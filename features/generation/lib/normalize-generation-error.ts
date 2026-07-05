@@ -55,6 +55,13 @@ export function normalizeUserFacingGenerationError(
     return copy.genericGenerationFailed;
   }
 
+  // OpenAI 組織の請求上限到達(2026-07-04 の障害で確認)。内部事情(請求)を出さず
+  // 「混雑」として案内する。"Billing hard limit has been reached." 等、
+  // OpenAI がタグ無しの生メッセージで返すため個別にパターンマッチする。
+  if (/billing.*hard limit|hard limit.*reached/i.test(errorMessage)) {
+    return copy.providerBusy;
+  }
+
   // OpenAI 側の非リトライ系エラー（組織未検証 / API key 不正 / 残高不足 /
   // 401・403 / GIF 拒否 / OPENAI_API_KEY 未設定）は upstream の生メッセージを
   // 表に出さず汎用文言に差し替える。詳細は Edge Function ログ参照。

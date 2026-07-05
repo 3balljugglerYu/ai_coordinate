@@ -123,6 +123,26 @@ describe("normalizeUserFacingGenerationError", () => {
     ).toBe(copy.modelTemporarilyUnavailable);
   });
 
+  it("maps OpenAI billing hard limit messages to copy.providerBusy", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        "Billing hard limit has been reached.",
+        copy,
+      ),
+    ).toBe(copy.providerBusy);
+  });
+
+  it("maps billing hard limit messages case-insensitively", () => {
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        "billing HARD LIMIT reached for this organization",
+        copy,
+      ),
+    ).toBe(copy.providerBusy);
+  });
+
   it("passes through unknown failed messages unchanged", () => {
     const message = "Something completely unexpected happened";
     expect(

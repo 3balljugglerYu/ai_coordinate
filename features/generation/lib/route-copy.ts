@@ -28,6 +28,7 @@ export const generationRouteCopy = {
       "安全性ポリシーにより生成できませんでした。\n内容を変更して再試行してください。",
     genericGenerationFailed:
       "画像生成に失敗しました。しばらくしてから、もう一度お試しください。",
+    providerBusy: "現在混み合っています。しばらく経ってからお試しください。",
     modelTemporarilyUnavailable:
       "選択した生成モデルは現在ご利用いただけません。別のモデルを選択してください。",
     webpMissingParams: "imageUrl, imageId, storagePath が必要です",
@@ -76,6 +77,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -124,6 +127,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -172,6 +177,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -220,6 +227,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -268,6 +277,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -316,6 +327,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -364,6 +377,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -412,6 +427,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -460,6 +477,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -508,6 +527,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -556,6 +577,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -604,6 +627,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -652,6 +677,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -700,6 +727,8 @@ export const generationRouteCopy = {
       "The request was blocked by the safety policy.\nPlease revise the content and try again.",
     genericGenerationFailed:
       "Image generation failed. Please try again in a little while.",
+    providerBusy:
+      "We're currently experiencing high demand. Please try again in a little while.",
     modelTemporarilyUnavailable:
       "The selected generation model is currently unavailable. Please choose another model.",
     webpMissingParams: "imageUrl, imageId, and storagePath are required.",
@@ -746,6 +775,8 @@ export const generationRouteCopy = {
     noImagesGenerated: string;
     safetyBlocked: string;
     genericGenerationFailed: string;
+    /** プロバイダ側の請求上限到達等、内部事情を出さず「混雑」として案内する文言 */
+    providerBusy: string;
     modelTemporarilyUnavailable: string;
     webpMissingParams: string;
     webpFailed: string;
