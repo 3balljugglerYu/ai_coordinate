@@ -16,9 +16,12 @@ import { act, render, screen } from "@testing-library/react";
 import { CompletionRewardPanel } from "@/features/collections/components/CompletionRewardPanel";
 
 describe("CompletionRewardPanel", () => {
+  let originalMatchMedia: PropertyDescriptor | undefined;
+
   beforeEach(() => {
     jest.useFakeTimers();
     // reduce-motion: CountUpNumber が即座に最終値へ到達し onDone を同期発火する
+    originalMatchMedia = Object.getOwnPropertyDescriptor(window, "matchMedia");
     Object.defineProperty(window, "matchMedia", {
       configurable: true,
       writable: true,
@@ -38,6 +41,12 @@ describe("CompletionRewardPanel", () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
+    // モックを残すと同ランナー内の他テストを汚染するため元の状態へ復元する
+    if (originalMatchMedia) {
+      Object.defineProperty(window, "matchMedia", originalMatchMedia);
+    } else {
+      delete (window as { matchMedia?: unknown }).matchMedia;
+    }
   });
 
   it("額が0以下なら何も描画しない", () => {
@@ -55,8 +64,12 @@ describe("CompletionRewardPanel", () => {
     act(() => {
       jest.advanceTimersByTime(800);
     });
+    // 着地は rAF コールバック内で行われるため1フレーム分進める
+    act(() => {
+      jest.advanceTimersByTime(20);
+    });
 
-    // reduce-motion により即着地 → 最終値と「獲得！」
+    // reduce-motion により rAF 1フレームで即着地 → 最終値と「獲得！」
     expect(screen.getByText("100")).not.toBeNull();
     expect(screen.getByText("獲得！")).not.toBeNull();
   });
@@ -67,7 +80,10 @@ describe("CompletionRewardPanel", () => {
     );
 
     act(() => {
-      jest.advanceTimersByTime(100); // じらし → 即着地(reduce-motion)
+      jest.advanceTimersByTime(100); // じらし
+    });
+    act(() => {
+      jest.advanceTimersByTime(20); // rAF 1フレームで即着地(reduce-motion)
     });
     expect(screen.getByText("獲得！")).not.toBeNull();
 
@@ -81,6 +97,9 @@ describe("CompletionRewardPanel", () => {
     render(<CompletionRewardPanel amount={30} delayMs={100} />);
     act(() => {
       jest.advanceTimersByTime(100);
+    });
+    act(() => {
+      jest.advanceTimersByTime(20);
     });
     act(() => {
       jest.advanceTimersByTime(60000);

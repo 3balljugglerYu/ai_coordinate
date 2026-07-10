@@ -93,11 +93,14 @@ export function CollectionMountComposer({
         // book(めくれる日記帳)は結果モーダルではなく没入の本リーダーへ直接遷移する。
         // 完走報酬はリーダー側の演出用に ?reward= で引き継ぐ(表示専用。付与はサーバー確定済み)。
         if (res.ok && data.status === "completed" && data.mode === "book" && data.sharePath) {
-          router.push(
-            rewardGranted > 0
-              ? `${data.sharePath}?reward=${rewardGranted}`
-              : data.sharePath,
-          );
+          let bookPath = data.sharePath;
+          if (rewardGranted > 0) {
+            // 既存クエリ/ハッシュを壊さないよう URL API で安全に付与する
+            const url = new URL(data.sharePath, window.location.origin);
+            url.searchParams.set("reward", String(rewardGranted));
+            bookPath = `${url.pathname}${url.search}${url.hash}`;
+          }
+          router.push(bookPath);
           return;
         }
         if (res.ok && data.status === "completed" && data.mountImageUrl) {

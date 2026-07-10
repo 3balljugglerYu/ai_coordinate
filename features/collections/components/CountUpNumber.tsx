@@ -22,25 +22,32 @@ export function CountUpNumber({
 }) {
   const [display, setDisplay] = useState(0);
   const doneRef = useRef(false);
+  // Latest Ref Pattern: 親の再レンダーで新しい onDone が渡されても、
+  // アニメーションを再トリガーせずに常に最新の関数を呼ぶ(stale closure回避)。
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  });
 
   useEffect(() => {
     doneRef.current = false;
+    // 0以下は描画0のまま(呼び出し側パネルが額<=0で非表示にする前提)。
     if (value <= 0) {
-      setDisplay(0);
       return;
     }
     const reduceMotion =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduceMotion) {
-      setDisplay(value);
-      doneRef.current = true;
-      onDone?.();
-      return;
-    }
+    // setState は必ず rAF コールバック内で行う(effect本体での同期setState回避)。
     let raf = 0;
     const start = performance.now();
     const tick = (now: number) => {
+      if (reduceMotion) {
+        setDisplay(value);
+        doneRef.current = true;
+        onDoneRef.current?.();
+        return;
+      }
       const t = Math.min(1, (now - start) / durationMs);
       const eased = 1 - Math.pow(1 - t, 3);
       setDisplay(Math.round(eased * value));
@@ -48,13 +55,11 @@ export function CountUpNumber({
         raf = requestAnimationFrame(tick);
       } else if (!doneRef.current) {
         doneRef.current = true;
-        onDone?.();
+        onDoneRef.current?.();
       }
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-    // onDone は再スタートのトリガにしない(親のインライン関数で無限再実行しないように)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, durationMs]);
 
   return <span className={className}>{display.toLocaleString("en-US")}</span>;
