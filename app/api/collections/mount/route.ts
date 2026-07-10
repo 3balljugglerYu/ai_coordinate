@@ -296,22 +296,24 @@ export async function POST(request: NextRequest) {
       uploadedPath = mountStoragePath; // 後続失敗時のロールバック対象
       const bookMountPath = mountStoragePath;
 
-      // X シェア用 OGP(横長バナー)は mount のツイン ogp-{ts}.png に保存する(mount モードと同方式)。
-      //   優先: 運営登録のテーマ表紙(ogp_template_path = 旅のきろくバナー)。未設定時は
-      //   はじまり画像を OGP にフォールバック(404 を避ける)。シェアページはこのツインを参照する。
-      const ogpTemplatePath = category.ogp_template_path as string | null;
+      // X シェア用 OGP は mount のツイン ogp-{ts}.png に保存する(mount モードと同方式)。
+      //   book はユーザー生成の「はじまり(表紙)」をそのまま OGP にする(A案 2026-07-11)。
+      //   全員共通テンプレ(ogp_template_path)より「本人のうちの子が主役」を優先する意図。
+      //   縦長画像のため X の大型カードでは中央帯(顔まわり)にクロップされる想定。
       const ogpTwinPath = ogpPathFromMountPath(mountStoragePath);
       if (ogpTwinPath) {
         try {
-          const ogpBuf = ogpTemplatePath
-            ? await downloadBuffer(admin, TEMPLATE_BUCKET, ogpTemplatePath)
-            : coverBuf;
-          await admin.storage
+          // storage.upload は API レベルの失敗では throw せず { error } を返すため
+          // 明示的に確認する(OGP失敗は完走をブロックしない方針のままログのみ)。
+          const { error: ogpUploadError } = await admin.storage
             .from(GENERATED_IMAGES_BUCKET)
-            .upload(ogpTwinPath, ogpBuf, {
+            .upload(ogpTwinPath, coverBuf, {
               contentType: "image/png",
               upsert: false,
             });
+          if (ogpUploadError) {
+            console.error("book OGP twin upload failed:", ogpUploadError);
+          }
         } catch (e) {
           console.error("book OGP twin upload failed:", e);
         }
