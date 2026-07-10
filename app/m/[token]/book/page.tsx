@@ -37,7 +37,9 @@ export async function generateMetadata({
       description: SHARE_DESCRIPTION,
       type: "article",
       siteName: "Persta.AI",
-      images: [{ url: book.ogpImageUrl, alt: title, width: 1200, height: 630 }],
+      // OGP はユーザー生成の「はじまり(表紙)」= 縦長のため、横長1200x630の
+      // サイズヒントは付けない(実寸はクローラーが画像から取得する)。
+      images: [{ url: book.ogpImageUrl, alt: title }],
     },
     twitter: {
       card: "summary_large_image",
