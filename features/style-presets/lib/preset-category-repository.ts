@@ -48,6 +48,7 @@ export interface PresetCategoryRow {
   visibility?: StylePresetCategoryVisibility | null;
   is_collection_series?: boolean | null;
   completion_threshold?: number | null;
+  completion_reward_percoins?: number | null;
   completion_view_mode?: string | null;
   book_cover_path?: string | null;
   unlock_prerequisite_key?: string | null;
@@ -110,6 +111,8 @@ export interface PresetCategoryAdmin {
   visibility: StylePresetCategoryVisibility;
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  /** コレクション完走時に付与するペルコイン数。0/null=報酬なし。 */
+  completionRewardPercoins: number | null;
   /** 完走表示モード: 'mount'(単一台紙) / 'book'(めくれる日記帳)。 */
   completionViewMode: "mount" | "book";
   /** book 表示の表紙(0ページ目)画像の storage path。 */
@@ -174,6 +177,7 @@ export interface PresetCategoryInsert {
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  completionRewardPercoins?: number | null;
   completionViewMode?: "mount" | "book";
   bookCoverPath?: string | null;
   unlockPrerequisiteKey?: string | null;
@@ -231,6 +235,7 @@ export interface PresetCategoryUpdate {
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  completionRewardPercoins?: number | null;
   completionViewMode?: "mount" | "book";
   bookCoverPath?: string | null;
   unlockPrerequisiteKey?: string | null;
@@ -303,6 +308,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     visibility: normalizeVisibility(row.visibility),
     isCollectionSeries: row.is_collection_series ?? false,
     completionThreshold: row.completion_threshold ?? null,
+    completionRewardPercoins: row.completion_reward_percoins ?? null,
     completionViewMode: row.completion_view_mode === "book" ? "book" : "mount",
     bookCoverPath: row.book_cover_path ?? null,
     unlockPrerequisiteKey: row.unlock_prerequisite_key ?? null,
@@ -447,6 +453,7 @@ export async function createPresetCategory(
       visibility: input.visibility ?? "admin_only",
       is_collection_series: input.isCollectionSeries ?? false,
       completion_threshold: input.completionThreshold ?? null,
+      completion_reward_percoins: input.completionRewardPercoins ?? null,
       completion_view_mode: input.completionViewMode ?? "mount",
       book_cover_path: input.bookCoverPath ?? null,
       unlock_prerequisite_key: input.unlockPrerequisiteKey ?? null,
@@ -539,6 +546,8 @@ export async function updatePresetCategory(
     payload.is_collection_series = input.isCollectionSeries;
   if (input.completionThreshold !== undefined)
     payload.completion_threshold = input.completionThreshold;
+  if (input.completionRewardPercoins !== undefined)
+    payload.completion_reward_percoins = input.completionRewardPercoins;
   if (input.completionViewMode !== undefined)
     payload.completion_view_mode = input.completionViewMode;
   if (input.bookCoverPath !== undefined)

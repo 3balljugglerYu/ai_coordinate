@@ -337,7 +337,7 @@ alwaysApply: false
 
 #### `preset_categories`
 - 主キー: `id`
-- 主要カラム: `key` (UNIQUE, 不変), `display_name_ja`, `display_name_en`, `badge_color`, `badge_text_color`, `skip_base_prefix`, `default_image_input_mode` (`single|dual`), `output_aspect_ratio_mode` (`source|square`), `user_guidance_ja`, `user_guidance_en`, `show_source_image_type_control`, `show_background_change_control`, `show_generation_model_control`, `show_user_prompt_input`, `visibility` (`public|admin_only`), `is_collection_series`, `completion_threshold`, `mount_template_path`, `mount_layout`, `ogp_template_path`, `ogp_mount_placement`, `display_order`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`
+- 主要カラム: `key` (UNIQUE, 不変), `display_name_ja`, `display_name_en`, `badge_color`, `badge_text_color`, `skip_base_prefix`, `default_image_input_mode` (`single|dual`), `output_aspect_ratio_mode` (`source|square`), `user_guidance_ja`, `user_guidance_en`, `show_source_image_type_control`, `show_background_change_control`, `show_generation_model_control`, `show_user_prompt_input`, `visibility` (`public|admin_only`), `is_collection_series`, `completion_threshold`, `completion_reward_percoins`, `mount_template_path`, `mount_layout`, `ogp_template_path`, `ogp_mount_placement`, `display_order`, `is_active`, `created_by`, `updated_by`, `created_at`, `updated_at`
 - 外部キー: `created_by -> auth.users.id` (`ON DELETE SET NULL`), `updated_by -> auth.users.id` (`ON DELETE SET NULL`)
 - トリガ: `prevent_preset_category_key_change` で `key` の UPDATE を拒否 (過去ジョブのスナップショット集計を守るため)
 - 備考: `style_presets` のカテゴリ。`skip_base_prefix=true` のとき生成時に `style.base_prefix` を一切付与しない (raw モード)。`output_aspect_ratio_mode='source'` はアップロード画像比率に合わせ、`square` は One-Tap Style 生成を 1:1 に固定する。`user_guidance_ja/en` はユーザー向け推奨画像・注意事項の説明文。`show_*_control` は `/style` 画面のアップロード画像タイプ・背景設定・生成モデル選択の表示可否をカテゴリ単位で制御する。`show_user_prompt_input=true` で `/style` にユーザープロンプト入力欄を表示し、生成時に `preset.stylingPrompt` の後ろへ追加結合する。`visibility='admin_only'` は `ADMIN_USER_IDS` の運営ユーザーだけ `/style` 表示・生成可能にする。`is_collection_series=true` はカテゴリをコレクションシリーズとして扱い、`completion_threshold` と `mount_layout` はスロット数一致 (`grid_3=3`, `grid_4=4`, `grid_6=6`) が CHECK 制約で強制される。`mount_template_path` は private `collection-mount-templates` bucket の PNG path。`ogp_template_path` は同 bucket 内のコレクション OGP 用デザインテンプレート (1200x630 PNG) の path で、NULL のとき OGP は従来の SVG 合成デザインになる。`ogp_mount_placement` (JSONB) はテンプレートへの台紙配置 `{"cx","cy","width","rotate"}` で NULL はコード側既定値。`is_active=false` は「新規 preset 作成時の選択肢から外す」だけで、既存 preset の表示は `style_presets.status` とカテゴリ `visibility` で制御する。seed 値は `coordinate` と `chibi`
@@ -345,7 +345,7 @@ alwaysApply: false
 
 #### `collection_completions`
 - 主キー: `id`
-- 主要カラム: `user_id`, `category_id`, `category_key`, `threshold_at_completion`, `mount_image_path`, `mount_status`, `mount_error`, `completed_at`, `created_at`, `updated_at`
+- 主要カラム: `user_id`, `category_id`, `category_key`, `threshold_at_completion`, `mount_image_path`, `mount_status`, `mount_error`, `completed_at`, `reward_granted_at`, `created_at`, `updated_at`
 - 外部キー: `user_id -> auth.users.id` (`ON DELETE CASCADE`), `category_id -> preset_categories.id` (`ON DELETE RESTRICT`)
 - 制約: `(user_id, category_id)` UNIQUE、`mount_status IN ('generating','completed','failed')`
 - 備考: コレクション台紙生成の予約・完了状態。生成済み台紙は `generated-images/collection-mounts/{userId}/{categoryKey}/mount-{timestamp}.png` に保存し、公開ページ `/m/{id}` で link-only 表示する。
@@ -458,7 +458,7 @@ alwaysApply: false
 ## `public` 関数（現行）
 
 ### 業務ロジック RPC
-- ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `deduct_percoins_admin`, `expire_free_percoin_batches`
+- ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `grant_collection_completion_reward`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
 - One-Tap Style: `consume_style_authenticated_generate_attempt`, `reserve_style_authenticated_generate_attempt`, `attach_style_authenticated_generate_attempt_job`, `release_style_authenticated_generate_attempt`, `reserve_style_guest_generate_attempt`, `release_style_guest_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
   - 注: `reserve_style_guest_generate_attempt` は意味を画面横断ゲスト試行（`/style` と `/coordinate` 合算）に拡張済み。現行 default は `p_short_limit=999`（実質無効）/ `p_daily_limit=1`。引数の `p_client_ip_hash` には `SHA-256("<ip>|<persta_guest_id>|<salt>")` を渡す（`features/style/lib/style-rate-limit.ts`）。

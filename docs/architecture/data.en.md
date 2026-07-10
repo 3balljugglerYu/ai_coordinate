@@ -315,6 +315,7 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `grant_daily_post_bonus` | `/api/posts/post` | user, generation | `integer` | Idempotent daily-post reward |
 | `grant_streak_bonus` | `/api/streak/check` | user | `integer` | Updates `profiles` streak state and grants reward |
 | `check_and_grant_referral_bonus_on_first_login_with_reason` | `/api/referral/check-first-login` | user, referral code | `bonus_granted`, `reason_code` | Validates referral window and grants once |
+| `grant_collection_completion_reward` | `/api/collections/mount` (after finalize) | completion id, user | `amount_granted`, `already_granted` | Idempotent completion reward via `reward_granted_at` test-and-set; amount from `preset_categories.completion_reward_percoins`, 50k cap, service_role only |
 | `generate_referral_code` | `/api/referral/generate`, `handle_new_user` | user | `text` | Ensures a persistent referral code |
 | `insert_source_image_stock` | `/api/source-image-stocks` | user, image URL, storage path, display name | `source_image_stocks` row | Atomic quota check plus stock insert |
 | `get_percoin_balance_breakdown` | my-page and credit screens | user | total and bucketed balances | Read model for wallet UI |

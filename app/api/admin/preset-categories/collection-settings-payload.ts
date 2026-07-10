@@ -18,6 +18,8 @@ import {
 export interface CollectionSettingsPayload {
   isCollectionSeries?: boolean;
   completionThreshold?: number | null;
+  /** コレクション完走時に付与するペルコイン数。0/null=報酬なし。 */
+  completionRewardPercoins?: number | null;
   /** 完走表示モード: 'mount'(単一台紙) / 'book'(めくれる日記帳)。 */
   completionViewMode?: "mount" | "book";
   /** book 表示の表紙(0ページ目)画像 storage path。 */
@@ -119,6 +121,25 @@ export function parseCollectionSettings(
       return { ok: false, error: "completion_threshold must be a positive integer" };
     } else {
       payload.completionThreshold = v;
+    }
+  }
+
+  // 完走報酬(ペルコイン)。0/null=報酬なし。負数・非整数は拒否(多層防御: DBのCHECKでも担保)。
+  if (body.completion_reward_percoins !== undefined) {
+    const v = body.completion_reward_percoins;
+    if (v === null) {
+      payload.completionRewardPercoins = null;
+    } else if (
+      typeof v !== "number" ||
+      !Number.isInteger(v) ||
+      v < 0
+    ) {
+      return {
+        ok: false,
+        error: "completion_reward_percoins must be a non-negative integer or null",
+      };
+    } else {
+      payload.completionRewardPercoins = v;
     }
   }
 

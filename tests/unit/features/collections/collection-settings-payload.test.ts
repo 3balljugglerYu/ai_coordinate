@@ -79,6 +79,44 @@ describe("parseCollectionSettings", () => {
     expect(parseCollectionSettings({ completion_threshold: 1.5 }, OFF).ok).toBe(false);
   });
 
+  test("完走報酬: 0 / 正の整数 / null は許可し payload に反映", () => {
+    const zero = parseCollectionSettings({ completion_reward_percoins: 0 }, OFF);
+    expect(zero.ok).toBe(true);
+    if (zero.ok) expect(zero.payload.completionRewardPercoins).toBe(0);
+
+    const hundred = parseCollectionSettings(
+      { completion_reward_percoins: 100 },
+      OFF,
+    );
+    expect(hundred.ok).toBe(true);
+    if (hundred.ok) expect(hundred.payload.completionRewardPercoins).toBe(100);
+
+    const nul = parseCollectionSettings(
+      { completion_reward_percoins: null },
+      OFF,
+    );
+    expect(nul.ok).toBe(true);
+    if (nul.ok) expect(nul.payload.completionRewardPercoins).toBeNull();
+  });
+
+  test("完走報酬: 負数 / 非整数 / 文字列は拒否", () => {
+    expect(
+      parseCollectionSettings({ completion_reward_percoins: -1 }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ completion_reward_percoins: 10.5 }, OFF).ok,
+    ).toBe(false);
+    expect(
+      parseCollectionSettings({ completion_reward_percoins: "100" }, OFF).ok,
+    ).toBe(false);
+  });
+
+  test("完走報酬: 未指定なら payload に含まれない(変更なし)", () => {
+    const r = parseCollectionSettings({}, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect("completionRewardPercoins" in r.payload).toBe(false);
+  });
+
   test("未対応レイアウトは拒否", () => {
     expect(parseCollectionSettings({ mount_layout: "grid_5" }, OFF).ok).toBe(false);
   });
