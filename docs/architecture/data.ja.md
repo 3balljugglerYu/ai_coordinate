@@ -325,6 +325,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `grant_daily_post_bonus` | `/api/posts/post` | user, generation | `integer` | デイリー投稿特典の冪等付与 |
 | `grant_streak_bonus` | `/api/streak/check` | user | `integer` | `profiles` のストリーク更新と特典付与 |
 | `check_and_grant_referral_bonus_on_first_login_with_reason` | `/api/referral/check-first-login` | user, referral code | `bonus_granted`, `reason_code` | 紹介成立判定と一度きりの付与 |
+| `grant_collection_completion_reward` | `/api/collections/mount`(finalize成功後) | completion id, user | `amount_granted`, `already_granted` | 完走報酬の冪等付与(`reward_granted_at` test-and-set、額は `preset_categories.completion_reward_percoins`、5万キャップ適用、service_role専用) |
 | `generate_referral_code` | `/api/referral/generate`, `handle_new_user` | user | `text` | 紹介コードの永続化 |
 | `insert_source_image_stock` | `/api/source-image-stocks` | user, image URL, storage path, display name | `source_image_stocks` row | 上限チェック付きの原子的 INSERT |
 | `get_percoin_balance_breakdown` | マイページ、課金 UI | user | bucket ごとの残高 | ウォレット UI 向け read model |
