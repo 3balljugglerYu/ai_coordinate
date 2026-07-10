@@ -183,6 +183,38 @@ describe("getPresetCategoryById", () => {
     expect(result?.progressiveBatchSize).toBeNull();
   });
 
+  test("completion_reward_percoins を camelCase へマップする(0/正の値/null)", async () => {
+    const withValue: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      completion_reward_percoins: 100,
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: withValue, error: null }),
+    });
+    const granted = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(granted?.completionRewardPercoins).toBe(100);
+
+    const withZero: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      completion_reward_percoins: 0,
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: withZero, error: null }),
+    });
+    const zero = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(zero?.completionRewardPercoins).toBe(0);
+
+    const withNull: PresetCategoryRow = {
+      ...SAMPLE_ROW,
+      completion_reward_percoins: null,
+    };
+    createAdminClientMock.mockReturnValue({
+      from: buildSingleChain({ data: withNull, error: null }),
+    });
+    const nul = await getPresetCategoryById(SAMPLE_ROW.id);
+    expect(nul?.completionRewardPercoins).toBeNull();
+  });
+
   test("progress_modal_* 色列が null なら null にフォールバックする", async () => {
     const row: PresetCategoryRow = {
       ...SAMPLE_ROW,
