@@ -32,6 +32,47 @@ function jsonError(message: string, code: string, status: number) {
   return NextResponse.json({ error: message, errorCode: code }, { status });
 }
 
+/**
+ * 完走報酬の付与(docs/planning/collection-completion-reward-implementation-plan.md)。
+ * finalize_collection_completion 成功直後にのみ呼ぶ。冪等は RPC 内の
+ * reward_granted_at test-and-set が担保。失敗しても完走レスポンスを妨げない
+ * (EARS-07: ログのみ残して 0 を返す)。戻り値=実付与額(キャップ後)。
+ */
+async function grantCompletionReward(
+  admin: ReturnType<typeof createAdminClient>,
+  completionId: string,
+  userId: string,
+): Promise<number> {
+  try {
+    const { data, error } = await admin.rpc(
+      "grant_collection_completion_reward",
+      {
+        p_completion_id: completionId,
+        p_user_id: userId,
+      },
+    );
+    if (error) {
+      console.error("[collections mount] completion reward grant failed:", error);
+      return 0;
+    }
+    const row = Array.isArray(data) ? data[0] : data;
+    const amount =
+      typeof row?.amount_granted === "number" ? row.amount_granted : 0;
+    if (amount > 0) {
+      // 残高表示系キャッシュを更新(tutorial/complete の付与と同じタグ群)。
+      // collection-completions: タグはコレクション表示専用で残高には効かない。
+      revalidateTag(`my-page-credits-${userId}`, "max");
+      revalidateTag(`my-page-${userId}`, "max");
+      revalidateTag(`challenge-${userId}`, "max");
+      revalidateTag(`coordinate-${userId}`, "max");
+    }
+    return amount;
+  } catch (grantError) {
+    console.error("[collections mount] completion reward grant failed:", grantError);
+    return 0;
+  }
+}
+
 async function downloadBuffer(
   admin: ReturnType<typeof createAdminClient>,
   bucket: string,
@@ -277,6 +318,7 @@ export async function POST(request: NextRequest) {
       }
 
       const bookSharePath = `/m/${completionId}/book`;
+      let bookRewardGranted = 0;
 
       if (!isUpdate) {
         const { data: finalized, error: finalizeError } = await admin.rpc(
@@ -303,6 +345,12 @@ export async function POST(request: NextRequest) {
           throw new Error(`book pages save failed: ${bookPagesError.message}`);
         }
         revalidateTag(`collection-completions:${user.id}`, "max");
+        // 完走報酬(finalize成功後のみ。作り直しでは呼ばれない)
+        bookRewardGranted = await grantCompletionReward(
+          admin,
+          completionId,
+          user.id,
+        );
         await Promise.allSettled([
           recordStyleUsageEvent({
             userId: user.id,
@@ -352,6 +400,8 @@ export async function POST(request: NextRequest) {
         mode: "book",
         sharePath: bookSharePath,
         mountImageUrl: bookOgpUrl,
+        // 完走報酬の実付与額(0=報酬なし/付与失敗/作り直し)。祝賀ビューの演出用
+        rewardGranted: bookRewardGranted,
       });
     }
 
@@ -468,6 +518,7 @@ export async function POST(request: NextRequest) {
       console.error("collection mount OGP generation failed:", ogpError);
     }
 
+    let rewardGranted = 0;
     if (!isUpdate) {
       // 5) 初回のみ finalize(generating → completed の遷移)。イベント記録もここだけ。
       const { data: finalized, error: finalizeError } = await admin.rpc(
@@ -486,6 +537,8 @@ export async function POST(request: NextRequest) {
       }
       // マイページのコレクション表示(ユーザー別 cache)を更新
       revalidateTag(`collection-completions:${user.id}`, "max");
+      // 完走報酬(finalize成功後のみ。作り直しでは呼ばれない)
+      rewardGranted = await grantCompletionReward(admin, completionId, user.id);
       await Promise.allSettled([
         recordStyleUsageEvent({
           userId: user.id,
@@ -534,6 +587,8 @@ export async function POST(request: NextRequest) {
         (category.mount_template_width as number | null) ?? null,
       mountTemplateHeight:
         (category.mount_template_height as number | null) ?? null,
+      // 完走報酬の実付与額(0=報酬なし/付与失敗/作り直し)。祝賀ビューの演出用
+      rewardGranted,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "unknown error";
