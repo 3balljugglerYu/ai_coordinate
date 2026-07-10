@@ -303,12 +303,17 @@ export async function POST(request: NextRequest) {
       const ogpTwinPath = ogpPathFromMountPath(mountStoragePath);
       if (ogpTwinPath) {
         try {
-          await admin.storage
+          // storage.upload は API レベルの失敗では throw せず { error } を返すため
+          // 明示的に確認する(OGP失敗は完走をブロックしない方針のままログのみ)。
+          const { error: ogpUploadError } = await admin.storage
             .from(GENERATED_IMAGES_BUCKET)
             .upload(ogpTwinPath, coverBuf, {
               contentType: "image/png",
               upsert: false,
             });
+          if (ogpUploadError) {
+            console.error("book OGP twin upload failed:", ogpUploadError);
+          }
         } catch (e) {
           console.error("book OGP twin upload failed:", e);
         }
