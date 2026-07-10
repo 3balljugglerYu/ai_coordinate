@@ -7,6 +7,7 @@ import { X, Share2, Maximize2, Minimize2, ChevronUp } from "lucide-react";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
 import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
+import { CompletionRewardPanel } from "@/features/collections/components/CompletionRewardPanel";
 import {
   hasSeenSwipeHint,
   markSwipeHintSeen,
@@ -24,6 +25,7 @@ export function ScrapbookReader({
   pages,
   isOwner,
   completionId,
+  rewardGranted = 0,
 }: {
   title: string;
   coverImageUrl: string | null;
@@ -31,6 +33,11 @@ export function ScrapbookReader({
   isOwner: boolean;
   /** 完走(collection_completions.id = token)。所有者にホーム投稿ボタンを出すのに使う。 */
   completionId?: string | null;
+  /**
+   * 完走報酬の実付与額(?reward= から。所有者のみ・表示専用)。
+   * >0 のとき開幕にカウントアップ演出を重ねる(着地後は自動で消える)。
+   */
+  rewardGranted?: number;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -230,6 +237,17 @@ export function ScrapbookReader({
             <ChevronUp className="h-8 w-8 animate-bounce" />
             <p className="text-sm font-bold">↑ 上スワイプでUIを隠せます</p>
           </div>
+        </div>
+      ) : null}
+
+      {/* 完走報酬の獲得演出(完走直後の遷移時のみ)。着地後は自動で消え、没入を妨げない */}
+      {rewardGranted > 0 ? (
+        <div className="pointer-events-none absolute inset-x-0 top-16 z-20 flex justify-center">
+          <CompletionRewardPanel
+            amount={rewardGranted}
+            delayMs={900}
+            autoDismissMs={3200}
+          />
         </div>
       ) : null}
 

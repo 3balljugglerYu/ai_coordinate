@@ -311,6 +311,8 @@ export function useCollectionProgress() {
       mountImageUrl: result.mountImageUrl,
       sharePath: result.sharePath,
       completionId: result.completionId,
+      // 完走報酬の実付与額(>0で完了ビューにカウントアップ演出が出る)
+      rewardGranted: result.rewardGranted,
       mountTemplateWidth: result.mountTemplateWidth,
       mountTemplateHeight: result.mountTemplateHeight,
       characterImageUrl: target?.characterImageUrl ?? null,

@@ -13,6 +13,7 @@ import { ShareLinkButton } from "@/components/ShareLinkButton";
 import { AchievementBadge } from "@/features/collections/components/AchievementBadge";
 import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
 import { CollectionConfetti } from "@/features/collections/components/CollectionConfetti";
+import { CompletionRewardPanel } from "@/features/collections/components/CompletionRewardPanel";
 import { CollectionSparkle } from "@/features/collections/components/CollectionSparkle";
 import { collectionGuidePath } from "@/features/collections/lib/collection-guides";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
@@ -39,6 +40,11 @@ export interface CollectionCelebration {
   sharePath: string | null;
   /** 公開ページ token(= collection_completions.id)。シェアに使う */
   completionId: string | null;
+  /**
+   * 完走報酬の実付与額(サーバーのキャップ後)。>0 のとき完了ビューに
+   * カウントアップ演出パネルを出す(EARS-09)。0/undefined=パネル非表示。
+   */
+  rewardGranted?: number;
   /** リング中央のシリーズ用キャラ画像(任意) */
   characterImageUrl: string | null;
   /** 集めたシール画像(衣装ごと最新1枚)の公開URL。?枠に重ねる */
@@ -597,6 +603,8 @@ export function CollectionProgressModal({
                 />
               </div>
             </div>
+            {/* 完走報酬: 0.8秒じらし→カウントアップ→着地バースト(額>0のときのみ) */}
+            <CompletionRewardPanel amount={celebration.rewardGranted ?? 0} />
             {/* 上(オレンジ=主CTA)=「シェアページへ」、中(白)=「シェアする」。
                ボタンの色の位置は固定し、ラベル/動作だけ入れ替えている。 */}
             {celebration.sharePath ? (

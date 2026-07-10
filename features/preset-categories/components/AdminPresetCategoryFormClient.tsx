@@ -69,6 +69,8 @@ interface FormState {
   visibility: "public" | "admin_only";
   isCollectionSeries: boolean;
   completionThreshold: number | null;
+  /** コレクション完走時に付与するペルコイン数。0/null=報酬なし */
+  completionRewardPercoins: number | null;
   /** 完走表示モード: mount(単一台紙) / book(めくれる日記帳) */
   completionViewMode: "mount" | "book";
   /** book 表示の表紙(0ページ目)画像 storage path。null=簡易表紙 */
@@ -167,6 +169,7 @@ function toFormState(
     visibility: initial?.visibility ?? "admin_only",
     isCollectionSeries: initial?.isCollectionSeries ?? false,
     completionThreshold: initial?.completionThreshold ?? null,
+    completionRewardPercoins: initial?.completionRewardPercoins ?? null,
     completionViewMode: initial?.completionViewMode ?? "mount",
     bookCoverPath: initial?.bookCoverPath ?? null,
     unlockPrerequisiteKey: initial?.unlockPrerequisiteKey ?? null,
@@ -655,6 +658,7 @@ export function AdminPresetCategoryFormClient({
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: effectiveThreshold,
+              completion_reward_percoins: form.completionRewardPercoins,
               completion_view_mode: form.completionViewMode,
               book_cover_path: form.bookCoverPath,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
@@ -719,6 +723,7 @@ export function AdminPresetCategoryFormClient({
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
               completion_threshold: effectiveThreshold,
+              completion_reward_percoins: form.completionRewardPercoins,
               completion_view_mode: form.completionViewMode,
               book_cover_path: form.bookCoverPath,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
@@ -1313,6 +1318,35 @@ export function AdminPresetCategoryFormClient({
               className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
               placeholder="4"
             />
+          </label>
+
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">
+              完走報酬（ペルコイン）
+            </span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={form.completionRewardPercoins ?? ""}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === "") {
+                  update("completionRewardPercoins", null);
+                  return;
+                }
+                const n = Number(raw);
+                update(
+                  "completionRewardPercoins",
+                  Number.isFinite(n) ? Math.max(0, Math.floor(n)) : null,
+                );
+              }}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+              placeholder="100"
+            />
+            <span className="mt-1 block text-xs text-slate-500">
+              コレクション完走時に付与するペルコイン数。0または空欄で報酬なし。
+            </span>
           </label>
 
           {form.completionViewMode !== "book" ? (

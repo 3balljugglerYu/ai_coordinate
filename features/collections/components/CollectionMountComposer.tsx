@@ -34,6 +34,8 @@ export interface MountGeneratedResult {
   completionId: string | null;
   mountTemplateWidth: number | null;
   mountTemplateHeight: number | null;
+  /** 完走報酬の実付与額(サーバーのキャップ後)。0=報酬なし/付与失敗/作り直し */
+  rewardGranted: number;
 }
 
 interface Props {
@@ -81,11 +83,21 @@ export function CollectionMountComposer({
           sharePath?: string;
           mountTemplateWidth?: number | null;
           mountTemplateHeight?: number | null;
+          rewardGranted?: number;
           error?: string;
         };
+        const rewardGranted =
+          typeof data.rewardGranted === "number" && data.rewardGranted > 0
+            ? data.rewardGranted
+            : 0;
         // book(めくれる日記帳)は結果モーダルではなく没入の本リーダーへ直接遷移する。
+        // 完走報酬はリーダー側の演出用に ?reward= で引き継ぐ(表示専用。付与はサーバー確定済み)。
         if (res.ok && data.status === "completed" && data.mode === "book" && data.sharePath) {
-          router.push(data.sharePath);
+          router.push(
+            rewardGranted > 0
+              ? `${data.sharePath}?reward=${rewardGranted}`
+              : data.sharePath,
+          );
           return;
         }
         if (res.ok && data.status === "completed" && data.mountImageUrl) {
@@ -98,6 +110,7 @@ export function CollectionMountComposer({
               : null,
             mountTemplateWidth: data.mountTemplateWidth ?? null,
             mountTemplateHeight: data.mountTemplateHeight ?? null,
+            rewardGranted,
           });
           return;
         }

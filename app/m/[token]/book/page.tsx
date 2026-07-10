@@ -8,6 +8,7 @@ import { ScrapbookReader } from "@/features/collections/components/ScrapbookRead
 
 interface BookPageProps {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ reward?: string }>;
 }
 
 const SHARE_DESCRIPTION =
@@ -47,7 +48,10 @@ export async function generateMetadata({
   };
 }
 
-export default async function CollectionBookPage({ params }: BookPageProps) {
+export default async function CollectionBookPage({
+  params,
+  searchParams,
+}: BookPageProps) {
   await connection();
   const { token } = await params;
   const book = await getCollectionBookByToken(token);
@@ -57,6 +61,15 @@ export default async function CollectionBookPage({ params }: BookPageProps) {
 
   const user = await getUser();
   const isOwner = Boolean(user && user.id === book.ownerId);
+
+  // 完走報酬の演出(?reward=N)。表示専用(付与はサーバー確定済み)のため値は
+  // 常識的な範囲に丸め、他人のリンク共有で出ないよう所有者のみに限定する。
+  const { reward } = await searchParams;
+  const rewardRaw = Number.parseInt(reward ?? "", 10);
+  const rewardGranted =
+    isOwner && Number.isInteger(rewardRaw) && rewardRaw > 0
+      ? Math.min(rewardRaw, 100000)
+      : 0;
 
   // 表紙(0ページ目)の決定:
   //   - 既定: コレクションの先頭(sort_order 最小)の生成画像=「ユーザー生成の表紙」を front cover にし、
@@ -82,6 +95,7 @@ export default async function CollectionBookPage({ params }: BookPageProps) {
       pages={pages}
       isOwner={isOwner}
       completionId={token}
+      rewardGranted={rewardGranted}
     />
   );
 }
