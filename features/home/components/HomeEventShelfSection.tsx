@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -17,8 +17,18 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  CollectionProgressModal,
+  type CollectionCelebration,
+} from "@/features/collections/components/CollectionProgressModal";
+import {
+  CollectionMountComposer,
+  type MountGeneratedResult,
+} from "@/features/collections/components/CollectionMountComposer";
+import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+import type { CompletedMountView } from "@/features/my-page/components/MyPageCollections";
 import type {
   EventShelf,
   EventShelfCard,
@@ -37,6 +47,12 @@ interface HomeEventShelfSectionProps {
   shelf: EventShelf;
   /** サーバーで解決したリクエスト時刻(ISO)。カウントダウンのSSR/CSR不一致を防ぐ。 */
   nowIso: string;
+  /**
+   * 全コンプ済みユーザーの完成台紙(マイページと同一ソース)。あれば🎉カードの
+   * 代わりに台紙サムネを出し、タップでマイページと同じ完了モーダルを開く。
+   * null(未作成/未ログイン)なら /collections リンクのお祝いカードにフォールバック。
+   */
+  completedMount?: CompletedMountView | null;
 }
 
 /**
@@ -47,6 +63,7 @@ interface HomeEventShelfSectionProps {
 export function HomeEventShelfSection({
   shelf,
   nowIso,
+  completedMount = null,
 }: HomeEventShelfSectionProps) {
   const router = useRouter();
   const t = useTranslations("home");
@@ -55,6 +72,129 @@ export function HomeEventShelfSection({
   const { toast } = useToast();
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
+
+  // 完成台紙タップ時のモーダル(マイページの openMountModal と同挙動)。
+  const [mountCelebration, setMountCelebration] =
+    useState<CollectionCelebration | null>(null);
+  const [celebrationNonce, setCelebrationNonce] = useState(0);
+  const [composer, setComposer] = useState<{
+    categoryKey: string;
+    displayName: string;
+    threshold: number;
+  } | null>(null);
+  const [recomposeInfo, setRecomposeInfo] = useState<{
+    threshold: number;
+    canRecompose: boolean;
+  } | null>(null);
+
+  // 「台紙を更新する」の表示可否(マイページと同じ /api/collections/options 判定)。
+  const loadRecomposeInfo = useCallback(async () => {
+    if (!completedMount) return null;
+    try {
+      const r = await fetch(
+        `/api/collections/options?categoryKey=${encodeURIComponent(completedMount.categoryKey)}`,
+        { cache: "no-store" },
+      );
+      if (!r.ok) return null;
+      const d = (await r.json()) as {
+        threshold?: number | null;
+        outfits?: { images: unknown[] }[];
+      };
+      const outfits = d.outfits ?? [];
+      const threshold = d.threshold ?? 0;
+      const info = {
+        threshold,
+        canRecompose:
+          threshold > 0 &&
+          outfits.length >= threshold &&
+          outfits.some((o) => o.images.length > 1),
+      };
+      setRecomposeInfo(info);
+      return info;
+    } catch {
+      return null;
+    }
+  }, [completedMount]);
+
+  const openMountModal = useCallback(() => {
+    if (!completedMount) return;
+    setCelebrationNonce((n) => n + 1);
+    setMountCelebration({
+      categoryKey: completedMount.categoryKey,
+      displayName: completedMount.displayName,
+      fromCount: 0,
+      toCount: 0,
+      threshold: recomposeInfo?.threshold ?? 0,
+      isCompleted: true,
+      mountImageUrl: completedMount.mountImageUrl,
+      // book は redirect 元の /m/<id>(chrome付き)を経由するとチラつくため /m/<id>/book へ直行。
+      sharePath:
+        completedMount.completionViewMode === "book"
+          ? `/m/${completedMount.completionId}/book`
+          : `/m/${completedMount.completionId}`,
+      completionId: completedMount.completionId,
+      mountTemplateWidth: completedMount.mountTemplateWidth,
+      mountTemplateHeight: completedMount.mountTemplateHeight,
+      characterImageUrl: null,
+      collectedImageUrls: [],
+      canRecompose: recomposeInfo?.canRecompose ?? false,
+      // 完了済み台紙の見返しなので、紙吹雪ではなくダイヤのきらめき演出にする。
+      celebrationEffect: "sparkle",
+    });
+    if (!recomposeInfo) {
+      void loadRecomposeInfo().then((info) => {
+        if (!info) return;
+        setMountCelebration((prev) =>
+          prev && prev.completionId === completedMount.completionId
+            ? {
+                ...prev,
+                threshold: info.threshold,
+                canRecompose: info.canRecompose,
+              }
+            : prev,
+        );
+      });
+    }
+  }, [completedMount, recomposeInfo, loadRecomposeInfo]);
+
+  // モーダル内「台紙を更新する」→ 画像選択(composer)を開く(マイページと同挙動)。
+  const openComposerFromCelebration = useCallback(
+    (c: CollectionCelebration) => {
+      setMountCelebration(null);
+      setComposer({
+        categoryKey: c.categoryKey,
+        displayName: c.displayName,
+        threshold: c.threshold,
+      });
+    },
+    [],
+  );
+
+  // 台紙の再生成完了 → 完了モーダル(新台紙+シェア)を表示し、サーバー cache を再反映。
+  const handleGenerated = useCallback(
+    (result: MountGeneratedResult) => {
+      const target = composer;
+      setComposer(null);
+      setCelebrationNonce((n) => n + 1);
+      setMountCelebration({
+        categoryKey: result.categoryKey,
+        displayName: target?.displayName ?? "",
+        fromCount: target?.threshold ?? 0,
+        toCount: target?.threshold ?? 0,
+        threshold: target?.threshold ?? 0,
+        isCompleted: true,
+        mountImageUrl: result.mountImageUrl,
+        sharePath: result.sharePath,
+        completionId: result.completionId,
+        mountTemplateWidth: result.mountTemplateWidth,
+        mountTemplateHeight: result.mountTemplateHeight,
+        characterImageUrl: null,
+        collectedImageUrls: [],
+      });
+      router.refresh();
+    },
+    [composer, router],
+  );
 
   const cardLocale = locale === "en" ? "en" : "ja";
   const displayName =
@@ -89,6 +229,38 @@ export function HomeEventShelfSection({
 
   const renderCard = (card: EventShelfCard) => {
     if (card.kind === "celebration") {
+      // 本人の完成台紙があれば、マイページのコレクション欄と同じサムネ+同じタップ挙動
+      // (完了モーダル=台紙拡大+シェア+台紙更新)にする。
+      if (completedMount) {
+        return (
+          <button
+            type="button"
+            onClick={openMountModal}
+            className="relative flex-shrink-0 overflow-hidden rounded-xl border border-amber-300 shadow-sm transition hover:ring-2 hover:ring-amber-300"
+            style={{
+              height: CARD_HEIGHT_PX,
+              aspectRatio: mountAspectForCategory(
+                completedMount.categoryKey,
+                completedMount.mountTemplateWidth,
+                completedMount.mountTemplateHeight,
+              ),
+            }}
+            aria-label={`${completedMount.displayName} のカードを表示`}
+          >
+            <Image
+              src={completedMount.mountImageUrl}
+              alt={`${completedMount.displayName} コンプリートカード`}
+              fill
+              sizes={`${CARD_WIDTH_PX}px`}
+              className="object-cover"
+            />
+            <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-white shadow">
+              {t("eventShelfCelebrationTitle")}
+            </span>
+          </button>
+        );
+      }
+      // 台紙未作成(または未ログイン)時のフォールバック。
       return (
         <button
           type="button"
@@ -269,6 +441,27 @@ export function HomeEventShelfSection({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <CollectionProgressModal
+        key={
+          mountCelebration
+            ? `${mountCelebration.categoryKey}-${celebrationNonce}`
+            : "none"
+        }
+        open={!!mountCelebration}
+        celebration={mountCelebration}
+        onClose={() => setMountCelebration(null)}
+        onCreateMount={openComposerFromCelebration}
+      />
+      {composer ? (
+        <CollectionMountComposer
+          key={composer.categoryKey}
+          categoryKey={composer.categoryKey}
+          displayName={composer.displayName}
+          threshold={composer.threshold}
+          onClose={() => setComposer(null)}
+          onGenerated={handleGenerated}
+        />
+      ) : null}
     </section>
   );
 }

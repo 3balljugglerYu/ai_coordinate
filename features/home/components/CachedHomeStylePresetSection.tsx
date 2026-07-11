@@ -7,11 +7,14 @@ import { buildCollectionUnlockAnnouncements } from "@/features/collections/lib/c
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { PetitUnlockAnnouncer } from "@/features/collections/components/PetitUnlockAnnouncer";
+import { buildPublicGeneratedImageUrl } from "@/features/collections/lib/public-mount-server-api";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
   collectShelfPresetIds,
   deriveEventShelves,
 } from "@/features/home/lib/derive-event-shelves";
+import type { CompletedMountView } from "@/features/my-page/components/MyPageCollections";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 
@@ -72,6 +75,49 @@ export async function CachedHomeStylePresetSection({
     (preset) => !preset.locked && !shelfPresetIds.has(preset.id),
   );
 
+  // 全コンプ済み棚の🎉カードには、マイページと同じ「本人の完成台紙サムネ」を出す。
+  // 完走済み棚がある場合のみ対象カテゴリに絞って取得する(通常時はクエリ増ゼロを維持)。
+  const completedMountByKey = new Map<string, CompletedMountView>();
+  const completedKeys = eventShelves
+    .filter((shelf) => shelf.isCompleted)
+    .map((shelf) => shelf.categoryKey);
+  if (userId && completedKeys.length > 0) {
+    const admin = createAdminClient();
+    const { data } = await admin
+      .from("collection_completions")
+      .select(
+        "id, category_key, mount_image_path, preset_categories(display_name_ja, mount_template_width, mount_template_height, completion_view_mode)",
+      )
+      .eq("user_id", userId)
+      .eq("mount_status", "completed")
+      .in("category_key", completedKeys);
+    for (const row of data ?? []) {
+      const mountImageUrl = buildPublicGeneratedImageUrl(
+        (row.mount_image_path as string | null) ?? null,
+      );
+      if (!mountImageUrl) continue;
+      const cat = (row as { preset_categories?: unknown }).preset_categories;
+      const catRecord = (Array.isArray(cat) ? cat[0] : cat) as
+        | {
+            display_name_ja?: string;
+            mount_template_width?: number | null;
+            mount_template_height?: number | null;
+            completion_view_mode?: string | null;
+          }
+        | undefined;
+      completedMountByKey.set(row.category_key as string, {
+        completionId: row.id as string,
+        categoryKey: row.category_key as string,
+        displayName: catRecord?.display_name_ja ?? "",
+        mountImageUrl,
+        mountTemplateWidth: catRecord?.mount_template_width ?? null,
+        mountTemplateHeight: catRecord?.mount_template_height ?? null,
+        completionViewMode:
+          catRecord?.completion_view_mode === "book" ? "book" : "mount",
+      });
+    }
+  }
+
   // 解放お知らせ(初回バナー / 段階解放モーダル)。解放コンテキストはここで解決済みなので
   // 二重取得を避けて流用する。前提未完走・ゲートなしなら空配列(= 何も出ない)。
   const unlockAnnouncements = buildCollectionUnlockAnnouncements(
@@ -89,6 +135,7 @@ export async function CachedHomeStylePresetSection({
           key={shelf.categoryKey}
           shelf={shelf}
           nowIso={now.toISOString()}
+          completedMount={completedMountByKey.get(shelf.categoryKey) ?? null}
         />
       ))}
       <HomeStylePresetCarousel presets={presets} />
