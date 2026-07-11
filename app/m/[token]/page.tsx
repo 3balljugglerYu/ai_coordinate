@@ -7,6 +7,7 @@ import { getUser } from "@/lib/auth";
 import {
   getCollectionBookByToken,
   getPublicMountByToken,
+  withOgpVersion,
 } from "@/features/collections/lib/public-mount-server-api";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
@@ -77,9 +78,11 @@ export async function generateMetadata({
   // mount-{ts}.png → ogp-{ts}.png の対応(コミット 2026-06-09 以降に作成された
   // 台紙は OGP も併せて生成される)。旧台紙は OGP ファイルが無いので、その
   // 場合のみ縦長 mount をフォールバックに使う(中央クロップで一部が見切れる)。
-  const ogpImageUrl = mount.mountImageUrl.includes("/mount-")
-    ? mount.mountImageUrl.replace("/mount-", "/ogp-")
-    : mount.mountImageUrl;
+  const ogpImageUrl = withOgpVersion(
+    mount.mountImageUrl.includes("/mount-")
+      ? mount.mountImageUrl.replace("/mount-", "/ogp-")
+      : mount.mountImageUrl,
+  );
 
   return {
     ...base,
