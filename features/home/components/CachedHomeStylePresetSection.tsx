@@ -8,6 +8,11 @@ import { resolveCollectionUnlockContext } from "@/features/collections/lib/colle
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { PetitUnlockAnnouncer } from "@/features/collections/components/PetitUnlockAnnouncer";
 import { createClient } from "@/lib/supabase/server";
+import {
+  collectShelfPresetIds,
+  deriveEventShelves,
+} from "@/features/home/lib/derive-event-shelves";
+import { HomeEventShelfSection } from "./HomeEventShelfSection";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 
 // 解放ゲート対象が無い/未ログイン時に使う空コンテキスト(除去・解放判定とも no-op)。
@@ -51,8 +56,21 @@ export async function CachedHomeStylePresetSection({
   }
   const gated = applyCollectionUnlockGating(cachedPresets, unlockContext);
 
-  // ホームは locked(未解放=シルエット)に未対応のため、未解放分は出さない。
-  const presets = gated.filter((preset) => !preset.locked);
+  // 開催中のコレクション企画は専用の「企画棚」へ振り分ける(お着替えカルーセルの上)。
+  // 棚は locked(次の1枚のシルエット)も表示するため、gated を locked 除外前に渡す。
+  const now = new Date();
+  const eventShelves = deriveEventShelves(
+    gated,
+    unlockContext.distinctGeneratedByCategoryKey,
+    now,
+  );
+  const shelfPresetIds = collectShelfPresetIds(eventShelves);
+
+  // お着替えカルーセル: 棚に出した企画プリセットは除外して重複表示を避ける。
+  // locked(未解放=シルエット)は従来どおりカルーセルには出さない。
+  const presets = gated.filter(
+    (preset) => !preset.locked && !shelfPresetIds.has(preset.id),
+  );
 
   // 解放お知らせ(初回バナー / 段階解放モーダル)。解放コンテキストはここで解決済みなので
   // 二重取得を避けて流用する。前提未完走・ゲートなしなら空配列(= 何も出ない)。
@@ -66,6 +84,13 @@ export async function CachedHomeStylePresetSection({
       {unlockAnnouncements.length > 0 && (
         <PetitUnlockAnnouncer announcements={unlockAnnouncements} />
       )}
+      {eventShelves.map((shelf) => (
+        <HomeEventShelfSection
+          key={shelf.categoryKey}
+          shelf={shelf}
+          nowIso={now.toISOString()}
+        />
+      ))}
       <HomeStylePresetCarousel presets={presets} />
     </>
   );
