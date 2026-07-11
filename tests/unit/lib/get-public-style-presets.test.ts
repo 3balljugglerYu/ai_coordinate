@@ -55,6 +55,8 @@ describe("get-public-style-presets", () => {
     isActive: true,
     collectionDisplayStartsAt: null,
     collectionDisplayEndsAt: null,
+    isCollectionSeries: false,
+    completionThreshold: null,
   } as const;
 
   test("getPublishedStylePresets_キャッシュタグを付けて公開一覧を返す", async () => {

@@ -410,6 +410,8 @@ const TEST_COORDINATE_CATEGORY = {
   isActive: true,
   collectionDisplayStartsAt: null,
   collectionDisplayEndsAt: null,
+  isCollectionSeries: false,
+  completionThreshold: null,
 } as const;
 
 const presets: readonly StylePresetPublicSummary[] = [

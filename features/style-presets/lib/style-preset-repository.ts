@@ -54,6 +54,8 @@ interface StylePresetCategoryRow {
   is_active: boolean;
   collection_display_starts_at?: string | null;
   collection_display_ends_at?: string | null;
+  is_collection_series?: boolean | null;
+  completion_threshold?: number | null;
   unlock_prerequisite_key?: string | null;
   progressive_batch_size?: number | null;
   sequential_unlock?: boolean | null;
@@ -105,7 +107,7 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, collection_display_starts_at, collection_display_ends_at, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, sequential_unlock, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
+  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, collection_display_starts_at, collection_display_ends_at, is_collection_series, completion_threshold, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, sequential_unlock, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -189,6 +191,8 @@ function mapCategoryRefStrict(
       isActive: true,
       collectionDisplayStartsAt: null,
       collectionDisplayEndsAt: null,
+      isCollectionSeries: false,
+      completionThreshold: null,
       providerUserId: null,
       providerNickname: null,
       providerAvatarUrl: null,
@@ -229,6 +233,8 @@ function mapCategoryRefStrict(
     isActive: embedded.is_active,
     collectionDisplayStartsAt: embedded.collection_display_starts_at ?? null,
     collectionDisplayEndsAt: embedded.collection_display_ends_at ?? null,
+    isCollectionSeries: embedded.is_collection_series ?? false,
+    completionThreshold: embedded.completion_threshold ?? null,
     providerUserId: embedded.provider_user_id ?? null,
     providerNickname: provider?.nickname ?? null,
     providerAvatarUrl: provider?.avatar_url ?? null,

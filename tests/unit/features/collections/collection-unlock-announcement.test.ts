@@ -30,6 +30,8 @@ function makeCategory(
     isActive: true,
     collectionDisplayStartsAt: null,
     collectionDisplayEndsAt: null,
+    isCollectionSeries: false,
+    completionThreshold: null,
     unlockPrerequisiteKey: null,
     progressiveBatchSize: null,
     sequentialUnlock: false,

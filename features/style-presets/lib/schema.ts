@@ -65,6 +65,10 @@ export interface StylePresetCategoryRef {
   /** コレクション表示期間(NULL=無期限)。/style のプリセット一覧公開判定にも使う。 */
   collectionDisplayStartsAt: string | null;
   collectionDisplayEndsAt: string | null;
+  /** コレクションシリーズ(台紙収集の対象カテゴリ)かどうか。ホームの企画棚の対象判定に使う。 */
+  isCollectionSeries: boolean;
+  /** コンプリートに必要な生成体数(コレクションシリーズのみ)。企画棚の進捗カウンター分母に使う。 */
+  completionThreshold: number | null;
   /**
    * 提供者(クリエイター)の profiles.id。コラボ/提供スタイルのクレジット表示に使う。
    * 未設定(従来カテゴリ)なら null/undefined。リポジトリ層では常に値を埋める optional 属性。

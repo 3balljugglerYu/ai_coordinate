@@ -62,6 +62,8 @@ function categoryRef(
     isActive: true,
     collectionDisplayStartsAt: null,
     collectionDisplayEndsAt: null,
+    isCollectionSeries: false,
+    completionThreshold: null,
     unlockPrerequisiteKey,
     progressiveBatchSize,
     sequentialUnlock,
