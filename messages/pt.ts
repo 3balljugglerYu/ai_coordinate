@@ -1696,6 +1696,12 @@ export const ptMessages = {
       "Usar este estilo para gerar sua imagem?",
     userStyleTemplateConfirmCancel: "Ver outros modelos",
     userStyleTemplateConfirmAction: "Continuar",
+    eventShelfTeaserToast: "Gere um para desbloquear o próximo!",
+    eventShelfCountdownDaysLeft: "Faltam {days} dias",
+    eventShelfCountdownLastDay: "Termina hoje",
+    eventShelfCelebrationTitle: "Completo!",
+    eventShelfCelebrationAction: "Ver coleção",
+    eventShelfDoneBadge: "Gerado",
   },
   adminStyleTemplates: {
     pageTitle: "Moderação de modelos de estilo",

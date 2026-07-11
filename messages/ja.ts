@@ -1625,6 +1625,12 @@ export const jaMessages = {
       "このイラストのスタイルを使って生成画面へ移動しますか？",
     userStyleTemplateConfirmCancel: "他のテンプレを見る",
     userStyleTemplateConfirmAction: "移動する",
+    eventShelfTeaserToast: "1つ生成すると解放されます",
+    eventShelfCountdownDaysLeft: "あと{days}日",
+    eventShelfCountdownLastDay: "本日終了",
+    eventShelfCelebrationTitle: "コンプリート！",
+    eventShelfCelebrationAction: "コレクションを見る",
+    eventShelfDoneBadge: "生成済み",
   },
   adminStyleTemplates: {
     pageTitle: "スタイルテンプレート審査",

@@ -1690,6 +1690,12 @@ export const zhCnMessages = {
       "要用此造型生成你的图片吗?",
     userStyleTemplateConfirmCancel: "看看其他模板",
     userStyleTemplateConfirmAction: "继续",
+    eventShelfTeaserToast: "生成1个即可解锁下一个！",
+    eventShelfCountdownDaysLeft: "还剩{days}天",
+    eventShelfCountdownLastDay: "今日截止",
+    eventShelfCelebrationTitle: "收集完成！",
+    eventShelfCelebrationAction: "查看收藏",
+    eventShelfDoneBadge: "已生成",
   },
   adminStyleTemplates: {
     pageTitle: "造型模板审核",

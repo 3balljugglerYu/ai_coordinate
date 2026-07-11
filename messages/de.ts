@@ -1697,6 +1697,12 @@ export const deMessages = {
       "Diesen Stil verwenden, um dein eigenes Bild zu generieren?",
     userStyleTemplateConfirmCancel: "Andere Vorlagen sehen",
     userStyleTemplateConfirmAction: "Weiter",
+    eventShelfTeaserToast: "Erstelle eines, um das nächste freizuschalten!",
+    eventShelfCountdownDaysLeft: "Noch {days} Tage",
+    eventShelfCountdownLastDay: "Endet heute",
+    eventShelfCelebrationTitle: "Komplett!",
+    eventShelfCelebrationAction: "Sammlung ansehen",
+    eventShelfDoneBadge: "Erstellt",
   },
   adminStyleTemplates: {
     pageTitle: "Moderation der Stilvorlagen",

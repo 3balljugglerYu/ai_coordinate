@@ -1693,6 +1693,12 @@ export const enMessages = {
       "Use this style to generate your own image?",
     userStyleTemplateConfirmCancel: "See other templates",
     userStyleTemplateConfirmAction: "Continue",
+    eventShelfTeaserToast: "Generate one to unlock the next!",
+    eventShelfCountdownDaysLeft: "{days} days left",
+    eventShelfCountdownLastDay: "Ends today",
+    eventShelfCelebrationTitle: "Complete!",
+    eventShelfCelebrationAction: "View collection",
+    eventShelfDoneBadge: "Generated",
   },
   adminStyleTemplates: {
     pageTitle: "Style template moderation",

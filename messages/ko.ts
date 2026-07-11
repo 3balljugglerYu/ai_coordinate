@@ -1692,6 +1692,12 @@ export const koMessages = {
       "이 스타일로 내 이미지를 생성할까요?",
     userStyleTemplateConfirmCancel: "다른 템플릿 보기",
     userStyleTemplateConfirmAction: "계속",
+    eventShelfTeaserToast: "하나 생성하면 다음이 해금됩니다!",
+    eventShelfCountdownDaysLeft: "{days}일 남음",
+    eventShelfCountdownLastDay: "오늘 종료",
+    eventShelfCelebrationTitle: "컴플리트!",
+    eventShelfCelebrationAction: "컬렉션 보기",
+    eventShelfDoneBadge: "생성 완료",
   },
   adminStyleTemplates: {
     pageTitle: "스타일 템플릿 관리",
