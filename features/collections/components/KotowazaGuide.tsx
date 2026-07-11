@@ -254,11 +254,11 @@ export function KotowazaGuide({
             {entries.map((k, i) => (
               <div
                 key={k.no}
-                className={`kw-float relative aspect-square overflow-hidden rounded-xl border shadow-sm ${i % 2 ? "translate-y-2" : ""}`}
+                className={`kw-float relative aspect-[4/5] overflow-hidden rounded-xl border shadow-sm ${i % 2 ? "translate-y-2" : ""}`}
                 style={{ borderColor: "#dccdb6", backgroundColor: "#fffdf8", animationDelay: `${i * 0.35}s` }}
               >
                 {k.src ? (
-                  <Image src={k.src} alt={k.name} fill sizes="120px" className="object-contain" />
+                  <Image src={k.src} alt={k.name} fill sizes="120px" className="object-cover" />
                 ) : (
                   <span
                     className="flex h-full w-full items-center justify-center text-2xl font-bold"
@@ -366,11 +366,11 @@ export function KotowazaGuide({
                     其の{k.no}
                   </span>
                   <div
-                    className="relative mx-auto aspect-square w-44 overflow-hidden rounded-2xl border-2 border-dashed"
+                    className="relative mx-auto aspect-[4/5] w-44 overflow-hidden rounded-2xl border-2 border-dashed"
                     style={{ borderColor: "#dccdb6", backgroundColor: "#faf7f0" }}
                   >
                     {k.src ? (
-                      <Image src={k.src} alt={k.name} fill sizes="176px" className="object-contain" />
+                      <Image src={k.src} alt={k.name} fill sizes="176px" className="object-cover" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center gap-1" style={{ color: "#c9b8a0" }}>
                         <span className="text-4xl font-bold" style={{ fontFamily: HEADING_FONT }} aria-hidden>？</span>
@@ -459,15 +459,21 @@ export function KotowazaGuide({
                 {threshold}語そろえると、あなただけの特別なコンプリートカードが完成。
                 そのまま画像でダウンロードして、SNS でシェアして自慢しよう！
               </p>
-              {/* 完成カードのサンプル画像は準備でき次第差し替える */}
               <div
-                className="mx-auto mt-6 flex aspect-[1024/1608] w-full max-w-[240px] flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed"
-                style={{ borderColor: "#dccdb6", backgroundColor: "#faf7f0", color: "#c9b8a0" }}
+                className="relative mx-auto mt-6 aspect-[4/5] w-full max-w-[280px] overflow-hidden rounded-2xl border shadow-[0_6px_18px_rgba(75,60,40,0.12)]"
+                style={{ borderColor: "#e8ddc9" }}
               >
-                <span className="text-4xl" style={{ fontFamily: HEADING_FONT }} aria-hidden>諺</span>
-                <span className="text-xs font-bold">完成イメージは近日公開！</span>
+                <Image
+                  src="/collections/kotowaza/complete-sample.webp"
+                  alt="ことわざコレクションのコンプリートカードのイメージ(6語のことわざカードが並んだ完成例)"
+                  fill
+                  sizes="(max-width: 480px) 75vw, 280px"
+                  className="object-cover"
+                />
               </div>
-              <p className="mt-3 text-xs" style={{ color: "#9c9184" }}>＼ 完成イメージ ／</p>
+              <p className="mt-3 text-xs" style={{ color: "#9c9184" }}>
+                ＼ 完成イメージ ／<br />※ 画像はイメージです。実際のカードとはデザイン・収録語が異なります。
+              </p>
             </div>
           </Reveal>
         </div>
