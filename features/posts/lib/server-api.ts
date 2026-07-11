@@ -38,6 +38,22 @@ import {
 
 export type LikeRange = "all" | "day" | "week" | "month";
 
+/**
+ * PostgREST の .in() に一度に渡すID数の上限。URL長・応答サイズを抑えるための単位で、
+ * これを超える入力はチャンクに分割して取得し結果を結合する。
+ * 以前は超過時に throw していたため、ホームの「オススメ」(先週投稿の全件集計)が
+ * 週の投稿数100件超えと同時にSSRごと落ちる障害が起きた(2026-07-12)。
+ */
+const IN_QUERY_CHUNK_SIZE = 100;
+
+function chunkArray<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 type CommentRow = {
   id: string;
   user_id: string | null;
@@ -217,24 +233,28 @@ async function getProfileMap(
   }
 
   const supabase = supabaseOverride ?? (await createClient());
-  const { data: profiles, error: profilesError } = await supabase
-    .from("profiles")
-    .select("user_id,nickname,avatar_url,subscription_plan")
-    .in("user_id", userIds);
+  const chunkResults = await Promise.all(
+    chunkArray(userIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
+      const { data: profiles, error: profilesError } = await supabase
+        .from("profiles")
+        .select("user_id,nickname,avatar_url,subscription_plan")
+        .in("user_id", chunk);
 
-  if (profilesError) {
-    console.error("Profile fetch error:", profilesError);
-    return profileMap;
-  }
+      if (profilesError) {
+        console.error("Profile fetch error:", profilesError);
+        return [];
+      }
 
-  if (profiles) {
-    for (const profile of profiles) {
-      profileMap[profile.user_id] = {
-        nickname: profile.nickname,
-        avatar_url: profile.avatar_url,
-        subscription_plan: profile.subscription_plan ?? "free",
-      };
-    }
+      return profiles ?? [];
+    })
+  );
+
+  for (const profile of chunkResults.flat()) {
+    profileMap[profile.user_id] = {
+      nickname: profile.nickname,
+      avatar_url: profile.avatar_url,
+      subscription_plan: profile.subscription_plan ?? "free",
+    };
   }
 
   return profileMap;
@@ -901,7 +921,7 @@ export async function getLikeCount(
 }
 
 /**
- * いいね数を一括取得（バッチ、最大100件）
+ * いいね数を一括取得（バッチ。100件を超える入力はチャンク分割して取得）
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 export async function getLikeCountsBatch(
@@ -912,21 +932,23 @@ export async function getLikeCountsBatch(
     return {};
   }
 
-  if (imageIds.length > 100) {
-    throw new Error("バッチサイズは100件までです");
-  }
-
   const supabase = supabaseOverride ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("likes")
-    .select("image_id")
-    .in("image_id", imageIds);
+  const chunkResults = await Promise.all(
+    chunkArray(imageIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
+      const { data, error } = await supabase
+        .from("likes")
+        .select("image_id")
+        .in("image_id", chunk);
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`いいね数の一括取得に失敗しました: ${error.message}`);
-  }
+      if (error) {
+        console.error("Database query error:", error);
+        throw new Error(`いいね数の一括取得に失敗しました: ${error.message}`);
+      }
+
+      return data ?? [];
+    })
+  );
 
   // 集計
   const counts: Record<string, number> = {};
@@ -934,7 +956,7 @@ export async function getLikeCountsBatch(
     counts[id] = 0;
   });
 
-  data?.forEach((like) => {
+  chunkResults.flat().forEach((like) => {
     if (like.image_id) {
       counts[like.image_id] = (counts[like.image_id] || 0) + 1;
     }
@@ -965,7 +987,7 @@ export async function getUserLikeStatus(imageId: string, userId: string): Promis
 }
 
 /**
- * ユーザーのいいね状態を一括取得（バッチ）
+ * ユーザーのいいね状態を一括取得（バッチ。100件を超える入力はチャンク分割して取得）
  */
 export async function getUserLikeStatusesBatch(
   imageIds: string[],
@@ -975,29 +997,31 @@ export async function getUserLikeStatusesBatch(
     return {};
   }
 
-  if (imageIds.length > 100) {
-    throw new Error("バッチサイズは100件までです");
-  }
-
   const supabase = await createClient();
 
-  const { data, error } = await supabase
-    .from("likes")
-    .select("image_id")
-    .in("image_id", imageIds)
-    .eq("user_id", userId);
+  const chunkResults = await Promise.all(
+    chunkArray(imageIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
+      const { data, error } = await supabase
+        .from("likes")
+        .select("image_id")
+        .in("image_id", chunk)
+        .eq("user_id", userId);
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`いいね状態の一括取得に失敗しました: ${error.message}`);
-  }
+      if (error) {
+        console.error("Database query error:", error);
+        throw new Error(`いいね状態の一括取得に失敗しました: ${error.message}`);
+      }
+
+      return data ?? [];
+    })
+  );
 
   const statuses: Record<string, boolean> = {};
   imageIds.forEach((id) => {
     statuses[id] = false;
   });
 
-  data?.forEach((like) => {
+  chunkResults.flat().forEach((like) => {
     if (like.image_id) {
       statuses[like.image_id] = true;
     }
@@ -1061,42 +1085,45 @@ export async function getLikeCountsByRangeBatch(
 
   const supabase = supabaseOverride ?? (await createClient());
 
-  let query = supabase
-    .from("likes")
-    .select("image_id")
-    .in("image_id", imageIds);
-
-  // JST基準で期間フィルタリング（昨日/先週/先月）
+  // JST基準の期間フィルタ（昨日/先週/先月）。チャンクごとに再計算しないよう外で確定する。
+  let gteDate: string | undefined;
+  let lteDate: string | undefined;
   if (range === "day") {
     // Daily: 昨日のいいねのみ
-    const jstYesterdayStart = getJSTYesterdayStart();
-    const jstYesterdayEnd = getJSTYesterdayEnd();
-    query = query
-      .gte("created_at", jstYesterdayStart.toISOString())
-      .lte("created_at", jstYesterdayEnd.toISOString());
+    gteDate = getJSTYesterdayStart().toISOString();
+    lteDate = getJSTYesterdayEnd().toISOString();
   } else if (range === "week") {
     // Week: 先週のいいねのみ
-    const jstLastWeekStart = getJSTLastWeekStart();
-    const jstLastWeekEnd = getJSTLastWeekEnd();
-    query = query
-      .gte("created_at", jstLastWeekStart.toISOString())
-      .lte("created_at", jstLastWeekEnd.toISOString());
+    gteDate = getJSTLastWeekStart().toISOString();
+    lteDate = getJSTLastWeekEnd().toISOString();
   } else if (range === "month") {
     // Month: 先月のいいねのみ
-    const jstLastMonthStart = getJSTLastMonthStart();
-    const jstLastMonthEnd = getJSTLastMonthEnd();
-    query = query
-      .gte("created_at", jstLastMonthStart.toISOString())
-      .lte("created_at", jstLastMonthEnd.toISOString());
+    gteDate = getJSTLastMonthStart().toISOString();
+    lteDate = getJSTLastMonthEnd().toISOString();
   }
   // range === "all" の場合は期間制限なし
 
-  const { data, error } = await query;
+  const chunkResults = await Promise.all(
+    chunkArray(imageIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
+      let query = supabase
+        .from("likes")
+        .select("image_id")
+        .in("image_id", chunk);
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`いいね数の一括集計に失敗しました: ${error.message}`);
-  }
+      if (gteDate && lteDate) {
+        query = query.gte("created_at", gteDate).lte("created_at", lteDate);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Database query error:", error);
+        throw new Error(`いいね数の一括集計に失敗しました: ${error.message}`);
+      }
+
+      return data ?? [];
+    })
+  );
 
   // image_idごとに集計
   const counts: Record<string, number> = {};
@@ -1105,7 +1132,7 @@ export async function getLikeCountsByRangeBatch(
     counts[id] = 0;
   });
   // いいねがある投稿のカウントを増やす
-  data?.forEach((like) => {
+  chunkResults.flat().forEach((like) => {
     if (like.image_id) {
       counts[like.image_id] = (counts[like.image_id] || 0) + 1;
     }
@@ -1190,7 +1217,7 @@ export async function getCommentCount(
 }
 
 /**
- * コメント数を一括取得（バッチ、最大100件）
+ * コメント数を一括取得（バッチ。100件を超える入力はチャンク分割して取得）
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
 export async function getCommentCountsBatch(
@@ -1201,23 +1228,25 @@ export async function getCommentCountsBatch(
     return {};
   }
 
-  if (imageIds.length > 100) {
-    throw new Error("バッチサイズは100件までです");
-  }
-
   const supabase = supabaseOverride ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("comments")
-    .select("image_id")
-    .in("image_id", imageIds)
-    .is("parent_comment_id", null)
-    .is("deleted_at", null);
+  const chunkResults = await Promise.all(
+    chunkArray(imageIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
+      const { data, error } = await supabase
+        .from("comments")
+        .select("image_id")
+        .in("image_id", chunk)
+        .is("parent_comment_id", null)
+        .is("deleted_at", null);
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`コメント数の一括取得に失敗しました: ${error.message}`);
-  }
+      if (error) {
+        console.error("Database query error:", error);
+        throw new Error(`コメント数の一括取得に失敗しました: ${error.message}`);
+      }
+
+      return data ?? [];
+    })
+  );
 
   // 集計
   const counts: Record<string, number> = {};
@@ -1225,7 +1254,7 @@ export async function getCommentCountsBatch(
     counts[id] = 0;
   });
 
-  data?.forEach((comment) => {
+  chunkResults.flat().forEach((comment) => {
     if (comment.image_id) {
       counts[comment.image_id] = (counts[comment.image_id] || 0) + 1;
     }
@@ -1259,29 +1288,31 @@ export async function getReplyCountsBatch(
     return {};
   }
 
-  if (parentCommentIds.length > 100) {
-    throw new Error("バッチサイズは100件までです");
-  }
-
   const supabase = supabaseOverride ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("comments")
-    .select("parent_comment_id")
-    .in("parent_comment_id", parentCommentIds)
-    .is("deleted_at", null);
+  const chunkResults = await Promise.all(
+    chunkArray(parentCommentIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
+      const { data, error } = await supabase
+        .from("comments")
+        .select("parent_comment_id")
+        .in("parent_comment_id", chunk)
+        .is("deleted_at", null);
 
-  if (error) {
-    console.error("Database query error:", error);
-    throw new Error(`返信数の一括取得に失敗しました: ${error.message}`);
-  }
+      if (error) {
+        console.error("Database query error:", error);
+        throw new Error(`返信数の一括取得に失敗しました: ${error.message}`);
+      }
+
+      return data ?? [];
+    })
+  );
 
   const counts: Record<string, number> = {};
   parentCommentIds.forEach((id) => {
     counts[id] = 0;
   });
 
-  data?.forEach((reply) => {
+  chunkResults.flat().forEach((reply) => {
     if (reply.parent_comment_id) {
       counts[reply.parent_comment_id] = (counts[reply.parent_comment_id] || 0) + 1;
     }
