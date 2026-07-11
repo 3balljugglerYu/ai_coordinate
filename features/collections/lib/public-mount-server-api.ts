@@ -24,7 +24,13 @@ export function withOgpVersion(url: string): string;
 export function withOgpVersion(url: string | null): string | null;
 export function withOgpVersion(url: string | null): string | null {
   if (!url) return null;
-  return `${url}${url.includes("?") ? "&" : "?"}v=${OGP_IMAGE_VERSION}`;
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("v", String(OGP_IMAGE_VERSION));
+    return parsed.toString();
+  } catch {
+    return url;
+  }
 }
 
 export interface PublicMount {
