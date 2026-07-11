@@ -182,7 +182,9 @@ export function HomeEventShelfSection({
   };
 
   return (
-    <section className="mb-8">
+    // overflow-x-hidden: Swiper側は !overflow-visible のため、既存カルーセルと同様に
+    // 外側でスライドのはみ出しを刈り取る(無いとPC幅でカードが左右に飛び出す)。
+    <section className="mb-8 overflow-x-hidden">
       <div className="mb-3 flex items-center justify-between gap-2 px-4 sm:px-0">
         <h2 className="flex min-w-0 items-baseline gap-2 text-lg font-semibold text-gray-900">
           <span className="min-w-0 truncate">
