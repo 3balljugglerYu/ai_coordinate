@@ -38,6 +38,22 @@ import {
 
 export type LikeRange = "all" | "day" | "week" | "month";
 
+/**
+ * PostgREST の .in() に一度に渡すID数の上限。URL長・応答サイズを抑えるための単位で、
+ * これを超える入力はチャンクに分割して取得し結果を結合する。
+ * 以前は超過時に throw していたため、ホームの「オススメ」(先週投稿の全件集計)が
+ * 週の投稿数100件超えと同時にSSRごと落ちる障害が起きた(2026-07-12)。
+ */
+const IN_QUERY_CHUNK_SIZE = 100;
+
+function chunkArray<T>(items: readonly T[], size: number): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += size) {
+    chunks.push(items.slice(i, i + size));
+  }
+  return chunks;
+}
+
 type CommentRow = {
   id: string;
   user_id: string | null;
@@ -905,22 +921,6 @@ export async function getLikeCount(
 }
 
 /**
- * PostgREST の .in() に一度に渡すID数の上限。URL長・応答サイズを抑えるための単位で、
- * これを超える入力はチャンクに分割して取得し結果を結合する。
- * 以前は超過時に throw していたため、ホームの「オススメ」(先週投稿の全件集計)が
- * 週の投稿数100件超えと同時にSSRごと落ちる障害が起きた(2026-07-12)。
- */
-const IN_QUERY_CHUNK_SIZE = 100;
-
-function chunkArray<T>(items: readonly T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < items.length; i += size) {
-    chunks.push(items.slice(i, i + size));
-  }
-  return chunks;
-}
-
-/**
  * いいね数を一括取得（バッチ。100件を超える入力はチャンク分割して取得）
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
@@ -1085,6 +1085,24 @@ export async function getLikeCountsByRangeBatch(
 
   const supabase = supabaseOverride ?? (await createClient());
 
+  // JST基準の期間フィルタ（昨日/先週/先月）。チャンクごとに再計算しないよう外で確定する。
+  let gteDate: string | undefined;
+  let lteDate: string | undefined;
+  if (range === "day") {
+    // Daily: 昨日のいいねのみ
+    gteDate = getJSTYesterdayStart().toISOString();
+    lteDate = getJSTYesterdayEnd().toISOString();
+  } else if (range === "week") {
+    // Week: 先週のいいねのみ
+    gteDate = getJSTLastWeekStart().toISOString();
+    lteDate = getJSTLastWeekEnd().toISOString();
+  } else if (range === "month") {
+    // Month: 先月のいいねのみ
+    gteDate = getJSTLastMonthStart().toISOString();
+    lteDate = getJSTLastMonthEnd().toISOString();
+  }
+  // range === "all" の場合は期間制限なし
+
   const chunkResults = await Promise.all(
     chunkArray(imageIds, IN_QUERY_CHUNK_SIZE).map(async (chunk) => {
       let query = supabase
@@ -1092,30 +1110,9 @@ export async function getLikeCountsByRangeBatch(
         .select("image_id")
         .in("image_id", chunk);
 
-      // JST基準で期間フィルタリング（昨日/先週/先月）
-      if (range === "day") {
-        // Daily: 昨日のいいねのみ
-        const jstYesterdayStart = getJSTYesterdayStart();
-        const jstYesterdayEnd = getJSTYesterdayEnd();
-        query = query
-          .gte("created_at", jstYesterdayStart.toISOString())
-          .lte("created_at", jstYesterdayEnd.toISOString());
-      } else if (range === "week") {
-        // Week: 先週のいいねのみ
-        const jstLastWeekStart = getJSTLastWeekStart();
-        const jstLastWeekEnd = getJSTLastWeekEnd();
-        query = query
-          .gte("created_at", jstLastWeekStart.toISOString())
-          .lte("created_at", jstLastWeekEnd.toISOString());
-      } else if (range === "month") {
-        // Month: 先月のいいねのみ
-        const jstLastMonthStart = getJSTLastMonthStart();
-        const jstLastMonthEnd = getJSTLastMonthEnd();
-        query = query
-          .gte("created_at", jstLastMonthStart.toISOString())
-          .lte("created_at", jstLastMonthEnd.toISOString());
+      if (gteDate && lteDate) {
+        query = query.gte("created_at", gteDate).lte("created_at", lteDate);
       }
-      // range === "all" の場合は期間制限なし
 
       const { data, error } = await query;
 

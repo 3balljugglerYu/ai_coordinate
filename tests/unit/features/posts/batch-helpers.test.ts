@@ -15,6 +15,7 @@ import {
   getLikeCountsBatch,
   getCommentCountsBatch,
   getLikeCountsByRangeBatch,
+  getReplyCountsBatch,
   getUserLikeStatusesBatch,
 } from "@/features/posts/lib/server-api";
 import { createClient } from "@/lib/supabase/server";
@@ -120,6 +121,39 @@ describe("バッチ取得ヘルパーのチャンク分割", () => {
     expect(statuses["id-0"]).toBe(false);
   });
 
+  test("getReplyCountsBatch_150件入力でthrowせず分割して集計する", async () => {
+    const { client, inCalls } = makeFakeClient(
+      [
+        { parent_comment_id: "id-10" },
+        { parent_comment_id: "id-10" },
+        { parent_comment_id: "id-140" },
+      ],
+      "parent_comment_id",
+    );
+
+    const counts = await getReplyCountsBatch(MANY_IDS, client);
+
+    expect(inCalls.map((c) => c.length)).toEqual([100, 50]);
+    expect(counts["id-10"]).toBe(2);
+    expect(counts["id-140"]).toBe(1);
+    expect(counts["id-0"]).toBe(0);
+  });
+
+  test.each(["day", "month", "all"] as const)(
+    "getLikeCountsByRangeBatch_range=%s でも分割して集計する",
+    async (range) => {
+      const { client, inCalls } = makeFakeClient(
+        [{ image_id: "id-3" }],
+        "image_id",
+      );
+
+      const counts = await getLikeCountsByRangeBatch(MANY_IDS, range, client);
+
+      expect(inCalls.map((c) => c.length)).toEqual([100, 50]);
+      expect(counts["id-3"]).toBe(1);
+    },
+  );
+
   test("100件以下は従来どおり1回のクエリで取得する", async () => {
     const { client, inCalls } = makeFakeClient([{ image_id: "a" }], "image_id");
 
@@ -127,5 +161,41 @@ describe("バッチ取得ヘルパーのチャンク分割", () => {
 
     expect(inCalls).toHaveLength(1);
     expect(counts).toEqual({ a: 1, b: 0 });
+  });
+
+  test("空配列は即空オブジェクトを返しクエリしない", async () => {
+    const { client, inCalls } = makeFakeClient([], "image_id");
+
+    expect(await getLikeCountsBatch([], client)).toEqual({});
+    expect(await getCommentCountsBatch([], client)).toEqual({});
+    expect(await getReplyCountsBatch([], client)).toEqual({});
+    expect(await getLikeCountsByRangeBatch([], "week", client)).toEqual({});
+    expect(inCalls).toHaveLength(0);
+  });
+
+  test("チャンク内のDBエラーはthrowされる", async () => {
+    const chain: Record<string, unknown> = {};
+    for (const method of ["select", "is", "eq", "gte", "lte", "in"]) {
+      chain[method] = jest.fn(() => chain);
+    }
+    chain.then = (
+      resolve: (v: { data: null; error: { message: string } }) => void,
+    ) => resolve({ data: null, error: { message: "boom" } });
+    const failingClient = {
+      from: jest.fn(() => chain),
+    } as unknown as SupabaseClient;
+
+    await expect(getLikeCountsBatch(["a"], failingClient)).rejects.toThrow(
+      "いいね数の一括取得に失敗しました",
+    );
+    await expect(getCommentCountsBatch(["a"], failingClient)).rejects.toThrow(
+      "コメント数の一括取得に失敗しました",
+    );
+    await expect(getReplyCountsBatch(["a"], failingClient)).rejects.toThrow(
+      "返信数の一括取得に失敗しました",
+    );
+    await expect(
+      getLikeCountsByRangeBatch(["a"], "week", failingClient),
+    ).rejects.toThrow("いいね数の一括集計に失敗しました");
   });
 });
