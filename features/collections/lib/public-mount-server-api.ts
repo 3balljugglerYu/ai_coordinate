@@ -15,6 +15,18 @@ export function buildPublicGeneratedImageUrl(path: string | null): string | null
   return `${base}/storage/v1/object/public/${GENERATED_IMAGES_BUCKET}/${path}`;
 }
 
+// X(Twitter)等はカード画像を og:image の URL 単位でキャッシュし、手動パージ手段が無い。
+// Storage 実体を同一パスへ上書きした場合はこの版数を上げて URL を変え、再取得させる。
+const OGP_IMAGE_VERSION = 2;
+
+/** og:image 用 URL にキャッシュバスター(?v=N)を付与する */
+export function withOgpVersion(url: string): string;
+export function withOgpVersion(url: string | null): string | null;
+export function withOgpVersion(url: string | null): string | null {
+  if (!url) return null;
+  return `${url}${url.includes("?") ? "&" : "?"}v=${OGP_IMAGE_VERSION}`;
+}
+
 export interface PublicMount {
   completionId: string;
   ownerId: string;
@@ -158,7 +170,7 @@ export const getCollectionBookByToken = cache(async (
     displayNameJa: catRecord.display_name_ja ?? "",
     coverImageUrl: buildPublicGeneratedImageUrl(catRecord.book_cover_path ?? null),
     pageImageUrls,
-    ogpImageUrl: buildPublicGeneratedImageUrl(bookOgpPath),
+    ogpImageUrl: withOgpVersion(buildPublicGeneratedImageUrl(bookOgpPath)),
     completedAt: (data.completed_at as string | null) ?? null,
   };
 });
