@@ -184,11 +184,13 @@ export function HomeEventShelfSection({
   return (
     <section className="mb-8">
       <div className="mb-3 flex items-center justify-between gap-2 px-4 sm:px-0">
-        <h2 className="min-w-0 truncate text-lg font-semibold text-gray-900">
-          <span aria-hidden="true">🔥 </span>
-          {displayName}
+        <h2 className="flex min-w-0 items-baseline gap-2 text-lg font-semibold text-gray-900">
+          <span className="min-w-0 truncate">
+            <span aria-hidden="true">🔥 </span>
+            {displayName}
+          </span>
           {shelf.totalCount !== null && (
-            <span className="ml-2 align-middle text-sm font-semibold tabular-nums text-gray-500">
+            <span className="flex-shrink-0 text-sm font-semibold tabular-nums text-gray-500">
               {shelf.collectedCount}/{shelf.totalCount}
             </span>
           )}
