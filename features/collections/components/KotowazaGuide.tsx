@@ -94,20 +94,57 @@ export interface KotowazaEntry {
   src: string | null;
 }
 
-// ことわざ6種。イラスト到着後に name/reading/meaning/src を差し替える。
-const KOTOWAZA_PLACEHOLDER: KotowazaEntry[] = Array.from({ length: 6 }, (_, i) => ({
-  no: String(i + 1).padStart(2, "0"),
-  name: "？？？",
-  reading: "ちかじつこうかい",
-  meaning: "どんなことわざかは、企画スタートのお楽しみ！",
-  src: null,
-}));
+// ことわざ6語(雑葉さん提供イラスト)。6語目は到着後に差し替える。
+const KOTOWAZA_ENTRIES: KotowazaEntry[] = [
+  {
+    no: "01",
+    name: "猫の手も借りたい",
+    reading: "ねこのてもかりたい",
+    meaning: "とてもいそがしくて、どんな手伝いでもほしいようす",
+    src: "/collections/kotowaza/neko-no-te.webp",
+  },
+  {
+    no: "02",
+    name: "馬の耳に念仏",
+    reading: "うまのみみにねんぶつ",
+    meaning: "いくら言い聞かせても、まるで効き目がないこと",
+    src: "/collections/kotowaza/uma-no-mimi.webp",
+  },
+  {
+    no: "03",
+    name: "虎の威を借る狐",
+    reading: "とらのいをかるきつね",
+    meaning: "強いものの力をかさに着て、いばること",
+    src: "/collections/kotowaza/tora-no-i.webp",
+  },
+  {
+    no: "04",
+    name: "鶴の一声",
+    reading: "つるのひとこえ",
+    meaning: "議論をぴたりとまとめる、力のあるひとこと",
+    src: "/collections/kotowaza/tsuru-no-hitokoe.webp",
+  },
+  {
+    no: "05",
+    name: "猿も木から落ちる",
+    reading: "さるもきからおちる",
+    meaning: "名人でも、ときには失敗するということ",
+    src: "/collections/kotowaza/saru-mo-ki.webp",
+  },
+  {
+    no: "06",
+    name: "？？？",
+    reading: "ちかじつこうかい",
+    meaning: "さいごの1語は、企画スタートのお楽しみ！",
+    src: null,
+  },
+];
 
 const PERIOD_LABEL = "企画期間：7/18 (土) 18:00 〜 7/26 (日) 21:59";
 
 export function KotowazaGuide({
   threshold,
-  entries = KOTOWAZA_PLACEHOLDER,
+  entries = KOTOWAZA_ENTRIES,
 }: {
   threshold: number;
   entries?: KotowazaEntry[];
@@ -221,7 +258,7 @@ export function KotowazaGuide({
                 style={{ borderColor: "#dccdb6", backgroundColor: "#fffdf8", animationDelay: `${i * 0.35}s` }}
               >
                 {k.src ? (
-                  <Image src={k.src} alt={k.name} fill sizes="120px" className="object-cover" />
+                  <Image src={k.src} alt={k.name} fill sizes="120px" className="object-contain" />
                 ) : (
                   <span
                     className="flex h-full w-full items-center justify-center text-2xl font-bold"
@@ -333,7 +370,7 @@ export function KotowazaGuide({
                     style={{ borderColor: "#dccdb6", backgroundColor: "#faf7f0" }}
                   >
                     {k.src ? (
-                      <Image src={k.src} alt={k.name} fill sizes="176px" className="object-cover" />
+                      <Image src={k.src} alt={k.name} fill sizes="176px" className="object-contain" />
                     ) : (
                       <div className="flex h-full w-full flex-col items-center justify-center gap-1" style={{ color: "#c9b8a0" }}>
                         <span className="text-4xl font-bold" style={{ fontFamily: HEADING_FONT }} aria-hidden>？</span>
