@@ -600,6 +600,46 @@ describe("guest-generate", () => {
       );
     });
 
+    test("preset_image + サムネ横長 なら OpenAI targetSize が横長になる", async () => {
+      const openaiClient = jest.fn().mockResolvedValue({
+        data: "OPENAI_BASE64",
+        mimeType: "image/png",
+      });
+      await dispatchGuestImageGeneration({
+        model: "gpt-image-2-low-1k",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "(unused)",
+        openaiApiKey: "openai-key",
+        openaiClient,
+        outputAspectRatioMode: "preset_image",
+        presetImageDimensions: { width: 1600, height: 900 },
+      });
+      const call = openaiClient.mock.calls[0][0] as { targetSize: string };
+      // 横長サムネ → 出力サイズも横長(width > height)。targetSize は "WxH" 文字列。
+      expect(call.targetSize).toBeDefined();
+      const [w, h] = call.targetSize.split("x").map(Number);
+      expect(w).toBeGreaterThan(h);
+    });
+
+    test("preset_image + サムネ寸法なし は targetSize 未指定(source同等=入力ベースに委ねる)", async () => {
+      const openaiClient = jest.fn().mockResolvedValue({
+        data: "OPENAI_BASE64",
+        mimeType: "image/png",
+      });
+      await dispatchGuestImageGeneration({
+        model: "gpt-image-2-low-1k",
+        promptText: "x",
+        uploadImage: createPngFile(),
+        geminiApiKey: "(unused)",
+        openaiApiKey: "openai-key",
+        openaiClient,
+        outputAspectRatioMode: "preset_image",
+        presetImageDimensions: null,
+      });
+      expect(openaiClient.mock.calls[0][0].targetSize).toBeUndefined();
+    });
+
     test("referenceImage 指定時は OpenAI multi-input に image_0 と image_1 を送る", async () => {
       const openaiClient = jest.fn();
       const openaiMultiInputClient = jest.fn().mockResolvedValue([
