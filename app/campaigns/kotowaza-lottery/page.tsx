@@ -59,7 +59,7 @@ export default async function KotowazaLotteryRulesPage() {
 
       <Section no="01" title="主催者">
         <p>
-          本キャンペーンは、Persta.AI 運営者（以下「当社」といいます。）が主催します。
+          本キャンペーンは、Persta.AI 運営者 土井秀悠（以下「主催者」といいます。）が主催します。
         </p>
         <p className="text-gray-500">
           ※ 本キャンペーンは、X Corp. および Amazon とは一切関係ありません。
@@ -91,7 +91,7 @@ export default async function KotowazaLotteryRulesPage() {
           </li>
           <li>
             完成カードのページにある「Xで応募する」ボタンから、ハッシュタグ
-            <span className="font-bold">{HASHTAG}</span> と当社指定アカウント
+            <span className="font-bold">{HASHTAG}</span> と主催者指定アカウント
             <span className="font-bold">{MENTION}</span> を付けてXに投稿します。
           </li>
         </ol>
@@ -111,11 +111,11 @@ export default async function KotowazaLotteryRulesPage() {
 
       <Section no="06" title="抽選・当選発表">
         <p>
-          応募期間終了後、応募条件を満たした投稿を対象に、当社所定の方法により厳正に抽選のうえ、
+          応募期間終了後、応募条件を満たした投稿を対象に、主催者所定の方法により厳正に抽選のうえ、
           当選者を決定します。
         </p>
         <p>
-          当選者には、当社公式Xアカウントからのご連絡および当社所定フォームへのご入力依頼をもって
+          当選者には、主催者公式Xアカウントからのご連絡および主催者所定フォームへのご入力依頼をもって
           通知します。指定期限までにご入力がない場合、当選が無効となる場合があります。
         </p>
         <p className="text-gray-500">
@@ -142,19 +142,19 @@ export default async function KotowazaLotteryRulesPage() {
           応募者は、応募投稿および画像が第三者の権利を侵害しないことを保証するものとします。
         </p>
         <p>
-          応募者は当社に対し、当選発表・広報・SNS・Web掲載のために必要な範囲で、応募投稿および
+          応募者は主催者に対し、当選発表・広報・SNS・Web掲載のために必要な範囲で、応募投稿および
           画像を無償・非独占的に利用する権利を許諾するものとします。
         </p>
       </Section>
 
       <Section no="09" title="個人情報の取扱い">
         <p>
-          当社は、応募確認・重複応募の排除・抽選・当選連絡・賞品送付・不正防止・お問い合わせ対応・
+          主催者は、応募確認・重複応募の排除・抽選・当選連絡・賞品送付・不正防止・お問い合わせ対応・
           法令遵守のために、Xアカウント名・投稿URL・当選連絡に必要なメールアドレス等を利用します。
         </p>
         <p>
           取得した個人情報は、法令に基づく場合を除き、ご本人の同意なく第三者に提供しません。
-          詳細は当社プライバシーポリシーをご確認ください。
+          詳細は主催者プライバシーポリシーをご確認ください。
         </p>
       </Section>
 
@@ -166,7 +166,7 @@ export default async function KotowazaLotteryRulesPage() {
 
       <Section no="11" title="変更・中止">
         <p>
-          当社は、法令またはプラットフォームのルール変更、システム障害その他やむを得ない事情により、
+          主催者は、法令またはプラットフォームのルール変更、システム障害その他やむを得ない事情により、
           本キャンペーンの内容を変更・中断・中止することがあります。
         </p>
       </Section>
