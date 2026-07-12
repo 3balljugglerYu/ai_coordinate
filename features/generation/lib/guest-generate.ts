@@ -297,8 +297,11 @@ async function dispatchOpenAI(
     const aspectMode = normalizeStyleOutputAspectRatioMode(
       input.outputAspectRatioMode,
     );
+    // source、および preset_image でサムネ寸法が無い場合は入力ベース(undefined)に委ねる
+    // (寸法無しで resolve すると 1:1 に落ちて正方形強制になるのを防ぐ)。
     const targetLabel =
-      aspectMode === "source"
+      aspectMode === "source" ||
+      (aspectMode === "preset_image" && !input.presetImageDimensions)
         ? null
         : resolveOutputAspectRatio(
             aspectMode,

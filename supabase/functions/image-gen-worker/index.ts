@@ -2252,9 +2252,12 @@ Deno.serve(async () => {
                         height: oneTapStyleMetadata.thumbnailHeight,
                       }
                     : null;
-                // source は入力ベース(undefined)。それ以外(明示/preset_image)は具体ラベルへ解決。
+                // source、および preset_image でサムネ寸法が無い場合は入力ベース(undefined)に委ねる
+                // (寸法無しで resolve すると 1:1 に落ちて正方形強制になるのを防ぐ)。
+                // それ以外(明示/寸法ありのpreset_image)は具体ラベルへ解決。
                 const targetLabel =
-                  oneTapAspectMode === "source"
+                  oneTapAspectMode === "source" ||
+                  (oneTapAspectMode === "preset_image" && !oneTapPresetImageDims)
                     ? null
                     : resolveOutputAspectRatio(
                         oneTapAspectMode,
