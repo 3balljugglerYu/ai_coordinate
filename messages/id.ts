@@ -1695,6 +1695,13 @@ export const idMessages = {
       "Pakai gaya ini untuk membuat gambarmu?",
     userStyleTemplateConfirmCancel: "Lihat template lainnya",
     userStyleTemplateConfirmAction: "Lanjutkan",
+    eventShelfTeaserToast: "Buat satu untuk membuka berikutnya!",
+    eventShelfCountdownDaysLeft: "{days} hari lagi",
+    eventShelfCountdownLastDay: "Berakhir hari ini",
+    eventShelfCelebrationTitle: "Lengkap!",
+    eventShelfCelebrationAction: "Lihat koleksi",
+    eventShelfDoneBadge: "Sudah dibuat",
+    eventShelfNewBadge: "Baru",
   },
   adminStyleTemplates: {
     pageTitle: "Moderasi template gaya",

@@ -1692,6 +1692,13 @@ export const thMessages = {
       "ใช้สไตล์นี้เพื่อสร้างรูปของคุณเอง?",
     userStyleTemplateConfirmCancel: "ดูเทมเพลตอื่น",
     userStyleTemplateConfirmAction: "ดำเนินการต่อ",
+    eventShelfTeaserToast: "สร้าง 1 ชิ้นเพื่อปลดล็อกชิ้นถัดไป!",
+    eventShelfCountdownDaysLeft: "เหลืออีก {days} วัน",
+    eventShelfCountdownLastDay: "สิ้นสุดวันนี้",
+    eventShelfCelebrationTitle: "ครบแล้ว!",
+    eventShelfCelebrationAction: "ดูคอลเลกชัน",
+    eventShelfDoneBadge: "สร้างแล้ว",
+    eventShelfNewBadge: "ใหม่",
   },
   adminStyleTemplates: {
     pageTitle: "การกลั่นกรองเทมเพลตสไตล์",

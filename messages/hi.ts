@@ -1694,6 +1694,13 @@ export const hiMessages = {
       "इस स्टाइल का उपयोग करके अपनी छवि उत्पन्न करें?",
     userStyleTemplateConfirmCancel: "अन्य टेम्पलेट देखें",
     userStyleTemplateConfirmAction: "जारी रखें",
+    eventShelfTeaserToast: "अगला अनलॉक करने के लिए एक जनरेट करें!",
+    eventShelfCountdownDaysLeft: "{days} दिन बाकी",
+    eventShelfCountdownLastDay: "आज समाप्त",
+    eventShelfCelebrationTitle: "पूर्ण!",
+    eventShelfCelebrationAction: "संग्रह देखें",
+    eventShelfDoneBadge: "जनरेट किया गया",
+    eventShelfNewBadge: "नया",
   },
   adminStyleTemplates: {
     pageTitle: "स्टाइल टेम्पलेट मॉडरेशन",

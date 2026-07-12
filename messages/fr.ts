@@ -1696,6 +1696,13 @@ export const frMessages = {
       "Utiliser ce style pour générer votre image ?",
     userStyleTemplateConfirmCancel: "Voir d'autres modèles",
     userStyleTemplateConfirmAction: "Continuer",
+    eventShelfTeaserToast: "Générez-en un pour débloquer le suivant !",
+    eventShelfCountdownDaysLeft: "Plus que {days} jours",
+    eventShelfCountdownLastDay: "Se termine aujourd'hui",
+    eventShelfCelebrationTitle: "Terminé !",
+    eventShelfCelebrationAction: "Voir la collection",
+    eventShelfDoneBadge: "Généré",
+    eventShelfNewBadge: "Nouveau",
   },
   adminStyleTemplates: {
     pageTitle: "Modération des modèles de style",

@@ -207,6 +207,8 @@ describe("style-preset repository", () => {
           isActive: true,
           collectionDisplayStartsAt: null,
           collectionDisplayEndsAt: null,
+          isCollectionSeries: false,
+          completionThreshold: null,
           providerUserId: null,
           providerNickname: null,
           providerAvatarUrl: null,

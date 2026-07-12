@@ -1693,6 +1693,13 @@ export const arMessages = {
       "استخدام هذا الأسلوب لتوليد صورتك الخاصة؟",
     userStyleTemplateConfirmCancel: "عرض قوالب أخرى",
     userStyleTemplateConfirmAction: "متابعة",
+    eventShelfTeaserToast: "أنشئ واحدة لفتح التالية!",
+    eventShelfCountdownDaysLeft: "متبقي {days} أيام",
+    eventShelfCountdownLastDay: "ينتهي اليوم",
+    eventShelfCelebrationTitle: "اكتمل!",
+    eventShelfCelebrationAction: "عرض المجموعة",
+    eventShelfDoneBadge: "تم الإنشاء",
+    eventShelfNewBadge: "جديد",
   },
   adminStyleTemplates: {
     pageTitle: "إدارة قوالب الأسلوب",

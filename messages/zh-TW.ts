@@ -1690,6 +1690,13 @@ export const zhTwMessages = {
       "要用此造型生成你的圖片嗎?",
     userStyleTemplateConfirmCancel: "看看其他範本",
     userStyleTemplateConfirmAction: "繼續",
+    eventShelfTeaserToast: "生成1個即可解鎖下一個！",
+    eventShelfCountdownDaysLeft: "還剩{days}天",
+    eventShelfCountdownLastDay: "今日截止",
+    eventShelfCelebrationTitle: "收集完成！",
+    eventShelfCelebrationAction: "查看收藏",
+    eventShelfDoneBadge: "已生成",
+    eventShelfNewBadge: "新著",
   },
   adminStyleTemplates: {
     pageTitle: "造型範本審核",

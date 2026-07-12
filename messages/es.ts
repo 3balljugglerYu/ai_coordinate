@@ -1696,6 +1696,13 @@ export const esMessages = {
       "¿Usar este estilo para generar tu propia imagen?",
     userStyleTemplateConfirmCancel: "Ver otras plantillas",
     userStyleTemplateConfirmAction: "Continuar",
+    eventShelfTeaserToast: "¡Genera uno para desbloquear el siguiente!",
+    eventShelfCountdownDaysLeft: "Quedan {days} días",
+    eventShelfCountdownLastDay: "Termina hoy",
+    eventShelfCelebrationTitle: "¡Completado!",
+    eventShelfCelebrationAction: "Ver colección",
+    eventShelfDoneBadge: "Generado",
+    eventShelfNewBadge: "Nuevo",
   },
   adminStyleTemplates: {
     pageTitle: "Moderación de plantillas de estilo",

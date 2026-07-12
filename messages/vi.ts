@@ -1693,6 +1693,13 @@ export const viMessages = {
       "Dùng phong cách này để tạo hình của bạn?",
     userStyleTemplateConfirmCancel: "Xem mẫu khác",
     userStyleTemplateConfirmAction: "Tiếp tục",
+    eventShelfTeaserToast: "Tạo một cái để mở khóa cái tiếp theo!",
+    eventShelfCountdownDaysLeft: "Còn {days} ngày",
+    eventShelfCountdownLastDay: "Kết thúc hôm nay",
+    eventShelfCelebrationTitle: "Hoàn thành!",
+    eventShelfCelebrationAction: "Xem bộ sưu tập",
+    eventShelfDoneBadge: "Đã tạo",
+    eventShelfNewBadge: "Mới",
   },
   adminStyleTemplates: {
     pageTitle: "Kiểm duyệt mẫu phong cách",
