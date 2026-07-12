@@ -52,6 +52,8 @@ async function refreshCompletionFeedPost(
   revalidateTag("home-posts", "max");
   revalidateTag("home-posts-week", "max");
   revalidateTag("search-posts", "max");
+  // 本人プロフィールの投稿一覧サムネも更新(完走投稿ルートと同じタグ群)。
+  revalidateTag(`user-profile-${userId}`, "max");
   revalidateTag(`post-detail-${postId}`, { expire: 0 });
 }
 

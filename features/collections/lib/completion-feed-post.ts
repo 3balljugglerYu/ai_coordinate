@@ -80,11 +80,18 @@ export async function refreshCompletionFeedPostImage(
   mountStoragePath: string,
 ): Promise<{ postId: string | null }> {
   try {
-    const { data: existing } = await adminSupabase
+    const { data: existing, error: fetchError } = await adminSupabase
       .from("generated_images")
       .select("id")
       .eq("completion_id", completionId)
       .maybeSingle();
+    if (fetchError) {
+      console.error(
+        "[refreshCompletionFeedPostImage] fetch failed:",
+        fetchError.message,
+      );
+      return { postId: null };
+    }
     if (!existing?.id) return { postId: null };
 
     const imageUrl = buildPublicGeneratedImageUrl(mountStoragePath);
