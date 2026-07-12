@@ -16,6 +16,7 @@ import {
   parseOgpMountPlacement,
 } from "@/features/collections/lib/compose-mount-ogp";
 import { getRepresentativeImagesForCategory } from "@/features/collections/lib/representative-images";
+import { refreshCompletionFeedPostImage } from "@/features/collections/lib/completion-feed-post";
 import { resolveSelectedImages } from "@/features/collections/lib/resolve-selected-images";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 import type { ReserveCollectionResultRow } from "@/features/collections/lib/collection-types";
@@ -30,6 +31,30 @@ const CATEGORY_KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 
 function jsonError(message: string, code: string, status: number) {
   return NextResponse.json({ error: message, errorCode: code }, { status });
+}
+
+/**
+ * 台紙を作り直したとき、ホームに投稿済みの完走フィード投稿サムネも最新へ貼り替える。
+ * 投稿していなければ何もしない。best-effort(失敗しても作り直しは成功扱い)。
+ * 貼り替えたらフィード/詳細/検索の cache を失効させ、新サムネを反映する。
+ */
+async function refreshCompletionFeedPost(
+  userId: string,
+  completionId: string,
+  mountStoragePath: string,
+): Promise<void> {
+  const { postId } = await refreshCompletionFeedPostImage(
+    createAdminClient(),
+    completionId,
+    mountStoragePath,
+  );
+  if (!postId) return;
+  revalidateTag("home-posts", "max");
+  revalidateTag("home-posts-week", "max");
+  revalidateTag("search-posts", "max");
+  // 本人プロフィールの投稿一覧サムネも更新(完走投稿ルートと同じタグ群)。
+  revalidateTag(`user-profile-${userId}`, "max");
+  revalidateTag(`post-detail-${postId}`, { expire: 0 });
 }
 
 /**
@@ -380,6 +405,8 @@ export async function POST(request: NextRequest) {
           throw new Error(`book update failed: ${updateError.message}`);
         }
         revalidateTag(`collection-completions:${user.id}`, "max");
+        // 完走をホームに投稿済みなら、そのサムネも新しい表紙へ貼り替える(best-effort)。
+        await refreshCompletionFeedPost(user.id, completionId, bookMountPath);
         if (previousMountPath && previousMountPath !== bookMountPath) {
           // 旧 mount-{ts}.png と そのOGPツイン ogp-{ts}.png を削除(ベストエフォート)。
           const stale = [previousMountPath];
@@ -564,6 +591,8 @@ export async function POST(request: NextRequest) {
       if (updateError) {
         throw new Error(`mount_image_path update failed: ${updateError.message}`);
       }
+      // 完走をホームに投稿済みなら、そのサムネも新しい台紙へ貼り替える(best-effort)。
+      await refreshCompletionFeedPost(user.id, completionId, mountStoragePath);
       // 旧 mount + OGP は削除(残しても問題ないが容量節約)
       if (previousMountPath && previousMountPath !== mountStoragePath) {
         const oldOgpPath = ogpPathFromMountPath(previousMountPath);
