@@ -24,6 +24,23 @@ describe("parseCollectionSettings", () => {
     if (r.ok) expect(r.payload).toEqual({});
   });
 
+  test("lottery_target=true を payload に反映する", () => {
+    const r = parseCollectionSettings({ lottery_target: true }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload).toEqual({ lotteryTarget: true });
+  });
+
+  test("lottery_target=false も反映する", () => {
+    const r = parseCollectionSettings({ lottery_target: false }, OFF);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.payload).toEqual({ lotteryTarget: false });
+  });
+
+  test("lottery_target が boolean 以外は拒否", () => {
+    const r = parseCollectionSettings({ lottery_target: "yes" }, OFF);
+    expect(r.ok).toBe(false);
+  });
+
   test("コレクションを有効化し全項目そろえば ok", () => {
     const r = parseCollectionSettings(
       {
