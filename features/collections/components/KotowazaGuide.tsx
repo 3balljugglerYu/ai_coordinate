@@ -558,10 +558,20 @@ export function KotowazaGuide({
         </Reveal>
         <Reveal delay={100}>
           <p className="mx-auto mt-6 max-w-sm text-xs leading-relaxed" style={{ color: "#9c9184" }}>
-            ※ あつめる・カードの保存にはログインが必要です（未ログインでも一枚お試し生成できます）。
+            ※ あつめる・カードの保存にはログインが必要です。
           </p>
         </Reveal>
       </section>
+
+      {/* ===== クリエイター相談(控えめなフッターリンク) ===== */}
+      <div className="px-6 pb-10 text-center">
+        <Link
+          href="/creators"
+          className="text-xs text-[#b3a794] underline underline-offset-2 transition-colors hover:text-[#8a7c66]"
+        >
+          コラボご希望の方・プロンプト掲載のご相談はこちら ›
+        </Link>
+      </div>
     </main>
   );
 }
