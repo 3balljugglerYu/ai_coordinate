@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { connection } from "next/server";
 import Link from "next/link";
 
 const PAGE_TITLE = "うちの子のことわざ辞典 Xシェアキャンペーン 応募規約 | Persta.AI";
@@ -38,9 +37,7 @@ function Section({
   );
 }
 
-export default async function KotowazaLotteryRulesPage() {
-  await connection();
-
+export default function KotowazaLotteryRulesPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 pb-16 pt-8">
       <p className="text-xs font-bold tracking-wide text-amber-600">
