@@ -47,6 +47,7 @@ export interface PresetCategoryRow {
   user_prompt_max_length?: number | null;
   visibility?: StylePresetCategoryVisibility | null;
   is_collection_series?: boolean | null;
+  lottery_target?: boolean | null;
   completion_threshold?: number | null;
   completion_reward_percoins?: number | null;
   completion_view_mode?: string | null;
@@ -110,6 +111,8 @@ export interface PresetCategoryAdmin {
   userPromptMaxLength: number | null;
   visibility: StylePresetCategoryVisibility;
   isCollectionSeries: boolean;
+  /** Xシェア抽選プレゼントの対象カテゴリか(受付期間は collection_display 期間を流用)。 */
+  lotteryTarget: boolean;
   completionThreshold: number | null;
   /** コレクション完走時に付与するペルコイン数。0/null=報酬なし。 */
   completionRewardPercoins: number | null;
@@ -176,6 +179,7 @@ export interface PresetCategoryInsert {
   userPromptMaxLength?: number | null;
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
+  lotteryTarget?: boolean;
   completionThreshold?: number | null;
   completionRewardPercoins?: number | null;
   completionViewMode?: "mount" | "book";
@@ -234,6 +238,7 @@ export interface PresetCategoryUpdate {
   userPromptMaxLength?: number | null;
   visibility?: StylePresetCategoryVisibility;
   isCollectionSeries?: boolean;
+  lotteryTarget?: boolean;
   completionThreshold?: number | null;
   completionRewardPercoins?: number | null;
   completionViewMode?: "mount" | "book";
@@ -307,6 +312,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     userPromptMaxLength: row.user_prompt_max_length ?? null,
     visibility: normalizeVisibility(row.visibility),
     isCollectionSeries: row.is_collection_series ?? false,
+    lotteryTarget: row.lottery_target ?? false,
     completionThreshold: row.completion_threshold ?? null,
     completionRewardPercoins: row.completion_reward_percoins ?? null,
     completionViewMode: row.completion_view_mode === "book" ? "book" : "mount",
@@ -452,6 +458,7 @@ export async function createPresetCategory(
       user_prompt_max_length: input.userPromptMaxLength ?? null,
       visibility: input.visibility ?? "admin_only",
       is_collection_series: input.isCollectionSeries ?? false,
+      lottery_target: input.lotteryTarget ?? false,
       completion_threshold: input.completionThreshold ?? null,
       completion_reward_percoins: input.completionRewardPercoins ?? null,
       completion_view_mode: input.completionViewMode ?? "mount",
@@ -544,6 +551,8 @@ export async function updatePresetCategory(
     payload.visibility = input.visibility;
   if (input.isCollectionSeries !== undefined)
     payload.is_collection_series = input.isCollectionSeries;
+  if (input.lotteryTarget !== undefined)
+    payload.lottery_target = input.lotteryTarget;
   if (input.completionThreshold !== undefined)
     payload.completion_threshold = input.completionThreshold;
   if (input.completionRewardPercoins !== undefined)

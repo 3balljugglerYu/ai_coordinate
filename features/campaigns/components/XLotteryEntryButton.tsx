@@ -8,46 +8,47 @@ import {
 } from "@/features/collections/lib/share-mount";
 import {
   buildXLotteryIntentUrl,
-  findActiveXLotteryCampaign,
-  type XLotteryCampaign,
+  isLotteryEntryOpen,
+  X_LOTTERY_COPY,
 } from "../x-lottery-campaign";
 
 /**
- * 完走台紙の所有者にだけ表示する「Xで応募する」ボタン(キャンペーン期間中のみ)。
+ * 完走台紙の所有者にだけ表示する「Xで応募する」ボタン(受付期間中のみ)。
  *
- * 既存のシェア(URLのみ / OGP優先)とは別に、応募条件(ハッシュタグ + 主催者メンション)
- * を満たす X intent を開く。期間・対象カテゴリの判定は x-lottery-campaign に集約。
- * クライアント時刻で表示可否を判定するため、SSRとの hydration mismatch を避けて
- * マウント後に描画する(未該当なら何も出さない)。
+ * 対象カテゴリか(lotteryTarget)・受付期間は admin 設定(preset_categories)由来で、
+ * サーバーから props で受け取る。既存のシェア(URLのみ / OGP優先)とは別に、応募条件
+ * (ハッシュタグ + 主催者メンション)を満たす X intent を開く。
+ * クライアント時刻で期間判定するため、SSRとの hydration mismatch を避けてマウント後に描画する
+ * (未該当なら何も出さない)。
  */
 export function XLotteryEntryButton({
-  categoryKey,
+  lotteryTarget,
+  entryStartsAt,
+  entryEndsAt,
   completionId,
   mountImageUrl,
 }: {
-  categoryKey: string;
+  lotteryTarget: boolean;
+  entryStartsAt: string | null;
+  entryEndsAt: string | null;
   completionId: string;
   mountImageUrl: string;
 }) {
-  // クライアント時刻(new Date)で期間判定するため、マウント後にだけ解決する
-  // (SSRでは常に非表示にして hydration mismatch を避ける。ShareLinkButton と同方式)。
-  const [mounted, setMounted] = useState(false);
+  const [open, setOpen] = useState(false);
   useEffect(() => {
     // マウント検知の1回だけの setState。SSR/CSR の時刻差による hydration mismatch を
     // 避けるための正当な用途で、cascading render は起きない。
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setMounted(true);
-  }, []);
+    setOpen(isLotteryEntryOpen(lotteryTarget, entryStartsAt, entryEndsAt, new Date()));
+  }, [lotteryTarget, entryStartsAt, entryEndsAt]);
 
-  const campaign: XLotteryCampaign | null = mounted
-    ? findActiveXLotteryCampaign(categoryKey, new Date())
-    : null;
+  if (!open) return null;
 
-  if (!campaign) return null;
+  const copy = X_LOTTERY_COPY;
 
   const handleClick = () => {
     const shareUrl = buildPublicMountUrl(completionId, mountImageUrl);
-    const intentUrl = buildXLotteryIntentUrl(campaign, shareUrl);
+    const intentUrl = buildXLotteryIntentUrl(copy, shareUrl);
     // 応募=シェアなので既存の共有計測も呼ぶ(best-effort)。
     trackMountShareEvent(completionId);
     window.open(intentUrl, "_blank", "noopener,noreferrer");
@@ -59,7 +60,7 @@ export function XLotteryEntryButton({
         🎁 Xでシェアして応募しよう！
       </p>
       <p className="text-xs leading-relaxed text-amber-700/90">
-        抽選で1名様に <span className="font-bold">Amazonギフト3,000円分</span>
+        抽選で1名様に <span className="font-bold">{copy.prizeLabel}</span>
       </p>
       <button
         type="button"
@@ -72,7 +73,7 @@ export function XLotteryEntryButton({
         Xで応募する
       </button>
       <Link
-        href={campaign.rulesPath}
+        href={copy.rulesPath}
         className="text-[11px] text-amber-700/80 underline hover:text-amber-800"
       >
         応募規約・注意事項をみる

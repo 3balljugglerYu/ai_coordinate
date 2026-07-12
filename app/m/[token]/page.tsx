@@ -156,7 +156,9 @@ export default async function PublicMountPage({
       {isOwner ? (
         <div className="flex w-full max-w-sm flex-col items-center gap-3">
           <XLotteryEntryButton
-            categoryKey={mount.categoryKey}
+            lotteryTarget={mount.lotteryTarget}
+            entryStartsAt={mount.collectionDisplayStartsAt}
+            entryEndsAt={mount.collectionDisplayEndsAt}
             completionId={mount.completionId}
             mountImageUrl={mount.mountImageUrl}
           />

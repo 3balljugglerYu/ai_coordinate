@@ -44,6 +44,11 @@ export interface PublicMount {
   /** 台紙テンプレ実寸(px)。表示アスペクト算出用。無ければ null */
   mountTemplateWidth: number | null;
   mountTemplateHeight: number | null;
+  /** Xシェア抽選プレゼントの対象カテゴリか(admin 設定)。応募ボタンの表示判定に使う。 */
+  lotteryTarget: boolean;
+  /** 応募受付期間(= 企画表示期間を流用)。null は無制限。 */
+  collectionDisplayStartsAt: string | null;
+  collectionDisplayEndsAt: string | null;
 }
 
 /**
@@ -61,7 +66,7 @@ export async function getPublicMountByToken(
   const { data, error } = await supabase
     .from("collection_completions")
     .select(
-      "id, user_id, category_key, mount_image_path, completed_at, preset_categories(display_name_ja, display_name_en, mount_template_width, mount_template_height)",
+      "id, user_id, category_key, mount_image_path, completed_at, preset_categories(display_name_ja, display_name_en, mount_template_width, mount_template_height, lottery_target, collection_display_starts_at, collection_display_ends_at)",
     )
     .eq("id", token)
     .eq("mount_status", "completed")
@@ -85,6 +90,9 @@ export async function getPublicMountByToken(
     display_name_en?: string;
     mount_template_width?: number | null;
     mount_template_height?: number | null;
+    lottery_target?: boolean | null;
+    collection_display_starts_at?: string | null;
+    collection_display_ends_at?: string | null;
   };
 
   return {
@@ -97,6 +105,9 @@ export async function getPublicMountByToken(
     completedAt: (data.completed_at as string | null) ?? null,
     mountTemplateWidth: catRecord.mount_template_width ?? null,
     mountTemplateHeight: catRecord.mount_template_height ?? null,
+    lotteryTarget: catRecord.lottery_target ?? false,
+    collectionDisplayStartsAt: catRecord.collection_display_starts_at ?? null,
+    collectionDisplayEndsAt: catRecord.collection_display_ends_at ?? null,
   };
 }
 
