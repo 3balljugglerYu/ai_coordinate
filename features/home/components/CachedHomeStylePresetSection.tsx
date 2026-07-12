@@ -13,6 +13,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   collectShelfPresetIds,
   deriveEventShelves,
+  listActiveEventCategoryKeys,
 } from "@/features/home/lib/derive-event-shelves";
 import type { CompletedMountView } from "@/features/my-page/components/MyPageCollections";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
@@ -62,9 +63,45 @@ export async function CachedHomeStylePresetSection({
   // 開催中のコレクション企画は専用の「企画棚」へ振り分ける(お着替えカルーセルの上)。
   // 棚は locked(次の1枚のシルエット)も表示するため、gated を locked 除外前に渡す。
   const now = new Date();
+
+  // ✓済み判定用: 開催中企画カテゴリの「生成済みプリセットID集合」。
+  // 解放方式(順次/一斉/前提付き)に依存せず厳密に判定するためIDで持つ。
+  // 開催中企画がある場合のみ発行(通常時はクエリ増ゼロ)。失敗時は空集合=全てNEW表示に
+  // フォールバックし、ホーム全体は壊さない。
+  const generatedIdsByKey = new Map<string, ReadonlySet<string>>();
+  const activeEventKeys = listActiveEventCategoryKeys(gated, now);
+  if (userId && activeEventKeys.length > 0) {
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin
+        .from("image_jobs")
+        .select("style_template_id, style_preset_category_key")
+        .eq("user_id", userId)
+        .eq("status", "succeeded")
+        .in("style_preset_category_key", activeEventKeys)
+        .not("style_template_id", "is", null)
+        .limit(1000);
+      if (!error) {
+        for (const row of data ?? []) {
+          const key = row.style_preset_category_key as string;
+          const presetId = row.style_template_id as string;
+          const set = generatedIdsByKey.get(key) as Set<string> | undefined;
+          if (set) {
+            set.add(presetId);
+          } else {
+            generatedIdsByKey.set(key, new Set([presetId]));
+          }
+        }
+      }
+    } catch {
+      // 取得失敗は初日状態(全てNEW)で表示継続
+    }
+  }
+
   const eventShelves = deriveEventShelves(
     gated,
     unlockContext.distinctGeneratedByCategoryKey,
+    generatedIdsByKey,
     now,
   );
   const shelfPresetIds = collectShelfPresetIds(eventShelves);

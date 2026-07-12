@@ -33,14 +33,15 @@ export interface EventShelf {
 
 /**
  * 企画棚の対象カテゴリか。
- * コレクションシリーズ かつ 順次解放 かつ 表示ウィンドウがアクティブ(開始済み・未終了)。
- * starts/ends が null の側は無制限として扱う(/style の表示期間判定と同じ解釈)。
+ * コレクションシリーズ かつ 表示ウィンドウがアクティブ(開始済み・未終了)。
+ * 解放方式(順次/一斉/前提付き)は問わない。starts/ends が null の側は無制限として
+ * 扱う(/style の表示期間判定と同じ解釈)。
  */
 function isActiveEventCategory(
   category: StylePresetPublicSummary["category"],
   now: Date,
 ): boolean {
-  if (!category.isCollectionSeries || !category.sequentialUnlock) {
+  if (!category.isCollectionSeries) {
     return false;
   }
   const startsAt = category.collectionDisplayStartsAt;
@@ -55,22 +56,45 @@ function isActiveEventCategory(
 }
 
 /**
+ * 棚の対象となる「開催中の企画」カテゴリ key 一覧。
+ * 呼び出し側はこの key に対して「生成済みプリセットID集合」を取得してから
+ * deriveEventShelves に渡す(対象が無ければクエリ不要)。
+ */
+export function listActiveEventCategoryKeys(
+  gatedPresets: readonly StylePresetPublicSummary[],
+  now: Date,
+): string[] {
+  const keys: string[] = [];
+  const seen = new Set<string>();
+  for (const preset of gatedPresets) {
+    const category = preset.category;
+    if (seen.has(category.key)) continue;
+    if (!isActiveEventCategory(category, now)) continue;
+    seen.add(category.key);
+    keys.push(category.key);
+  }
+  return keys;
+}
+
+/**
  * gating 適用済みプリセット一覧から「開催中の企画」棚モデルを導出する純関数。
  *
  * 入力の前提(applyCollectionUnlockGating の出力仕様):
- * - sequential カテゴリは「解放済み(昇順) + locked な次の1枚(ティザー)」だけが含まれ、
- *   その先のプリセットは既に除去されている。
+ * - sequential カテゴリは「解放済み(昇順) + locked な次の1枚(ティザー)」のみ含まれる。
+ * - 前提付き(非sequential)カテゴリは未解放も locked 付きで全て残る(ティザー複数)。
+ * - 一斉公開カテゴリは gating no-op で全プリセットが unlocked のまま。
  * - 順序は sort_order 昇順のまま。
  *
- * ✓済み(done)の導出は「解放済みの先頭から distinct 生成数ぶん」。sequential 解放では
- * 順番にしか生成できない(生成が次を解放する)ため、この対応は厳密に成立する。
- * この不変条件が崩れる変更を collection-unlock 側に入れる場合はここも見直すこと。
- *
- * 追加のDBクエリは発行しない(distinct 生成数はホームで解決済みの解放コンテキストを流用)。
+ * ✓済み(done)の判定は「ユーザーが生成済みのプリセットID集合」への所属で行う。
+ * 解放方式(順次/一斉/前提付き)に依存しないため、どのカテゴリでも厳密に成立する。
+ * 未ログイン時は空集合を渡せば全カードが NEW(初日状態)になる。
+ * 進捗カウンターは distinct 生成数(解放コンテキスト)を優先し、無ければID集合の
+ * サイズで代替する(一斉公開カテゴリは解放コンテキストの集計対象外のため)。
  */
 export function deriveEventShelves(
   gatedPresets: readonly StylePresetPublicSummary[],
   distinctGeneratedByCategoryKey: ReadonlyMap<string, number>,
+  generatedPresetIdsByCategoryKey: ReadonlyMap<string, ReadonlySet<string>>,
   now: Date,
 ): EventShelf[] {
   const byCategory = new Map<string, StylePresetPublicSummary[]>();
@@ -93,16 +117,17 @@ export function deriveEventShelves(
   const shelves: EventShelf[] = [];
   for (const [key, presets] of byCategory) {
     const category = categoryByKey.get(key)!;
+    const generatedIds =
+      generatedPresetIdsByCategoryKey.get(key) ?? new Set<string>();
     const distinct = Math.max(
       0,
-      distinctGeneratedByCategoryKey.get(key) ?? 0,
+      distinctGeneratedByCategoryKey.get(key) ?? generatedIds.size,
     );
     const unlocked = presets.filter((p) => !p.locked);
     const teasers = presets.filter((p) => p.locked === true);
 
-    const doneCount = Math.min(distinct, unlocked.length);
-    const done = unlocked.slice(0, doneCount);
-    const news = unlocked.slice(doneCount);
+    const done = unlocked.filter((p) => generatedIds.has(p.id));
+    const news = unlocked.filter((p) => !generatedIds.has(p.id));
 
     const totalCount = category.completionThreshold ?? null;
     const isCompleted = totalCount !== null && distinct >= totalCount;

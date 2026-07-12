@@ -1,6 +1,7 @@
 import {
   deriveEventShelves,
   collectShelfPresetIds,
+  listActiveEventCategoryKeys,
 } from "@/features/home/lib/derive-event-shelves";
 import { applyCollectionUnlockGating } from "@/features/collections/lib/collection-unlock-gating";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -80,6 +81,16 @@ function italyCategory(overrides: Partial<StylePresetPublicSummary["category"]> 
   });
 }
 
+/** sequential では先頭から順に生成されるので、生成済みID集合=先頭N個 */
+function italyGeneratedIds(distinct: number): Map<string, ReadonlySet<string>> {
+  return new Map([
+    [
+      "travel_to_italy",
+      new Set(Array.from({ length: distinct }, (_, i) => `italy-${i}`)),
+    ],
+  ]);
+}
+
 /** 9プリセットを実ゲート(applyCollectionUnlockGating)へ通した出力を作る */
 function gatedItalyPresets(distinct: number) {
   const cat = italyCategory();
@@ -97,6 +108,7 @@ describe("deriveEventShelves", () => {
     const shelves = deriveEventShelves(
       gatedItalyPresets(0),
       new Map([["travel_to_italy", 0]]),
+      italyGeneratedIds(0),
       NOW,
     );
     expect(shelves).toHaveLength(1);
@@ -114,6 +126,7 @@ describe("deriveEventShelves", () => {
     const shelves = deriveEventShelves(
       gatedItalyPresets(2),
       new Map([["travel_to_italy", 2]]),
+      italyGeneratedIds(2),
       NOW,
     );
     const shelf = shelves[0];
@@ -135,6 +148,7 @@ describe("deriveEventShelves", () => {
     const shelves = deriveEventShelves(
       gatedItalyPresets(9),
       new Map([["travel_to_italy", 9]]),
+      italyGeneratedIds(9),
       NOW,
     );
     const shelf = shelves[0];
@@ -150,6 +164,7 @@ describe("deriveEventShelves", () => {
     const shelves = deriveEventShelves(
       gatedItalyPresets(2),
       new Map([["travel_to_italy", 2]]),
+      italyGeneratedIds(2),
       after,
     );
     expect(shelves).toHaveLength(0);
@@ -160,25 +175,28 @@ describe("deriveEventShelves", () => {
     const shelves = deriveEventShelves(
       gatedItalyPresets(0),
       new Map(),
+      new Map(),
       before,
     );
     expect(shelves).toHaveLength(0);
   });
 
   test("未ログイン(空コンテキスト)は初日状態になる", () => {
-    const shelves = deriveEventShelves(gatedItalyPresets(0), new Map(), NOW);
+    const shelves = deriveEventShelves(
+      gatedItalyPresets(0),
+      new Map(),
+      new Map(),
+      NOW,
+    );
     expect(shelves[0].cards.map((c) => c.kind)).toEqual(["new", "teaser"]);
     expect(shelves[0].collectedCount).toBe(0);
   });
 
-  test("コレクションシリーズでない/sequentialでないカテゴリは対象外", () => {
+  test("コレクションシリーズでないカテゴリは対象外", () => {
     const plain = makeCategory("coordinate");
-    const nonSequential = makeCategory("wafer", {
-      isCollectionSeries: true,
-      sequentialUnlock: false,
-    });
     const shelves = deriveEventShelves(
-      [makePreset("a", plain), makePreset("b", nonSequential)],
+      [makePreset("a", plain)],
+      new Map(),
       new Map(),
       NOW,
     );
@@ -202,6 +220,7 @@ describe("deriveEventShelves", () => {
         makePreset("italy-1", soon, true),
       ],
       new Map(),
+      new Map(),
       NOW,
     );
     expect(shelves.map((s) => s.categoryKey)).toEqual([
@@ -210,10 +229,92 @@ describe("deriveEventShelves", () => {
     ]);
   });
 
+  test("一斉公開(非sequential)のシリーズも棚に出て、ID集合で✓済みが付く", () => {
+    // 神コレ型: is_collection_series のみ(順次解放なし・前提なし) → gating は no-op
+    const wafer = makeCategory("wafer_like", {
+      isCollectionSeries: true,
+      sequentialUnlock: false,
+      completionThreshold: 6,
+      collectionDisplayStartsAt: "2026-07-03T10:00:00Z",
+      collectionDisplayEndsAt: "2026-07-12T13:00:00Z",
+    });
+    const presets = Array.from({ length: 6 }, (_, i) =>
+      makePreset(`w-${i}`, wafer),
+    );
+    // 生成順は任意(w-1 と w-4 だけ生成済み)。一斉公開は位置ベースでは判定できない
+    const shelves = deriveEventShelves(
+      presets,
+      new Map(),
+      new Map([["wafer_like", new Set(["w-1", "w-4"])]]),
+      NOW,
+    );
+    expect(shelves).toHaveLength(1);
+    const shelf = shelves[0];
+    expect(shelf.cards.map((c) => c.kind)).toEqual([
+      "new",
+      "new",
+      "new",
+      "new",
+      "done",
+      "done",
+    ]);
+    expect(shelf.cards.filter((c) => c.kind === "done").map((c) => c.preset?.id)).toEqual(
+      ["w-1", "w-4"],
+    );
+    // 解放コンテキスト対象外なのでカウンターはID集合サイズで代替
+    expect(shelf.collectedCount).toBe(2);
+    expect(shelf.totalCount).toBe(6);
+  });
+
+  test("一斉公開シリーズの全コンプでも celebration が先頭に付く", () => {
+    const wafer = makeCategory("wafer_like", {
+      isCollectionSeries: true,
+      sequentialUnlock: false,
+      completionThreshold: 3,
+      collectionDisplayEndsAt: "2026-07-12T13:00:00Z",
+    });
+    const presets = Array.from({ length: 3 }, (_, i) =>
+      makePreset(`w-${i}`, wafer),
+    );
+    const shelves = deriveEventShelves(
+      presets,
+      new Map(),
+      new Map([["wafer_like", new Set(["w-0", "w-1", "w-2"])]]),
+      NOW,
+    );
+    expect(shelves[0].isCompleted).toBe(true);
+    expect(shelves[0].cards[0].kind).toBe("celebration");
+  });
+
+  test("listActiveEventCategoryKeys は開催中シリーズの key を重複なしで返す", () => {
+    const italy = italyCategory();
+    const wafer = makeCategory("wafer_like", {
+      isCollectionSeries: true,
+      sequentialUnlock: false,
+      collectionDisplayEndsAt: "2026-07-12T13:00:00Z",
+    });
+    const ended = makeCategory("ended", {
+      isCollectionSeries: true,
+      collectionDisplayEndsAt: "2026-07-01T00:00:00Z",
+    });
+    const keys = listActiveEventCategoryKeys(
+      [
+        makePreset("i-0", italy),
+        makePreset("i-1", italy),
+        makePreset("w-0", wafer),
+        makePreset("e-0", ended),
+        makePreset("c-0", makeCategory("coordinate")),
+      ],
+      NOW,
+    );
+    expect(keys).toEqual(["travel_to_italy", "wafer_like"]);
+  });
+
   test("collectShelfPresetIds は celebration を除く全カードの preset id を返す", () => {
     const shelves = deriveEventShelves(
       gatedItalyPresets(9),
       new Map([["travel_to_italy", 9]]),
+      italyGeneratedIds(9),
       NOW,
     );
     const ids = collectShelfPresetIds(shelves);
