@@ -59,7 +59,15 @@ export default async function KotowazaLotteryRulesPage() {
 
       <Section no="01" title="主催者">
         <p>
-          本キャンペーンは、Persta.AI 運営者 土井秀悠（以下「主催者」といいます。）が主催します。
+          本キャンペーンは、Persta.AI 運営者（以下「主催者」といいます。）が主催します。
+          主催者の氏名・連絡先は
+          <Link
+            href="/tokushoho"
+            className="text-amber-600 underline hover:text-amber-700"
+          >
+            特定商取引法に基づく表記
+          </Link>
+          に記載しています。
         </p>
         <p className="text-gray-500">
           ※ 本キャンペーンは、X Corp. および Amazon とは一切関係ありません。
