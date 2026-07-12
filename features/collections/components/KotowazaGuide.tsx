@@ -94,7 +94,15 @@ export interface KotowazaEntry {
   src: string | null;
 }
 
-// ことわざ6語(雑葉さん提供イラスト)。6語目は到着後に差し替える。
+// ことわざ6語(雑葉さん提供イラスト)。公開前ティザーとして先頭3語のみ公開し、
+// 04〜06 は「？？？」で伏せる(名前・読みも bundle に載せない)。
+// 企画スタート時に下の3項を差し替えて全公開する:
+//   04 鶴の一声【つるのひとこえ】議論をぴたりとまとめる、力のあるひとこと
+//      src: /collections/kotowaza/tsuru-no-hitokoe.webp
+//   05 猿も木から落ちる【さるもきからおちる】名人でも、ときには失敗するということ
+//      src: /collections/kotowaza/saru-mo-ki.webp
+//   06 牛の歩みも千里【うしのあゆみもせんり】歩みはおそくても、こつこつ続ければ遠くまで行けること
+//      src: /collections/kotowaza/ushi-no-ayumi.webp
 const KOTOWAZA_ENTRIES: KotowazaEntry[] = [
   {
     no: "01",
@@ -119,23 +127,23 @@ const KOTOWAZA_ENTRIES: KotowazaEntry[] = [
   },
   {
     no: "04",
-    name: "鶴の一声",
-    reading: "つるのひとこえ",
-    meaning: "議論をぴたりとまとめる、力のあるひとこと",
-    src: "/collections/kotowaza/tsuru-no-hitokoe.webp",
+    name: "？？？",
+    reading: "ちかじつこうかい",
+    meaning: "どんなことわざかは、企画スタートのお楽しみ！",
+    src: null,
   },
   {
     no: "05",
-    name: "猿も木から落ちる",
-    reading: "さるもきからおちる",
-    meaning: "名人でも、ときには失敗するということ",
-    src: "/collections/kotowaza/saru-mo-ki.webp",
+    name: "？？？",
+    reading: "ちかじつこうかい",
+    meaning: "どんなことわざかは、企画スタートのお楽しみ！",
+    src: null,
   },
   {
     no: "06",
     name: "？？？",
     reading: "ちかじつこうかい",
-    meaning: "さいごの1語は、企画スタートのお楽しみ！",
+    meaning: "どんなことわざかは、企画スタートのお楽しみ！",
     src: null,
   },
 ];
@@ -254,7 +262,7 @@ export function KotowazaGuide({
             {entries.map((k, i) => (
               <div
                 key={k.no}
-                className={`kw-float relative aspect-[4/5] overflow-hidden rounded-xl border shadow-sm ${i % 2 ? "translate-y-2" : ""}`}
+                className="kw-float relative aspect-[4/5] overflow-hidden rounded-xl border shadow-sm"
                 style={{ borderColor: "#dccdb6", backgroundColor: "#fffdf8", animationDelay: `${i * 0.35}s` }}
               >
                 {k.src ? (
