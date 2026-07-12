@@ -9,6 +9,7 @@
  */
 const COLLECTION_GUIDE_PATHS: Record<string, string> = {
   travel_to_italy: "/collections/italy",
+  kotowaza_dictionary: "/collections/kotowaza",
 };
 
 /** 未登録カテゴリのフォールバック先(神コレの遊び方)。 */
