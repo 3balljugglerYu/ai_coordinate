@@ -18,9 +18,10 @@ import {
 export const EXPLICIT_OUTPUT_ASPECT_RATIOS: readonly GeminiAspectRatio[] =
   GEMINI_SUPPORTED_ASPECT_RATIOS.map((entry) => entry.label);
 
-/** admin で選択できる出力比率モード。"source"(自動) + 明示9比率。 */
+/** admin で選択できる出力比率モード。"source"(自動) + "preset_image"(登録画像) + 明示9比率。 */
 export const STYLE_OUTPUT_ASPECT_RATIO_MODES = [
   "source",
+  "preset_image",
   "9:16",
   "4:5",
   "3:4",
@@ -41,7 +42,9 @@ export function isStyleOutputAspectRatioMode(
   value: unknown,
 ): value is StyleOutputAspectRatioMode {
   return (
-    value === "source" || (typeof value === "string" && EXPLICIT_SET.has(value))
+    value === "source" ||
+    value === "preset_image" ||
+    (typeof value === "string" && EXPLICIT_SET.has(value))
   );
 }
 
@@ -54,17 +57,24 @@ export function normalizeStyleOutputAspectRatioMode(
 }
 
 /**
- * モード + 入力画像寸法から、最終的な Gemini 出力アスペクト比を解決する。
- * - "source" … 入力寸法を9段階の最近傍にスナップ(自動選択)
- * - 明示比率 … その比率をそのまま使う
+ * モード + 入力画像寸法(+ 登録画像寸法)から、最終的な Gemini 出力アスペクト比を解決する。
+ * - "source"       … 入力寸法を9段階の最近傍にスナップ(自動選択)
+ * - "preset_image" … preset のサムネ(登録画像)寸法を9段階の最近傍にスナップ。
+ *                     寸法が無いときは入力寸法にフォールバック(= source と同挙動)。
+ *                     ※ サムネ寸法はDB保存済みの整数のみ使うため、画像処理は発生しない。
+ * - 明示比率        … その比率をそのまま使う
  */
 export function resolveOutputAspectRatio(
   mode: unknown,
   inputDimensions: { width: number; height: number } | null | undefined,
+  presetImageDimensions?: { width: number; height: number } | null | undefined,
 ): GeminiAspectRatio {
   const normalized = normalizeStyleOutputAspectRatioMode(mode);
   if (normalized === "source") {
     return resolveGeminiAspectRatio(inputDimensions);
+  }
+  if (normalized === "preset_image") {
+    return resolveGeminiAspectRatio(presetImageDimensions ?? inputDimensions);
   }
   return normalized;
 }

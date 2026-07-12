@@ -223,7 +223,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "output_aspect_ratio_mode must be 'source' or one of 9:16,4:5,3:4,2:3,1:1,3:2,4:3,5:4,16:9",
+            "output_aspect_ratio_mode must be 'source', 'preset_image' or one of 9:16,4:5,3:4,2:3,1:1,3:2,4:3,5:4,16:9",
         },
         { status: 400 },
       );

@@ -176,6 +176,11 @@ export interface DispatchGuestImageGenerationInput {
   uploadImage: File;
   referenceImage?: File | null;
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
+  /**
+   * preset の登録画像(サムネ)の実寸。outputAspectRatioMode="preset_image" のとき、
+   * この寸法から出力アスペクトを決める(DB保存済みの整数のため画像処理は不要)。
+   */
+  presetImageDimensions?: { width: number; height: number } | null;
   geminiApiKey: string;
   openaiApiKey?: string;
   geminiTimeoutMs?: number;
@@ -287,18 +292,25 @@ async function dispatchOpenAI(
     };
   }
   try {
-    // 明示比率なら、その比率の寸法から OpenAI 出力サイズを決める(GPT Image 2 も非正方形可)。
-    // source は undefined にして入力画像ベース(従来挙動)に委ねる。
+    // 明示比率(や登録画像=preset_image)なら、その比率の寸法から OpenAI 出力サイズを決める
+    // (GPT Image 2 も非正方形可)。source は undefined にして入力画像ベース(従来挙動)に委ねる。
     const aspectMode = normalizeStyleOutputAspectRatioMode(
       input.outputAspectRatioMode,
     );
-    const targetSize =
+    const targetLabel =
       aspectMode === "source"
-        ? undefined
-        : getGptImage2TargetSize(
-            gptImage2.sizeTier,
-            aspectLabelToDimensions(aspectMode),
+        ? null
+        : resolveOutputAspectRatio(
+            aspectMode,
+            null,
+            input.presetImageDimensions,
           );
+    const targetSize = targetLabel
+      ? getGptImage2TargetSize(
+          gptImage2.sizeTier,
+          aspectLabelToDimensions(targetLabel),
+        )
+      : undefined;
     let result: OpenAIImageEditResult;
     if (input.referenceImage) {
       const referenceArrayBuffer = await input.referenceImage.arrayBuffer();
@@ -371,10 +383,12 @@ async function dispatchGemini(
   const imageSize = extractImageSize(input.model as GeminiOnlyModel);
   const { part: imagePart, dimensions: inputDimensions } =
     await fileToInlineDataPartWithDimensions(input.uploadImage);
-  // モード="source" は入力比率を自動スナップ、明示比率はその比率で出力する。
+  // モード="source" は入力比率を自動スナップ、"preset_image" は登録画像(サムネ)比率、
+  // 明示比率はその比率で出力する。
   const aspectRatio = resolveOutputAspectRatio(
     input.outputAspectRatioMode,
     inputDimensions,
+    input.presetImageDimensions,
   );
   const parts: GeminiContentPart[] = [
     { text: input.promptText },

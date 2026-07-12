@@ -975,6 +975,7 @@ export function AdminPresetCategoryFormClient({
             className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
           >
             <option value="source">アップロード画像に合わせる(自動)</option>
+            <option value="preset_image">登録画像(サムネ)に合わせる</option>
             {EXPLICIT_OUTPUT_ASPECT_RATIOS.map((ratio) => {
               const [w, h] = ratio.split(":").map(Number);
               const orientation =
@@ -987,7 +988,7 @@ export function AdminPresetCategoryFormClient({
             })}
           </select>
           <span className="mt-1 block text-xs text-slate-500">
-            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。比率を明示指定すると、このカテゴリの生成は常にその比率で出力します(Gemini)。OpenAI は 1:1 のみ固定に対応。
+            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。「登録画像(サムネ)に合わせる」は preset ごとのサムネ画像の比率で出力するため、イラストごとに縦横比を変えられます(サムネ寸法はDB保存済みのため生成時間に影響しません)。比率を明示指定すると常にその比率で出力します(Gemini)。OpenAI は 1:1 のみ固定に対応。
           </span>
         </label>
 
