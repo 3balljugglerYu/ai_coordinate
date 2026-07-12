@@ -18,16 +18,24 @@ import { refreshCompletionFeedPostImage } from "@/features/collections/lib/compl
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /** generated_images に対する select().eq().maybeSingle() と update().eq() を記録するフェイク。 */
-function makeClient(existingRow: { id: string } | null) {
+function makeClient(
+  existingRow: { id: string } | null,
+  opts: { fetchError?: { message: string }; updateError?: { message: string } } = {},
+) {
   const update = jest.fn();
-  const updateEq = jest.fn().mockResolvedValue({ error: null });
+  const updateEq = jest
+    .fn()
+    .mockResolvedValue({ error: opts.updateError ?? null });
   update.mockReturnValue({ eq: updateEq });
 
   const client = {
     from: jest.fn(() => ({
       select: jest.fn(() => ({
         eq: jest.fn(() => ({
-          maybeSingle: jest.fn().mockResolvedValue({ data: existingRow }),
+          maybeSingle: jest.fn().mockResolvedValue({
+            data: existingRow,
+            error: opts.fetchError ?? null,
+          }),
         })),
       })),
       update,
@@ -86,6 +94,36 @@ describe("refreshCompletionFeedPostImage", () => {
     expect(r.postId).toBeNull();
     expect(uploadWebPVariantsMock).not.toHaveBeenCalled();
     expect(update).not.toHaveBeenCalled();
+  });
+
+  test("取得クエリが error を返したら WebP生成せず null", async () => {
+    const { client, update } = makeClient(null, {
+      fetchError: { message: "db down" },
+    });
+
+    const r = await refreshCompletionFeedPostImage(
+      client,
+      "completion-1",
+      "path/mount-2.png",
+    );
+
+    expect(r.postId).toBeNull();
+    expect(uploadWebPVariantsMock).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  test("update が error を返したら null(サムネは古いままだが作り直しは成功)", async () => {
+    const { client } = makeClient({ id: "post-1" }, {
+      updateError: { message: "update failed" },
+    });
+
+    const r = await refreshCompletionFeedPostImage(
+      client,
+      "completion-1",
+      "path/mount-2.png",
+    );
+
+    expect(r.postId).toBeNull();
   });
 
   test("WebP生成が失敗しても throw せず null(作り直し自体は成功させる)", async () => {
