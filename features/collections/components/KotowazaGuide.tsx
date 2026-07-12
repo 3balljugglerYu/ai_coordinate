@@ -179,11 +179,16 @@ export function KotowazaGuide({
     },
     {
       n: "03",
-      t: `${threshold}語そろえてコンプリート`,
+      t: `【上巻】${threshold}語そろえてコンプリート`,
       b: `${threshold}種類そろえると、${threshold}枚を飾れる限定コンプリートカードが完成！`,
     },
     {
       n: "04",
+      t: "コンプリートで【下巻】解放！",
+      b: `【上巻】の${threshold}語をそろえると、あたらしい${threshold}語の【下巻】が出現。下巻もそろえて、全${threshold * 2}語の辞典を完成させよう！`,
+    },
+    {
+      n: "05",
       t: "ダウンロード＆シェア",
       b: "完成したカードはそのまま画像でダウンロード。SNS でシェアして自慢しよう！",
     },
@@ -224,7 +229,7 @@ export function KotowazaGuide({
             className="inline-block rounded-full border-2 border-dashed px-4 py-1 text-xs font-bold"
             style={{ borderColor: "#c9b8a0", color: SHU, backgroundColor: "rgba(255,255,255,0.7)", fontFamily: HEADING_FONT }}
           >
-            全{threshold}語 ✦ ことわざ辞典
+            【上巻】全{threshold}語 ✦ ことわざ辞典
           </span>
         </Reveal>
         <Reveal delay={100}>
@@ -248,6 +253,19 @@ export function KotowazaGuide({
             うちの子が、ことわざの世界の住人に。
             <br />
             全{threshold}語あつめて、じぶんだけの辞典をコンプリート。
+          </p>
+        </Reveal>
+        <Reveal delay={220}>
+          {/* 下巻の存在だけを予告(中身はシークレット)。/style では上巻完走まで
+              下巻カテゴリが一切表示されないため、ここで匂わせておく。 */}
+          <p
+            className="mx-auto mt-3 max-w-sm rounded-2xl border border-dashed px-4 py-2 text-xs leading-relaxed"
+            style={{ borderColor: "#dccdb6", color: SHU, backgroundColor: "rgba(255,255,255,0.6)" }}
+          >
+            さらに──【上巻】をコンプリートすると、秘密の
+            <span className="font-bold">【下巻】</span>（{threshold}語）が解放。
+            <br />
+            あわせて<span className="font-bold">全{threshold * 2}語</span>の大辞典に！
           </p>
         </Reveal>
         <Reveal delay={250}>
@@ -469,6 +487,10 @@ export function KotowazaGuide({
               <p className="mx-auto mt-4 max-w-md text-sm leading-loose" style={{ color: SUMI_SUB }}>
                 {threshold}語そろえると、あなただけの特別なコンプリートカードが完成。
                 そのまま画像でダウンロードして、SNS でシェアして自慢しよう！
+                <br />
+                <span className="font-bold" style={{ color: SHU }}>
+                  【上巻】【下巻】それぞれでカードが作れます。
+                </span>
               </p>
               <div
                 className="relative mx-auto mt-6 aspect-[4/5] w-full max-w-[280px] overflow-hidden rounded-2xl border shadow-[0_6px_18px_rgba(75,60,40,0.12)]"
