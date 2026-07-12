@@ -11,6 +11,7 @@ import {
 } from "@/features/collections/lib/public-mount-server-api";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
+import { XLotteryEntryButton } from "@/features/campaigns/components/XLotteryEntryButton";
 import { MountCelebrationBackground } from "@/features/collections/components/MountCelebrationBackground";
 import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
 
@@ -154,6 +155,11 @@ export default async function PublicMountPage({
 
       {isOwner ? (
         <div className="flex w-full max-w-sm flex-col items-center gap-3">
+          <XLotteryEntryButton
+            categoryKey={mount.categoryKey}
+            completionId={mount.completionId}
+            mountImageUrl={mount.mountImageUrl}
+          />
           <MountShareButton
             completionId={mount.completionId}
             mountImageUrl={mount.mountImageUrl}
