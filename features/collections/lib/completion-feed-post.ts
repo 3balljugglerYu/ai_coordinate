@@ -62,3 +62,61 @@ export async function postCompletionToFeed(
   if (!postId) throw new Error("post creation returned no id");
   return { postId: postId as string };
 }
+
+/**
+ * 完走の台紙を作り直した(表紙変更含む)ときに、既に作成済みの「完走フィード投稿」行の
+ * サムネ画像を最新の mount_image_path に貼り替える。
+ *
+ * 完走フィード投稿は初回投稿時に画像をスナップショットするため、作り直し後もこの helper を
+ * 呼ばないと古い表紙のサムネが残る(book/mount 共通の不具合)。投稿行(generated_images)は
+ * 完走ごとに最大1行なので、存在すれば画像列を更新する。台紙更新の副作用のため best-effort で
+ * 扱い、失敗しても throw しない(呼び出し側の作り直し自体は成功させる)。
+ *
+ * @returns 更新した投稿行の id(行が無ければ null)。呼び出し側の revalidate 対象に使える。
+ */
+export async function refreshCompletionFeedPostImage(
+  adminSupabase: SupabaseClient,
+  completionId: string,
+  mountStoragePath: string,
+): Promise<{ postId: string | null }> {
+  try {
+    const { data: existing } = await adminSupabase
+      .from("generated_images")
+      .select("id")
+      .eq("completion_id", completionId)
+      .maybeSingle();
+    if (!existing?.id) return { postId: null };
+
+    const imageUrl = buildPublicGeneratedImageUrl(mountStoragePath);
+    if (!imageUrl) return { postId: null };
+
+    const { thumbPath, displayPath } = await uploadWebPVariants(
+      imageUrl,
+      mountStoragePath,
+    );
+
+    const { error: updateError } = await adminSupabase
+      .from("generated_images")
+      .update({
+        image_url: imageUrl,
+        storage_path: mountStoragePath,
+        storage_path_display: displayPath,
+        storage_path_thumb: thumbPath,
+        // 実寸は Post 詳細の lazy compute で取り直されるためクリアする
+        width: null,
+        height: null,
+      })
+      .eq("id", existing.id as string);
+    if (updateError) {
+      console.error(
+        "[refreshCompletionFeedPostImage] update failed:",
+        updateError.message,
+      );
+      return { postId: null };
+    }
+    return { postId: existing.id as string };
+  } catch (e) {
+    console.error("[refreshCompletionFeedPostImage] failed:", e);
+    return { postId: null };
+  }
+}
