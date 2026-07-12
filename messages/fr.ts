@@ -1702,6 +1702,7 @@ export const frMessages = {
     eventShelfCelebrationTitle: "Terminé !",
     eventShelfCelebrationAction: "Voir la collection",
     eventShelfDoneBadge: "Généré",
+    eventShelfNewBadge: "Nouveau",
   },
   adminStyleTemplates: {
     pageTitle: "Modération des modèles de style",

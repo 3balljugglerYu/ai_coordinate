@@ -1698,6 +1698,7 @@ export const koMessages = {
     eventShelfCelebrationTitle: "컴플리트!",
     eventShelfCelebrationAction: "컬렉션 보기",
     eventShelfDoneBadge: "생성 완료",
+    eventShelfNewBadge: "신규",
   },
   adminStyleTemplates: {
     pageTitle: "스타일 템플릿 관리",

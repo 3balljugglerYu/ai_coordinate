@@ -1701,6 +1701,7 @@ export const idMessages = {
     eventShelfCelebrationTitle: "Lengkap!",
     eventShelfCelebrationAction: "Lihat koleksi",
     eventShelfDoneBadge: "Sudah dibuat",
+    eventShelfNewBadge: "Baru",
   },
   adminStyleTemplates: {
     pageTitle: "Moderasi template gaya",

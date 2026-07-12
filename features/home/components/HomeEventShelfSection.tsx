@@ -266,7 +266,6 @@ export function HomeEventShelfSection({
           type="button"
           onClick={() => router.push("/collections")}
           className="flex-shrink-0 text-left"
-          aria-label={t("eventShelfCelebrationAction")}
         >
           <div
             className="flex flex-col items-center justify-center gap-2 overflow-hidden rounded-xl border border-amber-300 bg-gradient-to-br from-amber-50 to-pink-100 shadow-sm transition hover:ring-2 hover:ring-amber-300"
@@ -322,14 +321,16 @@ export function HomeEventShelfSection({
           <div className="opacity-65">
             <StylePresetPreviewCard
               preset={preset}
-              alt={tStyle("styleCardAlt", { name: preset.title })}
+              // ステータス(生成済み)を alt に前置し、視覚バッジは aria-hidden にして
+              // スクリーンリーダーへ二重読み上げにならないようにする。
+              alt={`${t("eventShelfDoneBadge")} - ${tStyle("styleCardAlt", { name: preset.title })}`}
               locale={cardLocale}
               onClick={() => setConfirmingPreset(preset)}
             />
           </div>
           <span
             className="pointer-events-none absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white shadow"
-            aria-label={t("eventShelfDoneBadge")}
+            aria-hidden="true"
           >
             ✓
           </span>
@@ -342,12 +343,15 @@ export function HomeEventShelfSection({
       <div className="relative">
         <StylePresetPreviewCard
           preset={preset}
-          alt={tStyle("styleCardAlt", { name: preset.title })}
+          alt={`${t("eventShelfNewBadge")} - ${tStyle("styleCardAlt", { name: preset.title })}`}
           locale={cardLocale}
           onClick={() => setConfirmingPreset(preset)}
         />
-        <span className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white shadow">
-          NEW
+        <span
+          className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white shadow"
+          aria-hidden="true"
+        >
+          {t("eventShelfNewBadge")}
         </span>
       </div>
     );

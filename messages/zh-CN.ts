@@ -1696,6 +1696,7 @@ export const zhCnMessages = {
     eventShelfCelebrationTitle: "收集完成！",
     eventShelfCelebrationAction: "查看收藏",
     eventShelfDoneBadge: "已生成",
+    eventShelfNewBadge: "新着",
   },
   adminStyleTemplates: {
     pageTitle: "造型模板审核",

@@ -1698,6 +1698,7 @@ export const thMessages = {
     eventShelfCelebrationTitle: "ครบแล้ว!",
     eventShelfCelebrationAction: "ดูคอลเลกชัน",
     eventShelfDoneBadge: "สร้างแล้ว",
+    eventShelfNewBadge: "ใหม่",
   },
   adminStyleTemplates: {
     pageTitle: "การกลั่นกรองเทมเพลตสไตล์",

@@ -1699,6 +1699,7 @@ export const enMessages = {
     eventShelfCelebrationTitle: "Complete!",
     eventShelfCelebrationAction: "View collection",
     eventShelfDoneBadge: "Generated",
+    eventShelfNewBadge: "NEW",
   },
   adminStyleTemplates: {
     pageTitle: "Style template moderation",

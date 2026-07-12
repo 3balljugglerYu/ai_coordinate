@@ -1699,6 +1699,7 @@ export const viMessages = {
     eventShelfCelebrationTitle: "Hoàn thành!",
     eventShelfCelebrationAction: "Xem bộ sưu tập",
     eventShelfDoneBadge: "Đã tạo",
+    eventShelfNewBadge: "Mới",
   },
   adminStyleTemplates: {
     pageTitle: "Kiểm duyệt mẫu phong cách",

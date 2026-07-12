@@ -1631,6 +1631,7 @@ export const jaMessages = {
     eventShelfCelebrationTitle: "コンプリート！",
     eventShelfCelebrationAction: "コレクションを見る",
     eventShelfDoneBadge: "生成済み",
+    eventShelfNewBadge: "新着",
   },
   adminStyleTemplates: {
     pageTitle: "スタイルテンプレート審査",

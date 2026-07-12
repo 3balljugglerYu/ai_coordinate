@@ -1699,6 +1699,7 @@ export const arMessages = {
     eventShelfCelebrationTitle: "اكتمل!",
     eventShelfCelebrationAction: "عرض المجموعة",
     eventShelfDoneBadge: "تم الإنشاء",
+    eventShelfNewBadge: "جديد",
   },
   adminStyleTemplates: {
     pageTitle: "إدارة قوالب الأسلوب",

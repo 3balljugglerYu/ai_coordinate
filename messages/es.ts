@@ -1702,6 +1702,7 @@ export const esMessages = {
     eventShelfCelebrationTitle: "¡Completado!",
     eventShelfCelebrationAction: "Ver colección",
     eventShelfDoneBadge: "Generado",
+    eventShelfNewBadge: "Nuevo",
   },
   adminStyleTemplates: {
     pageTitle: "Moderación de plantillas de estilo",

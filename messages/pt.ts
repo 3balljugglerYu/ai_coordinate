@@ -1702,6 +1702,7 @@ export const ptMessages = {
     eventShelfCelebrationTitle: "Completo!",
     eventShelfCelebrationAction: "Ver coleção",
     eventShelfDoneBadge: "Gerado",
+    eventShelfNewBadge: "Novo",
   },
   adminStyleTemplates: {
     pageTitle: "Moderação de modelos de estilo",

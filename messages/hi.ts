@@ -1700,6 +1700,7 @@ export const hiMessages = {
     eventShelfCelebrationTitle: "पूर्ण!",
     eventShelfCelebrationAction: "संग्रह देखें",
     eventShelfDoneBadge: "जनरेट किया गया",
+    eventShelfNewBadge: "नया",
   },
   adminStyleTemplates: {
     pageTitle: "स्टाइल टेम्पलेट मॉडरेशन",

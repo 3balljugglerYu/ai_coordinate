@@ -1703,6 +1703,7 @@ export const deMessages = {
     eventShelfCelebrationTitle: "Komplett!",
     eventShelfCelebrationAction: "Sammlung ansehen",
     eventShelfDoneBadge: "Erstellt",
+    eventShelfNewBadge: "Neu",
   },
   adminStyleTemplates: {
     pageTitle: "Moderation der Stilvorlagen",
