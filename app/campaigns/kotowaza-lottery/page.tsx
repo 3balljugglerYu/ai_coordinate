@@ -128,9 +128,12 @@ export default function KotowazaLotteryRulesPage() {
         </p>
       </Section>
 
-      <Section no="07" title="応募上限・無効となる場合">
+      <Section no="07" title="応募回数・無効となる場合">
         <ul className="list-disc space-y-1 pl-5">
-          <li>応募は、お1人様1回（1アカウント）までとします。</li>
+          <li>
+            対象コレクションを1つコンプリートするごとに1回応募できます（【上巻】【下巻】で
+            最大2回）。応募は1人1アカウントに限り、複数アカウントでの応募はできません。
+          </li>
           <li>
             複数アカウントの利用、同一・類似内容の繰り返し投稿、非公開・削除された投稿、
             自動化ツール等による不正応募は無効とします。

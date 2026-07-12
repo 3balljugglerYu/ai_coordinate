@@ -1,85 +1,62 @@
 import {
-  findActiveXLotteryCampaign,
+  isLotteryEntryOpen,
   buildXLotteryIntentUrl,
-  type XLotteryCampaign,
+  X_LOTTERY_COPY,
+  type XLotteryCopy,
 } from "@/features/campaigns/x-lottery-campaign";
 
-const CAMPAIGN: XLotteryCampaign = {
-  id: "test-campaign",
-  categoryKeys: ["kotowaza_dictionary", "kotowaza_dictionary_2"],
-  entryStartsAt: "2026-07-18T09:00:00.000Z",
-  entryEndsAt: "2026-07-26T12:59:59.000Z",
+const COPY: XLotteryCopy = {
   hashtags: ["うちの子のことわざ辞典"],
   mention: "mickey_fuku",
   message: "うちの子のことわざ辞典をコンプリートしました！",
+  prizeLabel: "Amazonギフトカード3,000円分",
   rulesPath: "/campaigns/kotowaza-lottery",
 };
-const CAMPAIGNS = [CAMPAIGN];
 
-describe("findActiveXLotteryCampaign", () => {
-  test("対象カテゴリ・期間内なら該当キャンペーンを返す", () => {
-    const now = new Date("2026-07-20T00:00:00.000Z");
+const STARTS = "2026-07-18T09:00:00.000Z";
+const ENDS = "2026-07-26T12:59:59.000Z";
+
+describe("isLotteryEntryOpen", () => {
+  test("対象フラグ off なら常に false", () => {
     expect(
-      findActiveXLotteryCampaign("kotowaza_dictionary", now, CAMPAIGNS),
-    ).toBe(CAMPAIGN);
-    // 下巻カテゴリも同一キャンペーン対象
-    expect(
-      findActiveXLotteryCampaign("kotowaza_dictionary_2", now, CAMPAIGNS),
-    ).toBe(CAMPAIGN);
+      isLotteryEntryOpen(false, STARTS, ENDS, new Date("2026-07-20T00:00:00Z")),
+    ).toBe(false);
   });
 
-  test("対象外カテゴリは null", () => {
-    const now = new Date("2026-07-20T00:00:00.000Z");
+  test("対象フラグ on・期間内なら true", () => {
     expect(
-      findActiveXLotteryCampaign("travel_to_italy", now, CAMPAIGNS),
-    ).toBeNull();
+      isLotteryEntryOpen(true, STARTS, ENDS, new Date("2026-07-20T00:00:00Z")),
+    ).toBe(true);
   });
 
-  test("categoryKey が null/undefined は null", () => {
-    const now = new Date("2026-07-20T00:00:00.000Z");
-    expect(findActiveXLotteryCampaign(null, now, CAMPAIGNS)).toBeNull();
-    expect(findActiveXLotteryCampaign(undefined, now, CAMPAIGNS)).toBeNull();
+  test("開始前は false、開始時刻ちょうどは受付", () => {
+    expect(
+      isLotteryEntryOpen(true, STARTS, ENDS, new Date("2026-07-18T08:59:59Z")),
+    ).toBe(false);
+    expect(
+      isLotteryEntryOpen(true, STARTS, ENDS, new Date("2026-07-18T09:00:00Z")),
+    ).toBe(true);
   });
 
-  test("開始前は null、開始時刻ちょうどは受付", () => {
+  test("終了時刻を過ぎたら false", () => {
     expect(
-      findActiveXLotteryCampaign(
-        "kotowaza_dictionary",
-        new Date("2026-07-18T08:59:59.000Z"),
-        CAMPAIGNS,
-      ),
-    ).toBeNull();
+      isLotteryEntryOpen(true, STARTS, ENDS, new Date("2026-07-26T12:59:59Z")),
+    ).toBe(true);
     expect(
-      findActiveXLotteryCampaign(
-        "kotowaza_dictionary",
-        new Date("2026-07-18T09:00:00.000Z"),
-        CAMPAIGNS,
-      ),
-    ).toBe(CAMPAIGN);
+      isLotteryEntryOpen(true, STARTS, ENDS, new Date("2026-07-26T13:00:00Z")),
+    ).toBe(false);
   });
 
-  test("終了時刻を過ぎたら null", () => {
-    expect(
-      findActiveXLotteryCampaign(
-        "kotowaza_dictionary",
-        new Date("2026-07-26T12:59:59.000Z"),
-        CAMPAIGNS,
-      ),
-    ).toBe(CAMPAIGN);
-    expect(
-      findActiveXLotteryCampaign(
-        "kotowaza_dictionary",
-        new Date("2026-07-26T13:00:00.000Z"),
-        CAMPAIGNS,
-      ),
-    ).toBeNull();
+  test("期間が null(無制限)なら対象フラグだけで判定", () => {
+    expect(isLotteryEntryOpen(true, null, null, new Date())).toBe(true);
+    expect(isLotteryEntryOpen(false, null, null, new Date())).toBe(false);
   });
 });
 
 describe("buildXLotteryIntentUrl", () => {
   test("text にメッセージ+メンション、hashtags にタグ、url に台紙URLが入る", () => {
     const url = buildXLotteryIntentUrl(
-      CAMPAIGN,
+      COPY,
       "https://www.persta.ai/m/abc?v=123",
     );
     const parsed = new URL(url);
@@ -95,9 +72,14 @@ describe("buildXLotteryIntentUrl", () => {
 
   test("複数ハッシュタグはカンマ区切り", () => {
     const url = buildXLotteryIntentUrl(
-      { ...CAMPAIGN, hashtags: ["タグA", "タグB"] },
+      { ...COPY, hashtags: ["タグA", "タグB"] },
       "https://www.persta.ai/m/abc",
     );
     expect(new URL(url).searchParams.get("hashtags")).toBe("タグA,タグB");
+  });
+
+  test("現行 COPY 定数でも組み立てられる", () => {
+    const url = buildXLotteryIntentUrl(X_LOTTERY_COPY, "https://www.persta.ai/m/x");
+    expect(url.startsWith("https://x.com/intent/post?")).toBe(true);
   });
 });

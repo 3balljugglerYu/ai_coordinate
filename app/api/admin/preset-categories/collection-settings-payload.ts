@@ -17,6 +17,8 @@ import {
  */
 export interface CollectionSettingsPayload {
   isCollectionSeries?: boolean;
+  /** Xシェア抽選プレゼントの対象カテゴリか(受付期間は企画表示期間を流用)。 */
+  lotteryTarget?: boolean;
   completionThreshold?: number | null;
   /** コレクション完走時に付与するペルコイン数。0/null=報酬なし。 */
   completionRewardPercoins?: number | null;
@@ -107,6 +109,13 @@ export function parseCollectionSettings(
       return { ok: false, error: "is_collection_series must be boolean" };
     }
     payload.isCollectionSeries = body.is_collection_series;
+  }
+
+  if (body.lottery_target !== undefined) {
+    if (typeof body.lottery_target !== "boolean") {
+      return { ok: false, error: "lottery_target must be boolean" };
+    }
+    payload.lotteryTarget = body.lottery_target;
   }
 
   if (body.completion_threshold !== undefined) {

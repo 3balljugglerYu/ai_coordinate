@@ -68,6 +68,8 @@ interface FormState {
   userPromptMaxLength: number | null;
   visibility: "public" | "admin_only";
   isCollectionSeries: boolean;
+  /** Xシェア抽選プレゼントの対象カテゴリか(受付期間は企画表示期間を流用) */
+  lotteryTarget: boolean;
   completionThreshold: number | null;
   /** コレクション完走時に付与するペルコイン数。0/null=報酬なし */
   completionRewardPercoins: number | null;
@@ -168,6 +170,7 @@ function toFormState(
     userPromptMaxLength: initial?.userPromptMaxLength ?? null,
     visibility: initial?.visibility ?? "admin_only",
     isCollectionSeries: initial?.isCollectionSeries ?? false,
+    lotteryTarget: initial?.lotteryTarget ?? false,
     completionThreshold: initial?.completionThreshold ?? null,
     completionRewardPercoins: initial?.completionRewardPercoins ?? null,
     completionViewMode: initial?.completionViewMode ?? "mount",
@@ -657,6 +660,7 @@ export function AdminPresetCategoryFormClient({
               user_prompt_max_length: form.userPromptMaxLength,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
+              lottery_target: form.lotteryTarget,
               completion_threshold: effectiveThreshold,
               completion_reward_percoins: form.completionRewardPercoins,
               completion_view_mode: form.completionViewMode,
@@ -722,6 +726,7 @@ export function AdminPresetCategoryFormClient({
               user_prompt_max_length: form.userPromptMaxLength,
               visibility: form.visibility,
               is_collection_series: form.isCollectionSeries,
+              lottery_target: form.lotteryTarget,
               completion_threshold: effectiveThreshold,
               completion_reward_percoins: form.completionRewardPercoins,
               completion_view_mode: form.completionViewMode,
@@ -1259,6 +1264,24 @@ export function AdminPresetCategoryFormClient({
             <span className="text-xs text-slate-500">
               ON にすると、ユニーク衣装を N 種そろえるとコンプリート判定・完走表示が走ります。
               mount(台紙)では下記 N / レイアウト / 台紙テンプレが必須、book(日記帳)では N と表紙のみで動きます。
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.lotteryTarget}
+            onChange={(e) => update("lotteryTarget", e.target.checked)}
+            className="mt-1 h-4 w-4 rounded border-slate-300"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">Xシェア抽選プレゼントの対象にする</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              ON にすると、このカテゴリの完走台紙(所有者)に「Xで応募する」ボタンを表示します。
+              受付期間は下の「企画表示期間」を流用します(未設定なら常時)。賞品・ハッシュタグ・
+              規約はコード側の現行キャンペーン設定を使います。OFF なら一切表示されません。
             </span>
           </span>
         </label>
