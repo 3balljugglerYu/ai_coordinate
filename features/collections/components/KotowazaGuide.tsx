@@ -131,21 +131,21 @@ const KOTOWAZA_ENTRIES: KotowazaEntry[] = [
   {
     no: "04",
     name: "？？？",
-    reading: "ちかじつこうかい",
+    reading: "きんじつこうかい",
     meaning: "どんなことわざかは、企画スタートのお楽しみ！",
     src: null,
   },
   {
     no: "05",
     name: "？？？",
-    reading: "ちかじつこうかい",
+    reading: "きんじつこうかい",
     meaning: "どんなことわざかは、企画スタートのお楽しみ！",
     src: null,
   },
   {
     no: "06",
     name: "？？？",
-    reading: "ちかじつこうかい",
+    reading: "きんじつこうかい",
     meaning: "どんなことわざかは、企画スタートのお楽しみ！",
     src: null,
   },
@@ -474,16 +474,35 @@ export function KotowazaGuide({
                 className="relative mx-auto mt-6 aspect-[4/5] w-full max-w-[280px] overflow-hidden rounded-2xl border shadow-[0_6px_18px_rgba(75,60,40,0.12)]"
                 style={{ borderColor: "#e8ddc9" }}
               >
+                {/* 公開前ティザー: 画像内に伏せ字中のことわざが写り込むため、
+                    強めのぼかし+オーバーレイでシークレット表示にする。
+                    企画スタート時に blur とオーバーレイを外して全公開する。 */}
                 <Image
                   src="/collections/kotowaza/complete-sample.webp"
-                  alt="ことわざコレクションのコンプリートカードのイメージ(6語のことわざカードが並んだ完成例)"
+                  alt="ことわざコレクションのコンプリートカードのイメージ(内容は企画スタートまでシークレット)"
                   fill
                   sizes="(max-width: 480px) 75vw, 280px"
-                  className="object-cover"
+                  className="scale-110 object-cover blur-lg"
+                  aria-hidden
                 />
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-white/45">
+                  <span
+                    className="text-5xl font-bold"
+                    style={{ color: SHU, fontFamily: HEADING_FONT }}
+                    aria-hidden
+                  >
+                    ？
+                  </span>
+                  <span
+                    className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow"
+                    style={{ backgroundColor: SHU, fontFamily: HEADING_FONT }}
+                  >
+                    企画スタートでお披露目！
+                  </span>
+                </div>
               </div>
               <p className="mt-3 text-xs" style={{ color: "#9c9184" }}>
-                ＼ 完成イメージ ／<br />※ 画像はイメージです。実際のカードとはデザイン・収録語が異なります。
+                ＼ 完成イメージはシークレット ／<br />※ 画像はイメージです。実際のカードとはデザイン・収録語が異なります。
               </p>
             </div>
           </Reveal>
