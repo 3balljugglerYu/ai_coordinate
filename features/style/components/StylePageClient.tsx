@@ -12,8 +12,9 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Maximize2, Minimize2, Share2 } from "lucide-react";
+import { Maximize2, Minimize2, Share2, ZoomIn } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -250,6 +251,10 @@ function StyleReferencePanel({
    */
   providerOverlay?: React.ReactNode;
 }) {
+  const t = useTranslations("style");
+  const [zoomed, setZoomed] = useState(false);
+  const ar = aspectRatio ?? 1;
+
   return (
     <div className={className ?? "space-y-3"}>
       <Label
@@ -264,32 +269,72 @@ function StyleReferencePanel({
       <Card className="overflow-hidden p-0">
         <div
           className="relative bg-slate-100"
-          style={{ aspectRatio: String(aspectRatio ?? 1) }}
+          style={{ aspectRatio: String(ar) }}
         >
-          <Image
-            src={imageSrc}
-            alt={imageAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover"
-            priority
-          />
+          {/* 画像タップで全画面表示(横長サンプルが小さくて見えない問題の対策)。
+              ツールチップ/提供者クレジットは z-20 で上に載せ、各自のタップを維持する。 */}
+          <button
+            type="button"
+            onClick={() => setZoomed(true)}
+            className="absolute inset-0 z-0 cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500"
+            aria-label={t("styleImageZoomAria")}
+          >
+            <Image
+              src={imageSrc}
+              alt={imageAlt}
+              fill
+              sizes="(max-width: 768px) 100vw, 50vw"
+              className="object-cover"
+              priority
+            />
+          </button>
+          {/* タップで拡大できる合図(右下。ツールチップ=右上・提供者=左下と衝突しない) */}
+          <span
+            className={`pointer-events-none absolute z-10 flex items-center justify-center rounded-full bg-black/45 text-white ${
+              collapsed ? "bottom-1 right-1 h-5 w-5" : "bottom-2 right-2 h-7 w-7"
+            }`}
+            aria-hidden="true"
+          >
+            <ZoomIn className={collapsed ? "h-3 w-3" : "h-4 w-4"} />
+          </span>
           {tooltip ? (
             <div
-              className={`absolute z-10 ${collapsed ? "right-1 top-1" : "right-2 top-2"}`}
+              className={`absolute z-20 ${collapsed ? "right-1 top-1" : "right-2 top-2"}`}
             >
               {tooltip}
             </div>
           ) : null}
           {providerOverlay ? (
             <div
-              className={`absolute z-10 ${collapsed ? "bottom-1 left-1" : "bottom-2 left-2"}`}
+              className={`absolute z-20 ${collapsed ? "bottom-1 left-1" : "bottom-2 left-2"}`}
             >
               {providerOverlay}
             </div>
           ) : null}
         </div>
       </Card>
+
+      <Dialog open={zoomed} onOpenChange={setZoomed}>
+        <DialogContent
+          showCloseButton
+          className="border-0 bg-transparent p-0 shadow-none sm:max-w-[95vw]"
+          style={{ width: `min(95vw, calc(85vh * ${ar}))` }}
+        >
+          <DialogTitle className="sr-only">{label}</DialogTitle>
+          <div
+            className="relative w-full overflow-hidden rounded-lg bg-slate-900"
+            style={{ aspectRatio: String(ar), maxHeight: "85vh" }}
+          >
+            <Image
+              src={imageSrc}
+              alt={imageAlt}
+              fill
+              sizes="95vw"
+              className="object-contain"
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

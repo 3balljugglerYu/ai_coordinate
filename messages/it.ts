@@ -1351,6 +1351,7 @@ export const itMessages = {
     uploadLabel: "Il mio personaggio",
     addImageAction: "Aggiungi immagine",
     styleImageAlt: "Immagine dello stile selezionato",
+    styleImageZoomAria: "Ingrandisci immagine stile",
     styleCardAlt: "Carta di stile {name}",
     detailPresetLabel: "Generato con One-Tap Style",
     detailPresetCardAlt: "Carta di stile {name}",

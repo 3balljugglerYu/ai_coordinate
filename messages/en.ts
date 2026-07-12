@@ -1348,6 +1348,7 @@ export const enMessages = {
     uploadLabel: "My Character",
     addImageAction: "Add image",
     styleImageAlt: "Selected style image",
+    styleImageZoomAria: "Enlarge style image",
     styleCardAlt: "{name} style card",
     detailPresetLabel: "Generated with One-Tap Style",
     detailPresetCardAlt: "{name} style card",

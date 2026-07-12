@@ -1351,6 +1351,7 @@ export const ptMessages = {
     uploadLabel: "Meu Personagem",
     addImageAction: "Adicionar imagem",
     styleImageAlt: "Imagem do estilo selecionado",
+    styleImageZoomAria: "Ampliar imagem de estilo",
     styleCardAlt: "Cartão de estilo {name}",
     detailPresetLabel: "Gerado com One-Tap Style",
     detailPresetCardAlt: "Cartão de estilo {name}",

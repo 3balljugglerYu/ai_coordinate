@@ -1346,6 +1346,7 @@ export const zhCnMessages = {
     uploadLabel: "我的角色",
     addImageAction: "添加图片",
     styleImageAlt: "选定的造型图片",
+    styleImageZoomAria: "放大风格图片",
     styleCardAlt: "{name} 造型卡",
     detailPresetLabel: "由一键造型生成",
     detailPresetCardAlt: "{name} 造型卡",

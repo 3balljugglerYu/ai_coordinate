@@ -1352,6 +1352,7 @@ export const deMessages = {
     uploadLabel: "Mein Charakter",
     addImageAction: "Bild hinzufügen",
     styleImageAlt: "Ausgewähltes Stilbild",
+    styleImageZoomAria: "Stilbild vergrößern",
     styleCardAlt: "Stilkarte {name}",
     detailPresetLabel: "Mit One-Tap Style generiert",
     detailPresetCardAlt: "Stilkarte {name}",

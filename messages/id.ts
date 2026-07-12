@@ -1350,6 +1350,7 @@ export const idMessages = {
     uploadLabel: "Karakterku",
     addImageAction: "Tambah gambar",
     styleImageAlt: "Gambar gaya yang dipilih",
+    styleImageZoomAria: "Perbesar gambar gaya",
     styleCardAlt: "Kartu gaya {name}",
     detailPresetLabel: "Dibuat dengan One-Tap Style",
     detailPresetCardAlt: "Kartu gaya {name}",

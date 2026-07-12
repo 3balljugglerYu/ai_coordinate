@@ -1347,6 +1347,7 @@ export const thMessages = {
     uploadLabel: "ตัวละครของฉัน",
     addImageAction: "เพิ่มรูป",
     styleImageAlt: "รูปสไตล์ที่เลือก",
+    styleImageZoomAria: "ขยายรูปสไตล์",
     styleCardAlt: "การ์ดสไตล์ {name}",
     detailPresetLabel: "สร้างด้วย One-Tap Style",
     detailPresetCardAlt: "การ์ดสไตล์ {name}",

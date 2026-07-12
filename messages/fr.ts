@@ -1351,6 +1351,7 @@ export const frMessages = {
     uploadLabel: "Mon personnage",
     addImageAction: "Ajouter une image",
     styleImageAlt: "Image du style sélectionné",
+    styleImageZoomAria: "Agrandir l'image du style",
     styleCardAlt: "Carte de style {name}",
     detailPresetLabel: "Généré avec One-Tap Style",
     detailPresetCardAlt: "Carte de style {name}",
