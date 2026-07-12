@@ -501,7 +501,7 @@ export function KotowazaGuide({
                     企画スタート時に blur とオーバーレイを外して全公開する。 */}
                 <Image
                   src="/collections/kotowaza/complete-sample.webp"
-                  alt="ことわざコレクションのコンプリートカードのイメージ(内容は企画スタートまでシークレット)"
+                  alt=""
                   fill
                   sizes="(max-width: 480px) 75vw, 280px"
                   className="scale-110 object-cover blur-lg"
