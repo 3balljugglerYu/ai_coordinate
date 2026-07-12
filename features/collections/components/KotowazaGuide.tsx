@@ -277,6 +277,27 @@ export function KotowazaGuide({
           </p>
         </Reveal>
 
+        {/* Xシェア抽選プレゼントの告知(詳細・規約は応募規約ページを単一の真実源に) */}
+        <Reveal delay={280}>
+          <div className="mx-auto mt-5 max-w-sm rounded-2xl border-2 border-amber-300 bg-gradient-to-b from-amber-50 to-white px-5 py-4 text-center shadow-sm">
+            <p className="text-sm font-bold text-amber-700" style={{ fontFamily: HEADING_FONT }}>
+              🎁 Xシェアで抽選プレゼント
+            </p>
+            <p className="mt-1.5 text-xs leading-relaxed text-amber-800">
+              コンプリートしてXにシェアした方から、抽選で
+              <span className="font-bold">1名様</span>に
+              <br />
+              <span className="font-bold">Amazonギフトカード3,000円分</span>をプレゼント！
+            </p>
+            <Link
+              href="/campaigns/kotowaza-lottery"
+              className="mt-2 inline-block text-[11px] font-bold text-amber-700 underline hover:text-amber-800"
+            >
+              応募規約・注意事項をみる
+            </Link>
+          </div>
+        </Reveal>
+
         {/* ことわざ勢ぞろい(6コマ) */}
         <Reveal delay={300}>
           <div className="mx-auto mt-8 grid max-w-md grid-cols-3 gap-2 sm:grid-cols-6 sm:gap-3">
