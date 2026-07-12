@@ -22,9 +22,46 @@ describe("style-output-aspect-ratio", () => {
       "5:4",
       "16:9",
     ]);
-    // モード一覧 = source + 9比率
-    expect(STYLE_OUTPUT_ASPECT_RATIO_MODES.length).toBe(10);
+    // モード一覧 = source + preset_image + 9比率
+    expect(STYLE_OUTPUT_ASPECT_RATIO_MODES.length).toBe(11);
     expect(STYLE_OUTPUT_ASPECT_RATIO_MODES[0]).toBe("source");
+    expect(STYLE_OUTPUT_ASPECT_RATIO_MODES[1]).toBe("preset_image");
+  });
+
+  describe("preset_image モード(登録画像に合わせる)", () => {
+    test("isStyleOutputAspectRatioMode で有効", () => {
+      expect(isStyleOutputAspectRatioMode("preset_image")).toBe(true);
+    });
+    test("normalize でそのまま維持", () => {
+      expect(normalizeStyleOutputAspectRatioMode("preset_image")).toBe(
+        "preset_image",
+      );
+    });
+    test("preset サムネ寸法から比率を解決する(入力寸法は無視)", () => {
+      // 横長サムネ → 横長比率。入力は縦長でも preset 側が優先される。
+      expect(
+        resolveOutputAspectRatio(
+          "preset_image",
+          { width: 900, height: 1600 }, // 入力=縦長(無視される)
+          { width: 1600, height: 900 }, // サムネ=横長
+        ),
+      ).toBe("16:9");
+    });
+    test("preset サムネ寸法が無ければ入力寸法にフォールバック(source同等)", () => {
+      const withInput = resolveOutputAspectRatio(
+        "preset_image",
+        { width: 1600, height: 900 },
+        null,
+      );
+      const asSource = resolveOutputAspectRatio(
+        "source",
+        { width: 1600, height: 900 },
+      );
+      expect(withInput).toBe(asSource);
+    });
+    test("shouldForceSquareStyleOutput は preset_image では false", () => {
+      expect(shouldForceSquareStyleOutput("preset_image")).toBe(false);
+    });
   });
 
   describe("isStyleOutputAspectRatioMode", () => {

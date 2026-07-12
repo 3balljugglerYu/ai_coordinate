@@ -536,6 +536,10 @@ export async function postStyleGenerateRoute(
         openaiMultiInputClient,
         referenceImage,
         outputAspectRatioMode: preset.category.outputAspectRatioMode,
+        presetImageDimensions:
+          preset.thumbnailWidth > 0 && preset.thumbnailHeight > 0
+            ? { width: preset.thumbnailWidth, height: preset.thumbnailHeight }
+            : null,
       });
       lastDispatchResult = dispatchResult;
 

@@ -2162,13 +2162,24 @@ Deno.serve(async () => {
                       )
                     : null;
                   // one_tap_style は preset カテゴリの出力比率モードを尊重する
-                  // (source=入力比率に自動スナップ / 明示比率=その比率で出力)。
+                  // (source=入力比率 / preset_image=登録画像(サムネ)比率 / 明示比率=その比率)。
+                  // preset サムネ寸法は metadata に保存済みの整数のため追加I/Oは無い。
                   // それ以外(coordinate / inspire 等)は従来どおり入力比率に自動スナップ。
+                  const presetImageDims =
+                    oneTapStyleMetadata &&
+                    oneTapStyleMetadata.thumbnailWidth > 0 &&
+                    oneTapStyleMetadata.thumbnailHeight > 0
+                      ? {
+                          width: oneTapStyleMetadata.thumbnailWidth,
+                          height: oneTapStyleMetadata.thumbnailHeight,
+                        }
+                      : null;
                   const aspectRatio: GeminiAspectRatio =
                     job.generation_type === "one_tap_style"
                       ? resolveOutputAspectRatio(
                           oneTapStyleMetadata?.outputAspectRatioMode,
                           aspectDims,
+                          presetImageDims,
                         )
                       : resolveGeminiAspectRatio(aspectDims);
 
@@ -2223,22 +2234,42 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
-                // 出力比率: one_tap_style で明示比率なら、その比率の寸法から OpenAI 出力サイズを決める
-                // (GPT Image 2 も 9:16〜16:9 を出力可能)。source / 非one_tap は undefined にして
-                // 呼び出し側の入力画像ベース(従来挙動)に委ねる。
+                // 出力比率: one_tap_style で明示比率/登録画像(preset_image)なら、その比率の寸法から
+                // OpenAI 出力サイズを決める(GPT Image 2 も 9:16〜16:9 を出力可能)。source / 非one_tap は
+                // undefined にして呼び出し側の入力画像ベース(従来挙動)に委ねる。
                 const oneTapAspectMode =
                   job.generation_type === "one_tap_style"
                     ? normalizeStyleOutputAspectRatioMode(
                         oneTapStyleMetadata?.outputAspectRatioMode,
                       )
                     : "source";
-                const targetSize =
-                  oneTapAspectMode === "source"
-                    ? undefined
-                    : getGptImage2TargetSize(
-                        gptImage2.sizeTier,
-                        aspectLabelToDimensions(oneTapAspectMode),
+                const oneTapPresetImageDims =
+                  oneTapStyleMetadata &&
+                  oneTapStyleMetadata.thumbnailWidth > 0 &&
+                  oneTapStyleMetadata.thumbnailHeight > 0
+                    ? {
+                        width: oneTapStyleMetadata.thumbnailWidth,
+                        height: oneTapStyleMetadata.thumbnailHeight,
+                      }
+                    : null;
+                // source、および preset_image でサムネ寸法が無い場合は入力ベース(undefined)に委ねる
+                // (寸法無しで resolve すると 1:1 に落ちて正方形強制になるのを防ぐ)。
+                // それ以外(明示/寸法ありのpreset_image)は具体ラベルへ解決。
+                const targetLabel =
+                  oneTapAspectMode === "source" ||
+                  (oneTapAspectMode === "preset_image" && !oneTapPresetImageDims)
+                    ? null
+                    : resolveOutputAspectRatio(
+                        oneTapAspectMode,
+                        null,
+                        oneTapPresetImageDims,
                       );
+                const targetSize = targetLabel
+                  ? getGptImage2TargetSize(
+                      gptImage2.sizeTier,
+                      aspectLabelToDimensions(targetLabel),
+                    )
+                  : undefined;
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
