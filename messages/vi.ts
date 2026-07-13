@@ -1348,6 +1348,7 @@ export const viMessages = {
     uploadLabel: "Nhân vật của tôi",
     addImageAction: "Thêm hình",
     styleImageAlt: "Hình phong cách đã chọn",
+    styleImageZoomAria: "Phóng to ảnh phong cách",
     styleCardAlt: "Thẻ phong cách {name}",
     detailPresetLabel: "Tạo bằng One-Tap Style",
     detailPresetCardAlt: "Thẻ phong cách {name}",

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import {
@@ -14,6 +13,7 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { StyleReferencePanel } from "@/features/style/components/StyleReferencePanel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -223,79 +223,9 @@ function resolveInitialSelectedPresetId(
   return presets[0]?.id ?? "";
 }
 
-function StyleReferencePanel({
-  label,
-  imageSrc,
-  imageAlt,
-  className,
-  collapsed = false,
-  aspectRatio,
-  tooltip,
-  providerOverlay,
-}: {
-  label: string;
-  imageSrc: string;
-  imageAlt: string;
-  className?: string;
-  collapsed?: boolean;
-  aspectRatio?: number;
-  /**
-   * 画像コンテナの右上に絶対配置で重ねる任意の要素 (主に LabelInfoTooltip の `?` を想定)。
-   * preset カテゴリの user_guidance を画像内に表示するために使う。
-   */
-  tooltip?: React.ReactNode;
-  /**
-   * 画像コンテナの左下に絶対配置で重ねる任意の要素 (提供者クレジットを想定)。
-   * タップで提供者プロフィールへ遷移できる。
-   */
-  providerOverlay?: React.ReactNode;
-}) {
-  return (
-    <div className={className ?? "space-y-3"}>
-      <Label
-        className={
-          collapsed
-            ? "text-xs font-medium leading-none"
-            : "text-base font-medium"
-        }
-      >
-        {label}
-      </Label>
-      <Card className="overflow-hidden p-0">
-        <div
-          className="relative bg-slate-100"
-          style={{ aspectRatio: String(aspectRatio ?? 1) }}
-        >
-          <Image
-            src={imageSrc}
-            alt={imageAlt}
-            fill
-            sizes="(max-width: 768px) 100vw, 50vw"
-            className="object-cover"
-            priority
-          />
-          {tooltip ? (
-            <div
-              className={`absolute z-10 ${collapsed ? "right-1 top-1" : "right-2 top-2"}`}
-            >
-              {tooltip}
-            </div>
-          ) : null}
-          {providerOverlay ? (
-            <div
-              className={`absolute z-10 ${collapsed ? "bottom-1 left-1" : "bottom-2 left-2"}`}
-            >
-              {providerOverlay}
-            </div>
-          ) : null}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-// 旧 StyleResultPanel は features/generation/components/GenerationResultPanel.tsx
-// に抽出した。
+// StyleReferencePanel は features/style/components/StyleReferencePanel.tsx に抽出した
+// (画像タップで全画面ライトボックスを開く。単体テストのため独立コンポーネント化)。
+// 旧 StyleResultPanel は features/generation/components/GenerationResultPanel.tsx に抽出した。
 
 async function fetchStyleRateLimitStatus(): Promise<StyleRateLimitStatusState | null> {
   const response = await fetch("/style/rate-limit-status", {

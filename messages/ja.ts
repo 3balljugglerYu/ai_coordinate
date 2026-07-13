@@ -1291,6 +1291,7 @@ export const jaMessages = {
     uploadLabel: "My Character",
     addImageAction: "画像を追加",
     styleImageAlt: "選択中のスタイル画像",
+    styleImageZoomAria: "スタイル画像を拡大表示",
     styleCardAlt: "{name} のスタイルカード",
     detailPresetLabel: "ワンタップスタイルで生成",
     detailPresetCardAlt: "{name} のスタイルカード",

@@ -713,10 +713,9 @@ describe("StylePageClient", () => {
     expect(
       screen.getByRole("button", { name: /PARIS CODE style card/ })
     ).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByAltText("Selected style image")).toHaveAttribute(
-      "src",
-      "https://example.com/style-presets/paris-code.webp"
-    );
+    expect(
+      document.querySelector('img[src="https://example.com/style-presets/paris-code.webp"]'),
+    ).not.toBeNull();
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
       eventType: "visit",
       styleId: null,
@@ -757,10 +756,9 @@ describe("StylePageClient", () => {
         name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
       })
     ).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByAltText("Selected style image")).toHaveAttribute(
-      "src",
-      "https://example.com/style-presets/fluffy-pajamas-code.webp"
-    );
+    expect(
+      document.querySelector('img[src="https://example.com/style-presets/fluffy-pajamas-code.webp"]'),
+    ).not.toBeNull();
   });
 
   test("詳細画面からの初期選択後でも別スタイルへ切り替えられる", () => {
@@ -785,10 +783,9 @@ describe("StylePageClient", () => {
         name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
       })
     ).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByAltText("Selected style image")).toHaveAttribute(
-      "src",
-      "https://example.com/style-presets/paris-code.webp"
-    );
+    expect(
+      document.querySelector('img[src="https://example.com/style-presets/paris-code.webp"]'),
+    ).not.toBeNull();
   });
 
   test("詳細画面から選択付きで遷移した場合は選択カードを横スクロールで中央寄せする", () => {

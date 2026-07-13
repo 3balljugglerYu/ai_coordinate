@@ -1351,6 +1351,7 @@ export const esMessages = {
     uploadLabel: "Mi Personaje",
     addImageAction: "Añadir imagen",
     styleImageAlt: "Imagen de estilo seleccionada",
+    styleImageZoomAria: "Ampliar imagen de estilo",
     styleCardAlt: "Tarjeta de estilo {name}",
     detailPresetLabel: "Generado con One-Tap Style",
     detailPresetCardAlt: "Tarjeta de estilo {name}",

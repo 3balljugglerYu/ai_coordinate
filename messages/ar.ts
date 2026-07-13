@@ -1348,6 +1348,7 @@ export const arMessages = {
     uploadLabel: "شخصيتي",
     addImageAction: "إضافة صورة",
     styleImageAlt: "صورة الأسلوب المختار",
+    styleImageZoomAria: "تكبير صورة الستايل",
     styleCardAlt: "بطاقة أسلوب {name}",
     detailPresetLabel: "أُنشئت بـ One-Tap Style",
     detailPresetCardAlt: "بطاقة أسلوب {name}",
