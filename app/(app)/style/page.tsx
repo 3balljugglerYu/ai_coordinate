@@ -6,6 +6,7 @@ import { StylePageBody } from "@/features/style/components/StylePageBody";
 import { StyleTotalGenerationCount } from "@/features/style/components/StyleTotalGenerationCount";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
+import { getPublishedStylePreset } from "@/features/style-presets/lib/get-public-style-presets";
 
 interface StylePageProps {
   searchParams?: Promise<{
@@ -13,7 +14,9 @@ interface StylePageProps {
   }>;
 }
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({
+  searchParams,
+}: StylePageProps): Promise<Metadata> {
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const t = await getTranslations("style");
@@ -23,6 +26,37 @@ export async function generateMetadata(): Promise<Metadata> {
     path: "/style",
     locale,
   });
+
+  // ?style=<id> が付いている共有URLでは、そのStyleのサムネイルを OGP 画像にする。
+  // getPublishedStylePreset は published かつ非admin_only のみ返すため、下書き/管理限定
+  // Style は自動的に既定OGへフォールバックする(非公開の漏れなし)。
+  const styleId = (await searchParams)?.style;
+  const preset = styleId ? await getPublishedStylePreset(styleId) : null;
+
+  if (preset) {
+    const alt = `${preset.title} | Persta.AI`;
+    return {
+      ...metadata,
+      title: preset.title,
+      openGraph: {
+        ...metadata.openGraph,
+        title: alt,
+        images: [
+          {
+            url: preset.thumbnailImageUrl,
+            width: preset.thumbnailWidth,
+            height: preset.thumbnailHeight,
+            alt,
+          },
+        ],
+      },
+      twitter: {
+        ...metadata.twitter,
+        title: alt,
+        images: [preset.thumbnailImageUrl],
+      },
+    };
+  }
 
   return {
     ...metadata,
