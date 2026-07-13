@@ -1,5 +1,6 @@
 import { generateMetadata } from "@/app/(app)/style/page";
 import { getPublishedStylePreset } from "@/features/style-presets/lib/get-public-style-presets";
+import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 // generateMetadata だけを検証するため、default export が引き込む重いクライアント
 // コンポーネント群はスタブ化する(メタデータ生成には無関係)。
@@ -57,7 +58,9 @@ describe("style page generateMetadata", () => {
       thumbnailImageUrl: "https://cdn.example.com/thumb.webp",
       thumbnailWidth: 1280,
       thumbnailHeight: 853,
-    } as never);
+      // generateMetadata が参照するのは上記5フィールドのみ。他必須フィールドは
+      // 検証に不要なため、部分モックを公開サマリ型へアサートする。
+    } as unknown as StylePresetPublicSummary);
 
     const meta = await generateMetadata({
       searchParams: Promise.resolve({ style: "abc" }),
