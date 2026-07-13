@@ -288,10 +288,11 @@ function StyleReferencePanel({
               priority
             />
           </button>
-          {/* タップで拡大できる合図(右下。ツールチップ=右上・提供者=左下と衝突しない) */}
+          {/* タップで拡大できる合図。四隅で唯一どの要素とも競合しない左上に置く
+              (右上=ツールチップ / 左下=提供者クレジットは長い名前で max-w-[180px] まで伸びる)。 */}
           <span
             className={`pointer-events-none absolute z-10 flex items-center justify-center rounded-full bg-black/45 text-white ${
-              collapsed ? "bottom-1 right-1 h-5 w-5" : "bottom-2 right-2 h-7 w-7"
+              collapsed ? "left-1 top-1 h-5 w-5" : "left-2 top-2 h-7 w-7"
             }`}
             aria-hidden="true"
           >
