@@ -43,6 +43,7 @@ export async function GET() {
       presets,
       user.id,
       supabase,
+      { includeAdminOnly: isAdmin },
     );
     const announcements = buildCollectionUnlockAnnouncements(presets, context);
     return NextResponse.json({ announcements });

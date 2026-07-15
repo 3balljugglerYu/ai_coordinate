@@ -5,6 +5,7 @@ jest.mock("@/lib/supabase/admin", () => ({
 }));
 jest.mock("@/features/collections/lib/collection-progress-repository", () => ({
   getCollectionProgress: jest.fn(),
+  getCollectionProgressForUser: jest.fn(),
 }));
 jest.mock("@/features/style-presets/lib/style-preset-repository", () => ({
   listPublishedStylePresets: jest.fn(),
@@ -15,7 +16,10 @@ import {
   authorizeStylePresetUnlock,
 } from "@/features/collections/lib/collection-unlock-server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCollectionProgress } from "@/features/collections/lib/collection-progress-repository";
+import {
+  getCollectionProgress,
+  getCollectionProgressForUser,
+} from "@/features/collections/lib/collection-progress-repository";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
@@ -23,6 +27,10 @@ const mockCreateAdminClient =
   createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 const mockGetCollectionProgress =
   getCollectionProgress as jest.MockedFunction<typeof getCollectionProgress>;
+const mockGetCollectionProgressForUser =
+  getCollectionProgressForUser as jest.MockedFunction<
+    typeof getCollectionProgressForUser
+  >;
 const mockListPublished =
   listPublishedStylePresets as jest.MockedFunction<
     typeof listPublishedStylePresets
@@ -181,6 +189,44 @@ describe("resolveCollectionUnlockContext", () => {
     // 前提なしでも sequential は distinct を解決する(= ゲート対象)。
     expect(ctx.distinctGeneratedByCategoryKey.get(SEQ)).toBe(3);
     expect(mockCreateAdminClient).toHaveBeenCalled();
+  });
+
+  it("既定(非admin)は public 限定 RPC で前提を判定する", async () => {
+    setProgress([{ categoryKey: PREREQ, isCompleted: true }]);
+    setDistinctRpc([{ category_key: PETIT, unique_count: 0 }]);
+    const presets = [presetSummary("p1", categoryRef(PETIT, PREREQ, 2))];
+
+    await resolveCollectionUnlockContext(presets, "user-1", dummyClient);
+
+    expect(mockGetCollectionProgress).toHaveBeenCalled();
+    expect(mockGetCollectionProgressForUser).not.toHaveBeenCalled();
+  });
+
+  it("includeAdminOnly=true は admin対応RPC(admin_only含む)で前提を判定する", async () => {
+    // public 限定 RPC は admin_only の上巻を返さない(空)が、admin対応RPCは返す想定。
+    setProgress([]);
+    mockGetCollectionProgressForUser.mockResolvedValue([
+      { categoryKey: "kotowaza_dictionary", isCompleted: true, uniqueOutfitCount: 6 },
+    ] as unknown as Awaited<ReturnType<typeof getCollectionProgressForUser>>);
+    setDistinctRpc([{ category_key: "kotowaza_dictionary_2", unique_count: 0 }]);
+    const presets = [
+      presetSummary(
+        "p1",
+        categoryRef("kotowaza_dictionary_2", "kotowaza_dictionary", 2, true),
+      ),
+    ];
+
+    const ctx = await resolveCollectionUnlockContext(
+      presets,
+      "user-1",
+      dummyClient,
+      { includeAdminOnly: true },
+    );
+
+    expect(mockGetCollectionProgressForUser).toHaveBeenCalledWith("user-1", true);
+    expect(mockGetCollectionProgress).not.toHaveBeenCalled();
+    // admin対応RPCが上巻の完走を返すので、前提クリアと判定される。
+    expect(ctx.prerequisiteCompletedKeys.has("kotowaza_dictionary")).toBe(true);
   });
 });
 

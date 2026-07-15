@@ -56,6 +56,7 @@ export async function CachedHomeStylePresetSection({
       cachedPresets,
       userId,
       await createClient(),
+      { includeAdminOnly: isAdminViewer },
     );
   }
   const gated = applyCollectionUnlockGating(cachedPresets, unlockContext);
