@@ -97,57 +97,50 @@ export interface KotowazaEntry {
   src: string | null;
 }
 
-// ことわざ6語(雑葉さん提供イラスト)。公開前ティザーとして先頭3語のみ公開し、
-// 04〜06 は「？？？」で伏せる(名前・読みも bundle に載せない)。
-// 企画スタート時に下の3項を差し替えて全公開する:
-//   04 鶴の一声【つるのひとこえ】議論をぴたりとまとめる、力のあるひとこと
-//      src: /collections/kotowaza/tsuru-no-hitokoe.webp
-//   05 猿も木から落ちる【さるもきからおちる】名人でも、ときには失敗するということ
-//      src: /collections/kotowaza/saru-mo-ki.webp
-//   06 牛の歩みも千里【うしのあゆみもせんり】歩みはおそくても、こつこつ続ければ遠くまで行けること
-//      src: /collections/kotowaza/ushi-no-ayumi.webp
+// ことわざ6語(雑葉さん提供イラスト)。バナー(告知画像)と同じ並び・語ぞろえで全6語を公開する。
+// 各イラストは見出し語を焼き込んだカード絵(public/collections/kotowaza/*.webp)。
 const KOTOWAZA_ENTRIES: KotowazaEntry[] = [
   {
     no: "01",
-    name: "猫の手も借りたい",
-    reading: "ねこのてもかりたい",
-    meaning: "とてもいそがしくて、どんな手伝いでもほしいようす",
-    src: "/collections/kotowaza/neko-no-te.webp",
-  },
-  {
-    no: "02",
-    name: "馬の耳に念仏",
-    reading: "うまのみみにねんぶつ",
-    meaning: "いくら言い聞かせても、まるで効き目がないこと",
-    src: "/collections/kotowaza/uma-no-mimi.webp",
-  },
-  {
-    no: "03",
     name: "虎の威を借る狐",
     reading: "とらのいをかるきつね",
     meaning: "強いものの力をかさに着て、いばること",
     src: "/collections/kotowaza/tora-no-i.webp",
   },
   {
+    no: "02",
+    name: "鶴の一声",
+    reading: "つるのひとこえ",
+    meaning: "議論をぴたりとまとめる、力のあるひとこと",
+    src: "/collections/kotowaza/tsuru-no-hitokoe.webp",
+  },
+  {
+    no: "03",
+    name: "牛の歩みも千里",
+    reading: "うしのあゆみもせんり",
+    meaning: "歩みはおそくても、こつこつ続ければ遠くまで行けること",
+    src: "/collections/kotowaza/ushi-no-ayumi.webp",
+  },
+  {
     no: "04",
-    name: "？？？",
-    reading: "きんじつこうかい",
-    meaning: "どんなことわざかは、企画スタートのお楽しみ！",
-    src: null,
+    name: "魚心あれば水心",
+    reading: "うおごころあればみずごころ",
+    meaning: "相手が好意を示せば、こちらも好意で応じるということ",
+    src: "/collections/kotowaza/uo-gokoro.webp",
   },
   {
     no: "05",
-    name: "？？？",
-    reading: "きんじつこうかい",
-    meaning: "どんなことわざかは、企画スタートのお楽しみ！",
-    src: null,
+    name: "二兎追うものは一兎も得ず",
+    reading: "にとおうものはいっともえず",
+    meaning: "欲ばって二つをねらうと、どちらも得られないこと",
+    src: "/collections/kotowaza/nito-oumono.webp",
   },
   {
     no: "06",
-    name: "？？？",
-    reading: "きんじつこうかい",
-    meaning: "どんなことわざかは、企画スタートのお楽しみ！",
-    src: null,
+    name: "馬の耳に念仏",
+    reading: "うまのみみにねんぶつ",
+    meaning: "いくら言い聞かせても、まるで効き目がないこと",
+    src: "/collections/kotowaza/uma-no-mimi.webp",
   },
 ];
 
