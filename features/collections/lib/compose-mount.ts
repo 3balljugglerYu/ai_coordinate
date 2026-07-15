@@ -15,8 +15,14 @@ export async function composeMount(params: {
   stickers: Buffer[];
   /** 配置スロット(正規化矩形)。呼び出し側で mount_slots ?? プリセットを解決して渡す */
   slots: NormalizedSlotRect[];
+  /**
+   * 各画像を角丸マスクする半径(スロット短辺に対する比率, 0..0.5)。
+   * 0/未指定は角丸なし(従来の四角貼り)。ことわざ辞典など一部シリーズでのみ使う。
+   * 角は透過し、背後の台紙テンプレが覗く(＝角丸で貼ったように見える)。
+   */
+  cornerRadiusRatio?: number;
 }): Promise<Buffer> {
-  const { templatePng, stickers, slots } = params;
+  const { templatePng, stickers, slots, cornerRadiusRatio = 0 } = params;
 
   const base = sharp(templatePng);
   const meta = await base.metadata();
@@ -27,19 +33,41 @@ export async function composeMount(params: {
   }
 
   const count = Math.min(stickers.length, slots.length);
+  const clampedRatio = Math.max(0, Math.min(0.5, cornerRadiusRatio));
 
-  const composites = [];
-  for (let i = 0; i < count; i++) {
-    const px = toPixelRect(slots[i], width, height);
-    if (px.width <= 0 || px.height <= 0) {
-      continue;
-    }
-    const resized = await sharp(stickers[i])
-      .resize(px.width, px.height, { fit: "cover" })
-      .png()
-      .toBuffer();
-    composites.push({ input: resized, left: px.left, top: px.top });
-  }
+  // 各シールのリサイズ+角丸マスクは互いに独立なので並列実行する(libuv スレッド
+  // プールを活用して応答を短縮)。index マップ+filter でスロット順は維持する。
+  const composites = (
+    await Promise.all(
+      Array.from({ length: count }, async (_, i) => {
+        const px = toPixelRect(slots[i], width, height);
+        if (px.width <= 0 || px.height <= 0) {
+          return null;
+        }
+        let pipeline = sharp(stickers[i]).resize(px.width, px.height, {
+          fit: "cover",
+        });
+        if (clampedRatio > 0) {
+          const radius = Math.round(
+            Math.min(px.width, px.height) * clampedRatio,
+          );
+          if (radius > 0) {
+            // SVG の角丸矩形を dest-in で合成し、四隅を透過させる(角丸マスク)。
+            const mask = Buffer.from(
+              `<svg width="${px.width}" height="${px.height}">` +
+                `<rect x="0" y="0" width="${px.width}" height="${px.height}" ` +
+                `rx="${radius}" ry="${radius}"/></svg>`,
+            );
+            pipeline = pipeline
+              .ensureAlpha()
+              .composite([{ input: mask, blend: "dest-in" }]);
+          }
+        }
+        const resized = await pipeline.png().toBuffer();
+        return { input: resized, left: px.left, top: px.top };
+      }),
+    )
+  ).filter((c): c is { input: Buffer; left: number; top: number } => c !== null);
 
   return base.composite(composites).png().toBuffer();
 }

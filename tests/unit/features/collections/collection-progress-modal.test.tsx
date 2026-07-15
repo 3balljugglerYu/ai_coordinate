@@ -340,7 +340,7 @@ describe("CollectionProgressModal: ready ゲートのデッドロック防止", 
   });
 });
 
-describe("CollectionProgressModal: 完了時の紙吹雪は画像ロードを待たない", () => {
+describe("CollectionProgressModal: 完了時の紙吹雪は表示(ready)後に飛ぶ", () => {
   // 完了モーダル(台紙画像あり)。画像 onLoad を発火させず ready=false のまま。
   const completedConfetti: CollectionCelebration = {
     categoryKey: "collectible_wafer_sticker_god_6p",
@@ -356,23 +356,31 @@ describe("CollectionProgressModal: 完了時の紙吹雪は画像ロードを待
     collectedImageUrls: [],
   };
 
-  test("台紙画像がロードされず ready=false でも、フォールバックで紙吹雪が飛ぶ", () => {
+  test("準備中(ready=false)の間は紙吹雪を出さず、ready保険の到達後に飛ぶ", () => {
     jest.useFakeTimers();
     try {
       renderModal(completedConfetti);
 
       // 台紙画像 onLoad を発火させない → ready=false（準備中スピナー表示）。
       expect(screen.getByLabelText("読み込み中")).toBeInTheDocument();
-      // この時点ではまだ armed 前。
+
+      // 準備中の間は発火しない(600ms 経過してもまだ)。
+      act(() => {
+        jest.advanceTimersByTime(600);
+      });
       expect(
         screen.queryByTestId("collection-confetti"),
       ).not.toBeInTheDocument();
 
-      // CONFETTI_FALLBACK_MS(600ms) 経過で、ready を待たず発火する。
+      // READY_TIMEOUT_MS(3500ms) の保険で forceReady→ready になる。
+      // (この時点で ready 後の紙吹雪タイマーが仕込まれる)
       act(() => {
-        jest.advanceTimersByTime(600);
+        jest.advanceTimersByTime(3500);
       });
-
+      // ready 後の遅延(CONFETTI_AFTER_READY_MS=250ms)経過で発火する。
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
       expect(
         screen.getByTestId("collection-confetti"),
       ).toBeInTheDocument();
