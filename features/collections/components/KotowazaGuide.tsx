@@ -512,12 +512,12 @@ export function KotowazaGuide({
                     className="rounded-full px-4 py-1.5 text-xs font-bold text-white shadow"
                     style={{ backgroundColor: SHU, fontFamily: HEADING_FONT }}
                   >
-                    企画スタートでお披露目！
+                    完成は自分の目で！
                   </span>
                 </div>
               </div>
               <p className="mt-3 text-xs" style={{ color: "#9c9184" }}>
-                ＼ 完成イメージはシークレット ／<br />※ 画像はイメージです。実際のカードとはデザイン・収録語が異なります。
+                ＼ 完成はコンプしてのお楽しみ ／<br />※ 画像はイメージです。実際のカードとはデザイン・収録語が異なります。
               </p>
             </div>
           </Reveal>
