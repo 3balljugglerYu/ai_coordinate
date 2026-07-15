@@ -318,16 +318,14 @@ export function HomeEventShelfSection({
     if (card.kind === "done") {
       return (
         <div className="relative">
-          <div className="opacity-65">
-            <StylePresetPreviewCard
-              preset={preset}
-              // ステータス(生成済み)を alt に前置し、視覚バッジは aria-hidden にして
-              // スクリーンリーダーへ二重読み上げにならないようにする。
-              alt={`${t("eventShelfDoneBadge")} - ${tStyle("styleCardAlt", { name: preset.title })}`}
-              locale={cardLocale}
-              onClick={() => setConfirmingPreset(preset)}
-            />
-          </div>
+          <StylePresetPreviewCard
+            preset={preset}
+            // ステータス(生成済み)を alt に前置し、視覚バッジは aria-hidden にして
+            // スクリーンリーダーへ二重読み上げにならないようにする。
+            alt={`${t("eventShelfDoneBadge")} - ${tStyle("styleCardAlt", { name: preset.title })}`}
+            locale={cardLocale}
+            onClick={() => setConfirmingPreset(preset)}
+          />
           <span
             className="pointer-events-none absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white shadow"
             aria-hidden="true"
