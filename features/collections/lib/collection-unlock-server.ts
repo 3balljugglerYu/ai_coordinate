@@ -6,7 +6,7 @@ import type { StylePresetPublicSummary } from "@/features/style-presets/lib/sche
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 import {
   getCollectionProgress,
-  getCollectionProgressForUser,
+  getCollectionCompletionFlagsForUser,
 } from "./collection-progress-repository";
 import {
   computeUnlockedCount,
@@ -101,7 +101,7 @@ async function resolveCompletedPrerequisiteKeys(
   const uniqueCountByKey = new Map<string, number>();
   try {
     const progress = adminContext
-      ? await getCollectionProgressForUser(adminContext.userId, true)
+      ? await getCollectionCompletionFlagsForUser(adminContext.userId, true)
       : await getCollectionProgress(authedClient);
     for (const row of progress) {
       if (row.isCompleted && prerequisiteKeys.has(row.categoryKey)) {

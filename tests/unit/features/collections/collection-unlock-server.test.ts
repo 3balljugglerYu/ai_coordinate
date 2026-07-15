@@ -5,7 +5,7 @@ jest.mock("@/lib/supabase/admin", () => ({
 }));
 jest.mock("@/features/collections/lib/collection-progress-repository", () => ({
   getCollectionProgress: jest.fn(),
-  getCollectionProgressForUser: jest.fn(),
+  getCollectionCompletionFlagsForUser: jest.fn(),
 }));
 jest.mock("@/features/style-presets/lib/style-preset-repository", () => ({
   listPublishedStylePresets: jest.fn(),
@@ -18,7 +18,7 @@ import {
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getCollectionProgress,
-  getCollectionProgressForUser,
+  getCollectionCompletionFlagsForUser,
 } from "@/features/collections/lib/collection-progress-repository";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -27,9 +27,9 @@ const mockCreateAdminClient =
   createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 const mockGetCollectionProgress =
   getCollectionProgress as jest.MockedFunction<typeof getCollectionProgress>;
-const mockGetCollectionProgressForUser =
-  getCollectionProgressForUser as jest.MockedFunction<
-    typeof getCollectionProgressForUser
+const mockGetCollectionFlagsForUser =
+  getCollectionCompletionFlagsForUser as jest.MockedFunction<
+    typeof getCollectionCompletionFlagsForUser
   >;
 const mockListPublished =
   listPublishedStylePresets as jest.MockedFunction<
@@ -199,15 +199,15 @@ describe("resolveCollectionUnlockContext", () => {
     await resolveCollectionUnlockContext(presets, "user-1", dummyClient);
 
     expect(mockGetCollectionProgress).toHaveBeenCalled();
-    expect(mockGetCollectionProgressForUser).not.toHaveBeenCalled();
+    expect(mockGetCollectionFlagsForUser).not.toHaveBeenCalled();
   });
 
-  it("includeAdminOnly=true は admin対応RPC(admin_only含む)で前提を判定する", async () => {
-    // public 限定 RPC は admin_only の上巻を返さない(空)が、admin対応RPCは返す想定。
+  it("includeAdminOnly=true は admin対応の軽量RPC(admin_only含む)で前提を判定する", async () => {
+    // public 限定 RPC は admin_only の上巻を返さない(空)が、admin対応の軽量関数は返す想定。
     setProgress([]);
-    mockGetCollectionProgressForUser.mockResolvedValue([
+    mockGetCollectionFlagsForUser.mockResolvedValue([
       { categoryKey: "kotowaza_dictionary", isCompleted: true, uniqueOutfitCount: 6 },
-    ] as unknown as Awaited<ReturnType<typeof getCollectionProgressForUser>>);
+    ]);
     setDistinctRpc([{ category_key: "kotowaza_dictionary_2", unique_count: 0 }]);
     const presets = [
       presetSummary(
@@ -223,7 +223,7 @@ describe("resolveCollectionUnlockContext", () => {
       { includeAdminOnly: true },
     );
 
-    expect(mockGetCollectionProgressForUser).toHaveBeenCalledWith("user-1", true);
+    expect(mockGetCollectionFlagsForUser).toHaveBeenCalledWith("user-1", true);
     expect(mockGetCollectionProgress).not.toHaveBeenCalled();
     // admin対応RPCが上巻の完走を返すので、前提クリアと判定される。
     expect(ctx.prerequisiteCompletedKeys.has("kotowaza_dictionary")).toBe(true);
