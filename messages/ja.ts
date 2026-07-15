@@ -1292,6 +1292,7 @@ export const jaMessages = {
     addImageAction: "画像を追加",
     styleImageAlt: "選択中のスタイル画像",
     styleImageZoomAria: "スタイル画像を拡大表示",
+    styleGeneratedBadge: "生成済み",
     styleCardAlt: "{name} のスタイルカード",
     detailPresetLabel: "ワンタップスタイルで生成",
     detailPresetCardAlt: "{name} のスタイルカード",

@@ -1350,6 +1350,7 @@ export const hiMessages = {
     addImageAction: "छवि जोड़ें",
     styleImageAlt: "चयनित स्टाइल छवि",
     styleImageZoomAria: "स्टाइल छवि बड़ी करें",
+    styleGeneratedBadge: "बन गया",
     styleCardAlt: "{name} स्टाइल कार्ड",
     detailPresetLabel: "One-Tap Style से उत्पन्न",
     detailPresetCardAlt: "{name} स्टाइल कार्ड",

@@ -1352,6 +1352,7 @@ export const itMessages = {
     addImageAction: "Aggiungi immagine",
     styleImageAlt: "Immagine dello stile selezionato",
     styleImageZoomAria: "Ingrandisci immagine stile",
+    styleGeneratedBadge: "Generato",
     styleCardAlt: "Carta di stile {name}",
     detailPresetLabel: "Generato con One-Tap Style",
     detailPresetCardAlt: "Carta di stile {name}",

@@ -1352,6 +1352,7 @@ export const ptMessages = {
     addImageAction: "Adicionar imagem",
     styleImageAlt: "Imagem do estilo selecionado",
     styleImageZoomAria: "Ampliar imagem de estilo",
+    styleGeneratedBadge: "Gerado",
     styleCardAlt: "Cartão de estilo {name}",
     detailPresetLabel: "Gerado com One-Tap Style",
     detailPresetCardAlt: "Cartão de estilo {name}",

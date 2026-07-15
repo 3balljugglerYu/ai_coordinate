@@ -74,6 +74,13 @@ interface StylePresetPreviewCardProps {
   dripLocked?: boolean;
   /** dripLocked=true のとき中央に表示する文言(例: 「あとで とうじょう」)。 */
   dripLockedLabel?: string;
+  /**
+   * このプリセットを既に生成済みのとき true。企画(コレクション)カードで
+   * 「生成した / まだ」を見分けるため、右上に緑の ✓ バッジを表示する。
+   */
+  generated?: boolean;
+  /** generated=true のバッジの読み上げ文言(例: 「生成済み」)。 */
+  generatedLabel?: string;
 }
 
 export function buildStylePresetImageSrc(
@@ -101,6 +108,8 @@ export function StylePresetPreviewCard({
   lockedLabel,
   dripLocked = false,
   dripLockedLabel,
+  generated = false,
+  generatedLabel,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
   const isLocked = typeof lockedLabel === "string" && lockedLabel.length > 0;
@@ -170,6 +179,15 @@ export function StylePresetPreviewCard({
                 {lockedLabel}
               </span>
             </div>
+          )}
+          {/* 生成済みの企画カードは右上に緑の ✓ バッジ(ホームの企画棚と同じ意匠)。 */}
+          {!dripLocked && generated && (
+            <span
+              className="absolute right-1.5 top-1.5 z-20 flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white shadow"
+              aria-label={generatedLabel ?? "generated"}
+            >
+              ✓
+            </span>
           )}
         </div>
         <div

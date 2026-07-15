@@ -1352,6 +1352,7 @@ export const esMessages = {
     addImageAction: "Añadir imagen",
     styleImageAlt: "Imagen de estilo seleccionada",
     styleImageZoomAria: "Ampliar imagen de estilo",
+    styleGeneratedBadge: "Generado",
     styleCardAlt: "Tarjeta de estilo {name}",
     detailPresetLabel: "Generado con One-Tap Style",
     detailPresetCardAlt: "Tarjeta de estilo {name}",

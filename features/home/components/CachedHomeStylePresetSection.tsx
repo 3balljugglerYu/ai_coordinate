@@ -6,6 +6,7 @@ import {
 import { buildCollectionUnlockAnnouncements } from "@/features/collections/lib/collection-unlock-announcement";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
+import { getGeneratedCollectionPresetIds } from "@/features/collections/lib/generated-preset-ids";
 import { PetitUnlockAnnouncer } from "@/features/collections/components/PetitUnlockAnnouncer";
 import { buildPublicGeneratedImageUrl } from "@/features/collections/lib/public-mount-server-api";
 import { createClient } from "@/lib/supabase/server";
@@ -67,35 +68,26 @@ export async function CachedHomeStylePresetSection({
 
   // ✓済み判定用: 開催中企画カテゴリの「生成済みプリセットID集合」。
   // 解放方式(順次/一斉/前提付き)に依存せず厳密に判定するためIDで持つ。
+  // 生成済みIDは generation_metadata->'oneTapStyle'->>'id'(= プリセットID)に入るため、
+  // DB側 DISTINCT の RPC(getGeneratedCollectionPresetIds)で取得する。
   // 開催中企画がある場合のみ発行(通常時はクエリ増ゼロ)。失敗時は空集合=全てNEW表示に
   // フォールバックし、ホーム全体は壊さない。
   const generatedIdsByKey = new Map<string, ReadonlySet<string>>();
   const activeEventKeys = listActiveEventCategoryKeys(gated, now);
   if (userId && activeEventKeys.length > 0) {
-    try {
-      const admin = createAdminClient();
-      const { data, error } = await admin
-        .from("image_jobs")
-        .select("style_template_id, style_preset_category_key")
-        .eq("user_id", userId)
-        .eq("status", "succeeded")
-        .in("style_preset_category_key", activeEventKeys)
-        .not("style_template_id", "is", null)
-        .limit(1000);
-      if (!error) {
-        for (const row of data ?? []) {
-          const key = row.style_preset_category_key as string;
-          const presetId = row.style_template_id as string;
-          const set = generatedIdsByKey.get(key) as Set<string> | undefined;
-          if (set) {
-            set.add(presetId);
-          } else {
-            generatedIdsByKey.set(key, new Set([presetId]));
-          }
+    const flatGeneratedIds = new Set(
+      await getGeneratedCollectionPresetIds(await createClient(), activeEventKeys),
+    );
+    // カテゴリ別に分けて deriveEventShelves の期待する Map 形状に整える
+    // (プリセットIDは全体で一意のため、各カテゴリの所属プリセットだけを拾えばよい)。
+    for (const key of activeEventKeys) {
+      const idsForKey = new Set<string>();
+      for (const preset of gated) {
+        if (preset.category.key === key && flatGeneratedIds.has(preset.id)) {
+          idsForKey.add(preset.id);
         }
       }
-    } catch {
-      // 取得失敗は初日状態(全てNEW)で表示継続
+      generatedIdsByKey.set(key, idsForKey);
     }
   }
 

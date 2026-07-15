@@ -1349,6 +1349,7 @@ export const viMessages = {
     addImageAction: "Thêm hình",
     styleImageAlt: "Hình phong cách đã chọn",
     styleImageZoomAria: "Phóng to ảnh phong cách",
+    styleGeneratedBadge: "Đã tạo",
     styleCardAlt: "Thẻ phong cách {name}",
     detailPresetLabel: "Tạo bằng One-Tap Style",
     detailPresetCardAlt: "Thẻ phong cách {name}",
