@@ -107,12 +107,15 @@ const completedCelebration: CollectionCelebration = {
   collectedImageUrls: [],
 };
 
-function renderModal(celebration: CollectionCelebration) {
+function renderModal(
+  celebration: CollectionCelebration,
+  onClose: () => void = jest.fn(),
+) {
   return render(
     <CollectionProgressModal
       open
       celebration={celebration}
-      onClose={jest.fn()}
+      onClose={onClose}
     />,
   );
 }
@@ -167,6 +170,14 @@ describe("CollectionProgressModal: 完了ビューのシェア (PC)", () => {
 
     const link = screen.getByRole("link", { name: "シェアページへ" });
     expect(link).toHaveAttribute("href", "/m/completion-1");
+  });
+
+  test("「シェアページへ」クリックで onClose が呼ばれモーダルを閉じる", () => {
+    const onClose = jest.fn();
+    renderModal(completedCelebration, onClose);
+
+    fireEvent.click(screen.getByRole("link", { name: "シェアページへ" }));
+    expect(onClose).toHaveBeenCalled();
   });
 
   test("completionId が null ならシェアメニューを出さない", () => {
