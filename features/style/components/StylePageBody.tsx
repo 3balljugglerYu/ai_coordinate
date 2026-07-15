@@ -68,6 +68,7 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
             cachedPresets,
             user.id,
             await createClient(),
+            { includeAdminOnly: isAdminViewerFlag },
           ),
         )
       : applyCollectionUnlockGating(cachedPresets, EMPTY_UNLOCK_CONTEXT);

@@ -4,7 +4,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
-import { getCollectionProgress } from "./collection-progress-repository";
+import {
+  getCollectionProgress,
+  getCollectionCompletionFlagsForUser,
+} from "./collection-progress-repository";
 import {
   computeUnlockedCount,
   sequentialBatchSize,
@@ -37,6 +40,7 @@ export async function resolveCollectionUnlockContext(
   presets: readonly StylePresetPublicSummary[],
   userId: string,
   authedClient: SupabaseClient,
+  options: { includeAdminOnly?: boolean } = {},
 ): Promise<CollectionUnlockContext> {
   // 解放ゲートを持つカテゴリ(前提付き)＋ sequential(前提なしで単独順次解放)を対象にする。
   // sequential も distinct 集計が必要なため gatedCategoryKeys に含める。
@@ -62,7 +66,11 @@ export async function resolveCollectionUnlockContext(
 
   const [prerequisiteProgress, distinctGeneratedByCategoryKey] =
     await Promise.all([
-      resolveCompletedPrerequisiteKeys(prerequisiteKeys, authedClient),
+      resolveCompletedPrerequisiteKeys(
+        prerequisiteKeys,
+        authedClient,
+        options.includeAdminOnly ? { userId } : null,
+      ),
       resolveDistinctGeneratedCounts(gatedCategoryKeys, userId),
     ]);
 
@@ -74,19 +82,27 @@ export async function resolveCollectionUnlockContext(
 }
 
 /**
- * get_collection_progress RPC から「完走済み(mount完成)の前提条件カテゴリ key」と、
- * その「ユニーク生成数」(コンプリート演出が ack する値)を抽出する。
- * RPC は auth.uid() を使うため、必ず cookie 認証済みクライアントを渡すこと。
+ * 「完走済み(mount完成)の前提条件カテゴリ key」と、その「ユニーク生成数」
+ * (コンプリート演出が ack する値)を抽出する。
+ *
+ * 既定は public 限定の get_collection_progress(auth.uid() 使用)で判定するため、
+ * 必ず cookie 認証済みクライアントを渡すこと。ただし admin プレビュー時
+ * (adminContext 指定)は、前提が admin_only シリーズでも認識できるよう
+ * admin対応の get_collection_progress_for_user(include_admin_only=true)で判定する。
+ * これがないと、公開前(admin_only)の上巻を完走しても下巻が解放されない。
  * 取得失敗時は「未完走」として安全側に倒す(解放対象を出さない)。
  */
 async function resolveCompletedPrerequisiteKeys(
   prerequisiteKeys: ReadonlySet<string>,
   authedClient: SupabaseClient,
+  adminContext?: { userId: string } | null,
 ): Promise<{ completedKeys: Set<string>; uniqueCountByKey: Map<string, number> }> {
   const completedKeys = new Set<string>();
   const uniqueCountByKey = new Map<string, number>();
   try {
-    const progress = await getCollectionProgress(authedClient);
+    const progress = adminContext
+      ? await getCollectionCompletionFlagsForUser(adminContext.userId, true)
+      : await getCollectionProgress(authedClient);
     for (const row of progress) {
       if (row.isCompleted && prerequisiteKeys.has(row.categoryKey)) {
         completedKeys.add(row.categoryKey);
@@ -198,10 +214,13 @@ export async function authorizeStylePresetUnlock(
   }
 
   // 1) 前提条件カテゴリの完走チェック(前提付きのときのみ)。
+  //    admin プレビュー(includeAdminOnly)時は admin_only の前提も認識できるよう
+  //    admin対応RPCで判定する(表示ゲートと同一ポリシー)。
   if (hasPrereq) {
     const { completedKeys } = await resolveCompletedPrerequisiteKeys(
       new Set([category.unlockPrerequisiteKey!]),
       authedClient,
+      options.includeAdminOnly ? { userId } : null,
     );
     if (!completedKeys.has(category.unlockPrerequisiteKey!)) {
       return { allowed: false, reason: "prerequisite_incomplete" };

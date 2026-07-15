@@ -57,6 +57,41 @@ export async function getCollectionProgressForUser(
   return filterLockedCategories(withCompletion, supabase);
 }
 
+/** 解放ゲートの前提判定に必要な最小フラグ(重い画像/completion付与を伴わない)。 */
+export interface CollectionCompletionFlag {
+  categoryKey: string;
+  isCompleted: boolean;
+  uniqueOutfitCount: number;
+}
+
+/**
+ * 解放ゲートの前提判定に必要な最小情報(完走フラグ・ユニーク生成数)だけを、
+ * admin対応RPC get_collection_progress_for_user で取得する軽量版。
+ *
+ * getCollectionProgressForUser と違い、集めた画像(attachCollectedImages の N+1)や
+ * completion_id・キャラ画像などの付与を一切行わない。admin プレビューの解放判定
+ * (resolveCollectionUnlockContext)は is_completed / unique_outfit_count しか使わないため、
+ * 重い関連データ取得を避けてレンダリングの低速化を防ぐ。
+ */
+export async function getCollectionCompletionFlagsForUser(
+  userId: string,
+  includeAdminOnly: boolean,
+): Promise<CollectionCompletionFlag[]> {
+  const supabase = createAdminClient();
+  const { data, error } = await supabase.rpc("get_collection_progress_for_user", {
+    p_user_id: userId,
+    p_include_admin_only: includeAdminOnly,
+  });
+  if (error) {
+    throw error;
+  }
+  return ((data ?? []) as CollectionProgressRow[]).map((row) => ({
+    categoryKey: row.category_key,
+    isCompleted: row.is_completed,
+    uniqueOutfitCount: row.unique_outfit_count,
+  }));
+}
+
 /**
  * 解放ゲート(unlock_prerequisite_key)をマイページの進捗一覧にも適用する。
  *

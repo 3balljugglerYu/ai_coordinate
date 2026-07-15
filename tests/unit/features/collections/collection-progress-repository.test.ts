@@ -35,7 +35,10 @@ jest.mock("@/features/collections/lib/representative-images", () => ({
     getRepresentativeImagesForCategoryMock(...args),
 }));
 
-import { getCollectionProgressForUser } from "@/features/collections/lib/collection-progress-repository";
+import {
+  getCollectionProgressForUser,
+  getCollectionCompletionFlagsForUser,
+} from "@/features/collections/lib/collection-progress-repository";
 
 const PROGRESS_ROW = {
   category_id: "cat-1",
@@ -102,6 +105,43 @@ function buildAdminClient() {
 beforeEach(() => {
   jest.clearAllMocks();
   getRepresentativeImagesForCategoryMock.mockResolvedValue([]);
+});
+
+describe("getCollectionCompletionFlagsForUser: 前提判定用の軽量取得", () => {
+  test("RPCを直接叩き、is_completed/unique_outfit_count のみを map して返す(重い付与なし)", async () => {
+    const rpc = jest.fn().mockResolvedValue({
+      data: [{ ...PROGRESS_ROW, is_completed: true, unique_outfit_count: 6 }],
+      error: null,
+    });
+    const from = jest.fn(); // 軽量版は from() を一切呼ばない想定。
+    createAdminClientMock.mockImplementation(() => ({ rpc, from }));
+
+    const result = await getCollectionCompletionFlagsForUser("user-9", true);
+
+    expect(rpc).toHaveBeenCalledWith("get_collection_progress_for_user", {
+      p_user_id: "user-9",
+      p_include_admin_only: true,
+    });
+    expect(from).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        categoryKey: "db_driven_category",
+        isCompleted: true,
+        uniqueOutfitCount: 6,
+      },
+    ]);
+  });
+
+  test("RPCエラー時は throw する", async () => {
+    const rpc = jest
+      .fn()
+      .mockResolvedValue({ data: null, error: { message: "boom" } });
+    createAdminClientMock.mockImplementation(() => ({ rpc, from: jest.fn() }));
+
+    await expect(
+      getCollectionCompletionFlagsForUser("user-9", false),
+    ).rejects.toBeTruthy();
+  });
 });
 
 describe("getCollectionProgressForUser: progress-modal フィールド結合", () => {
