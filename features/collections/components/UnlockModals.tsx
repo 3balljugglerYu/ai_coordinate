@@ -179,13 +179,17 @@ export function UnlockDripModal({
   body?: string | null;
   /** 配色(未指定なら標準の紫基調)。 */
   colors?: UnlockAnnouncementColors;
-  /** 見出し「新たに N◯ 解放！」の単位(既定「体」。sequential は「日」など)。 */
+  /**
+   * 見出しの単位ラベル。指定時は「新たに N{unitLabel} 解放！」(例: "体")。
+   * null/未指定は件数・単位を出さず汎用の「新たに解放！」を表示する。
+   */
   unitLabel?: string | null;
 }) {
   const { cssVars, titleColor } = resolveColors(colors);
   const count = newlyUnlocked.length;
-  const unit = unitLabel ?? "体";
   const bodyText = body ?? `${title}の続きが登場しました。`;
+  // 単位ラベルがあれば「新たにN{unit} 解放！」、無ければ企画非依存の汎用見出し。
+  const heading = unitLabel ? `新たに${count}${unitLabel} 解放！` : "新たに解放！";
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
@@ -201,8 +205,7 @@ export function UnlockDripModal({
         <CloseButton onClose={onClose} />
         <NewPill />
         <h2 className="mt-2 text-lg font-bold" style={{ color: titleColor }}>
-          新たに{count}
-          {unit} 解放！
+          {heading}
         </h2>
         <p className="mt-1 text-sm text-[#7A5A93]">{bodyText}</p>
 

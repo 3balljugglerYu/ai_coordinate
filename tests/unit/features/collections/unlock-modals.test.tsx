@@ -123,7 +123,7 @@ describe("UnlockDripModal", () => {
     { id: "p2", title: "スタイルB", thumbnailUrl: "https://example.com/b.png" },
   ];
 
-  test("未設定: 解放数の見出しと標準文、サムネを表示", () => {
+  test("unitLabel未設定: 汎用見出し「新たに解放！」と標準文、サムネを表示", () => {
     render(
       <UnlockDripModal
         title="ぷち神"
@@ -131,13 +131,26 @@ describe("UnlockDripModal", () => {
         onClose={() => {}}
       />,
     );
-    expect(screen.getByText("新たに2体 解放！")).toBeInTheDocument();
+    // 件数・単位を出さない企画非依存の汎用見出し。
+    expect(screen.getByText("新たに解放！")).toBeInTheDocument();
     expect(screen.getByText("ぷち神の続きが登場しました。")).toBeInTheDocument();
     expect(screen.getByAltText("スタイルA")).toHaveAttribute(
       "src",
       "https://example.com/a.png",
     );
     expect(screen.getByAltText("スタイルB")).toBeInTheDocument();
+  });
+
+  test("unitLabel=体: 件数付き見出し「新たに2体 解放！」を表示", () => {
+    render(
+      <UnlockDripModal
+        title="ぷち神"
+        newlyUnlocked={newlyUnlocked}
+        onClose={() => {}}
+        unitLabel="体"
+      />,
+    );
+    expect(screen.getByText("新たに2体 解放！")).toBeInTheDocument();
   });
 
   test("設定あり: 本文と配色が props で反映される", () => {

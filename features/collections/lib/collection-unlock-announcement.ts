@@ -38,7 +38,10 @@ export interface CollectionUnlockAnnouncement {
    */
   baselineUnlockedCount: number;
   /**
-   * 「新たに N◯ 解放！」の単位ラベル。sequential は "日"(Day)、前提型は null(=「体」)。
+   * 解放モーダル見出しの単位ラベル。
+   * - 前提型(ぷち神など)は "体" → 「新たに N体 解放！」。
+   * - sequential(travel / ことわざ辞典など)は null → 単位・件数を出さず汎用の「新たに解放！」。
+   *   企画ごとに「日」等の固有単位に依存しないための汎用表示。
    */
   unitLabel: string | null;
   /**
@@ -128,7 +131,7 @@ export function buildCollectionUnlockAnnouncements(
       prerequisiteKey,
       prerequisiteAckCount,
       baselineUnlockedCount,
-      unitLabel: sequential ? "日" : null,
+      unitLabel: sequential ? null : "体",
       heroImagePath: category.unlockAnnouncementHeroPath,
       initialBody: category.unlockAnnouncementInitialBody,
       dripBody: category.unlockAnnouncementDripBody,
