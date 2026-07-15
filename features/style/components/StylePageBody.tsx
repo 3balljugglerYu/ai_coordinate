@@ -16,6 +16,7 @@ import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
+import { getGeneratedCollectionPresetIds } from "@/features/collections/lib/generated-preset-ids";
 import {
   applyCollectionUnlockGating,
   type CollectionUnlockContext,
@@ -75,6 +76,22 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
 
+  // 企画(コレクション)カードの「生成済み ✓」判定用に、本人が生成済みの
+  // プリセットID一覧を取得する。collection-series カテゴリのみ集計(通常カテゴリは対象外)。
+  const seriesCategoryKeys = user
+    ? Array.from(
+        new Set(
+          presets
+            .filter((preset) => preset.category.isCollectionSeries)
+            .map((preset) => preset.category.key),
+        ),
+      )
+    : [];
+  const generatedPresetIds =
+    user && seriesCategoryKeys.length > 0
+      ? await getGeneratedCollectionPresetIds(user.id, seriesCategoryKeys)
+      : [];
+
   return (
     <>
       {/* coordinate と同様、ログイン時はマウント時に router.refresh() して
@@ -125,6 +142,8 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
           subscriptionPlan={profile?.subscription_plan ?? "free"}
           // framing_mode (free_pose) は admin viewer 限定の先行公開 (サーバ側でも検証)
           canUseFreePose={isAdminViewerFlag}
+          // 企画カードの「生成済み ✓」表示用
+          generatedPresetIds={generatedPresetIds}
         />
 
         {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}

@@ -1351,6 +1351,7 @@ export const idMessages = {
     addImageAction: "Tambah gambar",
     styleImageAlt: "Gambar gaya yang dipilih",
     styleImageZoomAria: "Perbesar gambar gaya",
+    styleGeneratedBadge: "Sudah dibuat",
     styleCardAlt: "Kartu gaya {name}",
     detailPresetLabel: "Dibuat dengan One-Tap Style",
     detailPresetCardAlt: "Kartu gaya {name}",

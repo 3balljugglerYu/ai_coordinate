@@ -142,6 +142,45 @@ describe("StylePresetPreviewCard - 提供者クレジット", () => {
   });
 });
 
+describe("StylePresetPreviewCard - 生成済み ✓ バッジ", () => {
+  test("generated=true で ✓ バッジ(ラベル付き)を表示する", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+        generated
+        generatedLabel="生成済み"
+      />,
+    );
+    expect(screen.getByLabelText("生成済み")).toBeInTheDocument();
+  });
+
+  test("generated=false では ✓ バッジを表示しない", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+        generatedLabel="生成済み"
+      />,
+    );
+    expect(screen.queryByLabelText("生成済み")).toBeNull();
+  });
+
+  test("dripLocked のときは generated でも ✓ バッジを出さない", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset({ category: CHIBI_CATEGORY })}
+        alt="alt"
+        generated
+        generatedLabel="生成済み"
+        dripLocked
+        dripLockedLabel="あとで とうじょう"
+      />,
+    );
+    expect(screen.queryByLabelText("生成済み")).toBeNull();
+  });
+});
+
 describe("StylePresetPreviewCard - ロック表示", () => {
   test("lockedLabel を渡すとロックラベルを表示する", () => {
     render(

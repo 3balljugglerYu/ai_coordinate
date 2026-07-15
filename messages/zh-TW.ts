@@ -1347,6 +1347,7 @@ export const zhTwMessages = {
     addImageAction: "新增圖片",
     styleImageAlt: "選定的造型圖片",
     styleImageZoomAria: "放大風格圖片",
+    styleGeneratedBadge: "已生成",
     styleCardAlt: "{name} 造型卡",
     detailPresetLabel: "由一鍵造型生成",
     detailPresetCardAlt: "{name} 造型卡",

@@ -1353,6 +1353,7 @@ export const deMessages = {
     addImageAction: "Bild hinzufügen",
     styleImageAlt: "Ausgewähltes Stilbild",
     styleImageZoomAria: "Stilbild vergrößern",
+    styleGeneratedBadge: "Erstellt",
     styleCardAlt: "Stilkarte {name}",
     detailPresetLabel: "Mit One-Tap Style generiert",
     detailPresetCardAlt: "Stilkarte {name}",

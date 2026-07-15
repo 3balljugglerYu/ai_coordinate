@@ -1349,6 +1349,7 @@ export const arMessages = {
     addImageAction: "إضافة صورة",
     styleImageAlt: "صورة الأسلوب المختار",
     styleImageZoomAria: "تكبير صورة الستايل",
+    styleGeneratedBadge: "تم الإنشاء",
     styleCardAlt: "بطاقة أسلوب {name}",
     detailPresetLabel: "أُنشئت بـ One-Tap Style",
     detailPresetCardAlt: "بطاقة أسلوب {name}",

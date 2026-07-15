@@ -1348,6 +1348,7 @@ export const koMessages = {
     addImageAction: "이미지 추가",
     styleImageAlt: "선택한 스타일 이미지",
     styleImageZoomAria: "스타일 이미지 확대",
+    styleGeneratedBadge: "생성 완료",
     styleCardAlt: "{name} 스타일 카드",
     detailPresetLabel: "원탭 스타일로 생성됨",
     detailPresetCardAlt: "{name} 스타일 카드",

@@ -137,6 +137,12 @@ interface StylePageClientProps {
    * UI 非表示はセキュリティではなく、サーバ側 (generate-async) でも検証される。
    */
   canUseFreePose?: boolean;
+  /**
+   * このユーザーが既に生成済みの企画(コレクション)プリセットIDの一覧。
+   * 該当カードに「生成済み」の ✓ バッジを出して、生成した/まだを見分けやすくする。
+   * サーバ側(StylePageBody)で collection-series カテゴリ分のみ集計して渡す。
+   */
+  generatedPresetIds?: readonly string[];
 }
 
 interface StyleErrorState {
@@ -320,6 +326,7 @@ export function StylePageClient({
   showResultPanel = true,
   subscriptionPlan = "free",
   canUseFreePose = false,
+  generatedPresetIds,
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -327,6 +334,11 @@ export function StylePageClient({
   const postsT = useTranslations("posts");
   const locale = useLocale();
   const styleCardLocale = locale === "en" ? "en" : "ja";
+  // 生成済みの企画プリセットID集合(✓バッジ判定用。O(1)参照のため Set 化)。
+  const generatedPresetIdSet = useMemo(
+    () => new Set(generatedPresetIds ?? []),
+    [generatedPresetIds],
+  );
   const { toast, dismiss } = useToast();
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const generationStatusSectionRef = useRef<HTMLDivElement | null>(null);
@@ -1735,6 +1747,10 @@ export function StylePageClient({
                     ? t("guestCategoryLoginAction")
                     : undefined
                 }
+                generated={
+                  !isDripLocked && generatedPresetIdSet.has(preset.id)
+                }
+                generatedLabel={t("styleGeneratedBadge")}
               />
             );
           })}

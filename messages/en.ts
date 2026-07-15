@@ -1349,6 +1349,7 @@ export const enMessages = {
     addImageAction: "Add image",
     styleImageAlt: "Selected style image",
     styleImageZoomAria: "Enlarge style image",
+    styleGeneratedBadge: "Generated",
     styleCardAlt: "{name} style card",
     detailPresetLabel: "Generated with One-Tap Style",
     detailPresetCardAlt: "{name} style card",
