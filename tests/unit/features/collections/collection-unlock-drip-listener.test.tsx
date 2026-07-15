@@ -44,7 +44,7 @@ function makeAnnouncement(
     prerequisiteAckCount: 0,
     // sequential: baseline=1(表紙は常時解放) → 初回生成から drip 対象になる。
     baselineUnlockedCount: 1,
-    unitLabel: "日",
+    unitLabel: null, // sequential は汎用見出し(「新たに解放！」)
     heroImagePath: null,
     initialBody: null,
     dripBody: null,

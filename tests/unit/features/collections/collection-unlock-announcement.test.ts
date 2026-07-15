@@ -248,7 +248,7 @@ describe("buildCollectionUnlockAnnouncements", () => {
       );
     }
 
-    test("前提なしでも告知対象になり、昇順・baseline=1・単位=日", () => {
+    test("前提なしでも告知対象になり、昇順・baseline=1・単位ラベルなし(汎用)", () => {
       const result = buildCollectionUnlockAnnouncements(seqPresets(), {
         prerequisiteCompletedKeys: new Set(),
         distinctGeneratedByCategoryKey: new Map([[SEQ_KEY, 1]]), // はじまり生成済 → Day1解放
@@ -257,7 +257,7 @@ describe("buildCollectionUnlockAnnouncements", () => {
       const a = result[0];
       expect(a.unlockedCount).toBe(2); // はじまり + Day1
       expect(a.baselineUnlockedCount).toBe(1); // 表紙は常時解放
-      expect(a.unitLabel).toBe("日");
+      expect(a.unitLabel).toBeNull(); // sequential は汎用見出し(「新たに解放！」)
       expect(a.prerequisiteAckCount).toBe(0); // 前提ackゲートなし
       // 昇順(先頭=はじまり, 次=Day1)
       expect(a.unlockedPresets.map((p) => p.title)).toEqual(["はじまり", "Day1"]);
