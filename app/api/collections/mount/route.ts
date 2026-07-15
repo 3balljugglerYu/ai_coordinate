@@ -29,6 +29,14 @@ const GENERATED_IMAGES_BUCKET = "generated-images";
 const TEMPLATE_BUCKET = "collection-mount-templates";
 const CATEGORY_KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 
+// 台紙に貼る各画像を角丸にするコレクション(ことわざ辞典 上巻/下巻)。
+// 他シリーズ(神コレ等)は従来どおり四角のまま貼る。値は短辺に対する角丸半径比。
+const ROUNDED_MOUNT_CATEGORY_KEYS = new Set<string>([
+  "kotowaza_dictionary",
+  "kotowaza_dictionary_2",
+]);
+const ROUNDED_MOUNT_CORNER_RATIO = 0.08;
+
 function jsonError(message: string, code: string, status: number) {
   return NextResponse.json({ error: message, errorCode: code }, { status });
 }
@@ -471,7 +479,16 @@ export async function POST(request: NextRequest) {
       reps.map((r) => downloadBuffer(admin, GENERATED_IMAGES_BUCKET, r.storagePath)),
     );
 
-    const mountPng = await composeMount({ templatePng, stickers, slots });
+    // ことわざ辞典のみ、各画像を角丸で貼る(他シリーズは 0 = 従来の四角貼り)。
+    const cornerRadiusRatio = ROUNDED_MOUNT_CATEGORY_KEYS.has(categoryKey)
+      ? ROUNDED_MOUNT_CORNER_RATIO
+      : 0;
+    const mountPng = await composeMount({
+      templatePng,
+      stickers,
+      slots,
+      cornerRadiusRatio,
+    });
 
     // パスにタイムスタンプが含まれるため毎回新規パス。事前 remove は不要。
     const { error: uploadError } = await admin.storage

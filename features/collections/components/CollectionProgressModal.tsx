@@ -175,9 +175,10 @@ interface ModalLayout {
 // ready(全画像ロード完了)の保険タイムアウト。これを過ぎたら強制表示する。
 const READY_TIMEOUT_MS = 3500;
 
-// 紙吹雪(confetti)の発火フォールバック。台紙画像のロード(ready)を待たずに、
-// モーダルが開いたらこの時間以内に必ず発火させる(初回コンプリートの取りこぼし対策)。
-const CONFETTI_FALLBACK_MS = 600;
+// 紙吹雪(confetti)は「準備中」が終わり画像が表示された(ready)後に発火する。
+// フェードイン(220ms)後にポンッと出るよう軽く遅延させる。ready は onLoad 完了 or
+// READY_TIMEOUT_MS の保険で必ず true になるため、発火を取りこぼさない。
+const CONFETTI_AFTER_READY_MS = 250;
 
 const MODAL_LAYOUTS: Record<string, ModalLayout> = {
   // ウエハース(4スロット)
@@ -354,22 +355,25 @@ export function CollectionProgressModal({
     return () => window.clearTimeout(timer);
   }, [open, celebration, ready]);
 
-  // 紙吹雪の発火: 完了かつ confetti 演出のとき、台紙画像のロード(ready)を待たず、
-  // ready なら即・未ロードでも CONFETTI_FALLBACK_MS 以内に必ず armed にする。
-  // これで初回コンプリート(台紙画像が未キャッシュで ready が遅い)でも取りこぼさない。
+  // 紙吹雪の発火: 完了かつ confetti 演出で、かつ「準備中」が終わり画像が表示された
+  // (ready) 後にだけ armed にする。準備中スピナー表示のまま先に紙吹雪が飛ぶのを防ぐ。
+  // ready は onLoad 完了 or READY_TIMEOUT_MS の保険で必ず true になるため取りこぼさない。
   useEffect(() => {
     if (
       !open ||
       !celebration ||
       cEffect !== "confetti" ||
-      !(cIsCompleted || cReached)
+      !(cIsCompleted || cReached) ||
+      !ready
     ) {
       return;
     }
-    // ready なら即(次tick)・未ロードでも fallback 以内に発火。
+    // フェードイン(220ms)後にポンッと出るよう軽く遅延させる。
     // 同期 setState(cascading render)を避けるためタイマー経由にする。
-    const delay = ready ? 0 : CONFETTI_FALLBACK_MS;
-    const timer = window.setTimeout(() => setConfettiArmed(true), delay);
+    const timer = window.setTimeout(
+      () => setConfettiArmed(true),
+      CONFETTI_AFTER_READY_MS,
+    );
     return () => window.clearTimeout(timer);
   }, [open, celebration, cEffect, cIsCompleted, cReached, ready]);
 
@@ -502,8 +506,8 @@ export function CollectionProgressModal({
                 Dialog の overflow には影響されない。
               - sparkle: ダイヤのきらめき(完了台紙の見返し等)。モーダル枠内を彩る。 */}
         {/* confetti(クラッカー)は「初コンプの祝い」専用(完了 + confetti 演出)。
-            台紙画像のロード(ready)を待たず confettiArmed で発火するため、初回
-            コンプリートでも確実に飛ぶ(armed の条件に完了/演出種別を含む)。 */}
+            「準備中」が終わり画像が表示された(ready)後に confettiArmed で発火するため、
+            準備中スピナー表示のまま先に紙吹雪が飛ぶことはない。 */}
         <CollectionConfetti show={confettiArmed} />
         <CollectionSparkle show={ready && effect === "sparkle"} />
 
