@@ -1,40 +1,37 @@
 import "server-only";
 
-import { createAdminClient } from "@/lib/supabase/admin";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * 指定ユーザーが、指定カテゴリ(企画=collection-series)で既に生成済みの
- * プリセットID集合を返す。/style やホームの「生成済み ✓」判定に使う。
+ * 指定カテゴリ(企画=collection-series)で、呼び出しユーザー本人が既に生成済みの
+ * プリセットID集合を返す。/style の「生成済み ✓」判定に使う。
  *
- * image_jobs の成功ジョブから style_template_id(= 生成したプリセットID)を集める。
- * 失敗時・対象カテゴリなしのときは空配列(= すべて未生成扱い)にフォールバックし、
- * 画面全体は壊さない。
+ * DB 側 DISTINCT の RPC get_generated_preset_ids(SECURITY INVOKER, auth.uid())を、
+ * セッション認証済みクライアントで呼ぶ。これにより:
+ *  - RLS が適用され本人行のみ対象(service_role を使わない)、
+ *  - DISTINCT を DB 側で行うため PostgREST の 1000 行上限に依存しない。
+ * 失敗時・対象カテゴリなしのときは空配列(= すべて未生成扱い)にフォールバックする。
+ *
+ * @param client cookie 認証済みサーバークライアント(lib/supabase/server の createClient())
  */
 export async function getGeneratedCollectionPresetIds(
-  userId: string,
+  client: SupabaseClient,
   categoryKeys: readonly string[],
 ): Promise<string[]> {
   if (categoryKeys.length === 0) {
     return [];
   }
   try {
-    const admin = createAdminClient();
-    const { data, error } = await admin
-      .from("image_jobs")
-      .select("style_template_id")
-      .eq("user_id", userId)
-      .eq("status", "succeeded")
-      .in("style_preset_category_key", categoryKeys as string[])
-      .not("style_template_id", "is", null)
-      .limit(1000);
+    const { data, error } = await client.rpc("get_generated_preset_ids", {
+      p_category_keys: categoryKeys as string[],
+    });
     if (error) {
       return [];
     }
     const ids = new Set<string>();
-    for (const row of data ?? []) {
-      const id = (row as { style_template_id: string | null }).style_template_id;
-      if (id) {
-        ids.add(id);
+    for (const row of (data ?? []) as Array<{ preset_id: string | null }>) {
+      if (row.preset_id) {
+        ids.add(row.preset_id);
       }
     }
     return Array.from(ids);

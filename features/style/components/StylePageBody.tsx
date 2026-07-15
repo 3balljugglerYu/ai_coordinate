@@ -89,7 +89,10 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
     : [];
   const generatedPresetIds =
     user && seriesCategoryKeys.length > 0
-      ? await getGeneratedCollectionPresetIds(user.id, seriesCategoryKeys)
+      ? await getGeneratedCollectionPresetIds(
+          await createClient(),
+          seriesCategoryKeys,
+        )
       : [];
 
   return (
