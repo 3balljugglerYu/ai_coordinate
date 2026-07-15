@@ -614,6 +614,7 @@ export function CollectionProgressModal({
             {celebration.sharePath ? (
               <Link
                 href={celebration.sharePath}
+                onClick={onClose}
                 className="block w-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-center text-base font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.4)] transition-transform hover:-translate-y-0.5"
               >
                 シェアページへ
