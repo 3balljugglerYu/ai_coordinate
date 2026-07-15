@@ -131,7 +131,7 @@ const KOTOWAZA_ENTRIES: KotowazaEntry[] = [
   {
     no: "05",
     name: "二兎追うものは一兎も得ず",
-    reading: "にとおうものはいっとをえず",
+    reading: "にとおうものはいっともえず",
     meaning: "欲ばって二つをねらうと、どちらも得られないこと",
     src: "/collections/kotowaza/nito-oumono.webp",
   },
