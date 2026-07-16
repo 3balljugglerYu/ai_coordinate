@@ -44,15 +44,23 @@ function preset(
     categoryKey: string;
     createdDaysAgo: number;
     locked: boolean;
+    thumbnailWidth: number;
+    thumbnailHeight: number;
   }> = {},
 ): StylePresetPublicSummary {
-  const { categoryKey = "coordinate", createdDaysAgo = 100, locked } = overrides;
+  const {
+    categoryKey = "coordinate",
+    createdDaysAgo = 100,
+    locked,
+    thumbnailWidth = 1,
+    thumbnailHeight = 1,
+  } = overrides;
   return {
     id,
     title: id,
     thumbnailImageUrl: "https://example.com/x.webp",
-    thumbnailWidth: 1,
-    thumbnailHeight: 1,
+    thumbnailWidth,
+    thumbnailHeight,
     hasBackgroundPrompt: false,
     createdAt: new Date(Date.now() - createdDaysAgo * 86400000).toISOString(),
     category: {
@@ -146,6 +154,31 @@ describe("StyleBrowseSheet", () => {
     renderSheet({ generateTotals: {} });
     fireEvent.click(screen.getByText("p1"));
     expect(screen.queryByText(/これまでに.*回/)).toBeNull();
+  });
+
+  test("確認ダイアログの画像はサムネの実アスペクト比で表示(横長は横長・全幅)", () => {
+    renderSheet({
+      presets: [preset("wide", { thumbnailWidth: 1280, thumbnailHeight: 853 })],
+    });
+    fireEvent.click(screen.getByText("wide"));
+    const dialog = screen.getByRole("alertdialog");
+    const img = dialog.querySelector('img[alt="スタイル wide"]');
+    const container = img?.parentElement as HTMLElement;
+    expect(container.style.aspectRatio).toBe("1280 / 853");
+    // 横長は幅制限(max-w-[280px])を外して全幅を使う。
+    expect(container.className).not.toContain("max-w-[280px]");
+  });
+
+  test("確認ダイアログの縦長サムネは幅280pxに抑える", () => {
+    renderSheet({
+      presets: [preset("tall", { thumbnailWidth: 912, thumbnailHeight: 1173 })],
+    });
+    fireEvent.click(screen.getByText("tall"));
+    const dialog = screen.getByRole("alertdialog");
+    const img = dialog.querySelector('img[alt="スタイル tall"]');
+    const container = img?.parentElement as HTMLElement;
+    expect(container.style.aspectRatio).toBe("912 / 1173");
+    expect(container.className).toContain("max-w-[280px]");
   });
 
   test("確認ダイアログは下スワイプで閉じる", () => {

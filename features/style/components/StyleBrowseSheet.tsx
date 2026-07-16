@@ -275,12 +275,28 @@ export function StyleBrowseSheet({
             </AlertDialogHeader>
             {confirmingPreset ? (
               <div className="flex flex-col items-center gap-3 py-2">
-                <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-lg bg-gray-100">
+                {/* 画像はサムネの実アスペクト比で表示(拡大表示と同様、横長はクロップしない)。
+                    縦長はダイアログが縦に伸びすぎないよう幅280pxに抑え、横長は全幅を使う。 */}
+                <div
+                  className={`relative w-full overflow-hidden rounded-lg bg-gray-100 ${
+                    confirmingPreset.thumbnailWidth >
+                    confirmingPreset.thumbnailHeight
+                      ? ""
+                      : "max-w-[280px]"
+                  }`}
+                  style={{
+                    aspectRatio:
+                      confirmingPreset.thumbnailWidth > 0 &&
+                      confirmingPreset.thumbnailHeight > 0
+                        ? `${confirmingPreset.thumbnailWidth} / ${confirmingPreset.thumbnailHeight}`
+                        : "3 / 4",
+                  }}
+                >
                   <Image
                     src={confirmingPreset.thumbnailImageUrl}
                     alt={t("styleCardAlt", { name: confirmingPreset.title })}
                     fill
-                    sizes="280px"
+                    sizes="(max-width: 640px) 90vw, 480px"
                     className="object-cover object-top"
                   />
                   {/* グリッドと同じお気に入り(しおり)トグルを拡大表示にも置く。 */}
