@@ -1366,6 +1366,7 @@ export const enMessages = {
     styleBrowseConfirmTitle: "Try this on?",
     styleBrowseConfirmCancel: "See other styles",
     styleBrowseConfirmAction: "Try on",
+    styleUsageCount: "Generated {count} times so far",
     styleCardAlt: "{name} style card",
     detailPresetLabel: "Generated with One-Tap Style",
     detailPresetCardAlt: "{name} style card",

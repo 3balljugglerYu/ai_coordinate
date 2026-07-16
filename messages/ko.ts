@@ -1365,6 +1365,7 @@ export const koMessages = {
     styleBrowseConfirmTitle: "이 룩을 입혀볼까요?",
     styleBrowseConfirmCancel: "다른 스타일 보기",
     styleBrowseConfirmAction: "입어보기",
+    styleUsageCount: "지금까지 {count}번 생성되었어요",
     styleCardAlt: "{name} 스타일 카드",
     detailPresetLabel: "원탭 스타일로 생성됨",
     detailPresetCardAlt: "{name} 스타일 카드",

@@ -1368,6 +1368,7 @@ export const idMessages = {
     styleBrowseConfirmTitle: "Coba ini?",
     styleBrowseConfirmCancel: "Lihat gaya lainnya",
     styleBrowseConfirmAction: "Coba",
+    styleUsageCount: "Sudah dibuat {count} kali",
     styleCardAlt: "Kartu gaya {name}",
     detailPresetLabel: "Dibuat dengan One-Tap Style",
     detailPresetCardAlt: "Kartu gaya {name}",

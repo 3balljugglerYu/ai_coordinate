@@ -1366,6 +1366,7 @@ export const viMessages = {
     styleBrowseConfirmTitle: "Thử bộ này?",
     styleBrowseConfirmCancel: "Xem các style khác",
     styleBrowseConfirmAction: "Thử",
+    styleUsageCount: "Đã được tạo {count} lần",
     styleCardAlt: "Thẻ phong cách {name}",
     detailPresetLabel: "Tạo bằng One-Tap Style",
     detailPresetCardAlt: "Thẻ phong cách {name}",

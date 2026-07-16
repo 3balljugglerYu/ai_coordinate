@@ -1369,6 +1369,7 @@ export const ptMessages = {
     styleBrowseConfirmTitle: "Quer experimentar este look?",
     styleBrowseConfirmCancel: "Ver outros estilos",
     styleBrowseConfirmAction: "Experimentar",
+    styleUsageCount: "Gerado {count} vezes até agora",
     styleCardAlt: "Cartão de estilo {name}",
     detailPresetLabel: "Gerado com One-Tap Style",
     detailPresetCardAlt: "Cartão de estilo {name}",

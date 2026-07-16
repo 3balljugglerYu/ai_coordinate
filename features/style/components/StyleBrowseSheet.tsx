@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
-import { Heart } from "lucide-react";
+import { Bookmark } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
   AlertDialog,
@@ -20,6 +20,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
+import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import {
   deriveStyleBrowseChips,
   filterStyleBrowsePresets,
@@ -29,11 +31,14 @@ import type { StylePresetPublicSummary } from "@/features/style-presets/lib/sche
 
 /** チップ先頭の絵文字(装飾)。ラベル本文は i18n で解決する。 */
 const CHIP_EMOJI: Partial<Record<string, string>> = {
-  favorites: "♡",
+  favorites: "🔖",
   new: "✨",
   popular: "👑",
   creator: "🤝",
 };
+
+/** 拡大プレビューを「下スワイプで閉じる」と判定する移動量(px)。 */
+const SWIPE_CLOSE_THRESHOLD_PX = 80;
 
 interface StyleBrowseSheetProps {
   open: boolean;
@@ -41,6 +46,8 @@ interface StyleBrowseSheetProps {
   presets: readonly StylePresetPublicSummary[];
   /** プリセットID -> 直近生成数(👑人気の並び替え/表示判定)。 */
   generateCounts: Readonly<Record<string, number>>;
+  /** プリセットID -> 累計生成数(拡大プレビューの「これまでに◯回」表示)。 */
+  generateTotals: Readonly<Record<string, number>>;
   /** 現在のお気に入りID集合(楽観更新済みの最新値)。 */
   favoriteIds: ReadonlySet<string>;
   /** ♡トグル。ゲスト時の誘導も含め呼び出し側(StylePageClient)が処理する。 */
@@ -65,6 +72,7 @@ export function StyleBrowseSheet({
   onOpenChange,
   presets,
   generateCounts,
+  generateTotals,
   favoriteIds,
   onToggleFavorite,
   onSelectPreset,
@@ -79,6 +87,8 @@ export function StyleBrowseSheet({
   // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
+  // 「下スワイプで閉じる」用: タッチ開始Y座標(モバイルの自然な閉じ操作)。
+  const touchStartYRef = useRef<number | null>(null);
 
   // now はチップ導出/絞り込みの「新着」判定にだけ使う。シートを開いている間は
   // 固定でよいので、open が変わったときだけ取り直す。
@@ -197,8 +207,10 @@ export function StyleBrowseSheet({
                       }
                       generatedLabel={t("styleGeneratedBadge")}
                     />
-                    {/* ♡はカード(button)の兄弟としてオーバーレイ配置(buttonネスト回避)。
-                        左上=空き位置(✓=右上/カテゴリバッジ=左下)。locked には出さない。 */}
+                    {/* お気に入り(しおり)はカード(button)の兄弟としてオーバーレイ配置
+                        (buttonネスト回避)。ハートはホームの「いいね」と紛らわしいため
+                        ブックマークアイコンを使う。左上=空き位置(✓=右上/カテゴリバッジ=左下)。
+                        locked には出さない。 */}
                     {!isDripLocked ? (
                       <button
                         type="button"
@@ -209,12 +221,12 @@ export function StyleBrowseSheet({
                             : t("styleFavoriteAdd")
                         }
                         aria-pressed={isFavorite}
-                        className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-300"
+                        className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
                       >
-                        <Heart
+                        <Bookmark
                           className={`h-4 w-4 ${
                             isFavorite
-                              ? "fill-rose-500 text-rose-500"
+                              ? "fill-slate-700 text-slate-700"
                               : "text-slate-400"
                           }`}
                           aria-hidden="true"
@@ -238,7 +250,24 @@ export function StyleBrowseSheet({
             }
           }}
         >
-          <AlertDialogContent>
+          <AlertDialogContent
+            // モバイルの自然な操作として「下スワイプで閉じる」に対応する。
+            onTouchStart={(event) => {
+              touchStartYRef.current = event.touches[0]?.clientY ?? null;
+            }}
+            onTouchEnd={(event) => {
+              const startY = touchStartYRef.current;
+              touchStartYRef.current = null;
+              const endY = event.changedTouches[0]?.clientY;
+              if (
+                startY !== null &&
+                typeof endY === "number" &&
+                endY - startY > SWIPE_CLOSE_THRESHOLD_PX
+              ) {
+                setConfirmingPreset(null);
+              }
+            }}
+          >
             <AlertDialogHeader>
               <AlertDialogTitle>
                 {t("styleBrowseConfirmTitle")}
@@ -254,10 +283,55 @@ export function StyleBrowseSheet({
                     sizes="280px"
                     className="object-cover object-top"
                   />
+                  {/* グリッドと同じお気に入り(しおり)トグルを拡大表示にも置く。 */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onToggleFavorite(
+                        confirmingPreset.id,
+                        !favoriteIds.has(confirmingPreset.id),
+                      )
+                    }
+                    aria-label={
+                      favoriteIds.has(confirmingPreset.id)
+                        ? t("styleFavoriteRemove")
+                        : t("styleFavoriteAdd")
+                    }
+                    aria-pressed={favoriteIds.has(confirmingPreset.id)}
+                    className="absolute left-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  >
+                    <Bookmark
+                      className={`h-5 w-5 ${
+                        favoriteIds.has(confirmingPreset.id)
+                          ? "fill-slate-700 text-slate-700"
+                          : "text-slate-400"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
                 </div>
                 <p className="text-base font-medium text-slate-900">
                   {confirmingPreset.title}
                 </p>
+                {/* クリエイター表記(カードと同じ解決順: preset優先→カテゴリ)。 */}
+                {(() => {
+                  const provider = resolveStylePresetProvider(confirmingPreset);
+                  return provider ? (
+                    <StyleProviderCredit
+                      nickname={provider.nickname}
+                      avatarUrl={provider.avatarUrl}
+                      locale={locale}
+                    />
+                  ) : null;
+                })()}
+                {/* 累計利用回数(0回は出さない)。 */}
+                {(generateTotals[confirmingPreset.id] ?? 0) > 0 ? (
+                  <p className="text-xs text-slate-500">
+                    {t("styleUsageCount", {
+                      count: generateTotals[confirmingPreset.id],
+                    })}
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <AlertDialogFooter>

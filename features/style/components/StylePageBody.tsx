@@ -17,7 +17,10 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { getGeneratedCollectionPresetIds } from "@/features/collections/lib/generated-preset-ids";
-import { getStyleGenerateCounts } from "@/features/style/lib/style-popularity";
+import {
+  getStyleGenerateCounts,
+  getStyleGenerateTotalCounts,
+} from "@/features/style/lib/style-popularity";
 import {
   applyCollectionUnlockGating,
   type CollectionUnlockContext,
@@ -98,8 +101,12 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
 
   // 探索シート用データ:
   //  - 人気(全ユーザー共通・"use cache" 済み): プリセットID -> 直近30日生成数
-  //  - お気に入り初期集合(本人のみ・RLS適用): シートの♡表示と絞り込みの初期値
-  const generateCounts = await getStyleGenerateCounts();
+  //  - 累計利用回数(同・実質全期間): 拡大プレビューの「これまでに◯回」表示用
+  //  - お気に入り初期集合(本人のみ・RLS適用): シートのしおり表示と絞り込みの初期値
+  const [generateCounts, generateTotals] = await Promise.all([
+    getStyleGenerateCounts(),
+    getStyleGenerateTotalCounts(),
+  ]);
   let favoritePresetIds: string[] = [];
   if (user) {
     const supabase = await createClient();
@@ -163,8 +170,9 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
           canUseFreePose={isAdminViewerFlag}
           // 企画カードの「生成済み ✓」表示用
           generatedPresetIds={generatedPresetIds}
-          // 探索シート(チップ+グリッド)用: 人気カウントとお気に入り初期集合
+          // 探索シート(チップ+グリッド)用: 人気/累計カウントとお気に入り初期集合
           generateCounts={generateCounts}
+          generateTotals={generateTotals}
           initialFavoritePresetIds={favoritePresetIds}
         />
 

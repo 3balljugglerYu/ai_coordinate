@@ -1369,6 +1369,7 @@ export const frMessages = {
     styleBrowseConfirmTitle: "Essayer cette tenue ?",
     styleBrowseConfirmCancel: "Voir d'autres styles",
     styleBrowseConfirmAction: "Essayer",
+    styleUsageCount: "Généré {count} fois jusqu'à présent",
     styleCardAlt: "Carte de style {name}",
     detailPresetLabel: "Généré avec One-Tap Style",
     detailPresetCardAlt: "Carte de style {name}",

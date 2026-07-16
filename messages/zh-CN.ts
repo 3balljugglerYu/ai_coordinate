@@ -1364,6 +1364,7 @@ export const zhCnMessages = {
     styleBrowseConfirmTitle: "要试穿这套吗?",
     styleBrowseConfirmCancel: "看看其他风格",
     styleBrowseConfirmAction: "试穿",
+    styleUsageCount: "至今已生成{count}次",
     styleCardAlt: "{name} 造型卡",
     detailPresetLabel: "由一键造型生成",
     detailPresetCardAlt: "{name} 造型卡",

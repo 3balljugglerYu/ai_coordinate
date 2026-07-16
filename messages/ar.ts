@@ -1366,6 +1366,7 @@ export const arMessages = {
     styleBrowseConfirmTitle: "هل تريد تجربة هذه؟",
     styleBrowseConfirmCancel: "عرض ستايلات أخرى",
     styleBrowseConfirmAction: "تجربة",
+    styleUsageCount: "تم إنشاؤه {count} مرة حتى الآن",
     styleCardAlt: "بطاقة أسلوب {name}",
     detailPresetLabel: "أُنشئت بـ One-Tap Style",
     detailPresetCardAlt: "بطاقة أسلوب {name}",

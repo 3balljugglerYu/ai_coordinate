@@ -1369,6 +1369,7 @@ export const esMessages = {
     styleBrowseConfirmTitle: "¿Quieres probar este conjunto?",
     styleBrowseConfirmCancel: "Ver otros estilos",
     styleBrowseConfirmAction: "Probarlo",
+    styleUsageCount: "Generado {count} veces hasta ahora",
     styleCardAlt: "Tarjeta de estilo {name}",
     detailPresetLabel: "Generado con One-Tap Style",
     detailPresetCardAlt: "Tarjeta de estilo {name}",

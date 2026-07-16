@@ -149,6 +149,8 @@ interface StylePageClientProps {
    * サーバ側でキャッシュ済み(style-popularity)。
    */
   generateCounts?: Readonly<Record<string, number>>;
+  /** 探索シート用: プリセットID -> 累計生成数(拡大プレビューの利用回数表示)。 */
+  generateTotals?: Readonly<Record<string, number>>;
   /** 探索シート用: 本人のお気に入りプリセットIDの初期集合(以後は楽観更新)。 */
   initialFavoritePresetIds?: readonly string[];
 }
@@ -336,6 +338,7 @@ export function StylePageClient({
   canUseFreePose = false,
   generatedPresetIds,
   generateCounts,
+  generateTotals,
   initialFavoritePresetIds,
 }: StylePageClientProps) {
   const router = useRouter();
@@ -1838,6 +1841,7 @@ export function StylePageClient({
           onOpenChange={setIsBrowseSheetOpen}
           presets={presets}
           generateCounts={generateCounts ?? {}}
+          generateTotals={generateTotals ?? {}}
           favoriteIds={favoritePresetIds}
           onToggleFavorite={(presetId, next) => {
             void handleToggleFavorite(presetId, next);

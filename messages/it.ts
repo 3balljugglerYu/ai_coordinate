@@ -1369,6 +1369,7 @@ export const itMessages = {
     styleBrowseConfirmTitle: "Provarlo?",
     styleBrowseConfirmCancel: "Vedi altri stili",
     styleBrowseConfirmAction: "Provalo",
+    styleUsageCount: "Generato {count} volte finora",
     styleCardAlt: "Carta di stile {name}",
     detailPresetLabel: "Generato con One-Tap Style",
     detailPresetCardAlt: "Carta di stile {name}",

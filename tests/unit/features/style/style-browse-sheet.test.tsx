@@ -31,8 +31,11 @@ const T: Record<string, string> = {
 };
 
 jest.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
-    key === "styleCardAlt" ? `スタイル ${values?.name}` : (T[key] ?? key),
+  useTranslations: () => (key: string, values?: Record<string, unknown>) => {
+    if (key === "styleCardAlt") return `スタイル ${values?.name}`;
+    if (key === "styleUsageCount") return `これまでに${values?.count}回つくられました`;
+    return T[key] ?? key;
+  },
 }));
 
 function preset(
@@ -75,6 +78,7 @@ function renderSheet(
     onOpenChange: jest.fn(),
     presets: [preset("p1"), preset("p2", { createdDaysAgo: 2 })],
     generateCounts: {},
+    generateTotals: {},
     favoriteIds: new Set<string>(),
     onToggleFavorite,
     onSelectPreset,
@@ -121,6 +125,57 @@ describe("StyleBrowseSheet", () => {
     fireEvent.click(screen.getByRole("button", { name: "他のスタイルをみる" }));
     expect(onSelectPreset).not.toHaveBeenCalled();
     expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+  });
+
+  test("確認ダイアログにもお気に入り(しおり)トグルがあり、累計利用回数を表示する", () => {
+    const { onToggleFavorite } = renderSheet({
+      generateTotals: { p1: 52 },
+    });
+    fireEvent.click(screen.getByText("p1"));
+    // 利用回数
+    expect(
+      screen.getByText("これまでに52回つくられました"),
+    ).toBeInTheDocument();
+    // ダイアログ内のしおりトグル(グリッド側と合わせて複数存在するので最後=ダイアログ側)
+    const toggles = screen.getAllByRole("button", { name: "お気に入りに追加" });
+    fireEvent.click(toggles[toggles.length - 1]);
+    expect(onToggleFavorite).toHaveBeenCalledWith("p1", true);
+  });
+
+  test("利用回数0のプリセットでは回数を表示しない", () => {
+    renderSheet({ generateTotals: {} });
+    fireEvent.click(screen.getByText("p1"));
+    expect(screen.queryByText(/これまでに.*回/)).toBeNull();
+  });
+
+  test("確認ダイアログは下スワイプで閉じる", () => {
+    renderSheet();
+    fireEvent.click(screen.getByText("p1"));
+    const dialog = screen.getByRole("alertdialog");
+    fireEvent.touchStart(dialog, {
+      touches: [{ clientX: 0, clientY: 100 }],
+      changedTouches: [{ clientX: 0, clientY: 100 }],
+    });
+    fireEvent.touchEnd(dialog, {
+      touches: [],
+      changedTouches: [{ clientX: 0, clientY: 260 }],
+    });
+    expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+  });
+
+  test("小さい下スワイプ(閾値未満)では閉じない", () => {
+    renderSheet();
+    fireEvent.click(screen.getByText("p1"));
+    const dialog = screen.getByRole("alertdialog");
+    fireEvent.touchStart(dialog, {
+      touches: [{ clientX: 0, clientY: 100 }],
+      changedTouches: [{ clientX: 0, clientY: 100 }],
+    });
+    fireEvent.touchEnd(dialog, {
+      touches: [],
+      changedTouches: [{ clientX: 0, clientY: 140 }],
+    });
+    expect(screen.getByText("こちらを試着しますか？")).toBeInTheDocument();
   });
 
   test("♡タップで onToggleFavorite(id, true) が呼ばれ、選択は発火しない", () => {

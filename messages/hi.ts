@@ -1367,6 +1367,7 @@ export const hiMessages = {
     styleBrowseConfirmTitle: "इसे आज़माएँ?",
     styleBrowseConfirmCancel: "अन्य स्टाइल देखें",
     styleBrowseConfirmAction: "ट्राय करें",
+    styleUsageCount: "अब तक {count} बार बनाया गया",
     styleCardAlt: "{name} स्टाइल कार्ड",
     detailPresetLabel: "One-Tap Style से उत्पन्न",
     detailPresetCardAlt: "{name} स्टाइल कार्ड",

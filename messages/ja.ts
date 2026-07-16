@@ -1309,6 +1309,7 @@ export const jaMessages = {
     styleBrowseConfirmTitle: "こちらを試着しますか？",
     styleBrowseConfirmCancel: "他のスタイルをみる",
     styleBrowseConfirmAction: "試着する",
+    styleUsageCount: "これまでに{count}回つくられました",
     styleCardAlt: "{name} のスタイルカード",
     detailPresetLabel: "ワンタップスタイルで生成",
     detailPresetCardAlt: "{name} のスタイルカード",

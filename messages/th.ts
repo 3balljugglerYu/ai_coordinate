@@ -1365,6 +1365,7 @@ export const thMessages = {
     styleBrowseConfirmTitle: "ลองชุดนี้?",
     styleBrowseConfirmCancel: "ดูสไตล์อื่น",
     styleBrowseConfirmAction: "ลอง",
+    styleUsageCount: "ถูกสร้างแล้ว {count} ครั้ง",
     styleCardAlt: "การ์ดสไตล์ {name}",
     detailPresetLabel: "สร้างด้วย One-Tap Style",
     detailPresetCardAlt: "การ์ดสไตล์ {name}",

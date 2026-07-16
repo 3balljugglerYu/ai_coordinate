@@ -1370,6 +1370,7 @@ export const deMessages = {
     styleBrowseConfirmTitle: "Anprobieren?",
     styleBrowseConfirmCancel: "Andere Styles sehen",
     styleBrowseConfirmAction: "Anprobieren",
+    styleUsageCount: "Bisher {count} Mal erstellt",
     styleCardAlt: "Stilkarte {name}",
     detailPresetLabel: "Mit One-Tap Style generiert",
     detailPresetCardAlt: "Stilkarte {name}",
