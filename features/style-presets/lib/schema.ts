@@ -153,6 +153,8 @@ export interface StylePresetPublicSummary {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
+  /** 公開プリセットの作成日時(ISO)。/style 探索シートの「✨新着」チップ判定に使う。 */
+  createdAt: string;
   category: StylePresetCategoryRef;
   imageInputMode: ImageInputMode;
   dualReferenceSource: DualReferenceSource;

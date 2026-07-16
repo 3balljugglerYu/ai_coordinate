@@ -185,6 +185,7 @@ describe("style-preset repository", () => {
         thumbnailWidth: 912,
         thumbnailHeight: 1173,
         hasBackgroundPrompt: true,
+        createdAt: "2026-03-22T00:00:00.000Z",
         category: {
           id: TEST_CATEGORY_ID,
           key: "coordinate",
