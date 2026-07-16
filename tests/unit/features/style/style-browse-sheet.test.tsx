@@ -25,6 +25,9 @@ const T: Record<string, string> = {
   styleFavoritesEmpty: "お気に入りはまだありません",
   styleDripLockedLabel: "あとで とうじょう",
   styleGeneratedBadge: "生成済み",
+  styleBrowseConfirmTitle: "こちらを試着しますか？",
+  styleBrowseConfirmCancel: "他のスタイルをみる",
+  styleBrowseConfirmAction: "試着する",
 };
 
 jest.mock("next-intl", () => ({
@@ -102,10 +105,22 @@ describe("StyleBrowseSheet", () => {
     expect(screen.getByText("p2")).toBeInTheDocument();
   });
 
-  test("カードタップで onSelectPreset が呼ばれる", () => {
+  test("カードタップで拡大プレビュー確認が開き、「試着する」で onSelectPreset", () => {
     const { onSelectPreset } = renderSheet();
     fireEvent.click(screen.getByText("p1"));
+    // 即選択はされず、確認ダイアログが開く。
+    expect(onSelectPreset).not.toHaveBeenCalled();
+    expect(screen.getByText("こちらを試着しますか？")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "試着する" }));
     expect(onSelectPreset).toHaveBeenCalledWith("p1");
+  });
+
+  test("確認ダイアログの「他のスタイルをみる」で選択せず閉じる", () => {
+    const { onSelectPreset } = renderSheet();
+    fireEvent.click(screen.getByText("p1"));
+    fireEvent.click(screen.getByRole("button", { name: "他のスタイルをみる" }));
+    expect(onSelectPreset).not.toHaveBeenCalled();
+    expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
   });
 
   test("♡タップで onToggleFavorite(id, true) が呼ばれ、選択は発火しない", () => {

@@ -1,8 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { Heart } from "lucide-react";
 import { useTranslations } from "next-intl";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Sheet,
   SheetContent,
@@ -65,6 +75,10 @@ export function StyleBrowseSheet({
 }: StyleBrowseSheetProps) {
   const t = useTranslations("style");
   const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
+  // カードタップは即選択せず、拡大プレビュー+「試着しますか？」の確認を挟む
+  // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
+  const [confirmingPreset, setConfirmingPreset] =
+    useState<StylePresetPublicSummary | null>(null);
 
   // now はチップ導出/絞り込みの「新着」判定にだけ使う。シートを開いている間は
   // 固定でよいので、open が変わったときだけ取り直す。
@@ -172,7 +186,7 @@ export function StyleBrowseSheet({
                       onClick={
                         isDripLocked
                           ? undefined
-                          : () => onSelectPreset(preset.id)
+                          : () => setConfirmingPreset(preset)
                       }
                       dripLocked={isDripLocked}
                       dripLockedLabel={
@@ -213,6 +227,56 @@ export function StyleBrowseSheet({
             </div>
           )}
         </div>
+
+        {/* 拡大プレビュー+確認(ホーム企画棚の試着確認と同パターン)。
+            「試着する」で確定し、シートごと閉じて生成フローへ。 */}
+        <AlertDialog
+          open={confirmingPreset !== null}
+          onOpenChange={(dialogOpen) => {
+            if (!dialogOpen) {
+              setConfirmingPreset(null);
+            }
+          }}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {t("styleBrowseConfirmTitle")}
+              </AlertDialogTitle>
+            </AlertDialogHeader>
+            {confirmingPreset ? (
+              <div className="flex flex-col items-center gap-3 py-2">
+                <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-lg bg-gray-100">
+                  <Image
+                    src={confirmingPreset.thumbnailImageUrl}
+                    alt={t("styleCardAlt", { name: confirmingPreset.title })}
+                    fill
+                    sizes="280px"
+                    className="object-cover object-top"
+                  />
+                </div>
+                <p className="text-base font-medium text-slate-900">
+                  {confirmingPreset.title}
+                </p>
+              </div>
+            ) : null}
+            <AlertDialogFooter>
+              <AlertDialogCancel>
+                {t("styleBrowseConfirmCancel")}
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  if (confirmingPreset) {
+                    onSelectPreset(confirmingPreset.id);
+                  }
+                  setConfirmingPreset(null);
+                }}
+              >
+                {t("styleBrowseConfirmAction")}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );
