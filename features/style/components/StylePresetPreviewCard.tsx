@@ -81,6 +81,11 @@ interface StylePresetPreviewCardProps {
   generated?: boolean;
   /** generated=true のバッジの読み上げ文言(例: 「生成済み」)。 */
   generatedLabel?: string;
+  /**
+   * 探索シートのグリッド用: 固定 180px でなく親セル幅いっぱいに広げる。
+   * 画像は 3:4 のアスペクト比を維持する(ストリップの 180x240 と同比率)。
+   */
+  fluid?: boolean;
 }
 
 export function buildStylePresetImageSrc(
@@ -110,6 +115,7 @@ export function StylePresetPreviewCard({
   dripLockedLabel,
   generated = false,
   generatedLabel,
+  fluid = false,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
   const isLocked = typeof lockedLabel === "string" && lockedLabel.length > 0;
@@ -127,21 +133,35 @@ export function StylePresetPreviewCard({
       className={`group overflow-hidden p-0 transition ${
         selected ? "border-2 border-primary" : "hover:ring-2 hover:ring-primary/50"
       }`}
-      style={{
-        width: STYLE_PRESET_CARD_WIDTH_PX,
-        height: STYLE_PRESET_CARD_HEIGHT_PX,
-      }}
+      style={
+        fluid
+          ? { width: "100%" }
+          : {
+              width: STYLE_PRESET_CARD_WIDTH_PX,
+              height: STYLE_PRESET_CARD_HEIGHT_PX,
+            }
+      }
     >
       <div className="flex h-full flex-col overflow-hidden bg-gray-100">
         <div
           className="relative w-full overflow-hidden bg-gray-100"
-          style={{ height: STYLE_PRESET_CARD_IMAGE_HEIGHT_PX }}
+          style={
+            fluid
+              ? {
+                  aspectRatio: `${STYLE_PRESET_CARD_WIDTH_PX} / ${STYLE_PRESET_CARD_IMAGE_HEIGHT_PX}`,
+                }
+              : { height: STYLE_PRESET_CARD_IMAGE_HEIGHT_PX }
+          }
         >
           <Image
             src={buildStylePresetImageSrc(preset)}
             alt={alt}
             fill
-            sizes={`${STYLE_PRESET_CARD_WIDTH_PX}px`}
+            sizes={
+              fluid
+                ? "(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                : `${STYLE_PRESET_CARD_WIDTH_PX}px`
+            }
             className="object-cover object-top"
             style={
               dripLocked
@@ -218,7 +238,7 @@ export function StylePresetPreviewCard({
   if (!onClick || dripLocked) {
     return (
       <div
-        className="w-fit flex-shrink-0"
+        className={fluid ? "w-full" : "w-fit flex-shrink-0"}
         aria-disabled={dripLocked ? true : undefined}
       >
         {card}
@@ -231,7 +251,9 @@ export function StylePresetPreviewCard({
       ref={buttonRef}
       type="button"
       onClick={onClick}
-      className="flex-shrink-0 text-left disabled:cursor-not-allowed disabled:opacity-60"
+      className={`text-left disabled:cursor-not-allowed disabled:opacity-60 ${
+        fluid ? "w-full" : "flex-shrink-0"
+      }`}
       aria-pressed={typeof isSelected === "boolean" ? selected : undefined}
       disabled={disabled}
     >

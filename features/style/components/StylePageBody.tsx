@@ -17,6 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { getGeneratedCollectionPresetIds } from "@/features/collections/lib/generated-preset-ids";
+import { getStyleGenerateCounts } from "@/features/style/lib/style-popularity";
 import {
   applyCollectionUnlockGating,
   type CollectionUnlockContext,
@@ -95,6 +96,21 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
         )
       : [];
 
+  // 探索シート用データ:
+  //  - 人気(全ユーザー共通・"use cache" 済み): プリセットID -> 直近30日生成数
+  //  - お気に入り初期集合(本人のみ・RLS適用): シートの♡表示と絞り込みの初期値
+  const generateCounts = await getStyleGenerateCounts();
+  let favoritePresetIds: string[] = [];
+  if (user) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("style_preset_favorites")
+      .select("preset_id");
+    favoritePresetIds = (data ?? [])
+      .map((row) => row.preset_id as string)
+      .filter(Boolean);
+  }
+
   return (
     <>
       {/* coordinate と同様、ログイン時はマウント時に router.refresh() して
@@ -147,6 +163,9 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
           canUseFreePose={isAdminViewerFlag}
           // 企画カードの「生成済み ✓」表示用
           generatedPresetIds={generatedPresetIds}
+          // 探索シート(チップ+グリッド)用: 人気カウントとお気に入り初期集合
+          generateCounts={generateCounts}
+          initialFavoritePresetIds={favoritePresetIds}
         />
 
         {/* 生成結果一覧（認証ユーザーのみ）。/coordinate と同じ UI を再利用。 */}

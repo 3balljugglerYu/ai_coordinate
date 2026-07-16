@@ -11,8 +11,9 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { Maximize2, Minimize2, Share2 } from "lucide-react";
+import { LayoutGrid, Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { StyleBrowseSheet } from "@/features/style/components/StyleBrowseSheet";
 import { StyleReferencePanel } from "@/features/style/components/StyleReferencePanel";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -143,6 +144,13 @@ interface StylePageClientProps {
    * サーバ側(StylePageBody)で collection-series カテゴリ分のみ集計して渡す。
    */
   generatedPresetIds?: readonly string[];
+  /**
+   * 探索シート用: プリセットID -> 直近生成数(👑人気チップの判定・並び替え)。
+   * サーバ側でキャッシュ済み(style-popularity)。
+   */
+  generateCounts?: Readonly<Record<string, number>>;
+  /** 探索シート用: 本人のお気に入りプリセットIDの初期集合(以後は楽観更新)。 */
+  initialFavoritePresetIds?: readonly string[];
 }
 
 interface StyleErrorState {
@@ -327,6 +335,8 @@ export function StylePageClient({
   subscriptionPlan = "free",
   canUseFreePose = false,
   generatedPresetIds,
+  generateCounts,
+  initialFavoritePresetIds,
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -338,6 +348,11 @@ export function StylePageClient({
   const generatedPresetIdSet = useMemo(
     () => new Set(generatedPresetIds ?? []),
     [generatedPresetIds],
+  );
+  // 探索シート(チップ+グリッド)の開閉と、お気に入り(♡)の楽観更新集合。
+  const [isBrowseSheetOpen, setIsBrowseSheetOpen] = useState(false);
+  const [favoritePresetIds, setFavoritePresetIds] = useState<Set<string>>(
+    () => new Set(initialFavoritePresetIds ?? []),
   );
   const { toast, dismiss } = useToast();
   const presetStripRef = useRef<HTMLDivElement | null>(null);
@@ -1054,6 +1069,56 @@ export function StylePageClient({
     });
   };
 
+  /** 探索シートからの選択: シートを閉じて通常の選択フローへ。 */
+  const handleSelectFromBrowseSheet = (
+    presetId: StylePresetPublicSummary["id"],
+  ) => {
+    setIsBrowseSheetOpen(false);
+    handlePresetSelect(presetId);
+  };
+
+  /**
+   * お気に入り(♡)トグル。楽観更新し、API 失敗時はロールバック+トースト。
+   * ゲストはログイン誘導のみ(集合は変更しない)。
+   */
+  const handleToggleFavorite = async (presetId: string, next: boolean) => {
+    if (effectiveAuthState !== "authenticated") {
+      toast({ title: t("styleFavoriteLoginRequired") });
+      return;
+    }
+    setFavoritePresetIds((prev) => {
+      const updated = new Set(prev);
+      if (next) {
+        updated.add(presetId);
+      } else {
+        updated.delete(presetId);
+      }
+      return updated;
+    });
+    try {
+      const res = await fetch("/api/style-presets/favorites", {
+        method: next ? "POST" : "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ presetId }),
+      });
+      if (!res.ok) {
+        throw new Error(`favorites api ${res.status}`);
+      }
+    } catch {
+      // ロールバック(逆操作)。
+      setFavoritePresetIds((prev) => {
+        const updated = new Set(prev);
+        if (next) {
+          updated.delete(presetId);
+        } else {
+          updated.add(presetId);
+        }
+        return updated;
+      });
+      toast({ title: t("styleFavoriteError"), variant: "destructive" });
+    }
+  };
+
   const endPresetStripDrag = () => {
     presetDragStartXRef.current = 0;
     presetDragStartScrollLeftRef.current = 0;
@@ -1694,13 +1759,24 @@ export function StylePageClient({
   return (
     <div className="space-y-8">
       <section className="space-y-3" data-tour="style-tour-preset">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold text-gray-900">
-            {t("sectionTitle")}
-          </h2>
-          <p className="text-sm leading-6 text-slate-500">
-            {t("sectionDescription")}
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {t("sectionTitle")}
+            </h2>
+            <p className="text-sm leading-6 text-slate-500">
+              {t("sectionDescription")}
+            </p>
+          </div>
+          {/* 探索シート(チップ+グリッド)を開く。ストリップは従来どおり残す。 */}
+          <button
+            type="button"
+            onClick={() => setIsBrowseSheetOpen(true)}
+            className="mt-0.5 inline-flex shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            {t("styleBrowseAll")}
+            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+          </button>
         </div>
         <div
           ref={presetStripRef}
@@ -1755,6 +1831,23 @@ export function StylePageClient({
             );
           })}
         </div>
+
+        {/* 探索シート(チップ+グリッド)。presets はストリップと同一(解放ゲート適用済み)。 */}
+        <StyleBrowseSheet
+          open={isBrowseSheetOpen}
+          onOpenChange={setIsBrowseSheetOpen}
+          presets={presets}
+          generateCounts={generateCounts ?? {}}
+          favoriteIds={favoritePresetIds}
+          onToggleFavorite={(presetId, next) => {
+            void handleToggleFavorite(presetId, next);
+          }}
+          onSelectPreset={handleSelectFromBrowseSheet}
+          isAuthenticated={effectiveAuthState === "authenticated"}
+          generatedPresetIds={generatedPresetIdSet}
+          locale={styleCardLocale}
+          selectedPresetId={selectedPresetId}
+        />
       </section>
 
       <section className="space-y-6">
