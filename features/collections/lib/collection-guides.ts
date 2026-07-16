@@ -9,7 +9,9 @@
  */
 const COLLECTION_GUIDE_PATHS: Record<string, string> = {
   travel_to_italy: "/collections/italy",
+  // ことわざ辞典は上巻/下巻とも同じ遊び方ページを指す。
   kotowaza_dictionary: "/collections/kotowaza",
+  kotowaza_dictionary_2: "/collections/kotowaza",
 };
 
 /** 未登録カテゴリのフォールバック先(神コレの遊び方)。 */
