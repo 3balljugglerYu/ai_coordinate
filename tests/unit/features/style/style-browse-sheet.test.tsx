@@ -156,12 +156,37 @@ describe("StyleBrowseSheet", () => {
     expect(screen.queryByText(/これまでに.*回/)).toBeNull();
   });
 
+  /** 確認ダイアログ(シート自体も role=dialog のため、最後の dialog を取る)。 */
+  function getConfirmDialog(): HTMLElement {
+    const dialogs = screen.getAllByRole("dialog");
+    return dialogs[dialogs.length - 1];
+  }
+
+  /**
+   * jsdom は PointerEvent 未実装で fireEvent.pointerDown だと pointerType/clientY が
+   * 落ちるため、MouseEvent ベースで pointer イベントを合成して発火する。
+   */
+  function firePointer(
+    el: Element,
+    type: "pointerdown" | "pointerup",
+    pointerType: string,
+    clientY: number,
+  ) {
+    const event = new MouseEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      clientY,
+    });
+    Object.defineProperty(event, "pointerType", { value: pointerType });
+    fireEvent(el, event);
+  }
+
   test("確認ダイアログの画像はサムネの実アスペクト比で表示(横長は横長・全幅)", () => {
     renderSheet({
       presets: [preset("wide", { thumbnailWidth: 1280, thumbnailHeight: 853 })],
     });
     fireEvent.click(screen.getByText("wide"));
-    const dialog = screen.getByRole("alertdialog");
+    const dialog = getConfirmDialog();
     const img = dialog.querySelector('img[alt="スタイル wide"]');
     const container = img?.parentElement as HTMLElement;
     expect(container.style.aspectRatio).toBe("1280 / 853");
@@ -174,41 +199,41 @@ describe("StyleBrowseSheet", () => {
       presets: [preset("tall", { thumbnailWidth: 912, thumbnailHeight: 1173 })],
     });
     fireEvent.click(screen.getByText("tall"));
-    const dialog = screen.getByRole("alertdialog");
+    const dialog = getConfirmDialog();
     const img = dialog.querySelector('img[alt="スタイル tall"]');
     const container = img?.parentElement as HTMLElement;
     expect(container.style.aspectRatio).toBe("912 / 1173");
     expect(container.className).toContain("max-w-[280px]");
   });
 
-  test("確認ダイアログは下スワイプで閉じる", () => {
+  test("確認ダイアログはタッチの下スワイプで閉じる", () => {
     renderSheet();
     fireEvent.click(screen.getByText("p1"));
-    const dialog = screen.getByRole("alertdialog");
-    fireEvent.touchStart(dialog, {
-      touches: [{ clientX: 0, clientY: 100 }],
-      changedTouches: [{ clientX: 0, clientY: 100 }],
-    });
-    fireEvent.touchEnd(dialog, {
-      touches: [],
-      changedTouches: [{ clientX: 0, clientY: 260 }],
-    });
+    const dialog = getConfirmDialog();
+    firePointer(dialog, "pointerdown", "touch", 100);
+    firePointer(dialog, "pointerup", "touch", 260);
     expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
   });
 
-  test("小さい下スワイプ(閾値未満)では閉じない", () => {
+  test("小さい下スワイプ(閾値未満)やマウスドラッグでは閉じない", () => {
     renderSheet();
     fireEvent.click(screen.getByText("p1"));
-    const dialog = screen.getByRole("alertdialog");
-    fireEvent.touchStart(dialog, {
-      touches: [{ clientX: 0, clientY: 100 }],
-      changedTouches: [{ clientX: 0, clientY: 100 }],
-    });
-    fireEvent.touchEnd(dialog, {
-      touches: [],
-      changedTouches: [{ clientX: 0, clientY: 140 }],
-    });
+    const dialog = getConfirmDialog();
+    // 閾値未満のタッチスワイプ
+    firePointer(dialog, "pointerdown", "touch", 100);
+    firePointer(dialog, "pointerup", "touch", 140);
     expect(screen.getByText("こちらを試着しますか？")).toBeInTheDocument();
+    // マウスのドラッグ(テキスト選択等)では閉じない
+    firePointer(dialog, "pointerdown", "mouse", 100);
+    firePointer(dialog, "pointerup", "mouse", 300);
+    expect(screen.getByText("こちらを試着しますか？")).toBeInTheDocument();
+  });
+
+  test("確認ダイアログはEscで閉じる(通常Dialog化で外側/Escが効く)", () => {
+    renderSheet();
+    fireEvent.click(screen.getByText("p1"));
+    fireEvent.keyDown(getConfirmDialog(), { key: "Escape" });
+    expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
   });
 
   test("♡タップで onToggleFavorite(id, true) が呼ばれ、選択は発火しない", () => {

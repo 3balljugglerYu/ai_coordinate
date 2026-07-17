@@ -4,15 +4,13 @@ import { useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Bookmark } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Sheet,
   SheetContent,
@@ -87,8 +85,10 @@ export function StyleBrowseSheet({
   // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
-  // 「下スワイプで閉じる」用: タッチ開始Y座標(モバイルの自然な閉じ操作)。
-  const touchStartYRef = useRef<number | null>(null);
+  // 「下スワイプで閉じる」用: スワイプ開始Y座標(モバイルの自然な閉じ操作)。
+  // touch イベントでなく Pointer Events を使う(DevTools のデバイスモードや
+  // ペン入力でも動くように)。マウスは対象外(テキスト選択ドラッグ等との誤反応防止)。
+  const swipeStartYRef = useRef<number | null>(null);
 
   // now はチップ導出/絞り込みの「新着」判定にだけ使う。シートを開いている間は
   // 固定でよいので、open が変わったときだけ取り直す。
@@ -240,9 +240,10 @@ export function StyleBrowseSheet({
           )}
         </div>
 
-        {/* 拡大プレビュー+確認(ホーム企画棚の試着確認と同パターン)。
+        {/* 拡大プレビュー+確認。気軽に眺めて戻れるよう AlertDialog でなく通常の
+            Dialog を使う(外側タップ・Esc・×・下スワイプで閉じられる)。
             「試着する」で確定し、シートごと閉じて生成フローへ。 */}
-        <AlertDialog
+        <Dialog
           open={confirmingPreset !== null}
           onOpenChange={(dialogOpen) => {
             if (!dialogOpen) {
@@ -250,29 +251,31 @@ export function StyleBrowseSheet({
             }
           }}
         >
-          <AlertDialogContent
+          <DialogContent
             // モバイルの自然な操作として「下スワイプで閉じる」に対応する。
-            onTouchStart={(event) => {
-              touchStartYRef.current = event.touches[0]?.clientY ?? null;
+            // Pointer Events で touch/pen のみ対象(マウスのドラッグは無視)。
+            onPointerDown={(event) => {
+              if (event.pointerType !== "mouse") {
+                swipeStartYRef.current = event.clientY;
+              }
             }}
-            onTouchEnd={(event) => {
-              const startY = touchStartYRef.current;
-              touchStartYRef.current = null;
-              const endY = event.changedTouches[0]?.clientY;
+            onPointerUp={(event) => {
+              const startY = swipeStartYRef.current;
+              swipeStartYRef.current = null;
               if (
+                event.pointerType !== "mouse" &&
                 startY !== null &&
-                typeof endY === "number" &&
-                endY - startY > SWIPE_CLOSE_THRESHOLD_PX
+                event.clientY - startY > SWIPE_CLOSE_THRESHOLD_PX
               ) {
                 setConfirmingPreset(null);
               }
             }}
           >
-            <AlertDialogHeader>
-              <AlertDialogTitle>
+            <DialogHeader>
+              <DialogTitle className="text-center">
                 {t("styleBrowseConfirmTitle")}
-              </AlertDialogTitle>
-            </AlertDialogHeader>
+              </DialogTitle>
+            </DialogHeader>
             {confirmingPreset ? (
               <div className="flex flex-col items-center gap-3 py-2">
                 {/* 画像はサムネの実アスペクト比で表示(拡大表示と同様、横長はクロップしない)。
@@ -350,11 +353,8 @@ export function StyleBrowseSheet({
                 ) : null}
               </div>
             ) : null}
-            <AlertDialogFooter>
-              <AlertDialogCancel>
-                {t("styleBrowseConfirmCancel")}
-              </AlertDialogCancel>
-              <AlertDialogAction
+            <div className="flex flex-col gap-2">
+              <Button
                 onClick={() => {
                   if (confirmingPreset) {
                     onSelectPreset(confirmingPreset.id);
@@ -363,10 +363,16 @@ export function StyleBrowseSheet({
                 }}
               >
                 {t("styleBrowseConfirmAction")}
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmingPreset(null)}
+              >
+                {t("styleBrowseConfirmCancel")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </SheetContent>
     </Sheet>
   );
