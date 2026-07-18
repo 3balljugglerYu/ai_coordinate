@@ -1,3 +1,4 @@
+import { isActiveEventCategory } from "@/features/collections/lib/collection-display-period";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 /**
@@ -29,30 +30,6 @@ export interface EventShelf {
   /** 開催終了日時(カウントダウン用)。null なら無期限(カウントダウン非表示) */
   endsAt: string | null;
   isCompleted: boolean;
-}
-
-/**
- * 企画棚の対象カテゴリか。
- * コレクションシリーズ かつ 表示ウィンドウがアクティブ(開始済み・未終了)。
- * 解放方式(順次/一斉/前提付き)は問わない。starts/ends が null の側は無制限として
- * 扱う(/style の表示期間判定と同じ解釈)。
- */
-function isActiveEventCategory(
-  category: StylePresetPublicSummary["category"],
-  now: Date,
-): boolean {
-  if (!category.isCollectionSeries) {
-    return false;
-  }
-  const startsAt = category.collectionDisplayStartsAt;
-  const endsAt = category.collectionDisplayEndsAt;
-  if (startsAt && new Date(startsAt).getTime() > now.getTime()) {
-    return false;
-  }
-  if (endsAt && new Date(endsAt).getTime() <= now.getTime()) {
-    return false;
-  }
-  return true;
 }
 
 /**

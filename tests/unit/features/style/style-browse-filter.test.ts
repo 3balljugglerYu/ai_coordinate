@@ -18,6 +18,9 @@ function preset(
     providerUserId?: string | null;
     categoryProviderUserId?: string | null;
     locked?: boolean;
+    isCollectionSeries?: boolean;
+    collectionDisplayStartsAt?: string | null;
+    collectionDisplayEndsAt?: string | null;
   } = {},
 ): StylePresetPublicSummary {
   const {
@@ -27,6 +30,9 @@ function preset(
     providerUserId = null,
     categoryProviderUserId = null,
     locked,
+    isCollectionSeries = false,
+    collectionDisplayStartsAt = null,
+    collectionDisplayEndsAt = null,
   } = overrides;
   return {
     id,
@@ -41,6 +47,9 @@ function preset(
       displayNameJa: categoryNameJa,
       displayNameEn: categoryNameJa,
       providerUserId: categoryProviderUserId,
+      isCollectionSeries,
+      collectionDisplayStartsAt,
+      collectionDisplayEndsAt,
     } as StylePresetPublicSummary["category"],
     imageInputMode: "single",
     dualReferenceSource: "admin",
@@ -91,8 +100,8 @@ describe("deriveStyleBrowseChips", () => {
       "new",
       "popular",
       "creator",
-      "category:coordinate",
       "category:taste",
+      "category:coordinate",
     ]);
     // カテゴリチップは displayName を持つ。
     expect(chips.find((c) => c.id === "category:taste")?.categoryLabelJa).toBe(
@@ -106,6 +115,84 @@ describe("deriveStyleBrowseChips", () => {
       context(),
     );
     expect(chips.some((c) => c.id.startsWith("category:"))).toBe(false);
+  });
+
+  test("イベントチップ: 開催中のコレクションシリーズがあればお気に入りの直後に出る", () => {
+    const presets = [
+      preset("normal"),
+      preset("ev", {
+        categoryKey: "kotowaza_dictionary_2",
+        isCollectionSeries: true,
+        collectionDisplayStartsAt: new Date(NOW.getTime() - DAY_MS).toISOString(),
+        collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
+      }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.map((c) => c.id).slice(0, 3)).toEqual([
+      "all",
+      "favorites",
+      "event",
+    ]);
+  });
+
+  test("イベントチップ: 開催期間外(終了済み)なら出さない", () => {
+    const presets = [
+      preset("normal"),
+      preset("ended", {
+        categoryKey: "old_event",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() - DAY_MS).toISOString(),
+      }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.some((c) => c.id === "event")).toBe(false);
+  });
+
+  test("イベントチップ: コレクションシリーズ未登録(通常カテゴリ)だけなら出さない", () => {
+    const chips = deriveStyleBrowseChips(
+      [preset("a"), preset("b", { categoryKey: "taste" })],
+      context(),
+    );
+    expect(chips.some((c) => c.id === "event")).toBe(false);
+  });
+
+  test("非表示指定カテゴリ(coordinate_2)のチップは出さない(プリセット自体は残る)", () => {
+    const presets = [
+      preset("a", { categoryKey: "coordinate" }),
+      preset("b", { categoryKey: "coordinate_2", categoryNameJa: "コーディネート2.0" }),
+      preset("c", { categoryKey: "taste" }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.map((c) => c.id)).toEqual([
+      "all",
+      "favorites",
+      "category:taste",
+      "category:coordinate",
+    ]);
+    // チップを出さないだけで、絞り込み結果(すべて)からは除外しない。
+    expect(
+      filterStyleBrowsePresets(presets, "all", context()).map((p) => p.id),
+    ).toContain("b");
+  });
+
+  test("カテゴリチップの末尾はアレンジ→テイスト→コーディネートの固定順(他は出現順で前)", () => {
+    const presets = [
+      preset("co", { categoryKey: "coordinate" }),
+      preset("taste", { categoryKey: "character_coordinate" }),
+      preset("ev", {
+        categoryKey: "kotowaza_dictionary_2",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
+      }),
+      preset("remix", { categoryKey: "character_remix" }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.map((c) => c.id).filter((id) => id.startsWith("category:"))).toEqual([
+      "category:kotowaza_dictionary_2",
+      "category:character_remix",
+      "category:character_coordinate",
+      "category:coordinate",
+    ]);
   });
 
   test("カテゴリ提供者(category.providerUserId)でもクリエイターチップが出る", () => {
@@ -161,10 +248,41 @@ describe("filterStyleBrowsePresets", () => {
     ).toEqual(["creator"]);
   });
 
+  test("event: 開催中のコレクションシリーズのプリセットのみ", () => {
+    const withEvent = [
+      ...presets,
+      preset("ev1", {
+        categoryKey: "kotowaza_dictionary_2",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
+      }),
+      preset("ended", {
+        categoryKey: "old_event",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() - DAY_MS).toISOString(),
+      }),
+    ];
+    expect(
+      filterStyleBrowsePresets(withEvent, "event", ctx).map((p) => p.id),
+    ).toEqual(["ev1"]);
+  });
+
   test("category:<key>: 該当カテゴリのみ", () => {
     expect(
       filterStyleBrowsePresets(presets, "category:taste", ctx).map((p) => p.id),
     ).toEqual(["taste"]);
+  });
+
+  test("category:coordinate: 集約対象の coordinate_2 も含める", () => {
+    const withV2 = [
+      ...presets,
+      preset("co2", { categoryKey: "coordinate_2" }),
+    ];
+    expect(
+      filterStyleBrowsePresets(withV2, "category:coordinate", ctx).map(
+        (p) => p.id,
+      ),
+    ).toEqual(["old", "new", "pop-low", "pop-high", "creator", "co2"]);
   });
 
   test("locked(シルエット)も除外しない(現行ストリップと同じ)", () => {

@@ -60,6 +60,7 @@ function makePreset(
     thumbnailWidth: 100,
     thumbnailHeight: 100,
     hasBackgroundPrompt: false,
+    createdAt: "2026-01-01T00:00:00Z",
     category,
     imageInputMode: "single",
     dualReferenceSource: "admin",

@@ -23,12 +23,14 @@ import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema"
 import {
   deriveStyleBrowseChips,
   filterStyleBrowsePresets,
+  STYLE_NEW_WINDOW_DAYS,
   type StyleBrowseChipId,
 } from "@/features/style/lib/style-browse-filter";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 /** チップ先頭の絵文字(装飾)。ラベル本文は i18n で解決する。 */
 const CHIP_EMOJI: Partial<Record<string, string>> = {
+  event: "🎉",
   favorites: "🔖",
   new: "✨",
   popular: "👑",
@@ -117,6 +119,8 @@ export function StyleBrowseSheet({
     switch (chip.id) {
       case "all":
         return t("styleChipAll");
+      case "event":
+        return t("styleChipEvent");
       case "favorites":
         return t("styleChipFavorites");
       case "new":
@@ -172,6 +176,19 @@ export function StyleBrowseSheet({
 
         {/* グリッド本体(スクロール領域) */}
         <div className="flex-1 overflow-y-auto px-4 pb-8 pt-4">
+          {/* 人気は「直近30日」窓の並び順、新着は「直近14日」窓の絞り込み。
+              拡大プレビューの累計回数と食い違って見えることがあるため、
+              チップの基準をグリッド上部に明示する。 */}
+          {activeChip === "popular" && filtered.length > 0 ? (
+            <p className="mb-3 text-xs text-slate-500">
+              {t("stylePopularSortNote")}
+            </p>
+          ) : null}
+          {activeChip === "new" && filtered.length > 0 ? (
+            <p className="mb-3 text-xs text-slate-500">
+              {t("styleNewSortNote", { days: STYLE_NEW_WINDOW_DAYS })}
+            </p>
+          ) : null}
           {filtered.length === 0 ? (
             <p className="py-16 text-center text-sm text-gray-500">
               {activeChip === "favorites"

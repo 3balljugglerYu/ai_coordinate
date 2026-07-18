@@ -75,6 +75,7 @@ import type { StylePresetPublicSummary } from "@/features/style-presets/lib/sche
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { useGenerationFeedback } from "@/features/style/hooks/useGenerationFeedback";
+import { useStyleFavorites } from "@/features/style/hooks/useStyleFavorites";
 import { recordStyleUsageClientEvent } from "@/features/style/lib/style-usage-client";
 import { applyPerstaWatermark } from "@/features/generation/lib/apply-watermark";
 import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
@@ -352,11 +353,8 @@ export function StylePageClient({
     () => new Set(generatedPresetIds ?? []),
     [generatedPresetIds],
   );
-  // 探索シート(チップ+グリッド)の開閉と、お気に入り(♡)の楽観更新集合。
+  // 探索シート(チップ+グリッド)の開閉。
   const [isBrowseSheetOpen, setIsBrowseSheetOpen] = useState(false);
-  const [favoritePresetIds, setFavoritePresetIds] = useState<Set<string>>(
-    () => new Set(initialFavoritePresetIds ?? []),
-  );
   const { toast, dismiss } = useToast();
   const presetStripRef = useRef<HTMLDivElement | null>(null);
   const generationStatusSectionRef = useRef<HTMLDivElement | null>(null);
@@ -495,6 +493,11 @@ export function StylePageClient({
     : false;
   const effectiveAuthState = rateLimitStatus?.authState ?? initialAuthState ?? null;
   const wardrobeSave = useWardrobeSave({ authState: effectiveAuthState });
+  // 探索シートのお気に入り(しおり)。楽観更新+失敗時ロールバックはフック側が担う。
+  const { favoritePresetIds, toggleFavorite } = useStyleFavorites({
+    initialFavoritePresetIds,
+    isAuthenticated: effectiveAuthState === "authenticated",
+  });
   const modelAuthState =
     effectiveAuthState === "authenticated" ? "authenticated" : "guest";
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
@@ -1078,48 +1081,6 @@ export function StylePageClient({
   ) => {
     setIsBrowseSheetOpen(false);
     handlePresetSelect(presetId);
-  };
-
-  /**
-   * お気に入り(♡)トグル。楽観更新し、API 失敗時はロールバック+トースト。
-   * ゲストはログイン誘導のみ(集合は変更しない)。
-   */
-  const handleToggleFavorite = async (presetId: string, next: boolean) => {
-    if (effectiveAuthState !== "authenticated") {
-      toast({ title: t("styleFavoriteLoginRequired") });
-      return;
-    }
-    setFavoritePresetIds((prev) => {
-      const updated = new Set(prev);
-      if (next) {
-        updated.add(presetId);
-      } else {
-        updated.delete(presetId);
-      }
-      return updated;
-    });
-    try {
-      const res = await fetch("/api/style-presets/favorites", {
-        method: next ? "POST" : "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ presetId }),
-      });
-      if (!res.ok) {
-        throw new Error(`favorites api ${res.status}`);
-      }
-    } catch {
-      // ロールバック(逆操作)。
-      setFavoritePresetIds((prev) => {
-        const updated = new Set(prev);
-        if (next) {
-          updated.delete(presetId);
-        } else {
-          updated.add(presetId);
-        }
-        return updated;
-      });
-      toast({ title: t("styleFavoriteError"), variant: "destructive" });
-    }
   };
 
   const endPresetStripDrag = () => {
@@ -1844,7 +1805,7 @@ export function StylePageClient({
           generateTotals={generateTotals ?? {}}
           favoriteIds={favoritePresetIds}
           onToggleFavorite={(presetId, next) => {
-            void handleToggleFavorite(presetId, next);
+            void toggleFavorite(presetId, next);
           }}
           onSelectPreset={handleSelectFromBrowseSheet}
           isAuthenticated={effectiveAuthState === "authenticated"}

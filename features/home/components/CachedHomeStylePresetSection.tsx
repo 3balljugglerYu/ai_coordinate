@@ -17,6 +17,10 @@ import {
   listActiveEventCategoryKeys,
 } from "@/features/home/lib/derive-event-shelves";
 import type { CompletedMountView } from "@/features/my-page/components/MyPageCollections";
+import {
+  getStyleGenerateCounts,
+  getStyleGenerateTotalCounts,
+} from "@/features/style/lib/style-popularity";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 
@@ -73,9 +77,11 @@ export async function CachedHomeStylePresetSection({
   // 開催中企画がある場合のみ発行(通常時はクエリ増ゼロ)。失敗時は空集合=全てNEW表示に
   // フォールバックし、ホーム全体は壊さない。
   const generatedIdsByKey = new Map<string, ReadonlySet<string>>();
+  // 探索シートの「生成済み ✓」にも同じ集合を使うため、棚振り分けの外でも参照できるようにする。
+  let flatGeneratedIds: ReadonlySet<string> = new Set<string>();
   const activeEventKeys = listActiveEventCategoryKeys(gated, now);
   if (userId && activeEventKeys.length > 0) {
-    const flatGeneratedIds = new Set(
+    flatGeneratedIds = new Set(
       await getGeneratedCollectionPresetIds(await createClient(), activeEventKeys),
     );
     // カテゴリ別に分けて deriveEventShelves の期待する Map 形状に整える
@@ -155,6 +161,24 @@ export async function CachedHomeStylePresetSection({
     unlockContext,
   );
 
+  // ホームの「すべて見る」から開く探索シート用データ(/style の StylePageBody と同方針)。
+  //  - 人気/累計は全ユーザー共通の "use cache" 済み集計
+  //  - お気に入りは本人のみ(RLS適用)。未ログイン時はクエリ自体を発行しない
+  const [generateCounts, generateTotals] = await Promise.all([
+    getStyleGenerateCounts(),
+    getStyleGenerateTotalCounts(),
+  ]);
+  let favoritePresetIds: string[] = [];
+  if (userId) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from("style_preset_favorites")
+      .select("preset_id");
+    favoritePresetIds = (data ?? [])
+      .map((row) => row.preset_id as string)
+      .filter(Boolean);
+  }
+
   return (
     <>
       {unlockAnnouncements.length > 0 && (
@@ -168,7 +192,17 @@ export async function CachedHomeStylePresetSection({
           completedMount={completedMountByKey.get(shelf.categoryKey) ?? null}
         />
       ))}
-      <HomeStylePresetCarousel presets={presets} />
+      <HomeStylePresetCarousel
+        presets={presets}
+        // 探索シートには /style と同じ「解放ゲート適用済みの全プリセット」を渡す
+        // (カルーセルと違い locked=シルエットや棚振り分け分も含めて一覧できる)。
+        browsePresets={gated}
+        generateCounts={generateCounts}
+        generateTotals={generateTotals}
+        initialFavoritePresetIds={favoritePresetIds}
+        isAuthenticated={Boolean(userId)}
+        generatedPresetIds={Array.from(flatGeneratedIds)}
+      />
     </>
   );
 }
