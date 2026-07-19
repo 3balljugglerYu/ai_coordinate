@@ -103,6 +103,17 @@ export function StyleBrowseSheet({
   // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
+  // チップ列の常時表示スクロールインジケーター用。iOS Safari は
+  // ::-webkit-scrollbar による常時表示に非対応のため、自前の細いバーを描画する。
+  // スクロールのたびに再レンダリングするとグリッド全体が再描画されてカクつくため、
+  // React state を使わず effect 内で thumb の DOM スタイルを直接更新する。
+  // チップ列は Radix の Portal 内にあり open と同一コミットではマウントされない
+  // (ref が null のまま effect が走って終わる)ため、callback ref + state で
+  // 「実際に DOM が生えたとき」に effect を再実行させる。
+  const [chipRowEl, setChipRowEl] = useState<HTMLDivElement | null>(null);
+  const chipIndicatorTrackRef = useRef<HTMLDivElement | null>(null);
+  const chipIndicatorThumbRef = useRef<HTMLDivElement | null>(null);
+
   // 「下スワイプで閉じる」用: スワイプ開始Y座標(モバイルの自然な閉じ操作)。
   // touch イベントでなく Pointer Events を使う(DevTools のデバイスモードや
   // ペン入力でも動くように)。マウスは対象外(テキスト選択ドラッグ等との誤反応防止)。
@@ -210,6 +221,57 @@ export function StyleBrowseSheet({
     [presets, activeChip, context],
   );
 
+  // チップ列のスクロールインジケーター更新。開いている間だけ監視する。
+  // rAF で間引き、位置は transform(合成のみ・レイアウト不発)で動かす。
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const el = chipRowEl;
+    const track = chipIndicatorTrackRef.current;
+    const thumb = chipIndicatorThumbRef.current;
+    if (!el || !track || !thumb) {
+      return;
+    }
+    let rafId: number | null = null;
+    const measure = () => {
+      rafId = null;
+      const { scrollWidth, clientWidth, scrollLeft } = el;
+      if (scrollWidth <= clientWidth + 1) {
+        track.style.visibility = "hidden";
+        return;
+      }
+      track.style.visibility = "visible";
+      const trackWidth = track.clientWidth;
+      const thumbWidth = trackWidth * (clientWidth / scrollWidth);
+      const maxScroll = scrollWidth - clientWidth;
+      // RTL では scrollLeft が負になるため絶対値で進捗率にし、移動方向を反転する。
+      const progress = Math.min(Math.abs(scrollLeft) / maxScroll, 1);
+      const direction =
+        getComputedStyle(track).direction === "rtl" ? -1 : 1;
+      thumb.style.width = `${thumbWidth}px`;
+      thumb.style.transform = `translateX(${
+        direction * progress * (trackWidth - thumbWidth)
+      }px)`;
+    };
+    const schedule = () => {
+      if (rafId === null) {
+        rafId = requestAnimationFrame(measure);
+      }
+    };
+    measure();
+    el.addEventListener("scroll", schedule, { passive: true });
+    const resizeObserver = new ResizeObserver(schedule);
+    resizeObserver.observe(el);
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      el.removeEventListener("scroll", schedule);
+      resizeObserver.disconnect();
+    };
+  }, [open, chips, chipRowEl]);
+
   function chipLabel(chip: (typeof chips)[number]): string {
     if (chip.id.startsWith("category:")) {
       return (
@@ -257,7 +319,8 @@ export function StyleBrowseSheet({
           </SheetTitle>
           {/* チップ列(横スクロール) */}
           <div
-            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-1"
+            ref={setChipRowEl}
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             role="tablist"
             aria-label={t("styleBrowseSheetTitle")}
           >
@@ -282,6 +345,21 @@ export function StyleBrowseSheet({
                 </button>
               );
             })}
+          </div>
+          {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
+              ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
+              位置・表示は effect が DOM 直接更新する(visibility 初期値 hidden、
+              はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
+          <div
+            ref={chipIndicatorTrackRef}
+            className="relative mx-1 h-1 overflow-hidden rounded-full bg-slate-100"
+            style={{ visibility: "hidden" }}
+            aria-hidden="true"
+          >
+            <div
+              ref={chipIndicatorThumbRef}
+              className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
+            />
           </div>
         </SheetHeader>
 
