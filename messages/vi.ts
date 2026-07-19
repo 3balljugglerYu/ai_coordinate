@@ -1356,6 +1356,8 @@ export const viMessages = {
     styleChipAll: "Tất cả",
     styleChipEvent: "Sự kiện",
     styleChipFavorites: "Yêu thích",
+    styleFavoriteTutorialTitle: "🔖 Chạm để thêm vào yêu thích!",
+    styleFavoriteTutorialBody: "Xem lại bất cứ lúc nào trong tab 🔖Yêu thích",
     styleChipNew: "Mới",
     styleChipPopular: "Phổ biến",
     stylePopularSortNote: "Xếp theo số lần sử dụng trong 30 ngày gần đây",

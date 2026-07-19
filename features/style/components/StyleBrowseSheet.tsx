@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
+import type { Driver } from "driver.js";
 import { Bookmark } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,19 @@ const CHIP_EMOJI: Partial<Record<string, string>> = {
 
 /** 拡大プレビューを「下スワイプで閉じる」と判定する移動量(px)。 */
 const SWIPE_CLOSE_THRESHOLD_PX = 80;
+
+/** お気に入り(しおり)1ステップチュートリアルの表示済みフラグ(端末単位)。 */
+const FAVORITE_TUTORIAL_SEEN_KEY = "persta-ai:style-favorite-tutorial-seen";
+
+/** シートのオープンアニメーション完了とグリッド描画を待つ時間(ms)。 */
+const FAVORITE_TUTORIAL_DELAY_MS = 450;
+
+/** driver.js はチュートリアル表示時のみ遅延読み込み(TutorialTourProvider と同方針)。 */
+async function loadDriver() {
+  await import("driver.js/dist/driver.css");
+  const { driver } = await import("driver.js");
+  return driver;
+}
 
 interface StyleBrowseSheetProps {
   open: boolean;
@@ -82,6 +96,8 @@ export function StyleBrowseSheet({
   selectedPresetId,
 }: StyleBrowseSheetProps) {
   const t = useTranslations("style");
+  // 1ステップチュートリアルの「完了」ボタン文言は既存チュートリアルと共通化する。
+  const tTutorial = useTranslations("tutorial");
   const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
   // カードタップは即選択せず、拡大プレビュー+「試着しますか？」の確認を挟む
   // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
@@ -95,6 +111,91 @@ export function StyleBrowseSheet({
   // now はチップ導出/絞り込みの「新着」判定にだけ使う。シートを開いている間は
   // 固定でよいので、open が変わったときだけ取り直す。
   const now = useMemo(() => new Date(), [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 初回のみのお気に入り(しおり)1ステップチュートリアル。
+  // ログイン済み・お気に入り0件・未表示(localStorage)のときだけ、シートを開いた後に
+  // 先頭カードのしおりを driver.js でハイライトする(/style チュートリアルと同じ見た目)。
+  const favoriteTutorialAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      favoriteTutorialAttemptedRef.current = false;
+      return;
+    }
+    // シートを開いている間の再レンダー(チップ切替等)では再試行しない。
+    if (favoriteTutorialAttemptedRef.current) {
+      return;
+    }
+    favoriteTutorialAttemptedRef.current = true;
+    if (!isAuthenticated || favoriteIds.size > 0) {
+      return;
+    }
+    try {
+      if (window.localStorage.getItem(FAVORITE_TUTORIAL_SEEN_KEY)) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    let cancelled = false;
+    let driverObj: Driver | null = null;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        // 対象(先頭カードのしおり)が無ければ何もしない(0件・全ロック等)。
+        if (
+          cancelled ||
+          !document.querySelector('[data-tour="style-favorite-bookmark"]')
+        ) {
+          return;
+        }
+        const driver = await loadDriver();
+        if (cancelled) {
+          return;
+        }
+        const markSeen = () => {
+          try {
+            window.localStorage.setItem(FAVORITE_TUTORIAL_SEEN_KEY, "1");
+          } catch {
+            // localStorage 不可(プライベートモード等)でも致命ではない。
+          }
+        };
+        driverObj = driver({
+          showProgress: false,
+          showButtons: ["next", "close"],
+          // /style チュートリアルと同じ見た目(グラデ枠+橙ボタン)に揃える。
+          popoverClass: "persta-tour-popover",
+          doneBtnText: tTutorial("doneButton"),
+          onDestroyed: markSeen,
+          onPopoverRender: (popover) => {
+            // Radix Sheet(modal) は body を pointer-events:none にするため、
+            // body 直下に描画される driver.js の UI 側で明示的に有効化する。
+            popover.wrapper.style.pointerEvents = "auto";
+            document
+              .querySelectorAll<SVGElement>(".driver-overlay")
+              .forEach((el) => {
+                el.style.pointerEvents = "auto";
+              });
+          },
+          steps: [
+            {
+              element: '[data-tour="style-favorite-bookmark"]',
+              popover: {
+                title: t("styleFavoriteTutorialTitle"),
+                description: t("styleFavoriteTutorialBody"),
+                side: "bottom",
+                align: "start",
+              },
+            },
+          ],
+        });
+        driverObj.drive();
+      })();
+    }, FAVORITE_TUTORIAL_DELAY_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      driverObj?.destroy();
+    };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const context = useMemo(
     () => ({ favoriteIds, generateCounts, now, isAuthenticated }),
@@ -139,6 +240,16 @@ export function StyleBrowseSheet({
       <SheetContent
         side="bottom"
         className="h-[100dvh] gap-0 rounded-none border-t-0 p-0"
+        onInteractOutside={(event) => {
+          // driver.js のチュートリアルUI(ポップオーバー/オーバーレイ)はシート外
+          // (body直下)に描画されるため、その操作でシートが閉じないようにする。
+          if (
+            event.target instanceof Element &&
+            event.target.closest(".driver-popover, .driver-overlay")
+          ) {
+            event.preventDefault();
+          }
+        }}
       >
         <SheetHeader className="border-b px-4 pb-3 pt-4">
           <SheetTitle className="text-left text-lg font-semibold text-gray-900">
@@ -231,6 +342,7 @@ export function StyleBrowseSheet({
                     {!isDripLocked ? (
                       <button
                         type="button"
+                        data-tour="style-favorite-bookmark"
                         onClick={() => onToggleFavorite(preset.id, !isFavorite)}
                         aria-label={
                           isFavorite
@@ -238,10 +350,10 @@ export function StyleBrowseSheet({
                             : t("styleFavoriteAdd")
                         }
                         aria-pressed={isFavorite}
-                        className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                        className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:left-2 sm:top-2 sm:h-9 sm:w-9"
                       >
                         <Bookmark
-                          className={`h-4 w-4 ${
+                          className={`h-4 w-4 sm:h-5 sm:w-5 ${
                             isFavorite
                               ? "fill-slate-700 text-slate-700"
                               : "text-slate-400"

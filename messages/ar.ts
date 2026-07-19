@@ -1356,6 +1356,8 @@ export const arMessages = {
     styleChipAll: "الكل",
     styleChipEvent: "الفعاليات",
     styleChipFavorites: "المفضلة",
+    styleFavoriteTutorialTitle: "🔖 انقر للإضافة إلى المفضلة!",
+    styleFavoriteTutorialBody: "يمكنك العودة إليها في أي وقت من تبويب «🔖المفضلة»",
     styleChipNew: "جديد",
     styleChipPopular: "رائج",
     stylePopularSortNote: "بترتيب عدد مرات الاستخدام في آخر 30 يومًا",

@@ -8,12 +8,12 @@ export const STYLE_NEW_WINDOW_DAYS = 14;
  * カテゴリチップを出さないカテゴリ key。
  * - coordinate_2 (コーディネート2.0): 独立タブにせず「コーディネート」チップに集約する
  *   (STYLE_CATEGORY_CHIP_MERGED_KEYS 参照)
- * - kotowaza_dictionary (ことわざ辞典 上巻): 開催中企画は「🎉イベント」チップに集約する
- * いずれもプリセット自体は「すべて」等には出る。
+ * プリセット自体は「すべて」等には出る。
+ * なお企画(コレクションシリーズ)カテゴリはこのリストに依らず一律チップを出さない
+ * (「🎉イベント」チップに集約する)。deriveStyleBrowseChips を参照。
  */
 export const STYLE_HIDDEN_CATEGORY_CHIP_KEYS: ReadonlySet<string> = new Set([
   "coordinate_2",
-  "kotowaza_dictionary",
 ]);
 
 /**
@@ -101,6 +101,11 @@ export function deriveStyleBrowseChips(
   for (const preset of presets) {
     const key = preset.category.key;
     if (STYLE_HIDDEN_CATEGORY_CHIP_KEYS.has(key)) {
+      continue;
+    }
+    // 企画(コレクションシリーズ)は「🎉イベント」チップに集約するため、個別の
+    // カテゴリチップは出さない(開催期間外・管理者プレビューで一覧に混ざる場合も同様)。
+    if (preset.category.isCollectionSeries) {
       continue;
     }
     if (!seen.has(key)) {

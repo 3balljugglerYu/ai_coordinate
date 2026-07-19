@@ -1,8 +1,21 @@
 /** @jest-environment jsdom */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { StyleBrowseSheet } from "@/features/style/components/StyleBrowseSheet";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+
+// driver.js(お気に入りチュートリアル)は動的 import されるためモジュールごとモックする。
+// CSS は jest に loader が無いので空モック必須。
+jest.mock("driver.js/dist/driver.css", () => ({}));
+const driveMock = jest.fn();
+const destroyMock = jest.fn();
+const driverFactoryMock = jest.fn((_config: unknown) => ({
+  drive: driveMock,
+  destroy: destroyMock,
+}));
+jest.mock("driver.js", () => ({
+  driver: (config: unknown) => driverFactoryMock(config),
+}));
 
 jest.mock("next/image", () => ({
   __esModule: true,
@@ -277,5 +290,65 @@ describe("StyleBrowseSheet", () => {
     ).toHaveLength(1);
     fireEvent.click(screen.getByText("sec"));
     expect(onSelectPreset).not.toHaveBeenCalled();
+  });
+});
+
+describe("お気に入り1ステップチュートリアル", () => {
+  const SEEN_KEY = "persta-ai:style-favorite-tutorial-seen";
+
+  beforeEach(() => {
+    window.localStorage.clear();
+    jest.clearAllMocks();
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  /** シート開き後の遅延タイマーと動的 import(モック)を消化する。 */
+  async function flushTutorialTimer() {
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+  }
+
+  test("ログイン済み・お気に入り0件・初回なら driver が起動し、完了でフラグ保存", async () => {
+    renderSheet();
+    await flushTutorialTimer();
+    expect(driveMock).toHaveBeenCalledTimes(1);
+    // ハイライト対象は先頭カードのしおり。
+    const config = driverFactoryMock.mock.calls[0][0] as unknown as {
+      steps: Array<{ element: string }>;
+      onDestroyed: () => void;
+    };
+    expect(config.steps[0].element).toBe(
+      '[data-tour="style-favorite-bookmark"]',
+    );
+    // チュートリアルを閉じたら表示済みフラグが立つ。
+    config.onDestroyed();
+    expect(window.localStorage.getItem(SEEN_KEY)).toBe("1");
+  });
+
+  test("表示済みフラグがあれば起動しない", async () => {
+    window.localStorage.setItem(SEEN_KEY, "1");
+    renderSheet();
+    await flushTutorialTimer();
+    expect(driveMock).not.toHaveBeenCalled();
+  });
+
+  test("未ログイン(ゲスト)では起動しない", async () => {
+    renderSheet({ isAuthenticated: false });
+    await flushTutorialTimer();
+    expect(driveMock).not.toHaveBeenCalled();
+  });
+
+  test("既にお気に入りがあるユーザーには起動しない(別端末で使用済みのケース)", async () => {
+    renderSheet({ favoriteIds: new Set(["p1"]) });
+    await flushTutorialTimer();
+    expect(driveMock).not.toHaveBeenCalled();
   });
 });

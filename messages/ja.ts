@@ -1299,6 +1299,8 @@ export const jaMessages = {
     styleChipAll: "すべて",
     styleChipEvent: "イベント",
     styleChipFavorites: "お気に入り",
+    styleFavoriteTutorialTitle: "🔖 タップでお気に入り登録！",
+    styleFavoriteTutorialBody: "「🔖お気に入り」タブからいつでも見返せます",
     styleChipNew: "新着",
     styleChipPopular: "人気",
     stylePopularSortNote: "直近30日の利用回数順",

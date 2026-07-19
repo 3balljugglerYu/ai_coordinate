@@ -1355,6 +1355,8 @@ export const thMessages = {
     styleChipAll: "ทั้งหมด",
     styleChipEvent: "อีเวนต์",
     styleChipFavorites: "รายการโปรด",
+    styleFavoriteTutorialTitle: "🔖 แตะเพื่อเพิ่มในรายการโปรด!",
+    styleFavoriteTutorialBody: "ดูได้ทุกเมื่อจากแท็บ 🔖รายการโปรด",
     styleChipNew: "มาใหม่",
     styleChipPopular: "ยอดนิยม",
     stylePopularSortNote: "เรียงตามจำนวนการใช้งานใน 30 วันล่าสุด",

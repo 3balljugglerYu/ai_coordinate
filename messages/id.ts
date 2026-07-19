@@ -1358,6 +1358,8 @@ export const idMessages = {
     styleChipAll: "Semua",
     styleChipEvent: "Acara",
     styleChipFavorites: "Favorit",
+    styleFavoriteTutorialTitle: "🔖 Ketuk untuk menambahkan ke favorit!",
+    styleFavoriteTutorialBody: "Lihat kembali kapan saja di tab 🔖Favorit",
     styleChipNew: "Baru",
     styleChipPopular: "Populer",
     stylePopularSortNote: "Diurutkan berdasarkan penggunaan 30 hari terakhir",

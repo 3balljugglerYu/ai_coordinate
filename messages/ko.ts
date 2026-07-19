@@ -1355,6 +1355,8 @@ export const koMessages = {
     styleChipAll: "전체",
     styleChipEvent: "이벤트",
     styleChipFavorites: "즐겨찾기",
+    styleFavoriteTutorialTitle: "🔖 탭해서 즐겨찾기에 추가!",
+    styleFavoriteTutorialBody: "🔖즐겨찾기 탭에서 언제든지 다시 볼 수 있어요",
     styleChipNew: "신규",
     styleChipPopular: "인기",
     stylePopularSortNote: "최근 30일 이용 횟수순",

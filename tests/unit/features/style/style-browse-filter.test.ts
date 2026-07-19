@@ -179,17 +179,40 @@ describe("deriveStyleBrowseChips", () => {
     const presets = [
       preset("co", { categoryKey: "coordinate" }),
       preset("taste", { categoryKey: "character_coordinate" }),
-      preset("ev", {
-        categoryKey: "kotowaza_dictionary_2",
-        isCollectionSeries: true,
-        collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
-      }),
+      preset("other", { categoryKey: "special_collab" }),
       preset("remix", { categoryKey: "character_remix" }),
     ];
     const chips = deriveStyleBrowseChips(presets, context());
     expect(chips.map((c) => c.id).filter((id) => id.startsWith("category:"))).toEqual([
-      "category:kotowaza_dictionary_2",
+      "category:special_collab",
       "category:character_remix",
+      "category:character_coordinate",
+      "category:coordinate",
+    ]);
+  });
+
+  test("企画(コレクションシリーズ)は開催中/期間外を問わずカテゴリチップを出さない(イベントに集約)", () => {
+    const presets = [
+      preset("co", { categoryKey: "coordinate" }),
+      preset("taste", { categoryKey: "character_coordinate" }),
+      // 開催中の企画: イベントチップには出るが、個別カテゴリチップは出ない。
+      preset("active-ev", {
+        categoryKey: "kotowaza_dictionary_2",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
+      }),
+      // 期間外の企画(管理者プレビュー等で一覧に混ざるケース): どちらのチップも出ない。
+      preset("ended-ev", {
+        categoryKey: "travel_to_italy",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() - DAY_MS).toISOString(),
+      }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.map((c) => c.id)).toEqual([
+      "all",
+      "favorites",
+      "event",
       "category:character_coordinate",
       "category:coordinate",
     ]);

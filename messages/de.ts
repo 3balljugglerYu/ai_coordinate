@@ -1360,6 +1360,8 @@ export const deMessages = {
     styleChipAll: "Alle",
     styleChipEvent: "Events",
     styleChipFavorites: "Favoriten",
+    styleFavoriteTutorialTitle: "🔖 Tippen und als Favorit speichern!",
+    styleFavoriteTutorialBody: "Jederzeit im Tab „🔖Favoriten“ wiederzufinden",
     styleChipNew: "Neu",
     styleChipPopular: "Beliebt",
     stylePopularSortNote: "Sortiert nach Nutzungen der letzten 30 Tage",

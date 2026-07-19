@@ -1359,6 +1359,8 @@ export const esMessages = {
     styleChipAll: "Todo",
     styleChipEvent: "Eventos",
     styleChipFavorites: "Favoritos",
+    styleFavoriteTutorialTitle: "🔖 ¡Toca para guardar en favoritos!",
+    styleFavoriteTutorialBody: "Encuéntralos cuando quieras en la pestaña 🔖Favoritos",
     styleChipNew: "Nuevos",
     styleChipPopular: "Populares",
     stylePopularSortNote: "Ordenado por usos en los últimos 30 días",

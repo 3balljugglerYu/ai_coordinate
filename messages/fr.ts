@@ -1359,6 +1359,8 @@ export const frMessages = {
     styleChipAll: "Tout",
     styleChipEvent: "Événements",
     styleChipFavorites: "Favoris",
+    styleFavoriteTutorialTitle: "🔖 Touchez pour ajouter aux favoris !",
+    styleFavoriteTutorialBody: "Retrouvez-les à tout moment dans l’onglet 🔖Favoris",
     styleChipNew: "Nouveaux",
     styleChipPopular: "Populaires",
     stylePopularSortNote: "Trié par utilisations des 30 derniers jours",

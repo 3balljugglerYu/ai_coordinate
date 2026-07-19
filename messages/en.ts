@@ -1356,6 +1356,8 @@ export const enMessages = {
     styleChipAll: "All",
     styleChipEvent: "Events",
     styleChipFavorites: "Favorites",
+    styleFavoriteTutorialTitle: "🔖 Tap to add favorites!",
+    styleFavoriteTutorialBody: "Find them anytime in the 🔖Favorites tab",
     styleChipNew: "New",
     styleChipPopular: "Popular",
     stylePopularSortNote: "Sorted by uses in the last 30 days",

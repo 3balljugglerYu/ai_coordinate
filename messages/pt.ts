@@ -1359,6 +1359,8 @@ export const ptMessages = {
     styleChipAll: "Tudo",
     styleChipEvent: "Eventos",
     styleChipFavorites: "Favoritos",
+    styleFavoriteTutorialTitle: "🔖 Toque para adicionar aos favoritos!",
+    styleFavoriteTutorialBody: "Encontre-os quando quiser na aba 🔖Favoritos",
     styleChipNew: "Novos",
     styleChipPopular: "Populares",
     stylePopularSortNote: "Ordenado por usos nos últimos 30 dias",

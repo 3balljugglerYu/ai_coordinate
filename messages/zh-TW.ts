@@ -1354,6 +1354,8 @@ export const zhTwMessages = {
     styleChipAll: "全部",
     styleChipEvent: "活動",
     styleChipFavorites: "收藏",
+    styleFavoriteTutorialTitle: "🔖 點擊加入收藏！",
+    styleFavoriteTutorialBody: "隨時可在「🔖收藏」標籤中查看",
     styleChipNew: "新品",
     styleChipPopular: "熱門",
     stylePopularSortNote: "依最近30天使用次數排序",

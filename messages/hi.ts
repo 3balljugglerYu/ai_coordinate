@@ -1357,6 +1357,8 @@ export const hiMessages = {
     styleChipAll: "सभी",
     styleChipEvent: "इवेंट",
     styleChipFavorites: "पसंदीदा",
+    styleFavoriteTutorialTitle: "🔖 टैप करके पसंदीदा में जोड़ें!",
+    styleFavoriteTutorialBody: "🔖पसंदीदा टैब से कभी भी देख सकते हैं",
     styleChipNew: "नया",
     styleChipPopular: "लोकप्रिय",
     stylePopularSortNote: "पिछले 30 दिनों में उपयोग की संख्या के अनुसार क्रमबद्ध",
