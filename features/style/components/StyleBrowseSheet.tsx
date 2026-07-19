@@ -1,0 +1,613 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
+import type { Driver } from "driver.js";
+import { Bookmark, X } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
+import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
+import {
+  deriveStyleBrowseChips,
+  filterStyleBrowsePresets,
+  STYLE_NEW_WINDOW_DAYS,
+  type StyleBrowseChipId,
+} from "@/features/style/lib/style-browse-filter";
+import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+
+/** チップ先頭の絵文字(装飾)。ラベル本文は i18n で解決する。 */
+const CHIP_EMOJI: Partial<Record<string, string>> = {
+  event: "🎉",
+  favorites: "🔖",
+  new: "✨",
+  popular: "👑",
+  creator: "🤝",
+};
+
+/** 拡大プレビューを「下スワイプで閉じる」と判定する移動量(px)。 */
+const SWIPE_CLOSE_THRESHOLD_PX = 80;
+
+/** お気に入り(しおり)1ステップチュートリアルの表示済みフラグ(端末単位)。 */
+const FAVORITE_TUTORIAL_SEEN_KEY = "persta-ai:style-favorite-tutorial-seen";
+
+/** シートのオープンアニメーション完了とグリッド描画を待つ時間(ms)。 */
+const FAVORITE_TUTORIAL_DELAY_MS = 450;
+
+/** driver.js はチュートリアル表示時のみ遅延読み込み(TutorialTourProvider と同方針)。 */
+async function loadDriver() {
+  await import("driver.js/dist/driver.css");
+  const { driver } = await import("driver.js");
+  return driver;
+}
+
+interface StyleBrowseSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  presets: readonly StylePresetPublicSummary[];
+  /** プリセットID -> 直近生成数(👑人気の並び替え/表示判定)。 */
+  generateCounts: Readonly<Record<string, number>>;
+  /** プリセットID -> 累計生成数(拡大プレビューの「これまでに◯回」表示)。 */
+  generateTotals: Readonly<Record<string, number>>;
+  /** 現在のお気に入りID集合(楽観更新済みの最新値)。 */
+  favoriteIds: ReadonlySet<string>;
+  /** ♡トグル。ゲスト時の誘導も含め呼び出し側(StylePageClient)が処理する。 */
+  onToggleFavorite: (presetId: string, next: boolean) => void;
+  /** カード選択。呼び出し側でシートを閉じて選択状態にする。 */
+  onSelectPreset: (presetId: string) => void;
+  isAuthenticated: boolean;
+  /** 企画カードの「生成済み ✓」用(ストリップと同じ集合)。 */
+  generatedPresetIds: ReadonlySet<string>;
+  locale: "ja" | "en";
+  /** 選択中プリセット(シート内でもハイライト)。 */
+  selectedPresetId: string | null;
+}
+
+/**
+ * /style の探索シート(チップ+グリッド)。
+ * 「すべて見る」から全画面で開き、チップで絞り込んでカードを選ぶと閉じて生成フローへ。
+ * presets はストリップと同一(解放ゲート適用済み)を受け取り、追加フェッチしない。
+ */
+export function StyleBrowseSheet({
+  open,
+  onOpenChange,
+  presets,
+  generateCounts,
+  generateTotals,
+  favoriteIds,
+  onToggleFavorite,
+  onSelectPreset,
+  isAuthenticated,
+  generatedPresetIds,
+  locale,
+  selectedPresetId,
+}: StyleBrowseSheetProps) {
+  const t = useTranslations("style");
+  // 1ステップチュートリアルの「完了」ボタン文言は既存チュートリアルと共通化する。
+  const tTutorial = useTranslations("tutorial");
+  const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
+  // カードタップは即選択せず、拡大プレビュー+「試着しますか？」の確認を挟む
+  // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
+  const [confirmingPreset, setConfirmingPreset] =
+    useState<StylePresetPublicSummary | null>(null);
+  // チップ列の常時表示スクロールインジケーター用。iOS Safari は
+  // ::-webkit-scrollbar による常時表示に非対応のため、自前の細いバーを描画する。
+  // スクロールのたびに再レンダリングするとグリッド全体が再描画されてカクつくため、
+  // React state を使わず effect 内で thumb の DOM スタイルを直接更新する。
+  // チップ列は Radix の Portal 内にあり open と同一コミットではマウントされない
+  // (ref が null のまま effect が走って終わる)ため、callback ref + state で
+  // 「実際に DOM が生えたとき」に effect を再実行させる。
+  const [chipRowEl, setChipRowEl] = useState<HTMLDivElement | null>(null);
+  const chipIndicatorTrackRef = useRef<HTMLDivElement | null>(null);
+  const chipIndicatorThumbRef = useRef<HTMLDivElement | null>(null);
+
+  // 「下スワイプで閉じる」用: スワイプ開始Y座標(モバイルの自然な閉じ操作)。
+  // touch イベントでなく Pointer Events を使う(DevTools のデバイスモードや
+  // ペン入力でも動くように)。マウスは対象外(テキスト選択ドラッグ等との誤反応防止)。
+  const swipeStartYRef = useRef<number | null>(null);
+
+  // now はチップ導出/絞り込みの「新着」判定にだけ使う。シートを開いている間は
+  // 固定でよいので、open が変わったときだけ取り直す。
+  const now = useMemo(() => new Date(), [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 初回のみのお気に入り(しおり)1ステップチュートリアル。
+  // ログイン済み・お気に入り0件・未表示(localStorage)のときだけ、シートを開いた後に
+  // 先頭カードのしおりを driver.js でハイライトする(/style チュートリアルと同じ見た目)。
+  const favoriteTutorialAttemptedRef = useRef(false);
+  useEffect(() => {
+    if (!open) {
+      favoriteTutorialAttemptedRef.current = false;
+      return;
+    }
+    // シートを開いている間の再レンダー(チップ切替等)では再試行しない。
+    if (favoriteTutorialAttemptedRef.current) {
+      return;
+    }
+    favoriteTutorialAttemptedRef.current = true;
+    if (!isAuthenticated || favoriteIds.size > 0) {
+      return;
+    }
+    try {
+      if (window.localStorage.getItem(FAVORITE_TUTORIAL_SEEN_KEY)) {
+        return;
+      }
+    } catch {
+      return;
+    }
+    let cancelled = false;
+    let driverObj: Driver | null = null;
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        // 対象(先頭カードのしおり)が無ければ何もしない(0件・全ロック等)。
+        if (
+          cancelled ||
+          !document.querySelector('[data-tour="style-favorite-bookmark"]')
+        ) {
+          return;
+        }
+        const driver = await loadDriver();
+        if (cancelled) {
+          return;
+        }
+        const markSeen = () => {
+          try {
+            window.localStorage.setItem(FAVORITE_TUTORIAL_SEEN_KEY, "1");
+          } catch {
+            // localStorage 不可(プライベートモード等)でも致命ではない。
+          }
+        };
+        driverObj = driver({
+          showProgress: false,
+          showButtons: ["next", "close"],
+          // /style チュートリアルと同じ見た目(グラデ枠+橙ボタン)に揃える。
+          popoverClass: "persta-tour-popover",
+          doneBtnText: tTutorial("doneButton"),
+          onDestroyed: markSeen,
+          onPopoverRender: (popover) => {
+            // Radix Sheet(modal) は body を pointer-events:none にするため、
+            // body 直下に描画される driver.js の UI 側で明示的に有効化する。
+            popover.wrapper.style.pointerEvents = "auto";
+            document
+              .querySelectorAll<SVGElement>(".driver-overlay")
+              .forEach((el) => {
+                el.style.pointerEvents = "auto";
+              });
+          },
+          steps: [
+            {
+              element: '[data-tour="style-favorite-bookmark"]',
+              popover: {
+                title: t("styleFavoriteTutorialTitle"),
+                description: t("styleFavoriteTutorialBody"),
+                side: "bottom",
+                align: "start",
+              },
+            },
+          ],
+        });
+        driverObj.drive();
+      })();
+    }, FAVORITE_TUTORIAL_DELAY_MS);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+      driverObj?.destroy();
+    };
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const context = useMemo(
+    () => ({ favoriteIds, generateCounts, now, isAuthenticated }),
+    [favoriteIds, generateCounts, now, isAuthenticated],
+  );
+  const chips = useMemo(
+    () => deriveStyleBrowseChips(presets, context),
+    [presets, context],
+  );
+  const filtered = useMemo(
+    () => filterStyleBrowsePresets(presets, activeChip, context),
+    [presets, activeChip, context],
+  );
+
+  // チップ列のスクロールインジケーター更新。開いている間だけ監視する。
+  // rAF で間引き、位置は transform(合成のみ・レイアウト不発)で動かす。
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    const el = chipRowEl;
+    const track = chipIndicatorTrackRef.current;
+    const thumb = chipIndicatorThumbRef.current;
+    if (!el || !track || !thumb) {
+      return;
+    }
+    let rafId: number | null = null;
+    const measure = () => {
+      rafId = null;
+      const { scrollWidth, clientWidth, scrollLeft } = el;
+      if (scrollWidth <= clientWidth + 1) {
+        track.style.visibility = "hidden";
+        return;
+      }
+      track.style.visibility = "visible";
+      const trackWidth = track.clientWidth;
+      const thumbWidth = trackWidth * (clientWidth / scrollWidth);
+      const maxScroll = scrollWidth - clientWidth;
+      // RTL では scrollLeft が負になるため絶対値で進捗率にし、移動方向を反転する。
+      const progress = Math.min(Math.abs(scrollLeft) / maxScroll, 1);
+      const direction =
+        getComputedStyle(track).direction === "rtl" ? -1 : 1;
+      thumb.style.width = `${thumbWidth}px`;
+      thumb.style.transform = `translateX(${
+        direction * progress * (trackWidth - thumbWidth)
+      }px)`;
+    };
+    const schedule = () => {
+      if (rafId === null) {
+        rafId = requestAnimationFrame(measure);
+      }
+    };
+    measure();
+    el.addEventListener("scroll", schedule, { passive: true });
+    const resizeObserver = new ResizeObserver(schedule);
+    resizeObserver.observe(el);
+    return () => {
+      if (rafId !== null) {
+        cancelAnimationFrame(rafId);
+      }
+      el.removeEventListener("scroll", schedule);
+      resizeObserver.disconnect();
+    };
+  }, [open, chips, chipRowEl]);
+
+  function chipLabel(chip: (typeof chips)[number]): string {
+    if (chip.id.startsWith("category:")) {
+      return (
+        (locale === "en" ? chip.categoryLabelEn : chip.categoryLabelJa) ??
+        chip.id
+      );
+    }
+    switch (chip.id) {
+      case "all":
+        return t("styleChipAll");
+      case "event":
+        return t("styleChipEvent");
+      case "favorites":
+        return t("styleChipFavorites");
+      case "new":
+        return t("styleChipNew");
+      case "popular":
+        return t("styleChipPopular");
+      case "creator":
+        return t("styleChipCreator");
+      default:
+        return chip.id;
+    }
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      {/* 既定の閉じるボタン(アイコン16px)はタップ範囲が狭いため無効化し、
+          ヘッダー内に44pxの大きいボタンを自前で置く。 */}
+      <SheetContent
+        side="bottom"
+        className="h-[100dvh] gap-0 rounded-none border-t-0 p-0"
+        showCloseButton={false}
+        onInteractOutside={(event) => {
+          // driver.js のチュートリアルUI(ポップオーバー/オーバーレイ)はシート外
+          // (body直下)に描画されるため、その操作でシートが閉じないようにする。
+          if (
+            event.target instanceof Element &&
+            event.target.closest(".driver-popover, .driver-overlay")
+          ) {
+            event.preventDefault();
+          }
+        }}
+      >
+        <SheetHeader className="border-b px-4 pb-3 pt-4">
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="text-left text-lg font-semibold text-gray-900">
+              {t("styleBrowseSheetTitle")}
+            </SheetTitle>
+            {/* タップしやすい44pxの閉じるボタン(既定の16pxアイコンの代替)。 */}
+            <SheetClose className="-my-2 -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+              <X className="h-6 w-6" aria-hidden="true" />
+              <span className="sr-only">{t("styleBrowseClose")}</span>
+            </SheetClose>
+          </div>
+          {/* チップ列(横スクロール) */}
+          <div
+            ref={setChipRowEl}
+            className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            role="tablist"
+            aria-label={t("styleBrowseSheetTitle")}
+          >
+            {chips.map((chip) => {
+              const active = chip.id === activeChip;
+              const emoji = CHIP_EMOJI[chip.id];
+              return (
+                <button
+                  key={chip.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active}
+                  onClick={() => setActiveChip(chip.id)}
+                  className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                    active
+                      ? "border-primary bg-primary text-white"
+                      : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {emoji ? `${emoji} ` : ""}
+                  {chipLabel(chip)}
+                </button>
+              );
+            })}
+          </div>
+          {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
+              ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
+              位置・表示は effect が DOM 直接更新する(visibility 初期値 hidden、
+              はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
+          <div
+            ref={chipIndicatorTrackRef}
+            className="relative mx-1 h-1 overflow-hidden rounded-full bg-slate-100"
+            style={{ visibility: "hidden" }}
+            aria-hidden="true"
+          >
+            <div
+              ref={chipIndicatorThumbRef}
+              className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
+            />
+          </div>
+        </SheetHeader>
+
+        {/* グリッド本体(スクロール領域) */}
+        <div className="flex-1 overflow-y-auto px-4 pb-8 pt-4">
+          {/* 人気は「直近30日」窓の並び順、新着は「直近14日」窓の絞り込み。
+              拡大プレビューの累計回数と食い違って見えることがあるため、
+              チップの基準をグリッド上部に明示する。 */}
+          {activeChip === "popular" && filtered.length > 0 ? (
+            <p className="mb-3 text-xs text-slate-500">
+              {t("stylePopularSortNote")}
+            </p>
+          ) : null}
+          {activeChip === "new" && filtered.length > 0 ? (
+            <p className="mb-3 text-xs text-slate-500">
+              {t("styleNewSortNote", { days: STYLE_NEW_WINDOW_DAYS })}
+            </p>
+          ) : null}
+          {filtered.length === 0 ? (
+            <p className="py-16 text-center text-sm text-gray-500">
+              {activeChip === "favorites"
+                ? t("styleFavoritesEmpty")
+                : t("styleBrowseEmpty")}
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+              {filtered.map((preset) => {
+                const isDripLocked = preset.locked === true;
+                const isFavorite = favoriteIds.has(preset.id);
+                // ゲストは coordinate 以外を生成できないため、ストリップと同じ
+                // 「ログインで生成可能！」ラベルを重ねる(表示の一貫性)。
+                const isGuestLockedCard =
+                  !isDripLocked &&
+                  !isAuthenticated &&
+                  preset.category.key !== "coordinate";
+                return (
+                  <div key={preset.id} className="relative">
+                    <StylePresetPreviewCard
+                      preset={preset}
+                      fluid
+                      alt={t("styleCardAlt", { name: preset.title })}
+                      locale={locale}
+                      isSelected={
+                        !isDripLocked && preset.id === selectedPresetId
+                      }
+                      onClick={
+                        isDripLocked
+                          ? undefined
+                          : () => setConfirmingPreset(preset)
+                      }
+                      dripLocked={isDripLocked}
+                      dripLockedLabel={
+                        isDripLocked ? t("styleDripLockedLabel") : undefined
+                      }
+                      lockedLabel={
+                        isGuestLockedCard
+                          ? t("guestCategoryLoginAction")
+                          : undefined
+                      }
+                      generated={
+                        !isDripLocked && generatedPresetIds.has(preset.id)
+                      }
+                      generatedLabel={t("styleGeneratedBadge")}
+                    />
+                    {/* お気に入り(しおり)はカード(button)の兄弟としてオーバーレイ配置
+                        (buttonネスト回避)。ハートはホームの「いいね」と紛らわしいため
+                        ブックマークアイコンを使う。左上=空き位置(✓=右上/カテゴリバッジ=左下)。
+                        locked には出さない。 */}
+                    {!isDripLocked ? (
+                      <button
+                        type="button"
+                        data-tour="style-favorite-bookmark"
+                        onClick={() => onToggleFavorite(preset.id, !isFavorite)}
+                        aria-label={
+                          isFavorite
+                            ? t("styleFavoriteRemove")
+                            : t("styleFavoriteAdd")
+                        }
+                        aria-pressed={isFavorite}
+                        className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:left-2 sm:top-2 sm:h-9 sm:w-9"
+                      >
+                        <Bookmark
+                          className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                            isFavorite
+                              ? "fill-pink-500 text-pink-500"
+                              : "text-slate-400"
+                          }`}
+                          aria-hidden="true"
+                        />
+                      </button>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* 拡大プレビュー+確認。気軽に眺めて戻れるよう AlertDialog でなく通常の
+            Dialog を使う(外側タップ・Esc・×・下スワイプで閉じられる)。
+            「試着する」で確定し、シートごと閉じて生成フローへ。 */}
+        <Dialog
+          open={confirmingPreset !== null}
+          onOpenChange={(dialogOpen) => {
+            if (!dialogOpen) {
+              setConfirmingPreset(null);
+            }
+          }}
+        >
+          <DialogContent
+            // モバイルの自然な操作として「下スワイプで閉じる」に対応する。
+            // Pointer Events で touch/pen のみ対象(マウスのドラッグは無視)。
+            onPointerDown={(event) => {
+              if (event.pointerType !== "mouse") {
+                swipeStartYRef.current = event.clientY;
+              }
+            }}
+            onPointerUp={(event) => {
+              const startY = swipeStartYRef.current;
+              swipeStartYRef.current = null;
+              if (
+                event.pointerType !== "mouse" &&
+                startY !== null &&
+                event.clientY - startY > SWIPE_CLOSE_THRESHOLD_PX
+              ) {
+                setConfirmingPreset(null);
+              }
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle className="text-center">
+                {t("styleBrowseConfirmTitle")}
+              </DialogTitle>
+              {/* Radix の a11y 要件(aria-describedby)。視覚的には冗長なので sr-only。 */}
+              <DialogDescription className="sr-only">
+                {t("styleBrowseConfirmDescription")}
+              </DialogDescription>
+            </DialogHeader>
+            {confirmingPreset ? (
+              <div className="flex flex-col items-center gap-3 py-2">
+                {/* 画像はサムネの実アスペクト比で表示(拡大表示と同様、横長はクロップしない)。
+                    縦長はダイアログが縦に伸びすぎないよう幅280pxに抑え、横長は全幅を使う。 */}
+                <div
+                  className={`relative w-full overflow-hidden rounded-lg bg-gray-100 ${
+                    confirmingPreset.thumbnailWidth >
+                    confirmingPreset.thumbnailHeight
+                      ? ""
+                      : "max-w-[280px]"
+                  }`}
+                  style={{
+                    aspectRatio:
+                      confirmingPreset.thumbnailWidth > 0 &&
+                      confirmingPreset.thumbnailHeight > 0
+                        ? `${confirmingPreset.thumbnailWidth} / ${confirmingPreset.thumbnailHeight}`
+                        : "3 / 4",
+                  }}
+                >
+                  <Image
+                    src={confirmingPreset.thumbnailImageUrl}
+                    alt={t("styleCardAlt", { name: confirmingPreset.title })}
+                    fill
+                    sizes="(max-width: 640px) 90vw, 480px"
+                    className="object-cover object-top"
+                  />
+                  {/* グリッドと同じお気に入り(しおり)トグルを拡大表示にも置く。 */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onToggleFavorite(
+                        confirmingPreset.id,
+                        !favoriteIds.has(confirmingPreset.id),
+                      )
+                    }
+                    aria-label={
+                      favoriteIds.has(confirmingPreset.id)
+                        ? t("styleFavoriteRemove")
+                        : t("styleFavoriteAdd")
+                    }
+                    aria-pressed={favoriteIds.has(confirmingPreset.id)}
+                    className="absolute left-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400"
+                  >
+                    <Bookmark
+                      className={`h-5 w-5 ${
+                        favoriteIds.has(confirmingPreset.id)
+                          ? "fill-pink-500 text-pink-500"
+                          : "text-slate-400"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
+                <p className="text-base font-medium text-slate-900">
+                  {confirmingPreset.title}
+                </p>
+                {/* クリエイター表記(カードと同じ解決順: preset優先→カテゴリ)。 */}
+                {(() => {
+                  const provider = resolveStylePresetProvider(confirmingPreset);
+                  return provider ? (
+                    <StyleProviderCredit
+                      nickname={provider.nickname}
+                      avatarUrl={provider.avatarUrl}
+                      locale={locale}
+                    />
+                  ) : null;
+                })()}
+                {/* 累計利用回数(0回は出さない)。 */}
+                {(generateTotals[confirmingPreset.id] ?? 0) > 0 ? (
+                  <p className="text-xs text-slate-500">
+                    {t("styleUsageCount", {
+                      count: generateTotals[confirmingPreset.id],
+                    })}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={() => {
+                  if (confirmingPreset) {
+                    onSelectPreset(confirmingPreset.id);
+                  }
+                  setConfirmingPreset(null);
+                }}
+              >
+                {t("styleBrowseConfirmAction")}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setConfirmingPreset(null)}
+              >
+                {t("styleBrowseConfirmCancel")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </SheetContent>
+    </Sheet>
+  );
+}

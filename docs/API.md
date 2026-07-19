@@ -845,6 +845,15 @@ Main errors:
 | --- | --- | --- | --- |
 | POST | `/api/stripe/webhook` | webhook | Stripe の `checkout.session.completed` を処理する |
 
+### style-presets
+
+| Method | Path | Access | Summary |
+| --- | --- | --- | --- |
+| POST | `/api/style-presets/favorites` | user session | プリセットをお気に入り(しおり)に追加する（冪等） |
+| DELETE | `/api/style-presets/favorites` | user session | プリセットのお気に入りを解除する（冪等） |
+
+Request body は `{ "presetId": "uuid" }`。Same-Origin `Origin` 検証 + セッション必須で、`style_preset_favorites` に RLS（本人行のみ）で書き込む。初期のお気に入り集合は `/style` の RSC（StylePageBody / CachedHomeStylePresetSection）がサーバー側で供給するため、GET は提供しない。
+
 ### tutorial
 
 | Method | Path | Access | Summary |

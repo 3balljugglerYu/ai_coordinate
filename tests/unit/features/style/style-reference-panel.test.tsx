@@ -59,6 +59,25 @@ describe("StyleReferencePanel", () => {
     expect(dialogImg).not.toBeNull();
   });
 
+  test("拡大表示(ライトボックス)にも providerOverlay(提供者クレジット)を表示する", () => {
+    render(
+      <StyleReferencePanel
+        label="Style"
+        imageSrc="https://example.com/style.webp"
+        imageAlt="選択中のスタイル画像"
+        aspectRatio={1.5}
+        providerOverlay={<span>提供 氷洞つらら</span>}
+      />,
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "スタイル画像を拡大表示" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    // インライン側と拡大側の両方に描画される(計2箇所)。
+    expect(screen.getAllByText("提供 氷洞つらら")).toHaveLength(2);
+    expect(dialog.textContent).toContain("提供 氷洞つらら");
+  });
+
   test("インライン画像のボタンは aria-label を持ち、内側 Image は装飾(alt空)", () => {
     renderPanel();
     const btn = screen.getByRole("button", {

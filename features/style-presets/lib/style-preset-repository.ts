@@ -309,6 +309,7 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     thumbnailWidth: row.thumbnail_width,
     thumbnailHeight: row.thumbnail_height,
     hasBackgroundPrompt: Boolean(row.background_prompt?.trim()),
+    createdAt: row.created_at,
     category: mapCategoryRefStrict(row, extractCategory(row.category)),
     imageInputMode: row.image_input_mode,
     dualReferenceSource: normalizeDualReferenceSource(row.dual_reference_source),

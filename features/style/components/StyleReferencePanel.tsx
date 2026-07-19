@@ -122,6 +122,12 @@ export function StyleReferencePanel({
               sizes="95vw"
               className="object-contain"
             />
+            {/* 拡大表示にもインラインと同じ位置(左下)で提供者クレジットを重ねる。 */}
+            {providerOverlay ? (
+              <div className="absolute bottom-2 left-2 z-10">
+                {providerOverlay}
+              </div>
+            ) : null}
           </div>
         </DialogContent>
       </Dialog>

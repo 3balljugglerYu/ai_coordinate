@@ -27,3 +27,23 @@ export function isCollectionDisplayPeriodActive(
   }
   return true;
 }
+
+/** isActiveEventCategory の入力: 表示期間 + コレクションシリーズ登録の有無。 */
+export interface ActiveEventCategoryInput extends CollectionDisplayPeriod {
+  isCollectionSeries: boolean;
+}
+
+/**
+ * 「開催中の企画」カテゴリか。
+ * コレクションシリーズ(コンプリート要素)が登録されており、かつ表示期間内。
+ * ホームの企画棚(derive-event-shelves)と探索シートの「🎉イベント」チップ
+ * (style-browse-filter)が同じ判定を共有し、両者の表示期間が常に一致するようにする。
+ */
+export function isActiveEventCategory(
+  category: ActiveEventCategoryInput,
+  now: Date,
+): boolean {
+  return (
+    category.isCollectionSeries && isCollectionDisplayPeriodActive(category, now)
+  );
+}

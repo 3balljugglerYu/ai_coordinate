@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+import { LayoutGrid } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { FreeMode } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
@@ -17,6 +18,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { StyleBrowseSheet } from "@/features/style/components/StyleBrowseSheet";
+import { useStyleFavorites } from "@/features/style/hooks/useStyleFavorites";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 import "swiper/css";
@@ -24,6 +27,20 @@ import "swiper/css/free-mode";
 
 interface HomeStylePresetCarouselProps {
   presets: StylePresetPublicSummary[];
+  /**
+   * 「すべて見る」の探索シートに出すプリセット。/style と同じ
+   * 解放ゲート適用済みの全件(locked や企画棚ぶんも含む)を受け取る。
+   */
+  browsePresets: readonly StylePresetPublicSummary[];
+  /** 探索シート用: プリセットID -> 直近生成数(👑人気チップ)。 */
+  generateCounts: Readonly<Record<string, number>>;
+  /** 探索シート用: プリセットID -> 累計生成数(拡大プレビューの利用回数)。 */
+  generateTotals: Readonly<Record<string, number>>;
+  /** 探索シート用: 本人のお気に入り初期集合(以後は楽観更新)。 */
+  initialFavoritePresetIds: readonly string[];
+  isAuthenticated: boolean;
+  /** 企画カードの「生成済み ✓」用。 */
+  generatedPresetIds: readonly string[];
 }
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
@@ -77,16 +94,31 @@ function saveCurrentTranslate(swiper: SwiperType | null) {
 
 export function HomeStylePresetCarousel({
   presets,
+  browsePresets,
+  generateCounts,
+  generateTotals,
+  initialFavoritePresetIds,
+  isAuthenticated,
+  generatedPresetIds,
 }: HomeStylePresetCarouselProps) {
   const router = useRouter();
   const t = useTranslations("style");
   const tHome = useTranslations("home");
+  const locale = useLocale();
+  const styleCardLocale = locale === "en" ? "en" : "ja";
   const swiperRef = useRef<SwiperType | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isUserActiveRef = useRef(false);
   const isDialogOpenRef = useRef(false);
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
+  // 探索シート(チップ+グリッド)の開閉と、お気に入り(しおり)集合(/style と共通フック)。
+  const [isBrowseSheetOpen, setIsBrowseSheetOpen] = useState(false);
+  const { favoritePresetIds, toggleFavorite } = useStyleFavorites({
+    initialFavoritePresetIds,
+    isAuthenticated,
+  });
+  const generatedPresetIdSet = new Set(generatedPresetIds);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -221,11 +253,39 @@ export function HomeStylePresetCarousel({
     router.push(`/style?style=${encodeURIComponent(preset.id)}`);
   };
 
+  // 探索シートの開閉。開いている間はカルーセルの自動スクロールを止める。
+  const handleBrowseSheetOpenChange = (open: boolean) => {
+    if (open) {
+      saveCurrentTranslate(swiperRef.current);
+    }
+    isDialogOpenRef.current = open;
+    setIsBrowseSheetOpen(open);
+  };
+
+  /** 探索シートで試着確認まで済んだら /style へ遷移して生成フローに乗せる。 */
+  const handleSelectFromBrowseSheet = (presetId: string) => {
+    setIsBrowseSheetOpen(false);
+    isDialogOpenRef.current = false;
+    router.push(`/style?style=${encodeURIComponent(presetId)}`);
+  };
+
+
   return (
     <div ref={containerRef} className="mb-8 overflow-x-hidden">
-      <h2 className="mb-3 px-4 text-lg font-semibold text-gray-900 sm:px-0">
-        {tHome("stylePresetCarouselTitle")}
-      </h2>
+      <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-0">
+        <h2 className="text-lg font-semibold text-gray-900">
+          {tHome("stylePresetCarouselTitle")}
+        </h2>
+        {/* /style の「すべて見る」と同じ見た目。ホームに留まったまま探索シートを開く。 */}
+        <button
+          type="button"
+          onClick={() => handleBrowseSheetOpenChange(true)}
+          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-gray-200 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        >
+          {t("styleBrowseAll")}
+          <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
       {/* Swiper's RTL mode flips translate semantics; this image rail is animated with LTR math. */}
       <div className="-mx-4 px-4" dir="ltr">
         <Swiper
@@ -330,6 +390,23 @@ export function HomeStylePresetCarousel({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* 「すべて見る」の探索シート。/style と同じ UI で、選択(試着確認後)だけ /style へ遷移する。 */}
+      <StyleBrowseSheet
+        open={isBrowseSheetOpen}
+        onOpenChange={handleBrowseSheetOpenChange}
+        presets={browsePresets}
+        generateCounts={generateCounts}
+        generateTotals={generateTotals}
+        favoriteIds={favoritePresetIds}
+        onToggleFavorite={(presetId, next) => {
+          void toggleFavorite(presetId, next);
+        }}
+        onSelectPreset={handleSelectFromBrowseSheet}
+        isAuthenticated={isAuthenticated}
+        generatedPresetIds={generatedPresetIdSet}
+        locale={styleCardLocale}
+        selectedPresetId={null}
+      />
     </div>
   );
 }
