@@ -1355,6 +1355,8 @@ export const zhTwMessages = {
     styleChipEvent: "活動",
     styleChipFavorites: "收藏",
     styleFavoriteTutorialTitle: "🔖 點擊加入收藏！",
+    styleFavoriteAdded: "已加入收藏",
+    styleFavoriteRemoved: "已取消收藏",
     styleFavoriteTutorialBody: "隨時可在「🔖收藏」標籤中查看",
     styleChipNew: "新品",
     styleChipPopular: "熱門",
@@ -1705,7 +1707,7 @@ export const zhTwMessages = {
     heading: "Persta",
     subtitle:
       "想呈現的造型與角色，皆可從這裡開始的 AI 造型平台。",
-    stylePresetCarouselTitle: "免提示詞，立即換裝!",
+    stylePresetCarouselTitle: "輕鬆換裝!",
     stylePresetConfirmTitle: "要試穿這套嗎?",
     stylePresetConfirmCancel: "看看其他穿搭",
     stylePresetConfirmAction: "試穿",

@@ -1300,6 +1300,8 @@ export const jaMessages = {
     styleChipEvent: "イベント",
     styleChipFavorites: "お気に入り",
     styleFavoriteTutorialTitle: "🔖 タップでお気に入り登録！",
+    styleFavoriteAdded: "お気に入りに登録しました",
+    styleFavoriteRemoved: "お気に入りを解除しました",
     styleFavoriteTutorialBody: "「🔖お気に入り」タブからいつでも見返せます",
     styleChipNew: "新着",
     styleChipPopular: "人気",
@@ -1640,7 +1642,7 @@ export const jaMessages = {
   home: {
     heading: "Persta | ペルスタ",
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
-    stylePresetCarouselTitle: "プロンプトなしでお着替え！",
+    stylePresetCarouselTitle: "簡単お着替え！",
     stylePresetConfirmTitle: "こちらを試着しますか？",
     stylePresetConfirmCancel: "他のコーデをみる",
     stylePresetConfirmAction: "試着する",

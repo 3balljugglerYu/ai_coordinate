@@ -1360,6 +1360,8 @@ export const itMessages = {
     styleChipEvent: "Eventi",
     styleChipFavorites: "Preferiti",
     styleFavoriteTutorialTitle: "🔖 Tocca per aggiungere ai preferiti!",
+    styleFavoriteAdded: "Aggiunto ai preferiti",
+    styleFavoriteRemoved: "Rimosso dai preferiti",
     styleFavoriteTutorialBody: "Li ritrovi quando vuoi nella scheda 🔖Preferiti",
     styleChipNew: "Novità",
     styleChipPopular: "Popolari",
@@ -1711,7 +1713,7 @@ export const itMessages = {
     heading: "Persta",
     subtitle:
       "Una piattaforma di styling con IA per i look e i personaggi che vuoi creare.",
-    stylePresetCarouselTitle: "Cambia outfit, senza prompt!",
+    stylePresetCarouselTitle: "Cambio outfit facile!",
     stylePresetConfirmTitle: "Provarlo?",
     stylePresetConfirmCancel: "Vedi altri outfit",
     stylePresetConfirmAction: "Provalo",

@@ -1357,6 +1357,8 @@ export const viMessages = {
     styleChipEvent: "Sự kiện",
     styleChipFavorites: "Yêu thích",
     styleFavoriteTutorialTitle: "🔖 Chạm để thêm vào yêu thích!",
+    styleFavoriteAdded: "Đã thêm vào yêu thích",
+    styleFavoriteRemoved: "Đã bỏ khỏi yêu thích",
     styleFavoriteTutorialBody: "Xem lại bất cứ lúc nào trong tab 🔖Yêu thích",
     styleChipNew: "Mới",
     styleChipPopular: "Phổ biến",
@@ -1708,7 +1710,7 @@ export const viMessages = {
     heading: "Persta",
     subtitle:
       "Nền tảng styling AI cho những diện mạo và nhân vật bạn muốn tạo nên.",
-    stylePresetCarouselTitle: "Đổi đồ — không cần prompt!",
+    stylePresetCarouselTitle: "Đổi đồ thật dễ dàng!",
     stylePresetConfirmTitle: "Thử bộ này?",
     stylePresetConfirmCancel: "Xem các bộ khác",
     stylePresetConfirmAction: "Thử",

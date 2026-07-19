@@ -1357,6 +1357,8 @@ export const arMessages = {
     styleChipEvent: "الفعاليات",
     styleChipFavorites: "المفضلة",
     styleFavoriteTutorialTitle: "🔖 انقر للإضافة إلى المفضلة!",
+    styleFavoriteAdded: "تمت الإضافة إلى المفضلة",
+    styleFavoriteRemoved: "تمت الإزالة من المفضلة",
     styleFavoriteTutorialBody: "يمكنك العودة إليها في أي وقت من تبويب «🔖المفضلة»",
     styleChipNew: "جديد",
     styleChipPopular: "رائج",
@@ -1708,7 +1710,7 @@ export const arMessages = {
     heading: "Persta",
     subtitle:
       "منصة تنسيق إطلالات بالذكاء الاصطناعي للإطلالات والشخصيات التي تريد إنشاءها.",
-    stylePresetCarouselTitle: "غيّر الإطلالات بدون نص موجِّه!",
+    stylePresetCarouselTitle: "غيّر الإطلالات بسهولة!",
     stylePresetConfirmTitle: "هل تريد تجربة هذه؟",
     stylePresetConfirmCancel: "عرض إطلالات أخرى",
     stylePresetConfirmAction: "تجربة",

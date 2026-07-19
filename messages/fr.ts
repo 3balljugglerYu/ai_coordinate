@@ -1360,6 +1360,8 @@ export const frMessages = {
     styleChipEvent: "Événements",
     styleChipFavorites: "Favoris",
     styleFavoriteTutorialTitle: "🔖 Touchez pour ajouter aux favoris !",
+    styleFavoriteAdded: "Ajouté aux favoris",
+    styleFavoriteRemoved: "Retiré des favoris",
     styleFavoriteTutorialBody: "Retrouvez-les à tout moment dans l’onglet 🔖Favoris",
     styleChipNew: "Nouveaux",
     styleChipPopular: "Populaires",
@@ -1711,7 +1713,7 @@ export const frMessages = {
     heading: "Persta",
     subtitle:
       "Une plateforme de styling avec IA pour les looks et personnages que vous voulez créer.",
-    stylePresetCarouselTitle: "Changez de tenue, sans prompt !",
+    stylePresetCarouselTitle: "Changez de tenue en toute simplicité !",
     stylePresetConfirmTitle: "Essayer cette tenue ?",
     stylePresetConfirmCancel: "Voir d'autres tenues",
     stylePresetConfirmAction: "Essayer",

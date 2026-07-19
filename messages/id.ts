@@ -1359,6 +1359,8 @@ export const idMessages = {
     styleChipEvent: "Acara",
     styleChipFavorites: "Favorit",
     styleFavoriteTutorialTitle: "🔖 Ketuk untuk menambahkan ke favorit!",
+    styleFavoriteAdded: "Ditambahkan ke favorit",
+    styleFavoriteRemoved: "Dihapus dari favorit",
     styleFavoriteTutorialBody: "Lihat kembali kapan saja di tab 🔖Favorit",
     styleChipNew: "Baru",
     styleChipPopular: "Populer",
@@ -1710,7 +1712,7 @@ export const idMessages = {
     heading: "Persta",
     subtitle:
       "Platform styling AI untuk tampilan dan karakter yang ingin kamu ciptakan.",
-    stylePresetCarouselTitle: "Ganti outfit, tanpa prompt!",
+    stylePresetCarouselTitle: "Ganti outfit dengan mudah!",
     stylePresetConfirmTitle: "Coba ini?",
     stylePresetConfirmCancel: "Lihat outfit lainnya",
     stylePresetConfirmAction: "Coba",

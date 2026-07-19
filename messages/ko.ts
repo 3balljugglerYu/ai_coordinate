@@ -1356,6 +1356,8 @@ export const koMessages = {
     styleChipEvent: "이벤트",
     styleChipFavorites: "즐겨찾기",
     styleFavoriteTutorialTitle: "🔖 탭해서 즐겨찾기에 추가!",
+    styleFavoriteAdded: "즐겨찾기에 추가했어요",
+    styleFavoriteRemoved: "즐겨찾기에서 해제했어요",
     styleFavoriteTutorialBody: "🔖즐겨찾기 탭에서 언제든지 다시 볼 수 있어요",
     styleChipNew: "신규",
     styleChipPopular: "인기",
@@ -1707,7 +1709,7 @@ export const koMessages = {
     heading: "Persta",
     subtitle:
       "만들고 싶은 룩과 캐릭터를 위한 AI 스타일링 플랫폼.",
-    stylePresetCarouselTitle: "프롬프트 없이 코디 변경!",
+    stylePresetCarouselTitle: "간편 코디 변경!",
     stylePresetConfirmTitle: "이 룩을 입혀볼까요?",
     stylePresetConfirmCancel: "다른 코디 보기",
     stylePresetConfirmAction: "입어보기",

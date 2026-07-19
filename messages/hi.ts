@@ -1358,6 +1358,8 @@ export const hiMessages = {
     styleChipEvent: "इवेंट",
     styleChipFavorites: "पसंदीदा",
     styleFavoriteTutorialTitle: "🔖 टैप करके पसंदीदा में जोड़ें!",
+    styleFavoriteAdded: "पसंदीदा में जोड़ा गया",
+    styleFavoriteRemoved: "पसंदीदा से हटाया गया",
     styleFavoriteTutorialBody: "🔖पसंदीदा टैब से कभी भी देख सकते हैं",
     styleChipNew: "नया",
     styleChipPopular: "लोकप्रिय",
@@ -1709,7 +1711,7 @@ export const hiMessages = {
     heading: "Persta",
     subtitle:
       "उन लुक्स और कैरेक्टरों के लिए AI स्टाइलिंग प्लेटफ़ॉर्म जिन्हें आप बनाना चाहते हैं।",
-    stylePresetCarouselTitle: "बिना प्रॉम्प्ट के आउटफ़िट बदलें!",
+    stylePresetCarouselTitle: "आसानी से आउटफ़िट बदलें!",
     stylePresetConfirmTitle: "इसे आज़माएँ?",
     stylePresetConfirmCancel: "अन्य आउटफ़िट देखें",
     stylePresetConfirmAction: "ट्राय करें",

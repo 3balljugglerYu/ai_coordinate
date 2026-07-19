@@ -355,7 +355,7 @@ export function StyleBrowseSheet({
                         <Bookmark
                           className={`h-4 w-4 sm:h-5 sm:w-5 ${
                             isFavorite
-                              ? "fill-slate-700 text-slate-700"
+                              ? "fill-pink-500 text-pink-500"
                               : "text-slate-400"
                           }`}
                           aria-hidden="true"
@@ -451,7 +451,7 @@ export function StyleBrowseSheet({
                     <Bookmark
                       className={`h-5 w-5 ${
                         favoriteIds.has(confirmingPreset.id)
-                          ? "fill-slate-700 text-slate-700"
+                          ? "fill-pink-500 text-pink-500"
                           : "text-slate-400"
                       }`}
                       aria-hidden="true"

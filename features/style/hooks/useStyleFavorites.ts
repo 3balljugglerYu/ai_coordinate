@@ -38,6 +38,11 @@ export function useStyleFavorites({
       }
       return updated;
     });
+    // 楽観更新に合わせて即時に結果を通知する。API 失敗時は下の catch で
+    // エラートーストに置き換わる(TOAST_LIMIT=1 のため同時表示にはならない)。
+    toast({
+      title: next ? t("styleFavoriteAdded") : t("styleFavoriteRemoved"),
+    });
     try {
       const res = await fetch("/api/style-presets/favorites", {
         method: next ? "POST" : "DELETE",

@@ -1356,6 +1356,8 @@ export const thMessages = {
     styleChipEvent: "อีเวนต์",
     styleChipFavorites: "รายการโปรด",
     styleFavoriteTutorialTitle: "🔖 แตะเพื่อเพิ่มในรายการโปรด!",
+    styleFavoriteAdded: "เพิ่มในรายการโปรดแล้ว",
+    styleFavoriteRemoved: "นำออกจากรายการโปรดแล้ว",
     styleFavoriteTutorialBody: "ดูได้ทุกเมื่อจากแท็บ 🔖รายการโปรด",
     styleChipNew: "มาใหม่",
     styleChipPopular: "ยอดนิยม",
@@ -1707,7 +1709,7 @@ export const thMessages = {
     heading: "Persta",
     subtitle:
       "แพลตฟอร์มจัดสไตล์ด้วย AI สำหรับลุคและตัวละครที่คุณอยากสร้าง",
-    stylePresetCarouselTitle: "เปลี่ยนชุดได้ ไม่ต้องใช้พรอมป์!",
+    stylePresetCarouselTitle: "เปลี่ยนชุดง่าย ๆ!",
     stylePresetConfirmTitle: "ลองชุดนี้?",
     stylePresetConfirmCancel: "ดูชุดอื่น",
     stylePresetConfirmAction: "ลอง",

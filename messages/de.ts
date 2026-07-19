@@ -1361,6 +1361,8 @@ export const deMessages = {
     styleChipEvent: "Events",
     styleChipFavorites: "Favoriten",
     styleFavoriteTutorialTitle: "🔖 Tippen und als Favorit speichern!",
+    styleFavoriteAdded: "Zu Favoriten hinzugefügt",
+    styleFavoriteRemoved: "Aus Favoriten entfernt",
     styleFavoriteTutorialBody: "Jederzeit im Tab „🔖Favoriten“ wiederzufinden",
     styleChipNew: "Neu",
     styleChipPopular: "Beliebt",
@@ -1712,7 +1714,7 @@ export const deMessages = {
     heading: "Persta",
     subtitle:
       "Eine KI-Styling-Plattform für die Looks und Charaktere, die du erschaffen willst.",
-    stylePresetCarouselTitle: "Outfits wechseln — ohne Prompt!",
+    stylePresetCarouselTitle: "Outfits wechseln — ganz einfach!",
     stylePresetConfirmTitle: "Anprobieren?",
     stylePresetConfirmCancel: "Andere Outfits sehen",
     stylePresetConfirmAction: "Anprobieren",
