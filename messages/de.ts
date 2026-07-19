@@ -1357,6 +1357,7 @@ export const deMessages = {
     styleBrowseAll: "Alle ansehen",
     styleBrowseSheetTitle: "Stil finden",
     styleBrowseEmpty: "Keine Stile gefunden",
+    styleBrowseClose: "Schließen",
     styleChipAll: "Alle",
     styleChipEvent: "Events",
     styleChipFavorites: "Favoriten",

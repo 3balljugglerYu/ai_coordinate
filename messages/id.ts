@@ -1355,6 +1355,7 @@ export const idMessages = {
     styleBrowseAll: "Lihat semua",
     styleBrowseSheetTitle: "Cari gaya",
     styleBrowseEmpty: "Tidak ada gaya yang cocok",
+    styleBrowseClose: "Tutup",
     styleChipAll: "Semua",
     styleChipEvent: "Acara",
     styleChipFavorites: "Favorit",

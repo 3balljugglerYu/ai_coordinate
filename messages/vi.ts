@@ -1353,6 +1353,7 @@ export const viMessages = {
     styleBrowseAll: "Xem tất cả",
     styleBrowseSheetTitle: "Tìm phong cách",
     styleBrowseEmpty: "Không tìm thấy phong cách",
+    styleBrowseClose: "Đóng",
     styleChipAll: "Tất cả",
     styleChipEvent: "Sự kiện",
     styleChipFavorites: "Yêu thích",

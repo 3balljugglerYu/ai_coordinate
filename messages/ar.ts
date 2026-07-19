@@ -1353,6 +1353,7 @@ export const arMessages = {
     styleBrowseAll: "عرض الكل",
     styleBrowseSheetTitle: "ابحث عن ستايل",
     styleBrowseEmpty: "لا توجد ستايلات مطابقة",
+    styleBrowseClose: "إغلاق",
     styleChipAll: "الكل",
     styleChipEvent: "الفعاليات",
     styleChipFavorites: "المفضلة",

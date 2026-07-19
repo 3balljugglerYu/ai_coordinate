@@ -1352,6 +1352,7 @@ export const koMessages = {
     styleBrowseAll: "전체 보기",
     styleBrowseSheetTitle: "스타일 찾기",
     styleBrowseEmpty: "해당하는 스타일이 없습니다",
+    styleBrowseClose: "닫기",
     styleChipAll: "전체",
     styleChipEvent: "이벤트",
     styleChipFavorites: "즐겨찾기",

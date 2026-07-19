@@ -1296,6 +1296,7 @@ export const jaMessages = {
     styleBrowseAll: "すべて見る",
     styleBrowseSheetTitle: "スタイルをさがす",
     styleBrowseEmpty: "該当するスタイルがありません",
+    styleBrowseClose: "閉じる",
     styleChipAll: "すべて",
     styleChipEvent: "イベント",
     styleChipFavorites: "お気に入り",

@@ -1356,6 +1356,7 @@ export const esMessages = {
     styleBrowseAll: "Ver todo",
     styleBrowseSheetTitle: "Buscar un estilo",
     styleBrowseEmpty: "No se encontraron estilos",
+    styleBrowseClose: "Cerrar",
     styleChipAll: "Todo",
     styleChipEvent: "Eventos",
     styleChipFavorites: "Favoritos",

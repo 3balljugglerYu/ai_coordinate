@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import type { Driver } from "driver.js";
-import { Bookmark } from "lucide-react";
+import { Bookmark, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -299,9 +300,12 @@ export function StyleBrowseSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
+      {/* 既定の閉じるボタン(アイコン16px)はタップ範囲が狭いため無効化し、
+          ヘッダー内に44pxの大きいボタンを自前で置く。 */}
       <SheetContent
         side="bottom"
         className="h-[100dvh] gap-0 rounded-none border-t-0 p-0"
+        showCloseButton={false}
         onInteractOutside={(event) => {
           // driver.js のチュートリアルUI(ポップオーバー/オーバーレイ)はシート外
           // (body直下)に描画されるため、その操作でシートが閉じないようにする。
@@ -314,9 +318,16 @@ export function StyleBrowseSheet({
         }}
       >
         <SheetHeader className="border-b px-4 pb-3 pt-4">
-          <SheetTitle className="text-left text-lg font-semibold text-gray-900">
-            {t("styleBrowseSheetTitle")}
-          </SheetTitle>
+          <div className="flex items-center justify-between gap-2">
+            <SheetTitle className="text-left text-lg font-semibold text-gray-900">
+              {t("styleBrowseSheetTitle")}
+            </SheetTitle>
+            {/* タップしやすい44pxの閉じるボタン(既定の16pxアイコンの代替)。 */}
+            <SheetClose className="-my-2 -mr-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400">
+              <X className="h-6 w-6" aria-hidden="true" />
+              <span className="sr-only">{t("styleBrowseClose")}</span>
+            </SheetClose>
+          </div>
           {/* チップ列(横スクロール) */}
           <div
             ref={setChipRowEl}

@@ -1351,6 +1351,7 @@ export const zhCnMessages = {
     styleBrowseAll: "查看全部",
     styleBrowseSheetTitle: "寻找风格",
     styleBrowseEmpty: "没有符合的风格",
+    styleBrowseClose: "关闭",
     styleChipAll: "全部",
     styleChipEvent: "活动",
     styleChipFavorites: "收藏",

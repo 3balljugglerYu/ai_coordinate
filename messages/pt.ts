@@ -1356,6 +1356,7 @@ export const ptMessages = {
     styleBrowseAll: "Ver tudo",
     styleBrowseSheetTitle: "Encontrar um estilo",
     styleBrowseEmpty: "Nenhum estilo encontrado",
+    styleBrowseClose: "Fechar",
     styleChipAll: "Tudo",
     styleChipEvent: "Eventos",
     styleChipFavorites: "Favoritos",

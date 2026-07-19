@@ -1352,6 +1352,7 @@ export const thMessages = {
     styleBrowseAll: "ดูทั้งหมด",
     styleBrowseSheetTitle: "ค้นหาสไตล์",
     styleBrowseEmpty: "ไม่พบสไตล์ที่ตรงกัน",
+    styleBrowseClose: "ปิด",
     styleChipAll: "ทั้งหมด",
     styleChipEvent: "อีเวนต์",
     styleChipFavorites: "รายการโปรด",

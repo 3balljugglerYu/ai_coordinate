@@ -1356,6 +1356,7 @@ export const itMessages = {
     styleBrowseAll: "Vedi tutto",
     styleBrowseSheetTitle: "Trova uno stile",
     styleBrowseEmpty: "Nessuno stile trovato",
+    styleBrowseClose: "Chiudi",
     styleChipAll: "Tutto",
     styleChipEvent: "Eventi",
     styleChipFavorites: "Preferiti",

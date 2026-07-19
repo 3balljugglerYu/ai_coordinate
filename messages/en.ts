@@ -1353,6 +1353,7 @@ export const enMessages = {
     styleBrowseAll: "Browse all",
     styleBrowseSheetTitle: "Find a style",
     styleBrowseEmpty: "No styles found",
+    styleBrowseClose: "Close",
     styleChipAll: "All",
     styleChipEvent: "Events",
     styleChipFavorites: "Favorites",

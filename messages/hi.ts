@@ -1354,6 +1354,7 @@ export const hiMessages = {
     styleBrowseAll: "सभी देखें",
     styleBrowseSheetTitle: "स्टाइल खोजें",
     styleBrowseEmpty: "कोई स्टाइल नहीं मिली",
+    styleBrowseClose: "बंद करें",
     styleChipAll: "सभी",
     styleChipEvent: "इवेंट",
     styleChipFavorites: "पसंदीदा",
