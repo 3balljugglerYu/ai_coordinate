@@ -1315,6 +1315,7 @@ export const jaMessages = {
     styleFavoriteError: "お気に入りの更新に失敗しました",
     styleFavoritesEmpty: "お気に入りはまだありません",
     styleBrowseConfirmTitle: "こちらを試着しますか？",
+    styleBrowseConfirmDescription: "選択したスタイルの拡大プレビューです。試着するか、プレビューを閉じられます。",
     styleBrowseConfirmCancel: "他のスタイルをみる",
     styleBrowseConfirmAction: "試着する",
     styleUsageCount: "これまでに{count}回つくられました",

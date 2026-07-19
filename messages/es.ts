@@ -1375,6 +1375,7 @@ export const esMessages = {
     styleFavoriteError: "No se pudo actualizar favoritos",
     styleFavoritesEmpty: "Aún no tienes favoritos",
     styleBrowseConfirmTitle: "¿Quieres probar este conjunto?",
+    styleBrowseConfirmDescription: "Vista previa ampliada del estilo seleccionado. Puedes probártelo o cerrar la vista previa.",
     styleBrowseConfirmCancel: "Ver otros estilos",
     styleBrowseConfirmAction: "Probarlo",
     styleUsageCount: "Generado {count} veces hasta ahora",

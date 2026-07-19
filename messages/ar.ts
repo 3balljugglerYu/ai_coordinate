@@ -1372,6 +1372,7 @@ export const arMessages = {
     styleFavoriteError: "فشل تحديث المفضلة",
     styleFavoritesEmpty: "لا توجد مفضلات بعد",
     styleBrowseConfirmTitle: "هل تريد تجربة هذه؟",
+    styleBrowseConfirmDescription: "معاينة مكبّرة للستايل المحدد. يمكنك تجربته أو إغلاق المعاينة.",
     styleBrowseConfirmCancel: "عرض ستايلات أخرى",
     styleBrowseConfirmAction: "تجربة",
     styleUsageCount: "تم إنشاؤه {count} مرة حتى الآن",

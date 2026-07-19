@@ -1375,6 +1375,7 @@ export const itMessages = {
     styleFavoriteError: "Aggiornamento dei preferiti non riuscito",
     styleFavoritesEmpty: "Ancora nessun preferito",
     styleBrowseConfirmTitle: "Provarlo?",
+    styleBrowseConfirmDescription: "Anteprima ingrandita dello stile selezionato. Puoi provarlo o chiudere l’anteprima.",
     styleBrowseConfirmCancel: "Vedi altri stili",
     styleBrowseConfirmAction: "Provalo",
     styleUsageCount: "Generato {count} volte finora",

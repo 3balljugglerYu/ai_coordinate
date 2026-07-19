@@ -1375,6 +1375,7 @@ export const ptMessages = {
     styleFavoriteError: "Falha ao atualizar favoritos",
     styleFavoritesEmpty: "Ainda não há favoritos",
     styleBrowseConfirmTitle: "Quer experimentar este look?",
+    styleBrowseConfirmDescription: "Prévia ampliada do estilo selecionado. Você pode experimentá-lo ou fechar a prévia.",
     styleBrowseConfirmCancel: "Ver outros estilos",
     styleBrowseConfirmAction: "Experimentar",
     styleUsageCount: "Gerado {count} vezes até agora",

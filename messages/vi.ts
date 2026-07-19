@@ -1372,6 +1372,7 @@ export const viMessages = {
     styleFavoriteError: "Cập nhật yêu thích thất bại",
     styleFavoritesEmpty: "Chưa có mục yêu thích",
     styleBrowseConfirmTitle: "Thử bộ này?",
+    styleBrowseConfirmDescription: "Bản xem trước phóng to của phong cách đã chọn. Bạn có thể thử hoặc đóng bản xem trước.",
     styleBrowseConfirmCancel: "Xem các style khác",
     styleBrowseConfirmAction: "Thử",
     styleUsageCount: "Đã được tạo {count} lần",

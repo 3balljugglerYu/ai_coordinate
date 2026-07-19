@@ -1371,6 +1371,7 @@ export const thMessages = {
     styleFavoriteError: "อัปเดตรายการโปรดไม่สำเร็จ",
     styleFavoritesEmpty: "ยังไม่มีรายการโปรด",
     styleBrowseConfirmTitle: "ลองชุดนี้?",
+    styleBrowseConfirmDescription: "ตัวอย่างขยายของสไตล์ที่เลือก คุณสามารถลองสวมหรือปิดตัวอย่างได้",
     styleBrowseConfirmCancel: "ดูสไตล์อื่น",
     styleBrowseConfirmAction: "ลอง",
     styleUsageCount: "ถูกสร้างแล้ว {count} ครั้ง",

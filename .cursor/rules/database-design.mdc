@@ -51,6 +51,7 @@ alwaysApply: false
 - `referrals`
 - `source_image_stocks`
 - `style_presets`
+- `style_preset_favorites`
 - `style_usage_events`
 - `style_guest_generate_attempts`
 - `user_blocks`
@@ -267,6 +268,14 @@ alwaysApply: false
 - 備考: `action` は `submit/approve/reject/unpublish/withdraw`
 - RLS: 管理者または会員投稿者本人の `SELECT` のみ。`INSERT/UPDATE/DELETE` は RPC / service-role 経由
 
+#### `style_preset_favorites`
+- 主キー: `(user_id, preset_id)` 複合
+- 主要カラム: `user_id`, `preset_id`, `created_at`
+- 外部キー: `user_id -> auth.users.id`（CASCADE）, `preset_id -> style_presets.id`（CASCADE）
+- インデックス: `idx_style_preset_favorites_preset_id`（preset_id。お気に入り数集計用）
+- 備考: `/style` 探索シートのお気に入り(しおり)。API は `POST/DELETE /api/style-presets/favorites`（同一オリジン + セッション必須）
+- RLS: 本人行のみ `SELECT/INSERT/DELETE`（公開読み取りなし）
+
 #### `style_usage_events`
 - 主キー: `id`
 - 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `image_job_id`, `released_at`, `release_reason`, `created_at`
@@ -460,7 +469,8 @@ alwaysApply: false
 ### 業務ロジック RPC
 - ペルコイン: `apply_percoin_transaction`, `deduct_free_percoins`, `refund_percoins`, `grant_tour_bonus`, `grant_daily_post_bonus`, `grant_streak_bonus`, `grant_referral_bonus`, `grant_admin_bonus`, `grant_collection_completion_reward`, `deduct_percoins_admin`, `expire_free_percoin_batches`
 - ペルコイン参照: `get_percoin_balance_breakdown`, `get_percoin_transactions_with_expiry`, `get_percoin_transactions_count`, `get_percoin_bonus_default`, `get_percoin_streak_amount`, `get_free_percoin_batches_expiring`, `get_expiring_this_month_count`, `get_expiration_notification_targets`
-- One-Tap Style: `consume_style_authenticated_generate_attempt`, `reserve_style_authenticated_generate_attempt`, `attach_style_authenticated_generate_attempt_job`, `release_style_authenticated_generate_attempt`, `reserve_style_guest_generate_attempt`, `release_style_guest_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`
+- One-Tap Style: `consume_style_authenticated_generate_attempt`, `reserve_style_authenticated_generate_attempt`, `attach_style_authenticated_generate_attempt_job`, `release_style_authenticated_generate_attempt`, `reserve_style_guest_generate_attempt`, `release_style_guest_generate_attempt`, `place_style_preset_at_order`, `create_style_preset`, `update_style_preset`, `delete_style_preset_and_reorder`, `reorder_style_presets`, `get_style_generate_counts`
+  - 注: `get_style_generate_counts(p_days INT)` は `style_usage_events` の `event_type='generate'` を style_id 別に集計する参照 RPC。EXECUTE は service_role のみ（anon/authenticated 不可）。呼び出しは `features/style/lib/style-popularity.ts`（admin client + "use cache"）から。
   - 注: `reserve_style_guest_generate_attempt` は意味を画面横断ゲスト試行（`/style` と `/coordinate` 合算）に拡張済み。現行 default は `p_short_limit=999`（実質無効）/ `p_daily_limit=1`。引数の `p_client_ip_hash` には `SHA-256("<ip>|<persta_guest_id>|<salt>")` を渡す（`features/style/lib/style-rate-limit.ts`）。
   - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
 - コレクション: `get_collection_progress`, `reserve_collection_completion`, `finalize_collection_completion`, `fail_collection_completion`

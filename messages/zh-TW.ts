@@ -1370,6 +1370,7 @@ export const zhTwMessages = {
     styleFavoriteError: "收藏更新失敗",
     styleFavoritesEmpty: "還沒有收藏",
     styleBrowseConfirmTitle: "要試穿這套嗎?",
+    styleBrowseConfirmDescription: "所選風格的放大預覽。您可以試穿或關閉預覽。",
     styleBrowseConfirmCancel: "看看其他風格",
     styleBrowseConfirmAction: "試穿",
     styleUsageCount: "至今已生成{count}次",

@@ -1372,6 +1372,7 @@ export const enMessages = {
     styleFavoriteError: "Failed to update favorites",
     styleFavoritesEmpty: "No favorites yet",
     styleBrowseConfirmTitle: "Try this on?",
+    styleBrowseConfirmDescription: "Enlarged preview of the selected style. You can try it on or close the preview.",
     styleBrowseConfirmCancel: "See other styles",
     styleBrowseConfirmAction: "Try on",
     styleUsageCount: "Generated {count} times so far",

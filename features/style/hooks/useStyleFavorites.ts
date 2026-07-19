@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -23,6 +23,9 @@ export function useStyleFavorites({
   const [favoritePresetIds, setFavoritePresetIds] = useState<Set<string>>(
     () => new Set(initialFavoritePresetIds ?? []),
   );
+  // プリセットごとの最新リクエスト番号。連打時に古いリクエストの失敗が
+  // 後続操作の結果をロールバックしてしまわないよう、失敗処理は最新のみ有効にする。
+  const latestRequestIdRef = useRef(new Map<string, number>());
 
   const toggleFavorite = async (presetId: string, next: boolean) => {
     if (!isAuthenticated) {
@@ -43,6 +46,8 @@ export function useStyleFavorites({
     toast({
       title: next ? t("styleFavoriteAdded") : t("styleFavoriteRemoved"),
     });
+    const requestId = (latestRequestIdRef.current.get(presetId) ?? 0) + 1;
+    latestRequestIdRef.current.set(presetId, requestId);
     try {
       const res = await fetch("/api/style-presets/favorites", {
         method: next ? "POST" : "DELETE",
@@ -53,6 +58,10 @@ export function useStyleFavorites({
         throw new Error(`favorites api ${res.status}`);
       }
     } catch {
+      // 古いリクエストの失敗なら何もしない(最新操作の楽観状態を壊さない)。
+      if (latestRequestIdRef.current.get(presetId) !== requestId) {
+        return;
+      }
       // ロールバック(逆操作)。
       setFavoritePresetIds((prev) => {
         const updated = new Set(prev);

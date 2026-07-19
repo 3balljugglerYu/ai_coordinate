@@ -1373,6 +1373,7 @@ export const hiMessages = {
     styleFavoriteError: "पसंदीदा अपडेट नहीं हो सका",
     styleFavoritesEmpty: "अभी कोई पसंदीदा नहीं",
     styleBrowseConfirmTitle: "इसे आज़माएँ?",
+    styleBrowseConfirmDescription: "चुनी गई स्टाइल का बड़ा पूर्वावलोकन। आप इसे आज़मा सकते हैं या पूर्वावलोकन बंद कर सकते हैं।",
     styleBrowseConfirmCancel: "अन्य स्टाइल देखें",
     styleBrowseConfirmAction: "ट्राय करें",
     styleUsageCount: "अब तक {count} बार बनाया गया",

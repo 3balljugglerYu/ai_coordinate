@@ -1374,6 +1374,7 @@ export const idMessages = {
     styleFavoriteError: "Gagal memperbarui favorit",
     styleFavoritesEmpty: "Belum ada favorit",
     styleBrowseConfirmTitle: "Coba ini?",
+    styleBrowseConfirmDescription: "Pratinjau besar dari gaya yang dipilih. Anda bisa mencobanya atau menutup pratinjau.",
     styleBrowseConfirmCancel: "Lihat gaya lainnya",
     styleBrowseConfirmAction: "Coba",
     styleUsageCount: "Sudah dibuat {count} kali",

@@ -1371,6 +1371,7 @@ export const koMessages = {
     styleFavoriteError: "즐겨찾기 업데이트에 실패했습니다",
     styleFavoritesEmpty: "아직 즐겨찾기가 없습니다",
     styleBrowseConfirmTitle: "이 룩을 입혀볼까요?",
+    styleBrowseConfirmDescription: "선택한 스타일의 확대 미리보기입니다. 착용해 보거나 미리보기를 닫을 수 있어요.",
     styleBrowseConfirmCancel: "다른 스타일 보기",
     styleBrowseConfirmAction: "입어보기",
     styleUsageCount: "지금까지 {count}번 생성되었어요",

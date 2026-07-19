@@ -1376,6 +1376,7 @@ export const deMessages = {
     styleFavoriteError: "Favoriten konnten nicht aktualisiert werden",
     styleFavoritesEmpty: "Noch keine Favoriten",
     styleBrowseConfirmTitle: "Anprobieren?",
+    styleBrowseConfirmDescription: "Vergrößerte Vorschau des ausgewählten Stils. Du kannst ihn anprobieren oder die Vorschau schließen.",
     styleBrowseConfirmCancel: "Andere Styles sehen",
     styleBrowseConfirmAction: "Anprobieren",
     styleUsageCount: "Bisher {count} Mal erstellt",

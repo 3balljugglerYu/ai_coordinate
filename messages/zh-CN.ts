@@ -1370,6 +1370,7 @@ export const zhCnMessages = {
     styleFavoriteError: "收藏更新失败",
     styleFavoritesEmpty: "还没有收藏",
     styleBrowseConfirmTitle: "要试穿这套吗?",
+    styleBrowseConfirmDescription: "所选风格的放大预览。您可以试穿或关闭预览。",
     styleBrowseConfirmCancel: "看看其他风格",
     styleBrowseConfirmAction: "试穿",
     styleUsageCount: "至今已生成{count}次",

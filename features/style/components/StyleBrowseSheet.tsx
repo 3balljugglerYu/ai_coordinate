@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -400,6 +401,12 @@ export function StyleBrowseSheet({
               {filtered.map((preset) => {
                 const isDripLocked = preset.locked === true;
                 const isFavorite = favoriteIds.has(preset.id);
+                // ゲストは coordinate 以外を生成できないため、ストリップと同じ
+                // 「ログインで生成可能！」ラベルを重ねる(表示の一貫性)。
+                const isGuestLockedCard =
+                  !isDripLocked &&
+                  !isAuthenticated &&
+                  preset.category.key !== "coordinate";
                 return (
                   <div key={preset.id} className="relative">
                     <StylePresetPreviewCard
@@ -418,6 +425,11 @@ export function StyleBrowseSheet({
                       dripLocked={isDripLocked}
                       dripLockedLabel={
                         isDripLocked ? t("styleDripLockedLabel") : undefined
+                      }
+                      lockedLabel={
+                        isGuestLockedCard
+                          ? t("guestCategoryLoginAction")
+                          : undefined
                       }
                       generated={
                         !isDripLocked && generatedPresetIds.has(preset.id)
@@ -493,6 +505,10 @@ export function StyleBrowseSheet({
               <DialogTitle className="text-center">
                 {t("styleBrowseConfirmTitle")}
               </DialogTitle>
+              {/* Radix の a11y 要件(aria-describedby)。視覚的には冗長なので sr-only。 */}
+              <DialogDescription className="sr-only">
+                {t("styleBrowseConfirmDescription")}
+              </DialogDescription>
             </DialogHeader>
             {confirmingPreset ? (
               <div className="flex flex-col items-center gap-3 py-2">

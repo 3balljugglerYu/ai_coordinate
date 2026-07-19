@@ -1375,6 +1375,7 @@ export const frMessages = {
     styleFavoriteError: "Échec de la mise à jour des favoris",
     styleFavoritesEmpty: "Aucun favori pour l'instant",
     styleBrowseConfirmTitle: "Essayer cette tenue ?",
+    styleBrowseConfirmDescription: "Aperçu agrandi du style sélectionné. Vous pouvez l’essayer ou fermer l’aperçu.",
     styleBrowseConfirmCancel: "Voir d'autres styles",
     styleBrowseConfirmAction: "Essayer",
     styleUsageCount: "Généré {count} fois jusqu'à présent",
