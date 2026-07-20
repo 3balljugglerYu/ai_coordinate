@@ -41,6 +41,8 @@ interface HomeStylePresetCarouselProps {
   isAuthenticated: boolean;
   /** 企画カードの「生成済み ✓」用。 */
   generatedPresetIds: readonly string[];
+  /** NEW バッジを付ける新着プリセットID(登録14日以内)。 */
+  newPresetIds?: readonly string[];
 }
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
@@ -100,6 +102,7 @@ export function HomeStylePresetCarousel({
   initialFavoritePresetIds,
   isAuthenticated,
   generatedPresetIds,
+  newPresetIds,
 }: HomeStylePresetCarouselProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -119,6 +122,7 @@ export function HomeStylePresetCarousel({
     isAuthenticated,
   });
   const generatedPresetIdSet = new Set(generatedPresetIds);
+  const newPresetIdSet = new Set(newPresetIds ?? []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -354,6 +358,11 @@ export function HomeStylePresetCarousel({
                   preset={preset}
                   alt={t("styleCardAlt", { name: preset.title })}
                   onClick={() => handleSelect(preset)}
+                  newBadgeLabel={
+                    newPresetIdSet.has(preset.id)
+                      ? t("styleNewBadge")
+                      : undefined
+                  }
                 />
               </SwiperSlide>
             );

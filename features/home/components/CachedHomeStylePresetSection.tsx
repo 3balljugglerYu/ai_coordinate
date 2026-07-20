@@ -21,6 +21,10 @@ import {
   getStyleGenerateCounts,
   getStyleGenerateTotalCounts,
 } from "@/features/style/lib/style-popularity";
+import {
+  deriveHomeCarouselPresets,
+  isNewPreset,
+} from "@/features/home/lib/home-carousel-presets";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 
@@ -29,11 +33,6 @@ const EMPTY_UNLOCK_CONTEXT: CollectionUnlockContext = {
   prerequisiteCompletedKeys: new Set(),
   distinctGeneratedByCategoryKey: new Map(),
 };
-
-// カルーセルに出す最大枚数。全件(120枚超×ループ用3複製)を並べると
-// ホーム初回表示の DOM/ハイドレーションが重くなるため、人気上位のみに絞る。
-// 全件の探索は「すべて見る」(探索シート)が担う。
-const CAROUSEL_MAX_ITEMS = 20;
 
 /**
  * ホームの Style プリセットセクション。
@@ -184,13 +183,18 @@ export async function CachedHomeStylePresetSection({
       .filter(Boolean);
   }
 
-  // カルーセルは直近30日の人気順(生成数降順)で上位のみ表示する。
-  // sort は安定なので同数(未生成含む)は管理画面の並び順(sort_order)を維持する。
-  const carouselPresets = [...presets]
-    .sort(
-      (a, b) => (generateCounts[b.id] ?? 0) - (generateCounts[a.id] ?? 0),
-    )
-    .slice(0, CAROUSEL_MAX_ITEMS);
+  // カルーセルは「新着(先頭・最大 CAROUSEL_MAX_NEW_ITEMS 枚) + 人気順」の
+  // 上位 CAROUSEL_MAX_ITEMS 枚のみ表示する。人気順だけだと登録直後の
+  // スタイルがホームに露出しないため新着枠を確保する。
+  const carouselPresets = deriveHomeCarouselPresets(
+    presets,
+    generateCounts,
+    now,
+  );
+  // NEW バッジ対象(新着枠に限らず、窓内ならすべて)。
+  const newPresetIds = carouselPresets
+    .filter((preset) => isNewPreset(preset, now))
+    .map((preset) => preset.id);
 
   return (
     <>
@@ -207,6 +211,7 @@ export async function CachedHomeStylePresetSection({
       ))}
       <HomeStylePresetCarousel
         presets={carouselPresets}
+        newPresetIds={newPresetIds}
         // 探索シートには /style と同じ「解放ゲート適用済みの全プリセット」を渡す
         // (カルーセルと違い locked=シルエットや棚振り分け分も含めて一覧できる)。
         browsePresets={gated}

@@ -1351,6 +1351,7 @@ export const hiMessages = {
     styleImageAlt: "चयनित स्टाइल छवि",
     styleImageZoomAria: "स्टाइल छवि बड़ी करें",
     styleGeneratedBadge: "बन गया",
+    styleNewBadge: "नया",
     styleBrowseAll: "सभी देखें",
     styleBrowseSheetTitle: "स्टाइल खोजें",
     styleBrowseEmpty: "कोई स्टाइल नहीं मिली",
@@ -1714,7 +1715,7 @@ export const hiMessages = {
     subtitle:
       "उन लुक्स और कैरेक्टरों के लिए AI स्टाइलिंग प्लेटफ़ॉर्म जिन्हें आप बनाना चाहते हैं।",
     stylePresetCarouselTitle: "आसानी से आउटफ़िट बदलें!",
-    stylePresetCarouselCaption: "लोकप्रिय स्टाइलें पहले दिखाई जा रही हैं",
+    stylePresetCarouselCaption: "नई और लोकप्रिय स्टाइलें दिखाई जा रही हैं",
     stylePresetConfirmTitle: "इसे आज़माएँ?",
     stylePresetConfirmCancel: "अन्य आउटफ़िट देखें",
     stylePresetConfirmAction: "ट्राय करें",

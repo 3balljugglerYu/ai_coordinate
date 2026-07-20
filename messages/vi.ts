@@ -1350,6 +1350,7 @@ export const viMessages = {
     styleImageAlt: "Hình phong cách đã chọn",
     styleImageZoomAria: "Phóng to ảnh phong cách",
     styleGeneratedBadge: "Đã tạo",
+    styleNewBadge: "MỚI",
     styleBrowseAll: "Xem tất cả",
     styleBrowseSheetTitle: "Tìm phong cách",
     styleBrowseEmpty: "Không tìm thấy phong cách",
@@ -1713,7 +1714,7 @@ export const viMessages = {
     subtitle:
       "Nền tảng styling AI cho những diện mạo và nhân vật bạn muốn tạo nên.",
     stylePresetCarouselTitle: "Đổi đồ thật dễ dàng!",
-    stylePresetCarouselCaption: "Đang hiển thị các phong cách phổ biến trước",
+    stylePresetCarouselCaption: "Đang hiển thị các phong cách mới và phổ biến",
     stylePresetConfirmTitle: "Thử bộ này?",
     stylePresetConfirmCancel: "Xem các bộ khác",
     stylePresetConfirmAction: "Thử",

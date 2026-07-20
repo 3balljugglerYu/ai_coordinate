@@ -1348,6 +1348,7 @@ export const zhCnMessages = {
     styleImageAlt: "选定的造型图片",
     styleImageZoomAria: "放大风格图片",
     styleGeneratedBadge: "已生成",
+    styleNewBadge: "NEW",
     styleBrowseAll: "查看全部",
     styleBrowseSheetTitle: "寻找风格",
     styleBrowseEmpty: "没有符合的风格",
@@ -1710,7 +1711,7 @@ export const zhCnMessages = {
     subtitle:
       "想呈现的造型与角色，皆可由这里开始的 AI 造型平台。",
     stylePresetCarouselTitle: "轻松换装!",
-    stylePresetCarouselCaption: "优先展示热门风格",
+    stylePresetCarouselCaption: "展示新增与热门风格",
     stylePresetConfirmTitle: "要试穿这套吗?",
     stylePresetConfirmCancel: "看看其他搭配",
     stylePresetConfirmAction: "试穿",
