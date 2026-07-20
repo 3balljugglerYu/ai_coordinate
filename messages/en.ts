@@ -1350,6 +1350,7 @@ export const enMessages = {
     styleImageAlt: "Selected style image",
     styleImageZoomAria: "Enlarge style image",
     styleGeneratedBadge: "Generated",
+    styleNewBadge: "NEW",
     styleBrowseAll: "Browse all",
     styleBrowseSheetTitle: "Find a style",
     styleBrowseEmpty: "No styles found",
@@ -1713,7 +1714,7 @@ export const enMessages = {
     subtitle:
       "An AI styling platform for the looks and characters you want to create.",
     stylePresetCarouselTitle: "Easy outfit change!",
-    stylePresetCarouselCaption: "Showing popular styles first",
+    stylePresetCarouselCaption: "Showing new and popular styles",
     stylePresetConfirmTitle: "Try this on?",
     stylePresetConfirmCancel: "See other outfits",
     stylePresetConfirmAction: "Try on",

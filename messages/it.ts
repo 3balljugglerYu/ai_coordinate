@@ -1353,6 +1353,7 @@ export const itMessages = {
     styleImageAlt: "Immagine dello stile selezionato",
     styleImageZoomAria: "Ingrandisci immagine stile",
     styleGeneratedBadge: "Generato",
+    styleNewBadge: "NUOVO",
     styleBrowseAll: "Vedi tutto",
     styleBrowseSheetTitle: "Trova uno stile",
     styleBrowseEmpty: "Nessuno stile trovato",
@@ -1716,7 +1717,7 @@ export const itMessages = {
     subtitle:
       "Una piattaforma di styling con IA per i look e i personaggi che vuoi creare.",
     stylePresetCarouselTitle: "Cambio outfit facile!",
-    stylePresetCarouselCaption: "Mostriamo prima gli stili più popolari",
+    stylePresetCarouselCaption: "Mostriamo stili nuovi e popolari",
     stylePresetConfirmTitle: "Provarlo?",
     stylePresetConfirmCancel: "Vedi altri outfit",
     stylePresetConfirmAction: "Provalo",

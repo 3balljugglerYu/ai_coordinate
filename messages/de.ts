@@ -1354,6 +1354,7 @@ export const deMessages = {
     styleImageAlt: "Ausgewähltes Stilbild",
     styleImageZoomAria: "Stilbild vergrößern",
     styleGeneratedBadge: "Erstellt",
+    styleNewBadge: "NEU",
     styleBrowseAll: "Alle ansehen",
     styleBrowseSheetTitle: "Stil finden",
     styleBrowseEmpty: "Keine Stile gefunden",
@@ -1717,7 +1718,7 @@ export const deMessages = {
     subtitle:
       "Eine KI-Styling-Plattform für die Looks und Charaktere, die du erschaffen willst.",
     stylePresetCarouselTitle: "Outfits wechseln — ganz einfach!",
-    stylePresetCarouselCaption: "Beliebte Stile werden zuerst angezeigt",
+    stylePresetCarouselCaption: "Neue und beliebte Stile werden angezeigt",
     stylePresetConfirmTitle: "Anprobieren?",
     stylePresetConfirmCancel: "Andere Outfits sehen",
     stylePresetConfirmAction: "Anprobieren",

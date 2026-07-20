@@ -1349,6 +1349,7 @@ export const koMessages = {
     styleImageAlt: "선택한 스타일 이미지",
     styleImageZoomAria: "스타일 이미지 확대",
     styleGeneratedBadge: "생성 완료",
+    styleNewBadge: "NEW",
     styleBrowseAll: "전체 보기",
     styleBrowseSheetTitle: "스타일 찾기",
     styleBrowseEmpty: "해당하는 스타일이 없습니다",
@@ -1712,7 +1713,7 @@ export const koMessages = {
     subtitle:
       "만들고 싶은 룩과 캐릭터를 위한 AI 스타일링 플랫폼.",
     stylePresetCarouselTitle: "간편 코디 변경!",
-    stylePresetCarouselCaption: "인기 스타일부터 표시 중",
+    stylePresetCarouselCaption: "신규・인기 스타일 표시 중",
     stylePresetConfirmTitle: "이 룩을 입혀볼까요?",
     stylePresetConfirmCancel: "다른 코디 보기",
     stylePresetConfirmAction: "입어보기",

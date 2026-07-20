@@ -1352,6 +1352,7 @@ export const idMessages = {
     styleImageAlt: "Gambar gaya yang dipilih",
     styleImageZoomAria: "Perbesar gambar gaya",
     styleGeneratedBadge: "Sudah dibuat",
+    styleNewBadge: "BARU",
     styleBrowseAll: "Lihat semua",
     styleBrowseSheetTitle: "Cari gaya",
     styleBrowseEmpty: "Tidak ada gaya yang cocok",
@@ -1715,7 +1716,7 @@ export const idMessages = {
     subtitle:
       "Platform styling AI untuk tampilan dan karakter yang ingin kamu ciptakan.",
     stylePresetCarouselTitle: "Ganti outfit dengan mudah!",
-    stylePresetCarouselCaption: "Menampilkan gaya populer terlebih dahulu",
+    stylePresetCarouselCaption: "Menampilkan gaya baru dan populer",
     stylePresetConfirmTitle: "Coba ini?",
     stylePresetConfirmCancel: "Lihat outfit lainnya",
     stylePresetConfirmAction: "Coba",

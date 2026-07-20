@@ -82,6 +82,12 @@ interface StylePresetPreviewCardProps {
   /** generated=true のバッジの読み上げ文言(例: 「生成済み」)。 */
   generatedLabel?: string;
   /**
+   * 新着(登録から日が浅い)プリセットのとき左上に表示するバッジ文言(例: 「NEW」)。
+   * 探索シートは左上にしおりを重ねるため、渡すのはホームカルーセル等の
+   * しおりが無い面に限ること。
+   */
+  newBadgeLabel?: string;
+  /**
    * 探索シートのグリッド用: 固定 180px でなく親セル幅いっぱいに広げる。
    * 画像は 3:4 のアスペクト比を維持する(ストリップの 180x240 と同比率)。
    */
@@ -115,6 +121,7 @@ export function StylePresetPreviewCard({
   dripLockedLabel,
   generated = false,
   generatedLabel,
+  newBadgeLabel,
   fluid = false,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
@@ -199,6 +206,12 @@ export function StylePresetPreviewCard({
                 {lockedLabel}
               </span>
             </div>
+          )}
+          {/* 新着バッジ(左上)。ブランドのグラデーションで目を引かせる。 */}
+          {!dripLocked && newBadgeLabel && (
+            <span className="absolute left-1.5 top-1.5 z-20 inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-2 py-0.5 text-[10px] font-bold leading-tight text-white shadow">
+              {newBadgeLabel}
+            </span>
           )}
           {/* 生成済みの企画カードは右上に緑の ✓ バッジ(ホームの企画棚と同じ意匠)。 */}
           {!dripLocked && generated && (

@@ -1350,6 +1350,7 @@ export const arMessages = {
     styleImageAlt: "صورة الأسلوب المختار",
     styleImageZoomAria: "تكبير صورة الستايل",
     styleGeneratedBadge: "تم الإنشاء",
+    styleNewBadge: "جديد",
     styleBrowseAll: "عرض الكل",
     styleBrowseSheetTitle: "ابحث عن ستايل",
     styleBrowseEmpty: "لا توجد ستايلات مطابقة",
@@ -1713,7 +1714,7 @@ export const arMessages = {
     subtitle:
       "منصة تنسيق إطلالات بالذكاء الاصطناعي للإطلالات والشخصيات التي تريد إنشاءها.",
     stylePresetCarouselTitle: "غيّر الإطلالات بسهولة!",
-    stylePresetCarouselCaption: "نعرض الستايلات الرائجة أولًا",
+    stylePresetCarouselCaption: "نعرض الستايلات الجديدة والرائجة",
     stylePresetConfirmTitle: "هل تريد تجربة هذه؟",
     stylePresetConfirmCancel: "عرض إطلالات أخرى",
     stylePresetConfirmAction: "تجربة",

@@ -1349,6 +1349,7 @@ export const thMessages = {
     styleImageAlt: "รูปสไตล์ที่เลือก",
     styleImageZoomAria: "ขยายรูปสไตล์",
     styleGeneratedBadge: "สร้างแล้ว",
+    styleNewBadge: "ใหม่",
     styleBrowseAll: "ดูทั้งหมด",
     styleBrowseSheetTitle: "ค้นหาสไตล์",
     styleBrowseEmpty: "ไม่พบสไตล์ที่ตรงกัน",
@@ -1712,7 +1713,7 @@ export const thMessages = {
     subtitle:
       "แพลตฟอร์มจัดสไตล์ด้วย AI สำหรับลุคและตัวละครที่คุณอยากสร้าง",
     stylePresetCarouselTitle: "เปลี่ยนชุดง่าย ๆ!",
-    stylePresetCarouselCaption: "แสดงสไตล์ยอดนิยมก่อน",
+    stylePresetCarouselCaption: "แสดงสไตล์ใหม่และยอดนิยม",
     stylePresetConfirmTitle: "ลองชุดนี้?",
     stylePresetConfirmCancel: "ดูชุดอื่น",
     stylePresetConfirmAction: "ลอง",
