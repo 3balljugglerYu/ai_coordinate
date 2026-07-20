@@ -1712,6 +1712,7 @@ export const koMessages = {
     subtitle:
       "만들고 싶은 룩과 캐릭터를 위한 AI 스타일링 플랫폼.",
     stylePresetCarouselTitle: "간편 코디 변경!",
+    stylePresetCarouselCaption: "인기 스타일부터 표시 중",
     stylePresetConfirmTitle: "이 룩을 입혀볼까요?",
     stylePresetConfirmCancel: "다른 코디 보기",
     stylePresetConfirmAction: "입어보기",

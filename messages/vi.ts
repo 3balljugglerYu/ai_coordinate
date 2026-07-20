@@ -1713,6 +1713,7 @@ export const viMessages = {
     subtitle:
       "Nền tảng styling AI cho những diện mạo và nhân vật bạn muốn tạo nên.",
     stylePresetCarouselTitle: "Đổi đồ thật dễ dàng!",
+    stylePresetCarouselCaption: "Đang hiển thị các phong cách phổ biến trước",
     stylePresetConfirmTitle: "Thử bộ này?",
     stylePresetConfirmCancel: "Xem các bộ khác",
     stylePresetConfirmAction: "Thử",

@@ -1715,6 +1715,7 @@ export const idMessages = {
     subtitle:
       "Platform styling AI untuk tampilan dan karakter yang ingin kamu ciptakan.",
     stylePresetCarouselTitle: "Ganti outfit dengan mudah!",
+    stylePresetCarouselCaption: "Menampilkan gaya populer terlebih dahulu",
     stylePresetConfirmTitle: "Coba ini?",
     stylePresetConfirmCancel: "Lihat outfit lainnya",
     stylePresetConfirmAction: "Coba",

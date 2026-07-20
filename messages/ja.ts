@@ -1645,6 +1645,7 @@ export const jaMessages = {
     heading: "Persta | ペルスタ",
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
     stylePresetCarouselTitle: "簡単お着替え！",
+    stylePresetCarouselCaption: "人気のスタイルから表示中",
     stylePresetConfirmTitle: "こちらを試着しますか？",
     stylePresetConfirmCancel: "他のコーデをみる",
     stylePresetConfirmAction: "試着する",

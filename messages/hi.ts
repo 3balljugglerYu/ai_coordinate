@@ -1714,6 +1714,7 @@ export const hiMessages = {
     subtitle:
       "उन लुक्स और कैरेक्टरों के लिए AI स्टाइलिंग प्लेटफ़ॉर्म जिन्हें आप बनाना चाहते हैं।",
     stylePresetCarouselTitle: "आसानी से आउटफ़िट बदलें!",
+    stylePresetCarouselCaption: "लोकप्रिय स्टाइलें पहले दिखाई जा रही हैं",
     stylePresetConfirmTitle: "इसे आज़माएँ?",
     stylePresetConfirmCancel: "अन्य आउटफ़िट देखें",
     stylePresetConfirmAction: "ट्राय करें",
