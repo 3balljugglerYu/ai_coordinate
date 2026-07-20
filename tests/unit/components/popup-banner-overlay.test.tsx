@@ -24,6 +24,11 @@ jest.mock("next/image", () => ({
       <img alt={alt} src={src} {...rest} />
     );
   },
+  // 先読みゲートが表示用と同じ最適化URLを解決するのに使う。テストでは
+  // 変換せず src/sizes をそのまま返す(srcSet 無し = src がそのまま読まれる)。
+  getImageProps: (props: { src: string; sizes?: string }) => ({
+    props: { src: props.src, sizes: props.sizes },
+  }),
 }));
 
 jest.mock("next/link", () => ({

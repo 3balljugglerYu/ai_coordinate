@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import { getImageProps } from "next/image";
 import { Suspense } from "react";
+import { preload } from "react-dom";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { isAdminViewer as checkIsAdminViewer } from "@/lib/env";
 import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
+import { POPUP_BANNER_IMAGE_SIZES } from "@/features/popup-banners/lib/popup-banner-image";
 import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
 import { CachedHomePostListSection } from "@/features/home/components/CachedHomePostListSection";
@@ -135,6 +138,29 @@ async function HomePopupBannerSection({
   const popupBanners = e2ePopupBanners
     ? e2ePopupBanners
     : await getActivePopupBanners();
+
+  // ポップアップはクライアントで hydration 後に表示されるため、そのままだと
+  // 画像の取得開始が数秒遅れて LCP を悪化させる(実測で Load Delay 約5.6秒)。
+  // 表示候補の先頭バナーを <link rel="preload"> で先行ダウンロードさせ、
+  // Overlay の <Image> と同じ srcset/sizes を getImageProps で再現して
+  // ブラウザのキャッシュに確実にヒットさせる。
+  // (表示済みで実際には出ないユーザーにも1枚分の DL が発生するが、
+  //  HTTP キャッシュに乗るため再訪時の実コストはほぼ無い)
+  const preloadBanner = popupBanners[0];
+  if (preloadBanner?.imageUrl) {
+    const { props: imgProps } = getImageProps({
+      src: preloadBanner.imageUrl,
+      alt: "",
+      fill: true,
+      sizes: POPUP_BANNER_IMAGE_SIZES,
+    });
+    preload(imgProps.src, {
+      as: "image",
+      imageSrcSet: imgProps.srcSet,
+      imageSizes: imgProps.sizes,
+      fetchPriority: "high",
+    });
+  }
 
   return <PopupBannerOverlay banners={popupBanners} />;
 }

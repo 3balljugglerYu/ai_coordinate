@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
+import Image, { getImageProps } from "next/image";
 import Link from "next/link";
 import { Check, X } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { usePopupBanner } from "@/features/popup-banners/hooks/usePopupBanner";
+import { POPUP_BANNER_IMAGE_SIZES } from "@/features/popup-banners/lib/popup-banner-image";
 import type { ActivePopupBanner } from "@/features/popup-banners/lib/schema";
 
 interface PopupBannerOverlayProps {
@@ -90,7 +91,21 @@ export function PopupBannerOverlay({ banners }: PopupBannerOverlayProps) {
 
     preloadImage.onload = decodeAndFinalize;
     preloadImage.onerror = finalize;
-    preloadImage.src = currentBanner.imageUrl;
+    // 表示に使う <Image>(next/image) と同じ srcset/sizes を与え、ブラウザに
+    // 同一の最適化 URL を選ばせる。生 URL を読むと表示用と別リソースになり
+    // 二重ダウンロードになるうえ、サーバー側 preload(<link rel="preload">)の
+    // キャッシュにも当たらない。
+    const { props: gateImageProps } = getImageProps({
+      src: currentBanner.imageUrl,
+      alt: "",
+      fill: true,
+      sizes: POPUP_BANNER_IMAGE_SIZES,
+    });
+    preloadImage.sizes = gateImageProps.sizes ?? "";
+    if (gateImageProps.srcSet) {
+      preloadImage.srcset = gateImageProps.srcSet;
+    }
+    preloadImage.src = gateImageProps.src;
 
     if (preloadImage.complete) {
       decodeAndFinalize();
@@ -128,7 +143,7 @@ export function PopupBannerOverlay({ banners }: PopupBannerOverlayProps) {
         alt={visibleBanner.alt || t("imageAltFallback")}
         fill
         className="object-cover"
-        sizes="(max-width: 768px) 80vw, 420px"
+        sizes={POPUP_BANNER_IMAGE_SIZES}
         priority
       />
     </div>
