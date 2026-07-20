@@ -1713,6 +1713,7 @@ export const enMessages = {
     subtitle:
       "An AI styling platform for the looks and characters you want to create.",
     stylePresetCarouselTitle: "Easy outfit change!",
+    stylePresetCarouselCaption: "Showing popular styles first",
     stylePresetConfirmTitle: "Try this on?",
     stylePresetConfirmCancel: "See other outfits",
     stylePresetConfirmAction: "Try on",

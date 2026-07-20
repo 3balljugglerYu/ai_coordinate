@@ -1710,6 +1710,7 @@ export const zhTwMessages = {
     subtitle:
       "想呈現的造型與角色，皆可從這裡開始的 AI 造型平台。",
     stylePresetCarouselTitle: "輕鬆換裝!",
+    stylePresetCarouselCaption: "優先顯示熱門風格",
     stylePresetConfirmTitle: "要試穿這套嗎?",
     stylePresetConfirmCancel: "看看其他穿搭",
     stylePresetConfirmAction: "試穿",

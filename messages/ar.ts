@@ -1713,6 +1713,7 @@ export const arMessages = {
     subtitle:
       "منصة تنسيق إطلالات بالذكاء الاصطناعي للإطلالات والشخصيات التي تريد إنشاءها.",
     stylePresetCarouselTitle: "غيّر الإطلالات بسهولة!",
+    stylePresetCarouselCaption: "نعرض الستايلات الرائجة أولًا",
     stylePresetConfirmTitle: "هل تريد تجربة هذه؟",
     stylePresetConfirmCancel: "عرض إطلالات أخرى",
     stylePresetConfirmAction: "تجربة",

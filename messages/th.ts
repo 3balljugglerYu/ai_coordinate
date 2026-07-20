@@ -1712,6 +1712,7 @@ export const thMessages = {
     subtitle:
       "แพลตฟอร์มจัดสไตล์ด้วย AI สำหรับลุคและตัวละครที่คุณอยากสร้าง",
     stylePresetCarouselTitle: "เปลี่ยนชุดง่าย ๆ!",
+    stylePresetCarouselCaption: "แสดงสไตล์ยอดนิยมก่อน",
     stylePresetConfirmTitle: "ลองชุดนี้?",
     stylePresetConfirmCancel: "ดูชุดอื่น",
     stylePresetConfirmAction: "ลอง",

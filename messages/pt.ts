@@ -1716,6 +1716,7 @@ export const ptMessages = {
     subtitle:
       "Uma plataforma de styling com IA para os looks e personagens que você quer criar.",
     stylePresetCarouselTitle: "Troca de roupa fácil!",
+    stylePresetCarouselCaption: "Mostrando primeiro os estilos populares",
     stylePresetConfirmTitle: "Quer experimentar este look?",
     stylePresetConfirmCancel: "Ver outros looks",
     stylePresetConfirmAction: "Experimentar",

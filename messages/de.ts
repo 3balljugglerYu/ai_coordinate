@@ -1717,6 +1717,7 @@ export const deMessages = {
     subtitle:
       "Eine KI-Styling-Plattform für die Looks und Charaktere, die du erschaffen willst.",
     stylePresetCarouselTitle: "Outfits wechseln — ganz einfach!",
+    stylePresetCarouselCaption: "Beliebte Stile werden zuerst angezeigt",
     stylePresetConfirmTitle: "Anprobieren?",
     stylePresetConfirmCancel: "Andere Outfits sehen",
     stylePresetConfirmAction: "Anprobieren",

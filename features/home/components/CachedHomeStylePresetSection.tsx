@@ -30,6 +30,11 @@ const EMPTY_UNLOCK_CONTEXT: CollectionUnlockContext = {
   distinctGeneratedByCategoryKey: new Map(),
 };
 
+// カルーセルに出す最大枚数。全件(120枚超×ループ用3複製)を並べると
+// ホーム初回表示の DOM/ハイドレーションが重くなるため、人気上位のみに絞る。
+// 全件の探索は「すべて見る」(探索シート)が担う。
+const CAROUSEL_MAX_ITEMS = 20;
+
 /**
  * ホームの Style プリセットセクション。
  * admin は admin_only カテゴリも(公開前プレビュー用に)併せて表示する。
@@ -179,6 +184,14 @@ export async function CachedHomeStylePresetSection({
       .filter(Boolean);
   }
 
+  // カルーセルは直近30日の人気順(生成数降順)で上位のみ表示する。
+  // sort は安定なので同数(未生成含む)は管理画面の並び順(sort_order)を維持する。
+  const carouselPresets = [...presets]
+    .sort(
+      (a, b) => (generateCounts[b.id] ?? 0) - (generateCounts[a.id] ?? 0),
+    )
+    .slice(0, CAROUSEL_MAX_ITEMS);
+
   return (
     <>
       {unlockAnnouncements.length > 0 && (
@@ -193,7 +206,7 @@ export async function CachedHomeStylePresetSection({
         />
       ))}
       <HomeStylePresetCarousel
-        presets={presets}
+        presets={carouselPresets}
         // 探索シートには /style と同じ「解放ゲート適用済みの全プリセット」を渡す
         // (カルーセルと違い locked=シルエットや棚振り分け分も含めて一覧できる)。
         browsePresets={gated}

@@ -273,9 +273,15 @@ export function HomeStylePresetCarousel({
   return (
     <div ref={containerRef} className="mb-8 overflow-x-hidden">
       <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-0">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {tHome("stylePresetCarouselTitle")}
-        </h2>
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">
+            {tHome("stylePresetCarouselTitle")}
+          </h2>
+          {/* カルーセルは人気順上位のみ表示するため、その基準を薄く添える。 */}
+          <p className="mt-0.5 text-xs text-slate-500">
+            {tHome("stylePresetCarouselCaption")}
+          </p>
+        </div>
         {/* /style の「すべて見る」と同じ見た目。ホームに留まったまま探索シートを開く。 */}
         <button
           type="button"
