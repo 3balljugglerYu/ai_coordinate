@@ -186,6 +186,8 @@ describe("style-preset repository", () => {
         thumbnailHeight: 1173,
         hasBackgroundPrompt: true,
         createdAt: "2026-03-22T00:00:00.000Z",
+        // fixture の row に published_at が無い場合は null(移行前データ相当)。
+        publishedAt: null,
         category: {
           id: TEST_CATEGORY_ID,
           key: "coordinate",

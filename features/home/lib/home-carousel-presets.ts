@@ -13,20 +13,24 @@ export const CAROUSEL_MAX_NEW_ITEMS = 7;
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** 新着(登録から STYLE_NEW_WINDOW_DAYS 日以内)か。NEW バッジ表示にも使う。 */
+/**
+ * 新着(公開から STYLE_NEW_WINDOW_DAYS 日以内)か。NEW バッジ表示にも使う。
+ * 判定は公開日時(publishedAt)を優先する。下書き期間が長かったプリセットでも
+ * 公開した日から新着になり、再公開(下書き→公開)でも新着に返り咲く。
+ */
 export function isNewPreset(
   preset: StylePresetPublicSummary,
   now: Date,
 ): boolean {
-  const created = Date.parse(preset.createdAt);
-  if (Number.isNaN(created)) return false;
-  return now.getTime() - created <= STYLE_NEW_WINDOW_DAYS * DAY_MS;
+  const published = Date.parse(preset.publishedAt ?? preset.createdAt);
+  if (Number.isNaN(published)) return false;
+  return now.getTime() - published <= STYLE_NEW_WINDOW_DAYS * DAY_MS;
 }
 
 /**
  * カルーセル表示用のプリセットを導出する。
  *
- * 並び: 新着(直近 STYLE_NEW_WINDOW_DAYS 日・作成日の新しい順)を先頭に最大
+ * 並び: 新着(公開から STYLE_NEW_WINDOW_DAYS 日以内・公開日の新しい順)を先頭に最大
  * CAROUSEL_MAX_NEW_ITEMS 枚 → 残りを人気(直近30日生成数の降順)で埋めて合計
  * CAROUSEL_MAX_ITEMS 枚。人気順だけだと登録直後のスタイル(生成数0)が
  * ホームに一切露出しないため、新着枠を先頭に確保する。
@@ -40,9 +44,11 @@ export function deriveHomeCarouselPresets(
   generateCounts: Readonly<Record<string, number>>,
   now: Date,
 ): StylePresetPublicSummary[] {
+  const publishedTime = (preset: StylePresetPublicSummary) =>
+    Date.parse(preset.publishedAt ?? preset.createdAt);
   const newest = presets
     .filter((preset) => isNewPreset(preset, now))
-    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))
+    .sort((a, b) => publishedTime(b) - publishedTime(a))
     .slice(0, CAROUSEL_MAX_NEW_ITEMS);
   const newestIds = new Set(newest.map((preset) => preset.id));
   const popular = presets

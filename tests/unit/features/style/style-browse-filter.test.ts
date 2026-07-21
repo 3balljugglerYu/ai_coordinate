@@ -13,6 +13,7 @@ function preset(
   id: string,
   overrides: {
     createdDaysAgo?: number;
+    publishedDaysAgo?: number | null;
     categoryKey?: string;
     categoryNameJa?: string;
     providerUserId?: string | null;
@@ -25,6 +26,7 @@ function preset(
 ): StylePresetPublicSummary {
   const {
     createdDaysAgo = 100,
+    publishedDaysAgo = createdDaysAgo,
     categoryKey = "coordinate",
     categoryNameJa = categoryKey,
     providerUserId = null,
@@ -42,6 +44,10 @@ function preset(
     thumbnailHeight: 1,
     hasBackgroundPrompt: false,
     createdAt: new Date(NOW.getTime() - createdDaysAgo * DAY_MS).toISOString(),
+    publishedAt:
+      publishedDaysAgo === null
+        ? null
+        : new Date(NOW.getTime() - publishedDaysAgo * DAY_MS).toISOString(),
     category: {
       key: categoryKey,
       displayNameJa: categoryNameJa,
@@ -257,6 +263,16 @@ describe("filterStyleBrowsePresets", () => {
     expect(filterStyleBrowsePresets(presets, "new", ctx).map((p) => p.id)).toEqual(
       ["new"],
     );
+  });
+
+  test("new: 下書き期間が長くても公開が直近なら新着(publishedAt優先)", () => {
+    const withLatePublish = [
+      ...presets,
+      preset("late-publish", { createdDaysAgo: 100, publishedDaysAgo: 2 }),
+    ];
+    expect(
+      filterStyleBrowsePresets(withLatePublish, "new", ctx).map((p) => p.id),
+    ).toEqual(["new", "late-publish"]);
   });
 
   test("popular: 生成数>0のみを降順で", () => {

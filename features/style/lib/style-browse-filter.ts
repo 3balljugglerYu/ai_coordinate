@@ -63,9 +63,13 @@ export interface StyleBrowseContext {
 }
 
 function isNewPreset(preset: StylePresetPublicSummary, now: Date): boolean {
-  const created = Date.parse(preset.createdAt);
-  if (Number.isNaN(created)) return false;
-  return now.getTime() - created <= STYLE_NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+  // 公開日時(publishedAt)を優先。下書き期間が長くても公開した日から新着になる
+  // (ホームの新着枠 home-carousel-presets.ts の isNewPreset と同じ解釈)。
+  const published = Date.parse(preset.publishedAt ?? preset.createdAt);
+  if (Number.isNaN(published)) return false;
+  return (
+    now.getTime() - published <= STYLE_NEW_WINDOW_DAYS * 24 * 60 * 60 * 1000
+  );
 }
 
 function hasCreator(preset: StylePresetPublicSummary): boolean {

@@ -12,6 +12,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 function preset(
   id: string,
   createdDaysAgo: number,
+  publishedDaysAgo: number | null = createdDaysAgo,
 ): StylePresetPublicSummary {
   return {
     id,
@@ -21,6 +22,10 @@ function preset(
     thumbnailHeight: 1,
     hasBackgroundPrompt: false,
     createdAt: new Date(NOW.getTime() - createdDaysAgo * DAY_MS).toISOString(),
+    publishedAt:
+      publishedDaysAgo === null
+        ? null
+        : new Date(NOW.getTime() - publishedDaysAgo * DAY_MS).toISOString(),
     category: {
       key: "coordinate",
       displayNameJa: "コーディネート",
@@ -96,8 +101,38 @@ describe("deriveHomeCarouselPresets", () => {
     expect(result.map((p) => p.id)).toEqual(["b", "a", "c"]);
   });
 
-  test("createdAt が不正な値でも新着扱いせずクラッシュしない", () => {
-    const broken = { ...preset("broken", 1), createdAt: "invalid" };
+  test("下書き期間が長くても公開が直近なら新着になる(publishedAt優先)", () => {
+    const presets = [
+      // 100日前に下書き作成 → 2日前に公開
+      preset("old-draft-published-now", 100, 2),
+      // 100日前に作成・公開済み(人気あり)
+      preset("old-published", 100, 100),
+    ];
+    const result = deriveHomeCarouselPresets(
+      presets,
+      { "old-published": 50 },
+      NOW,
+    );
+    expect(result.map((p) => p.id)).toEqual([
+      "old-draft-published-now",
+      "old-published",
+    ]);
+  });
+
+  test("publishedAt が null(移行前データ等)なら createdAt にフォールバック", () => {
+    const presets = [
+      preset("legacy-new", 3, null),
+      preset("legacy-old", 100, null),
+    ];
+    const result = deriveHomeCarouselPresets(presets, {}, NOW);
+    expect(result.map((p) => p.id)).toEqual(["legacy-new", "legacy-old"]);
+  });
+
+  test("日付が不正な値でも新着扱いせずクラッシュしない", () => {
+    const broken = {
+      ...preset("broken", 1, null),
+      createdAt: "invalid",
+    };
     const result = deriveHomeCarouselPresets(
       [broken, preset("ok", 1)],
       {},
