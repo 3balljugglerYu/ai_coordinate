@@ -159,9 +159,9 @@ alwaysApply: false
 
 #### `comments`
 - 主キー: `id`
-- 主要カラム: `user_id`, `image_id`, `parent_comment_id`, `content`, `last_activity_at`, `created_at`, `updated_at`, `deleted_at`
-- 外部キー: `user_id -> auth.users.id`, `image_id -> generated_images.id`, `parent_comment_id -> comments.id`
-- 備考: `parent_comment_id IS NULL` が親コメント、非NULLが返信。親一覧ソートは `last_activity_at DESC, id DESC`
+- 主要カラム: `user_id`, `image_id`, `parent_comment_id`, `reply_to_comment_id`, `reply_to_deleted`, `content`, `last_activity_at`, `created_at`, `updated_at`, `deleted_at`
+- 外部キー: `user_id -> auth.users.id`, `image_id -> generated_images.id`, `parent_comment_id -> comments.id`, `reply_to_comment_id -> comments.id`（`ON DELETE SET NULL`）
+- 備考: `parent_comment_id IS NULL` が親コメント、非NULLが返信。親一覧ソートは `last_activity_at DESC, id DESC`。`reply_to_comment_id` は引用リプライ（同一スレッド内の返信のみ・親コメント引用不可を `validate_parent_comment` で強制）。引用先の物理削除時は `"0_mark_reply_to_deleted"` trigger（AFTER DELETE・RI より先に名前順発火）が生存参照元に `reply_to_deleted=true` を立ててから FK が NULL 化（NULL+true=削除済み引用と通常返信を区別）。`reply_to_comment_id` はクリア方向のみ・`reply_to_deleted` は true 方向のみ変更可
 - RLS: `deleted_at IS NULL` は公開 `SELECT`、自分の削除済みコメントは本人も `SELECT` 可。`INSERT/UPDATE/DELETE` は本人のみ
 
 #### `follows`
@@ -486,7 +486,8 @@ alwaysApply: false
 
 ### trigger / helper / 運用関数
 - 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`
-- コメント返信/整合性: `validate_parent_comment`, `prevent_direct_parent_delete_with_replies`, `update_parent_last_activity_at`, `update_parent_last_activity_at_on_delete`, `broadcast_reply_lifecycle_event`
+- コメント返信/整合性: `validate_parent_comment`, `prevent_direct_parent_delete_with_replies`, `update_parent_last_activity_at`, `update_parent_last_activity_at_on_delete`, `broadcast_reply_lifecycle_event`, `mark_reply_to_deleted`（トリガー名 `"0_mark_reply_to_deleted"`・AFTER DELETE。引用先の物理削除時に生存する参照元へ `reply_to_deleted` を立てる。名前を `0_` 始まりにして内部 RI トリガーより先に発火させ、FK SET NULL 前に参照でマッチさせる。cascade で引用元も同時削除されるケースは AFTER 化により安全）
+  - 注: `notify_on_comment` は引用リプライ（`reply_to_comment_id` 非NULL）のとき引用先作成者のみへ通知し、親コメント作成者へは通知しない。`data.reply_kind='reply_to_reply'` を保存し表示側(presentation.ts)が文言を分岐する
 - 更新日時: `update_updated_at_column`, `update_banners_updated_at`, `update_popup_banners_updated_at`, `update_popup_banner_views_updated_at`, `update_materials_images_updated_at`, `update_notification_preferences_updated_at`
 - `style_presets` は `update_updated_at_column()` trigger で `updated_at` を更新
 - 公開日時: `set_style_preset_published_at` — `style_presets.status` が published へ遷移した INSERT/UPDATE で `published_at = now()` を設定（published のままの編集では更新しない）

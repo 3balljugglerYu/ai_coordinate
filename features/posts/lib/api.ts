@@ -397,14 +397,19 @@ export async function getRepliesAPI(
 export async function createReplyAPI(
   parentCommentId: string,
   content: string,
-  messages?: PostsApiMessages
+  messages?: PostsApiMessages,
+  replyToCommentId?: string | null
 ): Promise<ReplyComment> {
   const response = await fetch(`/api/comments/${parentCommentId}/replies`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({
+      content,
+      // 引用リプライ(返信への返信)のときのみ引用先IDを付与する。
+      ...(replyToCommentId ? { replyToCommentId } : {}),
+    }),
   });
 
   if (!response.ok) {

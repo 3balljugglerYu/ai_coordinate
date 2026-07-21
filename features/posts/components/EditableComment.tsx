@@ -7,6 +7,7 @@ import {
   type MouseEvent,
 } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { User, MoreVertical, Edit, Trash2, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,6 +32,7 @@ import { deleteCommentAPI, updateCommentAPI } from "../lib/api";
 import type { ParentComment, ReplyComment } from "../types";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
+import { ReplyQuoteHeader } from "./ReplyQuoteHeader";
 import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import { cn, sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
@@ -191,30 +193,53 @@ export function EditableComment({
           onClick={handleSelectClick}
           onKeyDown={handleSelectKeyDown}
         >
+          {/* アバター/ニックネームは作成者のプロフィールへのリンクにする
+              (user_id が無い=匿名化済みの場合はリンクなし)。行タップの
+              返信パネル選択は a 要素上のタップを除外済みのため競合しない。 */}
           {!isDeleted &&
-            (comment.user_avatar_url ? (
-              <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
-                <Image
-                  src={comment.user_avatar_url}
-                  alt={displayName}
-                  fill
-                  className="object-cover"
-                  sizes="32px"
-                />
-              </div>
-            ) : (
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
-                <User className="h-4 w-4 text-gray-500" />
-              </div>
-            ))}
+            (() => {
+              const avatar = comment.user_avatar_url ? (
+                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full">
+                  <Image
+                    src={comment.user_avatar_url}
+                    alt={displayName}
+                    fill
+                    className="object-cover"
+                    sizes="32px"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-200">
+                  <User className="h-4 w-4 text-gray-500" />
+                </div>
+              );
+              return comment.user_id ? (
+                <Link
+                  href={`/users/${comment.user_id}`}
+                  className="shrink-0 transition-opacity hover:opacity-80"
+                >
+                  {avatar}
+                </Link>
+              ) : (
+                avatar
+              );
+            })()}
 
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-2">
-              {!isDeleted && (
-                <span className="text-sm font-medium text-gray-900">
-                  {displayName}
-                </span>
-              )}
+              {!isDeleted &&
+                (comment.user_id ? (
+                  <Link
+                    href={`/users/${comment.user_id}`}
+                    className="text-sm font-medium text-gray-900 transition-opacity hover:opacity-70"
+                  >
+                    {displayName}
+                  </Link>
+                ) : (
+                  <span className="text-sm font-medium text-gray-900">
+                    {displayName}
+                  </span>
+                ))}
               <span className="text-xs text-gray-500">
                 {new Intl.DateTimeFormat(locale, {
                   month: "short",
@@ -224,6 +249,14 @@ export function EditableComment({
                 }).format(new Date(comment.created_at))}
               </span>
             </div>
+
+            {/* 引用リプライの引用ヘッダー(返信のみ持つ)。削除済みコメントでは出さない。 */}
+            {!isDeleted && "reply_to_comment_id" in comment && (
+              <ReplyQuoteHeader
+                replyTo={comment.reply_to}
+                replyToDeleted={comment.reply_to_deleted}
+              />
+            )}
 
             {isEditing ? (
               <div className="space-y-2">

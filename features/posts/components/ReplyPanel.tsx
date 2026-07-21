@@ -2,15 +2,16 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { CSSProperties } from "react";
-import { useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ChevronLeft, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { CommentComposerSheet } from "./CommentComposerSheet";
 import { CommentComposerTrigger } from "./CommentComposerTrigger";
 import { EditableComment } from "./EditableComment";
 import { ReplyItem } from "./ReplyItem";
 import { ReplyPanelSkeleton } from "./ReplyPanelSkeleton";
-import type { ParentComment } from "../types";
+import type { ParentComment, ReplyToTarget } from "../types";
 import { useReplies } from "../hooks/useReplies";
 
 interface ReplyPanelProps {
@@ -33,6 +34,26 @@ export function ReplyPanel({
   const t = useTranslations("posts");
   const commonT = useTranslations("common");
   const [, startTransition] = useTransition();
+  // 引用リプライ用コンポーザーの開閉と引用先。
+  // 引用チップの解除ではシートを開いたまま通常の親スレッド返信に切り替え、
+  // シートを閉じる(キャンセル)・送信成功では両方クリアする。
+  const [isQuoteSheetOpen, setIsQuoteSheetOpen] = useState(false);
+  const [quoteReplyTo, setQuoteReplyTo] = useState<ReplyToTarget | null>(null);
+
+  const handleQuoteReply = (target: ReplyToTarget) => {
+    setQuoteReplyTo(target);
+    setIsQuoteSheetOpen(true);
+  };
+
+  const closeQuoteSheet = () => {
+    setIsQuoteSheetOpen(false);
+    setQuoteReplyTo(null);
+  };
+
+  // 引用リプライ投稿後、一覧更新が反映されたタイミングで新しい返信まで
+  // スクロールする。block: "nearest" のため既に見えている場合は動かない。
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollTargetReplyIdRef = useRef<string | null>(null);
   const {
     replies,
     isLoading,
@@ -72,6 +93,21 @@ export function ReplyPanel({
     await refreshReplies();
     refreshParentThread();
   };
+
+  useEffect(() => {
+    const targetId = scrollTargetReplyIdRef.current;
+    if (!targetId) {
+      return;
+    }
+    const element = scrollContainerRef.current?.querySelector(
+      `[data-reply-id="${targetId}"]`,
+    );
+    if (!element) {
+      return;
+    }
+    scrollTargetReplyIdRef.current = null;
+    element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [replies]);
 
   const hasReplies = parentComment.reply_count > 0 || replies.length > 0;
   const showRepliesSkeleton =
@@ -113,7 +149,7 @@ export function ReplyPanel({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
               <div className="border-b border-gray-200 bg-white px-4">
                 <EditableComment
                   comment={parentComment}
@@ -138,6 +174,11 @@ export function ReplyPanel({
                         currentUserId={currentUserId}
                         onReplyUpdated={handleReplyUpdated}
                         onReplyDeleted={handleReplyDeleted}
+                        onQuoteReply={
+                          parentComment.deleted_at
+                            ? undefined
+                            : handleQuoteReply
+                        }
                       />
                     ))}
                   </div>
@@ -179,6 +220,34 @@ export function ReplyPanel({
                 }
               />
             </div>
+
+            {/* 引用リプライ用コンポーザー。返信の「返信する」から開く。
+                引用チップの解除はシートを開いたまま通常返信に切り替え、
+                閉じる(キャンセル)・送信成功では引用状態ごとクリアする。 */}
+            <CommentComposerSheet
+              open={isQuoteSheetOpen}
+              onOpenChange={(nextOpen) => {
+                if (!nextOpen) {
+                  closeQuoteSheet();
+                }
+              }}
+              title={t("replySheetTitle")}
+              parentCommentId={parentComment.id}
+              currentUserId={currentUserId}
+              onCommentAdded={(created) => {
+                if (created?.id) {
+                  scrollTargetReplyIdRef.current = created.id;
+                }
+                closeQuoteSheet();
+                void handleReplyAdded();
+              }}
+              placeholder={t("replyPlaceholder")}
+              submitLabel={t("replySubmit")}
+              submittingLabel={t("replySubmitting")}
+              compact
+              replyTo={quoteReplyTo}
+              onReplyToClear={() => setQuoteReplyTo(null)}
+            />
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

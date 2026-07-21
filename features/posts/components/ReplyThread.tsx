@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommentInput } from "./CommentInput";
 import { ReplyItem } from "./ReplyItem";
-import type { ParentComment } from "../types";
+import type { ParentComment, ReplyToTarget } from "../types";
 import { useReplies } from "../hooks/useReplies";
 
 interface ReplyThreadProps {
@@ -23,6 +23,9 @@ export function ReplyThread({
   const [, startTransition] = useTransition();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReplyComposerOpen, setIsReplyComposerOpen] = useState(false);
+  // 引用リプライの引用先(デスクトップ)。引用チップの解除で通常返信に切り替え、
+  // キャンセル・送信成功でクリアする(モバイル ReplyPanel と同じ状態遷移)。
+  const [quoteReplyTo, setQuoteReplyTo] = useState<ReplyToTarget | null>(null);
   const {
     replies,
     isLoading,
@@ -52,11 +55,47 @@ export function ReplyThread({
     setIsExpanded((prev) => !prev);
   };
 
-  const handleReplyAdded = async () => {
+  // 引用リプライ投稿後、一覧更新の反映後に新しい返信までスクロールする。
+  // block: "nearest" のため既に見えている場合は動かない。
+  const threadContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollTargetReplyIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const targetId = scrollTargetReplyIdRef.current;
+    if (!targetId) {
+      return;
+    }
+    const element = threadContainerRef.current?.querySelector(
+      `[data-reply-id="${targetId}"]`,
+    );
+    if (!element) {
+      return;
+    }
+    scrollTargetReplyIdRef.current = null;
+    element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [replies]);
+
+  const handleReplyAdded = async (created?: { id: string }) => {
+    // 引用リプライのときだけ投稿箇所へスクロールする(通常返信は従来どおり)。
+    if (quoteReplyTo && created?.id) {
+      scrollTargetReplyIdRef.current = created.id;
+    }
     setIsReplyComposerOpen(false);
+    setQuoteReplyTo(null);
     setIsExpanded(true);
     await refreshReplies();
     refreshParentThread();
+  };
+
+  const handleComposerCancel = () => {
+    setIsReplyComposerOpen(false);
+    setQuoteReplyTo(null);
+  };
+
+  /** 返信の「返信する」: 引用先をセットしてコンポーザーを開く。 */
+  const handleQuoteReply = (target: ReplyToTarget) => {
+    setQuoteReplyTo(target);
+    setIsReplyComposerOpen(true);
   };
 
   const handleReplyUpdated = async () => {
@@ -75,7 +114,7 @@ export function ReplyThread({
   }
 
   return (
-    <div className="pb-3 pl-11">
+    <div ref={threadContainerRef} className="pb-3 pl-11">
       <div className="flex flex-wrap items-center gap-2">
         {!parentComment.deleted_at && (
           <Button
@@ -83,7 +122,15 @@ export function ReplyThread({
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-xs text-gray-600"
-            onClick={() => setIsReplyComposerOpen((prev) => !prev)}
+            onClick={() => {
+              if (isReplyComposerOpen) {
+                handleComposerCancel();
+              } else {
+                // 親コメントへの通常返信(引用なし)で開く。
+                setQuoteReplyTo(null);
+                setIsReplyComposerOpen(true);
+              }
+            }}
           >
             {isReplyComposerOpen ? t("cancelReply") : t("replyAction")}
           </Button>
@@ -104,7 +151,9 @@ export function ReplyThread({
         )}
       </div>
 
-      {isReplyComposerOpen && (
+      {/* 通常の親スレッド返信(引用なし)は従来どおり返信ボタンの直下に表示する。
+          引用リプライ時は引用した返信の直下(一覧内)に表示する。 */}
+      {isReplyComposerOpen && !quoteReplyTo && (
         <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
           <CommentInput
             parentCommentId={parentComment.id}
@@ -115,7 +164,9 @@ export function ReplyThread({
             submittingLabel={t("replySubmitting")}
             compact
             autoFocus
-            onCancel={() => setIsReplyComposerOpen(false)}
+            onCancel={handleComposerCancel}
+            replyTo={null}
+            onReplyToClear={() => setQuoteReplyTo(null)}
           />
         </div>
       )}
@@ -128,13 +179,37 @@ export function ReplyThread({
             </div>
           ) : (
             replies.map((reply) => (
-              <ReplyItem
-                key={reply.id}
-                reply={reply}
-                currentUserId={currentUserId}
-                onReplyUpdated={handleReplyUpdated}
-                onReplyDeleted={handleReplyDeleted}
-              />
+              <div key={reply.id}>
+                <ReplyItem
+                  reply={reply}
+                  currentUserId={currentUserId}
+                  onReplyUpdated={handleReplyUpdated}
+                  onReplyDeleted={handleReplyDeleted}
+                  onQuoteReply={
+                    parentComment.deleted_at ? undefined : handleQuoteReply
+                  }
+                />
+                {/* 引用リプライのコンポーザーは引用した返信の直下に表示する。
+                    引用チップを解除した場合は通常返信となり上部の位置へ移る。 */}
+                {isReplyComposerOpen &&
+                  quoteReplyTo?.commentId === reply.id && (
+                    <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                      <CommentInput
+                        parentCommentId={parentComment.id}
+                        currentUserId={currentUserId}
+                        onCommentAdded={handleReplyAdded}
+                        placeholder={t("replyPlaceholder")}
+                        submitLabel={t("replySubmit")}
+                        submittingLabel={t("replySubmitting")}
+                        compact
+                        autoFocus
+                        onCancel={handleComposerCancel}
+                        replyTo={quoteReplyTo}
+                        onReplyToClear={() => setQuoteReplyTo(null)}
+                      />
+                    </div>
+                  )}
+              </div>
             ))
           )}
 

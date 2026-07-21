@@ -41,6 +41,10 @@ describe("formatNotificationContent", () => {
       return `${values?.actor} replied to your comment`;
     }
 
+    if (key === "replyToReplyTitle") {
+      return `${values?.actor} replied to your reply`;
+    }
+
     if (key === "likeTitle") {
       return `${values?.actor} liked your post`;
     }
@@ -79,6 +83,25 @@ describe("formatNotificationContent", () => {
     expect(result).toEqual({
       title: "Bob replied to your comment",
       body: "hello from comment",
+    });
+  });
+
+  test("comment通知でreply_kindがreply_to_replyの場合_replyToReplyTitleを返す", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        entity_type: "comment",
+        data: {
+          comment_content: "hello from quote reply",
+          reply_kind: "reply_to_reply",
+        },
+      }),
+      "Carol",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: "Carol replied to your reply",
+      body: "hello from quote reply",
     });
   });
 

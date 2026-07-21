@@ -94,7 +94,12 @@ export function useReplies({
           0,
           pendingRequestsRef.current - 1,
         );
-        setHasResolvedInitialLoad(true);
+        // 古い(打ち切られた)リクエストが「読み込み完了」を立てると、
+        // リスト空 + 完了済み = 「まだ返信はありません」の誤表示が起きるため、
+        // 最新リクエストのみが完了フラグを立てる。
+        if (requestId === requestSequenceRef.current) {
+          setHasResolvedInitialLoad(true);
+        }
 
         if (pendingRequestsRef.current === 0) {
           setIsLoading(false);
@@ -108,6 +113,12 @@ export function useReplies({
     await loadReplies(0, true);
   }, [loadReplies]);
 
+  // フルリセットは「別の親スレッドに切り替わったとき」のみ。
+  // parentReplyCount の変化(自分の投稿後の親更新や realtime)ではリストを
+  // 消さない。消すと「空リスト+読み込み済み」の瞬間が生まれ、
+  // 「まだ返信はありません」が一瞬表示される。既存リストを表示したまま、
+  // 下の enabled effect が件数不一致を検知して refresh し、届いた時点で
+  // 差し替える。
   useEffect(() => {
     setReplies([]);
     setHasMore(false);
@@ -117,7 +128,8 @@ export function useReplies({
     inFlightKeysRef.current.clear();
     pendingRequestsRef.current = 0;
     setIsLoading(false);
-  }, [parentCommentId, parentReplyCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parentCommentId]);
 
   useEffect(() => {
     if (!enabled) {
@@ -125,6 +137,11 @@ export function useReplies({
     }
 
     if (parentReplyCount === 0) {
+      // 返信が0件になった場合、読み込み済みリストが残っていればクリアする
+      // (parentReplyCount 変化ではフルリセットしなくなったため、ここで整合させる)。
+      setReplies((prev) => (prev.length > 0 ? [] : prev));
+      setHasMore(false);
+      setOffset(0);
       setHasResolvedInitialLoad(true);
       return;
     }

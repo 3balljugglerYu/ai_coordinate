@@ -176,6 +176,33 @@ describe("EditableComment", () => {
     validateProfileTextMock.mockReturnValue({ valid: true });
   });
 
+  test("作成者のニックネームがプロフィールへのリンクになる", () => {
+    render(
+      <EditableComment
+        comment={createComment({ user_nickname: "taro" })}
+        currentUserId="viewer-1"
+        onCommentUpdated={() => undefined}
+        onCommentDeleted={() => undefined}
+      />,
+    );
+
+    const nameLink = screen.getByRole("link", { name: "taro" });
+    expect(nameLink).toHaveAttribute("href", "/users/user-1");
+  });
+
+  test("user_id が無い場合はニックネームをリンクにしない", () => {
+    render(
+      <EditableComment
+        comment={createComment({ user_id: null, user_nickname: "taro" })}
+        currentUserId="viewer-1"
+        onCommentUpdated={() => undefined}
+        onCommentDeleted={() => undefined}
+      />,
+    );
+
+    expect(screen.queryByRole("link", { name: "taro" })).toBeNull();
+  });
+
   test("選択可能なコメント領域に button semantics を付与する", () => {
     render(
       <EditableComment
