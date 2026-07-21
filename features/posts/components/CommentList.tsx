@@ -177,6 +177,16 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
       string | null
     >(null);
 
+    // ディープリンクが新しく与えられたら探索状態をリセットする。
+    // 通知一覧から同じ投稿へ再遷移したとき、このコンポーネントは
+    // 再マウントされず ref が処理済みのまま残るため。
+    useEffect(() => {
+      if (deepLink) {
+        deepLinkHandledRef.current = false;
+        deepLinkPagesLoadedRef.current = 0;
+      }
+    }, [deepLink]);
+
     useEffect(() => {
       if (
         !deepLink ||

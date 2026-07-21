@@ -18,7 +18,7 @@ jest.mock("@/features/posts/lib/api", () => ({
 
 jest.mock("@/lib/supabase/client", () => ({
   createClient: () => {
-    const channel = {
+    const channel: { on: jest.Mock; subscribe: jest.Mock } = {
       on: jest.fn(() => channel),
       subscribe: jest.fn(() => channel),
     };
@@ -185,6 +185,37 @@ describe("ReplyThread 通知ディープリンク", () => {
     expect(
       getRepliesAPIMock.mock.calls.filter((call) => call[2] === 0)
     ).toHaveLength(1);
+  });
+
+  test("消費後に再度ディープリンクが与えられたら_再探索してスクロールする(回帰)", async () => {
+    // 通知一覧から同じ投稿へ再遷移してもコンポーネントは再マウント
+    // されないため、処理済みフラグ(ref)のリセットを検証する。
+    getRepliesAPIMock.mockResolvedValue([reply("r1"), reply("target-reply")]);
+    const onConsumed = jest.fn();
+    const props = {
+      parentComment: parentComment(2),
+      currentUserId: "user-1",
+      onThreadChanged: jest.fn(),
+      onDeepLinkReplyConsumed: onConsumed,
+    };
+
+    const { rerender } = render(
+      <ReplyThread {...props} deepLinkReplyId="target-reply" />
+    );
+    await waitFor(() => expect(onConsumed).toHaveBeenCalledTimes(1));
+
+    // 消費後、CommentList 側は deepLinkReplyId を null に戻す
+    rerender(<ReplyThread {...props} deepLinkReplyId={null} />);
+    scrollIntoViewMock.mockClear();
+
+    // 2回目の通知タップで同じ返信が再指定される
+    rerender(<ReplyThread {...props} deepLinkReplyId="target-reply" />);
+
+    await waitFor(() => expect(onConsumed).toHaveBeenCalledTimes(2));
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({
+      behavior: "smooth",
+      block: "center",
+    });
   });
 
   test("対象が見つからない場合_断念してスレッド表示のみ行う", async () => {

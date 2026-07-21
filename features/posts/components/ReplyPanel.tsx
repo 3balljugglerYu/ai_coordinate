@@ -128,6 +128,15 @@ export function ReplyPanel({
     null,
   );
 
+  // ディープリンクが新しく与えられたら探索状態をリセットする
+  // (再マウントなしで同じパネルへ再遷移するケース)。
+  useEffect(() => {
+    if (deepLinkReplyId) {
+      deepLinkHandledRef.current = false;
+      deepLinkPagesLoadedRef.current = 0;
+    }
+  }, [deepLinkReplyId]);
+
   useEffect(() => {
     if (!deepLinkReplyId || deepLinkHandledRef.current || !open || isLoading) {
       return;

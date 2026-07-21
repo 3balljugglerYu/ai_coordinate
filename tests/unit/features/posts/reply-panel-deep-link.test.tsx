@@ -27,7 +27,7 @@ jest.mock("@/features/posts/lib/api", () => ({
 
 jest.mock("@/lib/supabase/client", () => ({
   createClient: () => {
-    const channel = {
+    const channel: { on: jest.Mock; subscribe: jest.Mock } = {
       on: jest.fn(() => channel),
       subscribe: jest.fn(() => channel),
     };

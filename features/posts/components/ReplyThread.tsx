@@ -96,6 +96,15 @@ export function ReplyThread({
   const deepLinkHandledRef = useRef(false);
   const deepLinkPagesLoadedRef = useRef(0);
 
+  // ディープリンクが新しく与えられたら探索状態をリセットする
+  // (再マウントなしで同じスレッドへ再遷移するケース)。
+  useEffect(() => {
+    if (deepLinkReplyId) {
+      deepLinkHandledRef.current = false;
+      deepLinkPagesLoadedRef.current = 0;
+    }
+  }, [deepLinkReplyId]);
+
   useEffect(() => {
     if (!deepLinkReplyId || deepLinkHandledRef.current) {
       return;

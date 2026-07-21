@@ -155,7 +155,9 @@ export function useReplies({
     // ページ追加読み込みで replies.length が変わるたびに refresh すると、
     // 読み込んだ後続ページが offset 0 のリセットで置き換えられてしまう
     // (ディープリンクのページ跨ぎ探索で見つけた対象が消える)。
-    if (lastSyncedCountRef.current === parentReplyCount) {
+    // ただし「同期済みのはずなのに一覧が空」の場合は取り残されないよう
+    // 再同期する(ページ再訪でツリーが組み直されるケース等)。
+    if (lastSyncedCountRef.current === parentReplyCount && replies.length > 0) {
       return;
     }
 

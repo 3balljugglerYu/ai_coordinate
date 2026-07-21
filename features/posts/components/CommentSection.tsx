@@ -25,15 +25,27 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
   const commentListRef = useRef<CommentListRef>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
   // 通知タップ由来のディープリンク(?comment=<親ID>&reply=<返信ID>)。
-  // 初回マウント時に一度だけ取り込み、処理完了後に URL から取り除く
-  // (リロードや戻る操作で再度スクロールしないように)。
-  const [deepLink, setDeepLink] = useState<CommentDeepLink | null>(() => {
+  // 処理完了後に URL から取り除く(リロードや戻る操作で再度スクロール
+  // しないように)。取り込みはマウント時の一度きりではなく searchParams の
+  // 変化に反応させる: 通知一覧から同じ投稿へ再遷移したとき、Next.js は
+  // このコンポーネントを再マウントせず state を保持したまま searchParams
+  // だけ更新するため、初期化子方式では2回目以降のディープリンクを取りこぼす。
+  const [deepLink, setDeepLink] = useState<CommentDeepLink | null>(null);
+
+  useEffect(() => {
     const commentId = searchParams.get("comment");
     if (!commentId) {
-      return null;
+      return;
     }
-    return { commentId, replyId: searchParams.get("reply") };
-  });
+    const replyId = searchParams.get("reply");
+    // URL(外部システム)との同期のための意図的な setState。同値なら更新しない。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDeepLink((prev) =>
+      prev && prev.commentId === commentId && prev.replyId === replyId
+        ? prev
+        : { commentId, replyId },
+    );
+  }, [searchParams]);
 
   const handleDeepLinkConsumed = useCallback(() => {
     setDeepLink(null);

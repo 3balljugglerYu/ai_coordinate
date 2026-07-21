@@ -5,11 +5,12 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { CommentSection } from "@/features/posts/components/CommentSection";
 import type { CommentDeepLink } from "@/features/posts/components/CommentList";
 
-const searchParamsMock = new Map<string, string>();
-
+// 実際の useSearchParams と同様に「現在の URL」を返す。
+// CommentSection は URL 清掃(replaceState)後のパラメータを再取り込み
+// しないこと、再遷移で再び付与されたら取り込むことをこれで検証できる。
 jest.mock("next/navigation", () => ({
   useSearchParams: () => ({
-    get: (key: string) => searchParamsMock.get(key) ?? null,
+    get: (key: string) => new URLSearchParams(window.location.search).get(key),
   }),
 }));
 
@@ -58,13 +59,7 @@ jest.mock("@/features/posts/components/CommentList", () => {
 });
 
 describe("CommentSection 通知ディープリンク", () => {
-  beforeEach(() => {
-    searchParamsMock.clear();
-  });
-
   test("comment/replyパラメータをCommentListへ渡し、消費後にURLから除去する", () => {
-    searchParamsMock.set("comment", "parent-1");
-    searchParamsMock.set("reply", "reply-9");
     window.history.replaceState(
       null,
       "",
@@ -95,7 +90,6 @@ describe("CommentSection 通知ディープリンク", () => {
   });
 
   test("replyなしのcommentパラメータのみでも取り込む", () => {
-    searchParamsMock.set("comment", "parent-1");
     window.history.replaceState(null, "", "/posts/post-1?comment=parent-1");
 
     render(<CommentSection postId="post-1" currentUserId="user-1" />);
@@ -103,5 +97,36 @@ describe("CommentSection 通知ディープリンク", () => {
     const list = screen.getByTestId("comment-list");
     expect(list.getAttribute("data-deep-comment")).toBe("parent-1");
     expect(list.getAttribute("data-deep-reply")).toBe("");
+  });
+
+  test("消費後に再遷移でパラメータが再付与されたら_再取り込みする(回帰)", () => {
+    // 通知一覧から同じ投稿へ再遷移すると、コンポーネントは再マウント
+    // されず searchParams だけが変わる。初期化子方式では2回目を
+    // 取りこぼすため、effect での再取り込みを検証する。
+    window.history.replaceState(
+      null,
+      "",
+      "/posts/post-1?from=notifications&comment=parent-1&reply=reply-9"
+    );
+
+    const { rerender } = render(
+      <CommentSection postId="post-1" currentUserId="user-1" />
+    );
+    const list = screen.getByTestId("comment-list");
+
+    // 1回目の取り込みと消費
+    fireEvent.click(screen.getByRole("button", { name: "consume-deep-link" }));
+    expect(list.getAttribute("data-deep-comment")).toBe("");
+
+    // 再遷移(再マウントなしで URL のみ変化)を模す
+    window.history.replaceState(
+      null,
+      "",
+      "/posts/post-1?from=notifications&comment=parent-1&reply=reply-9"
+    );
+    rerender(<CommentSection postId="post-1" currentUserId="user-1" />);
+
+    expect(list.getAttribute("data-deep-comment")).toBe("parent-1");
+    expect(list.getAttribute("data-deep-reply")).toBe("reply-9");
   });
 });
