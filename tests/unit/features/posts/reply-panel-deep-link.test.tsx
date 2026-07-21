@@ -1,7 +1,7 @@
 /** @jest-environment jsdom */
 
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { act, render, waitFor } from "@testing-library/react";
 import { ReplyPanel } from "@/features/posts/components/ReplyPanel";
 import type { ParentComment, ReplyComment } from "@/features/posts/types";
 
@@ -156,6 +156,39 @@ describe("ReplyPanel 通知ディープリンク", () => {
       getRepliesAPIMock.mock.calls.some((call) => call[2] === 20)
     ).toBe(true);
     expect(scrollIntoViewMock).toHaveBeenCalled();
+  });
+
+  test("ページ跨ぎ探索後_件数同期リセットで対象が消えない(回帰)", async () => {
+    // 返信数60件・対象は2ページ目。全件読み切っていない(40/60)状態でも、
+    // useReplies の件数同期が offset 0 のリセットを再発火して探索済み
+    // ページ(対象を含む)を置き換えないことを確認する。
+    const page1 = Array.from({ length: 20 }, (_, i) => reply(`p1-${i}`));
+    const page2 = [
+      ...Array.from({ length: 19 }, (_, i) => reply(`p2-${i}`)),
+      reply("target-reply"),
+    ];
+    getRepliesAPIMock.mockImplementation(
+      (_id: string, _limit: number, offset: number) =>
+        Promise.resolve(offset >= 20 ? page2 : page1)
+    );
+    const onConsumed = jest.fn();
+
+    renderPanel(60, onConsumed);
+
+    await waitFor(() => expect(onConsumed).toHaveBeenCalled());
+    // 後続の非同期処理(件数同期等)が走り切るのを待ってから最終状態を確認
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+
+    // 対象が消えずに表示され続けている
+    expect(
+      document.querySelector('[data-reply-id="target-reply"]')
+    ).not.toBeNull();
+    // offset 0 のリセット取得は初回の1回のみ(追加読み込み後に再発火しない)
+    expect(
+      getRepliesAPIMock.mock.calls.filter((call) => call[2] === 0)
+    ).toHaveLength(1);
   });
 
   test("対象が見つからない場合_断念して通常表示する", async () => {

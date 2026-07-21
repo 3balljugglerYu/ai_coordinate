@@ -26,27 +26,36 @@ jest.mock("@/features/posts/components/CommentComposerTrigger", () => ({
 }));
 
 // CommentList は受け取った deepLink を可視化し、消費コールバックを発火できるようにする。
-jest.mock("@/features/posts/components/CommentList", () => ({
-  CommentList: React.forwardRef(function CommentListMock({
-    deepLink,
-    onDeepLinkConsumed,
-  }: {
-    deepLink?: CommentDeepLink | null;
-    onDeepLinkConsumed?: () => void;
-  }) {
-    return (
-      <div
-        data-testid="comment-list"
-        data-deep-comment={deepLink?.commentId ?? ""}
-        data-deep-reply={deepLink?.replyId ?? ""}
-      >
-        <button type="button" onClick={onDeepLinkConsumed}>
-          consume-deep-link
-        </button>
-      </div>
-    );
-  }),
-}));
+jest.mock("@/features/posts/components/CommentList", () => {
+  const { forwardRef, useImperativeHandle } = jest.requireActual("react");
+
+  return {
+    CommentList: forwardRef(function CommentListMock(
+      {
+        deepLink,
+        onDeepLinkConsumed,
+      }: {
+        deepLink?: CommentDeepLink | null;
+        onDeepLinkConsumed?: () => void;
+      },
+      ref: React.Ref<{ refresh: () => void }>,
+    ) {
+      useImperativeHandle(ref, () => ({ refresh: jest.fn() }));
+
+      return (
+        <div
+          data-testid="comment-list"
+          data-deep-comment={deepLink?.commentId ?? ""}
+          data-deep-reply={deepLink?.replyId ?? ""}
+        >
+          <button type="button" onClick={onDeepLinkConsumed}>
+            consume-deep-link
+          </button>
+        </div>
+      );
+    }),
+  };
+});
 
 describe("CommentSection 通知ディープリンク", () => {
   beforeEach(() => {

@@ -118,7 +118,7 @@ export function ReplyThread({
     if (found) {
       deepLinkHandledRef.current = true;
       const element = threadContainerRef.current?.querySelector(
-        `[data-reply-id="${deepLinkReplyId}"]`,
+        `[data-reply-id="${CSS.escape(deepLinkReplyId)}"]`,
       );
       element?.scrollIntoView({ behavior: "smooth", block: "center" });
       window.setTimeout(() => setHighlightedReplyId(deepLinkReplyId), 0);

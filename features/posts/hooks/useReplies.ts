@@ -50,6 +50,9 @@ export function useReplies({
   const requestSequenceRef = useRef(0);
   const inFlightKeysRef = useRef<Set<string>>(new Set());
   const pendingRequestsRef = useRef(0);
+  // 件数同期を実施済みの parentReplyCount。同じ件数に対して繰り返し
+  // refresh しないためのガード(下の件数同期 effect を参照)。
+  const lastSyncedCountRef = useRef<number | null>(null);
 
   const loadReplies = useCallback(
     async (nextOffset: number, reset = false) => {
@@ -127,6 +130,7 @@ export function useReplies({
     requestSequenceRef.current = 0;
     inFlightKeysRef.current.clear();
     pendingRequestsRef.current = 0;
+    lastSyncedCountRef.current = null;
     setIsLoading(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [parentCommentId]);
@@ -143,14 +147,25 @@ export function useReplies({
       setHasMore(false);
       setOffset(0);
       setHasResolvedInitialLoad(true);
+      lastSyncedCountRef.current = 0;
+      return;
+    }
+
+    // 同じ parentReplyCount に対する同期(リセット取得)は一度だけ行う。
+    // ページ追加読み込みで replies.length が変わるたびに refresh すると、
+    // 読み込んだ後続ページが offset 0 のリセットで置き換えられてしまう
+    // (ディープリンクのページ跨ぎ探索で見つけた対象が消える)。
+    if (lastSyncedCountRef.current === parentReplyCount) {
       return;
     }
 
     if (replies.length > 0 && replies.length === parentReplyCount && !hasMore) {
+      lastSyncedCountRef.current = parentReplyCount;
       setHasResolvedInitialLoad(true);
       return;
     }
 
+    lastSyncedCountRef.current = parentReplyCount;
     void refreshReplies();
   }, [enabled, hasMore, parentReplyCount, refreshReplies, replies.length]);
 

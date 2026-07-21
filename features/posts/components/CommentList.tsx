@@ -88,6 +88,9 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     const [isLoading, setIsLoading] = useState(false);
     const [hasMore, setHasMore] = useState(true);
     const [offset, setOffset] = useState(0);
+    // 初回読み込みが解決するまでディープリンク探索を開始しない
+    // (初期リセット取得と探索の append 取得が二重発火しないように)。
+    const [hasResolvedInitialLoad, setHasResolvedInitialLoad] = useState(false);
     const requestSequenceRef = useRef(0);
     const inFlightKeysRef = useRef<Set<string>>(new Set());
     const pendingRequestsRef = useRef(0);
@@ -140,6 +143,10 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
             pendingRequestsRef.current - 1,
           );
 
+          if (requestId === requestSequenceRef.current) {
+            setHasResolvedInitialLoad(true);
+          }
+
           if (pendingRequestsRef.current === 0) {
             setIsLoading(false);
           }
@@ -171,7 +178,12 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     >(null);
 
     useEffect(() => {
-      if (!deepLink || deepLinkHandledRef.current || isLoading) {
+      if (
+        !deepLink ||
+        deepLinkHandledRef.current ||
+        isLoading ||
+        !hasResolvedInitialLoad
+      ) {
         return;
       }
 
@@ -196,11 +208,14 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
 
       // 親コメントへスクロール。
       const element = document.querySelector(
-        `[data-comment-id="${target.id}"]`,
+        `[data-comment-id="${CSS.escape(target.id)}"]`,
       );
       element?.scrollIntoView({ behavior: "smooth", block: "center" });
 
       if (deepLink.replyId && target.reply_count > 0) {
+        // URL の後始末(onDeepLinkConsumed)は返信側の探索が完了(成功/断念)
+        // してから行う。探索中にリロードされてもディープリンクを再開できる
+        // ようにするため(下の onDeepLinkReplyConsumed で呼ぶ)。
         if (window.innerWidth < REPLY_PANEL_MOBILE_BREAKPOINT) {
           // モバイル: 返信パネルを開く(パネル側が対象返信までスクロール)。
           onReplyPanelOpen?.(target.id);
@@ -221,19 +236,26 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
         // 親コメント自体が対象(投稿へのコメント通知)のときはハイライトする。
         setHighlightedCommentId(target.id);
         window.setTimeout(() => setHighlightedCommentId(null), 2500);
+        onDeepLinkConsumed?.();
       }
-
-      onDeepLinkConsumed?.();
     }, [
       comments,
       deepLink,
       hasMore,
+      hasResolvedInitialLoad,
       isLoading,
       loadComments,
       offset,
       onDeepLinkConsumed,
       onReplyPanelOpen,
     ]);
+
+    // 返信側(ReplyThread / ReplyPanel)の探索完了時: 指示をクリアし、
+    // このタイミングで URL の後始末を行う。
+    const handleDeepLinkReplyConsumed = useCallback(() => {
+      setDeepLinkReplyTarget(null);
+      onDeepLinkConsumed?.();
+    }, [onDeepLinkConsumed]);
 
     // 親コンポーネントから呼び出せるrefresh関数を公開
     useImperativeHandle(ref, () => ({
@@ -408,7 +430,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
             onDeepLinkReplyConsumed={
               deepLinkReplyTarget?.route === "thread" &&
               deepLinkReplyTarget.parentId === comment.id
-                ? () => setDeepLinkReplyTarget(null)
+                ? handleDeepLinkReplyConsumed
                 : undefined
             }
           />
@@ -443,7 +465,7 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
             onDeepLinkReplyConsumed={
               deepLinkReplyTarget?.route === "panel" &&
               deepLinkReplyTarget.parentId === activeReplyComment.id
-                ? () => setDeepLinkReplyTarget(null)
+                ? handleDeepLinkReplyConsumed
                 : undefined
             }
           />
