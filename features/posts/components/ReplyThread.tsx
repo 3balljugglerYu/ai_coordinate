@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommentInput } from "./CommentInput";
@@ -55,7 +55,31 @@ export function ReplyThread({
     setIsExpanded((prev) => !prev);
   };
 
-  const handleReplyAdded = async () => {
+  // 引用リプライ投稿後、一覧更新の反映後に新しい返信までスクロールする。
+  // block: "nearest" のため既に見えている場合は動かない。
+  const threadContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollTargetReplyIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const targetId = scrollTargetReplyIdRef.current;
+    if (!targetId) {
+      return;
+    }
+    const element = threadContainerRef.current?.querySelector(
+      `[data-reply-id="${targetId}"]`,
+    );
+    if (!element) {
+      return;
+    }
+    scrollTargetReplyIdRef.current = null;
+    element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [replies]);
+
+  const handleReplyAdded = async (created?: { id: string }) => {
+    // 引用リプライのときだけ投稿箇所へスクロールする(通常返信は従来どおり)。
+    if (quoteReplyTo && created?.id) {
+      scrollTargetReplyIdRef.current = created.id;
+    }
     setIsReplyComposerOpen(false);
     setQuoteReplyTo(null);
     setIsExpanded(true);
@@ -90,7 +114,7 @@ export function ReplyThread({
   }
 
   return (
-    <div className="pb-3 pl-11">
+    <div ref={threadContainerRef} className="pb-3 pl-11">
       <div className="flex flex-wrap items-center gap-2">
         {!parentComment.deleted_at && (
           <Button

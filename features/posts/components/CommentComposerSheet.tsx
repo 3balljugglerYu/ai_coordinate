@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { CommentInput } from "./CommentInput";
-import type { ReplyToTarget } from "../types";
+import type { ParentComment, ReplyComment, ReplyToTarget } from "../types";
 
 interface CommentComposerSheetProps {
   open: boolean;
@@ -20,7 +20,8 @@ interface CommentComposerSheetProps {
   imageId?: string;
   parentCommentId?: string;
   currentUserId?: string | null;
-  onCommentAdded: () => void;
+  /** 投稿成功時に作成されたコメント/返信を渡す(投稿後スクロール等に使う)。 */
+  onCommentAdded: (created?: ParentComment | ReplyComment) => void;
   placeholder?: string;
   submitLabel?: string;
   submittingLabel?: string;
@@ -48,8 +49,8 @@ export function CommentComposerSheet({
 }: CommentComposerSheetProps) {
   const t = useTranslations("posts");
 
-  const handleCommentAdded = () => {
-    onCommentAdded();
+  const handleCommentAdded = (created?: ParentComment | ReplyComment) => {
+    onCommentAdded(created);
     onOpenChange(false);
   };
 

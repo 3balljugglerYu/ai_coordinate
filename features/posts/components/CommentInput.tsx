@@ -7,7 +7,7 @@ import { CornerUpLeft, User, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { createCommentAPI, createReplyAPI } from "../lib/api";
-import type { ReplyToTarget } from "../types";
+import type { ParentComment, ReplyComment, ReplyToTarget } from "../types";
 import { useToast } from "@/components/ui/use-toast";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { usePathname } from "next/navigation";
@@ -17,7 +17,8 @@ import { COMMENT_MAX_LENGTH } from "@/constants";
 interface CommentInputProps {
   imageId?: string;
   parentCommentId?: string;
-  onCommentAdded: () => void;
+  /** 投稿成功時に作成されたコメント/返信を渡す(投稿後スクロール等に使う)。 */
+  onCommentAdded: (created?: ParentComment | ReplyComment) => void;
   currentUserId?: string | null;
   placeholder?: string;
   submitLabel?: string;
@@ -148,11 +149,12 @@ export function CommentInput({
 
     setIsLoading(true);
     try {
+      let created: ParentComment | ReplyComment | undefined;
       if (isReplyComposer) {
         if (!parentCommentId) {
           throw new Error(t("replyCreateFailed"));
         }
-        await createReplyAPI(
+        created = await createReplyAPI(
           parentCommentId!,
           sanitized.value,
           {
@@ -164,12 +166,12 @@ export function CommentInput({
         if (!imageId) {
           throw new Error(t("commentCreateFailed"));
         }
-        await createCommentAPI(imageId!, sanitized.value, {
+        created = await createCommentAPI(imageId!, sanitized.value, {
           commentCreateFailed: t("commentCreateFailed"),
         });
       }
       setContent("");
-      onCommentAdded();
+      onCommentAdded(created);
       onCancel?.();
     } catch (error) {
       toast({

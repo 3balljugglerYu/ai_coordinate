@@ -2,7 +2,7 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { CSSProperties } from "react";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ChevronLeft, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,11 @@ export function ReplyPanel({
     setIsQuoteSheetOpen(false);
     setQuoteReplyTo(null);
   };
+
+  // 引用リプライ投稿後、一覧更新が反映されたタイミングで新しい返信まで
+  // スクロールする。block: "nearest" のため既に見えている場合は動かない。
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const scrollTargetReplyIdRef = useRef<string | null>(null);
   const {
     replies,
     isLoading,
@@ -88,6 +93,21 @@ export function ReplyPanel({
     await refreshReplies();
     refreshParentThread();
   };
+
+  useEffect(() => {
+    const targetId = scrollTargetReplyIdRef.current;
+    if (!targetId) {
+      return;
+    }
+    const element = scrollContainerRef.current?.querySelector(
+      `[data-reply-id="${targetId}"]`,
+    );
+    if (!element) {
+      return;
+    }
+    scrollTargetReplyIdRef.current = null;
+    element.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [replies]);
 
   const hasReplies = parentComment.reply_count > 0 || replies.length > 0;
   const showRepliesSkeleton =
@@ -129,7 +149,7 @@ export function ReplyPanel({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
               <div className="border-b border-gray-200 bg-white px-4">
                 <EditableComment
                   comment={parentComment}
@@ -214,7 +234,10 @@ export function ReplyPanel({
               title={t("replySheetTitle")}
               parentCommentId={parentComment.id}
               currentUserId={currentUserId}
-              onCommentAdded={() => {
+              onCommentAdded={(created) => {
+                if (created?.id) {
+                  scrollTargetReplyIdRef.current = created.id;
+                }
                 closeQuoteSheet();
                 void handleReplyAdded();
               }}

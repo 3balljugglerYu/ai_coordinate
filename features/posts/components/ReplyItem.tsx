@@ -27,7 +27,8 @@ export function ReplyItem({
   const canQuote = Boolean(onQuoteReply) && !reply.deleted_at;
 
   return (
-    <div>
+    // data-reply-id は投稿後スクロール(ReplyPanel/ReplyThread)のアンカー。
+    <div data-reply-id={reply.id}>
       <EditableComment
         comment={reply}
         currentUserId={currentUserId}
