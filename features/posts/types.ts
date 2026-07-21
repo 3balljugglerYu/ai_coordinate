@@ -81,6 +81,13 @@ export interface ReplyQuoteRef {
   content_preview: string;
 }
 
+/** コンポーザーの引用チップに表示する引用先(返信する対象)。 */
+export interface ReplyToTarget {
+  commentId: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+}
+
 export interface ReplyComment extends CommentRecordBase, CommentProfile {
   parent_comment_id: string;
   /** 引用先の返信ID(引用リプライのみ)。引用先の物理削除で NULL 化される。 */

@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { CommentInput } from "./CommentInput";
 import { ReplyItem } from "./ReplyItem";
-import type { ParentComment } from "../types";
+import type { ParentComment, ReplyToTarget } from "../types";
 import { useReplies } from "../hooks/useReplies";
 
 interface ReplyThreadProps {
@@ -23,6 +23,9 @@ export function ReplyThread({
   const [, startTransition] = useTransition();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isReplyComposerOpen, setIsReplyComposerOpen] = useState(false);
+  // 引用リプライの引用先(デスクトップ)。引用チップの解除で通常返信に切り替え、
+  // キャンセル・送信成功でクリアする(モバイル ReplyPanel と同じ状態遷移)。
+  const [quoteReplyTo, setQuoteReplyTo] = useState<ReplyToTarget | null>(null);
   const {
     replies,
     isLoading,
@@ -54,9 +57,21 @@ export function ReplyThread({
 
   const handleReplyAdded = async () => {
     setIsReplyComposerOpen(false);
+    setQuoteReplyTo(null);
     setIsExpanded(true);
     await refreshReplies();
     refreshParentThread();
+  };
+
+  const handleComposerCancel = () => {
+    setIsReplyComposerOpen(false);
+    setQuoteReplyTo(null);
+  };
+
+  /** 返信の「返信する」: 引用先をセットしてコンポーザーを開く。 */
+  const handleQuoteReply = (target: ReplyToTarget) => {
+    setQuoteReplyTo(target);
+    setIsReplyComposerOpen(true);
   };
 
   const handleReplyUpdated = async () => {
@@ -83,7 +98,15 @@ export function ReplyThread({
             variant="ghost"
             size="sm"
             className="h-7 px-2 text-xs text-gray-600"
-            onClick={() => setIsReplyComposerOpen((prev) => !prev)}
+            onClick={() => {
+              if (isReplyComposerOpen) {
+                handleComposerCancel();
+              } else {
+                // 親コメントへの通常返信(引用なし)で開く。
+                setQuoteReplyTo(null);
+                setIsReplyComposerOpen(true);
+              }
+            }}
           >
             {isReplyComposerOpen ? t("cancelReply") : t("replyAction")}
           </Button>
@@ -115,7 +138,9 @@ export function ReplyThread({
             submittingLabel={t("replySubmitting")}
             compact
             autoFocus
-            onCancel={() => setIsReplyComposerOpen(false)}
+            onCancel={handleComposerCancel}
+            replyTo={quoteReplyTo}
+            onReplyToClear={() => setQuoteReplyTo(null)}
           />
         </div>
       )}
@@ -134,6 +159,9 @@ export function ReplyThread({
                 currentUserId={currentUserId}
                 onReplyUpdated={handleReplyUpdated}
                 onReplyDeleted={handleReplyDeleted}
+                onQuoteReply={
+                  parentComment.deleted_at ? undefined : handleQuoteReply
+                }
               />
             ))
           )}

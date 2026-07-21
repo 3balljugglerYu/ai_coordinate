@@ -11,6 +11,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { CommentInput } from "./CommentInput";
+import type { ReplyToTarget } from "../types";
 
 interface CommentComposerSheetProps {
   open: boolean;
@@ -24,6 +25,10 @@ interface CommentComposerSheetProps {
   submitLabel?: string;
   submittingLabel?: string;
   compact?: boolean;
+  /** 引用リプライの引用先(CommentInput の引用チップに表示)。 */
+  replyTo?: ReplyToTarget | null;
+  /** 引用チップの解除ボタン(解除すると通常の親スレッド返信になる)。 */
+  onReplyToClear?: () => void;
 }
 
 export function CommentComposerSheet({
@@ -38,6 +43,8 @@ export function CommentComposerSheet({
   submitLabel,
   submittingLabel,
   compact,
+  replyTo = null,
+  onReplyToClear,
 }: CommentComposerSheetProps) {
   const t = useTranslations("posts");
 
@@ -78,6 +85,8 @@ export function CommentComposerSheet({
           submittingLabel={submittingLabel}
           compact={compact}
           autoFocus
+          replyTo={replyTo}
+          onReplyToClear={onReplyToClear}
         />
       </SheetContent>
     </Sheet>

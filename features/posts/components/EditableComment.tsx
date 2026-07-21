@@ -31,6 +31,7 @@ import { deleteCommentAPI, updateCommentAPI } from "../lib/api";
 import type { ParentComment, ReplyComment } from "../types";
 import { useToast } from "@/components/ui/use-toast";
 import { CollapsibleText } from "./CollapsibleText";
+import { ReplyQuoteHeader } from "./ReplyQuoteHeader";
 import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import { cn, sanitizeProfileText, validateProfileText } from "@/lib/utils";
 import { COMMENT_MAX_LENGTH } from "@/constants";
@@ -224,6 +225,14 @@ export function EditableComment({
                 }).format(new Date(comment.created_at))}
               </span>
             </div>
+
+            {/* 引用リプライの引用ヘッダー(返信のみ持つ)。削除済みコメントでは出さない。 */}
+            {!isDeleted && "reply_to_comment_id" in comment && (
+              <ReplyQuoteHeader
+                replyTo={comment.reply_to}
+                replyToDeleted={comment.reply_to_deleted}
+              />
+            )}
 
             {isEditing ? (
               <div className="space-y-2">

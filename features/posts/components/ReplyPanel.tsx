@@ -2,15 +2,16 @@
 
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import type { CSSProperties } from "react";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { ChevronLeft, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { CommentComposerSheet } from "./CommentComposerSheet";
 import { CommentComposerTrigger } from "./CommentComposerTrigger";
 import { EditableComment } from "./EditableComment";
 import { ReplyItem } from "./ReplyItem";
 import { ReplyPanelSkeleton } from "./ReplyPanelSkeleton";
-import type { ParentComment } from "../types";
+import type { ParentComment, ReplyToTarget } from "../types";
 import { useReplies } from "../hooks/useReplies";
 
 interface ReplyPanelProps {
@@ -33,6 +34,21 @@ export function ReplyPanel({
   const t = useTranslations("posts");
   const commonT = useTranslations("common");
   const [, startTransition] = useTransition();
+  // 引用リプライ用コンポーザーの開閉と引用先。
+  // 引用チップの解除ではシートを開いたまま通常の親スレッド返信に切り替え、
+  // シートを閉じる(キャンセル)・送信成功では両方クリアする。
+  const [isQuoteSheetOpen, setIsQuoteSheetOpen] = useState(false);
+  const [quoteReplyTo, setQuoteReplyTo] = useState<ReplyToTarget | null>(null);
+
+  const handleQuoteReply = (target: ReplyToTarget) => {
+    setQuoteReplyTo(target);
+    setIsQuoteSheetOpen(true);
+  };
+
+  const closeQuoteSheet = () => {
+    setIsQuoteSheetOpen(false);
+    setQuoteReplyTo(null);
+  };
   const {
     replies,
     isLoading,
@@ -138,6 +154,11 @@ export function ReplyPanel({
                         currentUserId={currentUserId}
                         onReplyUpdated={handleReplyUpdated}
                         onReplyDeleted={handleReplyDeleted}
+                        onQuoteReply={
+                          parentComment.deleted_at
+                            ? undefined
+                            : handleQuoteReply
+                        }
                       />
                     ))}
                   </div>
@@ -179,6 +200,31 @@ export function ReplyPanel({
                 }
               />
             </div>
+
+            {/* 引用リプライ用コンポーザー。返信の「返信する」から開く。
+                引用チップの解除はシートを開いたまま通常返信に切り替え、
+                閉じる(キャンセル)・送信成功では引用状態ごとクリアする。 */}
+            <CommentComposerSheet
+              open={isQuoteSheetOpen}
+              onOpenChange={(nextOpen) => {
+                if (!nextOpen) {
+                  closeQuoteSheet();
+                }
+              }}
+              title={t("replySheetTitle")}
+              parentCommentId={parentComment.id}
+              currentUserId={currentUserId}
+              onCommentAdded={() => {
+                closeQuoteSheet();
+                void handleReplyAdded();
+              }}
+              placeholder={t("replyPlaceholder")}
+              submitLabel={t("replySubmit")}
+              submittingLabel={t("replySubmitting")}
+              compact
+              replyTo={quoteReplyTo}
+              onReplyToClear={() => setQuoteReplyTo(null)}
+            />
           </div>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>
