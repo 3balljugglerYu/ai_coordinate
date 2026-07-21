@@ -14,6 +14,12 @@ jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+jest.mock("next/navigation", () => ({
+  useSearchParams: () => ({
+    get: () => null,
+  }),
+}));
+
 jest.mock("@/features/posts/components/CommentInput", () => ({
   CommentInput: ({ onCommentAdded }: { onCommentAdded?: () => void }) => (
     <button type="button" onClick={() => onCommentAdded?.()}>
