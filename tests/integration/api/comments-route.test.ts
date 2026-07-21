@@ -112,6 +112,9 @@ describe("Comment reply route", () => {
         user_id: "user-2",
         image_id: "post-1",
         parent_comment_id: "comment-1",
+        reply_to_comment_id: null,
+        reply_to_deleted: false,
+        reply_to: null,
         content: "first reply",
         created_at: "2026-04-16T00:00:00.000Z",
         updated_at: "2026-04-16T00:00:00.000Z",
@@ -181,6 +184,9 @@ describe("Comment reply route", () => {
       user_id: "user-1",
       image_id: "post-1",
       parent_comment_id: "comment-1",
+      reply_to_comment_id: null,
+      reply_to_deleted: false,
+      reply_to: null,
       content: "reply body",
       created_at: "2026-04-16T00:00:00.000Z",
       updated_at: "2026-04-16T00:00:00.000Z",
@@ -208,6 +214,87 @@ describe("Comment reply route", () => {
       expire: 0,
     });
   });
+
+  test("POST /api/comments/[id]/replies_replyToCommentId指定時_そのまま渡す(引用リプライ)", async () => {
+    mockCreateReply.mockResolvedValue({
+      id: "reply-2",
+      user_id: "user-1",
+      image_id: "post-1",
+      parent_comment_id: "comment-1",
+      reply_to_comment_id: "reply-1",
+      reply_to_deleted: false,
+      reply_to: {
+        user_id: "user-9",
+        nickname: "hanako",
+        avatar_url: null,
+        content_preview: "元の返信",
+      },
+      content: "quote reply body",
+      created_at: "2026-04-16T00:00:00.000Z",
+      updated_at: "2026-04-16T00:00:00.000Z",
+      deleted_at: null,
+      user_nickname: "User",
+      user_avatar_url: null,
+    });
+
+    const response = await postReplyRoute(
+      createRequest("POST", {
+        content: "quote reply body",
+        replyToCommentId: "11111111-2222-4333-8444-555555555555",
+      }),
+      { params: Promise.resolve({ id: "comment-1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    expect(mockCreateReply).toHaveBeenCalledWith(
+      "comment-1",
+      "user-1",
+      "quote reply body",
+      "11111111-2222-4333-8444-555555555555"
+    );
+  });
+
+  test("POST /api/comments/[id]/replies_replyToCommentIdがstring以外_400を返す", async () => {
+    const response = await postReplyRoute(
+      createRequest("POST", { content: "body", replyToCommentId: 123 }),
+      { params: Promise.resolve({ id: "comment-1" }) }
+    );
+    const body = (await response.json()) as { errorCode: string };
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("POSTS_REPLY_TO_INVALID");
+    expect(mockCreateReply).not.toHaveBeenCalled();
+  });
+
+  // UUID不正・親コメント引用・別スレッド引用は server-api / DB トリガーが
+  // POSTS_REPLY_TO_INVALID として検出する。route がそれを 400 + errorCode で
+  // 返すことをエラーコード表(docs/API.md)の3種すべてで検証する。
+  test.each([
+    ["POSTS_REPLY_TO_INVALID", "返信先が正しくありません"],
+    ["POSTS_REPLY_TO_NOT_FOUND", "返信先のコメントが見つかりません"],
+    ["POSTS_REPLY_TO_DELETED", "返信先のコメントは削除されています"],
+  ])(
+    "POST /api/comments/[id]/replies_%sの場合_400とerrorCodeを返す",
+    async (code, message) => {
+      mockCreateReply.mockRejectedValue(new PostCommentError(message, 400, code));
+
+      const response = await postReplyRoute(
+        createRequest("POST", {
+          content: "body",
+          replyToCommentId: "11111111-2222-4333-8444-555555555555",
+        }),
+        { params: Promise.resolve({ id: "comment-1" }) }
+      );
+      const body = (await response.json()) as {
+        error: string;
+        errorCode: string;
+      };
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe(code);
+      expect(body.error).toBe(message);
+    }
+  );
 
   test("POST /api/comments/[id]/replies_未認証の場合_401を返す", async () => {
     mockGetUser.mockResolvedValue(null);
@@ -291,6 +378,9 @@ describe("Comment edit/delete route", () => {
       user_id: "user-1",
       image_id: "post-1",
       parent_comment_id: "comment-1",
+      reply_to_comment_id: null,
+      reply_to_deleted: false,
+      reply_to: null,
       content: "updated reply",
       created_at: "2026-04-16T00:00:00.000Z",
       updated_at: "2026-04-16T00:10:00.000Z",
@@ -321,6 +411,8 @@ describe("Comment edit/delete route", () => {
       user_id: "user-1",
       image_id: "post-1",
       parent_comment_id: null,
+      reply_count: 0,
+      last_activity_at: "2026-04-16T00:05:00.000Z",
       content: "updated parent comment",
       created_at: "2026-04-16T00:00:00.000Z",
       updated_at: "2026-04-16T00:05:00.000Z",

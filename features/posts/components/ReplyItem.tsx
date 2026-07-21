@@ -35,7 +35,8 @@ export function ReplyItem({
         onCommentDeleted={onReplyDeleted}
       />
       {canQuote && (
-        <div className="-mt-2 pb-2 pl-11">
+        <div className="-mt-3 pb-1 pl-9">
+          {/* タッチターゲット44px(min-h-11)を確保しつつ、視覚上は小さなテキストリンクに見せる。 */}
           <button
             type="button"
             onClick={() =>
@@ -45,7 +46,7 @@ export function ReplyItem({
                 avatarUrl: reply.user_avatar_url,
               })
             }
-            className="text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
+            className="flex min-h-11 items-center px-2 text-xs font-medium text-gray-500 transition-colors hover:text-gray-700"
           >
             {t("replyAction")}
           </button>

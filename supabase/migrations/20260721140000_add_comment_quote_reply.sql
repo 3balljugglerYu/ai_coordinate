@@ -52,18 +52,24 @@ BEGIN
       RAISE EXCEPTION 'parent_comment_id is immutable for comments';
     END IF;
 
-    -- 引用参照は「外す」方向のみ許可する。
-    -- FK ON DELETE SET NULL(引用先の物理削除)による NULL 化を通しつつ、
-    -- 付け替え(別コメントへの変更)はデータ改ざんとして拒否する。
-    IF NEW.reply_to_comment_id IS DISTINCT FROM OLD.reply_to_comment_id
-      AND NOT (OLD.reply_to_comment_id IS NOT NULL AND NEW.reply_to_comment_id IS NULL) THEN
-      RAISE EXCEPTION 'reply_to_comment_id can only be cleared';
+    -- 引用参照・削除フラグは「DB内部の削除処理」でのみ変更を許可する。
+    -- マーカー(app.comment_quote_internal)は mark_reply_to_deleted trigger が
+    -- トランザクションローカルに立てるため、引用先の物理削除に伴う
+    -- フラグ更新と FK ON DELETE SET NULL の NULL 化は同一トランザクション内で通る。
+    -- ユーザーの直接 UPDATE(RLS は本人行の UPDATE を許可している)による
+    -- 「削除済み引用の偽装」「引用の付け替え/解除」はここで拒否する。
+    IF NEW.reply_to_comment_id IS DISTINCT FROM OLD.reply_to_comment_id THEN
+      IF NOT (OLD.reply_to_comment_id IS NOT NULL AND NEW.reply_to_comment_id IS NULL)
+        OR current_setting('app.comment_quote_internal', true) IS DISTINCT FROM '1' THEN
+        RAISE EXCEPTION 'reply_to_comment_id can only be cleared by comment deletion';
+      END IF;
     END IF;
 
-    -- 削除フラグは false→true の一方向のみ(mark_reply_to_deleted trigger 用)。
-    IF NEW.reply_to_deleted IS DISTINCT FROM OLD.reply_to_deleted
-      AND NOT (OLD.reply_to_deleted = FALSE AND NEW.reply_to_deleted = TRUE) THEN
-      RAISE EXCEPTION 'reply_to_deleted can only transition to true';
+    IF NEW.reply_to_deleted IS DISTINCT FROM OLD.reply_to_deleted THEN
+      IF NOT (OLD.reply_to_deleted = FALSE AND NEW.reply_to_deleted = TRUE)
+        OR current_setting('app.comment_quote_internal', true) IS DISTINCT FROM '1' THEN
+        RAISE EXCEPTION 'reply_to_deleted can only be set by comment deletion';
+      END IF;
     END IF;
 
     IF NEW.deleted_at IS DISTINCT FROM OLD.deleted_at
@@ -159,8 +165,13 @@ $$;
 -- 引用先(返信)が物理削除される直前に、参照元の reply_to_deleted を立てる。
 -- この後 FK の ON DELETE SET NULL が reply_to_comment_id を NULL 化するため、
 -- 「引用していたが削除された」状態(NULL + true)が残り、通常返信と区別できる。
--- validate_parent_comment の UPDATE 検証は false→true / 非NULL→NULL を
--- 許可しているため、この内部更新と FK 動作はどちらも通る。
+--
+-- 内部実行マーカー(app.comment_quote_internal)をトランザクションローカルに
+-- 立ててから更新する。validate_parent_comment はこのマーカーが無い
+-- reply_to_deleted / reply_to_comment_id の変更を拒否するため、ユーザーの
+-- 直接 UPDATE による偽装は不可。マーカーはトランザクション終了まで有効なので、
+-- この後に走る FK ON DELETE SET NULL の内部 UPDATE も同様に許可される
+-- (既存 delete_comment_thread の app.comment_delete_rpc と同じパターン)。
 CREATE OR REPLACE FUNCTION public.mark_reply_to_deleted()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -168,6 +179,7 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
+  PERFORM set_config('app.comment_quote_internal', '1', true);
   UPDATE public.comments
   SET reply_to_deleted = TRUE
   WHERE reply_to_comment_id = OLD.id

@@ -164,16 +164,19 @@ function toParentComment(
 function toReplyComment(
   comment: CommentRow,
   profileMap: Record<string, { nickname: string | null; avatar_url: string | null }>,
-  quoteMap: Record<string, CommentRow | undefined> = {}
+  quoteMap: Record<string, CommentRow | undefined> = {},
+  quoteLookupFailed = false
 ): ReplyComment {
-  // 引用先の解決。引用先が取得できない/削除済み(tombstone)の場合は
+  // 引用先の解決。lookup 成功時に引用先が見つからない/削除済み(tombstone)なら
   // 「削除されたコメント」フォールバック(reply_to_deleted=true 扱い)にする。
+  // lookup 自体が失敗した場合は削除と誤表示せず、DB のフラグのみを信頼して
+  // 引用ヘッダーを非表示に留める(一時的な取得エラーで偽の削除表示をしない)。
   const replyToCommentId = comment.reply_to_comment_id ?? null;
   const quote = replyToCommentId ? quoteMap[replyToCommentId] : undefined;
   const quoteAlive = Boolean(quote && !quote.deleted_at);
   const replyToDeleted =
     Boolean(comment.reply_to_deleted) ||
-    Boolean(replyToCommentId && !quoteAlive);
+    Boolean(replyToCommentId && !quoteAlive && !quoteLookupFailed);
 
   return {
     id: comment.id,
@@ -218,6 +221,8 @@ async function fetchReplyQuoteRows(
 ): Promise<{
   quoteMap: Record<string, CommentRow | undefined>;
   quoteAuthorIds: string[];
+  /** 引用先の取得自体に失敗したか。true のとき「削除済み」と誤判定してはならない。 */
+  lookupFailed: boolean;
 }> {
   const quoteIds = Array.from(
     new Set(
@@ -228,7 +233,7 @@ async function fetchReplyQuoteRows(
   );
 
   if (quoteIds.length === 0) {
-    return { quoteMap: {}, quoteAuthorIds: [] };
+    return { quoteMap: {}, quoteAuthorIds: [], lookupFailed: false };
   }
 
   const { data, error } = await supabase
@@ -238,8 +243,9 @@ async function fetchReplyQuoteRows(
 
   if (error) {
     // 引用表示は付加情報のため、失敗しても返信一覧自体は返す(非致命)。
+    // ただし lookupFailed を立て、「引用先が削除された」との誤表示を防ぐ。
     console.error("Reply quote fetch error:", error);
-    return { quoteMap: {}, quoteAuthorIds: [] };
+    return { quoteMap: {}, quoteAuthorIds: [], lookupFailed: true };
   }
 
   const quoteRows = (data ?? []) as unknown as CommentRow[];
@@ -256,7 +262,7 @@ async function fetchReplyQuoteRows(
     )
   );
 
-  return { quoteMap, quoteAuthorIds };
+  return { quoteMap, quoteAuthorIds, lookupFailed: false };
 }
 
 function mapDeleteCommentRpcError(errorMessage: string): PostCommentError | null {
@@ -1493,7 +1499,7 @@ export async function getReplies(
   }
 
   // 引用先(reply_to)はページ内の ID を集めて batch 取得する(個別 lookup 禁止)。
-  const { quoteMap, quoteAuthorIds } = await fetchReplyQuoteRows(
+  const { quoteMap, quoteAuthorIds, lookupFailed } = await fetchReplyQuoteRows(
     replies,
     supabase
   );
@@ -1508,7 +1514,7 @@ export async function getReplies(
   const profileMap = await getProfileMap(userIds, supabase);
 
   return replies.map((reply) =>
-    toReplyComment(reply as CommentRow, profileMap, quoteMap)
+    toReplyComment(reply as CommentRow, profileMap, quoteMap, lookupFailed)
   );
 }
 
@@ -1663,7 +1669,7 @@ export async function createReply(
 
   const reply = replyData as unknown as CommentRow;
   // 作成レスポンスにも一覧と同じ引用情報を合成する(投稿直後の描画用)。
-  const { quoteMap, quoteAuthorIds } = await fetchReplyQuoteRows(
+  const { quoteMap, quoteAuthorIds, lookupFailed } = await fetchReplyQuoteRows(
     [reply],
     adminSupabase
   );
@@ -1671,7 +1677,7 @@ export async function createReply(
     Array.from(new Set([userId, ...quoteAuthorIds])),
     supabase
   );
-  return toReplyComment(reply, profileMap, quoteMap);
+  return toReplyComment(reply, profileMap, quoteMap, lookupFailed);
 }
 
 /**
@@ -1747,7 +1753,7 @@ export async function updateComment(
 
   if (existingComment.parent_comment_id) {
     // 編集後の再描画で引用ヘッダーが消えないよう、引用情報も合成して返す。
-    const { quoteMap, quoteAuthorIds } = await fetchReplyQuoteRows(
+    const { quoteMap, quoteAuthorIds, lookupFailed } = await fetchReplyQuoteRows(
       [updatedComment],
       adminSupabase
     );
@@ -1755,7 +1761,7 @@ export async function updateComment(
       Array.from(new Set([userId, ...quoteAuthorIds])),
       supabase
     );
-    return toReplyComment(updatedComment, profileMap, quoteMap);
+    return toReplyComment(updatedComment, profileMap, quoteMap, lookupFailed);
   }
 
   const profileMap = await getProfileMap([userId], supabase);
