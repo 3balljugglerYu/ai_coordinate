@@ -153,8 +153,14 @@ export interface StylePresetPublicSummary {
   thumbnailWidth: number;
   thumbnailHeight: number;
   hasBackgroundPrompt: boolean;
-  /** 公開プリセットの作成日時(ISO)。/style 探索シートの「✨新着」チップ判定に使う。 */
+  /** 公開プリセットの作成日時(ISO)。publishedAt が無い場合の新着判定フォールバック。 */
   createdAt: string;
+  /**
+   * 最後に公開(draft等→published 遷移)した日時(ISO)。トリガーで自動記録。
+   * 新着判定(ホーム新着枠/NEWバッジ/✨新着チップ)は publishedAt ?? createdAt を使う。
+   * NULL は移行前データ等(createdAt にフォールバック)。
+   */
+  publishedAt: string | null;
   category: StylePresetCategoryRef;
   imageInputMode: ImageInputMode;
   dualReferenceSource: DualReferenceSource;

@@ -91,6 +91,8 @@ interface StylePresetRow {
   updated_by: string | null;
   created_at: string;
   updated_at: string;
+  // 最後に published へ遷移した日時(DBトリガーで自動記録)。新着判定用。
+  published_at?: string | null;
   // プリセット単位の提供者(profiles.id)。カテゴリ単位と独立して設定できる。
   provider_user_id?: string | null;
   // クリエイター提供プロンプト 申請(Phase 1)用カラム(通常プリセットでは null)
@@ -310,6 +312,7 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     thumbnailHeight: row.thumbnail_height,
     hasBackgroundPrompt: Boolean(row.background_prompt?.trim()),
     createdAt: row.created_at,
+    publishedAt: row.published_at ?? null,
     category: mapCategoryRefStrict(row, extractCategory(row.category)),
     imageInputMode: row.image_input_mode,
     dualReferenceSource: normalizeDualReferenceSource(row.dual_reference_source),
