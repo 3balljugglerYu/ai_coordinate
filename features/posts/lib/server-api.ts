@@ -1478,13 +1478,15 @@ export async function getReplies(
 ): Promise<ReplyComment[]> {
   const supabase = createAdminClient();
 
+  // 返信は「古い順」(会話が上から下に流れる順)。新しい返信・引用リプライは
+  // 引用元より下に追加され、引用ヘッダーの参照方向(上を指す)と一致する。
   const { data: repliesData, error } = await supabase
     .from("comments")
     .select(COMMENT_SELECT_COLUMNS)
     .eq("parent_comment_id", parentCommentId)
     .is("deleted_at", null)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
+    .order("created_at", { ascending: true })
+    .order("id", { ascending: true })
     .range(offset, offset + limit - 1);
 
   if (error) {
