@@ -86,7 +86,19 @@ export async function POST(
     }
 
     const [{ id }, body] = await Promise.all([paramsPromise, bodyPromise]);
-    const { content } = body;
+    const { content, replyToCommentId } = body;
+
+    // 引用リプライ(任意)。string 以外は不正入力として弾く。
+    // UUID 形式・同一スレッド等の検証は server-api / DB トリガーが行う。
+    if (
+      replyToCommentId != null &&
+      typeof replyToCommentId !== "string"
+    ) {
+      return NextResponse.json(
+        { error: copy.replyToInvalid, errorCode: "POSTS_REPLY_TO_INVALID" },
+        { status: 400 }
+      );
+    }
 
     if (!id) {
       return NextResponse.json(
@@ -125,7 +137,12 @@ export async function POST(
       );
     }
 
-    const reply = await createReply(id, user.id, sanitized.value);
+    const reply = await createReply(
+      id,
+      user.id,
+      sanitized.value,
+      replyToCommentId ?? null
+    );
     revalidateTag(`post-detail-${reply.image_id}`, { expire: 0 });
 
     return NextResponse.json({ reply });

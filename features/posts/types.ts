@@ -69,8 +69,26 @@ export interface ParentComment extends CommentRecordBase, CommentProfile {
   last_activity_at: string;
 }
 
+/**
+ * 引用リプライの引用先情報(表示用)。
+ * 表示のたびにサーバー側で最新のプロフィールを解決して返す
+ * (ニックネーム変更・アバター変更に追従する)。
+ */
+export interface ReplyQuoteRef {
+  user_id: string | null;
+  nickname: string | null;
+  avatar_url: string | null;
+  content_preview: string;
+}
+
 export interface ReplyComment extends CommentRecordBase, CommentProfile {
   parent_comment_id: string;
+  /** 引用先の返信ID(引用リプライのみ)。引用先の物理削除で NULL 化される。 */
+  reply_to_comment_id: string | null;
+  /** 引用先が削除された印。true なら「削除されたコメント」フォールバック表示。 */
+  reply_to_deleted: boolean;
+  /** 引用先の表示情報。引用なし・引用先削除済みのときは null。 */
+  reply_to: ReplyQuoteRef | null;
 }
 
 export type CommentDeleteMode = "physical" | "logical";

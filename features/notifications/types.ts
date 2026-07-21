@@ -19,6 +19,10 @@ export interface Notification {
     image_url?: string;
     comment_id?: string;
     comment_content?: string;
+    /** 返信種別。"reply_to_reply" は引用リプライ(あなたの返信への返信)。 */
+    reply_kind?: "reply_to_reply";
+    reply_to_comment_id?: string;
+    parent_comment_id?: string;
     follower_id?: string;
     bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus" | "tour_bonus";
     bonus_amount?: number;

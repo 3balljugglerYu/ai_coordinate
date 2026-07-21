@@ -17,7 +17,8 @@ export type NotificationTranslationKey =
   | "commentTitle"
   | "followTitle"
   | "likeTitle"
-  | "replyTitle";
+  | "replyTitle"
+  | "replyToReplyTitle";
 
 function getStringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -116,7 +117,11 @@ export function formatNotificationContent(
       return {
         title:
           notification.entity_type === "comment"
-            ? t("replyTitle", { actor: actorName })
+            ? // 引用リプライ(返信への返信)は宛先が「あなたの返信」なので文言を分ける。
+              // reply_kind が無い既存データは従来どおり replyTitle。
+              notification.data?.reply_kind === "reply_to_reply"
+              ? t("replyToReplyTitle", { actor: actorName })
+              : t("replyTitle", { actor: actorName })
             : t("commentTitle", { actor: actorName }),
         body: getStringValue(notification.data?.comment_content) ?? notification.body,
       };

@@ -59,6 +59,9 @@ type CommentRow = {
   user_id: string | null;
   image_id: string;
   parent_comment_id: string | null;
+  // 引用リプライ(返信への返信)。列が無い旧テスト fixture も許容するため optional。
+  reply_to_comment_id?: string | null;
+  reply_to_deleted?: boolean | null;
   content: string;
   created_at: string;
   updated_at: string;
@@ -76,12 +79,17 @@ const COMMENT_SELECT_COLUMNS = [
   "user_id",
   "image_id",
   "parent_comment_id",
+  "reply_to_comment_id",
+  "reply_to_deleted",
   "content",
   "created_at",
   "updated_at",
   "deleted_at",
   "last_activity_at",
 ].join(",");
+
+/** 引用ヘッダーに出す引用先本文プレビューの最大文字数。 */
+const REPLY_QUOTE_PREVIEW_MAX_LENGTH = 80;
 
 export class PostCommentError extends Error {
   constructor(
@@ -155,13 +163,41 @@ function toParentComment(
 
 function toReplyComment(
   comment: CommentRow,
-  profileMap: Record<string, { nickname: string | null; avatar_url: string | null }>
+  profileMap: Record<string, { nickname: string | null; avatar_url: string | null }>,
+  quoteMap: Record<string, CommentRow | undefined> = {}
 ): ReplyComment {
+  // 引用先の解決。引用先が取得できない/削除済み(tombstone)の場合は
+  // 「削除されたコメント」フォールバック(reply_to_deleted=true 扱い)にする。
+  const replyToCommentId = comment.reply_to_comment_id ?? null;
+  const quote = replyToCommentId ? quoteMap[replyToCommentId] : undefined;
+  const quoteAlive = Boolean(quote && !quote.deleted_at);
+  const replyToDeleted =
+    Boolean(comment.reply_to_deleted) ||
+    Boolean(replyToCommentId && !quoteAlive);
+
   return {
     id: comment.id,
     user_id: comment.user_id,
     image_id: comment.image_id,
     parent_comment_id: comment.parent_comment_id || "",
+    reply_to_comment_id: replyToCommentId,
+    reply_to_deleted: replyToDeleted,
+    reply_to:
+      quoteAlive && quote
+        ? {
+            user_id: quote.user_id,
+            nickname: quote.user_id
+              ? profileMap[quote.user_id]?.nickname ?? null
+              : null,
+            avatar_url: quote.user_id
+              ? profileMap[quote.user_id]?.avatar_url ?? null
+              : null,
+            content_preview:
+              quote.content.length > REPLY_QUOTE_PREVIEW_MAX_LENGTH
+                ? `${quote.content.slice(0, REPLY_QUOTE_PREVIEW_MAX_LENGTH)}...`
+                : quote.content,
+          }
+        : null,
     content: comment.content,
     created_at: comment.created_at,
     updated_at: comment.updated_at,
@@ -169,6 +205,58 @@ function toReplyComment(
     user_nickname: comment.user_id ? profileMap[comment.user_id]?.nickname ?? null : null,
     user_avatar_url: comment.user_id ? profileMap[comment.user_id]?.avatar_url ?? null : null,
   };
+}
+
+/**
+ * ページ内の返信が引用している引用先コメントを一括取得する(N+1回避)。
+ * 返り値の quoteMap は toReplyComment に渡し、quoteAuthorIds は
+ * profileMap の一括取得対象に加える。
+ */
+async function fetchReplyQuoteRows(
+  replies: CommentRow[],
+  supabase: SupabaseClient
+): Promise<{
+  quoteMap: Record<string, CommentRow | undefined>;
+  quoteAuthorIds: string[];
+}> {
+  const quoteIds = Array.from(
+    new Set(
+      replies
+        .map((reply) => reply.reply_to_comment_id)
+        .filter((id): id is string => Boolean(id))
+    )
+  );
+
+  if (quoteIds.length === 0) {
+    return { quoteMap: {}, quoteAuthorIds: [] };
+  }
+
+  const { data, error } = await supabase
+    .from("comments")
+    .select(COMMENT_SELECT_COLUMNS)
+    .in("id", quoteIds);
+
+  if (error) {
+    // 引用表示は付加情報のため、失敗しても返信一覧自体は返す(非致命)。
+    console.error("Reply quote fetch error:", error);
+    return { quoteMap: {}, quoteAuthorIds: [] };
+  }
+
+  const quoteRows = (data ?? []) as unknown as CommentRow[];
+  const quoteMap: Record<string, CommentRow | undefined> = {};
+  for (const row of quoteRows) {
+    quoteMap[row.id] = row;
+  }
+  const quoteAuthorIds = Array.from(
+    new Set(
+      quoteRows
+        .filter((row) => !row.deleted_at)
+        .map((row) => row.user_id)
+        .filter((userId): userId is string => Boolean(userId))
+    )
+  );
+
+  return { quoteMap, quoteAuthorIds };
 }
 
 function mapDeleteCommentRpcError(errorMessage: string): PostCommentError | null {
@@ -1404,16 +1492,24 @@ export async function getReplies(
     return [];
   }
 
+  // 引用先(reply_to)はページ内の ID を集めて batch 取得する(個別 lookup 禁止)。
+  const { quoteMap, quoteAuthorIds } = await fetchReplyQuoteRows(
+    replies,
+    supabase
+  );
   const userIds = Array.from(
     new Set(
-      replies
-        .map((reply) => reply.user_id)
-        .filter((userId): userId is string => Boolean(userId))
+      [
+        ...replies.map((reply) => reply.user_id),
+        ...quoteAuthorIds,
+      ].filter((userId): userId is string => Boolean(userId))
     )
   );
   const profileMap = await getProfileMap(userIds, supabase);
 
-  return replies.map((reply) => toReplyComment(reply as CommentRow, profileMap));
+  return replies.map((reply) =>
+    toReplyComment(reply as CommentRow, profileMap, quoteMap)
+  );
 }
 
 /**
@@ -1453,11 +1549,59 @@ export async function createComment(
   );
 }
 
+/**
+ * DBトリガー(validate_parent_comment)の引用検証エラーを安定した
+ * エラーコード付き PostCommentError へ変換する。メッセージ規約は
+ * REPLY_TO_ プレフィックス(supabase/migrations/20260721140000)。
+ */
+function mapReplyToTriggerError(errorMessage: string): PostCommentError | null {
+  if (errorMessage.includes("REPLY_TO_NOT_FOUND")) {
+    return new PostCommentError(
+      "返信先のコメントが見つかりません",
+      400,
+      "POSTS_REPLY_TO_NOT_FOUND"
+    );
+  }
+
+  if (errorMessage.includes("REPLY_TO_DELETED")) {
+    return new PostCommentError(
+      "返信先のコメントは削除されています",
+      400,
+      "POSTS_REPLY_TO_DELETED"
+    );
+  }
+
+  if (errorMessage.includes("REPLY_TO_INVALID_TARGET")) {
+    return new PostCommentError(
+      "返信先が正しくありません",
+      400,
+      "POSTS_REPLY_TO_INVALID"
+    );
+  }
+
+  return null;
+}
+
+const REPLY_TO_UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function createReply(
   parentCommentId: string,
   userId: string,
-  content: string
+  content: string,
+  replyToCommentId?: string | null
 ): Promise<ReplyComment> {
+  if (
+    replyToCommentId != null &&
+    !REPLY_TO_UUID_PATTERN.test(replyToCommentId)
+  ) {
+    throw new PostCommentError(
+      "返信先が正しくありません",
+      400,
+      "POSTS_REPLY_TO_INVALID"
+    );
+  }
+
   const sanitized = validateCommentContent(content);
   const adminSupabase = createAdminClient();
 
@@ -1500,19 +1644,34 @@ export async function createReply(
       image_id: parentComment.image_id,
       user_id: userId,
       parent_comment_id: parentCommentId,
+      // 引用リプライ(返信への返信)。同一スレッド・存命チェックは
+      // DBトリガー(validate_parent_comment)が最終防衛する。
+      reply_to_comment_id: replyToCommentId ?? null,
       content: sanitized,
     } as never)
     .select(COMMENT_SELECT_COLUMNS)
     .single();
 
   if (replyError) {
+    const mapped = mapReplyToTriggerError(replyError.message);
+    if (mapped) {
+      throw mapped;
+    }
     console.error("Database query error:", replyError);
     throw new Error(`返信の投稿に失敗しました: ${replyError.message}`);
   }
 
   const reply = replyData as unknown as CommentRow;
-  const profileMap = await getProfileMap([userId], supabase);
-  return toReplyComment(reply, profileMap);
+  // 作成レスポンスにも一覧と同じ引用情報を合成する(投稿直後の描画用)。
+  const { quoteMap, quoteAuthorIds } = await fetchReplyQuoteRows(
+    [reply],
+    adminSupabase
+  );
+  const profileMap = await getProfileMap(
+    Array.from(new Set([userId, ...quoteAuthorIds])),
+    supabase
+  );
+  return toReplyComment(reply, profileMap, quoteMap);
 }
 
 /**
@@ -1587,8 +1746,16 @@ export async function updateComment(
   }
 
   if (existingComment.parent_comment_id) {
-    const profileMap = await getProfileMap([userId], supabase);
-    return toReplyComment(updatedComment, profileMap);
+    // 編集後の再描画で引用ヘッダーが消えないよう、引用情報も合成して返す。
+    const { quoteMap, quoteAuthorIds } = await fetchReplyQuoteRows(
+      [updatedComment],
+      adminSupabase
+    );
+    const profileMap = await getProfileMap(
+      Array.from(new Set([userId, ...quoteAuthorIds])),
+      supabase
+    );
+    return toReplyComment(updatedComment, profileMap, quoteMap);
   }
 
   const profileMap = await getProfileMap([userId], supabase);

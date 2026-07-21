@@ -197,7 +197,13 @@ describe("Comment reply route", () => {
 
     expect(response.status).toBe(200);
     expect(body.reply.id).toBe("reply-1");
-    expect(mockCreateReply).toHaveBeenCalledWith("comment-1", "user-1", "reply body");
+    // 第4引数は引用リプライの replyToCommentId(未指定時は null)。
+    expect(mockCreateReply).toHaveBeenCalledWith(
+      "comment-1",
+      "user-1",
+      "reply body",
+      null
+    );
     expect(mockRevalidateTag).toHaveBeenCalledWith("post-detail-post-1", {
       expire: 0,
     });
