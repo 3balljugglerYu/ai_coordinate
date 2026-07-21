@@ -244,7 +244,7 @@ describe("useNotifications", () => {
     });
   });
 
-  test("comment通知クリック時_image_idを使って投稿詳細へ遷移する", async () => {
+  test("comment通知クリック時_親コメントと返信のディープリンク付きで投稿詳細へ遷移する", async () => {
     const { result } = await renderNotificationsHook();
 
     act(() => {
@@ -268,7 +268,9 @@ describe("useNotifications", () => {
       );
     });
 
-    expect(pushMock).toHaveBeenCalledWith("/posts/post-123?from=notifications");
+    expect(pushMock).toHaveBeenCalledWith(
+      "/posts/post-123?from=notifications&comment=parent-comment-1&reply=reply-1"
+    );
   });
 
   test("既読のcomment通知クリック時_既読化せず投稿詳細へ遷移する", async () => {
@@ -279,7 +281,48 @@ describe("useNotifications", () => {
     });
 
     expect(markNotificationsReadMock).not.toHaveBeenCalled();
-    expect(pushMock).toHaveBeenCalledWith("/posts/post-123?from=notifications");
+    expect(pushMock).toHaveBeenCalledWith(
+      "/posts/post-123?from=notifications&comment=parent-comment-1&reply=reply-1"
+    );
+  });
+
+  test("引用リプライ通知クリック時_data.parent_comment_idを優先してディープリンクを組む", async () => {
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          entity_type: "comment",
+          entity_id: "ignored-entity",
+          data: {
+            image_id: "post-123",
+            comment_id: "quote-reply-1",
+            parent_comment_id: "parent-9",
+            reply_kind: "reply_to_reply",
+          },
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/posts/post-123?from=notifications&comment=parent-9&reply=quote-reply-1"
+    );
+  });
+
+  test("post通知にcomment_idがない場合_ディープリンクなしで遷移する", async () => {
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          entity_type: "post",
+          entity_id: "post-777",
+          data: {},
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledWith("/posts/post-777?from=notifications");
   });
 
   test("comment通知にimage_idがない場合_comment分岐では遷移しない", async () => {
@@ -306,7 +349,7 @@ describe("useNotifications", () => {
         entity_type: "post",
         entity_id: "post-999",
       }),
-      "/posts/post-999?from=notifications",
+      "/posts/post-999?from=notifications&comment=reply-1",
     ],
     [
       "user通知",

@@ -14,6 +14,8 @@ interface ReplyItemProps {
    * 未指定なら「返信する」ボタンを表示しない。
    */
   onQuoteReply?: (target: ReplyToTarget) => void;
+  /** 通知ディープリンクの対象返信として一時ハイライトする。 */
+  highlighted?: boolean;
 }
 
 export function ReplyItem({
@@ -22,13 +24,21 @@ export function ReplyItem({
   onReplyUpdated,
   onReplyDeleted,
   onQuoteReply,
+  highlighted = false,
 }: ReplyItemProps) {
   const t = useTranslations("posts");
   const canQuote = Boolean(onQuoteReply) && !reply.deleted_at;
 
   return (
     // data-reply-id は投稿後スクロール(ReplyPanel/ReplyThread)のアンカー。
-    <div data-reply-id={reply.id}>
+    <div
+      data-reply-id={reply.id}
+      className={
+        highlighted
+          ? "rounded-lg bg-blue-50 transition-colors duration-700"
+          : "transition-colors duration-700"
+      }
+    >
       <EditableComment
         comment={reply}
         currentUserId={currentUserId}

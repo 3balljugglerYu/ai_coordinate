@@ -2,11 +2,13 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import { CommentInput } from "./CommentInput";
 import { CommentComposerTrigger } from "./CommentComposerTrigger";
 import { CommentList, type CommentListRef } from "./CommentList";
+import type { CommentDeepLink } from "./CommentList";
 
 interface CommentSectionProps {
   postId: string;
@@ -19,8 +21,41 @@ interface CommentSectionProps {
  */
 export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
   const t = useTranslations("posts");
+  const searchParams = useSearchParams();
   const commentListRef = useRef<CommentListRef>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
+  // 通知タップ由来のディープリンク(?comment=<親ID>&reply=<返信ID>)。
+  // 処理完了後に URL から取り除く(リロードや戻る操作で再度スクロール
+  // しないように)。取り込みはマウント時の一度きりではなく searchParams の
+  // 変化に反応させる: 通知一覧から同じ投稿へ再遷移したとき、Next.js は
+  // このコンポーネントを再マウントせず state を保持したまま searchParams
+  // だけ更新するため、初期化子方式では2回目以降のディープリンクを取りこぼす。
+  const [deepLink, setDeepLink] = useState<CommentDeepLink | null>(null);
+
+  useEffect(() => {
+    const commentId = searchParams.get("comment");
+    if (!commentId) {
+      return;
+    }
+    const replyId = searchParams.get("reply");
+    // URL(外部システム)との同期のための意図的な setState。同値なら更新しない。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDeepLink((prev) =>
+      prev && prev.commentId === commentId && prev.replyId === replyId
+        ? prev
+        : { commentId, replyId },
+    );
+  }, [searchParams]);
+
+  const handleDeepLinkConsumed = useCallback(() => {
+    setDeepLink(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("comment");
+      url.searchParams.delete("reply");
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
+  }, []);
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<
     string | null
   >(null);
@@ -147,6 +182,8 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
         replyPanelStyle={replyPanelStyle}
         onReplyPanelOpen={handleOpenReplyPanel}
         onReplyPanelOpenChange={handleReplyPanelOpenChange}
+        deepLink={deepLink}
+        onDeepLinkConsumed={handleDeepLinkConsumed}
       />
     </div>
   );

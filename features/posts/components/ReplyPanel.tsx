@@ -21,7 +21,16 @@ interface ReplyPanelProps {
   currentUserId?: string | null;
   onThreadChanged: () => void;
   panelStyle: CSSProperties;
+  /**
+   * 通知ディープリンク: パネル表示後にこの返信までスクロールする。
+   * 対象が現在ページに無ければ上限まで追加読み込みして探す。
+   */
+  deepLinkReplyId?: string | null;
+  onDeepLinkReplyConsumed?: () => void;
 }
+
+/** ディープリンク対象の返信を探すための追加読み込み上限(20件x5=100件)。 */
+const DEEP_LINK_REPLY_MAX_PAGES = 5;
 
 export function ReplyPanel({
   open,
@@ -30,6 +39,8 @@ export function ReplyPanel({
   currentUserId,
   onThreadChanged,
   panelStyle,
+  deepLinkReplyId = null,
+  onDeepLinkReplyConsumed,
 }: ReplyPanelProps) {
   const t = useTranslations("posts");
   const commonT = useTranslations("common");
@@ -109,6 +120,66 @@ export function ReplyPanel({
     element.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [replies]);
 
+  // 通知ディープリンク: 対象返信が読み込まれたらスクロール+ハイライト。
+  // ページ内に無ければ上限まで追加読み込みして探す。
+  const deepLinkHandledRef = useRef(false);
+  const deepLinkPagesLoadedRef = useRef(0);
+  const [highlightedReplyId, setHighlightedReplyId] = useState<string | null>(
+    null,
+  );
+
+  // ディープリンクが新しく与えられたら探索状態をリセットする
+  // (再マウントなしで同じパネルへ再遷移するケース)。
+  useEffect(() => {
+    if (deepLinkReplyId) {
+      deepLinkHandledRef.current = false;
+      deepLinkPagesLoadedRef.current = 0;
+    }
+  }, [deepLinkReplyId]);
+
+  useEffect(() => {
+    if (!deepLinkReplyId || deepLinkHandledRef.current || !open || isLoading) {
+      return;
+    }
+
+    if (!hasResolvedInitialLoad) {
+      return;
+    }
+
+    const found = replies.some((reply) => reply.id === deepLinkReplyId);
+    if (found) {
+      deepLinkHandledRef.current = true;
+      const element = scrollContainerRef.current?.querySelector(
+        `[data-reply-id="${CSS.escape(deepLinkReplyId)}"]`,
+      );
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => setHighlightedReplyId(deepLinkReplyId), 0);
+      window.setTimeout(() => setHighlightedReplyId(null), 2500);
+      onDeepLinkReplyConsumed?.();
+      return;
+    }
+
+    if (hasMore && deepLinkPagesLoadedRef.current < DEEP_LINK_REPLY_MAX_PAGES) {
+      deepLinkPagesLoadedRef.current += 1;
+      void loadReplies(offset, false);
+      return;
+    }
+
+    // 見つからない(削除済み等): 断念して通常表示。
+    deepLinkHandledRef.current = true;
+    onDeepLinkReplyConsumed?.();
+  }, [
+    deepLinkReplyId,
+    hasMore,
+    hasResolvedInitialLoad,
+    isLoading,
+    loadReplies,
+    offset,
+    onDeepLinkReplyConsumed,
+    open,
+    replies,
+  ]);
+
   const hasReplies = parentComment.reply_count > 0 || replies.length > 0;
   const showRepliesSkeleton =
     parentComment.reply_count > 0 && !hasResolvedInitialLoad;
@@ -116,10 +187,9 @@ export function ReplyPanel({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal forceMount>
-        <DialogPrimitive.Overlay
-          className="reply-panel-mobile-overlay fixed z-40 bg-black/5 md:hidden"
-          style={panelStyle}
-        />
+        {/* 背面(投稿画像含む)全体を薄く暗転させ、モーダル中であること・
+            外側タップで閉じられることを視覚的に伝える。 */}
+        <DialogPrimitive.Overlay className="reply-panel-mobile-overlay fixed inset-0 z-40 bg-black/30 md:hidden" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
           className="reply-panel-mobile-content fixed z-50 flex flex-col overflow-hidden border border-gray-200 bg-gray-50 shadow-xl outline-none md:hidden"
@@ -179,6 +249,7 @@ export function ReplyPanel({
                             ? undefined
                             : handleQuoteReply
                         }
+                        highlighted={highlightedReplyId === reply.id}
                       />
                     ))}
                   </div>
