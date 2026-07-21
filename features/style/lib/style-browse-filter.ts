@@ -62,9 +62,17 @@ export interface StyleBrowseContext {
   isAuthenticated: boolean;
 }
 
-function isNewPreset(preset: StylePresetPublicSummary, now: Date): boolean {
-  // 公開日時(publishedAt)を優先。下書き期間が長くても公開した日から新着になる
-  // (ホームの新着枠 home-carousel-presets.ts の isNewPreset と同じ解釈)。
+/**
+ * 新着(公開から STYLE_NEW_WINDOW_DAYS 日以内)か。
+ * 公開日時(publishedAt)を優先し、null(移行前データ等)は createdAt にフォールバック。
+ * 下書き期間が長くても公開した日から新着になり、再公開でも新着に返り咲く。
+ * 探索シートの「✨新着」チップと、ホームの新着枠/NEWバッジ
+ * (features/home/lib/home-carousel-presets.ts)で共有する。
+ */
+export function isNewPreset(
+  preset: StylePresetPublicSummary,
+  now: Date,
+): boolean {
   const published = Date.parse(preset.publishedAt ?? preset.createdAt);
   if (Number.isNaN(published)) return false;
   return (

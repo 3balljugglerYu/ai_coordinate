@@ -1,5 +1,9 @@
-import { STYLE_NEW_WINDOW_DAYS } from "@/features/style/lib/style-browse-filter";
+import { isNewPreset } from "@/features/style/lib/style-browse-filter";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+
+// 新着判定は探索シート(✨新着チップ)と同一実装を共有する。
+// CachedHomeStylePresetSection の NEW バッジ判定用に再エクスポートする。
+export { isNewPreset };
 
 /**
  * ホームのお着替えカルーセルに出す最大枚数。全件(120枚超×ループ用3複製)を
@@ -11,21 +15,6 @@ export const CAROUSEL_MAX_ITEMS = 20;
 /** カルーセル先頭に固定で出す「新着」の最大枚数(残り = 人気枠 13枚)。 */
 export const CAROUSEL_MAX_NEW_ITEMS = 7;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * 新着(公開から STYLE_NEW_WINDOW_DAYS 日以内)か。NEW バッジ表示にも使う。
- * 判定は公開日時(publishedAt)を優先する。下書き期間が長かったプリセットでも
- * 公開した日から新着になり、再公開(下書き→公開)でも新着に返り咲く。
- */
-export function isNewPreset(
-  preset: StylePresetPublicSummary,
-  now: Date,
-): boolean {
-  const published = Date.parse(preset.publishedAt ?? preset.createdAt);
-  if (Number.isNaN(published)) return false;
-  return now.getTime() - published <= STYLE_NEW_WINDOW_DAYS * DAY_MS;
-}
 
 /**
  * カルーセル表示用のプリセットを導出する。
