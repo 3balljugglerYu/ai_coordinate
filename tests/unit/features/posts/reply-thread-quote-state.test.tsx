@@ -124,6 +124,20 @@ describe("ReplyThread 引用状態遷移(デスクトップ)", () => {
     expect(composer()?.getAttribute("data-reply-to")).toBe("reply-1");
   });
 
+  test("引用リプライのコンポーザーは引用した返信の下に表示される", () => {
+    setup();
+    const quoteButton = screen.getByRole("button", {
+      name: "quote-reply-button",
+    });
+    fireEvent.click(quoteButton);
+
+    const composerEl = composer();
+    expect(composerEl).not.toBeNull();
+    // DOM順で「引用した返信(のボタン)」の後にコンポーザーが来ること。
+    const position = quoteButton.compareDocumentPosition(composerEl!);
+    expect(position & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   test("引用チップ解除でコンポーザーは開いたまま通常返信になる", () => {
     setup();
     fireEvent.click(screen.getByRole("button", { name: "quote-reply-button" }));

@@ -127,7 +127,9 @@ export function ReplyThread({
         )}
       </div>
 
-      {isReplyComposerOpen && (
+      {/* 通常の親スレッド返信(引用なし)は従来どおり返信ボタンの直下に表示する。
+          引用リプライ時は引用した返信の直下(一覧内)に表示する。 */}
+      {isReplyComposerOpen && !quoteReplyTo && (
         <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
           <CommentInput
             parentCommentId={parentComment.id}
@@ -139,7 +141,7 @@ export function ReplyThread({
             compact
             autoFocus
             onCancel={handleComposerCancel}
-            replyTo={quoteReplyTo}
+            replyTo={null}
             onReplyToClear={() => setQuoteReplyTo(null)}
           />
         </div>
@@ -153,16 +155,37 @@ export function ReplyThread({
             </div>
           ) : (
             replies.map((reply) => (
-              <ReplyItem
-                key={reply.id}
-                reply={reply}
-                currentUserId={currentUserId}
-                onReplyUpdated={handleReplyUpdated}
-                onReplyDeleted={handleReplyDeleted}
-                onQuoteReply={
-                  parentComment.deleted_at ? undefined : handleQuoteReply
-                }
-              />
+              <div key={reply.id}>
+                <ReplyItem
+                  reply={reply}
+                  currentUserId={currentUserId}
+                  onReplyUpdated={handleReplyUpdated}
+                  onReplyDeleted={handleReplyDeleted}
+                  onQuoteReply={
+                    parentComment.deleted_at ? undefined : handleQuoteReply
+                  }
+                />
+                {/* 引用リプライのコンポーザーは引用した返信の直下に表示する。
+                    引用チップを解除した場合は通常返信となり上部の位置へ移る。 */}
+                {isReplyComposerOpen &&
+                  quoteReplyTo?.commentId === reply.id && (
+                    <div className="mb-3 rounded-xl border border-gray-200 bg-gray-50 p-3">
+                      <CommentInput
+                        parentCommentId={parentComment.id}
+                        currentUserId={currentUserId}
+                        onCommentAdded={handleReplyAdded}
+                        placeholder={t("replyPlaceholder")}
+                        submitLabel={t("replySubmit")}
+                        submittingLabel={t("replySubmitting")}
+                        compact
+                        autoFocus
+                        onCancel={handleComposerCancel}
+                        replyTo={quoteReplyTo}
+                        onReplyToClear={() => setQuoteReplyTo(null)}
+                      />
+                    </div>
+                  )}
+              </div>
             ))
           )}
 
