@@ -14,6 +14,11 @@ interface CommentItemProps {
   onCommentDeleted: () => void;
   onThreadChanged: () => void;
   onOpenReplyPanel?: () => void;
+  /** 通知ディープリンクの対象コメントとして一時ハイライトする。 */
+  highlighted?: boolean;
+  /** 通知ディープリンク: スレッドを自動展開してこの返信まで移動する(PC)。 */
+  deepLinkReplyId?: string | null;
+  onDeepLinkReplyConsumed?: () => void;
 }
 
 /**
@@ -27,13 +32,24 @@ export function CommentItem({
   onCommentDeleted,
   onThreadChanged,
   onOpenReplyPanel,
+  highlighted = false,
+  deepLinkReplyId = null,
+  onDeepLinkReplyConsumed,
 }: CommentItemProps) {
   const t = useTranslations("posts");
   const hasReplies = comment.reply_count > 0;
   const showMobileReplyButton = !comment.deleted_at || hasReplies;
 
   return (
-    <div>
+    // data-comment-id は通知ディープリンクのスクロールアンカー。
+    <div
+      data-comment-id={comment.id}
+      className={
+        highlighted
+          ? "rounded-lg bg-blue-50 transition-colors duration-700"
+          : "transition-colors duration-700"
+      }
+    >
       <EditableComment
         comment={comment}
         currentUserId={currentUserId}
@@ -63,6 +79,8 @@ export function CommentItem({
           parentComment={comment}
           currentUserId={currentUserId}
           onThreadChanged={onThreadChanged}
+          deepLinkReplyId={deepLinkReplyId}
+          onDeepLinkReplyConsumed={onDeepLinkReplyConsumed}
         />
       </div>
     </div>

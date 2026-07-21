@@ -455,14 +455,27 @@ export function useNotifications(
         return;
       }
 
-      // 遷移
+      // 遷移。コメント/返信通知は対象コメントへのディープリンクを付与し、
+      // 投稿ページ側(CommentSection)が該当コメント・返信までスクロールする。
       if (notification.entity_type === "post") {
-        router.push(`/posts/${notification.entity_id}?from=notifications`);
+        const commentId = notification.data?.comment_id;
+        const deepLink = commentId ? `&comment=${commentId}` : "";
+        router.push(
+          `/posts/${notification.entity_id}?from=notifications${deepLink}`
+        );
       } else if (
         notification.entity_type === "comment" &&
         notification.data?.image_id
       ) {
-        router.push(`/posts/${notification.data.image_id}?from=notifications`);
+        // comment 実体の entity_id は親コメントID(notify_on_comment 参照)。
+        // data.comment_id は作成された返信自身のID。
+        const parentId =
+          notification.data?.parent_comment_id ?? notification.entity_id;
+        const replyId = notification.data?.comment_id;
+        const deepLink = `&comment=${parentId}${replyId ? `&reply=${replyId}` : ""}`;
+        router.push(
+          `/posts/${notification.data.image_id}?from=notifications${deepLink}`
+        );
       } else if (notification.entity_type === "user") {
         router.push(`/users/${notification.entity_id}?from=notifications`);
       }

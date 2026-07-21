@@ -15,6 +15,7 @@ import { CommentItem } from "./CommentItem";
 import { CommentLoadMoreSkeleton } from "./CommentLoadMoreSkeleton";
 import { ReplyPanel } from "./ReplyPanel";
 import { getCommentsAPI } from "../lib/api";
+import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import type { ParentComment } from "../types";
 import { createClient } from "@/lib/supabase/client";
 
@@ -35,6 +36,12 @@ type ReplyLifecyclePayload = {
   user_id?: string | null;
 };
 
+/** 通知タップ由来のディープリンク(対象の親コメントと、任意で返信)。 */
+export interface CommentDeepLink {
+  commentId: string;
+  replyId: string | null;
+}
+
 interface CommentListProps {
   imageId: string;
   currentUserId?: string | null;
@@ -43,6 +50,9 @@ interface CommentListProps {
   replyPanelStyle?: CSSProperties | null;
   onReplyPanelOpen?: (commentId: string) => void;
   onReplyPanelOpenChange?: (open: boolean) => void;
+  deepLink?: CommentDeepLink | null;
+  /** ディープリンクの処理が完了(成功/断念)したときに呼ぶ(URLの後始末用)。 */
+  onDeepLinkConsumed?: () => void;
 }
 
 export interface CommentListRef {
@@ -50,6 +60,9 @@ export interface CommentListRef {
 }
 
 const COMMENTS_PER_PAGE = 20;
+
+/** ディープリンク対象を探すための追加読み込み上限(20件x5=100件まで)。 */
+const DEEP_LINK_MAX_PAGES = 5;
 
 /**
  * コメント一覧コンポーネント
@@ -65,6 +78,8 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
       replyPanelStyle,
       onReplyPanelOpen,
       onReplyPanelOpenChange,
+      deepLink = null,
+      onDeepLinkConsumed,
     },
     ref,
   ) {
@@ -136,6 +151,89 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
     const handleThreadChanged = useCallback(() => {
       loadComments(0, true);
     }, [loadComments]);
+
+    // ---- 通知ディープリンク: 対象の親コメントまでスクロールし、返信指定が
+    // あればスレッドへ引き継ぐ(PC: ReplyThread 自動展開 / モバイル: 返信パネル)。
+    // 対象が現在ページに無ければ上限まで追加読み込みして探す。 ----
+    const deepLinkPagesLoadedRef = useRef(0);
+    const deepLinkHandledRef = useRef(false);
+    // 「この返信まで移動」指示。route で経路を排他にする
+    // (ReplyThread はモバイルでも CSS 非表示のままマウントされるため、
+    // 両経路へ同時に渡すと二重処理になる)。
+    const [deepLinkReplyTarget, setDeepLinkReplyTarget] = useState<{
+      parentId: string;
+      replyId: string;
+      route: "thread" | "panel";
+    } | null>(null);
+    // 対象コメントの一時ハイライト。
+    const [highlightedCommentId, setHighlightedCommentId] = useState<
+      string | null
+    >(null);
+
+    useEffect(() => {
+      if (!deepLink || deepLinkHandledRef.current || isLoading) {
+        return;
+      }
+
+      const target = comments.find(
+        (comment) => comment.id === deepLink.commentId,
+      );
+
+      if (!target) {
+        // まだ見つからない: 上限までページを追加読み込みして探す。
+        if (hasMore && deepLinkPagesLoadedRef.current < DEEP_LINK_MAX_PAGES) {
+          deepLinkPagesLoadedRef.current += 1;
+          void loadComments(offset, false);
+          return;
+        }
+        // 見つからない(削除済み等): 断念して通常表示。
+        deepLinkHandledRef.current = true;
+        onDeepLinkConsumed?.();
+        return;
+      }
+
+      deepLinkHandledRef.current = true;
+
+      // 親コメントへスクロール。
+      const element = document.querySelector(
+        `[data-comment-id="${target.id}"]`,
+      );
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+
+      if (deepLink.replyId && target.reply_count > 0) {
+        if (window.innerWidth < REPLY_PANEL_MOBILE_BREAKPOINT) {
+          // モバイル: 返信パネルを開く(パネル側が対象返信までスクロール)。
+          onReplyPanelOpen?.(target.id);
+          setDeepLinkReplyTarget({
+            parentId: target.id,
+            replyId: deepLink.replyId,
+            route: "panel",
+          });
+        } else {
+          // PC: 該当スレッドを自動展開して対象返信まで移動。
+          setDeepLinkReplyTarget({
+            parentId: target.id,
+            replyId: deepLink.replyId,
+            route: "thread",
+          });
+        }
+      } else {
+        // 親コメント自体が対象(投稿へのコメント通知)のときはハイライトする。
+        setHighlightedCommentId(target.id);
+        window.setTimeout(() => setHighlightedCommentId(null), 2500);
+      }
+
+      onDeepLinkConsumed?.();
+    }, [
+      comments,
+      deepLink,
+      hasMore,
+      isLoading,
+      loadComments,
+      offset,
+      onDeepLinkConsumed,
+      onReplyPanelOpen,
+    ]);
 
     // 親コンポーネントから呼び出せるrefresh関数を公開
     useImperativeHandle(ref, () => ({
@@ -300,6 +398,19 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
             onOpenReplyPanel={
               onReplyPanelOpen ? () => onReplyPanelOpen(comment.id) : undefined
             }
+            highlighted={highlightedCommentId === comment.id}
+            deepLinkReplyId={
+              deepLinkReplyTarget?.route === "thread" &&
+              deepLinkReplyTarget.parentId === comment.id
+                ? deepLinkReplyTarget.replyId
+                : null
+            }
+            onDeepLinkReplyConsumed={
+              deepLinkReplyTarget?.route === "thread" &&
+              deepLinkReplyTarget.parentId === comment.id
+                ? () => setDeepLinkReplyTarget(null)
+                : undefined
+            }
           />
         ))}
 
@@ -323,6 +434,18 @@ export const CommentList = forwardRef<CommentListRef, CommentListProps>(
             currentUserId={currentUserId}
             onThreadChanged={handleThreadChanged}
             panelStyle={replyPanelStyle}
+            deepLinkReplyId={
+              deepLinkReplyTarget?.route === "panel" &&
+              deepLinkReplyTarget.parentId === activeReplyComment.id
+                ? deepLinkReplyTarget.replyId
+                : null
+            }
+            onDeepLinkReplyConsumed={
+              deepLinkReplyTarget?.route === "panel" &&
+              deepLinkReplyTarget.parentId === activeReplyComment.id
+                ? () => setDeepLinkReplyTarget(null)
+                : undefined
+            }
           />
         )}
       </div>

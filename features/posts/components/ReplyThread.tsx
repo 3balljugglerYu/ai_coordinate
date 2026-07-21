@@ -12,12 +12,23 @@ interface ReplyThreadProps {
   parentComment: ParentComment;
   currentUserId?: string | null;
   onThreadChanged: () => void;
+  /**
+   * 通知ディープリンク: スレッドを自動展開してこの返信までスクロールする。
+   * 対象が現在ページに無ければ上限まで追加読み込みして探す。
+   */
+  deepLinkReplyId?: string | null;
+  onDeepLinkReplyConsumed?: () => void;
 }
+
+/** ディープリンク対象の返信を探すための追加読み込み上限(20件x5=100件)。 */
+const DEEP_LINK_REPLY_MAX_PAGES = 5;
 
 export function ReplyThread({
   parentComment,
   currentUserId,
   onThreadChanged,
+  deepLinkReplyId = null,
+  onDeepLinkReplyConsumed,
 }: ReplyThreadProps) {
   const t = useTranslations("posts");
   const [, startTransition] = useTransition();
@@ -31,6 +42,7 @@ export function ReplyThread({
     isLoading,
     hasMore,
     offset,
+    hasResolvedInitialLoad,
     loadReplies,
     refreshReplies,
   } = useReplies({
@@ -59,6 +71,10 @@ export function ReplyThread({
   // block: "nearest" のため既に見えている場合は動かない。
   const threadContainerRef = useRef<HTMLDivElement | null>(null);
   const scrollTargetReplyIdRef = useRef<string | null>(null);
+  // 通知ディープリンク対象の一時ハイライト。
+  const [highlightedReplyId, setHighlightedReplyId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     const targetId = scrollTargetReplyIdRef.current;
@@ -74,6 +90,63 @@ export function ReplyThread({
     scrollTargetReplyIdRef.current = null;
     element.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [replies]);
+
+  // 通知ディープリンク: スレッドを自動展開し、対象返信が読み込まれたら
+  // スクロール+ハイライト。ページ内に無ければ上限まで追加読み込みして探す。
+  const deepLinkHandledRef = useRef(false);
+  const deepLinkPagesLoadedRef = useRef(0);
+
+  useEffect(() => {
+    if (!deepLinkReplyId || deepLinkHandledRef.current) {
+      return;
+    }
+
+    if (!isExpanded) {
+      // 展開→(次の実行で)対象探索、という2段階遷移のための意図的な setState。
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setIsExpanded(true);
+      return;
+    }
+
+    // 初回読み込みが解決するまで判断しない(hasMore の初期値 false のまま
+    // 「見つからない」と誤断念するのを防ぐ)。
+    if (!hasResolvedInitialLoad || isLoading) {
+      return;
+    }
+
+    const found = replies.some((reply) => reply.id === deepLinkReplyId);
+    if (found) {
+      deepLinkHandledRef.current = true;
+      const element = threadContainerRef.current?.querySelector(
+        `[data-reply-id="${deepLinkReplyId}"]`,
+      );
+      element?.scrollIntoView({ behavior: "smooth", block: "center" });
+      window.setTimeout(() => setHighlightedReplyId(deepLinkReplyId), 0);
+      window.setTimeout(() => setHighlightedReplyId(null), 2500);
+      onDeepLinkReplyConsumed?.();
+      return;
+    }
+
+    if (hasMore && deepLinkPagesLoadedRef.current < DEEP_LINK_REPLY_MAX_PAGES) {
+      deepLinkPagesLoadedRef.current += 1;
+      void loadReplies(offset, false);
+      return;
+    }
+
+    // 見つからない(削除済み等): 断念してスレッド表示のみ。
+    deepLinkHandledRef.current = true;
+    onDeepLinkReplyConsumed?.();
+  }, [
+    deepLinkReplyId,
+    hasMore,
+    hasResolvedInitialLoad,
+    isExpanded,
+    isLoading,
+    loadReplies,
+    offset,
+    onDeepLinkReplyConsumed,
+    replies,
+  ]);
 
   const handleReplyAdded = async (created?: { id: string }) => {
     // 引用リプライのときだけ投稿箇所へスクロールする(通常返信は従来どおり)。
@@ -188,6 +261,7 @@ export function ReplyThread({
                   onQuoteReply={
                     parentComment.deleted_at ? undefined : handleQuoteReply
                   }
+                  highlighted={highlightedReplyId === reply.id}
                 />
                 {/* 引用リプライのコンポーザーは引用した返信の直下に表示する。
                     引用チップを解除した場合は通常返信となり上部の位置へ移る。 */}

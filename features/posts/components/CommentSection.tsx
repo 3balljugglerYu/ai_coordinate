@@ -2,11 +2,13 @@
 
 import type { CSSProperties } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { REPLY_PANEL_MOBILE_BREAKPOINT } from "../lib/constants";
 import { CommentInput } from "./CommentInput";
 import { CommentComposerTrigger } from "./CommentComposerTrigger";
 import { CommentList, type CommentListRef } from "./CommentList";
+import type { CommentDeepLink } from "./CommentList";
 
 interface CommentSectionProps {
   postId: string;
@@ -19,8 +21,29 @@ interface CommentSectionProps {
  */
 export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
   const t = useTranslations("posts");
+  const searchParams = useSearchParams();
   const commentListRef = useRef<CommentListRef>(null);
   const sectionRef = useRef<HTMLDivElement>(null);
+  // 通知タップ由来のディープリンク(?comment=<親ID>&reply=<返信ID>)。
+  // 初回マウント時に一度だけ取り込み、処理完了後に URL から取り除く
+  // (リロードや戻る操作で再度スクロールしないように)。
+  const [deepLink, setDeepLink] = useState<CommentDeepLink | null>(() => {
+    const commentId = searchParams.get("comment");
+    if (!commentId) {
+      return null;
+    }
+    return { commentId, replyId: searchParams.get("reply") };
+  });
+
+  const handleDeepLinkConsumed = useCallback(() => {
+    setDeepLink(null);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("comment");
+      url.searchParams.delete("reply");
+      window.history.replaceState(window.history.state, "", url.toString());
+    }
+  }, []);
   const [activeReplyCommentId, setActiveReplyCommentId] = useState<
     string | null
   >(null);
@@ -147,6 +170,8 @@ export function CommentSection({ postId, currentUserId }: CommentSectionProps) {
         replyPanelStyle={replyPanelStyle}
         onReplyPanelOpen={handleOpenReplyPanel}
         onReplyPanelOpenChange={handleReplyPanelOpenChange}
+        deepLink={deepLink}
+        onDeepLinkConsumed={handleDeepLinkConsumed}
       />
     </div>
   );
