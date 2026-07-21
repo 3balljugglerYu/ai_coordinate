@@ -187,10 +187,9 @@ export function ReplyPanel({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal forceMount>
-        <DialogPrimitive.Overlay
-          className="reply-panel-mobile-overlay fixed z-40 bg-black/5 md:hidden"
-          style={panelStyle}
-        />
+        {/* 背面(投稿画像含む)全体を薄く暗転させ、モーダル中であること・
+            外側タップで閉じられることを視覚的に伝える。 */}
+        <DialogPrimitive.Overlay className="reply-panel-mobile-overlay fixed inset-0 z-40 bg-black/30 md:hidden" />
         <DialogPrimitive.Content
           aria-describedby={undefined}
           className="reply-panel-mobile-content fixed z-50 flex flex-col overflow-hidden border border-gray-200 bg-gray-50 shadow-xl outline-none md:hidden"
