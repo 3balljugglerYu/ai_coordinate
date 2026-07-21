@@ -720,6 +720,18 @@ Main errors:
 | GET | `/api/comments/[id]/replies` | public | 指定親コメントの返信一覧を取得する |
 | POST | `/api/comments/[id]/replies` | user session | 指定親コメントへ返信を投稿する |
 
+POST `/api/comments/[id]/replies` の request body は `{ "content": string, "replyToCommentId"?: uuid }`。`replyToCommentId` を指定すると引用リプライ（返信への返信）となり、**同一スレッド内の返信のみ**引用できる（親コメント自身は不可・DB トリガーで強制）。通知は引用先の作成者のみに届く。
+
+レスポンスの返信オブジェクトには引用情報が含まれる: `reply_to_comment_id`（引用先ID、引用先の物理削除で null）、`reply_to_deleted`（引用先が削除済みなら true）、`reply_to`（表示用: `{ user_id, nickname, avatar_url, content_preview }`、引用なし・削除済みは null）。GET の一覧でも同形。
+
+引用リプライのエラーコード（いずれも 400）:
+
+| errorCode | 条件 |
+| --- | --- |
+| `POSTS_REPLY_TO_INVALID` | UUID 形式不正 / 親コメント・別スレッド・別画像への引用 |
+| `POSTS_REPLY_TO_NOT_FOUND` | 引用先コメントが存在しない |
+| `POSTS_REPLY_TO_DELETED` | 引用先コメントが削除済み |
+
 ### contact
 
 | Method | Path | Access | Summary |

@@ -222,7 +222,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 ### 何が起きるか
 
 1. `/api/posts/post` が `generated_images.is_posted = true` を更新し、必要なら `grant_daily_post_bonus` を呼ぶ
-2. いいねとフォローは基本的に session client から各テーブルへ直接書き込む。コメントは `comments.parent_comment_id` で親子構造を持ち、親コメント削除の意味論は `delete_comment_thread` RPC に集約される。親に返信が残る間は tombstone を返し、最後の返信が消えた時点で tombstone 親も物理削除する
+2. いいねとフォローは基本的に session client から各テーブルへ直接書き込む。コメントは `comments.parent_comment_id` で親子構造を持ち、親コメント削除の意味論は `delete_comment_thread` RPC に集約される。親に返信が残る間は tombstone を返し、最後の返信が消えた時点で tombstone 親も物理削除する。返信への返信（引用リプライ）は `comments.reply_to_comment_id` の参照で表現する（1階層フラット構造は維持）。「同一スレッド内の返信のみ引用可・親コメント引用不可」は `validate_parent_comment` trigger が強制し、引用先が物理削除されると `mark_reply_to_deleted` trigger が `reply_to_deleted = true` を立ててから FK が参照を NULL 化する（通常返信と削除済み引用を区別可能）。引用リプライの通知は引用先の作成者のみに届き、親コメント作成者には届かない
 3. 通知は通常アプリコードから直接 INSERT しない
 4. Postgres trigger が通知の作成・削除に加えて、`comments.last_activity_at` の維持と reply lifecycle の Broadcast を行う
    - `likes` の INSERT / DELETE
