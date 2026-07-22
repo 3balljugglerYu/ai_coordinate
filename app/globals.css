@@ -300,6 +300,17 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     will-change: opacity;
   }
 
+  /* ホーム上部バナーのカルーセル。
+     Swiper 初期化前(SSR直後)は swiper/css の .swiper-slide { width: 100% } で
+     スライドが全幅になり、初期化時に 1.5 枚表示へ縮んでレイアウトシフトが
+     起きる(実測 CLS 0.09 相当)。初期化後と同じ幅(spaceBetween 16 /
+     slidesPerView 1.5 の計算式)を事前に与えてシフトを防ぐ。
+     初期化後は Swiper が設定する inline style が優先されるため副作用はない。 */
+  .home-banner-swiper .swiper-slide {
+    width: calc((100% - 8px) / 1.5);
+    margin-right: 16px;
+  }
+
   @keyframes commentComposerSheetSlideIn {
     from {
       transform: translate3d(0, 100%, 0);

@@ -3,6 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Card } from "@/components/ui/card";
+import {
+  HOME_BANNER_IMAGE_HEIGHT,
+  HOME_BANNER_IMAGE_SIZES,
+  HOME_BANNER_IMAGE_WIDTH,
+} from "../lib/home-banner-image";
 import type { HomeBanner } from "@/constants/homeBanners";
 
 function isExternalUrl(url: string): boolean {
@@ -39,10 +44,10 @@ export function HomeBannerCard({
         <Image
           src={banner.imageUrl}
           alt={banner.alt}
-          width={1200}
-          height={400}
+          width={HOME_BANNER_IMAGE_WIDTH}
+          height={HOME_BANNER_IMAGE_HEIGHT}
           className="w-full h-auto object-cover aspect-[3/1]"
-          sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+          sizes={HOME_BANNER_IMAGE_SIZES}
           priority={prioritizeImage}
           loading={prioritizeImage ? "eager" : undefined}
         />
