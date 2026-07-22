@@ -6,7 +6,7 @@ import { applyTemplate } from "@/shared/generation/prompt-template";
 import { extractTemplateVariables } from "@/shared/generation/prompt-template";
 
 // API (route.ts) / DB (prompt_overrides_content_check) の上限と同値に保つこと
-const MAX_CONTENT_LENGTH = 20000;
+const MAX_CONTENT_LENGTH = 100000;
 const SIGNIFICANT_CHANGE_RATIO = 0.3; // ±30% で大幅変更とみなす
 
 interface Props {
