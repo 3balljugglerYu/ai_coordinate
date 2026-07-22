@@ -9,6 +9,12 @@ import { isAdminViewer as checkIsAdminViewer } from "@/lib/env";
 import { getActivePopupBanners } from "@/features/popup-banners/lib/get-active-popup-banners";
 import { POPUP_BANNER_IMAGE_SIZES } from "@/features/popup-banners/lib/popup-banner-image";
 import { PopupBannerOverlay } from "@/features/popup-banners/components/PopupBannerOverlay";
+import { getPublicBanners } from "@/features/banners/lib/get-banners";
+import {
+  HOME_BANNER_IMAGE_HEIGHT,
+  HOME_BANNER_IMAGE_SIZES,
+  HOME_BANNER_IMAGE_WIDTH,
+} from "@/features/home/lib/home-banner-image";
 import { CachedHomeBannerSection } from "@/features/home/components/CachedHomeBannerSection";
 import { CachedHomePostListSection } from "@/features/home/components/CachedHomePostListSection";
 import { CachedHomeStylePresetSection } from "@/features/home/components/CachedHomeStylePresetSection";
@@ -165,6 +171,107 @@ async function HomePopupBannerSection({
   return <PopupBannerOverlay banners={popupBanners} />;
 }
 
+/**
+ * ホーム上部バナー(現在の LCP 要素)の先頭1枚を先行ダウンロードさせる。
+ * バナーは Suspense ストリーミング + クライアントカルーセル経由で表示される
+ * ため、そのままだと画像取得の開始が RSC 到着後になり LCP を悪化させる
+ * (実測で Load Delay 2〜7秒)。HomeBannerCard の <Image> と同じ
+ * srcset/sizes を getImageProps で再現し、キャッシュに確実にヒットさせる。
+ */
+async function HomeBannerPreload() {
+  const banners = await getPublicBanners();
+  const first = banners[0];
+  if (!first?.imageUrl) {
+    return null;
+  }
+
+  const { props: imgProps } = getImageProps({
+    src: first.imageUrl,
+    alt: "",
+    width: HOME_BANNER_IMAGE_WIDTH,
+    height: HOME_BANNER_IMAGE_HEIGHT,
+    sizes: HOME_BANNER_IMAGE_SIZES,
+  });
+  preload(imgProps.src, {
+    as: "image",
+    imageSrcSet: imgProps.srcSet,
+    imageSizes: imgProps.sizes,
+    fetchPriority: "high",
+  });
+
+  return null;
+}
+
+/**
+ * ホーム投稿一覧のフォールバック。実体(PostList)は SortTabs(mb-4) 付きで
+ * レンダーされるため、同じ高さのプレースホルダーを置いて差し替え時に
+ * 下のコンテンツが押し下げられるシフトを防ぐ。
+ */
+function HomePostListFallback() {
+  return (
+    <>
+      <div className="mb-4 border-b">
+        <div className="my-2 h-6 w-40 animate-pulse rounded bg-gray-200" />
+      </div>
+      <PostListSkeleton />
+    </>
+  );
+}
+
+/**
+ * スタイルカルーセル用ローダー。cookies 依存の getUser() をページ本体から
+ * 切り離し、Suspense 内で解決する(ページシェルを静的に保つため)。
+ */
+async function HomeStylePresetSectionLoader() {
+  const currentUser = await getUser();
+  // 公開前カテゴリ(admin_only)を admin / プレビュー admin にだけ表示する
+  const isAdminViewer = checkIsAdminViewer(currentUser?.id ?? null);
+
+  return (
+    <CachedHomeStylePresetSection
+      isAdminViewer={isAdminViewer}
+      userId={currentUser?.id ?? null}
+    />
+  );
+}
+
+/**
+ * Inspire ホームカルーセル用ローダー。
+ * Creator Looks: admin / allowlist 該当ユーザーのみカルーセルに含める (= Stage 1 厳密化)
+ * 非該当ユーザーには Creator Looks 投稿を完全非表示にし、既存 Inspire 投稿のみ表示する
+ */
+async function HomeUserStyleTemplateSectionLoader() {
+  const currentUser = await getUser();
+  const includeCreatorLooks = await isCreatorLooksEnabledForUser(currentUser);
+
+  return (
+    <CachedHomeUserStyleTemplateSection
+      includeCreatorLooks={includeCreatorLooks}
+    />
+  );
+}
+
+/** 解放お知らせのプレビュー(開発/E2E のみ)。?petitUnlockPreview=initial|drip で強制表示。 */
+async function HomePetitUnlockPreviewSection({
+  searchParams,
+}: {
+  searchParams: Promise<{ petitUnlockPreview?: string }>;
+}) {
+  const previewParam = (await searchParams).petitUnlockPreview;
+  const petitUnlockPreview =
+    (previewParam === "initial" || previewParam === "drip") &&
+    (process.env.NODE_ENV !== "production" ||
+      process.env.PLAYWRIGHT_E2E === "1")
+      ? previewParam
+      : null;
+
+  if (!petitUnlockPreview) {
+    return null;
+  }
+
+  return <HomePetitUnlockPreview mode={petitUnlockPreview} />;
+}
+
 export default async function LocaleHome({
   params,
   searchParams,
@@ -175,42 +282,31 @@ export default async function LocaleHome({
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
 
-  // Creator Looks: admin / allowlist 該当ユーザーのみカルーセルに含める (= Stage 1 厳密化)
-  // 非該当ユーザーには Creator Looks 投稿を完全非表示にし、既存 Inspire 投稿のみ表示する
-  const currentUser = await getUser();
-  const includeCreatorLooks = await isCreatorLooksEnabledForUser(currentUser);
-  // 公開前カテゴリ(admin_only)を admin / プレビュー admin にだけ表示する
-  const isAdminViewer = checkIsAdminViewer(currentUser?.id ?? null);
-
-  // 解放お知らせのプレビュー(開発/E2E のみ)。?petitUnlockPreview=initial|drip で強制表示。
-  const previewParam = (await searchParams).petitUnlockPreview;
-  const petitUnlockPreview =
-    (previewParam === "initial" || previewParam === "drip") &&
-    (process.env.NODE_ENV !== "production" ||
-      process.env.PLAYWRIGHT_E2E === "1")
-      ? previewParam
-      : null;
+  // cookies / searchParams に依存する処理はページ本体で await せず、
+  // 各 Suspense 内のローダーへ寄せる。ページ本体で await するとページ全体が
+  // 動的になり、初期表示が「ヘッダー + フッターのみ」になってフッターが
+  // 一瞬ビューポート内に見え、コンテンツ到着時に大きな CLS が発生する
+  // (実測 0.15)。シェル(見出し + スケルトン)を先に描画してフッターを
+  // 最初から画面外に置く。
 
   return (
     <div className="mx-auto max-w-6xl px-1 pb-8 pt-6 sm:px-4 md:pt-8">
       <HomeStructuredData locale={locale} />
       <Suspense fallback={null}>
+        <HomeBannerPreload />
+      </Suspense>
+      <Suspense fallback={null}>
         <HomePopupBannerSection searchParams={searchParams} />
       </Suspense>
-      {petitUnlockPreview && (
-        <Suspense fallback={null}>
-          <HomePetitUnlockPreview mode={petitUnlockPreview} />
-        </Suspense>
-      )}
+      <Suspense fallback={null}>
+        <HomePetitUnlockPreviewSection searchParams={searchParams} />
+      </Suspense>
       <HomeHeading />
       <Suspense fallback={<HomeBannerSkeleton />}>
         <CachedHomeBannerSection />
       </Suspense>
       <Suspense fallback={<HomeStylePresetCarouselSkeleton />}>
-        <CachedHomeStylePresetSection
-          isAdminViewer={isAdminViewer}
-          userId={currentUser?.id ?? null}
-        />
+        <HomeStylePresetSectionLoader />
       </Suspense>
       {/*
         Inspire ホームカルーセル（ADR-013）。
@@ -220,12 +316,10 @@ export default async function LocaleHome({
       */}
       {process.env.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED === "true" && (
         <Suspense fallback={<HomeUserStyleTemplateCarouselSkeleton />}>
-          <CachedHomeUserStyleTemplateSection
-            includeCreatorLooks={includeCreatorLooks}
-          />
+          <HomeUserStyleTemplateSectionLoader />
         </Suspense>
       )}
-      <Suspense fallback={<PostListSkeleton />}>
+      <Suspense fallback={<HomePostListFallback />}>
         <CachedHomePostListSection />
       </Suspense>
     </div>

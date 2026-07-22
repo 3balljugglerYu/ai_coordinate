@@ -36,6 +36,11 @@ export function HomeBannerList({ banners }: HomeBannerListProps) {
     <div className="mb-8 overflow-x-hidden">
       <div className="-mx-4 px-4">
         <Swiper
+          // Swiper 初期化前(SSR直後)はスライド幅が全幅になり、初期化時に
+          // 1.5枚表示へ縮んでレイアウトシフト(実測CLS 0.09相当)が起きる。
+          // 初期化後と同じ幅を globals.css の .home-banner-swiper で事前に
+          // 与えておく(初期化後は Swiper の inline style が優先される)。
+          className="home-banner-swiper"
           modules={[Autoplay]}
           onSwiper={setSwiper}
           onSlideChange={(swiper) => setActiveIndex(swiper.realIndex)}
