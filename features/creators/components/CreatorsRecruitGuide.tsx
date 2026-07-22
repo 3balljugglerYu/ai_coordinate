@@ -397,6 +397,81 @@ export function CreatorsRecruitGuide({
               </Link>
             </div>
           </Reveal>
+
+          <Reveal delay={200}>
+            <div className="mt-5 rounded-3xl border border-amber-100 bg-white p-5 shadow-[0_6px_20px_rgba(120,90,50,0.08)]">
+              <div className="flex items-center gap-3">
+                <div className="relative h-12 w-12 overflow-hidden rounded-full border border-amber-200">
+                  <Image
+                    src="/collections/kotowaza/user-icons/zatsuha-icon.webp"
+                    alt="雑葉 さんのアイコン"
+                    fill
+                    sizes="48px"
+                    className="object-cover"
+                  />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p
+                    className="text-sm font-bold text-[#5b4b3a]"
+                    style={{ fontFamily: HEADING_FONT }}
+                  >
+                    雑葉 さん
+                  </p>
+                  <a
+                    href="https://x.com/sacher10610"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] px-3 py-1 text-xs font-bold text-white transition-transform hover:-translate-y-0.5"
+                  >
+                    <XIcon className="h-3 w-3" />
+                    @sacher10610
+                  </a>
+                </div>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-[#7a6a58]">
+                「うちの子のことわざ辞典」(全6種)は 雑葉 さんとのコラボ企画。
+                「虎の威を借る狐」「鶴の一声」など、ことわざの世界にうちの子が入り込むプロンプトが、たくさんのうちの子に楽しまれました。
+              </p>
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {[
+                  {
+                    src: "/collections/kotowaza/tora-no-i.webp",
+                    alt: "ことわざ辞典 虎の威を借る狐",
+                  },
+                  {
+                    src: "/collections/kotowaza/tsuru-no-hitokoe.webp",
+                    alt: "ことわざ辞典 鶴の一声",
+                  },
+                  {
+                    src: "/collections/kotowaza/neko-no-te.webp",
+                    alt: "ことわざ辞典 猫の手も借りたい",
+                  },
+                ].map((work) => (
+                  <div
+                    key={work.src}
+                    className="relative aspect-square overflow-hidden rounded-xl border border-amber-100 bg-white"
+                  >
+                    <Image
+                      src={work.src}
+                      alt={work.alt}
+                      fill
+                      sizes="(max-width: 768px) 30vw, 140px"
+                      className="object-cover"
+                    />
+                  </div>
+                ))}
+              </div>
+              <Link
+                href="/collections/kotowaza"
+                className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-4 py-2 text-sm font-bold text-amber-700 transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+              >
+                ことわざ辞典の特設ページを見る
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-4 w-4">
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+              </Link>
+            </div>
+          </Reveal>
         </div>
       </section>
 
