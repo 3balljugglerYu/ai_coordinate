@@ -10,6 +10,7 @@ import {
   withOgpVersion,
 } from "@/features/collections/lib/public-mount-server-api";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
+import { collectionGuidePath } from "@/features/collections/lib/collection-guides";
 import { MountShareButton } from "@/features/collections/components/MountShareButton";
 import { XLotteryEntryButton } from "@/features/campaigns/components/XLotteryEntryButton";
 import { MountCelebrationBackground } from "@/features/collections/components/MountCelebrationBackground";
@@ -182,7 +183,7 @@ export default async function PublicMountPage({
         </p>
         <div className="mt-3">
           <Link
-            href="/collections/wafer"
+            href={collectionGuidePath(mount.categoryKey)}
             className="text-xs text-gray-500 underline hover:text-gray-700"
           >
             遊び方をみる
