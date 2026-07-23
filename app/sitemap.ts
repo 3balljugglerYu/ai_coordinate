@@ -7,7 +7,7 @@ import {
   locales,
   localizePublicPath,
 } from "@/i18n/config";
-import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
+import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 
 // ロケール展開する公開ページ(PUBLIC_PATH_PATTERNS に含まれるパス)
 const LOCALIZED_PUBLIC_PATHS = [
@@ -65,6 +65,23 @@ function priorityFor(path: LocalizedPath): number {
 }
 
 /**
+ * ビルド時プリレンダの "use cache" 充填には時間制限があり、超過すると
+ * USE_CACHE_TIMEOUT でビルド自体が失敗する。DB の一時的な遅延・ハングで
+ * デプロイが落ちないよう、動的データの取得は個別にタイムボックスし、
+ * 間に合わなかった分は諦めて残りのエントリだけで sitemap を生成する。
+ */
+const SITEMAP_QUERY_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((resolve) => {
+      setTimeout(() => resolve(fallback), SITEMAP_QUERY_TIMEOUT_MS);
+    }),
+  ]);
+}
+
+/**
  * hreflang アノテーション(sitemap の xhtml:link)。
  * 動的コンテンツはロケールごとに 15 エントリへ複製する代わりに、
  * デフォルトロケール URL 1 エントリ + 言語別 alternates で表現し、
@@ -119,9 +136,28 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     })
   );
 
-  // 投稿詳細ページ（最大1000件まで）
-  // デフォルトロケール URL 1 エントリ + hreflang alternates で全ロケールを表現する
-  let postPages: MetadataRoute.Sitemap = [];
+  // 動的コンテンツ(投稿・カタログ・スタイル)は並列で取得し、
+  // どれかが遅延・失敗しても他のエントリと静的ページで sitemap を成立させる。
+  const [postPages, catalogPages, stylePages] = await Promise.all([
+    fetchPostPages(baseUrl),
+    fetchCatalogPages(baseUrl),
+    fetchStylePages(baseUrl),
+  ]);
+
+  return [
+    ...staticPages,
+    ...unlocalizedPages,
+    ...stylePages,
+    ...postPages,
+    ...catalogPages,
+  ];
+}
+
+/**
+ * 投稿詳細ページ（最大1000件まで）。
+ * デフォルトロケール URL 1 エントリ + hreflang alternates で全ロケールを表現する。
+ */
+async function fetchPostPages(baseUrl: string): Promise<MetadataRoute.Sitemap> {
   try {
     const supabase = createAdminClient();
     // 注意: generated_images に updated_at カラムは存在しない(select すると
@@ -131,70 +167,83 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       .select("id, posted_at")
       .eq("is_posted", true)
       .order("posted_at", { ascending: false })
-      .limit(1000); // 1 sitemapあたり50,000 URL制限を考慮して1000件に制限
+      .limit(1000) // 1 sitemapあたり50,000 URL制限を考慮して1000件に制限
+      .abortSignal(AbortSignal.timeout(SITEMAP_QUERY_TIMEOUT_MS));
 
-    if (!error && posts) {
-      postPages = posts
-        .filter((post) => post.id)
-        .map((post) => {
-          const path = `/posts/${post.id}`;
-          return {
-            url: `${baseUrl}${localizePublicPath(path, DEFAULT_LOCALE)}`,
-            ...(post.posted_at
-              ? { lastModified: new Date(post.posted_at) }
-              : {}),
-            changeFrequency: "weekly" as const,
-            priority: 0.6,
-            alternates: buildLanguageAlternates(path, baseUrl),
-          };
-        });
-    } else if (error) {
+    if (error) {
       console.error("Failed to fetch posts for sitemap:", error);
+      return [];
     }
-  } catch (error) {
-    // エラーが発生した場合は、静的ページのみを返す
-    console.error("Failed to fetch posts for sitemap:", error);
-  }
 
-  // 公開中の catalog 企画
-  let catalogPages: MetadataRoute.Sitemap = [];
+    return (posts ?? [])
+      .filter((post) => post.id)
+      .map((post) => {
+        const path = `/posts/${post.id}`;
+        return {
+          url: `${baseUrl}${localizePublicPath(path, DEFAULT_LOCALE)}`,
+          ...(post.posted_at ? { lastModified: new Date(post.posted_at) } : {}),
+          changeFrequency: "weekly" as const,
+          priority: 0.6,
+          alternates: buildLanguageAlternates(path, baseUrl),
+        };
+      });
+  } catch (error) {
+    console.error("Failed to fetch posts for sitemap:", error);
+    return [];
+  }
+}
+
+/** 公開中の catalog 企画。 */
+async function fetchCatalogPages(
+  baseUrl: string
+): Promise<MetadataRoute.Sitemap> {
   try {
     const supabase = createAdminClient();
-    const { data: campaigns, error: campaignError } = await supabase
+    const { data: campaigns, error } = await supabase
       .from("catalog_campaigns")
       .select("slug, updated_at")
       .eq("status", "published")
       .order("display_order", { ascending: true })
-      .limit(500);
+      .limit(500)
+      .abortSignal(AbortSignal.timeout(SITEMAP_QUERY_TIMEOUT_MS));
 
-    if (!campaignError && campaigns) {
-      catalogPages = campaigns
-        .filter((c) => c.slug)
-        .map((c) => {
-          const path = `/catalog/${c.slug}`;
-          return {
-            url: `${baseUrl}${localizePublicPath(path, DEFAULT_LOCALE)}`,
-            lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
-            changeFrequency: "weekly" as const,
-            priority: 0.7,
-            alternates: buildLanguageAlternates(path, baseUrl),
-          };
-        });
-    } else if (campaignError) {
-      console.error(
-        "Failed to fetch catalog campaigns for sitemap:",
-        campaignError
-      );
+    if (error) {
+      console.error("Failed to fetch catalog campaigns for sitemap:", error);
+      return [];
     }
+
+    return (campaigns ?? [])
+      .filter((c) => c.slug)
+      .map((c) => {
+        const path = `/catalog/${c.slug}`;
+        return {
+          url: `${baseUrl}${localizePublicPath(path, DEFAULT_LOCALE)}`,
+          lastModified: c.updated_at ? new Date(c.updated_at) : new Date(),
+          changeFrequency: "weekly" as const,
+          priority: 0.7,
+          alternates: buildLanguageAlternates(path, baseUrl),
+        };
+      });
   } catch (error) {
     console.error("Failed to fetch catalog campaigns for sitemap:", error);
+    return [];
   }
+}
 
-  // 公開スタイル紹介ページ(/styles/[slug])
-  let stylePages: MetadataRoute.Sitemap = [];
+/**
+ * 公開スタイル紹介ページ(/styles/[slug])。
+ * repository を直接呼ぶ(get-public-style-presets の "use cache" ラッパーを経由すると
+ * sitemap 自身の "use cache" 充填の中で入れ子のキャッシュ充填が発生し、
+ * ビルド時プリレンダのタイムアウト要因になり得るため)。
+ */
+async function fetchStylePages(
+  baseUrl: string
+): Promise<MetadataRoute.Sitemap> {
   try {
-    const presets = await getPublishedStylePresets();
-    stylePages = presets
+    // listPublishedStylePresets は内部でエラー時に [] を返す。
+    // repository に abortSignal を注入できないため withTimeout で打ち切る。
+    const presets = await withTimeout(listPublishedStylePresets(), []);
+    return presets
       .filter((preset) => preset.slug)
       .map((preset) => {
         const path = `/styles/${preset.slug}`;
@@ -208,15 +257,8 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
       });
   } catch (error) {
     console.error("Failed to fetch style presets for sitemap:", error);
+    return [];
   }
-
-  return [
-    ...staticPages,
-    ...unlocalizedPages,
-    ...stylePages,
-    ...postPages,
-    ...catalogPages,
-  ];
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
