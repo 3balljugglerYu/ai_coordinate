@@ -5,6 +5,7 @@ import {
   type GalleryImage,
 } from "@/features/creators/components/CreatorsRecruitGuide";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
+import { createCanonicalAlternates } from "@/lib/metadata";
 
 const OGP_IMAGE = "/og/one-tap-style.png";
 const PAGE_TITLE =
@@ -15,6 +16,7 @@ const PAGE_DESCRIPTION =
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
+  alternates: createCanonicalAlternates("/creators"),
   openGraph: {
     title: "あなたのプロンプトを掲載しませんか？｜One-Tap Style クリエイター募集",
     description:

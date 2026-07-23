@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
+import { getLocale } from "next-intl/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createLocaleAlternates } from "@/lib/metadata";
 import {
   getCachedCampaignBySlug,
   getCachedPublicEntriesByCampaign,
@@ -42,9 +45,16 @@ export async function generateMetadata({
     SIGNED_URL_TTL_SECONDS,
   );
 
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+
   return {
     title,
     description,
+    alternates: createLocaleAlternates(
+      `/catalog/${slug}/p/${entryId}`,
+      locale
+    ),
     openGraph: {
       title,
       description,

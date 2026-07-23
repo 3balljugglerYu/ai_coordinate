@@ -1,6 +1,11 @@
 import type { Metadata } from "next";
 import { getSiteUrl } from "@/lib/env";
-import { localizePublicPath, locales, type Locale } from "@/i18n/config";
+import {
+  DEFAULT_LOCALE,
+  localizePublicPath,
+  locales,
+  type Locale,
+} from "@/i18n/config";
 
 const DEFAULT_OPEN_GRAPH_IMAGE = {
   path: "/opengraph-image.png",
@@ -27,9 +32,28 @@ export function createLocaleAlternates(path: string, locale: Locale) {
 
   return {
     canonical: `${siteUrl}${canonicalPath}`,
-    languages: Object.fromEntries(
-      locales.map((entry) => [entry, `${siteUrl}${localizePublicPath(path, entry)}`])
-    ),
+    languages: {
+      ...Object.fromEntries(
+        locales.map((entry) => [entry, `${siteUrl}${localizePublicPath(path, entry)}`])
+      ),
+      // 言語が一致しない訪問者の既定 URL(hreflang x-default)はデフォルトロケール版
+      "x-default": `${siteUrl}${localizePublicPath(path, DEFAULT_LOCALE)}`,
+    },
+  };
+}
+
+/**
+ * ロケール分割していない公開ページ(/collections, /creators, /users/[id] 等)用の
+ * 自己参照 canonical を生成する。
+ *
+ * root layout にサイト全体の alternates を置くと、alternates 未定義の全ページが
+ * トップページを canonical として継承してしまう(= 検索エンジンに「トップの複製」と
+ * 伝わりインデックス対象から外れる)ため、各ページが必ず自分の canonical を宣言する。
+ */
+export function createCanonicalAlternates(path: string) {
+  const siteUrl = getSiteUrl();
+  return {
+    canonical: siteUrl ? `${siteUrl}${path}` : path,
   };
 }
 

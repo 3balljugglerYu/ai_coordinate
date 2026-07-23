@@ -3,236 +3,245 @@ import type {Locale} from "@/i18n/config";
 const siteCopy = {
   ja: {
     title:
-      "Persta.AI (ペルスタ) - 着てみたいも、なりたいも。AIスタイリングプラットフォーム",
+      "Persta.AI (ペルスタ) - AI着せ替え・AIイラスト生成のスタイリングプラットフォーム",
     description:
-      "Persta（ペルスタ）は、AIでファッション・キャラクターなどのビジュアル表現を自由にスタイリングできるプラットフォームです。persta.aiで、みんなの作品を見て、インスピレーションを得ましょう。",
+      "Persta（ペルスタ）は、うちの子・推しキャラのイラストをAIで着せ替え・コーディネートできるAIイラスト生成プラットフォームです。無料で試して、persta.aiでみんなの作品からインスピレーションを得ましょう。",
   },
   en: {
     title:
-      "Persta.AI - An AI styling platform for fashion, characters, and visual expression",
+      "Persta.AI - AI Dress-Up, Outfit Swap & Character Illustration Generator",
     description:
-      "Persta is an AI styling platform where you can explore fashion, character, and visual expression ideas, then discover inspiration from the community on persta.ai.",
+      "Persta is an AI platform for dressing up your OCs and favorite characters: generate outfit swaps, coordinated looks, and new illustration styles, then discover inspiration from the community on persta.ai.",
   },
   ko: {
     title:
-      "Persta.AI — 패션, 캐릭터, 비주얼 표현을 위한 AI 스타일링 플랫폼",
+      "Persta.AI — AI 옷 갈아입히기·AI 일러스트 생성 스타일링 플랫폼",
     description:
-      "Persta는 패션, 캐릭터, 비주얼 표현 아이디어를 자유롭게 스타일링할 수 있는 AI 플랫폼입니다. persta.ai에서 다른 사용자의 작품을 보고 영감을 얻어보세요.",
+      "Persta는 내 캐릭터(오리캐)와 최애 일러스트를 AI로 옷 갈아입히기·코디할 수 있는 AI 일러스트 생성 플랫폼입니다. 무료로 체험하고 persta.ai에서 다른 사용자의 작품을 보고 영감을 얻어보세요.",
   },
   "zh-CN": {
     title:
-      "Persta.AI — 时尚、角色和视觉表达的 AI 造型平台",
+      "Persta.AI — AI 换装与 AI 插画生成的造型平台",
     description:
-      "Persta 是一个 AI 造型平台，让你自由探索时尚、角色和视觉表达的创意。来 persta.ai 浏览社区作品，激发你的灵感。",
+      "Persta 是一个 AI 插画生成平台，用 AI 为你的自设角色（OC）和本命角色换装、搭配服装。免费体验，并在 persta.ai 浏览社区作品，激发你的灵感。",
   },
   "zh-TW": {
     title:
-      "Persta.AI — 時尚、角色與視覺表達的 AI 造型平台",
+      "Persta.AI — AI 換裝與 AI 插畫生成的造型平台",
     description:
-      "Persta 是一個 AI 造型平台，讓你自由探索時尚、角色與視覺表達的創意。來 persta.ai 瀏覽社群作品，激發你的靈感。",
+      "Persta 是一個 AI 插畫生成平台，用 AI 為你的自創角色（OC）和本命角色換裝、搭配服裝。免費體驗，並在 persta.ai 瀏覽社群作品，激發你的靈感。",
   },
   es: {
     title:
-      "Persta.AI — Plataforma de estilismo con IA para moda, personajes y expresión visual",
+      "Persta.AI — Cambio de ropa con IA y generación de ilustraciones de personajes",
     description:
-      "Persta es una plataforma de estilismo con IA donde puedes explorar ideas de moda, personajes y expresión visual, y descubrir inspiración de la comunidad en persta.ai.",
+      "Persta es una plataforma de IA para vestir a tus OCs y personajes favoritos: genera cambios de outfit, looks coordinados y nuevos estilos de ilustración. Pruébalo gratis y descubre inspiración de la comunidad en persta.ai.",
   },
   pt: {
     title:
-      "Persta.AI — Plataforma de styling com IA para moda, personagens e expressão visual",
+      "Persta.AI — Troca de roupa com IA e geração de ilustrações de personagens",
     description:
-      "Persta é uma plataforma de styling com IA onde você pode explorar ideias de moda, personagens e expressão visual, e encontrar inspiração da comunidade em persta.ai.",
+      "Persta é uma plataforma de IA para vestir seus OCs e personagens favoritos: gere trocas de roupa, looks coordenados e novos estilos de ilustração. Experimente grátis e encontre inspiração da comunidade em persta.ai.",
   },
   fr: {
     title:
-      "Persta.AI — Plateforme de stylisme IA pour la mode, les personnages et l'expression visuelle",
+      "Persta.AI — Habillage IA et génération d'illustrations de personnages",
     description:
-      "Persta est une plateforme de stylisme IA où vous pouvez explorer des idées de mode, de personnages et d'expression visuelle, puis trouver l'inspiration auprès de la communauté sur persta.ai.",
+      "Persta est une plateforme d'IA pour habiller vos OC et personnages préférés : générez des changements de tenue, des looks coordonnés et de nouveaux styles d'illustration. Essayez gratuitement et trouvez l'inspiration auprès de la communauté sur persta.ai.",
   },
   de: {
     title:
-      "Persta.AI – KI-Styling-Plattform für Mode, Charaktere und visuellen Ausdruck",
+      "Persta.AI – KI-Anziehen & KI-Illustrationsgenerator für Charaktere",
     description:
-      "Persta ist eine KI-Styling-Plattform, auf der du Ideen für Mode, Charaktere und visuellen Ausdruck erkunden und dich von der Community auf persta.ai inspirieren lassen kannst.",
+      "Persta ist eine KI-Plattform, mit der du deine OCs und Lieblingscharaktere umziehst: Erstelle Outfit-Wechsel, abgestimmte Looks und neue Illustrationsstile. Kostenlos ausprobieren und dich von der Community auf persta.ai inspirieren lassen.",
   },
   it: {
     title:
-      "Persta.AI — Piattaforma di styling con IA per moda, personaggi ed espressione visiva",
+      "Persta.AI — Cambio d'abito con IA e generazione di illustrazioni di personaggi",
     description:
-      "Persta è una piattaforma di styling con IA in cui puoi esplorare idee di moda, personaggi ed espressione visiva, e trovare ispirazione dalla community su persta.ai.",
+      "Persta è una piattaforma di IA per vestire i tuoi OC e personaggi preferiti: genera cambi d'abito, look coordinati e nuovi stili di illustrazione. Provala gratis e trova ispirazione dalla community su persta.ai.",
   },
   id: {
     title:
-      "Persta.AI — Platform styling AI untuk fashion, karakter, dan ekspresi visual",
+      "Persta.AI — Ganti baju AI & generator ilustrasi karakter",
     description:
-      "Persta adalah platform styling AI tempat kamu bisa menjelajahi ide fashion, karakter, dan ekspresi visual, lalu menemukan inspirasi dari komunitas di persta.ai.",
+      "Persta adalah platform AI untuk mendandani OC dan karakter favoritmu: buat pergantian outfit, padu padan gaya, dan gaya ilustrasi baru. Coba gratis dan temukan inspirasi dari komunitas di persta.ai.",
   },
   th: {
     title:
-      "Persta.AI — แพลตฟอร์ม AI สไตลิ่งสำหรับแฟชั่น คาแรกเตอร์ และการแสดงออกทางภาพ",
+      "Persta.AI — แพลตฟอร์ม AI เปลี่ยนชุดตัวละครและสร้างภาพประกอบด้วย AI",
     description:
-      "Persta คือแพลตฟอร์ม AI สไตลิ่ง ที่คุณสามารถสำรวจไอเดียแฟชั่น คาแรกเตอร์ และการแสดงออกทางภาพ และค้นพบแรงบันดาลใจจากชุมชนได้ที่ persta.ai",
+      "Persta คือแพลตฟอร์ม AI สำหรับเปลี่ยนชุดให้ OC และตัวละครที่คุณรัก สร้างการเปลี่ยนชุด การแต่งตัว และสไตล์ภาพประกอบใหม่ ๆ ทดลองฟรีและค้นพบแรงบันดาลใจจากชุมชนได้ที่ persta.ai",
   },
   vi: {
     title:
-      "Persta.AI — Nền tảng styling AI cho thời trang, nhân vật và biểu đạt hình ảnh",
+      "Persta.AI — Thay trang phục AI & tạo ảnh minh họa nhân vật bằng AI",
     description:
-      "Persta là nền tảng styling AI nơi bạn có thể khám phá ý tưởng thời trang, nhân vật và biểu đạt hình ảnh, đồng thời tìm cảm hứng từ cộng đồng tại persta.ai.",
+      "Persta là nền tảng AI giúp thay trang phục cho OC và nhân vật yêu thích của bạn: tạo outfit mới, phối đồ và các phong cách minh họa khác nhau. Dùng thử miễn phí và tìm cảm hứng từ cộng đồng tại persta.ai.",
   },
   hi: {
     title:
-      "Persta.AI — फ़ैशन, किरदार और विज़ुअल अभिव्यक्ति के लिए AI स्टाइलिंग प्लैटफ़ॉर्म",
+      "Persta.AI — AI ड्रेस-अप और किरदारों के लिए AI इलस्ट्रेशन जेनरेटर",
     description:
-      "Persta एक AI स्टाइलिंग प्लैटफ़ॉर्म है जहाँ आप फ़ैशन, किरदार और विज़ुअल अभिव्यक्ति के आइडिया एक्सप्लोर कर सकते हैं और persta.ai पर कम्यूनिटी से प्रेरणा पा सकते हैं।",
+      "Persta एक AI प्लैटफ़ॉर्म है जहाँ आप अपने OC और पसंदीदा किरदारों को नए आउटफ़िट पहना सकते हैं: आउटफ़िट बदलें, कोऑर्डिनेटेड लुक और नए इलस्ट्रेशन स्टाइल बनाएँ। मुफ़्त आज़माएँ और persta.ai पर कम्यूनिटी से प्रेरणा पाएँ।",
   },
   ar: {
     title:
-      "Persta.AI — منصّة تنسيق المظهر بالذكاء الاصطناعي للأزياء والشخصيات والتعبير البصري",
+      "Persta.AI — تبديل ملابس الشخصيات وتوليد الرسوم التوضيحية بالذكاء الاصطناعي",
     description:
-      "Persta منصّة تنسيق مظهر تعتمد على الذكاء الاصطناعي، تتيح لك استكشاف أفكار الأزياء والشخصيات والتعبير البصري، والاستلهام من أعمال المجتمع على persta.ai.",
+      "Persta منصّة ذكاء اصطناعي لتبديل ملابس شخصياتك الأصلية وشخصياتك المفضلة: أنشئ إطلالات منسّقة وأنماط رسوم جديدة بلمسة واحدة. جرّب مجانًا واستلهم من أعمال المجتمع على persta.ai.",
   },
 } as const satisfies Record<Locale, {title: string; description: string}>;
 
 const homeCopy = {
   ja: {
-    metadataTitle: "Persta.AI (ペルスタ)",
-    metadataDescription: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
+    metadataTitle:
+      "Persta.AI (ペルスタ) | AIでキャラクターを着せ替え・イラスト生成",
+    metadataDescription:
+      "うちの子・推しキャラのイラストをAIでワンタップ着せ替え。コーディネートやスタイル変更のAIイラスト生成を無料で試せるAIスタイリングプラットフォームです。作品を投稿してコミュニティで共有しよう。",
     heading: "Persta | ペルスタ",
     subtitle: "着てみたいも、なりたいも。AIスタイリングプラットフォーム",
     organizationDescription:
-      "Persta（ペルスタ）は、AIでファッション・キャラクターなどのビジュアル表現を自由にスタイリングできるプラットフォームです。",
+      "Persta（ペルスタ）は、うちの子・推しキャラなどのイラストをAIで着せ替え・コーディネートできるAIイラスト生成／スタイリングプラットフォームです。",
   },
   en: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | AI Dress-Up & Character Illustration Generator",
     metadataDescription:
-      "An AI styling platform for the looks and characters you want to create.",
+      "Dress up your OCs and favorite characters with AI. Generate outfit swaps, coordinated looks, and new illustration styles in one tap — free to try on Persta.AI.",
     heading: "Persta",
     subtitle:
       "An AI styling platform for the looks and characters you want to create.",
     organizationDescription:
-      "Persta is an AI styling platform for freely styling fashion, characters, and other visual ideas.",
+      "Persta is an AI platform for dressing up and styling OCs, fashion, and other character illustrations with AI-generated outfit swaps.",
   },
   ko: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | AI 옷 갈아입히기·AI 일러스트 생성",
     metadataDescription:
-      "입고 싶은 모습도, 되고 싶은 모습도. AI 스타일링 플랫폼.",
+      "내 캐릭터(오리캐)와 최애 일러스트를 AI로 원탭 옷 갈아입히기. 코디와 스타일 변경 AI 일러스트 생성을 무료로 체험할 수 있는 AI 스타일링 플랫폼입니다.",
     heading: "Persta",
     subtitle: "입고 싶은 모습도, 되고 싶은 모습도. AI 스타일링 플랫폼.",
     organizationDescription:
-      "Persta는 패션, 캐릭터 등 비주얼 표현을 자유롭게 스타일링할 수 있는 AI 플랫폼입니다.",
+      "Persta는 내 캐릭터와 최애 일러스트를 AI로 옷 갈아입히기·코디할 수 있는 AI 일러스트 생성 플랫폼입니다.",
   },
   "zh-CN": {
-    metadataTitle: "Persta.AI",
-    metadataDescription: "想穿的样子，想成为的样子。AI 造型平台。",
+    metadataTitle: "Persta.AI | AI 换装・AI 插画生成",
+    metadataDescription:
+      "用 AI 一键为你的自设角色（OC）和本命角色换装。免费体验服装搭配与风格变化的 AI 插画生成，并在社区分享作品。",
     heading: "Persta",
     subtitle: "想穿的样子，想成为的样子。AI 造型平台。",
     organizationDescription:
-      "Persta 是一个 AI 造型平台，让你自由探索时尚、角色等视觉表达的创意。",
+      "Persta 是一个 AI 插画生成平台，用 AI 为自设角色（OC）和喜欢的角色换装、搭配造型。",
   },
   "zh-TW": {
-    metadataTitle: "Persta.AI",
-    metadataDescription: "想穿的樣子，想成為的樣子。AI 造型平台。",
+    metadataTitle: "Persta.AI | AI 換裝・AI 插畫生成",
+    metadataDescription:
+      "用 AI 一鍵為你的自創角色（OC）和本命角色換裝。免費體驗服裝搭配與風格變化的 AI 插畫生成，並在社群分享作品。",
     heading: "Persta",
     subtitle: "想穿的樣子，想成為的樣子。AI 造型平台。",
     organizationDescription:
-      "Persta 是一個 AI 造型平台，讓你自由探索時尚、角色等視覺表達的創意。",
+      "Persta 是一個 AI 插畫生成平台，用 AI 為自創角色（OC）和喜歡的角色換裝、搭配造型。",
   },
   es: {
-    metadataTitle: "Persta.AI",
+    metadataTitle:
+      "Persta.AI | Cambio de ropa con IA y generación de ilustraciones",
     metadataDescription:
-      "Lo que quieres llevar, lo que quieres ser. Plataforma de estilismo con IA.",
+      "Viste a tus OCs y personajes favoritos con IA. Genera cambios de outfit, looks coordinados y nuevos estilos de ilustración con un toque. Pruébalo gratis en Persta.AI.",
     heading: "Persta",
     subtitle:
       "Lo que quieres llevar, lo que quieres ser. Plataforma de estilismo con IA.",
     organizationDescription:
-      "Persta es una plataforma de estilismo con IA para explorar libremente moda, personajes y otras expresiones visuales.",
+      "Persta es una plataforma de IA para vestir y estilizar OCs, moda y otras ilustraciones de personajes con cambios de ropa generados por IA.",
   },
   pt: {
-    metadataTitle: "Persta.AI",
+    metadataTitle:
+      "Persta.AI | Troca de roupa com IA e geração de ilustrações",
     metadataDescription:
-      "O que você quer vestir, quem você quer ser. Plataforma de styling com IA.",
+      "Vista seus OCs e personagens favoritos com IA. Gere trocas de roupa, looks coordenados e novos estilos de ilustração com um toque. Experimente grátis no Persta.AI.",
     heading: "Persta",
     subtitle:
       "O que você quer vestir, quem você quer ser. Plataforma de styling com IA.",
     organizationDescription:
-      "Persta é uma plataforma de styling com IA para explorar livremente moda, personagens e outras expressões visuais.",
+      "Persta é uma plataforma de IA para vestir e estilizar OCs, moda e outras ilustrações de personagens com trocas de roupa geradas por IA.",
   },
   fr: {
-    metadataTitle: "Persta.AI",
+    metadataTitle:
+      "Persta.AI | Habillage IA et génération d'illustrations",
     metadataDescription:
-      "Ce que vous voulez porter, ce que vous voulez devenir. Plateforme de stylisme IA.",
+      "Habillez vos OC et personnages préférés grâce à l'IA. Générez changements de tenue, looks coordonnés et nouveaux styles d'illustration en un geste. Essai gratuit sur Persta.AI.",
     heading: "Persta",
     subtitle:
       "Ce que vous voulez porter, ce que vous voulez devenir. Plateforme de stylisme IA.",
     organizationDescription:
-      "Persta est une plateforme de stylisme IA qui vous permet d'explorer librement la mode, les personnages et d'autres expressions visuelles.",
+      "Persta est une plateforme d'IA pour habiller et styliser des OC, de la mode et d'autres illustrations de personnages grâce à des changements de tenue générés par IA.",
   },
   de: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | KI-Anziehen & KI-Illustrationsgenerator",
     metadataDescription:
-      "Was du tragen willst, wer du sein willst. KI-Styling-Plattform.",
+      "Ziehe deine OCs und Lieblingscharaktere mit KI um. Erstelle Outfit-Wechsel, abgestimmte Looks und neue Illustrationsstile mit einem Tipp – kostenlos ausprobieren auf Persta.AI.",
     heading: "Persta",
     subtitle: "Was du tragen willst, wer du sein willst. KI-Styling-Plattform.",
     organizationDescription:
-      "Persta ist eine KI-Styling-Plattform, auf der du Mode, Charaktere und andere visuelle Ausdrucksformen frei erkunden kannst.",
+      "Persta ist eine KI-Plattform, mit der du OCs, Mode und andere Charakter-Illustrationen mit KI-generierten Outfit-Wechseln stylst.",
   },
   it: {
-    metadataTitle: "Persta.AI",
+    metadataTitle:
+      "Persta.AI | Cambio d'abito con IA e generazione di illustrazioni",
     metadataDescription:
-      "Quello che vuoi indossare, quello che vuoi essere. Piattaforma di styling con IA.",
+      "Vesti i tuoi OC e personaggi preferiti con l'IA. Genera cambi d'abito, look coordinati e nuovi stili di illustrazione con un tocco. Provalo gratis su Persta.AI.",
     heading: "Persta",
     subtitle:
       "Quello che vuoi indossare, quello che vuoi essere. Piattaforma di styling con IA.",
     organizationDescription:
-      "Persta è una piattaforma di styling con IA per esplorare liberamente moda, personaggi e altre espressioni visive.",
+      "Persta è una piattaforma di IA per vestire e stilizzare OC, moda e altre illustrazioni di personaggi con cambi d'abito generati dall'IA.",
   },
   id: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | Ganti Baju AI & Generator Ilustrasi AI",
     metadataDescription:
-      "Yang ingin kamu pakai, yang ingin kamu jadikan. Platform styling AI.",
+      "Ganti baju OC dan karakter favoritmu dengan AI. Buat pergantian outfit, padu padan gaya, dan gaya ilustrasi baru dalam sekali tap — coba gratis di Persta.AI.",
     heading: "Persta",
     subtitle:
       "Yang ingin kamu pakai, yang ingin kamu jadikan. Platform styling AI.",
     organizationDescription:
-      "Persta adalah platform styling AI tempat kamu bisa bebas menjelajahi fashion, karakter, dan ekspresi visual lainnya.",
+      "Persta adalah platform AI untuk mendandani OC, fashion, dan ilustrasi karakter lainnya dengan pergantian outfit hasil AI.",
   },
   th: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | AI เปลี่ยนชุดตัวละคร & สร้างภาพประกอบด้วย AI",
     metadataDescription:
-      "สิ่งที่อยากใส่ สิ่งที่อยากเป็น แพลตฟอร์ม AI สไตลิ่ง",
+      "เปลี่ยนชุดให้ OC และตัวละครที่คุณรักด้วย AI สร้างการเปลี่ยนชุด การแต่งตัว และสไตล์ภาพประกอบใหม่ ๆ ในแตะเดียว ทดลองฟรีที่ Persta.AI",
     heading: "Persta",
     subtitle: "สิ่งที่อยากใส่ สิ่งที่อยากเป็น แพลตฟอร์ม AI สไตลิ่ง",
     organizationDescription:
-      "Persta คือแพลตฟอร์ม AI สไตลิ่ง ที่คุณสามารถสำรวจไอเดียแฟชั่น คาแรกเตอร์ และการแสดงออกทางภาพอื่น ๆ ได้อย่างอิสระ",
+      "Persta คือแพลตฟอร์ม AI สำหรับเปลี่ยนชุดและจัดสไตล์ให้ OC แฟชั่น และภาพประกอบตัวละครอื่น ๆ ด้วยการเปลี่ยนชุดที่สร้างโดย AI",
   },
   vi: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | Thay trang phục AI & tạo ảnh minh họa AI",
     metadataDescription:
-      "Điều bạn muốn mặc, điều bạn muốn trở thành. Nền tảng styling AI.",
+      "Thay trang phục cho OC và nhân vật yêu thích bằng AI. Tạo outfit mới, phối đồ và các phong cách minh họa khác nhau chỉ với một chạm — dùng thử miễn phí trên Persta.AI.",
     heading: "Persta",
     subtitle:
       "Điều bạn muốn mặc, điều bạn muốn trở thành. Nền tảng styling AI.",
     organizationDescription:
-      "Persta là nền tảng styling AI cho phép bạn tự do khám phá thời trang, nhân vật và các hình thức biểu đạt hình ảnh khác.",
+      "Persta là nền tảng AI giúp thay trang phục và tạo phong cách cho OC, thời trang và các ảnh minh họa nhân vật khác bằng trang phục do AI tạo ra.",
   },
   hi: {
-    metadataTitle: "Persta.AI",
+    metadataTitle: "Persta.AI | AI ड्रेस-अप और AI इलस्ट्रेशन जेनरेटर",
     metadataDescription:
-      "जो पहनना चाहें, जो बनना चाहें — AI स्टाइलिंग प्लैटफ़ॉर्म।",
+      "अपने OC और पसंदीदा किरदारों को AI से नए आउटफ़िट पहनाएँ। एक टैप में आउटफ़िट बदलें, कोऑर्डिनेटेड लुक और नए इलस्ट्रेशन स्टाइल बनाएँ — Persta.AI पर मुफ़्त आज़माएँ।",
     heading: "Persta",
     subtitle: "जो पहनना चाहें, जो बनना चाहें — AI स्टाइलिंग प्लैटफ़ॉर्म।",
     organizationDescription:
-      "Persta एक AI स्टाइलिंग प्लैटफ़ॉर्म है जहाँ आप फ़ैशन, किरदार और दूसरे विज़ुअल एक्सप्रेशन को आज़ादी से एक्सप्लोर कर सकते हैं।",
+      "Persta एक AI प्लैटफ़ॉर्म है जहाँ OC, फ़ैशन और दूसरे किरदारों के इलस्ट्रेशन को AI-जेनरेटेड आउटफ़िट बदलाव से स्टाइल किया जा सकता है।",
   },
   ar: {
-    metadataTitle: "Persta.AI",
+    metadataTitle:
+      "Persta.AI | تبديل ملابس الشخصيات وتوليد الرسوم بالذكاء الاصطناعي",
     metadataDescription:
-      "ما تريد ارتداءه، ومن تريد أن تكون. منصّة تنسيق المظهر بالذكاء الاصطناعي.",
+      "بدّل ملابس شخصياتك الأصلية وشخصياتك المفضلة بالذكاء الاصطناعي. أنشئ إطلالات منسّقة وأنماط رسوم جديدة بلمسة واحدة — جرّب مجانًا على Persta.AI.",
     heading: "Persta",
     subtitle:
       "ما تريد ارتداءه، ومن تريد أن تكون. منصّة تنسيق المظهر بالذكاء الاصطناعي.",
     organizationDescription:
-      "Persta منصّة تنسيق مظهر بالذكاء الاصطناعي تتيح لك استكشاف الأزياء والشخصيات وأشكال التعبير البصري الأخرى بحرية.",
+      "Persta منصّة ذكاء اصطناعي لتبديل ملابس الشخصيات الأصلية والأزياء وسائر رسوم الشخصيات وتنسيق مظهرها بإطلالات مولّدة بالذكاء الاصطناعي.",
   },
 } as const satisfies Record<
   Locale,
@@ -693,8 +702,256 @@ const postPageCopy = {
   }
 >;
 
+// /styles(スタイル一覧)と /styles/[slug](スタイル紹介)の SEO 向けコピー。
+// detailDescription の {title} はスタイル名で置換して使う。
+const stylesCopy = {
+  ja: {
+    indexTitle: "AI着せ替えスタイル一覧 | Persta.AI",
+    indexDescription:
+      "Perstaで使えるAI着せ替え・AIイラスト生成のスタイル一覧。制服・ドレス・ファンタジー衣装など、うちの子や推しキャラをワンタップで着せ替えられるスタイルを探せます。",
+    indexHeading: "スタイル一覧",
+    indexIntro:
+      "うちの子・推しキャラのイラストをワンタップで着せ替えできるAIスタイルのカタログです。気になるスタイルを選んで、無料で試してみましょう。",
+    detailTitleSuffix: "AI着せ替えスタイル | Persta.AI",
+    detailDescription:
+      "「{title}」スタイルで、うちの子・推しキャラのイラストをAIが着せ替え。画像をアップロードするだけで、{title}のAIイラストをワンタップ生成。無料でお試しできます。",
+    cta: "このスタイルで着せ替える",
+    related: "同じカテゴリのスタイル",
+    allStyles: "スタイル一覧へ戻る",
+    providerLabel: "提供: {name}",
+  },
+  en: {
+    indexTitle: "AI Dress-Up Style Gallery | Persta.AI",
+    indexDescription:
+      "Browse AI dress-up and illustration styles on Persta: uniforms, dresses, fantasy outfits, and more. Restyle your OCs and favorite characters in one tap.",
+    indexHeading: "Style Gallery",
+    indexIntro:
+      "A catalog of AI styles that dress up your OCs and favorite character illustrations in one tap. Pick a style and try it for free.",
+    detailTitleSuffix: "AI Dress-Up Style | Persta.AI",
+    detailDescription:
+      "Dress up your OCs and favorite characters in the \"{title}\" style. Just upload an image and generate a {title} AI illustration in one tap — free to try.",
+    cta: "Dress up with this style",
+    related: "Styles in the same category",
+    allStyles: "Back to Style Gallery",
+    providerLabel: "By {name}",
+  },
+  ko: {
+    indexTitle: "AI 옷 갈아입히기 스타일 목록 | Persta.AI",
+    indexDescription:
+      "Persta에서 쓸 수 있는 AI 옷 갈아입히기·AI 일러스트 생성 스타일 목록. 교복, 드레스, 판타지 의상 등 내 캐릭터와 최애를 원탭으로 갈아입혀 보세요.",
+    indexHeading: "스타일 목록",
+    indexIntro:
+      "내 캐릭터(오리캐)와 최애 일러스트를 원탭으로 갈아입힐 수 있는 AI 스타일 카탈로그입니다. 마음에 드는 스타일을 골라 무료로 체험해 보세요.",
+    detailTitleSuffix: "AI 옷 갈아입히기 스타일 | Persta.AI",
+    detailDescription:
+      "\"{title}\" 스타일로 내 캐릭터와 최애 일러스트를 AI가 갈아입혀 드립니다. 이미지를 업로드하면 {title} AI 일러스트를 원탭으로 생성. 무료 체험 가능.",
+    cta: "이 스타일로 갈아입히기",
+    related: "같은 카테고리의 스타일",
+    allStyles: "스타일 목록으로 돌아가기",
+    providerLabel: "제공: {name}",
+  },
+  "zh-CN": {
+    indexTitle: "AI 换装风格一览 | Persta.AI",
+    indexDescription:
+      "浏览 Persta 上可用的 AI 换装·AI 插画生成风格：制服、礼服、奇幻服装等。一键为你的自设角色（OC）和本命角色换装。",
+    indexHeading: "风格一览",
+    indexIntro:
+      "这是可一键为自设角色（OC）和本命角色插画换装的 AI 风格目录。挑选喜欢的风格，免费体验吧。",
+    detailTitleSuffix: "AI 换装风格 | Persta.AI",
+    detailDescription:
+      "用「{title}」风格为你的自设角色和本命角色换装。只需上传图片，即可一键生成 {title} 的 AI 插画，免费体验。",
+    cta: "用这个风格换装",
+    related: "同类风格",
+    allStyles: "返回风格一览",
+    providerLabel: "提供：{name}",
+  },
+  "zh-TW": {
+    indexTitle: "AI 換裝風格一覽 | Persta.AI",
+    indexDescription:
+      "瀏覽 Persta 上可用的 AI 換裝·AI 插畫生成風格：制服、禮服、奇幻服裝等。一鍵為你的自創角色（OC）和本命角色換裝。",
+    indexHeading: "風格一覽",
+    indexIntro:
+      "這是可一鍵為自創角色（OC）和本命角色插畫換裝的 AI 風格目錄。挑選喜歡的風格，免費體驗吧。",
+    detailTitleSuffix: "AI 換裝風格 | Persta.AI",
+    detailDescription:
+      "用「{title}」風格為你的自創角色和本命角色換裝。只需上傳圖片，即可一鍵生成 {title} 的 AI 插畫，免費體驗。",
+    cta: "用這個風格換裝",
+    related: "同類風格",
+    allStyles: "返回風格一覽",
+    providerLabel: "提供：{name}",
+  },
+  es: {
+    indexTitle: "Galería de estilos de cambio de ropa con IA | Persta.AI",
+    indexDescription:
+      "Explora los estilos de cambio de ropa e ilustración con IA de Persta: uniformes, vestidos, trajes de fantasía y más. Cambia el look de tus OCs y personajes favoritos con un toque.",
+    indexHeading: "Galería de estilos",
+    indexIntro:
+      "Un catálogo de estilos de IA para vestir a tus OCs y personajes favoritos con un toque. Elige un estilo y pruébalo gratis.",
+    detailTitleSuffix: "Estilo de cambio de ropa con IA | Persta.AI",
+    detailDescription:
+      "Viste a tus OCs y personajes favoritos con el estilo «{title}». Solo sube una imagen y genera una ilustración de IA de {title} con un toque. Prueba gratis.",
+    cta: "Vestir con este estilo",
+    related: "Estilos de la misma categoría",
+    allStyles: "Volver a la galería de estilos",
+    providerLabel: "De {name}",
+  },
+  pt: {
+    indexTitle: "Galeria de estilos de troca de roupa com IA | Persta.AI",
+    indexDescription:
+      "Explore os estilos de troca de roupa e ilustração com IA do Persta: uniformes, vestidos, trajes de fantasia e mais. Mude o visual dos seus OCs e personagens favoritos com um toque.",
+    indexHeading: "Galeria de estilos",
+    indexIntro:
+      "Um catálogo de estilos de IA para vestir seus OCs e personagens favoritos com um toque. Escolha um estilo e experimente grátis.",
+    detailTitleSuffix: "Estilo de troca de roupa com IA | Persta.AI",
+    detailDescription:
+      "Vista seus OCs e personagens favoritos com o estilo \"{title}\". Basta enviar uma imagem para gerar uma ilustração de IA de {title} com um toque. Experimente grátis.",
+    cta: "Vestir com este estilo",
+    related: "Estilos da mesma categoria",
+    allStyles: "Voltar à galeria de estilos",
+    providerLabel: "Por {name}",
+  },
+  fr: {
+    indexTitle: "Galerie de styles d'habillage IA | Persta.AI",
+    indexDescription:
+      "Parcourez les styles d'habillage et d'illustration IA de Persta : uniformes, robes, tenues fantastiques et plus. Relookez vos OC et personnages préférés en un geste.",
+    indexHeading: "Galerie de styles",
+    indexIntro:
+      "Un catalogue de styles IA pour habiller vos OC et personnages préférés en un geste. Choisissez un style et essayez-le gratuitement.",
+    detailTitleSuffix: "Style d'habillage IA | Persta.AI",
+    detailDescription:
+      "Habillez vos OC et personnages préférés avec le style « {title} ». Téléversez une image et générez une illustration IA {title} en un geste. Essai gratuit.",
+    cta: "Habiller avec ce style",
+    related: "Styles de la même catégorie",
+    allStyles: "Retour à la galerie de styles",
+    providerLabel: "Par {name}",
+  },
+  de: {
+    indexTitle: "KI-Anzieh-Stile im Überblick | Persta.AI",
+    indexDescription:
+      "Entdecke die KI-Anzieh- und Illustrationsstile von Persta: Uniformen, Kleider, Fantasy-Outfits und mehr. Style deine OCs und Lieblingscharaktere mit einem Tipp um.",
+    indexHeading: "Stil-Galerie",
+    indexIntro:
+      "Ein Katalog von KI-Stilen, mit denen du OCs und Lieblingscharakter-Illustrationen mit einem Tipp umziehst. Wähle einen Stil und probiere ihn kostenlos aus.",
+    detailTitleSuffix: "KI-Anzieh-Stil | Persta.AI",
+    detailDescription:
+      "Ziehe deine OCs und Lieblingscharaktere im Stil „{title}“ um. Einfach ein Bild hochladen und mit einem Tipp eine {title}-KI-Illustration erstellen. Kostenlos testen.",
+    cta: "Mit diesem Stil anziehen",
+    related: "Stile derselben Kategorie",
+    allStyles: "Zurück zur Stil-Galerie",
+    providerLabel: "Von {name}",
+  },
+  it: {
+    indexTitle: "Galleria di stili di cambio d'abito con IA | Persta.AI",
+    indexDescription:
+      "Sfoglia gli stili di cambio d'abito e illustrazione con IA di Persta: uniformi, abiti, costumi fantasy e altro. Cambia look ai tuoi OC e personaggi preferiti con un tocco.",
+    indexHeading: "Galleria di stili",
+    indexIntro:
+      "Un catalogo di stili IA per vestire i tuoi OC e personaggi preferiti con un tocco. Scegli uno stile e provalo gratis.",
+    detailTitleSuffix: "Stile di cambio d'abito con IA | Persta.AI",
+    detailDescription:
+      "Vesti i tuoi OC e personaggi preferiti con lo stile «{title}». Carica un'immagine e genera un'illustrazione IA di {title} con un tocco. Prova gratuita.",
+    cta: "Vesti con questo stile",
+    related: "Stili della stessa categoria",
+    allStyles: "Torna alla galleria di stili",
+    providerLabel: "Di {name}",
+  },
+  id: {
+    indexTitle: "Daftar gaya ganti baju AI | Persta.AI",
+    indexDescription:
+      "Jelajahi gaya ganti baju dan ilustrasi AI di Persta: seragam, gaun, kostum fantasi, dan lainnya. Ganti gaya OC dan karakter favoritmu dalam sekali tap.",
+    indexHeading: "Galeri gaya",
+    indexIntro:
+      "Katalog gaya AI untuk mendandani ilustrasi OC dan karakter favoritmu dalam sekali tap. Pilih gaya dan coba gratis.",
+    detailTitleSuffix: "Gaya ganti baju AI | Persta.AI",
+    detailDescription:
+      "Dandani OC dan karakter favoritmu dengan gaya \"{title}\". Cukup unggah gambar dan buat ilustrasi AI {title} dalam sekali tap. Coba gratis.",
+    cta: "Ganti baju dengan gaya ini",
+    related: "Gaya dalam kategori yang sama",
+    allStyles: "Kembali ke galeri gaya",
+    providerLabel: "Oleh {name}",
+  },
+  th: {
+    indexTitle: "รวมสไตล์ AI เปลี่ยนชุด | Persta.AI",
+    indexDescription:
+      "เลือกชมสไตล์ AI เปลี่ยนชุดและสร้างภาพประกอบบน Persta ทั้งชุดนักเรียน เดรส ชุดแฟนตาซี และอีกมากมาย เปลี่ยนชุดให้ OC และตัวละครที่คุณรักได้ในแตะเดียว",
+    indexHeading: "แกลเลอรีสไตล์",
+    indexIntro:
+      "แคตตาล็อกสไตล์ AI สำหรับเปลี่ยนชุดให้ภาพ OC และตัวละครที่คุณรักในแตะเดียว เลือกสไตล์ที่ชอบแล้วทดลองฟรี",
+    detailTitleSuffix: "สไตล์ AI เปลี่ยนชุด | Persta.AI",
+    detailDescription:
+      "เปลี่ยนชุดให้ OC และตัวละครที่คุณรักด้วยสไตล์ \"{title}\" แค่อัปโหลดภาพก็สร้างภาพประกอบ AI สไตล์ {title} ได้ในแตะเดียว ทดลองฟรี",
+    cta: "เปลี่ยนชุดด้วยสไตล์นี้",
+    related: "สไตล์ในหมวดเดียวกัน",
+    allStyles: "กลับไปที่แกลเลอรีสไตล์",
+    providerLabel: "โดย {name}",
+  },
+  vi: {
+    indexTitle: "Danh sách phong cách thay trang phục AI | Persta.AI",
+    indexDescription:
+      "Khám phá các phong cách thay trang phục và minh họa AI trên Persta: đồng phục, váy, trang phục fantasy và nhiều hơn nữa. Đổi phong cách cho OC và nhân vật yêu thích chỉ với một chạm.",
+    indexHeading: "Thư viện phong cách",
+    indexIntro:
+      "Danh mục các phong cách AI giúp thay trang phục cho ảnh minh họa OC và nhân vật yêu thích chỉ với một chạm. Chọn phong cách và dùng thử miễn phí.",
+    detailTitleSuffix: "Phong cách thay trang phục AI | Persta.AI",
+    detailDescription:
+      "Thay trang phục cho OC và nhân vật yêu thích với phong cách \"{title}\". Chỉ cần tải ảnh lên là tạo được ảnh minh họa AI {title} trong một chạm. Dùng thử miễn phí.",
+    cta: "Thay trang phục với phong cách này",
+    related: "Phong cách cùng danh mục",
+    allStyles: "Quay lại thư viện phong cách",
+    providerLabel: "Bởi {name}",
+  },
+  hi: {
+    indexTitle: "AI ड्रेस-अप स्टाइल गैलरी | Persta.AI",
+    indexDescription:
+      "Persta पर उपलब्ध AI ड्रेस-अप और इलस्ट्रेशन स्टाइल देखें: यूनिफ़ॉर्म, ड्रेस, फ़ैंटेसी आउटफ़िट और भी बहुत कुछ। एक टैप में अपने OC और पसंदीदा किरदारों का लुक बदलें।",
+    indexHeading: "स्टाइल गैलरी",
+    indexIntro:
+      "एक टैप में OC और पसंदीदा किरदारों के इलस्ट्रेशन को नए आउटफ़िट पहनाने वाले AI स्टाइल का कैटलॉग। कोई स्टाइल चुनें और मुफ़्त आज़माएँ।",
+    detailTitleSuffix: "AI ड्रेस-अप स्टाइल | Persta.AI",
+    detailDescription:
+      "\"{title}\" स्टाइल में अपने OC और पसंदीदा किरदारों को सजाएँ। बस एक इमेज अपलोड करें और एक टैप में {title} की AI इलस्ट्रेशन बनाएँ। मुफ़्त आज़माएँ।",
+    cta: "इस स्टाइल से ड्रेस-अप करें",
+    related: "इसी कैटेगरी के स्टाइल",
+    allStyles: "स्टाइल गैलरी पर वापस जाएँ",
+    providerLabel: "{name} द्वारा",
+  },
+  ar: {
+    indexTitle: "معرض أنماط تبديل الملابس بالذكاء الاصطناعي | Persta.AI",
+    indexDescription:
+      "تصفّح أنماط تبديل الملابس وتوليد الرسوم بالذكاء الاصطناعي على Persta: أزياء مدرسية وفساتين وأزياء خيالية والمزيد. غيّر إطلالة شخصياتك الأصلية وشخصياتك المفضلة بلمسة واحدة.",
+    indexHeading: "معرض الأنماط",
+    indexIntro:
+      "دليل أنماط الذكاء الاصطناعي لتبديل ملابس رسوم شخصياتك الأصلية وشخصياتك المفضلة بلمسة واحدة. اختر نمطًا وجرّبه مجانًا.",
+    detailTitleSuffix: "نمط تبديل الملابس بالذكاء الاصطناعي | Persta.AI",
+    detailDescription:
+      "بدّل ملابس شخصياتك الأصلية وشخصياتك المفضلة بنمط «{title}». ما عليك سوى رفع صورة لتوليد رسم بالذكاء الاصطناعي بنمط {title} بلمسة واحدة. جرّب مجانًا.",
+    cta: "بدّل الملابس بهذا النمط",
+    related: "أنماط من الفئة نفسها",
+    allStyles: "العودة إلى معرض الأنماط",
+    providerLabel: "بواسطة {name}",
+  },
+} as const satisfies Record<
+  Locale,
+  {
+    indexTitle: string;
+    indexDescription: string;
+    indexHeading: string;
+    indexIntro: string;
+    detailTitleSuffix: string;
+    detailDescription: string;
+    cta: string;
+    related: string;
+    allStyles: string;
+    providerLabel: string;
+  }
+>;
+
 export function getSiteCopy(locale: Locale) {
   return siteCopy[locale];
+}
+
+export function getStylesCopy(locale: Locale) {
+  return stylesCopy[locale];
 }
 
 export function getHomeCopy(locale: Locale) {

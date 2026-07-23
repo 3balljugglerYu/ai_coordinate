@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createLocaleAlternates } from "@/lib/metadata";
 import {
   getCachedCampaignBySlug,
   getCachedPublicEntriesByCampaign,
@@ -39,11 +42,15 @@ export async function generateMetadata({
     coverImageUrl = url;
   }
 
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+
   return {
     title: `${campaign.title} | 絵師カタログ | Persta.AI`,
     description:
       campaign.description ??
       `${campaign.title} - 絵師さんの作品をまとめた本です。`,
+    alternates: createLocaleAlternates(`/catalog/${slug}`, locale),
     openGraph: {
       title: campaign.title,
       description: campaign.description ?? undefined,

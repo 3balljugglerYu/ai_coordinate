@@ -49,6 +49,11 @@ export const itMessages = {
     privacy: "Informativa sulla privacy",
     communityGuidelines: "Linee guida della community",
     disclosure: "Informativa commerciale",
+    styles: "Galleria di stili",
+    catalog: "Catalogo artisti",
+    collections: "Collezioni",
+    freeMaterials: "Materiali gratuiti",
+    creators: "Per i creator",
   },
   searchBar: {
     placeholder: "Cerca prompt",

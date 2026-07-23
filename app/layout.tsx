@@ -8,7 +8,7 @@ import "./globals.css";
 //   2 回目のオープン時にアイコンが描画されない不具合が出ることがある。）
 import "yet-another-react-lightbox/styles.css";
 import { LocaleShell } from "@/components/LocaleShell";
-import { getSiteUrl } from "@/lib/env";
+import { env, getSiteUrl } from "@/lib/env";
 import { DEFAULT_LOCALE, getLocaleDir, locales } from "@/i18n/config";
 import { getSiteCopy } from "@/i18n/page-copy";
 
@@ -25,6 +25,7 @@ const geistMono = localFont({
 });
 
 const siteUrl = getSiteUrl() || "https://persta.ai";
+const googleSiteVerification = env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION;
 const defaultSiteCopy = getSiteCopy(DEFAULT_LOCALE);
 const localeCookiePattern = locales.join("|");
 const rtlLocales = locales.filter((locale) => getLocaleDir(locale) === "rtl");
@@ -42,18 +43,19 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: defaultSiteCopy.title,
   description: defaultSiteCopy.description,
-  alternates: {
-    canonical: siteUrl,
-    languages: {
-      ja: `${siteUrl}/ja`,
-      en: `${siteUrl}/en`,
-      "x-default": `${siteUrl}/ja`,
-    },
-  },
+  // 注意: ここに alternates(canonical)を置いてはならない。
+  // root layout の alternates は「自分で alternates を定義しないすべてのページ」に
+  // 継承され、全ページの canonical がトップページを指してしまう(= 検索エンジンに
+  // 各ページを「トップの複製」と誤認させ、インデックスから除外させる)。
+  // canonical/hreflang は各ページが createLocaleAlternates / createCanonicalAlternates
+  // (lib/metadata.ts)で自己参照を宣言する。
   robots: {
     index: true,
     follow: true,
   },
+  ...(googleSiteVerification
+    ? { verification: { google: googleSiteVerification } }
+    : {}),
 };
 
 export const viewport = {

@@ -49,6 +49,11 @@ export const enMessages = {
     privacy: "Privacy Policy",
     communityGuidelines: "Community Guidelines",
     disclosure: "Commercial Disclosure",
+    styles: "Style Gallery",
+    catalog: "Artist Catalog",
+    collections: "Collections",
+    freeMaterials: "Free Dress-Up Materials",
+    creators: "For Creators",
   },
   searchBar: {
     placeholder: "Search prompts",

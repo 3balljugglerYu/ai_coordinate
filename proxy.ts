@@ -48,6 +48,11 @@ export async function proxy(request: NextRequest) {
 
     const redirectResponse = NextResponse.redirect(redirectUrl);
     applyLocaleCookie(redirectResponse, resolvedLocale);
+    // /style・/coordinate はロケール付き URL へのリダイレクト時にも
+    // ゲスト識別 Cookie を発行しておく(初回アクセスから確実に識別できるようにする)。
+    if (shouldIssueGuestIdForPathname(pathname)) {
+      ensureGuestIdOnResponse(request, redirectResponse);
+    }
     return redirectResponse;
   }
 

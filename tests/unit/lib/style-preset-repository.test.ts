@@ -180,6 +180,8 @@ describe("style-preset repository", () => {
     expect(presets).toEqual([
       {
         id: "preset-1",
+        // /styles/[slug] の公開スタイル紹介ページで使う公開フィールド
+        slug: "paris-code",
         title: "PARIS CODE",
         thumbnailImageUrl: "https://example.com/style.webp",
         thumbnailWidth: 912,

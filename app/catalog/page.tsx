@@ -1,23 +1,29 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { getLocale } from "next-intl/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCachedPublishedCampaigns } from "@/features/catalog/lib/get-public-catalog";
 import { createCatalogSignedUrls } from "@/features/catalog/lib/repository";
 import { CampaignCard } from "@/features/catalog/components/CampaignCard";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createMarketingPageMetadata } from "@/lib/metadata";
 
 const SIGNED_URL_TTL_SECONDS = 60 * 30;
 
-export const metadata: Metadata = {
-  title: "絵師カタログ | Persta.AI",
-  description:
-    "X で活動するクリエイターさんの作品を、企画ごとの本としてまとめて楽しめるカタログです。",
-  openGraph: {
-    title: "絵師カタログ | Persta.AI",
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+
+  return createMarketingPageMetadata({
+    title: locale === "ja" ? "絵師カタログ" : "Artist Catalog",
     description:
-      "X で活動するクリエイターさんの作品を、企画ごとの本としてまとめて楽しめるカタログです。",
-    type: "website",
-  },
-};
+      locale === "ja"
+        ? "X で活動するクリエイターさんの作品を、企画ごとの本としてまとめて楽しめるカタログです。"
+        : "A catalog of works by artists on X, collected into books by project.",
+    path: "/catalog",
+    locale,
+  });
+}
 
 export default async function CatalogIndexPage() {
   await connection();
