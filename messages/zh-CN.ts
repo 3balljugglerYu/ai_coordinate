@@ -49,6 +49,11 @@ export const zhCnMessages = {
     privacy: "隐私政策",
     communityGuidelines: "社区准则",
     disclosure: "商业披露",
+    styles: "风格一览",
+    catalog: "画师目录",
+    collections: "收藏图鉴",
+    freeMaterials: "换装免费素材",
+    creators: "创作者招募",
   },
   searchBar: {
     placeholder: "搜索提示词",

@@ -6,6 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   createStylePreset,
   deleteStylePreset,
+  getPublishedStylePresetBySlug,
   listPublishedStylePresets,
   reorderStylePresets,
   updateStylePreset,
@@ -180,6 +181,8 @@ describe("style-preset repository", () => {
     expect(presets).toEqual([
       {
         id: "preset-1",
+        // /styles/[slug] の公開スタイル紹介ページで使う公開フィールド
+        slug: "paris-code",
         title: "PARIS CODE",
         thumbnailImageUrl: "https://example.com/style.webp",
         thumbnailWidth: 912,
@@ -233,6 +236,96 @@ describe("style-preset repository", () => {
         providerAvatarUrl: null,
       },
     ]);
+  });
+
+  // /styles/[slug] の公開スタイル紹介ページで使う slug 検索。
+  // 公開 summary への変換と、秘匿フィールド(styling_prompt 等)非公開の
+  // 回帰ガードを含む。
+  const PUBLIC_PRESET_ROW = {
+    id: "preset-1",
+    slug: "paris-code",
+    title: "PARIS CODE",
+    styling_prompt: "prompt",
+    background_prompt: "Paris street",
+    thumbnail_image_url: "https://example.com/style.webp",
+    thumbnail_storage_path: null,
+    thumbnail_width: 912,
+    thumbnail_height: 1173,
+    sort_order: 0,
+    status: "published",
+    category_id: TEST_CATEGORY_ID,
+    image_input_mode: "single",
+    reference_image_url: null,
+    reference_image_storage_path: null,
+    reference_image_width: null,
+    reference_image_height: null,
+    category: TEST_CATEGORY_ROW,
+    created_by: null,
+    updated_by: null,
+    created_at: "2026-03-22T00:00:00.000Z",
+    updated_at: "2026-03-22T00:00:00.000Z",
+  };
+
+  function mockSlugQuery(result: { data: unknown; error: unknown }) {
+    const maybeSingle = jest.fn().mockResolvedValue(result);
+    const query = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle,
+    };
+    mockCreateAdminClient.mockReturnValue({
+      from: jest.fn(() => query),
+    } as never);
+    return query;
+  }
+
+  test("getPublishedStylePresetBySlug_slugで公開プリセットを取得しsummaryへ変換する", async () => {
+    const query = mockSlugQuery({ data: PUBLIC_PRESET_ROW, error: null });
+
+    const preset = await getPublishedStylePresetBySlug("paris-code");
+
+    expect(query.eq).toHaveBeenCalledWith("slug", "paris-code");
+    expect(query.eq).toHaveBeenCalledWith("status", "published");
+    expect(preset?.id).toBe("preset-1");
+    expect(preset?.slug).toBe("paris-code");
+    expect(preset?.title).toBe("PARIS CODE");
+    // 秘匿フィールドは公開 summary に含めない(回帰ガード)
+    expect(preset).not.toHaveProperty("stylingPrompt");
+    expect(preset).not.toHaveProperty("backgroundPrompt");
+  });
+
+  test("getPublishedStylePresetBySlug_見つからなければnullを返す", async () => {
+    mockSlugQuery({ data: null, error: null });
+
+    await expect(
+      getPublishedStylePresetBySlug("unknown-slug")
+    ).resolves.toBeNull();
+  });
+
+  test("getPublishedStylePresetBySlug_運営限定カテゴリは既定で除外し管理者指定では返す", async () => {
+    const adminOnlyRow = {
+      ...PUBLIC_PRESET_ROW,
+      category: { ...TEST_CATEGORY_ROW, visibility: "admin_only" },
+    };
+
+    mockSlugQuery({ data: adminOnlyRow, error: null });
+    await expect(
+      getPublishedStylePresetBySlug("paris-code")
+    ).resolves.toBeNull();
+
+    mockSlugQuery({ data: adminOnlyRow, error: null });
+    const adminPreset = await getPublishedStylePresetBySlug("paris-code", {
+      includeAdminOnly: true,
+    });
+    expect(adminPreset?.slug).toBe("paris-code");
+  });
+
+  test("getPublishedStylePresetBySlug_クエリエラー時はnullを返す", async () => {
+    mockSlugQuery({ data: null, error: { message: "boom" } });
+
+    await expect(
+      getPublishedStylePresetBySlug("paris-code")
+    ).resolves.toBeNull();
   });
 
   test("listPublishedStylePresets_提供者(provider)埋め込みをクレジット情報へ変換する", async () => {

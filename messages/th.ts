@@ -49,6 +49,11 @@ export const thMessages = {
     privacy: "นโยบายความเป็นส่วนตัว",
     communityGuidelines: "แนวปฏิบัติของชุมชน",
     disclosure: "การเปิดเผยทางการค้า",
+    styles: "แกลเลอรีสไตล์",
+    catalog: "แคตตาล็อกนักวาด",
+    collections: "คอลเลกชัน",
+    freeMaterials: "สื่อฟรีสำหรับเปลี่ยนชุด",
+    creators: "รับสมัครครีเอเตอร์",
   },
   searchBar: {
     placeholder: "ค้นหาพรอมป์",

@@ -49,6 +49,11 @@ export const idMessages = {
     privacy: "Kebijakan Privasi",
     communityGuidelines: "Pedoman Komunitas",
     disclosure: "Pengungkapan Komersial",
+    styles: "Galeri gaya",
+    catalog: "Katalog ilustrator",
+    collections: "Koleksi",
+    freeMaterials: "Materi gratis ganti baju",
+    creators: "Untuk kreator",
   },
   searchBar: {
     placeholder: "Cari prompt",

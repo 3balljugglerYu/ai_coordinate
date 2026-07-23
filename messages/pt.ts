@@ -49,6 +49,11 @@ export const ptMessages = {
     privacy: "Política de privacidade",
     communityGuidelines: "Diretrizes da comunidade",
     disclosure: "Divulgação comercial",
+    styles: "Galeria de estilos",
+    catalog: "Catálogo de artistas",
+    collections: "Coleções",
+    freeMaterials: "Materiais gratuitos",
+    creators: "Para criadores",
   },
   searchBar: {
     placeholder: "Buscar prompts",

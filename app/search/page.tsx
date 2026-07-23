@@ -7,6 +7,7 @@ import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
 import { getUser } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
+import { createLocaleAlternates } from "@/lib/metadata";
 import { getSearchCopy } from "@/i18n/page-copy";
 
 interface SearchPageProps {
@@ -39,6 +40,9 @@ export async function generateMetadata({
   return {
     title,
     description,
+    // ?q= 付きの検索結果 URL はクエリ無しの /search に正規化する
+    // (クエリごとの薄い重複ページがインデックスされるのを防ぐ)
+    alternates: createLocaleAlternates("/search", locale),
     openGraph: {
       title,
       description,

@@ -53,6 +53,13 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/catalog\/[^/]+\/p\/[^/]+$/,
   /^\/catalog\/submit$/,
   /^\/catalog\/submit\/thanks$/,
+  // 生成ページ(ゲスト生成可)とスタイル紹介ページもロケール付き URL で公開する。
+  // ここに追加すると proxy がロケール無しアクセスを /{locale}/... へリダイレクトするため、
+  // 対応する app/[locale]/ 配下の re-export ルートが必須(無いと 404 になる)。
+  /^\/style$/,
+  /^\/coordinate$/,
+  /^\/styles$/,
+  /^\/styles\/[^/]+$/,
 ];
 
 export function isLocale(value: string | undefined | null): value is Locale {

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 import { ItalyTravelGuide } from "@/features/collections/components/ItalyTravelGuide";
@@ -15,6 +16,7 @@ const PAGE_DESCRIPTION =
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
+  alternates: createCanonicalAlternates("/collections/italy"),
   openGraph: {
     title: "うちの子のイタリア旅行日記｜めくれる旅行日記をつくろう",
     description:
