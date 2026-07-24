@@ -239,8 +239,7 @@ export function CollabRecruitGuide({
           text: "朝のテーマ告知ポストを引用して、その日の投稿を振り返りつつ再告知。まだ参加していない方にも届けます",
         },
       ],
-      footnote:
-        "特設ページは会期後も残ります。人気が出れば、続編や第2弾へ展開することもあります。",
+      footnote: "特設ページは会期後も残ります。",
       tape: "bg-purple-200/80",
     },
   ];
@@ -670,14 +669,6 @@ export function CollabRecruitGuide({
           <div className="mt-8">
             <ConsultButton />
           </div>
-        </Reveal>
-        <Reveal delay={320}>
-          <p className="mt-8 text-xs text-[#9a7888]">
-            プロンプトの掲載(One-Tap Style クリエイター)をお考えの方は{" "}
-            <Link href="/creators" className="font-bold text-rose-600 underline underline-offset-2">
-              こちら
-            </Link>
-          </p>
         </Reveal>
       </section>
     </main>
