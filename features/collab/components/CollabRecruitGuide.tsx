@@ -248,9 +248,7 @@ export function CollabRecruitGuide({
   const faqs: { q: string; a: string[] }[] = [
     {
       q: "誰でも相談できますか？",
-      a: [
-        "イラストレーター・プロンプト制作者・企画を考えたい方など、うちの子文化が好きならどなたでも歓迎です。",
-      ],
+      a: ["プロンプト制作者・企画を考えたい方など、どなたでも歓迎です。"],
     },
     {
       q: "何を用意すればいいですか？",
@@ -553,7 +551,7 @@ export function CollabRecruitGuide({
                           className="flex gap-2 rounded-xl bg-white/70 p-3"
                         >
                           <dt
-                            className="shrink-0 rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700"
+                            className="mt-0.5 shrink-0 self-start rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700"
                             style={{ fontFamily: HEADING_FONT }}
                           >
                             {role.label}
@@ -575,7 +573,7 @@ export function CollabRecruitGuide({
                           className="flex gap-2 rounded-xl bg-white/70 p-3"
                         >
                           <span
-                            className="shrink-0 rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700"
+                            className="mt-0.5 shrink-0 self-start rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700"
                             style={{ fontFamily: HEADING_FONT }}
                           >
                             {item.label}
