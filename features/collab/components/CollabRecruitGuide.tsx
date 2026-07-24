@@ -159,70 +159,130 @@ export function CollabRecruitGuide({
   const benefits: { title: string; body: string; icon: ReactNode }[] = [
     {
       title: "ひとつの“企画”として大きく展開",
-      body: "単発の掲載ではなく、「うちの子の◯◯」のような特設企画として一緒に作ります。専用ページ・バナー・SNS告知までセットです。",
+      body: "単発の掲載ではなく、「うちの子の◯◯」という特設企画として展開します。専用ページ・バナー・SNS告知までセットでご用意します。",
       icon: (
         <path d="M12 .6 9.2 7.6 1.7 8.1l5.7 4.8L5.5 20l6.5-3.9L18.5 20l-1.9-7.1 5.7-4.8-7.5-.5L12 .6Z" />
       ),
     },
     {
       title: "あなたの名前とファン導線を明記",
-      body: "企画ページ・作品カードにアイコンとお名前、X へのリンクを掲載。企画を楽しんだ人が、あなたのもとへ届きます。",
+      body: "企画ページ・作品カードに、アイコン、お名前、Xリンクを掲載します。さらに参加者へのリポストにもお名前とXリンクが載り続けるので、企画を楽しんだ方があなたのもとへ届きます。",
       icon: (
         <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6Z" />
       ),
     },
     {
       title: "“あつめて完成”の体験まで一緒に",
-      body: "全種コンプリートで特典画像が完成するコレクション形式など、参加したくなる仕掛けを運営が一緒に設計します。",
+      body: "全種コンプリートで特典画像が完成するコレクション形式など、参加したくなる仕掛けを運営が一緒に設計します。公開されるのは生成された画像だけで、プロンプトは非公開のまま守られます。",
       icon: (
         <path d="M4 4h7v7H4V4Zm9 0h7v7h-7V4ZM4 13h7v7H4v-7Zm12.5 0L13 20h7l-3.5-7Z" />
       ),
     },
+    {
+      title: "毎日の運用は、運営と一緒に",
+      body: "開催中の告知・ポスト文の作成・参加者への返信やリポスト・スケジュール管理は、運営が中心となって担当します。「毎日投稿を考えるのが大変そう」という心配はいりません。あなたは作品づくりに集中できます。",
+      icon: (
+        <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 4a1 1 0 0 1 1 1v4.6l3 1.7a1 1 0 1 1-1 1.7l-3.5-2a1 1 0 0 1-.5-.9V7a1 1 0 0 1 1-1Z" />
+      ),
+    },
   ];
 
-  const steps = [
+  const steps: {
+    no: string;
+    title: string;
+    body: string;
+    tape: string;
+    note?: string;
+    roles?: { label: string; text: string }[];
+    schedule?: { label: string; text: string }[];
+    footnote?: string;
+  }[] = [
     {
       no: "01",
       title: "相談する",
       body: "X(DM)から「コラボしてみたい / 話を聞きたい」とご連絡ください。作品やSNSを見せていただけるとスムーズです。",
+      note: "目安：基本的に当日〜3日ほどでお返事します（時期により前後します）。",
       tape: "bg-pink-200/80",
     },
     {
       no: "02",
       title: "企画を一緒に考える",
-      body: "あなたの世界観に合わせて、テーマ・点数・見せ方を一緒に決めます。無理のないペースで大丈夫です。",
+      body: "あなたの世界観に合わせて、テーマ・プロンプト・スケジュールを決めていきます。無理のないペースで大丈夫です。",
       tape: "bg-rose-200/80",
     },
     {
       no: "03",
       title: "制作 & 特設ページ公開",
-      body: "作品をお預かりして、クレジット付きの特設企画として公開。バナーやSNSでも告知します。",
+      body: "運営が制作し、確認していただいたのち公開します。",
+      roles: [
+        { label: "あなた", text: "作品・プロンプトの共有、運営とSNS告知を実施" },
+        { label: "運営", text: "ページ制作・バナー・SNS告知" },
+      ],
+      note: "目安：数週間程度、ペースはご相談ください。",
       tape: "bg-fuchsia-200/80",
     },
     {
       no: "04",
-      title: "みんなのうちの子が参加",
-      body: "全国のうちの子があなたの企画で変身し、SNSでシェア。あなたの名前と作品が広がります。",
+      title: "開催中",
+      body: "開催中は、こんな流れで進みます。",
+      schedule: [
+        {
+          label: "朝",
+          text: "あなたと運営が、その日のテーマを告知（ポスト文・画像は基本的に運営が用意）",
+        },
+        {
+          label: "日中",
+          text: "参加者のうちの子が続々投稿。あなたと運営で、できるだけ一件ずつ返信＆リポスト（運営からはあなたのお名前を明記）",
+        },
+        {
+          label: "夜",
+          text: "朝のテーマ告知ポストを引用して、その日の投稿を振り返りつつ再告知。まだ参加していない方にも届けます",
+        },
+      ],
+      footnote:
+        "特設ページは会期後も残ります。人気が出れば、続編や第2弾へ展開することもあります。",
       tape: "bg-purple-200/80",
     },
   ];
 
-  const faqs = [
+  const faqs: { q: string; a: string[] }[] = [
     {
       q: "誰でも相談できますか？",
-      a: "はい、大歓迎です。イラストレーター・プロンプト制作者・企画を一緒に考えたい方など、「うちの子文化が好き」ならどなたでもどうぞ。",
+      a: [
+        "イラストレーター・プロンプト制作者・企画を考えたい方など、うちの子文化が好きならどなたでも歓迎です。",
+      ],
     },
     {
       q: "何を用意すればいいですか？",
-      a: "最初は何もなくて大丈夫です。ご相談のなかで、テーマや必要な素材を一緒に決めていきます。",
+      a: [
+        "最初は何もなくて大丈夫です。ご相談のなかで、テーマや素材を一緒に決めていきます。",
+      ],
+    },
+    {
+      q: "企画が始まったら、毎日大変じゃないですか？",
+      a: [
+        "ポスト案は基本的に運営が担当します。もちろん中身を変えていただいてOKです。あなたのアカウントから出す用の文面も、こちらで作成します。",
+        "毎日の投稿は簡単ではありませんが、その分、あなたのお名前が広まり認知されていきます。無理のないペースで大丈夫ですので、一緒に進めていきましょう。",
+      ],
+    },
+    {
+      q: "フォロワーが少なくても、実績がなくても大丈夫ですか？",
+      a: [
+        "大丈夫です。フォロワー数や実績よりも、“うちの子への愛”と世界観を大切にしています。",
+        "ご相談の際にXでの投稿内容を拝見したうえで、一緒に進め方を考えていきます。",
+      ],
     },
     {
       q: "報酬はありますか？",
-      a: "現在は、クレジット掲載と特設企画としての露出が中心です。条件は個別にご相談ください。",
+      a: [
+        "クレジット掲載と、特設企画としての露出が中心です。参加者へのリポストにお名前とXリンクが載り、新しいファンとの出会いに繋がります。条件は個別にご相談ください。",
+      ],
     },
     {
       q: "期間やスケジュールは？",
-      a: "企画の規模に合わせて柔軟に決めています。過去のコラボも、それぞれのペースで進めてきました。",
+      a: [
+        "企画の規模に合わせて柔軟に決めています。過去のコラボも、それぞれのペースで進行しました。",
+      ],
     },
   ];
 
@@ -483,6 +543,60 @@ export function CollabRecruitGuide({
                   <p className="mt-1.5 text-sm leading-relaxed text-[#7a5868]">
                     {s.body}
                   </p>
+
+                  {/* 役割分担(あなた / 運営) */}
+                  {s.roles ? (
+                    <dl className="mt-3 grid gap-2">
+                      {s.roles.map((role) => (
+                        <div
+                          key={role.label}
+                          className="flex gap-2 rounded-xl bg-white/70 p-3"
+                        >
+                          <dt
+                            className="shrink-0 rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700"
+                            style={{ fontFamily: HEADING_FONT }}
+                          >
+                            {role.label}
+                          </dt>
+                          <dd className="text-sm leading-relaxed text-[#7a5868]">
+                            {role.text}
+                          </dd>
+                        </div>
+                      ))}
+                    </dl>
+                  ) : null}
+
+                  {/* 開催中の時間割(朝 / 日中) */}
+                  {s.schedule ? (
+                    <ul className="mt-3 grid gap-2">
+                      {s.schedule.map((item) => (
+                        <li
+                          key={item.label}
+                          className="flex gap-2 rounded-xl bg-white/70 p-3"
+                        >
+                          <span
+                            className="shrink-0 rounded-md bg-rose-100 px-2 py-0.5 text-xs font-bold text-rose-700"
+                            style={{ fontFamily: HEADING_FONT }}
+                          >
+                            {item.label}
+                          </span>
+                          <span className="text-sm leading-relaxed text-[#7a5868]">
+                            {item.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+
+                  {s.note ? (
+                    <p className="mt-3 text-xs text-[#9a7888]">{s.note}</p>
+                  ) : null}
+
+                  {s.footnote ? (
+                    <p className="mt-3 text-xs leading-relaxed text-[#9a7888]">
+                      {s.footnote}
+                    </p>
+                  ) : null}
                 </div>
               </Reveal>
             ))}
@@ -516,9 +630,16 @@ export function CollabRecruitGuide({
                       </svg>
                     </span>
                   </summary>
-                  <p className="mt-3 text-sm leading-relaxed text-[#7a5868]">
-                    {f.a}
-                  </p>
+                  <div className="mt-3 grid gap-2">
+                    {f.a.map((paragraph, pi) => (
+                      <p
+                        key={pi}
+                        className="text-sm leading-relaxed text-[#7a5868]"
+                      >
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
                 </details>
               </Reveal>
             ))}
