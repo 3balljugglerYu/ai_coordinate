@@ -25,11 +25,26 @@ const T: Record<string, string> = {
   stylePopularSortNote: "直近30日の生成数順",
 };
 
+const HOME_T: Record<string, string> = {
+  stylePresetConfirmTitle: "こちらを試着しますか？",
+  stylePresetConfirmCancel: "キャンセル",
+  stylePresetConfirmAction: "試着する",
+};
+
 jest.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, unknown>) => {
-    if (key === "styleNewSortNote") return `直近${values?.days}日の新着`;
-    return T[key] ?? key;
-  },
+  useTranslations:
+    (namespace?: string) =>
+    (key: string, values?: Record<string, unknown>) => {
+      if (namespace === "home") return HOME_T[key] ?? key;
+      if (key === "styleNewSortNote") return `直近${values?.days}日の新着`;
+      if (key === "styleCardAlt") return `スタイル ${values?.name}`;
+      return T[key] ?? key;
+    },
+}));
+
+const routerPushMock = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPushMock }),
 }));
 
 // /styles は静的ページのため、認証状態とお気に入りはブラウザ側で取得する。
@@ -187,6 +202,40 @@ describe("StylesGalleryClient", () => {
 
     expect(screen.queryByText("style-old")).toBeNull();
     expect(screen.getByText("style-new")).toBeTruthy();
+  });
+
+  test("カード選択_試着確認モーダルを開き「試着する」で/styleへ遷移する", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-a"));
+
+    // 紹介ページへ即遷移せず、ホームと同じ試着確認モーダルを出す
+    expect(screen.getByText("こちらを試着しますか？")).toBeTruthy();
+    fireEvent.click(screen.getByText("試着する"));
+
+    expect(routerPushMock).toHaveBeenCalledWith("/ja/style?style=style-a");
+  });
+
+  test("カード選択_修飾キー付きクリックはモーダルを開かない(リンク既定動作)", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-a"), { metaKey: true });
+
+    expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
   });
 
   test("ログイン済み_お気に入りチップが現れ絞り込める", async () => {

@@ -1,7 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
 import {
@@ -11,7 +22,7 @@ import {
   type StyleBrowseChipId,
 } from "@/features/style/lib/style-browse-filter";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
-import type { Locale } from "@/i18n/config";
+import { localizePublicPath, type Locale } from "@/i18n/config";
 
 /** チップ先頭の絵文字(装飾)。探索シート(StyleBrowseSheet)と同じ見た目に揃える。 */
 const CHIP_EMOJI: Partial<Record<string, string>> = {
@@ -52,11 +63,28 @@ export function StylesGalleryClient({
   locale,
 }: StylesGalleryClientProps) {
   const t = useTranslations("style");
+  const tHome = useTranslations("home");
+  const router = useRouter();
   const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
   const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(
     () => new Set()
   );
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // カードタップは即遷移せず、ホームのカルーセルと同じ「試着しますか？」確認を挟む。
+  // 紹介ページ(/styles/[slug])へは href(修飾キー付きクリック/クローラー)で辿れる。
+  const [confirmingPreset, setConfirmingPreset] =
+    useState<StylePresetPublicSummary | null>(null);
+
+  const handleConfirm = () => {
+    const preset = confirmingPreset;
+    if (!preset) {
+      return;
+    }
+    setConfirmingPreset(null);
+    router.push(
+      `${localizePublicPath("/style", locale)}?style=${encodeURIComponent(preset.id)}`
+    );
+  };
 
   // ログイン済みならお気に入り(しおり)を取得して 🔖 チップを有効化する。
   // 未ログイン・取得失敗時はチップが出ないだけで、一覧表示には影響しない。
@@ -189,10 +217,57 @@ export function StylesGalleryClient({
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
           {filtered.map((preset) => (
-            <PublicStyleCard key={preset.id} preset={preset} locale={locale} />
+            <PublicStyleCard
+              key={preset.id}
+              preset={preset}
+              locale={locale}
+              onSelect={setConfirmingPreset}
+            />
           ))}
         </div>
       )}
+
+      {/* ホームのカルーセルと同じ試着確認モーダル。「試着する」で /style へ遷移する。 */}
+      <AlertDialog
+        open={confirmingPreset !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmingPreset(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {tHome("stylePresetConfirmTitle")}
+            </AlertDialogTitle>
+          </AlertDialogHeader>
+          {confirmingPreset ? (
+            <div className="flex flex-col items-center gap-3 py-2">
+              <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-lg bg-gray-100">
+                <Image
+                  src={confirmingPreset.thumbnailImageUrl}
+                  alt={t("styleCardAlt", { name: confirmingPreset.title })}
+                  fill
+                  sizes="280px"
+                  className="object-cover object-top"
+                />
+              </div>
+              <p className="text-base font-medium text-slate-900">
+                {confirmingPreset.title}
+              </p>
+            </div>
+          ) : null}
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {tHome("stylePresetConfirmCancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirm}>
+              {tHome("stylePresetConfirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
