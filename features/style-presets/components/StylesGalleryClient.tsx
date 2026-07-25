@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { Bookmark } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useStyleFavorites } from "@/features/style/hooks/useStyleFavorites";
+import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
 import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
 import {
@@ -131,6 +132,13 @@ export function StylesGalleryClient({
     () => deriveStyleBrowseChips(presets, context),
     [presets, context]
   );
+
+  // チップ列の常時表示スクロールインジケーター(探索シートと共通のフック)。
+  const {
+    setScrollEl: setChipRowEl,
+    trackRef: chipIndicatorTrackRef,
+    thumbRef: chipIndicatorThumbRef,
+  } = useHorizontalScrollIndicator({ remeasureKey: chips });
   const filtered = useMemo(
     () => filterStyleBrowsePresets(presets, activeChip, context),
     [presets, activeChip, context]
@@ -165,7 +173,8 @@ export function StylesGalleryClient({
     <div>
       {/* チップ列(横スクロール)。探索シートと同じ操作感。 */}
       <div
-        className="-mx-1 mb-4 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        ref={setChipRowEl}
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tablist"
         aria-label={t("styleBrowseSheetTitle")}
       >
@@ -190,6 +199,21 @@ export function StylesGalleryClient({
             </button>
           );
         })}
+      </div>
+      {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
+          ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
+          位置・表示はフックが DOM を直接更新する(visibility 初期値 hidden、
+          はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
+      <div
+        ref={chipIndicatorTrackRef}
+        className="relative mx-1 mb-4 mt-1 h-1 overflow-hidden rounded-full bg-slate-100"
+        style={{ visibility: "hidden" }}
+        aria-hidden="true"
+      >
+        <div
+          ref={chipIndicatorThumbRef}
+          className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
+        />
       </div>
 
       {/* 人気/新着の基準を明示する(探索シートと同じ注記)。 */}
