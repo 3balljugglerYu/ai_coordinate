@@ -13,13 +13,13 @@ export function Footer() {
 	// 確保する SEO 上の役割も持つ(これらのページはナビからも辿れる必要がある)。
 	const contentLinks = [
 		{ href: localizePublicPath("/styles", locale), label: t("styles") },
-		{ href: localizePublicPath("/catalog", locale), label: t("catalog") },
-		{ href: "/collections", label: t("collections") },
+		// { href: localizePublicPath("/catalog", locale), label: t("catalog") },
+		// { href: "/collections", label: t("collections") },
 		{
 			href: localizePublicPath("/free-materials", locale),
 			label: t("freeMaterials"),
 		},
-		{ href: "/creators", label: t("creators") },
+		// { href: "/creators", label: t("creators") },
 	];
 
 	const legalLinks = [
