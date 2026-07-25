@@ -82,12 +82,15 @@ export function ensureGuestIdOnResponse(
  * 例:
  *  - `/style`, `/style/...` → true
  *  - `/coordinate`, `/coordinate/...` → true
- *  - `/en/style`, `/ja/coordinate/foo` → true
+ *  - `/en/style`, `/ja/coordinate/foo`, `/zh-CN/style` → true
  *  - `/posts/123`, `/api/...` → false
  */
 export function shouldIssueGuestIdForPathname(pathname: string): boolean {
   return GUEST_ID_PATHNAME_PATTERN.test(pathname);
 }
 
+// ロケールプレフィックスは `ja` 等の 2 文字に加え、`zh-CN` / `zh-TW` のような
+// 地域付きタグも許容する(非ロケール文字列に過剰一致しても Cookie が余分に
+// 発行されるだけで、レート制限の抜け道にはならない)。
 const GUEST_ID_PATHNAME_PATTERN =
-  /^\/(?:[a-z]{2}\/)?(?:style|coordinate)(?:\/|$)/i;
+  /^\/(?:[a-zA-Z]{2}(?:-[a-zA-Z]{2,4})?\/)?(?:style|coordinate)(?:\/|$)/i;

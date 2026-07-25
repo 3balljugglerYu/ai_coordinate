@@ -112,6 +112,9 @@ describe("guest-id", () => {
     test("ロケールプレフィックス付きでも発行する", () => {
       expect(shouldIssueGuestIdForPathname("/en/style")).toBe(true);
       expect(shouldIssueGuestIdForPathname("/ja/coordinate/foo")).toBe(true);
+      // 地域付きロケール(zh-CN / zh-TW)も対象
+      expect(shouldIssueGuestIdForPathname("/zh-CN/style")).toBe(true);
+      expect(shouldIssueGuestIdForPathname("/zh-TW/coordinate")).toBe(true);
     });
 
     test("無関係なパスでは発行しない", () => {

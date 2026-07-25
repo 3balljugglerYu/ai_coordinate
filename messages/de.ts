@@ -49,6 +49,11 @@ export const deMessages = {
     privacy: "Datenschutz",
     communityGuidelines: "Community-Richtlinien",
     disclosure: "Impressum",
+    styles: "Stil-Galerie",
+    catalog: "Künstlerkatalog",
+    collections: "Sammlungen",
+    freeMaterials: "Kostenlose Vorlagen",
+    creators: "Für Creator",
   },
   searchBar: {
     placeholder: "Prompts suchen",

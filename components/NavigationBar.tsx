@@ -82,14 +82,14 @@ export function NavigationBar() {
   useEffect(() => {
     if (user && !hasPrefetched.current) {
       router.prefetch(localizedHomePath);
-      router.prefetch("/coordinate");
-      router.prefetch("/style");
+      router.prefetch(localizePublicPath("/coordinate", locale));
+      router.prefetch(localizePublicPath("/style", locale));
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
       hasPrefetched.current = true;
     }
-  }, [localizedHomePath, user, router]);
+  }, [localizedHomePath, locale, user, router]);
 
   useEffect(() => {
     if (!pendingPathname) {
@@ -146,7 +146,9 @@ export function NavigationBar() {
       return;
     }
 
-    let destinationPath = resolvedPath;
+    // 公開パス(/coordinate, /style 等)はロケール付き URL へ直接遷移し、
+    // proxy の 307 リダイレクトを介さない(1 ホップ分速くする)。
+    let destinationPath = localizePublicPath(resolvedPath, locale);
     let pendingTargetPath = normalizedTargetPath;
 
     if (requiresAuthForGuestNavigation(normalizedTargetPath) && !user) {

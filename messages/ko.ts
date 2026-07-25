@@ -49,6 +49,11 @@ export const koMessages = {
     privacy: "개인정보 처리방침",
     communityGuidelines: "커뮤니티 가이드라인",
     disclosure: "특정상거래법 표시",
+    styles: "스타일 목록",
+    catalog: "일러스트레이터 카탈로그",
+    collections: "컬렉션 도감",
+    freeMaterials: "옷 갈아입히기 무료 소재",
+    creators: "크리에이터 모집",
   },
   searchBar: {
     placeholder: "프롬프트 검색",

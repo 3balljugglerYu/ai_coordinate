@@ -4,6 +4,8 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "申請ありがとうございます | 絵師カタログ | Persta.AI",
+  // フォーム送信後の確認ページは検索結果に出す価値がないため noindex
+  robots: { index: false, follow: true },
 };
 
 export default async function CatalogSubmitThanksPage() {

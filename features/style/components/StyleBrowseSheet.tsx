@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/sheet";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
+import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import {
   deriveStyleBrowseChips,
@@ -105,16 +106,6 @@ export function StyleBrowseSheet({
   // (ホーム企画棚と同じ体験。小さいグリッドの誤タップ防止も兼ねる)。
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
-  // チップ列の常時表示スクロールインジケーター用。iOS Safari は
-  // ::-webkit-scrollbar による常時表示に非対応のため、自前の細いバーを描画する。
-  // スクロールのたびに再レンダリングするとグリッド全体が再描画されてカクつくため、
-  // React state を使わず effect 内で thumb の DOM スタイルを直接更新する。
-  // チップ列は Radix の Portal 内にあり open と同一コミットではマウントされない
-  // (ref が null のまま effect が走って終わる)ため、callback ref + state で
-  // 「実際に DOM が生えたとき」に effect を再実行させる。
-  const [chipRowEl, setChipRowEl] = useState<HTMLDivElement | null>(null);
-  const chipIndicatorTrackRef = useRef<HTMLDivElement | null>(null);
-  const chipIndicatorThumbRef = useRef<HTMLDivElement | null>(null);
 
   // 「下スワイプで閉じる」用: スワイプ開始Y座標(モバイルの自然な閉じ操作)。
   // touch イベントでなく Pointer Events を使う(DevTools のデバイスモードや
@@ -223,56 +214,13 @@ export function StyleBrowseSheet({
     [presets, activeChip, context],
   );
 
-  // チップ列のスクロールインジケーター更新。開いている間だけ監視する。
-  // rAF で間引き、位置は transform(合成のみ・レイアウト不発)で動かす。
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-    const el = chipRowEl;
-    const track = chipIndicatorTrackRef.current;
-    const thumb = chipIndicatorThumbRef.current;
-    if (!el || !track || !thumb) {
-      return;
-    }
-    let rafId: number | null = null;
-    const measure = () => {
-      rafId = null;
-      const { scrollWidth, clientWidth, scrollLeft } = el;
-      if (scrollWidth <= clientWidth + 1) {
-        track.style.visibility = "hidden";
-        return;
-      }
-      track.style.visibility = "visible";
-      const trackWidth = track.clientWidth;
-      const thumbWidth = trackWidth * (clientWidth / scrollWidth);
-      const maxScroll = scrollWidth - clientWidth;
-      // RTL では scrollLeft が負になるため絶対値で進捗率にし、移動方向を反転する。
-      const progress = Math.min(Math.abs(scrollLeft) / maxScroll, 1);
-      const direction =
-        getComputedStyle(track).direction === "rtl" ? -1 : 1;
-      thumb.style.width = `${thumbWidth}px`;
-      thumb.style.transform = `translateX(${
-        direction * progress * (trackWidth - thumbWidth)
-      }px)`;
-    };
-    const schedule = () => {
-      if (rafId === null) {
-        rafId = requestAnimationFrame(measure);
-      }
-    };
-    measure();
-    el.addEventListener("scroll", schedule, { passive: true });
-    const resizeObserver = new ResizeObserver(schedule);
-    resizeObserver.observe(el);
-    return () => {
-      if (rafId !== null) {
-        cancelAnimationFrame(rafId);
-      }
-      el.removeEventListener("scroll", schedule);
-      resizeObserver.disconnect();
-    };
-  }, [open, chips, chipRowEl]);
+  // チップ列の常時表示スクロールインジケーター(/styles と共通のフック)。
+  // 開いている間だけ監視し、チップ構成が変わったら再計測する。
+  const {
+    setScrollEl: setChipRowEl,
+    trackRef: chipIndicatorTrackRef,
+    thumbRef: chipIndicatorThumbRef,
+  } = useHorizontalScrollIndicator({ active: open, remeasureKey: chips });
 
   function chipLabel(chip: (typeof chips)[number]): string {
     if (chip.id.startsWith("category:")) {

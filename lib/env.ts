@@ -31,6 +31,11 @@ const envSchema = {
   // Site URL
   NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
 
+  // Google Search Console のサイト所有権確認トークン(メタタグ方式)。
+  // 未設定なら verification メタタグ自体を出力しない。
+  NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:
+    process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION,
+
   // Event
   NEXT_PUBLIC_EVENT_USER_ID: process.env.NEXT_PUBLIC_EVENT_USER_ID,
 
@@ -152,6 +157,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_STRIPE_PRICING_TABLE_ID || "",
     NEXT_PUBLIC_SITE_URL:
       envSchema.NEXT_PUBLIC_SITE_URL || "",
+    NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION:
+      envSchema.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
     NEXT_PUBLIC_EVENT_USER_ID:
       envSchema.NEXT_PUBLIC_EVENT_USER_ID || "",
     NEXT_PUBLIC_GA4_MEASUREMENT_ID:

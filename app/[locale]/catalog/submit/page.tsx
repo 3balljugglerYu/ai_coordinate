@@ -1,1 +1,1 @@
-export { default, metadata } from "../../../catalog/submit/page";
+export { default, generateMetadata } from "../../../catalog/submit/page";

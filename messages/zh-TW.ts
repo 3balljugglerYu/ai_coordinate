@@ -49,6 +49,11 @@ export const zhTwMessages = {
     privacy: "隱私權政策",
     communityGuidelines: "社群守則",
     disclosure: "商業揭露",
+    styles: "風格一覽",
+    catalog: "繪師目錄",
+    collections: "收藏圖鑑",
+    freeMaterials: "換裝免費素材",
+    creators: "創作者招募",
   },
   searchBar: {
     placeholder: "搜尋提示詞",

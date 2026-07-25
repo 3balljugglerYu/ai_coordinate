@@ -7,6 +7,7 @@ import { getPublicCollectionSeriesCatalog } from "@/features/collections/lib/col
 import { getCollectionProgressForUser } from "@/features/collections/lib/collection-progress-repository";
 import { buildCollectionCatalogView } from "@/features/collections/lib/collection-catalog-view";
 import { CollectionCatalogGrid } from "@/features/collections/components/CollectionCatalogGrid";
+import { createCanonicalAlternates } from "@/lib/metadata";
 
 const OGP_IMAGE = "/og/wafer-god.jpg";
 const PAGE_TITLE = "コレクション図鑑｜うちの子で集めよう | Persta.AI";
@@ -16,6 +17,7 @@ const PAGE_DESCRIPTION =
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
+  alternates: createCanonicalAlternates("/collections"),
   openGraph: {
     title: "コレクション図鑑｜うちの子で集めよう",
     description: "うちの子で楽しめるコレクション一覧。集めてコンプリートしよう。",

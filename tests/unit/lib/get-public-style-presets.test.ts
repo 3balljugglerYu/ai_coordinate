@@ -7,16 +7,19 @@ jest.mock("next/cache", () => ({
 
 jest.mock("@/features/style-presets/lib/style-preset-repository", () => ({
   getPublishedStylePresetById: jest.fn(),
+  getPublishedStylePresetBySlug: jest.fn(),
   listPublishedStylePresets: jest.fn(),
 }));
 
 import { cacheLife, cacheTag } from "next/cache";
 import {
   getPublishedStylePreset,
+  getPublishedStylePresetBySlugPublic,
   getPublishedStylePresets,
 } from "@/features/style-presets/lib/get-public-style-presets";
 import {
   getPublishedStylePresetById,
+  getPublishedStylePresetBySlug,
   listPublishedStylePresets,
 } from "@/features/style-presets/lib/style-preset-repository";
 
@@ -25,6 +28,10 @@ const mockCacheTag = cacheTag as jest.MockedFunction<typeof cacheTag>;
 const mockGetPublishedStylePresetById =
   getPublishedStylePresetById as jest.MockedFunction<
     typeof getPublishedStylePresetById
+  >;
+const mockGetPublishedStylePresetBySlug =
+  getPublishedStylePresetBySlug as jest.MockedFunction<
+    typeof getPublishedStylePresetBySlug
   >;
 const mockListPublishedStylePresets =
   listPublishedStylePresets as jest.MockedFunction<
@@ -123,5 +130,40 @@ describe("get-public-style-presets", () => {
       "preset-admin",
       { includeAdminOnly: true }
     );
+  });
+
+  test("getPublishedStylePresetBySlugPublic_slug指定で公開プリセットを返す", async () => {
+    mockGetPublishedStylePresetBySlug.mockResolvedValueOnce({
+      id: "preset-1",
+      slug: "paris-code",
+      title: "PARIS CODE",
+      thumbnailImageUrl: "https://example.com/style.webp",
+      thumbnailWidth: 912,
+      thumbnailHeight: 1173,
+      hasBackgroundPrompt: true,
+      createdAt: "2026-03-22T00:00:00.000Z",
+      publishedAt: null,
+      category: baseCategory,
+      imageInputMode: "single",
+      dualReferenceSource: "admin",
+    } as never);
+
+    const result = await getPublishedStylePresetBySlugPublic("paris-code");
+
+    expect(mockCacheTag).toHaveBeenCalledWith("style-presets");
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+    expect(mockGetPublishedStylePresetBySlug).toHaveBeenCalledWith(
+      "paris-code"
+    );
+    expect(result?.slug).toBe("paris-code");
+    expect(result?.id).toBe("preset-1");
+  });
+
+  test("getPublishedStylePresetBySlugPublic_見つからなければnullを返す", async () => {
+    mockGetPublishedStylePresetBySlug.mockResolvedValueOnce(null);
+
+    await expect(
+      getPublishedStylePresetBySlugPublic("unknown-slug")
+    ).resolves.toBeNull();
   });
 });

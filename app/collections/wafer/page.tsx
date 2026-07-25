@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { WaferGuide } from "@/features/collections/components/WaferGuide";
 
@@ -14,6 +15,7 @@ const PAGE_DESCRIPTION =
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
+  alternates: createCanonicalAlternates("/collections/wafer"),
   openGraph: {
     title: "うちの子の神コレクション｜6柱そろえてコンプリート",
     description:

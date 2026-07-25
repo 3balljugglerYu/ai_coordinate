@@ -306,6 +306,7 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
   const provider = extractProvider(row.provider);
   return {
     id: row.id,
+    slug: row.slug,
     title: row.title,
     thumbnailImageUrl: row.thumbnail_image_url,
     thumbnailWidth: row.thumbnail_width,
@@ -494,6 +495,32 @@ export async function getPublishedStylePresetById(
 
   if (error) {
     console.error("[style-preset-repository] get published by id error:", error);
+    return null;
+  }
+
+  if (!data) return null;
+  const preset = mapRowToPublicSummary(data as StylePresetRow);
+  return canAccessCategory(preset.category, options) ? preset : null;
+}
+
+export async function getPublishedStylePresetBySlug(
+  slug: string,
+  options: PublishedStylePresetAccessOptions = {},
+  client?: SupabaseClient
+): Promise<StylePresetPublicSummary | null> {
+  const supabase = getSupabase(client);
+  const { data, error } = await supabase
+    .from("style_presets")
+    .select(STYLE_PRESET_WITH_CATEGORY_SELECT)
+    .eq("slug", slug)
+    .eq("status", "published")
+    .maybeSingle();
+
+  if (error) {
+    console.error(
+      "[style-preset-repository] get published by slug error:",
+      error
+    );
     return null;
   }
 

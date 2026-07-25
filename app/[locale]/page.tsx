@@ -110,6 +110,15 @@ function HomeStructuredData({ locale }: { locale: Locale }) {
     "alternateName": ["Persta", "ペルスタ"],
     "url": siteUrl,
     "description": copy.organizationDescription,
+    // サイト内検索(/search?q=)の存在を検索エンジンに伝える(サイトリンク検索ボックス)
+    "potentialAction": {
+      "@type": "SearchAction",
+      "target": {
+        "@type": "EntryPoint",
+        "urlTemplate": `${siteUrl}${localizePublicPath("/search", locale)}?q={search_term_string}`,
+      },
+      "query-input": "required name=search_term_string",
+    },
   };
 
   return (

@@ -49,6 +49,11 @@ export const arMessages = {
     privacy: "سياسة الخصوصية",
     communityGuidelines: "إرشادات المجتمع",
     disclosure: "الإفصاح التجاري",
+    styles: "معرض الأنماط",
+    catalog: "دليل الرسّامين",
+    collections: "المجموعات",
+    freeMaterials: "مواد مجانية لتبديل الملابس",
+    creators: "للمبدعين",
   },
   searchBar: {
     placeholder: "ابحث في النصوص الموجِّهة",

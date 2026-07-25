@@ -148,6 +148,8 @@ export interface StylePresetAdmin {
 
 export interface StylePresetPublicSummary {
   id: string;
+  /** 一意 slug。/styles/[slug] の公開スタイル紹介ページ URL に使う。 */
+  slug: string;
   title: string;
   thumbnailImageUrl: string;
   thumbnailWidth: number;

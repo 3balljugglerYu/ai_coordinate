@@ -5,6 +5,7 @@ import {
   type PastCollab,
 } from "@/features/collab/components/CollabRecruitGuide";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
+import { createCanonicalAlternates } from "@/lib/metadata";
 
 const OGP_IMAGE = "/collections/wafer/god-share.webp";
 const PAGE_TITLE =
@@ -18,6 +19,7 @@ const ITALY_CATEGORY_KEY = "travel_to_italy";
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
+  alternates: createCanonicalAlternates("/collab"),
   openGraph: {
     title: "一緒にコラボしませんか？｜コラボ企画パートナー募集",
     description:

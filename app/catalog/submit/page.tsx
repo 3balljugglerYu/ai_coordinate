@@ -2,15 +2,25 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { getLocale } from "next-intl/server";
 import { env, isCatalogFeatureEnabled } from "@/lib/env";
 import { getCachedCampaignBySlug } from "@/features/catalog/lib/get-public-catalog";
 import { CatalogSubmissionForm } from "@/features/catalog/components/CatalogSubmissionForm";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { createLocaleAlternates } from "@/lib/metadata";
 
-export const metadata: Metadata = {
-  title: "作品を申請する | 絵師カタログ | Persta.AI",
-  description:
-    "X で活動するクリエイターさん向けの、絵師カタログ申請フォームです。未ログインでも申請できます。",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+
+  return {
+    title: "作品を申請する | 絵師カタログ | Persta.AI",
+    description:
+      "X で活動するクリエイターさん向けの、絵師カタログ申請フォームです。未ログインでも申請できます。",
+    // ?campaign=<slug> のクエリ違い URL はクエリ無しの /catalog/submit に正規化する
+    alternates: createLocaleAlternates("/catalog/submit", locale),
+  };
+}
 
 interface PageProps {
   searchParams: Promise<{ campaign?: string }>;

@@ -99,15 +99,15 @@ export function AppSidebar() {
   useEffect(() => {
     if (user && !hasPrefetched.current) {
       router.prefetch(localizedHomePath);
-      router.prefetch("/coordinate");
-      router.prefetch("/style");
+      router.prefetch(localizePublicPath("/coordinate", locale));
+      router.prefetch(localizePublicPath("/style", locale));
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
       router.prefetch("/my-page/contact");
       hasPrefetched.current = true;
     }
-  }, [localizedHomePath, user, router]);
+  }, [localizedHomePath, locale, user, router]);
 
   useEffect(() => {
     return subscribeCoordinateSourceStockSavePromptDot(
@@ -184,7 +184,9 @@ export function AppSidebar() {
         markMissionTabSnoozed();
       }
 
-      router.push(resolvedPath);
+      // 公開パス(/coordinate, /style 等)はロケール付き URL へ直接遷移し、
+      // proxy の 307 リダイレクトを介さない(1 ホップ分速くする)。
+      router.push(localizePublicPath(resolvedPath, locale));
     });
   };
 

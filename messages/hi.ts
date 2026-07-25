@@ -49,6 +49,11 @@ export const hiMessages = {
     privacy: "गोपनीयता नीति",
     communityGuidelines: "सामुदायिक दिशानिर्देश",
     disclosure: "व्यावसायिक प्रकटीकरण",
+    styles: "स्टाइल गैलरी",
+    catalog: "आर्टिस्ट कैटलॉग",
+    collections: "कलेक्शन",
+    freeMaterials: "मुफ़्त ड्रेस-अप सामग्री",
+    creators: "क्रिएटर्स के लिए",
   },
   searchBar: {
     placeholder: "प्रॉम्प्ट खोजें",

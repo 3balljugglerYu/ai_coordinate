@@ -149,8 +149,10 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   // - 既存のキャッシュ済み getPost を再利用し、余分なDB往復を避ける(MUST-ADDRESS-006)
   // - redirect() は内部で例外を投げるため try/catch の外で呼ぶ
   let completionRedirect: string | null = null;
+  let postForJsonLd: Awaited<ReturnType<typeof getPost>> = null;
   try {
     const post = await getPost(id, currentUserId, true);
+    postForJsonLd = post;
     if (post?.completion_id && post.is_posted) {
       completionRedirect =
         post.completion_view_mode === "book"
@@ -165,8 +167,58 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     redirect(completionRedirect);
   }
 
+  // 画像検索での発見性を高める ImageObject 構造化データ。
+  // getPost はキャッシュ済みのため追加の DB 往復は発生しない。
+  let imageJsonLd: Record<string, unknown> | null = null;
+  if (postForJsonLd) {
+    const localeValue = await getLocale();
+    const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+    const copy = getPostPageCopy(locale);
+    const siteUrl = getSiteUrl();
+    const rawImageUrl = getPostDisplayUrl(postForJsonLd);
+    const absoluteImageUrl =
+      rawImageUrl && rawImageUrl.startsWith("http")
+        ? rawImageUrl
+        : siteUrl && rawImageUrl
+          ? `${siteUrl}${rawImageUrl}`
+          : null;
+
+    if (absoluteImageUrl) {
+      imageJsonLd = {
+        "@context": "https://schema.org",
+        "@type": "ImageObject",
+        contentUrl: absoluteImageUrl,
+        name: buildSanitizedText(postForJsonLd.caption, copy.fallbackAlt, 80),
+        description: buildSanitizedText(
+          postForJsonLd.caption,
+          copy.fallbackDescription,
+          120
+        ),
+        ...(postForJsonLd.posted_at
+          ? { datePublished: postForJsonLd.posted_at }
+          : {}),
+        ...(postForJsonLd.user?.nickname
+          ? {
+              creator: {
+                "@type": "Person",
+                name: postForJsonLd.user.nickname,
+              },
+            }
+          : {}),
+      };
+    }
+  }
+
   // use cache でキャッシュして即時表示を優先（閲覧数はキャッシュ時スキップ）
   return (
-    <CachedPostDetail postId={id} currentUserId={currentUserId} />
+    <>
+      <CachedPostDetail postId={id} currentUserId={currentUserId} />
+      {imageJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(imageJsonLd) }}
+        />
+      )}
+    </>
   );
 }

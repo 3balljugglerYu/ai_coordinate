@@ -49,6 +49,11 @@ export const viMessages = {
     privacy: "Chính sách bảo mật",
     communityGuidelines: "Nguyên tắc cộng đồng",
     disclosure: "Công bố thương mại",
+    styles: "Thư viện phong cách",
+    catalog: "Danh mục họa sĩ",
+    collections: "Bộ sưu tập",
+    freeMaterials: "Tài nguyên miễn phí",
+    creators: "Dành cho nhà sáng tạo",
   },
   searchBar: {
     placeholder: "Tìm prompt",

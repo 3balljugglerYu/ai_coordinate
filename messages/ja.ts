@@ -46,6 +46,11 @@ export const jaMessages = {
     privacy: "プライバシーポリシー",
     communityGuidelines: "コミュニティガイドライン",
     disclosure: "商取引に関する開示",
+    styles: "スタイル一覧",
+    catalog: "絵師カタログ",
+    collections: "コレクション図鑑",
+    freeMaterials: "着せ替えフリー素材",
+    creators: "クリエイター募集",
   },
   searchBar: {
     placeholder: "プロンプト検索",
