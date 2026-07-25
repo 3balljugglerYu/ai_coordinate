@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
+import { truncateStylePresetName } from "@/features/style/lib/style-preset-name";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import { localizePublicPath, type Locale } from "@/i18n/config";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -92,8 +93,12 @@ export function PublicStyleCard({
             className="flex shrink-0 items-center"
           />
         )}
-        <p className="line-clamp-2 text-sm font-semibold text-gray-900">
-          {preset.title}
+        {/* ホーム/style のカードと同じ1行表示(16文字で切り詰め + truncate)。 */}
+        <p
+          className="truncate text-sm font-semibold text-gray-900"
+          title={preset.title}
+        >
+          {truncateStylePresetName(preset.title)}
         </p>
       </div>
     </Link>

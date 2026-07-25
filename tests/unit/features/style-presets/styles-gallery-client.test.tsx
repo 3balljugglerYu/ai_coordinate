@@ -313,6 +313,41 @@ describe("StylesGalleryClient", () => {
     expect(frame.className).not.toContain("aspect-[3/4]");
   });
 
+  test("モーダル_Escで閉じられる(AlertDialogではなく通常のDialog)", async () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-a"));
+    expect(screen.getByText("こちらを試着しますか？")).toBeTruthy();
+
+    fireEvent.keyDown(document, { key: "Escape" });
+
+    await waitFor(() =>
+      expect(screen.queryByText("こちらを試着しますか？")).toBeNull(),
+    );
+  });
+
+  test("カードタイトル_16文字を超える場合は1行に切り詰める", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("あいうえおかきくけこさしすせそたちつてと")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    expect(
+      screen.getByText("あいうえおかきくけこさしすせそた..."),
+    ).toBeTruthy();
+  });
+
   test("カード選択_修飾キー付きクリックはモーダルを開かない(リンク既定動作)", () => {
     render(
       <StylesGalleryClient

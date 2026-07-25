@@ -2,15 +2,15 @@
 
 import Image from "next/image";
 import { useTranslations } from "next-intl";
+import { Button } from "@/components/ui/button";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 interface StyleTryOnConfirmDialogProps {
@@ -23,10 +23,12 @@ interface StyleTryOnConfirmDialogProps {
 
 /**
  * 「こちらを試着しますか？」の確認モーダル。
- * ホームのスタイルカルーセルと /styles のギャラリーで共用する。
+ * ホームのスタイルカルーセル・企画棚と /styles のギャラリーで共用する。
  *
- * 画像はサムネイルの実アスペクト比で表示する(探索シートと同じ挙動)。
- * 横長はクロップせず全幅、縦長はダイアログが縦に伸びすぎないよう幅280pxに抑える。
+ * 気軽に眺めて戻れるよう AlertDialog ではなく通常の Dialog を使う
+ * (探索シートの拡大プレビューと同じ方針。枠外タップ・Esc・× で閉じられる)。
+ * 画像はサムネイルの実アスペクト比で表示する。横長はクロップせず全幅、
+ * 縦長はダイアログが縦に伸びすぎないよう幅280pxに抑える。
  * 文言はホーム由来の home.stylePresetConfirm* キーを共通利用する。
  */
 export function StyleTryOnConfirmDialog({
@@ -38,13 +40,17 @@ export function StyleTryOnConfirmDialog({
   const tHome = useTranslations("home");
 
   return (
-    <AlertDialog open={preset !== null} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>
+    <Dialog open={preset !== null} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="text-center">
             {tHome("stylePresetConfirmTitle")}
-          </AlertDialogTitle>
-        </AlertDialogHeader>
+          </DialogTitle>
+          {/* Radix の a11y 要件(aria-describedby)。視覚的には冗長なので sr-only。 */}
+          <DialogDescription className="sr-only">
+            {t("styleBrowseConfirmDescription")}
+          </DialogDescription>
+        </DialogHeader>
         {preset ? (
           <div className="flex flex-col items-center gap-3 py-2">
             <div
@@ -73,15 +79,15 @@ export function StyleTryOnConfirmDialog({
             </p>
           </div>
         ) : null}
-        <AlertDialogFooter>
-          <AlertDialogCancel>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
             {tHome("stylePresetConfirmCancel")}
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm}>
+          </Button>
+          <Button onClick={onConfirm}>
             {tHome("stylePresetConfirmAction")}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

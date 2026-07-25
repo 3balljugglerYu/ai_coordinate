@@ -5,9 +5,9 @@ import Image from "next/image";
 import { Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
+import { truncateStylePresetName } from "@/features/style/lib/style-preset-name";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 
-const PRESET_NAME_MAX_CHARACTERS = 16;
 const STYLE_PRESET_CARD_WIDTH_PX = 180;
 const STYLE_PRESET_CARD_IMAGE_HEIGHT_PX = 240;
 const STYLE_PRESET_CARD_TITLE_HEIGHT_PX = 44;
@@ -100,13 +100,9 @@ export function buildStylePresetImageSrc(
   return preset.thumbnailImageUrl;
 }
 
-export function truncateStylePresetName(name: string): string {
-  const characters = Array.from(name);
-  if (characters.length <= PRESET_NAME_MAX_CHARACTERS) {
-    return name;
-  }
-  return `${characters.slice(0, PRESET_NAME_MAX_CHARACTERS).join("")}...`;
-}
+// 切り詰めロジックはサーバーでも描画される PublicStyleCard と共有するため
+// features/style/lib/style-preset-name.ts に移動した(既存importの互換で再export)。
+export { truncateStylePresetName } from "@/features/style/lib/style-preset-name";
 
 export function StylePresetPreviewCard({
   preset,
