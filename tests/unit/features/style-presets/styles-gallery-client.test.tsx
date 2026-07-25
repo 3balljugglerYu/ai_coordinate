@@ -67,12 +67,16 @@ function preset(
     categoryKey: string;
     categoryLabelJa: string;
     publishedDaysAgo: number;
+    thumbnailWidth: number;
+    thumbnailHeight: number;
   }> = {},
 ): StylePresetPublicSummary {
   const {
     categoryKey = "coordinate",
     categoryLabelJa = "コーディネート",
     publishedDaysAgo = 100,
+    thumbnailWidth = 912,
+    thumbnailHeight = 1173,
   } = overrides;
   const publishedAt = new Date(
     Date.parse(NOW_ISO) - publishedDaysAgo * 86400000,
@@ -82,8 +86,8 @@ function preset(
     slug: id,
     title: id,
     thumbnailImageUrl: "https://example.com/x.webp",
-    thumbnailWidth: 912,
-    thumbnailHeight: 1173,
+    thumbnailWidth,
+    thumbnailHeight,
     hasBackgroundPrompt: false,
     createdAt: publishedAt,
     publishedAt,
@@ -221,6 +225,54 @@ describe("StylesGalleryClient", () => {
     fireEvent.click(screen.getByText("試着する"));
 
     expect(routerPushMock).toHaveBeenCalledWith("/ja/style?style=style-a");
+  });
+
+  // jsdom は aspect-ratio プロパティを解釈せず style 属性から落とすため、
+  // 実比率表示の分岐は「横長=全幅 / 縦長=幅280px制限」の class 切替で検証する
+  // (探索シートと同じ表示ロジック)。
+  function getConfirmImageFrame(presetId: string): HTMLElement {
+    // 1枚目はグリッドのカード画像、2枚目がモーダル内の拡大画像
+    const images = screen.getAllByAltText(`スタイル ${presetId}`);
+    const frame = images[images.length - 1]?.parentElement;
+    expect(frame).toBeTruthy();
+    return frame as HTMLElement;
+  }
+
+  test("カード選択_横長サムネイルはクロップせず全幅で表示する", () => {
+    render(
+      <StylesGalleryClient
+        presets={[
+          preset("style-wide", { thumbnailWidth: 1200, thumbnailHeight: 800 }),
+        ]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-wide"));
+
+    const frame = getConfirmImageFrame("style-wide");
+    expect(frame.className).not.toContain("max-w-[280px]");
+    // 3:4 固定クロップ(旧実装)に戻っていないこと
+    expect(frame.className).not.toContain("aspect-[3/4]");
+  });
+
+  test("カード選択_縦長サムネイルは幅280pxに制限する", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-tall")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-tall"));
+
+    const frame = getConfirmImageFrame("style-tall");
+    expect(frame.className).toContain("max-w-[280px]");
+    expect(frame.className).not.toContain("aspect-[3/4]");
   });
 
   test("カード選択_修飾キー付きクリックはモーダルを開かない(リンク既定動作)", () => {
