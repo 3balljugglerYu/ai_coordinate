@@ -1,10 +1,25 @@
 import type { Metadata } from "next";
+import { cacheLife, cacheTag } from "next/cache";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
-import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
+import { StylesGalleryClient } from "@/features/style-presets/components/StylesGalleryClient";
+import { getStyleGenerateCounts } from "@/features/style/lib/style-popularity";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
 import { getSiteUrl } from "@/lib/env";
+
+/**
+ * 「✨新着」「🎉イベント」チップ判定の基準時刻。
+ * 静的プリレンダ中は Date を直接使えないため "use cache" スコープで確定させる。
+ * cacheLife はプリセット一覧のキャッシュ(minutes)と揃え、数分単位で追従する
+ * (判定窓は 14 日なのでこの粒度で十分)。
+ */
+async function getStylesGalleryNowIso(): Promise<string> {
+  "use cache";
+  cacheTag("style-presets");
+  cacheLife("minutes");
+  return new Date().toISOString();
+}
 
 // locale は cookie 依存の getLocale() ではなく URL パラメータから解決する。
 // これによりページ全体が静的プリレンダ可能になり、JSON-LD が初期 HTML に含まれる
@@ -38,7 +53,11 @@ export default async function StylesIndexPage({
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
   const copy = getStylesCopy(locale);
-  const presets = await getPublishedStylePresets();
+  const [presets, generateCounts, nowIso] = await Promise.all([
+    getPublishedStylePresets(),
+    getStyleGenerateCounts(),
+    getStylesGalleryNowIso(),
+  ]);
   // HomeStructuredData と同じ方針: 環境変数未設定時も既定ドメインで JSON-LD を出す
   const siteUrl = getSiteUrl() || "https://persta.ai";
 
@@ -67,11 +86,12 @@ export default async function StylesIndexPage({
           </p>
         </header>
 
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
-          {presets.map((preset) => (
-            <PublicStyleCard key={preset.id} preset={preset} locale={locale} />
-          ))}
-        </div>
+        <StylesGalleryClient
+          presets={presets}
+          generateCounts={generateCounts}
+          nowIso={nowIso}
+          locale={locale}
+        />
       </div>
 
       <script
