@@ -22,6 +22,8 @@ const T: Record<string, string> = {
   styleChipPopular: "人気",
   styleChipCreator: "クリエイター",
   styleFavoritesEmpty: "お気に入りはまだありません",
+  styleFavoriteAdd: "お気に入りに追加",
+  styleFavoriteRemove: "お気に入りを解除",
   stylePopularSortNote: "直近30日の生成数順",
 };
 
@@ -109,10 +111,14 @@ function preset(
 }
 
 describe("StylesGalleryClient", () => {
+  const fetchMock = jest.fn();
+
   beforeEach(() => {
     jest.clearAllMocks();
     getUserMock.mockResolvedValue({ data: { user: null } });
     favoritesSelectMock.mockResolvedValue({ data: [] });
+    fetchMock.mockResolvedValue({ ok: true });
+    global.fetch = fetchMock as unknown as typeof fetch;
   });
 
   test("初期表示_全プリセットとカテゴリチップを表示する", async () => {
@@ -320,6 +326,56 @@ describe("StylesGalleryClient", () => {
     fireEvent.click(screen.getByText("style-a"), { metaKey: true });
 
     expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+  });
+
+  test("しおり_ログイン済みはトグルでAPIを呼び楽観更新する", async () => {
+    getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
+
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    // 認証状態がクライアントで解決されるのを待つ(お気に入りチップの出現で判定)
+    await screen.findByRole("tab", { name: /お気に入り/ });
+
+    fireEvent.click(screen.getByRole("button", { name: "お気に入りに追加" }));
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/style-presets/favorites",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ presetId: "style-a" }),
+      }),
+    );
+    // 楽観更新でしおりが「解除」表示に切り替わる
+    expect(
+      screen.getByRole("button", { name: "お気に入りを解除" }),
+    ).toBeTruthy();
+  });
+
+  test("しおり_未ログインはAPIを呼ばない(ログイン誘導のみ)", async () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+    await waitFor(() => expect(getUserMock).toHaveBeenCalled());
+
+    fireEvent.click(screen.getByRole("button", { name: "お気に入りに追加" }));
+
+    expect(fetchMock).not.toHaveBeenCalled();
+    // 集合は変更されない(「追加」表示のまま)
+    expect(
+      screen.getByRole("button", { name: "お気に入りに追加" }),
+    ).toBeTruthy();
   });
 
   test("ログイン済み_お気に入りチップが現れ絞り込める", async () => {

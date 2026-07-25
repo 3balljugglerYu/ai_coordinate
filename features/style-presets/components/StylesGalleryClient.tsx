@@ -3,7 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Bookmark } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useStyleFavorites } from "@/features/style/hooks/useStyleFavorites";
 import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
 import {
@@ -56,10 +58,11 @@ export function StylesGalleryClient({
   const t = useTranslations("style");
   const router = useRouter();
   const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
-  const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(
-    () => new Set()
-  );
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // お気に入り(しおり)の集合と楽観更新トグル。/style・ホームと同じフックを共用する
+  // (ゲストのタップはフック側がログイン誘導トーストを出す)。
+  const { favoritePresetIds, toggleFavorite, hydrateFavorites } =
+    useStyleFavorites({ isAuthenticated });
   // カードタップは即遷移せず、ホームのカルーセルと同じ「試着しますか？」確認を挟む。
   // 紹介ページ(/styles/[slug])へは href(修飾キー付きクリック/クローラー)で辿れる。
   const [confirmingPreset, setConfirmingPreset] =
@@ -96,12 +99,10 @@ export function StylesGalleryClient({
         if (cancelled) {
           return;
         }
-        setFavoriteIds(
-          new Set(
-            (data ?? [])
-              .map((row) => row.preset_id as string)
-              .filter(Boolean)
-          )
+        hydrateFavorites(
+          (data ?? [])
+            .map((row) => row.preset_id as string)
+            .filter(Boolean)
         );
       } catch {
         // 認証状態の取得に失敗してもゲスト表示として成立する
@@ -110,16 +111,18 @@ export function StylesGalleryClient({
     return () => {
       cancelled = true;
     };
+    // hydrateFavorites は useCallback で安定しているためマウント時のみ実行する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const context = useMemo(
     () => ({
-      favoriteIds,
+      favoriteIds: favoritePresetIds,
       generateCounts,
       now: new Date(nowIso),
       isAuthenticated,
     }),
-    [favoriteIds, generateCounts, nowIso, isAuthenticated]
+    [favoritePresetIds, generateCounts, nowIso, isAuthenticated]
   );
   const chips = useMemo(
     () => deriveStyleBrowseChips(presets, context),
@@ -206,14 +209,41 @@ export function StylesGalleryClient({
         </p>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
-          {filtered.map((preset) => (
-            <PublicStyleCard
-              key={preset.id}
-              preset={preset}
-              locale={locale}
-              onSelect={setConfirmingPreset}
-            />
-          ))}
+          {filtered.map((preset) => {
+            const isFavorite = favoritePresetIds.has(preset.id);
+            return (
+              <div key={preset.id} className="relative">
+                <PublicStyleCard
+                  preset={preset}
+                  locale={locale}
+                  onSelect={setConfirmingPreset}
+                />
+                {/* お気に入り(しおり)はカード(リンク)の兄弟としてオーバーレイ配置
+                    (a 要素への button ネスト回避)。探索シートと同じ意匠。
+                    ゲストのタップはフック側がログイン誘導トーストを出す。 */}
+                <button
+                  type="button"
+                  onClick={() => void toggleFavorite(preset.id, !isFavorite)}
+                  aria-label={
+                    isFavorite
+                      ? t("styleFavoriteRemove")
+                      : t("styleFavoriteAdd")
+                  }
+                  aria-pressed={isFavorite}
+                  className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:left-2 sm:top-2 sm:h-9 sm:w-9"
+                >
+                  <Bookmark
+                    className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                      isFavorite
+                        ? "fill-pink-500 text-pink-500"
+                        : "text-slate-400"
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 

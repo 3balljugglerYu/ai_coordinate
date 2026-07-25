@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -76,5 +76,14 @@ export function useStyleFavorites({
     }
   };
 
-  return { favoritePresetIds, toggleFavorite };
+  /**
+   * 遅延取得した初期お気に入りを反映する(/styles のように認証状態を
+   * クライアント側で解決するページ用)。既存の集合を丸ごと置き換えるため、
+   * マウント直後の初期化にのみ使い、楽観更新後には呼ばないこと。
+   */
+  const hydrateFavorites = useCallback((presetIds: readonly string[]) => {
+    setFavoritePresetIds(new Set(presetIds));
+  }, []);
+
+  return { favoritePresetIds, toggleFavorite, hydrateFavorites };
 }
