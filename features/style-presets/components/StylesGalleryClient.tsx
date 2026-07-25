@@ -1,20 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
+import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
 import {
   deriveStyleBrowseChips,
   filterStyleBrowsePresets,
@@ -63,7 +54,6 @@ export function StylesGalleryClient({
   locale,
 }: StylesGalleryClientProps) {
   const t = useTranslations("style");
-  const tHome = useTranslations("home");
   const router = useRouter();
   const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
   const [favoriteIds, setFavoriteIds] = useState<ReadonlySet<string>>(
@@ -227,63 +217,16 @@ export function StylesGalleryClient({
         </div>
       )}
 
-      {/* ホームのカルーセルと同じ試着確認モーダル。「試着する」で /style へ遷移する。 */}
-      <AlertDialog
-        open={confirmingPreset !== null}
+      {/* ホームのカルーセルと共通の試着確認モーダル。「試着する」で /style へ遷移する。 */}
+      <StyleTryOnConfirmDialog
+        preset={confirmingPreset}
         onOpenChange={(open) => {
           if (!open) {
             setConfirmingPreset(null);
           }
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {tHome("stylePresetConfirmTitle")}
-            </AlertDialogTitle>
-          </AlertDialogHeader>
-          {confirmingPreset ? (
-            <div className="flex flex-col items-center gap-3 py-2">
-              {/* 画像はサムネの実アスペクト比で表示(探索シートと同じ挙動。横長はクロップしない)。
-                  縦長はダイアログが縦に伸びすぎないよう幅280pxに抑え、横長は全幅を使う。 */}
-              <div
-                className={`relative w-full overflow-hidden rounded-lg bg-gray-100 ${
-                  confirmingPreset.thumbnailWidth >
-                  confirmingPreset.thumbnailHeight
-                    ? ""
-                    : "max-w-[280px]"
-                }`}
-                style={{
-                  aspectRatio:
-                    confirmingPreset.thumbnailWidth > 0 &&
-                    confirmingPreset.thumbnailHeight > 0
-                      ? `${confirmingPreset.thumbnailWidth} / ${confirmingPreset.thumbnailHeight}`
-                      : "3 / 4",
-                }}
-              >
-                <Image
-                  src={confirmingPreset.thumbnailImageUrl}
-                  alt={t("styleCardAlt", { name: confirmingPreset.title })}
-                  fill
-                  sizes="(max-width: 640px) 90vw, 480px"
-                  className="object-cover object-top"
-                />
-              </div>
-              <p className="text-base font-medium text-slate-900">
-                {confirmingPreset.title}
-              </p>
-            </div>
-          ) : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {tHome("stylePresetConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>
-              {tHome("stylePresetConfirmAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={handleConfirm}
+      />
     </div>
   );
 }

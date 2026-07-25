@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
@@ -9,16 +8,8 @@ import { LayoutGrid } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { FreeMode } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -332,42 +323,12 @@ export function HomeStylePresetCarousel({
           })}
         </Swiper>
       </div>
-      <AlertDialog
-        open={confirmingPreset !== null}
+      {/* /styles と共通の試着確認モーダル(サムネイルの実アスペクト比で表示)。 */}
+      <StyleTryOnConfirmDialog
+        preset={confirmingPreset}
         onOpenChange={handleDialogOpenChange}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {tHome("stylePresetConfirmTitle")}
-            </AlertDialogTitle>
-          </AlertDialogHeader>
-          {confirmingPreset ? (
-            <div className="flex flex-col items-center gap-3 py-2">
-              <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-lg bg-gray-100">
-                <Image
-                  src={confirmingPreset.thumbnailImageUrl}
-                  alt={t("styleCardAlt", { name: confirmingPreset.title })}
-                  fill
-                  sizes="280px"
-                  className="object-cover object-top"
-                />
-              </div>
-              <p className="text-base font-medium text-slate-900">
-                {confirmingPreset.title}
-              </p>
-            </div>
-          ) : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {tHome("stylePresetConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>
-              {tHome("stylePresetConfirmAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={handleConfirm}
+      />
     </div>
   );
 }
