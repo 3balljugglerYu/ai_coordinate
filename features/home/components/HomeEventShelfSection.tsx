@@ -7,15 +7,6 @@ import { useLocale, useTranslations } from "next-intl";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { FreeMode } from "swiper/modules";
 import { PartyPopper } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
   CollectionProgressModal,
@@ -27,6 +18,12 @@ import {
 } from "@/features/collections/components/CollectionMountComposer";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+} from "@/i18n/config";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import type { CompletedMountView } from "@/features/my-page/components/MyPageCollections";
 import type {
@@ -224,7 +221,11 @@ export function HomeEventShelfSection({
       return;
     }
     setConfirmingPreset(null);
-    router.push(`/style?style=${encodeURIComponent(preset.id)}`);
+    // 公開パスはロケール付き URL へ直接遷移し、proxy の 307 リダイレクトを介さない。
+    const pathLocale = isLocale(locale) ? locale : DEFAULT_LOCALE;
+    router.push(
+      `${localizePublicPath("/style", pathLocale)}?style=${encodeURIComponent(preset.id)}`
+    );
   };
 
   const renderCard = (card: EventShelfCard) => {
@@ -403,46 +404,17 @@ export function HomeEventShelfSection({
           ))}
         </Swiper>
       </div>
-      <AlertDialog
-        open={confirmingPreset !== null}
+      {/* ホームのカルーセル・/styles と共通の試着確認モーダル
+          (サムネイルの実アスペクト比で表示)。 */}
+      <StyleTryOnConfirmDialog
+        preset={confirmingPreset}
         onOpenChange={(open) => {
           if (!open) {
             setConfirmingPreset(null);
           }
         }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t("stylePresetConfirmTitle")}</AlertDialogTitle>
-          </AlertDialogHeader>
-          {confirmingPreset ? (
-            <div className="flex flex-col items-center gap-3 py-2">
-              <div className="relative aspect-[3/4] w-full max-w-[280px] overflow-hidden rounded-lg bg-gray-100">
-                <Image
-                  src={confirmingPreset.thumbnailImageUrl}
-                  alt={tStyle("styleCardAlt", {
-                    name: confirmingPreset.title,
-                  })}
-                  fill
-                  sizes="280px"
-                  className="object-cover object-top"
-                />
-              </div>
-              <p className="text-base font-medium text-slate-900">
-                {confirmingPreset.title}
-              </p>
-            </div>
-          ) : null}
-          <AlertDialogFooter>
-            <AlertDialogCancel>
-              {t("stylePresetConfirmCancel")}
-            </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirm}>
-              {t("stylePresetConfirmAction")}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        onConfirm={handleConfirm}
+      />
       <CollectionProgressModal
         key={
           mountCelebration
