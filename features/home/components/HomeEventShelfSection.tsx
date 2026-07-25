@@ -50,6 +50,8 @@ interface HomeEventShelfSectionProps {
    * null(未作成/未ログイン)なら /collections リンクのお祝いカードにフォールバック。
    */
   completedMount?: CompletedMountView | null;
+  /** プリセットID -> 累計生成数(試着確認モーダルの「これまでに◯回」表示)。 */
+  generateTotals?: Readonly<Record<string, number>>;
 }
 
 /**
@@ -61,6 +63,7 @@ export function HomeEventShelfSection({
   shelf,
   nowIso,
   completedMount = null,
+  generateTotals,
 }: HomeEventShelfSectionProps) {
   const router = useRouter();
   const t = useTranslations("home");
@@ -414,6 +417,8 @@ export function HomeEventShelfSection({
           }
         }}
         onConfirm={handleConfirm}
+        locale={cardLocale}
+        generateTotals={generateTotals}
       />
       <CollectionProgressModal
         key={

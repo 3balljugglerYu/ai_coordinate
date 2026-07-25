@@ -24,6 +24,8 @@ interface HomeStylePresetCarouselProps {
   presets: StylePresetPublicSummary[];
   /** NEW バッジを付ける新着プリセットID(登録14日以内)。 */
   newPresetIds?: readonly string[];
+  /** プリセットID -> 累計生成数(試着確認モーダルの「これまでに◯回」表示)。 */
+  generateTotals?: Readonly<Record<string, number>>;
 }
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
@@ -78,6 +80,7 @@ function saveCurrentTranslate(swiper: SwiperType | null) {
 export function HomeStylePresetCarousel({
   presets,
   newPresetIds,
+  generateTotals,
 }: HomeStylePresetCarouselProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -328,6 +331,8 @@ export function HomeStylePresetCarousel({
         preset={confirmingPreset}
         onOpenChange={handleDialogOpenChange}
         onConfirm={handleConfirm}
+        locale={locale === "ja" ? "ja" : "en"}
+        generateTotals={generateTotals}
       />
     </div>
   );

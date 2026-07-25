@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import { cacheLife, cacheTag } from "next/cache";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { StylesGalleryClient } from "@/features/style-presets/components/StylesGalleryClient";
-import { getStyleGenerateCounts } from "@/features/style/lib/style-popularity";
+import {
+  getStyleGenerateCounts,
+  getStyleGenerateTotalCounts,
+} from "@/features/style/lib/style-popularity";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
@@ -53,9 +56,10 @@ export default async function StylesIndexPage({
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
   const copy = getStylesCopy(locale);
-  const [presets, generateCounts, nowIso] = await Promise.all([
+  const [presets, generateCounts, generateTotals, nowIso] = await Promise.all([
     getPublishedStylePresets(),
     getStyleGenerateCounts(),
+    getStyleGenerateTotalCounts(),
     getStylesGalleryNowIso(),
   ]);
   // HomeStructuredData と同じ方針: 環境変数未設定時も既定ドメインで JSON-LD を出す
@@ -89,6 +93,7 @@ export default async function StylesIndexPage({
         <StylesGalleryClient
           presets={presets}
           generateCounts={generateCounts}
+          generateTotals={generateTotals}
           nowIso={nowIso}
           locale={locale}
         />

@@ -1,6 +1,12 @@
 /** @jest-environment jsdom */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { StylesGalleryClient } from "@/features/style-presets/components/StylesGalleryClient";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
@@ -25,6 +31,9 @@ const T: Record<string, string> = {
   styleFavoriteAdd: "お気に入りに追加",
   styleFavoriteRemove: "お気に入りを解除",
   stylePopularSortNote: "直近30日の生成数順",
+  styleBrowseConfirmTitle: "こちらを試着しますか？",
+  styleBrowseConfirmAction: "試着する",
+  styleBrowseConfirmCancel: "他のスタイルをみる",
 };
 
 const HOME_T: Record<string, string> = {
@@ -40,6 +49,8 @@ jest.mock("next-intl", () => ({
       if (namespace === "home") return HOME_T[key] ?? key;
       if (key === "styleNewSortNote") return `直近${values?.days}日の新着`;
       if (key === "styleCardAlt") return `スタイル ${values?.name}`;
+      if (key === "styleUsageCount")
+        return `これまでに${values?.count}回つくられました`;
       return T[key] ?? key;
     },
 }));
@@ -71,6 +82,7 @@ function preset(
     publishedDaysAgo: number;
     thumbnailWidth: number;
     thumbnailHeight: number;
+    providerNickname: string;
   }> = {},
 ): StylePresetPublicSummary {
   const {
@@ -79,6 +91,7 @@ function preset(
     publishedDaysAgo = 100,
     thumbnailWidth = 912,
     thumbnailHeight = 1173,
+    providerNickname,
   } = overrides;
   const publishedAt = new Date(
     Date.parse(NOW_ISO) - publishedDaysAgo * 86400000,
@@ -95,6 +108,9 @@ function preset(
     publishedAt,
     imageInputMode: "single",
     dualReferenceSource: "admin",
+    providerUserId: providerNickname ? "provider-1" : null,
+    providerNickname: providerNickname ?? null,
+    providerAvatarUrl: null,
     category: {
       id: `cat-${categoryKey}`,
       key: categoryKey,
@@ -132,6 +148,7 @@ describe("StylesGalleryClient", () => {
           }),
         ]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -158,6 +175,7 @@ describe("StylesGalleryClient", () => {
           }),
         ]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -188,6 +206,7 @@ describe("StylesGalleryClient", () => {
           }),
         ]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -211,6 +230,7 @@ describe("StylesGalleryClient", () => {
           preset("style-c"),
         ]}
         generateCounts={{ "style-a": 2, "style-b": 10 }}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -235,6 +255,7 @@ describe("StylesGalleryClient", () => {
           preset("style-new", { publishedDaysAgo: 3 }),
         ]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -251,6 +272,7 @@ describe("StylesGalleryClient", () => {
       <StylesGalleryClient
         presets={[preset("style-a")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -283,6 +305,7 @@ describe("StylesGalleryClient", () => {
           preset("style-wide", { thumbnailWidth: 1200, thumbnailHeight: 800 }),
         ]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -301,6 +324,7 @@ describe("StylesGalleryClient", () => {
       <StylesGalleryClient
         presets={[preset("style-tall")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -313,11 +337,50 @@ describe("StylesGalleryClient", () => {
     expect(frame.className).not.toContain("aspect-[3/4]");
   });
 
+  test("モーダル_提供者クレジットと累計生成数を表示する", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a", { providerNickname: "氷洞つらら" })]}
+        generateCounts={{}}
+        generateTotals={{ "style-a": 12 }}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-a"));
+
+    // モーダル内に提供者クレジットと累計生成数が表示される
+    const dialog = within(screen.getByRole("dialog"));
+    expect(dialog.getByText(/氷洞つらら/)).toBeTruthy();
+    expect(dialog.getByText("これまでに12回つくられました")).toBeTruthy();
+    // 探索シートと同じボタン構成(「他のスタイルをみる」で閉じる)
+    expect(dialog.getByText("他のスタイルをみる")).toBeTruthy();
+  });
+
+  test("モーダル_累計0回のプリセットでは回数を表示しない", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        generateTotals={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    fireEvent.click(screen.getByText("style-a"));
+
+    expect(screen.getByText("こちらを試着しますか？")).toBeTruthy();
+    expect(screen.queryByText(/これまでに/)).toBeNull();
+  });
+
   test("モーダル_Escで閉じられる(AlertDialogではなく通常のDialog)", async () => {
     render(
       <StylesGalleryClient
         presets={[preset("style-a")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -338,6 +401,7 @@ describe("StylesGalleryClient", () => {
       <StylesGalleryClient
         presets={[preset("あいうえおかきくけこさしすせそたちつてと")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -353,6 +417,7 @@ describe("StylesGalleryClient", () => {
       <StylesGalleryClient
         presets={[preset("style-a")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -370,6 +435,7 @@ describe("StylesGalleryClient", () => {
       <StylesGalleryClient
         presets={[preset("style-a")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -398,6 +464,7 @@ describe("StylesGalleryClient", () => {
       <StylesGalleryClient
         presets={[preset("style-a")]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,
@@ -429,6 +496,7 @@ describe("StylesGalleryClient", () => {
           }),
         ]}
         generateCounts={{}}
+        generateTotals={{}}
         nowIso={NOW_ISO}
         locale="ja"
       />,

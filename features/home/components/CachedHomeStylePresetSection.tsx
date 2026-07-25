@@ -17,7 +17,10 @@ import {
   listActiveEventCategoryKeys,
 } from "@/features/home/lib/derive-event-shelves";
 import type { CompletedMountView } from "@/features/my-page/components/MyPageCollections";
-import { getStyleGenerateCounts } from "@/features/style/lib/style-popularity";
+import {
+  getStyleGenerateCounts,
+  getStyleGenerateTotalCounts,
+} from "@/features/style/lib/style-popularity";
 import {
   deriveHomeCarouselPresets,
   isNewPreset,
@@ -162,10 +165,13 @@ export async function CachedHomeStylePresetSection({
     unlockContext,
   );
 
-  // カルーセルの並び順(人気)に使う全ユーザー共通の "use cache" 済み集計。
-  // かつてはホーム上の探索シート用に累計集計・お気に入りも取得していたが、
-  // 「すべて見る」を /styles ページへのリンクに統一したため不要になった。
-  const generateCounts = await getStyleGenerateCounts();
+  // 全ユーザー共通の "use cache" 済み集計。
+  // 人気(直近30日)はカルーセルの並び順、累計は試着確認モーダルの
+  // 「これまでに◯回つくられました」表示に使う。
+  const [generateCounts, generateTotals] = await Promise.all([
+    getStyleGenerateCounts(),
+    getStyleGenerateTotalCounts(),
+  ]);
 
   // カルーセルは「新着(先頭・最大 CAROUSEL_MAX_NEW_ITEMS 枚) + 人気順」の
   // 上位 CAROUSEL_MAX_ITEMS 枚のみ表示する。人気順だけだと登録直後の
@@ -191,11 +197,13 @@ export async function CachedHomeStylePresetSection({
           shelf={shelf}
           nowIso={now.toISOString()}
           completedMount={completedMountByKey.get(shelf.categoryKey) ?? null}
+          generateTotals={generateTotals}
         />
       ))}
       <HomeStylePresetCarousel
         presets={carouselPresets}
         newPresetIds={newPresetIds}
+        generateTotals={generateTotals}
       />
     </>
   );

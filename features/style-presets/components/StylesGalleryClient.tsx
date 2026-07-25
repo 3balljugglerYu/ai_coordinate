@@ -30,6 +30,8 @@ interface StylesGalleryClientProps {
   presets: StylePresetPublicSummary[];
   /** プリセットID -> 直近生成数(👑人気チップの表示判定と並び替え)。 */
   generateCounts: Record<string, number>;
+  /** プリセットID -> 累計生成数(試着確認モーダルの「これまでに◯回」表示)。 */
+  generateTotals: Record<string, number>;
   /**
    * 「✨新着」「🎉イベント」判定の基準時刻(ISO)。
    * サーバー("use cache" スコープ)で確定した値を受け取ることで、
@@ -52,6 +54,7 @@ interface StylesGalleryClientProps {
 export function StylesGalleryClient({
   presets,
   generateCounts,
+  generateTotals,
   nowIso,
   locale,
 }: StylesGalleryClientProps) {
@@ -256,6 +259,8 @@ export function StylesGalleryClient({
           }
         }}
         onConfirm={handleConfirm}
+        locale={locale === "ja" ? "ja" : "en"}
+        generateTotals={generateTotals}
       />
     </div>
   );
