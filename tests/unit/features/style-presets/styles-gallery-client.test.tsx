@@ -98,6 +98,8 @@ function preset(
       key: categoryKey,
       displayNameJa: categoryLabelJa,
       displayNameEn: categoryLabelJa,
+      badgeColor: "rgb(255, 87, 34)",
+      badgeTextColor: "rgb(255, 255, 255)",
       isCollectionSeries: false,
       collectionDisplayStartsAt: null,
       collectionDisplayEndsAt: null,
@@ -137,6 +139,36 @@ describe("StylesGalleryClient", () => {
     // 未ログインではお気に入りチップは出さない
     await waitFor(() => expect(getUserMock).toHaveBeenCalled());
     expect(screen.queryByRole("tab", { name: /お気に入り/ })).toBeNull();
+  });
+
+  test("カード_admin設定色のカテゴリバッジを表示しcoordinateには出さない", () => {
+    render(
+      <StylesGalleryClient
+        presets={[
+          preset("style-a"),
+          preset("style-b", {
+            categoryKey: "character_remix",
+            categoryLabelJa: "アレンジ",
+          }),
+        ]}
+        generateCounts={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    // 「アレンジ」はチップ + カード上のバッジの2箇所(バッジは aria-label 付き span)
+    const badge = screen
+      .getAllByText("アレンジ")
+      .find((el) => el.tagName === "SPAN" && el.getAttribute("aria-label"));
+    expect(badge).toBeTruthy();
+    expect((badge as HTMLElement).style.backgroundColor).toBe(
+      "rgb(255, 87, 34)",
+    );
+    expect((badge as HTMLElement).style.color).toBe("rgb(255, 255, 255)");
+
+    // default カテゴリの coordinate はバッジ非表示(チップの1箇所のみ)
+    expect(screen.getAllByText("コーディネート")).toHaveLength(1);
   });
 
   test("カテゴリチップ_選択でグリッドを絞り込む", () => {
