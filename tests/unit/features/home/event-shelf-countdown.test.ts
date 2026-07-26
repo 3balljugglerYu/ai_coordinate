@@ -9,7 +9,8 @@ function endsIn(ms: number): string {
   return new Date(NOW_MS + ms).toISOString();
 }
 
-const MINUTE = 60 * 1000;
+const SECOND = 1000;
+const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
 
@@ -29,43 +30,49 @@ describe("deriveEventShelfCountdown", () => {
     ).toEqual({ type: "days", days: 1 });
   });
 
-  test("残り24時間未満_時間+分のカウントダウンに切り替わる", () => {
+  test("残り24時間未満_時間+分+秒のカウントダウンに切り替わる", () => {
     expect(
-      deriveEventShelfCountdown(endsIn(23 * HOUR + 59 * MINUTE), NOW_MS),
-    ).toEqual({ type: "hoursMinutes", hours: 23, minutes: 59 });
+      deriveEventShelfCountdown(endsIn(23 * HOUR + 59 * MINUTE + 59 * SECOND), NOW_MS),
+    ).toEqual({ type: "countdown", hours: 23, minutes: 59, seconds: 59 });
     expect(deriveEventShelfCountdown(endsIn(90 * MINUTE), NOW_MS)).toEqual({
-      type: "hoursMinutes",
+      type: "countdown",
       hours: 1,
       minutes: 30,
+      seconds: 0,
     });
+    expect(
+      deriveEventShelfCountdown(endsIn(59 * MINUTE + 30 * SECOND), NOW_MS),
+    ).toEqual({ type: "countdown", hours: 0, minutes: 59, seconds: 30 });
   });
 
-  test("分は切り上げ_終了前に0分と表示されることはない", () => {
-    // 残り1秒でも「あと1分」
-    expect(deriveEventShelfCountdown(endsIn(1000), NOW_MS)).toEqual({
-      type: "hoursMinutes",
+  test("秒は切り上げ_終了前に0秒と表示されることはない", () => {
+    // 残り1ミリ秒でも「あと1秒」
+    expect(deriveEventShelfCountdown(endsIn(1), NOW_MS)).toEqual({
+      type: "countdown",
       hours: 0,
-      minutes: 1,
+      minutes: 0,
+      seconds: 1,
     });
-    // 残り59分30秒 → 切り上げで1時間0分ではなく60分=1時間0分
+    // 残り59.5秒 → 切り上げで1分0秒
     expect(
-      deriveEventShelfCountdown(endsIn(59 * MINUTE + 30 * 1000), NOW_MS),
-    ).toEqual({ type: "hoursMinutes", hours: 1, minutes: 0 });
+      deriveEventShelfCountdown(endsIn(59 * SECOND + 500), NOW_MS),
+    ).toEqual({ type: "countdown", hours: 0, minutes: 1, seconds: 0 });
   });
 
   test("企画終了時刻ちょうど_カウントが0になる", () => {
     expect(deriveEventShelfCountdown(endsIn(0), NOW_MS)).toEqual({
-      type: "hoursMinutes",
+      type: "countdown",
       hours: 0,
       minutes: 0,
+      seconds: 0,
     });
   });
 
-  test("24時間の境界直下_「あと24時間0分」ではなく日数表示に倒す", () => {
-    // 23時間59分1秒 → 分の切り上げで1440分になるため「あと1日」
+  test("24時間の境界直下_「あと24時間0分0秒」ではなく日数表示に倒す", () => {
+    // 23時間59分59.5秒 → 秒の切り上げで86400秒になるため「あと1日」
     expect(
       deriveEventShelfCountdown(
-        endsIn(EVENT_COUNTDOWN_HOURS_THRESHOLD_MS - 1000),
+        endsIn(EVENT_COUNTDOWN_HOURS_THRESHOLD_MS - 500),
         NOW_MS,
       ),
     ).toEqual({ type: "days", days: 1 });

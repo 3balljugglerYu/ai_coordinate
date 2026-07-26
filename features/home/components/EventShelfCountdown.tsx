@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   deriveEventShelfCountdown,
-  MS_PER_MINUTE,
+  MS_PER_SECOND,
 } from "@/features/home/lib/event-shelf-countdown";
 
 interface EventShelfCountdownProps {
@@ -18,9 +18,9 @@ interface EventShelfCountdownProps {
  * 企画棚のカウントダウンバッジ。
  *
  * - 残り 24 時間以上: 「あと{days}日」(グレー)
- * - 残り 24 時間未満: 「あと{hours}時間{minutes}分」(赤・緊急表示)で、
- *   1 分ごとに自動更新する。更新は「分の境界」ちょうどにスケジュールするため、
- *   企画終了時刻にはぴったり「あと0分」になり、終了から 1 分後に消える
+ * - 残り 24 時間未満: 「あと{hours}時間{minutes}分{seconds}秒」(赤・緊急表示)で、
+ *   1 秒ごとに自動更新する。更新は「秒の境界」ちょうどにスケジュールするため、
+ *   企画終了時刻にはぴったり「あと0秒」になり、その 1 秒後に消える
  * - 終了後は何も表示しない(棚自体は次のサーバー再検証で消える)
  *
  * 初期表示はサーバー時刻(nowIso)で描画してハイドレーション不一致を避け、
@@ -43,14 +43,14 @@ export function EventShelfCountdown({
       const current = Date.now();
       setNowMs(current);
       const msLeft = endsAtMs - current;
-      // 終了から 1 分以上過ぎたら更新を止める(バッジは既に非表示)。
-      if (msLeft < -MS_PER_MINUTE) {
+      // 終了から 1 秒以上過ぎたら更新を止める(バッジは既に非表示)。
+      if (msLeft < -MS_PER_SECOND) {
         return;
       }
-      // 次の「分の境界」ちょうどに再計算する。残りが分の倍数ぴったりの瞬間は
-      // 1 分後に予約する(0 だと同一時刻に連続発火してしまうため)。
+      // 次の「秒の境界」ちょうどに再計算する。残りが秒の倍数ぴったりの瞬間は
+      // 1 秒後に予約する(0 だと同一時刻に連続発火してしまうため)。
       const delay =
-        msLeft > 0 ? msLeft % MS_PER_MINUTE || MS_PER_MINUTE : MS_PER_MINUTE;
+        msLeft > 0 ? msLeft % MS_PER_SECOND || MS_PER_SECOND : MS_PER_SECOND;
       timer = window.setTimeout(tick, delay);
     };
     tick();
@@ -66,16 +66,22 @@ export function EventShelfCountdown({
     return null;
   }
 
-  const urgent = countdown.type === "hoursMinutes";
+  const urgent = countdown.type === "countdown";
   const label =
     countdown.type === "days"
       ? t("eventShelfCountdownDaysLeft", { days: countdown.days })
       : countdown.hours > 0
-        ? t("eventShelfCountdownHoursMinutes", {
+        ? t("eventShelfCountdownHoursMinutesSeconds", {
             hours: countdown.hours,
             minutes: countdown.minutes,
+            seconds: countdown.seconds,
           })
-        : t("eventShelfCountdownMinutes", { minutes: countdown.minutes });
+        : countdown.minutes > 0
+          ? t("eventShelfCountdownMinutesSeconds", {
+              minutes: countdown.minutes,
+              seconds: countdown.seconds,
+            })
+          : t("eventShelfCountdownSeconds", { seconds: countdown.seconds });
 
   return (
     <span
