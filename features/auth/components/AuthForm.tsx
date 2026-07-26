@@ -497,8 +497,7 @@ export function AuthForm({
             {t("continueWithGoogle")}
           </Button>
 
-          {/* X (Twitter) - 一時的に非表示 */}
-          {/*
+          {/* X (Twitter) */}
           <Button
             type="button"
             variant="outline"
@@ -511,7 +510,6 @@ export function AuthForm({
             </svg>
             {t("continueWithX")}
           </Button>
-          */}
 
           {/* GitHub */}
           {/*
