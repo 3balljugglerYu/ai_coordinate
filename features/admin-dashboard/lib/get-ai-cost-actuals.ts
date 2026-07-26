@@ -3,6 +3,7 @@ import "server-only";
 import { getRangeBounds } from "./dashboard-range";
 import type { DashboardRange } from "./dashboard-range";
 import { fetchOpenAiActualCost } from "./openai-costs-client";
+import { fetchGeminiActualCost } from "./gemini-billing-client";
 import type { AiCostActualEntry, AiCostActuals } from "./ai-cost-actual-types";
 
 /**
@@ -18,6 +19,7 @@ export async function getAiCostActuals(
 
   const results = await Promise.allSettled([
     fetchOpenAiActualCost(currentStart, now),
+    fetchGeminiActualCost(currentStart, now),
   ]);
 
   const entries: AiCostActualEntry[] = results.map((result, index) => {
