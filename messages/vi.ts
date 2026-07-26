@@ -1376,6 +1376,7 @@ export const viMessages = {
     stylePopularSortNote: "Xếp theo số lần sử dụng trong 30 ngày gần đây",
     styleNewSortNote: "Phong cách được thêm trong {days} ngày gần đây",
     styleChipCreator: "Nhà sáng tạo",
+    styleChipCollab: "Dự án hợp tác",
     styleFavoriteAdd: "Thêm vào yêu thích",
     styleFavoriteRemove: "Bỏ khỏi yêu thích",
     styleFavoriteLoginRequired: "Đăng nhập để dùng mục yêu thích",

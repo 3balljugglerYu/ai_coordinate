@@ -1376,6 +1376,7 @@ export const arMessages = {
     stylePopularSortNote: "بترتيب عدد مرات الاستخدام في آخر 30 يومًا",
     styleNewSortNote: "ستايلات أُضيفت خلال آخر {days} يومًا",
     styleChipCreator: "المبدعون",
+    styleChipCollab: "مشاريع تعاونية",
     styleFavoriteAdd: "أضف إلى المفضلة",
     styleFavoriteRemove: "إزالة من المفضلة",
     styleFavoriteLoginRequired: "سجّل الدخول لاستخدام المفضلة",

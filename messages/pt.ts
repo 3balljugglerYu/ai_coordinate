@@ -1379,6 +1379,7 @@ export const ptMessages = {
     stylePopularSortNote: "Ordenado por usos nos últimos 30 dias",
     styleNewSortNote: "Estilos adicionados nos últimos {days} dias",
     styleChipCreator: "Criadores",
+    styleChipCollab: "Colaborações",
     styleFavoriteAdd: "Adicionar aos favoritos",
     styleFavoriteRemove: "Remover dos favoritos",
     styleFavoriteLoginRequired: "Faça login para usar favoritos",

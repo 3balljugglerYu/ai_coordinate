@@ -1378,6 +1378,7 @@ export const idMessages = {
     stylePopularSortNote: "Diurutkan berdasarkan penggunaan 30 hari terakhir",
     styleNewSortNote: "Gaya yang ditambahkan dalam {days} hari terakhir",
     styleChipCreator: "Kreator",
+    styleChipCollab: "Kolaborasi",
     styleFavoriteAdd: "Tambahkan ke favorit",
     styleFavoriteRemove: "Hapus dari favorit",
     styleFavoriteLoginRequired: "Masuk untuk menggunakan favorit",

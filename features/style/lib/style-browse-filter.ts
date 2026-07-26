@@ -45,6 +45,7 @@ export type StyleBrowseChipId =
   | "new"
   | "popular"
   | "creator"
+  | "collab"
   | `category:${string}`;
 
 export interface StyleBrowseChip {
@@ -86,7 +87,7 @@ function hasCreator(preset: StylePresetPublicSummary): boolean {
 
 /**
  * presets から表示すべきチップ列を導出する(空になる軸のチップは出さない)。
- * 並び: すべて → お気に入り(ログイン時) → イベント(開催中のみ) → 新着 → 人気 → クリエイター → カテゴリ別。
+ * 並び: すべて → お気に入り(ログイン時) → イベント(開催中のみ) → 新着 → 人気 → クリエイター → コラボ企画 → カテゴリ別。
  */
 export function deriveStyleBrowseChips(
   presets: readonly StylePresetPublicSummary[],
@@ -107,6 +108,12 @@ export function deriveStyleBrowseChips(
   }
   if (presets.some(hasCreator)) {
     chips.push({ id: "creator" });
+  }
+  // コラボ企画: コレクションシリーズ(コンプリート要素のある企画)を
+  // 開催中かどうかに関わらずまとめる(常設化した企画の受け皿。
+  // 開催中の企画は「🎉イベント」とこのチップの両方に出る)。
+  if (presets.some((p) => p.category.isCollectionSeries)) {
+    chips.push({ id: "collab" });
   }
   // カテゴリチップ: 出現順で重複排除。カテゴリが1種類しか無ければ「すべて」と同義なので出さない。
   const seen = new Map<string, StyleBrowseChip>();
@@ -175,6 +182,8 @@ export function filterStyleBrowsePresets(
     }
     case "creator":
       return presets.filter(hasCreator);
+    case "collab":
+      return presets.filter((p) => p.category.isCollectionSeries);
     default: {
       const key = chipId.slice("category:".length);
       const keys = new Set([

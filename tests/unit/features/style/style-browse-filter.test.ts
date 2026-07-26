@@ -154,6 +154,52 @@ describe("deriveStyleBrowseChips", () => {
     expect(chips.some((c) => c.id === "event")).toBe(false);
   });
 
+  test("コラボ企画チップ: 期間未設定の常設シリーズはイベントに出ずコラボ企画に出る", () => {
+    const presets = [
+      preset("normal"),
+      preset("perm", {
+        categoryKey: "wafer_god",
+        isCollectionSeries: true,
+        collectionDisplayStartsAt: null,
+        collectionDisplayEndsAt: null,
+      }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.some((c) => c.id === "event")).toBe(false);
+    expect(chips.some((c) => c.id === "collab")).toBe(true);
+    expect(
+      filterStyleBrowsePresets(presets, "collab", context()).map((p) => p.id),
+    ).toEqual(["perm"]);
+  });
+
+  test("コラボ企画チップ: 開催中のシリーズはイベントとコラボ企画の両方に出る", () => {
+    const presets = [
+      preset("normal"),
+      preset("ev", {
+        categoryKey: "kotowaza_dictionary_2",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
+      }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.some((c) => c.id === "event")).toBe(true);
+    expect(chips.some((c) => c.id === "collab")).toBe(true);
+  });
+
+  test("コラボ企画チップ: 終了済みシリーズもコラボ企画には出る(常設化の受け皿)", () => {
+    const presets = [
+      preset("normal"),
+      preset("ended", {
+        categoryKey: "old_event",
+        isCollectionSeries: true,
+        collectionDisplayEndsAt: new Date(NOW.getTime() - DAY_MS).toISOString(),
+      }),
+    ];
+    const chips = deriveStyleBrowseChips(presets, context());
+    expect(chips.some((c) => c.id === "event")).toBe(false);
+    expect(chips.some((c) => c.id === "collab")).toBe(true);
+  });
+
   test("イベントチップ: コレクションシリーズ未登録(通常カテゴリ)だけなら出さない", () => {
     const chips = deriveStyleBrowseChips(
       [preset("a"), preset("b", { categoryKey: "taste" })],
@@ -197,17 +243,18 @@ describe("deriveStyleBrowseChips", () => {
     ]);
   });
 
-  test("企画(コレクションシリーズ)は開催中/期間外を問わずカテゴリチップを出さない(イベントに集約)", () => {
+  test("企画(コレクションシリーズ)は開催中/期間外を問わずカテゴリチップを出さない(イベント/コラボ企画に集約)", () => {
     const presets = [
       preset("co", { categoryKey: "coordinate" }),
       preset("taste", { categoryKey: "character_coordinate" }),
-      // 開催中の企画: イベントチップには出るが、個別カテゴリチップは出ない。
+      // 開催中の企画: イベント+コラボ企画チップには出るが、個別カテゴリチップは出ない。
       preset("active-ev", {
         categoryKey: "kotowaza_dictionary_2",
         isCollectionSeries: true,
         collectionDisplayEndsAt: new Date(NOW.getTime() + DAY_MS).toISOString(),
       }),
-      // 期間外の企画(管理者プレビュー等で一覧に混ざるケース): どちらのチップも出ない。
+      // 期間外の企画(管理者プレビュー等で一覧に混ざるケース):
+      // イベント・個別カテゴリには出ないが、コラボ企画には集約される。
       preset("ended-ev", {
         categoryKey: "travel_to_italy",
         isCollectionSeries: true,
@@ -219,6 +266,7 @@ describe("deriveStyleBrowseChips", () => {
       "all",
       "favorites",
       "event",
+      "collab",
       "category:character_coordinate",
       "category:coordinate",
     ]);

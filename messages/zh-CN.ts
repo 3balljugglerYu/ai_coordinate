@@ -1374,6 +1374,7 @@ export const zhCnMessages = {
     stylePopularSortNote: "按最近30天使用次数排序",
     styleNewSortNote: "最近{days}天内新增的风格",
     styleChipCreator: "创作者",
+    styleChipCollab: "联动企划",
     styleFavoriteAdd: "添加到收藏",
     styleFavoriteRemove: "取消收藏",
     styleFavoriteLoginRequired: "登录后即可使用收藏",

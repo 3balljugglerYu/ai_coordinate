@@ -1375,6 +1375,7 @@ export const koMessages = {
     stylePopularSortNote: "최근 30일 이용 횟수순",
     styleNewSortNote: "최근 {days}일 이내에 추가된 스타일",
     styleChipCreator: "크리에이터",
+    styleChipCollab: "콜라보 기획",
     styleFavoriteAdd: "즐겨찾기에 추가",
     styleFavoriteRemove: "즐겨찾기 해제",
     styleFavoriteLoginRequired: "즐겨찾기는 로그인 후 사용할 수 있어요",

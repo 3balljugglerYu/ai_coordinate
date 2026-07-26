@@ -1379,6 +1379,7 @@ export const esMessages = {
     stylePopularSortNote: "Ordenado por usos en los últimos 30 días",
     styleNewSortNote: "Estilos añadidos en los últimos {days} días",
     styleChipCreator: "Creadores",
+    styleChipCollab: "Colaboraciones",
     styleFavoriteAdd: "Añadir a favoritos",
     styleFavoriteRemove: "Quitar de favoritos",
     styleFavoriteLoginRequired: "Inicia sesión para usar favoritos",

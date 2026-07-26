@@ -1375,6 +1375,7 @@ export const thMessages = {
     stylePopularSortNote: "เรียงตามจำนวนการใช้งานใน 30 วันล่าสุด",
     styleNewSortNote: "สไตล์ที่เพิ่มเข้ามาใน {days} วันล่าสุด",
     styleChipCreator: "ครีเอเตอร์",
+    styleChipCollab: "โปรเจกต์คอลแลบ",
     styleFavoriteAdd: "เพิ่มในรายการโปรด",
     styleFavoriteRemove: "นำออกจากรายการโปรด",
     styleFavoriteLoginRequired: "เข้าสู่ระบบเพื่อใช้รายการโปรด",
