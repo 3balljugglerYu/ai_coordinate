@@ -64,30 +64,14 @@ export function GenerationModeTabs() {
   return (
     <div className="border-b border-pink-100/70 bg-white/80 backdrop-blur-sm">
       <div className="mx-auto max-w-6xl px-4 py-3">
+        {/* 3タブをスマホ幅に収めるため、アクティブタブだけラベル込みで広げ、
+            非アクティブはアイコンのみに縮める(ラベルは sr-only で読み上げ対象に残す)。
+            可変幅のためスライドピルは使わず、アクティブタブに直接グラデ背景を当てる。 */}
         <div
           role="tablist"
           aria-label={labels.join(" / ")}
-          className="relative inline-flex w-full max-w-xl items-stretch overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)] sm:w-auto"
+          className="inline-flex w-auto max-w-full items-stretch gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
         >
-          {/* スライドするピル(アクティブ背景) */}
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-1 left-1 z-0 rounded-full",
-              "bg-gradient-to-r from-pink-500 to-orange-400",
-              "shadow-[0_4px_14px_rgba(236,72,153,0.35)]",
-              "transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-              "motion-reduce:transition-none"
-            )}
-            style={{
-              // 幅は「枠内の 1/N から左右の余白 0.25rem 分を引いた値」。
-              // translateX の % は要素自身の幅基準なので、100% 移動すると
-              // ちょうどピル 1 個分だけ動き、両端の余白が左右対称になる。
-              width: `calc(${100 / TABS.length}% - 0.25rem)`,
-              transform: `translateX(${activeIndex * 100}%)`,
-            }}
-          />
-
           {TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = activeIndex === index;
@@ -99,12 +83,15 @@ export function GenerationModeTabs() {
                 role="tab"
                 aria-selected={isActive}
                 aria-current={isActive ? "page" : undefined}
+                aria-label={labels[index]}
+                title={labels[index]}
                 className={cn(
-                  // 3タブをスマホ幅に収めるため flex-1 で等分し、余白とアイコン間隔を圧縮。
-                  "relative z-10 flex flex-1 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-sm font-semibold whitespace-nowrap",
-                  "transition-colors duration-300 sm:flex-none sm:min-w-[112px] sm:gap-1.5 sm:px-4",
+                  "relative flex items-center justify-center rounded-full py-2 text-sm font-semibold whitespace-nowrap",
+                  "transition-colors duration-300",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1",
-                  isActive ? "text-white" : "text-gray-500 hover:text-pink-600"
+                  isActive
+                    ? "flex-1 gap-1.5 bg-gradient-to-r from-pink-500 to-orange-400 px-4 text-white shadow-[0_4px_14px_rgba(236,72,153,0.35)] sm:flex-none sm:min-w-[112px]"
+                    : "shrink-0 gap-1 px-3 text-gray-500 hover:text-pink-600"
                 )}
               >
                 <Icon
@@ -113,7 +100,10 @@ export function GenerationModeTabs() {
                     isActive ? "scale-110 -rotate-6" : "scale-100 rotate-0"
                   )}
                 />
-                <span className="truncate">{labels[index]}</span>
+                {/* アクティブはラベル表示、非アクティブは読み上げ用に sr-only で保持 */}
+                <span className={isActive ? "truncate" : "sr-only"}>
+                  {labels[index]}
+                </span>
               </Link>
             );
           })}
