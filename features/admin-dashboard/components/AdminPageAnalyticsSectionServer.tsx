@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
 import type {
   DashboardFunnelStep,
+  DashboardLoginMethodMixItem,
   DashboardModelMixItem,
   DashboardOneTapStyleAnalytics,
   DashboardTrendPoint,
@@ -20,6 +21,7 @@ interface AdminPageAnalyticsSectionServerProps {
   oneTapStyle: DashboardOneTapStyleAnalytics;
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
+  loginMethodMix: DashboardLoginMethodMixItem[];
 }
 
 interface AdminGa4SectionLoaderProps {
@@ -46,6 +48,7 @@ export function AdminPageAnalyticsSectionServer({
   oneTapStyle,
   funnel,
   modelMix,
+  loginMethodMix,
 }: AdminPageAnalyticsSectionServerProps) {
   return (
     <section className="space-y-4">
@@ -57,6 +60,7 @@ export function AdminPageAnalyticsSectionServer({
         oneTapStyle={oneTapStyle}
         funnel={funnel}
         modelMix={modelMix}
+        loginMethodMix={loginMethodMix}
       />
       <Suspense fallback={<AdminPageAnalyticsDetailsSectionSkeleton />}>
         <AdminPageAnalyticsDetailsSectionLoader ga4Promise={ga4Promise} />

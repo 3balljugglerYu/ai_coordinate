@@ -2,6 +2,7 @@ import { Activity, AlertTriangle, ArrowRightLeft, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
   DashboardFunnelStep,
+  DashboardLoginMethodMixItem,
   DashboardModelMixItem,
   DashboardOneTapStyleAnalytics,
   DashboardTrendPoint,
@@ -12,6 +13,7 @@ import { AdminEntryAccessStackedCard } from "./AdminEntryAccessStackedCard";
 import { AdminExternalAccessStackedCard } from "./AdminExternalAccessStackedCard";
 import { AdminDropoffPagesCard } from "./AdminDropoffPagesCard";
 import { AdminFunnelCard } from "./AdminFunnelCard";
+import { AdminLoginMethodMixChartPanel } from "./AdminLoginMethodMixChartPanel";
 import { AdminModelMixChartPanel } from "./AdminModelMixChartPanel";
 import { AdminTopLandingPagesCard } from "./AdminTopLandingPagesCard";
 import { AdminTopPagesCard } from "./AdminTopPagesCard";
@@ -33,6 +35,7 @@ interface AdminTrendAndFunnelSectionProps {
   oneTapStyle: DashboardOneTapStyleAnalytics;
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
+  loginMethodMix: DashboardLoginMethodMixItem[];
 }
 
 interface AnalyticsUnavailableCardProps {
@@ -149,6 +152,7 @@ export function AdminTrendAndFunnelSection({
   oneTapStyle,
   funnel,
   modelMix,
+  loginMethodMix,
 }: AdminTrendAndFunnelSectionProps) {
   const trendCsv = buildDashboardTrendCsv(trend);
   const trendCsvFilename = `dashboard-trend-${csvDateSpanSuffix(
@@ -196,6 +200,24 @@ export function AdminTrendAndFunnelSection({
           </CardHeader>
           <CardContent>
             <AdminModelMixChartPanel data={modelMix} />
+          </CardContent>
+        </Card>
+        <Card className="border-violet-200/60 bg-white/95 shadow-sm xl:col-span-6">
+          <CardHeader className="pb-4">
+            <CardTitle
+              className="text-lg text-slate-900"
+              style={{
+                fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
+              }}
+            >
+              ログイン方法別構成
+            </CardTitle>
+            <p className="text-sm text-slate-500">
+              期間内に新規登録したユーザーの認証プロバイダ内訳（凡例に累計）
+            </p>
+          </CardHeader>
+          <CardContent>
+            <AdminLoginMethodMixChartPanel data={loginMethodMix} />
           </CardContent>
         </Card>
       </section>

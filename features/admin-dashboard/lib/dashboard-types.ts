@@ -53,6 +53,15 @@ export interface DashboardModelMixItem {
   sharePct: number;
 }
 
+export interface DashboardLoginMethodMixItem {
+  provider: string;
+  label: string;
+  count: number;
+  sharePct: number;
+  cumulativeCount: number;
+  cumulativeSharePct: number;
+}
+
 export interface DashboardFunnelStep {
   label: string;
   users: number;
@@ -231,6 +240,7 @@ export interface AdminDashboardData {
   opsSummary: DashboardOpsSummary;
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
+  loginMethodMix: DashboardLoginMethodMixItem[];
   recentPurchases: DashboardPurchaseRow[];
   alerts: DashboardAlertRow[];
   quickActions: DashboardQuickAction[];
