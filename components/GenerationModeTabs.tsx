@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Sparkles, Wand2, PenLine } from "lucide-react";
 import { stripLocalePrefix } from "@/i18n/config";
@@ -43,11 +43,45 @@ export function GenerationModeTabs() {
     : "";
   const activeIndex = TABS.findIndex((tab) => tab.path === normalizedPathname);
 
+  // スライドするピル(アクティブ背景)。タブが可変幅(アクティブ=ラベル込み /
+  // 非アクティブ=アイコンのみ)のため、アクティブタブの位置・幅を実測してピルを
+  // その位置へ transition で移動させる。等幅前提の translateX 方式では
+  // 可変幅に対応できないため測定方式にしている。
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  // 初回描画ではスライドさせず(左端0からの不自然な移動を防ぐ)、
+  // 2回目以降のアクティブ変更でのみ transition を効かせる。
+  const [pillReady, setPillReady] = useState(false);
+
   // 両ルートを先読みして遷移を体感ゼロに近づける。
   useEffect(() => {
     if (activeIndex === -1) return;
     TABS.forEach((tab) => router.prefetch(`${localePrefix}${tab.path}`));
   }, [router, activeIndex, localePrefix]);
+
+  // アクティブタブの実測位置へピルを移動する。activeIndex / ラベル変更(言語切替)後の
+  // レイアウト確定後に測定するため useLayoutEffect を使う。
+  useLayoutEffect(() => {
+    if (activeIndex === -1) return;
+    const el = tabRefs.current[activeIndex];
+    if (!el) return;
+    const measure = () => {
+      const node = tabRefs.current[activeIndex];
+      if (!node) return;
+      setPill({ left: node.offsetLeft, width: node.offsetWidth });
+    };
+    measure();
+    // 初回測定の次フレームで transition を有効化(初回はスライドさせない)。
+    const raf = requestAnimationFrame(() => setPillReady(true));
+    // コンテナ幅変化(回転・リサイズ)にも追従する。
+    const ro = new ResizeObserver(measure);
+    if (listRef.current) ro.observe(listRef.current);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [activeIndex, localePrefix, freeT, navT, styleT]);
 
   // 滞在中のモードを「直近に使った生成モード」として記憶する。
   // ボトムナビ/サイドバーの「コーディネート」入口がこれを読み、前回モードへ復帰する。
@@ -66,12 +100,29 @@ export function GenerationModeTabs() {
       <div className="mx-auto max-w-6xl px-4 py-3">
         {/* 3タブをスマホ幅に収めるため、アクティブタブだけラベル込みで広げ、
             非アクティブはアイコンのみに縮める(ラベルは sr-only で読み上げ対象に残す)。
-            可変幅のためスライドピルは使わず、アクティブタブに直接グラデ背景を当てる。 */}
+            グラデ背景は実測位置へスライドするピルで表現する(従来のスライド演出を維持)。 */}
         <div
+          ref={listRef}
           role="tablist"
           aria-label={labels.join(" / ")}
-          className="inline-flex w-auto max-w-full items-stretch gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
+          className="relative inline-flex w-auto max-w-full items-stretch gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
         >
+          {/* スライドするピル(アクティブ背景)。アクティブタブの実測位置・幅へ移動する。 */}
+          {pill ? (
+            <span
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute inset-y-1 z-0 rounded-full",
+                "bg-gradient-to-r from-pink-500 to-orange-400",
+                "shadow-[0_4px_14px_rgba(236,72,153,0.35)]",
+                pillReady
+                  ? "transition-[left,width] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none"
+                  : "",
+              )}
+              style={{ left: pill.left, width: pill.width }}
+            />
+          ) : null}
+
           {TABS.map((tab, index) => {
             const Icon = tab.icon;
             const isActive = activeIndex === index;
@@ -80,18 +131,23 @@ export function GenerationModeTabs() {
                 key={tab.path}
                 href={`${localePrefix}${tab.path}`}
                 prefetch
+                ref={(node) => {
+                  tabRefs.current[index] = node;
+                }}
                 role="tab"
                 aria-selected={isActive}
                 aria-current={isActive ? "page" : undefined}
                 aria-label={labels[index]}
                 title={labels[index]}
                 className={cn(
-                  "relative flex items-center justify-center rounded-full py-2 text-sm font-semibold whitespace-nowrap",
-                  "transition-colors duration-300",
+                  "relative z-10 flex items-center justify-center rounded-full py-2 text-sm font-semibold whitespace-nowrap",
+                  // 幅(ラベルの出し入れ)と文字色を同じ duration で滑らかに変化させ、
+                  // ピルのスライドと歩調を合わせる。
+                  "transition-[color,padding] duration-300",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1",
                   isActive
-                    ? "flex-1 gap-1.5 bg-gradient-to-r from-pink-500 to-orange-400 px-4 text-white shadow-[0_4px_14px_rgba(236,72,153,0.35)] sm:flex-none sm:min-w-[112px]"
-                    : "shrink-0 gap-1 px-3 text-gray-500 hover:text-pink-600"
+                    ? "gap-1.5 px-4 text-white sm:min-w-[112px]"
+                    : "gap-1 px-3 text-gray-500 hover:text-pink-600"
                 )}
               >
                 <Icon
