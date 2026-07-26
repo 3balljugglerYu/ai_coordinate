@@ -181,7 +181,7 @@ paths:
                   default: keep
                 generationType:
                   type: string
-                  enum: [coordinate, specified_coordinate, full_body, chibi]
+                  enum: [coordinate, specified_coordinate, full_body, chibi, one_tap_style, inspire, free]
                   default: coordinate
       responses:
         "200":
@@ -2298,7 +2298,7 @@ components:
           default: 1
         generationType:
           type: string
-          enum: [coordinate, specified_coordinate, full_body, chibi]
+          enum: [coordinate, specified_coordinate, full_body, chibi, one_tap_style, inspire, free]
           default: coordinate
         model:
           type: string
