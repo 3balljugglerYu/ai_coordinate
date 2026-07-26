@@ -1355,7 +1355,7 @@ export const thMessages = {
     resultsTitle: "รายการผลลัพธ์",
     promptLabel: "สิ่งที่ต้องการสร้าง",
     promptPlaceholder: "เช่น ให้ใส่ชุดนักเรียน แล้วยืนอยู่ใต้ต้นซากุระโดยมีแสงนุ่มนวลของฤดูใบไม้ผลิส่องมา",
-    loginCtaTitle: "โหมดอิสระต้องเข้าสู่ระบบ",
+    loginCtaTitle: "Free Style ต้องเข้าสู่ระบบ",
     loginCtaDescription: "เข้าสู่ระบบเพื่อสร้างภาพประกอบตัวละครของคุณด้วยคำสั่งของคุณเอง",
     loginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
   },

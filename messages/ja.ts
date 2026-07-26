@@ -1299,7 +1299,7 @@ export const jaMessages = {
     resultsTitle: "生成結果一覧",
     promptLabel: "生成したい内容",
     promptPlaceholder: "例: 制服姿にしてください。桜の下に立たせて、春の柔らかい光が当たるようにしてください。",
-    loginCtaTitle: "じゆうモードはログインが必要です",
+    loginCtaTitle: "Free Style はログインが必要です",
     loginCtaDescription: "ログインすると、自由な指示でうちの子のイラストを生成できます。",
     loginCtaAction: "ログイン / 新規登録",
   },

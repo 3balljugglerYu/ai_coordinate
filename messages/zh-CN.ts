@@ -1354,7 +1354,7 @@ export const zhCnMessages = {
     resultsTitle: "生成结果列表",
     promptLabel: "想生成的内容",
     promptPlaceholder: "例：请换上校服。让他站在樱花树下，沐浴柔和的春光。",
-    loginCtaTitle: "自由模式需要登录",
+    loginCtaTitle: "Free Style 需要登录",
     loginCtaDescription: "登录后即可用你自己的指令生成角色插画。",
     loginCtaAction: "登录 / 注册",
   },

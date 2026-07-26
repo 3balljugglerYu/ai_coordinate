@@ -1357,7 +1357,7 @@ export const hiMessages = {
     resultsTitle: "जेनरेट किए गए परिणाम",
     promptLabel: "क्या जेनरेट करना है",
     promptPlaceholder: "उदा. स्कूल यूनिफ़ॉर्म पहनाइए। चेरी ब्लॉसम के नीचे खड़ा कीजिए, वसंत की मुलायम रोशनी में।",
-    loginCtaTitle: "फ्री मोड के लिए लॉगिन ज़रूरी है",
+    loginCtaTitle: "Free Style के लिए लॉगिन ज़रूरी है",
     loginCtaDescription: "अपने निर्देशों से अपने किरदार की इलस्ट्रेशन बनाने के लिए लॉगिन करें।",
     loginCtaAction: "लॉगिन / साइन अप",
   },

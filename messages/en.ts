@@ -1356,7 +1356,7 @@ export const enMessages = {
     resultsTitle: "Generated results",
     promptLabel: "What to generate",
     promptPlaceholder: "e.g. Put them in a school uniform. Have them stand under cherry blossoms in soft spring light.",
-    loginCtaTitle: "Free Mode requires login",
+    loginCtaTitle: "Free Style requires login",
     loginCtaDescription: "Log in to generate illustrations of your character with your own instructions.",
     loginCtaAction: "Log in / Sign up",
   },

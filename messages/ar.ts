@@ -1356,7 +1356,7 @@ export const arMessages = {
     resultsTitle: "قائمة النتائج",
     promptLabel: "ما تريد إنشاءه",
     promptPlaceholder: "مثال: ألبسه زيًا مدرسيًا. اجعله يقف تحت أزهار الكرز بضوء ربيعي ناعم.",
-    loginCtaTitle: "الوضع الحر يتطلب تسجيل الدخول",
+    loginCtaTitle: "Free Style يتطلب تسجيل الدخول",
     loginCtaDescription: "سجّل الدخول لإنشاء رسوم لشخصيتك بتعليماتك الخاصة.",
     loginCtaAction: "تسجيل الدخول / إنشاء حساب",
   },

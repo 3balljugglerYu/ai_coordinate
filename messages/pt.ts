@@ -1359,7 +1359,7 @@ export const ptMessages = {
     resultsTitle: "Resultados gerados",
     promptLabel: "O que gerar",
     promptPlaceholder: "ex.: Coloque um uniforme escolar. Deixe-o sob as cerejeiras com uma luz suave de primavera.",
-    loginCtaTitle: "O modo livre exige login",
+    loginCtaTitle: "Free Style exige login",
     loginCtaDescription: "Faça login para gerar ilustrações do seu personagem com suas próprias instruções.",
     loginCtaAction: "Entrar / Cadastrar",
   },

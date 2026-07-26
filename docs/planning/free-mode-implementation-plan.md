@@ -8,7 +8,7 @@
 
 | 項目 | 決定 |
 |------|------|
-| 名称 | ページ見出し「じゆうモード」、タブ短縮形「じゆう」（**別キーで管理**）。15言語対応 |
+| 名称 | ページ見出し・タブとも「Free Style」（別キーで管理。旧: 見出し「じゆうモード」/タブ「じゆう」から変更）。coordinate=「Coordinate」/style=「One-Tap Style」/inspireの投稿ラベル=「Creator Style」。全15言語で共通の英語ブランド名に統一 |
 | ゲスト可否 | 生成はログイン必須。ページ閲覧は公開（SEO対象）。ゲスト生成経路には接続しない |
 | 料金 | コーディネートと同額のペルコイン消費（同モデル＝同額が既存機構で自動成立） |
 | デフォルトプロンプト | キャラ保持の錨を admin 管理テンプレートとしてサーバー側で結合（UI非表示・ユーザー除去不可） |
@@ -47,7 +47,7 @@
 - Worker の失敗時返金は**「試みる」であり保証ではない**（返金RPC失敗時はログのみでキュー削除: `image-gen-worker/index.ts:3061` 付近）→ ADR-006
 - `sanitizeUserInput` は既知フレーズの正規表現除去であり**完全なインジェクション防止ではない**（防御の一層と位置付ける）→ ADR-003
 - Worker のリトライ時プロンプト強化（reinforcement）は coordinate / one_tap_style のみ対象（`index.ts:2385` 付近）。free は対象外＝リトライ時も錨のみ → ADR-003 に判断を明記
-- `generated_images.prompt` には**全文検索用 trigram インデックス**がある。50,000字の書き込みコスト影響を Phase 1 で計測する
+- `generated_images.prompt` には**全文検索用 trigram インデックス**がある。30,000字の書き込みコスト影響を Phase 1 で計測する
 - admin のテンプレ編集は registry 既存キーのみ受理（新キーはコード追加。DBシード不要）。`prompt_overrides` の содержимое上限は100,000字（free錨と両立）
 
 ## 概要図
@@ -61,7 +61,7 @@ flowchart TD
     C --> D{"ログイン済みか"}
     D -->|いいえ| E["ログイン誘導CTA表示 生成ボタンはAuthModalへ"]
     D -->|はい| F["画像アップロード または 生成済み・ストックから選ぶ freeの生成物も含む"]
-    F --> G["自由記述プロンプト入力 上限50000文字"]
+    F --> G["自由記述プロンプト入力 上限30000文字"]
     G --> H{"送信時チェック"}
     H -->|"画像なし・空・超過"| I["エラー表示"]
     H -->|OK| J["ペルコイン残高チェック"]
@@ -103,7 +103,7 @@ sequenceDiagram
 | R6 | Event | When 生成が実行される時, the system shall coordinateと同じモデル・同額のペルコインを消費し、最終失敗時は**既存の自動返金処理を実行する**（返金RPC失敗時は手動対応となる既知リスクを運用監視で検知する: ADR-006） |
 | R7 | If | If モデル側でエラーが発生した場合, then the system shall 分かりやすいエラーメッセージを表示する。**プロバイダのstatus/エラー内容から長文起因と判定できる場合に限り**「プロンプトが長すぎる可能性」を示唆する |
 | R8 | Event | When 生成が成功した時, the system shall `free-${userId}` のキャッシュタグを無効化し、freeページのギャラリー・履歴・投稿フロー（モデレーション込み）に結果を接続する |
-| R9 | State | While じゆうモードページを表示中, the system shall 設定UI（画像タイプ/背景/ポーズ/モデル/枚数）を表示しない |
+| R9 | State | While Free Styleページを表示中, the system shall 元画像タイプ/背景/ポーズ/枚数の設定UIを表示しない（生成モデル選択＝品質・出力サイズは表示する。枚数=1固定） |
 | R10 | Event | When DBにジョブ/生成物が保存される時, the system shall generation_type='free' をCHECK制約の許可値として受理する |
 | R11 | Event | When 画像ソースピッカーの「生成済み」タブを開いた時, the system shall free の生成物も選択肢に含める |
 | R12 | Event | When freeページのギャラリーで「このイラストで生成」を実行した時, the system shall **freeページ内のフォームに適用する**（モード別イベントで、coordinate用イベント・文言を流用しない） |
@@ -117,7 +117,7 @@ sequenceDiagram
 
 ### ADR-002: プロンプト上限はモード別に superRefine へ一本化（free=30,000）
 - **Context**: 現行 schema は `prompt` フィールド自身に `.max(1500)` があり、superRefine追加だけでは free の長文が先に落ちる。加えて事前検証で既定モデル OpenAI gpt-image-2 のプロンプト上限が **32,000字**（[OpenAI API Reference](https://developers.openai.com/api/reference/resources/images/methods/generate)）と判明。最終プロンプト＝錨(`free.base_prefix`)＋delimiter＋ユーザー入力 なので、ユーザー入力の上限は錨分の余白を引いて設計する必要がある。
-- **Decision**: 共通schemaの `prompt` は `.string().min(1)` のみとし、**上限は superRefine で generationType（default適用後）により出し分ける**: free=**30,000** / それ以外=1,500。文字数基準は JS `string.length`（UTF-16コード単位、既存 `.max()` と同一基準）。`FREE_GENERATION_PROMPT_MAX_LENGTH=30000` を新設し client/server で共用。**じゆうモードは既定モデル(OpenAI gpt-image-2)固定**とし、`free.base_prefix` を1,800字未満に保つことで「錨＋30,000字 < 32,000字」を常に満たす（＝プロバイダ側で長さ拒否が起きない設計）。
+- **Decision**: 共通schemaの `prompt` は `.string().min(1)` のみとし、**上限は superRefine で generationType（default適用後）により出し分ける**: free=**30,000** / それ以外=1,500。文字数基準は JS `string.length`（UTF-16コード単位、既存 `.max()` と同一基準）。`FREE_GENERATION_PROMPT_MAX_LENGTH=30000` を新設し client/server で共用。**Free Style は生成モデルを選択可能**（品質・出力サイズ含む。既定は `DEFAULT_GENERATION_MODEL`、free プランは許可モデルのみ）。上限30,000字は選択肢中もっとも厳しい OpenAI gpt-image-2 の32,000字に錨込みで収まる設計とし、`free.base_prefix` を1,800字未満に保つことで「錨＋30,000字 < 32,000字」を常に満たす（＝プロバイダ側で長さ拒否が起きない設計）。
 - **Consequence**: 境界テスト（1,500/1,501/30,000/30,001、default適用後判定）を必須とする。schemaの単純なmax超過が**生成前に決定的な400**を返すため、複雑なモデル別事前チェックは不要になった。`free.base_prefix` の文字数が上限余白を侵さないことを確認するテストを追加。プロンプト本文をログへ出さないことを確認する。
 
 ### ADR-003: キャラ保持の錨は registry テンプレート＋サーバー側結合（sanitizeは防御の一層）
@@ -127,7 +127,7 @@ sequenceDiagram
 
 ### ADR-004: GenerationForm/Container は複製せず mode prop で拡張
 - **Context**: Container(1,438行)/Form(785行)の複製は保守負債。フル汎用化も大工事。
-- **Decision**: `mode: "coordinate" | "free"`（既定 coordinate）を追加。free では設定UIセクション非表示・既定値固定（model=既定, count=1）・maxLength切替・purchase source/revalidate切替。チュートリアル配線は coordinate 限定でガード。**履歴適用イベントはモード別のイベント名・文言に分離**し、coordinate の `COORDINATE_APPLY_FROM_HISTORY_EVENT` を free に流用しない。`detailFrom` パラメータの戻り先も free に対応させる。
+- **Decision**: `mode: "coordinate" | "free"`（既定 coordinate）を追加。free では元画像タイプ/背景/ポーズ/枚数の設定UIを非表示（生成モデル選択は表示）・count=1固定・maxLength切替・purchase source/revalidate切替。チュートリアル配線は coordinate 限定でガード。**履歴適用イベントは共通の `COORDINATE_APPLY_FROM_HISTORY_EVENT` を再利用**する（free と coordinate は別ページのため同一イベントでも衝突しない。将来モード非依存名へのリネーム余地あり）。`detailFrom` の戻り先も free に対応させる（`from=free`→`/free`。ROUTES.FREE 追加）。
 - **Consequence**: coordinate の挙動は既定値で完全不変（非回帰テストマトリクスで担保: 上限1,500・設定UI表示・イベント名・revalidate先）。
 
 ### ADR-005: /free は公開ページ（SEO対象）、生成のみログイン必須
@@ -138,7 +138,7 @@ sequenceDiagram
 ### ADR-006: 失敗時返金は既存のベストエフォート処理を踏襲（本スコープで堅牢化しない）
 - **Context**: Worker の返金は「試みる」実装であり、返金RPC失敗時はログのみでキュー削除される（全モード共通の既存挙動）。堅牢化（返金成功後のみメッセージ削除、durable retry）は Worker コアに触る全モード影響の変更。
 - **Decision**: 本スコープでは既存挙動を踏襲し、R6 の表現を「既存の自動返金処理を実行する」に留める。**返金RPC失敗はログから検知して手動対応する既知リスク**として明記し、ロールアウト条件に「返金失敗ログの監視方法の確認」を含める。
-- **Consequence**: 50,000字によりプロバイダ失敗率が上がる可能性があるため、Phase 1 のモデル別事前検証で失敗率の高い長さ帯を把握する。返金堅牢化は独立した改善タスクとして別途起票候補。
+- **Consequence**: 30,000字によりプロバイダ失敗率が上がる可能性があるため、Phase 1 のモデル別事前検証で失敗率の高い長さ帯を把握する。返金堅牢化は独立した改善タスクとして別途起票候補。
 
 ## 実装計画（フェーズ）
 
@@ -157,13 +157,13 @@ flowchart LR
 ### Phase 1: DB＋共有コア＋事前検証
 目的: 'free' 種別と錨テンプレ・上限をコアに追加し、長文の実受理性を確認する。
 
-- [x] **モデル別長文事前検証（完了）**: 既定モデル OpenAI gpt-image-2 のプロンプト上限は32,000字（ドキュメント確認済み）。じゆうモードは既定モデル固定＋入力30,000字上限とし、錨(<1,800字)込みで32,000字内に収める設計に確定。Geminiは上限が大きいため問題にならないが、モデル固定のため考慮不要
+- [x] **モデル別長文事前検証（完了）**: 既定モデル OpenAI gpt-image-2 のプロンプト上限は32,000字（ドキュメント確認済み）。Free Style は生成モデルを選択可能＋入力30,000字上限とし、錨(<1,800字)込みで最も厳しい OpenAI gpt-image-2 の32,000字内に収める設計に確定。Gemini系は上限が大きいためどのモデルでも安全
 - [ ] **trigramインデックス影響**: `generated_images.prompt` は最大でも錨込み約32,000字。既存 coordinate/one_tap_style も同カラムを使うため桁は同等。マイグレーション適用時に挿入コストをステージングで軽く確認（ブロッカーではない）
 - [ ] マイグレーション新規: 両テーブルのCHECK制約に 'free' 追加。**運用手順**: ステージングで行数・実行時間・lock待ちを測定／必要なら `NOT VALID` → `VALIDATE CONSTRAINT` 方式／`lock_timeout`/`statement_timeout` 設定と失敗時再実行方針を migration コメントに記載
 - [ ] `shared/generation/prompt-core.ts`: `GenerationType` に `"free"`、`buildPrompt` free 分岐（`free.base_prefix` 前置＋`free.user_direction_label` によるdelimiter付きユーザー入力）
 - [ ] `shared/generation/prompt-registry.ts`: カテゴリ `free`、キー `free.base_prefix`（優先順位文入りのキャラ保持錨）と **`free.user_direction_label`** を追加
 - [ ] admin override の検証確認: `prompt_overrides` の既存チェック（≤100,000字）で空文字・極端長文の扱いに問題がないか確認し、必要なら計画修正
-- [ ] `lib/generation/prompt-validation.ts`: `FREE_GENERATION_PROMPT_MAX_LENGTH = 50000` 追加
+- [ ] `lib/generation/prompt-validation.ts`: `FREE_GENERATION_PROMPT_MAX_LENGTH = 30000` 追加
 - [ ] `.cursor/rules/database-design.mdc` 更新（'free' 追加、inspire の記載漏れ修正）
 - [ ] ユニットテスト: buildPrompt free 分岐（錨結合・delimiter・優先順位文の存在・sanitize・空/空白のみ拒否・**錨上書き命令や多言語回避例が入力されても錨が先頭に残ること**）、coordinate/one_tap_style の非回帰
 - [ ] マイグレーション適用（差分をユーザーに提示→承認→ステージング相当確認→本番）
@@ -172,11 +172,11 @@ flowchart LR
 目的: generate-async が free を受理し種別別上限を検証。型の全列挙箇所を追随。
 
 - [ ] **generation_type 型台帳の全列挙箇所を追随**: `features/generation/types.ts` / `lib/database.ts` / `lib/server-database.ts`（取得引数） / `CachedGeneratedImageGallery.tsx` の `GalleryGenerationType`（可能なら共通型から導出に変更） / Gallery client・list 側 props / `ImageSourcePicker` の `PICKER_GENERATION_TYPES`（**free を追加**: R11）
-- [ ] `features/generation/lib/schema.ts`: `prompt` の `.max(1500)` を**撤去**し `.min(1)` のみに。superRefine で generationType（default適用後）により free=50,000 / 他=1,500 を判定。`generationType` enum に `"free"`
+- [ ] `features/generation/lib/schema.ts`: `prompt` の `.max(1500)` を**撤去**し `.min(1)` のみに。superRefine で generationType（default適用後）により free=30,000 / 他=1,500 を判定。`generationType` enum に `"free"`
 - [ ] `features/generation/lib/async-api.ts` / `types.ts`: リクエスト型に `"free"`
 - [ ] `app/api/generate-async/handler.ts`: 透過確認（inspire専用検証に入らないこと）。長文起因4xxの non-retriable 分類（事前検証の結果に応じて）
 - [ ] Worker: free 分岐でのプロンプト組立を **OpenAI即時 / OpenAI batch / Gemini の各経路**で検証するテスト（`prompt-override.test.ts` のパターン踏襲）。リトライ強化が free に適用されないことの確認テスト
-- [ ] 統合テスト: `generate-async-route.test.ts` に free ケース（401 / 画像なし400 / **境界: 1,500・1,501・50,000・50,001** / 正常202 / coordinateの1,501が引き続き400であること）
+- [ ] 統合テスト: `generate-async-route.test.ts` に free ケース（401 / 画像なし400 / **境界: 1,500・1,501・30,000・30,001** / 正常202 / coordinateの1,501が引き続き400であること）
 - [ ] ギャラリーのページングAPIが free を受理するテスト
 
 ### Phase 3: UI実装＋最小i18n
@@ -189,7 +189,7 @@ flowchart LR
 - [ ] `GenerationModeTabs.tsx` 3タブ化（タブラベルは短縮形キー）＋幅調整、`generation-mode-preference.ts` に `/free`
 - [ ] `detailFrom="free"` の詳細画面戻り先対応
 - [ ] エラー文言: 長文起因と判定できる場合のみの示唆文言（R7）
-- [ ] `messages/*.ts`（15言語）: `free` namespace（pageTitle「じゆうモード」/**tabLabel「じゆう」（別キー）**/description/promptLabel/placeholder/loginCta/エラー文言）
+- [ ] `messages/*.ts`（15言語）: `free` namespace（pageTitle「Free Style」/**tabLabel「Free Style」（別キー）**/description/promptLabel/placeholder/loginCta/エラー文言）
 
 ### Phase 4: ルーティング/SEO＋ドキュメント
 目的: 検索導線と公開仕様ドキュメントの整備。ここで初めてユーザー公開可能になる。
@@ -216,7 +216,7 @@ flowchart LR
 | `supabase/migrations/<new>_allow_free_generation_type.sql` | 新規 | CHECK制約に 'free'（lock対策コメント込み） |
 | `shared/generation/prompt-core.ts` | 修正 | GenerationType追加・buildPrompt free分岐 |
 | `shared/generation/prompt-registry.ts` | 修正 | `free.base_prefix`＋`free.user_direction_label` |
-| `lib/generation/prompt-validation.ts` | 修正 | FREE用上限50,000 |
+| `lib/generation/prompt-validation.ts` | 修正 | FREE用上限30,000 |
 | `features/generation/lib/schema.ts` | 修正 | `.max(1500)`撤去＋superRefine種別別上限＋enum |
 | `features/generation/types.ts` / `lib/database.ts` / `lib/server-database.ts` | 修正 | 型ユニオンに "free"（台帳追随） |
 | `features/generation/lib/async-api.ts` | 修正 | 型に "free" |

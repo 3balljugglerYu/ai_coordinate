@@ -25,6 +25,7 @@ import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
+import { resolveStickyBackUrl } from "@/features/posts/lib/sticky-back-url";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -88,18 +89,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const isMyPageSubPath =
     normalizedPathname.startsWith("/my-page/") &&
     normalizedPathname !== "/my-page";
-  const backUrl =
-    fromParam === "my-page"
-      ? ROUTES.MY_PAGE
-      : fromParam === "notifications"
-        ? "/notifications"
-        : fromParam === "coordinate"
-          ? ROUTES.COORDINATE
-          : fromParam === "style"
-            ? ROUTES.STYLE
-            : isMyPageSubPath
-              ? ROUTES.MY_PAGE
-              : localizedHomePath;
+  const backUrl = resolveStickyBackUrl({
+    fromParam,
+    isMyPageSubPath,
+    localizedHomePath,
+  });
 
   useEffect(() => {
     const updateHeaderHeight = () => {

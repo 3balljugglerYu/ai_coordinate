@@ -1360,7 +1360,7 @@ export const deMessages = {
     resultsTitle: "Generierte Ergebnisse",
     promptLabel: "Was generiert werden soll",
     promptPlaceholder: "z. B. Zieh ihr eine Schuluniform an. Stell sie unter Kirschblüten in weiches Frühlingslicht.",
-    loginCtaTitle: "Der freie Modus erfordert eine Anmeldung",
+    loginCtaTitle: "Free Style erfordert eine Anmeldung",
     loginCtaDescription: "Melde dich an, um Illustrationen deiner Figur mit eigenen Anweisungen zu generieren.",
     loginCtaAction: "Anmelden / Registrieren",
   },

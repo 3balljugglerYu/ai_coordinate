@@ -1356,7 +1356,7 @@ export const viMessages = {
     resultsTitle: "Danh sách kết quả",
     promptLabel: "Nội dung muốn tạo",
     promptPlaceholder: "vd: Hãy cho mặc đồng phục học sinh. Đặt đứng dưới hoa anh đào trong ánh sáng dịu của mùa xuân.",
-    loginCtaTitle: "Chế độ tự do cần đăng nhập",
+    loginCtaTitle: "Free Style cần đăng nhập",
     loginCtaDescription: "Đăng nhập để tạo ảnh minh họa nhân vật của bạn bằng chỉ dẫn của riêng bạn.",
     loginCtaAction: "Đăng nhập / Đăng ký",
   },

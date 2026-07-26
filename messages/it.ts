@@ -1359,7 +1359,7 @@ export const itMessages = {
     resultsTitle: "Risultati generati",
     promptLabel: "Cosa generare",
     promptPlaceholder: "es. Mettile un'uniforme scolastica. Falla stare sotto i ciliegi con una luce morbida primaverile.",
-    loginCtaTitle: "La modalità libera richiede l'accesso",
+    loginCtaTitle: "Free Style richiede l'accesso",
     loginCtaDescription: "Accedi per generare illustrazioni del tuo personaggio con le tue istruzioni.",
     loginCtaAction: "Accedi / Registrati",
   },

@@ -1358,7 +1358,7 @@ export const idMessages = {
     resultsTitle: "Daftar hasil",
     promptLabel: "Apa yang ingin dibuat",
     promptPlaceholder: "mis. Kenakan seragam sekolah. Buat dia berdiri di bawah bunga sakura dengan cahaya lembut musim semi.",
-    loginCtaTitle: "Mode bebas memerlukan login",
+    loginCtaTitle: "Free Style memerlukan login",
     loginCtaDescription: "Masuk untuk menghasilkan ilustrasi karaktermu dengan instruksimu sendiri.",
     loginCtaAction: "Masuk / Daftar",
   },

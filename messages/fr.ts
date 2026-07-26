@@ -1359,7 +1359,7 @@ export const frMessages = {
     resultsTitle: "Résultats générés",
     promptLabel: "Ce qu'il faut générer",
     promptPlaceholder: "ex. : Mets-lui un uniforme scolaire. Place-le sous les cerisiers dans une douce lumière printanière.",
-    loginCtaTitle: "Le mode libre nécessite une connexion",
+    loginCtaTitle: "Free Style nécessite une connexion",
     loginCtaDescription: "Connectez-vous pour générer des illustrations de votre personnage avec vos propres instructions.",
     loginCtaAction: "Se connecter / S'inscrire",
   },

@@ -1359,7 +1359,7 @@ export const esMessages = {
     resultsTitle: "Resultados generados",
     promptLabel: "Qué generar",
     promptPlaceholder: "p. ej. Ponle un uniforme escolar. Que esté bajo los cerezos con una luz suave de primavera.",
-    loginCtaTitle: "El modo libre requiere iniciar sesión",
+    loginCtaTitle: "Free Style requiere iniciar sesión",
     loginCtaDescription: "Inicia sesión para generar ilustraciones de tu personaje con tus propias instrucciones.",
     loginCtaAction: "Iniciar sesión / Registrarse",
   },
