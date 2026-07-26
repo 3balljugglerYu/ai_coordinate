@@ -847,7 +847,7 @@ export const zhCnMessages = {
     tourStepPromptDescription: "请描述想要的搭配。",
     tourStepGenerateDescription: "选择 “开始造型” 即可开始。",
     pageTitle: "Coordinate",
-    pageDescription: "上传角色图片，享受 AI 造型乐趣。",
+    pageDescription: "上传人物图片，轻松换装。保持原本的姿势和构图，只自然地更换服装。",
     resultsTitle: "生成结果",
     imageSourceLabel: "请选择原始图片",
     libraryTab: "图库",
@@ -1350,7 +1350,7 @@ export const zhCnMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "上传图片，用你自己的指令生成。保留角色特征，创作出你想象中的插画。",
+    pageDescription: "上传图片，用自由的指示随心创作。不仅能换装，还能自由打造姿势、背景乃至整个场景。",
     resultsTitle: "生成结果列表",
     promptLabel: "想生成的内容",
     promptPlaceholder: "例：请换上校服。让他站在樱花树下，沐浴柔和的春光。",

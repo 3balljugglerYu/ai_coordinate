@@ -848,7 +848,7 @@ export const thMessages = {
     tourStepPromptDescription: "อธิบายชุดที่ต้องการ",
     tourStepGenerateDescription: "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม",
     pageTitle: "Coordinate",
-    pageDescription: "อัปโหลดรูปตัวละครและสนุกกับการจัดสไตล์ด้วย AI",
+    pageDescription: "อัปโหลดรูปบุคคลแล้วเปลี่ยนชุดได้ง่าย ๆ คงท่าทางและองค์ประกอบเดิมไว้ เปลี่ยนแค่เสื้อผ้าอย่างเป็นธรรมชาติ",
     resultsTitle: "ผลลัพธ์ที่สร้าง",
     imageSourceLabel: "เลือกรูปต้นฉบับ",
     libraryTab: "ไลบรารี",
@@ -1351,7 +1351,7 @@ export const thMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "อัปโหลดรูปภาพและสร้างด้วยคำสั่งของคุณเอง คงลักษณะของตัวละครไว้ แล้วสร้างภาพอย่างที่คุณจินตนาการ",
+    pageDescription: "อัปโหลดรูปแล้วสร้างสรรค์ได้อย่างอิสระตามใจ ไม่ใช่แค่เปลี่ยนชุด แต่กำหนดท่าทาง ฉากหลัง และซีนทั้งหมดได้ตามต้องการ",
     resultsTitle: "รายการผลลัพธ์",
     promptLabel: "สิ่งที่ต้องการสร้าง",
     promptPlaceholder: "เช่น ให้ใส่ชุดนักเรียน แล้วยืนอยู่ใต้ต้นซากุระโดยมีแสงนุ่มนวลของฤดูใบไม้ผลิส่องมา",

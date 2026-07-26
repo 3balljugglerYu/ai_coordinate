@@ -851,7 +851,7 @@ export const ptMessages = {
     tourStepPromptDescription: "Descreva o tipo de look que você quer.",
     tourStepGenerateDescription: "Selecione \"Iniciar styling\" para começar.",
     pageTitle: "Coordinate",
-    pageDescription: "Faça upload de uma imagem de personagem e curta o styling com IA.",
+    pageDescription: "Envie uma foto e troque de look com facilidade. Mantenha a pose e a composição originais, mudando apenas a roupa de forma natural.",
     resultsTitle: "Resultados gerados",
     imageSourceLabel: "Escolha sua imagem de origem",
     libraryTab: "Biblioteca",
@@ -1355,7 +1355,7 @@ export const ptMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Envie uma imagem e gere com suas próprias instruções. Mantenha as características do seu personagem e crie exatamente o que imagina.",
+    pageDescription: "Envie uma imagem e crie livremente, do seu jeito. Além de trocar o look, você cria a pose, o fundo e a cena inteira à vontade.",
     resultsTitle: "Resultados gerados",
     promptLabel: "O que gerar",
     promptPlaceholder: "ex.: Coloque um uniforme escolar. Deixe-o sob as cerejeiras com uma luz suave de primavera.",

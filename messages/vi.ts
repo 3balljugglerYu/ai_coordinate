@@ -848,7 +848,7 @@ export const viMessages = {
     tourStepPromptDescription: "Mô tả loại trang phục bạn muốn.",
     tourStepGenerateDescription: "Chọn \"Bắt đầu styling\" để bắt đầu.",
     pageTitle: "Coordinate",
-    pageDescription: "Tải hình nhân vật và tận hưởng styling với AI.",
+    pageDescription: "Tải ảnh nhân vật lên và thay trang phục thật dễ dàng. Giữ nguyên tư thế và bố cục gốc, chỉ thay đổi trang phục một cách tự nhiên.",
     resultsTitle: "Kết quả đã tạo",
     imageSourceLabel: "Chọn hình nguồn của bạn",
     libraryTab: "Thư viện",
@@ -1352,7 +1352,7 @@ export const viMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Tải ảnh lên và tạo bằng chỉ dẫn của riêng bạn. Giữ nguyên đặc điểm nhân vật và tạo đúng như bạn tưởng tượng.",
+    pageDescription: "Tải ảnh lên và sáng tạo tự do theo ý bạn. Không chỉ thay trang phục, bạn còn tự do tạo tư thế, bối cảnh và cả khung cảnh.",
     resultsTitle: "Danh sách kết quả",
     promptLabel: "Nội dung muốn tạo",
     promptPlaceholder: "vd: Hãy cho mặc đồng phục học sinh. Đặt đứng dưới hoa anh đào trong ánh sáng dịu của mùa xuân.",

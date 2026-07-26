@@ -848,7 +848,7 @@ export const arMessages = {
     tourStepPromptDescription: "صف نوع الإطلالة التي تريدها.",
     tourStepGenerateDescription: "اختر \"بدء التنسيق\" للبدء.",
     pageTitle: "Coordinate",
-    pageDescription: "ارفع صورة شخصية واستمتع بتنسيق الإطلالات بالذكاء الاصطناعي.",
+    pageDescription: "ارفع صورة شخص وغيّر الملابس بسهولة. حافظ على الوضعية والتكوين الأصليين، وغيّر الملابس فقط بشكل طبيعي.",
     resultsTitle: "النتائج المُنشأة",
     imageSourceLabel: "اختر صورتك المصدر",
     libraryTab: "المكتبة",
@@ -1352,7 +1352,7 @@ export const arMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "ارفع صورة وأنشئ بتعليماتك الخاصة. حافظ على ملامح شخصيتك وأنشئ تمامًا ما تتخيله.",
+    pageDescription: "ارفع صورة وأبدع بحرية كما تتخيّل. ليس تغيير الملابس فحسب، بل يمكنك تصميم الوضعية والخلفية والمشهد بالكامل كما تريد.",
     resultsTitle: "قائمة النتائج",
     promptLabel: "ما تريد إنشاءه",
     promptPlaceholder: "مثال: ألبسه زيًا مدرسيًا. اجعله يقف تحت أزهار الكرز بضوء ربيعي ناعم.",

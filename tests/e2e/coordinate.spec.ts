@@ -43,7 +43,7 @@ test.describe("CoordinatePageE2E from EARS specs", () => {
         page.getByRole("heading", { level: 2, name: "ログイン" })
       ).toBeVisible();
       await expect(
-        page.getByRole("heading", { level: 1, name: "コーディネート" })
+        page.getByRole("heading", { level: 1, name: "Coordinate" })
       ).toHaveCount(0);
     });
   });
@@ -66,10 +66,10 @@ test.describe("CoordinatePageE2E from EARS specs", () => {
       await page.goto(COORDINATE_PATH);
 
       await expect(
-        page.getByRole("heading", { level: 1, name: "コーディネート" })
+        page.getByRole("heading", { level: 1, name: "Coordinate" })
       ).toBeVisible();
       await expect(
-        page.getByText("人物画像をアップロードして、着せ替えを楽しみましょう")
+        page.getByText("人物画像をアップロードして、かんたん着せ替え。元のポーズや構図はそのままに、衣装だけを自然にチェンジできます。")
       ).toBeVisible();
       await expect(
         page.getByRole("heading", { level: 2, name: "生成結果一覧" })
@@ -98,7 +98,7 @@ test.describe("CoordinatePageE2E from EARS specs", () => {
         page.getByRole("heading", { level: 1, name: "Coordinate" })
       ).toBeVisible();
       await expect(
-        page.getByText("Upload a character image and enjoy styling with AI.")
+        page.getByText("Upload a photo and change outfits with ease. Keep the original pose and composition while naturally swapping just the clothing.")
       ).toBeVisible();
       await expect(
         page.getByRole("heading", { level: 2, name: "Generated results" })

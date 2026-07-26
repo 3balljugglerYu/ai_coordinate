@@ -848,7 +848,7 @@ export const koMessages = {
     tourStepPromptDescription: "원하는 코디를 설명해 주세요.",
     tourStepGenerateDescription: "“스타일링 시작”을 선택해 시작해 주세요.",
     pageTitle: "Coordinate",
-    pageDescription: "캐릭터 이미지를 업로드하고 AI 스타일링을 즐겨보세요.",
+    pageDescription: "인물 이미지를 업로드해 간편하게 옷을 갈아입혀 보세요. 원래 포즈와 구도는 그대로, 의상만 자연스럽게 바꿀 수 있습니다.",
     resultsTitle: "생성 결과",
     imageSourceLabel: "원본 이미지를 선택하세요",
     libraryTab: "라이브러리",
@@ -1351,7 +1351,7 @@ export const koMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "이미지를 업로드하고 자유로운 지시로 생성할 수 있습니다. 캐릭터의 특징은 그대로, 원하는 대로 일러스트를 만들어 보세요.",
+    pageDescription: "이미지를 업로드하고 자유로운 지시로 원하는 대로. 옷 갈아입히기는 물론, 포즈·배경·장면까지 자유롭게 만들 수 있습니다.",
     resultsTitle: "생성 결과 목록",
     promptLabel: "생성할 내용",
     promptPlaceholder: "예: 교복을 입혀 주세요. 벚꽃 아래에 세우고 봄의 부드러운 빛이 비치게 해 주세요.",

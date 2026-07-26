@@ -825,7 +825,7 @@ export const jaMessages = {
     tourStepPromptDescription: "どんなコーデにしたいか入力します。",
     tourStepGenerateDescription: "「コーデスタート」ボタンを選択して、開始しましょう！",
     pageTitle: "Coordinate",
-    pageDescription: "人物画像をアップロードして、着せ替えを楽しみましょう",
+    pageDescription: "人物画像をアップロードして、かんたん着せ替え。元のポーズや構図はそのままに、衣装だけを自然にチェンジできます。",
     resultsTitle: "生成結果一覧",
     imageSourceLabel: "元画像の選択方法",
     libraryTab: "ライブラリ",
@@ -1295,7 +1295,7 @@ export const jaMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "画像をアップロードして、自由な指示で生成できます。うちの子の特徴はそのままに、思いのままのイラストを作りましょう。",
+    pageDescription: "画像をアップロードして、自由な指示で思いのままに。着せ替えはもちろん、ポーズ・背景・シーンごと自在に作れます。",
     resultsTitle: "生成結果一覧",
     promptLabel: "生成したい内容",
     promptPlaceholder: "例: 制服姿にしてください。桜の下に立たせて、春の柔らかい光が当たるようにしてください。",

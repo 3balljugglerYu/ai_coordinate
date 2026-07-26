@@ -851,7 +851,7 @@ export const esMessages = {
     tourStepPromptDescription: "Describe el tipo de conjunto que quieres.",
     tourStepGenerateDescription: "Selecciona \"Empezar styling\" para empezar.",
     pageTitle: "Coordinate",
-    pageDescription: "Sube una imagen de personaje y disfruta del styling con IA.",
+    pageDescription: "Sube una foto y cambia de outfit con facilidad. Mantén la pose y la composición originales y cambia solo la ropa de forma natural.",
     resultsTitle: "Resultados generados",
     imageSourceLabel: "Elige tu imagen de origen",
     libraryTab: "Biblioteca",
@@ -1355,7 +1355,7 @@ export const esMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Sube una imagen y genera con tus propias instrucciones. Conserva los rasgos de tu personaje y crea justo lo que imaginas.",
+    pageDescription: "Sube una imagen y crea con total libertad. Además de cambiar el outfit, puedes crear la pose, el fondo y toda la escena a tu gusto.",
     resultsTitle: "Resultados generados",
     promptLabel: "Qué generar",
     promptPlaceholder: "p. ej. Ponle un uniforme escolar. Que esté bajo los cerezos con una luz suave de primavera.",

@@ -851,7 +851,7 @@ export const frMessages = {
     tourStepPromptDescription: "Décrivez le type de tenue souhaité.",
     tourStepGenerateDescription: "Sélectionnez « Démarrer le styling ».",
     pageTitle: "Coordinate",
-    pageDescription: "Téléchargez l'image d'un personnage et amusez-vous avec le styling par IA.",
+    pageDescription: "Importez une photo et changez de tenue en toute simplicité. Gardez la pose et le cadrage d'origine en ne modifiant que les vêtements, naturellement.",
     resultsTitle: "Résultats générés",
     imageSourceLabel: "Choisissez votre image source",
     libraryTab: "Bibliothèque",
@@ -1355,7 +1355,7 @@ export const frMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Importez une image et générez avec vos propres instructions. Conservez les traits de votre personnage et créez exactement ce que vous imaginez.",
+    pageDescription: "Importez une image et créez librement, comme vous l'imaginez. Au-delà des tenues, composez la pose, l'arrière-plan et toute la scène à votre guise.",
     resultsTitle: "Résultats générés",
     promptLabel: "Ce qu'il faut générer",
     promptPlaceholder: "ex. : Mets-lui un uniforme scolaire. Place-le sous les cerisiers dans une douce lumière printanière.",

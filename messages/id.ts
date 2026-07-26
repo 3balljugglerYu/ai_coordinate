@@ -850,7 +850,7 @@ export const idMessages = {
     tourStepPromptDescription: "Jelaskan jenis outfit yang kamu inginkan.",
     tourStepGenerateDescription: "Pilih \"Mulai styling\" untuk memulai.",
     pageTitle: "Coordinate",
-    pageDescription: "Unggah gambar karakter dan nikmati styling dengan AI.",
+    pageDescription: "Unggah foto dan ganti busana dengan mudah. Pertahankan pose dan komposisi asli, cukup ubah pakaiannya secara alami.",
     resultsTitle: "Hasil yang dihasilkan",
     imageSourceLabel: "Pilih gambar sumbermu",
     libraryTab: "Pustaka",
@@ -1354,7 +1354,7 @@ export const idMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Unggah gambar dan hasilkan dengan instruksimu sendiri. Pertahankan ciri karaktermu dan buat persis seperti yang kamu bayangkan.",
+    pageDescription: "Unggah gambar dan berkreasi bebas sesukamu. Bukan hanya ganti busana, kamu bisa mengatur pose, latar, hingga seluruh suasana.",
     resultsTitle: "Daftar hasil",
     promptLabel: "Apa yang ingin dibuat",
     promptPlaceholder: "mis. Kenakan seragam sekolah. Buat dia berdiri di bawah bunga sakura dengan cahaya lembut musim semi.",

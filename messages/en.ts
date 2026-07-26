@@ -848,7 +848,7 @@ export const enMessages = {
     tourStepPromptDescription: "Describe the kind of outfit you want.",
     tourStepGenerateDescription: "Select “Start styling” to begin.",
     pageTitle: "Coordinate",
-    pageDescription: "Upload a character image and enjoy styling with AI.",
+    pageDescription: "Upload a photo and change outfits with ease. Keep the original pose and composition while naturally swapping just the clothing.",
     resultsTitle: "Generated results",
     imageSourceLabel: "Choose your source image",
     libraryTab: "Library",
@@ -1352,7 +1352,7 @@ export const enMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Upload an image and generate with your own instructions. Keep your character's features while creating exactly what you imagine.",
+    pageDescription: "Upload an image and create freely, just as you imagine. Beyond outfit changes, you can freely craft the pose, background, and whole scene.",
     resultsTitle: "Generated results",
     promptLabel: "What to generate",
     promptPlaceholder: "e.g. Put them in a school uniform. Have them stand under cherry blossoms in soft spring light.",

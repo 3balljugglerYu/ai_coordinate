@@ -851,7 +851,7 @@ export const deMessages = {
     tourStepPromptDescription: "Beschreibe das gewünschte Outfit.",
     tourStepGenerateDescription: "Wähle \"Styling starten\", um zu beginnen.",
     pageTitle: "Coordinate",
-    pageDescription: "Lade ein Charakterbild hoch und genieße Styling mit KI.",
+    pageDescription: "Lade ein Foto hoch und wechsle das Outfit ganz einfach. Behalte Pose und Bildausschnitt bei und ändere nur die Kleidung – ganz natürlich.",
     resultsTitle: "Generierte Ergebnisse",
     imageSourceLabel: "Wähle dein Quellbild",
     libraryTab: "Bibliothek",
@@ -1356,7 +1356,7 @@ export const deMessages = {
   free: {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
-    pageDescription: "Lade ein Bild hoch und generiere mit deinen eigenen Anweisungen. Behalte die Merkmale deiner Figur und erschaffe genau das, was du dir vorstellst.",
+    pageDescription: "Lade ein Bild hoch und gestalte frei nach deinen Vorstellungen. Nicht nur das Outfit: Pose, Hintergrund und die ganze Szene lassen sich frei erstellen.",
     resultsTitle: "Generierte Ergebnisse",
     promptLabel: "Was generiert werden soll",
     promptPlaceholder: "z. B. Zieh ihr eine Schuluniform an. Stell sie unter Kirschblüten in weiches Frühlingslicht.",
