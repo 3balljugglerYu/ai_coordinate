@@ -1,6 +1,8 @@
+import type { ReactNode } from "react";
 import { Activity, AlertTriangle, ArrowRightLeft, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
+  DashboardAiCostEstimate,
   DashboardFunnelStep,
   DashboardLoginMethodMixItem,
   DashboardModelMixItem,
@@ -13,6 +15,7 @@ import { AdminEntryAccessStackedCard } from "./AdminEntryAccessStackedCard";
 import { AdminExternalAccessStackedCard } from "./AdminExternalAccessStackedCard";
 import { AdminDropoffPagesCard } from "./AdminDropoffPagesCard";
 import { AdminFunnelCard } from "./AdminFunnelCard";
+import { AdminAiCostCardPanel } from "./AdminAiCostCardPanel";
 import { AdminLoginMethodMixChartPanel } from "./AdminLoginMethodMixChartPanel";
 import { AdminModelMixChartPanel } from "./AdminModelMixChartPanel";
 import { AdminTopLandingPagesCard } from "./AdminTopLandingPagesCard";
@@ -36,6 +39,9 @@ interface AdminTrendAndFunnelSectionProps {
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
   loginMethodMix: DashboardLoginMethodMixItem[];
+  aiCostEstimate: DashboardAiCostEstimate;
+  /** 実額行（サーバー側で Suspense 付きに組み立てたスロット） */
+  aiCostActualSlot?: ReactNode;
 }
 
 interface AnalyticsUnavailableCardProps {
@@ -153,6 +159,8 @@ export function AdminTrendAndFunnelSection({
   funnel,
   modelMix,
   loginMethodMix,
+  aiCostEstimate,
+  aiCostActualSlot,
 }: AdminTrendAndFunnelSectionProps) {
   const trendCsv = buildDashboardTrendCsv(trend);
   const trendCsvFilename = `dashboard-trend-${csvDateSpanSuffix(
@@ -221,6 +229,11 @@ export function AdminTrendAndFunnelSection({
           </CardContent>
         </Card>
       </section>
+
+      <AdminAiCostCardPanel
+        estimate={aiCostEstimate}
+        actualSlot={aiCostActualSlot}
+      />
     </section>
   );
 }

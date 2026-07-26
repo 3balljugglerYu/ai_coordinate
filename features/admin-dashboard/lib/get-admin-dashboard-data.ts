@@ -23,6 +23,7 @@ import {
   type StyleGuestGenerateAttemptRow,
   type StylePresetDashboardRow,
 } from "./build-one-tap-style-detailed";
+import { buildAiCostEstimate } from "./build-ai-cost";
 import type {
   AdminDashboardData,
   AdminDashboardKpi,
@@ -951,6 +952,7 @@ export async function getAdminDashboardData(
     funnel,
     modelMix,
     loginMethodMix: buildLoginMethodMix(authProviderSignups, currentStart, now),
+    aiCostEstimate: buildAiCostEstimate(generatedImages, currentStart, now),
     recentPurchases,
     alerts,
     quickActions: adminQuickActionItems.map((item) => ({

@@ -8,6 +8,7 @@ import { AdminPageAnalyticsSectionServer } from "@/features/admin-dashboard/comp
 import { parseAdminDashboardTab } from "@/features/admin-dashboard/lib/dashboard-tab";
 import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
+import { getAiCostActuals } from "@/features/admin-dashboard/lib/get-ai-cost-actuals";
 import {
   formatAdminDateTimeLabel,
   getCustomDashboardRangeBounds,
@@ -114,6 +115,8 @@ export default async function AdminDashboardPage({
           funnel={data.funnel}
           modelMix={data.modelMix}
           loginMethodMix={data.loginMethodMix}
+          aiCostEstimate={data.aiCostEstimate}
+          aiCostActualsPromise={getAiCostActuals(range)}
         />
       )}
     </AdminDashboardView>
