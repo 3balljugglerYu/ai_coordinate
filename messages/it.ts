@@ -1346,6 +1346,17 @@ export const itMessages = {
     stepFinishedDescription:
       "Ottimo lavoro. Goditi la creazione di altri cambi di outfit. Tocca \"Fatto\" per ricevere la ricompensa in Percoin.",
   },
+  free: {
+    tabLabel: "Libera",
+    pageTitle: "Modalità libera",
+    pageDescription: "Carica un'immagine e genera con le tue istruzioni. Mantieni i tratti del personaggio e crea esattamente ciò che immagini.",
+    resultsTitle: "Risultati generati",
+    promptLabel: "Cosa generare",
+    promptPlaceholder: "es. In uniforme scolastica sotto i ciliegi, con la luce morbida della primavera. Mantieni viso e capelli del personaggio.",
+    loginCtaTitle: "La modalità libera richiede l'accesso",
+    loginCtaDescription: "Accedi per generare illustrazioni del tuo personaggio con le tue istruzioni.",
+    loginCtaAction: "Accedi / Registrati",
+  },
   style: {
     pageTitle: "One-Tap Style",
     pageDescription:

@@ -1343,6 +1343,17 @@ export const enMessages = {
     stepFinishedDescription:
       "Nice work. Enjoy creating more outfit swaps from here. Click “Done” to receive your Percoin reward.",
   },
+  free: {
+    tabLabel: "Free",
+    pageTitle: "Free Mode",
+    pageDescription: "Upload an image and generate with your own instructions. Keep your character's features while creating exactly what you imagine.",
+    resultsTitle: "Generated results",
+    promptLabel: "What to generate",
+    promptPlaceholder: "e.g. In a school uniform under cherry blossoms, in soft spring light. Keep the character's face and hairstyle.",
+    loginCtaTitle: "Free Mode requires login",
+    loginCtaDescription: "Log in to generate illustrations of your character with your own instructions.",
+    loginCtaAction: "Log in / Sign up",
+  },
   style: {
     pageTitle: "One-Tap Style",
     pageDescription:

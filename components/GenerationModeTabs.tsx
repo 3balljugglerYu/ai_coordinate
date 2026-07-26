@@ -4,27 +4,27 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, Wand2 } from "lucide-react";
+import { Sparkles, Wand2, PenLine } from "lucide-react";
 import { stripLocalePrefix } from "@/i18n/config";
 import { setLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import { cn } from "@/lib/utils";
 
 /**
- * /coordinate と /style を相互に行き来するためのアニメーション付き
- * セグメントタブ。ボトムナビ/サイドバーに無い style 画面への導線を兼ねる。
+ * /coordinate・/style・/free を相互に行き来するためのアニメーション付き
+ * セグメントタブ。ボトムナビ/サイドバーに無い style / free 画面への導線を兼ねる。
  *
- * (app)/layout.tsx に配置されており、/coordinate ⇄ /style の遷移中も
+ * (app)/layout.tsx に配置されており、モード間の遷移中も
  * インスタンスが保持される。そのため usePathname の更新に合わせて
  * ピル(アクティブ背景)が CSS トランジションで滑らかにスライドし、
  * 遷移完了を待たずに即座に切り替わって見える。ページ本文の読み込みは
  * (app)/loading.tsx のスケルトンがタブの下で受け持つ。
  *
- * ラベルは既存の翻訳キー (nav.coordinate / style.pageTitle) を再利用し、
- * 新規キーを増やさない。
+ * ラベルは既存キー (nav.coordinate / style.pageTitle) と free.tabLabel を使う。
  */
 const TABS = [
   { path: "/coordinate", icon: Sparkles },
   { path: "/style", icon: Wand2 },
+  { path: "/free", icon: PenLine },
 ] as const;
 
 export function GenerationModeTabs() {
@@ -32,6 +32,7 @@ export function GenerationModeTabs() {
   const router = useRouter();
   const navT = useTranslations("nav");
   const styleT = useTranslations("style");
+  const freeT = useTranslations("free");
 
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   // 現在の pathname からロケールプレフィックス(例: /ja)を取り出し、遷移先 URL に
@@ -55,10 +56,10 @@ export function GenerationModeTabs() {
     setLastGenerationModePath(TABS[activeIndex].path);
   }, [activeIndex]);
 
-  // coordinate / style 以外のルートでは表示しない。
+  // coordinate / style / free 以外のルートでは表示しない。
   if (activeIndex === -1) return null;
 
-  const labels = [navT("coordinate"), styleT("pageTitle")];
+  const labels = [navT("coordinate"), styleT("pageTitle"), freeT("tabLabel")];
 
   return (
     <div className="border-b border-pink-100/70 bg-white/80 backdrop-blur-sm">
@@ -66,7 +67,7 @@ export function GenerationModeTabs() {
         <div
           role="tablist"
           aria-label={labels.join(" / ")}
-          className="relative inline-flex w-full max-w-md items-stretch overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)] sm:w-auto"
+          className="relative inline-flex w-full max-w-xl items-stretch overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)] sm:w-auto"
         >
           {/* スライドするピル(アクティブ背景) */}
           <span
@@ -99,8 +100,9 @@ export function GenerationModeTabs() {
                 aria-selected={isActive}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
-                  "relative z-10 flex flex-1 items-center justify-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold",
-                  "transition-colors duration-300 sm:flex-none sm:min-w-[148px]",
+                  // 3タブをスマホ幅に収めるため flex-1 で等分し、余白とアイコン間隔を圧縮。
+                  "relative z-10 flex flex-1 items-center justify-center gap-1 rounded-full px-2.5 py-2 text-sm font-semibold whitespace-nowrap",
+                  "transition-colors duration-300 sm:flex-none sm:min-w-[112px] sm:gap-1.5 sm:px-4",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1",
                   isActive ? "text-white" : "text-gray-500 hover:text-pink-600"
                 )}

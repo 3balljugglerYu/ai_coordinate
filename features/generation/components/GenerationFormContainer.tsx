@@ -69,6 +69,14 @@ interface GenerationFormContainerProps {
    * `GuestResultPreview` に in-memory で表示する。既定は "authenticated"。
    */
   authState?: "guest" | "authenticated";
+  /**
+   * 生成モード。
+   * - "coordinate"(既定): 従来のコーディネート生成。
+   * - "free": じゆうモード。generationType="free" で生成し、キャッシュ無効化先・
+   *   ペルコイン購入導線の from を free に切り替える。じゆうモードはログイン必須のため
+   *   authState="guest" では使わない。
+   */
+  mode?: "coordinate" | "free";
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -192,9 +200,16 @@ function sumCompletedProgressUnits(
 export function GenerationFormContainer({
   subscriptionPlan,
   authState = "authenticated",
+  mode = "coordinate",
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
+  const isFreeMode = mode === "free";
+  // モード別のキャッシュ無効化先とペルコイン購入導線の from。
+  const revalidatePath = isFreeMode
+    ? "/api/revalidate/free"
+    : "/api/revalidate/coordinate";
+  const purchaseSource = isFreeMode ? "free" : "coordinate";
   const router = useRouter();
   const { toast } = useToast();
   const ctx = useGenerationState();
@@ -415,7 +430,7 @@ export function GenerationFormContainer({
         void (async () => {
           if (shouldInvalidateCache) {
             try {
-              await fetch("/api/revalidate/coordinate", { method: "POST" });
+              await fetch(revalidatePath, { method: "POST" });
             } catch {
               // 無効化失敗時も refresh は継続する
             }
@@ -426,7 +441,7 @@ export function GenerationFormContainer({
         })();
       }, delayMs);
     },
-    [router]
+    [router, revalidatePath]
   );
 
   const formatPartialFailureMessage = useCallback(
@@ -1372,6 +1387,7 @@ export function GenerationFormContainer({
         isGenerating={isFormBusy}
         authState={authState}
         guestGenerationLocked={isGuest && guestResult !== null}
+        mode={mode}
       />
 
       {error ? (
@@ -1380,7 +1396,7 @@ export function GenerationFormContainer({
           {isPercoinInsufficientError(error) && !isGuest ? (
             <div className="mt-3 flex justify-center lg:justify-start">
               <Link
-                href={getPercoinPurchaseUrl("coordinate")}
+                href={getPercoinPurchaseUrl(purchaseSource)}
                 className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
               >
                 {creditsT("purchaseAction")}

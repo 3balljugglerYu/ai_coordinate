@@ -1347,6 +1347,17 @@ export const deMessages = {
     stepFinishedDescription:
       "Gut gemacht. Genieße jetzt das Erstellen weiterer Outfit-Wechsel. Klicke auf \"Fertig\", um deine Percoin-Belohnung zu erhalten.",
   },
+  free: {
+    tabLabel: "Frei",
+    pageTitle: "Freier Modus",
+    pageDescription: "Lade ein Bild hoch und generiere mit deinen eigenen Anweisungen. Behalte die Merkmale deiner Figur und erschaffe genau das, was du dir vorstellst.",
+    resultsTitle: "Generierte Ergebnisse",
+    promptLabel: "Was generiert werden soll",
+    promptPlaceholder: "z. B. In Schuluniform unter Kirschblüten, im weichen Frühlingslicht. Gesicht und Frisur der Figur beibehalten.",
+    loginCtaTitle: "Der freie Modus erfordert eine Anmeldung",
+    loginCtaDescription: "Melde dich an, um Illustrationen deiner Figur mit eigenen Anweisungen zu generieren.",
+    loginCtaAction: "Anmelden / Registrieren",
+  },
   style: {
     pageTitle: "One-Tap Style",
     pageDescription:

@@ -1346,6 +1346,17 @@ export const esMessages = {
     stepFinishedDescription:
       "Buen trabajo. Sigue creando más cambios de conjunto a partir de aquí. Pulsa \"Listo\" para recibir tu recompensa de Percoins.",
   },
+  free: {
+    tabLabel: "Libre",
+    pageTitle: "Modo libre",
+    pageDescription: "Sube una imagen y genera con tus propias instrucciones. Conserva los rasgos de tu personaje y crea justo lo que imaginas.",
+    resultsTitle: "Resultados generados",
+    promptLabel: "Qué generar",
+    promptPlaceholder: "p. ej. Con uniforme escolar bajo los cerezos, con luz suave de primavera. Conserva la cara y el peinado del personaje.",
+    loginCtaTitle: "El modo libre requiere iniciar sesión",
+    loginCtaDescription: "Inicia sesión para generar ilustraciones de tu personaje con tus propias instrucciones.",
+    loginCtaAction: "Iniciar sesión / Registrarse",
+  },
   style: {
     pageTitle: "One-Tap Style",
     pageDescription:

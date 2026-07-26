@@ -1286,6 +1286,17 @@ export const jaMessages = {
     stepFinishedDescription:
       "お疲れ様でした！引き続き、着せ替えをお楽しみください！ ※「完了」をクリックするとコインが付与されます。",
   },
+  free: {
+    tabLabel: "じゆう",
+    pageTitle: "じゆうモード",
+    pageDescription: "画像をアップロードして、自由な指示で生成できます。うちの子の特徴はそのままに、思いのままのイラストを作りましょう。",
+    resultsTitle: "生成結果一覧",
+    promptLabel: "生成したい内容",
+    promptPlaceholder: "例: 制服姿で桜の下に立たせて、春の柔らかい光で。キャラクターの顔や髪型はそのまま。",
+    loginCtaTitle: "じゆうモードはログインが必要です",
+    loginCtaDescription: "ログインすると、自由な指示でうちの子のイラストを生成できます。",
+    loginCtaAction: "ログイン / 新規登録",
+  },
   style: {
     pageTitle: "One-Tap Style",
     pageDescription:

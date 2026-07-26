@@ -1343,6 +1343,17 @@ export const arMessages = {
     stepFinishedDescription:
       "أحسنت. استمتع بإنشاء المزيد من تغييرات الإطلالة من هنا. اضغط \"تم\" لاستلام مكافأة Percoin.",
   },
+  free: {
+    tabLabel: "حر",
+    pageTitle: "الوضع الحر",
+    pageDescription: "ارفع صورة وأنشئ بتعليماتك الخاصة. حافظ على ملامح شخصيتك وأنشئ تمامًا ما تتخيله.",
+    resultsTitle: "قائمة النتائج",
+    promptLabel: "ما تريد إنشاءه",
+    promptPlaceholder: "مثال: بزي مدرسي تحت أزهار الكرز، بضوء الربيع الناعم. حافظ على وجه الشخصية وتسريحة شعرها.",
+    loginCtaTitle: "الوضع الحر يتطلب تسجيل الدخول",
+    loginCtaDescription: "سجّل الدخول لإنشاء رسوم لشخصيتك بتعليماتك الخاصة.",
+    loginCtaAction: "تسجيل الدخول / إنشاء حساب",
+  },
   style: {
     pageTitle: "One-Tap Style",
     pageDescription:

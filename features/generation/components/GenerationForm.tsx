@@ -37,7 +37,7 @@ import {
 } from "../lib/form-preferences";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
-  isGenerationPromptTooLong,
+  FREE_GENERATION_PROMPT_MAX_LENGTH,
 } from "../lib/prompt-validation";
 import { DEFAULT_GENERATION_MODEL } from "../types";
 import type {
@@ -78,6 +78,8 @@ interface GenerationFormProps {
     model: GeminiModel;
     /** framing_mode。既定 free_pose / 「維持」チェックON で locked。locked は送らない(省略) */
     framingMode?: FramingMode;
+    /** 生成種別。じゆうモードは "free"。省略時は呼び出し側で "coordinate" 扱い。 */
+    generationType?: "coordinate" | "free";
   }) => void;
   isGenerating?: boolean;
   /**
@@ -91,6 +93,14 @@ interface GenerationFormProps {
    * 再生成すると in-memory の結果が失われ上限エラーになるため、生成ボタンを無効化する。
    */
   guestGenerationLocked?: boolean;
+  /**
+   * 生成モード。
+   * - "coordinate"(既定): 従来の詳細設定つきコーディネート生成。
+   * - "free": じゆうモード。設定UI(元画像タイプ/背景/ポーズ/モデル/枚数)を出さず、
+   *   画像+自由記述プロンプトのみ。既定値(model=DEFAULT, count=1, backgroundMode=keep)を
+   *   固定送信し、generationType="free" で生成する。プロンプト上限は30,000字。
+   */
+  mode?: "coordinate" | "free";
 }
 
 type BackgroundModeOption = {
@@ -107,9 +117,22 @@ export function GenerationForm({
   isGenerating = false,
   authState = "authenticated",
   guestGenerationLocked = false,
+  mode = "coordinate",
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
+  const freeT = useTranslations("free");
   const subscriptionT = useTranslations("subscription");
+  const isFree = mode === "free";
+  // じゆうモードは上限30,000字、それ以外は1,500字。
+  const promptMaxLength = isFree
+    ? FREE_GENERATION_PROMPT_MAX_LENGTH
+    : GENERATION_PROMPT_MAX_LENGTH;
+  // プロンプト欄のラベル/プレースホルダはモード別。それ以外の機構的な文言は
+  // coordinate namespace を流用する(churn を抑える)。
+  const promptLabel = isFree ? freeT("promptLabel") : t("promptLabel");
+  const promptPlaceholder = isFree
+    ? freeT("promptPlaceholder")
+    : t("promptPlaceholder");
   const generationState = useGenerationState();
   const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -184,7 +207,7 @@ export function GenerationForm({
   });
 
   const promptLength = prompt.length;
-  const isPromptTooLong = isGenerationPromptTooLong(prompt);
+  const isPromptTooLong = promptLength > promptMaxLength;
   const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
     selectedModel,
@@ -259,7 +282,7 @@ export function GenerationForm({
     }
 
     if (isPromptTooLong) {
-      alert(t("promptTooLong", { max: GENERATION_PROMPT_MAX_LENGTH }));
+      alert(t("promptTooLong", { max: promptMaxLength }));
       return;
     }
 
@@ -268,8 +291,10 @@ export function GenerationForm({
       return;
     }
 
-    // チュートリアル中: コーデスタート押下でStep8へ進む
+    // チュートリアル中: コーデスタート押下でStep8へ進む(coordinate 専用配線)。
+    // じゆうモードはチュートリアル対象外なので発火しない。
     if (
+      !isFree &&
       typeof document !== "undefined" &&
       sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) === "true"
     ) {
@@ -278,15 +303,34 @@ export function GenerationForm({
       );
     }
 
+    const commonSourceImage = {
+      sourceImage:
+        selectedStock || selectedGenerated ? undefined : uploadedImage?.file,
+      sourceImageStockId: selectedStock?.id,
+      sourceImageGeneratedId: selectedGenerated?.id,
+    } as const;
+
+    // じゆうモードは設定UIを持たないため、既定値を固定送信する
+    // (背景=keep / 枚数=1 / モデル=DEFAULT / framingMode なし / sourceImageType=illustration)。
+    if (isFree) {
+      onSubmit({
+        prompt: trimmedPrompt,
+        ...commonSourceImage,
+        sourceImageType: "illustration",
+        backgroundMode: "keep",
+        count: 1,
+        model: DEFAULT_GENERATION_MODEL,
+        generationType: "free",
+      });
+      return;
+    }
+
     // ソース画像の入力は uploadedImage / stock / generated のいずれか 1 つ。
     // selectedStock / selectedGenerated が立っているときはサーバ側で id 経由
     // で URL を解決するため、sourceImage (File) は undefined を渡す。
     onSubmit({
       prompt: trimmedPrompt,
-      sourceImage:
-        selectedStock || selectedGenerated ? undefined : uploadedImage?.file,
-      sourceImageStockId: selectedStock?.id,
-      sourceImageGeneratedId: selectedGenerated?.id,
+      ...commonSourceImage,
       sourceImageType,
       backgroundMode,
       count: Math.min(selectedCount, maxGenerationCount),
@@ -386,7 +430,10 @@ export function GenerationForm({
 
   // /style → 「このイラストで生成」 → 確認 → /coordinate 遷移時に
   // sessionStorage に画像 URL が積まれていれば apply-from-history へ転送する。
+  // この pending key は /coordinate 専用の持ち越し経路なので、じゆうモードでは消費しない
+  // (誤ってじゆうモードのフォームに coordinate 由来の画像を差し込まないため)。
   useEffect(() => {
+    if (isFree) return;
     if (typeof window === "undefined") return;
     let pendingUrl: string | null = null;
     try {
@@ -553,50 +600,58 @@ export function GenerationForm({
           />
         </div>
 
-        <div>
-          <Label className="text-base font-medium block">
-            {t("sourceImageTypeLabel")}
-          </Label>
-          <RadioGroup
-            value={sourceImageType}
-            onValueChange={(value) => setSourceImageType(value as SourceImageType)}
-            className="mt-2 flex items-center gap-6"
-            disabled={isGenerating || isTutorialInProgress}
-          >
-            {sourceImageTypeOptions.map((option) => (
-              <div key={option.value} className="flex items-center space-x-2">
-                <RadioGroupItem
-                  id={`source-image-type-${option.value}`}
-                  value={option.value}
-                />
-                <Label
-                  htmlFor={`source-image-type-${option.value}`}
-                  className="text-sm font-medium leading-none"
-                >
-                  {option.label}
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </div>
+        {/* 元画像タイプ(実写/イラスト)。じゆうモードでは非表示。 */}
+        {!isFree ? (
+          <div>
+            <Label className="text-base font-medium block">
+              {t("sourceImageTypeLabel")}
+            </Label>
+            <RadioGroup
+              value={sourceImageType}
+              onValueChange={(value) => setSourceImageType(value as SourceImageType)}
+              className="mt-2 flex items-center gap-6"
+              disabled={isGenerating || isTutorialInProgress}
+            >
+              {sourceImageTypeOptions.map((option) => (
+                <div key={option.value} className="flex items-center space-x-2">
+                  <RadioGroupItem
+                    id={`source-image-type-${option.value}`}
+                    value={option.value}
+                  />
+                  <Label
+                    htmlFor={`source-image-type-${option.value}`}
+                    className="text-sm font-medium leading-none"
+                  >
+                    {option.label}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
+        ) : null}
 
-        {/* 着せ替え内容入力 */}
+        {/* プロンプト入力(じゆうモードは自由記述 / それ以外は着せ替え内容) */}
         <PromptInputField
           value={prompt}
           onChange={setPrompt}
-          label={t("promptLabel")}
-          placeholder={t("promptPlaceholder")}
+          label={promptLabel}
+          placeholder={promptPlaceholder}
           clearLabel={t("promptClear")}
           characterCount={t("promptCharacterCount", {
             current: promptLength,
-            max: GENERATION_PROMPT_MAX_LENGTH,
+            max: promptMaxLength,
           })}
-          maxLength={GENERATION_PROMPT_MAX_LENGTH}
+          maxLength={promptMaxLength}
           invalid={isPromptTooLong}
           disabled={isGenerating || isTutorialInProgress}
-          containerProps={{ "data-tour": "tour-prompt-input" }}
+          containerProps={
+            isFree ? undefined : { "data-tour": "tour-prompt-input" }
+          }
         />
 
+        {/* --- ここから下の設定UIはコーディネート専用。じゆうモードでは全て非表示 --- */}
+        {!isFree ? (
+          <>
         {/* 背景設定 */}
         <div data-tour="tour-background-change">
           <Label className="text-base font-medium">{t("backgroundLabel")}</Label>
@@ -730,6 +785,9 @@ export function GenerationForm({
             </p>
           ) : null}
         </div>
+          </>
+        ) : null}
+        {/* --- コーディネート専用の設定UIここまで --- */}
 
         {/* 生成ボタン */}
         <GenerationSubmitButton
