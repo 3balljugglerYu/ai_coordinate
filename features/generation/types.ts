@@ -45,12 +45,14 @@ export type GenerationType =
   | 'full_body'
   | 'chibi'
   | 'one_tap_style'
-  | 'inspire';
+  | 'inspire'
+  | 'free';
 
 /**
  * 画像ソースピッカー「生成済み」タブに表示する generation_type の集合。
  * coordinate 系の派生 (specified_coordinate / full_body / chibi)、style (one_tap_style)、
- * inspire を含む。ユーザー視点での「自分が生成した人物画像」全般を入力に再利用できる。
+ * inspire、free (じゆうモード) を含む。ユーザー視点での「自分が生成した人物画像」全般を
+ * 入力に再利用できる。
  */
 export const PICKER_GENERATION_TYPES = [
   'coordinate',
@@ -59,6 +61,7 @@ export const PICKER_GENERATION_TYPES = [
   'chibi',
   'one_tap_style',
   'inspire',
+  'free',
 ] as const satisfies readonly GenerationType[];
 
 /**

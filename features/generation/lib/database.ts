@@ -1,6 +1,6 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { COORDINATE_STOCKS_LINK_MAX_JOBS } from "./coordinate-stocks-constants";
-import type { BackgroundMode, GeminiModel } from "../types";
+import type { BackgroundMode, GeminiModel, GenerationType } from "../types";
 
 /**
  * generated_imagesテーブルへのデータベース操作
@@ -21,14 +21,7 @@ export interface GeneratedImageRecord {
   // 公開閲覧数(viewableインプレッション)。view_count(詳細到達)は内部分析用に併存
   impression_count?: number;
   // Phase 1で追加されたカラム（optional）
-  generation_type?:
-    | 'coordinate'
-    | 'specified_coordinate'
-    | 'full_body'
-    | 'chibi'
-    | 'one_tap_style'
-    | 'inspire'
-    | null;
+  generation_type?: GenerationType | null;
   input_images?: Record<string, unknown> | null;
   generation_metadata?: Record<string, unknown> | null;
   source_image_stock_id?: string | null;
@@ -121,13 +114,7 @@ export async function getGeneratedImages(
   userId: string,
   limit = 50,
   offset = 0,
-  generationType?:
-    | "coordinate"
-    | "specified_coordinate"
-    | "full_body"
-    | "chibi"
-    | "one_tap_style"
-    | "inspire"
+  generationType?: GenerationType
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 

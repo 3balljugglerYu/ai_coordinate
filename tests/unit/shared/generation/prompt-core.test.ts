@@ -333,6 +333,24 @@ Minimal monochrome look`;
       });
       expect(result).toBe(`CUSTOM FREE ANCHOR\n\nカスタム指示:\n\n${userDirection}`);
     });
+
+    test("Worker が free_pose の framingMode を渡しても free 分岐は無視する(背景モードにも依存しない)", () => {
+      // Worker は全 i2i 経路で framingMode/backgroundMode を渡すが、free 分岐は
+      // これらを解釈しない。どの組み合わせでも同一の錨+入力を返すことを確認する。
+      const base = buildPrompt({
+        generationType: "free",
+        outfitDescription: userDirection,
+        backgroundMode: "keep",
+      });
+      const withFraming = buildPrompt({
+        generationType: "free",
+        outfitDescription: userDirection,
+        backgroundMode: "ai_auto",
+        framingMode: "free_pose",
+        sourceImageType: "real",
+      });
+      expect(withFraming).toBe(base);
+    });
   });
 
   describe("buildCoordinateAttemptReinforcementPrefix", () => {
