@@ -824,7 +824,7 @@ export const jaMessages = {
     tourStepUploadDescription: "ここで着せ替えたい人物画像をアップロードします。",
     tourStepPromptDescription: "どんなコーデにしたいか入力します。",
     tourStepGenerateDescription: "「コーデスタート」ボタンを選択して、開始しましょう！",
-    pageTitle: "コーディネート",
+    pageTitle: "Coordinate",
     pageDescription: "人物画像をアップロードして、着せ替えを楽しみましょう",
     resultsTitle: "生成結果一覧",
     imageSourceLabel: "元画像の選択方法",

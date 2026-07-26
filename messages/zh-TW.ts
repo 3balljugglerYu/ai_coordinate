@@ -846,7 +846,7 @@ export const zhTwMessages = {
     tourStepUploadDescription: "在此上傳想要重新造型的角色圖片。",
     tourStepPromptDescription: "請描述想要的穿搭。",
     tourStepGenerateDescription: "選擇 “開始造型” 即可開始。",
-    pageTitle: "穿搭",
+    pageTitle: "Coordinate",
     pageDescription: "上傳角色圖片，享受 AI 造型樂趣。",
     resultsTitle: "生成結果",
     imageSourceLabel: "請選擇原始圖片",

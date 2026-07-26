@@ -847,7 +847,7 @@ export const viMessages = {
     tourStepUploadDescription: "Tải lên đây hình nhân vật bạn muốn phối lại.",
     tourStepPromptDescription: "Mô tả loại trang phục bạn muốn.",
     tourStepGenerateDescription: "Chọn \"Bắt đầu styling\" để bắt đầu.",
-    pageTitle: "Phối đồ",
+    pageTitle: "Coordinate",
     pageDescription: "Tải hình nhân vật và tận hưởng styling với AI.",
     resultsTitle: "Kết quả đã tạo",
     imageSourceLabel: "Chọn hình nguồn của bạn",

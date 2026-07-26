@@ -849,7 +849,7 @@ export const idMessages = {
     tourStepUploadDescription: "Unggah di sini gambar karakter yang ingin kamu styling ulang.",
     tourStepPromptDescription: "Jelaskan jenis outfit yang kamu inginkan.",
     tourStepGenerateDescription: "Pilih \"Mulai styling\" untuk memulai.",
-    pageTitle: "Koordinat",
+    pageTitle: "Coordinate",
     pageDescription: "Unggah gambar karakter dan nikmati styling dengan AI.",
     resultsTitle: "Hasil yang dihasilkan",
     imageSourceLabel: "Pilih gambar sumbermu",

@@ -847,7 +847,7 @@ export const arMessages = {
     tourStepUploadDescription: "ارفع هنا صورة الشخصية التي تريد إعادة تنسيقها.",
     tourStepPromptDescription: "صف نوع الإطلالة التي تريدها.",
     tourStepGenerateDescription: "اختر \"بدء التنسيق\" للبدء.",
-    pageTitle: "تنسيق",
+    pageTitle: "Coordinate",
     pageDescription: "ارفع صورة شخصية واستمتع بتنسيق الإطلالات بالذكاء الاصطناعي.",
     resultsTitle: "النتائج المُنشأة",
     imageSourceLabel: "اختر صورتك المصدر",

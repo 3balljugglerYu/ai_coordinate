@@ -847,7 +847,7 @@ export const thMessages = {
     tourStepUploadDescription: "อัปโหลดที่นี่เพื่อรูปตัวละครที่ต้องการจัดสไตล์ใหม่",
     tourStepPromptDescription: "อธิบายชุดที่ต้องการ",
     tourStepGenerateDescription: "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม",
-    pageTitle: "จัดเซ็ต",
+    pageTitle: "Coordinate",
     pageDescription: "อัปโหลดรูปตัวละครและสนุกกับการจัดสไตล์ด้วย AI",
     resultsTitle: "ผลลัพธ์ที่สร้าง",
     imageSourceLabel: "เลือกรูปต้นฉบับ",

@@ -847,7 +847,7 @@ export const koMessages = {
     tourStepUploadDescription: "다시 스타일링하고 싶은 캐릭터 이미지를 여기에 업로드합니다.",
     tourStepPromptDescription: "원하는 코디를 설명해 주세요.",
     tourStepGenerateDescription: "“스타일링 시작”을 선택해 시작해 주세요.",
-    pageTitle: "코디",
+    pageTitle: "Coordinate",
     pageDescription: "캐릭터 이미지를 업로드하고 AI 스타일링을 즐겨보세요.",
     resultsTitle: "생성 결과",
     imageSourceLabel: "원본 이미지를 선택하세요",

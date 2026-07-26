@@ -850,7 +850,7 @@ export const esMessages = {
     tourStepUploadDescription: "Sube aquí la imagen del personaje que quieres restilizar.",
     tourStepPromptDescription: "Describe el tipo de conjunto que quieres.",
     tourStepGenerateDescription: "Selecciona \"Empezar styling\" para empezar.",
-    pageTitle: "Coordinar",
+    pageTitle: "Coordinate",
     pageDescription: "Sube una imagen de personaje y disfruta del styling con IA.",
     resultsTitle: "Resultados generados",
     imageSourceLabel: "Elige tu imagen de origen",

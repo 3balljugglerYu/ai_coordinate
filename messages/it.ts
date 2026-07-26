@@ -850,7 +850,7 @@ export const itMessages = {
     tourStepUploadDescription: "Carica qui l’immagine del personaggio che vuoi restilizzare.",
     tourStepPromptDescription: "Descrivi il tipo di outfit che desideri.",
     tourStepGenerateDescription: "Seleziona \"Avvia styling\" per iniziare.",
-    pageTitle: "Coordina",
+    pageTitle: "Coordinate",
     pageDescription: "Carica un'immagine di personaggio e divertiti con lo styling con IA.",
     resultsTitle: "Risultati generati",
     imageSourceLabel: "Scegli l'immagine sorgente",

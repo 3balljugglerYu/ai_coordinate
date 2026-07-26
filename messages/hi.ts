@@ -848,7 +848,7 @@ export const hiMessages = {
     tourStepUploadDescription: "जिस कैरेक्टर छवि को आप फिर से स्टाइल करना चाहते हैं उसे यहाँ अपलोड करें।",
     tourStepPromptDescription: "जिस तरह का आउटफ़िट आप चाहते हैं उसका वर्णन करें।",
     tourStepGenerateDescription: "शुरू करने के लिए \"स्टाइलिंग शुरू करें\" चुनें।",
-    pageTitle: "कोऑर्डिनेट",
+    pageTitle: "Coordinate",
     pageDescription: "एक कैरेक्टर छवि अपलोड करें और AI के साथ स्टाइलिंग का आनंद लें।",
     resultsTitle: "उत्पन्न परिणाम",
     imageSourceLabel: "अपनी मूल छवि चुनें",
