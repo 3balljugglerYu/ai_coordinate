@@ -17,6 +17,7 @@ import {
   type MountGeneratedResult,
 } from "@/features/collections/components/CollectionMountComposer";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
+import { EventShelfCountdown } from "@/features/home/components/EventShelfCountdown";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
 import {
@@ -37,8 +38,6 @@ import "swiper/css/free-mode";
 // StylePresetPreviewCard と同寸(180 x 240+44)。celebration カードのサイズ合わせ用。
 const CARD_WIDTH_PX = 180;
 const CARD_HEIGHT_PX = 284;
-
-const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 interface HomeEventShelfSectionProps {
   shelf: EventShelf;
@@ -199,20 +198,6 @@ export function HomeEventShelfSection({
   const cardLocale = locale === "en" ? "en" : "ja";
   const displayName =
     cardLocale === "en" ? shelf.displayNameEn : shelf.displayNameJa;
-
-  // 残り日数(切り上げ)。当日=1。期間外の棚はサーバー側で除外済みだが防御的に負値は隠す。
-  let countdownLabel: string | null = null;
-  let countdownUrgent = false;
-  if (shelf.endsAt) {
-    const msLeft = new Date(shelf.endsAt).getTime() - new Date(nowIso).getTime();
-    const daysLeft = Math.ceil(msLeft / MS_PER_DAY);
-    if (daysLeft >= 1) {
-      countdownUrgent = daysLeft <= 1;
-      countdownLabel = countdownUrgent
-        ? t("eventShelfCountdownLastDay")
-        : t("eventShelfCountdownDaysLeft", { days: daysLeft });
-    }
-  }
 
   const handleTeaserTap = () => {
     toast({ description: t("eventShelfTeaserToast") });
@@ -375,17 +360,9 @@ export function HomeEventShelfSection({
             </span>
           )}
         </h2>
-        {countdownLabel && (
-          <span
-            className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${
-              countdownUrgent
-                ? "bg-red-500 text-white"
-                : "bg-gray-200 text-gray-600"
-            }`}
-          >
-            {countdownLabel}
-          </span>
-        )}
+        {/* 残り24時間未満は「あと◯時間◯分」の1分刻みカウントダウン(赤)、
+            それ以上は「あと◯日」(グレー)。期間外はサーバー側で棚ごと除外済み。 */}
+        <EventShelfCountdown endsAt={shelf.endsAt} nowIso={nowIso} />
       </div>
       <div className="-mx-4 px-4">
         <Swiper
