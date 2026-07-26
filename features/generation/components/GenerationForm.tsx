@@ -310,8 +310,8 @@ export function GenerationForm({
       sourceImageGeneratedId: selectedGenerated?.id,
     } as const;
 
-    // じゆうモードは設定UIを持たないため、既定値を固定送信する
-    // (背景=keep / 枚数=1 / モデル=DEFAULT / framingMode なし / sourceImageType=illustration)。
+    // じゆうモードはモデル選択(品質・サイズ含む)のみ設定可能。それ以外は既定値を
+    // 固定送信する(背景=keep / 枚数=1 / framingMode なし / sourceImageType=illustration)。
     if (isFree) {
       onSubmit({
         prompt: trimmedPrompt,
@@ -319,7 +319,7 @@ export function GenerationForm({
         sourceImageType: "illustration",
         backgroundMode: "keep",
         count: 1,
-        model: DEFAULT_GENERATION_MODEL,
+        model: effectiveSelectedModel,
         generationType: "free",
       });
       return;
@@ -716,7 +716,11 @@ export function GenerationForm({
             </div>
           </div>
         ) : null}
+          </>
+        ) : null}
+        {/* --- 背景/ポーズ/元画像タイプ の coordinate 専用設定ここまで --- */}
 
+        {/* モデル選択(レンダリング品質・出力サイズを含む)は、じゆうモードでも表示する */}
         <GenerationModelControls
           value={effectiveSelectedModel}
           onChange={handleSelectedModelChange}
@@ -737,7 +741,8 @@ export function GenerationForm({
           }
         />
 
-        {/* 生成枚数選択 */}
+        {/* 生成枚数選択(じゆうモードでは非表示・常に1枚) */}
+        {!isFree ? (
         <div data-tour="tour-count-select">
           <Label className="text-base font-medium mb-3 block">
             {t("countLabel")}
@@ -785,9 +790,8 @@ export function GenerationForm({
             </p>
           ) : null}
         </div>
-          </>
         ) : null}
-        {/* --- コーディネート専用の設定UIここまで --- */}
+        {/* --- 生成枚数(coordinate専用)ここまで --- */}
 
         {/* 生成ボタン */}
         <GenerationSubmitButton

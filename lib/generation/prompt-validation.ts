@@ -3,11 +3,12 @@ export const GENERATION_PROMPT_MAX_LENGTH = 1500;
 /**
  * じゆうモード(generationType="free")のプロンプト上限。
  *
- * 既定モデル OpenAI gpt-image-2 のプロンプト上限は 32,000 文字
+ * じゆうモードはモデル選択(品質・サイズ含む)が可能だが、選択肢のうち最も上限が
+ * 厳しい OpenAI gpt-image-2 のプロンプト上限は 32,000 文字
  * (https://developers.openai.com/api/reference)。最終プロンプトは
  * 錨(free.base_prefix, 1,800字未満に維持) + delimiter + ユーザー入力 なので、
- * ユーザー入力を 30,000 字に制限すれば錨込みでも 32,000 字以内に必ず収まり、
- * プロバイダ側で長さ超過エラーが起きない。
+ * ユーザー入力を 30,000 字に制限すれば、どのモデルを選んでも錨込みで 32,000 字
+ * 以内に必ず収まり、プロバイダ側で長さ超過エラーが起きない。
  */
 export const FREE_GENERATION_PROMPT_MAX_LENGTH = 30000;
 

@@ -380,7 +380,7 @@ describe("GenerationForm (new image source picker integration)", () => {
   });
 
   describe("mode='free' (じゆうモード)", () => {
-    test("設定UI(元画像タイプ/背景/モデル/枚数)を表示しない", () => {
+    test("元画像タイプ/背景/ポーズ/枚数は非表示、モデル選択(品質・サイズ)は表示する", () => {
       render(
         <GenerationForm
           subscriptionPlan="free"
@@ -388,18 +388,19 @@ describe("GenerationForm (new image source picker integration)", () => {
           mode="free"
         />,
       );
-      // 設定UIの各ラベル(キー名で描画される)が出ないこと
+      // coordinate 専用設定は出ない
       expect(screen.queryByText("sourceImageTypeLabel")).toBeNull();
       expect(screen.queryByText("backgroundLabel")).toBeNull();
       expect(screen.queryByText("poseModeLabel")).toBeNull();
       expect(screen.queryByText("countLabel")).toBeNull();
-      expect(screen.queryByTestId("mock-model-controls")).toBeNull();
-      // 画像アップロードとプロンプト欄は出る
+      // モデル選択(レンダリング品質・出力サイズを含む)は じゆうモードでも出る
+      expect(screen.getByTestId("mock-model-controls")).toBeInTheDocument();
+      // 画像アップロードとプロンプト欄も出る
       expect(screen.getByTestId("mock-image-uploader")).toBeInTheDocument();
       expect(screen.getByRole("textbox")).toBeInTheDocument();
     });
 
-    test("画像+prompt で submit すると generationType='free' と既定値を固定送信する", async () => {
+    test("画像+prompt で submit すると generationType='free' と選択モデル・既定値を送信する", async () => {
       const user = userEvent.setup();
       const onSubmit = jest.fn();
       render(
@@ -424,8 +425,9 @@ describe("GenerationForm (new image source picker integration)", () => {
       expect(arg.sourceImage).toBeInstanceOf(File);
       expect(arg.backgroundMode).toBe("keep");
       expect(arg.count).toBe(1);
+      // モデルは選択値(未操作なので既定)を送る
       expect(arg.model).toBe(DEFAULT_GENERATION_MODEL);
-      // 設定UIが無いので framingMode は送らない
+      // 背景/ポーズ設定が無いので framingMode は送らない
       expect(arg.framingMode).toBeUndefined();
     });
 
