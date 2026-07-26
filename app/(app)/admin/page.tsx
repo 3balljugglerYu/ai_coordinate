@@ -114,6 +114,7 @@ export default async function AdminDashboardPage({
           funnel={data.funnel}
           modelMix={data.modelMix}
           loginMethodMix={data.loginMethodMix}
+          aiCostEstimate={data.aiCostEstimate}
         />
       )}
     </AdminDashboardView>

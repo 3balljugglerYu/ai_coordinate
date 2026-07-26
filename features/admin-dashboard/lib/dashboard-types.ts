@@ -53,6 +53,32 @@ export interface DashboardModelMixItem {
   sharePct: number;
 }
 
+export interface DashboardAiCostDayPoint {
+  bucket: string;
+  label: string;
+  openaiJpy: number;
+  googleJpy: number;
+  totalJpy: number;
+}
+
+export interface DashboardAiCostModelItem {
+  model: string;
+  provider: "openai" | "google";
+  providerLabel: string;
+  count: number;
+  totalUsd: number;
+  totalJpy: number;
+}
+
+export interface DashboardAiCostEstimate {
+  totalUsd: number;
+  totalJpy: number;
+  days: DashboardAiCostDayPoint[];
+  byModel: DashboardAiCostModelItem[];
+  unknownModelCount: number;
+  rateNote: string;
+}
+
 export interface DashboardLoginMethodMixItem {
   provider: string;
   label: string;
@@ -241,6 +267,7 @@ export interface AdminDashboardData {
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
   loginMethodMix: DashboardLoginMethodMixItem[];
+  aiCostEstimate: DashboardAiCostEstimate;
   recentPurchases: DashboardPurchaseRow[];
   alerts: DashboardAlertRow[];
   quickActions: DashboardQuickAction[];

@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
 import type {
+  DashboardAiCostEstimate,
   DashboardFunnelStep,
   DashboardLoginMethodMixItem,
   DashboardModelMixItem,
@@ -22,6 +23,7 @@ interface AdminPageAnalyticsSectionServerProps {
   funnel: DashboardFunnelStep[];
   modelMix: DashboardModelMixItem[];
   loginMethodMix: DashboardLoginMethodMixItem[];
+  aiCostEstimate: DashboardAiCostEstimate;
 }
 
 interface AdminGa4SectionLoaderProps {
@@ -49,6 +51,7 @@ export function AdminPageAnalyticsSectionServer({
   funnel,
   modelMix,
   loginMethodMix,
+  aiCostEstimate,
 }: AdminPageAnalyticsSectionServerProps) {
   return (
     <section className="space-y-4">
@@ -61,6 +64,7 @@ export function AdminPageAnalyticsSectionServer({
         funnel={funnel}
         modelMix={modelMix}
         loginMethodMix={loginMethodMix}
+        aiCostEstimate={aiCostEstimate}
       />
       <Suspense fallback={<AdminPageAnalyticsDetailsSectionSkeleton />}>
         <AdminPageAnalyticsDetailsSectionLoader ga4Promise={ga4Promise} />
