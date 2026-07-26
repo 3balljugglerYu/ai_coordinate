@@ -1379,6 +1379,7 @@ export const frMessages = {
     stylePopularSortNote: "Trié par utilisations des 30 derniers jours",
     styleNewSortNote: "Styles ajoutés au cours des {days} derniers jours",
     styleChipCreator: "Créateurs",
+    styleChipCollab: "Collaborations",
     styleFavoriteAdd: "Ajouter aux favoris",
     styleFavoriteRemove: "Retirer des favoris",
     styleFavoriteLoginRequired: "Connectez-vous pour utiliser les favoris",

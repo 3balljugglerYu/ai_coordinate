@@ -1319,6 +1319,7 @@ export const jaMessages = {
     stylePopularSortNote: "直近30日の利用回数順",
     styleNewSortNote: "直近{days}日以内に追加されたスタイル",
     styleChipCreator: "クリエイター",
+    styleChipCollab: "コラボ企画",
     styleFavoriteAdd: "お気に入りに追加",
     styleFavoriteRemove: "お気に入りを解除",
     styleFavoriteLoginRequired: "お気に入りはログインすると使えます",

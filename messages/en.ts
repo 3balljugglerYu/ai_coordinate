@@ -1376,6 +1376,7 @@ export const enMessages = {
     stylePopularSortNote: "Sorted by uses in the last 30 days",
     styleNewSortNote: "Styles added in the last {days} days",
     styleChipCreator: "Creators",
+    styleChipCollab: "Collabs",
     styleFavoriteAdd: "Add to favorites",
     styleFavoriteRemove: "Remove from favorites",
     styleFavoriteLoginRequired: "Log in to use favorites",

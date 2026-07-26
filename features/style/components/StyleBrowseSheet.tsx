@@ -39,6 +39,7 @@ const CHIP_EMOJI: Partial<Record<string, string>> = {
   new: "✨",
   popular: "👑",
   creator: "🤝",
+  collab: "🎪",
 };
 
 /** 拡大プレビューを「下スワイプで閉じる」と判定する移動量(px)。 */
@@ -242,6 +243,8 @@ export function StyleBrowseSheet({
         return t("styleChipPopular");
       case "creator":
         return t("styleChipCreator");
+      case "collab":
+        return t("styleChipCollab");
       default:
         return chip.id;
     }

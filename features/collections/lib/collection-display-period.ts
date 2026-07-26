@@ -28,6 +28,20 @@ export function isCollectionDisplayPeriodActive(
   return true;
 }
 
+/**
+ * 開催期間(開始または終了のいずれか)が設定されているか。
+ * 期間が未設定のコレクションシリーズは「常設(コラボ企画)」として扱い、
+ * イベント(期間限定の企画)とはみなさない。
+ */
+export function hasCollectionDisplayPeriod(
+  period: CollectionDisplayPeriod,
+): boolean {
+  return (
+    period.collectionDisplayStartsAt !== null ||
+    period.collectionDisplayEndsAt !== null
+  );
+}
+
 /** isActiveEventCategory の入力: 表示期間 + コレクションシリーズ登録の有無。 */
 export interface ActiveEventCategoryInput extends CollectionDisplayPeriod {
   isCollectionSeries: boolean;
@@ -35,7 +49,11 @@ export interface ActiveEventCategoryInput extends CollectionDisplayPeriod {
 
 /**
  * 「開催中の企画」カテゴリか。
- * コレクションシリーズ(コンプリート要素)が登録されており、かつ表示期間内。
+ * コレクションシリーズ(コンプリート要素)が登録されており、開催期間が
+ * **設定されており**、かつ表示期間内であること。
+ * 期間未設定(NULL/NULL)のシリーズは常設のコラボ企画でありイベントではない
+ * (ホームの企画棚・🎉イベントチップに出さない。生成やコンプリート機能は
+ *  isCollectionDisplayPeriodActive の「NULL=制限なし」判定によりそのまま使える)。
  * ホームの企画棚(derive-event-shelves)と探索シートの「🎉イベント」チップ
  * (style-browse-filter)が同じ判定を共有し、両者の表示期間が常に一致するようにする。
  */
@@ -44,6 +62,8 @@ export function isActiveEventCategory(
   now: Date,
 ): boolean {
   return (
-    category.isCollectionSeries && isCollectionDisplayPeriodActive(category, now)
+    category.isCollectionSeries &&
+    hasCollectionDisplayPeriod(category) &&
+    isCollectionDisplayPeriodActive(category, now)
   );
 }

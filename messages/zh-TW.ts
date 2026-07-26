@@ -1374,6 +1374,7 @@ export const zhTwMessages = {
     stylePopularSortNote: "依最近30天使用次數排序",
     styleNewSortNote: "最近{days}天內新增的風格",
     styleChipCreator: "創作者",
+    styleChipCollab: "聯動企劃",
     styleFavoriteAdd: "加入收藏",
     styleFavoriteRemove: "取消收藏",
     styleFavoriteLoginRequired: "登入後即可使用收藏",

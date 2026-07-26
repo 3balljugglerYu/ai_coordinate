@@ -1380,6 +1380,7 @@ export const deMessages = {
     stylePopularSortNote: "Sortiert nach Nutzungen der letzten 30 Tage",
     styleNewSortNote: "Stile, die in den letzten {days} Tagen hinzugefügt wurden",
     styleChipCreator: "Creator",
+    styleChipCollab: "Kollaborationen",
     styleFavoriteAdd: "Zu Favoriten hinzufügen",
     styleFavoriteRemove: "Aus Favoriten entfernen",
     styleFavoriteLoginRequired: "Zum Nutzen der Favoriten anmelden",

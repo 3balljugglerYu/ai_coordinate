@@ -1377,6 +1377,7 @@ export const hiMessages = {
     stylePopularSortNote: "पिछले 30 दिनों में उपयोग की संख्या के अनुसार क्रमबद्ध",
     styleNewSortNote: "पिछले {days} दिनों में जोड़ी गई स्टाइलें",
     styleChipCreator: "क्रिएटर",
+    styleChipCollab: "कोलैब प्रोजेक्ट",
     styleFavoriteAdd: "पसंदीदा में जोड़ें",
     styleFavoriteRemove: "पसंदीदा से हटाएं",
     styleFavoriteLoginRequired: "पसंदीदा उपयोग करने के लिए लॉगिन करें",

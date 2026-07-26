@@ -25,6 +25,7 @@ const CHIP_EMOJI: Partial<Record<string, string>> = {
   new: "✨",
   popular: "👑",
   creator: "🤝",
+  collab: "🎪",
 };
 
 interface StylesGalleryClientProps {
@@ -164,6 +165,8 @@ export function StylesGalleryClient({
         return t("styleChipPopular");
       case "creator":
         return t("styleChipCreator");
+      case "collab":
+        return t("styleChipCollab");
       default:
         return chip.id;
     }
