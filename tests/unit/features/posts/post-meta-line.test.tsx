@@ -6,10 +6,10 @@ jest.mock("next-intl", () => ({
       metaModelLabel: "生成モデル",
       metaModeLabel: "生成モード",
       metaSizeLabel: "サイズ",
-      modeCoordinate: "コーディネート",
+      modeCoordinate: "Coordinate",
       modeOneTapStyle: "One-Tap Style",
-      modeInspire: "投稿スタイル",
-      modeFree: "じゆう",
+      modeInspire: "Post Style",
+      modeFree: "Free Style",
     };
     return messages[key] ?? key;
   }),
@@ -76,9 +76,9 @@ describe("PostMetaLine", () => {
       />,
     );
     const node = screen.getByTestId("post-meta-line");
-    expect(node.textContent).toBe("じゆう ・ ChatGPT Images 2.0 / 1024×1536");
+    expect(node.textContent).toBe("Free Style ・ ChatGPT Images 2.0 / 1024×1536");
     expect(node.getAttribute("aria-label")).toBe(
-      "生成モード: じゆう, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
+      "生成モード: Free Style, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
     );
   });
 
@@ -92,11 +92,11 @@ describe("PostMetaLine", () => {
       />,
     );
     const node = screen.getByTestId("post-meta-line");
-    expect(node.textContent).toBe("コーディネート");
-    expect(node.getAttribute("aria-label")).toBe("生成モード: コーディネート");
+    expect(node.textContent).toBe("Coordinate");
+    expect(node.getAttribute("aria-label")).toBe("生成モード: Coordinate");
   });
 
-  it("collapses coordinate-family types into a single コーディネート label", () => {
+  it("collapses coordinate-family types into a single Coordinate label", () => {
     for (const type of [
       "specified_coordinate",
       "full_body",
@@ -111,7 +111,7 @@ describe("PostMetaLine", () => {
         />,
       );
       expect(screen.getByTestId("post-meta-line").textContent).toBe(
-        "コーディネート",
+        "Coordinate",
       );
       unmount();
     }
@@ -138,9 +138,7 @@ describe("PostMetaLine", () => {
         generationType="inspire"
       />,
     );
-    expect(screen.getByTestId("post-meta-line").textContent).toBe(
-      "投稿スタイル",
-    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe("Post Style");
   });
 
   it("renders nothing when both the mode and the model are unknown", () => {
