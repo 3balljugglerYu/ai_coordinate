@@ -16,10 +16,18 @@ interface BillingCostRow {
   totalCost?: unknown;
 }
 
+/**
+ * 課金エクスポートが置かれている GCP プロジェクト。
+ * 別プロジェクトに作った場合のみ BILLING_BIGQUERY_PROJECT_ID で上書きする。
+ */
+export function getBillingProjectId(): string {
+  return env.BILLING_BIGQUERY_PROJECT_ID || env.GA4_BIGQUERY_PROJECT_ID;
+}
+
 export function isGeminiBillingConfigured(): boolean {
   return Boolean(
     env.BILLING_BIGQUERY_DATASET &&
-      env.GA4_BIGQUERY_PROJECT_ID &&
+      getBillingProjectId() &&
       env.GA4_SERVICE_ACCOUNT_JSON_BASE64
   );
 }
@@ -48,7 +56,7 @@ export async function fetchGeminiActualCost(
 
   try {
     const client = getGa4BigQueryClient();
-    const projectId = env.GA4_BIGQUERY_PROJECT_ID;
+    const projectId = getBillingProjectId();
     const datasetId = env.BILLING_BIGQUERY_DATASET;
 
     const [tableRows] = await client.query({
