@@ -34,7 +34,8 @@ function resolveTemplate(
 export type GenerationType =
   | "coordinate"
   | "one_tap_style"
-  | "inspire";
+  | "inspire"
+  | "free";
 
 /**
  * Inspire 機能で「テンプレのどの要素を image_0 に適用するか」の組み合わせ。
@@ -237,6 +238,20 @@ export function buildPrompt(options: BuildPromptOptions): string {
     return sanitizedDescription;
   }
 
+  if (generationType === "free") {
+    // じゆうモード: 設定UIを持たず、ユーザーの自由記述のみで生成する。
+    // 運営が管理する錨(キャラ保持指示 + 優先順位)を必ず前置し、ユーザー入力は
+    // 明示的な delimiter ラベルで区切って結合する。sanitizeUserInput は防御の一層で
+    // あり完全なインジェクション防止ではないため、錨側で identity 保持を最優先と明記する。
+    // (背景/ポーズ等の設定分岐は持たない = coordinate の free_pose 相当を常に適用)
+    const basePrefix = resolveTemplate(templates, "free.base_prefix");
+    const directionLabel = resolveTemplate(
+      templates,
+      "free.user_direction_label",
+    );
+    return `${basePrefix}\n\n${directionLabel}:\n\n${sanitizedDescription}`;
+  }
+
   if (generationType === "inspire") {
     // Inspire のプロンプトは buildInspirePrompt() で別経路から組み立てる。
     // この経路に到達したら呼び出し側のバグなので明示的に失敗させる。
@@ -246,7 +261,7 @@ export function buildPrompt(options: BuildPromptOptions): string {
   }
 
   throw new Error(
-    `API Error - Configuration '${generationType}' not found. Available types: coordinate, one_tap_style, inspire`
+    `API Error - Configuration '${generationType}' not found. Available types: coordinate, one_tap_style, inspire, free`
   );
 }
 

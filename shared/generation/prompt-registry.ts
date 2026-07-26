@@ -28,6 +28,7 @@ export const PROMPT_CATEGORIES = [
   "inspire",
   "reinforcement",
   "creator_looks",
+  "free",
 ] as const;
 export type PromptCategory = (typeof PROMPT_CATEGORIES)[number];
 
@@ -89,6 +90,27 @@ const COORDINATE_BASE_PREFIX_FREE_POSE_DEFAULT = `CRITICAL INSTRUCTION: This is 
 2. Follow the User's Direction below: Apply exactly what the user's direction specifies — this may include the outfit, pose, gesture, expression, camera angle, framing, composition, and background. Treat the user's direction as the primary intent for everything other than identity.
 
 3. Keep What Is Not Specified: For anything the user's direction does NOT mention, keep it consistent with \`image_0.png\`. In particular, if no new outfit is described, keep the person's current outfit unchanged; if no pose or camera change is described, keep the original pose and camera. Where the result requires a choice that the user did not specify (e.g., framing for a new outfit), pick a natural one that best fits the direction. You may render body parts not visible in \`image_0.png\` when the new pose requires it, staying consistent with the character's identity and body shape.`;
+
+// ============================================================================
+// Free 系 (じゆうモード: buildPrompt の free 分岐内テキスト)
+// ============================================================================
+
+// じゆうモードの錨。設定UIを持たず、ユーザーの自由記述だけで生成するため、
+// (1) image_0 のキャラ identity 保持を最優先とし、(2) ユーザー指示と競合した場合は
+// identity 保持を優先する、という優先順位を明記する。それ以外(衣装/ポーズ/カメラ/背景/構図)は
+// ユーザー指示に委ね、書かれていないものは image_0 を維持する。
+// 重要: 最終プロンプト = この錨 + delimiter + ユーザー入力(最大30,000字) が
+// OpenAI gpt-image-2 の上限32,000字を超えないよう、この錨は1,800字未満に保つこと。
+const FREE_BASE_PREFIX_DEFAULT = `CRITICAL INSTRUCTION: This is an Image-to-Image task based on \`image_0.png\`. Follow these rules in strict priority order:
+
+1. Identity Preservation (TOP PRIORITY, ABSOLUTE): Keep the person in \`image_0.png\` recognizable as the exact same character. Preserve the facial features, hairstyle, hair color, eye color, body shape, skin tone, and overall appearance. Preserve the rendering style of \`image_0.png\` — if it is a photograph keep it photorealistic; if it is an illustration keep the same artistic touch. NEVER alter the person's identity. If the user's direction below conflicts with preserving this identity, you MUST prioritize identity preservation and ignore the conflicting part.
+
+2. Follow the User's Direction below: Apply what the user's direction specifies — this may include the outfit, pose, gesture, expression, camera angle, framing, composition, and background. Treat it as the primary intent for everything OTHER than identity.
+
+3. Keep What Is Not Specified: For anything the user's direction does not mention, keep it consistent with \`image_0.png\`. You may render body parts not visible in the original when a requested pose requires it, staying consistent with the character's identity and body shape.`;
+
+// ユーザー入力セクションのラベル(delimiter)。錨とユーザー入力を明確に分離する。
+const FREE_USER_DIRECTION_LABEL_DEFAULT = "User's Direction";
 
 // ============================================================================
 // Inspire 系 (buildInspirePrompt 内テキスト)
@@ -474,6 +496,23 @@ export const PROMPT_REGISTRY = {
     defaultContent: CREATOR_LOOKS_BACKGROUND_DIRECTIVE_DEFAULT,
     supportedVariables: ["background"],
     previewSamples: { background: "spring cherry blossom park with soft sunlight" },
+  },
+  "free.base_prefix": {
+    category: "free",
+    description:
+      "じゆうモード: ユーザーの自由記述プロンプトの前に必ず前置する錨。" +
+      "image_0 のキャラ identity 保持を最優先とし、ユーザー指示と競合した場合も identity を優先する旨を明記する。" +
+      "最終プロンプト長(錨+入力30,000字)が OpenAI gpt-image-2 の上限32,000字を超えないよう1,800字未満に保つこと。",
+    defaultContent: FREE_BASE_PREFIX_DEFAULT,
+    supportedVariables: [],
+  },
+  "free.user_direction_label": {
+    category: "free",
+    description:
+      "じゆうモード: 錨とユーザー入力を区切る delimiter ラベル。" +
+      "この直後にコロンと改行を挟んでユーザーの自由記述が続く。",
+    defaultContent: FREE_USER_DIRECTION_LABEL_DEFAULT,
+    supportedVariables: [],
   },
 } as const satisfies Record<string, PromptDefinition>;
 

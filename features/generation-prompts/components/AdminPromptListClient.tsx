@@ -30,6 +30,7 @@ const CATEGORY_LABELS: Record<PromptCategory, string> = {
   inspire: "Inspire (テンプレ適用)",
   reinforcement: "Reinforcement (リトライ強化文)",
   creator_looks: "Creator Looks (隠し meta-prompt)",
+  free: "Free (じゆうモード)",
 };
 
 export function AdminPromptListClient({
