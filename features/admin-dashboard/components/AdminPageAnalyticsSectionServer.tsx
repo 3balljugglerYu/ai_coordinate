@@ -1,5 +1,7 @@
 import { Suspense } from "react";
 import type { Ga4DashboardData } from "@/features/analytics/lib/ga4-types";
+import type { AiCostActuals } from "../lib/ai-cost-actual-types";
+import { AdminAiCostActualRow } from "./AdminAiCostActualRow";
 import type {
   DashboardAiCostEstimate,
   DashboardFunnelStep,
@@ -24,10 +26,20 @@ interface AdminPageAnalyticsSectionServerProps {
   modelMix: DashboardModelMixItem[];
   loginMethodMix: DashboardLoginMethodMixItem[];
   aiCostEstimate: DashboardAiCostEstimate;
+  aiCostActualsPromise: Promise<AiCostActuals>;
 }
 
 interface AdminGa4SectionLoaderProps {
   ga4Promise: Promise<Ga4DashboardData>;
+}
+
+async function AdminAiCostActualLoader({
+  actualsPromise,
+}: {
+  actualsPromise: Promise<AiCostActuals>;
+}) {
+  const actuals = await actualsPromise;
+  return <AdminAiCostActualRow actuals={actuals} />;
 }
 
 async function AdminPageAnalyticsAccessSectionLoader({
@@ -52,6 +64,7 @@ export function AdminPageAnalyticsSectionServer({
   modelMix,
   loginMethodMix,
   aiCostEstimate,
+  aiCostActualsPromise,
 }: AdminPageAnalyticsSectionServerProps) {
   return (
     <section className="space-y-4">
@@ -65,6 +78,11 @@ export function AdminPageAnalyticsSectionServer({
         modelMix={modelMix}
         loginMethodMix={loginMethodMix}
         aiCostEstimate={aiCostEstimate}
+        aiCostActualSlot={
+          <Suspense fallback={null}>
+            <AdminAiCostActualLoader actualsPromise={aiCostActualsPromise} />
+          </Suspense>
+        }
       />
       <Suspense fallback={<AdminPageAnalyticsDetailsSectionSkeleton />}>
         <AdminPageAnalyticsDetailsSectionLoader ga4Promise={ga4Promise} />

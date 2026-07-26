@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Coins } from "lucide-react";
 import {
   Card,
@@ -68,9 +69,13 @@ function AiCostTooltip({
 
 interface AdminAiCostCardProps {
   estimate: DashboardAiCostEstimate;
+  actualSlot?: ReactNode;
 }
 
-export default function AdminAiCostCard({ estimate }: AdminAiCostCardProps) {
+export default function AdminAiCostCard({
+  estimate,
+  actualSlot,
+}: AdminAiCostCardProps) {
   const series: StackedBarSeries<DashboardAiCostDayPoint>[] = [
     {
       dataKey: "openaiJpy",
@@ -125,6 +130,8 @@ export default function AdminAiCostCard({ estimate }: AdminAiCostCardProps) {
             </p>
           ) : null}
         </div>
+
+        {actualSlot}
 
         {hasCost ? (
           <ScrollingStackedBarChart

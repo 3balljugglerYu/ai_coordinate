@@ -49,6 +49,12 @@ const envSchema = {
   GA4_BIGQUERY_DATASET: process.env.GA4_BIGQUERY_DATASET,
   GA4_BIGQUERY_LOCATION: process.env.GA4_BIGQUERY_LOCATION,
 
+  // AI 原価ダッシュボード(任意。未設定なら実額表示を出さず推定のみ)
+  // OpenAI Costs API 用の Admin API キー(platform.openai.com の Admin Keys)
+  OPENAI_ADMIN_API_KEY: process.env.OPENAI_ADMIN_API_KEY,
+  // Cloud Billing の BigQuery エクスポート先データセット(GA4 と同じプロジェクト想定)
+  BILLING_BIGQUERY_DATASET: process.env.BILLING_BIGQUERY_DATASET,
+
   // Admin
   ADMIN_USER_IDS: process.env.ADMIN_USER_IDS,
   // 「admin 公開コンテンツ閲覧のみ」を許可するプレビュー権限ユーザー(任意, csv)。
@@ -169,6 +175,8 @@ function getEnv() {
     GA4_BIGQUERY_PROJECT_ID: envSchema.GA4_BIGQUERY_PROJECT_ID || "",
     GA4_BIGQUERY_DATASET: envSchema.GA4_BIGQUERY_DATASET || "",
     GA4_BIGQUERY_LOCATION: envSchema.GA4_BIGQUERY_LOCATION || "",
+    OPENAI_ADMIN_API_KEY: envSchema.OPENAI_ADMIN_API_KEY || "",
+    BILLING_BIGQUERY_DATASET: envSchema.BILLING_BIGQUERY_DATASET || "",
     ADMIN_USER_IDS: envSchema.ADMIN_USER_IDS || "",
     ADMIN_PREVIEW_USER_IDS: envSchema.ADMIN_PREVIEW_USER_IDS || "",
     ACCOUNT_PURGE_CRON_SECRET:

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Activity, AlertTriangle, ArrowRightLeft, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type {
@@ -39,6 +40,8 @@ interface AdminTrendAndFunnelSectionProps {
   modelMix: DashboardModelMixItem[];
   loginMethodMix: DashboardLoginMethodMixItem[];
   aiCostEstimate: DashboardAiCostEstimate;
+  /** 実額行（サーバー側で Suspense 付きに組み立てたスロット） */
+  aiCostActualSlot?: ReactNode;
 }
 
 interface AnalyticsUnavailableCardProps {
@@ -157,6 +160,7 @@ export function AdminTrendAndFunnelSection({
   modelMix,
   loginMethodMix,
   aiCostEstimate,
+  aiCostActualSlot,
 }: AdminTrendAndFunnelSectionProps) {
   const trendCsv = buildDashboardTrendCsv(trend);
   const trendCsvFilename = `dashboard-trend-${csvDateSpanSuffix(
@@ -226,7 +230,10 @@ export function AdminTrendAndFunnelSection({
         </Card>
       </section>
 
-      <AdminAiCostCardPanel estimate={aiCostEstimate} />
+      <AdminAiCostCardPanel
+        estimate={aiCostEstimate}
+        actualSlot={aiCostActualSlot}
+      />
     </section>
   );
 }

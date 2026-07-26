@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import type { ReactNode } from "react";
 import { Loader2 } from "lucide-react";
 import type { DashboardAiCostEstimate } from "../lib/dashboard-types";
 
@@ -16,8 +17,13 @@ const AdminAiCostCard = dynamic(() => import("./AdminAiCostCard"), {
 
 interface AdminAiCostCardPanelProps {
   estimate: DashboardAiCostEstimate;
+  /** 実額行（サーバー側で Suspense 付きに組み立てたスロット） */
+  actualSlot?: ReactNode;
 }
 
-export function AdminAiCostCardPanel({ estimate }: AdminAiCostCardPanelProps) {
-  return <AdminAiCostCard estimate={estimate} />;
+export function AdminAiCostCardPanel({
+  estimate,
+  actualSlot,
+}: AdminAiCostCardPanelProps) {
+  return <AdminAiCostCard estimate={estimate} actualSlot={actualSlot} />;
 }
