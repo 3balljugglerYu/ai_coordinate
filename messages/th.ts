@@ -76,7 +76,7 @@ export const thMessages = {
     metaSizeLabel: "ขนาด",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "คัดลอก",
     copied: "คัดลอกแล้ว",
@@ -842,6 +842,7 @@ export const thMessages = {
       "หากคุณใช้ Persta เป็นประจำ การสมัครสมาชิกมักคุ้มกว่าการซื้อ Percoin ทีละแพ็ก",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "บทช่วยสอน",
     tourStepUploadDescription: "อัปโหลดที่นี่เพื่อรูปตัวละครที่ต้องการจัดสไตล์ใหม่",
     tourStepPromptDescription: "อธิบายชุดที่ต้องการ",
@@ -1349,7 +1350,7 @@ export const thMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "โหมดอิสระ",
+    pageTitle: "Free Style",
     pageDescription: "อัปโหลดรูปภาพและสร้างด้วยคำสั่งของคุณเอง คงลักษณะของตัวละครไว้ แล้วสร้างภาพอย่างที่คุณจินตนาการ",
     resultsTitle: "รายการผลลัพธ์",
     promptLabel: "สิ่งที่ต้องการสร้าง",

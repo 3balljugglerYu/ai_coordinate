@@ -76,7 +76,7 @@ export const ptMessages = {
     metaSizeLabel: "Tamanho",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Copiar",
     copied: "Copiado",
@@ -845,6 +845,7 @@ export const ptMessages = {
       "Se você usa Persta com regularidade, uma assinatura costuma ser mais econômica do que comprar Percoins um a um.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Tutorial",
     tourStepUploadDescription: "Faça upload aqui da imagem de personagem que você quer restilizar.",
     tourStepPromptDescription: "Descreva o tipo de look que você quer.",
@@ -1353,7 +1354,7 @@ export const ptMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Modo livre",
+    pageTitle: "Free Style",
     pageDescription: "Envie uma imagem e gere com suas próprias instruções. Mantenha as características do seu personagem e crie exatamente o que imagina.",
     resultsTitle: "Resultados gerados",
     promptLabel: "O que gerar",

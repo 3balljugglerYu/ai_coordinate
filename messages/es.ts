@@ -76,7 +76,7 @@ export const esMessages = {
     metaSizeLabel: "Tamaño",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Copiar",
     copied: "Copiado",
@@ -845,6 +845,7 @@ export const esMessages = {
       "Si usas Persta con regularidad, suscribirte suele ser más rentable que comprar Percoins de uno en uno.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Tutorial",
     tourStepUploadDescription: "Sube aquí la imagen del personaje que quieres restilizar.",
     tourStepPromptDescription: "Describe el tipo de conjunto que quieres.",
@@ -1353,7 +1354,7 @@ export const esMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Modo libre",
+    pageTitle: "Free Style",
     pageDescription: "Sube una imagen y genera con tus propias instrucciones. Conserva los rasgos de tu personaje y crea justo lo que imaginas.",
     resultsTitle: "Resultados generados",
     promptLabel: "Qué generar",

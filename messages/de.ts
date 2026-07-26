@@ -76,7 +76,7 @@ export const deMessages = {
     metaSizeLabel: "Größe",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Kopieren",
     copied: "Kopiert",
@@ -845,6 +845,7 @@ export const deMessages = {
       "Wenn du Persta regelmäßig nutzt, ist ein Abo meist günstiger als der Einzelkauf von Percoins.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Tutorial",
     tourStepUploadDescription: "Lade hier das Charakterbild hoch, das du restylen willst.",
     tourStepPromptDescription: "Beschreibe das gewünschte Outfit.",
@@ -1354,7 +1355,7 @@ export const deMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Freier Modus",
+    pageTitle: "Free Style",
     pageDescription: "Lade ein Bild hoch und generiere mit deinen eigenen Anweisungen. Behalte die Merkmale deiner Figur und erschaffe genau das, was du dir vorstellst.",
     resultsTitle: "Generierte Ergebnisse",
     promptLabel: "Was generiert werden soll",

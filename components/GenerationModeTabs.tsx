@@ -19,7 +19,9 @@ import { cn } from "@/lib/utils";
  * 遷移完了を待たずに即座に切り替わって見える。ページ本文の読み込みは
  * (app)/loading.tsx のスケルトンがタブの下で受け持つ。
  *
- * ラベルは既存キー (nav.coordinate / style.pageTitle) と free.tabLabel を使う。
+ * ラベルは coordinate.tabLabel / style.pageTitle / free.tabLabel を使う。
+ * coordinate.tabLabel はタブ専用(ボトムナビ/サイドバーの nav.coordinate=「コーディネート」
+ * とは別キー)にして、タブだけ英語ブランド名「Coordinate」にできるようにしている。
  */
 const TABS = [
   { path: "/coordinate", icon: Sparkles },
@@ -30,7 +32,7 @@ const TABS = [
 export function GenerationModeTabs() {
   const pathname = usePathname();
   const router = useRouter();
-  const navT = useTranslations("nav");
+  const coordinateT = useTranslations("coordinate");
   const styleT = useTranslations("style");
   const freeT = useTranslations("free");
 
@@ -81,7 +83,7 @@ export function GenerationModeTabs() {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [activeIndex, localePrefix, freeT, navT, styleT]);
+  }, [activeIndex, localePrefix, freeT, coordinateT, styleT]);
 
   // 滞在中のモードを「直近に使った生成モード」として記憶する。
   // ボトムナビ/サイドバーの「コーディネート」入口がこれを読み、前回モードへ復帰する。
@@ -93,7 +95,11 @@ export function GenerationModeTabs() {
   // coordinate / style / free 以外のルートでは表示しない。
   if (activeIndex === -1) return null;
 
-  const labels = [navT("coordinate"), styleT("pageTitle"), freeT("tabLabel")];
+  const labels = [
+    coordinateT("tabLabel"),
+    styleT("pageTitle"),
+    freeT("tabLabel"),
+  ];
 
   return (
     <div className="border-b border-pink-100/70 bg-white/80 backdrop-blur-sm">

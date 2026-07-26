@@ -76,7 +76,7 @@ export const frMessages = {
     metaSizeLabel: "Taille",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Copier",
     copied: "Copié",
@@ -845,6 +845,7 @@ export const frMessages = {
       "Si vous utilisez Persta régulièrement, un abonnement est généralement plus avantageux que d'acheter des Percoins à l'unité.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Tutoriel",
     tourStepUploadDescription: "Téléchargez ici l’image du personnage que vous souhaitez restyler.",
     tourStepPromptDescription: "Décrivez le type de tenue souhaité.",
@@ -1353,7 +1354,7 @@ export const frMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Mode libre",
+    pageTitle: "Free Style",
     pageDescription: "Importez une image et générez avec vos propres instructions. Conservez les traits de votre personnage et créez exactement ce que vous imaginez.",
     resultsTitle: "Résultats générés",
     promptLabel: "Ce qu'il faut générer",

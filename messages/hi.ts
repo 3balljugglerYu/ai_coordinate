@@ -76,7 +76,7 @@ export const hiMessages = {
     metaSizeLabel: "साइज़",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "कॉपी करें",
     copied: "कॉपी हो गया",
@@ -843,6 +843,7 @@ export const hiMessages = {
       "यदि आप Persta का नियमित रूप से उपयोग करते हैं, तो सदस्यता आमतौर पर एक-एक करके Percoin खरीदने से ज़्यादा किफ़ायती है।",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "ट्यूटोरियल",
     tourStepUploadDescription: "जिस कैरेक्टर छवि को आप फिर से स्टाइल करना चाहते हैं उसे यहाँ अपलोड करें।",
     tourStepPromptDescription: "जिस तरह का आउटफ़िट आप चाहते हैं उसका वर्णन करें।",
@@ -1351,7 +1352,7 @@ export const hiMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "फ्री मोड",
+    pageTitle: "Free Style",
     pageDescription: "एक इमेज अपलोड करें और अपने निर्देशों से जेनरेट करें। किरदार की खासियतें बनाए रखते हुए ठीक वैसा बनाएँ जैसा आप सोचते हैं।",
     resultsTitle: "जेनरेट किए गए परिणाम",
     promptLabel: "क्या जेनरेट करना है",

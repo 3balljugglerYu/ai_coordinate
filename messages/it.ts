@@ -76,7 +76,7 @@ export const itMessages = {
     metaSizeLabel: "Dimensione",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Copia",
     copied: "Copiato",
@@ -845,6 +845,7 @@ export const itMessages = {
       "Se usi Persta regolarmente, un abbonamento di solito è più conveniente che acquistare Percoin uno per uno.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Tutorial",
     tourStepUploadDescription: "Carica qui l’immagine del personaggio che vuoi restilizzare.",
     tourStepPromptDescription: "Descrivi il tipo di outfit che desideri.",
@@ -1353,7 +1354,7 @@ export const itMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Modalità libera",
+    pageTitle: "Free Style",
     pageDescription: "Carica un'immagine e genera con le tue istruzioni. Mantieni i tratti del personaggio e crea esattamente ciò che immagini.",
     resultsTitle: "Risultati generati",
     promptLabel: "Cosa generare",

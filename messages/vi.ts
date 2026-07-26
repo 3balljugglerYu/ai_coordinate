@@ -76,7 +76,7 @@ export const viMessages = {
     metaSizeLabel: "Kích thước",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Sao chép",
     copied: "Đã sao chép",
@@ -842,6 +842,7 @@ export const viMessages = {
       "Nếu bạn dùng Persta thường xuyên, đăng ký thường tiết kiệm hơn so với mua Percoin từng lần.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Hướng dẫn",
     tourStepUploadDescription: "Tải lên đây hình nhân vật bạn muốn phối lại.",
     tourStepPromptDescription: "Mô tả loại trang phục bạn muốn.",
@@ -1350,7 +1351,7 @@ export const viMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Chế độ tự do",
+    pageTitle: "Free Style",
     pageDescription: "Tải ảnh lên và tạo bằng chỉ dẫn của riêng bạn. Giữ nguyên đặc điểm nhân vật và tạo đúng như bạn tưởng tượng.",
     resultsTitle: "Danh sách kết quả",
     promptLabel: "Nội dung muốn tạo",

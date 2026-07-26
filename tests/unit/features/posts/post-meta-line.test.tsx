@@ -8,7 +8,7 @@ jest.mock("next-intl", () => ({
       metaSizeLabel: "サイズ",
       modeCoordinate: "Coordinate",
       modeOneTapStyle: "One-Tap Style",
-      modeInspire: "Post Style",
+      modeInspire: "Creator Style",
       modeFree: "Free Style",
     };
     return messages[key] ?? key;
@@ -138,7 +138,9 @@ describe("PostMetaLine", () => {
         generationType="inspire"
       />,
     );
-    expect(screen.getByTestId("post-meta-line").textContent).toBe("Post Style");
+    expect(screen.getByTestId("post-meta-line").textContent).toBe(
+      "Creator Style",
+    );
   });
 
   it("renders nothing when both the mode and the model are unknown", () => {

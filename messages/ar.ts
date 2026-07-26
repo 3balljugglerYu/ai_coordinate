@@ -76,7 +76,7 @@ export const arMessages = {
     metaSizeLabel: "الحجم",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "نسخ",
     copied: "تم النسخ",
@@ -842,6 +842,7 @@ export const arMessages = {
       "إذا كنت تستخدم Persta بانتظام، فإن الاشتراك عادةً أكثر اقتصادًا من شراء Percoin قطعة قطعة.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "الدليل التعليمي",
     tourStepUploadDescription: "ارفع هنا صورة الشخصية التي تريد إعادة تنسيقها.",
     tourStepPromptDescription: "صف نوع الإطلالة التي تريدها.",
@@ -1350,7 +1351,7 @@ export const arMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "الوضع الحر",
+    pageTitle: "Free Style",
     pageDescription: "ارفع صورة وأنشئ بتعليماتك الخاصة. حافظ على ملامح شخصيتك وأنشئ تمامًا ما تتخيله.",
     resultsTitle: "قائمة النتائج",
     promptLabel: "ما تريد إنشاءه",

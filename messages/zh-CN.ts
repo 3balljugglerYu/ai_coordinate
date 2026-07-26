@@ -76,7 +76,7 @@ export const zhCnMessages = {
     metaSizeLabel: "尺寸",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "复制",
     copied: "已复制",
@@ -841,6 +841,7 @@ export const zhCnMessages = {
       "如果你定期使用 Persta，相比逐次购买 Percoin，订阅通常更划算。",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "教程",
     tourStepUploadDescription: "在此上传想要重新造型的角色图片。",
     tourStepPromptDescription: "请描述想要的搭配。",
@@ -1348,7 +1349,7 @@ export const zhCnMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "自由模式",
+    pageTitle: "Free Style",
     pageDescription: "上传图片，用你自己的指令生成。保留角色特征，创作出你想象中的插画。",
     resultsTitle: "生成结果列表",
     promptLabel: "想生成的内容",

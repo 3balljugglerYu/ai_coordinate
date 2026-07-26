@@ -76,7 +76,7 @@ export const idMessages = {
     metaSizeLabel: "Ukuran",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "Salin",
     copied: "Tersalin",
@@ -844,6 +844,7 @@ export const idMessages = {
       "Jika kamu menggunakan Persta secara rutin, langganan biasanya lebih hemat dibanding membeli Percoin satuan.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "Tutorial",
     tourStepUploadDescription: "Unggah di sini gambar karakter yang ingin kamu styling ulang.",
     tourStepPromptDescription: "Jelaskan jenis outfit yang kamu inginkan.",
@@ -1352,7 +1353,7 @@ export const idMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "Mode bebas",
+    pageTitle: "Free Style",
     pageDescription: "Unggah gambar dan hasilkan dengan instruksimu sendiri. Pertahankan ciri karaktermu dan buat persis seperti yang kamu bayangkan.",
     resultsTitle: "Daftar hasil",
     promptLabel: "Apa yang ingin dibuat",

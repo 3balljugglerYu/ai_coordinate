@@ -76,7 +76,7 @@ export const koMessages = {
     metaSizeLabel: "사이즈",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "복사",
     copied: "복사됨",
@@ -842,6 +842,7 @@ export const koMessages = {
       "Persta를 정기적으로 사용한다면 Percoin을 한 번씩 구매하는 것보다 구독이 더 합리적입니다.",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "튜토리얼",
     tourStepUploadDescription: "다시 스타일링하고 싶은 캐릭터 이미지를 여기에 업로드합니다.",
     tourStepPromptDescription: "원하는 코디를 설명해 주세요.",
@@ -1349,7 +1350,7 @@ export const koMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "자유 모드",
+    pageTitle: "Free Style",
     pageDescription: "이미지를 업로드하고 자유로운 지시로 생성할 수 있습니다. 캐릭터의 특징은 그대로, 원하는 대로 일러스트를 만들어 보세요.",
     resultsTitle: "생성 결과 목록",
     promptLabel: "생성할 내용",

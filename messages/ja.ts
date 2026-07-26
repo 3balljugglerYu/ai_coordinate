@@ -73,7 +73,7 @@ export const jaMessages = {
     metaSizeLabel: "サイズ",
     modeCoordinate: "Coordinate",
     modeOneTapStyle: "One-Tap Style",
-    modeInspire: "Post Style",
+    modeInspire: "Creator Style",
     modeFree: "Free Style",
     copy: "コピー",
     copied: "コピー済み",
@@ -819,6 +819,7 @@ export const jaMessages = {
       "定期的に使うなら、都度購入よりサブスクの方がコスパよく運用できます。",
   },
   coordinate: {
+    tabLabel: "Coordinate",
     tourButton: "チュートリアル",
     tourStepUploadDescription: "ここで着せ替えたい人物画像をアップロードします。",
     tourStepPromptDescription: "どんなコーデにしたいか入力します。",
@@ -1293,7 +1294,7 @@ export const jaMessages = {
   },
   free: {
     tabLabel: "Free Style",
-    pageTitle: "じゆうモード",
+    pageTitle: "Free Style",
     pageDescription: "画像をアップロードして、自由な指示で生成できます。うちの子の特徴はそのままに、思いのままのイラストを作りましょう。",
     resultsTitle: "生成結果一覧",
     promptLabel: "生成したい内容",
