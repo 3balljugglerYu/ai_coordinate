@@ -1352,7 +1352,7 @@ export const itMessages = {
     pageDescription: "Carica un'immagine e genera con le tue istruzioni. Mantieni i tratti del personaggio e crea esattamente ciò che immagini.",
     resultsTitle: "Risultati generati",
     promptLabel: "Cosa generare",
-    promptPlaceholder: "es. In uniforme scolastica sotto i ciliegi, con la luce morbida della primavera. Mantieni viso e capelli del personaggio.",
+    promptPlaceholder: "es. Mettile un'uniforme scolastica. Falla stare sotto i ciliegi con una luce morbida primaverile.",
     loginCtaTitle: "La modalità libera richiede l'accesso",
     loginCtaDescription: "Accedi per generare illustrazioni del tuo personaggio con le tue istruzioni.",
     loginCtaAction: "Accedi / Registrati",

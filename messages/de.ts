@@ -1353,7 +1353,7 @@ export const deMessages = {
     pageDescription: "Lade ein Bild hoch und generiere mit deinen eigenen Anweisungen. Behalte die Merkmale deiner Figur und erschaffe genau das, was du dir vorstellst.",
     resultsTitle: "Generierte Ergebnisse",
     promptLabel: "Was generiert werden soll",
-    promptPlaceholder: "z. B. In Schuluniform unter Kirschblüten, im weichen Frühlingslicht. Gesicht und Frisur der Figur beibehalten.",
+    promptPlaceholder: "z. B. Zieh ihr eine Schuluniform an. Stell sie unter Kirschblüten in weiches Frühlingslicht.",
     loginCtaTitle: "Der freie Modus erfordert eine Anmeldung",
     loginCtaDescription: "Melde dich an, um Illustrationen deiner Figur mit eigenen Anweisungen zu generieren.",
     loginCtaAction: "Anmelden / Registrieren",

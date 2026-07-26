@@ -1348,7 +1348,7 @@ export const koMessages = {
     pageDescription: "이미지를 업로드하고 자유로운 지시로 생성할 수 있습니다. 캐릭터의 특징은 그대로, 원하는 대로 일러스트를 만들어 보세요.",
     resultsTitle: "생성 결과 목록",
     promptLabel: "생성할 내용",
-    promptPlaceholder: "예: 교복을 입고 벚꽃 아래에서, 봄의 부드러운 빛으로. 캐릭터의 얼굴과 헤어스타일은 그대로.",
+    promptPlaceholder: "예: 교복을 입혀 주세요. 벚꽃 아래에 세우고 봄의 부드러운 빛이 비치게 해 주세요.",
     loginCtaTitle: "자유 모드는 로그인이 필요합니다",
     loginCtaDescription: "로그인하면 자유로운 지시로 내 캐릭터의 일러스트를 생성할 수 있습니다.",
     loginCtaAction: "로그인 / 회원가입",

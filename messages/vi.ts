@@ -1349,7 +1349,7 @@ export const viMessages = {
     pageDescription: "Tải ảnh lên và tạo bằng chỉ dẫn của riêng bạn. Giữ nguyên đặc điểm nhân vật và tạo đúng như bạn tưởng tượng.",
     resultsTitle: "Danh sách kết quả",
     promptLabel: "Nội dung muốn tạo",
-    promptPlaceholder: "vd: Mặc đồng phục học sinh dưới hoa anh đào, trong ánh sáng dịu của mùa xuân. Giữ nguyên khuôn mặt và kiểu tóc của nhân vật.",
+    promptPlaceholder: "vd: Hãy cho mặc đồng phục học sinh. Đặt đứng dưới hoa anh đào trong ánh sáng dịu của mùa xuân.",
     loginCtaTitle: "Chế độ tự do cần đăng nhập",
     loginCtaDescription: "Đăng nhập để tạo ảnh minh họa nhân vật của bạn bằng chỉ dẫn của riêng bạn.",
     loginCtaAction: "Đăng nhập / Đăng ký",

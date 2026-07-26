@@ -1352,7 +1352,7 @@ export const frMessages = {
     pageDescription: "Importez une image et générez avec vos propres instructions. Conservez les traits de votre personnage et créez exactement ce que vous imaginez.",
     resultsTitle: "Résultats générés",
     promptLabel: "Ce qu'il faut générer",
-    promptPlaceholder: "ex. : En uniforme scolaire sous les cerisiers, dans une douce lumière printanière. Conservez le visage et la coiffure du personnage.",
+    promptPlaceholder: "ex. : Mets-lui un uniforme scolaire. Place-le sous les cerisiers dans une douce lumière printanière.",
     loginCtaTitle: "Le mode libre nécessite une connexion",
     loginCtaDescription: "Connectez-vous pour générer des illustrations de votre personnage avec vos propres instructions.",
     loginCtaAction: "Se connecter / S'inscrire",

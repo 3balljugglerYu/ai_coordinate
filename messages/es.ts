@@ -1352,7 +1352,7 @@ export const esMessages = {
     pageDescription: "Sube una imagen y genera con tus propias instrucciones. Conserva los rasgos de tu personaje y crea justo lo que imaginas.",
     resultsTitle: "Resultados generados",
     promptLabel: "Qué generar",
-    promptPlaceholder: "p. ej. Con uniforme escolar bajo los cerezos, con luz suave de primavera. Conserva la cara y el peinado del personaje.",
+    promptPlaceholder: "p. ej. Ponle un uniforme escolar. Que esté bajo los cerezos con una luz suave de primavera.",
     loginCtaTitle: "El modo libre requiere iniciar sesión",
     loginCtaDescription: "Inicia sesión para generar ilustraciones de tu personaje con tus propias instrucciones.",
     loginCtaAction: "Iniciar sesión / Registrarse",

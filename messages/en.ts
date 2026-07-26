@@ -1349,7 +1349,7 @@ export const enMessages = {
     pageDescription: "Upload an image and generate with your own instructions. Keep your character's features while creating exactly what you imagine.",
     resultsTitle: "Generated results",
     promptLabel: "What to generate",
-    promptPlaceholder: "e.g. In a school uniform under cherry blossoms, in soft spring light. Keep the character's face and hairstyle.",
+    promptPlaceholder: "e.g. Put them in a school uniform. Have them stand under cherry blossoms in soft spring light.",
     loginCtaTitle: "Free Mode requires login",
     loginCtaDescription: "Log in to generate illustrations of your character with your own instructions.",
     loginCtaAction: "Log in / Sign up",

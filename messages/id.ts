@@ -1351,7 +1351,7 @@ export const idMessages = {
     pageDescription: "Unggah gambar dan hasilkan dengan instruksimu sendiri. Pertahankan ciri karaktermu dan buat persis seperti yang kamu bayangkan.",
     resultsTitle: "Daftar hasil",
     promptLabel: "Apa yang ingin dibuat",
-    promptPlaceholder: "mis. Mengenakan seragam sekolah di bawah bunga sakura, dengan cahaya lembut musim semi. Pertahankan wajah dan gaya rambut karakter.",
+    promptPlaceholder: "mis. Kenakan seragam sekolah. Buat dia berdiri di bawah bunga sakura dengan cahaya lembut musim semi.",
     loginCtaTitle: "Mode bebas memerlukan login",
     loginCtaDescription: "Masuk untuk menghasilkan ilustrasi karaktermu dengan instruksimu sendiri.",
     loginCtaAction: "Masuk / Daftar",

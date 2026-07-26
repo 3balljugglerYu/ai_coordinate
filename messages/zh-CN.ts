@@ -1347,7 +1347,7 @@ export const zhCnMessages = {
     pageDescription: "上传图片，用你自己的指令生成。保留角色特征，创作出你想象中的插画。",
     resultsTitle: "生成结果列表",
     promptLabel: "想生成的内容",
-    promptPlaceholder: "例：穿着校服站在樱花树下，沐浴柔和的春光。保留角色的脸和发型。",
+    promptPlaceholder: "例：请换上校服。让他站在樱花树下，沐浴柔和的春光。",
     loginCtaTitle: "自由模式需要登录",
     loginCtaDescription: "登录后即可用你自己的指令生成角色插画。",
     loginCtaAction: "登录 / 注册",
