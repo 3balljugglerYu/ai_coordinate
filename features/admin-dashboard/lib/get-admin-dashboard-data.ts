@@ -28,6 +28,7 @@ import type {
   AdminDashboardKpi,
   DashboardAlertRow,
   DashboardFunnelStep,
+  DashboardLoginMethodMixItem,
   DashboardModelMixItem,
   DashboardOpsSummary,
   DashboardPurchaseRow,
@@ -41,6 +42,11 @@ type ProfileRow = {
   nickname: string | null;
   created_at: string;
   signup_source?: string | null;
+};
+
+type AuthProviderSignupRow = {
+  created_at: string;
+  provider: string | null;
 };
 
 type GeneratedImageRow = {
@@ -307,6 +313,62 @@ function buildModelMix(generations: GeneratedImageRow[]): DashboardModelMixItem[
       sharePct: total > 0 ? Number(((count / total) * 100).toFixed(1)) : 0,
     }))
     .sort((a, b) => b.count - a.count);
+}
+
+const LOGIN_METHOD_LABELS: Record<string, string> = {
+  google: "Google",
+  email: "メール/パスワード",
+  x: "X",
+};
+
+// twitter は Supabase 旧プロバイダ名。x に正規化し、未知のプロバイダは「その他」に畳む
+// (色をエンティティ固定にするため、系列を無限に増やさない)。
+function normalizeLoginProvider(provider: string | null): string {
+  const normalized = (provider ?? "").trim().toLowerCase();
+  if (normalized === "twitter") return "x";
+  if (normalized in LOGIN_METHOD_LABELS) return normalized;
+  return "other";
+}
+
+export function buildLoginMethodMix(
+  rows: Array<{ created_at: string; provider: string | null }>,
+  currentStart: Date,
+  now: Date
+): DashboardLoginMethodMixItem[] {
+  const cumulativeCounts = new Map<string, number>();
+  const rangeCounts = new Map<string, number>();
+
+  for (const row of rows) {
+    const provider = normalizeLoginProvider(row.provider);
+    cumulativeCounts.set(provider, (cumulativeCounts.get(provider) ?? 0) + 1);
+    if (isWithinDateRange(row.created_at, currentStart, now)) {
+      rangeCounts.set(provider, (rangeCounts.get(provider) ?? 0) + 1);
+    }
+  }
+
+  const cumulativeTotal = rows.length;
+  const rangeTotal = Array.from(rangeCounts.values()).reduce(
+    (sum, count) => sum + count,
+    0
+  );
+
+  return Array.from(cumulativeCounts.entries())
+    .map(([provider, cumulativeCount]) => {
+      const count = rangeCounts.get(provider) ?? 0;
+      return {
+        provider,
+        label: LOGIN_METHOD_LABELS[provider] ?? "その他",
+        count,
+        sharePct:
+          rangeTotal > 0 ? Number(((count / rangeTotal) * 100).toFixed(1)) : 0,
+        cumulativeCount,
+        cumulativeSharePct:
+          cumulativeTotal > 0
+            ? Number(((cumulativeCount / cumulativeTotal) * 100).toFixed(1))
+            : 0,
+      };
+    })
+    .sort((a, b) => b.cumulativeCount - a.cumulativeCount);
 }
 
 function buildFunnel(params: {
@@ -577,6 +639,7 @@ export async function getAdminDashboardData(
     expiringResult,
     reportsResult,
     activeVisiblePostsResult,
+    authProviderSignupsResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
@@ -637,6 +700,7 @@ export async function getAdminDashboardData(
       .eq("moderation_status", "visible")
       .not("user_id", "is", null)
       .gte("posted_at", activeThresholdIso),
+    supabase.rpc("get_auth_provider_signups"),
   ]);
 
   if (profilesResult.error) console.error("Dashboard profiles fetch error:", profilesResult.error);
@@ -666,6 +730,12 @@ export async function getAdminDashboardData(
   if (expiringResult.error) console.error("Dashboard expiring fetch error:", expiringResult.error);
   if (reportsResult.error) console.error("Dashboard reports fetch error:", reportsResult.error);
   if (activeVisiblePostsResult.error) console.error("Dashboard active visible fetch error:", activeVisiblePostsResult.error);
+  if (authProviderSignupsResult.error) {
+    console.error(
+      "Dashboard auth provider signups fetch error:",
+      authProviderSignupsResult.error
+    );
+  }
 
   const profiles = (profilesResult.data ?? []) as ProfileRow[];
   const generatedImages = (generatedResult.data ?? []) as GeneratedImageRow[];
@@ -681,6 +751,8 @@ export async function getAdminDashboardData(
   const activeVisiblePosts = (activeVisiblePostsResult.data ?? []) as Array<{
     user_id: string | null;
   }>;
+  const authProviderSignups =
+    (authProviderSignupsResult.data ?? []) as AuthProviderSignupRow[];
   const pendingCount = pendingResult.count ?? 0;
 
   const currentProfiles = profiles.filter((profile) =>
@@ -878,6 +950,7 @@ export async function getAdminDashboardData(
     opsSummary,
     funnel,
     modelMix,
+    loginMethodMix: buildLoginMethodMix(authProviderSignups, currentStart, now),
     recentPurchases,
     alerts,
     quickActions: adminQuickActionItems.map((item) => ({

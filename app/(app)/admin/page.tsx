@@ -113,6 +113,7 @@ export default async function AdminDashboardPage({
           oneTapStyle={data.oneTapStyle}
           funnel={data.funnel}
           modelMix={data.modelMix}
+          loginMethodMix={data.loginMethodMix}
         />
       )}
     </AdminDashboardView>
