@@ -27,6 +27,8 @@ const expectedClientNamespaces = [
   "referral",
   "searchBar",
   "style",
+  // useTranslations("free") をクライアントで使うため clientNamespaces に含まれる
+  "free",
   "subscription",
   "posts",
   "popupBanners",
