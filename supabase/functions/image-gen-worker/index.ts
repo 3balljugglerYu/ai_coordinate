@@ -51,10 +51,7 @@ import {
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
 } from "../../../shared/generation/gemini-aspect-ratio.ts";
-import {
-  normalizeStyleOutputAspectRatioMode,
-  resolveOutputAspectRatio,
-} from "../../../shared/generation/style-output-aspect-ratio.ts";
+import { resolveJobOutputAspectRatio } from "../../../shared/generation/job-output-aspect.ts";
 import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
@@ -2161,27 +2158,18 @@ Deno.serve(async () => {
                         aspectBaseImage.mimeType,
                       )
                     : null;
-                  // one_tap_style は preset カテゴリの出力比率モードを尊重する
-                  // (source=入力比率 / preset_image=登録画像(サムネ)比率 / 明示比率=その比率)。
-                  // preset サムネ寸法は metadata に保存済みの整数のため追加I/Oは無い。
-                  // それ以外(coordinate / inspire 等)は従来どおり入力比率に自動スナップ。
-                  const presetImageDims =
-                    oneTapStyleMetadata &&
-                    oneTapStyleMetadata.thumbnailWidth > 0 &&
-                    oneTapStyleMetadata.thumbnailHeight > 0
-                      ? {
-                          width: oneTapStyleMetadata.thumbnailWidth,
-                          height: oneTapStyleMetadata.thumbnailHeight,
-                        }
-                      : null;
-                  const aspectRatio: GeminiAspectRatio =
-                    job.generation_type === "one_tap_style"
-                      ? resolveOutputAspectRatio(
-                          oneTapStyleMetadata?.outputAspectRatioMode,
-                          aspectDims,
-                          presetImageDims,
-                        )
-                      : resolveGeminiAspectRatio(aspectDims);
+                  // 出力比率は生成種別で決まる(job-output-aspect の pure helper に集約):
+                  // - one_tap_style: preset の outputAspectRatioMode(source/preset_image/明示)
+                  // - free: generation_metadata.outputAspectRatioMode(source + 明示9比率)
+                  // - それ以外(coordinate / inspire 等): 入力比率に自動スナップ
+                  const aspectRatio: GeminiAspectRatio = resolveJobOutputAspectRatio({
+                    generationType: job.generation_type,
+                    generationMetadata: job.generation_metadata as
+                      | Record<string, unknown>
+                      | null,
+                    oneTapStyleMetadata,
+                    inputDimensions: aspectDims,
+                  }).label;
 
                   // gemini-3.1-flash-image-preview のみ candidateCount / responseModalities を追加。
                   // gemini-3-pro-image-preview / gemini-2.5-flash-image 等は不要。
@@ -2234,40 +2222,24 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
-                // 出力比率: one_tap_style で明示比率/登録画像(preset_image)なら、その比率の寸法から
-                // OpenAI 出力サイズを決める(GPT Image 2 も 9:16〜16:9 を出力可能)。source / 非one_tap は
-                // undefined にして呼び出し側の入力画像ベース(従来挙動)に委ねる。
-                const oneTapAspectMode =
-                  job.generation_type === "one_tap_style"
-                    ? normalizeStyleOutputAspectRatioMode(
-                        oneTapStyleMetadata?.outputAspectRatioMode,
-                      )
-                    : "source";
-                const oneTapPresetImageDims =
-                  oneTapStyleMetadata &&
-                  oneTapStyleMetadata.thumbnailWidth > 0 &&
-                  oneTapStyleMetadata.thumbnailHeight > 0
-                    ? {
-                        width: oneTapStyleMetadata.thumbnailWidth,
-                        height: oneTapStyleMetadata.thumbnailHeight,
-                      }
-                    : null;
-                // source、および preset_image でサムネ寸法が無い場合は入力ベース(undefined)に委ねる
-                // (寸法無しで resolve すると 1:1 に落ちて正方形強制になるのを防ぐ)。
-                // それ以外(明示/寸法ありのpreset_image)は具体ラベルへ解決。
-                const targetLabel =
-                  oneTapAspectMode === "source" ||
-                  (oneTapAspectMode === "preset_image" && !oneTapPresetImageDims)
-                    ? null
-                    : resolveOutputAspectRatio(
-                        oneTapAspectMode,
-                        null,
-                        oneTapPresetImageDims,
-                      );
-                const targetSize = targetLabel
+                // 出力比率(job-output-aspect の pure helper に集約)。明示比率のときだけ
+                // OpenAI の targetSize を上書きし、source / 非対象は undefined にして
+                // 入力画像ベース(resolveOpenAITargetSize=従来挙動)へ委ねる。
+                // - one_tap_style: 明示比率 / 寸法ありの preset_image を上書き
+                // - free: generation_metadata の明示9比率を上書き(source は委ねる)
+                // GPT Image 2 も 9:16〜16:9 を出力可能(16px 丸めのため厳密比率でなく近似)。
+                const openAIAspect = resolveJobOutputAspectRatio({
+                  generationType: job.generation_type,
+                  generationMetadata: job.generation_metadata as
+                    | Record<string, unknown>
+                    | null,
+                  oneTapStyleMetadata,
+                  inputDimensions: null,
+                });
+                const targetSize = openAIAspect.shouldOverrideOpenAITargetSize
                   ? getGptImage2TargetSize(
                       gptImage2.sizeTier,
-                      aspectLabelToDimensions(targetLabel),
+                      aspectLabelToDimensions(openAIAspect.label),
                     )
                   : undefined;
                 const attemptStartedAtMs = Date.now();

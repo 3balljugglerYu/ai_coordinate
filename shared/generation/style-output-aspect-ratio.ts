@@ -57,6 +57,43 @@ export function normalizeStyleOutputAspectRatioMode(
 }
 
 /**
+ * じゆうモード(Free Style)でユーザーが選べる出力比率モード。
+ * admin の `STYLE_OUTPUT_ASPECT_RATIO_MODES` から `preset_image` を除いた
+ * "source"(自動) + 明示9比率 = 10 種。preset を持たない Free では preset_image は無効。
+ *
+ * API の zod・localStorage の正規化の双方でこの allowlist を単一の真実源として使う。
+ */
+export const FREE_OUTPUT_ASPECT_RATIO_MODES = [
+  "source",
+  ...EXPLICIT_OUTPUT_ASPECT_RATIOS,
+] as const;
+
+export type FreeOutputAspectRatioMode =
+  (typeof FREE_OUTPUT_ASPECT_RATIO_MODES)[number];
+
+export function isFreeOutputAspectRatioMode(
+  value: unknown,
+): value is FreeOutputAspectRatioMode {
+  return (
+    value === "source" ||
+    (typeof value === "string" && EXPLICIT_SET.has(value))
+  );
+}
+
+/**
+ * Free 用の正規化。許容外(preset_image / 不正値 / undefined)は "source" にフォールバックする。
+ * localStorage 復元値と Worker が読む破損 metadata の両方で使う。
+ * ※ API 層はフォールバックせず zod で 400 拒否する(責務分担)。
+ */
+export function normalizeFreeOutputAspectRatioMode(
+  value: unknown,
+): FreeOutputAspectRatioMode {
+  // 旧仕様 "square" は 1:1 として扱う(後方互換)。
+  if (value === "square") return "1:1";
+  return isFreeOutputAspectRatioMode(value) ? value : "source";
+}
+
+/**
  * モード + 入力画像寸法(+ 登録画像寸法)から、最終的な Gemini 出力アスペクト比を解決する。
  * - "source"       … 入力寸法を9段階の最近傍にスナップ(自動選択)
  * - "preset_image" … preset のサムネ(登録画像)寸法を9段階の最近傍にスナップ。
