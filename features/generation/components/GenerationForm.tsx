@@ -647,6 +647,8 @@ export function GenerationForm({
           containerProps={
             isFree ? undefined : { "data-tour": "tour-prompt-input" }
           }
+          // じゆうモードはラベルが短い(「生成したい内容」)ためスマホでも 1 行に収める。
+          labelRowSingleLine={isFree}
         />
 
         {/* --- ここから下の設定UIはコーディネート専用。じゆうモードでは全て非表示 --- */}
