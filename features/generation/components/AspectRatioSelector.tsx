@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
 import { useTranslations } from "next-intl";
 import { Check, Sparkles } from "lucide-react";
@@ -30,6 +31,26 @@ export function AspectRatioSelector({
   disabled,
 }: AspectRatioSelectorProps) {
   const t = useTranslations("free");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
+
+  // 選択中カードが横スクロール領域外にあるとき、見える位置まで寄せる。
+  // 再遷移で前回選択(右側の比率など)を復元した際に「選択が画面外で見えない」問題を解消する。
+  // container.scrollLeft のみ操作し、ページの縦スクロールには影響させない。
+  // 既に見えているカード(ユーザーが直接クリックした場合など)は動かさない。
+  useEffect(() => {
+    const container = containerRef.current;
+    const selected = selectedRef.current;
+    if (!container || !selected) return;
+    const cRect = container.getBoundingClientRect();
+    const sRect = selected.getBoundingClientRect();
+    const PADDING = 12;
+    if (sRect.left < cRect.left) {
+      container.scrollLeft -= cRect.left - sRect.left + PADDING;
+    } else if (sRect.right > cRect.right) {
+      container.scrollLeft += sRect.right - cRect.right + PADDING;
+    }
+  }, [value]);
 
   return (
     <div>
@@ -40,6 +61,7 @@ export function AspectRatioSelector({
         {t("aspectSectionTitle")}
       </span>
       <RadioGroupPrimitive.Root
+        ref={containerRef}
         value={value}
         onValueChange={(next) => onChange(next as FreeOutputAspectRatioMode)}
         disabled={disabled}
@@ -72,6 +94,7 @@ export function AspectRatioSelector({
           return (
             <RadioGroupPrimitive.Item
               key={mode}
+              ref={mode === value ? selectedRef : undefined}
               value={mode}
               aria-label={ariaLabel}
               className={cn(
