@@ -34,7 +34,11 @@ import {
   readPreferredModel,
   writePreferredBackgroundMode,
   writePreferredModel,
+  readPreferredAspectMode,
+  writePreferredAspectMode,
 } from "../lib/form-preferences";
+import { AspectRatioSelector } from "./AspectRatioSelector";
+import type { FreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
   FREE_GENERATION_PROMPT_MAX_LENGTH,
@@ -80,6 +84,8 @@ interface GenerationFormProps {
     framingMode?: FramingMode;
     /** 生成種別。じゆうモードは "free"。省略時は呼び出し側で "coordinate" 扱い。 */
     generationType?: "coordinate" | "free";
+    /** じゆうモードの出力比率(source + 明示9比率)。free のときのみ指定。 */
+    outputAspectRatioMode?: FreeOutputAspectRatioMode;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -188,6 +194,9 @@ export function GenerationForm({
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
+  // じゆうモードの出力比率。初期値は source(自動)。マウント後に localStorage から復元する。
+  const [aspectMode, setAspectMode] =
+    useState<FreeOutputAspectRatioMode>("source");
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const isAuthenticated = authState === "authenticated";
@@ -226,12 +235,24 @@ export function GenerationForm({
   useEffect(() => {
     setSelectedModel(readPreferredModel());
     setBackgroundMode(readPreferredBackgroundMode());
-  }, []);
+    // 比率は Free のみ。マウント後に復元(SSR は source、hydration 後に前回値へ)。
+    if (isFree) {
+      setAspectMode(readPreferredAspectMode());
+    }
+  }, [isFree]);
 
   const handleSelectedModelChange = useCallback((value: GeminiModel) => {
     setSelectedModel(value);
     writePreferredModel(value);
   }, []);
+
+  const handleAspectModeChange = useCallback(
+    (value: FreeOutputAspectRatioMode) => {
+      setAspectMode(value);
+      writePreferredAspectMode(value);
+    },
+    [],
+  );
 
   const handleBackgroundModeChange = useCallback((value: BackgroundMode) => {
     setBackgroundMode(value);
@@ -321,6 +342,8 @@ export function GenerationForm({
         count: 1,
         model: effectiveSelectedModel,
         generationType: "free",
+        // 出力比率(source は async-api 側で送信を省略=既定挙動)。
+        outputAspectRatioMode: aspectMode,
       });
       return;
     }
@@ -628,6 +651,15 @@ export function GenerationForm({
               ))}
             </RadioGroup>
           </div>
+        ) : null}
+
+        {/* じゆうモードの出力比率セレクタ(「生成したい内容」の上に配置)。 */}
+        {isFree ? (
+          <AspectRatioSelector
+            value={aspectMode}
+            onChange={handleAspectModeChange}
+            disabled={isGenerating || isTutorialInProgress}
+          />
         ) : null}
 
         {/* プロンプト入力(じゆうモードは自由記述 / それ以外は着せ替え内容) */}
