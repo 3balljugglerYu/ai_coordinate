@@ -4,12 +4,15 @@ import {
   BACKGROUND_MODE_STORAGE_KEY,
   COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
   SELECTED_MODEL_STORAGE_KEY,
+  FREE_ASPECT_MODE_STORAGE_KEY,
   readCoordinateStockSavePromptDismissed,
   readPreferredBackgroundMode,
   readPreferredModel,
+  readPreferredAspectMode,
   writeCoordinateStockSavePromptDismissed,
   writePreferredBackgroundMode,
   writePreferredModel,
+  writePreferredAspectMode,
 } from "@/features/generation/lib/form-preferences";
 import { GPT_IMAGE_2_LEGACY_LOW_MODEL } from "@/features/generation/types";
 
@@ -219,6 +222,35 @@ describe("form-preferences", () => {
           value: originalWindow,
         });
       }
+    });
+  });
+
+  describe("aspect mode (Free Style)", () => {
+    it("returns source by default", () => {
+      expect(readPreferredAspectMode()).toBe("source");
+    });
+
+    it("round-trips a valid explicit ratio", () => {
+      writePreferredAspectMode("3:4");
+      expect(window.localStorage.getItem(FREE_ASPECT_MODE_STORAGE_KEY)).toBe(
+        "3:4",
+      );
+      expect(readPreferredAspectMode()).toBe("3:4");
+    });
+
+    it("falls back to source for disallowed/invalid stored values", () => {
+      for (const bad of ["preset_image", "garbage", ""]) {
+        window.localStorage.setItem(FREE_ASPECT_MODE_STORAGE_KEY, bad);
+        expect(readPreferredAspectMode()).toBe("source");
+      }
+    });
+
+    it("normalizes on write so disallowed values never persist", () => {
+      // @ts-expect-error 意図的に許容外の値を渡して正規化を検証する
+      writePreferredAspectMode("preset_image");
+      expect(window.localStorage.getItem(FREE_ASPECT_MODE_STORAGE_KEY)).toBe(
+        "source",
+      );
     });
   });
 });
