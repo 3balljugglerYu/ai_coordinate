@@ -81,15 +81,20 @@ export function isFreeOutputAspectRatioMode(
 }
 
 /**
- * Free 用の正規化。許容外(preset_image / 不正値 / undefined)は "source" にフォールバックする。
- * localStorage 復元値と Worker が読む破損 metadata の両方で使う。
+ * Free 用の正規化。許容外(preset_image / 旧 "square" / 不正値 / undefined)は
+ * "source" にフォールバックする。localStorage 復元値と Worker が読む破損 metadata の
+ * 両方で使う。
+ *
+ * 旧 "square" 互換は preset_categories 由来の admin 経路
+ * (`normalizeStyleOutputAspectRatioMode`) だけが持つ。Free は新規機能で
+ * "square" が書かれる経路が無く、API は zod enum で 400 にするため、ここで受理すると
+ * 「API は 400 / localStorage・Worker は 1:1」と入力経路ごとに境界の意味がずれる。
+ * Free の allowlist(source + 明示9比率)を単一の真実源とし、それ以外は一律 source。
  * ※ API 層はフォールバックせず zod で 400 拒否する(責務分担)。
  */
 export function normalizeFreeOutputAspectRatioMode(
   value: unknown,
 ): FreeOutputAspectRatioMode {
-  // 旧仕様 "square" は 1:1 として扱う(後方互換)。
-  if (value === "square") return "1:1";
   return isFreeOutputAspectRatioMode(value) ? value : "source";
 }
 

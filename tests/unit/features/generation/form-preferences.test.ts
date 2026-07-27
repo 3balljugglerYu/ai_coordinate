@@ -239,7 +239,9 @@ describe("form-preferences", () => {
     });
 
     it("falls back to source for disallowed/invalid stored values", () => {
-      for (const bad of ["preset_image", "garbage", ""]) {
+      // "square" は preset_categories 由来の旧互換値。Free の allowlist 外なので
+      // 1:1 へ丸めず source に倒す(API が 400 にするのと境界の意味を揃える)。
+      for (const bad of ["preset_image", "square", "garbage", ""]) {
         window.localStorage.setItem(FREE_ASPECT_MODE_STORAGE_KEY, bad);
         expect(readPreferredAspectMode()).toBe("source");
       }

@@ -1,6 +1,9 @@
 /** @jest-environment node */
 
-import { resolveJobOutputAspectRatio } from "@/shared/generation/job-output-aspect";
+import {
+  resolveJobOutputAspectRatio,
+  resolveOpenAIOutputTargetSize,
+} from "@/shared/generation/job-output-aspect";
 
 const PORTRAIT = { width: 800, height: 1200 }; // 2:3
 const LANDSCAPE = { width: 1920, height: 1080 }; // 16:9
@@ -59,6 +62,18 @@ describe("resolveJobOutputAspectRatio", () => {
         expect(r.shouldOverrideOpenAITargetSize).toBe(false);
       }
     });
+
+    test("旧 'square' は Free では許容外。1:1 に固定せず source として入力比率に従う", () => {
+      // preset_categories 由来の旧互換値。Free の allowlist 外なので API は 400 にする。
+      // localStorage/Worker 側も 1:1 へ丸めず source と同じ扱いにして境界の意味を揃える。
+      const r = resolveJobOutputAspectRatio({
+        generationType: "free",
+        generationMetadata: { outputAspectRatioMode: "square" },
+        inputDimensions: PORTRAIT, // 非正方形の入力で「1:1 に化けない」ことを検証
+      });
+      expect(r.label).toBe("2:3");
+      expect(r.shouldOverrideOpenAITargetSize).toBe(false);
+    });
   });
 
   describe("one_tap_style", () => {
@@ -104,6 +119,57 @@ describe("resolveJobOutputAspectRatio", () => {
       });
       expect(r.label).toBe("16:9");
       expect(r.shouldOverrideOpenAITargetSize).toBe(false);
+    });
+  });
+
+  describe("resolveOpenAIOutputTargetSize (provider request 境界)", () => {
+    test("free + source は undefined を返し、入力画像ベースの従来挙動へ委ねる", () => {
+      expect(
+        resolveOpenAIOutputTargetSize({
+          generationType: "free",
+          generationMetadata: { outputAspectRatioMode: "source" },
+          inputDimensions: PORTRAIT,
+          sizeTier: "1k",
+        }),
+      ).toBeUndefined();
+    });
+
+    test("free + 明示比率は具体サイズを返す(16の倍数・縦横の向きが一致)", () => {
+      const size = resolveOpenAIOutputTargetSize({
+        generationType: "free",
+        generationMetadata: { outputAspectRatioMode: "3:4" },
+        inputDimensions: LANDSCAPE,
+        sizeTier: "1k",
+      });
+      expect(size).toBeDefined();
+      const [w, h] = size!.split("x").map(Number);
+      // 16px 丸めのため厳密な 3:4 ではないが、縦長であり誤差は許容範囲内。
+      expect(w % 16).toBe(0);
+      expect(h % 16).toBe(0);
+      expect(w).toBeLessThan(h);
+      expect(Math.abs(w / h - 3 / 4)).toBeLessThan(0.02);
+    });
+
+    test("one_tap_style の明示比率も具体サイズを返す(非回帰)", () => {
+      expect(
+        resolveOpenAIOutputTargetSize({
+          generationType: "one_tap_style",
+          oneTapStyleMetadata: { outputAspectRatioMode: "16:9" },
+          inputDimensions: PORTRAIT,
+          sizeTier: "1k",
+        }),
+      ).toBeDefined();
+    });
+
+    test("coordinate は比率キーがあっても undefined(従来挙動を維持)", () => {
+      expect(
+        resolveOpenAIOutputTargetSize({
+          generationType: "coordinate",
+          generationMetadata: { outputAspectRatioMode: "3:4" },
+          inputDimensions: PORTRAIT,
+          sizeTier: "1k",
+        }),
+      ).toBeUndefined();
     });
   });
 

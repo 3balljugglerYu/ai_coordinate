@@ -10,9 +10,15 @@
  */
 import type { GenerationType } from "./prompt-core.ts";
 import {
+  aspectLabelToDimensions,
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
 } from "./gemini-aspect-ratio.ts";
+import {
+  getGptImage2TargetSize,
+  type GptImage2SizeTier,
+  type GptImage2TargetSize,
+} from "./openai-image-model.ts";
 import {
   normalizeStyleOutputAspectRatioMode,
   normalizeFreeOutputAspectRatioMode,
@@ -107,4 +113,26 @@ export function resolveJobOutputAspectRatio(
     label: resolveGeminiAspectRatio(inputDimensions),
     shouldOverrideOpenAITargetSize: false,
   };
+}
+
+/**
+ * OpenAI(GPT Image 2)へ渡す `targetSize` を解決する。
+ *
+ * Worker の provider request 組み立て境界をそのまま pure helper として切り出したもの。
+ * - 明示比率(free の選択 / one_tap の preset 設定)のときだけ具体サイズを返す
+ * - source / 対象外は `undefined` を返し、呼び出し側の入力画像ベース
+ *   (`resolveOpenAITargetSize`)の従来挙動に委ねる
+ *
+ * 返るサイズは 16px の倍数に丸められるため、指定比率とは厳密一致せず誤差内の近似になる
+ * (縦横の向きは保たれる)。
+ */
+export function resolveOpenAIOutputTargetSize(
+  params: ResolveJobOutputAspectRatioParams & {
+    sizeTier: GptImage2SizeTier;
+  },
+): GptImage2TargetSize | undefined {
+  const { sizeTier, ...aspectParams } = params;
+  const aspect = resolveJobOutputAspectRatio(aspectParams);
+  if (!aspect.shouldOverrideOpenAITargetSize) return undefined;
+  return getGptImage2TargetSize(sizeTier, aspectLabelToDimensions(aspect.label));
 }

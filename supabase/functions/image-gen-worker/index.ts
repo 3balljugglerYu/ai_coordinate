@@ -40,18 +40,20 @@ import {
 } from "../../../shared/generation/one-tap-style-metadata.ts";
 import {
   GPT_IMAGE_2_PERCOIN_COSTS,
-  getGptImage2TargetSize,
   isGptImage2CanonicalModel,
   normalizeLegacyGptImage2Model,
   parseGptImage2Model,
 } from "../../../shared/generation/openai-image-model.ts";
 import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-image-model.ts";
 import {
-  aspectLabelToDimensions,
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
 } from "../../../shared/generation/gemini-aspect-ratio.ts";
-import { resolveJobOutputAspectRatio } from "../../../shared/generation/job-output-aspect.ts";
+import {
+  resolveJobOutputAspectRatio,
+  resolveOpenAIOutputTargetSize,
+} from "../../../shared/generation/job-output-aspect.ts";
+import { mergeSuccessGenerationMetadata } from "../../../shared/generation/job-metadata.ts";
 import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
@@ -2228,20 +2230,15 @@ Deno.serve(async () => {
                 // - one_tap_style: 明示比率 / 寸法ありの preset_image を上書き
                 // - free: generation_metadata の明示9比率を上書き(source は委ねる)
                 // GPT Image 2 も 9:16〜16:9 を出力可能(16px 丸めのため厳密比率でなく近似)。
-                const openAIAspect = resolveJobOutputAspectRatio({
+                const targetSize = resolveOpenAIOutputTargetSize({
                   generationType: job.generation_type,
                   generationMetadata: job.generation_metadata as
                     | Record<string, unknown>
                     | null,
                   oneTapStyleMetadata,
                   inputDimensions: null,
+                  sizeTier: gptImage2.sizeTier,
                 });
-                const targetSize = openAIAspect.shouldOverrideOpenAITargetSize
-                  ? getGptImage2TargetSize(
-                      gptImage2.sizeTier,
-                      aspectLabelToDimensions(openAIAspect.label),
-                    )
-                  : undefined;
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
                 let attemptHttpOk = false;
@@ -2660,10 +2657,14 @@ Deno.serve(async () => {
           if (!primaryUploadedImage) {
             throw new Error("No uploaded images");
           }
-          const successGenerationMetadata = {
-            ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+          // job 側のキー(outputAspectRatioMode / framingMode 等)を保持したまま
+          // 成功時の実績情報を追記する(マージ規則は shared の pure helper に集約)。
+          const successGenerationMetadata = mergeSuccessGenerationMetadata({
+            jobGenerationMetadata: job.generation_metadata as
+              | Record<string, unknown>
+              | null,
             geminiAttempts,
-          };
+          });
           currentStage = "persisting";
           await measureJobStage(
             jobId,

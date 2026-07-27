@@ -49,4 +49,57 @@ describe("AspectRatioSelector", () => {
     fireEvent.click(screen.getByRole("radio", { name: "16:9 横長" }));
     expect(onChange).toHaveBeenCalledWith("16:9");
   });
+
+  describe("選択中カードの横スクロール復元", () => {
+    // jsdom はレイアウトを持たないため getBoundingClientRect をモックして
+    // 「コンテナの可視範囲」と「選択カードの位置」を擬似的に与える。
+    const CONTAINER_RECT = { left: 0, right: 300 } as DOMRect;
+
+    function setupRects(selectedRect: { left: number; right: number }) {
+      const spy = jest
+        .spyOn(Element.prototype, "getBoundingClientRect")
+        .mockImplementation(function (this: Element) {
+          if (this.getAttribute("role") === "radiogroup") return CONTAINER_RECT;
+          if (this.getAttribute("aria-checked") === "true") {
+            return selectedRect as DOMRect;
+          }
+          return { left: 0, right: 0 } as DOMRect;
+        });
+      return spy;
+    }
+
+    afterEach(() => {
+      jest.restoreAllMocks();
+    });
+
+    test("選択カードが右にはみ出していれば scrollLeft を増やして見える位置へ寄せる", () => {
+      setupRects({ left: 420, right: 500 });
+      render(<AspectRatioSelector value="16:9" onChange={() => {}} />);
+      const container = screen.getByRole("radiogroup");
+      // 0 から increase される(はみ出し量 200 + 余白 12)
+      expect(container.scrollLeft).toBeGreaterThan(0);
+    });
+
+    test("選択カードが左にはみ出していれば scrollLeft を減らす(RTL/巻き戻し方向)", () => {
+      setupRects({ left: -80, right: 10 });
+      render(<AspectRatioSelector value="16:9" onChange={() => {}} />);
+      const container = screen.getByRole("radiogroup");
+      expect(container.scrollLeft).toBeLessThan(0);
+    });
+
+    test("既に表示範囲内のカードは動かさない", () => {
+      setupRects({ left: 40, right: 120 });
+      render(<AspectRatioSelector value="4:5" onChange={() => {}} />);
+      const container = screen.getByRole("radiogroup");
+      expect(container.scrollLeft).toBe(0);
+    });
+
+    test("ページスクロールAPI(scrollIntoView)は使わない", () => {
+      const scrollIntoView = jest.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      setupRects({ left: 420, right: 500 });
+      render(<AspectRatioSelector value="16:9" onChange={() => {}} />);
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
 });
