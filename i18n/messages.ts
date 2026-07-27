@@ -59,6 +59,9 @@ const clientNamespaces = [
   "referral",
   "searchBar",
   "style",
+  // じゆうモードの GenerationModeTabs / GenerationForm / FreeGuestLoginCta が
+  // useTranslations("free") を使うため client bundle に含める
+  "free",
   "posts",
   "popupBanners",
   "tutorial",

@@ -16,6 +16,7 @@ export const ROUTES = {
   MY_PAGE_CREDITS: "/my-page/credits",
   COORDINATE: "/coordinate",
   STYLE: "/style",
+  FREE: "/free",
 } as const;
 
 // コメントの最大文字数

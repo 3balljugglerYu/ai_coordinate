@@ -14,6 +14,7 @@ const LOCALIZED_PUBLIC_PATHS = [
   "/",
   "/style",
   "/coordinate",
+  "/free",
   "/styles",
   "/search",
   "/about",
@@ -41,6 +42,7 @@ function changeFrequencyFor(
   if (
     path === "/style" ||
     path === "/coordinate" ||
+    path === "/free" ||
     path === "/styles" ||
     path === "/catalog"
   ) {
@@ -54,7 +56,8 @@ function changeFrequencyFor(
 
 function priorityFor(path: LocalizedPath): number {
   if (path === "/") return 1;
-  if (path === "/style" || path === "/coordinate") return 0.9;
+  if (path === "/style" || path === "/coordinate" || path === "/free")
+    return 0.9;
   if (path === "/styles" || path === "/search" || path === "/catalog") {
     return 0.8;
   }

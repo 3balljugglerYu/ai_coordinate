@@ -433,6 +433,7 @@ export function PostDetailStatic({
           model={post.model ?? null}
           width={post.width ?? null}
           height={post.height ?? null}
+          generationType={post.generation_type ?? null}
         />
 
         {/* プロンプト */}

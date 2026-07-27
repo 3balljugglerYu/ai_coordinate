@@ -1,7 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { getGeneratedImagesServer } from "../lib/server-database";
 import { GeneratedImageGalleryClient } from "./GeneratedImageGalleryClient";
-import type { GeneratedImageData } from "../types";
+import type { GeneratedImageData, GenerationType } from "../types";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const PAGE_SIZE = 4;
@@ -13,13 +13,8 @@ const PAGE_SIZE = 4;
  * generationType / cacheTag / title を呼び出し側で指定できるようにしている。
  */
 
-export type GalleryGenerationType =
-  | "coordinate"
-  | "specified_coordinate"
-  | "full_body"
-  | "chibi"
-  | "one_tap_style"
-  | "inspire";
+// 二重管理を避けるため共通の GenerationType から導出する（"free" 等の追加が自動追随）。
+export type GalleryGenerationType = GenerationType;
 
 interface CachedGeneratedImageGalleryProps {
   userId: string;

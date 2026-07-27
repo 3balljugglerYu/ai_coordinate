@@ -50,7 +50,10 @@ import {
 } from "@/app/api/generate-async/handler";
 import type { AsyncGenerationJobRepository } from "@/features/generation/lib/async-generation-job-repository";
 import { convertHeicBase64ToJpeg } from "@/features/generation/lib/heic-converter";
-import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import {
+  GENERATION_PROMPT_MAX_LENGTH,
+  FREE_GENERATION_PROMPT_MAX_LENGTH,
+} from "@/features/generation/lib/prompt-validation";
 import {
   getStyleTemplateById,
   type UserStyleTemplateRow,
@@ -620,6 +623,51 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(response.status).toBe(400);
       expect(body.error).toBe(
         `着せ替え内容は${GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
+      );
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("postGenerateAsyncRoute_free_1501文字は受理する(coordinateなら拒否される長さ)", async () => {
+      jobRepository.findSourceImageStock.mockResolvedValueOnce({
+        data: {
+          id: VALID_SOURCE_IMAGE_STOCK_ID,
+          image_url: "https://cdn.example.com/source-stock.png",
+        },
+        error: null,
+      });
+      const request = createRequest({
+        prompt: "a".repeat(GENERATION_PROMPT_MAX_LENGTH + 1),
+        generationType: "free",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
+
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+      });
+
+      expect(response.status).toBe(200);
+      const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
+      expect(inserted?.generation_type).toBe("free");
+    });
+
+    test("postGenerateAsyncRoute_free_30001文字はジョブ作成前に400を返す", async () => {
+      const request = createRequest({
+        prompt: "a".repeat(FREE_GENERATION_PROMPT_MAX_LENGTH + 1),
+        generationType: "free",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+      });
+
+      const response = await postGenerateAsyncRoute(request, {
+        getUserFn,
+        jobRepository,
+      });
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.error).toBe(
+        `着せ替え内容は${FREE_GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
       );
       expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();

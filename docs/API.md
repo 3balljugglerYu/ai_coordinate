@@ -265,7 +265,7 @@ admin がシリーズ別 KPI と達成者一覧を取得します。
   "sourceImageType": "illustration | ...",
   "backgroundMode": "enum, optional",
   "count": "1..4, optional",
-  "generationType": "coordinate | specified_coordinate | full_body | chibi",
+  "generationType": "coordinate | specified_coordinate | full_body | chibi | one_tap_style | inspire | free",
   "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-{low|medium|high}-{1k|2k|4k}"
 }
 ```
@@ -329,7 +329,7 @@ Main errors:
   - `model`: 必須、`gpt-image-2-low-1k`（旧 `gpt-image-2-low` も互換受理）か `gemini-3.1-flash-image-preview-512` のみ許可 (UCL-001)
   - `sourceImageType`: 任意、`illustration` (default) / `real`
   - `backgroundMode`: 任意、`keep` (default) / `ai_auto` / `include_in_prompt`
-  - `generationType`: 任意、`coordinate` (default) / `specified_coordinate` / `full_body` / `chibi`
+  - `generationType`: 任意。ゲスト経路では `coordinate` のみ受理（default: `coordinate`。未知値は `coordinate` に正規化）。`free`（じゆうモード）はログイン必須のため、このAPIでは利用できません（認証必須の `/api/generate-async` を使用）
 
 Success response:
 

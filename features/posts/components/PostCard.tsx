@@ -10,6 +10,7 @@ import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
 import { getPostThumbUrl, getPublicViewCount } from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
+import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
@@ -62,6 +63,8 @@ export function PostCard({
   }, [impressionsActive, impressionInView, postId]);
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
   const imageUrl = getPostThumbUrl(post);
+  // 生成モードラベル(カード左下)。coordinate系/one_tap_style/inspire/free 以外は null。
+  const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type);
 
   // 投稿者情報の表示（Phase 5でプロフィール画面へのリンクを追加予定）
   const displayName =
@@ -103,6 +106,13 @@ export function PostCard({
       {post.completion_id ? (
         <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
           {locale === "en" ? "Complete" : "コンプリート"}
+        </span>
+      ) : null}
+      {/* 生成モードラベル(左下)。coordinate系/one_tap_style/inspire/free を表示。
+          不明・null は非表示。 */}
+      {generationModeLabelKey ? (
+        <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+          {t(generationModeLabelKey)}
         </span>
       ) : null}
     </div>

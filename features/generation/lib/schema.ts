@@ -8,7 +8,7 @@ import {
   BACKGROUND_MODES,
   SOURCE_IMAGE_TYPES,
 } from "../types";
-import { GENERATION_PROMPT_MAX_LENGTH } from "./prompt-validation";
+import { getPromptMaxLength } from "./prompt-validation";
 import { FRAMING_MODES } from "@/shared/generation/framing-mode";
 import { CREATOR_LOOKS_MODES } from "@/shared/generation/creator-looks-mode";
 
@@ -50,13 +50,10 @@ function getSafeExtensionFromMimeType(mimeType: string): string {
 }
 
 export const generationRequestSchema = z.object({
-  prompt: z
-    .string()
-    .min(1, "着せ替え内容を入力してください")
-    .max(
-      GENERATION_PROMPT_MAX_LENGTH,
-      `着せ替え内容は${GENERATION_PROMPT_MAX_LENGTH}文字以内で入力してください`
-    ),
+  // 上限は generationType により異なる(free=30,000 / 他=1,500)ため、フィールド単体では
+  // .max() を付けず min(1) のみとし、superRefine で default 適用後の generationType を
+  // 見て種別別に判定する(free の長文がフィールドレベルで先に落ちるのを防ぐ)。
+  prompt: z.string().min(1, "着せ替え内容を入力してください"),
   sourceImageBase64: z.string().optional(),
   sourceImageMimeType: z
     .string()
@@ -86,6 +83,7 @@ export const generationRequestSchema = z.object({
       'chibi',
       'one_tap_style',
       'inspire',
+      'free',
     ])
     .optional()
     .default('coordinate'),
@@ -118,6 +116,17 @@ export const generationRequestSchema = z.object({
   // 指定時は handler 側で overrides より優先して override_* を導出する。
   creatorLooksMode: z.enum(CREATOR_LOOKS_MODES).optional(),
 }).superRefine((data, ctx) => {
+  // プロンプト上限は generationType 別(free=30,000 / 他=1,500)。
+  // default 適用後の generationType で判定するため superRefine で検証する。
+  const promptMaxLength = getPromptMaxLength(data.generationType);
+  if (data.prompt.length > promptMaxLength) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["prompt"],
+      message: `着せ替え内容は${promptMaxLength}文字以内で入力してください`,
+    });
+  }
+
   const hasSourceImageStockId =
     typeof data.sourceImageStockId === "string" &&
     data.sourceImageStockId.length > 0;
