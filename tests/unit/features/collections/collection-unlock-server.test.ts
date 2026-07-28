@@ -56,6 +56,7 @@ function categoryRef(
     badgeColor: "#000000",
     badgeTextColor: "#ffffff",
     skipBasePrefix: false,
+    allowGuestGeneration: false,
     outputAspectRatioMode: "source",
     userGuidanceJa: null,
     userGuidanceEn: null,

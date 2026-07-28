@@ -18,10 +18,13 @@ import {
 export const EXPLICIT_OUTPUT_ASPECT_RATIOS: readonly GeminiAspectRatio[] =
   GEMINI_SUPPORTED_ASPECT_RATIOS.map((entry) => entry.label);
 
-/** admin で選択できる出力比率モード。"source"(自動) + "preset_image"(登録画像) + 明示9比率。 */
+/** admin で選択できる出力比率モード。"source"(自動) + "preset_image"(登録画像) + "user_select"(ユーザーが決める) + 明示9比率。 */
 export const STYLE_OUTPUT_ASPECT_RATIO_MODES = [
   "source",
   "preset_image",
+  // 実際の比率は生成リクエスト時のユーザー選択で決まるメタなモード。
+  // 比率ラベルそのものではないため、解決時は必ず source 相当へ倒す(下記参照)。
+  "user_select",
   "9:16",
   "4:5",
   "3:4",
@@ -44,6 +47,7 @@ export function isStyleOutputAspectRatioMode(
   return (
     value === "source" ||
     value === "preset_image" ||
+    value === "user_select" ||
     (typeof value === "string" && EXPLICIT_SET.has(value))
   );
 }
@@ -54,6 +58,45 @@ export function normalizeStyleOutputAspectRatioMode(
   // 旧仕様 "square" は 1:1 として扱う(後方互換)。
   if (value === "square") return "1:1";
   return isStyleOutputAspectRatioMode(value) ? value : "source";
+}
+
+/**
+ * One-Tap Style の生成画面でユーザーが選べる出力比率モード。
+ * admin の `STYLE_OUTPUT_ASPECT_RATIO_MODES` から "user_select" 自身を除いた
+ * "source"(自動) + "preset_image"(登録画像) + 明示9比率 = 11 種。
+ *
+ * "user_select" は「ユーザーが決める」という設定値であってユーザーの選択肢ではないため、
+ * ここには含めない(API 検証でもこの allowlist を単一の真実源として使う)。
+ */
+export const USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES = [
+  "source",
+  "preset_image",
+  ...EXPLICIT_OUTPUT_ASPECT_RATIOS,
+] as const;
+
+export type UserSelectableOutputAspectRatioMode =
+  (typeof USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES)[number];
+
+export function isUserSelectableOutputAspectRatioMode(
+  value: unknown,
+): value is UserSelectableOutputAspectRatioMode {
+  return (
+    value === "source" ||
+    value === "preset_image" ||
+    (typeof value === "string" && EXPLICIT_SET.has(value))
+  );
+}
+
+/**
+ * ユーザー選択値の正規化。許容外("user_select" 自身 / 不正値 / undefined)は
+ * "source" にフォールバックする。localStorage 復元値と Worker 側の防御で使う。
+ * ※ API 層はフォールバックせず zod で 400 拒否する(責務分担)。
+ */
+export function normalizeUserSelectableOutputAspectRatioMode(
+  value: unknown,
+): UserSelectableOutputAspectRatioMode {
+  if (value === "square") return "1:1";
+  return isUserSelectableOutputAspectRatioMode(value) ? value : "source";
 }
 
 /**
@@ -112,7 +155,10 @@ export function resolveOutputAspectRatio(
   presetImageDimensions?: { width: number; height: number } | null | undefined,
 ): GeminiAspectRatio {
   const normalized = normalizeStyleOutputAspectRatioMode(mode);
-  if (normalized === "source") {
+  // "user_select" は「ユーザーが決める」という設定値であって比率ラベルではない。
+  // 実際のユーザー選択は生成リクエスト時に解決済みの比率として渡ってくるため、
+  // ここに到達した場合(未選択/破損など)は source と同じく入力比率へ倒す。
+  if (normalized === "source" || normalized === "user_select") {
     return resolveGeminiAspectRatio(inputDimensions);
   }
   if (normalized === "preset_image") {

@@ -3,6 +3,9 @@
 import {
   EXPLICIT_OUTPUT_ASPECT_RATIOS,
   STYLE_OUTPUT_ASPECT_RATIO_MODES,
+  USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES,
+  isUserSelectableOutputAspectRatioMode,
+  normalizeUserSelectableOutputAspectRatioMode,
   isStyleOutputAspectRatioMode,
   normalizeStyleOutputAspectRatioMode,
   resolveOutputAspectRatio,
@@ -22,10 +25,54 @@ describe("style-output-aspect-ratio", () => {
       "5:4",
       "16:9",
     ]);
-    // モード一覧 = source + preset_image + 9比率
-    expect(STYLE_OUTPUT_ASPECT_RATIO_MODES.length).toBe(11);
+    // モード一覧 = source + preset_image + user_select + 9比率
+    expect(STYLE_OUTPUT_ASPECT_RATIO_MODES.length).toBe(12);
     expect(STYLE_OUTPUT_ASPECT_RATIO_MODES[0]).toBe("source");
     expect(STYLE_OUTPUT_ASPECT_RATIO_MODES[1]).toBe("preset_image");
+    expect(STYLE_OUTPUT_ASPECT_RATIO_MODES[2]).toBe("user_select");
+  });
+
+  describe("user_select モード(ユーザーが決める)", () => {
+    test("admin の選択肢としては有効な値", () => {
+      expect(isStyleOutputAspectRatioMode("user_select")).toBe(true);
+      expect(normalizeStyleOutputAspectRatioMode("user_select")).toBe(
+        "user_select",
+      );
+    });
+
+    test("比率ラベルではないため解決時は source と同じく入力比率へ倒す(安全網)", () => {
+      // user_select がそのまま Gemini の aspectRatio に渡ると不正値になるため、
+      // 解決段階で必ず入力比率へフォールバックする。
+      expect(
+        resolveOutputAspectRatio("user_select", { width: 800, height: 1200 }),
+      ).toBe("2:3");
+      expect(
+        resolveOutputAspectRatio("user_select", { width: 1920, height: 1080 }),
+      ).toBe("16:9");
+    });
+
+    test("ユーザーが選べる選択肢には user_select 自身を含めない(11種)", () => {
+      expect(USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES.length).toBe(11);
+      expect(
+        (USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES as readonly string[]).includes(
+          "user_select",
+        ),
+      ).toBe(false);
+      expect(isUserSelectableOutputAspectRatioMode("user_select")).toBe(false);
+    });
+
+    test("ユーザー選択値の正規化: 許容外は source", () => {
+      expect(normalizeUserSelectableOutputAspectRatioMode("user_select")).toBe(
+        "source",
+      );
+      expect(normalizeUserSelectableOutputAspectRatioMode("garbage")).toBe(
+        "source",
+      );
+      expect(normalizeUserSelectableOutputAspectRatioMode("preset_image")).toBe(
+        "preset_image",
+      );
+      expect(normalizeUserSelectableOutputAspectRatioMode("4:5")).toBe("4:5");
+    });
   });
 
   describe("preset_image モード(登録画像に合わせる)", () => {
