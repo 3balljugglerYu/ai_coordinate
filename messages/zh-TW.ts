@@ -196,6 +196,10 @@ export const zhTwMessages = {
     shareClipboardUnsupported: "不支援剪貼簿 API。",
     shareWebApiUnsupported: "不支援 Web Share API。",
     shareFailed: "分享失敗。",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "登入",

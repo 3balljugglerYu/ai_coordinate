@@ -196,6 +196,10 @@ export const hiMessages = {
     shareClipboardUnsupported: "Clipboard API समर्थित नहीं है।",
     shareWebApiUnsupported: "Web Share API समर्थित नहीं है।",
     shareFailed: "पोस्ट शेयर करने में विफल।",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "लॉग इन",

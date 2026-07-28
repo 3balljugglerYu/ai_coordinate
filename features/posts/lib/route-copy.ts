@@ -13,6 +13,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "投稿の取得に失敗しました",
     viewCountUpdateFailed: "閲覧数の更新に失敗しました",
     postFailed: "投稿に失敗しました",
+    postSuspendedCannotPublish:
+      "このコンテンツは公開停止中のため、投稿できません。異議申立ての手続きをご確認ください。",
     updateFailed: "更新に失敗しました",
     deleteFailed: "投稿の取り消しに失敗しました",
     commentsFetchFailed: "コメントの取得に失敗しました",
@@ -42,6 +44,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -71,6 +75,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -100,6 +106,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -129,6 +137,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -158,6 +168,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -187,6 +199,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -216,6 +230,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -245,6 +261,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -274,6 +292,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -303,6 +323,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -332,6 +354,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -361,6 +385,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -390,6 +416,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -419,6 +447,8 @@ export const postsRouteCopy = {
     postsFetchFailed: "Failed to fetch posts.",
     viewCountUpdateFailed: "Failed to update the view count.",
     postFailed: "Failed to publish the post.",
+    postSuspendedCannotPublish:
+      "This content is suspended and cannot be published. Please review the appeal process.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -450,6 +480,8 @@ export const postsRouteCopy = {
     postsFetchFailed: string;
     viewCountUpdateFailed: string;
     postFailed: string;
+    /** 公開停止中コンテンツの再投稿を DB trigger が拒否したときの文言。 */
+    postSuspendedCannotPublish: string;
     updateFailed: string;
     deleteFailed: string;
     commentsFetchFailed: string;

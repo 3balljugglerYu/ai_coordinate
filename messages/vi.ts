@@ -196,6 +196,10 @@ export const viMessages = {
     shareClipboardUnsupported: "Clipboard API không được hỗ trợ.",
     shareWebApiUnsupported: "Web Share API không được hỗ trợ.",
     shareFailed: "Chia sẻ bài viết thất bại.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "Đăng nhập",

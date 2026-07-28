@@ -196,6 +196,10 @@ export const deMessages = {
     shareClipboardUnsupported: "Die Zwischenablage-API wird nicht unterstützt.",
     shareWebApiUnsupported: "Die Web Share API wird nicht unterstützt.",
     shareFailed: "Beitrag konnte nicht geteilt werden.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "Anmelden",

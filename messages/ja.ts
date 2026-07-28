@@ -193,6 +193,10 @@ export const jaMessages = {
     shareClipboardUnsupported: "クリップボードAPIがサポートされていません",
     shareWebApiUnsupported: "Web Share APIがサポートされていません",
     shareFailed: "共有に失敗しました",
+      suspendedDialogTitle: "このコンテンツは公開停止中です",
+    suspendedDialogDescription: "コミュニティガイドラインに基づき、この画像の公開を停止しています。内容と理由をご確認いただき、判定に納得できない場合は異議を申し立てられます。画像そのものは削除されていません。",
+    suspendedDialogAction: "内容を確認する",
+    suspendedDialogClose: "閉じる",
   },
   auth: {
     signinTitle: "ログイン",

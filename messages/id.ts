@@ -196,6 +196,10 @@ export const idMessages = {
     shareClipboardUnsupported: "Clipboard API tidak didukung.",
     shareWebApiUnsupported: "Web Share API tidak didukung.",
     shareFailed: "Gagal membagikan postingan.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "Masuk",

@@ -196,6 +196,10 @@ export const thMessages = {
     shareClipboardUnsupported: "ไม่รองรับ Clipboard API",
     shareWebApiUnsupported: "ไม่รองรับ Web Share API",
     shareFailed: "แชร์โพสต์ไม่สำเร็จ",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "เข้าสู่ระบบ",

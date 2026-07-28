@@ -196,6 +196,10 @@ export const koMessages = {
     shareClipboardUnsupported: "클립보드 API를 사용할 수 없습니다.",
     shareWebApiUnsupported: "Web Share API를 사용할 수 없습니다.",
     shareFailed: "공유에 실패했습니다.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "로그인",

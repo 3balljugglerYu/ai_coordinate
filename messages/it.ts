@@ -196,6 +196,10 @@ export const itMessages = {
     shareClipboardUnsupported: "L'API degli appunti non è supportata.",
     shareWebApiUnsupported: "L'API Web Share non è supportata.",
     shareFailed: "Impossibile condividere il post.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "Accedi",

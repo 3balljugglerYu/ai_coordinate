@@ -196,6 +196,10 @@ export const esMessages = {
     shareClipboardUnsupported: "La API de portapapeles no es compatible.",
     shareWebApiUnsupported: "La Web Share API no es compatible.",
     shareFailed: "No se pudo compartir la publicación.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "Iniciar sesión",

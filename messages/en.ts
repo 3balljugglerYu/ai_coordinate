@@ -196,6 +196,10 @@ export const enMessages = {
     shareClipboardUnsupported: "Clipboard API is not supported.",
     shareWebApiUnsupported: "Web Share API is not supported.",
     shareFailed: "Failed to share the post.",
+      suspendedDialogTitle: "This content is currently suspended",
+    suspendedDialogDescription: "We have suspended this image under our Community Guidelines. You can review the details and reason, and appeal if you disagree with the decision. The image itself has not been deleted.",
+    suspendedDialogAction: "Review the details",
+    suspendedDialogClose: "Close",
   },
   auth: {
     signinTitle: "Log in",
