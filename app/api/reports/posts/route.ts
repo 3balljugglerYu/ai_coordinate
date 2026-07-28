@@ -107,8 +107,15 @@ async function calculatePendingMetrics(
   };
 }
 
+/**
+ * pending 化 RPC を呼ぶ。
+ *
+ * ADR-010: `mark_post_pending_by_report` は service_role 専用に是正したため、
+ * 必ず `createAdminClient()` 由来のクライアントを渡すこと。セッションクライアントを
+ * 渡すと権限エラーになり、通報起因の自動非表示が停止する。
+ */
 async function setPendingWithRpc(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   context: PendingContext
 ): Promise<{ ok: boolean; reason: string }> {
   const reasonCode =
@@ -143,8 +150,12 @@ async function setPendingWithRpc(
   return { ok: true, reason: "rpc_success" };
 }
 
+/**
+ * ADR-010: pending 判定の確認も admin クライアントに揃える。
+ * RLS 依存で「見えないから pending ではない」と誤判定するのを避ける。
+ */
 async function isPostAlreadyPending(
-  supabase: Awaited<ReturnType<typeof createClient>>,
+  supabase: ReturnType<typeof createAdminClient>,
   postId: string
 ): Promise<boolean> {
   const { data: currentPost, error } = await supabase
@@ -283,6 +294,11 @@ export async function POST(request: NextRequest) {
     let postModerationStatus: "visible" | "pending" | "removed" = post.moderation_status || "visible";
     const pendingMode: PendingMode = isReporterAdmin ? "admin_immediate" : "primary";
 
+    // ADR-010: pending 化 RPC と状態確認は service_role 専用に是正したため、
+    // admin 通報 (閾値判定をスキップする経路) でも admin クライアントが要る。
+    // 従来は非 admin 経路の集計内でのみ生成していたのでスコープを引き上げる。
+    const adminClient = createAdminClient();
+
     if (isReporterAdmin) {
       // admin による通報は閾値判定をスキップして即時 pending 化する
       metrics = {
@@ -294,7 +310,6 @@ export async function POST(request: NextRequest) {
       };
     } else {
       try {
-        const adminClient = createAdminClient();
         metrics = await calculatePendingMetrics(adminClient, postId, baselineTime);
 
         // 並行通報で集計タイミングが競合した場合に取りこぼしやすいため、短時間だけ再評価する
@@ -326,10 +341,10 @@ export async function POST(request: NextRequest) {
         mode: pendingMode,
       };
 
-      const rpcResult = await setPendingWithRpc(supabase, context);
+      const rpcResult = await setPendingWithRpc(adminClient, context);
       let pendingApplied = rpcResult.ok;
       if (!pendingApplied) {
-        const alreadyPending = await isPostAlreadyPending(supabase, postId);
+        const alreadyPending = await isPostAlreadyPending(adminClient, postId);
         if (!alreadyPending) {
           console.error("[Moderation] Pending update failed:", {
             context,
