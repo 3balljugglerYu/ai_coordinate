@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminDashboardModeTabs } from "./AdminDashboardModeTabs";
 import { AdminDashboardRangeTabs } from "./AdminDashboardRangeTabs";
 import { AdminKpiCard } from "./AdminKpiCard";
+import { AdminModerationOutboxCard } from "./AdminModerationOutboxCard";
 import { AdminOpsSummaryCard } from "./AdminOpsSummaryCard";
 import { AdminPriorityAlertsCard } from "./AdminPriorityAlertsCard";
 import { AdminQuickActionsGrid } from "./AdminQuickActionsGrid";
@@ -142,8 +143,19 @@ export function AdminDashboardView({
             </div>
           </section>
 
-          <section className="max-w-4xl">
-            <AdminOpsSummaryCard opsSummary={data.opsSummary} />
+          <section className="grid gap-4 xl:grid-cols-12">
+            <div className="xl:col-span-7">
+              <AdminOpsSummaryCard opsSummary={data.opsSummary} />
+            </div>
+            <div className="xl:col-span-5">
+              {/*
+                通知の配送が滞ると投稿者が公開停止を知らされないまま放置される。
+                SQL を定期実行する運用は続かないため、ダッシュボードに常設して
+                管理画面を開いたときに目に入るようにしている。
+                データは自前で取得するため data パイプラインには載せない。
+              */}
+              <AdminModerationOutboxCard />
+            </div>
           </section>
         </>
       ) : (
