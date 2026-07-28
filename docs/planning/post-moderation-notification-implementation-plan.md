@@ -32,7 +32,9 @@
 
 - スコープ: **通知 ＋ 異議申立て導線**（strike 管理は対象外）
 - 通知タイミング: **reject のみ**（approve 復帰時・pending 化時は通知しない）
-- removed の生成ギャラリー表示: **「削除済み」の tombstone カードを残す**。重大カテゴリはサムネイルを再表示しない
+- removed の生成ギャラリー表示: **「公開停止」の tombstone カードを残す**。重大カテゴリはサムネイルを再表示しない
+- 通報者の匿名性: 投稿者から通報者を特定できない仕様を**構造で保証**する（列 allowlist / 理由の2欄分離 / 件数非開示）
+- 措置ラベル: 投稿者向けは「削除」でも「非公開」でもなく **「公開停止」**。DB 値 `moderation_status = 'removed'` は変更しない
 - 通知チャネル: **アプリ内通知のみ**（メール・プッシュは対象外）
 - 通知配送: 判定 API からの直 INSERT ではなく、**判定と同一トランザクションで outbox に記録し、冪等な dispatcher で通知化する**
 - 異議申立ての単位: 投稿単位ではなく、**個々の削除判定（`moderation_audit_logs.id`）単位**
@@ -281,6 +283,18 @@ erDiagram
 - **REQ-021**: If the pending RPC permission change is deployed without the corresponding route handler change, then the report-triggered auto-hiding shall fail; therefore the migration and the route change shall ship in the same commit and deployment.
   pending RPC の権限変更が対応する route handler の変更を伴わずにデプロイされた場合、通報起因の自動非表示は失敗する。したがってマイグレーションと route 変更は同一コミット・同一デプロイで反映しなければならない。
 
+- **REQ-022**: The system shall never expose the reporter's identity to the reported author. Author-facing responses shall exclude `actor_id`, `metadata`, and `internal_note`, and shall be built only from `action = 'reject'` rows.
+  システムは通報者の同一性を被通報者（投稿者）に開示してはならない。投稿者向けレスポンスは `actor_id` / `metadata` / `internal_note` を除外し、`action = 'reject'` の行のみから構築しなければならない。
+
+- **REQ-023**: The system shall never include report counts, weighted scores, or report timestamps in any author-facing notification or page.
+  システムは通報件数・加重スコア・通報日時を、投稿者向けのいかなる通知・画面にも含めてはならない。
+
+- **REQ-024**: When an admin rejects a post, the system shall require both a policy code and an author-facing reason, and shall store the internal note in a separate column that is never returned to the author.
+  管理者が投稿を「不適切」と判定するとき、システムは違反ポリシーコードと投稿者向け説明の両方を必須とし、運営内部メモは投稿者に返却されない別カラムへ保存しなければならない。
+
+- **REQ-025**: The system shall present the enforcement action to the author as "公開停止" with its scope and duration, and shall state that the underlying image has not been deleted. The stored `moderation_status` value shall remain `removed`.
+  システムは投稿者に対して措置を「公開停止」として範囲・期間とともに提示し、画像自体が削除されていないことを明示しなければならない。保存値 `moderation_status` は `removed` のまま変更しない。
+
 ---
 
 ## 3. ADR
@@ -378,6 +392,37 @@ erDiagram
   - **これは本計画が持ち込んだ問題ではなく既存の本番の穴**である。緊急度は本計画と独立しているため、Phase 1 の先頭に置いて単独でコミットし、計画の他部分の進捗と切り離して先行マージできる形にする
   - 通報フローの回帰リスクがあるため、Phase 5 で「通報しきい値到達時に pending 化される」既存挙動のテストを必ず通す
 
+### ADR-011: 通報者の匿名性を構造で保証し、措置ラベルを「公開停止」に統一する
+
+- **Context**: 一般的な SNS では、通報を受けた投稿者が通報者を特定できない仕様が標準である。DSA 第17条3項(b) も「通報に基づく判断か」の開示は求めるが、**通報者の同一性の開示は求めていない**。DB 層では `post_reports` の SELECT policy が `auth.uid() = reporter_id` のため通報テーブル自体は保護されている（本番実測で確認済み）。しかし本計画は `moderation_audit_logs` を削除判定の source of truth とし、その上に投稿者向けページ `/my-page/moderation/decisions/{id}` を構築するため、以下3経路で通報者が漏れうる。
+
+  1. **`actor_id`**: `app/api/reports/posts/route.ts` は `actorId: user.id`（= 通報したユーザー）で `mark_post_pending_by_report` を呼ぶため、`action = 'pending_auto'` の行の `actor_id` は**通報者本人**になる。本番は現在2行のみで両方 admin だが、一般ユーザーの通報がしきい値に達した時点で必ず発生する構造的な穴
+  2. **自由記述の理由**: 現計画は判定詳細ページに運営の判定理由を表示する。運営が「〇〇さんから通報が」と書けば漏れる。運用ルールでは防げない人的ミス経路
+  3. **通報件数・加重スコア**: `metadata` の `weightedScore` / `recentCount` / `activeUsers` は、氏名がなくとも小規模コミュニティでは通報者の絞り込み材料になる
+
+  併せて、投稿者向けの措置ラベルを「削除」と表記すると物理削除に見えるという問題がある。実際には `generated_images` の行も Storage の画像も残り、`moderation_status` が `removed` になって非表示になるだけである。一方「非公開」は本アプリで `is_posted = false`（未投稿）と同義であり、**投稿者が自分で戻せる状態**を連想させるため、運営措置の表現としては誤解を生む。
+
+- **Decision**:
+
+  **(A) 通報者の匿名性を3点で遮断する**
+  1. 投稿者向けの取得は `moderation_audit_logs` を直読みせず、**列 allowlist を持つ専用リポジトリ関数のみ**を経路とする。`actor_id` / `metadata` / `internal_note` を射影に含めない。`action = 'pending_auto'` の行は投稿者向けには一切使用しない（`reject` 行のみ使用）
+  2. 判定理由を **2カラムに分離**する。`author_facing_reason`（投稿者が読む説明・必須）と `internal_note`（運営内部メモ・任意）。管理画面でも2つの入力欄に分け、前者に「※投稿者が読みます」と明示する
+  3. 投稿者向けの通知 payload・判定詳細ページに、通報件数・加重スコア・通報日時を**一切含めない**。文面は「利用者からの報告および運営による確認に基づき」のように件数を出さない中立表現とする
+
+  **(B) 措置ラベルを「公開停止」に統一する**
+  - 投稿者向け表記は「削除」でも「非公開」でもなく **「公開停止」** を使う
+  - 判定詳細ページは DSA 第17条3項(a) に合わせ、措置を単語1つではなく**種類・範囲・期間の3項目**で表示する（例: 措置=公開停止（すべての利用者に非表示） / 範囲=全世界のすべての利用者 / 期間=解除されるまで）
+  - 「画像そのものは削除されていません。マイページの生成一覧には残っています」の一文を併記する
+  - **DB の `moderation_status = 'removed'` は変更しない**。フィード・投稿詳細・プロフィールのフィルタが広範に依存しており、リネームは本計画と無関係な回帰リスクを持ち込む。変更するのは i18n 層の表示ラベルのみ
+  - 管理画面の判定ボタンは「不適切」のままとする。運営にとっては違反判定であることが明確な方が誤操作を防げる
+
+- **Reason**: (A) は「運用ルールで気をつける」では防げない類の漏洩であり、列を取得しない構造にすれば実装ミス以外では漏れない。2カラム分離は運営の入力手間が1欄増えるが、「この文章は投稿者が読む」という意識が働くため、内部メモ的な記述の混入が構造的に減る。(B) は投稿者の誤解（画像が消えた／自分で戻せる）を両方とも回避しつつ、異議申立てで解除されうる状態であることを含意できる。
+
+- **Consequence**:
+  - `moderation_audit_logs` に開示用の列を追加し、`metadata` は運営内部専用に用途を限定する。既存行は新列が NULL になるため、投稿者向けページは NULL 時のフォールバック表示を持つ
+  - 運営は reject 時に「違反ポリシー」「投稿者に見せる説明」の2項目が必須になる。`author_facing_reason` 未入力では判定できない
+  - 通報者の匿名性はテストで担保する。投稿者向け API レスポンスに `actor_id` / `internal_note` / 件数系フィールドが**含まれないこと**を明示的に検証する
+
 ---
 
 ## 4. 実装計画
@@ -417,7 +462,9 @@ flowchart LR
   - `p_actor_id` が `admin_users` に存在することを DB 内で検証
   - `moderation_audit_logs.metadata->>'idempotency_key'` に対象 action 限定の部分 UNIQUE index を追加
   - 通常判定は対象が `pending` の場合だけ `FOR UPDATE` して適用し、同一 idempotency key の再送は既存 decision id を返す
-  - reject 時は `policy_code` / `policy_version` / `policy_anchor` / `decision_source` / `automated_means_used` / `restriction_scope` / `restriction_duration` を `moderation_audit_logs.metadata` に保存
+  - **`moderation_audit_logs` に投稿者開示用の列を追加する**（ADR-011）。`metadata` には入れない: `policy_code` / `policy_version` / `policy_anchor` / `author_facing_reason` / `internal_note` / `restriction_scope` / `restriction_duration` / `decision_source` / `automated_means_used`
+  - `metadata` は**運営内部専用**とし、`weightedScore` / `recentCount` / `activeUsers` / `idempotency_key` 等のみを保持する。投稿者向け経路では `metadata` と `actor_id` と `internal_note` を一切射影しない
+  - reject 時は `policy_code` と `author_facing_reason` を NOT NULL 相当で要求する（`RAISE EXCEPTION`）
   - `moderation_audit_logs` の一般 authenticated 向け SELECT/INSERT policy を削除し、service_role/RPC 専用に是正
 - [ ] `supabase/migrations/2026xxxx_add_moderation_notification_outbox.sql` を新規作成
   - `moderation_notification_outbox`: `id`, `event_key UNIQUE`, `moderation_decision_id`, `appeal_id`, `recipient_id`, `notification_type`, `entity_id`, `payload`, `delivery_status`, `attempt_count`, `last_error`, `available_at`, `delivered_at`, `created_at`
@@ -455,7 +502,7 @@ flowchart LR
   - `REPORT_TAXONOMY` と versioned guideline clause のマッピング
   - `policy_code`, `policy_version`, `policy_anchor`, `hide_thumbnail` を定義
 - [ ] `features/moderation/lib/schemas.ts` に追加
-  - reject 時は `policyCode` と trim 後1文字以上の `reason` を必須
+  - reject 時は `policyCode` と trim 後1文字以上の `authorFacingReason` を必須（ADR-011 / REQ-024）。`internalNote` は optional・最大1000字で、**投稿者向けレスポンスには決して載せない**
   - 管理判定には UUID の `idempotencyKey` を必須化し、UI が操作開始時に生成して同じ送信の再試行で再利用
   - `createAppealSchema`: `moderationDecisionId: uuid`, trim 後1〜1000字の `body`
   - `appealDecisionSchema`: `action`, trim 後1〜500字の必須 `note`, optional `independenceExceptionReason`
@@ -464,9 +511,12 @@ flowchart LR
   - `apply_admin_moderation_decision_v2` を呼び、`moderationDecisionId` を受け取る
   - API から notifications へ直接 INSERT しない。dispatcher RPC を best effort で呼び、失敗時も outbox が再試行可能なため判定は成功で返す
   - `revalidateTag` は5タグを個別に non-fatal で無効化（ADR-007）
-  - `logAdminAction` の `metadata` に `policy_category` を追加
+  - `logAdminAction` の `metadata` に `policy_code` を追加（`internalNote` は含めない）
+  - outbox の payload に載せるのは `policy_code` / `policy_version` / `policy_anchor` / `author_facing_reason` / `moderation_decision_id` のみ。`internal_note` / 通報件数 / 通報者情報は載せない（REQ-022 / REQ-023）
 - [ ] `features/moderation/lib/appeal-repository.ts` を新規作成
   - `getModerationDecisionForOwner(decisionId, userId)`: service-role で取得する前にセッション user と投稿所有者を照合し、他人の判定を返さない。投稿復帰後も取得可能
+  - **列 allowlist を関数内に定数として定義し、`select("*")` を使わない**（ADR-011 / REQ-022）。射影するのは `id` / `post_id` / `action` / `policy_code` / `policy_version` / `policy_anchor` / `author_facing_reason` / `restriction_scope` / `restriction_duration` / `decision_source` / `automated_means_used` / `created_at` のみ。`actor_id` / `metadata` / `internal_note` は**含めない**
+  - `action = 'reject'` の行のみを対象とする。`pending_auto` 行は投稿者向けには一切返さない（通報者の `actor_id` を持つため）
   - removal outbox の `delivered_at` から申立期限を算出し、未配送時は申立可能として返す
   - `getCurrentRemovalDecisionId(postId, userId)`: gallery tombstone の遷移先解決用
   - `getAppealByDecisionAndUser(decisionId, userId)`
@@ -503,16 +553,21 @@ flowchart LR
 - [ ] `app/(app)/my-page/moderation/decisions/[decisionId]/page.tsx` を新規作成
   - `getUser()` で認証し、所有者以外は `notFound()`
   - 投稿が visible に復帰済みでも判定・異議結果を表示
-  - 措置の範囲・期間、判定ソース、自動化の関与、版付きポリシー、運営理由、救済手段、期限、異議状態、結果理由を表示
+  - 措置の範囲・期間、判定ソース、自動化の関与、版付きポリシー、`author_facing_reason`、救済手段、期限、異議状態、結果理由を表示
+  - **措置は「公開停止」表記とし、種類・範囲・期間の3項目で表示する**（ADR-011 / REQ-025）。例: 措置=公開停止（すべての利用者に非表示） / 範囲=全世界のすべての利用者 / 期間=解除されるまで
+  - **「画像そのものは削除されていません。マイページの生成一覧には残っています」の一文を併記する**
+  - **通報件数・加重スコア・通報日時を表示しない**（REQ-023）。通報の有無に触れる場合は「利用者からの報告および運営による確認に基づき」等、件数を出さない中立表現とする
   - `hide_thumbnail` の場合は画像の代わりにプレースホルダーを表示
   - データ取得はサーバーコンポーネントから props 渡し（既存 `app/(app)/admin/moderation/page.tsx` と同じ方式に揃える）
 - [ ] `features/moderation/components/PostAppealForm.tsx` を新規作成（クライアント）
   - 期限内かつ未申立ての場合のみ `Textarea` + 送信ボタン。状態・受付日時・結果理由を追跡可能にする
 - [ ] `features/my-page/components/MyImageCard.tsx` を修正
   - removed は tombstone とし、重大カテゴリでは画像を描画しない
+  - **バッジ文言は「公開停止」**（「削除済み」は使わない。ADR-011 / REQ-025）
   - `detailUrl` を現在の decision ID に切り替え、投稿詳細・共有・ダウンロードへ遷移させない
 - [ ] `messages/ja.ts` に `moderation` ブロック（`messages/ja.ts:545`）へキー追加
   - 通知、判定詳細、期限、状態、結果理由、tombstone、独立レビュー例外の文言
+  - **措置ラベルは「公開停止」に統一する**。通知タイトルは「投稿を公開停止しました」、tombstone バッジは「公開停止」。DB 値 `removed` は変更せず、i18n 層のみで表現する
 - [ ] `messages/en.ts` 〜 `messages/vi.ts` の**残り15ファイル**に同じキーを追加（ja 以外は暫定的に英語文言でよい）
 
 ### Phase 4: 管理画面 UI
@@ -521,7 +576,9 @@ flowchart LR
 **ビルド確認**: `npm run build -- --webpack` が通る
 
 - [ ] `app/(app)/admin/moderation/ModerationQueueClient.tsx` を修正
-  - 「不適切」判定時に versioned policy catalog の条項を選択し、具体的理由を必須入力
+  - 「不適切」判定時に versioned policy catalog の条項を選択（必須）
+  - **理由入力を2欄に分ける**（ADR-011 / REQ-024）。「投稿者に見せる説明」（必須・ラベルに **※投稿者が読みます** を明示）と「運営内部メモ」（任意・ラベルに ※投稿者には表示されません を明示）。前者が空なら送信ボタンを無効化する
+  - 判定ボタンの文言は「不適切」のまま維持する（運営にとっては違反判定であることが明確な方が誤操作を防げる）
   - 判定後に `router.refresh()` を追加
 - [ ] `app/(app)/admin/moderation/appeals/page.tsx` を新規作成
   - ページ認証は `getUser()` + `getAdminUserIds()` パターン（`app/(app)/admin/moderation/page.tsx:11-16` を踏襲）
@@ -555,7 +612,7 @@ flowchart LR
 | `supabase/migrations/2026xxxx_harden_mark_post_pending_rpc.sql` | 新規 | pending 化 RPC を service_role 専用化 + reason 制限 + admin 検証（ADR-010） |
 | `app/api/reports/posts/route.ts` | 修正 | `setPendingWithRpc` / `isPostAlreadyPending` を admin クライアント経由に差し替え（ADR-010） |
 | `supabase/migrations/2026xxxx_extend_notifications_for_post_moderation.sql` | 新規 | 通知 type 2値 + moderation event 一意 index |
-| `supabase/migrations/2026xxxx_harden_post_moderation_decision.sql` | 新規 | v2 判定 RPC、admin 二重検証、既存 RPC 権限是正 |
+| `supabase/migrations/2026xxxx_harden_post_moderation_decision.sql` | 新規 | v2 判定 RPC、admin 二重検証、既存 RPC 権限是正、開示用カラム追加（ADR-011） |
 | `supabase/migrations/2026xxxx_add_moderation_notification_outbox.sql` | 新規 | outbox + dispatcher + retry cron |
 | `supabase/migrations/2026xxxx_add_post_moderation_appeals.sql` | 新規 | decision 単位の異議申立て + RLS + guard |
 | `supabase/migrations/2026xxxx_add_decide_post_moderation_appeal_rpc.sql` | 新規 | 異議判定 + 復帰 + 結果 outbox の atomic RPC |
@@ -619,6 +676,11 @@ flowchart LR
 | 権限テスト | 未認証の異議申立て POST が401 / 他人の decision は404 / 非 admin のキュー GET は403 / admin POST の cross-origin は拒否 |
 | 権限テスト | 判定者が投稿者本人でも system notification が作られ、admin の nickname/avatar/id は投稿者向け enrichment に出ない |
 | 権限テスト | RLS: 別ユーザーのセッションで `post_moderation_appeals` を SELECT しても0件 |
+| 匿名性テスト | 投稿者向け API/ページのレスポンスに `actor_id` / `metadata` / `internal_note` が**含まれない**ことをスナップショットで検証（REQ-022） |
+| 匿名性テスト | 一般ユーザーの通報でしきい値到達 → reject した投稿の判定詳細に、通報者の user_id も通報件数も現れないこと（REQ-022 / REQ-023） |
+| 匿名性テスト | `internal_note` に通報者名を書いても投稿者向けレスポンスに出ないこと。`author_facing_reason` のみが返ること（REQ-024） |
+| 表示テスト | 投稿者向けの措置表記が「公開停止」であり、種類・範囲・期間の3項目と「画像は削除されていません」の一文が表示されること。tombstone バッジも「公開停止」であること（REQ-025） |
+| 異常系 | reject 時に `policy_code` または `author_facing_reason` が空だと判定が拒否されること（REQ-024） |
 | 表示テスト | removed は tombstone として残り、重大カテゴリは画像なし、通常カテゴリは定義どおりの表示、カードは current decision へ遷移 |
 | 表示テスト | 通知一覧でモデレーション通知が i18n された文言で表示される / `data` 欠落時に DB の title/body にフォールバックする |
 | 表示テスト | overturn 結果通知から decision 詳細が開き、投稿が visible に戻った後も404にならず、結果理由を確認できる |
