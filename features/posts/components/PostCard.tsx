@@ -8,7 +8,11 @@ import { useInView } from "react-intersection-observer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
-import { getPostThumbUrl, getPublicViewCount } from "../lib/utils";
+import {
+  getPostBeforeImageUrl,
+  getPostThumbUrl,
+  getPublicViewCount,
+} from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { Post } from "../types";
@@ -65,6 +69,8 @@ export function PostCard({
   const imageUrl = getPostThumbUrl(post);
   // 生成モードラベル(カード左下)。coordinate系/one_tap_style/inspire/free 以外は null。
   const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type);
+  // 生成元画像が実際に表示される投稿かどうか（右下ラベルの表示判定）
+  const hasBeforeImage = getPostBeforeImageUrl(post) !== null;
 
   // 投稿者情報の表示（Phase 5でプロフィール画面へのリンクを追加予定）
   const displayName =
@@ -113,6 +119,16 @@ export function PostCard({
       {generationModeLabelKey ? (
         <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
           {t(generationModeLabelKey)}
+        </span>
+      ) : null}
+      {/* 生成元(Before)画像ラベル(右下)。
+          判定は getPostBeforeImageUrl に委ねる。show_before_image は DEFAULT TRUE の
+          ため単体で見ると生成元を持たない投稿(じゆうモード等)にも付いてしまう。
+          正典の解決ロジックを使うことで「実際に生成元が見られる投稿」だけに出る。
+          右上は三点リーダーが占めているため右下に置く。 */}
+      {hasBeforeImage ? (
+        <span className="absolute bottom-2 right-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+          {t("sourceImageLabel")}
         </span>
       ) : null}
     </div>
