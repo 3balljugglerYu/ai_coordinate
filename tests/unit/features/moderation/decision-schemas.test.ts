@@ -18,6 +18,8 @@ import {
 import {
   MODERATION_POLICY_CATALOG,
   findModerationPolicy,
+  getModerationPolicyLabelKeys,
+  isValidModerationPolicyCode,
   shouldHideThumbnailForPolicy,
 } from "@/constants/moderation-policy";
 
@@ -176,5 +178,39 @@ describe("MODERATION_POLICY_CATALOG", () => {
 
   it("code なし（approve など）は非表示にしない", () => {
     expect(shouldHideThumbnailForPolicy(null)).toBe(false);
+  });
+
+  it("未知の code / null に対して findModerationPolicy は null を返す", () => {
+    expect(findModerationPolicy("does.not.exist")).toBeNull();
+    expect(findModerationPolicy(null)).toBeNull();
+    expect(findModerationPolicy(undefined)).toBeNull();
+  });
+
+  it("getModerationPolicyLabelKeys は既存の通報ラベルキーを返す", () => {
+    // 執行ポリシー専用キーを19件x15ロケール増やさず、通報ダイアログ用の
+    // 既存キーを再利用する設計を固定する
+    expect(getModerationPolicyLabelKeys("rights.copyright")).toEqual({
+      categoryKey: "categoryRights",
+      subcategoryKey: "subcategoryCopyright",
+    });
+    // snake_case は PascalCase に変換される
+    expect(getModerationPolicyLabelKeys("spam_fraud.scam_link")).toEqual({
+      categoryKey: "categorySpamFraud",
+      subcategoryKey: "subcategoryScamLink",
+    });
+    expect(getModerationPolicyLabelKeys("sexual.minor_sexual")).toEqual({
+      categoryKey: "categorySexual",
+      subcategoryKey: "subcategoryMinorSexual",
+    });
+  });
+
+  it("未知の code ではラベルキーを返さない", () => {
+    expect(getModerationPolicyLabelKeys("does.not.exist")).toBeNull();
+    expect(getModerationPolicyLabelKeys(null)).toBeNull();
+  });
+
+  it("isValidModerationPolicyCode はカタログの有無で判定する", () => {
+    expect(isValidModerationPolicyCode("rights.copyright")).toBe(true);
+    expect(isValidModerationPolicyCode("does.not.exist")).toBe(false);
   });
 });
