@@ -8,7 +8,11 @@ import { useInView } from "react-intersection-observer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
-import { getPostThumbUrl, getPublicViewCount } from "../lib/utils";
+import {
+  getPostBeforeImageUrl,
+  getPostThumbUrl,
+  getPublicViewCount,
+} from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { Post } from "../types";
@@ -65,6 +69,8 @@ export function PostCard({
   const imageUrl = getPostThumbUrl(post);
   // 生成モードラベル(カード左下)。coordinate系/one_tap_style/inspire/free 以外は null。
   const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type);
+  // 生成元画像が実際に表示できる投稿かどうか（右下ラベルの表示判定）
+  const hasBeforeImage = getPostBeforeImageUrl(post) !== null;
 
   // 投稿者情報の表示（Phase 5でプロフィール画面へのリンクを追加予定）
   const displayName =
@@ -113,6 +119,22 @@ export function PostCard({
       {generationModeLabelKey ? (
         <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
           {t(generationModeLabelKey)}
+        </span>
+      ) : null}
+      {/* 生成元(Before)画像ラベル(右下)。
+          Persta の生成は必ず画像アップロードを伴うため、生成元自体はどの投稿にも
+          存在する。しかし「表示用に永続化された画像」は全投稿にあるわけではなく、
+          Before/After 表示機能より前の投稿には pre_generation_storage_path が無い
+          (本番実測: 投稿済み 919 件中 189 件が該当し、うち 176 件は fallback も無い)。
+
+          ラベルは「タップすれば生成元が見られる」という期待を持たせるため、
+          チェックの有無 (show_before_image) ではなく **実際に表示できるか** で
+          判定する。正典の解決ロジックである getPostBeforeImageUrl に委ねることで、
+          表示ロジックと判定が同じ関数を通り、将来ずれない。
+          右上は三点リーダーが占めているため右下に置く。 */}
+      {hasBeforeImage ? (
+        <span className="absolute bottom-2 right-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+          {t("sourceImageLabel")}
         </span>
       ) : null}
     </div>
