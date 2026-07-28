@@ -49,6 +49,8 @@ export interface StylePresetCategoryRef {
   skipBasePrefix: boolean;
   /** true のとき未ログインでも生成可(ゲスト1日1回)。既定 false。 */
   allowGuestGeneration: boolean;
+  /** true のとき生成画面に出力比率セレクタを表示する。既定 false。 */
+  showOutputAspectRatioControl: boolean;
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string | null;
   userGuidanceEn: string | null;

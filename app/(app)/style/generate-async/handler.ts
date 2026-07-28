@@ -35,6 +35,7 @@ import {
   type FramingMode,
 } from "@/shared/generation/framing-mode";
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
+import { isUserSelectableOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
@@ -202,6 +203,25 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // framing_mode (admin viewer 限定の先行公開)。未知値は 400。
+    // 出力比率のユーザー選択。カテゴリが「ユーザーが決める」(user_select)のときだけ採用する。
+    // それ以外のカテゴリで送られてきた場合は無視し、カテゴリ設定値で固定する
+    // (UI 非表示はセキュリティではないため、サーバー側でも判定する)。
+    const outputAspectRatioEntry = formData.get("outputAspectRatioMode");
+    let userSelectedAspectRatioMode: string | null = null;
+    if (
+      typeof outputAspectRatioEntry === "string" &&
+      outputAspectRatioEntry.length > 0
+    ) {
+      if (!isUserSelectableOutputAspectRatioMode(outputAspectRatioEntry)) {
+        return jsonError(
+          copy.invalidOutputAspectRatio,
+          "STYLE_INVALID_OUTPUT_ASPECT_RATIO",
+          400,
+        );
+      }
+      userSelectedAspectRatioMode = outputAspectRatioEntry;
+    }
+
     // free_pose は非 admin から送られたら 400 (UI 非表示はセキュリティではないためサーバでも遮断)。
     // raw モード (skip_base_prefix=true) カテゴリでは無視して locked 扱い (REQ-5)。
     const framingModeEntry = formData.get("framingMode");
@@ -567,7 +587,12 @@ export async function postStyleGenerateAsyncRoute(
         ...buildOneTapStyleGenerationMetadata(
           {
             ...preset,
-            outputAspectRatioMode: preset.category.outputAspectRatioMode,
+            // カテゴリが user_select のときのみユーザー選択を採用する。
+            // 未選択なら source(入力比率にスナップ)へ倒す。
+            outputAspectRatioMode:
+              preset.category.outputAspectRatioMode === "user_select"
+                ? (userSelectedAspectRatioMode ?? "source")
+                : preset.category.outputAspectRatioMode,
           },
           "paid",
           {

@@ -27,7 +27,9 @@ import {
 } from "@/features/generation/types";
 import {
   normalizeFreeOutputAspectRatioMode,
+  normalizeUserSelectableOutputAspectRatioMode,
   type FreeOutputAspectRatioMode,
+  type UserSelectableOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
 
 export const SELECTED_MODEL_STORAGE_KEY = "persta-ai:last-selected-model";
@@ -35,6 +37,8 @@ export const BACKGROUND_MODE_STORAGE_KEY = "persta-ai:last-background-mode";
 export const COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY =
   "persta-ai:coordinate-stock-save-prompt-dismissed";
 export const FREE_ASPECT_MODE_STORAGE_KEY = "persta-ai:free-output-aspect-mode";
+/** One-Tap Style の比率は Free とは別に記憶する(モードごとに好みが異なるため)。 */
+export const STYLE_ASPECT_MODE_STORAGE_KEY = "persta-ai:style-output-aspect-mode";
 
 const DEFAULT_MODEL: GeminiModel = DEFAULT_GENERATION_MODEL;
 const DEFAULT_BACKGROUND_MODE: BackgroundMode = "keep";
@@ -138,6 +142,24 @@ export function writePreferredAspectMode(
   safeWriteLocalStorage(
     FREE_ASPECT_MODE_STORAGE_KEY,
     normalizeFreeOutputAspectRatioMode(mode),
+  );
+}
+
+/**
+ * One-Tap Style(/style)の出力比率モード。Free とは別キーで記憶する。
+ * 許容外("user_select" 自身 / 不正値)は "source" に丸める。
+ */
+export function readPreferredStyleAspectMode(): UserSelectableOutputAspectRatioMode {
+  const stored = safeReadLocalStorage(STYLE_ASPECT_MODE_STORAGE_KEY);
+  return normalizeUserSelectableOutputAspectRatioMode(stored);
+}
+
+export function writePreferredStyleAspectMode(
+  mode: UserSelectableOutputAspectRatioMode,
+): void {
+  safeWriteLocalStorage(
+    STYLE_ASPECT_MODE_STORAGE_KEY,
+    normalizeUserSelectableOutputAspectRatioMode(mode),
   );
 }
 

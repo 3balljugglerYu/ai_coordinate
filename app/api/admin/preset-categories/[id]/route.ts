@@ -131,6 +131,15 @@ export async function PATCH(
     }
     update.badgeTextColor = body.badge_text_color;
   }
+  if (body.show_output_aspect_ratio_control !== undefined) {
+    if (typeof body.show_output_aspect_ratio_control !== "boolean") {
+      return NextResponse.json(
+        { error: "show_output_aspect_ratio_control must be boolean" },
+        { status: 400 },
+      );
+    }
+    update.showOutputAspectRatioControl = body.show_output_aspect_ratio_control;
+  }
   if (body.allow_guest_generation !== undefined) {
     if (typeof body.allow_guest_generation !== "boolean") {
       return NextResponse.json(

@@ -110,7 +110,14 @@ import { COLLECTION_PROGRESS_REFRESH_EVENT } from "@/features/collections/hooks/
 import {
   readPreferredModel,
   writePreferredModel,
+  readPreferredStyleAspectMode,
+  writePreferredStyleAspectMode,
 } from "@/features/generation/lib/form-preferences";
+import { AspectRatioCardSelector } from "@/components/AspectRatioCardSelector";
+import {
+  USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES,
+  type UserSelectableOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 import {
   DEFAULT_GENERATION_MODEL,
   type GeminiModel,
@@ -399,6 +406,10 @@ export function StylePageClient({
   const POSE_PROMPT_MAX_LENGTH = 500;
   const [posePromptEnabled, setPosePromptEnabled] = useState(false);
   const [posePromptValue, setPosePromptValue] = useState("");
+  // 出力比率のユーザー選択(カテゴリが user_select のときのみ表示・送信)。
+  // 初期値は source(自動)。マウント後に localStorage から復元する。
+  const [aspectMode, setAspectMode] =
+    useState<UserSelectableOutputAspectRatioMode>("source");
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
@@ -485,6 +496,9 @@ export function StylePageClient({
     selectedPreset?.category.showBackgroundChangeControl ?? true;
   const shouldShowGenerationModelControl =
     selectedPreset?.category.showGenerationModelControl ?? true;
+  // 出力比率セレクタは admin で明示的に ON にしたカテゴリだけ表示する(既定 false)。
+  const shouldShowOutputAspectRatioControl =
+    selectedPreset?.category.showOutputAspectRatioControl ?? false;
   const effectiveSourceImageType = shouldShowSourceImageTypeControl
     ? sourceImageType
     : "illustration";
@@ -776,7 +790,17 @@ export function StylePageClient({
   // localStorage に保存された前回選択モデルを復元 (Phase 5 / UCL-013)
   useEffect(() => {
     setSelectedModel(readPreferredModel());
+    setAspectMode(readPreferredStyleAspectMode());
   }, []);
+
+  // ユーザー操作経由の比率変更だけ localStorage に書く
+  const handleAspectModeChange = useCallback(
+    (next: UserSelectableOutputAspectRatioMode) => {
+      setAspectMode(next);
+      writePreferredStyleAspectMode(next);
+    },
+    [],
+  );
 
   // ユーザー操作経由のモデル変更だけ localStorage に書く
   const handleSelectedModelChange = useCallback((next: GeminiModel) => {
@@ -1557,6 +1581,10 @@ export function StylePageClient({
       ) {
         formData.set("userPrompt", userPromptInputValue);
       }
+      // 出力比率はカテゴリが user_select のときのみ送る(他カテゴリへ混入させない)。
+      if (shouldShowOutputAspectRatioControl) {
+        formData.set("outputAspectRatioMode", aspectMode);
+      }
       // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
       // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
       if (selectedPreset.category.showUserPromptInput) {
@@ -2123,6 +2151,31 @@ export function StylePageClient({
                     id="style-pose-prompt"
                   />
                 ) : null}
+              </div>
+            ) : null}
+
+            {shouldShowOutputAspectRatioControl ? (
+              <div className="mb-4">
+                <AspectRatioCardSelector
+                  modes={USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES}
+                  value={aspectMode}
+                  onChange={(next) =>
+                    handleAspectModeChange(
+                      next as UserSelectableOutputAspectRatioMode,
+                    )
+                  }
+                  disabled={isGenerating}
+                  labels={{
+                    sectionTitle: t("aspectSectionTitle"),
+                    auto: t("aspectAuto"),
+                    autoDescription: t("aspectAutoDescription"),
+                    presetImage: t("aspectPresetImage"),
+                    presetImageDescription: t("aspectPresetImageDescription"),
+                    square: t("aspectSquare"),
+                    portrait: t("aspectPortrait"),
+                    landscape: t("aspectLandscape"),
+                  }}
+                />
               </div>
             ) : null}
 

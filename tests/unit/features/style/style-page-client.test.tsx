@@ -398,6 +398,7 @@ const TEST_COORDINATE_CATEGORY = {
   skipBasePrefix: false,
   // coordinate は従来どおりゲスト生成を許可するカテゴリ。
   allowGuestGeneration: true,
+  showOutputAspectRatioControl: false,
   outputAspectRatioMode: "source",
   userGuidanceJa: null,
   userGuidanceEn: null,
@@ -734,6 +735,7 @@ describe("StylePageClient", () => {
           ...TEST_COORDINATE_CATEGORY,
           key: "chibi",
           allowGuestGeneration: false,
+          showOutputAspectRatioControl: false,
           displayNameJa: "ちびキャラ",
           displayNameEn: "Chibi",
         },
@@ -1893,6 +1895,7 @@ describe("StylePageClient", () => {
       id: "cat-chibi",
       key: "chibi",
       allowGuestGeneration: false,
+      showOutputAspectRatioControl: false,
       displayNameJa: "ちびキャラ",
       displayNameEn: "Chibi",
     } as const;
@@ -1935,6 +1938,7 @@ describe("StylePageClient", () => {
       id: "cat-chibi",
       key: "chibi",
       allowGuestGeneration: false,
+      showOutputAspectRatioControl: false,
       displayNameJa: "ちびキャラ",
       displayNameEn: "Chibi",
     } as const;
@@ -1962,6 +1966,7 @@ describe("StylePageClient", () => {
       id: "cat-chibi",
       key: "chibi",
       allowGuestGeneration: false,
+      showOutputAspectRatioControl: false,
       displayNameJa: "ちびキャラ",
       displayNameEn: "Chibi",
     } as const;

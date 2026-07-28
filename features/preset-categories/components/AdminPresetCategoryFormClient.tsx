@@ -57,6 +57,7 @@ interface FormState {
   badgeTextColor: string;
   skipBasePrefix: boolean;
   allowGuestGeneration: boolean;
+  showOutputAspectRatioControl: boolean;
   defaultImageInputMode: "single" | "dual";
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string;
@@ -160,6 +161,8 @@ function toFormState(
     badgeTextColor: initial?.badgeTextColor ?? "#ffffff",
     skipBasePrefix: initial?.skipBasePrefix ?? false,
     allowGuestGeneration: initial?.allowGuestGeneration ?? false,
+    showOutputAspectRatioControl:
+      initial?.showOutputAspectRatioControl ?? false,
     defaultImageInputMode: initial?.defaultImageInputMode ?? "single",
     outputAspectRatioMode: initial?.outputAspectRatioMode ?? "source",
     userGuidanceJa: initial?.userGuidanceJa ?? "",
@@ -651,6 +654,7 @@ export function AdminPresetCategoryFormClient({
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
               allow_guest_generation: form.allowGuestGeneration,
+              show_output_aspect_ratio_control: form.showOutputAspectRatioControl,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
@@ -718,6 +722,7 @@ export function AdminPresetCategoryFormClient({
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
               allow_guest_generation: form.allowGuestGeneration,
+              show_output_aspect_ratio_control: form.showOutputAspectRatioControl,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
@@ -969,25 +974,32 @@ export function AdminPresetCategoryFormClient({
           <AspectRatioCardSelector
             modes={STYLE_OUTPUT_ASPECT_RATIO_MODES}
             value={form.outputAspectRatioMode}
-            onChange={(next) =>
-              update(
-                "outputAspectRatioMode",
-                next as StyleOutputAspectRatioMode,
-              )
-            }
+            onChange={(next) => {
+              const mode = next as StyleOutputAspectRatioMode;
+              // 「ユーザーが決める」を選んだら、ユーザー画面に比率セレクタを出さないと
+              // 設定が意味を持たないため、表示項目のチェックを自動で ON にする。
+              setForm((prev) => ({
+                ...prev,
+                outputAspectRatioMode: mode,
+                showOutputAspectRatioControl:
+                  mode === "user_select" ? true : prev.showOutputAspectRatioControl,
+              }));
+            }}
             labels={{
               sectionTitle: "出力比率",
               auto: "自動",
               autoDescription: "アップロード画像に合わせる",
               presetImage: "登録画像",
               presetImageDescription: "登録画像(サムネ)の比率に合わせる",
+              userSelect: "ユーザーが決める",
+              userSelectDescription: "生成画面でユーザーが比率を選ぶ",
               square: "正方形",
               portrait: "縦長",
               landscape: "横長",
             }}
           />
           <span className="mt-1 block text-xs text-slate-500">
-            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。「登録画像」は preset ごとのサムネ画像の比率で出力するため、イラストごとに縦横比を変えられます(サムネ寸法はDB保存済みのため生成時間に影響しません)。比率を明示指定すると常にその比率で出力します。OpenAI(GPT Image 2)も 9:16〜16:9 に対応しますが、出力サイズが16px単位に丸められるため厳密な比率ではなく誤差内の近似になります(縦横の向きは保たれます)。
+            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。「登録画像」は preset ごとのサムネ画像の比率で出力するため、イラストごとに縦横比を変えられます(サムネ寸法はDB保存済みのため生成時間に影響しません)。「ユーザーが決める」にすると、生成画面に比率セレクタが出てユーザー自身が選べます(下の「出力比率を表示」が自動で ON になります)。比率を明示指定すると常にその比率で出力します。OpenAI(GPT Image 2)も 9:16〜16:9 に対応しますが、出力サイズが16px単位に丸められるため厳密な比率ではなく誤差内の近似になります(縦横の向きは保たれます)。
           </span>
         </div>
 
@@ -1138,6 +1150,26 @@ export function AdminPresetCategoryFormClient({
             <br />
             <span className="text-xs text-slate-500">
               OFF の場合、/style では「イラスト / 写真」を選ばせず、生成時は illustration として扱います。
+            </span>
+          </span>
+        </label>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.showOutputAspectRatioControl}
+            onChange={(e) =>
+              update("showOutputAspectRatioControl", e.target.checked)
+            }
+            className="mt-1"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">出力比率を表示</span>
+            <br />
+            <span className="text-xs text-slate-500">
+              ON にすると /style の生成画面に出力比率セレクタが出て、ユーザーが比率を選べます
+              (じゆうモードと同じUI)。上の「出力比率」で「ユーザーが決める」を選ぶと自動で ON になります。
+              OFF の場合はカテゴリの設定値で固定されます。
             </span>
           </span>
         </label>

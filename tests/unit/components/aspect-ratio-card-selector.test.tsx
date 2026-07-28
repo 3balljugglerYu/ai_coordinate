@@ -13,13 +13,15 @@ const ADMIN_LABELS = {
   autoDescription: "アップロード画像に合わせる",
   presetImage: "登録画像",
   presetImageDescription: "登録画像(サムネ)の比率に合わせる",
+  userSelect: "ユーザーが決める",
+  userSelectDescription: "生成画面でユーザーが比率を選ぶ",
   square: "正方形",
   portrait: "縦長",
   landscape: "横長",
 };
 
 describe("AspectRatioCardSelector", () => {
-  test("admin 用(11種: 自動 + 登録画像 + 明示9比率)を描画する", () => {
+  test("admin 用(12種: 自動 + 登録画像 + ユーザーが決める + 明示9比率)を描画する", () => {
     render(
       <AspectRatioCardSelector
         modes={STYLE_OUTPUT_ASPECT_RATIO_MODES}
@@ -29,7 +31,7 @@ describe("AspectRatioCardSelector", () => {
       />,
     );
     expect(screen.getByRole("radiogroup")).toBeTruthy();
-    expect(screen.getAllByRole("radio")).toHaveLength(11);
+    expect(screen.getAllByRole("radio")).toHaveLength(12);
   });
 
   test("preset_image カードは専用ラベルと説明を持つ", () => {

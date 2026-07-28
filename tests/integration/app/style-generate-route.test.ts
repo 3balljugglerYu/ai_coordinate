@@ -81,6 +81,7 @@ const TEST_COORDINATE_CATEGORY = {
   skipBasePrefix: false,
   // coordinate は従来どおりゲスト生成を許可するカテゴリ。
   allowGuestGeneration: true,
+  showOutputAspectRatioControl: false,
   outputAspectRatioMode: "source",
   userGuidanceJa: null,
   userGuidanceEn: null,
@@ -869,6 +870,7 @@ describe("StyleGenerateRoute integration tests", () => {
           ...TEST_COORDINATE_CATEGORY,
           key: "chibi",
           allowGuestGeneration: false,
+          showOutputAspectRatioControl: false,
           displayNameJa: "ちびキャラ",
           displayNameEn: "Chibi",
           visibility: "admin_only",
@@ -904,6 +906,7 @@ describe("StyleGenerateRoute integration tests", () => {
           ...TEST_COORDINATE_CATEGORY,
           key: "chibi",
           allowGuestGeneration: false,
+          showOutputAspectRatioControl: false,
           displayNameJa: "ちびキャラ",
           displayNameEn: "Chibi",
           visibility: "public",
@@ -942,6 +945,7 @@ describe("StyleGenerateRoute integration tests", () => {
           ...TEST_COORDINATE_CATEGORY,
           key: "coordinate_2",
           allowGuestGeneration: true,
+          showOutputAspectRatioControl: false,
           displayNameJa: "コーディネート2.0",
           displayNameEn: "Coordinate 2.0",
           visibility: "public",
@@ -974,6 +978,7 @@ describe("StyleGenerateRoute integration tests", () => {
         category: {
           ...TEST_COORDINATE_CATEGORY,
           allowGuestGeneration: false,
+          showOutputAspectRatioControl: false,
         },
       })
     );
@@ -1008,6 +1013,7 @@ describe("StyleGenerateRoute integration tests", () => {
           ...TEST_COORDINATE_CATEGORY,
           key: "collectible_wafer_sticker_god_6p",
           allowGuestGeneration: false,
+          showOutputAspectRatioControl: false,
           displayNameJa: "神コレ",
           displayNameEn: "Collectible Wafer Sticker (God) 6P",
           visibility: "public",

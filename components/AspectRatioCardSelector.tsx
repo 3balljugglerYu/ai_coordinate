@@ -2,7 +2,7 @@
 
 import { useEffect, useId, useRef } from "react";
 import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
-import { Check, Image as ImageIcon, Sparkles } from "lucide-react";
+import { Check, Image as ImageIcon, Sparkles, UserCog } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 /**
@@ -20,6 +20,10 @@ export interface AspectRatioCardSelectorLabels {
   presetImage?: string;
   /** "preset_image" の補足説明(スクリーンリーダー向け)。 */
   presetImageDescription?: string;
+  /** "user_select"(ユーザーが決める) カードのキャプション。modes に含める場合は必須。 */
+  userSelect?: string;
+  /** "user_select" の補足説明(スクリーンリーダー向け)。 */
+  userSelectDescription?: string;
   /** 1:1 のキャプション/向き。 */
   square: string;
   /** 縦長比率の向き(aria 用)。 */
@@ -38,7 +42,7 @@ interface AspectRatioCardSelectorProps {
 }
 
 /** 比率以外の「動的に決まる」モード(固定枠を持たないカード)。 */
-const DYNAMIC_MODES = new Set(["source", "preset_image"]);
+const DYNAMIC_MODES = new Set(["source", "preset_image", "user_select"]);
 
 /**
  * 出力アスペクト比を選ぶ横スクロールのカードセレクタ(表示専用)。
@@ -101,21 +105,26 @@ export function AspectRatioCardSelector({
         {modes.map((mode) => {
           const isDynamic = DYNAMIC_MODES.has(mode);
           const isPresetImage = mode === "preset_image";
+          const isUserSelect = mode === "user_select";
           const [w, h] = isDynamic ? [1, 1] : mode.split(":").map(Number);
           const orientation =
             w === h ? labels.square : w > h ? labels.landscape : labels.portrait;
           // カード下のキャプション: 動的モードは専用文言 / 1:1=正方形 / それ以外は比率そのもの。
-          const caption = isPresetImage
-            ? (labels.presetImage ?? mode)
-            : mode === "source"
+          const caption = isUserSelect
+            ? (labels.userSelect ?? mode)
+            : isPresetImage
+              ? (labels.presetImage ?? mode)
+              : mode === "source"
               ? labels.auto
               : w === h
                 ? labels.square
                 : mode;
           // スクリーンリーダー向けには比率と向き(または補足説明)を明示する。
-          const ariaLabel = isPresetImage
-            ? `${labels.presetImage ?? mode}（${labels.presetImageDescription ?? ""}）`
-            : mode === "source"
+          const ariaLabel = isUserSelect
+            ? `${labels.userSelect ?? mode}（${labels.userSelectDescription ?? ""}）`
+            : isPresetImage
+              ? `${labels.presetImage ?? mode}（${labels.presetImageDescription ?? ""}）`
+              : mode === "source"
               ? `${labels.auto}（${labels.autoDescription}）`
               : `${mode} ${orientation}`;
 
@@ -143,7 +152,9 @@ export function AspectRatioCardSelector({
                 )}
                 style={isDynamic ? { width: "5rem" } : { aspectRatio: `${w} / ${h}` }}
               >
-                {isPresetImage ? (
+                {isUserSelect ? (
+                  <UserCog className="size-5" />
+                ) : isPresetImage ? (
                   <ImageIcon className="size-5" />
                 ) : mode === "source" ? (
                   <Sparkles className="size-5" />
