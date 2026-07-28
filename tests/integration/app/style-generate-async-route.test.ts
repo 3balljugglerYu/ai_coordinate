@@ -251,6 +251,73 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(jobRepository.createImageJob).not.toHaveBeenCalled();
   });
 
+  describe("出力比率のユーザー選択(user_select)", () => {
+    const runWith = async (
+      categoryMode: string,
+      sentAspect: string | null,
+    ) => {
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: {
+            ...TEST_COORDINATE_CATEGORY,
+            outputAspectRatioMode: categoryMode,
+          },
+        }),
+      );
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      formData.set("model", "gemini-3.1-flash-image-preview-512");
+      if (sentAspect) formData.set("outputAspectRatioMode", sentAspect);
+      return postStyleGenerateAsyncRoute(createRequest(formData), {
+        getUserFn,
+        jobRepository,
+        getPublishedStylePresetForGenerationFn,
+        recordStyleUsageEventFn,
+        invokeImageWorkerFn,
+        supabaseUrl: "https://example.supabase.co",
+      });
+    };
+
+    const savedAspect = () => {
+      const arg = jobRepository.createImageJob.mock.calls[0][0] as {
+        generation_metadata?: { oneTapStyle?: { outputAspectRatioMode?: string } };
+      };
+      return arg.generation_metadata?.oneTapStyle?.outputAspectRatioMode;
+    };
+
+    test("カテゴリが user_select ならユーザー選択した比率を採用する", async () => {
+      const response = await runWith("user_select", "4:5");
+      expect(response.status).toBe(200);
+      expect(savedAspect()).toBe("4:5");
+    });
+
+    test("カテゴリが user_select でユーザー未選択なら source に倒す", async () => {
+      const response = await runWith("user_select", null);
+      expect(response.status).toBe(200);
+      expect(savedAspect()).toBe("source");
+    });
+
+    test("カテゴリが固定比率ならユーザー選択を無視しカテゴリ設定を使う", async () => {
+      // UI 非表示はセキュリティではないため、送られてきても採用しない。
+      const response = await runWith("9:16", "4:5");
+      expect(response.status).toBe(200);
+      expect(savedAspect()).toBe("9:16");
+    });
+
+    test("許容外の比率値(user_select 自身)は 400 で拒否する", async () => {
+      const response = await runWith("user_select", "user_select");
+      expect(response.status).toBe(400);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("不正な比率値は 400 で拒否する", async () => {
+      const response = await runWith("user_select", "garbage");
+      expect(response.status).toBe(400);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+  });
+
   test("UCL-016: 認証ユーザーのジョブは常に billingMode=paid で作成される", async () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);

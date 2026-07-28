@@ -357,7 +357,7 @@ export function StyleBrowseSheet({
                 const isGuestLockedCard =
                   !isDripLocked &&
                   !isAuthenticated &&
-                  preset.category.key !== "coordinate";
+                  !preset.category.allowGuestGeneration;
                 return (
                   <div key={preset.id} className="relative">
                     <StylePresetPreviewCard

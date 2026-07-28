@@ -69,6 +69,7 @@ interface ParsedCreatePayload {
   badgeColor?: string;
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
+  allowGuestGeneration?: boolean;
   defaultImageInputMode?: "single" | "dual";
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
@@ -188,6 +189,15 @@ export async function POST(request: NextRequest) {
     }
     payload.badgeTextColor = body.badge_text_color;
   }
+  if (body.allow_guest_generation !== undefined) {
+    if (typeof body.allow_guest_generation !== "boolean") {
+      return NextResponse.json(
+        { error: "allow_guest_generation must be boolean" },
+        { status: 400 },
+      );
+    }
+    payload.allowGuestGeneration = body.allow_guest_generation;
+  }
   if (body.skip_base_prefix !== undefined) {
     if (typeof body.skip_base_prefix !== "boolean") {
       return NextResponse.json(
@@ -223,7 +233,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "output_aspect_ratio_mode must be 'source', 'preset_image' or one of 9:16,4:5,3:4,2:3,1:1,3:2,4:3,5:4,16:9",
+            "output_aspect_ratio_mode must be 'source', 'preset_image', 'user_select' or one of 9:16,4:5,3:4,2:3,1:1,3:2,4:3,5:4,16:9",
         },
         { status: 400 },
       );
@@ -433,6 +443,7 @@ export async function POST(request: NextRequest) {
         display_name_ja: created.displayNameJa,
         display_name_en: created.displayNameEn,
         skip_base_prefix: created.skipBasePrefix,
+        allow_guest_generation: created.allowGuestGeneration,
         default_image_input_mode: created.defaultImageInputMode,
         output_aspect_ratio_mode: created.outputAspectRatioMode,
         has_user_guidance:
