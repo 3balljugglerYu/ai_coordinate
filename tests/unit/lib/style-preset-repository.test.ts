@@ -199,6 +199,7 @@ describe("style-preset repository", () => {
           badgeColor: "#1f2937",
           badgeTextColor: "#ffffff",
           skipBasePrefix: false,
+          allowGuestGeneration: false,
           outputAspectRatioMode: "source",
           userGuidanceJa: null,
           userGuidanceEn: null,

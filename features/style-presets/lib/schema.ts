@@ -47,6 +47,8 @@ export interface StylePresetCategoryRef {
   badgeColor: string;
   badgeTextColor: string;
   skipBasePrefix: boolean;
+  /** true のとき未ログインでも生成可(ゲスト1日1回)。既定 false。 */
+  allowGuestGeneration: boolean;
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string | null;
   userGuidanceEn: string | null;

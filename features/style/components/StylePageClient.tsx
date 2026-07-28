@@ -549,7 +549,7 @@ export function StylePageClient({
   const isGuestRestrictedCategory =
     effectiveAuthState !== "authenticated" &&
     selectedPreset != null &&
-    selectedPreset.category.key !== "coordinate";
+    !selectedPreset.category.allowGuestGeneration;
   const isGenerateDisabled =
     !selectedPreset ||
     !hasSourceImage ||
@@ -1761,7 +1761,7 @@ export function StylePageClient({
             const isGuestLockedCard =
               !isDripLocked &&
               effectiveAuthState !== "authenticated" &&
-              preset.category.key !== "coordinate";
+              !preset.category.allowGuestGeneration;
             return (
               <StylePresetPreviewCard
                 key={preset.id}

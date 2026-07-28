@@ -79,6 +79,8 @@ const TEST_COORDINATE_CATEGORY = {
   badgeColor: "#1f2937",
   badgeTextColor: "#ffffff",
   skipBasePrefix: false,
+  // coordinate は従来どおりゲスト生成を許可するカテゴリ。
+  allowGuestGeneration: true,
   outputAspectRatioMode: "source",
   userGuidanceJa: null,
   userGuidanceEn: null,
@@ -866,6 +868,7 @@ describe("StyleGenerateRoute integration tests", () => {
         category: {
           ...TEST_COORDINATE_CATEGORY,
           key: "chibi",
+          allowGuestGeneration: false,
           displayNameJa: "ちびキャラ",
           displayNameEn: "Chibi",
           visibility: "admin_only",
@@ -900,6 +903,7 @@ describe("StyleGenerateRoute integration tests", () => {
         category: {
           ...TEST_COORDINATE_CATEGORY,
           key: "chibi",
+          allowGuestGeneration: false,
           displayNameJa: "ちびキャラ",
           displayNameEn: "Chibi",
           visibility: "public",
@@ -929,6 +933,72 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  test("postStyleGenerateRoute_allow_guest_generationがtrueならcoordinate以外でもguest生成できる", async () => {
+    // 判定軸は category.key ではなくフラグであることの証明。
+    // admin でフラグを ON にしたカテゴリ(例: コーディネート2.0)はゲスト生成できる。
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          key: "coordinate_2",
+          allowGuestGeneration: true,
+          displayNameJa: "コーディネート2.0",
+          displayNameEn: "Coordinate 2.0",
+          visibility: "public",
+        },
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+
+    expect(response.status).toBe(200);
+    expect(fetchFn).toHaveBeenCalled();
+  });
+
+  test("postStyleGenerateRoute_allow_guest_generationがfalseならcoordinateキーでもguest生成不可(401)", async () => {
+    // 逆方向の証明。キー名が coordinate でもフラグ OFF なら拒否する。
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          allowGuestGeneration: false,
+        },
+      })
+    );
+
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(401);
+    expect(body.errorCode).toBe("STYLE_CATEGORY_REQUIRES_AUTH");
+    expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleGenerateRoute_神コレ(collectible_wafer_sticker_god_6p)公開時もguest生成不可(403)", async () => {
     // 企画開始時に公開予定のカテゴリ。公開（visibility: public）に変わっても
     // 未ログインユーザーは生成できないことを、実カテゴリキーで明示的に固定する。
@@ -937,6 +1007,7 @@ describe("StyleGenerateRoute integration tests", () => {
         category: {
           ...TEST_COORDINATE_CATEGORY,
           key: "collectible_wafer_sticker_god_6p",
+          allowGuestGeneration: false,
           displayNameJa: "神コレ",
           displayNameEn: "Collectible Wafer Sticker (God) 6P",
           visibility: "public",

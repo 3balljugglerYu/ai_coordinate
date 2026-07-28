@@ -396,6 +396,8 @@ const TEST_COORDINATE_CATEGORY = {
   badgeColor: "#1f2937",
   badgeTextColor: "#ffffff",
   skipBasePrefix: false,
+  // coordinate は従来どおりゲスト生成を許可するカテゴリ。
+  allowGuestGeneration: true,
   outputAspectRatioMode: "source",
   userGuidanceJa: null,
   userGuidanceEn: null,
@@ -731,6 +733,7 @@ describe("StylePageClient", () => {
         category: {
           ...TEST_COORDINATE_CATEGORY,
           key: "chibi",
+          allowGuestGeneration: false,
           displayNameJa: "ちびキャラ",
           displayNameEn: "Chibi",
         },
@@ -1889,6 +1892,7 @@ describe("StylePageClient", () => {
       ...TEST_COORDINATE_CATEGORY,
       id: "cat-chibi",
       key: "chibi",
+      allowGuestGeneration: false,
       displayNameJa: "ちびキャラ",
       displayNameEn: "Chibi",
     } as const;
@@ -1930,6 +1934,7 @@ describe("StylePageClient", () => {
       ...TEST_COORDINATE_CATEGORY,
       id: "cat-chibi",
       key: "chibi",
+      allowGuestGeneration: false,
       displayNameJa: "ちびキャラ",
       displayNameEn: "Chibi",
     } as const;
@@ -1956,6 +1961,7 @@ describe("StylePageClient", () => {
       ...TEST_COORDINATE_CATEGORY,
       id: "cat-chibi",
       key: "chibi",
+      allowGuestGeneration: false,
       displayNameJa: "ちびキャラ",
       displayNameEn: "Chibi",
     } as const;

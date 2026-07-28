@@ -131,6 +131,15 @@ export async function PATCH(
     }
     update.badgeTextColor = body.badge_text_color;
   }
+  if (body.allow_guest_generation !== undefined) {
+    if (typeof body.allow_guest_generation !== "boolean") {
+      return NextResponse.json(
+        { error: "allow_guest_generation must be boolean" },
+        { status: 400 },
+      );
+    }
+    update.allowGuestGeneration = body.allow_guest_generation;
+  }
   if (body.skip_base_prefix !== undefined) {
     if (typeof body.skip_base_prefix !== "boolean") {
       return NextResponse.json(

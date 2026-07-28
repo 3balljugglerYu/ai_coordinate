@@ -17,9 +17,10 @@ import {
   splitSlots,
 } from "@/features/collections/lib/slot-edit-geometry";
 import {
-  EXPLICIT_OUTPUT_ASPECT_RATIOS,
+  STYLE_OUTPUT_ASPECT_RATIO_MODES,
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
+import { AspectRatioCardSelector } from "@/components/AspectRatioCardSelector";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
 import { ProgressModalColorPreview } from "@/features/preset-categories/components/ProgressModalColorPreview";
 
@@ -55,6 +56,7 @@ interface FormState {
   badgeColor: string;
   badgeTextColor: string;
   skipBasePrefix: boolean;
+  allowGuestGeneration: boolean;
   defaultImageInputMode: "single" | "dual";
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string;
@@ -157,6 +159,7 @@ function toFormState(
     badgeColor: initial?.badgeColor ?? "#1f2937",
     badgeTextColor: initial?.badgeTextColor ?? "#ffffff",
     skipBasePrefix: initial?.skipBasePrefix ?? false,
+    allowGuestGeneration: initial?.allowGuestGeneration ?? false,
     defaultImageInputMode: initial?.defaultImageInputMode ?? "single",
     outputAspectRatioMode: initial?.outputAspectRatioMode ?? "source",
     userGuidanceJa: initial?.userGuidanceJa ?? "",
@@ -647,6 +650,7 @@ export function AdminPresetCategoryFormClient({
               badge_color: form.badgeColor,
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
+              allow_guest_generation: form.allowGuestGeneration,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
@@ -713,6 +717,7 @@ export function AdminPresetCategoryFormClient({
               badge_color: form.badgeColor,
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
+              allow_guest_generation: form.allowGuestGeneration,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
@@ -960,37 +965,31 @@ export function AdminPresetCategoryFormClient({
           </span>
         </label>
 
-        <label className="block">
-          <span className="text-sm font-medium text-slate-700">
-            出力比率
-          </span>
-          <select
+        <div className="block">
+          <AspectRatioCardSelector
+            modes={STYLE_OUTPUT_ASPECT_RATIO_MODES}
             value={form.outputAspectRatioMode}
-            onChange={(e) =>
+            onChange={(next) =>
               update(
                 "outputAspectRatioMode",
-                e.target.value as StyleOutputAspectRatioMode,
+                next as StyleOutputAspectRatioMode,
               )
             }
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
-          >
-            <option value="source">アップロード画像に合わせる(自動)</option>
-            <option value="preset_image">登録画像(サムネ)に合わせる</option>
-            {EXPLICIT_OUTPUT_ASPECT_RATIOS.map((ratio) => {
-              const [w, h] = ratio.split(":").map(Number);
-              const orientation =
-                w === h ? "正方形" : w > h ? "横長" : "縦長";
-              return (
-                <option key={ratio} value={ratio}>
-                  {ratio}（{orientation}）
-                </option>
-              );
-            })}
-          </select>
+            labels={{
+              sectionTitle: "出力比率",
+              auto: "自動",
+              autoDescription: "アップロード画像に合わせる",
+              presetImage: "登録画像",
+              presetImageDescription: "登録画像(サムネ)の比率に合わせる",
+              square: "正方形",
+              portrait: "縦長",
+              landscape: "横長",
+            }}
+          />
           <span className="mt-1 block text-xs text-slate-500">
-            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。「登録画像(サムネ)に合わせる」は preset ごとのサムネ画像の比率で出力するため、イラストごとに縦横比を変えられます(サムネ寸法はDB保存済みのため生成時間に影響しません)。比率を明示指定すると常にその比率で出力します(Gemini)。OpenAI は 1:1 のみ固定に対応。
+            「自動」はアップロード画像の比率に合わせて9段階(9:16〜16:9)の最も近い比率で出力します。「登録画像」は preset ごとのサムネ画像の比率で出力するため、イラストごとに縦横比を変えられます(サムネ寸法はDB保存済みのため生成時間に影響しません)。比率を明示指定すると常にその比率で出力します。OpenAI(GPT Image 2)も 9:16〜16:9 に対応しますが、出力サイズが16px単位に丸められるため厳密な比率ではなく誤差内の近似になります(縦横の向きは保たれます)。
           </span>
-        </label>
+        </div>
 
         <label className="block">
           <span className="text-sm font-medium text-slate-700">
@@ -1063,6 +1062,25 @@ export function AdminPresetCategoryFormClient({
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium text-slate-700">挙動フラグ</legend>
+
+        <label className="flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={form.allowGuestGeneration}
+            onChange={(e) => update("allowGuestGeneration", e.target.checked)}
+            className="mt-1"
+          />
+          <span className="text-sm text-slate-700">
+            <span className="font-medium">
+              ログイン不要で生成できる (allow_guest_generation)
+            </span>
+            <br />
+            <span className="text-xs text-slate-500">
+              ON にすると未ログインのユーザーもこのカテゴリのプリセットで生成できます(ゲストは1日1回の無料枠)。
+              OFF のカテゴリはログインが必要です。既定は OFF のため、開放したいカテゴリだけ明示的に ON にしてください。
+            </span>
+          </span>
+        </label>
 
         <label className="flex items-start gap-3">
           <input
