@@ -1,5 +1,7 @@
--- 出力比率モードに 'user_select'(ユーザーが決める) を追加し、
--- ユーザー画面に出力比率セレクタを出すかの表示フラグを新設する。
+-- 出力比率モードに 'user_select'(ユーザーが決める) を追加する。
+--
+-- 「ユーザー画面に比率セレクタを出すか」は output_aspect_ratio_mode = 'user_select' から
+-- 一意に導出できるため、専用フラグ列は持たない(二重管理による不整合を防ぐ)。
 --
 -- 目的:
 --   admin でカテゴリの出力比率を「ユーザーが決める」にすると、One-Tap Style の
@@ -44,11 +46,3 @@ END $$;
 
 COMMENT ON COLUMN public.preset_categories.output_aspect_ratio_mode IS
   'source = アップロード比率に合わせて自動選択(9段階の最近傍) / preset_image = preset のサムネ(登録画像)比率に合わせる / user_select = ユーザーが生成画面で選ぶ / 9:16〜16:9 = 明示比率固定';
-
--- ユーザー画面に出力比率セレクタを表示するか。
--- 'user_select' を選ぶと admin フォーム側で自動的に ON になる。
-ALTER TABLE public.preset_categories
-  ADD COLUMN IF NOT EXISTS show_output_aspect_ratio_control BOOLEAN NOT NULL DEFAULT false;
-
-COMMENT ON COLUMN public.preset_categories.show_output_aspect_ratio_control IS
-  'true のとき One-Tap Style の生成画面に出力比率セレクタを表示し、ユーザーが比率を選べる。既定 false。';

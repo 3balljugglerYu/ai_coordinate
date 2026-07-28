@@ -261,7 +261,6 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
           category: {
             ...TEST_COORDINATE_CATEGORY,
             outputAspectRatioMode: categoryMode,
-            showOutputAspectRatioControl: categoryMode === "user_select",
           },
         }),
       );

@@ -66,7 +66,6 @@ const TEST_CATEGORY_REF = {
   badgeTextColor: "#ffffff",
   skipBasePrefix: false,
   allowGuestGeneration: false,
-  showOutputAspectRatioControl: false,
   outputAspectRatioMode: "source",
   userGuidanceJa: null,
   userGuidanceEn: null,

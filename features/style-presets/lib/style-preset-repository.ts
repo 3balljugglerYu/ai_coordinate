@@ -38,7 +38,6 @@ interface StylePresetCategoryRow {
   badge_text_color: string;
   skip_base_prefix: boolean;
   allow_guest_generation: boolean;
-  show_output_aspect_ratio_control: boolean;
   provider_user_id?: string | null;
   // PostgREST embedded select で profiles を JOIN した結果(provider クレジット用)
   provider?: ProviderProfileRow | ProviderProfileRow[] | null;
@@ -111,7 +110,7 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, allow_guest_generation, show_output_aspect_ratio_control, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, collection_display_starts_at, collection_display_ends_at, is_collection_series, completion_threshold, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, sequential_unlock, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
+  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, allow_guest_generation, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, collection_display_starts_at, collection_display_ends_at, is_collection_series, completion_threshold, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, sequential_unlock, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -182,7 +181,6 @@ function mapCategoryRefStrict(
       badgeTextColor: "#ffffff",
       skipBasePrefix: false,
       allowGuestGeneration: false,
-      showOutputAspectRatioControl: false,
       outputAspectRatioMode: "source",
       userGuidanceJa: null,
       userGuidanceEn: null,
@@ -224,8 +222,6 @@ function mapCategoryRefStrict(
     badgeTextColor: embedded.badge_text_color,
     skipBasePrefix: embedded.skip_base_prefix,
     allowGuestGeneration: embedded.allow_guest_generation ?? false,
-    showOutputAspectRatioControl:
-      embedded.show_output_aspect_ratio_control ?? false,
     outputAspectRatioMode: normalizeStyleOutputAspectRatioMode(
       embedded.output_aspect_ratio_mode,
     ),

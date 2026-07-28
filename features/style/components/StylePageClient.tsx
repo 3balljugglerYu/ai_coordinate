@@ -496,9 +496,10 @@ export function StylePageClient({
     selectedPreset?.category.showBackgroundChangeControl ?? true;
   const shouldShowGenerationModelControl =
     selectedPreset?.category.showGenerationModelControl ?? true;
-  // 出力比率セレクタは admin で明示的に ON にしたカテゴリだけ表示する(既定 false)。
+  // 出力比率セレクタは「ユーザーが決める」カテゴリだけ表示する。
+  // 表示可否は output_aspect_ratio_mode から一意に決まるため、別フラグは持たない。
   const shouldShowOutputAspectRatioControl =
-    selectedPreset?.category.showOutputAspectRatioControl ?? false;
+    selectedPreset?.category.outputAspectRatioMode === "user_select";
   const effectiveSourceImageType = shouldShowSourceImageTypeControl
     ? sourceImageType
     : "illustration";

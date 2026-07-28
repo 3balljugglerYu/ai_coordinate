@@ -70,7 +70,6 @@ interface ParsedCreatePayload {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   allowGuestGeneration?: boolean;
-  showOutputAspectRatioControl?: boolean;
   defaultImageInputMode?: "single" | "dual";
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
@@ -189,15 +188,6 @@ export async function POST(request: NextRequest) {
       );
     }
     payload.badgeTextColor = body.badge_text_color;
-  }
-  if (body.show_output_aspect_ratio_control !== undefined) {
-    if (typeof body.show_output_aspect_ratio_control !== "boolean") {
-      return NextResponse.json(
-        { error: "show_output_aspect_ratio_control must be boolean" },
-        { status: 400 },
-      );
-    }
-    payload.showOutputAspectRatioControl = body.show_output_aspect_ratio_control;
   }
   if (body.allow_guest_generation !== undefined) {
     if (typeof body.allow_guest_generation !== "boolean") {
@@ -454,7 +444,6 @@ export async function POST(request: NextRequest) {
         display_name_en: created.displayNameEn,
         skip_base_prefix: created.skipBasePrefix,
         allow_guest_generation: created.allowGuestGeneration,
-        show_output_aspect_ratio_control: created.showOutputAspectRatioControl,
         default_image_input_mode: created.defaultImageInputMode,
         output_aspect_ratio_mode: created.outputAspectRatioMode,
         has_user_guidance:

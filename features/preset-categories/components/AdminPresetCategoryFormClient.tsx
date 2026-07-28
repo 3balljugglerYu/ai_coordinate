@@ -57,7 +57,6 @@ interface FormState {
   badgeTextColor: string;
   skipBasePrefix: boolean;
   allowGuestGeneration: boolean;
-  showOutputAspectRatioControl: boolean;
   defaultImageInputMode: "single" | "dual";
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string;
@@ -161,8 +160,6 @@ function toFormState(
     badgeTextColor: initial?.badgeTextColor ?? "#ffffff",
     skipBasePrefix: initial?.skipBasePrefix ?? false,
     allowGuestGeneration: initial?.allowGuestGeneration ?? false,
-    showOutputAspectRatioControl:
-      initial?.showOutputAspectRatioControl ?? false,
     defaultImageInputMode: initial?.defaultImageInputMode ?? "single",
     outputAspectRatioMode: initial?.outputAspectRatioMode ?? "source",
     userGuidanceJa: initial?.userGuidanceJa ?? "",
@@ -654,7 +651,6 @@ export function AdminPresetCategoryFormClient({
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
               allow_guest_generation: form.allowGuestGeneration,
-              show_output_aspect_ratio_control: form.showOutputAspectRatioControl,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
@@ -722,7 +718,6 @@ export function AdminPresetCategoryFormClient({
               badge_text_color: form.badgeTextColor,
               skip_base_prefix: form.skipBasePrefix,
               allow_guest_generation: form.allowGuestGeneration,
-              show_output_aspect_ratio_control: form.showOutputAspectRatioControl,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
@@ -974,17 +969,12 @@ export function AdminPresetCategoryFormClient({
           <AspectRatioCardSelector
             modes={STYLE_OUTPUT_ASPECT_RATIO_MODES}
             value={form.outputAspectRatioMode}
-            onChange={(next) => {
-              const mode = next as StyleOutputAspectRatioMode;
-              // 「ユーザーが決める」を選んだら、ユーザー画面に比率セレクタを出さないと
-              // 設定が意味を持たないため、表示項目のチェックを自動で ON にする。
-              setForm((prev) => ({
-                ...prev,
-                outputAspectRatioMode: mode,
-                showOutputAspectRatioControl:
-                  mode === "user_select" ? true : prev.showOutputAspectRatioControl,
-              }));
-            }}
+            onChange={(next) =>
+              update(
+                "outputAspectRatioMode",
+                next as StyleOutputAspectRatioMode,
+              )
+            }
             labels={{
               sectionTitle: "出力比率",
               auto: "自動",
@@ -1154,22 +1144,27 @@ export function AdminPresetCategoryFormClient({
           </span>
         </label>
 
+        {/*
+          出力比率セレクタの表示可否は「出力比率」の設定から一意に決まるため、
+          独立した設定値としては持たない(二重管理による不整合を防ぐ)。
+          ここでは状態が一目で分かるように読み取り専用で表示する。
+        */}
         <label className="flex items-start gap-3">
           <input
             type="checkbox"
-            checked={form.showOutputAspectRatioControl}
-            onChange={(e) =>
-              update("showOutputAspectRatioControl", e.target.checked)
-            }
+            checked={form.outputAspectRatioMode === "user_select"}
+            readOnly
+            disabled
+            aria-describedby="output-aspect-control-hint"
             className="mt-1"
           />
           <span className="text-sm text-slate-700">
             <span className="font-medium">出力比率を表示</span>
             <br />
-            <span className="text-xs text-slate-500">
-              ON にすると /style の生成画面に出力比率セレクタが出て、ユーザーが比率を選べます
-              (じゆうモードと同じUI)。上の「出力比率」で「ユーザーが決める」を選ぶと自動で ON になります。
-              OFF の場合はカテゴリの設定値で固定されます。
+            <span id="output-aspect-control-hint" className="text-xs text-slate-500">
+              上の「出力比率」で「ユーザーが決める」を選んだときだけ自動で ON になります
+              (ここでは切り替えできません)。ON のとき /style の生成画面に比率セレクタが出て、
+              ユーザーが比率を選べます(じゆうモードと同じUI)。それ以外はカテゴリの設定値で固定されます。
             </span>
           </span>
         </label>

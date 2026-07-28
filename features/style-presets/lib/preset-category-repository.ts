@@ -35,7 +35,6 @@ export interface PresetCategoryRow {
   badge_text_color: string;
   skip_base_prefix: boolean;
   allow_guest_generation: boolean;
-  show_output_aspect_ratio_control: boolean;
   default_image_input_mode: PresetCategoryImageInputMode;
   output_aspect_ratio_mode?: StyleOutputAspectRatioMode | null;
   user_guidance_ja?: string | null;
@@ -102,8 +101,6 @@ export interface PresetCategoryAdmin {
   skipBasePrefix: boolean;
   /** true のとき未ログインでも生成可(ゲスト1日1回)。既定 false。 */
   allowGuestGeneration: boolean;
-  /** true のとき生成画面に出力比率セレクタを表示する。既定 false。 */
-  showOutputAspectRatioControl: boolean;
   defaultImageInputMode: PresetCategoryImageInputMode;
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string | null;
@@ -173,7 +170,6 @@ export interface PresetCategoryInsert {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   allowGuestGeneration?: boolean;
-  showOutputAspectRatioControl?: boolean;
   defaultImageInputMode?: PresetCategoryImageInputMode;
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
@@ -234,7 +230,6 @@ export interface PresetCategoryUpdate {
   badgeTextColor?: string;
   skipBasePrefix?: boolean;
   allowGuestGeneration?: boolean;
-  showOutputAspectRatioControl?: boolean;
   defaultImageInputMode?: PresetCategoryImageInputMode;
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
@@ -308,7 +303,6 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     badgeTextColor: row.badge_text_color,
     skipBasePrefix: row.skip_base_prefix,
     allowGuestGeneration: row.allow_guest_generation ?? false,
-    showOutputAspectRatioControl: row.show_output_aspect_ratio_control ?? false,
     defaultImageInputMode: row.default_image_input_mode,
     outputAspectRatioMode: normalizeStyleOutputAspectRatioMode(
       row.output_aspect_ratio_mode,
@@ -458,7 +452,6 @@ export async function createPresetCategory(
       badge_text_color: input.badgeTextColor ?? "#ffffff",
       skip_base_prefix: input.skipBasePrefix ?? false,
       allow_guest_generation: input.allowGuestGeneration ?? false,
-      show_output_aspect_ratio_control: input.showOutputAspectRatioControl ?? false,
       default_image_input_mode: input.defaultImageInputMode ?? "single",
       output_aspect_ratio_mode: input.outputAspectRatioMode ?? "source",
       user_guidance_ja: input.userGuidanceJa ?? null,
@@ -541,8 +534,6 @@ export async function updatePresetCategory(
   if (input.skipBasePrefix !== undefined) payload.skip_base_prefix = input.skipBasePrefix;
   if (input.allowGuestGeneration !== undefined)
     payload.allow_guest_generation = input.allowGuestGeneration;
-  if (input.showOutputAspectRatioControl !== undefined)
-    payload.show_output_aspect_ratio_control = input.showOutputAspectRatioControl;
   if (input.defaultImageInputMode !== undefined)
     payload.default_image_input_mode = input.defaultImageInputMode;
   if (input.outputAspectRatioMode !== undefined)
