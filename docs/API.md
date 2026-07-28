@@ -692,8 +692,10 @@ Main errors:
 | POST | `/api/admin/materials-images/[slug]/reorder` | admin session | フリー素材画像の表示順を更新する |
 | GET | `/api/admin/materials-images/[slug]` | admin session | フリー素材画像一覧を取得する |
 | POST | `/api/admin/materials-images/[slug]` | admin session | フリー素材画像を追加する |
-| POST | `/api/admin/moderation/posts/[postId]/decision` | admin session | 投稿モデレーションの判定を確定する |
+| POST | `/api/admin/moderation/posts/[postId]/decision` | admin session | 投稿モデレーションの判定を確定する。reject は `policyCode` と `authorFacingReason` が必須、`idempotencyKey`(UUID) も必須。`internalNote` は任意で投稿者には返さない。対象が審査待ちでなければ 409 |
 | GET | `/api/admin/moderation/posts` | admin session | 審査キューを取得する |
+| GET | `/api/admin/moderation/appeals` | admin session | 審査待ちの異議申立てを取得する。他運営の user id は返さず `is_original_decider` の真偽値のみ返す |
+| POST | `/api/admin/moderation/appeals/[appealId]/decision` | admin session | 異議申立てを判定する。`action` は `uphold`(棄却・`removed` のまま) / `overturn`(認容・`visible` へ復帰)。`note` 必須。元判定者と同一なら `independenceExceptionReason` 必須で 400。対象が現在有効な公開停止でなければ 409 |
 | GET | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を取得する |
 | PATCH | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を更新する |
 | GET | `/api/admin/reports/aggregated` | admin session | 通報集計結果を取得する |
@@ -828,7 +830,8 @@ POST `/api/comments/[id]/replies` の request body は `{ "content": string, "re
 
 | Method | Path | Access | Summary |
 | --- | --- | --- | --- |
-| POST | `/api/reports/posts` | user session | 投稿を通報し、審査待ち判定メトリクスを更新する |
+| POST | `/api/reports/posts` | user session | 投稿を通報し、審査待ち判定メトリクスを更新する。pending 化は service_role クライアント経由 |
+| POST | `/api/moderation/appeals` | user session | 公開停止判定に対して異議を申し立てる。対象は投稿ではなく判定 ID(`moderationDecisionId`)。`appellant_id` はサーバー側セッションから解決し、作成は `create_post_moderation_appeal` RPC が行う。重複・期限切れ・対象外は 409、他人の判定は 404 |
 
 ### revalidate
 

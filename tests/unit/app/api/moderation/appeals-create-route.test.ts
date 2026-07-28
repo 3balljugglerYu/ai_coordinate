@@ -28,7 +28,7 @@ jest.mock("@/lib/api/route-locale", () => ({
 
 jest.mock("@/features/moderation/lib/appeal-repository", () => ({
   resolveAppealPreconditions: jest.fn(),
-  insertAppealAsOwner: jest.fn(),
+  createAppealAsOwner: jest.fn(),
 }));
 
 import { NextRequest } from "next/server";
@@ -36,7 +36,7 @@ import { POST } from "@/app/api/moderation/appeals/route";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  insertAppealAsOwner,
+  createAppealAsOwner,
   resolveAppealPreconditions,
 } from "@/features/moderation/lib/appeal-repository";
 
@@ -47,7 +47,7 @@ const mockCreateAdminClient = createAdminClient as jest.MockedFunction<
 const mockResolve = resolveAppealPreconditions as jest.MockedFunction<
   typeof resolveAppealPreconditions
 >;
-const mockInsert = insertAppealAsOwner as jest.MockedFunction<typeof insertAppealAsOwner>;
+const mockCreate = createAppealAsOwner as jest.MockedFunction<typeof createAppealAsOwner>;
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const OTHER_USER_ID = "99999999-9999-4999-8999-999999999999";
@@ -103,7 +103,7 @@ describe("POST /api/moderation/appeals", () => {
   it("appellant_id はセッション由来で、ボディの値は無視される", async () => {
     mockSession({ id: USER_ID });
     mockResolve.mockResolvedValue({ ok: true, postId: POST_ID, deadline: null });
-    mockInsert.mockResolvedValue({ ok: true, appealId: APPEAL_ID });
+    mockCreate.mockResolvedValue({ ok: true, appealId: APPEAL_ID });
 
     const response = await POST(
       request({
@@ -115,15 +115,16 @@ describe("POST /api/moderation/appeals", () => {
     );
 
     expect(response.status).toBe(200);
-    // セッションの user id が使われること
+    // 事前チェックはセッションの user id で行う
     expect(mockResolve).toHaveBeenCalledWith(DECISION_ID, USER_ID, expect.anything());
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: USER_ID })
+    // 作成は RPC 経由。appellant_id はクライアントから渡さず、DB 側で
+    // auth.uid() から決定される（レビュー指摘 [P1] 対応）
+    const createArgs = mockCreate.mock.calls[0]?.[0];
+    expect(createArgs).toEqual(
+      expect.objectContaining({ decisionId: DECISION_ID, body: "本文" })
     );
-    // ボディで渡した他人の ID は使われない
-    expect(mockInsert).not.toHaveBeenCalledWith(
-      expect.objectContaining({ userId: OTHER_USER_ID })
-    );
+    // ボディで渡した他人の ID がどこにも混入しないこと
+    expect(JSON.stringify(createArgs ?? {})).not.toContain(OTHER_USER_ID);
   });
 
   it("他人の判定は 404（存在しない扱い）", async () => {
@@ -134,7 +135,7 @@ describe("POST /api/moderation/appeals", () => {
       request({ moderationDecisionId: DECISION_ID, body: "本文" })
     );
     expect(response.status).toBe(404);
-    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockCreate).not.toHaveBeenCalled();
   });
 
   it("重複申立ては 409", async () => {
@@ -171,10 +172,10 @@ describe("POST /api/moderation/appeals", () => {
     expect(payload.errorCode).toBe("APPEAL_NOT_APPLICABLE");
   });
 
-  it("INSERT 時の重複も 409 に落とす（競合時の保険）", async () => {
+  it("RPC 側で重複を検出した場合も 409 に落とす（競合時の保険）", async () => {
     mockSession({ id: USER_ID });
     mockResolve.mockResolvedValue({ ok: true, postId: POST_ID, deadline: null });
-    mockInsert.mockResolvedValue({ ok: false, duplicate: true });
+    mockCreate.mockResolvedValue({ ok: false, reason: "duplicate" });
 
     const response = await POST(
       request({ moderationDecisionId: DECISION_ID, body: "本文" })
@@ -182,10 +183,10 @@ describe("POST /api/moderation/appeals", () => {
     expect(response.status).toBe(409);
   });
 
-  it("INSERT がその他の理由で失敗したら 500", async () => {
+  it("RPC がその他の理由で失敗したら 500", async () => {
     mockSession({ id: USER_ID });
     mockResolve.mockResolvedValue({ ok: true, postId: POST_ID, deadline: null });
-    mockInsert.mockResolvedValue({ ok: false, duplicate: false });
+    mockCreate.mockResolvedValue({ ok: false, reason: "unknown" });
 
     const response = await POST(
       request({ moderationDecisionId: DECISION_ID, body: "本文" })
@@ -197,7 +198,7 @@ describe("POST /api/moderation/appeals", () => {
     const deadline = "2026-08-11T00:00:00.000Z";
     mockSession({ id: USER_ID });
     mockResolve.mockResolvedValue({ ok: true, postId: POST_ID, deadline });
-    mockInsert.mockResolvedValue({ ok: true, appealId: APPEAL_ID });
+    mockCreate.mockResolvedValue({ ok: true, appealId: APPEAL_ID });
 
     const response = await POST(
       request({ moderationDecisionId: DECISION_ID, body: "本文" })

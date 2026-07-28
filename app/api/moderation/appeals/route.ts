@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createAppealSchema } from "@/features/moderation/lib/schemas";
 import {
-  insertAppealAsOwner,
+  createAppealAsOwner,
   resolveAppealPreconditions,
 } from "@/features/moderation/lib/appeal-repository";
 import { jsonError } from "@/lib/api/json-error";
@@ -60,6 +60,7 @@ export async function POST(request: NextRequest) {
         case "expired":
           return jsonError(copy.appealDeadlinePassed, "APPEAL_DEADLINE_PASSED", 409);
         case "not_removed":
+        case "not_current_removal":
           return jsonError(copy.appealNotApplicable, "APPEAL_NOT_APPLICABLE", 409);
         default:
           // 他人の判定も「存在しない」として扱う（REQ-014）
@@ -67,24 +68,35 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const inserted = await insertAppealAsOwner({
-      postId: preconditions.postId,
+    // 実際の作成は SECURITY DEFINER RPC が行う。appellant_id / status /
+    // appeal_deadline_at はすべて DB 内で決定される（レビュー指摘 [P1] 対応）。
+    // 上の preconditions は UX のための事前チェックで、権限境界ではない。
+    const created = await createAppealAsOwner({
       decisionId: moderationDecisionId,
-      userId: user.id,
       body,
-      deadline: preconditions.deadline,
       sessionClientOverride: supabase,
     });
 
-    if (!inserted.ok) {
-      if (inserted.duplicate) {
-        return jsonError(copy.appealAlreadyExists, "APPEAL_ALREADY_EXISTS", 409);
+    if (!created.ok) {
+      switch (created.reason) {
+        case "duplicate":
+          return jsonError(copy.appealAlreadyExists, "APPEAL_ALREADY_EXISTS", 409);
+        case "expired":
+          return jsonError(copy.appealDeadlinePassed, "APPEAL_DEADLINE_PASSED", 409);
+        case "not_removed":
+        case "not_current_removal":
+          return jsonError(copy.appealNotApplicable, "APPEAL_NOT_APPLICABLE", 409);
+        case "invalid_body":
+          return jsonError(copy.invalidRequest, "APPEAL_INVALID_REQUEST", 400);
+        case "not_found":
+          return jsonError(copy.appealNotFound, "APPEAL_NOT_FOUND", 404);
+        default:
+          return jsonError(copy.appealCreateFailed, "APPEAL_CREATE_FAILED", 500);
       }
-      return jsonError(copy.appealCreateFailed, "APPEAL_CREATE_FAILED", 500);
     }
 
     return NextResponse.json({
-      appealId: inserted.appealId,
+      appealId: created.appealId,
       status: "pending",
       appealDeadlineAt: preconditions.deadline,
     });

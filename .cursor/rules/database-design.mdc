@@ -232,8 +232,31 @@ alwaysApply: false
 #### `moderation_audit_logs`
 - 主キー: `id`
 - 主要カラム: `post_id`, `actor_id`, `action`, `reason`, `metadata`, `created_at`
+- 投稿者開示用カラム: `policy_code`, `policy_version`, `policy_anchor`, `author_facing_reason`, `restriction_scope`, `restriction_duration`, `decision_source`, `automated_means_used`
+- 運営内部専用カラム: `internal_note`
 - 外部キー: `post_id -> generated_images.id`, `actor_id -> auth.users.id`
-- RLS: `authenticated` ロールに `SELECT/INSERT` を許可
+- RLS: **policy なし（service_role と SECURITY DEFINER 関数のみ）**。旧 `authenticated` への `SELECT/INSERT` 開放は撤去済み
+- 注意: `action='pending_auto'` の行の `actor_id` は**通報したユーザー本人**。`metadata` には通報件数・加重スコアが入る。投稿者向けの経路で `actor_id` / `metadata` / `internal_note` を射影してはならない
+- 一意制約: `metadata->>'idempotency_key'` に `action IN ('approve','reject')` 限定の部分 UNIQUE index
+
+#### `moderation_notification_outbox`
+- 主キー: `id`
+- 主要カラム: `event_key`(UNIQUE), `moderation_decision_id`, `appeal_id`, `recipient_id`, `notification_type`, `entity_id`, `payload`, `delivery_status`, `attempt_count`, `last_error`, `available_at`, `delivered_at`, `created_at`
+- 外部キー: `moderation_decision_id -> moderation_audit_logs.id`, `appeal_id -> post_moderation_appeals.id`(SET NULL), `recipient_id -> auth.users.id`
+- RLS: policy なし。`PUBLIC`/`anon`/`authenticated` から全権限を REVOKE
+- 用途: モデレーション通知の transactional outbox。判定と同一トランザクションで記録し、`dispatch_moderation_notification_outbox` が冪等に配送する
+- `payload` には投稿者に開示してよい項目のみを入れる（`internal_note`・通報件数・通報者情報は入れない）
+
+#### `post_moderation_appeals`
+- 主キー: `id`
+- 主要カラム: `post_id`, `removal_decision_id`, `appellant_id`, `body`, `status`, `decision_note`, `decided_by`, `decided_at`, `independence_exception_reason`, `appeal_deadline_at`, `created_at`
+- 外部キー: `post_id -> generated_images.id`, `removal_decision_id -> moderation_audit_logs.id`, `appellant_id -> auth.users.id`, `decided_by -> auth.users.id`(SET NULL)
+- 一意制約: `UNIQUE (removal_decision_id, appellant_id)`（投稿単位ではなく**削除判定単位**。同じ投稿が後日別の理由で再度公開停止された場合は再申立て可能）
+- CHECK: `status IN ('pending','upheld','overturned')` / pending は判定3項目が NULL・判定済みは NOT NULL / `body` は trim 後 1〜1000 字
+- `status` の意味: `upheld` = 棄却（`removed` のまま）、`overturned` = 認容（`visible` へ復帰）
+- RLS: SELECT は `auth.uid() = appellant_id` のみ。**INSERT ポリシーは無い**（作成は `create_post_moderation_appeal` RPC 経由）。UPDATE/DELETE ポリシーも無い
+- 列 GRANT: `authenticated` には `decided_by` と `independence_exception_reason` を**与えない**（判定した運営の個人情報を投稿者へ露出させないため）
+- guard trigger: `enforce_post_moderation_appeal_target` が「pending での作成」「対象が自分の投稿の reject 判定」「投稿が現在 removed」「**現在有効な最新の削除判定**」を強制する
 
 #### `admin_users`
 - 主キー: `user_id`
@@ -434,6 +457,10 @@ alwaysApply: false
 - `idx_follows_followee_id`, `idx_follows_follower_id`
 - `idx_referrals_created_at`, `idx_referrals_referral_code`, `idx_referrals_referred_id`, `idx_referrals_referrer_id`
 - `idx_post_reports_post_id_created_at`, `idx_post_reports_reporter_id_created_at`
+- `idx_moderation_audit_logs_post_action_created`, `uq_moderation_audit_idempotency_key`(部分)
+- `idx_moderation_outbox_pending`(部分), `idx_moderation_outbox_decision`
+- `idx_post_moderation_appeals_status_created`, `idx_post_moderation_appeals_appellant_created`
+- `uq_notifications_moderation_event_key`(部分)
 - `idx_user_blocks_blocked_id_created_at`, `idx_user_blocks_blocker_id_created_at`
 - `idx_profiles_deletion_scheduled_at`
 - `idx_banners_public_list`
@@ -480,7 +507,7 @@ alwaysApply: false
 - 通知: `create_notification`
 - コメント削除: `delete_comment_thread`（親に返信が残る場合は tombstone 化し、最後の返信が消えた時点で tombstone 親も物理削除）
 - 退会: `request_account_deletion`, `cancel_account_deletion`, `record_forfeiture_ledger`, `get_due_deletion_candidates`
-- モデレーション: `mark_post_pending_by_report`, `apply_admin_moderation_decision`
+- モデレーション: `mark_post_pending_by_report`(service_role 専用), `apply_admin_moderation_decision`(旧版・権限のみ是正), `apply_admin_moderation_decision_v2`, `dispatch_moderation_notification_outbox`, `create_post_moderation_appeal`(authenticated から実行), `decide_post_moderation_appeal`, `current_post_removal_decision_id`
 - 絵師カタログ: `apply_catalog_entry_decision`
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`, `complete_image_job_with_generated_images`
 

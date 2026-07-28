@@ -122,6 +122,22 @@ export async function POST(
           { status: 400 }
         );
       }
+      // 申立て対象が現在有効な公開停止でない場合（申立てが pending の間に投稿が
+      // 復帰し、別理由で再度公開停止された等）。認容すると別の判定を解除して
+      // しまうため、RPC が変更せずに例外を出す（REQ-009 / REQ-011）。
+      if (
+        typeof rpcError.message === "string" &&
+        rpcError.message.includes("appeal_target_not_current_removal")
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "この申立ての対象は、現在有効な公開停止ではありません。投稿の最新の判定を確認してください",
+            errorCode: "APPEAL_TARGET_NOT_CURRENT_REMOVAL",
+          },
+          { status: 409 }
+        );
+      }
       return NextResponse.json({ error: "異議申立ての判定に失敗しました" }, { status: 500 });
     }
 

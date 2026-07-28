@@ -21,8 +21,8 @@ jest.mock("@/lib/supabase/server", () => ({
 
 import {
   APPEAL_WINDOW_DAYS,
+  createAppealAsOwner,
   getCurrentRemovalDecisionId,
-  insertAppealAsOwner,
   listPendingAppealsForAdmin,
   resolveAppealPreconditions,
 } from "@/features/moderation/lib/appeal-repository";
@@ -322,55 +322,90 @@ describe("listPendingAppealsForAdmin", () => {
   });
 });
 
-describe("insertAppealAsOwner", () => {
-  it("作成できれば appealId を返す", async () => {
-    const client = createChain({
-      post_moderation_appeals: { data: { id: APPEAL_ID }, error: null },
-    });
+describe("createAppealAsOwner", () => {
+  /**
+   * レビュー指摘 [P1] 対応で、直接 INSERT から SECURITY DEFINER RPC 経由に変更した。
+   * RLS の WITH CHECK だけでは status='overturned' や任意の appeal_deadline_at を
+   * PostgREST から書き込めてしまうため。
+   */
+  function rpcClient(result: { data: unknown; error: unknown }) {
+    return { rpc: jest.fn(async () => result) };
+  }
 
-    const result = await insertAppealAsOwner({
-      postId: POST_ID,
+  it("RPC 経由で作成し appealId を返す", async () => {
+    const client = rpcClient({ data: APPEAL_ID, error: null });
+
+    const result = await createAppealAsOwner({
       decisionId: DECISION_ID,
-      userId: OWNER_ID,
       body: "誤判定です",
-      deadline: null,
       sessionClientOverride: client as never,
     });
 
     expect(result).toEqual({ ok: true, appealId: APPEAL_ID });
+    // 直接 INSERT ではなく RPC を呼ぶこと。post_id / appellant_id / status /
+    // appeal_deadline_at はクライアントから渡さない（DB 側で決定する）
+    expect(client.rpc).toHaveBeenCalledWith("create_post_moderation_appeal", {
+      p_decision_id: DECISION_ID,
+      p_body: "誤判定です",
+    });
   });
 
-  it("unique 違反(23505)は duplicate として返す", async () => {
-    const client = createChain({
-      post_moderation_appeals: { data: null, error: { code: "23505" } },
+  it("unique 違反は duplicate として分類する", async () => {
+    const client = rpcClient({
+      data: null,
+      error: { code: "23505", message: "duplicate key value" },
     });
 
-    const result = await insertAppealAsOwner({
-      postId: POST_ID,
+    const result = await createAppealAsOwner({
       decisionId: DECISION_ID,
-      userId: OWNER_ID,
       body: "本文",
-      deadline: null,
       sessionClientOverride: client as never,
     });
 
-    expect(result).toEqual({ ok: false, duplicate: true });
+    expect(result).toEqual({ ok: false, reason: "duplicate" });
   });
 
-  it("その他のエラーは duplicate=false で返す", async () => {
-    const client = createChain({
-      post_moderation_appeals: { data: null, error: { code: "42501" } },
-    });
+  it("RPC の各例外を対応する理由に分類する", async () => {
+    const cases: Array<[string, string]> = [
+      ["appeal_decision_not_found", "not_found"],
+      ["appeal_post_not_removed", "not_removed"],
+      ["appeal_deadline_passed", "expired"],
+      ["appeal_target_not_current_removal", "not_current_removal"],
+      ["appeal_body_invalid_length", "invalid_body"],
+    ];
 
-    const result = await insertAppealAsOwner({
-      postId: POST_ID,
+    for (const [message, expected] of cases) {
+      const client = rpcClient({ data: null, error: { message } });
+      const result = await createAppealAsOwner({
+        decisionId: DECISION_ID,
+        body: "本文",
+        sessionClientOverride: client as never,
+      });
+      expect(result).toEqual({ ok: false, reason: expected });
+    }
+  });
+
+  it("未知のエラーは unknown として返す", async () => {
+    const client = rpcClient({ data: null, error: { message: "boom" } });
+
+    const result = await createAppealAsOwner({
       decisionId: DECISION_ID,
-      userId: OWNER_ID,
       body: "本文",
-      deadline: null,
       sessionClientOverride: client as never,
     });
 
-    expect(result).toEqual({ ok: false, duplicate: false });
+    expect(result).toEqual({ ok: false, reason: "unknown" });
+  });
+
+  it("RPC が値を返さなければ unknown", async () => {
+    const client = rpcClient({ data: null, error: null });
+
+    const result = await createAppealAsOwner({
+      decisionId: DECISION_ID,
+      body: "本文",
+      sessionClientOverride: client as never,
+    });
+
+    expect(result).toEqual({ ok: false, reason: "unknown" });
   });
 });

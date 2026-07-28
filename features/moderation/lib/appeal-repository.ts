@@ -255,13 +255,29 @@ export async function getCurrentRemovalDecisionId(
  * 異議申立て作成時の前提を検証し、期限のスナップショットを返す。
  * DB 側にも guard trigger があるが、API で 4xx を返すためここでも確認する。
  */
+/**
+ * 異議申立ての前提を検証する。
+ *
+ * **これは UX のための事前チェックであり、権限境界ではない。** 実際の強制は
+ * `create_post_moderation_appeal` RPC と guard trigger が DB 内で行う
+ * (レビュー指摘 [P1] 対応)。ここでの検証は、RPC を呼ぶ前に適切な 4xx と
+ * 文言を返すためのもの。
+ */
 export async function resolveAppealPreconditions(
   decisionId: string,
   userId: string,
   adminClientOverride?: ReturnType<typeof createAdminClient>
 ): Promise<
   | { ok: true; postId: string; deadline: string | null }
-  | { ok: false; reason: "not_found" | "already_exists" | "expired" | "not_removed" }
+  | {
+      ok: false;
+      reason:
+        | "not_found"
+        | "already_exists"
+        | "expired"
+        | "not_removed"
+        | "not_current_removal";
+    }
 > {
   const adminClient = adminClientOverride ?? createAdminClient();
   const detail = await getModerationDecisionForOwner(decisionId, userId, {
@@ -282,6 +298,17 @@ export async function resolveAppealPreconditions(
     Date.now() > new Date(detail.appealDeadlineAt).getTime()
   ) {
     return { ok: false, reason: "expired" };
+  }
+
+  // 現在有効な削除判定に対してのみ申し立てられる (REQ-009)。
+  // 古い判定への申立てを認めると、その認容が新しい公開停止まで解除してしまう。
+  const currentDecisionId = await getCurrentRemovalDecisionId(
+    detail.decision.post_id,
+    userId,
+    adminClient
+  );
+  if (currentDecisionId !== decisionId) {
+    return { ok: false, reason: "not_current_removal" };
   }
 
   return {
@@ -365,41 +392,67 @@ export async function listPendingAppealsForAdmin(
   });
 }
 
-/** セッションクライアントで異議申立てを作成する（RLS の appellant_id 一致を利用）。 */
-export async function insertAppealAsOwner(params: {
-  postId: string;
+/** `create_post_moderation_appeal` RPC が返しうる失敗理由。 */
+export type AppealCreateFailure =
+  | "duplicate"
+  | "not_found"
+  | "not_removed"
+  | "expired"
+  | "not_current_removal"
+  | "invalid_body"
+  | "unknown";
+
+function classifyAppealCreateError(message: string): AppealCreateFailure {
+  if (message.includes("23505") || message.includes("duplicate key")) return "duplicate";
+  if (message.includes("appeal_decision_not_found")) return "not_found";
+  if (message.includes("appeal_post_not_removed")) return "not_removed";
+  if (message.includes("appeal_deadline_passed")) return "expired";
+  if (message.includes("appeal_target_not_current_removal")) return "not_current_removal";
+  if (message.includes("appeal_body_invalid_length")) return "invalid_body";
+  return "unknown";
+}
+
+/**
+ * 異議申立てを作成する。
+ *
+ * レビュー指摘 [P1] 対応: 直接 INSERT ではなく `create_post_moderation_appeal`
+ * RPC 経由にする。RLS の `WITH CHECK (auth.uid() = appellant_id)` だけでは
+ * `status='overturned'` や任意の `appeal_deadline_at` / 長大な `body` を
+ * PostgREST から直接書き込めてしまうため、INSERT ポリシーは撤去済み。
+ *
+ * `appellant_id` / `status` / `appeal_deadline_at` / `post_id` はすべて DB 内で
+ * 決定される。対象が「現在有効な削除判定」であることも DB が検証する。
+ *
+ * RPC はセッションクライアントから呼ぶ（`auth.uid()` を使うため service_role では
+ * NULL になり `appeal_auth_required` で弾かれる）。
+ */
+export async function createAppealAsOwner(params: {
   decisionId: string;
-  userId: string;
   body: string;
-  deadline: string | null;
   sessionClientOverride?: Awaited<ReturnType<typeof createClient>>;
-}): Promise<{ ok: true; appealId: string } | { ok: false; duplicate: boolean }> {
+}): Promise<
+  { ok: true; appealId: string } | { ok: false; reason: AppealCreateFailure }
+> {
   const supabase = params.sessionClientOverride ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("post_moderation_appeals")
-    .insert({
-      post_id: params.postId,
-      removal_decision_id: params.decisionId,
-      appellant_id: params.userId,
-      body: params.body,
-      appeal_deadline_at: params.deadline,
-    })
-    .select("id")
-    .maybeSingle<{ id: string }>();
+  const { data, error } = await supabase.rpc("create_post_moderation_appeal", {
+    p_decision_id: params.decisionId,
+    p_body: params.body,
+  });
 
   if (error) {
-    // 23505 = unique_violation（同じ判定への重複申立て）
-    const duplicate = error.code === "23505";
-    if (!duplicate) {
-      console.error("[Moderation] appeal insert failed:", error);
+    const reason = classifyAppealCreateError(
+      `${error.code ?? ""} ${error.message ?? ""}`
+    );
+    if (reason === "unknown") {
+      console.error("[Moderation] appeal create RPC failed:", error);
     }
-    return { ok: false, duplicate };
+    return { ok: false, reason };
   }
 
   if (!data) {
-    return { ok: false, duplicate: false };
+    return { ok: false, reason: "unknown" };
   }
 
-  return { ok: true, appealId: data.id };
+  return { ok: true, appealId: data as string };
 }
