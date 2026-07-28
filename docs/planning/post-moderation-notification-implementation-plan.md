@@ -11,21 +11,32 @@
 
 | 論点 | 結論 |
 | --- | --- |
-| 日本 情プラ法（2025/4/1施行） | 第27条で削除時に「その事実と理由」を発信者へ通知、または発信者が容易に知り得る状態に置く義務。ただし対象は大規模特定電気通信役務提供者（登録型で平均月間発信者数1000万人以上）。**Persta.AI は対象外＝法的義務なし** |
+| 日本 情プラ法（2025/4/1施行） | 第27条で削除時に「その事実と理由」を発信者へ通知、または発信者が容易に知り得る状態に置く義務。ただし対象は総務大臣が指定した大規模特定電気通信役務提供者。指定基準には平均月間発信者数等1,000万人超に加え、平均月間延べ発信者数200万人超の基準もある。**現時点で Persta.AI は指定対象外であり、第27条の直接の法的義務はない** |
 | 情プラ法 第26条 | 削除基準の策定・公表義務。コミュニティガイドラインで実質達成済み |
-| EU DSA 第17条 | ホスティングサービス提供者**全般**に適用（micro/small 企業免除は第20〜24条のみで第17条は免除されない）。理由説明に (a)措置の種類・範囲・期間 (b)依拠した事実 (c)自動化手段の使用 (d)法的根拠 (e)契約上の根拠 (f)救済手段 を含めることを要求。対象措置に「可視性の制限」を含む |
+| EU DSA 第17条 | EU 域内でサービスを提供するホスティングサービス提供者に適用（micro/small 企業免除は Section 3 が対象で、Section 2 の第17条は免除されない）。ただし **EU から技術的にアクセス可能なだけでは足りず**、EU 域内の相当数の利用者または EU 向け活動等の「EU との実質的な結び付き」が必要。理由説明に (a)措置の種類・範囲・期間 (b)依拠した事実 (c)自動化手段の使用 (d)法的根拠 (e)契約上の根拠 (f)救済手段 を含めることを要求し、「可視性の制限」も対象 |
 | TikTok | 通知に「投稿日 + 違反した具体的ポリシー + ガイドラインへのリンク + 異議申立てボタン」。導入後**異議申立て要求が14%減少**、ガイドライン閲覧が約3倍、再違反率も低下 |
 | Meta | フィード内通知 + 違反ポリシー箇所の参照 + 「なぜ禁止か」の短い説明 + 再審査請求。strike system で累積管理 |
 | Santa Clara Principles | 異議申立ての最低基準は「元の判断に関与していない人による人的レビュー」「追加情報を提出する機会」「結果の通知と理解可能な理由の説明」 |
 
 **設計上の主要な示唆**: 丁寧な通知は運営のサポート負荷を増やすのではなく減らす（TikTok 実測）。無言削除は問い合わせと不信を生む側にある。
 
+一次資料:
+
+- [情プラ法（e-Gov 法令検索）](https://laws.e-gov.go.jp/law/413AC0000000137/)
+- [情プラ法施行規則（e-Gov 法令検索）](https://laws.e-gov.go.jp/law/504M60000008039)
+- [EU Digital Services Act（EUR-Lex）](https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32022R2065)
+- [Santa Clara Principles](https://santaclaraprinciples.org/)
+- [TikTok「コンテンツ削除に関する透明性を強化する新機能を追加」](https://newsroom.tiktok.com/ja-jp/add-clarity-to-content-removals)
+
 ### 今回の決定事項（ヒアリング結果）
 
 - スコープ: **通知 ＋ 異議申立て導線**（strike 管理は対象外）
 - 通知タイミング: **reject のみ**（approve 復帰時・pending 化時は通知しない）
-- removed の生成ギャラリー表示: **「削除済み」バッジを付けて残す**
+- removed の生成ギャラリー表示: **「削除済み」の tombstone カードを残す**。重大カテゴリはサムネイルを再表示しない
 - 通知チャネル: **アプリ内通知のみ**（メール・プッシュは対象外）
+- 通知配送: 判定 API からの直 INSERT ではなく、**判定と同一トランザクションで outbox に記録し、冪等な dispatcher で通知化する**
+- 異議申立ての単位: 投稿単位ではなく、**個々の削除判定（`moderation_audit_logs.id`）単位**
+- リリースゲート: EU との実質的な結び付きがあるかをリリース前に法務・事業側で確認する。DSA 適用と判断した場合は ADR-006 を再検討し、pending 時点の理由通知を本リリースの必須スコープへ切り替える
 
 ---
 
@@ -36,27 +47,27 @@
 | 要素 | 実体 | 備考 |
 | --- | --- | --- |
 | 判定 API | `app/api/admin/moderation/posts/[postId]/decision/route.ts` | `requireAdmin()` → RPC → `logAdminAction()`。**`revalidateTag` を呼んでいない** |
-| 判定 RPC | `apply_admin_moderation_decision`（`supabase/migrations/20260209094500_...sql`） | status・reason・approved_at 更新 + `moderation_audit_logs` 挿入を atomic に実行。SECURITY DEFINER |
+| 判定 RPC | `apply_admin_moderation_decision`（`supabase/migrations/20260209094500_...sql`） | status・reason・approved_at 更新 + `moderation_audit_logs` 挿入を atomic に実行。SECURITY DEFINER。ただし現状は `authenticated` に実行権限があり、呼出者指定の `p_actor_id` を DB 内で admin 検証していないため、本計画で v2 化・権限是正が必要 |
 | 審査キュー API | `app/api/admin/moderation/posts/route.ts` | `moderation_status = 'pending'` を `moderation_updated_at` 降順で返す |
 | 審査キュー UI | `app/(app)/admin/moderation/ModerationQueueClient.tsx` | 判定後はキュー再取得のみ。`router.refresh()` なし |
 | 審査キュー ページ | `app/(app)/admin/moderation/page.tsx` | ページ認証は `getUser()` + `getAdminUserIds()`（API は `requireAdmin()`）。用途で異なるので踏襲する |
 | 決定スキーマ | `features/moderation/lib/schemas.ts:32` | `action: "approve" \| "reject"`, `reason: string.max(300).optional()` |
-| 通報タクソノミ | `constants/report-taxonomy.ts` | `rights / sexual / violence / harassment / danger / spam_fraud / other` の7カテゴリ + サブカテゴリ。**違反ポリシーの参照にそのまま再利用できる** |
-| 監査ログ | `moderation_audit_logs`（`action IN ('pending_auto','approve','reject')`） | `metadata JSONB` あり |
+| 通報タクソノミ | `constants/report-taxonomy.ts` | `rights / sexual / violence / harassment / danger / spam_fraud / other` の7カテゴリ + サブカテゴリ。通報受付の語彙として再利用するが、契約上の根拠としては粗いため、版管理されたガイドライン条項とのマッピングを追加する |
+| 監査ログ | `moderation_audit_logs`（`action IN ('pending_auto','approve','reject')`） | `metadata JSONB` あり。現状の SELECT/INSERT RLS は authenticated 全体に広すぎるため、削除理由の source of truth として使う前にアクセスを service_role 専用へ是正する |
 
 ### 通知基盤
 
 | 要素 | 実体 | 今回の影響 |
 | --- | --- | --- |
 | テーブル | `notifications`（`supabase/migrations/20251213013611_notifications.sql`） | `type` CHECK に**現在14値**、`entity_type` CHECK に `post` を含む（本番実測済み） |
-| RLS | INSERT は `WITH CHECK (false)`。SELECT/UPDATE/DELETE は本人のみ | service_role クライアント（`createAdminClient()`）は RLS をバイパスするので直 INSERT 可 |
+| RLS | INSERT は `WITH CHECK (false)`。SELECT/UPDATE/DELETE は本人のみ | service_role クライアント（`createAdminClient()`）は RLS をバイパスするが、判定と通知を分離すると欠落・重複を安全に修復できないため、本機能では outbox 経由にする |
 | 生成関数 | `create_notification`（`20251213101944_fix_notifications_security_definer.sql`） | `recipient_id = actor_id` で self-skip。`notification_preferences` は like/comment/follow のみ判定 |
 | TS 型 | `features/notifications/types.ts:5` は `'like' \| 'comment' \| 'follow' \| 'bonus'` の4値のみ | **DB の14値と既に乖離**。今回追加分は型にも追加する |
 | 表示ロジック | `features/notifications/lib/presentation.ts` の `formatNotificationContent` | `default:` で DB の `title`/`body` にフォールバックするため、**型を追加しなくても表示自体は壊れない**。i18n したい場合は `case` を追加する |
 | 遷移ロジック | `features/notifications/hooks/useNotifications.ts:425` | `entity_type === "post"` → `/posts/{entity_id}` に push。**removed な投稿は本人でも開けないため死んだリンクになる（要分岐追加）** |
 | タブ | `features/notifications/lib/notification-tab.ts` | `activity` / `announcements` の2タブ。type によるフィルタはないので activity に出る |
 
-### 参考にできる既存の「admin 判定 → 通知」実装
+### 参考にできる既存の「admin 判定 → 通知」実装と今回の差分
 
 `app/api/admin/style-templates/[id]/decision/route.ts` が最も近い。パターンは以下（`docs/architecture/data.ja.md:311` に方針として明記済み）:
 
@@ -68,6 +79,8 @@
 6. `revalidateTag()` でキャッシュ無効化
 
 Creator Looks 側（`supabase/migrations/20260603100100_...sql`）は trigger 方式（`AFTER UPDATE OF moderation_status ON user_style_templates`）だが、こちらは通知文言を DB に日本語ハードコードしている。
+
+上記はいずれも参考実装だが、投稿削除通知は異議申立ての起点となるため、同じ「RPC 後に通知を best-effort INSERT」方式は採用しない。判定・監査ログ・outbox を1トランザクションに閉じ、通知テーブルへの配送だけを再試行可能な副作用として分離する。
 
 ### 投稿者側の可視性（現状の歪み）
 
@@ -111,10 +124,11 @@ stateDiagram-v2
 flowchart TD
     A["運営が審査キューで不適切を選択"] --> B["違反ポリシーを選択し理由を入力"]
     B --> C["POST /api/admin/moderation/posts/postId/decision"]
-    C --> D["apply_admin_moderation_decision で removed 化と監査ログ"]
-    D --> E["notifications へ直 INSERT: post_moderation_removed"]
-    E --> F["revalidateTag でフィードキャッシュ無効化"]
-    F --> G["投稿者のベルに通知が出る"]
+    C --> D["apply_admin_moderation_decision_v2 で removed 化と判定ログ"]
+    D --> E["同一トランザクションで通知 outbox を作成"]
+    E --> F["dispatcher が通知を冪等に配送"]
+    F --> F2["revalidateTag でフィードキャッシュ無効化"]
+    F2 --> G["投稿者のベルに通知が出る"]
     G --> H["通知タップで異議申立て画面へ遷移"]
     H --> I{"投稿者が申立てるか"}
     I -->|申立てる| J["POST /api/moderation/appeals"]
@@ -123,8 +137,9 @@ flowchart TD
     L --> M{"運営の再審査"}
     M -->|認める| N["approve で visible に復帰"]
     M -->|棄却| O["removed のまま"]
-    N --> P["notifications: post_moderation_appeal_result"]
+    N --> P["outbox: post_moderation_appeal_result"]
     O --> P
+    P --> Q["判定後も残る異議申立て詳細画面で結果と理由を確認"]
 ```
 
 ### API 通信シーケンス
@@ -135,13 +150,16 @@ sequenceDiagram
     participant QC as ModerationQueueClient
     participant API as DecisionRoute
     participant RPC as SupabaseRPC
-    participant NT as NotificationsTable
+    participant OB as NotificationOutbox
+    participant DS as NotificationDispatcher
     participant Author as PostAuthor
     Admin->>QC: 不適切を選択しポリシーと理由を入力
     QC->>API: POST decision with action reject and policy
-    API->>RPC: apply_admin_moderation_decision
-    RPC-->>API: true
-    API->>NT: INSERT post_moderation_removed
+    API->>RPC: apply_admin_moderation_decision_v2
+    RPC->>OB: 判定イベントと同時に outbox INSERT
+    RPC-->>API: moderationDecisionId
+    API->>DS: 即時配送を best effort で要求
+    DS->>OB: SKIP LOCKED で pending を取得し通知化
     API->>API: revalidateTag home-posts など
     API-->>QC: success
     Author->>Author: ベルに未読通知
@@ -155,17 +173,35 @@ sequenceDiagram
 erDiagram
     generated_images ||--o{ post_moderation_appeals : "has"
     generated_images ||--o{ moderation_audit_logs : "has"
+    moderation_audit_logs ||--o| post_moderation_appeals : "appealed by"
+    moderation_audit_logs ||--o{ moderation_notification_outbox : "emits"
+    post_moderation_appeals ||--o{ moderation_notification_outbox : "emits"
     generated_images ||--o{ notifications : "referenced by entity_id"
     post_moderation_appeals {
         uuid id PK
         uuid post_id FK
+        uuid removal_decision_id FK
         uuid appellant_id FK
         text body
         text status
         text decision_note
         uuid decided_by FK
+        text independence_exception_reason
         timestamptz decided_at
+        timestamptz appeal_deadline_at
         timestamptz created_at
+    }
+    moderation_notification_outbox {
+        uuid id PK
+        text event_key UK
+        uuid moderation_decision_id FK
+        uuid appeal_id FK
+        uuid recipient_id FK
+        text notification_type
+        jsonb payload
+        text delivery_status
+        integer attempt_count
+        timestamptz delivered_at
     }
 ```
 
@@ -175,11 +211,11 @@ erDiagram
 
 ### 通知
 
-- **REQ-001**: When an admin rejects a post via the moderation queue, the system shall insert a `post_moderation_removed` notification addressed to the post author, containing the violated policy category, the admin-entered reason, and a link to the appeal screen.
-  管理者が審査キューで投稿を「不適切」と判定したとき、システムは投稿者宛に `post_moderation_removed` 通知を作成し、違反ポリシーカテゴリ・運営が入力した理由・異議申立て画面へのリンクを含めなければならない。
+- **REQ-001**: When an admin rejects a pending post via the moderation queue, the system shall atomically persist the removal, its moderation decision record, and one `post_moderation_removed` outbox event addressed to the post author.
+  管理者が審査キューで pending 投稿を「不適切」と判定したとき、システムは removed 化・削除判定レコード・投稿者宛 `post_moderation_removed` outbox イベント1件を同一トランザクションで保存しなければならない。
 
-- **REQ-002**: If the notification insert fails, then the system shall still return success for the moderation decision and log the failure, so that the removal itself is never rolled back by a notification error.
-  通知の INSERT が失敗した場合、システムはモデレーション判定自体は成功として返し、失敗をログに記録しなければならない（通知エラーで削除がロールバックされてはならない）。
+- **REQ-002**: If delivery from the outbox to `notifications` fails, then the system shall keep the moderation decision committed, record the attempt and error, and retry without creating duplicate notifications.
+  outbox から `notifications` への配送が失敗した場合、システムはモデレーション判定を維持し、試行回数とエラーを記録し、通知を重複させずに再試行しなければならない。
 
 - **REQ-003**: While a post is in `pending` status, the system shall not notify the author.
   投稿が `pending` の間、システムは投稿者に通知してはならない。
@@ -187,38 +223,38 @@ erDiagram
 - **REQ-004**: When an admin approves a post, the system shall not create an author-facing notification but shall invalidate the feed cache tags so the post returns to the feed without waiting for natural cache expiry.
   管理者が「問題なし」と判定したとき、システムは投稿者向け通知を作成せず、フィードのキャッシュタグを無効化して自然失効を待たずに復帰させなければならない。
 
-- **REQ-005**: Where the acting admin is the post author, the system shall skip the notification.
-  判定した管理者が投稿者本人である場合、システムは通知をスキップしなければならない。
+- **REQ-005**: Where the acting admin is also the post author, the system shall still create the mandatory system notification and shall render it without exposing the administrator's profile identity.
+  判定した管理者が投稿者本人である場合でも、システムは運営通知を省略してはならず、管理者個人のプロフィール情報を公開しない system notification として表示しなければならない。
 
 ### 異議申立て
 
-- **REQ-006**: When the author opens the appeal screen for a removed post they own, the system shall display the post thumbnail, the violated policy category, the admin reason, and a link to the community guidelines.
-  投稿者が自分の removed 投稿の異議申立て画面を開いたとき、システムは投稿サムネイル・違反ポリシーカテゴリ・運営の理由・コミュニティガイドラインへのリンクを表示しなければならない。
+- **REQ-006**: When the author opens a moderation decision page they own, the system shall display the restriction, policy clause and version, admin reason, decision source, automation involvement, available redress, and appeal status even after the post is restored.
+  投稿者が自分に属する削除判定画面を開いたとき、システムは投稿が復帰した後も、措置内容・ポリシー条項と版・運営理由・判定ソース・自動化手段の関与・救済手段・異議申立て状態を表示しなければならない。
 
-- **REQ-007**: When the author submits an appeal, the system shall create exactly one `post_moderation_appeals` row with `status = 'pending'`, resolving `appellant_id` from the server-side session.
-  投稿者が異議申立てを送信したとき、システムは `status = 'pending'` の `post_moderation_appeals` 行をちょうど1件作成し、`appellant_id` はサーバー側セッションから解決しなければならない。
+- **REQ-007**: When the author submits an appeal no later than 14 days after delivery of the removal notification, the system shall create exactly one `post_moderation_appeals` row for the referenced removal decision with `status = 'pending'`, resolving `appellant_id` from the server-side session. If delivery has not completed, the deadline shall not expire.
+  投稿者が削除通知の配送完了から14日以内に異議申立てを送信したとき、システムは対象の削除判定に対して `status = 'pending'` の `post_moderation_appeals` 行をちょうど1件作成し、`appellant_id` はサーバー側セッションから解決しなければならない。通知が未配送の間は期限切れとして扱ってはならない。
 
-- **REQ-008**: If the author has already appealed the same post, then the system shall reject the request with a duplicate error.
-  同じ投稿に既に異議申立て済みの場合、システムは重複エラーで拒否しなければならない。
+- **REQ-008**: If the author has already appealed the same removal decision, then the system shall reject the request with a duplicate error while allowing an appeal against a later independent removal decision for the same post.
+  同じ削除判定に既に異議申立て済みの場合は重複エラーで拒否しなければならないが、同じ投稿が後日別の判定で再削除された場合は新たな異議申立てを許可しなければならない。
 
-- **REQ-009**: If the target post is not owned by the requester or is not in `removed` status, then the system shall reject the appeal with a 403 or 404.
-  対象投稿が申立て者の所有でない、または `removed` でない場合、システムは 403 または 404 で拒否しなければならない。
+- **REQ-009**: If the removal decision is not for a post owned by the requester, is not the current applicable removal, or is past its appeal deadline, then the system shall reject the appeal without disclosing another user's data.
+  削除判定が申立て者所有の投稿に属さない、現在有効な削除判定でない、または申立期限を過ぎている場合、システムは他ユーザーの情報を開示せず申立てを拒否しなければならない。
 
-- **REQ-010**: When an admin decides an appeal, the system shall update the appeal row to `upheld` or `overturned`, record `decided_by` and `decided_at`, and notify the appellant with `post_moderation_appeal_result`.
-  管理者が異議申立てを判定したとき、システムは申立て行を `upheld` または `overturned` に更新し、`decided_by` と `decided_at` を記録し、`post_moderation_appeal_result` で申立て者に通知しなければならない。
+- **REQ-010**: When an admin decides an appeal, the system shall atomically update it to `upheld` or `overturned`, record a required decision note, reviewer and timestamp, and create one idempotent `post_moderation_appeal_result` outbox event.
+  管理者が異議申立てを判定したとき、システムは申立てを `upheld` または `overturned` に更新し、必須の判定理由・判定者・判定日時を記録し、冪等な `post_moderation_appeal_result` outbox イベント1件を同一トランザクションで作成しなければならない。
 
 > **用語の対応（実装時の混同防止）**: `uphold` / `upheld` は「**元の削除判定を支持する**」＝ UI 上の「**棄却する**」で、投稿は `removed` のまま。`overturn` / `overturned` は「**元の削除判定を覆す**」＝ UI 上の「**認める**」で、投稿は `visible` に復帰する。日本語の「認める」を `uphold` に対応させると挙動が逆転するため注意する。
 
-- **REQ-011**: When an appeal is overturned, the system shall restore the post to `visible` via `apply_admin_moderation_decision` and invalidate the feed cache tags.
-  異議申立てが認められたとき、システムは `apply_admin_moderation_decision` 経由で投稿を `visible` に戻し、フィードのキャッシュタグを無効化しなければならない。
+- **REQ-011**: When an appeal is overturned, the system shall restore the post to `visible` in the same transaction as the appeal decision, append an audit record, and invalidate the feed cache tags.
+  異議申立てが認められたとき、システムは異議判定と同一トランザクションで投稿を `visible` に戻して監査ログを追記し、フィードのキャッシュタグを無効化しなければならない。
 
-- **REQ-012**: While the appeal reviewer is the same admin who made the original decision, the system shall display a warning in the admin UI.
-  異議申立ての審査者が元の判定を行った管理者と同一である間、システムは管理画面に警告を表示しなければならない。
+- **REQ-012**: While the appeal reviewer is the same admin who made the original decision, the system shall display a warning and require an independence-exception reason before allowing the decision.
+  異議申立ての審査者が元の判定を行った管理者と同一である場合、システムは管理画面に警告を表示し、判定を許可する前に独立レビューを実施できない例外理由の入力を必須にしなければならない。
 
 ### 権限・可視性
 
-- **REQ-013**: While a post is `removed`, the system shall keep it visible in the author's own generation gallery with a removed badge, and shall route the card to the appeal screen instead of the post detail page.
-  投稿が `removed` の間、システムは投稿者自身の生成ギャラリーに「削除済み」バッジ付きで表示を維持し、カードの遷移先を投稿詳細ではなく異議申立て画面にしなければならない。
+- **REQ-013**: While a post is `removed`, the system shall keep a tombstone card in the author's generation gallery, route it to the current moderation decision, and suppress the thumbnail and content actions for severe safety categories.
+  投稿が `removed` の間、システムは投稿者自身の生成ギャラリーに tombstone カードを残して現在の削除判定へ遷移させ、重大な安全カテゴリではサムネイルおよびダウンロード・共有操作を表示してはならない。
 
 - **REQ-014**: The system shall not expose the appeal screen, appeal API, or removal reason of a post to any user other than its author and admins.
   システムは、異議申立て画面・異議申立て API・削除理由を、投稿者本人と管理者以外のいかなるユーザーにも公開してはならない。
@@ -226,57 +262,66 @@ erDiagram
 - **REQ-015**: Where the notification type is a moderation type, the system shall deliver it regardless of `notification_preferences`.
   通知タイプがモデレーション系である場合、システムは `notification_preferences` に関係なく配信しなければならない。
 
+- **REQ-016**: The system shall not expose the personal profile identity of the administrator who made or reviewed a moderation decision in author-facing notification presentation or API enrichment.
+  システムは、モデレーション判定者・異議審査者の個人プロフィール情報を投稿者向け通知の表示または API enrichment で公開してはならない。
+
+- **REQ-017**: If the service is determined to have a substantial connection to the EU, then the system shall notify the author at the time a `pending` visibility restriction is imposed and shall notify them when that restriction is lifted.
+  本サービスが EU との実質的な結び付きを持つと判断された場合、システムは pending による可視性制限を課した時点で投稿者へ理由通知を行い、制限解除時にも結果を通知しなければならない。
+
+- **REQ-018**: The system shall reject direct calls to admin moderation RPCs from `anon` and ordinary `authenticated` roles and shall verify `p_actor_id` against `admin_users` inside each service-role RPC.
+  システムは `anon` および一般 `authenticated` ロールからの管理モデレーション RPC 直接実行を拒否し、service-role RPC 内でも `p_actor_id` が `admin_users` に存在することを検証しなければならない。
+
 ---
 
 ## 3. ADR
 
-### ADR-001: 通知は trigger ではなく判定 API 内の直 INSERT にする
+### ADR-001: 判定と通知要求は transactional outbox で結合する
 
-- **Context**: リポジトリには2つの前例がある。Creator Looks は `AFTER UPDATE OF moderation_status` の trigger（`user_style_templates`）、style_template は判定 API 内の直 INSERT（`docs/architecture/data.ja.md:311` に方針として明記）。
-- **Decision**: `app/api/admin/moderation/posts/[postId]/decision/route.ts` 内で `createAdminClient()` から `notifications` へ直 INSERT する。
+- **Context**: 判定 RPC 後に API から `notifications` へ直 INSERT すると、判定だけが確定して通知が永久欠落する経路と、HTTP 再試行による重複経路が生じる。一方、通知配送障害で削除判定を取り消すべきではない。
+- **Decision**: `apply_admin_moderation_decision_v2` が removed 化・`moderation_audit_logs`・`moderation_notification_outbox` を同一トランザクションで保存する。API は判定後に dispatcher を best effort で呼び、1分間隔の `pg_cron` が未配送行を再試行する。dispatcher は `event_key` と通知側の部分 UNIQUE index で冪等にする。
 - **Reason**:
-  1. `generated_images.moderation_status` は**通報 API（`app/api/reports/posts/route.ts`）からも `pending` に更新される**。trigger にすると pending 遷移でも発火するため、reject のみ通知する要件（REQ-003）を満たすには trigger 内に条件分岐が必要になり、意図が分散する。
-  2. 判定 API は通知の recipient に使う `user_id` を取得する必要があり、これは trigger では `NEW` から取れるが、違反ポリシーカテゴリのような API 層の入力を渡すには metadata 経由の迂回が必要になる。
-  3. `apply_admin_moderation_decision` RPC の呼び出し元はこの1ルートのみなので、DB 層に寄せる利点（複数経路からの一貫性保証）がない。
-- **Consequence**: DB 直接更新（psql や Supabase Studio からの手動 UPDATE）では通知が飛ばない。運用手順として「removed 化は必ず管理画面から行う」を守る必要がある。監査ログは RPC 側に残るので事後検知は可能。
+  1. 判定と「通知すべき事実」の欠落を防ぎつつ、通知配送は判定から分離できる。
+  2. `FOR UPDATE SKIP LOCKED` で即時配送と cron が競合しても二重配送を防げる。
+  3. psql / Supabase Studio の直接 UPDATE は通知だけでなく監査ログも作らないため、removed 化を RPC に技術的に集約し、直接 UPDATE を正式運用経路にしない。
+- **Consequence**: outbox テーブル、dispatcher 関数、cron 監視が増える。未配送件数・最終エラーを管理画面または監視 SQL で確認できるようにする。
 
 ### ADR-002: 通知文言は i18n し、DB には reason code を保存する
 
 - **Context**: 既存の Creator Looks trigger と style_template 判定 API は通知の `title`/`body` に日本語をハードコードしている。`formatNotificationContent` は未知の type を `default:` で DB の title/body にフォールバックさせる。
-- **Decision**: `presentation.ts` に `case "post_moderation_removed"` と `case "post_moderation_appeal_result"` を追加し、i18n キーから文言を組み立てる。DB の `data` には `policy_category` / `policy_subcategory` / `admin_reason` / `appeal_status` を構造化して保存し、`title`/`body` には日本語のフォールバック文言も入れておく。
+- **Decision**: `presentation.ts` に `case "post_moderation_removed"` と `case "post_moderation_appeal_result"` を追加し、i18n キーから文言を組み立てる。削除判定の正本は `moderation_audit_logs.metadata`、異議結果の正本は `post_moderation_appeals` とし、通知 `data` には `moderation_decision_id` / `appeal_id` / `policy_code` / `appeal_status` / `decision_note` を配送時スナップショットとして保存する。`title`/`body` には日本語のフォールバック文言も入れておく。
 - **Reason**:
   1. DSA 第17条4項は「明確で容易に理解できる」理由説明を要求しており、16ロケール対応のアプリで日本語固定は要件を満たさない。
   2. `default:` フォールバックが既にあるため、i18n キー追加前でも表示は壊れず、段階的に移行できる。
   3. 運営が入力する自由記述の理由は翻訳できないため、**枠（ポリシー名・案内文）を i18n し、運営の理由文は引用として原文表示**する。TikTok もポリシー名は正典・追加コンテキストは原文の構成を取っている。
 - **Consequence**: `messages/` 16ファイル全てにキー追加が必要（`satisfies DeepReplaceStrings<typeof jaMessages>` のため）。日本語以外は暫定的に英語文言を流用してよい。
 
-### ADR-003: 違反ポリシーは既存の `REPORT_TAXONOMY` を再利用する
+### ADR-003: 通報分類と執行根拠を分離し、版管理されたマッピングを持つ
 
 - **Context**: 現在 reject は自由記述の `reason`（最大300字）のみ。DSA 第17条3項(e) は「契約上の根拠」＝どの規約条項に違反したかの明示を求める。TikTok/Meta も違反ポリシー名を通知に含める。
-- **Decision**: 新規タクソノミを作らず、`constants/report-taxonomy.ts` の `REPORT_TAXONOMY`（7カテゴリ + サブカテゴリ）から管理者が違反カテゴリを選択する。`moderationDecisionSchema` に `policyCategoryId` / `policySubcategoryId` を追加する。
-- **Reason**: 通報時にユーザーが選ぶカテゴリと運営が判定に使うカテゴリが同一語彙になり、通報→判定→通知が一貫する。i18n キー（`moderation.categoryRights` 等）も既に16ロケール分揃っている。
-- **Consequence**: 「どのカテゴリにも当てはまらないが削除する」ケースは `other` を使う。将来ガイドラインの条項番号と対応させたくなった場合はマッピング表の追加が必要。
+- **Decision**: `REPORT_TAXONOMY` は通報受付カテゴリとして再利用しつつ、`constants/moderation-policy.ts` に `policy_code`、ガイドライン条項 anchor、`policy_version`、サムネイル表示可否を持つ `MODERATION_POLICY_CATALOG` を新設する。管理者は執行ポリシーを選択し、判定ログには選択時の版を保存する。
+- **Reason**: 通報カテゴリだけでは DSA 第17条の契約上の根拠や、改定後に「当時どの条項で削除したか」を説明できない。入力語彙の一貫性を保ちつつ、執行根拠は安定IDで管理する。
+- **Consequence**: ガイドライン改定時に catalog の version と anchor の更新が必要。「other」は自由裁量の根拠ではなく、具体的な条項と必須理由を選べる場合に限る。
 
 ### ADR-004: 異議申立ては新規テーブルにする（`post_reports` を流用しない）
 
 - **Context**: 通報は `post_reports`、監査は `moderation_audit_logs` に既にある。
 - **Decision**: `post_moderation_appeals` を新設する。
 - **Reason**: 通報は「第三者→投稿」の関係、異議申立ては「投稿者→運営判定」の関係で、主体・ライフサイクル・RLS が全く異なる。`moderation_audit_logs` は運営操作の追記専用ログで、`status` を持つ可変レコードには不適。
-- **Consequence**: テーブルが1つ増える。`UNIQUE(post_id, appellant_id)` で1投稿1回に制限する。
+- **Consequence**: テーブルが1つ増える。`removal_decision_id` で削除判定に紐付け、`UNIQUE(removal_decision_id, appellant_id)` で1判定1回に制限する。同じ投稿が後日別判定で再削除された場合は再度申立て可能。
 
 ### ADR-005: 「元の判断者以外によるレビュー」は技術強制せず可視化に留める
 
 - **Context**: Santa Clara Principles は異議申立ての最低基準として「元の決定に関与していない人または合議体による人的レビュー」を挙げる。
-- **Decision**: `decided_by` を元判定（`moderation_audit_logs`）と異議申立て（`post_moderation_appeals`）の両方に記録し、**同一人物の場合は管理画面に警告バナーを出す**。ブロックはしない。
+- **Decision**: `decided_by` を元判定（`moderation_audit_logs`）と異議申立て（`post_moderation_appeals`）の両方に記録する。同一人物の場合は管理画面に警告バナーを出し、`independence_exception_reason` の入力を必須にする。別担当者が対応可能な場合は管理画面上で優先的に割り当てるが、最終的なブロックはしない。
 - **Reason**: 運営体制が実質1〜2名の現状で「別人によるレビュー」を技術的に強制すると、異議申立てが永久に処理できなくなる。理想を掲げて機能を止めるより、逸脱を可視化して記録に残す方が実効的。
-- **Consequence**: 原則を完全には満たさない。運営規模が拡大した時点でブロックに変更できるよう、判定 API 側に「同一人物か」の判定ロジックだけは実装しておく。
+- **Consequence**: Santa Clara Principles の原則を完全には満たさないため、「独立レビュー例外」として記録・集計する。運営規模が拡大した時点でブロックへ変更できる。
 
 ### ADR-006: pending の「審査中」バッジは今回作らない
 
 - **Context**: 現状 pending 中の投稿は投稿者からは通常表示のまま見える（他ユーザーからは非表示）。
 - **Decision**: `removed` のみバッジを出し、`pending` にはバッジを出さない。
-- **Reason**: 「reject のみ通知」の決定と整合させる。pending の可視化は「通報されている」事実の開示にあたり、誤通報段階での不安を招く。DSA 第17条は可視性制限も対象とするため厳密には開示が望ましいが、Persta.AI は DSA 指定事業者ではなく、通報→判定のリードタイムも短いため今回は見送る。
-- **Consequence**: 投稿者は pending 期間中に自分の投稿が他者から見えていないことを知る手段がない。将来 DSA 対応を厳密化する場合は Phase 6 として追加する。
+- **Reason**: 「reject のみ通知」の決定と整合させる。pending の可視化は誤通報段階での不安を招くため、国内向け baseline では見送る。ただし DSA は「指定事業者」制度ではなく、EU との実質的な結び付きがあれば第17条が適用され得る。
+- **Consequence**: 投稿者は pending 期間中に自分の投稿が他者から見えていないことを知る手段がない。リリースゲートで DSA 適用と判断した場合、この ADR は採用せず、「通報」という語を避けた中立的な可視性制限通知と、approve 時の解除通知を実装する。
 
 ### ADR-007: 判定 API の `revalidateTag` 欠落を本計画で同時に修正する
 
@@ -284,6 +329,18 @@ erDiagram
 - **Decision**: 同ファイルを触るため、本計画の Phase 2 で `revalidateTag` を追加する。
 - **Reason**: approve による復帰の即時性は REQ-004 の一部であり、通知機能の正しさとも直結する（「削除しました」と通知した投稿が実は数分見え続ける、の逆パターンを防ぐ）。範囲外リファクタリングではなく、対象ファイルの機能欠落の修正と位置づける。
 - **Consequence**: 通報 API と同じ5タグ（`home-posts` / `home-posts-week` / `search-posts` / `user-profile-{author}` / `post-detail-{id}`）を揃える。
+
+### ADR-008: 通知・異議申立てのリンク先は削除判定の永続ページにする
+
+- **Context**: 投稿IDをリンク先にすると、異議が認められて `visible` に戻った時点で「removed の場合だけ表示する画面」が404になる。また、同じ投稿に複数の削除判定があり得る。
+- **Decision**: 通知は `/my-page/moderation/decisions/{moderationDecisionId}` へ遷移する。画面は所有者であることを検証した上で、投稿の現在状態に関係なく判定と異議結果を表示する。生成ギャラリーの removed tombstone は現在有効な削除判定IDへ遷移する。
+- **Consequence**: 投稿復帰後も異議申立て結果を確認できる。投稿本体が将来削除される場合に備え、判定・異議レコードには表示に必要なポリシーと理由のスナップショットを保持する。
+
+### ADR-009: 管理者 RPC は service_role 専用かつ DB 内でも admin を検証する
+
+- **Context**: 既存 `apply_admin_moderation_decision` は SECURITY DEFINER でありながら `authenticated` に実行権限があり、`p_actor_id` の admin 検証もない。同じ書式を新 RPC にコピーすると一般ユーザーによる判定改変を許す。
+- **Decision**: `PUBLIC` / `anon` / `authenticated` から EXECUTE を REVOKEし、`service_role` のみに GRANTする。さらに `p_actor_id` が `admin_users` に存在しなければ RPC 内で `42501` を送出する。API は `requireAdmin()` と `ensureSameOrigin()` も維持する。
+- **Consequence**: API と DB の二重防御になる。既存 RPC は v2 導入時に直接実行権限を是正する。
 
 ---
 
@@ -302,91 +359,116 @@ flowchart LR
 
 ### Phase 1: データベース
 
-**目的**: 通知タイプの追加と異議申立てテーブルの新設
+**目的**: 安全な判定イベント、通知 outbox、異議申立てのデータ基盤を追加
 **ビルド確認**: マイグレーション適用後に `npm run typecheck` と `npm run build -- --webpack` が通る（この時点でアプリ挙動は変わらない）
 
 - [ ] `supabase/migrations/2026xxxx_extend_notifications_for_post_moderation.sql` を新規作成
   - `notifications_type_check` に `post_moderation_removed` / `post_moderation_appeal_result` を追加（既存14値を保持。`20260602100400_extend_notifications_for_creator_looks.sql` の書式を踏襲）
   - `entity_type` は `post` を再利用するため **CHECK 変更なし**
+  - `data->>'moderation_event_key'` に moderation type 限定の部分 UNIQUE index を追加し、dispatcher の冪等性を担保
   - コメントに DOWN 手順を記載
+- [ ] `supabase/migrations/2026xxxx_harden_post_moderation_decision.sql` を新規作成
+  - 既存 `apply_admin_moderation_decision` の `authenticated` EXECUTE を REVOKE
+  - `apply_admin_moderation_decision_v2(..., p_idempotency_key UUID) RETURNS UUID` を SECURITY DEFINER で作成し、`PUBLIC` / `anon` / `authenticated` を REVOKE、`service_role` のみに GRANT
+  - `p_actor_id` が `admin_users` に存在することを DB 内で検証
+  - `moderation_audit_logs.metadata->>'idempotency_key'` に対象 action 限定の部分 UNIQUE index を追加
+  - 通常判定は対象が `pending` の場合だけ `FOR UPDATE` して適用し、同一 idempotency key の再送は既存 decision id を返す
+  - reject 時は `policy_code` / `policy_version` / `policy_anchor` / `decision_source` / `automated_means_used` / `restriction_scope` / `restriction_duration` を `moderation_audit_logs.metadata` に保存
+  - `moderation_audit_logs` の一般 authenticated 向け SELECT/INSERT policy を削除し、service_role/RPC 専用に是正
+- [ ] `supabase/migrations/2026xxxx_add_moderation_notification_outbox.sql` を新規作成
+  - `moderation_notification_outbox`: `id`, `event_key UNIQUE`, `moderation_decision_id`, `appeal_id`, `recipient_id`, `notification_type`, `entity_id`, `payload`, `delivery_status`, `attempt_count`, `last_error`, `available_at`, `delivered_at`, `created_at`
+  - RLS 有効化、公開 policy なし、`PUBLIC` / `anon` / `authenticated` から全権限を REVOKE
+  - `dispatch_moderation_notification_outbox(p_limit)` を `FOR UPDATE SKIP LOCKED` + notification UPSERT で実装。行ごとの `EXCEPTION` ブロックにより、成功時 `delivered`、失敗時 `pending` のまま attempt と error を更新
+  - author-facing notification の `actor_id` には recipient ID を設定し `data.system_generated = true` とする。実際の admin ID は outbox payload / notification API に含めない
+  - `pg_cron` で1分ごとに dispatcher を実行。既存 `cron.job` の重複防止パターンを踏襲
 - [ ] `supabase/migrations/2026xxxx_add_post_moderation_appeals.sql` を新規作成
-  - `post_moderation_appeals` テーブル: `id`, `post_id`（FK → `generated_images` ON DELETE CASCADE）, `appellant_id`（FK → `auth.users` ON DELETE CASCADE）, `body TEXT NOT NULL`, `status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','upheld','overturned'))`, `decision_note TEXT`, `decided_by UUID`, `decided_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`
-  - `UNIQUE (post_id, appellant_id)`（REQ-008）
-  - `CHECK`: `status = 'pending'` のとき `decided_at IS NULL`、それ以外は `decided_at IS NOT NULL`（DB層でのビジネスルール強制）
+  - `post_moderation_appeals`: `id`, `post_id`, `removal_decision_id`（FK → `moderation_audit_logs`）, `appellant_id`, `body`, `status`, `decision_note`, `decided_by`, `decided_at`, `independence_exception_reason`, `appeal_deadline_at`, `created_at`
+  - `UNIQUE (removal_decision_id, appellant_id)`（同じ投稿の別削除判定には再申立て可能）
+  - `CHECK`: pending は判定3項目が NULL、判定済みは `decision_note` / `decided_by` / `decided_at` がすべて NOT NULL
   - インデックス: `(status, created_at DESC)`（キュー用）、`(appellant_id, created_at DESC)`
-  - RLS 有効化。`post_reports` のポリシー（`20260208193000_add_moderation_reports_blocks.sql`）を参考に:
+  - RLS:
     - SELECT: `auth.uid() = appellant_id`
     - INSERT: `WITH CHECK (auth.uid() = appellant_id)`
     - UPDATE/DELETE: ポリシーを作らない（運営更新は service_role のみ）
-  - **BEFORE INSERT guard trigger** を同マイグレーションに追加し、「対象投稿が申立て者の所有であり、かつ `moderation_status = 'removed'` である」ことを DB 層で強制する（REQ-009 を API 層だけに委ねない）。`supabase/migrations/20260602100600_creator_looks_db_guard_triggers.sql` の guard trigger 書式を踏襲し、違反時は `RAISE EXCEPTION` する。CHECK 制約では他テーブルを参照できないため trigger で実装する
+  - BEFORE INSERT guard で、所有者、現在 removed、対象 decision が最新かつ当該投稿の reject であることを検証
+  - 申立期限は対象 decision の removal outbox `delivered_at + interval '14 days'` とし、未配送なら期限切れにしない。申立て作成時は算出した期限を `appeal_deadline_at` にスナップショットする
 - [ ] `supabase/migrations/2026xxxx_add_decide_post_moderation_appeal_rpc.sql` を新規作成
-  - `decide_post_moderation_appeal(p_appeal_id, p_actor_id, p_action, p_note)` を SECURITY DEFINER で実装
-  - `apply_admin_moderation_decision` と同じ書式（`20260209094500_...sql` を参考）
-  - `overturned` のとき同一トランザクション内で `generated_images` を `visible` に戻し、`moderation_audit_logs` に `approve` を記録（REQ-011）
+  - `decide_post_moderation_appeal(p_appeal_id, p_actor_id, p_action, p_note, p_independence_exception_reason)` を SECURITY DEFINER で実装
+  - actor の `admin_users` 検証、service_role 専用 EXECUTE（REQ-018）
+  - 同一判定者の場合だけ `p_independence_exception_reason` を必須化
+  - `overturned` のとき同一トランザクションで投稿を visible に戻し、監査ログを追記
+  - 判定更新と同じトランザクションで `post_moderation_appeal_result` outbox を作成し、結果理由を payload に含める
   - `p_action NOT IN ('uphold','overturn')` は `RAISE EXCEPTION`
   - 対象が `status <> 'pending'` なら `FALSE` を返す（冪等性ガード）
-  - `REVOKE ALL FROM PUBLIC` + `GRANT EXECUTE TO authenticated`
 - [ ] `supabase db diff` で差分を確認し、ユーザーに提示してから適用
 
 ### Phase 2: サーバーサイド
 
-**目的**: 判定 API での通知発行と異議申立て API の実装
+**目的**: v2 判定 RPC、outbox 即時配送、判定単位の異議申立て API を実装
 **ビルド確認**: `npm run lint` / `npm run typecheck` / `npm run build -- --webpack` が通る
 
+- [ ] `constants/moderation-policy.ts` を新規作成
+  - `REPORT_TAXONOMY` と versioned guideline clause のマッピング
+  - `policy_code`, `policy_version`, `policy_anchor`, `hide_thumbnail` を定義
 - [ ] `features/moderation/lib/schemas.ts` に追加
-  - `moderationDecisionSchema` に `policyCategoryId` / `policySubcategoryId` を追加（`REPORT_TAXONOMY` の id を `z.enum` ではなくランタイム検証で照合。approve 時は任意）
-  - `createAppealSchema`: `postId: z.string().uuid()`, `body: z.string().min(1).max(1000)`
-  - `appealDecisionSchema`: `action: z.enum(["uphold","overturn"])`, `note: z.string().max(500).optional()`
+  - reject 時は `policyCode` と trim 後1文字以上の `reason` を必須
+  - 管理判定には UUID の `idempotencyKey` を必須化し、UI が操作開始時に生成して同じ送信の再試行で再利用
+  - `createAppealSchema`: `moderationDecisionId: uuid`, trim 後1〜1000字の `body`
+  - `appealDecisionSchema`: `action`, trim 後1〜500字の必須 `note`, optional `independenceExceptionReason`
 - [ ] `app/api/admin/moderation/posts/[postId]/decision/route.ts` を修正
-  - 投稿の `user_id` を先に取得（`app/api/admin/style-templates/[id]/decision/route.ts` の「申請者取得→RPC→通知」順序を踏襲）
-  - reject かつ `adminUser.id !== post.user_id` のとき `notifications` へ直 INSERT（REQ-001 / REQ-005）
-    - `type: 'post_moderation_removed'`, `entity_type: 'post'`, `entity_id: postId`, `actor_id: adminUser.id`
-    - `data`: `{ policy_category, policy_subcategory, admin_reason, appeal_path }`
-    - `title`/`body` に日本語フォールバック文言（ADR-002）
-  - INSERT 失敗は `console.error` に留め、判定自体は成功で返す（REQ-002）
-  - `revalidateTag` を5タグ追加（ADR-007）
+  - `requireAdmin()` + `ensureSameOrigin(request)`
+  - `apply_admin_moderation_decision_v2` を呼び、`moderationDecisionId` を受け取る
+  - API から notifications へ直接 INSERT しない。dispatcher RPC を best effort で呼び、失敗時も outbox が再試行可能なため判定は成功で返す
+  - `revalidateTag` は5タグを個別に non-fatal で無効化（ADR-007）
   - `logAdminAction` の `metadata` に `policy_category` を追加
 - [ ] `features/moderation/lib/appeal-repository.ts` を新規作成
-  - `getRemovedPostForOwner(postId, userId)`: `moderation_status = 'removed'` かつ `user_id = userId` の行だけを返す。**既存の `getPostDetail` は変更しない**（詳細ページの意味論を保つ）
-    - セッションクライアント（`createClient()`）を使う。`generated_images` の RLS は所有者が自分の行を `moderation_status` に関係なく SELECT できる（`getMyImagesServer` が removed 行を返せている事実で確認済み）ため、service_role は不要
-  - `getAppealByPostAndUser(postId, userId)`
+  - `getModerationDecisionForOwner(decisionId, userId)`: service-role で取得する前にセッション user と投稿所有者を照合し、他人の判定を返さない。投稿復帰後も取得可能
+  - removal outbox の `delivered_at` から申立期限を算出し、未配送時は申立可能として返す
+  - `getCurrentRemovalDecisionId(postId, userId)`: gallery tombstone の遷移先解決用
+  - `getAppealByDecisionAndUser(decisionId, userId)`
   - `listPendingAppealsForAdmin(limit, offset)`: 元判定者を `moderation_audit_logs` から引いて同梱（REQ-012 の警告表示用）。admin クライアント（`createAdminClient()`）を使う
 - [ ] `app/api/moderation/appeals/route.ts` を新規作成（POST）
   - `getUser()` で認証、`ensureSameOrigin(request)` で CSRF 防御（`app/api/reports/posts/route.ts` を踏襲）
-  - `appellant_id` は**セッションから解決**。リクエストボディからは受け取らない（REQ-007）
-  - 所有者かつ `removed` の検証（REQ-009）。重複は 409（REQ-008）
+  - `appellant_id` はセッションから解決し、decision の所有・現在性・期限を API と DB guard で二重検証
+  - 同一 decision の重複は409。同一投稿の後続 removal decision は許可
 - [ ] `app/api/admin/moderation/appeals/route.ts` を新規作成（GET、`requireAdmin()`）
 - [ ] `app/api/admin/moderation/appeals/[appealId]/decision/route.ts` を新規作成（POST、`requireAdmin()`）
+  - `ensureSameOrigin(request)`
   - `decide_post_moderation_appeal` RPC を呼ぶ
-  - `post_moderation_appeal_result` 通知を直 INSERT（REQ-010）
+  - dispatcher RPC を best effort で呼ぶ。通知直 INSERT は行わない
   - overturn 時は5タグを `revalidateTag`（REQ-011）
   - `logAdminAction`（`actionType: 'moderation_appeal_uphold' | 'moderation_appeal_overturn'`）
 - [ ] `features/my-page/lib/server-api.ts` の `getMyImagesServer` は**フィルタを変更しない**（removed を残す決定のため）。JSDoc に「removed を意図的に含む」旨を明記
 
 ### Phase 3: 投稿者側 UI
 
-**目的**: 通知の表示・遷移と異議申立て画面、ギャラリーのバッジ
+**目的**: 永続的な判定詳細・異議申立て画面と安全な tombstone 表示
 **ビルド確認**: `npm run build -- --webpack` が通り、16ロケールの typecheck が通る
 
 - [ ] `features/notifications/types.ts` を修正
   - `NotificationType` に `'post_moderation_removed' | 'post_moderation_appeal_result'` を追加
-  - `Notification['data']` に `policy_category?` / `policy_subcategory?` / `admin_reason?` / `appeal_status?` を追加
+  - `Notification['data']` に `moderation_decision_id?` / `appeal_id?` / `policy_code?` / `appeal_status?` / `decision_note?` / `system_generated?` を追加
 - [ ] `features/notifications/lib/presentation.ts` を修正
   - `NotificationTranslationKey` に新キーを追加
   - `formatNotificationContent` に2つの `case` を追加（ADR-002）。`data` が欠けている旧データは DB の title/body にフォールバック
+- [ ] `features/notifications/lib/server-api.ts` と `NotificationList.tsx` を修正
+  - moderation type は actor profile enrichment を返さず、Persta.AI の運営ロゴ・名称で表示（REQ-016）
+  - `hide_thumbnail` の判定に従い重大カテゴリの通知サムネイルを返さない
 - [ ] `features/notifications/hooks/useNotifications.ts` を修正
-  - `entity_type === "post"` の分岐**より前**に、モデレーション系 type を異議申立て画面へ push する分岐を追加（死んだ `/posts/{id}` リンクの回避）
-- [ ] `app/(app)/my-page/moderation/[postId]/page.tsx` を新規作成
-  - `getUser()` で認証。`getRemovedPostForOwner` が `null` を返したら `notFound()`（REQ-014）
-  - 表示: サムネイル / 違反ポリシーカテゴリ（i18n） / 運営の理由（原文引用） / コミュニティガイドラインへのリンク / 異議申立てフォーム（既に申立て済みなら状態表示）
+  - moderation type は `data.moderation_decision_id` から `/my-page/moderation/decisions/{id}` へ遷移
+- [ ] `app/(app)/my-page/moderation/decisions/[decisionId]/page.tsx` を新規作成
+  - `getUser()` で認証し、所有者以外は `notFound()`
+  - 投稿が visible に復帰済みでも判定・異議結果を表示
+  - 措置の範囲・期間、判定ソース、自動化の関与、版付きポリシー、運営理由、救済手段、期限、異議状態、結果理由を表示
+  - `hide_thumbnail` の場合は画像の代わりにプレースホルダーを表示
   - データ取得はサーバーコンポーネントから props 渡し（既存 `app/(app)/admin/moderation/page.tsx` と同じ方式に揃える）
 - [ ] `features/moderation/components/PostAppealForm.tsx` を新規作成（クライアント）
-  - `Textarea` + 送信ボタン。`useToast` で結果表示（`PostModerationMenu.tsx` の作法を踏襲）
+  - 期限内かつ未申立ての場合のみ `Textarea` + 送信ボタン。状態・受付日時・結果理由を追跡可能にする
 - [ ] `features/my-page/components/MyImageCard.tsx` を修正
-  - `image.moderation_status === "removed"` のとき「削除済み」バッジを重ねる（REQ-013）
-  - `detailUrl` を `removed` のときだけ `/my-page/moderation/${image.id}` に切り替える
+  - removed は tombstone とし、重大カテゴリでは画像を描画しない
+  - `detailUrl` を現在の decision ID に切り替え、投稿詳細・共有・ダウンロードへ遷移させない
 - [ ] `messages/ja.ts` に `moderation` ブロック（`messages/ja.ts:545`）へキー追加
-  - 通知タイトル/本文、異議申立て画面の文言、バッジラベル、フォームのエラー文言
+  - 通知、判定詳細、期限、状態、結果理由、tombstone、独立レビュー例外の文言
 - [ ] `messages/en.ts` 〜 `messages/vi.ts` の**残り15ファイル**に同じキーを追加（ja 以外は暫定的に英語文言でよい）
 
 ### Phase 4: 管理画面 UI
@@ -395,15 +477,16 @@ flowchart LR
 **ビルド確認**: `npm run build -- --webpack` が通る
 
 - [ ] `app/(app)/admin/moderation/ModerationQueueClient.tsx` を修正
-  - 「不適切」判定時に違反ポリシーカテゴリ/サブカテゴリの `Select` を出す（`REPORT_TAXONOMY` を使用）
+  - 「不適切」判定時に versioned policy catalog の条項を選択し、具体的理由を必須入力
   - 判定後に `router.refresh()` を追加
 - [ ] `app/(app)/admin/moderation/appeals/page.tsx` を新規作成
   - ページ認証は `getUser()` + `getAdminUserIds()` パターン（`app/(app)/admin/moderation/page.tsx:11-16` を踏襲）
 - [ ] `app/(app)/admin/moderation/appeals/AppealQueueClient.tsx` を新規作成
   - データ取得は**クライアント側 fetch**（`ModerationQueueClient.tsx` の `fetchQueue()` パターンを踏襲）。投稿者側の異議申立て画面がサーバーコンポーネント props 方式なのと非対称だが、これは既存の「管理キューはクライアント fetch・一般画面はサーバー props」という分担に合わせたもの
   - 申立て本文 / 対象投稿サムネ / 元の削除理由 / 元判定者を表示
-  - 元判定者が自分と同一なら警告バナー（REQ-012 / ADR-005）
-  - 「認める」（= `overturn`、投稿を復帰）／「棄却する」（= `uphold`、`removed` のまま）ボタン + 理由入力。ラベルと action の対応を取り違えないこと
+  - 元判定者が自分と同一なら警告バナー + 独立レビュー例外理由を必須入力（REQ-012 / ADR-005）
+  - 「認める」／「棄却する」いずれも結果理由を必須入力
+  - outbox の pending/failed 件数と最終エラーを確認できる運用表示または診断リンク
 - [ ] `app/(app)/admin/admin-nav-items.ts` に `/admin/moderation/appeals`（label: 異議申立て、iconKey: `shield-check` を再利用、`quickAction: true`）を `/admin/reports` の直後に追加
 
 ### Phase 5: テストと仕上げ
@@ -413,8 +496,11 @@ flowchart LR
 
 - [ ] `/test-flow` に沿ってテストを実装（下記テスト観点を参照）
 - [ ] 実機確認（シークレットウィンドウで別アカウントを使用。既読状態は localStorage 端末単位ではなく DB の `is_read` なのでアカウント切替で確認可能）
-- [ ] `docs/architecture/data.ja.md` の RPC カタログに `decide_post_moderation_appeal` を追記
+- [ ] EU との実質的な結び付きの有無を法務・事業側で確認し、結果を ADR-006 の採否として記録。適用する場合は REQ-017 を実装してからリリース
+- [ ] `docs/architecture/data.ja.md` / `data.en.md`、`.cursor/rules/database-design.mdc`、`docs/API.md` を新テーブル・RLS・RPC・API契約と同期
 - [ ] `app/(marketing)/community-guidelines/page.tsx` と `app/(marketing)/terms/page.tsx` の「異議申立て」記述を実装と整合させる（現在は導線が存在しない前提の文面）
+  - 現行の「通知から原則14日以内」を実装と一致させる
+  - CSAM 等でも受付自体を拒否するか、画像非表示の上で再審査だけ受け付けるかを法務・運営判断として明文化
 
 ---
 
@@ -422,29 +508,36 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 | --- | --- | --- |
-| `supabase/migrations/2026xxxx_extend_notifications_for_post_moderation.sql` | 新規 | `notifications_type_check` に2値追加 |
-| `supabase/migrations/2026xxxx_add_post_moderation_appeals.sql` | 新規 | 異議申立てテーブル + RLS + インデックス + INSERT guard trigger |
-| `supabase/migrations/2026xxxx_add_decide_post_moderation_appeal_rpc.sql` | 新規 | 判定 RPC（overturn 時の復帰を含む） |
+| `supabase/migrations/2026xxxx_extend_notifications_for_post_moderation.sql` | 新規 | 通知 type 2値 + moderation event 一意 index |
+| `supabase/migrations/2026xxxx_harden_post_moderation_decision.sql` | 新規 | v2 判定 RPC、admin 二重検証、既存 RPC 権限是正 |
+| `supabase/migrations/2026xxxx_add_moderation_notification_outbox.sql` | 新規 | outbox + dispatcher + retry cron |
+| `supabase/migrations/2026xxxx_add_post_moderation_appeals.sql` | 新規 | decision 単位の異議申立て + RLS + guard |
+| `supabase/migrations/2026xxxx_add_decide_post_moderation_appeal_rpc.sql` | 新規 | 異議判定 + 復帰 + 結果 outbox の atomic RPC |
+| `constants/moderation-policy.ts` | 新規 | 通報分類と版付きガイドライン条項のマッピング |
 | `features/moderation/lib/schemas.ts` | 修正 | 判定スキーマ拡張 + 異議申立てスキーマ追加 |
-| `app/api/admin/moderation/posts/[postId]/decision/route.ts` | 修正 | 通知直 INSERT + `revalidateTag` + ポリシーカテゴリ |
-| `features/moderation/lib/appeal-repository.ts` | 新規 | 所有者向け removed 取得 + 申立て取得 |
+| `app/api/admin/moderation/posts/[postId]/decision/route.ts` | 修正 | v2 RPC + outbox 即時配送 + `revalidateTag` |
+| `features/moderation/lib/appeal-repository.ts` | 新規 | 所有者向け永続 decision 詳細 + 申立て取得 |
 | `app/api/moderation/appeals/route.ts` | 新規 | 異議申立て投稿 API |
 | `app/api/admin/moderation/appeals/route.ts` | 新規 | 異議申立てキュー取得 API |
-| `app/api/admin/moderation/appeals/[appealId]/decision/route.ts` | 新規 | 異議申立て判定 API + 通知 |
+| `app/api/admin/moderation/appeals/[appealId]/decision/route.ts` | 新規 | 異議申立て判定 API + outbox 即時配送 |
 | `features/my-page/lib/server-api.ts` | 修正 | `getMyImagesServer` の JSDoc 明記のみ |
 | `features/notifications/types.ts` | 修正 | `NotificationType` と `data` 拡張 |
 | `features/notifications/lib/presentation.ts` | 修正 | 2 type の i18n 表示分岐 |
+| `features/notifications/lib/server-api.ts` | 修正 | moderation actor/thumbnail の非公開化 |
+| `features/notifications/components/NotificationList.tsx` | 修正 | moderation type を運営ロゴで表示 |
 | `features/notifications/hooks/useNotifications.ts` | 修正 | モデレーション通知の遷移先分岐 |
-| `app/(app)/my-page/moderation/[postId]/page.tsx` | 新規 | 削除理由表示 + 異議申立て画面 |
+| `app/(app)/my-page/moderation/decisions/[decisionId]/page.tsx` | 新規 | 復帰後も残る判定・異議申立て詳細 |
 | `features/moderation/components/PostAppealForm.tsx` | 新規 | 異議申立てフォーム |
-| `features/my-page/components/MyImageCard.tsx` | 修正 | 削除済みバッジ + 遷移先切替 |
+| `features/my-page/components/MyImageCard.tsx` | 修正 | 安全な tombstone + decision 遷移 |
 | `app/(app)/admin/moderation/ModerationQueueClient.tsx` | 修正 | ポリシー選択 + `router.refresh()` |
 | `app/(app)/admin/moderation/appeals/page.tsx` | 新規 | 異議申立てキューページ |
 | `app/(app)/admin/moderation/appeals/AppealQueueClient.tsx` | 新規 | 異議申立てキュー UI |
 | `app/(app)/admin/admin-nav-items.ts` | 修正 | ナビ項目追加 |
 | `messages/ja.ts` | 修正 | `moderation` ブロックにキー追加 |
 | `messages/{en,ko,zh-CN,zh-TW,es,fr,de,it,pt,ar,hi,id,th,vi}.ts` | 修正 | 同キーを15ファイルに追加（typecheck 必須） |
-| `docs/architecture/data.ja.md` | 修正 | RPC カタログに追記 |
+| `docs/architecture/data.ja.md` / `data.en.md` | 修正 | outbox・異議フロー・RPC カタログ |
+| `.cursor/rules/database-design.mdc` | 修正 | テーブル・RLS・index・function ledger |
+| `docs/API.md` | 修正 | 異議申立て・管理判定 API 契約 |
 | `app/(marketing)/community-guidelines/page.tsx` | 修正 | 異議申立て導線の記述を実装と整合 |
 | `app/(marketing)/terms/page.tsx` | 修正 | 同上 |
 
@@ -454,10 +547,11 @@ flowchart LR
 
 ### 品質チェックリスト
 
-- [ ] **エラーハンドリング**: 通知 INSERT 失敗が削除判定をロールバックしない（REQ-002）。RPC エラー時に 500 を返し、監査ログの整合が崩れない
-- [ ] **権限制御**: 異議申立て API が他人の投稿に対して 403/404 を返す。`appellant_id` がセッション由来である（クライアント指定不可）。異議申立てキュー API が `requireAdmin()` で守られている
-- [ ] **データ整合性**: `UNIQUE(post_id, appellant_id)` が重複申立てを弾く。`status` と `decided_at` の整合が CHECK 制約で強制されている。overturn 時の「申立て更新 + 投稿復帰 + 監査ログ」が1トランザクション
-- [ ] **セキュリティ**: RLS で申立て者以外が SELECT できない。UPDATE/DELETE ポリシーを作らないことで運営以外の改変を防ぐ。`body` のバリデーション（最大1000字）
+- [ ] **エラーハンドリング**: notification 配送失敗後も outbox が pending で残り、attempt/error を記録して cron で再試行できる
+- [ ] **権限制御**: 異議申立て API が他人の decision を404扱いにする。admin RPC は一般 authenticated から直接実行できず、DB 内でも `admin_users` を検証する
+- [ ] **データ整合性**: `UNIQUE(removal_decision_id, appellant_id)`、outbox `event_key`、notification 部分 UNIQUE が重複を防ぐ。overturn の「申立て更新 + 投稿復帰 + 監査ログ + outbox」が1トランザクション
+- [ ] **セキュリティ**: admin mutation は `requireAdmin()` + Same-Origin + service-role RPC + DB admin check の多層防御。投稿者向けレスポンスに admin profile を含めない
+- [ ] **コンテンツ安全性**: `hide_thumbnail` 対象は通知・gallery・decision 詳細の全経路で画像を描画せず、共有・ダウンロード導線を出さない
 - [ ] **i18n**: 16ロケール全てにキーが揃い `satisfies DeepReplaceStrings<typeof jaMessages>` が通る
 - [ ] **キャッシュ**: approve / overturn 時に5タグが無効化され、フィード復帰が即時である
 
@@ -465,20 +559,23 @@ flowchart LR
 
 | カテゴリ | テスト内容 |
 | --- | --- |
-| 正常系 | reject で `post_moderation_removed` 通知が1件作成される / 通知の `data` にポリシーカテゴリと理由が入る / 異議申立てが `pending` で作成される / overturn で投稿が `visible` に戻り `post_moderation_appeal_result` が飛ぶ |
+| 正常系 | reject で removed・audit・outbox が atomic に作成され、dispatcher 後に通知が1件だけ作成される |
+| 正常系 | decision ID を指定した異議申立てが pending で作成され、overturn で投稿復帰・結果理由・outbox が atomic に確定する |
 | 正常系 | approve では投稿者向け通知が作成されない（REQ-004） |
 | 正常系 | pending 遷移（通報 API 経由）では通知が作成されない（REQ-003） |
-| 異常系 | 通知 INSERT が失敗しても judgment API は 200 を返す（モック注入で検証） |
-| 異常系 | 同一投稿への2回目の異議申立てが 409 |
-| 異常系 | `visible` な投稿への異議申立てが拒否される |
-| 権限テスト | 未認証の異議申立て POST が 401 / 他人の投稿への申立てが 403 or 404 / 非 admin の異議申立てキュー GET が 403 |
-| 権限テスト | 判定者が投稿者本人のとき通知が作成されない（REQ-005） |
+| 冪等性 | 同じ判定リクエストの再送、dispatcher の並行実行、cron 再試行で audit/outbox/notification が重複しない |
+| 障害回復 | notification INSERT 失敗後も判定は維持され、outbox が pending のまま残り、次回 dispatcher で1件配送される |
+| 異常系 | 同じ removal decision への2回目は409、同じ投稿の後続 removal decision への申立ては成功 |
+| 異常系 | 通知配送から14日を過ぎた decision、過去の非現行 decision、visible 投稿の未確定 decision への申立てが拒否され、outbox 未配送中は期限切れにならない |
+| 権限テスト | `anon` / 一般 authenticated が2つの admin RPC を直接呼ぶと拒否され、actor spoofing も拒否される |
+| 権限テスト | 未認証の異議申立て POST が401 / 他人の decision は404 / 非 admin のキュー GET は403 / admin POST の cross-origin は拒否 |
+| 権限テスト | 判定者が投稿者本人でも system notification が作られ、admin の nickname/avatar/id は投稿者向け enrichment に出ない |
 | 権限テスト | RLS: 別ユーザーのセッションで `post_moderation_appeals` を SELECT しても0件 |
-| 表示テスト | removed な投稿が生成ギャラリーに「削除済み」バッジ付きで残る / カードの遷移先が異議申立て画面 |
+| 表示テスト | removed は tombstone として残り、重大カテゴリは画像なし、通常カテゴリは定義どおりの表示、カードは current decision へ遷移 |
 | 表示テスト | 通知一覧でモデレーション通知が i18n された文言で表示される / `data` 欠落時に DB の title/body にフォールバックする |
-| 表示テスト | 通知タップで `/posts/{id}` ではなく異議申立て画面に遷移する |
-| 表示テスト | 通知のサムネイル解決（`features/notifications/lib/server-api.ts:12` の post enrichment）が removed な投稿でも成立する |
-| 実機確認 | シークレットウィンドウの別アカウントで削除→通知受信→申立て→運営判定→復帰までを通す。レスポンシブ表示 |
+| 表示テスト | overturn 結果通知から decision 詳細が開き、投稿が visible に戻った後も404にならず、結果理由を確認できる |
+| 運用テスト | 同一判定者による異議判定は例外理由なしでは拒否され、理由ありでは記録付きで処理できる |
+| 実機確認 | 別アカウントで削除→outbox配送→通知→申立て→運営判定→復帰→結果通知までを通す。レスポンシブ表示 |
 
 ### テスト実装手順
 
@@ -494,12 +591,13 @@ flowchart LR
 | 対象 | 方針 |
 | --- | --- |
 | `notifications` CHECK 拡張 | 値の**追加のみ**なので既存行に影響しない。DOWN は不要（戻すと新 type の行が制約違反になるため、むしろ戻さない方が安全）。マイグレーション末尾にこの判断をコメントで残す |
-| `post_moderation_appeals` | `DROP TABLE` で完全に戻せる。既存テーブルへのカラム追加を含まないため安全 |
-| `decide_post_moderation_appeal` RPC | `DROP FUNCTION` で戻せる。既存 RPC（`apply_admin_moderation_decision`）は**変更しない**ので、Phase 1 のロールバックが既存モデレーションを壊さない |
-| 判定 API の通知 INSERT | try/catch で囲み、失敗しても判定は成功させる設計（REQ-002）。通知を止めたい場合は INSERT ブロックのみ revert すればよい |
+| outbox / dispatcher / cron | まず `cron.alter_job(... active := false)` で配送を停止する。pending outbox を保持したまま API を v1 RPC へ戻せる。テーブル DROP はデータ保全確認後のみ |
+| `post_moderation_appeals` | API/UI を先に無効化し、申立てデータを保持する。運用データを伴うため安易な `DROP TABLE` は行わない |
+| v2 判定 RPC | API を旧 RPC に戻せるが、旧 RPC の一般 authenticated EXECUTE は再付与しない。権限是正はロールバック対象外 |
+| `decide_post_moderation_appeal` RPC | 新規受付を止めた後に API/UI を戻す。確定済みの判定・outbox は保持する |
 | `revalidateTag` 追加（ADR-007） | 独立コミットにする。キャッシュ挙動に問題が出た場合これだけ revert できる |
 | UI | Phase 3 / Phase 4 をそれぞれ独立コミットにし、フェーズ単位で `revert` 可能にする |
-| 機能フラグ | 通知は「出す/出さない」の二値なので env フラグは設けない。段階投入したい場合は Phase 2 の通知 INSERT を最後にマージする順序制御で代替する |
+| 機能フラグ | dispatcher cron を停止可能な配送 kill switch とし、判定記録と outbox は継続する。通知停止中も欠落イベントを失わない |
 
 **適用順序の推奨**: Phase 1 のマイグレーションを適用しても、Phase 2 をデプロイするまでアプリ挙動は一切変わらない。先に DB だけ本番適用して様子を見られる。
 
@@ -524,5 +622,7 @@ flowchart LR
 - `notifications` の CHECK 制約値は 2026-07-28 時点の本番実測（14値）に基づく。マイグレーション作成時に再確認すること
 - マイグレーションのタイムスタンプ接頭辞は作成時の日時で確定させる
 - 他15ロケールの翻訳品質は暫定（英語流用）とし、必要なら別 PR で精査する
-- ADR-005 の通り、Santa Clara Principles の「元の判断者以外によるレビュー」は現状の運営体制では技術強制しない
+- ADR-005 の通り、Santa Clara Principles の「元の判断者以外によるレビュー」は現状の運営体制では技術強制しないが、同一人物の場合の例外理由を必須記録する
+- DSA 適用有無は「EUから閲覧可能か」ではなく EU との実質的な結び付きで判断し、リリース前に法務・事業側の確認結果を残す
+- ロールアウト前から存在する removed 投稿は自動的に14日制限へ載せず、バックフィル通知を行う場合はその配送完了から14日を付与するか、対象外として個別対応するかを運営判断で確定する
 - 新規 Markdown はグローバル `.gitignore` の `*.md` に該当するため、コミット時に `git add -f` が必要
