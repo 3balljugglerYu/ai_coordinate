@@ -78,16 +78,100 @@ export default async function ModerationDecisionPage({
   const formatDate = (value: string | null) =>
     value ? new Date(value).toLocaleString("ja-JP") : "-";
 
+  /**
+   * 現在の状況をひと目で伝えるバナーの内容を決める。
+   *
+   * タイトルは状態で切り替えず汎用にしている。このページは「1つの判定の
+   * 永続的な記録」で、措置が解除された後に別の理由で再度公開停止されることが
+   * ありうるため、タイトルを現在の状態に連動させると古い判定のページが
+   * 別の停止を指してしまうため。状態はバナーで表す。
+   */
+  const statusBanner = (() => {
+    if (appeal?.status === "overturned") {
+      return {
+        tone: "positive" as const,
+        text: t("statusRestoredByAppeal"),
+      };
+    }
+    if (detail.postModerationStatus === "removed") {
+      return detail.isCurrentRemoval
+        ? { tone: "warning" as const, text: t("statusCurrentlySuspended") }
+        : { tone: "neutral" as const, text: t("statusSupersededSuspension") };
+    }
+    return { tone: "positive" as const, text: t("statusCurrentlyPublished") };
+  })();
+
+  const bannerClass =
+    statusBanner.tone === "positive"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-900"
+      : statusBanner.tone === "warning"
+        ? "border-amber-200 bg-amber-50 text-amber-900"
+        : "border-slate-200 bg-slate-50 text-slate-700";
+
   return (
     <div className="mx-auto w-full max-w-2xl space-y-6 p-4">
-      <header className="space-y-1">
+      <header className="space-y-2">
         <h1 className="text-2xl font-bold tracking-tight text-slate-900">
           {t("decisionPageTitle")}
         </h1>
         <p className="text-sm text-slate-600">{t("decisionPageDescription")}</p>
+        <p className={`rounded-md border p-3 text-sm font-medium ${bannerClass}`}>
+          {statusBanner.text}
+        </p>
       </header>
 
-      {/* 措置の内容: 種類・範囲・期間の3項目 (DSA 第17条3項(a)) */}
+      {/*
+        履歴は新しい順に並べる。ユーザーは「今どうなっているか」を先に知りたい。
+        ① 異議申立ての結果 → ② 異議申立て → ③ 公開停止 の順。
+      */}
+
+      {/* ① 異議申立ての結果（判定済みのときだけ） */}
+      {appeal && appeal.status !== "pending" && (
+        <Card>
+          <CardContent className="space-y-3 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant={appeal.status === "overturned" ? "default" : "destructive"}>
+                {appeal.status === "overturned"
+                  ? t("appealStatusOverturned")
+                  : t("appealStatusUpheld")}
+              </Badge>
+              <span className="text-xs text-slate-500">
+                {t("appealDecidedAt")}: {formatDate(appeal.decided_at)}
+              </span>
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t("appealResultReason")}
+              </h2>
+              <p className="whitespace-pre-wrap text-sm text-slate-700">
+                {appeal.decision_note || "-"}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ② 異議申立て（申立て済みのときだけ） */}
+      {appeal && (
+        <Card>
+          <CardContent className="space-y-3 p-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t("appealYourMessage")}
+              </h2>
+              {appeal.status === "pending" && (
+                <Badge variant="secondary">{t("appealStatusPending")}</Badge>
+              )}
+              <span className="text-xs text-slate-500">
+                {t("appealSubmittedAt")}: {formatDate(appeal.created_at)}
+              </span>
+            </div>
+            <p className="whitespace-pre-wrap text-sm text-slate-700">{appeal.body}</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ③ 公開停止の措置 (DSA 第17条3項(a): 種類・期間) */}
       <Card>
         <CardContent className="space-y-4 p-5">
           <dl className="space-y-3 text-sm">
@@ -116,20 +200,8 @@ export default async function ModerationDecisionPage({
             </div>
           </dl>
 
-          {/* 物理削除ではないことを明示する (ユーザーの誤解を防ぐ) */}
-          <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">
-            {t("notDeletedNotice")}
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* 違反したポリシーと投稿者向け説明 */}
-      <Card>
-        <CardContent className="space-y-4 p-5">
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-slate-900">
-              {t("policyLabel")}
-            </h2>
+            <h2 className="text-sm font-semibold text-slate-900">{t("policyLabel")}</h2>
             <p className="text-sm text-slate-700">
               {/* 通報ダイアログ用のラベルキーを再利用する（全ロケール既存） */}
               {policyLabelKeys
@@ -150,9 +222,7 @@ export default async function ModerationDecisionPage({
           </div>
 
           <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-slate-900">
-              {t("reasonLabel")}
-            </h2>
+            <h2 className="text-sm font-semibold text-slate-900">{t("reasonLabel")}</h2>
             <p className="whitespace-pre-wrap text-sm text-slate-700">
               {decision.author_facing_reason || t("reasonUnavailable")}
             </p>
@@ -166,10 +236,17 @@ export default async function ModerationDecisionPage({
               {decision.automated_means_used ? t("automatedYes") : t("automatedNo")}
             </p>
           </div>
+
+          {/* 物理削除ではないことの補足は、現在この措置で停止中のときだけ出す */}
+          {detail.isCurrentRemoval && (
+            <p className="rounded-md bg-slate-50 p-3 text-xs text-slate-600">
+              {t("notDeletedNotice")}
+            </p>
+          )}
         </CardContent>
       </Card>
 
-      {/* 対象の投稿 */}
+      {/* 対象の投稿（イベントではなく参照情報なので履歴の下） */}
       <Card>
         <CardContent className="space-y-3 p-5">
           <h2 className="text-sm font-semibold text-slate-900">{t("targetPostLabel")}</h2>
@@ -193,75 +270,35 @@ export default async function ModerationDecisionPage({
         </CardContent>
       </Card>
 
-      {/* 異議申立て */}
-      <Card>
-        <CardContent className="space-y-4 p-5">
-          <div className="space-y-1">
-            <h2 className="text-sm font-semibold text-slate-900">{t("appealSection")}</h2>
-            <p className="text-xs text-slate-600">
-              {detail.appealDeadlineAt
-                ? t("appealDeadlineNotice", {
-                    deadline: formatDate(detail.appealDeadlineAt),
-                  })
-                : t("appealDeadlineNotYetStarted")}
-            </p>
-          </div>
-
-          {appeal ? (
-            <div className="space-y-3 text-sm">
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={
-                    appeal.status === "overturned"
-                      ? "default"
-                      : appeal.status === "upheld"
-                        ? "destructive"
-                        : "secondary"
-                  }
-                >
-                  {appeal.status === "pending"
-                    ? t("appealStatusPending")
-                    : appeal.status === "overturned"
-                      ? t("appealStatusOverturned")
-                      : t("appealStatusUpheld")}
-                </Badge>
-                <span className="text-xs text-slate-500">
-                  {t("appealSubmittedAt")}: {formatDate(appeal.created_at)}
-                </span>
-              </div>
-
-              <div className="space-y-1">
-                <h3 className="text-xs font-semibold text-slate-700">
-                  {t("appealYourMessage")}
-                </h3>
-                <p className="whitespace-pre-wrap text-sm text-slate-700">{appeal.body}</p>
-              </div>
-
-              {appeal.status !== "pending" && (
-                <div className="space-y-1">
-                  <h3 className="text-xs font-semibold text-slate-700">
-                    {t("appealResultReason")}
-                  </h3>
-                  <p className="whitespace-pre-wrap text-sm text-slate-700">
-                    {appeal.decision_note || "-"}
-                  </p>
-                  <p className="text-xs text-slate-500">
-                    {t("appealDecidedAt")}: {formatDate(appeal.decided_at)}
-                  </p>
-                </div>
-              )}
+      {/* 未申立てのときだけフォーム（申立て済みなら上の履歴に出ている） */}
+      {!appeal && (
+        <Card>
+          <CardContent className="space-y-4 p-5">
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-slate-900">
+                {t("appealSection")}
+              </h2>
+              <p className="text-xs text-slate-600">
+                {detail.appealDeadlineAt
+                  ? t("appealDeadlineNotice", {
+                      deadline: formatDate(detail.appealDeadlineAt),
+                    })
+                  : t("appealDeadlineNotYetStarted")}
+              </p>
             </div>
-          ) : detail.canAppeal ? (
-            <PostAppealForm moderationDecisionId={decision.id} />
-          ) : (
-            <p className="text-sm text-slate-600">
-              {detail.postModerationStatus === "removed"
-                ? t("appealClosed")
-                : t("appealNotNeeded")}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+
+            {detail.canAppeal ? (
+              <PostAppealForm moderationDecisionId={decision.id} />
+            ) : (
+              <p className="text-sm text-slate-600">
+                {detail.postModerationStatus === "removed"
+                  ? t("appealClosed")
+                  : t("appealNotNeeded")}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       <p className="text-xs text-slate-500">{t("contactNotice")}</p>
     </div>

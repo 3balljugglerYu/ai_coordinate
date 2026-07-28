@@ -86,6 +86,15 @@ export interface DecisionDetailForOwner {
   canAppeal: boolean;
   /** 投稿の現在の状態。復帰済みでも詳細は閲覧できる。 */
   postModerationStatus: "visible" | "pending" | "removed" | null;
+  /**
+   * この判定が「現在有効な公開停止」かどうか。
+   *
+   * 投稿が復帰した後、別の理由で再度公開停止されることがある。その場合
+   * `postModerationStatus` は 'removed' だが、それは**この判定によるものではない**。
+   * 画面の状態表示をこの区別なしに書くと、古い判定のページに現在の停止を
+   * 帰属させてしまうため、判定単位の状態として返す。
+   */
+  isCurrentRemoval: boolean;
 }
 
 /**
@@ -205,6 +214,21 @@ export async function getModerationDecisionForOwner(
 
   const withinDeadline = deadline === null || Date.now() <= new Date(deadline).getTime();
 
+  // この判定が現在有効な公開停止かを判定する。post が removed でも、別の
+  // 判定による停止であれば false になる。
+  let isCurrentRemoval = false;
+  if (post.moderation_status === "removed") {
+    const { data: latestReject } = await adminClient
+      .from("moderation_audit_logs")
+      .select("id")
+      .eq("post_id", decision.post_id)
+      .eq("action", "reject")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ id: string }>();
+    isCurrentRemoval = latestReject?.id === decisionId;
+  }
+
   return {
     // 出口でも列を絞る（allowlist と二重の防御。ADR-011 / REQ-022）
     decision: toAuthorFacingDecision(decision),
@@ -215,6 +239,7 @@ export async function getModerationDecisionForOwner(
       !appeal && post.moderation_status === "removed" && withinDeadline,
     postModerationStatus:
       (post.moderation_status as DecisionDetailForOwner["postModerationStatus"]) ?? null,
+    isCurrentRemoval,
   };
 }
 

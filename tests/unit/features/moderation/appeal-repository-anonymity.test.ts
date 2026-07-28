@@ -231,3 +231,85 @@ describe("投稿者向け判定取得の匿名性 (ADR-011)", () => {
     expect(result?.appealDeadlineAt).toBe("2026-07-15T00:00:00.000Z");
   });
 });
+
+describe("isCurrentRemoval（状態バナーの帰属判定）", () => {
+  /**
+   * 投稿が復帰した後、別の理由で再度公開停止されることがある。
+   * その場合 postModerationStatus は 'removed' だが、それは**この判定による
+   * ものではない**。画面のタイトルや状態表示をこの区別なしに書くと、
+   * 古い判定のページが別の停止を指してしまう。
+   */
+  const tables = (latestRejectId: string | null, postStatus: string) => ({
+    moderation_audit_logs: {
+      data: {
+        id: DECISION_ID,
+        post_id: POST_ID,
+        action: "reject",
+        created_at: "2026-07-01T00:00:00.000Z",
+      },
+      error: null,
+    },
+    generated_images: {
+      data: { user_id: OWNER_ID, moderation_status: postStatus },
+      error: null,
+    },
+    moderation_notification_outbox: { data: { delivered_at: null }, error: null },
+    post_moderation_appeals: { data: null, error: null },
+    __latestReject: latestRejectId,
+  });
+
+  /** moderation_audit_logs を2回引く（判定本体 → 最新 reject）ので順に返す。 */
+  function chainWithLatest(latestRejectId: string | null, postStatus: string) {
+    const cursors: Record<string, number> = {};
+    const results: Record<string, unknown[]> = {
+      moderation_audit_logs: [
+        tables(latestRejectId, postStatus).moderation_audit_logs,
+        { data: latestRejectId ? { id: latestRejectId } : null, error: null },
+      ],
+      generated_images: [tables(latestRejectId, postStatus).generated_images],
+      moderation_notification_outbox: [{ data: { delivered_at: null }, error: null }],
+      post_moderation_appeals: [{ data: null, error: null }],
+    };
+
+    const from = jest.fn((table: string) => {
+      const idx = cursors[table] ?? 0;
+      cursors[table] = idx + 1;
+      const result = results[table]?.[idx] ?? { data: null, error: null };
+      const builder: Record<string, unknown> = {
+        maybeSingle: () => Promise.resolve(result),
+        then: (f: (v: unknown) => unknown) => Promise.resolve(result).then(f),
+      };
+      for (const m of ["select", "eq", "order", "limit", "in", "gt", "not", "is", "range"]) {
+        builder[m] = jest.fn(() => builder);
+      }
+      return builder;
+    });
+    return { from };
+  }
+
+  it("この判定が最新の公開停止なら true", async () => {
+    const client = chainWithLatest(DECISION_ID, "removed");
+    const result = await getModerationDecisionForOwner(DECISION_ID, OWNER_ID, {
+      adminClient: client as never,
+    });
+    expect(result?.isCurrentRemoval).toBe(true);
+  });
+
+  it("別の判定で公開停止されている場合は false", async () => {
+    const client = chainWithLatest("99999999-9999-4999-8999-999999999999", "removed");
+    const result = await getModerationDecisionForOwner(DECISION_ID, OWNER_ID, {
+      adminClient: client as never,
+    });
+    // 投稿は removed だが、この判定によるものではない
+    expect(result?.postModerationStatus).toBe("removed");
+    expect(result?.isCurrentRemoval).toBe(false);
+  });
+
+  it("投稿が公開中なら false", async () => {
+    const client = chainWithLatest(DECISION_ID, "visible");
+    const result = await getModerationDecisionForOwner(DECISION_ID, OWNER_ID, {
+      adminClient: client as never,
+    });
+    expect(result?.isCurrentRemoval).toBe(false);
+  });
+});
