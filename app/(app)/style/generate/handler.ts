@@ -4,6 +4,10 @@ import {
   MAX_IMAGE_BYTES,
 } from "@/features/i2i-poc/shared/image-constraints";
 import { getPublishedStylePresetForGeneration } from "@/features/style-presets/lib/style-preset-repository";
+import {
+  isUserSelectableOutputAspectRatioMode,
+  type UserSelectableOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 import { downloadStylePresetReferenceImage } from "@/features/style-presets/lib/style-preset-storage";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
@@ -267,6 +271,31 @@ export async function postStyleGenerateRoute(
         401
       );
     }
+    // 出力比率のユーザー選択。カテゴリが「ユーザーが決める」(user_select)のときだけ採用する。
+    // 非同期(認証)経路と同じ allowlist で検証し、許容外は 400。
+    // ※ 固定比率カテゴリで送られてきた有効値は無視する(カテゴリ設定を優先)。
+    //    形式不正は経路を問わず 400 にして、クライアント側のバグを早期に表面化させる。
+    const outputAspectRatioEntry = formData.get("outputAspectRatioMode");
+    let userSelectedAspectRatioMode: UserSelectableOutputAspectRatioMode | null =
+      null;
+    if (
+      typeof outputAspectRatioEntry === "string" &&
+      outputAspectRatioEntry.length > 0
+    ) {
+      if (!isUserSelectableOutputAspectRatioMode(outputAspectRatioEntry)) {
+        return jsonError(
+          copy.invalidOutputAspectRatio,
+          "STYLE_INVALID_OUTPUT_ASPECT_RATIO",
+          400,
+        );
+      }
+      userSelectedAspectRatioMode = outputAspectRatioEntry;
+    }
+    const effectiveOutputAspectRatioMode =
+      preset.category.outputAspectRatioMode === "user_select"
+        ? (userSelectedAspectRatioMode ?? "source")
+        : preset.category.outputAspectRatioMode;
+
     const effectiveSourceImageType: SourceImageType =
       preset.category.showSourceImageTypeControl
         ? sourceImageType
@@ -536,7 +565,7 @@ export async function postStyleGenerateRoute(
         openaiClient,
         openaiMultiInputClient,
         referenceImage,
-        outputAspectRatioMode: preset.category.outputAspectRatioMode,
+        outputAspectRatioMode: effectiveOutputAspectRatioMode,
         presetImageDimensions:
           preset.thumbnailWidth > 0 && preset.thumbnailHeight > 0
             ? { width: preset.thumbnailWidth, height: preset.thumbnailHeight }

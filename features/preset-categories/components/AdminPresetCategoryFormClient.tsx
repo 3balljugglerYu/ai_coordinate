@@ -1147,27 +1147,35 @@ export function AdminPresetCategoryFormClient({
         {/*
           出力比率セレクタの表示可否は「出力比率」の設定から一意に決まるため、
           独立した設定値としては持たない(二重管理による不整合を防ぐ)。
-          ここでは状態が一目で分かるように読み取り専用で表示する。
+          操作できない入力欄は設定項目と誤解されるため、チェックボックスではなく
+          導出された状態表示にする。
         */}
-        <label className="flex items-start gap-3">
-          <input
-            type="checkbox"
-            checked={form.outputAspectRatioMode === "user_select"}
-            readOnly
-            disabled
-            aria-describedby="output-aspect-control-hint"
-            className="mt-1"
-          />
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className={
+              form.outputAspectRatioMode === "user_select"
+                ? "mt-0.5 text-sm font-semibold text-emerald-600"
+                : "mt-0.5 text-sm text-slate-400"
+            }
+          >
+            {form.outputAspectRatioMode === "user_select" ? "✓" : "—"}
+          </span>
           <span className="text-sm text-slate-700">
             <span className="font-medium">出力比率を表示</span>
+            {": "}
+            <span role="status" aria-live="polite" className="font-medium">
+              {form.outputAspectRatioMode === "user_select" ? "表示" : "非表示"}
+            </span>
             <br />
-            <span id="output-aspect-control-hint" className="text-xs text-slate-500">
-              上の「出力比率」で「ユーザーが決める」を選んだときだけ自動で ON になります
-              (ここでは切り替えできません)。ON のとき /style の生成画面に比率セレクタが出て、
-              ユーザーが比率を選べます(じゆうモードと同じUI)。それ以外はカテゴリの設定値で固定されます。
+            <span className="text-xs text-slate-500">
+              この項目は上の「出力比率」から自動で決まります(ここでは切り替えできません)。
+              「ユーザーが決める」を選んだときだけ /style の生成画面に比率セレクタが出て、
+              ユーザーが比率を選べます(じゆうモードと同じUI)。
+              それ以外はカテゴリの設定値で固定されます。
             </span>
           </span>
-        </label>
+        </div>
 
         <label className="flex items-start gap-3">
           <input

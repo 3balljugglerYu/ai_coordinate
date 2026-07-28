@@ -1331,6 +1331,11 @@ export function StylePageClient({
       formData.set("sourceImageType", effectiveSourceImageType);
       formData.set("backgroundChange", effectiveBackgroundChange ? "true" : "false");
       formData.set("model", effectiveSelectedModel);
+      // 出力比率はカテゴリが user_select のときのみ送る(非同期経路と同じ扱い)。
+      // ゲストにもセレクタは出るため、同期経路でも送らないと選択が反映されない。
+      if (shouldShowOutputAspectRatioControl) {
+        formData.set("outputAspectRatioMode", aspectMode);
+      }
       if (
         selectedPreset.imageInputMode === "dual" &&
         selectedPreset.dualReferenceSource === "user_upload" &&
@@ -2165,7 +2170,7 @@ export function StylePageClient({
                       next as UserSelectableOutputAspectRatioMode,
                     )
                   }
-                  disabled={isGenerating}
+                  disabled={isGenerating || isGuestResultLocked}
                   labels={{
                     sectionTitle: t("aspectSectionTitle"),
                     auto: t("aspectAuto"),

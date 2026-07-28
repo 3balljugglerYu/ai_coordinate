@@ -933,6 +933,67 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  describe("ゲスト × user_select(出力比率のユーザー選択)", () => {
+    const runGuest = async (sentAspect: string | null) => {
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: {
+            ...TEST_COORDINATE_CATEGORY,
+            // ゲスト開放 かつ ユーザーが比率を決めるカテゴリ
+            allowGuestGeneration: true,
+            outputAspectRatioMode: "user_select",
+          },
+        })
+      );
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      if (sentAspect) formData.set("outputAspectRatioMode", sentAspect);
+      return postStyleGenerateRoute(createRequest(formData), {
+        fetchFn,
+        geminiApiKey: "test-api-key",
+        getUserFn,
+        getPublishedStylePresetForGenerationFn,
+        recordStyleUsageEventFn,
+        checkAndConsumeRateLimitFn,
+        releaseRateLimitAttemptFn,
+      });
+    };
+
+    /** provider へ渡った aspectRatio を取り出す。 */
+    const sentAspectRatio = () => {
+      const [, init] = fetchFn.mock.calls[0];
+      const body = JSON.parse((init as RequestInit).body as string);
+      return body?.generationConfig?.imageConfig?.aspectRatio;
+    };
+
+    test("ゲストが選んだ比率が provider まで反映される", async () => {
+      const response = await runGuest("4:5");
+      expect(response.status).toBe(200);
+      expect(sentAspectRatio()).toBe("4:5");
+    });
+
+    test("ゲスト未選択なら source(入力比率)にフォールバックする", async () => {
+      // 入力画像は 1:1 相当のため source では 1:1 になる。
+      const response = await runGuest(null);
+      expect(response.status).toBe(200);
+      expect(sentAspectRatio()).not.toBe("4:5");
+    });
+
+    test("ゲストの不正な比率値は 400 で拒否し生成枠を消費しない", async () => {
+      const response = await runGuest("garbage");
+      expect(response.status).toBe(400);
+      expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+      expect(fetchFn).not.toHaveBeenCalled();
+    });
+
+    test("ゲストが user_select 自身を送っても 400 で拒否する", async () => {
+      const response = await runGuest("user_select");
+      expect(response.status).toBe(400);
+      expect(fetchFn).not.toHaveBeenCalled();
+    });
+  });
+
   test("postStyleGenerateRoute_allow_guest_generationがtrueならcoordinate以外でもguest生成できる", async () => {
     // 判定軸は category.key ではなくフラグであることの証明。
     // admin でフラグを ON にしたカテゴリ(例: コーディネート2.0)はゲスト生成できる。
