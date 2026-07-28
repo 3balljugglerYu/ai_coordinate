@@ -9,6 +9,8 @@ export type AdminAuditAction =
   | "deduction"
   | "moderation_approve"
   | "moderation_reject"
+  | "moderation_appeal_uphold"
+  | "moderation_appeal_overturn"
   | "announcement_create"
   | "announcement_update"
   | "announcement_delete"
