@@ -6,9 +6,11 @@ import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { getPromptSafeAltText } from "@/features/generation/lib/prompt-visibility";
+import { shouldHideThumbnailForPolicy } from "@/constants/moderation-policy";
 
 interface MyImageCardProps {
   image: GeneratedImageRecord;
@@ -47,7 +49,16 @@ export function MyImageCard({
     storage_path: image.storage_path,
   });
 
-  const detailUrl = `/posts/${image.id}?from=my-page`;
+  // 公開停止 (moderation_status='removed') の投稿は本人でも /posts/{id} を開けない。
+  // tombstone として残しつつ、遷移先を判定詳細ページに切り替える (ADR-008 / REQ-013)。
+  // 判定 ID はサーバー側で解決してから渡す (removalDecisionId)。
+  // 判定 ID はカードに引き回さず、resolver ルートがサーバー側で最新の
+  // reject 判定を引いて詳細ページへ redirect する。
+  const isSuspended = image.moderation_status === "removed";
+  const hideThumbnail = isSuspended && shouldHideThumbnailForPolicy(image.moderation_reason);
+  const detailUrl = isSuspended
+    ? `/my-page/moderation/posts/${image.id}`
+    : `/posts/${image.id}?from=my-page`;
 
   // 長押し検出。pointerdown でタイマー開始、move/up/cancel でクリア。
   // タイマーが満了したら onLongPressEnterSelection を発火し、続く click は抑止する。
@@ -84,7 +95,12 @@ export function MyImageCard({
     .filter(Boolean)
     .join(" ");
 
-  const imageEl = imageUrl ? (
+  const imageEl = isSuspended && hideThumbnail ? (
+    // 重大な安全カテゴリでは、公開停止した画像を本人にも再表示しない (ADR-011)
+    <div className="flex aspect-square items-center justify-center bg-slate-100 px-3 text-center text-xs text-slate-500">
+      {t("moderationThumbnailHidden")}
+    </div>
+  ) : imageUrl ? (
     <Image
       src={imageUrl}
       alt={getPromptSafeAltText(image, "画像")}
@@ -113,6 +129,14 @@ export function MyImageCard({
         >
           <div className="relative w-full overflow-hidden bg-gray-100">
             {imageEl}
+            {isSuspended && (
+              <Badge
+                variant="secondary"
+                className="absolute right-2 top-2 bg-slate-900/80 text-white"
+              >
+                {t("moderationSuspendedBadge")}
+              </Badge>
+            )}
             <Checkbox
               checked={selected}
               aria-hidden="true"
@@ -150,6 +174,14 @@ export function MyImageCard({
       >
         <div className="relative w-full overflow-hidden bg-gray-100">
           {imageEl}
+          {isSuspended && (
+            <Badge
+              variant="secondary"
+              className="absolute right-2 top-2 bg-slate-900/80 text-white"
+            >
+              {t("moderationSuspendedBadge")}
+            </Badge>
+          )}
         </div>
       </Link>
     </Card>

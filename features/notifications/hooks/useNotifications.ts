@@ -11,6 +11,7 @@ import {
   getUnreadCount,
 } from "../lib/api";
 import type { Notification } from "../types";
+import { isModerationNotificationType } from "../types";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import {
   formatNotificationContent,
@@ -427,6 +428,20 @@ export function useNotifications(
       // 既読化
       if (!notification.is_read) {
         markRead([notification.id]);
+      }
+
+      // モデレーション通知は判定詳細ページへ遷移する。
+      // entity_type は 'post' だが、公開停止された投稿は本人でも /posts/{id} を
+      // 開けないため、下の post 分岐より前に処理して死んだリンクを避ける
+      // (ADR-008)。判定詳細は投稿が復帰した後も開ける。
+      if (
+        isModerationNotificationType(notification.type) &&
+        notification.data?.moderation_decision_id
+      ) {
+        router.push(
+          `/my-page/moderation/decisions/${notification.data.moderation_decision_id}?from=notifications`
+        );
+        return;
       }
 
       // 運営ボーナス通知はマイページへ遷移

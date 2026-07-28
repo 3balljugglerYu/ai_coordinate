@@ -103,6 +103,32 @@ export function isValidModerationPolicyCode(code: string): boolean {
   return POLICY_BY_CODE.has(code);
 }
 
+/** snake_case を PascalCase にする（`spam_fraud` → `SpamFraud`）。 */
+function toPascalCase(value: string): string {
+  return value
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join("");
+}
+
+/**
+ * ポリシーの表示ラベルに使う i18n キーを返す。
+ *
+ * `messages/*.ts` の `moderation` ブロックには通報ダイアログ用の
+ * `categoryRights` / `subcategoryCopyright` 等が**全15ロケール分すでに存在する**ため、
+ * 執行ポリシー専用のキーを19件×15ロケール新設せず、これを再利用する。
+ */
+export function getModerationPolicyLabelKeys(
+  code: string | null | undefined
+): { categoryKey: string; subcategoryKey: string } | null {
+  const policy = findModerationPolicy(code);
+  if (!policy) return null;
+  return {
+    categoryKey: `category${toPascalCase(policy.categoryId)}`,
+    subcategoryKey: `subcategory${toPascalCase(policy.subcategoryId)}`,
+  };
+}
+
 /**
  * 判定ログに保存された code から、サムネイルを隠すべきかを判定する。
  * カタログから消えた古い code は「不明」として安全側（非表示）に倒す。
