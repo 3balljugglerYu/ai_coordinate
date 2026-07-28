@@ -893,6 +893,8 @@ export function GenerationFormContainer({
     generationType?: import("../types").GenerationType;
     /** framing_mode。free_pose(既定)のときのみ async 経路で送られる(locked は省略) */
     framingMode?: import("@/shared/generation/framing-mode").FramingMode;
+    /** じゆうモードの出力比率(source + 明示9比率)。free のときのみ。 */
+    outputAspectRatioMode?: import("@/shared/generation/style-output-aspect-ratio").FreeOutputAspectRatioMode;
   }) => {
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -1028,6 +1030,7 @@ export function GenerationFormContainer({
             generationType: data.generationType || "coordinate",
             model: data.model,
             framingMode: data.framingMode,
+            outputAspectRatioMode: data.outputAspectRatioMode,
           },
           asyncApiMessages
         );

@@ -124,6 +124,13 @@ export async function generateImageAsync(
       ...(request.framingMode
         ? { framingMode: request.framingMode }
         : {}),
+      // じゆうモードの出力比率は free のときのみ送信する(他モードに混入させない)。
+      // "source" は既定=非上書きのため送らない。明示比率だけ載せる。
+      ...(request.generationType === "free" &&
+      request.outputAspectRatioMode &&
+      request.outputAspectRatioMode !== "source"
+        ? { outputAspectRatioMode: request.outputAspectRatioMode }
+        : {}),
     }),
   });
 

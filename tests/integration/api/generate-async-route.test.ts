@@ -533,6 +533,69 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
     });
 
+    describe("outputAspectRatioMode (Free Style)", () => {
+      const runFree = async (extra: Record<string, unknown>) => {
+        const request = createRequest({
+          prompt: "猫",
+          sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+          generationType: "free",
+          ...extra,
+        });
+        return postGenerateAsyncRoute(request, {
+          getUserFn,
+          jobRepository,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        });
+      };
+
+      test("free + 明示比率は generation_metadata.outputAspectRatioMode に保存する", async () => {
+        const response = await runFree({ outputAspectRatioMode: "3:4" });
+        expect(response.status).toBe(200);
+        const arg = jobRepository.createImageJob.mock.calls[0][0] as {
+          generation_type: string;
+          generation_metadata?: { outputAspectRatioMode?: string };
+        };
+        expect(arg.generation_type).toBe("free");
+        expect(arg.generation_metadata?.outputAspectRatioMode).toBe("3:4");
+      });
+
+      test("free + source は保存しない(既定=非上書き)", async () => {
+        const response = await runFree({ outputAspectRatioMode: "source" });
+        expect(response.status).toBe(200);
+        const arg = jobRepository.createImageJob.mock.calls[0][0] as {
+          generation_metadata?: { outputAspectRatioMode?: string };
+        };
+        expect(arg.generation_metadata?.outputAspectRatioMode).toBeUndefined();
+      });
+
+      test("free + 未指定は保存しない", async () => {
+        const response = await runFree({});
+        expect(response.status).toBe(200);
+        const arg = jobRepository.createImageJob.mock.calls[0][0] as {
+          generation_metadata?: { outputAspectRatioMode?: string };
+        };
+        expect(arg.generation_metadata?.outputAspectRatioMode).toBeUndefined();
+      });
+
+      test("coordinate + 比率指定は 400 で拒否し job を作らない", async () => {
+        const request = createRequest({
+          prompt: "猫",
+          sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+          generationType: "coordinate",
+          outputAspectRatioMode: "3:4",
+        });
+        const response = await postGenerateAsyncRoute(request, {
+          getUserFn,
+          jobRepository,
+          invokeImageWorkerFn,
+          supabaseUrl: "https://example.supabase.co",
+        });
+        expect(response.status).toBe(400);
+        expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      });
+    });
+
     test("postGenerateAsyncRoute_未認証ユーザーの場合_401を返す", async () => {
       // ============================================================
       // Arrange
