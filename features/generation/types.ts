@@ -7,6 +7,7 @@ import type {
   SourceImageType,
 } from "@/shared/generation/prompt-core";
 import type { FramingMode } from "@/shared/generation/framing-mode";
+import type { FreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   DEFAULT_GPT_IMAGE_2_MODEL,
   GPT_IMAGE_2_CANONICAL_MODELS,
@@ -308,6 +309,11 @@ export interface GenerationRequest {
    * coordinate 生成時のみ有効・全ログインユーザー対象 (サーバ側 schema で検証)。
    */
   framingMode?: FramingMode;
+  /**
+   * じゆうモード(Free Style)専用の出力アスペクト比。
+   * "source"(自動) または明示9比率。free 生成時のみ有効(サーバ側 schema で検証)。
+   */
+  outputAspectRatioMode?: FreeOutputAspectRatioMode;
 }
 
 export interface GenerationResponse {

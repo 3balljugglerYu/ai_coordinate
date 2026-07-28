@@ -11,6 +11,7 @@ import {
 import { getPromptMaxLength } from "./prompt-validation";
 import { FRAMING_MODES } from "@/shared/generation/framing-mode";
 import { CREATOR_LOOKS_MODES } from "@/shared/generation/creator-looks-mode";
+import { FREE_OUTPUT_ASPECT_RATIO_MODES } from "@/shared/generation/style-output-aspect-ratio";
 
 /**
  * 画像生成機能のZodスキーマ
@@ -115,6 +116,10 @@ export const generationRequestSchema = z.object({
   // Creator Looks 専用: 生成モード(衣装のみ/衣装＋背景2段階/背景のみ)。
   // 指定時は handler 側で overrides より優先して override_* を導出する。
   creatorLooksMode: z.enum(CREATOR_LOOKS_MODES).optional(),
+  // じゆうモード専用: 出力アスペクト比。source(自動) + 明示9比率のみ許可(preset_image は不可)。
+  // enum 外の値(preset_image / 不正値)は 400。generationType='free' 以外での指定も
+  // superRefine で 400 にする(責務分担: API は拒否・localStorage/Worker は source フォールバック)。
+  outputAspectRatioMode: z.enum(FREE_OUTPUT_ASPECT_RATIO_MODES).optional(),
 }).superRefine((data, ctx) => {
   // プロンプト上限は generationType 別(free=30,000 / 他=1,500)。
   // default 適用後の generationType で判定するため superRefine で検証する。
@@ -215,6 +220,19 @@ export const generationRequestSchema = z.object({
       code: z.ZodIssueCode.custom,
       path: ["framingMode"],
       message: "framingMode は coordinate 生成時のみ指定できます",
+    });
+  }
+
+  // outputAspectRatioMode は free 生成時のみ指定可能
+  // (coordinate/style/inspire 等の比率決定に影響させない)
+  if (
+    data.outputAspectRatioMode !== undefined &&
+    data.generationType !== "free"
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["outputAspectRatioMode"],
+      message: "outputAspectRatioMode は free 生成時のみ指定できます",
     });
   }
 }).transform((data) => {

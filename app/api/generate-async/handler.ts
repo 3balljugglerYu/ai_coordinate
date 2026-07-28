@@ -20,6 +20,7 @@ import {
   overridesForCreatorLooksMode,
   maxStagesForCreatorLooksMode,
 } from "@/shared/generation/creator-looks-mode";
+import { normalizeFreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   getCreatorLooksTwoStageVisibility,
   isTwoStageModeAvailable,
@@ -148,6 +149,7 @@ export async function postGenerateAsyncRoute(
       overrides,
       framingMode,
       creatorLooksMode,
+      outputAspectRatioMode,
     } = validationResult.data;
     const effectiveModel = model || DEFAULT_GENERATION_MODEL;
     // Creator Looks 投稿テンプレ(is_creator_looks)に対してのみ有効な生成モード。
@@ -470,6 +472,16 @@ export async function postGenerateAsyncRoute(
       generationMetadata.creatorLooksMaxStages = maxStagesForCreatorLooksMode(
         effectiveCreatorLooksMode,
       );
+    }
+    // じゆうモードのユーザー選択比率。free かつ明示比率のときのみ格納する
+    // (source=既定は載せない。Worker 側で未指定→source フォールバック)。
+    // schema で検証済みだが、防御的に Free 用 normalizer を通す。
+    if (generationType === "free" && outputAspectRatioMode) {
+      const normalizedAspect =
+        normalizeFreeOutputAspectRatioMode(outputAspectRatioMode);
+      if (normalizedAspect !== "source") {
+        generationMetadata.outputAspectRatioMode = normalizedAspect;
+      }
     }
 
     // image_jobsテーブルにレコード作成

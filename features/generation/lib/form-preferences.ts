@@ -25,11 +25,16 @@ import {
   normalizeModelName,
   type GeminiModel,
 } from "@/features/generation/types";
+import {
+  normalizeFreeOutputAspectRatioMode,
+  type FreeOutputAspectRatioMode,
+} from "@/shared/generation/style-output-aspect-ratio";
 
 export const SELECTED_MODEL_STORAGE_KEY = "persta-ai:last-selected-model";
 export const BACKGROUND_MODE_STORAGE_KEY = "persta-ai:last-background-mode";
 export const COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY =
   "persta-ai:coordinate-stock-save-prompt-dismissed";
+export const FREE_ASPECT_MODE_STORAGE_KEY = "persta-ai:free-output-aspect-mode";
 
 const DEFAULT_MODEL: GeminiModel = DEFAULT_GENERATION_MODEL;
 const DEFAULT_BACKGROUND_MODE: BackgroundMode = "keep";
@@ -114,6 +119,26 @@ export function writePreferredBackgroundMode(mode: BackgroundMode): void {
     return;
   }
   safeWriteLocalStorage(BACKGROUND_MODE_STORAGE_KEY, mode);
+}
+
+/**
+ * じゆうモード(Free Style)の出力比率モード。
+ * 許容外(preset_image / 旧値 / 不正値)は Free 専用 normalizer で "source" に丸める。
+ * SSR では null を返すため、呼び出し側はマウント後に復元する(初回描画は source)。
+ */
+export function readPreferredAspectMode(): FreeOutputAspectRatioMode {
+  const stored = safeReadLocalStorage(FREE_ASPECT_MODE_STORAGE_KEY);
+  return normalizeFreeOutputAspectRatioMode(stored);
+}
+
+export function writePreferredAspectMode(
+  mode: FreeOutputAspectRatioMode,
+): void {
+  // 念のため Free 用に正規化してから保存(許容外は source)。
+  safeWriteLocalStorage(
+    FREE_ASPECT_MODE_STORAGE_KEY,
+    normalizeFreeOutputAspectRatioMode(mode),
+  );
 }
 
 export function readCoordinateStockSavePromptDismissed(): boolean {
