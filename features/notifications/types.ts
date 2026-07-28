@@ -2,8 +2,32 @@
  * 通知機能の型定義
  */
 
-export type NotificationType = 'like' | 'comment' | 'follow' | 'bonus';
+export type NotificationType =
+  | 'like'
+  | 'comment'
+  | 'follow'
+  | 'bonus'
+  | 'post_moderation_removed'
+  | 'post_moderation_appeal_result';
 export type EntityType = 'post' | 'comment' | 'user';
+
+/**
+ * 運営の措置に関する通知タイプ。
+ *
+ * 設計判断: docs/planning/post-moderation-notification-implementation-plan.md ADR-011
+ *
+ * これらの通知は投稿者本人が recipient で、actor_id にも recipient 本人の ID が入る
+ * (= 判定した管理者の個人情報を投稿者へ渡さないため)。したがって actor の
+ * プロフィール enrichment を行ってはならない。UI は運営ロゴで表示する。
+ */
+export const MODERATION_NOTIFICATION_TYPES = [
+  'post_moderation_removed',
+  'post_moderation_appeal_result',
+] as const;
+
+export function isModerationNotificationType(type: string): boolean {
+  return (MODERATION_NOTIFICATION_TYPES as readonly string[]).includes(type);
+}
 
 export interface Notification {
   id: string;
@@ -28,6 +52,25 @@ export interface Notification {
     bonus_amount?: number;
     streak_days?: number;
     reason?: string;
+    /**
+     * モデレーション通知 (post_moderation_*) の payload。
+     * outbox の payload をそのまま格納する。通報者情報・通報件数は含まない
+     * (ADR-011 / REQ-022, REQ-023)。
+     */
+    moderation_decision_id?: string;
+    policy_code?: string;
+    policy_version?: string;
+    policy_anchor?: string;
+    author_facing_reason?: string;
+    restriction_scope?: string;
+    restriction_duration?: string;
+    appeal_id?: string;
+    appeal_status?: "pending" | "upheld" | "overturned";
+    decision_note?: string;
+    /** dispatcher の冪等キー。UI では使わない。 */
+    moderation_event_key?: string;
+    /** 運営発の通知であることの印。UI はこれを見て運営ロゴを出す。 */
+    system_generated?: boolean;
   };
   is_read: boolean;
   read_at: string | null;

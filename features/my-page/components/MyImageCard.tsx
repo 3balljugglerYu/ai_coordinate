@@ -47,6 +47,13 @@ export function MyImageCard({
     storage_path: image.storage_path,
   });
 
+  // 公開停止 (moderation_status='removed') の投稿は本人でも /posts/{id} を開けない。
+  // tombstone として残しつつ、遷移先を判定詳細ページに切り替える (ADR-008 / REQ-013)。
+  // 判定 ID はサーバー側で解決してから渡す (removalDecisionId)。
+  // 公開停止された投稿は is_posted=false に戻され、投稿者のギャラリーでは
+  // 未投稿として普通に扱われる（バッジは付けない）。恒久的なラベルは離脱要因に
+  // なるため。詳細画面も所有者は開ける（getPostDetail が is_posted=false を
+  // 所有者に許可する）。再投稿しようとした時点で PostModal が異議申立てへ案内する。
   const detailUrl = `/posts/${image.id}?from=my-page`;
 
   // 長押し検出。pointerdown でタイマー開始、move/up/cancel でクリア。

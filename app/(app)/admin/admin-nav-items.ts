@@ -48,6 +48,13 @@ export const adminNavItems: AdminNavItem[] = [
     quickAction: true,
   },
   {
+    path: "/admin/moderation/appeals",
+    label: "異議申立て",
+    description: "公開停止への異議を審査",
+    iconKey: "shield-check",
+    quickAction: true,
+  },
+  {
     path: "/admin/percoin-defaults",
     label: "デフォルト枚数",
     description: "ボーナス既定値を設定",

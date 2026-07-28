@@ -151,6 +151,21 @@ export async function POST(request: NextRequest) {
       subscription_plan: bonusMeta?.subscriptionPlan,
     });
   } catch (error) {
+    // 公開停止中のコンテンツは DB trigger (enforce_no_publish_while_removed) が
+    // 再公開を拒否する。クライアントに専用コードを返し、異議申立てへ案内させる。
+    if (
+      error instanceof Error &&
+      error.message.includes("post_suspended_cannot_publish")
+    ) {
+      return NextResponse.json(
+        {
+          error: copy.postSuspendedCannotPublish,
+          errorCode: "POSTS_SUSPENDED_CANNOT_PUBLISH",
+        },
+        { status: 409 }
+      );
+    }
+
     // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
     console.error("Post API error:", error);
     return NextResponse.json(

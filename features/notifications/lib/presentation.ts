@@ -18,7 +18,12 @@ export type NotificationTranslationKey =
   | "followTitle"
   | "likeTitle"
   | "replyTitle"
-  | "replyToReplyTitle";
+  | "replyToReplyTitle"
+  | "moderationRemovedTitle"
+  | "moderationRemovedBody"
+  | "moderationAppealUpheldTitle"
+  | "moderationAppealOverturnedTitle"
+  | "moderationAppealResultTitle";
 
 function getStringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -132,6 +137,32 @@ export function formatNotificationContent(
       };
     case "bonus":
       return formatBonusNotification(notification, t);
+    case "post_moderation_removed":
+      // 措置ラベルは「削除」ではなく「公開停止」で統一する (ADR-011 / REQ-025)。
+      // 運営が入力した投稿者向け説明は翻訳できないため原文をそのまま出す。
+      return {
+        title: t("moderationRemovedTitle"),
+        body:
+          getStringValue(notification.data?.author_facing_reason) ??
+          getStringValue(notification.body) ??
+          t("moderationRemovedBody"),
+      };
+    case "post_moderation_appeal_result": {
+      const status = getStringValue(notification.data?.appeal_status);
+      const title =
+        status === "overturned"
+          ? t("moderationAppealOverturnedTitle")
+          : status === "upheld"
+            ? t("moderationAppealUpheldTitle")
+            : t("moderationAppealResultTitle");
+      return {
+        title,
+        body:
+          getStringValue(notification.data?.decision_note) ??
+          getStringValue(notification.body) ??
+          "",
+      };
+    }
     default:
       return {
         title: notification.title,

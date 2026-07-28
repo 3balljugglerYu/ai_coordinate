@@ -141,7 +141,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | コレクション | `preset_categories`, `image_jobs`, `collection_completions`, Storage `collection-mount-templates` / `generated-images` | `get_collection_progress`, `reserve_collection_completion`, `finalize_collection_completion`, `fail_collection_completion` | `/api/collections/progress`, `/api/collections/mount`, `/m/[token]`, `/admin/collections`, `/admin/preset-categories` |
 | 投稿とソーシャル | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification`, `delete_comment_thread` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
 | 特典とグロース | `percoin_bonus_defaults`, `percoin_streak_defaults`, `referrals`, `notifications`, `free_percoin_batches` | `grant_tour_bonus`, `grant_streak_bonus`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `grant_referral_bonus` | `/api/tutorial/complete`, `/api/streak/check`, `/api/referral/check-first-login` |
-| モデレーションと管理 | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
+| モデレーションと管理 | `post_reports`, `moderation_audit_logs`, `moderation_notification_outbox`, `post_moderation_appeals`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision_v2`, `dispatch_moderation_notification_outbox`, `create_post_moderation_appeal`, `decide_post_moderation_appeal`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/moderation/appeals`, `/api/admin/**` |
 | ホーム訴求バナー | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
 | 退会と完全削除 | `profiles`, `credit_forfeiture_ledger`, `generated_images`, `source_image_stocks` | `request_account_deletion`, `cancel_account_deletion`, `get_due_deletion_candidates`, `record_forfeiture_ledger` | `/api/account/deactivate`, `/api/account/reactivate`, `/api/internal/account-purge` |
 | Inspire (ユーザー投稿スタイルテンプレ) | `user_style_templates`, `user_style_template_preview_attempts`, `style_template_audit_logs`, `image_jobs` (拡張列), `generated_images` (拡張列), `notifications` (拡張) | `apply_user_style_template_decision`, `promote_user_style_template_draft`, `create_user_style_template_draft`, `enforce_user_style_template_submission_cap` | `/api/style-templates/**`, `/api/admin/style-templates/**`, `/api/generate-async` (inspire 経路), `/inspire/[templateId]`, `/admin/style-templates`, ホーム (env で gate) |
@@ -242,10 +242,13 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 
 1. `/api/reports/posts` が `post_reports` に通報を追加する
 2. 同じ route 内で `createAdminClient()` を使い、全通報とアクティブユーザー数を集計する
-3. 閾値を超えたら `mark_post_pending_by_report` を呼ぶ
+3. 閾値を超えたら `mark_post_pending_by_report` を呼ぶ（**service_role クライアント経由**。同 RPC は service_role 専用）
 4. その結果 `generated_images.moderation_status` と `moderation_audit_logs` が更新される
 5. 管理者は `/api/admin/moderation/posts/[postId]/decision` を呼ぶ
-6. その route が `apply_admin_moderation_decision` を呼び、`admin_audit_log` にも記録する
+6. その route が `apply_admin_moderation_decision_v2` を呼び、状態更新・`moderation_audit_logs`・`moderation_notification_outbox` を同一トランザクションで確定し、`admin_audit_log` にも記録する
+7. `dispatch_moderation_notification_outbox` が outbox から `notifications` へ配送する（route が best effort で呼び、`pg_cron` が毎分再試行）
+8. 投稿者は通知から `/my-page/moderation/decisions/[decisionId]` へ遷移し、`create_post_moderation_appeal` RPC で異議を申し立てられる
+9. 管理者が `decide_post_moderation_appeal` で判定する。`overturn` は投稿の `visible` 復帰まで同一トランザクションで行う
 
 ### 重要な点
 
@@ -336,8 +339,11 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `grant_admin_bonus` | `/api/admin/bonus/grant`, `/api/admin/bonus/grant-batch` | user, amount, reason, admin, notify flag, balance type | `amount_granted`, `transaction_id` | 通知付き管理者付与 |
 | `deduct_percoins_admin` | `/api/admin/deduction` | user, amount, balance type, idempotency key, metadata | `balance`, `amount_deducted` | 冪等性付き管理者減算 |
 | `get_user_ids_by_emails` | 一括 lookup / 一括付与 | email array | `email`, `user_id`, `balance` | 管理者用の一括検索 helper |
-| `mark_post_pending_by_report` | `/api/reports/posts` | post, actor, reason, metadata | `boolean` | 投稿を pending にし、審査ログを書き込む |
-| `apply_admin_moderation_decision` | `/api/admin/moderation/posts/[postId]/decision` | post, actor, action, reason, time, metadata | `boolean` | 最終審査の反映 |
+| `mark_post_pending_by_report` | `/api/reports/posts`(service_role クライアント) | post, actor, reason, metadata | `boolean` | 投稿を pending にし、審査ログを書き込む。**service_role 専用**。`reason` は `report_threshold` / `admin_immediate` のみ、後者は `admin_users` で fail-closed 検証 |
+| `apply_admin_moderation_decision` | (v2 に移行済み。権限のみ service_role に是正) | post, actor, action, reason, time, metadata | `boolean` | 旧版。新規の呼び出しは v2 を使う |
+| `apply_admin_moderation_decision_v2` | `/api/admin/moderation/posts/[postId]/decision` | post, actor, action, idempotency key, policy(code/version/anchor), author facing reason, internal note, restriction scope/duration, decision source, automated flag, time, metadata | `uuid`(判定 ID) | 状態更新・`moderation_audit_logs`・`moderation_notification_outbox` を同一トランザクションで確定。対象が `pending` のときだけ適用し、同一 idempotency key の再送は既存判定 ID を返す。**service_role 専用**かつ `admin_users` で fail-closed 検証 |
+| `dispatch_moderation_notification_outbox` | 判定 API の best effort 呼び出し + `pg_cron`(毎分) | limit | `integer`(配送件数) | outbox から `notifications` へ冪等に配送。`FOR UPDATE SKIP LOCKED` と行ごとの例外処理で、1件の失敗が他行を巻き込まない。失敗時は指数バックオフで pending 維持 |
+| `decide_post_moderation_appeal` | `/api/admin/moderation/appeals/[appealId]/decision` | appeal, actor, action(`uphold`/`overturn`), note, independence exception reason, time | `boolean` | 異議申立ての判定。`overturn` は申立て更新・投稿の `visible` 復帰・監査ログ・結果 outbox を同一トランザクションで確定。理由必須。元判定者と同一 actor のときは例外理由を必須化。**service_role 専用** |
 | `request_account_deletion` | `/api/account/deactivate` | user, confirm text, reauth ok | `status`, `scheduled_for` | 退会予約の設定 |
 | `cancel_account_deletion` | `/api/account/reactivate` | user | `status` | 退会予約の取り消し |
 | `get_due_deletion_candidates` | `/api/internal/account-purge` | limit | 対象ユーザー一覧 | purge 対象列挙 |

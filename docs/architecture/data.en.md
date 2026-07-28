@@ -132,7 +132,7 @@ This matches Supabase/Postgres best practices used in this repo:
 | Collections | `preset_categories`, `image_jobs`, `collection_completions`, Storage `collection-mount-templates` / `generated-images` | `get_collection_progress`, `reserve_collection_completion`, `finalize_collection_completion`, `fail_collection_completion` | `/api/collections/progress`, `/api/collections/mount`, `/m/[token]`, `/admin/collections`, `/admin/preset-categories` |
 | Posting and social | `generated_images`, `likes`, `comments`, `follows`, `notifications`, `post_reports`, `user_blocks` | `grant_daily_post_bonus`, `create_notification`, `delete_comment_thread` | `/api/posts/post`, `/api/posts/[id]/like`, `/api/posts/[id]/comments`, `/api/users/[userId]/follow` |
 | Bonuses and growth | `percoin_bonus_defaults`, `percoin_streak_defaults`, `referrals`, `notifications`, `free_percoin_batches` | `grant_tour_bonus`, `grant_streak_bonus`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `grant_referral_bonus` | `/api/tutorial/complete`, `/api/streak/check`, `/api/referral/check-first-login` |
-| Moderation and admin | `post_reports`, `moderation_audit_logs`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/admin/**` |
+| Moderation and admin | `post_reports`, `moderation_audit_logs`, `moderation_notification_outbox`, `post_moderation_appeals`, `admin_users`, `admin_audit_log`, `generated_images` | `mark_post_pending_by_report`, `apply_admin_moderation_decision_v2`, `dispatch_moderation_notification_outbox`, `create_post_moderation_appeal`, `decide_post_moderation_appeal`, `grant_admin_bonus`, `deduct_percoins_admin`, `get_user_ids_by_emails` | `/api/reports/posts`, `/api/moderation/appeals`, `/api/admin/**` |
 | Home promotion banners | `popup_banners`, `popup_banner_views`, `popup_banner_analytics`, `popup_banner_guest_events` | `record_popup_banner_interaction`, `reorder_popup_banners` | `/api/popup-banners/**`, `/api/admin/popup-banners/**`, `/admin/popup-banners` |
 | Deactivation and purge | `profiles`, `credit_forfeiture_ledger`, `generated_images`, `source_image_stocks` | `request_account_deletion`, `cancel_account_deletion`, `get_due_deletion_candidates`, `record_forfeiture_ledger` | `/api/account/deactivate`, `/api/account/reactivate`, `/api/internal/account-purge` |
 | Artist catalog | `catalog_campaigns`, `catalog_entries`, `catalog_public_entries` view, `catalog_audit_logs`, `notifications` (extended), Storage `catalog-images` | `apply_catalog_entry_decision`, `enforce_catalog_entry_submission_cap` | `/catalog`, `/catalog/[slug]`, `/catalog/submit`, `/api/catalog/**`, `/api/admin/catalog/**`, `/admin/catalog/**` |
@@ -232,10 +232,13 @@ This matches Supabase/Postgres best practices used in this repo:
 
 1. `/api/reports/posts` inserts a row in `post_reports`.
 2. The same route uses `createAdminClient()` to aggregate all reports and active-user metrics.
-3. When thresholds are crossed, it calls `mark_post_pending_by_report`.
+3. When thresholds are crossed, it calls `mark_post_pending_by_report` (via a **service_role client**; the RPC is service_role only).
 4. This updates `generated_images.moderation_status` and writes `moderation_audit_logs`.
 5. An admin later calls `/api/admin/moderation/posts/[postId]/decision`.
-6. That route calls `apply_admin_moderation_decision` and writes `admin_audit_log`.
+6. That route calls `apply_admin_moderation_decision_v2`, which commits the status change, `moderation_audit_logs`, and `moderation_notification_outbox` in one transaction, and writes `admin_audit_log`.
+7. `dispatch_moderation_notification_outbox` delivers from the outbox into `notifications` (called best-effort by the route, retried every minute by `pg_cron`).
+8. The author reaches `/my-page/moderation/decisions/[decisionId]` from the notification and can appeal via the `create_post_moderation_appeal` RPC.
+9. An admin decides the appeal with `decide_post_moderation_appeal`; `overturn` restores the post to `visible` in the same transaction.
 
 ### Why this matters
 
@@ -326,8 +329,13 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `grant_admin_bonus` | `/api/admin/bonus/grant`, `/api/admin/bonus/grant-batch` | user, amount, reason, admin, notify flag, balance type | `amount_granted`, `transaction_id` | Admin credit grant with optional notification |
 | `deduct_percoins_admin` | `/api/admin/deduction` | user, amount, balance type, idempotency key, metadata | `balance`, `amount_deducted` | Admin deduction with DB-level idempotency |
 | `get_user_ids_by_emails` | admin bulk lookup/grant | email array | `email`, `user_id`, `balance` rows | Bulk admin lookup helper |
-| `mark_post_pending_by_report` | `/api/reports/posts` | post, actor, reason, metadata | `boolean` | Moves post to pending and writes moderation audit |
-| `apply_admin_moderation_decision` | `/api/admin/moderation/posts/[postId]/decision` | post, actor, action, reason, time, metadata | `boolean` | Final approve/reject decision |
+| `mark_post_pending_by_report` | `/api/reports/posts` (service_role client) | post, actor, reason, metadata | `boolean` | Moves post to pending and writes moderation audit. **service_role only**; `reason` limited to `report_threshold` / `admin_immediate`, the latter verified against `admin_users` |
+| `apply_admin_moderation_decision` | (superseded by v2; permissions hardened only) | post, actor, action, reason, time, metadata | `boolean` | Legacy. New callers must use v2 |
+| `apply_admin_moderation_decision_v2` | `/api/admin/moderation/posts/[postId]/decision` | post, actor, action, idempotency key, policy(code/version/anchor), author facing reason, internal note, restriction scope/duration, decision source, automated flag, time, metadata | `uuid` (decision id) | Commits status change, `moderation_audit_logs`, and `moderation_notification_outbox` in one transaction. Applies only when the post is `pending`; a resend with the same idempotency key returns the existing decision id. **service_role only**, verified against `admin_users` |
+| `dispatch_moderation_notification_outbox` | decision routes (best effort) + `pg_cron` (every minute) | limit | `integer` (delivered count) | Idempotently delivers outbox rows into `notifications` using `FOR UPDATE SKIP LOCKED` with per-row exception handling and exponential backoff |
+| `create_post_moderation_appeal` | `/api/moderation/appeals` | decision id, body | `uuid` (appeal id) | Creates an appeal. `appellant_id` comes from `auth.uid()`, status is forced to `pending`, and the deadline is derived from the outbox `delivered_at`. Only the currently effective removal decision can be appealed |
+| `decide_post_moderation_appeal` | `/api/admin/moderation/appeals/[appealId]/decision` | appeal, actor, action(`uphold`/`overturn`), note, independence exception reason, time | `boolean` | Decides an appeal. `overturn` commits the appeal update, the post's return to `visible`, the audit log, and the result outbox in one transaction. Note is mandatory. Requires an exception reason when the actor is the original decider. **service_role only** |
+| `current_post_removal_decision_id` | guard trigger / appeal RPCs | post id | `uuid` | The currently effective removal decision for a post; `NULL` when the post is not `removed` |
 | `request_account_deletion` | `/api/account/deactivate` | user, confirm text, reauth ok | `status`, `scheduled_for` | Schedules deletion lifecycle |
 | `cancel_account_deletion` | `/api/account/reactivate` | user | `status` | Cancels scheduled deletion |
 | `get_due_deletion_candidates` | `/api/internal/account-purge` | limit | candidate rows | Lists users ready for purge |

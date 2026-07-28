@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
+import { isModerationNotificationType } from "../types";
 import type { Notification, NotificationsResponse } from "../types";
+import { shouldHideThumbnailForPolicy } from "@/constants/moderation-policy";
 
 type NotificationRow = Omit<Notification, "actor" | "post">;
 
@@ -32,8 +34,16 @@ export async function enrichNotificationsWithDetails(
   supabase: SupabaseClient,
   notifications: NotificationRow[]
 ): Promise<Notification[]> {
+  // モデレーション通知は actor_id に recipient 本人が入るため、プロフィールを
+  // 引くと「自分が自分に削除通知を出した」ように見える。enrichment 対象から外す
+  // (ADR-011 / レビュー指摘10: 管理者の個人情報を通知から分離)。
   const actorIds = Array.from(
-    new Set(notifications.map((notification) => notification.actor_id).filter(Boolean))
+    new Set(
+      notifications
+        .filter((notification) => !isModerationNotificationType(notification.type))
+        .map((notification) => notification.actor_id)
+        .filter(Boolean)
+    )
   );
 
   const actorMap: Record<
@@ -114,9 +124,15 @@ export async function enrichNotificationsWithDetails(
   }
 
   return notifications.map((notification) => {
-    const actor = actorMap[notification.actor_id];
+    const isModeration = isModerationNotificationType(notification.type);
+    const actor = isModeration ? undefined : actorMap[notification.actor_id];
     const resolvedImageId = getResolvedImageId(notification, commentImageIdMap);
-    const post = resolvedImageId ? postMap[resolvedImageId] : null;
+    const resolvedPost = resolvedImageId ? postMap[resolvedImageId] : null;
+    // 重大な安全カテゴリでは、削除対象画像を通知でも再表示しない (ADR-011)。
+    const post =
+      isModeration && shouldHideThumbnailForPolicy(notification.data?.policy_code)
+        ? null
+        : resolvedPost;
 
     return {
       ...notification,

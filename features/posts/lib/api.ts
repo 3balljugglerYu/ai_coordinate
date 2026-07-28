@@ -29,6 +29,23 @@ interface PostsApiMessages {
  */
 
 /**
+ * API が返した errorCode を保持する Error。
+ *
+ * 公開停止中コンテンツの再投稿 (`POSTS_SUSPENDED_CANNOT_PUBLISH`) のように、
+ * 文言ではなくコードで分岐したいケースがあるため。
+ */
+export class PostApiError extends Error {
+  readonly code: string | null;
+
+  constructor(message: string, code: string | null) {
+    super(message);
+    this.name = "PostApiError";
+    this.code = code;
+  }
+}
+
+
+/**
  * 画像を投稿
  */
 export async function postImageAPI(
@@ -45,7 +62,10 @@ export async function postImageAPI(
 
   if (!response.ok) {
     const error = await response.json().catch(() => null);
-    throw new Error(error?.error || messages?.postFailed || "投稿に失敗しました");
+    throw new PostApiError(
+      error?.error || messages?.postFailed || "投稿に失敗しました",
+      typeof error?.errorCode === "string" ? error.errorCode : null
+    );
   }
 
   return response.json();

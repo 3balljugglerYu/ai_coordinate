@@ -13,6 +13,7 @@ import {
 import { NotificationLoadMoreSkeleton } from "./NotificationLoadMoreSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
+import { isModerationNotificationType } from "../types";
 import { cn } from "@/lib/utils";
 import { User, Heart, MessageCircle, UserPlus, Bell } from "lucide-react";
 
@@ -192,6 +193,11 @@ export function NotificationList({
         {notifications.map((notification) => {
           const imageUrl = getImageUrl(notification);
           const isBonusNotification = notification.type === "bonus";
+          // モデレーション通知も運営発なので運営ロゴで表示する。
+          // actor_id には recipient 本人が入っており、アバターを出すと
+          // 「自分が自分に通知した」ように見えてしまう (ADR-011)。
+          const isSystemNotification =
+            isBonusNotification || isModerationNotificationType(notification.type);
           const isActorProfileLinkNotification =
             notification.type === "like" || notification.type === "comment";
           const actorName =
@@ -219,7 +225,7 @@ export function NotificationList({
             >
               {/* アクターのアバター */}
               <div className="flex-shrink-0">
-                {isBonusNotification ? (
+                {isSystemNotification ? (
                   <Image
                     src="/icons/icon-192.png"
                     alt="Persta.AI"

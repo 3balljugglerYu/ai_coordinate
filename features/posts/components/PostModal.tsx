@@ -11,12 +11,23 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
+import { isSuspendedPublishError } from "../lib/post-error-codes";
 import {
   beforeImageUrlCache,
   cacheBeforeImageUrl,
@@ -61,6 +72,8 @@ export function PostModal({
   const [showBeforeImage, setShowBeforeImage] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // 公開停止中コンテンツの再投稿を試みたときの案内ダイアログ
+  const [suspendedDialogOpen, setSuspendedDialogOpen] = useState(false);
   // 呼び出し元から beforeImageUrl が渡されていない場合に自動取得した URL。
   // ImageModal が事前に取得済みの値を共有 cache から同期取得することで、
   // モーダルが開いた瞬間に Before 画像が表示できるようにする。
@@ -155,6 +168,17 @@ export function PostModal({
 
       window.location.href = "/";
     } catch (err) {
+      // 公開停止中のコンテンツは DB trigger が再公開を拒否する。
+      // エラー文言をそのまま出すのではなく、異議申立てへ案内するダイアログを出す。
+      // instanceof ではなく code の構造的チェックで判定する。
+      // api.ts をモックするテストでは class が undefined になり instanceof が
+      // 例外を投げるため（既存の PostModal テストで実際に発生した）。
+      if (isSuspendedPublishError(err)) {
+        setSuspendedDialogOpen(true);
+        setIsSubmitting(false);
+        return;
+      }
+
       // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
       console.error("Post error:", err);
       setError(
@@ -282,6 +306,32 @@ export function PostModal({
           </DialogFooter>
         </form>
       </DialogContent>
+
+      {/*
+        公開停止中コンテンツの再投稿を試みたときの案内。
+        責める文面にせず、異議申立てという次の行動を示すことを優先する。
+        遷移先の resolver ルートが最新の公開停止判定へ解決して詳細ページへ送る。
+      */}
+      <AlertDialog open={suspendedDialogOpen} onOpenChange={setSuspendedDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("suspendedDialogTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("suspendedDialogDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("suspendedDialogClose")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                window.location.href = `/my-page/moderation/posts/${imageId}`;
+              }}
+            >
+              {t("suspendedDialogAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }
