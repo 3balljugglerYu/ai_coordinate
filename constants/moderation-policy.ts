@@ -14,12 +14,21 @@
 
 import { REPORT_TAXONOMY } from "./report-taxonomy";
 
-/** ガイドライン本文のセクション slug。`/community-guidelines#<anchor>` で参照する。 */
-export type ModerationPolicyAnchor =
-  | "guidelines-prohibited-absolute"
-  | "guidelines-prohibited-general"
-  | "guidelines-nsfw"
-  | "guidelines-ip";
+/**
+ * ガイドライン本文のセクション slug。`/community-guidelines#<anchor>` で参照する。
+ *
+ * 値は `app/(marketing)/community-guidelines/page.tsx` の各セクションの
+ * `anchor` と一致していなければリンクが着地しない。齟齬は
+ * `tests/unit/constants/moderation-policy-anchors.test.ts` で検出する。
+ */
+export const MODERATION_POLICY_ANCHORS = [
+  "guidelines-prohibited-absolute",
+  "guidelines-prohibited-general",
+  "guidelines-nsfw",
+  "guidelines-ip",
+] as const;
+
+export type ModerationPolicyAnchor = (typeof MODERATION_POLICY_ANCHORS)[number];
 
 export interface ModerationPolicy {
   /** 判定ログに保存する安定コード。`{category}.{subcategory}` 形式。 */

@@ -336,8 +336,11 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `grant_admin_bonus` | `/api/admin/bonus/grant`, `/api/admin/bonus/grant-batch` | user, amount, reason, admin, notify flag, balance type | `amount_granted`, `transaction_id` | 通知付き管理者付与 |
 | `deduct_percoins_admin` | `/api/admin/deduction` | user, amount, balance type, idempotency key, metadata | `balance`, `amount_deducted` | 冪等性付き管理者減算 |
 | `get_user_ids_by_emails` | 一括 lookup / 一括付与 | email array | `email`, `user_id`, `balance` | 管理者用の一括検索 helper |
-| `mark_post_pending_by_report` | `/api/reports/posts` | post, actor, reason, metadata | `boolean` | 投稿を pending にし、審査ログを書き込む |
-| `apply_admin_moderation_decision` | `/api/admin/moderation/posts/[postId]/decision` | post, actor, action, reason, time, metadata | `boolean` | 最終審査の反映 |
+| `mark_post_pending_by_report` | `/api/reports/posts`(service_role クライアント) | post, actor, reason, metadata | `boolean` | 投稿を pending にし、審査ログを書き込む。**service_role 専用**。`reason` は `report_threshold` / `admin_immediate` のみ、後者は `admin_users` で fail-closed 検証 |
+| `apply_admin_moderation_decision` | (v2 に移行済み。権限のみ service_role に是正) | post, actor, action, reason, time, metadata | `boolean` | 旧版。新規の呼び出しは v2 を使う |
+| `apply_admin_moderation_decision_v2` | `/api/admin/moderation/posts/[postId]/decision` | post, actor, action, idempotency key, policy(code/version/anchor), author facing reason, internal note, restriction scope/duration, decision source, automated flag, time, metadata | `uuid`(判定 ID) | 状態更新・`moderation_audit_logs`・`moderation_notification_outbox` を同一トランザクションで確定。対象が `pending` のときだけ適用し、同一 idempotency key の再送は既存判定 ID を返す。**service_role 専用**かつ `admin_users` で fail-closed 検証 |
+| `dispatch_moderation_notification_outbox` | 判定 API の best effort 呼び出し + `pg_cron`(毎分) | limit | `integer`(配送件数) | outbox から `notifications` へ冪等に配送。`FOR UPDATE SKIP LOCKED` と行ごとの例外処理で、1件の失敗が他行を巻き込まない。失敗時は指数バックオフで pending 維持 |
+| `decide_post_moderation_appeal` | `/api/admin/moderation/appeals/[appealId]/decision` | appeal, actor, action(`uphold`/`overturn`), note, independence exception reason, time | `boolean` | 異議申立ての判定。`overturn` は申立て更新・投稿の `visible` 復帰・監査ログ・結果 outbox を同一トランザクションで確定。理由必須。元判定者と同一 actor のときは例外理由を必須化。**service_role 専用** |
 | `request_account_deletion` | `/api/account/deactivate` | user, confirm text, reauth ok | `status`, `scheduled_for` | 退会予約の設定 |
 | `cancel_account_deletion` | `/api/account/reactivate` | user | `status` | 退会予約の取り消し |
 | `get_due_deletion_candidates` | `/api/internal/account-purge` | limit | 対象ユーザー一覧 | purge 対象列挙 |

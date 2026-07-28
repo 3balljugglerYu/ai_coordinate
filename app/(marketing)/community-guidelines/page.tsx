@@ -13,6 +13,7 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
+import type { ModerationPolicyAnchor } from "@/constants/moderation-policy";
 
 type Section = {
   title: string;
@@ -20,6 +21,17 @@ type Section = {
   icon?: "scroll" | "ban" | "eye" | "flag" | "gavel" | "heart" | "alert" | "shield";
   paragraphs?: string[];
   list?: string[];
+  /**
+   * ディープリンク用のアンカー。
+   *
+   * 公開停止の判定詳細ページ (/my-page/moderation/decisions/[decisionId]) から
+   * 「該当条項を読む」で飛ばすために使う。値は
+   * `constants/moderation-policy.ts` の `ModerationPolicyAnchor` と一致させること。
+   *
+   * 英語版は全文翻訳前のスタブ (2セクション) のためアンカーを持たない。
+   * その場合リンクはページ先頭に着地する。
+   */
+  anchor?: ModerationPolicyAnchor | "guidelines-appeal";
 };
 
 const icons = {
@@ -71,6 +83,7 @@ export default async function CommunityGuidelinesPage() {
             {
               icon: "ban",
               title: "2. 絶対に禁止されるコンテンツ",
+              anchor: "guidelines-prohibited-absolute",
               description: "発見次第、永久停止と当局通報の対象となるもの",
               paragraphs: [
                 "以下のコンテンツの生成・投稿・共有・要求は、いかなる文脈においても禁止します。違反が確認された場合、当サービスは警告等の段階を経ずに当該アカウントを永久停止し、関係当局への通報および証拠保全を行います。",
@@ -87,6 +100,7 @@ export default async function CommunityGuidelinesPage() {
             {
               icon: "shield",
               title: "3. 一般的な禁止事項",
+              anchor: "guidelines-prohibited-general",
               description: "違反対応の対象となる主な行為",
               paragraphs: [
                 "以下の行為は、違反の重大性・反復性に応じて、コンテンツの非公開・削除、またはアカウントの停止等の対応の対象となります。",
@@ -108,6 +122,7 @@ export default async function CommunityGuidelinesPage() {
             {
               icon: "eye",
               title: "4. センシティブ／NSFW コンテンツの取扱い",
+              anchor: "guidelines-nsfw",
               description: "暫定的な運用方針と利用者へのお願い",
               paragraphs: [
                 "当サービスは、創作物の幅を不当に狭めないよう配慮しつつ、未成年保護および公共の場としての品位を最優先します。性的、暴力的、グロテスクな表現については、第2条・第3条で禁止する範囲を厳守してください。",
@@ -119,6 +134,7 @@ export default async function CommunityGuidelinesPage() {
             {
               icon: "scroll",
               title: "5. 知的財産権の尊重",
+              anchor: "guidelines-ip",
               description: "他者の権利を侵害しないために",
               paragraphs: [
                 "当サービスは、創作と既存作品からの影響との関係について中立の立場を取りますが、第三者の権利を明らかに侵害する目的での生成・投稿は禁止します。",
@@ -151,7 +167,7 @@ export default async function CommunityGuidelinesPage() {
                 "当サービスは、違反の重大性、反復性、悪質性、コミュニティへの影響等を勘案し、現状では主に以下の対応を講じます。重大な違反（CSAM、深刻な権利侵害、明確な犯罪行為、重大な安全リスク等）については、即時に厳格な措置を講じます。",
               ],
               list: [
-                "コンテンツの非公開・削除：通報の重み付けが一定のしきい値に達した時点で自動的に非公開化し、人手による審査の上で削除等を判断します。",
+                "コンテンツの公開停止：通報の重み付けが一定のしきい値に達した時点で自動的に非公開化し、人手による審査の上で公開停止等を判断します。公開停止と判断した場合は、違反したポリシーおよび理由をアプリ内通知でお知らせします。なお公開停止は当サービス上での表示を止める措置であり、生成画像そのものはマイページの生成一覧に残ります。",
                 "アカウント停止：違反の程度に応じて、運用上、一時的な停止と永続的な停止を使い分けます。停止された場合、ログイン後の機能の利用が制限されることがあります。永続的な停止に該当した場合、再登録はお断りすることがあります。",
                 "当局通報・証拠保全：CSAM 等、法令上通報義務または通報の必要があると判断されるコンテンツについては、関係当局への通報および証拠保全を行います。",
                 "今後の運用改善：警告制度や段階的な機能制限、停止期間の自動管理、再登録防止の仕組みなど、より細やかな対応手段については、運用の状況に応じて順次導入・強化していく予定です。",
@@ -161,10 +177,11 @@ export default async function CommunityGuidelinesPage() {
             {
               icon: "heart",
               title: "8. 異議申立て",
+              anchor: "guidelines-appeal",
               description: "措置を受けた場合の救済手続き",
               paragraphs: [
-                "執行措置を受けたユーザーは、措置の通知から原則として14日以内に、当サービス所定の方法により異議を申し立てることができます。異議申立てには、対象措置、対象コンテンツ、申立ての理由を明記してください。",
-                "当サービスは合理的な期間内に再審査を行い、結果を通知します。再審査の結果、措置が不適切であったと当サービスが判断した場合は、当該措置を取り消し、必要に応じてコンテンツの復元等を行います。",
+                "投稿の公開停止措置を受けたユーザーは、措置の通知から原則として14日以内に異議を申し立てることができます。申立ては、公開停止の通知をタップして表示される判定内容の画面、またはマイページの生成一覧で「公開停止」と表示されたカードから行えます。同じ画面で、実施された措置・範囲・期間、違反したポリシーとその版、運営からの説明、審査結果をあわせて確認できます。",
+                "当サービスは合理的な期間内に再審査を行い、認容・棄却のいずれの場合も理由を添えて結果を通知します。再審査の結果、措置が不適切であったと当サービスが判断した場合は、当該措置を取り消して投稿の公開を再開します。なお通報者が誰であるかは、いかなる場合も投稿者に開示しません。",
                 "ただし、CSAM 等、法令違反が明白かつ重大な事案については、異議申立てを認めない場合があります。",
               ],
             },
@@ -231,7 +248,7 @@ export default async function CommunityGuidelinesPage() {
           const Icon = section.icon ? icons[section.icon] : null;
 
           return (
-            <Card key={section.title}>
+            <Card key={section.title} id={section.anchor}>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   {Icon ? <Icon className="h-4 w-4 text-gray-500" /> : null}
