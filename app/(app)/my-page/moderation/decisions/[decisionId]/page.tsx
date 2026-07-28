@@ -98,10 +98,14 @@ export default async function ModerationDecisionPage({
                 <span className="ml-2">{t("actionSuspendedDetail")}</span>
               </dd>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <dt className="w-28 shrink-0 text-slate-500">{t("scopeLabel")}</dt>
-              <dd className="flex-1 text-slate-900">{t("scopeAllUsers")}</dd>
-            </div>
+            {/*
+              「範囲」の行は表示しない。
+              措置の行に「すべての利用者に非表示」と出ており重複するうえ、
+              「全世界のすべての利用者」という表現が投稿者には過度に威圧的に読める。
+              DSA 第17条3項(a) の territorial scope は `restriction_scope` として
+              DB に保存し続けており、DSA 適用と判断した場合に表示を戻せる
+              (i18n キー scopeLabel / scopeAllUsers も残してある)。
+            */}
             <div className="flex flex-wrap gap-2">
               <dt className="w-28 shrink-0 text-slate-500">{t("durationLabel")}</dt>
               <dd className="flex-1 text-slate-900">{t("durationUntilReversed")}</dd>
