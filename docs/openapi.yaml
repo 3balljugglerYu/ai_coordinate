@@ -181,7 +181,9 @@ paths:
                   default: keep
                 generationType:
                   type: string
-                  enum: [coordinate, specified_coordinate, full_body, chibi]
+                  # ゲスト経路は coordinate のみ受理(handler の ALLOWED_GENERATION_TYPES)。
+                  # free はログイン必須のため /generate-async 側のみで受理する。
+                  enum: [coordinate]
                   default: coordinate
       responses:
         "200":
@@ -2298,7 +2300,7 @@ components:
           default: 1
         generationType:
           type: string
-          enum: [coordinate, specified_coordinate, full_body, chibi]
+          enum: [coordinate, specified_coordinate, full_body, chibi, one_tap_style, inspire, free]
           default: coordinate
         model:
           type: string

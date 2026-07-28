@@ -1,11 +1,11 @@
 /**
- * 直近に使った生成モード(コーディネート / One-Tap Style)を記憶するための
+ * 直近に使った生成モード(コーディネート / One-Tap Style / じゆうモード)を記憶するための
  * 軽量な永続化ヘルパー。
  *
  * 用途:
- *  - GenerationModeTabs が /coordinate・/style 滞在中に現在モードを保存する
+ *  - GenerationModeTabs が /coordinate・/style・/free 滞在中に現在モードを保存する
  *  - ボトムナビ/サイドバーの「コーディネート」入口が、クリック時に前回モードを
- *    読み取り、前回が One-Tap Style なら /style へ復帰させる
+ *    読み取り、前回が One-Tap Style / じゆうモード なら該当ページへ復帰させる
  *
  * localStorage のみを使い、読み取り失敗(プライベートモード等)時は既定の
  * /coordinate にフォールバックする。SSR では window が無いため既定値を返す。
@@ -13,6 +13,7 @@
 export const GENERATION_MODE_PATHS = {
   coordinate: "/coordinate",
   style: "/style",
+  free: "/free",
 } as const;
 
 export type GenerationModePath =
@@ -27,7 +28,8 @@ export function isGenerationModePath(
 ): path is GenerationModePath {
   return (
     path === GENERATION_MODE_PATHS.coordinate ||
-    path === GENERATION_MODE_PATHS.style
+    path === GENERATION_MODE_PATHS.style ||
+    path === GENERATION_MODE_PATHS.free
   );
 }
 

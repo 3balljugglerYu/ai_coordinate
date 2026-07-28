@@ -61,6 +61,34 @@ describe("PromptInputField", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
+  test("既定はラベル行がスマホで縦積み(flex-col)", () => {
+    render(
+      <PromptInputField
+        value=""
+        onChange={() => {}}
+        label="ラベル"
+        clearLabel="クリア"
+      />,
+    );
+    const row = screen.getByText("ラベル").parentElement;
+    expect(row?.className).toContain("flex-col");
+  });
+
+  test("labelRowSingleLine=true でラベル行を常に 1 行(flex-row・縦積みなし)にする", () => {
+    render(
+      <PromptInputField
+        value=""
+        onChange={() => {}}
+        label="生成したい内容"
+        clearLabel="クリア"
+        labelRowSingleLine
+      />,
+    );
+    const row = screen.getByText("生成したい内容").parentElement;
+    expect(row?.className).toContain("flex-row");
+    expect(row?.className).not.toContain("flex-col");
+  });
+
   test("hint / characterCount を渡すと表示される", () => {
     render(
       <PromptInputField

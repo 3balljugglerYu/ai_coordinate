@@ -58,6 +58,8 @@ const PUBLIC_PATH_PATTERNS = [
   // 対応する app/[locale]/ 配下の re-export ルートが必須(無いと 404 になる)。
   /^\/style$/,
   /^\/coordinate$/,
+  // /free (じゆうモード) はページ閲覧は公開(SEO対象)・生成のみログイン必須。
+  /^\/free$/,
   /^\/styles$/,
   /^\/styles\/[^/]+$/,
 ];

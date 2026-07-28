@@ -115,6 +115,7 @@ jest.mock("@/lib/build-current-url", () => ({
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
+import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
 
 let fetchMock: jest.Mock;
 beforeEach(() => {
@@ -376,5 +377,66 @@ describe("GenerationForm (new image source picker integration)", () => {
     expect(arg.sourceImage).toBeUndefined();
     expect(arg.sourceImageStockId).toBeUndefined();
     expect(arg.sourceImageGeneratedId).toBe("gen-42");
+  });
+
+  describe("mode='free' (じゆうモード)", () => {
+    test("元画像タイプ/背景/ポーズ/枚数は非表示、モデル選択(品質・サイズ)は表示する", () => {
+      render(
+        <GenerationForm
+          subscriptionPlan="free"
+          onSubmit={() => {}}
+          mode="free"
+        />,
+      );
+      // coordinate 専用設定は出ない
+      expect(screen.queryByText("sourceImageTypeLabel")).toBeNull();
+      expect(screen.queryByText("backgroundLabel")).toBeNull();
+      expect(screen.queryByText("poseModeLabel")).toBeNull();
+      expect(screen.queryByText("countLabel")).toBeNull();
+      // モデル選択(レンダリング品質・出力サイズを含む)は じゆうモードでも出る
+      expect(screen.getByTestId("mock-model-controls")).toBeInTheDocument();
+      // 画像アップロードとプロンプト欄も出る
+      expect(screen.getByTestId("mock-image-uploader")).toBeInTheDocument();
+      expect(screen.getByRole("textbox")).toBeInTheDocument();
+    });
+
+    test("画像+prompt で submit すると generationType='free' と選択モデル・既定値を送信する", async () => {
+      const user = userEvent.setup();
+      const onSubmit = jest.fn();
+      render(
+        <GenerationForm
+          subscriptionPlan="free"
+          onSubmit={onSubmit}
+          mode="free"
+        />,
+      );
+
+      await user.click(screen.getByText("mock-upload"));
+      await user.type(screen.getByRole("textbox"), "自由な指示");
+
+      const submit = screen.getByTestId("mock-submit");
+      await waitFor(() => expect(submit).not.toBeDisabled());
+      await user.click(submit);
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      const arg = onSubmit.mock.calls[0][0];
+      expect(arg.generationType).toBe("free");
+      expect(arg.prompt).toBe("自由な指示");
+      expect(arg.sourceImage).toBeInstanceOf(File);
+      expect(arg.backgroundMode).toBe("keep");
+      expect(arg.count).toBe(1);
+      // モデルは選択値(未操作なので既定)を送る
+      expect(arg.model).toBe(DEFAULT_GENERATION_MODEL);
+      // 背景/ポーズ設定が無いので framingMode は送らない
+      expect(arg.framingMode).toBeUndefined();
+    });
+
+    test("coordinate(既定)モードでは設定UIを表示する(非回帰)", () => {
+      render(<GenerationForm subscriptionPlan="free" onSubmit={() => {}} />);
+      expect(screen.getByText("sourceImageTypeLabel")).toBeInTheDocument();
+      expect(screen.getByText("backgroundLabel")).toBeInTheDocument();
+      expect(screen.getByText("countLabel")).toBeInTheDocument();
+      expect(screen.getByTestId("mock-model-controls")).toBeInTheDocument();
+    });
   });
 });

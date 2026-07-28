@@ -34,6 +34,13 @@ interface PromptInputFieldProps {
   };
   /** aria-invalid フラグ (= 上限超過時の見た目を呼び出し側で制御) */
   invalid?: boolean;
+  /**
+   * ラベルと「クリア」ボタンを常に 1 行(横並び)で表示するか。
+   * 既定(false)はスマホで縦積み(/style の長いカテゴリ別ガイド文対策)。
+   * ラベルが短い画面(例: じゆうモードの「生成したい内容」)では true にして
+   * スマホでも 1 行に収める。
+   */
+  labelRowSingleLine?: boolean;
 }
 
 /**
@@ -56,6 +63,7 @@ export function PromptInputField({
   id = "prompt",
   containerProps,
   invalid,
+  labelRowSingleLine = false,
 }: PromptInputFieldProps) {
   const showClearButton = clearLabel !== undefined;
   const showCharacterCount = characterCount !== undefined;
@@ -65,11 +73,19 @@ export function PromptInputField({
   return (
     <div {...containerProps}>
       {/*
-        ラベルが長い場合 (例: /style のカテゴリ別ガイド文) でも、スマホで
+        既定: ラベルが長い場合 (例: /style のカテゴリ別ガイド文) でも、スマホで
         「クリア」ボタンが折り返しテキストの脇に窮屈に挟まらないよう、
         モバイルはラベルの下にボタンを配置し、sm 以上で従来の横並びに戻す。
+        labelRowSingleLine=true: ラベルが短い画面(例: じゆうモード)では
+        スマホでも常に 1 行(横並び)にする。
       */}
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+      <div
+        className={
+          labelRowSingleLine
+            ? "flex flex-row items-center justify-between gap-2"
+            : "flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+        }
+      >
         {/* 管理画面で改行を入れたラベルをそのまま反映する (whitespace-pre-line)。
             複数行でも詰まりすぎないよう leading-none を leading-snug で上書き。 */}
         <Label
@@ -81,7 +97,11 @@ export function PromptInputField({
             type="button"
             size="sm"
             variant="ghost"
-            className="h-7 self-end px-2 text-xs text-gray-600 hover:text-gray-900 sm:self-auto"
+            className={
+              labelRowSingleLine
+                ? "h-7 shrink-0 self-auto px-2 text-xs text-gray-600 hover:text-gray-900"
+                : "h-7 self-end px-2 text-xs text-gray-600 hover:text-gray-900 sm:self-auto"
+            }
             onClick={() => onChange("")}
             disabled={value.length === 0 || disabled}
             aria-label={clearLabel}
