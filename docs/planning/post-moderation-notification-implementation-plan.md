@@ -54,6 +54,7 @@
 | 決定スキーマ | `features/moderation/lib/schemas.ts:32` | `action: "approve" \| "reject"`, `reason: string.max(300).optional()` |
 | 通報タクソノミ | `constants/report-taxonomy.ts` | `rights / sexual / violence / harassment / danger / spam_fraud / other` の7カテゴリ + サブカテゴリ。通報受付の語彙として再利用するが、契約上の根拠としては粗いため、版管理されたガイドライン条項とのマッピングを追加する |
 | 監査ログ | `moderation_audit_logs`（`action IN ('pending_auto','approve','reject')`） | `metadata JSONB` あり。現状の SELECT/INSERT RLS は authenticated 全体に広すぎるため、削除理由の source of truth として使う前にアクセスを service_role 専用へ是正する |
+| pending 化 RPC | `mark_post_pending_by_report`（`supabase/migrations/20260208221000_add_mark_post_pending_rpc.sql`） | SECURITY DEFINER。本番 ACL 実測で `anon=X \| authenticated=X`。`auth.uid()` を参照せず `p_actor_id` / `p_reason` が呼出者任せ。**anon キーだけで任意投稿を pending 化でき、監査ログに偽の actor を書ける既存の穴**。ADR-010 で是正する |
 
 ### 通知基盤
 
@@ -271,6 +272,15 @@ erDiagram
 - **REQ-018**: The system shall reject direct calls to admin moderation RPCs from `anon` and ordinary `authenticated` roles and shall verify `p_actor_id` against `admin_users` inside each service-role RPC.
   システムは `anon` および一般 `authenticated` ロールからの管理モデレーション RPC 直接実行を拒否し、service-role RPC 内でも `p_actor_id` が `admin_users` に存在することを検証しなければならない。
 
+- **REQ-019**: The system shall reject direct calls to `mark_post_pending_by_report` from `anon` and `authenticated` roles, shall accept only `report_threshold` or `admin_immediate` as the reason, and shall verify `p_actor_id` against `admin_users` when the reason is `admin_immediate`.
+  システムは `anon` および `authenticated` ロールからの `mark_post_pending_by_report` 直接実行を拒否し、reason は `report_threshold` または `admin_immediate` のみを受け付け、reason が `admin_immediate` のときは `p_actor_id` が `admin_users` に存在することを検証しなければならない。
+
+- **REQ-020**: While the report flow marks a post pending, the system shall invoke the pending RPC through a service-role client from the server-side route handler, never from a user session client.
+  通報フローが投稿を pending 化する間、システムは pending RPC をサーバー側 route handler の service-role クライアントから呼び出し、ユーザーセッションクライアントからは呼び出してはならない。
+
+- **REQ-021**: If the pending RPC permission change is deployed without the corresponding route handler change, then the report-triggered auto-hiding shall fail; therefore the migration and the route change shall ship in the same commit and deployment.
+  pending RPC の権限変更が対応する route handler の変更を伴わずにデプロイされた場合、通報起因の自動非表示は失敗する。したがってマイグレーションと route 変更は同一コミット・同一デプロイで反映しなければならない。
+
 ---
 
 ## 3. ADR
@@ -342,6 +352,32 @@ erDiagram
 - **Decision**: `PUBLIC` / `anon` / `authenticated` から EXECUTE を REVOKEし、`service_role` のみに GRANTする。さらに `p_actor_id` が `admin_users` に存在しなければ RPC 内で `42501` を送出する。API は `requireAdmin()` と `ensureSameOrigin()` も維持する。
 - **Consequence**: API と DB の二重防御になる。既存 RPC は v2 導入時に直接実行権限を是正する。
 
+### ADR-010: `mark_post_pending_by_report` の actor 偽装と任意 pending 化を塞ぐ
+
+- **Context**: ADR-009 の是正対象は `apply_admin_moderation_decision` 系のみだが、`mark_post_pending_by_report`（`supabase/migrations/20260208221000_add_mark_post_pending_rpc.sql`）が同じ構造の穴を持つ。本番 ACL 実測は `anon=X | authenticated=X | service_role=X` で、マイグレーションは `GRANT EXECUTE TO authenticated` しか書いていないが Supabase の default privileges により **`anon` にも EXECUTE が付いている**。関数は SECURITY DEFINER でありながら `auth.uid()` を一切参照せず、`p_actor_id` と `p_reason` は呼出者任せ、`post_reports` の存在確認もない。更新条件は `is_posted = true AND moderation_status = 'visible'` のみ。
+
+  影響は3点:
+
+  1. **公開 anon キーだけで任意の公開投稿を1コールずつ `pending`（全ユーザーから非表示）にできる**。anon キーはクライアントバンドルに含まれる公開値であり、PostgREST の `/rest/v1/rpc/mark_post_pending_by_report` に直接到達できるため、検閲・DoS ベクタとして成立する
+  2. `p_reason='admin_immediate'` と任意の `p_actor_id` を渡して「運営が即時非表示にした」偽の監査ログを作れる
+  3. **本計画の根幹に効く**。本計画は `moderation_audit_logs` を削除判定の source of truth とし `removal_decision_id` をそこから引く設計だが、SECURITY DEFINER は RLS をバイパスするため、ADR-009 で authenticated 向け RLS policy を削除しても**この RPC 経路からの任意行 INSERT は止まらない**。正本テーブルに一般ユーザーが書ける穴が残り、`removal_decision_id` の信頼性が崩れる
+
+  なお単純に `authenticated` から EXECUTE を REVOKE すると通報の自動非表示が壊れる。通報ルートがユーザーのセッションクライアントからこの RPC を呼んでいるため（`app/api/reports/posts/route.ts` の `setPendingWithRpc(supabase, context)`）。
+
+- **Decision**: pending 化を **service_role 経路に一本化**する。
+  1. `app/api/reports/posts/route.ts` の `setPendingWithRpc` に渡すクライアントをセッションクライアントから `createAdminClient()` に差し替える。同ルートは `calculatePendingMetrics` で既に admin クライアントを生成しているため、新規の資材追加は不要
+  2. `mark_post_pending_by_report` から `PUBLIC` / `anon` / `authenticated` の EXECUTE を REVOKE し、`service_role` のみに GRANT する
+  3. `p_reason` を呼出者任せにせず、RPC 内で `report_threshold` / `admin_immediate` の2値に限定する（`CHECK` 相当の `RAISE EXCEPTION`）。`admin_immediate` を渡す場合は `p_actor_id` が `admin_users` に存在することを RPC 内で検証する
+  4. `isPostAlreadyPending` の照会も同じ admin クライアントに揃える
+
+- **Reason**: (a) 案として「`p_actor_id` を廃止して `auth.uid()` から導出し、`post_reports` に当該行が存在することを RPC 内で検証する」も検討したが、通報 API は既に INSERT 済みの `post_reports` を前提に集計しており、RPC 側で再度存在確認を行うのは責務の二重化になる。ADR-009 が「管理系 RPC は service_role 専用」という方針を立てた直後に、同じテーブル群を触る RPC だけ authenticated に開けておく整合性の悪さもある。service_role へ寄せる方が方針が一貫し、変更量も小さい。
+
+- **Consequence**:
+  - 通報による自動非表示はサーバー側 route handler からのみ実行可能になる。クライアントから直接 RPC を叩く経路は消える
+  - `moderation_audit_logs` への書き込み経路が service_role のみに閉じ、ADR-009 の RLS 是正と合わせて正本テーブルの完全性が担保される
+  - **これは本計画が持ち込んだ問題ではなく既存の本番の穴**である。緊急度は本計画と独立しているため、Phase 1 の先頭に置いて単独でコミットし、計画の他部分の進捗と切り離して先行マージできる形にする
+  - 通報フローの回帰リスクがあるため、Phase 5 で「通報しきい値到達時に pending 化される」既存挙動のテストを必ず通す
+
 ---
 
 ## 4. 実装計画
@@ -362,6 +398,14 @@ flowchart LR
 **目的**: 安全な判定イベント、通知 outbox、異議申立てのデータ基盤を追加
 **ビルド確認**: マイグレーション適用後に `npm run typecheck` と `npm run build -- --webpack` が通る（この時点でアプリ挙動は変わらない）
 
+> **先行マージ推奨**: 以下の1件目（ADR-010）は既存の本番の穴を塞ぐもので、本計画の他部分に依存しない。単独コミットにして先にマージできる形にする。**ただしアプリ側の 1 行変更（`setPendingWithRpc` のクライアント差し替え）と同時に適用しないと通報の自動非表示が壊れる**ため、マイグレーションとルート修正を同一コミットに含めること。
+
+- [ ] `supabase/migrations/2026xxxx_harden_mark_post_pending_rpc.sql` を新規作成（ADR-010）
+  - `mark_post_pending_by_report` から `PUBLIC` / `anon` / `authenticated` の EXECUTE を REVOKE し、`service_role` のみに GRANT
+  - `p_reason` を `report_threshold` / `admin_immediate` の2値に限定（それ以外は `RAISE EXCEPTION` で `22023`）
+  - `p_reason = 'admin_immediate'` のときは `p_actor_id` が `admin_users` に存在することを RPC 内で検証（不在なら `42501`）
+  - 関数シグネチャは変更しないため、呼出側の引数修正は不要（差し替えるのはクライアントのみ）
+  - 併せて `app/api/reports/posts/route.ts` を修正し、`setPendingWithRpc` と `isPostAlreadyPending` に渡すクライアントを `createAdminClient()` に差し替える（同ルートは `calculatePendingMetrics` で既に生成済み）
 - [ ] `supabase/migrations/2026xxxx_extend_notifications_for_post_moderation.sql` を新規作成
   - `notifications_type_check` に `post_moderation_removed` / `post_moderation_appeal_result` を追加（既存14値を保持。`20260602100400_extend_notifications_for_creator_looks.sql` の書式を踏襲）
   - `entity_type` は `post` を再利用するため **CHECK 変更なし**
@@ -508,6 +552,8 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 | --- | --- | --- |
+| `supabase/migrations/2026xxxx_harden_mark_post_pending_rpc.sql` | 新規 | pending 化 RPC を service_role 専用化 + reason 制限 + admin 検証（ADR-010） |
+| `app/api/reports/posts/route.ts` | 修正 | `setPendingWithRpc` / `isPostAlreadyPending` を admin クライアント経由に差し替え（ADR-010） |
 | `supabase/migrations/2026xxxx_extend_notifications_for_post_moderation.sql` | 新規 | 通知 type 2値 + moderation event 一意 index |
 | `supabase/migrations/2026xxxx_harden_post_moderation_decision.sql` | 新規 | v2 判定 RPC、admin 二重検証、既存 RPC 権限是正 |
 | `supabase/migrations/2026xxxx_add_moderation_notification_outbox.sql` | 新規 | outbox + dispatcher + retry cron |
@@ -568,6 +614,8 @@ flowchart LR
 | 異常系 | 同じ removal decision への2回目は409、同じ投稿の後続 removal decision への申立ては成功 |
 | 異常系 | 通知配送から14日を過ぎた decision、過去の非現行 decision、visible 投稿の未確定 decision への申立てが拒否され、outbox 未配送中は期限切れにならない |
 | 権限テスト | `anon` / 一般 authenticated が2つの admin RPC を直接呼ぶと拒否され、actor spoofing も拒否される |
+| 権限テスト | `anon` / 一般 authenticated が `mark_post_pending_by_report` を直接呼ぶと拒否される（ADR-010）。`p_reason` に許可外の値を渡すと拒否され、`admin_immediate` を非 admin の `p_actor_id` で渡すと `42501` になる |
+| 回帰テスト | ADR-010 適用後も既存の通報フローが壊れないこと: しきい値到達で `pending` 化される / 運営通報は1件で即 `pending` 化される / 既に `pending` の投稿への通報が成功扱いになる |
 | 権限テスト | 未認証の異議申立て POST が401 / 他人の decision は404 / 非 admin のキュー GET は403 / admin POST の cross-origin は拒否 |
 | 権限テスト | 判定者が投稿者本人でも system notification が作られ、admin の nickname/avatar/id は投稿者向け enrichment に出ない |
 | 権限テスト | RLS: 別ユーザーのセッションで `post_moderation_appeals` を SELECT しても0件 |
@@ -598,8 +646,12 @@ flowchart LR
 | `revalidateTag` 追加（ADR-007） | 独立コミットにする。キャッシュ挙動に問題が出た場合これだけ revert できる |
 | UI | Phase 3 / Phase 4 をそれぞれ独立コミットにし、フェーズ単位で `revert` 可能にする |
 | 機能フラグ | dispatcher cron を停止可能な配送 kill switch とし、判定記録と outbox は継続する。通知停止中も欠落イベントを失わない |
+| pending 化 RPC の権限是正（ADR-010） | **ロールバック対象外**。既存の脆弱性の修正であり、`anon` / `authenticated` への EXECUTE を再付与してはならない。万一通報フローが壊れた場合は、権限を戻すのではなく `app/api/reports/posts/route.ts` 側のクライアント差し替えを修正する |
 
-**適用順序の推奨**: Phase 1 のマイグレーションを適用しても、Phase 2 をデプロイするまでアプリ挙動は一切変わらない。先に DB だけ本番適用して様子を見られる。
+**適用順序の推奨**:
+
+- **ADR-010 のマイグレーションだけは、アプリ側の `app/api/reports/posts/route.ts` 修正と同時にデプロイする必要がある**。マイグレーションを先行適用するとセッションクライアントからの RPC 実行が権限エラーになり、通報しきい値到達時の自動非表示が動かなくなる。同一コミット・同一デプロイで反映すること
+- 残りの Phase 1 マイグレーション（通知 CHECK / outbox / appeals / 判定 v2 RPC）は、Phase 2 をデプロイするまでアプリ挙動を変えない。先に DB だけ本番適用して様子を見られる
 
 ---
 
@@ -626,3 +678,5 @@ flowchart LR
 - DSA 適用有無は「EUから閲覧可能か」ではなく EU との実質的な結び付きで判断し、リリース前に法務・事業側の確認結果を残す
 - ロールアウト前から存在する removed 投稿は自動的に14日制限へ載せず、バックフィル通知を行う場合はその配送完了から14日を付与するか、対象外として個別対応するかを運営判断で確定する
 - 新規 Markdown はグローバル `.gitignore` の `*.md` に該当するため、コミット時に `git add -f` が必要
+- ADR-010 の対象は既存の本番脆弱性であり、本計画の他部分と独立して先行マージできる。ただし**マイグレーション単独では通報フローが壊れる**ため、`app/api/reports/posts/route.ts` の修正と必ず同一コミットにする（REQ-021）
+- `anon` への EXECUTE 付与は Supabase の default privileges 由来であり、マイグレーションの `GRANT ... TO authenticated` だけを読んでも気づけない。他の SECURITY DEFINER 関数にも同種の過剰付与がないか、本計画とは別に棚卸しする価値がある（本計画のスコープ外）
