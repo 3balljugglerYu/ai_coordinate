@@ -1,162 +1,169 @@
 # じゆうモード プロンプト非公開モード 実装計画
 
 作成日: 2026-07-29
-対象: `/free`（じゆうモード）投稿のプロンプトを非公開にしつつ、他ユーザーが同じプロンプトで生成できるようにする
+最終更新: 2026-07-29（レビュー指摘を受けて全面改訂。**ADR-001 と ADR-007 を撤回**）
+対象: `/free` 投稿のプロンプト非公開化、および**プロンプト保管の秘匿境界そのものの是正**
 
 ## 背景
 
-`/free` の投稿は詳細画面でプロンプトが表示され、フォロワーはコピーして再利用できる。一方で「プロンプトは自分の資産なので見せたくないが、使ってもらえるのは嬉しい」というニーズがある。
+`/free` の投稿は詳細画面でプロンプトが表示され、フォロワーはコピーして再利用できる。「プロンプトは自分の資産なので見せたくないが、使ってもらえるのは嬉しい」というニーズに対し、秘匿したまま「試せる」導線を用意する。
 
-単に「コピー禁止」にすると、投稿者は使ってもらう喜びを失い、閲覧者は何もできない。**プロンプトを秘匿したまま「試せる」導線を用意する**ことで、両者の利益が両立する。
+### 初版計画の重大な誤りと、判明した既存脆弱性
+
+初版は「アプリ層の redaction（`prompt-visibility.ts`）が主要4経路に適用済みだから、列を1つ足せば足りる」としていた。**これは誤りだった。** RLS を見ずにアプリ層だけを見た結論である。
+
+本番実測で確認した事実:
+
+```sql
+-- generated_images の SELECT ポリシー（実測）
+USING ((is_posted = true AND moderation_status = 'visible') OR (user_id = auth.uid()))
+-- roles: {public}
+
+-- テーブル権限（実測）
+anon:          SELECT を含む
+authenticated: SELECT を含む
+```
+
+**RLS は行単位であり、列を絞らない。** したがって公開 anon キーで以下が通る。
+
+```
+GET {SUPABASE_URL}/rest/v1/generated_images
+    ?is_posted=eq.true&moderation_status=eq.visible&select=prompt,generation_type
+```
+
+`redactSensitivePrompts` はサーバーコンポーネントの出力から消しているだけで、**この経路には一切関与しない**。
+
+**本番で読み取れる件数（実測）:**
+
+| generation_type | 読める行数 | ユニークなプロンプト数 |
+| --- | --- | --- |
+| **one_tap_style** | **689** | **263** |
+| coordinate | 229 | 208 |
+
+つまり **運営が作成した One-Tap Style プリセットのプロンプト 263 種が、現在この瞬間も公開 anon キーで取得できる**。「画像のみ公開・プロンプト非公開で moat を作る」という設計意図と正面から反する既存の脆弱性であり、新機能とは独立して存在する。
+
+**この RLS を是正しない限り、プロンプト非公開モードは成立しない。** 同じ経路から新機能の秘密も抜かれるためである。よって本計画は「新機能の追加」ではなく **「プロンプト保管の秘匿境界を作り直し、その上に新機能を載せる」** ものとして再設計する。
 
 ### ヒアリングで確定した仕様
 
 | # | 決定 |
 | --- | --- |
 | ① | 派生投稿のクレジットは**原作者を表示**。連鎖しても常に原作を指す |
-| ② | 元投稿が削除／投稿取消／非公開／公開停止のときは**生成不可**。「現在、ご利用できません」と角の立たない表示 |
+| ② | 元投稿が利用不可のときは生成不可。「現在、ご利用できません」と角の立たない表示 |
 | ③ | フォロー判定は**原作者**に対して。カードから直接フォローできる |
-| ④ | 派生投稿はプロンプトを表示しない。`one_tap_style` の既存分岐を流用 |
+| ④ | 派生投稿はプロンプトを表示しない |
 | ⑤ | ペルコインは通常の `/free` 生成と同額。原作者への還元はなし |
-| ⑥ | 既定は**公開**。投稿者が明示的に非公開を選ぶ |
-| ⑦ | 運営はプロンプト全文を閲覧可。非公開提供であることが分かるバッジを admin に出す |
-| ⑧ | 原作者の投稿に**利用数**（「42人が使いました」）を表示する |
-| ⑨ | 投稿後も編集モーダルで**公開／非公開を切り替えられる** |
+| ⑥ | 既定は**公開**。投稿者が明示的に非公開を選ぶ。投稿後も切り替え可能 |
+| ⑦ | 運営はプロンプト全文を閲覧可。非公開提供を示すバッジを admin に出す |
+| ⑧ | 原作者の投稿に**利用数**を表示する（原作者自身の生成は除外） |
 
 ---
 
 ## コードベース調査結果
 
-### プロンプトの可視性（既存の仕組み）
+### プロンプトが漏れている経路（実測）
 
-`features/generation/lib/prompt-visibility.ts` が読み取り時に伏せる方式を実装済み。
-
-```ts
-shouldHidePromptForGenerationType(type) // one_tap_style のときだけ true
-getVisiblePrompt(record)                // 隠すなら "" を返す
-redactSensitivePrompt / redactSensitivePrompts
-```
-
-**主要な4経路すべてで適用済みであることを確認した。**
-
-| 経路 | 適用箇所 |
+| 経路 | 状況 |
 | --- | --- |
-| ホームフィード | `features/posts/lib/server-api.ts:477`（`enrichPosts` 内） |
-| 投稿詳細 | `features/posts/lib/server-api.ts:973`（`getPost`） |
-| プロフィール投稿 | `features/my-page/lib/server-api.ts:229`（`getUserPostsServer`） |
-| マイページ生成一覧 | `features/my-page/lib/api.ts:67` |
+| PostgREST 直接 SELECT | **anon で `select=prompt` が通る**（上記） |
+| `features/generation/lib/database.ts:123,155,342,362` | ブラウザクライアントから `select("*")` |
+| `features/event/lib/database.ts:24` | 同上 |
+| `image_jobs.prompt_text` | `app/api/generate-async/handler.ts:487` で保存。RLS は `auth.uid() = user_id` なので**所有者は全列を読める** |
+| Worker | `supabase/functions/image-gen-worker/index.ts:2743` で `generated_images.prompt` へコピー |
+| `features/generation/lib/prompt-builder.ts:39-45` | **最終プロンプト全文を `console.log` している** |
 
-このため **別テーブルへの退避は不要**。列の追加と redaction の拡張で足りる（ADR-001）。
+### アプリ層 redaction（境界ではないが防御層として維持する）
+
+`features/generation/lib/prompt-visibility.ts` が `one_tap_style` のみ伏せる実装。適用箇所は `server-api.ts:477,973` / `my-page/lib/server-api.ts:229` / `my-page/lib/api.ts:67`。
 
 ### 詳細画面のプロンプト表示
 
-`features/posts/components/PostDetailStatic.tsx:440-471` および同構造の `PostDetail.tsx`。
-
-```jsx
-{oneTapStylePreset ? (
-  <OneTapStyleDetailCard preset={oneTapStylePreset} />   // ← プロンプト欄の代わりにカード
-) : hasVisiblePrompt ? (
-  <div>…プロンプト全文 + コピーボタン…</div>
-) : null}
-```
-
-**「プロンプト欄の代わりにカードを出す」分岐が既にある。** ここに第3分岐を足すのが最小変更（ADR-002）。
-
-- フォロー判定: `PostDetailStatic.tsx:97` の `canViewPrompt = isOwner || isFollowingAuthor`
-- 未フォロー時は `maskedPrompt`（`*` の羅列）を表示している
+`PostDetailStatic.tsx:440-471` と `PostDetail.tsx`。`oneTapStylePreset ? カード : hasVisiblePrompt ? プロンプト欄 : null` の分岐がある。フォロー判定は `canViewPrompt = isOwner || isFollowingAuthor`（`:97`）。
 
 ### One-Tap Style の参照カード（流用元）
 
-`features/style/components/OneTapStyleDetailCard.tsx`
-
-```
- ラベル → StylePresetPreviewCard（サムネイル・クリック可）
-   → AlertDialog で確認
-   → router.push(`/style?style=<id>`)
-```
-
-**「サムネイル → 確認 → 生成画面へ」という構造がそのまま使える。**
+`features/style/components/OneTapStyleDetailCard.tsx`。「サムネイル → 確認ダイアログ → 生成画面へ」の構造。
 
 ### `/free` の生成フロー
 
-`features/generation/components/GenerationForm.tsx:335-350`
+`GenerationForm.tsx:335-350`。入力は画像・プロンプト・モデル・比率の4つのみ。生成 API は `app/api/generate-async/handler.ts`。
 
-```ts
-onSubmit({
-  prompt: trimmedPrompt,
-  ...commonSourceImage,      // アップロード画像 / stock / generated のいずれか
-  sourceImageType: "illustration",
-  backgroundMode: "keep",
-  count: 1,
-  model: effectiveSelectedModel,
-  generationType: "free",
-  outputAspectRatioMode: aspectMode,
-});
-```
+### 検索（初版の調査は誤りだった）
 
-**じゆうモードの入力は「画像・プロンプト・モデル・比率」の4つだけ**（背景/ポーズ/枚数は固定送信）。ボトムシートはこの4つのうちプロンプトを固定し、残り3つを受け取ればよい。
+**`SearchBar` は `StickyHeader.tsx:289-305` で PC・モバイル双方に常時描画されている。** 初版で「アプリ内に導線が無い」としたのは、`/search` の文字列で grep したため `router.push` でパスを組み立てる `SearchBar.tsx` を取りこぼした結果である。**検索は現に使える機能である。**
 
-生成 API は `app/api/generate-async/handler.ts`。`generationType === "free"` の分岐が `:479` にある。
+- 検索クエリ: `server-api.ts:614,651` の `ilike("prompt", ...)`
+- API: `app/api/posts/route.ts:35-38` の `q`
+- キャッシュタグ: `search-posts`（`app/api/posts/post/route.ts:122` ほか）
 
-### その他
+### 削除・所有
 
-- 編集モーダル: `features/posts/components/EditPostModal.tsx`。`show_before_image` のトグルが既にあり、同じ場所に追加できる
-- フォロー: `app/api/users/[userId]/follow/route.ts`、状態取得は `follow-status`
-- `generated_images` の関連列: `prompt` / `generation_type` / `show_before_image` / `style_template_id`（いずれも実在を確認済み）
-- Supabase 接続: `npx supabase db query --linked` で参照系の実行を確認済み
+- `features/generation/lib/database.ts:170` `deleteGeneratedImage` — **ブラウザから物理削除できる**
+- `generated_images` の RLS: INSERT / UPDATE / DELETE いずれも所有者に開放（実測）
 
 ### i18n
 
-`messages/` に **15ロケール**。`messages/ja.ts` の `jaMessages` が master で、他は `satisfies DeepReplaceStrings<typeof jaMessages>`。**キー追加は15ファイル全てに必要**。
+`messages/` に15ロケール。`messages/ja.ts` が master で `satisfies DeepReplaceStrings<typeof jaMessages>`。**キー追加は15ファイル全てに必要**。
 
 ---
 
 ## 1. 概要図
+
+### 秘匿境界の再設計（本計画の中核）
+
+```mermaid
+flowchart TB
+    subgraph public["公開行 anon から読める"]
+        GI["generated_images<br/>prompt は空にする"]
+    end
+    subgraph secret["秘匿テーブル anon 権限なし"]
+        PS["generated_image_prompt_secrets<br/>プロンプト全文"]
+    end
+    subgraph server["サーバー経路のみ"]
+        API["server-api と 生成API と Worker"]
+    end
+    GI -.->|"1対1"| PS
+    API -->|"service role で解決"| PS
+    API -->|"可視性ルールを適用して返す"| U["クライアント"]
+    PS -.->|"anon と authenticated は直接読めない"| X["直接アクセスは失敗"]
+```
 
 ### 全体フロー
 
 ```mermaid
 flowchart TD
     A["Aさんが /free で生成し投稿"] --> B{"プロンプトを公開するか"}
-    B -->|公開| C["従来どおり全文表示とコピー"]
-    B -->|非公開| D["プロンプト欄の代わりに参照カードを表示"]
+    B -->|公開| C["フォロワーには全文を表示"]
+    B -->|非公開| D["プロンプト欄の代わりに参照カード"]
     D --> E{"閲覧者はAさんをフォロー済みか"}
     E -->|未フォロー| F["カード上でフォローを促す"]
     E -->|フォロー済み| G["このプロンプトで作る を押せる"]
     F --> G
     G --> H["ボトムシートが開く"]
     H --> I["プロンプト欄はグレーアウト。画像と比率とモデルを選ぶ"]
-    I --> J["投稿IDを送って生成。プロンプトはサーバーで解決"]
-    J --> K["Bさんの生成物ができる"]
-    K --> L["Bさんが投稿すると原作者Aの参照カードが付く"]
+    I --> J["原作の投稿IDだけを送信"]
+    J --> K["Workerが実行直前に秘密を解決"]
+    K --> L["Bの所有レコードに秘密を一切保存しない"]
 ```
 
-### 参照の連鎖
-
-```mermaid
-flowchart LR
-    A["Aの投稿 原作"] --> B["Bの投稿"]
-    B --> C["Cの投稿"]
-    B -.->|クレジットはAを指す| A
-    C -.->|連鎖してもAを指す| A
-```
-
-### 生成のシーケンス
+### 生成のシーケンス（秘密が派生者の所有物にならないこと）
 
 ```mermaid
 sequenceDiagram
     participant U as Viewer
-    participant S as BottomSheet
     participant API as GenerateAsyncAPI
-    participant DB as Supabase
-    U->>S: このプロンプトで作る を押す
-    S->>S: 画像と比率とモデルを選ぶ
-    S->>API: POST 投稿IDと画像と比率とモデル
-    API->>DB: 元投稿を取得し状態と所有者を検証
-    API->>API: プロンプトをサーバー側で解決
-    API->>DB: image_jobs に投入し source_post_id を保存
-    API-->>S: ジョブ受付
-    S-->>U: 生成中の表示
+    participant J as ImageJobs
+    participant W as Worker
+    participant S as PromptSecrets
+    U->>API: POST 原作の投稿IDと画像と比率とモデル
+    API->>API: 対象条件とフォローとブロックを検証
+    API->>J: origin_post_id だけ保存し prompt_text は空
+    W->>J: ジョブ取得
+    W->>W: 実行直前に条件を再検証
+    W->>S: service role で秘密を解決
+    W->>W: 生成する
+    W->>J: 完了。prompt_text は空のまま
+    Note over W: 派生した generated_images にも秘密を書かない
 ```
 
 ### 状態遷移
@@ -175,14 +182,25 @@ stateDiagram-v2
 
 ```mermaid
 erDiagram
-    generated_images ||--o{ generated_images : "source_post_id で派生を指す"
+    generated_images ||--o| generated_image_prompt_secrets : "1対1で秘密を持つ"
+    generated_images ||--o{ prompt_usage_events : "原作として使われた記録"
+    generated_image_prompt_secrets {
+        uuid image_id PK
+        text prompt "全文 anon 権限なし"
+        uuid owner_id "所有者"
+    }
     generated_images {
         uuid id PK
-        text prompt
-        text generation_type
+        text prompt "空にする 公開行のため"
         text prompt_visibility "public または private"
-        uuid source_post_id FK "原作の投稿 常に根を指す"
-        boolean show_before_image
+        uuid source_post_id "原作 不変 service role のみ設定可"
+        uuid source_author_id "原作者 削除後も残す"
+    }
+    prompt_usage_events {
+        uuid id PK
+        uuid origin_post_id "原作"
+        uuid user_id "使った人"
+        timestamptz created_at
     }
 ```
 
@@ -190,132 +208,152 @@ erDiagram
 
 ## 2. EARS 要件定義
 
-### 可視性の設定
+### 秘匿境界
 
-- **REQ-001**: When a user posts a `/free` generation, the system shall default `prompt_visibility` to `public`.
-  ユーザーが `/free` の生成物を投稿したとき、システムは `prompt_visibility` を既定で `public` にしなければならない。
+- **REQ-001**: The system shall store prompt text only in `generated_image_prompt_secrets`, and `generated_images.prompt` shall not contain prompt text for any row.
+  システムはプロンプト本文を `generated_image_prompt_secrets` にのみ保存し、`generated_images.prompt` にはいかなる行でもプロンプト本文を保持してはならない。
 
-- **REQ-002**: When the author toggles prompt visibility in the post or edit modal, the system shall persist the new value and reflect it on the detail screen immediately.
-  投稿者が投稿モーダルまたは編集モーダルで公開設定を切り替えたとき、システムは値を保存し、詳細画面へ即座に反映しなければならない。
+- **REQ-002**: The system shall deny `SELECT` on `generated_image_prompt_secrets` to the `anon` role, and shall permit it to `authenticated` only for rows the requester owns.
+  システムは `generated_image_prompt_secrets` の `SELECT` を `anon` に拒否し、`authenticated` には自分が所有する行に限って許可しなければならない。
 
-- **REQ-003**: While `prompt_visibility` is `private`, the system shall never return the prompt text to any client other than the author's own and admin paths.
-  `prompt_visibility` が `private` である間、システムは投稿者本人と admin 以外のいかなるクライアントにもプロンプト文字列を返してはならない。
+- **REQ-003**: The system shall return prompt text only to the **owner of the origin prompt** and to admin paths. A deriving user shall not receive it, even for a post that the deriving user owns.
+  システムはプロンプト本文を、**原作プロンプトの所有者**と admin 経路にのみ返さなければならない。派生した利用者は、自分が所有する投稿に対してであっても本文を受け取ってはならない。
 
-### 参照カードと生成
+- **REQ-004**: While a prompt is public, the system shall disclose it only to the author and the author's followers, preserving the existing follow gate.
+  プロンプトが公開である間、システムは既存のフォローゲートを維持し、投稿者とそのフォロワーにのみ開示しなければならない。
 
-- **REQ-004**: While a post has a private prompt, the system shall render a reference card with the origin author's name and thumbnail in place of the prompt section.
-  投稿のプロンプトが非公開である間、システムはプロンプト欄の代わりに、原作者名とサムネイルを含む参照カードを表示しなければならない。
+### 派生生成
 
-- **REQ-005**: While the viewer does not follow the origin author, the system shall present a follow action on the card and shall not allow generation.
-  閲覧者が原作者をフォローしていない間、システムはカード上にフォロー導線を出し、生成を許可してはならない。
+- **REQ-005**: When a viewer starts a derived generation, the system shall accept only the origin post id, source image, aspect ratio and model, and shall not accept prompt text.
+  閲覧者が派生生成を開始したとき、システムは原作の投稿ID・元画像・比率・モデルのみを受け取り、プロンプト本文を受け取ってはならない。
 
-- **REQ-006**: When the viewer starts a generation from the bottom sheet, the system shall accept only the post id, source image, aspect ratio and model, and shall resolve the prompt server-side.
-  閲覧者がボトムシートから生成を開始したとき、システムは投稿ID・元画像・比率・モデルのみを受け取り、プロンプトはサーバー側で解決しなければならない。
+- **REQ-006**: The system shall not persist the origin prompt into any record owned by the deriving user, including `image_jobs.prompt_text` and the derived `generated_images.prompt`.
+  システムは、`image_jobs.prompt_text` と派生した `generated_images.prompt` を含め、派生した利用者が所有するいかなるレコードにも原作のプロンプトを保存してはならない。
 
-- **REQ-007**: If the referenced post is deleted, unposted, suspended, or its prompt is no longer private-shareable, then the system shall reject the generation and display "現在、ご利用できません" without exposing the reason.
-  参照先の投稿が削除・投稿取消・公開停止などで利用できない場合、システムは生成を拒否し、理由を露出せずに「現在、ご利用できません」と表示しなければならない。
+- **REQ-007**: When the worker executes a derived job, it shall resolve the secret with the service role immediately before generation, and shall re-verify availability, visibility, follow and block conditions at that time.
+  Worker が派生ジョブを実行するとき、生成の直前に service role で秘密を解決し、その時点で利用可否・可視性・フォロー・ブロックの条件を再検証しなければならない。
 
-- **REQ-008**: When a generation derives from another post, the system shall store `source_post_id` pointing to the **origin** post, resolving the chain to its root.
-  ある生成が他の投稿から派生したとき、システムは連鎖を根まで解決した**原作**の投稿を `source_post_id` に保存しなければならない。
+- **REQ-008**: If the source is not a `free` root post with `prompt_visibility = 'private'` and an existing secret, or the origin author is unavailable, or a block relation exists in either direction, then the system shall reject the generation.
+  参照先が `free` の根投稿でなく、`prompt_visibility = 'private'` でなく、秘密が存在せず、原作者が利用不可、または双方向いずれかにブロック関係がある場合、システムは生成を拒否しなければならない。
 
-### 派生投稿
+### 出所と改ざん防止
 
-- **REQ-009**: While a post has a `source_post_id`, the system shall treat its prompt as private regardless of the poster's own選択, and shall display the origin's reference card instead of the prompt.
-  投稿が `source_post_id` を持つ間、システムは投稿者自身の選択に関わらずプロンプトを非公開として扱い、プロンプト欄の代わりに原作の参照カードを表示しなければならない。
+- **REQ-009**: The system shall set `source_post_id` and `source_author_id` only from a trusted server path, and shall reject any client-initiated insert or update of these columns.
+  システムは `source_post_id` と `source_author_id` を信頼されたサーバー経路からのみ設定し、クライアント起点のこれらの列の挿入・更新を拒否しなければならない。
 
-- **REQ-010**: While the origin post is unavailable, the system shall render the derived post's card in a disabled state with "現在、ご利用できません".
-  原作の投稿が利用できない間、システムは派生投稿のカードを無効状態にし「現在、ご利用できません」と表示しなければならない。
+- **REQ-010**: The system shall keep `source_post_id` immutable after creation.
+  システムは作成後の `source_post_id` を不変にしなければならない。
 
-### 利用数
+- **REQ-011**: While the origin post has been deleted, the system shall retain the lineage and render the credit in a disabled state, rather than losing the attribution.
+  原作の投稿が削除されている間、システムは出所を保持し、クレジットを無効状態で表示しなければならない。出所を失ってはならない。
 
-- **REQ-011**: While a post has been used as an origin, the system shall display the number of distinct users who generated from it.
-  投稿が原作として使われている間、システムはそこから生成したユニークユーザー数を表示しなければならない。
+- **REQ-012**: When a derived generation completes successfully, the system shall record an immutable usage event, and the usage count shall be computed from those events.
+  派生生成が成功したとき、システムは改ざんできない利用イベントを記録し、利用数はそのイベントから算出しなければならない。
 
-- **REQ-012**: The usage count shall exclude the origin author's own generations.
-  利用数には原作者自身の生成を含めてはならない。
+### 表示
+
+- **REQ-013**: While a post has a private prompt or a source reference, the system shall render the origin reference card in place of the prompt section.
+  投稿のプロンプトが非公開、または出所参照を持つ間、システムはプロンプト欄の代わりに原作の参照カードを表示しなければならない。
+
+- **REQ-014**: If the origin is unavailable for any reason, then the system shall return an identical response shape, status and error code for all causes, and shall not include the origin thumbnail.
+  原作がいずれかの理由で利用不可の場合、システムはすべての原因に対して同一のレスポンス形状・ステータス・エラーコードを返し、原作のサムネイルを含めてはならない。
+
+- **REQ-015**: When the author switches a prompt from public to private, the UI shall state that already disclosed content cannot be retracted.
+  投稿者がプロンプトを公開から非公開へ切り替えるとき、UI は既に開示された内容を回収できない旨を明示しなければならない。
 
 ### 検索
 
-- **REQ-015**: The system shall not provide prompt-based full-text search, and `GET /api/posts` shall ignore any `q` parameter.
-  システムはプロンプト全文検索を提供してはならず、`GET /api/posts` は `q` パラメータを無視しなければならない。
+- **REQ-016**: The system shall search `caption` and author display name, and shall not use prompt text as a search key.
+  システムは `caption` と作者表示名を検索対象とし、プロンプト本文を検索キーに使ってはならない。
 
-- **REQ-016**: If a request reaches a removed search route, then the system shall redirect to the home screen rather than returning a broken page.
-  削除された検索経路へのリクエストが到達した場合、システムは壊れたページを返さずホーム画面へリダイレクトしなければならない。
+### ログ
+
+- **REQ-017**: The system shall not write prompt text to application logs, worker logs, APM, or provider error payloads.
+  システムはプロンプト本文を、アプリログ・Worker ログ・APM・プロバイダのエラーペイロードに書き出してはならない。
 
 ### 運営
 
-- **REQ-013**: While an admin views a post with a private prompt, the system shall display the full prompt together with a badge indicating that it is provided privately.
-  管理者が非公開プロンプトの投稿を閲覧している間、システムはプロンプト全文と、非公開提供であることを示すバッジを表示しなければならない。
-
-- **REQ-014**: The moderation queue shall show the same badge so that reviewers can tell at a glance.
-  審査キューにも同じバッジを表示し、審査者が一目で判別できるようにしなければならない。
+- **REQ-018**: While an admin views a post, the system shall display the full prompt with a badge indicating whether it is provided privately.
+  管理者が投稿を閲覧している間、システムはプロンプト全文と、非公開提供かどうかを示すバッジを表示しなければならない。
 
 ---
 
 ## 3. ADR
 
-### ADR-001: 別テーブルではなく列追加＋読み取り時 redaction にする
+### ADR-001（改訂）: プロンプトは公開行から分離し、秘匿テーブルへ移す
 
-- **Context**: Creator Looks は `user_style_template_secrets.hidden_prompt` として別テーブルに隔離している。同じ方式も考えられた。
-- **Decision**: `generated_images` に `prompt_visibility` 列を足し、既存の `prompt-visibility.ts` を拡張する。別テーブルは作らない。
+**初版の「別テーブル不要」は撤回する。**
+
+- **Context**: 初版はアプリ層 redaction を境界とみなした。しかし `generated_images` の SELECT ポリシーは行単位で `anon` に開放されており、`select=prompt` で直接読める。実測で One-Tap Style プリセット 263 種が公開状態にあることを確認した。
+- **Decision**: `generated_image_prompt_secrets(image_id PK, prompt, owner_id, created_at)` を新設し、**すべてのプロンプト本文をここへ移す**。`generated_images.prompt` は空にする。RLS は「所有者本人のみ SELECT 可」、`anon` には権限を与えない。書き込みは service role / SECURITY DEFINER RPC のみ。
 - **Reason**:
-  1. Creator Looks のプロンプトは**抽出器が生成した、投稿者本人も見ない値**。一方 `/free` のプロンプトは**本人が書いた本人の資産**であり、本人は常に読める必要がある。別テーブルにすると「本人だけ別経路で読む」機構が余分に要る
-  2. 読み取り時 redaction の仕組みが**既に存在し、主要4経路すべてに適用済み**であることを確認した。同じレールに乗せるのが最小リスク
-  3. 容量は論点にならない。`/free` 投稿21件のプロンプト合計は 48 kB、`generated_images` 全体は 18 MB。Supabase はテーブル数で課金しない
-- **Consequence**: 新しい読み取り経路を足すときに redaction を忘れると漏れる。`prompt-visibility.ts` を必ず経由する規約をコメントとテストで固定する。
+  1. RLS は列を絞れない。行が見える以上、列は取れる
+  2. 列単位 GRANT で `prompt` を剥奪する案も検討したが、**`select("*")` を使うブラウザ経路が5箇所あり**（`generation/lib/database.ts:123,155,342,362` と `event/lib/database.ts:24`）、権限が欠けると `select=*` 自体がエラーになる。移行コストは同等以上で、境界としては分離の方が明確
+  3. 「公開プロンプト」も実際はフォロワー限定（`canViewPrompt = isOwner || isFollowingAuthor`）であり、**誰でも読める列に置いてよいプロンプトは1つも無い**。よって全件移す
+  4. Creator Looks が別テーブルなのは実績のあるパターン。「本人が読めない」問題は、secrets 側に所有者向け RLS を付ければ両立する
+- **Consequence**: 既存 919 行分の移行が必要。移行中は二重保持の期間を設ける。読み取りはすべてサーバー経路を通るようになり、ブラウザから直接プロンプトを取る経路は無くなる。
 
-### ADR-002: 詳細画面は既存の三項分岐に第3の枝を足す
+### ADR-002: 派生利用者が所有するレコードに秘密を一切書かない
 
-- **Context**: `PostDetailStatic.tsx` / `PostDetail.tsx` に「`one_tap_style` ならカード、そうでなければプロンプト欄」という分岐が既にある。
-- **Decision**: `sourceReference ? 参照カード : oneTapStylePreset ? 既存カード : hasVisiblePrompt ? プロンプト欄 : null` の順に評価する。
-- **Reason**: 「プロンプト欄の代わりにカードを出す」という構造が実証済みで、レイアウトもそのまま流用できる。新しい表示領域を作るより変更が小さく、既存の見た目とも揃う。
-- **Consequence**: 分岐が4段になり読みにくくなる。判定を `getPostPromptDisplayMode(post)` のような関数に切り出し、JSX 側は分岐名で読めるようにする。
+- **Context**: 初版は「派生投稿の `prompt` 列に原作のプロンプトが入るが UI で隠す」としていた。しかし `image_jobs` の RLS は `auth.uid() = user_id` であり、**派生した利用者は自分のジョブの全列を読める**。Worker も `generated_images.prompt` へコピーする（`image-gen-worker/index.ts:2743`）。UI で隠しても2箇所から平文を取得できる。
+- **Decision**: 派生ジョブでは `image_jobs.prompt_text` を空にし、`origin_post_id` のみを保存する。Worker が**実行直前に service role で秘密を解決**し、生成後も派生行の `prompt` を空のままにする。
+- **Reason**: 秘密を「派生者の所有物」に一瞬でも置いた時点で、RLS 上はその人のものになる。表示制御では取り返せない。
+- **Consequence**: Worker に「投稿 ID から秘密を解決する」経路が増える。ジョブ投入後に原作が非公開解除・削除・ブロックされる可能性があるため、解決時点で条件を再検証する（REQ-007）。
 
-### ADR-003: `source_post_id` は常に原作（根）を指す
+### ADR-003: `source_post_id` は常に原作を指し、削除後も出所を保持する
 
-- **Context**: A→B→C と派生したとき、C が B を指すか A を指すかで意味が変わる。
-- **Decision**: 常に根（A）を指す。B から派生するときは `B.source_post_id ?? B.id` を保存する。
-- **Reason**: 「沢山使ってもらえると原作者の欲求が満たされる」という本機能の目的に照らすと、伝播するほど原作者から功績が離れる設計は本末転倒。根を指せば利用数の集計も 1 クエリで済む。
-- **Consequence**: 中間の B がどれだけ広めたかは記録されない。将来必要になったら `derived_from_post_id` を別途足す（今回は入れない）。
+- **Context**: A→B→C と派生したとき、根を指すか直前を指すかで意味が変わる。また `ON DELETE SET NULL` にすると、原作の削除で派生の出所が消える。派生投稿は「通常の投稿」に見えるようになり、非公開強制も外れる。
+- **Decision**: 常に根を指す。`source_post_id` は **FK 制約を張らない素の UUID** とし、あわせて `source_author_id` を保存する。原作が削除されても値は残り、解決に失敗したら「現在、ご利用できません」を表示する。
+- **Reason**: 出所は削除後も残す必要がある（クレジット・非公開強制・利用数の根拠）。`ON DELETE SET NULL` はこれを破壊する。`RESTRICT` は原作者が自分の投稿を消せなくなるため不可。
+- **Consequence**: 参照整合性が DB で保証されない。解決側で「行が無い」ケースを必ず扱う。中間の投稿がどれだけ広めたかは記録しない（必要になったら `derived_from_post_id` を後から足す）。
 
-### ADR-004: 派生投稿のプロンプトは投稿者の選択より優先して非公開にする
+### ADR-004: 派生投稿は投稿者の選択より優先して非公開にする
 
-- **Context**: B はボトムシートでプロンプトを編集できないため、B の投稿の `prompt` 列には A のプロンプトがそのまま入る。
-- **Decision**: `source_post_id` を持つ投稿は、投稿者が「公開」を選んでも非公開として扱う。投稿モーダルでもトグルを出さない。
-- **Reason**: B の選択を尊重すると A との約束が破れる。プロンプトは A の資産であり、B に公開の権限はない。
-- **Consequence**: B は自分の投稿のプロンプトを詳細画面で見られない（自分で書いたものではないため許容）。B が自分でプロンプトを書き直したい場合は `/free` で新規に生成する。
+- **Context**: 派生した利用者はボトムシートでプロンプトを編集できないため、生成に使われたのは原作のプロンプトそのものである。
+- **Decision**: `source_post_id` を持つ投稿は、投稿者が「公開」を選んでも非公開として扱う。投稿モーダルでトグルを出さない。DB trigger でも強制する。
+- **Reason**: プロンプトは原作者の資産であり、派生者に公開の権限はない。
+- **Consequence**: 派生者は自分の投稿のプロンプトを見られない（ADR-002 により、そもそも所有物として保存されない）。
 
-### ADR-005: 利用不可の理由は閲覧者に開示しない
+### ADR-005: 利用不可の理由は開示せず、レスポンス形状も統一する
 
-- **Context**: 元投稿が削除／投稿取消／公開停止のいずれでも生成できない。
-- **Decision**: すべて「現在、ご利用できません」に丸める。理由は出さない。
-- **Reason**: 「公開停止されました」と出すと、第三者に対して原作者が措置を受けた事実を開示することになる。削除と公開停止を区別できると、その投稿が違反したことも推測できてしまう。角が立たず、かつ情報も漏らさない表現に統一する。
-- **Consequence**: 原作者が自分で消しただけのケースでも同じ文言になる。閲覧者から見て区別できないが、実害はない。
+- **Context**: 元投稿が削除・投稿取消・公開停止・非公開解除のいずれでも生成できない。
+- **Decision**: すべて「現在、ご利用できません」に丸める。**文言だけでなく、HTTP ステータス・エラーコード・レスポンスの形も同一にする。** 公開停止された投稿のサムネイルは返さない。
+- **Reason**: 「削除時だけサムネイルが欠ける」「公開停止時だけ画像が残る」「ステータスが違う」といった差からも理由は推測できる。**文言を揃えただけでは秘匿にならない。**
+- **Consequence**: 原作者が自分で消しただけのケースも同じ表示になる。閲覧者から区別できないが実害はない。
 
-### ADR-006: 生成 API はプロンプトを受け取らず投稿 ID を受け取る
+### ADR-006: 生成 API はプロンプトを受け取らず、対象条件を厳格に検証する
 
-- **Context**: ボトムシートからの生成でプロンプトをクライアント経由で渡すと、devtools で丸見えになり非公開の意味がない。
-- **Decision**: `sourcePostId` を受け取り、サーバー側で元投稿を取得してプロンプトを解決する。取得時に所有者・状態・フォロー関係を検証する。
-- **Reason**: 「非公開」を謳う以上、プロンプトが一度でもクライアントへ渡ってはならない。CSS で隠す・APIレスポンスから消すだけでは不十分。
-- **Consequence**: 生成 API に「投稿 ID からプロンプトを解決する」分岐が増える。既存の `prompt` 受け取り経路と排他にし、両方指定されたらエラーにする。
+- **Context**: プロンプトをクライアント経由で渡すと devtools で見える。また `sourcePostId` の検証が緩いと、**One-Tap Style や Inspire の投稿 ID を渡して秘匿プロンプトを回収できる**。
+- **Decision**: `sourcePostId` のみを受け取り、以下をすべて満たすときだけ実行する。
+  - 対象が存在し `is_posted = true` かつ `moderation_status = 'visible'`
+  - `generation_type = 'free'`
+  - 根投稿である（`source_post_id IS NULL`）。派生 ID が渡されたら根へ解決する
+  - `prompt_visibility = 'private'`
+  - secrets 行が存在する
+  - 原作者のアカウントが利用可能
+  - リクエスト元が原作者をフォローしている、または本人
+  - **双方向いずれにもブロック関係がない**
+- **Reason**: 条件が1つでも欠けると別種の秘匿プロンプトの回収経路になる。
+- **Consequence**: 検証が長くなるため、専用の SECURITY DEFINER RPC に集約して API と Worker の双方から呼ぶ。
 
-### ADR-007: プロンプト全文検索そのものを廃止する
+### ADR-007（改訂）: 検索は残し、対象を公開フィールドへ差し替える
 
-- **Context**: `features/posts/lib/server-api.ts:614,651` でフィード検索が `ilike("prompt", ...)` を実行しており、**プロンプト全文が検索キー**になっている。当初は「非公開投稿を検索対象から除外する」案だったが、ヒアリングの結果**この検索機能は現状使われていない**ことが分かった。
-- **Decision**: 非公開判定を足すのではなく、**プロンプト全文検索そのものを廃止する**。
-  1. `getPosts` から `searchQuery` 引数と `ilike("prompt", ...)` を削除
-  2. `GET /api/posts` の `q` パラメータを廃止
-  3. `/search` ページと `app/[locale]/search` を撤去
-  4. `app/sitemap.ts` から `/search` を除外し、`app/[locale]/page.tsx` の SearchAction 構造化データ（サイトリンク検索ボックス）も削除
+**初版の「検索機能を廃止」は撤回する。**
+
+- **Context**: 初版は「アプリ内に検索ボックスへの導線が無い」として廃止を提案した。**これは調査ミスだった。** `SearchBar` は `StickyHeader.tsx:289-305` で PC・モバイル双方に常時描画されている。`/search` の文字列で grep したため、`router.push` でパスを組み立てる `SearchBar.tsx` を取りこぼした。
+- **Decision**: `/search` と検索バーは維持する。`ilike("prompt", ...)` を **`caption` と作者表示名の検索へ差し替える**。
 - **Reason**:
-  1. **レスポンスからプロンプトを消しても、検索でヒットする事実そのものが内容を漏らす。** 「ゴシック」で検索してヒットすれば、その語がプロンプトに含まれると分かる。単語を変えて試せば総当たりで中身を復元できる。redaction だけでは秘匿にならない典型例
-  2. **UI を隠すだけでは不十分。** `GET /api/posts?q=` は公開 API で、ページを消しても直接叩ける。プロンプトを CSS で隠すのと同じ構図になる
-  3. 使われていない機能に非公開判定を足すのは、**将来にわたって「漏れうる経路」を1つ抱え続ける**ことを意味する。経路自体を消せば、以後この観点を考えなくてよくなる
-  4. 調査の結果**アプリ内に検索ボックスへの導線が無い**ことを確認した（`/search` を参照しているのは sitemap と構造化データのみ。`PostList.tsx:55` はページ判定に使っているだけ）。UI 上の損失がほぼない
-- **Consequence**:
-  - 検索を将来復活させる場合は、`caption` など**公開が前提のフィールド**を対象に作り直す。プロンプトは検索対象にしない
-  - SEO 上、サイトリンク検索ボックスが Google に表示されなくなる。ただし機能が使われていない以上、実害より「動かない検索ボックスが出ない」利点が上回る
-  - `/search` への外部リンクや既存の被リンクは 404 になる。必要なら `/` へリダイレクトする（Phase 2 の TODO に含める）
+  1. 現に使える機能であり、廃止は実質的なユーザー機能削除にあたる。秘匿の手段としては過剰
+  2. そもそも**プロンプトを検索キーにしている現状自体が是正対象**である。ADR-001 でプロンプトを公開行から外す以上、検索キーにはできない
+  3. `caption` は公開が前提のフィールドであり、検索対象として自然
+- **Consequence**: 検索の当たり方が変わる。プロンプト本文でヒットしていたものはヒットしなくなる。`caption` 未設定の投稿は検索に出にくくなるため、リリース時に周知する。
+
+### ADR-008: 利用数は改ざん不可のイベントから算出する
+
+- **Context**: `generated_images` を数える案だったが、同テーブルは所有者が INSERT / UPDATE / DELETE でき、`source_post_id` も書き換えられる。任意の原作 ID を自分の行に設定すれば利用数を水増しできる。派生画像を削除すると利用数が減る問題もある。
+- **Decision**: `prompt_usage_events(id, origin_post_id, user_id, created_at)` を新設し、**生成成功時に service role で記録**する。利用数はこのテーブルから `COUNT(DISTINCT user_id)` で算出し、原作者自身を除外する。クライアントからの書き込みは不可。
+- **Reason**: 表示する数値は改ざんできてはならない。生成画像の削除で数が減るのも実態に合わない（使った事実は消えない）。
+- **Consequence**: テーブルが1つ増える。イベントは削除しないため単調増加する。
 
 ---
 
@@ -325,119 +363,123 @@ erDiagram
 
 ```mermaid
 flowchart LR
-    P1["Phase 1: DB"] --> P2["Phase 2: サーバーサイド"]
+    P0["Phase 0: 秘匿境界の是正"] --> P1["Phase 1: 非公開モードのDB"]
+    P1 --> P2["Phase 2: サーバーサイド"]
     P2 --> P3["Phase 3: 投稿者側 UI"]
     P2 --> P4["Phase 4: 閲覧者側 UI"]
     P3 --> P5["Phase 5: 運営 UI と仕上げ"]
     P4 --> P5
 ```
 
-### Phase 1: データベース
+### Phase 0: 秘匿境界の是正（既存脆弱性の修復）
 
-**目的**: 可視性フラグと派生元の記録を追加する
-**ビルド確認**: マイグレーション適用後に `npm run typecheck` と `npm run build -- --webpack` が通る（この時点でアプリ挙動は変わらない）
+**目的**: プロンプトを公開行から分離し、anon から読めなくする
+**ビルド確認**: 移行後も既存のプロンプト表示（フォロワー向け）が壊れないこと
 
-- [ ] `supabase/migrations/2026xxxx_add_free_prompt_visibility.sql` を新規作成
-  - `generated_images` に列を追加
+**この Phase は単独で価値がある。** 新機能を作らなくても既存の漏洩を塞ぐため、先行マージ可能な形にする。
+
+- [ ] `supabase/migrations/2026xxxx_add_generated_image_prompt_secrets.sql` を新規作成
+  - `generated_image_prompt_secrets(image_id UUID PK REFERENCES generated_images(id) ON DELETE CASCADE, prompt TEXT NOT NULL, owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+  - RLS 有効化。SELECT は `auth.uid() = owner_id` のみ。INSERT / UPDATE / DELETE のポリシーは作らない（service role 専用）
+  - `REVOKE ALL ON TABLE ... FROM PUBLIC, anon`
+  - `owner_id` にインデックス
+  - 既存 `20260602100600_creator_looks_db_guard_triggers.sql` の書式を踏襲
+- [ ] `supabase/migrations/2026xxxx_backfill_prompt_secrets.sql` を新規作成
+  - 既存 `generated_images` から secrets へコピー（919行想定）
+  - **この時点では `generated_images.prompt` を空にしない**（読み取り経路の移行が完了するまで二重保持）
+- [ ] `features/generation/lib/prompt-secrets.ts` を新規作成
+  - `getPromptForViewer(imageId, viewerId)` — 可視性ルール（本人 / フォロワー / admin / one_tap_style / private）を適用して返す。service role で secrets を読む
+  - **アプリ層 redaction は防御層として残す**が、境界はここに移す
+- [ ] 読み取り経路を `prompt-secrets.ts` 経由へ移行
+  - `features/posts/lib/server-api.ts`（`enrichPosts` / `getPost`）
+  - `features/my-page/lib/server-api.ts` / `features/my-page/lib/api.ts`
+  - **ブラウザからの `select("*")` を明示列に変更**し `prompt` を除外
+    `features/generation/lib/database.ts:123,155,342,362` / `features/event/lib/database.ts:24`
+- [ ] `supabase/migrations/2026xxxx_clear_generated_images_prompt.sql` を新規作成
+  - 読み取り移行の完了を確認した**後**に、`generated_images.prompt` を空文字へ更新
+  - 以後の書き込み経路も secrets 側のみにする（Worker / API）
+  - **列自体は残す**（`select("*")` の互換と段階的ロールバックのため）
+- [ ] `features/generation/lib/prompt-builder.ts:39-45` のログ出力を削除（REQ-017）
+  - Worker・route・provider エラーにもプロンプトを載せない規約をコメントで明記
+
+### Phase 1: 非公開モードのデータベース
+
+**目的**: 可視性フラグ・出所・利用イベント
+**ビルド確認**: 適用してもアプリ挙動は変わらない（既定 `public`）
+
+- [ ] `supabase/migrations/2026xxxx_add_free_prompt_visibility.sql`
+  - `generated_images` に追加
     - `prompt_visibility TEXT NOT NULL DEFAULT 'public' CHECK (prompt_visibility IN ('public','private'))`
-    - `source_post_id UUID REFERENCES public.generated_images(id) ON DELETE SET NULL`
-  - `source_post_id` に部分インデックス（`WHERE source_post_id IS NOT NULL`）。利用数の集計に使う
-  - 既存行はすべて `public` になるため挙動は変わらない（REQ-001 / ⑥ と整合）
-  - **guard trigger** を追加し、DB 層で不変条件を強制する
+    - `source_post_id UUID`（**FK なし**。ADR-003）
+    - `source_author_id UUID`
+  - `source_post_id` に部分インデックス（`WHERE source_post_id IS NOT NULL`）
+  - **guard trigger**（DB 層で強制）
     - `source_post_id` が自分自身を指さない
-    - `source_post_id` が指す行の `source_post_id` は NULL である（＝常に根を指す。ADR-003）
-    - `source_post_id` が NOT NULL のとき `prompt_visibility` は強制的に `'private'`（ADR-004）
-  - 既存 `20260602100600_creator_looks_db_guard_triggers.sql` の guard trigger 書式を踏襲
-- [ ] `supabase/migrations/2026xxxx_add_free_prompt_usage_count_rpc.sql` を新規作成
-  - `get_prompt_usage_count(p_post_id UUID) RETURNS INTEGER`
-  - `source_post_id = p_post_id` の投稿から**ユニークな user_id 数**を数え、原作者自身は除外する（REQ-011 / REQ-012）
-  - `STABLE` / `SECURITY DEFINER` / `SET search_path = public`
-  - `REVOKE ALL FROM PUBLIC, anon` のうえ `authenticated` に GRANT（閲覧者に見せる値のため）
+    - `source_post_id` が NOT NULL のとき `prompt_visibility` を `'private'` に強制
+    - **`source_post_id` / `source_author_id` は service role からの書き込みのときのみ設定・変更可**。それ以外の INSERT / UPDATE では拒否（REQ-009）
+    - 作成後の `source_post_id` 変更を拒否（REQ-010）
+- [ ] `supabase/migrations/2026xxxx_add_prompt_usage_events.sql`
+  - `prompt_usage_events(id UUID PK, origin_post_id UUID NOT NULL, user_id UUID NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`
+  - RLS 有効化・公開ポリシーなし・`REVOKE ALL FROM PUBLIC, anon, authenticated`
+  - `(origin_post_id)` にインデックス
+- [ ] `supabase/migrations/2026xxxx_add_derived_generation_rpcs.sql`
+  - `resolve_derived_prompt_source(p_source_post_id, p_requester_id)` — ADR-006 の全条件を検証し、根の投稿 ID・原作者 ID・プロンプトを返す。**service role 専用**
+  - `record_prompt_usage(p_origin_post_id, p_user_id)` — 利用イベントを記録。service role 専用
+  - `get_prompt_usage_count(p_origin_post_id)` — `COUNT(DISTINCT user_id)`。原作者自身を除外。`authenticated` に GRANT
 - [ ] `supabase db diff` で差分を確認し、ユーザーに提示してから適用
 
 ### Phase 2: サーバーサイド
 
-**目的**: 可視性判定の拡張と、投稿 ID からプロンプトを解決する生成経路
-**ビルド確認**: `npm run lint` / `npm run typecheck` / `npm run build -- --webpack` が通る
+**目的**: 派生生成の経路と検索の是正
+**ビルド確認**: `npm run lint` / `npm run typecheck` / `npm run build -- --webpack`
 
 - [ ] `features/generation/lib/prompt-visibility.ts` を拡張
-  - `shouldHidePrompt(record)` を追加。`one_tap_style` に加えて `prompt_visibility === 'private'` と `source_post_id != null` を条件にする
-  - 既存の `shouldHidePromptForGenerationType` は残し、内部から呼ぶ（呼出元の互換のため）
-  - `getPostPromptDisplayMode(record)` を新設し、`"source_reference" | "one_tap_style" | "prompt" | "none"` を返す。詳細画面の分岐をこの関数名で読めるようにする（ADR-002）
-- [ ] `features/generation/lib/database.ts` の `GeneratedImageRecord` に `prompt_visibility` / `source_post_id` を追加
-- [ ] `features/posts/types.ts` の `Post` に、参照カード表示用の解決済みフィールドを追加
-  - `source_reference?: { post_id, author_id, author_nickname, author_avatar_url, thumbnail_url, is_available } | null`
-- [ ] `features/posts/lib/server-api.ts` を修正
-  - `getPost` で `source_post_id` があれば原作を取得し `source_reference` を組み立てる
-  - **原作が利用可能かの判定**をここに集約する（`is_posted` かつ `moderation_status = 'visible'` かつ行が存在する）。利用不可なら `is_available: false` にし、プロンプトは絶対に載せない（REQ-007 / ADR-005）
-  - 利用数は `get_prompt_usage_count` RPC で取得する
-- [ ] **プロンプト全文検索を廃止する**（ADR-007 / REQ-015, REQ-016）。独立コミットにする
-  - `features/posts/lib/server-api.ts` の `getPosts` から `searchQuery` 引数と `:614` `:651` の `ilike("prompt", ...)` を削除
-  - `app/api/posts/route.ts:35-38` の `q` パラメータの受け取りを削除
-  - `app/search/page.tsx` と `app/[locale]/search/page.tsx` を削除し、`/search` は `/` へリダイレクト
-  - `features/posts/components/CachedSearchPostList.tsx` を削除
-  - `features/posts/components/PostList.tsx:55` の `isSearchPage` 判定を整理
-  - `app/sitemap.ts` から `/search` を除外（`:19` `:41` `:61`）
-  - `app/[locale]/page.tsx:113-118` の SearchAction 構造化データを削除
-  - **UI を消すだけでは不十分**。`GET /api/posts?q=` が生きていると総当たりで復元できるため、サーバー側のクエリまで消す
-- [ ] `features/posts/lib/schemas` に相当する zod 定義へ `promptVisibility` を追加（投稿・編集 API 用）
-- [ ] `app/api/posts/post/route.ts` と `app/api/posts/update/route.ts` を修正
-  - `promptVisibility` を受け取り保存する
-  - `source_post_id` を持つ投稿では `private` に強制する（DB trigger と二重）
-- [ ] `app/api/generate-async/handler.ts` を修正（ADR-006）
-  - `sourcePostId` を受け取る分岐を追加。`prompt` との同時指定はエラー（400）
-  - サーバー側で元投稿を取得し、以下をすべて満たすときだけプロンプトを解決する
-    - 元投稿が存在し `is_posted = true` かつ `moderation_status = 'visible'`
-    - リクエスト元が原作者をフォローしている、または本人（REQ-005 / ③）
-  - 満たさない場合は理由を出さずに 409 と `errorCode: FREE_SOURCE_UNAVAILABLE` を返す
-  - 生成する `generated_images` 行に `source_post_id`（根に解決した値）を保存する
+  - `getPostPromptDisplayMode(record)` を追加し `"source_reference" | "one_tap_style" | "prompt" | "none"` を返す
+  - `prompt_visibility === 'private'` と `source_post_id != null` を非公開条件に加える
+- [ ] `features/posts/types.ts` / `features/generation/lib/database.ts` に新列を追加
+- [ ] `features/posts/lib/server-api.ts` に `source_reference` の解決を追加
+  - 原作の利用可否判定をここに集約。**利用不可なら同一形状で `is_available: false` を返し、サムネイルも含めない**（ADR-005 / REQ-014）
+  - 利用数は `get_prompt_usage_count` から取得
+- [ ] **検索対象の差し替え**（ADR-007 / REQ-016）。独立コミットにする
+  - `server-api.ts:614,651` の `ilike("prompt", ...)` を `caption` と作者表示名の検索へ変更
+  - `SearchBar.tsx` / `StickyHeader.tsx` のプレースホルダ文言を調整
+  - `search-posts` キャッシュタグの無効化箇所は現状維持
+  - `docs/TEST_PLAN.md` と画面フロー資料の検索記述を更新
+- [ ] `app/api/generate-async/handler.ts` を修正
+  - `sourcePostId` を受け取る分岐。`prompt` との同時指定は 400
+  - `resolve_derived_prompt_source` で検証。失敗は理由を出さず 409 + `FREE_SOURCE_UNAVAILABLE`
+  - `image_jobs` には `origin_post_id` のみ保存し `prompt_text` は空（ADR-002 / REQ-006）
+- [ ] `supabase/functions/image-gen-worker/index.ts` を修正
+  - `origin_post_id` があるジョブは、実行直前に `resolve_derived_prompt_source` を再実行して秘密を解決（REQ-007）
+  - 生成後、派生行の `prompt` を空のままにする（`:2743` のコピーを条件分岐）
+  - 成功時に `record_prompt_usage` を呼ぶ（REQ-012）
+- [ ] `app/api/posts/post/route.ts` / `update/route.ts` に `promptVisibility` を追加
 
 ### Phase 3: 投稿者側 UI
 
-**目的**: 公開／非公開の選択と切り替え
-**ビルド確認**: `npm run build -- --webpack` が通る
-
-- [ ] `features/posts/components/PostModal.tsx` を修正
-  - 「プロンプトを公開する」トグルを追加（既定 ON）。`show_before_image` の隣に置く
-  - **`/free` の投稿かつ派生でないときだけ表示**する。派生投稿では出さない（ADR-004）
-  - 「プロンプト非公開 かつ 生成前の画像も非表示」のときだけ注意文を出す
-    「どちらも非公開だと、他の人は何ができるか分からず試しにくくなります」
-- [ ] `features/posts/components/EditPostModal.tsx` を修正
-  - 同じトグルを追加（⑨）。`show_before_image` と同じ扱い
-- [ ] `messages/ja.ts` ほか15ロケールに投稿者向けの文言を追加
+- [ ] `PostModal.tsx` に「プロンプトを公開する」トグル（既定 ON）。派生投稿では出さない
+- [ ] 「非公開 かつ 生成前の画像も非表示」のときの注意文
+- [ ] `EditPostModal.tsx` に同トグル。**公開→非公開の切替時に「すでに閲覧・コピーされた内容は回収できません」と明示**（REQ-015）
+- [ ] 15ロケールに文言追加
 
 ### Phase 4: 閲覧者側 UI
 
-**目的**: 参照カードとボトムシート
-**ビルド確認**: `npm run build -- --webpack` が通る
-
 - [ ] `features/posts/components/SourcePromptReferenceCard.tsx` を新規作成
-  - `features/style/components/OneTapStyleDetailCard.tsx` の構造を踏襲（サムネイル → 確認 → 実行）
-  - 原作者のニックネーム・アバター・投稿サムネイルを表示
-  - 未フォローなら**カード内にフォローボタン**を出す（③）。`app/api/users/[userId]/follow` を使う
-  - 利用数「◯人がこのプロンプトを使いました」を表示（⑧ / REQ-011）
-  - `is_available === false` のときはカードを無効化し「現在、ご利用できません」（ADR-005）
+  - `OneTapStyleDetailCard.tsx` の構造を踏襲。原作者名・アバター・サムネイル
+  - 未フォローならカード内にフォローボタン
+  - 利用数を表示
+  - `is_available === false` は無効化して「現在、ご利用できません」
 - [ ] `features/generation/components/PromptLockedGenerationSheet.tsx` を新規作成
-  - ボトムシート。プロンプト欄は**表示するが disabled + グレーアウト**し「プロンプトは非公開です」と出す
-  - 入力は画像・比率・モデルの3つ（`GenerationForm.tsx:335-350` の `/free` 送信内容から `prompt` を除いたもの）
-  - 送信は `sourcePostId` を含めて `generate-async` へ
-- [ ] `features/posts/components/PostDetailStatic.tsx` と `PostDetail.tsx` を修正
-  - `getPostPromptDisplayMode` による4分岐に置き換える（ADR-002）
-  - `source_reference` があれば `SourcePromptReferenceCard` を出す
-- [ ] `messages/ja.ts` ほか15ロケールに閲覧者向けの文言を追加
+  - プロンプト欄は disabled + グレーアウトで「プロンプトは非公開です」
+  - 入力は画像・比率・モデルの3つ
+- [ ] `PostDetailStatic.tsx` / `PostDetail.tsx` を `getPostPromptDisplayMode` の4分岐へ
+- [ ] 15ロケールに文言追加
 
 ### Phase 5: 運営 UI と仕上げ
 
-**目的**: admin からの可視化とドキュメント同期
-**ビルド確認**: `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build -- --webpack`
-
-- [ ] 投稿詳細の admin 閲覧時にプロンプト全文と「プロンプト非公開」バッジを表示（REQ-013）
-  - `isFullAdminViewer` の既存判定を使う
-- [ ] `app/(app)/admin/moderation/ModerationQueueClient.tsx` に同バッジを追加（REQ-014）
-  - 審査キュー API のレスポンスに `prompt_visibility` を含める
-- [ ] `.cursor/rules/database-design.mdc` に新列・trigger・RPC を追記
-- [ ] `docs/API.md` に `sourcePostId` の受け口と `promptVisibility` を追記
-- [ ] `docs/architecture/data.ja.md` / `data.en.md` の RPC カタログに `get_prompt_usage_count` を追記
+- [ ] 投稿詳細の admin 閲覧時にプロンプト全文と「プロンプト非公開」バッジ（REQ-018）
+- [ ] `ModerationQueueClient.tsx` に同バッジ。審査キュー API に `prompt_visibility` を追加
+- [ ] `.cursor/rules/database-design.mdc` / `docs/API.md` / `docs/architecture/data.ja.md` / `data.en.md` を同期
 - [ ] `/test-flow` に沿ってテストを実施
 
 ---
@@ -446,73 +488,90 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 | --- | --- | --- |
-| `supabase/migrations/2026xxxx_add_free_prompt_visibility.sql` | 新規 | 列2つ + 部分index + guard trigger |
-| `supabase/migrations/2026xxxx_add_free_prompt_usage_count_rpc.sql` | 新規 | 利用数の集計 RPC |
-| `features/generation/lib/prompt-visibility.ts` | 修正 | `shouldHidePrompt` / `getPostPromptDisplayMode` を追加 |
-| `features/generation/lib/database.ts` | 修正 | `GeneratedImageRecord` に列2つ |
-| `features/posts/types.ts` | 修正 | `Post` に `source_reference` |
-| `features/posts/lib/server-api.ts` | 修正 | 参照解決・利用可否判定・利用数取得 |
-| `app/api/posts/post/route.ts` | 修正 | `promptVisibility` の受け取り |
-| `app/api/posts/update/route.ts` | 修正 | 同上（後から変更） |
-| `app/api/generate-async/handler.ts` | 修正 | `sourcePostId` 経路とサーバー側プロンプト解決 |
-| `app/api/posts/route.ts` | 修正 | `q` パラメータの廃止 |
-| `app/search/page.tsx` | 削除 | プロンプト検索の廃止 |
-| `app/[locale]/search/page.tsx` | 削除 | 同上 |
-| `features/posts/components/CachedSearchPostList.tsx` | 削除 | 同上 |
-| `app/sitemap.ts` | 修正 | `/search` を除外 |
-| `app/[locale]/page.tsx` | 修正 | SearchAction 構造化データを削除 |
-| `features/posts/components/PostList.tsx` | 修正 | `isSearchPage` 判定の整理 |
-| `features/posts/components/PostModal.tsx` | 修正 | 公開トグルと注意文 |
-| `features/posts/components/EditPostModal.tsx` | 修正 | 公開トグル |
+| `supabase/migrations/2026xxxx_add_generated_image_prompt_secrets.sql` | 新規 | 秘匿テーブル + RLS |
+| `supabase/migrations/2026xxxx_backfill_prompt_secrets.sql` | 新規 | 既存919行の移行 |
+| `supabase/migrations/2026xxxx_clear_generated_images_prompt.sql` | 新規 | 公開列の空化 |
+| `supabase/migrations/2026xxxx_add_free_prompt_visibility.sql` | 新規 | 列3つ + guard trigger |
+| `supabase/migrations/2026xxxx_add_prompt_usage_events.sql` | 新規 | 利用イベント |
+| `supabase/migrations/2026xxxx_add_derived_generation_rpcs.sql` | 新規 | 検証・記録・集計 RPC |
+| `features/generation/lib/prompt-secrets.ts` | 新規 | 秘密の解決 |
+| `features/generation/lib/prompt-visibility.ts` | 修正 | 表示モード判定 |
+| `features/generation/lib/prompt-builder.ts` | 修正 | **ログ出力の削除** |
+| `features/generation/lib/database.ts` | 修正 | `select("*")` を明示列へ（4箇所） |
+| `features/event/lib/database.ts` | 修正 | 同上 |
+| `features/posts/lib/server-api.ts` | 修正 | 出所解決・検索対象の差し替え |
+| `features/my-page/lib/server-api.ts` / `api.ts` | 修正 | 読み取り経路の移行 |
+| `app/api/generate-async/handler.ts` | 修正 | `sourcePostId` 経路 |
+| `supabase/functions/image-gen-worker/index.ts` | 修正 | 実行直前の秘密解決・利用記録 |
+| `app/api/posts/route.ts` | 修正 | 検索パラメータの意味変更 |
+| `app/api/posts/post/route.ts` / `update/route.ts` | 修正 | `promptVisibility` |
+| `features/posts/components/SearchBar.tsx` | 修正 | プレースホルダ文言 |
+| `features/posts/components/StickyHeader.tsx` | 修正 | 同上（必要なら） |
+| `features/posts/components/PostModal.tsx` / `EditPostModal.tsx` | 修正 | 公開トグル |
 | `features/posts/components/SourcePromptReferenceCard.tsx` | 新規 | 参照カード |
 | `features/generation/components/PromptLockedGenerationSheet.tsx` | 新規 | ボトムシート |
-| `features/posts/components/PostDetailStatic.tsx` | 修正 | 4分岐化 |
-| `features/posts/components/PostDetail.tsx` | 修正 | 同上 |
+| `features/posts/components/PostDetailStatic.tsx` / `PostDetail.tsx` | 修正 | 4分岐化 |
 | `app/(app)/admin/moderation/ModerationQueueClient.tsx` | 修正 | 非公開バッジ |
 | `app/api/admin/moderation/posts/route.ts` | 修正 | `prompt_visibility` を返す |
 | `messages/ja.ts` ほか14ファイル | 修正 | 文言追加（15ロケール） |
-| `.cursor/rules/database-design.mdc` | 修正 | スキーマ台帳 |
-| `docs/API.md` | 修正 | API 台帳 |
-| `docs/architecture/data.ja.md` / `data.en.md` | 修正 | RPC カタログ |
+| `.cursor/rules/database-design.mdc` / `docs/API.md` / `docs/architecture/data.ja.md` / `data.en.md` / `docs/TEST_PLAN.md` | 修正 | 台帳同期 |
 
 ---
 
 ## 6. 品質・テスト観点
 
-### 品質チェックリスト
+### 秘匿の検証（最重要。すべて実データ経路で確認する）
 
-- [ ] **プロンプトの秘匿**: 非公開投稿のレスポンスに `prompt` が含まれないこと。フィード・詳細・プロフィール・マイページ・検索のすべてで確認
-- [ ] **サーバー側解決**: 生成 API がクライアントから `prompt` を受け取らず、`sourcePostId` から解決していること
-- [ ] **権限制御**: フォローしていない閲覧者が生成できないこと。API を直接叩いても拒否されること
-- [ ] **データ整合性**: `source_post_id` が常に根を指すこと。自己参照が禁止されていること
-- [ ] **i18n**: 15ロケールすべてにキーが揃い typecheck が通ること
-
-### テスト観点
-
-| カテゴリ | テスト内容 |
+| # | テスト内容 |
 | --- | --- |
-| 秘匿 | 非公開投稿の API レスポンスに `prompt` が含まれない（フィード・詳細・プロフィール・マイページ） |
-| 秘匿 | 派生投稿は投稿者が公開を選んでも非公開として扱われる |
-| 秘匿 | 投稿者本人と admin は全文を取得できる |
-| 秘匿 | `GET /api/posts?q=<プロンプトの一部>` が検索として機能しない（全件が返るか、q が無視される） |
-| 秘匿 | `/search` が 404 にならずホームへリダイレクトされる |
-| 正常系 | フォロー済みの閲覧者がボトムシートから生成でき、`source_post_id` が根に解決される |
-| 正常系 | A→B→C と派生しても C の `source_post_id` は A を指す |
-| 正常系 | 利用数がユニークユーザー数で、原作者自身を除外している |
-| 異常系 | 元投稿が削除・投稿取消・公開停止のとき生成が 409 になり、理由が露出しない |
-| 異常系 | `prompt` と `sourcePostId` の同時指定が 400 |
-| 権限テスト | 未フォローの閲覧者が生成 API を直接叩くと拒否される |
-| 権限テスト | 他人の投稿の `promptVisibility` を更新できない |
-| DB | guard trigger が自己参照と多段参照を拒否する |
-| 表示テスト | 詳細画面が4分岐で正しく出し分けられる（参照カード / One-Tap Style / プロンプト欄 / なし） |
-| 表示テスト | 利用不可の参照カードが無効表示になる |
-| 実機確認 | ボトムシートのグレーアウト表示、フォロー後に生成できるようになる導線 |
+| 1 | **anon キーで `generated_images?select=prompt` を叩いても秘密が返らない** |
+| 2 | **anon キーで `generated_image_prompt_secrets` を叩くと拒否される** |
+| 3 | 他人の認証トークンで secrets を叩いても自分の行しか返らない |
+| 4 | **派生者の認証トークンで `image_jobs.prompt_text` を取得しても秘密が無い** |
+| 5 | **派生者の認証トークンで派生 `generated_images.prompt` を取得しても秘密が無い** |
+| 6 | event gallery・生成一覧・無限スクロール・RSC ペイロードに prompt が無い |
+| 7 | OGP・JSON-LD・alt テキスト・通知・エラーレスポンス・ログに秘密が無い |
+| 8 | 検索が prompt を対象にしていない（プロンプト固有語でヒットしない） |
+| 9 | public→private 切替後、全キャッシュ経路から即座に消える |
 
-### テスト実装手順
+### 改ざん・権限
 
-`/test-flow` → `/spec-extract` → `/spec-write` → `/test-generate` → `/test-reviewing` → `/spec-verify`
+| # | テスト内容 |
+| --- | --- |
+| 10 | `source_post_id` / `source_author_id` の直接 INSERT / UPDATE が拒否される |
+| 11 | 作成後の `source_post_id` 変更が拒否される |
+| 12 | One-Tap Style / Inspire / coordinate の投稿 ID を `sourcePostId` に渡すと拒否される |
+| 13 | 派生投稿の ID を渡すと根へ解決される |
+| 14 | 未フォローの閲覧者が生成 API を直接叩くと拒否される |
+| 15 | ブロック関係があると拒否される（双方向とも） |
+| 16 | 他人の投稿の `promptVisibility` を更新できない |
+| 17 | 利用数がクライアント操作で水増しできない |
 
-`tests/**` の typecheck エラーと lint の既存赤は main 由来。自分の回帰と誤認しないこと。
+### 利用不可の一貫性
+
+| # | テスト内容 |
+| --- | --- |
+| 18 | 削除・投稿取消・公開停止・非公開解除の**すべてで同一のレスポンス形状・ステータス・エラーコード**になる |
+| 19 | いずれの場合もサムネイルが含まれない |
+| 20 | 原作削除後もクレジットと「現在、ご利用できません」が維持される |
+
+### 正常系
+
+| # | テスト内容 |
+| --- | --- |
+| 21 | フォロー済みの閲覧者がボトムシートから生成でき、`source_post_id` が根に解決される |
+| 22 | A→B→C と派生しても C の `source_post_id` は A を指す |
+| 23 | 利用数がユニークユーザー数で、原作者自身を除外している |
+| 24 | 派生画像を削除しても利用数が減らない |
+| 25 | Worker がジョブ投入後に条件が変わったケースを検出して中断する |
+
+### 移行（Phase 0）
+
+| # | テスト内容 |
+| --- | --- |
+| 26 | 既存919行が secrets へ漏れなく移行されている |
+| 27 | 移行後もフォロワー向けのプロンプト表示が従来どおり動く |
+| 28 | `one_tap_style` のプロンプトが admin 以外に返らない |
 
 ---
 
@@ -520,15 +579,17 @@ flowchart LR
 
 | 対象 | 方針 |
 | --- | --- |
-| 列追加（`prompt_visibility` / `source_post_id`） | 既定値が `public` / NULL なので、適用しても既存挙動は変わらない。UI を戻せば実質無効化できる。`DROP COLUMN` はデータ保全確認後のみ |
-| guard trigger | `DROP TRIGGER` で戻せるが、戻すと不変条件が失われるため非推奨 |
-| 利用数 RPC | `DROP FUNCTION` で安全に戻せる。表示側を先に外すこと |
-| 生成 API の `sourcePostId` 分岐 | 既存の `prompt` 経路とは排他の追加実装。分岐を revert すれば従来動作に戻る |
-| UI | Phase 3 / Phase 4 を独立コミットにし、フェーズ単位で revert 可能にする |
-| プロンプト検索の廃止（ADR-007） | 独立コミットにする。SEO 影響が出た場合はこれだけ revert できる。ただし revert すると非公開プロンプトが検索から漏れるため、戻す場合は非公開除外の条件を必ず併せて入れる |
-| 機能フラグ | 設けない。既定が `public` なので、投稿者が選ばない限り従来と同じ挙動になる |
+| Phase 0 の秘匿テーブル | 二重保持の期間を設けるため、`clear_generated_images_prompt` を当てるまでは読み取り経路を戻せる。**空化した後は戻せない**ので、その前に十分検証する |
+| `generated_images.prompt` の空化 | 実行前に secrets への移行完全性を検証する（テスト26）。列自体は残すため、必要なら secrets から書き戻せる |
+| ログ削除 | 単独で安全。revert する理由が無い |
+| 検索対象の差し替え | 独立コミット。`caption` 検索で不評なら調整できるが、**prompt 検索へ戻してはならない**（ADR-001 と矛盾する） |
+| Phase 1 の列追加 | 既定が `public` / NULL なので、適用しても挙動は変わらない |
+| guard trigger | `DROP TRIGGER` で戻せるが、戻すと改ざん防止が失われる |
+| 利用イベント | 追記のみ。表示側を先に外せば安全に止められる |
+| Worker の変更 | 派生ジョブのみの分岐。既存生成には影響しない |
+| UI | Phase 3 / 4 を独立コミットにする |
 
-**適用順序**: Phase 1 のマイグレーションを適用してもアプリ挙動は変わらない（既存行はすべて `public`）。先に DB だけ本番適用して様子を見られる。
+**適用順序**: Phase 0 は既存脆弱性の修復であり、**新機能を待たずに先行して出す価値がある**。Phase 1 のマイグレーションは適用してもアプリ挙動を変えない。
 
 ---
 
@@ -536,7 +597,7 @@ flowchart LR
 
 | スキル | 用途 | フェーズ |
 | --- | --- | --- |
-| `/project-database-context` | DB 設計・RLS 方針の参照 | Phase 1 |
+| `/project-database-context` | DB 設計・RLS 方針の参照 | Phase 0, 1 |
 | `/git-create-branch` | ブランチ作成 | 実装開始時 |
 | `/test-flow` `/spec-extract` `/spec-write` | テスト設計 | Phase 5 |
 | `/test-generate` `/test-reviewing` `/spec-verify` | テスト生成・レビュー | Phase 5 |
@@ -547,7 +608,10 @@ flowchart LR
 
 ## 前提・未確定事項
 
-- マイグレーションのタイムスタンプは作成時の日時で確定させる
-- 他14ロケールの翻訳は暫定（英語流用）。必要なら別 PR で精査する
-- 本リポジトリではマイグレーションは main マージで自動適用されない。本番反映は `supabase db push` を手動実行する
-- 新規 Markdown はグローバル `.gitignore` の `*.md` に該当するため、コミット時に `git add -f` が必要
+- **公開→非公開の切替は「以後の表示を止める」機能であり、過去の秘密化ではない。** すでに閲覧・コピー・キャッシュ・検索エンジンに保存された内容は回収できない。UI と仕様に明記する（REQ-015）
+- Phase 0 の `generated_images.prompt` 空化は不可逆に近い。実行前に移行完全性を必ず検証する
+- この環境では Docker が使えずローカル Supabase を起動できない。SQL の実挙動は PR の Supabase Preview で検証する
+- マイグレーションは main マージで自動適用されない。本番反映は `supabase db push` を手動実行する
+- Worker（Edge Function）の変更は `supabase functions deploy image-gen-worker` が別途必要
+- 他14ロケールの翻訳は暫定（英語流用）
+- 新規 Markdown はグローバル `.gitignore` の `*.md` に該当するため `git add -f` が必要
