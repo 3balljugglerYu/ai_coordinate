@@ -18,7 +18,10 @@ import {
   createAsyncGenerationJobRepository,
   type AsyncGenerationJobRepository,
 } from "@/features/generation/lib/async-generation-job-repository";
-import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
+import type {
+  ImageJobCreateInput,
+  PromptExecutionInput,
+} from "@/features/generation/lib/job-types";
 import { getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import {
   DEFAULT_GENERATION_MODEL,
@@ -576,7 +579,10 @@ export async function postStyleGenerateAsyncRoute(
 
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
-      prompt_text: prompt,
+      // プリセット全文はユーザーが読める列に置かない。image_jobs の SELECT RLS は
+      // auth.uid() = user_id なので、ここへ入れると生成した本人が運営資産を
+      // そのまま取得できてしまう（REQ-019）。service-only の実行入力へ渡す。
+      prompt_text: "",
       input_image_url: inputImageUrl,
       source_image_stock_id: resolvedStockId,
       source_image_type: effectiveSourceImageType,
@@ -615,8 +621,17 @@ export async function postStyleGenerateAsyncRoute(
       style_preset_category_key: preset.category.key,
     };
 
+    // One-Tap Style のプロンプトは運営資産であり、生成した本人にも開示しない。
+    // author secret は作らず、service-only の provider_prompt にだけ持つ。
+    const promptExecution: PromptExecutionInput = {
+      kind: "materialized",
+      providerPrompt: prompt,
+      sourceKind: "one_tap_style",
+      sourceRevision: preset.id,
+    };
+
     const { data: job, error: insertError } =
-      await jobRepository.createImageJob(jobData);
+      await jobRepository.createImageJob(jobData, promptExecution);
 
     if (insertError || !job) {
       console.error("Style async generate route: failed to create job", insertError);

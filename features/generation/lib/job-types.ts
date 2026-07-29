@@ -95,6 +95,58 @@ export type ImageJobCreateInput = Omit<
 };
 
 /**
+ * ジョブの生成実行入力（`generation_prompt_snapshots` の1行）。
+ *
+ * プロンプト本文は `anon` にも開放されている `generated_images` / `image_jobs`
+ * には置かず、service-only のこのレコードだけに持つ。
+ * 詳細は docs/planning/free-prompt-private-mode-implementation-plan.md ADR-001。
+ *
+ * ジョブと実行入力は必ず対で作る。実行入力を持たないジョブは Worker が
+ * 生成入力を解決できず処理不能になるため、`createImageJob` の必須引数に
+ * することで「渡し忘れたらコンパイルが通らない」状態にしている（REQ-003c）。
+ */
+export type PromptExecutionInput =
+  | MaterializedPromptExecutionInput
+  | DerivedPromptReferenceInput;
+
+/**
+ * 通常ジョブの実行入力。
+ *
+ * Worker が必要とするものは生成種別で異なる。
+ *   coordinate / free : `authorInput`（生入力）。Worker が実行時に錨を付ける
+ *   one_tap_style     : `providerPrompt`（組み立て済み全文）。そのまま送信する
+ *   inspire           : どちらも不要。ジョブの列から組み立てる
+ *
+ * `authorInput` は原作者へ開示してよい入力で、生成成功時に author secret へ
+ * 転記される。`providerPrompt` は運営資産で誰にも開示しない。
+ * 両方を同時に持つことはできない（DB の CHECK 制約でも拒否する）。
+ */
+export interface MaterializedPromptExecutionInput {
+  kind: "materialized";
+  /** 運営が組み立てた開示不可の全文。one_tap_style のみ */
+  providerPrompt?: string | null;
+  /** 原作者の生入力。coordinate / free のみ */
+  authorInput?: string | null;
+  /** `authorInput` の所有者。`authorInput` があるときは必須 */
+  authorInputOwnerId?: string | null;
+  /** 生成由来。既定はジョブの `generation_type` */
+  sourceKind?: string | null;
+  /** プリセット版など、再試行時に固定したい識別子 */
+  sourceRevision?: string | null;
+}
+
+/**
+ * 派生ジョブの実行入力。本文を一切持たない。
+ *
+ * 原作のプロンプトは Worker が実行直前に author secret から解決し、
+ * メモリ上でのみ組み立てる。派生件数に比例して秘密の永続コピーが増えることを
+ * 避けるため、ここには参照すら持たせない（ADR-002）。
+ */
+export interface DerivedPromptReferenceInput {
+  kind: "derived_reference";
+}
+
+/**
  * ジョブ更新用の型（部分更新）
  */
 export type ImageJobUpdateInput = Partial<

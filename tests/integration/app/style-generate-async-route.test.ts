@@ -167,6 +167,21 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
   let recordStyleUsageEventFn: jest.Mock<Promise<void>, [unknown]>;
   let invokeImageWorkerFn: jest.Mock;
 
+  /**
+   * 生成に使われるプロンプトを取り出す。
+   *
+   * One-Tap Style のプロンプトは運営資産なので、ユーザーが全列を読める
+   * image_jobs.prompt_text には保存しない。service-only の生成実行入力
+   * (createImageJob の第2引数) にだけ持たせる（REQ-019）。
+   */
+  function getProviderPrompt(callIndex = 0): string | undefined {
+    return (
+      jobRepository.createImageJob.mock.calls[callIndex]?.[1] as
+        | { providerPrompt?: string }
+        | undefined
+    )?.providerPrompt;
+  }
+
   beforeEach(() => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     isAdminViewerMock.mockReset();
@@ -342,11 +357,11 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       status: "queued",
     });
     expect(jobRepository.getUserCreditBalance).toHaveBeenCalledWith("user-123");
-    expect(jobRepository.createImageJob).toHaveBeenCalledWith({
+    expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+      expect.objectContaining({
       user_id: "user-123",
-      prompt_text: buildExpectedPrompt({
-        backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
-      }),
+      // 運営資産なのでユーザー可読列には残さない
+      prompt_text: "",
       input_image_url: "https://cdn.example.com/temp/user-123/upload-image.png",
       source_image_stock_id: null,
       source_image_type: "illustration",
@@ -372,7 +387,15 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       style_reference_image_url: null,
       style_reference_image_bucket: null,
       style_preset_category_key: "coordinate",
-    });
+      }),
+      expect.objectContaining({
+        kind: "materialized",
+        providerPrompt: buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+        sourceKind: "one_tap_style",
+      })
+    );
     expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
       "style-job-001"
     );
@@ -436,7 +459,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       "temp/user-123/reference-image-ref.png"
     );
     expect(inserted?.style_reference_image_bucket).toBe("generated-images");
-    expect(inserted?.prompt_text).toContain(
+    expect(getProviderPrompt()).toContain(
       "User Visual Preferences:\n髪色をピンクにして、丸い目にする"
     );
   });
@@ -552,9 +575,8 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     });
 
     expect(response.status).toBe(200);
-    const inserted = jobRepository.createImageJob.mock.calls[0]?.[0];
-    expect(inserted?.prompt_text).not.toContain("User Visual Preferences");
-    expect(inserted?.prompt_text).not.toContain("この指示は採用しない");
+    expect(getProviderPrompt()).not.toContain("User Visual Preferences");
+    expect(getProviderPrompt()).not.toContain("この指示は採用しない");
   });
 
   test("カテゴリで非表示のstyleフォーム項目はサーバー側でも既定値に固定する", async () => {
@@ -590,13 +612,18 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(response.status).toBe(200);
     expect(jobRepository.createImageJob).toHaveBeenCalledWith(
       expect.objectContaining({
-        prompt_text: buildExpectedPrompt({
-          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
-        }),
+        // 運営資産なのでユーザー可読列には残さない
+        prompt_text: "",
         source_image_type: "illustration",
         model: "gpt-image-2-low-1k",
         background_mode: "keep",
       }),
+      expect.objectContaining({
+        kind: "materialized",
+        providerPrompt: buildExpectedPrompt({
+          backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
+        }),
+      })
     );
   });
 
@@ -658,7 +685,9 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
         generation_metadata: expect.objectContaining({
           oneTapStyle: expect.objectContaining({ billingMode: "paid" }),
         }),
-      })
+      }),
+      // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+      expect.objectContaining({ kind: expect.any(String) })
     );
   });
 
@@ -734,7 +763,9 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
     expect(response.status).toBe(200);
     expect(jobRepository.createImageJob).toHaveBeenCalledWith(
-      expect.objectContaining({ model: "gpt-image-2-low-1k" })
+      expect.objectContaining({ model: "gpt-image-2-low-1k" }),
+      // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+      expect.objectContaining({ kind: expect.any(String) })
     );
   });
 
@@ -1035,7 +1066,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
           .defaultContent,
         "Styling Direction:\nRAW PROMPT\nSECOND LINE",
       ].join("\n\n");
-      expect(jobData.prompt_text).toBe(expectedPrompt);
+      expect(getProviderPrompt()).toBe(expectedPrompt);
       expect(jobData.generation_metadata).toEqual(
         expect.objectContaining({ framingMode: "free_pose" }),
       );
@@ -1062,7 +1093,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.prompt_text).toBe(
+      expect(getProviderPrompt()).toBe(
         "Styling Direction:\nRAW PROMPT\nSECOND LINE",
       );
       expect(jobData.generation_metadata).not.toEqual(
@@ -1078,7 +1109,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.prompt_text).toBe(
+      expect(getProviderPrompt()).toBe(
         buildExpectedPrompt({
           backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
         }),
@@ -1095,8 +1126,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       );
 
       expect(response.status).toBe(200);
-      const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.prompt_text).toBe(
+      expect(getProviderPrompt()).toBe(
         buildExpectedPrompt({
           backgroundInstruction: STYLE_PROMPT_KEEP_BACKGROUND_SUFFIX,
         }),
@@ -1149,10 +1179,10 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.prompt_text).toContain(
+      expect(getProviderPrompt()).toContain(
         PROMPT_REGISTRY["style.base_prefix_free_pose"].defaultContent,
       );
-      expect(jobData.prompt_text).toContain(
+      expect(getProviderPrompt()).toContain(
         "Pose & Camera Direction:\nSitting on a bench, low angle",
       );
       expect(jobData.generation_metadata).toEqual(
@@ -1188,7 +1218,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.prompt_text).toBe(
+      expect(getProviderPrompt()).toBe(
         "Styling Direction:\nRAW PROMPT\nSECOND LINE",
       );
       expect(jobData.generation_metadata).not.toEqual(
@@ -1203,8 +1233,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       );
 
       expect(response.status).toBe(200);
-      const jobData = jobRepository.createImageJob.mock.calls[0][0];
-      expect(jobData.prompt_text).not.toContain("Pose & Camera Direction");
+      expect(getProviderPrompt()).not.toContain("Pose & Camera Direction");
     });
   });
 });

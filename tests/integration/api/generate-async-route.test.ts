@@ -256,9 +256,12 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         batchMode: "openai_single_job",
       });
       expect(jobRepository.createImageJob).toHaveBeenCalledTimes(1);
-      expect(jobRepository.createImageJob).toHaveBeenCalledWith({
+      // 本文はユーザーが読める列に置かず、service-only の実行入力へ渡す。
+      // prompt_text は全生成種別で空になる（REQ-006 / REQ-019）。
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        {
         user_id: "user-123",
-        prompt_text: "linen jacket",
+        prompt_text: "",
         input_image_url: "https://cdn.example.com/stock.png",
         source_image_stock_id: VALID_SOURCE_IMAGE_STOCK_ID,
         source_image_type: "illustration",
@@ -276,7 +279,14 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         override_angle: null,
         override_pose: null,
         override_background: null,
-      });
+        },
+        {
+          kind: "materialized",
+          authorInput: "linen jacket",
+          authorInputOwnerId: "user-123",
+          sourceKind: "coordinate",
+        }
+      );
       expect(jobRepository.sendImageJobQueueMessage).toHaveBeenCalledWith(
         "job-001"
       );
@@ -349,8 +359,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
             style_template_id: VALID_STYLE_TEMPLATE_ID,
             style_reference_image_url: "style-templates/visible-template.png",
             ...expectedOverrides,
-          })
-        );
+          }),
+        // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+        expect.objectContaining({ kind: expect.any(String) })
+      );
       }
     );
   });
@@ -433,7 +445,9 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
             creatorLooksMode: "background_only",
             creatorLooksMaxStages: 1,
           }),
-        })
+        }),
+        // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+        expect.objectContaining({ kind: expect.any(String) })
       );
     });
 
@@ -448,7 +462,9 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
             creatorLooksMode: "outfit_and_background",
             creatorLooksMaxStages: 2,
           }),
-        })
+        }),
+        // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+        expect.objectContaining({ kind: expect.any(String) })
       );
     });
 
@@ -495,7 +511,9 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         expect.objectContaining({
           model: "gemini-3.1-flash-image-preview-512",
           requested_image_count: 1,
-        })
+        }),
+        // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+        expect.objectContaining({ kind: expect.any(String) })
       );
     });
 
@@ -529,7 +547,9 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         expect.objectContaining({
           model: "gpt-image-2-low-1k",
           requested_image_count: 4,
-        })
+        }),
+        // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
+        expect.objectContaining({ kind: expect.any(String) })
       );
     });
 
@@ -1356,9 +1376,15 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
 
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      const promptExecution = jobRepository.createImageJob.mock.calls[0][1];
       expect(jobData.generation_metadata).toEqual({ framingMode: "free_pose" });
-      // prompt_text は raw のまま (free_pose の合成は worker の buildPrompt が行う)
-      expect(jobData.prompt_text).toBe("linen jacket");
+      // 本文はユーザーが読める列に置かない。生入力は実行入力レコード側へ渡し、
+      // free_pose の合成は従来どおり worker の buildPrompt が行う。
+      expect(jobData.prompt_text).toBe("");
+      expect(promptExecution).toMatchObject({
+        kind: "materialized",
+        authorInput: "linen jacket",
+      });
     });
 
     test("未知の framingMode 値は schema で 400 になる", async () => {

@@ -208,54 +208,112 @@ describe("SupabaseAsyncGenerationJobRepository", () => {
   });
 
   describe("createImageJob", () => {
-    function setupInsertChain(result: { data: unknown; error: unknown }) {
+    /**
+     * ジョブと生成実行入力は原子的に作る必要があるため、insert 2 回ではなく
+     * RPC 1 本に寄せている。実行入力を持たないジョブは Worker が生成入力を
+     * 解決できず処理不能になる（REQ-003c）。
+     */
+    function setupRpcChain(result: { data: unknown; error: unknown }) {
       const single = jest.fn().mockResolvedValue(result);
       const select = jest.fn(() => ({ single }));
-      const insert = jest.fn(() => ({ select }));
-      fromMock.mockReturnValueOnce({ insert });
-      return { insert, select, single };
+      rpcMock.mockReturnValueOnce({ select });
+      return { select, single };
     }
 
+    const baseJob = {
+      user_id: "u",
+      prompt_text: "",
+      input_image_url: "url",
+      source_image_stock_id: null,
+      source_image_type: "illustration" as const,
+      generation_type: "coordinate" as const,
+      model: "gemini-2.5-flash-image-preview",
+      background_mode: "keep" as const,
+      generation_metadata: null,
+      status: "queued" as const,
+      processing_stage: "queued" as const,
+      attempts: 0,
+    };
+
     test("正常: id/status を返す", async () => {
-      setupInsertChain({
+      setupRpcChain({
         data: { id: "job-1", status: "queued" },
         error: null,
       });
       const repo = new SupabaseAsyncGenerationJobRepository();
-      const res = await repo.createImageJob({
-        user_id: "u",
-        prompt_text: "p",
-        input_image_url: "url",
-        source_image_stock_id: null,
-        source_image_type: "illustration",
-        generation_type: "coordinate",
-        model: "gemini-2.5-flash-image-preview",
-        background_mode: "keep",
-        generation_metadata: null,
-        status: "queued",
-        processing_stage: "queued",
-        attempts: 0,
+      const res = await repo.createImageJob(baseJob, {
+        kind: "materialized",
+        authorInput: "p",
+        authorInputOwnerId: "u",
+        sourceKind: "coordinate",
       });
       expect(res.data?.id).toBe("job-1");
     });
 
+    test("原子的作成 RPC を呼ぶ", async () => {
+      setupRpcChain({ data: { id: "job-1", status: "queued" }, error: null });
+      const repo = new SupabaseAsyncGenerationJobRepository();
+      await repo.createImageJob(baseJob, {
+        kind: "materialized",
+        authorInput: "p",
+        authorInputOwnerId: "u",
+        sourceKind: "coordinate",
+      });
+
+      expect(rpcMock).toHaveBeenCalledWith(
+        "create_image_job_with_prompt_execution",
+        expect.objectContaining({
+          p_job: baseJob,
+          p_prompt_execution: expect.objectContaining({
+            snapshot_kind: "materialized",
+            author_input: "p",
+            author_input_owner_id: "u",
+          }),
+        })
+      );
+    });
+
+    test("One-Tap は provider_prompt だけを持ち author_input を持たない", async () => {
+      // 運営資産なので生成した本人にも開示しない。author secret を作らせない
+      // ため、author_input は null のままにする。
+      setupRpcChain({ data: { id: "job-1", status: "queued" }, error: null });
+      const repo = new SupabaseAsyncGenerationJobRepository();
+      await repo.createImageJob(
+        { ...baseJob, generation_type: "one_tap_style" },
+        {
+          kind: "materialized",
+          providerPrompt: "assembled preset",
+          sourceKind: "one_tap_style",
+        }
+      );
+
+      const payload = rpcMock.mock.calls[0][1].p_prompt_execution;
+      expect(payload.provider_prompt).toBe("assembled preset");
+      expect(payload.author_input).toBeNull();
+      expect(payload.author_input_owner_id).toBeNull();
+    });
+
+    test("派生ジョブは本文を一切渡さない", async () => {
+      // 原作のプロンプトは Worker が実行直前に author secret から解決する。
+      // 派生件数に比例して秘密の永続コピーが増えないようにする（ADR-002）。
+      setupRpcChain({ data: { id: "job-1", status: "queued" }, error: null });
+      const repo = new SupabaseAsyncGenerationJobRepository();
+      await repo.createImageJob(baseJob, { kind: "derived_reference" });
+
+      expect(rpcMock.mock.calls[0][1].p_prompt_execution).toEqual({
+        snapshot_kind: "derived_reference",
+        source_kind: "free",
+      });
+    });
+
     test("error 時は error を返す", async () => {
       const err = { message: "db" };
-      setupInsertChain({ data: null, error: err });
+      setupRpcChain({ data: null, error: err });
       const repo = new SupabaseAsyncGenerationJobRepository();
-      const res = await repo.createImageJob({
-        user_id: "u",
-        prompt_text: "p",
-        input_image_url: "url",
-        source_image_stock_id: null,
-        source_image_type: "illustration",
-        generation_type: "coordinate",
-        model: "gemini-2.5-flash-image-preview",
-        background_mode: "keep",
-        generation_metadata: null,
-        status: "queued",
-        processing_stage: "queued",
-        attempts: 0,
+      const res = await repo.createImageJob(baseJob, {
+        kind: "materialized",
+        authorInput: "p",
+        authorInputOwnerId: "u",
       });
       expect(res.error).toBe(err);
     });

@@ -1,5 +1,31 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { ImageJobCreateInput } from "./job-types";
+import type { ImageJobCreateInput, PromptExecutionInput } from "./job-types";
+
+/**
+ * 実行入力を RPC の jsonb 引数へ変換する。
+ *
+ * 派生ジョブは本文を一切持たない。`source_kind` を 'free' に固定するのは
+ * DB 側の CHECK 制約と揃えるためで、ここで値を作らず落とすと制約違反になる。
+ */
+function toPromptExecutionPayload(
+  promptExecution: PromptExecutionInput
+): Record<string, unknown> {
+  if (promptExecution.kind === "derived_reference") {
+    return {
+      snapshot_kind: "derived_reference",
+      source_kind: "free",
+    };
+  }
+
+  return {
+    snapshot_kind: "materialized",
+    provider_prompt: promptExecution.providerPrompt ?? null,
+    author_input: promptExecution.authorInput ?? null,
+    author_input_owner_id: promptExecution.authorInputOwnerId ?? null,
+    source_kind: promptExecution.sourceKind ?? null,
+    source_revision: promptExecution.sourceRevision ?? null,
+  };
+}
 
 type RepositoryResult<T> =
   | { data: T; error: null }
@@ -32,8 +58,16 @@ export interface AsyncGenerationJobRepository {
   getUserSubscriptionPlan(
     userId: string
   ): Promise<RepositoryResult<{ subscription_plan: string | null }>>;
+  /**
+   * ジョブと生成実行入力を同一トランザクションで作成する。
+   *
+   * 第2引数は optional にしない。実行入力を持たないジョブは Worker が
+   * 生成入力を解決できず処理不能になるため、呼び出し側の注意ではなく
+   * 型で渡し忘れを防ぐ（REQ-003c）。
+   */
   createImageJob(
-    jobData: ImageJobCreateInput
+    jobData: ImageJobCreateInput,
+    promptExecution: PromptExecutionInput
   ): Promise<RepositoryResult<{ id: string; status: string }>>;
   markImageJobFailed(
     jobId: string,
@@ -140,10 +174,19 @@ export class SupabaseAsyncGenerationJobRepository
     } as const;
   }
 
-  async createImageJob(jobData: ImageJobCreateInput) {
+  async createImageJob(
+    jobData: ImageJobCreateInput,
+    promptExecution: PromptExecutionInput
+  ) {
+    // ジョブと実行入力は原子的に作る。片方だけが残る部分成功を許さないため、
+    // 2回の insert ではなく RPC 1本に寄せている。
+    // RPC 側で prompt_text は常に空へ正規化されるので、ユーザーが読める列に
+    // 本文が残ることはない。
     const { data, error } = await this.supabase
-      .from("image_jobs")
-      .insert([jobData])
+      .rpc("create_image_job_with_prompt_execution", {
+        p_job: jobData,
+        p_prompt_execution: toPromptExecutionPayload(promptExecution),
+      })
       .select("id, status")
       .single();
 
@@ -151,7 +194,10 @@ export class SupabaseAsyncGenerationJobRepository
       return { data: null, error: error ?? new Error("job create failed") } as const;
     }
 
-    return { data, error: null } as const;
+    return {
+      data: data as { id: string; status: string },
+      error: null,
+    } as const;
   }
 
   async markImageJobFailed(jobId: string, errorMessage: string) {
