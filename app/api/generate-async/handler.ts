@@ -9,7 +9,10 @@ import {
   type FramingMode,
 } from "@/shared/generation/framing-mode";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
-import type { ImageJobCreateInput } from "@/features/generation/lib/job-types";
+import type {
+  ImageJobCreateInput,
+  PromptExecutionInput,
+} from "@/features/generation/lib/job-types";
 import {
   getPercoinCost,
   creatorLooksCost,
@@ -488,7 +491,10 @@ export async function postGenerateAsyncRoute(
     const createJobStartedAt = Date.now();
     const jobData: ImageJobCreateInput = {
       user_id: user.id,
-      prompt_text: prompt,
+      // 本文はユーザーが読める列に置かない。生入力は service-only の
+      // 実行入力レコードへ渡し、Worker がそこから解決する（REQ-006 / REQ-019）。
+      // RPC 側でも空へ正規化されるが、意図を呼び出し側にも残す。
+      prompt_text: "",
       input_image_url: inputImageUrl,
       source_image_stock_id: stockId,
       source_image_type: sourceImageType,
@@ -520,8 +526,18 @@ export async function postGenerateAsyncRoute(
         : {}),
     };
 
+    // 生成実行入力。coordinate / free の入力は原作者へ開示してよい生入力で、
+    // 生成成功時に author secret へ転記される。inspire はジョブの列から
+    // Worker が組み立てるため入力を持たない。
+    const promptExecution: PromptExecutionInput = {
+      kind: "materialized",
+      authorInput: isInspireRequest ? null : prompt,
+      authorInputOwnerId: isInspireRequest ? null : user.id,
+      sourceKind: generationType || "coordinate",
+    };
+
     const { data: job, error: insertError } =
-      await jobRepository.createImageJob(jobData);
+      await jobRepository.createImageJob(jobData, promptExecution);
     const createJobMs = Date.now() - createJobStartedAt;
 
     if (insertError || !job) {

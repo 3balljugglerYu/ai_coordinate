@@ -56,7 +56,7 @@ export const koMessages = {
     creators: "크리에이터 모집",
   },
   searchBar: {
-    placeholder: "프롬프트 검색",
+    placeholder: "설명 또는 크리에이터로 검색",
     clear: "검색어 지우기",
     submit: "검색",
   },

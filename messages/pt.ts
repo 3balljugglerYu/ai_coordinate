@@ -56,7 +56,7 @@ export const ptMessages = {
     creators: "Para criadores",
   },
   searchBar: {
-    placeholder: "Buscar prompts",
+    placeholder: "Buscar por descrição ou criador",
     clear: "Limpar busca",
     submit: "Buscar",
   },

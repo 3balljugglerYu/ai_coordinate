@@ -56,7 +56,7 @@ export const zhTwMessages = {
     creators: "創作者招募",
   },
   searchBar: {
-    placeholder: "搜尋提示詞",
+    placeholder: "依作品說明或作者搜尋",
     clear: "清除搜尋",
     submit: "搜尋",
   },

@@ -34,15 +34,12 @@ export function sanitizeUserInput(input: string): string {
  * プロンプトを構築（プロンプトインジェクション対策済み）
  */
 export function buildPrompt(options: BuildPromptOptions): string {
-  const prompt = buildPromptCore(options);
-
-  // デバッグ用: 最終プロンプトをログ出力
-  console.log(`[Prompt Builder] Generation Type: ${options.generationType}`);
-  console.log(`[Prompt Builder] Background Mode: ${options.backgroundMode}`);
-  console.log(
-    `[Prompt Builder] Source Image Type: ${options.sourceImageType ?? "illustration"}`
-  );
-  console.log(`[Prompt Builder] Final Prompt:\n${prompt}`);
-
-  return prompt;
+  // 最終プロンプトは運営が管理する錨(free.base_prefix 等)とユーザー入力の
+  // 結合結果であり、いずれも秘匿対象。ログ・APM・プロバイダのエラー
+  // ペイロードへ書き出さない (REQ-017)。
+  //
+  // 生成種別・背景モード等の非秘匿な識別子だけであればログしてよいが、
+  // 本文と同じ行に出すと切り分けを誤って再び全文が載るため、この関数では
+  // 何も出力しない方針に統一する。
+  return buildPromptCore(options);
 }

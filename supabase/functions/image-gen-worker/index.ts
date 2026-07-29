@@ -61,6 +61,7 @@ import {
 } from "./openai-image.ts";
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
+import { resolvePromptExecutionInput } from "./prompt-execution.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -1777,6 +1778,30 @@ Deno.serve(async () => {
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
+          // 生成入力の解決 (プロンプト秘匿境界の移行期)
+          //
+          // 新規ジョブは image_jobs.prompt_text を空にし、本文を service-only の
+          // generation_prompt_snapshots へ置いている。image_jobs の SELECT RLS は
+          // auth.uid() = user_id なので、本文をそこへ残すと生成した本人が運営資産まで
+          // 読めてしまう。
+          //
+          // 移行前のジョブは prompt_text に値があるため、当面は「実行入力レコードが
+          // あればそちら、無ければ prompt_text」とする。Phase 0C で prompt_text を
+          // 空化した後は、レコード欠落を固定内部コードで fail closed させる。
+          //
+          // 生成フェーズと画像永続化フェーズの両方から参照するため、どちらの
+          // コールバックよりも外側で解決しておく。
+          const promptExecution = await resolvePromptExecutionInput(
+            supabase,
+            job.id,
+          );
+          // coordinate / free は生入力、one_tap_style は組み立て済み全文。
+          // どちらも無い種別 (inspire / creator_looks) はジョブの列から作る。
+          const generationInput =
+            promptExecution?.authorInput ??
+            promptExecution?.providerPrompt ??
+            job.prompt_text;
+
           let generatedImages: GeneratedImageResult[] = [];
           currentStage = "generating";
           await measureJobStage(
@@ -1983,9 +2008,9 @@ Deno.serve(async () => {
                     }
                   }
 
-                  let fullPrompt = job.prompt_text;
+                  let fullPrompt = generationInput;
                   if (job.generation_type === "one_tap_style") {
-                    fullPrompt = job.prompt_text;
+                    fullPrompt = generationInput;
                   } else if (creatorLooksHiddenPrompt) {
                     fullPrompt = composeCreatorLooksPrompt(
                       creatorLooksHiddenPrompt,
@@ -2009,7 +2034,7 @@ Deno.serve(async () => {
                   } else if (job.input_image_url) {
                     fullPrompt = buildSharedPrompt({
                       generationType: job.generation_type as GenerationType,
-                      outfitDescription: job.prompt_text,
+                      outfitDescription: generationInput,
                       backgroundMode,
                       sourceImageType:
                         job.source_image_type === "real"
@@ -2746,7 +2771,10 @@ Deno.serve(async () => {
                   user_id: job.user_id,
                   image_url: primaryUploadedImage.publicUrl,
                   storage_path: primaryUploadedImage.uploadPath,
-                  prompt: job.prompt_text,
+                  // 移行期の dual-write。legacy ジョブは prompt_text に、
+                  // 新規ジョブは実行入力レコードに値がある。
+                  // Phase 0C でこの列は空化し、DB 制約で非空値を拒否する。
+                  prompt: generationInput,
                   background_mode: backgroundMode,
                   is_posted: false,
                   generation_type: job.generation_type,
@@ -2773,6 +2801,39 @@ Deno.serve(async () => {
               }
 
               imageRecordIds.push(imageRecord.id);
+
+              // 原作者へ開示してよい生入力だけを author secret へ転記する。
+              // one_tap_style は provider_prompt しか持たないためここへ入らず、
+              // 生成した本人が運営資産を読める状態にはならない。
+              // 派生ジョブは derived_reference で author_input を持てない
+              // (テーブル CHECK) ため、同様にここへ入らない。
+              if (
+                promptExecution?.snapshotKind === "materialized" &&
+                promptExecution.authorInput &&
+                promptExecution.authorInputOwnerId
+              ) {
+                const { error: secretError } = await supabase
+                  .from("generated_image_prompt_secrets")
+                  .upsert(
+                    {
+                      image_id: imageRecord.id,
+                      prompt: promptExecution.authorInput,
+                      prompt_owner_id: promptExecution.authorInputOwnerId,
+                      source_kind: "author_input",
+                    },
+                    { onConflict: "image_id", ignoreDuplicates: true },
+                  );
+
+                if (secretError) {
+                  // 本文は載せない。ここで失敗しても画像自体は保存済みなので、
+                  // 生成を落とさず記録だけ残す。移行完了後は完了 RPC 経由に
+                  // 一本化されるため、この経路は縮小する。
+                  console.error(
+                    `[Worker] failed to store author prompt secret for image ${imageRecord.id}`,
+                    { code: secretError.code },
+                  );
+                }
+              }
 
               const { data: postInsertJob, error: postInsertJobError } = await supabase
                 .from("image_jobs")

@@ -56,7 +56,7 @@ export const enMessages = {
     creators: "For Creators",
   },
   searchBar: {
-    placeholder: "Search prompts",
+    placeholder: "Search by caption or creator",
     clear: "Clear search",
     submit: "Search",
   },

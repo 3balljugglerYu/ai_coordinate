@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { redactSensitivePrompts } from "@/features/generation/lib/prompt-visibility";
+import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 
 export interface PercoinTransaction {
   id: string;
@@ -226,7 +227,8 @@ export async function getUserPostsServer(
     return [];
   }
 
-  return redactSensitivePrompts(data || []);
+  // プロンプトの正本は service-only の author secret（ADR-001）
+  return redactSensitivePrompts(await resolveVisiblePrompts(data || []));
 }
 
 /**
@@ -278,7 +280,8 @@ export const getMyImagesServer = cache(async (
       throw new Error(`画像の取得に失敗しました: ${error.message || "Unknown error"}`);
     }
 
-    return redactSensitivePrompts(data || []);
+    // プロンプトの正本は service-only の author secret（ADR-001）
+  return redactSensitivePrompts(await resolveVisiblePrompts(data || []));
   } catch (err) {
     console.error("[getMyImagesServer] Unexpected error:", err);
     if (err instanceof Error) {

@@ -19,6 +19,9 @@ import { POST } from "@/app/api/generate-async/route";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+/** ジョブと生成実行入力を原子的に作る RPC 名。 */
+const JOB_CREATE_RPC = "create_image_job_with_prompt_execution";
+
 type JsonRecord = Record<string, unknown>;
 const SAMPLE_SOURCE_IMAGE_BASE64 = Buffer.from("image-bytes").toString("base64");
 
@@ -131,8 +134,19 @@ function createSupabaseMock(options: SupabaseMockOptions = {}) {
     getPublicUrl,
   }));
 
-  const rpc = jest.fn().mockResolvedValue({
-    error: options.rpcError ?? null,
+  // ジョブ作成は insert ではなく原子的 RPC 経由になった。
+  // ジョブと生成実行入力を同一トランザクションで作るため（REQ-003c）。
+  const jobCreateResult = options.jobResult ?? {
+    data: { id: "job-001", status: "queued" },
+    error: null,
+  };
+  const rpc = jest.fn((name: string) => {
+    if (name === JOB_CREATE_RPC) {
+      return {
+        select: () => ({ single: () => Promise.resolve(jobCreateResult) }),
+      };
+    }
+    return Promise.resolve({ error: options.rpcError ?? null });
   });
 
   const client = {
@@ -256,7 +270,10 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         "status": 400,
       }
     `);
-    expect(supabase.jobsBuilder.insert).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalledWith(
+      JOB_CREATE_RPC,
+      expect.anything()
+    );
     expect(supabase.profilesBuilder.eq).toHaveBeenCalledWith(
       "user_id",
       "user-123"
@@ -286,7 +303,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     expect({
       status: response.status,
       body,
-      queueCall: supabase.rpc.mock.calls[0],
+      queueCall: supabase.rpc.mock.calls.find((call) => call[0] === "pgmq_send"),
     }).toMatchInlineSnapshot(`
       {
         "body": {
@@ -349,18 +366,23 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       })
     );
     const body = await readJson(response);
-    const insertedJob = (
-      supabase.jobsBuilder.insert.mock.calls[0]?.[0] as
-        | Array<Record<string, unknown>>
-        | undefined
-    )?.[0];
+    const jobCreateCall = supabase.rpc.mock.calls.find(
+      (call) => call[0] === JOB_CREATE_RPC
+    );
+    const insertedJob = jobCreateCall?.[1]?.p_job as
+      | Record<string, unknown>
+      | undefined;
+    const promptExecution = jobCreateCall?.[1]?.p_prompt_execution as
+      | Record<string, unknown>
+      | undefined;
 
     expect({
       status: response.status,
       body,
       uploadCall: supabase.upload.mock.calls[0],
       insertedJob,
-      queueCall: supabase.rpc.mock.calls[0],
+      promptExecution,
+      queueCall: supabase.rpc.mock.calls.find((call) => call[0] === "pgmq_send"),
     }).toMatchInlineSnapshot(`
       {
         "body": {
@@ -380,7 +402,7 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "override_outfit": null,
           "override_pose": null,
           "processing_stage": "queued",
-          "prompt_text": "linen jacket",
+          "prompt_text": "",
           "requested_image_count": 1,
           "source_image_stock_id": null,
           "source_image_type": "real",
@@ -388,6 +410,14 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
           "style_reference_image_url": null,
           "style_template_id": null,
           "user_id": "user-123",
+        },
+        "promptExecution": {
+          "author_input": "linen jacket",
+          "author_input_owner_id": "user-123",
+          "provider_prompt": null,
+          "snapshot_kind": "materialized",
+          "source_kind": "coordinate",
+          "source_revision": null,
         },
         "queueCall": [
           "pgmq_send",
@@ -454,11 +484,12 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       })
     );
     const body = await readJson(response);
-    const insertedJob = (
-      supabase.jobsBuilder.insert.mock.calls[0]?.[0] as
-        | Array<Record<string, unknown>>
-        | undefined
-    )?.[0];
+    const jobCreateCall = supabase.rpc.mock.calls.find(
+      (call) => call[0] === JOB_CREATE_RPC
+    );
+    const insertedJob = jobCreateCall?.[1]?.p_job as
+      | Record<string, unknown>
+      | undefined;
 
     expect({
       status: response.status,
@@ -513,6 +544,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
         "status": 400,
       }
     `);
-    expect(supabase.jobsBuilder.insert).not.toHaveBeenCalled();
+    expect(supabase.rpc).not.toHaveBeenCalledWith(
+      JOB_CREATE_RPC,
+      expect.anything()
+    );
   });
 });

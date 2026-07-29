@@ -67,7 +67,11 @@ export async function saveWardrobeImage(
       storage_path_display: storagePath,
       storage_path_thumb: storagePath,
       generation_type: "one_tap_style",
-      prompt: input.prompt ?? "",
+      // One-Tap Style のプロンプトは運営が組み立てたプリセット全文であり、
+      // 生成した本人にも開示しない。generated_images は行単位 RLS で anon にも
+      // 開放されており列を絞れないため、ここへ書くと公開経路から取得できる。
+      // author secret も作らない（REQ-019 / ADR-001）。
+      prompt: "",
       model: input.model,
       width: input.width,
       height: input.height,

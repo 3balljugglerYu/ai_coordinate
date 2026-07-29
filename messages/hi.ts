@@ -56,7 +56,7 @@ export const hiMessages = {
     creators: "क्रिएटर्स के लिए",
   },
   searchBar: {
-    placeholder: "प्रॉम्प्ट खोजें",
+    placeholder: "विवरण या क्रिएटर से खोजें",
     clear: "खोज साफ़ करें",
     submit: "खोजें",
   },
