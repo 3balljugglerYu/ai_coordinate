@@ -1,7 +1,7 @@
 # じゆうモード プロンプト非公開モード 実装計画
 
 作成日: 2026-07-29
-最終更新: 2026-07-29（再レビュー指摘を反映。秘密の所有権分離・全書き込み経路・段階デプロイを追加）
+最終更新: 2026-07-29（再々レビュー指摘を反映。legacy built prompt・検索順序・返金・終端job方針を確定）
 対象: `/free` 投稿のプロンプト非公開化、および**プロンプト保管の秘匿境界そのものの是正**
 
 ## 背景
@@ -105,6 +105,18 @@ app/(app)/style/generate-async/handler.ts:578-579
 
 したがって「全プロンプトを `generated_images.user_id` 所有の1テーブルへ移す」設計は採用しない。**ユーザーに表示し得る原作入力**と、**誰にも直接返さないプロバイダ送信用スナップショット**を分離する。
 
+### legacy 行から生入力は復元できない（本番・コード確認済み）
+
+`generated_images.prompt` と `image_jobs.prompt_text` に保存されているのは、ユーザーの生入力ではなく `buildPromptCore` 適用後の最終プロンプトである。
+
+- `shared/generation/prompt-core.ts:241-252` は `free.base_prefix`・`free.user_direction_label`・`sanitizedDescription` を連結する
+- `free.base_prefix` は `shared/generation/prompt-registry.ts:500-506` の運営管理テンプレートで、DB overrideにより版が変わり得る
+- `app/api/generate-async/handler.ts:465-521` は生入力を `generation_metadata` に入れず、ビルド済みの `prompt` を `image_jobs.prompt_text` へ保存する
+
+このため、legacy全文から運営prefixだけを安全に剥離してauthor inputを復元することはできない。legacyのfree / coordinateは `source_kind = 'legacy_built'` として、**既存画面がすでに開示しているビルド済み全文を従来と同じ範囲にだけ返す**。これは新しい開示ではなく既存挙動の維持である。
+
+新規jobでは、生入力をservice-only snapshot内の `author_input` として最終プロンプトから分離して保存する。生成成功時にauthor secretへ転記し、以後ユーザー向け表示には生入力だけを使う。ビルド済み最終プロンプトは全生成種別でservice-only snapshotへ保存し、ユーザーが読める `image_jobs.prompt_text` には保存しない。
+
 ### エラー・Storage の二次経路
 
 - `shared/generation/errors.ts:33-36` の `sanitizeProviderErrorMessage` は API キー形式しか除去しない
@@ -112,6 +124,18 @@ app/(app)/style/generate-async/handler.ts:578-579
 - Worker は provider から返った画像バイト列をそのまま公開 Storage に保存する（`:2614-2629`）。PNG text chunk / EXIF 等のメタデータは現状検査・除去していない
 
 エラー本文と画像メタデータも秘匿境界に含める。
+
+### 本番利用状況と検索影響（2026-07-29実測）
+
+| 指標 | 実測値 |
+| --- | --- |
+| 公開・visible投稿 | 918件 |
+| captionあり | 530件 |
+| caption充足率 | **57.7%** |
+| `generation_type = 'free'` | 全21件・2ユーザー・投稿0件 |
+| `generation_type = 'coordinate'` | 全1,307件・投稿231件 |
+
+検索をcaption + 作者表示名へ変更すると、caption未設定の約42.3%は本文ではヒットしなくなる。作者名検索は残るが、検索対象変更をUIとリリースノートで明示する。
 
 ### アプリ層 redaction（境界ではないが防御層として維持する）
 
@@ -156,7 +180,7 @@ app/(app)/style/generate-async/handler.ts:578-579
 flowchart TB
     subgraph public["公開行 anon から読める"]
         GI["generated_images<br/>prompt は空にする"]
-        J["image_jobs<br/>本人入力以外の prompt_text は空"]
+        J["image_jobs<br/>新規jobの prompt_text は全種別で空"]
     end
     subgraph authorsecret["原作者の秘密 authenticated は本人行のみ"]
         PS["generated_image_prompt_secrets<br/>ユーザー向け原作入力"]
@@ -237,12 +261,14 @@ erDiagram
         uuid image_id PK
         text prompt "ユーザー向け原作入力"
         uuid prompt_owner_id "実際の原作者"
-        text source_kind "free coordinate legacy"
+        text source_kind "author_input legacy_built"
     }
     generation_prompt_snapshots {
         uuid image_job_id PK
         text provider_prompt "プロバイダ送信用全文"
-        text source_kind "one_tap inspire"
+        text author_input "新規jobの生入力 nullable"
+        uuid author_input_owner_id "入力者 nullable"
+        text source_kind "free coordinate one_tap inspire"
         text source_revision "プリセット版"
     }
     generated_images {
@@ -276,6 +302,12 @@ erDiagram
 
 - **REQ-003**: The system shall never infer prompt ownership from `generated_images.user_id`; it shall use `prompt_owner_id` and the disclosure policy of the prompt source.
   システムは `generated_images.user_id` からプロンプト所有権を推定してはならず、`prompt_owner_id` とプロンプト由来ごとの開示方針を使用しなければならない。
+
+- **REQ-003a**: For legacy rows where raw author input cannot be reconstructed, the system shall classify the built prompt as `legacy_built` and preserve only the existing disclosure scope.
+  生の原作者入力を復元できないlegacy行について、システムはビルド済み全文を `legacy_built` と分類し、既存と同じ開示範囲だけを維持しなければならない。
+
+- **REQ-003b**: For every new generation job, the system shall persist the provider-ready prompt only in a service-only snapshot and shall separately preserve raw author input only for generation types where that input is user-disclosable.
+  すべての新規生成jobについて、システムはプロバイダ送信用全文をservice-only snapshotだけに保存し、ユーザーへ開示可能な生成種別に限って生の原作者入力を別フィールドとして保存しなければならない。
 
 - **REQ-004**: While a prompt is public, the system shall disclose it only to the author and the author's followers, preserving the existing follow gate.
   プロンプトが公開である間、システムは既存のフォローゲートを維持し、投稿者とそのフォロワーにのみ開示しなければならない。
@@ -329,6 +361,9 @@ erDiagram
 - **REQ-016**: The system shall search `caption` and author display name, and shall not use prompt text as a search key.
   システムは `caption` と作者表示名を検索対象とし、プロンプト本文を検索キーに使ってはならない。
 
+- **REQ-016a**: Before the system clears `generated_images.prompt`, it shall deploy the caption and author-name search path and verify that no production search query depends on the legacy prompt column.
+  システムは `generated_images.prompt` を空化する前に、caption・作者名検索をデプロイし、本番検索が旧prompt列へ依存していないことを検証しなければならない。
+
 ### ログ
 
 - **REQ-017**: The system shall not write prompt text to application logs, worker logs, APM, or provider error payloads.
@@ -336,6 +371,9 @@ erDiagram
 
 - **REQ-020**: After the contract migration, the database shall reject every insert or update that writes a non-empty value to `generated_images.prompt`.
   contract マイグレーション後、DB は `generated_images.prompt` に非空値を書き込むすべての INSERT / UPDATE を拒否しなければならない。
+
+- **REQ-020a**: After the contract migration, `generated_images.prompt` shall have `DEFAULT ''` in addition to `NOT NULL` and `CHECK (prompt = '')`.
+  contract マイグレーション後、`generated_images.prompt` は `NOT NULL` と `CHECK (prompt = '')` に加えて `DEFAULT ''` を持たなければならない。
 
 - **REQ-021**: If a provider returns an error, the system shall store and return only an allowlisted internal error code and shall not persist or log the provider response body.
   プロバイダがエラーを返した場合、システムは allowlist 済みの内部エラーコードだけを保存・返却し、プロバイダのレスポンス本文を永続化またはログ出力してはならない。
@@ -352,6 +390,12 @@ erDiagram
 - **REQ-025**: Once the worker has completed its final authorization check and started the provider request, later revocation may prevent delivery but cannot guarantee cancellation of the in-flight provider request.
   Worker が最終認可を終えてプロバイダリクエストを開始した後は、後続の取消によって成果物の提供を止められても、実行中の外部リクエスト自体の取消は保証しない。
 
+- **REQ-026**: If source availability, follow, or block authorization becomes invalid before delivery, the system shall not deliver the generated result and shall refund any deducted Percoins through the existing idempotent `refund_percoins` path.
+  成果物提供前に原作の利用可否・フォロー・ブロック認可が無効になった場合、システムは生成結果を提供せず、減算済みペルコインを既存の冪等な `refund_percoins` 経路で返金しなければならない。
+
+- **REQ-027**: A terminal failed job shall not be re-executed in place; a user retry shall create a new job with a new prompt snapshot.
+  終端状態のfailed jobをその場で再実行してはならず、ユーザーの再試行は新しいprompt snapshotを持つ新規jobを作成しなければならない。
+
 ### 運営
 
 - **REQ-018**: While an admin views a post, the system shall display the full prompt with a badge indicating whether it is provided privately.
@@ -367,21 +411,22 @@ erDiagram
 
 - **Context**: `generated_images` の SELECT は行単位で `anon` に開放されているため、本文を同じ行へ置けない。一方、One-Tap Style では生成画像の所有者は利用者だが、最終プロンプトは運営資産である。画像所有者を秘密の所有者とみなすと、別テーブルへ移しても本人 RLS から再漏洩する。
 - **Decision**:
-  1. `generated_image_prompt_secrets(image_id PK, prompt, prompt_owner_id, source_kind, created_at)` は、投稿者へ表示・再利用し得る**ユーザー向け原作入力**だけを持つ。直接 SELECT は `auth.uid() = prompt_owner_id` のみ
-  2. `generation_prompt_snapshots(image_job_id PK, provider_prompt, source_kind, source_revision, created_at)` は、One-Tap Style 等の**プロバイダ送信用全文**を必要な場合だけ持つ。`anon` / `authenticated` には一切の権限・ポリシーを与えない
+  1. `generated_image_prompt_secrets(image_id PK, prompt, prompt_owner_id, source_kind, created_at)` は、投稿者へ表示・再利用し得るプロンプトを持つ。新規行は生のauthor input、legacy行は分離不能なビルド済み全文を `legacy_built` として保持する。直接 SELECT は `auth.uid() = prompt_owner_id` のみ
+  2. `generation_prompt_snapshots(image_job_id PK, provider_prompt, author_input, author_input_owner_id, source_kind, source_revision, created_at)` は、**全新規jobのプロバイダ送信用全文**を持つ。ユーザー向け表示対象であるfree / coordinateの生入力だけを `author_input` として分離・一時保持し、生成成功時にauthor secretへ転記する。One-Tap等の補助入力からauthor secretは作らない。`anon` / `authenticated` には一切の権限・ポリシーを与えない
   3. 派生画像と One-Tap Style 画像には、生成画像所有者が読める author secret を作らない
-  4. `generated_images.prompt` は全行空にし、contract 後は CHECK 制約で非空値を拒否する
+  4. 新規jobの `image_jobs.prompt_text` は全生成種別で空にし、Workerはservice-only snapshotから生成する
+  5. `generated_images.prompt` は全行空にし、contract 後は `DEFAULT ''` と CHECK 制約で非空値を拒否する
 - **Reason**:
   1. RLS は列を絞れない。行が見える以上、列は取れる
   2. 「公開プロンプト」もフォロワー限定であり、公開行へ置いてよい本文はない
   3. ユーザー入力と共通 prefix・hidden prompt・プリセット全文では所有者と開示方針が異なる
   4. 完成済みプロンプトをユーザー所有の secrets にまとめると One-Tap Style / Inspire の moat を破る
-- **Consequence**: backfill は `generation_type` と由来を分類して行う。分類不能な legacy 行はauthor secretへ入れない。信頼できるjob対応があり運用上の保存理由がある場合だけservice-only snapshotへ移し、それ以外は件数・ハッシュ・分類理由を検証してcontractで消去する。秘密テーブルが2つになるが、開示可否をデータ構造で表現できる。
+- **Consequence**: legacyの生入力復元は行わない。現在表示されているfree / coordinateのビルド済み全文は `legacy_built` としてauthor secretへ移し、開示範囲を広げず現状維持する。One-Tap / Inspire等の非開示全文はauthor secretへ入れず、信頼できるjob対応と保存理由がある場合だけservice-only snapshotへ移す。新規行は生入力と最終全文を正しく分離できる。
 
 ### ADR-002: 派生利用者が所有するレコードに秘密を一切書かない
 
 - **Context**: 初版は「派生投稿の `prompt` 列に原作のプロンプトが入るが UI で隠す」としていた。しかし `image_jobs` の RLS は `auth.uid() = user_id` であり、**派生した利用者は自分のジョブの全列を読める**。Worker も `generated_images.prompt` へコピーする（`image-gen-worker/index.ts:2743`）。UI で隠しても2箇所から平文を取得できる。
-- **Decision**: 派生ジョブでは `image_jobs.prompt_text` を空にし、`origin_post_id` のみを保存する。Worker が**実行直前に service role で原作者入力を解決**し、生成後も派生行に author secret を作らない。One-Tap Style はユーザー行へ全文を置かず、不変のプリセット版または service-only snapshot から解決する。
+- **Decision**: 新規jobでは生成種別を問わず `image_jobs.prompt_text` を空にし、最終全文をservice-only snapshotへ保存する。派生ジョブは `origin_post_id` のみをユーザー可読行へ保存し、Workerが**実行直前にservice roleで原作snapshotを解決**する。生成後も派生行にauthor secretを作らない。
 - **Reason**: 秘密を「派生者の所有物」に一瞬でも置いた時点で、RLS 上はその人のものになる。表示制御では取り返せない。
 - **Consequence**: Worker に「投稿 ID から秘密を解決する」経路が増える。ジョブ投入後に原作が非公開解除・削除・ブロックされる可能性があるため、解決時点で条件を再検証する（REQ-007）。
 
@@ -421,7 +466,7 @@ erDiagram
 - **Reason**: 条件が1つでも欠けると別種の秘匿プロンプトの回収経路になる。
 - **Consequence**: 検証が長くなるため、専用の SECURITY DEFINER RPC に集約して API と Worker の双方から呼ぶ。
 
-Worker の最終検証後に外部APIリクエストを開始した時点を認可境界とする。外部API実行中にDBロックは保持しない。実行中に取消された場合、必要なら生成後の再検証で成果物を破棄し冪等に返金できるが、プロバイダへ送信済みのリクエスト自体は取り消せない（REQ-025）。
+Workerは課金前とprovider呼び出し直前に認可を検証する。課金前に無効なら減算せず終了する。課金後に無効なら成果物を提供せず、既存の `refundPercoinsFromGeneration` → `refund_percoins` RPCで冪等返金する。provider完了後・永続化前にも再検証し、その間に取消された場合は成果物を破棄して同じ返金経路を使う。外部API実行中にDBロックは保持せず、providerへ送信済みのリクエスト自体の取消は保証しない（REQ-025 / REQ-026）。
 
 ### ADR-007（改訂）: 検索は残し、対象を公開フィールドへ差し替える
 
@@ -433,7 +478,7 @@ Worker の最終検証後に外部APIリクエストを開始した時点を認�
   1. 現に使える機能であり、廃止は実質的なユーザー機能削除にあたる。秘匿の手段としては過剰
   2. そもそも**プロンプトを検索キーにしている現状自体が是正対象**である。ADR-001 でプロンプトを公開行から外す以上、検索キーにはできない
   3. `caption` は公開が前提のフィールドであり、検索対象として自然
-- **Consequence**: 検索の当たり方が変わる。実装前に caption 充足率を集計して影響を把握し、プレースホルダとリリースノートで「作品説明・作者名検索」へ変わることを示す。セキュリティ修正のリリース自体は充足率調査で遅らせない。ページネーション・並び順・ワイルドカードのエスケープを維持する。
+- **Consequence**: 本番のcaption充足率は57.7%（公開visible 918件中530件）で、約42.3%はcaption本文ではヒットしない。プレースホルダとリリースノートで「作品説明・作者名検索」へ変わることを示す。検索差し替えは `generated_images.prompt` 空化の前提なのでPhase 0Bへ前倒しする。ページネーション・並び順・ワイルドカードのエスケープを維持する。
 
 ### ADR-008: 利用数は改ざん不可のイベントから算出する
 
@@ -452,9 +497,23 @@ Worker の最終検証後に外部APIリクエストを開始した時点を認�
 ### ADR-010: provider error と公開画像メタデータを秘密の出口として扱う
 
 - **Context**: 現在の sanitizer はAPIキーしか除去せず、provider本文を `error_message` とログへ保存し得る。また provider の画像バイト列をそのまま公開Storageへ置いている。
-- **Decision**: クライアント可視のエラーはallowlist済み内部コードへ正規化し、provider response body・request body・promptをDB、ログ、APMへ残さない。生成画像は公開保存前に再エンコードして非画素メタデータを除去するか、サポート形式ごとの検査でprompt-bearing metadataがないことを証明する。
+- **Decision**: クライアント可視のエラーはallowlist済み内部コードへ正規化し、provider response body・request body・promptをDB、ログ、APMへ残さない。providerの生バイトが保存されるoriginalを優先調査し、prompt-bearing metadataがあれば公開保存前に除去・再エンコードする。display / thumbnailはSharp再エンコード済みだが、テストでmetadataがないことを確認する。
 - **Reason**: UIとDB列を塞いでも、エラー本文やPNG text chunkから本文が出れば機能価値が失われる。
 - **Consequence**: 運用デバッグ情報はステータス、内部コード、request id、provider、モデル、所要時間に限定する。元画像の画素としてモデルが文字を描画するケースは技術的に防げないため、秘匿保証は非画素メタデータとシステム出力経路を対象とする。
+
+### ADR-011: 非公開モードの対象は今回 `/free` に限定する
+
+- **Context**: 2026-07-29時点で `free` は全21件・投稿0件、`coordinate` は全1,307件・投稿231件である。coordinateへ広げれば利用面は大きいが、ヒアリングで確定した本機能の対象は `/free` であり、投稿UI・派生生成・互換性の追加検討が必要になる。
+- **Decision**: Phase 0の秘匿境界修正と新規jobのauthor input分離は全生成種別へ適用するが、`prompt_visibility = 'private'` を選べるroot投稿は今回 `generation_type = 'free'` に限定する。
+- **Reason**: セキュリティ境界は利用数に関係なく全種別で直す。一方、製品機能の対象拡大は実測利用数だけを理由に既存合意を変更せず、別の要件確認を経る。
+- **Consequence**: coordinate対応を後から追加する場合は、guard制約・投稿UI・派生可否・legacy built表示を扱う別ADRとforward migrationが必要になる。この後戻りコストを明示的に受け入れる。
+
+### ADR-012: 終端failed jobは再利用せず、新規jobとして再試行する
+
+- **Context**: 現在のWorker claimは `queued` と `failed` の両方を許すが、終端失敗時はqueue messageを削除しており、管理API/UIに既存failed jobの手動再実行経路は見つからない。contractでlegacy `prompt_text` を空化すると、snapshotのないfailed jobは同一行で再生成できない。
+- **Decision**: Workerが処理開始できるのは `queued` のみとする。内部リトライはstatusを `queued` に戻す。終端 `failed` は不変とし、ユーザーの「再試行」は入力を再送して新しいjobとsnapshotを作る。
+- **Reason**: 終端jobの監査状態を保ち、空化済み秘密へ依存する隠れた再実行経路をなくす。
+- **Consequence**: legacy failed jobを同一IDで手動再実行する運用は廃止する。将来admin再実行を作る場合も、旧jobを複製せず認可・課金・snapshotを再作成する専用RPCを設計する。
 
 ---
 
@@ -464,10 +523,10 @@ Worker の最終検証後に外部APIリクエストを開始した時点を認�
 
 ```mermaid
 flowchart LR
-    P0A["Phase 0A PR1: Expand"] --> P0B["Phase 0B PR2: Dual write と Backfill"]
+    P0A["Phase 0A PR1: Expand"] --> P0B["Phase 0B PR2: Dual write と検索と Backfill"]
     P0B --> P0C["Phase 0C PR3: Contract"]
     P0C --> P1["Phase 1 PR4: 非公開モードDBとAPI"]
-    P1 --> P2["Phase 2 PR5: UIと検索"]
+    P1 --> P2["Phase 2 PR5: 投稿と閲覧UI"]
     P2 --> P3["Phase 3 PR6: Adminと仕上げ"]
 ```
 
@@ -477,7 +536,7 @@ flowchart LR
 | --- | --- | --- |
 | 1 | PR1のadditive migrationを `supabase db push` | 旧Next.js / 旧Workerが正常、secret権限マトリクスが期待どおり |
 | 2 | PR2のbackward-compatible Worker | legacy jobは従来どおり、snapshot jobも処理可能 |
-| 3 | PR2のNext.js | 新規行がdual-writeされ、One-Tap新規jobの `prompt_text` が空 |
+| 3 | PR2のNext.js | 新規jobの `prompt_text` が全種別で空、検索がcaption + 作者名へ移行済み |
 | 4 | backfill + 検証SQL | 種別件数・行digest・owner・orphan・dual-write後の差分がすべて0 |
 | 5 | PR3のfallbackなしNext.js / Worker | secret読み取りエラーがfail closed。既存表示・生成が正常 |
 | 6 | PR3のcontract migration | 公開列と終端One-Tap jobを空化し、DB invariantをVALIDATE |
@@ -494,16 +553,21 @@ flowchart LR
   - `image_id UUID PK REFERENCES generated_images(id) ON DELETE CASCADE`
   - `prompt TEXT NOT NULL`
   - `prompt_owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
-  - `source_kind TEXT NOT NULL CHECK (...)`
+  - `source_kind TEXT NOT NULL CHECK (source_kind IN ('author_input','legacy_built'))`
   - RLSは本人SELECTのみ。`anon`拒否。DMLはservice role /専用RPCのみ
 - [ ] `generation_prompt_snapshots`
   - `image_job_id UUID PK REFERENCES image_jobs(id) ON DELETE CASCADE`
-  - `provider_prompt TEXT NOT NULL`, `source_kind`, `source_revision`, `created_at`
+  - `provider_prompt TEXT NOT NULL`, `author_input TEXT`, `author_input_owner_id UUID`, `source_kind`, `source_revision`, `created_at`
+  - `source_kind` は `free / coordinate / one_tap_style / inspire` 等の生成由来を表す
+  - `author_input` はユーザー向け表示対象のfree / coordinateだけに許可し、入力の有無・owner・source kindをCHECK制約で整合させる
   - RLS有効・公開ポリシーなし・`PUBLIC, anon, authenticated` から全権限REVOKE
 - [ ] 通常生成の完了を原子的に行うRPCを追加し、画像行・author secret・job成功更新を同一トランザクションに閉じる
 - [ ] `complete_image_job_with_generated_images` の新しい定義を追加し、将来のdual-writeに対応できる形にする
 - [ ] One-Tap用の「ジョブ + service-only snapshot」作成RPCを追加する。`source_revision` は実行時に変更されないプリセット版または内容ハッシュ
 - [ ] SECURITY DEFINER関数は `SET search_path = public, pg_temp`、所有者固定、`PUBLIC / anon / authenticated` のEXECUTEをREVOKEし、必要なservice role経路だけに限定する
+- [ ] Supabaseの契約・バックアップ機能を確認
+  - PITR契約の有無、通常バックアップの保持期間、復元手順を記録
+  - PITR未契約でもPhase 0Cへ進めるよう、通常バックアップまたは暗号化service-only退避の具体策を決める
 - [ ] マイグレーション後に `anon` / authenticated他人 / owner / service role の権限マトリクスをPreviewで検証
 
 ### Phase 0B: Dual-write・読み取り移行・Backfill（PR2）
@@ -512,14 +576,21 @@ flowchart LR
 **デプロイ順序**: backward-compatible Worker → Next.js → backfill・検証
 
 - [ ] Worker を先にデプロイ
-  - One-Tapはsnapshotがあれば使用し、移行前の既存ジョブだけ `prompt_text` fallbackを許す
+  - 全生成種別でsnapshotがあれば使用し、移行前の既存jobだけ `prompt_text` fallbackを許す
   - Gemini/OpenAI双方の画像永続化を新RPCへ統一する
-  - `generated_images.prompt` への直接コピーをやめ、author secretが必要な種別だけ同一トランザクションで作る
+  - `generated_images.prompt` への直接コピーをやめ、新規jobはsnapshotの `author_input` がある場合だけ同一トランザクションでauthor secretを作る
 - [ ] Next.jsをデプロイ
-  - One-Tapは `prompt_text = ''` とし、ジョブとsnapshotを原子的に作る
+  - 全生成種別で `prompt_text = ''` とし、job・provider prompt・生のauthor inputをsnapshotへ原子的に保存する
   - `saveGeneratedImage(s)` の汎用ブラウザINSERTを削除またはpromptを書けないAPIへ縮小
   - Wardrobe claimの `prompt` を公開列へ保存しない。必要ならtrusted RPCで分類済みsecretへ保存
   - `features/generation/lib/prompt-builder.ts` の最終プロンプトログを削除
+- [ ] **検索対象をcontract前に差し替える**（REQ-016 / REQ-016a）
+  - `server-api.ts:614,651` のprompt検索をcaption + 公開プロフィール表示名へ変更
+  - `caption` と `profiles.nickname` の `%term%` 検索について、`pg_trgm` indexを追加するかPreviewの `EXPLAIN` で不要と判断した根拠を残す
+  - 既存のmoderation・block・report・sort・pagination条件を維持し、wildcardをエスケープ
+  - `SearchBar` / `StickyHeader` を「作品説明・作者名」に変更
+  - caption充足率57.7%と検索対象変更をリリースノートに記載
+  - 本番同等データで検索が0件固定にならないことを確認
 - [ ] 読み取りを `features/generation/lib/prompt-secrets.ts` へ移行
   - `features/posts/lib/server-api.ts`、`features/my-page/lib/server-api.ts` / `api.ts`
   - ブラウザの `select("*")` を明示列へ変更し `prompt` を除外
@@ -528,9 +599,10 @@ flowchart LR
 - [ ] 公開Storageへ保存する生成画像の非画素メタデータを除去または形式別に検証
 - [ ] idempotent backfill
   - `INSERT ... ON CONFLICT ...` とし、`generation_type` /由来ごとに分類
-  - free / coordinateのユーザー向け入力だけauthor secretへ移す
-  - One-Tap / platform prompt /分類不能なlegacy全文はauthor secretへ入れない。信頼できるjob対応と保存理由があるものだけservice-only snapshotへ移す
-  - 移行対象外は `generation_type` /理由別件数とhashを検証し、平文をログへ出さない
+  - legacy free / coordinateは生入力へ分離せず、ビルド済み全文を `legacy_built` author secretへ移して既存開示範囲を維持
+  - legacy One-Tap / Inspire /非開示全文はauthor secretへ入れない。信頼できるjob対応と保存理由があるものだけservice-only snapshotへ移す
+  - prefix剥離・テンプレート文字列一致による生入力推定は行わない
+  - `legacy_built` と移行対象外は `generation_type` /理由別件数とhashを検証し、平文をログへ出さない
   - backfill中もdual-writeを継続
 - [ ] 平文を出力しない検証SQLを実行
   - legacy非空行と移行先の件数を種別ごとに比較
@@ -541,17 +613,20 @@ flowchart LR
 ### Phase 0C: Contract・既存漏洩の閉鎖（PR3）
 
 **目的**: 公開列・ユーザー所有ジョブ・fallbackを完全に閉じ、再発をDBで拒否する
-**開始条件**: Phase 0Bが本番稼働し、検証SQLが連続して差分0件。queued/processingジョブの移行方針が完了。contract直前のDBバックアップまたはPITR復元点を確認
+**開始条件**: Phase 0Bが本番稼働し、検索がprompt列へ依存せず、検証SQLが連続して差分0件。queued/processingジョブのsnapshot移行が完了。Phase 0Aで確定したバックアップ手段の復元点を確認
 
 - [ ] secret→legacyの読み取りfallbackを削除してデプロイし、読み取りエラー率を監視
-- [ ] Supabaseのバックアップ/PITR可用性と復元点を記録する。利用できない場合はcontractを止め、暗号化されたservice-only退避方法を別途レビューする
 - [ ] `generated_images.prompt` を空文字へ更新
+- [ ] `ALTER COLUMN prompt SET DEFAULT ''` を適用
 - [ ] `CHECK (prompt = '')` を `NOT VALID` →検証→VALIDATEの順で追加
+- [ ] prompt検索が残っていないことを確認して `idx_generated_images_prompt_trgm` を削除
 - [ ] 最新の `complete_image_job_with_generated_images` を含む全永続化経路が空文字しか書かないことを確認
-- [ ] One-Tapの `image_jobs.prompt_text` を空化
-  - succeeded / failed / cancelled等の終端ジョブを対象にする
+- [ ] 全生成種別の `image_jobs.prompt_text` を段階的に空化
+  - succeeded / failed / cancelled等の終端jobを対象にする
   - queued / processingは先にsnapshotへ移すか、完了後に空化する
-  - 固定件数「2,123」ではなく実行時クエリ結果と対象status内訳を記録
+  - legacy failedは同一jobで再実行せず、ユーザー再試行は新規jobを作る
+  - Workerのclaim条件を `queued` のみに変更し、終端failedを再取得しない
+  - 固定件数ではなく実行時クエリ結果をgeneration_type・status別に記録
 - [ ] anonで `generated_images.prompt` が全件空、One-Tap生成者で自分のjob/snapshotから全文を取得できないことを本番同等キーで検証
 - [ ] 秘匿境界修正を新機能から独立してリリース完了とする
 
@@ -586,12 +661,14 @@ flowchart LR
   - 利用不可は同一の409 + `FREE_SOURCE_UNAVAILABLE`
   - jobには `origin_post_id` のみ保存し `prompt_text = ''`
 - [ ] Worker
-  - provider呼び出し直前に可用性・フォロー・双方向blockを再検証
-  - 外部呼び出し開始後の取消意味論をREQ-025としてテスト・文書化
+  - 課金前・provider呼び出し直前・provider完了後の永続化前に、可用性・フォロー・双方向blockを再検証
+  - 原作のservice-only provider snapshotを解決し、元生成と同じビルド済み全文を使用。snapshotが存在しない `legacy_built` 原作だけはauthor secretの全文をservice roleで直接使用
+  - 課金前の認可失敗は減算せず終了。課金後の認可失敗は成果物を破棄し、`refundPercoinsFromGeneration` → `refund_percoins` で冪等返金
+  - 外部呼び出し開始後の取消意味論をREQ-025 / REQ-026としてテスト・文書化
   - 派生画像にはauthor secretを作らない
   - 成功トランザクション内で `record_prompt_usage(p_image_job_id)`
 
-### Phase 2: 投稿・閲覧UIと検索（PR5）
+### Phase 2: 投稿・閲覧UI（PR5）
 
 **目的**: ユーザー向け操作と公開フィールド検索を提供する
 **ビルド確認**: `npm run lint` / `npm run typecheck` / `npm run build -- --webpack`
@@ -617,12 +694,6 @@ flowchart LR
   - 入力は画像・比率・モデルの3つ
 - [ ] `PostDetailStatic.tsx` / `PostDetail.tsx` を `getPostPromptDisplayMode` の4分岐へ
 - [ ] 15ロケールに文言追加
-- [ ] 検索対象差し替えを独立コミットにする
-  - 本番caption充足率を平文promptに触れない集計で確認
-  - caption + 公開プロフィール表示名を検索。プロフィールID事前検索または専用RPC/viewを採用
-  - 既存のmoderation・block・report・sort・pagination条件を維持
-  - `%` / `_` 等のwildcardをエスケープ
-  - `SearchBar` / `StickyHeader` を「作品説明・作者名」に変更しリリースノートへ記載
 
 ### Phase 3: Admin・文書・統合検証（PR6）
 
@@ -641,7 +712,8 @@ flowchart LR
 | `supabase/migrations/2026xxxx_expand_prompt_secret_boundary.sql` | 新規 | author secret + service-only snapshot + RLS |
 | `supabase/migrations/2026xxxx_add_atomic_generation_persistence_rpcs.sql` | 新規 | 画像・秘密・job完了の原子的RPC、既存完了RPC再定義 |
 | `supabase/migrations/2026xxxx_backfill_prompt_secrets.sql` | 新規 | 種別分類・冪等backfill・検証SQL |
-| `supabase/migrations/2026xxxx_contract_generated_images_prompt.sql` | 新規 | 公開列の空化 + `CHECK (prompt = '')` |
+| `supabase/migrations/2026xxxx_replace_prompt_search_indexes.sql` | 新規 | caption・nickname検索index。旧prompt trigramはcontractで削除 |
+| `supabase/migrations/2026xxxx_contract_generated_images_prompt.sql` | 新規 | 公開列の空化 + `DEFAULT ''` + `CHECK (prompt = '')` |
 | `supabase/migrations/2026xxxx_add_free_prompt_visibility.sql` | 新規 | 列3つ + guard trigger |
 | `supabase/migrations/2026xxxx_add_prompt_usage_events.sql` | 新規 | 利用イベント |
 | `supabase/migrations/2026xxxx_add_derived_generation_rpcs.sql` | 新規 | 検証・記録・集計 RPC |
@@ -653,9 +725,9 @@ flowchart LR
 | `app/api/wardrobe/claim/save-wardrobe-image.ts` | 修正 | `generated_images.prompt` への直接書き込みを廃止 |
 | `features/posts/lib/server-api.ts` | 修正 | 出所解決・検索対象の差し替え |
 | `features/my-page/lib/server-api.ts` / `api.ts` | 修正 | 読み取り経路の移行 |
-| `app/api/generate-async/handler.ts` | 修正 | `sourcePostId` 経路 |
+| `app/api/generate-async/handler.ts` | 修正 | 全通常jobの生入力/最終全文snapshot化 + `sourcePostId` 経路 |
 | `app/(app)/style/generate-async/handler.ts` | 修正 | `prompt_text` を空にし、job + service-only snapshotを原子的に作成 |
-| `supabase/migrations/2026xxxx_contract_image_jobs_prompt_text.sql` | 新規 | status別に既存One-Tap全文を安全に空化 |
+| `supabase/migrations/2026xxxx_contract_image_jobs_prompt_text.sql` | 新規 | generation type・status別に既存job全文を安全に空化 |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | snapshot/原作解決・原子的保存・固定エラー・利用記録・画像metadata対策 |
 | `supabase/functions/image-gen-worker/openai-image.ts` | 修正 | provider本文を外へ伝播しない固定エラー化 |
 | `shared/generation/errors.ts` | 修正 | allowlist済み内部エラーコードと正規化 |
@@ -686,15 +758,19 @@ flowchart LR
 | 4 | **派生者の認証トークンで `image_jobs.prompt_text` を取得しても秘密が無い** |
 | 4b | **One-Tap Style で生成したユーザーが、自分の `image_jobs.prompt_text` からプリセット全文を読めない** |
 | 4c | One-Tap Style生成者が `generation_prompt_snapshots` を直接SELECTできない |
+| 4d | free / coordinate生成者も、自分のjobから運営prefixを含むprovider promptを直接取得できない |
 | 5 | **派生者の認証トークンで派生 `generated_images.prompt` を取得しても秘密が無い** |
 | 5b | Wardrobe claim・Gemini単枚・OpenAI複数枚・ブラウザhelperの全保存経路で公開列が空 |
 | 5c | contract後に非空 `generated_images.prompt` のINSERT / UPDATEがDB制約で拒否される |
 | 5d | collection完走投稿RPCがcontract後も空文字で行を作成できる |
+| 5e | contract後に `prompt` を省略したINSERTは `DEFAULT ''` で成功し、公開列は空になる |
 | 6 | event gallery・生成一覧・無限スクロール・RSC ペイロードに秘密が無い |
 | 7 | OGP・JSON-LD・alt・通知・APIレスポンス・`image_jobs.error_message`・function logsに秘密が無い |
 | 7b | Gemini/OpenAIのエラー本文に既知の秘密文字列を含めても、固定内部コード以外が保存・返却・ログ出力されない |
-| 7c | 公開StorageのPNG/JPEG/WebP原本・display・thumbにprompt-bearing metadataがない |
+| 7c | provider生バイトのoriginalにprompt-bearing metadataがなく、display・thumbもSharp再エンコード後にmetadataがない |
 | 8 | 検索が prompt を対象にしていない（プロンプト固有語でヒットしない） |
+| 8b | Phase 0C直前に検索がcaption + 作者名で動作し、prompt空化後も同じ結果を返す |
+| 8c | contract後に旧prompt trigram indexがなく、caption・nickname検索の `EXPLAIN` が許容計画である |
 | 9 | public→private 切替後、全キャッシュ経路から即座に消える |
 
 ### 改ざん・権限
@@ -734,17 +810,20 @@ flowchart LR
 | 25 | Worker がジョブ投入後に条件が変わったケースを検出して中断する |
 | 25b | 最終検証後に取消されたin-flightジョブの成果物提供・返金ポリシーがREQ-025どおりである |
 | 25c | One-Tapのpreset更新後もqueued jobは保存済みrevision/snapshotと同じ入力で再試行される |
+| 25d | 課金前の認可失敗では減算されず、課金後・provider完了後の認可失敗では成果物を破棄して `refund_percoins` が1回だけ適用される |
+| 25e | 終端failed jobをWorkerがclaimせず、ユーザー再試行で新しいjob・snapshotが作られる |
 
 ### 移行（Phase 0）
 
 | # | テスト内容 |
 | --- | --- |
 | 26 | 実行時のlegacy非空件数と移行先件数を `generation_type` / `source_kind` 別に比較し差分0 |
-| 26b | 行ごとのdigest一致、owner/source_kind不整合0、orphan0、未分類行のauthenticated開示0 |
+| 26b | legacy free / coordinateが `legacy_built` として行ごとにdigest一致し、owner/source_kind不整合0、orphan0 |
 | 26c | dual-write開始後に作成された行を含め、contract直前の再検証で差分0 |
+| 26d | 新規free / coordinateはauthor secretに生入力だけを持ち、provider snapshotとの分離が保たれる |
 | 27 | 移行後も原作者・許可されたフォロワー向け表示が従来どおり動く |
 | 28 | `one_tap_style` / Inspire / platform promptが admin/service role 以外に返らない |
-| 29 | queued / processing One-Tap jobを壊さず、終端後に `prompt_text` が空化される |
+| 29 | 全生成種別のqueued / processing jobを壊さずsnapshotへ移行し、終端後に `prompt_text` が空化される |
 | 30 | 各デプロイ段階で旧Next.js・新Next.js・旧Worker・新Workerの許容組合せをrunbookどおり確認する |
 
 ---
@@ -757,7 +836,7 @@ flowchart LR
 | Phase 0B dual-write | contract前は新規書き込みを旧経路へ戻せる。ただしOne-Tapの公開漏洩を再開するrevertは行わず、機能停止または固定エラーで閉じる |
 | `generated_images.prompt` の空化 | 列はDROPしないが、公開列への書き戻しは行わない。表示障害はsecret対応コードへのrollbackで復旧する。author secretへ移行しないplatform/未分類値はcanonical preset・信頼できるsnapshot・DBバックアップの有無を確認してから消去する |
 | `CHECK (prompt = '')` | アプリを戻す必要がある場合も制約を先に外さず、旧コードが非空値を書かない互換版へ戻す |
-| One-Tap job空化 | queued / processingを対象外にするため進行中jobを破壊しない。終端行の平文は復元しない |
+| `image_jobs.prompt_text` 空化 | 全生成種別でqueued / processingを先にsnapshotへ移す。終端failedは再利用せず、終端行の平文は復元しない |
 | ログ削除 | 単独で安全。revert する理由が無い |
 | 検索対象の差し替え | 独立コミット。`caption` 検索で不評なら調整できるが、**prompt 検索へ戻してはならない**（ADR-001 と矛盾する） |
 | Phase 1 の列追加 | 既定が `public` / NULL なので、適用しても挙動は変わらない |
@@ -788,7 +867,8 @@ flowchart LR
 - **公開→非公開の切替は「以後の表示を止める」機能であり、過去の秘密化ではない。** すでに閲覧・コピー・キャッシュ・検索エンジンに保存された内容は回収できない。UI と仕様に明記する（REQ-015）
 - `generated_images.prompt` は互換のため列を残すが、Phase 0C後は常に空であることをDBが強制する。将来DROPする場合は別ADR・別PRとする
 - 移行完了条件は経過日数ではなく、dual-write稼働後の行単位digest・件数・ownership検証が差分0であること
-- provider呼び出し開始後の取消は外部送信そのものを巻き戻せない。成果物破棄・返金を要求するかはREQ-025の運用仕様に従う
+- provider呼び出し開始後の取消は外部送信そのものを巻き戻せない。成果物は永続化・提供せず、減算済みなら既存 `refund_percoins` 経路で返金する（REQ-025 / REQ-026）
+- 非公開モードは今回 `/free` のみを対象とし、coordinateへの拡張は別ADR・別forward migrationとする（ADR-011）
 - この環境では Docker が使えずローカル Supabase を起動できない。SQL の実挙動は PR の Supabase Preview で検証する
 - マイグレーションは main マージで自動適用されない。本番反映は `supabase db push` を手動実行する
 - Worker（Edge Function）の変更は `supabase functions deploy image-gen-worker` が別途必要
