@@ -236,8 +236,11 @@ erDiagram
 
 ### 検索
 
-- **REQ-015**: While a post's prompt is private, the system shall exclude it from prompt-based full-text search for anyone other than the author.
-  投稿のプロンプトが非公開である間、システムは投稿者本人以外に対して、その投稿をプロンプト全文検索の対象から除外しなければならない。
+- **REQ-015**: The system shall not provide prompt-based full-text search, and `GET /api/posts` shall ignore any `q` parameter.
+  システムはプロンプト全文検索を提供してはならず、`GET /api/posts` は `q` パラメータを無視しなければならない。
+
+- **REQ-016**: If a request reaches a removed search route, then the system shall redirect to the home screen rather than returning a broken page.
+  削除された検索経路へのリクエストが到達した場合、システムは壊れたページを返さずホーム画面へリダイレクトしなければならない。
 
 ### 運営
 
@@ -296,12 +299,23 @@ erDiagram
 - **Reason**: 「非公開」を謳う以上、プロンプトが一度でもクライアントへ渡ってはならない。CSS で隠す・APIレスポンスから消すだけでは不十分。
 - **Consequence**: 生成 API に「投稿 ID からプロンプトを解決する」分岐が増える。既存の `prompt` 受け取り経路と排他にし、両方指定されたらエラーにする。
 
-### ADR-007: 非公開プロンプトは検索の対象から外す
+### ADR-007: プロンプト全文検索そのものを廃止する
 
-- **Context**: `features/posts/lib/server-api.ts:614,651` でフィード検索が `ilike("prompt", ...)` を実行している。プロンプト全文が検索キーになっている。
-- **Decision**: 非公開プロンプトの投稿は、投稿者本人以外の検索結果から除外する。クエリに `prompt_visibility = 'public'`（または本人）の条件を足す。
-- **Reason**: **レスポンスからプロンプトを消しても、検索でヒットする事実そのものが内容を漏らす。** 「ゴシック」で検索してヒットすれば、その語がプロンプトに含まれると分かる。単語を変えて試せば、総当たりで中身を復元できてしまう。redaction だけでは秘匿にならない典型例。
-- **Consequence**: 非公開にすると自分の投稿が他人の検索に出なくなる。露出は減るが、これは非公開を選んだ結果として妥当。投稿者本人の検索では従来どおりヒットさせる。
+- **Context**: `features/posts/lib/server-api.ts:614,651` でフィード検索が `ilike("prompt", ...)` を実行しており、**プロンプト全文が検索キー**になっている。当初は「非公開投稿を検索対象から除外する」案だったが、ヒアリングの結果**この検索機能は現状使われていない**ことが分かった。
+- **Decision**: 非公開判定を足すのではなく、**プロンプト全文検索そのものを廃止する**。
+  1. `getPosts` から `searchQuery` 引数と `ilike("prompt", ...)` を削除
+  2. `GET /api/posts` の `q` パラメータを廃止
+  3. `/search` ページと `app/[locale]/search` を撤去
+  4. `app/sitemap.ts` から `/search` を除外し、`app/[locale]/page.tsx` の SearchAction 構造化データ（サイトリンク検索ボックス）も削除
+- **Reason**:
+  1. **レスポンスからプロンプトを消しても、検索でヒットする事実そのものが内容を漏らす。** 「ゴシック」で検索してヒットすれば、その語がプロンプトに含まれると分かる。単語を変えて試せば総当たりで中身を復元できる。redaction だけでは秘匿にならない典型例
+  2. **UI を隠すだけでは不十分。** `GET /api/posts?q=` は公開 API で、ページを消しても直接叩ける。プロンプトを CSS で隠すのと同じ構図になる
+  3. 使われていない機能に非公開判定を足すのは、**将来にわたって「漏れうる経路」を1つ抱え続ける**ことを意味する。経路自体を消せば、以後この観点を考えなくてよくなる
+  4. 調査の結果**アプリ内に検索ボックスへの導線が無い**ことを確認した（`/search` を参照しているのは sitemap と構造化データのみ。`PostList.tsx:55` はページ判定に使っているだけ）。UI 上の損失がほぼない
+- **Consequence**:
+  - 検索を将来復活させる場合は、`caption` など**公開が前提のフィールド**を対象に作り直す。プロンプトは検索対象にしない
+  - SEO 上、サイトリンク検索ボックスが Google に表示されなくなる。ただし機能が使われていない以上、実害より「動かない検索ボックスが出ない」利点が上回る
+  - `/search` への外部リンクや既存の被リンクは 404 になる。必要なら `/` へリダイレクトする（Phase 2 の TODO に含める）
 
 ---
 
@@ -357,10 +371,15 @@ flowchart LR
   - `getPost` で `source_post_id` があれば原作を取得し `source_reference` を組み立てる
   - **原作が利用可能かの判定**をここに集約する（`is_posted` かつ `moderation_status = 'visible'` かつ行が存在する）。利用不可なら `is_available: false` にし、プロンプトは絶対に載せない（REQ-007 / ADR-005）
   - 利用数は `get_prompt_usage_count` RPC で取得する
-- [ ] `features/posts/lib/server-api.ts` の**検索クエリを修正**（ADR-007 / REQ-015）
-  - `:614` と `:651` の `ilike("prompt", ...)` に、非公開投稿を除外する条件を足す
-  - 投稿者本人の検索では従来どおりヒットさせる
-  - **レスポンスから prompt を消すだけでは不十分**。ヒットする事実自体が内容を漏らすため
+- [ ] **プロンプト全文検索を廃止する**（ADR-007 / REQ-015, REQ-016）。独立コミットにする
+  - `features/posts/lib/server-api.ts` の `getPosts` から `searchQuery` 引数と `:614` `:651` の `ilike("prompt", ...)` を削除
+  - `app/api/posts/route.ts:35-38` の `q` パラメータの受け取りを削除
+  - `app/search/page.tsx` と `app/[locale]/search/page.tsx` を削除し、`/search` は `/` へリダイレクト
+  - `features/posts/components/CachedSearchPostList.tsx` を削除
+  - `features/posts/components/PostList.tsx:55` の `isSearchPage` 判定を整理
+  - `app/sitemap.ts` から `/search` を除外（`:19` `:41` `:61`）
+  - `app/[locale]/page.tsx:113-118` の SearchAction 構造化データを削除
+  - **UI を消すだけでは不十分**。`GET /api/posts?q=` が生きていると総当たりで復元できるため、サーバー側のクエリまで消す
 - [ ] `features/posts/lib/schemas` に相当する zod 定義へ `promptVisibility` を追加（投稿・編集 API 用）
 - [ ] `app/api/posts/post/route.ts` と `app/api/posts/update/route.ts` を修正
   - `promptVisibility` を受け取り保存する
@@ -436,6 +455,13 @@ flowchart LR
 | `app/api/posts/post/route.ts` | 修正 | `promptVisibility` の受け取り |
 | `app/api/posts/update/route.ts` | 修正 | 同上（後から変更） |
 | `app/api/generate-async/handler.ts` | 修正 | `sourcePostId` 経路とサーバー側プロンプト解決 |
+| `app/api/posts/route.ts` | 修正 | `q` パラメータの廃止 |
+| `app/search/page.tsx` | 削除 | プロンプト検索の廃止 |
+| `app/[locale]/search/page.tsx` | 削除 | 同上 |
+| `features/posts/components/CachedSearchPostList.tsx` | 削除 | 同上 |
+| `app/sitemap.ts` | 修正 | `/search` を除外 |
+| `app/[locale]/page.tsx` | 修正 | SearchAction 構造化データを削除 |
+| `features/posts/components/PostList.tsx` | 修正 | `isSearchPage` 判定の整理 |
 | `features/posts/components/PostModal.tsx` | 修正 | 公開トグルと注意文 |
 | `features/posts/components/EditPostModal.tsx` | 修正 | 公開トグル |
 | `features/posts/components/SourcePromptReferenceCard.tsx` | 新規 | 参照カード |
@@ -468,8 +494,8 @@ flowchart LR
 | 秘匿 | 非公開投稿の API レスポンスに `prompt` が含まれない（フィード・詳細・プロフィール・マイページ） |
 | 秘匿 | 派生投稿は投稿者が公開を選んでも非公開として扱われる |
 | 秘匿 | 投稿者本人と admin は全文を取得できる |
-| 秘匿 | **非公開プロンプトの語で検索してもヒットしない**（本人以外）。総当たりで内容を復元できないこと |
-| 秘匿 | 投稿者本人の検索では従来どおりヒットする |
+| 秘匿 | `GET /api/posts?q=<プロンプトの一部>` が検索として機能しない（全件が返るか、q が無視される） |
+| 秘匿 | `/search` が 404 にならずホームへリダイレクトされる |
 | 正常系 | フォロー済みの閲覧者がボトムシートから生成でき、`source_post_id` が根に解決される |
 | 正常系 | A→B→C と派生しても C の `source_post_id` は A を指す |
 | 正常系 | 利用数がユニークユーザー数で、原作者自身を除外している |
@@ -499,6 +525,7 @@ flowchart LR
 | 利用数 RPC | `DROP FUNCTION` で安全に戻せる。表示側を先に外すこと |
 | 生成 API の `sourcePostId` 分岐 | 既存の `prompt` 経路とは排他の追加実装。分岐を revert すれば従来動作に戻る |
 | UI | Phase 3 / Phase 4 を独立コミットにし、フェーズ単位で revert 可能にする |
+| プロンプト検索の廃止（ADR-007） | 独立コミットにする。SEO 影響が出た場合はこれだけ revert できる。ただし revert すると非公開プロンプトが検索から漏れるため、戻す場合は非公開除外の条件を必ず併せて入れる |
 | 機能フラグ | 設けない。既定が `public` なので、投稿者が選ばない限り従来と同じ挙動になる |
 
 **適用順序**: Phase 1 のマイグレーションを適用してもアプリ挙動は変わらない（既存行はすべて `public`）。先に DB だけ本番適用して様子を見られる。
