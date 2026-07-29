@@ -1,11 +1,7 @@
-import { connection } from "next/server";
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
-import { CachedSearchPostList } from "@/features/posts/components/CachedSearchPostList";
-import { PostListSkeleton } from "@/features/posts/components/PostListSkeleton";
 import { getSiteUrl } from "@/lib/env";
-import { getUser } from "@/lib/auth";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { createLocaleAlternates } from "@/lib/metadata";
 import { getSearchCopy } from "@/i18n/page-copy";
@@ -58,36 +54,17 @@ export async function generateMetadata({
   };
 }
 
-export default async function SearchPage({ searchParams }: SearchPageProps) {
-  await connection();
-
-  const localeValue = await getLocale();
-  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
-  const copy = getSearchCopy(locale);
-  const params = await searchParams;
-  const searchQuery = params.q?.trim() || "";
-  const sortType = params.sort || "popular";
-  const user = await getUser();
-  const userId = user?.id ?? null;
-
-  return (
-    <div className="mx-auto max-w-6xl px-4 pb-8 pt-6 md:pt-8">
-      {/* 検索結果 */}
-      {!searchQuery || !searchQuery.trim() ? (
-        <div className="py-12 text-center">
-          <p className="text-muted-foreground">
-            {copy.emptyQuery}
-          </p>
-        </div>
-      ) : (
-        <Suspense fallback={<PostListSkeleton />}>
-          <CachedSearchPostList
-            searchQuery={searchQuery.trim()}
-            sortType={sortType}
-            userId={userId}
-          />
-        </Suspense>
-      )}
-    </div>
-  );
+export default async function SearchPage() {
+  // 検索は一時的に無効化している。UI の導線は StickyHeader で閉じているが、
+  // ブックマークやクローラーが直接この URL を叩くとループが再現するため、
+  // ページ側でもホームへ逃がす。
+  //
+  // 経緯: PostList の初回ロード useEffect が loadedSearchQuery / loadedSortType を
+  // 依存に持ちながら loadPosts 内でそれらを更新するため、検索クエリがあると
+  // 止まらずリクエストを投げ続ける。Vercel が 503 を返し、画面はスケルトンのまま
+  // 固まる。
+  //
+  // 復帰させるときは、この関数を git 履歴から戻し、StickyHeader の
+  // SEARCH_ENABLED も true にすること。
+  redirect("/");
 }

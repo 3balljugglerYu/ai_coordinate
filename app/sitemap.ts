@@ -16,7 +16,7 @@ const LOCALIZED_PUBLIC_PATHS = [
   "/coordinate",
   "/free",
   "/styles",
-  "/search",
+  // 検索は一時的に無効化中（ホームへリダイレクト）のため sitemap から外す
   "/about",
   "/pricing",
   "/terms",
