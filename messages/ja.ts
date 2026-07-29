@@ -53,7 +53,7 @@ export const jaMessages = {
     creators: "クリエイター募集",
   },
   searchBar: {
-    placeholder: "プロンプト検索",
+    placeholder: "作品説明・作者名で検索",
     clear: "検索をクリア",
     submit: "検索",
   },

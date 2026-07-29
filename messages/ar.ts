@@ -56,7 +56,7 @@ export const arMessages = {
     creators: "للمبدعين",
   },
   searchBar: {
-    placeholder: "ابحث في النصوص الموجِّهة",
+    placeholder: "ابحث بالوصف أو اسم المُنشئ",
     clear: "مسح البحث",
     submit: "بحث",
   },

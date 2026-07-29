@@ -56,7 +56,7 @@ export const deMessages = {
     creators: "Für Creator",
   },
   searchBar: {
-    placeholder: "Prompts suchen",
+    placeholder: "Nach Beschreibung oder Ersteller suchen",
     clear: "Suche zurücksetzen",
     submit: "Suchen",
   },

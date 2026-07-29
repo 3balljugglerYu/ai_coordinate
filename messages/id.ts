@@ -56,7 +56,7 @@ export const idMessages = {
     creators: "Untuk kreator",
   },
   searchBar: {
-    placeholder: "Cari prompt",
+    placeholder: "Cari berdasarkan deskripsi atau kreator",
     clear: "Hapus pencarian",
     submit: "Cari",
   },

@@ -18,6 +18,11 @@ import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibili
 import { getImageDimensions, getPostImageUrl } from "./utils";
 import { isAllowedInputImageUrl } from "./before-image-storage";
 import {
+  MAX_MATCHED_AUTHORS,
+  buildAuthorNicknamePattern,
+  buildPostSearchOrFilter,
+} from "./search-filters";
+import {
   ensureImageDimensions,
   type ImageRowSubset,
 } from "./ensure-image-dimensions";
@@ -354,6 +359,33 @@ async function getProfileMap(
   return profileMap;
 }
 
+/**
+ * 検索語に一致する作者の user_id を解決する。
+ *
+ * 作者名は profiles 側にあるため、generated_images への or フィルタへ
+ * 混ぜる前に候補を確定させる。件数が多いと URL が伸びるため上限を置く。
+ * 失敗しても検索全体は落とさず、caption 検索だけで続行する。
+ */
+async function findAuthorIdsByNickname(
+  searchQuery: string,
+  supabase: SupabaseClient
+): Promise<string[]> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .ilike("nickname", buildAuthorNicknamePattern(searchQuery))
+    .limit(MAX_MATCHED_AUTHORS);
+
+  if (error) {
+    console.error("Author nickname search failed:", error);
+    return [];
+  }
+
+  return (data ?? [])
+    .map((row) => (row as { user_id: string }).user_id)
+    .filter(Boolean);
+}
+
 async function getVisibilityExclusions(
   currentUserId?: string | null,
   supabaseOverride?: SupabaseClient
@@ -564,6 +596,16 @@ export const getPosts = cache(async (
     supabaseForHelpers
   );
 
+  // 検索対象は caption と作者の公開表示名。プロンプトは秘匿テーブルへ移すため
+  // 検索キーに使えない（ADR-007 / REQ-016）。
+  // 作者名は別テーブルなので、先に該当 user_id を解決してから or に混ぜる。
+  const searchOrFilter = normalizedSearchQuery
+    ? buildPostSearchOrFilter(
+        normalizedSearchQuery,
+        await findAuthorIdsByNickname(normalizedSearchQuery, supabase)
+      )
+    : undefined;
+
   // フォロータブの場合の処理
   if (sort === "following") {
     // 未認証ユーザーの場合は空配列を返す
@@ -609,9 +651,9 @@ export const getPosts = cache(async (
       followingQuery = followingQuery.not("id", "in", toSqlInList(reportedPostIds));
     }
 
-    // 検索クエリが指定されている場合、プロンプト文を検索
-    if (normalizedSearchQuery) {
-      followingQuery = followingQuery.ilike("prompt", `%${normalizedSearchQuery}%`);
+    // 検索クエリが指定されている場合、作品説明と作者名を検索
+    if (searchOrFilter) {
+      followingQuery = followingQuery.or(searchOrFilter);
     }
 
     const { data: postsData, error: postsError } = await followingQuery
@@ -646,9 +688,9 @@ export const getPosts = cache(async (
     postsQuery = postsQuery.not("id", "in", toSqlInList(reportedPostIds));
   }
 
-  // 検索クエリが指定されている場合、プロンプト文を検索
-  if (normalizedSearchQuery) {
-    postsQuery = postsQuery.ilike("prompt", `%${normalizedSearchQuery}%`);
+  // 検索クエリが指定されている場合、作品説明と作者名を検索
+  if (searchOrFilter) {
+    postsQuery = postsQuery.or(searchOrFilter);
   }
 
   // 期間別ソートの場合は、その期間に投稿されたもののみをフィルタリング

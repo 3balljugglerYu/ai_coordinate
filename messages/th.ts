@@ -56,7 +56,7 @@ export const thMessages = {
     creators: "รับสมัครครีเอเตอร์",
   },
   searchBar: {
-    placeholder: "ค้นหาพรอมป์",
+    placeholder: "ค้นหาด้วยคำอธิบายหรือผู้สร้าง",
     clear: "ล้างการค้นหา",
     submit: "ค้นหา",
   },

@@ -56,7 +56,7 @@ export const frMessages = {
     creators: "Pour les créateurs",
   },
   searchBar: {
-    placeholder: "Rechercher des prompts",
+    placeholder: "Rechercher par description ou créateur",
     clear: "Effacer la recherche",
     submit: "Rechercher",
   },

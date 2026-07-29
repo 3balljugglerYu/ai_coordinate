@@ -56,7 +56,7 @@ export const itMessages = {
     creators: "Per i creator",
   },
   searchBar: {
-    placeholder: "Cerca prompt",
+    placeholder: "Cerca per descrizione o creatore",
     clear: "Cancella ricerca",
     submit: "Cerca",
   },

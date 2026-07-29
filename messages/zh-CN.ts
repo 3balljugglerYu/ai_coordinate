@@ -56,7 +56,7 @@ export const zhCnMessages = {
     creators: "创作者招募",
   },
   searchBar: {
-    placeholder: "搜索提示词",
+    placeholder: "按作品说明或作者搜索",
     clear: "清除搜索",
     submit: "搜索",
   },

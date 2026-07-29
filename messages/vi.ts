@@ -56,7 +56,7 @@ export const viMessages = {
     creators: "Dành cho nhà sáng tạo",
   },
   searchBar: {
-    placeholder: "Tìm prompt",
+    placeholder: "Tìm theo mô tả hoặc tác giả",
     clear: "Xóa tìm kiếm",
     submit: "Tìm kiếm",
   },

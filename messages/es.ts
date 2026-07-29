@@ -56,7 +56,7 @@ export const esMessages = {
     creators: "Para creadores",
   },
   searchBar: {
-    placeholder: "Buscar prompts",
+    placeholder: "Buscar por descripción o creador",
     clear: "Borrar búsqueda",
     submit: "Buscar",
   },
