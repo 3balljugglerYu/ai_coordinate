@@ -33,6 +33,14 @@ import {
   stripLocalePrefix,
 } from "@/i18n/config";
 
+/**
+ * 検索機能の有効フラグ。
+ *
+ * PostList の初回ロードがループする既存不具合のため一時的に閉じている。
+ * 修正後に true へ戻す。あわせて app/search/page.tsx のリダイレクトも外すこと。
+ */
+const SEARCH_ENABLED = false;
+
 interface StickyHeaderProps {
   children?: React.ReactNode;
   showBackButton?: boolean;
@@ -287,6 +295,19 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // 検索バーの配置を条件分岐で切り替え
   const renderSearchBar = () => {
+    // 検索は一時的に無効化している。SEARCH_ENABLED を true に戻せば復帰する。
+    //
+    // 経緯: PostList の初回ロード useEffect が loadedSearchQuery / loadedSortType を
+    // 依存に持ちながら loadPosts 内でそれらを更新するため、検索クエリがあると
+    // ループする。ヒット 0 件だと即終了するので長く表に出ていなかったが、
+    // 検索対象を prompt から caption + 作者名へ変えたことで顕在化した。
+    // 旧 prompt 検索は全投稿に運営の錨が入っていて多くの語が大量にヒットしていた。
+    //
+    // 利用実績が乏しく、先に直す優先度が低いと判断して導線ごと閉じる。
+    if (!SEARCH_ENABLED) {
+      return null;
+    }
+
     if (isSearchPage) {
       // 検索ページ: PC版のみ1箇所に表示
       return (
@@ -318,7 +339,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   return (
     <header ref={headerRef} className={headerClassName}>
       {/* モバイル版の検索ページ: 簡素化されたヘッダー（検索バーのみ） */}
-      {isSearchPage && (
+      {SEARCH_ENABLED && isSearchPage && (
         <div className="w-full px-4 py-3 flex items-center justify-center md:hidden">
           <div className="w-full max-w-2xl">
             <SearchBar />

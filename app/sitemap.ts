@@ -16,7 +16,7 @@ const LOCALIZED_PUBLIC_PATHS = [
   "/coordinate",
   "/free",
   "/styles",
-  "/search",
+  // 検索は一時的に無効化中（ホームへリダイレクト）のため sitemap から外す
   "/about",
   "/pricing",
   "/terms",
@@ -38,7 +38,7 @@ type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];
 function changeFrequencyFor(
   path: LocalizedPath
 ): NonNullable<MetadataRoute.Sitemap[number]["changeFrequency"]> {
-  if (path === "/" || path === "/search") return "daily";
+  if (path === "/") return "daily";
   if (
     path === "/style" ||
     path === "/coordinate" ||
@@ -58,7 +58,7 @@ function priorityFor(path: LocalizedPath): number {
   if (path === "/") return 1;
   if (path === "/style" || path === "/coordinate" || path === "/free")
     return 0.9;
-  if (path === "/styles" || path === "/search" || path === "/catalog") {
+  if (path === "/styles" || path === "/catalog") {
     return 0.8;
   }
   if (path === "/about" || path === "/credits/purchase") return 0.7;
