@@ -2,6 +2,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { env } from "@/lib/env";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 
 /**
  * イベント画像取得関数（サーバー側）
@@ -34,5 +35,7 @@ export const getEventImagesServer = cache(async (
     throw new Error(`イベント画像の取得に失敗しました: ${error.message}`);
   }
 
-  return data || [];
+  // プロンプトの正本は author secret。generated_images.prompt は
+  // 移行期間の互換用にすぎず、Phase 0C で空になる（ADR-001）。
+  return await resolveVisiblePrompts(data || []);
 });

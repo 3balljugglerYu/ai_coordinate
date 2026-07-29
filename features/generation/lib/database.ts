@@ -1,4 +1,5 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
+import { resolveOwnVisiblePrompts } from "./prompt-secrets-client";
 import { COORDINATE_STOCKS_LINK_MAX_JOBS } from "./coordinate-stocks-constants";
 import type { BackgroundMode, GeminiModel, GenerationType } from "../types";
 
@@ -137,7 +138,9 @@ export async function getGeneratedImages(
     throw new Error(`画像の取得に失敗しました: ${error.message}`);
   }
 
-  return data || [];
+  // プロンプトの正本は author secret。generated_images.prompt は移行期間の
+  // 互換用にすぎず、Phase 0C で空になる（ADR-001）。
+  return await resolveOwnVisiblePrompts(data || []);
 }
 
 /**
@@ -451,7 +454,9 @@ export async function getGeneratedImagesBySourceImage(
     throw new Error(`生成画像の取得に失敗しました: ${error.message}`);
   }
 
-  return data || [];
+  // プロンプトの正本は author secret。generated_images.prompt は移行期間の
+  // 互換用にすぎず、Phase 0C で空になる（ADR-001）。
+  return await resolveOwnVisiblePrompts(data || []);
 }
 
 /**

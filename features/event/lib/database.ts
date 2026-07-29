@@ -1,6 +1,7 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 import { env } from "@/lib/env";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import { resolveOwnVisiblePrompts } from "@/features/generation/lib/prompt-secrets-client";
 
 /**
  * イベント画像取得関数（クライアント側）
@@ -32,5 +33,7 @@ export async function getEventImages(
     throw new Error(`イベント画像の取得に失敗しました: ${error.message}`);
   }
 
-  return data || [];
+  // プロンプトの正本は author secret。generated_images.prompt は
+  // 移行期間の互換用にすぎず、Phase 0C で空になる（ADR-001）。
+  return await resolveOwnVisiblePrompts(data || []);
 }

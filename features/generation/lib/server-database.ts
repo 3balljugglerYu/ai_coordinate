@@ -3,6 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { GenerationType } from "../types";
 import { createClient } from "@/lib/supabase/server";
 import type { SourceImageStock, GeneratedImageRecord } from "./database";
+import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 
 /**
  * サーバーサイドでストック画像一覧を取得
@@ -102,7 +103,9 @@ export const getGeneratedImagesServer = cache(async (
     throw new Error(`画像の取得に失敗しました: ${error.message}`);
   }
 
-  return data || [];
+  // プロンプトの正本は author secret。generated_images.prompt は
+  // 移行期間の互換用にすぎず、Phase 0C で空になる（ADR-001）。
+  return await resolveVisiblePrompts(data || []);
 });
 
 /**
