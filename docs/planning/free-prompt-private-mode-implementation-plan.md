@@ -624,13 +624,13 @@ flowchart LR
 **目的**: 既存コードを壊さず秘密の保存先と原子的書き込み口を追加する
 **適用順序**: PR1マージ → `supabase db push` → スキーマ確認。未使用テーブルが先行しても既存挙動は変わらない
 
-- [ ] `generated_image_prompt_secrets`
+- [x] `generated_image_prompt_secrets`
   - `image_id UUID PK REFERENCES generated_images(id) ON DELETE CASCADE`
   - `prompt TEXT NOT NULL`
   - `prompt_owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
   - `source_kind TEXT NOT NULL CHECK (source_kind IN ('author_input'))`
   - RLSは本人SELECTのみ。`anon`拒否。DMLはservice role /専用RPCのみ
-- [ ] `generation_prompt_snapshots`
+- [x] `generation_prompt_snapshots`
   - `image_job_id UUID PK REFERENCES image_jobs(id) ON DELETE CASCADE`
   - `snapshot_kind TEXT NOT NULL CHECK (snapshot_kind IN ('materialized','derived_reference'))`
   - `provider_prompt TEXT`, `author_input TEXT`, `author_input_owner_id UUID`, `source_kind`, `source_revision`, `created_at`
@@ -639,53 +639,56 @@ flowchart LR
   - `derived_reference` は `provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がすべてNULL、`source_kind = 'free'` であることをローカルCHECKで強制する
   - `image_jobs.origin_post_id` とのcross-table triggerは、origin列を追加するPhase 1で有効化する
   - RLS有効・公開ポリシーなし・`PUBLIC, anon, authenticated` から全権限REVOKE
-- [ ] 通常生成の完了を原子的に行うRPCを追加し、画像行・author secret・job成功更新を同一トランザクションに閉じる
-- [ ] `complete_image_job_with_generated_images` の新しい定義を追加し、将来のdual-writeに対応できる形にする
-- [ ] One-Tap用の「ジョブ + service-only materialized execution record」作成RPCを追加する。`source_revision` は実行時に変更されないプリセット版または内容ハッシュ
-- [ ] SECURITY DEFINER関数は `SET search_path = public, pg_temp`、所有者固定、`PUBLIC / anon / authenticated` のEXECUTEをREVOKEし、必要なservice role経路だけに限定する
-- [ ] Supabaseの契約・バックアップ機能を確認
-  - PITR契約の有無、通常バックアップの保持期間、復元手順を記録
-  - PITR未契約でもPhase 0Cへ進めるよう、通常バックアップまたは暗号化service-only退避の具体策を決める
-- [ ] マイグレーション後に `anon` / authenticated他人 / owner / service role の権限マトリクスをPreviewで検証
+- [x] 通常生成の完了を原子的に行うRPCを追加し、画像行・author secret・job成功更新を同一トランザクションに閉じる
+- [x] `complete_image_job_with_generated_images` の新しい定義を追加し、将来のdual-writeに対応できる形にする
+- [x] One-Tap用の「ジョブ + service-only materialized execution record」作成RPCを追加する。`source_revision` は実行時に変更されないプリセット版または内容ハッシュ
+- [x] SECURITY DEFINER関数は `SET search_path = public, pg_temp`、所有者固定、`PUBLIC / anon / authenticated` のEXECUTEをREVOKEし、必要なservice role経路だけに限定する
+- [x] Supabaseの契約・バックアップ機能を確認（2026-07-29 実測）
+  - Proプランの日次物理バックアップが7日分あり、すべて `COMPLETED`（`supabase backups list` で確認）
+  - PITRアドオンは未契約。**Phase 0C の前提条件から外す**
+  - 本命の保険は author secret 側に本文が残っていること。DBを巻き戻すのではなく
+    secret から `generated_images.prompt` へ書き戻せば復旧できる。
+    実際に `20260729150000` / `20260729160000` で2回実証済み
+- [x] マイグレーション後に `anon` / authenticated他人 / owner / service role の権限マトリクスをPreviewで検証
 
 ### Phase 0B: Dual-write・読み取り移行・Backfill（PR2）
 
 **目的**: 新規行の取りこぼしを止めた状態で、既存値を安全に移行する
 **デプロイ順序**: backward-compatible Worker → Next.js → backfill・検証
 
-- [ ] Worker を先にデプロイ
+- [x] Worker を先にデプロイ
   - 全生成種別でmaterialized execution recordがあれば使用し、移行前の既存jobだけ `prompt_text` fallbackを許す
   - 新規jobでexecution recordが欠落・不整合なら `GENERATION_PROMPT_EXECUTION_MISSING` の固定内部コードでprovider呼び出し前に終端失敗とし、`prompt_text` へfallbackしない
   - Gemini/OpenAI双方の画像永続化を新RPCへ統一する
   - `generated_images.prompt` への直接コピーをやめ、新規jobはmaterialized execution recordの `author_input` がある場合だけ同一トランザクションでauthor secretを作る
-- [ ] Next.jsをデプロイ
+- [x] Next.jsをデプロイ
   - `ImageJobCreateInput` とは別に `MaterializedPromptExecutionInput | DerivedPromptReferenceInput` のdiscriminated unionを定義し、repositoryを `createImageJob(jobData, promptExecution)` の2引数に変更する。第2引数はoptionalにしない
   - 2つの既存呼び出し元を同じ型へ移し、全生成種別で `prompt_text = ''` としたjob・provider prompt・生のauthor inputを専用RPCで原子的に保存する
   - jobだけ、またはexecution recordだけが残る部分成功を許さず、3つ目の生成経路がprompt execution入力なしでコンパイルできないことを型で保証する（REQ-003c）
   - `saveGeneratedImage(s)` の汎用ブラウザINSERTを削除またはpromptを書けないAPIへ縮小
   - Wardrobe claimの `prompt` を公開列へ保存しない。必要ならtrusted RPCで分類済みsecretへ保存
   - `features/generation/lib/prompt-builder.ts` の最終プロンプトログを削除
-- [ ] **検索対象をcontract前に差し替える**（REQ-016 / REQ-016a）
+- [x] **検索対象をcontract前に差し替える**（REQ-016 / REQ-016a）
   - `server-api.ts:614,651` のprompt検索をcaption + 公開プロフィール表示名へ変更
   - `caption` と `profiles.nickname` の `%term%` 検索について、`pg_trgm` indexを追加するかPreviewの `EXPLAIN` で不要と判断した根拠を残す
   - 既存のmoderation・block・report・sort・pagination条件を維持し、wildcardをエスケープ
   - `SearchBar` / `StickyHeader` を「作品説明・作者名」に変更
   - caption充足率57.7%と検索対象変更をリリースノートに記載
   - 本番同等データで検索が0件固定にならないことを確認
-- [ ] 読み取りを `features/generation/lib/prompt-secrets.ts` へ移行
+- [x] 読み取りを `features/generation/lib/prompt-secrets.ts` へ移行
   - `features/posts/lib/server-api.ts`、`features/my-page/lib/server-api.ts` / `api.ts`
   - ブラウザの `select("*")` を明示列へ変更し `prompt` を除外
   - 移行中のfallbackは「対応するlegacy行でsecretが未作成」の場合だけ。DB障害・権限エラー時はfail closed
-- [ ] providerエラーを固定内部コードへ正規化し、response body・prompt・stackをDB/ログへ保存しない
-- [ ] 公開Storageへ保存する生成画像の非画素メタデータを除去または形式別に検証
-- [ ] idempotent backfill
+- [x] providerエラーを固定内部コードへ正規化し、response body・prompt・stackをDB/ログへ保存しない
+- [x] 公開Storageへ保存する生成画像の非画素メタデータを除去または形式別に検証
+- [x] idempotent backfill
   - `INSERT ... ON CONFLICT ...` とし、`generation_type` /由来ごとに分類
   - `coordinate`（非空1,302件）と `free`（21件）は生入力そのものなので、加工せず `author_input` として author secret へ移す。`prompt_owner_id` は `generated_images.user_id`
   - `one_tap_style`（非空2,069件・運営の組み立て済み全文）と `inspire`（89件・`"inspire"` / `"creator-looks"` のマーカー値）は author secret へ入れない
   - prefix剥離・テンプレート文字列一致による加工は行わない（そもそも剥離すべきprefixが入っていない）
   - 移行対象外は `generation_type` 別件数とhashを検証し、平文をログへ出さない
   - backfill中もdual-writeを継続
-- [ ] 平文を出力しない検証SQLを実行
+- [x] 平文を出力しない検証SQLを実行
   - legacy非空行と移行先の件数を種別ごとに比較
   - 行ごとの `digest(prompt)` を比較
   - owner/source_kind不整合、orphan、移行漏れが0件
@@ -694,13 +697,16 @@ flowchart LR
 ### Phase 0C: Contract・既存漏洩の閉鎖（PR3）
 
 **目的**: 公開列・ユーザー所有ジョブ・fallbackを完全に閉じ、再発をDBで拒否する
-**開始条件**: Phase 0Bが本番稼働し、検索がprompt列へ依存せず、検証SQLが連続して差分0件。**PR2デプロイ時刻より前に作られたqueued / processing jobが残っていない**。PR2以後のjobは作成RPCにより全件execution recordを持つ。ユーザー向け再試行が新規job作成であることを確認。Phase 0Aで確定したバックアップ手段の復元点を確認
+**開始条件**: Phase 0Bが本番稼働し、検索がprompt列へ依存せず、検証SQLが連続して差分0件。**PR2デプロイ時刻より前に作られたqueued / processing jobが残っていない**。PR2以後のjobは作成RPCにより全件execution recordを持つ。ユーザー向け再試行が新規job作成であることを確認。日次物理バックアップが直近分まで `COMPLETED` であることを確認（PITRは不要）。
+あわせて author secret 側の完全性を再検証する（件数・行ごとのmd5・所有者・運営資産の非混入）
 
 - [ ] secret→legacyの読み取りfallbackを削除してデプロイし、読み取りエラー率を監視
 - [ ] `generated_images.prompt` を空文字へ更新
 - [ ] `ALTER COLUMN prompt SET DEFAULT ''` を適用
 - [ ] `CHECK (prompt = '')` を `NOT VALID` →検証→VALIDATEの順で追加
-- [ ] prompt検索が残っていないことを確認して `idx_generated_images_prompt_trgm` を削除
+- [ ] `idx_generated_images_prompt_trgm` を削除
+  - 検索は無効化済みで、有効化しても caption / nickname の trigram index を使う
+    （`20260729170000` で追加済み）。prompt の index は空化後に不要になる
 - [ ] 最新の `complete_image_job_with_generated_images` を含む全永続化経路が空文字しか書かないことを確認
 - [ ] 全生成種別の `image_jobs.prompt_text` を段階的に空化
   - succeeded / failed / cancelled等の終端jobを対象にする
@@ -709,7 +715,9 @@ flowchart LR
   - legacy failedは同一jobで再実行せず、ユーザー再試行は新規jobを作る
   - Workerのclaim条件を `queued` のみに変更し、終端failedを再取得しない
   - 固定件数ではなく実行時クエリ結果をgeneration_type・status別に記録
-- [ ] contract前後に同じ既知のcaption・nickname検索を本番で実行し、prompt空化後も検索が0件固定にならないことをランブックへ記録する（自動テスト8bではなく運用確認）
+- [ ] ~~contract前後に同じ既知のcaption・nickname検索を本番で実行する~~
+  - **検索は PR #466 で一時的に無効化した**ため、この確認は不要になった。
+    復帰させるときに `PostList` のループ修正とあわせて行う（後述の未解決事項）
 - [ ] anonで `generated_images.prompt` が全件空、One-Tap生成者で自分のjob/execution recordから全文を取得できないことを本番同等キーで検証
 - [ ] 秘匿境界修正を新機能から独立してリリース完了とする
 
@@ -969,6 +977,45 @@ flowchart LR
 | `/test-generate` `/test-reviewing` `/spec-verify` | テスト生成・レビュー | 各PR |
 | `/codex-webpack-build` | 本番ビルド検証 | 各フェーズ末 |
 | `/git-create-pr` | PR 作成（タイトル・本文は日本語必須） | 実装完了時 |
+
+---
+
+## 実装で判明した未解決事項（2026-07-29）
+
+Phase 0A / 0B を本番へ適用する過程で見つかった、この計画の外にある問題。
+Phase 0C より先に片付ける必要はないが、忘れないよう記録する。
+
+### 検索を一時的に無効化している（PR #466）
+
+`PostList` の初回ロード `useEffect` が `loadedSearchQuery` / `loadedSortType` を
+依存に持ちながら `loadPosts` 内でそれらを更新するため、検索クエリがあると
+ループする。本番で同一リクエストが953回投げられ、Vercel が 503 を返していた。
+
+この不具合は今回の変更とは無関係（最終変更は #407）だが、検索対象を
+prompt から caption + 作者名へ変えたことで顕在化した。旧 prompt 検索は
+全投稿に運営の錨が入っていて多くの語が大量にヒットしていたのに対し、
+ヒット 0 件ならループは即終了するため長く表に出ていなかった。
+
+利用実績が乏しいため、導線ごと閉じて先送りした。復帰させるときは
+`PostList` のループ修正が前提になる。`StickyHeader` の `SEARCH_ENABLED` と
+`app/search/page.tsx` の `redirect` を戻せば復帰する。
+
+### 同じ性質のミスを3度繰り返した
+
+いずれも「対の片方を忘れる」型で、目視レビューでは繰り返し漏れた。
+
+1. 列を削除したが、その列を参照する RPC を直し忘れた（生成が全件失敗）
+2. 新しい完了 RPC を作ったが、Worker の呼び出しを切り替え忘れた（プロンプトが保存されない）
+3. 読み取り経路を移行したが、生成一覧の経路を見落とした（Phase 0C で全画面から消えるところだった）
+
+再発防止として、`prompt` を返すクエリを持つファイルが author secret の解決を
+通しているかを機械的に検査するテストを入れた
+（`tests/unit/features/generation/prompt-read-paths.test.ts`）。
+新しい読み取り経路が増えたら落ちる。
+
+plpgsql は CREATE 時に関数本体の SQL を検査しないため、列を削除しても
+実行時まで露見しない。列を消すときは `pg_get_functiondef` の全文検索で
+参照元を潰すこと（`20260729140000` に実装）。
 
 ---
 
