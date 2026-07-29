@@ -1,7 +1,7 @@
 # じゆうモード プロンプト非公開モード 実装計画
 
 作成日: 2026-07-29
-最終更新: 2026-07-29（フォローアップ指摘A〜Dを反映。派生秘密の実行時解決・DB二重防御・公開系譜の列挙範囲・例外時redactionを確定）
+最終更新: 2026-07-29（実装着手後の本番実測で前提誤りを訂正。ADR-013 / ADR-014 を撤回し、legacy_built 分類と不変template revisionを削除）
 対象: `/free` 投稿のプロンプト非公開化、および**プロンプト保管の秘匿境界そのものの是正**
 
 ## 背景
@@ -105,17 +105,31 @@ app/(app)/style/generate-async/handler.ts:578-579
 
 したがって「全プロンプトを `generated_images.user_id` 所有の1テーブルへ移す」設計は採用しない。**ユーザーに表示し得る原作入力**と、**誰にも直接返さない生成実行入力**を分離する。
 
-### legacy 行から生入力は復元できない（本番・コード確認済み）
+### 保存されているのは生入力である（本番実測で訂正）
 
-`generated_images.prompt` と `image_jobs.prompt_text` に保存されているのは、ユーザーの生入力ではなく `buildPromptCore` 適用後の最終プロンプトである。
+**改訂 3〜5 で「保存されているのはビルド済み最終プロンプトであり、生入力は復元できない」としていたが、これは誤りだった。** `prompt-core.ts` の実装だけを見て保存内容を推論し、実データを確認していなかった。
 
-- `shared/generation/prompt-core.ts:241-252` は `free.base_prefix`・`free.user_direction_label`・`sanitizedDescription` を連結する
-- `free.base_prefix` は `shared/generation/prompt-registry.ts:500-506` の運営管理テンプレートで、DB overrideにより版が変わり得る
-- `app/api/generate-async/handler.ts:465-521` は生入力を `generation_metadata` に入れず、ビルド済みの `prompt` を `image_jobs.prompt_text` へ保存する
+実際の保存経路は次のとおりで、**組み立ては Worker が実行時に行う**。
 
-このため、legacy全文から運営prefixだけを安全に剥離してauthor inputを復元することはできない。legacyのfree / coordinateは `source_kind = 'legacy_built'` として、**既存画面がすでに開示しているビルド済み全文を従来と同じ範囲にだけ返す**。これは新しい開示ではなく既存挙動の維持である。
+- `app/api/generate-async/handler.ts:138` はリクエストボディから `prompt` を分割代入し、`:489` でそのまま `prompt_text` に入れる
+- `supabase/functions/image-gen-worker/index.ts:2010-2012` が `buildSharedPrompt({ outfitDescription: job.prompt_text, ... })` で錨を付ける
 
-新規の通常jobでは、生入力をservice-onlyの `materialized` execution record内の `author_input` として最終プロンプトから分離して保存する。生成成功時にauthor secretへ転記し、以後ユーザー向け表示には生入力だけを使う。通常jobのビルド済み最終プロンプトは `materialized` recordへ保存し、ユーザーが読める `image_jobs.prompt_text` には保存しない。private freeの派生jobは例外として、本文を一切保存しない `derived_reference` recordに原作IDと不変template revision参照だけを持たせる。
+本番実測（`generated_images`、全行）:
+
+| generation_type | 全行 | 運営の錨を含む | 内容 |
+| --- | --- | --- | --- |
+| one_tap_style | 2,110 | **1,165** | 組み立て済みのプリセット全文。平均2,947字・最大19,259字 |
+| coordinate | 1,307 | **0** | ユーザー入力。平均167字 |
+| free | 21 | **0** | ユーザー入力。実物は「和風にしてください。」等 |
+| inspire | 89 | **0** | `"inspire"` / `"creator-looks"` のマーカー文字列 |
+
+したがって:
+
+- **`legacy_built` 分類は不要**。coordinate / free の既存行は生入力そのものであり、そのまま `author_input` として author secret へ移せる
+- **legacy と新規で表示・コピー内容が変わる問題は発生しない**。世代差は生じない
+- **不変テンプレート revision も不要**。通常生成は現在も実行時に現行テンプレートで組み立てており、再試行時のバイト一致は元から保証されていない。派生 job だけ版を固定するのは既存より厳格で、かつ運営の錨を DB へ新たに書き出す副作用がある
+
+一方、**One-Tap Style の漏洩は本物である**。2,110 件中 1,165 件が運営の錨を含む組み立て済み全文で、anon から読める。coordinate / free の露出はユーザー自身の入力であり、moat ではなくプライバシーの問題として扱う。
 
 ### job作成経路と終端failedの実態（コード・本番確認済み）
 
@@ -207,15 +221,13 @@ flowchart TB
         PS["generated_image_prompt_secrets<br/>ユーザー向け原作入力"]
     end
     subgraph servicesec["完全なサーバー専用領域"]
-        GS["generation_prompt_snapshots<br/>通常jobは全文、派生jobはrevision参照だけ"]
-        TR["free_prompt_template_revisions<br/>共有・不変のfree template版"]
+        GS["generation_prompt_snapshots<br/>通常jobは全文、派生jobは本文なし"]
     end
     subgraph server["サーバー経路のみ"]
         API["server-api と 生成API と Worker"]
     end
     GI -.->|"必要な生成種別だけ0対1"| PS
     J -->|"全新規jobが1対1"| GS
-    GS -.->|"派生jobだけ参照"| TR
     API -->|"service role で解決"| PS
     API -->|"service role で解決"| GS
     API -->|"可視性ルールを適用して返す"| U["クライアント"]
@@ -286,13 +298,12 @@ stateDiagram-v2
 erDiagram
     generated_images ||--o| generated_image_prompt_secrets : "原作者入力を持つ場合だけ"
     image_jobs ||--|| generation_prompt_snapshots : "実行入力recordを必ず持つ"
-    free_prompt_template_revisions ||--o{ generation_prompt_snapshots : "派生jobが版を固定"
     generated_images ||--o{ prompt_usage_events : "原作として使われた記録"
     generated_image_prompt_secrets {
         uuid image_id PK
         text prompt "ユーザー向け原作入力"
         uuid prompt_owner_id "実際の原作者"
-        text source_kind "author_input legacy_built"
+        text source_kind "author_input"
     }
     generation_prompt_snapshots {
         uuid image_job_id PK
@@ -302,14 +313,6 @@ erDiagram
         uuid author_input_owner_id "入力者 nullable"
         text source_kind "free coordinate one_tap inspire"
         text source_revision "プリセット版"
-        uuid template_revision_id "派生jobのfree template版 nullable"
-    }
-    free_prompt_template_revisions {
-        uuid id PK
-        text content_hash UK
-        text base_prefix "service only"
-        text direction_label "service only"
-        timestamptz created_at
     }
     image_jobs {
         uuid id PK
@@ -348,8 +351,8 @@ erDiagram
 - **REQ-003**: The system shall never infer prompt ownership from `generated_images.user_id`; it shall use `prompt_owner_id` and the disclosure policy of the prompt source.
   システムは `generated_images.user_id` からプロンプト所有権を推定してはならず、`prompt_owner_id` とプロンプト由来ごとの開示方針を使用しなければならない。
 
-- **REQ-003a**: For legacy rows where raw author input cannot be reconstructed, the system shall classify the built prompt as `legacy_built`, preserve only the existing disclosure scope, and display and copy that exact built value without heuristic extraction.
-  生の原作者入力を復元できないlegacy行について、システムはビルド済み全文を `legacy_built` と分類し、既存と同じ開示範囲だけを維持し、推測による抽出や整形をせず保存済み全文をそのまま表示・コピーしなければならない。
+- **REQ-003a**: The system shall migrate existing `coordinate` and `free` prompts as author input without transformation, and shall not migrate platform-owned or marker values into author secrets.
+  システムは既存の `coordinate` / `free` のプロンプトを加工せず原作者入力として移行し、運営所有の値やマーカー値を author secret へ移してはならない。
 
 - **REQ-003b**: For every new generation job, the system shall create a service-only prompt execution record; a non-derived job shall persist its provider-ready prompt only in that record, while a derived job shall persist no prompt text and shall retain only its origin and immutable free-template revision.
   すべての新規生成jobについて、システムはservice-onlyのprompt execution recordを作成しなければならない。通常jobはプロバイダ送信用全文をそのrecordだけに保存し、派生jobはプロンプト本文を一切保存せず、原作と不変のfreeテンプレートrevisionだけを保持しなければならない。
@@ -379,8 +382,8 @@ erDiagram
 - **REQ-007**: When the trusted server creates a derived job, it shall validate the source and atomically persist only the origin id and an immutable, content-addressed free-template revision; it shall not resolve or persist the origin prompt.
   信頼されたサーバーが派生jobを作成するとき、原作を検証し、原作IDとcontent-addressedな不変freeテンプレートrevisionだけを原子的に保存しなければならない。この時点では原作プロンプトを解決または保存してはならない。
 
-- **REQ-007a**: Immediately before a worker sends a derived request to the provider, it shall atomically re-verify availability, visibility, follow and block conditions and resolve the author secret with the service role, rebuild an `author_input` with the job's fixed free-template revision or use `legacy_built` verbatim, and keep the built prompt only in memory.
-  Workerが派生リクエストをproviderへ送る直前に、利用可否・可視性・フォロー・ブロック条件を再検証した同じservice-only処理でauthor secretを解決し、`author_input` はjobに固定したfreeテンプレートrevisionで再ビルドし、`legacy_built` は保存済み全文をそのまま使用し、ビルド済み全文をメモリ外へ永続化してはならない。
+- **REQ-007a**: Immediately before a worker sends a derived request to the provider, it shall atomically re-verify availability, visibility, follow and block conditions and resolve the author secret with the service role, rebuild the provider prompt in memory with the same builder used for a normal free generation, and shall not persist the built prompt.
+  Workerが派生リクエストをproviderへ送る直前に、利用可否・可視性・フォロー・ブロック条件を再検証した同じservice-only処理でauthor secretを解決し、通常のfree生成と同じbuilderでメモリ上だけにprovider promptを再ビルドし、ビルド済み全文を永続化してはならない。
 
 - **REQ-007b**: If the required execution record or template revision is missing or inconsistent, then the worker shall terminate the job with an allowlisted internal code before calling the provider and shall not fall back to a user-readable prompt column or a current template.
   必須のprompt execution recordまたはテンプレートrevisionが欠落・不整合の場合、Workerはprovider呼び出し前にallowlist済み内部コードでjobを終端し、ユーザー可読prompt列や現行テンプレートへfallbackしてはならない。
@@ -471,25 +474,24 @@ erDiagram
 
 - **Context**: `generated_images` の SELECT は行単位で `anon` に開放されているため、本文を同じ行へ置けない。一方、One-Tap Style では生成画像の所有者は利用者だが、最終プロンプトは運営資産である。画像所有者を秘密の所有者とみなすと、別テーブルへ移しても本人 RLS から再漏洩する。
 - **Decision**:
-  1. `generated_image_prompt_secrets(image_id PK, prompt, prompt_owner_id, source_kind, created_at)` は、投稿者へ表示・再利用し得るプロンプトを持つ。新規行は生のauthor input、legacy行は分離不能なビルド済み全文を `legacy_built` として保持する。直接 SELECT は `auth.uid() = prompt_owner_id` のみ
-  2. `generation_prompt_snapshots` は全新規jobに必須のservice-only prompt execution recordとする。`snapshot_kind = 'materialized'` の通常jobは `provider_prompt` と、開示可能な種別だけ `author_input` / ownerを持つ。`snapshot_kind = 'derived_reference'` の派生jobはprompt本文を一切持たず、`template_revision_id` だけを持つ。`anon` / `authenticated` には一切の権限・ポリシーを与えない
-  3. `free_prompt_template_revisions(id, content_hash UNIQUE, base_prefix, direction_label, created_at)` は、freeテンプレートの解決済み内容を版ごとに1行だけ保持するservice-only不変テーブルとする。UPDATE / DELETEを許さず、同じ内容はcontent hashで重複排除する
-  4. 派生画像と One-Tap Style 画像には、生成画像所有者が読める author secret を作らない
-  5. 新規jobの `image_jobs.prompt_text` は全生成種別で空にする。通常jobはmaterialized record、派生jobはWorker実行時のauthor secret + 固定revisionから生成する
-  6. `generated_images.prompt` は全行空にし、contract 後は `DEFAULT ''` と CHECK 制約で非空値を拒否する
+  1. `generated_image_prompt_secrets(image_id PK, prompt, prompt_owner_id, source_kind, created_at)` は、投稿者へ表示・再利用し得る原作者入力を持つ。`source_kind` は `author_input` のみ。直接 SELECT は `auth.uid() = prompt_owner_id` のみ
+  2. `generation_prompt_snapshots` は全新規jobに必須のservice-only prompt execution recordとする。`snapshot_kind = 'materialized'` の通常jobは `provider_prompt` と、開示可能な種別だけ `author_input` / ownerを持つ。`snapshot_kind = 'derived_reference'` の派生jobはprompt本文を一切持たない。`anon` / `authenticated` には一切の権限・ポリシーを与えない
+  3. 派生画像と One-Tap Style 画像には、生成画像所有者が読める author secret を作らない
+  4. 新規jobの `image_jobs.prompt_text` は全生成種別で空にする。通常jobはmaterialized record、派生jobはWorker実行時のauthor secretから生成する
+  5. `generated_images.prompt` は全行空にし、contract 後は `DEFAULT ''` と CHECK 制約で非空値を拒否する
 - **Reason**:
   1. RLS は列を絞れない。行が見える以上、列は取れる
   2. 「公開プロンプト」もフォロワー限定であり、公開行へ置いてよい本文はない
   3. ユーザー入力と共通 prefix・hidden prompt・プリセット全文では所有者と開示方針が異なる
   4. 完成済みプロンプトをユーザー所有の secrets にまとめると One-Tap Style / Inspire の moat を破る
-- **Consequence**: legacyの生入力復元は行わない。現在表示されているfree / coordinateのビルド済み全文は `legacy_built` としてauthor secretへ移し、開示範囲を広げず現状維持する。One-Tap / Inspire等の非開示全文はauthor secretへ入れず、信頼できるjob対応と保存理由がある場合だけmaterialized recordへ移す。派生jobごとのprovider prompt複製は作らない。将来 `image_jobs` に保持期限を導入して原作jobのrecordがCASCADE削除されても、完成したfree原作のauthor secretと共有revisionから派生生成を継続できる。
+- **Consequence**: 既存の coordinate / free は生入力そのものなので、加工せず `author_input` として author secret へ移す。表示・コピー内容は移行前後で変わらない。One-Tap Style の組み立て済み全文と Inspire のマーカー値は author secret へ入れない。派生jobごとのprovider prompt複製も作らない。将来 `image_jobs` に保持期限を導入して原作jobのrecordがCASCADE削除されても、完成したfree原作のauthor secretから派生生成を継続できる。
 
 ### ADR-002: 派生利用者が所有するレコードに秘密を一切書かない
 
 - **Context**: 初版は「派生投稿の `prompt` 列に原作のプロンプトが入るが UI で隠す」としていた。しかし `image_jobs` の RLS は `auth.uid() = user_id` であり、**派生した利用者は自分のジョブの全列を読める**。Worker も `generated_images.prompt` へコピーする（`image-gen-worker/index.ts:2743`）。UI で隠しても2箇所から平文を取得できる。
-- **Decision**: 新規jobでは生成種別を問わず `image_jobs.prompt_text` を空にする。派生job作成時のAPIはauthor secretを解決せず、原作IDと現在の不変free-template revisionだけを `derived_reference` recordへ保存する。Workerはprovider呼び出し直前にservice role RPCで認可再検証とauthor secret解決を同時に行い、`author_input` はjobに固定したrevisionを渡した `shared/generation/prompt-core.ts` のpure `buildPrompt` でメモリ上だけに再ビルドし、`legacy_built` は保存済み全文を直接使用する。ビルド済み全文はDB・ログ・APMへ永続化しない。原作jobのprovider snapshotは参照しない。
+- **Decision**: 新規jobでは生成種別を問わず `image_jobs.prompt_text` を空にする。派生job作成時のAPIはauthor secretを解決せず、原作IDだけを `image_jobs.origin_post_id` と本文を持たない `derived_reference` recordへ保存する。Workerはprovider呼び出し直前にservice role RPCで認可再検証とauthor secret解決を同時に行い、通常のfree生成とまったく同じbuilderでメモリ上だけに再ビルドする。ビルド済み全文はDB・ログ・APMへ永続化しない。原作jobのprovider snapshotは参照しない。
 - **Reason**: 秘密を「派生者の所有物」に一瞬でも置いた時点で、RLS上はその人のものになる。service-onlyであっても派生jobごとに全文を複製すると、将来の権限事故時の被害量と取消後に残る秘密を増やす。原作画像に紐づくauthor secretはdurableなので、実行時解決でもF1の耐久性を満たす。
-- **Consequence**: 派生jobの再試行決定性を守るため、freeテンプレートの不変revisionを共有テーブルへ保存する。秘密の永続コピーはauthor secretとテンプレート版ごとの共有revisionに限定され、フォロワー数に比例して増えない。job投入後に原作が公開へ戻る・削除・ブロックされる場合はWorkerの実行時解決が失敗し、派生jobに残る秘密はない。legacyだけは再構成不能なのでauthor secretの旧全文をメモリ上で直接使用する（REQ-007 / REQ-007a）。
+- **Consequence**: 秘密の永続コピーはauthor secretだけになり、フォロワー数に比例して増えない。派生生成は「通常のfree生成の入力を原作者のものに差し替えただけ」になり、経路が1本で済む。テンプレート更新後の再試行が更新後の錨を使う点は通常生成と同じ挙動であり、新たな不整合を持ち込まない。job投入後に原作が公開へ戻る・削除・ブロックされる場合はWorkerの実行時解決が失敗し、派生jobに残る秘密はない（REQ-007 / REQ-007a）。
 
 ### ADR-003: `source_post_id` は常に原作を指し、削除後も出所を保持する
 
@@ -576,19 +578,16 @@ Workerは課金前とprovider呼び出し直前に認可を検証する。課金
 - **Reason**: 終端jobの監査状態を保ち、空化済み秘密へ依存する隠れた再実行経路をなくす。
 - **Consequence**: これは移行支援だけでなく既存180件に関係する再試行挙動の修正である。Phase 0C前にユーザー向け再試行導線がfailed再claimへ依存せず、新規job作成になっていることを確認する。legacy failed jobを同一IDで手動再実行する運用は廃止する。将来admin再実行を作る場合も、旧jobを複製せず認可・課金・prompt execution recordを再作成する専用RPCを設計する。
 
-### ADR-013: legacy built promptは既存表示を維持し、新規行だけauthor inputを表示する
+### ADR-013（撤回）: legacy built prompt の世代差は発生しない
 
-- **Context**: legacy free / coordinateから生入力を復元できないため、author secretの内容はlegacyでは運営prefix・ラベルを含むビルド済み全文、新規行ではauthor inputのみになる。判断しないまま実装すると、同じプロンプト欄とコピー操作の世代差が偶然の挙動になる。
-- **Decision**: `source_kind` をサーバー側の表示解決に使用する。`legacy_built` は保存済み全文を加工せず従来と同じフォローゲートで表示・コピーし、`author_input` は生入力だけを表示・コピーする。prefix剥離、テンプレート一致による抽出、コピー時の再構成は行わない。移行内部の分類でユーザーを混乱させないため「旧形式」ラベルは追加しない。
-- **Reason**: legacy全文の推測加工は誤切断・内容改変の危険があり、既存ユーザーが現在見られる内容を移行だけで狭める理由もない。一方、新規行で運営prefixを開示し続ける必要はない。
-- **Consequence**: legacyと新規で表示・コピー内容に意図的な世代差が残る。これは互換仕様としてテストする。将来legacy表示を畳む場合は、既存開示仕様の変更として別ADR・告知・forward migrationで扱う。
+- **撤回理由**: 前提が誤っていた。本番実測で `coordinate` / `free` の既存 `prompt` はビルド済み全文ではなく生入力であることを確認した（運営の錨を含む行は 0 件）。したがって legacy と新規で author secret の中身が変わらず、表示・コピーの世代差も生じない。
+- **現在の方針**: 既存行は加工せず `author_input` として移行する。prefix 剥離・推測抽出は不要であり、そもそも剥離すべき prefix が入っていない。
 
-### ADR-014: freeテンプレートをcontent-addressedな不変revisionとして共有する
+### ADR-014（撤回）: freeテンプレートの不変revisionは導入しない
 
-- **Context**: `prompt_overrides` は現行値しか保持せず、監査ログも本文を保存しない。hashだけをjobへ置いても、override更新後に過去jobと同じテンプレートを復元できない。一方、派生jobごとにprovider prompt全文を保存すると秘密の複製数が利用数に比例する。
-- **Decision**: 解決済みの `free.base_prefix` と `free.user_direction_label` をservice-onlyの `free_prompt_template_revisions` に保存し、正規化した内容のSHA-256をUNIQUEキーとして重複排除する。行は不変でUPDATE / DELETEを禁止する。派生job作成時はログを持たないserver-only resolverで現行2値を解決し、`ensure_free_prompt_template_revision` RPCでrevision IDだけを取得してjobへ固定する。Workerはそのrevisionを取得してpure builderへ渡す。
-- **Reason**: 1 revision 1行の秘密コピーで再試行決定性を保ち、派生件数に比例するprovider prompt複製を避けられる。
-- **Consequence**: テーブルが1つ増え、freeテンプレート更新後の最初の派生job作成時に新revisionが追加される。revision取得不能・hash不一致では現行テンプレートへfallbackせず固定内部コードでfail closedする。revision本文はadmin UIへ新たに露出させず、既存のprompt override管理経路だけを編集入口とする。
+- **撤回理由**: ADR-013 と同じ前提誤りに依存していた。通常生成は現在も Worker 実行時に現行テンプレートで組み立てており、**再試行時のバイト一致は元から保証されていない**。派生 job だけ版を固定するのは既存挙動より厳格で、整合しない。
+- **副次的な利点**: revision テーブルは運営の錨（`free.base_prefix`）を DB へ新たに書き出す必要があった。実測では現在 `prompt_overrides` に `free.*` の行が 0 件で、錨はコード定数にのみ存在する。導入しないことで、秘密の保管場所を増やさずに済む。
+- **現在の方針**: 派生 job は原作 ID だけを保持し、Worker が通常の free 生成と同じ builder で実行時に組み立てる。
 
 ---
 
@@ -629,16 +628,16 @@ flowchart LR
   - `image_id UUID PK REFERENCES generated_images(id) ON DELETE CASCADE`
   - `prompt TEXT NOT NULL`
   - `prompt_owner_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE`
-  - `source_kind TEXT NOT NULL CHECK (source_kind IN ('author_input','legacy_built'))`
+  - `source_kind TEXT NOT NULL CHECK (source_kind IN ('author_input'))`
   - RLSは本人SELECTのみ。`anon`拒否。DMLはservice role /専用RPCのみ
 - [ ] `generation_prompt_snapshots`
   - `image_job_id UUID PK REFERENCES image_jobs(id) ON DELETE CASCADE`
   - `snapshot_kind TEXT NOT NULL CHECK (snapshot_kind IN ('materialized','derived_reference'))`
-  - `provider_prompt TEXT`, `author_input TEXT`, `author_input_owner_id UUID`, `source_kind`, `source_revision`, `template_revision_id UUID`, `created_at`
+  - `provider_prompt TEXT`, `author_input TEXT`, `author_input_owner_id UUID`, `source_kind`, `source_revision`, `created_at`
   - `source_kind` は `free / coordinate / one_tap_style / inspire` 等の生成由来を表す
-  - `materialized` は `provider_prompt` 必須かつ `template_revision_id` がNULL。`author_input` はユーザー向け表示対象のfree / coordinateだけに許可し、入力の有無・owner・source kindをCHECK制約で整合させる
-  - `derived_reference` は `provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がすべてNULL、`source_kind = 'free'`、`template_revision_id` がNOT NULLであることをローカルCHECKで強制する
-  - `template_revision_id` のFKと `image_jobs.origin_post_id` とのcross-table triggerは、revisionテーブルとorigin列を追加するPhase 1で有効化する
+  - `materialized` は `provider_prompt` 必須。`author_input` はユーザー向け表示対象のfree / coordinateだけに許可し、入力の有無・ownerをCHECK制約で整合させる
+  - `derived_reference` は `provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がすべてNULL、`source_kind = 'free'` であることをローカルCHECKで強制する
+  - `image_jobs.origin_post_id` とのcross-table triggerは、origin列を追加するPhase 1で有効化する
   - RLS有効・公開ポリシーなし・`PUBLIC, anon, authenticated` から全権限REVOKE
 - [ ] 通常生成の完了を原子的に行うRPCを追加し、画像行・author secret・job成功更新を同一トランザクションに閉じる
 - [ ] `complete_image_job_with_generated_images` の新しい定義を追加し、将来のdual-writeに対応できる形にする
@@ -681,10 +680,10 @@ flowchart LR
 - [ ] 公開Storageへ保存する生成画像の非画素メタデータを除去または形式別に検証
 - [ ] idempotent backfill
   - `INSERT ... ON CONFLICT ...` とし、`generation_type` /由来ごとに分類
-  - legacy free / coordinateは生入力へ分離せず、ビルド済み全文を `legacy_built` author secretへ移して既存開示範囲を維持
-  - legacy One-Tap / Inspire /非開示全文はauthor secretへ入れない。信頼できるjob対応と保存理由があるものだけservice-only materialized execution recordへ移す
-  - prefix剥離・テンプレート文字列一致による生入力推定は行わない
-  - `legacy_built` と移行対象外は `generation_type` /理由別件数とhashを検証し、平文をログへ出さない
+  - `coordinate`（非空1,302件）と `free`（21件）は生入力そのものなので、加工せず `author_input` として author secret へ移す。`prompt_owner_id` は `generated_images.user_id`
+  - `one_tap_style`（非空2,069件・運営の組み立て済み全文）と `inspire`（89件・`"inspire"` / `"creator-looks"` のマーカー値）は author secret へ入れない
+  - prefix剥離・テンプレート文字列一致による加工は行わない（そもそも剥離すべきprefixが入っていない）
+  - 移行対象外は `generation_type` 別件数とhashを検証し、平文をログへ出さない
   - backfill中もdual-writeを継続
 - [ ] 平文を出力しない検証SQLを実行
   - legacy非空行と移行先の件数を種別ごとに比較
@@ -733,15 +732,9 @@ flowchart LR
     - 作成時にoriginの実在・root・free・`source_author_id = origin.user_id` を検証
     - 作成後の `source_post_id` / `source_author_id` 変更を拒否
     - `image_jobs.origin_post_id` はservice-onlyのjob作成RPCだけが設定でき、作成後は変更を拒否
-- [ ] `supabase/migrations/2026xxxx_add_free_prompt_template_revisions.sql`
-  - `free_prompt_template_revisions(id UUID PK, content_hash TEXT UNIQUE NOT NULL, base_prefix TEXT NOT NULL, direction_label TEXT NOT NULL, created_at TIMESTAMPTZ NOT NULL DEFAULT now())`
-  - hashは区切り長を含むcanonical encodingからSHA-256を計算し、文字列連結の曖昧性を避ける。RPC内で再計算して入力hashの偽装を拒否
-  - RLS有効・公開ポリシーなし・`REVOKE ALL FROM PUBLIC, anon, authenticated`
-  - UPDATE / DELETEをtriggerで拒否し、service role専用 `ensure_free_prompt_template_revision` だけが `INSERT ... ON CONFLICT (content_hash)` で作成・取得
-  - `generation_prompt_snapshots.template_revision_id` にFK `ON DELETE RESTRICT` を追加
 - [ ] 派生recordとauthor secretのDB二重防御（REQ-003d）
   - `generation_prompt_snapshots` のlocal CHECKに加え、BEFORE INSERT / UPDATE triggerで対応する `image_jobs.origin_post_id` を参照し、originありなら `snapshot_kind = 'derived_reference'`、originなしなら `materialized` を強制する
-  - 派生recordでは `provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がNULL、`source_kind = 'free'`、`template_revision_id` がNOT NULLでなければ、RPC経由か直接書き込みかを問わず拒否する
+  - 派生recordでは `provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がNULL、`source_kind = 'free'` でなければ、RPC経由か直接書き込みかを問わず拒否する
   - `complete_image_job_with_generated_images` は `source_post_id` / `source_author_id` を呼び出し引数から信用せず、検証済み `v_job.origin_post_id` と原作行から導出する
   - 同RPCは `v_job.origin_post_id IS NOT NULL` のときnullable列の状態と無関係にauthor secret作成分岐へ入らない。不正にauthor inputが存在すれば固定内部コードでtransactionを失敗させる
   - `generated_image_prompt_secrets` のBEFORE INSERT / UPDATE triggerは、対象 `generated_images.source_post_id IS NOT NULL` ならservice roleの直接書き込みでも拒否する
@@ -752,7 +745,6 @@ flowchart LR
 - [ ] `supabase/migrations/2026xxxx_add_derived_generation_rpcs.sql`
   - `validate_derived_prompt_source(p_source_post_id, p_requester_id)` — APIのjob作成前、Workerの課金前、provider完了後の検証用。本文を返さず可否・根の投稿ID・原作者IDだけを返すservice-only RPC
   - `resolve_derived_prompt_source(p_source_post_id, p_requester_id)` — Workerがprovider送信直前に使用。ADR-006の全条件を同一statement / transaction snapshotで再検証し、author secretの `source_kind` と秘密値を返すservice-only RPC。原作jobのexecution recordは参照しない
-  - `ensure_free_prompt_template_revision(p_base_prefix, p_direction_label)` / `get_free_prompt_template_revision(p_revision_id)` — service-only。不変revisionをcontent hashで重複排除して作成し、Workerへ固定2値を返す
   - `record_prompt_usage(p_image_job_id)` — 成功済みjobから値を導出し `ON CONFLICT DO NOTHING`
   - `get_prompt_usage_count(p_origin_post_id)` — service-only。Server APIが原作の閲覧可否を適用した後に `COUNT(DISTINCT user_id)` を取得し、クライアントから任意UUIDを列挙できる直接GRANTはしない
 - [ ] `app/api/generate-async/handler.ts`
@@ -760,12 +752,12 @@ flowchart LR
   - requester idはbodyではなく認証セッションから取得
   - 利用不可は同一の409 + `FREE_SOURCE_UNAVAILABLE`
   - 派生job作成時は `validate_derived_prompt_source` で認可するがauthor secretを取得しない
-  - ログを持たないserver-only template resolverで `free.base_prefix` / `free.user_direction_label` を解決し、`ensure_free_prompt_template_revision` から不変revision IDを取得する。ここではbuilderを呼ばずprovider promptを組み立てない
-  - jobのユーザー可読列には `origin_post_id` と `prompt_text = ''`、service-only `derived_reference` recordには `template_revision_id` だけを保存する
+  - ここでは author secret を解決せず、builder も呼ばない
+  - jobのユーザー可読列には `origin_post_id` と `prompt_text = ''` を保存し、service-only `derived_reference` recordは本文を一切持たない
   - job + derived reference RPCの失敗時は、入力オブジェクト・resolved template・Supabase error objectを丸ごとログ出力せず、job idが未採番ならrequest id、固定内部コード、処理段階だけを記録・返却する
 - [ ] Worker
   - 課金前に `validate_derived_prompt_source` とderived reference / template revisionの存在・hash整合を確認する
-  - provider呼び出し直前に `resolve_derived_prompt_source` で認可再検証とauthor secret解決を同時に行う。`author_input` は固定revisionを渡して `shared/generation/prompt-core.ts` のpure `buildPrompt` を直接呼び、`legacy_built` はそのまま使用する。ログを持つ `features/generation/lib/prompt-builder.ts` はimportしない
+  - provider呼び出し直前に `resolve_derived_prompt_source` で認可再検証とauthor secret解決を同時に行い、通常のfree生成と同じ `buildSharedPrompt` へ原作者の入力を渡してメモリ上だけで組み立てる。ログを持つ `features/generation/lib/prompt-builder.ts` はimportしない
   - ビルド済み全文はprovider requestのメモリ内だけに置き、derived reference、job、生成画像、ログ、APMへ書かない
   - provider完了後・永続化前は本文を返さない `validate_derived_prompt_source` で再検証する
   - execution record / revision欠落・kind不整合・hash不一致は現行templateや `prompt_text` へfallbackせず、provider呼び出し前に固定内部コードで終端失敗
@@ -787,7 +779,7 @@ flowchart LR
 - [ ] `features/posts/lib/server-api.ts` に `source_reference` の解決を追加
   - 原作の利用可否判定をここに集約。**利用不可なら同一形状で `is_available: false` を返し、サムネイルも含めない**（ADR-005 / REQ-014）
   - 利用数は `get_prompt_usage_count` から取得
-  - prompt表示値を `source_kind` で解決し、`legacy_built` は保存済み全文、`author_input` は生入力だけを返す。クライアントへsource kindの判定責務やprompt execution recordを渡さない（ADR-013）
+  - prompt表示値は author secret から解決する。クライアントへ prompt execution record を渡さない
 - [ ] `app/api/posts/post/route.ts` / `update/route.ts` に `promptVisibility` を追加
 - [ ] `PostModal.tsx` に「プロンプトを公開する」トグル（既定 ON）。派生投稿では出さない
 - [ ] 「非公開 かつ 生成前の画像も非表示」のときの注意文
@@ -801,7 +793,6 @@ flowchart LR
   - プロンプト欄は disabled + グレーアウトで「プロンプトは非公開です」
   - 入力は画像・比率・モデルの3つ
 - [ ] `PostDetailStatic.tsx` / `PostDetail.tsx` を `getPostPromptDisplayMode` の4分岐へ
-- [ ] 既存のプロンプト表示・コピーUIは、legacyでは全文、新規ではauthor inputだけを同一の操作で扱う。legacy prefixの抽出・再構成や「旧形式」ラベル追加は行わない（REQ-003a / ADR-013）
 - [ ] 15ロケールに文言追加
 
 ### Phase 3: Admin・文書・統合検証（PR6）
@@ -824,11 +815,9 @@ flowchart LR
 | `supabase/migrations/2026xxxx_replace_prompt_search_indexes.sql` | 新規 | caption・nickname検索index。旧prompt trigramはcontractで削除 |
 | `supabase/migrations/2026xxxx_contract_generated_images_prompt.sql` | 新規 | 公開列の空化 + `DEFAULT ''` + `CHECK (prompt = '')` |
 | `supabase/migrations/2026xxxx_add_free_prompt_visibility.sql` | 新規 | generated imageの列3つ、image jobのorigin列、guard trigger |
-| `supabase/migrations/2026xxxx_add_free_prompt_template_revisions.sql` | 新規 | content-addressedな不変free template revision + execution recordのFK / cross-table trigger |
 | `supabase/migrations/2026xxxx_add_prompt_usage_events.sql` | 新規 | 利用イベント |
 | `supabase/migrations/2026xxxx_add_derived_generation_rpcs.sql` | 新規 | 検証・記録・集計 RPC |
 | `features/generation/lib/prompt-secrets.ts` | 新規 | 秘密の解決 |
-| `features/generation-prompts/lib/resolve-free-template-revision.ts` | 新規 | ログへ本文を渡さず現行free templateを解決し、不変revisionを確定 |
 | `features/generation/lib/prompt-visibility.ts` | 修正 | 表示モード判定 |
 | `features/generation/lib/prompt-builder.ts` | 修正 | **ログ出力の削除** |
 | `features/generation/lib/job-types.ts` | 修正 | materialized / derived-referenceのdiscriminated unionを追加し、execution record省略を型で防止 |
@@ -938,7 +927,7 @@ flowchart LR
 | # | テスト内容 |
 | --- | --- |
 | 26 | 実行時のlegacy非空件数と移行先件数を `generation_type` / `source_kind` 別に比較し差分0 |
-| 26b | legacy free / coordinateが `legacy_built` として行ごとにdigest一致し、owner/source_kind不整合0、orphan0 |
+| 26b | 既存 coordinate / free が加工されずに行ごとdigest一致で移行され、owner不整合0、orphan0。one_tap_style / inspire は author secret へ入らない |
 | 26c | dual-write開始後に作成された行を含め、contract直前の再検証で差分0 |
 | 26d | 新規free / coordinateの通常jobはauthor secretに生入力だけを持ち、materialized provider promptとの分離が保たれる |
 | 26e | `createImageJob` はprompt execution入力なしで型チェックを通らず、RPC失敗時にjobまたはexecution recordだけが残らない |
@@ -988,8 +977,8 @@ flowchart LR
 - **公開→非公開の切替は「以後の表示を止める」機能であり、過去の秘密化ではない。** すでに閲覧・コピー・キャッシュ・検索エンジンに保存された内容は回収できない。UI と仕様に明記する（REQ-015）
 - `generated_images.prompt` は互換のため列を残すが、Phase 0C後は常に空であることをDBが強制する。将来DROPする場合は別ADR・別PRとする
 - 移行完了条件は経過日数ではなく、dual-write稼働後の行単位digest・件数・ownership検証が差分0であること
-- 通常jobのmaterialized execution recordは当該jobの監査・再試行用。派生jobは本文を持たないderived referenceだけを保存し、author secretとjob固定の共有template revisionを正本としてWorker実行時にメモリ上で再ビルドする。派生件数に比例する秘密全文の永続コピーは作らない
-- legacyと新規ではプロンプト表示・コピー結果に意図的な世代差がある。legacyは従来のbuilt全文、新規はauthor inputのみとし、推測加工や旧形式ラベルは追加しない（ADR-013）
+- 通常jobのmaterialized execution recordは当該jobの監査・再試行用。派生jobは本文を持たないderived referenceだけを保存し、author secretを正本としてWorker実行時にメモリ上で再ビルドする。派生件数に比例する秘密全文の永続コピーは作らない
+- 既存行と新規行でプロンプト表示・コピー結果は変わらない。どちらも原作者の生入力であり、移行は加工なしで行う（ADR-013 撤回）
 - provider呼び出し開始後の取消は外部送信そのものを巻き戻せない。成果物は永続化・提供せず、減算済みなら既存 `refund_percoins` 経路で返金する（REQ-025 / REQ-026）
 - 非公開モードは今回 `/free` のみを対象とし、coordinateへの拡張は別ADR・別forward migrationとする（ADR-011）
 - この環境では Docker が使えずローカル Supabase を起動できない。SQL の実挙動は PR の Supabase Preview で検証する

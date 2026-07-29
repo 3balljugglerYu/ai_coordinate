@@ -145,14 +145,14 @@ alwaysApply: false
 - 主キー: `image_id`
 - 主要カラム: `image_id`, `prompt`, `prompt_owner_id`, `source_kind`, `created_at`
 - 外部キー: `image_id -> generated_images.id`（CASCADE）, `prompt_owner_id -> auth.users.id`（CASCADE）
-- 備考: ユーザーへ開示し得る原作者入力の保管先。`generated_images` は行単位 RLS で `anon` にも開放されており列を絞れないため、本文を公開行へ置かない。`source_kind` は `author_input`（新規行の生入力）/ `legacy_built`（生入力を復元できない移行行のビルド済み全文）。プロンプトの所有者は画像の所有者と一致しないことがあるため（One-Tap Style は画像=生成者・プロンプト=運営）、所有権は `generated_images.user_id` から推定せず `prompt_owner_id` で持つ
+- 備考: ユーザーへ開示し得る原作者入力の保管先。`generated_images` は行単位 RLS で `anon` にも開放されており列を絞れないため、本文を公開行へ置かない。`source_kind` は `author_input` のみ（既存の coordinate / free も生入力そのものなので加工せず移行する）。プロンプトの所有者は画像の所有者と一致しないことがあるため（One-Tap Style は画像=生成者・プロンプト=運営）、所有権は `generated_images.user_id` から推定せず `prompt_owner_id` で持つ
 - RLS: `authenticated` の直接 `SELECT` は `prompt_owner_id = auth.uid()` の行のみ。`anon` は全 REVOKE。`INSERT/UPDATE/DELETE` のポリシーは無く、`service_role` と SECURITY DEFINER 関数のみ書き込める。フォロワーへの開示はサーバー経路が可視性ルールを適用して行う
 
 #### `generation_prompt_snapshots`
 - 主キー: `image_job_id`
-- 主要カラム: `image_job_id`, `snapshot_kind`, `provider_prompt`, `author_input`, `author_input_owner_id`, `source_kind`, `source_revision`, `template_revision_id`, `created_at`
+- 主要カラム: `image_job_id`, `snapshot_kind`, `provider_prompt`, `author_input`, `author_input_owner_id`, `source_kind`, `source_revision`, `created_at`
 - 外部キー: `image_job_id -> image_jobs.id`（CASCADE）
-- 制約: `snapshot_kind` は `materialized`（通常 job・`provider_prompt` 必須・`template_revision_id` は NULL）/ `derived_reference`（派生 job・`provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がすべて NULL・`source_kind = 'free'`）。`author_input` と `author_input_owner_id` は必ず対で存在する
+- 制約: `snapshot_kind` は `materialized`（通常 job・`provider_prompt` 必須）/ `derived_reference`（派生 job・`provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がすべて NULL・`source_kind = 'free'`）。`author_input` と `author_input_owner_id` は必ず対で存在する
 - 備考: 全新規 job が 1 対 1 で持つ生成実行入力。派生 job に本文を持たせないのは、派生件数に比例して秘密の永続コピーが増えることを避けるため。Worker が実行直前に author secret からメモリ上でのみ再ビルドする
 - RLS: 全アクション deny のポリシー 1 本。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（= `service_role` と SECURITY DEFINER 関数のみ）
 
