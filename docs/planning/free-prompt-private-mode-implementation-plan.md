@@ -42,6 +42,22 @@ GET {SUPABASE_URL}/rest/v1/generated_images
 
 つまり **運営が作成した One-Tap Style プリセットのプロンプト 263 種が、現在この瞬間も公開 anon キーで取得できる**。「画像のみ公開・プロンプト非公開で moat を作る」という設計意図と正面から反する既存の脆弱性であり、新機能とは独立して存在する。
 
+#### さらに、同じ構造の漏洩が `image_jobs` にもある
+
+レビュー指摘の P0-2（派生者が自分のジョブから秘密を読める）と**まったく同じ構造が、One-Tap Style の既存機能にも存在する**ことを確認した。
+
+```
+app/(app)/style/generate-async/handler.ts:578-579
+  user_id:     user.id      ← 生成した本人が所有者
+  prompt_text: prompt       ← 組み立て済みのプリセット全文
+```
+
+`image_jobs` の SELECT RLS は `auth.uid() = user_id` である。したがって **One-Tap Style で生成したユーザーは、自分のジョブ行から運営プリセットのプロンプト全文を読める**。
+
+本番実測: `generation_type = 'one_tap_style'` のジョブ **2,123件すべてに `prompt_text` が入っている**。
+
+対象の投稿が公開されていなくても、**自分が一度生成しさえすればそのプリセットのプロンプトが手に入る**。`generated_images` 側を塞いでも、この経路が残れば moat は開いたままになる。Phase 0 の対象に含める。
+
 **この RLS を是正しない限り、プロンプト非公開モードは成立しない。** 同じ経路から新機能の秘密も抜かれるためである。よって本計画は「新機能の追加」ではなく **「プロンプト保管の秘匿境界を作り直し、その上に新機能を載せる」** ものとして再設計する。
 
 ### ヒアリングで確定した仕様
@@ -69,6 +85,7 @@ GET {SUPABASE_URL}/rest/v1/generated_images
 | `features/generation/lib/database.ts:123,155,342,362` | ブラウザクライアントから `select("*")` |
 | `features/event/lib/database.ts:24` | 同上 |
 | `image_jobs.prompt_text` | `app/api/generate-async/handler.ts:487` で保存。RLS は `auth.uid() = user_id` なので**所有者は全列を読める** |
+| `image_jobs.prompt_text`（One-Tap Style） | `app/(app)/style/generate-async/handler.ts:578-579` で**生成者本人を所有者として運営プリセット全文を保存**。本番 2,123 件すべてに存在 |
 | Worker | `supabase/functions/image-gen-worker/index.ts:2743` で `generated_images.prompt` へコピー |
 | `features/generation/lib/prompt-builder.ts:39-45` | **最終プロンプト全文を `console.log` している** |
 
@@ -221,6 +238,11 @@ erDiagram
 
 - **REQ-004**: While a prompt is public, the system shall disclose it only to the author and the author's followers, preserving the existing follow gate.
   プロンプトが公開である間、システムは既存のフォローゲートを維持し、投稿者とそのフォロワーにのみ開示しなければならない。
+
+### 既存機能の秘匿（One-Tap Style）
+
+- **REQ-019**: The system shall not persist One-Tap Style preset prompts into `image_jobs` rows owned by the generating user; the worker shall resolve the preset prompt with the service role at execution time.
+  システムは One-Tap Style のプリセットプロンプトを、生成したユーザーが所有する `image_jobs` 行に保存してはならない。Worker が実行時に service role で解決しなければならない。
 
 ### 派生生成
 
@@ -399,6 +421,11 @@ flowchart LR
   - 読み取り移行の完了を確認した**後**に、`generated_images.prompt` を空文字へ更新
   - 以後の書き込み経路も secrets 側のみにする（Worker / API）
   - **列自体は残す**（`select("*")` の互換と段階的ロールバックのため）
+- [ ] **One-Tap Style の `image_jobs.prompt_text` 経路を塞ぐ**（REQ-019）
+  - `app/(app)/style/generate-async/handler.ts:578-579` で `prompt_text` にプリセット全文を保存しているのをやめ、`style_preset_id` 等の参照だけを保存する
+  - Worker が実行時に service role でプリセットプロンプトを解決する
+  - **既存 2,123 件の `prompt_text` を空にするマイグレーションを含める**
+  - `generated_images` 側だけ塞いでもこの経路が残れば moat は開いたままになる
 - [ ] `features/generation/lib/prompt-builder.ts:39-45` のログ出力を削除（REQ-017）
   - Worker・route・provider エラーにもプロンプトを載せない規約をコメントで明記
 
@@ -502,6 +529,8 @@ flowchart LR
 | `features/posts/lib/server-api.ts` | 修正 | 出所解決・検索対象の差し替え |
 | `features/my-page/lib/server-api.ts` / `api.ts` | 修正 | 読み取り経路の移行 |
 | `app/api/generate-async/handler.ts` | 修正 | `sourcePostId` 経路 |
+| `app/(app)/style/generate-async/handler.ts` | 修正 | プリセット全文の保存をやめ参照のみにする |
+| `supabase/migrations/2026xxxx_clear_image_jobs_prompt_text.sql` | 新規 | 既存 2,123 件の `prompt_text` を空化 |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | 実行直前の秘密解決・利用記録 |
 | `app/api/posts/route.ts` | 修正 | 検索パラメータの意味変更 |
 | `app/api/posts/post/route.ts` / `update/route.ts` | 修正 | `promptVisibility` |
@@ -528,6 +557,7 @@ flowchart LR
 | 2 | **anon キーで `generated_image_prompt_secrets` を叩くと拒否される** |
 | 3 | 他人の認証トークンで secrets を叩いても自分の行しか返らない |
 | 4 | **派生者の認証トークンで `image_jobs.prompt_text` を取得しても秘密が無い** |
+| 4b | **One-Tap Style で生成したユーザーが、自分の `image_jobs.prompt_text` からプリセット全文を読めない** |
 | 5 | **派生者の認証トークンで派生 `generated_images.prompt` を取得しても秘密が無い** |
 | 6 | event gallery・生成一覧・無限スクロール・RSC ペイロードに prompt が無い |
 | 7 | OGP・JSON-LD・alt テキスト・通知・エラーレスポンス・ログに秘密が無い |
