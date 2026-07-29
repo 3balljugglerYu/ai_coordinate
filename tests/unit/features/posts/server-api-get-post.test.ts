@@ -2,6 +2,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { getPost } from "@/features/posts/lib/server-api";
 
 jest.mock("react", () => ({
@@ -173,6 +174,24 @@ function createSupabaseMock(
   };
 }
 
+/**
+ * author secret の一括取得用スタブ。
+ *
+ * プロンプトの正本は service-only の generated_image_prompt_secrets へ
+ * 移したため、読み取り経路がこの参照を持つようになった（ADR-001）。
+ * ここでは secret 未作成（= backfill 前の既存行）を再現し、legacy 列への
+ * フォールバックが働くことを前提にする。
+ */
+function createPromptSecretAdminStub(rows: Array<{ image_id: string; prompt: string }> = []) {
+  return {
+    from: () => ({
+      select: () => ({
+        in: () => Promise.resolve({ data: rows, error: null }),
+      }),
+    }),
+  };
+}
+
 describe("getPost", () => {
   const originalSupabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const createClientMock = createClient as jest.MockedFunction<
@@ -180,6 +199,9 @@ describe("getPost", () => {
   >;
 
   beforeEach(() => {
+    (createAdminClient as jest.Mock).mockReturnValue(
+      createPromptSecretAdminStub()
+    );
     process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example";
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,

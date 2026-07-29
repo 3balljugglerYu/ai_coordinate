@@ -12,6 +12,22 @@ jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(),
 }));
 
+/**
+ * プロンプトの正本を service-only の generated_image_prompt_secrets へ移した
+ * ため、読み取り経路が service role の参照を持つようになった（ADR-001）。
+ * ここでは secret 未作成（= backfill 前の既存行）を再現し、legacy 列への
+ * フォールバックが働くことを前提にする。
+ */
+jest.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        in: () => Promise.resolve({ data: [], error: null }),
+      }),
+    }),
+  }),
+}));
+
 import { createClient } from "@/lib/supabase/server";
 import {
   PERCOIN_TRANSACTIONS_PER_PAGE,

@@ -15,6 +15,7 @@ import type {
 } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
+import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 import { getImageDimensions, getPostImageUrl } from "./utils";
 import { isAllowedInputImageUrl } from "./before-image-storage";
 import {
@@ -504,8 +505,13 @@ async function enrichPosts(
     getCommentCountsBatch(postIds, supabaseOverride),
   ]);
 
+  // プロンプトの正本は service-only の author secret。generated_images.prompt は
+  // 移行期間の互換用にすぎない（ADR-001）。一覧のたびに N 件引かないよう
+  // まとめて解決する。redactSensitivePrompt は防御層として残す。
+  const promptResolvedPosts = await resolveVisiblePrompts(postsData);
+
   // 投稿データにユーザー情報・いいね数・コメント数を結合
-  return postsData.map((post) => {
+  return promptResolvedPosts.map((post) => {
     const safePost = redactSensitivePrompt(post);
     const profile = safePost.user_id ? profileMap[safePost.user_id] : undefined;
     const postId = safePost.id || "";
@@ -1012,8 +1018,11 @@ export const getPost = cache(async (
     }
   }
 
+  // 単一取得もプロンプトの正本は author secret から解決する（ADR-001）
+  const [promptResolved] = await resolveVisiblePrompts([data]);
+
   return redactSensitivePrompt({
-    ...data,
+    ...promptResolved,
     user: data.user_id
       ? {
           id: data.user_id,

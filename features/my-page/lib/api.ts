@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { resolveOwnVisiblePrompts } from "@/features/generation/lib/prompt-secrets-client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import {
   redactSensitivePrompt,
@@ -64,7 +65,9 @@ export async function getMyImages(
     );
   }
 
-  return redactSensitivePrompts(data || []);
+  // プロンプトの正本は author secret。RLS が本人行だけを返すため、
+  // 他人の本文はそもそも取得できない（ADR-001）。
+  return redactSensitivePrompts(await resolveOwnVisiblePrompts(data || []));
 }
 
 /**
@@ -98,7 +101,8 @@ export async function getImageDetail(
     );
   }
 
-  return redactSensitivePrompt(data);
+  const [promptResolved] = await resolveOwnVisiblePrompts([data]);
+  return redactSensitivePrompt(promptResolved);
 }
 
 /**
