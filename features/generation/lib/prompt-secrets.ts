@@ -109,11 +109,3 @@ export async function resolveVisiblePrompts<T extends PromptResolvableRecord>(
     return resolved === record.prompt ? record : { ...record, prompt: resolved };
   });
 }
-
-/** 単一レコード版。 */
-export async function resolveVisiblePrompt<T extends PromptResolvableRecord>(
-  record: T
-): Promise<T> {
-  const [resolved] = await resolveVisiblePrompts([record]);
-  return resolved;
-}
