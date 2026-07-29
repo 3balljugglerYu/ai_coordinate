@@ -2702,7 +2702,11 @@ Deno.serve(async () => {
 
               if (isOpenAIImageModel(dbModel)) {
                 const { data: imageRecords, error: completeJobError } = await supabase.rpc(
-                  "complete_image_job_with_generated_images",
+                  // 画像行・author secret・job 成功更新を同一トランザクションで
+                  // 確定する。旧 complete_image_job_with_generated_images は
+                  // 空になった prompt_text をコピーするだけで author secret を
+                  // 作らないため、生成した本人が自分のプロンプトを参照できなくなる。
+                  "complete_image_job_with_prompt_secrets",
                   {
                     p_job_id: jobId,
                     p_images: uploadedImages.map((image) => ({

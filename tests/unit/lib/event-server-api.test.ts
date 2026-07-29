@@ -8,6 +8,21 @@ jest.mock("react", () => {
   };
 });
 
+/**
+ * プロンプトの正本を service-only の generated_image_prompt_secrets へ移した
+ * ため、読み取り経路が service role の参照を持つようになった（ADR-001）。
+ * ここでは secret 未作成を再現し、legacy 列へのフォールバックを前提にする。
+ */
+jest.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: () => ({
+    from: () => ({
+      select: () => ({
+        in: () => Promise.resolve({ data: [], error: null }),
+      }),
+    }),
+  }),
+}));
+
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(),
 }));
