@@ -11,21 +11,26 @@
 -- 表示・生成ともにこの列を読まなくなっている。
 --
 -- ★ 適用順序が重要 ★
--- この migration より先に、次の2つがデプロイ済みであること。
---   1. Next.js (legacy フォールバックを外した読み取り)
---   2. Worker  (Gemini 経路も原子的 RPC を使い、prompt_text を読まない版)
+-- この migration より先に、次の3つが完了していること。
+--   1. expand migration 20260730090000 (完了RPCの6引数化)
+--   2. Next.js (legacy フォールバックを外した読み取り)
+--   3. Worker  (Gemini 経路も原子的 RPC を使い、prompt_text を読まない版)
 --
 -- 旧 Worker のまま適用すると次が起きる。
 --   - Gemini 経路の直接 INSERT が generated_images.prompt の CHECK 違反で失敗
 --   - prompt_text を読む旧 Worker が、空化された active ジョブで生成入力を失う
 --
--- さらに、in-flight の旧 revision 処理が残っていないことを確認する。
+-- さらに、in-flight の処理が残っていないことを確認する。
 -- 手順:
---   a. 新 Worker をデプロイする
---   b. image_jobs の queued / processing が 0 件になるまで待つ
---      (0 件でなくても、全件が実行入力レコードを持つなら続行可。migration が
---       この条件を検証し、満たさなければ中断する)
---   c. この migration を適用する
+--   a. expand migration 20260730090000 を適用する (旧・新 Worker の両対応)
+--   b. Next.js をマージ・デプロイし、新 Worker をデプロイする
+--   c. Worker の cron を止め、image_jobs の queued / processing が 0 件になるまで待つ
+--   d. この migration を適用する
+--   e. Worker の cron を戻す
+--
+-- c で active を 0 にするのは必須である。active を許したまま強いロックを取ると
+-- Worker と互いの次処理を待つ deadlock が成立し、許さずに緩いロックにすると
+-- 空化と生成入力の読み取りが競合する。運用で止めるのが最も単純で安全。
 --
 -- 不可逆性について:
 --   この UPDATE 自体は不可逆だが、本文は secret 側に残っているため、
@@ -35,6 +40,21 @@
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
+
+-- ===============================================
+-- ロックを最初に取る（Worker と同じ順序で、完了 RPC の入口も止める強さ）
+-- ===============================================
+-- 完了 RPC は image_jobs を FOR UPDATE (ROW SHARE) で押さえてから
+-- generated_images へ INSERT する。migration がこれと逆順、または競合しない
+-- 弱いロックを取ると deadlock が成立する。
+--   migration: generated_images を保持 → image_jobs の UPDATE 待ち
+--   Worker   : image_jobs 行を保持     → generated_images の INSERT 待ち
+--
+-- そこで Worker と同じ順序 (image_jobs → generated_images) で、
+-- FOR UPDATE も INSERT も入れない強さのロックを検証より前に取得する。
+-- lock_timeout があるので、取れなければ何も適用せず巻き戻る。
+LOCK TABLE public.image_jobs IN EXCLUSIVE MODE;
+LOCK TABLE public.generated_images IN ACCESS EXCLUSIVE MODE;
 
 -- ===============================================
 -- 0. 事前検証: 空化して表示を失う行が「想定内の孤児」だけであること
@@ -135,10 +155,9 @@ $$;
 -- legacy 値を generated_images.prompt へ書いていた。以後は空文字だけを書く。
 -- author secret の作成はそのまま維持する。
 
--- Gemini 経路も同じ RPC で確定できるよう、model と background_mode を
--- 呼び出し側から渡せるようにする。Worker は image_jobs の生値ではなく
--- 正規化後の値 (normalizeModelName / resolveBackgroundMode) を画像へ書いて
--- いたため、NULL のときだけジョブの値を使う形で互換を保つ。
+-- シグネチャ拡張 (p_model / p_background_mode) は expand migration
+-- 20260730090000 で先行適用済み。ここでは dual-write を止めるためだけに
+-- 再定義する。差分は generated_images.prompt へ書く値のみ。
 CREATE OR REPLACE FUNCTION public.complete_image_job_with_prompt_secrets(
   p_job_id uuid,
   p_images jsonb,
@@ -360,10 +379,6 @@ BEGIN
 END;
 $function$;
 
--- 旧シグネチャ (4引数) は overload として残らないよう明示的に落とす。
--- 残すと呼び出し側の引数漏れが「別の関数が呼ばれる」形で隠れる。
-DROP FUNCTION IF EXISTS public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text);
-
 REVOKE ALL ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) FROM anon;
 REVOKE ALL ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) FROM authenticated;
@@ -453,32 +468,28 @@ COMMENT ON COLUMN public.generated_images.prompt IS
 -- active ジョブも空化して構わない。generated_images.prompt と同じく
 -- DEFAULT '' + CHECK で不変条件にする。
 --
--- 競合防止: 事前チェックと UPDATE の間に旧 Worker の stale 処理が状態を
--- 変えられないよう、テーブルロックを取ってから検証する。
--- ロック中は image_jobs への書き込みが待たされるが、対象は約3,600行で
--- UPDATE は一瞬である。
-
-LOCK TABLE public.image_jobs IN SHARE ROW EXCLUSIVE MODE;
-
--- 実行入力レコードを持たない active ジョブがあれば、空化すると生成入力を
--- 失う。1 件でもあれば中断し、完了を待ってから再適用する。
+-- active ジョブが 1 件でもあれば中断する。
+--
+-- 当初は「実行入力レコードを持つなら active でも続行可」としていたが、これは
+-- 安全ではない。active を許すと Worker と競合し、
+--   - 緩いロック (SHARE ROW EXCLUSIVE) では完了 RPC の FOR UPDATE と競合せず、
+--     空化と生成入力の読み取りがすれ違う
+--   - 強いロックを後から取ると、migration が generated_images を保持したまま
+--     image_jobs を待ち、Worker が image_jobs 行を保持したまま
+--     generated_images を待つ deadlock が成立する
+-- 運用で Worker を止めてキューを空にするのが最も単純で安全である。
 DO $$
 DECLARE
-  v_active_without_record integer;
+  v_active integer;
 BEGIN
   SELECT count(*)
-  INTO v_active_without_record
-  FROM public.image_jobs AS j
-  WHERE j.status IN ('queued', 'processing')
-    AND NOT EXISTS (
-      SELECT 1
-      FROM public.generation_prompt_snapshots AS s
-      WHERE s.image_job_id = j.id
-    );
+  INTO v_active
+  FROM public.image_jobs
+  WHERE status IN ('queued', 'processing');
 
-  IF v_active_without_record > 0 THEN
+  IF v_active > 0 THEN
     RAISE EXCEPTION
-      '実行入力レコードを持たない active ジョブが % 件ある。完了を待ってから再適用すること', v_active_without_record;
+      'active な image_jobs が % 件ある。Worker の cron を止め、キューが空になってから再適用すること', v_active;
   END IF;
 END;
 $$;

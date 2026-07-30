@@ -62,6 +62,7 @@ import {
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import { resolvePromptExecutionInput } from "./prompt-execution.ts";
+import { settleFailedJobBilling } from "./failed-job-billing.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -782,6 +783,55 @@ function getGenerationPercoinAmount(job: {
 const GENERATION_PROMPT_EXECUTION_MISSING =
   "GENERATION_PROMPT_EXECUTION_MISSING";
 
+/**
+ * 最終失敗したジョブの課金後処理を冪等に実行する。
+ *
+ * 判定と順序は failed-job-billing.ts に隔離し（Jest でテスト可能にするため）、
+ * ここでは Supabase への副作用を注入するだけにする。
+ *
+ * @returns 完了したか。false のときメッセージを ack してはならない。
+ */
+async function settleFailedJobBillingWithSupabase(
+  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  params: {
+    jobId: string;
+    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    job: any;
+    errorMessage: string;
+    isFreeOneTapStyleJob: boolean;
+    reservedAttemptId: string | null;
+  },
+): Promise<boolean> {
+  const { jobId, job, errorMessage, isFreeOneTapStyleJob, reservedAttemptId } =
+    params;
+
+  return await settleFailedJobBilling({
+    jobId,
+    isFreeOneTapStyleJob,
+    reservedAttemptId,
+    errorMessage,
+    releaseFreeAttempt: (attemptId, releaseReason) =>
+      releaseStyleAuthenticatedGenerateAttempt(
+        supabase,
+        attemptId,
+        releaseReason,
+      ),
+    refundPercoins: () =>
+      refundPercoinsFromGeneration(
+        supabase,
+        job.user_id,
+        jobId,
+        getGenerationPercoinAmount(job),
+      ),
+    logInfo: (message) => console.log(`[Job Processing] ${message}`),
+    logError: (message, error) =>
+      console.error(`[Job Processing] ${message}`, error),
+  });
+}
+
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
     errorMessage === GENERATION_PROMPT_EXECUTION_MISSING ||
@@ -1479,6 +1529,37 @@ Deno.serve(async () => {
         // processing は削除しない。削除するとクラッシュ時にジョブが永続的に
         // processing のまま残る（下の stale 判定で回収する）。
         if (job.status === "succeeded" || job.status === "failed") {
+          // failed の再配送は課金後処理の reconciliation として使う。
+          // 「failed へ更新 → 返金 → pgmq_delete」の途中でクラッシュした場合、
+          // ここで無条件に削除すると未実施の返金が永久に実行されない。
+          if (job.status === "failed") {
+            const terminalOneTapMetadata =
+              job.generation_type === "one_tap_style"
+                ? getOneTapStylePresetMetadata(job)
+                : null;
+            const settled = await settleFailedJobBillingWithSupabase(supabase, {
+              jobId,
+              job,
+              errorMessage: job.error_message ?? "",
+              isFreeOneTapStyleJob:
+                job.generation_type === "one_tap_style" &&
+                terminalOneTapMetadata?.billingMode === "free",
+              reservedAttemptId:
+                job.generation_type === "one_tap_style"
+                  ? getOneTapStyleReservedAttemptId(job)
+                  : null,
+            });
+
+            if (!settled) {
+              // ack せずメッセージを残し、次の配送でもう一度試す
+              console.warn(
+                `[Job Processing] Left failed message for billing reconciliation: ${jobId}`,
+              );
+              skippedCount++;
+              continue;
+            }
+          }
+
           const { error: terminalDeleteError } = await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
             p_msg_id: msgId,
@@ -2657,8 +2738,22 @@ Deno.serve(async () => {
           };
 
           const uploadedImages: UploadedGeneratedImage[] = [];
-          const cleanupUploadedImages = async (reason: string) => {
-            const uploadPaths = uploadedImages.map((image) => image.uploadPath);
+          /**
+           * アップロード済み画像のうち、DB に紐づかなかった分を削除する。
+           *
+           * 完了 RPC は冪等で、stale 競合時には別 Worker が作った既存行を返す。
+           * その場合、今回アップロードした画像は誰からも参照されない孤児になる。
+           * RPC が返した storage_path に含まれないものだけを消すことで、
+           * エラー時（persistedPaths なし = 全部消す）と競合時の両方を扱える。
+           */
+          const cleanupUploadedImages = async (
+            reason: string,
+            persistedPaths?: readonly string[],
+          ) => {
+            const keep = new Set(persistedPaths ?? []);
+            const uploadPaths = uploadedImages
+              .map((image) => image.uploadPath)
+              .filter((path) => !keep.has(path));
             if (uploadPaths.length === 0) {
               return;
             }
@@ -2672,8 +2767,22 @@ Deno.serve(async () => {
                 `[Worker] failed to cleanup uploaded images after ${reason}`,
                 cleanupError
               );
+            } else {
+              console.log(
+                `[Worker] cleaned up ${uploadPaths.length} unpersisted uploads after ${reason}`,
+              );
             }
           };
+
+          /** 完了 RPC の返り値から storage_path を取り出す。 */
+          const extractPersistedPaths = (rows: unknown): string[] =>
+            Array.isArray(rows)
+              ? (rows as Array<{ storage_path?: unknown }>)
+                  .map((row) =>
+                    typeof row?.storage_path === "string" ? row.storage_path : null
+                  )
+                  .filter((path): path is string => path !== null)
+              : [];
 
           currentStage = "uploading";
           await measureJobStage(
@@ -2795,6 +2904,13 @@ Deno.serve(async () => {
                   );
                 }
 
+                // stale 競合で別 Worker の既存行が返った場合、今回アップロードした
+                // 画像は誰からも参照されない。返却 storage_path に無い分を消す。
+                await cleanupUploadedImages(
+                  "atomic completion",
+                  extractPersistedPaths(imageRecords),
+                );
+
                 imageRecordIds.push(...rpcImageRecordIds);
                 return;
               }
@@ -2838,6 +2954,8 @@ Deno.serve(async () => {
                   "Failed to complete image job atomically:",
                   geminiCompleteError,
                 );
+                // DB に紐づかなかったアップロードを孤児にしない
+                await cleanupUploadedImages("persistence failure");
                 throw new Error(
                   `画像メタデータの保存に失敗しました: ${geminiCompleteError.message}`,
                 );
@@ -2851,8 +2969,16 @@ Deno.serve(async () => {
 
               if (geminiRecordIds.length === 0) {
                 // RPC は冪等で、既に成功済みなら既存行を返す。0 件は想定外。
+                await cleanupUploadedImages("empty persistence result");
                 throw new Error("画像メタデータの保存結果が空です");
               }
+
+              // stale 競合で別 Worker の既存行が返った場合、今回アップロードした
+              // 画像は誰からも参照されない。返却 storage_path に無い分を消す。
+              await cleanupUploadedImages(
+                "atomic completion",
+                extractPersistedPaths(geminiImageRecords),
+              );
 
               imageRecordIds.push(...geminiRecordIds);
 
@@ -2987,57 +3113,35 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗が確定した場合のみ返金または無料枠release
+          // 最終失敗が確定した場合のみ課金後処理を行う。
+          // 完了してからだけ ack する（未返金のまま捨てないため）。
           if (shouldMarkAsFailed) {
-            if (isFreeOneTapStyleJob) {
-              const shouldReleaseFreeAttempt =
-                reservedAttemptId !== null &&
-                !isSafetyPolicyBlockedErrorMessage(errorMessage);
+            const settled = await settleFailedJobBillingWithSupabase(supabase, {
+              jobId,
+              job,
+              errorMessage,
+              isFreeOneTapStyleJob,
+              reservedAttemptId,
+            });
 
-              if (shouldReleaseFreeAttempt) {
-                try {
-                  const releaseReason =
-                    errorMessage === "No images generated"
-                      ? "no_image_generated"
-                      : "worker_failed";
-                  await releaseStyleAuthenticatedGenerateAttempt(
-                    supabase,
-                    reservedAttemptId,
-                    releaseReason
-                  );
-                  console.log(
-                    `[Job Processing] Released free style attempt for failed job ${jobId}`
-                  );
-                } catch (releaseError) {
-                  console.error(
-                    "[Job Processing] Failed to release free style attempt after final generation failure:",
-                    releaseError
-                  );
-                }
+            if (settled) {
+              const { error: failDeleteError } = await supabase.rpc("pgmq_delete", {
+                p_queue_name: QUEUE_NAME,
+                p_msg_id: msgId,
+              });
+              if (failDeleteError) {
+                console.error(
+                  "Failed to delete message after final failure:",
+                  failDeleteError,
+                );
               }
             } else {
-              try {
-                const percoinCost = getGenerationPercoinAmount(job);
-                await refundPercoinsFromGeneration(
-                  supabase,
-                  job.user_id,
-                  jobId,
-                  percoinCost
-                );
-                console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
-              } catch (refundError) {
-                // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
-                console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
-              }
+              // メッセージを残す。可視性タイムアウト後に再配送され、
+              // 冒頭の failed 分岐が reconciliation として課金後処理を再実行する。
+              console.warn(
+                `[Job Processing] Left message for billing reconciliation: ${jobId}`,
+              );
             }
-          }
-
-          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 2の場合）
-          if (shouldMarkAsFailed) {
-            await supabase.rpc("pgmq_delete", {
-              p_queue_name: QUEUE_NAME,
-              p_msg_id: msgId,
-            });
           }
         }
       } catch (error) {
