@@ -397,8 +397,10 @@ erDiagram
 - **REQ-010**: The system shall keep `source_post_id` immutable after creation.
   システムは作成後の `source_post_id` を不変にしなければならない。
 
-- **REQ-011**: While the origin post has been deleted, the system shall retain the lineage and render the credit in a disabled state, rather than losing the attribution.
-  原作の投稿が削除されている間、システムは出所を保持し、クレジットを無効状態で表示しなければならない。出所を失ってはならない。
+- **REQ-011（改訂）**: While the origin post is unavailable, the system shall retain the lineage in the database, and the UI shall show only the section heading and a single unavailability message, omitting the thumbnail, credit, usage count and profile link.
+  原作の投稿が利用できない間、システムは出所をデータベース上に保持しなければならない。UI は表題と利用不可の文言だけを表示し、サムネイル・クレジット・利用数・プロフィール導線を出してはならない。
+
+  **改訂の理由（2026-07-30・実機確認後）**: 当初は「クレジットを無効状態で表示する」としていたが、実際に投稿取消を試すと、縦に大きな空のサムネイル枠が残り壊れて見えた。加えて、解消しようのない状態でクレジット・利用数・プロフィール導線を見せても閲覧者の次の行動につながらない。取り消した投稿へ注目を集めない方が原作者の意思にも沿う。`source_post_id` / `source_author_id` は DB に残り続けるため、系譜そのものは失われず、運営は admin から辿れる。
 
 - **REQ-012**: When a derived generation completes successfully, the system shall record an immutable usage event, and the usage count shall be computed from those events.
   派生生成が成功したとき、システムは改ざんできない利用イベントを記録し、利用数はそのイベントから算出しなければならない。

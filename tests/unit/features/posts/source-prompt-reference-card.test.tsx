@@ -208,6 +208,34 @@ describe("押せない理由の出し分け", () => {
     ).toBeNull();
   });
 
+  it("原作が使えないときは表題と理由だけを出す", () => {
+    // 空のサムネイル枠が縦に大きく残ると壊れて見える。解消しようのない状態で
+    // クレジットや利用数・プロフィール導線を見せても次の行動につながらない。
+    // 実際に起きるのは派生投稿の原作が取り消されたとき
+    renderCard({
+      isDerivedPost: true,
+      reference: buildReference({
+        isAvailable: false,
+        thumbnailUrl: null,
+        beforeThumbnailUrl: null,
+      }),
+    });
+
+    // 残るもの
+    expect(screen.getByText("原作のプロンプトで作る")).toBeInTheDocument();
+    expect(screen.getByText("現在、ご利用できません")).toBeInTheDocument();
+
+    // 消えるもの
+    expect(
+      screen.queryByTestId("source-prompt-after-frame")
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("原作 原作者さん")).not.toBeInTheDocument();
+    expect(screen.queryByText(/人がこのプロンプトを使いました/)).toBeNull();
+    expect(
+      screen.queryByRole("link", { name: /プロフィールへ/ })
+    ).not.toBeInTheDocument();
+  });
+
   it("原作が使えないときはフォローを促さない", () => {
     // フォローしても解決しないので、次の行動として示すのは誤り
     renderCard({
@@ -230,11 +258,15 @@ describe("サムネイル", () => {
   });
 
   it("利用不可ならサムネイルを出さない (REQ-014)", () => {
+    // 枠ごと描画しないので、画像もプレースホルダも残らない
     renderCard({
       reference: buildReference({ isAvailable: false, thumbnailUrl: null }),
     });
 
     expect(screen.queryByAltText("原作の作品")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("source-prompt-after-frame")
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -369,7 +401,7 @@ describe("Before/After の並べ表示", () => {
   });
 
   it("利用不可なら Before も出さない", () => {
-    // REQ-014: 利用不可のときサムネイルを含めない
+    // REQ-014: 利用不可のときサムネイルを含めない。カードごと描画しない。
     renderCard({
       reference: buildReference({
         isAvailable: false,
@@ -408,16 +440,16 @@ describe("プロフィールへの導線", () => {
     ).toHaveAttribute("href", `/users/${AUTHOR_ID}`);
   });
 
-  it("原作が使えなくなっていても出す", () => {
-    // 作者は実在しており、クレジットは保持する仕様（REQ-011）。
-    // 「使えないけれど誰の作品かは辿れる」状態が正しい。
+  it("原作が使えないときは出さない", () => {
+    // 取り消した投稿へ注目を集めないことが原作者の意思に沿う。
+    // 系譜自体は DB に残っており（REQ-011）、失われるのは UI の導線だけ。
     renderCard({
       reference: buildReference({ isAvailable: false, thumbnailUrl: null }),
     });
 
     expect(
-      screen.getByRole("link", { name: /プロフィールへ/ })
-    ).toBeInTheDocument();
+      screen.queryByRole("link", { name: /プロフィールへ/ })
+    ).not.toBeInTheDocument();
   });
 
   it("未ログインでも出す", () => {
@@ -439,14 +471,9 @@ describe("プロフィールへの導線", () => {
   });
 
   it("原作者が分からないときは出さない", () => {
-    // 飛ばす先が無い
+    // 飛ばす先が無い（resolver は作者不明を利用不可にするが、判定は独立させる）
     renderCard({
-      reference: buildReference({
-        authorId: null,
-        authorNickname: null,
-        isAvailable: false,
-        thumbnailUrl: null,
-      }),
+      reference: buildReference({ authorId: null, authorNickname: null }),
     });
 
     expect(

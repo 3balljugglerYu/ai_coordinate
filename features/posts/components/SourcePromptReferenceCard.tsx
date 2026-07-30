@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Lock, Sparkles, User } from "lucide-react";
+import { Sparkles, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
@@ -84,14 +84,17 @@ interface SourcePromptReferenceCardProps {
  *
  * 押せない理由は3つあり、それぞれ別の文言を出す。
  *
- * - 原作が内在的に使えない → 「現在、ご利用できません」
+ * - 原作が内在的に使えない → **表題と「現在、ご利用できません」だけ**にする。
  *   削除・投稿取消・公開停止・公開へ戻された、のどれであっても同じ文言にする。
  *   区別できると原作の状態を推測できてしまう（ADR-005）。
- * - 未ログイン → 「ログインすると使えます」
- * - 未フォロー → 「フォローすると使えます」＋カード内にフォローボタン
+ * - 未ログイン → カードは出したまま「ログインすると使えます」
+ * - 未フォロー → カードは出したまま「フォローすると使えます」＋フォローボタン
  *
- * 未ログイン・未フォローを利用不可と同じ文言にまとめないのは、これらが
- * 閲覧者側で解消できる状態であり、次の行動を示せるためである。
+ * 未ログイン・未フォローでカードを残すのは、これらが閲覧者側で解消できる状態で
+ * あり、サムネイルこそが「解消する価値があるか」の判断材料になるためである。
+ * 逆に原作が使えないときは解消できないので、空のサムネイル枠・クレジット・
+ * 利用数・プロフィール導線をすべて落とす。取り消した投稿へ注目を集めないことが
+ * 原作者の意思に沿う（REQ-011 の UI 部分を改訂。DB 側の系譜保持は変えていない）。
  */
 export function SourcePromptReferenceCard({
   reference,
@@ -150,105 +153,108 @@ export function SourcePromptReferenceCard({
           : t("sourcePromptCardTitle")}
       </p>
 
-      <Card
-        className={`overflow-hidden p-0 ${canGenerate ? "" : "opacity-70"}`}
-        style={{ width: cardWidth, maxWidth: "100%" }}
-      >
-        {/*
-          サムネイル。利用不可のときは含めない（REQ-014）ので、錠アイコンの
-          プレースホルダへ差し替える。高さが変わると隣の文字が動くため、
-          プレースホルダも同じ比率で描く。
-
-          Before/After を並べるときは、正方形・縦長なら横並び、横長なら縦並びに
-          する。横長を横並びにすると全体が極端に横長になり、縦長を縦並びにすると
-          極端に縦長になる。どちらもカードとして収まりが悪い。
-
-          両セルは After の比率を共有する。Before の実寸は保存していないため
-          （詳細は types.ts のコメント）、object-top で顔を残す形にしている。
-        */}
-        <div
-          className={`flex w-full ${
-            showsBefore && isLandscape ? "flex-col" : "flex-row"
-          }`}
+      {/*
+        原作が使えないときはカードを出さない。空のサムネイル枠が縦に大きく残ると
+        壊れて見えるうえ、解消しようのない状態でクレジットや利用数を見せても
+        次の行動につながらない。
+      */}
+      {reference.isAvailable ? (
+        <Card
+          className={`overflow-hidden p-0 ${canGenerate ? "" : "opacity-70"}`}
+          style={{ width: cardWidth, maxWidth: "100%" }}
         >
+          {/*
+            サムネイル。利用不可のカードはそもそも描画しないので、ここで URL が
+            無いのは「利用可能だが取得に失敗した」ときだけ。錠アイコンは
+            「使えない」意味に読めてしまうため、無地の枠で埋める。
+
+            Before/After を並べるときは、正方形・縦長なら横並び、横長なら縦並びに
+            する。横長を横並びにすると全体が極端に横長になり、縦長を縦並びにすると
+            極端に縦長になる。どちらもカードとして収まりが悪い。
+
+            両セルは After の比率を共有する。Before の実寸は保存していないため
+            （詳細は types.ts のコメント）、object-top で顔を残す形にしている。
+          */}
           <div
-            className="relative flex-1 overflow-hidden bg-gray-100"
-            style={{ aspectRatio }}
-            data-testid="source-prompt-after-frame"
+            className={`flex w-full ${
+              showsBefore && isLandscape ? "flex-col" : "flex-row"
+            }`}
           >
-            {reference.thumbnailUrl ? (
-              <Image
-                src={reference.thumbnailUrl}
-                alt={t("sourcePromptThumbnailAlt")}
-                fill
-                sizes={cellSizes}
-                className="object-cover object-top"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center">
-                <Lock className="h-6 w-6 text-gray-400" aria-hidden="true" />
+            <div
+              className="relative flex-1 overflow-hidden bg-gray-100"
+              style={{ aspectRatio }}
+              data-testid="source-prompt-after-frame"
+            >
+              {reference.thumbnailUrl ? (
+                <Image
+                  src={reference.thumbnailUrl}
+                  alt={t("sourcePromptThumbnailAlt")}
+                  fill
+                  sizes={cellSizes}
+                  className="object-cover object-top"
+                />
+              ) : null}
+              {showsBefore ? (
+                <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                  {t("afterImageLabel")}
+                </span>
+              ) : null}
+            </div>
+
+            {showsBefore && reference.beforeThumbnailUrl ? (
+              <div
+                className="relative flex-1 overflow-hidden border-l bg-gray-100"
+                style={{ aspectRatio }}
+                data-testid="source-prompt-before-frame"
+              >
+                <Image
+                  src={reference.beforeThumbnailUrl}
+                  alt={t("beforeImageAlt")}
+                  fill
+                  sizes={cellSizes}
+                  className="object-cover object-top"
+                />
+                <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                  {t("beforeImageLabel")}
+                </span>
               </div>
-            )}
-            {showsBefore ? (
-              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                {t("afterImageLabel")}
-              </span>
             ) : null}
           </div>
 
-          {showsBefore && reference.beforeThumbnailUrl ? (
-            <div
-              className="relative flex-1 overflow-hidden border-l bg-gray-100"
-              style={{ aspectRatio }}
-              data-testid="source-prompt-before-frame"
-            >
-              <Image
-                src={reference.beforeThumbnailUrl}
-                alt={t("beforeImageAlt")}
-                fill
-                sizes={cellSizes}
-                className="object-cover object-top"
-              />
-              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                {t("beforeImageLabel")}
-              </span>
-            </div>
-          ) : null}
-        </div>
+          {/* サムネイルの下にクレジットと利用数を置く（One-Tap Style のカードと同じ配置） */}
+          <div className="space-y-1 border-t bg-white px-3 py-2">
+            {authorName ? (
+              <div className="flex items-center gap-1.5">
+                {reference.authorAvatarUrl ? (
+                  <Image
+                    src={reference.authorAvatarUrl}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="shrink-0 rounded-full object-cover ring-1 ring-black/10"
+                  />
+                ) : (
+                  <span
+                    aria-hidden="true"
+                    className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 ring-1 ring-black/10"
+                  >
+                    <User className="h-3 w-3 text-gray-500" />
+                  </span>
+                )}
+                <p className="truncate text-xs font-medium text-slate-900">
+                  {t("sourcePromptCredit", { name: authorName })}
+                </p>
+              </div>
+            ) : null}
 
-        {/* サムネイルの下にクレジットと利用数を置く（One-Tap Style のカードと同じ配置） */}
-        <div className="space-y-1 border-t bg-white px-3 py-2">
-          {authorName ? (
-            <div className="flex items-center gap-1.5">
-              {reference.authorAvatarUrl ? (
-                <Image
-                  src={reference.authorAvatarUrl}
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="shrink-0 rounded-full object-cover ring-1 ring-black/10"
-                />
-              ) : (
-                <span
-                  aria-hidden="true"
-                  className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 ring-1 ring-black/10"
-                >
-                  <User className="h-3 w-3 text-gray-500" />
-                </span>
-              )}
-              <p className="truncate text-xs font-medium text-slate-900">
-                {t("sourcePromptCredit", { name: authorName })}
+            {reference.usageCount > 0 ? (
+              <p className="text-[11px] leading-tight text-muted-foreground">
+                {t("sourcePromptUsageCount", { count: reference.usageCount })}
               </p>
-            </div>
-          ) : null}
-
-          {reference.usageCount > 0 ? (
-            <p className="text-[11px] leading-tight text-muted-foreground">
-              {t("sourcePromptUsageCount", { count: reference.usageCount })}
-            </p>
-          ) : null}
-        </div>
-      </Card>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
 
       {blockedReason ? (
         <p className="text-xs font-medium text-amber-700">{blockedReason}</p>
@@ -284,12 +290,12 @@ export function SourcePromptReferenceCard({
       {/*
         原作者のプロフィールへの導線。
 
-        原作が使えなくなっていても出す。作者は実在しており、クレジットは
-        保持する仕様（REQ-011）なので、「使えないけれど誰の作品かは辿れる」
-        状態が正しい。原作者自身には出さない（自分のプロフィールへ飛ばす
-        リンクは雑音になる。フォローボタンを出さないのと同じ理由）。
+        原作が使えないときは出さない。取り消した投稿へ注目を集めないことが
+        原作者の意思に沿うためで、表題と「現在、ご利用できません」だけを残す。
+        原作者自身にも出さない（自分のプロフィールへ飛ばすリンクは雑音になる。
+        フォローボタンを出さないのと同じ理由）。
       */}
-      {reference.authorId && !isOwnPrompt ? (
+      {reference.isAvailable && reference.authorId && !isOwnPrompt ? (
         <Link
           href={`/users/${encodeURIComponent(reference.authorId)}`}
           className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-gray-50"
