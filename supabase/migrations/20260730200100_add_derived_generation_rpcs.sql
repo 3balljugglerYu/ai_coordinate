@@ -646,6 +646,13 @@ BEGIN
 END;
 $$;
 
+-- PostgREST のスキーマキャッシュを明示的に再読み込みさせる。
+-- Worker は validate_derived_prompt_source / resolve_derived_prompt_source を
+-- Data API 経由の rpc() で呼ぶため、キャッシュが古いと PGRST202
+-- (function not found) になる。DDL の event trigger による自動 reload は
+-- 即時とは限らず、本作業中に実際に PGRST202 を踏んでいる。
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
 
 -- ===============================================
