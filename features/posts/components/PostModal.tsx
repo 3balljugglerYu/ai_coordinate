@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { GenerationType } from "@/features/generation/types";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
 import { isSuspendedPublishError } from "../lib/post-error-codes";
@@ -47,6 +48,18 @@ interface PostModalProps {
   afterImageUrl?: string | null;
   /** 関連する Before 画像 URL（永続パスまたは楽観 fallback） */
   beforeImageUrl?: string | null;
+  /**
+   * 生成種別。プロンプト非公開トグルは `free` の root 投稿だけに出す。
+   * 未指定ならトグルを出さない（= 既定の公開のまま）。coordinate や
+   * one_tap_style で private を送ると DB trigger が拒否するため、
+   * 「出さない」を安全側の既定にしている。
+   */
+  generationType?: GenerationType | null;
+  /**
+   * 派生投稿の原作 ID。値があるとトグルを出さない。
+   * 派生投稿は trigger が常に非公開へ強制するので選択肢にならない。
+   */
+  sourcePostId?: string | null;
   onPostSuccess?: (
     response: PostImageResponse
   ) =>
@@ -64,12 +77,16 @@ export function PostModal({
   currentCaption,
   afterImageUrl,
   beforeImageUrl,
+  generationType,
+  sourcePostId,
   onPostSuccess,
 }: PostModalProps) {
   const t = useTranslations("posts");
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const [caption, setCaption] = useState(currentCaption || "");
   const [showBeforeImage, setShowBeforeImage] = useState(true);
+  // 既定は公開。投稿者が明示的に非公開を選ぶ（ADR-004）。
+  const [isPromptPublic, setIsPromptPublic] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 公開停止中コンテンツの再投稿を試みたときの案内ダイアログ
@@ -116,6 +133,11 @@ export function PostModal({
   // 表示優先: 親から渡された URL > 自動取得 URL
   const effectiveBeforeImageUrl = beforeImageUrl ?? autoFetchedBeforeUrl;
 
+  // 非公開を選べるのは「じゆうモードで作った自分の root 投稿」だけ。
+  // 呼び出し元が種別を渡していない画面では出さない（安全側）。
+  const canChoosePromptVisibility =
+    generationType === "free" && !sourcePostId;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -132,6 +154,14 @@ export function PostModal({
         id: imageId,
         caption: caption.trim() || undefined,
         show_before_image: showBeforeImage,
+        // トグルを出していない投稿では列を触らない（既存値・既定値を維持）
+        ...(canChoosePromptVisibility
+          ? {
+              prompt_visibility: isPromptPublic
+                ? ("public" as const)
+                : ("private" as const),
+            }
+          : {}),
       }, {
         postFailed: t("postFailed"),
       });
@@ -289,6 +319,32 @@ export function PostModal({
                 {t("showBeforeImageLabel")}
               </Label>
             </div>
+
+            {canChoosePromptVisibility && (
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="prompt-visibility"
+                    checked={isPromptPublic}
+                    onCheckedChange={(checked) =>
+                      setIsPromptPublic(checked === true)
+                    }
+                    disabled={isSubmitting}
+                  />
+                  <Label
+                    htmlFor="prompt-visibility"
+                    className="cursor-pointer text-sm font-medium"
+                  >
+                    {t("promptVisibilityLabel")}
+                  </Label>
+                </div>
+                {!isPromptPublic && (
+                  <p className="pl-6 text-xs text-muted-foreground">
+                    {t("promptVisibilityHint")}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

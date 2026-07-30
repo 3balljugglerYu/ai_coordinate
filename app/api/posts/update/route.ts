@@ -26,6 +26,11 @@ export async function PUT(request: NextRequest) {
       typeof body?.show_before_image === "boolean"
         ? body.show_before_image
         : undefined;
+    const promptVisibility =
+      body?.prompt_visibility === "private" ||
+      body?.prompt_visibility === "public"
+        ? body.prompt_visibility
+        : undefined;
 
     if (!id) {
       return NextResponse.json(
@@ -34,8 +39,13 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // キャプションと show_before_image の更新処理
-    const result = await postImageServer(id, caption, showBeforeImage);
+    // キャプション・show_before_image・prompt_visibility の更新処理
+    const result = await postImageServer(
+      id,
+      caption,
+      showBeforeImage,
+      promptVisibility
+    );
 
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
@@ -70,6 +80,22 @@ export async function PUT(request: NextRequest) {
       posted_at: result.posted_at || new Date().toISOString(),
     });
   } catch (error) {
+    // instanceof ではなくメッセージの構造的チェックにする。
+    // server-database をモックするテストでは helper が undefined になり、
+    // 呼び出し自体が例外になる（隣の post_suspended_cannot_publish と同じ理由）。
+    if (
+      error instanceof Error &&
+      error.message.includes("prompt_visibility=private")
+    ) {
+      return NextResponse.json(
+        {
+          error: copy.promptVisibilityNotAllowed,
+          errorCode: "POSTS_PROMPT_VISIBILITY_NOT_ALLOWED",
+        },
+        { status: 400 }
+      );
+    }
+
     console.error("Update API error:", error);
     return NextResponse.json(
       {

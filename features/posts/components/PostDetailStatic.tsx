@@ -516,6 +516,9 @@ export function PostDetailStatic({
           currentShowBeforeImage={post.show_before_image}
           afterImageUrl={displayImageUrl}
           beforeImageUrl={beforeImageUrl}
+          generationType={post.generation_type ?? null}
+          sourcePostId={post.source_post_id ?? null}
+          currentPromptVisibility={post.prompt_visibility}
         />
       )}
 
@@ -539,6 +542,8 @@ export function PostDetailStatic({
           currentCaption={post.caption || undefined}
           afterImageUrl={displayImageUrl}
           beforeImageUrl={beforeImageUrl}
+          generationType={post.generation_type ?? null}
+          sourcePostId={post.source_post_id ?? null}
         />
       )}
     </div>

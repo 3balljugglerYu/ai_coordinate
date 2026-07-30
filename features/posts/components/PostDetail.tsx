@@ -372,6 +372,9 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           currentShowBeforeImage={post.show_before_image}
           afterImageUrl={imageUrl}
           beforeImageUrl={beforeImageUrl}
+          generationType={post.generation_type ?? null}
+          sourcePostId={post.source_post_id ?? null}
+          currentPromptVisibility={post.prompt_visibility}
         />
       )}
 
@@ -395,6 +398,8 @@ export function PostDetail({ post, currentUserId }: PostDetailProps) {
           currentCaption={post.caption || undefined}
           afterImageUrl={imageUrl}
           beforeImageUrl={beforeImageUrl}
+          generationType={post.generation_type ?? null}
+          sourcePostId={post.source_post_id ?? null}
         />
       )}
     </div>

@@ -94,6 +94,9 @@ const postTranslations = {
   afterImageLabel: "After",
   beforeImageLabel: "Before",
   showBeforeImageLabel: "生成前画像も表示する",
+  promptVisibilityLabel: "プロンプトを公開する",
+  promptVisibilityHint:
+    "オフにすると、プロンプトは誰にも見せません。",
 } as const;
 
 const postsTranslator = ((key: keyof typeof postTranslations, values?: Record<string, unknown>) => {
@@ -372,5 +375,117 @@ describe("PostModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "キャンセル" }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+  describe("プロンプト非公開トグル", () => {
+    test("じゆうモードの root 投稿では出る", () => {
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+        />
+      );
+
+      expect(screen.getByLabelText("プロンプトを公開する")).toBeInTheDocument();
+    });
+
+    test("既定は公開なので prompt_visibility=public を送る", async () => {
+      // 既定を非公開にすると、意図せず moat 側へ倒れる（ADR-004: 既定は公開）
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+        />
+      );
+
+      fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
+
+      await waitFor(() => {
+        expect(postImageAPIMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt_visibility: "public" }),
+          expect.anything()
+        );
+      });
+    });
+
+    test("オフにすると prompt_visibility=private を送り注意文を出す", async () => {
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+        />
+      );
+
+      fireEvent.click(screen.getByLabelText("プロンプトを公開する"));
+
+      expect(
+        screen.getByText("オフにすると、プロンプトは誰にも見せません。")
+      ).toBeInTheDocument();
+
+      fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
+
+      await waitFor(() => {
+        expect(postImageAPIMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt_visibility: "private" }),
+          expect.anything()
+        );
+      });
+    });
+
+    test("coordinate では出さず prompt_visibility も送らない", async () => {
+      // free 以外の root で private を送ると DB trigger が拒否する。
+      // 列を触らないことで既存挙動をそのまま保つ。
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="coordinate"
+        />
+      );
+
+      expect(
+        screen.queryByLabelText("プロンプトを公開する")
+      ).not.toBeInTheDocument();
+
+      fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
+
+      await waitFor(() => {
+        expect(postImageAPIMock).toHaveBeenCalled();
+      });
+      const payload = postImageAPIMock.mock.calls[0][0];
+      expect("prompt_visibility" in payload).toBe(false);
+    });
+
+    test("派生投稿では出さない", () => {
+      // 派生投稿は trigger が常に非公開へ強制するので選択肢にならない
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+          sourcePostId="22222222-2222-4222-8222-222222222222"
+        />
+      );
+
+      expect(
+        screen.queryByLabelText("プロンプトを公開する")
+      ).not.toBeInTheDocument();
+    });
+
+    test("種別が渡されていない画面では出さない", () => {
+      // 呼び出し元が未対応のときに誤って非公開を選べるようにしない
+      render(<PostModal open onOpenChange={jest.fn()} imageId="image-1" />);
+
+      expect(
+        screen.queryByLabelText("プロンプトを公開する")
+      ).not.toBeInTheDocument();
+    });
   });
 });

@@ -113,11 +113,17 @@ export const getGeneratedImagesServer = cache(async (
  *
  * @param showBeforeImage - 未指定なら show_before_image 列は更新しない（既存値維持）。
  *                          true / false が指定されたときだけ DB に反映する。
+ * @param promptVisibility - 未指定なら prompt_visibility 列は更新しない（既存値維持）。
+ *                           `private` を指定できるのは generation_type='free' の
+ *                           root 投稿だけで、それ以外は DB trigger が拒否する。
+ *                           派生投稿は trigger が常に private へ強制するため、
+ *                           ここで public を送っても public にはならない。
  */
 export async function postImageServer(
   id: string,
   caption?: string,
-  showBeforeImage?: boolean
+  showBeforeImage?: boolean,
+  promptVisibility?: "public" | "private"
 ): Promise<GeneratedImageRecord> {
   const supabase = await createClient();
 
@@ -128,6 +134,9 @@ export async function postImageServer(
   };
   if (typeof showBeforeImage === "boolean") {
     updates.show_before_image = showBeforeImage;
+  }
+  if (promptVisibility) {
+    updates.prompt_visibility = promptVisibility;
   }
 
   const { data, error } = await supabase

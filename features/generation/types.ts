@@ -348,6 +348,9 @@ export interface GeneratedImageData {
   // ユーザーが「Before 画像を表示しない」を選択しているかどうか。
   // false のとき Before/After トグルは出さない。
   showBeforeImage?: boolean;
+  // 派生生成の原作 root 投稿。値があると投稿モーダルの
+  // 「プロンプトを公開する」トグルを出さない（常に非公開が強制されるため）。
+  sourcePostId?: string | null;
 }
 
 /**

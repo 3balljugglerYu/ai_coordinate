@@ -469,6 +469,8 @@ export function GeneratedImageList({
           // Before 画像 URL を同期解決できれば PostModal 側の遅延を回避できる。
           // 解決不可（undefined）の場合は PostModal 側で API fallback。
           beforeImageUrl={resolveBeforeImageUrlSync(postModalImage) ?? undefined}
+          generationType={generationType}
+          sourcePostId={postModalImage.sourcePostId ?? null}
         />
       )}
 
