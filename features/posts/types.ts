@@ -38,6 +38,13 @@ export interface SourcePromptReference {
   authorAvatarUrl: string | null;
   /** 利用可能なときだけ入る原作のサムネイル URL。 */
   thumbnailUrl: string | null;
+  /**
+   * 原作画像の実寸。カードのアスペクト比をこれに合わせる。
+   * lazy compute でまだ埋まっていない行があるため null を許し、
+   * 描画側は既定比率へフォールバックする。
+   */
+  thumbnailWidth: number | null;
+  thumbnailHeight: number | null;
   /** このプロンプトを使った人数（原作者自身は除外）。 */
   usageCount: number;
 }

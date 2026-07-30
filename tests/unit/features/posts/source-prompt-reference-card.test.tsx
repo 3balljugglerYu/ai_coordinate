@@ -75,6 +75,8 @@ function buildReference(
     authorNickname: "原作者さん",
     authorAvatarUrl: "https://cdn.example/a.png",
     thumbnailUrl: "https://cdn.example/thumb.webp",
+    thumbnailWidth: 896,
+    thumbnailHeight: 1152,
     usageCount: 42,
     ...overrides,
   };
@@ -93,6 +95,19 @@ function renderCard(props: Partial<
       {...props}
     />
   );
+}
+
+/**
+ * サムネイル枠。JSDOM では React が style 属性を書かず CSSOM へ直接入れるため、
+ * セレクタでは引けない。画像の親要素をたどる。
+ */
+function thumbnailFrame(): HTMLElement {
+  const image = screen.getByAltText("原作の作品");
+  const frame = image.parentElement;
+  if (!frame) {
+    throw new Error("thumbnail frame not found");
+  }
+  return frame;
 }
 
 beforeEach(() => {
@@ -198,6 +213,42 @@ describe("サムネイル", () => {
     });
 
     expect(screen.queryByAltText("原作の作品")).not.toBeInTheDocument();
+  });
+});
+
+describe("サムネイルの比率", () => {
+  it("原作の実寸に合わせる", () => {
+    // 固定枠に押し込むと、縦横比がまちまちなユーザー生成物が切り取られる
+    renderCard({
+      reference: buildReference({ thumbnailWidth: 896, thumbnailHeight: 1152 }),
+    });
+
+    expect(thumbnailFrame().style.aspectRatio).toBe(String(896 / 1152));
+  });
+
+  it("横長の原作も比率どおりに描く", () => {
+    renderCard({
+      reference: buildReference({ thumbnailWidth: 1536, thumbnailHeight: 864 }),
+    });
+
+    expect(thumbnailFrame().style.aspectRatio).toBe(String(1536 / 864));
+  });
+
+  it("実寸が無ければ既定比率へ倒す", () => {
+    // width/height は lazy compute なので未取得の行がある
+    renderCard({
+      reference: buildReference({ thumbnailWidth: null, thumbnailHeight: null }),
+    });
+
+    expect(thumbnailFrame().style.aspectRatio).toBe(String(180 / 240));
+  });
+
+  it("片方だけ欠けている場合も既定比率へ倒す", () => {
+    renderCard({
+      reference: buildReference({ thumbnailWidth: 896, thumbnailHeight: null }),
+    });
+
+    expect(thumbnailFrame().style.aspectRatio).toBe(String(180 / 240));
   });
 });
 

@@ -45,6 +45,8 @@ type OriginRow = {
   storage_path_thumb: string | null;
   storage_path: string | null;
   image_url: string | null;
+  width: number | null;
+  height: number | null;
 };
 
 /**
@@ -94,6 +96,8 @@ export async function resolveSourcePromptReference(
       authorNickname: null,
       authorAvatarUrl: null,
       thumbnailUrl: null,
+      thumbnailWidth: null,
+      thumbnailHeight: null,
       usageCount: 0,
     };
   }
@@ -111,6 +115,8 @@ export async function resolveSourcePromptReference(
     authorNickname: profile.nickname,
     authorAvatarUrl: profile.avatarUrl,
     thumbnailUrl: null,
+    thumbnailWidth: null,
+    thumbnailHeight: null,
     usageCount,
   };
 
@@ -120,8 +126,13 @@ export async function resolveSourcePromptReference(
     return base;
   }
 
-  const thumbnailUrl = await fetchOriginThumbnailUrl(supabase, originPostId);
-  return { ...base, thumbnailUrl };
+  const thumbnail = await fetchOriginThumbnail(supabase, originPostId);
+  return {
+    ...base,
+    thumbnailUrl: thumbnail.url,
+    thumbnailWidth: thumbnail.width,
+    thumbnailHeight: thumbnail.height,
+  };
 }
 
 /**
@@ -194,21 +205,33 @@ async function fetchUsageCount(
   return Number.isSafeInteger(count) && count > 0 ? count : 0;
 }
 
-async function fetchOriginThumbnailUrl(
+/**
+ * 原作のサムネイル URL と実寸。
+ *
+ * 実寸はカードのアスペクト比に使う。lazy compute でまだ埋まっていない行が
+ * あるため null を返し得る（描画側が既定比率へフォールバックする）。
+ */
+async function fetchOriginThumbnail(
   supabase: SupabaseClient,
   originPostId: string
-): Promise<string | null> {
+): Promise<{ url: string | null; width: number | null; height: number | null }> {
   const { data, error } = await supabase
     .from("generated_images")
-    .select("id, user_id, storage_path_thumb, storage_path, image_url")
+    .select(
+      "id, user_id, storage_path_thumb, storage_path, image_url, width, height"
+    )
     .eq("id", originPostId)
     .maybeSingle();
 
   if (error || !data) {
-    return null;
+    return { url: null, width: null, height: null };
   }
 
   const row = data as OriginRow;
   const url = getPostThumbUrl(row);
-  return url || null;
+  return {
+    url: url || null,
+    width: row.width ?? null,
+    height: row.height ?? null,
+  };
 }

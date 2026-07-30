@@ -46,6 +46,8 @@ interface StubOptions {
     storage_path_thumb: string | null;
     storage_path: string | null;
     image_url: string | null;
+    width: number | null;
+    height: number | null;
   } | null;
 }
 
@@ -108,6 +110,8 @@ function createSupabaseStub(options: StubOptions = {}) {
                         storage_path_thumb: "thumb/origin.webp",
                         storage_path: null,
                         image_url: null,
+                        width: 896,
+                        height: 1152,
                       }
                     : options.originRow,
                 error: null,
@@ -221,6 +225,9 @@ describe("resolveSourcePromptReference", () => {
       authorId: AUTHOR_ID,
       authorNickname: "原作者さん",
       usageCount: 42,
+      // カードのアスペクト比に使う原作の実寸
+      thumbnailWidth: 896,
+      thumbnailHeight: 1152,
     });
     expect(result?.thumbnailUrl).toBeTruthy();
   });
@@ -247,6 +254,8 @@ describe("resolveSourcePromptReference", () => {
       authorNickname: "原作者さん",
       authorAvatarUrl: "https://cdn/a.png",
       thumbnailUrl: null,
+      thumbnailWidth: null,
+      thumbnailHeight: null,
       usageCount: 0,
     });
   });
@@ -350,6 +359,8 @@ describe("resolveSourcePromptReference", () => {
       authorNickname: null,
       authorAvatarUrl: null,
       thumbnailUrl: null,
+      thumbnailWidth: null,
+      thumbnailHeight: null,
       usageCount: 0,
     });
     // 原作者が無いと requester を決められないので RPC も呼ばない
@@ -396,7 +407,9 @@ describe("resolveSourcePromptReference", () => {
       "authorNickname",
       "isAvailable",
       "postId",
+      "thumbnailHeight",
       "thumbnailUrl",
+      "thumbnailWidth",
       "usageCount",
     ]);
   });
