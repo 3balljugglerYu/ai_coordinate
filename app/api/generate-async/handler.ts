@@ -139,6 +139,7 @@ export async function postGenerateAsyncRoute(
 
     const {
       prompt,
+      sourcePostId,
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId,
@@ -487,6 +488,57 @@ export async function postGenerateAsyncRoute(
       }
     }
 
+    // 派生生成の認可。
+    //
+    // ここでは author secret を解決しない。本文を Next.js のメモリへ載せる
+    // 必要がなく、載せると例外経路やログへ漏れる余地が増える。
+    // 解決は Worker が provider 送信直前に行う（計画書 REQ-007 / REQ-007a）。
+    //
+    // 利用不可の理由は返さない。削除・投稿取消・公開停止・非公開解除の
+    // どれであっても同じ 409 + 同じコードにする（ADR-005）。理由を返すと
+    // そこから原作の状態を推測できてしまう。
+    let derivedRootPostId: string | null = null;
+    if (sourcePostId) {
+      const adminClient = createAdminClient();
+      const { data: validation, error: validationError } = await adminClient
+        .rpc("validate_derived_prompt_source", {
+          p_source_post_id: sourcePostId,
+          // requester は body ではなく認証セッションから取る。
+          p_requester_id: user.id,
+        })
+        .select("is_available, root_post_id")
+        .maybeSingle();
+
+      if (validationError) {
+        // 検証できないときは通さない (fail closed)。
+        // Supabase の error object を丸ごとログへ出さず、コードだけに絞る。
+        console.error("Derived prompt source validation failed", {
+          requestId,
+          code: validationError.code,
+        });
+        return jsonError(
+          copy.generationFailed,
+          "GENERATION_DERIVED_VALIDATION_FAILED",
+          500
+        );
+      }
+
+      const validated = validation as
+        | { is_available?: boolean; root_post_id?: string | null }
+        | null;
+
+      if (!validated?.is_available || !validated.root_post_id) {
+        return jsonError(
+          copy.derivedSourceUnavailable,
+          "FREE_SOURCE_UNAVAILABLE",
+          409
+        );
+      }
+
+      // 派生 ID を渡された場合も root へ解決済みの値を使う（ADR-003）
+      derivedRootPostId = validated.root_post_id;
+    }
+
     // image_jobsテーブルにレコード作成
     const createJobStartedAt = Date.now();
     const jobData: ImageJobCreateInput = {
@@ -518,6 +570,9 @@ export async function postGenerateAsyncRoute(
       override_background: isInspireRequest
         ? resolvedOverrides?.background ?? true
         : null,
+      // 派生生成の原作。trigger がクライアントロールからの設定を拒否するため、
+      // この値は service role 経路（原子的 job 作成 RPC）でのみ通る。
+      ...(derivedRootPostId ? { origin_post_id: derivedRootPostId } : {}),
       // generation_metadata: framingMode(locked 以外) と Creator Looks モード/段階数。
       // worker がプロンプト構築・2段階生成判定に使い、完了 RPC 経由で
       // generated_images.generation_metadata へコピーされて品質比較にも使える。
@@ -526,15 +581,23 @@ export async function postGenerateAsyncRoute(
         : {}),
     };
 
-    // 生成実行入力。coordinate / free の入力は原作者へ開示してよい生入力で、
+    // 生成実行入力。
+    //
+    // 派生生成は本文を一切保存しない。原作のプロンプトは Worker が実行直前に
+    // author secret から解決し、メモリ上でのみ組み立てる。派生件数に比例して
+    // 秘密の永続コピーが増えることを避けるため（ADR-002）。
+    //
+    // 通常生成の coordinate / free の入力は原作者へ開示してよい生入力で、
     // 生成成功時に author secret へ転記される。inspire はジョブの列から
     // Worker が組み立てるため入力を持たない。
-    const promptExecution: PromptExecutionInput = {
-      kind: "materialized",
-      authorInput: isInspireRequest ? null : prompt,
-      authorInputOwnerId: isInspireRequest ? null : user.id,
-      sourceKind: generationType || "coordinate",
-    };
+    const promptExecution: PromptExecutionInput = derivedRootPostId
+      ? { kind: "derived_reference" }
+      : {
+          kind: "materialized",
+          authorInput: isInspireRequest ? null : prompt ?? null,
+          authorInputOwnerId: isInspireRequest ? null : user.id,
+          sourceKind: generationType || "coordinate",
+        };
 
     const { data: job, error: insertError } =
       await jobRepository.createImageJob(jobData, promptExecution);

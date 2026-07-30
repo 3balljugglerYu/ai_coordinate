@@ -787,6 +787,15 @@ const GENERATION_PROMPT_EXECUTION_MISSING =
   "GENERATION_PROMPT_EXECUTION_MISSING";
 
 /**
+ * 派生生成の原作が利用できないときに投げる固定内部コード。
+ *
+ * 削除・投稿取消・公開停止・非公開解除・フォロー解除・ブロックのいずれでも
+ * 同じコードにする。理由を分けると、そこから原作の状態を推測できてしまう
+ * （ADR-005）。復旧不能なので再試行しない。
+ */
+const DERIVED_PROMPT_SOURCE_UNAVAILABLE = "DERIVED_PROMPT_SOURCE_UNAVAILABLE";
+
+/**
  * 最終失敗したジョブの課金後処理を冪等に実行する。
  *
  * 判定と順序は failed-job-billing.ts に隔離し（Jest でテスト可能にするため）、
@@ -837,6 +846,7 @@ async function settleFailedJobBillingWithSupabase(
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
     errorMessage === GENERATION_PROMPT_EXECUTION_MISSING ||
+    errorMessage === DERIVED_PROMPT_SOURCE_UNAVAILABLE ||
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
@@ -1902,12 +1912,52 @@ Deno.serve(async () => {
           );
           // coordinate / free は生入力、one_tap_style は組み立て済み全文。
           // どちらも無い種別 (inspire / creator_looks) はジョブの列から作る。
-          const generationInput =
-            promptExecution?.authorInput ??
-            promptExecution?.providerPrompt ??
-            "";
+          // 派生生成は本文を実行入力に持たない。原作者の入力を
+          // provider 送信直前に author secret から解決する（REQ-007a）。
+          //
+          // ここで解決するのは「課金の直前に認可を確認する」ため。
+          // 本文はこの時点では取らず、認可だけを見る。
+          const isDerivedJob = job.origin_post_id != null;
 
-          {
+          if (isDerivedJob) {
+            if (promptExecution?.snapshotKind !== "derived_reference") {
+              // 派生 job に materialized record が付いている状態は改ざんの疑い。
+              // DB の cross-table trigger でも拒否されるが、ここでも止める。
+              throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
+            }
+
+            const { data: preChargeValidation, error: preChargeError } =
+              await supabase
+                .rpc("validate_derived_prompt_source", {
+                  p_source_post_id: job.origin_post_id,
+                  p_requester_id: job.user_id,
+                })
+                .select("is_available")
+                .maybeSingle();
+
+            if (preChargeError) {
+              // 検証できないときは通さない (fail closed)
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+
+            if (
+              !(preChargeValidation as { is_available?: boolean } | null)
+                ?.is_available
+            ) {
+              // 課金前なので減算は起きない
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+          }
+
+          // 派生生成の本文は provider 送信直前に解決するため、ここでは空。
+          // let にしているのは、生成フェーズで一度だけ代入するため。
+          let generationInput = isDerivedJob
+            ? ""
+            : promptExecution?.authorInput ??
+              promptExecution?.providerPrompt ??
+              "";
+
+          if (!isDerivedJob) {
             const requiresAuthorInput =
               job.generation_type === "coordinate" ||
               job.generation_type === "free";
@@ -1924,6 +1974,42 @@ Deno.serve(async () => {
 
 
           let generatedImages: GeneratedImageResult[] = [];
+          if (isDerivedJob) {
+            // 認可を再検証したうえで原作者の入力を取得する（REQ-007a）。
+            //
+            // validate と resolve を分けず、resolve 側が同一 statement で
+            // 認可を再確認する。分けるとその間に条件が変わる余地ができる。
+            //
+            // ここで得た本文はメモリ上だけに置く。derived reference、job、
+            // 生成画像、ログ、APM へは書かない。
+            const { data: resolved, error: resolveError } = await supabase
+              .rpc("resolve_derived_prompt_source", {
+                p_source_post_id: job.origin_post_id,
+                p_requester_id: job.user_id,
+              })
+              .select("author_input")
+              .maybeSingle();
+
+            if (resolveError) {
+              // error object を丸ごと serialize しない。本文は含まれない想定だが、
+              // RPC payload ごとログへ出す経路を作らない（REQ-017a）。
+              console.error("[Job Processing] Derived prompt resolve failed", {
+                jobId,
+                code: resolveError.code,
+              });
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+
+            const resolvedInput = (resolved as { author_input?: string } | null)
+              ?.author_input;
+
+            if (!resolvedInput) {
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+
+            generationInput = resolvedInput;
+          }
+
           currentStage = "generating";
           await measureJobStage(
             jobId,

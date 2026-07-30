@@ -3,6 +3,9 @@ import type { Locale } from "@/i18n/config";
 export const generationRouteCopy = {
   ja: {
     authRequired: "認証が必要です",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "このプロンプトは現在ご利用できません",
+    generationFailed: "生成の準備に失敗しました。もう一度お試しください。",
     invalidRequest: "不正なリクエストです",
     sourceStockNotFound: "ストック画像が見つかりません",
     sourceStockFetchFailed: "ストック画像の取得に失敗しました",
@@ -53,6 +56,9 @@ export const generationRouteCopy = {
   },
   en: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "This prompt is currently unavailable",
+    generationFailed: "Failed to prepare the generation. Please try again.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -103,6 +109,9 @@ export const generationRouteCopy = {
   },
   ko: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "이 프롬프트는 현재 사용할 수 없습니다",
+    generationFailed: "생성 준비에 실패했습니다. 다시 시도해 주세요.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -153,6 +162,9 @@ export const generationRouteCopy = {
   },
   "zh-CN": {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "该提示词当前不可用",
+    generationFailed: "生成准备失败，请重试。",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -203,6 +215,9 @@ export const generationRouteCopy = {
   },
   "zh-TW": {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "此提示詞目前無法使用",
+    generationFailed: "生成準備失敗，請重試。",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -253,6 +268,9 @@ export const generationRouteCopy = {
   },
   es: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Este prompt no está disponible por ahora",
+    generationFailed: "No se pudo preparar la generación. Inténtalo de nuevo.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -303,6 +321,9 @@ export const generationRouteCopy = {
   },
   pt: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Este prompt não está disponível no momento",
+    generationFailed: "Falha ao preparar a geração. Tente novamente.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -353,6 +374,9 @@ export const generationRouteCopy = {
   },
   fr: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Ce prompt n'est pas disponible pour le moment",
+    generationFailed: "Échec de la préparation de la génération. Veuillez réessayer.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -403,6 +427,9 @@ export const generationRouteCopy = {
   },
   de: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Dieser Prompt ist derzeit nicht verfügbar",
+    generationFailed: "Die Generierung konnte nicht vorbereitet werden. Bitte erneut versuchen.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -453,6 +480,9 @@ export const generationRouteCopy = {
   },
   it: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Questo prompt non è attualmente disponibile",
+    generationFailed: "Preparazione della generazione non riuscita. Riprova.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -503,6 +533,9 @@ export const generationRouteCopy = {
   },
   id: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Prompt ini sedang tidak tersedia",
+    generationFailed: "Gagal menyiapkan pembuatan. Silakan coba lagi.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -553,6 +586,9 @@ export const generationRouteCopy = {
   },
   th: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "พรอมป์นี้ยังไม่พร้อมใช้งาน",
+    generationFailed: "เตรียมการสร้างไม่สำเร็จ กรุณาลองอีกครั้ง",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -603,6 +639,9 @@ export const generationRouteCopy = {
   },
   vi: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "Prompt này hiện không khả dụng",
+    generationFailed: "Không thể chuẩn bị tạo ảnh. Vui lòng thử lại.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -653,6 +692,9 @@ export const generationRouteCopy = {
   },
   hi: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "यह प्रॉम्प्ट अभी उपलब्ध नहीं है",
+    generationFailed: "जनरेशन तैयार करने में विफल। कृपया पुनः प्रयास करें।",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -703,6 +745,9 @@ export const generationRouteCopy = {
   },
   ar: {
     authRequired: "You need to be logged in.",
+    // 派生生成の原作が利用できないとき。理由は出さない（ADR-005）。
+    derivedSourceUnavailable: "هذا الموجّه غير متاح حاليًا",
+    generationFailed: "فشل تحضير التوليد. حاول مرة أخرى.",
     invalidRequest: "The request is invalid.",
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
@@ -755,6 +800,10 @@ export const generationRouteCopy = {
   Locale,
   {
     authRequired: string;
+    /** 派生生成の原作が利用できないとき。理由は出さない（ADR-005） */
+    derivedSourceUnavailable: string;
+    /** 派生生成の準備に失敗したとき（検証RPCが失敗など） */
+    generationFailed: string;
     invalidRequest: string;
     sourceStockNotFound: string;
     sourceStockFetchFailed: string;

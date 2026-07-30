@@ -249,7 +249,7 @@ flowchart TD
     G --> H["ボトムシートが開く"]
     H --> I["プロンプト欄はグレーアウト。画像と比率とモデルを選ぶ"]
     I --> J["原作の投稿IDだけを送信"]
-    J --> K["APIがoriginとtemplate revisionだけでjobを作成"]
+    J --> K["APIが原作の投稿IDだけでjobを作成"]
     K --> L["Workerが実行直前に認可と秘密を解決"]
     L --> M["メモリ上だけでprovider promptを再ビルド"]
     M --> N["Bのレコードに原作の秘密を永続化しない"]
@@ -264,10 +264,8 @@ sequenceDiagram
     participant J as ImageJobs
     participant W as Worker
     participant S as AuthorPromptSecrets
-    participant R as FreePromptRevisions
     U->>API: POST 原作の投稿IDと画像と比率とモデル
     API->>API: 対象条件とフォローとブロックを検証
-    API->>R: 現行free template revisionを確定
     API->>J: jobと秘密を持たない参照recordを原子的に作成
     Note over J: originとrevisionだけ。prompt本文は空
     W->>J: ジョブ取得
@@ -354,8 +352,8 @@ erDiagram
 - **REQ-003a**: The system shall migrate existing `coordinate` and `free` prompts as author input without transformation, and shall not migrate platform-owned or marker values into author secrets.
   システムは既存の `coordinate` / `free` のプロンプトを加工せず原作者入力として移行し、運営所有の値やマーカー値を author secret へ移してはならない。
 
-- **REQ-003b**: For every new generation job, the system shall create a service-only prompt execution record; a non-derived job shall persist its provider-ready prompt only in that record, while a derived job shall persist no prompt text and shall retain only its origin and immutable free-template revision.
-  すべての新規生成jobについて、システムはservice-onlyのprompt execution recordを作成しなければならない。通常jobはプロバイダ送信用全文をそのrecordだけに保存し、派生jobはプロンプト本文を一切保存せず、原作と不変のfreeテンプレートrevisionだけを保持しなければならない。
+- **REQ-003b**: For every new generation job, the system shall create a service-only prompt execution record; a non-derived job shall persist its provider-ready prompt only in that record, while a derived job shall persist no prompt text and shall retain only its origin post id.
+  すべての新規生成jobについて、システムはservice-onlyのprompt execution recordを作成しなければならない。通常jobはプロバイダ送信用全文をそのrecordだけに保存し、派生jobはプロンプト本文を一切保存せず、原作の投稿IDだけを保持しなければならない。
 
 - **REQ-003c**: When the system creates a generation job, it shall atomically create its required prompt execution record, and the repository type shall not permit callers to omit the discriminated materialized or derived-reference input.
   システムが生成jobを作成するとき、必須のprompt execution recordを同一トランザクションで作成し、repositoryの型は `materialized` または `derived_reference` の判別可能な入力を呼び出し元が省略することを許してはならない。
@@ -379,14 +377,14 @@ erDiagram
 - **REQ-006**: The system shall not persist the origin prompt into any record owned by the deriving user, including `image_jobs.prompt_text` and the derived `generated_images.prompt`.
   システムは、`image_jobs.prompt_text` と派生した `generated_images.prompt` を含め、派生した利用者が所有するいかなるレコードにも原作のプロンプトを保存してはならない。
 
-- **REQ-007**: When the trusted server creates a derived job, it shall validate the source and atomically persist only the origin id and an immutable, content-addressed free-template revision; it shall not resolve or persist the origin prompt.
-  信頼されたサーバーが派生jobを作成するとき、原作を検証し、原作IDとcontent-addressedな不変freeテンプレートrevisionだけを原子的に保存しなければならない。この時点では原作プロンプトを解決または保存してはならない。
+- **REQ-007**: When the trusted server creates a derived job, it shall validate the source and atomically persist only the origin post id; it shall not resolve or persist the origin prompt.
+  信頼されたサーバーが派生jobを作成するとき、原作を検証し、原作の投稿IDだけを原子的に保存しなければならない。この時点では原作プロンプトを解決または保存してはならない。
 
 - **REQ-007a**: Immediately before a worker sends a derived request to the provider, it shall atomically re-verify availability, visibility, follow and block conditions and resolve the author secret with the service role, rebuild the provider prompt in memory with the same builder used for a normal free generation, and shall not persist the built prompt.
   Workerが派生リクエストをproviderへ送る直前に、利用可否・可視性・フォロー・ブロック条件を再検証した同じservice-only処理でauthor secretを解決し、通常のfree生成と同じbuilderでメモリ上だけにprovider promptを再ビルドし、ビルド済み全文を永続化してはならない。
 
-- **REQ-007b**: If the required execution record or template revision is missing or inconsistent, then the worker shall terminate the job with an allowlisted internal code before calling the provider and shall not fall back to a user-readable prompt column or a current template.
-  必須のprompt execution recordまたはテンプレートrevisionが欠落・不整合の場合、Workerはprovider呼び出し前にallowlist済み内部コードでjobを終端し、ユーザー可読prompt列や現行テンプレートへfallbackしてはならない。
+- **REQ-007b**: If the required execution record is missing or inconsistent, then the worker shall terminate the job with an allowlisted internal code before calling the provider and shall not fall back to a user-readable prompt column.
+  必須のprompt execution recordが欠落・不整合の場合、Workerはprovider呼び出し前にallowlist済み内部コードでjobを終端し、ユーザー可読prompt列へfallbackしてはならない。
 
 - **REQ-008**: If the source is not a `free` root post with `prompt_visibility = 'private'` and an existing secret, or the origin author is unavailable, or a block relation exists in either direction, then the system shall reject the generation.
   参照先が `free` の根投稿でなく、`prompt_visibility = 'private'` でなく、秘密が存在せず、原作者が利用不可、または双方向いずれかにブロック関係がある場合、システムは生成を拒否しなければならない。
@@ -795,11 +793,11 @@ curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
   - jobのユーザー可読列には `origin_post_id` と `prompt_text = ''` を保存し、service-only `derived_reference` recordは本文を一切持たない
   - job + derived reference RPCの失敗時は、入力オブジェクト・resolved template・Supabase error objectを丸ごとログ出力せず、job idが未採番ならrequest id、固定内部コード、処理段階だけを記録・返却する
 - [ ] Worker
-  - 課金前に `validate_derived_prompt_source` とderived reference / template revisionの存在・hash整合を確認する
+  - 課金前に `validate_derived_prompt_source` と derived reference recordの存在を確認する
   - provider呼び出し直前に `resolve_derived_prompt_source` で認可再検証とauthor secret解決を同時に行い、通常のfree生成と同じ `buildSharedPrompt` へ原作者の入力を渡してメモリ上だけで組み立てる。ログを持つ `features/generation/lib/prompt-builder.ts` はimportしない
   - ビルド済み全文はprovider requestのメモリ内だけに置き、derived reference、job、生成画像、ログ、APMへ書かない
   - provider完了後・永続化前は本文を返さない `validate_derived_prompt_source` で再検証する
-  - execution record / revision欠落・kind不整合・hash不一致は現行templateや `prompt_text` へfallbackせず、provider呼び出し前に固定内部コードで終端失敗
+  - execution record欠落・kind不整合は `prompt_text` へfallbackせず、provider呼び出し前に固定内部コードで終端失敗（既存の `GENERATION_PROMPT_EXECUTION_MISSING` を再利用する）
   - 秘密解決後のcatchではerror object・RPC result・prompt・templateをserializeせず、allowlist済み内部コード、job id、request id、stageだけを記録する（REQ-017a）
   - 課金前の認可失敗は減算せず終了。課金後の認可失敗は成果物を破棄し、`refundPercoinsFromGeneration` → `refund_percoins` で冪等返金
   - 外部呼び出し開始後の取消意味論をREQ-025 / REQ-026としてテスト・文書化
@@ -866,7 +864,7 @@ curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
 | `app/api/wardrobe/claim/save-wardrobe-image.ts` | 修正 | `generated_images.prompt` への直接書き込みを廃止 |
 | `features/posts/lib/server-api.ts` | 修正 | 出所解決・検索対象の差し替え |
 | `features/my-page/lib/server-api.ts` / `api.ts` | 修正 | 読み取り経路の移行 |
-| `app/api/generate-async/handler.ts` | 修正 | 通常jobのmaterialized record、派生jobのorigin + template revision経路 |
+| `app/api/generate-async/handler.ts` | 修正 | 通常jobのmaterialized record、派生jobのorigin経路 |
 | `app/(app)/style/generate-async/handler.ts` | 修正 | `prompt_text` を空にし、job + service-only materialized recordを原子的に作成 |
 | `supabase/migrations/2026xxxx_contract_image_jobs_prompt_text.sql` | 新規 | generation type・status別に既存job全文を安全に空化 |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | materialized/derived解決・実行時再ビルド・例外redaction・原子的保存・固定エラー・利用記録・画像metadata対策 |
@@ -895,8 +893,8 @@ curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
 | # | テスト内容 |
 | --- | --- |
 | 1 | **anon キーで `generated_images?select=prompt` を叩いても秘密が返らない** |
-| 2 | **anon キーでauthor secret・prompt execution record・free template revisionを叩くと拒否される** |
-| 3 | authenticated本人は自分が原作者のauthor secretだけ読め、他人行・prompt execution record・free template revisionは全件読めない |
+| 2 | **anon キーでauthor secret・prompt execution recordを叩くと拒否される** |
+| 3 | authenticated本人は自分が原作者のauthor secretだけ読め、他人行・prompt execution recordは全件読めない |
 | 4 | **派生者の認証トークンで `image_jobs.prompt_text` を取得しても秘密が無い** |
 | 4b | **One-Tap Style で生成したユーザーが、自分の `image_jobs.prompt_text` からプリセット全文を読めない** |
 | 4c | One-Tap Style生成者が `generation_prompt_snapshots` を直接SELECTできない |
@@ -958,7 +956,7 @@ curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
 | 25d | 課金前の認可失敗では減算されず、課金後・provider完了後の認可失敗では成果物を破棄して `refund_percoins` が1回だけ適用される |
 | 25e | 終端failed jobをWorkerがclaimせず、ユーザー再試行で新しいjob・execution recordが作られる |
 | 25f | 原作job/execution record削除後も、新しい派生jobを作成できる。derived referenceは本文を持たず、Workerが実行時にauthor input + job固定revisionから同じ全文を決定的に再ビルドし、legacyだけ保存済みbuilt全文をメモリ上で使用する |
-| 25g | execution record / revision欠落、kind不整合、revision hash不一致では現行templateや `prompt_text` へfallbackせず、provider未呼び出しのまま固定内部コードで終端する |
+| 25g | execution record欠落・kind不整合では `prompt_text` へfallbackせず、provider未呼び出しのまま固定内部コードで終端する |
 | 25h | 同一free template内容はrevision 1行へ重複排除され、更新後は新revisionになり、既存jobは旧revisionで再試行される。revisionのUPDATE / DELETEは拒否される |
 
 ### 移行（Phase 0）

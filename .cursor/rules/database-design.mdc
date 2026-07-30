@@ -132,6 +132,7 @@ alwaysApply: false
 - 主要カラム: `user_id`, `prompt_text`, `input_image_url`, `source_image_stock_id`, `generation_type`, `generation_metadata`, `model`, `status`, `processing_stage`, `requested_image_count`, `result_image_url`, `error_message`, `attempts`, `created_at`, `updated_at`, `started_at`, `completed_at`, `background_mode`, `source_image_type`, `style_template_id`, `style_reference_image_url`, `style_reference_image_bucket`, `style_preset_category_key`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
 - 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`requested_image_count` は `1..4`（OpenAI batched edit の受理枚数）、`generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style/inspire/free`（`specified_coordinate/full_body/chibi` は歴史的経緯で CHECK に残るが新規未使用）、`source_image_type` は `illustration/real`、`background_mode` は `keep/ai_auto/include_in_prompt`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low-1k` / `gpt-image-2-low-2k` / `gpt-image-2-low-4k` / `gpt-image-2-medium-1k` / `gpt-image-2-medium-2k` / `gpt-image-2-medium-4k` / `gpt-image-2-high-1k` / `gpt-image-2-high-2k` / `gpt-image-2-high-4k`（旧 `gpt-image-2-low` も履歴互換で許可）を保持する
+- 追加カラム(Phase 1): `origin_post_id`（派生生成の原作 root・**FKなし**・service-only の job 作成 RPC のみ設定可・作成後不変）
 - 備考(秘匿): `prompt_text` は常に空。本文は `generation_prompt_snapshots` にのみ存在する。SELECT RLS が本人開放のため、ここへ書くと One-Tap Style の運営プリセットが生成者本人から読めてしまう（REQ-019）
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
 
@@ -140,6 +141,8 @@ alwaysApply: false
 - 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `image_job_id`, `image_job_result_index`, `width`, `height`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`, `image_job_id -> image_jobs.id`
 - 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style/inspire/free`（`specified_coordinate/full_body/chibi` は歴史的経緯で CHECK に残るが新規未使用）、`moderation_status` は `visible/pending/removed`、`background_mode` は `keep/ai_auto/include_in_prompt`、`image_job_id` / `image_job_result_index` は OpenAI batched edit の 1 job 複数結果を OpenAI response `data[]` 順で紐づける。`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low-1k` / `gpt-image-2-low-2k` / `gpt-image-2-low-4k` / `gpt-image-2-medium-1k` / `gpt-image-2-medium-2k` / `gpt-image-2-medium-4k` / `gpt-image-2-high-1k` / `gpt-image-2-high-2k` / `gpt-image-2-high-4k`（旧 `gpt-image-2-low` も履歴互換で許可）を保持する。`width` / `height` は画像実寸（INT、`> 0` の CHECK 制約、NULL 許容）で、Post 詳細画面のサイズ表示と画像向き判定用に server-api の lazy compute で fetch 時に保存される
+- 追加カラム(Phase 1): `prompt_visibility`（`public`/`private`・既定 public）, `source_post_id`（派生元 root・**FKなし**）, `source_author_id`（原作者）
+- 制約: `source_post_id` は service role 経路のみ設定可・作成後不変（NULL→非NULLの後付けも拒否）。`source_post_id` があると `prompt_visibility` は private に強制。root で private を選べるのは `generation_type='free'` のみ。いずれも `enforce_generated_image_lineage` trigger で強制
 - 制約: `prompt` は `CHECK (prompt = '')` + `DEFAULT ''`。本文は `generated_image_prompt_secrets`（原作者入力）と `generation_prompt_snapshots`（生成実行入力）にのみ存在し、この列は `select("*")` 互換のために残している空列（ADR-001 / REQ-020）
 - RLS: 投稿済みかつ `visible` の画像は公開、それ以外は本人のみ。`INSERT/UPDATE/DELETE` は本人のみ
 
@@ -157,6 +160,13 @@ alwaysApply: false
 - 制約: `snapshot_kind` は `materialized`（通常 job・`provider_prompt` 必須）/ `derived_reference`（派生 job・`provider_prompt` / `author_input` / `author_input_owner_id` / `source_revision` がすべて NULL・`source_kind = 'free'`）。`author_input` と `author_input_owner_id` は必ず対で存在する
 - 備考: 全新規 job が 1 対 1 で持つ生成実行入力。派生 job に本文を持たせないのは、派生件数に比例して秘密の永続コピーが増えることを避けるため。Worker が実行直前に author secret からメモリ上でのみ再ビルドする
 - RLS: 全アクション deny のポリシー 1 本。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（= `service_role` と SECURITY DEFINER 関数のみ）
+
+#### `prompt_usage_events`
+- 主キー: `id`
+- 主要カラム: `image_job_id`（UNIQUE）, `origin_post_id`, `origin_author_id`, `user_id`, `created_at`
+- 外部キー: `image_job_id -> image_jobs.id`（CASCADE）
+- 備考: 派生生成の成功イベント。利用数の算出根拠。`image_job_id` UNIQUE で Worker 再試行・キュー再配送時の重複を防ぐ。`generated_images` を数える案は所有者が書き換えられるため採らない
+- RLS: 全アクション deny。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（service_role のみ）
 
 #### `source_image_stocks`
 - 主キー: `id`
@@ -529,6 +539,11 @@ alwaysApply: false
 - モデレーション: `mark_post_pending_by_report`(service_role 専用), `apply_admin_moderation_decision`(旧版・権限のみ是正), `apply_admin_moderation_decision_v2`, `dispatch_moderation_notification_outbox`, `create_post_moderation_appeal`(authenticated から実行), `decide_post_moderation_appeal`, `current_post_removal_decision_id`
 - 絵師カタログ: `apply_catalog_entry_decision`
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`, `complete_image_job_with_generated_images`
+- 派生生成（`service_role` のみ EXECUTE 可）:
+  - `validate_derived_prompt_source(p_source_post_id uuid, p_requester_id uuid)` — 認可を検証し `is_available / root_post_id / origin_author_id` を返す。**本文は返さない**。利用不可の理由も返さない（ADR-005）。派生 ID を渡すと root へ解決する
+  - `resolve_derived_prompt_source(p_source_post_id uuid, p_requester_id uuid)` — 認可を再検証してから原作者の入力を返す。**本文を返す唯一の経路**。Worker が provider 送信直前にだけ使う
+  - `record_prompt_usage(p_image_job_id uuid)` — 成功済みジョブから origin / 利用者を導出して冪等記録。引数を信用しない
+  - `get_prompt_usage_count(p_origin_post_id uuid)` — ユニーク利用者数（原作者を除外）。service-only（任意 UUID での列挙を防ぐ）
 - プロンプト秘匿境界（`service_role` のみ EXECUTE 可）:
   - `create_image_job_with_prompt_execution(p_job jsonb, p_prompt_execution jsonb)` — job と `generation_prompt_snapshots` を同一トランザクションで作成し、execution record を持たない job を作らせない。`prompt_text` は常に空へ正規化する
   - `complete_image_job_with_prompt_secrets(p_job_id uuid, p_images jsonb, p_generation_metadata jsonb DEFAULT NULL, p_result_image_url text DEFAULT NULL, p_model text DEFAULT NULL, p_background_mode text DEFAULT NULL)` — 生成画像・author secret・job 成功更新・`credit_transactions.related_generation_id` 更新を同一トランザクションで確定する。末尾2引数はWorkerが正規化済みの値を渡すために使い、NULL時だけjobの値へfallbackする。author secret は `snapshot_kind = 'materialized'` かつ `author_input` / owner が揃うときだけ作るため、派生 job には作られない
