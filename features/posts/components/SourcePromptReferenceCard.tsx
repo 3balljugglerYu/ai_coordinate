@@ -256,8 +256,23 @@ export function SourcePromptReferenceCard({
         </Card>
       ) : null}
 
+      {/*
+        文言の色は「閲覧者が解消できるか」で分ける。
+
+        フォロー・ログインは次の行動につながるので目を引く色にする。
+        原作が使えないのは解消しようがないため、目立たせても閲覧者を
+        急かすだけになる。ここは落ち着いた灰色にとどめる。
+      */}
       {blockedReason ? (
-        <p className="text-xs font-medium text-amber-700">{blockedReason}</p>
+        <p
+          className={`text-xs ${
+            reference.isAvailable
+              ? "font-medium text-amber-700"
+              : "text-muted-foreground"
+          }`}
+        >
+          {blockedReason}
+        </p>
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2">

@@ -208,6 +208,26 @@ describe("押せない理由の出し分け", () => {
     ).toBeNull();
   });
 
+it("解消できない理由は目立たせない", () => {
+    // フォロー・ログインは次の行動につながるので目を引く色にするが、
+    // 原作が使えないのは解消しようがないため落ち着いた灰色にとどめる
+    renderCard({
+      reference: buildReference({ isAvailable: false, thumbnailUrl: null }),
+    });
+
+    expect(screen.getByText("現在、ご利用できません").className).toContain(
+      "text-muted-foreground"
+    );
+  });
+
+  it("解消できる理由は目を引く色にする", () => {
+    renderCard({ isFollowingAuthor: false });
+
+    expect(screen.getByText("フォローすると使えます").className).toContain(
+      "text-amber-700"
+    );
+  });
+
   it("原作が使えないときは表題と理由だけを出す", () => {
     // 空のサムネイル枠が縦に大きく残ると壊れて見える。解消しようのない状態で
     // クレジットや利用数・プロフィール導線を見せても次の行動につながらない。
