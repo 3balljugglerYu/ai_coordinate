@@ -1,0 +1,214 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import type { SourcePromptReference } from "../types";
+import { getPostThumbUrl } from "./utils";
+
+/**
+ * プロンプト非公開投稿・派生投稿の参照カードを解決する（REQ-013 / REQ-014）。
+ *
+ * ## 「原作」の決め方
+ *
+ * - 派生投稿 (`source_post_id != null`) → その値が指す root 投稿
+ * - root の非公開投稿 → その投稿自身
+ *
+ * どちらも同じカードで表示する。root の非公開投稿では原作者＝投稿者になる。
+ *
+ * ## 閲覧者に依存しない判定だけを返す理由
+ *
+ * フォロー有無とブロックは閲覧者ごとに変わり、`use cache` の粒度と噛み合わない。
+ * また、フォロー直後に反映されないカードは操作の手応えを損なう。
+ * そこで
+ *
+ * - ここでは「原作が内在的に使えるか」（実在・投稿済み・visible・free・root・
+ *   非公開・secret あり・作者のアカウント利用可）だけを判定する
+ * - フォロー有無は画面側が既に取得している follow-status を使う
+ * - 最終的な認可は生成API・Worker・完了RPCが再検証する
+ *
+ * ## 内在的な可否をどう取るか
+ *
+ * `validate_derived_prompt_source(origin, requester)` へ**原作者自身の ID**を渡す。
+ * この関数のフォロー条件は「フォロー済み または 本人」で、ブロックは双方向の
+ * 検査なので、requester = 原作者にすると閲覧者依存の条件が自動的に外れ、
+ * 内在的な可否だけが残る。判定を TypeScript 側へ写して二重管理にしない。
+ */
+
+interface OriginResolvableRecord {
+  id?: string;
+  user_id: string | null;
+  prompt_visibility?: "public" | "private";
+  source_post_id?: string | null;
+  source_author_id?: string | null;
+}
+
+type OriginRow = {
+  id: string;
+  user_id: string | null;
+  storage_path_thumb: string | null;
+  storage_path: string | null;
+  image_url: string | null;
+};
+
+/**
+ * 参照カードを出すべき投稿かを判定し、原作の投稿 ID を返す。
+ * カード不要なら null。
+ */
+export function resolveOriginPostId(
+  record: OriginResolvableRecord
+): string | null {
+  if (record.source_post_id) {
+    return record.source_post_id;
+  }
+  if (record.prompt_visibility === "private" && record.id) {
+    return record.id;
+  }
+  return null;
+}
+
+/**
+ * 参照カードの内容を解決する。
+ *
+ * @param supabase service role のクライアント。原作が非公開・未投稿へ変わっていても
+ *                 「利用不可」を判定するために行の存在を確認する必要があるため、
+ *                 閲覧者の RLS ではなく service role で読む。返す値は
+ *                 可否・クレジット・サムネイル・利用数だけで、本文は含まない。
+ */
+export async function resolveSourcePromptReference(
+  record: OriginResolvableRecord,
+  supabase: SupabaseClient
+): Promise<SourcePromptReference | null> {
+  const originPostId = resolveOriginPostId(record);
+  if (!originPostId) {
+    return null;
+  }
+
+  // 原作者。派生投稿は削除後もクレジットを出せるようスナップショットを使う。
+  // root の非公開投稿では投稿者自身が原作者になる。
+  const originAuthorId = record.source_author_id ?? record.user_id ?? null;
+
+  if (!originAuthorId) {
+    // 原作者が分からない状態ではフォロー先もクレジットも出せない。
+    // 系譜だけ残して利用不可にする。
+    return {
+      postId: originPostId,
+      isAvailable: false,
+      authorId: null,
+      authorNickname: null,
+      authorAvatarUrl: null,
+      thumbnailUrl: null,
+      usageCount: 0,
+    };
+  }
+
+  const [validation, profile, usageCount] = await Promise.all([
+    fetchIntrinsicAvailability(supabase, originPostId, originAuthorId),
+    fetchAuthorProfile(supabase, originAuthorId),
+    fetchUsageCount(supabase, originPostId),
+  ]);
+
+  const base: SourcePromptReference = {
+    postId: originPostId,
+    isAvailable: validation,
+    authorId: originAuthorId,
+    authorNickname: profile.nickname,
+    authorAvatarUrl: profile.avatarUrl,
+    thumbnailUrl: null,
+    usageCount,
+  };
+
+  if (!validation) {
+    // 利用不可のときはサムネイルを含めない（REQ-014）。
+    // 形状は同じままにして、原因を推測させない。
+    return base;
+  }
+
+  const thumbnailUrl = await fetchOriginThumbnailUrl(supabase, originPostId);
+  return { ...base, thumbnailUrl };
+}
+
+/**
+ * 原作が内在的に使えるか。閲覧者依存の条件は requester=原作者で外している。
+ *
+ * 判定できないときは false（fail closed）。カードを無効化するだけなので、
+ * 誤って有効化して生成APIで弾かれるより、そもそも押させない方が親切である。
+ */
+async function fetchIntrinsicAvailability(
+  supabase: SupabaseClient,
+  originPostId: string,
+  originAuthorId: string
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .rpc("validate_derived_prompt_source", {
+      p_source_post_id: originPostId,
+      p_requester_id: originAuthorId,
+    })
+    .select("is_available")
+    .maybeSingle();
+
+  if (error) {
+    console.error("Failed to validate source prompt availability", {
+      code: error.code,
+    });
+    return false;
+  }
+
+  return Boolean((data as { is_available?: boolean } | null)?.is_available);
+}
+
+async function fetchAuthorProfile(
+  supabase: SupabaseClient,
+  authorId: string
+): Promise<{ nickname: string | null; avatarUrl: string | null }> {
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("nickname, avatar_url")
+    .eq("user_id", authorId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { nickname: null, avatarUrl: null };
+  }
+
+  const typed = data as { nickname: string | null; avatar_url: string | null };
+  return { nickname: typed.nickname, avatarUrl: typed.avatar_url };
+}
+
+/**
+ * 利用数。取得できないときは 0 にする。
+ *
+ * カードの本質は「このプロンプトで作れる」ことなので、人数が出ないだけで
+ * カード全体を落とさない。
+ */
+async function fetchUsageCount(
+  supabase: SupabaseClient,
+  originPostId: string
+): Promise<number> {
+  const { data, error } = await supabase.rpc("get_prompt_usage_count", {
+    p_origin_post_id: originPostId,
+  });
+
+  if (error) {
+    console.error("Failed to fetch prompt usage count", { code: error.code });
+    return 0;
+  }
+
+  const count = Number(data);
+  return Number.isSafeInteger(count) && count > 0 ? count : 0;
+}
+
+async function fetchOriginThumbnailUrl(
+  supabase: SupabaseClient,
+  originPostId: string
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("id, user_id, storage_path_thumb, storage_path, image_url")
+    .eq("id", originPostId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  const row = data as OriginRow;
+  const url = getPostThumbUrl(row);
+  return url || null;
+}

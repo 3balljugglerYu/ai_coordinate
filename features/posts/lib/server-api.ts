@@ -17,6 +17,7 @@ import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
 import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 import { getImageDimensions, getPostImageUrl } from "./utils";
+import { resolveSourcePromptReference } from "./source-prompt-reference";
 import { isAllowedInputImageUrl } from "./before-image-storage";
 import {
   MAX_MATCHED_AUTHORS,
@@ -1021,8 +1022,22 @@ export const getPost = cache(async (
   // 単一取得もプロンプトの正本は author secret から解決する（ADR-001）
   const [promptResolved] = await resolveVisiblePrompts([data]);
 
+  // 非公開プロンプト・派生投稿の参照カード（REQ-013）。
+  // 検証RPCと集計RPCはどちらも service-only なので、閲覧者の RLS クライアント
+  // ではなく admin クライアントで解決する。返る値は可否・クレジット・サムネイル・
+  // 利用数だけで、プロンプト本文は含まない。
+  // 解決に失敗してもページ全体は落とさず、カードだけ出さない。
+  const sourceReference = await resolveSourcePromptReference(
+    data,
+    createAdminClient()
+  ).catch((referenceError) => {
+    console.error("Failed to resolve source prompt reference:", referenceError);
+    return null;
+  });
+
   return redactSensitivePrompt({
     ...promptResolved,
+    source_reference: sourceReference,
     user: data.user_id
       ? {
           id: data.user_id,
