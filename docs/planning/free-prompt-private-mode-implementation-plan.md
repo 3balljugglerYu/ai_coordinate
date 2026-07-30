@@ -524,6 +524,7 @@ erDiagram
   - 原作者のアカウントが利用可能
   - リクエスト元が原作者をフォローしている、または本人
   - **双方向いずれにもブロック関係がない**
+  - **派生リクエスト自身の `generationType` が `free`**（`generationType` には `default('coordinate')` があるため、`sourcePostId` だけを送ると別種の builder へ入る）
 - **Reason**: 条件が1つでも欠けると別種の秘匿プロンプトの回収経路になる。
 - **Consequence**: 検証が長くなるため、専用の SECURITY DEFINER RPC に集約して API と Worker の双方から呼ぶ。
 
@@ -546,7 +547,7 @@ Workerは課金前とprovider呼び出し直前に認可を検証する。課金
 - **Context**: `generated_images` を数える案だったが、同テーブルは所有者が INSERT / UPDATE / DELETE でき、`source_post_id` も書き換えられる。任意の原作 ID を自分の行に設定すれば利用数を水増しできる。派生画像を削除すると利用数が減る問題もある。
 - **Decision**: `prompt_usage_events(id, image_job_id UNIQUE, origin_post_id, origin_author_id, user_id, created_at)` を新設し、**生成成功時に service role で冪等記録**する。`record_prompt_usage(p_image_job_id)` は成功済みジョブから origin・原作者・利用者をDB内で導出し、`ON CONFLICT DO NOTHING` とする。利用数は `COUNT(DISTINCT user_id)` で算出し、保存済み `origin_author_id` により原作者自身を除外する。クライアントからの書き込みは不可。
 - **Reason**: 表示する数値は改ざんできてはならない。生成画像の削除で数が減るのも実態に合わない（使った事実は消えない）。
-- **Consequence**: テーブルが1つ増える。イベントは削除しないため単調増加するが、Worker再試行では増えない。集計RPCはservice-onlyとし、Server APIが原作の閲覧可否を適用してから結果だけをレスポンスへ載せる。クライアントへ任意UUIDで呼べるEXECUTE権限は与えない。ただし公開・visibleな派生投稿の `source_post_id` は系譜表示の仕様としてanon可読であり、PostgRESTから**投稿済み派生だけの件数**は部分的に列挙できる。未投稿・非公開を含む全成功生成数とユニーク利用者数は `prompt_usage_events` 側にだけ存在し、直接列挙できない。
+- **Consequence**: テーブルが1つ増える。`image_job_id` にFKは張らない（`image_jobs` には本人が自分の行を削除できるポリシーがあり、CASCADEにすると派生者がジョブを消すだけで利用数を減らせる）。イベントは削除しないため単調増加するが、Worker再試行では増えない。集計RPCはservice-onlyとし、Server APIが原作の閲覧可否を適用してから結果だけをレスポンスへ載せる。クライアントへ任意UUIDで呼べるEXECUTE権限は与えない。ただし公開・visibleな派生投稿の `source_post_id` は系譜表示の仕様としてanon可読であり、PostgRESTから**投稿済み派生だけの件数**は部分的に列挙できる。未投稿・非公開を含む全成功生成数とユニーク利用者数は `prompt_usage_events` 側にだけ存在し、直接列挙できない。
 
 ### ADR-009: Phase 0 は expand・backfill・contract の複数デプロイに分ける
 
@@ -786,6 +787,7 @@ curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
   - `get_prompt_usage_count(p_origin_post_id)` — service-only。Server APIが原作の閲覧可否を適用した後に `COUNT(DISTINCT user_id)` を取得し、クライアントから任意UUIDを列挙できる直接GRANTはしない
 - [ ] `app/api/generate-async/handler.ts`
   - `sourcePostId` と `prompt` の同時指定は400
+  - `sourcePostId` 指定時に `generationType <> 'free'` は400（fail closed）
   - requester idはbodyではなく認証セッションから取得
   - 利用不可は同一の409 + `FREE_SOURCE_UNAVAILABLE`
   - 派生job作成時は `validate_derived_prompt_source` で認可するがauthor secretを取得しない

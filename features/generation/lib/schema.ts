@@ -144,6 +144,20 @@ export const generationRequestSchema = z.object({
     return;
   }
 
+  // 派生生成は generationType='free' に限る。
+  // generationType には default('coordinate') があるため、sourcePostId だけを
+  // 送ると free 以外として通ってしまう。その場合 coordinate の builder が
+  // 原作者の本文を運営プリセットと結合するなど、想定外の経路に入る。
+  // UI からは常に free で送るが、API 直叩きに対して fail closed にしておく。
+  if (data.sourcePostId && data.generationType !== "free") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["generationType"],
+      message: "派生生成はじゆうモードのみ利用できます",
+    });
+    return;
+  }
+
   // 派生生成でなければ本文は必須。フィールドから min(1) を外した分をここで補う。
   if (!data.sourcePostId) {
     if (data.prompt === undefined || data.prompt.length < 1) {

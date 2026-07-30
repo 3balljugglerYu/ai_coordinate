@@ -29,9 +29,17 @@ SET LOCAL lock_timeout = '5s';
 -- image_job_id を UNIQUE にすることで、Worker の再試行や
 -- キュー再配送でイベントが重複しない (REQ-023)。
 
+-- image_job_id に FK を張らない。image_jobs には authenticated が自分の行を
+-- DELETE できるポリシーがあるため、ON DELETE CASCADE にすると派生した本人が
+-- 自分のジョブを消すだけで利用イベントも消え、原作者に見える利用数を減らせる。
+-- 子テーブル側の権限を絞っても FK cascade は防げない。
+-- ADR-008 の「イベントは削除しないため単調増加する」を守るため、
+-- source_post_id と同じくスナップショット値として保持する。
+
 CREATE TABLE IF NOT EXISTS public.prompt_usage_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  image_job_id UUID NOT NULL UNIQUE REFERENCES public.image_jobs(id) ON DELETE CASCADE,
+  -- FK なし（親ジョブの削除で消えないようにする）
+  image_job_id UUID NOT NULL UNIQUE,
   origin_post_id UUID NOT NULL,
   origin_author_id UUID NOT NULL,
   user_id UUID NOT NULL,
@@ -373,6 +381,7 @@ DECLARE
   v_job public.image_jobs%ROWTYPE;
   v_execution public.generation_prompt_snapshots%ROWTYPE;
   v_origin_author uuid;
+  v_origin_available boolean;
   v_expected_count integer;
   v_image_count integer;
   v_image jsonb;
@@ -440,15 +449,23 @@ BEGIN
   FROM public.generation_prompt_snapshots
   WHERE generation_prompt_snapshots.image_job_id = p_job_id;
 
-  -- 派生ジョブなら原作者を原作行から導出する（引数を信用しない）
+  -- 派生ジョブは完了時点でも認可が有効か再検証する (REQ-004 / REQ-011)。
+  --
+  -- 生成には数十秒〜数分かかるため、その間に原作者が投稿を取り消す・非公開に
+  -- する・派生者をブロックする・アカウント削除を予約する、あるいは派生者が
+  -- フォローを外す、といった変化が起こり得る。存在確認だけでは
+  -- 「取り消された投稿のプロンプトから作られた画像」が残ってしまう。
+  --
+  -- ここで失敗させると生成済みの成果物を破棄して返金することになるが、
+  -- 原作者の意思を成果物より優先する（ADR-004 の延長）。
   IF v_job.origin_post_id IS NOT NULL THEN
-    SELECT user_id INTO v_origin_author
-    FROM public.generated_images
-    WHERE id = v_job.origin_post_id;
+    SELECT is_available, origin_author_id
+    INTO v_origin_available, v_origin_author
+    FROM public.validate_derived_prompt_source(v_job.origin_post_id, v_job.user_id);
 
-    IF v_origin_author IS NULL THEN
+    IF NOT COALESCE(v_origin_available, false) OR v_origin_author IS NULL THEN
       RAISE EXCEPTION
-        'DERIVED_ORIGIN_UNAVAILABLE: origin post not found for job %', p_job_id;
+        'DERIVED_ORIGIN_UNAVAILABLE: origin post no longer usable for job %', p_job_id;
     END IF;
   END IF;
 

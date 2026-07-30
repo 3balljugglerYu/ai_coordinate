@@ -49,27 +49,112 @@ COMMENT ON COLUMN public.image_jobs.origin_post_id IS
   '派生生成の原作 root 投稿。service-only の job 作成 RPC のみ設定可・作成後不変';
 
 -- ===============================================
--- 2. クライアントロールの判定
+-- 2. 信頼された書き込み経路の判定
 -- ===============================================
--- 「信頼されたサーバー経路か」を判定する。
+-- 当初は「authenticated / anon を拒否リストにする」実装だったが、これは
+-- 新しいクライアント向けロールが追加されたときに自動で信頼してしまう。
+-- また auth.role() は Supabase で deprecated 扱いである。
 --
--- service_role だけを許可リストにすると、migration や手動修正 (postgres として
--- 接続、auth.role() は NULL) まで拒否してしまい保守できない。
--- 逆に、防ぎたいのは「ブラウザの authenticated JWT が PostgREST 経由で
--- 出所を偽造すること」だけである。したがって既知のクライアントロールを
--- 拒否リストにする。
+-- そこで正の判定にする。実測した接続コンテキストは次のとおり。
+--
+--   経路                  session_user     auth.jwt()->>'role'
+--   --------------------- ---------------- -------------------
+--   Data API (anon)       authenticator    anon
+--   Data API (service)    authenticator    service_role
+--   psql / migration      postgres         NULL
+--
+-- Data API 経由は authenticator が接続ロールになるため、
+-- 「authenticator 経由なら service_role の JWT だけを信頼し、
+--   それ以外の接続 (migration・手動修正) は信頼する」で表現できる。
 
-CREATE OR REPLACE FUNCTION public.is_client_role()
+-- 判定そのものは引数を取る純関数に切り出す。session_user は接続で決まるため
+-- migration 内から偽装できず、そのままでは 4 経路を検証できない。
+CREATE OR REPLACE FUNCTION public.is_trusted_lineage_writer_for(
+  p_session_user text,
+  p_jwt_role text
+)
+RETURNS boolean
+LANGUAGE sql
+IMMUTABLE
+SET search_path = public, pg_temp
+AS $$
+  SELECT CASE
+    -- Data API (PostgREST) 経由。JWT の role が service_role のときだけ信頼する。
+    -- 未知のクライアントロールが増えても、ここが false になるので安全側に倒れる。
+    WHEN p_session_user = 'authenticator'
+      THEN COALESCE(p_jwt_role, '') = 'service_role'
+    -- migration や運用中の手動修正 (postgres 等の直接接続)
+    ELSE true
+  END;
+$$;
+
+COMMENT ON FUNCTION public.is_trusted_lineage_writer_for(text, text) IS
+  'is_trusted_lineage_writer の判定本体。接続コンテキストを引数で受けるため migration から検証できる';
+
+CREATE OR REPLACE FUNCTION public.is_trusted_lineage_writer()
 RETURNS boolean
 LANGUAGE sql
 STABLE
 SET search_path = public, pg_temp
 AS $$
-  SELECT COALESCE(auth.role(), '') IN ('authenticated', 'anon');
+  -- 生の current_setting は使わない。PostgREST が request.jwt.claims に空文字を
+  -- 入れる経路があり、''::jsonb は invalid input syntax で落ちる。
+  -- auth.jwt() は nullif で空文字を潰しているため、そこへ委ねる。
+  SELECT public.is_trusted_lineage_writer_for(
+    session_user::text,
+    auth.jwt() ->> 'role'
+  );
 $$;
 
-COMMENT ON FUNCTION public.is_client_role() IS
-  'ブラウザ由来のロール (authenticated / anon) か。出所列の改ざん防止に使う。service_role と postgres は false';
+COMMENT ON FUNCTION public.is_trusted_lineage_writer() IS
+  '出所列を設定してよい経路か。Data API 経由は service_role の JWT のみ信頼し、直接接続 (migration) は信頼する。未知のクライアントロールは信頼しない';
+
+-- 4 経路 + 未知ロールを固定する。想定が崩れたら適用時に落ちる。
+DO $$
+DECLARE
+  v_case record;
+BEGIN
+  FOR v_case IN
+    SELECT *
+    FROM (VALUES
+      -- ブラウザからの通常アクセス
+      ('authenticator', 'authenticated', false),
+      -- 未ログインのアクセス
+      ('authenticator', 'anon',          false),
+      -- サーバー経路 (API route / Worker)
+      ('authenticator', 'service_role',  true),
+      -- JWT なしで Data API を叩いた場合
+      ('authenticator', NULL,            false),
+      -- 将来クライアント向けロールが増えても信頼しない
+      ('authenticator', 'future_role',   false),
+      -- migration / 手動修正
+      ('postgres',      NULL,            true)
+    ) AS t(session_user_name, jwt_role, expected)
+  LOOP
+    IF public.is_trusted_lineage_writer_for(
+         v_case.session_user_name,
+         v_case.jwt_role
+       ) IS DISTINCT FROM v_case.expected
+    THEN
+      RAISE EXCEPTION
+        'is_trusted_lineage_writer_for(%, %) が期待値 % と一致しない',
+        v_case.session_user_name,
+        COALESCE(v_case.jwt_role, '<null>'),
+        v_case.expected;
+    END IF;
+  END LOOP;
+END;
+$$;
+
+-- auth.jwt() が呼べること（Supabase の auth スキーマ前提）も確認しておく。
+-- migration 経路では NULL が返り、postgres なので true になる。
+DO $$
+BEGIN
+  IF public.is_trusted_lineage_writer() IS NOT TRUE THEN
+    RAISE EXCEPTION 'migration 経路が信頼されない判定になっている';
+  END IF;
+END;
+$$;
 
 -- ===============================================
 -- 3. generated_images の guard trigger
@@ -87,7 +172,7 @@ BEGIN
   -- (a) 出所列はクライアントから触らせない。
   --     INSERT 時に値が入っている場合と、UPDATE で変化する場合の両方を見る。
   IF TG_OP = 'INSERT' THEN
-    IF public.is_client_role()
+    IF NOT public.is_trusted_lineage_writer()
        AND (NEW.source_post_id IS NOT NULL OR NEW.source_author_id IS NOT NULL)
     THEN
       RAISE EXCEPTION
@@ -135,6 +220,14 @@ BEGIN
           'source_post_id は generation_type=free の投稿のみ指せる: %', v_origin.generation_type;
       END IF;
 
+      -- 派生画像自身も free でなければならない。
+      -- 原作側だけを見ていると、API を直叩きして generationType を coordinate や
+      -- one_tap_style にした派生が通り、通常の free とは違う builder で処理される。
+      IF NEW.generation_type <> 'free' THEN
+        RAISE EXCEPTION
+          '派生画像の generation_type は free でなければならない: %', NEW.generation_type;
+      END IF;
+
       IF NEW.source_author_id IS DISTINCT FROM v_origin.user_id THEN
         RAISE EXCEPTION 'source_author_id が原作の所有者と一致しない';
       END IF;
@@ -170,7 +263,7 @@ SET search_path = public, pg_temp
 AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
-    IF public.is_client_role() AND NEW.origin_post_id IS NOT NULL THEN
+    IF NOT public.is_trusted_lineage_writer() AND NEW.origin_post_id IS NOT NULL THEN
       RAISE EXCEPTION
         'origin_post_id はクライアントから設定できない (REQ-009)';
     END IF;
@@ -316,7 +409,8 @@ COMMIT;
 -- DROP FUNCTION IF EXISTS public.enforce_prompt_execution_kind();
 -- DROP FUNCTION IF EXISTS public.enforce_image_job_origin();
 -- DROP FUNCTION IF EXISTS public.enforce_generated_image_lineage();
--- DROP FUNCTION IF EXISTS public.is_client_role();
+-- DROP FUNCTION IF EXISTS public.is_trusted_lineage_writer();
+-- DROP FUNCTION IF EXISTS public.is_trusted_lineage_writer_for(text, text);
 -- ALTER TABLE public.image_jobs DROP COLUMN IF EXISTS origin_post_id;
 -- ALTER TABLE public.generated_images
 --   DROP COLUMN IF EXISTS source_author_id,
