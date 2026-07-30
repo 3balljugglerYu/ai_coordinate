@@ -80,6 +80,7 @@ export const deMessages = {
     sourcePromptFollowToUse: "Folgen, um ihn zu nutzen",
     sourcePromptLoginToUse: "Anmelden, um ihn zu nutzen",
     sourcePromptThumbnailAlt: "Originalwerk",
+    sourcePromptViewProfile: "Profil ansehen",
     promptPrivateBadge: "Privat",
     lockedSheetTitle: "Mit diesem Prompt erstellen",
     lockedSheetDescription: "Du siehst den Prompt nicht, kannst aber damit generieren.",

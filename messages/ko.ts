@@ -80,6 +80,7 @@ export const koMessages = {
     sourcePromptFollowToUse: "팔로우하면 사용할 수 있습니다",
     sourcePromptLoginToUse: "로그인하면 사용할 수 있습니다",
     sourcePromptThumbnailAlt: "원작 작품",
+    sourcePromptViewProfile: "프로필 보기",
     promptPrivateBadge: "비공개",
     lockedSheetTitle: "이 프롬프트로 만들기",
     lockedSheetDescription: "프롬프트는 보이지 않지만 같은 내용으로 생성할 수 있습니다.",

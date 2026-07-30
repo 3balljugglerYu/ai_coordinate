@@ -80,6 +80,7 @@ export const itMessages = {
     sourcePromptFollowToUse: "Segui per usarlo",
     sourcePromptLoginToUse: "Accedi per usarlo",
     sourcePromptThumbnailAlt: "Opera originale",
+    sourcePromptViewProfile: "Vedi profilo",
     promptPrivateBadge: "Privato",
     lockedSheetTitle: "Crea con questo prompt",
     lockedSheetDescription: "Non vedi il prompt, ma puoi generare con esso.",

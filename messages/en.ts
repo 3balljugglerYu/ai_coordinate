@@ -80,6 +80,7 @@ export const enMessages = {
     sourcePromptFollowToUse: "Follow to use it",
     sourcePromptLoginToUse: "Log in to use it",
     sourcePromptThumbnailAlt: "Original work",
+    sourcePromptViewProfile: "View profile",
     promptPrivateBadge: "Private",
     lockedSheetTitle: "Create with this prompt",
     lockedSheetDescription: "You cannot see the prompt, but you can generate with it.",

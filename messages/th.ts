@@ -80,6 +80,7 @@ export const thMessages = {
     sourcePromptFollowToUse: "ติดตามเพื่อใช้งาน",
     sourcePromptLoginToUse: "เข้าสู่ระบบเพื่อใช้งาน",
     sourcePromptThumbnailAlt: "ผลงานต้นฉบับ",
+    sourcePromptViewProfile: "ดูโปรไฟล์",
     promptPrivateBadge: "ส่วนตัว",
     lockedSheetTitle: "สร้างด้วยพรอมต์นี้",
     lockedSheetDescription: "คุณไม่เห็นพรอมต์ แต่สร้างด้วยพรอมต์นี้ได้",

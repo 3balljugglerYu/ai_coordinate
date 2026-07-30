@@ -80,6 +80,7 @@ export const frMessages = {
     sourcePromptFollowToUse: "Abonnez-vous pour l'utiliser",
     sourcePromptLoginToUse: "Connectez-vous pour l'utiliser",
     sourcePromptThumbnailAlt: "Œuvre originale",
+    sourcePromptViewProfile: "Voir le profil",
     promptPrivateBadge: "Privé",
     lockedSheetTitle: "Créer avec ce prompt",
     lockedSheetDescription: "Vous ne voyez pas le prompt, mais vous pouvez générer avec lui.",

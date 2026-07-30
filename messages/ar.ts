@@ -80,6 +80,7 @@ export const arMessages = {
     sourcePromptFollowToUse: "تابِع لتستخدمه",
     sourcePromptLoginToUse: "سجّل الدخول لتستخدمه",
     sourcePromptThumbnailAlt: "العمل الأصلي",
+    sourcePromptViewProfile: "عرض الملف الشخصي",
     promptPrivateBadge: "خاص",
     lockedSheetTitle: "أنشئ بهذا الأمر",
     lockedSheetDescription: "لا ترى الأمر، لكن يمكنك التوليد به.",

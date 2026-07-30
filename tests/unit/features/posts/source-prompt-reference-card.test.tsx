@@ -23,6 +23,19 @@ jest.mock("next/dynamic", () => ({
   default: () => () => null,
 }));
 
+jest.mock("next/link", () => ({
+  __esModule: true,
+  default: ({
+    href,
+    children,
+    ...props
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) =>
+    React.createElement("a", { href, ...props }, children),
+}));
+
 jest.mock("next/image", () => ({
   __esModule: true,
   default: ({
@@ -54,6 +67,7 @@ const translations = {
   beforeImageAlt: "生成元画像",
   beforeImageLabel: "Before",
   afterImageLabel: "After",
+  sourcePromptViewProfile: "プロフィールへ",
 } as const;
 
 const translator = ((
@@ -382,6 +396,62 @@ describe("表題", () => {
     renderCard({ isDerivedPost: true });
 
     expect(screen.getByText("原作のプロンプトで作る")).toBeInTheDocument();
+  });
+});
+
+describe("プロフィールへの導線", () => {
+  it("原作者のプロフィールへリンクする", () => {
+    renderCard();
+
+    expect(
+      screen.getByRole("link", { name: /プロフィールへ/ })
+    ).toHaveAttribute("href", `/users/${AUTHOR_ID}`);
+  });
+
+  it("原作が使えなくなっていても出す", () => {
+    // 作者は実在しており、クレジットは保持する仕様（REQ-011）。
+    // 「使えないけれど誰の作品かは辿れる」状態が正しい。
+    renderCard({
+      reference: buildReference({ isAvailable: false, thumbnailUrl: null }),
+    });
+
+    expect(
+      screen.getByRole("link", { name: /プロフィールへ/ })
+    ).toBeInTheDocument();
+  });
+
+  it("未ログインでも出す", () => {
+    // 作者を見に行くだけならログインは要らない
+    renderCard({ currentUserId: null, isFollowingAuthor: false });
+
+    expect(
+      screen.getByRole("link", { name: /プロフィールへ/ })
+    ).toBeInTheDocument();
+  });
+
+  it("原作者自身には出さない", () => {
+    // 自分のプロフィールへ飛ばすリンクは雑音（フォローボタンと同じ理由）
+    renderCard({ currentUserId: AUTHOR_ID, isFollowingAuthor: false });
+
+    expect(
+      screen.queryByRole("link", { name: /プロフィールへ/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("原作者が分からないときは出さない", () => {
+    // 飛ばす先が無い
+    renderCard({
+      reference: buildReference({
+        authorId: null,
+        authorNickname: null,
+        isAvailable: false,
+        thumbnailUrl: null,
+      }),
+    });
+
+    expect(
+      screen.queryByRole("link", { name: /プロフィールへ/ })
+    ).not.toBeInTheDocument();
   });
 });
 

@@ -80,6 +80,7 @@ export const idMessages = {
     sourcePromptFollowToUse: "Ikuti untuk memakainya",
     sourcePromptLoginToUse: "Masuk untuk memakainya",
     sourcePromptThumbnailAlt: "Karya asli",
+    sourcePromptViewProfile: "Lihat profil",
     promptPrivateBadge: "Privat",
     lockedSheetTitle: "Buat dengan prompt ini",
     lockedSheetDescription: "Anda tidak melihat prompt-nya, tetapi bisa membuat dengan itu.",

@@ -80,6 +80,7 @@ export const hiMessages = {
     sourcePromptFollowToUse: "इस्तेमाल के लिए फ़ॉलो करें",
     sourcePromptLoginToUse: "इस्तेमाल के लिए लॉग इन करें",
     sourcePromptThumbnailAlt: "मूल कृति",
+    sourcePromptViewProfile: "प्रोफ़ाइल देखें",
     promptPrivateBadge: "निजी",
     lockedSheetTitle: "इस प्रॉम्प्ट से बनाएँ",
     lockedSheetDescription: "आप प्रॉम्प्ट नहीं देख सकते, पर उससे बना सकते हैं।",

@@ -80,6 +80,7 @@ export const viMessages = {
     sourcePromptFollowToUse: "Theo dõi để dùng",
     sourcePromptLoginToUse: "Đăng nhập để dùng",
     sourcePromptThumbnailAlt: "Tác phẩm gốc",
+    sourcePromptViewProfile: "Xem trang cá nhân",
     promptPrivateBadge: "Riêng tư",
     lockedSheetTitle: "Tạo bằng câu lệnh này",
     lockedSheetDescription: "Bạn không thấy câu lệnh, nhưng vẫn tạo được bằng nó.",

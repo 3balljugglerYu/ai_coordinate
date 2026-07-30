@@ -3,6 +3,7 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Lock, Sparkles, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
@@ -279,6 +280,24 @@ export function SourcePromptReferenceCard({
           />
         ) : null}
       </div>
+
+      {/*
+        原作者のプロフィールへの導線。
+
+        原作が使えなくなっていても出す。作者は実在しており、クレジットは
+        保持する仕様（REQ-011）なので、「使えないけれど誰の作品かは辿れる」
+        状態が正しい。原作者自身には出さない（自分のプロフィールへ飛ばす
+        リンクは雑音になる。フォローボタンを出さないのと同じ理由）。
+      */}
+      {reference.authorId && !isOwnPrompt ? (
+        <Link
+          href={`/users/${encodeURIComponent(reference.authorId)}`}
+          className="inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:bg-gray-50"
+        >
+          <User className="h-3.5 w-3.5" aria-hidden="true" />
+          {t("sourcePromptViewProfile")}
+        </Link>
+      ) : null}
 
       {canGenerate ? (
         <PromptLockedGenerationSheet

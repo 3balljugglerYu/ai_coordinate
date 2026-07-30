@@ -80,6 +80,7 @@ export const zhTwMessages = {
     sourcePromptFollowToUse: "追蹤後即可使用",
     sourcePromptLoginToUse: "登入後即可使用",
     sourcePromptThumbnailAlt: "原作作品",
+    sourcePromptViewProfile: "查看主頁",
     promptPrivateBadge: "私密",
     lockedSheetTitle: "用這個提示詞創作",
     lockedSheetDescription: "你看不到提示詞，但可以用它生成。",

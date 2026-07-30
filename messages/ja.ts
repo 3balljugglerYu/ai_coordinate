@@ -77,6 +77,7 @@ export const jaMessages = {
     sourcePromptFollowToUse: "フォローすると使えます",
     sourcePromptLoginToUse: "ログインすると使えます",
     sourcePromptThumbnailAlt: "原作の作品",
+    sourcePromptViewProfile: "プロフィールへ",
     promptPrivateBadge: "非公開",
     lockedSheetTitle: "このプロンプトで作る",
     lockedSheetDescription: "プロンプトは見えませんが、同じ内容で生成できます。",
