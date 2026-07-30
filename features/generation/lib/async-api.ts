@@ -11,6 +11,7 @@ import {
 } from "../types";
 import type { ImageJobProcessingStage } from "./job-types";
 import { normalizeSourceImage } from "./normalize-source-image";
+import { buildPromptRequestFields } from "./prompt-locked-submission";
 
 interface AsyncGenerationApiMessages {
   imageLoadFailed?: string;
@@ -108,7 +109,11 @@ export async function generateImageAsync(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      prompt: request.prompt,
+      // 派生生成では本文を送らない。同時指定は schema が 400 にする（ADR-006）。
+      ...buildPromptRequestFields({
+        prompt: request.prompt,
+        sourcePostId: request.sourcePostId,
+      }),
       sourceImageBase64,
       sourceImageMimeType,
       sourceImageStockId: request.sourceImageStockId,

@@ -77,6 +77,14 @@ interface GenerationFormContainerProps {
    *   authState="guest" では使わない。
    */
   mode?: "coordinate" | "free";
+  /**
+   * プロンプト非公開投稿の派生生成モード。
+   * プロンプト欄を施錠し、本文の代わりに `sourcePostId` を送る。
+   * `mode="free"` と併せて使う。
+   */
+  promptLocked?: boolean;
+  /** 派生生成の原作 root 投稿 ID。 */
+  sourcePostId?: string;
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -201,6 +209,8 @@ export function GenerationFormContainer({
   subscriptionPlan,
   authState = "authenticated",
   mode = "coordinate",
+  promptLocked = false,
+  sourcePostId,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
@@ -895,6 +905,8 @@ export function GenerationFormContainer({
     framingMode?: import("@/shared/generation/framing-mode").FramingMode;
     /** じゆうモードの出力比率(source + 明示9比率)。free のときのみ。 */
     outputAspectRatioMode?: import("@/shared/generation/style-output-aspect-ratio").FreeOutputAspectRatioMode;
+    /** 派生生成の原作 root 投稿 ID。本文の代わりにこれだけを送る。 */
+    sourcePostId?: string;
   }) => {
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -1031,6 +1043,8 @@ export function GenerationFormContainer({
             model: data.model,
             framingMode: data.framingMode,
             outputAspectRatioMode: data.outputAspectRatioMode,
+            // 派生生成。本文は送らない（schema が同時指定を 400 にする）。
+            sourcePostId: data.sourcePostId,
           },
           asyncApiMessages
         );
@@ -1391,6 +1405,8 @@ export function GenerationFormContainer({
         authState={authState}
         guestGenerationLocked={isGuest && guestResult !== null}
         mode={mode}
+        promptLocked={promptLocked}
+        sourcePostId={sourcePostId}
       />
 
       {error ? (

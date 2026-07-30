@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { PostDetailStatic } from "./PostDetailStatic";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { CommentSection } from "./CommentSection";
 import { CommentSectionSkeleton } from "./CommentSectionSkeleton";
 import { incrementViewCountAPI } from "../lib/api";
@@ -20,6 +21,8 @@ interface PostDetailContentProps {
   imageUrl?: string | null;
   /** ダウンロード用の元画像 URL（PNG/JPEG）。`<DownloadButton>` まで流す */
   originalImageUrl?: string | null;
+  /** 閲覧者の購読プラン。派生生成シートのモデル選択・上限に使う。 */
+  viewerSubscriptionPlan?: SubscriptionPlan;
 }
 
 export function PostDetailContent({
@@ -33,6 +36,7 @@ export function PostDetailContent({
   ownerId,
   imageUrl,
   originalImageUrl,
+  viewerSubscriptionPlan,
 }: PostDetailContentProps) {
   const [hiddenPostId, setHiddenPostId] = useState<string | null>(null);
   const router = useRouter();
@@ -78,7 +82,8 @@ export function PostDetailContent({
         originalImageUrl={originalImageUrl}
         isHidden={isHidden}
         onHidden={() => setHiddenPostId(postId)}
-      />
+        viewerSubscriptionPlan={viewerSubscriptionPlan}
+        />
 
       {!isHidden && (
         <Suspense fallback={<CommentSectionSkeleton />}>

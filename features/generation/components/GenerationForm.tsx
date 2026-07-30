@@ -67,6 +67,10 @@ import {
 } from "../lib/apply-from-history-event";
 import { fetchSourceImageAsUploadedImage } from "../lib/source-image-to-file";
 import { useImageSourcePicker } from "../hooks/useImageSourcePicker";
+import {
+  isGenerationSubmitDisabled,
+  resolveSubmittedPrompt,
+} from "../lib/prompt-locked-submission";
 
 interface GenerationFormProps {
   subscriptionPlan: SubscriptionPlan;
@@ -86,6 +90,11 @@ interface GenerationFormProps {
     generationType?: "coordinate" | "free";
     /** じゆうモードの出力比率(source + 明示9比率)。free のときのみ指定。 */
     outputAspectRatioMode?: FreeOutputAspectRatioMode;
+    /**
+     * 派生生成の原作 root 投稿 ID。promptLocked のときだけ入る。
+     * これを送ると API は本文を受け取らず、原作の author secret から解決する。
+     */
+    sourcePostId?: string;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -107,6 +116,22 @@ interface GenerationFormProps {
    *   固定送信し、generationType="free" で生成する。プロンプト上限は30,000字。
    */
   mode?: "coordinate" | "free";
+  /**
+   * 派生生成の原作 root 投稿 ID。`promptLocked` と併せて渡す。
+   */
+  sourcePostId?: string;
+  /**
+   * プロンプトを閲覧者に入力させないモード（非公開プロンプトの派生生成）。
+   *
+   * true のとき
+   * - プロンプト欄は disabled + グレーアウトにし、本文を一切描画しない
+   * - 本文の必須チェックをスキップし、onSubmit の prompt は空文字を渡す
+   *   （本文はサーバーが原作の author secret から解決する / REQ-005）
+   *
+   * `mode="free"` 専用。閲覧者が本文を差し替える余地を作らないため、
+   * 値をクライアントへ渡さないだけでなく入力もさせない。
+   */
+  promptLocked?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -124,6 +149,8 @@ export function GenerationForm({
   authState = "authenticated",
   guestGenerationLocked = false,
   mode = "coordinate",
+  promptLocked = false,
+  sourcePostId,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -135,10 +162,18 @@ export function GenerationForm({
     : GENERATION_PROMPT_MAX_LENGTH;
   // プロンプト欄のラベル/プレースホルダはモード別。それ以外の機構的な文言は
   // coordinate namespace を流用する(churn を抑える)。
-  const promptLabel = isFree ? freeT("promptLabel") : t("promptLabel");
-  const promptPlaceholder = isFree
-    ? freeT("promptPlaceholder")
-    : t("promptPlaceholder");
+  const postsT = useTranslations("posts");
+  const promptLabel = promptLocked
+    ? postsT("lockedSheetPromptLabel")
+    : isFree
+      ? freeT("promptLabel")
+      : t("promptLabel");
+  // 施錠時は本文を描画しない。プレースホルダも「非公開である」ことだけを伝える。
+  const promptPlaceholder = promptLocked
+    ? postsT("lockedSheetPromptLocked")
+    : isFree
+      ? freeT("promptPlaceholder")
+      : t("promptPlaceholder");
   const generationState = useGenerationState();
   const openStockTabRequestId = generationState?.openStockTabRequestId ?? 0;
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -295,16 +330,19 @@ export function GenerationForm({
   }, [openStockTabRequestId, isAuthenticated, picker]);
 
   const handleSubmit = async () => {
-    const trimmedPrompt = prompt.trim();
+    // 施錠時は入力させないので本文は常に空。長さ検証も対象外。
+    const trimmedPrompt = resolveSubmittedPrompt(promptLocked, prompt);
 
-    if (!trimmedPrompt) {
-      alert(t("missingPrompt"));
-      return;
-    }
+    if (!promptLocked) {
+      if (!trimmedPrompt) {
+        alert(t("missingPrompt"));
+        return;
+      }
 
-    if (isPromptTooLong) {
-      alert(t("promptTooLong", { max: promptMaxLength }));
-      return;
+      if (isPromptTooLong) {
+        alert(t("promptTooLong", { max: promptMaxLength }));
+        return;
+      }
     }
 
     if (!uploadedImage && !selectedStock && !selectedGenerated) {
@@ -344,6 +382,9 @@ export function GenerationForm({
         generationType: "free",
         // 出力比率(source は async-api 側で送信を省略=既定挙動)。
         outputAspectRatioMode: aspectMode,
+        // 派生生成のときだけ原作を指す。schema は本文との同時指定を 400 にするため、
+        // 施錠時に本文を空へ固定していることと対になっている。
+        ...(promptLocked && sourcePostId ? { sourcePostId } : {}),
       });
       return;
     }
@@ -367,12 +408,14 @@ export function GenerationForm({
 
   const hasSourceImage =
     !!uploadedImage || !!selectedStock || !!selectedGenerated;
-  const isSubmitDisabled =
-    !prompt.trim() ||
-    !hasSourceImage ||
-    isGenerating ||
-    isPromptTooLong ||
-    guestGenerationLocked;
+  const isSubmitDisabled = isGenerationSubmitDisabled({
+    promptLocked,
+    prompt,
+    isPromptTooLong,
+    hasSourceImage,
+    isGenerating,
+    guestGenerationLocked,
+  });
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -664,18 +707,24 @@ export function GenerationForm({
 
         {/* プロンプト入力(じゆうモードは自由記述 / それ以外は着せ替え内容) */}
         <PromptInputField
-          value={prompt}
-          onChange={setPrompt}
+          // 施錠時は value を空に固定する。原作の本文はクライアントへ来ないが、
+          // ここで state を経由させないことで将来の取り違えも防ぐ。
+          value={promptLocked ? "" : prompt}
+          onChange={promptLocked ? () => {} : setPrompt}
           label={promptLabel}
           placeholder={promptPlaceholder}
           clearLabel={t("promptClear")}
-          characterCount={t("promptCharacterCount", {
-            current: promptLength,
-            max: promptMaxLength,
-          })}
+          characterCount={
+            promptLocked
+              ? ""
+              : t("promptCharacterCount", {
+                  current: promptLength,
+                  max: promptMaxLength,
+                })
+          }
           maxLength={promptMaxLength}
-          invalid={isPromptTooLong}
-          disabled={isGenerating || isTutorialInProgress}
+          invalid={!promptLocked && isPromptTooLong}
+          disabled={promptLocked || isGenerating || isTutorialInProgress}
           containerProps={
             isFree ? undefined : { "data-tour": "tour-prompt-input" }
           }

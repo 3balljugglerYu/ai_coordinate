@@ -12,6 +12,8 @@ import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
+import { getUserProfileServer } from "@/features/my-page/lib/server-api";
+import { normalizeSubscriptionPlan } from "@/features/subscription/subscription-config";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 
 interface CachedPostDetailProps {
@@ -81,6 +83,25 @@ export async function CachedPostDetail({
     }
   }
 
+  /*
+    閲覧者の購読プラン。プロンプト非公開投稿の派生生成シートでモデル選択と
+    上限に使う。投稿者のプラン (post.user.subscription_plan) とは別物。
+
+    currentUserId は use cache の引数なのでキャッシュキーに含まれる。
+    閲覧者ごとに別エントリになるため、他人のプランが混ざることはない。
+    未ログインは参照カードから生成できないので取得しない。
+  */
+  let viewerSubscriptionPlan: "free" | "light" | "standard" | "premium" = "free";
+  if (currentUserId) {
+    const viewerProfile = await getUserProfileServer(
+      currentUserId,
+      supabase
+    ).catch(() => null);
+    viewerSubscriptionPlan = normalizeSubscriptionPlan(
+      viewerProfile?.subscription_plan
+    );
+  }
+
   const imageUrl = getPostDisplayUrl(post);
   // 表示は WebP（軽量）、ダウンロードは元の PNG/JPEG（高画質）。
   // この経路だけ二段構成にし、`<DownloadButton>` の挙動を `/coordinate` や
@@ -106,6 +127,7 @@ export async function CachedPostDetail({
       ownerId={post.user_id}
       imageUrl={imageUrl}
       originalImageUrl={originalImageUrl}
+      viewerSubscriptionPlan={viewerSubscriptionPlan}
     />
   );
 }
