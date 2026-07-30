@@ -773,8 +773,18 @@ function getGenerationPercoinAmount(job: {
 /**
  * 再試行不可のエラーか判定
  */
+/**
+ * 生成実行入力が欠落・不整合のときに投げる固定内部コード。
+ *
+ * 復旧不能な状態なので再試行しない。リトライすると、減算済みペルコインの
+ * 返金が次回配送まで遅れ、課金RPC・snapshot 検索・worker 起動がもう一度走る。
+ */
+const GENERATION_PROMPT_EXECUTION_MISSING =
+  "GENERATION_PROMPT_EXECUTION_MISSING";
+
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
+    errorMessage === GENERATION_PROMPT_EXECUTION_MISSING ||
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
@@ -1458,12 +1468,27 @@ Deno.serve(async () => {
           continue;
         }
 
-        // 冪等性チェック: 既に完了している場合はメッセージを削除してスキップ
-        if (job.status === "succeeded") {
-          await supabase.rpc("pgmq_delete", {
+        // 冪等性チェック: 終端状態のジョブはメッセージを削除してスキップ。
+        //
+        // failed も削除対象に含める。claim を queued 限定にしたため、failed の
+        // メッセージが再配送されても UPDATE が 0 件になり、削除されないまま
+        // 残り続ける。可視性タイムアウトごとに再取得され、取得枠を占有して
+        // 新しい生成を飢餓状態にしうる。「failed 更新後・pgmq_delete 前に
+        // クラッシュ」でも再現する。
+        //
+        // processing は削除しない。削除するとクラッシュ時にジョブが永続的に
+        // processing のまま残る（下の stale 判定で回収する）。
+        if (job.status === "succeeded" || job.status === "failed") {
+          const { error: terminalDeleteError } = await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
             p_msg_id: msgId,
           });
+          if (terminalDeleteError) {
+            console.error(
+              "Failed to delete terminal job message:",
+              terminalDeleteError,
+            );
+          }
           skippedCount++;
           continue;
         }
@@ -1820,7 +1845,7 @@ Deno.serve(async () => {
               (requiresAuthorInput && !promptExecution?.authorInput) ||
               (requiresProviderPrompt && !promptExecution?.providerPrompt)
             ) {
-              throw new Error("GENERATION_PROMPT_EXECUTION_MISSING");
+              throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
             }
           }
 
@@ -2699,7 +2724,13 @@ Deno.serve(async () => {
           );
 
           // ===== フェーズ4-3: generated_imagesテーブルへの保存 =====
-          let shouldSkipAfterPersist = false;
+          // 「永続化の直前に他ワーカーが状態を変えた」ケースの skip 分岐は
+          // 廃止した。両 provider が complete_image_job_with_prompt_secrets を
+          // 使うようになり、
+          //   - すでに succeeded なら RPC が既存行を返す（冪等）
+          //   - それ以外の状態遷移は RPC が例外を投げ、通常の失敗経路で
+          //     冪等返金まで進む
+          // という形で RPC 側に寄ったため。OpenAI 経路は元からこの挙動だった。
           const imageRecordIds: string[] = [];
           const primaryUploadedImage = uploadedImages[0];
           if (!primaryUploadedImage) {
@@ -2768,202 +2799,68 @@ Deno.serve(async () => {
                 return;
               }
 
-              // 生成完了直前に source_image_stock_id を再取得する。
-              // 生成中にユーザーがダイアログから元画像をストック保存した場合、
-              // link-stock API が image_jobs.source_image_stock_id を後追いで更新するため、
-              // 起動時にロードした job.source_image_stock_id では古い値（NULL）を保持している可能性がある。
-              const { data: latestJob, error: latestJobError } = await supabase
-                .from("image_jobs")
-                .select("source_image_stock_id")
-                .eq("id", jobId)
-                .maybeSingle();
-
-              if (latestJobError) {
-                console.warn(
-                  `[Worker] failed to refetch source_image_stock_id for job ${jobId}, falling back to initial value`,
-                  latestJobError
-                );
-              }
-
-              const latestSourceImageStockId =
-                latestJob?.source_image_stock_id ?? job.source_image_stock_id;
-
-              // inspire 用: generated_images_inspire_template_consistency_check
-              // (generation_type='inspire' ⇔ style_template_id IS NOT NULL) を満たすため、
-              // image_jobs から style_template_id / override_* を継承する。
-              const isInspireRecord = job.generation_type === "inspire";
-              const { data: imageRecord, error: insertError } = await supabase
-                .from("generated_images")
-                .insert({
-                  user_id: job.user_id,
-                  image_url: primaryUploadedImage.publicUrl,
-                  storage_path: primaryUploadedImage.uploadPath,
-                  // 本文はユーザーが読める列に置かない。表示は author secret から
-                  // 解決される。DB の CHECK 制約も非空値を拒否する (REQ-020)。
-                  prompt: "",
-                  background_mode: backgroundMode,
-                  is_posted: false,
-                  generation_type: job.generation_type,
-                  generation_metadata: job.generation_metadata ?? null,
-                  model: dbModel,
-                  source_image_stock_id: latestSourceImageStockId,
-                  image_job_id: jobId,
-                  image_job_result_index: 0,
-                  width: primaryUploadedImage.width,
-                  height: primaryUploadedImage.height,
-                  style_template_id: job.style_template_id ?? null,
-                  override_target: job.override_target ?? null,
-                  override_outfit: isInspireRecord ? (job.override_outfit ?? true) : null,
-                  override_angle: isInspireRecord ? (job.override_angle ?? true) : null,
-                  override_pose: isInspireRecord ? (job.override_pose ?? true) : null,
-                  override_background: isInspireRecord ? (job.override_background ?? true) : null,
-                })
-                .select()
-                .single();
-
-              if (insertError) {
-                console.error("Database insert error:", insertError);
-                throw new Error(`画像メタデータの保存に失敗しました: ${insertError.message}`);
-              }
-
-              imageRecordIds.push(imageRecord.id);
-
-              // 原作者へ開示してよい生入力だけを author secret へ転記する。
-              // one_tap_style は provider_prompt しか持たないためここへ入らず、
-              // 生成した本人が運営資産を読める状態にはならない。
-              // 派生ジョブは derived_reference で author_input を持てない
-              // (テーブル CHECK) ため、同様にここへ入らない。
-              if (
-                promptExecution?.snapshotKind === "materialized" &&
-                promptExecution.authorInput &&
-                promptExecution.authorInputOwnerId
-              ) {
-                const { error: secretError } = await supabase
-                  .from("generated_image_prompt_secrets")
-                  .upsert(
+              // Gemini 経路も OpenAI と同じ原子的 RPC で確定する。
+              //
+              // 以前は「画像を INSERT → author secret を別リクエストで upsert →
+              // job を成功更新」の3手順に分かれており、secret の失敗をログだけで
+              // 握りつぶしていた。generated_images.prompt を空にした後は、この
+              // 部分成功が「画像はあるがプロンプトが永久に空」という表示欠損として
+              // 顕在化する。ジョブは成功扱いなので再試行も返金もされない。
+              // Phase 0B で実際に起きた事故と同型なので、同一トランザクションへ
+              // 寄せる（計画書 Phase 0B「Gemini/OpenAI双方の画像永続化を新RPCへ統一」）。
+              //
+              // model と background_mode は Worker 側で正規化した値を渡す。
+              // 直接 INSERT 時代は normalizeModelName / resolveBackgroundMode の
+              // 結果を書いていたため、RPC がジョブの生値を書くと挙動が変わる。
+              //
+              // source_image_stock_id は RPC 内で FOR UPDATE 付きに読み直した
+              // ジョブの値を使う。生成中にユーザーがストック保存した場合の
+              // 後追い更新も、Worker 起動時の古い値ではなく最新が反映される。
+              const { data: geminiImageRecords, error: geminiCompleteError } =
+                await supabase.rpc("complete_image_job_with_prompt_secrets", {
+                  p_job_id: jobId,
+                  p_images: [
                     {
-                      image_id: imageRecord.id,
-                      prompt: promptExecution.authorInput,
-                      prompt_owner_id: promptExecution.authorInputOwnerId,
-                      source_kind: "author_input",
+                      image_url: primaryUploadedImage.publicUrl,
+                      storage_path: primaryUploadedImage.uploadPath,
+                      width: primaryUploadedImage.width,
+                      height: primaryUploadedImage.height,
                     },
-                    { onConflict: "image_id", ignoreDuplicates: true },
-                  );
+                  ],
+                  p_generation_metadata: successGenerationMetadata,
+                  p_result_image_url: primaryUploadedImage.publicUrl,
+                  p_model: dbModel,
+                  p_background_mode: backgroundMode,
+                });
 
-                if (secretError) {
-                  // 本文は載せない。ここで失敗しても画像自体は保存済みなので、
-                  // 生成を落とさず記録だけ残す。移行完了後は完了 RPC 経由に
-                  // 一本化されるため、この経路は縮小する。
-                  console.error(
-                    `[Worker] failed to store author prompt secret for image ${imageRecord.id}`,
-                    { code: secretError.code },
-                  );
-                }
-              }
-
-              const { data: postInsertJob, error: postInsertJobError } = await supabase
-                .from("image_jobs")
-                .select("source_image_stock_id")
-                .eq("id", jobId)
-                .maybeSingle();
-
-              if (postInsertJobError) {
-                console.warn(
-                  `[Worker] failed to post-sync source_image_stock_id for generated image ${imageRecord.id}`,
-                  postInsertJobError
+              if (geminiCompleteError) {
+                console.error(
+                  "Failed to complete image job atomically:",
+                  geminiCompleteError,
+                );
+                throw new Error(
+                  `画像メタデータの保存に失敗しました: ${geminiCompleteError.message}`,
                 );
               }
 
-              const postInsertSourceImageStockId =
-                postInsertJob?.source_image_stock_id ?? null;
+              const geminiRecordIds = Array.isArray(geminiImageRecords)
+                ? (geminiImageRecords as Array<{ id?: unknown }>)
+                    .map((row) => (typeof row?.id === "string" ? row.id : null))
+                    .filter((id): id is string => id !== null)
+                : [];
 
-              if (
-                postInsertSourceImageStockId &&
-                postInsertSourceImageStockId !== latestSourceImageStockId
-              ) {
-                const { error: syncGeneratedImageError } = await supabase
-                  .from("generated_images")
-                  .update({ source_image_stock_id: postInsertSourceImageStockId })
-                  .eq("id", imageRecord.id);
-
-                if (syncGeneratedImageError) {
-                  console.warn(
-                    `[Worker] failed to post-sync generated image ${imageRecord.id} with source image stock`,
-                    syncGeneratedImageError
-                  );
-                }
+              if (geminiRecordIds.length === 0) {
+                // RPC は冪等で、既に成功済みなら既存行を返す。0 件は想定外。
+                throw new Error("画像メタデータの保存結果が空です");
               }
 
-              // ===== フェーズ4-4: 成功時の処理 =====
-              // image_jobsテーブルを更新（成功時）
-              const { data: succeededJob, error: successUpdateError } = await supabase
-                .from("image_jobs")
-                .update({
-                  status: "succeeded",
-                  processing_stage: "completed",
-                  result_image_url: primaryUploadedImage.publicUrl,
-                  error_message: null,
-                  completed_at: new Date().toISOString(),
-                  generation_metadata: successGenerationMetadata,
-                })
-                .eq("id", jobId)
-                .eq("status", "processing")
-                .select("id")
-                .maybeSingle();
+              imageRecordIds.push(...geminiRecordIds);
 
-              if (successUpdateError) {
-                console.error("Failed to update job status to succeeded:", successUpdateError);
-                throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
-              }
-
-              if (!succeededJob) {
-                console.warn(`[Job Success] Skipped succeeded update because status changed: ${jobId}`);
-                skippedCount++;
-                shouldSkipAfterPersist = true;
-                return;
-              }
-
-              // credit_transactionsのrelated_generation_idを更新
-              // 画像生成前にNULLで保存していた取引履歴を、generated_images.idに更新
-              try {
-                const { error: updateTransactionError } = await supabase
-                  .from("credit_transactions")
-                  .update({ related_generation_id: imageRecord.id })
-                  .eq("user_id", job.user_id)
-                  .is("related_generation_id", null) // NULLの取引履歴を検索
-                  .eq("transaction_type", "consumption")
-                  .eq("metadata->>job_id", jobId); // metadata内のjob_idで特定
-                
-                if (updateTransactionError) {
-                  console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
-                  // エラーはログに記録するが、処理は継続
-                } else {
-                  console.log(`[Job Success] Updated credit transaction related_generation_id to ${imageRecord.id}`);
-                }
-              } catch (updateTransactionError) {
-                console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
-                // エラーはログに記録するが、処理は継続
-              }
+              // credit_transactions.related_generation_id の更新は
+              // complete_image_job_with_prompt_secrets が同一トランザクション内で
+              // 行うため、ここでの後追い更新は不要になった。
             }
           );
-
-          if (shouldSkipAfterPersist) {
-            const skippedAtMs = Date.now();
-            const totalDurationMs =
-              createdAtMs !== null && !Number.isNaN(createdAtMs)
-                ? Math.max(skippedAtMs - createdAtMs, 0)
-                : null;
-            logJobTimingSummary({
-              jobId,
-              outcome: "ジョブスキップ",
-              queueWaitMs,
-              workerDurationMs: Math.max(skippedAtMs - workerStartedAtMs, 0),
-              totalDurationMs,
-              stageDurationsMs,
-              currentStage,
-            });
-            continue;
-	          }
 
           await deleteGeneratedImagesTempReferenceImageIfExists(
             supabase,
