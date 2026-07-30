@@ -61,7 +61,10 @@ import {
 } from "./openai-image.ts";
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
-import { resolvePromptExecutionInput } from "./prompt-execution.ts";
+import {
+  type PromptExecutionRecord,
+  resolvePromptExecutionInput,
+} from "./prompt-execution.ts";
 import {
   resolveRecordedPercoinRefundAmount,
   settleFailedJobBilling,
@@ -787,6 +790,15 @@ const GENERATION_PROMPT_EXECUTION_MISSING =
   "GENERATION_PROMPT_EXECUTION_MISSING";
 
 /**
+ * 派生生成の原作が利用できないときに投げる固定内部コード。
+ *
+ * 削除・投稿取消・公開停止・非公開解除・フォロー解除・ブロックのいずれでも
+ * 同じコードにする。理由を分けると、そこから原作の状態を推測できてしまう
+ * （ADR-005）。復旧不能なので再試行しない。
+ */
+const DERIVED_PROMPT_SOURCE_UNAVAILABLE = "DERIVED_PROMPT_SOURCE_UNAVAILABLE";
+
+/**
  * 最終失敗したジョブの課金後処理を冪等に実行する。
  *
  * 判定と順序は failed-job-billing.ts に隔離し（Jest でテスト可能にするため）、
@@ -837,6 +849,7 @@ async function settleFailedJobBillingWithSupabase(
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
     errorMessage === GENERATION_PROMPT_EXECUTION_MISSING ||
+    errorMessage === DERIVED_PROMPT_SOURCE_UNAVAILABLE ||
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
@@ -1805,6 +1818,209 @@ Deno.serve(async () => {
           continue;
         }
 
+        // ===== 生成入力の解決と派生生成の認可（減算より前に実行） =====
+        //
+        // ペルコイン減算より前に行う。ここで落ちる原因は「実行入力レコードの
+        // 欠落」と「原作が利用できない」のどちらもユーザーの操作では直せない。
+        // 減算してから失敗させると、成功しないことが確定している生成に対して
+        // 一度残高を減らし、返金経路の成否に残高の正しさを賭けることになる。
+        // 先に検証すれば、そもそも減算・返金のどちらも発生しない。
+        //
+        // 生成フェーズと画像永続化フェーズの両方から参照するため、
+        // どちらのコールバックよりも外側で保持する。
+        let promptExecution: PromptExecutionRecord | null = null;
+        const isDerivedJob = job.origin_post_id != null;
+        let generationInput = "";
+        try {
+          // 生成入力の解決 (プロンプト秘匿境界)
+          //
+          // 本文は service-only の generation_prompt_snapshots にだけ存在する。
+          // image_jobs.prompt_text は常に空で、legacy 列へのフォールバックは
+          // 持たない (fail closed)。落ちる経路を残すと、レコードの作成漏れが
+          // 「古い列の値で生成が通ってしまう」形で隠蔽され、Phase 0C の空化後に
+          // 初めて壊れる。
+          //
+          // 生成種別ごとに必要な入力が揃っていなければ、provider を呼ぶ前に
+          // 固定内部コードで終端失敗させる。
+          promptExecution = await resolvePromptExecutionInput(
+            supabase,
+            job.id,
+          );
+          // coordinate / free は生入力、one_tap_style は組み立て済み全文。
+          // どちらも無い種別 (inspire / creator_looks) はジョブの列から作る。
+          // 派生生成は本文を実行入力に持たない。原作者の入力を
+          // provider 送信直前に author secret から解決する（REQ-007a）。
+          //
+          // ここでは本文を取らず、認可だけを見る。
+          if (isDerivedJob) {
+            if (promptExecution?.snapshotKind !== "derived_reference") {
+              // 派生 job に materialized record が付いている状態は改ざんの疑い。
+              // DB の cross-table trigger でも拒否されるが、ここでも止める。
+              throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
+            }
+
+            const { data: preChargeValidation, error: preChargeError } =
+              await supabase
+                .rpc("validate_derived_prompt_source", {
+                  p_source_post_id: job.origin_post_id,
+                  p_requester_id: job.user_id,
+                })
+                .select("is_available")
+                .maybeSingle();
+
+            if (preChargeError) {
+              // 検証できないときは通さない (fail closed)
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+
+            if (
+              !(preChargeValidation as { is_available?: boolean } | null)
+                ?.is_available
+            ) {
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+          }
+
+          // 派生生成の本文は provider 送信直前に解決するため、ここでは空。
+          generationInput = isDerivedJob
+            ? ""
+            : promptExecution?.authorInput ??
+              promptExecution?.providerPrompt ??
+              "";
+
+          if (!isDerivedJob) {
+            const requiresAuthorInput =
+              job.generation_type === "coordinate" ||
+              job.generation_type === "free";
+            const requiresProviderPrompt =
+              job.generation_type === "one_tap_style";
+
+            if (
+              (requiresAuthorInput && !promptExecution?.authorInput) ||
+              (requiresProviderPrompt && !promptExecution?.providerPrompt)
+            ) {
+              throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
+            }
+          }
+        } catch (preflightError) {
+          const preflightMessage = sanitizeProviderErrorMessage(
+            preflightError instanceof Error
+              ? preflightError.message
+              : "Unknown error",
+          );
+          console.error("[Job Processing] Preflight failed", {
+            jobId,
+            message: preflightMessage,
+          });
+          const preflightFailedAtMs = Date.now();
+          logJobTimingSummary({
+            jobId,
+            outcome: "ジョブ失敗",
+            queueWaitMs,
+            workerDurationMs: Math.max(preflightFailedAtMs - workerStartedAtMs, 0),
+            totalDurationMs:
+              createdAtMs !== null && !Number.isNaN(createdAtMs)
+                ? Math.max(preflightFailedAtMs - createdAtMs, 0)
+                : null,
+            stageDurationsMs,
+            currentStage,
+            errorMessage: preflightMessage,
+          });
+
+          // 生成フェーズの失敗と同じ再試行判定を使う。
+          // 実行入力の欠落と原作の利用不可は固定内部コードで終端失敗するが、
+          // snapshot 読み出しの一時的なDBエラーは1回だけ再試行させる。
+          // ここで常に failed にすると、接続の瞬断が永久失敗になる。
+          const { data: preflightCurrentJob, error: preflightFetchError } =
+            await supabase
+              .from("image_jobs")
+              .select("attempts, started_at")
+              .eq("id", jobId)
+              .single();
+
+          if (preflightFetchError) {
+            console.error(
+              "Failed to fetch job attempts after preflight failure:",
+              preflightFetchError,
+            );
+            // ack しない。可視性タイムアウト後に再処理される。
+            continue;
+          }
+
+          const preflightAttempts = (preflightCurrentJob?.attempts || 0) + 1;
+          const preflightIsFinal =
+            isNonRetriableGenerationError(preflightMessage) ||
+            preflightAttempts >= 2;
+
+          const { data: preflightUpdatedJob, error: preflightUpdateError } =
+            await supabase
+              .from("image_jobs")
+              .update({
+                status: preflightIsFinal ? "failed" : "queued",
+                processing_stage: preflightIsFinal ? "failed" : "queued",
+                result_image_url: null,
+                error_message: preflightMessage,
+                attempts: preflightAttempts,
+                started_at: preflightIsFinal
+                  ? preflightCurrentJob?.started_at ?? job.started_at
+                  : null,
+                completed_at: preflightIsFinal
+                  ? new Date().toISOString()
+                  : null,
+              })
+              .eq("id", jobId)
+              .eq("status", "processing")
+              .select("id")
+              .maybeSingle();
+
+          if (preflightUpdateError) {
+            console.error(
+              "Failed to update job status after preflight failure:",
+              preflightUpdateError,
+            );
+            continue;
+          }
+
+          if (!preflightUpdatedJob) {
+            skippedCount++;
+            continue;
+          }
+
+          if (!preflightIsFinal) {
+            // queued へ戻した。減算していないので返金も不要。
+            // ack しないことで可視性タイムアウト後に再配送される。
+            continue;
+          }
+
+          // 減算前なので返金は発生しないが、無料枠の予約は解放する必要がある。
+          // settleFailedJobBilling は冪等で、消費履歴が無ければ返金しない。
+          const preflightSettled = await settleFailedJobBillingWithSupabase(
+            supabase,
+            {
+              jobId,
+              job,
+              errorMessage: preflightMessage,
+              isFreeOneTapStyleJob,
+              reservedAttemptId,
+            },
+          );
+
+          if (preflightSettled) {
+            await supabase.rpc("pgmq_delete", {
+              p_queue_name: QUEUE_NAME,
+              p_msg_id: msgId,
+            });
+          } else {
+            // ack しない。再配送で冒頭の failed 分岐が reconciliation する。
+            console.warn(
+              `[Job Processing] Left message for billing reconciliation: ${jobId}`,
+            );
+          }
+
+          continue;
+        }
+
+
         // ===== ペルコイン減算処理（画像生成前に実行） =====
         if (!isFreeOneTapStyleJob) {
           currentStage = "charging";
@@ -1882,48 +2098,43 @@ Deno.serve(async () => {
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
-          // 生成入力の解決 (プロンプト秘匿境界)
-          //
-          // 本文は service-only の generation_prompt_snapshots にだけ存在する。
-          // image_jobs.prompt_text は常に空で、legacy 列へのフォールバックは
-          // 持たない (fail closed)。落ちる経路を残すと、レコードの作成漏れが
-          // 「古い列の値で生成が通ってしまう」形で隠蔽され、Phase 0C の空化後に
-          // 初めて壊れる。
-          //
-          // 生成種別ごとに必要な入力が揃っていなければ、provider を呼ぶ前に
-          // 固定内部コードで終端失敗させる。課金の後だが、失敗時は既存の
-          // 冪等返金経路 (refundPercoinsFromGeneration) でペルコインが戻る。
-          //
-          // 生成フェーズと画像永続化フェーズの両方から参照するため、どちらの
-          // コールバックよりも外側で解決しておく。
-          const promptExecution = await resolvePromptExecutionInput(
-            supabase,
-            job.id,
-          );
-          // coordinate / free は生入力、one_tap_style は組み立て済み全文。
-          // どちらも無い種別 (inspire / creator_looks) はジョブの列から作る。
-          const generationInput =
-            promptExecution?.authorInput ??
-            promptExecution?.providerPrompt ??
-            "";
+          let generatedImages: GeneratedImageResult[] = [];
+          if (isDerivedJob) {
+            // 認可を再検証したうえで原作者の入力を取得する（REQ-007a）。
+            //
+            // validate と resolve を分けず、resolve 側が同一 statement で
+            // 認可を再確認する。分けるとその間に条件が変わる余地ができる。
+            //
+            // ここで得た本文はメモリ上だけに置く。derived reference、job、
+            // 生成画像、ログ、APM へは書かない。
+            const { data: resolved, error: resolveError } = await supabase
+              .rpc("resolve_derived_prompt_source", {
+                p_source_post_id: job.origin_post_id,
+                p_requester_id: job.user_id,
+              })
+              .select("author_input")
+              .maybeSingle();
 
-          {
-            const requiresAuthorInput =
-              job.generation_type === "coordinate" ||
-              job.generation_type === "free";
-            const requiresProviderPrompt =
-              job.generation_type === "one_tap_style";
-
-            if (
-              (requiresAuthorInput && !promptExecution?.authorInput) ||
-              (requiresProviderPrompt && !promptExecution?.providerPrompt)
-            ) {
-              throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
+            if (resolveError) {
+              // error object を丸ごと serialize しない。本文は含まれない想定だが、
+              // RPC payload ごとログへ出す経路を作らない（REQ-017a）。
+              console.error("[Job Processing] Derived prompt resolve failed", {
+                jobId,
+                code: resolveError.code,
+              });
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
+
+            const resolvedInput = (resolved as { author_input?: string } | null)
+              ?.author_input;
+
+            if (!resolvedInput) {
+              throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
+            }
+
+            generationInput = resolvedInput;
           }
 
-
-          let generatedImages: GeneratedImageResult[] = [];
           currentStage = "generating";
           await measureJobStage(
             jobId,

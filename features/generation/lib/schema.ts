@@ -54,7 +54,17 @@ export const generationRequestSchema = z.object({
   // 上限は generationType により異なる(free=30,000 / 他=1,500)ため、フィールド単体では
   // .max() を付けず min(1) のみとし、superRefine で default 適用後の generationType を
   // 見て種別別に判定する(free の長文がフィールドレベルで先に落ちるのを防ぐ)。
-  prompt: z.string().min(1, "着せ替え内容を入力してください"),
+  // 派生生成 (sourcePostId 指定) では本文をクライアントから受け取らないため、
+  // フィールド単体では必須にしない。通常生成での必須は superRefine で担保する。
+  prompt: z.string().optional(),
+  /**
+   * 派生生成の原作 root 投稿 ID。
+   *
+   * これを指定した場合、プロンプト本文は受け取らない。サーバー側が
+   * author secret から解決するため、クライアントへ本文を渡さずに済む
+   * （計画書 ADR-006 / REQ-005）。
+   */
+  sourcePostId: z.string().uuid().optional(),
   sourceImageBase64: z.string().optional(),
   sourceImageMimeType: z
     .string()
@@ -123,8 +133,45 @@ export const generationRequestSchema = z.object({
 }).superRefine((data, ctx) => {
   // プロンプト上限は generationType 別(free=30,000 / 他=1,500)。
   // default 適用後の generationType で判定するため superRefine で検証する。
+  // 派生生成と本文指定は同時に使えない。両方来た場合はどちらを使うか
+  // 曖昧になり、クライアントが本文を差し替えて原作の認可だけ借りる余地も残る。
+  if (data.sourcePostId && data.prompt !== undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["prompt"],
+      message: "派生生成では着せ替え内容を指定できません",
+    });
+    return;
+  }
+
+  // 派生生成は generationType='free' に限る。
+  // generationType には default('coordinate') があるため、sourcePostId だけを
+  // 送ると free 以外として通ってしまう。その場合 coordinate の builder が
+  // 原作者の本文を運営プリセットと結合するなど、想定外の経路に入る。
+  // UI からは常に free で送るが、API 直叩きに対して fail closed にしておく。
+  if (data.sourcePostId && data.generationType !== "free") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["generationType"],
+      message: "派生生成はじゆうモードのみ利用できます",
+    });
+    return;
+  }
+
+  // 派生生成でなければ本文は必須。フィールドから min(1) を外した分をここで補う。
+  if (!data.sourcePostId) {
+    if (data.prompt === undefined || data.prompt.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["prompt"],
+        message: "着せ替え内容を入力してください",
+      });
+      return;
+    }
+  }
+
   const promptMaxLength = getPromptMaxLength(data.generationType);
-  if (data.prompt.length > promptMaxLength) {
+  if ((data.prompt?.length ?? 0) > promptMaxLength) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       path: ["prompt"],
