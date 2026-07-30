@@ -1435,4 +1435,166 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect("generation_metadata" in jobData).toBe(false);
     });
   });
+
+  describe("派生生成 (プロンプト非公開モード)", () => {
+    const VALID_SOURCE_POST_ID = "33333333-3333-4333-8333-333333333333";
+    const ROOT_POST_ID = "44444444-4444-4444-8444-444444444444";
+
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildBody(extra: Record<string, unknown> = {}): JsonRecord {
+      return {
+        sourcePostId: VALID_SOURCE_POST_ID,
+        generationType: "free",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        ...extra,
+      };
+    }
+
+    /**
+     * validate_derived_prompt_source のレスポンスを差し替える。
+     *
+     * ハンドラは `createAdminClient().rpc(...).select(...).maybeSingle()` の
+     * 形で呼ぶため、その連鎖を再現する。
+     */
+    function mockValidation(result: {
+      data?: { is_available?: boolean; root_post_id?: string | null } | null;
+      error?: { code?: string } | null;
+    }) {
+      const maybeSingle = jest.fn().mockResolvedValue({
+        data: result.data ?? null,
+        error: result.error ?? null,
+      });
+      const select = jest.fn(() => ({ maybeSingle }));
+      const rpc = jest.fn(() => ({ select }));
+      createAdminClientMock.mockReturnValue(
+        { rpc } as unknown as ReturnType<typeof createAdminClient>
+      );
+      return { rpc, select, maybeSingle };
+    }
+
+    test("利用可能な原作なら origin_post_id は root へ解決した値で保存される", async () => {
+      // 派生 ID を渡されても root を指す (ADR-003)。
+      // ここが原作 ID のままだと、系譜が連鎖して原作者のクレジットが失われる。
+      const { rpc } = mockValidation({
+        data: { is_available: true, root_post_id: ROOT_POST_ID },
+      });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(rpc).toHaveBeenCalledWith("validate_derived_prompt_source", {
+        p_source_post_id: VALID_SOURCE_POST_ID,
+        // requester は body ではなく認証セッションから取る (REQ-016)
+        p_requester_id: "user-123",
+      });
+
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect(jobData.origin_post_id).toBe(ROOT_POST_ID);
+      expect(jobData.prompt_text).toBe("");
+    });
+
+    test("派生ジョブの実行入力は本文を持たない derived_reference になる", async () => {
+      // materialized で作られると、原作者の入力が派生者の author secret へ
+      // 転記される余地が生まれる (REQ-003d)。
+      mockValidation({
+        data: { is_available: true, root_post_id: ROOT_POST_ID },
+      });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      const promptExecution = jobRepository.createImageJob.mock.calls[0][1];
+      expect(promptExecution).toEqual({ kind: "derived_reference" });
+    });
+
+    test("原作が利用不可なら 409 を返し理由は伏せる", async () => {
+      // 削除・投稿取消・公開停止・非公開解除・フォロー解除・ブロックのどれでも
+      // 同じ応答にする。理由を返すと原作の状態を推測できてしまう (ADR-005)。
+      mockValidation({ data: { is_available: false, root_post_id: null } });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+      const body = (await readJson(response)) as JsonRecord;
+
+      expect(response.status).toBe(409);
+      expect(body.errorCode).toBe("FREE_SOURCE_UNAVAILABLE");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("is_available だけ true で root_post_id が無い応答も通さない", async () => {
+      // root が解決できないまま進むと origin_post_id が付かない派生ができる。
+      mockValidation({ data: { is_available: true, root_post_id: null } });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+      const body = (await readJson(response)) as JsonRecord;
+
+      expect(response.status).toBe(409);
+      expect(body.errorCode).toBe("FREE_SOURCE_UNAVAILABLE");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("検証RPCがエラーなら fail closed で 500 を返す", async () => {
+      // 検証できないときに通すと、障害時に秘匿境界が緩む方向へ倒れる。
+      mockValidation({ error: { code: "PGRST202" } });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+      const body = (await readJson(response)) as JsonRecord;
+
+      expect(response.status).toBe(500);
+      expect(body.errorCode).toBe("GENERATION_DERIVED_VALIDATION_FAILED");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("応答が null でも通さない", async () => {
+      mockValidation({ data: null });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody()),
+        dependencies()
+      );
+
+      expect(response.status).toBe(409);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("sourcePostId が無い通常生成では検証RPCを呼ばない", async () => {
+      const { rpc } = mockValidation({
+        data: { is_available: true, root_post_id: ROOT_POST_ID },
+      });
+
+      const response = await postGenerateAsyncRoute(
+        createRequest({
+          prompt: "夏服にして",
+          generationType: "free",
+          sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        }),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(rpc).not.toHaveBeenCalled();
+      const jobData = jobRepository.createImageJob.mock.calls[0][0];
+      expect("origin_post_id" in jobData).toBe(false);
+    });
+  });
 });
