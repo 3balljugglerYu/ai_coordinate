@@ -11,9 +11,11 @@ import type { GeneratedImageRecord } from "./database";
  *
  * 詳細は docs/planning/free-prompt-private-mode-implementation-plan.md ADR-001。
  *
- * 移行の段階:
- *   Phase 0B (現在) 新規行は secret、既存行は legacy 列。ここでは両方を見る
- *   Phase 0C        legacy 列を空化し、DB 制約で非空値を拒否する
+ * Phase 0C 以降、本文は secret にしか存在しない。`generated_images.prompt` は
+ * 常に空で、DB の CHECK 制約が非空値の書き込みを拒否する。
+ * legacy 列へのフォールバックは持たない（fail closed）。secret が無い行は
+ * 「開示するものが無い」行であり、障害時に古い列へ落ちて秘匿境界が緩む
+ * 経路を残さないため。
  */
 
 /** 解決に必要な最小の形。Post 型でも生の行でも受けられるようにする。 */
@@ -81,9 +83,8 @@ async function fetchPromptSecrets(
 /**
  * 複数レコードの表示用プロンプトを解決する。
  *
- * 開示不可の種別は空文字にし、それ以外は secret を優先して legacy 列へ
- * フォールバックする。フォールバックが必要なのは backfill 前の既存行だけで、
- * Phase 0C 以降は secret に一本化される。
+ * 開示不可の種別は空文字にし、それ以外は secret の値だけを使う。
+ * secret が無ければ空文字（legacy 列へは落ちない）。
  */
 export async function resolveVisiblePrompts<T extends PromptResolvableRecord>(
   records: T[]
@@ -104,8 +105,7 @@ export async function resolveVisiblePrompts<T extends PromptResolvableRecord>(
       return record.prompt === "" ? record : { ...record, prompt: "" };
     }
 
-    const secret = record.id ? secrets.get(record.id) : undefined;
-    const resolved = secret ?? record.prompt;
+    const resolved = (record.id ? secrets.get(record.id) : undefined) ?? "";
     return resolved === record.prompt ? record : { ...record, prompt: resolved };
   });
 }

@@ -43,13 +43,14 @@ describe("resolveVisiblePrompts", () => {
     expect(result[0].prompt).toBe("秘密の入力");
   });
 
-  it("secret が無ければ legacy 列へ落とす", async () => {
-    // backfill 前の既存行はまだ secret を持たない
+  it("secret が無ければ空文字にする（legacy 列へ落ちない）", async () => {
+    // Phase 0C 以降、本文は secret にしか存在しない。legacy 列へ落ちる経路を
+    // 残すと、障害や移行漏れのときに古い列の内容が漏れ出る。
     const result = await resolveVisiblePrompts([
       { id: "img-1", prompt: "legacy 値", generation_type: "coordinate" },
     ]);
 
-    expect(result[0].prompt).toBe("legacy 値");
+    expect(result[0].prompt).toBe("");
   });
 
   it("one_tap_style は secret が無くても legacy へ落とさない", async () => {
@@ -105,7 +106,7 @@ describe("resolveVisiblePrompts", () => {
     expect(result.map((r) => r.prompt)).toEqual([
       "A の入力",
       "B の入力",
-      "legacy C",
+      "", // secret が無い行は空。legacy 列へは落ちない
     ]);
   });
 
@@ -131,7 +132,7 @@ describe("resolveVisiblePrompts", () => {
   it("変化が無いレコードは同一参照のまま返す", async () => {
     const record = {
       id: "img-1",
-      prompt: "legacy 値",
+      prompt: "",
       generation_type: "free" as const,
     };
 

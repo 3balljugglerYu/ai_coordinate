@@ -553,9 +553,9 @@ Workerは課金前とprovider呼び出し直前に認可を検証する。課金
 ### ADR-009: Phase 0 は expand・backfill・contract の複数デプロイに分ける
 
 - **Context**: Vercel デプロイと `supabase db push`、Edge Function deploy は別操作である。単一PRに additive migration と空化 migration を同梱すると、旧コード停止・テーブル未作成・backfill後の新規行取りこぼしのいずれかが起こる。
-- **Decision**: 既存漏洩修正は3段階に分ける。Phase 0A で additive schema、Phase 0B で互換コード・dual-write・backfill・検証、Phase 0C で旧fallback撤去・空化・DB invariantを適用する。各段階を別PR・別デプロイとし、新機能UIより先に完了させる。
+- **Decision**: 既存漏洩修正は3段階に分ける。Phase 0A で additive schema、Phase 0B で互換コード・dual-write・backfill・検証、Phase 0C で旧fallback撤去・空化・DB invariantを適用する。各段階を別PR・別デプロイとし、新機能UIより先に完了させる。さらに Phase 0C で必要になった完了RPCの6引数化は、contractと同じ未適用migration群へ入れず、**先行expand PRとして単独でマージ・適用**する。`supabase db push` は特定migrationで停止できないため、expandとcontractの間へWorkerデプロイを挟むにはPR自体を分ける。
 - **Reason**: 時間ではなく、dual-write 稼働中の行単位検証を contract の前提にする必要がある。未使用の additive table が一時的に残ることは、データ欠損や漏洩より安全である。
-- **Consequence**: 当初の「Phase 0〜5を単一PR」は撤回する。移行中だけ新→旧の dual-read を許すが、secret取得エラー時の無条件fallbackは禁止する。fallbackには期限・観測・撤去PRを必須とする。
+- **Consequence**: 当初の「Phase 0〜5を単一PR」は撤回する。移行中だけ新→旧の dual-read を許すが、secret取得エラー時の無条件fallbackは禁止する。fallbackには期限・観測・撤去PRを必須とする。Phase 0C expand適用後はPostgRESTのschema cacheを明示reloadし、旧4引数・新6引数の両呼び出しが解決できることを確認してからWorkerを切り替える。
 
 ### ADR-010: provider error と公開画像メタデータを秘密の出口として扱う
 
@@ -598,8 +598,9 @@ Workerは課金前とprovider呼び出し直前に認可を検証する。課金
 ```mermaid
 flowchart LR
     P0A["Phase 0A PR1: Expand"] --> P0B["Phase 0B PR2: Dual write と検索と Backfill"]
-    P0B --> P0C["Phase 0C PR3: Contract"]
-    P0C --> P1["Phase 1 PR4: 非公開モードDBとAPI"]
+    P0B --> P0CE["Phase 0C PR3a: 完了RPC Expand"]
+    P0CE --> P0CC["Phase 0C PR3b: Contract"]
+    P0CC --> P1["Phase 1 PR4: 非公開モードDBとAPI"]
     P1 --> P2["Phase 2 PR5: 投稿と閲覧UI"]
     P2 --> P3["Phase 3 PR6: Adminと仕上げ"]
 ```
@@ -612,10 +613,35 @@ flowchart LR
 | 2 | PR2のbackward-compatible Worker | legacy jobは従来どおり、materialized execution recordを持つjobも処理可能 |
 | 3 | PR2のNext.js | `createImageJob(jobData, promptExecution)` が必須で、新規jobの `prompt_text` が全種別で空。検索がcaption + 作者名へ移行済み |
 | 4 | backfill + 検証SQL | 種別件数・行digest・owner・orphan・dual-write後の差分がすべて0 |
-| 5 | PR3直前の本番ゲート | user retryが新規jobを作ること、**PR2デプロイ時刻より前に作られたqueued / processing jobが0件**であること、PR2以後のjobが全件execution recordを持つこと、既知caption・nickname検索が結果を返すことを記録 |
-| 6 | PR3のfallbackなしNext.js / Worker | secret読み取りエラーがfail closed。既存表示・生成が正常 |
-| 7 | PR3のcontract migration | 公開列と終端jobを空化し、DB invariantをVALIDATE。直後に同じcaption・nickname検索が0件固定でないことを確認 |
-| 8 | PR4以降 | private prompt新機能を初めて有効化 |
+| 5 | Phase 0C先行expand PR | `20260730090000` **だけ**を含むPRをマージする。`supabase db push --dry-run` が1本だけを示すことを確認して適用 |
+| 6 | PostgREST互換ゲート | schema reload後、旧4引数・新6引数の双方がPGRST202ではなく関数本体の応答へ到達することをservice roleで確認 |
+| 7 | Phase 0C contract PRのNext.js / Worker | 先行expandを含むmainと同期してからデプロイ。secret読み取りエラーがfail closedで、Gemini / OpenAI双方の生成・表示が正常 |
+| 8 | contract直前のdrain | 生成受付を止め、Worker cronを動かしたまま`queued / processing = 0`までdrain。その後cronを止め、active=0を再確認 |
+| 9 | Phase 0C contract migration | `supabase db push --dry-run` が`20260730100000`だけを示すことを確認。公開列と**全job**を空化し、DB invariantを追加 |
+| 10 | 再開・受け入れ確認 | Worker cronを戻して生成受付を再開。Gemini / OpenAI生成、表示、anon公開列、Storage孤児、課金reconciliationを確認 |
+| 11 | PR4以降 | private prompt新機能を初めて有効化 |
+
+expand適用後のPostgREST疎通は、実在しないjob IDを使って関数解決だけを確認する。
+service role keyはシェル履歴・ログへ出さず、次の旧4引数 / 新6引数リクエストが
+どちらも `PGRST202` ではなく関数本体の `image job not found` へ到達することを確認する。
+
+```bash
+curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
+  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"p_job_id":"00000000-0000-4000-8000-000000000000","p_images":[],"p_generation_metadata":null,"p_result_image_url":null}'
+
+curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
+  -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"p_job_id":"00000000-0000-4000-8000-000000000000","p_images":[],"p_generation_metadata":null,"p_result_image_url":null,"p_model":null,"p_background_mode":null}'
+```
+
+生成受付を一時停止する運用手段が用意できない場合はcontractを適用しない。
+受付を止めずにactive=0の瞬間を狙う運用は、migration内部ゲートによりfail closedには
+なるが、再試行回数と停止時間を予測できず、本ランブックの正式手順とはしない。
 
 各段階でロールバック先は「直前の互換バージョン」とする。順序を飛ばさず、Vercel・DB・Workerのどれが現在の本番バージョンかをリリース記録へ残す。
 
@@ -694,12 +720,16 @@ flowchart LR
   - owner/source_kind不整合、orphan、移行漏れが0件
   - dual-write開始後に作られた行も差分0件
 
-### Phase 0C: Contract・既存漏洩の閉鎖（PR3）
+### Phase 0C: Contract・既存漏洩の閉鎖（先行expand PR + contract PR3）
 
 **目的**: 公開列・ユーザー所有ジョブ・fallbackを完全に閉じ、再発をDBで拒否する
-**開始条件**: Phase 0Bが本番稼働し、検索がprompt列へ依存せず、検証SQLが連続して差分0件。**PR2デプロイ時刻より前に作られたqueued / processing jobが残っていない**。PR2以後のjobは作成RPCにより全件execution recordを持つ。ユーザー向け再試行が新規job作成であることを確認。日次物理バックアップが直近分まで `COMPLETED` であることを確認（PITRは不要）。
+**開始条件**: Phase 0Bが本番稼働し、検索がprompt列へ依存せず、検証SQLが連続して差分0件。Phase 0C先行expand PRの `20260730090000` が本番migration historyに存在し、PostgREST経由で旧4引数・新6引数の両呼び出しが解決できる。ユーザー向け再試行が新規job作成であることを確認。日次物理バックアップが直近分まで `COMPLETED` であることを確認（PITRは不要）。contract適用直前は生成受付を止め、Workerでdrainした後にcronを止め、**全queued / processing jobが0件**であることをSQLとmigration内部ゲートの両方で確認する。
 あわせて author secret 側の完全性を再検証する（件数・行ごとのmd5・所有者・運営資産の非混入）
 
+- [ ] `20260730090000_expand_complete_rpc_model_params.sql` をcontractとは別の先行PRとしてマージ・適用
+  - `supabase db push --dry-run` で対象がこの1本だけであることを確認
+  - `NOTIFY pgrst, 'reload schema'` 後、旧4引数・新6引数の双方が解決できることを確認
+  - contract PRを更新後のmainと同期し、同migrationがcontract PRの差分から消えたことを確認
 - [ ] secret→legacyの読み取りfallbackを削除してデプロイし、読み取りエラー率を監視
 - [ ] `generated_images.prompt` を空文字へ更新
 - [ ] `ALTER COLUMN prompt SET DEFAULT ''` を適用
@@ -708,10 +738,11 @@ flowchart LR
   - 検索は無効化済みで、有効化しても caption / nickname の trigram index を使う
     （`20260729170000` で追加済み）。prompt の index は空化後に不要になる
 - [ ] 最新の `complete_image_job_with_generated_images` を含む全永続化経路が空文字しか書かないことを確認
-- [ ] 全生成種別の `image_jobs.prompt_text` を段階的に空化
-  - succeeded / failed / cancelled等の終端jobを対象にする
-  - PR2より前のqueued / processingは先にmaterialized recordへ移すか、完了後に空化する
-  - 適用直前にgeneration_type・status・attempts・created_at別件数を再取得する。全queued / processingが0件になるまで待つ必要はなく、記録済みPR2デプロイ時刻より前のactive jobが0件であることを停止条件にする
+- [ ] 全生成種別・全statusの `image_jobs.prompt_text` を同一transactionで空化
+  - 生成受付を一時停止し、Worker cronを動かしたまま全queued / processingをdrainする
+  - active=0になってからWorker cronを止め、直後に件数を再確認する
+  - migrationは最初に`image_jobs EXCLUSIVE → generated_images ACCESS EXCLUSIVE`の順でロックし、activeが1件でもあれば中断する
+  - 全件空化後に`DEFAULT ''`と`CHECK (prompt_text = '')`を追加し、再発をDBで拒否する
   - legacy failedは同一jobで再実行せず、ユーザー再試行は新規jobを作る
   - Workerのclaim条件を `queued` のみに変更し、終端failedを再取得しない
   - 固定件数ではなく実行時クエリ結果をgeneration_type・status別に記録
@@ -954,7 +985,7 @@ flowchart LR
 | Phase 0B dual-write | contract前は新規書き込みを旧経路へ戻せる。ただしOne-Tapの公開漏洩を再開するrevertは行わず、機能停止または固定エラーで閉じる |
 | `generated_images.prompt` の空化 | 列はDROPしないが、公開列への書き戻しは行わない。表示障害はsecret対応コードへのrollbackで復旧する。author secretへ移行しないplatform/未分類値はcanonical preset・信頼できるmaterialized execution record・DBバックアップの有無を確認してから消去する |
 | `CHECK (prompt = '')` | アプリを戻す必要がある場合も制約を先に外さず、旧コードが非空値を書かない互換版へ戻す |
-| `image_jobs.prompt_text` 空化 | 全生成種別でPR2以前のqueued / processingを先にmaterialized execution recordへ移す。終端failedは再利用せず、終端行の平文は復元しない |
+| `image_jobs.prompt_text` 空化 | contract適用前に生成受付停止・drain・cron停止で全activeを0にする。終端failedは再利用せず、空化後の平文は復元しない |
 | ログ削除 | 単独で安全。revert する理由が無い |
 | 検索対象の差し替え | 独立コミット。`caption` 検索で不評なら調整できるが、**prompt 検索へ戻してはならない**（ADR-001 と矛盾する） |
 | Phase 1 の列追加 | 既定が `public` / NULL なので、適用しても挙動は変わらない |
@@ -963,7 +994,7 @@ flowchart LR
 | Worker | backward-compatible版を先に出す。rollback時もmaterialized execution recordとlegacy active jobの両方を読める直前版へ戻す。派生実行時解決をprovider全文の永続化へ戻さない |
 | UI | PR5をrevertまたは機能導線を隠しても、DBの秘匿境界は維持する |
 
-**適用順序**: Phase 0A → 0B → 検証 → 0C を厳守する。`supabase db push` は各PRに含まれる対象migrationだけであることを `supabase migration list` で確認する。Phase 0C完了前にprivate prompt新機能を公開しない。
+**適用順序**: Phase 0A → 0B → 検証 → Phase 0C先行expand PR → PostgREST互換確認 → Phase 0C contract PR を厳守する。`supabase db push --dry-run` と `supabase migration list` の両方で各PRの対象migrationが1本だけであることを確認する。Phase 0C完了前にprivate prompt新機能を公開しない。
 
 ---
 

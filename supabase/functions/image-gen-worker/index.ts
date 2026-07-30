@@ -62,6 +62,10 @@ import {
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import { resolvePromptExecutionInput } from "./prompt-execution.ts";
+import {
+  resolveRecordedPercoinRefundAmount,
+  settleFailedJobBilling,
+} from "./failed-job-billing.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -773,8 +777,66 @@ function getGenerationPercoinAmount(job: {
 /**
  * 再試行不可のエラーか判定
  */
+/**
+ * 生成実行入力が欠落・不整合のときに投げる固定内部コード。
+ *
+ * 復旧不能な状態なので再試行しない。リトライすると、減算済みペルコインの
+ * 返金が次回配送まで遅れ、課金RPC・snapshot 検索・worker 起動がもう一度走る。
+ */
+const GENERATION_PROMPT_EXECUTION_MISSING =
+  "GENERATION_PROMPT_EXECUTION_MISSING";
+
+/**
+ * 最終失敗したジョブの課金後処理を冪等に実行する。
+ *
+ * 判定と順序は failed-job-billing.ts に隔離し（Jest でテスト可能にするため）、
+ * ここでは Supabase への副作用を注入するだけにする。
+ *
+ * @returns 完了したか。false のときメッセージを ack してはならない。
+ */
+async function settleFailedJobBillingWithSupabase(
+  // deno-lint-ignore no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+  params: {
+    jobId: string;
+    // deno-lint-ignore no-explicit-any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    job: any;
+    errorMessage: string;
+    isFreeOneTapStyleJob: boolean;
+    reservedAttemptId: string | null;
+  },
+): Promise<boolean> {
+  const { jobId, job, errorMessage, isFreeOneTapStyleJob, reservedAttemptId } =
+    params;
+
+  return await settleFailedJobBilling({
+    jobId,
+    isFreeOneTapStyleJob,
+    reservedAttemptId,
+    errorMessage,
+    releaseFreeAttempt: (attemptId, releaseReason) =>
+      releaseStyleAuthenticatedGenerateAttempt(
+        supabase,
+        attemptId,
+        releaseReason,
+      ),
+    refundPercoins: () =>
+      refundPercoinsFromGeneration(
+        supabase,
+        job.user_id,
+        jobId,
+      ),
+    logInfo: (message) => console.log(`[Job Processing] ${message}`),
+    logError: (message, error) =>
+      console.error(`[Job Processing] ${message}`, error),
+  });
+}
+
 function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
+    errorMessage === GENERATION_PROMPT_EXECUTION_MISSING ||
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
@@ -859,20 +921,20 @@ async function refundPercoinsFromGeneration(
   supabase: ReturnType<typeof createClient>,
   userId: string,
   jobId: string,
-  percoinAmount: number
 ): Promise<void> {
   try {
-    console.log(`[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`);
-
-    // 互換性のため request値は引き続き算出するが、
-    // 実際の返金配分は DB 側 refund_percoins が allocation 明細を優先して決定する。
-    // （旧データのみ legacy fallback で request値を使用）
+    // reconciliation は価格改定後に走る可能性があるため、現在の料金表から
+    // 返金額を再計算しない。減算時の credit_transactions.amount を正本にする。
+    // allocation を持つ現行データでは、この絶対値が DB 側の allocation 合計と
+    // 一致しなければ refund_percoins が fail closed する。
     const { data: consumptionTx, error: consumptionError } = await supabase
       .from("credit_transactions")
-      .select("id, metadata")
+      .select("id, amount, metadata")
       .eq("user_id", userId)
       .eq("transaction_type", "consumption")
       .eq("metadata->>job_id", jobId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (consumptionError) {
@@ -883,6 +945,13 @@ async function refundPercoinsFromGeneration(
       console.warn(`[Percoin Refund] Consumption transaction not found for job ${jobId}, skipping refund`);
       return;
     }
+
+    const percoinAmount = resolveRecordedPercoinRefundAmount(
+      consumptionTx.amount,
+    );
+    console.log(
+      `[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`,
+    );
 
     const metadata = (consumptionTx.metadata as { from_promo?: number; from_paid?: number } | null) ?? {};
     const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata.from_promo ?? percoinAmount)));
@@ -1458,12 +1527,58 @@ Deno.serve(async () => {
           continue;
         }
 
-        // 冪等性チェック: 既に完了している場合はメッセージを削除してスキップ
-        if (job.status === "succeeded") {
-          await supabase.rpc("pgmq_delete", {
+        // 冪等性チェック: 終端状態のジョブはメッセージを削除してスキップ。
+        //
+        // failed も削除対象に含める。claim を queued 限定にしたため、failed の
+        // メッセージが再配送されても UPDATE が 0 件になり、削除されないまま
+        // 残り続ける。可視性タイムアウトごとに再取得され、取得枠を占有して
+        // 新しい生成を飢餓状態にしうる。「failed 更新後・pgmq_delete 前に
+        // クラッシュ」でも再現する。
+        //
+        // processing は削除しない。削除するとクラッシュ時にジョブが永続的に
+        // processing のまま残る（下の stale 判定で回収する）。
+        if (job.status === "succeeded" || job.status === "failed") {
+          // failed の再配送は課金後処理の reconciliation として使う。
+          // 「failed へ更新 → 返金 → pgmq_delete」の途中でクラッシュした場合、
+          // ここで無条件に削除すると未実施の返金が永久に実行されない。
+          if (job.status === "failed") {
+            const terminalOneTapMetadata =
+              job.generation_type === "one_tap_style"
+                ? getOneTapStylePresetMetadata(job)
+                : null;
+            const settled = await settleFailedJobBillingWithSupabase(supabase, {
+              jobId,
+              job,
+              errorMessage: job.error_message ?? "",
+              isFreeOneTapStyleJob:
+                job.generation_type === "one_tap_style" &&
+                terminalOneTapMetadata?.billingMode === "free",
+              reservedAttemptId:
+                job.generation_type === "one_tap_style"
+                  ? getOneTapStyleReservedAttemptId(job)
+                  : null,
+            });
+
+            if (!settled) {
+              // ack せずメッセージを残し、次の配送でもう一度試す
+              console.warn(
+                `[Job Processing] Left failed message for billing reconciliation: ${jobId}`,
+              );
+              skippedCount++;
+              continue;
+            }
+          }
+
+          const { error: terminalDeleteError } = await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
             p_msg_id: msgId,
           });
+          if (terminalDeleteError) {
+            console.error(
+              "Failed to delete terminal job message:",
+              terminalDeleteError,
+            );
+          }
           skippedCount++;
           continue;
         }
@@ -1520,7 +1635,9 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗確定時のみ返金または無料枠release（未減算ジョブの過剰返金も防ぐ）
+          // 最終失敗確定時のみ返金または無料枠release。
+          // 通常失敗・failed再配送と同じ共通処理を通し、課金後処理が
+          // 完了したときだけメッセージを ack する。
           const staleOneTapStyleMetadata =
             job.generation_type === "one_tap_style"
               ? getOneTapStylePresetMetadata(job)
@@ -1530,56 +1647,37 @@ Deno.serve(async () => {
               ? getOneTapStyleReservedAttemptId(job)
               : null;
 
-          if (
-            job.generation_type === "one_tap_style" &&
-            staleOneTapStyleMetadata?.billingMode === "free" &&
-            staleReservedAttemptId
-          ) {
-            try {
-              await releaseStyleAuthenticatedGenerateAttempt(
-                supabase,
-                staleReservedAttemptId,
-                "worker_failed"
-              );
-              console.log(
-                `[Job Processing] Released free style attempt for final stale-failed job ${jobId}`
-              );
-            } catch (releaseError) {
-              console.error(
-                "[Job Processing] Failed to release free style attempt for final stale-failed job:",
-                releaseError
-              );
-            }
-          } else {
-            try {
-              const { data: consumptionTx } = await supabase
-                .from("credit_transactions")
-                .select("id")
-                .eq("user_id", job.user_id)
-                .eq("transaction_type", "consumption")
-                .eq("metadata->>job_id", jobId)
-                .maybeSingle();
+          const staleSettled = await settleFailedJobBillingWithSupabase(
+            supabase,
+            {
+              jobId,
+              job,
+              errorMessage: staleErrorMessage,
+              isFreeOneTapStyleJob:
+                job.generation_type === "one_tap_style" &&
+                staleOneTapStyleMetadata?.billingMode === "free",
+              reservedAttemptId: staleReservedAttemptId,
+            },
+          );
 
-              if (consumptionTx) {
-                const percoinCost = getGenerationPercoinAmount(job);
-                await refundPercoinsFromGeneration(
-                  supabase,
-                  job.user_id,
-                  jobId,
-                  percoinCost
-                );
-                console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
-              }
-            } catch (refundError) {
-              console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
-            }
+          if (!staleSettled) {
+            console.warn(
+              `[Job Processing] Left stale-failed message for billing reconciliation: ${jobId}`,
+            );
+            skippedCount++;
+            continue;
           }
 
-          // 失敗確定したためメッセージを削除
-          await supabase.rpc("pgmq_delete", {
+          const { error: staleDeleteError } = await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
             p_msg_id: msgId,
           });
+          if (staleDeleteError) {
+            console.error(
+              "Failed to delete message after stale final failure:",
+              staleDeleteError,
+            );
+          }
           skippedCount++;
           continue;
         }
@@ -1594,7 +1692,13 @@ Deno.serve(async () => {
             started_at: new Date().toISOString(),
           })
           .eq("id", jobId)
-          .in("status", ["queued", "failed"]) // 既にprocessingの場合は更新しない
+          // claim できるのは queued のみ (ADR-012)。
+          // 以前は failed も含めていたが、終端 failed を暗黙に再実行する経路に
+          // なっており、attempts の上限(2)を超えて再試行される不具合の温床だった
+          // (本番実測: attempts=3 が 25 件)。内部リトライは status を queued に
+          // 戻して行い、終端 failed は不変とする。ユーザーの再試行は新しい
+          // ジョブ + 実行入力レコードを作る。
+          .eq("status", "queued")
           .select("id")
           .maybeSingle();
 
@@ -1778,16 +1882,17 @@ Deno.serve(async () => {
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
-          // 生成入力の解決 (プロンプト秘匿境界の移行期)
+          // 生成入力の解決 (プロンプト秘匿境界)
           //
-          // 新規ジョブは image_jobs.prompt_text を空にし、本文を service-only の
-          // generation_prompt_snapshots へ置いている。image_jobs の SELECT RLS は
-          // auth.uid() = user_id なので、本文をそこへ残すと生成した本人が運営資産まで
-          // 読めてしまう。
+          // 本文は service-only の generation_prompt_snapshots にだけ存在する。
+          // image_jobs.prompt_text は常に空で、legacy 列へのフォールバックは
+          // 持たない (fail closed)。落ちる経路を残すと、レコードの作成漏れが
+          // 「古い列の値で生成が通ってしまう」形で隠蔽され、Phase 0C の空化後に
+          // 初めて壊れる。
           //
-          // 移行前のジョブは prompt_text に値があるため、当面は「実行入力レコードが
-          // あればそちら、無ければ prompt_text」とする。Phase 0C で prompt_text を
-          // 空化した後は、レコード欠落を固定内部コードで fail closed させる。
+          // 生成種別ごとに必要な入力が揃っていなければ、provider を呼ぶ前に
+          // 固定内部コードで終端失敗させる。課金の後だが、失敗時は既存の
+          // 冪等返金経路 (refundPercoinsFromGeneration) でペルコインが戻る。
           //
           // 生成フェーズと画像永続化フェーズの両方から参照するため、どちらの
           // コールバックよりも外側で解決しておく。
@@ -1800,7 +1905,23 @@ Deno.serve(async () => {
           const generationInput =
             promptExecution?.authorInput ??
             promptExecution?.providerPrompt ??
-            job.prompt_text;
+            "";
+
+          {
+            const requiresAuthorInput =
+              job.generation_type === "coordinate" ||
+              job.generation_type === "free";
+            const requiresProviderPrompt =
+              job.generation_type === "one_tap_style";
+
+            if (
+              (requiresAuthorInput && !promptExecution?.authorInput) ||
+              (requiresProviderPrompt && !promptExecution?.providerPrompt)
+            ) {
+              throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
+            }
+          }
+
 
           let generatedImages: GeneratedImageResult[] = [];
           currentStage = "generating";
@@ -2609,8 +2730,22 @@ Deno.serve(async () => {
           };
 
           const uploadedImages: UploadedGeneratedImage[] = [];
-          const cleanupUploadedImages = async (reason: string) => {
-            const uploadPaths = uploadedImages.map((image) => image.uploadPath);
+          /**
+           * アップロード済み画像のうち、DB に紐づかなかった分を削除する。
+           *
+           * 完了 RPC は冪等で、stale 競合時には別 Worker が作った既存行を返す。
+           * その場合、今回アップロードした画像は誰からも参照されない孤児になる。
+           * RPC が返した storage_path に含まれないものだけを消すことで、
+           * エラー時（persistedPaths なし = 全部消す）と競合時の両方を扱える。
+           */
+          const cleanupUploadedImages = async (
+            reason: string,
+            persistedPaths?: readonly string[],
+          ) => {
+            const keep = new Set(persistedPaths ?? []);
+            const uploadPaths = uploadedImages
+              .map((image) => image.uploadPath)
+              .filter((path) => !keep.has(path));
             if (uploadPaths.length === 0) {
               return;
             }
@@ -2624,8 +2759,22 @@ Deno.serve(async () => {
                 `[Worker] failed to cleanup uploaded images after ${reason}`,
                 cleanupError
               );
+            } else {
+              console.log(
+                `[Worker] cleaned up ${uploadPaths.length} unpersisted uploads after ${reason}`,
+              );
             }
           };
+
+          /** 完了 RPC の返り値から storage_path を取り出す。 */
+          const extractPersistedPaths = (rows: unknown): string[] =>
+            Array.isArray(rows)
+              ? (rows as Array<{ storage_path?: unknown }>)
+                  .map((row) =>
+                    typeof row?.storage_path === "string" ? row.storage_path : null
+                  )
+                  .filter((path): path is string => path !== null)
+              : [];
 
           currentStage = "uploading";
           await measureJobStage(
@@ -2676,7 +2825,13 @@ Deno.serve(async () => {
           );
 
           // ===== フェーズ4-3: generated_imagesテーブルへの保存 =====
-          let shouldSkipAfterPersist = false;
+          // 「永続化の直前に他ワーカーが状態を変えた」ケースの skip 分岐は
+          // 廃止した。両 provider が complete_image_job_with_prompt_secrets を
+          // 使うようになり、
+          //   - すでに succeeded なら RPC が既存行を返す（冪等）
+          //   - それ以外の状態遷移は RPC が例外を投げ、通常の失敗経路で
+          //     冪等返金まで進む
+          // という形で RPC 側に寄ったため。OpenAI 経路は元からこの挙動だった。
           const imageRecordIds: string[] = [];
           const primaryUploadedImage = uploadedImages[0];
           if (!primaryUploadedImage) {
@@ -2741,207 +2896,89 @@ Deno.serve(async () => {
                   );
                 }
 
+                // stale 競合で別 Worker の既存行が返った場合、今回アップロードした
+                // 画像は誰からも参照されない。返却 storage_path に無い分を消す。
+                await cleanupUploadedImages(
+                  "atomic completion",
+                  extractPersistedPaths(imageRecords),
+                );
+
                 imageRecordIds.push(...rpcImageRecordIds);
                 return;
               }
 
-              // 生成完了直前に source_image_stock_id を再取得する。
-              // 生成中にユーザーがダイアログから元画像をストック保存した場合、
-              // link-stock API が image_jobs.source_image_stock_id を後追いで更新するため、
-              // 起動時にロードした job.source_image_stock_id では古い値（NULL）を保持している可能性がある。
-              const { data: latestJob, error: latestJobError } = await supabase
-                .from("image_jobs")
-                .select("source_image_stock_id")
-                .eq("id", jobId)
-                .maybeSingle();
-
-              if (latestJobError) {
-                console.warn(
-                  `[Worker] failed to refetch source_image_stock_id for job ${jobId}, falling back to initial value`,
-                  latestJobError
-                );
-              }
-
-              const latestSourceImageStockId =
-                latestJob?.source_image_stock_id ?? job.source_image_stock_id;
-
-              // inspire 用: generated_images_inspire_template_consistency_check
-              // (generation_type='inspire' ⇔ style_template_id IS NOT NULL) を満たすため、
-              // image_jobs から style_template_id / override_* を継承する。
-              const isInspireRecord = job.generation_type === "inspire";
-              const { data: imageRecord, error: insertError } = await supabase
-                .from("generated_images")
-                .insert({
-                  user_id: job.user_id,
-                  image_url: primaryUploadedImage.publicUrl,
-                  storage_path: primaryUploadedImage.uploadPath,
-                  // 移行期の dual-write。legacy ジョブは prompt_text に、
-                  // 新規ジョブは実行入力レコードに値がある。
-                  // Phase 0C でこの列は空化し、DB 制約で非空値を拒否する。
-                  prompt: generationInput,
-                  background_mode: backgroundMode,
-                  is_posted: false,
-                  generation_type: job.generation_type,
-                  generation_metadata: job.generation_metadata ?? null,
-                  model: dbModel,
-                  source_image_stock_id: latestSourceImageStockId,
-                  image_job_id: jobId,
-                  image_job_result_index: 0,
-                  width: primaryUploadedImage.width,
-                  height: primaryUploadedImage.height,
-                  style_template_id: job.style_template_id ?? null,
-                  override_target: job.override_target ?? null,
-                  override_outfit: isInspireRecord ? (job.override_outfit ?? true) : null,
-                  override_angle: isInspireRecord ? (job.override_angle ?? true) : null,
-                  override_pose: isInspireRecord ? (job.override_pose ?? true) : null,
-                  override_background: isInspireRecord ? (job.override_background ?? true) : null,
-                })
-                .select()
-                .single();
-
-              if (insertError) {
-                console.error("Database insert error:", insertError);
-                throw new Error(`画像メタデータの保存に失敗しました: ${insertError.message}`);
-              }
-
-              imageRecordIds.push(imageRecord.id);
-
-              // 原作者へ開示してよい生入力だけを author secret へ転記する。
-              // one_tap_style は provider_prompt しか持たないためここへ入らず、
-              // 生成した本人が運営資産を読める状態にはならない。
-              // 派生ジョブは derived_reference で author_input を持てない
-              // (テーブル CHECK) ため、同様にここへ入らない。
-              if (
-                promptExecution?.snapshotKind === "materialized" &&
-                promptExecution.authorInput &&
-                promptExecution.authorInputOwnerId
-              ) {
-                const { error: secretError } = await supabase
-                  .from("generated_image_prompt_secrets")
-                  .upsert(
+              // Gemini 経路も OpenAI と同じ原子的 RPC で確定する。
+              //
+              // 以前は「画像を INSERT → author secret を別リクエストで upsert →
+              // job を成功更新」の3手順に分かれており、secret の失敗をログだけで
+              // 握りつぶしていた。generated_images.prompt を空にした後は、この
+              // 部分成功が「画像はあるがプロンプトが永久に空」という表示欠損として
+              // 顕在化する。ジョブは成功扱いなので再試行も返金もされない。
+              // Phase 0B で実際に起きた事故と同型なので、同一トランザクションへ
+              // 寄せる（計画書 Phase 0B「Gemini/OpenAI双方の画像永続化を新RPCへ統一」）。
+              //
+              // model と background_mode は Worker 側で正規化した値を渡す。
+              // 直接 INSERT 時代は normalizeModelName / resolveBackgroundMode の
+              // 結果を書いていたため、RPC がジョブの生値を書くと挙動が変わる。
+              //
+              // source_image_stock_id は RPC 内で FOR UPDATE 付きに読み直した
+              // ジョブの値を使う。生成中にユーザーがストック保存した場合の
+              // 後追い更新も、Worker 起動時の古い値ではなく最新が反映される。
+              const { data: geminiImageRecords, error: geminiCompleteError } =
+                await supabase.rpc("complete_image_job_with_prompt_secrets", {
+                  p_job_id: jobId,
+                  p_images: [
                     {
-                      image_id: imageRecord.id,
-                      prompt: promptExecution.authorInput,
-                      prompt_owner_id: promptExecution.authorInputOwnerId,
-                      source_kind: "author_input",
+                      image_url: primaryUploadedImage.publicUrl,
+                      storage_path: primaryUploadedImage.uploadPath,
+                      width: primaryUploadedImage.width,
+                      height: primaryUploadedImage.height,
                     },
-                    { onConflict: "image_id", ignoreDuplicates: true },
-                  );
+                  ],
+                  p_generation_metadata: successGenerationMetadata,
+                  p_result_image_url: primaryUploadedImage.publicUrl,
+                  p_model: dbModel,
+                  p_background_mode: backgroundMode,
+                });
 
-                if (secretError) {
-                  // 本文は載せない。ここで失敗しても画像自体は保存済みなので、
-                  // 生成を落とさず記録だけ残す。移行完了後は完了 RPC 経由に
-                  // 一本化されるため、この経路は縮小する。
-                  console.error(
-                    `[Worker] failed to store author prompt secret for image ${imageRecord.id}`,
-                    { code: secretError.code },
-                  );
-                }
-              }
-
-              const { data: postInsertJob, error: postInsertJobError } = await supabase
-                .from("image_jobs")
-                .select("source_image_stock_id")
-                .eq("id", jobId)
-                .maybeSingle();
-
-              if (postInsertJobError) {
-                console.warn(
-                  `[Worker] failed to post-sync source_image_stock_id for generated image ${imageRecord.id}`,
-                  postInsertJobError
+              if (geminiCompleteError) {
+                console.error(
+                  "Failed to complete image job atomically:",
+                  geminiCompleteError,
+                );
+                // DB に紐づかなかったアップロードを孤児にしない
+                await cleanupUploadedImages("persistence failure");
+                throw new Error(
+                  `画像メタデータの保存に失敗しました: ${geminiCompleteError.message}`,
                 );
               }
 
-              const postInsertSourceImageStockId =
-                postInsertJob?.source_image_stock_id ?? null;
+              const geminiRecordIds = Array.isArray(geminiImageRecords)
+                ? (geminiImageRecords as Array<{ id?: unknown }>)
+                    .map((row) => (typeof row?.id === "string" ? row.id : null))
+                    .filter((id): id is string => id !== null)
+                : [];
 
-              if (
-                postInsertSourceImageStockId &&
-                postInsertSourceImageStockId !== latestSourceImageStockId
-              ) {
-                const { error: syncGeneratedImageError } = await supabase
-                  .from("generated_images")
-                  .update({ source_image_stock_id: postInsertSourceImageStockId })
-                  .eq("id", imageRecord.id);
-
-                if (syncGeneratedImageError) {
-                  console.warn(
-                    `[Worker] failed to post-sync generated image ${imageRecord.id} with source image stock`,
-                    syncGeneratedImageError
-                  );
-                }
+              if (geminiRecordIds.length === 0) {
+                // RPC は冪等で、既に成功済みなら既存行を返す。0 件は想定外。
+                await cleanupUploadedImages("empty persistence result");
+                throw new Error("画像メタデータの保存結果が空です");
               }
 
-              // ===== フェーズ4-4: 成功時の処理 =====
-              // image_jobsテーブルを更新（成功時）
-              const { data: succeededJob, error: successUpdateError } = await supabase
-                .from("image_jobs")
-                .update({
-                  status: "succeeded",
-                  processing_stage: "completed",
-                  result_image_url: primaryUploadedImage.publicUrl,
-                  error_message: null,
-                  completed_at: new Date().toISOString(),
-                  generation_metadata: successGenerationMetadata,
-                })
-                .eq("id", jobId)
-                .eq("status", "processing")
-                .select("id")
-                .maybeSingle();
+              // stale 競合で別 Worker の既存行が返った場合、今回アップロードした
+              // 画像は誰からも参照されない。返却 storage_path に無い分を消す。
+              await cleanupUploadedImages(
+                "atomic completion",
+                extractPersistedPaths(geminiImageRecords),
+              );
 
-              if (successUpdateError) {
-                console.error("Failed to update job status to succeeded:", successUpdateError);
-                throw new Error(`ジョブステータスの更新に失敗しました: ${successUpdateError.message}`);
-              }
+              imageRecordIds.push(...geminiRecordIds);
 
-              if (!succeededJob) {
-                console.warn(`[Job Success] Skipped succeeded update because status changed: ${jobId}`);
-                skippedCount++;
-                shouldSkipAfterPersist = true;
-                return;
-              }
-
-              // credit_transactionsのrelated_generation_idを更新
-              // 画像生成前にNULLで保存していた取引履歴を、generated_images.idに更新
-              try {
-                const { error: updateTransactionError } = await supabase
-                  .from("credit_transactions")
-                  .update({ related_generation_id: imageRecord.id })
-                  .eq("user_id", job.user_id)
-                  .is("related_generation_id", null) // NULLの取引履歴を検索
-                  .eq("transaction_type", "consumption")
-                  .eq("metadata->>job_id", jobId); // metadata内のjob_idで特定
-                
-                if (updateTransactionError) {
-                  console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
-                  // エラーはログに記録するが、処理は継続
-                } else {
-                  console.log(`[Job Success] Updated credit transaction related_generation_id to ${imageRecord.id}`);
-                }
-              } catch (updateTransactionError) {
-                console.error("[Job Success] Failed to update credit transaction:", updateTransactionError);
-                // エラーはログに記録するが、処理は継続
-              }
+              // credit_transactions.related_generation_id の更新は
+              // complete_image_job_with_prompt_secrets が同一トランザクション内で
+              // 行うため、ここでの後追い更新は不要になった。
             }
           );
-
-          if (shouldSkipAfterPersist) {
-            const skippedAtMs = Date.now();
-            const totalDurationMs =
-              createdAtMs !== null && !Number.isNaN(createdAtMs)
-                ? Math.max(skippedAtMs - createdAtMs, 0)
-                : null;
-            logJobTimingSummary({
-              jobId,
-              outcome: "ジョブスキップ",
-              queueWaitMs,
-              workerDurationMs: Math.max(skippedAtMs - workerStartedAtMs, 0),
-              totalDurationMs,
-              stageDurationsMs,
-              currentStage,
-            });
-            continue;
-	          }
 
           await deleteGeneratedImagesTempReferenceImageIfExists(
             supabase,
@@ -3068,57 +3105,35 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗が確定した場合のみ返金または無料枠release
+          // 最終失敗が確定した場合のみ課金後処理を行う。
+          // 完了してからだけ ack する（未返金のまま捨てないため）。
           if (shouldMarkAsFailed) {
-            if (isFreeOneTapStyleJob) {
-              const shouldReleaseFreeAttempt =
-                reservedAttemptId !== null &&
-                !isSafetyPolicyBlockedErrorMessage(errorMessage);
+            const settled = await settleFailedJobBillingWithSupabase(supabase, {
+              jobId,
+              job,
+              errorMessage,
+              isFreeOneTapStyleJob,
+              reservedAttemptId,
+            });
 
-              if (shouldReleaseFreeAttempt) {
-                try {
-                  const releaseReason =
-                    errorMessage === "No images generated"
-                      ? "no_image_generated"
-                      : "worker_failed";
-                  await releaseStyleAuthenticatedGenerateAttempt(
-                    supabase,
-                    reservedAttemptId,
-                    releaseReason
-                  );
-                  console.log(
-                    `[Job Processing] Released free style attempt for failed job ${jobId}`
-                  );
-                } catch (releaseError) {
-                  console.error(
-                    "[Job Processing] Failed to release free style attempt after final generation failure:",
-                    releaseError
-                  );
-                }
+            if (settled) {
+              const { error: failDeleteError } = await supabase.rpc("pgmq_delete", {
+                p_queue_name: QUEUE_NAME,
+                p_msg_id: msgId,
+              });
+              if (failDeleteError) {
+                console.error(
+                  "Failed to delete message after final failure:",
+                  failDeleteError,
+                );
               }
             } else {
-              try {
-                const percoinCost = getGenerationPercoinAmount(job);
-                await refundPercoinsFromGeneration(
-                  supabase,
-                  job.user_id,
-                  jobId,
-                  percoinCost
-                );
-                console.log(`[Job Processing] Refunded ${percoinCost} percoins for finally failed job ${jobId}`);
-              } catch (refundError) {
-                // 返金失敗はログに記録（既に減算されているため、手動対応が必要な可能性がある）
-                console.error("[Job Processing] Failed to refund percoins after final generation failure:", refundError);
-              }
+              // メッセージを残す。可視性タイムアウト後に再配送され、
+              // 冒頭の failed 分岐が reconciliation として課金後処理を再実行する。
+              console.warn(
+                `[Job Processing] Left message for billing reconciliation: ${jobId}`,
+              );
             }
-          }
-
-          // メッセージの削除/アーカイブ（即時失敗またはattempts >= 2の場合）
-          if (shouldMarkAsFailed) {
-            await supabase.rpc("pgmq_delete", {
-              p_queue_name: QUEUE_NAME,
-              p_msg_id: msgId,
-            });
           }
         }
       } catch (error) {

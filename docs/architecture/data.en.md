@@ -195,16 +195,15 @@ This matches Supabase/Postgres best practices used in this repo:
    - switches to `processing_stage = charging` and calls `deduct_free_percoins` only for paid jobs
    - switches to `processing_stage = generating` and calls Gemini or the OpenAI Images Edit API. OpenAI batch generation sends `n=requested_image_count` in one upstream API call
    - switches to `processing_stage = uploading` and uploads the result images to Storage. OpenAI batch results use file names under the same `jobId` with a result index
-   - switches to `processing_stage = persisting` and inserts rows in `generated_images`, carrying forward `generation_metadata` when needed by later detail views. OpenAI batch generation uses the `complete_image_job_with_generated_images` RPC so multiple inserts, the `image_jobs` success update, and legacy `credit_transactions.related_generation_id` backfill happen in one transaction
-   - updates `image_jobs` to `status = succeeded` and `processing_stage = completed`
-   - backfills `credit_transactions.related_generation_id`
-7. If generation reaches terminal failure, the worker stores `processing_stage = failed` and calls `refund_percoins` exactly once.
+   - switches to `processing_stage = persisting` and completes both Gemini and OpenAI jobs through `complete_image_job_with_prompt_secrets`. The RPC creates `generated_images` rows and author secrets, marks `image_jobs` successful, and links `credit_transactions.related_generation_id` in one transaction. If a competing worker's result wins, uploads absent from the RPC's returned `storage_path` set are removed
+7. If generation reaches terminal failure, the worker stores `processing_stage = failed` and idempotently runs `refund_percoins` or releases the free attempt using the recorded consumption amount. A billing failure leaves the queue message unacknowledged so terminal-failed redelivery reconciles it.
 
 ### Why the design looks this way
 
 - The route handler checks balance early for user feedback
 - The worker owns the real deduction so billing happens close to the external side effect
 - Refund logic is also centralized in SQL to keep allocation bookkeeping consistent
+- Reconciliation uses the original `credit_transactions.amount` rather than recalculating from the current model price table
 - OpenAI batch generation is all-or-nothing. A returned image count mismatch or persistence failure marks the job failed and refunds the full amount; partial success is not saved or billed.
 
 ## Core flow 4: Posting, likes, comments, follows, and notifications

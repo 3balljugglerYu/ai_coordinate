@@ -221,7 +221,9 @@ function createImageRecord(
   return {
     id: "image-1",
     user_id: "user-1",
-    prompt: "prompt",
+    // 本文は author secret 側にのみ存在する。この列は常に空（REQ-020）。
+    // secret を持たない行の表示解決は空文字になる (fail closed)
+    prompt: "",
     image_url: "https://example.com/image.webp",
     is_posted: true,
     created_at: "2026-03-01T00:00:00.000Z",

@@ -1,0 +1,587 @@
+-- ===============================================
+-- Phase 0C (contract): 公開列からプロンプトを消し、再発を DB で拒否する
+-- ===============================================
+-- 設計判断: docs/planning/free-prompt-private-mode-implementation-plan.md
+--           ADR-001 / ADR-009 / REQ-020 / REQ-020a
+--
+-- ここが既存漏洩を実際に閉じる工程である。
+-- generated_images は行単位 RLS で anon にも開放されており列を絞れないため、
+-- この列に値がある限り、公開 anon キーで select=prompt が通ってしまう。
+-- 本文の正本は Phase 0B までに author secret / 実行入力レコードへ移してあり、
+-- 表示・生成ともにこの列を読まなくなっている。
+--
+-- ★ 適用順序が重要 ★
+-- この migration より先に、次の3つが完了していること。
+--   1. expand migration 20260730090000 を先行 PR で本番適用済み
+--   2. Next.js (legacy フォールバックを外した読み取り)
+--   3. Worker  (Gemini 経路も原子的 RPC を使い、prompt_text を読まない版)
+--
+-- 旧 Worker のまま適用すると次が起きる。
+--   - Gemini 経路の直接 INSERT が generated_images.prompt の CHECK 違反で失敗
+--   - prompt_text を読む旧 Worker が、空化された active ジョブで生成入力を失う
+--
+-- さらに、in-flight の処理が残っていないことを確認する。
+-- 手順:
+--   a. 先行 PR で expand migration 20260730090000 だけをマージ・適用する
+--   b. migration history と PostgREST の旧4引数・新6引数疎通を確認する
+--   c. contract PR を main と同期してからマージし、Next.js / 新 Worker をデプロイする
+--   d. 生成受付を一時停止する（queued を増やさない）
+--   e. Worker cron は動かしたまま、image_jobs の queued / processing が
+--      0 件になるまで drain する
+--   f. active=0 を確認してから Worker cron を止める
+--   g. `supabase db push --dry-run` がこの contract だけを示すことを確認し、
+--      この migration を適用する
+--   h. Worker cron を戻し、生成受付を再開する
+--
+-- e で active を 0 にするのは必須である。active を許したまま強いロックを取ると
+-- Worker と互いの次処理を待つ deadlock が成立し、許さずに緩いロックにすると
+-- 空化と生成入力の読み取りが競合する。運用で止めるのが最も単純で安全。
+--
+-- 不可逆性について:
+--   この UPDATE 自体は不可逆だが、本文は secret 側に残っているため、
+--   万一のときは secret から書き戻せる（20260729150000 / 160000 で実証済み）。
+--   日次物理バックアップ(7日分)も確認済み。PITR は不要と判断した。
+
+BEGIN;
+
+SET LOCAL lock_timeout = '5s';
+
+-- ===============================================
+-- ロックを最初に取る（Worker と同じ順序で、完了 RPC の入口も止める強さ）
+-- ===============================================
+-- 完了 RPC は image_jobs を FOR UPDATE (ROW SHARE) で押さえてから
+-- generated_images へ INSERT する。migration がこれと逆順、または競合しない
+-- 弱いロックを取ると deadlock が成立する。
+--   migration: generated_images を保持 → image_jobs の UPDATE 待ち
+--   Worker   : image_jobs 行を保持     → generated_images の INSERT 待ち
+--
+-- そこで Worker と同じ順序 (image_jobs → generated_images) で、
+-- FOR UPDATE も INSERT も入れない強さのロックを検証より前に取得する。
+-- lock_timeout があるので、取れなければ何も適用せず巻き戻る。
+LOCK TABLE public.image_jobs IN EXCLUSIVE MODE;
+LOCK TABLE public.generated_images IN ACCESS EXCLUSIVE MODE;
+
+-- ===============================================
+-- 0. 事前検証: 空化して表示を失う行が「想定内の孤児」だけであること
+-- ===============================================
+-- 開示対象 (coordinate / free) で本文が残っているのに secret が無い行は、
+-- 空化すると表示手段を失う。事前調査 (2026-07-30) では該当が 3 行で、
+-- いずれも user_id IS NULL・未投稿・ジョブ紐付けなしの孤児だった。
+-- RLS 上、未投稿かつ所有者なしの行は誰にも見えないため、失っても影響がない。
+--
+-- ただし「安全な孤児」の条件は人の目視ではなく SQL で強制する。
+-- 適用直前に所有者付きの行や、投稿済み・ジョブ紐付きの欠損行が増えていたら、
+-- 不可逆操作の前提が崩れているので中断する。
+
+DO $$
+DECLARE
+  v_safe_orphan integer;
+  v_unsafe integer;
+BEGIN
+  SELECT
+    count(*) FILTER (
+      WHERE gi.user_id IS NULL
+        AND gi.is_posted IS NOT TRUE
+        AND gi.image_job_id IS NULL
+    ),
+    count(*) FILTER (
+      WHERE gi.user_id IS NOT NULL
+        OR gi.is_posted IS TRUE
+        OR gi.image_job_id IS NOT NULL
+    )
+  INTO v_safe_orphan, v_unsafe
+  FROM public.generated_images AS gi
+  WHERE gi.generation_type IN ('coordinate', 'free')
+    AND gi.prompt <> ''
+    AND NOT EXISTS (
+      SELECT 1
+      FROM public.generated_image_prompt_secrets AS s
+      WHERE s.image_id = gi.id
+    );
+
+  IF v_unsafe > 0 THEN
+    RAISE EXCEPTION
+      'secret を持たない行のうち % 件が「安全な孤児」の条件を満たさない（所有者あり / 投稿済み / ジョブ紐付きのいずれか）。backfill 漏れのため中断', v_unsafe;
+  END IF;
+
+  RAISE NOTICE '空化で表示を失うのは所有者なし・未投稿・ジョブ紐付けなしの孤児 % 件のみ（想定どおり）', v_safe_orphan;
+END;
+$$;
+
+-- secret と legacy の整合を最終確認する（件数・内容・所有者・運営資産の非混入）
+DO $$
+DECLARE
+  v_digest_mismatch integer;
+  v_owner_mismatch integer;
+  v_platform_leak integer;
+BEGIN
+  SELECT count(*)
+  INTO v_digest_mismatch
+  FROM public.generated_images AS gi
+  JOIN public.generated_image_prompt_secrets AS s ON s.image_id = gi.id
+  WHERE gi.prompt <> ''
+    AND md5(gi.prompt) <> md5(s.prompt);
+
+  IF v_digest_mismatch > 0 THEN
+    RAISE EXCEPTION 'legacy と secret の内容不一致が % 件。中断', v_digest_mismatch;
+  END IF;
+
+  -- 所有者の不一致。coordinate / free は本人の入力なので画像所有者と一致する。
+  -- ずれていると、本来の原作者は見られず、誤って prompt_owner_id に入った
+  -- 別ユーザーが RLS 経由で本文を直接取得できる。
+  -- backfill (20260729130000) と同じ検証を contract 直前にも実行する。
+  SELECT count(*)
+  INTO v_owner_mismatch
+  FROM public.generated_images AS gi
+  JOIN public.generated_image_prompt_secrets AS s ON s.image_id = gi.id
+  WHERE gi.generation_type IN ('coordinate', 'free')
+    AND s.prompt_owner_id IS DISTINCT FROM gi.user_id;
+
+  IF v_owner_mismatch > 0 THEN
+    RAISE EXCEPTION 'author secret の所有者不一致が % 件。中断', v_owner_mismatch;
+  END IF;
+
+  SELECT count(*)
+  INTO v_platform_leak
+  FROM public.generated_image_prompt_secrets AS s
+  JOIN public.generated_images AS gi ON gi.id = s.image_id
+  WHERE gi.generation_type IN ('one_tap_style', 'inspire');
+
+  IF v_platform_leak > 0 THEN
+    RAISE EXCEPTION '運営資産が author secret に % 件混入している。中断', v_platform_leak;
+  END IF;
+END;
+$$;
+
+-- ===============================================
+-- 1. 完了 RPC の dual-write を止める
+-- ===============================================
+-- Phase 0B の complete_image_job_with_prompt_secrets は移行期間の互換として
+-- legacy 値を generated_images.prompt へ書いていた。以後は空文字だけを書く。
+-- author secret の作成はそのまま維持する。
+
+-- シグネチャ拡張 (p_model / p_background_mode) は expand migration
+-- 20260730090000 で先行適用済み。ここでは dual-write を止めるためだけに
+-- 再定義する。差分は generated_images.prompt へ書く値のみ。
+CREATE OR REPLACE FUNCTION public.complete_image_job_with_prompt_secrets(
+  p_job_id uuid,
+  p_images jsonb,
+  p_generation_metadata jsonb DEFAULT NULL::jsonb,
+  p_result_image_url text DEFAULT NULL::text,
+  p_model text DEFAULT NULL::text,
+  p_background_mode text DEFAULT NULL::text
+)
+RETURNS TABLE (
+  id uuid,
+  image_url text,
+  storage_path text,
+  image_job_result_index integer
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+#variable_conflict use_column
+DECLARE
+  v_job public.image_jobs%ROWTYPE;
+  v_execution public.generation_prompt_snapshots%ROWTYPE;
+  v_expected_count integer;
+  v_image_count integer;
+  v_image jsonb;
+  v_index integer := 0;
+  v_image_url text;
+  v_storage_path text;
+  v_image_width integer;
+  v_image_height integer;
+  v_inserted_id uuid;
+  v_first_image_id uuid;
+  v_first_image_url text;
+BEGIN
+  IF p_images IS NULL OR jsonb_typeof(p_images) <> 'array' THEN
+    RAISE EXCEPTION 'p_images must be a JSON array';
+  END IF;
+
+  SELECT *
+  INTO v_job
+  FROM public.image_jobs
+  WHERE image_jobs.id = p_job_id
+  FOR UPDATE;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'image job not found: %', p_job_id;
+  END IF;
+
+  -- 冪等: すでに成功しているなら既存行を返す
+  IF v_job.status = 'succeeded' THEN
+    RETURN QUERY
+    SELECT
+      gi.id,
+      gi.image_url,
+      gi.storage_path,
+      gi.image_job_result_index
+    FROM public.generated_images AS gi
+    WHERE gi.image_job_id = p_job_id
+    ORDER BY gi.image_job_result_index ASC NULLS LAST, gi.created_at ASC;
+    RETURN;
+  END IF;
+
+  IF v_job.status <> 'processing' THEN
+    RAISE EXCEPTION 'image job must be processing to complete: %, status=%', p_job_id, v_job.status;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM public.generated_images AS gi
+    WHERE gi.image_job_id = p_job_id
+  ) THEN
+    RAISE EXCEPTION 'generated images already exist for job: %', p_job_id;
+  END IF;
+
+  v_expected_count := COALESCE(v_job.requested_image_count, 1);
+  v_image_count := jsonb_array_length(p_images);
+
+  IF v_image_count <> v_expected_count THEN
+    RAISE EXCEPTION 'generated image count mismatch for job %, expected %, got %',
+      p_job_id,
+      v_expected_count,
+      v_image_count;
+  END IF;
+
+  SELECT *
+  INTO v_execution
+  FROM public.generation_prompt_snapshots
+  WHERE generation_prompt_snapshots.image_job_id = p_job_id;
+
+  FOR v_image IN
+    SELECT element
+    FROM jsonb_array_elements(p_images) AS elements(element)
+  LOOP
+    v_image_url := NULLIF(TRIM(v_image->>'image_url'), '');
+    v_storage_path := NULLIF(TRIM(v_image->>'storage_path'), '');
+    v_image_width := CASE
+      WHEN v_image->>'width' ~ '^[1-9][0-9]*$' THEN (v_image->>'width')::integer
+      ELSE NULL
+    END;
+    v_image_height := CASE
+      WHEN v_image->>'height' ~ '^[1-9][0-9]*$' THEN (v_image->>'height')::integer
+      ELSE NULL
+    END;
+
+    IF v_image_url IS NULL THEN
+      RAISE EXCEPTION 'image_url is required for job %, index %', p_job_id, v_index;
+    END IF;
+
+    IF v_storage_path IS NULL THEN
+      RAISE EXCEPTION 'storage_path is required for job %, index %', p_job_id, v_index;
+    END IF;
+
+    INSERT INTO public.generated_images AS gi (
+      user_id,
+      image_url,
+      storage_path,
+      prompt,
+      background_mode,
+      is_posted,
+      generation_type,
+      generation_metadata,
+      model,
+      source_image_stock_id,
+      image_job_id,
+      image_job_result_index,
+      width,
+      height,
+      style_template_id,
+      override_target,
+      override_outfit,
+      override_angle,
+      override_pose,
+      override_background
+    )
+    VALUES (
+      v_job.user_id,
+      v_image_url,
+      v_storage_path,
+      -- 本文はユーザーが読める列に置かない。表示は author secret から
+      -- 解決される (REQ-020)。
+      '',
+      COALESCE(p_background_mode, v_job.background_mode),
+      false,
+      v_job.generation_type,
+      COALESCE(p_generation_metadata, v_job.generation_metadata),
+      COALESCE(p_model, v_job.model),
+      v_job.source_image_stock_id,
+      p_job_id,
+      v_index,
+      v_image_width,
+      v_image_height,
+      v_job.style_template_id,
+      v_job.override_target,
+      v_job.override_outfit,
+      v_job.override_angle,
+      v_job.override_pose,
+      v_job.override_background
+    )
+    RETURNING gi.id INTO v_inserted_id;
+
+    -- author secret はユーザーへ開示し得る生入力があるときだけ作る。
+    -- 派生 job は snapshot_kind='derived_reference' で author_input を
+    -- 持てない (テーブル CHECK) ため、ここには入らない。
+    IF v_execution.snapshot_kind = 'materialized'
+       AND v_execution.author_input IS NOT NULL
+       AND v_execution.author_input_owner_id IS NOT NULL
+    THEN
+      INSERT INTO public.generated_image_prompt_secrets (
+        image_id,
+        prompt,
+        prompt_owner_id,
+        source_kind
+      )
+      VALUES (
+        v_inserted_id,
+        v_execution.author_input,
+        v_execution.author_input_owner_id,
+        'author_input'
+      )
+      ON CONFLICT (image_id) DO NOTHING;
+    END IF;
+
+    IF v_index = 0 THEN
+      v_first_image_id := v_inserted_id;
+      v_first_image_url := v_image_url;
+    END IF;
+
+    v_index := v_index + 1;
+  END LOOP;
+
+  UPDATE public.image_jobs
+  SET
+    status = 'succeeded',
+    processing_stage = 'completed',
+    result_image_url = COALESCE(NULLIF(TRIM(p_result_image_url), ''), v_first_image_url),
+    error_message = NULL,
+    completed_at = now(),
+    generation_metadata = COALESCE(p_generation_metadata, v_job.generation_metadata),
+    updated_at = now()
+  WHERE image_jobs.id = p_job_id
+    AND image_jobs.status = 'processing';
+
+  UPDATE public.credit_transactions
+  SET related_generation_id = v_first_image_id
+  WHERE credit_transactions.user_id = v_job.user_id
+    AND credit_transactions.related_generation_id IS NULL
+    AND credit_transactions.transaction_type = 'consumption'
+    AND credit_transactions.metadata->>'job_id' = p_job_id::text;
+
+  RETURN QUERY
+  SELECT
+    gi.id,
+    gi.image_url,
+    gi.storage_path,
+    gi.image_job_result_index
+  FROM public.generated_images AS gi
+  WHERE gi.image_job_id = p_job_id
+  ORDER BY gi.image_job_result_index ASC NULLS LAST, gi.created_at ASC;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) FROM anon;
+REVOKE ALL ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_image_job_with_prompt_secrets(uuid, jsonb, jsonb, text, text, text) TO service_role;
+
+-- 旧完了 RPC を新 RPC への forwarding wrapper に置き換える。
+--
+-- 当初は pg_get_functiondef で定義を取り出し、v_job.prompt_text を文字列置換
+-- する方式にしていた。現行定義では成立するが、overload 追加や本番 hotfix で
+-- 定義がずれると壊れる。wrapper なら 198 行の複製も文字列操作も不要で、
+-- 旧呼び出しも新しい原子的完了契約（author secret 作成を含む）へ揃う。
+--
+-- 誤って旧 RPC が使われても、prompt='' と author secret 作成が保証される。
+
+CREATE OR REPLACE FUNCTION public.complete_image_job_with_generated_images(
+  p_job_id uuid,
+  p_images jsonb,
+  p_generation_metadata jsonb DEFAULT NULL::jsonb,
+  p_result_image_url text DEFAULT NULL::text
+)
+RETURNS TABLE (
+  id uuid,
+  image_url text,
+  storage_path text,
+  image_job_result_index integer
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $function$
+  SELECT *
+  FROM public.complete_image_job_with_prompt_secrets(
+    p_job_id,
+    p_images,
+    p_generation_metadata,
+    p_result_image_url
+  );
+$function$;
+
+COMMENT ON FUNCTION public.complete_image_job_with_generated_images(uuid, jsonb, jsonb, text) IS
+  '互換用の forwarding wrapper。実体は complete_image_job_with_prompt_secrets。新規実装はこちらを呼ばないこと';
+
+REVOKE ALL ON FUNCTION public.complete_image_job_with_generated_images(uuid, jsonb, jsonb, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.complete_image_job_with_generated_images(uuid, jsonb, jsonb, text) FROM anon;
+REVOKE ALL ON FUNCTION public.complete_image_job_with_generated_images(uuid, jsonb, jsonb, text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.complete_image_job_with_generated_images(uuid, jsonb, jsonb, text) TO service_role;
+
+-- ===============================================
+-- 2. 公開列を空にする
+-- ===============================================
+
+UPDATE public.generated_images
+SET prompt = ''
+WHERE prompt <> '';
+
+-- ===============================================
+-- 3. 再発を DB で拒否する (REQ-020 / REQ-020a)
+-- ===============================================
+-- DEFAULT '' を併せるのは、prompt を省略する INSERT が NOT NULL 違反で
+-- 落ちないようにするため。将来の新しい書き込み経路の事故を減らす。
+
+ALTER TABLE public.generated_images
+  ALTER COLUMN prompt SET DEFAULT '';
+
+ALTER TABLE public.generated_images
+  ADD CONSTRAINT generated_images_prompt_must_be_empty
+  CHECK (prompt = '') NOT VALID;
+
+ALTER TABLE public.generated_images
+  VALIDATE CONSTRAINT generated_images_prompt_must_be_empty;
+
+COMMENT ON COLUMN public.generated_images.prompt IS
+  '常に空。本文は generated_image_prompt_secrets (原作者入力) と generation_prompt_snapshots (生成実行入力) にのみ存在する。列は select("*") 互換のため残している (ADR-001)';
+
+-- ===============================================
+-- 4. image_jobs.prompt_text を全件空にし、DB で固定する
+-- ===============================================
+-- SELECT RLS が auth.uid() = user_id のため、One-Tap Style の組み立て済み
+-- 全文が生成した本人から読める状態が残っていた (REQ-019)。
+--
+-- 当初は「終端ジョブのみ空化」としていたが、それでは execution record を持つ
+-- active ジョブが除外されたまま残り、後に終端へ遷移しても空化する処理も
+-- DB 制約も無いため、一部ジョブで漏洩が継続する。migration は成功 NOTICE を
+-- 出すので「閉じた」と誤認する。
+--
+-- 新 Worker は prompt_text を読まない (実行入力レコードから解決する) ため、
+-- active ジョブも空化して構わない。generated_images.prompt と同じく
+-- DEFAULT '' + CHECK で不変条件にする。
+--
+-- active ジョブが 1 件でもあれば中断する。
+--
+-- 当初は「実行入力レコードを持つなら active でも続行可」としていたが、これは
+-- 安全ではない。active を許すと Worker と競合し、
+--   - 緩いロック (SHARE ROW EXCLUSIVE) では完了 RPC の FOR UPDATE と競合せず、
+--     空化と生成入力の読み取りがすれ違う
+--   - 強いロックを後から取ると、migration が generated_images を保持したまま
+--     image_jobs を待ち、Worker が image_jobs 行を保持したまま
+--     generated_images を待つ deadlock が成立する
+-- 運用で Worker を止めてキューを空にするのが最も単純で安全である。
+DO $$
+DECLARE
+  v_active integer;
+BEGIN
+  SELECT count(*)
+  INTO v_active
+  FROM public.image_jobs
+  WHERE status IN ('queued', 'processing');
+
+  IF v_active > 0 THEN
+    RAISE EXCEPTION
+      'active な image_jobs が % 件ある。Worker の cron を止め、キューが空になってから再適用すること', v_active;
+  END IF;
+END;
+$$;
+
+-- 実行時の件数を記録してから空化する（固定件数を前提にしない）
+DO $$
+DECLARE
+  r record;
+BEGIN
+  FOR r IN
+    SELECT generation_type, status, count(*) AS n
+    FROM public.image_jobs
+    WHERE prompt_text <> ''
+    GROUP BY 1, 2
+    ORDER BY 1, 2
+  LOOP
+    RAISE NOTICE 'prompt_text 空化対象: % / % = % 件', r.generation_type, r.status, r.n;
+  END LOOP;
+END;
+$$;
+
+UPDATE public.image_jobs
+SET prompt_text = ''
+WHERE prompt_text <> '';
+
+ALTER TABLE public.image_jobs
+  ALTER COLUMN prompt_text SET DEFAULT '';
+
+ALTER TABLE public.image_jobs
+  ADD CONSTRAINT image_jobs_prompt_text_must_be_empty
+  CHECK (prompt_text = '') NOT VALID;
+
+ALTER TABLE public.image_jobs
+  VALIDATE CONSTRAINT image_jobs_prompt_text_must_be_empty;
+
+COMMENT ON COLUMN public.image_jobs.prompt_text IS
+  '常に空。生成入力は generation_prompt_snapshots にのみ存在する。SELECT RLS が本人開放のため、ここへ書くと One-Tap Style の運営プリセットが生成者本人から読める (REQ-019)';
+
+-- ===============================================
+-- 5. 旧 prompt の trigram index を落とす
+-- ===============================================
+-- 列は常に空になったため、この index が支える検索は存在しない。
+-- 検索は caption / nickname の index (20260729170000) へ移行済み。
+
+DROP INDEX IF EXISTS public.idx_generated_images_prompt_trgm;
+
+-- ===============================================
+-- 6. 事後検証
+-- ===============================================
+
+DO $$
+DECLARE
+  v_nonempty_images integer;
+  v_nonempty_jobs integer;
+BEGIN
+  SELECT count(*)
+  INTO v_nonempty_images
+  FROM public.generated_images
+  WHERE prompt <> '';
+
+  IF v_nonempty_images > 0 THEN
+    RAISE EXCEPTION 'generated_images.prompt に非空が % 件残っている', v_nonempty_images;
+  END IF;
+
+  SELECT count(*)
+  INTO v_nonempty_jobs
+  FROM public.image_jobs
+  WHERE prompt_text <> '';
+
+  IF v_nonempty_jobs > 0 THEN
+    RAISE EXCEPTION 'image_jobs.prompt_text に非空が % 件残っている', v_nonempty_jobs;
+  END IF;
+
+  RAISE NOTICE 'contract 完了: generated_images.prompt と image_jobs.prompt_text が全件空になり、両方に CHECK が有効';
+END;
+$$;
+
+COMMIT;
+
+-- ===============================================
+-- DOWN（緊急時のみ・秘匿境界が開くため原則使わない）:
+-- BEGIN;
+-- ALTER TABLE public.generated_images
+--   DROP CONSTRAINT generated_images_prompt_must_be_empty;
+-- UPDATE public.generated_images gi
+-- SET prompt = s.prompt
+-- FROM public.generated_image_prompt_secrets s
+-- WHERE s.image_id = gi.id;
+-- COMMIT;
+-- ===============================================
