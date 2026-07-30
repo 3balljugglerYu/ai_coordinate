@@ -1,6 +1,25 @@
 import { isSafetyPolicyBlockedErrorMessage } from "../../../shared/generation/errors.ts";
 
 /**
+ * 消費トランザクションに記録された額から返金額を復元する。
+ *
+ * reconciliation は失敗から時間が経って実行されることがあるため、現在の
+ * モデル料金表から再計算してはならない。料金改定後に再計算値と
+ * generation_percoin_allocations の合計がずれると、refund_percoins の
+ * allocation total mismatch で永久に返金できなくなる。
+ */
+export function resolveRecordedPercoinRefundAmount(
+  consumptionAmount: unknown,
+): number {
+  const numericAmount = Number(consumptionAmount);
+  if (!Number.isSafeInteger(numericAmount) || numericAmount >= 0) {
+    throw new Error("invalid recorded consumption amount");
+  }
+
+  return Math.abs(numericAmount);
+}
+
+/**
  * 最終失敗したジョブの課金後処理。
  *
  * Worker は「failed へ更新 → 返金/release → pgmq_delete」の順で処理する。

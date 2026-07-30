@@ -15,7 +15,10 @@
  *   3. 返金済み failed の再配送（= 冪等に通り ack できる）
  */
 
-import { settleFailedJobBilling } from "@/supabase/functions/image-gen-worker/failed-job-billing";
+import {
+  resolveRecordedPercoinRefundAmount,
+  settleFailedJobBilling,
+} from "@/supabase/functions/image-gen-worker/failed-job-billing";
 
 function baseParams(
   overrides: Partial<Parameters<typeof settleFailedJobBilling>[0]> = {}
@@ -77,6 +80,25 @@ describe("有料ジョブの返金", () => {
 
     expect(params.releaseFreeAttempt).not.toHaveBeenCalled();
   });
+});
+
+describe("記録済み消費額からの返金額復元", () => {
+  it("負の消費額を正の返金額へ変換する", () => {
+    expect(resolveRecordedPercoinRefundAmount(-75)).toBe(75);
+  });
+
+  it("DBドライバが数値文字列を返しても復元できる", () => {
+    expect(resolveRecordedPercoinRefundAmount("-120")).toBe(120);
+  });
+
+  it.each([0, 10, null, undefined, "invalid", 1.5])(
+    "消費トランザクションとして不正な値 %p は拒否する",
+    (amount) => {
+      expect(() => resolveRecordedPercoinRefundAmount(amount)).toThrow(
+        "invalid recorded consumption amount",
+      );
+    },
+  );
 });
 
 describe("無料枠 One-Tap Style ジョブの release", () => {

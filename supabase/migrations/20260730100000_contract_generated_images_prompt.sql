@@ -12,7 +12,7 @@
 --
 -- ★ 適用順序が重要 ★
 -- この migration より先に、次の3つが完了していること。
---   1. expand migration 20260730090000 (完了RPCの6引数化)
+--   1. expand migration 20260730090000 を先行 PR で本番適用済み
 --   2. Next.js (legacy フォールバックを外した読み取り)
 --   3. Worker  (Gemini 経路も原子的 RPC を使い、prompt_text を読まない版)
 --
@@ -22,13 +22,18 @@
 --
 -- さらに、in-flight の処理が残っていないことを確認する。
 -- 手順:
---   a. expand migration 20260730090000 を適用する (旧・新 Worker の両対応)
---   b. Next.js をマージ・デプロイし、新 Worker をデプロイする
---   c. Worker の cron を止め、image_jobs の queued / processing が 0 件になるまで待つ
---   d. この migration を適用する
---   e. Worker の cron を戻す
+--   a. 先行 PR で expand migration 20260730090000 だけをマージ・適用する
+--   b. migration history と PostgREST の旧4引数・新6引数疎通を確認する
+--   c. contract PR を main と同期してからマージし、Next.js / 新 Worker をデプロイする
+--   d. 生成受付を一時停止する（queued を増やさない）
+--   e. Worker cron は動かしたまま、image_jobs の queued / processing が
+--      0 件になるまで drain する
+--   f. active=0 を確認してから Worker cron を止める
+--   g. `supabase db push --dry-run` がこの contract だけを示すことを確認し、
+--      この migration を適用する
+--   h. Worker cron を戻し、生成受付を再開する
 --
--- c で active を 0 にするのは必須である。active を許したまま強いロックを取ると
+-- e で active を 0 にするのは必須である。active を許したまま強いロックを取ると
 -- Worker と互いの次処理を待つ deadlock が成立し、許さずに緩いロックにすると
 -- 空化と生成入力の読み取りが競合する。運用で止めるのが最も単純で安全。
 --

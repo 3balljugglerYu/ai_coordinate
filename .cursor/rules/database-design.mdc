@@ -531,7 +531,7 @@ alwaysApply: false
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`, `complete_image_job_with_generated_images`
 - プロンプト秘匿境界（`service_role` のみ EXECUTE 可）:
   - `create_image_job_with_prompt_execution(p_job jsonb, p_prompt_execution jsonb)` — job と `generation_prompt_snapshots` を同一トランザクションで作成し、execution record を持たない job を作らせない。`prompt_text` は常に空へ正規化する
-  - `complete_image_job_with_prompt_secrets(p_job_id uuid, p_images jsonb, p_generation_metadata jsonb, p_result_image_url text)` — 生成画像・author secret・job 成功更新を同一トランザクションで確定する。author secret は `snapshot_kind = 'materialized'` かつ `author_input` / owner が揃うときだけ作るため、派生 job には作られない
+  - `complete_image_job_with_prompt_secrets(p_job_id uuid, p_images jsonb, p_generation_metadata jsonb DEFAULT NULL, p_result_image_url text DEFAULT NULL, p_model text DEFAULT NULL, p_background_mode text DEFAULT NULL)` — 生成画像・author secret・job 成功更新・`credit_transactions.related_generation_id` 更新を同一トランザクションで確定する。末尾2引数はWorkerが正規化済みの値を渡すために使い、NULL時だけjobの値へfallbackする。author secret は `snapshot_kind = 'materialized'` かつ `author_input` / owner が揃うときだけ作るため、派生 job には作られない
 
 ### trigger / helper / 運用関数
 - 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`

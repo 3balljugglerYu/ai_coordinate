@@ -62,7 +62,10 @@ import {
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import { resolvePromptExecutionInput } from "./prompt-execution.ts";
-import { settleFailedJobBilling } from "./failed-job-billing.ts";
+import {
+  resolveRecordedPercoinRefundAmount,
+  settleFailedJobBilling,
+} from "./failed-job-billing.ts";
 
 /**
  * 画像生成ワーカー Edge Function
@@ -824,7 +827,6 @@ async function settleFailedJobBillingWithSupabase(
         supabase,
         job.user_id,
         jobId,
-        getGenerationPercoinAmount(job),
       ),
     logInfo: (message) => console.log(`[Job Processing] ${message}`),
     logError: (message, error) =>
@@ -919,20 +921,20 @@ async function refundPercoinsFromGeneration(
   supabase: ReturnType<typeof createClient>,
   userId: string,
   jobId: string,
-  percoinAmount: number
 ): Promise<void> {
   try {
-    console.log(`[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`);
-
-    // 互換性のため request値は引き続き算出するが、
-    // 実際の返金配分は DB 側 refund_percoins が allocation 明細を優先して決定する。
-    // （旧データのみ legacy fallback で request値を使用）
+    // reconciliation は価格改定後に走る可能性があるため、現在の料金表から
+    // 返金額を再計算しない。減算時の credit_transactions.amount を正本にする。
+    // allocation を持つ現行データでは、この絶対値が DB 側の allocation 合計と
+    // 一致しなければ refund_percoins が fail closed する。
     const { data: consumptionTx, error: consumptionError } = await supabase
       .from("credit_transactions")
-      .select("id, metadata")
+      .select("id, amount, metadata")
       .eq("user_id", userId)
       .eq("transaction_type", "consumption")
       .eq("metadata->>job_id", jobId)
+      .order("created_at", { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (consumptionError) {
@@ -943,6 +945,13 @@ async function refundPercoinsFromGeneration(
       console.warn(`[Percoin Refund] Consumption transaction not found for job ${jobId}, skipping refund`);
       return;
     }
+
+    const percoinAmount = resolveRecordedPercoinRefundAmount(
+      consumptionTx.amount,
+    );
+    console.log(
+      `[Percoin Refund] Starting refund for user ${userId}, job ${jobId}, amount ${percoinAmount}`,
+    );
 
     const metadata = (consumptionTx.metadata as { from_promo?: number; from_paid?: number } | null) ?? {};
     const refundToPromo = Math.max(0, Math.min(percoinAmount, Number(metadata.from_promo ?? percoinAmount)));
@@ -1626,7 +1635,9 @@ Deno.serve(async () => {
             continue;
           }
 
-          // 最終失敗確定時のみ返金または無料枠release（未減算ジョブの過剰返金も防ぐ）
+          // 最終失敗確定時のみ返金または無料枠release。
+          // 通常失敗・failed再配送と同じ共通処理を通し、課金後処理が
+          // 完了したときだけメッセージを ack する。
           const staleOneTapStyleMetadata =
             job.generation_type === "one_tap_style"
               ? getOneTapStylePresetMetadata(job)
@@ -1636,56 +1647,37 @@ Deno.serve(async () => {
               ? getOneTapStyleReservedAttemptId(job)
               : null;
 
-          if (
-            job.generation_type === "one_tap_style" &&
-            staleOneTapStyleMetadata?.billingMode === "free" &&
-            staleReservedAttemptId
-          ) {
-            try {
-              await releaseStyleAuthenticatedGenerateAttempt(
-                supabase,
-                staleReservedAttemptId,
-                "worker_failed"
-              );
-              console.log(
-                `[Job Processing] Released free style attempt for final stale-failed job ${jobId}`
-              );
-            } catch (releaseError) {
-              console.error(
-                "[Job Processing] Failed to release free style attempt for final stale-failed job:",
-                releaseError
-              );
-            }
-          } else {
-            try {
-              const { data: consumptionTx } = await supabase
-                .from("credit_transactions")
-                .select("id")
-                .eq("user_id", job.user_id)
-                .eq("transaction_type", "consumption")
-                .eq("metadata->>job_id", jobId)
-                .maybeSingle();
+          const staleSettled = await settleFailedJobBillingWithSupabase(
+            supabase,
+            {
+              jobId,
+              job,
+              errorMessage: staleErrorMessage,
+              isFreeOneTapStyleJob:
+                job.generation_type === "one_tap_style" &&
+                staleOneTapStyleMetadata?.billingMode === "free",
+              reservedAttemptId: staleReservedAttemptId,
+            },
+          );
 
-              if (consumptionTx) {
-                const percoinCost = getGenerationPercoinAmount(job);
-                await refundPercoinsFromGeneration(
-                  supabase,
-                  job.user_id,
-                  jobId,
-                  percoinCost
-                );
-                console.log(`[Job Processing] Refunded ${percoinCost} percoins for final stale-failed job ${jobId}`);
-              }
-            } catch (refundError) {
-              console.error("[Job Processing] Failed to refund final stale-failed job:", refundError);
-            }
+          if (!staleSettled) {
+            console.warn(
+              `[Job Processing] Left stale-failed message for billing reconciliation: ${jobId}`,
+            );
+            skippedCount++;
+            continue;
           }
 
-          // 失敗確定したためメッセージを削除
-          await supabase.rpc("pgmq_delete", {
+          const { error: staleDeleteError } = await supabase.rpc("pgmq_delete", {
             p_queue_name: QUEUE_NAME,
             p_msg_id: msgId,
           });
+          if (staleDeleteError) {
+            console.error(
+              "Failed to delete message after stale final failure:",
+              staleDeleteError,
+            );
+          }
           skippedCount++;
           continue;
         }

@@ -205,16 +205,15 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
    - `processing_stage = charging` にして、課金が必要なジョブのみ `deduct_free_percoins` を実行
    - `processing_stage = generating` にして Gemini または OpenAI Images Edit API を呼ぶ。OpenAI バッチでは 1 回の API 呼び出しに `n=requested_image_count` を渡す
    - `processing_stage = uploading` にして生成画像を Storage に保存する。OpenAI バッチでは同一 `jobId` 配下に result index 付きのファイル名で複数保存する
-   - `processing_stage = persisting` にして `generated_images` を INSERT し、必要に応じて `generation_metadata` も引き継ぐ。OpenAI バッチでは `complete_image_job_with_generated_images` RPC が複数行 INSERT、`image_jobs` 成功更新、`credit_transactions.related_generation_id` の legacy backfill を 1 transaction に閉じる
-   - `image_jobs` を `status = succeeded`, `processing_stage = completed` に更新
-   - `credit_transactions.related_generation_id` を後で埋める
-7. 終端失敗になった場合は `processing_stage = failed` を保存し、`refund_percoins` を 1 回だけ呼ぶ
+   - `processing_stage = persisting` にして、Gemini / OpenAIの両方を `complete_image_job_with_prompt_secrets` RPC で確定する。同RPCが `generated_images` とauthor secretの作成、`image_jobs` 成功更新、`credit_transactions.related_generation_id` の更新を 1 transaction に閉じる。競合で今回のStorage uploadが採用されなかった場合は、RPCが返した `storage_path` との差分を削除する
+7. 終端失敗になった場合は `processing_stage = failed` を保存し、記録済み消費トランザクションの金額で冪等な `refund_percoins` または無料枠releaseを実行する。課金後処理が失敗した場合はqueue messageを残し、failed再配送をreconciliationとして同じ処理を繰り返す
 
 ### 重要な点
 
 - route handler 側の残高チェックは、ユーザーへの早いフィードバックが目的
 - 実際の減算は外部副作用に最も近い worker 側が担う
 - 返金ロジックも SQL に寄せているため、配分の整合性が保たれる
+- reconciliation時も現在のモデル料金表から再計算せず、減算時の`credit_transactions.amount`を返金額の正本にする
 - OpenAI バッチは all-or-nothing。返却枚数不足や永続化失敗は job 失敗 + 全額返金扱いにし、部分成功の保存・課金はしない
 
 ## 主要フロー 4: 投稿、いいね、コメント、フォロー、通知
