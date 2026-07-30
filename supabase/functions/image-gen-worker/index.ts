@@ -1594,7 +1594,13 @@ Deno.serve(async () => {
             started_at: new Date().toISOString(),
           })
           .eq("id", jobId)
-          .in("status", ["queued", "failed"]) // 既にprocessingの場合は更新しない
+          // claim できるのは queued のみ (ADR-012)。
+          // 以前は failed も含めていたが、終端 failed を暗黙に再実行する経路に
+          // なっており、attempts の上限(2)を超えて再試行される不具合の温床だった
+          // (本番実測: attempts=3 が 25 件)。内部リトライは status を queued に
+          // 戻して行い、終端 failed は不変とする。ユーザーの再試行は新しい
+          // ジョブ + 実行入力レコードを作る。
+          .eq("status", "queued")
           .select("id")
           .maybeSingle();
 
@@ -1778,16 +1784,17 @@ Deno.serve(async () => {
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         const geminiAttempts: GeminiAttemptMetadata[] = [];
         try {
-          // 生成入力の解決 (プロンプト秘匿境界の移行期)
+          // 生成入力の解決 (プロンプト秘匿境界)
           //
-          // 新規ジョブは image_jobs.prompt_text を空にし、本文を service-only の
-          // generation_prompt_snapshots へ置いている。image_jobs の SELECT RLS は
-          // auth.uid() = user_id なので、本文をそこへ残すと生成した本人が運営資産まで
-          // 読めてしまう。
+          // 本文は service-only の generation_prompt_snapshots にだけ存在する。
+          // image_jobs.prompt_text は常に空で、legacy 列へのフォールバックは
+          // 持たない (fail closed)。落ちる経路を残すと、レコードの作成漏れが
+          // 「古い列の値で生成が通ってしまう」形で隠蔽され、Phase 0C の空化後に
+          // 初めて壊れる。
           //
-          // 移行前のジョブは prompt_text に値があるため、当面は「実行入力レコードが
-          // あればそちら、無ければ prompt_text」とする。Phase 0C で prompt_text を
-          // 空化した後は、レコード欠落を固定内部コードで fail closed させる。
+          // 生成種別ごとに必要な入力が揃っていなければ、provider を呼ぶ前に
+          // 固定内部コードで終端失敗させる。課金の後だが、失敗時は既存の
+          // 冪等返金経路 (refundPercoinsFromGeneration) でペルコインが戻る。
           //
           // 生成フェーズと画像永続化フェーズの両方から参照するため、どちらの
           // コールバックよりも外側で解決しておく。
@@ -1800,7 +1807,23 @@ Deno.serve(async () => {
           const generationInput =
             promptExecution?.authorInput ??
             promptExecution?.providerPrompt ??
-            job.prompt_text;
+            "";
+
+          {
+            const requiresAuthorInput =
+              job.generation_type === "coordinate" ||
+              job.generation_type === "free";
+            const requiresProviderPrompt =
+              job.generation_type === "one_tap_style";
+
+            if (
+              (requiresAuthorInput && !promptExecution?.authorInput) ||
+              (requiresProviderPrompt && !promptExecution?.providerPrompt)
+            ) {
+              throw new Error("GENERATION_PROMPT_EXECUTION_MISSING");
+            }
+          }
+
 
           let generatedImages: GeneratedImageResult[] = [];
           currentStage = "generating";
@@ -2775,10 +2798,9 @@ Deno.serve(async () => {
                   user_id: job.user_id,
                   image_url: primaryUploadedImage.publicUrl,
                   storage_path: primaryUploadedImage.uploadPath,
-                  // 移行期の dual-write。legacy ジョブは prompt_text に、
-                  // 新規ジョブは実行入力レコードに値がある。
-                  // Phase 0C でこの列は空化し、DB 制約で非空値を拒否する。
-                  prompt: generationInput,
+                  // 本文はユーザーが読める列に置かない。表示は author secret から
+                  // 解決される。DB の CHECK 制約も非空値を拒否する (REQ-020)。
+                  prompt: "",
                   background_mode: backgroundMode,
                   is_posted: false,
                   generation_type: job.generation_type,

@@ -98,6 +98,8 @@ function createImageRecord(overrides: Record<string, unknown> = {}) {
   return {
     id: "image-1",
     user_id: "event-user-1",
+    // 本文は author secret 側にのみ存在する。この列は常に空（REQ-020）
+    prompt: "",
     is_posted: true,
     posted_at: "2026-03-10T00:00:00.000Z",
     image_url: "https://example.com/event-1.webp",

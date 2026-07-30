@@ -39,8 +39,9 @@ function isDisclosableGenerationType(
 /**
  * 本人の author secret を一括取得して表示用プロンプトを解決する。
  *
- * 取得に失敗した場合は legacy 列へ落とさず投げる。障害時に秘匿境界が
- * 緩む方向へ倒れることを避けるため。
+ * secret が無ければ空文字（legacy 列へは落ちない）。Phase 0C 以降、
+ * 本文は secret にしか存在しないため。取得に失敗した場合も legacy 列へ
+ * 落とさず投げる。障害時に秘匿境界が緩む方向へ倒れることを避けるため。
  */
 export async function resolveOwnVisiblePrompts<
   T extends ClientPromptResolvableRecord,
@@ -78,8 +79,7 @@ export async function resolveOwnVisiblePrompts<
       return record.prompt === "" ? record : { ...record, prompt: "" };
     }
 
-    const secret = record.id ? secrets.get(record.id) : undefined;
-    const resolved = secret ?? record.prompt;
+    const resolved = (record.id ? secrets.get(record.id) : undefined) ?? "";
     return resolved === record.prompt ? record : { ...record, prompt: resolved };
   });
 }

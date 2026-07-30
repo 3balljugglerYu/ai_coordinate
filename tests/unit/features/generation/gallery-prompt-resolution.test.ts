@@ -180,15 +180,16 @@ describe("開示できない種別の扱い", () => {
   });
 });
 
-describe("移行前の行", () => {
-  it("secret が無ければ legacy 列を返す", async () => {
-    // backfill 前の既存行。Phase 0C までは legacy 列に値がある。
+describe("secret を持たない行", () => {
+  it("legacy 列へ落とさず空文字にする", async () => {
+    // Phase 0C 以降、本文は secret にしか存在しない。落ちる経路を残すと
+    // 障害や移行漏れのときに古い列の内容が漏れ出る（fail closed）。
     setImages([
       { id: "img-3", prompt: "むかしの入力", generation_type: "coordinate" },
     ]);
 
     const result = await getGeneratedImages("user-1");
 
-    expect(result[0].prompt).toBe("むかしの入力");
+    expect(result[0].prompt).toBe("");
   });
 });

@@ -64,49 +64,6 @@ export interface SourceImageStock {
 }
 
 /**
- * 生成画像のメタデータをデータベースに保存
- */
-export async function saveGeneratedImage(
-  data: Omit<GeneratedImageRecord, "id" | "created_at">
-): Promise<GeneratedImageRecord> {
-  const supabase = createBrowserClient();
-
-  const { data: record, error } = await supabase
-    .from("generated_images")
-    .insert([data])
-    .select()
-    .single();
-
-  if (error) {
-    console.error("Database insert error:", error);
-    throw new Error(`画像メタデータの保存に失敗しました: ${error.message}`);
-  }
-
-  return record;
-}
-
-/**
- * 複数の生成画像のメタデータを一括保存
- */
-export async function saveGeneratedImages(
-  images: Array<Omit<GeneratedImageRecord, "id" | "created_at">>
-): Promise<GeneratedImageRecord[]> {
-  const supabase = createBrowserClient();
-
-  const { data: records, error } = await supabase
-    .from("generated_images")
-    .insert(images)
-    .select();
-
-  if (error) {
-    console.error("Database insert error:", error);
-    throw new Error(`画像メタデータの保存に失敗しました: ${error.message}`);
-  }
-
-  return records;
-}
-
-/**
  * ユーザーの生成画像一覧を取得
  * generationType が指定された場合はそのタイプのみを取得し、
  * 指定されない場合は全てのタイプを取得する。
