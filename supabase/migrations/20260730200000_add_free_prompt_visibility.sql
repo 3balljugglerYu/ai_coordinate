@@ -245,9 +245,23 @@ BEGIN
 END;
 $$;
 
+-- UPDATE は不変条件に関わる列だけで発火させる。
+-- generated_images は record_post_impressions が impression_count を
+-- 集合UPDATEで加算するホットテーブルであり、全UPDATEで発火させると
+-- 表示のたびに行ごとの PL/pgSQL 呼び出しが積み上がる。
+--
+-- 列の選定: UPDATE 経路が読むのは source_post_id / source_author_id の
+-- 不変性、id との自己参照、prompt_visibility と generation_type の整合だけ。
+-- id を含めるのは UPDATE で自己参照へ化けるのを防ぐため。
 DROP TRIGGER IF EXISTS trg_enforce_generated_image_lineage ON public.generated_images;
 CREATE TRIGGER trg_enforce_generated_image_lineage
-  BEFORE INSERT OR UPDATE ON public.generated_images
+  BEFORE INSERT OR UPDATE OF
+    id,
+    source_post_id,
+    source_author_id,
+    prompt_visibility,
+    generation_type
+  ON public.generated_images
   FOR EACH ROW
   EXECUTE FUNCTION public.enforce_generated_image_lineage();
 
@@ -275,9 +289,13 @@ BEGIN
 END;
 $$;
 
+-- 同じ理由で image_jobs も絞る。Worker は1ジョブにつき status /
+-- processing_stage / attempts などを数回UPDATEするため、発火回数が多い。
+-- UPDATE 経路が読むのは origin_post_id の不変性だけ。
 DROP TRIGGER IF EXISTS trg_enforce_image_job_origin ON public.image_jobs;
 CREATE TRIGGER trg_enforce_image_job_origin
-  BEFORE INSERT OR UPDATE ON public.image_jobs
+  BEFORE INSERT OR UPDATE OF origin_post_id
+  ON public.image_jobs
   FOR EACH ROW
   EXECUTE FUNCTION public.enforce_image_job_origin();
 
