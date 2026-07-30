@@ -31,8 +31,23 @@ const PromptLockedGenerationSheet = dynamic(
  */
 const CARD_WIDTH_PX = 180;
 
+/**
+ * Before / After を並べるときのカード幅。
+ *
+ * 180px のまま2分割すると1枚あたり 87px になり、衣装のディテールが判別できない。
+ * それでは「プロンプトの効果を見て判断する」という目的を果たせないので広げる。
+ * 中身が枠を埋めるので、横幅いっぱいに伸ばしたときのような不自然さは出ない。
+ */
+const CARD_WIDTH_WITH_BEFORE_PX = 320;
+
 /** 実寸が取れていない原作のフォールバック比率。One-Tap Style のカードと同じ 3:4。 */
 const FALLBACK_ASPECT_RATIO = 180 / 240;
+
+/**
+ * 横長と見なす閾値。
+ * 横長を横並びにすると全体が極端に横長になるため、縦並びへ切り替える。
+ */
+const LANDSCAPE_RATIO_THRESHOLD = 1.1;
 
 interface SourcePromptReferenceCardProps {
   reference: SourcePromptReference;
@@ -60,6 +75,11 @@ interface SourcePromptReferenceCardProps {
  * クレジットを置く。ただしサムネイルの比率は原作画像の実寸に従う。
  * プリセットは運営が用意した固定比率の画像だが、原作はユーザーの生成物で
  * 縦横比がまちまちなので、固定枠に押し込むと切り取られてしまう。
+ *
+ * 原作が「生成前の画像も表示する」設定なら Before / After を並べる。
+ * プロンプトが見えない閲覧者にとって、After 1枚では「プロンプトの効果」と
+ * 「元のうちの子の魅力」が区別できない。並べることで、そのプロンプトが何を
+ * 変えるのかが分かる。非公開プロンプトでは Before/After が仕様書の代わりになる。
  *
  * 押せない理由は3つあり、それぞれ別の文言を出す。
  *
@@ -103,6 +123,24 @@ export function SourcePromptReferenceCard({
       ? reference.thumbnailWidth / reference.thumbnailHeight
       : FALLBACK_ASPECT_RATIO;
 
+  /*
+    Before を並べるか。
+
+    プロンプトが見えない閲覧者にとって、After 1枚では「プロンプトの効果」と
+    「元のうちの子の魅力」が区別できない。Before を並べると、そのプロンプトが
+    何を変えるのかが分かる。原作者が「生成前の画像も表示する」を外している場合は
+    resolver 側で null になっているので、設定はそのまま尊重される。
+  */
+  const showsBefore = !!reference.thumbnailUrl && !!reference.beforeThumbnailUrl;
+  // 向きは After で決める。じゆうモードは出力比率を元画像と別に選べるため、
+  // Before と After で向きが違うことがある。
+  const isLandscape = aspectRatio > LANDSCAPE_RATIO_THRESHOLD;
+  const cardWidth = showsBefore ? CARD_WIDTH_WITH_BEFORE_PX : CARD_WIDTH_PX;
+  // 横並びは1セルが半分の幅になるので、セルの比率は変えずにそのまま使う。
+  const cellSizes = showsBefore
+    ? `${Math.round(cardWidth / (isLandscape ? 1 : 2))}px`
+    : `${cardWidth}px`;
+
   return (
     <div className="space-y-2">
       <p className="text-sm font-bold text-gray-700">
@@ -113,30 +151,68 @@ export function SourcePromptReferenceCard({
 
       <Card
         className={`overflow-hidden p-0 ${canGenerate ? "" : "opacity-70"}`}
-        style={{ width: CARD_WIDTH_PX }}
+        style={{ width: cardWidth, maxWidth: "100%" }}
       >
         {/*
           サムネイル。利用不可のときは含めない（REQ-014）ので、錠アイコンの
           プレースホルダへ差し替える。高さが変わると隣の文字が動くため、
           プレースホルダも同じ比率で描く。
+
+          Before/After を並べるときは、正方形・縦長なら横並び、横長なら縦並びに
+          する。横長を横並びにすると全体が極端に横長になり、縦長を縦並びにすると
+          極端に縦長になる。どちらもカードとして収まりが悪い。
+
+          両セルは After の比率を共有する。Before の実寸は保存していないため
+          （詳細は types.ts のコメント）、object-top で顔を残す形にしている。
         */}
         <div
-          className="relative w-full overflow-hidden bg-gray-100"
-          style={{ aspectRatio }}
+          className={`flex w-full ${
+            showsBefore && isLandscape ? "flex-col" : "flex-row"
+          }`}
         >
-          {reference.thumbnailUrl ? (
-            <Image
-              src={reference.thumbnailUrl}
-              alt={t("sourcePromptThumbnailAlt")}
-              fill
-              sizes={`${CARD_WIDTH_PX}px`}
-              className="object-cover object-top"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center">
-              <Lock className="h-6 w-6 text-gray-400" aria-hidden="true" />
+          <div
+            className="relative flex-1 overflow-hidden bg-gray-100"
+            style={{ aspectRatio }}
+            data-testid="source-prompt-after-frame"
+          >
+            {reference.thumbnailUrl ? (
+              <Image
+                src={reference.thumbnailUrl}
+                alt={t("sourcePromptThumbnailAlt")}
+                fill
+                sizes={cellSizes}
+                className="object-cover object-top"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center">
+                <Lock className="h-6 w-6 text-gray-400" aria-hidden="true" />
+              </div>
+            )}
+            {showsBefore ? (
+              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                {t("afterImageLabel")}
+              </span>
+            ) : null}
+          </div>
+
+          {showsBefore && reference.beforeThumbnailUrl ? (
+            <div
+              className="relative flex-1 overflow-hidden border-l bg-gray-100"
+              style={{ aspectRatio }}
+              data-testid="source-prompt-before-frame"
+            >
+              <Image
+                src={reference.beforeThumbnailUrl}
+                alt={t("beforeImageAlt")}
+                fill
+                sizes={cellSizes}
+                className="object-cover object-top"
+              />
+              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                {t("beforeImageLabel")}
+              </span>
             </div>
-          )}
+          ) : null}
         </div>
 
         {/* サムネイルの下にクレジットと利用数を置く（One-Tap Style のカードと同じ配置） */}

@@ -51,6 +51,9 @@ const translations = {
   sourcePromptFollowToUse: "フォローすると使えます",
   sourcePromptLoginToUse: "ログインすると使えます",
   sourcePromptThumbnailAlt: "原作の作品",
+  beforeImageAlt: "生成元画像",
+  beforeImageLabel: "Before",
+  afterImageLabel: "After",
 } as const;
 
 const translator = ((
@@ -77,6 +80,7 @@ function buildReference(
     thumbnailUrl: "https://cdn.example/thumb.webp",
     thumbnailWidth: 896,
     thumbnailHeight: 1152,
+    beforeThumbnailUrl: null,
     usageCount: 42,
     ...overrides,
   };
@@ -99,15 +103,19 @@ function renderCard(props: Partial<
 
 /**
  * サムネイル枠。JSDOM では React が style 属性を書かず CSSOM へ直接入れるため、
- * セレクタでは引けない。画像の親要素をたどる。
+ * `[style*='aspect-ratio']` のようなセレクタでは引けない。
  */
 function thumbnailFrame(): HTMLElement {
-  const image = screen.getByAltText("原作の作品");
-  const frame = image.parentElement;
-  if (!frame) {
-    throw new Error("thumbnail frame not found");
+  return screen.getByTestId("source-prompt-after-frame");
+}
+
+/** Before/After を並べる外枠（flex-row / flex-col を確認する）。 */
+function thumbnailRow(): HTMLElement {
+  const parent = thumbnailFrame().parentElement;
+  if (!parent) {
+    throw new Error("thumbnail row not found");
   }
-  return frame;
+  return parent;
 }
 
 beforeEach(() => {
@@ -249,6 +257,117 @@ describe("サムネイルの比率", () => {
     });
 
     expect(thumbnailFrame().style.aspectRatio).toBe(String(180 / 240));
+  });
+});
+
+describe("Before/After の並べ表示", () => {
+  const WITH_BEFORE = {
+    thumbnailUrl: "https://cdn.example/after.webp",
+    beforeThumbnailUrl: "https://cdn.example/before.webp",
+  };
+
+  it("原作が生成元画像を表示する設定なら2枚並べる", () => {
+    // After 1枚では「プロンプトの効果」と「元のうちの子の魅力」が区別できない
+    renderCard({ reference: buildReference(WITH_BEFORE) });
+
+    expect(screen.getByAltText("原作の作品")).toBeInTheDocument();
+    expect(screen.getByAltText("生成元画像")).toBeInTheDocument();
+  });
+
+  it("2枚のときは Before / After のラベルを重ねる", () => {
+    // ラベルが無いと「結果が2枚ある」と誤読される
+    renderCard({ reference: buildReference(WITH_BEFORE) });
+
+    expect(screen.getByText("Before")).toBeInTheDocument();
+    expect(screen.getByText("After")).toBeInTheDocument();
+  });
+
+  it("1枚のときはラベルを出さない", () => {
+    renderCard();
+
+    expect(screen.queryByText("Before")).not.toBeInTheDocument();
+    expect(screen.queryByText("After")).not.toBeInTheDocument();
+  });
+
+  it("縦長は横並びにする", () => {
+    renderCard({
+      reference: buildReference({
+        ...WITH_BEFORE,
+        thumbnailWidth: 896,
+        thumbnailHeight: 1152,
+      }),
+    });
+
+    expect(thumbnailRow().className).toContain("flex-row");
+  });
+
+  it("正方形も横並びにする", () => {
+    renderCard({
+      reference: buildReference({
+        ...WITH_BEFORE,
+        thumbnailWidth: 1024,
+        thumbnailHeight: 1024,
+      }),
+    });
+
+    expect(thumbnailRow().className).toContain("flex-row");
+  });
+
+  it("横長は縦並びにする", () => {
+    // 横長を横並びにすると全体が極端に横長になる
+    renderCard({
+      reference: buildReference({
+        ...WITH_BEFORE,
+        thumbnailWidth: 1536,
+        thumbnailHeight: 864,
+      }),
+    });
+
+    expect(thumbnailRow().className).toContain("flex-col");
+  });
+
+  it("Before が無ければ横長でも縦並びにしない", () => {
+    // 1枚のときは並べる相手がいないので向きの分岐に入らない
+    renderCard({
+      reference: buildReference({
+        thumbnailWidth: 1536,
+        thumbnailHeight: 864,
+      }),
+    });
+
+    expect(thumbnailRow().className).not.toContain("flex-col");
+  });
+
+  it("両セルは After の比率を共有する", () => {
+    // Before の実寸は保存していないため、After の比率に合わせて object-top で
+    // 顔を残す（詳細は types.ts のコメント）
+    renderCard({
+      reference: buildReference({
+        ...WITH_BEFORE,
+        thumbnailWidth: 896,
+        thumbnailHeight: 1152,
+      }),
+    });
+
+    const before = screen.getByTestId("source-prompt-before-frame");
+    expect(before.style.aspectRatio).toBe(String(896 / 1152));
+    expect(thumbnailFrame().style.aspectRatio).toBe(String(896 / 1152));
+  });
+
+  it("利用不可なら Before も出さない", () => {
+    // REQ-014: 利用不可のときサムネイルを含めない
+    renderCard({
+      reference: buildReference({
+        isAvailable: false,
+        thumbnailUrl: null,
+        beforeThumbnailUrl: null,
+      }),
+    });
+
+    expect(screen.queryByAltText("生成元画像")).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId("source-prompt-before-frame")
+    ).not.toBeInTheDocument();
   });
 });
 

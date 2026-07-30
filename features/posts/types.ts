@@ -45,6 +45,22 @@ export interface SourcePromptReference {
    */
   thumbnailWidth: number | null;
   thumbnailHeight: number | null;
+  /**
+   * 原作の生成元画像（Before）の URL。
+   *
+   * プロンプトが見えない閲覧者にとって、After 1枚だけでは「プロンプトの効果」と
+   * 「元のうちの子の魅力」が区別できない。Before を並べることで、そのプロンプトが
+   * 何を変えるのかが分かる。非公開プロンプトでは Before/After が仕様書の代わりになる。
+   *
+   * 原作者が「生成前の画像も表示する」を外している場合は null。設定を尊重する。
+   * 永続化が済んでいない場合も null（他人のジョブ行へは踏み込まない）。
+   *
+   * Before の実寸は持たない。`generated_images.width / height` は After の値で、
+   * Before（アップロード画像から作った WebP）の寸法は保存していない。取得には
+   * 画像ヘッダーの HTTP フェッチが必要で、投稿詳細の描画経路に載せる価値はない。
+   * 描画側は After の比率を両セルで共有し、`object-cover object-top` で顔を残す。
+   */
+  beforeThumbnailUrl: string | null;
   /** このプロンプトを使った人数（原作者自身は除外）。 */
   usageCount: number;
 }

@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SourcePromptReference } from "../types";
-import { getPostThumbUrl } from "./utils";
+import { getPostBeforeImageUrl, getPostThumbUrl } from "./utils";
 
 /**
  * プロンプト非公開投稿・派生投稿の参照カードを解決する（REQ-013 / REQ-014）。
@@ -47,6 +47,8 @@ type OriginRow = {
   image_url: string | null;
   width: number | null;
   height: number | null;
+  pre_generation_storage_path: string | null;
+  show_before_image: boolean | null;
 };
 
 /**
@@ -98,6 +100,7 @@ export async function resolveSourcePromptReference(
       thumbnailUrl: null,
       thumbnailWidth: null,
       thumbnailHeight: null,
+      beforeThumbnailUrl: null,
       usageCount: 0,
     };
   }
@@ -117,6 +120,7 @@ export async function resolveSourcePromptReference(
     thumbnailUrl: null,
     thumbnailWidth: null,
     thumbnailHeight: null,
+    beforeThumbnailUrl: null,
     usageCount,
   };
 
@@ -132,6 +136,7 @@ export async function resolveSourcePromptReference(
     thumbnailUrl: thumbnail.url,
     thumbnailWidth: thumbnail.width,
     thumbnailHeight: thumbnail.height,
+    beforeThumbnailUrl: thumbnail.beforeUrl,
   };
 }
 
@@ -206,32 +211,51 @@ async function fetchUsageCount(
 }
 
 /**
- * 原作のサムネイル URL と実寸。
+ * 原作のサムネイル URL・実寸・生成元画像 URL。
  *
  * 実寸はカードのアスペクト比に使う。lazy compute でまだ埋まっていない行が
  * あるため null を返し得る（描画側が既定比率へフォールバックする）。
+ *
+ * Before の解決は `getPostBeforeImageUrl` に委ねる。この関数は
+ * `show_before_image === false` で null を返すため、原作者が「生成前の画像も
+ * 表示する」を外している設定がそのまま尊重される。
+ *
+ * `input_image_url_fallback` は渡さない。あのフォールバックは「自分の生成直後の
+ * 投稿」向けで、ここでの原作は他人の投稿である。他人のジョブ行を引くクエリと
+ * URL 許可リスト検査が増える割に、得られるのは永続化待ちの数十秒だけ。
  */
 async function fetchOriginThumbnail(
   supabase: SupabaseClient,
   originPostId: string
-): Promise<{ url: string | null; width: number | null; height: number | null }> {
+): Promise<{
+  url: string | null;
+  width: number | null;
+  height: number | null;
+  beforeUrl: string | null;
+}> {
   const { data, error } = await supabase
     .from("generated_images")
     .select(
-      "id, user_id, storage_path_thumb, storage_path, image_url, width, height"
+      "id, user_id, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image"
     )
     .eq("id", originPostId)
     .maybeSingle();
 
   if (error || !data) {
-    return { url: null, width: null, height: null };
+    return { url: null, width: null, height: null, beforeUrl: null };
   }
 
   const row = data as OriginRow;
   const url = getPostThumbUrl(row);
+  const beforeUrl = getPostBeforeImageUrl({
+    pre_generation_storage_path: row.pre_generation_storage_path,
+    show_before_image: row.show_before_image ?? undefined,
+  });
+
   return {
     url: url || null,
     width: row.width ?? null,
     height: row.height ?? null,
+    beforeUrl,
   };
 }

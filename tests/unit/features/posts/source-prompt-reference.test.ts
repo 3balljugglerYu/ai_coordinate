@@ -48,6 +48,8 @@ interface StubOptions {
     image_url: string | null;
     width: number | null;
     height: number | null;
+    pre_generation_storage_path: string | null;
+    show_before_image: boolean | null;
   } | null;
 }
 
@@ -112,6 +114,8 @@ function createSupabaseStub(options: StubOptions = {}) {
                         image_url: null,
                         width: 896,
                         height: 1152,
+                        pre_generation_storage_path: "before/origin.webp",
+                        show_before_image: true,
                       }
                     : options.originRow,
                 error: null,
@@ -232,6 +236,84 @@ describe("resolveSourcePromptReference", () => {
     expect(result?.thumbnailUrl).toBeTruthy();
   });
 
+  it("原作が生成元画像を表示する設定なら Before も返す", async () => {
+    // プロンプトが見えない閲覧者にとって Before/After が判断材料になる
+    const { supabase } = createSupabaseStub({ isAvailable: true });
+
+    const result = await resolveSourcePromptReference(
+      {
+        id: POST_ID,
+        user_id: DERIVER_ID,
+        source_post_id: ORIGIN_POST_ID,
+        source_author_id: AUTHOR_ID,
+      },
+      supabase
+    );
+
+    expect(result?.beforeThumbnailUrl).toContain("before/origin.webp");
+  });
+
+  it("原作者が生成元画像を非表示にしていたら Before を返さない", async () => {
+    // 「生成前の画像も表示する」を外している設定を尊重する
+    const { supabase } = createSupabaseStub({
+      isAvailable: true,
+      originRow: {
+        id: ORIGIN_POST_ID,
+        user_id: AUTHOR_ID,
+        storage_path_thumb: "thumb/origin.webp",
+        storage_path: null,
+        image_url: null,
+        width: 896,
+        height: 1152,
+        pre_generation_storage_path: "before/origin.webp",
+        show_before_image: false,
+      },
+    });
+
+    const result = await resolveSourcePromptReference(
+      {
+        id: POST_ID,
+        user_id: DERIVER_ID,
+        source_post_id: ORIGIN_POST_ID,
+        source_author_id: AUTHOR_ID,
+      },
+      supabase
+    );
+
+    expect(result?.thumbnailUrl).toBeTruthy();
+    expect(result?.beforeThumbnailUrl).toBeNull();
+  });
+
+  it("生成元画像が永続化されていなければ Before を返さない", async () => {
+    // 他人のジョブ行 (input_image_url) へは踏み込まない
+    const { supabase } = createSupabaseStub({
+      isAvailable: true,
+      originRow: {
+        id: ORIGIN_POST_ID,
+        user_id: AUTHOR_ID,
+        storage_path_thumb: "thumb/origin.webp",
+        storage_path: null,
+        image_url: null,
+        width: 896,
+        height: 1152,
+        pre_generation_storage_path: null,
+        show_before_image: true,
+      },
+    });
+
+    const result = await resolveSourcePromptReference(
+      {
+        id: POST_ID,
+        user_id: DERIVER_ID,
+        source_post_id: ORIGIN_POST_ID,
+        source_author_id: AUTHOR_ID,
+      },
+      supabase
+    );
+
+    expect(result?.beforeThumbnailUrl).toBeNull();
+  });
+
   it("利用不可なら形状を変えずサムネイルだけ落とす", async () => {
     // 原因（削除・投稿取消・公開停止・公開へ戻された）を区別できると
     // 原作の状態を推測できてしまう（ADR-005 / REQ-014）
@@ -256,6 +338,7 @@ describe("resolveSourcePromptReference", () => {
       thumbnailUrl: null,
       thumbnailWidth: null,
       thumbnailHeight: null,
+      beforeThumbnailUrl: null,
       usageCount: 0,
     });
   });
@@ -361,6 +444,7 @@ describe("resolveSourcePromptReference", () => {
       thumbnailUrl: null,
       thumbnailWidth: null,
       thumbnailHeight: null,
+      beforeThumbnailUrl: null,
       usageCount: 0,
     });
     // 原作者が無いと requester を決められないので RPC も呼ばない
@@ -405,6 +489,7 @@ describe("resolveSourcePromptReference", () => {
       "authorAvatarUrl",
       "authorId",
       "authorNickname",
+      "beforeThumbnailUrl",
       "isAvailable",
       "postId",
       "thumbnailHeight",
