@@ -10,6 +10,36 @@ export interface PostImageRequest {
   // 投稿モーダル / 編集モーダルで「生成前の画像も表示する」を切り替える。
   // 未指定なら API 側で更新しない（後方互換）。
   show_before_image?: boolean;
+  // プロンプトをフォロワーへ開示するか。未指定なら API 側で更新しない（後方互換）。
+  // 派生投稿は DB trigger が常に private へ強制するため、指定しても効かない。
+  prompt_visibility?: "public" | "private";
+}
+
+/**
+ * プロンプト非公開投稿の参照カードに必要な値（REQ-013 / REQ-014）。
+ *
+ * ここに載るのは**閲覧者に依存しない**判定だけである。フォロー有無とブロックは
+ * クライアントの follow-status と生成APIの再検証で扱う。閲覧者ごとに分岐する値を
+ * ここへ入れると `use cache` の粒度と噛み合わない。
+ *
+ * 原作が内在的に利用できない（削除・投稿取消・公開停止・公開へ戻された・
+ * secret 消失・作者のアカウント利用不可）ときは `isAvailable: false` とし、
+ * **形状を変えずにサムネイルだけ落とす**。原因ごとに応答が変わると、そこから
+ * 原作の状態を推測できてしまう（ADR-005）。
+ */
+export interface SourcePromptReference {
+  /** 原作 root 投稿 ID。利用不可でも系譜として保持する（REQ-011）。 */
+  postId: string;
+  /** 内在的に利用可能か。false ならサムネイルを含めない。 */
+  isAvailable: boolean;
+  /** 原作者。原作が削除されていてもクレジットは出す（REQ-011）。 */
+  authorId: string | null;
+  authorNickname: string | null;
+  authorAvatarUrl: string | null;
+  /** 利用可能なときだけ入る原作のサムネイル URL。 */
+  thumbnailUrl: string | null;
+  /** このプロンプトを使った人数（原作者自身は除外）。 */
+  usageCount: number;
 }
 
 export interface PostImageResponse {
@@ -45,6 +75,9 @@ export interface Post extends GeneratedImageRecord {
   // pre_generation_storage_path が無い間（生成完了直後の永続化処理中など）に
   // image_jobs.input_image_url で代替表示する。永続化完了後は null になる。
   input_image_url_fallback?: string | null;
+  // プロンプト非公開投稿・派生投稿の参照カード用（REQ-013）。
+  // 詳細取得の経路だけで解決する。一覧はプロンプト欄を持たないため付けない。
+  source_reference?: SourcePromptReference | null;
 }
 
 export interface CommentProfile {

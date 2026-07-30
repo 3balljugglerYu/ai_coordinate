@@ -45,6 +45,18 @@ export interface GeneratedImageRecord {
   moderation_reason?: string | null;
   moderation_updated_at?: string;
   moderation_approved_at?: string | null;
+  /**
+   * プロンプトをフォロワーへ開示するか（既定 'public'）。
+   * root で 'private' を選べるのは generation_type='free' のみ（DB trigger で強制）。
+   */
+  prompt_visibility?: "public" | "private";
+  /**
+   * 派生生成の原作 root 投稿。FK は張らず、原作が削除されても保持する。
+   * service role 経路のみ設定可・作成後不変（REQ-009 / REQ-010）。
+   */
+  source_post_id?: string | null;
+  /** 派生元の原作者。原作が削除されてもクレジットを出せるよう保持する（REQ-011）。 */
+  source_author_id?: string | null;
 }
 
 /**
