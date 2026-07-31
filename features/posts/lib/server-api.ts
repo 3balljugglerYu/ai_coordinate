@@ -1022,6 +1022,20 @@ export const getPost = cache(async (
   // 単一取得もプロンプトの正本は author secret から解決する（ADR-001）
   const [promptResolved] = await resolveVisiblePrompts([data]);
 
+  // /free の投稿では本文を本人以外へ渡さない。
+  //
+  // 公開プロンプトはフォロワーにだけ開示する値だが、従来は props に本文を載せて
+  // 表示だけ伏字にしていた。devtools を開けば読めるため、フォローゲートが
+  // 実質的に見た目だけのものになっていた。
+  //
+  // 参照カードのコピーとシート表示は /api/posts/[id]/prompt-text 経由で取り、
+  // そちらがサーバー側でフォロー・ブロック・公開設定を検証する。ここで props
+  // から落としておけば、未フォロワーのブラウザには本文が一切届かない。
+  //
+  // 本人には残す。自分が書いた文章を確認できないと編集もできない。
+  const shouldStripPromptFromPayload =
+    promptResolved.generation_type === "free" && !isPostOwner;
+
   // 非公開プロンプト・派生投稿の参照カード（REQ-013）。
   // 検証RPCと集計RPCはどちらも service-only なので、閲覧者の RLS クライアント
   // ではなく admin クライアントで解決する。返る値は可否・クレジット・サムネイル・
@@ -1037,6 +1051,7 @@ export const getPost = cache(async (
 
   return redactSensitivePrompt({
     ...promptResolved,
+    prompt: shouldStripPromptFromPayload ? "" : promptResolved.prompt,
     source_reference: sourceReference,
     user: data.user_id
       ? {

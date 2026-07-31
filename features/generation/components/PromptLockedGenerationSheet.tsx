@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   Sheet,
@@ -10,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
+import { fetchSourcePromptText } from "@/features/posts/lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 
 interface PromptLockedGenerationSheetProps {
@@ -18,6 +20,14 @@ interface PromptLockedGenerationSheetProps {
   /** 派生生成の原作 root 投稿 ID。 */
   sourcePostId: string;
   subscriptionPlan: SubscriptionPlan;
+  /**
+   * 原作のプロンプト公開設定。
+   *
+   * `public` のときだけ入力欄へ本文を表示する（編集は不可）。公開なのに
+   * コピーしないと読めない状態を避けるためで、生成に使う本文は表示値ではなく
+   * サーバーが原作の author secret から解決する。
+   */
+  promptVisibility: "public" | "private";
 }
 
 /**
@@ -42,8 +52,35 @@ export function PromptLockedGenerationSheet({
   onOpenChange,
   sourcePostId,
   subscriptionPlan,
+  promptVisibility,
 }: PromptLockedGenerationSheetProps) {
   const t = useTranslations("posts");
+  const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
+
+  /*
+    公開プロンプトの本文は開いてから取りに行く。
+
+    props へ載せると未フォロワーのブラウザにも届いてしまうため、
+    サーバー側で認可する /api/posts/[id]/prompt-text 経由にする。
+    取得に失敗しても生成自体は成立する（本文はサーバーが解決する）ので、
+    表示だけ諦めてシートは開いたままにする。
+  */
+  useEffect(() => {
+    if (!open || promptVisibility !== "public") {
+      return;
+    }
+    let cancelled = false;
+    fetchSourcePromptText(sourcePostId)
+      .then((text) => {
+        if (!cancelled) setLockedPromptText(text);
+      })
+      .catch(() => {
+        if (!cancelled) setLockedPromptText(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, promptVisibility, sourcePostId]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -63,6 +100,7 @@ export function PromptLockedGenerationSheet({
               authState="authenticated"
               mode="free"
               promptLocked
+              lockedPromptText={lockedPromptText}
               sourcePostId={sourcePostId}
             />
           </GenerationStateProvider>

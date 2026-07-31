@@ -17,6 +17,7 @@ export const postsRouteCopy = {
       "このコンテンツは公開停止中のため、投稿できません。異議申立ての手続きをご確認ください。",
     promptVisibilityNotAllowed:
       "プロンプトを非公開にできるのは、じゆうモードで作った自分の投稿だけです。",
+    promptTextUnavailable: "このプロンプトは現在ご利用できません",
     updateFailed: "更新に失敗しました",
     deleteFailed: "投稿の取り消しに失敗しました",
     commentsFetchFailed: "コメントの取得に失敗しました",
@@ -50,6 +51,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -83,6 +85,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -116,6 +119,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -149,6 +153,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -182,6 +187,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -215,6 +221,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -248,6 +255,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -281,6 +289,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -314,6 +323,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -347,6 +357,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -380,6 +391,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -413,6 +425,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -446,6 +459,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -479,6 +493,7 @@ export const postsRouteCopy = {
       "This content is suspended and cannot be published. Please review the appeal process.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
+    promptTextUnavailable: "This prompt is currently unavailable.",
     updateFailed: "Failed to update the post.",
     deleteFailed: "Failed to remove the post.",
     commentsFetchFailed: "Failed to fetch the comments.",
@@ -514,6 +529,8 @@ export const postsRouteCopy = {
     postSuspendedCannotPublish: string;
     /** free 以外・派生投稿でプロンプト非公開を指定したときの文言。 */
     promptVisibilityNotAllowed: string;
+    /** 公開プロンプト本文を取得できなかったときの文言。理由は区別しない。 */
+    promptTextUnavailable: string;
     updateFailed: string;
     deleteFailed: string;
     commentsFetchFailed: string;

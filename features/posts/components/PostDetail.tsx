@@ -28,6 +28,7 @@ import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDe
 import {
   getPostPromptDisplayMode,
   getVisiblePrompt,
+  shouldShowOwnerPromptWithCard,
 } from "@/features/generation/lib/prompt-visibility";
 import { SourcePromptReferenceCard } from "./SourcePromptReferenceCard";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
@@ -106,6 +107,10 @@ export function PostDetail({
   const hasVisiblePrompt = visiblePrompt.trim().length > 0;
   // 表示モードは1箇所で決める（REQ-013）
   const promptDisplayMode = getPostPromptDisplayMode(post, { isOwner });
+  // 本人が自分の /free 投稿を見ているときは、カードと本文を並べる
+  const ownerShowsCardWithPrompt = shouldShowOwnerPromptWithCard(post, {
+    isOwner,
+  });
   // 参照カードのフォロー判定の対象は原作者。派生投稿では投稿者と別人になる（ADR-003）。
   const sourceAuthorId = post.source_reference?.authorId ?? null;
   const isSourceAuthorSelf =
@@ -373,6 +378,19 @@ export function PostDetail({
           </div>
         ) : promptDisplayMode === "prompt" ? (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
+            {/* 本人には利用数を見せつつ、自分の本文もその場で確認できるようにする */}
+            {ownerShowsCardWithPrompt && post.source_reference ? (
+              <div className="mb-3">
+                <SourcePromptReferenceCard
+                  reference={post.source_reference}
+                  currentUserId={currentUserId ?? null}
+                  isFollowingAuthor={isFollowingSourceAuthor}
+                  isDerivedPost={!!post.source_post_id}
+                  subscriptionPlan={viewerSubscriptionPlan}
+                />
+              </div>
+            ) : null}
+
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
                 {t("prompt")}
@@ -383,7 +401,13 @@ export function PostDetail({
                   </span>
                 ) : null}
               </span>
+              {/*
+                コピーは /free ではカード側の「プロンプトをコピーする」に寄せた。
+                本人の画面ではカードと本文が並ぶので、ここにも置くと二重になる。
+                coordinate は従来どおりここにコピーを残す。
+              */}
               <div className="flex items-center gap-2">
+                {ownerShowsCardWithPrompt ? null : (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -402,6 +426,7 @@ export function PostDetail({
                     </>
                   )}
                 </Button>
+                )}
               </div>
             </div>
             <CollapsibleText text={canViewPrompt ? visiblePrompt : maskedPrompt} maxLines={1} />

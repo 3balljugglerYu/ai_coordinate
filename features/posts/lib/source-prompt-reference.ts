@@ -42,6 +42,7 @@ interface OriginResolvableRecord {
 type OriginRow = {
   id: string;
   user_id: string | null;
+  prompt_visibility: "public" | "private" | null;
   storage_path_thumb: string | null;
   storage_path: string | null;
   image_url: string | null;
@@ -101,6 +102,8 @@ export async function resolveSourcePromptReference(
       thumbnailWidth: null,
       thumbnailHeight: null,
       beforeThumbnailUrl: null,
+      // 原作を読めていないので、開示側へ倒さない
+      promptVisibility: "private",
       usageCount: 0,
     };
   }
@@ -121,6 +124,8 @@ export async function resolveSourcePromptReference(
     thumbnailWidth: null,
     thumbnailHeight: null,
     beforeThumbnailUrl: null,
+    // 利用不可のときはコピーもさせないので、開示側へ倒さない
+    promptVisibility: "private",
     usageCount,
   };
 
@@ -137,6 +142,7 @@ export async function resolveSourcePromptReference(
     thumbnailWidth: thumbnail.width,
     thumbnailHeight: thumbnail.height,
     beforeThumbnailUrl: thumbnail.beforeUrl,
+    promptVisibility: thumbnail.promptVisibility,
   };
 }
 
@@ -232,17 +238,25 @@ async function fetchOriginThumbnail(
   width: number | null;
   height: number | null;
   beforeUrl: string | null;
+  promptVisibility: "public" | "private";
 }> {
   const { data, error } = await supabase
     .from("generated_images")
     .select(
-      "id, user_id, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image"
+      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image"
     )
     .eq("id", originPostId)
     .maybeSingle();
 
   if (error || !data) {
-    return { url: null, width: null, height: null, beforeUrl: null };
+    // 読めなければ開示側へ倒さない
+    return {
+      url: null,
+      width: null,
+      height: null,
+      beforeUrl: null,
+      promptVisibility: "private",
+    };
   }
 
   const row = data as OriginRow;
@@ -257,5 +271,7 @@ async function fetchOriginThumbnail(
     width: row.width ?? null,
     height: row.height ?? null,
     beforeUrl,
+    // 想定外の値は非公開として扱う（fail closed）
+    promptVisibility: row.prompt_visibility === "public" ? "public" : "private",
   };
 }

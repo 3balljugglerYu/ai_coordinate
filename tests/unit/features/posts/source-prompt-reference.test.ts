@@ -43,6 +43,7 @@ interface StubOptions {
   originRow?: {
     id: string;
     user_id: string | null;
+    prompt_visibility: "public" | "private" | null;
     storage_path_thumb: string | null;
     storage_path: string | null;
     image_url: string | null;
@@ -109,6 +110,7 @@ function createSupabaseStub(options: StubOptions = {}) {
                     ? {
                         id: ORIGIN_POST_ID,
                         user_id: AUTHOR_ID,
+                        prompt_visibility: "private",
                         storage_path_thumb: "thumb/origin.webp",
                         storage_path: null,
                         image_url: null,
@@ -260,6 +262,7 @@ describe("resolveSourcePromptReference", () => {
       originRow: {
         id: ORIGIN_POST_ID,
         user_id: AUTHOR_ID,
+        prompt_visibility: "private",
         storage_path_thumb: "thumb/origin.webp",
         storage_path: null,
         image_url: null,
@@ -291,6 +294,7 @@ describe("resolveSourcePromptReference", () => {
       originRow: {
         id: ORIGIN_POST_ID,
         user_id: AUTHOR_ID,
+        prompt_visibility: "private",
         storage_path_thumb: "thumb/origin.webp",
         storage_path: null,
         image_url: null,
@@ -312,6 +316,57 @@ describe("resolveSourcePromptReference", () => {
     );
 
     expect(result?.beforeThumbnailUrl).toBeNull();
+  });
+
+  it("公開プロンプトの原作なら promptVisibility=public を返す", async () => {
+    // カードのコピーボタンとシートの本文表示は、この値で出し分ける
+    const { supabase } = createSupabaseStub({
+      isAvailable: true,
+      originRow: {
+        id: ORIGIN_POST_ID,
+        user_id: AUTHOR_ID,
+        prompt_visibility: "public",
+        storage_path_thumb: "thumb/origin.webp",
+        storage_path: null,
+        image_url: null,
+        width: 896,
+        height: 1152,
+        pre_generation_storage_path: null,
+        show_before_image: true,
+      },
+    });
+
+    const result = await resolveSourcePromptReference(
+      {
+        id: POST_ID,
+        user_id: DERIVER_ID,
+        source_post_id: ORIGIN_POST_ID,
+        source_author_id: AUTHOR_ID,
+      },
+      supabase
+    );
+
+    expect(result?.promptVisibility).toBe("public");
+  });
+
+  it("原作を読めなかったときは promptVisibility を private にする", async () => {
+    // 開示側へ倒すと、読めていない原作でコピーボタンが出てしまう
+    const { supabase } = createSupabaseStub({
+      isAvailable: true,
+      originRow: null,
+    });
+
+    const result = await resolveSourcePromptReference(
+      {
+        id: POST_ID,
+        user_id: DERIVER_ID,
+        source_post_id: ORIGIN_POST_ID,
+        source_author_id: AUTHOR_ID,
+      },
+      supabase
+    );
+
+    expect(result?.promptVisibility).toBe("private");
   });
 
   it("利用不可なら形状を変えずサムネイルだけ落とす", async () => {
@@ -339,6 +394,7 @@ describe("resolveSourcePromptReference", () => {
       thumbnailWidth: null,
       thumbnailHeight: null,
       beforeThumbnailUrl: null,
+      promptVisibility: "private",
       usageCount: 0,
     });
   });
@@ -445,6 +501,7 @@ describe("resolveSourcePromptReference", () => {
       thumbnailWidth: null,
       thumbnailHeight: null,
       beforeThumbnailUrl: null,
+      promptVisibility: "private",
       usageCount: 0,
     });
     // 原作者が無いと requester を決められないので RPC も呼ばない
@@ -492,6 +549,7 @@ describe("resolveSourcePromptReference", () => {
       "beforeThumbnailUrl",
       "isAvailable",
       "postId",
+      "promptVisibility",
       "thumbnailHeight",
       "thumbnailUrl",
       "thumbnailWidth",

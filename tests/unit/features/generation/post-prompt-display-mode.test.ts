@@ -10,6 +10,7 @@
 
 import {
   getPostPromptDisplayMode,
+  shouldShowOwnerPromptWithCard,
   type PostPromptDisplayMode,
 } from "@/features/generation/lib/prompt-visibility";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
@@ -38,38 +39,78 @@ function mode(
   return getPostPromptDisplayMode(build(overrides), options);
 }
 
-describe("公開プロンプト", () => {
-  it("本文があれば prompt", () => {
-    expect(mode()).toBe("prompt");
+describe("/free の root 投稿", () => {
+  it("公開でも第三者には参照カード", () => {
+    // 入口が公開設定で変わると分かりにくいので UI を1つに寄せている
+    expect(mode({ prompt_visibility: "public" })).toBe("source_reference");
   });
 
-  it("本文が空なら none", () => {
-    expect(mode({ prompt: "" })).toBe("none");
-  });
-
-  it("空白だけの本文も none", () => {
-    // 空白を prompt 扱いにすると、空のプロンプト欄だけが残る
-    expect(mode({ prompt: "   \n " })).toBe("none");
-  });
-});
-
-describe("root の非公開プロンプト", () => {
-  it("第三者には参照カード", () => {
+  it("非公開でも第三者には参照カード", () => {
     expect(mode({ prompt_visibility: "private" })).toBe("source_reference");
   });
 
+  it("本文が空でも第三者には参照カード", () => {
+    // 本文の有無ではなく生成種別で決める
+    expect(mode({ prompt: "" })).toBe("source_reference");
+  });
+
   it("本人には本文を出す", () => {
-    // 自分が書いた文章を確認できないと編集もできない。
-    // 他人へ見せないことが目的なので、本人への開示は目的に反しない。
+    // 自分が書いた文章を確認できないと編集もできない
     expect(mode({ prompt_visibility: "private" }, { isOwner: true })).toBe(
+      "prompt"
+    );
+    expect(mode({ prompt_visibility: "public" }, { isOwner: true })).toBe(
       "prompt"
     );
   });
 
   it("本人でも本文が空なら none", () => {
+    expect(mode({ prompt: "" }, { isOwner: true })).toBe("none");
+  });
+});
+
+describe("coordinate（対象外）", () => {
+  it("本文があれば prompt", () => {
+    expect(mode({ generation_type: "coordinate" })).toBe("prompt");
+  });
+
+  it("本文が空なら none", () => {
+    expect(mode({ generation_type: "coordinate", prompt: "" })).toBe("none");
+  });
+
+  it("空白だけの本文も none", () => {
+    // 空白を prompt 扱いにすると、空のプロンプト欄だけが残る
+    expect(mode({ generation_type: "coordinate", prompt: "   \n " })).toBe(
+      "none"
+    );
+  });
+});
+
+describe("本人へのカード併記", () => {
+  it("/free の root 投稿を本人が見るときだけ true", () => {
+    // 利用数はカードにしか出ないので、作者が見られるようにする
+    expect(shouldShowOwnerPromptWithCard(build(), { isOwner: true })).toBe(true);
+  });
+
+  it("他人には false", () => {
+    expect(shouldShowOwnerPromptWithCard(build())).toBe(false);
+  });
+
+  it("派生投稿では false", () => {
     expect(
-      mode({ prompt_visibility: "private", prompt: "" }, { isOwner: true })
-    ).toBe("none");
+      shouldShowOwnerPromptWithCard(
+        build({ source_post_id: ORIGIN_POST_ID }),
+        { isOwner: true }
+      )
+    ).toBe(false);
+  });
+
+  it("coordinate では false", () => {
+    expect(
+      shouldShowOwnerPromptWithCard(build({ generation_type: "coordinate" }), {
+        isOwner: true,
+      })
+    ).toBe(false);
   });
 });
 
@@ -121,7 +162,7 @@ describe("One-Tap Style", () => {
 });
 
 describe("列が無い既存レコード", () => {
-  it("prompt_visibility 未設定は公開として扱う", () => {
+  it("coordinate は従来どおり本文を出す", () => {
     // 適用前に作られた行や select で列を落とした経路でも既存挙動を保つ
     expect(
       getPostPromptDisplayMode({

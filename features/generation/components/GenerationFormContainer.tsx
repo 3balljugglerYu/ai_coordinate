@@ -85,6 +85,11 @@ interface GenerationFormContainerProps {
   promptLocked?: boolean;
   /** 派生生成の原作 root 投稿 ID。 */
   sourcePostId?: string;
+  /**
+   * 施錠した入力欄に表示する本文。公開プロンプトのときだけ入る。
+   * 表示専用で、生成に使う本文はサーバーが author secret から解決する。
+   */
+  lockedPromptText?: string | null;
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -211,6 +216,7 @@ export function GenerationFormContainer({
   mode = "coordinate",
   promptLocked = false,
   sourcePostId,
+  lockedPromptText,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
@@ -1406,6 +1412,7 @@ export function GenerationFormContainer({
         guestGenerationLocked={isGuest && guestResult !== null}
         mode={mode}
         promptLocked={promptLocked}
+        lockedPromptText={lockedPromptText}
         sourcePostId={sourcePostId}
       />
 

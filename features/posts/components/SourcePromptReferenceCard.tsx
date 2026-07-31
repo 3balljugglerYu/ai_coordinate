@@ -5,9 +5,12 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Sparkles, User } from "lucide-react";
+import { Check, Copy, Sparkles, User } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import { copyTextToClipboard } from "../lib/copy-to-clipboard";
+import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import type { SourcePromptReference } from "../types";
 
@@ -104,7 +107,9 @@ export function SourcePromptReferenceCard({
   subscriptionPlan,
 }: SourcePromptReferenceCardProps) {
   const t = useTranslations("posts");
+  const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const isOwnPrompt =
     !!currentUserId && !!reference.authorId && currentUserId === reference.authorId;
@@ -121,6 +126,31 @@ export function SourcePromptReferenceCard({
         : null;
 
   const authorName = reference.authorNickname?.trim();
+  // コピーは公開プロンプトだけ。生成と同じフォローゲートを通す。
+  const canCopyPrompt = canGenerate && reference.promptVisibility === "public";
+
+  /*
+    本文はここでは持たず、押されてから API で取る。
+
+    公開プロンプトはフォロワーにだけ開示する値なので、payload に載せると
+    未フォロワーのブラウザにも届いてしまう（従来はそれを表示だけ伏字にしていた）。
+    サーバー側でフォロー・ブロック・公開設定を検証してから返す経路に寄せる。
+  */
+  const handleCopyPrompt = async () => {
+    try {
+      const promptText = await fetchSourcePromptText(reference.postId);
+      await copyTextToClipboard(promptText);
+      setIsCopied(true);
+      toast({ title: t("sourcePromptCopied") });
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy source prompt:", error);
+      toast({
+        title: t("sourcePromptCopyFailed"),
+        variant: "destructive",
+      });
+    }
+  };
   // 実寸が揃っているときだけ原作の比率を使う。片方でも欠けたら既定へ倒す。
   const aspectRatio =
     reference.thumbnailWidth && reference.thumbnailHeight
@@ -275,7 +305,7 @@ export function SourcePromptReferenceCard({
         </p>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-col items-start gap-2">
         {canGenerate ? (
           <button
             type="button"
@@ -284,6 +314,26 @@ export function SourcePromptReferenceCard({
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
             {t("sourcePromptCardTitle")}
+          </button>
+        ) : null}
+
+        {/*
+          公開プロンプトはコピーもできる。「作る」はアプリ内で完結し、
+          「コピー」は別のツールへ持ち出すためのもので役割が違う。
+          編集したい人はコピーして /free へ貼れるので、シートが編集不可でも詰まらない。
+        */}
+        {canCopyPrompt ? (
+          <button
+            type="button"
+            onClick={handleCopyPrompt}
+            className="inline-flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-gray-50"
+          >
+            {isCopied ? (
+              <Check className="h-4 w-4" aria-hidden="true" />
+            ) : (
+              <Copy className="h-4 w-4" aria-hidden="true" />
+            )}
+            {isCopied ? t("sourcePromptCopied") : t("sourcePromptCopy")}
           </button>
         ) : null}
 
@@ -326,6 +376,7 @@ export function SourcePromptReferenceCard({
           onOpenChange={setIsSheetOpen}
           sourcePostId={reference.postId}
           subscriptionPlan={subscriptionPlan}
+          promptVisibility={reference.promptVisibility}
         />
       ) : null}
     </div>

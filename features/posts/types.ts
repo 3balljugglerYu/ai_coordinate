@@ -61,6 +61,15 @@ export interface SourcePromptReference {
    * 描画側は After の比率を両セルで共有し、`object-cover object-top` で顔を残す。
    */
   beforeThumbnailUrl: string | null;
+  /**
+   * 原作のプロンプト公開設定。
+   *
+   * `public` のときだけカードに「プロンプトをコピーする」を出し、ボトムシートの
+   * 入力欄にも本文を表示する（編集は不可）。本文そのものはここに載せない。
+   * 未フォロワーのブラウザへ届かないよう、`/api/posts/[id]/prompt-text` が
+   * サーバー側で認可してから返す。
+   */
+  promptVisibility: "public" | "private";
   /** このプロンプトを使った人数（原作者自身は除外）。 */
   usageCount: number;
 }

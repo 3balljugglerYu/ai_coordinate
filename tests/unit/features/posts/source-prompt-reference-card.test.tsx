@@ -8,7 +8,7 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { SourcePromptReferenceCard } from "@/features/posts/components/SourcePromptReferenceCard";
 import type { SourcePromptReference } from "@/features/posts/types";
@@ -46,6 +46,18 @@ jest.mock("next/image", () => ({
     React.createElement("img", { alt, src, ...props }),
 }));
 
+jest.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({ toast: jest.fn() }),
+}));
+
+jest.mock("@/features/posts/lib/copy-to-clipboard", () => ({
+  copyTextToClipboard: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock("@/features/posts/lib/source-prompt-text-api", () => ({
+  fetchSourcePromptText: jest.fn().mockResolvedValue("白いワンピースにして"),
+}));
+
 jest.mock("@/features/users/components/FollowButton", () => ({
   FollowButton: ({ userId }: { userId: string }) => (
     <button type="button" data-testid="follow-button" data-user-id={userId}>
@@ -68,6 +80,9 @@ const translations = {
   beforeImageLabel: "Before",
   afterImageLabel: "After",
   sourcePromptViewProfile: "プロフィールへ",
+  sourcePromptCopy: "プロンプトをコピーする",
+  sourcePromptCopied: "コピーしました",
+  sourcePromptCopyFailed: "コピーできませんでした",
 } as const;
 
 const translator = ((
@@ -95,6 +110,7 @@ function buildReference(
     thumbnailWidth: 896,
     thumbnailHeight: 1152,
     beforeThumbnailUrl: null,
+    promptVisibility: "private",
     usageCount: 42,
     ...overrides,
   };
@@ -448,6 +464,89 @@ describe("表題", () => {
     renderCard({ isDerivedPost: true });
 
     expect(screen.getByText("原作のプロンプトで作る")).toBeInTheDocument();
+  });
+});
+
+describe("プロンプトのコピー", () => {
+  it("公開プロンプトならコピーボタンを出す", () => {
+    renderCard({
+      reference: buildReference({ promptVisibility: "public" }),
+    });
+
+    expect(
+      screen.getByRole("button", { name: /プロンプトをコピーする/ })
+    ).toBeInTheDocument();
+  });
+
+  it("非公開プロンプトでは出さない", () => {
+    renderCard({
+      reference: buildReference({ promptVisibility: "private" }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /プロンプトをコピーする/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("未フォローでは出さない（生成と同じフォローゲート）", () => {
+    // ここを開けると、公開プロンプトのフォローゲートが実質無効になる
+    renderCard({
+      isFollowingAuthor: false,
+      reference: buildReference({ promptVisibility: "public" }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /プロンプトをコピーする/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("未ログインでは出さない", () => {
+    renderCard({
+      currentUserId: null,
+      isFollowingAuthor: false,
+      reference: buildReference({ promptVisibility: "public" }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /プロンプトをコピーする/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("原作が使えないときは出さない", () => {
+    renderCard({
+      reference: buildReference({
+        promptVisibility: "public",
+        isAvailable: false,
+        thumbnailUrl: null,
+      }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: /プロンプトをコピーする/ })
+    ).not.toBeInTheDocument();
+  });
+
+  it("押すと API から本文を取ってクリップボードへ入れる", async () => {
+    // 本文は props に載せない。未フォロワーのブラウザへ届かせないため。
+    const { fetchSourcePromptText } = jest.requireMock(
+      "@/features/posts/lib/source-prompt-text-api"
+    );
+    const { copyTextToClipboard } = jest.requireMock(
+      "@/features/posts/lib/copy-to-clipboard"
+    );
+
+    renderCard({
+      reference: buildReference({ promptVisibility: "public" }),
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /プロンプトをコピーする/ })
+    );
+
+    await waitFor(() => {
+      expect(fetchSourcePromptText).toHaveBeenCalledWith(ORIGIN_POST_ID);
+      expect(copyTextToClipboard).toHaveBeenCalledWith("白いワンピースにして");
+    });
   });
 });
 

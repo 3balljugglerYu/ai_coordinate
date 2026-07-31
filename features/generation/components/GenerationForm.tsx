@@ -132,6 +132,13 @@ interface GenerationFormProps {
    * 値をクライアントへ渡さないだけでなく入力もさせない。
    */
   promptLocked?: boolean;
+  /**
+   * 施錠した入力欄に表示する本文。公開プロンプトのときだけ入る。
+   *
+   * 表示専用である。生成に使う本文はサーバーが原作の author secret から
+   * 解決するため、ここを書き換えても送信内容は変わらない。
+   */
+  lockedPromptText?: string | null;
 }
 
 type BackgroundModeOption = {
@@ -150,6 +157,7 @@ export function GenerationForm({
   guestGenerationLocked = false,
   mode = "coordinate",
   promptLocked = false,
+  lockedPromptText,
   sourcePostId,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
@@ -168,7 +176,7 @@ export function GenerationForm({
     : isFree
       ? freeT("promptLabel")
       : t("promptLabel");
-  // 施錠時は本文を描画しない。プレースホルダも「非公開である」ことだけを伝える。
+  // 施錠時のプレースホルダ。公開プロンプトは本文を value に入れるので出ない。
   const promptPlaceholder = promptLocked
     ? postsT("lockedSheetPromptLocked")
     : isFree
@@ -707,9 +715,9 @@ export function GenerationForm({
 
         {/* プロンプト入力(じゆうモードは自由記述 / それ以外は着せ替え内容) */}
         <PromptInputField
-          // 施錠時は value を空に固定する。原作の本文はクライアントへ来ないが、
-          // ここで state を経由させないことで将来の取り違えも防ぐ。
-          value={promptLocked ? "" : prompt}
+          // 施錠時は state を経由させず、渡された表示値だけを出す。
+          // 非公開なら本文が来ないので空のままプレースホルダが出る。
+          value={promptLocked ? lockedPromptText ?? "" : prompt}
           onChange={promptLocked ? () => {} : setPrompt}
           label={promptLabel}
           placeholder={promptPlaceholder}
