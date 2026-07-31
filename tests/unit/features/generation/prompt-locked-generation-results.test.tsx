@@ -6,10 +6,11 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useGenerationState } from "@/features/generation/context/GenerationStateContext";
+import { getGeneratedImages } from "@/features/generation/lib/database";
 import type { GeneratedImageData } from "@/features/generation/types";
 
 jest.mock("next-intl", () => ({
@@ -18,6 +19,14 @@ jest.mock("next-intl", () => ({
 
 jest.mock("@/features/generation/context/GenerationStateContext", () => ({
   useGenerationState: jest.fn(),
+}));
+
+jest.mock("@/features/generation/lib/database", () => ({
+  getGeneratedImages: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock("@/features/auth/lib/auth-client", () => ({
+  getCurrentUser: jest.fn().mockResolvedValue({ id: "user-1" }),
 }));
 
 jest.mock("@/features/generation/components/GeneratedImageGallery", () => ({
@@ -48,6 +57,9 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
 const useGenerationStateMock = useGenerationState as jest.MockedFunction<
   typeof useGenerationState
 >;
+const getGeneratedImagesMock = getGeneratedImages as jest.MockedFunction<
+  typeof getGeneratedImages
+>;
 
 function buildImage(id: string): GeneratedImageData {
   return { id, url: `https://cdn.example/${id}.webp`, is_posted: false };
@@ -68,6 +80,7 @@ function stubState(partial: {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  getGeneratedImagesMock.mockResolvedValue([]);
   useTranslationsMock.mockReturnValue(
     ((key: string) =>
       key === "resultsTitle" ? "生成結果一覧" : key) as unknown as ReturnType<
@@ -132,5 +145,80 @@ describe("生成結果の描画", () => {
       "data-generation-type",
       "free"
     );
+  });
+});
+
+describe("過去のじゆうモード生成", () => {
+  it("直近の生成も一覧へ並べる", async () => {
+    // シートで作った分だけだと、閉じたあとどこへ行ったか分からない
+    useGenerationStateMock.mockReturnValue(stubState({}));
+    getGeneratedImagesMock.mockResolvedValue([
+      {
+        id: "past-1",
+        user_id: "user-1",
+        image_url: "https://cdn.example/past-1.webp",
+        storage_path: "p1",
+        prompt: "",
+        is_posted: true,
+      },
+    ]);
+
+    render(<PromptLockedGenerationResults />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery")).toHaveAttribute("data-count", "1");
+    });
+  });
+
+  it("じゆうモードだけを引く", async () => {
+    useGenerationStateMock.mockReturnValue(stubState({}));
+
+    render(<PromptLockedGenerationResults />);
+
+    await waitFor(() => {
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith(
+        "user-1",
+        4,
+        0,
+        "free"
+      );
+    });
+  });
+
+  it("新しく作った分を先頭に置く", async () => {
+    // 生成直後に DB からも引けた場合、進捗つきのプレビュー側を優先する
+    useGenerationStateMock.mockReturnValue(
+      stubState({ previewImages: [buildImage("same")] })
+    );
+    getGeneratedImagesMock.mockResolvedValue([
+      {
+        id: "same",
+        user_id: "user-1",
+        image_url: "https://cdn.example/from-db.webp",
+        storage_path: "p",
+        prompt: "",
+        is_posted: false,
+      },
+    ]);
+
+    render(<PromptLockedGenerationResults />);
+
+    await waitFor(() => {
+      // 重複は畳まれて1件のまま
+      expect(screen.getByTestId("gallery")).toHaveAttribute("data-count", "1");
+    });
+  });
+
+  it("取得に失敗しても落ちない", async () => {
+    useGenerationStateMock.mockReturnValue(
+      stubState({ previewImages: [buildImage("a")] })
+    );
+    getGeneratedImagesMock.mockRejectedValue(new Error("network"));
+
+    render(<PromptLockedGenerationResults />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery")).toHaveAttribute("data-count", "1");
+    });
   });
 });

@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/sheet";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
+import { PromptLockedGenerationHeader } from "@/features/generation/components/PromptLockedGenerationHeader";
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useIsDesktopViewport } from "@/features/generation/hooks/useIsDesktopViewport";
 import { fetchSourcePromptText } from "@/features/posts/lib/source-prompt-text-api";
@@ -47,6 +48,14 @@ interface PromptLockedGenerationSheetProps {
  * ジョブのポーリング・進捗表示・結果表示までの一連の機構を二重に持つと
  * 片方だけ直す事故が起きるためである（過去に「片方だけ直して壊す」を
  * 繰り返している）。
+ *
+ * ## 見出しは Free Style に合わせる
+ *
+ * 中でやっていることは Free Style の生成そのものなので、`/free` のページ冒頭
+ * （タイトル・説明・保有ペルコイン）と同じ並びにする。見出しだけ
+ * 「このプロンプトで作る」にすると別機能に見えてしまう。
+ *
+ * ダイアログのタイトルは読み上げのために必要なので、視覚的には隠して残す。
  *
  * ## 画面幅で見せ方を変える
  *
@@ -135,15 +144,19 @@ export function PromptLockedGenerationSheet({
             maxHeight: "85vh",
           }}
         >
-          <DialogHeader className="flex-shrink-0 border-b px-6 py-4">
+          {/* 読み上げ用。見出しは本文側の Free Style 表記が担う。 */}
+          <DialogHeader className="sr-only">
             <DialogTitle>{t("lockedSheetTitle")}</DialogTitle>
             <DialogDescription>{t("lockedSheetDescription")}</DialogDescription>
           </DialogHeader>
 
           <GenerationStateProvider>
             {/* 左: 入力 / 右: 生成結果。どちらも独立にスクロールさせる。 */}
-            <div className="flex flex-1 gap-6 px-6 py-4" style={{ minHeight: 0 }}>
-              <div className="w-1/2 overflow-y-auto pr-1">{form}</div>
+            <div className="flex flex-1 gap-6 px-6 py-6" style={{ minHeight: 0 }}>
+              <div className="w-1/2 space-y-6 overflow-y-auto pr-1">
+                <PromptLockedGenerationHeader />
+                {form}
+              </div>
               <div className="w-1/2 overflow-y-auto border-l pl-6">
                 <PromptLockedGenerationResults />
               </div>
@@ -160,13 +173,15 @@ export function PromptLockedGenerationSheet({
         side="bottom"
         className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
       >
-        <SheetHeader>
+        {/* 読み上げ用。見出しは本文側の Free Style 表記が担う。 */}
+        <SheetHeader className="sr-only">
           <SheetTitle>{t("lockedSheetTitle")}</SheetTitle>
           <SheetDescription>{t("lockedSheetDescription")}</SheetDescription>
         </SheetHeader>
 
         {/* モバイルは縦に積む。入力の下に結果が続く。 */}
-        <div className="space-y-6 px-4 pb-8">
+        <div className="space-y-6 px-4 pb-8 pt-4">
+          <PromptLockedGenerationHeader />
           <GenerationStateProvider>
             {form}
             <PromptLockedGenerationResults />
