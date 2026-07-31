@@ -3,6 +3,13 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Sheet,
   SheetContent,
   SheetDescription,
@@ -11,6 +18,8 @@ import {
 } from "@/components/ui/sheet";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
+import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
+import { useIsDesktopViewport } from "@/features/generation/hooks/useIsDesktopViewport";
 import { fetchSourcePromptText } from "@/features/posts/lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 
@@ -31,7 +40,7 @@ interface PromptLockedGenerationSheetProps {
 }
 
 /**
- * 非公開プロンプトの派生生成シート。
+ * 派生生成の入力面。
  *
  * じゆうモードの生成フォームをそのまま使い、プロンプト欄だけを施錠する。
  * 別フォームを作らないのは、比率・モデル・画像入力・ペルコイン残高確認・
@@ -39,9 +48,24 @@ interface PromptLockedGenerationSheetProps {
  * 片方だけ直す事故が起きるためである（過去に「片方だけ直して壊す」を
  * 繰り返している）。
  *
+ * ## 画面幅で見せ方を変える
+ *
+ * - モバイル: 下から出るボトムシート
+ * - デスクトップ: 横長のモーダル。左に入力、右に生成結果を並べる
+ *
+ * ボトムシートは指の届く範囲へ寄せる仕組みで、広い画面では縦に間延びし、
+ * 左右が大きく余る。「画像を選ぶ」モーダルと同じ2カラムに寄せて、
+ * 入力しながら結果を見られるようにする。
+ *
+ * ## 生成結果を必ず描画する
+ *
  * `GenerationStateProvider` をシート内に置く。プロバイダはページ側にも
  * あるが、投稿詳細ページには無い。ここで包むことで、生成中の進捗と
- * 完了後のプレビューがシート内で完結する。
+ * 完了後のプレビューがこの中で完結する。
+ *
+ * 以前はプロバイダを置いただけで結果を描画するものが無く、生成しても
+ * 完成画像が出ないままだった。`PromptLockedGenerationResults` が
+ * `previewImages` を受け取って一覧にする。
  *
  * 本文はこのコンポーネントに一切入ってこない。渡すのは原作の投稿 ID だけで、
  * 本文はサーバーが provider 送信直前に author secret から解決する（REQ-005 /
@@ -55,6 +79,7 @@ export function PromptLockedGenerationSheet({
   promptVisibility,
 }: PromptLockedGenerationSheetProps) {
   const t = useTranslations("posts");
+  const isDesktop = useIsDesktopViewport();
   const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
 
   /*
@@ -82,6 +107,53 @@ export function PromptLockedGenerationSheet({
     };
   }, [open, promptVisibility, sourcePostId]);
 
+  const form = (
+    <GenerationFormContainer
+      subscriptionPlan={subscriptionPlan}
+      authState="authenticated"
+      mode="free"
+      promptLocked
+      lockedPromptText={lockedPromptText}
+      sourcePostId={sourcePostId}
+    />
+  );
+
+  if (isDesktop) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        {/*
+          幅と高さは inline style で指定する。shadcn の sm:max-w-lg と
+          Tailwind v4 のスキャナ生成事情で class 上書きが効きにくい
+          （「画像を選ぶ」モーダルと同じ理由・同じ書き方）。
+        */}
+        <DialogContent
+          className="flex flex-col p-0"
+          style={{
+            width: "min(95vw, 1100px)",
+            maxWidth: "min(95vw, 1100px)",
+            height: "85vh",
+            maxHeight: "85vh",
+          }}
+        >
+          <DialogHeader className="flex-shrink-0 border-b px-6 py-4">
+            <DialogTitle>{t("lockedSheetTitle")}</DialogTitle>
+            <DialogDescription>{t("lockedSheetDescription")}</DialogDescription>
+          </DialogHeader>
+
+          <GenerationStateProvider>
+            {/* 左: 入力 / 右: 生成結果。どちらも独立にスクロールさせる。 */}
+            <div className="flex flex-1 gap-6 px-6 py-4" style={{ minHeight: 0 }}>
+              <div className="w-1/2 overflow-y-auto pr-1">{form}</div>
+              <div className="w-1/2 overflow-y-auto border-l pl-6">
+                <PromptLockedGenerationResults />
+              </div>
+            </div>
+          </GenerationStateProvider>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -93,16 +165,11 @@ export function PromptLockedGenerationSheet({
           <SheetDescription>{t("lockedSheetDescription")}</SheetDescription>
         </SheetHeader>
 
-        <div className="px-4 pb-8">
+        {/* モバイルは縦に積む。入力の下に結果が続く。 */}
+        <div className="space-y-6 px-4 pb-8">
           <GenerationStateProvider>
-            <GenerationFormContainer
-              subscriptionPlan={subscriptionPlan}
-              authState="authenticated"
-              mode="free"
-              promptLocked
-              lockedPromptText={lockedPromptText}
-              sourcePostId={sourcePostId}
-            />
+            {form}
+            <PromptLockedGenerationResults />
           </GenerationStateProvider>
         </div>
       </SheetContent>
