@@ -1,8 +1,17 @@
 -- ===============================================
--- 派生生成の原作に「公開プロンプト」も許可する
+-- validate_derived_prompt_source のフォロー判定を修正する
 -- ===============================================
--- 設計判断: docs/planning/free-prompt-private-mode-implementation-plan.md
---           ADR-006 / REQ-008 の改訂
+-- 20260731090000 で関数を書き直した際、follows の列名を `followee_id` から
+-- `following_id` へ取り違えた。plpgsql は関数本体の SQL を CREATE 時に
+-- 検証しないため、適用は成功し**実行時にだけ** 42703 で落ちる状態になった。
+--
+-- 影響: 早期 return を通り抜けたすべての呼び出しが例外になる。呼び出し側は
+-- いずれも fail closed なので秘匿は緩まないが、派生生成が一切できない。
+-- 本番の該当投稿は1件・派生生成の実績は0件のため利用者影響は無い。
+--
+-- 以下は 20260731090000 と同じ内容で、フォロー判定の列名だけを直したもの。
+-- 元の意図（公開プロンプトも原作にできるようにする）は
+-- docs/planning/free-prompt-private-mode-implementation-plan.md ADR-006 / REQ-008。
 --
 -- 当初は「プロンプト非公開の投稿だけを派生生成の原作にできる」設計だった。
 -- 実機で見た結果、公開・非公開でプロンプト欄の UI が変わるのは分かりにくく、
@@ -153,6 +162,8 @@ GRANT EXECUTE ON FUNCTION public.validate_derived_prompt_source(uuid, uuid) TO s
 DO $$
 DECLARE
   v_available boolean;
+  v_post uuid;
+  v_author uuid;
 BEGIN
   SELECT is_available INTO v_available
   FROM public.validate_derived_prompt_source(
@@ -164,7 +175,28 @@ BEGIN
     RAISE EXCEPTION '存在しない原作が利用可能と判定された';
   END IF;
 
-  RAISE NOTICE '公開プロンプトを原作に許可した。他の条件は変更していない';
+  -- 早期 return では列名の誤りを検出できない。実在する free の root 投稿で
+  -- フォロー判定まで到達させ、関数本体が最後まで実行できることを確かめる。
+  SELECT id, user_id INTO v_post, v_author
+  FROM public.generated_images
+  WHERE generation_type = 'free'
+    AND is_posted = true
+    AND moderation_status = 'visible'
+    AND source_post_id IS NULL
+  LIMIT 1;
+
+  IF v_post IS NOT NULL THEN
+    -- 本人を requester にすると、フォロー判定を含む全条件を通過して true になる
+    SELECT is_available INTO v_available
+    FROM public.validate_derived_prompt_source(v_post, v_author);
+
+    IF v_available IS NOT TRUE THEN
+      RAISE EXCEPTION
+        '実在する free root 投稿 % を本人が使えない判定になった', v_post;
+    END IF;
+  END IF;
+
+  RAISE NOTICE 'フォロー判定の列名を followee_id へ修正した';
 END;
 $$;
 
