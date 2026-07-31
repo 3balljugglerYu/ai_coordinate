@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { Drawer } from "vaul";
 import {
   Dialog,
   DialogContent,
@@ -9,13 +10,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { GenerationFormContainer } from "@/features/generation/components/GenerationFormContainer";
 import { PromptLockedGenerationHeader } from "@/features/generation/components/PromptLockedGenerationHeader";
@@ -59,12 +53,16 @@ interface PromptLockedGenerationSheetProps {
  *
  * ## 画面幅で見せ方を変える
  *
- * - モバイル: 下から出るボトムシート
+ * - モバイル: vaul の Drawer。下からせり上がり、先頭で下へ引くと閉じる
  * - デスクトップ: 横長のモーダル。左に入力、右に生成結果を並べる
  *
  * ボトムシートは指の届く範囲へ寄せる仕組みで、広い画面では縦に間延びし、
  * 左右が大きく余る。「画像を選ぶ」モーダルと同じ2カラムに寄せて、
  * 入力しながら結果を見られるようにする。
+ *
+ * モバイルで shadcn の Sheet ではなく vaul を使うのは、「画像を選ぶ」の
+ * ドロワーと手触りを揃えるためである。shadcn の Sheet はスライドインはする
+ * ものの引いて閉じられず、同じ画面の中で操作感が食い違う。
  *
  * ## 生成結果を必ず描画する
  *
@@ -168,26 +166,42 @@ export function PromptLockedGenerationSheet({
   }
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
-        side="bottom"
-        className="max-h-[92vh] overflow-y-auto rounded-t-2xl"
-      >
-        {/* 読み上げ用。見出しは本文側の Free Style 表記が担う。 */}
-        <SheetHeader className="sr-only">
-          <SheetTitle>{t("lockedSheetTitle")}</SheetTitle>
-          <SheetDescription>{t("lockedSheetDescription")}</SheetDescription>
-        </SheetHeader>
+    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+      <Drawer.Portal>
+        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
+        <Drawer.Content
+          className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-white outline-none"
+          style={{ height: "92dvh", maxHeight: "92dvh" }}
+        >
+          {/*
+            つまみ。ここを引くと閉じる。本文が先頭まで戻っていれば本文側を
+            下へ引いても閉じるので、指の位置を選ばずに閉じられる。
+          */}
+          <div className="flex-shrink-0">
+            <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
+            {/* 読み上げ用。見出しは本文側の Free Style 表記が担う。 */}
+            <Drawer.Title className="sr-only">
+              {t("lockedSheetTitle")}
+            </Drawer.Title>
+            <Drawer.Description className="sr-only">
+              {t("lockedSheetDescription")}
+            </Drawer.Description>
+          </div>
 
-        {/* モバイルは縦に積む。入力の下に結果が続く。 */}
-        <div className="space-y-6 px-4 pb-8 pt-4">
-          <PromptLockedGenerationHeader />
-          <GenerationStateProvider>
-            {form}
-            <PromptLockedGenerationResults />
-          </GenerationStateProvider>
-        </div>
-      </SheetContent>
-    </Sheet>
+          {/*
+            本文。ここが先頭 (scrollTop = 0) のときだけ、下方向のドラッグが
+            ドロワーを閉じる操作になる。途中までスクロールしている間は通常の
+            スクロールが優先されるので、読んでいる最中に閉じない。
+          */}
+          <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-8 pt-2">
+            <PromptLockedGenerationHeader />
+            <GenerationStateProvider>
+              {form}
+              <PromptLockedGenerationResults />
+            </GenerationStateProvider>
+          </div>
+        </Drawer.Content>
+      </Drawer.Portal>
+    </Drawer.Root>
   );
 }
