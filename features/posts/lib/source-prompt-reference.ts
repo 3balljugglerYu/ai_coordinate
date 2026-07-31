@@ -34,6 +34,7 @@ import { getPostBeforeImageUrl, getPostThumbUrl } from "./utils";
 interface OriginResolvableRecord {
   id?: string;
   user_id: string | null;
+  generation_type?: string | null;
   prompt_visibility?: "public" | "private";
   source_post_id?: string | null;
   source_author_id?: string | null;
@@ -55,6 +56,14 @@ type OriginRow = {
 /**
  * 参照カードを出すべき投稿かを判定し、原作の投稿 ID を返す。
  * カード不要なら null。
+ *
+ * 条件は `getPostPromptDisplayMode` が `source_reference` を返す条件と
+ * 一致させること。片方だけを変えると、カードを出すと決めたのに中身が
+ * 解決できず、プロンプト欄ごと何も表示されなくなる（実際に起きた）。
+ * `tests/unit/features/posts/source-prompt-reference.test.ts` の
+ * 「表示モードとの整合」がこの一致を機械的に検査する。
+ *
+ * `prompt_visibility` は条件に入れない。公開・非公開のどちらでもカードを出す。
  */
 export function resolveOriginPostId(
   record: OriginResolvableRecord
@@ -62,7 +71,7 @@ export function resolveOriginPostId(
   if (record.source_post_id) {
     return record.source_post_id;
   }
-  if (record.prompt_visibility === "private" && record.id) {
+  if (record.generation_type === "free" && record.id) {
     return record.id;
   }
   return null;
