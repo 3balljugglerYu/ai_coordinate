@@ -4,8 +4,19 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Check, Copy, Sparkles, User } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
@@ -107,9 +118,11 @@ export function SourcePromptReferenceCard({
   subscriptionPlan,
 }: SourcePromptReferenceCardProps) {
   const t = useTranslations("posts");
+  const router = useRouter();
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
+  const [isOpenOriginConfirmOpen, setIsOpenOriginConfirmOpen] = useState(false);
 
   const isOwnPrompt =
     !!currentUserId && !!reference.authorId && currentUserId === reference.authorId;
@@ -126,6 +139,18 @@ export function SourcePromptReferenceCard({
         : null;
 
   const authorName = reference.authorNickname?.trim();
+
+  /*
+    カードから原作の投稿へ移動できるようにする。
+
+    出すのは派生投稿を見ているときだけ。root の投稿では原作が「いま見ている
+    投稿そのもの」なので、押しても同じページへ戻るだけになる。
+
+    タップですぐ移動させず確認を挟むのは、カードが「このプロンプトで作る」の
+    ための面でもあり、生成しに来た人が誤タップで別ページへ飛ばされると
+    入力内容を失うためである（One-Tap Style のカードと同じ作法）。
+  */
+  const canOpenOrigin = isDerivedPost && reference.isAvailable;
   // コピーは公開プロンプトだけ。生成と同じフォローゲートを通す。
   const canCopyPrompt = canGenerate && reference.promptVisibility === "public";
 
@@ -190,8 +215,30 @@ export function SourcePromptReferenceCard({
       */}
       {reference.isAvailable ? (
         <Card
-          className={`overflow-hidden p-0 ${canGenerate ? "" : "opacity-70"}`}
+          className={`overflow-hidden p-0 ${canGenerate ? "" : "opacity-70"} ${
+            canOpenOrigin ? "cursor-pointer transition hover:ring-2 hover:ring-primary/40" : ""
+          }`}
           style={{ width: cardWidth, maxWidth: "100%" }}
+          role={canOpenOrigin ? "button" : undefined}
+          tabIndex={canOpenOrigin ? 0 : undefined}
+          aria-label={
+            canOpenOrigin ? t("sourcePromptOpenOriginConfirmTitle") : undefined
+          }
+          onClick={
+            canOpenOrigin
+              ? () => setIsOpenOriginConfirmOpen(true)
+              : undefined
+          }
+          onKeyDown={
+            canOpenOrigin
+              ? (event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setIsOpenOriginConfirmOpen(true);
+                  }
+                }
+              : undefined
+          }
         >
           {/*
             サムネイル。利用不可のカードはそもそも描画しないので、ここで URL が
@@ -369,6 +416,34 @@ export function SourcePromptReferenceCard({
           {t("sourcePromptViewProfile")}
         </Link>
       ) : null}
+
+      <AlertDialog
+        open={isOpenOriginConfirmOpen}
+        onOpenChange={setIsOpenOriginConfirmOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {t("sourcePromptOpenOriginConfirmTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("sourcePromptOpenOriginConfirmDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {t("sourcePromptOpenOriginConfirmCancel")}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() =>
+                router.push(`/posts/${encodeURIComponent(reference.postId)}`)
+              }
+            >
+              {t("sourcePromptOpenOriginConfirmAction")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {canGenerate ? (
         <PromptLockedGenerationSheet

@@ -46,6 +46,51 @@ jest.mock("next/image", () => ({
     React.createElement("img", { alt, src, ...props }),
 }));
 
+const pushMock = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock }),
+}));
+
+jest.mock("@/components/ui/alert-dialog", () => ({
+  AlertDialog: ({
+    children,
+    open,
+  }: {
+    children: React.ReactNode;
+    open: boolean;
+  }) => (open ? <div>{children}</div> : null),
+  AlertDialogContent: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogFooter: ({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  ),
+  AlertDialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <h2>{children}</h2>
+  ),
+  AlertDialogDescription: ({ children }: { children: React.ReactNode }) => (
+    <p>{children}</p>
+  ),
+  AlertDialogCancel: ({ children }: { children: React.ReactNode }) => (
+    <button type="button">{children}</button>
+  ),
+  AlertDialogAction: ({
+    children,
+    onClick,
+  }: {
+    children: React.ReactNode;
+    onClick?: () => void;
+  }) => (
+    <button type="button" onClick={onClick}>
+      {children}
+    </button>
+  ),
+}));
+
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
@@ -83,6 +128,11 @@ const translations = {
   sourcePromptCopy: "プロンプトをコピーする",
   sourcePromptCopied: "コピーしました",
   sourcePromptCopyFailed: "コピーできませんでした",
+  sourcePromptOpenOriginConfirmTitle: "原作のページに移動しますか？",
+  sourcePromptOpenOriginConfirmDescription:
+    "「はい」を選択すると、このプロンプトの原作の投稿へ移動します。",
+  sourcePromptOpenOriginConfirmCancel: "キャンセル",
+  sourcePromptOpenOriginConfirmAction: "はい",
 } as const;
 
 const translator = ((
@@ -150,6 +200,7 @@ function thumbnailRow(): HTMLElement {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  pushMock.mockClear();
   (useTranslations as jest.MockedFunction<typeof useTranslations>)
     .mockReturnValue(translator);
 });
@@ -547,6 +598,62 @@ describe("プロンプトのコピー", () => {
       expect(fetchSourcePromptText).toHaveBeenCalledWith(ORIGIN_POST_ID);
       expect(copyTextToClipboard).toHaveBeenCalledWith("白いワンピースにして");
     });
+  });
+});
+
+describe("原作の投稿への遷移", () => {
+  it("派生投稿ではカードを押せる", () => {
+    renderCard({ isDerivedPost: true });
+
+    expect(
+      screen.getByRole("button", { name: "原作のページに移動しますか？" })
+    ).toBeInTheDocument();
+  });
+
+  it("root の投稿では押せない", () => {
+    // 原作が「いま見ている投稿そのもの」なので、押しても同じページへ戻るだけ
+    renderCard({ isDerivedPost: false });
+
+    expect(
+      screen.queryByRole("button", { name: "原作のページに移動しますか？" })
+    ).not.toBeInTheDocument();
+  });
+
+  it("押すとすぐには遷移せず確認を出す", () => {
+    // 生成しに来た人が誤タップで飛ばされると入力内容を失う
+    renderCard({ isDerivedPost: true });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "原作のページに移動しますか？" })
+    );
+
+    expect(
+      screen.getByText("「はい」を選択すると、このプロンプトの原作の投稿へ移動します。")
+    ).toBeInTheDocument();
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+
+  it("確認して初めて原作の投稿へ移動する", () => {
+    renderCard({ isDerivedPost: true });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "原作のページに移動しますか？" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "はい" }));
+
+    expect(pushMock).toHaveBeenCalledWith(`/posts/${ORIGIN_POST_ID}`);
+  });
+
+  it("原作が使えないときは押せない", () => {
+    // カードごと描画しないので確認ダイアログの起点も無い
+    renderCard({
+      isDerivedPost: true,
+      reference: buildReference({ isAvailable: false, thumbnailUrl: null }),
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "原作のページに移動しますか？" })
+    ).not.toBeInTheDocument();
   });
 });
 
