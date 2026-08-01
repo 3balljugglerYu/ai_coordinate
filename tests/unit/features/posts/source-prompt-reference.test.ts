@@ -12,7 +12,10 @@ import {
   resolveOriginPostId,
   resolveSourcePromptReference,
 } from "@/features/posts/lib/source-prompt-reference";
-import { getPostPromptDisplayMode } from "@/features/generation/lib/prompt-visibility";
+import {
+  getPostPromptDisplayMode,
+  shouldShowPromptWithCard,
+} from "@/features/generation/lib/prompt-visibility";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 const POST_ID = "11111111-1111-4111-8111-111111111111";
@@ -188,12 +191,16 @@ describe("resolveOriginPostId", () => {
 /**
  * 表示モードとの整合。
  *
- * 「カードを出す」と決める側 (getPostPromptDisplayMode) と、カードの中身を
- * 作る側 (resolveOriginPostId) は別ファイルにある。片方だけ変えると、
- * カードを出すと決めたのに中身が null になり、プロンプト欄ごと何も
- * 表示されなくなる。実際に「公開へ切り替えたら何も見えない」形で起きた。
+ * 「カードを出す」と決める側 (prompt-visibility.ts) と、カードの中身を作る側
+ * (resolveOriginPostId) は別ファイルにある。片方だけ変えると、カードを出すと
+ * 決めたのに中身が null になり、プロンプト欄ごと何も表示されなくなる。
+ * 実際に「公開へ切り替えたら何も見えない」形で起きた。
  *
- * 総当たりで両者の一致を機械的に検査する。
+ * カードが出るのは2通りある。
+ * - `source_reference`: カードだけを出す（非公開を第三者が見たとき）
+ * - `prompt` + `shouldShowPromptWithCard`: 本文の上にカードを並べる
+ *
+ * どちらでも中身が要る。総当たりで両方向の一致を機械的に検査する。
  */
 describe("表示モードとの整合", () => {
   const GENERATION_TYPES = [
@@ -204,66 +211,92 @@ describe("表示モードとの整合", () => {
   ] as const;
   const VISIBILITIES = ["public", "private"] as const;
   const SOURCES = [null, ORIGIN_POST_ID] as const;
+  const OWNERS = [true, false] as const;
 
-  it("source_reference を返す組み合わせでは必ず原作 ID が解決できる", () => {
+  function buildRecord(
+    generationType: string,
+    promptVisibility: "public" | "private",
+    sourcePostId: string | null
+  ) {
+    return {
+      id: POST_ID,
+      user_id: AUTHOR_ID,
+      prompt: "本文",
+      generation_type: generationType,
+      prompt_visibility: promptVisibility,
+      source_post_id: sourcePostId,
+    };
+  }
+
+  /** 画面がカードを描画する条件。呼び出し側の分岐と同じ形で書く。 */
+  function cardIsRendered(
+    record: ReturnType<typeof buildRecord>,
+    isOwner: boolean
+  ): boolean {
+    return (
+      getPostPromptDisplayMode(record, { isOwner }) === "source_reference" ||
+      shouldShowPromptWithCard(record, { isOwner })
+    );
+  }
+
+  it("カードを出す組み合わせでは必ず原作 ID が解決できる", () => {
     for (const generationType of GENERATION_TYPES) {
       for (const promptVisibility of VISIBILITIES) {
         for (const sourcePostId of SOURCES) {
-          const record = {
-            id: POST_ID,
-            user_id: AUTHOR_ID,
-            prompt: "本文",
-            generation_type: generationType,
-            prompt_visibility: promptVisibility,
-            source_post_id: sourcePostId,
-          };
+          for (const isOwner of OWNERS) {
+            const record = buildRecord(
+              generationType,
+              promptVisibility,
+              sourcePostId
+            );
+            if (!cardIsRendered(record, isOwner)) continue;
 
-          const mode = getPostPromptDisplayMode(record);
-          if (mode !== "source_reference") continue;
-
-          expect({
-            generationType,
-            promptVisibility,
-            sourcePostId,
-            originPostId: resolveOriginPostId(record),
-          }).toEqual({
-            generationType,
-            promptVisibility,
-            sourcePostId,
-            originPostId: sourcePostId ?? POST_ID,
-          });
+            expect({
+              generationType,
+              promptVisibility,
+              sourcePostId,
+              isOwner,
+              originPostId: resolveOriginPostId(record),
+            }).toEqual({
+              generationType,
+              promptVisibility,
+              sourcePostId,
+              isOwner,
+              originPostId: sourcePostId ?? POST_ID,
+            });
+          }
         }
       }
     }
   });
 
-  it("原作 ID が解決できる組み合わせでは必ず source_reference になる", () => {
-    // 逆向きも見る。カードの中身だけ作られて表示されない状態も無駄なクエリになる。
+  it("原作 ID が解決できる組み合わせでは必ずカードを出す", () => {
+    // 逆向きも見る。中身だけ作られて表示されない状態は無駄なクエリになる。
     for (const generationType of GENERATION_TYPES) {
       for (const promptVisibility of VISIBILITIES) {
         for (const sourcePostId of SOURCES) {
-          const record = {
-            id: POST_ID,
-            user_id: AUTHOR_ID,
-            prompt: "本文",
-            generation_type: generationType,
-            prompt_visibility: promptVisibility,
-            source_post_id: sourcePostId,
-          };
+          for (const isOwner of OWNERS) {
+            const record = buildRecord(
+              generationType,
+              promptVisibility,
+              sourcePostId
+            );
+            if (resolveOriginPostId(record) === null) continue;
 
-          if (resolveOriginPostId(record) === null) continue;
-
-          expect({
-            generationType,
-            promptVisibility,
-            sourcePostId,
-            mode: getPostPromptDisplayMode(record),
-          }).toEqual({
-            generationType,
-            promptVisibility,
-            sourcePostId,
-            mode: "source_reference",
-          });
+            expect({
+              generationType,
+              promptVisibility,
+              sourcePostId,
+              isOwner,
+              rendered: cardIsRendered(record, isOwner),
+            }).toEqual({
+              generationType,
+              promptVisibility,
+              sourcePostId,
+              isOwner,
+              rendered: true,
+            });
+          }
         }
       }
     }
