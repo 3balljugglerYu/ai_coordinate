@@ -314,6 +314,14 @@ export interface GenerationRequest {
    * "source"(自動) または明示9比率。free 生成時のみ有効(サーバ側 schema で検証)。
    */
   outputAspectRatioMode?: FreeOutputAspectRatioMode;
+  /**
+   * 派生生成の原作 root 投稿 ID（プロンプト非公開モード）。
+   *
+   * これを指定した場合、`prompt` は送らない。本文はサーバーが原作の
+   * author secret から解決するため、クライアントへ渡さずに済む（REQ-005）。
+   * サーバー側 schema が本文との同時指定を 400 にする。
+   */
+  sourcePostId?: string;
 }
 
 export interface GenerationResponse {
@@ -348,6 +356,9 @@ export interface GeneratedImageData {
   // ユーザーが「Before 画像を表示しない」を選択しているかどうか。
   // false のとき Before/After トグルは出さない。
   showBeforeImage?: boolean;
+  // 派生生成の原作 root 投稿。値があると投稿モーダルの
+  // 「プロンプトを公開する」トグルを出さない（常に非公開が強制されるため）。
+  sourcePostId?: string | null;
 }
 
 /**

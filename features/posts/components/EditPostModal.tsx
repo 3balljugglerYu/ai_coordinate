@@ -16,6 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import type { GenerationType } from "@/features/generation/types";
+import {
+  PromptVisibilityField,
+  type PromptVisibilityValue,
+} from "./PromptVisibilityField";
 import { updatePostCaption } from "../lib/api";
 
 interface EditPostModalProps {
@@ -29,6 +34,15 @@ interface EditPostModalProps {
   afterImageUrl?: string | null;
   /** 関連する Before 画像 URL（永続パスまたは楽観 fallback） */
   beforeImageUrl?: string | null;
+  /**
+   * 生成種別。プロンプト非公開トグルは `free` の root 投稿だけに出す。
+   * 未指定ならトグルを出さない（列を触らないので既存値が維持される）。
+   */
+  generationType?: GenerationType | null;
+  /** 派生投稿の原作 ID。値があるとトグルを出さない（常に非公開が強制される）。 */
+  sourcePostId?: string | null;
+  /** 既存投稿の prompt_visibility。未指定なら公開として扱う。 */
+  currentPromptVisibility?: "public" | "private";
 }
 
 const MAX_CAPTION_LENGTH = 200;
@@ -41,6 +55,9 @@ export function EditPostModal({
   currentShowBeforeImage,
   afterImageUrl,
   beforeImageUrl,
+  generationType,
+  sourcePostId,
+  currentPromptVisibility,
 }: EditPostModalProps) {
   const t = useTranslations("posts");
   const router = useRouter();
@@ -48,6 +65,9 @@ export function EditPostModal({
   const [showBeforeImage, setShowBeforeImage] = useState(
     currentShowBeforeImage !== false
   );
+  // 既存投稿の値をそのまま出す。未設定は非公開（新しい既定）として扱う。
+  const [promptVisibility, setPromptVisibility] =
+    useState<PromptVisibilityValue>(currentPromptVisibility ?? "private");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,9 +75,10 @@ export function EditPostModal({
     if (open) {
       setCaption(currentCaption || "");
       setShowBeforeImage(currentShowBeforeImage !== false);
+      setPromptVisibility(currentPromptVisibility ?? "private");
       setError(null);
     }
-  }, [open, currentCaption, currentShowBeforeImage]);
+  }, [open, currentCaption, currentShowBeforeImage, currentPromptVisibility]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -75,6 +96,10 @@ export function EditPostModal({
         id: imageId,
         caption: caption.trim() || undefined,
         show_before_image: showBeforeImage,
+        // トグルを出していない投稿では列を触らない（既存値を維持）
+        ...(canChoosePromptVisibility
+          ? { prompt_visibility: promptVisibility }
+          : {}),
       }, {
         updateFailed: t("updateFailed"),
       });
@@ -95,6 +120,16 @@ export function EditPostModal({
 
   const remainingChars = MAX_CAPTION_LENGTH - caption.length;
   const isOverLimit = caption.length > MAX_CAPTION_LENGTH;
+
+  // 非公開を選べるのは「じゆうモードで作った自分の root 投稿」だけ
+  const canChoosePromptVisibility =
+    generationType === "free" && !sourcePostId;
+  // 公開 → 非公開へ切り替えようとしている最中だけ、回収できないことを伝える。
+  // 元から非公開の投稿で毎回出すと、警告が読み飛ばされる（REQ-015）。
+  const isSwitchingToPrivate =
+    canChoosePromptVisibility &&
+    promptVisibility === "private" &&
+    currentPromptVisibility === "public";
 
   // チェック ON のときだけ Before も並べて表示する（OFF 時は After 単独）
   const showBeforeInPreview = showBeforeImage && !!beforeImageUrl;
@@ -171,22 +206,44 @@ export function EditPostModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="edit-show-before-image"
-                checked={showBeforeImage}
-                onCheckedChange={(checked) =>
-                  setShowBeforeImage(checked === true)
-                }
-                disabled={isSubmitting}
-              />
-              <Label
-                htmlFor="edit-show-before-image"
-                className="cursor-pointer text-sm font-medium"
-              >
-                {t("showBeforeImageLabel")}
-              </Label>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-show-before-image"
+                  checked={showBeforeImage}
+                  onCheckedChange={(checked) =>
+                    setShowBeforeImage(checked === true)
+                  }
+                  disabled={isSubmitting}
+                />
+                <Label
+                  htmlFor="edit-show-before-image"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  {t("showBeforeImageLabel")}
+                </Label>
+              </div>
+              <p className="pl-6 text-xs leading-relaxed text-muted-foreground">
+                {t("showBeforeImageHint")}
+              </p>
             </div>
+
+            {canChoosePromptVisibility && (
+              <div className="space-y-2">
+                <PromptVisibilityField
+                  value={promptVisibility}
+                  onChange={setPromptVisibility}
+                  disabled={isSubmitting}
+                  idPrefix="edit"
+                />
+                {/* 公開 → 非公開のときだけ。元から非公開なら毎回出さない（REQ-015） */}
+                {isSwitchingToPrivate && (
+                  <p className="pl-6 text-xs font-medium leading-relaxed text-amber-700">
+                    {t("promptVisibilityRetractWarning")}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <DialogFooter>

@@ -6,7 +6,7 @@ import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
 import Image from "next/image";
 import Link from "next/link";
-import { User, MoreHorizontal, Edit, Trash2, Copy, Check } from "lucide-react";
+import { User, MoreHorizontal, Edit, Trash2, Copy, Check, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -25,7 +25,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import { OneTapStyleDetailCard } from "@/features/style/components/OneTapStyleDetailCard";
-import { getVisiblePrompt } from "@/features/generation/lib/prompt-visibility";
+import {
+  getPostPromptDisplayMode,
+  getVisiblePrompt,
+  shouldShowPromptWithCard,
+} from "@/features/generation/lib/prompt-visibility";
+import { SourcePromptReferenceCard } from "./SourcePromptReferenceCard";
+import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { SubscriptionBadge } from "@/features/subscription/components/SubscriptionBadge";
 import type { Post } from "../types";
@@ -47,6 +54,11 @@ interface PostDetailStaticProps {
   originalImageUrl?: string | null;
   isHidden?: boolean;
   onHidden?: () => void;
+  /**
+   * 閲覧者の購読プラン。派生生成シートのモデル選択・上限に使う。
+   * 投稿者のプランではないので post.user.subscription_plan とは別物。
+   */
+  viewerSubscriptionPlan?: SubscriptionPlan;
 }
 
 /**
@@ -56,6 +68,7 @@ interface PostDetailStaticProps {
 export function PostDetailStatic({
   post,
   currentUserId,
+  viewerSubscriptionPlan = "free",
   imageAspectRatio,
   postId,
   initialLikeCount,
@@ -98,6 +111,36 @@ export function PostDetailStatic({
   const oneTapStylePreset = getOneTapStylePresetMetadata(post);
   const visiblePrompt = getVisiblePrompt(post);
   const hasVisiblePrompt = visiblePrompt.trim().length > 0;
+  // 表示モードは1箇所で決める（REQ-013）。
+  // 本人には自分の非公開プロンプトを見せる（忘れたときに確認できないと編集もできない）。
+  const promptDisplayMode = getPostPromptDisplayMode(post, { isOwner });
+  // /free の投稿で、本人または公開プロンプトのときはカードと本文を並べる
+  const showsCardWithPrompt = shouldShowPromptWithCard(post, { isOwner });
+  /*
+    本人以外の本文は payload に載せていない（未フォロワーのブラウザへ届かせない
+    ため）。公開プロンプトを併記するときだけ、サーバー側で認可する
+    /api/posts/[id]/prompt-text から取りに行く。
+
+    未フォロワーには 404 が返るので本文は出ない。カード側が
+    「フォローすると使えます」と次の行動を示すので、伏字を並べる必要はない。
+  */
+  const [fetchedPromptText, setFetchedPromptText] = useState<string | null>(
+    null
+  );
+  // 参照カードのフォロー判定の対象は原作者。派生投稿では投稿者と別人になる（ADR-003）。
+  const sourceAuthorId = post.source_reference?.authorId ?? null;
+  const isSourceAuthorSelf =
+    !!currentUserId && !!sourceAuthorId && currentUserId === sourceAuthorId;
+  /*
+    フォロー済みと確認できた原作者の ID を持つ。boolean ではなく ID を持つのは、
+    別の投稿へ移って原作者が変わったときに前の判定が残らないようにするため。
+  */
+  const [followedSourceAuthorId, setFollowedSourceAuthorId] = useState<
+    string | null
+  >(null);
+  const isFollowingSourceAuthor =
+    isSourceAuthorSelf ||
+    (!!sourceAuthorId && followedSourceAuthorId === sourceAuthorId);
 
   const handleCopyPrompt = async () => {
     if (!canViewPrompt || !hasVisiblePrompt) {
@@ -109,7 +152,7 @@ export function PostDetailStatic({
     }
     if (hasVisiblePrompt) {
       try {
-        await copyTextToClipboard(visiblePrompt);
+        await copyTextToClipboard(displayPrompt);
         setIsPromptCopied(true);
         toast({
           title: postsT("copySuccessTitle"),
@@ -149,7 +192,78 @@ export function PostDetailStatic({
     fetchFollowStatus();
   }, [currentUserId, followUserId, isOwner]);
 
+  /**
+   * 参照カード用のフォロー判定。対象は原作者で、投稿者とは別人になり得る。
+   *
+   * サーバーの payload に載せずクライアントで取るのは、投稿詳細が
+   * `use cache` (cacheLife("minutes")) を通るためである。フォローした直後に
+   * カードが有効化されないと操作の手応えを失う。押せてしまった場合でも
+   * 生成API・Worker・完了RPCが再検証するので、権限が緩む方向には倒れない。
+   *
+   * effect 内で同期的に setState しない。自分が原作者・原作者不明・未ログインは
+   * 派生値で表現できるため、ここでは fetch 結果だけを state へ入れる。
+   */
+  useEffect(() => {
+    if (!sourceAuthorId || !currentUserId || isSourceAuthorSelf) {
+      return;
+    }
+    let cancelled = false;
+    fetch(`/api/users/${sourceAuthorId}/follow-status`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled) return;
+        setFollowedSourceAuthorId(data?.isFollowing ? sourceAuthorId : null);
+      })
+      .catch((error) => {
+        console.error("Failed to fetch source author follow status:", error);
+        if (!cancelled) setFollowedSourceAuthorId(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentUserId, sourceAuthorId, isSourceAuthorSelf]);
+
+  useEffect(() => {
+    if (!showsCardWithPrompt || isOwner || !post.id) {
+      return;
+    }
+    // payload に本文があるならそれで足りる
+    if (visiblePrompt.trim().length > 0) {
+      return;
+    }
+    let cancelled = false;
+    fetchSourcePromptText(post.id)
+      .then((text) => {
+        if (!cancelled) setFetchedPromptText(text);
+      })
+      .catch(() => {
+        if (!cancelled) setFetchedPromptText(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [showsCardWithPrompt, isOwner, post.id, visiblePrompt]);
+
   const maskedPrompt = hasVisiblePrompt ? "*".repeat(visiblePrompt.length) : "";
+  /*
+    表示する本文。
+
+    /free（カード併記）: 本人は payload、フォロワーは API から取った値。
+    未フォロワーは取得できないので空になり、本文ブロックごと出ない。
+    カード側が「フォローすると使えます」と次の行動を示すため、伏字は要らない。
+
+    それ以外（coordinate 等）: 従来どおり、閲覧不可なら伏字を出す。
+    カードが無くゲートの理由を示す場所が他に無いため、伏字が
+    「本文はあるが今は見られない」ことを伝える役目を持つ。
+  */
+  const displayPrompt = showsCardWithPrompt
+    ? hasVisiblePrompt
+      ? visiblePrompt
+      : fetchedPromptText ?? ""
+    : canViewPrompt
+      ? visiblePrompt
+      : maskedPrompt;
+  const hasDisplayPrompt = displayPrompt.trim().length > 0;
 
   useEffect(() => {
     if (!beforeImageUrl || !afterImageFrameRef.current) {
@@ -436,18 +550,59 @@ export function PostDetailStatic({
           generationType={post.generation_type ?? null}
         />
 
-        {/* プロンプト */}
-        {oneTapStylePreset ? (
+        {/*
+          プロンプト欄。表示モードは getPostPromptDisplayMode の4分岐に従う。
+          分岐条件をここに散らすと、非公開の投稿に本文が出る事故が起きる。
+        */}
+        {promptDisplayMode === "one_tap_style" ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
-            <OneTapStyleDetailCard preset={oneTapStylePreset} />
+            <OneTapStyleDetailCard preset={oneTapStylePreset!} />
           </div>
-        ) : hasVisiblePrompt ? (
+        ) : promptDisplayMode === "source_reference" && post.source_reference ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
+            <SourcePromptReferenceCard
+              reference={post.source_reference}
+              currentUserId={currentUserId ?? null}
+              isFollowingAuthor={isFollowingSourceAuthor}
+              isDerivedPost={!!post.source_post_id}
+              subscriptionPlan={viewerSubscriptionPlan}
+            />
+          </div>
+        ) : promptDisplayMode === "prompt" ? (
+          <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
+            {/* カードを本文の上へ。利用数と「このプロンプトで作る」はカード側にある */}
+            {showsCardWithPrompt && post.source_reference ? (
+              <div className="mb-3">
+                <SourcePromptReferenceCard
+                  reference={post.source_reference}
+                  currentUserId={currentUserId ?? null}
+                  isFollowingAuthor={isFollowingSourceAuthor}
+                  isDerivedPost={!!post.source_post_id}
+                  subscriptionPlan={viewerSubscriptionPlan}
+                />
+              </div>
+            ) : null}
+
+            {hasDisplayPrompt ? (
+            <>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-gray-700">
+              <span className="flex items-center gap-1.5 text-sm font-bold text-gray-700">
                 {postsT("prompt")}
+                {/* 本人が非公開にしている投稿であることを本人にだけ示す */}
+                {post.prompt_visibility === "private" ? (
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-600">
+                    <Lock className="h-2.5 w-2.5" aria-hidden="true" />
+                    {postsT("promptPrivateBadge")}
+                  </span>
+                ) : null}
               </span>
+              {/*
+                コピーは /free ではカード側の「プロンプトをコピーする」に寄せた。
+                本人の画面ではカードと本文が並ぶので、ここにも置くと二重になる。
+                coordinate は従来どおりここにコピーを残す。
+              */}
               <div className="flex items-center gap-2">
+                {showsCardWithPrompt ? null : (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -466,9 +621,12 @@ export function PostDetailStatic({
                     </>
                   )}
                 </Button>
+                )}
               </div>
             </div>
-            <CollapsibleText text={canViewPrompt ? visiblePrompt : maskedPrompt} maxLines={1} />
+            <CollapsibleText text={displayPrompt} maxLines={1} />
+            </>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -516,6 +674,9 @@ export function PostDetailStatic({
           currentShowBeforeImage={post.show_before_image}
           afterImageUrl={displayImageUrl}
           beforeImageUrl={beforeImageUrl}
+          generationType={post.generation_type ?? null}
+          sourcePostId={post.source_post_id ?? null}
+          currentPromptVisibility={post.prompt_visibility}
         />
       )}
 
@@ -539,6 +700,8 @@ export function PostDetailStatic({
           currentCaption={post.caption || undefined}
           afterImageUrl={displayImageUrl}
           beforeImageUrl={beforeImageUrl}
+          generationType={post.generation_type ?? null}
+          sourcePostId={post.source_post_id ?? null}
         />
       )}
     </div>

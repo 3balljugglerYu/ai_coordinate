@@ -69,7 +69,7 @@ app/(app)/style/generate-async/handler.ts:578-579
 | ③ | フォロー判定は**原作者**に対して。カードから直接フォローできる |
 | ④ | 派生投稿はプロンプトを表示しない |
 | ⑤ | ペルコインは通常の `/free` 生成と同額。原作者への還元はなし |
-| ⑥ | 既定は**公開**。投稿者が明示的に非公開を選ぶ。投稿後も切り替え可能 |
+| ⑥ | ~~既定は**公開**~~ → **改訂（2026-08-03）: 既定は非公開**。ラジオ2択で明示的に選ぶ。投稿後も切り替え可能 |
 | ⑦ | 運営はプロンプト全文を閲覧可。非公開提供を示すバッジを admin に出す |
 | ⑧ | 原作者の投稿に**利用数**を表示する（原作者自身の生成は除外） |
 
@@ -282,7 +282,7 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Public: "投稿時に既定で公開"
+    [*] --> Private: "投稿時に既定で非公開"
     Public --> Private: "編集モーダルで非公開にする"
     Private --> Public: "編集モーダルで公開にする"
     Private --> Unavailable: "削除 投稿取消 公開停止"
@@ -397,8 +397,10 @@ erDiagram
 - **REQ-010**: The system shall keep `source_post_id` immutable after creation.
   システムは作成後の `source_post_id` を不変にしなければならない。
 
-- **REQ-011**: While the origin post has been deleted, the system shall retain the lineage and render the credit in a disabled state, rather than losing the attribution.
-  原作の投稿が削除されている間、システムは出所を保持し、クレジットを無効状態で表示しなければならない。出所を失ってはならない。
+- **REQ-011（改訂）**: While the origin post is unavailable, the system shall retain the lineage in the database, and the UI shall show only the section heading and a single unavailability message, omitting the thumbnail, credit, usage count and profile link.
+  原作の投稿が利用できない間、システムは出所をデータベース上に保持しなければならない。UI は表題と利用不可の文言だけを表示し、サムネイル・クレジット・利用数・プロフィール導線を出してはならない。
+
+  **改訂の理由（2026-07-30・実機確認後）**: 当初は「クレジットを無効状態で表示する」としていたが、実際に投稿取消を試すと、縦に大きな空のサムネイル枠が残り壊れて見えた。加えて、解消しようのない状態でクレジット・利用数・プロフィール導線を見せても閲覧者の次の行動につながらない。取り消した投稿へ注目を集めない方が原作者の意思にも沿う。`source_post_id` / `source_author_id` は DB に残り続けるため、系譜そのものは失われず、運営は admin から辿れる。
 
 - **REQ-012**: When a derived generation completes successfully, the system shall record an immutable usage event, and the usage count shall be computed from those events.
   派生生成が成功したとき、システムは改ざんできない利用イベントを記録し、利用数はそのイベントから算出しなければならない。
@@ -505,6 +507,15 @@ erDiagram
 - **Reason**: プロンプトは原作者の資産であり、派生者に公開の権限はない。
 - **Consequence**: 派生者は自分の投稿のプロンプトを見られない（ADR-002 により、そもそも所有物として保存されない）。
 
+### ADR-004b（改訂・2026-08-03）: 投稿時の既定を非公開にする
+
+- **Context**: 当初は「既定は公開。投稿者が明示的に非公開を選ぶ」と決めていた。実装後に、公開プロンプトの投稿者に何の見返りがあるかを検討した。
+- **Decision**: 既定を**非公開**にする。UI はチェックボックス1つではなくラジオ2択にし、選んだ側の説明だけを出す。
+- **Reason**: 既定は最も強い誘導であり、多くの人は触らない。非公開なら生成が必ず「このプロンプトで作る」を通るため、使われるたびに投稿者のところへ人が戻り、派生投稿にクレジットが付いて新しい入口になる。公開だとコピーされた分はその輪から外れ、アプリの外へ出る。「画像のみ公開・プロンプト非公開で moat を作る」という中核方針とも一致する。
+  - チェックボックス1つをやめたのは、「プロンプトを非公開にする」のチェックを外す＝「非公開にしないようにする」という二重否定になり読み違えを招くため。
+  - 公開への金銭的な報酬（ペルコイン等）は作らない。コピーは「クリップボードに入れた」以上を観測できず、報酬を付けると複数アカウントで水増しできる。対価はフォロワー1人（コピーにはフォローが必要）で既に成立している。
+- **Consequence**: 公開プロンプトは相対的に少なくなり、コピー導線が使われる機会も減る。公開を選んだときは「コピーから作られた分は利用数に入りません」と事実を伝える。利用イベントは `sourcePostId` を伴う生成にしか記録されないため、コピーして Free Style へ貼った場合はアプリ内であっても数えられない。
+
 ### ADR-005: 利用不可の理由は開示せず、レスポンス形状も統一する
 
 - **Context**: 元投稿が削除・投稿取消・公開停止・非公開解除のいずれでも生成できない。
@@ -517,9 +528,10 @@ erDiagram
 - **Context**: プロンプトをクライアント経由で渡すと devtools で見える。また `sourcePostId` の検証が緩いと、**One-Tap Style や Inspire の投稿 ID を渡して秘匿プロンプトを回収できる**。
 - **Decision**: `sourcePostId` のみを受け取り、以下をすべて満たすときだけ実行する。
   - 対象が存在し `is_posted = true` かつ `moderation_status = 'visible'`
+    - **改訂（2026-07-31）**: `is_posted` は本人が自分の生成物を使う場合だけ問わない。マイページから自分の未投稿の生成物を開くと「現在、ご利用できません」になっていたが、自分のプロンプトなので使えるべき。未投稿は「まだ公開していない自分の下書き」でしかなく第三者へ渡らない（他人が ID を渡しても `user_id <> requester` で従来どおり弾かれ、投稿詳細の取得も未投稿は本人と管理者にしか返さない）。`moderation_status` は本人でも緩めない。公開停止になった内容から作り直せると措置の意味がなくなる
   - `generation_type = 'free'`
   - 根投稿である（`source_post_id IS NULL`）。派生 ID が渡されたら根へ解決する
-  - `prompt_visibility = 'private'`
+  - ~~`prompt_visibility = 'private'`~~ → **改訂（2026-07-31）**: 公開・非公開のどちらも原作にできる。公開設定でプロンプト欄の UI が変わるのは分かりにくく、「このプロンプトで作る」の入口はどちらでも同じであるべきという判断。公開のときはコピーボタンを併設し、シートの入力欄にも本文を表示する（編集は不可）。生成時に送るのは公開・非公開とも投稿 ID だけで、本文はサーバーが author secret から解決するため秘匿は緩まない
   - secrets 行が存在する
   - 原作者のアカウントが利用可能
   - リクエスト元が原作者をフォローしている、または本人
@@ -820,7 +832,7 @@ curl -sS "${SUPABASE_URL}/rest/v1/rpc/complete_image_job_with_prompt_secrets" \
   - 利用数は `get_prompt_usage_count` から取得
   - prompt表示値は author secret から解決する。クライアントへ prompt execution record を渡さない
 - [ ] `app/api/posts/post/route.ts` / `update/route.ts` に `promptVisibility` を追加
-- [ ] `PostModal.tsx` に「プロンプトを公開する」トグル（既定 ON）。派生投稿では出さない
+- [x] `PostModal.tsx` にラジオ2択「プロンプトを公開する / 非公開にする」（既定は非公開）。派生投稿では出さない
 - [ ] 「非公開 かつ 生成前の画像も非表示」のときの注意文
 - [ ] `EditPostModal.tsx` に同トグル。**公開→非公開の切替時に「すでに閲覧・コピーされた内容は回収できません」と明示**（REQ-015）
 - [ ] `features/posts/components/SourcePromptReferenceCard.tsx` を新規作成

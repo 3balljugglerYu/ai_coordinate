@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { PostModal } from "@/features/posts/components/PostModal";
 import { resolveBeforeImageUrlSync } from "@/features/posts/lib/before-image-cache";
-import type { GeneratedImageData } from "../types";
+import type { GeneratedImageData, GenerationType } from "../types";
 import { ImageModal } from "./ImageModal";
 import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 
@@ -18,6 +18,13 @@ interface GeneratedImageGalleryProps {
   isGenerating?: boolean;
   generatingCount?: number;
   onDownload?: (image: GeneratedImageData) => void;
+  /**
+   * この一覧が扱う generation_type。投稿モーダルの
+   * 「プロンプトを公開する」トグルの出し分けに使う。
+   * 画像単位ではなく一覧単位で渡すのは、生成直後の画像（DB 未取得）でも
+   * 種別が確定しているため。
+   */
+  generationType?: GenerationType | null;
 }
 
 const FALLBACK_SHOW_DELAY_MS = 800;
@@ -31,6 +38,7 @@ export function GeneratedImageGallery({
   isGenerating = false,
   generatingCount = 0,
   onDownload,
+  generationType,
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
@@ -289,6 +297,8 @@ export function GeneratedImageGallery({
           // Before 画像 URL を同期解決できれば PostModal 側の遅延を回避できる。
           // 解決不可（undefined）の場合は PostModal 側で API fallback。
           beforeImageUrl={resolveBeforeImageUrlSync(postModalImage) ?? undefined}
+          generationType={generationType}
+          sourcePostId={postModalImage.sourcePostId ?? null}
         />
       )}
 

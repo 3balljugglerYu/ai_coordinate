@@ -99,6 +99,13 @@ export async function POST(request: NextRequest) {
       typeof body?.show_before_image === "boolean"
         ? body.show_before_image
         : undefined;
+    // 未指定なら列を更新しない（既定は DB の 'public'）。
+    // enum 外の値は無視して既定へ倒す（fail closed ではなく既存挙動維持）。
+    const promptVisibility =
+      body?.prompt_visibility === "private" ||
+      body?.prompt_visibility === "public"
+        ? body.prompt_visibility
+        : undefined;
 
     if (!id) {
       return NextResponse.json(
@@ -108,7 +115,12 @@ export async function POST(request: NextRequest) {
     }
 
     // 投稿処理
-    const result = await postImageServer(id, caption, showBeforeImage);
+    const result = await postImageServer(
+      id,
+      caption,
+      showBeforeImage,
+      promptVisibility
+    );
 
     // デイリー投稿特典の付与（エラーが発生しても投稿は成功させる）
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
@@ -151,6 +163,25 @@ export async function POST(request: NextRequest) {
       subscription_plan: bonusMeta?.subscriptionPlan,
     });
   } catch (error) {
+    // free 以外の root で非公開を指定した場合は理由の分かる 400 を返す。
+    // trigger が拒否するため DB 側の不変条件は保たれているが、
+    // 「投稿に失敗しました」だけでは利用者が直せない。
+    // instanceof ではなくメッセージの構造的チェックにする。
+    // server-database をモックするテストでは helper が undefined になり、
+    // 呼び出し自体が例外になる（隣の post_suspended_cannot_publish と同じ理由）。
+    if (
+      error instanceof Error &&
+      error.message.includes("prompt_visibility=private")
+    ) {
+      return NextResponse.json(
+        {
+          error: copy.promptVisibilityNotAllowed,
+          errorCode: "POSTS_PROMPT_VISIBILITY_NOT_ALLOWED",
+        },
+        { status: 400 }
+      );
+    }
+
     // 公開停止中のコンテンツは DB trigger (enforce_no_publish_while_removed) が
     // 再公開を拒否する。クライアントに専用コードを返し、異議申立てへ案内させる。
     if (

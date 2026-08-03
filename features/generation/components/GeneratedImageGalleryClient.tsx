@@ -127,6 +127,7 @@ export function GeneratedImageGalleryClient({
               preGenerationStoragePath:
                 record.pre_generation_storage_path ?? null,
               showBeforeImage: record.show_before_image ?? true,
+              sourcePostId: record.source_post_id ?? null,
             } as GeneratedImageData;
           })
           .filter((img): img is GeneratedImageData => img !== null);
@@ -191,6 +192,7 @@ export function GeneratedImageGalleryClient({
           images={galleryImages}
           isGenerating={genState?.isGenerating ?? false}
           generatingCount={genState?.generatingCount ?? 0}
+          generationType={generationType}
         />
       ) : (
         <GeneratedImageList

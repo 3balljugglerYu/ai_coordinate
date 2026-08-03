@@ -94,6 +94,15 @@ const postTranslations = {
   afterImageLabel: "After",
   beforeImageLabel: "Before",
   showBeforeImageLabel: "生成前画像も表示する",
+  promptVisibilityLabel: "プロンプトの公開設定",
+  promptVisibilityPublicOption: "プロンプトを公開する",
+  promptVisibilityPrivateOption: "プロンプトを非公開にする",
+  promptVisibilityPublicHint:
+    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
+  promptVisibilityPrivateHint:
+    "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。",
+  showBeforeImageHint:
+    "元画像も表示することで、どんな変化が起きるか伝わりやすくなります。",
 } as const;
 
 const postsTranslator = ((key: keyof typeof postTranslations, values?: Record<string, unknown>) => {
@@ -372,5 +381,151 @@ describe("PostModal", () => {
     fireEvent.click(screen.getByRole("button", { name: "キャンセル" }));
 
     expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+  describe("プロンプトの公開設定", () => {
+    test("じゆうモードの root 投稿では選べる", () => {
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+        />
+      );
+
+      expect(
+        screen.getByLabelText("プロンプトを非公開にする")
+      ).toBeInTheDocument();
+      expect(
+        screen.getByLabelText("プロンプトを公開する")
+      ).toBeInTheDocument();
+    });
+
+    test("既定は非公開で prompt_visibility=private を送る", async () => {
+      // 非公開なら使うたびに投稿者へ人が戻る。既定は最も強い誘導なので
+      // 投稿者に返るほうへ倒す（ADR-004 改訂）。
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+        />
+      );
+
+      expect(screen.getByLabelText("プロンプトを非公開にする")).toBeChecked();
+
+      fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
+
+      await waitFor(() => {
+        expect(postImageAPIMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt_visibility: "private" }),
+          expect.anything()
+        );
+      });
+    });
+
+    test("公開を選ぶと prompt_visibility=public を送り説明が入れ替わる", async () => {
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+        />
+      );
+
+      // 選んだ側の説明だけを出す（両方並べるとモバイルで圧迫する）
+      expect(
+        screen.getByText(
+          "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。"
+        )
+      ).toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText("プロンプトを公開する"));
+
+      expect(
+        screen.getByText(
+          "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。"
+        )
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(
+          "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。"
+        )
+      ).not.toBeInTheDocument();
+
+      fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
+
+      await waitFor(() => {
+        expect(postImageAPIMock).toHaveBeenCalledWith(
+          expect.objectContaining({ prompt_visibility: "public" }),
+          expect.anything()
+        );
+      });
+    });
+
+    test("coordinate では出さず prompt_visibility も送らない", async () => {
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="coordinate"
+        />
+      );
+
+      expect(
+        screen.queryByLabelText("プロンプトを非公開にする")
+      ).not.toBeInTheDocument();
+
+      fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
+
+      await waitFor(() => {
+        expect(postImageAPIMock).toHaveBeenCalled();
+      });
+      const payload = postImageAPIMock.mock.calls[0][0];
+      expect("prompt_visibility" in payload).toBe(false);
+    });
+
+    test("派生投稿では出さない", () => {
+      render(
+        <PostModal
+          open
+          onOpenChange={jest.fn()}
+          imageId="image-1"
+          generationType="free"
+          sourcePostId="22222222-2222-4222-8222-222222222222"
+        />
+      );
+
+      expect(
+        screen.queryByLabelText("プロンプトを非公開にする")
+      ).not.toBeInTheDocument();
+    });
+
+    test("種別が渡されていない画面では出さない", () => {
+      render(<PostModal open onOpenChange={jest.fn()} imageId="image-1" />);
+
+      expect(
+        screen.queryByLabelText("プロンプトを非公開にする")
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("元画像の説明", () => {
+    test("チェックの有無によらず常に出す", () => {
+      // 外した瞬間に説明が現れるのは実質の引き止めになる。
+      // 元画像を出さない判断には見せたくない理由があることが多い。
+      render(<PostModal open onOpenChange={jest.fn()} imageId="image-1" />);
+
+      const hint =
+        "元画像も表示することで、どんな変化が起きるか伝わりやすくなります。";
+      expect(screen.getByText(hint)).toBeInTheDocument();
+
+      fireEvent.click(screen.getByLabelText("生成前画像も表示する"));
+
+      expect(screen.getByText(hint)).toBeInTheDocument();
+    });
   });
 });

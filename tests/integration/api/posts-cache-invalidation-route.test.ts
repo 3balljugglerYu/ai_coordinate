@@ -109,6 +109,8 @@ describe("Posts cache invalidation routes", () => {
     expect(mockPostImageServer).toHaveBeenCalledWith(
       "post-1",
       "fresh caption",
+      undefined,
+      // prompt_visibility 未指定なら列を触らない
       undefined
     );
     expect(mockRevalidateTag).toHaveBeenCalledWith("home-posts", "max");
@@ -152,7 +154,8 @@ describe("Posts cache invalidation routes", () => {
     expect(mockPostImageServer).toHaveBeenCalledWith(
       "post-1",
       "fresh caption",
-      false
+      false,
+      undefined
     );
   });
 
@@ -177,6 +180,7 @@ describe("Posts cache invalidation routes", () => {
     expect(mockPostImageServer).toHaveBeenCalledWith(
       "post-2",
       "updated caption",
+      undefined,
       undefined
     );
     expect(mockRevalidateTag).toHaveBeenCalledWith("home-posts", "max");
@@ -214,7 +218,8 @@ describe("Posts cache invalidation routes", () => {
     expect(mockPostImageServer).toHaveBeenCalledWith(
       "post-2",
       "updated caption",
-      false
+      false,
+      undefined
     );
   });
 

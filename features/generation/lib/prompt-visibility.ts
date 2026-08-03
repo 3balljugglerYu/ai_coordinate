@@ -4,10 +4,89 @@ type PromptProtectedRecord = Pick<GeneratedImageRecord, "prompt" | "generation_t
   caption?: string | null;
 };
 
+/**
+ * プロンプト欄に何を描画するか。
+ *
+ * - `one_tap_style`: 運営プリセットのカード（本文は誰にも見せない）
+ * - `source_reference`: 原作の参照カード（本文は見せず、派生生成だけ許す）
+ * - `prompt`: 本文を表示（既存のフォローゲートは呼び出し側が適用する）
+ * - `none`: 表示するものが無い
+ */
+export type PostPromptDisplayMode =
+  | "one_tap_style"
+  | "source_reference"
+  | "prompt"
+  | "none";
+
+type PromptDisplayRecord = PromptProtectedRecord &
+  Pick<GeneratedImageRecord, "prompt_visibility" | "source_post_id">;
+
 export function shouldHidePromptForGenerationType(
   generationType?: GeneratedImageRecord["generation_type"]
 ): boolean {
   return generationType === "one_tap_style";
+}
+
+/**
+ * プロンプト欄の表示モードを決める（計画書 REQ-013 / ADR-004）。
+ *
+ * 分岐の順序に意味がある。
+ *
+ * 1. 派生投稿 (`source_post_id != null`) は最優先で参照カード。
+ *    派生者は原作者のプロンプトを所有していないため、`isOwner` でも本文は出さない。
+ * 2. `one_tap_style` は運営資産なので生成した本人にも出さない（既存挙動）。
+ * 3. `/free` の root 投稿は**公開・非公開を問わず**参照カードを出す。
+ *    入口が公開設定で変わると分かりにくいため、生成の導線は1つに寄せている。
+ *
+ *    そのうえで本文を併記するかは公開設定で分ける。
+ *    - 公開: カード＋本文。公開している以上、読める場所が要る
+ *    - 非公開: カードのみ。ただし**本人には本文を出す**（自分が書いた文章で、
+ *      確認できないと編集もできない）
+ *
+ *    併記する場合、この関数は `prompt` を返し、カードは
+ *    `shouldShowPromptWithCard` を見た呼び出し側が本文の上へ並べる。
+ * 4. それ以外（coordinate など）は従来どおり、本文があれば `prompt`。
+ */
+export function getPostPromptDisplayMode(
+  record: PromptDisplayRecord,
+  options?: { isOwner?: boolean }
+): PostPromptDisplayMode {
+  if (record.source_post_id) {
+    return "source_reference";
+  }
+
+  if (shouldHidePromptForGenerationType(record.generation_type)) {
+    return "one_tap_style";
+  }
+
+  if (record.generation_type === "free") {
+    // 本文を併記しない場合はカードだけ。本文の有無では決めない
+    // （本人以外の本文は payload に載せず、必要になってから取りに行くため）。
+    return shouldShowPromptWithCard(record, options) ? "prompt" : "source_reference";
+  }
+
+  return record.prompt.trim().length > 0 ? "prompt" : "none";
+}
+
+/**
+ * 参照カードと本文を並べて出すか。
+ *
+ * `/free` の root 投稿で、本人が見ているか、プロンプトを公開しているとき。
+ *
+ * 公開しているなら本文の読める場所が要る。コピーボタンだけだと、貼り付け先を
+ * 用意しないと中身が分からない。
+ *
+ * 本人には公開設定によらず出す。利用数はカードにしか出ないので作者に見せつつ、
+ * 自分の本文もその場で確認できるようにする。
+ */
+export function shouldShowPromptWithCard(
+  record: PromptDisplayRecord,
+  options?: { isOwner?: boolean }
+): boolean {
+  if (record.source_post_id || record.generation_type !== "free") {
+    return false;
+  }
+  return !!options?.isOwner || record.prompt_visibility !== "private";
 }
 
 export function getVisiblePrompt<T extends PromptProtectedRecord>(record: T): string {
