@@ -529,7 +529,7 @@ describe("プロンプトのコピー", () => {
     ).toBeInTheDocument();
   });
 
-  it("非公開プロンプトでは出さない", () => {
+  it("非公開プロンプトでは第三者に出さない", () => {
     renderCard({
       reference: buildReference({ promptVisibility: "private" }),
     });
@@ -537,6 +537,20 @@ describe("プロンプトのコピー", () => {
     expect(
       screen.queryByRole("button", { name: /プロンプトをコピーする/ })
     ).not.toBeInTheDocument();
+  });
+
+  it("非公開でも本人にはコピーさせる", () => {
+    // 非公開は「第三者へ渡さない」設定であって、自分の資産を自分から
+    // 遠ざけるものではない。本人には本文が出るのにコピー手段が無い状態を防ぐ。
+    renderCard({
+      currentUserId: AUTHOR_ID,
+      isFollowingAuthor: false,
+      reference: buildReference({ promptVisibility: "private" }),
+    });
+
+    expect(
+      screen.getByRole("button", { name: /プロンプトをコピーする/ })
+    ).toBeInTheDocument();
   });
 
   it("未フォローでは出さない（生成と同じフォローゲート）", () => {

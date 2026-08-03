@@ -151,8 +151,18 @@ export function SourcePromptReferenceCard({
     入力内容を失うためである（One-Tap Style のカードと同じ作法）。
   */
   const canOpenOrigin = isDerivedPost && reference.isAvailable;
-  // コピーは公開プロンプトだけ。生成と同じフォローゲートを通す。
-  const canCopyPrompt = canGenerate && reference.promptVisibility === "public";
+  /*
+    コピーできる条件。
+
+    非公開はフォロワーにも渡さないが、**本人は自分のプロンプトを常にコピーできる**。
+    非公開は「第三者へ渡さない」設定であって、自分の資産を自分から遠ざける
+    ものではない。ここを公開だけにしていたため、本人が自分の本文を見られるのに
+    コピー手段が無い状態になっていた。
+
+    第三者は公開のときだけ。生成と同じフォローゲートを通す。
+  */
+  const canCopyPrompt =
+    canGenerate && (isOwnPrompt || reference.promptVisibility === "public");
 
   /*
     本文はここでは持たず、押されてから API で取る。
