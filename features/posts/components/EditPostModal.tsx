@@ -17,6 +17,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { GenerationType } from "@/features/generation/types";
+import {
+  PromptVisibilityField,
+  type PromptVisibilityValue,
+} from "./PromptVisibilityField";
 import { updatePostCaption } from "../lib/api";
 
 interface EditPostModalProps {
@@ -61,9 +65,9 @@ export function EditPostModal({
   const [showBeforeImage, setShowBeforeImage] = useState(
     currentShowBeforeImage !== false
   );
-  const [isPromptPublic, setIsPromptPublic] = useState(
-    currentPromptVisibility !== "private"
-  );
+  // 既存投稿の値をそのまま出す。未設定は非公開（新しい既定）として扱う。
+  const [promptVisibility, setPromptVisibility] =
+    useState<PromptVisibilityValue>(currentPromptVisibility ?? "private");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +75,7 @@ export function EditPostModal({
     if (open) {
       setCaption(currentCaption || "");
       setShowBeforeImage(currentShowBeforeImage !== false);
-      setIsPromptPublic(currentPromptVisibility !== "private");
+      setPromptVisibility(currentPromptVisibility ?? "private");
       setError(null);
     }
   }, [open, currentCaption, currentShowBeforeImage, currentPromptVisibility]);
@@ -94,11 +98,7 @@ export function EditPostModal({
         show_before_image: showBeforeImage,
         // トグルを出していない投稿では列を触らない（既存値を維持）
         ...(canChoosePromptVisibility
-          ? {
-              prompt_visibility: isPromptPublic
-                ? ("public" as const)
-                : ("private" as const),
-            }
+          ? { prompt_visibility: promptVisibility }
           : {}),
       }, {
         updateFailed: t("updateFailed"),
@@ -128,8 +128,8 @@ export function EditPostModal({
   // 元から非公開の投稿で毎回出すと、警告が読み飛ばされる（REQ-015）。
   const isSwitchingToPrivate =
     canChoosePromptVisibility &&
-    !isPromptPublic &&
-    currentPromptVisibility !== "private";
+    promptVisibility === "private" &&
+    currentPromptVisibility === "public";
 
   // チェック ON のときだけ Before も並べて表示する（OFF 時は After 単独）
   const showBeforeInPreview = showBeforeImage && !!beforeImageUrl;
@@ -206,48 +206,39 @@ export function EditPostModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="edit-show-before-image"
-                checked={showBeforeImage}
-                onCheckedChange={(checked) =>
-                  setShowBeforeImage(checked === true)
-                }
-                disabled={isSubmitting}
-              />
-              <Label
-                htmlFor="edit-show-before-image"
-                className="cursor-pointer text-sm font-medium"
-              >
-                {t("showBeforeImageLabel")}
-              </Label>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="edit-show-before-image"
+                  checked={showBeforeImage}
+                  onCheckedChange={(checked) =>
+                    setShowBeforeImage(checked === true)
+                  }
+                  disabled={isSubmitting}
+                />
+                <Label
+                  htmlFor="edit-show-before-image"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  {t("showBeforeImageLabel")}
+                </Label>
+              </div>
+              <p className="pl-6 text-xs leading-relaxed text-muted-foreground">
+                {t("showBeforeImageHint")}
+              </p>
             </div>
 
             {canChoosePromptVisibility && (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="edit-prompt-visibility"
-                    checked={isPromptPublic}
-                    onCheckedChange={(checked) =>
-                      setIsPromptPublic(checked === true)
-                    }
-                    disabled={isSubmitting}
-                  />
-                  <Label
-                    htmlFor="edit-prompt-visibility"
-                    className="cursor-pointer text-sm font-medium"
-                  >
-                    {t("promptVisibilityLabel")}
-                  </Label>
-                </div>
-                {!isPromptPublic && (
-                  <p className="pl-6 text-xs text-muted-foreground">
-                    {t("promptVisibilityHint")}
-                  </p>
-                )}
+              <div className="space-y-2">
+                <PromptVisibilityField
+                  value={promptVisibility}
+                  onChange={setPromptVisibility}
+                  disabled={isSubmitting}
+                  idPrefix="edit"
+                />
+                {/* 公開 → 非公開のときだけ。元から非公開なら毎回出さない（REQ-015） */}
                 {isSwitchingToPrivate && (
-                  <p className="pl-6 text-xs font-medium text-amber-700">
+                  <p className="pl-6 text-xs font-medium leading-relaxed text-amber-700">
                     {t("promptVisibilityRetractWarning")}
                   </p>
                 )}

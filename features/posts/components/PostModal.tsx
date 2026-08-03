@@ -26,6 +26,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { GenerationType } from "@/features/generation/types";
+import {
+  PromptVisibilityField,
+  type PromptVisibilityValue,
+} from "./PromptVisibilityField";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
 import { isSuspendedPublishError } from "../lib/post-error-codes";
@@ -85,8 +89,15 @@ export function PostModal({
   const { refreshUnreadCount } = useUnreadNotificationCount();
   const [caption, setCaption] = useState(currentCaption || "");
   const [showBeforeImage, setShowBeforeImage] = useState(true);
-  // 既定は公開。投稿者が明示的に非公開を選ぶ（ADR-004）。
-  const [isPromptPublic, setIsPromptPublic] = useState(true);
+  /*
+    既定は非公開（ADR-004 改訂）。
+
+    非公開なら、使うたびに投稿者のところへ人が戻ってくる。公開だと
+    コピーされた分はその輪から外れる。既定は最も強い誘導なので、
+    投稿者に返るほうへ倒す。
+  */
+  const [promptVisibility, setPromptVisibility] =
+    useState<PromptVisibilityValue>("private");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 公開停止中コンテンツの再投稿を試みたときの案内ダイアログ
@@ -156,11 +167,7 @@ export function PostModal({
         show_before_image: showBeforeImage,
         // トグルを出していない投稿では列を触らない（既存値・既定値を維持）
         ...(canChoosePromptVisibility
-          ? {
-              prompt_visibility: isPromptPublic
-                ? ("public" as const)
-                : ("private" as const),
-            }
+          ? { prompt_visibility: promptVisibility }
           : {}),
       }, {
         postFailed: t("postFailed"),
@@ -303,47 +310,40 @@ export function PostModal({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="show-before-image"
-                checked={showBeforeImage}
-                onCheckedChange={(checked) =>
-                  setShowBeforeImage(checked === true)
-                }
-                disabled={isSubmitting}
-              />
-              <Label
-                htmlFor="show-before-image"
-                className="cursor-pointer text-sm font-medium"
-              >
-                {t("showBeforeImageLabel")}
-              </Label>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="show-before-image"
+                  checked={showBeforeImage}
+                  onCheckedChange={(checked) =>
+                    setShowBeforeImage(checked === true)
+                  }
+                  disabled={isSubmitting}
+                />
+                <Label
+                  htmlFor="show-before-image"
+                  className="cursor-pointer text-sm font-medium"
+                >
+                  {t("showBeforeImageLabel")}
+                </Label>
+              </div>
+              {/*
+                外したときではなく常に出す。元画像を出さない判断には見せたく
+                ない理由があることが多く、外した瞬間に説明が現れるのは実質の
+                引き止めになる。チェックする前の判断材料として渡す。
+              */}
+              <p className="pl-6 text-xs leading-relaxed text-muted-foreground">
+                {t("showBeforeImageHint")}
+              </p>
             </div>
 
             {canChoosePromptVisibility && (
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <Checkbox
-                    id="prompt-visibility"
-                    checked={isPromptPublic}
-                    onCheckedChange={(checked) =>
-                      setIsPromptPublic(checked === true)
-                    }
-                    disabled={isSubmitting}
-                  />
-                  <Label
-                    htmlFor="prompt-visibility"
-                    className="cursor-pointer text-sm font-medium"
-                  >
-                    {t("promptVisibilityLabel")}
-                  </Label>
-                </div>
-                {!isPromptPublic && (
-                  <p className="pl-6 text-xs text-muted-foreground">
-                    {t("promptVisibilityHint")}
-                  </p>
-                )}
-              </div>
+              <PromptVisibilityField
+                value={promptVisibility}
+                onChange={setPromptVisibility}
+                disabled={isSubmitting}
+                idPrefix="post"
+              />
             )}
           </div>
 

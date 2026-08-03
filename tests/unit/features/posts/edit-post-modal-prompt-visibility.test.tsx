@@ -81,9 +81,15 @@ const translations = {
   afterImageLabel: "After",
   beforeImageLabel: "Before",
   showBeforeImageLabel: "生成前画像も表示する",
-  promptVisibilityLabel: "プロンプトを公開する",
-  promptVisibilityHint: "オフにすると、プロンプトは誰にも見せません。",
+  promptVisibilityLabel: "プロンプトの公開設定",
+  promptVisibilityPublicOption: "プロンプトを公開する",
+  promptVisibilityPrivateOption: "プロンプトを非公開にする",
+  promptVisibilityPublicHint:
+    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
+  promptVisibilityPrivateHint: "プロンプトは誰にも見せません。",
   promptVisibilityRetractWarning: RETRACT_WARNING,
+  showBeforeImageHint:
+    "元画像も表示することで、どんな変化が起きるか伝わりやすくなります。",
 } as const;
 
 const translator = ((
@@ -117,18 +123,20 @@ beforeEach(() => {
   });
 });
 
-describe("トグルの出し分け", () => {
-  it("じゆうモードの root 投稿では出る", () => {
+describe("選択肢の出し分け", () => {
+  it("じゆうモードの root 投稿では選べる", () => {
     renderModal();
 
-    expect(screen.getByLabelText("プロンプトを公開する")).toBeInTheDocument();
+    expect(
+      screen.getByLabelText("プロンプトを非公開にする")
+    ).toBeInTheDocument();
   });
 
   it("coordinate では出さない", () => {
     renderModal({ generationType: "coordinate" });
 
     expect(
-      screen.queryByLabelText("プロンプトを公開する")
+      screen.queryByLabelText("プロンプトを非公開にする")
     ).not.toBeInTheDocument();
   });
 
@@ -136,28 +144,29 @@ describe("トグルの出し分け", () => {
     renderModal({ sourcePostId: "22222222-2222-4222-8222-222222222222" });
 
     expect(
-      screen.queryByLabelText("プロンプトを公開する")
+      screen.queryByLabelText("プロンプトを非公開にする")
     ).not.toBeInTheDocument();
   });
 });
 
 describe("既存値の反映", () => {
-  it("非公開の投稿はチェックが外れた状態で開く", () => {
+  it("非公開の投稿は非公開が選ばれた状態で開く", () => {
     renderModal({ currentPromptVisibility: "private" });
 
-    expect(screen.getByLabelText("プロンプトを公開する")).not.toBeChecked();
+    expect(screen.getByLabelText("プロンプトを非公開にする")).toBeChecked();
   });
 
-  it("公開の投稿はチェック済みで開く", () => {
+  it("公開の投稿は公開が選ばれた状態で開く", () => {
     renderModal({ currentPromptVisibility: "public" });
 
     expect(screen.getByLabelText("プロンプトを公開する")).toBeChecked();
   });
 
-  it("未指定は公開として扱う", () => {
+  it("未設定は非公開として扱う", () => {
+    // 新しい既定に合わせる
     renderModal();
 
-    expect(screen.getByLabelText("プロンプトを公開する")).toBeChecked();
+    expect(screen.getByLabelText("プロンプトを非公開にする")).toBeChecked();
   });
 });
 
@@ -167,7 +176,7 @@ describe("回収できないことの明示 (REQ-015)", () => {
 
     expect(screen.queryByText(RETRACT_WARNING)).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByLabelText("プロンプトを公開する"));
+    fireEvent.click(screen.getByLabelText("プロンプトを非公開にする"));
 
     expect(screen.getByText(RETRACT_WARNING)).toBeInTheDocument();
   });
@@ -189,10 +198,10 @@ describe("回収できないことの明示 (REQ-015)", () => {
 });
 
 describe("送信内容", () => {
-  it("トグルを出している投稿では prompt_visibility を送る", async () => {
+  it("選択肢を出している投稿では prompt_visibility を送る", async () => {
     renderModal({ currentPromptVisibility: "public" });
 
-    fireEvent.click(screen.getByLabelText("プロンプトを公開する"));
+    fireEvent.click(screen.getByLabelText("プロンプトを非公開にする"));
     fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
 
     await waitFor(() => {
@@ -203,7 +212,7 @@ describe("送信内容", () => {
     });
   });
 
-  it("トグルを出していない投稿では列を触らない", async () => {
+  it("選択肢を出していない投稿では列を触らない", async () => {
     // 送ってしまうと、UI に無い設定を勝手に上書きする
     renderModal({ generationType: "coordinate" });
 
