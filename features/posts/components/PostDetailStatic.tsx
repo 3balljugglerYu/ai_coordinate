@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, lazy, Suspense } from "react";
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useTranslations } from "next-intl";
 import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
@@ -258,6 +258,38 @@ export function PostDetailStatic({
     };
   }, [showsCardWithPrompt, isOwner, post.id, visiblePrompt]);
 
+
+  /*
+    上部（ユーザーアイコン横）のフォローボタンと参照カードの状態を同期する。
+
+    root の /free 投稿では投稿者＝原作者なので、上でフォローした瞬間に
+    カードの「このプロンプトで作る」が出るべきである。別々の state のままだと
+    画面を更新するまで反映されない（実際に報告された）。
+
+    useCallback にするのは、FollowButton が onFollowChange を effect の依存に
+    持つため。毎レンダーで新しい関数を渡すと follow-status の取得が
+    レンダーごとに走る。
+  */
+  const handleAuthorFollowChange = useCallback(
+    (isFollowing: boolean) => {
+      setIsFollowingAuthor(isFollowing);
+      if (sourceAuthorId && sourceAuthorId === followUserId) {
+        setFollowedSourceAuthorId(isFollowing ? sourceAuthorId : null);
+      }
+    },
+    [sourceAuthorId, followUserId]
+  );
+
+  /* カード内のフォローボタン（派生投稿で原作者が別人のとき）用。 */
+  const handleSourceAuthorFollowChange = useCallback(
+    (isFollowing: boolean) => {
+      setFollowedSourceAuthorId(
+        isFollowing && sourceAuthorId ? sourceAuthorId : null
+      );
+    },
+    [sourceAuthorId]
+  );
+
   const maskedPrompt = hasVisiblePrompt ? "*".repeat(visiblePrompt.length) : "";
   /*
     表示する本文。
@@ -473,7 +505,7 @@ export function PostDetailStatic({
               <FollowButton
                 userId={followUserId}
                 currentUserId={currentUserId}
-                onFollowChange={setIsFollowingAuthor}
+                onFollowChange={handleAuthorFollowChange}
               />
             )}
 
@@ -580,6 +612,11 @@ export function PostDetailStatic({
               isFollowingAuthor={isFollowingSourceAuthor}
               isDerivedPost={!!post.source_post_id}
               subscriptionPlan={viewerSubscriptionPlan}
+              hideFollowButton={
+                !!post.source_reference?.authorId &&
+                post.source_reference.authorId === post.user_id
+              }
+              onFollowChange={handleSourceAuthorFollowChange}
             />
           </div>
         ) : promptDisplayMode === "prompt" ? (
@@ -593,6 +630,11 @@ export function PostDetailStatic({
                   isFollowingAuthor={isFollowingSourceAuthor}
                   isDerivedPost={!!post.source_post_id}
                   subscriptionPlan={viewerSubscriptionPlan}
+                  hideFollowButton={
+                    !!post.source_reference?.authorId &&
+                    post.source_reference.authorId === post.user_id
+                  }
+                  onFollowChange={handleSourceAuthorFollowChange}
                 />
               </div>
             ) : null}

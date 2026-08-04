@@ -78,6 +78,20 @@ interface SourcePromptReferenceCardProps {
   /** 派生投稿の詳細で表示しているか。表題を「原作の〜」に変える。 */
   isDerivedPost: boolean;
   subscriptionPlan: SubscriptionPlan;
+  /**
+   * ページ上に同じ相手へのフォローボタンが既にあるとき true。
+   *
+   * root の投稿では投稿者＝原作者で、ヘッダー（ユーザーアイコン横）のボタンと
+   * 二重になるため隠す。派生投稿では原作者はページの投稿者と別人なので、
+   * カードのボタンが唯一の導線になり、隠してはいけない。
+   */
+  hideFollowButton?: boolean;
+  /**
+   * カード内のフォローボタンで状態が変わったとき親へ伝える。
+   * 親が持つフォロー状態と食い違うと、フォローしたのに
+   * 「このプロンプトで作る」が出ない（再読込が要る）状態になる。
+   */
+  onFollowChange?: (isFollowing: boolean) => void;
 }
 
 /**
@@ -116,6 +130,8 @@ export function SourcePromptReferenceCard({
   isFollowingAuthor,
   isDerivedPost,
   subscriptionPlan,
+  hideFollowButton = false,
+  onFollowChange,
 }: SourcePromptReferenceCardProps) {
   const t = useTranslations("posts");
   const router = useRouter();
@@ -398,13 +414,15 @@ export function SourcePromptReferenceCard({
           未フォローならカード内で解消できるようにする（ヒアリング済みの決定）。
           原作が使えない状態でフォローを促しても解決しないので、そのときは出さない。
         */}
-        {reference.isAvailable &&
+        {!hideFollowButton &&
+        reference.isAvailable &&
         reference.authorId &&
         !isOwnPrompt &&
         !isFollowingAuthor ? (
           <FollowButton
             userId={reference.authorId}
             currentUserId={currentUserId}
+            onFollowChange={onFollowChange}
           />
         ) : null}
       </div>
