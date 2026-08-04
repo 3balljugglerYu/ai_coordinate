@@ -1806,6 +1806,8 @@ export const koMessages = {
     userFallback: "사용자",
     postImageAlt: "게시물 이미지",
     likeTitle: "{actor}님이 게시물을 좋아합니다",
+    derivedPostTitle: "{actor}님이 「{origin}」 프롬프트로 작품을 게시했습니다",
+    derivedPostTitleNoCaption: "{actor}님이 회원님의 프롬프트로 작품을 게시했습니다",
     commentTitle: "{actor}님이 게시물에 댓글을 남겼습니다",
     replyTitle: "{actor}님이 댓글에 답글을 남겼습니다",
     replyToReplyTitle: "{actor}님이 회원님의 답글에 답글을 남겼습니다",

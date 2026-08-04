@@ -1804,6 +1804,8 @@ export const zhTwMessages = {
     userFallback: "使用者",
     postImageAlt: "貼文圖片",
     likeTitle: "{actor} 喜歡了你的貼文",
+    derivedPostTitle: "{actor} 使用「{origin}」的提示詞發布了作品",
+    derivedPostTitleNoCaption: "{actor} 使用你的提示詞發布了作品",
     commentTitle: "{actor} 在你的貼文留言",
     replyTitle: "{actor} 回覆了你的留言",
     replyToReplyTitle: "{actor}回覆了你的回覆",

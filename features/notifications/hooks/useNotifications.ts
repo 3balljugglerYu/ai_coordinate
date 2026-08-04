@@ -32,6 +32,9 @@ interface UseNotificationsOptions {
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
 
+/** Realtime 新着の enrichment 取得件数。直近を少し多めに取り、対象 ID を探す。 */
+const REALTIME_ENRICH_FETCH_LIMIT = 5;
+
 function getBonusToastStorageKey(userId: string) {
   return `${BONUS_TOAST_HISTORY_STORAGE_KEY}:${userId}`;
 }
@@ -141,6 +144,36 @@ export function useNotifications(
   const translateNotification = useCallback(
     (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
       values ? t(key as never, values as never) : t(key as never),
+    [t]
+  );
+
+  // Realtime の生の行には actor と post(サムネ) が付かず、実名表示の要件
+  // (REQ-006) を満たせない。一覧へ入れる前に enrichment 済みの同じ通知を
+  // API から取り直し、取れなかったときだけ生の行をそのまま出す。
+  const prependRealtimeNotification = useCallback(
+    async (rawNotification: Notification) => {
+      let notificationToInsert = rawNotification;
+      try {
+        const response = await getNotifications(
+          REALTIME_ENRICH_FETCH_LIMIT,
+          null,
+          { fetchFailed: t("fetchFailed") }
+        );
+        const enriched = response.notifications.find(
+          (item) => item.id === rawNotification.id
+        );
+        if (enriched) {
+          notificationToInsert = enriched;
+        }
+      } catch (error) {
+        console.error("Failed to enrich realtime notification:", error);
+      }
+      setNotifications((prev) =>
+        prev.some((item) => item.id === notificationToInsert.id)
+          ? prev
+          : [notificationToInsert, ...prev]
+      );
+    },
     [t]
   );
 
@@ -297,10 +330,10 @@ export function useNotifications(
           filter: `recipient_id=eq.${currentUserId}`,
         },
         (payload) => {
-          // 新規通知を追加
+          // 新規通知。バッジは即時、一覧の行は enrichment を経てから差し込む
           const newNotification = payload.new as Notification;
-          setNotifications((prev) => [newNotification, ...prev]);
           setUnreadCount((prev) => prev + 1);
+          void prependRealtimeNotification(newNotification);
 
           // ボーナス通知の場合はToastを表示
           if (
@@ -333,6 +366,7 @@ export function useNotifications(
     hasShownBonusToast,
     isNotificationsPage,
     markBonusToastAsShown,
+    prependRealtimeNotification,
     syncUnreadBadgeCount,
     toast,
     t,

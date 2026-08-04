@@ -1807,6 +1807,8 @@ export const viMessages = {
     userFallback: "Người dùng",
     postImageAlt: "Hình bài đăng",
     likeTitle: "{actor} đã thích bài viết của bạn",
+    derivedPostTitle: "{actor} đã đăng một tác phẩm bằng prompt “{origin}” của bạn",
+    derivedPostTitleNoCaption: "{actor} đã đăng một tác phẩm bằng prompt của bạn",
     commentTitle: "{actor} đã bình luận về bài viết của bạn",
     replyTitle: "{actor} đã trả lời bình luận của bạn",
     replyToReplyTitle: "{actor} đã trả lời phản hồi của bạn",

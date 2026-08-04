@@ -1807,6 +1807,8 @@ export const enMessages = {
     userFallback: "User",
     postImageAlt: "Post image",
     likeTitle: "{actor} liked your post",
+    derivedPostTitle: "{actor} posted a work using your prompt “{origin}”",
+    derivedPostTitleNoCaption: "{actor} posted a work using your prompt",
     commentTitle: "{actor} commented on your post",
     replyTitle: "{actor} replied to your comment",
     replyToReplyTitle: "{actor} replied to your reply",

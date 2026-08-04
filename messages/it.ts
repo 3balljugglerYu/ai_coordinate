@@ -1810,6 +1810,8 @@ export const itMessages = {
     userFallback: "Utente",
     postImageAlt: "Immagine del post",
     likeTitle: "{actor} ha messo mi piace al tuo post",
+    derivedPostTitle: "{actor} ha pubblicato un'opera usando il tuo prompt “{origin}”",
+    derivedPostTitleNoCaption: "{actor} ha pubblicato un'opera usando il tuo prompt",
     commentTitle: "{actor} ha commentato il tuo post",
     replyTitle: "{actor} ha risposto al tuo commento",
     replyToReplyTitle: "{actor} ha risposto alla tua risposta",

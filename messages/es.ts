@@ -1810,6 +1810,8 @@ export const esMessages = {
     userFallback: "Usuario",
     postImageAlt: "Imagen de la publicación",
     likeTitle: "{actor} le dio me gusta a tu publicación",
+    derivedPostTitle: "{actor} publicó una obra usando tu prompt «{origin}»",
+    derivedPostTitleNoCaption: "{actor} publicó una obra usando tu prompt",
     commentTitle: "{actor} comentó tu publicación",
     replyTitle: "{actor} respondió a tu comentario",
     replyToReplyTitle: "{actor} respondió a tu respuesta",

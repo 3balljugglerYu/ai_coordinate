@@ -15,6 +15,8 @@ export type NotificationTranslationKey =
   | "bonusTourBody"
   | "bonusTourTitle"
   | "commentTitle"
+  | "derivedPostTitle"
+  | "derivedPostTitleNoCaption"
   | "followTitle"
   | "likeTitle"
   | "replyTitle"
@@ -40,6 +42,31 @@ function getNumberValue(value: unknown): number | null {
   }
 
   return null;
+}
+
+/**
+ * 原作キャプションの見出し内表示は書記素クラスタ単位で20文字まで。
+ * UTF-16 の slice だと絵文字のサロゲートペアや結合文字を途中で割ってしまう。
+ * 実際に超過した場合のみ省略記号を付ける。
+ */
+const ORIGIN_CAPTION_MAX_GRAPHEMES = 20;
+
+function truncateOriginCaption(caption: string): string {
+  const graphemes =
+    typeof Intl !== "undefined" && "Segmenter" in Intl
+      ? Array.from(
+          new Intl.Segmenter(undefined, { granularity: "grapheme" }).segment(
+            caption
+          ),
+          (entry) => entry.segment
+        )
+      : // Segmenter が無い環境ではコードポイント単位（結合文字の分割リスクは残るが落とさない）
+        Array.from(caption);
+
+  if (graphemes.length <= ORIGIN_CAPTION_MAX_GRAPHEMES) {
+    return caption;
+  }
+  return graphemes.slice(0, ORIGIN_CAPTION_MAX_GRAPHEMES).join("") + "…";
 }
 
 function formatBonusNotification(
@@ -135,6 +162,19 @@ export function formatNotificationContent(
         title: t("followTitle", { actor: actorName }),
         body: "",
       };
+    case "derived_post_published": {
+      // 見出しは派生者の実名＋原作キャプション。本文は無し (REQ-006)。
+      const originCaption = getStringValue(notification.data?.origin_caption);
+      return {
+        title: originCaption
+          ? t("derivedPostTitle", {
+              actor: actorName,
+              origin: truncateOriginCaption(originCaption),
+            })
+          : t("derivedPostTitleNoCaption", { actor: actorName }),
+        body: "",
+      };
+    }
     case "bonus":
       return formatBonusNotification(notification, t);
     case "post_moderation_removed":

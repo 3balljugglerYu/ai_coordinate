@@ -1743,6 +1743,8 @@ export const jaMessages = {
     userFallback: "ユーザー",
     postImageAlt: "投稿画像",
     likeTitle: "{actor}があなたの投稿にいいねしました",
+    derivedPostTitle: "{actor}が「{origin}」のプロンプトで作品を投稿しました",
+    derivedPostTitleNoCaption: "{actor}があなたのプロンプトで作品を投稿しました",
     commentTitle: "{actor}があなたの投稿にコメントしました",
     replyTitle: "{actor}があなたのコメントに返信しました",
     replyToReplyTitle: "{actor}があなたの返信に返信しました",

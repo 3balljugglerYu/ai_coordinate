@@ -1804,6 +1804,8 @@ export const zhCnMessages = {
     userFallback: "用户",
     postImageAlt: "帖子图片",
     likeTitle: "{actor} 点赞了你的帖子",
+    derivedPostTitle: "{actor} 使用「{origin}」的提示词发布了作品",
+    derivedPostTitleNoCaption: "{actor} 使用你的提示词发布了作品",
     commentTitle: "{actor} 评论了你的帖子",
     replyTitle: "{actor} 回复了你的评论",
     replyToReplyTitle: "{actor}回复了你的回复",

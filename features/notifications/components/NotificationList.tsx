@@ -15,7 +15,28 @@ import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
 import { isModerationNotificationType } from "../types";
 import { cn } from "@/lib/utils";
-import { User, Heart, MessageCircle, UserPlus, Bell } from "lucide-react";
+import {
+  User,
+  Heart,
+  MessageCircle,
+  UserPlus,
+  Bell,
+  Sparkles,
+} from "lucide-react";
+
+/**
+ * アバタータップで actor のプロフィールへ遷移できる通知タイプ。
+ * handleActorIconClick 内のガードと、avatarOnClick を付ける
+ * isActorProfileLinkNotification 判定の両方がこの predicate を使う。
+ * 片方だけを更新するとタップが効かなくなる (REQ-008)。
+ */
+const ACTOR_PROFILE_LINK_NOTIFICATION_TYPES: ReadonlyArray<
+  Notification["type"]
+> = ["like", "comment", "derived_post_published"];
+
+function canLinkToActorProfile(type: Notification["type"]): boolean {
+  return ACTOR_PROFILE_LINK_NOTIFICATION_TYPES.includes(type);
+}
 
 interface NotificationListProps {
   initialNotifications?: Notification[];
@@ -105,6 +126,8 @@ export function NotificationList({
         return <UserPlus className="h-4 w-4 text-green-500" />;
       case "bonus":
         return <Bell className="h-4 w-4 text-yellow-500 fill-yellow-500" />;
+      case "derived_post_published":
+        return <Sparkles className="h-4 w-4 text-purple-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -129,12 +152,12 @@ export function NotificationList({
     return null;
   };
 
-  // いいね通知の左側アイコンタップ時は、いいねしたユーザーのプロフィールへ遷移
+  // actor アイコンタップ時は、その相手のプロフィールへ遷移
   const handleActorIconClick = (
     event: MouseEvent<HTMLElement>,
     notification: Notification
   ) => {
-    if (!["like", "comment"].includes(notification.type)) return;
+    if (!canLinkToActorProfile(notification.type)) return;
 
     event.stopPropagation();
 
@@ -198,8 +221,9 @@ export function NotificationList({
           // 「自分が自分に通知した」ように見えてしまう (ADR-011)。
           const isSystemNotification =
             isBonusNotification || isModerationNotificationType(notification.type);
-          const isActorProfileLinkNotification =
-            notification.type === "like" || notification.type === "comment";
+          const isActorProfileLinkNotification = canLinkToActorProfile(
+            notification.type
+          );
           const actorName =
             notification.actor?.nickname || t("userFallback");
           const content = formatNotificationContent(

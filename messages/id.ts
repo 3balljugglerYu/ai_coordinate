@@ -1809,6 +1809,8 @@ export const idMessages = {
     userFallback: "Pengguna",
     postImageAlt: "Gambar postingan",
     likeTitle: "{actor} menyukai postinganmu",
+    derivedPostTitle: "{actor} memposting karya menggunakan prompt-mu “{origin}”",
+    derivedPostTitleNoCaption: "{actor} memposting karya menggunakan prompt-mu",
     commentTitle: "{actor} mengomentari postinganmu",
     replyTitle: "{actor} membalas komentarmu",
     replyToReplyTitle: "{actor} membalas balasan Anda",
