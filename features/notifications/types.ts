@@ -10,7 +10,9 @@ export type NotificationType =
   | 'post_moderation_removed'
   | 'post_moderation_appeal_result'
   | 'derived_post_published'
-  | 'derived_usage_milestone';
+  | 'derived_usage_milestone'
+  | 'style_preset_post_published'
+  | 'style_preset_usage_milestone';
 export type EntityType = 'post' | 'comment' | 'user';
 
 /**
@@ -41,6 +43,7 @@ export function isModerationNotificationType(type: string): boolean {
 export const ANONYMOUS_ACTOR_NOTIFICATION_TYPES = [
   ...MODERATION_NOTIFICATION_TYPES,
   'derived_usage_milestone',
+  'style_preset_usage_milestone',
 ] as const;
 
 export function isAnonymousActorNotificationType(type: string): boolean {
@@ -70,8 +73,12 @@ export interface Notification {
     follower_id?: string;
     /** 派生投稿通知 (derived_post_published): 原作キャプションのスナップショット。見出しに差し込む。 */
     origin_caption?: string | null;
-    /** 利用数マイルストーン通知 (derived_usage_milestone): 到達した節目の回数。 */
+    /** 利用数マイルストーン通知 (derived_usage_milestone / style_preset_usage_milestone): 到達した節目の回数。 */
     milestone?: number;
+    /** One-Tap Style クリエイター通知: 対象プリセットのID・名前・slug のスナップショット。 */
+    preset_id?: string;
+    preset_title?: string | null;
+    preset_slug?: string | null;
     bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus" | "tour_bonus";
     bonus_amount?: number;
     streak_days?: number;

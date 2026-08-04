@@ -21,6 +21,9 @@ export type NotificationTranslationKey =
   | "likeTitle"
   | "replyTitle"
   | "replyToReplyTitle"
+  | "stylePresetPostTitle"
+  | "stylePresetUsageMilestoneFirstTitle"
+  | "stylePresetUsageMilestoneTitle"
   | "usageMilestoneFirstTitle"
   | "usageMilestoneFirstTitleNoCaption"
   | "usageMilestoneTitle"
@@ -207,6 +210,40 @@ export function formatNotificationContent(
       return {
         title: notification.title,
         body: notification.body,
+      };
+    }
+    case "style_preset_post_published": {
+      // One-Tap Style プリセット利用投稿の実名通知。プリセット名はスナップショット。
+      const presetTitle = getStringValue(notification.data?.preset_title);
+      if (!presetTitle) {
+        return { title: notification.title, body: notification.body };
+      }
+      return {
+        title: t("stylePresetPostTitle", {
+          actor: actorName,
+          preset: truncateOriginCaption(presetTitle),
+        }),
+        body: "",
+      };
+    }
+    case "style_preset_usage_milestone": {
+      // 匿名の節目通知（One-Tap Style 版）。
+      const milestone = getNumberValue(notification.data?.milestone);
+      const presetTitle = getStringValue(notification.data?.preset_title);
+      if (milestone === null || !presetTitle) {
+        return { title: notification.title, body: notification.body };
+      }
+      return {
+        title:
+          milestone === 1
+            ? t("stylePresetUsageMilestoneFirstTitle", {
+                preset: truncateOriginCaption(presetTitle),
+              })
+            : t("stylePresetUsageMilestoneTitle", {
+                preset: truncateOriginCaption(presetTitle),
+                count: milestone,
+              }),
+        body: "",
       };
     }
     case "bonus":
