@@ -38,6 +38,13 @@ SET LOCAL lock_timeout = '5s';
 -- ===============================================
 -- 既存 20260728130000 の16値 + 'derived_post_published'。
 -- entity_type は既存の 'post' を再利用するため変更しない。
+--
+-- ADD CONSTRAINT は ACCESS EXCLUSIVE を取り既存行を全件検証する
+-- （lock_timeout はロック取得待ちのみ制限し、検証時間は制限しない）。
+-- 適用判断: 2026-08-04 時点の本番 notifications は 3,521 行で検証は
+-- ミリ秒オーダー。1週間前の 20260728130000 も同一パターンを本番適用済み。
+-- 行数が数百万に育った将来に流用する場合は NOT VALID → VALIDATE の
+-- 2段適用へ切り替えること。直後の部分インデックス作成も同じ判断。
 
 ALTER TABLE public.notifications
 DROP CONSTRAINT IF EXISTS notifications_type_check;
@@ -304,6 +311,8 @@ DECLARE
   v_origin UUID;
   v_d1 UUID;
   v_d2 UUID;
+  v_d3 UUID;
+  v_d4 UUID;
   v_self UUID;
   v_count INT;
   v_remaining UUID;
@@ -411,11 +420,52 @@ BEGIN
       RAISE EXCEPTION '自己派生で通知が作られてしまった: %', v_count;
     END IF;
 
+    -- 双方向ブロックで通知が作られないこと (REQ-004)。
+    -- ペア選定はブロック無しの2名なので、ここで一時的にブロックを作って
+    -- 両方向を検証する（サブトランザクションごとロールバックされ残らない）。
+    INSERT INTO public.user_blocks (blocker_id, blocked_id)
+    VALUES (v_origin_author, v_deriver);
+
+    INSERT INTO public.generated_images
+      (user_id, image_url, storage_path, prompt, is_posted, generation_type, source_post_id, source_author_id)
+    VALUES
+      (v_deriver, 'https://example.invalid/dpn-d3.png', 'verify/dpn-d3.png', '', false, 'free', v_origin, v_origin_author)
+    RETURNING id INTO v_d3;
+
+    UPDATE public.generated_images SET is_posted = true WHERE id = v_d3;
+
+    IF EXISTS (
+      SELECT 1 FROM public.notifications
+      WHERE type = 'derived_post_published' AND entity_id = v_d3
+    ) THEN
+      RAISE EXCEPTION '原作者→派生者のブロック関係で通知が作られてしまった';
+    END IF;
+
+    DELETE FROM public.user_blocks
+    WHERE blocker_id = v_origin_author AND blocked_id = v_deriver;
+    INSERT INTO public.user_blocks (blocker_id, blocked_id)
+    VALUES (v_deriver, v_origin_author);
+
+    INSERT INTO public.generated_images
+      (user_id, image_url, storage_path, prompt, is_posted, generation_type, source_post_id, source_author_id)
+    VALUES
+      (v_deriver, 'https://example.invalid/dpn-d4.png', 'verify/dpn-d4.png', '', false, 'free', v_origin, v_origin_author)
+    RETURNING id INTO v_d4;
+
+    UPDATE public.generated_images SET is_posted = true WHERE id = v_d4;
+
+    IF EXISTS (
+      SELECT 1 FROM public.notifications
+      WHERE type = 'derived_post_published' AND entity_id = v_d4
+    ) THEN
+      RAISE EXCEPTION '派生者→原作者のブロック関係で通知が作られてしまった';
+    END IF;
+
     -- 検証成功。サブトランザクションごと必ず巻き戻す（Realtime へ漏らさない）。
     RAISE EXCEPTION USING ERRCODE = 'PT999';
   EXCEPTION
     WHEN SQLSTATE 'PT999' THEN
-      RAISE NOTICE '実データ dry-run OK（投稿→2件→取消→自己派生スキップ）。変更はすべてロールバックした';
+      RAISE NOTICE '実データ dry-run OK（投稿→2件→取消→自己派生スキップ→双方向ブロックスキップ）。変更はすべてロールバックした';
     -- 他の例外は捕捉しない = assert 失敗はマイグレーションを失敗させる
   END;
 END;

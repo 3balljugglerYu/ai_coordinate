@@ -6,6 +6,9 @@ import { getRouteLocale } from "@/lib/api/route-locale";
 import { getNotificationsRouteCopy } from "@/features/notifications/lib/route-copy";
 import { enrichNotificationsWithDetails } from "@/features/notifications/lib/server-api";
 
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * 通知一覧取得API
  */
@@ -27,6 +30,38 @@ export async function GET(request: NextRequest) {
     }
 
     const supabase = await createClient();
+
+    // Realtime 新着の enrichment 用の単一取得 (REQ-006)。
+    // 件数窓（直近N件）方式はバースト時に対象を取り逃がすため ID で引く。
+    // recipient_id を本人へ固定するため、id を知っていても他人の通知は取れない。
+    const idParam = searchParams.get("id");
+    if (idParam) {
+      if (!UUID_PATTERN.test(idParam)) {
+        return jsonError(copy.fetchFailed, "NOTIFICATIONS_INVALID_ID", 400);
+      }
+
+      const { data: idRows, error: idError } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("recipient_id", user.id)
+        .eq("id", idParam)
+        .limit(1);
+
+      if (idError) {
+        console.error("Database query error:", idError);
+        return jsonError(copy.fetchFailed, "NOTIFICATIONS_FETCH_FAILED", 500);
+      }
+
+      const enriched = await enrichNotificationsWithDetails(
+        supabase,
+        idRows ?? []
+      );
+
+      return NextResponse.json({
+        notifications: enriched,
+        nextCursor: null,
+      });
+    }
 
     // 通知一覧を取得するクエリを構築
     let query = supabase

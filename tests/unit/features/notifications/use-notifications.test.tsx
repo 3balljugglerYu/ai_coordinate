@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import {
+  getNotificationById,
   getNotifications,
   getUnreadCount,
   markAllNotificationsRead,
@@ -29,6 +30,7 @@ jest.mock("@/features/auth/lib/auth-client", () => ({
 
 jest.mock("@/features/notifications/lib/api", () => ({
   getNotifications: jest.fn(),
+  getNotificationById: jest.fn(),
   getUnreadCount: jest.fn(),
   markNotificationsRead: jest.fn(),
   markAllNotificationsRead: jest.fn(),
@@ -59,6 +61,9 @@ const getCurrentUserMock = getCurrentUser as jest.MockedFunction<
 >;
 const getNotificationsMock = getNotifications as jest.MockedFunction<
   typeof getNotifications
+>;
+const getNotificationByIdMock = getNotificationById as jest.MockedFunction<
+  typeof getNotificationById
 >;
 const getUnreadCountMock = getUnreadCount as jest.MockedFunction<
   typeof getUnreadCount
@@ -161,6 +166,7 @@ describe("useNotifications", () => {
       notifications: [],
       nextCursor: null,
     });
+    getNotificationByIdMock.mockResolvedValue(null);
     getUnreadCountMock.mockResolvedValue(0);
     markNotificationsReadMock.mockResolvedValue({ success: true });
     markAllNotificationsReadMock.mockResolvedValue({ success: true });
@@ -346,11 +352,11 @@ describe("useNotifications", () => {
     );
   });
 
-  test("Realtime新着はenrichmentしてから一覧へ差し込む", async () => {
+  test("Realtime新着はID指定でenrichmentしてから一覧へ差し込む", async () => {
     // 生の行には actor・post が無い。新着時点から実名・サムネで出す (REQ-006)。
+    // 件数窓（直近N件）方式はバースト時に取り逃がすため、ID 指定で1件引く。
     usePathnameMock.mockReturnValue("/feed");
     const { result } = await renderNotificationsHook();
-    getNotificationsMock.mockClear();
 
     const raw = createNotification({
       id: "realtime-1",
@@ -361,18 +367,13 @@ describe("useNotifications", () => {
       read_at: null,
       data: {},
     });
-    getNotificationsMock.mockResolvedValue({
-      notifications: [
-        {
-          ...raw,
-          actor: { id: "actor-1", nickname: "ゆき", avatar_url: null },
-          post: {
-            image_url: "https://cdn.example/derived.webp",
-            caption: null,
-          },
-        },
-      ],
-      nextCursor: null,
+    getNotificationByIdMock.mockResolvedValue({
+      ...raw,
+      actor: { id: "actor-1", nickname: "ゆき", avatar_url: null },
+      post: {
+        image_url: "https://cdn.example/derived.webp",
+        caption: null,
+      },
     });
 
     act(() => {
@@ -380,7 +381,7 @@ describe("useNotifications", () => {
     });
 
     await waitFor(() => {
-      expect(getNotificationsMock).toHaveBeenCalledWith(5, null, {
+      expect(getNotificationByIdMock).toHaveBeenCalledWith("realtime-1", {
         fetchFailed: "fetch failed",
       });
       expect(result.current.notifications[0]).toEqual(
@@ -396,8 +397,7 @@ describe("useNotifications", () => {
   test("Realtime新着のenrichment失敗時は生の行のまま差し込む", async () => {
     usePathnameMock.mockReturnValue("/feed");
     const { result } = await renderNotificationsHook();
-    getNotificationsMock.mockClear();
-    getNotificationsMock.mockRejectedValue(new Error("network down"));
+    getNotificationByIdMock.mockRejectedValue(new Error("network down"));
 
     const raw = createNotification({
       id: "realtime-2",
@@ -413,6 +413,57 @@ describe("useNotifications", () => {
       expect(result.current.notifications[0]).toEqual(
         expect.objectContaining({ id: "realtime-2", actor: null })
       );
+    });
+  });
+
+  test("Realtime新着が完了順で前後してもcreated_at降順を保つ", async () => {
+    usePathnameMock.mockReturnValue("/feed");
+    const { result } = await renderNotificationsHook();
+
+    const older = createNotification({
+      id: "realtime-old",
+      created_at: "2026-08-04T00:00:00.000Z",
+      is_read: false,
+      read_at: null,
+    });
+    const newer = createNotification({
+      id: "realtime-new",
+      created_at: "2026-08-04T00:01:00.000Z",
+      is_read: false,
+      read_at: null,
+    });
+
+    // 古い方の enrichment だけ遅延させ、完了順を新→旧に逆転させる
+    let resolveOlder: (value: Notification | null) => void = () => {};
+    getNotificationByIdMock.mockImplementation((id) => {
+      if (id === "realtime-old") {
+        return new Promise((resolve) => {
+          resolveOlder = resolve;
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    act(() => {
+      realtimeInsertHandler?.({ new: older });
+      realtimeInsertHandler?.({ new: newer });
+    });
+
+    await waitFor(() => {
+      expect(result.current.notifications.map((item) => item.id)).toEqual([
+        "realtime-new",
+      ]);
+    });
+
+    act(() => {
+      resolveOlder(null);
+    });
+
+    await waitFor(() => {
+      expect(result.current.notifications.map((item) => item.id)).toEqual([
+        "realtime-new",
+        "realtime-old",
+      ]);
     });
   });
 

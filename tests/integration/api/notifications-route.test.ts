@@ -456,6 +456,57 @@ describe("GET /api/notifications", () => {
     });
   });
 
+  test("GET_id指定の場合_本人の通知1件をenrichmentして返す", async () => {
+    // Spec: NOTIFGET-014 (Realtime 新着の enrichment 用の単一取得)
+    const rows = [
+      {
+        id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
+        created_at: "2024-01-01T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "deriver-1",
+        type: "derived_post_published",
+        entity_type: "post",
+        entity_id: "derived-post-1",
+      },
+    ];
+    setupSupabaseFromTables({
+      notifications: { data: rows, error: null },
+      profiles: {
+        data: [{ user_id: "deriver-1", nickname: "ゆき", avatar_url: null }],
+        error: null,
+      },
+    });
+
+    const res = await GET(
+      createRequest(
+        "http://localhost/api/notifications?id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+      )
+    );
+    const body = (await res.json()) as {
+      notifications: Array<{ id: string; actor: { nickname: string } | null }>;
+      nextCursor: string | null;
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.notifications).toHaveLength(1);
+    expect(body.notifications[0].actor).toEqual(
+      expect.objectContaining({ nickname: "ゆき" })
+    );
+    expect(body.nextCursor).toBeNull();
+  });
+
+  test("GET_idが不正な形式の場合_400を返す", async () => {
+    setupSupabaseFromTables({
+      notifications: { data: [], error: null },
+    });
+
+    const res = await GET(
+      createRequest("http://localhost/api/notifications?id=not-a-uuid")
+    );
+
+    expect(res.status).toBe(400);
+  });
+
   test("GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する", async () => {
     // Spec: NOTIFGET-010A
     const rows = [

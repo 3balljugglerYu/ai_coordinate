@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   getNotifications,
+  getNotificationById,
   markNotificationsRead,
   markAllNotificationsRead,
   getUnreadCount,
@@ -31,9 +32,6 @@ interface UseNotificationsOptions {
 
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
-
-/** Realtime 新着の enrichment 取得件数。直近を少し多めに取り、対象 ID を探す。 */
-const REALTIME_ENRICH_FETCH_LIMIT = 5;
 
 function getBonusToastStorageKey(userId: string) {
   return `${BONUS_TOAST_HISTORY_STORAGE_KEY}:${userId}`;
@@ -154,25 +152,28 @@ export function useNotifications(
     async (rawNotification: Notification) => {
       let notificationToInsert = rawNotification;
       try {
-        const response = await getNotifications(
-          REALTIME_ENRICH_FETCH_LIMIT,
-          null,
-          { fetchFailed: t("fetchFailed") }
-        );
-        const enriched = response.notifications.find(
-          (item) => item.id === rawNotification.id
-        );
+        // ID 指定の単一取得。件数窓（直近N件）方式はバースト時に対象を
+        // 取り逃がすため、必ず本人宛のその1件だけを引く。
+        const enriched = await getNotificationById(rawNotification.id, {
+          fetchFailed: t("fetchFailed"),
+        });
         if (enriched) {
           notificationToInsert = enriched;
         }
       } catch (error) {
         console.error("Failed to enrich realtime notification:", error);
       }
-      setNotifications((prev) =>
-        prev.some((item) => item.id === notificationToInsert.id)
-          ? prev
-          : [notificationToInsert, ...prev]
-      );
+      // enrichment の完了順に依存せず、API と同じ created_at DESC, id DESC を保つ
+      setNotifications((prev) => {
+        if (prev.some((item) => item.id === notificationToInsert.id)) {
+          return prev;
+        }
+        return [notificationToInsert, ...prev].sort((a, b) => {
+          const createdAtOrder =
+            Date.parse(b.created_at) - Date.parse(a.created_at);
+          return createdAtOrder || b.id.localeCompare(a.id);
+        });
+      });
     },
     [t]
   );
