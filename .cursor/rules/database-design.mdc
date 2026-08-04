@@ -141,8 +141,8 @@ alwaysApply: false
 - 主要カラム: `user_id`, `image_url`, `storage_path`, `prompt`, `is_posted`, `caption`, `posted_at`, `created_at`, `view_count`, `generation_type`, `input_images`, `generation_metadata`, `source_image_stock_id`, `image_job_id`, `image_job_result_index`, `width`, `height`, `model`, `storage_path_display`, `storage_path_thumb`, `moderation_status`, `moderation_reason`, `moderation_updated_at`, `moderation_approved_at`, `background_mode`
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`, `image_job_id -> image_jobs.id`
 - 備考: `generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style/inspire/free`（`specified_coordinate/full_body/chibi` は歴史的経緯で CHECK に残るが新規未使用）、`moderation_status` は `visible/pending/removed`、`background_mode` は `keep/ai_auto/include_in_prompt`、`image_job_id` / `image_job_result_index` は OpenAI batched edit の 1 job 複数結果を OpenAI response `data[]` 順で紐づける。`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low-1k` / `gpt-image-2-low-2k` / `gpt-image-2-low-4k` / `gpt-image-2-medium-1k` / `gpt-image-2-medium-2k` / `gpt-image-2-medium-4k` / `gpt-image-2-high-1k` / `gpt-image-2-high-2k` / `gpt-image-2-high-4k`（旧 `gpt-image-2-low` も履歴互換で許可）を保持する。`width` / `height` は画像実寸（INT、`> 0` の CHECK 制約、NULL 許容）で、Post 詳細画面のサイズ表示と画像向き判定用に server-api の lazy compute で fetch 時に保存される
-- 追加カラム(Phase 1): `prompt_visibility`（`public`/`private`・既定 public）, `source_post_id`（派生元 root・**FKなし**）, `source_author_id`（原作者）
-- 制約: `source_post_id` は service role 経路のみ設定可・作成後不変（NULL→非NULLの後付けも拒否）。`source_post_id` があると `prompt_visibility` は private に強制。root で private を選べるのは `generation_type='free'` のみ。いずれも `enforce_generated_image_lineage` trigger で強制
+- 追加カラム(Phase 1): `prompt_visibility`（`public`/`private`・**既定 private**。2026-08-03 に public から反転。ADR-004b「送り忘れたら閉じる側へ倒す」）, `source_post_id`（派生元 root・**FKなし**）, `source_author_id`（原作者）
+- 制約: `source_post_id` は信頼された書き込み経路（`is_trusted_lineage_writer()` = Data API 経由なら service_role の JWT のみ・直接接続は信頼）のみ設定可・作成後不変（NULL→非NULLの後付けも拒否）。`source_post_id` があると `prompt_visibility` は private に強制。root で private を保てるのは `generation_type='free'` のみで、free 以外は **INSERT 時に public へ正規化**（既定値が流れ込むだけなので例外にしない。例外にすると coordinate / one_tap_style の生成が全滅する）・**UPDATE では拒否**（モーダルからの明示指定なので伝える価値がある）。いずれも `enforce_generated_image_lineage` trigger（`UPDATE OF id, source_post_id, source_author_id, prompt_visibility, generation_type` に限定。`record_post_impressions` の集合UPDATEで発火させない）で強制
 - 制約: `prompt` は `CHECK (prompt = '')` + `DEFAULT ''`。本文は `generated_image_prompt_secrets`（原作者入力）と `generation_prompt_snapshots`（生成実行入力）にのみ存在し、この列は `select("*")` 互換のために残している空列（ADR-001 / REQ-020）
 - RLS: 投稿済みかつ `visible` の画像は公開、それ以外は本人のみ。`INSERT/UPDATE/DELETE` は本人のみ
 
@@ -163,9 +163,9 @@ alwaysApply: false
 
 #### `prompt_usage_events`
 - 主キー: `id`
-- 主要カラム: `image_job_id`（UNIQUE）, `origin_post_id`, `origin_author_id`, `user_id`, `created_at`
-- 外部キー: `image_job_id -> image_jobs.id`（CASCADE）
-- 備考: 派生生成の成功イベント。利用数の算出根拠。`image_job_id` UNIQUE で Worker 再試行・キュー再配送時の重複を防ぐ。`generated_images` を数える案は所有者が書き換えられるため採らない
+- 主要カラム: `image_job_id`（UNIQUE・**FKなし**）, `origin_post_id`, `origin_author_id`, `user_id`, `created_at`
+- 外部キー: なし（すべてスナップショット値。`image_jobs` には本人 DELETE ポリシーがあり、FK CASCADE にすると派生者が自分のジョブを消すだけで原作者に見える利用数を減らせるため張らない）
+- 備考: 派生生成の成功イベント。利用数の算出根拠。`image_job_id` UNIQUE で Worker 再試行・キュー再配送時の重複を防ぐ。`generated_images` を数える案は所有者が書き換えられるため採らない。記録されるのは `sourcePostId` を伴う生成のみで、コピーして /free に貼った生成はアプリ内でも数えられない
 - RLS: 全アクション deny。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（service_role のみ）
 
 #### `source_image_stocks`
@@ -460,7 +460,8 @@ alwaysApply: false
 - `idx_generated_images_moderation_approved_at`
 - ~~`idx_generated_images_prompt_trgm`~~（Phase 0C で削除。prompt 列は常に空）
 - `idx_generated_images_caption_trgm`（`is_posted = true` 部分索引・検索の作品説明マッチ用）
-- `idx_profiles_nickname_trgm`（検索の作者名マッチ用）（`prompt` の trigram 検索用）
+- `idx_profiles_nickname_trgm`（検索の作者名マッチ用）
+- `idx_generated_images_source_post_id`（`source_post_id IS NOT NULL` 部分索引・派生投稿から原作への参照用）
 - `idx_image_jobs_user_id_status`
 - `idx_image_jobs_created_at`
 - `idx_image_jobs_user_id`
@@ -540,7 +541,7 @@ alwaysApply: false
 - 絵師カタログ: `apply_catalog_entry_decision`
 - 画像関連: `increment_view_count`, `insert_source_image_stock`, `update_stock_image_last_used`, `get_stock_image_limit`, `get_stock_image_usage_count`, `complete_image_job_with_generated_images`
 - 派生生成（`service_role` のみ EXECUTE 可）:
-  - `validate_derived_prompt_source(p_source_post_id uuid, p_requester_id uuid)` — 認可を検証し `is_available / root_post_id / origin_author_id` を返す。**本文は返さない**。利用不可の理由も返さない（ADR-005）。派生 ID を渡すと root へ解決する
+  - `validate_derived_prompt_source(p_source_post_id uuid, p_requester_id uuid)` — 認可を検証し `is_available / root_post_id / origin_author_id` を返す。**本文は返さない**。利用不可の理由も返さない（ADR-005）。派生 ID を渡すと root へ解決する。条件: free の root・visible・secret あり・原作者が利用可・双方向ブロックなし・フォロー済みか本人。**公開/非公開は問わない**（2026-07-31 改訂）。`is_posted` は本人が自分の生成物を使う場合だけ問わない（未投稿の下書きから本人は生成できる。`moderation_status` は本人でも緩めない）。API の job 作成前・Worker の減算前・完了RPC の画像INSERT前の3ヶ所で呼ばれる
   - `resolve_derived_prompt_source(p_source_post_id uuid, p_requester_id uuid)` — 認可を再検証してから原作者の入力を返す。**本文を返す唯一の経路**。Worker が provider 送信直前にだけ使う
   - `record_prompt_usage(p_image_job_id uuid)` — 成功済みジョブから origin / 利用者を導出して冪等記録。引数を信用しない
   - `get_prompt_usage_count(p_origin_post_id uuid)` — ユニーク利用者数（原作者を除外）。service-only（任意 UUID での列挙を防ぐ）
@@ -556,6 +557,7 @@ alwaysApply: false
 - `style_presets` は `update_updated_at_column()` trigger で `updated_at` を更新
 - 公開日時: `set_style_preset_published_at` — `style_presets.status` が published へ遷移した INSERT/UPDATE で `published_at = now()` を設定（published のままの編集では更新しない）
 - 絵師カタログ制約: `enforce_catalog_entry_submission_cap`
+- プロンプト秘匿・系譜: `enforce_generated_image_lineage`（出所列のクライアント設定拒否・不変性・派生の private 強制・free 以外の正規化）, `enforce_image_job_origin`（`origin_post_id` の設定経路と不変性。`UPDATE OF origin_post_id` に限定）, `enforce_prompt_execution_kind`（`origin_post_id` の有無と `snapshot_kind` の整合を cross-table で強制）, `reject_derived_image_prompt_secret`（派生画像への author secret 作成を service_role でも拒否）, `is_trusted_lineage_writer()` / `is_trusted_lineage_writer_for(session_user, jwt_role)`（信頼された書き込み経路の判定。Data API 経由は service_role の JWT のみ信頼・直接接続は信頼。判定本体は引数付き純関数で、migration が6経路を適用時に検証する）
 - アカウント初期化: `handle_new_user`
 - 監視・診断: `detect_generation_billing_anomalies`, `monitor_generation_billing_anomalies`
 - 拡張由来: `pgmq_send`, `pgmq_read`, `pgmq_delete`

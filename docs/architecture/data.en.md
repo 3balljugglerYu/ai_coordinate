@@ -277,6 +277,13 @@ These are EARS-inspired summaries for the flows that new developers most often b
 - `postconditions`: On success, one or more `generated_images` rows are inserted, `image_jobs.status = succeeded`, and the consumption transaction is linked to the generated image. For OpenAI batch generation, `generated_images.image_job_id` is the aggregation key. On terminal failure, the job ends in `failed` and refund is attempted once.
 - `postconditions_ja`: 成功時は `generated_images` が追加され、`image_jobs.status = succeeded` となり、消費トランザクションが生成画像に紐づく。終端失敗時はジョブが `failed` で確定し、返金が1回だけ試行される。
 
+### PROMPT-SECRECY-001
+
+- `ears`: The system shall never persist prompt text into user-readable rows (`generated_images.prompt` / `image_jobs.prompt_text`); the text shall exist only in the service-only tables `generated_image_prompt_secrets` (author input) and `generation_prompt_snapshots` (execution input).
+- `preconditions`: Job creation goes through `create_image_job_with_prompt_execution` (job + execution record in one transaction). Completion goes through `complete_image_job_with_prompt_secrets` (images, author secret, job success and billing linkage in one transaction).
+- `postconditions`: The public columns stay empty via `CHECK (prompt = '')` (even `service_role` cannot write non-empty values). Reads resolve through `resolveVisiblePrompts` and fail closed (no fallback to legacy columns). List payloads unconditionally strip `/free` prompt text (`stripFreePromptsForList`); the detail payload carries it only for the owner and admins; everyone else fetches via `/api/posts/[id]/prompt-text` (public prompts, follower-gated). Derived generation accepts only `sourcePostId` from clients; the worker resolves the text via `resolve_derived_prompt_source` immediately before the provider call and keeps it in memory only. Authorization is re-verified at three points (`validate_derived_prompt_source`: before job creation, before percoin deduction, before the completion RPC inserts images); if it lapsed by completion the output is discarded and refunded.
+- See: `docs/planning/free-prompt-private-mode-implementation-plan.md` (ADR-001..011) and `tests/unit/features/generation/prompt-read-paths.test.ts` (mechanically detects read paths that bypass the resolver).
+
 ### BILLING-STRIPE-001
 
 - `ears`: When Stripe confirms `checkout.session.completed`, the system shall apply the purchase exactly once to the user wallet.
@@ -339,6 +346,12 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `cancel_account_deletion` | `/api/account/reactivate` | user | `status` | Cancels scheduled deletion |
 | `get_due_deletion_candidates` | `/api/internal/account-purge` | limit | candidate rows | Lists users ready for purge |
 | `record_forfeiture_ledger` | `/api/internal/account-purge` | user, email hash, deleted time | `void` | Writes wallet forfeiture audit |
+| `create_image_job_with_prompt_execution` | `/api/generate-async` (admin client) | job jsonb, prompt execution jsonb | `image_jobs` row | Creates the job and its `generation_prompt_snapshots` row in one transaction; normalizes `prompt_text` to empty. **service_role only** |
+| `complete_image_job_with_prompt_secrets` | Edge Function worker | job id, images jsonb, metadata, result url, model, background mode | generated image rows | Finalizes images, author secret, job success and billing linkage in one transaction. Derived jobs re-verify authorization before insert; if lapsed, raises (output discarded, refunded). **service_role only** |
+| `validate_derived_prompt_source` | `/api/generate-async`, worker, completion RPC, reference-card resolver | source post id, requester id | `is_available / root_post_id / origin_author_id` | Authorizes derived generation. **Returns neither text nor reason** (ADR-005). Public and private origins both pass; owners may use their own unposted works. **service_role only** |
+| `resolve_derived_prompt_source` | Edge Function worker (immediately before the provider call) | source post id, requester id | `author_input` | Re-verifies authorization, then returns the author input. **The only RPC that returns prompt text.** **service_role only** |
+| `record_prompt_usage` | completion RPC | image job id | `void` | Idempotently records a successful derived generation (`image_job_id` UNIQUE); derives values from the job, not from arguments |
+| `get_prompt_usage_count` | post-detail reference-card resolver | origin post id | `integer` | Unique user count excluding the origin author. **service_role only** (prevents enumeration by arbitrary UUIDs) |
 
 ## Trigger map
 
@@ -357,6 +370,10 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `follows` `AFTER INSERT` | `notify_on_follow()` | Create follow notification |
 | `follows` `AFTER DELETE` | `delete_notification_on_follow_removal()` | Remove follow notification on unfollow |
 | `generated_images` `AFTER INSERT` | `update_stock_image_last_used()` | Update stock-image usage metadata after generation |
+| `generated_images` `BEFORE INSERT / UPDATE OF id, source_post_id, source_author_id, prompt_visibility, generation_type` | `enforce_generated_image_lineage()` | Rejects client writes to lineage columns, keeps them immutable, forces derived posts private, normalizes visibility for non-free rows. Does not fire on hot `impression_count` updates |
+| `image_jobs` `BEFORE INSERT / UPDATE OF origin_post_id` | `enforce_image_job_origin()` | Restricts `origin_post_id` to trusted writers and keeps it immutable |
+| `generation_prompt_snapshots` `BEFORE INSERT/UPDATE` | `enforce_prompt_execution_kind()` | Cross-table check that `snapshot_kind` matches the job's `origin_post_id` |
+| `generated_image_prompt_secrets` `BEFORE INSERT/UPDATE` | `reject_derived_image_prompt_secret()` | Rejects author secrets for derived images, even from `service_role` |
 | `comments`, `image_jobs`, `profiles`, `source_image_stocks`, `user_credits` `BEFORE UPDATE` | `update_updated_at_column()` | Maintain generic `updated_at` values |
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | Maintain notification preference timestamp |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | Maintain banner timestamp |
@@ -402,6 +419,9 @@ Use this section to decide whether a new feature should use session access, serv
 | Table | Why it is not a normal client CRUD target |
 | --- | --- |
 | `generation_percoin_allocations` | Internal billing allocation detail |
+| `generated_image_prompt_secrets` | Canonical store of author prompt text. `authenticated` may SELECT only its own rows; writes go through service role / SECURITY DEFINER only. Follower disclosure happens in server paths that apply visibility rules |
+| `generation_prompt_snapshots` | Execution input, 1:1 with jobs. All roles denied except service role. One-Tap Style operator prompts also live here |
+| `prompt_usage_events` | Successful derived generations (basis of usage counts). All roles denied. No FK on `image_job_id` so deleting one's own job cannot shrink the author's count |
 | `percoin_bonus_defaults` | Operational defaults table |
 | `percoin_streak_defaults` | Operational defaults table |
 | `credit_forfeiture_ledger` | Audit-only, direct public access blocked |
