@@ -61,6 +61,22 @@ describe("formatNotificationContent", () => {
       return `${values?.actor} posted a work using your prompt`;
     }
 
+    if (key === "usageMilestoneFirstTitle") {
+      return `Your prompt "${values?.origin}" was used for the first time`;
+    }
+
+    if (key === "usageMilestoneFirstTitleNoCaption") {
+      return "Your prompt was used for the first time";
+    }
+
+    if (key === "usageMilestoneTitle") {
+      return `Your prompt "${values?.origin}" has been used ${values?.count} times`;
+    }
+
+    if (key === "usageMilestoneTitleNoCaption") {
+      return `Your prompt has been used ${values?.count} times`;
+    }
+
     return key;
   };
 
@@ -237,5 +253,93 @@ describe("formatNotificationContent", () => {
     expect(result.title).toBe(
       `ゆき posted a work using your prompt "${"あ".repeat(19)}👨‍👩‍👧‍👦…"`
     );
+  });
+
+  test("利用数マイルストーン通知_初回はキャプション付きの専用文言", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        entity_id: "origin-post-1",
+        data: { milestone: 1 },
+        post: { image_url: null, caption: "桜ドレスコーデ" },
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: 'Your prompt "桜ドレスコーデ" was used for the first time',
+      body: "",
+    });
+  });
+
+  test("利用数マイルストーン通知_キャプションが無い場合はNoCaption版", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        data: { milestone: 1 },
+        post: null,
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: "Your prompt was used for the first time",
+      body: "",
+    });
+  });
+
+  test("利用数マイルストーン通知_2回目以降は回数入りの文言", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        data: { milestone: 5 },
+        post: { image_url: null, caption: "桜ドレスコーデ" },
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: 'Your prompt "桜ドレスコーデ" has been used 5 times',
+      body: "",
+    });
+  });
+
+  test("利用数マイルストーン通知_キャプションは書記素20文字で切り詰める", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        data: { milestone: 10 },
+        post: { image_url: null, caption: "あ".repeat(25) },
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result.title).toBe(
+      `Your prompt "${"あ".repeat(20)}…" has been used 10 times`
+    );
+  });
+
+  test("利用数マイルストーン通知_milestone欠損時はDB文言へフォールバック", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        data: {},
+        title: "db title",
+        body: "db body",
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result).toEqual({ title: "db title", body: "db body" });
   });
 });

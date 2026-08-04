@@ -507,6 +507,56 @@ describe("GET /api/notifications", () => {
     expect(res.status).toBe(400);
   });
 
+  test("GET_利用数マイルストーン通知_actorをenrichmentしない", async () => {
+    // Spec: NOTIFGET-015 (B案 REQ-005: 匿名通知は actor を引かない)
+    const rows = [
+      {
+        id: "n1",
+        created_at: "2024-01-01T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "user-1",
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        entity_id: "origin-post-1",
+        data: { milestone: 5 },
+      },
+    ];
+    setupSupabaseFromTables({
+      notifications: { data: rows, error: null },
+      profiles: {
+        data: [{ user_id: "user-1", nickname: "本人", avatar_url: null }],
+        error: null,
+      },
+      generatedImages: {
+        data: [
+          {
+            id: "origin-post-1",
+            image_url: "https://img.example/origin.png",
+            storage_path: "u/o.png",
+            storage_path_thumb: "u/o_thumb.webp",
+            caption: "桜ドレス",
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const res = await GET(createRequest("http://localhost/api/notifications"));
+    const body = (await res.json()) as {
+      notifications: Array<{
+        actor?: unknown;
+        post: { image_url: string | null; caption: string | null } | null;
+      }>;
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.notifications[0].actor ?? null).toBeNull();
+    expect(body.notifications[0].post).toEqual({
+      image_url: "https://cdn.example/thumb.webp",
+      caption: "桜ドレス",
+    });
+  });
+
   test("GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する", async () => {
     // Spec: NOTIFGET-010A
     const rows = [
