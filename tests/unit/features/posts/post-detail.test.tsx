@@ -389,6 +389,25 @@ describe("PostDetail", () => {
     });
   });
 
+  test("表示_運営閲覧時_フォローに依らず平文を表示する", async () => {
+    // REQ-018: プロンプトは通報対応の判断材料そのもの。
+    // フォローしていない運営にも伏字ではなく全文を出す。
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ isFollowing: false }),
+    });
+    const post = createPost({ prompt: "reported prompt" });
+    await act(async () => {
+      render(
+        <PostDetail post={post} currentUserId="admin-1" viewerIsAdmin />
+      );
+    });
+    await waitFor(() => {
+      expect(screen.getByText("reported prompt")).toBeInTheDocument();
+    });
+    expect(screen.queryByText("***************")).not.toBeInTheDocument();
+  });
+
   test("表示_プロンプト閲覧可の間_平文を表示する", async () => {
     // Spec: POSTDET-008
     const post = createPost({ prompt: "plain here" });

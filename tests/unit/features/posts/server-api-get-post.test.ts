@@ -4,6 +4,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPost } from "@/features/posts/lib/server-api";
+import { isFullAdmin } from "@/lib/env";
 
 jest.mock("react", () => ({
   cache: <T extends (...args: never[]) => unknown>(fn: T) => fn,
@@ -63,6 +64,8 @@ function createSupabaseMock(
     show_before_image: boolean;
     width: number | null;
     height: number | null;
+    generation_type: string;
+    prompt_visibility: string;
   }> = {},
   jobResult: {
     data: { input_image_url: string | null } | null;
@@ -405,5 +408,69 @@ describe("getPost", () => {
         input_image_url_fallback: null,
       })
     );
+  });
+});
+
+/**
+ * /free 投稿の本文 strip のテスト。
+ *
+ * 公開プロンプトでもフォロワー限定の開示なので、payload には本人と運営にだけ
+ * 本文を載せる。第三者はカード経由（/api/posts/[id]/prompt-text）で取る。
+ */
+describe("getPost の free 本文 strip", () => {
+  const createClientMock = createClient as jest.MockedFunction<
+    typeof createClient
+  >;
+  const isFullAdminMock = isFullAdmin as jest.MockedFunction<typeof isFullAdmin>;
+
+  beforeEach(() => {
+    isFullAdminMock.mockReturnValue(false);
+    (createAdminClient as jest.Mock).mockReturnValue(
+      createPromptSecretAdminStub([
+        { image_id: "post-1", prompt: "ひみつの本文" },
+      ])
+    );
+    process.env.NEXT_PUBLIC_SUPABASE_URL = "https://supabase.example";
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      arrayBuffer: async () => createPngHeader(1024, 1024),
+    } as never);
+  });
+
+  function setup() {
+    const { supabase } = createSupabaseMock({
+      generation_type: "free",
+      prompt_visibility: "public",
+      width: 1024,
+      height: 1024,
+    });
+    createClientMock.mockResolvedValue(supabase as never);
+  }
+
+  it("第三者には本文を載せない", async () => {
+    setup();
+
+    const post = await getPost("post-1", "viewer-9", true);
+
+    expect(post?.prompt).toBe("");
+  });
+
+  it("本人には本文を載せる", async () => {
+    setup();
+
+    const post = await getPost("post-1", "author-1", true);
+
+    expect(post?.prompt).toBe("ひみつの本文");
+  });
+
+  it("運営には本文を載せる (REQ-018)", async () => {
+    // プロンプトは通報対応の判断材料そのもの。getPost のキャッシュは
+    // currentUserId を鍵に含むため、admin 向けの値は他の閲覧者へ漏れない。
+    isFullAdminMock.mockReturnValue(true);
+    setup();
+
+    const post = await getPost("post-1", "admin-1", true);
+
+    expect(post?.prompt).toBe("ひみつの本文");
   });
 });

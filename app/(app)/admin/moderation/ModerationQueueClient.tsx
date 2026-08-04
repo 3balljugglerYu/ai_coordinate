@@ -225,6 +225,16 @@ export function ModerationQueueClient() {
                 <p className="text-sm font-medium text-slate-900 line-clamp-2">
                   {post.caption || "キャプションなし"}
                 </p>
+                {/*
+                  プロンプト非公開の投稿は、中身の見えないプロンプトを他人に
+                  配っている状態。運営はキューの段階で見分けられるようにする。
+                  本文そのものは投稿詳細（admin 閲覧）で確認できる (REQ-018)。
+                */}
+                {post.prompt_visibility === "private" && (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+                    🔒 プロンプト非公開
+                  </span>
+                )}
                 <p className="text-xs text-slate-600">
                   通報件数: {post.report_count} / 重み合計:{" "}
                   {post.weighted_report_score.toFixed(2)}

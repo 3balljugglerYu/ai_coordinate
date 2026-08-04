@@ -27,6 +27,12 @@ export interface ModerationQueueItem {
   report_count: number;
   weighted_report_score: number;
   latest_reported_at: string | null;
+  /**
+   * プロンプトの公開設定。'private' はフォロワーへ本文を見せずに派生生成だけ
+   * 許している投稿で、キューに「プロンプト非公開」バッジを出す (REQ-018)。
+   * 適用前の行には列が無い場合があるため optional。
+   */
+  prompt_visibility?: "public" | "private";
 }
 
 export interface BlockStatusResponse {
