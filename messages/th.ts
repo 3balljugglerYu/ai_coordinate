@@ -1806,6 +1806,8 @@ export const thMessages = {
     userFallback: "ผู้ใช้",
     postImageAlt: "รูปของโพสต์",
     likeTitle: "{actor} ถูกใจโพสต์ของคุณ",
+    derivedPostTitle: "{actor} โพสต์ผลงานโดยใช้พรอมต์ “{origin}” ของคุณ",
+    derivedPostTitleNoCaption: "{actor} โพสต์ผลงานโดยใช้พรอมต์ของคุณ",
     commentTitle: "{actor} แสดงความคิดเห็นในโพสต์ของคุณ",
     replyTitle: "{actor} ตอบกลับความคิดเห็นของคุณ",
     replyToReplyTitle: "{actor} ตอบกลับการตอบกลับของคุณ",

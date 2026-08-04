@@ -1807,6 +1807,8 @@ export const arMessages = {
     userFallback: "مستخدم",
     postImageAlt: "صورة المنشور",
     likeTitle: "{actor} أعجبه منشورك",
+    derivedPostTitle: "نشر {actor} عملاً باستخدام البرومبت الخاص بك «{origin}»",
+    derivedPostTitleNoCaption: "نشر {actor} عملاً باستخدام البرومبت الخاص بك",
     commentTitle: "{actor} علّق على منشورك",
     replyTitle: "{actor} رد على تعليقك",
     replyToReplyTitle: "ردّ {actor} على ردّك",

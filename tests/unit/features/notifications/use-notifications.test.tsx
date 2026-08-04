@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useNotifications } from "@/features/notifications/hooks/useNotifications";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import {
+  getNotificationById,
   getNotifications,
   getUnreadCount,
   markAllNotificationsRead,
@@ -29,6 +30,7 @@ jest.mock("@/features/auth/lib/auth-client", () => ({
 
 jest.mock("@/features/notifications/lib/api", () => ({
   getNotifications: jest.fn(),
+  getNotificationById: jest.fn(),
   getUnreadCount: jest.fn(),
   markNotificationsRead: jest.fn(),
   markAllNotificationsRead: jest.fn(),
@@ -59,6 +61,9 @@ const getCurrentUserMock = getCurrentUser as jest.MockedFunction<
 >;
 const getNotificationsMock = getNotifications as jest.MockedFunction<
   typeof getNotifications
+>;
+const getNotificationByIdMock = getNotificationById as jest.MockedFunction<
+  typeof getNotificationById
 >;
 const getUnreadCountMock = getUnreadCount as jest.MockedFunction<
   typeof getUnreadCount
@@ -161,6 +166,7 @@ describe("useNotifications", () => {
       notifications: [],
       nextCursor: null,
     });
+    getNotificationByIdMock.mockResolvedValue(null);
     getUnreadCountMock.mockResolvedValue(0);
     markNotificationsReadMock.mockResolvedValue({ success: true });
     markAllNotificationsReadMock.mockResolvedValue({ success: true });
@@ -323,6 +329,142 @@ describe("useNotifications", () => {
     });
 
     expect(pushMock).toHaveBeenCalledWith("/posts/post-777?from=notifications");
+  });
+
+  test("派生投稿通知クリック時_汎用post分岐で派生作品の詳細へ遷移する", async () => {
+    // entity=派生投稿のため専用分岐は無い。将来 type 別分岐が増えても
+    // この遷移が壊れないことを固定する (REQ-007)。
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          type: "derived_post_published",
+          entity_type: "post",
+          entity_id: "derived-post-1",
+          data: {},
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/posts/derived-post-1?from=notifications"
+    );
+  });
+
+  test("Realtime新着はID指定でenrichmentしてから一覧へ差し込む", async () => {
+    // 生の行には actor・post が無い。新着時点から実名・サムネで出す (REQ-006)。
+    // 件数窓（直近N件）方式はバースト時に取り逃がすため、ID 指定で1件引く。
+    usePathnameMock.mockReturnValue("/feed");
+    const { result } = await renderNotificationsHook();
+
+    const raw = createNotification({
+      id: "realtime-1",
+      type: "derived_post_published",
+      entity_type: "post",
+      entity_id: "derived-post-1",
+      is_read: false,
+      read_at: null,
+      data: {},
+    });
+    getNotificationByIdMock.mockResolvedValue({
+      ...raw,
+      actor: { id: "actor-1", nickname: "ゆき", avatar_url: null },
+      post: {
+        image_url: "https://cdn.example/derived.webp",
+        caption: null,
+      },
+    });
+
+    act(() => {
+      realtimeInsertHandler?.({ new: raw });
+    });
+
+    await waitFor(() => {
+      expect(getNotificationByIdMock).toHaveBeenCalledWith("realtime-1", {
+        fetchFailed: "fetch failed",
+      });
+      expect(result.current.notifications[0]).toEqual(
+        expect.objectContaining({
+          id: "realtime-1",
+          actor: expect.objectContaining({ nickname: "ゆき" }),
+        })
+      );
+    });
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  test("Realtime新着のenrichment失敗時は生の行のまま差し込む", async () => {
+    usePathnameMock.mockReturnValue("/feed");
+    const { result } = await renderNotificationsHook();
+    getNotificationByIdMock.mockRejectedValue(new Error("network down"));
+
+    const raw = createNotification({
+      id: "realtime-2",
+      is_read: false,
+      read_at: null,
+    });
+
+    act(() => {
+      realtimeInsertHandler?.({ new: raw });
+    });
+
+    await waitFor(() => {
+      expect(result.current.notifications[0]).toEqual(
+        expect.objectContaining({ id: "realtime-2", actor: null })
+      );
+    });
+  });
+
+  test("Realtime新着が完了順で前後してもcreated_at降順を保つ", async () => {
+    usePathnameMock.mockReturnValue("/feed");
+    const { result } = await renderNotificationsHook();
+
+    const older = createNotification({
+      id: "realtime-old",
+      created_at: "2026-08-04T00:00:00.000Z",
+      is_read: false,
+      read_at: null,
+    });
+    const newer = createNotification({
+      id: "realtime-new",
+      created_at: "2026-08-04T00:01:00.000Z",
+      is_read: false,
+      read_at: null,
+    });
+
+    // 古い方の enrichment だけ遅延させ、完了順を新→旧に逆転させる
+    let resolveOlder: (value: Notification | null) => void = () => {};
+    getNotificationByIdMock.mockImplementation((id) => {
+      if (id === "realtime-old") {
+        return new Promise((resolve) => {
+          resolveOlder = resolve;
+        });
+      }
+      return Promise.resolve(null);
+    });
+
+    act(() => {
+      realtimeInsertHandler?.({ new: older });
+      realtimeInsertHandler?.({ new: newer });
+    });
+
+    await waitFor(() => {
+      expect(result.current.notifications.map((item) => item.id)).toEqual([
+        "realtime-new",
+      ]);
+    });
+
+    act(() => {
+      resolveOlder(null);
+    });
+
+    await waitFor(() => {
+      expect(result.current.notifications.map((item) => item.id)).toEqual([
+        "realtime-new",
+        "realtime-old",
+      ]);
+    });
   });
 
   test("comment通知にimage_idがない場合_comment分岐では遷移しない", async () => {

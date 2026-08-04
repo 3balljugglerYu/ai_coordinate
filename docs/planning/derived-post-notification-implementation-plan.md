@@ -220,7 +220,7 @@ DB とフロントはどちらが先に本番へ出ても壊れない（新 type
 - [ ] `messages/ja.ts` の `notifications` 名前空間に2キー追加（例: `derivedPostTitle: "{actor}が「{origin}」のプロンプトで作品を投稿しました"` / `derivedPostTitleNoCaption: "{actor}があなたのプロンプトで作品を投稿しました"`）
 - [ ] 残り14ロケール（en/ko/zh-CN/zh-TW/es/pt/fr/de/it/id/th/vi/hi/ar）に同キーを追加
 - [ ] `features/notifications/components/NotificationList.tsx`: `getNotificationIcon` に case 追加（Sparkles 系アイコン）。**actor プロフィールへ遷移できる type の共通 predicate を定義し、`handleActorIconClick` 内のガード（:137）と `isActorProfileLinkNotification`（:201-202）の両方を置き換える**（許可リストが2箇所にあり、片方だけではアバタータップが有効にならない=レビュー指摘⑤。REQ-008）
-- [ ] `features/notifications/hooks/useNotifications.ts`: Realtime INSERT で生の `payload.new` をそのまま差し込まず、**新着1件を API 経由で enrichment（actor・post 付与）してから一覧へ追加**する（取得失敗時は従来どおり生の行にフォールバック）。新着時点から実名・アバター・サムネイルが出る=REQ-006（レビュー指摘④。既存の全通知タイプも恩恵を受ける）
+- [ ] `features/notifications/hooks/useNotifications.ts`: Realtime INSERT で生の `payload.new` をそのまま差し込まず、**新着1件を API 経由で enrichment（actor・post 付与）してから一覧へ追加**する（取得失敗時は従来どおり生の行にフォールバック）。新着時点から実名・アバター・サムネイルが出る=REQ-006（レビュー指摘④。既存の全通知タイプも恩恵を受ける）。取得は `?id=` 指定の単一取得（件数窓方式はバースト時に取り逃がすため）とし、差し込み時に `created_at DESC, id DESC` の並びを維持する（実装レビュー指摘②③）
 
 **変更不要（entity=派生投稿にした効果）**: `useNotifications.ts` の**遷移分岐**（既存の `entity_type==='post'` 汎用分岐で `/posts/{派生投稿id}` へ飛ぶ）、`server-api.ts` の `getResolvedImageId`（既存ルールで派生作品のサムネ・caption が付く）。
 
@@ -249,7 +249,9 @@ Phase 1: 0.5日 / Phase 2: 0.5日 / Phase 3: 0.5日 — 合計 **1〜1.5日**。
 | `features/notifications/types.ts` | 修正 | `NotificationType` と `data.origin_caption` 追加 |
 | `features/notifications/lib/presentation.ts` | 修正 | 見出しキー union と switch case 追加 |
 | `features/notifications/components/NotificationList.tsx` | 修正 | アイコン case 追加・actor リンク判定を共通 predicate へ統一（2箇所） |
-| `features/notifications/hooks/useNotifications.ts` | 修正 | Realtime 新着を enrichment してから一覧へ差し込む |
+| `features/notifications/hooks/useNotifications.ts` | 修正 | Realtime 新着を enrichment してから一覧へ差し込む（`created_at DESC` 維持） |
+| `features/notifications/lib/api.ts` | 修正 | `getNotificationById`（ID 指定の単一取得）を追加 |
+| `app/api/notifications/route.ts` | 修正 | `?id=` の単一取得（本人固定 + enrichment）を追加 |
 | `messages/ja.ts` ほか15ロケール全ファイル | 修正 | `derivedPostTitle` / `derivedPostTitleNoCaption` 追加 |
 | `tests/unit/lib/notification-presentation.test.ts` | 修正 | 見出しの4ケース追加 |
 | `tests/unit/features/notifications/use-notifications.test.tsx` | 修正 | 遷移＋Realtime 新着 enrichment のケース追加 |
@@ -258,7 +260,7 @@ Phase 1: 0.5日 / Phase 2: 0.5日 / Phase 3: 0.5日 — 合計 **1〜1.5日**。
 | `docs/architecture/data.ja.md` / `data.en.md` | 修正 | Trigger map 2行追加 |
 | `.cursor/rules/database-design.mdc` | 修正 | notifications の type・インデックス記述更新 |
 
-変更しないことが設計上重要なファイル: `create_notification`（**再定義はしない**。EXECUTE 権限のみ変更=ADR-007）、`features/notifications/lib/server-api.ts`（entity=派生投稿のため既存ルールのまま派生作品のサムネが付く）、`useNotifications.ts` の遷移分岐（汎用 post 分岐のまま。修正は Realtime 差し込みのみ）、`app/api/posts/post/route.ts`・`app/api/posts/[id]/route.ts`（API フックを置かない）、`app/api/notifications/*`・`notification-tab.ts`・`route-copy.ts`（type 非依存）。
+変更しないことが設計上重要なファイル: `create_notification`（**再定義はしない**。EXECUTE 権限のみ変更=ADR-007）、`features/notifications/lib/server-api.ts`（entity=派生投稿のため既存ルールのまま派生作品のサムネが付く）、`useNotifications.ts` の遷移分岐（汎用 post 分岐のまま。修正は Realtime 差し込みのみ）、`app/api/posts/post/route.ts`・`app/api/posts/[id]/route.ts`（API フックを置かない）、`notification-tab.ts`・`route-copy.ts`（type 非依存）。
 
 ## 7. 品質・テスト観点
 

@@ -1811,6 +1811,8 @@ export const deMessages = {
     userFallback: "Nutzer",
     postImageAlt: "Beitragsbild",
     likeTitle: "{actor} hat deinen Beitrag geliked",
+    derivedPostTitle: "{actor} hat mit deinem Prompt „{origin}“ ein Werk veröffentlicht",
+    derivedPostTitleNoCaption: "{actor} hat mit deinem Prompt ein Werk veröffentlicht",
     commentTitle: "{actor} hat deinen Beitrag kommentiert",
     replyTitle: "{actor} hat auf deinen Kommentar geantwortet",
     replyToReplyTitle: "{actor} hat auf deine Antwort geantwortet",

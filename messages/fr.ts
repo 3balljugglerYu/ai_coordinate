@@ -1810,6 +1810,8 @@ export const frMessages = {
     userFallback: "Utilisateur",
     postImageAlt: "Image de la publication",
     likeTitle: "{actor} a aimé votre publication",
+    derivedPostTitle: "{actor} a publié une œuvre avec votre prompt « {origin} »",
+    derivedPostTitleNoCaption: "{actor} a publié une œuvre avec votre prompt",
     commentTitle: "{actor} a commenté votre publication",
     replyTitle: "{actor} a répondu à votre commentaire",
     replyToReplyTitle: "{actor} a répondu à votre réponse",

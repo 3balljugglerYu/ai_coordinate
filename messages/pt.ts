@@ -1810,6 +1810,8 @@ export const ptMessages = {
     userFallback: "Usuário",
     postImageAlt: "Imagem da publicação",
     likeTitle: "{actor} curtiu sua publicação",
+    derivedPostTitle: "{actor} publicou uma obra usando seu prompt “{origin}”",
+    derivedPostTitleNoCaption: "{actor} publicou uma obra usando seu prompt",
     commentTitle: "{actor} comentou sua publicação",
     replyTitle: "{actor} respondeu seu comentário",
     replyToReplyTitle: "{actor} respondeu à sua resposta",

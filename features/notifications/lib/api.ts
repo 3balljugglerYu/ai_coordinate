@@ -49,6 +49,34 @@ export async function getNotifications(
 }
 
 /**
+ * 通知を1件だけ取得（Realtime 新着の enrichment 用）。
+ * 本人宛でない・存在しない場合は null。
+ */
+export async function getNotificationById(
+  id: string,
+  messages?: NotificationApiMessages
+): Promise<Notification | null> {
+  const params = new URLSearchParams({ id });
+
+  const response = await fetch(`/api/notifications?${params.toString()}`, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    const error = (await response.json().catch(() => null)) as
+      | { error?: string }
+      | null;
+    throw new Error(error?.error || messages?.fetchFailed || "通知の取得に失敗しました");
+  }
+
+  const body = (await response.json()) as NotificationsResponse;
+  return body.notifications[0] ?? null;
+}
+
+/**
  * 通知を既読化
  */
 export async function markNotificationsRead(

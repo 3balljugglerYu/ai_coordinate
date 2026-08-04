@@ -1808,6 +1808,8 @@ export const hiMessages = {
     userFallback: "उपयोगकर्ता",
     postImageAlt: "पोस्ट की छवि",
     likeTitle: "{actor} ने आपकी पोस्ट को लाइक किया",
+    derivedPostTitle: "{actor} ने आपके प्रॉम्प्ट “{origin}” से एक कृति पोस्ट की",
+    derivedPostTitleNoCaption: "{actor} ने आपके प्रॉम्प्ट से एक कृति पोस्ट की",
     commentTitle: "{actor} ने आपकी पोस्ट पर टिप्पणी की",
     replyTitle: "{actor} ने आपकी टिप्पणी पर जवाब दिया",
     replyToReplyTitle: "{actor} ने आपके उत्तर का जवाब दिया",

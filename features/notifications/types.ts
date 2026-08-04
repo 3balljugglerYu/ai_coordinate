@@ -8,7 +8,8 @@ export type NotificationType =
   | 'follow'
   | 'bonus'
   | 'post_moderation_removed'
-  | 'post_moderation_appeal_result';
+  | 'post_moderation_appeal_result'
+  | 'derived_post_published';
 export type EntityType = 'post' | 'comment' | 'user';
 
 /**
@@ -48,6 +49,8 @@ export interface Notification {
     reply_to_comment_id?: string;
     parent_comment_id?: string;
     follower_id?: string;
+    /** 派生投稿通知 (derived_post_published): 原作キャプションのスナップショット。見出しに差し込む。 */
+    origin_caption?: string | null;
     bonus_type?: "admin_bonus" | "daily_post" | "streak" | "referral" | "signup_bonus" | "tour_bonus";
     bonus_amount?: number;
     streak_days?: number;
