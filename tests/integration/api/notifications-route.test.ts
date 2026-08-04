@@ -397,6 +397,65 @@ describe("GET /api/notifications", () => {
     });
   });
 
+  test("GET_派生投稿通知の場合_派生作品のサムネとactorを付与する", async () => {
+    // Spec: NOTIFGET-013
+    // entity=派生投稿のため、既存の post 実体解決がそのまま効くことを固定する (REQ-006)。
+    const rows = [
+      {
+        id: "n1",
+        created_at: "2024-01-01T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "deriver-1",
+        type: "derived_post_published",
+        entity_type: "post",
+        entity_id: "derived-post-1",
+        data: { origin_caption: "桜ドレス" },
+      },
+    ];
+    setupSupabaseFromTables({
+      notifications: { data: rows, error: null },
+      profiles: {
+        data: [
+          {
+            user_id: "deriver-1",
+            nickname: "ゆき",
+            avatar_url: null,
+          },
+        ],
+        error: null,
+      },
+      generatedImages: {
+        data: [
+          {
+            id: "derived-post-1",
+            image_url: "https://img.example/derived.png",
+            storage_path: "u/d.png",
+            storage_path_thumb: "u/d_thumb.webp",
+            caption: "派生作品のキャプション",
+          },
+        ],
+        error: null,
+      },
+    });
+
+    const res = await GET(createRequest("http://localhost/api/notifications"));
+    const body = (await res.json()) as {
+      notifications: Array<{
+        actor: { nickname: string } | null;
+        post: { image_url: string | null; caption: string | null } | null;
+      }>;
+    };
+
+    expect(res.status).toBe(200);
+    expect(body.notifications[0].actor).toEqual(
+      expect.objectContaining({ nickname: "ゆき" })
+    );
+    expect(body.notifications[0].post).toEqual({
+      image_url: "https://cdn.example/thumb.webp",
+      caption: "派生作品のキャプション",
+    });
+  });
+
   test("GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する", async () => {
     // Spec: NOTIFGET-010A
     const rows = [

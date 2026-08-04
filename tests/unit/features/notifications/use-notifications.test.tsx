@@ -325,6 +325,97 @@ describe("useNotifications", () => {
     expect(pushMock).toHaveBeenCalledWith("/posts/post-777?from=notifications");
   });
 
+  test("派生投稿通知クリック時_汎用post分岐で派生作品の詳細へ遷移する", async () => {
+    // entity=派生投稿のため専用分岐は無い。将来 type 別分岐が増えても
+    // この遷移が壊れないことを固定する (REQ-007)。
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          type: "derived_post_published",
+          entity_type: "post",
+          entity_id: "derived-post-1",
+          data: {},
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/posts/derived-post-1?from=notifications"
+    );
+  });
+
+  test("Realtime新着はenrichmentしてから一覧へ差し込む", async () => {
+    // 生の行には actor・post が無い。新着時点から実名・サムネで出す (REQ-006)。
+    usePathnameMock.mockReturnValue("/feed");
+    const { result } = await renderNotificationsHook();
+    getNotificationsMock.mockClear();
+
+    const raw = createNotification({
+      id: "realtime-1",
+      type: "derived_post_published",
+      entity_type: "post",
+      entity_id: "derived-post-1",
+      is_read: false,
+      read_at: null,
+      data: {},
+    });
+    getNotificationsMock.mockResolvedValue({
+      notifications: [
+        {
+          ...raw,
+          actor: { id: "actor-1", nickname: "ゆき", avatar_url: null },
+          post: {
+            image_url: "https://cdn.example/derived.webp",
+            caption: null,
+          },
+        },
+      ],
+      nextCursor: null,
+    });
+
+    act(() => {
+      realtimeInsertHandler?.({ new: raw });
+    });
+
+    await waitFor(() => {
+      expect(getNotificationsMock).toHaveBeenCalledWith(5, null, {
+        fetchFailed: "fetch failed",
+      });
+      expect(result.current.notifications[0]).toEqual(
+        expect.objectContaining({
+          id: "realtime-1",
+          actor: expect.objectContaining({ nickname: "ゆき" }),
+        })
+      );
+    });
+    expect(result.current.unreadCount).toBe(1);
+  });
+
+  test("Realtime新着のenrichment失敗時は生の行のまま差し込む", async () => {
+    usePathnameMock.mockReturnValue("/feed");
+    const { result } = await renderNotificationsHook();
+    getNotificationsMock.mockClear();
+    getNotificationsMock.mockRejectedValue(new Error("network down"));
+
+    const raw = createNotification({
+      id: "realtime-2",
+      is_read: false,
+      read_at: null,
+    });
+
+    act(() => {
+      realtimeInsertHandler?.({ new: raw });
+    });
+
+    await waitFor(() => {
+      expect(result.current.notifications[0]).toEqual(
+        expect.objectContaining({ id: "realtime-2", actor: null })
+      );
+    });
+  });
+
   test("comment通知にimage_idがない場合_comment分岐では遷移しない", async () => {
     const { result } = await renderNotificationsHook();
 

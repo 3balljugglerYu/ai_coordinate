@@ -53,6 +53,14 @@ describe("formatNotificationContent", () => {
       return `${values?.actor} followed you`;
     }
 
+    if (key === "derivedPostTitle") {
+      return `${values?.actor} posted a work using your prompt "${values?.origin}"`;
+    }
+
+    if (key === "derivedPostTitleNoCaption") {
+      return `${values?.actor} posted a work using your prompt`;
+    }
+
     return key;
   };
 
@@ -139,5 +147,95 @@ describe("formatNotificationContent", () => {
       title: "Bob replied to your comment",
       body: "fallback body from reply notification",
     });
+  });
+
+  test("派生投稿通知_原作キャプション付きの見出しを組む", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_post_published",
+        entity_type: "post",
+        entity_id: "derived-post-1",
+        data: { origin_caption: "桜ドレスコーデ" },
+      }),
+      "ゆき",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: 'ゆき posted a work using your prompt "桜ドレスコーデ"',
+      body: "",
+    });
+  });
+
+  test("派生投稿通知_キャプションが無い場合はNoCaption版の見出しを使う", () => {
+    for (const data of [{}, { origin_caption: "   " }]) {
+      const result = formatNotificationContent(
+        createNotification({
+          type: "derived_post_published",
+          entity_type: "post",
+          entity_id: "derived-post-1",
+          data,
+        }),
+        "ゆき",
+        translate
+      );
+
+      expect(result).toEqual({
+        title: "ゆき posted a work using your prompt",
+        body: "",
+      });
+    }
+  });
+
+  test("派生投稿通知_書記素20文字ちょうどのキャプションは省略記号を付けない", () => {
+    const caption = "あ".repeat(20);
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_post_published",
+        entity_type: "post",
+        data: { origin_caption: caption },
+      }),
+      "ゆき",
+      translate
+    );
+
+    expect(result.title).toBe(
+      `ゆき posted a work using your prompt "${caption}"`
+    );
+  });
+
+  test("派生投稿通知_20文字を超えたら書記素単位で切り省略記号を付ける", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_post_published",
+        entity_type: "post",
+        data: { origin_caption: "あ".repeat(25) },
+      }),
+      "ゆき",
+      translate
+    );
+
+    expect(result.title).toBe(
+      `ゆき posted a work using your prompt "${"あ".repeat(20)}…"`
+    );
+  });
+
+  test("派生投稿通知_結合絵文字を書記素の途中で分割しない", () => {
+    // 👨‍👩‍👧‍👦 は ZWJ 結合で1書記素（UTF-16 では複数コード単位）。
+    // 19文字 + 絵文字 = 20書記素で切れ、絵文字が壊れないこと。
+    const caption = "あ".repeat(19) + "👨‍👩‍👧‍👦" + "つづき";
+    const result = formatNotificationContent(
+      createNotification({
+        type: "derived_post_published",
+        entity_type: "post",
+        data: { origin_caption: caption },
+      }),
+      "ゆき",
+      translate
+    );
+
+    expect(result.title).toBe(
+      `ゆき posted a work using your prompt "${"あ".repeat(19)}👨‍👩‍👧‍👦…"`
+    );
   });
 });
