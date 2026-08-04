@@ -249,6 +249,29 @@ admin がシリーズ別 KPI と達成者一覧を取得します。
   - `400`: `limit` または `offset` が不正
   - `500`: 投稿取得失敗
 
+### `GET /api/posts/[id]/prompt-text`
+
+公開プロンプトの本文を返します。`/free` の投稿詳細のコピー・生成シート表示・本文併記が使います。
+
+- Access: `user session`（認証必須）
+- 背景: 公開プロンプトはフォロワー限定の開示のため、本文は投稿詳細の payload に載せません（本人と管理者を除く）。本文が要る場面だけ、この API がサーバー側で認可してから返します。
+- 認可: `validate_derived_prompt_source` と同じ条件（free の root・visible・フォロー済みか本人・ブロックなし）に加えて、**原作が `prompt_visibility = 'public'` であること**。非公開の本文はこの経路から絶対に返しません。
+- 派生投稿の ID を渡した場合は root へ解決して root の本文を返します。
+
+Success response:
+
+```json
+{
+  "postId": "root-post-uuid",
+  "prompt": "原作者が入力した本文"
+}
+```
+
+Main errors:
+
+- `401`: 未認証
+- `404`: 利用不可（`POSTS_PROMPT_TEXT_UNAVAILABLE`）。非公開・未フォロー・削除・投稿取消・公開停止のいずれでも**同じ応答**（原作の状態を推測させない）
+
 ### `POST /api/generate-async`
 
 非同期画像生成ジョブを作成し、キューへ投入します。
@@ -258,7 +281,7 @@ admin がシリーズ別 KPI と達成者一覧を取得します。
 
 ```json
 {
-  "prompt": "string, required, max 1000",
+  "prompt": "string, max 1500 (free は 30000)。sourcePostId 指定時は送らない（同時指定は 400）",
   "sourceImageStockId": "uuid, optional",
   "sourceImageBase64": "string, optional",
   "sourceImageMimeType": "image/png | image/jpeg | image/jpg | image/webp | image/gif | image/heic | image/heif",
@@ -266,7 +289,8 @@ admin がシリーズ別 KPI と達成者一覧を取得します。
   "backgroundMode": "enum, optional",
   "count": "1..4, optional",
   "generationType": "coordinate | specified_coordinate | full_body | chibi | one_tap_style | inspire | free",
-  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-{low|medium|high}-{1k|2k|4k}"
+  "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-{low|medium|high}-{1k|2k|4k}",
+  "sourcePostId": "uuid, optional (派生生成)"
 }
 ```
 
@@ -282,6 +306,11 @@ admin がシリーズ別 KPI と達成者一覧を取得します。
 - GPT Image 2 では `count` を `acceptedImageCount` として受理し、worker が OpenAI Images Edit API に 1 回で `n=acceptedImageCount` を渡します。上限はサブスクプランの生成枚数上限と `1..4` の小さい方です。
 - Gemini 系モデルでは互換性のため、この API 1 回につき 1 job / 1 画像です。複数枚生成はクライアント側が複数 job を投入します。
 - **Gemini 経路は `generationConfig.imageConfig.aspectRatio` を必ず付与** します。入力画像のアスペクトから 9 段階の離散ラベル (`9:16` / `4:5` / `3:4` / `2:3` / `1:1` / `3:2` / `4:3` / `5:4` / `16:9`) のうち最も近いものを選択し、範囲外は `9:16` / `16:9` にクランプします。`gemini-2.5-flash-image` 等 `imageSize` を持たないモデルでも `aspectRatio` だけは送信されます。
+- **派生生成（プロンプト公開・非公開モード）**: `sourcePostId` に原作（`/free` の root 投稿）の ID を渡すと、プロンプト本文をクライアントから送らずに原作と同じプロンプトで生成します。本文は Worker が provider 送信直前に author secret から解決します。
+  - `prompt` との同時指定は `400`（原作の認可だけ借りて本文を差し替える経路を塞ぐ）
+  - `generationType` は `free` 必須（省略時の default `coordinate` では `400`）
+  - 原作が利用不可（削除・投稿取消・公開停止・secret なし・原作者が利用不可・未フォロー・ブロック関係）の場合は `409` + `FREE_SOURCE_UNAVAILABLE`。**理由は区別されない**
+  - 認可は job 作成前・Worker のペルコイン減算前・完了 RPC の画像 INSERT 前の3ヶ所で再検証される。完了時に失効していた場合は成果物を破棄して返金する
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
 - `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。
@@ -314,6 +343,7 @@ Main errors:
 - `400`: バリデーション不正、元画像未指定、画像サイズ超過、残高不足
 - `401`: 未認証
 - `404`: 指定したストック画像が見つからない
+- `409`: 派生生成の原作が利用不可（`FREE_SOURCE_UNAVAILABLE`）
 - `500`: アップロード失敗、ジョブ作成失敗など
 - `202`: ジョブ作成済みだがキュー投入が遅延している可能性あり
 
@@ -693,7 +723,7 @@ Main errors:
 | GET | `/api/admin/materials-images/[slug]` | admin session | フリー素材画像一覧を取得する |
 | POST | `/api/admin/materials-images/[slug]` | admin session | フリー素材画像を追加する |
 | POST | `/api/admin/moderation/posts/[postId]/decision` | admin session | 投稿モデレーションの判定を確定する。reject は `policyCode` と `authorFacingReason` が必須、`idempotencyKey`(UUID) も必須。`internalNote` は任意で投稿者には返さない。対象が審査待ちでなければ 409 |
-| GET | `/api/admin/moderation/posts` | admin session | 審査キューを取得する |
+| GET | `/api/admin/moderation/posts` | admin session | 審査キューを取得する。各行に `prompt_visibility` を含み、非公開プロンプトの投稿をバッジで見分けられる |
 | GET | `/api/admin/moderation/appeals` | admin session | 審査待ちの異議申立てを取得する。他運営の user id は返さず `is_original_decider` の真偽値のみ返す |
 | POST | `/api/admin/moderation/appeals/[appealId]/decision` | admin session | 異議申立てを判定する。`action` は `uphold`(棄却・`removed` のまま) / `overturn`(認容・`visible` へ復帰)。`note` 必須。元判定者と同一なら `independenceExceptionReason` 必須で 400。対象が現在有効な公開停止でなければ 409 |
 | GET | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を取得する |
@@ -815,9 +845,10 @@ POST `/api/comments/[id]/replies` の request body は `{ "content": string, "re
 | POST | `/api/posts/[id]/view` | public | 閲覧数を加算する。ログイン中の管理者閲覧はカウントしない |
 | POST | `/api/posts/comments/batch` | public | 複数投稿のコメント数を一括取得する |
 | POST | `/api/posts/likes/batch` | public | 複数投稿のいいね数を一括取得する |
-| POST | `/api/posts/post` | user session | 投稿完了処理とデイリー特典付与を行う |
+| POST | `/api/posts/post` | user session | 投稿完了処理とデイリー特典付与を行う。`prompt_visibility`（`public`/`private`・`/free` のみ）を受け付ける |
 | GET | `/api/posts` | public | 投稿一覧を取得する |
-| PUT | `/api/posts/update` | user session | 投稿キャプションを更新する |
+| GET | `/api/posts/[id]/prompt-text` | user session | 公開プロンプトの本文を返す（フォロワー限定・非公開は返さない） |
+| PUT | `/api/posts/update` | user session | 投稿キャプション・`prompt_visibility` を更新する |
 
 ### referral
 

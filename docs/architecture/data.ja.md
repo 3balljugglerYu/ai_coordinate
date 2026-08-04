@@ -284,6 +284,13 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 - `preconditions`: 認証済みセッションであること。リクエストが妥当であること。元画像がストックまたはアップロードから解決できること。事前残高チェックを満たすこと。
 - `postconditions`: 成功時は `generated_images` が 1 件以上追加され、`image_jobs.status = succeeded` となり、消費トランザクションが生成画像に紐づく。OpenAI バッチでは `generated_images.image_job_id` が集計キーになる。終端失敗時はジョブが `failed` で確定し、返金が1回だけ試行される。
 
+### PROMPT-SECRECY-001
+
+- `ears`: システムはプロンプト本文をユーザーが読める行（`generated_images.prompt` / `image_jobs.prompt_text`）へ保存してはならず、本文は service-only の `generated_image_prompt_secrets`（原作者入力）と `generation_prompt_snapshots`（生成実行入力）にのみ存在しなければならない。
+- `preconditions`: job 作成は `create_image_job_with_prompt_execution`（job と実行入力を同一トランザクションで作成）、完了は `complete_image_job_with_prompt_secrets`（画像・author secret・job 成功・課金紐づけを同一トランザクションで確定）を通ること。
+- `postconditions`: 公開列は `CHECK (prompt = '')` で常に空（service_role でも非空は書けない）。読み取りは `resolveVisiblePrompts`（サーバー）経由で fail closed（secret が無ければ空。legacy 列へのフォールバック禁止）。`/free` の本文は一覧 payload から無条件で落とし（`stripFreePromptsForList`）、詳細 payload には本人と管理者にだけ載せる。第三者は `/api/posts/[id]/prompt-text`（公開のみ・フォロワー限定）で取る。派生生成はクライアントから `sourcePostId` のみを受け取り、本文は Worker が provider 送信直前に `resolve_derived_prompt_source` で解決してメモリ上でのみ使う。認可は API の job 作成前・Worker の減算前・完了 RPC の画像 INSERT 前の3ヶ所で `validate_derived_prompt_source` により再検証され、完了時に失効していた場合は成果物を破棄して返金する。
+- 関連: `docs/planning/free-prompt-private-mode-implementation-plan.md`（ADR-001〜ADR-011）、`tests/unit/features/generation/prompt-read-paths.test.ts`（未経由の読み取り経路を機械検出）。
+
 ### BILLING-STRIPE-001
 
 - `ears`: Stripe が `checkout.session.completed` を通知したとき、システムは購入結果をユーザーのウォレットへ厳密に1回だけ反映しなければならない。
@@ -347,6 +354,12 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `cancel_account_deletion` | `/api/account/reactivate` | user | `status` | 退会予約の取り消し |
 | `get_due_deletion_candidates` | `/api/internal/account-purge` | limit | 対象ユーザー一覧 | purge 対象列挙 |
 | `record_forfeiture_ledger` | `/api/internal/account-purge` | user, email hash, deleted time | `void` | ウォレット失効台帳の記録 |
+| `create_image_job_with_prompt_execution` | `/api/generate-async`(admin client) | job jsonb, prompt execution jsonb | `image_jobs` row | job と `generation_prompt_snapshots` を同一トランザクションで作成。`prompt_text` は常に空へ正規化。**service_role 専用** |
+| `complete_image_job_with_prompt_secrets` | Edge Function worker | job id, images jsonb, metadata, result url, model, background mode | 生成画像の一覧 | 生成画像・author secret・job 成功更新・`credit_transactions` 紐づけを同一トランザクションで確定。派生 job は完了前に認可を再検証し、失効なら例外（成果物破棄→返金）。**service_role 専用** |
+| `validate_derived_prompt_source` | `/api/generate-async`, worker, 完了RPC内, 参照カード解決 | source post id, requester id | `is_available / root_post_id / origin_author_id` | 派生生成の認可判定。**本文も理由も返さない**（ADR-005）。公開/非公開とも可・本人は未投稿も可。**service_role 専用** |
+| `resolve_derived_prompt_source` | Edge Function worker（provider 送信直前のみ） | source post id, requester id | `author_input` | 認可を再検証してから原作者の入力を返す。**本文を返す唯一の RPC**。**service_role 専用** |
+| `record_prompt_usage` | 完了RPC内 | image job id | `void` | 派生生成の成功イベントを冪等記録（`image_job_id` UNIQUE）。引数を信用せず job から導出 |
+| `get_prompt_usage_count` | 投稿詳細の参照カード解決 | origin post id | `integer` | ユニーク利用者数（原作者除外）。**service_role 専用**（任意 UUID の列挙防止） |
 
 ## Trigger 一覧
 
@@ -365,6 +378,10 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `follows` `AFTER INSERT` | `notify_on_follow()` | フォロー通知作成 |
 | `follows` `AFTER DELETE` | `delete_notification_on_follow_removal()` | フォロー解除時の通知削除 |
 | `generated_images` `AFTER INSERT` | `update_stock_image_last_used()` | 元画像ストックの利用状況更新 |
+| `generated_images` `BEFORE INSERT / UPDATE OF id, source_post_id, source_author_id, prompt_visibility, generation_type` | `enforce_generated_image_lineage()` | 出所列のクライアント設定拒否・作成後不変・派生の private 強制・free 以外の可視性正規化。ホットな `impression_count` 更新では発火しない |
+| `image_jobs` `BEFORE INSERT / UPDATE OF origin_post_id` | `enforce_image_job_origin()` | `origin_post_id` の設定経路（信頼された書き込みのみ）と作成後不変 |
+| `generation_prompt_snapshots` `BEFORE INSERT/UPDATE` | `enforce_prompt_execution_kind()` | `image_jobs.origin_post_id` の有無と `snapshot_kind` の整合を cross-table で強制 |
+| `generated_image_prompt_secrets` `BEFORE INSERT/UPDATE` | `reject_derived_image_prompt_secret()` | 派生画像への author secret 作成を service_role でも拒否 |
 | `comments`, `image_jobs`, `profiles`, `source_image_stocks`, `user_credits` `BEFORE UPDATE` | `update_updated_at_column()` | 汎用 `updated_at` 更新 |
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | 通知設定の更新時刻管理 |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | バナー更新時刻管理 |
@@ -410,6 +427,9 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | テーブル | 理由 |
 | --- | --- |
 | `generation_percoin_allocations` | 内部課金配分の明細 |
+| `generated_image_prompt_secrets` | プロンプト本文（原作者入力）の正本。`authenticated` の直接 SELECT は本人行のみ・書き込みは service role / SECURITY DEFINER のみ。フォロワーへの開示はサーバー経路が可視性ルールを適用する |
+| `generation_prompt_snapshots` | 生成実行入力（job と 1:1）。全ロール deny で service role のみ。One-Tap Style の運営プリセット全文もここ |
+| `prompt_usage_events` | 派生生成の成功イベント（利用数の根拠）。全ロール deny。`image_job_id` に FK を張らない（本人の job 削除で利用数が減るのを防ぐ） |
 | `percoin_bonus_defaults` | 運用設定テーブル |
 | `percoin_streak_defaults` | 運用設定テーブル |
 | `credit_forfeiture_ledger` | 監査専用で、直接公開アクセス禁止 |
