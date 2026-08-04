@@ -117,3 +117,33 @@ describe("派生投稿通知のアバター導線", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 });
+
+describe("利用数マイルストーン通知の匿名表示", () => {
+  it("運営ロゴで表示され、アバターにタップ導線が付かない", () => {
+    // actor_id には recipient 本人が入るが、本人のアバターを出すと
+    // 「自分が自分に通知した」ように見える (B案 REQ-005)
+    mockNotifications = [
+      createDerivedNotification({
+        id: "n-2",
+        type: "derived_usage_milestone",
+        entity_id: "origin-post-1",
+        actor_id: "origin-author",
+        recipient_id: "origin-author",
+        data: { milestone: 1 },
+        actor: {
+          id: "origin-author",
+          nickname: "みきふく",
+          avatar_url: "https://cdn.example/self.png",
+        },
+      }),
+    ];
+
+    render(<NotificationList />);
+
+    expect(screen.getByAltText("Persta.AI")).toBeInTheDocument();
+    expect(screen.queryByAltText("みきふく")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByAltText("Persta.AI"));
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+});

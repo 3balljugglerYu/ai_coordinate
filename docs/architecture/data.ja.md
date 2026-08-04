@@ -381,6 +381,8 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `generated_images` `BEFORE INSERT / UPDATE OF id, source_post_id, source_author_id, prompt_visibility, generation_type` | `enforce_generated_image_lineage()` | 出所列のクライアント設定拒否・作成後不変・派生の private 強制・free 以外の可視性正規化。ホットな `impression_count` 更新では発火しない |
 | `generated_images` `AFTER UPDATE OF is_posted` | `notify_on_derived_post_published()` | 派生投稿（`source_post_id` 非NULL）の公開で原作者へ `derived_post_published` 通知を作成（1作品=1通知）。自己派生・双方向ブロックはスキップし、失敗は WARNING に留め投稿を巻き込まない |
 | `generated_images` `AFTER UPDATE OF is_posted` | `delete_notification_on_derived_post_removal()` | 派生投稿の非公開化（取消・公開停止・退会一括取消）でその作品の通知を削除。他の作品の通知には触れない |
+| `generated_images` `AFTER UPDATE OF is_posted` | `delete_usage_milestone_on_origin_removal()` | 原作（free root）の非公開化でその投稿の `derived_usage_milestone` 通知を削除（リンク切れ回避） |
+| `prompt_usage_events` `AFTER INSERT` | `notify_on_prompt_usage_milestone()` | 派生生成の累計回数（原作者除外）が節目 (1,5,10,25,50,100,250,500,1000) にちょうど達したとき、原作者へ `derived_usage_milestone` 通知を匿名で作成（actor=本人・`create_notification` 不使用の直接 INSERT） |
 | `image_jobs` `BEFORE INSERT / UPDATE OF origin_post_id` | `enforce_image_job_origin()` | `origin_post_id` の設定経路（信頼された書き込みのみ）と作成後不変 |
 | `generation_prompt_snapshots` `BEFORE INSERT/UPDATE` | `enforce_prompt_execution_kind()` | `image_jobs.origin_post_id` の有無と `snapshot_kind` の整合を cross-table で強制 |
 | `generated_image_prompt_secrets` `BEFORE INSERT/UPDATE` | `reject_derived_image_prompt_secret()` | 派生画像への author secret 作成を service_role でも拒否 |
