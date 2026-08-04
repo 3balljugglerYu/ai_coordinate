@@ -2,7 +2,10 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
-import { redactSensitivePrompts } from "@/features/generation/lib/prompt-visibility";
+import {
+  redactSensitivePrompts,
+  stripFreePromptsForList,
+} from "@/features/generation/lib/prompt-visibility";
 import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 
 export interface PercoinTransaction {
@@ -227,8 +230,12 @@ export async function getUserPostsServer(
     return [];
   }
 
-  // プロンプトの正本は service-only の author secret（ADR-001）
-  return redactSensitivePrompts(await resolveVisiblePrompts(data || []));
+  // プロンプトの正本は service-only の author secret（ADR-001）。
+  // /free の本文は一覧 payload へ載せない（プロフィールは他人も閲覧し、
+  // 一覧は本文を表示しない）。本人も詳細・マイページ経路で読む。
+  return stripFreePromptsForList(
+    redactSensitivePrompts(await resolveVisiblePrompts(data || []))
+  );
 }
 
 /**

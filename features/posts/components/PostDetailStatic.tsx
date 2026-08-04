@@ -55,6 +55,12 @@ interface PostDetailStaticProps {
   isHidden?: boolean;
   onHidden?: () => void;
   /**
+   * 閲覧者が運営か（サーバー側で isFullAdmin 判定済み）。
+   * 通報対応でプロンプト全文を見るために、本文の表示だけ本人と同じ扱いにする
+   * （REQ-018）。編集・削除メニューなど所有者専用の操作には影響しない。
+   */
+  viewerIsAdmin?: boolean;
+  /**
    * 閲覧者の購読プラン。派生生成シートのモデル選択・上限に使う。
    * 投稿者のプランではないので post.user.subscription_plan とは別物。
    */
@@ -69,6 +75,7 @@ export function PostDetailStatic({
   post,
   currentUserId,
   viewerSubscriptionPlan = "free",
+  viewerIsAdmin = false,
   imageAspectRatio,
   postId,
   initialLikeCount,
@@ -107,15 +114,22 @@ export function PostDetailStatic({
   const isOwner = currentUserId === post.user_id;
   const followUserId = post.user?.id || post.user_id;
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
-  const canViewPrompt = isOwner || isFollowingAuthor;
+  // 運営は通報対応のためフォロー関係に依らず本文を読める（REQ-018）
+  const canViewPrompt = isOwner || isFollowingAuthor || viewerIsAdmin;
   const oneTapStylePreset = getOneTapStylePresetMetadata(post);
   const visiblePrompt = getVisiblePrompt(post);
   const hasVisiblePrompt = visiblePrompt.trim().length > 0;
   // 表示モードは1箇所で決める（REQ-013）。
   // 本人には自分の非公開プロンプトを見せる（忘れたときに確認できないと編集もできない）。
-  const promptDisplayMode = getPostPromptDisplayMode(post, { isOwner });
+  const promptDisplayMode = getPostPromptDisplayMode(post, {
+    isOwner,
+    isModerator: viewerIsAdmin,
+  });
   // /free の投稿で、本人または公開プロンプトのときはカードと本文を並べる
-  const showsCardWithPrompt = shouldShowPromptWithCard(post, { isOwner });
+  const showsCardWithPrompt = shouldShowPromptWithCard(post, {
+    isOwner,
+    isModerator: viewerIsAdmin,
+  });
   /*
     本人以外の本文は payload に載せていない（未フォロワーのブラウザへ届かせない
     ため）。公開プロンプトを併記するときだけ、サーバー側で認可する

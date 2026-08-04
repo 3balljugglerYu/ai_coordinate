@@ -10,6 +10,7 @@ import {
 } from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isFullAdmin } from "@/lib/env";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
@@ -128,6 +129,7 @@ export async function CachedPostDetail({
       imageUrl={imageUrl}
       originalImageUrl={originalImageUrl}
       viewerSubscriptionPlan={viewerSubscriptionPlan}
+      viewerIsAdmin={isFullAdmin(currentUserId)}
     />
   );
 }

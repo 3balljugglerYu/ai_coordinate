@@ -23,6 +23,12 @@ interface PostDetailContentProps {
   originalImageUrl?: string | null;
   /** 閲覧者の購読プラン。派生生成シートのモデル選択・上限に使う。 */
   viewerSubscriptionPlan?: SubscriptionPlan;
+  /**
+   * 閲覧者が運営（full admin）か。サーバー側で isFullAdmin により判定した値。
+   * 通報対応でプロンプト全文を見るために使う（REQ-018）。表示の出し分けで
+   * あり、本文そのものは getPost が admin にだけ payload へ含める。
+   */
+  viewerIsAdmin?: boolean;
 }
 
 export function PostDetailContent({
@@ -37,6 +43,7 @@ export function PostDetailContent({
   imageUrl,
   originalImageUrl,
   viewerSubscriptionPlan,
+  viewerIsAdmin,
 }: PostDetailContentProps) {
   const [hiddenPostId, setHiddenPostId] = useState<string | null>(null);
   const router = useRouter();
@@ -83,6 +90,7 @@ export function PostDetailContent({
         isHidden={isHidden}
         onHidden={() => setHiddenPostId(postId)}
         viewerSubscriptionPlan={viewerSubscriptionPlan}
+          viewerIsAdmin={viewerIsAdmin}
         />
 
       {!isHidden && (

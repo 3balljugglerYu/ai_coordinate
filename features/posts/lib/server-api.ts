@@ -14,7 +14,10 @@ import type {
   SortType,
 } from "../types";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
-import { redactSensitivePrompt } from "@/features/generation/lib/prompt-visibility";
+import {
+  redactSensitivePrompt,
+  stripFreePromptsForList,
+} from "@/features/generation/lib/prompt-visibility";
 import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 import { getImageDimensions, getPostImageUrl } from "./utils";
 import { resolveSourcePromptReference } from "./source-prompt-reference";
@@ -509,7 +512,13 @@ async function enrichPosts(
   // プロンプトの正本は service-only の author secret。generated_images.prompt は
   // 移行期間の互換用にすぎない（ADR-001）。一覧のたびに N 件引かないよう
   // まとめて解決する。redactSensitivePrompt は防御層として残す。
-  const promptResolvedPosts = await resolveVisiblePrompts(postsData);
+  //
+  // /free の本文は一覧 payload へ載せない。フィードのキャッシュは閲覧者を
+  // 跨いで共有され得るため、閲覧者ごとの出し分けはできない。一覧は本文を
+  // 表示しないので、落としても画面は変わらない。
+  const promptResolvedPosts = stripFreePromptsForList(
+    await resolveVisiblePrompts(postsData)
+  );
 
   // 投稿データにユーザー情報・いいね数・コメント数を結合
   return promptResolvedPosts.map((post) => {
@@ -1033,8 +1042,13 @@ export const getPost = cache(async (
   // から落としておけば、未フォロワーのブラウザには本文が一切届かない。
   //
   // 本人には残す。自分が書いた文章を確認できないと編集もできない。
+  // 運営にも残す（REQ-018）。プロンプトは通報対応の判断材料そのもので、
+  // 画像だけで「不適切かどうか」を決めさせない。getPost のキャッシュは
+  // currentUserId を鍵に含むため、admin 向けの値が他の閲覧者へ漏れることはない。
   const shouldStripPromptFromPayload =
-    promptResolved.generation_type === "free" && !isPostOwner;
+    promptResolved.generation_type === "free" &&
+    !isPostOwner &&
+    !isFullAdminViewer;
 
   // 非公開プロンプト・派生投稿の参照カード（REQ-013）。
   // 検証RPCと集計RPCはどちらも service-only なので、閲覧者の RLS クライアント

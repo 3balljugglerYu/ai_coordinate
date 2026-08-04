@@ -46,10 +46,17 @@ export function shouldHidePromptForGenerationType(
  *    併記する場合、この関数は `prompt` を返し、カードは
  *    `shouldShowPromptWithCard` を見た呼び出し側が本文の上へ並べる。
  * 4. それ以外（coordinate など）は従来どおり、本文があれば `prompt`。
+ *
+ * `isModerator`（運営）は本文の併記について本人と同じ扱いにする（REQ-018）。
+ * プロンプトは通報対応の判断材料そのもので、画像だけで判断させない。
+ * ただし派生投稿は運営でも参照カードのまま。派生投稿自身は本文を所有して
+ * おらず（author secret が無い）、出すべき本文は原作の詳細で見る。
+ * one_tap_style も運営資産のプリセットカードのままにする（全文は
+ * admin のプリセット管理画面が正）。
  */
 export function getPostPromptDisplayMode(
   record: PromptDisplayRecord,
-  options?: { isOwner?: boolean }
+  options?: { isOwner?: boolean; isModerator?: boolean }
 ): PostPromptDisplayMode {
   if (record.source_post_id) {
     return "source_reference";
@@ -81,12 +88,16 @@ export function getPostPromptDisplayMode(
  */
 export function shouldShowPromptWithCard(
   record: PromptDisplayRecord,
-  options?: { isOwner?: boolean }
+  options?: { isOwner?: boolean; isModerator?: boolean }
 ): boolean {
   if (record.source_post_id || record.generation_type !== "free") {
     return false;
   }
-  return !!options?.isOwner || record.prompt_visibility !== "private";
+  return (
+    !!options?.isOwner ||
+    !!options?.isModerator ||
+    record.prompt_visibility !== "private"
+  );
 }
 
 export function getVisiblePrompt<T extends PromptProtectedRecord>(record: T): string {
@@ -109,6 +120,34 @@ export function redactSensitivePrompts<T extends PromptProtectedRecord>(
   records: T[]
 ): T[] {
   return records.map(redactSensitivePrompt);
+}
+
+type ListPromptRecord = PromptProtectedRecord &
+  Pick<GeneratedImageRecord, "prompt_visibility">;
+
+/**
+ * 一覧 payload から `/free` の本文を落とす。
+ *
+ * フィード・プロフィールの一覧はプロンプト欄を持たないのに、payload には
+ * author secret から解決した本文が載っていた。画面に出なくても devtools で
+ * 読めるため、非公開プロンプトがここから漏れる。
+ *
+ * 公開・非公開を問わず落とす。公開でもフォロワー限定の開示であり、
+ * 一覧のキャッシュは閲覧者を跨いで共有され得るため、閲覧者ごとの
+ * 出し分けはできない。本文が要る画面（詳細・シート・コピー）は
+ * `/api/posts/[id]/prompt-text` かオーナー向け経路で取る。
+ *
+ * coordinate は従来どおり残す。一覧カードの alt フォールバックが使う
+ * ことがあり、フォローゲートは詳細画面の伏字が担っている。
+ */
+export function stripFreePromptsForList<T extends ListPromptRecord>(
+  records: T[]
+): T[] {
+  return records.map((record) =>
+    record.generation_type === "free" && record.prompt !== ""
+      ? { ...record, prompt: "" }
+      : record
+  );
 }
 
 export function getPromptSafeAltText<T extends PromptProtectedRecord>(

@@ -24,7 +24,9 @@ export async function GET(request: NextRequest) {
     const { data: posts, error } = await adminClient
       .from("generated_images")
       .select(
-        "id,user_id,image_url,storage_path_thumb,storage_path,caption,moderation_status,moderation_reason,posted_at,created_at"
+        // prompt_visibility: プロンプト非公開の投稿は「中身の見えないプロンプトを
+        // 他人に配っている」状態なので、キューの段階で見分けられるようにする (REQ-018)
+        "id,user_id,image_url,storage_path_thumb,storage_path,caption,moderation_status,moderation_reason,posted_at,created_at,prompt_visibility"
       )
       .eq("is_posted", true)
       .eq("moderation_status", "pending")

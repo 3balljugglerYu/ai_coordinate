@@ -44,6 +44,8 @@ interface PostDetailProps {
    * 投稿者のプランではないので post.user.subscription_plan とは別物。
    */
   viewerSubscriptionPlan?: SubscriptionPlan;
+  /** 閲覧者が運営か。本文の表示だけ本人と同じ扱いにする（REQ-018）。 */
+  viewerIsAdmin?: boolean;
 }
 
 /**
@@ -53,6 +55,7 @@ export function PostDetail({
   post,
   currentUserId,
   viewerSubscriptionPlan = "free",
+  viewerIsAdmin = false,
 }: PostDetailProps) {
   const t = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
@@ -102,14 +105,21 @@ export function PostDetail({
 
   const followUserId = post.user?.id || post.user_id;
   const isOwner = currentUserId === post.user_id;
-  const canViewPrompt = isOwner || isFollowingAuthor;
+  // 運営は通報対応のためフォロー関係に依らず本文を読める（REQ-018）
+  const canViewPrompt = isOwner || isFollowingAuthor || viewerIsAdmin;
   const oneTapStylePreset = getOneTapStylePresetMetadata(post);
   const visiblePrompt = getVisiblePrompt(post);
   const hasVisiblePrompt = visiblePrompt.trim().length > 0;
   // 表示モードは1箇所で決める（REQ-013）
-  const promptDisplayMode = getPostPromptDisplayMode(post, { isOwner });
+  const promptDisplayMode = getPostPromptDisplayMode(post, {
+    isOwner,
+    isModerator: viewerIsAdmin,
+  });
   // /free の投稿で、本人または公開プロンプトのときはカードと本文を並べる
-  const showsCardWithPrompt = shouldShowPromptWithCard(post, { isOwner });
+  const showsCardWithPrompt = shouldShowPromptWithCard(post, {
+    isOwner,
+    isModerator: viewerIsAdmin,
+  });
   /*
     本人以外の本文は payload に載せていない（未フォロワーのブラウザへ届かせない
     ため）。公開プロンプトを併記するときだけ、サーバー側で認可する

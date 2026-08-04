@@ -11,6 +11,7 @@
 import {
   getPostPromptDisplayMode,
   shouldShowPromptWithCard,
+  stripFreePromptsForList,
   type PostPromptDisplayMode,
 } from "@/features/generation/lib/prompt-visibility";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
@@ -81,6 +82,35 @@ describe("coordinate（対象外）", () => {
     expect(mode({ generation_type: "coordinate", prompt: "   \n " })).toBe(
       "none"
     );
+  });
+});
+
+describe("運営 (isModerator)", () => {
+  it("非公開の free でも本文を併記する (REQ-018)", () => {
+    // プロンプトは通報対応の判断材料そのもの。画像だけで判断させない。
+    expect(
+      mode({ prompt_visibility: "private" }, { isModerator: true })
+    ).toBe("prompt");
+    expect(
+      shouldShowPromptWithCard(build({ prompt_visibility: "private" }), {
+        isModerator: true,
+      })
+    ).toBe(true);
+  });
+
+  it("派生投稿は運営でも参照カードのまま", () => {
+    // 派生投稿自身は本文を所有していない（author secret が無い）。
+    // 出すべき本文は原作の詳細で見る。
+    expect(
+      mode({ source_post_id: ORIGIN_POST_ID }, { isModerator: true })
+    ).toBe("source_reference");
+  });
+
+  it("one_tap_style は運営でもプリセットカードのまま", () => {
+    // 全文は admin のプリセット管理画面が正
+    expect(
+      mode({ generation_type: "one_tap_style" }, { isModerator: true })
+    ).toBe("one_tap_style");
   });
 });
 
@@ -180,5 +210,35 @@ describe("列が無い既存レコード", () => {
         generation_type: "coordinate",
       })
     ).toBe("prompt");
+  });
+});
+
+describe("一覧 payload の本文除去", () => {
+  it("/free の本文は公開・非公開を問わず落とす", () => {
+    // 一覧のキャッシュは閲覧者を跨いで共有され得るため、
+    // 閲覧者ごとの出し分けはできない。公開でもフォロワー限定の開示である。
+    const rows = stripFreePromptsForList([
+      build({ prompt_visibility: "public", prompt: "公開の本文" }),
+      build({ prompt_visibility: "private", prompt: "非公開の本文" }),
+    ]);
+
+    expect(rows.map((row) => row.prompt)).toEqual(["", ""]);
+  });
+
+  it("coordinate の本文は残す", () => {
+    // 一覧カードの alt フォールバックが使うことがあり、
+    // フォローゲートは詳細画面の伏字が担っている
+    const rows = stripFreePromptsForList([
+      build({ generation_type: "coordinate", prompt: "夏服にして" }),
+    ]);
+
+    expect(rows[0].prompt).toBe("夏服にして");
+  });
+
+  it("既に空なら同じ参照を返す", () => {
+    const record = build({ prompt: "" });
+    const rows = stripFreePromptsForList([record]);
+
+    expect(rows[0]).toBe(record);
   });
 });
