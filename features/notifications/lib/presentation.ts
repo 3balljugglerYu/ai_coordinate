@@ -21,6 +21,10 @@ export type NotificationTranslationKey =
   | "likeTitle"
   | "replyTitle"
   | "replyToReplyTitle"
+  | "usageMilestoneFirstTitle"
+  | "usageMilestoneFirstTitleNoCaption"
+  | "usageMilestoneTitle"
+  | "usageMilestoneTitleNoCaption"
   | "moderationRemovedTitle"
   | "moderationRemovedBody"
   | "moderationAppealUpheldTitle"
@@ -173,6 +177,36 @@ export function formatNotificationContent(
             })
           : t("derivedPostTitleNoCaption", { actor: actorName }),
         body: "",
+      };
+    }
+    case "derived_usage_milestone": {
+      // 匿名の節目通知 (B案)。原作キャプションは enrichment 済みの
+      // post.caption を使う（スナップショットではなく後編集にも追従する）。
+      const milestone = getNumberValue(notification.data?.milestone);
+      const originCaption = getStringValue(notification.post?.caption);
+      const origin = originCaption
+        ? truncateOriginCaption(originCaption)
+        : null;
+      if (milestone === 1) {
+        return {
+          title: origin
+            ? t("usageMilestoneFirstTitle", { origin })
+            : t("usageMilestoneFirstTitleNoCaption"),
+          body: "",
+        };
+      }
+      if (milestone !== null) {
+        return {
+          title: origin
+            ? t("usageMilestoneTitle", { origin, count: milestone })
+            : t("usageMilestoneTitleNoCaption", { count: milestone }),
+          body: "",
+        };
+      }
+      // milestone 欠損時は DB フォールバック文言
+      return {
+        title: notification.title,
+        body: notification.body,
       };
     }
     case "bonus":

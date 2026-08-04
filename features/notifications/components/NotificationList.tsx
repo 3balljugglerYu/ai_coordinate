@@ -13,7 +13,7 @@ import {
 import { NotificationLoadMoreSkeleton } from "./NotificationLoadMoreSkeleton";
 import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
-import { isModerationNotificationType } from "../types";
+import { isAnonymousActorNotificationType } from "../types";
 import { cn } from "@/lib/utils";
 import {
   User,
@@ -22,6 +22,7 @@ import {
   UserPlus,
   Bell,
   Sparkles,
+  PartyPopper,
 } from "lucide-react";
 
 /**
@@ -128,6 +129,8 @@ export function NotificationList({
         return <Bell className="h-4 w-4 text-yellow-500 fill-yellow-500" />;
       case "derived_post_published":
         return <Sparkles className="h-4 w-4 text-purple-500" />;
+      case "derived_usage_milestone":
+        return <PartyPopper className="h-4 w-4 text-amber-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
@@ -216,11 +219,12 @@ export function NotificationList({
         {notifications.map((notification) => {
           const imageUrl = getImageUrl(notification);
           const isBonusNotification = notification.type === "bonus";
-          // モデレーション通知も運営発なので運営ロゴで表示する。
+          // 匿名通知（moderation 系・利用数マイルストーン）は運営ロゴで表示する。
           // actor_id には recipient 本人が入っており、アバターを出すと
-          // 「自分が自分に通知した」ように見えてしまう (ADR-011)。
+          // 「自分が自分に通知した」ように見えてしまう (ADR-011 / B案 REQ-005)。
           const isSystemNotification =
-            isBonusNotification || isModerationNotificationType(notification.type);
+            isBonusNotification ||
+            isAnonymousActorNotificationType(notification.type);
           const isActorProfileLinkNotification = canLinkToActorProfile(
             notification.type
           );

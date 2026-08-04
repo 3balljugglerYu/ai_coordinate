@@ -1,7 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
-import { isModerationNotificationType } from "../types";
+import {
+  isAnonymousActorNotificationType,
+  isModerationNotificationType,
+} from "../types";
 import type { Notification, NotificationsResponse } from "../types";
 import { shouldHideThumbnailForPolicy } from "@/constants/moderation-policy";
 
@@ -34,13 +37,16 @@ export async function enrichNotificationsWithDetails(
   supabase: SupabaseClient,
   notifications: NotificationRow[]
 ): Promise<Notification[]> {
-  // モデレーション通知は actor_id に recipient 本人が入るため、プロフィールを
-  // 引くと「自分が自分に削除通知を出した」ように見える。enrichment 対象から外す
-  // (ADR-011 / レビュー指摘10: 管理者の個人情報を通知から分離)。
+  // 匿名通知（moderation 系・利用数マイルストーン）は actor_id に recipient
+  // 本人が入るため、プロフィールを引くと「自分が自分に通知した」ように見える。
+  // enrichment 対象から外す (ADR-011 / B案 REQ-005)。
   const actorIds = Array.from(
     new Set(
       notifications
-        .filter((notification) => !isModerationNotificationType(notification.type))
+        .filter(
+          (notification) =>
+            !isAnonymousActorNotificationType(notification.type)
+        )
         .map((notification) => notification.actor_id)
         .filter(Boolean)
     )
