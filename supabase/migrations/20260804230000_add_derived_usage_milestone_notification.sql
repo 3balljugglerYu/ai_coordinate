@@ -94,11 +94,17 @@ BEGIN
   END IF;
 
   -- 通算回数（原作者除外）。「ちょうど節目」のときだけ発火する (ADR-002)。
-  -- idx_prompt_usage_events_origin があるため安価。
+  -- idx_prompt_usage_events_origin があるため安価。最大節目 1000 を超えたら
+  -- 正確な件数は不要なので 1001 件で走査を打ち切り、人気投稿でも
+  -- Worker 完了 RPC の待ち時間を一定に保つ。
   SELECT count(*) INTO v_count
-  FROM public.prompt_usage_events
-  WHERE origin_post_id = NEW.origin_post_id
-    AND user_id <> origin_author_id;
+  FROM (
+    SELECT 1
+    FROM public.prompt_usage_events
+    WHERE origin_post_id = NEW.origin_post_id
+      AND user_id <> origin_author_id
+    LIMIT 1001
+  ) AS bounded_usage;
 
   IF v_count NOT IN (1, 5, 10, 25, 50, 100, 250, 500, 1000) THEN
     RETURN NEW;
@@ -106,9 +112,14 @@ BEGIN
 
   -- 原作が現在も投稿中のときだけ通知する (REQ-003)。
   -- 取消直後に生成完了が滑り込む競合と、原作消滅（FK なし）の防御。
+  -- FOR SHARE で原作行を共有ロックし、非公開化 (UPDATE is_posted=false) と
+  -- 直列化する。これが無いと「ここで true を読む → 別トランザクションが
+  -- 非公開化して削除トリガーまで完了 → その後に通知 INSERT」の順序で
+  -- リンク切れ通知が残り得る (REQ-008 の不変条件が崩れる)。
   SELECT is_posted INTO v_origin_is_posted
   FROM public.generated_images
-  WHERE id = NEW.origin_post_id;
+  WHERE id = NEW.origin_post_id
+  FOR SHARE;
 
   IF NOT FOUND OR v_origin_is_posted IS DISTINCT FROM true THEN
     RETURN NEW;

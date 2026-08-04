@@ -129,7 +129,7 @@ DB とフロントはどちらが先に本番へ出ても壊れない（A案と�
 - [ ] マイグレーション `add_derived_usage_milestone_notification.sql` を作成
   - [ ] `notifications_type_check` を DROP → `'derived_usage_milestone'` を加えた18値で ADD（`20260804200000` の書式踏襲。3,521行規模の根拠コメントも同様に）
   - [ ] 部分ユニークインデックス `notifications_unique_usage_milestone_idx ON notifications (entity_id, ((data->>'milestone'))) WHERE type = 'derived_usage_milestone'`（REQ-004。moderation の式インデックス前例）
-  - [ ] 関数 `notify_on_prompt_usage_milestone()`（SECURITY DEFINER / `SET search_path = public, pg_temp`。自己利用スキップ → 累計カウント（原作者除外）→ 節目配列と完全一致判定 → 原作の実在＋`is_posted` 確認 → notifications へ**直接 INSERT**（recipient=actor=原作者、`'post'`、原作ID、DB フォールバック title は日本語、data は `{milestone: n}`）。全体 EXCEPTION → WARNING で生成完了 RPC を守る = REQ-009）
+  - [ ] 関数 `notify_on_prompt_usage_milestone()`（SECURITY DEFINER / `SET search_path = public, pg_temp`。自己利用スキップ → 累計カウント（原作者除外・最大節目超過後は `LIMIT 1001` で走査打ち切り=実装レビュー指摘②）→ 節目配列と完全一致判定 → 原作の実在＋`is_posted` 確認（**`FOR SHARE` で非公開化と直列化**し、読み取り後に取消が滑り込んでもリンク切れ通知を残さない=実装レビュー指摘①）→ notifications へ**直接 INSERT**（recipient=actor=原作者、`'post'`、原作ID、DB フォールバック title は日本語、data は `{milestone: n}`）。全体 EXCEPTION → WARNING で生成完了 RPC を守る = REQ-009）
   - [ ] トリガー `trg_notify_prompt_usage_milestone`: `AFTER INSERT ON prompt_usage_events FOR EACH ROW`（書き込みは Worker 完了 RPC の1経路のみ・ON CONFLICT DO NOTHING 時は発火しない）
   - [ ] 関数 `delete_usage_milestone_on_origin_removal()` + トリガー `trg_delete_usage_milestone_on_origin_removal`: `AFTER UPDATE OF is_posted ON generated_images ... WHEN (OLD.is_posted = true AND NEW.is_posted = false AND OLD.source_post_id IS NULL AND OLD.generation_type = 'free')` → `DELETE ... WHERE type='derived_usage_milestone' AND entity_id = OLD.id`（ADR-005。A案トリガーとは WHEN が別）
   - [ ] 適用後検証 DO ブロック（`20260804200000` と同じ2段構成）:

@@ -131,7 +131,11 @@ export async function enrichNotificationsWithDetails(
 
   return notifications.map((notification) => {
     const isModeration = isModerationNotificationType(notification.type);
-    const actor = isModeration ? undefined : actorMap[notification.actor_id];
+    // 匿名通知は、同一バッチの別通知経由で recipient 本人のプロフィールが
+    // actorMap に入っていても付与しない (ADR-011 / B案 REQ-005)。
+    const actor = isAnonymousActorNotificationType(notification.type)
+      ? undefined
+      : actorMap[notification.actor_id];
     const resolvedImageId = getResolvedImageId(notification, commentImageIdMap);
     const resolvedPost = resolvedImageId ? postMap[resolvedImageId] : null;
     // 重大な安全カテゴリでは、削除対象画像を通知でも再表示しない (ADR-011)。

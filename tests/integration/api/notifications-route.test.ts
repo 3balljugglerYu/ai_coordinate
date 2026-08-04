@@ -557,6 +557,55 @@ describe("GET /api/notifications", () => {
     });
   });
 
+  test("GET_匿名通知と本人がactorの通知が混在しても匿名側にactorを復元しない", async () => {
+    // Spec: NOTIFGET-016 (B案 REQ-005)
+    // 別通知経由で recipient 本人のプロフィールが actorMap に入っても、
+    // 匿名通知には付与しないことを最終マッピングの段で固定する。
+    const rows = [
+      {
+        id: "n1",
+        created_at: "2024-01-02T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "user-1",
+        type: "derived_usage_milestone",
+        entity_type: "post",
+        entity_id: "origin-post-1",
+        data: { milestone: 5 },
+      },
+      {
+        id: "n2",
+        created_at: "2024-01-01T00:00:00Z",
+        recipient_id: "user-1",
+        actor_id: "user-1",
+        type: "like",
+        entity_type: "post",
+        entity_id: "post-9",
+        data: {},
+      },
+    ];
+    setupSupabaseFromTables({
+      notifications: { data: rows, error: null },
+      profiles: {
+        data: [{ user_id: "user-1", nickname: "本人", avatar_url: null }],
+        error: null,
+      },
+    });
+
+    const res = await GET(createRequest("http://localhost/api/notifications"));
+    const body = (await res.json()) as {
+      notifications: Array<{ id: string; actor?: { nickname: string } | null }>;
+    };
+
+    expect(res.status).toBe(200);
+    const milestone = body.notifications.find((n) => n.id === "n1");
+    const like = body.notifications.find((n) => n.id === "n2");
+    // actorMap には本人のプロフィールが入っている（like 経由）が、匿名側には付与しない
+    expect(milestone?.actor ?? null).toBeNull();
+    expect(like?.actor).toEqual(
+      expect.objectContaining({ nickname: "本人" })
+    );
+  });
+
   test("GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する", async () => {
     // Spec: NOTIFGET-010A
     const rows = [
