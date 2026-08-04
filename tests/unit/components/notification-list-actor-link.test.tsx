@@ -147,3 +147,51 @@ describe("利用数マイルストーン通知の匿名表示", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 });
+
+describe("One-Tap Style クリエイター通知の表示", () => {
+  it("実名の投稿通知はアバタータップで投稿者プロフィールへ遷移する", () => {
+    mockNotifications = [
+      createDerivedNotification({
+        id: "n-3",
+        type: "style_preset_post_published",
+        entity_id: "posted-image-1",
+        data: { preset_title: "桜メイド服" },
+      }),
+    ];
+
+    render(<NotificationList />);
+
+    fireEvent.click(screen.getByAltText("ゆき"));
+
+    expect(pushMock).toHaveBeenCalledWith(
+      "/users/deriver-1?from=notifications"
+    );
+  });
+
+  it("匿名の節目通知は運営ロゴで表示されタップ導線が付かない", () => {
+    mockNotifications = [
+      createDerivedNotification({
+        id: "n-4",
+        type: "style_preset_usage_milestone",
+        entity_type: "user",
+        entity_id: "origin-author",
+        actor_id: "origin-author",
+        recipient_id: "origin-author",
+        data: { milestone: 1, preset_title: "桜メイド服" },
+        actor: {
+          id: "origin-author",
+          nickname: "みきふく",
+          avatar_url: "https://cdn.example/self.png",
+        },
+      }),
+    ];
+
+    render(<NotificationList />);
+
+    expect(screen.getByAltText("Persta.AI")).toBeInTheDocument();
+    expect(screen.queryByAltText("みきふく")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByAltText("Persta.AI"));
+    expect(pushMock).not.toHaveBeenCalled();
+  });
+});

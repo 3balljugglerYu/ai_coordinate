@@ -352,6 +352,23 @@ describe("useNotifications", () => {
     );
   });
 
+  test("スタイル節目通知クリック時_プリセットの公開ページへ遷移する", async () => {
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          type: "style_preset_usage_milestone",
+          entity_type: "user",
+          entity_id: "provider-1",
+          data: { preset_slug: "sakura-maid", milestone: 5 },
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledWith("/styles/sakura-maid");
+  });
+
   test("Realtime新着はID指定でenrichmentしてから一覧へ差し込む", async () => {
     // 生の行には actor・post が無い。新着時点から実名・サムネで出す (REQ-006)。
     // 件数窓（直近N件）方式はバースト時に取り逃がすため、ID 指定で1件引く。
