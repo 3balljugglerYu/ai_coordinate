@@ -130,10 +130,29 @@ jest.mock("@/features/posts/components/CommentList", () => {
 });
 
 jest.mock("@/features/users/components/FollowButton", () => ({
-  FollowButton: ({ userId }: { userId: string }) => (
-    <div data-testid="follow-button" data-user-id={userId} />
+  FollowButton: ({
+    userId,
+    onFollowChange,
+  }: {
+    userId: string;
+    onFollowChange?: (isFollowing: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="follow-button"
+      data-user-id={userId}
+      onClick={() => onFollowChange?.(true)}
+    />
   ),
 }));
+
+// 参照カードの生成シートは vaul と生成フォーム一式を抱えるため差し替える
+jest.mock(
+  "@/features/generation/components/PromptLockedGenerationSheet",
+  () => ({
+    PromptLockedGenerationSheet: () => null,
+  })
+);
 
 jest.mock("@/components/ui/dropdown-menu", () => ({
   DropdownMenu: ({ children }: { children: React.ReactNode }) => (
@@ -386,6 +405,56 @@ describe("PostDetail", () => {
     });
     await waitFor(() => {
       expect(screen.getByText("***")).toBeInTheDocument();
+    });
+  });
+
+test("フォロー_上部のボタンでフォローすると再読込なしでカードが有効になる", async () => {
+    // 上部のボタンとカードの state が別々のままだと、フォローしても
+    // 「このプロンプトで作る」が出ず、画面の更新が要る（実際に報告された）。
+    (global.fetch as jest.Mock).mockResolvedValue({
+      ok: true,
+      json: async () => ({ isFollowing: false }),
+    });
+    // 原作者はページの投稿者と同一（root の /free 投稿）。
+    // createPost の既定 user.id と揃えないと、上部のボタンが別人を指してしまう
+    const post = createPost({
+      generation_type: "free",
+      prompt_visibility: "private",
+      prompt: "",
+      source_reference: {
+        postId: "img-1",
+        isAvailable: true,
+        authorId: "owner-1",
+        authorNickname: "作者",
+        authorAvatarUrl: null,
+        thumbnailUrl: null,
+        thumbnailWidth: null,
+        thumbnailHeight: null,
+        beforeThumbnailUrl: null,
+        promptVisibility: "private",
+        usageCount: 0,
+      },
+    });
+
+    await act(async () => {
+      render(<PostDetail post={post} currentUserId="viewer-1" />);
+    });
+
+    // 未フォロー: 生成ボタンは無い。フォロー導線はヘッダーの1つだけ
+    // （カード側は同じ相手なので隠れる）
+    expect(
+      screen.queryByRole("button", { name: /sourcePromptCardTitle/ })
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("follow-button")).toHaveLength(1);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("follow-button"));
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /sourcePromptCardTitle/ })
+      ).toBeInTheDocument();
     });
   });
 

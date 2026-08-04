@@ -104,8 +104,19 @@ jest.mock("@/features/posts/lib/source-prompt-text-api", () => ({
 }));
 
 jest.mock("@/features/users/components/FollowButton", () => ({
-  FollowButton: ({ userId }: { userId: string }) => (
-    <button type="button" data-testid="follow-button" data-user-id={userId}>
+  FollowButton: ({
+    userId,
+    onFollowChange,
+  }: {
+    userId: string;
+    onFollowChange?: (isFollowing: boolean) => void;
+  }) => (
+    <button
+      type="button"
+      data-testid="follow-button"
+      data-user-id={userId}
+      onClick={() => onFollowChange?.(true)}
+    >
       フォロー
     </button>
   ),
@@ -668,6 +679,34 @@ describe("原作の投稿への遷移", () => {
     expect(
       screen.queryByRole("button", { name: "原作のページに移動しますか？" })
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("フォローボタンの重複と同期", () => {
+  it("ページ上に同じ相手のボタンがあるときは隠す", () => {
+    // root の投稿ではヘッダー（ユーザーアイコン横）のボタンと二重になる
+    renderCard({ isFollowingAuthor: false, hideFollowButton: true });
+
+    expect(screen.queryByTestId("follow-button")).not.toBeInTheDocument();
+    // 文言は残す。解消の導線はヘッダー側が担う
+    expect(screen.getByText("フォローすると使えます")).toBeInTheDocument();
+  });
+
+  it("派生投稿（原作者が別人）では隠さない", () => {
+    renderCard({ isFollowingAuthor: false, hideFollowButton: false });
+
+    expect(screen.getByTestId("follow-button")).toBeInTheDocument();
+  });
+
+  it("カード内でフォローしたら親へ伝える", () => {
+    // 親のフォロー状態と食い違うと、フォローしたのに
+    // 「このプロンプトで作る」が出ない（再読込が要る）状態になる
+    const onFollowChange = jest.fn();
+    renderCard({ isFollowingAuthor: false, onFollowChange });
+
+    fireEvent.click(screen.getByTestId("follow-button"));
+
+    expect(onFollowChange).toHaveBeenCalledWith(true);
   });
 });
 
