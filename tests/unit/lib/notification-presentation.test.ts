@@ -77,6 +77,18 @@ describe("formatNotificationContent", () => {
       return `Your prompt has been used ${values?.count} times`;
     }
 
+    if (key === "stylePresetPostTitle") {
+      return `${values?.actor} posted a work in your "${values?.preset}" style`;
+    }
+
+    if (key === "stylePresetUsageMilestoneFirstTitle") {
+      return `Your "${values?.preset}" style was used for the first time`;
+    }
+
+    if (key === "stylePresetUsageMilestoneTitle") {
+      return `Your "${values?.preset}" style has been used ${values?.count} times`;
+    }
+
     return key;
   };
 
@@ -341,5 +353,73 @@ describe("formatNotificationContent", () => {
     );
 
     expect(result).toEqual({ title: "db title", body: "db body" });
+  });
+
+  test("スタイル投稿通知_実名とプリセット名で見出しを組む", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "style_preset_post_published",
+        entity_type: "post",
+        entity_id: "posted-image-1",
+        data: { preset_id: "p-1", preset_title: "桜メイド服" },
+      }),
+      "ゆき",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: 'ゆき posted a work in your "桜メイド服" style',
+      body: "",
+    });
+  });
+
+  test("スタイル投稿通知_preset_title欠損時はDB文言へフォールバック", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "style_preset_post_published",
+        entity_type: "post",
+        data: {},
+        title: "db title",
+        body: "db body",
+      }),
+      "ゆき",
+      translate
+    );
+
+    expect(result).toEqual({ title: "db title", body: "db body" });
+  });
+
+  test("スタイル節目通知_初回は専用文言", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "style_preset_usage_milestone",
+        entity_type: "user",
+        entity_id: "provider-1",
+        data: { milestone: 1, preset_title: "桜メイド服" },
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result).toEqual({
+      title: 'Your "桜メイド服" style was used for the first time',
+      body: "",
+    });
+  });
+
+  test("スタイル節目通知_2回目以降は回数入りでプリセット名を20文字に切り詰める", () => {
+    const result = formatNotificationContent(
+      createNotification({
+        type: "style_preset_usage_milestone",
+        entity_type: "user",
+        data: { milestone: 50, preset_title: "あ".repeat(25) },
+      }),
+      "unused-actor",
+      translate
+    );
+
+    expect(result.title).toBe(
+      `Your "${"あ".repeat(20)}…" style has been used 50 times`
+    );
   });
 });

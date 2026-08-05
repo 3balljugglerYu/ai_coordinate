@@ -23,6 +23,7 @@ import {
   Bell,
   Sparkles,
   PartyPopper,
+  Shirt,
 } from "lucide-react";
 
 /**
@@ -33,7 +34,7 @@ import {
  */
 const ACTOR_PROFILE_LINK_NOTIFICATION_TYPES: ReadonlyArray<
   Notification["type"]
-> = ["like", "comment", "derived_post_published"];
+> = ["like", "comment", "derived_post_published", "style_preset_post_published"];
 
 function canLinkToActorProfile(type: Notification["type"]): boolean {
   return ACTOR_PROFILE_LINK_NOTIFICATION_TYPES.includes(type);
@@ -131,6 +132,10 @@ export function NotificationList({
         return <Sparkles className="h-4 w-4 text-purple-500" />;
       case "derived_usage_milestone":
         return <PartyPopper className="h-4 w-4 text-amber-500" />;
+      case "style_preset_post_published":
+        return <Shirt className="h-4 w-4 text-indigo-500" />;
+      case "style_preset_usage_milestone":
+        return <PartyPopper className="h-4 w-4 text-pink-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }

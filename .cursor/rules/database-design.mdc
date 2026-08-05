@@ -486,6 +486,10 @@ alwaysApply: false
 - `notifications_unique_comment_idx`
 - `notifications_unique_derived_post_idx`(部分・`type='derived_post_published'`)
 - `notifications_unique_usage_milestone_idx`(部分・式 `(entity_id, data->>'milestone')`・`type='derived_usage_milestone'`)
+- `notifications_unique_style_preset_post_idx`(部分・`type='style_preset_post_published'`)
+- `notifications_unique_style_preset_milestone_idx`(部分・式 `(data->>'preset_id', data->>'milestone')`・`type='style_preset_usage_milestone'`)
+- `idx_generated_images_one_tap_preset`(部分・式 `(generation_metadata->'oneTapStyle'->>'id')`)
+- `idx_style_preset_usage_events_preset`
 - `idx_follows_followee_id`, `idx_follows_follower_id`
 - `idx_referrals_created_at`, `idx_referrals_referral_code`, `idx_referrals_referred_id`, `idx_referrals_referrer_id`
 - `idx_post_reports_post_id_created_at`, `idx_post_reports_reporter_id_created_at`
@@ -552,7 +556,8 @@ alwaysApply: false
   - `complete_image_job_with_prompt_secrets(p_job_id uuid, p_images jsonb, p_generation_metadata jsonb DEFAULT NULL, p_result_image_url text DEFAULT NULL, p_model text DEFAULT NULL, p_background_mode text DEFAULT NULL)` — 生成画像・author secret・job 成功更新・`credit_transactions.related_generation_id` 更新を同一トランザクションで確定する。末尾2引数はWorkerが正規化済みの値を渡すために使い、NULL時だけjobの値へfallbackする。author secret は `snapshot_kind = 'materialized'` かつ `author_input` / owner が揃うときだけ作るため、派生 job には作られない
 
 ### trigger / helper / 運用関数
-- 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `notify_on_derived_post_published`, `notify_on_prompt_usage_milestone`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`, `delete_notification_on_derived_post_removal`, `delete_usage_milestone_on_origin_removal`
+- 通知連動: `notify_on_like`, `notify_on_comment`, `notify_on_follow`, `notify_on_derived_post_published`, `notify_on_prompt_usage_milestone`, `notify_on_style_preset_post_published`, `notify_on_style_preset_usage_milestone`, `delete_notification_on_like_removal`, `delete_notification_on_comment_deletion`, `delete_notification_on_follow_removal`, `delete_notification_on_derived_post_removal`, `delete_usage_milestone_on_origin_removal`, `delete_style_preset_post_notification`
+  - 注: One-Tap Style クリエイター通知は、投稿系2関数が `generated_images`、節目関数が append-only の `style_preset_usage_events`（`record_style_preset_usage` が信頼済み INSERT から記録。画像削除で累計が減らない正本）に付く。プリセット ID は `generation_metadata->'oneTapStyle'->>'id'`（FK列なし・式インデックスで参照）、provider 解決は `COALESCE(style_presets.provider_user_id, preset_categories.provider_user_id)` を **profiles join で user_id へ解決**（id=user_id は制約なしの偶然一致のため）。`generated_images` はクライアント INSERT 不可（ポリシー撤去+REVOKE）・生成由来フィールド（generation_type/generation_metadata/image_job_id/style_template_id）は `enforce_generated_image_generation_fields` が非信頼 UPDATE を拒否（通知偽造対策）
   - 注: `notify_on_prompt_usage_milestone` は `prompt_usage_events` の `AFTER INSERT`。累計回数（原作者除外）が節目にちょうど達したときだけ発火し、匿名（actor=recipient 本人）で直接 INSERT する。`delete_usage_milestone_on_origin_removal` は原作（free root）の非公開化でその投稿のマイルストーン通知を削除する
   - 注: `notify_on_derived_post_published` / `delete_notification_on_derived_post_removal` は `generated_images` の `AFTER UPDATE OF is_posted`。派生投稿（`source_post_id` 非NULL）の公開で原作者へ `derived_post_published` を作成（自己派生・双方向ブロックはスキップ、1作品=1通知）、非公開化（取消/公開停止/退会）でその作品の通知を削除する。`create_notification` は Data API から EXECUTE 不可（PUBLIC/anon/authenticated を REVOKE 済み・service_role のみ）
 - コメント返信/整合性: `validate_parent_comment`, `prevent_direct_parent_delete_with_replies`, `update_parent_last_activity_at`, `update_parent_last_activity_at_on_delete`, `broadcast_reply_lifecycle_event`, `mark_reply_to_deleted`（トリガー名 `"0_mark_reply_to_deleted"`・AFTER DELETE。引用先の物理削除時に生存する参照元へ `reply_to_deleted` を立てる。名前を `0_` 始まりにして内部 RI トリガーより先に発火させ、FK SET NULL 前に参照でマッチさせる。cascade で引用元も同時削除されるケースは AFTER 化により安全）

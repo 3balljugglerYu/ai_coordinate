@@ -505,6 +505,16 @@ export function useNotifications(
         return;
       }
 
+      // One-Tap Style の節目通知は対象プリセットの公開ページへ。
+      // slug 欠損時は下の entity_type='user' 分岐（自分のプロフィール）へフォールバック。
+      if (
+        notification.type === "style_preset_usage_milestone" &&
+        notification.data?.preset_slug
+      ) {
+        router.push(`/styles/${notification.data.preset_slug}`);
+        return;
+      }
+
       // 遷移。コメント/返信通知は対象コメントへのディープリンクを付与し、
       // 投稿ページ側(CommentSection)が該当コメント・返信までスクロールする。
       if (notification.entity_type === "post") {
