@@ -96,6 +96,10 @@ interface StylePresetRow {
   published_at?: string | null;
   // プリセット単位の提供者(profiles.id)。カテゴリ単位と独立して設定できる。
   provider_user_id?: string | null;
+  // ユーザープロンプト入力欄のスタイル別上書き(NULL はカテゴリ設定へ継承)
+  user_prompt_label?: string | null;
+  user_prompt_placeholder?: string | null;
+  user_prompt_max_length?: number | null;
   // クリエイター提供プロンプト 申請(Phase 1)用カラム(通常プリセットでは null)
   submitted_by_user_id?: string | null;
   target_providers?: string[] | null;
@@ -292,6 +296,9 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     providerUserId: row.provider_user_id ?? null,
     providerNickname: provider?.nickname ?? null,
     providerAvatarUrl: provider?.avatar_url ?? null,
+    userPromptLabel: row.user_prompt_label ?? null,
+    userPromptPlaceholder: row.user_prompt_placeholder ?? null,
+    userPromptMaxLength: row.user_prompt_max_length ?? null,
     createdBy: row.created_by,
     updatedBy: row.updated_by,
     createdAt: row.created_at,
@@ -323,6 +330,9 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     providerUserId: row.provider_user_id ?? null,
     providerNickname: provider?.nickname ?? null,
     providerAvatarUrl: provider?.avatar_url ?? null,
+    userPromptLabel: row.user_prompt_label ?? null,
+    userPromptPlaceholder: row.user_prompt_placeholder ?? null,
+    userPromptMaxLength: row.user_prompt_max_length ?? null,
   };
 }
 
@@ -593,6 +603,9 @@ export async function createStylePreset(
     p_reference_image_height: input.referenceImageHeight ?? null,
     p_dual_reference_source: input.dualReferenceSource ?? "admin",
     p_provider_user_id: input.providerUserId ?? null,
+    p_user_prompt_label: input.userPromptLabel ?? null,
+    p_user_prompt_placeholder: input.userPromptPlaceholder ?? null,
+    p_user_prompt_max_length: input.userPromptMaxLength ?? null,
   });
 
   const row = mapRpcRow(data);
@@ -782,6 +795,18 @@ export async function updateStylePreset(
       input.providerUserId !== undefined
         ? input.providerUserId
         : existing.providerUserId ?? null,
+    p_user_prompt_label:
+      input.userPromptLabel !== undefined
+        ? input.userPromptLabel
+        : existing.userPromptLabel ?? null,
+    p_user_prompt_placeholder:
+      input.userPromptPlaceholder !== undefined
+        ? input.userPromptPlaceholder
+        : existing.userPromptPlaceholder ?? null,
+    p_user_prompt_max_length:
+      input.userPromptMaxLength !== undefined
+        ? input.userPromptMaxLength
+        : existing.userPromptMaxLength ?? null,
   });
 
   const row = mapRpcRow(data);
