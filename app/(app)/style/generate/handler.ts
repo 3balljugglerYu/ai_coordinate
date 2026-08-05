@@ -48,7 +48,7 @@ import { getUser } from "@/lib/auth";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StyleUsageAuthState } from "@/features/style/lib/style-usage-events";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
-import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import { resolveUserPromptMaxLength } from "@/features/style-presets/lib/resolve-user-prompt-settings";
 
 const MAX_RETRYABLE_ATTEMPTS = 2;
 
@@ -372,9 +372,8 @@ export async function postStyleGenerateRoute(
       preset.category.showUserPromptInput && userPromptRaw.trim().length > 0
         ? userPromptRaw
         : null;
-    // 上限はカテゴリ別設定(user_prompt_max_length)を優先、未設定は既定値
-    const userPromptMaxLength =
-      preset.category.userPromptMaxLength ?? GENERATION_PROMPT_MAX_LENGTH;
+    // 上限はプリセット別 → カテゴリ別 → 既定値の順で解決(UI と同じヘルパー)
+    const userPromptMaxLength = resolveUserPromptMaxLength(preset);
     if (
       preset.category.showUserPromptInput &&
       userPromptRaw.length > userPromptMaxLength

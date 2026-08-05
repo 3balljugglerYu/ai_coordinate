@@ -42,7 +42,7 @@ import { isUserSelectableOutputAspectRatioMode } from "@/shared/generation/style
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
-import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
+import { resolveUserPromptMaxLength } from "@/features/style-presets/lib/resolve-user-prompt-settings";
 
 interface StyleGenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -395,9 +395,8 @@ export async function postStyleGenerateAsyncRoute(
       preset.category.showUserPromptInput && userPromptRaw.trim().length > 0
         ? userPromptRaw
         : null;
-    // 上限はカテゴリ別設定(user_prompt_max_length)を優先、未設定は既定値
-    const userPromptMaxLength =
-      preset.category.userPromptMaxLength ?? GENERATION_PROMPT_MAX_LENGTH;
+    // 上限はプリセット別 → カテゴリ別 → 既定値の順で解決(UI と同じヘルパー)
+    const userPromptMaxLength = resolveUserPromptMaxLength(preset);
     if (
       preset.category.showUserPromptInput &&
       userPromptRaw.length > userPromptMaxLength

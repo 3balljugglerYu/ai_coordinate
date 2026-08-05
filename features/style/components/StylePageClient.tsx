@@ -36,9 +36,14 @@ import { ImageSourcePickerTrigger } from "@/features/generation/components/Image
 import { PromptInputField } from "@/features/generation/components/PromptInputField";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/features/generation/lib/prompt-validation";
 import {
-  loadUserPromptForCategory,
-  saveUserPromptForCategory,
+  loadUserPromptForScope,
+  saveUserPromptForScope,
 } from "@/features/style/lib/user-prompt-recall";
+import {
+  resolveUserPromptLabel,
+  resolveUserPromptMaxLength,
+  resolveUserPromptPlaceholder,
+} from "@/features/style-presets/lib/resolve-user-prompt-settings";
 import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import type { SourceImageStock } from "@/features/generation/lib/database";
@@ -468,7 +473,8 @@ export function StylePageClient({
 
   // プリセット切り替え時に preset 固有の入力 (userPrompt / 参考画像) をリセットする。
   // 別 preset で意図しない入力が引き継がれてクレジット浪費しないための防御。
-  // userPrompt は category 単位で localStorage に「前回の入力」を保存しており、
+  // userPrompt はスコープ単位(ラベル上書きのある preset は preset 単位、それ以外は
+  // category 単位)で localStorage に「前回の入力」を保存しており、
   // 復元することで「ユーザーがまた来た時にも同じ追記を再利用できる」UX を提供する。
   useEffect(() => {
     setUserReferenceImage(null);
@@ -477,9 +483,16 @@ export function StylePageClient({
       return;
     }
     setUserPromptInputValue(
-      loadUserPromptForCategory(
-        selectedPreset.category.key,
-        selectedPreset.category.userPromptMaxLength ??
+      loadUserPromptForScope(
+        {
+          presetId: selectedPreset.id,
+          hasPresetLabel: selectedPreset.userPromptLabel != null,
+          categoryKey: selectedPreset.category.key,
+        },
+        // resolveUserPromptMaxLength と同じ 3 段フォールバック(effect の deps を
+        // メンバーアクセス単位に保つため、ここでは直接書く)
+        selectedPreset.userPromptMaxLength ??
+          selectedPreset.category.userPromptMaxLength ??
           GENERATION_PROMPT_MAX_LENGTH,
       ),
     );
@@ -488,6 +501,8 @@ export function StylePageClient({
     selectedPreset?.category.key,
     selectedPreset?.category.showUserPromptInput,
     selectedPreset?.category.userPromptMaxLength,
+    selectedPreset?.userPromptLabel,
+    selectedPreset?.userPromptMaxLength,
   ]);
 
   const shouldShowSourceImageTypeControl =
@@ -607,10 +622,10 @@ export function StylePageClient({
   }, [effectiveAuthState, guestSaveImage, selectedPreset?.id]);
 
   const isCompletingGeneration = generationPhase === "completing";
-  // ユーザープロンプト入力の最大文字数(カテゴリ別設定を優先、未設定は既定値)
-  const userPromptMaxLength =
-    selectedPreset?.category.userPromptMaxLength ??
-    GENERATION_PROMPT_MAX_LENGTH;
+  // ユーザープロンプト入力の最大文字数(プリセット別 → カテゴリ別 → 既定値)
+  const userPromptMaxLength = selectedPreset
+    ? resolveUserPromptMaxLength(selectedPreset)
+    : GENERATION_PROMPT_MAX_LENGTH;
   const selectedPresetAspectRatio = selectedPreset
     ? selectedPreset.thumbnailWidth / selectedPreset.thumbnailHeight
     : 1;
@@ -1349,11 +1364,15 @@ export function StylePageClient({
       ) {
         formData.set("userPrompt", userPromptInputValue);
       }
-      // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
+      // スコープ単位で「最後に submit したプロンプト」を localStorage に記憶し、
       // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
       if (selectedPreset.category.showUserPromptInput) {
-        saveUserPromptForCategory(
-          selectedPreset.category.key,
+        saveUserPromptForScope(
+          {
+            presetId: selectedPreset.id,
+            hasPresetLabel: selectedPreset.userPromptLabel != null,
+            categoryKey: selectedPreset.category.key,
+          },
           userPromptInputValue,
         );
       }
@@ -1591,11 +1610,15 @@ export function StylePageClient({
       if (shouldShowOutputAspectRatioControl) {
         formData.set("outputAspectRatioMode", aspectMode);
       }
-      // category 単位で「最後に submit したプロンプト」を localStorage に記憶し、
+      // スコープ単位で「最後に submit したプロンプト」を localStorage に記憶し、
       // 次回 /style 来訪時に prefill する。空(=クリア後)送信は記憶を消去する。
       if (selectedPreset.category.showUserPromptInput) {
-        saveUserPromptForCategory(
-          selectedPreset.category.key,
+        saveUserPromptForScope(
+          {
+            presetId: selectedPreset.id,
+            hasPresetLabel: selectedPreset.userPromptLabel != null,
+            categoryKey: selectedPreset.category.key,
+          },
           userPromptInputValue,
         );
       }
@@ -2061,11 +2084,10 @@ export function StylePageClient({
                 value={userPromptInputValue}
                 onChange={setUserPromptInputValue}
                 label={
-                  selectedPreset.category.userPromptLabel ??
-                  t("userPromptLabel")
+                  resolveUserPromptLabel(selectedPreset) ?? t("userPromptLabel")
                 }
                 placeholder={
-                  selectedPreset.category.userPromptPlaceholder ??
+                  resolveUserPromptPlaceholder(selectedPreset) ??
                   t("userPromptPlaceholder")
                 }
                 hint={t("userPromptHint", { max: userPromptMaxLength })}
