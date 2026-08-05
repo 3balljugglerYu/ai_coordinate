@@ -377,7 +377,9 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `prompt_usage_events` `AFTER INSERT` | `notify_on_prompt_usage_milestone()` | Creates an anonymous `derived_usage_milestone` notification to the origin author when the cumulative usage count (excluding the author) exactly reaches a milestone (1,5,10,25,50,100,250,500,1000). actor = recipient; direct INSERT bypassing `create_notification` |
 | `generated_images` `AFTER UPDATE OF is_posted` | `notify_on_style_preset_post_published()` | Real-name `style_preset_post_published` notification to the preset provider when a One-Tap Style image is published. Provider resolution matches the credit display (preset → category fallback). Skips self-usage and blocked pairs |
 | `generated_images` `AFTER UPDATE OF is_posted` | `delete_style_preset_post_notification()` | Deletes that post's real-name notification when a preset-based image is unpublished |
-| `generated_images` `AFTER INSERT` | `notify_on_style_preset_usage_milestone()` | Anonymous `style_preset_usage_milestone` notification to the provider when cumulative One-Tap usage (excluding the provider) exactly reaches a milestone (direct INSERT; max one per preset × milestone) |
+| `generated_images` `BEFORE UPDATE OF generation_type, generation_metadata, image_job_id, style_template_id` | `enforce_generated_image_generation_fields()` | Rejects untrusted client changes to generation-origin fields (notification-forgery protection). Client INSERT is blocked via policy removal + REVOKE |
+| `generated_images` `AFTER INSERT` | `record_style_preset_usage()` | Records One-Tap generations into append-only `style_preset_usage_events` (source of truth for milestones) |
+| `style_preset_usage_events` `AFTER INSERT` | `notify_on_style_preset_usage_milestone()` | Anonymous `style_preset_usage_milestone` notification to the provider when cumulative One-Tap usage (excluding the provider) exactly reaches a milestone (direct INSERT; max one per preset × milestone) |
 | `image_jobs` `BEFORE INSERT / UPDATE OF origin_post_id` | `enforce_image_job_origin()` | Restricts `origin_post_id` to trusted writers and keeps it immutable |
 | `generation_prompt_snapshots` `BEFORE INSERT/UPDATE` | `enforce_prompt_execution_kind()` | Cross-table check that `snapshot_kind` matches the job's `origin_post_id` |
 | `generated_image_prompt_secrets` `BEFORE INSERT/UPDATE` | `reject_derived_image_prompt_secret()` | Rejects author secrets for derived images, even from `service_role` |
@@ -429,6 +431,7 @@ Use this section to decide whether a new feature should use session access, serv
 | `generated_image_prompt_secrets` | Canonical store of author prompt text. `authenticated` may SELECT only its own rows; writes go through service role / SECURITY DEFINER only. Follower disclosure happens in server paths that apply visibility rules |
 | `generation_prompt_snapshots` | Execution input, 1:1 with jobs. All roles denied except service role. One-Tap Style operator prompts also live here |
 | `prompt_usage_events` | Successful derived generations (basis of usage counts). All roles denied. No FK on `image_job_id` so deleting one's own job cannot shrink the author's count |
+| `style_preset_usage_events` | Successful One-Tap Style generations (source of truth for milestone notifications). All roles denied. No FKs so deleting one's own images cannot shrink the cumulative count |
 | `percoin_bonus_defaults` | Operational defaults table |
 | `percoin_streak_defaults` | Operational defaults table |
 | `credit_forfeiture_ledger` | Audit-only, direct public access blocked |

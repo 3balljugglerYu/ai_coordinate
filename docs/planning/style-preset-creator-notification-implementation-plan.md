@@ -33,11 +33,13 @@ One-Tap Style のプリセットにはクリエイター帰属（`style_presets.
 
 - **ADR-001 プリセット ID は JSONB のまま使う**: 新 FK 列は足さず、`(generation_metadata->'oneTapStyle'->>'id')` の**部分式インデックス**を `generated_images` に新設して数える。既存2,247行のバックフィル不要・書き込み経路（`app/(app)/style/generate-async/handler.ts` / 完了RPC）も無変更。
 - **ADR-002 provider 解決はクレジット表示と同一規則**: `COALESCE(style_presets.provider_user_id, preset_categories.provider_user_id)`。NULL なら通知しない。`status` では絞らない（クレジットが出ている相手＝通知が届く相手、の一致を優先）。
-- **ADR-003 節目判定は B案 ADR-002 を踏襲**: 通算（provider 自身の生成を除外）×ちょうど一致のみ発火・`LIMIT 1001` 打ち切り・節目 {1,5,10,25,50,100,250,500,1000}・初回は専用文言。既に数百回使われている人気プリセットは次の節目（250/500/1000）から自然に再開する＝遡及なし。
+- **ADR-003（改）節目判定は B案 ADR-002 を踏襲し、累計の正本は append-only の `style_preset_usage_events`**: 画像は本人が物理削除できるため `generated_images` の count は「累計」にならない（実装レビュー指摘②）。#477 の `prompt_usage_events` と同型のイベント表を新設し、既存分をバックフィル（節目トリガー作成前に実行し過去分の発火を防ぐ）、信頼済み INSERT からトリガーで記録する。通算（provider 除外）×ちょうど一致のみ発火・`LIMIT 1001` 打ち切り・節目 {1,5,10,25,50,100,250,500,1000}・初回は専用文言。人気プリセットは次の節目から自然に再開＝遡及なし。
 - **ADR-004 milestone の entity は `user`（provider 本人）**: プリセットには投稿ページが無いため。タップ遷移は `data.preset_slug` から `/styles/{slug}`（公開SEOページ）へ向ける専用分岐を1つ追加（slug 欠損時は既存の user 分岐で自分のプロフィールへフォールバック）。一覧サムネは `data.image_url`（プリセットサムネを焼き込み・enrichment 不要の既存フォールバック経路）。
 - **ADR-005 投稿通知の削除は entity 一致で行う**: 非公開化（取消・公開停止・退会）で `type + entity_id=画像ID` の DELETE（A案と同じリンク切れ回避）。milestone はプリセット非公開でも削除しない（利用実績は消えない事実。`/styles/{slug}` が404になる可能性は許容）。
 - **ADR-006 create_notification の使い分け**: 実名側は `create_notification` 経由（A案と同じ・自己スキップ流用）、匿名側は直接 INSERT（B案と同じ・self-skip 回避）。冪等化は部分ユニークインデックス2本（実名=5列 / 匿名=式 `(data->>'preset_id', data->>'milestone')`）。
 - 実名側は投稿者×provider の**双方向ブロック**で抑止（A案 REQ-004 同等）。自己利用（provider 本人の投稿・生成）は通知・カウントとも対象外。
+- **ADR-007 生成由来フィールドの保護（実装レビュー指摘①・Critical）**: `generated_images` はクライアント INSERT/UPDATE ポリシーが実在し通知偽造が成立していた。クライアント INSERT をポリシーごと撤去（正規経路は完了RPC=SECURITY DEFINER と wardrobe claim=service_role のみ・アプリのクライアント INSERT ゼロを確認済み）し、`generation_type` / `generation_metadata` / `image_job_id` / `style_template_id` の非信頼 UPDATE を BEFORE トリガーで拒否。眠っている creator_looks 投稿通知の偽造経路（`style_template_id` 差し替え）も同時に塞がる。
+- **ADR-008 provider の auth uid は profiles join で解決（実装レビュー指摘③）**: `provider_user_id` は `profiles.id` への FK で、`id = user_id` は CHECK の無い偶然一致。`profiles.user_id` を明示的に引いて通知宛先・自己利用判定に使う。
 
 ### EARS 要約（A/B案の REQ を継承し対象を読み替え）
 
@@ -54,13 +56,14 @@ One-Tap Style のプリセットにはクリエイター帰属（`style_presets.
 
 ### Phase 1: DB マイグレーション（`add_style_preset_creator_notifications.sql`）
 
+- **生成由来フィールドの保護（ADR-007）**: クライアント INSERT ポリシー撤去＋INSERT 権限 REVOKE＋非信頼 UPDATE を拒否する BEFORE トリガー
 - CHECK に2 type 追加（20値）
-- `generated_images` に部分式インデックス `idx_generated_images_one_tap_preset ON ((generation_metadata->'oneTapStyle'->>'id')) WHERE ... IS NOT NULL`（現行2,247行・作成はミリ秒オーダー）
-- 通知側ユニークインデックス2本（実名=5列部分 / 匿名=式部分）
-- 関数+トリガー3本（すべて EXCEPTION ガード付き・REQ-007）:
-  - `notify_on_style_preset_post_published`: `AFTER UPDATE OF is_posted` WHEN（遷移true＋oneTapStyle あり）。provider 解決→自己スキップ→双方向ブロック→`create_notification`（data: preset_id/preset_title/preset_slug）
-  - `delete_style_preset_post_notification`: WHEN（遷移false＋oneTapStyle あり）。`type + entity_id` で DELETE
-  - `notify_on_style_preset_usage_milestone`: `AFTER INSERT` WHEN（oneTapStyle あり）。provider 解決→自己スキップ→通算カウント（provider 除外・LIMIT 1001）→ちょうど節目→直接 INSERT（匿名・data: preset_id/preset_title/preset_slug/milestone/image_url=サムネ）
+- **`style_preset_usage_events` 新設（ADR-003改）**: 既存 One-Tap 生成のバックフィル（節目トリガー作成前）＋ `trg_record_style_preset_usage`（信頼済み INSERT からの記録）
+- `generated_images` に部分式インデックス、イベント表 preset インデックス、通知側ユニークインデックス2本（実名=5列部分 / 匿名=式部分）
+- 通知系の関数+トリガー（すべて EXCEPTION ガード付き・REQ-007。provider 解決は profiles join=ADR-008）:
+  - `notify_on_style_preset_post_published`: `AFTER UPDATE OF is_posted` WHEN（遷移true＋generation_type='one_tap_style'＋oneTapStyle あり）。provider 解決→自己スキップ→双方向ブロック→`create_notification`（data: preset_id/preset_title/preset_slug）
+  - `delete_style_preset_post_notification`: WHEN（遷移false＋同条件）。`type + entity_id` で DELETE
+  - `notify_on_style_preset_usage_milestone`: **`AFTER INSERT ON style_preset_usage_events`**。provider 解決→自己スキップ→通算カウント（イベント正本・provider 除外・LIMIT 1001）→ちょうど節目→直接 INSERT（匿名・data: preset_id/preset_title/preset_slug/milestone/image_url=サムネ）
 - 検証: カタログ検証＋ロールバック式実データ dry-run（一時カテゴリ+一時プリセット（provider=実在u1）を作成→u2の生成1回で「初めて」→2〜4回目は増えない→5回目で2件目→u1自身の生成は不変→投稿で実名通知→取消で実名側だけ削除・milestone 残存→全ロールバック）
 
 ### Phase 2: フロント表示
