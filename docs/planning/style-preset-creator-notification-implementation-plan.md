@@ -40,6 +40,7 @@ One-Tap Style のプリセットにはクリエイター帰属（`style_presets.
 - 実名側は投稿者×provider の**双方向ブロック**で抑止（A案 REQ-004 同等）。自己利用（provider 本人の投稿・生成）は通知・カウントとも対象外。
 - **ADR-007 生成由来フィールドの保護（実装レビュー指摘①・Critical）**: `generated_images` はクライアント INSERT/UPDATE ポリシーが実在し通知偽造が成立していた。クライアント INSERT をポリシーごと撤去（正規経路は完了RPC=SECURITY DEFINER と wardrobe claim=service_role のみ・アプリのクライアント INSERT ゼロを確認済み）し、`generation_type` / `generation_metadata` / `image_job_id` / `style_template_id` の非信頼 UPDATE を BEFORE トリガーで拒否。眠っている creator_looks 投稿通知の偽造経路（`style_template_id` 差し替え）も同時に塞がる。
 - **ADR-008 provider の auth uid は profiles join で解決（実装レビュー指摘③）**: `provider_user_id` は `profiles.id` への FK で、`id = user_id` は CHECK の無い偶然一致。`profiles.user_id` を明示的に引いて通知宛先・自己利用判定に使う。
+- **ADR-009 公開前のテスト生成を除外する（記録時点ゲート。20260805120000）**: 運営は公開前に admin_only カテゴリ・非公開プリセットでテスト生成する。これが記録されると「provider 設定済みなら節目通知が運営テストで発火」「未設定でも累計を先に消費して実ユーザーの初回通知が消える」の2重汚染になる。対策は生成された瞬間の公開状態（`sp.status='published' AND pc.visibility='public' AND pc.is_active`）を満たす生成だけを記録・通知する記録時点ゲート。カテゴリの公開切替時刻を持たずに時系列的に正確で、実名投稿通知にも同じゲートを掛ける。過去イベントは残置（当時の状態は復元不能・ちょうど交差方式のため影響は将来の節目がわずかに早まるのみ）。
 
 ### EARS 要約（A/B案の REQ を継承し対象を読み替え）
 
