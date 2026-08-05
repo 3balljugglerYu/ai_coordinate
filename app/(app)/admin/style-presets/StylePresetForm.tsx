@@ -84,6 +84,10 @@ export function StylePresetForm({
         showSourceImageTypeControl: preset.category.showSourceImageTypeControl,
         showBackgroundChangeControl: preset.category.showBackgroundChangeControl,
         showGenerationModelControl: preset.category.showGenerationModelControl,
+        showUserPromptInput: preset.category.showUserPromptInput,
+        userPromptLabel: preset.category.userPromptLabel,
+        userPromptPlaceholder: preset.category.userPromptPlaceholder,
+        userPromptMaxLength: preset.category.userPromptMaxLength,
         visibility: preset.category.visibility,
         defaultImageInputMode: "single" as const,
         displayOrder: 9999,
@@ -143,6 +147,21 @@ export function StylePresetForm({
   const [referencePreviewUrl, setReferencePreviewUrl] = useState<string | null>(
     preset?.referenceImageUrl ?? null,
   );
+  // ユーザープロンプト入力欄のスタイル別上書き。空 = カテゴリ設定へ継承。
+  const [userPromptLabel, setUserPromptLabel] = useState(
+    preset?.userPromptLabel ?? ""
+  );
+  const [userPromptPlaceholder, setUserPromptPlaceholder] = useState(
+    preset?.userPromptPlaceholder ?? ""
+  );
+  const [userPromptMaxLength, setUserPromptMaxLength] = useState(
+    preset?.userPromptMaxLength != null ? String(preset.userPromptMaxLength) : ""
+  );
+  const selectedCategory = editableCategories.find((c) => c.id === categoryId);
+  // 上書きセクションはカテゴリ側のマスタースイッチが ON のときのみ表示する
+  // (OFF のカテゴリでは値が使われないため。state は保持され保存時に現状維持される)。
+  const showUserPromptOverrideSection =
+    selectedCategory?.showUserPromptInput === true;
 
   // category 切り替え時は default_image_input_mode を新しい値で上書き
   function handleCategoryChange(nextId: string) {
@@ -262,6 +281,12 @@ export function StylePresetForm({
       formData.append("dual_reference_source", dualReferenceSource);
       // クリエイター(提供者クレジット)。空文字でクレジット無しに更新できる。
       formData.append("provider_user_id", providerUserId);
+      // ユーザープロンプト入力欄のスタイル別上書き。空文字でクリア(カテゴリ設定へ継承)。
+      // セクション非表示のカテゴリでも state は preset の現在値で初期化されるため、
+      // 常時送信しても既存値はそのまま往復して保存される。
+      formData.append("user_prompt_label", userPromptLabel);
+      formData.append("user_prompt_placeholder", userPromptPlaceholder);
+      formData.append("user_prompt_max_length", userPromptMaxLength);
       if (file) {
         formData.append("file", file);
       }
@@ -470,6 +495,70 @@ export function StylePresetForm({
             </p>
           </div>
         </div>
+
+        {showUserPromptOverrideSection && (
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+            <div>
+              <p className="text-sm font-medium">
+                ユーザープロンプト入力欄（スタイル別上書き）
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                このカテゴリは入力欄が有効です。空欄の項目はカテゴリ設定（無ければ既定文言・上限
+                1500 文字）を継承します。
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="user_prompt_label">ラベル（textarea の見出し）</Label>
+              <Textarea
+                id="user_prompt_label"
+                value={userPromptLabel}
+                onChange={(event) => setUserPromptLabel(event.target.value)}
+                maxLength={120}
+                placeholder={
+                  selectedCategory?.userPromptLabel ??
+                  "例: 💡 キャラクターの名前を入力してください（任意）"
+                }
+                className="mt-1 min-h-[64px] text-sm"
+              />
+              <p className="mt-1 text-xs text-slate-500">120 文字まで。改行可。</p>
+            </div>
+            <div>
+              <Label htmlFor="user_prompt_placeholder">
+                プレースホルダ（textarea 内のヒント）
+              </Label>
+              <Input
+                id="user_prompt_placeholder"
+                value={userPromptPlaceholder}
+                onChange={(event) =>
+                  setUserPromptPlaceholder(event.target.value)
+                }
+                maxLength={200}
+                placeholder={selectedCategory?.userPromptPlaceholder ?? "例: ノエル"}
+                className="mt-1 min-h-[44px] text-sm"
+              />
+            </div>
+            <div>
+              <Label htmlFor="user_prompt_max_length">最大文字数（任意）</Label>
+              <Input
+                id="user_prompt_max_length"
+                type="number"
+                min={1}
+                max={1500}
+                value={userPromptMaxLength}
+                onChange={(event) => setUserPromptMaxLength(event.target.value)}
+                placeholder={
+                  selectedCategory?.userPromptMaxLength != null
+                    ? String(selectedCategory.userPromptMaxLength)
+                    : "1500"
+                }
+                className="mt-1 min-h-[44px] w-40 text-sm"
+              />
+              <p className="mt-1 text-xs text-slate-500">
+                1〜1500 の整数。空欄はカテゴリ設定（無ければ 1500）。
+              </p>
+            </div>
+          </div>
+        )}
 
         {imageInputMode === "dual" && (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

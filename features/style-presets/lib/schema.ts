@@ -135,6 +135,14 @@ export interface StylePresetAdmin {
   providerUserId?: string | null;
   providerNickname?: string | null;
   providerAvatarUrl?: string | null;
+  /**
+   * ユーザープロンプト入力欄のスタイル別上書き(ラベル/placeholder/最大文字数)。
+   * NULL はカテゴリ設定(category.userPromptXxx) → i18n 既定(上限は 1500)へ継承。
+   * 表示 ON/OFF 自体は category.showUserPromptInput のまま(per-style では上書きしない)。
+   */
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -179,6 +187,13 @@ export interface StylePresetPublicSummary {
   /** 提供者のアイコン(profiles.avatar_url をライブ取得)。 */
   providerAvatarUrl?: string | null;
   /**
+   * ユーザープロンプト入力欄のスタイル別上書き。NULL はカテゴリ設定 → i18n 既定へ継承
+   * (上限は既定 1500)。/style の textarea 描画とサーバー側の長さ検証が同じ解決順を使う。
+   */
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
+  /**
    * 段階解放(drip)でまだ解放されていないプリセットのとき true。
    * /style では「コンプリートで解放」のシルエットカードとして表示し、選択・生成不可にする。
    * 未指定/false は通常の解放済みプリセット。
@@ -217,6 +232,10 @@ export interface StylePresetInsert {
   referenceImageHeight?: number | null;
   /** プリセット単位のクリエイター(提供者クレジット)= profiles.id。null でクレジット無し。 */
   providerUserId?: string | null;
+  /** ユーザープロンプト入力欄のスタイル別上書き。null/未指定はカテゴリ設定へ継承。 */
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
 }
 
 export interface StylePresetUpdate {
@@ -240,6 +259,10 @@ export interface StylePresetUpdate {
   referenceImageHeight?: number | null;
   /** プリセット単位のクリエイター(提供者クレジット)= profiles.id。null でクレジット解除。 */
   providerUserId?: string | null;
+  /** ユーザープロンプト入力欄のスタイル別上書き。null で解除(カテゴリ設定へ継承)、未指定なら現状維持。 */
+  userPromptLabel?: string | null;
+  userPromptPlaceholder?: string | null;
+  userPromptMaxLength?: number | null;
 }
 
 export const stylePresetReorderSchema = z.object({
