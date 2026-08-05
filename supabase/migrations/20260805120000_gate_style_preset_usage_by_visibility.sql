@@ -29,20 +29,43 @@
 -- これにより「公開前に生成したテスト画像をローンチ後に投稿する」運用でも
 -- クリエイターへ通知が飛ばない。
 --
--- 既に記録済みの過去イベントの扱い:
---   - 一度も公開されていないプリセット（published_at IS NULL）のイベントは
---     確実に公開前テスト由来のため、ここで削除して今後のローンチの
---     「初めて」通知を復元する。
---   - 公開済みプリセットのイベントは残す（当時の公開状態は復元できない）。
---     残したテストイベントがある場合、そのプリセットでは「初めて」通知が
---     出ず、以後の節目も実利用より早く到達する制約が残る。
+-- 既に記録済みの過去イベント（20260805000000 のバックフィル分を含む）は
+-- すべて残置する。published_at IS NULL は「未公開または移行前データ」
+-- （20260721120000 の列コメント）であり、公開→draft 戻しや
+-- delete_style_preset_and_reorder による物理削除を経た正規利用と
+-- テスト由来を機械的に区別できないため、自動削除はしない。
+-- 特定プリセットのローンチ前にテストイベントを掃除したい場合は、
+-- 運用で当該プリセットが一度も公開されていないことを確認のうえ、
+-- preset_id を明示した DELETE を個別に実行する（既に節目通知が発行済みの
+-- 場合は通知側のユニークインデックス行も残るため、「初めて」の復元には
+-- 通知行の削除も必要になる点に注意）。
+-- 残したテストイベントがあるプリセットでは「初めて」通知が出ず、
+-- 以後の節目も実利用より早く到達する制約が残る。
+--
+-- 過去イベントは生成時点の公開状態を証明できないため、
+-- was_public_at_generation 列（既定 false）を追加し、本ゲート適用後の
+-- 記録だけを true にする。実名通知はこのフラグを要求することで、
+-- バックフィル時代のテスト画像（例: admin_only カテゴリ × published
+-- プリセット）を公開後に投稿しても通知されない。節目の累計には
+-- フラグに関係なく全イベントを数える（append-only の通算を維持）。
 
 BEGIN;
 
 SET LOCAL lock_timeout = '5s';
 
 -- ===============================================
--- 1. 記録トリガー関数: 公開中の生成のみ記録する
+-- 1. 生成時点の適格性を示す永続フラグ
+-- ===============================================
+-- 既定 false のため、バックフィル済みの既存行はすべて「証明なし」になる。
+
+ALTER TABLE public.style_preset_usage_events
+  ADD COLUMN IF NOT EXISTS was_public_at_generation BOOLEAN NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN public.style_preset_usage_events.was_public_at_generation IS
+  '生成時点で公開中（ADR-009 のゲート通過）だったことの永続証跡。ゲート適用後の記録のみ true。実名通知はこれを要求し、節目の累計はフラグに関係なく数える';
+
+-- ===============================================
+-- 2. 記録トリガー関数: 公開中の生成のみ記録する
 -- ===============================================
 
 CREATE OR REPLACE FUNCTION public.record_style_preset_usage()
@@ -81,12 +104,13 @@ BEGIN
   END IF;
 
   INSERT INTO public.style_preset_usage_events
-    (generated_image_id, preset_id, user_id, created_at)
+    (generated_image_id, preset_id, user_id, created_at, was_public_at_generation)
   VALUES (
     NEW.id,
     (NEW.generation_metadata->'oneTapStyle'->>'id')::uuid,
     NEW.user_id,
-    COALESCE(NEW.created_at, now())
+    COALESCE(NEW.created_at, now()),
+    true
   )
   ON CONFLICT (generated_image_id) DO NOTHING;
 
@@ -103,7 +127,7 @@ COMMENT ON FUNCTION public.record_style_preset_usage() IS
   'One-Tap Style 生成を append-only の style_preset_usage_events へ記録する。公開中（preset published × カテゴリ public/有効 × 表示期間内）の生成のみ対象 (ADR-003改/ADR-009)';
 
 -- ===============================================
--- 2. 実名通知関数: 公開中かつ生成時点でも適格な場合のみ通知する
+-- 3. 実名通知関数: 公開中かつ生成時点でも適格な場合のみ通知する
 -- ===============================================
 
 CREATE OR REPLACE FUNCTION public.notify_on_style_preset_post_published()
@@ -156,14 +180,16 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- 投稿時点で公開中、かつ生成時点でも適格（= 利用イベントが存在する）
-  -- 場合だけ通知する (ADR-009)。公開前に生成したテスト画像を公開後に
-  -- 投稿しても通知しない。
+  -- 投稿時点で公開中、かつ生成時点でも適格（= ゲート通過の証跡
+  -- was_public_at_generation=true のイベントが存在する）場合だけ通知する
+  -- (ADR-009)。公開前に生成したテスト画像は、バックフィル時代の行
+  -- （フラグ false）を含めて公開後に投稿しても通知しない。
   IF v_is_public IS DISTINCT FROM true
      OR NOT EXISTS (
        SELECT 1
        FROM public.style_preset_usage_events e
        WHERE e.generated_image_id = NEW.id
+         AND e.was_public_at_generation = true
      )
   THEN
     RETURN NEW;
@@ -215,32 +241,6 @@ COMMENT ON FUNCTION public.notify_on_style_preset_post_published() IS
   'One-Tap Style プリセット利用画像の投稿時、provider へ実名の style_preset_post_published 通知を作る。投稿時点で公開中かつ生成時点でも適格（利用イベントが存在）な場合のみ。自己利用・双方向ブロックはスキップ (REQ-001/004/007, ADR-009)';
 
 -- ===============================================
--- 3. 未公開プリセットのテストイベントを掃除する
--- ===============================================
--- 一度も公開されていないプリセット（published_at IS NULL。プリセット自体が
--- 消えている場合を含む）のイベントは、20260805000000 のゲート無し期間に
--- 記録された公開前テスト由来と断定できるため削除する。
--- これで今後ローンチするプリセットの「初めて」通知が復元される。
--- 公開済みプリセットのイベントは判別不能のため残す（ヘッダーコメント参照）。
-
-DO $$
-DECLARE
-  v_deleted BIGINT;
-BEGIN
-  DELETE FROM public.style_preset_usage_events e
-  WHERE NOT EXISTS (
-    SELECT 1
-    FROM public.style_presets sp
-    WHERE sp.id = e.preset_id
-      AND sp.published_at IS NOT NULL
-  );
-
-  GET DIAGNOSTICS v_deleted = ROW_COUNT;
-  RAISE NOTICE '未公開プリセットのテストイベントを % 件削除した', v_deleted;
-END;
-$$;
-
--- ===============================================
 -- 適用後の検証
 -- ===============================================
 
@@ -259,23 +259,30 @@ BEGIN
 
   IF position('collection_display_starts_at' in
        pg_get_functiondef('public.notify_on_style_preset_post_published()'::regprocedure)) = 0
-     OR position('style_preset_usage_events' in
+     OR position('was_public_at_generation' in
        pg_get_functiondef('public.notify_on_style_preset_post_published()'::regprocedure)) = 0
   THEN
     RAISE EXCEPTION 'notify_on_style_preset_post_published に公開状態/生成時適格性ゲートが入っていない';
   END IF;
 
-  IF EXISTS (
-    SELECT 1 FROM public.style_preset_usage_events e
-    WHERE NOT EXISTS (
-      SELECT 1 FROM public.style_presets sp
-      WHERE sp.id = e.preset_id AND sp.published_at IS NOT NULL
-    )
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'style_preset_usage_events'
+      AND column_name = 'was_public_at_generation'
   ) THEN
-    RAISE EXCEPTION '未公開プリセットのイベントが残っている';
+    RAISE EXCEPTION 'was_public_at_generation 列が存在しない';
   END IF;
 
-  RAISE NOTICE 'カタログ検証 OK（関数2本の再定義・ゲートの存在・テストイベント掃除）';
+  -- 既存（バックフィル）行はすべて「証明なし」のままであること
+  IF EXISTS (
+    SELECT 1 FROM public.style_preset_usage_events
+    WHERE was_public_at_generation = true
+  ) THEN
+    RAISE EXCEPTION '適用時点で was_public_at_generation=true の行が存在する';
+  END IF;
+
+  RAISE NOTICE 'カタログ検証 OK（関数2本の再定義・ゲートの存在・適格性フラグ列）';
 END;
 $$;
 
@@ -434,16 +441,30 @@ BEGIN
       RAISE EXCEPTION '非公開プリセットの生成が記録されてしまった: %', v_count;
     END IF;
 
-    -- (7) 再公開後に「公開前に生成した画像」を投稿 → 実名通知は出ない
-    --     （生成時点の適格性 = イベントの存在が無いため。レビュー指摘②の核心）
+    -- (7) バックフィル相当のイベント（フラグ false）を持つ「公開前に生成した
+    --     画像」を、再公開後に投稿 → 実名通知は出ない
+    --     （生成時点の適格性 = was_public_at_generation=true の証跡が無いため。
+    --      レビュー指摘②とバックフィル行の穴の両方をここで固定する）
     UPDATE public.style_presets SET status = 'published' WHERE id = v_preset;
+
+    INSERT INTO public.style_preset_usage_events
+      (generated_image_id, preset_id, user_id, created_at)
+    VALUES (v_img_hidden, v_preset, v_consumer, now());
+
+    SELECT count(*) INTO v_count
+    FROM public.style_preset_usage_events
+    WHERE preset_id = v_preset;
+    IF v_count <> 2 THEN
+      RAISE EXCEPTION 'バックフィル相当イベントの投入後の件数が想定外: %', v_count;
+    END IF;
+
     UPDATE public.generated_images SET is_posted = true WHERE id = v_img_hidden;
 
     SELECT count(*) INTO v_count
     FROM public.notifications
     WHERE type = 'style_preset_post_published' AND entity_id = v_img_hidden;
     IF v_count <> 0 THEN
-      RAISE EXCEPTION '公開前に生成した画像の投稿で実名通知が出てしまった: %', v_count;
+      RAISE EXCEPTION '公開前に生成した画像（フラグ false のイベント持ち）の投稿で実名通知が出てしまった: %', v_count;
     END IF;
 
     -- (8) 公開中に生成した画像の投稿 → 実名通知が出る
@@ -462,7 +483,7 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = 'PT999';
   EXCEPTION
     WHEN SQLSTATE 'PT999' THEN
-      RAISE NOTICE '実データ dry-run OK（admin_only/期間前/期間後/is_active=false/非公開は無反応・公開中は記録+初回通知・公開前生成の後日投稿は通知なし・公開中生成の投稿は実名通知）。変更はすべてロールバックした';
+      RAISE NOTICE '実データ dry-run OK（admin_only/期間前/期間後/is_active=false/非公開は無反応・公開中は記録+初回通知・フラグfalseイベント持ち画像の後日投稿は通知なし・公開中生成の投稿は実名通知）。変更はすべてロールバックした';
     -- 他の例外は捕捉しない = assert 失敗はマイグレーションを失敗させる
   END;
 END;
@@ -475,6 +496,7 @@ COMMIT;
 -- BEGIN;
 -- -- record_style_preset_usage / notify_on_style_preset_post_published を
 -- -- 20260805000000 の定義（公開状態ゲートなし）へ戻す。
--- -- 削除したテストイベントは復元できない（未公開プリセットのテスト由来のみ）。
+-- -- ALTER TABLE public.style_preset_usage_events
+-- --   DROP COLUMN IF EXISTS was_public_at_generation;
 -- COMMIT;
 -- ===============================================
