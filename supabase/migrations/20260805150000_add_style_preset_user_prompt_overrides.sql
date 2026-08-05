@@ -335,4 +335,10 @@ BEGIN
 END;
 $$;
 
+-- RPC シグネチャ変更(DROP+CREATE)を PostgREST のスキーマキャッシュへ明示反映する。
+-- event trigger(pgrst_ddl_watch/pgrst_drop_watch)による自動 reload は即時とは限らず、
+-- 過去に PGRST202 を踏んだ実績があるため明示する(20260730200100 と同じ方針)。
+-- NOTIFY はトランザクショナルで COMMIT 時に配送される。
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
