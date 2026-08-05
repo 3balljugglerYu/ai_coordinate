@@ -8,23 +8,34 @@
 -- 実装ではこれも利用イベントとして記録されるため、
 --   (1) provider 設定済みなら節目通知が運営テストで発火する
 --   (2) provider 未設定でもイベントが累計を先に消費し、公開後の実ユーザーの
---       「初めて」通知が静かに消える
--- という2つの汚染が起きる。
+--       「初めて」通知が欠落する（節目1は一度しか交差しないため、早まるの
+--       ではなく完全に失われる）
+-- という汚染が起きる。
 --
 -- 対策は「記録時点ゲート」方式: 生成された瞬間の公開状態
 --   プリセット status = 'published'
 --   かつ カテゴリ visibility = 'public'
 --   かつ カテゴリ is_active = true
+--   かつ カテゴリ表示期間内（[starts, ends)。アプリ側の公開判定
+--        20260610130000 と同一の境界）
 -- を満たす生成だけを利用実績として記録・通知する。
--- published_at 境界方式と違い、カテゴリの admin_only→public 切替時刻を
--- 持たなくても時系列的に正確（発火時点の状態がそのまま答えになる）。
+-- published_at 境界方式と違い、カテゴリの admin_only→public 切替や
+-- 予約公開の開始・終了の時刻を別途持たなくても時系列的に正確
+--（発火時点の状態がそのまま答えになる）。
 --
--- 実名の投稿通知にも同じゲートを掛ける（非公開状態のプリセットで作った
--- 画像の投稿はクリエイターへ通知しない）。
+-- 実名の投稿通知は「投稿時点で公開中」かつ「生成時点でも適格だった」の
+-- 両方を要求する。生成時点の適格性は style_preset_usage_events の行の
+-- 存在を永続的な証跡として使う（公開前のテスト生成にはイベントが無い）。
+-- これにより「公開前に生成したテスト画像をローンチ後に投稿する」運用でも
+-- クリエイターへ通知が飛ばない。
 --
--- 既に記録済みの過去イベント（バックフィル分を含む）はそのまま残す:
--- 当時の公開状態は復元できず、「ちょうど節目に一致したときだけ発火」方式の
--- ため、影響は将来の節目がわずかに早まることに限られる。
+-- 既に記録済みの過去イベントの扱い:
+--   - 一度も公開されていないプリセット（published_at IS NULL）のイベントは
+--     確実に公開前テスト由来のため、ここで削除して今後のローンチの
+--     「初めて」通知を復元する。
+--   - 公開済みプリセットのイベントは残す（当時の公開状態は復元できない）。
+--     残したテストイベントがある場合、そのプリセットでは「初めて」通知が
+--     出ず、以後の節目も実利用より早く到達する制約が残る。
 
 BEGIN;
 
@@ -49,9 +60,10 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- 公開中（プリセット published × カテゴリ public × カテゴリ有効）の
-  -- 生成だけを利用実績にする (ADR-009)。運営の公開前テストは
-  -- カウントも通知もされない。
+  -- 公開中の生成だけを利用実績にする (ADR-009)。
+  -- 条件はアプリ側の公開判定 (20260610130000) と同一:
+  -- published × visibility='public' × is_active × 表示期間 [starts, ends)。
+  -- 運営の公開前・期間外テストはカウントも通知もされない。
   IF NOT EXISTS (
     SELECT 1
     FROM public.style_presets sp
@@ -60,6 +72,10 @@ BEGIN
       AND sp.status = 'published'
       AND pc.visibility = 'public'
       AND pc.is_active = true
+      AND (pc.collection_display_starts_at IS NULL
+           OR now() >= pc.collection_display_starts_at)
+      AND (pc.collection_display_ends_at IS NULL
+           OR now() < pc.collection_display_ends_at)
   ) THEN
     RETURN NEW;
   END IF;
@@ -84,10 +100,10 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.record_style_preset_usage() IS
-  'One-Tap Style 生成を append-only の style_preset_usage_events へ記録する。公開中（preset published × カテゴリ public/有効）の生成のみ対象 (ADR-003改/ADR-009)';
+  'One-Tap Style 生成を append-only の style_preset_usage_events へ記録する。公開中（preset published × カテゴリ public/有効 × 表示期間内）の生成のみ対象 (ADR-003改/ADR-009)';
 
 -- ===============================================
--- 2. 実名通知関数: 公開中のプリセットのみ通知する
+-- 2. 実名通知関数: 公開中かつ生成時点でも適格な場合のみ通知する
 -- ===============================================
 
 CREATE OR REPLACE FUNCTION public.notify_on_style_preset_post_published()
@@ -120,7 +136,13 @@ BEGIN
   -- 明示的に引く (ADR-008)。公開状態も同時に取得する (ADR-009)。
   SELECT COALESCE(preset_provider.user_id, category_provider.user_id),
          sp.title, sp.slug,
-         (sp.status = 'published' AND pc.visibility = 'public' AND pc.is_active = true)
+         (sp.status = 'published'
+          AND pc.visibility = 'public'
+          AND pc.is_active = true
+          AND (pc.collection_display_starts_at IS NULL
+               OR now() >= pc.collection_display_starts_at)
+          AND (pc.collection_display_ends_at IS NULL
+               OR now() < pc.collection_display_ends_at))
   INTO v_provider, v_preset_title, v_preset_slug, v_is_public
   FROM public.style_presets sp
   LEFT JOIN public.preset_categories pc ON pc.id = sp.category_id
@@ -134,8 +156,16 @@ BEGIN
     RETURN NEW;
   END IF;
 
-  -- 非公開状態（テスト期間）のプリセットでは通知しない (ADR-009)
-  IF v_is_public IS DISTINCT FROM true THEN
+  -- 投稿時点で公開中、かつ生成時点でも適格（= 利用イベントが存在する）
+  -- 場合だけ通知する (ADR-009)。公開前に生成したテスト画像を公開後に
+  -- 投稿しても通知しない。
+  IF v_is_public IS DISTINCT FROM true
+     OR NOT EXISTS (
+       SELECT 1
+       FROM public.style_preset_usage_events e
+       WHERE e.generated_image_id = NEW.id
+     )
+  THEN
     RETURN NEW;
   END IF;
 
@@ -182,7 +212,33 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.notify_on_style_preset_post_published() IS
-  'One-Tap Style プリセット利用画像の投稿時、provider へ実名の style_preset_post_published 通知を作る。公開中のプリセットのみ対象。自己利用・双方向ブロックはスキップ (REQ-001/004/007, ADR-009)';
+  'One-Tap Style プリセット利用画像の投稿時、provider へ実名の style_preset_post_published 通知を作る。投稿時点で公開中かつ生成時点でも適格（利用イベントが存在）な場合のみ。自己利用・双方向ブロックはスキップ (REQ-001/004/007, ADR-009)';
+
+-- ===============================================
+-- 3. 未公開プリセットのテストイベントを掃除する
+-- ===============================================
+-- 一度も公開されていないプリセット（published_at IS NULL。プリセット自体が
+-- 消えている場合を含む）のイベントは、20260805000000 のゲート無し期間に
+-- 記録された公開前テスト由来と断定できるため削除する。
+-- これで今後ローンチするプリセットの「初めて」通知が復元される。
+-- 公開済みプリセットのイベントは判別不能のため残す（ヘッダーコメント参照）。
+
+DO $$
+DECLARE
+  v_deleted BIGINT;
+BEGIN
+  DELETE FROM public.style_preset_usage_events e
+  WHERE NOT EXISTS (
+    SELECT 1
+    FROM public.style_presets sp
+    WHERE sp.id = e.preset_id
+      AND sp.published_at IS NOT NULL
+  );
+
+  GET DIAGNOSTICS v_deleted = ROW_COUNT;
+  RAISE NOTICE '未公開プリセットのテストイベントを % 件削除した', v_deleted;
+END;
+$$;
 
 -- ===============================================
 -- 適用後の検証
@@ -196,21 +252,36 @@ BEGIN
     RAISE EXCEPTION '再定義対象の関数が存在しない';
   END IF;
 
-  IF position('visibility' in pg_get_functiondef('public.record_style_preset_usage()'::regprocedure)) = 0 THEN
-    RAISE EXCEPTION 'record_style_preset_usage に公開状態ゲートが入っていない';
+  IF position('collection_display_starts_at' in
+       pg_get_functiondef('public.record_style_preset_usage()'::regprocedure)) = 0 THEN
+    RAISE EXCEPTION 'record_style_preset_usage に表示期間ゲートが入っていない';
   END IF;
 
-  IF position('v_is_public' in pg_get_functiondef('public.notify_on_style_preset_post_published()'::regprocedure)) = 0 THEN
-    RAISE EXCEPTION 'notify_on_style_preset_post_published に公開状態ゲートが入っていない';
+  IF position('collection_display_starts_at' in
+       pg_get_functiondef('public.notify_on_style_preset_post_published()'::regprocedure)) = 0
+     OR position('style_preset_usage_events' in
+       pg_get_functiondef('public.notify_on_style_preset_post_published()'::regprocedure)) = 0
+  THEN
+    RAISE EXCEPTION 'notify_on_style_preset_post_published に公開状態/生成時適格性ゲートが入っていない';
   END IF;
 
-  RAISE NOTICE 'カタログ検証 OK（関数2本の再定義とゲートの存在）';
+  IF EXISTS (
+    SELECT 1 FROM public.style_preset_usage_events e
+    WHERE NOT EXISTS (
+      SELECT 1 FROM public.style_presets sp
+      WHERE sp.id = e.preset_id AND sp.published_at IS NOT NULL
+    )
+  ) THEN
+    RAISE EXCEPTION '未公開プリセットのイベントが残っている';
+  END IF;
+
+  RAISE NOTICE 'カタログ検証 OK（関数2本の再定義・ゲートの存在・テストイベント掃除）';
 END;
 $$;
 
 -- 実データ dry-run（必ずロールバックされるサブトランザクション。
--- Realtime へ漏れず、データも残らない）。公開状態の遷移ごとに
--- 記録・通知が正しくゲートされることを本体まで通す。
+-- Realtime へ漏れず、データも残らない）。公開状態・表示期間・有効フラグの
+-- 遷移ごとに記録・通知が正しくゲートされることを本体まで通す。
 
 DO $$
 DECLARE
@@ -245,13 +316,13 @@ BEGIN
 
     INSERT INTO public.style_presets
       (slug, title, thumbnail_image_url, thumbnail_width, thumbnail_height,
-       styling_prompt, category_id, image_input_mode, status, provider_user_id)
+       styling_prompt, category_id, image_input_mode, status, provider_user_id, published_at)
     VALUES
       ('verify-gate-preset', '検証用スタイル', 'https://example.invalid/gate-thumb.png', 100, 100,
-       'verify', v_category, 'single', 'published', v_provider)
+       'verify', v_category, 'single', 'published', v_provider, now())
     RETURNING id INTO v_preset;
 
-    -- (1) カテゴリ admin_only 中の生成 → 記録も通知もされない
+    -- (1) カテゴリ admin_only 中の生成 → 記録されない
     INSERT INTO public.generated_images
       (user_id, image_url, storage_path, prompt, is_posted, generation_type, generation_metadata)
     VALUES
@@ -265,20 +336,41 @@ BEGIN
       RAISE EXCEPTION 'admin_only カテゴリの生成が記録されてしまった: %', v_count;
     END IF;
 
-    -- (2) カテゴリを public 化 → 生成が記録され「初めて」通知が出る
-    UPDATE public.preset_categories SET visibility = 'public' WHERE id = v_category;
+    -- (2) public 化したが表示期間の開始前 → 記録されない（予約公開のテスト）
+    UPDATE public.preset_categories
+    SET visibility = 'public',
+        collection_display_starts_at = now() + interval '1 hour'
+    WHERE id = v_category;
 
     INSERT INTO public.generated_images
       (user_id, image_url, storage_path, prompt, is_posted, generation_type, generation_metadata)
     VALUES
       (v_consumer, 'https://example.invalid/gate-2.png', 'verify/gate-2.png', '', false, 'one_tap_style',
+       jsonb_build_object('oneTapStyle', jsonb_build_object('id', v_preset)));
+
+    SELECT count(*) INTO v_count
+    FROM public.style_preset_usage_events WHERE preset_id = v_preset;
+    IF v_count <> 0 THEN
+      RAISE EXCEPTION '表示期間の開始前の生成が記録されてしまった: %', v_count;
+    END IF;
+
+    -- (3) 表示期間内 → 記録され「初めて」通知が出る
+    UPDATE public.preset_categories
+    SET collection_display_starts_at = now() - interval '1 hour',
+        collection_display_ends_at = now() + interval '1 hour'
+    WHERE id = v_category;
+
+    INSERT INTO public.generated_images
+      (user_id, image_url, storage_path, prompt, is_posted, generation_type, generation_metadata)
+    VALUES
+      (v_consumer, 'https://example.invalid/gate-3.png', 'verify/gate-3.png', '', false, 'one_tap_style',
        jsonb_build_object('oneTapStyle', jsonb_build_object('id', v_preset)))
     RETURNING id INTO v_img_public;
 
     SELECT count(*) INTO v_count
     FROM public.style_preset_usage_events WHERE preset_id = v_preset;
     IF v_count <> 1 THEN
-      RAISE EXCEPTION '公開後の生成が記録されない: %', v_count;
+      RAISE EXCEPTION '表示期間内の生成が記録されない: %', v_count;
     END IF;
 
     SELECT count(*) INTO v_count
@@ -290,13 +382,50 @@ BEGIN
       RAISE EXCEPTION '公開後の初回生成で「初めて」通知が出ない: %', v_count;
     END IF;
 
-    -- (3) プリセットを非公開化 → 生成は記録されない
+    -- (4) 表示期間の終了後 → 記録されない
+    UPDATE public.preset_categories
+    SET collection_display_ends_at = now() - interval '1 minute'
+    WHERE id = v_category;
+
+    INSERT INTO public.generated_images
+      (user_id, image_url, storage_path, prompt, is_posted, generation_type, generation_metadata)
+    VALUES
+      (v_consumer, 'https://example.invalid/gate-4.png', 'verify/gate-4.png', '', false, 'one_tap_style',
+       jsonb_build_object('oneTapStyle', jsonb_build_object('id', v_preset)));
+
+    SELECT count(*) INTO v_count
+    FROM public.style_preset_usage_events WHERE preset_id = v_preset;
+    IF v_count <> 1 THEN
+      RAISE EXCEPTION '表示期間の終了後の生成が記録されてしまった: %', v_count;
+    END IF;
+
+    -- (5) 期間を戻し is_active=false → 記録されない
+    UPDATE public.preset_categories
+    SET collection_display_ends_at = NULL,
+        is_active = false
+    WHERE id = v_category;
+
+    INSERT INTO public.generated_images
+      (user_id, image_url, storage_path, prompt, is_posted, generation_type, generation_metadata)
+    VALUES
+      (v_consumer, 'https://example.invalid/gate-5.png', 'verify/gate-5.png', '', false, 'one_tap_style',
+       jsonb_build_object('oneTapStyle', jsonb_build_object('id', v_preset)));
+
+    SELECT count(*) INTO v_count
+    FROM public.style_preset_usage_events WHERE preset_id = v_preset;
+    IF v_count <> 1 THEN
+      RAISE EXCEPTION 'is_active=false カテゴリの生成が記録されてしまった: %', v_count;
+    END IF;
+
+    UPDATE public.preset_categories SET is_active = true WHERE id = v_category;
+
+    -- (6) プリセット非公開中の生成 → 記録されない
     UPDATE public.style_presets SET status = 'draft' WHERE id = v_preset;
 
     INSERT INTO public.generated_images
       (user_id, image_url, storage_path, prompt, is_posted, generation_type, generation_metadata)
     VALUES
-      (v_consumer, 'https://example.invalid/gate-3.png', 'verify/gate-3.png', '', false, 'one_tap_style',
+      (v_consumer, 'https://example.invalid/gate-6.png', 'verify/gate-6.png', '', false, 'one_tap_style',
        jsonb_build_object('oneTapStyle', jsonb_build_object('id', v_preset)));
 
     SELECT count(*) INTO v_count
@@ -305,18 +434,19 @@ BEGIN
       RAISE EXCEPTION '非公開プリセットの生成が記録されてしまった: %', v_count;
     END IF;
 
-    -- (4) 非公開状態での投稿 → 実名通知は出ない
+    -- (7) 再公開後に「公開前に生成した画像」を投稿 → 実名通知は出ない
+    --     （生成時点の適格性 = イベントの存在が無いため。レビュー指摘②の核心）
+    UPDATE public.style_presets SET status = 'published' WHERE id = v_preset;
     UPDATE public.generated_images SET is_posted = true WHERE id = v_img_hidden;
 
     SELECT count(*) INTO v_count
     FROM public.notifications
     WHERE type = 'style_preset_post_published' AND entity_id = v_img_hidden;
     IF v_count <> 0 THEN
-      RAISE EXCEPTION '非公開プリセットの投稿で実名通知が出てしまった: %', v_count;
+      RAISE EXCEPTION '公開前に生成した画像の投稿で実名通知が出てしまった: %', v_count;
     END IF;
 
-    -- (5) 再公開後の投稿 → 実名通知が出る
-    UPDATE public.style_presets SET status = 'published' WHERE id = v_preset;
+    -- (8) 公開中に生成した画像の投稿 → 実名通知が出る
     UPDATE public.generated_images SET is_posted = true WHERE id = v_img_public;
 
     SELECT count(*) INTO v_count
@@ -332,7 +462,7 @@ BEGIN
     RAISE EXCEPTION USING ERRCODE = 'PT999';
   EXCEPTION
     WHEN SQLSTATE 'PT999' THEN
-      RAISE NOTICE '実データ dry-run OK（admin_only中は無反応→公開で記録+初回通知→非公開で記録停止→非公開投稿は通知なし→再公開投稿で実名通知）。変更はすべてロールバックした';
+      RAISE NOTICE '実データ dry-run OK（admin_only/期間前/期間後/is_active=false/非公開は無反応・公開中は記録+初回通知・公開前生成の後日投稿は通知なし・公開中生成の投稿は実名通知）。変更はすべてロールバックした';
     -- 他の例外は捕捉しない = assert 失敗はマイグレーションを失敗させる
   END;
 END;
@@ -344,6 +474,7 @@ COMMIT;
 -- DOWN:
 -- BEGIN;
 -- -- record_style_preset_usage / notify_on_style_preset_post_published を
--- -- 20260805000000 の定義（公開状態ゲートなし）へ戻す
+-- -- 20260805000000 の定義（公開状態ゲートなし）へ戻す。
+-- -- 削除したテストイベントは復元できない（未公開プリセットのテスト由来のみ）。
 -- COMMIT;
 -- ===============================================

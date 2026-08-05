@@ -383,10 +383,10 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `generated_images` `AFTER UPDATE OF is_posted` | `delete_notification_on_derived_post_removal()` | 派生投稿の非公開化（取消・公開停止・退会一括取消）でその作品の通知を削除。他の作品の通知には触れない |
 | `generated_images` `AFTER UPDATE OF is_posted` | `delete_usage_milestone_on_origin_removal()` | 原作（free root）の非公開化でその投稿の `derived_usage_milestone` 通知を削除（リンク切れ回避） |
 | `prompt_usage_events` `AFTER INSERT` | `notify_on_prompt_usage_milestone()` | 派生生成の累計回数（原作者除外）が節目 (1,5,10,25,50,100,250,500,1000) にちょうど達したとき、原作者へ `derived_usage_milestone` 通知を匿名で作成（actor=本人・`create_notification` 不使用の直接 INSERT） |
-| `generated_images` `AFTER UPDATE OF is_posted` | `notify_on_style_preset_post_published()` | One-Tap Style プリセット利用画像の投稿で provider へ実名の `style_preset_post_published` 通知。provider 解決はクレジット表示と同一規則（プリセット→カテゴリ）。**公開中のプリセットのみ**対象。自己利用・双方向ブロックはスキップ |
+| `generated_images` `AFTER UPDATE OF is_posted` | `notify_on_style_preset_post_published()` | One-Tap Style プリセット利用画像の投稿で provider へ実名の `style_preset_post_published` 通知。provider 解決はクレジット表示と同一規則（プリセット→カテゴリ）。**投稿時点で公開中かつ生成時点でも適格（利用イベントが存在）な場合のみ**対象。自己利用・双方向ブロックはスキップ |
 | `generated_images` `AFTER UPDATE OF is_posted` | `delete_style_preset_post_notification()` | プリセット利用画像の非公開化でその投稿の実名通知を削除（リンク切れ回避） |
 | `generated_images` `BEFORE UPDATE OF generation_type, generation_metadata, image_job_id, style_template_id` | `enforce_generated_image_generation_fields()` | 生成由来フィールドの非信頼クライアント変更を拒否（通知偽造対策）。クライアント INSERT はポリシー撤去＋REVOKE で遮断済み |
-| `generated_images` `AFTER INSERT` | `record_style_preset_usage()` | One-Tap 生成を append-only の `style_preset_usage_events` へ記録（節目通知の正本）。**公開中（preset published × カテゴリ public/有効）の生成のみ**対象で、運営の公開前テストは記録されない |
+| `generated_images` `AFTER INSERT` | `record_style_preset_usage()` | One-Tap 生成を append-only の `style_preset_usage_events` へ記録（節目通知の正本）。**公開中（preset published × カテゴリ public/有効 × 表示期間内）の生成のみ**対象で、運営の公開前・期間外テストは記録されない |
 | `style_preset_usage_events` `AFTER INSERT` | `notify_on_style_preset_usage_milestone()` | One-Tap 利用の累計（provider 除外）が節目にちょうど達したとき provider へ匿名の `style_preset_usage_milestone` 通知（直接 INSERT・プリセット×節目で最大1件） |
 | `image_jobs` `BEFORE INSERT / UPDATE OF origin_post_id` | `enforce_image_job_origin()` | `origin_post_id` の設定経路（信頼された書き込みのみ）と作成後不変 |
 | `generation_prompt_snapshots` `BEFORE INSERT/UPDATE` | `enforce_prompt_execution_kind()` | `image_jobs.origin_post_id` の有無と `snapshot_kind` の整合を cross-table で強制 |
