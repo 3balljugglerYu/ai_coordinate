@@ -17,6 +17,7 @@ import {
 } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
+import { shouldRecordStylePresetUsage } from "@/features/style-presets/lib/style-preset-usage-recording";
 import {
   checkAndConsumeStyleGenerateRateLimit,
   releaseStyleGenerateRateLimitAttempt,
@@ -259,6 +260,13 @@ export async function postStyleGenerateRoute(
     if (preset.category.visibility === "admin_only") {
       return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
     }
+    // 公開中でないプリセット(表示期間外・is_active=false 等)の利用イベントは記録しない
+    // (「◯◯回つくられました」カウンタ/KPI へのテスト・期間外生成の混入防止)。
+    // 生成自体は従来どおり動かし、以降の記録だけを no-op に差し替える。
+    const gatedRecordStyleUsageEventFn: typeof recordStyleUsageEventFn =
+      shouldRecordStylePresetUsage(preset)
+        ? recordStyleUsageEventFn
+        : async () => {};
     // ゲストの無料生成は category.allow_guest_generation が true のカテゴリのみ許可。
     // 許可カテゴリは admin のカテゴリ編集から切り替える(既定 false = ログイン必須)。
     // クライアントでも制御するが defense-in-depth としてサーバーでも検証する。
@@ -442,7 +450,7 @@ export async function postStyleGenerateRoute(
     if (!rateLimitResult.allowed) {
       if (rateLimitResult.reason === "guest_short") {
         await recordStyleRateLimitedEvent({
-          recordStyleUsageEventFn,
+          recordStyleUsageEventFn: gatedRecordStyleUsageEventFn,
           userId: null,
           authState,
           styleId,
@@ -459,7 +467,7 @@ export async function postStyleGenerateRoute(
 
       if (rateLimitResult.reason === "guest_daily") {
         await recordStyleRateLimitedEvent({
-          recordStyleUsageEventFn,
+          recordStyleUsageEventFn: gatedRecordStyleUsageEventFn,
           userId: null,
           authState,
           styleId,
@@ -486,7 +494,7 @@ export async function postStyleGenerateRoute(
       }
 
       await recordStyleRateLimitedEvent({
-        recordStyleUsageEventFn,
+        recordStyleUsageEventFn: gatedRecordStyleUsageEventFn,
         userId: null,
         authState,
         styleId,
@@ -526,7 +534,7 @@ export async function postStyleGenerateRoute(
 
     if (authState === "guest") {
       await recordStyleGenerateAttemptEvent({
-        recordStyleUsageEventFn,
+        recordStyleUsageEventFn: gatedRecordStyleUsageEventFn,
         userId: null,
         authState,
         styleId,
@@ -574,7 +582,7 @@ export async function postStyleGenerateRoute(
 
       if (dispatchResult.kind === "success") {
         try {
-          await recordStyleUsageEventFn({
+          await gatedRecordStyleUsageEventFn({
             userId: null,
             authState,
             eventType: "generate",
