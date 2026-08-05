@@ -314,6 +314,42 @@ describe("StyleGenerateRoute integration tests", () => {
     });
   });
 
+  // 記録ゲート(shouldRecordStylePresetUsage): 公開中でないプリセット
+  // (ここでは表示期間外の公開カテゴリ)は生成自体は成功するが、
+  // 利用イベント(generate_attempt / generate)を一切記録しない。
+  test("postStyleGenerateRoute_表示期間外カテゴリは生成は成功するが利用イベントを記録しない", async () => {
+    getUserFn.mockResolvedValueOnce(null);
+    getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+      buildStylePresetForGeneration({
+        category: {
+          ...TEST_COORDINATE_CATEGORY,
+          collectionDisplayEndsAt: "2020-01-01T00:00:00Z",
+        },
+      })
+    );
+    const formData = new FormData();
+    formData.set("styleId", STYLE_ID);
+    formData.set("uploadImage", createUploadImage());
+
+    const response = await postStyleGenerateRoute(createRequest(formData), {
+      fetchFn,
+      geminiApiKey: "test-api-key",
+      getUserFn,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      checkAndConsumeRateLimitFn,
+      releaseRateLimitAttemptFn,
+    });
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({
+      imageDataUrl: "data:image/png;base64,generated-image-base64",
+      mimeType: "image/png",
+    });
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleGenerateRoute_不正styleIdの場合_400を返す", async () => {
     const formData = new FormData();
     formData.set("styleId", "unknown-style");
