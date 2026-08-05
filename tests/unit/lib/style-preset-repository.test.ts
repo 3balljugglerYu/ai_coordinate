@@ -235,6 +235,9 @@ describe("style-preset repository", () => {
         providerUserId: null,
         providerNickname: null,
         providerAvatarUrl: null,
+        userPromptLabel: null,
+        userPromptPlaceholder: null,
+        userPromptMaxLength: null,
       },
     ]);
   });
@@ -619,6 +622,9 @@ describe("style-preset repository", () => {
       p_reference_image_height: null,
       p_dual_reference_source: "admin",
       p_provider_user_id: null,
+      p_user_prompt_label: null,
+      p_user_prompt_placeholder: null,
+      p_user_prompt_max_length: null,
     });
     expect(updated.sortOrder).toBe(2);
     expect(updated.updatedBy).toBe("admin-2");
@@ -682,6 +688,108 @@ describe("style-preset repository", () => {
     expect((await runUpdate("creator-x", { providerUserId: null })).p_provider_user_id).toBeNull();
     // 未指定: 既存値を維持する(意図せぬ解除をしない)
     expect((await runUpdate("creator-x", {})).p_provider_user_id).toBe("creator-x");
+  });
+
+  test("updateStylePreset_ユーザープロンプト上書き3項目は 設定/クリア/未指定維持 が RPC に正しく渡る", async () => {
+    const baseRow = {
+      id: "preset-1",
+      slug: "preset-1",
+      title: "T",
+      styling_prompt: "P",
+      background_prompt: null,
+      thumbnail_image_url: "https://example.com/old.webp",
+      thumbnail_storage_path: "style-presets/preset-1/old.webp",
+      thumbnail_width: 720,
+      thumbnail_height: 960,
+      sort_order: 1,
+      status: "draft" as const,
+      category_id: TEST_CATEGORY_ID,
+      image_input_mode: "single" as const,
+      reference_image_url: null,
+      reference_image_storage_path: null,
+      reference_image_width: null,
+      reference_image_height: null,
+      category: TEST_CATEGORY_ROW,
+      created_by: "admin-1",
+      updated_by: "admin-1",
+      created_at: "2026-03-22T00:00:00.000Z",
+      updated_at: "2026-03-22T00:00:00.000Z",
+    };
+
+    const runUpdate = async (
+      existingOverrides: {
+        user_prompt_label?: string | null;
+        user_prompt_placeholder?: string | null;
+        user_prompt_max_length?: number | null;
+      },
+      input: {
+        userPromptLabel?: string | null;
+        userPromptPlaceholder?: string | null;
+        userPromptMaxLength?: number | null;
+      }
+    ) => {
+      const existingRow = { ...baseRow, ...existingOverrides };
+      const maybeSingle = jest
+        .fn()
+        .mockResolvedValueOnce({ data: existingRow, error: null })
+        .mockResolvedValueOnce({ data: existingRow, error: null });
+      const from = jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnThis(),
+        eq: jest.fn().mockReturnThis(),
+        maybeSingle,
+      });
+      const rpc = jest.fn().mockResolvedValue({ data: existingRow, error: null });
+      mockCreateAdminClient.mockReturnValue({ from, rpc } as never);
+      await updateStylePreset("preset-1", {
+        title: "T",
+        updatedBy: "admin-2",
+        ...input,
+      });
+      return rpc.mock.calls[0][1] as Record<string, unknown>;
+    };
+
+    // 設定: 明示した値が渡る
+    const set = await runUpdate(
+      {},
+      {
+        userPromptLabel: "キャラクターの名前",
+        userPromptPlaceholder: "例: ラッキー",
+        userPromptMaxLength: 10,
+      }
+    );
+    expect(set.p_user_prompt_label).toBe("キャラクターの名前");
+    expect(set.p_user_prompt_placeholder).toBe("例: ラッキー");
+    expect(set.p_user_prompt_max_length).toBe(10);
+
+    // クリア: null が渡る(カテゴリ設定へ継承)
+    const cleared = await runUpdate(
+      {
+        user_prompt_label: "旧ラベル",
+        user_prompt_placeholder: "旧ヒント",
+        user_prompt_max_length: 20,
+      },
+      {
+        userPromptLabel: null,
+        userPromptPlaceholder: null,
+        userPromptMaxLength: null,
+      }
+    );
+    expect(cleared.p_user_prompt_label).toBeNull();
+    expect(cleared.p_user_prompt_placeholder).toBeNull();
+    expect(cleared.p_user_prompt_max_length).toBeNull();
+
+    // 未指定: 既存値を維持する(意図せぬクリアをしない)
+    const kept = await runUpdate(
+      {
+        user_prompt_label: "旧ラベル",
+        user_prompt_placeholder: "旧ヒント",
+        user_prompt_max_length: 20,
+      },
+      {}
+    );
+    expect(kept.p_user_prompt_label).toBe("旧ラベル");
+    expect(kept.p_user_prompt_placeholder).toBe("旧ヒント");
+    expect(kept.p_user_prompt_max_length).toBe(20);
   });
 
   test("createStylePreset_dualReferenceSource=user_upload を指定すると RPC に user_upload が渡る", async () => {

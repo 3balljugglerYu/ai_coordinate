@@ -3,30 +3,45 @@
  *
  * jest の jsdom 環境では window.localStorage がデフォルトで使えるので、
  * 各テスト前に localStorage.clear() してから検証する。
+ *
+ * 記憶キーはスコープで決まる:
+ *   - hasPresetLabel=false → user-prompt:{categoryKey} (従来キー = 後方互換)
+ *   - hasPresetLabel=true  → user-prompt:preset:{presetId}
  */
 import {
-  loadUserPromptForCategory,
-  saveUserPromptForCategory,
+  loadUserPromptForScope,
+  saveUserPromptForScope,
+  type UserPromptRecallScope,
 } from "@/features/style/lib/user-prompt-recall";
+
+const waferScope: UserPromptRecallScope = {
+  presetId: "preset-wafer-1",
+  hasPresetLabel: false,
+  categoryKey: "collectible_wafer_sticker",
+};
+
+const labeledScope: UserPromptRecallScope = {
+  presetId: "preset-name-1",
+  hasPresetLabel: true,
+  categoryKey: "character_remix_text",
+};
 
 describe("user-prompt-recall", () => {
   beforeEach(() => {
     window.localStorage.clear();
   });
 
-  describe("loadUserPromptForCategory", () => {
-    test("未保存 category は空文字を返す", () => {
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", 200)).toBe(
-        "",
-      );
+  describe("loadUserPromptForScope", () => {
+    test("未保存 scope は空文字を返す", () => {
+      expect(loadUserPromptForScope(waferScope, 200)).toBe("");
     });
 
-    test("保存済み category の値が返る", () => {
+    test("保存済み category scope の値が返る (従来キー互換)", () => {
       window.localStorage.setItem(
         "user-prompt:collectible_wafer_sticker",
         "ハイビスカスを持たせて",
       );
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", 200)).toBe(
+      expect(loadUserPromptForScope(waferScope, 200)).toBe(
         "ハイビスカスを持たせて",
       );
     });
@@ -36,9 +51,7 @@ describe("user-prompt-recall", () => {
         "user-prompt:collectible_wafer_sticker",
         "0123456789",
       );
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", 5)).toBe(
-        "01234",
-      );
+      expect(loadUserPromptForScope(waferScope, 5)).toBe("01234");
     });
 
     test("maxLength が null / undefined / 0 のときは無制限扱いで全文を返す", () => {
@@ -46,15 +59,9 @@ describe("user-prompt-recall", () => {
         "user-prompt:collectible_wafer_sticker",
         "fulltext",
       );
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", null)).toBe(
-        "fulltext",
-      );
-      expect(
-        loadUserPromptForCategory("collectible_wafer_sticker", undefined),
-      ).toBe("fulltext");
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", 0)).toBe(
-        "fulltext",
-      );
+      expect(loadUserPromptForScope(waferScope, null)).toBe("fulltext");
+      expect(loadUserPromptForScope(waferScope, undefined)).toBe("fulltext");
+      expect(loadUserPromptForScope(waferScope, 0)).toBe("fulltext");
     });
 
     test("category 単位で独立して取り出す (別 category は混ざらない)", () => {
@@ -63,10 +70,40 @@ describe("user-prompt-recall", () => {
         "wafer-text",
       );
       window.localStorage.setItem("user-prompt:chibi", "chibi-text");
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", 200)).toBe(
-        "wafer-text",
+      expect(loadUserPromptForScope(waferScope, 200)).toBe("wafer-text");
+      expect(
+        loadUserPromptForScope(
+          { presetId: "p-chibi", hasPresetLabel: false, categoryKey: "chibi" },
+          200,
+        ),
+      ).toBe("chibi-text");
+    });
+
+    test("hasPresetLabel=true は preset キーから読む (category の下書きは prefill しない)", () => {
+      // 同カテゴリの category キーに下書きがあっても、ラベル上書きのある preset は
+      // 「入力の意味が違う」ため category の下書きを引き継がない。
+      window.localStorage.setItem(
+        "user-prompt:character_remix_text",
+        "カテゴリの下書き",
       );
-      expect(loadUserPromptForCategory("chibi", 200)).toBe("chibi-text");
+      expect(loadUserPromptForScope(labeledScope, 200)).toBe("");
+
+      window.localStorage.setItem(
+        "user-prompt:preset:preset-name-1",
+        "ラッキー",
+      );
+      expect(loadUserPromptForScope(labeledScope, 200)).toBe("ラッキー");
+    });
+
+    test("hasPresetLabel=true の preset 同士も presetId 単位で独立する", () => {
+      window.localStorage.setItem("user-prompt:preset:preset-name-1", "名前A");
+      const numberScope: UserPromptRecallScope = {
+        presetId: "preset-number-1",
+        hasPresetLabel: true,
+        categoryKey: "character_remix_text",
+      };
+      expect(loadUserPromptForScope(numberScope, 200)).toBe("");
+      expect(loadUserPromptForScope(labeledScope, 200)).toBe("名前A");
     });
 
     test("localStorage が throw しても空文字に fallback (private mode の保険)", () => {
@@ -75,19 +112,31 @@ describe("user-prompt-recall", () => {
         .mockImplementation(() => {
           throw new Error("blocked");
         });
-      expect(loadUserPromptForCategory("collectible_wafer_sticker", 200)).toBe(
-        "",
-      );
+      expect(loadUserPromptForScope(waferScope, 200)).toBe("");
       spy.mockRestore();
     });
   });
 
-  describe("saveUserPromptForCategory", () => {
-    test("非空の値は category キーで保存される", () => {
-      saveUserPromptForCategory("collectible_wafer_sticker", "アロハシャツで");
+  describe("saveUserPromptForScope", () => {
+    test("hasPresetLabel=false は従来の category キーで保存される", () => {
+      saveUserPromptForScope(waferScope, "アロハシャツで");
       expect(
         window.localStorage.getItem("user-prompt:collectible_wafer_sticker"),
       ).toBe("アロハシャツで");
+    });
+
+    test("hasPresetLabel=true は preset キーで保存され、category キーは触らない", () => {
+      window.localStorage.setItem(
+        "user-prompt:character_remix_text",
+        "カテゴリの下書き",
+      );
+      saveUserPromptForScope(labeledScope, "ラッキー");
+      expect(
+        window.localStorage.getItem("user-prompt:preset:preset-name-1"),
+      ).toBe("ラッキー");
+      expect(
+        window.localStorage.getItem("user-prompt:character_remix_text"),
+      ).toBe("カテゴリの下書き");
     });
 
     test("空文字 / trim 後空文字は保存ではなく削除", () => {
@@ -95,27 +144,24 @@ describe("user-prompt-recall", () => {
         "user-prompt:collectible_wafer_sticker",
         "old",
       );
-      saveUserPromptForCategory("collectible_wafer_sticker", "");
+      saveUserPromptForScope(waferScope, "");
       expect(
         window.localStorage.getItem("user-prompt:collectible_wafer_sticker"),
       ).toBeNull();
 
       window.localStorage.setItem(
-        "user-prompt:collectible_wafer_sticker",
+        "user-prompt:preset:preset-name-1",
         "old2",
       );
-      saveUserPromptForCategory("collectible_wafer_sticker", "   \n\t  ");
+      saveUserPromptForScope(labeledScope, "   \n\t  ");
       expect(
-        window.localStorage.getItem("user-prompt:collectible_wafer_sticker"),
+        window.localStorage.getItem("user-prompt:preset:preset-name-1"),
       ).toBeNull();
     });
 
     test("category 単位で独立 (別 category の保存値は触らない)", () => {
       window.localStorage.setItem("user-prompt:chibi", "keep-me");
-      saveUserPromptForCategory(
-        "collectible_wafer_sticker",
-        "new-wafer",
-      );
+      saveUserPromptForScope(waferScope, "new-wafer");
       expect(window.localStorage.getItem("user-prompt:chibi")).toBe("keep-me");
       expect(
         window.localStorage.getItem("user-prompt:collectible_wafer_sticker"),
@@ -128,9 +174,7 @@ describe("user-prompt-recall", () => {
         .mockImplementation(() => {
           throw new Error("quota_exceeded");
         });
-      expect(() =>
-        saveUserPromptForCategory("collectible_wafer_sticker", "x"),
-      ).not.toThrow();
+      expect(() => saveUserPromptForScope(waferScope, "x")).not.toThrow();
       spy.mockRestore();
     });
   });
