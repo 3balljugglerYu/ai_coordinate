@@ -16,6 +16,7 @@ import {
 } from "@/features/style-presets/lib/style-preset-repository";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { parseStylePresetSortOrder } from "@/features/style-presets/lib/parse-style-preset-sort-order";
+import { parseUserPromptOverrideFields } from "@/features/style-presets/lib/parse-user-prompt-override-fields";
 import {
   deleteStylePresetImage,
   uploadStylePresetImage,
@@ -199,6 +200,17 @@ export async function PATCH(
       providerUserId = providerUserIdEntry;
     }
 
+    // ユーザープロンプト入力欄のスタイル別上書き:
+    //   - フィールド未送信 → 現状維持(undefined = repository 側で既存値を送る)
+    //   - 空文字 → null(クリア = カテゴリ設定へ継承)
+    const userPromptOverrides = parseUserPromptOverrideFields(formData);
+    if (!userPromptOverrides.ok) {
+      return NextResponse.json(
+        { error: userPromptOverrides.error },
+        { status: 400 }
+      );
+    }
+
     // 共通の更新ペイロード
     const updatePayload = {
       title,
@@ -220,6 +232,8 @@ export async function PATCH(
       referenceImageHeight: existing.referenceImageHeight,
       // provider は undefined(未送信)なら repository 側で現状維持。
       providerUserId,
+      // 上書き 3 項目も undefined(未送信)なら repository 側で現状維持。
+      ...userPromptOverrides.value,
     };
 
     // 新しい reference file (= admin dual の場合のみ意味あり) を新規 object に保存し、DB 更新成功後に旧 object を削除する。

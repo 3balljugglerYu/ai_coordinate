@@ -15,6 +15,7 @@ import {
 } from "@/features/style-presets/lib/style-preset-repository";
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { parseStylePresetSortOrder } from "@/features/style-presets/lib/parse-style-preset-sort-order";
+import { parseUserPromptOverrideFields } from "@/features/style-presets/lib/parse-user-prompt-override-fields";
 import {
   deleteStylePresetImage,
   uploadStylePresetImage,
@@ -180,6 +181,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ユーザープロンプト入力欄のスタイル別上書き(空文字 = 未設定 = カテゴリ設定へ継承)
+    const userPromptOverrides = parseUserPromptOverrideFields(formData);
+    if (!userPromptOverrides.ok) {
+      return NextResponse.json(
+        { error: userPromptOverrides.error },
+        { status: 400 }
+      );
+    }
+
     // クリエイター(提供者クレジット): 空なら null。指定時は allowlist 所属を必須にする。
     const providerUserId =
       typeof providerUserIdEntry === "string" && providerUserIdEntry.length > 0
@@ -243,6 +253,7 @@ export async function POST(request: NextRequest) {
       referenceImageWidth,
       referenceImageHeight,
       providerUserId,
+      ...userPromptOverrides.value,
     });
 
     revalidateStylePresets();
