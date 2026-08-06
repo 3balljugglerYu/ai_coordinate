@@ -363,7 +363,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `grant_prompt_usage_reward` | `record_prompt_usage` / 再処理 | 利用イベント id | `void` | Free 派生の原作者へ還元。自己利用・原作非公開・額0は `skipped` 確定。`reward_status` の test-and-set で冪等。**service_role 専用** |
 | `grant_style_preset_usage_reward` | 記録トリガー / 再処理 | 利用イベント id | `void` | One-Tap Style のクリエイターへ還元。provider は profiles 経由で解決。自己利用・provider 未設定・額0は `skipped`。**service_role 専用** |
 | `reprocess_pending_usage_rewards` | pg_cron（10分毎） | 上限件数 | 処理件数 | `pending` のまま残った還元を再処理。**行単位の例外ブロック**＋`FOR UPDATE SKIP LOCKED`＋指数バックオフ（指数部は `LEAST(n,9)` で頭打ち）。**service_role 専用** |
-| `get_grantable_free_percoin_amount` | 各付与RPC内 | user id, 要求額 | 付与可能額 | 5万無料残高キャップ。**内部で受け手単位の advisory lock** を取り、この関数を通る全経路（還元2・完走報酬・デイリー・ストリーク・サブスク）を直列化する。登録/ツアー/紹介/admin付与/返金はそもそもこの関数を通らない（キャップ非適用の既存仕様） |
+| `get_grantable_free_percoin_amount` | 各付与RPC内 | user id, 要求額 | 付与可能額 | 5万無料残高キャップ。**ロックは持たない**（共有関数に入れると既存経路とロック取得順が食い違い、デイリー報酬×ストリーク報酬でデッドロックになるため）。受け手単位の直列化は**還元の付与RPC 2本が冒頭で取る advisory lock** のみで、キャップの強制はその2経路間で成立する。既存ボーナスとの並行時の超過、および登録/ツアー/紹介/admin付与/返金がそもそもこの関数を通らない点は、いずれも本機能導入前からの既存仕様 |
 | `get_prompt_usage_count` | 投稿詳細の参照カード解決 | origin post id | `integer` | ユニーク利用者数（原作者除外）。**service_role 専用**（任意 UUID の列挙防止） |
 
 ## Trigger 一覧

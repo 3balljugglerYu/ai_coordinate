@@ -25,9 +25,11 @@
 --   ADR-007 失敗は pending として残し、pg_cron から再処理する。
 --           再処理側も行単位の例外ブロックが必須(1件の失敗でバッチ全体が
 --           巻き戻り、古い1行の恒久エラーで後続行が滞留するため)
---   ADR-008 5万キャップは get_grantable_free_percoin_amount の内部で
---           受け手単位に直列化する。この関数を通る全経路(本機能2 + 完走報酬/
---           デイリー/ストリーク/サブスク)が自動的に同じロック規約に参加する
+--   ADR-008 受け手単位の直列化は「本機能の付与RPC 2本の冒頭」で行う。
+--           共有の get_grantable_free_percoin_amount へロックを入れる案は、
+--           既存経路とロック取得順が食い違いデッドロックを生むため撤回した
+--           (詳細は下記セクション4)。よってキャップの強制は本機能の2経路間
+--           でのみ成立し、既存ボーナスとの並行時の超過は本PR以前のまま残る
 --
 -- 適用順序: 新規 RPC の追加のみでシグネチャ変更を伴わないため通常順で可。
 -- ただし PostgREST のスキーマキャッシュ更新のため末尾で NOTIFY する。
@@ -250,7 +252,8 @@ BEGIN
     RETURN 0;
   END IF;
 
-  -- 5万無料残高キャップ。内部で受け手単位の advisory lock を取る(ADR-008)
+  -- 5万無料残高キャップ。受け手単位の直列化は呼び出し元の付与RPCが冒頭で
+  -- 取る advisory lock で担保する(ADR-008。共有関数側には入れない)
   v_amount := public.get_grantable_free_percoin_amount(p_recipient_id, v_configured);
 
   IF v_amount IS NULL OR v_amount <= 0 THEN
@@ -687,7 +690,11 @@ BEGIN
     SELECT id, kind, recipient_id, created_at, 0 AS table_order FROM prompt_claim
     UNION ALL
     SELECT id, kind, recipient_id, created_at, 1 AS table_order FROM style_claim
-    ORDER BY table_order, recipient_id, created_at
+    -- 受け手を最優先に並べる。テーブル順を先にすると、同じ受け手が両テーブルに
+    -- いる場合にバッチごとで並び順が変わり、循環待ちになる
+    -- (A: prompt受け手A → style受け手B / B: prompt受け手B → style受け手A)。
+    -- 受け手順をグローバルに固定すれば、どのバッチも同じ順序でロックを取る。
+    ORDER BY recipient_id, table_order, created_at
   LOOP
     BEGIN
       IF v_row.kind = 'prompt' THEN
@@ -744,7 +751,7 @@ REVOKE ALL ON FUNCTION public.reprocess_pending_usage_rewards(integer) FROM PUBL
 GRANT EXECUTE ON FUNCTION public.reprocess_pending_usage_rewards(integer) TO service_role;
 
 COMMENT ON FUNCTION public.reprocess_pending_usage_rewards(integer) IS
-  '付与に失敗して pending のまま残った利用イベントを再処理する(service_role専用)。行単位で隔離し、失敗行は指数バックオフ';
+  '付与に失敗して pending のまま残った利用イベントを再処理する(service_role専用)。行単位で隔離し、失敗行は指数バックオフ。p_limit は「テーブルごと」の上限で、1回の実行では最大 2*p_limit 件(Free + Style)を処理する';
 
 -- =============================================================================
 -- 10. pg_cron 登録(既存ジョブがあれば貼り替える。20260728130200 と同じ手順)
@@ -765,7 +772,8 @@ BEGIN
 
   PERFORM cron.schedule(
     'reprocess_pending_usage_rewards',
-    '*/10 * * * *',  -- 10分ごと
+    -- 10分ごと。p_limit はテーブルごとの上限なので1回で最大100件(Free+Style)
+    '*/10 * * * *',
     'SELECT public.reprocess_pending_usage_rewards(50);'
   );
 END;
@@ -897,6 +905,9 @@ DECLARE
   v_balance_after integer;
   v_tx_count integer;
   v_batch_count integer;
+  v_new_image uuid;
+  v_job uuid;
+  v_free_recipient uuid;
 BEGIN
   -- 検証用の実データが揃うか先に確かめる(揃わなければスキップ)
   SELECT sp.id INTO v_preset
@@ -1059,7 +1070,65 @@ BEGIN
       RAISE EXCEPTION '付与失敗なのに取引が増えた';
     END IF;
 
-    -- (f) legacy は再処理で拾われない
+    -- (f) 記録関数を通した隔離の検証(ADR-006 の本丸)。
+    --     付与が失敗しても、記録関数が作った利用イベントは残ること。
+    --     残高は int 上限のままなので付与は必ず失敗する。
+    --
+    --     f-1) Style: トリガー経由。record_style_preset_usage は関数全体が
+    --          単一の EXCEPTION ブロックのため、内側で隔離できていないと
+    --          付与失敗で INSERT ごと巻き戻る。
+    INSERT INTO public.generated_images (
+      user_id, image_url, storage_path, prompt, background_mode,
+      is_posted, generation_type, generation_metadata, model, width, height
+    )
+    SELECT gi.user_id, gi.image_url, gi.storage_path, '', gi.background_mode,
+           false, 'one_tap_style',
+           jsonb_build_object('oneTapStyle', jsonb_build_object('id', v_preset::text)),
+           gi.model, gi.width, gi.height
+    FROM public.generated_images gi
+    WHERE gi.id = v_image
+    RETURNING id INTO v_new_image;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM public.style_preset_usage_events
+      WHERE generated_image_id = v_new_image AND reward_status = 'pending'
+    ) THEN
+      RAISE EXCEPTION
+        'Style: 付与失敗で利用イベントまで巻き戻った(内側の例外ブロックが効いていない)';
+    END IF;
+
+    --     f-2) Free: 完了RPCから呼ばれる record_prompt_usage 経由。
+    --          こちらはハンドラが無いため、隔離できていないと例外が
+    --          この PERFORM まで伝播する(= 生成完了RPCが中断する挙動と同じ)。
+    UPDATE public.percoin_bonus_defaults SET amount = 2 WHERE source = 'prompt_usage_reward';
+
+    SELECT e.image_job_id, e.origin_author_id INTO v_job, v_free_recipient
+    FROM public.prompt_usage_events e
+    LIMIT 1;
+
+    IF v_job IS NOT NULL THEN
+      INSERT INTO public.user_credits (user_id, balance, paid_balance)
+      VALUES (v_free_recipient, 2147483647, 2147483647)
+      ON CONFLICT (user_id) DO UPDATE
+        SET balance = 2147483647, paid_balance = 2147483647;
+
+      DELETE FROM public.prompt_usage_events WHERE image_job_id = v_job;
+
+      -- 例外が伝播したらここで dry-run 全体が落ちる(= 隔離できていない)
+      PERFORM public.record_prompt_usage(v_job);
+
+      IF NOT EXISTS (
+        SELECT 1 FROM public.prompt_usage_events
+        WHERE image_job_id = v_job AND reward_status = 'pending'
+      ) THEN
+        RAISE EXCEPTION
+          'Free: 付与失敗で利用イベントが残っていない(内側の例外ブロックが効いていない)';
+      END IF;
+    ELSE
+      RAISE NOTICE 'Free 経路の隔離検証は既存イベントが無いためスキップした';
+    END IF;
+
+    -- (g) legacy は再処理で拾われない
     SELECT count(*) INTO v_legacy_before
     FROM public.style_preset_usage_events WHERE reward_status = 'legacy';
     PERFORM public.reprocess_pending_usage_rewards(10);
@@ -1068,7 +1137,7 @@ BEGIN
       RAISE EXCEPTION 'legacy が再処理で変化した';
     END IF;
 
-    RAISE NOTICE '実データ dry-run OK(額0=skipped/取引0/残高不変・付与で+2かつgranted・二重実行で不変・自己利用skipped・付与失敗でpending維持かつ残高不変・legacy不変)';
+    RAISE NOTICE '実データ dry-run OK(額0=skipped/取引0/残高不変・付与で+2かつgranted・二重実行で不変・自己利用skipped・付与失敗でpending維持かつ残高不変・記録関数経由でもStyle/Free両方イベント残存・legacy不変)';
 
     -- 検証はここで必ず巻き戻す
     RAISE EXCEPTION 'PT999' USING ERRCODE = 'PT999';
