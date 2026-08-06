@@ -1102,8 +1102,17 @@ BEGIN
     --          この PERFORM まで伝播する(= 生成完了RPCが中断する挙動と同じ)。
     UPDATE public.percoin_bonus_defaults SET amount = 2 WHERE source = 'prompt_usage_reward';
 
+    -- 付与が「失敗」する経路へ確実に到達するイベントだけを選ぶ。
+    -- 自己利用や原作が非公開のイベントを拾うと skipped で正常終了してしまい、
+    -- 下の pending 判定が誤って失敗する(適用先データに依存した誤検知)。
     SELECT e.image_job_id, e.origin_author_id INTO v_job, v_free_recipient
     FROM public.prompt_usage_events e
+    JOIN public.image_jobs j ON j.id = e.image_job_id
+    JOIN public.generated_images gi ON gi.id = e.origin_post_id
+    WHERE j.status = 'succeeded'
+      AND e.user_id <> e.origin_author_id
+      AND gi.is_posted = true
+      AND gi.moderation_status = 'visible'
     LIMIT 1;
 
     IF v_job IS NOT NULL THEN
@@ -1125,7 +1134,7 @@ BEGIN
           'Free: 付与失敗で利用イベントが残っていない(内側の例外ブロックが効いていない)';
       END IF;
     ELSE
-      RAISE NOTICE 'Free 経路の隔離検証は既存イベントが無いためスキップした';
+      RAISE NOTICE 'Free 経路の隔離検証は対象イベント(他者利用×公開中の原作)が無いためスキップした';
     END IF;
 
     -- (g) legacy は再処理で拾われない
