@@ -402,7 +402,7 @@ COMMENT ON FUNCTION public.grant_prompt_usage_reward(uuid) IS
 -- 7. Style(One-Tap Style)の還元付与
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION public.grant_style_preset_usage_reward(p_event_id uuid)
+CREATE OR REPLACE FUNCTION public.grant_style_preset_usage_reward(p_generated_image_id uuid)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -423,7 +423,7 @@ BEGIN
   LEFT JOIN public.preset_categories pc ON pc.id = sp.category_id
   LEFT JOIN public.profiles preset_provider ON preset_provider.id = sp.provider_user_id
   LEFT JOIN public.profiles category_provider ON category_provider.id = pc.provider_user_id
-  WHERE e.id = p_event_id AND e.reward_status = 'pending';
+  WHERE e.generated_image_id = p_generated_image_id AND e.reward_status = 'pending';
 
   -- 受け手単位の直列化(ADR-008)。provider 未設定なら誰も受け取らないので
   -- ロックは不要。以降の test-and-set より先に取る。
@@ -433,7 +433,7 @@ BEGIN
 
   UPDATE public.style_preset_usage_events e
   SET reward_status = 'granted'
-  WHERE e.id = p_event_id
+  WHERE e.generated_image_id = p_generated_image_id
     AND e.reward_status = 'pending'
   RETURNING e.* INTO v_event;
 
@@ -446,7 +446,7 @@ BEGIN
   IF v_provider IS NULL OR v_provider = v_event.user_id THEN
     UPDATE public.style_preset_usage_events
     SET reward_status = 'skipped', reward_processed_at = now()
-    WHERE id = p_event_id;
+    WHERE generated_image_id = p_generated_image_id;
     RETURN;
   END IF;
 
@@ -457,7 +457,7 @@ BEGIN
     'style_usage_reward',
     jsonb_build_object(
       'source', 'grant_style_preset_usage_reward',
-      'event_id', p_event_id,
+      'event_id', p_generated_image_id,
       'preset_id', v_event.preset_id,
       'generated_image_id', v_event.generated_image_id
     )
@@ -466,13 +466,13 @@ BEGIN
   IF v_amount <= 0 THEN
     UPDATE public.style_preset_usage_events
     SET reward_status = 'skipped', reward_processed_at = now()
-    WHERE id = p_event_id;
+    WHERE generated_image_id = p_generated_image_id;
     RETURN;
   END IF;
 
   UPDATE public.style_preset_usage_events
   SET reward_granted_at = now(), reward_processed_at = now()
-  WHERE id = p_event_id;
+  WHERE generated_image_id = p_generated_image_id;
 END;
 $$;
 
@@ -603,7 +603,7 @@ BEGIN
     true
   )
   ON CONFLICT (generated_image_id) DO NOTHING
-  RETURNING id INTO v_event_id;
+  RETURNING generated_image_id INTO v_event_id;
 
   -- 還元付与(ADR-006)。
   -- この関数は末尾に EXCEPTION ハンドラを持つ = 関数全体が1つの
@@ -671,7 +671,7 @@ BEGIN
       FOR UPDATE OF e SKIP LOCKED
     ),
     style_claim AS (
-      SELECT e.id,
+      SELECT e.generated_image_id AS id,
              'style'::text AS kind,
              COALESCE(preset_provider.user_id, category_provider.user_id) AS recipient_id,
              e.created_at
@@ -736,7 +736,7 @@ BEGIN
                 ),
                 interval '24 hours'
               )
-          WHERE id = v_row.id;
+          WHERE generated_image_id = v_row.id;
         END IF;
         RAISE WARNING 'Pending usage reward failed: kind=%, event=%, error=%',
           v_row.kind, v_row.id, SQLERRM;
@@ -956,7 +956,7 @@ BEGIN
     INSERT INTO public.style_preset_usage_events
       (generated_image_id, preset_id, user_id, created_at, was_public_at_generation)
     VALUES (v_image, v_preset, v_consumer, now(), true)
-    RETURNING id INTO v_event;
+    RETURNING generated_image_id INTO v_event;
 
     SELECT COALESCE(balance, 0) INTO v_balance_before
     FROM public.user_credits WHERE user_id = v_provider_user;
@@ -965,7 +965,7 @@ BEGIN
     PERFORM public.grant_style_preset_usage_reward(v_event);
 
     SELECT reward_status INTO v_status
-    FROM public.style_preset_usage_events WHERE id = v_event;
+    FROM public.style_preset_usage_events WHERE generated_image_id = v_event;
     SELECT count(*) INTO v_tx_count
     FROM public.credit_transactions
     WHERE metadata->>'event_id' = v_event::text;
@@ -988,12 +988,12 @@ BEGIN
 
     -- (b) 額を入れると付与され、残高が増え、granted になる
     UPDATE public.percoin_bonus_defaults SET amount = 2 WHERE source = 'style_usage_reward';
-    UPDATE public.style_preset_usage_events SET reward_status = 'pending' WHERE id = v_event;
+    UPDATE public.style_preset_usage_events SET reward_status = 'pending' WHERE generated_image_id = v_event;
 
     PERFORM public.grant_style_preset_usage_reward(v_event);
 
     SELECT reward_status INTO v_status
-    FROM public.style_preset_usage_events WHERE id = v_event;
+    FROM public.style_preset_usage_events WHERE generated_image_id = v_event;
     SELECT COALESCE(balance, 0) INTO v_balance_after
     FROM public.user_credits WHERE user_id = v_provider_user;
     SELECT count(*) INTO v_tx_count
@@ -1020,10 +1020,10 @@ BEGIN
     -- (d) 自己利用は skipped(利用者 = provider)
     UPDATE public.style_preset_usage_events
     SET reward_status = 'pending', user_id = v_provider_user
-    WHERE id = v_event;
+    WHERE generated_image_id = v_event;
     PERFORM public.grant_style_preset_usage_reward(v_event);
     SELECT reward_status INTO v_status
-    FROM public.style_preset_usage_events WHERE id = v_event;
+    FROM public.style_preset_usage_events WHERE generated_image_id = v_event;
     IF v_status <> 'skipped' THEN
       RAISE EXCEPTION '自己利用が skipped にならない(status=%)', v_status;
     END IF;
@@ -1034,7 +1034,7 @@ BEGIN
     --     キャップは2を通し、直後の balance + 2 が integer 範囲外で失敗する。
     UPDATE public.style_preset_usage_events
     SET reward_status = 'pending', user_id = v_consumer
-    WHERE id = v_event;
+    WHERE generated_image_id = v_event;
 
     INSERT INTO public.user_credits (user_id, balance, paid_balance)
     VALUES (v_provider_user, 2147483647, 2147483647)
@@ -1050,7 +1050,7 @@ BEGIN
     END;
 
     SELECT reward_status INTO v_status
-    FROM public.style_preset_usage_events WHERE id = v_event;
+    FROM public.style_preset_usage_events WHERE generated_image_id = v_event;
     SELECT COALESCE(balance, 0) INTO v_balance_after
     FROM public.user_credits WHERE user_id = v_provider_user;
 
