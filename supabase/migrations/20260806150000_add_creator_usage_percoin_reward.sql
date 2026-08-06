@@ -42,6 +42,10 @@ ALTER TABLE public.percoin_bonus_defaults
   DROP CONSTRAINT IF EXISTS percoin_bonus_defaults_source_check;
 ALTER TABLE public.percoin_bonus_defaults
   DROP CONSTRAINT IF EXISTS percoin_bonus_defaults_amount_check;
+-- 追加する制約自体も先に落とす。過去に部分適用された環境
+-- (検証失敗で履歴に残らず DDL だけ残った場合)でも再実行できるようにする。
+ALTER TABLE public.percoin_bonus_defaults
+  DROP CONSTRAINT IF EXISTS percoin_bonus_defaults_source_amount_check;
 
 -- source と amount を1つの CHECK にまとめる(source ごとに許容範囲が違うため)。
 -- 既存4 source は従来どおり 1〜1000(「必ず1以上」の保証を壊さない)。
