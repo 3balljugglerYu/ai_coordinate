@@ -30,9 +30,6 @@ interface UseNotificationsOptions {
   autoMarkAllRead?: boolean;
 }
 
-/** 未読数の再同期をまとめる待ち時間(ms)。一括既読の連打を1回に畳む。 */
-const UNREAD_SYNC_DEBOUNCE_MS = 300;
-
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
 
@@ -142,36 +139,6 @@ export function useNotifications(
     });
   }, [refreshUnreadCount]);
 
-  /**
-   * 未読数のサーバー再同期をまとめる。
-   * 「すべて既読にする」は行数ぶんの UPDATE を発火させるため、そのたびに
-   * 取得すると無駄なリクエストが並ぶ。最後の1回だけ実行する。
-   */
-  // Realtime の UPDATE で「取得が要るか」を同期的に判定するための鏡。
-  const notificationsRef = useRef<Notification[]>([]);
-  useEffect(() => {
-    notificationsRef.current = notifications;
-  }, [notifications]);
-
-  const unreadSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const scheduleUnreadBadgeSync = useCallback(() => {
-    if (unreadSyncTimerRef.current) {
-      clearTimeout(unreadSyncTimerRef.current);
-    }
-    unreadSyncTimerRef.current = setTimeout(() => {
-      unreadSyncTimerRef.current = null;
-      syncUnreadBadgeCount();
-    }, UNREAD_SYNC_DEBOUNCE_MS);
-  }, [syncUnreadBadgeCount]);
-
-  useEffect(() => {
-    return () => {
-      if (unreadSyncTimerRef.current) {
-        clearTimeout(unreadSyncTimerRef.current);
-      }
-    };
-  }, []);
-
   const translateNotification = useCallback(
     (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
       values ? t(key as never, values as never) : t(key as never),
@@ -222,19 +189,67 @@ export function useNotifications(
    * 呼ぶと一括既読で行数ぶんのリクエストが飛ぶため、一覧に既にある行は
    * DB 由来の列だけをマージして済ませる(enrichment 済みの actor / post は保持)。
    */
-  const applyRealtimeNotificationUpdate = useCallback(
-    async (updated: Notification) => {
-      // 取得要否は ref で同期的に判定する。setNotifications の更新関数は
-      // その場で走るとは限らないため、中で立てたフラグを直後に読むと
-      // 「一覧にあるのに取得しに行く」誤判定になる。
-      const exists = notificationsRef.current.some(
-        (item) => item.id === updated.id
-      );
+  /**
+   * 購読が成立した時点（初回・再接続の両方）で最新ページを取り直し、
+   * 取りこぼしを埋める。
+   *
+   * 初期取得〜購読成立の間や、切断中に古い還元通知が更新されて先頭側へ
+   * 浮上すると、その UPDATE を受け取れない。しかも浮上後はカーソルより
+   * 新しくなるので次ページ取得にも現れず、リロードするまで一覧に出ない。
+   *
+   * 単純な置き換えだと取得中に届いた Realtime の更新を巻き戻してしまうため、
+   * ID 単位でマージし、created_at が新しい方を残す。
+   */
+  const reconcileLatestNotifications = useCallback(async () => {
+    if (!currentUserId) return;
 
+    try {
+      const response = await getNotifications(20, null, {
+        fetchFailed: t("fetchFailed"),
+      });
+
+      setNotifications((prev) => {
+        const byId = new Map(prev.map((item) => [item.id, item]));
+        for (const fetched of response.notifications) {
+          const local = byId.get(fetched.id);
+          if (
+            local &&
+            Date.parse(local.created_at) >= Date.parse(fetched.created_at)
+          ) {
+            continue;
+          }
+          byId.set(fetched.id, fetched);
+        }
+        return [...byId.values()].sort((a, b) => {
+          const createdAtOrder =
+            Date.parse(b.created_at) - Date.parse(a.created_at);
+          return createdAtOrder || b.id.localeCompare(a.id);
+        });
+      });
+    } catch (error) {
+      console.error("Failed to reconcile notifications:", error);
+    }
+  }, [currentUserId, t]);
+
+  const applyRealtimeNotificationUpdate = useCallback(
+    (updated: Notification) => {
       setNotifications((prev) => {
         const index = prev.findIndex((item) => item.id === updated.id);
         if (index === -1) {
-          return prev;
+          // 一覧に無い行。ここへ来るのは主に「すべて既読にする」で
+          // 未ロードの未読行が一斉に更新されたときなので、原則は無視する。
+          // (取得しに行くと未読件数ぶんのリクエストが並び、しかも古い通知が
+          //  一覧へ差し込まれてしまう)
+          // 還元通知の未読だけは、気づかせる価値があるので差し込む。匿名で
+          // actor / post の enrichment が不要なため、生の行をそのまま置ける。
+          if (updated.type !== "usage_reward_earned" || updated.is_read) {
+            return prev;
+          }
+          return [updated, ...prev].sort((a, b) => {
+            const createdAtOrder =
+              Date.parse(b.created_at) - Date.parse(a.created_at);
+            return createdAtOrder || b.id.localeCompare(a.id);
+          });
         }
         const merged: Notification = {
           ...prev[index],
@@ -254,13 +269,8 @@ export function useNotifications(
         });
       });
 
-      // 一覧に無い(未ロードのページから浮上してきた)ときだけ取得して差し込む。
-      // ref が1レンダー遅れて誤って取得しても、差し込み側が id 重複を弾く。
-      if (!exists) {
-        await prependRealtimeNotification(updated);
-      }
     },
-    [prependRealtimeNotification]
+    []
   );
 
   const markBonusToastAsShown = useCallback(
@@ -452,13 +462,23 @@ export function useNotifications(
         },
         (payload) => {
           // 内容の更新(還元通知の累計加算)と既読化の両方がここへ来る。
-          // 未読数はクライアントで増減させるとすぐズレるため、必ずサーバーの値で
-          // 再同期する(一括既読の連打に備えてデバウンス)。
-          void applyRealtimeNotificationUpdate(payload.new as Notification);
-          scheduleUnreadBadgeSync();
+          const updated = payload.new as Notification;
+          applyRealtimeNotificationUpdate(updated);
+          // 未読バッジの同期は UnreadNotificationProvider が同じ UPDATE を
+          // 購読して行っている。ここで無条件に呼ぶと一括既読のたびに
+          // 未読数APIが二重に叩かれるため、このフックが持つローカルの
+          // 未読数を直す必要がある還元通知のときだけ再同期する。
+          if (updated.type === "usage_reward_earned") {
+            syncUnreadBadgeCount();
+          }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        // 初回の購読成立時と再接続時に、購読ギャップぶんを埋める
+        if (status === "SUBSCRIBED") {
+          void reconcileLatestNotifications();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -470,7 +490,7 @@ export function useNotifications(
     markBonusToastAsShown,
     applyRealtimeNotificationUpdate,
     prependRealtimeNotification,
-    scheduleUnreadBadgeSync,
+    reconcileLatestNotifications,
     syncUnreadBadgeCount,
     toast,
     t,

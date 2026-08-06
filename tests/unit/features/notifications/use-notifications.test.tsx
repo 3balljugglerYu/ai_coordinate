@@ -681,30 +681,62 @@ describe("useNotifications", () => {
       expect(getNotificationByIdMock).not.toHaveBeenCalled();
     });
 
-    test("一覧に無い行は取得して差し込む", async () => {
+    test("一覧に無い未読の還元通知は追加取得せずそのまま差し込む", async () => {
       const { result } = await renderNotificationsHook();
       expect(result.current.notifications).toHaveLength(0);
+      getNotificationByIdMock.mockClear();
 
       const incoming = createNotification({
         id: "reward-2",
         type: "usage_reward_earned",
         entity_type: "user",
+        is_read: false,
         created_at: "2026-08-06T04:00:00.000Z",
         data: { reward_date: "2026-08-06", usage_count: 3, total_amount: 6 },
       });
-      getNotificationByIdMock.mockResolvedValue(incoming);
 
       await act(async () => {
         realtimeUpdateHandler?.({ new: incoming });
         await Promise.resolve();
+      });
+
+      // 匿名通知なので actor/post の enrichment が要らず、生の行をそのまま置ける
+      expect(getNotificationByIdMock).not.toHaveBeenCalled();
+      expect(result.current.notifications.map((n) => n.id)).toEqual(["reward-2"]);
+    });
+
+    test("一覧に無い行の一括既読UPDATEは無視し、追加取得も差し込みもしない", async () => {
+      // 「すべて既読にする」は DB 上の全未読行を更新するため、未ロード行の
+      // UPDATE が大量に届く。ここで取得すると未読件数ぶんのリクエストが並び、
+      // 古い通知が一覧へ差し込まれてしまう。
+      const { result } = await renderNotificationsHook();
+      getNotificationByIdMock.mockClear();
+
+      await act(async () => {
+        for (let i = 0; i < 5; i += 1) {
+          realtimeUpdateHandler?.({
+            new: createNotification({
+              id: `unloaded-${i}`,
+              is_read: true,
+              read_at: "2026-08-06T06:00:00.000Z",
+            }),
+          });
+        }
+        // 既読済みの還元通知も差し込まない
+        realtimeUpdateHandler?.({
+          new: createNotification({
+            id: "reward-read",
+            type: "usage_reward_earned",
+            entity_type: "user",
+            is_read: true,
+            data: { reward_date: "2026-08-06", usage_count: 9, total_amount: 18 },
+          }),
+        });
         await Promise.resolve();
       });
 
-      expect(getNotificationByIdMock).toHaveBeenCalledWith(
-        "reward-2",
-        expect.anything()
-      );
-      expect(result.current.notifications.map((n) => n.id)).toEqual(["reward-2"]);
+      expect(getNotificationByIdMock).not.toHaveBeenCalled();
+      expect(result.current.notifications).toHaveLength(0);
     });
 
     test("既読化のUPDATEでは未読数を自前で増やさない", async () => {

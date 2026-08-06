@@ -82,13 +82,18 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_date text;
+  v_notified_at timestamptz;
 BEGIN
   IF p_recipient IS NULL OR COALESCE(p_amount, 0) <= 0 THEN
     RETURN;
   END IF;
 
-  -- 日付境界は JST。日をまたぐと自然に新しい行になる。
-  v_date := to_char(now() AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD');
+  -- 集約キーの日付と created_at は必ず同じ時刻から導く。
+  -- now() はトランザクション開始時刻なので、再処理バッチが JST 23:59:59 に
+  -- 始まって付与が 00:00 以降に走ると「日付は前日・created_at は当日」になり、
+  -- 実時刻ベースでは同じ日に2行並んでしまう。
+  v_notified_at := clock_timestamp();
+  v_date := to_char(v_notified_at AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD');
 
   INSERT INTO public.notifications (
     recipient_id, actor_id, type, entity_type, entity_id,
@@ -102,7 +107,7 @@ BEGIN
       'usage_count', 1,
       'total_amount', p_amount
     ),
-    false, clock_timestamp()
+    false, v_notified_at
   )
   ON CONFLICT (recipient_id, (data->>'reward_date'))
   WHERE type = 'usage_reward_earned'
@@ -116,14 +121,9 @@ BEGIN
       '{total_amount}',
       to_jsonb(COALESCE((public.notifications.data->>'total_amount')::integer, 0) + p_amount)
     ),
-    -- 未読へ戻してバッジを点け、created_at も進めて一覧の先頭へ浮上させる(ADR-004)。
-    --
-    -- now() はトランザクション開始時刻を返すため、同一トランザクション内で
-    -- 複数回付与されると created_at が進まず浮上しない。再処理バッチは
-    -- 1トランザクションで最大100件を処理するので、これは実際に起こり得る。
-    -- 呼び出しごとに現在時刻を返す clock_timestamp() を使う。
+    -- 未読へ戻してバッジを点け、created_at も進めて一覧の先頭へ浮上させる(ADR-004)
     is_read = false,
-    created_at = clock_timestamp();
+    created_at = v_notified_at;
 END;
 $$;
 
@@ -370,6 +370,10 @@ DECLARE
   v_created_2 timestamptz;
   v_is_read boolean;
   v_rows integer;
+  v_free_event uuid;
+  v_free_recipient uuid;
+  v_status text;
+  v_balance integer;
 BEGIN
   SELECT user_id INTO v_user FROM public.profiles WHERE user_id IS NOT NULL LIMIT 1;
 
@@ -430,7 +434,71 @@ BEGIN
       RAISE EXCEPTION '額0で更新されてしまった(count=%)', v_count;
     END IF;
 
-    RAISE NOTICE '実データ dry-run OK(新規作成・2回目で行が増えず累計加算・未読へ復帰・created_atが進む・額0は無反応)';
+    -- (d) 通知が失敗しても付与は残る(ADR-003 の本丸)。
+    --     一時的な NOT VALID CHECK で還元通知の書き込みだけを失敗させ、
+    --     付与RPC を通した上で reward_status / 取引 / 残高が確定していることを見る。
+    --     この検証を入れないと、将来 upsert の呼び出しが内側の例外ブロックから
+    --     外れても、カタログ検証(関数名の grep)はすり抜けてしまう。
+    SELECT e.id, e.origin_author_id INTO v_free_event, v_free_recipient
+    FROM public.prompt_usage_events e
+    JOIN public.image_jobs j ON j.id = e.image_job_id
+    JOIN public.generated_images gi ON gi.id = e.origin_post_id
+    WHERE j.status = 'succeeded'
+      AND e.user_id <> e.origin_author_id
+      AND gi.is_posted = true
+      AND gi.moderation_status = 'visible'
+    LIMIT 1;
+
+    IF v_free_event IS NULL THEN
+      RAISE NOTICE '通知失敗ケースの検証は対象イベントが無いためスキップした';
+    ELSE
+      -- 還元を有効化し、対象イベントを未処理へ戻す
+      UPDATE public.percoin_bonus_defaults SET amount = 2 WHERE source = 'prompt_usage_reward';
+      UPDATE public.prompt_usage_events
+      SET reward_status = 'pending', reward_granted_at = NULL, reward_processed_at = NULL
+      WHERE id = v_free_event;
+
+      -- 受け手のキャップ枠を空けておく(上限到達だと skipped になり検証にならない)
+      INSERT INTO public.user_credits (user_id, balance, paid_balance)
+      VALUES (v_free_recipient, 0, 0)
+      ON CONFLICT (user_id) DO UPDATE SET balance = 0, paid_balance = 0;
+
+      ALTER TABLE public.notifications
+        ADD CONSTRAINT dry_run_reject_usage_reward_notification
+        CHECK (type <> 'usage_reward_earned') NOT VALID;
+
+      PERFORM public.grant_prompt_usage_reward(v_free_event);
+
+      ALTER TABLE public.notifications
+        DROP CONSTRAINT dry_run_reject_usage_reward_notification;
+
+      SELECT reward_status INTO v_status
+      FROM public.prompt_usage_events WHERE id = v_free_event;
+      SELECT COALESCE(balance, 0) INTO v_balance
+      FROM public.user_credits WHERE user_id = v_free_recipient;
+
+      IF v_status <> 'granted' THEN
+        RAISE EXCEPTION '通知失敗で付与まで巻き戻った(status=%)', v_status;
+      END IF;
+      IF v_balance <> 2 THEN
+        RAISE EXCEPTION '通知失敗で残高が入っていない(balance=%)', v_balance;
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM public.credit_transactions
+        WHERE metadata->>'event_id' = v_free_event::text
+          AND transaction_type = 'prompt_usage_reward'
+      ) THEN
+        RAISE EXCEPTION '通知失敗で取引が残っていない';
+      END IF;
+      IF EXISTS (
+        SELECT 1 FROM public.notifications
+        WHERE recipient_id = v_free_recipient AND type = 'usage_reward_earned'
+      ) THEN
+        RAISE EXCEPTION '失敗させたはずの通知が作られている';
+      END IF;
+    END IF;
+
+    RAISE NOTICE '実データ dry-run OK(新規作成・2回目で行が増えず累計加算・未読へ復帰・created_atが進む・額0は無反応・通知失敗でも付与RPCの結果は残る)';
 
     RAISE EXCEPTION 'PT999' USING ERRCODE = 'PT999';
   EXCEPTION
