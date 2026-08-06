@@ -6,6 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  CLASSIC_BONUS_MAX_AMOUNT,
+  CLASSIC_BONUS_MIN_AMOUNT,
+  USAGE_REWARD_MAX_AMOUNT,
+  USAGE_REWARD_MIN_AMOUNT,
+  getBonusAmountRange,
+  isUsageRewardBonusSource,
+} from "@/features/credits/lib/percoin-bonus-defaults";
 
 interface BonusDefault {
   source: string;
@@ -23,27 +31,10 @@ interface PercoinDefaultsFormProps {
   streakDefaults: StreakDefault[];
 }
 
-const AMOUNT_MIN = 1;
-const AMOUNT_MAX = 1000;
-
-/**
- * クリエイター還元(利用されるたびに付与)は 0〜5。
- * 0 = 付与しない。上限5は1生成の最低コスト(10)より十分小さい安全域で、
- * 2アカウントの相互利用でも残高が純増しないようにするための制限。
- * API・DB CHECK にも同じ範囲がある。
- */
-const USAGE_REWARD_SOURCES = new Set<string>([
-  "prompt_usage_reward",
-  "style_usage_reward",
-]);
-const USAGE_REWARD_MIN = 0;
-const USAGE_REWARD_MAX = 5;
-
-function amountRangeFor(source: string): { min: number; max: number } {
-  return USAGE_REWARD_SOURCES.has(source)
-    ? { min: USAGE_REWARD_MIN, max: USAGE_REWARD_MAX }
-    : { min: AMOUNT_MIN, max: AMOUNT_MAX };
-}
+const AMOUNT_MIN = CLASSIC_BONUS_MIN_AMOUNT;
+const AMOUNT_MAX = CLASSIC_BONUS_MAX_AMOUNT;
+const USAGE_REWARD_MIN = USAGE_REWARD_MIN_AMOUNT;
+const USAGE_REWARD_MAX = USAGE_REWARD_MAX_AMOUNT;
 
 export function PercoinDefaultsForm({
   bonusDefaults,
@@ -64,12 +55,12 @@ export function PercoinDefaultsForm({
   // 還元は「利用のたびに付与」で他の特典と性質が違うため、別セクションに分けて
   // 注意書きと一緒に表示する(マイグレーション未適用の環境では行が無く非表示)。
   const usageRewardDefaults = bonusDefaults.filter(({ source }) =>
-    USAGE_REWARD_SOURCES.has(source)
+    isUsageRewardBonusSource(source)
   );
 
   const handleBonusChange = (source: string, value: string) => {
     const num = parseInt(value, 10);
-    const { min, max } = amountRangeFor(source);
+    const { min, max } = getBonusAmountRange(source);
     setBonusValues((prev) => ({
       ...prev,
       [source]: Number.isNaN(num) ? min : Math.min(max, Math.max(min, num)),
@@ -84,9 +75,12 @@ export function PercoinDefaultsForm({
     }));
   };
 
+  // 範囲は source ごとに違う(還元は 0 が「付与しない」を意味する有効値)。
+  // 一律に 1〜1000 で判定すると還元の 0 が保存できなくなる。
   const validate = (): boolean => {
-    for (const [, amount] of Object.entries(bonusValues)) {
-      if (amount < AMOUNT_MIN || amount > AMOUNT_MAX) return false;
+    for (const [source, amount] of Object.entries(bonusValues)) {
+      const { min, max } = getBonusAmountRange(source);
+      if (amount < min || amount > max) return false;
     }
     for (let d = 1; d <= 14; d++) {
       const amount = streakValues[d] ?? 0;
@@ -101,7 +95,7 @@ export function PercoinDefaultsForm({
     if (!validate()) {
       toast({
         title: "入力エラー",
-        description: `枚数は${AMOUNT_MIN}〜${AMOUNT_MAX}の範囲で入力してください`,
+        description: `枚数は${AMOUNT_MIN}〜${AMOUNT_MAX}（クリエイター還元は${USAGE_REWARD_MIN}〜${USAGE_REWARD_MAX}）の範囲で入力してください`,
         variant: "destructive",
       });
       return;
@@ -168,7 +162,7 @@ export function PercoinDefaultsForm({
         </h2>
         <div className="grid gap-4 sm:grid-cols-2">
           {bonusDefaults
-            .filter(({ source }) => !USAGE_REWARD_SOURCES.has(source))
+            .filter(({ source }) => !isUsageRewardBonusSource(source))
             .map(({ source, label }) => (
               <div key={source} className="space-y-2">
                 <Label htmlFor={`bonus-${source}`}>{label}</Label>

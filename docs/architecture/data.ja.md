@@ -358,7 +358,12 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `complete_image_job_with_prompt_secrets` | Edge Function worker | job id, images jsonb, metadata, result url, model, background mode | 生成画像の一覧 | 生成画像・author secret・job 成功更新・`credit_transactions` 紐づけを同一トランザクションで確定。派生 job は完了前に認可を再検証し、失効なら例外（成果物破棄→返金）。**service_role 専用** |
 | `validate_derived_prompt_source` | `/api/generate-async`, worker, 完了RPC内, 参照カード解決 | source post id, requester id | `is_available / root_post_id / origin_author_id` | 派生生成の認可判定。**本文も理由も返さない**（ADR-005）。公開/非公開とも可・本人は未投稿も可。**service_role 専用** |
 | `resolve_derived_prompt_source` | Edge Function worker（provider 送信直前のみ） | source post id, requester id | `author_input` | 認可を再検証してから原作者の入力を返す。**本文を返す唯一の RPC**。**service_role 専用** |
-| `record_prompt_usage` | 完了RPC内 | image job id | `void` | 派生生成の成功イベントを冪等記録（`image_job_id` UNIQUE）。引数を信用せず job から導出 |
+| `record_prompt_usage` | 完了RPC内 | image job id | `void` | 派生生成の成功イベントを冪等記録（`image_job_id` UNIQUE）。引数を信用せず job から導出。記録後に原作者への還元付与を試みる（**内側の例外ブロックで隔離**し、失敗しても生成完了を巻き込まない） |
+| `apply_usage_reward_grant` | 還元付与RPC内 | recipient, source, metadata | 付与額 | 還元の付与本体。設定額0/キャップ0なら0を返す。**service_role 専用** |
+| `grant_prompt_usage_reward` | `record_prompt_usage` / 再処理 | 利用イベント id | `void` | Free 派生の原作者へ還元。自己利用・原作非公開・額0は `skipped` 確定。`reward_status` の test-and-set で冪等。**service_role 専用** |
+| `grant_style_preset_usage_reward` | 記録トリガー / 再処理 | 利用イベント id | `void` | One-Tap Style のクリエイターへ還元。provider は profiles 経由で解決。自己利用・provider 未設定・額0は `skipped`。**service_role 専用** |
+| `reprocess_pending_usage_rewards` | pg_cron（10分毎） | 上限件数 | 処理件数 | `pending` のまま残った還元を再処理。**行単位の例外ブロック**＋`FOR UPDATE SKIP LOCKED`＋指数バックオフ（指数部は `LEAST(n,9)` で頭打ち）。**service_role 専用** |
+| `get_grantable_free_percoin_amount` | 各付与RPC内 | user id, 要求額 | 付与可能額 | 5万無料残高キャップ。**内部で受け手単位の advisory lock** を取り、この関数を通る全経路（還元2・完走報酬・デイリー・ストリーク・サブスク）を直列化する。登録/ツアー/紹介/admin付与/返金はそもそもこの関数を通らない（キャップ非適用の既存仕様） |
 | `get_prompt_usage_count` | 投稿詳細の参照カード解決 | origin post id | `integer` | ユニーク利用者数（原作者除外）。**service_role 専用**（任意 UUID の列挙防止） |
 
 ## Trigger 一覧
@@ -386,7 +391,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `generated_images` `AFTER UPDATE OF is_posted` | `notify_on_style_preset_post_published()` | One-Tap Style プリセット利用画像の投稿で provider へ実名の `style_preset_post_published` 通知。provider 解決はクレジット表示と同一規則（プリセット→カテゴリ）。**投稿時点で公開中かつ生成時点でも適格（`was_public_at_generation=true` の利用イベントが存在）な場合のみ**対象。自己利用・双方向ブロックはスキップ |
 | `generated_images` `AFTER UPDATE OF is_posted` | `delete_style_preset_post_notification()` | プリセット利用画像の非公開化でその投稿の実名通知を削除（リンク切れ回避） |
 | `generated_images` `BEFORE UPDATE OF generation_type, generation_metadata, image_job_id, style_template_id` | `enforce_generated_image_generation_fields()` | 生成由来フィールドの非信頼クライアント変更を拒否（通知偽造対策）。クライアント INSERT はポリシー撤去＋REVOKE で遮断済み |
-| `generated_images` `AFTER INSERT` | `record_style_preset_usage()` | One-Tap 生成を append-only の `style_preset_usage_events` へ記録（節目通知の正本）。**公開中（preset published × カテゴリ public/有効 × 表示期間内）の生成のみ**対象で、運営の公開前・期間外テストは記録されない |
+| `generated_images` `AFTER INSERT` | `record_style_preset_usage()` | One-Tap 生成を append-only の `style_preset_usage_events` へ記録（節目通知の正本）。**公開中（preset published × カテゴリ public/有効 × 表示期間内）の生成のみ**対象で、運営の公開前・期間外テストは記録されない。記録後にクリエイターへの還元付与を試みる。**付与は内側の例外ブロックに隔離**する（この関数は全体が単一の EXCEPTION ブロック＝サブトランザクションのため、裸で呼ぶと付与失敗で利用イベントの INSERT ごと巻き戻り、利用数と節目通知の正本を失う） |
 | `style_preset_usage_events` `AFTER INSERT` | `notify_on_style_preset_usage_milestone()` | One-Tap 利用の累計（provider 除外）が節目にちょうど達したとき provider へ匿名の `style_preset_usage_milestone` 通知（直接 INSERT・プリセット×節目で最大1件） |
 | `image_jobs` `BEFORE INSERT / UPDATE OF origin_post_id` | `enforce_image_job_origin()` | `origin_post_id` の設定経路（信頼された書き込みのみ）と作成後不変 |
 | `generation_prompt_snapshots` `BEFORE INSERT/UPDATE` | `enforce_prompt_execution_kind()` | `image_jobs.origin_post_id` の有無と `snapshot_kind` の整合を cross-table で強制 |

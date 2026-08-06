@@ -4,53 +4,26 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
-
-const BONUS_SOURCES = [
-  "signup_bonus",
-  "tour_bonus",
-  "referral",
-  "daily_post",
-  "prompt_usage_reward",
-  "style_usage_reward",
-] as const;
-
-/**
- * クリエイター還元(利用のたびに付与)は 0〜5。
- * 0 = 付与しない。上限5は経済的な安全域で、1生成の最低コスト(10)より
- * 十分小さい値に制限することで、2アカウントの相互利用でも残高が純増しない。
- * DB 側にも同じ CHECK がある(20260806150000)。
- */
-const USAGE_REWARD_SOURCES = new Set<string>([
-  "prompt_usage_reward",
-  "style_usage_reward",
-]);
-const USAGE_REWARD_MAX_AMOUNT = 5;
+import {
+  BONUS_SOURCES,
+  validateBonusAmount,
+} from "@/features/credits/lib/percoin-bonus-defaults";
 
 const patchBodySchema = z.object({
   bonusDefaults: z.array(
     z
       .object({
         source: z.enum(BONUS_SOURCES),
-        // 範囲は source ごとに違うため、ここでは広めに受けて superRefine で判定する
-        amount: z.number().int().min(0).max(1000),
+        // 範囲は source ごとに違うため、ここでは広めに受けて共有ルールで判定する
+        amount: z.number().int(),
       })
       .superRefine((value, ctx) => {
-        if (USAGE_REWARD_SOURCES.has(value.source)) {
-          if (value.amount > USAGE_REWARD_MAX_AMOUNT) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              path: ["amount"],
-              message: `${value.source} は 0〜${USAGE_REWARD_MAX_AMOUNT} で指定してください`,
-            });
-          }
-          return;
-        }
-        // 既存ボーナスは従来どおり「必ず1以上」
-        if (value.amount < 1) {
+        const error = validateBonusAmount(value.source, value.amount);
+        if (error) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             path: ["amount"],
-            message: `${value.source} は 1〜1000 で指定してください`,
+            message: error,
           });
         }
       })
