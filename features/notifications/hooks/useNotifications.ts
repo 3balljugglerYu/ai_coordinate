@@ -147,6 +147,12 @@ export function useNotifications(
    * 「すべて既読にする」は行数ぶんの UPDATE を発火させるため、そのたびに
    * 取得すると無駄なリクエストが並ぶ。最後の1回だけ実行する。
    */
+  // Realtime の UPDATE で「取得が要るか」を同期的に判定するための鏡。
+  const notificationsRef = useRef<Notification[]>([]);
+  useEffect(() => {
+    notificationsRef.current = notifications;
+  }, [notifications]);
+
   const unreadSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const scheduleUnreadBadgeSync = useCallback(() => {
     if (unreadSyncTimerRef.current) {
@@ -218,14 +224,18 @@ export function useNotifications(
    */
   const applyRealtimeNotificationUpdate = useCallback(
     async (updated: Notification) => {
-      let handled = false;
+      // 取得要否は ref で同期的に判定する。setNotifications の更新関数は
+      // その場で走るとは限らないため、中で立てたフラグを直後に読むと
+      // 「一覧にあるのに取得しに行く」誤判定になる。
+      const exists = notificationsRef.current.some(
+        (item) => item.id === updated.id
+      );
 
       setNotifications((prev) => {
         const index = prev.findIndex((item) => item.id === updated.id);
         if (index === -1) {
           return prev;
         }
-        handled = true;
         const merged: Notification = {
           ...prev[index],
           title: updated.title,
@@ -244,8 +254,9 @@ export function useNotifications(
         });
       });
 
-      // 一覧に無い(未ロードのページから浮上してきた)ときだけ取得して差し込む
-      if (!handled) {
+      // 一覧に無い(未ロードのページから浮上してきた)ときだけ取得して差し込む。
+      // ref が1レンダー遅れて誤って取得しても、差し込み側が id 重複を弾く。
+      if (!exists) {
         await prependRealtimeNotification(updated);
       }
     },

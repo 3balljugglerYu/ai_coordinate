@@ -89,6 +89,10 @@ describe("formatNotificationContent", () => {
       return `Your "${values?.preset}" style has been used ${values?.count} times`;
     }
 
+    if (key === "usageRewardEarnedTitle") {
+      return `Used ${values?.count} times today, earned ${values?.amount} Percoins`;
+    }
+
     return key;
   };
 
@@ -421,5 +425,58 @@ describe("formatNotificationContent", () => {
     expect(result.title).toBe(
       `Your "${"あ".repeat(20)}…" style has been used 50 times`
     );
+  });
+
+  describe("クリエイター還元通知(usage_reward_earned)", () => {
+    test("その日の累計回数と累計獲得数を差し込む", () => {
+      const result = formatNotificationContent(
+        createNotification({
+          type: "usage_reward_earned",
+          entity_type: "user",
+          entity_id: "creator-1",
+          data: { reward_date: "2026-08-06", usage_count: 5, total_amount: 10 },
+        }),
+        "unused-actor",
+        translate
+      );
+
+      expect(result).toEqual({
+        title: "Used 5 times today, earned 10 Percoins",
+        body: "",
+      });
+    });
+
+    test("1回目でも同じ文言で回数1が入る", () => {
+      const result = formatNotificationContent(
+        createNotification({
+          type: "usage_reward_earned",
+          entity_type: "user",
+          data: { reward_date: "2026-08-06", usage_count: 1, total_amount: 2 },
+        }),
+        "unused-actor",
+        translate
+      );
+
+      expect(result).toEqual({
+        title: "Used 1 times today, earned 2 Percoins",
+        body: "",
+      });
+    });
+
+    test("集計値が欠けていればDBのtitle/bodyへフォールバックする", () => {
+      const result = formatNotificationContent(
+        createNotification({
+          type: "usage_reward_earned",
+          entity_type: "user",
+          title: "db title",
+          body: "db body",
+          data: { reward_date: "2026-08-06" },
+        }),
+        "unused-actor",
+        translate
+      );
+
+      expect(result).toEqual({ title: "db title", body: "db body" });
+    });
   });
 });

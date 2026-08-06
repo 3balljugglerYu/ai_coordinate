@@ -128,10 +128,14 @@ describe("useNotifications", () => {
   let realtimeInsertHandler:
     | ((payload: { new: Notification }) => void)
     | null = null;
+  let realtimeUpdateHandler:
+    | ((payload: { new: Notification }) => void)
+    | null = null;
 
   beforeEach(() => {
     jest.clearAllMocks();
     realtimeInsertHandler = null;
+    realtimeUpdateHandler = null;
     const translateNotifications = (
       key: string,
       values?: Record<string, unknown>
@@ -186,6 +190,15 @@ describe("useNotifications", () => {
           filter.event === "INSERT"
         ) {
           realtimeInsertHandler = callback as (payload: { new: Notification }) => void;
+        }
+
+        if (
+          typeof filter === "object" &&
+          filter !== null &&
+          "event" in filter &&
+          filter.event === "UPDATE"
+        ) {
+          realtimeUpdateHandler = callback as (payload: { new: Notification }) => void;
         }
 
         return channel;
@@ -615,5 +628,108 @@ describe("useNotifications", () => {
       })
     );
     expect(refreshUnreadCountMock).toHaveBeenCalled();
+  });
+
+  describe("Realtime UPDATE(クリエイター還元の日次集約)", () => {
+    test("一覧にある行は追加取得せずマージし、created_at が進むと先頭へ浮上する", async () => {
+      const reward = createNotification({
+        id: "reward-1",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        entity_id: "user-1",
+        is_read: true,
+        created_at: "2026-08-06T01:00:00.000Z",
+        data: { reward_date: "2026-08-06", usage_count: 1, total_amount: 2 },
+      });
+      const other = createNotification({
+        id: "other-1",
+        created_at: "2026-08-06T02:00:00.000Z",
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [other, reward],
+        nextCursor: null,
+      });
+
+      const { result } = await renderNotificationsHook();
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "other-1",
+        "reward-1",
+      ]);
+
+      getNotificationByIdMock.mockClear();
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: {
+            ...reward,
+            is_read: false,
+            created_at: "2026-08-06T03:00:00.000Z",
+            data: { reward_date: "2026-08-06", usage_count: 2, total_amount: 7 },
+          },
+        });
+        await Promise.resolve();
+      });
+
+      // 先頭へ浮上し、累計が更新される
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "reward-1",
+        "other-1",
+      ]);
+      expect(result.current.notifications[0]?.data?.total_amount).toBe(7);
+      expect(result.current.notifications[0]?.is_read).toBe(false);
+      // 一覧にある行は取得し直さない(一括既読でリクエストが並ばないため)
+      expect(getNotificationByIdMock).not.toHaveBeenCalled();
+    });
+
+    test("一覧に無い行は取得して差し込む", async () => {
+      const { result } = await renderNotificationsHook();
+      expect(result.current.notifications).toHaveLength(0);
+
+      const incoming = createNotification({
+        id: "reward-2",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        created_at: "2026-08-06T04:00:00.000Z",
+        data: { reward_date: "2026-08-06", usage_count: 3, total_amount: 6 },
+      });
+      getNotificationByIdMock.mockResolvedValue(incoming);
+
+      await act(async () => {
+        realtimeUpdateHandler?.({ new: incoming });
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(getNotificationByIdMock).toHaveBeenCalledWith(
+        "reward-2",
+        expect.anything()
+      );
+      expect(result.current.notifications.map((n) => n.id)).toEqual(["reward-2"]);
+    });
+
+    test("既読化のUPDATEでは未読数を自前で増やさない", async () => {
+      // 通知ページでは自動既読が走るため、別ページとして描画する
+      usePathnameMock.mockReturnValue("/");
+      const target = createNotification({ id: "n-1", is_read: false });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [target],
+        nextCursor: null,
+      });
+      getUnreadCountMock.mockResolvedValue(1);
+
+      const { result } = await renderNotificationsHook();
+      expect(result.current.unreadCount).toBe(1);
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: { ...target, is_read: true, read_at: "2026-08-06T05:00:00.000Z" },
+        });
+        await Promise.resolve();
+      });
+
+      // クライアント側でカウンタを増減させない(サーバー値で再同期する)
+      expect(result.current.unreadCount).toBe(1);
+      expect(result.current.notifications[0]?.is_read).toBe(true);
+    });
   });
 });
