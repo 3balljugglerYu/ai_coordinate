@@ -888,4 +888,83 @@ describe("useNotifications", () => {
       expect(refreshUnreadCountMock).not.toHaveBeenCalled();
     });
   });
+
+  describe("クリエイター還元通知のその他の経路", () => {
+    test("クリックでペルコイン管理ページへ遷移する", async () => {
+      const { result } = await renderNotificationsHook();
+
+      await act(async () => {
+        result.current.handleNotificationClick(
+          createNotification({
+            id: "reward-nav",
+            type: "usage_reward_earned",
+            entity_type: "user",
+            entity_id: "user-1",
+            is_read: true,
+            data: { reward_date: "2026-08-07", usage_count: 2, total_amount: 4 },
+          })
+        );
+        await Promise.resolve();
+      });
+
+      expect(pushMock).toHaveBeenCalledWith("/my-page/credits");
+    });
+
+    test("一覧に既存行があるとき、差し込んだ還元通知は日時順に並ぶ", async () => {
+      const older = createNotification({
+        id: "older-1",
+        created_at: "2026-08-07T01:00:00.000Z",
+      });
+      const newer = createNotification({
+        id: "newer-1",
+        created_at: "2026-08-07T09:00:00.000Z",
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [newer, older],
+        nextCursor: null,
+      });
+
+      const { result } = await renderNotificationsHook();
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: createNotification({
+            id: "reward-mid",
+            type: "usage_reward_earned",
+            entity_type: "user",
+            is_read: false,
+            created_at: "2026-08-07T05:00:00.000Z",
+            data: { reward_date: "2026-08-07", usage_count: 1, total_amount: 2 },
+          }),
+        });
+        await Promise.resolve();
+      });
+
+      // 先頭固定ではなく created_at 降順に収まる
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "newer-1",
+        "reward-mid",
+        "older-1",
+      ]);
+    });
+
+    test("reconciliationの取得に失敗しても一覧を壊さない", async () => {
+      const existing = createNotification({ id: "keep-1" });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [existing],
+        nextCursor: null,
+      });
+      const { result } = await renderNotificationsHook();
+
+      getNotificationsMock.mockRejectedValueOnce(new Error("network down"));
+
+      await act(async () => {
+        realtimeSubscribeCallback?.("SUBSCRIBED");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.notifications.map((n) => n.id)).toEqual(["keep-1"]);
+    });
+  });
 });
