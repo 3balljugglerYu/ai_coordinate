@@ -187,6 +187,35 @@ COMMENT ON COLUMN public.style_preset_usage_events.reward_status IS
 -- キャップを全経路の厳密な強制上限にするには、全付与経路で「受け手ロックを
 -- 最初に取る」順序へ統一する必要がある(既存の金銭処理を複数書き換えるため、
 -- 独立したタスクとして扱う)。
+--
+-- 本マイグレーションの初期版はこの共有関数にロックを入れていた。検証より前に
+-- COMMIT していたため、その版を一度でも走らせた環境にはロック入りの定義が
+-- 残っている。ここで元の定義へ明示的に戻し、どの環境から適用しても同じ状態に
+-- 収束させる(下のカタログ検証がロックの不在を assert する)。
+CREATE OR REPLACE FUNCTION public.get_grantable_free_percoin_amount(
+  p_user_id uuid,
+  p_requested_amount integer
+)
+RETURNS integer
+LANGUAGE plpgsql
+SET search_path TO 'public'
+AS $$
+declare
+  v_cap constant integer := 50000;
+  v_free_balance integer;
+begin
+  if p_requested_amount is null or p_requested_amount <= 0 then
+    return 0;
+  end if;
+
+  select greatest(coalesce(balance, 0) - coalesce(paid_balance, 0), 0)
+  into v_free_balance
+  from public.user_credits
+  where user_id = p_user_id;
+
+  return greatest(least(p_requested_amount, v_cap - coalesce(v_free_balance, 0)), 0);
+end;
+$$;
 
 -- =============================================================================
 -- 5. 付与の共通処理(内部関数)
