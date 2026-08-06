@@ -8,6 +8,8 @@ const BONUS_SOURCE_LABELS: Record<string, string> = {
   tour_bonus: "チュートリアル完了特典",
   referral: "紹介成立特典",
   daily_post: "デイリー投稿特典",
+  prompt_usage_reward: "Freeプロンプトが利用された時（作者へ）",
+  style_usage_reward: "One-Tap Styleが利用された時（クリエイターへ）",
 };
 
 /**

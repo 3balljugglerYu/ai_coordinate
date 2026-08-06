@@ -4,20 +4,29 @@ import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logAdminAction } from "@/lib/admin-audit";
-
-const BONUS_SOURCES = [
-  "signup_bonus",
-  "tour_bonus",
-  "referral",
-  "daily_post",
-] as const;
+import {
+  BONUS_SOURCES,
+  validateBonusAmount,
+} from "@/features/credits/lib/percoin-bonus-defaults";
 
 const patchBodySchema = z.object({
   bonusDefaults: z.array(
-    z.object({
-      source: z.enum(BONUS_SOURCES),
-      amount: z.number().int().min(1).max(1000),
-    })
+    z
+      .object({
+        source: z.enum(BONUS_SOURCES),
+        // 範囲は source ごとに違うため、ここでは広めに受けて共有ルールで判定する
+        amount: z.number().int(),
+      })
+      .superRefine((value, ctx) => {
+        const error = validateBonusAmount(value.source, value.amount);
+        if (error) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["amount"],
+            message: error,
+          });
+        }
+      })
   ),
   streakDefaults: z.array(
     z.object({

@@ -110,7 +110,7 @@ alwaysApply: false
 #### `percoin_bonus_defaults`
 - 主キー: `source`
 - 主要カラム: `source`, `amount`, `updated_at`
-- 備考: `source` は `signup_bonus/tour_bonus/referral/daily_post`
+- 備考: `source` は `signup_bonus/tour_bonus/referral/daily_post`（各 1〜1000）と、クリエイター還元の `prompt_usage_reward/style_usage_reward`（各 **0〜5**、0=付与しない・既定0）。範囲は source ごとに違い、単一の CHECK で出し分ける（`features/credits/lib/percoin-bonus-defaults.ts` が API/フォームと共有する正本）。還元の上限5は「付与額 < 1生成の最低コスト10」を保つための制約
 - RLS: 有効だが、公開ポリシーは未定義
 
 #### `percoin_streak_defaults`
