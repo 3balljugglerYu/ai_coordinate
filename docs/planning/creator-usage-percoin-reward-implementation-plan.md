@@ -27,8 +27,15 @@
 ### 日次上限なしの経済的根拠（実データで検証済み）
 
 1生成の最低コストは **10ペルコイン**（`features/generation/lib/model-config.ts` / `shared/generation/openai-image-model.ts`。多くのモデルは20〜130）。
-付与2なら利用者が10払って原作者に2入る = **系全体で常に8の純減**。自作自演を繰り返すほど攻撃者が損をする構造のため、日次上限は不要。
-イベント時5でも純減5で安全域。加えて既存の**5万無料残高キャップ**（`get_grantable_free_percoin_amount`）が全付与に効く。
+付与2なら利用者が10払って原作者に2入る = **系全体で常に8の純減**。イベント時5でも純減5で安全域。
+加えて既存の**5万無料残高キャップ**（`get_grantable_free_percoin_amount`）が全付与に効く。
+
+**ただしこの純減はあくまで「付与額 < 最低生成コスト(10)」が成り立つ間だけの性質**である（レビュー指摘で明確化）。
+自己利用除外は**2アカウントの相互利用**を防げない: A が B のプロンプトで生成（A が10払い B が X 受取）、
+B が A のプロンプトで生成（B が10払い A が X 受取）を繰り返すと、ペアの収支は `2X - 20`。
+**X が11以上だと生成のたびにペアの残高が増える**。したがって「上限1000のまま運用注意で担保」では不十分で、
+**新2 source の上限は DB CHECK で 5 に固定する**（ADR-004 改訂）。日次上限が不要なのは、
+この上限固定が前提条件として DB に刻まれている場合に限る。
 
 ## コードベース調査結果
 
@@ -75,9 +82,14 @@ flowchart TD
   クリエイター未設定のスタイルでは誰にも付与されない。
 - **REQ-06** (状態駆動): While Free の原作が未投稿・非表示（moderation_status ≠ visible）, the system shall 付与しない。
   取り下げ・削除された投稿では還元されない。Style 側は記録時ゲート（#479）により公開中の生成のみが記録されるため追加条件は不要。
-- **REQ-07**: When 同一の利用イベントに対して付与処理が再実行されたとき, the system shall 二重付与しない（`reward_granted_at` の test-and-set）。
-- **REQ-08** (異常系): If 付与処理が失敗したら, then the system shall 警告のみ記録して**生成の完了処理を巻き戻さない**。
-  還元の失敗で生成が失敗扱いになることはない。
+- **REQ-07**: When 同一の利用イベントに対して付与処理が再実行されたとき, the system shall 二重付与しない（`reward_status` の test-and-set）。
+- **REQ-08** (異常系): If 付与処理が失敗したら, then the system shall 付与部分のみをロールバックし、**利用イベントの記録と生成の完了処理は確定させる**（ADR-006 の内側例外ブロック）。
+  還元の失敗で生成が失敗扱いになったり、利用数・節目通知が失われたりすることはない。
+- **REQ-11** (イベント駆動): When 付与に失敗した `pending` 行が一定時間残っているとき, the system shall 再処理で付与を試みる（ADR-007）。
+  一時的な失敗で還元が永久に欠落することはない。
+- **REQ-12** (状態駆動): While イベントが `legacy`（本機能導入前の既存イベント）, the system shall 再処理の対象にしない。
+  過去の利用に遡って付与されることはない。
+- **REQ-13** (状態駆動): While 同一の受け手へ複数の付与が並行して走る, the system shall 受け手単位で直列化し、5万無料残高キャップを超えない（ADR-008）。
 - **REQ-09** (状態駆動): While 受け手の無料残高が5万を超える, the system shall キャップ後の額（0を含む）で付与する（既存ルール踏襲）。
 - **REQ-10** (権限): 付与 RPC は service_role 限定。額・受け手はすべて DB 内で導出し、クライアント入力を信用しない。
 
@@ -90,12 +102,64 @@ flowchart TD
 - **Reason**: 両関数とも SECURITY DEFINER で、既に「成功した生成のみ・冪等・公開中ゲート済み」という前提が揃っている。イベント行が付与単位の自然な正本になり、`ON CONFLICT DO NOTHING` で弾かれた再実行では付与も走らない。
 - **Consequence**: 記録関数の責務が増える。REQ-08 のとおり付与失敗は WARNING に留め、生成完了を巻き込まない。
 
-### ADR-002: 冪等キーは利用イベント行の `reward_granted_at`（test-and-set）
+### ADR-002（改訂）: 付与状態は `reward_status` で持ち、`reward_granted_at` だけに頼らない
 
-- **Context**: 二重付与は残高の直接的な毀損。
-- **Decision**: 両イベントテーブルに `reward_granted_at timestamptz` を追加し、`UPDATE ... WHERE reward_granted_at IS NULL RETURNING` で1行だけが付与に進む（#409 と同一パターン）。
-- **Reason**: 実績のある方式。同一トランザクション内で例外が起きれば未付与へロールバックされる。
-- **Consequence**: 過去イベント（Free 13件・Style 2,289件）は `reward_granted_at` が NULL のままだが、**遡及付与は行わない**（記録関数は新規生成でしか走らないため自然に対象外）。
+- **Context**: 二重付与は残高の直接的な毀損。当初案は `reward_granted_at IS NULL` の test-and-set のみだった。
+  しかしレビュー指摘のとおり、それでは **「過去イベント」「額0でOFF中」「終端スキップ（自己利用等）」「一時的な付与失敗」** の4状態が
+  すべて NULL に潰れてしまい、再処理すべき行を特定できない。
+- **Decision**: 両イベントテーブルに以下を追加する。
+  - `reward_status text NOT NULL DEFAULT 'pending'` — `pending` / `granted` / `skipped` / `legacy`
+  - `reward_granted_at timestamptz`（付与成立時のみ）/ `reward_processed_at timestamptz`（終端確定時）
+  - test-and-set は `UPDATE ... WHERE reward_status = 'pending' RETURNING` で行う（1行だけが処理に進む）
+  - 終端スキップ（自己利用・受け手未解決・非公開・額0・キャップ0）は **`skipped` で確定**し、`pending` と区別する
+- **Reason**: 「まだ付与できていない（再試行対象）」と「もう付与しない（確定）」を DB 上で判別できるようにするため。
+  ペルコインは金銭相当のため、失敗が WARNING ログにしか残らない状態は許容しない。
+- **Consequence**: 既存イベント（Free 13件・Style 2,289件）は**マイグレーションで `legacy` にバックフィル**する。
+  これを怠ると再処理経路が過去分を拾って遡及付与してしまう（ADR-006 の再処理と対で必須）。
+
+### ADR-006（新規）: 付与失敗を利用イベントから隔離する（内側の例外ブロック）
+
+- **Context**: 付与呼び出しを既存の記録関数へ素直に足すと、**PL/pgSQL のサブトランザクション挙動により重大な副作用**が出る。
+  実際の関数定義を確認した結果:
+  - `record_style_preset_usage` は **関数全体が単一の `BEGIN ... EXCEPTION WHEN OTHERS` ブロック**。
+    EXCEPTION 句を持つブロックはサブトランザクションを張るため、ブロック内で例外が起きると
+    **同ブロック内の `style_preset_usage_events` への INSERT ごとロールバックされる**。
+    このテーブルは利用数カウントと節目通知の正本なので、付与の失敗で**利用実績と通知まで消える**。
+  - `record_prompt_usage` は **EXCEPTION ハンドラを一切持たない**（`RAISE EXCEPTION` はあるがハンドラではない）。
+    ここで例外が伝播すると、呼び出し元の `complete_image_job_with_prompt_secrets` にもハンドラが無いため
+    **生成完了トランザクション全体が中断＝生成が失敗扱いになり返金される**。
+- **Decision**: 付与呼び出しは**必ず内側の独立した `BEGIN ... EXCEPTION WHEN OTHERS ... END` ブロックに入れる**。
+  ロールバック範囲を「付与の test-and-set ＋ ウォレット3点更新」だけに限定し、
+  利用イベントの INSERT は常に外側で確定させる。失敗時は `reward_status='pending'` のまま WARNING を出す。
+- **Reason**: REQ-08（生成を巻き込まない）を、要件の宣言ではなく**構造として保証する**ため。
+- **Consequence**: 失敗行は `pending` として残るので、下記の再処理経路で回収できる。
+
+### ADR-007（新規）: 再処理経路（pending の回収）を用意する
+
+- **Context**: 付与が一度失敗すると、現行構造では**永久に欠落する**（実装を確認して確定）:
+  - Free: `complete_image_job_with_prompt_secrets` は `status='succeeded'` で**冪等early-return**するため、
+    ジョブ再実行では `record_prompt_usage` が二度と呼ばれない。加えて `ON CONFLICT DO NOTHING` で INSERT も再実行されない
+  - Style: トリガーは `generated_images` の AFTER INSERT で**一度しか発火しない**
+- **Decision**: `reprocess_pending_usage_rewards(p_limit int)`（service_role 限定）を用意し、
+  一定時間以上前の `pending` 行を拾って付与 RPC を再実行する。**pg_cron から定期実行**する
+  （本番には pg_cron 稼働中。`SELECT public.monitor_creator_looks_extract_failures();` を5分ごとに回す先例あり）。
+- **Reason**: 金銭相当の欠損を自動回復可能にする。手動補正の運用負荷をなくす。
+- **Consequence**: 再処理は `legacy` を対象外とする（ADR-002 のバックフィルが前提）。
+  再処理でも同じ付与 RPC を通すので、冪等性と各種スキップ条件は一箇所に保たれる。
+
+### ADR-008（新規）: 5万キャップは受け手単位の advisory lock で直列化する
+
+- **Context**: `get_grantable_free_percoin_amount` は `user_credits` を**ロックせずに SELECT** している（本番の関数定義で確認）。
+  利用イベントの test-and-set は**別々のイベント行**をロックするだけなので、同一クリエイターへの並行付与は直列化されない。
+  無料残高 49,998 のときに2件が同時に走ると、双方が残り枠2を計算し、`balance = balance + 2` が順に適用されて **50,002** になる。
+- **Decision**: 付与 RPC の冒頭（キャップ計算の前）で `PERFORM pg_advisory_xact_lock(hashtextextended(v_recipient_id::text, 0))` を取り、
+  キャップ計算〜ウォレット3点更新までを受け手単位で直列化する。
+  （advisory lock はリポジトリ内で `place_style_preset_at_order` 等が既に使う定番手法）
+- **Reason**: 5万キャップを「だいたい守られる値」ではなく**強制上限**にするため。本機能は人気クリエイターへ高頻度で発火するため、
+  並行競合は理論上の話ではなく現実的に起こる。
+- **Consequence**: **本 PR のスコープは新規2経路のみ**にロックを入れる。既存ボーナス（登録・ツアー・紹介・デイリー・ストリーク・完走報酬）は
+  同じロック規約を持たないため、**それらと本付与が同時に走る極めて稀なケースでは超過が残る**（既存経路の低頻度性ゆえ実害は小さい）。
+  これは本機能が作った問題ではなく既存の穴のため、**全付与経路への統一適用は別タスクとして明記**する。
 
 ### ADR-003: 1回の付与ごとの通知は出さない
 
@@ -104,12 +168,25 @@ flowchart TD
 - **Reason**: 生成のたびに発火するため通知が洪水になる。利用の節目通知（B案 #477 / #478）が既に「◯回使われました」を伝えており、役割が重複する。付与はペルコイン履歴で確認できる。
 - **Consequence**: 「いつ・何で増えたか」は取引履歴の metadata（origin_post_id / preset_id）で追える設計にする。
 
-### ADR-004: 設定は既存 `percoin_bonus_defaults` に source 追加。新 source のみ 0 を許可
+### ADR-004（改訂）: 設定は既存 `percoin_bonus_defaults` に source 追加。新 source は **0〜5** に固定
 
-- **Context**: 現行 CHECK は `amount >= 1`。既定 0（OFF）を実現するには 0 を許す必要がある。
-- **Decision**: `source` の CHECK に2値を追加し、`amount` の CHECK を「新2 source は 0 以上 / 既存4 source は従来どおり 1 以上」の条件付きに変更する。
-- **Reason**: 既存ボーナス（登録・ツアー等）の「必ず1以上」という保証を壊さずに、還元だけ OFF 可能にできる。新テーブルを作らないので管理画面の改修が最小。
-- **Consequence**: CHECK が条件分岐を持つ。API/フォームも source ごとに下限を出し分ける。
+- **Context**: 現行 CHECK は `amount BETWEEN 1 AND 1000`。既定 0（OFF）には 0 が必要。
+  さらにレビュー指摘のとおり、**上限1000のままでは admin の入力ミス1回で経済モデルの前提（付与額 < 最低生成コスト10）が崩れる**。
+  2アカウントの相互利用では X≥11 で残高が純増するため、上限は運用注意ではなく**不変条件として DB に置く**必要がある。
+- **Decision**: `source` の CHECK に2値を追加し、`amount` の CHECK を条件付きにする。
+  ```sql
+  CHECK (
+    (source IN ('prompt_usage_reward', 'style_usage_reward') AND amount BETWEEN 0 AND 5)
+    OR
+    (source IN ('signup_bonus', 'tour_bonus', 'referral', 'daily_post') AND amount BETWEEN 1 AND 1000)
+  )
+  ```
+  zod・フォームも新2 source のみ `min 0 / max 5` に揃える。
+- **Reason**: 既存ボーナスの「必ず1以上」保証を壊さず、還元だけ OFF 可能にしつつ、
+  **経済的な安全域（運用値2、イベント時最大5）を DB が強制する**。5 を超える施策が必要になったら、
+  最低生成コストとの関係を再レビューするマイグレーションとして明示的に上げる。
+- **Consequence**: CHECK が条件分岐を持つ。API/フォームも source ごとに下限・上限を出し分ける。
+  境界テストは新2 source が `0/5` 許可・`6`（および 1000）拒否、既存4 source が `1/1000` 許可・`0` 拒否。
 
 ### ADR-005: Style の provider 解決は profiles 経由で user_id を得る
 
@@ -128,20 +205,32 @@ flowchart LR
 ### Phase 1: DB
 
 - [ ] マイグレーション `2026080615xxxx_add_creator_usage_percoin_reward.sql`
-  - `percoin_bonus_defaults` の CHECK 更新（source に `prompt_usage_reward` / `style_usage_reward`、amount は新 source のみ 0 可）+ 両 source を **amount 0** で seed
+  - `percoin_bonus_defaults` の CHECK 更新（source に `prompt_usage_reward` / `style_usage_reward`、
+    **amount は新 source のみ 0〜5・既存4 source は 1〜1000**）+ 両 source を **amount 0** で seed
   - `credit_transactions.transaction_type` / `free_percoin_batches.source` の CHECK に2値追加（#409 と同じ手順で現行定義に追加）
-  - `prompt_usage_events.reward_granted_at` / `style_preset_usage_events.reward_granted_at` 追加
-  - `grant_prompt_usage_reward(p_event_id uuid)` / `grant_style_preset_usage_reward(p_event_id uuid)`（service_role 限定・自己利用/受け手未解決/非公開/額0で早期 return・5万キャップ・3点更新・期限式は #409 と同一）
-  - `record_prompt_usage` / `record_style_preset_usage` に付与呼び出しを追加（**例外は WARNING に握って生成完了を巻き込まない**）
-  - カタログ検証 + **ロールバックされるサブトランザクションでの実データ dry-run**（自己利用・額0・非公開原作・正常付与・二重実行の各遷移）
-  - `NOTIFY pgrst, 'reload schema'`（関数シグネチャ追加のため）
+  - 両イベントテーブルに `reward_status`（既定 `pending`）/ `reward_granted_at` / `reward_processed_at` 追加（ADR-002）
+  - **既存イベントを `legacy` にバックフィル**（Free 13件・Style 2,289件。遡及付与の防止に必須）
+  - `grant_prompt_usage_reward(p_event_id uuid)` / `grant_style_preset_usage_reward(p_event_id uuid)`
+    （service_role 限定 / **冒頭で受け手単位の advisory lock**（ADR-008）/ `reward_status='pending'` の test-and-set /
+    自己利用・受け手未解決・非公開・額0・キャップ0 は **`skipped` で確定** / 付与成立時のみ `granted` /
+    3点更新・期限式は #409 と同一）
+  - `record_prompt_usage` / `record_style_preset_usage` に付与呼び出しを追加。
+    **必ず内側の `BEGIN ... EXCEPTION WHEN OTHERS` ブロックに入れる**（ADR-006）。
+    Style 側は既存の外側ハンドラに巻き込まれない位置に置き、イベント INSERT を確定させてから呼ぶ
+  - `reprocess_pending_usage_rewards(p_limit int)`（service_role 限定・`legacy` 除外・一定時間経過した `pending` のみ）
+  - pg_cron 登録（既存の `monitor_creator_looks_extract_failures` と同型の SQL 関数ジョブ）
+  - カタログ検証 + **ロールバックされるサブトランザクションでの実データ dry-run**
+    （自己利用 / 額0 / 非公開原作 / 正常付与 / 二重実行 / **付与例外時にイベント INSERT が残ること** /
+    **`legacy` が再処理されないこと** の各遷移）
+  - `NOTIFY pgrst, 'reload schema'`（関数追加のため）
 
 ### Phase 2: 管理画面
 
-- [ ] `app/api/admin/percoin-defaults/route.ts` — 新2 source を zod enum に追加し、**新 source のみ min(0)** を許可
+- [ ] `app/api/admin/percoin-defaults/route.ts` — 新2 source を zod enum に追加し、**新 source は min(0) / max(5)**、既存4 source は従来どおり 1〜1000（ADR-004）
 - [ ] `app/(app)/admin/percoin-defaults/page.tsx` — ラベル追加（「Freeプロンプトが利用された時の付与数（作者へ）」「One-Tap Styleが利用された時の付与数（クリエイターへ）」）
-- [ ] `PercoinDefaultsForm.tsx` — source 別の下限（新2項目は 0 = 付与なし）+ **注意書き**を表示
+- [ ] `PercoinDefaultsForm.tsx` — source 別の下限・上限（新2項目は **0〜5**、0 = 付与なし）+ **注意書き**を表示
   - 「0 にすると付与しません」
+  - 「**設定できるのは0〜5です**（1生成の最低コスト10より十分小さい値に制限しています）」
   - 「自分自身の利用では付与されません」
   - 「**Free はアプリ内の『このプロンプトで作る』経由の生成のみ対象です。プロンプトをコピーして貼り付けた生成は対象外です**」
   - 「公開中（審査中・取り下げ・非公開カテゴリを除く）の利用のみが対象です」
@@ -149,7 +238,9 @@ flowchart LR
 ### Phase 3: テスト・ドキュメント・検証
 
 - [ ] 付与ロジックのテスト（DB 関数のため、dry-run + 既存パターンに沿った統合テスト）
-- [ ] 管理画面 API のバリデーションテスト（0 許可/1未満拒否の出し分け・境界1000）
+- [ ] **付与例外時にイベント INSERT が残る**ことの回帰テスト（ADR-006。意図的に失敗させる dry-run）
+- [ ] **同一受け手への並行付与テスト**（2セッションでキャップ超過が起きないこと。ADR-008）
+- [ ] 管理画面 API のバリデーションテスト（新2 source は `0/5` 許可・`6`/`1000` 拒否、既存4 source は `1/1000` 許可・`0` 拒否）
 - [ ] `docs/architecture/data.ja.md` / `data.en.md`（RPC 一覧・トリガー一覧）+ `.cursor/rules/database-design.mdc`
 - [ ] `npm run lint` / `typecheck` / `test` / `build -- --webpack`
 
@@ -157,7 +248,7 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 |
 |---|---|---|
-| `supabase/migrations/2026080615xxxx_add_creator_usage_percoin_reward.sql` | 新規 | 設定 source 追加 / 付与済み列 / 付与RPC2本 / 記録関数のフック / 検証 |
+| `supabase/migrations/2026080615xxxx_add_creator_usage_percoin_reward.sql` | 新規 | 設定 source 追加(0〜5) / 付与状態列 + legacy バックフィル / 付与RPC2本(advisory lock) / 再処理RPC + cron / 記録関数のフック(内側例外ブロック) / 検証 |
 | `app/api/admin/percoin-defaults/route.ts` | 修正 | 新2 source の受領と下限出し分け |
 | `app/(app)/admin/percoin-defaults/page.tsx` | 修正 | ラベル定義 |
 | `app/(app)/admin/percoin-defaults/PercoinDefaultsForm.tsx` | 修正 | 下限出し分け + 注意書き |
@@ -166,16 +257,26 @@ flowchart LR
 
 ## 品質・テスト観点
 
-- [ ] **経済安全性**: 自己利用ゼロ・付与額 < 生成コストの前提が崩れていないか（額は admin 設定のため、フォームに上限1000のまま + 注意書き）
+- [ ] **経済安全性**: 自己利用ゼロ + **DB CHECK で上限5**（2アカウント相互利用でも純減が保たれる）
 - [ ] **二重付与なし**: 同一イベントの再実行で 0 件
-- [ ] **生成の巻き添えなし**: 付与失敗時も生成完了 RPC は成功する
-- [ ] **権限**: 付与 RPC は authenticated から実行不可
-- [ ] **既存ボーナス不変**: 登録/ツアー/紹介/デイリーの下限1と現行額が変わらない
+- [ ] **生成の巻き添えなし**: 付与失敗時も生成完了 RPC は成功し、**利用イベント行と節目通知が残る**（ADR-006 の回帰テスト）
+- [ ] **再処理**: `pending` は回収され、`legacy` / `skipped` は再処理されない
+- [ ] **並行制御**: 同一受け手へ2セッションから同時付与してもキャップを超えない（**並行テストを実施**）
+- [ ] **権限**: 付与 RPC / 再処理 RPC は authenticated から実行不可
+- [ ] **既存ボーナス不変**: 登録/ツアー/紹介/デイリーの 1〜1000 と現行額が変わらない
 
 ## ロールバック方針
 
 - 既定 0（OFF）出荷のため、**適用しただけでは1コインも動かない**。問題時は admin で額を 0 に戻せば即停止
+  （額0は `skipped` 確定なので、後から額を入れても過去分に遡って付与されない）
 - 列・source 追加は加算のみ。down は明示しない（設定値消失リスク回避、既存方針）
+- 再処理 cron は `cron.unschedule` で単独停止できる
+
+## 別タスク（本 PR のスコープ外）
+
+- **全付与経路への advisory lock 統一**（ADR-008）: 既存ボーナス（登録・ツアー・紹介・デイリー・ストリーク・完走報酬）は
+  現状ロックを取らないため、本付与と同時実行された場合の5万キャップ超過が理論上残る。
+  本機能が作った問題ではなく既存の穴だが、キャップを厳密な強制上限にするなら全経路の統一が必要
 
 ## 適用順序
 
