@@ -90,6 +90,10 @@ flowchart TD
 - **REQ-12** (状態駆動): While イベントが `legacy`（本機能導入前の既存イベント）, the system shall 再処理の対象にしない。
   過去の利用に遡って付与されることはない。
 - **REQ-13** (状態駆動): While 同一の受け手へ複数の付与が並行して走る, the system shall 受け手単位で直列化し、5万無料残高キャップを超えない（ADR-008）。
+  **本機能の2経路だけでなく、既存ボーナス（登録・ツアー・紹介・デイリー・ストリーク・完走報酬・サブスク）との同時実行でも成立する**
+  （キャップ関数自体にロックを置くため）。
+- **REQ-14** (異常系): If 再処理バッチ中の1件が失敗したら, then the system shall その行のみ `pending` に残して後続行の処理を継続し、
+  試行回数に応じてバックオフする（ADR-007）。1件の恒久エラーで再処理全体が止まらない。
 - **REQ-09** (状態駆動): While 受け手の無料残高が5万を超える, the system shall キャップ後の額（0を含む）で付与する（既存ルール踏襲）。
 - **REQ-10** (権限): 付与 RPC は service_role 限定。額・受け手はすべて DB 内で導出し、クライアント入力を信用しない。
 
@@ -143,23 +147,68 @@ flowchart TD
 - **Decision**: `reprocess_pending_usage_rewards(p_limit int)`（service_role 限定）を用意し、
   一定時間以上前の `pending` 行を拾って付与 RPC を再実行する。**pg_cron から定期実行**する
   （本番には pg_cron 稼働中。`SELECT public.monitor_creator_looks_extract_failures();` を5分ごとに回す先例あり）。
+  **再処理側にも ADR-006 と同じ隔離を適用する**（レビュー指摘。pg_cron の1回の呼び出しは1トランザクションのため、
+  1行の例外でバッチ全体がロールバックし、それ以前に成功した付与まで巻き戻る）:
+  ```sql
+  FOR v_event IN
+    SELECT ... FROM ... WHERE reward_status = 'pending'
+      AND created_at < now() - interval '5 minutes'
+      AND (next_attempt_at IS NULL OR next_attempt_at <= now())
+    ORDER BY recipient_id, created_at          -- 並行実行時のロック順序を固定
+    LIMIT p_limit
+    FOR UPDATE SKIP LOCKED                      -- 実行が重なっても同じ行を掴まない
+  LOOP
+    BEGIN
+      PERFORM public.grant_..._usage_reward(v_event.id);
+    EXCEPTION WHEN OTHERS THEN
+      -- この行だけ pending のまま残し、後続行の処理を続ける
+      UPDATE ... SET attempt_count = attempt_count + 1,
+                     last_error = SQLERRM,
+                     next_attempt_at = now() + (interval '5 minutes' * attempt_count)
+      WHERE id = v_event.id;
+      RAISE WARNING 'Pending usage reward failed: event=%, error=%', v_event.id, SQLERRM;
+    END;
+  END LOOP;
+  ```
+  併せて `attempt_count int NOT NULL DEFAULT 0` / `last_error text` / `next_attempt_at timestamptz` を持たせ、
+  **恒久エラーの無限再試行を指数バックオフで抑え、監視可能にする**。
 - **Reason**: 金銭相当の欠損を自動回復可能にする。手動補正の運用負荷をなくす。
+  行単位の隔離が無いと、古い1行が毎回失敗するだけで**後続行が恒久的に処理されなくなる**（レビュー指摘）。
 - **Consequence**: 再処理は `legacy` を対象外とする（ADR-002 のバックフィルが前提）。
   再処理でも同じ付与 RPC を通すので、冪等性と各種スキップ条件は一箇所に保たれる。
+  1バッチで複数受け手の advisory lock を保持することになるため、`p_limit` は小さく（50程度）保ち、
+  `ORDER BY recipient_id` でロック取得順を固定する（ADR-008 のロックとの整合）。
+  実装時に pg_cron で「行ごとに COMMIT する PROCEDURE」が使えるなら、そちらの方がロック保持時間が短く望ましい。
+  使えるかは環境依存のため、**動作確認できた場合のみ採用**し、既定は上記の関数＋行単位例外ブロックとする。
 
-### ADR-008（新規）: 5万キャップは受け手単位の advisory lock で直列化する
+### ADR-008（改訂）: 5万キャップは `get_grantable_free_percoin_amount` の中で受け手単位に直列化する（全経路一括）
 
 - **Context**: `get_grantable_free_percoin_amount` は `user_credits` を**ロックせずに SELECT** している（本番の関数定義で確認）。
   利用イベントの test-and-set は**別々のイベント行**をロックするだけなので、同一クリエイターへの並行付与は直列化されない。
   無料残高 49,998 のときに2件が同時に走ると、双方が残り枠2を計算し、`balance = balance + 2` が順に適用されて **50,002** になる。
-- **Decision**: 付与 RPC の冒頭（キャップ計算の前）で `PERFORM pg_advisory_xact_lock(hashtextextended(v_recipient_id::text, 0))` を取り、
-  キャップ計算〜ウォレット3点更新までを受け手単位で直列化する。
-  （advisory lock はリポジトリ内で `place_style_preset_at_order` 等が既に使う定番手法）
-- **Reason**: 5万キャップを「だいたい守られる値」ではなく**強制上限**にするため。本機能は人気クリエイターへ高頻度で発火するため、
-  並行競合は理論上の話ではなく現実的に起こる。
-- **Consequence**: **本 PR のスコープは新規2経路のみ**にロックを入れる。既存ボーナス（登録・ツアー・紹介・デイリー・ストリーク・完走報酬）は
-  同じロック規約を持たないため、**それらと本付与が同時に走る極めて稀なケースでは超過が残る**（既存経路の低頻度性ゆえ実害は小さい）。
-  これは本機能が作った問題ではなく既存の穴のため、**全付与経路への統一適用は別タスクとして明記**する。
+  当初案は「新規2経路にだけロックを入れる」だったが、レビュー指摘のとおり
+  **advisory lock は競合する全経路が同じキーを取って初めて排他制御になる**。
+  既存経路が参加しない限り、REQ-13 の「キャップを超えない」は保証できず best-effort に留まる。
+- **Decision**: ロックを個々の付与 RPC ではなく、**`get_grantable_free_percoin_amount` の内部**（残高 SELECT の前）に置く。
+  ```sql
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
+  ```
+  これで**この関数を通る全経路が自動的に同じロック規約に参加する**。トランザクションスコープのロックなので、
+  関数から戻った後の呼び出し側のウォレット3点更新まで保持され、コミットで解放される。
+- **Reason**: 「5万キャップを全経路の強制上限にする」というレビュー指摘の要求を、**最小の変更で・回帰リスクを増やさずに**満たせるため。
+  本番で検証した事実:
+  - この関数を使う既存の付与関数は **4関数（5インスタンス）**: `grant_collection_completion_reward` /
+    `grant_daily_post_bonus` / `grant_streak_bonus` / `grant_subscription_percoins`（2オーバーロード）
+  - **アプリ側（TS）からの直接呼び出しは 0 件** — DB 内の付与関数からしか呼ばれないため、
+    参照専用プレビュー用途にロックを持ち込む副作用がない
+  - 関数は **VOLATILE**（`provolatile='v'`）なので、advisory lock の呼び出しがプランナのインライン化・
+    キャッシュ前提と衝突しない。SECURITY DEFINER ではないが `pg_advisory_xact_lock` は PUBLIC 実行可
+  既存4関数の本体を書き換える案（レビュー提案）は、各定義を忠実に再現し直す必要があり**回帰リスクが高い**。
+  1関数への追加で同じ保証が得られるなら、そちらを採る。
+- **Consequence**: **REQ-13 は全経路で成立する不変条件になる**（best-effort への後退が不要）。
+  同一ユーザーへの付与が同時に走ると片方が待つが、いずれもミリ秒オーダーの処理で実害はない。
+  各付与トランザクションが取るロックは受け手1件のみのため、デッドロック経路は生じない
+  （複数受け手を1トランザクションで扱う再処理側の扱いは ADR-007 に記載）。
 
 ### ADR-003: 1回の付与ごとの通知は出さない
 
@@ -208,16 +257,21 @@ flowchart LR
   - `percoin_bonus_defaults` の CHECK 更新（source に `prompt_usage_reward` / `style_usage_reward`、
     **amount は新 source のみ 0〜5・既存4 source は 1〜1000**）+ 両 source を **amount 0** で seed
   - `credit_transactions.transaction_type` / `free_percoin_batches.source` の CHECK に2値追加（#409 と同じ手順で現行定義に追加）
-  - 両イベントテーブルに `reward_status`（既定 `pending`）/ `reward_granted_at` / `reward_processed_at` 追加（ADR-002）
+  - 両イベントテーブルに `reward_status`（既定 `pending`）/ `reward_granted_at` / `reward_processed_at`
+    / `attempt_count` / `last_error` / `next_attempt_at` 追加（ADR-002 / ADR-007）
   - **既存イベントを `legacy` にバックフィル**（Free 13件・Style 2,289件。遡及付与の防止に必須）
+  - **`get_grantable_free_percoin_amount` に受け手単位の advisory lock を追加**（ADR-008 改訂）。
+    これで既存4関数（`grant_collection_completion_reward` / `grant_daily_post_bonus` / `grant_streak_bonus` /
+    `grant_subscription_percoins` ×2）を含む**全付与経路が同じロック規約に参加**する（既存関数の本体は変更しない）
   - `grant_prompt_usage_reward(p_event_id uuid)` / `grant_style_preset_usage_reward(p_event_id uuid)`
-    （service_role 限定 / **冒頭で受け手単位の advisory lock**（ADR-008）/ `reward_status='pending'` の test-and-set /
+    （service_role 限定 / `reward_status='pending'` の test-and-set /
     自己利用・受け手未解決・非公開・額0・キャップ0 は **`skipped` で確定** / 付与成立時のみ `granted` /
     3点更新・期限式は #409 と同一）
   - `record_prompt_usage` / `record_style_preset_usage` に付与呼び出しを追加。
     **必ず内側の `BEGIN ... EXCEPTION WHEN OTHERS` ブロックに入れる**（ADR-006）。
     Style 側は既存の外側ハンドラに巻き込まれない位置に置き、イベント INSERT を確定させてから呼ぶ
-  - `reprocess_pending_usage_rewards(p_limit int)`（service_role 限定・`legacy` 除外・一定時間経過した `pending` のみ）
+  - `reprocess_pending_usage_rewards(p_limit int)`（service_role 限定・`legacy` 除外・一定時間経過した `pending` のみ・
+    **行単位の内側例外ブロック + `FOR UPDATE SKIP LOCKED` + `ORDER BY recipient_id` + バックオフ更新**。ADR-007）
   - pg_cron 登録（既存の `monitor_creator_looks_extract_failures` と同型の SQL 関数ジョブ）
   - カタログ検証 + **ロールバックされるサブトランザクションでの実データ dry-run**
     （自己利用 / 額0 / 非公開原作 / 正常付与 / 二重実行 / **付与例外時にイベント INSERT が残ること** /
@@ -261,7 +315,10 @@ flowchart LR
 - [ ] **二重付与なし**: 同一イベントの再実行で 0 件
 - [ ] **生成の巻き添えなし**: 付与失敗時も生成完了 RPC は成功し、**利用イベント行と節目通知が残る**（ADR-006 の回帰テスト）
 - [ ] **再処理**: `pending` は回収され、`legacy` / `skipped` は再処理されない
-- [ ] **並行制御**: 同一受け手へ2セッションから同時付与してもキャップを超えない（**並行テストを実施**）
+- [ ] **並行制御**: 同一受け手へ2セッションから同時付与してもキャップを超えない（**並行テストを実施**）。
+      **本機能同士に加え、既存ボーナス（例: デイリー）との同時実行**でも超えないこと
+- [ ] **再処理の堅牢性**: バッチ内の1件が失敗しても、それ以前に成功した付与がロールバックされず、後続行が処理される
+- [ ] **既存付与の非回帰**: キャップ関数の変更後も既存4関数（完走報酬・デイリー・ストリーク・サブスク）が従来どおり動く
 - [ ] **権限**: 付与 RPC / 再処理 RPC は authenticated から実行不可
 - [ ] **既存ボーナス不変**: 登録/ツアー/紹介/デイリーの 1〜1000 と現行額が変わらない
 
@@ -274,9 +331,8 @@ flowchart LR
 
 ## 別タスク（本 PR のスコープ外）
 
-- **全付与経路への advisory lock 統一**（ADR-008）: 既存ボーナス（登録・ツアー・紹介・デイリー・ストリーク・完走報酬）は
-  現状ロックを取らないため、本付与と同時実行された場合の5万キャップ超過が理論上残る。
-  本機能が作った問題ではなく既存の穴だが、キャップを厳密な強制上限にするなら全経路の統一が必要
+現時点でなし。当初「別タスク」としていた**全付与経路への advisory lock 統一**は、
+キャップ関数自体にロックを置く方式（ADR-008 改訂）により**本 PR で解決する**。
 
 ## 適用順序
 
