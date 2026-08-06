@@ -153,47 +153,36 @@ COMMENT ON COLUMN public.style_preset_usage_events.reward_status IS
   '還元付与の状態。pending=未処理(再処理対象) / granted=付与済 / skipped=終端スキップ(自己利用・額0等) / legacy=本機能導入前';
 
 -- =============================================================================
--- 4. キャップ計算に受け手単位の直列化を追加(ADR-008)
+-- 4. 受け手単位の直列化(ADR-008 再改訂)
 -- =============================================================================
 --
--- 元の実装は user_credits をロックせず SELECT していたため、同一ユーザーへの
--- 並行付与で双方が同じ残り枠を計算し、5万キャップを超え得た
+-- キャップ計算は user_credits をロックせず SELECT するため、同一ユーザーへの
+-- 並行付与で双方が同じ残り枠を計算し、5万キャップを超え得る
 -- (例: 無料残高49,998 で2件同時 → 双方が枠2を計算 → 50,002)。
 --
--- ロックをこの関数の中に置くことで、呼び出し側を1つも書き換えずに
--- 「キャップ計算を行う全経路」が同じロック規約に参加する。
--- transaction-scoped なので、関数から戻った後の呼び出し側のウォレット更新まで
--- 保持され、コミットで解放される。
+-- 当初は get_grantable_free_percoin_amount の内部にロックを置き、
+-- 「キャップ計算を行う全経路」を一括で直列化する設計だった。しかし本番の
+-- 既存関数を調べたところ、ロック取得順が経路ごとに食い違っており、
+-- 共有関数にロックを入れると新たなデッドロックを生むことが判明した:
 --
--- 注: 登録・ツアー・紹介・admin付与・返金はそもそもこの関数を通らない
--- (キャップ非適用の既存仕様)。運営判断により現状維持。
-CREATE OR REPLACE FUNCTION public.get_grantable_free_percoin_amount(
-  p_user_id uuid,
-  p_requested_amount integer
-)
-RETURNS integer
-LANGUAGE plpgsql
-AS $$
-declare
-  v_cap constant integer := 50000;
-  v_free_balance integer;
-begin
-  if p_requested_amount is null or p_requested_amount <= 0 then
-    return 0;
-  end if;
-
-  -- 受け手単位で直列化する。キャップ計算〜呼び出し側のウォレット更新までが
-  -- 1トランザクションに収まるため、これで超過を防げる。
-  perform pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
-
-  select greatest(coalesce(balance, 0) - coalesce(paid_balance, 0), 0)
-  into v_free_balance
-  from public.user_credits
-  where user_id = p_user_id;
-
-  return greatest(least(p_requested_amount, v_cap - coalesce(v_free_balance, 0)), 0);
-end;
-$$;
+--   grant_daily_post_bonus : キャップ計算 → profiles UPDATE  (advisory → 行)
+--   grant_streak_bonus     : profiles UPDATE → キャップ計算  (行 → advisory)
+--
+-- 同一ユーザーの投稿報酬とログイン報酬が並行すると循環待ちになり、
+-- どちらかが deadlock detected で中断される。キャップ超過は「稀に上限を
+-- 少し超える」だけだが、デッドロックは既存の報酬付与そのものを失敗させる。
+-- 割に合わないため、共有関数には手を入れず、本機能の付与RPCの冒頭でのみ
+-- ロックを取る(下記 6/7)。
+--
+--   - 本機能の付与どうし(人気クリエイターへの高頻度な同時付与 = この機能が
+--     現実に作る競合)は完全に直列化される
+--   - 既存ボーナスとの同時実行における超過は、本PR以前と同じ状態で残る
+--     (本機能が作った問題ではない既存の穴)
+--   - 既存関数を1つも書き換えないため、回帰もデッドロックも増やさない
+--
+-- キャップを全経路の厳密な強制上限にするには、全付与経路で「受け手ロックを
+-- 最初に取る」順序へ統一する必要がある(既存の金銭処理を複数書き換えるため、
+-- 独立したタスクとして扱う)。
 
 -- =============================================================================
 -- 5. 付与の共通処理(内部関数)
@@ -288,9 +277,24 @@ SET search_path = public, pg_temp
 AS $$
 DECLARE
   v_event public.prompt_usage_events%ROWTYPE;
+  v_recipient uuid;
   v_origin_ok boolean;
   v_amount integer;
 BEGIN
+  -- 受け手を先に読む(ロックを他のどのロックよりも先に取るため。ADR-008)
+  SELECT e.origin_author_id INTO v_recipient
+  FROM public.prompt_usage_events e
+  WHERE e.id = p_event_id AND e.reward_status = 'pending';
+
+  IF v_recipient IS NULL THEN
+    RETURN;
+  END IF;
+
+  -- 受け手単位の直列化。キャップ計算〜ウォレット更新までを守る。
+  -- 「受け手ロックを最初に取る」を本関数の規約とし、行ロックより先に置く
+  -- (順序が経路ごとに食い違うとデッドロックになるため)。
+  PERFORM pg_advisory_xact_lock(hashtextextended(v_recipient::text, 0));
+
   -- 冪等の要(ADR-002): pending の1行だけが処理に進む。
   -- 以降で例外が起きた場合は呼び出し側の内側ブロックごとロールバックされ、
   -- pending に戻る(= 再処理で拾える)。
@@ -373,6 +377,24 @@ DECLARE
   v_provider uuid;
   v_amount integer;
 BEGIN
+  -- 受け手(provider)を先に解決する。ロックを他のどのロックよりも先に取るため。
+  -- provider 解決はクレジット表示・クリエイター通知と同一規則(ADR-005)。
+  -- provider_user_id は profiles.id への FK なので profiles.user_id を明示的に引く。
+  SELECT COALESCE(preset_provider.user_id, category_provider.user_id)
+  INTO v_provider
+  FROM public.style_preset_usage_events e
+  JOIN public.style_presets sp ON sp.id = e.preset_id
+  LEFT JOIN public.preset_categories pc ON pc.id = sp.category_id
+  LEFT JOIN public.profiles preset_provider ON preset_provider.id = sp.provider_user_id
+  LEFT JOIN public.profiles category_provider ON category_provider.id = pc.provider_user_id
+  WHERE e.id = p_event_id AND e.reward_status = 'pending';
+
+  -- 受け手単位の直列化(ADR-008)。provider 未設定なら誰も受け取らないので
+  -- ロックは不要。以降の test-and-set より先に取る。
+  IF v_provider IS NOT NULL THEN
+    PERFORM pg_advisory_xact_lock(hashtextextended(v_provider::text, 0));
+  END IF;
+
   UPDATE public.style_preset_usage_events e
   SET reward_status = 'granted'
   WHERE e.id = p_event_id
@@ -382,16 +404,6 @@ BEGIN
   IF v_event.id IS NULL THEN
     RETURN;
   END IF;
-
-  -- provider 解決はクレジット表示・クリエイター通知と同一規則(ADR-005)。
-  -- provider_user_id は profiles.id への FK なので profiles.user_id を明示的に引く。
-  SELECT COALESCE(preset_provider.user_id, category_provider.user_id)
-  INTO v_provider
-  FROM public.style_presets sp
-  LEFT JOIN public.preset_categories pc ON pc.id = sp.category_id
-  LEFT JOIN public.profiles preset_provider ON preset_provider.id = sp.provider_user_id
-  LEFT JOIN public.profiles category_provider ON category_provider.id = pc.provider_user_id
-  WHERE sp.id = v_event.preset_id;
 
   -- クリエイター未設定 → 誰にも付与しない(REQ-05)
   -- 自己利用も付与しない(REQ-03)
@@ -600,30 +612,49 @@ DECLARE
   v_row record;
   v_processed integer := 0;
 BEGIN
+  -- 候補の claim と処理順について:
+  --   - 行は FOR UPDATE SKIP LOCKED で claim する。cron と手動実行が重なっても
+  --     互いに別の行を掴み、同じ先頭 N 件を奪い合わない
+  --   - 並び順は「実際の受け手(advisory lock のキー)」にする。Style の受け手は
+  --     利用者ではなく provider なので、ここで解決してから並べる
+  --   - UNION 全体には行ロックを付けられないため、テーブルごとに claim して
+  --     prompt → style の順に処理する。並行バッチも同じ順序を辿るので
+  --     ロック取得順が食い違わない
   FOR v_row IN
-    SELECT id, kind, recipient_id
-    FROM (
+    WITH prompt_claim AS (
       SELECT e.id,
              'prompt'::text AS kind,
              e.origin_author_id AS recipient_id,
-             e.created_at,
-             e.next_attempt_at
+             e.created_at
       FROM public.prompt_usage_events e
       WHERE e.reward_status = 'pending'
-      UNION ALL
+        AND e.created_at < now() - interval '5 minutes'
+        AND (e.next_attempt_at IS NULL OR e.next_attempt_at <= now())
+      ORDER BY e.origin_author_id, e.created_at
+      LIMIT GREATEST(COALESCE(p_limit, 50), 1)
+      FOR UPDATE OF e SKIP LOCKED
+    ),
+    style_claim AS (
       SELECT e.id,
              'style'::text AS kind,
-             e.user_id AS recipient_id,   -- 受け手はRPC内で解決する。順序固定用の代理キー
-             e.created_at,
-             e.next_attempt_at
+             COALESCE(preset_provider.user_id, category_provider.user_id) AS recipient_id,
+             e.created_at
       FROM public.style_preset_usage_events e
+      JOIN public.style_presets sp ON sp.id = e.preset_id
+      LEFT JOIN public.preset_categories pc ON pc.id = sp.category_id
+      LEFT JOIN public.profiles preset_provider ON preset_provider.id = sp.provider_user_id
+      LEFT JOIN public.profiles category_provider ON category_provider.id = pc.provider_user_id
       WHERE e.reward_status = 'pending'
-    ) pending
-    WHERE pending.created_at < now() - interval '5 minutes'
-      AND (pending.next_attempt_at IS NULL OR pending.next_attempt_at <= now())
-    -- 並行実行時のロック取得順を固定する(ADR-008 の advisory lock との整合)
-    ORDER BY pending.recipient_id, pending.created_at
-    LIMIT GREATEST(COALESCE(p_limit, 50), 1)
+        AND e.created_at < now() - interval '5 minutes'
+        AND (e.next_attempt_at IS NULL OR e.next_attempt_at <= now())
+      ORDER BY COALESCE(preset_provider.user_id, category_provider.user_id), e.created_at
+      LIMIT GREATEST(COALESCE(p_limit, 50), 1)
+      FOR UPDATE OF e SKIP LOCKED
+    )
+    SELECT id, kind, recipient_id, created_at, 0 AS table_order FROM prompt_claim
+    UNION ALL
+    SELECT id, kind, recipient_id, created_at, 1 AS table_order FROM style_claim
+    ORDER BY table_order, recipient_id, created_at
   LOOP
     BEGIN
       IF v_row.kind = 'prompt' THEN
@@ -707,11 +738,15 @@ BEGIN
 END;
 $do$;
 
-COMMIT;
-
 -- =============================================================================
 -- 11. カタログ検証 + 実データ dry-run(必ずロールバックする)
 -- =============================================================================
+--
+-- COMMIT はこのファイルの末尾に置く。検証より前にコミットすると、
+-- 検証が失敗しても DDL・関数・cron だけが残り、マイグレーション履歴には
+-- 未適用として記録される(再実行時に既存制約と衝突して手動修復が必要になる)。
+-- dry-run 内の PT999 は内側のサブトランザクションだけを戻すため、
+-- 外側の DDL トランザクションとは両立する。
 
 DO $$
 DECLARE
@@ -755,11 +790,24 @@ BEGIN
     RAISE EXCEPTION '付与関数が % 本(4本必要)', v_funcs;
   END IF;
 
-  SELECT p.prosrc LIKE '%pg_advisory_xact_lock%' INTO v_lock_present
+  -- 受け手単位の直列化は付与RPCの側で行う(ADR-008 再改訂。共有関数に入れると
+  -- 既存経路とロック順が食い違いデッドロックになるため)
+  SELECT bool_and(p.prosrc LIKE '%pg_advisory_xact_lock%') INTO v_lock_present
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
-  WHERE n.nspname = 'public' AND p.proname = 'get_grantable_free_percoin_amount';
+  WHERE n.nspname = 'public'
+    AND p.proname IN ('grant_prompt_usage_reward', 'grant_style_preset_usage_reward');
   IF v_lock_present IS DISTINCT FROM true THEN
-    RAISE EXCEPTION 'キャップ関数に advisory lock が入っていない';
+    RAISE EXCEPTION '付与RPCに受け手単位の advisory lock が入っていない';
+  END IF;
+
+  -- 共有のキャップ関数は元のまま(ロックを持ち込んでいない)ことを確認する
+  IF EXISTS (
+    SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'get_grantable_free_percoin_amount'
+      AND p.prosrc LIKE '%pg_advisory_xact_lock%'
+  ) THEN
+    RAISE EXCEPTION 'キャップ関数にロックが入っている(既存経路とのデッドロック要因)';
   END IF;
 
   IF has_function_privilege('authenticated', 'public.grant_prompt_usage_reward(uuid)', 'EXECUTE')
@@ -798,79 +846,114 @@ $$;
 
 -- 実データでの dry-run。必ずロールバックするサブトランザクションで行う。
 -- (コミット済みの INSERT + DELETE では論理レプリケーションに痕跡が漏れるため)
+--
+-- 実データが無い環境(Supabase Preview の新規ブランチ等)では NOTICE を出して
+-- スキップする。マイグレーションの成否を適用先のデータ量に依存させないため。
+-- 本番適用時は NOTICE が「スキップ」ではなく「OK」であることを必ず確認する。
 DO $$
 DECLARE
-  v_user uuid;
-  v_other uuid;
+  v_provider_profile uuid;
+  v_provider_user uuid;
+  v_consumer uuid;
   v_preset uuid;
   v_image uuid;
   v_event uuid;
   v_status text;
-  v_amount integer;
+  v_legacy_before integer;
   v_balance_before integer;
   v_balance_after integer;
+  v_tx_count integer;
+  v_batch_count integer;
 BEGIN
+  -- 検証用の実データが揃うか先に確かめる(揃わなければスキップ)
+  SELECT sp.id INTO v_preset
+  FROM public.style_presets sp
+  JOIN public.preset_categories pc ON pc.id = sp.category_id
+  WHERE sp.status = 'published' AND pc.visibility = 'public' AND pc.is_active = true
+  LIMIT 1;
+
+  SELECT p.id, p.user_id INTO v_provider_profile, v_provider_user
+  FROM public.profiles p
+  WHERE p.user_id IS NOT NULL
+  LIMIT 1;
+
+  SELECT p.user_id INTO v_consumer
+  FROM public.profiles p
+  WHERE p.user_id IS NOT NULL AND p.user_id <> v_provider_user
+  LIMIT 1;
+
+  IF v_preset IS NULL OR v_provider_user IS NULL OR v_consumer IS NULL THEN
+    RAISE NOTICE '実データが無いため dry-run をスキップした(プレビュー環境等)';
+    RETURN;
+  END IF;
+
+  SELECT gi.id INTO v_image
+  FROM public.generated_images gi
+  WHERE gi.user_id = v_consumer
+    AND NOT EXISTS (
+      SELECT 1 FROM public.style_preset_usage_events e
+      WHERE e.generated_image_id = gi.id
+    )
+  LIMIT 1;
+
+  IF v_image IS NULL THEN
+    RAISE NOTICE '未使用の画像が無いため dry-run をスキップした';
+    RETURN;
+  END IF;
+
   BEGIN
-    -- 検証用に既存の公開プリセットと2ユーザーを借りる
-    SELECT sp.id INTO v_preset
-    FROM public.style_presets sp
-    JOIN public.preset_categories pc ON pc.id = sp.category_id
-    WHERE sp.status = 'published' AND pc.visibility = 'public' AND pc.is_active = true
-    LIMIT 1;
+    -- provider を検証用ユーザーに固定してから始める。
+    -- これをしないと「額0だから skipped」なのか「provider 未設定だから
+    -- skipped」なのか区別できず、検証が素通りする。
+    UPDATE public.style_presets
+    SET provider_user_id = v_provider_profile
+    WHERE id = v_preset;
 
-    SELECT user_id INTO v_user FROM public.profiles WHERE user_id IS NOT NULL LIMIT 1;
-    SELECT user_id INTO v_other FROM public.profiles WHERE user_id IS NOT NULL AND user_id <> v_user LIMIT 1;
-
-    IF v_preset IS NULL OR v_user IS NULL OR v_other IS NULL THEN
-      RAISE EXCEPTION 'dry-run 用の実データが揃わない(検証をスキップさせない)';
-    END IF;
-
-    -- まだ利用イベントを持たない画像を選ぶ(ON CONFLICT で握りつぶされて
-    -- 検証が素通りするのを防ぐ)
-    SELECT gi.id INTO v_image
-    FROM public.generated_images gi
-    WHERE gi.user_id = v_user
-      AND NOT EXISTS (
-        SELECT 1 FROM public.style_preset_usage_events e
-        WHERE e.generated_image_id = gi.id
-      )
-    LIMIT 1;
-    IF v_image IS NULL THEN
-      RAISE EXCEPTION 'dry-run 用の画像が見つからない(検証をスキップさせない)';
-    END IF;
-
-    -- (a) 額0(既定)なら skipped で確定し、取引は作られない
     INSERT INTO public.style_preset_usage_events
       (generated_image_id, preset_id, user_id, created_at, was_public_at_generation)
-    VALUES (v_image, v_preset, v_other, now(), true)
-    ON CONFLICT (generated_image_id) DO NOTHING
+    VALUES (v_image, v_preset, v_consumer, now(), true)
     RETURNING id INTO v_event;
 
-    IF v_event IS NULL THEN
-      RAISE EXCEPTION 'dry-run 用イベントを作成できない(検証をスキップさせない)';
-    END IF;
+    SELECT COALESCE(balance, 0) INTO v_balance_before
+    FROM public.user_credits WHERE user_id = v_provider_user;
 
+    -- (a) 額0(既定)は skipped で確定し、取引もバッチも作られず残高も動かない
     PERFORM public.grant_style_preset_usage_reward(v_event);
-    SELECT reward_status INTO v_status FROM public.style_preset_usage_events WHERE id = v_event;
+
+    SELECT reward_status INTO v_status
+    FROM public.style_preset_usage_events WHERE id = v_event;
+    SELECT count(*) INTO v_tx_count
+    FROM public.credit_transactions
+    WHERE metadata->>'event_id' = v_event::text;
+    SELECT count(*) INTO v_batch_count
+    FROM public.free_percoin_batches
+    WHERE source = 'style_usage_reward' AND user_id = v_provider_user
+      AND granted_at > now() - interval '1 minute';
+    SELECT COALESCE(balance, 0) INTO v_balance_after
+    FROM public.user_credits WHERE user_id = v_provider_user;
+
     IF v_status <> 'skipped' THEN
       RAISE EXCEPTION '額0のとき skipped にならない(status=%)', v_status;
+    END IF;
+    IF v_tx_count <> 0 OR v_batch_count <> 0 THEN
+      RAISE EXCEPTION '額0なのに取引(%)/バッチ(%)が作られた', v_tx_count, v_batch_count;
+    END IF;
+    IF COALESCE(v_balance_after, 0) <> COALESCE(v_balance_before, 0) THEN
+      RAISE EXCEPTION '額0なのに残高が動いた(before=%, after=%)', v_balance_before, v_balance_after;
     END IF;
 
     -- (b) 額を入れると付与され、残高が増え、granted になる
     UPDATE public.percoin_bonus_defaults SET amount = 2 WHERE source = 'style_usage_reward';
     UPDATE public.style_preset_usage_events SET reward_status = 'pending' WHERE id = v_event;
 
-    -- provider を持つプリセットに差し替えて付与経路を通す
-    UPDATE public.style_presets SET provider_user_id = (
-      SELECT id FROM public.profiles WHERE user_id = v_user
-    ) WHERE id = v_preset;
-
-    SELECT COALESCE(balance, 0) INTO v_balance_before FROM public.user_credits WHERE user_id = v_user;
-
     PERFORM public.grant_style_preset_usage_reward(v_event);
 
-    SELECT reward_status INTO v_status FROM public.style_preset_usage_events WHERE id = v_event;
-    SELECT COALESCE(balance, 0) INTO v_balance_after FROM public.user_credits WHERE user_id = v_user;
+    SELECT reward_status INTO v_status
+    FROM public.style_preset_usage_events WHERE id = v_event;
+    SELECT COALESCE(balance, 0) INTO v_balance_after
+    FROM public.user_credits WHERE user_id = v_provider_user;
+    SELECT count(*) INTO v_tx_count
+    FROM public.credit_transactions WHERE metadata->>'event_id' = v_event::text;
 
     IF v_status <> 'granted' THEN
       RAISE EXCEPTION '付与後に granted にならない(status=%)', v_status;
@@ -878,34 +961,81 @@ BEGIN
     IF COALESCE(v_balance_after, 0) <> COALESCE(v_balance_before, 0) + 2 THEN
       RAISE EXCEPTION '残高が2増えていない(before=%, after=%)', v_balance_before, v_balance_after;
     END IF;
+    IF v_tx_count <> 1 THEN
+      RAISE EXCEPTION '取引が1件でない(count=%)', v_tx_count;
+    END IF;
 
     -- (c) 二重実行しても増えない(冪等)
     PERFORM public.grant_style_preset_usage_reward(v_event);
-    SELECT COALESCE(balance, 0) INTO v_balance_after FROM public.user_credits WHERE user_id = v_user;
+    SELECT COALESCE(balance, 0) INTO v_balance_after
+    FROM public.user_credits WHERE user_id = v_provider_user;
     IF COALESCE(v_balance_after, 0) <> COALESCE(v_balance_before, 0) + 2 THEN
       RAISE EXCEPTION '二重実行で残高が増えた(after=%)', v_balance_after;
     END IF;
 
     -- (d) 自己利用は skipped(利用者 = provider)
     UPDATE public.style_preset_usage_events
-    SET reward_status = 'pending', user_id = v_user
+    SET reward_status = 'pending', user_id = v_provider_user
     WHERE id = v_event;
     PERFORM public.grant_style_preset_usage_reward(v_event);
-    SELECT reward_status INTO v_status FROM public.style_preset_usage_events WHERE id = v_event;
+    SELECT reward_status INTO v_status
+    FROM public.style_preset_usage_events WHERE id = v_event;
     IF v_status <> 'skipped' THEN
       RAISE EXCEPTION '自己利用が skipped にならない(status=%)', v_status;
     END IF;
 
-    -- (e) legacy は再処理で拾われない
-    SELECT count(*) INTO v_amount
-    FROM public.style_preset_usage_events
-    WHERE reward_status = 'legacy';
+    -- (e) 付与が失敗しても利用イベントは残り、ウォレットは動かない(ADR-006)。
+    --     失敗の注入は検証用ユーザーの残高だけで行う(共有スキーマには触らない)。
+    --     balance = paid_balance = int 上限にすると、無料残高は0のままなので
+    --     キャップは2を通し、直後の balance + 2 が integer 範囲外で失敗する。
+    UPDATE public.style_preset_usage_events
+    SET reward_status = 'pending', user_id = v_consumer
+    WHERE id = v_event;
+
+    INSERT INTO public.user_credits (user_id, balance, paid_balance)
+    VALUES (v_provider_user, 2147483647, 2147483647)
+    ON CONFLICT (user_id) DO UPDATE
+      SET balance = 2147483647, paid_balance = 2147483647;
+
+    BEGIN
+      PERFORM public.grant_style_preset_usage_reward(v_event);
+      RAISE EXCEPTION '付与が失敗するはずのケースで成功した';
+    EXCEPTION
+      WHEN numeric_value_out_of_range THEN
+        NULL;  -- 記録関数側の内側ブロックと同じ扱い(付与だけが巻き戻る)
+    END;
+
+    SELECT reward_status INTO v_status
+    FROM public.style_preset_usage_events WHERE id = v_event;
+    SELECT COALESCE(balance, 0) INTO v_balance_after
+    FROM public.user_credits WHERE user_id = v_provider_user;
+
+    IF v_status <> 'pending' THEN
+      RAISE EXCEPTION '付与失敗後に pending へ戻っていない(status=%)', v_status;
+    END IF;
+    IF v_balance_after <> 2147483647 THEN
+      RAISE EXCEPTION '付与失敗なのに残高が動いた(after=%)', v_balance_after;
+    END IF;
+    IF EXISTS (
+      SELECT 1 FROM public.credit_transactions
+      WHERE metadata->>'event_id' = v_event::text
+        AND transaction_type = 'style_usage_reward'
+        AND created_at > now() - interval '1 minute'
+      HAVING count(*) > 1
+    ) THEN
+      RAISE EXCEPTION '付与失敗なのに取引が増えた';
+    END IF;
+
+    -- (f) legacy は再処理で拾われない
+    SELECT count(*) INTO v_legacy_before
+    FROM public.style_preset_usage_events WHERE reward_status = 'legacy';
     PERFORM public.reprocess_pending_usage_rewards(10);
-    IF (SELECT count(*) FROM public.style_preset_usage_events WHERE reward_status = 'legacy') <> v_amount THEN
+    IF (SELECT count(*) FROM public.style_preset_usage_events WHERE reward_status = 'legacy')
+       <> v_legacy_before THEN
       RAISE EXCEPTION 'legacy が再処理で変化した';
     END IF;
 
-    RAISE NOTICE '実データ dry-run OK(額0=skipped・付与で残高+2かつgranted・二重実行で不変・自己利用skipped・legacy不変)';
+    RAISE NOTICE '実データ dry-run OK(額0=skipped/取引0/残高不変・付与で+2かつgranted・二重実行で不変・自己利用skipped・付与失敗でpending維持かつ残高不変・legacy不変)';
 
     -- 検証はここで必ず巻き戻す
     RAISE EXCEPTION 'PT999' USING ERRCODE = 'PT999';
@@ -918,3 +1048,5 @@ $$;
 
 -- PostgREST のスキーマキャッシュへ新関数を反映する
 NOTIFY pgrst, 'reload schema';
+
+COMMIT;
