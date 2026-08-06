@@ -9,6 +9,7 @@ import {
   type StylePublicUsageEventType,
 } from "@/features/style/lib/style-usage-events";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
+import { shouldRecordStylePresetUsage } from "@/features/style-presets/lib/style-preset-usage-recording";
 import { getAdminPreviewUserIds, getAdminUserIds } from "@/lib/env";
 
 const STYLE_USAGE_EVENT_TYPES = new Set<StylePublicUsageEventType>([
@@ -76,11 +77,21 @@ export async function postStyleEventsRoute(
         ? payload.styleId.trim()
         : null;
 
-    if (
-      styleId &&
-      !(await getPublishedStylePresetByIdFn(styleId, { includeAdminOnly }))
-    ) {
-      return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+    if (styleId) {
+      const preset = await getPublishedStylePresetByIdFn(styleId, {
+        includeAdminOnly,
+      });
+      if (!preset) {
+        return jsonError(copy.invalidStylePreset, "STYLE_INVALID_STYLE", 400);
+      }
+      // 公開中でないプリセット(admin の公開前テスト・表示期間外等)に紐づく
+      // 利用イベントは記録しない(「◯◯回つくられました」カウンタ/KPI への混入防止)。
+      // トラッキングは UX に影響させない方針のため、エラーではなく ok で応答する。
+      // 非 admin は上の取得(includeAdminOnly=false)で既に 400 になるため、
+      // ここに到達してスキップされるのは実質 admin の公開前テストのみ。
+      if (!shouldRecordStylePresetUsage(preset)) {
+        return NextResponse.json({ ok: true });
+      }
     }
 
     const authState: StyleUsageAuthState = user ? "authenticated" : "guest";

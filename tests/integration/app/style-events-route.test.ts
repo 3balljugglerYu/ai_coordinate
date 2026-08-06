@@ -21,6 +21,24 @@ async function readJson(response: Response): Promise<JsonRecord> {
   return (await response.json()) as JsonRecord;
 }
 
+/**
+ * getPublishedStylePresetById が返す公開中プリセットの最小形。
+ * 記録ゲート(shouldRecordStylePresetUsage)が category の公開状態を読むため、
+ * カテゴリを含めて返す(実リポジトリの戻り値と同じく category 必須)。
+ */
+function buildPublicPreset(categoryOverrides: Record<string, unknown> = {}) {
+  return {
+    id: STYLE_ID,
+    category: {
+      visibility: "public",
+      isActive: true,
+      collectionDisplayStartsAt: null,
+      collectionDisplayEndsAt: null,
+      ...categoryOverrides,
+    },
+  };
+}
+
 describe("StyleEventsRoute integration tests", () => {
   let getUserFn: jest.Mock;
   let getAdminUserIdsFn: jest.Mock;
@@ -34,7 +52,7 @@ describe("StyleEventsRoute integration tests", () => {
     getPublishedStylePresetByIdFn = jest
       .fn()
       .mockImplementation(async (styleId: string) =>
-        styleId === STYLE_ID ? { id: STYLE_ID } : null
+        styleId === STYLE_ID ? buildPublicPreset() : null
       );
     recordStyleUsageEventFn = jest.fn().mockResolvedValue(undefined);
     consoleErrorSpy = jest.spyOn(console, "error").mockImplementation(() => {
@@ -175,5 +193,72 @@ describe("StyleEventsRoute integration tests", () => {
       eventType: "download",
       styleId: STYLE_ID,
     });
+  });
+
+  // 記録ゲート(shouldRecordStylePresetUsage): 公開中でないプリセットに紐づく
+  // 利用イベントは記録しない。エラーではなく ok を返す(UX 影響なし)。
+  test("postStyleEventsRoute_adminOnlyカテゴリのプリセットは記録せずokを返す(公開前テスト除外)", async () => {
+    getUserFn.mockResolvedValueOnce({ id: "admin-1" });
+    getAdminUserIdsFn.mockReturnValueOnce(["admin-1"]);
+    getPublishedStylePresetByIdFn.mockResolvedValueOnce(
+      buildPublicPreset({ visibility: "admin_only" })
+    );
+
+    const response = await postStyleEventsRoute(
+      createRequest({ eventType: "generate", styleId: STYLE_ID }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleEventsRoute_表示期間外のプリセットは記録せずokを返す", async () => {
+    getPublishedStylePresetByIdFn.mockResolvedValueOnce(
+      buildPublicPreset({ collectionDisplayEndsAt: "2020-01-01T00:00:00Z" })
+    );
+
+    const response = await postStyleEventsRoute(
+      createRequest({ eventType: "generate", styleId: STYLE_ID }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleEventsRoute_inactiveカテゴリのプリセットは記録せずokを返す", async () => {
+    getPublishedStylePresetByIdFn.mockResolvedValueOnce(
+      buildPublicPreset({ isActive: false })
+    );
+
+    const response = await postStyleEventsRoute(
+      createRequest({ eventType: "download", styleId: STYLE_ID }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body).toEqual({ ok: true });
+    expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
   });
 });

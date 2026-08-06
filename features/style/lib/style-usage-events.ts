@@ -33,6 +33,13 @@ export interface RecordStyleUsageEventInput {
   styleId?: string | null;
 }
 
+/**
+ * 注意: styleId を伴うイベントを新しい経路から記録する場合は、記録前に
+ * `shouldRecordStylePresetUsage`(features/style-presets/lib/style-preset-usage-recording)
+ * を通すこと。公開中でないプリセット(admin の公開前テスト等)のイベントが
+ * 「◯◯回つくられました」カウンタや KPI 集計に混入するのを防ぐゲートで、
+ * 既存経路(/style/events・/style/generate)は適用済み。
+ */
 export async function recordStyleUsageEvent({
   userId,
   authState,
