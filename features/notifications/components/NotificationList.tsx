@@ -24,6 +24,7 @@ import {
   Sparkles,
   PartyPopper,
   Shirt,
+  Coins,
 } from "lucide-react";
 
 /**
@@ -136,6 +137,8 @@ export function NotificationList({
         return <Shirt className="h-4 w-4 text-indigo-500" />;
       case "style_preset_usage_milestone":
         return <PartyPopper className="h-4 w-4 text-pink-500" />;
+      case "usage_reward_earned":
+        return <Coins className="h-4 w-4 text-amber-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }

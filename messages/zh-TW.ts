@@ -1813,6 +1813,7 @@ export const zhTwMessages = {
     stylePresetPostTitle: "{actor} 用你的「{preset}」風格發布了作品",
     stylePresetUsageMilestoneFirstTitle: "你的「{preset}」風格首次被使用",
     stylePresetUsageMilestoneTitle: "你的「{preset}」風格已被使用 {count} 次",
+    usageRewardEarnedTitle: "今天你的作品被使用了 {count} 次，獲得 {amount} 佩爾幣！",
     commentTitle: "{actor} 在你的貼文留言",
     replyTitle: "{actor} 回覆了你的留言",
     replyToReplyTitle: "{actor}回覆了你的回覆",

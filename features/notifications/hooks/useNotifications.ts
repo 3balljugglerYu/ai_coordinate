@@ -30,6 +30,9 @@ interface UseNotificationsOptions {
   autoMarkAllRead?: boolean;
 }
 
+/** 未読数の再同期をまとめる待ち時間(ms)。一括既読の連打を1回に畳む。 */
+const UNREAD_SYNC_DEBOUNCE_MS = 300;
+
 const BONUS_TOAST_HISTORY_STORAGE_KEY = "bonus-toast-history:v2";
 const BONUS_TOAST_HISTORY_LIMIT = 100;
 
@@ -139,6 +142,30 @@ export function useNotifications(
     });
   }, [refreshUnreadCount]);
 
+  /**
+   * 未読数のサーバー再同期をまとめる。
+   * 「すべて既読にする」は行数ぶんの UPDATE を発火させるため、そのたびに
+   * 取得すると無駄なリクエストが並ぶ。最後の1回だけ実行する。
+   */
+  const unreadSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scheduleUnreadBadgeSync = useCallback(() => {
+    if (unreadSyncTimerRef.current) {
+      clearTimeout(unreadSyncTimerRef.current);
+    }
+    unreadSyncTimerRef.current = setTimeout(() => {
+      unreadSyncTimerRef.current = null;
+      syncUnreadBadgeCount();
+    }, UNREAD_SYNC_DEBOUNCE_MS);
+  }, [syncUnreadBadgeCount]);
+
+  useEffect(() => {
+    return () => {
+      if (unreadSyncTimerRef.current) {
+        clearTimeout(unreadSyncTimerRef.current);
+      }
+    };
+  }, []);
+
   const translateNotification = useCallback(
     (key: NotificationTranslationKey, values?: Record<string, string | number>) =>
       values ? t(key as never, values as never) : t(key as never),
@@ -176,6 +203,53 @@ export function useNotifications(
       });
     },
     [t]
+  );
+
+  /**
+   * Realtime の UPDATE を一覧へ反映する。
+   *
+   * クリエイター還元通知は「受け手×JST日付で1行」を UPSERT で更新するため、
+   * 2件目以降は INSERT ではなく UPDATE で届く。更新時は created_at も進むので、
+   * 反映後に再ソートすると一覧の先頭へ浮上する。
+   *
+   * 既読化・一括既読も UPDATE を発火させる。ここで毎回 getNotificationById を
+   * 呼ぶと一括既読で行数ぶんのリクエストが飛ぶため、一覧に既にある行は
+   * DB 由来の列だけをマージして済ませる(enrichment 済みの actor / post は保持)。
+   */
+  const applyRealtimeNotificationUpdate = useCallback(
+    async (updated: Notification) => {
+      let handled = false;
+
+      setNotifications((prev) => {
+        const index = prev.findIndex((item) => item.id === updated.id);
+        if (index === -1) {
+          return prev;
+        }
+        handled = true;
+        const merged: Notification = {
+          ...prev[index],
+          title: updated.title,
+          body: updated.body,
+          data: updated.data,
+          is_read: updated.is_read,
+          read_at: updated.read_at,
+          created_at: updated.created_at,
+        };
+        const next = [...prev];
+        next[index] = merged;
+        return next.sort((a, b) => {
+          const createdAtOrder =
+            Date.parse(b.created_at) - Date.parse(a.created_at);
+          return createdAtOrder || b.id.localeCompare(a.id);
+        });
+      });
+
+      // 一覧に無い(未ロードのページから浮上してきた)ときだけ取得して差し込む
+      if (!handled) {
+        await prependRealtimeNotification(updated);
+      }
+    },
+    [prependRealtimeNotification]
   );
 
   const markBonusToastAsShown = useCallback(
@@ -357,6 +431,22 @@ export function useNotifications(
           }
         }
       )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `recipient_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          // 内容の更新(還元通知の累計加算)と既読化の両方がここへ来る。
+          // 未読数はクライアントで増減させるとすぐズレるため、必ずサーバーの値で
+          // 再同期する(一括既読の連打に備えてデバウンス)。
+          void applyRealtimeNotificationUpdate(payload.new as Notification);
+          scheduleUnreadBadgeSync();
+        }
+      )
       .subscribe();
 
     return () => {
@@ -367,7 +457,9 @@ export function useNotifications(
     hasShownBonusToast,
     isNotificationsPage,
     markBonusToastAsShown,
+    applyRealtimeNotificationUpdate,
     prependRealtimeNotification,
+    scheduleUnreadBadgeSync,
     syncUnreadBadgeCount,
     toast,
     t,
@@ -512,6 +604,12 @@ export function useNotifications(
         notification.data?.preset_slug
       ) {
         router.push(`/styles/${notification.data.preset_slug}`);
+        return;
+      }
+
+      // クリエイター還元通知はペルコイン管理ページへ(残高が見える唯一の画面)。
+      if (notification.type === "usage_reward_earned") {
+        router.push("/my-page/credits");
         return;
       }
 

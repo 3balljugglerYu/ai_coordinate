@@ -28,6 +28,7 @@ export type NotificationTranslationKey =
   | "usageMilestoneFirstTitleNoCaption"
   | "usageMilestoneTitle"
   | "usageMilestoneTitleNoCaption"
+  | "usageRewardEarnedTitle"
   | "moderationRemovedTitle"
   | "moderationRemovedBody"
   | "moderationAppealUpheldTitle"
@@ -243,6 +244,22 @@ export function formatNotificationContent(
                 preset: truncateOriginCaption(presetTitle),
                 count: milestone,
               }),
+        body: "",
+      };
+    }
+    case "usage_reward_earned": {
+      // クリエイター還元（匿名）。受け手×JST日付で1行に集約され、
+      // 付与のたびに usage_count / total_amount が加算される。
+      const usageCount = getNumberValue(notification.data?.usage_count);
+      const totalAmount = getNumberValue(notification.data?.total_amount);
+      if (usageCount === null || totalAmount === null) {
+        return { title: notification.title, body: notification.body };
+      }
+      return {
+        title: t("usageRewardEarnedTitle", {
+          count: usageCount,
+          amount: totalAmount,
+        }),
         body: "",
       };
     }

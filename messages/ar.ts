@@ -1816,6 +1816,7 @@ export const arMessages = {
     stylePresetPostTitle: "نشر {actor} عملاً بأسلوبك «{preset}»",
     stylePresetUsageMilestoneFirstTitle: "استُخدم أسلوبك «{preset}» لأول مرة",
     stylePresetUsageMilestoneTitle: "وصل عدد مرات استخدام أسلوبك «{preset}» إلى {count}",
+    usageRewardEarnedTitle: "استُخدم عملك {count} مرة اليوم وحصلت على {amount} بيركوين!",
     commentTitle: "{actor} علّق على منشورك",
     replyTitle: "{actor} رد على تعليقك",
     replyToReplyTitle: "ردّ {actor} على ردّك",

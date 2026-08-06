@@ -1819,6 +1819,7 @@ export const esMessages = {
     stylePresetPostTitle: "{actor} publicó una obra con tu estilo «{preset}»",
     stylePresetUsageMilestoneFirstTitle: "Tu estilo «{preset}» se usó por primera vez",
     stylePresetUsageMilestoneTitle: "Tu estilo «{preset}» se ha usado {count} veces",
+    usageRewardEarnedTitle: "¡Tu obra se usó {count} veces hoy y ganaste {amount} Percoins!",
     commentTitle: "{actor} comentó tu publicación",
     replyTitle: "{actor} respondió a tu comentario",
     replyToReplyTitle: "{actor} respondió a tu respuesta",

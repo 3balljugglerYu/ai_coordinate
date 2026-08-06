@@ -1819,6 +1819,7 @@ export const itMessages = {
     stylePresetPostTitle: "{actor} ha pubblicato un'opera con il tuo stile “{preset}”",
     stylePresetUsageMilestoneFirstTitle: "Il tuo stile “{preset}” è stato usato per la prima volta",
     stylePresetUsageMilestoneTitle: "Il tuo stile “{preset}” è stato usato {count} volte",
+    usageRewardEarnedTitle: "Oggi la tua opera è stata usata {count} volte: hai guadagnato {amount} Percoin!",
     commentTitle: "{actor} ha commentato il tuo post",
     replyTitle: "{actor} ha risposto al tuo commento",
     replyToReplyTitle: "{actor} ha risposto alla tua risposta",

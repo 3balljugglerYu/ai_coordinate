@@ -1817,6 +1817,7 @@ export const hiMessages = {
     stylePresetPostTitle: "{actor} ने आपकी “{preset}” स्टाइल में एक कृति पोस्ट की",
     stylePresetUsageMilestoneFirstTitle: "आपकी “{preset}” स्टाइल पहली बार उपयोग की गई",
     stylePresetUsageMilestoneTitle: "आपकी “{preset}” स्टाइल {count} बार उपयोग की जा चुकी है",
+    usageRewardEarnedTitle: "आज आपकी रचना {count} बार इस्तेमाल हुई और आपको {amount} पर्कॉइन मिले!",
     commentTitle: "{actor} ने आपकी पोस्ट पर टिप्पणी की",
     replyTitle: "{actor} ने आपकी टिप्पणी पर जवाब दिया",
     replyToReplyTitle: "{actor} ने आपके उत्तर का जवाब दिया",

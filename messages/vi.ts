@@ -1816,6 +1816,7 @@ export const viMessages = {
     stylePresetPostTitle: "{actor} đã đăng một tác phẩm với phong cách “{preset}” của bạn",
     stylePresetUsageMilestoneFirstTitle: "Phong cách “{preset}” của bạn được sử dụng lần đầu tiên",
     stylePresetUsageMilestoneTitle: "Phong cách “{preset}” của bạn đã được sử dụng {count} lần",
+    usageRewardEarnedTitle: "Hôm nay tác phẩm của bạn được dùng {count} lần và bạn nhận {amount} Percoin!",
     commentTitle: "{actor} đã bình luận về bài viết của bạn",
     replyTitle: "{actor} đã trả lời bình luận của bạn",
     replyToReplyTitle: "{actor} đã trả lời phản hồi của bạn",
