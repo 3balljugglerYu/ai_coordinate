@@ -87,7 +87,9 @@ flowchart TD
 - **Decision**: `(recipient_id, type, data->>'reward_date')` の部分ユニークインデックスで1行に集約し、
   付与のたびに `ON CONFLICT DO UPDATE` で累計を加算する。
 - **Reason**: 「都度気づける」と「通知欄を埋めない」を両立できる。既存の UPSERT 通知と同じ手法。
-- **Consequence**: 日付は JST で決める（`(now() AT TIME ZONE 'Asia/Tokyo')::date`）。
+- **Consequence**: 日付は JST で決める。**`v_notified_at := clock_timestamp()` を一度だけ取得し、
+  そこから `reward_date` と `created_at` の両方を導出する**（`now()` はトランザクション開始時刻なので、
+  再処理バッチが日をまたぐと「日付は前日・`created_at` は当日」になり同じ日に2行並ぶ）。
   日をまたぐと自然に新しい行になる。
 
 ### ADR-002: 累計は通知行の `data` に持ち、付与額から加算する
@@ -107,11 +109,12 @@ flowchart TD
 ### ADR-004（ユーザー決定）: 更新のたびに `created_at` を進めて先頭へ浮上させる
 
 - **Context**: 「更新のたびに先頭へ浮上させたい」（存在感を出し、確実に気づけるようにする）。
-- **Decision**: UPSERT の更新時に `created_at = now()` も更新する。
+- **Decision**: UPSERT の更新時に `created_at`（= `v_notified_at`）も進める。
 - **Reason**: 一覧の並び順は**サーバー・クライアントとも `created_at DESC, id DESC` で統一**されているため、
   `created_at` を進めるだけで、追加のソート列やソート式の変更なしに先頭へ浮上する。
-  ページングも `created_at|id` のキーセットカーソル方式なので、行が上へ移動しても
-  **重複や取りこぼしが起きない**（下記 Consequence で詳述）。
+  ページングは `created_at|id` のキーセットカーソル方式なので、行が上へ移動しても
+  **重複表示にはならない**。ただし**キーセット単体では取りこぼしを防げない**ため、
+  ADR-006 の reconciliation と併用して整合を保つ（下記 Consequence で詳述）。
 - **Consequence**:
   - この type に限り `created_at` の意味は「最後に付与された時刻」になる。列コメントで明示する。
   - ページング整合: 浮上した行は「カーソルより新しい」側へ移るため、次ページ取得の結果からは外れる。
@@ -169,7 +172,8 @@ flowchart LR
   - 部分ユニークインデックス `(recipient_id, (data->>'reward_date')) WHERE type = 'usage_reward_earned'`
   - `upsert_usage_reward_notification(p_recipient uuid, p_amount integer)`（service_role 限定）
     - JST 日付を算出し、`ON CONFLICT DO UPDATE` で `usage_count +1` / `total_amount +p_amount` /
-      `is_read = false` / **`created_at = now()`（先頭へ浮上）**
+      `is_read = false` / **`created_at = v_notified_at`（先頭へ浮上）**。
+      `v_notified_at := clock_timestamp()` を一度だけ取り、`reward_date` と共用する
     - `actor_id = p_recipient`（匿名）・`entity_type='user'`・`entity_id = p_recipient`
   - `grant_prompt_usage_reward` / `grant_style_preset_usage_reward` の**付与成立時のみ**呼び出し、
     **内側の例外ブロックで隔離**（ADR-003）

@@ -374,6 +374,8 @@ DECLARE
   v_free_recipient uuid;
   v_status text;
   v_balance integer;
+  v_notification_before jsonb;
+  v_notification_after jsonb;
 BEGIN
   SELECT user_id INTO v_user FROM public.profiles WHERE user_id IS NOT NULL LIMIT 1;
 
@@ -463,6 +465,16 @@ BEGIN
       VALUES (v_free_recipient, 0, 0)
       ON CONFLICT (user_id) DO UPDATE SET balance = 0, paid_balance = 0;
 
+      -- 通知の事前スナップショット。前半で v_user 向けの通知を作っているため、
+      -- v_free_recipient がたまたま同じユーザーだと「行が存在する」だけでは
+      -- 判定できない(適用先データ次第で誤失敗する)。前後の差分で見る。
+      SELECT to_jsonb(n) INTO v_notification_before
+      FROM public.notifications n
+      WHERE n.recipient_id = v_free_recipient
+        AND n.type = 'usage_reward_earned'
+        AND n.data->>'reward_date' =
+            to_char(clock_timestamp() AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD');
+
       ALTER TABLE public.notifications
         ADD CONSTRAINT dry_run_reject_usage_reward_notification
         CHECK (type <> 'usage_reward_earned') NOT VALID;
@@ -490,11 +502,15 @@ BEGIN
       ) THEN
         RAISE EXCEPTION '通知失敗で取引が残っていない';
       END IF;
-      IF EXISTS (
-        SELECT 1 FROM public.notifications
-        WHERE recipient_id = v_free_recipient AND type = 'usage_reward_earned'
-      ) THEN
-        RAISE EXCEPTION '失敗させたはずの通知が作られている';
+      SELECT to_jsonb(n) INTO v_notification_after
+      FROM public.notifications n
+      WHERE n.recipient_id = v_free_recipient
+        AND n.type = 'usage_reward_earned'
+        AND n.data->>'reward_date' =
+            to_char(clock_timestamp() AT TIME ZONE 'Asia/Tokyo', 'YYYY-MM-DD');
+
+      IF v_notification_after IS DISTINCT FROM v_notification_before THEN
+        RAISE EXCEPTION '失敗させたはずの通知が作成・更新されている';
       END IF;
     END IF;
 

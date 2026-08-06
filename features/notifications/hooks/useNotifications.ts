@@ -462,15 +462,9 @@ export function useNotifications(
         },
         (payload) => {
           // 内容の更新(還元通知の累計加算)と既読化の両方がここへ来る。
-          const updated = payload.new as Notification;
-          applyRealtimeNotificationUpdate(updated);
           // 未読バッジの同期は UnreadNotificationProvider が同じ UPDATE を
-          // 購読して行っている。ここで無条件に呼ぶと一括既読のたびに
-          // 未読数APIが二重に叩かれるため、このフックが持つローカルの
-          // 未読数を直す必要がある還元通知のときだけ再同期する。
-          if (updated.type === "usage_reward_earned") {
-            syncUnreadBadgeCount();
-          }
+          // 購読して行うので、ここでは呼ばない(呼ぶと未読数APIが二重に走る)。
+          applyRealtimeNotificationUpdate(payload.new as Notification);
         }
       )
       .subscribe((status) => {
