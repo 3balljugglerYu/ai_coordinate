@@ -75,9 +75,10 @@ flowchart TD
 - **REQ-07** (異常系): If 通知の作成・更新が失敗したら, then the system shall 警告のみ記録し、**ペルコインの付与自体は成立させる**。
   通知の不具合でコインが入らなくなることはない。
 - **REQ-08**: Free と Style の還元は**合算**して1件に集約する。
-- **REQ-09**: フロントは通知の UPDATE をリアルタイムに反映して先頭へ移動させ、未読数はサーバーの値で再同期する。
+- **REQ-09**: フロントは通知の UPDATE をリアルタイムに反映して先頭へ移動させる。
+  未読バッジの同期は `UnreadNotificationProvider` が同じ UPDATE を購読して行い、このフックからは呼ばない。
 - **REQ-10** (異常系): If 既読化や一括既読で UPDATE が大量に発火したら, then the system shall
-  追加のリクエストを発生させず、未読数の再同期はデバウンスする。
+  **追加のリクエストを一切発生させない**（一覧に無い行は取得しない。未読数の同期も Provider に任せる）。
 
 ## ADR（設計判断記録）
 
@@ -135,15 +136,16 @@ flowchart TD
   1. その id が一覧の状態にある → **payload の変更列を既存行へマージ**してから再ソート（ネットワーク往復なし）
   2. 状態に無い → **原則は無視**する。ただし**未読の還元通知だけは生の行をそのまま差し込む**
      （匿名なので actor / post の enrichment が不要）
-  3. 未読数の再同期は**還元通知のときだけ**行う
+  3. 未読バッジの同期は**このフックからは行わない**（`UnreadNotificationProvider` が同じ UPDATE を購読済み）
 - **Reason**:
   - 「すべて既読にする」は **DB 上の全未読行**を更新するため、未ロード行の UPDATE も大量に届く。
     ここで `getNotificationById` を呼ぶと**未読件数ぶんのリクエストが並び**、さらに古い通知が
     一覧へ差し込まれてしまう（レビュー指摘）。取得はやめ、還元通知の未読だけを生のまま置く。
   - 未読数をクライアント側で増減させると、既読化 UPDATE と混ざって容易にずれる。サーバーの値を正とする。
-    ただし `UnreadNotificationProvider` が既に同じ UPDATE を購読してバッジを同期しているため、
-    無条件に呼ぶと未読数 API が二重に叩かれる。**このフックのローカル未読数を直す必要がある
-    還元通知のときだけ**再同期する（レビュー指摘）。
+    その責務は `UnreadNotificationProvider` が既に持っており（同じ UPDATE を購読済み）、
+    このフックから重ねて呼ぶと未読数 API が二重に走る。**バッジ同期は Provider に一本化**する
+    （レビュー指摘。フックの `syncUnreadBadgeCount` は Provider の `refreshUnreadCount` を呼ぶだけで、
+    フックのローカル未読数は更新しないため、呼んでも二重化するだけだった）。
 - **Consequence**: マージ対象は DB の列のみ（`is_read` / `created_at` / `title` / `body` / `data`）。
   actor 等の enrichment 済みフィールドは既存の値を保持する（還元通知は匿名なので actor は元々無い）。
 
@@ -188,13 +190,17 @@ flowchart LR
 - [ ] `messages/{ja,en,...}.ts` — 15ロケール分のキー追加
 - [ ] `features/notifications/components/NotificationList.tsx` — アイコン（コイン系）追加
 - [ ] `features/notifications/hooks/useNotifications.ts` — 遷移先 `/my-page/credits`、
-      **UPDATE 購読の追加**（状態にあればマージして再ソート／無ければ取得して差し込み／未読数はデバウンス再同期）
+      **UPDATE 購読の追加**（状態にあればマージして再ソート／状態に無い行は**未読の還元通知だけ生行を追加**し
+      それ以外は無視／未読バッジの同期は Provider に任せる）、
+      **購読成立時の reconciliation**（ADR-006）
 
 ### Phase 3: テスト・ドキュメント・検証
 
 - [ ] presentation のテスト（0件・1件・複数・数字の差し込み）
 - [ ] `useNotifications` のテスト（UPDATE で**先頭へ浮上**する／状態にある行はマージのみで追加取得しない／
-      状態に無い行は取得して差し込む／既読化の UPDATE で未読が増えない）
+      状態に無い行は**未読の還元通知だけ生行を追加し、既読・他タイプは無視**する／
+      還元通知の UPDATE でも未読数 API を直接呼ばない／購読成立時の reconciliation で
+      取りこぼしを補完しつつ、ローカルの新しい状態を巻き戻さない）
 - [ ] `docs/architecture/data.{ja,en}.md`・`.cursor/rules/database-design.mdc` 同期
 - [ ] `npm run lint` / `typecheck` / `test` / `build -- --webpack`
 
@@ -205,7 +211,8 @@ flowchart LR
 - [ ] **付与を巻き込まない**: 通知の UPSERT が失敗しても付与と利用イベントは残る
 - [ ] **先頭へ浮上する**: 更新後に一覧の一番上に来る（サーバー再取得後も同じ並び）
 - [ ] **未読数がずれない**: 既読化・一括既読の UPDATE で増えない
-- [ ] **リクエストが増えない**: 一括既読で行数ぶんの `getNotificationById` が飛ばない
+- [ ] **リクエストが増えない**: 一括既読で行数ぶんの `getNotificationById` が飛ばない。
+      還元通知の UPDATE でも未読数 API が二重に走らない（Provider に一本化）
 - [ ] **匿名**: 利用者の名前・アバター・プロフィール導線が出ない
 - [ ] **0枚では通知しない**: 設定0・上限到達・自己利用のとき無反応
 
