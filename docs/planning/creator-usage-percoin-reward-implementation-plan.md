@@ -28,7 +28,8 @@
 
 1生成の最低コストは **10ペルコイン**（`features/generation/lib/model-config.ts` / `shared/generation/openai-image-model.ts`。多くのモデルは20〜130）。
 付与2なら利用者が10払って原作者に2入る = **系全体で常に8の純減**。イベント時5でも純減5で安全域。
-加えて既存の**5万無料残高キャップ**（`get_grantable_free_percoin_amount`）が全付与に効く。
+加えて既存の**5万無料残高キャップ**（`get_grantable_free_percoin_amount`）が、**キャップ計算を行う経路**に効く
+（本機能の2経路を含む。非適用の既存経路は後述の「キャップ非適用の既存経路」を参照）。
 
 **ただしこの純減はあくまで「付与額 < 最低生成コスト(10)」が成り立つ間だけの性質**である（レビュー指摘で明確化）。
 自己利用除外は**2アカウントの相互利用**を防げない: A が B のプロンプトで生成（A が10払い B が X 受取）、
@@ -169,10 +170,19 @@ flowchart TD
       -- しかも 5分・10分・15分… の線形増加になってしまう(レビュー指摘)。
       -- 更新前の値に power(2, n) を掛けることで初回5分・以降10分・20分…の
       -- 指数バックオフにし、暴走防止に24時間で頭打ちにする。
+      -- 指数部を先に頭打ちにする。`LEAST(interval, '24 hours')` で外側から
+      -- 抑えるだけでは、attempt_count が伸びた恒久エラー行で
+      -- `interval * power(2, n)` の評価時に 22008 interval out of range が出る
+      -- (本番で再現確認済み: n=60 でエラー)。しかもこの UPDATE は EXCEPTION
+      -- ハンドラの中にあり、ハンドラ内で起きた例外は同じハンドラでは捕捉されず
+      -- 外へ伝播するため、再処理バッチ全体を巻き戻してしまう(レビュー指摘)。
       UPDATE ... SET attempt_count = attempt_count + 1,
                      last_error = SQLERRM,
                      next_attempt_at = now() + LEAST(
-                       interval '5 minutes' * power(2, attempt_count),
+                       interval '5 minutes' * power(
+                         2::double precision,
+                         LEAST(attempt_count, 9)::double precision
+                       ),
                        interval '24 hours'
                      )
       WHERE id = v_event.id;
@@ -191,7 +201,7 @@ flowchart TD
   実装時に pg_cron で「行ごとに COMMIT する PROCEDURE」が使えるなら、そちらの方がロック保持時間が短く望ましい。
   使えるかは環境依存のため、**動作確認できた場合のみ採用**し、既定は上記の関数＋行単位例外ブロックとする。
 
-### ADR-008（改訂）: 5万キャップは `get_grantable_free_percoin_amount` の中で受け手単位に直列化する（全経路一括）
+### ADR-008（改訂）: 5万キャップは `get_grantable_free_percoin_amount` の中で受け手単位に直列化する（この関数を通る全経路に一括適用）
 
 - **Context**: `get_grantable_free_percoin_amount` は `user_credits` を**ロックせずに SELECT** している（本番の関数定義で確認）。
   利用イベントの test-and-set は**別々のイベント行**をロックするだけなので、同一クリエイターへの並行付与は直列化されない。
@@ -205,7 +215,7 @@ flowchart TD
   ```
   これで**この関数を通る全経路が自動的に同じロック規約に参加する**。トランザクションスコープのロックなので、
   関数から戻った後の呼び出し側のウォレット3点更新まで保持され、コミットで解放される。
-- **Reason**: 「5万キャップを全経路の強制上限にする」というレビュー指摘の要求を、**最小の変更で・回帰リスクを増やさずに**満たせるため。
+- **Reason**: 「5万キャップを**キャップ計算を行う全経路**の強制上限にする」というレビュー指摘の要求を、**最小の変更で・回帰リスクを増やさずに**満たせるため。
   本番で検証した事実:
   - この関数を使う既存の付与関数は **4関数（5インスタンス）**: `grant_collection_completion_reward` /
     `grant_daily_post_bonus` / `grant_streak_bonus` / `grant_subscription_percoins`（2オーバーロード）
@@ -226,8 +236,8 @@ flowchart TD
   | 経路 | キャップ計算 | 位置づけ |
   |---|---|---|
   | `handle_new_user`（登録ボーナス） | なし | 新規ユーザーは残高0のため実質的に競合しない |
-  | `grant_tour_bonus`（20） | なし | **残高49,998時などに超過し得る既存仕様** |
-  | `grant_referral_bonus`（50） | なし | **同上** |
+  | `grant_tour_bonus` | なし | **上限付近で超過し得る既存仕様** |
+  | `grant_referral_bonus` | なし | **同上** |
   | `grant_admin_bonus` | なし | 運営の裁量付与。意図的な例外 |
   | `refund_percoins` | なし | 返金は消費分の復元であり、キャップで削ると残高が失われる。意図的な例外 |
 
@@ -287,7 +297,7 @@ flowchart LR
   - **既存イベントを `legacy` にバックフィル**（Free 13件・Style 2,289件。遡及付与の防止に必須）
   - **`get_grantable_free_percoin_amount` に受け手単位の advisory lock を追加**（ADR-008 改訂）。
     これで既存4関数（`grant_collection_completion_reward` / `grant_daily_post_bonus` / `grant_streak_bonus` /
-    `grant_subscription_percoins` ×2）を含む**全付与経路が同じロック規約に参加**する（既存関数の本体は変更しない）
+    `grant_subscription_percoins` ×2）を含む**キャップ計算を行う全経路が同じロック規約に参加**する（既存関数の本体は変更しない）
   - `grant_prompt_usage_reward(p_event_id uuid)` / `grant_style_preset_usage_reward(p_event_id uuid)`
     （service_role 限定 / `reward_status='pending'` の test-and-set /
     自己利用・受け手未解決・非公開・額0・キャップ0 は **`skipped` で確定** / 付与成立時のみ `granted` /
@@ -343,7 +353,8 @@ flowchart LR
 - [ ] **並行制御**: 同一受け手へ2セッションから同時付与してもキャップを超えない（**並行テストを実施**）。
       **本機能同士に加え、キャップ計算を行う既存ボーナス（例: デイリー）との同時実行**でも超えないこと
 - [ ] **再処理の堅牢性**: バッチ内の1件が失敗しても、それ以前に成功した付与がロールバックされず、後続行が処理される
-- [ ] **バックオフ**: 初回失敗で即時再試行にならず 5分 → 10分 → 20分…と伸び、24時間で頭打ちになる（境界テスト）
+- [ ] **バックオフ**: 初回失敗で即時再試行にならず 5分 → 10分 → 20分…と伸び、24時間で頭打ちになる（境界テスト `attempt_count=0/1/2`）。
+      **`attempt_count=1000` でも例外なく24時間になる**こと（指数部の頭打ちが効いているかの回帰テスト）
 - [ ] **既存付与の非回帰**: キャップ関数の変更後も既存4関数（完走報酬・デイリー・ストリーク・サブスク）が従来どおり動く。
       キャップを通らない経路（登録・ツアー・紹介・admin・返金）の挙動も変わらないこと
 - [ ] **権限**: 付与 RPC / 再処理 RPC は authenticated から実行不可
@@ -365,8 +376,10 @@ flowchart LR
 
 レビュー過程で判明した**既存の挙動**です。本機能とは独立しており、**運営判断により現状を維持します**。
 
-- **ツアーボーナス（20）・紹介ボーナス（50）は5万キャップを通らない**。
-  無料残高が49,998でも満額が付与され、5万を超えます（キャップ導入当初からの挙動）。
+- **ツアーボーナス・紹介ボーナスは5万キャップを通らない**。
+  無料残高が上限付近でも満額が付与され、5万を超えます（キャップ導入当初からの挙動）。
+  付与額は admin 設定値（`percoin_bonus_defaults`）のため固定値を前提にしない
+  （例: 紹介は**リポジトリ既定値100 / 本番現行値50**と乖離があり、運用中に変わり得る）。
 - これをキャップ対象に含めると「上限に達したユーザーにはボーナスを配らない」という**製品仕様の変更**になるため、
   本 PR では変更しない（**運営が現状維持を選択済み**）。将来必要になれば別タスクで扱う。
 - `handle_new_user`（登録）は新規ユーザーの残高が0のため実質的に競合しない。
