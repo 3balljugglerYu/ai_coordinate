@@ -437,7 +437,7 @@ BEGIN
     AND e.reward_status = 'pending'
   RETURNING e.* INTO v_event;
 
-  IF v_event.id IS NULL THEN
+  IF v_event.generated_image_id IS NULL THEN
     RETURN;
   END IF;
 
