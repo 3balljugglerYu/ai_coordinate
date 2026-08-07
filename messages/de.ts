@@ -71,11 +71,15 @@ export const deMessages = {
     showBeforeImageLabel: "Auch das Vorher-Bild anzeigen",
     promptVisibilityLabel: "Sichtbarkeit des Prompts",
     promptVisibilityRewardHint:
-      "Du erhältst bis zu +{amount} Percoins, jedes Mal wenn ein Follower mit diesem Prompt erstellt.",
+      "Wenn jemand, der dir folgt, mit diesem Prompt erstellt, erhältst du jedes Mal +{amount} Percoins.",
     promptVisibilityPublicOption: "Prompt anzeigen",
     promptVisibilityPrivateOption: "Prompt privat halten",
-    promptVisibilityPublicHint: "Follower können den Prompt kopieren. Aus einer Kopie erstellte Bilder werden nicht gezählt.",
-    promptVisibilityPrivateHint: "Niemand sieht den Prompt. Follower können ihn trotzdem nutzen, ohne ihn zu sehen.",
+    promptVisibilityPublicHint:
+      "Follower können deinen Prompt kopieren. Aus einer Kopie erstellte Generierungen zählen nicht für die Nutzungszahl. Nur Follower können damit generieren.",
+    promptVisibilityPublicHintWithReward:
+      "Follower können deinen Prompt kopieren. Aus einer Kopie erstellte Generierungen zählen weder für die Nutzungszahl noch für die Percoin-Belohnungen. Nur Follower können damit generieren.",
+    promptVisibilityPrivateHint:
+      "Dein Prompt bleibt für alle verborgen. Follower können damit generieren, ohne den Text zu sehen. Nur Follower können damit generieren.",
     showBeforeImageHint: "Mit dem Ausgangsbild ist besser zu erkennen, was der Prompt verändert.",
     promptVisibilityRetractWarning: "Der Wechsel zu privat macht nicht rückgängig, was schon gesehen oder kopiert wurde.",
     sourcePromptCardTitle: "Mit diesem Prompt erstellen",

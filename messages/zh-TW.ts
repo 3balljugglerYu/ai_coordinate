@@ -71,11 +71,15 @@ export const zhTwMessages = {
     showBeforeImageLabel: "同時顯示更換前的圖片",
     promptVisibilityLabel: "提示詞公開設定",
     promptVisibilityRewardHint:
-      "追蹤者每次使用此提示詞生成，你最多可獲得 +{amount} 佩爾幣。",
+      "追蹤你的使用者每次使用此提示詞生成，你將獲得 +{amount} 佩爾幣。",
     promptVisibilityPublicOption: "公開提示詞",
     promptVisibilityPrivateOption: "將提示詞設為私密",
-    promptVisibilityPublicHint: "追蹤者可以複製提示詞。用複製的內容生成不計入使用數。",
-    promptVisibilityPrivateHint: "任何人都看不到提示詞。追蹤者仍可在看不到內容的情況下用它生成。",
+    promptVisibilityPublicHint:
+      "追蹤者可以複製你的提示詞。透過複製生成的內容不計入使用次數。只有追蹤者才能用它生成。",
+    promptVisibilityPublicHintWithReward:
+      "追蹤者可以複製你的提示詞。透過複製生成的內容既不計入使用次數，也不計入佩爾幣回饋。只有追蹤者才能用它生成。",
+    promptVisibilityPrivateHint:
+      "提示詞不會展示給任何人。追蹤者看不到內容，但可以用同一提示詞生成。只有追蹤者才能用它生成。",
     showBeforeImageHint: "一併顯示原圖，更容易讓人看出提示詞改變了什麼。",
     promptVisibilityRetractWarning: "改為私密無法撤回已被看到或複製的內容。",
     sourcePromptCardTitle: "用這個提示詞創作",

@@ -71,11 +71,15 @@ export const esMessages = {
     showBeforeImageLabel: "Mostrar también la imagen original",
     promptVisibilityLabel: "Visibilidad del prompt",
     promptVisibilityRewardHint:
-      "Ganas hasta +{amount} Percoins cada vez que un seguidor crea con este prompt.",
+      "Cuando alguien que te sigue crea con este prompt, ganas +{amount} Percoins cada vez.",
     promptVisibilityPublicOption: "Mostrar el prompt",
     promptVisibilityPrivateOption: "Mantener el prompt privado",
-    promptVisibilityPublicHint: "Tus seguidores pueden copiar el prompt. Lo generado desde una copia no se cuenta.",
-    promptVisibilityPrivateHint: "Nadie ve el prompt. Tus seguidores pueden generar con él sin verlo.",
+    promptVisibilityPublicHint:
+      "Tus seguidores pueden copiar el prompt. Las creaciones hechas desde una copia no cuentan para el número de usos. Solo tus seguidores pueden generar con él.",
+    promptVisibilityPublicHintWithReward:
+      "Tus seguidores pueden copiar el prompt. Las creaciones hechas desde una copia no cuentan ni para el número de usos ni para las recompensas en Percoins. Solo tus seguidores pueden generar con él.",
+    promptVisibilityPrivateHint:
+      "Tu prompt no se muestra a nadie. Tus seguidores pueden generar con él sin ver el texto. Solo tus seguidores pueden generar con él.",
     showBeforeImageHint: "Mostrar la imagen original ayuda a ver qué cambia el prompt.",
     promptVisibilityRetractWarning: "Cambiar a privado no deshace lo que ya se vio o se copió.",
     sourcePromptCardTitle: "Crear con este prompt",

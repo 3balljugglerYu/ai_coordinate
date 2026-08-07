@@ -71,11 +71,15 @@ export const arMessages = {
     showBeforeImageLabel: "اعرض الصورة قبل التغيير أيضًا",
     promptVisibilityLabel: "ظهور الأمر",
     promptVisibilityRewardHint:
-      "‏تحصل على ما يصل إلى +{amount} بيركوين في كل مرة ينشئ فيها أحد متابعيك بهذا البرومبت.",
+      "‏عندما ينشئ أحد متابعيك بهذا البرومبت، تحصل على +{amount} بيركوين في كل مرة.",
     promptVisibilityPublicOption: "إظهار الأمر",
     promptVisibilityPrivateOption: "إبقاء الأمر خاصًا",
-    promptVisibilityPublicHint: "يمكن للمتابعين نسخ الأمر. لا تُحتسب الأعمال المُنشأة من نسخة.",
-    promptVisibilityPrivateHint: "لا أحد يرى الأمر. يمكن للمتابعين التوليد به دون رؤيته.",
+    promptVisibilityPublicHint:
+      "يمكن لمتابعيك نسخ البرومبت. وما يُنشأ من نسخة لا يُحتسب ضمن عدد الاستخدامات. ولا يمكن لغير المتابعين الإنشاء به.",
+    promptVisibilityPublicHintWithReward:
+      "يمكن لمتابعيك نسخ البرومبت. وما يُنشأ من نسخة لا يُحتسب ضمن عدد الاستخدامات ولا ضمن مكافآت البيركوين. ولا يمكن لغير المتابعين الإنشاء به.",
+    promptVisibilityPrivateHint:
+      "لا يُعرض البرومبت لأحد. يمكن لمتابعيك الإنشاء به دون رؤية نصه. ولا يمكن لغير المتابعين الإنشاء به.",
     showBeforeImageHint: "إظهار الصورة الأصلية يوضّح ما الذي يغيّره الأمر.",
     promptVisibilityRetractWarning: "التحويل إلى خاص لا يلغي ما تم رؤيته أو نسخه بالفعل.",
     sourcePromptCardTitle: "أنشئ بهذا الأمر",

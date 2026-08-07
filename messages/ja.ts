@@ -68,11 +68,15 @@ export const jaMessages = {
     showBeforeImageLabel: "生成前の画像も表示する",
     promptVisibilityLabel: "プロンプトの公開設定",
     promptVisibilityRewardHint:
-      "フォロワーがこのプロンプトで生成すると、1回につき最大 +{amount} ペルコインが還元されます。",
+      "あなたをフォローしている人がこのプロンプトで生成すると、1回につき +{amount} ペルコインが還元されます。",
     promptVisibilityPublicOption: "プロンプトを公開する",
     promptVisibilityPrivateOption: "プロンプトを非公開にする",
-    promptVisibilityPublicHint: "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
-    promptVisibilityPrivateHint: "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。",
+    promptVisibilityPublicHint:
+      "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。フォロワー以外は生成できません。",
+    promptVisibilityPublicHintWithReward:
+      "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。フォロワー以外は生成できません。",
+    promptVisibilityPrivateHint:
+      "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。フォロワー以外は生成できません。",
     showBeforeImageHint: "元画像も表示することで、どんな変化が起きるか伝わりやすくなります。",
     promptVisibilityRetractWarning: "非公開に変えても、すでに見られた内容やコピーされた内容は取り消せません。",
     sourcePromptCardTitle: "このプロンプトで作る",

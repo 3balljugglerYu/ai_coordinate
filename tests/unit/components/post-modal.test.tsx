@@ -98,7 +98,7 @@ const postTranslations = {
   promptVisibilityPublicOption: "プロンプトを公開する",
   promptVisibilityPrivateOption: "プロンプトを非公開にする",
   promptVisibilityPublicHint:
-    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
+    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。フォロワー以外は生成できません。",
   promptVisibilityPrivateHint:
     "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。",
   showBeforeImageHint:
@@ -446,7 +446,7 @@ describe("PostModal", () => {
 
       expect(
         screen.getByText(
-          "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。"
+          "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。フォロワー以外は生成できません。"
         )
       ).toBeInTheDocument();
       expect(

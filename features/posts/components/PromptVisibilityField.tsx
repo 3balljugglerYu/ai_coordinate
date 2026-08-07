@@ -101,7 +101,13 @@ export function PromptVisibilityField({
           </div>
           {value === "public" && (
             <p className="pl-6 text-xs leading-relaxed text-muted-foreground">
-              {t("promptVisibilityPublicHint")}
+              {/*
+                還元が停止中(0)のときは還元に触れない。他の告知と同じく
+                「もらえないのに還元の話が出る」状態を作らないため。
+              */}
+              {promptUsageRewardAmount > 0
+                ? t("promptVisibilityPublicHintWithReward")
+                : t("promptVisibilityPublicHint")}
             </p>
           )}
         </div>
