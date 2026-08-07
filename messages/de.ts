@@ -71,7 +71,7 @@ export const deMessages = {
     showBeforeImageLabel: "Auch das Vorher-Bild anzeigen",
     promptVisibilityLabel: "Sichtbarkeit des Prompts",
     promptVisibilityRewardHint:
-      "Du erhältst +{amount} Percoins, jedes Mal wenn ein Follower mit diesem Prompt erstellt.",
+      "Du erhältst bis zu +{amount} Percoins, jedes Mal wenn ein Follower mit diesem Prompt erstellt.",
     promptVisibilityPublicOption: "Prompt anzeigen",
     promptVisibilityPrivateOption: "Prompt privat halten",
     promptVisibilityPublicHint: "Follower können den Prompt kopieren. Aus einer Kopie erstellte Bilder werden nicht gezählt.",
@@ -1373,10 +1373,12 @@ export const deMessages = {
     usageRewardTitle: "Creator-Belohnungen",
     usageRewardDescription:
       "Verdiene Percoins, wenn andere mit deinen Prompts oder Styles erstellen.",
-    usageRewardFreeItem: "+{amount} Percoins, wenn dein /free-Prompt genutzt wird",
-    usageRewardStyleItem: "+{amount} Percoins, wenn dein One-Tap Style genutzt wird",
+    usageRewardFreeItem:
+      "Bis zu +{amount} Percoins, wenn dein /free-Prompt genutzt wird",
+    usageRewardStyleItem:
+      "Bis zu +{amount} Percoins, wenn dein One-Tap Style genutzt wird",
     usageRewardNote:
-      "Eigene Nutzung zählt nicht. Generierungen per Copy-Paste des Prompts ebenfalls nicht – nur solche über „Mit diesem Prompt erstellen“ in der App.",
+      "Eigene Nutzung zählt nicht. Generierungen per Copy-Paste des Prompts ebenfalls nicht – nur solche über „Mit diesem Prompt erstellen“ in der App. Sobald dein Guthaben an kostenlosen Percoins die Obergrenze erreicht, wird nichts mehr gutgeschrieben.",
     referralTitle: "Empfehlungsbonus",
     referralDescription:
       "Lade Freunde ein, um Percoins zu verdienen. Belohnungen werden gutgeschrieben, wenn sich jemand über deinen Empfehlungslink oder QR-Code anmeldet.",

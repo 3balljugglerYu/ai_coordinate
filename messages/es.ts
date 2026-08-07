@@ -71,7 +71,7 @@ export const esMessages = {
     showBeforeImageLabel: "Mostrar también la imagen original",
     promptVisibilityLabel: "Visibilidad del prompt",
     promptVisibilityRewardHint:
-      "Ganas +{amount} Percoins cada vez que un seguidor crea con este prompt.",
+      "Ganas hasta +{amount} Percoins cada vez que un seguidor crea con este prompt.",
     promptVisibilityPublicOption: "Mostrar el prompt",
     promptVisibilityPrivateOption: "Mantener el prompt privado",
     promptVisibilityPublicHint: "Tus seguidores pueden copiar el prompt. Lo generado desde una copia no se cuenta.",
@@ -1372,10 +1372,12 @@ export const esMessages = {
     usageRewardTitle: "Recompensas para creadores",
     usageRewardDescription:
       "Gana Percoins cuando otras personas creen con tus prompts o estilos.",
-    usageRewardFreeItem: "+{amount} Percoins cuando se usa tu prompt de /free",
-    usageRewardStyleItem: "+{amount} Percoins cuando se usa tu One-Tap Style",
+    usageRewardFreeItem:
+      "Hasta +{amount} Percoins cuando se usa tu prompt de /free",
+    usageRewardStyleItem:
+      "Hasta +{amount} Percoins cuando se usa tu One-Tap Style",
     usageRewardNote:
-      "Tu propio uso no cuenta. Las generaciones hechas copiando y pegando el prompt tampoco: solo cuentan las iniciadas desde «Crear con este prompt» en la app.",
+      "Tu propio uso no cuenta. Las generaciones hechas copiando y pegando el prompt tampoco: solo cuentan las iniciadas desde «Crear con este prompt» en la app. No se otorga nada cuando tu saldo de Percoins gratuitos alcanza el límite.",
     referralTitle: "Bonificación por invitación",
     referralDescription:
       "Invita a tus amigos para ganar Percoins. Las recompensas se conceden cuando un amigo se registra usando tu enlace o código QR.",

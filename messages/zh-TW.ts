@@ -71,7 +71,7 @@ export const zhTwMessages = {
     showBeforeImageLabel: "同時顯示更換前的圖片",
     promptVisibilityLabel: "提示詞公開設定",
     promptVisibilityRewardHint:
-      "追蹤者每次使用此提示詞生成，你將獲得 +{amount} 佩爾幣。",
+      "追蹤者每次使用此提示詞生成，你最多可獲得 +{amount} 佩爾幣。",
     promptVisibilityPublicOption: "公開提示詞",
     promptVisibilityPrivateOption: "將提示詞設為私密",
     promptVisibilityPublicHint: "追蹤者可以複製提示詞。用複製的內容生成不計入使用數。",
@@ -1367,10 +1367,12 @@ export const zhTwMessages = {
     usageRewardTitle: "創作者回饋",
     usageRewardDescription:
       "當其他使用者使用你的提示詞或風格生成時，你將獲得佩爾幣。",
-    usageRewardFreeItem: "你的 /free 提示詞被使用時 +{amount} 佩爾幣",
-    usageRewardStyleItem: "你的 One-Tap Style 被使用時 +{amount} 佩爾幣",
+    usageRewardFreeItem:
+      "你的 /free 提示詞被使用時 最多 +{amount} 佩爾幣",
+    usageRewardStyleItem:
+      "你的 One-Tap Style 被使用時 最多 +{amount} 佩爾幣",
     usageRewardNote:
-      "自己使用不計入。複製貼上提示詞的生成也不計入，僅限從應用程式內「用這個提示詞創作」發起的生成。",
+      "自己使用不計入。複製貼上提示詞的生成也不計入，僅限從應用程式內「用這個提示詞創作」發起的生成。免費佩爾幣餘額達到上限後將不再發放。",
     referralTitle: "推薦獎勵",
     referralDescription:
       "邀請好友即可獲得 Percoin。當有人透過你的推薦連結或 QR Code 註冊時，即會發放獎勵。",

@@ -71,7 +71,7 @@ export const viMessages = {
     showBeforeImageLabel: "Hiển thị cả hình trước khi đổi",
     promptVisibilityLabel: "Hiển thị câu lệnh",
     promptVisibilityRewardHint:
-      "Bạn nhận +{amount} Percoin mỗi lần người theo dõi tạo ảnh bằng prompt này.",
+      "Bạn nhận tối đa +{amount} Percoin mỗi lần người theo dõi tạo ảnh bằng prompt này.",
     promptVisibilityPublicOption: "Hiện câu lệnh",
     promptVisibilityPrivateOption: "Giữ câu lệnh riêng tư",
     promptVisibilityPublicHint: "Người theo dõi có thể sao chép câu lệnh. Ảnh tạo từ bản sao không được tính.",
@@ -1369,10 +1369,12 @@ export const viMessages = {
     usageRewardTitle: "Thưởng cho nhà sáng tạo",
     usageRewardDescription:
       "Nhận Percoin khi người khác sáng tạo bằng prompt hoặc style của bạn.",
-    usageRewardFreeItem: "+{amount} Percoin khi prompt /free của bạn được dùng",
-    usageRewardStyleItem: "+{amount} Percoin khi One-Tap Style của bạn được dùng",
+    usageRewardFreeItem:
+      "Tối đa +{amount} Percoin khi prompt /free của bạn được dùng",
+    usageRewardStyleItem:
+      "Tối đa +{amount} Percoin khi One-Tap Style của bạn được dùng",
     usageRewardNote:
-      "Bạn tự dùng thì không tính. Tạo ảnh bằng cách sao chép prompt cũng không tính — chỉ tính khi bắt đầu từ “Tạo với prompt này” trong ứng dụng.",
+      "Bạn tự dùng thì không tính. Tạo ảnh bằng cách sao chép prompt cũng không tính — chỉ tính khi bắt đầu từ “Tạo với prompt này” trong ứng dụng. Sẽ không được cộng khi số dư Percoin miễn phí đã đạt giới hạn.",
     referralTitle: "Thưởng giới thiệu",
     referralDescription:
       "Mời bạn bè để nhận Percoin. Phần thưởng được cấp khi bạn bè đăng ký từ liên kết hoặc QR code giới thiệu của bạn.",

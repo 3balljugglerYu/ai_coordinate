@@ -71,7 +71,7 @@ export const enMessages = {
     showBeforeImageLabel: "Also display the before image",
     promptVisibilityLabel: "Prompt visibility",
     promptVisibilityRewardHint:
-      "You earn +{amount} Percoins each time a follower creates with this prompt.",
+      "You earn up to +{amount} Percoins each time a follower creates with this prompt.",
     promptVisibilityPublicOption: "Show the prompt",
     promptVisibilityPrivateOption: "Keep the prompt private",
     promptVisibilityPublicHint: "Followers can copy the prompt. Generations made from a copy are not counted.",
@@ -1369,10 +1369,12 @@ export const enMessages = {
     usageRewardTitle: "Creator rewards",
     usageRewardDescription:
       "Earn Percoins when other users create with your prompts or styles.",
-    usageRewardFreeItem: "+{amount} Percoins when your /free prompt is used",
-    usageRewardStyleItem: "+{amount} Percoins when your One-Tap Style is used",
+    usageRewardFreeItem:
+      "Up to +{amount} Percoins when your /free prompt is used",
+    usageRewardStyleItem:
+      "Up to +{amount} Percoins when your One-Tap Style is used",
     usageRewardNote:
-      "Your own usage doesn't count. Generations made by copy-pasting a prompt don't count either — only those started from “Create with this prompt” in the app.",
+      "Your own usage doesn't count. Generations made by copy-pasting a prompt don't count either — only those started from “Create with this prompt” in the app. Nothing is granted once your free Percoin balance reaches its cap.",
     referralTitle: "Referral bonus",
     referralDescription:
       "Invite friends to earn Percoins. Rewards are granted when a friend signs up from your referral link or QR code.",

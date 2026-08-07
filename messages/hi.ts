@@ -71,7 +71,7 @@ export const hiMessages = {
     showBeforeImageLabel: "पहले की छवि भी दिखाएँ",
     promptVisibilityLabel: "प्रॉम्प्ट की दृश्यता",
     promptVisibilityRewardHint:
-      "जब भी कोई फ़ॉलोअर इस प्रॉम्प्ट से बनाता है, आपको +{amount} पर्कॉइन मिलते हैं।",
+      "जब भी कोई फ़ॉलोअर इस प्रॉम्प्ट से बनाता है, आपको अधिकतम +{amount} पर्कॉइन मिलते हैं।",
     promptVisibilityPublicOption: "प्रॉम्प्ट दिखाएँ",
     promptVisibilityPrivateOption: "प्रॉम्प्ट निजी रखें",
     promptVisibilityPublicHint: "फ़ॉलोअर्स प्रॉम्प्ट कॉपी कर सकते हैं। कॉपी से बनाई गई रचनाएँ नहीं गिनी जातीं।",
@@ -1370,10 +1370,12 @@ export const hiMessages = {
     usageRewardTitle: "क्रिएटर रिवॉर्ड",
     usageRewardDescription:
       "जब दूसरे लोग आपके प्रॉम्प्ट या स्टाइल से बनाते हैं, तो आपको पर्कॉइन मिलते हैं।",
-    usageRewardFreeItem: "आपका /free प्रॉम्प्ट इस्तेमाल होने पर +{amount} पर्कॉइन",
-    usageRewardStyleItem: "आपका One-Tap Style इस्तेमाल होने पर +{amount} पर्कॉइन",
+    usageRewardFreeItem:
+      "आपका /free प्रॉम्प्ट इस्तेमाल होने पर अधिकतम +{amount} पर्कॉइन",
+    usageRewardStyleItem:
+      "आपका One-Tap Style इस्तेमाल होने पर अधिकतम +{amount} पर्कॉइन",
     usageRewardNote:
-      "अपना उपयोग नहीं गिना जाता। प्रॉम्प्ट कॉपी-पेस्ट करके बनाई गई इमेज भी नहीं — केवल ऐप में “इस प्रॉम्प्ट से बनाएं” से शुरू की गई।",
+      "अपना उपयोग नहीं गिना जाता। प्रॉम्प्ट कॉपी-पेस्ट करके बनाई गई इमेज भी नहीं — केवल ऐप में “इस प्रॉम्प्ट से बनाएं” से शुरू की गई। मुफ़्त पर्कॉइन बैलेंस सीमा पर पहुँचने के बाद कुछ नहीं मिलता।",
     referralTitle: "रेफ़रल बोनस",
     referralDescription:
       "Percoin कमाने के लिए दोस्तों को आमंत्रित करें। जब कोई दोस्त आपके रेफ़रल लिंक या QR कोड से साइन अप करता है तो पुरस्कार दिए जाते हैं।",
