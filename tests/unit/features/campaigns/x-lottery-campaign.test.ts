@@ -1,7 +1,8 @@
 import {
   isLotteryEntryOpen,
   buildXLotteryIntentUrl,
-  X_LOTTERY_COPY,
+  getXLotteryCopy,
+  X_LOTTERY_CAMPAIGNS,
   type XLotteryCopy,
 } from "@/features/campaigns/x-lottery-campaign";
 
@@ -10,6 +11,7 @@ const COPY: XLotteryCopy = {
   mention: "mickey_fuku",
   message: "うちの子のことわざ辞典をコンプリートしました！",
   prizeLabel: "Amazonギフトカード3,000円分",
+  winnersLabel: "1名様",
   rulesPath: "/campaigns/kotowaza-lottery",
 };
 
@@ -78,8 +80,43 @@ describe("buildXLotteryIntentUrl", () => {
     expect(new URL(url).searchParams.get("hashtags")).toBe("タグA,タグB");
   });
 
-  test("現行 COPY 定数でも組み立てられる", () => {
-    const url = buildXLotteryIntentUrl(X_LOTTERY_COPY, "https://www.persta.ai/m/x");
-    expect(url.startsWith("https://x.com/intent/post?")).toBe(true);
+  test("登録済みキャンペーンの文面でも組み立てられる", () => {
+    for (const copy of Object.values(X_LOTTERY_CAMPAIGNS)) {
+      const url = buildXLotteryIntentUrl(copy, "https://www.persta.ai/m/x");
+      expect(url.startsWith("https://x.com/intent/post?")).toBe(true);
+    }
+  });
+});
+
+describe("getXLotteryCopy", () => {
+  test("ファッション雑誌の文面が引ける(タグ・メンション・5名様・規約パス)", () => {
+    const copy = getXLotteryCopy("fashion_magazine_summer");
+    expect(copy).not.toBeNull();
+    expect(copy?.hashtags).toEqual(["うちの子のファッション雑誌"]);
+    expect(copy?.mention).toBe("mickey_fuku");
+    expect(copy?.winnersLabel).toBe("5名様");
+    expect(copy?.prizeLabel).toBe("Amazonギフト券2,000円分");
+    expect(copy?.rulesPath).toBe("/campaigns/fashion-magazine-lottery");
+  });
+
+  test("ことわざ(上下巻)の文面も残っている", () => {
+    expect(getXLotteryCopy("kotowaza_dictionary")).not.toBeNull();
+    expect(getXLotteryCopy("kotowaza_dictionary_2")).not.toBeNull();
+  });
+
+  test("未登録カテゴリは null(lottery_target が立っていてもボタンを出さない)", () => {
+    expect(getXLotteryCopy("travel_to_italy")).toBeNull();
+    expect(getXLotteryCopy("unknown_category")).toBeNull();
+  });
+
+  test("応募intentにファッション雑誌の応募要件が全部入る", () => {
+    const copy = getXLotteryCopy("fashion_magazine_summer");
+    if (!copy) throw new Error("copy missing");
+    const url = new URL(
+      buildXLotteryIntentUrl(copy, "https://www.persta.ai/m/abc/book"),
+    );
+    expect(url.searchParams.get("text")).toContain("@mickey_fuku");
+    expect(url.searchParams.get("hashtags")).toBe("うちの子のファッション雑誌");
+    expect(url.searchParams.get("url")).toBe("https://www.persta.ai/m/abc/book");
   });
 });

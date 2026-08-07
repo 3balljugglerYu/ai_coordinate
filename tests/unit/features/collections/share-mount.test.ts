@@ -8,6 +8,7 @@
  */
 
 import {
+  buildPublicBookUrl,
   buildPublicMountUrl,
   extractMountVersionFromUrl,
   trackMountShareEvent,
@@ -49,6 +50,12 @@ describe("buildPublicMountUrl", () => {
     );
     expect(buildPublicMountUrl("c1", null)).toBe(`${origin}/m/c1`);
     expect(buildPublicMountUrl("c1", undefined)).toBe(`${origin}/m/c1`);
+  });
+});
+
+describe("buildPublicBookUrl", () => {
+  test("book ビューの公開URLを組み立てる(キャッシュバスター無し)", () => {
+    expect(buildPublicBookUrl("c1")).toBe(`${origin}/m/c1/book`);
   });
 });
 

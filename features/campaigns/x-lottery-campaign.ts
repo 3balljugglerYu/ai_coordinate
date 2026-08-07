@@ -20,18 +20,53 @@ export interface XLotteryCopy {
   message: string;
   /** 賞品名(UI表示用)。 */
   prizeLabel: string;
+  /** 当選人数の表示(「1名様」「5名様」)。ボタンの誘導文で使う。 */
+  winnersLabel: string;
   /** 応募規約ページのパス。 */
   rulesPath: string;
 }
 
-/** 現行キャンペーン(Amazonギフト3,000円)の文面。 */
-export const X_LOTTERY_COPY: XLotteryCopy = {
-  hashtags: ["うちの子のことわざ辞典"],
-  mention: "mickey_fuku",
-  message: "うちの子のことわざ辞典をコンプリートしました！",
-  prizeLabel: "Amazonギフトカード3,000円分",
-  rulesPath: "/campaigns/kotowaza-lottery",
+/**
+ * カテゴリ key → キャンペーン文面。
+ *
+ * 「どのカテゴリで受付中か・期間」は admin(lottery_target + 表示期間)が決め、
+ * 文面はここで対になる。マップに無いカテゴリは lottery_target が立っていても
+ * ボタンを出さない(文面が無い応募動線を作らない fail-closed)。
+ * 終了したキャンペーンの文面も履歴・復刻用に残す。
+ */
+export const X_LOTTERY_CAMPAIGNS: Readonly<Record<string, XLotteryCopy>> = {
+  // ことわざ辞典(2026-07-18〜07-26・受付終了)
+  kotowaza_dictionary: {
+    hashtags: ["うちの子のことわざ辞典"],
+    mention: "mickey_fuku",
+    message: "うちの子のことわざ辞典をコンプリートしました！",
+    prizeLabel: "Amazonギフトカード3,000円分",
+    winnersLabel: "1名様",
+    rulesPath: "/campaigns/kotowaza-lottery",
+  },
+  kotowaza_dictionary_2: {
+    hashtags: ["うちの子のことわざ辞典"],
+    mention: "mickey_fuku",
+    message: "うちの子のことわざ辞典をコンプリートしました！",
+    prizeLabel: "Amazonギフトカード3,000円分",
+    winnersLabel: "1名様",
+    rulesPath: "/campaigns/kotowaza-lottery",
+  },
+  // うちの子のファッション雑誌：夏(2026-08-08 19:00〜08-16 21:59)
+  fashion_magazine_summer: {
+    hashtags: ["うちの子のファッション雑誌"],
+    mention: "mickey_fuku",
+    message: "うちの子のファッション雑誌、1冊完成しました！",
+    prizeLabel: "Amazonギフト券2,000円分",
+    winnersLabel: "5名様",
+    rulesPath: "/campaigns/fashion-magazine-lottery",
+  },
 };
+
+/** カテゴリの文面を引く。未定義なら null(ボタン非表示)。 */
+export function getXLotteryCopy(categoryKey: string): XLotteryCopy | null {
+  return X_LOTTERY_CAMPAIGNS[categoryKey] ?? null;
+}
 
 /**
  * このカテゴリの完走台紙で応募を受け付けているか。

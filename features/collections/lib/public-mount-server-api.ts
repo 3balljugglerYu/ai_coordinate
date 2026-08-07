@@ -138,6 +138,11 @@ export interface PublicCollectionBook {
    * source/user_select 等で確定しないときは null(表示領域いっぱいにフォールバック)。
    */
   pageAspectRatio: number | null;
+  /** Xシェア抽選の対象カテゴリか(admin 設定)。 */
+  lotteryTarget: boolean;
+  /** 応募受付期間(= 企画表示期間の流用)。 */
+  collectionDisplayStartsAt: string | null;
+  collectionDisplayEndsAt: string | null;
 }
 
 /**
@@ -155,7 +160,7 @@ export const getCollectionBookByToken = cache(async (
   const { data, error } = await supabase
     .from("collection_completions")
     .select(
-      "id, user_id, category_key, mount_image_path, completed_at, book_page_paths, preset_categories(display_name_ja, book_cover_path, book_cover_overlay, book_back_cover_mode, output_aspect_ratio_mode)",
+      "id, user_id, category_key, mount_image_path, completed_at, book_page_paths, preset_categories(display_name_ja, book_cover_path, book_cover_overlay, book_back_cover_mode, output_aspect_ratio_mode, lottery_target, collection_display_starts_at, collection_display_ends_at)",
     )
     .eq("id", token)
     .eq("mount_status", "completed")
@@ -188,6 +193,9 @@ export const getCollectionBookByToken = cache(async (
     book_cover_overlay?: boolean | null;
     book_back_cover_mode?: string | null;
     output_aspect_ratio_mode?: string | null;
+    lottery_target?: boolean | null;
+    collection_display_starts_at?: string | null;
+    collection_display_ends_at?: string | null;
   };
 
   // OGP(Xシェア画像)は横長バナー。book は mount_image_path(=はじまり/縦長)とは別に、
@@ -212,5 +220,8 @@ export const getCollectionBookByToken = cache(async (
     pageAspectRatio: resolveBookPageAspectRatio(
       normalizeStyleOutputAspectRatioMode(catRecord.output_aspect_ratio_mode),
     ),
+    lotteryTarget: catRecord.lottery_target ?? false,
+    collectionDisplayStartsAt: catRecord.collection_display_starts_at ?? null,
+    collectionDisplayEndsAt: catRecord.collection_display_ends_at ?? null,
   };
 });

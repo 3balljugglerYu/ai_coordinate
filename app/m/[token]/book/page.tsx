@@ -101,6 +101,12 @@ export default async function CollectionBookPage({
       coverOverlay={book.coverOverlay}
       backCoverImageUrl={backCoverImageUrl}
       pageAspectRatio={book.pageAspectRatio}
+      lottery={{
+        categoryKey: book.categoryKey,
+        lotteryTarget: book.lotteryTarget,
+        entryStartsAt: book.collectionDisplayStartsAt,
+        entryEndsAt: book.collectionDisplayEndsAt,
+      }}
     />
   );
 }
