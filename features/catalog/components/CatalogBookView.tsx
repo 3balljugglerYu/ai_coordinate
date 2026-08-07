@@ -42,6 +42,20 @@ interface CatalogBookViewProps {
    * (カタログ=絵師作品は既定 false で従来どおり object-cover 全面)。
    */
   isScrapbook?: boolean;
+  /**
+   * front cover に「Persta.AI Catalog + タイトル」のオーバーレイを重ねるか。
+   * false なら表紙画像だけを見せる(タイトル焼き込み済みの表紙向け)。
+   */
+  showCoverOverlay?: boolean;
+  /**
+   * 裏表紙に使う画像 URL。null なら従来どおり固定の革表紙(End of Volume)。
+   */
+  backCoverImageUrl?: string | null;
+  /**
+   * 1 ページ(紙)の幅/高さ比。指定すると本をその比率にして表示領域内へ収める
+   * (余白はページ内ではなく本の外側に出る)。null なら従来どおり表示領域いっぱい。
+   */
+  pageAspectRatio?: number | null;
 }
 
 // 本のサイズは利用可能領域 (bookContainerRef) を実測し、その縦横比に合わせて
@@ -149,6 +163,9 @@ export function CatalogBookView({
   campaignCoverImageUrl,
   onChromeVisibilityChange,
   isScrapbook = false,
+  showCoverOverlay = true,
+  backCoverImageUrl = null,
+  pageAspectRatio = null,
 }: CatalogBookViewProps) {
   const [mounted, setMounted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(false);
@@ -510,31 +527,56 @@ export function CatalogBookView({
   // 実測領域 (bookSize) の縦横比に合わせて 1 ページぶんの width / height を決める。
   // landscape (見開き) では 1 ページ = 横半分。
   const isPortraitLayout = bookSize != null && bookSize.w < 2 * PAGE_MIN_WIDTH;
-  const flipWidth =
+
+  // 本の外形サイズ。
+  // pageAspectRatio 未指定は従来どおり実測領域そのまま (= 画面へ密着)。
+  // 指定時は本をその比率にして実測領域内へ最大サイズで収める。生成比率と紙の形が
+  // 一致するので、ページ内に上下 (or 左右) の余白が出ず、余白は本の外側へ逃げる。
+  const bookBox =
     bookSize == null
+      ? null
+      : pageAspectRatio == null || pageAspectRatio <= 0
+        ? bookSize
+        : (() => {
+            const spreadRatio = isPortraitLayout
+              ? pageAspectRatio
+              : pageAspectRatio * 2;
+            const w = Math.min(bookSize.w, bookSize.h * spreadRatio);
+            return { w: Math.round(w), h: Math.round(w / spreadRatio) };
+          })();
+
+  const flipWidth =
+    bookBox == null
       ? 0
       : isPortraitLayout
-        ? bookSize.w
-        : Math.round(bookSize.w / 2);
-  const flipHeight = bookSize?.h ?? 0;
+        ? bookBox.w
+        : Math.round(bookBox.w / 2);
+  const flipHeight = bookBox?.h ?? 0;
 
   return (
     <div className="mx-auto flex h-full w-full max-w-[1100px] justify-center">
       {mounted ? (
         <div
           ref={bookContainerRef}
-          className="relative h-full w-full"
-          style={{
-            filter: "drop-shadow(0 25px 25px rgba(20,10,5,0.25))",
-          }}
+          className="relative flex h-full w-full items-center justify-center"
         >
-          {bookSize != null ? (
-            <>
+          {bookBox != null ? (
+            // 本体は bookBox の実寸を持つ内側 div に置く。ref (= 実測 + ジェスチャ領域)
+            // は外側のままにして、本の外の余白をタップしてもページがめくれる従来の
+            // 操作感を保つ。
+            <div
+              className="relative"
+              style={{
+                width: bookBox.w,
+                height: bookBox.h,
+                filter: "drop-shadow(0 25px 25px rgba(20,10,5,0.25))",
+              }}
+            >
               {/* @ts-expect-error react-pageflip の型定義が古い */}
               <HTMLFlipBook
                 // 領域サイズが変わったら key 貼り替えで本体を作り直し、新しい
                 // width/height で正しい寸法に描き直す (props の後更新は無視されるため)。
-                key={`${bookSize.w}x${bookSize.h}`}
+                key={`${bookBox.w}x${bookBox.h}`}
                 width={flipWidth}
                 height={flipHeight}
                 size="stretch"
@@ -584,6 +626,7 @@ export function CatalogBookView({
                     coverImageUrl={campaignCoverImageUrl}
                     variant="front"
                     isScrapbook={isScrapbook}
+                    showOverlay={showCoverOverlay}
                   />
                 </FlipBookPageWrapper>
 
@@ -605,12 +648,18 @@ export function CatalogBookView({
                   </FlipBookPageWrapper>
                 ))}
 
-                {/* Back cover (hard cover) */}
+                {/* Back cover (hard cover)。backCoverImageUrl があればその画像を
+                    裏表紙にし、無ければ従来どおり固定の革表紙にフォールバックする。 */}
                 <FlipBookPageWrapper density="hard">
-                  <BookCover title={campaignTitle} variant="back" />
+                  <BookCover
+                    title={campaignTitle}
+                    variant="back"
+                    coverImageUrl={backCoverImageUrl}
+                    isScrapbook={isScrapbook}
+                  />
                 </FlipBookPageWrapper>
               </HTMLFlipBook>
-            </>
+            </div>
           ) : (
             <div
               className="flex h-full w-full items-center justify-center text-stone-500"

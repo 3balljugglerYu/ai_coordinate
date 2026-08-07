@@ -1069,6 +1069,48 @@ describe("parseCollectionSettings - 解放お知らせ設定(任意・独立)", 
       expect(rStr.ok).toBe(true);
       if (rStr.ok) expect(rStr.payload.bookCoverPath).toBe("travel/cover.png");
     });
+
+    test("book_cover_overlay: boolean のみ受理", () => {
+      const rOff = parseCollectionSettings({ book_cover_overlay: false }, OFF);
+      expect(rOff.ok).toBe(true);
+      if (rOff.ok) expect(rOff.payload.bookCoverOverlay).toBe(false);
+
+      const rBad = parseCollectionSettings({ book_cover_overlay: "false" }, OFF);
+      expect(rBad.ok).toBe(false);
+      if (!rBad.ok) expect(rBad.error).toMatch(/book_cover_overlay/);
+    });
+
+    test("book_back_cover_mode: 許可値のみ受理", () => {
+      const rLast = parseCollectionSettings(
+        { book_back_cover_mode: "last_page" },
+        OFF,
+      );
+      expect(rLast.ok).toBe(true);
+      if (rLast.ok) expect(rLast.payload.bookBackCoverMode).toBe("last_page");
+
+      const rDefault = parseCollectionSettings(
+        { book_back_cover_mode: "default" },
+        OFF,
+      );
+      expect(rDefault.ok).toBe(true);
+      if (rDefault.ok) expect(rDefault.payload.bookBackCoverMode).toBe("default");
+
+      const rBad = parseCollectionSettings(
+        { book_back_cover_mode: "leather" },
+        OFF,
+      );
+      expect(rBad.ok).toBe(false);
+      if (!rBad.ok) expect(rBad.error).toMatch(/book_back_cover_mode/);
+    });
+
+    test("未指定のときは payload に載せない(既存値を維持)", () => {
+      const r = parseCollectionSettings({}, OFF);
+      expect(r.ok).toBe(true);
+      if (r.ok) {
+        expect(r.payload.bookCoverOverlay).toBeUndefined();
+        expect(r.payload.bookBackCoverMode).toBeUndefined();
+      }
+    });
   });
 
   describe("sequential_unlock(順番固定の1つずつ解放)", () => {

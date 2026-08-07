@@ -6,6 +6,11 @@ import {
   type MountLayoutKey,
   type NormalizedSlotRect,
 } from "@/features/collections/lib/mount-layouts";
+import {
+  BOOK_BACK_COVER_MODES,
+  isBookBackCoverMode,
+  type BookBackCoverMode,
+} from "@/features/collections/lib/book-display";
 
 /**
  * preset_categories のコレクション設定(is_collection_series / completion_threshold /
@@ -26,6 +31,10 @@ export interface CollectionSettingsPayload {
   completionViewMode?: "mount" | "book";
   /** book 表示の表紙(0ページ目)画像 storage path。 */
   bookCoverPath?: string | null;
+  /** book 表示の表紙にタイトル等のオーバーレイを重ねるか。false=表紙画像だけ見せる。 */
+  bookCoverOverlay?: boolean;
+  /** book 表示の裏表紙: 'default'(固定の革表紙) / 'last_page'(最後の生成画像)。 */
+  bookBackCoverMode?: BookBackCoverMode;
   /** 完走必須の前提カテゴリ key(完走者限定の解放ゲート)。null=ゲートなし */
   unlockPrerequisiteKey?: string | null;
   /** プリセットを N 体ずつ段階解放する単位(正の整数)。null=最初から全部 */
@@ -169,6 +178,24 @@ export function parseCollectionSettings(
     } else {
       payload.bookCoverPath = v.trim();
     }
+  }
+
+  if (body.book_cover_overlay !== undefined) {
+    if (typeof body.book_cover_overlay !== "boolean") {
+      return { ok: false, error: "book_cover_overlay must be boolean" };
+    }
+    payload.bookCoverOverlay = body.book_cover_overlay;
+  }
+
+  if (body.book_back_cover_mode !== undefined) {
+    const v = body.book_back_cover_mode;
+    if (!isBookBackCoverMode(v)) {
+      return {
+        ok: false,
+        error: `book_back_cover_mode must be one of ${BOOK_BACK_COVER_MODES.join(" / ")}`,
+      };
+    }
+    payload.bookBackCoverMode = v;
   }
 
   // 解放ゲート: 完走必須の前提カテゴリ key(完走者限定)。空文字は null(ゲートなし)に正規化。

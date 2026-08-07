@@ -26,6 +26,9 @@ export function ScrapbookReader({
   isOwner,
   completionId,
   rewardGranted = 0,
+  coverOverlay = true,
+  backCoverImageUrl = null,
+  pageAspectRatio = null,
 }: {
   title: string;
   coverImageUrl: string | null;
@@ -38,6 +41,12 @@ export function ScrapbookReader({
    * >0 のとき開幕にカウントアップ演出を重ねる(着地後は自動で消える)。
    */
   rewardGranted?: number;
+  /** 表紙にタイトル等のオーバーレイを重ねるか。false=表紙画像だけ見せる。 */
+  coverOverlay?: boolean;
+  /** 裏表紙に使う画像URL。null なら固定の革表紙(End of Volume)。 */
+  backCoverImageUrl?: string | null;
+  /** ページ(紙)の幅/高さ比。null なら表示領域いっぱい(従来挙動)。 */
+  pageAspectRatio?: number | null;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -219,6 +228,9 @@ export function ScrapbookReader({
           campaignCoverImageUrl={coverImageUrl}
           pages={pages}
           isScrapbook
+          showCoverOverlay={coverOverlay}
+          backCoverImageUrl={backCoverImageUrl}
+          pageAspectRatio={pageAspectRatio}
           onChromeVisibilityChange={(visible) => {
             setChromeVisible(visible);
             // 上スワイプ(=chrome非表示化)が実際に行われたら、ヒントの役目は

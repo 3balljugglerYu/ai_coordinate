@@ -6,8 +6,8 @@ interface BookCoverProps {
   description?: string | null;
   variant: "front" | "back";
   /**
-   * 表紙に表示するサムネイル画像 (campaign.cover_storage_path の signed URL)。
-   * front かつ画像ありのときだけ全面の画像表紙にする。
+   * 表紙に表示する画像 (campaign.cover_storage_path の signed URL / 完走者の生成画像)。
+   * 画像があれば front / back とも全面の画像表紙にする。
    */
   coverImageUrl?: string | null;
   /**
@@ -15,6 +15,12 @@ interface BookCoverProps {
    * (カタログは既定 false で従来どおり object-cover 全面)。
    */
   isScrapbook?: boolean;
+  /**
+   * 画像表紙に「Persta.AI Catalog + タイトル」のオーバーレイ(下部グラデーション・
+   * 金箔風枠を含む)を重ねるか。false なら表紙画像だけを見せる。
+   * タイトルを焼き込み済みの表紙画像(雑誌企画等)は false にする。
+   */
+  showOverlay?: boolean;
 }
 
 /**
@@ -24,8 +30,11 @@ interface BookCoverProps {
  * front:
  *  - coverImageUrl があれば、カタログ一覧と同じサムネイル画像を全面に敷き、
  *    下部のグラデーション上にタイトル / ハッシュタグを重ねる (雑誌・画集の表紙風)。
+ *    showOverlay=false のときは重ね書きを一切せず、表紙画像だけを見せる。
  *  - 画像が無ければ、深いバーガンディの革表紙風デザインにフォールバックする。
- * back: 革表紙風の奥付。
+ * back:
+ *  - coverImageUrl があれば、その画像を全面に敷いた裏表紙 (重ね書きなし)。
+ *  - 画像が無ければ革表紙風の奥付。
  */
 export function BookCover({
   title,
@@ -34,9 +43,12 @@ export function BookCover({
   variant,
   coverImageUrl,
   isScrapbook = false,
+  showOverlay = true,
 }: BookCoverProps) {
-  // front かつ画像あり → サムネイル画像を全面に敷いた表紙
-  if (variant === "front" && coverImageUrl) {
+  // 画像あり → その画像を全面に敷いた表紙 / 裏表紙。
+  // オーバーレイ(タイトル等)は front かつ showOverlay のときだけ重ねる。
+  if (coverImageUrl) {
+    const withOverlay = variant === "front" && showOverlay;
     return (
       <div className="relative h-full w-full overflow-hidden bg-[#2e110d]">
         <Image
@@ -49,59 +61,69 @@ export function BookCover({
           sizes="(max-width: 768px) 100vw, 760px"
         />
 
-        {/* 下部グラデーション (タイトルの可読性確保) */}
-        <div
-          aria-hidden
-          className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/55 to-transparent"
-        />
+        {withOverlay ? (
+          <>
+            {/* 下部グラデーション (タイトルの可読性確保) */}
+            <div
+              aria-hidden
+              className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-black/90 via-black/55 to-transparent"
+            />
 
-        {/* 薄い金箔風の枠 — 本らしさを残す */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-3 rounded-sm border border-[#c9a961]/45"
-        />
+            {/* 薄い金箔風の枠 — 本らしさを残す */}
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-3 rounded-sm border border-[#c9a961]/45"
+            />
+          </>
+        ) : null}
 
-        {/* 中央折り目側の陰影 */}
+        {/* 中央折り目側の陰影 (front は右端 / back は左端) */}
         <div
           aria-hidden
-          className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-black/45 to-transparent"
+          className={`absolute inset-y-0 w-10 ${
+            variant === "front"
+              ? "right-0 bg-gradient-to-l from-black/45 to-transparent"
+              : "left-0 bg-gradient-to-r from-black/45 to-transparent"
+          }`}
         />
 
         {/* 下部のタイトルブロック */}
-        <div className="absolute inset-x-0 bottom-0 z-10 px-7 pb-9 text-center">
-          <p
-            className="text-[10px] uppercase tracking-[0.4em] text-[#d4b87a]"
-            style={{
-              fontFamily: "var(--font-libre), serif",
-              textShadow: "0 1px 4px rgba(0,0,0,0.75)",
-            }}
-          >
-            Persta.AI Catalog
-          </p>
-          <div className="mx-auto my-3 h-px w-12 bg-[#c9a961]/70" />
-          <h1
-            className="text-3xl leading-snug text-[#f6e8c4] sm:text-4xl"
-            style={{
-              fontFamily: "var(--font-cormorant), serif",
-              fontWeight: 500,
-              letterSpacing: "0.01em",
-              textShadow: "0 2px 12px rgba(0,0,0,0.9)",
-            }}
-          >
-            {title}
-          </h1>
-          {hashtag ? (
+        {withOverlay ? (
+          <div className="absolute inset-x-0 bottom-0 z-10 px-7 pb-9 text-center">
             <p
-              className="mt-3 text-xs tracking-[0.18em] text-[#e6d0a0]"
+              className="text-[10px] uppercase tracking-[0.4em] text-[#d4b87a]"
               style={{
                 fontFamily: "var(--font-libre), serif",
-                textShadow: "0 1px 6px rgba(0,0,0,0.85)",
+                textShadow: "0 1px 4px rgba(0,0,0,0.75)",
               }}
             >
-              #{hashtag}
+              Persta.AI Catalog
             </p>
-          ) : null}
-        </div>
+            <div className="mx-auto my-3 h-px w-12 bg-[#c9a961]/70" />
+            <h1
+              className="text-3xl leading-snug text-[#f6e8c4] sm:text-4xl"
+              style={{
+                fontFamily: "var(--font-cormorant), serif",
+                fontWeight: 500,
+                letterSpacing: "0.01em",
+                textShadow: "0 2px 12px rgba(0,0,0,0.9)",
+              }}
+            >
+              {title}
+            </h1>
+            {hashtag ? (
+              <p
+                className="mt-3 text-xs tracking-[0.18em] text-[#e6d0a0]"
+                style={{
+                  fontFamily: "var(--font-libre), serif",
+                  textShadow: "0 1px 6px rgba(0,0,0,0.85)",
+                }}
+              >
+                #{hashtag}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
     );
   }
