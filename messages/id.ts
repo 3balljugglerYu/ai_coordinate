@@ -74,10 +74,12 @@ export const idMessages = {
       "Saat orang yang mengikutimu berkreasi dengan prompt ini, kamu dapat +{amount} Percoin setiap kali.",
     promptVisibilityPublicOption: "Tampilkan prompt",
     promptVisibilityPrivateOption: "Jadikan prompt privat",
-    promptVisibilityPublicHint: "Pengikut dapat menyalin prompt. Hasil dari salinan tidak dihitung.",
+    promptVisibilityPublicHint:
+      "Pengikut bisa menyalin prompt kamu. Generasi dari hasil salinan tidak dihitung ke jumlah penggunaan. Hanya pengikut yang bisa membuat dengan prompt ini.",
     promptVisibilityPublicHintWithReward:
-      "Pengikut bisa menyalin prompt kamu. Generasi dari hasil salinan tidak dihitung ke jumlah penggunaan maupun imbalan Percoin.",
-    promptVisibilityPrivateHint: "Tidak ada yang melihat prompt. Pengikut tetap bisa membuat dengan itu tanpa melihatnya.",
+      "Pengikut bisa menyalin prompt kamu. Generasi dari hasil salinan tidak dihitung ke jumlah penggunaan maupun imbalan Percoin. Hanya pengikut yang bisa membuat dengan prompt ini.",
+    promptVisibilityPrivateHint:
+      "Prompt kamu tidak ditampilkan ke siapa pun. Pengikut bisa membuat dengan prompt yang sama tanpa melihat isinya. Hanya pengikut yang bisa membuat dengan prompt ini.",
     showBeforeImageHint: "Menampilkan gambar asli memudahkan orang melihat apa yang diubah prompt.",
     promptVisibilityRetractWarning: "Mengubah ke privat tidak membatalkan apa yang sudah dilihat atau disalin.",
     sourcePromptCardTitle: "Buat dengan prompt ini",

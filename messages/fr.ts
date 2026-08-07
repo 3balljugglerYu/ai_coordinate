@@ -74,10 +74,12 @@ export const frMessages = {
       "Quand une personne qui vous suit crée avec ce prompt, vous gagnez +{amount} Percoins à chaque fois.",
     promptVisibilityPublicOption: "Afficher le prompt",
     promptVisibilityPrivateOption: "Garder le prompt privé",
-    promptVisibilityPublicHint: "Vos abonnés peuvent copier le prompt. Les créations issues d'une copie ne sont pas comptées.",
+    promptVisibilityPublicHint:
+      "Vos abonnés peuvent copier le prompt. Les créations faites à partir d'une copie ne comptent pas dans le nombre d'utilisations. Seuls vos abonnés peuvent générer avec.",
     promptVisibilityPublicHintWithReward:
-      "Vos abonnés peuvent copier le prompt. Les créations faites à partir d'une copie ne comptent ni dans le nombre d'utilisations ni dans les récompenses en Percoins.",
-    promptVisibilityPrivateHint: "Personne ne voit le prompt. Vos abonnés peuvent générer avec lui sans le voir.",
+      "Vos abonnés peuvent copier le prompt. Les créations faites à partir d'une copie ne comptent ni dans le nombre d'utilisations ni dans les récompenses en Percoins. Seuls vos abonnés peuvent générer avec.",
+    promptVisibilityPrivateHint:
+      "Votre prompt reste invisible pour tous. Vos abonnés peuvent générer avec sans en voir le texte. Seuls vos abonnés peuvent générer avec.",
     showBeforeImageHint: "Afficher l'image d'origine aide à voir ce que le prompt change.",
     promptVisibilityRetractWarning: "Passer en privé n'annule pas ce qui a déjà été vu ou copié.",
     sourcePromptCardTitle: "Créer avec ce prompt",

@@ -74,10 +74,12 @@ export const viMessages = {
       "Khi người theo dõi bạn tạo ảnh bằng prompt này, bạn nhận +{amount} Percoin mỗi lần.",
     promptVisibilityPublicOption: "Hiện câu lệnh",
     promptVisibilityPrivateOption: "Giữ câu lệnh riêng tư",
-    promptVisibilityPublicHint: "Người theo dõi có thể sao chép câu lệnh. Ảnh tạo từ bản sao không được tính.",
+    promptVisibilityPublicHint:
+      "Người theo dõi có thể sao chép prompt của bạn. Ảnh tạo từ bản sao không được tính vào số lượt dùng. Chỉ người theo dõi mới tạo được bằng prompt này.",
     promptVisibilityPublicHintWithReward:
-      "Người theo dõi có thể sao chép prompt của bạn. Ảnh tạo từ bản sao không được tính vào số lượt dùng lẫn phần thưởng Percoin.",
-    promptVisibilityPrivateHint: "Không ai thấy câu lệnh. Người theo dõi vẫn tạo được bằng câu lệnh đó mà không thấy nội dung.",
+      "Người theo dõi có thể sao chép prompt của bạn. Ảnh tạo từ bản sao không được tính vào số lượt dùng lẫn phần thưởng Percoin. Chỉ người theo dõi mới tạo được bằng prompt này.",
+    promptVisibilityPrivateHint:
+      "Prompt của bạn không hiển thị với ai. Người theo dõi có thể tạo ảnh bằng chính prompt đó mà không thấy nội dung. Chỉ người theo dõi mới tạo được bằng prompt này.",
     showBeforeImageHint: "Hiển thị ảnh gốc giúp thấy rõ câu lệnh thay đổi những gì.",
     promptVisibilityRetractWarning: "Chuyển sang riêng tư không hoàn tác những gì đã được xem hoặc sao chép.",
     sourcePromptCardTitle: "Tạo bằng câu lệnh này",

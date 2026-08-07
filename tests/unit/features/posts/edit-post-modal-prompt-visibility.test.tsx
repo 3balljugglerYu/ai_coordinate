@@ -85,7 +85,7 @@ const translations = {
   promptVisibilityPublicOption: "プロンプトを公開する",
   promptVisibilityPrivateOption: "プロンプトを非公開にする",
   promptVisibilityPublicHint:
-    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
+    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。フォロワー以外は生成できません。",
   promptVisibilityPrivateHint: "プロンプトは誰にも見せません。",
   promptVisibilityRetractWarning: RETRACT_WARNING,
   showBeforeImageHint:

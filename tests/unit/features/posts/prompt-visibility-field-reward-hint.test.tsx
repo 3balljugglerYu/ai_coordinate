@@ -31,9 +31,9 @@ const messages: Record<string, string> = {
   promptVisibilityPublicOption: "プロンプトを公開する",
   promptVisibilityPrivateOption: "プロンプトを非公開にする",
   promptVisibilityPublicHint:
-    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
+    "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。フォロワー以外は生成できません。",
   promptVisibilityPublicHintWithReward:
-    "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。",
+    "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。フォロワー以外は生成できません。",
   promptVisibilityPrivateHint: "プロンプトは誰にも見せません。",
   promptVisibilityRewardHint:
     "あなたをフォローしている人がこのプロンプトで生成すると、1回につき +{amount} ペルコインが還元されます。",
@@ -82,7 +82,7 @@ describe("PromptVisibilityField の還元まわりの表示", () => {
 
     expect(
       screen.getByText(
-        "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。"
+        "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。フォロワー以外は生成できません。"
       )
     ).toBeInTheDocument();
     expect(screen.queryByText(/ペルコイン還元/)).not.toBeInTheDocument();
@@ -99,7 +99,7 @@ describe("PromptVisibilityField の還元まわりの表示", () => {
 
     expect(
       screen.getByText(
-        "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。"
+        "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。フォロワー以外は生成できません。"
       )
     ).toBeInTheDocument();
     expect(

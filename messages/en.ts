@@ -74,10 +74,12 @@ export const enMessages = {
       "When someone who follows you creates with this prompt, you earn +{amount} Percoins each time.",
     promptVisibilityPublicOption: "Show the prompt",
     promptVisibilityPrivateOption: "Keep the prompt private",
-    promptVisibilityPublicHint: "Followers can copy the prompt. Generations made from a copy are not counted.",
+    promptVisibilityPublicHint:
+      "Followers can copy your prompt. Generations made from a copy don't count toward your usage number. Only followers can generate with it.",
     promptVisibilityPublicHintWithReward:
-      "Followers can copy your prompt. Generations made from a copy count toward neither your usage number nor your Percoin rewards.",
-    promptVisibilityPrivateHint: "Nobody sees the prompt. Followers can still generate with it without seeing it.",
+      "Followers can copy your prompt. Generations made from a copy count toward neither your usage number nor your Percoin rewards. Only followers can generate with it.",
+    promptVisibilityPrivateHint:
+      "Your prompt stays hidden from everyone. Followers can generate with it without seeing the text. Only followers can generate with it.",
     showBeforeImageHint: "Showing the source image makes it easier to see what the prompt changes.",
     promptVisibilityRetractWarning: "Switching to private does not undo what has already been seen or copied.",
     sourcePromptCardTitle: "Create with this prompt",
