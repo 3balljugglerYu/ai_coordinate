@@ -75,6 +75,8 @@ export const zhTwMessages = {
     promptVisibilityPublicOption: "公開提示詞",
     promptVisibilityPrivateOption: "將提示詞設為私密",
     promptVisibilityPublicHint: "追蹤者可以複製提示詞。用複製的內容生成不計入使用數。",
+    promptVisibilityPublicHintWithReward:
+      "追蹤者可以複製你的提示詞。透過複製生成的內容既不計入使用次數，也不計入佩爾幣回饋。",
     promptVisibilityPrivateHint: "任何人都看不到提示詞。追蹤者仍可在看不到內容的情況下用它生成。",
     showBeforeImageHint: "一併顯示原圖，更容易讓人看出提示詞改變了什麼。",
     promptVisibilityRetractWarning: "改為私密無法撤回已被看到或複製的內容。",

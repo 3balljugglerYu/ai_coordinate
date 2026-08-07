@@ -75,6 +75,8 @@ export const thMessages = {
     promptVisibilityPublicOption: "แสดงพรอมต์",
     promptVisibilityPrivateOption: "ตั้งพรอมต์เป็นส่วนตัว",
     promptVisibilityPublicHint: "ผู้ติดตามคัดลอกพรอมต์ได้ งานที่สร้างจากสำเนาจะไม่ถูกนับ",
+    promptVisibilityPublicHintWithReward:
+      "ผู้ติดตามสามารถคัดลอกพรอมต์ของคุณได้ ผลงานที่สร้างจากการคัดลอกจะไม่นับทั้งจำนวนการใช้งานและรางวัลเพอร์คอยน์",
     promptVisibilityPrivateHint: "ไม่มีใครเห็นพรอมต์ ผู้ติดตามยังสร้างด้วยพรอมต์นี้ได้โดยไม่เห็นเนื้อหา",
     showBeforeImageHint: "การแสดงภาพต้นฉบับช่วยให้เห็นว่าพรอมต์เปลี่ยนอะไรบ้าง",
     promptVisibilityRetractWarning: "การเปลี่ยนเป็นส่วนตัวไม่ย้อนคืนสิ่งที่ถูกเห็นหรือคัดลอกไปแล้ว",

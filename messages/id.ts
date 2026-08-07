@@ -75,6 +75,8 @@ export const idMessages = {
     promptVisibilityPublicOption: "Tampilkan prompt",
     promptVisibilityPrivateOption: "Jadikan prompt privat",
     promptVisibilityPublicHint: "Pengikut dapat menyalin prompt. Hasil dari salinan tidak dihitung.",
+    promptVisibilityPublicHintWithReward:
+      "Pengikut bisa menyalin prompt kamu. Generasi dari hasil salinan tidak dihitung ke jumlah penggunaan maupun imbalan Percoin.",
     promptVisibilityPrivateHint: "Tidak ada yang melihat prompt. Pengikut tetap bisa membuat dengan itu tanpa melihatnya.",
     showBeforeImageHint: "Menampilkan gambar asli memudahkan orang melihat apa yang diubah prompt.",
     promptVisibilityRetractWarning: "Mengubah ke privat tidak membatalkan apa yang sudah dilihat atau disalin.",

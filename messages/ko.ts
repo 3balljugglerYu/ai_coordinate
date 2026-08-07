@@ -75,6 +75,8 @@ export const koMessages = {
     promptVisibilityPublicOption: "프롬프트 공개",
     promptVisibilityPrivateOption: "프롬프트 비공개",
     promptVisibilityPublicHint: "팔로워가 프롬프트를 복사할 수 있습니다. 복사본으로 만든 생성은 이용 수에 포함되지 않습니다.",
+    promptVisibilityPublicHintWithReward:
+      "팔로워는 프롬프트를 복사할 수 있습니다. 복사해서 만든 생성물은 이용 수에도 페르코인 보상에도 포함되지 않습니다.",
     promptVisibilityPrivateHint: "프롬프트를 아무에게도 보여주지 않습니다. 팔로워는 내용을 보지 않고 같은 프롬프트로 생성만 할 수 있습니다.",
     showBeforeImageHint: "원본 이미지를 함께 보여주면 프롬프트가 무엇을 바꾸는지 전달하기 쉬워집니다.",
     promptVisibilityRetractWarning: "비공개로 바꿔도 이미 보였거나 복사된 내용은 되돌릴 수 없습니다.",

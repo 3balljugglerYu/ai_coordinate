@@ -75,6 +75,8 @@ export const enMessages = {
     promptVisibilityPublicOption: "Show the prompt",
     promptVisibilityPrivateOption: "Keep the prompt private",
     promptVisibilityPublicHint: "Followers can copy the prompt. Generations made from a copy are not counted.",
+    promptVisibilityPublicHintWithReward:
+      "Followers can copy your prompt. Generations made from a copy count toward neither your usage number nor your Percoin rewards.",
     promptVisibilityPrivateHint: "Nobody sees the prompt. Followers can still generate with it without seeing it.",
     showBeforeImageHint: "Showing the source image makes it easier to see what the prompt changes.",
     promptVisibilityRetractWarning: "Switching to private does not undo what has already been seen or copied.",

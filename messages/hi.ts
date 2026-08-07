@@ -75,6 +75,8 @@ export const hiMessages = {
     promptVisibilityPublicOption: "प्रॉम्प्ट दिखाएँ",
     promptVisibilityPrivateOption: "प्रॉम्प्ट निजी रखें",
     promptVisibilityPublicHint: "फ़ॉलोअर्स प्रॉम्प्ट कॉपी कर सकते हैं। कॉपी से बनाई गई रचनाएँ नहीं गिनी जातीं।",
+    promptVisibilityPublicHintWithReward:
+      "फ़ॉलोअर आपका प्रॉम्प्ट कॉपी कर सकते हैं। कॉपी से बनाई गई इमेज न तो उपयोग संख्या में गिनी जाती है और न ही पर्कॉइन रिवॉर्ड में।",
     promptVisibilityPrivateHint: "प्रॉम्प्ट किसी को नहीं दिखेगा। फ़ॉलोअर्स उसे देखे बिना भी उससे बना सकते हैं।",
     showBeforeImageHint: "मूल छवि दिखाने से समझना आसान होता है कि प्रॉम्प्ट क्या बदलता है।",
     promptVisibilityRetractWarning: "निजी करने से वह पीछे नहीं हटता जो पहले ही देखा या कॉपी हो चुका है।",

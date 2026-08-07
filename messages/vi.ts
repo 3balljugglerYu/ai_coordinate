@@ -75,6 +75,8 @@ export const viMessages = {
     promptVisibilityPublicOption: "Hiện câu lệnh",
     promptVisibilityPrivateOption: "Giữ câu lệnh riêng tư",
     promptVisibilityPublicHint: "Người theo dõi có thể sao chép câu lệnh. Ảnh tạo từ bản sao không được tính.",
+    promptVisibilityPublicHintWithReward:
+      "Người theo dõi có thể sao chép prompt của bạn. Ảnh tạo từ bản sao không được tính vào số lượt dùng lẫn phần thưởng Percoin.",
     promptVisibilityPrivateHint: "Không ai thấy câu lệnh. Người theo dõi vẫn tạo được bằng câu lệnh đó mà không thấy nội dung.",
     showBeforeImageHint: "Hiển thị ảnh gốc giúp thấy rõ câu lệnh thay đổi những gì.",
     promptVisibilityRetractWarning: "Chuyển sang riêng tư không hoàn tác những gì đã được xem hoặc sao chép.",

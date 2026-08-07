@@ -72,6 +72,8 @@ export const jaMessages = {
     promptVisibilityPublicOption: "プロンプトを公開する",
     promptVisibilityPrivateOption: "プロンプトを非公開にする",
     promptVisibilityPublicHint: "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
+    promptVisibilityPublicHintWithReward:
+      "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。",
     promptVisibilityPrivateHint: "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。",
     showBeforeImageHint: "元画像も表示することで、どんな変化が起きるか伝わりやすくなります。",
     promptVisibilityRetractWarning: "非公開に変えても、すでに見られた内容やコピーされた内容は取り消せません。",

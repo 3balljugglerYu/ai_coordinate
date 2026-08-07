@@ -75,6 +75,8 @@ export const arMessages = {
     promptVisibilityPublicOption: "إظهار الأمر",
     promptVisibilityPrivateOption: "إبقاء الأمر خاصًا",
     promptVisibilityPublicHint: "يمكن للمتابعين نسخ الأمر. لا تُحتسب الأعمال المُنشأة من نسخة.",
+    promptVisibilityPublicHintWithReward:
+      "يمكن لمتابعيك نسخ البرومبت. وما يُنشأ من نسخة لا يُحتسب ضمن عدد الاستخدامات ولا ضمن مكافآت البيركوين.",
     promptVisibilityPrivateHint: "لا أحد يرى الأمر. يمكن للمتابعين التوليد به دون رؤيته.",
     showBeforeImageHint: "إظهار الصورة الأصلية يوضّح ما الذي يغيّره الأمر.",
     promptVisibilityRetractWarning: "التحويل إلى خاص لا يلغي ما تم رؤيته أو نسخه بالفعل.",

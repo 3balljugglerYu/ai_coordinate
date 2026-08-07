@@ -75,6 +75,8 @@ export const ptMessages = {
     promptVisibilityPublicOption: "Mostrar o prompt",
     promptVisibilityPrivateOption: "Manter o prompt privado",
     promptVisibilityPublicHint: "Seus seguidores podem copiar o prompt. Gerações feitas a partir de uma cópia não são contadas.",
+    promptVisibilityPublicHintWithReward:
+      "Seus seguidores podem copiar o prompt. Criações feitas a partir de uma cópia não contam nem para o número de usos nem para as recompensas em Percoins.",
     promptVisibilityPrivateHint: "Ninguém vê o prompt. Seus seguidores ainda podem gerar com ele sem vê-lo.",
     showBeforeImageHint: "Mostrar a imagem original facilita perceber o que o prompt muda.",
     promptVisibilityRetractWarning: "Mudar para privado não desfaz o que já foi visto ou copiado.",

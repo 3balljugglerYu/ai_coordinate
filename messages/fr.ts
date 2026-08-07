@@ -75,6 +75,8 @@ export const frMessages = {
     promptVisibilityPublicOption: "Afficher le prompt",
     promptVisibilityPrivateOption: "Garder le prompt privé",
     promptVisibilityPublicHint: "Vos abonnés peuvent copier le prompt. Les créations issues d'une copie ne sont pas comptées.",
+    promptVisibilityPublicHintWithReward:
+      "Vos abonnés peuvent copier le prompt. Les créations faites à partir d'une copie ne comptent ni dans le nombre d'utilisations ni dans les récompenses en Percoins.",
     promptVisibilityPrivateHint: "Personne ne voit le prompt. Vos abonnés peuvent générer avec lui sans le voir.",
     showBeforeImageHint: "Afficher l'image d'origine aide à voir ce que le prompt change.",
     promptVisibilityRetractWarning: "Passer en privé n'annule pas ce qui a déjà été vu ou copié.",

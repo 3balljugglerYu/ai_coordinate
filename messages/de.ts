@@ -75,6 +75,8 @@ export const deMessages = {
     promptVisibilityPublicOption: "Prompt anzeigen",
     promptVisibilityPrivateOption: "Prompt privat halten",
     promptVisibilityPublicHint: "Follower können den Prompt kopieren. Aus einer Kopie erstellte Bilder werden nicht gezählt.",
+    promptVisibilityPublicHintWithReward:
+      "Follower können deinen Prompt kopieren. Aus einer Kopie erstellte Generierungen zählen weder für die Nutzungszahl noch für die Percoin-Belohnungen.",
     promptVisibilityPrivateHint: "Niemand sieht den Prompt. Follower können ihn trotzdem nutzen, ohne ihn zu sehen.",
     showBeforeImageHint: "Mit dem Ausgangsbild ist besser zu erkennen, was der Prompt verändert.",
     promptVisibilityRetractWarning: "Der Wechsel zu privat macht nicht rückgängig, was schon gesehen oder kopiert wurde.",
