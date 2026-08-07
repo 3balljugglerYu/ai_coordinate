@@ -12,19 +12,27 @@ import {
 } from "@/features/collections/lib/book-share-metadata";
 
 describe("buildBookShareDescription", () => {
-  test("カテゴリ名を差し込む", () => {
-    expect(buildBookShareDescription("旅行日記")).toBe(
-      "うちの子の旅行日記。あなたのうちの子でも作れます。"
+  test("表示名をそのまま使う", () => {
+    expect(buildBookShareDescription("🇮🇹 うちの子のイタリア旅行日記")).toBe(
+      "🇮🇹 うちの子のイタリア旅行日記。あなたのうちの子でも作れます。"
     );
   });
 
   test("カテゴリが変われば文言も追従する（旅行日記に固定されない）", () => {
-    const description = buildBookShareDescription("ファッション雑誌：夏");
+    const description = buildBookShareDescription("うちの子のファッション雑誌：夏");
 
     expect(description).toBe(
       "うちの子のファッション雑誌：夏。あなたのうちの子でも作れます。"
     );
     expect(description).not.toContain("旅行日記");
+  });
+
+  test("表示名に既に含まれる「うちの子の」を重複させない", () => {
+    // 実データの display_name_ja は「うちの子の…」で始まる。
+    // 接頭辞を足すと「うちの子のうちの子の…」になる。
+    const description = buildBookShareDescription("うちの子のファッション雑誌：夏");
+
+    expect(description).not.toContain("うちの子のうちの子");
   });
 
   test.each([null, undefined, "", "   "])(

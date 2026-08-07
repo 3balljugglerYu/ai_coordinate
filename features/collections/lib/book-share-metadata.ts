@@ -10,8 +10,12 @@ export function buildBookShareDescription(
   displayNameJa: string | null | undefined
 ): string {
   const name = displayNameJa?.trim();
+  // 表示名をそのまま使う。接頭辞は付けない ——
+  // 実データの表示名には既に「うちの子の」が含まれており
+  // (「うちの子のファッション雑誌：夏」「🇮🇹 うちの子のイタリア旅行日記」)、
+  // 足すと「うちの子のうちの子の…」と二重になる。
   return name
-    ? `うちの子の${name}。あなたのうちの子でも作れます。`
+    ? `${name}。あなたのうちの子でも作れます。`
     : "Persta.AI のコレクション作品です。";
 }
 
