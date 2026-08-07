@@ -71,7 +71,7 @@ export const thMessages = {
     showBeforeImageLabel: "แสดงรูปก่อนเปลี่ยนด้วย",
     promptVisibilityLabel: "การเปิดเผยพรอมต์",
     promptVisibilityRewardHint:
-      "คุณจะได้รับสูงสุด +{amount} เพอร์คอยน์ ทุกครั้งที่ผู้ติดตามสร้างด้วยพรอมต์นี้",
+      "เมื่อผู้ที่ติดตามคุณสร้างด้วยพรอมต์นี้ คุณจะได้รับ +{amount} เพอร์คอยน์ ทุกครั้ง",
     promptVisibilityPublicOption: "แสดงพรอมต์",
     promptVisibilityPrivateOption: "ตั้งพรอมต์เป็นส่วนตัว",
     promptVisibilityPublicHint: "ผู้ติดตามคัดลอกพรอมต์ได้ งานที่สร้างจากสำเนาจะไม่ถูกนับ",

@@ -71,7 +71,7 @@ export const zhCnMessages = {
     showBeforeImageLabel: "同时显示更换前的图片",
     promptVisibilityLabel: "提示词公开设置",
     promptVisibilityRewardHint:
-      "关注者每次使用此提示词生成，你最多可获得 +{amount} 佩尔币。",
+      "关注你的用户每次使用此提示词生成，你将获得 +{amount} 佩尔币。",
     promptVisibilityPublicOption: "公开提示词",
     promptVisibilityPrivateOption: "将提示词设为私密",
     promptVisibilityPublicHint: "关注者可以复制提示词。用复制的内容生成不计入使用数。",

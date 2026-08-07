@@ -71,7 +71,7 @@ export const hiMessages = {
     showBeforeImageLabel: "पहले की छवि भी दिखाएँ",
     promptVisibilityLabel: "प्रॉम्प्ट की दृश्यता",
     promptVisibilityRewardHint:
-      "जब भी कोई फ़ॉलोअर इस प्रॉम्प्ट से बनाता है, आपको अधिकतम +{amount} पर्कॉइन मिलते हैं।",
+      "जब आपको फ़ॉलो करने वाला कोई व्यक्ति इस प्रॉम्प्ट से बनाता है, तो हर बार आपको +{amount} पर्कॉइन मिलते हैं।",
     promptVisibilityPublicOption: "प्रॉम्प्ट दिखाएँ",
     promptVisibilityPrivateOption: "प्रॉम्प्ट निजी रखें",
     promptVisibilityPublicHint: "फ़ॉलोअर्स प्रॉम्प्ट कॉपी कर सकते हैं। कॉपी से बनाई गई रचनाएँ नहीं गिनी जातीं।",

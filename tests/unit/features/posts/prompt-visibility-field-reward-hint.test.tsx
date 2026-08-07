@@ -36,7 +36,7 @@ const messages: Record<string, string> = {
     "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。",
   promptVisibilityPrivateHint: "プロンプトは誰にも見せません。",
   promptVisibilityRewardHint:
-    "フォロワーがこのプロンプトで生成すると、1回につき最大 +{amount} ペルコインが還元されます。",
+    "あなたをフォローしている人がこのプロンプトで生成すると、1回につき +{amount} ペルコインが還元されます。",
 };
 
 function translate(
@@ -104,7 +104,7 @@ describe("PromptVisibilityField の還元まわりの表示", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "フォロワーがこのプロンプトで生成すると、1回につき最大 +2 ペルコインが還元されます。"
+        "あなたをフォローしている人がこのプロンプトで生成すると、1回につき +2 ペルコインが還元されます。"
       )
     ).toBeInTheDocument();
   });

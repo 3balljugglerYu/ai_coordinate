@@ -71,7 +71,7 @@ export const esMessages = {
     showBeforeImageLabel: "Mostrar también la imagen original",
     promptVisibilityLabel: "Visibilidad del prompt",
     promptVisibilityRewardHint:
-      "Ganas hasta +{amount} Percoins cada vez que un seguidor crea con este prompt.",
+      "Cuando alguien que te sigue crea con este prompt, ganas +{amount} Percoins cada vez.",
     promptVisibilityPublicOption: "Mostrar el prompt",
     promptVisibilityPrivateOption: "Mantener el prompt privado",
     promptVisibilityPublicHint: "Tus seguidores pueden copiar el prompt. Lo generado desde una copia no se cuenta.",

@@ -71,7 +71,7 @@ export const enMessages = {
     showBeforeImageLabel: "Also display the before image",
     promptVisibilityLabel: "Prompt visibility",
     promptVisibilityRewardHint:
-      "You earn up to +{amount} Percoins each time a follower creates with this prompt.",
+      "When someone who follows you creates with this prompt, you earn +{amount} Percoins each time.",
     promptVisibilityPublicOption: "Show the prompt",
     promptVisibilityPrivateOption: "Keep the prompt private",
     promptVisibilityPublicHint: "Followers can copy the prompt. Generations made from a copy are not counted.",

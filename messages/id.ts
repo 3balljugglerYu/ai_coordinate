@@ -71,7 +71,7 @@ export const idMessages = {
     showBeforeImageLabel: "Tampilkan juga gambar sebelum",
     promptVisibilityLabel: "Visibilitas prompt",
     promptVisibilityRewardHint:
-      "Kamu dapat hingga +{amount} Percoin setiap kali pengikut berkreasi dengan prompt ini.",
+      "Saat orang yang mengikutimu berkreasi dengan prompt ini, kamu dapat +{amount} Percoin setiap kali.",
     promptVisibilityPublicOption: "Tampilkan prompt",
     promptVisibilityPrivateOption: "Jadikan prompt privat",
     promptVisibilityPublicHint: "Pengikut dapat menyalin prompt. Hasil dari salinan tidak dihitung.",

@@ -71,7 +71,7 @@ export const deMessages = {
     showBeforeImageLabel: "Auch das Vorher-Bild anzeigen",
     promptVisibilityLabel: "Sichtbarkeit des Prompts",
     promptVisibilityRewardHint:
-      "Du erhältst bis zu +{amount} Percoins, jedes Mal wenn ein Follower mit diesem Prompt erstellt.",
+      "Wenn jemand, der dir folgt, mit diesem Prompt erstellt, erhältst du jedes Mal +{amount} Percoins.",
     promptVisibilityPublicOption: "Prompt anzeigen",
     promptVisibilityPrivateOption: "Prompt privat halten",
     promptVisibilityPublicHint: "Follower können den Prompt kopieren. Aus einer Kopie erstellte Bilder werden nicht gezählt.",

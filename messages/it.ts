@@ -71,7 +71,7 @@ export const itMessages = {
     showBeforeImageLabel: "Mostra anche l'immagine prima",
     promptVisibilityLabel: "Visibilità del prompt",
     promptVisibilityRewardHint:
-      "Guadagni fino a +{amount} Percoin ogni volta che un follower crea con questo prompt.",
+      "Quando una persona che ti segue crea con questo prompt, guadagni +{amount} Percoin ogni volta.",
     promptVisibilityPublicOption: "Mostra il prompt",
     promptVisibilityPrivateOption: "Mantieni il prompt privato",
     promptVisibilityPublicHint: "I follower possono copiare il prompt. Le generazioni da una copia non vengono conteggiate.",

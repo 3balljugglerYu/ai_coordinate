@@ -71,7 +71,7 @@ export const frMessages = {
     showBeforeImageLabel: "Afficher aussi l'image d'origine",
     promptVisibilityLabel: "Visibilité du prompt",
     promptVisibilityRewardHint:
-      "Vous gagnez jusqu'à +{amount} Percoins chaque fois qu'un abonné crée avec ce prompt.",
+      "Quand une personne qui vous suit crée avec ce prompt, vous gagnez +{amount} Percoins à chaque fois.",
     promptVisibilityPublicOption: "Afficher le prompt",
     promptVisibilityPrivateOption: "Garder le prompt privé",
     promptVisibilityPublicHint: "Vos abonnés peuvent copier le prompt. Les créations issues d'une copie ne sont pas comptées.",

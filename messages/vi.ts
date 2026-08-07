@@ -71,7 +71,7 @@ export const viMessages = {
     showBeforeImageLabel: "Hiển thị cả hình trước khi đổi",
     promptVisibilityLabel: "Hiển thị câu lệnh",
     promptVisibilityRewardHint:
-      "Bạn nhận tối đa +{amount} Percoin mỗi lần người theo dõi tạo ảnh bằng prompt này.",
+      "Khi người theo dõi bạn tạo ảnh bằng prompt này, bạn nhận +{amount} Percoin mỗi lần.",
     promptVisibilityPublicOption: "Hiện câu lệnh",
     promptVisibilityPrivateOption: "Giữ câu lệnh riêng tư",
     promptVisibilityPublicHint: "Người theo dõi có thể sao chép câu lệnh. Ảnh tạo từ bản sao không được tính.",

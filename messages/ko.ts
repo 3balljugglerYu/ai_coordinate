@@ -71,7 +71,7 @@ export const koMessages = {
     showBeforeImageLabel: "변경 전 이미지도 함께 표시",
     promptVisibilityLabel: "프롬프트 공개 설정",
     promptVisibilityRewardHint:
-      "팔로워가 이 프롬프트로 생성할 때마다 최대 +{amount} 페르코인이 지급됩니다.",
+      "회원님을 팔로우하는 사람이 이 프롬프트로 생성하면, 1회당 +{amount} 페르코인이 지급됩니다.",
     promptVisibilityPublicOption: "프롬프트 공개",
     promptVisibilityPrivateOption: "프롬프트 비공개",
     promptVisibilityPublicHint: "팔로워가 프롬프트를 복사할 수 있습니다. 복사본으로 만든 생성은 이용 수에 포함되지 않습니다.",

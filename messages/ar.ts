@@ -71,7 +71,7 @@ export const arMessages = {
     showBeforeImageLabel: "اعرض الصورة قبل التغيير أيضًا",
     promptVisibilityLabel: "ظهور الأمر",
     promptVisibilityRewardHint:
-      "‏تحصل على ما يصل إلى +{amount} بيركوين في كل مرة ينشئ فيها أحد متابعيك بهذا البرومبت.",
+      "‏عندما ينشئ أحد متابعيك بهذا البرومبت، تحصل على +{amount} بيركوين في كل مرة.",
     promptVisibilityPublicOption: "إظهار الأمر",
     promptVisibilityPrivateOption: "إبقاء الأمر خاصًا",
     promptVisibilityPublicHint: "يمكن للمتابعين نسخ الأمر. لا تُحتسب الأعمال المُنشأة من نسخة.",

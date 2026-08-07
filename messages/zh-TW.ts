@@ -71,7 +71,7 @@ export const zhTwMessages = {
     showBeforeImageLabel: "同時顯示更換前的圖片",
     promptVisibilityLabel: "提示詞公開設定",
     promptVisibilityRewardHint:
-      "追蹤者每次使用此提示詞生成，你最多可獲得 +{amount} 佩爾幣。",
+      "追蹤你的使用者每次使用此提示詞生成，你將獲得 +{amount} 佩爾幣。",
     promptVisibilityPublicOption: "公開提示詞",
     promptVisibilityPrivateOption: "將提示詞設為私密",
     promptVisibilityPublicHint: "追蹤者可以複製提示詞。用複製的內容生成不計入使用數。",
