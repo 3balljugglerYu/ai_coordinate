@@ -11,8 +11,8 @@ const PAGE_TITLE =
 const PAGE_DESCRIPTION =
   "うちの子が夏の誌面の主役に。表紙から裏表紙まで全8ページを生成すると、めくって読めるデジタル雑誌が完成。Xシェアで抽選5名にAmazonギフト券2,000円分。8/8〜8/16開催。";
 
-// TODO: OGP画像はユーザーから支給され次第 /og/ 配下へ配置して images を追加する
-// (画像なしの間は images を省略し、タイトル/説明のみのカードにフォールバック)。
+const OGP_IMAGE = "/collections/fashion-magazine/ogp.jpg";
+
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
@@ -23,12 +23,21 @@ export const metadata: Metadata = {
       "うちの子が夏の誌面の主役に。全8ページで、めくって読める1冊が完成。Xシェアで抽選5名にAmazonギフト券2,000円分。",
     type: "website",
     siteName: "Persta.AI",
+    images: [
+      {
+        url: OGP_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "うちの子のファッション雑誌：夏 総額10,000円アマギフプレゼントキャンペーン 8/8 19:00〜8/16 21:59",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "うちの子のファッション雑誌：夏｜8ページそろえて1冊完成",
     description:
       "うちの子が夏の誌面の主役に。全8ページで、めくって読める1冊が完成。Xシェアで抽選5名にAmazonギフト券2,000円分。",
+    images: [OGP_IMAGE],
   },
 };
 
