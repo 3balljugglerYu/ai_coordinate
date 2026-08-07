@@ -54,9 +54,9 @@ export const X_LOTTERY_CAMPAIGNS: Readonly<Record<string, XLotteryCopy>> = {
   },
   // うちの子のファッション雑誌：夏(2026-08-08 19:00〜08-16 21:59)
   fashion_magazine_summer: {
-    hashtags: ["うちの子のファッション雑誌"],
+    hashtags: ["うちの子のファッション雑誌", "PerstaAI"],
     mention: "mickey_fuku",
-    message: "うちの子のファッション雑誌、1冊完成しました！",
+    message: "うちの子のファッション雑誌、完成しました！",
     prizeLabel: "Amazonギフト券2,000円分",
     winnersLabel: "5名様",
     rulesPath: "/campaigns/fashion-magazine-lottery",
@@ -88,19 +88,28 @@ export function isLotteryEntryOpen(
 
 /**
  * 応募用の X intent(post) URL を組み立てる。
- * text にメッセージ + 主催者メンション、hashtags にタグ、url に台紙シェアURLを渡す。
- * → 投稿に「メッセージ + @メンション + OGPカード + #ハッシュタグ」が入り、
- *   Xガイドラインの「主催者@ユーザー名を含める」を満たしつつ応募回収できる。
+ *
+ * url / hashtags パラメータを使うと本文が1行に連結されて読みにくいため、
+ * 改行込みのレイアウトを text 1パラメータにまとめて渡す:
+ *
+ *   {メッセージ}
+ *   {シェアURL}
+ *   (空行)
+ *   @{メンション}
+ *   #{タグ} #{タグ}
+ *
+ * OGPカードは本文中のURLから展開される。@メンションと#タグが本文に入るので
+ * Xガイドラインの「主催者@ユーザー名を含める」も満たしつつ応募回収できる。
  */
 export function buildXLotteryIntentUrl(
   copy: XLotteryCopy,
   shareUrl: string,
 ): string {
-  const params = new URLSearchParams();
-  params.set("text", `${copy.message} @${copy.mention}`);
-  params.set("url", shareUrl);
+  const lines = [copy.message, shareUrl, "", `@${copy.mention}`];
   if (copy.hashtags.length > 0) {
-    params.set("hashtags", copy.hashtags.join(","));
+    lines.push(copy.hashtags.map((tag) => `#${tag}`).join(" "));
   }
+  const params = new URLSearchParams();
+  params.set("text", lines.join("\n"));
   return `https://x.com/intent/post?${params.toString()}`;
 }
