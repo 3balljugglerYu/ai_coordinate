@@ -3,16 +3,18 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getUser } from "@/lib/auth";
 import { getCollectionBookByToken } from "@/features/collections/lib/public-mount-server-api";
+import { composeBookPages } from "@/features/collections/lib/book-display";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
 import { ScrapbookReader } from "@/features/collections/components/ScrapbookReader";
+import {
+  BOOK_SHARE_FALLBACK_TITLE,
+  buildBookShareDescription,
+} from "@/features/collections/lib/book-share-metadata";
 
 interface BookPageProps {
   params: Promise<{ token: string }>;
   searchParams: Promise<{ reward?: string }>;
 }
-
-const SHARE_DESCRIPTION =
-  "うちの子の旅行日記(スクラップブック)。あなたのうちの子でも作れます。";
 
 export async function generateMetadata({
   params,
@@ -21,11 +23,12 @@ export async function generateMetadata({
   const book = await getCollectionBookByToken(token);
   const title = book
     ? `${book.displayNameJa} | Persta.AI`
-    : "旅行日記 | Persta.AI";
+    : BOOK_SHARE_FALLBACK_TITLE;
+  const description = buildBookShareDescription(book?.displayNameJa);
 
   const base: Metadata = {
     title,
-    description: SHARE_DESCRIPTION,
+    description,
     robots: { index: false, follow: true },
   };
   if (!book || !book.ogpImageUrl) return base;
@@ -34,7 +37,7 @@ export async function generateMetadata({
     ...base,
     openGraph: {
       title,
-      description: SHARE_DESCRIPTION,
+      description,
       type: "article",
       siteName: "Persta.AI",
       // OGP はユーザー生成の「はじまり(表紙)」= 縦長のため、横長1200x630の
@@ -44,7 +47,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title,
-      description: SHARE_DESCRIPTION,
+      description,
       images: [book.ogpImageUrl],
     },
   };
@@ -73,18 +76,15 @@ export default async function CollectionBookPage({
       ? Math.min(rewardRaw, 100000)
       : 0;
 
-  // 表紙(0ページ目)の決定:
-  //   - 既定: コレクションの先頭(sort_order 最小)の生成画像=「ユーザー生成の表紙」を front cover にし、
-  //     残りを中身ページにする(完走数 N は表紙を含む。例 travel_to_italy=9)。
-  //   - book_cover_path(共通固定表紙)が設定されている場合のみ、それを front cover にし全ページを中身にする。
-  const hasFixedCover = Boolean(book.coverImageUrl);
-  const coverImageUrl = book.coverImageUrl ?? book.pageImageUrls[0] ?? null;
-  const contentImageUrls = hasFixedCover
-    ? book.pageImageUrls
-    : book.pageImageUrls.slice(1);
+  // 表紙 / 中身 / 裏表紙の振り分け(カテゴリ設定依存)。詳細は composeBookPages 参照。
+  const { coverImageUrl, bodyImageUrls, backCoverImageUrl } = composeBookPages({
+    fixedCoverImageUrl: book.coverImageUrl,
+    pageImageUrls: book.pageImageUrls,
+    backCoverMode: book.backCoverMode,
+  });
 
   // クレジット項目は渡さない(displayName 無し)= 画像のみのスクラップブックページ。
-  const pages: CatalogPageData[] = contentImageUrls.map((url, i) => ({
+  const pages: CatalogPageData[] = bodyImageUrls.map((url, i) => ({
     id: String(i),
     imageUrl: url,
     alt: null,
@@ -98,6 +98,9 @@ export default async function CollectionBookPage({
       isOwner={isOwner}
       completionId={token}
       rewardGranted={rewardGranted}
+      coverOverlay={book.coverOverlay}
+      backCoverImageUrl={backCoverImageUrl}
+      pageAspectRatio={book.pageAspectRatio}
     />
   );
 }

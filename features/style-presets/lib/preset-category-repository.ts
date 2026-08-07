@@ -15,6 +15,10 @@ import {
   type MountLayoutKey,
   type NormalizedSlotRect,
 } from "@/features/collections/lib/mount-layouts";
+import {
+  normalizeBookBackCoverMode,
+  type BookBackCoverMode,
+} from "@/features/collections/lib/book-display";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
@@ -53,6 +57,8 @@ export interface PresetCategoryRow {
   completion_reward_percoins?: number | null;
   completion_view_mode?: string | null;
   book_cover_path?: string | null;
+  book_cover_overlay?: boolean | null;
+  book_back_cover_mode?: string | null;
   unlock_prerequisite_key?: string | null;
   progressive_batch_size?: number | null;
   sequential_unlock?: boolean | null;
@@ -123,6 +129,10 @@ export interface PresetCategoryAdmin {
   completionViewMode: "mount" | "book";
   /** book 表示の表紙(0ページ目)画像の storage path。 */
   bookCoverPath: string | null;
+  /** book 表示の表紙にタイトル等のオーバーレイを重ねるか。false=表紙画像だけ見せる。 */
+  bookCoverOverlay: boolean;
+  /** book 表示の裏表紙: 固定の革表紙 or 最後の生成画像。 */
+  bookBackCoverMode: BookBackCoverMode;
   unlockPrerequisiteKey: string | null;
   progressiveBatchSize: number | null;
   /** 順番固定の1つずつ解放(sequential unlock)。詳細は schema.ts の同名フィールド参照。 */
@@ -188,6 +198,8 @@ export interface PresetCategoryInsert {
   completionRewardPercoins?: number | null;
   completionViewMode?: "mount" | "book";
   bookCoverPath?: string | null;
+  bookCoverOverlay?: boolean;
+  bookBackCoverMode?: BookBackCoverMode;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
   sequentialUnlock?: boolean;
@@ -248,6 +260,8 @@ export interface PresetCategoryUpdate {
   completionRewardPercoins?: number | null;
   completionViewMode?: "mount" | "book";
   bookCoverPath?: string | null;
+  bookCoverOverlay?: boolean;
+  bookBackCoverMode?: BookBackCoverMode;
   unlockPrerequisiteKey?: string | null;
   progressiveBatchSize?: number | null;
   sequentialUnlock?: boolean;
@@ -323,6 +337,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     completionRewardPercoins: row.completion_reward_percoins ?? null,
     completionViewMode: row.completion_view_mode === "book" ? "book" : "mount",
     bookCoverPath: row.book_cover_path ?? null,
+    bookCoverOverlay: row.book_cover_overlay ?? true,
+    bookBackCoverMode: normalizeBookBackCoverMode(row.book_back_cover_mode),
     unlockPrerequisiteKey: row.unlock_prerequisite_key ?? null,
     progressiveBatchSize: row.progressive_batch_size ?? null,
     sequentialUnlock: row.sequential_unlock ?? false,
@@ -470,6 +486,8 @@ export async function createPresetCategory(
       completion_reward_percoins: input.completionRewardPercoins ?? null,
       completion_view_mode: input.completionViewMode ?? "mount",
       book_cover_path: input.bookCoverPath ?? null,
+      book_cover_overlay: input.bookCoverOverlay ?? true,
+      book_back_cover_mode: input.bookBackCoverMode ?? "default",
       unlock_prerequisite_key: input.unlockPrerequisiteKey ?? null,
       progressive_batch_size: input.progressiveBatchSize ?? null,
       sequential_unlock: input.sequentialUnlock ?? false,
@@ -570,6 +588,10 @@ export async function updatePresetCategory(
     payload.completion_view_mode = input.completionViewMode;
   if (input.bookCoverPath !== undefined)
     payload.book_cover_path = input.bookCoverPath;
+  if (input.bookCoverOverlay !== undefined)
+    payload.book_cover_overlay = input.bookCoverOverlay;
+  if (input.bookBackCoverMode !== undefined)
+    payload.book_back_cover_mode = input.bookBackCoverMode;
   if (input.unlockPrerequisiteKey !== undefined)
     payload.unlock_prerequisite_key = input.unlockPrerequisiteKey;
   if (input.progressiveBatchSize !== undefined)

@@ -20,6 +20,7 @@ import {
   STYLE_OUTPUT_ASPECT_RATIO_MODES,
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
+import type { BookBackCoverMode } from "@/features/collections/lib/book-display";
 import { AspectRatioCardSelector } from "@/components/AspectRatioCardSelector";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
 import { ProgressModalColorPreview } from "@/features/preset-categories/components/ProgressModalColorPreview";
@@ -79,6 +80,10 @@ interface FormState {
   completionViewMode: "mount" | "book";
   /** book 表示の表紙(0ページ目)画像 storage path。null=簡易表紙 */
   bookCoverPath: string | null;
+  /** book 表示の表紙にタイトル等のオーバーレイを重ねるか */
+  bookCoverOverlay: boolean;
+  /** book 表示の裏表紙: default(固定の革表紙) / last_page(最後の生成画像) */
+  bookBackCoverMode: BookBackCoverMode;
   /** 解放の前提カテゴリ key(完走者限定)。null=ゲートなし */
   unlockPrerequisiteKey: string | null;
   /** 段階解放の単位(正の整数)。null=最初から全部解放 */
@@ -178,6 +183,8 @@ function toFormState(
     completionRewardPercoins: initial?.completionRewardPercoins ?? null,
     completionViewMode: initial?.completionViewMode ?? "mount",
     bookCoverPath: initial?.bookCoverPath ?? null,
+    bookCoverOverlay: initial?.bookCoverOverlay ?? true,
+    bookBackCoverMode: initial?.bookBackCoverMode ?? "default",
     unlockPrerequisiteKey: initial?.unlockPrerequisiteKey ?? null,
     progressiveBatchSize: initial?.progressiveBatchSize ?? null,
     sequentialUnlock: initial?.sequentialUnlock ?? false,
@@ -669,6 +676,8 @@ export function AdminPresetCategoryFormClient({
               completion_reward_percoins: form.completionRewardPercoins,
               completion_view_mode: form.completionViewMode,
               book_cover_path: form.bookCoverPath,
+              book_cover_overlay: form.bookCoverOverlay,
+              book_back_cover_mode: form.bookBackCoverMode,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
               progressive_batch_size: form.progressiveBatchSize,
               sequential_unlock: form.sequentialUnlock,
@@ -736,6 +745,8 @@ export function AdminPresetCategoryFormClient({
               completion_reward_percoins: form.completionRewardPercoins,
               completion_view_mode: form.completionViewMode,
               book_cover_path: form.bookCoverPath,
+              book_cover_overlay: form.bookCoverOverlay,
+              book_back_cover_mode: form.bookBackCoverMode,
               unlock_prerequisite_key: form.unlockPrerequisiteKey,
               progressive_batch_size: form.progressiveBatchSize,
               sequential_unlock: form.sequentialUnlock,
@@ -1377,6 +1388,45 @@ export function AdminPresetCategoryFormClient({
             />
             <span className="mt-1 block text-xs text-slate-500">
               既定は「コレクション先頭(sort_order 最小)プリセットのユーザー生成画像」が表紙になります(完走数 N は表紙プリセットを含めて数える)。ここにパスを入れた場合のみ全員共通の固定表紙に上書き。9:16 を想定。
+            </span>
+          </label>
+        ) : null}
+
+        {form.completionViewMode === "book" ? (
+          <label className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              checked={form.bookCoverOverlay}
+              onChange={(e) => update("bookCoverOverlay", e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-slate-300"
+            />
+            <span className="text-sm text-slate-700">
+              表紙にタイトルを重ねる
+              <span className="mt-1 block text-xs text-slate-500">
+                ON で表紙画像の上に「Persta.AI Catalog + カテゴリ名」と下部グラデーション・金枠を重ねます。タイトルを焼き込んだ表紙画像を使う企画では OFF にしてください。
+              </span>
+            </span>
+          </label>
+        ) : null}
+
+        {form.completionViewMode === "book" ? (
+          <label className="block">
+            <span className="text-sm font-medium text-slate-700">裏表紙</span>
+            <select
+              value={form.bookBackCoverMode}
+              onChange={(e) =>
+                update(
+                  "bookBackCoverMode",
+                  e.target.value === "last_page" ? "last_page" : "default",
+                )
+              }
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm sm:max-w-xs"
+            >
+              <option value="default">default（固定の革表紙）</option>
+              <option value="last_page">last_page（最後の生成画像を裏表紙に）</option>
+            </select>
+            <span className="mt-1 block text-xs text-slate-500">
+              default は本の最後に「End of Volume」の革表紙が入ります。last_page は最後のプリセットの生成画像をそのまま裏表紙にし、革表紙を出しません(最終ページを裏表紙としてデザインした企画向け)。
             </span>
           </label>
         ) : null}

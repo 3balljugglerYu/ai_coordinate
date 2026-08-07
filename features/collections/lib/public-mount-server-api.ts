@@ -2,6 +2,12 @@ import "server-only";
 
 import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeStyleOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
+import {
+  normalizeBookBackCoverMode,
+  resolveBookPageAspectRatio,
+  type BookBackCoverMode,
+} from "@/features/collections/lib/book-display";
 
 const GENERATED_IMAGES_BUCKET = "generated-images";
 const UUID_PATTERN =
@@ -123,6 +129,15 @@ export interface PublicCollectionBook {
   /** OGP/シェア用の1枚絵URL(= mount_image_path のテーマ表紙)。 */
   ogpImageUrl: string | null;
   completedAt: string | null;
+  /** 表紙にタイトル等のオーバーレイを重ねるか(book_cover_overlay)。 */
+  coverOverlay: boolean;
+  /** 裏表紙の出し方(book_back_cover_mode)。 */
+  backCoverMode: BookBackCoverMode;
+  /**
+   * 本のページ(紙)の幅/高さ比。カテゴリの出力比率が確定しているときのみ数値、
+   * source/user_select 等で確定しないときは null(表示領域いっぱいにフォールバック)。
+   */
+  pageAspectRatio: number | null;
 }
 
 /**
@@ -140,7 +155,7 @@ export const getCollectionBookByToken = cache(async (
   const { data, error } = await supabase
     .from("collection_completions")
     .select(
-      "id, user_id, category_key, mount_image_path, completed_at, book_page_paths, preset_categories(display_name_ja, book_cover_path)",
+      "id, user_id, category_key, mount_image_path, completed_at, book_page_paths, preset_categories(display_name_ja, book_cover_path, book_cover_overlay, book_back_cover_mode, output_aspect_ratio_mode)",
     )
     .eq("id", token)
     .eq("mount_status", "completed")
@@ -170,6 +185,9 @@ export const getCollectionBookByToken = cache(async (
   const catRecord = (cat ?? {}) as {
     display_name_ja?: string;
     book_cover_path?: string | null;
+    book_cover_overlay?: boolean | null;
+    book_back_cover_mode?: string | null;
+    output_aspect_ratio_mode?: string | null;
   };
 
   // OGP(Xシェア画像)は横長バナー。book は mount_image_path(=はじまり/縦長)とは別に、
@@ -189,5 +207,10 @@ export const getCollectionBookByToken = cache(async (
     pageImageUrls,
     ogpImageUrl: withOgpVersion(buildPublicGeneratedImageUrl(bookOgpPath)),
     completedAt: (data.completed_at as string | null) ?? null,
+    coverOverlay: catRecord.book_cover_overlay ?? true,
+    backCoverMode: normalizeBookBackCoverMode(catRecord.book_back_cover_mode),
+    pageAspectRatio: resolveBookPageAspectRatio(
+      normalizeStyleOutputAspectRatioMode(catRecord.output_aspect_ratio_mode),
+    ),
   };
 });
