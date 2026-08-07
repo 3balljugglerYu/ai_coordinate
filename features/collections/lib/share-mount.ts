@@ -29,6 +29,15 @@ export function buildPublicMountUrl(
 }
 
 /**
+ * book(めくれる完走ビュー)の公開URL。
+ * mount と違い、OGP画像は book ページの metadata がバージョン付きURLで返すため
+ * キャッシュバスターのクエリは持たない。
+ */
+export function buildPublicBookUrl(completionId: string): string {
+  return `${window.location.origin}/m/${completionId}/book`;
+}
+
+/**
  * mount_shared を記録する(best-effort)。失敗は握りつぶす。
  * 共有/コピーの成功時(ShareLinkButton の onShared)から呼ぶ。
  */

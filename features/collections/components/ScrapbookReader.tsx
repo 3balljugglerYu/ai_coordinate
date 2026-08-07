@@ -7,6 +7,7 @@ import { X, Share2, Maximize2, Minimize2, ChevronUp } from "lucide-react";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
 import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
+import { XLotteryEntryButton } from "@/features/campaigns/components/XLotteryEntryButton";
 import { CompletionRewardPanel } from "@/features/collections/components/CompletionRewardPanel";
 import {
   hasSeenSwipeHint,
@@ -29,6 +30,7 @@ export function ScrapbookReader({
   coverOverlay = true,
   backCoverImageUrl = null,
   pageAspectRatio = null,
+  lottery = null,
 }: {
   title: string;
   coverImageUrl: string | null;
@@ -47,6 +49,16 @@ export function ScrapbookReader({
   backCoverImageUrl?: string | null;
   /** ページ(紙)の幅/高さ比。null なら表示領域いっぱい(従来挙動)。 */
   pageAspectRatio?: number | null;
+  /**
+   * Xシェア抽選の応募ボタン(所有者のみ)。null なら出さない。
+   * 期間・対象カテゴリの判定はボタン側(admin 設定由来の値で行う)。
+   */
+  lottery?: {
+    categoryKey: string;
+    lotteryTarget: boolean;
+    entryStartsAt: string | null;
+    entryEndsAt: string | null;
+  } | null;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -267,10 +279,21 @@ export function ScrapbookReader({
       {isOwner && completionId ? (
         <div
           className={
-            "absolute bottom-5 left-1/2 z-10 -translate-x-1/2 transition-opacity duration-300 " +
+            "absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2.5 transition-opacity duration-300 " +
             (chromeVisible ? "opacity-100" : "pointer-events-none opacity-0")
           }
         >
+          {lottery ? (
+            <XLotteryEntryButton
+              categoryKey={lottery.categoryKey}
+              lotteryTarget={lottery.lotteryTarget}
+              entryStartsAt={lottery.entryStartsAt}
+              entryEndsAt={lottery.entryEndsAt}
+              completionId={completionId}
+              view="book"
+              variant="chrome"
+            />
+          ) : null}
           <CompletionFeedPostButton
             completionId={completionId}
             displayName={title}
