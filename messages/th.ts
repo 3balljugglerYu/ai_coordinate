@@ -1815,6 +1815,7 @@ export const thMessages = {
     stylePresetPostTitle: "{actor} โพสต์ผลงานด้วยสไตล์ “{preset}” ของคุณ",
     stylePresetUsageMilestoneFirstTitle: "สไตล์ “{preset}” ของคุณถูกใช้เป็นครั้งแรก",
     stylePresetUsageMilestoneTitle: "สไตล์ “{preset}” ของคุณถูกใช้แล้ว {count} ครั้ง",
+    usageRewardEarnedTitle: "วันนี้ผลงานของคุณถูกใช้ {count} ครั้ง ได้รับ {amount} เพอร์คอยน์!",
     commentTitle: "{actor} แสดงความคิดเห็นในโพสต์ของคุณ",
     replyTitle: "{actor} ตอบกลับความคิดเห็นของคุณ",
     replyToReplyTitle: "{actor} ตอบกลับการตอบกลับของคุณ",

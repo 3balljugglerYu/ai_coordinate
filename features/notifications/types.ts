@@ -12,7 +12,8 @@ export type NotificationType =
   | 'derived_post_published'
   | 'derived_usage_milestone'
   | 'style_preset_post_published'
-  | 'style_preset_usage_milestone';
+  | 'style_preset_usage_milestone'
+  | 'usage_reward_earned';
 export type EntityType = 'post' | 'comment' | 'user';
 
 /**
@@ -35,7 +36,8 @@ export function isModerationNotificationType(type: string): boolean {
 
 /**
  * actor が存在しない匿名通知タイプ（actor_id には recipient 本人が入る）。
- * moderation 系（ADR-011）と利用数マイルストーン（B案 REQ-005）。
+ * moderation 系（ADR-011）・利用数マイルストーン（B案 REQ-005）・
+ * クリエイター還元（REQ-005: 誰が利用したかは含めない）。
  *
  * これらは actor の enrichment を行わず、UI は運営ロゴで表示し、
  * アバターにプロフィール導線を付けてはならない。
@@ -44,6 +46,7 @@ export const ANONYMOUS_ACTOR_NOTIFICATION_TYPES = [
   ...MODERATION_NOTIFICATION_TYPES,
   'derived_usage_milestone',
   'style_preset_usage_milestone',
+  'usage_reward_earned',
 ] as const;
 
 export function isAnonymousActorNotificationType(type: string): boolean {
@@ -75,6 +78,13 @@ export interface Notification {
     origin_caption?: string | null;
     /** 利用数マイルストーン通知 (derived_usage_milestone / style_preset_usage_milestone): 到達した節目の回数。 */
     milestone?: number;
+    /**
+     * クリエイター還元通知 (usage_reward_earned): その日(JST)の累計。
+     * 受け手×日付で1行に集約し、付与のたびに加算される。
+     */
+    reward_date?: string;
+    usage_count?: number;
+    total_amount?: number;
     /** One-Tap Style クリエイター通知: 対象プリセットのID・名前・slug のスナップショット。 */
     preset_id?: string;
     preset_title?: string | null;

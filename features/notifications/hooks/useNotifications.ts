@@ -178,6 +178,101 @@ export function useNotifications(
     [t]
   );
 
+  /**
+   * Realtime の UPDATE を一覧へ反映する。
+   *
+   * クリエイター還元通知は「受け手×JST日付で1行」を UPSERT で更新するため、
+   * 2件目以降は INSERT ではなく UPDATE で届く。更新時は created_at も進むので、
+   * 反映後に再ソートすると一覧の先頭へ浮上する。
+   *
+   * 既読化・一括既読も UPDATE を発火させる。ここで毎回 getNotificationById を
+   * 呼ぶと一括既読で行数ぶんのリクエストが飛ぶため、一覧に既にある行は
+   * DB 由来の列だけをマージして済ませる(enrichment 済みの actor / post は保持)。
+   */
+  /**
+   * 購読が成立した時点（初回・再接続の両方）で最新ページを取り直し、
+   * 取りこぼしを埋める。
+   *
+   * 初期取得〜購読成立の間や、切断中に古い還元通知が更新されて先頭側へ
+   * 浮上すると、その UPDATE を受け取れない。しかも浮上後はカーソルより
+   * 新しくなるので次ページ取得にも現れず、リロードするまで一覧に出ない。
+   *
+   * 単純な置き換えだと取得中に届いた Realtime の更新を巻き戻してしまうため、
+   * ID 単位でマージし、created_at が新しい方を残す。
+   */
+  const reconcileLatestNotifications = useCallback(async () => {
+    if (!currentUserId) return;
+
+    try {
+      const response = await getNotifications(20, null, {
+        fetchFailed: t("fetchFailed"),
+      });
+
+      setNotifications((prev) => {
+        const byId = new Map(prev.map((item) => [item.id, item]));
+        for (const fetched of response.notifications) {
+          const local = byId.get(fetched.id);
+          if (
+            local &&
+            Date.parse(local.created_at) >= Date.parse(fetched.created_at)
+          ) {
+            continue;
+          }
+          byId.set(fetched.id, fetched);
+        }
+        return [...byId.values()].sort((a, b) => {
+          const createdAtOrder =
+            Date.parse(b.created_at) - Date.parse(a.created_at);
+          return createdAtOrder || b.id.localeCompare(a.id);
+        });
+      });
+    } catch (error) {
+      console.error("Failed to reconcile notifications:", error);
+    }
+  }, [currentUserId, t]);
+
+  const applyRealtimeNotificationUpdate = useCallback(
+    (updated: Notification) => {
+      setNotifications((prev) => {
+        const index = prev.findIndex((item) => item.id === updated.id);
+        if (index === -1) {
+          // 一覧に無い行。ここへ来るのは主に「すべて既読にする」で
+          // 未ロードの未読行が一斉に更新されたときなので、原則は無視する。
+          // (取得しに行くと未読件数ぶんのリクエストが並び、しかも古い通知が
+          //  一覧へ差し込まれてしまう)
+          // 還元通知の未読だけは、気づかせる価値があるので差し込む。匿名で
+          // actor / post の enrichment が不要なため、生の行をそのまま置ける。
+          if (updated.type !== "usage_reward_earned" || updated.is_read) {
+            return prev;
+          }
+          return [updated, ...prev].sort((a, b) => {
+            const createdAtOrder =
+              Date.parse(b.created_at) - Date.parse(a.created_at);
+            return createdAtOrder || b.id.localeCompare(a.id);
+          });
+        }
+        const merged: Notification = {
+          ...prev[index],
+          title: updated.title,
+          body: updated.body,
+          data: updated.data,
+          is_read: updated.is_read,
+          read_at: updated.read_at,
+          created_at: updated.created_at,
+        };
+        const next = [...prev];
+        next[index] = merged;
+        return next.sort((a, b) => {
+          const createdAtOrder =
+            Date.parse(b.created_at) - Date.parse(a.created_at);
+          return createdAtOrder || b.id.localeCompare(a.id);
+        });
+      });
+
+    },
+    []
+  );
+
   const markBonusToastAsShown = useCallback(
     (notification: Pick<Notification, "id">) => {
       if (!currentUserId) return;
@@ -357,7 +452,27 @@ export function useNotifications(
           }
         }
       )
-      .subscribe();
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `recipient_id=eq.${currentUserId}`,
+        },
+        (payload) => {
+          // 内容の更新(還元通知の累計加算)と既読化の両方がここへ来る。
+          // 未読バッジの同期は UnreadNotificationProvider が同じ UPDATE を
+          // 購読して行うので、ここでは呼ばない(呼ぶと未読数APIが二重に走る)。
+          applyRealtimeNotificationUpdate(payload.new as Notification);
+        }
+      )
+      .subscribe((status) => {
+        // 初回の購読成立時と再接続時に、購読ギャップぶんを埋める
+        if (status === "SUBSCRIBED") {
+          void reconcileLatestNotifications();
+        }
+      });
 
     return () => {
       supabase.removeChannel(channel);
@@ -367,7 +482,9 @@ export function useNotifications(
     hasShownBonusToast,
     isNotificationsPage,
     markBonusToastAsShown,
+    applyRealtimeNotificationUpdate,
     prependRealtimeNotification,
+    reconcileLatestNotifications,
     syncUnreadBadgeCount,
     toast,
     t,
@@ -512,6 +629,12 @@ export function useNotifications(
         notification.data?.preset_slug
       ) {
         router.push(`/styles/${notification.data.preset_slug}`);
+        return;
+      }
+
+      // クリエイター還元通知はペルコイン管理ページへ(残高が見える唯一の画面)。
+      if (notification.type === "usage_reward_earned") {
+        router.push("/my-page/credits");
         return;
       }
 

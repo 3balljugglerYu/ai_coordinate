@@ -1816,6 +1816,7 @@ export const enMessages = {
     stylePresetPostTitle: "{actor} posted a work in your “{preset}” style",
     stylePresetUsageMilestoneFirstTitle: "Your “{preset}” style was used for the first time",
     stylePresetUsageMilestoneTitle: "Your “{preset}” style has been used {count} times",
+    usageRewardEarnedTitle: "Your work was used {count} times today — you earned {amount} Percoins!",
     commentTitle: "{actor} commented on your post",
     replyTitle: "{actor} replied to your comment",
     replyToReplyTitle: "{actor} replied to your reply",

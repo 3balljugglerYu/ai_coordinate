@@ -1815,6 +1815,7 @@ export const koMessages = {
     stylePresetPostTitle: "{actor}님이 회원님의 「{preset}」 스타일로 작품을 게시했습니다",
     stylePresetUsageMilestoneFirstTitle: "회원님의 「{preset}」 스타일이 처음으로 사용되었습니다",
     stylePresetUsageMilestoneTitle: "회원님의 「{preset}」 스타일이 {count}회 사용되었습니다",
+    usageRewardEarnedTitle: "오늘 회원님의 작품이 {count}회 이용되어 {amount} 페르코인을 획득했어요!",
     commentTitle: "{actor}님이 게시물에 댓글을 남겼습니다",
     replyTitle: "{actor}님이 댓글에 답글을 남겼습니다",
     replyToReplyTitle: "{actor}님이 회원님의 답글에 답글을 남겼습니다",

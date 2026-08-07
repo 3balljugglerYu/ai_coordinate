@@ -1752,6 +1752,7 @@ export const jaMessages = {
     stylePresetPostTitle: "{actor}があなたの「{preset}」のスタイルで作品を投稿しました",
     stylePresetUsageMilestoneFirstTitle: "あなたの「{preset}」のスタイルが初めて利用されました",
     stylePresetUsageMilestoneTitle: "あなたの「{preset}」のスタイルが{count}回利用されました",
+    usageRewardEarnedTitle: "本日、あなたの作品が{count}回利用され{amount}ペルコイン獲得！",
     commentTitle: "{actor}があなたの投稿にコメントしました",
     replyTitle: "{actor}があなたのコメントに返信しました",
     replyToReplyTitle: "{actor}があなたの返信に返信しました",

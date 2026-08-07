@@ -128,10 +128,16 @@ describe("useNotifications", () => {
   let realtimeInsertHandler:
     | ((payload: { new: Notification }) => void)
     | null = null;
+  let realtimeUpdateHandler:
+    | ((payload: { new: Notification }) => void)
+    | null = null;
+  let realtimeSubscribeCallback: ((status: string) => void) | null = null;
 
   beforeEach(() => {
     jest.clearAllMocks();
     realtimeInsertHandler = null;
+    realtimeUpdateHandler = null;
+    realtimeSubscribeCallback = null;
     const translateNotifications = (
       key: string,
       values?: Record<string, unknown>
@@ -188,9 +194,23 @@ describe("useNotifications", () => {
           realtimeInsertHandler = callback as (payload: { new: Notification }) => void;
         }
 
+        if (
+          typeof filter === "object" &&
+          filter !== null &&
+          "event" in filter &&
+          filter.event === "UPDATE"
+        ) {
+          realtimeUpdateHandler = callback as (payload: { new: Notification }) => void;
+        }
+
         return channel;
       });
-      channel.subscribe = jest.fn().mockReturnValue(channel);
+      channel.subscribe = jest.fn().mockImplementation((callback?: unknown) => {
+        if (typeof callback === "function") {
+          realtimeSubscribeCallback = callback as (status: string) => void;
+        }
+        return channel;
+      });
       channelFactoryMock.mockReturnValue(channel);
 
       return {
@@ -615,5 +635,336 @@ describe("useNotifications", () => {
       })
     );
     expect(refreshUnreadCountMock).toHaveBeenCalled();
+  });
+
+  describe("Realtime UPDATE(クリエイター還元の日次集約)", () => {
+    test("一覧にある行は追加取得せずマージし、created_at が進むと先頭へ浮上する", async () => {
+      const reward = createNotification({
+        id: "reward-1",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        entity_id: "user-1",
+        is_read: true,
+        created_at: "2026-08-06T01:00:00.000Z",
+        data: { reward_date: "2026-08-06", usage_count: 1, total_amount: 2 },
+      });
+      const other = createNotification({
+        id: "other-1",
+        created_at: "2026-08-06T02:00:00.000Z",
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [other, reward],
+        nextCursor: null,
+      });
+
+      const { result } = await renderNotificationsHook();
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "other-1",
+        "reward-1",
+      ]);
+
+      getNotificationByIdMock.mockClear();
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: {
+            ...reward,
+            is_read: false,
+            created_at: "2026-08-06T03:00:00.000Z",
+            data: { reward_date: "2026-08-06", usage_count: 2, total_amount: 7 },
+          },
+        });
+        await Promise.resolve();
+      });
+
+      // 先頭へ浮上し、累計が更新される
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "reward-1",
+        "other-1",
+      ]);
+      expect(result.current.notifications[0]?.data?.total_amount).toBe(7);
+      expect(result.current.notifications[0]?.is_read).toBe(false);
+      // 一覧にある行は取得し直さない(一括既読でリクエストが並ばないため)
+      expect(getNotificationByIdMock).not.toHaveBeenCalled();
+    });
+
+    test("一覧に無い未読の還元通知は追加取得せずそのまま差し込む", async () => {
+      const { result } = await renderNotificationsHook();
+      expect(result.current.notifications).toHaveLength(0);
+      getNotificationByIdMock.mockClear();
+
+      const incoming = createNotification({
+        id: "reward-2",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        is_read: false,
+        created_at: "2026-08-06T04:00:00.000Z",
+        data: { reward_date: "2026-08-06", usage_count: 3, total_amount: 6 },
+      });
+
+      await act(async () => {
+        realtimeUpdateHandler?.({ new: incoming });
+        await Promise.resolve();
+      });
+
+      // 匿名通知なので actor/post の enrichment が要らず、生の行をそのまま置ける
+      expect(getNotificationByIdMock).not.toHaveBeenCalled();
+      expect(result.current.notifications.map((n) => n.id)).toEqual(["reward-2"]);
+    });
+
+    test("一覧に無い行の一括既読UPDATEは無視し、追加取得も差し込みもしない", async () => {
+      // 「すべて既読にする」は DB 上の全未読行を更新するため、未ロード行の
+      // UPDATE が大量に届く。ここで取得すると未読件数ぶんのリクエストが並び、
+      // 古い通知が一覧へ差し込まれてしまう。
+      const { result } = await renderNotificationsHook();
+      getNotificationByIdMock.mockClear();
+
+      await act(async () => {
+        for (let i = 0; i < 5; i += 1) {
+          realtimeUpdateHandler?.({
+            new: createNotification({
+              id: `unloaded-${i}`,
+              is_read: true,
+              read_at: "2026-08-06T06:00:00.000Z",
+            }),
+          });
+        }
+        // 既読済みの還元通知も差し込まない
+        realtimeUpdateHandler?.({
+          new: createNotification({
+            id: "reward-read",
+            type: "usage_reward_earned",
+            entity_type: "user",
+            is_read: true,
+            data: { reward_date: "2026-08-06", usage_count: 9, total_amount: 18 },
+          }),
+        });
+        await Promise.resolve();
+      });
+
+      expect(getNotificationByIdMock).not.toHaveBeenCalled();
+      expect(result.current.notifications).toHaveLength(0);
+    });
+
+    test("既読化のUPDATEでは未読数を自前で増やさない", async () => {
+      // 通知ページでは自動既読が走るため、別ページとして描画する
+      usePathnameMock.mockReturnValue("/");
+      const target = createNotification({ id: "n-1", is_read: false });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [target],
+        nextCursor: null,
+      });
+      getUnreadCountMock.mockResolvedValue(1);
+
+      const { result } = await renderNotificationsHook();
+      expect(result.current.unreadCount).toBe(1);
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: { ...target, is_read: true, read_at: "2026-08-06T05:00:00.000Z" },
+        });
+        await Promise.resolve();
+      });
+
+      // クライアント側でカウンタを増減させない(サーバー値で再同期する)
+      expect(result.current.unreadCount).toBe(1);
+      expect(result.current.notifications[0]?.is_read).toBe(true);
+    });
+  });
+
+  describe("購読成立時の取りこぼし補完(reconciliation)", () => {
+    test("購読前に浮上した行が最新ページ取得でマージされる", async () => {
+      const loaded = createNotification({
+        id: "loaded-1",
+        created_at: "2026-08-07T02:00:00.000Z",
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [loaded],
+        nextCursor: null,
+      });
+
+      const { result } = await renderNotificationsHook();
+      expect(result.current.notifications.map((n) => n.id)).toEqual(["loaded-1"]);
+
+      // 購読が成立する前に、未ロードだった還元通知が浮上していたケース
+      const bumped = createNotification({
+        id: "reward-bumped",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        is_read: false,
+        created_at: "2026-08-07T03:00:00.000Z",
+        data: { reward_date: "2026-08-07", usage_count: 4, total_amount: 8 },
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [bumped, loaded],
+        nextCursor: null,
+      });
+
+      await act(async () => {
+        realtimeSubscribeCallback?.("SUBSCRIBED");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "reward-bumped",
+        "loaded-1",
+      ]);
+    });
+
+    test("ローカルの方が新しい同一IDは取得結果で巻き戻らない", async () => {
+      const stale = createNotification({
+        id: "reward-1",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        is_read: false,
+        created_at: "2026-08-07T01:00:00.000Z",
+        data: { reward_date: "2026-08-07", usage_count: 1, total_amount: 2 },
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [stale],
+        nextCursor: null,
+      });
+
+      const { result } = await renderNotificationsHook();
+
+      // 取得より新しい更新が Realtime で先に届いている状態にする
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: {
+            ...stale,
+            created_at: "2026-08-07T04:00:00.000Z",
+            data: { reward_date: "2026-08-07", usage_count: 6, total_amount: 12 },
+          },
+        });
+        await Promise.resolve();
+      });
+      expect(result.current.notifications[0]?.data?.total_amount).toBe(12);
+
+      // reconciliation は古いスナップショットを返す
+      await act(async () => {
+        realtimeSubscribeCallback?.("SUBSCRIBED");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      // 巻き戻らない
+      expect(result.current.notifications[0]?.data?.total_amount).toBe(12);
+      expect(result.current.notifications[0]?.created_at).toBe(
+        "2026-08-07T04:00:00.000Z"
+      );
+    });
+
+    test("還元通知のUPDATEでも未読数APIを直接呼ばない(Providerに一本化)", async () => {
+      usePathnameMock.mockReturnValue("/");
+      const reward = createNotification({
+        id: "reward-9",
+        type: "usage_reward_earned",
+        entity_type: "user",
+        is_read: true,
+        created_at: "2026-08-07T01:00:00.000Z",
+        data: { reward_date: "2026-08-07", usage_count: 1, total_amount: 2 },
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [reward],
+        nextCursor: null,
+      });
+
+      await renderNotificationsHook();
+      refreshUnreadCountMock.mockClear();
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: {
+            ...reward,
+            is_read: false,
+            created_at: "2026-08-07T05:00:00.000Z",
+            data: { reward_date: "2026-08-07", usage_count: 2, total_amount: 4 },
+          },
+        });
+        await Promise.resolve();
+      });
+
+      expect(refreshUnreadCountMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("クリエイター還元通知のその他の経路", () => {
+    test("クリックでペルコイン管理ページへ遷移する", async () => {
+      const { result } = await renderNotificationsHook();
+
+      await act(async () => {
+        result.current.handleNotificationClick(
+          createNotification({
+            id: "reward-nav",
+            type: "usage_reward_earned",
+            entity_type: "user",
+            entity_id: "user-1",
+            is_read: true,
+            data: { reward_date: "2026-08-07", usage_count: 2, total_amount: 4 },
+          })
+        );
+        await Promise.resolve();
+      });
+
+      expect(pushMock).toHaveBeenCalledWith("/my-page/credits");
+    });
+
+    test("一覧に既存行があるとき、差し込んだ還元通知は日時順に並ぶ", async () => {
+      const older = createNotification({
+        id: "older-1",
+        created_at: "2026-08-07T01:00:00.000Z",
+      });
+      const newer = createNotification({
+        id: "newer-1",
+        created_at: "2026-08-07T09:00:00.000Z",
+      });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [newer, older],
+        nextCursor: null,
+      });
+
+      const { result } = await renderNotificationsHook();
+
+      await act(async () => {
+        realtimeUpdateHandler?.({
+          new: createNotification({
+            id: "reward-mid",
+            type: "usage_reward_earned",
+            entity_type: "user",
+            is_read: false,
+            created_at: "2026-08-07T05:00:00.000Z",
+            data: { reward_date: "2026-08-07", usage_count: 1, total_amount: 2 },
+          }),
+        });
+        await Promise.resolve();
+      });
+
+      // 先頭固定ではなく created_at 降順に収まる
+      expect(result.current.notifications.map((n) => n.id)).toEqual([
+        "newer-1",
+        "reward-mid",
+        "older-1",
+      ]);
+    });
+
+    test("reconciliationの取得に失敗しても一覧を壊さない", async () => {
+      const existing = createNotification({ id: "keep-1" });
+      getNotificationsMock.mockResolvedValue({
+        notifications: [existing],
+        nextCursor: null,
+      });
+      const { result } = await renderNotificationsHook();
+
+      getNotificationsMock.mockRejectedValueOnce(new Error("network down"));
+
+      await act(async () => {
+        realtimeSubscribeCallback?.("SUBSCRIBED");
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(result.current.notifications.map((n) => n.id)).toEqual(["keep-1"]);
+    });
   });
 });

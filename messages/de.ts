@@ -1820,6 +1820,7 @@ export const deMessages = {
     stylePresetPostTitle: "{actor} hat ein Werk in deinem Stil „{preset}“ veröffentlicht",
     stylePresetUsageMilestoneFirstTitle: "Dein Stil „{preset}“ wurde zum ersten Mal verwendet",
     stylePresetUsageMilestoneTitle: "Dein Stil „{preset}“ wurde {count} Mal verwendet",
+    usageRewardEarnedTitle: "Dein Werk wurde heute {count} Mal genutzt – {amount} Percoins erhalten!",
     commentTitle: "{actor} hat deinen Beitrag kommentiert",
     replyTitle: "{actor} hat auf deinen Kommentar geantwortet",
     replyToReplyTitle: "{actor} hat auf deine Antwort geantwortet",

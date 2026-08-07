@@ -1818,6 +1818,7 @@ export const idMessages = {
     stylePresetPostTitle: "{actor} memposting karya dengan gaya “{preset}” milikmu",
     stylePresetUsageMilestoneFirstTitle: "Gaya “{preset}” milikmu digunakan untuk pertama kalinya",
     stylePresetUsageMilestoneTitle: "Gaya “{preset}” milikmu telah digunakan {count} kali",
+    usageRewardEarnedTitle: "Karya kamu dipakai {count} kali hari ini dan kamu dapat {amount} Percoin!",
     commentTitle: "{actor} mengomentari postinganmu",
     replyTitle: "{actor} membalas komentarmu",
     replyToReplyTitle: "{actor} membalas balasan Anda",
