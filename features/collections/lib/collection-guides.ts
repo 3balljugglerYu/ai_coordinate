@@ -12,6 +12,7 @@ const COLLECTION_GUIDE_PATHS: Record<string, string> = {
   // ことわざ辞典は上巻/下巻とも同じ遊び方ページを指す。
   kotowaza_dictionary: "/collections/kotowaza",
   kotowaza_dictionary_2: "/collections/kotowaza",
+  fashion_magazine_summer: "/collections/fashion-magazine",
 };
 
 /** 未登録カテゴリのフォールバック先(神コレの遊び方)。 */
