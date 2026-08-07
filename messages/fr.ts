@@ -70,6 +70,8 @@ export const frMessages = {
     afterImageAlt: "Image générée",
     showBeforeImageLabel: "Afficher aussi l'image d'origine",
     promptVisibilityLabel: "Visibilité du prompt",
+    promptVisibilityRewardHint:
+      "Vous gagnez +{amount} Percoins chaque fois qu'un abonné crée avec ce prompt.",
     promptVisibilityPublicOption: "Afficher le prompt",
     promptVisibilityPrivateOption: "Garder le prompt privé",
     promptVisibilityPublicHint: "Vos abonnés peuvent copier le prompt. Les créations issues d'une copie ne sont pas comptées.",
@@ -1367,6 +1369,13 @@ export const frMessages = {
     resetIn: "Réinitialisation dans",
     tipsLabel: "Astuce :",
     dailyResetDescription: "Cette mission se réinitialise chaque jour à 00:00 JST.",
+    usageRewardTitle: "Récompenses créateur",
+    usageRewardDescription:
+      "Gagnez des Percoins quand d'autres créent avec vos prompts ou styles.",
+    usageRewardFreeItem: "+{amount} Percoins quand votre prompt /free est utilisé",
+    usageRewardStyleItem: "+{amount} Percoins quand votre One-Tap Style est utilisé",
+    usageRewardNote:
+      "Votre propre utilisation ne compte pas. Les générations faites en copiant-collant le prompt non plus : seules comptent celles lancées depuis « Créer avec ce prompt » dans l'app.",
     referralTitle: "Bonus de parrainage",
     referralDescription:
       "Invitez vos amis pour gagner des Percoins. Les récompenses sont attribuées lorsqu'un ami s'inscrit via votre lien ou votre QR code de parrainage.",

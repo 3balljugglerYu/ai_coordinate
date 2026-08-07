@@ -70,6 +70,8 @@ export const deMessages = {
     afterImageAlt: "Generiertes Bild",
     showBeforeImageLabel: "Auch das Vorher-Bild anzeigen",
     promptVisibilityLabel: "Sichtbarkeit des Prompts",
+    promptVisibilityRewardHint:
+      "Du erhältst +{amount} Percoins, jedes Mal wenn ein Follower mit diesem Prompt erstellt.",
     promptVisibilityPublicOption: "Prompt anzeigen",
     promptVisibilityPrivateOption: "Prompt privat halten",
     promptVisibilityPublicHint: "Follower können den Prompt kopieren. Aus einer Kopie erstellte Bilder werden nicht gezählt.",
@@ -1368,6 +1370,13 @@ export const deMessages = {
     resetIn: "Zurücksetzen in",
     tipsLabel: "Tipp:",
     dailyResetDescription: "Diese Mission wird täglich um 00:00 JST zurückgesetzt.",
+    usageRewardTitle: "Creator-Belohnungen",
+    usageRewardDescription:
+      "Verdiene Percoins, wenn andere mit deinen Prompts oder Styles erstellen.",
+    usageRewardFreeItem: "+{amount} Percoins, wenn dein /free-Prompt genutzt wird",
+    usageRewardStyleItem: "+{amount} Percoins, wenn dein One-Tap Style genutzt wird",
+    usageRewardNote:
+      "Eigene Nutzung zählt nicht. Generierungen per Copy-Paste des Prompts ebenfalls nicht – nur solche über „Mit diesem Prompt erstellen“ in der App.",
     referralTitle: "Empfehlungsbonus",
     referralDescription:
       "Lade Freunde ein, um Percoins zu verdienen. Belohnungen werden gutgeschrieben, wenn sich jemand über deinen Empfehlungslink oder QR-Code anmeldet.",

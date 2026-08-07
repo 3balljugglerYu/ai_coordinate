@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ImagePlus,
   Sparkles,
+  Coins,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
@@ -54,6 +55,12 @@ interface ChallengePageContentProps {
   baseStreakBonusSchedule: readonly number[];
   streakBonusSchedule: readonly number[];
   /**
+   * クリエイター還元の付与額。0 は停止中を意味し、カードごと表示しない
+   * (もらえないのに「もらえます」と書かないため)。
+   */
+  promptUsageRewardAmount?: number;
+  styleUsageRewardAmount?: number;
+  /**
    * Vercel が自動で設定する VERCEL_ENV ("production" | "preview" | "development" | undefined)。
    * preview_streak URL パラメータの本番セーフガード判定に使用する。
    */
@@ -67,9 +74,16 @@ export function ChallengePageContent({
   dailyPostBonusAmount,
   baseStreakBonusSchedule,
   streakBonusSchedule,
+  promptUsageRewardAmount = 0,
+  styleUsageRewardAmount = 0,
   vercelEnv,
 }: ChallengePageContentProps) {
   const t = useTranslations("challenge");
+  // カード見出しの「+◯」には、Free / Style のうち大きい方を出す
+  const maxUsageRewardAmount = Math.max(
+    promptUsageRewardAmount,
+    styleUsageRewardAmount
+  );
   const subscriptionT = useTranslations("subscription");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -670,6 +684,52 @@ export function ChallengePageContent({
             </div>
           </ChallengeCard>
         </div>
+
+        {/*
+          クリエイター還元。運営が付与額を 0 にしている間は停止中なので、
+          カードごと出さない(もらえないのに「もらえます」と書かない)。
+        */}
+        {maxUsageRewardAmount > 0 && (
+          <div className="mb-6">
+            <ChallengeCard
+              title={t("usageRewardTitle")}
+              description={t("usageRewardDescription")}
+              percoinAmount={maxUsageRewardAmount}
+              icon={Coins}
+              color="orange"
+              className="h-full"
+            >
+              <div className="space-y-3">
+                <ul className="space-y-2 text-sm text-slate-700">
+                  {promptUsageRewardAmount > 0 && (
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                      <span>
+                        {t("usageRewardFreeItem", {
+                          amount: promptUsageRewardAmount,
+                        })}
+                      </span>
+                    </li>
+                  )}
+                  {styleUsageRewardAmount > 0 && (
+                    <li className="flex items-start gap-2">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
+                      <span>
+                        {t("usageRewardStyleItem", {
+                          amount: styleUsageRewardAmount,
+                        })}
+                      </span>
+                    </li>
+                  )}
+                </ul>
+                <div className="flex items-start gap-2 rounded-lg border border-orange-100 bg-orange-50/50 p-3 text-sm text-orange-700">
+                  <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
+                  <span>{t("usageRewardNote")}</span>
+                </div>
+              </div>
+            </ChallengeCard>
+          </div>
+        )}
       </div>
     </div>
   );
