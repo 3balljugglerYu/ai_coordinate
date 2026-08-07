@@ -70,6 +70,8 @@ export const thMessages = {
     afterImageAlt: "รูปที่สร้าง",
     showBeforeImageLabel: "แสดงรูปก่อนเปลี่ยนด้วย",
     promptVisibilityLabel: "การเปิดเผยพรอมต์",
+    promptVisibilityRewardHint:
+      "คุณจะได้รับสูงสุด +{amount} เพอร์คอยน์ ทุกครั้งที่ผู้ติดตามสร้างด้วยพรอมต์นี้",
     promptVisibilityPublicOption: "แสดงพรอมต์",
     promptVisibilityPrivateOption: "ตั้งพรอมต์เป็นส่วนตัว",
     promptVisibilityPublicHint: "ผู้ติดตามคัดลอกพรอมต์ได้ งานที่สร้างจากสำเนาจะไม่ถูกนับ",
@@ -1366,6 +1368,15 @@ export const thMessages = {
     resetIn: "รีเซ็ตในอีก",
     tipsLabel: "เคล็ดลับ:",
     dailyResetDescription: "ภารกิจนี้รีเซ็ตทุกวันเวลา 00:00 JST",
+    usageRewardTitle: "รางวัลครีเอเตอร์",
+    usageRewardDescription:
+      "รับเพอร์คอยน์เมื่อผู้ใช้คนอื่นสร้างผลงานด้วยพรอมต์หรือสไตล์ของคุณ",
+    usageRewardFreeItem:
+      "สูงสุด +{amount} เพอร์คอยน์ เมื่อพรอมต์ /free ของคุณถูกใช้",
+    usageRewardStyleItem:
+      "สูงสุด +{amount} เพอร์คอยน์ เมื่อ One-Tap Style ของคุณถูกใช้",
+    usageRewardNote:
+      "การใช้งานของคุณเองไม่นับ การสร้างด้วยการคัดลอกพรอมต์ไปวางก็ไม่นับ นับเฉพาะที่เริ่มจาก “สร้างด้วยพรอมต์นี้” ในแอปเท่านั้น และจะไม่ได้รับเมื่อยอดเพอร์คอยน์ฟรีถึงขีดจำกัดแล้ว",
     referralTitle: "โบนัสแนะนำ",
     referralDescription:
       "ชวนเพื่อนเพื่อรับ Percoin จะได้รับรางวัลเมื่อมีคนสมัครจากลิงก์หรือ QR code แนะนำของคุณ",

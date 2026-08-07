@@ -38,6 +38,8 @@ export async function CachedChallengePageContent({
       dailyPostBonusAmount={displayDefaults.dailyPostBonusAmount}
       baseStreakBonusSchedule={baseDefaults.streakBonusSchedule}
       streakBonusSchedule={displayDefaults.streakBonusSchedule}
+      promptUsageRewardAmount={baseDefaults.promptUsageRewardAmount}
+      styleUsageRewardAmount={baseDefaults.styleUsageRewardAmount}
       vercelEnv={process.env.VERCEL_ENV}
     />
   );

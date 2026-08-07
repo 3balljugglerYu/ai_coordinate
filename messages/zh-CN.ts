@@ -70,6 +70,8 @@ export const zhCnMessages = {
     afterImageAlt: "生成图片",
     showBeforeImageLabel: "同时显示更换前的图片",
     promptVisibilityLabel: "提示词公开设置",
+    promptVisibilityRewardHint:
+      "关注者每次使用此提示词生成，你最多可获得 +{amount} 佩尔币。",
     promptVisibilityPublicOption: "公开提示词",
     promptVisibilityPrivateOption: "将提示词设为私密",
     promptVisibilityPublicHint: "关注者可以复制提示词。用复制的内容生成不计入使用数。",
@@ -1365,6 +1367,15 @@ export const zhCnMessages = {
     resetIn: "距重置",
     tipsLabel: "提示:",
     dailyResetDescription: "本任务每天 JST 00:00 重置。",
+    usageRewardTitle: "创作者回馈",
+    usageRewardDescription:
+      "当其他用户使用你的提示词或风格生成时，你将获得佩尔币。",
+    usageRewardFreeItem:
+      "你的 /free 提示词被使用时 最多 +{amount} 佩尔币",
+    usageRewardStyleItem:
+      "你的 One-Tap Style 被使用时 最多 +{amount} 佩尔币",
+    usageRewardNote:
+      "自己使用不计入。复制粘贴提示词的生成也不计入，仅限从应用内“用这个提示词创作”发起的生成。免费佩尔币余额达到上限后将不再发放。",
     referralTitle: "推荐奖励",
     referralDescription:
       "邀请好友即可获得 Percoin。当有人通过你的推荐链接或二维码注册时，会发放奖励。",

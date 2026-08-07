@@ -1,8 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useUsageRewardAmounts } from "@/features/credits/hooks/useUsageRewardAmounts";
 
 export type PromptVisibilityValue = "public" | "private";
 
@@ -45,12 +47,26 @@ export function PromptVisibilityField({
   idPrefix,
 }: PromptVisibilityFieldProps) {
   const t = useTranslations("posts");
+  // 還元が停止中(0)なら告知は出さない。取得前・失敗時も 0 なので、
+  // 「もらえないのに告知だけ出る」ことはない。
+  const { promptUsageRewardAmount } = useUsageRewardAmounts();
   const publicId = `${idPrefix}-prompt-visibility-public`;
   const privateId = `${idPrefix}-prompt-visibility-private`;
 
   return (
     <div className="space-y-2">
       <p className="text-sm font-medium">{t("promptVisibilityLabel")}</p>
+
+      {promptUsageRewardAmount > 0 && (
+        <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900">
+          <Coins className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span>
+            {t("promptVisibilityRewardHint", {
+              amount: promptUsageRewardAmount,
+            })}
+          </span>
+        </div>
+      )}
 
       <RadioGroup
         value={value}

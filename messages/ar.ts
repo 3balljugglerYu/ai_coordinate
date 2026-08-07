@@ -70,6 +70,8 @@ export const arMessages = {
     afterImageAlt: "الصورة المنشأة",
     showBeforeImageLabel: "اعرض الصورة قبل التغيير أيضًا",
     promptVisibilityLabel: "ظهور الأمر",
+    promptVisibilityRewardHint:
+      "‏تحصل على ما يصل إلى +{amount} بيركوين في كل مرة ينشئ فيها أحد متابعيك بهذا البرومبت.",
     promptVisibilityPublicOption: "إظهار الأمر",
     promptVisibilityPrivateOption: "إبقاء الأمر خاصًا",
     promptVisibilityPublicHint: "يمكن للمتابعين نسخ الأمر. لا تُحتسب الأعمال المُنشأة من نسخة.",
@@ -1367,6 +1369,15 @@ export const arMessages = {
     resetIn: "إعادة التعيين خلال",
     tipsLabel: "نصيحة:",
     dailyResetDescription: "تُعاد هذه المهمة كل يوم في 00:00 JST.",
+    usageRewardTitle: "مكافآت صنّاع المحتوى",
+    usageRewardDescription:
+      "احصل على بيركوين عندما ينشئ الآخرون باستخدام برومبتاتك أو ستايلاتك.",
+    usageRewardFreeItem:
+      "‏حتى +{amount} بيركوين عند استخدام برومبت /free الخاص بك",
+    usageRewardStyleItem:
+      "‏حتى +{amount} بيركوين عند استخدام One-Tap Style الخاص بك",
+    usageRewardNote:
+      "استخدامك الشخصي لا يُحتسب، وكذلك ما يُنشأ بنسخ البرومبت ولصقه — يُحتسب فقط ما يبدأ من «أنشئ بهذا البرومبت» داخل التطبيق. ولا يُمنح شيء عند بلوغ رصيد البيركوين المجاني حدَّه الأقصى.",
     referralTitle: "مكافأة الإحالة",
     referralDescription:
       "ادعُ أصدقاءك لكسب Percoin. تُمنح المكافآت عند تسجيل صديق من خلال رابط الإحالة أو رمز QR الخاص بك.",

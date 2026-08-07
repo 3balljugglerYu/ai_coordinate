@@ -70,6 +70,8 @@ export const idMessages = {
     afterImageAlt: "Gambar yang dihasilkan",
     showBeforeImageLabel: "Tampilkan juga gambar sebelum",
     promptVisibilityLabel: "Visibilitas prompt",
+    promptVisibilityRewardHint:
+      "Kamu dapat hingga +{amount} Percoin setiap kali pengikut berkreasi dengan prompt ini.",
     promptVisibilityPublicOption: "Tampilkan prompt",
     promptVisibilityPrivateOption: "Jadikan prompt privat",
     promptVisibilityPublicHint: "Pengikut dapat menyalin prompt. Hasil dari salinan tidak dihitung.",
@@ -1369,6 +1371,15 @@ export const idMessages = {
     resetIn: "Reset dalam",
     tipsLabel: "Tips:",
     dailyResetDescription: "Misi ini reset setiap hari pukul 00:00 JST.",
+    usageRewardTitle: "Imbalan kreator",
+    usageRewardDescription:
+      "Dapatkan Percoin saat pengguna lain berkreasi dengan prompt atau gaya kamu.",
+    usageRewardFreeItem:
+      "Hingga +{amount} Percoin saat prompt /free kamu dipakai",
+    usageRewardStyleItem:
+      "Hingga +{amount} Percoin saat One-Tap Style kamu dipakai",
+    usageRewardNote:
+      "Penggunaan sendiri tidak dihitung. Generasi hasil salin-tempel prompt juga tidak — hanya yang dimulai dari “Buat dengan prompt ini” di aplikasi. Tidak ada pemberian saat saldo Percoin gratismu mencapai batas.",
     referralTitle: "Bonus referral",
     referralDescription:
       "Undang teman untuk mendapat Percoin. Hadiah diberikan saat teman mendaftar dari tautan atau QR code referralmu.",

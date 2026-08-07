@@ -70,6 +70,8 @@ export const ptMessages = {
     afterImageAlt: "Imagem gerada",
     showBeforeImageLabel: "Mostrar também a imagem antes",
     promptVisibilityLabel: "Visibilidade do prompt",
+    promptVisibilityRewardHint:
+      "Você ganha até +{amount} Percoins cada vez que um seguidor cria com este prompt.",
     promptVisibilityPublicOption: "Mostrar o prompt",
     promptVisibilityPrivateOption: "Manter o prompt privado",
     promptVisibilityPublicHint: "Seus seguidores podem copiar o prompt. Gerações feitas a partir de uma cópia não são contadas.",
@@ -1370,6 +1372,15 @@ export const ptMessages = {
     resetIn: "Reseta em",
     tipsLabel: "Dica:",
     dailyResetDescription: "Esta missão reseta todos os dias às 00:00 JST.",
+    usageRewardTitle: "Recompensas para criadores",
+    usageRewardDescription:
+      "Ganhe Percoins quando outras pessoas criarem com seus prompts ou estilos.",
+    usageRewardFreeItem:
+      "Até +{amount} Percoins quando seu prompt do /free é usado",
+    usageRewardStyleItem:
+      "Até +{amount} Percoins quando seu One-Tap Style é usado",
+    usageRewardNote:
+      "Seu próprio uso não conta. Gerações feitas copiando e colando o prompt também não: só valem as iniciadas em “Criar com este prompt” no app. Nada é concedido quando seu saldo de Percoins gratuitos atinge o limite.",
     referralTitle: "Bônus de indicação",
     referralDescription:
       "Convide amigos para ganhar Percoins. As recompensas são concedidas quando alguém se cadastra pelo seu link ou QR code de indicação.",

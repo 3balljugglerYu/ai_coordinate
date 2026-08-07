@@ -67,6 +67,8 @@ export const jaMessages = {
     afterImageAlt: "生成済み画像",
     showBeforeImageLabel: "生成前の画像も表示する",
     promptVisibilityLabel: "プロンプトの公開設定",
+    promptVisibilityRewardHint:
+      "フォロワーがこのプロンプトで生成すると、1回につき最大 +{amount} ペルコインが還元されます。",
     promptVisibilityPublicOption: "プロンプトを公開する",
     promptVisibilityPrivateOption: "プロンプトを非公開にする",
     promptVisibilityPublicHint: "フォロワーはプロンプトをコピーできます。コピーから作られた分は利用数に入りません。",
@@ -1313,6 +1315,15 @@ export const jaMessages = {
     resetIn: "リセットまで",
     tipsLabel: "Tips:",
     dailyResetDescription: "日本時間（JST）で毎日0時にリセットされます",
+    usageRewardTitle: "クリエイター還元",
+    usageRewardDescription:
+      "あなたのプロンプトやスタイルが他のユーザーに使われると、ペルコインが還元されます。",
+    usageRewardFreeItem:
+      "あなたの /free のプロンプトが使われると 最大 +{amount} ペルコイン",
+    usageRewardStyleItem:
+      "あなたの One-Tap Style が使われると 最大 +{amount} ペルコイン",
+    usageRewardNote:
+      "自分自身の利用は対象外です。プロンプトをコピーして貼り付けた生成も対象外で、アプリ内の「このプロンプトで作る」から使われた場合が対象です。無料ペルコイン残高が上限に達している場合は還元されません。",
     referralTitle: "友達紹介特典",
     referralDescription:
       "友達を招待してペルコインをゲット！紹介リンクまたはQRコードから友達が新規登録すると特典が付与されます。",
