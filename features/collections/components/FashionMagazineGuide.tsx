@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 
 /**
@@ -115,17 +116,7 @@ export function FashionMagazineGuide() {
       />
 
       {/* ============ 表紙(ヒーロー) ============ */}
-      <header className="relative overflow-hidden px-6 pb-16 pt-14 text-center">
-        {/* 誌面の外枠 */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-3 border border-stone-300 sm:inset-5"
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-4 border border-stone-200 sm:inset-6"
-        />
-
+      <header className="px-6 pb-16 pt-10 text-center">
         <Reveal>
           <p
             className="text-[11px] uppercase tracking-[0.5em] text-stone-500"
@@ -133,42 +124,34 @@ export function FashionMagazineGuide() {
           >
             Persta.AI presents
           </p>
-          <p
-            className="mt-6 text-5xl font-semibold leading-none tracking-tight sm:text-6xl"
-            style={{ fontFamily: "'Cormorant Garamond', serif" }}
-          >
-            SUMMER
-            <br />
-            ISSUE
-          </p>
-          <p className="mt-2 text-[11px] tracking-[0.35em] text-[#c2410c]">
-            {CAMPAIGN.issueLabel}
-          </p>
-        </Reveal>
-
-        <Reveal delay={150}>
-          <h1 className="mx-auto mt-8 max-w-md text-2xl font-bold leading-relaxed tracking-wide sm:text-3xl">
+          <h1 className="mx-auto mt-3 max-w-md text-xl font-bold leading-relaxed tracking-wide sm:text-2xl">
             {CAMPAIGN.title}
           </h1>
-          <p className="mx-auto mt-4 max-w-sm text-sm leading-loose text-stone-600">
+        </Reveal>
+
+        <Reveal delay={120}>
+          <div className="mx-auto mt-6 max-w-md">
+            <Image
+              src="/collections/fashion-magazine/hero.webp"
+              alt={`${CAMPAIGN.title}のメインビジュアル。あなたのうちの子が表紙モデルの雑誌をつくる企画。${CAMPAIGN.prizeLabel}が抽選で${CAMPAIGN.winnersLabel}に当たるキャンペーンを${CAMPAIGN.periodLabel}に開催`}
+              width={1000}
+              height={1333}
+              priority
+              sizes="(max-width: 640px) 100vw, 448px"
+              className="h-auto w-full rounded-sm shadow-[0_10px_40px_rgba(120,90,40,0.18)]"
+            />
+          </div>
+        </Reveal>
+
+        <Reveal delay={240}>
+          <p className="mx-auto mt-6 max-w-sm text-sm leading-loose text-stone-600">
             全{CAMPAIGN.pageCount}ページの誌面を、ぜんぶ「うちの子」で。
             <br />
             表紙から裏表紙まで揃えると、
             <br className="sm:hidden" />
             めくって読める1冊が完成します。
           </p>
-        </Reveal>
-
-        <Reveal delay={300}>
-          <div className="mt-8 inline-flex flex-col items-center gap-1 border-y border-stone-300 px-8 py-3">
-            <p className="text-[10px] tracking-[0.3em] text-stone-500">
-              開催期間
-            </p>
-            <p className="text-base font-bold tracking-wider">
-              {CAMPAIGN.periodLabel}
-            </p>
-          </div>
-          <div className="mt-8">
+          <div className="mt-7">
             <Link
               href="/style"
               className="inline-flex items-center gap-2 bg-[#1c1917] px-10 py-4 text-sm font-bold tracking-[0.2em] text-[#faf8f4] transition-transform hover:-translate-y-0.5"
@@ -177,7 +160,7 @@ export function FashionMagazineGuide() {
             </Link>
           </div>
           <p className="mt-3 text-[11px] text-stone-500">
-            Xシェアで {CAMPAIGN.prizeLabel} が抽選で{CAMPAIGN.winnersLabel}に
+            開催期間 {CAMPAIGN.periodLabel}
           </p>
         </Reveal>
       </header>
@@ -224,6 +207,64 @@ export function FashionMagazineGuide() {
             </Reveal>
           ))}
         </div>
+      </section>
+
+      <Rule />
+
+      {/* ============ 作例(表紙・裏表紙) ============ */}
+      <section className="overflow-hidden px-6 py-14">
+        <Reveal>
+          <p
+            className="text-center text-[11px] uppercase tracking-[0.45em] text-stone-500"
+            style={{ fontFamily: "'Cormorant Garamond', serif" }}
+          >
+            Sample Pages
+          </p>
+          <h2 className="mt-2 text-center text-xl font-bold tracking-wide">
+            たとえば、こんな1冊に
+          </h2>
+        </Reveal>
+
+        <div className="mx-auto mt-10 flex max-w-md items-center justify-center gap-4">
+          <Reveal delay={100} className="w-1/2">
+            <figure>
+              <Image
+                src="/collections/fashion-magazine/cover-sample.webp"
+                alt="表紙の作例。誌名 Persta Style と夏のリゾートを背景にしたモデルの誌面デザイン"
+                width={720}
+                height={953}
+                sizes="(max-width: 640px) 45vw, 210px"
+                className="h-auto w-full -rotate-2 rounded-sm shadow-[0_8px_30px_rgba(120,90,40,0.22)]"
+              />
+              <figcaption className="mt-3 text-center text-[11px] tracking-[0.2em] text-stone-500">
+                P.1 表紙
+              </figcaption>
+            </figure>
+          </Reveal>
+          <Reveal delay={220} className="w-1/2">
+            <figure>
+              <Image
+                src="/collections/fashion-magazine/back-cover-sample.webp"
+                alt="裏表紙の作例。バーコードや奥付が入った雑誌の裏表紙デザイン"
+                width={720}
+                height={953}
+                sizes="(max-width: 640px) 45vw, 210px"
+                className="h-auto w-full rotate-2 rounded-sm shadow-[0_8px_30px_rgba(120,90,40,0.22)]"
+              />
+              <figcaption className="mt-3 text-center text-[11px] tracking-[0.2em] text-stone-500">
+                P.8 裏表紙
+              </figcaption>
+            </figure>
+          </Reveal>
+        </div>
+
+        <Reveal delay={300}>
+          <p className="mx-auto mt-8 max-w-sm text-center text-sm leading-loose text-stone-600">
+            表紙も裏表紙も、写真1枚から生成。
+            <br />
+            モデルはすべて、あなたのうちの子に置き換わります。
+          </p>
+        </Reveal>
       </section>
 
       <Rule />
