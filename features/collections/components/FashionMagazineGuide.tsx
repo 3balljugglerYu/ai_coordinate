@@ -106,7 +106,9 @@ export function FashionMagazineGuide() {
       className="min-h-screen bg-[#faf8f4] text-[#1c1917]"
       style={{ fontFamily: "'Shippori Mincho', 'Hiragino Mincho ProN', serif" }}
     >
-      {/* LP専用フォント。WaferGuide と同じく link で読み込む(サイト全体には影響しない) */}
+      {/* LP専用フォント。WaferGuide と同じく link で読み込む(サイト全体には影響しない)。
+          このLPだけで使う書体のため、_document への追加はしない。 */}
+      {/* eslint-disable-next-line @next/next/no-page-custom-font */}
       <link
         href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Shippori+Mincho:wght@500;600;700&display=swap"
         rel="stylesheet"
