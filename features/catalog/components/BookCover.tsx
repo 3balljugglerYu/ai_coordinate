@@ -77,6 +77,15 @@ export function BookCover({
           </>
         ) : null}
 
+        {/*
+          オーバーレイを消しても見出しは残す。表紙画像にタイトルが焼き込まれて
+          いても、スクリーンリーダーの見出しナビゲーションからページ名を辿れる
+          ようにするため(設定値で文書構造が変わらないようにする)。
+        */}
+        {variant === "front" && !withOverlay ? (
+          <h1 className="sr-only">{title}</h1>
+        ) : null}
+
         {/* 中央折り目側の陰影 (front は右端 / back は左端) */}
         <div
           aria-hidden

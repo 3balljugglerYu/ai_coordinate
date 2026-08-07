@@ -6,14 +6,15 @@ import { getCollectionBookByToken } from "@/features/collections/lib/public-moun
 import { composeBookPages } from "@/features/collections/lib/book-display";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
 import { ScrapbookReader } from "@/features/collections/components/ScrapbookReader";
+import {
+  BOOK_SHARE_FALLBACK_TITLE,
+  buildBookShareDescription,
+} from "@/features/collections/lib/book-share-metadata";
 
 interface BookPageProps {
   params: Promise<{ token: string }>;
   searchParams: Promise<{ reward?: string }>;
 }
-
-const SHARE_DESCRIPTION =
-  "うちの子の旅行日記(スクラップブック)。あなたのうちの子でも作れます。";
 
 export async function generateMetadata({
   params,
@@ -22,11 +23,12 @@ export async function generateMetadata({
   const book = await getCollectionBookByToken(token);
   const title = book
     ? `${book.displayNameJa} | Persta.AI`
-    : "旅行日記 | Persta.AI";
+    : BOOK_SHARE_FALLBACK_TITLE;
+  const description = buildBookShareDescription(book?.displayNameJa);
 
   const base: Metadata = {
     title,
-    description: SHARE_DESCRIPTION,
+    description,
     robots: { index: false, follow: true },
   };
   if (!book || !book.ogpImageUrl) return base;
@@ -35,7 +37,7 @@ export async function generateMetadata({
     ...base,
     openGraph: {
       title,
-      description: SHARE_DESCRIPTION,
+      description,
       type: "article",
       siteName: "Persta.AI",
       // OGP はユーザー生成の「はじまり(表紙)」= 縦長のため、横長1200x630の
@@ -45,7 +47,7 @@ export async function generateMetadata({
     twitter: {
       card: "summary_large_image",
       title,
-      description: SHARE_DESCRIPTION,
+      description,
       images: [book.ogpImageUrl],
     },
   };
