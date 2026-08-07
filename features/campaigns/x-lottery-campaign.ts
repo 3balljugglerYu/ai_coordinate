@@ -100,6 +100,13 @@ export function isLotteryEntryOpen(
  *
  * OGPカードは本文中のURLから展開される。@メンションと#タグが本文に入るので
  * Xガイドラインの「主催者@ユーザー名を含める」も満たしつつ応募回収できる。
+ *
+ * エンドポイントはレガシーの twitter.com/intent/tweet を使う。
+ * x.com/intent/post だと iOS の X アプリがネイティブ投稿画面に割り当てず
+ * アプリ内ブラウザ(Web版投稿画面)で開いてしまい、Web版に未ログインの
+ * ユーザーはログイン壁で応募できない(実機検証 2026-08-08)。
+ * twitter.com/intent/tweet はアプリのネイティブ投稿画面へマップされ、
+ * アプリ未インストール時は x.com の Web 投稿画面へリダイレクトされる。
  */
 export function buildXLotteryIntentUrl(
   copy: XLotteryCopy,
@@ -111,5 +118,5 @@ export function buildXLotteryIntentUrl(
   }
   const params = new URLSearchParams();
   params.set("text", lines.join("\n"));
-  return `https://x.com/intent/post?${params.toString()}`;
+  return `https://twitter.com/intent/tweet?${params.toString()}`;
 }
