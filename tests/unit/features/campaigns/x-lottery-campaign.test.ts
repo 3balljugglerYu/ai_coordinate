@@ -62,7 +62,7 @@ describe("buildXLotteryIntentUrl", () => {
       "https://www.persta.ai/m/abc?v=123",
     );
     const parsed = new URL(url);
-    expect(parsed.origin + parsed.pathname).toBe("https://x.com/intent/post");
+    expect(parsed.origin + parsed.pathname).toBe("https://twitter.com/intent/tweet");
     expect(parsed.searchParams.get("text")).toBe(
       [
         "うちの子のことわざ辞典をコンプリートしました！",
@@ -88,7 +88,7 @@ describe("buildXLotteryIntentUrl", () => {
   test("登録済みキャンペーンの文面でも組み立てられる", () => {
     for (const copy of Object.values(X_LOTTERY_CAMPAIGNS)) {
       const url = buildXLotteryIntentUrl(copy, "https://www.persta.ai/m/x");
-      expect(url.startsWith("https://x.com/intent/post?")).toBe(true);
+      expect(url.startsWith("https://twitter.com/intent/tweet?")).toBe(true);
     }
   });
 });
