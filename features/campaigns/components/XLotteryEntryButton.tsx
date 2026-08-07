@@ -78,19 +78,16 @@ export function XLotteryEntryButton({
 
   if (variant === "chrome") {
     // book リーダー用: 没入UIの下部に置くコンパクト版。
-    // 賞品はボタン内に短く出し、詳細は規約リンクへ逃がす。
+    // 賞品などの詳細は規約リンクへ逃がし、ボタンは文言だけに絞る。
     return (
       <div className="flex flex-col items-center gap-1.5">
         <button
           type="button"
           onClick={handleClick}
-          className="inline-flex items-center gap-2 rounded-full bg-[#1d1d1f] px-5 py-2.5 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          className="inline-flex items-center gap-2 rounded-full bg-[#1d1d1f] px-6 py-2.5 text-sm font-bold text-white shadow-lg transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
         >
           {xIcon}
           Xで応募する
-          <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-black">
-            🎁 {copy.prizeLabel}
-          </span>
         </button>
         <Link
           href={copy.rulesPath}
