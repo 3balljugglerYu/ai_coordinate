@@ -38,6 +38,9 @@ const messages: Record<string, string> = {
   transactionTypeAdminDeductionDefault: "運営による減算",
   transactionTypeTourBonus: "チュートリアルボーナス",
   transactionTypeForfeiture: "退会による放棄",
+  transactionTypeCollectionCompletion: "コレクション完走報酬",
+  transactionTypePromptUsageReward: "プロンプト利用の還元",
+  transactionTypeStyleUsageReward: "スタイル利用の還元",
   expireAt: "有効期限: {date}",
   breakdownPrefix: "内訳: {details}",
   breakdownPeriodLimited: "期間限定 {amount}",
@@ -136,5 +139,68 @@ describe("PercoinTransactions", () => {
 
     expect(screen.getByText("サブスク付与")).toBeInTheDocument();
     expect(screen.getByText("+400")).toBeInTheDocument();
+  });
+
+  // 以前は switch の default に落ちて collection_completion 等の内部値が
+  // そのまま表示されていた種別。生の英語が出ないことを固定する。
+  it.each([
+    ["collection_completion", "コレクション完走報酬"],
+    ["prompt_usage_reward", "プロンプト利用の還元"],
+    ["style_usage_reward", "スタイル利用の還元"],
+  ])("renders translated label for %s", (transactionType, expectedLabel) => {
+    const transactions: PercoinTransaction[] = [
+      {
+        id: `tx-${transactionType}`,
+        amount: 2,
+        transaction_type: transactionType,
+        metadata: null,
+        created_at: "2026-08-07T00:00:00.000Z",
+        expire_at: "2027-02-28T14:59:59.000Z",
+      },
+    ];
+
+    render(
+      <PercoinTransactions
+        transactions={transactions}
+        filter="all"
+        offset={0}
+        totalCount={1}
+        isLoading={false}
+        onFilterChange={jest.fn()}
+        onPageClick={jest.fn()}
+        onNextPage={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText(expectedLabel)).toBeInTheDocument();
+    expect(screen.queryByText(transactionType)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the raw value for unknown transaction types", () => {
+    const transactions: PercoinTransaction[] = [
+      {
+        id: "tx-unknown",
+        amount: 1,
+        transaction_type: "some_future_type",
+        metadata: null,
+        created_at: "2026-08-07T00:00:00.000Z",
+        expire_at: null,
+      },
+    ];
+
+    render(
+      <PercoinTransactions
+        transactions={transactions}
+        filter="all"
+        offset={0}
+        totalCount={1}
+        isLoading={false}
+        onFilterChange={jest.fn()}
+        onPageClick={jest.fn()}
+        onNextPage={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText("some_future_type")).toBeInTheDocument();
   });
 });
