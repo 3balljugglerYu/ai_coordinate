@@ -1,6 +1,28 @@
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 /**
+ * チュートリアルツアーが進行中(sessionStorage の in_progress が立っている)かを返す。
+ *
+ * ナビの「コーディネート」入口は通常「直近に使った生成モード」へ差し替え遷移するが、
+ * ツアー進行中にそれをやると、直近が /style・/free のユーザーはツアーの再開先
+ * (/coordinate)に到達できず無言で詰まる。ツアー中だけ差し替えを止めるための判定。
+ */
+export function isTutorialTourInProgress(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return (
+      window.sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS) ===
+      "true"
+    );
+  } catch {
+    // プライベートモード等でストレージにアクセスできない場合は通常挙動に倒す。
+    return false;
+  }
+}
+
+/**
  * チュートリアルが「表示中 or これから表示される」状態かを判定する。
  * true の間はホーム画面で他のオーバーレイ(ポップアップバナー等)を抑制し、
  * チュートリアルの進行を妨げないために使う。
