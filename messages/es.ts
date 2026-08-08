@@ -939,8 +939,11 @@ export const esMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Tutorial",
+    tourStepUploadTitle: "Sube una imagen",
     tourStepUploadDescription: "Sube aquí la imagen del personaje que quieres restilizar.",
+    tourStepPromptTitle: "Introduce el prompt de styling",
     tourStepPromptDescription: "Describe el tipo de conjunto que quieres.",
+    tourStepGenerateTitle: "Empieza a generar",
     tourStepGenerateDescription: "Selecciona \"Empezar styling\" para empezar.",
     pageTitle: "Coordinate",
     pageDescription: "Sube una foto y cambia de outfit con facilidad. Mantén la pose y la composición originales y cambia solo la ropa de forma natural.",
@@ -1420,38 +1423,11 @@ export const esMessages = {
     prevButton: "Atrás",
     nextButton: "Siguiente",
     doneButton: "Listo",
-    promptTemplate:
-      "Diseña un conjunto acorde con la temporada del mes {month}.",
-    stepCoordinateTitle: "Abrir Coordinar",
-    stepCoordinateDescription: "Toca aquí para abrir la pantalla de coordinación.",
-    stepUploadTitle: "Sube una imagen",
-    stepUploadDescription:
-      "Sube aquí la imagen del personaje que quieres restilizar. Hemos preparado una imagen de demostración para este recorrido.",
-    stepPromptTitle: "Introduce el prompt de styling",
-    stepPromptDescription:
-      "Describe el tipo de conjunto que quieres. Usaremos este ejemplo para el tutorial.",
-    stepBackgroundTitle: "Configuración del fondo",
-    stepBackgroundDescription:
-      "Elige aquí cómo gestionar el fondo. Para este tutorial, sigamos con \"Que decida la IA\".",
-    stepModelTitle: "Selecciona el modelo de generación",
-    stepModelDescription:
-      "En este tutorial usaremos ChatGPT Images 2.0 Low. Si había otro modelo seleccionado, se cambiará automáticamente aquí.",
-    stepSizeTitle: "Comprueba el tamaño de salida",
-    stepSizeDescription:
-      "Mantendremos el tamaño de salida en Estándar. Las dimensiones exactas se ajustan automáticamente según la orientación de la imagen.",
-    stepGenerateTitle: "Empieza a generar",
-    stepGenerateDescription:
-      "Selecciona \"Empezar styling\" para empezar. Tus Percoins se restituirán tras el tutorial, así que sigue sin preocupaciones.",
-    stepGeneratingTitle: "Generando...",
-    stepGeneratingDescription:
-      "Puedes seguir el progreso debajo. ¡Espera un momento a que termine!",
-    stepCompletedTitle: "¡Listo!",
-    stepFirstImageTitle: "Tu cambio de conjunto está completo",
-    stepFirstImageDescription:
-      "Ahora puedes publicar o descargar el resultado. ¡Pruébalo!",
+    stepNavigateTitle: "¡Empieza a crear aquí!",
+    stepNavigateDescription: "Toca aquí para continuar.",
     stepFinishedTitle: "Recorrido completado",
     stepFinishedDescription:
-      "Buen trabajo. Sigue creando más cambios de conjunto a partir de aquí. Pulsa \"Listo\" para recibir tu recompensa de Percoins.",
+      "¡Todo listo! Elige un estilo y una foto para crear tu primera imagen. Al completar el tour recibirás tu bono de Percoin.",
   },
   free: {
     tabLabel: "Free Style",

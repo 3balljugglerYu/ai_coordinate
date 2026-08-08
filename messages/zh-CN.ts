@@ -935,8 +935,11 @@ export const zhCnMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "教程",
+    tourStepUploadTitle: "上传图片",
     tourStepUploadDescription: "在此上传想要重新造型的角色图片。",
+    tourStepPromptTitle: "输入造型提示词",
     tourStepPromptDescription: "请描述想要的搭配。",
+    tourStepGenerateTitle: "开始生成",
     tourStepGenerateDescription: "选择 “开始造型” 即可开始。",
     pageTitle: "Coordinate",
     pageDescription: "上传人物图片，轻松换装。保持原本的姿势和构图，只自然地更换服装。",
@@ -1415,38 +1418,11 @@ export const zhCnMessages = {
     prevButton: "上一步",
     nextButton: "下一步",
     doneButton: "完成",
-    promptTemplate:
-      "请按 {month} 月的季节感为我搭配。",
-    stepCoordinateTitle: "打开搭配",
-    stepCoordinateDescription: "点击此处即可打开搭配页面。",
-    stepUploadTitle: "上传图片",
-    stepUploadDescription:
-      "在此上传想要重新造型的角色图片。本次教程已为你准备好示例图片。",
-    stepPromptTitle: "输入造型提示词",
-    stepPromptDescription:
-      "请描述想要的搭配。本教程将使用此示例。",
-    stepBackgroundTitle: "背景设置",
-    stepBackgroundDescription:
-      "在这里选择如何处理背景。本教程将使用 “交给 AI 处理” 继续。",
-    stepModelTitle: "选择生成模型",
-    stepModelDescription:
-      "本教程将使用 ChatGPT Images 2.0 Low。即使已选择其他模型，也会在这里自动切换。",
-    stepSizeTitle: "确认输出尺寸",
-    stepSizeDescription:
-      "输出尺寸将保持为标准。实际尺寸会根据图片方向自动调整。",
-    stepGenerateTitle: "开始生成",
-    stepGenerateDescription:
-      "选择 “开始造型” 即可开始。教程结束后将退还使用的 Percoin，请放心继续。",
-    stepGeneratingTitle: "生成中...",
-    stepGeneratingDescription:
-      "下方可以查看进度，请耐心等候完成!",
-    stepCompletedTitle: "完成啦!",
-    stepFirstImageTitle: "换装完成",
-    stepFirstImageDescription:
-      "现在你可以发布或下载结果，欢迎尝试。",
+    stepNavigateTitle: "从这里开始生成！",
+    stepNavigateDescription: "请点击这里。",
     stepFinishedTitle: "教程结束",
     stepFinishedDescription:
-      "辛苦了。接下来请尽情享受更多搭配。点击 “完成” 即可领取 Percoin 奖励。",
+      "辛苦了！选择喜欢的风格和照片，马上生成第一张图片吧！完成导览即可获得奖励Percoin。",
   },
   free: {
     tabLabel: "Free Style",

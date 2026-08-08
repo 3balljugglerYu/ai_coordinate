@@ -936,8 +936,11 @@ export const thMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "บทช่วยสอน",
+    tourStepUploadTitle: "อัปโหลดรูป",
     tourStepUploadDescription: "อัปโหลดที่นี่เพื่อรูปตัวละครที่ต้องการจัดสไตล์ใหม่",
+    tourStepPromptTitle: "กรอกพรอมป์การจัดสไตล์",
     tourStepPromptDescription: "อธิบายชุดที่ต้องการ",
+    tourStepGenerateTitle: "เริ่มสร้าง",
     tourStepGenerateDescription: "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม",
     pageTitle: "Coordinate",
     pageDescription: "อัปโหลดรูปบุคคลแล้วเปลี่ยนชุดได้ง่าย ๆ คงท่าทางและองค์ประกอบเดิมไว้ เปลี่ยนแค่เสื้อผ้าอย่างเป็นธรรมชาติ",
@@ -1416,38 +1419,11 @@ export const thMessages = {
     prevButton: "ย้อนกลับ",
     nextButton: "ถัดไป",
     doneButton: "เสร็จแล้ว",
-    promptTemplate:
-      "โปรดจัดชุดให้เข้ากับฤดูกาลของเดือน {month}",
-    stepCoordinateTitle: "เปิดจัดเซ็ต",
-    stepCoordinateDescription: "แตะที่นี่เพื่อเปิดหน้าจัดเซ็ต",
-    stepUploadTitle: "อัปโหลดรูป",
-    stepUploadDescription:
-      "อัปโหลดที่นี่เพื่อรูปตัวละครที่ต้องการจัดสไตล์ใหม่ เราเตรียมรูปสาธิตไว้สำหรับบทเรียนนี้แล้ว",
-    stepPromptTitle: "กรอกพรอมป์การจัดสไตล์",
-    stepPromptDescription:
-      "อธิบายชุดที่ต้องการ เราจะใช้ตัวอย่างนี้สำหรับบทเรียน",
-    stepBackgroundTitle: "การตั้งค่าพื้นหลัง",
-    stepBackgroundDescription:
-      "เลือกที่นี่ว่าจะจัดการพื้นหลังอย่างไร สำหรับบทเรียนนี้ ใช้ \"ให้ AI ตัดสินใจ\" ต่อไป",
-    stepModelTitle: "เลือกโมเดลสร้างภาพ",
-    stepModelDescription:
-      "บทเรียนนี้จะใช้ ChatGPT Images 2.0 Low หากเลือกโมเดลอื่นไว้ ระบบจะเปลี่ยนเป็นโมเดลนี้โดยอัตโนมัติ",
-    stepSizeTitle: "ตรวจสอบขนาดเอาต์พุต",
-    stepSizeDescription:
-      "เราจะใช้ขนาดเอาต์พุตมาตรฐาน ขนาดจริงจะปรับโดยอัตโนมัติตามแนวภาพ",
-    stepGenerateTitle: "เริ่มสร้าง",
-    stepGenerateDescription:
-      "เลือก \"เริ่มจัดสไตล์\" เพื่อเริ่ม Percoin ของคุณจะถูกคืนหลังบทเรียน จึงดำเนินการต่อได้อย่างสบายใจ",
-    stepGeneratingTitle: "กำลังสร้าง...",
-    stepGeneratingDescription:
-      "คุณติดตามความคืบหน้าได้ด้านล่าง โปรดรอสักครู่จนเสร็จ!",
-    stepCompletedTitle: "เสร็จแล้ว!",
-    stepFirstImageTitle: "เปลี่ยนชุดของคุณเสร็จแล้ว",
-    stepFirstImageDescription:
-      "ตอนนี้คุณโพสต์หรือดาวน์โหลดผลลัพธ์ได้ ลองดู",
+    stepNavigateTitle: "เริ่มสร้างได้ที่นี่!",
+    stepNavigateDescription: "แตะที่นี่เพื่อดำเนินการต่อ",
     stepFinishedTitle: "ทัวร์เสร็จแล้ว",
     stepFinishedDescription:
-      "ทำได้ดี เพลิดเพลินกับการเปลี่ยนชุดเพิ่มเติมจากที่นี่ คลิก \"เสร็จแล้ว\" เพื่อรับรางวัล Percoin",
+      "เรียบร้อยแล้ว! เลือกสไตล์และรูปภาพที่ชอบเพื่อสร้างภาพแรกของคุณ ทำทัวร์ให้เสร็จเพื่อรับโบนัส Percoin",
   },
   free: {
     tabLabel: "Free Style",

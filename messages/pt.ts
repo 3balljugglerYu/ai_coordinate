@@ -939,8 +939,11 @@ export const ptMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Tutorial",
+    tourStepUploadTitle: "Fazer upload de imagem",
     tourStepUploadDescription: "Faça upload aqui da imagem de personagem que você quer restilizar.",
+    tourStepPromptTitle: "Digitar o prompt de styling",
     tourStepPromptDescription: "Descreva o tipo de look que você quer.",
+    tourStepGenerateTitle: "Iniciar a geração",
     tourStepGenerateDescription: "Selecione \"Iniciar styling\" para começar.",
     pageTitle: "Coordinate",
     pageDescription: "Envie uma foto e troque de look com facilidade. Mantenha a pose e a composição originais, mudando apenas a roupa de forma natural.",
@@ -1420,38 +1423,11 @@ export const ptMessages = {
     prevButton: "Voltar",
     nextButton: "Próximo",
     doneButton: "Concluir",
-    promptTemplate:
-      "Por favor, crie um look adequado à estação do mês {month}.",
-    stepCoordinateTitle: "Abrir Coordenar",
-    stepCoordinateDescription: "Toque aqui para abrir a tela de coordenação.",
-    stepUploadTitle: "Fazer upload de imagem",
-    stepUploadDescription:
-      "Faça upload aqui da imagem de personagem que você quer restilizar. Já preparamos uma imagem de demonstração para este passo a passo.",
-    stepPromptTitle: "Digitar o prompt de styling",
-    stepPromptDescription:
-      "Descreva o tipo de look que você quer. Vamos usar este exemplo no tutorial.",
-    stepBackgroundTitle: "Configurações de fundo",
-    stepBackgroundDescription:
-      "Escolha aqui como tratar o fundo. Para este tutorial, sigamos com \"Deixar a IA decidir\".",
-    stepModelTitle: "Selecionar o modelo de geração",
-    stepModelDescription:
-      "Neste tutorial, usaremos o ChatGPT Images 2.0 Low. Se outro modelo estiver selecionado, ele será alterado automaticamente aqui.",
-    stepSizeTitle: "Verifique o tamanho de saída",
-    stepSizeDescription:
-      "Manteremos o tamanho de saída em Padrão. As dimensões reais são ajustadas automaticamente conforme a orientação da imagem.",
-    stepGenerateTitle: "Iniciar a geração",
-    stepGenerateDescription:
-      "Selecione \"Iniciar styling\" para começar. Seus Percoins serão restituídos depois do tutorial, então fique à vontade para continuar.",
-    stepGeneratingTitle: "Gerando...",
-    stepGeneratingDescription:
-      "Você pode acompanhar o progresso abaixo. Aguarde um instante até concluir!",
-    stepCompletedTitle: "Pronto!",
-    stepFirstImageTitle: "Sua troca de look está completa",
-    stepFirstImageDescription:
-      "Agora você pode publicar ou baixar o resultado. Experimente!",
+    stepNavigateTitle: "Comece a criar aqui!",
+    stepNavigateDescription: "Toque aqui para continuar.",
     stepFinishedTitle: "Tour concluído",
     stepFinishedDescription:
-      "Bom trabalho. Aproveite para criar mais trocas de look a partir daqui. Toque em \"Concluir\" para receber sua recompensa em Percoins.",
+      "Tudo pronto! Escolha um estilo e uma foto para criar sua primeira imagem. Ao concluir o tour, você recebe seu bônus de Percoin.",
   },
   free: {
     tabLabel: "Free Style",

@@ -938,8 +938,11 @@ export const idMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Tutorial",
+    tourStepUploadTitle: "Unggah gambar",
     tourStepUploadDescription: "Unggah di sini gambar karakter yang ingin kamu styling ulang.",
+    tourStepPromptTitle: "Masukkan prompt styling",
     tourStepPromptDescription: "Jelaskan jenis outfit yang kamu inginkan.",
+    tourStepGenerateTitle: "Mulai pembuatan",
     tourStepGenerateDescription: "Pilih \"Mulai styling\" untuk memulai.",
     pageTitle: "Coordinate",
     pageDescription: "Unggah foto dan ganti busana dengan mudah. Pertahankan pose dan komposisi asli, cukup ubah pakaiannya secara alami.",
@@ -1419,38 +1422,11 @@ export const idMessages = {
     prevButton: "Kembali",
     nextButton: "Lanjut",
     doneButton: "Selesai",
-    promptTemplate:
-      "Mohon padukan outfit sesuai musim bulan {month}.",
-    stepCoordinateTitle: "Buka Koordinat",
-    stepCoordinateDescription: "Ketuk di sini untuk membuka layar Koordinat.",
-    stepUploadTitle: "Unggah gambar",
-    stepUploadDescription:
-      "Unggah di sini gambar karakter yang ingin kamu styling ulang. Untuk panduan ini, kami sudah menyiapkan gambar demo.",
-    stepPromptTitle: "Masukkan prompt styling",
-    stepPromptDescription:
-      "Jelaskan jenis outfit yang kamu inginkan. Kami akan pakai contoh ini untuk tutorial.",
-    stepBackgroundTitle: "Pengaturan latar belakang",
-    stepBackgroundDescription:
-      "Pilih di sini cara menangani latar belakang. Untuk tutorial ini, lanjut dengan \"Biarkan AI memutuskan\".",
-    stepModelTitle: "Pilih model pembuatan",
-    stepModelDescription:
-      "Untuk tutorial ini, kita akan memakai ChatGPT Images 2.0 Low. Jika model lain sedang dipilih, model akan otomatis diganti di sini.",
-    stepSizeTitle: "Periksa ukuran output",
-    stepSizeDescription:
-      "Ukuran output akan tetap Standard. Dimensi sebenarnya akan disesuaikan otomatis dengan orientasi gambar.",
-    stepGenerateTitle: "Mulai pembuatan",
-    stepGenerateDescription:
-      "Pilih \"Mulai styling\" untuk memulai. Percoinmu akan dikembalikan setelah tutorial, jadi tenang saja lanjutkan.",
-    stepGeneratingTitle: "Membuat...",
-    stepGeneratingDescription:
-      "Kamu bisa memantau progresnya di bawah. Tunggu sebentar sampai selesai!",
-    stepCompletedTitle: "Sudah siap!",
-    stepFirstImageTitle: "Pergantian outfitmu selesai",
-    stepFirstImageDescription:
-      "Kamu sekarang bisa memposting atau mengunduh hasilnya. Coba!",
+    stepNavigateTitle: "Mulai membuat di sini!",
+    stepNavigateDescription: "Ketuk di sini untuk melanjutkan.",
     stepFinishedTitle: "Tur selesai",
     stepFinishedDescription:
-      "Kerja bagus. Selanjutnya nikmati pembuatan pergantian outfit lainnya. Klik \"Selesai\" untuk menerima hadiah Percoin.",
+      "Semua siap! Pilih gaya dan foto untuk membuat gambar pertamamu. Selesaikan tur untuk menerima bonus Percoin.",
   },
   free: {
     tabLabel: "Free Style",

@@ -936,8 +936,11 @@ export const enMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Tutorial",
+    tourStepUploadTitle: "Upload an image",
     tourStepUploadDescription: "Upload the character image you want to restyle here.",
+    tourStepPromptTitle: "Enter the styling prompt",
     tourStepPromptDescription: "Describe the kind of outfit you want.",
+    tourStepGenerateTitle: "Start generating",
     tourStepGenerateDescription: "Select “Start styling” to begin.",
     pageTitle: "Coordinate",
     pageDescription: "Upload a photo and change outfits with ease. Keep the original pose and composition while naturally swapping just the clothing.",
@@ -1417,38 +1420,11 @@ export const enMessages = {
     prevButton: "Back",
     nextButton: "Next",
     doneButton: "Done",
-    promptTemplate:
-      "Please style the outfit to match the season in month {month}.",
-    stepCoordinateTitle: "Open Coordinate",
-    stepCoordinateDescription: "Tap here to open the coordinate screen.",
-    stepUploadTitle: "Upload an image",
-    stepUploadDescription:
-      "Upload the character image you want to restyle here. We've already prepared a demo image for this walkthrough.",
-    stepPromptTitle: "Enter the styling prompt",
-    stepPromptDescription:
-      "Describe the kind of outfit you want. We'll use this example for the tutorial.",
-    stepBackgroundTitle: "Background settings",
-    stepBackgroundDescription:
-      "Choose how to handle the background here. For this tutorial, let's continue with “Let AI decide.”",
-    stepModelTitle: "Select the generation model",
-    stepModelDescription:
-      "For this tutorial, we'll use ChatGPT Images 2.0 Low. If another model was selected, it is switched automatically here.",
-    stepSizeTitle: "Check the output size",
-    stepSizeDescription:
-      "We'll keep the output size set to Standard. The exact dimensions are adjusted automatically to match the image orientation.",
-    stepGenerateTitle: "Start generating",
-    stepGenerateDescription:
-      "Select “Start styling” to begin. Your Percoins will be restored after the tutorial, so feel free to continue.",
-    stepGeneratingTitle: "Generating...",
-    stepGeneratingDescription:
-      "You can track the progress below. Please wait a moment for it to finish!",
-    stepCompletedTitle: "It's ready!",
-    stepFirstImageTitle: "Your outfit swap is complete",
-    stepFirstImageDescription:
-      "You can now post or download the result. Give it a try.",
+    stepNavigateTitle: "Start creating here!",
+    stepNavigateDescription: "Tap here to continue.",
     stepFinishedTitle: "Tour complete",
     stepFinishedDescription:
-      "Nice work. Enjoy creating more outfit swaps from here. Click “Done” to receive your Percoin reward.",
+      "You're all set! Pick a style and a photo to create your first image. Complete the tour to receive your Percoin bonus.",
   },
   free: {
     tabLabel: "Free Style",

@@ -936,8 +936,11 @@ export const arMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "الدليل التعليمي",
+    tourStepUploadTitle: "ارفع صورة",
     tourStepUploadDescription: "ارفع هنا صورة الشخصية التي تريد إعادة تنسيقها.",
+    tourStepPromptTitle: "أدخل النص الموجِّه للتنسيق",
     tourStepPromptDescription: "صف نوع الإطلالة التي تريدها.",
+    tourStepGenerateTitle: "بدء التوليد",
     tourStepGenerateDescription: "اختر \"بدء التنسيق\" للبدء.",
     pageTitle: "Coordinate",
     pageDescription: "ارفع صورة شخص وغيّر الملابس بسهولة. حافظ على الوضعية والتكوين الأصليين، وغيّر الملابس فقط بشكل طبيعي.",
@@ -1417,38 +1420,11 @@ export const arMessages = {
     prevButton: "رجوع",
     nextButton: "التالي",
     doneButton: "تم",
-    promptTemplate:
-      "يُرجى تنسيق الإطلالة بما يلائم موسم الشهر {month}.",
-    stepCoordinateTitle: "افتح التنسيق",
-    stepCoordinateDescription: "اضغط هنا لفتح شاشة التنسيق.",
-    stepUploadTitle: "ارفع صورة",
-    stepUploadDescription:
-      "ارفع هنا صورة الشخصية التي تريد إعادة تنسيقها. حضّرنا بالفعل صورة تجريبية لهذا الدليل.",
-    stepPromptTitle: "أدخل النص الموجِّه للتنسيق",
-    stepPromptDescription:
-      "صف نوع الإطلالة التي تريدها. سنستخدم هذا المثال للدليل.",
-    stepBackgroundTitle: "إعدادات الخلفية",
-    stepBackgroundDescription:
-      "اختر هنا كيفية التعامل مع الخلفية. لهذا الدليل، لنتابع بـ \"اترك الأمر للذكاء الاصطناعي\".",
-    stepModelTitle: "اختر نموذج التوليد",
-    stepModelDescription:
-      "سنستخدم في هذا الدليل ChatGPT Images 2.0 Low. إذا كان نموذج آخر محددًا، فسيتم التبديل إليه تلقائيًا هنا.",
-    stepSizeTitle: "تحقق من حجم الإخراج",
-    stepSizeDescription:
-      "سنبقي حجم الإخراج على القياسي. يتم ضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة.",
-    stepGenerateTitle: "بدء التوليد",
-    stepGenerateDescription:
-      "اختر \"بدء التنسيق\" للبدء. ستُعاد لك Percoin بعد الدليل، فلا تتردد في المتابعة.",
-    stepGeneratingTitle: "جارٍ التوليد...",
-    stepGeneratingDescription:
-      "يمكنك متابعة التقدم أدناه. يُرجى الانتظار لحظة حتى الانتهاء!",
-    stepCompletedTitle: "جاهز!",
-    stepFirstImageTitle: "اكتمل تغيير إطلالتك",
-    stepFirstImageDescription:
-      "يمكنك الآن نشر النتيجة أو تنزيلها. جرّبها.",
+    stepNavigateTitle: "ابدأ الإنشاء من هنا!",
+    stepNavigateDescription: "اضغط هنا للمتابعة.",
     stepFinishedTitle: "اكتملت الجولة",
     stepFinishedDescription:
-      "أحسنت. استمتع بإنشاء المزيد من تغييرات الإطلالة من هنا. اضغط \"تم\" لاستلام مكافأة Percoin.",
+      "كل شيء جاهز! اختر النمط والصورة المفضلين لديك لإنشاء أول صورة. أكمل الجولة للحصول على مكافأة Percoin.",
   },
   free: {
     tabLabel: "Free Style",

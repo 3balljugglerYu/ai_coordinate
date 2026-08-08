@@ -913,8 +913,11 @@ export const jaMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "チュートリアル",
+    tourStepUploadTitle: "画像をアップロード！",
     tourStepUploadDescription: "ここで着せ替えたい人物画像をアップロードします。",
+    tourStepPromptTitle: "着せ替え内容を入力！",
     tourStepPromptDescription: "どんなコーデにしたいか入力します。",
+    tourStepGenerateTitle: "生成開始！",
     tourStepGenerateDescription: "「コーデスタート」ボタンを選択して、開始しましょう！",
     pageTitle: "Coordinate",
     pageDescription: "人物画像をアップロードして、かんたん着せ替え。元のポーズや構図はそのままに、衣装だけを自然にチェンジできます。",
@@ -1361,37 +1364,11 @@ export const jaMessages = {
     prevButton: "戻る",
     nextButton: "次へ",
     doneButton: "完了",
-    promptTemplate: "{month}月の季節に合う素敵な服装にしてください。",
-    stepCoordinateTitle: "コーディネート画面へ！",
-    stepCoordinateDescription: "ここをタップしてください。",
-    stepUploadTitle: "画像をアップロード！",
-    stepUploadDescription:
-      "ここで着せ替えたい人物画像をアップロードします。今回は体験用の画像をセットしました！",
-    stepPromptTitle: "着せ替え内容を入力！",
-    stepPromptDescription:
-      "どんなコーデにしたいか入力します。今回は、この内容で進めます！",
-    stepBackgroundTitle: "背景設定",
-    stepBackgroundDescription:
-      "ここでは背景の扱いを選べます。今回は「AIに依頼」を選択して進めてみましょう！",
-    stepModelTitle: "生成モデルを選択",
-    stepModelDescription:
-      "ここで、ChatGPTまたはGeminiのモデルを選ぶことができます。今回はChatGPTを選択します。",
-    stepSizeTitle: "出力サイズを確認",
-    stepSizeDescription:
-      "ここで、画像サイズを選択することができます。今回は、標準の1Kサイズで進めます。",
-    stepGenerateTitle: "生成開始！",
-    stepGenerateDescription:
-      "「コーデスタート」ボタンを選択して、開始しましょう！ ※コインが消費されますが、ツアー完了後に戻るのでご安心ください。",
-    stepGeneratingTitle: "生成しています！",
-    stepGeneratingDescription:
-      "進捗バーで生成の状態を確認できます。完了まで少々お待ちください！",
-    stepCompletedTitle: "完了しました！",
-    stepFirstImageTitle: "着せ替え完了！",
-    stepFirstImageDescription:
-      "投稿やダウンロードが可能です！ぜひ試してみてください！",
+    stepNavigateTitle: "生成はここから！",
+    stepNavigateDescription: "ここをタップしてください。",
     stepFinishedTitle: "ツアー完了！",
     stepFinishedDescription:
-      "お疲れ様でした！引き続き、着せ替えをお楽しみください！ ※「完了」をクリックするとコインが付与されます。",
+      "お疲れ様でした！お好きなスタイルと写真を選んで、さっそく1枚つくってみましょう！ツアーを完了すると、ボーナスのペルコインが付与されます。",
   },
   free: {
     tabLabel: "Free Style",

@@ -35,7 +35,10 @@ import {
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
 import { getLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
-import { isTutorialTourInProgress } from "@/features/tutorial/lib/tutorial-status";
+import {
+  TUTORIAL_TOUR_ENTRY_PATH,
+  isTutorialTourInProgress,
+} from "@/features/tutorial/lib/tutorial-status";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 
@@ -151,10 +154,12 @@ export function AppSidebar() {
 
     // 「コーディネート」入口は前回使った生成モードへ復帰させる。
     // 前回 One-Tap Style だった場合は /style へ遷移する。
-    // ただしチュートリアルツアー進行中は差し替えない(ツアーの再開先は
-    // /coordinate 固定のため、/style 等へ流すとツアーが再開できず詰まる)。
-    if (normalizedTargetPath === "/coordinate" && !isTutorialTourInProgress()) {
-      const preferred = getLastGenerationModePath();
+    // ただしチュートリアルツアー進行中は直近モードに関わらずツアーの目的地
+    // (/style)へ固定する(他モードへ流すとツアーが再開できず詰まる)。
+    if (normalizedTargetPath === "/coordinate") {
+      const preferred = isTutorialTourInProgress()
+        ? TUTORIAL_TOUR_ENTRY_PATH
+        : getLastGenerationModePath();
       if (preferred !== "/coordinate") {
         // path 内の "/coordinate" のみ差し替え、ロケールプレフィックスや
         // クエリ・ハッシュ等の付随情報を維持する。
