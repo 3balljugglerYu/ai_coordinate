@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 const PAGE_TITLE =
-  "うちの子のファッション雑誌：夏 Xシェアキャンペーン 応募規約 | Persta.AI";
+  "うちの子のファッション雑誌 Xシェアキャンペーン 応募規約 | Persta.AI";
 const PAGE_DESCRIPTION =
-  "「うちの子のファッション雑誌：夏」を1冊完成させてXにシェアした方から抽選で5名様にAmazonギフト券2,000円分をプレゼント。応募規約・注意事項。";
+  "「うちの子のファッション雑誌」を1冊完成させてXにシェアした方から抽選で5名様にAmazonギフト券2,000円分をプレゼント。応募規約・注意事項。";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -43,12 +43,12 @@ export default function FashionMagazineLotteryRulesPage() {
     <main className="mx-auto max-w-2xl px-5 pb-16 pt-8">
       <p className="text-xs font-bold tracking-wide text-orange-700">CAMPAIGN</p>
       <h1 className="mt-1 text-2xl font-bold leading-relaxed text-gray-900">
-        うちの子のファッション雑誌：夏
+        うちの子のファッション雑誌
         <br />
         Xシェアキャンペーン 応募規約
       </h1>
       <p className="mt-3 rounded-xl bg-orange-50 px-4 py-3 text-sm font-medium text-orange-900">
-        「うちの子のファッション雑誌：夏」の全8ページを完成させ、できあがった雑誌をXにシェアした方の中から、
+        「うちの子のファッション雑誌」の全8ページを完成させ、できあがった雑誌をXにシェアした方の中から、
         抽選で<span className="font-bold">5名様</span>に
         <span className="font-bold">Amazonギフト券2,000円分</span>をお贈りします。
       </p>
@@ -86,7 +86,7 @@ export default function FashionMagazineLotteryRulesPage() {
         <ol className="list-decimal space-y-2 pl-5">
           <li>
             Persta.AI
-            の「うちの子のファッション雑誌：夏」で、表紙から裏表紙まで全8ページを生成し、1冊を完成させる
+            の「うちの子のファッション雑誌」で、表紙から裏表紙まで全8ページを生成し、1冊を完成させる
           </li>
           <li>
             完成ページに表示される「Xで応募する」ボタンから、雑誌をXへ
