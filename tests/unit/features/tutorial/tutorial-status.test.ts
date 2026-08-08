@@ -1,4 +1,7 @@
-import { isTutorialActiveOrPending } from "@/features/tutorial/lib/tutorial-status";
+import {
+  isTutorialActiveOrPending,
+  isTutorialTourInProgress,
+} from "@/features/tutorial/lib/tutorial-status";
 
 describe("isTutorialActiveOrPending", () => {
   beforeEach(() => {
@@ -68,5 +71,35 @@ describe("isTutorialActiveOrPending", () => {
     ).toBe(false);
 
     spy.mockRestore();
+  });
+});
+
+describe("isTutorialTourInProgress", () => {
+  beforeEach(() => {
+    window.sessionStorage.clear();
+  });
+
+  it("in_progress が true なら true(ナビの直近モード復帰を止める)", () => {
+    window.sessionStorage.setItem("tutorial_in_progress", "true");
+    expect(isTutorialTourInProgress()).toBe(true);
+  });
+
+  it("未設定・別値なら false(通常のモード復帰を行う)", () => {
+    expect(isTutorialTourInProgress()).toBe(false);
+    window.sessionStorage.setItem("tutorial_in_progress", "false");
+    expect(isTutorialTourInProgress()).toBe(false);
+  });
+
+  it("sessionStorage が例外を投げる場合は false(通常挙動に倒す)", () => {
+    const spy = jest
+      .spyOn(Storage.prototype, "getItem")
+      .mockImplementation(() => {
+        throw new Error("blocked");
+      });
+    try {
+      expect(isTutorialTourInProgress()).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });
