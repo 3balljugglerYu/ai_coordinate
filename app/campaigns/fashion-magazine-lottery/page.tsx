@@ -134,9 +134,16 @@ export default function FashionMagazineLotteryRulesPage() {
 
       <Section no="06" title="抽選・当選発表">
         <ul className="list-disc space-y-1 pl-5">
-          <li>応募期間の終了後、条件を満たした応募の中から主催者が抽選します</li>
+          <li>
+            応募期間の終了後、
+            <span className="font-bold">約1週間を目処に</span>
+            、条件を満たした応募の中から主催者が抽選します
+          </li>
           <li>
             当選された方には、{MENTION} からXのDMでご連絡します。当選発表はこのDMをもって代えさせていただきます
+          </li>
+          <li>
+            ギフト券は、当選のご連絡とやり取りの確認ができ次第、DMで順次お送りします
           </li>
           <li>
             DMのご連絡から7日以内にお返事がない場合、当選を無効とし、繰り上げ抽選を行うことがあります
