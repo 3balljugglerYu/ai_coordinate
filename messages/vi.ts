@@ -936,8 +936,11 @@ export const viMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Hướng dẫn",
+    tourStepUploadTitle: "Tải hình lên",
     tourStepUploadDescription: "Tải lên đây hình nhân vật bạn muốn phối lại.",
+    tourStepPromptTitle: "Nhập prompt styling",
     tourStepPromptDescription: "Mô tả loại trang phục bạn muốn.",
+    tourStepGenerateTitle: "Bắt đầu tạo",
     tourStepGenerateDescription: "Chọn \"Bắt đầu styling\" để bắt đầu.",
     pageTitle: "Coordinate",
     pageDescription: "Tải ảnh nhân vật lên và thay trang phục thật dễ dàng. Giữ nguyên tư thế và bố cục gốc, chỉ thay đổi trang phục một cách tự nhiên.",
@@ -1417,38 +1420,11 @@ export const viMessages = {
     prevButton: "Quay lại",
     nextButton: "Tiếp",
     doneButton: "Hoàn thành",
-    promptTemplate:
-      "Hãy phối trang phục theo cảm giác mùa của tháng {month}.",
-    stepCoordinateTitle: "Mở Phối đồ",
-    stepCoordinateDescription: "Chạm vào đây để mở màn hình phối đồ.",
-    stepUploadTitle: "Tải hình lên",
-    stepUploadDescription:
-      "Tải lên đây hình nhân vật bạn muốn phối lại. Chúng tôi đã chuẩn bị sẵn hình demo cho hướng dẫn này.",
-    stepPromptTitle: "Nhập prompt styling",
-    stepPromptDescription:
-      "Mô tả loại trang phục bạn muốn. Chúng tôi sẽ dùng ví dụ này cho hướng dẫn.",
-    stepBackgroundTitle: "Cài đặt nền",
-    stepBackgroundDescription:
-      "Chọn ở đây cách xử lý nền. Trong hướng dẫn này, hãy tiếp tục với \"Để AI quyết định\".",
-    stepModelTitle: "Chọn mô hình tạo ảnh",
-    stepModelDescription:
-      "Trong hướng dẫn này, chúng ta sẽ dùng ChatGPT Images 2.0 Low. Nếu đang chọn mô hình khác, hệ thống sẽ tự động chuyển tại đây.",
-    stepSizeTitle: "Kiểm tra kích thước đầu ra",
-    stepSizeDescription:
-      "Chúng ta sẽ giữ kích thước đầu ra ở mức Tiêu chuẩn. Kích thước thực tế sẽ tự động điều chỉnh theo hướng của ảnh.",
-    stepGenerateTitle: "Bắt đầu tạo",
-    stepGenerateDescription:
-      "Chọn \"Bắt đầu styling\" để bắt đầu. Percoin của bạn sẽ được hoàn lại sau hướng dẫn, nên bạn có thể tiếp tục an tâm.",
-    stepGeneratingTitle: "Đang tạo...",
-    stepGeneratingDescription:
-      "Bạn có thể theo dõi tiến trình ở dưới. Vui lòng đợi cho đến khi hoàn tất!",
-    stepCompletedTitle: "Sẵn sàng!",
-    stepFirstImageTitle: "Đã đổi đồ xong",
-    stepFirstImageDescription:
-      "Bây giờ bạn có thể đăng hoặc tải kết quả. Hãy thử nhé.",
+    stepNavigateTitle: "Bắt đầu tạo tại đây!",
+    stepNavigateDescription: "Chạm vào đây để tiếp tục.",
     stepFinishedTitle: "Đã hoàn thành tour",
     stepFinishedDescription:
-      "Tuyệt vời. Tận hưởng việc tạo thêm các lần đổi đồ từ đây. Nhấn \"Hoàn thành\" để nhận thưởng Percoin.",
+      "Tuyệt vời! Hãy thử tạo một bức ảnh nhé! Chạm “Hoàn thành” để nhận thưởng Percoin.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1707,9 +1683,9 @@ export const viMessages = {
     tourNextButton: "Tiếp theo",
     tourDoneButton: "Thử ngay!",
     tourStepPresetTitle: "✨ ① Chọn phong cách",
-    tourStepPresetDescription: "Hãy chọn phong cách bạn muốn thay đổi!",
+    tourStepPresetDescription: "Tại đây bạn chọn phong cách yêu thích!",
     tourStepCharacterTitle: "💖 ② Chọn nhân vật của bạn",
-    tourStepCharacterDescription: "Hãy chọn nhân vật bạn muốn thay trang phục!",
+    tourStepCharacterDescription: "Tại đây bạn thiết lập nhân vật của mình!",
     tourStepGenerateTitle: "🚀 ③ Bắt đầu phối đồ!",
     tourStepGenerateDescription: "Chạm vào là quá trình tạo ảnh bắt đầu! Chỉ việc chờ thôi!",
   },

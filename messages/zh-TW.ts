@@ -935,8 +935,11 @@ export const zhTwMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "教學",
+    tourStepUploadTitle: "上傳圖片",
     tourStepUploadDescription: "在此上傳想要重新造型的角色圖片。",
+    tourStepPromptTitle: "輸入造型提示詞",
     tourStepPromptDescription: "請描述想要的穿搭。",
+    tourStepGenerateTitle: "開始生成",
     tourStepGenerateDescription: "選擇 “開始造型” 即可開始。",
     pageTitle: "Coordinate",
     pageDescription: "上傳人物圖片，輕鬆換裝。保持原本的姿勢與構圖，只自然地更換服裝。",
@@ -1415,38 +1418,10 @@ export const zhTwMessages = {
     prevButton: "上一步",
     nextButton: "下一步",
     doneButton: "完成",
-    promptTemplate:
-      "請依 {month} 月的季節感為我搭配。",
-    stepCoordinateTitle: "開啟穿搭",
-    stepCoordinateDescription: "點擊此處即可開啟穿搭頁面。",
-    stepUploadTitle: "上傳圖片",
-    stepUploadDescription:
-      "在此上傳想要重新造型的角色圖片。本次教學已為你準備好示範圖片。",
-    stepPromptTitle: "輸入造型提示詞",
-    stepPromptDescription:
-      "請描述想要的穿搭。本教學將使用此範例。",
-    stepBackgroundTitle: "背景設定",
-    stepBackgroundDescription:
-      "在這裡選擇如何處理背景。本教學將使用 “交給 AI” 繼續。",
-    stepModelTitle: "選擇生成模型",
-    stepModelDescription:
-      "本教學將使用 ChatGPT Images 2.0 Low。即使已選擇其他模型，也會在這裡自動切換。",
-    stepSizeTitle: "確認輸出尺寸",
-    stepSizeDescription:
-      "輸出尺寸將保持為標準。實際尺寸會依照圖片方向自動調整。",
-    stepGenerateTitle: "開始生成",
-    stepGenerateDescription:
-      "選擇 “開始造型” 即可開始。教學結束後會退還使用的 Percoin，請放心繼續。",
-    stepGeneratingTitle: "生成中...",
-    stepGeneratingDescription:
-      "下方可以查看進度，請耐心等候完成!",
-    stepCompletedTitle: "完成囉!",
-    stepFirstImageTitle: "換裝完成",
-    stepFirstImageDescription:
-      "現在你可以發佈或下載結果，歡迎試試。",
+    stepNavigateTitle: "從這裡開始生成！",
+    stepNavigateDescription: "請點擊這裡。",
     stepFinishedTitle: "教學結束",
-    stepFinishedDescription:
-      "辛苦了。從現在起請盡情享受更多穿搭。點擊 “完成” 即可領取 Percoin 獎勵。",
+    stepFinishedDescription: "辛苦了！快去試著生成一張吧！點擊「完成」即可獲得獎勵Percoin。",
   },
   free: {
     tabLabel: "Free Style",
@@ -1704,9 +1679,9 @@ export const zhTwMessages = {
     tourNextButton: "下一步",
     tourDoneButton: "馬上試試！",
     tourStepPresetTitle: "✨ ① 選擇風格",
-    tourStepPresetDescription: "請選擇想換裝的風格！",
+    tourStepPresetDescription: "在這裡選擇你喜歡的風格！",
     tourStepCharacterTitle: "💖 ② 選擇我的角色",
-    tourStepCharacterDescription: "請選擇想換裝的角色！",
+    tourStepCharacterDescription: "在這裡設定你的角色！",
     tourStepGenerateTitle: "🚀 ③ 開始穿搭！",
     tourStepGenerateDescription: "點選後就會開始生成！接著只要等待就好！",
   },

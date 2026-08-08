@@ -939,8 +939,11 @@ export const deMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Tutorial",
+    tourStepUploadTitle: "Bild hochladen",
     tourStepUploadDescription: "Lade hier das Charakterbild hoch, das du restylen willst.",
+    tourStepPromptTitle: "Styling-Prompt eingeben",
     tourStepPromptDescription: "Beschreibe das gewünschte Outfit.",
+    tourStepGenerateTitle: "Generierung starten",
     tourStepGenerateDescription: "Wähle \"Styling starten\", um zu beginnen.",
     pageTitle: "Coordinate",
     pageDescription: "Lade ein Foto hoch und wechsle das Outfit ganz einfach. Behalte Pose und Bildausschnitt bei und ändere nur die Kleidung – ganz natürlich.",
@@ -1421,38 +1424,11 @@ export const deMessages = {
     prevButton: "Zurück",
     nextButton: "Weiter",
     doneButton: "Fertig",
-    promptTemplate:
-      "Bitte gestalte das Outfit passend zur Jahreszeit von Monat {month}.",
-    stepCoordinateTitle: "Koordinieren öffnen",
-    stepCoordinateDescription: "Tippe hier, um den Koordinieren-Bildschirm zu öffnen.",
-    stepUploadTitle: "Bild hochladen",
-    stepUploadDescription:
-      "Lade hier das Charakterbild hoch, das du restylen willst. Wir haben für diese Tour bereits ein Demo-Bild vorbereitet.",
-    stepPromptTitle: "Styling-Prompt eingeben",
-    stepPromptDescription:
-      "Beschreibe das gewünschte Outfit. Wir verwenden dieses Beispiel für das Tutorial.",
-    stepBackgroundTitle: "Hintergrund-Einstellungen",
-    stepBackgroundDescription:
-      "Wähle hier, wie der Hintergrund behandelt wird. Für dieses Tutorial bleiben wir bei \"KI entscheiden lassen\".",
-    stepModelTitle: "Generierungsmodell auswählen",
-    stepModelDescription:
-      "Für dieses Tutorial verwenden wir ChatGPT Images 2.0 Low. Wenn ein anderes Modell ausgewählt war, wird es hier automatisch umgestellt.",
-    stepSizeTitle: "Ausgabegröße prüfen",
-    stepSizeDescription:
-      "Die Ausgabegröße bleibt auf Standard. Die tatsächlichen Abmessungen werden automatisch an die Bildausrichtung angepasst.",
-    stepGenerateTitle: "Generierung starten",
-    stepGenerateDescription:
-      "Wähle \"Styling starten\", um zu beginnen. Deine Percoins werden nach dem Tutorial wieder gutgeschrieben.",
-    stepGeneratingTitle: "Wird generiert...",
-    stepGeneratingDescription:
-      "Du kannst den Fortschritt unten verfolgen. Bitte warte einen Moment, bis es fertig ist!",
-    stepCompletedTitle: "Es ist fertig!",
-    stepFirstImageTitle: "Dein Outfit-Wechsel ist abgeschlossen",
-    stepFirstImageDescription:
-      "Jetzt kannst du das Ergebnis veröffentlichen oder herunterladen. Probier es aus.",
+    stepNavigateTitle: "Hier geht's los!",
+    stepNavigateDescription: "Tippe hier, um fortzufahren.",
     stepFinishedTitle: "Tour abgeschlossen",
     stepFinishedDescription:
-      "Gut gemacht. Genieße jetzt das Erstellen weiterer Outfit-Wechsel. Klicke auf \"Fertig\", um deine Percoin-Belohnung zu erhalten.",
+      "Gut gemacht! Probiere es aus und erstelle ein Bild! Tippe auf „Fertig“, um deinen Bonus-Percoin zu erhalten.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1711,9 +1687,9 @@ export const deMessages = {
     tourNextButton: "Weiter",
     tourDoneButton: "Gleich ausprobieren!",
     tourStepPresetTitle: "✨ ① Stil auswählen",
-    tourStepPresetDescription: "Wähle den Stil, den du anziehen möchtest!",
+    tourStepPresetDescription: "Hier wählst du deinen Lieblingsstil aus!",
     tourStepCharacterTitle: "💖 ② Charakter auswählen",
-    tourStepCharacterDescription: "Wähle den Charakter, den du umstylen möchtest!",
+    tourStepCharacterDescription: "Hier legst du deinen Charakter fest!",
     tourStepGenerateTitle: "🚀 ③ Outfit starten!",
     tourStepGenerateDescription: "Antippen und die Generierung beginnt – einfach abwarten!",
   },

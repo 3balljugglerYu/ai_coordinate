@@ -1,122 +1,65 @@
 import type { DriveStep } from "driver.js";
 
 export interface TutorialTourCopy {
-  coordinateTitle: string;
-  coordinateDescription: string;
-  uploadTitle: string;
-  uploadDescription: string;
-  promptTitle: string;
-  promptDescription: string;
-  backgroundTitle: string;
-  backgroundDescription: string;
-  modelTitle: string;
-  modelDescription: string;
-  sizeTitle: string;
-  sizeDescription: string;
+  navigateTitle: string;
+  navigateDescription: string;
+  presetTitle: string;
+  presetDescription: string;
+  characterTitle: string;
+  characterDescription: string;
   generateTitle: string;
   generateDescription: string;
-  generatingTitle: string;
-  generatingDescription: string;
-  completedTitle: string;
-  firstImageTitle: string;
-  firstImageDescription: string;
   finishedTitle: string;
   finishedDescription: string;
 }
 
+/**
+ * 新規登録チュートリアル(全5ステップ・ツールチップのみ)のステップ定義。
+ *
+ * ① ホームでナビの生成入口を案内(タップで /style へ遷移)
+ * ②〜④ One-Tap Style のミニツアー(style-tour-*)と同じアンカーを共用
+ *       (スタイル選択 → キャラクター写真 → 生成ボタン)
+ * ⑤ 締め(「完了」で完了APIを呼び、完了ボーナスを付与)
+ *
+ * 生成もデモ画像の挿入も行わないため、課金経路には一切影響しない。
+ * ①の element はモバイル/PC でナビの実体が異なるため Provider 側で差し替える。
+ */
 export function getTourSteps(copy: TutorialTourCopy): DriveStep[] {
   return [
     {
-      element: '[data-tour="coordinate-nav"]',
+      element: '[data-tour="coordinate-nav-mobile"]',
       popover: {
-        title: copy.coordinateTitle,
-        description: copy.coordinateDescription,
+        title: copy.navigateTitle,
+        description: copy.navigateDescription,
         side: "top",
         align: "center",
       },
     },
     {
-      element: '[data-tour="tour-image-upload"]',
+      element: '[data-tour="style-tour-preset"]',
       popover: {
-        title: copy.uploadTitle,
-        description: copy.uploadDescription,
+        title: copy.presetTitle,
+        description: copy.presetDescription,
         side: "bottom",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="tour-prompt-input"]',
-      popover: {
-        title: copy.promptTitle,
-        description: copy.promptDescription,
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="tour-background-change"]',
-      popover: {
-        title: copy.backgroundTitle,
-        description: copy.backgroundDescription,
-        side: "right",
         align: "center",
       },
     },
     {
-      element: '[data-tour="tour-model-select"]',
+      element: '[data-tour="style-tour-character"]',
       popover: {
-        title: copy.modelTitle,
-        description: copy.modelDescription,
+        title: copy.characterTitle,
+        description: copy.characterDescription,
         side: "top",
-        align: "start",
+        align: "center",
       },
     },
     {
-      element: '[data-tour="tour-gpt-image-2-size"]',
-      popover: {
-        title: copy.sizeTitle,
-        description: copy.sizeDescription,
-        side: "top",
-        align: "start",
-      },
-    },
-    {
-      element: '[data-tour="tour-generate-btn"]',
+      element: '[data-tour="style-tour-generate"]',
       popover: {
         title: copy.generateTitle,
         description: copy.generateDescription,
         side: "top",
         align: "center",
-        showButtons: ["previous"],
-      },
-    },
-    {
-      element: '[data-tour="tour-generating"]',
-      popover: {
-        title: copy.generatingTitle,
-        description: copy.generatingDescription,
-        side: "top",
-        align: "start",
-        showButtons: [],
-      },
-    },
-    {
-      popover: {
-        title: copy.completedTitle,
-        description: "",
-        side: "over",
-        align: "center",
-        showButtons: ["next"],
-      },
-    },
-    {
-      element: '[data-tour="tour-first-image"]',
-      popover: {
-        title: copy.firstImageTitle,
-        description: copy.firstImageDescription,
-        side: "top",
-        align: "center",
-        showButtons: ["next"],
       },
     },
     {

@@ -105,15 +105,14 @@ export function CoordinateTourButton() {
         nextBtnText: t("nextButton"),
         doneBtnText: t("doneButton"),
         steps: getCoordinateTourSteps({
-          // タイトルと操作ボタンは tutorial の既存キーを流用。説明文は
-          // 新規ユーザー向け(体験用画像/プロンプトのセット、コイン返却)を
-          // 前提としており簡易ツアーには不正確なため、coordinate 専用の
-          // 説明文に差し替える。
-          uploadTitle: t("stepUploadTitle"),
+          // 操作ボタン(戻る/次へ/完了)のみ tutorial の共通キーを流用し、
+          // ステップ文言は coordinate 専用キーで完結させる
+          // (新規ユーザー向けツアーの文言変更に巻き込まれないように)。
+          uploadTitle: coordinateT("tourStepUploadTitle"),
           uploadDescription: coordinateT("tourStepUploadDescription"),
-          promptTitle: t("stepPromptTitle"),
+          promptTitle: coordinateT("tourStepPromptTitle"),
           promptDescription: coordinateT("tourStepPromptDescription"),
-          generateTitle: t("stepGenerateTitle"),
+          generateTitle: coordinateT("tourStepGenerateTitle"),
           generateDescription: coordinateT("tourStepGenerateDescription"),
         }),
         onNextClick: (_el, _step, opts) => {

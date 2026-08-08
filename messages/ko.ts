@@ -936,8 +936,11 @@ export const koMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "튜토리얼",
+    tourStepUploadTitle: "이미지 업로드",
     tourStepUploadDescription: "다시 스타일링하고 싶은 캐릭터 이미지를 여기에 업로드합니다.",
+    tourStepPromptTitle: "스타일링 프롬프트 입력",
     tourStepPromptDescription: "원하는 코디를 설명해 주세요.",
+    tourStepGenerateTitle: "생성 시작",
     tourStepGenerateDescription: "“스타일링 시작”을 선택해 시작해 주세요.",
     pageTitle: "Coordinate",
     pageDescription: "인물 이미지를 업로드해 간편하게 옷을 갈아입혀 보세요. 원래 포즈와 구도는 그대로, 의상만 자연스럽게 바꿀 수 있습니다.",
@@ -1416,38 +1419,11 @@ export const koMessages = {
     prevButton: "뒤로",
     nextButton: "다음",
     doneButton: "완료",
-    promptTemplate:
-      "{month}월의 계절감에 맞춰 코디를 부탁드립니다.",
-    stepCoordinateTitle: "코디 열기",
-    stepCoordinateDescription: "여기를 탭하면 코디 화면이 열립니다.",
-    stepUploadTitle: "이미지 업로드",
-    stepUploadDescription:
-      "다시 스타일링하고 싶은 캐릭터 이미지를 여기에 업로드합니다. 이번 가이드용으로는 데모 이미지가 미리 준비되어 있습니다.",
-    stepPromptTitle: "스타일링 프롬프트 입력",
-    stepPromptDescription:
-      "원하는 코디를 설명해 주세요. 튜토리얼에서는 이 예시를 사용합니다.",
-    stepBackgroundTitle: "배경 설정",
-    stepBackgroundDescription:
-      "여기서 배경 처리 방식을 선택할 수 있습니다. 이 튜토리얼에서는 “AI에게 맡기기”로 진행합니다.",
-    stepModelTitle: "생성 모델 선택",
-    stepModelDescription:
-      "이 튜토리얼에서는 ChatGPT Images 2.0 Low를 사용합니다. 다른 모델이 선택되어 있어도 여기서 자동으로 전환됩니다.",
-    stepSizeTitle: "출력 크기 확인",
-    stepSizeDescription:
-      "출력 크기는 표준으로 유지합니다. 실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다.",
-    stepGenerateTitle: "생성 시작",
-    stepGenerateDescription:
-      "“스타일링 시작”을 선택해 시작해 주세요. 튜토리얼이 끝나면 사용한 Percoin은 돌려드리니 안심하고 진행하셔도 됩니다.",
-    stepGeneratingTitle: "생성 중...",
-    stepGeneratingDescription:
-      "아래에서 진행 상황을 확인할 수 있습니다. 완료될 때까지 잠시 기다려 주세요!",
-    stepCompletedTitle: "완성!",
-    stepFirstImageTitle: "코디 변경이 완료되었습니다",
-    stepFirstImageDescription:
-      "이제 결과를 게시하거나 다운로드할 수 있습니다. 한번 시도해 보세요.",
+    stepNavigateTitle: "생성은 여기에서!",
+    stepNavigateDescription: "여기를 탭해 주세요.",
     stepFinishedTitle: "투어 완료",
     stepFinishedDescription:
-      "수고하셨습니다. 이제부터 자유롭게 더 많은 코디를 즐겨보세요. “완료”를 누르면 Percoin 보상을 받을 수 있습니다.",
+      "수고하셨습니다! 이제 직접 생성해 보세요! “완료”를 누르면 보너스 페르코인이 지급됩니다.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1706,9 +1682,9 @@ export const koMessages = {
     tourNextButton: "다음",
     tourDoneButton: "바로 해보기!",
     tourStepPresetTitle: "✨ ① 스타일 선택",
-    tourStepPresetDescription: "갈아입히고 싶은 스타일을 선택해 주세요!",
+    tourStepPresetDescription: "여기에서 마음에 드는 스타일을 선택합니다!",
     tourStepCharacterTitle: "💖 ② 마이 캐릭터 선택",
-    tourStepCharacterDescription: "갈아입히고 싶은 캐릭터를 골라 주세요!",
+    tourStepCharacterDescription: "여기에서 당신의 캐릭터를 설정합니다!",
     tourStepGenerateTitle: "🚀 ③ 코디 시작!",
     tourStepGenerateDescription: "선택하면 생성이 시작돼요! 이제 기다리기만 하면 돼요!",
   },

@@ -937,8 +937,11 @@ export const hiMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "ट्यूटोरियल",
+    tourStepUploadTitle: "एक छवि अपलोड करें",
     tourStepUploadDescription: "जिस कैरेक्टर छवि को आप फिर से स्टाइल करना चाहते हैं उसे यहाँ अपलोड करें।",
+    tourStepPromptTitle: "स्टाइलिंग प्रॉम्प्ट दर्ज करें",
     tourStepPromptDescription: "जिस तरह का आउटफ़िट आप चाहते हैं उसका वर्णन करें।",
+    tourStepGenerateTitle: "जनरेट करना शुरू करें",
     tourStepGenerateDescription: "शुरू करने के लिए \"स्टाइलिंग शुरू करें\" चुनें।",
     pageTitle: "Coordinate",
     pageDescription: "किसी व्यक्ति की फ़ोटो अपलोड करें और आसानी से पहनावा बदलें। मूल पोज़ और कंपोज़िशन वैसा ही रखते हुए, सिर्फ़ कपड़े स्वाभाविक रूप से बदलें।",
@@ -1418,38 +1421,11 @@ export const hiMessages = {
     prevButton: "वापस",
     nextButton: "अगला",
     doneButton: "हो गया",
-    promptTemplate:
-      "कृपया महीने {month} के मौसम के अनुसार आउटफ़िट स्टाइल करें।",
-    stepCoordinateTitle: "कोऑर्डिनेट खोलें",
-    stepCoordinateDescription: "कोऑर्डिनेट स्क्रीन खोलने के लिए यहाँ टैप करें।",
-    stepUploadTitle: "एक छवि अपलोड करें",
-    stepUploadDescription:
-      "जिस कैरेक्टर छवि को आप फिर से स्टाइल करना चाहते हैं उसे यहाँ अपलोड करें। हमने इस वॉकथ्रू के लिए पहले ही एक डेमो छवि तैयार कर ली है।",
-    stepPromptTitle: "स्टाइलिंग प्रॉम्प्ट दर्ज करें",
-    stepPromptDescription:
-      "जिस तरह का आउटफ़िट आप चाहते हैं उसका वर्णन करें। हम ट्यूटोरियल के लिए इस उदाहरण का उपयोग करेंगे।",
-    stepBackgroundTitle: "पृष्ठभूमि सेटिंग्स",
-    stepBackgroundDescription:
-      "यहाँ चुनें कि पृष्ठभूमि को कैसे संभालना है। इस ट्यूटोरियल के लिए, चलिए \"AI को तय करने दें\" के साथ जारी रखते हैं।",
-    stepModelTitle: "जनरेशन मॉडल चुनें",
-    stepModelDescription:
-      "इस ट्यूटोरियल में हम ChatGPT Images 2.0 Low का उपयोग करेंगे। यदि कोई दूसरा मॉडल चुना हुआ है, तो यहाँ वह अपने आप बदल जाएगा।",
-    stepSizeTitle: "आउटपुट आकार जांचें",
-    stepSizeDescription:
-      "हम आउटपुट आकार को स्टैंडर्ड पर रखेंगे। वास्तविक आयाम छवि की दिशा के अनुसार अपने आप समायोजित होते हैं।",
-    stepGenerateTitle: "जनरेट करना शुरू करें",
-    stepGenerateDescription:
-      "शुरू करने के लिए \"स्टाइलिंग शुरू करें\" चुनें। ट्यूटोरियल के बाद आपके Percoin पुनः बहाल हो जाएँगे, इसलिए बेझिझक जारी रखें।",
-    stepGeneratingTitle: "उत्पन्न हो रहा है...",
-    stepGeneratingDescription:
-      "आप नीचे प्रगति को ट्रैक कर सकते हैं। पूरा होने के लिए कृपया एक पल प्रतीक्षा करें!",
-    stepCompletedTitle: "यह तैयार है!",
-    stepFirstImageTitle: "आपका आउटफ़िट स्वैप पूरा हो गया",
-    stepFirstImageDescription:
-      "अब आप परिणाम पोस्ट कर सकते हैं या डाउनलोड कर सकते हैं। इसे आज़माएँ।",
+    stepNavigateTitle: "यहाँ से बनाना शुरू करें!",
+    stepNavigateDescription: "जारी रखने के लिए यहाँ टैप करें।",
     stepFinishedTitle: "टूर पूरा हुआ",
     stepFinishedDescription:
-      "अच्छा काम। यहाँ से और आउटफ़िट स्वैप बनाने का आनंद लें। Percoin पुरस्कार पाने के लिए \"हो गया\" क्लिक करें।",
+      "बहुत बढ़िया! अब एक इमेज बनाकर देखें! “हो गया” टैप करने पर आपको बोनस Percoin मिलेगा।",
   },
   free: {
     tabLabel: "Free Style",
@@ -1708,9 +1684,9 @@ export const hiMessages = {
     tourNextButton: "आगे",
     tourDoneButton: "अभी आज़माएँ!",
     tourStepPresetTitle: "✨ ① स्टाइल चुनें",
-    tourStepPresetDescription: "वह स्टाइल चुनें जिसे आप पहनना चाहते हैं!",
+    tourStepPresetDescription: "यहाँ आप अपनी पसंदीदा स्टाइल चुनते हैं!",
     tourStepCharacterTitle: "💖 ② अपना कैरेक्टर चुनें",
-    tourStepCharacterDescription: "वह कैरेक्टर चुनें जिसकी ड्रेस बदलनी है!",
+    tourStepCharacterDescription: "यहाँ आप अपना कैरेक्टर सेट करते हैं!",
     tourStepGenerateTitle: "🚀 ③ कोऑर्डिनेट शुरू करें!",
     tourStepGenerateDescription: "टैप करते ही जनरेशन शुरू! बस थोड़ा इंतज़ार कीजिए!",
   },

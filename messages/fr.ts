@@ -939,8 +939,11 @@ export const frMessages = {
   coordinate: {
     tabLabel: "Coordinate",
     tourButton: "Tutoriel",
+    tourStepUploadTitle: "Télécharger une image",
     tourStepUploadDescription: "Téléchargez ici l’image du personnage que vous souhaitez restyler.",
+    tourStepPromptTitle: "Saisir le prompt de styling",
     tourStepPromptDescription: "Décrivez le type de tenue souhaité.",
+    tourStepGenerateTitle: "Lancer la génération",
     tourStepGenerateDescription: "Sélectionnez « Démarrer le styling ».",
     pageTitle: "Coordinate",
     pageDescription: "Importez une photo et changez de tenue en toute simplicité. Gardez la pose et le cadrage d'origine en ne modifiant que les vêtements, naturellement.",
@@ -1420,38 +1423,11 @@ export const frMessages = {
     prevButton: "Retour",
     nextButton: "Suivant",
     doneButton: "Terminer",
-    promptTemplate:
-      "Veuillez créer une tenue adaptée à la saison du mois de {month}.",
-    stepCoordinateTitle: "Ouvrir Coordonner",
-    stepCoordinateDescription: "Touchez ici pour ouvrir l'écran Coordonner.",
-    stepUploadTitle: "Télécharger une image",
-    stepUploadDescription:
-      "Téléchargez ici l'image du personnage que vous souhaitez restyler. Une image de démonstration est déjà préparée pour cette visite.",
-    stepPromptTitle: "Saisir le prompt de styling",
-    stepPromptDescription:
-      "Décrivez le type de tenue souhaité. Nous utiliserons cet exemple pour le tutoriel.",
-    stepBackgroundTitle: "Paramètres d'arrière-plan",
-    stepBackgroundDescription:
-      "Choisissez ici comment gérer l'arrière-plan. Pour ce tutoriel, continuons avec « Laisser l'IA décider ».",
-    stepModelTitle: "Sélectionner le modèle de génération",
-    stepModelDescription:
-      "Pour ce tutoriel, nous utiliserons ChatGPT Images 2.0 Low. Si un autre modèle était sélectionné, il sera remplacé automatiquement ici.",
-    stepSizeTitle: "Vérifier la taille de sortie",
-    stepSizeDescription:
-      "Nous garderons la taille de sortie sur Standard. Les dimensions exactes sont ajustées automatiquement selon l'orientation de l'image.",
-    stepGenerateTitle: "Lancer la génération",
-    stepGenerateDescription:
-      "Sélectionnez « Démarrer le styling ». Vos Percoins seront restitués à la fin du tutoriel, n'hésitez pas à continuer.",
-    stepGeneratingTitle: "Génération...",
-    stepGeneratingDescription:
-      "Vous pouvez suivre la progression ci-dessous. Patientez un instant !",
-    stepCompletedTitle: "C'est prêt !",
-    stepFirstImageTitle: "Votre changement de tenue est terminé",
-    stepFirstImageDescription:
-      "Vous pouvez maintenant publier ou télécharger le résultat. Essayez !",
+    stepNavigateTitle: "Commencez à créer ici !",
+    stepNavigateDescription: "Touchez ici pour continuer.",
     stepFinishedTitle: "Visite terminée",
     stepFinishedDescription:
-      "Bravo. Profitez maintenant pour créer plus de changements de tenue. Cliquez sur « Terminer » pour recevoir votre récompense en Percoins.",
+      "Bravo ! Lancez-vous et créez une image ! Touchez « Terminer » pour recevoir votre bonus Percoin.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1710,9 +1686,10 @@ export const frMessages = {
     tourNextButton: "Suivant",
     tourDoneButton: "Essayer tout de suite !",
     tourStepPresetTitle: "✨ ① Choisissez un style",
-    tourStepPresetDescription: "Sélectionnez le style que vous voulez porter !",
+    tourStepPresetDescription:
+      "Ici, vous choisissez votre style préféré !",
     tourStepCharacterTitle: "💖 ② Choisissez votre personnage",
-    tourStepCharacterDescription: "Choisissez le personnage à relooker !",
+    tourStepCharacterDescription: "Ici, vous définissez votre personnage !",
     tourStepGenerateTitle: "🚀 ③ Lancez la tenue !",
     tourStepGenerateDescription: "Touchez le bouton et la génération démarre. Il n'y a plus qu'à attendre !",
   },

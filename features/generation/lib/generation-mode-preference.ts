@@ -8,7 +8,8 @@
  *    読み取り、前回が One-Tap Style / じゆうモード なら該当ページへ復帰させる
  *
  * localStorage のみを使い、読み取り失敗(プライベートモード等)時は既定の
- * /coordinate にフォールバックする。SSR では window が無いため既定値を返す。
+ * /style にフォールバックする(新規ユーザーの初回着地を One-Tap Style に
+ * 寄せる方針)。SSR では window が無いため既定値を返す。
  */
 export const GENERATION_MODE_PATHS = {
   coordinate: "/coordinate",
@@ -20,7 +21,7 @@ export type GenerationModePath =
   (typeof GENERATION_MODE_PATHS)[keyof typeof GENERATION_MODE_PATHS];
 
 const STORAGE_KEY = "persta-ai:last-generation-mode";
-const DEFAULT_PATH: GenerationModePath = GENERATION_MODE_PATHS.coordinate;
+const DEFAULT_PATH: GenerationModePath = GENERATION_MODE_PATHS.style;
 
 /** 与えられた path が生成モードのルートかどうか。 */
 export function isGenerationModePath(
@@ -33,7 +34,7 @@ export function isGenerationModePath(
   );
 }
 
-/** 直近に使った生成モードのパスを返す(未保存・失敗時は /coordinate)。 */
+/** 直近に使った生成モードのパスを返す(未保存・失敗時は /style)。 */
 export function getLastGenerationModePath(): GenerationModePath {
   if (typeof window === "undefined") {
     return DEFAULT_PATH;

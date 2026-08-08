@@ -7,18 +7,16 @@ import type { Driver, DriveStep } from "driver.js";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import { createClient } from "@/lib/supabase/client";
 import { TutorialStartModal } from "./TutorialStartModal";
-import { getTourSteps } from "../lib/tour-steps";
-import { getJapanMonth } from "../lib/constants";
+import { getTourSteps, type TutorialTourCopy } from "../lib/tour-steps";
 import { TUTORIAL_STORAGE_KEYS } from "../types";
+import { TUTORIAL_TOUR_ENTRY_PATH } from "../lib/tutorial-status";
 import { stripLocalePrefix } from "@/i18n/config";
-import { writePreferredGalleryView } from "@/features/generation/lib/gallery-view-preference";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const SCROLL_TRANSITION_MS = 450;
-const GENERATION_COMPLETE_TRANSITION_DELAY_MS = 5000;
 
 /** driver.js をチュートリアル開始時のみ遅延読み込み（bundle-dynamic-imports） */
 async function loadDriver() {
@@ -66,17 +64,25 @@ function runTransitionFlow(
   }, SCROLL_TRANSITION_MS);
 }
 
+/**
+ * 新規登録チュートリアル(全5ステップ・ツールチップのみ)のオーケストレーター。
+ *
+ * ホームで開始モーダル → ①ナビ入口を案内 → タップで /style へ遷移
+ * (NavigationBar/AppSidebar 側がツアー進行中は直近モード復帰を止めて /style
+ * に固定する) → ②〜④は One-Tap Style のミニツアーと同じアンカー →
+ * ⑤締めの「完了」で /api/tutorial/complete を呼び、完了ボーナスを付与する。
+ * 生成・デモ画像挿入は行わない(課金経路に影響しない)。
+ */
 export function TutorialTourProvider() {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("tutorial");
+  const styleT = useTranslations("style");
   const [showModal, setShowModal] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const driverRef = useRef<Driver | null>(null);
-  const coordinateTourStartedRef = useRef(false);
-  const generationCompleteDelayTimerRef =
-    useRef<ReturnType<typeof setTimeout> | null>(null);
+  const styleTourStartedRef = useRef(false);
   const normalizedPath = pathname ? stripLocalePrefix(pathname).pathname : "/";
 
   // チュートリアル開始判定（rerender-dependencies: プリミティブな依存のみ）
@@ -144,6 +150,20 @@ export function TutorialTourProvider() {
     // スキップ扱い：tutorial_completed は更新しない（後からミッション画面のボタンで再開可能）
   };
 
+  const buildTourCopy = (): TutorialTourCopy => ({
+    navigateTitle: t("stepNavigateTitle"),
+    navigateDescription: t("stepNavigateDescription"),
+    // ②〜④は /style ミニツアー(StyleTourButton)と同じ文言を共用する
+    presetTitle: styleT("tourStepPresetTitle"),
+    presetDescription: styleT("tourStepPresetDescription"),
+    characterTitle: styleT("tourStepCharacterTitle"),
+    characterDescription: styleT("tourStepCharacterDescription"),
+    generateTitle: styleT("tourStepGenerateTitle"),
+    generateDescription: styleT("tourStepGenerateDescription"),
+    finishedTitle: t("stepFinishedTitle"),
+    finishedDescription: t("stepFinishedDescription"),
+  });
+
   const startTourFromHome = async () => {
     setShowModal(false);
     if (typeof sessionStorage !== "undefined") {
@@ -151,34 +171,11 @@ export function TutorialTourProvider() {
       sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.CURRENT_STEP, "0");
     }
 
-    const tourSteps = getTourSteps({
-      coordinateTitle: t("stepCoordinateTitle"),
-      coordinateDescription: t("stepCoordinateDescription"),
-      uploadTitle: t("stepUploadTitle"),
-      uploadDescription: t("stepUploadDescription"),
-      promptTitle: t("stepPromptTitle"),
-      promptDescription: t("stepPromptDescription"),
-      backgroundTitle: t("stepBackgroundTitle"),
-      backgroundDescription: t("stepBackgroundDescription"),
-      modelTitle: t("stepModelTitle"),
-      modelDescription: t("stepModelDescription"),
-      sizeTitle: t("stepSizeTitle"),
-      sizeDescription: t("stepSizeDescription"),
-      generateTitle: t("stepGenerateTitle"),
-      generateDescription: t("stepGenerateDescription"),
-      generatingTitle: t("stepGeneratingTitle"),
-      generatingDescription: t("stepGeneratingDescription"),
-      completedTitle: t("stepCompletedTitle"),
-      firstImageTitle: t("stepFirstImageTitle"),
-      firstImageDescription: t("stepFirstImageDescription"),
-      finishedTitle: t("stepFinishedTitle"),
-      finishedDescription: t("stepFinishedDescription"),
-    });
-
+    const tourSteps = getTourSteps(buildTourCopy());
     const driver = await loadDriver();
 
     const steps = [...tourSteps];
-    // Step1: モバイルは下部ナビ、PCはサイドバーのコーディネートをハイライト
+    // Step1: モバイルは下部ナビ、PCはサイドバーの生成入口をハイライト
     const isMobileOrTablet =
       typeof window !== "undefined" && window.innerWidth < 1024;
     steps[0] = {
@@ -190,7 +187,7 @@ export function TutorialTourProvider() {
         return (el ?? document.body) as Element;
       },
     };
-    // ②のステップ: ボタン非表示、コーディネートタップで遷移
+    // ①のステップ: ボタン非表示、入口ボタンのタップで /style へ遷移
     if (steps[0]?.popover) {
       const originalPopover = steps[0].popover as Record<string, unknown>;
       steps[0] = {
@@ -198,9 +195,12 @@ export function TutorialTourProvider() {
         popover: {
           ...originalPopover,
           showButtons: [],
-          onNextClick: (_element: Element | undefined, _step: unknown, options: { driver: Driver }) => {
-            writePreferredGalleryView("grid");
-            router.push("/coordinate");
+          onNextClick: (
+            _element: Element | undefined,
+            _step: unknown,
+            options: { driver: Driver }
+          ) => {
+            router.push(TUTORIAL_TOUR_ENTRY_PATH);
             options.driver.destroy();
           },
         },
@@ -229,56 +229,21 @@ export function TutorialTourProvider() {
     driverObj.drive(0);
   };
 
-  const startTourFromCoordinate = async () => {
+  const startTourFromStyle = async () => {
     if (typeof sessionStorage === "undefined") return;
 
     const inProgress = sessionStorage.getItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS);
     if (inProgress !== "true") return;
 
     const driver = await loadDriver();
-    const tourSteps = getTourSteps({
-      coordinateTitle: t("stepCoordinateTitle"),
-      coordinateDescription: t("stepCoordinateDescription"),
-      uploadTitle: t("stepUploadTitle"),
-      uploadDescription: t("stepUploadDescription"),
-      promptTitle: t("stepPromptTitle"),
-      promptDescription: t("stepPromptDescription"),
-      backgroundTitle: t("stepBackgroundTitle"),
-      backgroundDescription: t("stepBackgroundDescription"),
-      modelTitle: t("stepModelTitle"),
-      modelDescription: t("stepModelDescription"),
-      sizeTitle: t("stepSizeTitle"),
-      sizeDescription: t("stepSizeDescription"),
-      generateTitle: t("stepGenerateTitle"),
-      generateDescription: t("stepGenerateDescription"),
-      generatingTitle: t("stepGeneratingTitle"),
-      generatingDescription: t("stepGeneratingDescription"),
-      completedTitle: t("stepCompletedTitle"),
-      firstImageTitle: t("stepFirstImageTitle"),
-      firstImageDescription: t("stepFirstImageDescription"),
-      finishedTitle: t("stepFinishedTitle"),
-      finishedDescription: t("stepFinishedDescription"),
-    });
+    const tourSteps = getTourSteps(buildTourCopy());
 
-    // DOM の準備を待つ
+    // DOM の準備を待つ(②〜④のアンカーは /style ページ側に実装済み)
     const startFromStep = () => {
-      writePreferredGalleryView("grid");
-      document.dispatchEvent(
-        new CustomEvent("tutorial:prepare-coordinate-state", {
-          bubbles: true,
-        })
-      );
-      document.dispatchEvent(
-        new CustomEvent("tutorial:set-gallery-grid", {
-          bubbles: true,
-        })
-      );
-
       const hasRequiredElements = [
-        '[data-tour="tour-image-upload"]',
-        '[data-tour="tour-prompt-input"]',
-        '[data-tour="tour-model-select"]',
-        '[data-tour="tour-gpt-image-2-size"]',
+        '[data-tour="style-tour-preset"]',
+        '[data-tour="style-tour-character"]',
+        '[data-tour="style-tour-generate"]',
       ].every((sel) => document.querySelector(sel));
 
       if (!hasRequiredElements) {
@@ -286,156 +251,33 @@ export function TutorialTourProvider() {
         return;
       }
 
-      document.dispatchEvent(
-        new CustomEvent("tutorial:set-gpt-image-2-default-model", {
-          bubbles: true,
-        })
-      );
-
       const baseSteps = [...tourSteps];
       const lastIndex = baseSteps.length - 1;
 
-      // 生成開始（index 6）までは中断可能
-      const INTERRUPTIBLE_UNTIL_INDEX = 6;
-
-      // ③画像アップロード説明のステップでデモ画像を自動セット
-      // ④着せ替え内容入力のステップでプロンプトを自動セット（日本時間の現在月を基準）
+      // ②〜④(締めの手前まで)は「閉じる」で中断できるようにする
       let stepsWithCallbacks = baseSteps.map((step, idx) => {
-        // 中断可能なステップには「閉じる」ボタンを追加（既存の「戻る」「次へ」は維持）
-        let mergedStep = step;
-        if (idx <= INTERRUPTIBLE_UNTIL_INDEX && step.popover) {
-          const currentButtons =
-            (step.popover as { showButtons?: Array<"next" | "previous" | "close"> }).showButtons;
-          let newButtons: Array<"next" | "previous" | "close">;
-          if (currentButtons === undefined || currentButtons.length === 0) {
-            // 指定なし: デフォルトで「戻る」「次へ」+「閉じる」
-            newButtons = ["previous", "next", "close"];
-          } else {
-            // 既存のボタンに「閉じる」を追加
-            newButtons = [...currentButtons];
-            if (!newButtons.includes("close")) {
-              newButtons.push("close");
-            }
+        if (idx === 0 || idx === lastIndex || !step.popover) return step;
+        const currentButtons = (
+          step.popover as {
+            showButtons?: Array<"next" | "previous" | "close">;
           }
-          mergedStep = {
-            ...step,
-            popover: {
-              ...step.popover,
-              showButtons: newButtons,
-            },
-          };
-        }
-        if (idx === 1) {
-          return {
-            ...mergedStep,
-            onHighlighted: (element: Element | undefined) => {
-              document.dispatchEvent(
-                new CustomEvent("tutorial:set-demo-image", { bubbles: true })
-              );
-              // Step2: 画像アップロード欄を画面中央付近にスクロール
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        if (idx === 2) {
-          return {
-            ...mergedStep,
-            onHighlighted: (element: Element | undefined) => {
-              document.dispatchEvent(
-                new CustomEvent("tutorial:set-prompt", {
-                  bubbles: true,
-                  detail: {
-                    prompt: t("promptTemplate", { month: getJapanMonth() }),
-                  },
-                })
-              );
-              // Step3: 着せ替え内容入力欄を画面中央付近にスクロール（カスタムonHighlightedのためここで実行）
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        if (idx === 3) {
-          return {
-            ...mergedStep,
-            onHighlighted: (element: Element | undefined) => {
-              document.dispatchEvent(
-                new CustomEvent("tutorial:set-background-mode", {
-                  bubbles: true,
-                  detail: { mode: "ai_auto" },
-                })
-              );
-              // Step4: 背景設定オプションを画面中央付近にスクロール
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        if (idx === 4 || idx === 5) {
-          return {
-            ...mergedStep,
-            onHighlighted: (element: Element | undefined) => {
-              document.dispatchEvent(
-                new CustomEvent("tutorial:set-gpt-image-2-default-model", {
-                  bubbles: true,
-                })
-              );
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        if (idx === 9) {
-          return {
-            ...mergedStep,
-            onHighlighted: (element: Element | undefined) => {
-              document.body.setAttribute("data-tour-step-first-image", "true");
-              document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
-              if (element && element !== document.body) {
-                requestAnimationFrame(() => {
-                  element.scrollIntoView({
-                    behavior: "smooth",
-                    block: "center",
-                    inline: "nearest",
-                  });
-                });
-              }
-            },
-          };
-        }
-        return mergedStep;
+        ).showButtons;
+        const newButtons: Array<"next" | "previous" | "close"> =
+          currentButtons === undefined || currentButtons.length === 0
+            ? ["previous", "next", "close"]
+            : currentButtons.includes("close")
+              ? [...currentButtons]
+              : [...currentButtons, "close"];
+        return {
+          ...step,
+          popover: {
+            ...step.popover,
+            showButtons: newButtons,
+          },
+        };
       });
 
-      // 最後のステップで完了時にAPIを呼ぶ（next/done/close いずれでも）
+      // 締めのステップ: 「完了」で完了APIを呼ぶ(付与は冪等)
       const lastStep = stepsWithCallbacks[lastIndex];
       const handleTourComplete = (opts: { driver: Driver }) => {
         document.body.setAttribute("data-tour-transitioning", "true");
@@ -445,6 +287,25 @@ export function TutorialTourProvider() {
           sessionStorage.removeItem(TUTORIAL_STORAGE_KEYS.CURRENT_STEP);
           void completeTutorial();
           opts.driver.destroy();
+          // 閉じたあと、すぐ操作を始められるようスタイル選択セクションまで
+          // スクロールして戻す(StyleTourButton の「さっそく試す！」と同じ挙動)
+          requestAnimationFrame(() => {
+            const presetSection = document.querySelector(
+              '[data-tour="style-tour-preset"]'
+            );
+            if (!presetSection) return;
+            // スティッキーヘッダーに「スタイル選択」見出しが隠れないよう、
+            // ヘッダー分のマージンを引いてスクロールする
+            const STICKY_HEADER_OFFSET = 72;
+            const top =
+              presetSection.getBoundingClientRect().top +
+              window.scrollY -
+              STICKY_HEADER_OFFSET;
+            window.scrollTo({
+              top: Math.max(top, 0),
+              behavior: prefersReducedMotion() ? "auto" : "smooth",
+            });
+          });
         }, 100);
       };
       if (lastStep?.popover) {
@@ -454,10 +315,16 @@ export function TutorialTourProvider() {
           ...lastStep,
           popover: {
             ...orig,
-            onNextClick: (_el: Element | undefined, _step: unknown, opts: { driver: Driver }) =>
-              handleTourComplete(opts),
-            onCloseClick: (_el: Element | undefined, _step: unknown, opts: { driver: Driver }) =>
-              handleTourComplete(opts),
+            onNextClick: (
+              _el: Element | undefined,
+              _step: unknown,
+              opts: { driver: Driver }
+            ) => handleTourComplete(opts),
+            onCloseClick: (
+              _el: Element | undefined,
+              _step: unknown,
+              opts: { driver: Driver }
+            ) => handleTourComplete(opts),
           },
         };
       }
@@ -468,10 +335,6 @@ export function TutorialTourProvider() {
         if (typeof document !== "undefined") {
           document.body.removeAttribute("data-tour-in-progress");
           document.body.removeAttribute("data-tour-transitioning");
-          document.body.removeAttribute("data-tour-step-first-image");
-          document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
-          // チュートリアル用の画像・プロンプト等をクリアして画面を初期状態に戻す
-          document.dispatchEvent(new CustomEvent("tutorial:clear", { bubbles: true }));
         }
       };
 
@@ -479,6 +342,11 @@ export function TutorialTourProvider() {
         showProgress: true,
         animate: !prefersReducedMotion(),
         allowClose: true,
+        // ツールチップのみのツアーのため、ハイライト中の要素も操作不可にする。
+        // スタイル選択・写真設定・生成ボタンをツアー中に触れると、意図しない
+        // 生成(コイン消費)が起きうる(①のナビタップだけは遷移手段なので、
+        // ホーム側のドライバーでは操作可能のまま)。
+        disableActiveInteraction: true,
         // Persta 共通のポップなトーン（/style と統一。globals.css 参照）
         popoverClass: "persta-tour-popover",
         overlayOpacity: 0.6,
@@ -490,7 +358,7 @@ export function TutorialTourProvider() {
         steps: stepsWithCallbacks,
         onDestroyStarted: (_el, _step, opts) => {
           const idx = opts.driver.getActiveIndex() ?? 0;
-          if (idx <= INTERRUPTIBLE_UNTIL_INDEX) {
+          if (idx < lastIndex) {
             handleTourInterrupt();
             opts.driver.destroy();
           }
@@ -508,12 +376,6 @@ export function TutorialTourProvider() {
           runTransitionFlow(d, prevIndex, () => d.movePrevious());
         },
         onHighlighted: (element) => {
-          // 生成結果ハイライト以外では投稿/ダウンロード無効化を解除
-          const idx = driverRef.current?.getActiveIndex();
-          if (idx !== 9) {
-            document.body.removeAttribute("data-tour-step-first-image");
-            document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
-          }
           // 初回表示時: ハイライト要素を画面中央付近にスクロール
           if (element && element !== document.body) {
             requestAnimationFrame(() => {
@@ -530,8 +392,6 @@ export function TutorialTourProvider() {
           if (typeof document !== "undefined") {
             document.body.removeAttribute("data-tour-in-progress");
             document.body.removeAttribute("data-tour-transitioning");
-            document.body.removeAttribute("data-tour-step-first-image");
-            document.dispatchEvent(new CustomEvent("tutorial:step-11-changed"));
           }
         },
       });
@@ -540,7 +400,7 @@ export function TutorialTourProvider() {
       if (typeof document !== "undefined") {
         document.body.setAttribute("data-tour-in-progress", "true");
       }
-      driverObj.drive(1); // ③から開始（index 1）
+      driverObj.drive(1); // ②から開始（index 1）
     };
 
     requestAnimationFrame(startFromStep);
@@ -569,53 +429,16 @@ export function TutorialTourProvider() {
     }
   };
 
-  // コーデスタート押下で1秒後に生成中ステップへ進む
+  // /style に遷移したらツアー再開
   useEffect(() => {
-    const handler = () => {
-      setTimeout(() => {
-        const d = driverRef.current;
-        if (!d || d.isLastStep()) return;
-        const nextIndex = (d.getActiveIndex() ?? 0) + 1;
-        runTransitionFlow(d, nextIndex, () => d.moveNext());
-      }, 1000);
-    };
-    document.addEventListener("tutorial:advance-to-next", handler);
-    return () => document.removeEventListener("tutorial:advance-to-next", handler);
-  }, []);
-
-  // 生成完了で完了アニメーション表示後に「完了しました！」へ進む
-  useEffect(() => {
-    const handler = () => {
-      // 同イベントの重複発火時は二重遷移を防ぐ
-      if (generationCompleteDelayTimerRef.current) return;
-      generationCompleteDelayTimerRef.current = setTimeout(() => {
-        generationCompleteDelayTimerRef.current = null;
-        const d = driverRef.current;
-        if (!d || d.isLastStep()) return;
-        const nextIndex = (d.getActiveIndex() ?? 0) + 1;
-        runTransitionFlow(d, nextIndex, () => d.moveNext());
-      }, GENERATION_COMPLETE_TRANSITION_DELAY_MS);
-    };
-    document.addEventListener("tutorial:generation-complete", handler);
-    return () => {
-      document.removeEventListener("tutorial:generation-complete", handler);
-      if (generationCompleteDelayTimerRef.current) {
-        clearTimeout(generationCompleteDelayTimerRef.current);
-        generationCompleteDelayTimerRef.current = null;
-      }
-    };
-  }, []);
-
-  // /coordinate に遷移したらツアー再開
-  useEffect(() => {
-    if (normalizedPath !== "/coordinate") {
-      coordinateTourStartedRef.current = false;
+    if (normalizedPath !== TUTORIAL_TOUR_ENTRY_PATH) {
+      styleTourStartedRef.current = false;
       return;
     }
     if (isChecking) return;
-    if (coordinateTourStartedRef.current) return;
+    if (styleTourStartedRef.current) return;
 
-    coordinateTourStartedRef.current = true;
+    styleTourStartedRef.current = true;
     let cancelled = false;
 
     if (driverRef.current) {
@@ -630,7 +453,7 @@ export function TutorialTourProvider() {
         return;
       }
 
-      void startTourFromCoordinate();
+      void startTourFromStyle();
     };
 
     const timer = window.setTimeout(resumeTourWhenReady, 300);

@@ -1,11 +1,18 @@
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 /**
+ * 新規登録チュートリアルツアーの目的地(ツアー②〜④を表示する画面)。
+ * ツアー進行中は、ナビの生成入口タップを直近モードに関わらずここへ固定する。
+ */
+export const TUTORIAL_TOUR_ENTRY_PATH = "/style";
+
+/**
  * チュートリアルツアーが進行中(sessionStorage の in_progress が立っている)かを返す。
  *
  * ナビの「コーディネート」入口は通常「直近に使った生成モード」へ差し替え遷移するが、
- * ツアー進行中にそれをやると、直近が /style・/free のユーザーはツアーの再開先
- * (/coordinate)に到達できず無言で詰まる。ツアー中だけ差し替えを止めるための判定。
+ * ツアー進行中にそれをやると、直近モードのユーザーはツアーの再開先
+ * (TUTORIAL_TOUR_ENTRY_PATH)に到達できず無言で詰まる。
+ * ツアー中だけ遷移先を固定するための判定。
  */
 export function isTutorialTourInProgress(): boolean {
   if (typeof window === "undefined") {
