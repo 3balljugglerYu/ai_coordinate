@@ -10,8 +10,10 @@ import { setLastGenerationModePath } from "@/features/generation/lib/generation-
 import { cn } from "@/lib/utils";
 
 /**
- * /coordinate・/style・/free を相互に行き来するためのアニメーション付き
+ * /style・/free・/coordinate を相互に行き来するためのアニメーション付き
  * セグメントタブ。ボトムナビ/サイドバーに無い style / free 画面への導線を兼ねる。
+ * 並び順は利用を促したい順(ワンタップ > フリー > コーディネート)。
+ * コーディネートは将来的な縮退を見据えて末尾に置く。
  *
  * (app)/layout.tsx に配置されており、モード間の遷移中も
  * インスタンスが保持される。そのため usePathname の更新に合わせて
@@ -24,9 +26,9 @@ import { cn } from "@/lib/utils";
  * とは別キー)にして、タブだけ英語ブランド名「Coordinate」にできるようにしている。
  */
 const TABS = [
-  { path: "/coordinate", icon: Sparkles },
   { path: "/style", icon: Wand2 },
   { path: "/free", icon: PenLine },
+  { path: "/coordinate", icon: Sparkles },
 ] as const;
 
 export function GenerationModeTabs() {
@@ -96,9 +98,9 @@ export function GenerationModeTabs() {
   if (activeIndex === -1) return null;
 
   const labels = [
-    coordinateT("tabLabel"),
     styleT("pageTitle"),
     freeT("tabLabel"),
+    coordinateT("tabLabel"),
   ];
 
   return (
