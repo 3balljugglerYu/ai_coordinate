@@ -466,6 +466,11 @@ export function FashionMagazineGuide() {
                 応募は無料です。ペルコインの購入有無は当選確率に影響しません。
               </p>
               <p className="mt-2">
+                抽選と当選のご連絡は、企画終了後
+                <span className="font-bold">約1週間を目処</span>
+                に、XのDMで行います。
+              </p>
+              <p className="mt-2">
                 <Link
                   href={CAMPAIGN.rulesPath}
                   className="underline hover:text-stone-700"
