@@ -287,6 +287,25 @@ export function TutorialTourProvider() {
           sessionStorage.removeItem(TUTORIAL_STORAGE_KEYS.CURRENT_STEP);
           void completeTutorial();
           opts.driver.destroy();
+          // 閉じたあと、すぐ操作を始められるようスタイル選択セクションまで
+          // スクロールして戻す(StyleTourButton の「さっそく試す！」と同じ挙動)
+          requestAnimationFrame(() => {
+            const presetSection = document.querySelector(
+              '[data-tour="style-tour-preset"]'
+            );
+            if (!presetSection) return;
+            // スティッキーヘッダーに「スタイル選択」見出しが隠れないよう、
+            // ヘッダー分のマージンを引いてスクロールする
+            const STICKY_HEADER_OFFSET = 72;
+            const top =
+              presetSection.getBoundingClientRect().top +
+              window.scrollY -
+              STICKY_HEADER_OFFSET;
+            window.scrollTo({
+              top: Math.max(top, 0),
+              behavior: prefersReducedMotion() ? "auto" : "smooth",
+            });
+          });
         }, 100);
       };
       if (lastStep?.popover) {
