@@ -1424,7 +1424,7 @@ export const arMessages = {
     stepNavigateDescription: "اضغط هنا للمتابعة.",
     stepFinishedTitle: "اكتملت الجولة",
     stepFinishedDescription:
-      "كل شيء جاهز! اختر النمط والصورة المفضلين لديك لإنشاء أول صورة. أكمل الجولة للحصول على مكافأة Percoin.",
+      "أحسنت! جرّب إنشاء صورة الآن! اضغط على «تم» للحصول على مكافأة Percoin.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1683,9 +1683,9 @@ export const arMessages = {
     tourNextButton: "التالي",
     tourDoneButton: "جرّبه الآن!",
     tourStepPresetTitle: "✨ ① اختر النمط",
-    tourStepPresetDescription: "اختر النمط الذي تريد ارتداءه!",
+    tourStepPresetDescription: "هنا تختار النمط المفضل لديك!",
     tourStepCharacterTitle: "💖 ② اختر شخصيتك",
-    tourStepCharacterDescription: "اختر الشخصية التي تريد تغيير ملابسها!",
+    tourStepCharacterDescription: "هنا تقوم بإعداد شخصيتك!",
     tourStepGenerateTitle: "🚀 ③ ابدأ التنسيق!",
     tourStepGenerateDescription: "اضغط وستبدأ عملية الإنشاء! ما عليك سوى الانتظار!",
   },

@@ -1425,7 +1425,7 @@ export const hiMessages = {
     stepNavigateDescription: "जारी रखने के लिए यहाँ टैप करें।",
     stepFinishedTitle: "टूर पूरा हुआ",
     stepFinishedDescription:
-      "सब तैयार है! अपनी पसंद की स्टाइल और फ़ोटो चुनकर पहली इमेज बनाएं। टूर पूरा करने पर आपको बोनस Percoin मिलेगा।",
+      "बहुत बढ़िया! अब एक इमेज बनाकर देखें! “हो गया” टैप करने पर आपको बोनस Percoin मिलेगा।",
   },
   free: {
     tabLabel: "Free Style",
@@ -1684,9 +1684,9 @@ export const hiMessages = {
     tourNextButton: "आगे",
     tourDoneButton: "अभी आज़माएँ!",
     tourStepPresetTitle: "✨ ① स्टाइल चुनें",
-    tourStepPresetDescription: "वह स्टाइल चुनें जिसे आप पहनना चाहते हैं!",
+    tourStepPresetDescription: "यहाँ आप अपनी पसंदीदा स्टाइल चुनते हैं!",
     tourStepCharacterTitle: "💖 ② अपना कैरेक्टर चुनें",
-    tourStepCharacterDescription: "वह कैरेक्टर चुनें जिसकी ड्रेस बदलनी है!",
+    tourStepCharacterDescription: "यहाँ आप अपना कैरेक्टर सेट करते हैं!",
     tourStepGenerateTitle: "🚀 ③ कोऑर्डिनेट शुरू करें!",
     tourStepGenerateDescription: "टैप करते ही जनरेशन शुरू! बस थोड़ा इंतज़ार कीजिए!",
   },

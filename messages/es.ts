@@ -1427,7 +1427,7 @@ export const esMessages = {
     stepNavigateDescription: "Toca aquí para continuar.",
     stepFinishedTitle: "Recorrido completado",
     stepFinishedDescription:
-      "¡Todo listo! Elige un estilo y una foto para crear tu primera imagen. Al completar el tour recibirás tu bono de Percoin.",
+      "¡Buen trabajo! ¡Anímate a crear una imagen! Al tocar «Listo» recibirás tu Percoin de bonificación.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1686,9 +1686,9 @@ export const esMessages = {
     tourNextButton: "Siguiente",
     tourDoneButton: "¡Pruébalo ya!",
     tourStepPresetTitle: "✨ ① Elige un estilo",
-    tourStepPresetDescription: "¡Selecciona el estilo con el que quieres vestir!",
+    tourStepPresetDescription: "¡Aquí eliges tu estilo favorito!",
     tourStepCharacterTitle: "💖 ② Elige tu personaje",
-    tourStepCharacterDescription: "¡Elige el personaje al que quieres cambiar de look!",
+    tourStepCharacterDescription: "¡Aquí configuras tu personaje!",
     tourStepGenerateTitle: "🚀 ③ ¡Empieza el outfit!",
     tourStepGenerateDescription: "Al pulsarlo comienza la generación. ¡Solo queda esperar!",
   },

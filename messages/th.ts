@@ -1423,7 +1423,7 @@ export const thMessages = {
     stepNavigateDescription: "แตะที่นี่เพื่อดำเนินการต่อ",
     stepFinishedTitle: "ทัวร์เสร็จแล้ว",
     stepFinishedDescription:
-      "เรียบร้อยแล้ว! เลือกสไตล์และรูปภาพที่ชอบเพื่อสร้างภาพแรกของคุณ ทำทัวร์ให้เสร็จเพื่อรับโบนัส Percoin",
+      "เยี่ยมมาก! ลองสร้างภาพดูเลย! แตะ “เสร็จแล้ว” เพื่อรับโบนัส Percoin",
   },
   free: {
     tabLabel: "Free Style",
@@ -1682,9 +1682,9 @@ export const thMessages = {
     tourNextButton: "ถัดไป",
     tourDoneButton: "ลองเลย!",
     tourStepPresetTitle: "✨ ① เลือกสไตล์",
-    tourStepPresetDescription: "เลือกสไตล์ที่อยากเปลี่ยนลุค!",
+    tourStepPresetDescription: "เลือกสไตล์ที่คุณชอบได้ที่นี่!",
     tourStepCharacterTitle: "💖 ② เลือกตัวละครของฉัน",
-    tourStepCharacterDescription: "เลือกตัวละครที่อยากแต่งตัวให้!",
+    tourStepCharacterDescription: "ตั้งค่าตัวละครของคุณได้ที่นี่!",
     tourStepGenerateTitle: "🚀 ③ เริ่มจัดชุด!",
     tourStepGenerateDescription: "แตะแล้วระบบจะเริ่มสร้างภาพ ที่เหลือแค่รอเท่านั้น!",
   },

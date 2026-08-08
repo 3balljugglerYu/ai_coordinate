@@ -1368,7 +1368,7 @@ export const jaMessages = {
     stepNavigateDescription: "ここをタップしてください。",
     stepFinishedTitle: "ツアー完了！",
     stepFinishedDescription:
-      "お疲れ様でした！お好きなスタイルと写真を選んで、さっそく1枚つくってみましょう！ツアーを完了すると、ボーナスのペルコインが付与されます。",
+      "お疲れ様でした！ぜひ、生成してみてくださいね！『完了』を押すと、ボーナスのペルコインが付与されます。",
   },
   free: {
     tabLabel: "Free Style",
@@ -1621,9 +1621,9 @@ export const jaMessages = {
     tourNextButton: "つぎへ",
     tourDoneButton: "さっそく試す！",
     tourStepPresetTitle: "✨ ① スタイルを選択",
-    tourStepPresetDescription: "着せ替えたいスタイルを選択してください！",
+    tourStepPresetDescription: "ここでお好みのスタイルを選択します！",
     tourStepCharacterTitle: "💖 ② マイキャラ選択",
-    tourStepCharacterDescription: "着せ替えたいキャラクターを選んでください！",
+    tourStepCharacterDescription: "ここで、あなたのキャラクターを設定します！",
     tourStepGenerateTitle: "🚀 ③ コーデを開始！",
     tourStepGenerateDescription: "選択すると生成が始まります！あとは待つだけ！",
   },

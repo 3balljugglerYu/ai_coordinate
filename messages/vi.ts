@@ -1424,7 +1424,7 @@ export const viMessages = {
     stepNavigateDescription: "Chạm vào đây để tiếp tục.",
     stepFinishedTitle: "Đã hoàn thành tour",
     stepFinishedDescription:
-      "Xong rồi! Hãy chọn phong cách và ảnh yêu thích để tạo bức ảnh đầu tiên. Hoàn thành chuyến tham quan để nhận thưởng Percoin.",
+      "Tuyệt vời! Hãy thử tạo một bức ảnh nhé! Chạm “Hoàn thành” để nhận thưởng Percoin.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1683,9 +1683,9 @@ export const viMessages = {
     tourNextButton: "Tiếp theo",
     tourDoneButton: "Thử ngay!",
     tourStepPresetTitle: "✨ ① Chọn phong cách",
-    tourStepPresetDescription: "Hãy chọn phong cách bạn muốn thay đổi!",
+    tourStepPresetDescription: "Tại đây bạn chọn phong cách yêu thích!",
     tourStepCharacterTitle: "💖 ② Chọn nhân vật của bạn",
-    tourStepCharacterDescription: "Hãy chọn nhân vật bạn muốn thay trang phục!",
+    tourStepCharacterDescription: "Tại đây bạn thiết lập nhân vật của mình!",
     tourStepGenerateTitle: "🚀 ③ Bắt đầu phối đồ!",
     tourStepGenerateDescription: "Chạm vào là quá trình tạo ảnh bắt đầu! Chỉ việc chờ thôi!",
   },

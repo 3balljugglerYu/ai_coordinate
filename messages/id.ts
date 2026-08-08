@@ -1426,7 +1426,7 @@ export const idMessages = {
     stepNavigateDescription: "Ketuk di sini untuk melanjutkan.",
     stepFinishedTitle: "Tur selesai",
     stepFinishedDescription:
-      "Semua siap! Pilih gaya dan foto untuk membuat gambar pertamamu. Selesaikan tur untuk menerima bonus Percoin.",
+      "Kerja bagus! Silakan coba membuat gambar! Ketuk “Selesai” untuk menerima bonus Percoin.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1685,9 +1685,9 @@ export const idMessages = {
     tourNextButton: "Lanjut",
     tourDoneButton: "Coba sekarang!",
     tourStepPresetTitle: "✨ ① Pilih gaya",
-    tourStepPresetDescription: "Pilih gaya yang ingin kamu kenakan!",
+    tourStepPresetDescription: "Di sini kamu memilih gaya favoritmu!",
     tourStepCharacterTitle: "💖 ② Pilih karaktermu",
-    tourStepCharacterDescription: "Pilih karakter yang ingin kamu ganti pakaiannya!",
+    tourStepCharacterDescription: "Di sini kamu mengatur karaktermu!",
     tourStepGenerateTitle: "🚀 ③ Mulai padu padan!",
     tourStepGenerateDescription: "Ketuk dan proses pembuatan dimulai! Tinggal tunggu saja!",
   },

@@ -1421,8 +1421,7 @@ export const zhTwMessages = {
     stepNavigateTitle: "從這裡開始生成！",
     stepNavigateDescription: "請點擊這裡。",
     stepFinishedTitle: "教學結束",
-    stepFinishedDescription:
-      "辛苦了！選擇喜歡的風格和照片，馬上生成第一張圖片吧！完成導覽即可獲得獎勵Percoin。",
+    stepFinishedDescription: "辛苦了！快去試著生成一張吧！點擊「完成」即可獲得獎勵Percoin。",
   },
   free: {
     tabLabel: "Free Style",
@@ -1680,9 +1679,9 @@ export const zhTwMessages = {
     tourNextButton: "下一步",
     tourDoneButton: "馬上試試！",
     tourStepPresetTitle: "✨ ① 選擇風格",
-    tourStepPresetDescription: "請選擇想換裝的風格！",
+    tourStepPresetDescription: "在這裡選擇你喜歡的風格！",
     tourStepCharacterTitle: "💖 ② 選擇我的角色",
-    tourStepCharacterDescription: "請選擇想換裝的角色！",
+    tourStepCharacterDescription: "在這裡設定你的角色！",
     tourStepGenerateTitle: "🚀 ③ 開始穿搭！",
     tourStepGenerateDescription: "點選後就會開始生成！接著只要等待就好！",
   },

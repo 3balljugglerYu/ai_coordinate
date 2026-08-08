@@ -1423,7 +1423,7 @@ export const koMessages = {
     stepNavigateDescription: "여기를 탭해 주세요.",
     stepFinishedTitle: "투어 완료",
     stepFinishedDescription:
-      "수고하셨습니다! 마음에 드는 스타일과 사진을 골라 첫 이미지를 만들어 보세요! 투어를 완료하면 보너스 페르코인이 지급됩니다.",
+      "수고하셨습니다! 이제 직접 생성해 보세요! “완료”를 누르면 보너스 페르코인이 지급됩니다.",
   },
   free: {
     tabLabel: "Free Style",
@@ -1682,9 +1682,9 @@ export const koMessages = {
     tourNextButton: "다음",
     tourDoneButton: "바로 해보기!",
     tourStepPresetTitle: "✨ ① 스타일 선택",
-    tourStepPresetDescription: "갈아입히고 싶은 스타일을 선택해 주세요!",
+    tourStepPresetDescription: "여기에서 마음에 드는 스타일을 선택합니다!",
     tourStepCharacterTitle: "💖 ② 마이 캐릭터 선택",
-    tourStepCharacterDescription: "갈아입히고 싶은 캐릭터를 골라 주세요!",
+    tourStepCharacterDescription: "여기에서 당신의 캐릭터를 설정합니다!",
     tourStepGenerateTitle: "🚀 ③ 코디 시작!",
     tourStepGenerateDescription: "선택하면 생성이 시작돼요! 이제 기다리기만 하면 돼요!",
   },
