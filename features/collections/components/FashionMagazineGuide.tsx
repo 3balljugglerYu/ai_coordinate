@@ -16,7 +16,7 @@ import Link from "next/link";
 
 const CAMPAIGN = {
   issueLabel: "SUMMER ISSUE 2026",
-  title: "うちの子のファッション雑誌：夏",
+  title: "うちの子のファッション雑誌",
   periodLabel: "8/8(土) 19:00 〜 8/16(日) 21:59",
   pageCount: 8,
   prizeLabel: "Amazonギフト券 2,000円分",
