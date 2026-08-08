@@ -358,23 +358,68 @@ export function FashionMagazineGuide() {
             <p className="text-[10px] tracking-[0.3em] text-stone-500">
               ENTRY
             </p>
-            <ol className="mt-3 space-y-4 border-l border-stone-300 pl-5">
+            <ol className="mt-3 space-y-8 border-l border-stone-300 pl-5">
               <li className="text-sm leading-loose text-stone-700">
                 <span className="font-bold text-stone-900">
                   1. 雑誌をコンプリート
                 </span>
                 <br />
                 8ページすべてを生成して、1冊を完成させます。
+                <span className="mt-3 block">
+                  <Image
+                    src="/collections/fashion-magazine/entry-step1.webp"
+                    alt="コンプリート直後の画面。「シェアページへ」ボタンが表示される"
+                    width={640}
+                    height={1043}
+                    sizes="(max-width: 640px) 60vw, 230px"
+                    className="mx-auto h-auto w-full max-w-[230px] rounded-lg border border-stone-200 shadow-[0_6px_24px_rgba(120,90,40,0.16)]"
+                  />
+                  <span className="mt-2 block text-center text-[11px] tracking-wide text-stone-500">
+                    コンプリートすると、この画面が出ます
+                  </span>
+                </span>
               </li>
               <li className="text-sm leading-loose text-stone-700">
                 <span className="font-bold text-stone-900">
                   2. 完成した雑誌をXで公開ポスト
                 </span>
                 <br />
-                完成ページの「Xで応募する」ボタンから投稿すると、応募に必要な「
-                <span className="font-bold">@{CAMPAIGN.mention}</span> のメンション」と「
-                <span className="font-bold">#{CAMPAIGN.hashtag}</span>
-                」が自動で入ります。
+                応募ポストに必要なものは、次の4つです。
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>
+                    この企画で生成したイラスト
+                    <span className="font-bold">1枚以上</span>
+                    （8ページのうちどれでもOK）
+                  </li>
+                  <li>完成ページのシェアURL</li>
+                  <li>
+                    <span className="font-bold">@{CAMPAIGN.mention}</span>{" "}
+                    のメンション
+                  </li>
+                  <li>
+                    <span className="font-bold">#{CAMPAIGN.hashtag}</span>{" "}
+                    のハッシュタグ
+                  </li>
+                </ul>
+                <p className="mt-2">
+                  「Xで応募する」ボタンを使うと、シェアURL・メンション・ハッシュタグの3つは自動で入ります。
+                  <span className="font-bold">
+                    イラストは自動では添付されないため、投稿画面でお好きな1枚を添付してください。
+                  </span>
+                </p>
+                <span className="mt-3 block">
+                  <Image
+                    src="/collections/fashion-magazine/entry-step2.webp"
+                    alt="シェアページの「Xで応募する」ボタン。選択すると必要な情報が入った状態で投稿できる"
+                    width={645}
+                    height={1064}
+                    sizes="(max-width: 640px) 60vw, 230px"
+                    className="mx-auto h-auto w-full max-w-[230px] rounded-lg border border-stone-200 shadow-[0_6px_24px_rgba(120,90,40,0.16)]"
+                  />
+                  <span className="mt-2 block text-center text-[11px] tracking-wide text-stone-500">
+                    シェアページの「Xで応募する」から投稿
+                  </span>
+                </span>
               </li>
               <li className="text-sm leading-loose text-stone-700">
                 <span className="font-bold text-stone-900">
@@ -382,6 +427,34 @@ export function FashionMagazineGuide() {
                 </span>
                 <br />
                 当選のご連絡をXのDMでお送りするため、フォローをお願いしています(フォロー外だとDMが届かない設定の方が多いためです)。
+                <span className="mt-4 flex flex-col items-center gap-2.5 border border-stone-200 bg-white/60 px-5 py-5">
+                  <Image
+                    src="/collections/fashion-magazine/mikifuku-icon.webp"
+                    alt="@mickey_fuku のアイコン"
+                    width={160}
+                    height={160}
+                    className="h-16 w-16 rounded-full border border-stone-300 object-cover shadow-sm"
+                  />
+                  <span className="text-sm font-bold text-stone-900">
+                    みきふく | Persta.AI
+                  </span>
+                  <a
+                    href={`https://x.com/${CAMPAIGN.mention}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#1d1d1f] px-4 py-2 text-sm font-bold text-white transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400"
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      fill="currentColor"
+                      aria-hidden
+                      className="h-3.5 w-3.5"
+                    >
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                    </svg>
+                    @{CAMPAIGN.mention}
+                  </a>
+                </span>
               </li>
             </ol>
           </Reveal>
