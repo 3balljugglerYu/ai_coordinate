@@ -90,10 +90,29 @@ export default function FashionMagazineLotteryRulesPage() {
           </li>
           <li>
             完成ページに表示される「Xで応募する」ボタンから、雑誌をXへ
-            <span className="font-bold">公開ポスト</span>する。ポストには{" "}
-            <span className="font-bold">{MENTION} へのメンション</span>と{" "}
-            <span className="font-bold">{HASHTAG}</span>{" "}
-            の両方が含まれている必要があります（ボタンから投稿すると自動で入ります。編集して外れた場合は対象外となるためご注意ください）
+            <span className="font-bold">公開ポスト</span>
+            する。ポストには次の4つがすべて含まれている必要があります：
+            <ul className="mt-1 list-disc space-y-1 pl-5">
+              <li>
+                本キャンペーンで生成したイラスト
+                <span className="font-bold">1枚以上</span>
+                （8ページのうちどれでも可）
+              </li>
+              <li>完成ページのシェアURL</li>
+              <li>
+                <span className="font-bold">{MENTION}</span> へのメンション
+              </li>
+              <li>
+                <span className="font-bold">{HASHTAG}</span> のハッシュタグ
+              </li>
+            </ul>
+            <p className="mt-1">
+              ボタンから投稿すると、シェアURL・メンション・ハッシュタグの3つは自動で入ります。
+              <span className="font-bold">
+                イラストは自動では添付されないため、投稿画面で添付してください。
+              </span>
+              編集などでいずれかが欠けた場合は対象外となるためご注意ください
+            </p>
           </li>
           <li>
             Xで {MENTION} をフォローする —
@@ -101,7 +120,7 @@ export default function FashionMagazineLotteryRulesPage() {
           </li>
         </ol>
         <p className="text-gray-500">
-          手順2・3の順番は前後しても構いません。抽選日時点で3つすべてを満たしている方が対象です。
+          手順2・3の順番は前後しても構いません。抽選日時点で手順1〜3のすべてを満たしている方が対象です。
         </p>
       </Section>
 
@@ -135,7 +154,7 @@ export default function FashionMagazineLotteryRulesPage() {
           <li>応募はおひとり1アカウントまでです。複数アカウントからの応募が確認された場合、すべて対象外となります</li>
           <li>1回のコンプリートにつき1口の応募として扱います</li>
           <li>
-            次のいずれかに当てはまる場合、応募は無効となります：非公開アカウントからの投稿／メンションまたはハッシュタグの欠落／抽選日までに応募ポストが削除・非公開化されている／その他、不正な手段によると主催者が判断した応募
+            次のいずれかに当てはまる場合、応募は無効となります：非公開アカウントからの投稿／応募に必要な要素（イラスト添付・シェアURL・メンション・ハッシュタグ）のいずれかの欠落／抽選日までに応募ポストが削除・非公開化されている／その他、不正な手段によると主催者が判断した応募
           </li>
           <li>賞品の換金・返品・第三者への譲渡はできません</li>
           <li>

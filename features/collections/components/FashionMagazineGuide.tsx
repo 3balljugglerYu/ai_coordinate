@@ -384,10 +384,29 @@ export function FashionMagazineGuide() {
                   2. 完成した雑誌をXで公開ポスト
                 </span>
                 <br />
-                完成ページの「Xで応募する」ボタンから投稿すると、応募に必要な「
-                <span className="font-bold">@{CAMPAIGN.mention}</span> のメンション」と「
-                <span className="font-bold">#{CAMPAIGN.hashtag}</span>
-                」が自動で入ります。
+                応募ポストに必要なものは、次の4つです。
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  <li>
+                    この企画で生成したイラスト
+                    <span className="font-bold">1枚以上</span>
+                    （8ページのうちどれでもOK）
+                  </li>
+                  <li>完成ページのシェアURL</li>
+                  <li>
+                    <span className="font-bold">@{CAMPAIGN.mention}</span>{" "}
+                    のメンション
+                  </li>
+                  <li>
+                    <span className="font-bold">#{CAMPAIGN.hashtag}</span>{" "}
+                    のハッシュタグ
+                  </li>
+                </ul>
+                <p className="mt-2">
+                  「Xで応募する」ボタンを使うと、シェアURL・メンション・ハッシュタグの3つは自動で入ります。
+                  <span className="font-bold">
+                    イラストは自動では添付されないため、投稿画面でお好きな1枚を添付してください。
+                  </span>
+                </p>
                 <span className="mt-3 block">
                   <Image
                     src="/collections/fashion-magazine/entry-step2.webp"

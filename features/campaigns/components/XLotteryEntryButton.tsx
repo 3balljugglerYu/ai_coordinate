@@ -89,6 +89,11 @@ export function XLotteryEntryButton({
           {xIcon}
           Xで応募する
         </button>
+        {copy.attachmentNote ? (
+          <p className="max-w-[280px] rounded bg-black/40 px-2 py-0.5 text-center text-[11px] leading-relaxed text-white/90">
+            ※{copy.attachmentNote}
+          </p>
+        ) : null}
         <Link
           href={copy.rulesPath}
           className="rounded bg-black/40 px-2 py-0.5 text-[11px] text-white/90 underline hover:text-white"
@@ -115,6 +120,11 @@ export function XLotteryEntryButton({
         {xIcon}
         Xで応募する
       </button>
+      {copy.attachmentNote ? (
+        <p className="text-center text-[11px] leading-relaxed text-amber-700/90">
+          ※{copy.attachmentNote}
+        </p>
+      ) : null}
       <Link
         href={copy.rulesPath}
         className="text-[11px] text-amber-700/80 underline hover:text-amber-800"

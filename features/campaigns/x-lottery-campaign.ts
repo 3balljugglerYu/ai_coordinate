@@ -24,6 +24,11 @@ export interface XLotteryCopy {
   winnersLabel: string;
   /** 応募規約ページのパス。 */
   rulesPath: string;
+  /**
+   * 投稿画面でユーザーが手動で行う必要がある作業の注記(応募ボタン直下に表示)。
+   * intent で自動入力できないもの(例: 画像添付が応募要件のキャンペーン)に使う。
+   */
+  attachmentNote?: string;
 }
 
 /**
@@ -60,6 +65,8 @@ export const X_LOTTERY_CAMPAIGNS: Readonly<Record<string, XLotteryCopy>> = {
     prizeLabel: "Amazonギフト券2,000円分",
     winnersLabel: "5名様",
     rulesPath: "/campaigns/fashion-magazine-lottery",
+    attachmentNote:
+      "投稿画面で、この企画で生成したイラストを1枚以上添付してください(応募条件)",
   },
 };
 

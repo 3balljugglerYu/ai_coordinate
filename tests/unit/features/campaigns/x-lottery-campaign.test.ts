@@ -102,11 +102,14 @@ describe("getXLotteryCopy", () => {
     expect(copy?.winnersLabel).toBe("5名様");
     expect(copy?.prizeLabel).toBe("Amazonギフト券2,000円分");
     expect(copy?.rulesPath).toBe("/campaigns/fashion-magazine-lottery");
+    // イラスト添付は intent で自動入力できない応募条件のため、ボタン直下の注記が必須
+    expect(copy?.attachmentNote).toContain("イラストを1枚以上添付");
   });
 
-  test("ことわざ(上下巻)の文面も残っている", () => {
+  test("ことわざ(上下巻)の文面も残っている(添付注記なし)", () => {
     expect(getXLotteryCopy("kotowaza_dictionary")).not.toBeNull();
     expect(getXLotteryCopy("kotowaza_dictionary_2")).not.toBeNull();
+    expect(getXLotteryCopy("kotowaza_dictionary")?.attachmentNote).toBeUndefined();
   });
 
   test("未登録カテゴリは null(lottery_target が立っていてもボタンを出さない)", () => {
