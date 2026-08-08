@@ -323,6 +323,11 @@ export function TutorialTourProvider() {
         showProgress: true,
         animate: !prefersReducedMotion(),
         allowClose: true,
+        // ツールチップのみのツアーのため、ハイライト中の要素も操作不可にする。
+        // スタイル選択・写真設定・生成ボタンをツアー中に触れると、意図しない
+        // 生成(コイン消費)が起きうる(①のナビタップだけは遷移手段なので、
+        // ホーム側のドライバーでは操作可能のまま)。
+        disableActiveInteraction: true,
         // Persta 共通のポップなトーン（/style と統一。globals.css 参照）
         popoverClass: "persta-tour-popover",
         overlayOpacity: 0.6,
