@@ -758,6 +758,7 @@ export function PostDetailStatic({
           imageId={post.id}
           currentCaption={post.caption}
           currentShowBeforeImage={post.show_before_image}
+          isCompletion={Boolean(post.completion_id)}
           afterImageUrl={displayImageUrl}
           beforeImageUrl={beforeImageUrl}
           generationType={post.generation_type ?? null}

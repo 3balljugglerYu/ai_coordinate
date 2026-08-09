@@ -41,6 +41,11 @@ interface EditPostModalProps {
   generationType?: GenerationType | null;
   /** 派生投稿の原作 ID。値があるとトグルを出さない（常に非公開が強制される）。 */
   sourcePostId?: string | null;
+  /**
+   * 完走フィード投稿か。生成物ではないため After ラベルと Before 表示設定を
+   * 出さず、更新 payload にも show_before_image を含めない(caption 等のみ編集)。
+   */
+  isCompletion?: boolean;
   /** 既存投稿の prompt_visibility。未指定なら公開として扱う。 */
   currentPromptVisibility?: "public" | "private";
 }
@@ -53,6 +58,7 @@ export function EditPostModal({
   imageId,
   currentCaption,
   currentShowBeforeImage,
+  isCompletion,
   afterImageUrl,
   beforeImageUrl,
   generationType,
@@ -95,7 +101,8 @@ export function EditPostModal({
       await updatePostCaption({
         id: imageId,
         caption: caption.trim() || undefined,
-        show_before_image: showBeforeImage,
+        // 完走投稿は Before 設定 UI を出さないため列も触らない（既存値を維持）
+        ...(isCompletion ? {} : { show_before_image: showBeforeImage }),
         // トグルを出していない投稿では列を触らない（既存値を維持）
         ...(canChoosePromptVisibility
           ? { prompt_visibility: promptVisibility }
@@ -160,9 +167,11 @@ export function EditPostModal({
                     }`}
                     sizes="(max-width: 768px) 60vw, 320px"
                   />
-                  <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                    {t("afterImageLabel")}
-                  </div>
+                  {!isCompletion && (
+                    <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                      {t("afterImageLabel")}
+                    </div>
+                  )}
                 </div>
                 {showBeforeInPreview && beforeImageUrl && (
                   <div className="relative max-h-[15vh]">
@@ -206,6 +215,7 @@ export function EditPostModal({
               </div>
             </div>
 
+            {!isCompletion && (
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Checkbox
@@ -227,6 +237,7 @@ export function EditPostModal({
                 {t("showBeforeImageHint")}
               </p>
             </div>
+            )}
 
             {canChoosePromptVisibility && (
               <div className="space-y-2">

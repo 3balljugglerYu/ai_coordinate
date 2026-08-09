@@ -139,18 +139,21 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   }
 
   // 完走フィード投稿も通常投稿と同じ詳細を表示する(いいね・コメント可。
-  // 没入シェアページへは詳細内の CTA から遷移)。JSON-LD 用にキャッシュ済み
-  // getPost を再利用し、余分なDB往復を避ける(MUST-ADDRESS-006)。
+  // 没入シェアページへは詳細内の CTA から遷移)。
+  // JSON-LD は公開情報しか使わないため viewer=null で取得する。generateMetadata の
+  // getPost(id, null, true) と同一引数になり、React.cache が同一リクエスト内で
+  // 重複取得を防ぐ。詳細本体(CachedPostDetail)は "use cache" の別キャッシュ単位
+  // として自前の admin client で取得する(こちらはリクエスト間キャッシュが効く)。
   let postForJsonLd: Awaited<ReturnType<typeof getPost>> = null;
   try {
-    postForJsonLd = await getPost(id, currentUserId, true);
+    postForJsonLd = await getPost(id, null, true);
   } catch (error) {
     // 取得失敗時は JSON-LD なしで通常の詳細表示にフォールバック
     console.error("post fetch for json-ld failed:", error);
   }
 
   // 画像検索での発見性を高める ImageObject 構造化データ。
-  // getPost はキャッシュ済みのため追加の DB 往復は発生しない。
+  // (上の取得は generateMetadata と同一キーのため追加の DB 往復は発生しない)
   let imageJsonLd: Record<string, unknown> | null = null;
   if (postForJsonLd) {
     const localeValue = await getLocale();

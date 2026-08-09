@@ -43,18 +43,23 @@ describe("UrlUtils unit tests from EARS specs", () => {
     });
 
     test("完走投稿も通常投稿と同じ詳細パスへ(いいね・コメント可能な画面)", () => {
-      expect(
-        getPostCardHref(
-          { id: "post-2", completion_id: "cmp-9", completion_view_mode: "mount" },
-          "ja",
-        ),
-      ).toBe(getPostDetailLocalizedPath("post-2", "ja"));
-      expect(
-        getPostCardHref(
-          { id: "post-3", completion_id: "cmp-7", completion_view_mode: "book" },
-          "en",
-        ),
-      ).toBe(getPostDetailLocalizedPath("post-3", "en"));
+      // 完走投稿(completion_id あり)でも helper は id しか見ない
+      const mountCompletion = {
+        id: "post-2",
+        completion_id: "cmp-9",
+        completion_view_mode: "mount" as const,
+      };
+      const bookCompletion = {
+        id: "post-3",
+        completion_id: "cmp-7",
+        completion_view_mode: "book" as const,
+      };
+      expect(getPostCardHref(mountCompletion, "ja")).toBe(
+        getPostDetailLocalizedPath("post-2", "ja"),
+      );
+      expect(getPostCardHref(bookCompletion, "en")).toBe(
+        getPostDetailLocalizedPath("post-3", "en"),
+      );
     });
   });
 

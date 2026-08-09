@@ -25,11 +25,7 @@ export function getPostDetailLocalizedPath(
  * コメントができ、没入シェアページへは詳細内の CTA から1タップ)。
  */
 export function getPostCardHref(
-  post: {
-    id?: string | null;
-    completion_id?: string | null;
-    completion_view_mode?: "mount" | "book" | null;
-  },
+  post: { id?: string | null },
   locale: Locale
 ): string {
   return getPostDetailLocalizedPath(post.id ?? "", locale);
