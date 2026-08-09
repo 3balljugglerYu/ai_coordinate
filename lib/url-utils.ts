@@ -21,8 +21,8 @@ export function getPostDetailLocalizedPath(
 
 /**
  * フィードカード(PostCard)のタップ先パスを返す。
- * 完走フィード投稿(`completion_id` あり)は没入シェアページ(`/m/<token>`、
- * book は `/m/<token>/book`)へ。通常投稿は従来のロケール付き詳細パス。
+ * 完走フィード投稿も通常投稿と同じ詳細ページへ遷移する(詳細でいいね・
+ * コメントができ、没入シェアページへは詳細内の CTA から1タップ)。
  */
 export function getPostCardHref(
   post: {
@@ -32,12 +32,20 @@ export function getPostCardHref(
   },
   locale: Locale
 ): string {
-  if (post.completion_id) {
-    return post.completion_view_mode === "book"
-      ? `/m/${post.completion_id}/book`
-      : `/m/${post.completion_id}`;
-  }
   return getPostDetailLocalizedPath(post.id ?? "", locale);
+}
+
+/**
+ * 完走フィード投稿の没入シェアページ(`/m/<token>`、book は `/m/<token>/book`)の
+ * パスを返す。詳細ページの CTA「めくって見る／カードを見る」の遷移先。
+ */
+export function getCompletionImmersivePath(
+  completionId: string,
+  viewMode: "mount" | "book" | null | undefined
+): string {
+  return viewMode === "book"
+    ? `/m/${completionId}/book`
+    : `/m/${completionId}`;
 }
 
 export function getPostDetailUrl(postId: string, locale?: Locale): string {
