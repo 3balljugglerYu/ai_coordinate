@@ -1391,6 +1391,7 @@ export const itMessages = {
       "Fino a +{amount} Percoin quando il tuo One-Tap Style viene usato",
     usageRewardNote:
       "Il tuo utilizzo non conta. Nemmeno le generazioni fatte copiando e incollando il prompt: valgono solo quelle avviate da «Crea con questo prompt» nell'app. Nulla viene accreditato quando il saldo di Percoin gratuiti raggiunge il limite.",
+    usageRewardGuideLink: "Come funzionano le ricompense",
     referralTitle: "Bonus invito",
     referralDescription:
       "Invita amici per guadagnare Percoin. Le ricompense vengono assegnate quando un amico si iscrive dal tuo link o QR code di invito.",

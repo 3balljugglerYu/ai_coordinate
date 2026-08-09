@@ -1386,6 +1386,7 @@ export const zhCnMessages = {
       "你的 One-Tap Style 被使用时 最多 +{amount} 佩尔币",
     usageRewardNote:
       "自己使用不计入。复制粘贴提示词的生成也不计入，仅限从应用内“用这个提示词创作”发起的生成。免费佩尔币余额达到上限后将不再发放。",
+    usageRewardGuideLink: "了解创作者回馈机制",
     referralTitle: "推荐奖励",
     referralDescription:
       "邀请好友即可获得 Percoin。当有人通过你的推荐链接或二维码注册时，会发放奖励。",
