@@ -90,27 +90,33 @@ function HeroVisual({
 }) {
   if (!pcSrc || !spSrc) {
     return (
-      <div className="w-full px-4">
-        <div className="mx-auto flex aspect-[2/3] w-full max-w-[420px] items-center justify-center rounded-3xl border-[3px] border-dashed border-pink-300 bg-white/70 px-6 text-center text-xs font-bold leading-relaxed text-pink-400 sm:aspect-[3/2] sm:max-w-[900px]">
-          ヒーロー画像（支給待ち）
-          <br />
-          スマホ用 1024×1536 ／ PC用 1536×1024
-          <br />
-          タイトル文字は画像内に焼き込み
-        </div>
+      <div className="flex aspect-[2/3] w-full items-center justify-center border-y-[3px] border-dashed border-pink-300 bg-white/70 px-6 text-center text-xs font-bold leading-relaxed text-pink-400 sm:aspect-[3/2]">
+        ヒーロー画像（支給待ち）
+        <br />
+        スマホ用 1024×1536 ／ PC用 1536×1024
+        <br />
+        タイトル文字は画像内に焼き込み
       </div>
     );
   }
   return (
+    // 画面幅いっぱいに敷く。比率どおりに表示して切り抜かない
+    // (タイトル文字が画像内にあるため、cover で切ると文字が欠ける)。
+    // width/height は <source> 側にも持たせ、PC 表示時のレイアウトシフトを防ぐ。
     <picture>
-      <source media="(min-width: 640px)" srcSet={pcSrc} />
+      <source
+        media="(min-width: 640px)"
+        srcSet={pcSrc}
+        width={1536}
+        height={1024}
+      />
       <img
         src={spSrc}
         alt={alt}
         width={1024}
         height={1536}
         fetchPriority="high"
-        className="w-full object-cover sm:aspect-[3/2] sm:h-auto"
+        className="block w-full"
       />
     </picture>
   );
