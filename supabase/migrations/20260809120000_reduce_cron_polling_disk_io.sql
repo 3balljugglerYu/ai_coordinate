@@ -40,6 +40,9 @@ BEGIN;
 -- ---------------------------------------------
 -- command は変更しないため alter_job で schedule のみ差し替える
 -- (unschedule + schedule だと command の写し間違いが事故になりうる)。
+-- NOTE: image-gen-worker-cron はマイグレーションではなく本番で手動作成された
+--       ジョブのため、マイグレーションのみで構築される環境(Supabase Preview 等)
+--       には存在しない。存在しない環境では何もせず通す(エラーにしない)。
 DO $do$
 DECLARE
   v_job_id BIGINT;
@@ -50,7 +53,8 @@ BEGIN
   LIMIT 1;
 
   IF v_job_id IS NULL THEN
-    RAISE EXCEPTION 'image-gen-worker-cron が見つかりません (想定外の構成)';
+    RAISE NOTICE 'image-gen-worker-cron が無いためスキップ (Preview 等の環境)';
+    RETURN;
   END IF;
 
   PERFORM cron.alter_job(v_job_id, schedule := '30 seconds');
@@ -134,9 +138,10 @@ DECLARE
   v_cleanup_command TEXT;
   v_remaining BIGINT;
 BEGIN
+  -- ワーカー cron がある環境(本番)でのみ間隔を検証する
   SELECT schedule INTO v_schedule
   FROM cron.job WHERE jobname = 'image-gen-worker-cron';
-  IF v_schedule IS DISTINCT FROM '30 seconds' THEN
+  IF v_schedule IS NOT NULL AND v_schedule IS DISTINCT FROM '30 seconds' THEN
     RAISE EXCEPTION 'ワーカー cron の間隔が想定と異なります: %', v_schedule;
   END IF;
 
