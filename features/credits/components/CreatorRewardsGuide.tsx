@@ -69,6 +69,54 @@ function ImageSlot({
 }
 
 /**
+ * ヒーローの大きなキービジュアル。
+ *
+ * タイトル文字は画像に焼き込むため、横長(PC)と縦長(スマホ)で文字レイアウトが
+ * 変わる。1枚を切り抜くと文字が切れるので、比率ごとに別画像を用意して
+ * <picture> の media で出し分ける(next/image はアートディレクション非対応で、
+ * CSS 出し分けだと両方ダウンロードされうるため素の picture を使う)。
+ *
+ * 画像内に文字がある分、HTML 側の見出しは sr-only で持たせる
+ * (SEO と読み上げのため。見た目の重複は避ける)。
+ */
+function HeroVisual({
+  pcSrc,
+  spSrc,
+  alt,
+}: {
+  pcSrc?: string;
+  spSrc?: string;
+  alt: string;
+}) {
+  if (!pcSrc || !spSrc) {
+    return (
+      <div className="w-full px-4">
+        <div className="mx-auto flex aspect-[2/3] w-full max-w-[420px] items-center justify-center rounded-3xl border-[3px] border-dashed border-pink-300 bg-white/70 px-6 text-center text-xs font-bold leading-relaxed text-pink-400 sm:aspect-[3/2] sm:max-w-[900px]">
+          ヒーロー画像（支給待ち）
+          <br />
+          スマホ用 1024×1536 ／ PC用 1536×1024
+          <br />
+          タイトル文字は画像内に焼き込み
+        </div>
+      </div>
+    );
+  }
+  return (
+    <picture>
+      <source media="(min-width: 640px)" srcSet={pcSrc} />
+      <img
+        src={spSrc}
+        alt={alt}
+        width={1024}
+        height={1536}
+        fetchPriority="high"
+        className="w-full object-cover sm:aspect-[3/2] sm:h-auto"
+      />
+    </picture>
+  );
+}
+
+/**
  * 画面に入ったら「ぽん」と跳ねて現れる。
  * 従来のスライド+フェードより、勢いのあるポップな出方にする。
  */
@@ -197,41 +245,26 @@ export function CreatorRewardsGuide({
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-b from-amber-50 via-pink-50 to-white">
       {/* ============ ヒーロー ============ */}
-      <header className="relative px-6 pb-14 pt-10 text-center">
-        <Sparkle className="left-6 top-16 text-2xl" />
-        <Sparkle className="right-8 top-28 text-xl" delay={600} />
-        <Sparkle className="left-10 top-64 text-lg" delay={1200} />
+      <header className="relative pb-14 text-center">
+        {/* タイトルは画像内に焼き込むため、HTML 側は読み上げ・SEO 用に持つ */}
+        <h1 className="sr-only">
+          あなたのプロンプトがペルコインに！ | クリエイター還元
+        </h1>
 
-        <PopIn rotate={0}>
-          <span className="inline-block rounded-full bg-white px-4 py-1.5 text-xs font-black tracking-wide text-pink-500 shadow-[0_3px_0_rgba(236,72,153,0.2)]">
-            🪙 クリエイター還元
-          </span>
-          <h1 className="mt-4 text-3xl font-black leading-tight text-gray-900 sm:text-4xl">
-            あなたのプロンプトが、
-            <br />
-            <span className="bg-gradient-to-r from-pink-500 to-orange-400 bg-clip-text text-transparent">
-              ペルコインになる。
-            </span>
-          </h1>
-          <p className="mx-auto mt-4 max-w-sm text-sm font-medium leading-loose text-gray-600">
+        <HeroVisual alt="あなたのプロンプトがペルコインに！ 自分のプロンプトが使われ、ペルコインが返ってくることを表したイラスト" />
+
+        <Sparkle className="left-6 top-6 text-2xl" />
+        <Sparkle className="right-8 top-16 text-xl" delay={600} />
+
+        <PopIn delay={80} rotate={0}>
+          <p className="mx-auto mt-8 max-w-sm px-6 text-sm font-medium leading-loose text-gray-600">
             つくった作品が誰かに使われるたびに、
             <br />
             ペルコインがあなたに届きます。
           </p>
         </PopIn>
 
-        <PopIn delay={140} rotate={-6}>
-          <div className="mx-auto mt-6 max-w-[280px]">
-            <ImageSlot
-              ratio="1 / 1"
-              alt="自分のプロンプトが使われ、ペルコインが返ってくる循環のイラスト"
-              label="イラスト①（ヒーロー：還元の循環／chibi）"
-              float
-            />
-          </div>
-        </PopIn>
-
-        <div className="mx-auto mt-6 flex max-w-sm flex-col gap-4">
+        <div className="mx-auto mt-6 flex max-w-sm flex-col gap-4 px-6">
           {hasPrompt && (
             <CurrentAmountCard
               label="あなたのプロンプトが使われる度に、ペルコインが付与されます"
@@ -249,7 +282,7 @@ export function CreatorRewardsGuide({
         </div>
 
         <PopIn delay={420} rotate={0}>
-          <div className="mt-8">
+          <div className="mt-8 px-6">
             <Link
               href="/free"
               className="reward-breathe inline-flex items-center gap-2 rounded-full bg-gray-900 px-9 py-4 text-base font-black text-white shadow-[0_6px_0_rgba(0,0,0,0.2)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_rgba(0,0,0,0.2)]"
