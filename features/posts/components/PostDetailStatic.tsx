@@ -20,6 +20,7 @@ import { DeletePostDialog } from "./DeletePostDialog";
 import { PostModal } from "./PostModal";
 import { PostMetaLine } from "./PostMetaLine";
 import { getPostImageUrl, getPostBeforeImageUrl } from "../lib/utils";
+import { getCompletionImmersivePath } from "@/lib/url-utils";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
@@ -418,6 +419,13 @@ export function PostDetailStatic({
         ) : (
           /* Before なしは既存どおり After 単独表示 */
           <div className="relative w-full overflow-hidden bg-white">
+            {/* 完走投稿バッジ(フィードカードと同じ見た目)。完走投稿は Before 画像を
+                持たないため、このブランチにだけ置けば十分 */}
+            {post.completion_id ? (
+              <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                {postsT("completionBadge")}
+              </span>
+            ) : null}
             <div
               className={`relative w-full overflow-hidden bg-white cursor-pointer ${
                 imageAspectRatio === "portrait"
@@ -581,6 +589,24 @@ export function PostDetailStatic({
           </div>
         </div>
 
+        {/* 完走投稿: 没入ビュー(book/mount)への汎用CTA。企画名に依存しないラベルで、
+            book=めくれる完走ビュー、mount=完成カード(台紙)ページへ遷移する。 */}
+        {post.completion_id ? (
+          <div className="bg-white px-4 pb-1 pt-3">
+            <Link
+              href={getCompletionImmersivePath(
+                post.completion_id,
+                post.completion_view_mode
+              )}
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-6 py-3 text-sm font-bold text-white shadow-[0_4px_0_rgba(234,88,12,0.35)] transition-transform hover:-translate-y-0.5"
+            >
+              {post.completion_view_mode === "book"
+                ? postsT("completionViewBook")
+                : postsT("completionViewMount")}
+            </Link>
+          </div>
+        ) : null}
+
         {/* キャプション */}
         {post.caption && (
           <div className="bg-white px-4 py-3">
@@ -588,21 +614,25 @@ export function PostDetailStatic({
           </div>
         )}
 
-        {/* 生成モデル / サイズ（プロンプト直前） */}
-        <PostMetaLine
-          model={post.model ?? null}
-          width={post.width ?? null}
-          height={post.height ?? null}
-          generationType={post.generation_type ?? null}
-        />
+        {/* 生成モデル / サイズ（プロンプト直前）。完走投稿は生成物ではないため
+            出さない(generation_type=one_tap_style は保存上の慣例で、モード表示と
+            しては誤解を招く) */}
+        {!post.completion_id && (
+          <PostMetaLine
+            model={post.model ?? null}
+            width={post.width ?? null}
+            height={post.height ?? null}
+            generationType={post.generation_type ?? null}
+          />
+        )}
 
         {/*
           プロンプト欄。表示モードは getPostPromptDisplayMode の4分岐に従う。
           分岐条件をここに散らすと、非公開の投稿に本文が出る事故が起きる。
         */}
-        {promptDisplayMode === "one_tap_style" ? (
+        {promptDisplayMode === "one_tap_style" && oneTapStylePreset ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
-            <OneTapStyleDetailCard preset={oneTapStylePreset!} />
+            <OneTapStyleDetailCard preset={oneTapStylePreset} />
           </div>
         ) : promptDisplayMode === "source_reference" && post.source_reference ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
@@ -728,6 +758,7 @@ export function PostDetailStatic({
           imageId={post.id}
           currentCaption={post.caption}
           currentShowBeforeImage={post.show_before_image}
+          isCompletion={Boolean(post.completion_id)}
           afterImageUrl={displayImageUrl}
           beforeImageUrl={beforeImageUrl}
           generationType={post.generation_type ?? null}

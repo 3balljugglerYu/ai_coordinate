@@ -128,3 +128,27 @@ describe("PostCard の生成元ラベル描画", () => {
     expect(screen.getByText("sourceImageLabel")).toBeInTheDocument();
   });
 });
+
+describe("PostCard の完走投稿描画", () => {
+  it("コンプリートバッジとコメント数を描画し、タップ先は通常の詳細パス", () => {
+    render(
+      <PostCard
+        post={makePost({
+          completion_id: "cmp-1",
+          completion_view_mode: "book",
+          comment_count: 3,
+        })}
+      />
+    );
+
+    const badge = screen.getByText("completionBadge");
+    expect(badge).toBeInTheDocument();
+    // タップ先が没入シェアページ(/m/...)ではなく詳細パスであること
+    const link = badge.closest("a") ?? document.querySelector("a");
+    expect(link).not.toBeNull();
+    expect(link?.getAttribute("href") ?? "").toContain(`/posts/${POST_ID}`);
+    expect(link?.getAttribute("href") ?? "").not.toContain("/m/");
+    // コメント数が表示される(旧仕様では完走投稿のみ非表示だった)
+    expect(screen.getByText("3")).toBeInTheDocument();
+  });
+});

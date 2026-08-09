@@ -111,7 +111,7 @@ export function PostCard({
       )}
       {post.completion_id ? (
         <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-          {locale === "en" ? "Complete" : "コンプリート"}
+          {t("completionBadge")}
         </span>
       ) : null}
       {/* 生成モードラベル(左下)。coordinate系/one_tap_style/inspire/free を表示。
@@ -140,7 +140,7 @@ export function PostCard({
     </div>
   );
 
-  // 完走投稿は没入シェアページへ(通常投稿は従来の詳細ページ)。
+  // 完走投稿も通常投稿と同じ詳細ページへ(いいね・コメント可。没入ビューは詳細内CTAから)。
   const detailHref = getPostCardHref(post, locale);
 
   return (
@@ -170,7 +170,7 @@ export function PostCard({
           // 閲覧数は増えない。過去の「閲覧数が異常に増える」不具合は
           // サーバーレンダー中にカウントしていた旧実装が原因であり、
           // 現行構成では prefetch を有効化しても再発しない。
-          <Link href={detailHref} prefetch={!post.completion_id}>
+          <Link href={detailHref} prefetch>
             {imageContent}
           </Link>
         ) : (
@@ -248,18 +248,14 @@ export function PostCard({
                 currentUserId={currentUserId}
               />
             )}
-            {/* 完走投稿のタップ先(没入シェアページ)にはコメントUIが無いため、
-                操作不能なコメント数は出さない(MUST-ADDRESS-011)。 */}
-            {!post.completion_id && (
-              <div className="flex shrink-0 items-center gap-1">
-                <MessageCircle className="h-4 w-4 text-gray-500" />
-                {(post.comment_count || 0) > 0 && (
-                  <span className="text-xs font-medium tabular-nums text-gray-600">
-                    {formatCountEnUS(post.comment_count || 0)}
-                  </span>
-                )}
-              </div>
-            )}
+            <div className="flex shrink-0 items-center gap-1">
+              <MessageCircle className="h-4 w-4 text-gray-500" />
+              {(post.comment_count || 0) > 0 && (
+                <span className="text-xs font-medium tabular-nums text-gray-600">
+                  {formatCountEnUS(post.comment_count || 0)}
+                </span>
+              )}
+            </div>
             <div className="flex shrink-0 items-center gap-1">
               <Eye className="h-4 w-4 text-gray-500" />
               {/* フラグON時は impression_count、OFF時は view_count(getPublicViewCount) */}

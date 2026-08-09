@@ -100,7 +100,9 @@ export interface Post extends GeneratedImageRecord {
   impression_count?: number;
   moderation_status?: "visible" | "pending" | "removed";
   // 完走フィード投稿(オプトイン)の識別とタップ先解決用。
-  // completion_id があれば「コンプリート」バッジ + 没入シェアページ(/m/<id>[/book])へ遷移。
+  // completion_id があれば完走フィード投稿。「コンプリート」バッジを表示し、
+  // 詳細内 CTA(めくって見る/カードを見る)の遷移先(/m/<id>[/book])の解決に使う。
+  // タップ先は通常投稿と同じ詳細ページ(/posts/<id>)。
   completion_id?: string | null;
   completion_view_mode?: "mount" | "book" | null;
   // Before 画像の楽観表示用フォールバック。

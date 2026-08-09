@@ -6,6 +6,7 @@ jest.mock("@/lib/public-env", () => ({
 
 import { getSiteUrlForClient } from "@/lib/public-env";
 import {
+  getCompletionImmersivePath,
   getPostCardHref,
   getPostDetailLocalizedPath,
   getPostDetailPath,
@@ -34,42 +35,43 @@ describe("UrlUtils unit tests from EARS specs", () => {
     });
   });
 
-  describe("URLUTIL-101 getPostCardHref(完走フィード投稿のタップ先分岐)", () => {
+  describe("URLUTIL-101 getPostCardHref(タップ先は詳細ページに統一)", () => {
     test("通常投稿(completion_idなし)_ロケール付き詳細パスを返す", () => {
       expect(getPostCardHref({ id: "post-1" }, "ja")).toBe(
         getPostDetailLocalizedPath("post-1", "ja"),
       );
     });
 
-    test("完走投稿(mount)_台紙の没入シェアページへ", () => {
-      expect(
-        getPostCardHref(
-          { id: "post-2", completion_id: "cmp-9", completion_view_mode: "mount" },
-          "ja",
-        ),
-      ).toBe("/m/cmp-9");
+    test("完走投稿も通常投稿と同じ詳細パスへ(いいね・コメント可能な画面)", () => {
+      // 完走投稿(completion_id あり)でも helper は id しか見ない
+      const mountCompletion = {
+        id: "post-2",
+        completion_id: "cmp-9",
+        completion_view_mode: "mount" as const,
+      };
+      const bookCompletion = {
+        id: "post-3",
+        completion_id: "cmp-7",
+        completion_view_mode: "book" as const,
+      };
+      expect(getPostCardHref(mountCompletion, "ja")).toBe(
+        getPostDetailLocalizedPath("post-2", "ja"),
+      );
+      expect(getPostCardHref(bookCompletion, "en")).toBe(
+        getPostDetailLocalizedPath("post-3", "en"),
+      );
+    });
+  });
+
+  describe("URLUTIL-102 getCompletionImmersivePath(詳細内CTAの遷移先)", () => {
+    test("mount は /m/<id>、book は /m/<id>/book", () => {
+      expect(getCompletionImmersivePath("cmp-9", "mount")).toBe("/m/cmp-9");
+      expect(getCompletionImmersivePath("cmp-7", "book")).toBe("/m/cmp-7/book");
     });
 
-    test("完走投稿(book)_本の没入シェアページへ", () => {
-      expect(
-        getPostCardHref(
-          { id: "post-3", completion_id: "cmp-7", completion_view_mode: "book" },
-          "en",
-        ),
-      ).toBe("/m/cmp-7/book");
-    });
-
-    test("完走投稿は locale に依存せず /m パスを返す", () => {
-      const ja = getPostCardHref(
-        { id: "p", completion_id: "c", completion_view_mode: "mount" },
-        "ja",
-      );
-      const en = getPostCardHref(
-        { id: "p", completion_id: "c", completion_view_mode: "mount" },
-        "en",
-      );
-      expect(ja).toBe("/m/c");
-      expect(en).toBe("/m/c");
+    test("view_mode 不明(null/undefined)は mount 扱いにフォールバック", () => {
+      expect(getCompletionImmersivePath("cmp-1", null)).toBe("/m/cmp-1");
+      expect(getCompletionImmersivePath("cmp-2", undefined)).toBe("/m/cmp-2");
     });
   });
 

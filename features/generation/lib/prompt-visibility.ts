@@ -19,7 +19,10 @@ export type PostPromptDisplayMode =
   | "none";
 
 type PromptDisplayRecord = PromptProtectedRecord &
-  Pick<GeneratedImageRecord, "prompt_visibility" | "source_post_id">;
+  Pick<GeneratedImageRecord, "prompt_visibility" | "source_post_id"> & {
+    /** 完走フィード投稿(generated_images.completion_id)。生成物ではないため生成系UIを出さない。 */
+    completion_id?: string | null;
+  };
 
 export function shouldHidePromptForGenerationType(
   generationType?: GeneratedImageRecord["generation_type"]
@@ -58,6 +61,13 @@ export function getPostPromptDisplayMode(
   record: PromptDisplayRecord,
   options?: { isOwner?: boolean; isModerator?: boolean }
 ): PostPromptDisplayMode {
+  // 完走フィード投稿は生成物ではない(generation_type=one_tap_style は保存上の
+  // 慣例で、プリセットのメタデータを持たない)。プリセットカード等の
+  // 生成系UIは出さない。
+  if (record.completion_id) {
+    return "none";
+  }
+
   if (record.source_post_id) {
     return "source_reference";
   }

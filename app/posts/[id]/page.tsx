@@ -1,5 +1,4 @@
 import { connection } from "next/server";
-import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { getPost } from "@/features/posts/lib/server-api";
@@ -61,14 +60,10 @@ export async function generateMetadata({ params }: PostDetailPageProps): Promise
   }
 
   const siteUrl = getSiteUrl();
-  // 完走投稿の正規URLは没入シェアページ。canonical/OG をそちらへ向ける(MUST-ADDRESS-005)。
-  const completionPath = post.completion_id
-    ? `/m/${post.completion_id}${post.completion_view_mode === "book" ? "/book" : ""}`
-    : null;
+  // 完走投稿も通常投稿と同じ詳細ページを正規URLとする(タップ先が詳細に
+  // 統一されたため。没入シェアページ /m/... は共有用の別ページとして残る)。
   const postUrl = siteUrl
-    ? completionPath
-      ? `${siteUrl}${completionPath}`
-      : `${siteUrl}${localizePublicPath(`/posts/${id}`, locale)}`
+    ? `${siteUrl}${localizePublicPath(`/posts/${id}`, locale)}`
     : "";
   const imageUrl = getPostDisplayUrl(post);
 
@@ -143,32 +138,22 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     console.error("Auth error:", error);
   }
 
-  // 完走フィード投稿は没入シェアページが正規の表示先。/posts/<id>(通知ディープリンク・
-  // 直接URL)で来た場合は /m/<token>(book は /book)へリダイレクトする。
-  // - is_posted=true のときだけ発火(取消済みは通常詳細にフォールバック: MUST-ADDRESS-007)
-  // - 既存のキャッシュ済み getPost を再利用し、余分なDB往復を避ける(MUST-ADDRESS-006)
-  // - redirect() は内部で例外を投げるため try/catch の外で呼ぶ
-  let completionRedirect: string | null = null;
+  // 完走フィード投稿も通常投稿と同じ詳細を表示する(いいね・コメント可。
+  // 没入シェアページへは詳細内の CTA から遷移)。
+  // JSON-LD は公開情報しか使わないため viewer=null で取得する。generateMetadata の
+  // getPost(id, null, true) と同一引数になり、React.cache が同一リクエスト内で
+  // 重複取得を防ぐ。詳細本体(CachedPostDetail)は "use cache" の別キャッシュ単位
+  // として自前の admin client で取得する(こちらはリクエスト間キャッシュが効く)。
   let postForJsonLd: Awaited<ReturnType<typeof getPost>> = null;
   try {
-    const post = await getPost(id, currentUserId, true);
-    postForJsonLd = post;
-    if (post?.completion_id && post.is_posted) {
-      completionRedirect =
-        post.completion_view_mode === "book"
-          ? `/m/${post.completion_id}/book`
-          : `/m/${post.completion_id}`;
-    }
+    postForJsonLd = await getPost(id, null, true);
   } catch (error) {
-    // 取得失敗時は通常の詳細表示にフォールバック
-    console.error("completion redirect check failed:", error);
-  }
-  if (completionRedirect) {
-    redirect(completionRedirect);
+    // 取得失敗時は JSON-LD なしで通常の詳細表示にフォールバック
+    console.error("post fetch for json-ld failed:", error);
   }
 
   // 画像検索での発見性を高める ImageObject 構造化データ。
-  // getPost はキャッシュ済みのため追加の DB 往復は発生しない。
+  // (上の取得は generateMetadata と同一キーのため追加の DB 往復は発生しない)
   let imageJsonLd: Record<string, unknown> | null = null;
   if (postForJsonLd) {
     const localeValue = await getLocale();
