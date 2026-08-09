@@ -21,6 +21,8 @@ import Link from "next/link";
  */
 
 const PERCOIN_ICON = "/percoin.png";
+const HERO_SP = "/creator-rewards/hero-sp.webp";
+const HERO_PC = "/creator-rewards/hero-pc.webp";
 
 /**
  * 画像の枠。src が未指定(= 支給待ち)の間はプレースホルダを描く。
@@ -69,56 +71,54 @@ function ImageSlot({
 }
 
 /**
- * ヒーローの大きなキービジュアル。
+ * ヒーローの大きなキービジュアル(画面幅いっぱい)。
  *
- * タイトル文字は画像に焼き込むため、横長(PC)と縦長(スマホ)で文字レイアウトが
- * 変わる。1枚を切り抜くと文字が切れるので、比率ごとに別画像を用意して
- * <picture> の media で出し分ける(next/image はアートディレクション非対応で、
- * CSS 出し分けだと両方ダウンロードされうるため素の picture を使う)。
+ * 縦長(スマホ)と横長(PC)で別画像を <picture> の media で出し分ける
+ * (next/image はアートディレクション非対応で、CSS 出し分けだと両方
+ * ダウンロードされうるため素の picture を使う)。
+ * width/height は <source> 側にも持たせ、PC 表示時のレイアウトシフトを防ぐ。
  *
- * 画像内に文字がある分、HTML 側の見出しは sr-only で持たせる
- * (SEO と読み上げのため。見た目の重複は避ける)。
+ * タイトルは画像に焼き込まず HTML で重ねる。文字サイズが画面幅に追従し、
+ * 文言の修正に画像の作り直しが要らず、読み上げ・SEO でもそのまま拾えるため。
+ * 背景の空が明るいので、上部に白のグラデーション(スクリム)を敷いて可読性を確保する。
  */
-function HeroVisual({
-  pcSrc,
-  spSrc,
-  alt,
-}: {
-  pcSrc?: string;
-  spSrc?: string;
-  alt: string;
-}) {
-  if (!pcSrc || !spSrc) {
-    return (
-      <div className="flex aspect-[2/3] w-full items-center justify-center border-y-[3px] border-dashed border-pink-300 bg-white/70 px-6 text-center text-xs font-bold leading-relaxed text-pink-400 sm:aspect-[3/2]">
-        ヒーロー画像（支給待ち）
-        <br />
-        スマホ用 1024×1536 ／ PC用 1536×1024
-        <br />
-        タイトル文字は画像内に焼き込み
-      </div>
-    );
-  }
+function HeroVisual() {
   return (
-    // 画面幅いっぱいに敷く。比率どおりに表示して切り抜かない
-    // (タイトル文字が画像内にあるため、cover で切ると文字が欠ける)。
-    // width/height は <source> 側にも持たせ、PC 表示時のレイアウトシフトを防ぐ。
-    <picture>
-      <source
-        media="(min-width: 640px)"
-        srcSet={pcSrc}
-        width={1536}
-        height={1024}
+    <div className="relative w-full">
+      <picture>
+        <source
+          media="(min-width: 640px)"
+          srcSet={HERO_PC}
+          width={1536}
+          height={1024}
+        />
+        <img
+          src={HERO_SP}
+          alt="ペルコインを掲げて喜ぶ、うちの子のイラスト"
+          width={1024}
+          height={1536}
+          fetchPriority="high"
+          className="block w-full"
+        />
+      </picture>
+
+      {/* 文字を載せる帯。絵が明るいので上から白をうっすら重ねて読みやすくする */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[46%] bg-gradient-to-b from-white/90 via-white/60 to-transparent sm:h-[52%]"
       />
-      <img
-        src={spSrc}
-        alt={alt}
-        width={1024}
-        height={1536}
-        fetchPriority="high"
-        className="block w-full"
-      />
-    </picture>
+
+      <div className="absolute inset-x-0 top-0 px-6 pt-6 sm:pt-10">
+        <h1 className="mx-auto max-w-[22rem] text-[7vw] font-black leading-tight tracking-tight text-pink-600 drop-shadow-[0_2px_0_rgba(255,255,255,0.9)] sm:max-w-[34rem] sm:text-[3.2vw]">
+          あなたの
+          <span className="text-orange-500">プロンプト</span>
+          が
+          <br />
+          <span className="text-orange-500">ペルコイン</span>
+          に！
+        </h1>
+      </div>
+    </div>
   );
 }
 
@@ -252,15 +252,7 @@ export function CreatorRewardsGuide({
     <div className="min-h-screen overflow-hidden bg-gradient-to-b from-amber-50 via-pink-50 to-white">
       {/* ============ ヒーロー ============ */}
       <header className="relative pb-14 text-center">
-        {/* タイトルは画像内に焼き込むため、HTML 側は読み上げ・SEO 用に持つ */}
-        <h1 className="sr-only">
-          あなたのプロンプトがペルコインに！ | クリエイター還元
-        </h1>
-
-        <HeroVisual alt="あなたのプロンプトがペルコインに！ 自分のプロンプトが使われ、ペルコインが返ってくることを表したイラスト" />
-
-        <Sparkle className="left-6 top-6 text-2xl" />
-        <Sparkle className="right-8 top-16 text-xl" delay={600} />
+        <HeroVisual />
 
         <PopIn delay={80} rotate={0}>
           <p className="mx-auto mt-8 max-w-sm px-6 text-sm font-medium leading-loose text-gray-600">

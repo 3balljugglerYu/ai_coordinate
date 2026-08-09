@@ -15,8 +15,8 @@ const PAGE_TITLE =
 const PAGE_DESCRIPTION =
   "あなたが作ったプロンプトやスタイルが他のユーザーに使われるたびに、ペルコインが還元されます。もらえるまでの流れ・対象になる条件・還元されないケースをまとめました。";
 
-// TODO: OGP画像はイラスト支給後に /og/ 配下へ配置して images を追加する
-// (画像なしの間は images を省略し、タイトル/説明のみのカードにフォールバック)。
+const OGP_IMAGE = "/creator-rewards/ogp.jpg";
+
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
@@ -27,12 +27,21 @@ export const metadata: Metadata = {
       "作った作品が誰かに使われるたびに、ペルコインが還元されます。もらえるまでの3ステップを紹介。",
     type: "website",
     siteName: "Persta.AI",
+    images: [
+      {
+        url: OGP_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "ペルコインを掲げて喜ぶ、うちの子のイラスト",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: "あなたのプロンプトが、ペルコインになる｜クリエイター還元",
     description:
       "作った作品が誰かに使われるたびに、ペルコインが還元されます。もらえるまでの3ステップを紹介。",
+    images: [OGP_IMAGE],
   },
 };
 
