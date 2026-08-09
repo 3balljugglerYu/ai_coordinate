@@ -1643,3 +1643,106 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 .driver-popover.persta-tour-popover .driver-popover-close-btn:hover {
   color: #475569;
 }
+
+/* ===============================================
+   クリエイター還元の紹介ページ (/creator-rewards) の演出
+   =============================================== */
+/* ポップに「ぽん」と現れる。スライド+フェードより跳ねる印象にする */
+@keyframes rewardPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) translateY(24px) rotate(var(--reward-pop-rotate, -4deg));
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.06) translateY(-6px) rotate(calc(var(--reward-pop-rotate, -4deg) * -0.3));
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0) rotate(0deg);
+  }
+}
+
+/* コインやイラストがふわふわ浮き続ける */
+@keyframes rewardFloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
+/* 光がふわっと明滅するキラキラ */
+@keyframes rewardSparkle {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.15) rotate(25deg);
+  }
+}
+
+/* 「今すぐ押したくなる」ための軽い呼吸 */
+@keyframes rewardBreathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+/* 背景のグラデーションがゆっくり流れる */
+@keyframes rewardGradientShift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+.reward-pop-in {
+  animation: rewardPopIn 620ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.reward-float {
+  animation: rewardFloat 3.2s ease-in-out infinite;
+}
+
+.reward-sparkle {
+  animation: rewardSparkle 2.4s ease-in-out infinite;
+}
+
+.reward-breathe {
+  animation: rewardBreathe 2.2s ease-in-out infinite;
+}
+
+.reward-gradient-shift {
+  background-size: 200% 200%;
+  animation: rewardGradientShift 8s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /*
+   * 出現アニメは一瞬で終わらせて可視状態にする(要素が消えないよう both を維持)。
+   * 常時ループする演出は完全に止める。
+   */
+  .reward-pop-in {
+    animation-duration: 1ms;
+  }
+
+  .reward-float,
+  .reward-sparkle,
+  .reward-breathe,
+  .reward-gradient-shift {
+    animation: none;
+  }
+}

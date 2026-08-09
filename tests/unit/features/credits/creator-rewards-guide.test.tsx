@@ -56,11 +56,17 @@ describe("CreatorRewardsGuide", () => {
     expect(screen.getByText("+1")).toBeInTheDocument();
     expect(screen.getByText("+3")).toBeInTheDocument();
     expect(
-      screen.getByText("あなたのプロンプトが使われる")
+      screen.getByText(
+        "あなたのプロンプトが使われる度に、ペルコインが付与されます"
+      )
     ).toBeInTheDocument();
     expect(
-      screen.getByText("あなたの One-Tap Style が使われる")
+      screen.getByText(
+        "あなたの One-Tap Style が使われる度に、ペルコインが付与されます"
+      )
     ).toBeInTheDocument();
+    // 「現在の還元」の見出しは有効な項目の数だけ出る
+    expect(screen.getAllByText("現在の還元")).toHaveLength(2);
   });
 
   it("Style が 0(停止中)ならその行を出さない", () => {
@@ -72,7 +78,9 @@ describe("CreatorRewardsGuide", () => {
     );
     expect(screen.getByText("+1")).toBeInTheDocument();
     expect(
-      screen.queryByText("あなたの One-Tap Style が使われる")
+      screen.queryByText(
+        "あなたの One-Tap Style が使われる度に、ペルコインが付与されます"
+      )
     ).toBeNull();
   });
 
@@ -84,11 +92,13 @@ describe("CreatorRewardsGuide", () => {
       />
     );
     expect(screen.getByText("+2")).toBeInTheDocument();
-    expect(screen.queryByText("あなたのプロンプトが使われる")).toBeNull();
-    // フォロワー限定の説明は /free のプロンプト還元に固有の話なので出さない
     expect(
-      screen.queryByText("フォロワーが増えるほど、使われる")
+      screen.queryByText(
+        "あなたのプロンプトが使われる度に、ペルコインが付与されます"
+      )
     ).toBeNull();
+    // フォロワー限定の説明は Free Style のプロンプト還元に固有の話なので出さない
+    expect(screen.queryByText(/フォロワーが増えるほど/)).toBeNull();
   });
 
   it("還元されないケースと CTA は常に出る", () => {
@@ -102,8 +112,11 @@ describe("CreatorRewardsGuide", () => {
     expect(
       screen.getByText("自分で自分のプロンプトを使ったとき")
     ).toBeInTheDocument();
-    expect(
-      screen.getByText("じゆうモードで作る").closest("a")
-    ).toHaveAttribute("href", "/free");
+    // CTA は上下2箇所。どちらも Free Style へ
+    const ctas = screen.getAllByText("Free Style でつくる →");
+    expect(ctas).toHaveLength(2);
+    for (const cta of ctas) {
+      expect(cta.closest("a")).toHaveAttribute("href", "/free");
+    }
   });
 });
