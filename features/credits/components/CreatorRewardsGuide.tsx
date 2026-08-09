@@ -25,6 +25,36 @@ const HERO_SP = "/creator-rewards/hero-sp.webp";
 const HERO_PC = "/creator-rewards/hero-pc.webp";
 
 /**
+ * ヒーローの見出し。accent の部分だけ色を変える。
+ * 下の HERO_TITLE_TEXT / HERO_FONT_HREF をここから導出しているので、
+ * 文言を変えれば読み込むフォントの文字セットも自動で追従する
+ * (手で URL を書くと、増えた文字だけ別フォントになる事故が起きる)。
+ */
+const HERO_TITLE_LINES: readonly (readonly {
+  text: string;
+  accent?: boolean;
+}[])[] = [
+  [{ text: "あなたの" }, { text: "プロンプト", accent: true }, { text: "が" }],
+  [{ text: "ペルコイン", accent: true }, { text: "に！" }],
+];
+
+const HERO_TITLE_TEXT = HERO_TITLE_LINES.flat()
+  .map((part) => part.text)
+  .join("");
+
+/**
+ * 見出し用のポップな日本語書体(丸ゴシック系のディスプレイフォント)。
+ * text= で「実際に使う文字だけ」を切り出して配信させるため、実体は数 KB に収まる
+ * (日本語フォント全体だと数 MB になり、見出し1行のために読むには重すぎる)。
+ */
+const HERO_FONT_HREF = `https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&text=${encodeURIComponent(
+  HERO_TITLE_TEXT,
+)}&display=swap`;
+
+const HERO_FONT_FAMILY =
+  "'Mochiy Pop One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif";
+
+/**
  * 画像の枠。src が未指定(= 支給待ち)の間はプレースホルダを描く。
  * 画像が届いたら src を渡すだけで差し替わる。
  */
@@ -102,20 +132,39 @@ function HeroVisual() {
         />
       </picture>
 
-      {/* 文字を載せる帯。絵が明るいので上から白をうっすら重ねて読みやすくする */}
+      {/* 見出し用フォント。このページの見出し1行にしか使わないので
+          サイト全体のフォント読み込みには足さない */}
+      <link href={HERO_FONT_HREF} rel="stylesheet" />
+
+      {/* 文字を載せる帯。白フチで可読性は確保できるので、絵が見えるよう薄めにする */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[46%] bg-gradient-to-b from-white/90 via-white/60 to-transparent sm:h-[52%]"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[42%] bg-gradient-to-b from-white/75 via-white/35 to-transparent sm:h-[48%]"
       />
 
-      <div className="absolute inset-x-0 top-0 px-6 pt-6 sm:pt-10">
-        <h1 className="mx-auto max-w-[22rem] text-[7vw] font-black leading-tight tracking-tight text-pink-600 drop-shadow-[0_2px_0_rgba(255,255,255,0.9)] sm:max-w-[34rem] sm:text-[3.2vw]">
-          あなたの
-          <span className="text-orange-500">プロンプト</span>
-          が
-          <br />
-          <span className="text-orange-500">ペルコイン</span>
-          に！
+      <div className="absolute inset-x-0 top-0 px-6 pt-5 sm:pt-9">
+        <h1
+          className="mx-auto max-w-[22rem] text-[7.6vw] leading-[1.25] text-pink-600 sm:max-w-[36rem] sm:text-[3.4vw]"
+          style={{
+            fontFamily: HERO_FONT_FAMILY,
+            // 白フチ(縁取り)を文字の内側ではなく外側に出してポップな見出しにする
+            WebkitTextStroke: "0.14em #ffffff",
+            paintOrder: "stroke fill",
+            filter: "drop-shadow(0 3px 0 rgba(236,72,153,0.25))",
+          }}
+        >
+          {HERO_TITLE_LINES.map((line, lineIndex) => (
+            <span key={lineIndex} className="block">
+              {line.map((part) => (
+                <span
+                  key={part.text}
+                  className={part.accent ? "text-orange-500" : undefined}
+                >
+                  {part.text}
+                </span>
+              ))}
+            </span>
+          ))}
         </h1>
       </div>
     </div>
