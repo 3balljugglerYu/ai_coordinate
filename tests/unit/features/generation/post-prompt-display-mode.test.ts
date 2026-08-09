@@ -242,3 +242,42 @@ describe("一覧 payload の本文除去", () => {
     expect(rows[0]).toBe(record);
   });
 });
+
+describe("完走フィード投稿(completion_id あり)", () => {
+  it("generation_type が one_tap_style でも none(生成系UIを出さない)", () => {
+    // 完走投稿は generation_type=one_tap_style を保存上の慣例として持つが、
+    // プリセットのメタデータを持たないため、one_tap_style モードにすると
+    // 詳細側の OneTapStyleDetailCard が null プリセットで落ちる(実障害)。
+    expect(
+      getPostPromptDisplayMode({
+        ...buildRecord(),
+        generation_type: "one_tap_style",
+        completion_id: "cmp-1",
+      })
+    ).toBe("none");
+  });
+
+  it("本人・運営でも none のまま", () => {
+    expect(
+      getPostPromptDisplayMode(
+        { ...buildRecord(), completion_id: "cmp-1" },
+        { isOwner: true }
+      )
+    ).toBe("none");
+    expect(
+      getPostPromptDisplayMode(
+        { ...buildRecord(), completion_id: "cmp-1" },
+        { isModerator: true }
+      )
+    ).toBe("none");
+  });
+});
+
+function buildRecord() {
+  return {
+    prompt: "",
+    generation_type: "one_tap_style" as const,
+    prompt_visibility: "public" as const,
+    source_post_id: null,
+  };
+}

@@ -82,8 +82,10 @@ jest.mock("@/features/moderation/components/PostModerationMenu", () => ({
   PostModerationMenu: () => null,
 }));
 
+// 完走投稿で誤って描画されると null プリセットでクラッシュする実障害があったため、
+// マーカーを描画するモックにして「出ていないこと」を検査できるようにする
 jest.mock("@/features/style/components/OneTapStyleDetailCard", () => ({
-  OneTapStyleDetailCard: () => null,
+  OneTapStyleDetailCard: () => <div data-testid="one-tap-card" />,
 }));
 
 jest.mock("@/features/subscription/components/SubscriptionBadge", () => ({
@@ -162,6 +164,8 @@ describe("完走投稿の詳細描画", () => {
     expect(cta.closest("a")).toHaveAttribute("href", `/m/${COMPLETION_ID}/book`);
     expect(screen.getByText("completionBadge")).toBeInTheDocument();
     expect(screen.queryByTestId("post-meta-line")).toBeNull();
+    // generation_type=one_tap_style でもプリセットカードは出ない(null クラッシュ再発防止)
+    expect(screen.queryByTestId("one-tap-card")).toBeNull();
     expect(screen.queryByText("completionViewMount")).toBeNull();
   });
 

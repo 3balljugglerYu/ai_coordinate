@@ -454,9 +454,9 @@ export function PostDetail({
           プロンプト欄。表示モードは getPostPromptDisplayMode の4分岐に従う。
           分岐条件をここに散らすと、非公開の投稿に本文が出る事故が起きる。
         */}
-        {promptDisplayMode === "one_tap_style" ? (
+        {promptDisplayMode === "one_tap_style" && oneTapStylePreset ? (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
-            <OneTapStyleDetailCard preset={oneTapStylePreset!} />
+            <OneTapStyleDetailCard preset={oneTapStylePreset} />
           </div>
         ) : promptDisplayMode === "source_reference" && post.source_reference ? (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
