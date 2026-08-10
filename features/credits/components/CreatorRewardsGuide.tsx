@@ -25,6 +25,8 @@ const HERO_SP = "/creator-rewards/hero-sp.webp";
 const HERO_PC = "/creator-rewards/hero-pc.webp";
 const STEP1_MAIN = "/creator-rewards/step1.webp";
 const STEP1_SUB = "/creator-rewards/step1-sub.webp";
+const STEP2_MAIN = "/creator-rewards/step2.webp";
+const STEP2_SUB = "/creator-rewards/step2-sub.webp";
 
 /**
  * ヒーローの見出し。accent の部分だけ色を変える。
@@ -409,9 +411,17 @@ export function CreatorRewardsGuide({
               no: "2",
               emoji: "📮",
               title: "投稿しよう！",
-              body: "気に入った作品ができたら、ホームに投稿しましょう。このとき「プロンプトを公開する」を選ぶのがポイント。あなたのフォロワーが、同じプロンプトで作れるようになります。",
+              body: "気に入った作品ができたら、ホームに投稿しましょう。あなたのフォロワーが、同じプロンプトで生成できるようになります。プロンプトを隠した状態で生成できるモードもあります。",
               label: "イラスト③（投稿する：作品をみんなに見せる／chibi）",
               color: "from-rose-400 to-orange-400",
+              src: STEP2_MAIN,
+              sub: {
+                src: STEP2_SUB,
+                width: 382,
+                height: 945,
+                alt: "投稿画面。キャプションを入力し、プロンプトの公開設定を選んで投稿する",
+                caption: "実際の投稿画面",
+              },
             },
             {
               no: "3",
