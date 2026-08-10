@@ -249,21 +249,16 @@ function Sparkle({
  * 額は props 由来で、文言には埋め込まない(運営が変えたら表示も変わる)。
  */
 function CurrentAmountCard({
-  label,
   amount,
   delay,
 }: {
-  label: string;
   amount: number;
   delay: number;
 }) {
   return (
     <PopIn delay={delay} rotate={delay % 200 === 0 ? -5 : 5}>
       <div className="relative overflow-hidden rounded-3xl border-4 border-white bg-gradient-to-br from-pink-500 via-rose-400 to-orange-400 reward-gradient-shift px-6 py-5 text-center shadow-[0_10px_0_rgba(236,72,153,0.25)]">
-        <p className="text-sm font-bold leading-relaxed text-white/95">
-          {label}
-        </p>
-        <p className="mt-1 text-[11px] font-bold tracking-wide text-white/80">
+        <p className="text-[11px] font-bold tracking-wide text-white/80">
           現在の還元
         </p>
         <p className="mt-1 flex items-center justify-center gap-2">
@@ -313,18 +308,10 @@ export function CreatorRewardsGuide({
 
         <div className="mx-auto mt-6 flex max-w-sm flex-col gap-4 px-6">
           {hasPrompt && (
-            <CurrentAmountCard
-              label="あなたのプロンプトが使われる度に、ペルコインが付与されます"
-              amount={promptUsageRewardAmount}
-              delay={200}
-            />
+            <CurrentAmountCard amount={promptUsageRewardAmount} delay={200} />
           )}
           {hasStyle && (
-            <CurrentAmountCard
-              label="あなたの One-Tap Style が使われる度に、ペルコインが付与されます"
-              amount={styleUsageRewardAmount}
-              delay={300}
-            />
+            <CurrentAmountCard amount={styleUsageRewardAmount} delay={300} />
           )}
         </div>
 

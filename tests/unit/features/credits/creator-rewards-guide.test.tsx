@@ -55,17 +55,7 @@ describe("CreatorRewardsGuide", () => {
     );
     expect(screen.getByText("+1")).toBeInTheDocument();
     expect(screen.getByText("+3")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "あなたのプロンプトが使われる度に、ペルコインが付与されます"
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "あなたの One-Tap Style が使われる度に、ペルコインが付与されます"
-      )
-    ).toBeInTheDocument();
-    // 「現在の還元」の見出しは有効な項目の数だけ出る
+    // 有効な項目の数だけ額のカードが出る
     expect(screen.getAllByText("現在の還元")).toHaveLength(2);
   });
 
@@ -77,11 +67,9 @@ describe("CreatorRewardsGuide", () => {
       />
     );
     expect(screen.getByText("+1")).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "あなたの One-Tap Style が使われる度に、ペルコインが付与されます"
-      )
-    ).toBeNull();
+    expect(screen.queryByText("+0")).toBeNull();
+    // 停止中の分のカードは出さない
+    expect(screen.getAllByText("現在の還元")).toHaveLength(1);
   });
 
   it("プロンプトが 0(停止中)なら、その行とフォロワー説明を出さない", () => {
@@ -92,11 +80,7 @@ describe("CreatorRewardsGuide", () => {
       />
     );
     expect(screen.getByText("+2")).toBeInTheDocument();
-    expect(
-      screen.queryByText(
-        "あなたのプロンプトが使われる度に、ペルコインが付与されます"
-      )
-    ).toBeNull();
+    expect(screen.getAllByText("現在の還元")).toHaveLength(1);
     // フォロワー限定の説明は Free Style のプロンプト還元に固有の話なので出さない
     expect(screen.queryByText(/フォロワーが増えるほど/)).toBeNull();
   });
