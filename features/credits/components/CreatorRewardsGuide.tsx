@@ -1,0 +1,603 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import Image from "next/image";
+import Link from "next/link";
+
+/**
+ * クリエイター還元の紹介ページ本体。
+ *
+ * 付与額は運営が admin (`/admin/percoin-defaults`) で変更するため、
+ * サーバー側で読んだ値を props で受け取って表示する(文言に数字を埋め込まない)。
+ * 額が 0 のもの(= 停止中)は、その行ごと出さない。両方 0 のときはページ自体を
+ * 出さない(ページ側で notFound)。
+ *
+ * トーン: chibi キャラのイラストに合わせたポップで元気な見た目。
+ * 出現は「ぽん」と跳ねる pop-in、コインや装飾はふわふわ浮かせて、
+ * 読んでいて「やってみたくなる」勢いを出す(演出は globals.css の
+ * .reward-* ユーティリティ。prefers-reduced-motion では自動で静止する)。
+ *
+ * 画像はユーザー支給待ち。届くまで ImageSlot がプレースホルダを描画する。
+ */
+
+const PERCOIN_ICON = "/percoin.png";
+const HERO_SP = "/creator-rewards/hero-sp.webp";
+const HERO_PC = "/creator-rewards/hero-pc.webp";
+const STEP1_MAIN = "/creator-rewards/step1.webp";
+const STEP1_SUB = "/creator-rewards/step1-sub.webp";
+const STEP2_MAIN = "/creator-rewards/step2.webp";
+const STEP2_SUB = "/creator-rewards/step2-sub.webp";
+const STEP3_MAIN = "/creator-rewards/step3.webp";
+const STEP3_SUB = "/creator-rewards/step3-sub.webp";
+const STEP4_MAIN = "/creator-rewards/step4.webp";
+const STEP4_SUB = "/creator-rewards/step4-sub.webp";
+
+/**
+ * ヒーローの見出し。accent の部分だけ色を変える。
+ * 下の HERO_TITLE_TEXT / HERO_FONT_HREF をここから導出しているので、
+ * 文言を変えれば読み込むフォントの文字セットも自動で追従する
+ * (手で URL を書くと、増えた文字だけ別フォントになる事故が起きる)。
+ */
+const HERO_TITLE_LINES: readonly (readonly {
+  text: string;
+  accent?: boolean;
+}[])[] = [
+  [{ text: "あなたの" }, { text: "プロンプト", accent: true }, { text: "が" }],
+  [{ text: "ペルコイン", accent: true }, { text: "に！" }],
+];
+
+const HERO_TITLE_TEXT = HERO_TITLE_LINES.flat()
+  .map((part) => part.text)
+  .join("");
+
+/**
+ * 見出し用のポップな日本語書体(丸ゴシック系のディスプレイフォント)。
+ * text= で「実際に使う文字だけ」を切り出して配信させるため、実体は数 KB に収まる
+ * (日本語フォント全体だと数 MB になり、見出し1行のために読むには重すぎる)。
+ */
+const HERO_FONT_HREF = `https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&text=${encodeURIComponent(
+  HERO_TITLE_TEXT,
+)}&display=swap`;
+
+const HERO_FONT_FAMILY =
+  "'Mochiy Pop One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif";
+
+/**
+ * 画像の枠。src が未指定(= 支給待ち)の間はプレースホルダを描く。
+ * 画像が届いたら src を渡すだけで差し替わる。
+ */
+function ImageSlot({
+  src,
+  alt,
+  label,
+  ratio,
+  className,
+  float = false,
+}: {
+  src?: string;
+  alt: string;
+  /** プレースホルダに出す説明(支給待ちの間だけ見える) */
+  label: string;
+  /** 例: "1 / 1", "9 / 16" */
+  ratio: string;
+  className?: string;
+  /** chibi イラストをふわふわ浮かせる */
+  float?: boolean;
+}) {
+  const floatClass = float ? "reward-float" : "";
+  if (!src) {
+    return (
+      <div
+        style={{ aspectRatio: ratio }}
+        className={`flex w-full items-center justify-center rounded-3xl border-[3px] border-dashed border-pink-300 bg-white/70 px-4 text-center text-xs font-bold leading-relaxed text-pink-400 ${floatClass} ${className ?? ""}`}
+      >
+        {label}
+      </div>
+    );
+  }
+  return (
+    <Image
+      src={src}
+      alt={alt}
+      width={1024}
+      height={1024}
+      style={{ aspectRatio: ratio }}
+      className={`w-full rounded-3xl object-contain ${floatClass} ${className ?? ""}`}
+      sizes="(max-width: 640px) 100vw, 480px"
+    />
+  );
+}
+
+/**
+ * 実際のアプリ画面のスクリーンショット。
+ * イラストの下に添えて「本当にこの画面でやるんだ」と伝わるようにする。
+ * 端末の画面らしく見えるよう白フチ＋角丸で囲む。
+ */
+function ScreenshotSlot({
+  src,
+  alt,
+  caption,
+  width,
+  height,
+}: {
+  src?: string;
+  alt: string;
+  caption: string;
+  width: number;
+  height: number;
+}) {
+  // 端末まるごとの縦長スクショと、通知だけを切り出した横長スクショが混在するため、
+  // 向きに応じて最大幅を変える(縦長を広げすぎず、横長を潰しすぎない)。
+  const maxWidthClass = width > height ? "max-w-[300px]" : "max-w-[190px]";
+  return (
+    <figure className={`mx-auto mt-5 w-full ${maxWidthClass}`}>
+      {src ? (
+        <Image
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          sizes="190px"
+          className="w-full rounded-2xl border-4 border-white shadow-[0_6px_0_rgba(0,0,0,0.06)]"
+        />
+      ) : (
+        <div
+          style={{ aspectRatio: `${width} / ${height}` }}
+          className="flex w-full items-center justify-center rounded-2xl border-[3px] border-dashed border-pink-300 bg-white/70 px-3 text-center text-[10px] font-bold leading-relaxed text-pink-400"
+        >
+          {caption}（支給待ち）
+        </div>
+      )}
+      <figcaption className="mt-2 text-center text-[11px] font-bold text-gray-500">
+        {caption}
+      </figcaption>
+    </figure>
+  );
+}
+
+/**
+ * ヒーローの大きなキービジュアル(画面幅いっぱい)。
+ *
+ * 縦長(スマホ)と横長(PC)で別画像を <picture> の media で出し分ける
+ * (next/image はアートディレクション非対応で、CSS 出し分けだと両方
+ * ダウンロードされうるため素の picture を使う)。
+ * width/height は <source> 側にも持たせ、PC 表示時のレイアウトシフトを防ぐ。
+ *
+ * タイトルは画像に焼き込まず HTML で重ねる。文字サイズが画面幅に追従し、
+ * 文言の修正に画像の作り直しが要らず、読み上げ・SEO でもそのまま拾えるため。
+ * 背景の空が明るいので、上部に白のグラデーション(スクリム)を敷いて可読性を確保する。
+ */
+function HeroVisual() {
+  return (
+    <div className="relative w-full">
+      <picture>
+        <source
+          media="(min-width: 640px)"
+          srcSet={HERO_PC}
+          width={1536}
+          height={1024}
+        />
+        <img
+          src={HERO_SP}
+          alt="ペルコインを掲げて喜ぶ、うちの子のイラスト"
+          width={1024}
+          height={1536}
+          fetchPriority="high"
+          className="block w-full"
+        />
+      </picture>
+
+      {/* 見出し用フォント。このページの見出し1行にしか使わないので
+          サイト全体のフォント読み込みには足さない */}
+      <link href={HERO_FONT_HREF} rel="stylesheet" />
+
+      {/* 文字を載せる帯。白フチで可読性は確保できるので、絵が見えるよう薄めにする */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[42%] bg-gradient-to-b from-white/75 via-white/35 to-transparent sm:h-[48%]"
+      />
+
+      <div className="absolute inset-x-0 top-0 px-6 pt-5 sm:pt-9">
+        <h1
+          className="mx-auto max-w-[22rem] text-[7.6vw] leading-[1.25] text-pink-600 sm:max-w-[36rem] sm:text-[3.4vw]"
+          style={{
+            fontFamily: HERO_FONT_FAMILY,
+            // 白フチ(縁取り)を文字の内側ではなく外側に出してポップな見出しにする
+            WebkitTextStroke: "0.14em #ffffff",
+            paintOrder: "stroke fill",
+            filter: "drop-shadow(0 3px 0 rgba(236,72,153,0.25))",
+          }}
+        >
+          {HERO_TITLE_LINES.map((line, lineIndex) => (
+            <span key={lineIndex} className="block">
+              {line.map((part) => (
+                <span
+                  key={part.text}
+                  className={part.accent ? "text-orange-500" : undefined}
+                >
+                  {part.text}
+                </span>
+              ))}
+            </span>
+          ))}
+        </h1>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 画面に入ったら「ぽん」と跳ねて現れる。
+ * 従来のスライド+フェードより、勢いのあるポップな出方にする。
+ */
+function PopIn({
+  children,
+  delay = 0,
+  rotate = -4,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  /** 出てくるときの傾き(度)。連続配置で交互にすると賑やかになる */
+  rotate?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [shown, setShown] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setShown(true);
+            io.disconnect();
+            break;
+          }
+        }
+      },
+      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`${shown ? "reward-pop-in" : "opacity-0"} ${className ?? ""}`}
+      style={
+        {
+          animationDelay: `${delay}ms`,
+          "--reward-pop-rotate": `${rotate}deg`,
+        } as React.CSSProperties
+      }
+    >
+      {children}
+    </div>
+  );
+}
+
+/** 装飾のキラキラ。読み物の余白に散らして賑やかさを出す。 */
+function Sparkle({
+  className,
+  delay = 0,
+}: {
+  className?: string;
+  delay?: number;
+}) {
+  return (
+    <span
+      aria-hidden
+      className={`pointer-events-none absolute reward-sparkle select-none ${className ?? ""}`}
+      style={{ animationDelay: `${delay}ms` }}
+    >
+      ✨
+    </span>
+  );
+}
+
+/**
+ * 現在の還元額を大きく見せるバッジ。
+ * 額は props 由来で、文言には埋め込まない(運営が変えたら表示も変わる)。
+ */
+function CurrentAmountCard({
+  amount,
+  delay,
+}: {
+  amount: number;
+  delay: number;
+}) {
+  return (
+    <PopIn delay={delay} rotate={delay % 200 === 0 ? -5 : 5}>
+      <div className="relative overflow-hidden rounded-3xl border-4 border-white bg-gradient-to-br from-pink-500 via-rose-400 to-orange-400 reward-gradient-shift px-6 py-5 text-center shadow-[0_10px_0_rgba(236,72,153,0.25)]">
+        <p className="text-[11px] font-bold tracking-wide text-white/80">
+          現在の還元
+        </p>
+        <p className="mt-1 flex items-center justify-center gap-2">
+          <Image
+            src={PERCOIN_ICON}
+            alt=""
+            width={40}
+            height={40}
+            className="h-9 w-9 reward-float"
+            aria-hidden
+          />
+          <span className="text-4xl font-black text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.15)]">
+            +{amount}
+          </span>
+          <span className="text-base font-bold text-white/95">ペルコイン！</span>
+        </p>
+      </div>
+    </PopIn>
+  );
+}
+
+export function CreatorRewardsGuide({
+  promptUsageRewardAmount,
+  styleUsageRewardAmount,
+}: {
+  /** Free Style のプロンプトが使われたときの1回あたり付与額。0 なら停止中。 */
+  promptUsageRewardAmount: number;
+  /** One-Tap Style が使われたときの1回あたり付与額。0 なら停止中。 */
+  styleUsageRewardAmount: number;
+}) {
+  const hasPrompt = promptUsageRewardAmount > 0;
+  const hasStyle = styleUsageRewardAmount > 0;
+
+  return (
+    <div className="min-h-screen overflow-hidden bg-gradient-to-b from-amber-50 via-pink-50 to-white">
+      {/* ============ ヒーロー ============ */}
+      <header className="relative pb-14 text-center">
+        <HeroVisual />
+
+        <PopIn delay={80} rotate={0}>
+          <p className="mx-auto mt-8 max-w-sm px-6 text-sm font-medium leading-loose text-gray-600">
+            つくった作品が誰かに使われるたびに、
+            <br />
+            ペルコインがあなたに届きます。
+          </p>
+        </PopIn>
+
+        <div className="mx-auto mt-6 flex max-w-sm flex-col gap-4 px-6">
+          {hasPrompt && (
+            <CurrentAmountCard amount={promptUsageRewardAmount} delay={200} />
+          )}
+          {hasStyle && (
+            <CurrentAmountCard amount={styleUsageRewardAmount} delay={300} />
+          )}
+        </div>
+
+        <PopIn delay={420} rotate={0}>
+          <div className="mt-8 px-6">
+            <Link
+              href="/free"
+              className="reward-breathe inline-flex items-center gap-2 rounded-full bg-gray-900 px-9 py-4 text-base font-black text-white shadow-[0_6px_0_rgba(0,0,0,0.2)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_rgba(0,0,0,0.2)]"
+            >
+              Free Style でつくる →
+            </Link>
+          </div>
+        </PopIn>
+      </header>
+
+      {/* ============ 仕組み3ステップ ============ */}
+      <section className="relative bg-white px-6 py-16">
+        <Sparkle className="right-6 top-10 text-xl" delay={300} />
+
+        <PopIn rotate={0}>
+          <h2 className="text-center text-2xl font-black text-gray-900">
+            もらえるまで、
+            <span className="text-pink-500">4ステップ</span>
+          </h2>
+          <p className="mt-2 text-center text-sm font-medium text-gray-500">
+            むずかしい設定はありません！
+          </p>
+        </PopIn>
+
+        <div className="mx-auto mt-12 flex max-w-sm flex-col gap-14">
+          {[
+            {
+              no: "1",
+              emoji: "✍️",
+              title: "プロンプトを書いて生成！",
+              body: "Free Style であなたの考えたプロンプトを書いて生成しましょう",
+              label: "イラスト②（書いて生成する／chibi）",
+              color: "from-pink-500 to-rose-400",
+              src: STEP1_MAIN,
+              sub: {
+                src: STEP1_SUB,
+                width: 382,
+                height: 869,
+                alt: "Free Style の入力画面。人物画像をアップロードし、生成したい内容を文章で入力する",
+                caption: "実際の入力画面",
+              },
+            },
+            {
+              no: "2",
+              emoji: "📮",
+              title: "投稿しよう！",
+              body: "気に入った作品ができたら、ホームに投稿しましょう。あなたのフォロワーが、同じプロンプトで生成できるようになります。",
+              label: "イラスト③（投稿する：作品をみんなに見せる／chibi）",
+              color: "from-rose-400 to-orange-400",
+              src: STEP2_MAIN,
+              sub: {
+                src: STEP2_SUB,
+                width: 382,
+                height: 945,
+                alt: "投稿画面。キャプションを入力し、プロンプトの公開設定を選んで投稿する",
+                caption: "実際の投稿画面",
+              },
+            },
+            {
+              no: "3",
+              emoji: "🎉",
+              title: "フォロワーが使ってくれる！",
+              body: "あなたの投稿を見た人が「このプロンプトで作る」をタップ。プロンプトの中身は見せずに、うちの子づくりを楽しんでもらえます。",
+              label: "イラスト④（使われる：みんなに広がる／chibi）",
+              color: "from-orange-400 to-amber-400",
+              src: STEP3_MAIN,
+              sub: {
+                src: STEP3_SUB,
+                width: 382,
+                height: 979,
+                alt: "投稿の詳細画面。「このプロンプトで作る」ボタンから、同じプロンプトで生成できる",
+                caption: "実際の投稿画面",
+              },
+            },
+            {
+              no: "4",
+              emoji: "🪙",
+              title: "ペルコインが届く！",
+              body: "使われるたびにペルコインが還元されます。その日の分はまとめてお知らせで届き、履歴からも確認できます。",
+              label: "イラスト⑤（もらえる：コインが届く／chibi）",
+              color: "from-fuchsia-500 to-pink-500",
+              src: STEP4_MAIN,
+              sub: {
+                src: STEP4_SUB,
+                width: 347,
+                height: 205,
+                alt: "お知らせ画面。「本日、あなたの作品が1回利用され1ペルコイン獲得！」という通知が届いている",
+                caption: "実際に届くお知らせ",
+              },
+            },
+          ].map((s, i) => (
+            <PopIn key={s.no} delay={i * 60} rotate={i % 2 === 0 ? -5 : 5}>
+              <div className="relative">
+                <div
+                  className={`absolute -left-1 -top-4 z-10 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br ${s.color} text-2xl font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.15)]`}
+                >
+                  {s.no}
+                </div>
+                <div className="rounded-3xl border-4 border-gray-900/5 bg-gradient-to-b from-pink-50/70 to-white p-5 pt-8 shadow-[0_6px_0_rgba(0,0,0,0.05)]">
+                  <ImageSlot
+                    ratio="1 / 1"
+                    alt={s.title}
+                    label={s.label}
+                    src={s.src}
+                    className="mx-auto max-w-[240px]"
+                    float
+                  />
+                  <h3 className="mt-4 text-center text-lg font-black text-gray-900">
+                    <span className="mr-1">{s.emoji}</span>
+                    {s.title}
+                  </h3>
+                  <p className="mt-2 text-sm font-medium leading-loose text-gray-600">
+                    {s.body}
+                  </p>
+                  {s.sub ? (
+                    <ScreenshotSlot
+                      src={s.sub.src}
+                      alt={s.sub.alt}
+                      caption={s.sub.caption}
+                      width={s.sub.width}
+                      height={s.sub.height}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            </PopIn>
+          ))}
+        </div>
+      </section>
+
+      {/* ============ フォロワーとの関係 ============ */}
+      {hasPrompt && (
+        <section className="relative bg-white px-6 py-16">
+          <Sparkle className="left-8 top-12 text-xl" delay={900} />
+          <PopIn rotate={0}>
+            <h2 className="text-center text-2xl font-black leading-tight text-gray-900">
+              フォロワーが増えるほど、
+              <br />
+              <span className="text-orange-500">どんどん使われる！</span>
+            </h2>
+          </PopIn>
+          <PopIn delay={120} rotate={-3}>
+            <div className="mx-auto mt-6 max-w-sm rounded-3xl border-4 border-orange-100 bg-orange-50/60 p-5">
+              <p className="text-sm font-medium leading-loose text-gray-700">
+                あなたが公開したプロンプトを使えるのは、
+                <span className="font-black text-orange-600">
+                  あなたをフォローしている人
+                </span>
+                です。フォロワーが増えるほど使ってもらえる機会も増えて、還元もどんどん積み上がっていきます。
+              </p>
+            </div>
+          </PopIn>
+        </section>
+      )}
+
+      {/* ============ 対象外になるケース ============ */}
+      <section className="bg-gradient-to-b from-white to-gray-50 px-6 py-16">
+        <PopIn rotate={0}>
+          <h2 className="text-center text-xl font-black text-gray-900">
+            還元されないケース
+          </h2>
+          <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium text-gray-500">
+            あとで「あれ？」とならないために
+          </p>
+        </PopIn>
+
+        <div className="mx-auto mt-6 flex max-w-sm flex-col gap-3">
+          {[
+            {
+              title: "自分で自分のプロンプトを使ったとき",
+              body: "ご自身の利用は還元の対象になりません。",
+            },
+            {
+              title: "プロンプトをコピーして貼り付けたとき",
+              body: "「プロンプトを公開にする」にして投稿すると、フォロワーは、プロンプトをコピーして利用できるようになります。ここから利用された場合は、付与の対象外となります。",
+            },
+          ].map((item, i) => (
+            <PopIn key={item.title} delay={i * 50} rotate={i % 2 === 0 ? -2 : 2}>
+              <div className="rounded-2xl border-2 border-gray-200 bg-white px-5 py-4">
+                <p className="text-sm font-black text-gray-900">{item.title}</p>
+                <p className="mt-1 text-xs font-medium leading-relaxed text-gray-600">
+                  {item.body}
+                </p>
+              </div>
+            </PopIn>
+          ))}
+        </div>
+        <PopIn delay={200} rotate={0}>
+          <p className="mx-auto mt-5 max-w-sm text-center text-xs font-medium leading-relaxed text-gray-400">
+            還元の額は運営が変更する場合があります。最新の額はこのページとミッション画面に表示されます。
+          </p>
+        </PopIn>
+      </section>
+
+      {/* ============ CTA ============ */}
+      <section className="relative bg-gradient-to-b from-pink-500 via-rose-400 to-orange-400 reward-gradient-shift px-6 pb-20 pt-16 text-center">
+        <Sparkle className="left-8 top-8 text-2xl" />
+        <Sparkle className="right-10 top-16 text-xl" delay={700} />
+
+        <PopIn rotate={0}>
+          <h2 className="text-2xl font-black leading-tight text-white drop-shadow-[0_2px_0_rgba(0,0,0,0.12)]">
+            さっそく、つくってみよう！
+          </h2>
+          <p className="mx-auto mt-3 max-w-sm text-sm font-bold leading-loose text-white/95">
+            あなたの言葉が、
+            <br />
+            誰かのうちの子を変えていきます。
+          </p>
+          <div className="mt-8">
+            <Link
+              href="/free"
+              className="reward-breathe inline-flex items-center gap-2 rounded-full bg-white px-10 py-4 text-base font-black text-pink-600 shadow-[0_6px_0_rgba(0,0,0,0.18)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_rgba(0,0,0,0.18)]"
+            >
+              Free Style でつくる →
+            </Link>
+          </div>
+          <div className="mt-6">
+            <Link
+              href="/challenge"
+              className="text-xs font-bold text-white/85 underline hover:text-white"
+            >
+              ほかのペルコインの貯め方をみる
+            </Link>
+          </div>
+        </PopIn>
+      </section>
+    </div>
+  );
+}

@@ -1387,6 +1387,7 @@ export const koMessages = {
       "회원님의 One-Tap Style이 이용되면 최대 +{amount} 페르코인",
     usageRewardNote:
       "본인의 이용은 제외됩니다. 프롬프트를 복사해 붙여넣은 생성도 제외되며, 앱 내 ‘이 프롬프트로 만들기’에서 이용된 경우가 대상입니다. 무료 페르코인 잔액이 상한에 도달하면 지급되지 않습니다.",
+    usageRewardGuideLink: "크리에이터 리워드 구조 보기",
     referralTitle: "추천 보너스",
     referralDescription:
       "친구를 초대하면 Percoin을 받을 수 있습니다. 친구가 추천 링크 또는 QR 코드로 가입하면 보상이 지급됩니다.",

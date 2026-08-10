@@ -1390,6 +1390,7 @@ export const idMessages = {
       "Hingga +{amount} Percoin saat One-Tap Style kamu dipakai",
     usageRewardNote:
       "Penggunaan sendiri tidak dihitung. Generasi hasil salin-tempel prompt juga tidak — hanya yang dimulai dari “Buat dengan prompt ini” di aplikasi. Tidak ada pemberian saat saldo Percoin gratismu mencapai batas.",
+    usageRewardGuideLink: "Cara kerja imbalan kreator",
     referralTitle: "Bonus referral",
     referralDescription:
       "Undang teman untuk mendapat Percoin. Hadiah diberikan saat teman mendaftar dari tautan atau QR code referralmu.",

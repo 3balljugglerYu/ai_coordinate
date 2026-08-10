@@ -1391,6 +1391,7 @@ export const frMessages = {
       "Jusqu'à +{amount} Percoins quand votre One-Tap Style est utilisé",
     usageRewardNote:
       "Votre propre utilisation ne compte pas. Les générations faites en copiant-collant le prompt non plus : seules comptent celles lancées depuis « Créer avec ce prompt » dans l'app. Rien n'est attribué lorsque votre solde de Percoins gratuits atteint le plafond.",
+    usageRewardGuideLink: "Comment fonctionnent les récompenses",
     referralTitle: "Bonus de parrainage",
     referralDescription:
       "Invitez vos amis pour gagner des Percoins. Les récompenses sont attribuées lorsqu'un ami s'inscrit via votre lien ou votre QR code de parrainage.",

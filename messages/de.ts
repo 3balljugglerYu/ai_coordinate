@@ -1392,6 +1392,7 @@ export const deMessages = {
       "Bis zu +{amount} Percoins, wenn dein One-Tap Style genutzt wird",
     usageRewardNote:
       "Eigene Nutzung zählt nicht. Generierungen per Copy-Paste des Prompts ebenfalls nicht – nur solche über „Mit diesem Prompt erstellen“ in der App. Sobald dein Guthaben an kostenlosen Percoins die Obergrenze erreicht, wird nichts mehr gutgeschrieben.",
+    usageRewardGuideLink: "So funktionieren die Creator-Boni",
     referralTitle: "Empfehlungsbonus",
     referralDescription:
       "Lade Freunde ein, um Percoins zu verdienen. Belohnungen werden gutgeschrieben, wenn sich jemand über deinen Empfehlungslink oder QR-Code anmeldet.",

@@ -1388,6 +1388,7 @@ export const enMessages = {
       "Up to +{amount} Percoins when your One-Tap Style is used",
     usageRewardNote:
       "Your own usage doesn't count. Generations made by copy-pasting a prompt don't count either — only those started from “Create with this prompt” in the app. Nothing is granted once your free Percoin balance reaches its cap.",
+    usageRewardGuideLink: "See how creator rewards work",
     referralTitle: "Referral bonus",
     referralDescription:
       "Invite friends to earn Percoins. Rewards are granted when a friend signs up from your referral link or QR code.",

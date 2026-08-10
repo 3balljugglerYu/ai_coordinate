@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Flame,
@@ -726,6 +727,13 @@ export function ChallengePageContent({
                   <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
                   <span>{t("usageRewardNote")}</span>
                 </div>
+                {/* まとまった説明は紹介ページへ。カード内は要点だけに保つ。 */}
+                <Link
+                  href="/creator-rewards"
+                  className="inline-flex items-center gap-1 text-sm font-medium text-orange-600 underline hover:text-orange-700"
+                >
+                  {t("usageRewardGuideLink")}
+                </Link>
               </div>
             </ChallengeCard>
           </div>

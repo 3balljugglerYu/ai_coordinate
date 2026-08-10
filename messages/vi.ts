@@ -1388,6 +1388,7 @@ export const viMessages = {
       "Tối đa +{amount} Percoin khi One-Tap Style của bạn được dùng",
     usageRewardNote:
       "Bạn tự dùng thì không tính. Tạo ảnh bằng cách sao chép prompt cũng không tính — chỉ tính khi bắt đầu từ “Tạo với prompt này” trong ứng dụng. Sẽ không được cộng khi số dư Percoin miễn phí đã đạt giới hạn.",
+    usageRewardGuideLink: "Tìm hiểu cách nhận thưởng",
     referralTitle: "Thưởng giới thiệu",
     referralDescription:
       "Mời bạn bè để nhận Percoin. Phần thưởng được cấp khi bạn bè đăng ký từ liên kết hoặc QR code giới thiệu của bạn.",
