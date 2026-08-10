@@ -96,7 +96,7 @@ function ImageSlot({
       width={1024}
       height={1024}
       style={{ aspectRatio: ratio }}
-      className={`w-full object-contain ${floatClass} ${className ?? ""}`}
+      className={`w-full rounded-3xl object-contain ${floatClass} ${className ?? ""}`}
       sizes="(max-width: 640px) 100vw, 480px"
     />
   );
@@ -380,7 +380,7 @@ export function CreatorRewardsGuide({
         <PopIn rotate={0}>
           <h2 className="text-center text-2xl font-black text-gray-900">
             もらえるまで、
-            <span className="text-pink-500">3ステップ</span>
+            <span className="text-pink-500">4ステップ</span>
           </h2>
           <p className="mt-2 text-center text-sm font-medium text-gray-500">
             むずかしい設定はありません！
@@ -392,9 +392,9 @@ export function CreatorRewardsGuide({
             {
               no: "1",
               emoji: "✍️",
-              title: "プロンプトをつくって投稿！",
-              body: "Free Style で好きな言葉を書いて生成。投稿するときに「プロンプトを公開する」を選ぶと、ほかの人も使えるようになります。",
-              label: "イラスト②（作る：言葉から作品が生まれる／chibi）",
+              title: "プロンプトを書いて生成！",
+              body: "Free Style であなたの考えたプロンプトを書いて生成しましょう",
+              label: "イラスト②（書いて生成する／chibi）",
               color: "from-pink-500 to-rose-400",
               src: STEP1_MAIN,
               sub: {
@@ -407,18 +407,26 @@ export function CreatorRewardsGuide({
             },
             {
               no: "2",
-              emoji: "🎉",
-              title: "フォロワーが使ってくれる！",
-              body: "あなたの投稿を見た人が「このプロンプトで作る」をタップ。プロンプトの中身は見せずに、うちの子づくりを楽しんでもらえます。",
-              label: "イラスト③（使われる：みんなに広がる／chibi）",
-              color: "from-orange-400 to-amber-400",
+              emoji: "📮",
+              title: "投稿しよう！",
+              body: "気に入った作品ができたら、ホームに投稿しましょう。このとき「プロンプトを公開する」を選ぶのがポイント。あなたのフォロワーが、同じプロンプトで作れるようになります。",
+              label: "イラスト③（投稿する：作品をみんなに見せる／chibi）",
+              color: "from-rose-400 to-orange-400",
             },
             {
               no: "3",
+              emoji: "🎉",
+              title: "フォロワーが使ってくれる！",
+              body: "あなたの投稿を見た人が「このプロンプトで作る」をタップ。プロンプトの中身は見せずに、うちの子づくりを楽しんでもらえます。",
+              label: "イラスト④（使われる：みんなに広がる／chibi）",
+              color: "from-orange-400 to-amber-400",
+            },
+            {
+              no: "4",
               emoji: "🪙",
               title: "ペルコインが届く！",
               body: "使われるたびにペルコインが還元されます。その日の分はまとめてお知らせで届き、履歴からも確認できます。",
-              label: "イラスト④（もらえる：コインが届く／chibi）",
+              label: "イラスト⑤（もらえる：コインが届く／chibi）",
               color: "from-fuchsia-500 to-pink-500",
             },
           ].map((s, i) => (
