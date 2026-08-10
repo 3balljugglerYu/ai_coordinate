@@ -69,7 +69,10 @@ export function FeedCaption({ caption, onOpenDetail, expandLabel }: FeedCaptionP
   }
 
   const handleClick = () => {
-    if (isExpanded) {
+    // 5行に収まっている本文は展開する意味が無いので、1回で詳細へ移動する。
+    // ここを「常に1回目は展開」にすると、短い本文でも見た目が何も変わらないまま
+    // 1タップを消費してしまい、詳細へ行くのに毎回2回押すことになる。
+    if (isExpanded || !isClamped) {
       onOpenDetail();
       return;
     }

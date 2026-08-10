@@ -147,6 +147,42 @@ describe("PostFeedCard", () => {
       expect(screen.queryByTestId("post-feed-before-frame")).not.toBeInTheDocument();
     });
 
+    test("Before なしの縦長は高さを幅までに収め_切らずに中央へ置く", () => {
+      /*
+        1枚表示の縦長をそのまま出すと画面をほぼ占有し、Before/After を並べた
+        投稿より目立つ。「Before を出さない方が大きく見える」状態は施策の狙いと
+        逆を向くため、高さを幅までに収める。切り取らず左右に余白を作る。
+      */
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      const after = screen.getByTestId("post-feed-after-frame");
+      expect(after.style.aspectRatio).toBe("1");
+      expect(after.querySelector("img")?.className).toContain("object-contain");
+    });
+
+    test("Before なしの横長はそのままの比率(高さは元から幅以下)", () => {
+      render(
+        <PostFeedCard post={createPost({ width: 1536, height: 1024 })} currentUserId={null} />
+      );
+
+      expect(screen.getByTestId("post-feed-after-frame").style.aspectRatio).toBe(
+        String(1536 / 1024)
+      );
+    });
+
+    test("Before がある縦長は実寸の比率のまま(1セルが半分の幅なので伸びすぎない)", () => {
+      render(
+        <PostFeedCard
+          post={createPost({ input_image_url_fallback: "https://example.test/before.png" })}
+          currentUserId={null}
+        />
+      );
+
+      expect(screen.getByTestId("post-feed-after-frame").style.aspectRatio).toBe(
+        String(896 / 1152)
+      );
+    });
+
     test("横長は上下に並べる", () => {
       render(
         <PostFeedCard

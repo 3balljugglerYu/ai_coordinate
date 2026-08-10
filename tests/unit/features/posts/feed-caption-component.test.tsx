@@ -54,6 +54,32 @@ describe("FeedCaption", () => {
     expect(screen.queryByText("もっと見る")).not.toBeInTheDocument();
   });
 
+  test("5行に収まる本文は1回のタップで詳細へ移動する", () => {
+    // 展開する意味が無いのに1タップ消費すると、詳細へ行くのに毎回2回押すことになる
+    mockClamped(false);
+    const onOpenDetail = jest.fn();
+    render(
+      <FeedCaption caption="短い本文" onOpenDetail={onOpenDetail} expandLabel="もっと見る" />
+    );
+
+    fireEvent.click(screen.getByTestId("feed-caption"));
+
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("feed-caption")).toHaveAttribute("data-expanded", "false");
+  });
+
+  test("5行に収まる本文はキーボードでも1回で詳細へ移動する", () => {
+    mockClamped(false);
+    const onOpenDetail = jest.fn();
+    render(
+      <FeedCaption caption="短い本文" onOpenDetail={onOpenDetail} expandLabel="もっと見る" />
+    );
+
+    fireEvent.keyDown(screen.getByTestId("feed-caption"), { key: "Enter" });
+
+    expect(onOpenDetail).toHaveBeenCalledTimes(1);
+  });
+
   test("溢れていれば「もっと見る」を出し_1度目のタップで展開_2度目で詳細へ", () => {
     mockClamped(true);
     const onOpenDetail = jest.fn();

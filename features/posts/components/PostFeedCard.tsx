@@ -275,6 +275,7 @@ export function PostFeedCard({
             onImageClick={fullscreenImages.length > 0 ? setFullscreenIndex : undefined}
             imageButtonLabel={t("feedExpandImage")}
             priority={prioritizeImage}
+            clampPortraitToWidth
           />
           {/* バッジの位置は PostCard と揃える(完走=左上 / 生成モード=左下)。
               AFTER・BEFORE ラベルは右下なので重ならない。 */}

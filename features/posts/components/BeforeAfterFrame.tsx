@@ -38,6 +38,17 @@ interface BeforeAfterFrameProps {
   /** 拡大できることを伝える読み上げラベル(onImageClick 指定時のみ使う) */
   imageButtonLabel?: string;
   priority?: boolean;
+  /**
+   * Before が無い1枚表示のとき、縦長画像の高さを幅までに収めるか（既定 false）。
+   *
+   * フィードで有効にする。1枚表示の縦長をそのまま出すと画面をほぼ占有し、
+   * Before/After を並べた投稿より目立ってしまう。「Before を出さない方が
+   * 大きく見える」状態は、Before/After で価値を伝えるという狙いと逆を向く。
+   *
+   * 収まりきらない分は切り取らず、左右に余白を作って中央に置く。
+   * うちの子の全身を切るより、余白が出る方が投稿者の意図に沿う。
+   */
+  clampPortraitToWidth?: boolean;
 }
 
 /**
@@ -69,9 +80,20 @@ export function BeforeAfterFrame({
   onImageClick,
   imageButtonLabel,
   priority = false,
+  clampPortraitToWidth = false,
 }: BeforeAfterFrameProps) {
   const showsBefore = !!afterUrl && !!beforeUrl;
   const isLandscape = isLandscapeRatio(aspectRatio);
+
+  /*
+    1枚表示のときだけ、高さを幅までに収める(比率 = 幅/高さ なので下限1)。
+    Before/After を並べるときは1セルが半分の幅になり、そもそも縦に伸びすぎない。
+    こちらは実寸に従わせ、両セルで比率を共有する既存の作法を保つ。
+  */
+  const shouldClamp = clampPortraitToWidth && !showsBefore && aspectRatio < 1;
+  const frameAspectRatio = shouldClamp ? 1 : aspectRatio;
+  // 収まりきらない分を切らずに中央へ置く。左右に余白ができる。
+  const afterImageFit = shouldClamp ? "object-contain" : "object-cover object-top";
 
   // 画像を押せるようにするかどうか。押せないときは余計な role を付けない。
   const clickableProps = (index: number) =>
@@ -96,7 +118,7 @@ export function BeforeAfterFrame({
         className={`relative flex-1 overflow-hidden bg-gray-100 ${
           onImageClick ? "cursor-zoom-in" : ""
         }`}
-        style={{ aspectRatio }}
+        style={{ aspectRatio: frameAspectRatio }}
         data-testid={`${testIdPrefix}-after-frame`}
         {...clickableProps(0)}
       >
@@ -106,7 +128,7 @@ export function BeforeAfterFrame({
             alt={afterAlt}
             fill
             sizes={sizes}
-            className="object-cover object-top"
+            className={afterImageFit}
             priority={priority}
           />
         ) : null}
