@@ -26,6 +26,7 @@ import {
   isLandscapeRatio,
 } from "./BeforeAfterFrame";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
+import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import type { SourcePromptReference } from "../types";
@@ -344,7 +345,15 @@ export function SourcePromptReferenceCard({
         {canGenerate ? (
           <button
             type="button"
-            onClick={() => setIsSheetOpen(true)}
+            onClick={() => {
+              /*
+                グリッドは「一覧 → 詳細 → CTA」を経由するため、詳細で押された分も
+                直前のホーム表示形式へ帰属させないと、表示形式別の比較が
+                フィード有利に偏る（ADR-006）。
+              */
+              trackPromptUseTapped(reference.postId);
+              setIsSheetOpen(true);
+            }}
             className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />

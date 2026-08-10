@@ -8,6 +8,7 @@ import { Loader2, Sparkles, UserPlus } from "lucide-react";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useToast } from "@/components/ui/use-toast";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
+import { trackFollowFromCard, trackPromptUseTapped } from "../lib/home-view-events";
 import type { PromptActionSummary } from "../types";
 
 /**
@@ -30,8 +31,6 @@ interface FollowAndUsePromptButtonProps {
   isFollowingAuthor: boolean | undefined;
   /** フォローが成立したとき、親のフォロー状態も合わせる。 */
   onFollowChange?: (userId: string, isFollowing: boolean) => void;
-  /** 押されたことを計測へ通す(Phase 4 で使う。失敗しても操作は止めない)。 */
-  onUseTapped?: () => void;
 }
 
 /**
@@ -53,7 +52,6 @@ export function FollowAndUsePromptButton({
   currentUserId,
   isFollowingAuthor,
   onFollowChange,
-  onUseTapped,
 }: FollowAndUsePromptButtonProps) {
   const t = useTranslations("posts");
   const followT = useTranslations("follow");
@@ -103,7 +101,8 @@ export function FollowAndUsePromptButton({
 
   const openSheet = async () => {
     await resolveSubscriptionPlan();
-    onUseTapped?.();
+    // 分子(ADR-006)。表示形式は home-view-events 側が直前のホームから解決する。
+    trackPromptUseTapped(summary.originPostId);
     setIsSheetOpen(true);
   };
 
@@ -134,6 +133,7 @@ export function FollowAndUsePromptButton({
       }
 
       onFollowChange?.(authorId, true);
+      trackFollowFromCard(summary.originPostId);
       await openSheet();
     } catch (error) {
       // 失敗したらシートは開かない。開くと生成APIで弾かれて二度手間になる。

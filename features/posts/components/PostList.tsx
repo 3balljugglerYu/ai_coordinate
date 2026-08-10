@@ -33,6 +33,7 @@ import {
 } from "../lib/home-view-preference";
 import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
 import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
+import { trackHomeViewed, trackViewModeChanged } from "../lib/home-view-events";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -175,6 +176,8 @@ export function PostList({
     }
     const storedMode = getHomeViewMode();
     setViewMode(storedMode);
+    // 分母(ADR-006)。セッション内で表示形式ごとに1回だけ送られる。
+    trackHomeViewed(storedMode);
     if (storedMode === HOME_VIEW_MODES.feed) {
       // 既にフィードを使っている端末には NEW を出さない
       markHomeFeedNewBadgeSeen();
@@ -215,14 +218,23 @@ export function PostList({
   );
   const promptActions = useFeedPromptActions(feedPostIds, isFeedView);
 
-  const handleViewModeChange = useCallback((nextMode: HomeViewMode) => {
-    setViewMode(nextMode);
-    setHomeViewMode(nextMode);
-    if (nextMode === HOME_VIEW_MODES.feed) {
-      markHomeFeedNewBadgeSeen();
-      setShowViewModeNewBadge(false);
-    }
-  }, []);
+  const handleViewModeChange = useCallback(
+    (nextMode: HomeViewMode) => {
+      if (nextMode === viewMode) {
+        return;
+      }
+      setViewMode(nextMode);
+      setHomeViewMode(nextMode);
+      trackViewModeChanged(viewMode, nextMode);
+      // 切替先も分母に数える(切替後に何をしたかを同じ土俵で比較するため)
+      trackHomeViewed(nextMode);
+      if (nextMode === HOME_VIEW_MODES.feed) {
+        markHomeFeedNewBadgeSeen();
+        setShowViewModeNewBadge(false);
+      }
+    },
+    [viewMode]
+  );
 
   // URLパラメータでsortが指定されている場合
   useEffect(() => {

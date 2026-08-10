@@ -287,6 +287,65 @@ flowchart LR
 判断の目安: **2 でフィードがグリッドを明確に上回り、かつ 1 が一定数に達したら、既定をフィードへ切り替える**。現在の基準値は「他人のプロンプトの利用が累計13回・2人」。
 母数が小さいうちは率が不安定なので、実数（何人が押したか）も併記して判断する。
 
+### 分析用 SQL
+
+`home_view_events` は RLS 全拒否なので、`supabase db query --linked` か Supabase の SQL Editor で実行する。
+
+**① 表示形式別の CTA 到達率（本命）** — 分母は `home_viewed`（セッション単位）、分子は `prompt_use_tapped`（詳細画面経由も直前のホーム表示形式で帰属）
+
+```sql
+SELECT
+  view_mode,
+  count(*) FILTER (WHERE event_type = 'home_viewed')                      AS viewed,
+  count(*) FILTER (WHERE event_type = 'prompt_use_tapped')                AS use_tapped,
+  count(DISTINCT viewer_key) FILTER (WHERE event_type = 'prompt_use_tapped') AS use_tapped_people,
+  round(
+    100.0 * count(*) FILTER (WHERE event_type = 'prompt_use_tapped')
+    / nullif(count(*) FILTER (WHERE event_type = 'home_viewed'), 0),
+    1
+  ) AS reach_rate_pct
+FROM public.home_view_events
+WHERE created_at >= now() - interval '30 days'
+GROUP BY view_mode
+ORDER BY view_mode;
+```
+
+**② フィードを一度でも使った人の数**
+
+```sql
+SELECT count(DISTINCT viewer_key) AS feed_users
+FROM public.home_view_events
+WHERE event_type = 'home_viewed' AND view_mode = 'feed';
+```
+
+**③ カード経由のフォロー発生数**
+
+```sql
+SELECT date_trunc('day', created_at AT TIME ZONE 'Asia/Tokyo') AS day,
+       count(*) AS follows,
+       count(DISTINCT viewer_key) AS people
+FROM public.home_view_events
+WHERE event_type = 'follow_from_card'
+GROUP BY 1 ORDER BY 1 DESC;
+```
+
+**④ 切り替えたあと維持しているか** — 最後の切替が feed のまま何日続いているか
+
+```sql
+WITH last_change AS (
+  SELECT DISTINCT ON (viewer_key)
+         viewer_key, view_mode, created_at
+  FROM public.home_view_events
+  WHERE event_type = 'view_mode_changed'
+  ORDER BY viewer_key, created_at DESC
+)
+SELECT lc.view_mode,
+       count(*) AS people,
+       round(avg(EXTRACT(EPOCH FROM (now() - lc.created_at)) / 86400)::numeric, 1) AS avg_days_since
+FROM last_change lc
+GROUP BY lc.view_mode;
+```
+
 ## ロールバック方針
 
 - 表示形式の既定はグリッドのため、フィードに問題があってもトグルを隠すだけで従来の状態に戻る

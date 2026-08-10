@@ -8,6 +8,10 @@
 import React from "react";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { FollowAndUsePromptButton } from "@/features/posts/components/FollowAndUsePromptButton";
+import {
+  trackFollowFromCard,
+  trackPromptUseTapped,
+} from "@/features/posts/lib/home-view-events";
 import type { PromptActionSummary } from "@/features/posts/types";
 
 const toastMock = jest.fn();
@@ -41,6 +45,12 @@ jest.mock("@/components/ui/use-toast", () => ({
 jest.mock("@/features/auth/components/AuthModal", () => ({
   AuthModal: ({ open }: { open: boolean }) =>
     open ? <div data-testid="auth-modal" /> : null,
+}));
+
+// 計測は best-effort の副作用。ここでは呼ばれたことだけを見る
+jest.mock("@/features/posts/lib/home-view-events", () => ({
+  trackPromptUseTapped: jest.fn(),
+  trackFollowFromCard: jest.fn(),
 }));
 
 const AUTHOR_ID = "author-1";
@@ -245,6 +255,70 @@ describe("FollowAndUsePromptButton", () => {
       "free"
     );
     errorSpy.mockRestore();
+  });
+
+  describe("計測(ADR-006)", () => {
+    test("シートを開いたら prompt_use_tapped を原作IDで記録する", async () => {
+      mockFetch({
+        "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
+      });
+      render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("feed-use-prompt-button"));
+      });
+
+      expect(trackPromptUseTapped).toHaveBeenCalledWith("origin-1");
+      expect(trackFollowFromCard).not.toHaveBeenCalled();
+    });
+
+    test("カード経由のフォロー成立も記録する", async () => {
+      mockFetch({
+        "/follow": () => jsonResponse({ ok: true }),
+        "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
+      });
+      render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={false}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("feed-use-prompt-button"));
+      });
+
+      await waitFor(() => {
+        expect(trackFollowFromCard).toHaveBeenCalledWith("origin-1");
+      });
+      expect(trackPromptUseTapped).toHaveBeenCalledWith("origin-1");
+    });
+
+    test("フォローに失敗したら何も記録しない", async () => {
+      mockFetch({ "/follow": () => jsonResponse({ error: "ng" }, 403) });
+      render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={false}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("feed-use-prompt-button"));
+      });
+
+      await waitFor(() => expect(toastMock).toHaveBeenCalled());
+      expect(trackPromptUseTapped).not.toHaveBeenCalled();
+      expect(trackFollowFromCard).not.toHaveBeenCalled();
+    });
   });
 
   test("利用数は1人以上のときだけ出す", () => {

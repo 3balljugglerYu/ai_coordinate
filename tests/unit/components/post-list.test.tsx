@@ -11,6 +11,10 @@ import {
   HOME_POST_REFRESH_EVENT,
   type PendingHomePostRefresh,
 } from "@/features/posts/lib/home-post-refresh";
+import {
+  trackHomeViewed,
+  trackViewModeChanged,
+} from "@/features/posts/lib/home-view-events";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -79,6 +83,12 @@ jest.mock("@/features/posts/components/PostFeedCard", () => ({
   PostFeedCard: ({ post }: { post: Post }) => (
     <div data-testid={`post-feed-card-${post.id}`}>{post.caption}</div>
   ),
+}));
+
+// 計測は best-effort の副作用。ここでは呼ばれたことだけを見る
+jest.mock("@/features/posts/lib/home-view-events", () => ({
+  trackHomeViewed: jest.fn(),
+  trackViewModeChanged: jest.fn(),
 }));
 
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
@@ -371,6 +381,27 @@ describe("PostList", () => {
       });
       expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
       expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+    });
+
+    test("表示形式は分母として記録され_切替は遷移元つきで記録される", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      expect(trackHomeViewed).toHaveBeenCalledWith("grid");
+
+      fireEvent.click(screen.getByLabelText("フィード表示"));
+
+      expect(trackViewModeChanged).toHaveBeenCalledWith("grid", "feed");
+      expect(trackHomeViewed).toHaveBeenCalledWith("feed");
+    });
+
+    test("同じ表示形式を押し直しても切替として記録しない", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      fireEvent.click(screen.getByLabelText("グリッド表示"));
+
+      expect(trackViewModeChanged).not.toHaveBeenCalled();
     });
 
     // 検索画面は q 付きでレンダーすると main 由来の初回ロード無限ループを踏むため、
