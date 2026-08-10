@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -148,6 +148,19 @@ export function PostFeedCard({
   }, [afterUrl, beforeUrl, post, t]);
 
   const authorId = post.user?.id ?? null;
+  /*
+    インライン関数を渡すと FollowButton の状態取得 effect が毎レンダー走り、
+    「取得 → 再レンダー → また取得」の無限ループになる（PostDetail が
+    useCallback を使っているのと同じ理由）。
+  */
+  const handleAuthorFollowChange = useCallback(
+    (isFollowing: boolean) => {
+      if (authorId) {
+        onFollowChange?.(authorId, isFollowing);
+      }
+    },
+    [authorId, onFollowChange]
+  );
   // 行動ボタンが「フォローして使う」を出す状態か。
   // このとき作者行のフォローボタンは隠す。同じ相手への導線が2つ並ぶと、
   // どちらを押せばいいのか分からなくなる(投稿詳細の hideFollowButton と同じ考え方)。
@@ -231,7 +244,9 @@ export function PostFeedCard({
               <FollowButton
                 userId={authorId}
                 currentUserId={currentUserId}
-                onFollowChange={(isFollowing) => onFollowChange?.(authorId, isFollowing)}
+                // PostList がバッチで解決済み。ボタンごとに問い合わせ直さない
+                initialIsFollowing={isFollowingAuthor}
+                onFollowChange={handleAuthorFollowChange}
               />
             </div>
           ) : null}
