@@ -31,9 +31,23 @@ import {
   shouldShowHomeFeedNewBadge,
   type HomeViewMode,
 } from "../lib/home-view-preference";
+import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
 import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
 import { trackHomeViewed, trackViewModeChanged } from "../lib/home-view-events";
+
+/** グリッドの先読み距離。複数カラムなので1行が低く、数行ぶんの余裕になる。 */
+const GRID_PREFETCH_MARGIN_PX = 500;
+
+/**
+ * フィードカードの画像以外のおおよその高さ。
+ * 作者行 + キャプション + 行動ボタン + 統計 + カード間の余白のぶん。
+ * 画像は縦長でも幅までに収まるので、カード高 ≒ カード幅 + この値。
+ */
+const FEED_CARD_CHROME_PX = 170;
+
+/** フィードで何枚ぶん手前から次を取りに行くか。 */
+const FEED_PREFETCH_CARDS = 3;
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -88,9 +102,36 @@ export function PostList({
   const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
   const hasFreshNewestPostsRef = useRef(false);
+  // 画面幅からフィードカードのおおよその高さを出すため。SSR では既定幅を使う。
+  const [viewportWidth, setViewportWidth] = useState(FEED_CARD_MAX_WIDTH_PX);
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  /*
+    無限スクロールの先読み距離。
+
+    フィードは1列でカードが縦に大きく、200px では1枚の一部にしかならない。
+    トリガーが見えた時点で既に最後のカードを読んでいる状態になり、
+    「下まで行ってから待たされる」体感になる。カード3枚ぶん手前で取りに行く。
+
+    グリッドは複数カラムで1行が低いため、500px あれば数行ぶんの余裕になる。
+  */
+  const rootMargin = useMemo(() => {
+    if (viewMode !== HOME_VIEW_MODES.feed) {
+      return `${GRID_PREFETCH_MARGIN_PX}px`;
+    }
+    const cardWidth = Math.min(viewportWidth, FEED_CARD_MAX_WIDTH_PX);
+    const cardHeight = cardWidth + FEED_CARD_CHROME_PX;
+    return `${cardHeight * FEED_PREFETCH_CARDS}px`;
+  }, [viewMode, viewportWidth]);
+
   const { ref, inView } = useInView({
     threshold: 0,
-    rootMargin: "200px",
+    rootMargin,
   });
 
   const consumePendingRefresh = useCallback(() => {
@@ -513,7 +554,8 @@ export function PostList({
       ) : (
         <>
           {viewMode === HOME_VIEW_MODES.feed ? (
-            // フィード: スマホもPCも1列。読みやすさのため最大幅を絞って中央寄せする
+            // フィード: スマホもPCも1列。読みやすさのため最大幅を絞って中央寄せする。
+            // 幅の正本は FEED_CARD_MAX_WIDTH_PX(Tailwind の任意値はリテラルが要るため直書き)
             <div className="mx-auto flex max-w-[600px] flex-col">
               {posts.map((post, index) => (
                 <div key={post.id} className="mb-4">

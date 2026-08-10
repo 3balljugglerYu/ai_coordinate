@@ -27,6 +27,7 @@ jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
 }));
 
+const useInViewOptions: { rootMargin?: string }[] = [];
 jest.mock("react-intersection-observer", () => ({
   useInView: jest.fn(),
 }));
@@ -195,9 +196,10 @@ describe("PostList", () => {
       }
       throw new Error(`Unexpected namespace: ${namespace}`);
     });
-    useInViewMock.mockReturnValue({
-      ref: jest.fn(),
-      inView: false,
+    useInViewOptions.length = 0;
+    useInViewMock.mockImplementation((options?: { rootMargin?: string }) => {
+      useInViewOptions.push(options ?? {});
+      return { ref: jest.fn(), inView: false } as ReturnType<typeof useInView>;
     });
     useToastMock.mockReturnValue({
       toast: toastMock,
@@ -402,6 +404,28 @@ describe("PostList", () => {
       fireEvent.click(screen.getByLabelText("グリッド表示"));
 
       expect(trackViewModeChanged).not.toHaveBeenCalled();
+    });
+
+    test("無限スクロールの先読み距離は表示形式で変える", async () => {
+      /*
+        フィードは1列でカードが縦に大きく、グリッドと同じ距離では
+        「下まで行ってから待たされる」体感になる。カード3枚ぶん手前で取りに行く。
+      */
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      const gridMargin = useInViewOptions[useInViewOptions.length - 1].rootMargin;
+      expect(gridMargin).toBe("500px");
+
+      fireEvent.click(screen.getByLabelText("フィード表示"));
+
+      const feedMargin = useInViewOptions[useInViewOptions.length - 1].rootMargin;
+      // jsdom の innerWidth は 1024 なのでカード幅は上限 600px
+      // (600 + 170) * 3 = 2310px
+      expect(feedMargin).toBe("2310px");
+      expect(Number.parseInt(feedMargin!, 10)).toBeGreaterThan(
+        Number.parseInt(gridMargin!, 10)
+      );
     });
 
     // 検索画面は q 付きでレンダーすると main 由来の初回ロード無限ループを踏むため、

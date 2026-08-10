@@ -27,11 +27,9 @@ import {
 import type { Post, PromptActionSummary } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
+import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { cn, formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
-
-/** フィードカードの最大幅(PostList 側と揃える)。next/image の sizes に使う。 */
-const FEED_CARD_MAX_WIDTH_PX = 600;
 
 interface PostFeedCardProps {
   post: Post;
