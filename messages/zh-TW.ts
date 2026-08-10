@@ -140,6 +140,8 @@ export const zhTwMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "放大圖片",
     feedComments: "留言",
+    feedUsePrompt: "用這個提示詞創作",
+    feedFollowAndUsePrompt: "追蹤後使用",
     readMore: "顯示更多",
     collapse: "收合",
     errorTitle: "錯誤",

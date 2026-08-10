@@ -140,6 +140,8 @@ export const deMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "Bild vergrößern",
     feedComments: "Kommentare",
+    feedUsePrompt: "Mit diesem Prompt erstellen",
+    feedFollowAndUsePrompt: "Folgen und nutzen",
     readMore: "Mehr anzeigen",
     collapse: "Weniger anzeigen",
     errorTitle: "Fehler",

@@ -140,6 +140,8 @@ export const arMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "تكبير الصورة",
     feedComments: "التعليقات",
+    feedUsePrompt: "إنشاء بهذا الأمر",
+    feedFollowAndUsePrompt: "تابع للاستخدام",
     readMore: "اقرأ المزيد",
     collapse: "إظهار أقل",
     errorTitle: "خطأ",

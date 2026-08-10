@@ -140,6 +140,8 @@ export const hiMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "छवि बड़ी करें",
     feedComments: "टिप्पणियाँ",
+    feedUsePrompt: "इस प्रॉम्प्ट से बनाएँ",
+    feedFollowAndUsePrompt: "उपयोग के लिए फ़ॉलो करें",
     readMore: "और पढ़ें",
     collapse: "कम दिखाएँ",
     errorTitle: "त्रुटि",

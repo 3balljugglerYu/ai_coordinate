@@ -32,6 +32,7 @@ import {
   type HomeViewMode,
 } from "../lib/home-view-preference";
 import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
+import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -203,6 +204,16 @@ export function PostList({
     currentUserId,
     isFeedView
   );
+  // 「このプロンプトで作る」の可否も、詳細と同じ検証経路からサーバーで導出する
+  // (一覧の payload には載らない。ADR-005)。
+  const feedPostIds = useMemo(
+    () =>
+      isFeedView
+        ? posts.map((post) => post.id).filter((id): id is string => Boolean(id))
+        : [],
+    [isFeedView, posts]
+  );
+  const promptActions = useFeedPromptActions(feedPostIds, isFeedView);
 
   const handleViewModeChange = useCallback((nextMode: HomeViewMode) => {
     setViewMode(nextMode);
@@ -493,6 +504,7 @@ export function PostList({
                       post.user?.id ? followStatuses[post.user.id] : undefined
                     }
                     onFollowChange={setFollowStatus}
+                    promptAction={post.id ? promptActions[post.id] : undefined}
                   />
                 </div>
               ))}

@@ -14,6 +14,7 @@ import { ImageFullscreen } from "./ImageFullscreen";
 import { PostCardLikeButton } from "./PostCardLikeButton";
 import { BeforeAfterFrame, FALLBACK_ASPECT_RATIO } from "./BeforeAfterFrame";
 import { FeedCaption } from "./FeedCaption";
+import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
 import { queuePostImpression } from "../lib/impressions-client";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
@@ -23,7 +24,7 @@ import {
   getPostThumbUrl,
   getPublicViewCount,
 } from "../lib/utils";
-import type { Post } from "../types";
+import type { Post, PromptActionSummary } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
 import { cn, formatCountEnUS } from "@/lib/utils";
@@ -44,6 +45,11 @@ interface PostFeedCardProps {
    */
   isFollowingAuthor?: boolean;
   onFollowChange?: (userId: string, isFollowing: boolean) => void;
+  /**
+   * 「このプロンプトで作る」を出すためのサマリ（ADR-005）。
+   * 未取得・対象外の投稿は undefined。本文は含まない。
+   */
+  promptAction?: PromptActionSummary;
 }
 
 /**
@@ -70,6 +76,7 @@ export function PostFeedCard({
   trackImpressions = false,
   isFollowingAuthor,
   onFollowChange,
+  promptAction,
 }: PostFeedCardProps) {
   const t = useTranslations("posts");
   const locale = useLocale() as Locale;
@@ -134,9 +141,22 @@ export function PostFeedCard({
   }, [afterUrl, beforeUrl, post, t]);
 
   const authorId = post.user?.id ?? null;
+  // 行動ボタンが「フォローして使う」を出す状態か。
+  // このとき作者行のフォローボタンは隠す。同じ相手への導線が2つ並ぶと、
+  // どちらを押せばいいのか分からなくなる(投稿詳細の hideFollowButton と同じ考え方)。
+  const ctaOffersFollow =
+    !!promptAction &&
+    promptAction.isAvailable &&
+    !!promptAction.originAuthorId &&
+    promptAction.originAuthorId === authorId &&
+    isFollowingAuthor === false;
   // 自分の投稿・未ログイン・フォロー済みにはフォローボタンを出さない。
   const showFollowButton =
-    !!authorId && !!currentUserId && authorId !== currentUserId && isFollowingAuthor === false;
+    !!authorId &&
+    !!currentUserId &&
+    authorId !== currentUserId &&
+    isFollowingAuthor === false &&
+    !ctaOffersFollow;
 
   if (isHidden) {
     return null;
@@ -262,6 +282,18 @@ export function PostFeedCard({
             </span>
           ) : null}
         </div>
+
+        {/* 行動ボタン。「使いたい」がそのままフォロー動機に変換される一本道にする */}
+        {promptAction ? (
+          <div className="px-3 pt-3">
+            <FollowAndUsePromptButton
+              summary={promptAction}
+              currentUserId={currentUserId ?? null}
+              isFollowingAuthor={isFollowingAuthor}
+              onFollowChange={onFollowChange}
+            />
+          </div>
+        ) : null}
 
         {/* 統計。カード地(ここより下の余白)を押すと詳細へ移動する */}
         <div className="flex items-center gap-4 px-3 py-2">

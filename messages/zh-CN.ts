@@ -140,6 +140,8 @@ export const zhCnMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "放大图片",
     feedComments: "评论",
+    feedUsePrompt: "用这个提示词创作",
+    feedFollowAndUsePrompt: "关注后使用",
     readMore: "查看更多",
     collapse: "收起",
     errorTitle: "错误",

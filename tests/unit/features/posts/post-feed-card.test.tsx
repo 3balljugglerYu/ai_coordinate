@@ -60,6 +60,14 @@ jest.mock("@/features/users/components/FollowButton", () => ({
   ),
 }));
 
+jest.mock("@/features/posts/components/FollowAndUsePromptButton", () => ({
+  FollowAndUsePromptButton: ({
+    summary,
+  }: {
+    summary: { originPostId: string };
+  }) => <div data-testid="cta" data-origin={summary.originPostId} />,
+}));
+
 jest.mock("@/lib/env", () => ({
   isPostImpressionsEnabled: () => false,
 }));
@@ -227,6 +235,75 @@ describe("PostFeedCard", () => {
         <PostFeedCard post={createPost()} currentUserId={null} isFollowingAuthor={false} />
       );
       expect(screen.queryByTestId("follow-button-author-1")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("このプロンプトで作る", () => {
+    const summary = {
+      originPostId: "origin-1",
+      isAvailable: true,
+      originAuthorId: "author-1",
+      originAuthorNickname: "みきふく",
+      usageCount: 3,
+      promptVisibility: "private" as const,
+    };
+
+    test("サマリがある投稿にだけ CTA を出す", () => {
+      const { rerender } = render(
+        <PostFeedCard post={createPost()} currentUserId="viewer-1" isFollowingAuthor />
+      );
+      expect(screen.queryByTestId("cta")).not.toBeInTheDocument();
+
+      rerender(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingAuthor
+          promptAction={summary}
+        />
+      );
+      expect(screen.getByTestId("cta")).toHaveAttribute("data-origin", "origin-1");
+    });
+
+    test("CTA が「フォローして使う」を出す状態なら作者行のフォローボタンは隠す", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={false}
+          promptAction={summary}
+        />
+      );
+
+      expect(screen.getByTestId("cta")).toBeInTheDocument();
+      // 同じ相手への導線が2つ並ばないこと
+      expect(screen.queryByTestId("follow-button-author-1")).not.toBeInTheDocument();
+    });
+
+    test("原作者が投稿者と別人(派生投稿)なら作者行のフォローボタンは残す", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={false}
+          promptAction={{ ...summary, originAuthorId: "other-author" }}
+        />
+      );
+
+      expect(screen.getByTestId("follow-button-author-1")).toBeInTheDocument();
+    });
+
+    test("原作が使えないならフォローボタンは通常どおり出す", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={false}
+          promptAction={{ ...summary, isAvailable: false }}
+        />
+      );
+
+      expect(screen.getByTestId("follow-button-author-1")).toBeInTheDocument();
     });
   });
 

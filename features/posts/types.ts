@@ -74,6 +74,31 @@ export interface SourcePromptReference {
   usageCount: number;
 }
 
+/**
+ * 一覧(フィード)のカード上に「このプロンプトで作る」を出すための最小情報（ADR-005）。
+ *
+ * `SourcePromptReference` から**プロンプト本文につながる値を落とした**もの。
+ * サムネイルも持たない。フィードのカードは投稿自身の Before/After を出すので、
+ * 原作のサムネイルは使い道が無い(payload を無駄に太らせない)。
+ *
+ * 判定は詳細画面と同じ `resolveSourcePromptReference` から導出する。一覧側で
+ * 秘匿条件を再実装すると、詳細と食い違って「詳細では出ない導線が一覧に出る」
+ * 事故が起きる。正本は1つに保つ。
+ */
+export interface PromptActionSummary {
+  /** CTA の対象。一覧の投稿自身ではなく**原作**の投稿 ID。 */
+  originPostId: string;
+  /** 原作が内在的に使えるか。false なら CTA を出さない。 */
+  isAvailable: boolean;
+  /** フォロー判定の対象になる原作者。 */
+  originAuthorId: string | null;
+  originAuthorNickname: string | null;
+  /** このプロンプトを使った人数（原作者自身は除外）。 */
+  usageCount: number;
+  /** 生成シートに渡す公開設定。本文そのものは含まない。 */
+  promptVisibility: "public" | "private";
+}
+
 export interface PostImageResponse {
   id: string;
   is_posted: boolean;

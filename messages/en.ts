@@ -140,6 +140,8 @@ export const enMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "Expand image",
     feedComments: "Comments",
+    feedUsePrompt: "Create with this prompt",
+    feedFollowAndUsePrompt: "Follow to use",
     readMore: "Read more",
     collapse: "Show less",
     errorTitle: "Error",

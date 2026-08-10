@@ -140,6 +140,8 @@ export const viMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "Phóng to ảnh",
     feedComments: "Bình luận",
+    feedUsePrompt: "Tạo bằng prompt này",
+    feedFollowAndUsePrompt: "Theo dõi để dùng",
     readMore: "Xem thêm",
     collapse: "Thu gọn",
     errorTitle: "Lỗi",

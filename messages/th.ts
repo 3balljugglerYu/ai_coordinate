@@ -140,6 +140,8 @@ export const thMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "ขยายภาพ",
     feedComments: "ความคิดเห็น",
+    feedUsePrompt: "สร้างด้วยพรอมต์นี้",
+    feedFollowAndUsePrompt: "ติดตามเพื่อใช้งาน",
     readMore: "อ่านต่อ",
     collapse: "ย่อ",
     errorTitle: "ข้อผิดพลาด",

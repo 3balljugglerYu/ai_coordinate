@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SourcePromptReference } from "../types";
+import type { PromptActionSummary, SourcePromptReference } from "../types";
 import { getPostBeforeImageUrl, getPostThumbUrl } from "./utils";
 
 /**
@@ -152,6 +152,88 @@ export async function resolveSourcePromptReference(
     thumbnailHeight: thumbnail.height,
     beforeThumbnailUrl: thumbnail.beforeUrl,
     promptVisibility: thumbnail.promptVisibility,
+  };
+}
+
+/**
+ * 一覧（フィード）用に、複数投稿ぶんの CTA サマリをまとめて解決する（ADR-005）。
+ *
+ * 詳細画面と同じ `resolveSourcePromptReference` を通してから本文につながる値を
+ * 落とす。一覧側で秘匿条件を再実装しないのは、詳細と判定がずれて
+ * 「詳細では出ない導線が一覧に出る」事故を防ぐためである。
+ *
+ * 同じ原作を指す派生投稿が並ぶことがあるので、原作単位で重複を除いてから解決する。
+ *
+ * @param records 一覧の投稿（`id` を必須にする。戻り値のキーになるため）
+ * @param supabase service role のクライアント（詳細と同じ経路）
+ * @returns 投稿 ID → サマリ。CTA を出さない投稿は含めない
+ */
+export async function resolveSourcePromptSummaries(
+  records: (OriginResolvableRecord & { id: string })[],
+  supabase: SupabaseClient
+): Promise<Record<string, PromptActionSummary>> {
+  // 原作単位に畳む。キーは原作 ID と原作者 ID の組（原作者はレコード由来のため）。
+  const byOrigin = new Map<
+    string,
+    { record: OriginResolvableRecord; postIds: string[] }
+  >();
+
+  for (const record of records) {
+    const originPostId = resolveOriginPostId(record);
+    if (!originPostId) {
+      continue;
+    }
+    const originAuthorId = record.source_author_id ?? record.user_id ?? "";
+    const key = `${originPostId}::${originAuthorId}`;
+    const existing = byOrigin.get(key);
+    if (existing) {
+      existing.postIds.push(record.id);
+      continue;
+    }
+    byOrigin.set(key, { record, postIds: [record.id] });
+  }
+
+  if (byOrigin.size === 0) {
+    return {};
+  }
+
+  const resolved = await Promise.all(
+    Array.from(byOrigin.values()).map(async ({ record, postIds }) => ({
+      postIds,
+      reference: await resolveSourcePromptReference(record, supabase),
+    }))
+  );
+
+  const summaries: Record<string, PromptActionSummary> = {};
+  for (const { postIds, reference } of resolved) {
+    if (!reference) {
+      continue;
+    }
+    const summary = toPromptActionSummary(reference);
+    for (const postId of postIds) {
+      summaries[postId] = summary;
+    }
+  }
+  return summaries;
+}
+
+/**
+ * 参照カード用の値から、一覧に載せてよい項目だけを取り出す。
+ *
+ * サムネイルとアバターは落とす。フィードのカードは投稿自身の Before/After を
+ * 出すため使い道が無く、payload を太らせるだけである。
+ * 本文はそもそも `SourcePromptReference` に含まれない（PROMPT-SECRECY-001）。
+ */
+export function toPromptActionSummary(
+  reference: SourcePromptReference
+): PromptActionSummary {
+  return {
+    originPostId: reference.postId,
+    isAvailable: reference.isAvailable,
+    originAuthorId: reference.authorId,
+    originAuthorNickname: reference.authorNickname,
+    usageCount: reference.usageCount,
+    promptVisibility: reference.promptVisibility,
   };
 }
 

@@ -140,6 +140,8 @@ export const esMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "Ampliar imagen",
     feedComments: "Comentarios",
+    feedUsePrompt: "Crear con este prompt",
+    feedFollowAndUsePrompt: "Seguir para usar",
     readMore: "Leer más",
     collapse: "Mostrar menos",
     errorTitle: "Error",

@@ -140,6 +140,8 @@ export const ptMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "Ampliar imagem",
     feedComments: "Comentários",
+    feedUsePrompt: "Criar com este prompt",
+    feedFollowAndUsePrompt: "Seguir para usar",
     readMore: "Ler mais",
     collapse: "Mostrar menos",
     errorTitle: "Erro",

@@ -140,6 +140,8 @@ export const koMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "이미지 확대",
     feedComments: "댓글",
+    feedUsePrompt: "이 프롬프트로 만들기",
+    feedFollowAndUsePrompt: "팔로우하고 사용하기",
     readMore: "더 보기",
     collapse: "접기",
     errorTitle: "오류",

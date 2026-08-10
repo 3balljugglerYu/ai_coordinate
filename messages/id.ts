@@ -140,6 +140,8 @@ export const idMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "Perbesar gambar",
     feedComments: "Komentar",
+    feedUsePrompt: "Buat dengan prompt ini",
+    feedFollowAndUsePrompt: "Ikuti untuk memakai",
     readMore: "Selengkapnya",
     collapse: "Tutup",
     errorTitle: "Kesalahan",

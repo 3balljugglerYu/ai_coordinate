@@ -137,6 +137,8 @@ export const jaMessages = {
     viewModeNewBadge: "NEW",
     feedExpandImage: "画像を拡大表示",
     feedComments: "コメント",
+    feedUsePrompt: "このプロンプトで作る",
+    feedFollowAndUsePrompt: "フォローして使う",
     readMore: "もっと見る",
     collapse: "折りたたむ",
     errorTitle: "エラー",
