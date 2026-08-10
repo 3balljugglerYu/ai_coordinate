@@ -27,6 +27,8 @@ const STEP1_MAIN = "/creator-rewards/step1.webp";
 const STEP1_SUB = "/creator-rewards/step1-sub.webp";
 const STEP2_MAIN = "/creator-rewards/step2.webp";
 const STEP2_SUB = "/creator-rewards/step2-sub.webp";
+const STEP3_MAIN = "/creator-rewards/step3.webp";
+const STEP3_SUB = "/creator-rewards/step3-sub.webp";
 
 /**
  * ヒーローの見出し。accent の部分だけ色を変える。
@@ -411,7 +413,7 @@ export function CreatorRewardsGuide({
               no: "2",
               emoji: "📮",
               title: "投稿しよう！",
-              body: "気に入った作品ができたら、ホームに投稿しましょう。あなたのフォロワーが、同じプロンプトで生成できるようになります。プロンプトを隠した状態で生成できるモードもあります。",
+              body: "気に入った作品ができたら、ホームに投稿しましょう。あなたのフォロワーが、同じプロンプトで生成できるようになります。",
               label: "イラスト③（投稿する：作品をみんなに見せる／chibi）",
               color: "from-rose-400 to-orange-400",
               src: STEP2_MAIN,
@@ -430,6 +432,14 @@ export function CreatorRewardsGuide({
               body: "あなたの投稿を見た人が「このプロンプトで作る」をタップ。プロンプトの中身は見せずに、うちの子づくりを楽しんでもらえます。",
               label: "イラスト④（使われる：みんなに広がる／chibi）",
               color: "from-orange-400 to-amber-400",
+              src: STEP3_MAIN,
+              sub: {
+                src: STEP3_SUB,
+                width: 382,
+                height: 979,
+                alt: "投稿の詳細画面。「このプロンプトで作る」ボタンから、同じプロンプトで生成できる",
+                caption: "実際の投稿画面",
+              },
             },
             {
               no: "4",
