@@ -15,6 +15,7 @@ import { PostCardLikeButton } from "./PostCardLikeButton";
 import { BeforeAfterFrame, FALLBACK_ASPECT_RATIO } from "./BeforeAfterFrame";
 import { FeedCaption } from "./FeedCaption";
 import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
+import { FeedSourceQuote } from "./FeedSourceQuote";
 import { queuePostImpression } from "../lib/impressions-client";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
@@ -24,10 +25,11 @@ import {
   getPostThumbUrl,
   getPublicViewCount,
 } from "../lib/utils";
-import type { Post, PromptActionSummary } from "../types";
+import type { Post, PromptActionSummary, StylePresetLink } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
 import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { cn, formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
 
@@ -54,6 +56,11 @@ interface PostFeedCardProps {
    * 未取得・対象外の投稿は undefined。本文は含まない。
    */
   promptAction?: PromptActionSummary;
+  /**
+   * One-Tap Style 投稿の引用元プリセットへのリンク。
+   * 表題とサムネイルは投稿の generation_metadata から読むので、ここは slug だけ。
+   */
+  stylePresetLink?: StylePresetLink;
 }
 
 /**
@@ -82,6 +89,7 @@ export function PostFeedCard({
   isFollowingPromptAuthor,
   onFollowChange,
   promptAction,
+  stylePresetLink,
 }: PostFeedCardProps) {
   const t = useTranslations("posts");
   const locale = useLocale() as Locale;
@@ -114,6 +122,9 @@ export function PostFeedCard({
   const beforeUrl = getPostBeforeImageUrl(post);
   const detailHref = getPostCardHref(post, locale);
   const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type);
+  // One-Tap Style のプリセットは投稿の generation_metadata に入っているため
+  // サーバーへ問い合わせずに読める（リンクに要る slug だけ別途もらう）。
+  const oneTapPreset = getOneTapStylePresetMetadata(post);
 
   const displayName =
     post.user?.nickname ||
@@ -304,14 +315,40 @@ export function PostFeedCard({
           ) : null}
         </div>
 
-        {/* 行動ボタン。「使いたい」がそのままフォロー動機に変換される一本道にする */}
-        {promptAction ? (
+        {/*
+          引用元ブロック（X の引用リポスト相当）。
+          「誰の何を使ったか」→「自分も作る」が一続きに読めるよう、行動ボタンは
+          この中に入れる。同じ場所にブロックが2つ並ぶのを避ける意味もある。
+        */}
+        {promptAction?.isAvailable ? (
           <div className="px-3 pt-3">
-            <FollowAndUsePromptButton
-              summary={promptAction}
-              currentUserId={currentUserId ?? null}
-              isFollowingAuthor={isFollowingPromptAuthor}
-              onFollowChange={onFollowChange}
+            <FeedSourceQuote
+              thumbnailUrl={promptAction.originThumbnailUrl}
+              title={promptAction.originAuthorNickname || t("anonymousUser")}
+              avatarUrl={promptAction.originAuthorAvatarUrl}
+              description={promptAction.originCaption}
+              href={`/posts/${encodeURIComponent(promptAction.originPostId)}`}
+              usageCount={promptAction.usageCount}
+              action={
+                <FollowAndUsePromptButton
+                  summary={promptAction}
+                  currentUserId={currentUserId ?? null}
+                  isFollowingAuthor={isFollowingPromptAuthor}
+                  onFollowChange={onFollowChange}
+                />
+              }
+            />
+          </div>
+        ) : oneTapPreset ? (
+          <div className="px-3 pt-3">
+            <FeedSourceQuote
+              thumbnailUrl={oneTapPreset.thumbnailImageUrl}
+              title={oneTapPreset.title}
+              href={
+                stylePresetLink?.slug
+                  ? `/styles/${encodeURIComponent(stylePresetLink.slug)}`
+                  : null
+              }
             />
           </div>
         ) : null}

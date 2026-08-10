@@ -81,7 +81,9 @@ function createSupabaseStub(
             remaining -= 1;
             return remaining === 0
               ? Promise.resolve({
-                  data: ids.filter((id) => allowed.includes(id)).map((id) => ({ id })),
+                  data: ids
+                    .filter((id) => allowed.includes(id))
+                    .map((id) => ({ id, caption: "原作のキャプション" })),
                   error: null,
                 })
               : builder;
@@ -136,21 +138,24 @@ describe("toPromptActionSummary", () => {
   };
 
   it("CTA に要る項目だけを残す", () => {
-    expect(toPromptActionSummary(reference)).toEqual({
+    expect(toPromptActionSummary(reference, "原作のキャプション")).toEqual({
       originPostId: ORIGIN_A,
       isAvailable: true,
       originAuthorId: AUTHOR_ID,
       originAuthorNickname: "原作者さん",
+      originAuthorAvatarUrl: "https://cdn/a.png",
+      originThumbnailUrl: "https://cdn/thumb.webp",
+      originCaption: "原作のキャプション",
       usageCount: 7,
       promptVisibility: "public",
     });
   });
 
-  it("サムネイル・アバターは載せない(フィードは投稿自身の画像を出すため)", () => {
+  it("Before サムネイルと実寸は載せない(引用カードでは使わない)", () => {
     const summary = toPromptActionSummary(reference) as Record<string, unknown>;
-    expect(summary.thumbnailUrl).toBeUndefined();
     expect(summary.beforeThumbnailUrl).toBeUndefined();
-    expect(summary.authorAvatarUrl).toBeUndefined();
+    expect(summary.thumbnailWidth).toBeUndefined();
+    expect(summary.thumbnailHeight).toBeUndefined();
   });
 });
 
@@ -182,11 +187,12 @@ describe("resolveSourcePromptSummaries", () => {
       supabase
     );
 
-    expect(summaries[ORIGIN_A]).toEqual({
+    expect(summaries[ORIGIN_A]).toMatchObject({
       originPostId: ORIGIN_A,
       isAvailable: true,
       originAuthorId: AUTHOR_ID,
       originAuthorNickname: "原作者さん",
+      originAuthorAvatarUrl: "https://cdn/a.png",
       usageCount: 5,
       promptVisibility: "public",
     });
@@ -277,9 +283,12 @@ describe("resolveSourcePromptSummaries", () => {
     expect(serialized).not.toContain("hidden_prompt");
     expect(Object.keys(summaries[ORIGIN_A]).sort()).toEqual([
       "isAvailable",
+      "originAuthorAvatarUrl",
       "originAuthorId",
       "originAuthorNickname",
+      "originCaption",
       "originPostId",
+      "originThumbnailUrl",
       "promptVisibility",
       "usageCount",
     ]);
@@ -316,6 +325,9 @@ describe("resolveSourcePromptSummaries", () => {
       // 取り消した投稿の系譜メタデータは公開 API に載せない
       originAuthorId: null,
       originAuthorNickname: null,
+      originAuthorAvatarUrl: null,
+      originThumbnailUrl: null,
+      originCaption: null,
       usageCount: 0,
       promptVisibility: "private",
     });

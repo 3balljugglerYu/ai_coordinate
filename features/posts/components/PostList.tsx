@@ -237,7 +237,10 @@ export function PostList({
         : [],
     [isFeedView, posts]
   );
-  const promptActions = useFeedPromptActions(feedPostIds, isFeedView);
+  const { summaries: promptActions, styleLinks } = useFeedPromptActions(
+    feedPostIds,
+    isFeedView
+  );
 
   /*
     フォロー状態はフィード表示のときだけ解決する(グリッドのカードには出ないので
@@ -577,6 +580,7 @@ export function PostList({
                     })()}
                     onFollowChange={setFollowStatus}
                     promptAction={post.id ? promptActions[post.id] : undefined}
+                    stylePresetLink={post.id ? styleLinks[post.id] : undefined}
                   />
                 </div>
               ))}

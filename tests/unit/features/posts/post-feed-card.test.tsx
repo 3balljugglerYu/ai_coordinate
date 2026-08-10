@@ -60,6 +60,28 @@ jest.mock("@/features/users/components/FollowButton", () => ({
   ),
 }));
 
+const quoteSpy = jest.fn();
+jest.mock("@/features/posts/components/FeedSourceQuote", () => ({
+  FeedSourceQuote: (props: {
+    title: string;
+    href?: string | null;
+    thumbnailUrl: string | null;
+    action?: React.ReactNode;
+  }) => {
+    quoteSpy(props);
+    return (
+      <div data-testid="feed-source-quote" data-title={props.title} data-href={props.href ?? ""}>
+        {props.action}
+      </div>
+    );
+  },
+}));
+
+/** 引用カードに渡された props。 */
+function quoteProps(): { title: string; href?: string | null; thumbnailUrl: string | null } {
+  return quoteSpy.mock.calls[quoteSpy.mock.calls.length - 1][0];
+}
+
 const ctaSpy = jest.fn();
 jest.mock("@/features/posts/components/FollowAndUsePromptButton", () => ({
   FollowAndUsePromptButton: (props: {
@@ -288,6 +310,9 @@ describe("PostFeedCard", () => {
       isAvailable: true,
       originAuthorId: "author-1",
       originAuthorNickname: "みきふく",
+      originAuthorAvatarUrl: null,
+      originThumbnailUrl: "https://example.test/origin.png",
+      originCaption: "赤白ボーダーのマリンコーデ",
       usageCount: 3,
       promptVisibility: "private" as const,
     };
@@ -385,6 +410,113 @@ describe("PostFeedCard", () => {
       );
 
       expect(screen.getByTestId("follow-button-author-1")).toBeInTheDocument();
+    });
+  });
+
+  describe("引用元ブロック", () => {
+    const summary = {
+      originPostId: "origin-1",
+      isAvailable: true,
+      originAuthorId: "author-1",
+      originAuthorNickname: "みきふく",
+      originAuthorAvatarUrl: null,
+      originThumbnailUrl: "https://example.test/origin.png",
+      originCaption: "赤白ボーダーのマリンコーデ",
+      usageCount: 12,
+      promptVisibility: "private" as const,
+    };
+
+    test("派生・free 投稿は原作者と原作へのリンクを引用元に出す", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingPromptAuthor
+          promptAction={summary}
+        />
+      );
+
+      expect(quoteProps().title).toBe("みきふく");
+      expect(quoteProps().href).toBe("/posts/origin-1");
+      expect(quoteProps().thumbnailUrl).toBe("https://example.test/origin.png");
+      // 行動ボタンは引用カードの中に入る(同じ場所にブロックを2つ並べない)
+      expect(
+        screen.getByTestId("feed-source-quote").querySelector('[data-testid="cta"]')
+      ).not.toBeNull();
+    });
+
+    test("原作が使えないときは引用元ごと出さない", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          promptAction={{ ...summary, isAvailable: false }}
+        />
+      );
+      expect(screen.queryByTestId("feed-source-quote")).not.toBeInTheDocument();
+    });
+
+    test("One-Tap 投稿はプリセットを引用元に出す", () => {
+      render(
+        <PostFeedCard
+          post={createPost({
+            generation_type: "one_tap_style",
+            generation_metadata: {
+              oneTapStyle: {
+                id: "preset-1",
+                title: "夏のマリンコーデ",
+                thumbnailImageUrl: "https://example.test/preset.png",
+                thumbnailWidth: 300,
+                thumbnailHeight: 400,
+                hasBackgroundPrompt: false,
+                billingMode: "free",
+                outputAspectRatioMode: "portrait",
+              },
+            },
+          })}
+          currentUserId="viewer-1"
+          stylePresetLink={{ presetId: "preset-1", slug: "summer-marine" }}
+        />
+      );
+
+      expect(quoteProps().title).toBe("夏のマリンコーデ");
+      expect(quoteProps().href).toBe("/styles/summer-marine");
+    });
+
+    test("slug が無い One-Tap プリセットはリンクにしない", () => {
+      render(
+        <PostFeedCard
+          post={createPost({
+            generation_type: "one_tap_style",
+            generation_metadata: {
+              oneTapStyle: {
+                id: "preset-1",
+                title: "非公開スタイル",
+                thumbnailImageUrl: "https://example.test/preset.png",
+                thumbnailWidth: 300,
+                thumbnailHeight: 400,
+                hasBackgroundPrompt: false,
+                billingMode: "free",
+                outputAspectRatioMode: "portrait",
+              },
+            },
+          })}
+          currentUserId="viewer-1"
+          stylePresetLink={{ presetId: "preset-1", slug: null }}
+        />
+      );
+
+      expect(quoteProps().href).toBeNull();
+    });
+
+    test("引用元が無い投稿(コーディネート等)には出さない", () => {
+      render(
+        <PostFeedCard
+          post={createPost({ generation_type: "coordinate" })}
+          currentUserId="viewer-1"
+        />
+      );
+      expect(screen.queryByTestId("feed-source-quote")).not.toBeInTheDocument();
     });
   });
 

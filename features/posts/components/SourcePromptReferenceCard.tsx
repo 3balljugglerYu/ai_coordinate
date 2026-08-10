@@ -25,6 +25,7 @@ import {
   FALLBACK_ASPECT_RATIO,
   isLandscapeRatio,
 } from "./BeforeAfterFrame";
+import { shouldShowUsageCount } from "../lib/constants";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
@@ -313,7 +314,7 @@ export function SourcePromptReferenceCard({
               </div>
             ) : null}
 
-            {reference.usageCount > 0 ? (
+            {shouldShowUsageCount(reference.usageCount) ? (
               <p className="text-[11px] leading-tight text-muted-foreground">
                 {t("sourcePromptUsageCount", { count: reference.usageCount })}
               </p>

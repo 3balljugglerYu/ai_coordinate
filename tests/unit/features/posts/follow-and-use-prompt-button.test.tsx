@@ -61,6 +61,9 @@ function buildSummary(overrides: Partial<PromptActionSummary> = {}): PromptActio
     isAvailable: true,
     originAuthorId: AUTHOR_ID,
     originAuthorNickname: "みきふく",
+    originAuthorAvatarUrl: null,
+    originThumbnailUrl: null,
+    originCaption: null,
     usageCount: 0,
     promptVisibility: "private",
     ...overrides,
@@ -321,23 +324,14 @@ describe("FollowAndUsePromptButton", () => {
     });
   });
 
-  test("利用数は1人以上のときだけ出す", () => {
-    const { rerender } = render(
+  test("利用回数はボタンに出さない(引用カード側に集約している)", () => {
+    render(
       <FollowAndUsePromptButton
-        summary={buildSummary({ usageCount: 0 })}
+        summary={buildSummary({ usageCount: 42 })}
         currentUserId="viewer-1"
         isFollowingAuthor
       />
     );
     expect(screen.queryByText("posts.sourcePromptUsageCount")).not.toBeInTheDocument();
-
-    rerender(
-      <FollowAndUsePromptButton
-        summary={buildSummary({ usageCount: 12 })}
-        currentUserId="viewer-1"
-        isFollowingAuthor
-      />
-    );
-    expect(screen.getByText("posts.sourcePromptUsageCount")).toBeInTheDocument();
   });
 });

@@ -51,6 +51,7 @@ type OriginRow = {
   height: number | null;
   pre_generation_storage_path: string | null;
   show_before_image: boolean | null;
+  caption: string | null;
 };
 
 /**
@@ -204,7 +205,7 @@ export async function resolveSourcePromptSummaries(
         reference: await resolveSourcePromptReference(record, supabase),
       }))
     ),
-    fetchPubliclyUsableOriginIds(
+    fetchPubliclyUsableOrigins(
       supabase,
       Array.from(byOrigin.values())
         .map(({ record }) => resolveOriginPostId(record))
@@ -217,8 +218,9 @@ export async function resolveSourcePromptSummaries(
     if (!reference) {
       continue;
     }
-    const summary = publiclyUsableOrigins.has(reference.postId)
-      ? toPromptActionSummary(reference)
+    const origin = publiclyUsableOrigins.get(reference.postId);
+    const summary = origin
+      ? toPromptActionSummary(reference, origin.caption)
       : unavailableSummary(reference.postId);
     for (const postId of postIds) {
       summaries[postId] = summary;
@@ -241,30 +243,37 @@ export async function resolveSourcePromptSummaries(
  * 閲覧者を requester として再検証して弾くため、「押せたのに作れない」になる。
  * ここで root の公開状態を明示的に確認して打ち消す。
  *
- * 読めなければ空集合（fail closed）。
+ * 引用カードに出す原作のキャプションもここで一緒に取る（同じ行を読むため）。
+ *
+ * 読めなければ空（fail closed）。
  */
-async function fetchPubliclyUsableOriginIds(
+async function fetchPubliclyUsableOrigins(
   supabase: SupabaseClient,
   originPostIds: string[]
-): Promise<Set<string>> {
+): Promise<Map<string, { caption: string | null }>> {
   const uniqueIds = Array.from(new Set(originPostIds));
   if (uniqueIds.length === 0) {
-    return new Set();
+    return new Map();
   }
 
   const { data, error } = await supabase
     .from("generated_images")
-    .select("id")
+    .select("id, caption")
     .in("id", uniqueIds)
     .eq("is_posted", true)
     .eq("moderation_status", "visible");
 
   if (error) {
     console.error("Failed to check origin public availability", { code: error.code });
-    return new Set();
+    return new Map();
   }
 
-  return new Set((data ?? []).map((row) => (row as { id: string }).id));
+  return new Map(
+    (data ?? []).map((row) => {
+      const typed = row as { id: string; caption: string | null };
+      return [typed.id, { caption: typed.caption }];
+    })
+  );
 }
 
 /**
@@ -279,6 +288,9 @@ function unavailableSummary(originPostId: string): PromptActionSummary {
     isAvailable: false,
     originAuthorId: null,
     originAuthorNickname: null,
+    originAuthorAvatarUrl: null,
+    originThumbnailUrl: null,
+    originCaption: null,
     usageCount: 0,
     promptVisibility: "private",
   };
@@ -287,18 +299,22 @@ function unavailableSummary(originPostId: string): PromptActionSummary {
 /**
  * 参照カード用の値から、一覧に載せてよい項目だけを取り出す。
  *
- * サムネイルとアバターは落とす。フィードのカードは投稿自身の Before/After を
- * 出すため使い道が無く、payload を太らせるだけである。
- * 本文はそもそも `SourcePromptReference` に含まれない（PROMPT-SECRECY-001）。
+ * 載せるのは原作の**公開情報**（作者・サムネイル・キャプション・利用回数）だけ。
+ * プロンプト本文はそもそも `SourcePromptReference` に含まれない
+ * （PROMPT-SECRECY-001）。Before サムネイルは引用カードでは使わないので落とす。
  */
 export function toPromptActionSummary(
-  reference: SourcePromptReference
+  reference: SourcePromptReference,
+  originCaption: string | null = null
 ): PromptActionSummary {
   return {
     originPostId: reference.postId,
     isAvailable: reference.isAvailable,
     originAuthorId: reference.authorId,
     originAuthorNickname: reference.authorNickname,
+    originAuthorAvatarUrl: reference.authorAvatarUrl,
+    originThumbnailUrl: reference.thumbnailUrl,
+    originCaption,
     usageCount: reference.usageCount,
     promptVisibility: reference.promptVisibility,
   };
@@ -397,11 +413,12 @@ async function fetchOriginThumbnail(
   height: number | null;
   beforeUrl: string | null;
   promptVisibility: "public" | "private";
+  caption: string | null;
 }> {
   const { data, error } = await supabase
     .from("generated_images")
     .select(
-      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image"
+      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image, caption"
     )
     .eq("id", originPostId)
     .maybeSingle();
@@ -414,6 +431,7 @@ async function fetchOriginThumbnail(
       height: null,
       beforeUrl: null,
       promptVisibility: "private",
+      caption: null,
     };
   }
 
@@ -431,5 +449,6 @@ async function fetchOriginThumbnail(
     beforeUrl,
     // 想定外の値は非公開として扱う（fail closed）
     promptVisibility: row.prompt_visibility === "public" ? "public" : "private",
+    caption: row.caption,
   };
 }

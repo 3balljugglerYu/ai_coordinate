@@ -152,6 +152,7 @@ export function FollowAndUsePromptButton({
 
   return (
     <>
+      {/* 利用回数は引用カード側に出す(同じ数字を2箇所に置かない) */}
       <div className="flex items-center gap-2">
         <button
           type="button"
@@ -170,12 +171,6 @@ export function FollowAndUsePromptButton({
           {/* 15言語で文言の長さが揃わないため、折り返しを許して切らない */}
           <span className="min-w-0 text-left">{label}</span>
         </button>
-
-        {summary.usageCount > 0 ? (
-          <span className="shrink-0 text-xs text-muted-foreground">
-            {t("sourcePromptUsageCount", { count: summary.usageCount })}
-          </span>
-        ) : null}
       </div>
 
       <AuthModal

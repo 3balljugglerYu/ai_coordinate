@@ -40,18 +40,26 @@ function buildRequest(body: unknown): NextRequest {
 }
 
 /** generated_images への select を記録するスタブ。 */
-function mockQuery(rows: unknown[], error: { message: string } | null = null) {
-  const calls: { columns?: string; ids?: string[]; filters: [string, unknown][] } = {
-    filters: [],
-  };
-  const builder = {
+function mockQuery(
+  rows: unknown[],
+  error: { message: string } | null = null,
+  presetRows: unknown[] = []
+) {
+  const calls: {
+    columns?: string;
+    ids?: string[];
+    filters: [string, unknown][];
+    presetIds?: string[];
+  } = { filters: [] };
+
+  const imagesBuilder = {
     select: jest.fn((columns: string) => {
       calls.columns = columns;
-      return builder;
+      return imagesBuilder;
     }),
     in: jest.fn((_column: string, ids: string[]) => {
       calls.ids = ids;
-      return builder;
+      return imagesBuilder;
     }),
     eq: jest.fn((column: string, value: unknown) => {
       calls.filters.push([column, value]);
@@ -59,11 +67,23 @@ function mockQuery(rows: unknown[], error: { message: string } | null = null) {
       // 可視性フィルタが2つ揃った時点で結果を返す
       return calls.filters.length >= 2
         ? Promise.resolve({ data: rows, error })
-        : builder;
+        : imagesBuilder;
     }),
   };
+
+  const presetsBuilder = {
+    select: jest.fn(() => presetsBuilder),
+    in: jest.fn((_column: string, ids: string[]) => {
+      calls.presetIds = ids;
+      return presetsBuilder;
+    }),
+    eq: jest.fn(() => Promise.resolve({ data: presetRows, error: null })),
+  };
+
   mockCreateAdminClient.mockReturnValue({
-    from: jest.fn(() => builder),
+    from: jest.fn((table: string) =>
+      table === "style_presets" ? presetsBuilder : imagesBuilder
+    ),
   } as unknown as ReturnType<typeof createAdminClient>);
   return calls;
 }
@@ -101,8 +121,97 @@ describe("POST /api/posts/prompt-actions", () => {
 
     expect(calls.columns).not.toContain("prompt");
     expect(calls.columns).toBe(
-      "id, user_id, generation_type, source_post_id, source_author_id"
+      "id, user_id, generation_type, source_post_id, source_author_id, generation_metadata"
     );
+  });
+
+  describe("One-Tap Style の引用元リンク", () => {
+    const oneTapRow = {
+      id: POST_A,
+      user_id: AUTHOR_ID,
+      generation_type: "one_tap_style",
+      source_post_id: null,
+      source_author_id: null,
+      generation_metadata: {
+        oneTapStyle: {
+          id: "preset-1",
+          title: "夏のマリンコーデ",
+          thumbnailImageUrl: "https://example.test/p.png",
+          thumbnailWidth: 300,
+          thumbnailHeight: 400,
+          hasBackgroundPrompt: false,
+          billingMode: "free",
+          outputAspectRatioMode: "portrait",
+        },
+      },
+    };
+
+    test("公開カテゴリのプリセットは slug を返す", async () => {
+      mockQuery([oneTapRow], null, [
+        {
+          id: "preset-1",
+          slug: "summer-marine",
+          category: {
+            visibility: "public",
+            collection_display_starts_at: null,
+            collection_display_ends_at: null,
+          },
+        },
+      ]);
+
+      const response = await POST(buildRequest({ post_ids: [POST_A] }));
+      const body = await response.json();
+
+      expect(body.styleLinks[POST_A]).toEqual({
+        presetId: "preset-1",
+        slug: "summer-marine",
+      });
+    });
+
+    test("admin_only カテゴリは slug を返さない(404 に飛ばさない)", async () => {
+      mockQuery([oneTapRow], null, [
+        {
+          id: "preset-1",
+          slug: "secret-style",
+          category: {
+            visibility: "admin_only",
+            collection_display_starts_at: null,
+            collection_display_ends_at: null,
+          },
+        },
+      ]);
+
+      const response = await POST(buildRequest({ post_ids: [POST_A] }));
+      const body = await response.json();
+
+      expect(body.styleLinks[POST_A]).toEqual({ presetId: "preset-1", slug: null });
+    });
+
+    test("未公開(published でない)プリセットも slug を返さない", async () => {
+      mockQuery([oneTapRow], null, []);
+
+      const response = await POST(buildRequest({ post_ids: [POST_A] }));
+      const body = await response.json();
+
+      expect(body.styleLinks[POST_A]).toEqual({ presetId: "preset-1", slug: null });
+    });
+
+    test("One-Tap でない投稿だけならプリセットを問い合わせない", async () => {
+      const calls = mockQuery([
+        {
+          id: POST_A,
+          user_id: AUTHOR_ID,
+          generation_type: "free",
+          source_post_id: null,
+          source_author_id: null,
+          generation_metadata: null,
+        },
+      ]);
+
+      await POST(buildRequest({ post_ids: [POST_A] }));
+
+      expect(calls.presetIds).toBeUndefined();
+    });
   });
 
   test("公開中の投稿だけを resolver に渡す(既知UUIDで系譜メタデータを引き出せない)", async () => {

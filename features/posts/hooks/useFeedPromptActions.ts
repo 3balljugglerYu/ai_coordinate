@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { PromptActionSummary } from "../types";
+import type { PromptActionSummary, StylePresetLink } from "../types";
 
 /** 1リクエストあたりの上限（API 側の Zod と揃える）。 */
 const BATCH_SIZE = 50;
@@ -16,6 +16,7 @@ const BATCH_SIZE = 50;
  */
 export function useFeedPromptActions(postIds: string[], enabled: boolean) {
   const [summaries, setSummaries] = useState<Record<string, PromptActionSummary>>({});
+  const [styleLinks, setStyleLinks] = useState<Record<string, StylePresetLink>>({});
   // 問い合わせ済み(取得中を含む)の投稿。二重取得を防ぐ。
   const requestedRef = useRef<Set<string>>(new Set());
   /*
@@ -59,12 +60,16 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
           }
           const data = (await response.json()) as {
             summaries?: Record<string, PromptActionSummary>;
+            styleLinks?: Record<string, StylePresetLink>;
           };
           if (!isMountedRef.current) {
             return;
           }
           if (data.summaries) {
             setSummaries((prev) => ({ ...prev, ...data.summaries }));
+          }
+          if (data.styleLinks) {
+            setStyleLinks((prev) => ({ ...prev, ...data.styleLinks }));
           }
         } catch (error) {
           console.error("Failed to fetch prompt action summaries:", error);
@@ -75,5 +80,5 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
     })();
   }, [postIds, enabled]);
 
-  return summaries;
+  return { summaries, styleLinks };
 }

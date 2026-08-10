@@ -78,8 +78,7 @@ export interface SourcePromptReference {
  * 一覧(フィード)のカード上に「このプロンプトで作る」を出すための最小情報（ADR-005）。
  *
  * `SourcePromptReference` から**プロンプト本文につながる値を落とした**もの。
- * サムネイルも持たない。フィードのカードは投稿自身の Before/After を出すので、
- * 原作のサムネイルは使い道が無い(payload を無駄に太らせない)。
+ * 引用カード（X の引用リポスト相当）の描画に要る、原作の公開情報だけを持つ。
  *
  * 判定は詳細画面と同じ `resolveSourcePromptReference` から導出する。一覧側で
  * 秘匿条件を再実装すると、詳細と食い違って「詳細では出ない導線が一覧に出る」
@@ -88,15 +87,37 @@ export interface SourcePromptReference {
 export interface PromptActionSummary {
   /** CTA の対象。一覧の投稿自身ではなく**原作**の投稿 ID。 */
   originPostId: string;
-  /** 原作が内在的に使えるか。false なら CTA を出さない。 */
+  /** 原作が内在的に使えるか。false なら CTA も引用カードも出さない。 */
   isAvailable: boolean;
   /** フォロー判定の対象になる原作者。 */
   originAuthorId: string | null;
   originAuthorNickname: string | null;
-  /** このプロンプトを使った人数（原作者自身は除外）。 */
+  originAuthorAvatarUrl: string | null;
+  /** 引用カードのサムネイル。正方形にトリミングして出す。 */
+  originThumbnailUrl: string | null;
+  /** 引用カードに1行だけ出す原作のキャプション（公開情報）。 */
+  originCaption: string | null;
+  /**
+   * 原作の累計利用回数（原作者自身は除外）。
+   * 少ない数字は「使われていない」と読まれて逆効果なので、
+   * 表示するかどうかは `shouldShowUsageCount` が決める。
+   */
   usageCount: number;
   /** 生成シートに渡す公開設定。本文そのものは含まない。 */
   promptVisibility: "public" | "private";
+}
+
+/**
+ * One-Tap Style 投稿の引用カード用。
+ *
+ * プリセットの表題とサムネイルは投稿の `generation_metadata` に入っているので
+ * サーバーへ問い合わせずに読める。公開ページ `/styles/[slug]` は slug 基準だが
+ * スナップショットは id しか持たないため、リンクに要る slug だけを解決する。
+ */
+export interface StylePresetLink {
+  presetId: string;
+  /** 公開ページへのリンクに使う。非公開・admin_only のときは null（リンクを出さない）。 */
+  slug: string | null;
 }
 
 export interface PostImageResponse {

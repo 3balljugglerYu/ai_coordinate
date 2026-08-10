@@ -68,7 +68,7 @@ describe("useFeedPromptActions", () => {
     const { result } = renderHook(() => useFeedPromptActions(postIds, true));
 
     await waitFor(() => {
-      expect(Object.keys(result.current)).toHaveLength(120);
+      expect(Object.keys(result.current.summaries)).toHaveLength(120);
     });
     // 50 / 50 / 20 の3リクエストに分かれる
     expect(bodies.map((body) => body.length)).toEqual([50, 50, 20]);
@@ -134,7 +134,7 @@ describe("useFeedPromptActions", () => {
     release?.();
 
     await waitFor(() => {
-      expect(result.current["post-0"]).toBeDefined();
+      expect(result.current.summaries["post-0"]).toBeDefined();
     });
   });
 
