@@ -23,6 +23,8 @@ import Link from "next/link";
 const PERCOIN_ICON = "/percoin.png";
 const HERO_SP = "/creator-rewards/hero-sp.webp";
 const HERO_PC = "/creator-rewards/hero-pc.webp";
+const STEP1_MAIN = "/creator-rewards/step1.webp";
+const STEP1_SUB = "/creator-rewards/step1-sub.webp";
 
 /**
  * ヒーローの見出し。accent の部分だけ色を変える。
@@ -97,6 +99,50 @@ function ImageSlot({
       className={`w-full object-contain ${floatClass} ${className ?? ""}`}
       sizes="(max-width: 640px) 100vw, 480px"
     />
+  );
+}
+
+/**
+ * 実際のアプリ画面のスクリーンショット。
+ * イラストの下に添えて「本当にこの画面でやるんだ」と伝わるようにする。
+ * 端末の画面らしく見えるよう白フチ＋角丸で囲む。
+ */
+function ScreenshotSlot({
+  src,
+  alt,
+  caption,
+  width,
+  height,
+}: {
+  src?: string;
+  alt: string;
+  caption: string;
+  width: number;
+  height: number;
+}) {
+  return (
+    <figure className="mx-auto mt-5 w-full max-w-[190px]">
+      {src ? (
+        <Image
+          src={src}
+          alt={alt}
+          width={width}
+          height={height}
+          sizes="190px"
+          className="w-full rounded-2xl border-4 border-white shadow-[0_6px_0_rgba(0,0,0,0.06)]"
+        />
+      ) : (
+        <div
+          style={{ aspectRatio: `${width} / ${height}` }}
+          className="flex w-full items-center justify-center rounded-2xl border-[3px] border-dashed border-pink-300 bg-white/70 px-3 text-center text-[10px] font-bold leading-relaxed text-pink-400"
+        >
+          {caption}（支給待ち）
+        </div>
+      )}
+      <figcaption className="mt-2 text-center text-[11px] font-bold text-gray-500">
+        {caption}
+      </figcaption>
+    </figure>
   );
 }
 
@@ -350,6 +396,14 @@ export function CreatorRewardsGuide({
               body: "Free Style で好きな言葉を書いて生成。投稿するときに「プロンプトを公開する」を選ぶと、ほかの人も使えるようになります。",
               label: "イラスト②（作る：言葉から作品が生まれる／chibi）",
               color: "from-pink-500 to-rose-400",
+              src: STEP1_MAIN,
+              sub: {
+                src: STEP1_SUB,
+                width: 382,
+                height: 869,
+                alt: "Free Style の入力画面。人物画像をアップロードし、生成したい内容を文章で入力する",
+                caption: "実際の入力画面",
+              },
             },
             {
               no: "2",
@@ -380,6 +434,7 @@ export function CreatorRewardsGuide({
                     ratio="1 / 1"
                     alt={s.title}
                     label={s.label}
+                    src={s.src}
                     className="mx-auto max-w-[240px]"
                     float
                   />
@@ -390,6 +445,15 @@ export function CreatorRewardsGuide({
                   <p className="mt-2 text-sm font-medium leading-loose text-gray-600">
                     {s.body}
                   </p>
+                  {s.sub ? (
+                    <ScreenshotSlot
+                      src={s.sub.src}
+                      alt={s.sub.alt}
+                      caption={s.sub.caption}
+                      width={s.sub.width}
+                      height={s.sub.height}
+                    />
+                  ) : null}
                 </div>
               </div>
             </PopIn>
