@@ -9,6 +9,7 @@ import { PostCard } from "./PostCard";
 import { PostListSkeleton } from "./PostListSkeleton";
 import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
+import { HomeViewToggle } from "./HomeViewToggle";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -20,6 +21,15 @@ import {
   HOME_POST_REFRESH_EVENT,
   type PendingHomePostRefresh,
 } from "../lib/home-post-refresh";
+import {
+  DEFAULT_HOME_VIEW_MODE,
+  getHomeViewMode,
+  HOME_VIEW_MODES,
+  markHomeFeedNewBadgeSeen,
+  setHomeViewMode,
+  shouldShowHomeFeedNewBadge,
+  type HomeViewMode,
+} from "../lib/home-view-preference";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -68,6 +78,10 @@ export function PostList({
   const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
   const [pendingHomePostRefresh, setPendingHomePostRefresh] =
     useState<PendingHomePostRefresh | null>(null);
+  // 表示形式は端末に記憶する。SSR とハイドレーション不一致を避けるため、
+  // 初期値は既定(グリッド)にしてマウント後に localStorage から復元する。
+  const [viewMode, setViewMode] = useState<HomeViewMode>(DEFAULT_HOME_VIEW_MODE);
+  const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
   const hasFreshNewestPostsRef = useRef(false);
   const { ref, inView } = useInView({
@@ -149,6 +163,30 @@ export function PostList({
     return () => {
       subscription.unsubscribe();
     };
+  }, []);
+
+  // 端末に記憶された表示形式を復元する(検索画面は常にグリッド)
+  useEffect(() => {
+    if (isSearchPage) {
+      return;
+    }
+    const storedMode = getHomeViewMode();
+    setViewMode(storedMode);
+    if (storedMode === HOME_VIEW_MODES.feed) {
+      // 既にフィードを使っている端末には NEW を出さない
+      markHomeFeedNewBadgeSeen();
+      return;
+    }
+    setShowViewModeNewBadge(shouldShowHomeFeedNewBadge(Date.now()));
+  }, [isSearchPage]);
+
+  const handleViewModeChange = useCallback((nextMode: HomeViewMode) => {
+    setViewMode(nextMode);
+    setHomeViewMode(nextMode);
+    if (nextMode === HOME_VIEW_MODES.feed) {
+      markHomeFeedNewBadgeSeen();
+      setShowViewModeNewBadge(false);
+    }
   }, []);
 
   // URLパラメータでsortが指定されている場合
@@ -388,8 +426,17 @@ export function PostList({
     <>
       {/* 検索画面ではSortTabsを非表示 */}
       {!isSearchPage && (
-        <div className="mb-4">
+        <div className="mb-4 flex items-end justify-between gap-2 border-b">
+          {/* タブ=何を見るか / トグル=どう見るか。両者は独立している */}
           <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
+          {/* pb-1 でタブ(py-2 + text-sm = 36px)と行の高さを揃え、レイアウトシフトを防ぐ */}
+          <div className="pb-1">
+            <HomeViewToggle
+              value={viewMode}
+              onChange={handleViewModeChange}
+              showNewBadge={showViewModeNewBadge}
+            />
+          </div>
         </div>
       )}
       {posts.length === 0 ? (
@@ -407,27 +454,44 @@ export function PostList({
         )
       ) : (
         <>
-          <Masonry
-            breakpointCols={{
-              default: 4,
-              1024: 2,
-              640: 2,
-            }}
-            className="flex -ml-1 w-auto sm:-ml-4"
-            columnClassName="pl-1 bg-clip-padding sm:pl-4"
-          >
-            {posts.map((post, index) => (
-              <div key={post.id} className="mb-4">
-        <PostCard
-          post={post}
-          currentUserId={currentUserId}
-          isHighlighted={post.id === highlightPostId}
-          prioritizeImage={index < 2}
-          trackImpressions={trackImpressions}
-        />
-      </div>
-    ))}
-  </Masonry>
+          {viewMode === HOME_VIEW_MODES.feed ? (
+            // フィード: スマホもPCも1列。読みやすさのため最大幅を絞って中央寄せする
+            <div className="mx-auto flex max-w-[600px] flex-col">
+              {posts.map((post, index) => (
+                <div key={post.id} className="mb-4">
+                  <PostCard
+                    post={post}
+                    currentUserId={currentUserId}
+                    isHighlighted={post.id === highlightPostId}
+                    prioritizeImage={index < 2}
+                    trackImpressions={trackImpressions}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Masonry
+              breakpointCols={{
+                default: 4,
+                1024: 2,
+                640: 2,
+              }}
+              className="flex -ml-1 w-auto sm:-ml-4"
+              columnClassName="pl-1 bg-clip-padding sm:pl-4"
+            >
+              {posts.map((post, index) => (
+                <div key={post.id} className="mb-4">
+                  <PostCard
+                    post={post}
+                    currentUserId={currentUserId}
+                    isHighlighted={post.id === highlightPostId}
+                    prioritizeImage={index < 2}
+                    trackImpressions={trackImpressions}
+                  />
+                </div>
+              ))}
+            </Masonry>
+          )}
 
           {/* 無限スクロール用のトリガー要素 */}
           {hasMore && (

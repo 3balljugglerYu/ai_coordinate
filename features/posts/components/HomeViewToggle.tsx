@@ -1,0 +1,63 @@
+"use client";
+
+import { LayoutGrid, Rows3 } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
+import { HOME_VIEW_MODES, type HomeViewMode } from "../lib/home-view-preference";
+
+interface HomeViewToggleProps {
+  value: HomeViewMode;
+  onChange: (value: HomeViewMode) => void;
+  /** 新機能に気づいてもらうためのバッジ(初回フィード表示で消える) */
+  showNewBadge?: boolean;
+}
+
+/**
+ * ホームの「表示形式」を切り替えるアイコントグル。
+ *
+ * タブ(新着/オススメ/フォロー)が「何を見るか」であるのに対し、
+ * こちらは「どう見るか」を選ぶ。両者は独立しており、タブを移動しても
+ * 表示形式は維持される。
+ */
+export function HomeViewToggle({ value, onChange, showNewBadge = false }: HomeViewToggleProps) {
+  const postsT = useTranslations("posts");
+
+  const options: { mode: HomeViewMode; label: string; Icon: typeof LayoutGrid }[] = [
+    { mode: HOME_VIEW_MODES.grid, label: postsT("viewModeGrid"), Icon: LayoutGrid },
+    { mode: HOME_VIEW_MODES.feed, label: postsT("viewModeFeed"), Icon: Rows3 },
+  ];
+
+  return (
+    <div className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-muted/60 p-0.5">
+      {options.map(({ mode, label, Icon }) => {
+        const isActive = value === mode;
+        return (
+          <button
+            key={mode}
+            type="button"
+            onClick={() => onChange(mode)}
+            aria-pressed={isActive}
+            aria-label={label}
+            title={label}
+            className={cn(
+              "flex h-7 w-8 items-center justify-center rounded-full transition-colors",
+              isActive
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </button>
+        );
+      })}
+      {showNewBadge && (
+        <span
+          className="pointer-events-none absolute -right-1 -top-2 rounded-full bg-primary px-1.5 py-px text-[9px] font-bold leading-tight text-primary-foreground shadow-sm"
+          aria-hidden="true"
+        >
+          {postsT("viewModeNewBadge")}
+        </span>
+      )}
+    </div>
+  );
+}

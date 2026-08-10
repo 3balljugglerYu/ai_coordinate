@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
@@ -108,6 +108,9 @@ const postTranslations = {
   preparing: "準備中...",
   emptyState: "まだ投稿がありません。最初の投稿をしてみましょう！",
   allShown: "全ての投稿を表示しました",
+  viewModeGrid: "グリッド表示",
+  viewModeFeed: "フィード表示",
+  viewModeNewBadge: "NEW",
 } as const;
 
 const translationFns = {
@@ -313,5 +316,67 @@ describe("PostList", () => {
       });
     });
     await screen.findByTestId("post-card-post-4");
+  });
+
+  describe("表示形式のトグル", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    test("既定はグリッド_Masonryで描画しNEWバッジを出す", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("masonry")).toBeInTheDocument();
+      expect(screen.getByLabelText("グリッド表示")).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+      expect(screen.getByText("NEW")).toBeInTheDocument();
+    });
+
+    test("フィードに切り替えるとMasonryを使わず端末に記憶しNEWバッジが消える", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      fireEvent.click(screen.getByLabelText("フィード表示"));
+
+      expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
+      // 1列でも投稿自体は同じように描画される
+      expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
+      expect(screen.getByLabelText("フィード表示")).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+      expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("feed");
+    });
+
+    test("記憶済みのフィードは次回訪問時も復元される", async () => {
+      window.localStorage.setItem("persta-ai:home-view-mode", "feed");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("フィード表示")).toHaveAttribute(
+          "aria-pressed",
+          "true"
+        );
+      });
+      expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
+      expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+    });
+
+    // 検索画面は q 付きでレンダーすると main 由来の初回ロード無限ループを踏むため、
+    // 検索クエリ無し(キャッシュ済み投稿を再利用する経路)で表示形式だけを検証する
+    test("検索画面ではトグルを出さず_記憶がフィードでもグリッドのまま", async () => {
+      usePathnameMock.mockReturnValue("/search");
+      window.localStorage.setItem("persta-ai:home-view-mode", "feed");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-initial-1");
+      expect(screen.queryByLabelText("フィード表示")).not.toBeInTheDocument();
+      expect(screen.getByTestId("masonry")).toBeInTheDocument();
+    });
   });
 });
