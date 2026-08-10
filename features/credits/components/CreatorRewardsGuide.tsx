@@ -534,7 +534,7 @@ export function CreatorRewardsGuide({
             還元されないケース
           </h2>
           <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium text-gray-500">
-            あとで「あれ？」とならないように、先にお伝えします
+            あとで「あれ？」とならないために
           </p>
         </PopIn>
 
