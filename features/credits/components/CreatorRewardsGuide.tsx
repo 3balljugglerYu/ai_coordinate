@@ -355,9 +355,9 @@ export function CreatorRewardsGuide({
 
         <PopIn delay={80} rotate={0}>
           <p className="mx-auto mt-8 max-w-sm px-6 text-sm font-medium leading-loose text-gray-600">
-            つくった作品が誰かに使われるたびに、
+            つくった作品が使われるたびに、
             <br />
-            ペルコインがあなたに届きます。
+            ペルコインがあなたに届きます！
           </p>
         </PopIn>
 
