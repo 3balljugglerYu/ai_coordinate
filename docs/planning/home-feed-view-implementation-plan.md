@@ -1,7 +1,7 @@
 # ホームのフィード表示（1列）＋「このプロンプトで作る」導線 実装計画書
 
 作成日: 2026-08-10
-ステータス: 計画（レビュー指摘を反映済み・実装待ち）
+ステータス: 実装済み（Phase 1〜5 完了・マイグレーション適用待ち）
 
 ## 背景と目的
 
@@ -139,12 +139,17 @@ flowchart LR
 - **Context**: `source_reference` は詳細取得（`getPost`）でのみ `resolveSourcePromptReference` により解決され、
   一覧の `enrichPosts` は解決しない（型コメントにも明記）。また `getPostPromptDisplayMode` は表示モードの判定であり、
   公開 `/free` root では `prompt` を返すため CTA 可否の正本にはならない
-- **Decision**: 一覧 payload に **本文を含まないサーバー導出の `prompt_action_summary`** を追加する
-  （可否・原作 post_id・原作者 id・利用数・Before/After サムネイル）。詳細と**同じ検証経路（admin クライアント + 既存 RPC）**
-  から導出し、一覧の N 件はバッチで解決してリクエスト数を抑える
+- **Decision**: 本文を含まないサーバー導出の `prompt_action_summary` を用意する
+  （可否・原作 post_id・原作者 id・利用数・公開設定）。詳細と**同じ検証経路（admin クライアント + 既存 RPC）**
+  から導出し、N 件はバッチで解決してリクエスト数を抑える
 - **Reason**: 一覧側で秘匿条件を再実装すると、詳細と判定がずれて「詳細では出ない導線が一覧に出る」事故が起きる。
   正本を1つにする
-- **Consequence**: 一覧取得にサマリ解決のコストが乗る。フィード表示時のみ解決する / キャッシュするなどの最適化を実装時に検討する
+- **Consequence**: サマリ解決のコストが乗るため、フィード表示のときだけ解決する
+- **実装時の改訂（2026-08-10）**: 一覧 payload に載せるのではなく、**専用の `POST /api/posts/prompt-actions`**
+  としてフィードのときだけクライアントから取りに行く形にした。ホームの初回描画は `use cache` されており
+  閲覧者をまたいで共有される。表示形式は localStorage の値でサーバーは知り得ないため、payload に混ぜると
+  「グリッド利用者にも解決コストを払わせる」か「表示形式でキャッシュを二重に持つ」しかなくなる。
+  あわせて **Before/After サムネイルは載せない**（フィードのカードは投稿自身の画像を出すので使い道が無い）
 
 ### ADR-006: 表示形式別の KPI は「表示」ではなく「セッション」を分母にする（レビュー指摘で追加）
 
@@ -250,10 +255,16 @@ flowchart LR
 | features/posts/components/PostList.tsx | 修正 | viewMode 分岐・トグル配置 |
 | features/posts/lib/home-view-events.ts | 新規 | イベント送信（best-effort）＋直前の表示形式の持ち回り |
 | app/api/posts/home-view-events/route.ts | 新規 | 記録API（検証＋viewer_key 解決＋admin 書き込み） |
-| supabase/migrations/xxxx_add_home_view_events.sql | 新規 | イベントテーブル＋**RLS 全拒否** |
-| features/posts/lib/server-api.ts | 修正 | 一覧に `prompt_action_summary` を付与（フィード時のみ・バッチ解決） |
-| features/posts/lib/source-prompt-reference.ts | 修正 | 一覧用サマリのバッチ解決を追加（本文は含めない） |
+| supabase/migrations/20260810120000_add_home_view_events.sql | 新規 | イベントテーブル＋**RLS 全拒否** |
+| app/api/posts/prompt-actions/route.ts | 新規 | 一覧用サマリのバッチ解決API（フィード時のみ呼ぶ） |
+| features/posts/lib/source-prompt-reference.ts | 修正 | `resolveSourcePromptSummaries` / `toPromptActionSummary` を追加（本文は含めない） |
+| features/posts/hooks/useFeedPromptActions.ts | 新規 | サマリの増分取得（フィード時のみ） |
 | features/posts/components/FollowAndUsePromptButton.tsx | 新規 | フォロー→生成シートの状態遷移 |
+| app/api/users/follow-status/batch/route.ts | 新規 | フォロー状態のバッチ取得（カードごとの N+1 を防ぐ） |
+| features/posts/hooks/useFeedFollowStatus.ts | 新規 | フォロー状態の増分取得 |
+| app/api/users/me/subscription-plan/route.ts | 新規 | 生成シートに渡すプラン（押された瞬間だけ取得） |
+| features/posts/components/SourcePromptReferenceCard.tsx | 修正 | 共通部品化＋詳細画面でも `prompt_use_tapped` を記録 |
+| features/posts/lib/feed-caption.ts / feed-timestamp.ts | 新規 | 連続改行の詰め／相対時刻 |
 | messages/*.ts（15言語） | 修正 | 文言追加 |
 | tests/unit/... | 新規 | 上記テスト |
 
