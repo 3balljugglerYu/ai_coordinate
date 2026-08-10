@@ -29,6 +29,8 @@ const STEP2_MAIN = "/creator-rewards/step2.webp";
 const STEP2_SUB = "/creator-rewards/step2-sub.webp";
 const STEP3_MAIN = "/creator-rewards/step3.webp";
 const STEP3_SUB = "/creator-rewards/step3-sub.webp";
+const STEP4_MAIN = "/creator-rewards/step4.webp";
+const STEP4_SUB = "/creator-rewards/step4-sub.webp";
 
 /**
  * ヒーローの見出し。accent の部分だけ色を変える。
@@ -124,8 +126,11 @@ function ScreenshotSlot({
   width: number;
   height: number;
 }) {
+  // 端末まるごとの縦長スクショと、通知だけを切り出した横長スクショが混在するため、
+  // 向きに応じて最大幅を変える(縦長を広げすぎず、横長を潰しすぎない)。
+  const maxWidthClass = width > height ? "max-w-[300px]" : "max-w-[190px]";
   return (
-    <figure className="mx-auto mt-5 w-full max-w-[190px]">
+    <figure className={`mx-auto mt-5 w-full ${maxWidthClass}`}>
       {src ? (
         <Image
           src={src}
@@ -448,6 +453,14 @@ export function CreatorRewardsGuide({
               body: "使われるたびにペルコインが還元されます。その日の分はまとめてお知らせで届き、履歴からも確認できます。",
               label: "イラスト⑤（もらえる：コインが届く／chibi）",
               color: "from-fuchsia-500 to-pink-500",
+              src: STEP4_MAIN,
+              sub: {
+                src: STEP4_SUB,
+                width: 347,
+                height: 205,
+                alt: "お知らせ画面。「本日、あなたの作品が1回利用され1ペルコイン獲得！」という通知が届いている",
+                caption: "実際に届くお知らせ",
+              },
             },
           ].map((s, i) => (
             <PopIn key={s.no} delay={i * 60} rotate={i % 2 === 0 ? -5 : 5}>
@@ -486,43 +499,6 @@ export function CreatorRewardsGuide({
               </div>
             </PopIn>
           ))}
-        </div>
-      </section>
-
-      {/* ============ どう届くか(実画面) ============ */}
-      <section className="relative bg-gradient-to-b from-white to-amber-50 px-6 py-16">
-        <PopIn rotate={0}>
-          <h2 className="text-center text-2xl font-black text-gray-900">
-            こんなふうに届きます
-          </h2>
-          <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium text-gray-500">
-            還元があった日は、まとめてお知らせでお届け！
-          </p>
-        </PopIn>
-
-        <div className="mx-auto mt-8 flex max-w-md items-start justify-center gap-4">
-          <PopIn delay={80} rotate={-6} className="w-1/2">
-            <ImageSlot
-              ratio="9 / 16"
-              alt="還元のお知らせが届いた画面"
-              label="キャプチャ⑥（お知らせ：本日の還元通知）"
-              className="rounded-2xl border-4 border-white shadow-[0_6px_0_rgba(0,0,0,0.06)]"
-            />
-            <p className="mt-2 text-center text-xs font-bold text-gray-500">
-              お知らせ
-            </p>
-          </PopIn>
-          <PopIn delay={180} rotate={6} className="w-1/2">
-            <ImageSlot
-              ratio="9 / 16"
-              alt="ペルコインの取引履歴に還元が並んでいる画面"
-              label="キャプチャ⑦（ペルコイン履歴）"
-              className="rounded-2xl border-4 border-white shadow-[0_6px_0_rgba(0,0,0,0.06)]"
-            />
-            <p className="mt-2 text-center text-xs font-bold text-gray-500">
-              履歴
-            </p>
-          </PopIn>
         </div>
       </section>
 
