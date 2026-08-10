@@ -138,6 +138,8 @@ export const enMessages = {
     viewModeGrid: "Grid view",
     viewModeFeed: "Feed view",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Expand image",
+    feedComments: "Comments",
     readMore: "Read more",
     collapse: "Show less",
     errorTitle: "Error",

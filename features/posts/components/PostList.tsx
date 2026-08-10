@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
+import { PostFeedCard } from "./PostFeedCard";
 import { PostListSkeleton } from "./PostListSkeleton";
 import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
@@ -30,6 +31,7 @@ import {
   shouldShowHomeFeedNewBadge,
   type HomeViewMode,
 } from "../lib/home-view-preference";
+import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -179,6 +181,28 @@ export function PostList({
     }
     setShowViewModeNewBadge(shouldShowHomeFeedNewBadge(Date.now()));
   }, [isSearchPage]);
+
+  // フォロー状態はフィード表示のときだけ解決する(グリッドのカードには出ないので
+  // 取得コストを増やさない)。カードごとに問い合わせると20件で20リクエストになる。
+  const isFeedView = viewMode === HOME_VIEW_MODES.feed && !isSearchPage;
+  const feedAuthorIds = useMemo(
+    () =>
+      isFeedView
+        ? Array.from(
+            new Set(
+              posts
+                .map((post) => post.user?.id)
+                .filter((id): id is string => typeof id === "string" && id.length > 0)
+            )
+          )
+        : [],
+    [isFeedView, posts]
+  );
+  const { followStatuses, setFollowStatus } = useFeedFollowStatus(
+    feedAuthorIds,
+    currentUserId,
+    isFeedView
+  );
 
   const handleViewModeChange = useCallback((nextMode: HomeViewMode) => {
     setViewMode(nextMode);
@@ -459,12 +483,16 @@ export function PostList({
             <div className="mx-auto flex max-w-[600px] flex-col">
               {posts.map((post, index) => (
                 <div key={post.id} className="mb-4">
-                  <PostCard
+                  <PostFeedCard
                     post={post}
                     currentUserId={currentUserId}
                     isHighlighted={post.id === highlightPostId}
                     prioritizeImage={index < 2}
                     trackImpressions={trackImpressions}
+                    isFollowingAuthor={
+                      post.user?.id ? followStatuses[post.user.id] : undefined
+                    }
+                    onFollowChange={setFollowStatus}
                   />
                 </div>
               ))}

@@ -135,6 +135,8 @@ export const jaMessages = {
     viewModeGrid: "グリッド表示",
     viewModeFeed: "フィード表示",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "画像を拡大表示",
+    feedComments: "コメント",
     readMore: "もっと見る",
     collapse: "折りたたむ",
     errorTitle: "エラー",

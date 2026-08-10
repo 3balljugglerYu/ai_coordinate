@@ -138,6 +138,8 @@ export const thMessages = {
     viewModeGrid: "มุมมองตาราง",
     viewModeFeed: "มุมมองฟีด",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "ขยายภาพ",
+    feedComments: "ความคิดเห็น",
     readMore: "อ่านต่อ",
     collapse: "ย่อ",
     errorTitle: "ข้อผิดพลาด",

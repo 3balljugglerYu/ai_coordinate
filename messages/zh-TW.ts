@@ -138,6 +138,8 @@ export const zhTwMessages = {
     viewModeGrid: "網格檢視",
     viewModeFeed: "動態檢視",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "放大圖片",
+    feedComments: "留言",
     readMore: "顯示更多",
     collapse: "收合",
     errorTitle: "錯誤",

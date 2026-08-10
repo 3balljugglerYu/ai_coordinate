@@ -138,6 +138,8 @@ export const esMessages = {
     viewModeGrid: "Vista de cuadrícula",
     viewModeFeed: "Vista de feed",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Ampliar imagen",
+    feedComments: "Comentarios",
     readMore: "Leer más",
     collapse: "Mostrar menos",
     errorTitle: "Error",

@@ -138,6 +138,8 @@ export const frMessages = {
     viewModeGrid: "Vue en grille",
     viewModeFeed: "Vue en fil",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Agrandir l'image",
+    feedComments: "Commentaires",
     readMore: "Lire la suite",
     collapse: "Afficher moins",
     errorTitle: "Erreur",

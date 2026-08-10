@@ -138,6 +138,8 @@ export const zhCnMessages = {
     viewModeGrid: "网格视图",
     viewModeFeed: "信息流视图",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "放大图片",
+    feedComments: "评论",
     readMore: "查看更多",
     collapse: "收起",
     errorTitle: "错误",

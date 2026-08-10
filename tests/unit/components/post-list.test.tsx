@@ -75,6 +75,12 @@ jest.mock("@/features/posts/components/PostCard", () => ({
   ),
 }));
 
+jest.mock("@/features/posts/components/PostFeedCard", () => ({
+  PostFeedCard: ({ post }: { post: Post }) => (
+    <div data-testid={`post-feed-card-${post.id}`}>{post.caption}</div>
+  ),
+}));
+
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
   consumePendingHomePostRefresh: jest.fn(),
   HOME_POST_REFRESH_EVENT: "persta:home-post-refresh",
@@ -341,8 +347,9 @@ describe("PostList", () => {
       fireEvent.click(screen.getByLabelText("フィード表示"));
 
       expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
-      // 1列でも投稿自体は同じように描画される
-      expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
+      // 1列ではフィード用カードに差し替わる(グリッドの PostCard は使わない)
+      expect(screen.getByTestId("post-feed-card-initial-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("post-card-initial-1")).not.toBeInTheDocument();
       expect(screen.getByLabelText("フィード表示")).toHaveAttribute(
         "aria-pressed",
         "true"

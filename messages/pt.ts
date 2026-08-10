@@ -138,6 +138,8 @@ export const ptMessages = {
     viewModeGrid: "Visualização em grade",
     viewModeFeed: "Visualização em feed",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Ampliar imagem",
+    feedComments: "Comentários",
     readMore: "Ler mais",
     collapse: "Mostrar menos",
     errorTitle: "Erro",

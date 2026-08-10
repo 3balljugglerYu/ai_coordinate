@@ -138,6 +138,8 @@ export const koMessages = {
     viewModeGrid: "그리드 보기",
     viewModeFeed: "피드 보기",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "이미지 확대",
+    feedComments: "댓글",
     readMore: "더 보기",
     collapse: "접기",
     errorTitle: "오류",

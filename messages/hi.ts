@@ -138,6 +138,8 @@ export const hiMessages = {
     viewModeGrid: "ग्रिड व्यू",
     viewModeFeed: "फ़ीड व्यू",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "छवि बड़ी करें",
+    feedComments: "टिप्पणियाँ",
     readMore: "और पढ़ें",
     collapse: "कम दिखाएँ",
     errorTitle: "त्रुटि",

@@ -138,6 +138,8 @@ export const arMessages = {
     viewModeGrid: "عرض الشبكة",
     viewModeFeed: "عرض الموجز",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "تكبير الصورة",
+    feedComments: "التعليقات",
     readMore: "اقرأ المزيد",
     collapse: "إظهار أقل",
     errorTitle: "خطأ",

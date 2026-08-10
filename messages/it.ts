@@ -138,6 +138,8 @@ export const itMessages = {
     viewModeGrid: "Vista a griglia",
     viewModeFeed: "Vista feed",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Ingrandisci immagine",
+    feedComments: "Commenti",
     readMore: "Leggi di più",
     collapse: "Mostra meno",
     errorTitle: "Errore",

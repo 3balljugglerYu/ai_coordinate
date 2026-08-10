@@ -20,6 +20,11 @@ import {
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import {
+  BeforeAfterFrame,
+  FALLBACK_ASPECT_RATIO,
+  isLandscapeRatio,
+} from "./BeforeAfterFrame";
 import { copyTextToClipboard } from "../lib/copy-to-clipboard";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
@@ -54,15 +59,6 @@ const CARD_WIDTH_PX = 180;
  * 中身が枠を埋めるので、横幅いっぱいに伸ばしたときのような不自然さは出ない。
  */
 const CARD_WIDTH_WITH_BEFORE_PX = 320;
-
-/** 実寸が取れていない原作のフォールバック比率。One-Tap Style のカードと同じ 3:4。 */
-const FALLBACK_ASPECT_RATIO = 180 / 240;
-
-/**
- * 横長と見なす閾値。
- * 横長を横並びにすると全体が極端に横長になるため、縦並びへ切り替える。
- */
-const LANDSCAPE_RATIO_THRESHOLD = 1.1;
 
 interface SourcePromptReferenceCardProps {
   reference: SourcePromptReference;
@@ -219,7 +215,7 @@ export function SourcePromptReferenceCard({
   const showsBefore = !!reference.thumbnailUrl && !!reference.beforeThumbnailUrl;
   // 向きは After で決める。じゆうモードは出力比率を元画像と別に選べるため、
   // Before と After で向きが違うことがある。
-  const isLandscape = aspectRatio > LANDSCAPE_RATIO_THRESHOLD;
+  const isLandscape = isLandscapeRatio(aspectRatio);
   const cardWidth = showsBefore ? CARD_WIDTH_WITH_BEFORE_PX : CARD_WIDTH_PX;
   // 横並びは1セルが半分の幅になるので、セルの比率は変えずにそのまま使う。
   const cellSizes = showsBefore
@@ -278,51 +274,17 @@ export function SourcePromptReferenceCard({
             両セルは After の比率を共有する。Before の実寸は保存していないため
             （詳細は types.ts のコメント）、object-top で顔を残す形にしている。
           */}
-          <div
-            className={`flex w-full ${
-              showsBefore && isLandscape ? "flex-col" : "flex-row"
-            }`}
-          >
-            <div
-              className="relative flex-1 overflow-hidden bg-gray-100"
-              style={{ aspectRatio }}
-              data-testid="source-prompt-after-frame"
-            >
-              {reference.thumbnailUrl ? (
-                <Image
-                  src={reference.thumbnailUrl}
-                  alt={t("sourcePromptThumbnailAlt")}
-                  fill
-                  sizes={cellSizes}
-                  className="object-cover object-top"
-                />
-              ) : null}
-              {showsBefore ? (
-                <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                  {t("afterImageLabel")}
-                </span>
-              ) : null}
-            </div>
-
-            {showsBefore && reference.beforeThumbnailUrl ? (
-              <div
-                className="relative flex-1 overflow-hidden border-l bg-gray-100"
-                style={{ aspectRatio }}
-                data-testid="source-prompt-before-frame"
-              >
-                <Image
-                  src={reference.beforeThumbnailUrl}
-                  alt={t("beforeImageAlt")}
-                  fill
-                  sizes={cellSizes}
-                  className="object-cover object-top"
-                />
-                <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
-                  {t("beforeImageLabel")}
-                </span>
-              </div>
-            ) : null}
-          </div>
+          <BeforeAfterFrame
+            afterUrl={reference.thumbnailUrl}
+            beforeUrl={reference.beforeThumbnailUrl}
+            aspectRatio={aspectRatio}
+            afterAlt={t("sourcePromptThumbnailAlt")}
+            beforeAlt={t("beforeImageAlt")}
+            afterLabel={t("afterImageLabel")}
+            beforeLabel={t("beforeImageLabel")}
+            sizes={cellSizes}
+            testIdPrefix="source-prompt"
+          />
 
           {/* サムネイルの下にクレジットと利用数を置く（One-Tap Style のカードと同じ配置） */}
           <div className="space-y-1 border-t bg-white px-3 py-2">

@@ -138,6 +138,8 @@ export const viMessages = {
     viewModeGrid: "Xem dạng lưới",
     viewModeFeed: "Xem dạng bảng tin",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Phóng to ảnh",
+    feedComments: "Bình luận",
     readMore: "Xem thêm",
     collapse: "Thu gọn",
     errorTitle: "Lỗi",

@@ -138,6 +138,8 @@ export const deMessages = {
     viewModeGrid: "Rasteransicht",
     viewModeFeed: "Feed-Ansicht",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Bild vergrößern",
+    feedComments: "Kommentare",
     readMore: "Mehr anzeigen",
     collapse: "Weniger anzeigen",
     errorTitle: "Fehler",

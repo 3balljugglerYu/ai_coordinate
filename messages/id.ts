@@ -138,6 +138,8 @@ export const idMessages = {
     viewModeGrid: "Tampilan kisi",
     viewModeFeed: "Tampilan feed",
     viewModeNewBadge: "NEW",
+    feedExpandImage: "Perbesar gambar",
+    feedComments: "Komentar",
     readMore: "Selengkapnya",
     collapse: "Tutup",
     errorTitle: "Kesalahan",
