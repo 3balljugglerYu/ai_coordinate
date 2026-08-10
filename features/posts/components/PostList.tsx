@@ -186,28 +186,8 @@ export function PostList({
     setShowViewModeNewBadge(shouldShowHomeFeedNewBadge(Date.now()));
   }, [isSearchPage]);
 
-  // フォロー状態はフィード表示のときだけ解決する(グリッドのカードには出ないので
-  // 取得コストを増やさない)。カードごとに問い合わせると20件で20リクエストになる。
   const isFeedView = viewMode === HOME_VIEW_MODES.feed && !isSearchPage;
-  const feedAuthorIds = useMemo(
-    () =>
-      isFeedView
-        ? Array.from(
-            new Set(
-              posts
-                .map((post) => post.user?.id)
-                .filter((id): id is string => typeof id === "string" && id.length > 0)
-            )
-          )
-        : [],
-    [isFeedView, posts]
-  );
-  const { followStatuses, setFollowStatus } = useFeedFollowStatus(
-    feedAuthorIds,
-    currentUserId,
-    isFeedView
-  );
-  // 「このプロンプトで作る」の可否も、詳細と同じ検証経路からサーバーで導出する
+  // 「このプロンプトで作る」の可否は、詳細と同じ検証経路からサーバーで導出する
   // (一覧の payload には載らない。ADR-005)。
   const feedPostIds = useMemo(
     () =>
@@ -217,6 +197,37 @@ export function PostList({
     [isFeedView, posts]
   );
   const promptActions = useFeedPromptActions(feedPostIds, isFeedView);
+
+  /*
+    フォロー状態はフィード表示のときだけ解決する(グリッドのカードには出ないので
+    取得コストを増やさない)。カードごとに問い合わせると20件で20リクエストになる。
+
+    投稿者と原作者の**両方**を解決する。派生投稿では両者が別人で、
+    作者行のフォローボタンは投稿者を、CTA のフォロー判定は原作者を見るため、
+    ひとつの値で兼ねると「派生投稿者はフォロー済みだが原作者は未フォロー」の
+    閲覧者に『このプロンプトで作る』が出て、生成 API で弾かれる。
+  */
+  const feedAuthorIds = useMemo(() => {
+    if (!isFeedView) {
+      return [];
+    }
+    const ids = new Set<string>();
+    for (const post of posts) {
+      if (post.user?.id) {
+        ids.add(post.user.id);
+      }
+      const originAuthorId = post.id ? promptActions[post.id]?.originAuthorId : null;
+      if (originAuthorId) {
+        ids.add(originAuthorId);
+      }
+    }
+    return Array.from(ids);
+  }, [isFeedView, posts, promptActions]);
+  const { followStatuses, setFollowStatus } = useFeedFollowStatus(
+    feedAuthorIds,
+    currentUserId,
+    isFeedView
+  );
 
   const handleViewModeChange = useCallback(
     (nextMode: HomeViewMode) => {
@@ -515,6 +526,13 @@ export function PostList({
                     isFollowingAuthor={
                       post.user?.id ? followStatuses[post.user.id] : undefined
                     }
+                    isFollowingPromptAuthor={(() => {
+                      // CTA のフォロー判定は原作者を見る(派生投稿では投稿者と別人)
+                      const originAuthorId = post.id
+                        ? promptActions[post.id]?.originAuthorId
+                        : null;
+                      return originAuthorId ? followStatuses[originAuthorId] : undefined;
+                    })()}
                     onFollowChange={setFollowStatus}
                     promptAction={post.id ? promptActions[post.id] : undefined}
                   />

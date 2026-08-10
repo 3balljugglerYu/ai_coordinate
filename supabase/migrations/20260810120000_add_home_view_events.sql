@@ -23,8 +23,17 @@ CREATE TABLE public.home_view_events (
       'follow_from_card'
     )
   ),
-  -- そのイベント時点の表示形式。prompt_use_tapped は「直前のホーム表示形式」
-  view_mode text NOT NULL CHECK (view_mode IN ('grid', 'feed')),
+  -- そのイベント時点の表示形式。prompt_use_tapped / follow_from_card は
+  -- 「直前のホーム表示形式」で、ホームを経ていない流入(共有リンク・プロフィール・
+  -- 通知・検索)は 'none'。'none' をグリッドに数えると、分母(home_viewed)に
+  -- 対応しないタップが分子に混ざってグリッドの到達率だけが水増しされる。
+  view_mode text NOT NULL CHECK (
+    view_mode IN ('grid', 'feed')
+    OR (
+      view_mode = 'none'
+      AND event_type IN ('prompt_use_tapped', 'follow_from_card')
+    )
+  ),
   -- view_mode_changed のときの遷移元
   from_view_mode text CHECK (from_view_mode IN ('grid', 'feed')),
   -- 対象投稿。home_viewed / view_mode_changed では NULL
@@ -54,4 +63,4 @@ CREATE POLICY home_view_events_no_public_access
 COMMENT ON TABLE public.home_view_events IS
   'ホーム表示形式(グリッド/フィード)の効果測定イベント。公開SELECT/INSERT禁止(service role専用・API が viewer_key をサーバー側で解決して書く)';
 COMMENT ON COLUMN public.home_view_events.view_mode IS
-  'イベント時点の表示形式。prompt_use_tapped は詳細画面経由でも「直前のホーム表示形式」で帰属させる(ADR-006)';
+  'イベント時点の表示形式。prompt_use_tapped は詳細画面経由でも「直前のホーム表示形式」で帰属させる。ホーム未経由は none で、到達率の算出からは除外する(ADR-006)';

@@ -42,12 +42,20 @@ export async function POST(request: NextRequest) {
 
     const supabase = createAdminClient();
 
-    // CTA の対象になり得る投稿だけを引く（free の root と派生投稿）。
-    // ここで列を絞るのは、本文列をそもそもメモリに載せないため。
+    // 公開中の投稿だけを通す（fail closed）。
+    //
+    // この route は未ログインでも呼べる公開 API で、admin クライアントが RLS を
+    // 迂回して読む。ここを絞らないと、既知の UUID を投げるだけで未投稿・公開停止の
+    // 行まで resolver に渡り、原作 ID・原作者・利用数といった系譜のメタデータを
+    // 引き出せてしまう（本文ではないが、取り消した投稿の情報は返してはいけない）。
+    //
+    // 列を絞っているのは、本文列をそもそもメモリに載せないため。
     const { data, error } = await supabase
       .from("generated_images")
       .select("id, user_id, generation_type, source_post_id, source_author_id")
-      .in("id", Array.from(new Set(parsed.data.post_ids)));
+      .in("id", Array.from(new Set(parsed.data.post_ids)))
+      .eq("is_posted", true)
+      .eq("moderation_status", "visible");
 
     if (error) {
       console.error("[prompt-actions] query failed:", error);

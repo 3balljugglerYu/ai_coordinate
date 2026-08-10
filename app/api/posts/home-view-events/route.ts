@@ -25,7 +25,9 @@ const bodySchema = z
       "prompt_use_tapped",
       "follow_from_card",
     ]),
-    view_mode: z.enum(["grid", "feed"]),
+    // 'none' はホーム未経由の流入。ホームで発生するイベントには許さない
+    // (DB の CHECK と二重にする)。
+    view_mode: z.enum(["grid", "feed", "none"]),
     from_view_mode: z.enum(["grid", "feed"]).optional(),
     post_id: z.string().uuid().optional(),
   })
@@ -33,6 +35,13 @@ const bodySchema = z
     (value) =>
       value.event_type !== "view_mode_changed" || value.from_view_mode !== undefined,
     { message: "from_view_mode is required for view_mode_changed" }
+  )
+  .refine(
+    (value) =>
+      value.view_mode !== "none" ||
+      value.event_type === "prompt_use_tapped" ||
+      value.event_type === "follow_from_card",
+    { message: "view_mode 'none' is only valid for tap events" }
   );
 
 function noop(): NextResponse {

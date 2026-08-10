@@ -40,10 +40,16 @@ interface PostFeedCardProps {
   prioritizeImage?: boolean;
   trackImpressions?: boolean;
   /**
-   * 閲覧者が作者をフォローしているか。未取得は undefined。
+   * 閲覧者が**投稿者**をフォローしているか。未取得は undefined。
    * PostList がバッチで解決した値を渡す(カードごとの問い合わせを避けるため)。
+   * 作者行のフォローボタンの表示に使う。
    */
   isFollowingAuthor?: boolean;
+  /**
+   * 閲覧者が**原作者**をフォローしているか。未取得は undefined。
+   * 派生投稿では投稿者と原作者が別人なので、CTA の判定はこちらを使う。
+   */
+  isFollowingPromptAuthor?: boolean;
   onFollowChange?: (userId: string, isFollowing: boolean) => void;
   /**
    * 「このプロンプトで作る」を出すためのサマリ（ADR-005）。
@@ -75,6 +81,7 @@ export function PostFeedCard({
   prioritizeImage = false,
   trackImpressions = false,
   isFollowingAuthor,
+  isFollowingPromptAuthor,
   onFollowChange,
   promptAction,
 }: PostFeedCardProps) {
@@ -149,7 +156,7 @@ export function PostFeedCard({
     promptAction.isAvailable &&
     !!promptAction.originAuthorId &&
     promptAction.originAuthorId === authorId &&
-    isFollowingAuthor === false;
+    isFollowingPromptAuthor === false;
   // 自分の投稿・未ログイン・フォロー済みにはフォローボタンを出さない。
   const showFollowButton =
     !!authorId &&
@@ -289,7 +296,7 @@ export function PostFeedCard({
             <FollowAndUsePromptButton
               summary={promptAction}
               currentUserId={currentUserId ?? null}
-              isFollowingAuthor={isFollowingAuthor}
+              isFollowingAuthor={isFollowingPromptAuthor}
               onFollowChange={onFollowChange}
             />
           </div>

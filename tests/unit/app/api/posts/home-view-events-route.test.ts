@@ -200,6 +200,21 @@ describe("POST /api/posts/home-view-events", () => {
     expect(inserted[0]).toMatchObject({ from_view_mode: "grid", view_mode: "feed" });
   });
 
+  test("ホーム未経由の CTA は view_mode='none' で記録する", async () => {
+    mockGetUser.mockResolvedValue({ id: USER_ID } as never);
+    const inserted = mockSupabase({ postVisible: true });
+
+    await POST(
+      buildRequest({
+        event_type: "prompt_use_tapped",
+        view_mode: "none",
+        post_id: POST_ID,
+      })
+    );
+
+    expect(inserted[0]).toMatchObject({ view_mode: "none" });
+  });
+
   test.each([
     ["未知の event_type", { event_type: "clicked", view_mode: "feed" }],
     ["未知の view_mode", { event_type: "home_viewed", view_mode: "carousel" }],
@@ -211,6 +226,12 @@ describe("POST /api/posts/home-view-events", () => {
     [
       "post_id が UUID でない",
       { event_type: "prompt_use_tapped", view_mode: "feed", post_id: "nope" },
+    ],
+    // 'none' はホーム未経由の CTA 専用。ホームで発生するイベントには許さない
+    ["home_viewed が none", { event_type: "home_viewed", view_mode: "none" }],
+    [
+      "view_mode_changed が none",
+      { event_type: "view_mode_changed", view_mode: "none", from_view_mode: "grid" },
     ],
   ])("不正な body は 400 (%s)", async (_label, body) => {
     mockSupabase();

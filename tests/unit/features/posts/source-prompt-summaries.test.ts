@@ -37,8 +37,19 @@ afterAll(() => {
   }
 });
 
-function createSupabaseStub(options: { isAvailable?: boolean; usageCount?: number } = {}) {
+/**
+ * @param options.publiclyUsableOriginIds 公開導線から使える原作。
+ *   未指定なら「問い合わせた原作すべてが公開中」として扱う。
+ */
+function createSupabaseStub(
+  options: {
+    isAvailable?: boolean;
+    usageCount?: number;
+    publiclyUsableOriginIds?: string[];
+  } = {}
+) {
   const rpcCalls: Array<{ name: string; args: unknown }> = [];
+  const publicCheckCalls: string[][] = [];
 
   const supabase = {
     rpc: jest.fn((name: string, args: unknown) => {
@@ -58,6 +69,25 @@ function createSupabaseStub(options: { isAvailable?: boolean; usageCount?: numbe
     }),
     from: jest.fn((table: string) => ({
       select: () => ({
+        // 原作の公開状態チェック: .in(ids).eq("is_posted").eq("moderation_status")
+        in: (_column: string, ids: string[]) => {
+          publicCheckCalls.push(ids);
+          const allowed = options.publiclyUsableOriginIds ?? ids;
+          const builder = {
+            eq: jest.fn(),
+          };
+          let remaining = 2;
+          builder.eq = jest.fn(() => {
+            remaining -= 1;
+            return remaining === 0
+              ? Promise.resolve({
+                  data: ids.filter((id) => allowed.includes(id)).map((id) => ({ id })),
+                  error: null,
+                })
+              : builder;
+          });
+          return builder;
+        },
         eq: () => ({
           maybeSingle: () =>
             Promise.resolve({
@@ -83,7 +113,11 @@ function createSupabaseStub(options: { isAvailable?: boolean; usageCount?: numbe
     })),
   };
 
-  return { supabase: supabase as unknown as SupabaseClient, rpcCalls };
+  return {
+    supabase: supabase as unknown as SupabaseClient,
+    rpcCalls,
+    publicCheckCalls,
+  };
 }
 
 describe("toPromptActionSummary", () => {
@@ -249,6 +283,69 @@ describe("resolveSourcePromptSummaries", () => {
       "promptVisibility",
       "usageCount",
     ]);
+  });
+
+  it("投稿取消された原作は CTA を出さない(RPC の本人例外を打ち消す)", async () => {
+    /*
+      validate_derived_prompt_source は本人に限り未投稿の原作を許すが、
+      resolveSourcePromptReference は requester に原作者自身を渡すため
+      この例外が常に効いてしまう。一覧は公開導線なので打ち消す必要がある。
+      打ち消さないと「押せたのに生成APIで弾かれる」状態になる。
+    */
+    const { supabase } = createSupabaseStub({
+      isAvailable: true,
+      publiclyUsableOriginIds: [],
+    });
+
+    const summaries = await resolveSourcePromptSummaries(
+      [
+        {
+          id: DERIVED_1,
+          user_id: DERIVER_ID,
+          generation_type: "free",
+          source_post_id: ORIGIN_A,
+          source_author_id: AUTHOR_ID,
+        },
+      ],
+      supabase
+    );
+
+    expect(summaries[DERIVED_1]).toEqual({
+      originPostId: ORIGIN_A,
+      isAvailable: false,
+      // 取り消した投稿の系譜メタデータは公開 API に載せない
+      originAuthorId: null,
+      originAuthorNickname: null,
+      usageCount: 0,
+      promptVisibility: "private",
+    });
+  });
+
+  it("原作の公開状態は原作単位でまとめて1回だけ確認する", async () => {
+    const { supabase, publicCheckCalls } = createSupabaseStub();
+
+    await resolveSourcePromptSummaries(
+      [
+        {
+          id: DERIVED_1,
+          user_id: DERIVER_ID,
+          generation_type: "free",
+          source_post_id: ORIGIN_A,
+          source_author_id: AUTHOR_ID,
+        },
+        {
+          id: DERIVED_2,
+          user_id: DERIVER_ID,
+          generation_type: "free",
+          source_post_id: ORIGIN_B,
+          source_author_id: AUTHOR_ID,
+        },
+      ],
+      supabase
+    );
+
+    expect(publicCheckCalls).toHaveLength(1);
+    expect(publicCheckCalls[0].sort()).toEqual([ORIGIN_A, ORIGIN_B].sort());
   });
 
   it("空配列なら問い合わせない", async () => {

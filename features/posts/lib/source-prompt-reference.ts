@@ -197,24 +197,91 @@ export async function resolveSourcePromptSummaries(
     return {};
   }
 
-  const resolved = await Promise.all(
-    Array.from(byOrigin.values()).map(async ({ record, postIds }) => ({
-      postIds,
-      reference: await resolveSourcePromptReference(record, supabase),
-    }))
-  );
+  const [resolved, publiclyUsableOrigins] = await Promise.all([
+    Promise.all(
+      Array.from(byOrigin.values()).map(async ({ record, postIds }) => ({
+        postIds,
+        reference: await resolveSourcePromptReference(record, supabase),
+      }))
+    ),
+    fetchPubliclyUsableOriginIds(
+      supabase,
+      Array.from(byOrigin.values())
+        .map(({ record }) => resolveOriginPostId(record))
+        .filter((id): id is string => Boolean(id))
+    ),
+  ]);
 
   const summaries: Record<string, PromptActionSummary> = {};
   for (const { postIds, reference } of resolved) {
     if (!reference) {
       continue;
     }
-    const summary = toPromptActionSummary(reference);
+    const summary = publiclyUsableOrigins.has(reference.postId)
+      ? toPromptActionSummary(reference)
+      : unavailableSummary(reference.postId);
     for (const postId of postIds) {
       summaries[postId] = summary;
     }
   }
   return summaries;
+}
+
+/**
+ * 原作のうち「公開導線から使ってよい」ものだけを返す。
+ *
+ * `validate_derived_prompt_source` は本人に限り未投稿の原作を許す
+ * （マイページで自分の下書きから作り直せるようにするための例外。
+ * migration 20260731110000）。ところが `resolveSourcePromptReference` は
+ * 閲覧者依存の条件を外すために requester へ**原作者自身**を渡すので、
+ * この本人例外が常に効いてしまい、**投稿取消された原作でも available になる**。
+ *
+ * 詳細画面（マイページの下書きを含む）ではそれが正しい挙動だが、一覧は不特定多数に
+ * 出る公開導線なので、そこで例外を適用してはいけない。押しても生成 API が
+ * 閲覧者を requester として再検証して弾くため、「押せたのに作れない」になる。
+ * ここで root の公開状態を明示的に確認して打ち消す。
+ *
+ * 読めなければ空集合（fail closed）。
+ */
+async function fetchPubliclyUsableOriginIds(
+  supabase: SupabaseClient,
+  originPostIds: string[]
+): Promise<Set<string>> {
+  const uniqueIds = Array.from(new Set(originPostIds));
+  if (uniqueIds.length === 0) {
+    return new Set();
+  }
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select("id")
+    .in("id", uniqueIds)
+    .eq("is_posted", true)
+    .eq("moderation_status", "visible");
+
+  if (error) {
+    console.error("Failed to check origin public availability", { code: error.code });
+    return new Set();
+  }
+
+  return new Set((data ?? []).map((row) => (row as { id: string }).id));
+}
+
+/**
+ * 使えない原作のサマリ。
+ *
+ * 原作者も利用数も落とす。カードは何も描画しないので使い道が無く、
+ * 取り消した投稿の系譜メタデータを公開 API に載せる理由もない。
+ */
+function unavailableSummary(originPostId: string): PromptActionSummary {
+  return {
+    originPostId,
+    isAvailable: false,
+    originAuthorId: null,
+    originAuthorNickname: null,
+    usageCount: 0,
+    promptVisibility: "private",
+  };
 }
 
 /**

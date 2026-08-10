@@ -1,6 +1,6 @@
 "use client";
 
-import { DEFAULT_HOME_VIEW_MODE, isHomeViewMode, type HomeViewMode } from "./home-view-preference";
+import { isHomeViewMode, type HomeViewMode } from "./home-view-preference";
 
 /**
  * ホームの表示形式の効果測定（ADR-003 / ADR-006）。
@@ -26,9 +26,19 @@ export type HomeViewEventType =
   | "prompt_use_tapped"
   | "follow_from_card";
 
+/**
+ * 帰属先の表示形式。
+ *
+ * `none` は「ホームを経由していない」ことを表す（共有リンク・プロフィール・通知・
+ * 検索からそのまま詳細に来た場合）。これをグリッド扱いにすると、分母（ホームの
+ * `home_viewed`）に対応しないタップが分子に混ざり、グリッドの到達率だけが
+ * 水増しされて比較が壊れる。到達率の算出では `none` を除外する。
+ */
+export type AttributedViewMode = HomeViewMode | "none";
+
 interface HomeViewEventPayload {
   event_type: HomeViewEventType;
-  view_mode: HomeViewMode;
+  view_mode: AttributedViewMode;
   from_view_mode?: HomeViewMode;
   post_id?: string;
 }
@@ -126,16 +136,20 @@ export function rememberHomeViewMode(viewMode: HomeViewMode): void {
 
 /**
  * 帰属に使う表示形式。
- * ホームを経ずに詳細へ直接来た場合（共有リンク等）は既定のグリッド扱いにする。
+ *
+ * ホームを経ずに詳細へ直接来た場合（共有リンク・プロフィール・通知・検索）は
+ * `none` を返す。**既定のグリッドへ倒してはいけない**。分母の `home_viewed` は
+ * ホームでしか発生しないので、ホーム外からのタップをグリッドに数えると
+ * グリッドの到達率だけが水増しされ、表示形式の比較が成立しなくなる。
  */
-export function getAttributedViewMode(): HomeViewMode {
+export function getAttributedViewMode(): AttributedViewMode {
   if (typeof window === "undefined") {
-    return DEFAULT_HOME_VIEW_MODE;
+    return "none";
   }
   try {
     const value = window.sessionStorage.getItem(LAST_VIEW_MODE_KEY);
-    return isHomeViewMode(value) ? value : DEFAULT_HOME_VIEW_MODE;
+    return isHomeViewMode(value) ? value : "none";
   } catch {
-    return DEFAULT_HOME_VIEW_MODE;
+    return "none";
   }
 }

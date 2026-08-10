@@ -92,15 +92,18 @@ describe("home-view-events", () => {
       });
     });
 
-    test("ホームを経ずに詳細へ直接来た場合は既定のグリッド扱い", () => {
+    test("ホームを経ずに詳細へ直接来た場合は none(グリッドに数えない)", () => {
+      // 共有リンク・プロフィール・通知・検索からの流入。グリッドへ倒すと
+      // 分母(home_viewed)に対応しないタップが分子に混ざり、到達率が水増しされる
       trackPromptUseTapped("post-1");
 
-      expect(sentPayloads(beacon)[0].view_mode).toBe("grid");
+      expect(getAttributedViewMode()).toBe("none");
+      expect(sentPayloads(beacon)[0].view_mode).toBe("none");
     });
 
-    test("不正な保存値もグリッドへ倒す", () => {
+    test("不正な保存値も none へ倒す", () => {
       window.sessionStorage.setItem("persta-ai:last-home-view-mode", "carousel");
-      expect(getAttributedViewMode()).toBe("grid");
+      expect(getAttributedViewMode()).toBe("none");
     });
 
     test("follow_from_card も同じ帰属で記録する", () => {

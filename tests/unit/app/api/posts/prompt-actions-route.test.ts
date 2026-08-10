@@ -41,7 +41,9 @@ function buildRequest(body: unknown): NextRequest {
 
 /** generated_images への select を記録するスタブ。 */
 function mockQuery(rows: unknown[], error: { message: string } | null = null) {
-  const calls: { columns?: string; ids?: string[] } = {};
+  const calls: { columns?: string; ids?: string[]; filters: [string, unknown][] } = {
+    filters: [],
+  };
   const builder = {
     select: jest.fn((columns: string) => {
       calls.columns = columns;
@@ -49,7 +51,15 @@ function mockQuery(rows: unknown[], error: { message: string } | null = null) {
     }),
     in: jest.fn((_column: string, ids: string[]) => {
       calls.ids = ids;
-      return Promise.resolve({ data: rows, error });
+      return builder;
+    }),
+    eq: jest.fn((column: string, value: unknown) => {
+      calls.filters.push([column, value]);
+      // 実装は .in(...).eq(...).eq(...) の最後で await するため、
+      // 可視性フィルタが2つ揃った時点で結果を返す
+      return calls.filters.length >= 2
+        ? Promise.resolve({ data: rows, error })
+        : builder;
     }),
   };
   mockCreateAdminClient.mockReturnValue({
@@ -93,6 +103,19 @@ describe("POST /api/posts/prompt-actions", () => {
     expect(calls.columns).toBe(
       "id, user_id, generation_type, source_post_id, source_author_id"
     );
+  });
+
+  test("公開中の投稿だけを resolver に渡す(既知UUIDで系譜メタデータを引き出せない)", async () => {
+    // admin クライアントは RLS を迂回するため、未投稿・公開停止の行を
+    // 明示的に除外しないと、取り消した投稿の原作者や利用数まで返せてしまう
+    const calls = mockQuery([]);
+
+    await POST(buildRequest({ post_ids: [POST_A] }));
+
+    expect(calls.filters).toEqual([
+      ["is_posted", true],
+      ["moderation_status", "visible"],
+    ]);
   });
 
   test("重複した post_id は1回だけ問い合わせる", async () => {

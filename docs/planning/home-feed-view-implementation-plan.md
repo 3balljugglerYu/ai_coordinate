@@ -302,7 +302,8 @@ flowchart LR
 
 `home_view_events` は RLS 全拒否なので、`supabase db query --linked` か Supabase の SQL Editor で実行する。
 
-**① 表示形式別の CTA 到達率（本命）** — 分母は `home_viewed`（セッション単位）、分子は `prompt_use_tapped`（詳細画面経由も直前のホーム表示形式で帰属）
+**① 表示形式別の CTA 到達率（本命）** — 分母は `home_viewed`（セッション単位）、分子は `prompt_use_tapped`（詳細画面経由も直前のホーム表示形式で帰属）。
+ホームを経ていない流入（共有リンク・プロフィール・通知・検索）は `view_mode = 'none'` で記録されるので、**率の計算からは除外する**。
 
 ```sql
 SELECT
@@ -317,8 +318,17 @@ SELECT
   ) AS reach_rate_pct
 FROM public.home_view_events
 WHERE created_at >= now() - interval '30 days'
+  AND view_mode IN ('grid', 'feed')   -- 'none' はホーム未経由なので分母を持たない
 GROUP BY view_mode
 ORDER BY view_mode;
+```
+
+**①-b ホーム外からのプロンプト利用** — `none` の実数。ホームの改善とは別枠で見る
+
+```sql
+SELECT count(*) AS use_tapped, count(DISTINCT viewer_key) AS people
+FROM public.home_view_events
+WHERE event_type = 'prompt_use_tapped' AND view_mode = 'none';
 ```
 
 **② フィードを一度でも使った人の数**

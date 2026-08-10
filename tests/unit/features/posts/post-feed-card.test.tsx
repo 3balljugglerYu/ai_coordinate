@@ -60,13 +60,21 @@ jest.mock("@/features/users/components/FollowButton", () => ({
   ),
 }));
 
+const ctaSpy = jest.fn();
 jest.mock("@/features/posts/components/FollowAndUsePromptButton", () => ({
-  FollowAndUsePromptButton: ({
-    summary,
-  }: {
+  FollowAndUsePromptButton: (props: {
     summary: { originPostId: string };
-  }) => <div data-testid="cta" data-origin={summary.originPostId} />,
+    isFollowingAuthor?: boolean;
+  }) => {
+    ctaSpy(props);
+    return <div data-testid="cta" data-origin={props.summary.originPostId} />;
+  },
 }));
+
+/** CTA に渡された props（フォロー判定の取り違えを検出する）。 */
+function ctaProps(): { isFollowingAuthor?: boolean } {
+  return ctaSpy.mock.calls[ctaSpy.mock.calls.length - 1][0];
+}
 
 jest.mock("@/lib/env", () => ({
   isPostImpressionsEnabled: () => false,
@@ -271,6 +279,7 @@ describe("PostFeedCard", () => {
           post={createPost()}
           currentUserId="viewer-1"
           isFollowingAuthor={false}
+          isFollowingPromptAuthor={false}
           promptAction={summary}
         />
       );
@@ -286,10 +295,46 @@ describe("PostFeedCard", () => {
           post={createPost()}
           currentUserId="viewer-1"
           isFollowingAuthor={false}
+          isFollowingPromptAuthor={false}
           promptAction={{ ...summary, originAuthorId: "other-author" }}
         />
       );
 
+      expect(screen.getByTestId("follow-button-author-1")).toBeInTheDocument();
+    });
+
+    test("CTA のフォロー判定には原作者の状態を渡す(投稿者の状態ではない)", () => {
+      /*
+        派生投稿では投稿者と原作者が別人。投稿者をフォロー済みでも原作者が
+        未フォローなら「フォローして使う」でなければならない。取り違えると
+        「このプロンプトで作る」が出て、生成APIで弾かれる。
+      */
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingAuthor        // 投稿者はフォロー済み
+          isFollowingPromptAuthor={false} // 原作者は未フォロー
+          promptAction={{ ...summary, originAuthorId: "other-author" }}
+        />
+      );
+
+      expect(ctaProps().isFollowingAuthor).toBe(false);
+    });
+
+    test("原作者をフォロー済みなら投稿者が未フォローでも CTA はそのまま使える", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={false}
+          isFollowingPromptAuthor
+          promptAction={{ ...summary, originAuthorId: "other-author" }}
+        />
+      );
+
+      expect(ctaProps().isFollowingAuthor).toBe(true);
+      // 投稿者は未フォローなので作者行のボタンは残る
       expect(screen.getByTestId("follow-button-author-1")).toBeInTheDocument();
     });
 
