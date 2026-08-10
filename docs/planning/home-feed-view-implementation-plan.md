@@ -1,7 +1,7 @@
 # ホームのフィード表示（1列）＋「このプロンプトで作る」導線 実装計画書
 
 作成日: 2026-08-10
-ステータス: 計画（ユーザーレビュー待ち）
+ステータス: 計画（レビュー指摘を反映済み・実装待ち）
 
 ## 背景と目的
 
@@ -42,8 +42,12 @@
 | Before 画像の解決 | `getPostBeforeImageUrl(post)`（永続パス → fallback → null） | 「Before があるときだけ2枚表示」の判定に使う |
 | 拡大表示 | `ImageFullscreen`（初期インデックス指定可） | 画像タップの遷移先に流用 |
 | 生成導線 | `PromptLockedGenerationSheet` / `SourcePromptReferenceCard` 内のボタン | カード上のボタンから同じシートを開く |
+| **CTA 可否の判定材料** | `source_reference` は **`getPost`(詳細)でのみ** `resolveSourcePromptReference` により admin クライアントで解決。型コメントにも「詳細取得の経路だけで解決する。一覧はプロンプト欄を持たないため付けない」と明記。一覧の `enrichPosts` は解決しない | **一覧のままではカード上に CTA を出せない**。一覧用のサマリを新設する（下記 ADR-005） |
+| `getPostPromptDisplayMode` | 公開 `/free` root では `prompt` を返す（表示モード判定であって CTA 可否ではない） | CTA 可否の正本には使えない |
 | フォロー | `FollowButton`（`onFollowChange` で即時反映） | 「フォローして使う」の実装に流用 |
-| 既存イベント計測 | `prompt_usage_events` / `style_usage_events` / `post_impressions` 等 | 同じ作法で `home_view_events` を追加 |
+| 既存イベント計測 | `prompt_usage_events` / `style_usage_events` は RLS 有効＋`*_no_public_access`(全拒否)。`post_impressions` も RLS 有効で、`app/api/posts/impressions/batch/route.ts` が **viewer_key をサーバー側で解決**し `createAdminClient()` + RPC `record_post_impressions` で書く | **書き込みは必ずサーバー経由**。`home_view_events` も同じ作法に揃える（下記 ADR-003 改訂） |
+| `post_impressions` の列 | `id / image_id / viewer_key / event_date / created_at`。**`view_mode` は持たない** | 表示形式別の分母には使えない（下記 ADR-006） |
+| `FollowButton` | 文言は `follow` / `unfollow` のトグル。押下後に生成シートを開く責務は持たない | 「フォローして使う」は専用コンポーネントが要る（下記 ADR-007） |
 
 ## 概要図
 
@@ -118,12 +122,49 @@ flowchart LR
 - **Reason**: 未ログインでも機能し、サーバー往復が不要。既存の `generation-mode-preference` と同じ作法
 - **Consequence**: 端末をまたぐと引き継がれない。許容する
 
-### ADR-003: 計測は自前のイベントテーブルで行う
+### ADR-003: 計測は自前のイベントテーブルで行い、書き込みはサーバー経由に限定する（レビュー指摘で改訂）
 
-- **Context**: GA4 は未導入。知りたいのは「切り替え後に維持したか」「フィードは使用率を上げたか」
-- **Decision**: `home_view_events` を新設し、切り替え・行動ボタン押下・カード経由フォローを記録する
-- **Reason**: 期間をまたぐ状態追跡は GA4 が苦手（BigQuery 連携が要る）。既に自前テーブルで分析する運用が確立している
-- **Consequence**: 分析は SQL / admin ダッシュボードで行う
+- **Context**: GA4 は未導入。知りたいのは「切り替え後に維持したか」「フィードは使用率を上げたか」。
+  既存テーブルは `style_usage_events` / `prompt_usage_events` が RLS 全拒否、`post_impressions` も
+  API が viewer_key をサーバー側で解決して admin クライアント + RPC で書く方式
+- **Decision**: `home_view_events` を新設。**RLS は全拒否**とし、`app/api/posts/home-view-events/route.ts` が
+  event_type / view_mode / post の可視性 / 閲覧者を検証したうえで admin クライアントで書く。
+  ゲストは `post_impressions` と同様に**サーバー側で匿名 viewer key を解決**する
+- **Reason**: 当初案の「INSERT のみ許可」は既存の作法と逆で、`user_id` の偽装・存在しない post_id の混入・
+  イベント水増しの防御を RLS と CHECK だけで担うことになる。KPI テーブルが汚れると既定切り替えの判断を誤る
+- **Consequence**: クライアントから直接書けない。分析は SQL / admin ダッシュボードで行う
+
+### ADR-005: CTA 可否は一覧用のサーバー導出サマリで判定する（レビュー指摘で追加）
+
+- **Context**: `source_reference` は詳細取得（`getPost`）でのみ `resolveSourcePromptReference` により解決され、
+  一覧の `enrichPosts` は解決しない（型コメントにも明記）。また `getPostPromptDisplayMode` は表示モードの判定であり、
+  公開 `/free` root では `prompt` を返すため CTA 可否の正本にはならない
+- **Decision**: 一覧 payload に **本文を含まないサーバー導出の `prompt_action_summary`** を追加する
+  （可否・原作 post_id・原作者 id・利用数・Before/After サムネイル）。詳細と**同じ検証経路（admin クライアント + 既存 RPC）**
+  から導出し、一覧の N 件はバッチで解決してリクエスト数を抑える
+- **Reason**: 一覧側で秘匿条件を再実装すると、詳細と判定がずれて「詳細では出ない導線が一覧に出る」事故が起きる。
+  正本を1つにする
+- **Consequence**: 一覧取得にサマリ解決のコストが乗る。フィード表示時のみ解決する / キャッシュするなどの最適化を実装時に検討する
+
+### ADR-006: 表示形式別の KPI は「表示」ではなく「セッション」を分母にする（レビュー指摘で追加）
+
+- **Context**: 当初案の「表示形式別の CTA タップ率」は算出できない。`post_impressions` に `view_mode` が無く、
+  さらに ADR-001 でグリッド側のカードには CTA が存在しないため、**グリッドのタップ率は構造上ゼロ**になり比較が成立しない
+- **Decision**: 次の2点に変更する
+  1. **分母**: `home_view_events` に `home_viewed`（view_mode 付き・セッション単位で1回）を記録する
+  2. **分子**: CTA タップを**カード上・詳細画面のどちらで押されても記録**し、**直前のホーム表示形式**を付与する
+     （表示形式は sessionStorage で持ち回る）。これによりグリッド経由（一覧→詳細→CTA）も同じ土俵で数えられる
+- **Reason**: 比較したいのは「どちらの表示がプロンプト利用に繋がるか」であって「カード上のボタンが押されたか」ではない。
+  グリッドは詳細画面を経由して CTA に至るため、経路を含めて帰属させないと不公平な比較になる
+- **Consequence**: 詳細画面側にも表示形式の受け渡しが必要になる。母数が小さい間は率ではなく実数で見る
+
+### ADR-007: 「フォローして使う」は専用コンポーネントにする（レビュー指摘で追加）
+
+- **Context**: 既存 `FollowButton` は `follow` / `unfollow` のトグルで、押下後に生成シートを開く責務を持たない
+- **Decision**: `FollowAndUsePromptButton` を新設し、状態遷移を明示する
+  （未ログイン → AuthModal / フォロー成功 → 生成シートを開く / フォロー失敗 → シートを開かずエラー表示）
+- **Reason**: 既存ボタンの流用では文言も責務も要件に届かない
+- **Consequence**: フォロー API の呼び出しは既存経路を再利用し、UI とオーケストレーションのみ新規に作る
 
 ### ADR-004: 初期表示はグリッドのまま据え置く
 
@@ -161,22 +202,33 @@ flowchart LR
 - [ ] タップ領域の切り分け（画像 / 本文 / カード地 / ボタンで誤爆しないこと）
 - [ ] 完走投稿・One-Tap 投稿など Before が無い投稿は1枚表示
 
-### Phase 3: カード内の行動ボタン
-目的: 「使う」までの距離を最短にする
+### Phase 3: 一覧用サマリ ＋ カード内の行動ボタン
+目的: 「使う」までの距離を最短にする（ADR-005 / ADR-007）
 
-- [ ] 表示可否は既存の判定に従う（`getPostPromptDisplayMode` / `source_reference` の有無）
+- [ ] **一覧 payload に `prompt_action_summary` を追加**（本文を含まない。可否・原作 post_id・原作者 id・利用数・
+      Before/After サムネイル）。詳細と同じ検証経路（admin クライアント + 既存 RPC）から導出し、N 件はバッチ解決
+- [ ] フィード表示のときだけ解決する（グリッドには不要なので取得コストを増やさない）
+- [ ] `FollowAndUsePromptButton` を新設（ADR-007 の状態遷移）
 - [ ] フォロー済み → 「このプロンプトで作る」→ 既存の生成シートを開く
-- [ ] 未フォロー → 「フォローして使う」→ フォロー成立後に同シートを開く
-- [ ] 利用数（`◯人が使いました`）の表示。既存の利用数取得を流用
+- [ ] 未フォロー → 「フォローして使う」→ フォロー成功時のみシートを開く
+- [ ] 未ログイン → AuthModal へ
+- [ ] 利用数（`◯人が使いました`）の表示。サマリの値を使う
 
 ### Phase 4: 計測
 目的: 続ける／やめる／既定を切り替えるの判断材料を貯める
 
-- [ ] マイグレーション: `home_view_events`（`user_id` nullable / `event_type` / `view_mode` / `from_view_mode` / `post_id` nullable / `created_at`、RLS は INSERT のみ許可・参照は admin）
-- [ ] 記録する3種:
-      `view_mode_changed`(from/to) / `prompt_use_tapped`(view_mode, post_id) / `follow_from_card`(view_mode, post_id)
+- [ ] マイグレーション: `home_view_events`（`user_id` nullable / `viewer_key` / `event_type` / `view_mode` /
+      `from_view_mode` / `post_id` nullable / `created_at`）。**RLS は全拒否**（ADR-003）
+- [ ] 記録する4種:
+      - `home_viewed`(view_mode) … **分母**。セッション単位で1回（ADR-006）
+      - `view_mode_changed`(from → to) … 切替・維持・復帰の分析用
+      - `prompt_use_tapped`(view_mode, post_id) … **分子**。カード上・詳細画面のどちらでも記録し、
+        **直前のホーム表示形式**を付与（sessionStorage で持ち回る）
+      - `follow_from_card`(view_mode, post_id)
+- [ ] API `app/api/posts/home-view-events/route.ts`: event_type / view_mode / post の可視性 / 閲覧者を検証し、
+      **viewer_key をサーバー側で解決**して admin クライアントで書く（`post_impressions` と同じ作法）
 - [ ] 送信は best-effort（失敗しても操作を妨げない）
-- [ ] 分析用 SQL をドキュメント化（切替人数・維持日数・**表示形式別の使用率**）
+- [ ] 分析用 SQL をドキュメント化（切替人数・維持日数・**表示形式別の CTA 到達率＝分子/分母**）
 
 ### Phase 5: 文言・検証・PR
 - [ ] 15言語（トグルの読み上げラベル・NEW・「このプロンプトで作る」「フォローして使う」・「◯人が使いました」）
@@ -196,9 +248,12 @@ flowchart LR
 | features/posts/components/BeforeAfterFrame.tsx | 新規 | Before/After の共通描画（既存ロジックを切り出し） |
 | features/posts/components/SourcePromptReferenceCard.tsx | 修正 | 上記共通部品を使うよう置換（見た目は不変） |
 | features/posts/components/PostList.tsx | 修正 | viewMode 分岐・トグル配置 |
-| features/posts/lib/home-view-events.ts | 新規 | イベント送信（best-effort） |
-| app/api/posts/home-view-events/route.ts | 新規 | 記録API |
-| supabase/migrations/xxxx_add_home_view_events.sql | 新規 | イベントテーブル＋RLS |
+| features/posts/lib/home-view-events.ts | 新規 | イベント送信（best-effort）＋直前の表示形式の持ち回り |
+| app/api/posts/home-view-events/route.ts | 新規 | 記録API（検証＋viewer_key 解決＋admin 書き込み） |
+| supabase/migrations/xxxx_add_home_view_events.sql | 新規 | イベントテーブル＋**RLS 全拒否** |
+| features/posts/lib/server-api.ts | 修正 | 一覧に `prompt_action_summary` を付与（フィード時のみ・バッチ解決） |
+| features/posts/lib/source-prompt-reference.ts | 修正 | 一覧用サマリのバッチ解決を追加（本文は含めない） |
+| features/posts/components/FollowAndUsePromptButton.tsx | 新規 | フォロー→生成シートの状態遷移 |
 | messages/*.ts（15言語） | 修正 | 文言追加 |
 | tests/unit/... | 新規 | 上記テスト |
 
@@ -208,7 +263,13 @@ flowchart LR
 - [ ] タップ領域の誤爆がないこと（画像/本文/カード地/ボタン）
 - [ ] Before が無い投稿（One-Tap・完走投稿）でも破綻しないこと
 - [ ] 未ログインでもフィードが見られること（行動ボタンはログインを促す）
+- [ ] **CTA 可否が詳細画面と完全に一致すること**。次の全ケースでテストする:
+      完走投稿 / One-Tap 投稿 / 公開 `/free` root / 非公開 `/free` root / 派生投稿 / 原作が削除済み /
+      原作が投稿取消 / 未ログイン閲覧者 / 本人 / 運営
 - [ ] プロンプト非公開・原作削除の投稿で行動ボタンが出ないこと（秘匿の回帰防止）
+- [ ] `prompt_action_summary` に**プロンプト本文が含まれないこと**（payload を検査するテスト）
+- [ ] 「フォローして使う」の状態遷移（未ログイン→AuthModal / 成功→シート / 失敗→シートを開かない）
+- [ ] イベントがクライアントから直接 INSERT できないこと（RLS 全拒否の確認）
 - [ ] 計測が失敗しても操作が止まらないこと
 - [ ] 15言語で文言が崩れないこと（ボタン文言が長い言語での折り返し）
 
@@ -217,11 +278,14 @@ flowchart LR
 公開後に見る指標（Phase 4 のイベントから SQL で算出）:
 
 1. **フィードを一度でも使った人の数**（母数が小さいうちはここまで）
-2. **表示形式別の「このプロンプトで作る」タップ率** ← **本命**
+2. **表示形式別の CTA 到達率** ← **本命**
+   `prompt_use_tapped`(view_mode 別) ÷ `home_viewed`(view_mode 別)。
+   グリッドは「一覧 → 詳細 → CTA」を経由するため、**直前のホーム表示形式で帰属**させて同じ土俵で比較する（ADR-006）
 3. カード経由のフォロー発生数
 4. 切り替え後の維持日数（母数が増えてから）
 
 判断の目安: **2 でフィードがグリッドを明確に上回り、かつ 1 が一定数に達したら、既定をフィードへ切り替える**。現在の基準値は「他人のプロンプトの利用が累計13回・2人」。
+母数が小さいうちは率が不安定なので、実数（何人が押したか）も併記して判断する。
 
 ## ロールバック方針
 
