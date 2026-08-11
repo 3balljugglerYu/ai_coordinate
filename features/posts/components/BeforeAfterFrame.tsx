@@ -37,6 +37,11 @@ interface BeforeAfterFrameProps {
   onImageClick?: (index: number) => void;
   /** 拡大できることを伝える読み上げラベル(onImageClick 指定時のみ使う) */
   imageButtonLabel?: string;
+  /**
+   * 先頭カードの先読み。**Before/After の両方に効かせる**。
+   * After だけに付けると、並んでいるのに Before だけ遅れて出てきて
+   * 「後から差し込まれた」ように見える。1枚の絵として同時に出す。
+   */
   priority?: boolean;
   /**
    * Before が無い1枚表示のとき、縦長画像の高さを幅までに収めるか（既定 false）。
@@ -159,6 +164,7 @@ export function BeforeAfterFrame({
             fill
             sizes={sizes}
             className="object-cover object-top"
+            priority={priority}
           />
           <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
             {beforeLabel}

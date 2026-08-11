@@ -12,7 +12,11 @@ import { FollowButton } from "@/features/users/components/FollowButton";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
 import { ImageFullscreen } from "./ImageFullscreen";
 import { PostCardLikeButton } from "./PostCardLikeButton";
-import { BeforeAfterFrame, FALLBACK_ASPECT_RATIO } from "./BeforeAfterFrame";
+import {
+  BeforeAfterFrame,
+  FALLBACK_ASPECT_RATIO,
+  isLandscapeRatio,
+} from "./BeforeAfterFrame";
 import { FeedCaption } from "./FeedCaption";
 import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
 import { FeedSourceQuote } from "./FeedSourceQuote";
@@ -155,6 +159,19 @@ export function PostFeedCard({
     }
     return items;
   }, [afterUrl, beforeUrl, post, t]);
+
+  /*
+    next/image に渡す sizes。Before/After を横に並べるときは1セルが**半分の幅**に
+    なるので、100vw のままだと必要な2倍の解像度を落としてくる。
+    横長(上下に積む)と1枚表示のときは全幅のまま。
+  */
+  const imageSizes = useMemo(() => {
+    const showsBefore = !!afterUrl && !!beforeUrl;
+    const isHalfWidthCell = showsBefore && !isLandscapeRatio(aspectRatio);
+    return isHalfWidthCell
+      ? `(max-width: ${FEED_CARD_MAX_WIDTH_PX}px) 50vw, ${FEED_CARD_MAX_WIDTH_PX / 2}px`
+      : `(max-width: ${FEED_CARD_MAX_WIDTH_PX}px) 100vw, ${FEED_CARD_MAX_WIDTH_PX}px`;
+  }, [afterUrl, beforeUrl, aspectRatio]);
 
   const authorId = post.user?.id ?? null;
   /*
@@ -325,7 +342,7 @@ export function PostFeedCard({
             beforeAlt={t("beforeImageAlt")}
             afterLabel={t("afterImageLabel")}
             beforeLabel={t("beforeImageLabel")}
-            sizes={`(max-width: ${FEED_CARD_MAX_WIDTH_PX}px) 100vw, ${FEED_CARD_MAX_WIDTH_PX}px`}
+            sizes={imageSizes}
             testIdPrefix="post-feed"
             onImageClick={fullscreenImages.length > 0 ? setFullscreenIndex : undefined}
             imageButtonLabel={t("feedExpandImage")}

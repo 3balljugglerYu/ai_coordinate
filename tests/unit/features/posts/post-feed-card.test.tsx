@@ -216,6 +216,50 @@ describe("PostFeedCard", () => {
       );
     });
 
+    test("Before/After が並ぶときは片方だけ遅れないよう両方に先読みを効かせる", () => {
+      /*
+        After だけ priority だと、並んでいるのに Before だけ後から差し込まれる。
+        1枚の絵として同時に出す。
+      */
+      render(
+        <PostFeedCard
+          post={createPost({ input_image_url_fallback: "https://example.test/before.png" })}
+          currentUserId={null}
+          prioritizeImage
+        />
+      );
+
+      const after = screen.getByTestId("post-feed-after-frame").querySelector("img");
+      const before = screen.getByTestId("post-feed-before-frame").querySelector("img");
+      expect(after?.getAttribute("priority")).toBe(before?.getAttribute("priority"));
+    });
+
+    test("横に並ぶセルには半分の幅で sizes を渡す(2倍の解像度を落とさない)", () => {
+      render(
+        <PostFeedCard
+          post={createPost({ input_image_url_fallback: "https://example.test/before.png" })}
+          currentUserId={null}
+        />
+      );
+
+      const sizes = screen
+        .getByTestId("post-feed-after-frame")
+        .querySelector("img")
+        ?.getAttribute("sizes");
+      expect(sizes).toContain("50vw");
+      expect(sizes).toContain("300px");
+    });
+
+    test("1枚表示は全幅で sizes を渡す", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      const sizes = screen
+        .getByTestId("post-feed-after-frame")
+        .querySelector("img")
+        ?.getAttribute("sizes");
+      expect(sizes).toContain("100vw");
+    });
+
     test("横長は上下に並べる", () => {
       render(
         <PostFeedCard
