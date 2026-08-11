@@ -531,8 +531,9 @@ export function PostList({
         <div className="mb-4 flex items-end justify-between gap-2 border-b">
           {/* タブ=何を見るか / トグル=どう見るか。両者は独立している */}
           <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
-          {/* pb-1 でタブ(py-2 + text-sm = 36px)と行の高さを揃え、レイアウトシフトを防ぐ */}
-          <div className="pb-1">
+          {/* トグルは 40px(タブの 36px より少し高い)。ホームのスケルトンも 40px なので
+              差し替え時のレイアウトシフトは出ない */}
+          <div>
             <HomeViewToggle
               value={viewMode}
               onChange={handleViewModeChange}

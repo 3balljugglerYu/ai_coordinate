@@ -40,19 +40,21 @@ export function HomeViewToggle({ value, onChange, showNewBadge = false }: HomeVi
             aria-label={label}
             title={label}
             className={cn(
-              "flex h-7 w-8 items-center justify-center rounded-full transition-colors",
+              // 指で押せる大きさにする(44px 目安)。アイコンだけの小さな的だと
+              // 押し損ねて「反応しない」と受け取られる
+              "flex h-9 w-11 items-center justify-center rounded-full transition-colors",
               isActive
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <Icon className="h-4 w-4" aria-hidden="true" />
+            <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
           </button>
         );
       })}
       {showNewBadge && (
         <span
-          className="pointer-events-none absolute -right-1 -top-2 rounded-full bg-primary px-1.5 py-px text-[9px] font-bold leading-tight text-primary-foreground shadow-sm"
+          className="pointer-events-none absolute -right-1.5 -top-1.5 rounded-full bg-primary px-1.5 py-px text-[9px] font-bold leading-tight text-primary-foreground shadow-sm"
           aria-hidden="true"
         >
           {postsT("viewModeNewBadge")}
