@@ -7,6 +7,23 @@ import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUserRouteCopy } from "@/features/users/lib/route-copy";
+import { convertToWebP } from "@/features/generation/lib/webp-converter";
+
+/**
+ * 保存するアバターの最大辺（px）。
+ *
+ * 表示は 24〜36px（Retina で最大 72px）だが、将来プロフィール画面で大きく出す
+ * 余地を残して 256px にしている。これでも 1件あたり十数KB に収まる。
+ *
+ * リサイズしていなかった頃は、本番の 44 件で合計 34MB・中央値 746KB・最大 2.0MB
+ * だった（クライアントの切り抜きが PNG を吐くため）。36px の丸アイコンのために
+ * 毎回そのサイズを Storage から取りに行っており、画像最適化のたびに費用と
+ * 待ち時間になっていた。
+ */
+const AVATAR_MAX_SIZE_PX = 256;
+
+/** WebP 品質。アイコンなので 80 で十分（既存の変換ヘルパーの既定と同じ）。 */
+const AVATAR_WEBP_QUALITY = 80;
 
 /**
  * プロフィール画像アップロードAPI（POST）
@@ -81,18 +98,48 @@ export async function POST(
       .eq("user_id", userId)
       .single();
 
+    /*
+      保存前に 256px の WebP へ縮める。
+
+      受付上限(10MB)は据え置きで、**受け取ってから縮める**。ユーザーは今までどおり
+      撮った写真をそのまま上げられる。
+
+      変換に失敗したときは元のファイルをそのまま保存する(従来の挙動)。
+      アイコンが重いのは困るが、アップロード自体が失敗する方が困る。
+      なお現状クライアントは切り抜き時に PNG へ変換して送るため、
+      sharp が扱えない形式(HEIF 等)がここへ届くことはない想定。
+    */
+    let uploadBody: File | Buffer = file;
+    let fileExt = getFileExtensionFromMimeType(file.type);
+    let contentType: string | undefined;
+    try {
+      const originalBuffer = Buffer.from(await file.arrayBuffer());
+      uploadBody = await convertToWebP(originalBuffer, {
+        maxWidth: AVATAR_MAX_SIZE_PX,
+        maxHeight: AVATAR_MAX_SIZE_PX,
+        quality: AVATAR_WEBP_QUALITY,
+      });
+      fileExt = "webp";
+      contentType = "image/webp";
+    } catch (conversionError) {
+      console.error(
+        "[avatar] WebP 変換に失敗したため元のファイルを保存します:",
+        conversionError
+      );
+    }
+
     // ファイル名を生成（フォルダ: avatars/{userId}/タイムスタンプ.拡張子）
-    // MIMEタイプから拡張子を決定（file.nameに依存しない）
-    const fileExt = getFileExtensionFromMimeType(file.type);
+    // 拡張子は変換結果から決める（変換できたときは常に webp）
     const fileName = `avatars/${userId}/${Date.now()}.${fileExt}`;
     const filePath = fileName;
 
     // Supabase Storageにアップロード
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from(AVATAR_BUCKET)
-      .upload(filePath, file, {
+      .upload(filePath, uploadBody, {
         cacheControl: "3600",
         upsert: true,
+        ...(contentType ? { contentType } : {}),
       });
 
     if (uploadError) {
