@@ -54,7 +54,12 @@ export function HomeViewToggle({ value, onChange, showNewBadge = false }: HomeVi
       })}
       {showNewBadge && (
         <span
-          className="pointer-events-none absolute -right-1.5 -top-1.5 rounded-full bg-primary px-1.5 py-px text-[9px] font-bold leading-tight text-primary-foreground shadow-sm"
+          /*
+            右端は枠の内側に揃える(right-0)。負の値で外へ出すと、この行は
+            画面の右端にあるためページの余白へはみ出して切れて見える。
+            上方向だけ少し出して、フィード(▤)側の角に載せる。
+          */
+          className="pointer-events-none absolute right-0 -top-2 whitespace-nowrap rounded-full bg-primary px-1.5 py-px text-[9px] font-bold leading-tight text-primary-foreground shadow-sm"
           aria-hidden="true"
         >
           {postsT("viewModeNewBadge")}
