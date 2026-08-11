@@ -24,11 +24,16 @@ import { postsRouteCopy } from "@/features/posts/lib/route-copy";
  * - `validate_derived_prompt_source` が false（削除・投稿取消・公開停止・
  *   free でない・root でない・secret 無し・原作者が利用不可・未フォロー・
  *   双方向いずれかのブロック）
- * - **原作が非公開プロンプト**
+ * - **原作が非公開プロンプト**（ただし**原作者本人は除く**）
  *
- * 非公開を弾くのがこの経路の要点である。`resolve_derived_prompt_source` は
- * 本文を返す唯一の RPC で、Worker が provider 送信直前に使うためのもの。
- * ここから非公開の本文が出ると、機能そのものが成立しなくなる。
+ * 非公開を第三者へ出さないのがこの経路の要点である。`resolve_derived_prompt_source`
+ * は本文を返す唯一の RPC で、Worker が provider 送信直前に使うためのもの。
+ * ここから非公開の本文が第三者へ出ると、機能そのものが成立しなくなる。
+ *
+ * 一方で**本人は自分の非公開プロンプトを取り出せる**。非公開は「第三者へ渡さない」
+ * 設定であって、自分の資産を自分から遠ざけるものではない。本人は投稿詳細で本文を
+ * そのまま読めるので、ここで拒否しても秘匿にはならず、コピーだけができない状態に
+ * なる（参照カードは本人にコピーボタンを出すため、UI と条件が食い違っていた）。
  *
  * 理由は返さない。どの条件で落ちても同じ 404 にする。区別できると原作の
  * 状態を推測できてしまう（ADR-005）。
@@ -83,11 +88,17 @@ export async function GET(
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
-    // 非公開の本文はこの経路から絶対に出さない。
-    // validate は公開・非公開のどちらも通すため、ここで明示的に絞る。
+    /*
+      非公開の本文を第三者へ出さない。validate は公開・非公開のどちらも通すため、
+      ここで明示的に絞る。
+
+      ただし**原作者本人には出す**。本人は投稿詳細で本文をそのまま読めるので、
+      ここで拒否しても秘匿にならず「見えているのにコピーできない」だけになる。
+      参照カードは本人にコピーボタンを出しており、UI と条件が食い違っていた。
+    */
     const { data: originRow, error: originError } = await supabase
       .from("generated_images")
-      .select("prompt_visibility")
+      .select("prompt_visibility, user_id")
       .eq("id", validated.root_post_id)
       .maybeSingle();
 
@@ -95,7 +106,13 @@ export async function GET(
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
-    if ((originRow as { prompt_visibility?: string }).prompt_visibility !== "public") {
+    const origin = originRow as {
+      prompt_visibility?: string;
+      user_id?: string | null;
+    };
+    const isOriginAuthor = !!origin.user_id && origin.user_id === user.id;
+
+    if (!isOriginAuthor && origin.prompt_visibility !== "public") {
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
