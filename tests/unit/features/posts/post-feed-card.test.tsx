@@ -63,14 +63,20 @@ jest.mock("@/features/users/components/FollowButton", () => ({
 const quoteSpy = jest.fn();
 jest.mock("@/features/posts/components/FeedSourceQuote", () => ({
   FeedSourceQuote: (props: {
-    title: string;
+    variant: string;
+    title?: string;
     href?: string | null;
-    thumbnailUrl: string | null;
+    thumbnailUrl?: string | null;
     action?: React.ReactNode;
   }) => {
     quoteSpy(props);
     return (
-      <div data-testid="feed-source-quote" data-title={props.title} data-href={props.href ?? ""}>
+      <div
+        data-testid="feed-source-quote"
+        data-variant={props.variant}
+        data-title={props.title ?? ""}
+        data-href={props.href ?? ""}
+      >
         {props.action}
       </div>
     );
@@ -78,7 +84,12 @@ jest.mock("@/features/posts/components/FeedSourceQuote", () => ({
 }));
 
 /** 引用カードに渡された props。 */
-function quoteProps(): { title: string; href?: string | null; thumbnailUrl: string | null } {
+function quoteProps(): {
+  variant: string;
+  title?: string;
+  href?: string | null;
+  thumbnailUrl?: string | null;
+} {
   return quoteSpy.mock.calls[quoteSpy.mock.calls.length - 1][0];
 }
 
@@ -445,6 +456,35 @@ describe("PostFeedCard", () => {
       ).not.toBeNull();
     });
 
+    test("原作がこの投稿自身なら root として出す(自分を引用しない)", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingPromptAuthor
+          promptAction={{ ...summary, originPostId: "post-1" }}
+        />
+      );
+
+      expect(quoteProps().variant).toBe("root");
+      // 自分自身へのリンクは張らない
+      expect(quoteProps().href).toBeNull();
+    });
+
+    test("原作が別投稿なら derived として原作へのリンクを出す", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingPromptAuthor
+          promptAction={summary}
+        />
+      );
+
+      expect(quoteProps().variant).toBe("derived");
+      expect(quoteProps().href).toBe("/posts/origin-1");
+    });
+
     test("原作が使えないときは引用元ごと出さない", () => {
       render(
         <PostFeedCard
@@ -479,6 +519,7 @@ describe("PostFeedCard", () => {
         />
       );
 
+      expect(quoteProps().variant).toBe("style");
       expect(quoteProps().title).toBe("夏のマリンコーデ");
       expect(quoteProps().href).toBe("/styles/summer-marine");
     });

@@ -323,11 +323,20 @@ export function PostFeedCard({
         {promptAction?.isAvailable ? (
           <div className="px-3 pt-3">
             <FeedSourceQuote
+              /*
+                原作がこの投稿自身なら引用ではなくお知らせ。サムネイルと作者名を
+                出すと、すぐ上の投稿本体と同じものを繰り返すだけになる。
+              */
+              variant={promptAction.originPostId === post.id ? "root" : "derived"}
               thumbnailUrl={promptAction.originThumbnailUrl}
               title={promptAction.originAuthorNickname || t("anonymousUser")}
               avatarUrl={promptAction.originAuthorAvatarUrl}
               description={promptAction.originCaption}
-              href={`/posts/${encodeURIComponent(promptAction.originPostId)}`}
+              href={
+                promptAction.originPostId === post.id
+                  ? null
+                  : `/posts/${encodeURIComponent(promptAction.originPostId)}`
+              }
               usageCount={promptAction.usageCount}
               action={
                 <FollowAndUsePromptButton
@@ -342,6 +351,7 @@ export function PostFeedCard({
         ) : oneTapPreset ? (
           <div className="px-3 pt-3">
             <FeedSourceQuote
+              variant="style"
               thumbnailUrl={oneTapPreset.thumbnailImageUrl}
               title={oneTapPreset.title}
               href={
@@ -350,7 +360,6 @@ export function PostFeedCard({
                   : null
               }
               usageCount={stylePresetLink?.usageCount ?? 0}
-              usageVariant="style"
             />
           </div>
         ) : null}
