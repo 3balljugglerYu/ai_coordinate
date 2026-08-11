@@ -26,7 +26,7 @@ import {
   isLandscapeRatio,
 } from "./BeforeAfterFrame";
 import { shouldShowUsageCount } from "../lib/constants";
-import { copyTextToClipboard } from "../lib/copy-to-clipboard";
+import { copyTextFromPromise } from "@/lib/clipboard";
 import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
@@ -187,8 +187,13 @@ export function SourcePromptReferenceCard({
   */
   const handleCopyPrompt = async () => {
     try {
-      const promptText = await fetchSourcePromptText(reference.postId);
-      await copyTextToClipboard(promptText);
+      /*
+        本文の取得を await してから copyTextToClipboard を呼ぶと、iOS Safari では
+        通信のあいだにユーザー操作の権限が切れてコピーが必ず拒否される
+        (同期的にテキストを持っている他のコピーは動く)。
+        Promise を渡せる形にして、押した瞬間の権限を保つ。
+      */
+      await copyTextFromPromise(fetchSourcePromptText(reference.postId));
       setIsCopied(true);
       toast({ title: t("sourcePromptCopied") });
       setTimeout(() => setIsCopied(false), 2000);

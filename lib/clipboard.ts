@@ -46,3 +46,44 @@ export async function copyTextToClipboard(text: string): Promise<void> {
 
   throw new Error("Failed to copy to clipboard");
 }
+
+/**
+ * 「押してから通信でテキストを取ってコピーする」ためのコピー。
+ *
+ * iOS Safari は `await` を挟むとユーザー操作の権限が切れ、その後の
+ * `clipboard.writeText` が拒否される。textarea + execCommand のフォールバックも
+ * 権限が切れた後では効かないため、通信してから copyTextToClipboard を呼ぶ形だと
+ * iOS では必ず失敗する（同期的にテキストを持っている他のコピーは動く）。
+ *
+ * `ClipboardItem` には **Promise を渡せる**。こうすると中身が後から解決しても
+ * 押した瞬間の権限が保たれる。Safari が用意している正攻法。
+ *
+ * **クリックハンドラから同期的に呼ぶこと**（先に await すると意味がない）。
+ *
+ * @param textPromise コピーするテキストの Promise
+ * @throws テキストの取得に失敗した場合、またはコピーできなかった場合
+ */
+export async function copyTextFromPromise(
+  textPromise: Promise<string>
+): Promise<void> {
+  if (
+    typeof ClipboardItem !== "undefined" &&
+    navigator.clipboard &&
+    typeof navigator.clipboard.write === "function"
+  ) {
+    try {
+      await navigator.clipboard.write([
+        new ClipboardItem({
+          "text/plain": textPromise.then(
+            (text) => new Blob([text], { type: "text/plain" })
+          ),
+        }),
+      ]);
+      return;
+    } catch {
+      // 未対応・拒否された場合は従来経路へ倒す
+    }
+  }
+
+  await copyTextToClipboard(await textPromise);
+}

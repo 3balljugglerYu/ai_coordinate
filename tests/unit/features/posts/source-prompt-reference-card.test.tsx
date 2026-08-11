@@ -95,8 +95,10 @@ jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
 
-jest.mock("@/features/posts/lib/copy-to-clipboard", () => ({
-  copyTextToClipboard: jest.fn().mockResolvedValue(undefined),
+jest.mock("@/lib/clipboard", () => ({
+  // 本文の取得を await してから呼ぶと iOS Safari で権限が切れるため、
+  // Promise を渡す形になっていることをここで固定する
+  copyTextFromPromise: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("@/features/posts/lib/source-prompt-text-api", () => ({
@@ -607,9 +609,7 @@ describe("プロンプトのコピー", () => {
     const { fetchSourcePromptText } = jest.requireMock(
       "@/features/posts/lib/source-prompt-text-api"
     );
-    const { copyTextToClipboard } = jest.requireMock(
-      "@/features/posts/lib/copy-to-clipboard"
-    );
+    const { copyTextFromPromise } = jest.requireMock("@/lib/clipboard");
 
     renderCard({
       reference: buildReference({ promptVisibility: "public" }),
@@ -621,8 +621,12 @@ describe("プロンプトのコピー", () => {
 
     await waitFor(() => {
       expect(fetchSourcePromptText).toHaveBeenCalledWith(ORIGIN_POST_ID);
-      expect(copyTextToClipboard).toHaveBeenCalledWith("白いワンピースにして");
+      expect(copyTextFromPromise).toHaveBeenCalledTimes(1);
     });
+    // 解決済みの文字列ではなく Promise を渡していること(iOS の権限を保つため)
+    const passed = copyTextFromPromise.mock.calls[0][0];
+    expect(passed).toBeInstanceOf(Promise);
+    await expect(passed).resolves.toBe("白いワンピースにして");
   });
 });
 
