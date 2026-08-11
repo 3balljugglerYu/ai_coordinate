@@ -30,8 +30,19 @@ jest.mock("next/link", () => ({
 
 jest.mock("next/image", () => ({
   __esModule: true,
-  default: ({ alt, src, ...props }: React.ImgHTMLAttributes<HTMLImageElement>) =>
-    React.createElement("img", { alt, src, ...props }),
+  // unoptimized は img の属性にならないため、検証できるよう data 属性へ移す
+  default: ({
+    alt,
+    src,
+    unoptimized,
+    ...props
+  }: React.ImgHTMLAttributes<HTMLImageElement> & { unoptimized?: boolean }) =>
+    React.createElement("img", {
+      alt,
+      src,
+      "data-unoptimized": String(Boolean(unoptimized)),
+      ...props,
+    }),
 }));
 
 jest.mock("react-intersection-observer", () => ({
@@ -258,6 +269,18 @@ describe("PostFeedCard", () => {
         .querySelector("img")
         ?.getAttribute("sizes");
       expect(sizes).toContain("100vw");
+    });
+
+    test("画像はグリッドと同じ URL で出す(切り替え時にキャッシュを再利用する)", () => {
+      /*
+        最適化を通すと /_next/image?url=... に変わり、グリッドで見た直後に
+        フィードへ切り替えてもキャッシュが1枚も効かず全部取り直しになる。
+      */
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      const img = screen.getByTestId("post-feed-after-frame").querySelector("img");
+      expect(img?.getAttribute("src")).toBe("https://example.test/after.png");
+      expect(img?.getAttribute("data-unoptimized")).toBe("true");
     });
 
     test("横長は上下に並べる", () => {

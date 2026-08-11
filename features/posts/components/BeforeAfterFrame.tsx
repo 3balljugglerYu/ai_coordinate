@@ -29,7 +29,11 @@ interface BeforeAfterFrameProps {
   beforeAlt: string;
   afterLabel: string;
   beforeLabel: string;
-  /** next/image の sizes。呼び出し側のカード幅から決める。 */
+  /**
+   * next/image の sizes。呼び出し側のカード幅から決める。
+   * `unoptimized` なので srcset は生成されないが、将来最適化に戻したときに
+   * 正しい値が入っているよう意図は残しておく。
+   */
   sizes: string;
   /** data-testid の接頭辞。`{prefix}-after-frame` / `{prefix}-before-frame` になる。 */
   testIdPrefix: string;
@@ -71,6 +75,15 @@ interface BeforeAfterFrameProps {
  * もとは SourcePromptReferenceCard の中にあった描画を、フィードカードと
  * 共有するために切り出したもの。DOM 構造(行 > After セル > Before セル)は
  * 変えていない。
+ *
+ * 画像は `unoptimized` で出す(グリッドの PostCard と同じ)。理由は2つ。
+ *
+ * 1. **グリッドと同じ URL になる**。最適化を通すと `/_next/image?url=...` に
+ *    変わってしまい、グリッドで見た直後にフィードへ切り替えても
+ *    ブラウザキャッシュが1枚も再利用されず、全部を取り直すことになる。
+ * 2. 元が既に一覧向けの WebP サムネイルで、カード幅(最大600px)に対して
+ *    ほぼ適正サイズ。最適化で削れる分よりも、1枚ごとのサーバー往復と
+ *    変換コストの方が大きい。
  */
 export function BeforeAfterFrame({
   afterUrl,
@@ -140,6 +153,7 @@ export function BeforeAfterFrame({
             sizes={sizes}
             className={afterImageFit}
             priority={priority}
+            unoptimized
           />
         ) : null}
         {showsBefore ? (
@@ -165,6 +179,7 @@ export function BeforeAfterFrame({
             sizes={sizes}
             className="object-cover object-top"
             priority={priority}
+            unoptimized
           />
           <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
             {beforeLabel}
