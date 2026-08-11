@@ -15,6 +15,10 @@ jest.mock("@/features/posts/lib/source-prompt-reference", () => ({
   resolveSourcePromptSummaries: jest.fn(),
 }));
 
+jest.mock("@/features/style/lib/style-popularity", () => ({
+  getStyleGenerateTotalCounts: jest.fn(async () => ({ "preset-1": 42 })),
+}));
+
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/posts/prompt-actions/route";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -165,6 +169,8 @@ describe("POST /api/posts/prompt-actions", () => {
       expect(body.styleLinks[POST_A]).toEqual({
         presetId: "preset-1",
         slug: "summer-marine",
+        // 累計回数は /style の探索シートと同じ値を使う
+        usageCount: 42,
       });
     });
 
@@ -184,7 +190,11 @@ describe("POST /api/posts/prompt-actions", () => {
       const response = await POST(buildRequest({ post_ids: [POST_A] }));
       const body = await response.json();
 
-      expect(body.styleLinks[POST_A]).toEqual({ presetId: "preset-1", slug: null });
+      expect(body.styleLinks[POST_A]).toEqual({
+        presetId: "preset-1",
+        slug: null,
+        usageCount: 42,
+      });
     });
 
     test("未公開(published でない)プリセットも slug を返さない", async () => {
@@ -193,7 +203,11 @@ describe("POST /api/posts/prompt-actions", () => {
       const response = await POST(buildRequest({ post_ids: [POST_A] }));
       const body = await response.json();
 
-      expect(body.styleLinks[POST_A]).toEqual({ presetId: "preset-1", slug: null });
+      expect(body.styleLinks[POST_A]).toEqual({
+        presetId: "preset-1",
+        slug: null,
+        usageCount: 42,
+      });
     });
 
     test("One-Tap でない投稿だけならプリセットを問い合わせない", async () => {

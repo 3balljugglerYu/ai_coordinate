@@ -12,8 +12,8 @@ import { FeedSourceQuote } from "@/features/posts/components/FeedSourceQuote";
 import { USAGE_COUNT_DISPLAY_THRESHOLD } from "@/features/posts/lib/constants";
 
 jest.mock("next-intl", () => ({
-  useTranslations: () => (key: string, values?: Record<string, unknown>) =>
-    values ? `${key}:${JSON.stringify(values)}` : key,
+  useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
+    values ? `${namespace}.${key}:${JSON.stringify(values)}` : `${namespace}.${key}`,
 }));
 
 jest.mock("next/link", () => ({
@@ -48,7 +48,7 @@ describe("FeedSourceQuote", () => {
           usageCount={USAGE_COUNT_DISPLAY_THRESHOLD - 1}
         />
       );
-      expect(screen.queryByText(/sourcePromptUsageCount/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/UsageCount/)).not.toBeInTheDocument();
     });
 
     test("下限に届いたら出す", () => {
@@ -60,13 +60,29 @@ describe("FeedSourceQuote", () => {
         />
       );
       expect(
-        screen.getByText(`sourcePromptUsageCount:{"count":${USAGE_COUNT_DISPLAY_THRESHOLD}}`)
+        screen.getByText(
+          `posts.sourcePromptUsageCount:{"count":${USAGE_COUNT_DISPLAY_THRESHOLD}}`
+        )
+      ).toBeInTheDocument();
+    });
+
+    test("スタイル向けは /style と同じ文言を使う(同じ意味の文言を2箇所で持たない)", () => {
+      render(
+        <FeedSourceQuote
+          thumbnailUrl={null}
+          title="夏のマリンコーデ"
+          usageCount={42}
+          usageVariant="style"
+        />
+      );
+      expect(
+        screen.getByText('style.styleUsageCount:{"count":42}')
       ).toBeInTheDocument();
     });
 
     test("0回でも出さない", () => {
       render(<FeedSourceQuote thumbnailUrl={null} title="みきふく" usageCount={0} />);
-      expect(screen.queryByText(/sourcePromptUsageCount/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/UsageCount/)).not.toBeInTheDocument();
     });
   });
 

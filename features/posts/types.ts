@@ -118,6 +118,11 @@ export interface StylePresetLink {
   presetId: string;
   /** 公開ページへのリンクに使う。非公開・admin_only のときは null（リンクを出さない）。 */
   slug: string | null;
+  /**
+   * プリセットの累計生成回数。
+   * /style の探索シートが出しているものと同じ値を使う（正本を増やさない）。
+   */
+  usageCount: number;
 }
 
 export interface PostImageResponse {

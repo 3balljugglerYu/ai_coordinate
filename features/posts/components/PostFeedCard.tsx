@@ -349,6 +349,8 @@ export function PostFeedCard({
                   ? `/styles/${encodeURIComponent(stylePresetLink.slug)}`
                   : null
               }
+              usageCount={stylePresetLink?.usageCount ?? 0}
+              usageVariant="style"
             />
           </div>
         ) : null}

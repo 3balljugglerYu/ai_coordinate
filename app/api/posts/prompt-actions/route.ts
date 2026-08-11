@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveSourcePromptSummaries } from "@/features/posts/lib/source-prompt-reference";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { isCollectionDisplayPeriodActive } from "@/features/collections/lib/collection-display-period";
+import { getStyleGenerateTotalCounts } from "@/features/style/lib/style-popularity";
 import type { StylePresetLink } from "@/features/posts/types";
 
 /**
@@ -70,13 +71,17 @@ async function resolveStylePresetLinks(
     return {};
   }
 
-  const { data, error } = await supabase
+  const [{ data, error }, generateTotals] = await Promise.all([
+    supabase
     .from("style_presets")
     .select(
       "id, slug, category:preset_categories!style_presets_category_id_fkey(visibility, collection_display_starts_at, collection_display_ends_at)"
     )
     .in("id", Array.from(new Set(presetIdByPostId.values())))
-    .eq("status", "published");
+    .eq("status", "published"),
+    // 探索シートが出している累計回数と同じ値を使う(use cache 済み・正本を増やさない)
+    getStyleGenerateTotalCounts().catch(() => ({}) as Record<string, number>),
+  ]);
 
   if (error) {
     // リンクが出ないだけで引用カード自体は描けるので、失敗は握りつぶす
@@ -114,7 +119,11 @@ async function resolveStylePresetLinks(
 
   const links: Record<string, StylePresetLink> = {};
   for (const [postId, presetId] of presetIdByPostId) {
-    links[postId] = { presetId, slug: slugByPresetId.get(presetId) ?? null };
+    links[postId] = {
+      presetId,
+      slug: slugByPresetId.get(presetId) ?? null,
+      usageCount: generateTotals[presetId] ?? 0,
+    };
   }
   return links;
 }

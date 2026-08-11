@@ -22,6 +22,13 @@ interface FeedSourceQuoteProps {
   href?: string | null;
   /** 累計利用回数。下限に届かないときは出さない。 */
   usageCount?: number;
+  /**
+   * 利用回数の文言をどちらの対象向けにするか。
+   * プロンプトは「使われた」、スタイルは「つくられた」。
+   * `style` は /style の探索シートが既に使っている文言をそのまま再利用する
+   * (同じ意味の文言を2箇所で持たない)。
+   */
+  usageVariant?: "prompt" | "style";
   /** 行動ボタン。原作が使えるときだけ渡す。 */
   action?: React.ReactNode;
 }
@@ -46,9 +53,11 @@ export function FeedSourceQuote({
   description,
   href,
   usageCount = 0,
+  usageVariant = "prompt",
   action,
 }: FeedSourceQuoteProps) {
   const t = useTranslations("posts");
+  const styleT = useTranslations("style");
 
   const header = (
     <div className="flex min-w-0 items-center gap-1.5">
@@ -86,7 +95,9 @@ export function FeedSourceQuote({
       ) : null}
       {shouldShowUsageCount(usageCount) ? (
         <p className="text-[11px] leading-tight text-muted-foreground">
-          {t("sourcePromptUsageCount", { count: usageCount })}
+          {usageVariant === "style"
+            ? styleT("styleUsageCount", { count: usageCount })
+            : t("sourcePromptUsageCount", { count: usageCount })}
         </p>
       ) : null}
     </div>
