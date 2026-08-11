@@ -1,14 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
+import { PostFeedCard } from "./PostFeedCard";
 import { PostListSkeleton } from "./PostListSkeleton";
 import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
+import { HomeViewToggle } from "./HomeViewToggle";
 import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -20,6 +22,32 @@ import {
   HOME_POST_REFRESH_EVENT,
   type PendingHomePostRefresh,
 } from "../lib/home-post-refresh";
+import {
+  DEFAULT_HOME_VIEW_MODE,
+  getHomeViewMode,
+  HOME_VIEW_MODES,
+  markHomeFeedNewBadgeSeen,
+  setHomeViewMode,
+  shouldShowHomeFeedNewBadge,
+  type HomeViewMode,
+} from "../lib/home-view-preference";
+import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
+import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
+import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
+import { trackHomeViewed, trackViewModeChanged } from "../lib/home-view-events";
+
+/** グリッドの先読み距離。複数カラムなので1行が低く、数行ぶんの余裕になる。 */
+const GRID_PREFETCH_MARGIN_PX = 500;
+
+/**
+ * フィードカードの画像以外のおおよその高さ。
+ * 作者行 + キャプション + 行動ボタン + 統計 + カード間の余白のぶん。
+ * 画像は縦長でも幅までに収まるので、カード高 ≒ カード幅 + この値。
+ */
+const FEED_CARD_CHROME_PX = 170;
+
+/** フィードで何枚ぶん手前から次を取りに行くか。 */
+const FEED_PREFETCH_CARDS = 3;
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -68,11 +96,42 @@ export function PostList({
   const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
   const [pendingHomePostRefresh, setPendingHomePostRefresh] =
     useState<PendingHomePostRefresh | null>(null);
+  // 表示形式は端末に記憶する。SSR とハイドレーション不一致を避けるため、
+  // 初期値は既定(グリッド)にしてマウント後に localStorage から復元する。
+  const [viewMode, setViewMode] = useState<HomeViewMode>(DEFAULT_HOME_VIEW_MODE);
+  const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
   const hasFreshNewestPostsRef = useRef(false);
+  // 画面幅からフィードカードのおおよその高さを出すため。SSR では既定幅を使う。
+  const [viewportWidth, setViewportWidth] = useState(FEED_CARD_MAX_WIDTH_PX);
+  useEffect(() => {
+    const update = () => setViewportWidth(window.innerWidth);
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+
+  /*
+    無限スクロールの先読み距離。
+
+    フィードは1列でカードが縦に大きく、200px では1枚の一部にしかならない。
+    トリガーが見えた時点で既に最後のカードを読んでいる状態になり、
+    「下まで行ってから待たされる」体感になる。カード3枚ぶん手前で取りに行く。
+
+    グリッドは複数カラムで1行が低いため、500px あれば数行ぶんの余裕になる。
+  */
+  const rootMargin = useMemo(() => {
+    if (viewMode !== HOME_VIEW_MODES.feed) {
+      return `${GRID_PREFETCH_MARGIN_PX}px`;
+    }
+    const cardWidth = Math.min(viewportWidth, FEED_CARD_MAX_WIDTH_PX);
+    const cardHeight = cardWidth + FEED_CARD_CHROME_PX;
+    return `${cardHeight * FEED_PREFETCH_CARDS}px`;
+  }, [viewMode, viewportWidth]);
+
   const { ref, inView } = useInView({
     threshold: 0,
-    rootMargin: "200px",
+    rootMargin,
   });
 
   const consumePendingRefresh = useCallback(() => {
@@ -150,6 +209,87 @@ export function PostList({
       subscription.unsubscribe();
     };
   }, []);
+
+  // 端末に記憶された表示形式を復元する(検索画面は常にグリッド)
+  useEffect(() => {
+    if (isSearchPage) {
+      return;
+    }
+    const storedMode = getHomeViewMode();
+    setViewMode(storedMode);
+    // 分母(ADR-006)。セッション内で表示形式ごとに1回だけ送られる。
+    trackHomeViewed(storedMode);
+    if (storedMode === HOME_VIEW_MODES.feed) {
+      // 既にフィードを使っている端末には NEW を出さない
+      markHomeFeedNewBadgeSeen();
+      return;
+    }
+    setShowViewModeNewBadge(shouldShowHomeFeedNewBadge(Date.now()));
+  }, [isSearchPage]);
+
+  const isFeedView = viewMode === HOME_VIEW_MODES.feed && !isSearchPage;
+  // 「このプロンプトで作る」の可否は、詳細と同じ検証経路からサーバーで導出する
+  // (一覧の payload には載らない。ADR-005)。
+  const feedPostIds = useMemo(
+    () =>
+      isFeedView
+        ? posts.map((post) => post.id).filter((id): id is string => Boolean(id))
+        : [],
+    [isFeedView, posts]
+  );
+  const { summaries: promptActions, styleLinks } = useFeedPromptActions(
+    feedPostIds,
+    isFeedView
+  );
+
+  /*
+    フォロー状態はフィード表示のときだけ解決する(グリッドのカードには出ないので
+    取得コストを増やさない)。カードごとに問い合わせると20件で20リクエストになる。
+
+    投稿者と原作者の**両方**を解決する。派生投稿では両者が別人で、
+    作者行のフォローボタンは投稿者を、CTA のフォロー判定は原作者を見るため、
+    ひとつの値で兼ねると「派生投稿者はフォロー済みだが原作者は未フォロー」の
+    閲覧者に『このプロンプトで作る』が出て、生成 API で弾かれる。
+  */
+  const feedAuthorIds = useMemo(() => {
+    if (!isFeedView) {
+      return [];
+    }
+    const ids = new Set<string>();
+    for (const post of posts) {
+      if (post.user?.id) {
+        ids.add(post.user.id);
+      }
+      const originAuthorId = post.id ? promptActions[post.id]?.originAuthorId : null;
+      if (originAuthorId) {
+        ids.add(originAuthorId);
+      }
+    }
+    return Array.from(ids);
+  }, [isFeedView, posts, promptActions]);
+  const { followStatuses, setFollowStatus } = useFeedFollowStatus(
+    feedAuthorIds,
+    currentUserId,
+    isFeedView
+  );
+
+  const handleViewModeChange = useCallback(
+    (nextMode: HomeViewMode) => {
+      if (nextMode === viewMode) {
+        return;
+      }
+      setViewMode(nextMode);
+      setHomeViewMode(nextMode);
+      trackViewModeChanged(viewMode, nextMode);
+      // 切替先も分母に数える(切替後に何をしたかを同じ土俵で比較するため)
+      trackHomeViewed(nextMode);
+      if (nextMode === HOME_VIEW_MODES.feed) {
+        markHomeFeedNewBadgeSeen();
+        setShowViewModeNewBadge(false);
+      }
+    },
+    [viewMode]
+  );
 
   // URLパラメータでsortが指定されている場合
   useEffect(() => {
@@ -388,8 +528,18 @@ export function PostList({
     <>
       {/* 検索画面ではSortTabsを非表示 */}
       {!isSearchPage && (
-        <div className="mb-4">
+        <div className="mb-4 flex items-end justify-between gap-2 border-b">
+          {/* タブ=何を見るか / トグル=どう見るか。両者は独立している */}
           <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
+          {/* トグルは 40px(タブの 36px より少し高い)。ホームのスケルトンも 40px なので
+              差し替え時のレイアウトシフトは出ない */}
+          <div>
+            <HomeViewToggle
+              value={viewMode}
+              onChange={handleViewModeChange}
+              showNewBadge={showViewModeNewBadge}
+            />
+          </div>
         </div>
       )}
       {posts.length === 0 ? (
@@ -407,27 +557,58 @@ export function PostList({
         )
       ) : (
         <>
-          <Masonry
-            breakpointCols={{
-              default: 4,
-              1024: 2,
-              640: 2,
-            }}
-            className="flex -ml-1 w-auto sm:-ml-4"
-            columnClassName="pl-1 bg-clip-padding sm:pl-4"
-          >
-            {posts.map((post, index) => (
-              <div key={post.id} className="mb-4">
-        <PostCard
-          post={post}
-          currentUserId={currentUserId}
-          isHighlighted={post.id === highlightPostId}
-          prioritizeImage={index < 2}
-          trackImpressions={trackImpressions}
-        />
-      </div>
-    ))}
-  </Masonry>
+          {viewMode === HOME_VIEW_MODES.feed ? (
+            // フィード: スマホもPCも1列。読みやすさのため最大幅を絞って中央寄せする。
+            // 幅の正本は FEED_CARD_MAX_WIDTH_PX(Tailwind の任意値はリテラルが要るため直書き)
+            <div className="mx-auto flex max-w-[600px] flex-col">
+              {posts.map((post, index) => (
+                <div key={post.id} className="mb-4">
+                  <PostFeedCard
+                    post={post}
+                    currentUserId={currentUserId}
+                    isHighlighted={post.id === highlightPostId}
+                    prioritizeImage={index < 2}
+                    trackImpressions={trackImpressions}
+                    isFollowingAuthor={
+                      post.user?.id ? followStatuses[post.user.id] : undefined
+                    }
+                    isFollowingPromptAuthor={(() => {
+                      // CTA のフォロー判定は原作者を見る(派生投稿では投稿者と別人)
+                      const originAuthorId = post.id
+                        ? promptActions[post.id]?.originAuthorId
+                        : null;
+                      return originAuthorId ? followStatuses[originAuthorId] : undefined;
+                    })()}
+                    onFollowChange={setFollowStatus}
+                    promptAction={post.id ? promptActions[post.id] : undefined}
+                    stylePresetLink={post.id ? styleLinks[post.id] : undefined}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Masonry
+              breakpointCols={{
+                default: 4,
+                1024: 2,
+                640: 2,
+              }}
+              className="flex -ml-1 w-auto sm:-ml-4"
+              columnClassName="pl-1 bg-clip-padding sm:pl-4"
+            >
+              {posts.map((post, index) => (
+                <div key={post.id} className="mb-4">
+                  <PostCard
+                    post={post}
+                    currentUserId={currentUserId}
+                    isHighlighted={post.id === highlightPostId}
+                    prioritizeImage={index < 2}
+                    trackImpressions={trackImpressions}
+                  />
+                </div>
+              ))}
+            </Masonry>
+          )}
 
           {/* 無限スクロール用のトリガー要素 */}
           {hasMore && (

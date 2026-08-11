@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import type { SourcePromptReference } from "../types";
+import type { PromptActionSummary, SourcePromptReference } from "../types";
 import { getPostBeforeImageUrl, getPostThumbUrl } from "./utils";
 
 /**
@@ -51,6 +51,7 @@ type OriginRow = {
   height: number | null;
   pre_generation_storage_path: string | null;
   show_before_image: boolean | null;
+  caption: string | null;
 };
 
 /**
@@ -85,9 +86,23 @@ export function resolveOriginPostId(
  *                 閲覧者の RLS ではなく service role で読む。返す値は
  *                 可否・クレジット・サムネイル・利用数だけで、本文は含まない。
  */
+export interface ResolveSourcePromptOptions {
+  /**
+   * 事前にまとめて引いた原作者プロフィール（一覧のバッチ解決用）。
+   * 与えられていれば個別 SELECT を省く。
+   */
+  profileByUserId?: Map<string, { nickname: string | null; avatarUrl: string | null }>;
+  /**
+   * 事前にまとめて引いた原作の行（一覧のバッチ解決用）。
+   * 与えられていれば個別 SELECT を省く。
+   */
+  originRowById?: Map<string, OriginRow>;
+}
+
 export async function resolveSourcePromptReference(
   record: OriginResolvableRecord,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options: ResolveSourcePromptOptions = {}
 ): Promise<SourcePromptReference | null> {
   const originPostId = resolveOriginPostId(record);
   if (!originPostId) {
@@ -119,7 +134,7 @@ export async function resolveSourcePromptReference(
 
   const [validation, profile, usageCount] = await Promise.all([
     fetchIntrinsicAvailability(supabase, originPostId, originAuthorId),
-    fetchAuthorProfile(supabase, originAuthorId),
+    fetchAuthorProfile(supabase, originAuthorId, options.profileByUserId),
     fetchUsageCount(supabase, originPostId),
   ]);
 
@@ -144,7 +159,11 @@ export async function resolveSourcePromptReference(
     return base;
   }
 
-  const thumbnail = await fetchOriginThumbnail(supabase, originPostId);
+  const thumbnail = await fetchOriginThumbnail(
+    supabase,
+    originPostId,
+    options.originRowById
+  );
   return {
     ...base,
     thumbnailUrl: thumbnail.url,
@@ -152,6 +171,217 @@ export async function resolveSourcePromptReference(
     thumbnailHeight: thumbnail.height,
     beforeThumbnailUrl: thumbnail.beforeUrl,
     promptVisibility: thumbnail.promptVisibility,
+  };
+}
+
+/**
+ * 一覧（フィード）用に、複数投稿ぶんの CTA サマリをまとめて解決する（ADR-005）。
+ *
+ * 詳細画面と同じ `resolveSourcePromptReference` を通してから本文につながる値を
+ * 落とす。一覧側で秘匿条件を再実装しないのは、詳細と判定がずれて
+ * 「詳細では出ない導線が一覧に出る」事故を防ぐためである。
+ *
+ * 同じ原作を指す派生投稿が並ぶことがあるので、原作単位で重複を除いてから解決する。
+ *
+ * @param records 一覧の投稿（`id` を必須にする。戻り値のキーになるため）
+ * @param supabase service role のクライアント（詳細と同じ経路）
+ * @returns 投稿 ID → サマリ。CTA を出さない投稿は含めない
+ */
+export async function resolveSourcePromptSummaries(
+  records: (OriginResolvableRecord & { id: string })[],
+  supabase: SupabaseClient
+): Promise<Record<string, PromptActionSummary>> {
+  // 原作単位に畳む。キーは原作 ID と原作者 ID の組（原作者はレコード由来のため）。
+  const byOrigin = new Map<
+    string,
+    { record: OriginResolvableRecord; postIds: string[] }
+  >();
+
+  for (const record of records) {
+    const originPostId = resolveOriginPostId(record);
+    if (!originPostId) {
+      continue;
+    }
+    const originAuthorId = record.source_author_id ?? record.user_id ?? "";
+    const key = `${originPostId}::${originAuthorId}`;
+    const existing = byOrigin.get(key);
+    if (existing) {
+      existing.postIds.push(record.id);
+      continue;
+    }
+    byOrigin.set(key, { record, postIds: [record.id] });
+  }
+
+  if (byOrigin.size === 0) {
+    return {};
+  }
+
+  /*
+    原作の行と原作者プロフィールは**先にまとめて引く**。
+
+    原作ごとに個別 SELECT すると、1リクエストで原作数 × 4 回の往復になる。
+    直近で Disk IO バジェット枯渇の障害が起きているので、公開フィードから
+    呼ばれる経路の往復回数は削っておく。
+
+    判定そのものは詳細画面と同じ `resolveSourcePromptReference` に通したまま、
+    取得済みの値を渡して重複クエリだけを省く（正本は1つに保つ）。
+  */
+  const entries = Array.from(byOrigin.values());
+  const originIds = entries
+    .map(({ record }) => resolveOriginPostId(record))
+    .filter((id): id is string => Boolean(id));
+  const authorIds = entries
+    .map(({ record }) => record.source_author_id ?? record.user_id)
+    .filter((id): id is string => Boolean(id));
+
+  const [publiclyUsableOrigins, profileByUserId] = await Promise.all([
+    fetchPubliclyUsableOrigins(supabase, originIds),
+    fetchAuthorProfiles(supabase, authorIds),
+  ]);
+
+  const resolved = await Promise.all(
+    entries.map(async ({ record, postIds }) => ({
+      postIds,
+      reference: await resolveSourcePromptReference(record, supabase, {
+        profileByUserId,
+        originRowById: publiclyUsableOrigins,
+      }),
+    }))
+  );
+
+  const summaries: Record<string, PromptActionSummary> = {};
+  for (const { postIds, reference } of resolved) {
+    if (!reference) {
+      continue;
+    }
+    const origin = publiclyUsableOrigins.get(reference.postId);
+    const summary = origin
+      ? toPromptActionSummary(reference, origin.caption)
+      : unavailableSummary(reference.postId);
+    for (const postId of postIds) {
+      summaries[postId] = summary;
+    }
+  }
+  return summaries;
+}
+
+/**
+ * 原作のうち「公開導線から使ってよい」ものだけを返す。
+ *
+ * `validate_derived_prompt_source` は本人に限り未投稿の原作を許す
+ * （マイページで自分の下書きから作り直せるようにするための例外。
+ * migration 20260731110000）。ところが `resolveSourcePromptReference` は
+ * 閲覧者依存の条件を外すために requester へ**原作者自身**を渡すので、
+ * この本人例外が常に効いてしまい、**投稿取消された原作でも available になる**。
+ *
+ * 詳細画面（マイページの下書きを含む）ではそれが正しい挙動だが、一覧は不特定多数に
+ * 出る公開導線なので、そこで例外を適用してはいけない。押しても生成 API が
+ * 閲覧者を requester として再検証して弾くため、「押せたのに作れない」になる。
+ * ここで root の公開状態を明示的に確認して打ち消す。
+ *
+ * サムネイル・キャプションもここで一緒に取る（同じ行を読むため、往復を増やさない）。
+ *
+ * 読めなければ空（fail closed）。
+ */
+async function fetchPubliclyUsableOrigins(
+  supabase: SupabaseClient,
+  originPostIds: string[]
+): Promise<Map<string, OriginRow>> {
+  const uniqueIds = Array.from(new Set(originPostIds));
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .select(
+      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image, caption"
+    )
+    .in("id", uniqueIds)
+    .eq("is_posted", true)
+    .eq("moderation_status", "visible");
+
+  if (error) {
+    console.error("Failed to check origin public availability", { code: error.code });
+    return new Map();
+  }
+
+  return new Map((data ?? []).map((row) => [(row as OriginRow).id, row as OriginRow]));
+}
+
+/** 原作者プロフィールをまとめて引く（一覧のバッチ解決用）。 */
+async function fetchAuthorProfiles(
+  supabase: SupabaseClient,
+  authorIds: string[]
+): Promise<Map<string, { nickname: string | null; avatarUrl: string | null }>> {
+  const uniqueIds = Array.from(new Set(authorIds));
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, nickname, avatar_url")
+    .in("user_id", uniqueIds);
+
+  if (error) {
+    console.error("Failed to fetch author profiles", { code: error.code });
+    return new Map();
+  }
+
+  return new Map(
+    (data ?? []).map((row) => {
+      const typed = row as {
+        user_id: string;
+        nickname: string | null;
+        avatar_url: string | null;
+      };
+      return [typed.user_id, { nickname: typed.nickname, avatarUrl: typed.avatar_url }];
+    })
+  );
+}
+
+/**
+ * 使えない原作のサマリ。
+ *
+ * 原作者も利用数も落とす。カードは何も描画しないので使い道が無く、
+ * 取り消した投稿の系譜メタデータを公開 API に載せる理由もない。
+ */
+function unavailableSummary(originPostId: string): PromptActionSummary {
+  return {
+    originPostId,
+    isAvailable: false,
+    originAuthorId: null,
+    originAuthorNickname: null,
+    originAuthorAvatarUrl: null,
+    originThumbnailUrl: null,
+    originCaption: null,
+    usageCount: 0,
+    promptVisibility: "private",
+  };
+}
+
+/**
+ * 参照カード用の値から、一覧に載せてよい項目だけを取り出す。
+ *
+ * 載せるのは原作の**公開情報**（作者・サムネイル・キャプション・利用回数）だけ。
+ * プロンプト本文はそもそも `SourcePromptReference` に含まれない
+ * （PROMPT-SECRECY-001）。Before サムネイルは引用カードでは使わないので落とす。
+ */
+export function toPromptActionSummary(
+  reference: SourcePromptReference,
+  originCaption: string | null = null
+): PromptActionSummary {
+  return {
+    originPostId: reference.postId,
+    isAvailable: reference.isAvailable,
+    originAuthorId: reference.authorId,
+    originAuthorNickname: reference.authorNickname,
+    originAuthorAvatarUrl: reference.authorAvatarUrl,
+    originThumbnailUrl: reference.thumbnailUrl,
+    originCaption,
+    usageCount: reference.usageCount,
+    promptVisibility: reference.promptVisibility,
   };
 }
 
@@ -186,8 +416,17 @@ async function fetchIntrinsicAvailability(
 
 async function fetchAuthorProfile(
   supabase: SupabaseClient,
-  authorId: string
+  authorId: string,
+  prefetched?: Map<string, { nickname: string | null; avatarUrl: string | null }>
 ): Promise<{ nickname: string | null; avatarUrl: string | null }> {
+  const cached = prefetched?.get(authorId);
+  if (cached) {
+    return cached;
+  }
+  if (prefetched) {
+    // まとめて引いた結果に無い＝プロフィール未作成。個別に引き直さない
+    return { nickname: null, avatarUrl: null };
+  }
   const { data, error } = await supabase
     .from("profiles")
     .select("nickname, avatar_url")
@@ -241,21 +480,26 @@ async function fetchUsageCount(
  */
 async function fetchOriginThumbnail(
   supabase: SupabaseClient,
-  originPostId: string
+  originPostId: string,
+  prefetched?: Map<string, OriginRow>
 ): Promise<{
   url: string | null;
   width: number | null;
   height: number | null;
   beforeUrl: string | null;
   promptVisibility: "public" | "private";
+  caption: string | null;
 }> {
-  const { data, error } = await supabase
-    .from("generated_images")
-    .select(
-      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image"
-    )
-    .eq("id", originPostId)
-    .maybeSingle();
+  const cached = prefetched?.get(originPostId);
+  const { data, error } = cached
+    ? { data: cached, error: null }
+    : await supabase
+        .from("generated_images")
+        .select(
+          "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image, caption"
+        )
+        .eq("id", originPostId)
+        .maybeSingle();
 
   if (error || !data) {
     // 読めなければ開示側へ倒さない
@@ -265,6 +509,7 @@ async function fetchOriginThumbnail(
       height: null,
       beforeUrl: null,
       promptVisibility: "private",
+      caption: null,
     };
   }
 
@@ -282,5 +527,6 @@ async function fetchOriginThumbnail(
     beforeUrl,
     // 想定外の値は非公開として扱う（fail closed）
     promptVisibility: row.prompt_visibility === "public" ? "public" : "private",
+    caption: row.caption,
   };
 }

@@ -27,6 +27,10 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import { resolveStickyBackUrl } from "@/features/posts/lib/sticky-back-url";
 import {
+  hasInAppHistory,
+  recordInAppNavigation,
+} from "@/features/posts/lib/in-app-history";
+import {
   DEFAULT_LOCALE,
   isLocale,
   localizePublicPath,
@@ -102,6 +106,26 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     isMyPageSubPath,
     localizedHomePath,
   });
+
+  /*
+    「戻る」をホームへ返す場面だけ、履歴の巻き戻し(router.back)にする。
+
+    行き先を指定した遷移だとスクロールが一番上に戻ってしまい、フィードで
+    下まで見てから投稿を開いた人が、戻るたびに最初から辿り直すことになる。
+    履歴を戻ればブラウザがスクロール位置を復元してくれる。
+
+    `?from=` が付いている経路(coordinate / style / free / my-page 等)は
+    行き先を意図的に固定しているので触らない。履歴が無いタブ(共有リンクを
+    直接開いた等)も、サイトの外へ出ないよう従来どおりリンクで遷移する。
+  */
+  const [canGoBackInHistory, setCanGoBackInHistory] = useState(false);
+  useEffect(() => {
+    // 表示のたびに数える。初回表示は1で、2以上なら戻る先がアプリ内にある。
+    recordInAppNavigation();
+    setCanGoBackInHistory(hasInAppHistory());
+  }, [normalizedPathname]);
+  const shouldUseHistoryBack =
+    canGoBackInHistory && backUrl === localizedHomePath;
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -216,13 +240,25 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   // ヘッダー左側（戻るボタン + ロゴ）の共通コンポーネント
   const HeaderLeft = () => (
     <div className="flex items-center gap-4 flex-shrink-0">
-      {shouldShowBackButton && (
-        <Link href={backUrl}>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
+      {shouldShowBackButton &&
+        (shouldUseHistoryBack ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => router.back()}
+            aria-label={commonT("back")}
+            data-testid="sticky-header-back"
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-        </Link>
-      )}
+        ) : (
+          <Link href={backUrl} data-testid="sticky-header-back">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </Link>
+        ))}
       <Link
         href={localizedHomePath}
         className="flex items-center gap-2 text-sm font-semibold text-gray-900 hover:text-gray-700 whitespace-nowrap"

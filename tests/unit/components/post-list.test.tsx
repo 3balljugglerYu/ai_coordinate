@@ -1,5 +1,5 @@
 import React from "react";
-import { act, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
@@ -11,6 +11,10 @@ import {
   HOME_POST_REFRESH_EVENT,
   type PendingHomePostRefresh,
 } from "@/features/posts/lib/home-post-refresh";
+import {
+  trackHomeViewed,
+  trackViewModeChanged,
+} from "@/features/posts/lib/home-view-events";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -23,6 +27,7 @@ jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
 }));
 
+const useInViewOptions: { rootMargin?: string }[] = [];
 jest.mock("react-intersection-observer", () => ({
   useInView: jest.fn(),
 }));
@@ -75,6 +80,18 @@ jest.mock("@/features/posts/components/PostCard", () => ({
   ),
 }));
 
+jest.mock("@/features/posts/components/PostFeedCard", () => ({
+  PostFeedCard: ({ post }: { post: Post }) => (
+    <div data-testid={`post-feed-card-${post.id}`}>{post.caption}</div>
+  ),
+}));
+
+// 計測は best-effort の副作用。ここでは呼ばれたことだけを見る
+jest.mock("@/features/posts/lib/home-view-events", () => ({
+  trackHomeViewed: jest.fn(),
+  trackViewModeChanged: jest.fn(),
+}));
+
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
   consumePendingHomePostRefresh: jest.fn(),
   HOME_POST_REFRESH_EVENT: "persta:home-post-refresh",
@@ -108,6 +125,9 @@ const postTranslations = {
   preparing: "準備中...",
   emptyState: "まだ投稿がありません。最初の投稿をしてみましょう！",
   allShown: "全ての投稿を表示しました",
+  viewModeGrid: "グリッド表示",
+  viewModeFeed: "フィード表示",
+  viewModeNewBadge: "NEW",
 } as const;
 
 const translationFns = {
@@ -176,9 +196,10 @@ describe("PostList", () => {
       }
       throw new Error(`Unexpected namespace: ${namespace}`);
     });
-    useInViewMock.mockReturnValue({
-      ref: jest.fn(),
-      inView: false,
+    useInViewOptions.length = 0;
+    useInViewMock.mockImplementation((options?: { rootMargin?: string }) => {
+      useInViewOptions.push(options ?? {});
+      return { ref: jest.fn(), inView: false } as ReturnType<typeof useInView>;
     });
     useToastMock.mockReturnValue({
       toast: toastMock,
@@ -313,5 +334,111 @@ describe("PostList", () => {
       });
     });
     await screen.findByTestId("post-card-post-4");
+  });
+
+  describe("表示形式のトグル", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    test("既定はグリッド_Masonryで描画しNEWバッジを出す", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("masonry")).toBeInTheDocument();
+      expect(screen.getByLabelText("グリッド表示")).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+      expect(screen.getByText("NEW")).toBeInTheDocument();
+    });
+
+    test("フィードに切り替えるとMasonryを使わず端末に記憶しNEWバッジが消える", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      fireEvent.click(screen.getByLabelText("フィード表示"));
+
+      expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
+      // 1列ではフィード用カードに差し替わる(グリッドの PostCard は使わない)
+      expect(screen.getByTestId("post-feed-card-initial-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("post-card-initial-1")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("フィード表示")).toHaveAttribute(
+        "aria-pressed",
+        "true"
+      );
+      expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("feed");
+    });
+
+    test("記憶済みのフィードは次回訪問時も復元される", async () => {
+      window.localStorage.setItem("persta-ai:home-view-mode", "feed");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("フィード表示")).toHaveAttribute(
+          "aria-pressed",
+          "true"
+        );
+      });
+      expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
+      expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+    });
+
+    test("表示形式は分母として記録され_切替は遷移元つきで記録される", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      expect(trackHomeViewed).toHaveBeenCalledWith("grid");
+
+      fireEvent.click(screen.getByLabelText("フィード表示"));
+
+      expect(trackViewModeChanged).toHaveBeenCalledWith("grid", "feed");
+      expect(trackHomeViewed).toHaveBeenCalledWith("feed");
+    });
+
+    test("同じ表示形式を押し直しても切替として記録しない", async () => {
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      fireEvent.click(screen.getByLabelText("グリッド表示"));
+
+      expect(trackViewModeChanged).not.toHaveBeenCalled();
+    });
+
+    test("無限スクロールの先読み距離は表示形式で変える", async () => {
+      /*
+        フィードは1列でカードが縦に大きく、グリッドと同じ距離では
+        「下まで行ってから待たされる」体感になる。カード3枚ぶん手前で取りに行く。
+      */
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("masonry");
+
+      const gridMargin = useInViewOptions[useInViewOptions.length - 1].rootMargin;
+      expect(gridMargin).toBe("500px");
+
+      fireEvent.click(screen.getByLabelText("フィード表示"));
+
+      const feedMargin = useInViewOptions[useInViewOptions.length - 1].rootMargin;
+      // jsdom の innerWidth は 1024 なのでカード幅は上限 600px
+      // (600 + 170) * 3 = 2310px
+      expect(feedMargin).toBe("2310px");
+      expect(Number.parseInt(feedMargin!, 10)).toBeGreaterThan(
+        Number.parseInt(gridMargin!, 10)
+      );
+    });
+
+    // 検索画面は q 付きでレンダーすると main 由来の初回ロード無限ループを踏むため、
+    // 検索クエリ無し(キャッシュ済み投稿を再利用する経路)で表示形式だけを検証する
+    test("検索画面ではトグルを出さず_記憶がフィードでもグリッドのまま", async () => {
+      usePathnameMock.mockReturnValue("/search");
+      window.localStorage.setItem("persta-ai:home-view-mode", "feed");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-initial-1");
+      expect(screen.queryByLabelText("フィード表示")).not.toBeInTheDocument();
+      expect(screen.getByTestId("masonry")).toBeInTheDocument();
+    });
   });
 });

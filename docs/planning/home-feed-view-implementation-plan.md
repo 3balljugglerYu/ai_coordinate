@@ -1,7 +1,7 @@
 # ホームのフィード表示（1列）＋「このプロンプトで作る」導線 実装計画書
 
 作成日: 2026-08-10
-ステータス: 計画（レビュー指摘を反映済み・実装待ち）
+ステータス: 実装済み（Phase 1〜5 完了・マイグレーション適用待ち）
 
 ## 背景と目的
 
@@ -25,9 +25,13 @@
 | 初期表示 | **当面はグリッド**（従来どおり）。認知が広がったらフィードへ切り替える | 既存ユーザーの画面が突然変わる不利益を避ける |
 | 新機能の告知 | トグル横に **NEW バッジ**。一度フィードを開いたら消える／表示期間の上限あり | トグルは小さく、放置すると気づかれない |
 | Before/After | **1:1 で並べる**。縦長は左右・横長は上下。**AFTER / BEFORE のラベルを必ず出す** | `SourcePromptReferenceCard` に同じ実装が既にある（`flex-1` + `isLandscape` 判定 + ラベル）ので流用する |
-| キャプション | **X 準拠**。連続改行は詰める／最大5行で省略／タップで全文展開／さらにタップで詳細へ | 利用者に X ユーザーが多く、慣れた操作感の方が学習コストが低い |
+| Before が無い1枚表示 | **縦長は高さを幅までに収め、切らずに左右余白で中央**（実機確認で追加 2026-08-10） | そのまま出すと画面をほぼ占有し、Before/After を並べた投稿より目立つ。「Before を出さない方が大きく見える」状態は、Before/After で価値を伝える狙いと逆を向く |
+| キャプション | **X 準拠**。連続改行は詰める／最大5行で省略／**5行に収まる本文は1タップで詳細へ**／溢れる本文はタップで展開→さらにタップで詳細へ | 利用者に X ユーザーが多く、慣れた操作感の方が学習コストが低い。展開する意味が無い本文で1タップ消費すると、詳細へ行くのに毎回2回押すことになる |
 | 画像タップ | 拡大ビュー（既存 `ImageFullscreen`。Before/After 間はスワイプ） | X と同じ挙動 |
 | カード内の行動ボタン | **「このプロンプトで作る」**。未フォローなら**「フォローして使う」** | 「使いたい」がそのままフォロー動機に変換される。フォロワーゲート維持の帰結 |
+| 引用元ブロック | **画像の下に、X の引用リポスト相当のブロック**を置く（実機確認で追加 2026-08-11）。行動ボタンはこの中に入れる。サムネイルは比率にかかわらず**正方形にトリミング** | X では利用者が「〇〇様ご提供のツールで」と**手で書いている**。クレジットを出したい欲求は既にあるのに、アプリ内には手段が無かった。ペルコインは他人から見えないが、引用カードは**公開されるクレジット**になり、承認欲求により強く効く。押されなくても原作者の露出になる（CTA は押されて初めて効く）。正方形にするのはカード高のばらつきを抑えるため |
+| 引用元の主従 | 引用ブロックは画像の**下**・小さく・従属的に | 上や大きくすると投稿者の作品が「借り物」に見える。主役は投稿者のうちの子 |
+| 利用数の見せ方 | **累計利用回数**で表し、**10回未満は表示しない** | 「1人が使いました」は社会的証明として働かず、逆に「誰も使っていない」証明になる。人数は伸びが遅く原作者の意欲を削ぐ。10 はマイルストーン通知の節目とも揃う |
 | 計測 | **GA4 は導入しない**。既存の自前イベントテーブル方式で記録する | GA4 未導入で新規導入コスト（同意/プライバシー対応含む）が見合わない。期間をまたぐ追跡は SQL の方が正確 |
 | リポスト | **本計画のスコープ外**（別PR） | 投稿の概念そのものの拡張で、DB とフィードの並び順に影響する。混ぜると検証が困難 |
 
@@ -139,12 +143,17 @@ flowchart LR
 - **Context**: `source_reference` は詳細取得（`getPost`）でのみ `resolveSourcePromptReference` により解決され、
   一覧の `enrichPosts` は解決しない（型コメントにも明記）。また `getPostPromptDisplayMode` は表示モードの判定であり、
   公開 `/free` root では `prompt` を返すため CTA 可否の正本にはならない
-- **Decision**: 一覧 payload に **本文を含まないサーバー導出の `prompt_action_summary`** を追加する
-  （可否・原作 post_id・原作者 id・利用数・Before/After サムネイル）。詳細と**同じ検証経路（admin クライアント + 既存 RPC）**
-  から導出し、一覧の N 件はバッチで解決してリクエスト数を抑える
+- **Decision**: 本文を含まないサーバー導出の `prompt_action_summary` を用意する
+  （可否・原作 post_id・原作者 id・利用数・公開設定）。詳細と**同じ検証経路（admin クライアント + 既存 RPC）**
+  から導出し、N 件はバッチで解決してリクエスト数を抑える
 - **Reason**: 一覧側で秘匿条件を再実装すると、詳細と判定がずれて「詳細では出ない導線が一覧に出る」事故が起きる。
   正本を1つにする
-- **Consequence**: 一覧取得にサマリ解決のコストが乗る。フィード表示時のみ解決する / キャッシュするなどの最適化を実装時に検討する
+- **Consequence**: サマリ解決のコストが乗るため、フィード表示のときだけ解決する
+- **実装時の改訂（2026-08-10）**: 一覧 payload に載せるのではなく、**専用の `POST /api/posts/prompt-actions`**
+  としてフィードのときだけクライアントから取りに行く形にした。ホームの初回描画は `use cache` されており
+  閲覧者をまたいで共有される。表示形式は localStorage の値でサーバーは知り得ないため、payload に混ぜると
+  「グリッド利用者にも解決コストを払わせる」か「表示形式でキャッシュを二重に持つ」しかなくなる。
+  あわせて **Before/After サムネイルは載せない**（フィードのカードは投稿自身の画像を出すので使い道が無い）
 
 ### ADR-006: 表示形式別の KPI は「表示」ではなく「セッション」を分母にする（レビュー指摘で追加）
 
@@ -250,10 +259,16 @@ flowchart LR
 | features/posts/components/PostList.tsx | 修正 | viewMode 分岐・トグル配置 |
 | features/posts/lib/home-view-events.ts | 新規 | イベント送信（best-effort）＋直前の表示形式の持ち回り |
 | app/api/posts/home-view-events/route.ts | 新規 | 記録API（検証＋viewer_key 解決＋admin 書き込み） |
-| supabase/migrations/xxxx_add_home_view_events.sql | 新規 | イベントテーブル＋**RLS 全拒否** |
-| features/posts/lib/server-api.ts | 修正 | 一覧に `prompt_action_summary` を付与（フィード時のみ・バッチ解決） |
-| features/posts/lib/source-prompt-reference.ts | 修正 | 一覧用サマリのバッチ解決を追加（本文は含めない） |
+| supabase/migrations/20260810120000_add_home_view_events.sql | 新規 | イベントテーブル＋**RLS 全拒否** |
+| app/api/posts/prompt-actions/route.ts | 新規 | 一覧用サマリのバッチ解決API（フィード時のみ呼ぶ） |
+| features/posts/lib/source-prompt-reference.ts | 修正 | `resolveSourcePromptSummaries` / `toPromptActionSummary` を追加（本文は含めない） |
+| features/posts/hooks/useFeedPromptActions.ts | 新規 | サマリの増分取得（フィード時のみ） |
 | features/posts/components/FollowAndUsePromptButton.tsx | 新規 | フォロー→生成シートの状態遷移 |
+| app/api/users/follow-status/batch/route.ts | 新規 | フォロー状態のバッチ取得（カードごとの N+1 を防ぐ） |
+| features/posts/hooks/useFeedFollowStatus.ts | 新規 | フォロー状態の増分取得 |
+| app/api/users/me/subscription-plan/route.ts | 新規 | 生成シートに渡すプラン（押された瞬間だけ取得） |
+| features/posts/components/SourcePromptReferenceCard.tsx | 修正 | 共通部品化＋詳細画面でも `prompt_use_tapped` を記録 |
+| features/posts/lib/feed-caption.ts / feed-timestamp.ts | 新規 | 連続改行の詰め／相対時刻 |
 | messages/*.ts（15言語） | 修正 | 文言追加 |
 | tests/unit/... | 新規 | 上記テスト |
 
@@ -286,6 +301,75 @@ flowchart LR
 
 判断の目安: **2 でフィードがグリッドを明確に上回り、かつ 1 が一定数に達したら、既定をフィードへ切り替える**。現在の基準値は「他人のプロンプトの利用が累計13回・2人」。
 母数が小さいうちは率が不安定なので、実数（何人が押したか）も併記して判断する。
+
+### 分析用 SQL
+
+`home_view_events` は RLS 全拒否なので、`supabase db query --linked` か Supabase の SQL Editor で実行する。
+
+**① 表示形式別の CTA 到達率（本命）** — 分母は `home_viewed`（セッション単位）、分子は `prompt_use_tapped`（詳細画面経由も直前のホーム表示形式で帰属）。
+ホームを経ていない流入（共有リンク・プロフィール・通知・検索）は `view_mode = 'none'` で記録されるので、**率の計算からは除外する**。
+
+```sql
+SELECT
+  view_mode,
+  count(*) FILTER (WHERE event_type = 'home_viewed')                      AS viewed,
+  count(*) FILTER (WHERE event_type = 'prompt_use_tapped')                AS use_tapped,
+  count(DISTINCT viewer_key) FILTER (WHERE event_type = 'prompt_use_tapped') AS use_tapped_people,
+  round(
+    100.0 * count(*) FILTER (WHERE event_type = 'prompt_use_tapped')
+    / nullif(count(*) FILTER (WHERE event_type = 'home_viewed'), 0),
+    1
+  ) AS reach_rate_pct
+FROM public.home_view_events
+WHERE created_at >= now() - interval '30 days'
+  AND view_mode IN ('grid', 'feed')   -- 'none' はホーム未経由なので分母を持たない
+GROUP BY view_mode
+ORDER BY view_mode;
+```
+
+**①-b ホーム外からのプロンプト利用** — `none` の実数。ホームの改善とは別枠で見る
+
+```sql
+SELECT count(*) AS use_tapped, count(DISTINCT viewer_key) AS people
+FROM public.home_view_events
+WHERE event_type = 'prompt_use_tapped' AND view_mode = 'none';
+```
+
+**② フィードを一度でも使った人の数**
+
+```sql
+SELECT count(DISTINCT viewer_key) AS feed_users
+FROM public.home_view_events
+WHERE event_type = 'home_viewed' AND view_mode = 'feed';
+```
+
+**③ カード経由のフォロー発生数**
+
+```sql
+SELECT date_trunc('day', created_at AT TIME ZONE 'Asia/Tokyo') AS day,
+       count(*) AS follows,
+       count(DISTINCT viewer_key) AS people
+FROM public.home_view_events
+WHERE event_type = 'follow_from_card'
+GROUP BY 1 ORDER BY 1 DESC;
+```
+
+**④ 切り替えたあと維持しているか** — 最後の切替が feed のまま何日続いているか
+
+```sql
+WITH last_change AS (
+  SELECT DISTINCT ON (viewer_key)
+         viewer_key, view_mode, created_at
+  FROM public.home_view_events
+  WHERE event_type = 'view_mode_changed'
+  ORDER BY viewer_key, created_at DESC
+)
+SELECT lc.view_mode,
+       count(*) AS people,
+       round(avg(EXTRACT(EPOCH FROM (now() - lc.created_at)) / 86400)::numeric, 1) AS avg_days_since
+FROM last_change lc
+GROUP BY lc.view_mode;
+```
 
 ## ロールバック方針
 

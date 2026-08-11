@@ -22,7 +22,8 @@ export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
   ];
 
   return (
-    <div className="flex flex-wrap gap-2 border-b">
+    // 下線(border-b)は親(PostList)が表示形式トグルと同じ行に引くため、ここでは持たない
+    <div className="flex flex-wrap gap-2">
       {tabs.map((tab) => (
         <button
           key={tab.value}

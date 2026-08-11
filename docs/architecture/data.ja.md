@@ -365,7 +365,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `reprocess_pending_usage_rewards` | pg_cron（10分毎） | 上限件数 | 処理件数 | `pending` のまま残った還元を再処理。**行単位の例外ブロック**＋`FOR UPDATE SKIP LOCKED`＋指数バックオフ（指数部は `LEAST(n,9)` で頭打ち）。**service_role 専用** |
 | `upsert_usage_reward_notification` | 還元の付与RPC内 | recipient, 付与額 | `void` | 還元通知を**受け手×JST日付で1行**に集約して UPSERT。`usage_count`/`total_amount` を加算し、未読へ戻して `created_at` も進める（一覧の先頭へ浮上）。`created_at` は `now()` ではなく `clock_timestamp()`（`now()` はトランザクション開始時刻のため再処理バッチで浮上しない）。**service_role 専用** |
 | `get_grantable_free_percoin_amount` | 各付与RPC内 | user id, 要求額 | 付与可能額 | 5万無料残高キャップ。**ロックは持たない**（共有関数に入れると既存経路とロック取得順が食い違い、デイリー報酬×ストリーク報酬でデッドロックになるため）。受け手単位の直列化は**還元の付与RPC 2本が冒頭で取る advisory lock** のみで、キャップの強制はその2経路間で成立する。既存ボーナスとの並行時の超過、および登録/ツアー/紹介/admin付与/返金がそもそもこの関数を通らない点は、いずれも本機能導入前からの既存仕様 |
-| `get_prompt_usage_count` | 投稿詳細の参照カード解決 | origin post id | `integer` | ユニーク利用者数（原作者除外）。**service_role 専用**（任意 UUID の列挙防止） |
+| `get_prompt_usage_count` | 投稿詳細の参照カード解決 | origin post id | `integer` | 累計利用回数（原作者除外）。マイルストーン通知と同じ数え方。**service_role 専用**（任意 UUID の列挙防止） |
 
 ## Trigger 一覧
 
