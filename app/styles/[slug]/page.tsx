@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { notFound } from "next/navigation";
-import { ChevronRight, Wand2 } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import {
   getPublishedStylePresets,
   getPublishedStylePresetBySlugPublic,
@@ -15,6 +15,8 @@ import {
 } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
 import { getSiteUrl } from "@/lib/env";
+import { StylePresetGenerateCta } from "@/features/style-presets/components/StylePresetGenerateCta";
+import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 
 // locale は cookie 依存の getLocale() ではなく URL パラメータから解決する。
 // これによりページ全体が静的プリレンダ可能になり、JSON-LD が初期 HTML に含まれる
@@ -208,13 +210,18 @@ export default async function StyleDetailPage({ params }: PageProps) {
               {description}
             </p>
 
-            <Link
+            {/*
+              このページは閲覧者を知らない(公開・全員で同じキャッシュ)ため、
+              段階解放のカテゴリのときだけクライアントで解放状態を確認し、
+              未開放なら押せない状態にして理由を出す。
+              押してから生成画面で別のスタイルに差し替わるのを防ぐ。
+            */}
+            <StylePresetGenerateCta
+              presetId={preset.id}
               href={generatePath}
-              className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-semibold text-white shadow-[0_4px_14px_rgba(236,72,153,0.35)] transition-transform hover:scale-[1.02] motion-reduce:transition-none"
-            >
-              <Wand2 className="h-4 w-4" aria-hidden />
-              {copy.cta}
-            </Link>
+              label={copy.cta}
+              isGatedCategory={categoryNeedsUnlockContext(preset.category)}
+            />
           </div>
         </div>
 

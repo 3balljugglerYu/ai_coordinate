@@ -11,15 +11,25 @@ import {
 import { PostDetailContent } from "./PostDetailContent";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isFullAdmin } from "@/lib/env";
-import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { normalizeSubscriptionPlan } from "@/features/subscription/subscription-config";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
+import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
 interface CachedPostDetailProps {
   postId: string;
   currentUserId: string | null;
+  /**
+   * One-Tap のスタイルが、この閲覧者にとって開放済みか。
+   *
+   * `get_collection_progress` は `auth.uid()` を使うため cookie 認証済みの
+   * クライアントが要り、`use cache` の中では解決できない。ページ側
+   * （キャッシュ境界の外）で解決して渡す。currentUserId から決まる値なので、
+   * キャッシュの粒度は currentUserId のままで増えない。
+   */
+  presetUnlockState?: PresetUnlockState;
 }
 
 /**
@@ -30,6 +40,7 @@ interface CachedPostDetailProps {
 export async function CachedPostDetail({
   postId,
   currentUserId,
+  presetUnlockState,
 }: CachedPostDetailProps) {
   "use cache";
   cacheTag(`post-detail-${postId}`);
@@ -129,6 +140,8 @@ export async function CachedPostDetail({
       imageUrl={imageUrl}
       originalImageUrl={originalImageUrl}
       viewerSubscriptionPlan={viewerSubscriptionPlan}
+
+      presetUnlockState={presetUnlockState}
       viewerIsAdmin={isFullAdmin(currentUserId)}
     />
   );

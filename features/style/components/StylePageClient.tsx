@@ -134,6 +134,11 @@ interface StylePageClientProps {
   initialAuthState?: "authenticated" | "guest";
   initialSelectedPresetId?: string | null;
   /**
+   * `?style=` で要求されたスタイルが未開放だったときの理由。
+   * 通常の導線では押す前に伝えるが、共有リンク等でここへ直接来たときの保険。
+   */
+  lockedRequestedReason?: "sequential" | "prerequisite" | null;
+  /**
    * 生成直後の結果プレビュー（StyleResultPanel）を表示するかどうか。
    * 未指定 (true) のときは表示。ログインユーザー向けには
    * 生成結果一覧が同じ役割を担うため、ページ側から false を渡して
@@ -346,6 +351,7 @@ export function StylePageClient({
   presets,
   initialAuthState,
   initialSelectedPresetId,
+  lockedRequestedReason = null,
   showResultPanel = true,
   subscriptionPlan = "free",
   canUseFreePose = false,
@@ -356,6 +362,13 @@ export function StylePageClient({
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
+  /*
+    共有リンク等で未開放の `?style=` に来たときの保険。通常の導線
+    (スタイル紹介ページ・投稿詳細)では押す前にロック表示になるため、ここは出ない。
+  */
+  const [isLockedRequestOpen, setIsLockedRequestOpen] = useState(
+    lockedRequestedReason !== null
+  );
   const coordinateT = useTranslations("coordinate");
   const postsT = useTranslations("posts");
   const locale = useLocale();
@@ -2492,6 +2505,28 @@ export function StylePageClient({
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setRateLimitDialogMessage(null)}>
               {t("rateLimitDialogClose")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/*
+        共有リンク・URL 直叩きで未開放の ?style= に来たときの保険。
+        通常の導線(スタイル紹介ページ・投稿詳細)では押す前にロック表示になる。
+      */}
+      <AlertDialog open={isLockedRequestOpen} onOpenChange={setIsLockedRequestOpen}>
+        <AlertDialogContent data-testid="style-locked-request-notice">
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("presetLockedTitle")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {lockedRequestedReason === "prerequisite"
+                ? t("presetLockedPrerequisiteDescription")
+                : t("presetLockedSequentialDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setIsLockedRequestOpen(false)}>
+              {t("presetLockedAction")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

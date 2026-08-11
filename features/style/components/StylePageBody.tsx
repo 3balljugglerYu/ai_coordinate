@@ -80,6 +80,33 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
 
+  /*
+    共有リンクや URL 直叩きで未開放の `?style=` が来たときの保険。
+
+    通常の導線(スタイル紹介ページ・投稿詳細)では押す前にロック表示になるが、
+    それらを経由せずここへ来ることがある。その場合、要求されたスタイルが
+    一覧に無いため黙って先頭のスタイルに差し替わってしまうので、理由を伝える。
+
+    公開一覧に**ある**のに解放後の一覧に**ない/シルエット** のときだけ案内する。
+    公開一覧にそもそも無い(未公開・admin_only)ときは黙る。存在を教えないため。
+  */
+  const requestedPresetId = params.style ?? null;
+  const requestedInCatalog = requestedPresetId
+    ? cachedPresets.some((preset) => preset.id === requestedPresetId)
+    : false;
+  const requestedInGated = requestedPresetId
+    ? presets.find((preset) => preset.id === requestedPresetId)
+    : undefined;
+  const requestedCategory = requestedPresetId
+    ? cachedPresets.find((preset) => preset.id === requestedPresetId)?.category
+    : undefined;
+  const lockedRequestedReason: "sequential" | "prerequisite" | null =
+    requestedInCatalog && (!requestedInGated || requestedInGated.locked === true)
+      ? requestedCategory?.sequentialUnlock === true
+        ? "sequential"
+        : "prerequisite"
+      : null;
+
   // 企画(コレクション)カードの「生成済み ✓」判定用に、本人が生成済みの
   // プリセットID一覧を取得する。collection-series カテゴリのみ集計(通常カテゴリは対象外)。
   const seriesCategoryKeys = user
@@ -162,6 +189,7 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
           presets={presets}
           initialAuthState={user ? "authenticated" : "guest"}
           initialSelectedPresetId={params.style ?? null}
+          lockedRequestedReason={lockedRequestedReason}
           // ログインユーザーは生成結果一覧（下に並ぶ <CachedGeneratedImageGallery>）
           // が結果表示を担うため、即時結果パネルは非表示にする。
           showResultPanel={!user}

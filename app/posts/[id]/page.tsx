@@ -9,6 +9,11 @@ import { getSiteUrl } from "@/lib/env";
 import { DEFAULT_TITLE_TAGLINE } from "@/constants";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { getPostPageCopy } from "@/i18n/page-copy";
+import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
+import {
+  resolvePresetUnlockState,
+  type PresetUnlockState,
+} from "@/features/collections/lib/resolve-preset-unlock-state";
 
 // Next.js 16では、動的ルートはデフォルトで動的レンダリングされる
 // キャッシュはfetchのrevalidateオプションまたはReact.cache()で制御
@@ -152,6 +157,33 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
     console.error("post fetch for json-ld failed:", error);
   }
 
+  /*
+    One-Tap のスタイルカードで「まだ開放されていません」を出すための解放状態。
+
+    `get_collection_progress` は auth.uid() を使うため cookie 認証済みの
+    クライアントが要り、"use cache" の中(CachedPostDetail)では解決できない。
+    ここ(キャッシュ境界の外)で解決して渡す。
+
+    段階解放でないカテゴリなら resolvePresetUnlockState が問い合わせ無しで
+    unlocked を返すので、通常のスタイルでは追加コストが出ない。
+  */
+  let presetUnlockState: PresetUnlockState = { status: "unknown" };
+  const oneTapPresetId = postForJsonLd
+    ? (getOneTapStylePresetMetadata(postForJsonLd)?.id ?? null)
+    : null;
+  if (oneTapPresetId) {
+    try {
+      presetUnlockState = await resolvePresetUnlockState(
+        oneTapPresetId,
+        currentUserId,
+        await createClient()
+      );
+    } catch (error) {
+      // 判定できないときは案内を出さない側へ倒す
+      console.error("preset unlock state resolution failed:", error);
+    }
+  }
+
   // 画像検索での発見性を高める ImageObject 構造化データ。
   // (上の取得は generateMetadata と同一キーのため追加の DB 往復は発生しない)
   let imageJsonLd: Record<string, unknown> | null = null;
@@ -197,7 +229,11 @@ export default async function PostDetailPage({ params }: PostDetailPageProps) {
   // use cache でキャッシュして即時表示を優先（閲覧数はキャッシュ時スキップ）
   return (
     <>
-      <CachedPostDetail postId={id} currentUserId={currentUserId} />
+      <CachedPostDetail
+        postId={id}
+        currentUserId={currentUserId}
+        presetUnlockState={presetUnlockState}
+      />
       {imageJsonLd && (
         <script
           type="application/ld+json"
