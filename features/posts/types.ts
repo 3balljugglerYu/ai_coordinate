@@ -70,7 +70,7 @@ export interface SourcePromptReference {
    * サーバー側で認可してから返す。
    */
   promptVisibility: "public" | "private";
-  /** このプロンプトを使った人数（原作者自身は除外）。 */
+  /** このプロンプトの累計利用回数（原作者自身は除外）。 */
   usageCount: number;
 }
 

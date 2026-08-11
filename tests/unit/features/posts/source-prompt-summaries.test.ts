@@ -49,7 +49,29 @@ function createSupabaseStub(
   } = {}
 ) {
   const rpcCalls: Array<{ name: string; args: unknown }> = [];
-  const publicCheckCalls: string[][] = [];
+  /** テーブルごとのバッチ SELECT 回数(往復数の回帰を見る) */
+  const batchCalls: { generated_images: string[][]; profiles: string[][] } = {
+    generated_images: [],
+    profiles: [],
+  };
+  /** 個別 SELECT の回数(バッチ化できていれば 0 のまま) */
+  let singleSelectCount = 0;
+
+  function originRow(id: string) {
+    return {
+      id,
+      user_id: AUTHOR_ID,
+      prompt_visibility: "public",
+      storage_path_thumb: "thumb/origin.webp",
+      storage_path: null,
+      image_url: null,
+      width: 896,
+      height: 1152,
+      pre_generation_storage_path: "before/origin.webp",
+      show_before_image: true,
+      caption: "原作のキャプション",
+    };
+  }
 
   const supabase = {
     rpc: jest.fn((name: string, args: unknown) => {
@@ -69,47 +91,46 @@ function createSupabaseStub(
     }),
     from: jest.fn((table: string) => ({
       select: () => ({
-        // 原作の公開状態チェック: .in(ids).eq("is_posted").eq("moderation_status")
+        // バッチ SELECT: .in(ids) [.eq(...).eq(...)]
         in: (_column: string, ids: string[]) => {
-          publicCheckCalls.push(ids);
+          if (table === "profiles") {
+            batchCalls.profiles.push(ids);
+            return Promise.resolve({
+              data: ids.map((id) => ({
+                user_id: id,
+                nickname: "原作者さん",
+                avatar_url: "https://cdn/a.png",
+              })),
+              error: null,
+            });
+          }
+          batchCalls.generated_images.push(ids);
           const allowed = options.publiclyUsableOriginIds ?? ids;
-          const builder = {
-            eq: jest.fn(),
-          };
+          const builder = { eq: jest.fn() };
           let remaining = 2;
           builder.eq = jest.fn(() => {
             remaining -= 1;
             return remaining === 0
               ? Promise.resolve({
-                  data: ids
-                    .filter((id) => allowed.includes(id))
-                    .map((id) => ({ id, caption: "原作のキャプション" })),
+                  data: ids.filter((id) => allowed.includes(id)).map(originRow),
                   error: null,
                 })
               : builder;
           });
           return builder;
         },
+        // 個別 SELECT(一覧経路では呼ばれないはず)
         eq: () => ({
-          maybeSingle: () =>
-            Promise.resolve({
+          maybeSingle: () => {
+            singleSelectCount += 1;
+            return Promise.resolve({
               data:
                 table === "profiles"
                   ? { nickname: "原作者さん", avatar_url: "https://cdn/a.png" }
-                  : {
-                      id: ORIGIN_A,
-                      user_id: AUTHOR_ID,
-                      prompt_visibility: "public",
-                      storage_path_thumb: "thumb/origin.webp",
-                      storage_path: null,
-                      image_url: null,
-                      width: 896,
-                      height: 1152,
-                      pre_generation_storage_path: "before/origin.webp",
-                      show_before_image: true,
-                    },
+                  : originRow(ORIGIN_A),
               error: null,
-            }),
+            });
+          },
         }),
       }),
     })),
@@ -118,7 +139,8 @@ function createSupabaseStub(
   return {
     supabase: supabase as unknown as SupabaseClient,
     rpcCalls,
-    publicCheckCalls,
+    batchCalls,
+    getSingleSelectCount: () => singleSelectCount,
   };
 }
 
@@ -333,8 +355,8 @@ describe("resolveSourcePromptSummaries", () => {
     });
   });
 
-  it("原作の公開状態は原作単位でまとめて1回だけ確認する", async () => {
-    const { supabase, publicCheckCalls } = createSupabaseStub();
+  it("原作の行とプロフィールはまとめて1回ずつ引き_個別SELECTをしない", async () => {
+    const { supabase, batchCalls, getSingleSelectCount } = createSupabaseStub();
 
     await resolveSourcePromptSummaries(
       [
@@ -356,8 +378,11 @@ describe("resolveSourcePromptSummaries", () => {
       supabase
     );
 
-    expect(publicCheckCalls).toHaveLength(1);
-    expect(publicCheckCalls[0].sort()).toEqual([ORIGIN_A, ORIGIN_B].sort());
+    // 原作数に比例した往復にしない(Disk IO の観点)
+    expect(batchCalls.generated_images).toHaveLength(1);
+    expect(batchCalls.generated_images[0].sort()).toEqual([ORIGIN_A, ORIGIN_B].sort());
+    expect(batchCalls.profiles).toHaveLength(1);
+    expect(getSingleSelectCount()).toBe(0);
   });
 
   it("空配列なら問い合わせない", async () => {

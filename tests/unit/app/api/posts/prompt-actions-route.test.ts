@@ -190,10 +190,11 @@ describe("POST /api/posts/prompt-actions", () => {
       const response = await POST(buildRequest({ post_ids: [POST_A] }));
       const body = await response.json();
 
+      // リンクを出さないと決めたスタイルの人気度は公開しない
       expect(body.styleLinks[POST_A]).toEqual({
         presetId: "preset-1",
         slug: null,
-        usageCount: 42,
+        usageCount: 0,
       });
     });
 
@@ -206,7 +207,7 @@ describe("POST /api/posts/prompt-actions", () => {
       expect(body.styleLinks[POST_A]).toEqual({
         presetId: "preset-1",
         slug: null,
-        usageCount: 42,
+        usageCount: 0,
       });
     });
 

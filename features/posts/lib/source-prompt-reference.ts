@@ -86,9 +86,23 @@ export function resolveOriginPostId(
  *                 閲覧者の RLS ではなく service role で読む。返す値は
  *                 可否・クレジット・サムネイル・利用数だけで、本文は含まない。
  */
+export interface ResolveSourcePromptOptions {
+  /**
+   * 事前にまとめて引いた原作者プロフィール（一覧のバッチ解決用）。
+   * 与えられていれば個別 SELECT を省く。
+   */
+  profileByUserId?: Map<string, { nickname: string | null; avatarUrl: string | null }>;
+  /**
+   * 事前にまとめて引いた原作の行（一覧のバッチ解決用）。
+   * 与えられていれば個別 SELECT を省く。
+   */
+  originRowById?: Map<string, OriginRow>;
+}
+
 export async function resolveSourcePromptReference(
   record: OriginResolvableRecord,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  options: ResolveSourcePromptOptions = {}
 ): Promise<SourcePromptReference | null> {
   const originPostId = resolveOriginPostId(record);
   if (!originPostId) {
@@ -120,7 +134,7 @@ export async function resolveSourcePromptReference(
 
   const [validation, profile, usageCount] = await Promise.all([
     fetchIntrinsicAvailability(supabase, originPostId, originAuthorId),
-    fetchAuthorProfile(supabase, originAuthorId),
+    fetchAuthorProfile(supabase, originAuthorId, options.profileByUserId),
     fetchUsageCount(supabase, originPostId),
   ]);
 
@@ -145,7 +159,11 @@ export async function resolveSourcePromptReference(
     return base;
   }
 
-  const thumbnail = await fetchOriginThumbnail(supabase, originPostId);
+  const thumbnail = await fetchOriginThumbnail(
+    supabase,
+    originPostId,
+    options.originRowById
+  );
   return {
     ...base,
     thumbnailUrl: thumbnail.url,
@@ -198,20 +216,38 @@ export async function resolveSourcePromptSummaries(
     return {};
   }
 
-  const [resolved, publiclyUsableOrigins] = await Promise.all([
-    Promise.all(
-      Array.from(byOrigin.values()).map(async ({ record, postIds }) => ({
-        postIds,
-        reference: await resolveSourcePromptReference(record, supabase),
-      }))
-    ),
-    fetchPubliclyUsableOrigins(
-      supabase,
-      Array.from(byOrigin.values())
-        .map(({ record }) => resolveOriginPostId(record))
-        .filter((id): id is string => Boolean(id))
-    ),
+  /*
+    原作の行と原作者プロフィールは**先にまとめて引く**。
+
+    原作ごとに個別 SELECT すると、1リクエストで原作数 × 4 回の往復になる。
+    直近で Disk IO バジェット枯渇の障害が起きているので、公開フィードから
+    呼ばれる経路の往復回数は削っておく。
+
+    判定そのものは詳細画面と同じ `resolveSourcePromptReference` に通したまま、
+    取得済みの値を渡して重複クエリだけを省く（正本は1つに保つ）。
+  */
+  const entries = Array.from(byOrigin.values());
+  const originIds = entries
+    .map(({ record }) => resolveOriginPostId(record))
+    .filter((id): id is string => Boolean(id));
+  const authorIds = entries
+    .map(({ record }) => record.source_author_id ?? record.user_id)
+    .filter((id): id is string => Boolean(id));
+
+  const [publiclyUsableOrigins, profileByUserId] = await Promise.all([
+    fetchPubliclyUsableOrigins(supabase, originIds),
+    fetchAuthorProfiles(supabase, authorIds),
   ]);
+
+  const resolved = await Promise.all(
+    entries.map(async ({ record, postIds }) => ({
+      postIds,
+      reference: await resolveSourcePromptReference(record, supabase, {
+        profileByUserId,
+        originRowById: publiclyUsableOrigins,
+      }),
+    }))
+  );
 
   const summaries: Record<string, PromptActionSummary> = {};
   for (const { postIds, reference } of resolved) {
@@ -243,14 +279,14 @@ export async function resolveSourcePromptSummaries(
  * 閲覧者を requester として再検証して弾くため、「押せたのに作れない」になる。
  * ここで root の公開状態を明示的に確認して打ち消す。
  *
- * 引用カードに出す原作のキャプションもここで一緒に取る（同じ行を読むため）。
+ * サムネイル・キャプションもここで一緒に取る（同じ行を読むため、往復を増やさない）。
  *
  * 読めなければ空（fail closed）。
  */
 async function fetchPubliclyUsableOrigins(
   supabase: SupabaseClient,
   originPostIds: string[]
-): Promise<Map<string, { caption: string | null }>> {
+): Promise<Map<string, OriginRow>> {
   const uniqueIds = Array.from(new Set(originPostIds));
   if (uniqueIds.length === 0) {
     return new Map();
@@ -258,7 +294,9 @@ async function fetchPubliclyUsableOrigins(
 
   const { data, error } = await supabase
     .from("generated_images")
-    .select("id, caption")
+    .select(
+      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image, caption"
+    )
     .in("id", uniqueIds)
     .eq("is_posted", true)
     .eq("moderation_status", "visible");
@@ -268,10 +306,37 @@ async function fetchPubliclyUsableOrigins(
     return new Map();
   }
 
+  return new Map((data ?? []).map((row) => [(row as OriginRow).id, row as OriginRow]));
+}
+
+/** 原作者プロフィールをまとめて引く（一覧のバッチ解決用）。 */
+async function fetchAuthorProfiles(
+  supabase: SupabaseClient,
+  authorIds: string[]
+): Promise<Map<string, { nickname: string | null; avatarUrl: string | null }>> {
+  const uniqueIds = Array.from(new Set(authorIds));
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id, nickname, avatar_url")
+    .in("user_id", uniqueIds);
+
+  if (error) {
+    console.error("Failed to fetch author profiles", { code: error.code });
+    return new Map();
+  }
+
   return new Map(
     (data ?? []).map((row) => {
-      const typed = row as { id: string; caption: string | null };
-      return [typed.id, { caption: typed.caption }];
+      const typed = row as {
+        user_id: string;
+        nickname: string | null;
+        avatar_url: string | null;
+      };
+      return [typed.user_id, { nickname: typed.nickname, avatarUrl: typed.avatar_url }];
     })
   );
 }
@@ -351,8 +416,17 @@ async function fetchIntrinsicAvailability(
 
 async function fetchAuthorProfile(
   supabase: SupabaseClient,
-  authorId: string
+  authorId: string,
+  prefetched?: Map<string, { nickname: string | null; avatarUrl: string | null }>
 ): Promise<{ nickname: string | null; avatarUrl: string | null }> {
+  const cached = prefetched?.get(authorId);
+  if (cached) {
+    return cached;
+  }
+  if (prefetched) {
+    // まとめて引いた結果に無い＝プロフィール未作成。個別に引き直さない
+    return { nickname: null, avatarUrl: null };
+  }
   const { data, error } = await supabase
     .from("profiles")
     .select("nickname, avatar_url")
@@ -406,7 +480,8 @@ async function fetchUsageCount(
  */
 async function fetchOriginThumbnail(
   supabase: SupabaseClient,
-  originPostId: string
+  originPostId: string,
+  prefetched?: Map<string, OriginRow>
 ): Promise<{
   url: string | null;
   width: number | null;
@@ -415,13 +490,16 @@ async function fetchOriginThumbnail(
   promptVisibility: "public" | "private";
   caption: string | null;
 }> {
-  const { data, error } = await supabase
-    .from("generated_images")
-    .select(
-      "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image, caption"
-    )
-    .eq("id", originPostId)
-    .maybeSingle();
+  const cached = prefetched?.get(originPostId);
+  const { data, error } = cached
+    ? { data: cached, error: null }
+    : await supabase
+        .from("generated_images")
+        .select(
+          "id, user_id, prompt_visibility, storage_path_thumb, storage_path, image_url, width, height, pre_generation_storage_path, show_before_image, caption"
+        )
+        .eq("id", originPostId)
+        .maybeSingle();
 
   if (error || !data) {
     // 読めなければ開示側へ倒さない

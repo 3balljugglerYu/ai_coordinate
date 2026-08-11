@@ -68,6 +68,17 @@ export function FollowAndUsePromptButton({
   const isOwnPrompt = !!currentUserId && !!authorId && currentUserId === authorId;
   // フォロー判定の対象は原作者。派生投稿が並んでいても原作者を見る。
   const hasAccess = isOwnPrompt || isFollowingAuthor === true;
+  /*
+    フォロー状態がまだ取れていない間は押させない。
+
+    サマリ(prompt-actions)とフォロー状態(follow-status/batch)は別々に届くので、
+    その隙間で `undefined` のまま「フォローして生成する」を出してしまう。
+    既に原作者をフォローしている人がここを押すと、follow API が
+    FOLLOW_ALREADY_EXISTS(400) を返し、シートが開かずエラーになる。
+    未ログイン(AuthModal へ流す)と本人(フォロー不要)はこの限りではない。
+  */
+  const isFollowStatusPending =
+    !!currentUserId && !isOwnPrompt && isFollowingAuthor === undefined;
 
   // 原作が使えないときは導線ごと出さない。押しても解決しようがない。
   if (!summary.isAvailable || !authorId) {
@@ -107,7 +118,7 @@ export function FollowAndUsePromptButton({
   };
 
   const handleClick = async () => {
-    if (isWorking) {
+    if (isWorking || isFollowStatusPending) {
       return;
     }
     if (!currentUserId) {
@@ -157,11 +168,11 @@ export function FollowAndUsePromptButton({
         <button
           type="button"
           onClick={handleClick}
-          disabled={isWorking}
+          disabled={isWorking || isFollowStatusPending}
           data-testid="feed-use-prompt-button"
           className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
         >
-          {isWorking ? (
+          {isWorking || isFollowStatusPending ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
           ) : hasAccess ? (
             <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />

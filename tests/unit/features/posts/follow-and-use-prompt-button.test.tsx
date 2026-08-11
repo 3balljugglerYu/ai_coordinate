@@ -118,6 +118,62 @@ describe("FollowAndUsePromptButton", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  describe("フォロー状態が未取得のあいだ", () => {
+    test("押せない(既フォローの人が follow API の 400 で詰まるのを防ぐ)", async () => {
+      const fetchMock = mockFetch({});
+      render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={undefined}
+        />
+      );
+
+      const button = screen.getByTestId("feed-use-prompt-button");
+      expect(button).toBeDisabled();
+
+      fireEvent.click(button);
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    test("取得できたら押せるようになる", async () => {
+      mockFetch({
+        "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
+      });
+      const { rerender } = render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={undefined}
+        />
+      );
+      expect(screen.getByTestId("feed-use-prompt-button")).toBeDisabled();
+
+      rerender(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor
+        />
+      );
+      expect(screen.getByTestId("feed-use-prompt-button")).not.toBeDisabled();
+    });
+
+    test("本人の投稿はフォロー不要なので押せる", () => {
+      mockFetch({
+        "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
+      });
+      render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId={AUTHOR_ID}
+          isFollowingAuthor={undefined}
+        />
+      );
+      expect(screen.getByTestId("feed-use-prompt-button")).not.toBeDisabled();
+    });
+  });
+
   test("未ログインは AuthModal を開き_フォローも生成もしない", () => {
     const fetchMock = mockFetch({});
     render(

@@ -429,6 +429,9 @@ describe("PostFeedCard", () => {
       fireEvent.click(screen.getByLabelText("feedComments"));
 
       expect(pushMock).toHaveBeenCalledWith("/ja/posts/post-1");
+      // 親カードにも onClick があるので、伝播を止めないと2回 push されて
+      // 履歴が重複する(戻っても同じ画面に留まる)
+      expect(pushMock).toHaveBeenCalledTimes(1);
     });
   });
 

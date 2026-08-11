@@ -425,7 +425,12 @@ export function PostFeedCard({
           ) : null}
           <button
             type="button"
-            onClick={openDetail}
+            onClick={(event) => {
+              // 親カードにも onClick があるため、止めないと同じ詳細へ2回 push され
+              // 履歴が重複する(戻っても同じ画面に留まる)
+              stopCardNavigation(event);
+              openDetail();
+            }}
             aria-label={t("feedComments")}
             className="flex shrink-0 items-center gap-1 text-gray-500 transition-colors hover:text-gray-700"
           >

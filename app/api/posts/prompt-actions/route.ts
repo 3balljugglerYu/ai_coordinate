@@ -119,10 +119,16 @@ async function resolveStylePresetLinks(
 
   const links: Record<string, StylePresetLink> = {};
   for (const [postId, presetId] of presetIdByPostId) {
+    const slug = slugByPresetId.get(presetId) ?? null;
     links[postId] = {
       presetId,
-      slug: slugByPresetId.get(presetId) ?? null,
-      usageCount: generateTotals[presetId] ?? 0,
+      slug,
+      /*
+        公開できないプリセット(未公開・admin_only・表示期間外)は利用回数も返さない。
+        リンクを出さないと決めたのに人気度だけ公開フィードに出るのは筋が通らず、
+        限定公開・先行公開の運用でも漏れる。
+      */
+      usageCount: slug ? (generateTotals[presetId] ?? 0) : 0,
     };
   }
   return links;
