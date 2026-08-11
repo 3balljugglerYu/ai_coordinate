@@ -247,14 +247,25 @@ function resolveInitialSelectedPresetId(
   presets: readonly StylePresetPublicSummary[],
   initialSelectedPresetId?: string | null
 ): StylePresetPublicSummary["id"] {
+  /*
+    未開放(locked)のプリセットは選ばない。
+
+    sequential の段階解放では「次の1件」がシルエットとして一覧に残るため、
+    ID の存在だけで判定すると locked のまま選択され、フォームがそれを選んだ状態に
+    なってしまう。「まだ開放されていません」と伝えた直後に、その未開放スタイルで
+    生成できる状態が残るのは筋が通らない。
+  */
   if (
     initialSelectedPresetId &&
-    presets.some((preset) => preset.id === initialSelectedPresetId)
+    presets.some(
+      (preset) => preset.id === initialSelectedPresetId && preset.locked !== true
+    )
   ) {
     return initialSelectedPresetId;
   }
 
-  return presets[0]?.id ?? "";
+  // フォールバックも開放済みの先頭にする(先頭がシルエットのこともあるため)
+  return presets.find((preset) => preset.locked !== true)?.id ?? presets[0]?.id ?? "";
 }
 
 // StyleReferencePanel は features/style/components/StyleReferencePanel.tsx に抽出した
@@ -595,6 +606,9 @@ export function StylePageClient({
     !selectedPreset.category.allowGuestGeneration;
   const isGenerateDisabled =
     !selectedPreset ||
+    // 未開放(シルエット)のプリセットでは生成させない。
+    // 通常は選択されないが、押させてサーバーで 403 にするより手前で止める
+    selectedPreset.locked === true ||
     !hasSourceImage ||
     isGenerating ||
     isGuestDailyLimitReached ||

@@ -111,6 +111,22 @@ describe("resolvePresetUnlockState", () => {
     ).resolves.toEqual({ status: "locked", reason: "prerequisite" });
   });
 
+  test("前提を完走済みなら、段階解放の未開放は sequential として案内する", async () => {
+    /*
+      カテゴリ設定だけで理由を決めると、完走済みの人にも
+      「前の企画を完走すると開放されます」と誤案内してしまう。
+      理由は文脈（完走したか）から決める。
+    */
+    mockGetPresets.mockResolvedValue(
+      buildPresets(4, { unlockPrerequisiteKey: "previous", progressiveBatchSize: 2 })
+    );
+    mockResolveContext.mockResolvedValue(context(0, ["previous"]));
+
+    const state = await resolvePresetUnlockState("preset-0", USER_ID, supabase);
+
+    expect(state).toEqual({ status: "locked", reason: "sequential" });
+  });
+
   test("未公開・存在しない ID は unknown（存在を教えない）", async () => {
     mockGetPresets.mockResolvedValue(buildPresets(3, { sequentialUnlock: true }));
 

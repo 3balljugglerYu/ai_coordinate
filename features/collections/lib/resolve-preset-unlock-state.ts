@@ -76,12 +76,25 @@ export async function resolvePresetUnlockState(
   }
 
   /*
-    まだ開放されていない。理由で案内の文言を変える。
-    - sequential: 同じ企画を生成すると次が開く
-    - prerequisite: 前の企画を完走すると開く
+    まだ開放されていない。理由は**文脈から**決める。
+
+    カテゴリ設定(`sequentialUnlock`)だけで決めると、前提カテゴリ付きの企画で
+    「前提は完走済みだが、この1件はまだ段階解放の範囲外」というケースまで
+    `prerequisite` になり、既に完走した人へ「前の企画を完走すると開放されます」と
+    誤って案内してしまう。
+
+    - 前提カテゴリがあり、まだ完走していない → prerequisite（前の企画を完走する）
+    - それ以外（前提完走済み・前提なし）      → sequential（生成すると次が開く）
+
+    後者は sequential でも前提付き drip でも「生成すると開放される」で同じなので、
+    文言を分ける必要はない。
   */
+  const prerequisiteKey = target.category.unlockPrerequisiteKey;
+  const prerequisitePending =
+    !!prerequisiteKey && !context.prerequisiteCompletedKeys.has(prerequisiteKey);
+
   return {
     status: "locked",
-    reason: target.category.sequentialUnlock === true ? "sequential" : "prerequisite",
+    reason: prerequisitePending ? "prerequisite" : "sequential",
   };
 }

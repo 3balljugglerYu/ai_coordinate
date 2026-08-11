@@ -969,6 +969,57 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  test.each([
+    [
+      "sequential_unlock のカテゴリ",
+      { sequentialUnlock: true, unlockPrerequisiteKey: null },
+    ],
+    [
+      "前提カテゴリ付きのカテゴリ",
+      { sequentialUnlock: false, unlockPrerequisiteKey: "previous" },
+    ],
+  ])(
+    "postStyleGenerateRoute_段階解放カテゴリは guest 生成不可(%s)",
+    async (_label, gating) => {
+      /*
+        解放判定は「そのユーザーが何件生成したか」に依存するため、進捗を持たない
+        ゲストには判定できない。allow_guest_generation を立てても通さない
+        (立てた瞬間に解放順を迂回できてしまうのを防ぐ)。
+      */
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: {
+            ...TEST_COORDINATE_CATEGORY,
+            key: "collection",
+            allowGuestGeneration: true,
+            visibility: "public",
+            ...gating,
+          },
+        })
+      );
+
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+
+      const response = await postStyleGenerateRoute(createRequest(formData), {
+        fetchFn,
+        geminiApiKey: "test-api-key",
+        getUserFn,
+        getPublishedStylePresetForGenerationFn,
+        recordStyleUsageEventFn,
+        checkAndConsumeRateLimitFn,
+        releaseRateLimitAttemptFn,
+      });
+      const body = await readJson(response);
+
+      expect(response.status).toBe(401);
+      expect(body.errorCode).toBe("STYLE_CATEGORY_REQUIRES_AUTH");
+      expect(checkAndConsumeRateLimitFn).not.toHaveBeenCalled();
+      expect(fetchFn).not.toHaveBeenCalled();
+    }
+  );
+
   describe("ゲスト × user_select(出力比率のユーザー選択)", () => {
     const runGuest = async (sentAspect: string | null) => {
       getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
