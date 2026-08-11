@@ -26,6 +26,7 @@ import {
   stripLocalePrefix,
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
+import { handleNavigationRetap } from "@/lib/nav-retap";
 import { getLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import {
   TUTORIAL_TOUR_ENTRY_PATH,
@@ -148,6 +149,14 @@ export function NavigationBar() {
       normalizedPathname === normalizedTargetPath
     ) {
       markMissionTabSnoozed();
+    }
+
+    // 既にそのタブにいるときの再タップ(ホームなら一番上へ戻す)
+    if (
+      normalizedPathname === normalizedTargetPath &&
+      handleNavigationRetap(normalizedTargetPath)
+    ) {
+      return;
     }
 
     if (pendingPathname || normalizedPathname === normalizedTargetPath) {
