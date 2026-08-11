@@ -102,10 +102,15 @@ export function BeforeAfterFrame({
           role: "button" as const,
           tabIndex: 0,
           "aria-label": imageButtonLabel,
-          onClick: () => onImageClick(index),
+          onClick: (event: React.MouseEvent) => {
+            // 画像は拡大ビューだけを開く。親カードの詳細遷移へは伝えない
+            event.stopPropagation();
+            onImageClick(index);
+          },
           onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => {
             if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
+              event.stopPropagation();
               onImageClick(index);
             }
           },

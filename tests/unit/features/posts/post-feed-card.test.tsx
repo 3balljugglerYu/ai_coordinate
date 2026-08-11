@@ -263,6 +263,99 @@ describe("PostFeedCard", () => {
       expect(fullscreenSpy.mock.calls[0][0].images).toHaveLength(2);
     });
 
+    test("カード地をタップすると詳細へ移動する(キャプション無しでも辿り着ける)", () => {
+      render(<PostFeedCard post={createPost({ caption: null })} currentUserId={null} />);
+
+      fireEvent.click(screen.getByTestId("post-feed-card-post-1"));
+
+      expect(pushMock).toHaveBeenCalledWith("/ja/posts/post-1");
+    });
+
+    test("キャプションが無いときは1行ぶんの余白を空ける(そこも詳細への領域)", () => {
+      const { rerender } = render(
+        <PostFeedCard post={createPost({ caption: null })} currentUserId={null} />
+      );
+      expect(screen.getByTestId("post-feed-card-caption-spacer")).toBeInTheDocument();
+
+      rerender(<PostFeedCard post={createPost()} currentUserId={null} />);
+      expect(
+        screen.queryByTestId("post-feed-card-caption-spacer")
+      ).not.toBeInTheDocument();
+    });
+
+    test("時刻から詳細へ行ける(カード地は目に見えないため入口を残す)", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      expect(screen.getByTestId("post-feed-card-timestamp")).toHaveAttribute(
+        "href",
+        "/ja/posts/post-1"
+      );
+    });
+
+    test("作者アイコンと名前はプロフィールへ行き_詳細へは飛ばない", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      const profileLinks = screen
+        .getAllByRole("link")
+        .filter((link) => link.getAttribute("href") === "/users/author-1");
+      // アイコンと名前の2つ
+      expect(profileLinks).toHaveLength(2);
+
+      profileLinks.forEach((link) => fireEvent.click(link));
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    test("画像タップは拡大ビューだけで_カード地の詳細遷移は起きない", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      fireEvent.click(screen.getByTestId("post-feed-after-frame"));
+
+      expect(screen.getByTestId("image-fullscreen")).toBeInTheDocument();
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    test("キャプションの展開でカード地の詳細遷移は起きない", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      fireEvent.click(screen.getByTestId("feed-caption"));
+
+      // 短い本文は1タップで詳細(FeedCaption 自身の遷移)。二重に呼ばれない
+      expect(pushMock).toHaveBeenCalledTimes(1);
+    });
+
+    test("いいねボタンで詳細へ飛ばない", () => {
+      render(<PostFeedCard post={createPost()} currentUserId="viewer-1" />);
+
+      fireEvent.click(screen.getByTestId("like-button"));
+
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    test("引用ブロックの操作で詳細へ飛ばない", () => {
+      render(
+        <PostFeedCard
+          post={createPost()}
+          currentUserId="viewer-1"
+          isFollowingPromptAuthor
+          promptAction={{
+            originPostId: "origin-1",
+            isAvailable: true,
+            originAuthorId: "author-1",
+            originAuthorNickname: "みきふく",
+            originAuthorAvatarUrl: null,
+            originThumbnailUrl: null,
+            originCaption: null,
+            usageCount: 0,
+            promptVisibility: "private",
+          }}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId("feed-source-quote"));
+
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
     test("コメントアイコンは詳細へ移動する", () => {
       render(<PostFeedCard post={createPost()} currentUserId={null} />);
 

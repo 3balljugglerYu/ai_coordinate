@@ -192,12 +192,26 @@ export function PostFeedCard({
   }
 
   const openDetail = () => router.push(detailHref);
+  /** カード地の遷移を止める。自分の役割だけを果たす導線に付ける。 */
+  const stopCardNavigation = (event: React.MouseEvent) => event.stopPropagation();
 
   return (
     <>
+      {/*
+        カード地のどこを押しても詳細へ行けるようにする(X と同じ)。
+        キャプションが無い投稿では、本文をタップして詳細へ、という導線が
+        そもそも存在しないため、ここが唯一の受け皿になる。
+
+        個々の導線(作者・画像・キャプション・ボタン)は stopPropagation で
+        自分の役割だけを果たす。漏らすと「いいねを押したのに詳細へ飛ぶ」誤爆になる。
+
+        キーボード操作のために role/tabIndex は付けない(カード全体をタブ停止に
+        すると中のリンクと二重になる)。代わりに時刻をリンクにして経路を確保する。
+      */}
       <Card
+        onClick={openDetail}
         className={cn(
-          "gap-0 overflow-visible p-0 transition-[box-shadow,background-color,border-color] duration-700",
+          "gap-0 cursor-pointer overflow-visible p-0 transition-[box-shadow,background-color,border-color] duration-700",
           isHighlighted &&
             "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
         )}
@@ -208,6 +222,7 @@ export function PostFeedCard({
           {authorId ? (
             <Link
               href={`/users/${encodeURIComponent(authorId)}`}
+              onClick={stopCardNavigation}
               className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gray-200 transition-opacity hover:opacity-80"
             >
               {avatarUrl ? (
@@ -233,7 +248,9 @@ export function PostFeedCard({
             {authorId ? (
               <Link
                 href={`/users/${encodeURIComponent(authorId)}`}
-                className="truncate text-sm font-bold text-gray-900 transition-colors hover:text-gray-600"
+                onClick={stopCardNavigation}
+                // 指で押しやすいよう縦の当たり判定を広げる(文字高だけだと細い)
+                className="-my-1 truncate py-1 text-sm font-bold text-gray-900 transition-colors hover:text-gray-600"
                 title={displayName}
               >
                 {displayName}
@@ -242,14 +259,21 @@ export function PostFeedCard({
               <span className="truncate text-sm font-bold text-gray-900">{displayName}</span>
             )}
             {timestampLabel ? (
-              <span className="shrink-0 text-xs text-muted-foreground">
+              // X と同じく時刻から詳細へ。カード地タップは目に見えないので、
+              // 押せると分かる入口をひとつ残す(キーボード操作の経路も兼ねる)。
+              <Link
+                href={detailHref}
+                onClick={stopCardNavigation}
+                className="-my-1 shrink-0 py-1 text-xs text-muted-foreground transition-colors hover:text-gray-700"
+                data-testid="post-feed-card-timestamp"
+              >
                 ・{timestampLabel}
-              </span>
+              </Link>
             ) : null}
           </div>
 
           {showFollowButton && authorId ? (
-            <div className="shrink-0">
+            <div className="shrink-0" onClick={stopCardNavigation}>
               <FollowButton
                 userId={authorId}
                 currentUserId={currentUserId}
@@ -261,7 +285,7 @@ export function PostFeedCard({
           ) : null}
 
           {post.id ? (
-            <div className="shrink-0">
+            <div className="shrink-0" onClick={stopCardNavigation}>
               <PostModerationMenu
                 postId={post.id}
                 authorUserId={post.user_id}
@@ -275,14 +299,21 @@ export function PostFeedCard({
         </div>
 
         {post.caption ? (
-          <div className="px-3 pt-2">
+          <div className="px-3 pt-2" onClick={stopCardNavigation}>
             <FeedCaption
               caption={post.caption}
               onOpenDetail={openDetail}
               expandLabel={t("readMore")}
             />
           </div>
-        ) : null}
+        ) : (
+          /*
+            キャプションが無い投稿は、作者行と画像が詰まって窮屈に見える。
+            1行ぶんの余白を空けて見た目を整えつつ、ここが詳細への
+            タップ領域にもなる(カード地の onClick がそのまま効く)。
+          */
+          <div className="h-5" data-testid="post-feed-card-caption-spacer" />
+        )}
 
         {/* viewable 判定はカード面積の大半を占める画像エリアで行う(PostCard と同じ) */}
         <div className="relative mt-3 overflow-hidden" ref={impressionRef}>
@@ -321,7 +352,7 @@ export function PostFeedCard({
           この中に入れる。同じ場所にブロックが2つ並ぶのを避ける意味もある。
         */}
         {promptAction?.isAvailable ? (
-          <div className="px-3 pt-3">
+          <div className="px-3 pt-3" onClick={stopCardNavigation}>
             <FeedSourceQuote
               /*
                 原作がこの投稿自身なら引用ではなくお知らせ。サムネイルと作者名を
@@ -349,7 +380,7 @@ export function PostFeedCard({
             />
           </div>
         ) : oneTapPreset ? (
-          <div className="px-3 pt-3">
+          <div className="px-3 pt-3" onClick={stopCardNavigation}>
             <FeedSourceQuote
               variant="style"
               thumbnailUrl={oneTapPreset.thumbnailImageUrl}
@@ -367,11 +398,13 @@ export function PostFeedCard({
         {/* 統計。カード地(ここより下の余白)を押すと詳細へ移動する */}
         <div className="flex items-center gap-4 px-3 py-2">
           {post.id ? (
-            <PostCardLikeButton
-              imageId={post.id}
-              initialLikeCount={post.like_count || 0}
-              currentUserId={currentUserId}
-            />
+            <span onClick={stopCardNavigation}>
+              <PostCardLikeButton
+                imageId={post.id}
+                initialLikeCount={post.like_count || 0}
+                currentUserId={currentUserId}
+              />
+            </span>
           ) : null}
           <button
             type="button"

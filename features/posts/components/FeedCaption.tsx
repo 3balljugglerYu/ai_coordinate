@@ -68,7 +68,9 @@ export function FeedCaption({ caption, onOpenDetail, expandLabel }: FeedCaptionP
     return null;
   }
 
-  const handleClick = () => {
+  const handleClick = (event: React.SyntheticEvent) => {
+    // 展開のつもりのタップで親カードの詳細遷移が起きないようにする
+    event.stopPropagation();
     // 5行に収まっている本文は展開する意味が無いので、1回で詳細へ移動する。
     // ここを「常に1回目は展開」にすると、短い本文でも見た目が何も変わらないまま
     // 1タップを消費してしまい、詳細へ行くのに毎回2回押すことになる。
@@ -87,7 +89,7 @@ export function FeedCaption({ caption, onOpenDetail, expandLabel }: FeedCaptionP
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          handleClick();
+          handleClick(event);
         }
       }}
       className="cursor-pointer text-left"
