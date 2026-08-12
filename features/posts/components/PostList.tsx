@@ -137,7 +137,17 @@ export function PostList({
   const [viewMode, setViewMode] = useState<HomeViewMode>(DEFAULT_HOME_VIEW_MODE);
   const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
-  const hasFreshNewestPostsRef = useRef(false);
+  /*
+    「サーバー描画ぶんより新しい newest を既に持っている」フラグ。
+
+    復元した一覧はまさにこれに当たるので、最初から true で始める。
+    こうしないと初回ロードの effect が initialPosts(20件)で一覧を出し直し、
+    復元した件数ごと潰れて基準にするカードも消える(＝位置が戻らない)。
+    この effect は複数回走るため「1回だけ止める」方式では防げない。
+    タブを切り替えて戻ってきたときは loadedSortType が変わるので、
+    この分岐には入らず通常どおり取り直される。
+  */
+  const hasFreshNewestPostsRef = useRef(Boolean(restored));
   // 画面幅からフィードカードのおおよその高さを出すため。SSR では既定幅を使う。
   const [viewportWidth, setViewportWidth] = useState(FEED_CARD_MAX_WIDTH_PX);
   useEffect(() => {
