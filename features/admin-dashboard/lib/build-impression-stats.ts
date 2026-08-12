@@ -68,6 +68,21 @@ function toCount(value: unknown): number {
     : 0;
 }
 
+/**
+ * 内訳の比率表示。
+ *
+ * 単純な四捨五入だと「フィード 3件 → 0%」のように、件数があるのに 0% と出て
+ * 壊れて見える。表示形式の記録は途中から始めたので、しばらく分母(不明)が
+ * 大きいままになる。0 でないのに 0% になる場合は「1%未満」と出す。
+ */
+export function formatImpressionShare(value: number, total: number): string {
+  if (total <= 0 || value <= 0) {
+    return "0%";
+  }
+  const rounded = Math.round((value / total) * 100);
+  return rounded === 0 ? "1%未満" : `${rounded}%`;
+}
+
 /** "2026-08-12" → "8/12"。文字列から切り出す(Date を通すとタイムゾーンでずれる)。 */
 export function formatImpressionDateLabel(date: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);

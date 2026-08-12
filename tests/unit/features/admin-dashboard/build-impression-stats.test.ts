@@ -9,6 +9,7 @@
 
 import {
   formatImpressionDateLabel,
+  formatImpressionShare,
   parseImpressionStats,
 } from "@/features/admin-dashboard/lib/build-impression-stats";
 
@@ -136,6 +137,30 @@ describe("parseImpressionStats", () => {
       uniqueViewers: 0,
       grid: 0,
     });
+  });
+});
+
+describe("formatImpressionShare", () => {
+  test("件数があるのに0%と出さない(1%未満にする)", () => {
+    /*
+      表示形式の記録は途中から始めたので、しばらく分母(不明)が大きいまま。
+      単純な四捨五入だと「フィード 3件 → 0%」になり、壊れて見える。
+    */
+    expect(formatImpressionShare(3, 10979)).toBe("1%未満");
+    expect(formatImpressionShare(36, 10979)).toBe("1%未満");
+  });
+
+  test("四捨五入で1%以上になるものは通常表示", () => {
+    // 0.5% は四捨五入で 1% になるので「1%未満」にはしない
+    expect(formatImpressionShare(5, 1000)).toBe("1%");
+    expect(formatImpressionShare(300, 1000)).toBe("30%");
+    expect(formatImpressionShare(1000, 1000)).toBe("100%");
+  });
+
+  test("0件・分母0は0%", () => {
+    expect(formatImpressionShare(0, 1000)).toBe("0%");
+    expect(formatImpressionShare(10, 0)).toBe("0%");
+    expect(formatImpressionShare(0, 0)).toBe("0%");
   });
 });
 

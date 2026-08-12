@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Eye } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AdminImpressionTrendChartPanel } from "./AdminImpressionTrendChartPanel";
+import { formatImpressionShare } from "../lib/build-impression-stats";
 import type { PostImpressionStats } from "../lib/get-post-impression-stats";
 
 interface AdminImpressionSectionProps {
@@ -66,7 +67,7 @@ function BreakdownRow({
               {item.value.toLocaleString("ja-JP")}
             </span>
             <span className="text-slate-500">
-              {total > 0 ? `${Math.round((item.value / total) * 100)}%` : "0%"}
+              {formatImpressionShare(item.value, total)}
             </span>
           </span>
         ))}
@@ -93,6 +94,14 @@ export function AdminImpressionSection({ stats }: AdminImpressionSectionProps) {
             <p className="mt-1 text-sm text-slate-600">
               可視50%×1秒で1件。同じ人・同じ投稿は30分に1回まで数えます。
             </p>
+            {/*
+              2026-08-12 に重複除外を「1日1回」から「30分に1回」へ変えた。
+              書いておかないと、日別チャートの段差をアクセス増と読み違える。
+            */}
+            <p className="mt-1 text-xs text-slate-500">
+              2026-08-12 より前は「1日1回」で集計しています（同じ日を境に数え方が
+              変わるため、チャートの段差は増加ではありません）。
+            </p>
           </div>
         </div>
       </CardHeader>
@@ -105,7 +114,12 @@ export function AdminImpressionSection({ stats }: AdminImpressionSectionProps) {
           <SummaryCell
             label="ユニーク視聴者"
             value={totals.uniqueViewers.toLocaleString("ja-JP")}
-            hint="期間内の実人数(日次の合計ではありません)"
+            /*
+              「実人数」と書くと過信される。ゲストは IP ハッシュで識別するため、
+              モバイルで IP が変わるたびに別人として数えられ、期間が長いほど
+              膨らむ。実態に近いのは日別チャートの方。
+            */
+            hint="日次の合計ではありません。ゲストはIPで識別するため、期間が長いほど多めに出ます"
           />
           <SummaryCell
             label="見られた投稿"
@@ -180,62 +194,53 @@ export function AdminImpressionSection({ stats }: AdminImpressionSectionProps) {
                 よく見られた投稿
               </h3>
               <p className="mt-1 text-xs text-slate-500">
-                この期間のインプレッション上位。サムネイルから投稿詳細へ移動できます。
+                この期間のインプレッション上位（上段）とユニーク視聴者（下段）。
+                タップで投稿詳細へ移動できます。
               </p>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs text-slate-500">
-                    <th className="pb-2 font-medium">投稿</th>
-                    <th className="pb-2 text-right font-medium">
-                      インプレッション
-                    </th>
-                    <th className="pb-2 text-right font-medium">
-                      ユニーク視聴者
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {topPosts.map((post) => (
-                    <tr
-                      key={post.imageId}
-                      className="border-b border-slate-100 last:border-0"
-                    >
-                      <td className="py-2">
-                        <Link
-                          href={`/posts/${post.imageId}`}
-                          className="flex items-center gap-3 hover:underline"
-                          target="_blank"
-                        >
-                          <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-100">
-                            {post.thumbUrl ? (
-                              <Image
-                                src={post.thumbUrl}
-                                alt=""
-                                fill
-                                sizes="40px"
-                                className="object-cover"
-                                unoptimized
-                              />
-                            ) : null}
-                          </span>
-                          <span className="truncate text-slate-700">
-                            {post.authorName}
-                          </span>
-                        </Link>
-                      </td>
-                      <td className="py-2 text-right font-semibold text-slate-900">
-                        {post.impressions.toLocaleString("ja-JP")}
-                      </td>
-                      <td className="py-2 text-right text-slate-600">
-                        {post.uniqueViewers.toLocaleString("ja-JP")}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {/*
+              表(min-width + 横スクロール)にすると、スマホでは肝心の数値が画面外に
+              出てランキングとして機能しない。管理画面はスマホから見ることが多い
+              ため、どの幅でも横スクロールなしで数値まで読める並びにする。
+            */}
+            <ul className="text-sm">
+              {topPosts.map((post) => (
+                <li
+                  key={post.imageId}
+                  className="flex items-center gap-3 border-b border-slate-100 py-2 last:border-0"
+                >
+                  <Link
+                    href={`/posts/${post.imageId}`}
+                    className="flex min-w-0 flex-1 items-center gap-3 hover:underline"
+                    target="_blank"
+                  >
+                    <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                      {post.thumbUrl ? (
+                        <Image
+                          src={post.thumbUrl}
+                          alt=""
+                          fill
+                          sizes="40px"
+                          className="object-cover"
+                          unoptimized
+                        />
+                      ) : null}
+                    </span>
+                    <span className="truncate text-slate-700">
+                      {post.authorName}
+                    </span>
+                  </Link>
+                  <div className="shrink-0 text-right">
+                    <p className="font-semibold text-slate-900">
+                      {post.impressions.toLocaleString("ja-JP")}
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      {post.uniqueViewers.toLocaleString("ja-JP")}人が視聴
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         ) : null}
       </CardContent>
