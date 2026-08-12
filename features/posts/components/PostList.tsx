@@ -35,6 +35,12 @@ import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
 import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
 import { trackHomeViewed, trackViewModeChanged } from "../lib/home-view-events";
+import {
+  clearHomeFeedRestoreSnapshot,
+  peekHomeFeedRestoreSnapshot,
+  restoreHomeFeedScroll,
+  saveHomeFeedRestoreSnapshot,
+} from "../lib/home-feed-restore";
 
 /** グリッドの先読み距離。複数カラムなので1行が低く、数行ぶんの余裕になる。 */
 const GRID_PREFETCH_MARGIN_PX = 500;
@@ -69,10 +75,6 @@ export function PostList({
 }: PostListProps) {
   const postsT = useTranslations("posts");
   const { toast } = useToast();
-  const [posts, setPosts] = useState<Post[]>(forceInitialLoading ? [] : initialPosts);
-  const [isLoading, setIsLoading] = useState(forceInitialLoading);
-  const [hasMore, setHasMore] = useState(forceInitialLoading ? true : initialPosts.length === 20);
-  const [offset, setOffset] = useState(forceInitialLoading ? 0 : initialPosts.length);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -83,6 +85,40 @@ export function PostList({
   const isSearchPage = pathname === "/search" || pathname?.endsWith("/search");
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
   const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
+
+  /*
+    詳細から戻ってきたときに復元する一覧。
+
+    初期化関数で読むのは、20件で描画してから差し替えるとちらつくうえ、
+    スクロール補正の基準にするカードが最初の描画に存在しないことがあるため。
+    ここでは消さない(開発時は初期化関数が2回走り、2回目が空になる)。
+    破棄は復元し終わったあとの effect で行う。
+  */
+  const [restored] = useState(() =>
+    isSearchPage
+      ? null
+      : peekHomeFeedRestoreSnapshot({
+          sortType: defaultSortType,
+          searchQuery: normalizedSearchQuery,
+        })
+  );
+
+  const [posts, setPosts] = useState<Post[]>(
+    restored ? restored.posts : forceInitialLoading ? [] : initialPosts
+  );
+  const [isLoading, setIsLoading] = useState(
+    restored ? false : forceInitialLoading
+  );
+  const [hasMore, setHasMore] = useState(
+    restored
+      ? restored.hasMore
+      : forceInitialLoading
+        ? true
+        : initialPosts.length === 20
+  );
+  const [offset, setOffset] = useState(
+    restored ? restored.offset : forceInitialLoading ? 0 : initialPosts.length
+  );
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -278,6 +314,9 @@ export function PostList({
       if (nextMode === viewMode) {
         return;
       }
+      // 表示形式を自分で切り替えたら「続きから」は破棄する。
+      // 見え方を変えた直後に前の位置へ飛ばされる方が戸惑う
+      clearHomeFeedRestoreSnapshot();
       setViewMode(nextMode);
       setHomeViewMode(nextMode);
       trackViewModeChanged(viewMode, nextMode);
@@ -306,6 +345,8 @@ export function PostList({
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
   const handleSortChange = useCallback((newSortType: SortType) => {
+    // 並び替えたら別の一覧。保存済みの位置は意味を失う
+    clearHomeFeedRestoreSnapshot();
     setPrevSortType(sortType);
     setSortType(newSortType);
   }, [sortType]);
@@ -474,6 +515,58 @@ export function PostList({
     loadedSearchQuery,
   ]);
 
+  /*
+    復元した一覧を描画したあと、タップしていた投稿を基準に位置を戻す。
+    最初のマウントで1回だけ。画像の読み込みやグリッド↔フィードの切替で
+    高さが動くため、補正は数フレームかけて追従する(詳細は home-feed-restore)。
+  */
+  useEffect(() => {
+    if (!restored) {
+      return;
+    }
+    clearHomeFeedRestoreSnapshot();
+    return restoreHomeFeedScroll(restored);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // タップ時に読む「いまの一覧」。クリックはレンダー後なので effect 同期で足りる
+  const feedStateRef = useRef({ posts, offset, hasMore, sortType, viewMode });
+  useEffect(() => {
+    feedStateRef.current = { posts, offset, hasMore, sortType, viewMode };
+  }, [posts, offset, hasMore, sortType, viewMode]);
+
+  /*
+    投稿をタップした瞬間の状態を控える。
+
+    位置は scrollY ではなく「タップしたカードが画面のどこにあったか」で持つ。
+    絶対位置は画像・フォント・上部バナー・表示形式の切替で簡単に変わるが、
+    「あのカードが画面のこの高さにあった」は変わらない。
+  */
+  const rememberFeedPosition = useCallback(
+    (postId: string | undefined, element: HTMLElement) => {
+      if (!postId || isSearchPage) {
+        return;
+      }
+      const current = feedStateRef.current;
+      // 初期20件のままなら、戻ってもサーバー描画で同じ高さになる(復元不要)
+      if (current.posts.length <= 20) {
+        return;
+      }
+      saveHomeFeedRestoreSnapshot({
+        posts: current.posts,
+        offset: current.offset,
+        hasMore: current.hasMore,
+        sortType: current.sortType,
+        viewMode: current.viewMode,
+        searchQuery: normalizedSearchQuery,
+        anchorPostId: postId,
+        anchorTop: element.getBoundingClientRect().top,
+        scrollY: window.scrollY,
+      });
+    },
+    [isSearchPage, normalizedSearchQuery]
+  );
+
   useEffect(() => {
     if (!highlightPostId) {
       return;
@@ -562,7 +655,15 @@ export function PostList({
             // 幅の正本は FEED_CARD_MAX_WIDTH_PX(Tailwind の任意値はリテラルが要るため直書き)
             <div className="mx-auto flex max-w-[600px] flex-col">
               {posts.map((post, index) => (
-                <div key={post.id} className="mb-4">
+                <div
+                  key={post.id}
+                  data-post-id={post.id}
+                  className="mb-4"
+                  // 遷移が始まる前に控える(キャプチャ段階)
+                  onClickCapture={(event) =>
+                    rememberFeedPosition(post.id, event.currentTarget)
+                  }
+                >
                   <PostFeedCard
                     post={post}
                     currentUserId={currentUserId}
@@ -597,7 +698,14 @@ export function PostList({
               columnClassName="pl-1 bg-clip-padding sm:pl-4"
             >
               {posts.map((post, index) => (
-                <div key={post.id} className="mb-4">
+                <div
+                  key={post.id}
+                  data-post-id={post.id}
+                  className="mb-4"
+                  onClickCapture={(event) =>
+                    rememberFeedPosition(post.id, event.currentTarget)
+                  }
+                >
                   <PostCard
                     post={post}
                     currentUserId={currentUserId}
