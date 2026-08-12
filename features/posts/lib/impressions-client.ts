@@ -7,10 +7,11 @@
  * ページ離脱時(visibilitychange: hidden / pagehide)は sendBeacon で flush する。
  *
  * 過剰加算ガード(ADR-002/003):
- * - sessionStorage(`post-impressions-sent-v1`)に「最後に送った時刻」を持ち、
- *   30分経つまで同じ投稿を再送しない。キュー投入時点で記録するため、
- *   StrictMode 二重実行・BFCache 復帰・再マウントでも二重送信しない
- *   (送信失敗時の取りこぼしは DB dedup と次の窓に委ねる)。
+ * - 「最後に送った時刻」をモジュール内 Map に持ち、30分経つまで同じ投稿を
+ *   再送しない。キュー投入時点で記録するため、StrictMode 二重実行・
+ *   BFCache 復帰・再マウントでも二重送信しない。
+ * - sessionStorage(`post-impressions-sent-v1`)はリロードをまたぐ引き継ぎ層。
+ *   **抑止の正本ではない**(読めない環境があるため)。
  * - サーバ側でも (image_id, viewer_key, window_start) UNIQUE が最終防波堤。
  *
  * ここの抑止(前回送信から30分)は DB の固定枠より厳しい。緩い側にすると
@@ -31,60 +32,69 @@ const MAX_BATCH_SIZE = 100;
 /** 再送を許すまでの間隔。SQL 側の 30分固定枠(floor(epoch/1800))と対になる。 */
 export const IMPRESSION_WINDOW_MS = 30 * 60 * 1000;
 
-type SentMap = Record<string, number>;
+/**
+ * 「この投稿を最後に送った時刻」。**抑止の正本はこのメモリ側**。
+ *
+ * sessionStorage はプロパティアクセス自体が SecurityError を投げ得る
+ * (Cookie無効設定・一部のプライベートモード等)。そこに依存すると、
+ * 読めない環境で30分の抑止がまるごと外れる。DB 側は30分の固定枠なので、
+ * 10:29 と 10:31 が別枠になり、2分しか経っていなくても2回加算されてしまう。
+ * (窓が1日だった頃は DB 側が受け止めていたが、30分にした以上ここが要る)
+ */
+const sentMemory = new Map<string, number>();
+let hydrated = false;
 
-function readSentMap(): SentMap {
-  if (typeof window === "undefined") {
-    return {};
+/**
+ * sessionStorage の内容をメモリへ取り込む(リロード・BFCache 復帰の引き継ぎ)。
+ * sessionStorage はタブ単位でこのモジュールしか書かないため、1回で足りる。
+ */
+function hydrateFromSession(now: number): void {
+  if (hydrated || typeof window === "undefined") {
+    return;
   }
-  // sessionStorage はプロパティアクセス自体が SecurityError を投げ得る
-  // (Cookie無効設定・一部のプライベートモード等)ため、全体を try-catch で守る。
-  // 読めない環境では空(=セッションdedupなし)にフォールバックし、
-  // 整合性は DB の UNIQUE(最終防波堤)に委ねる。
+  hydrated = true;
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
     if (!raw) {
-      return {};
+      return;
     }
     const parsed = JSON.parse(raw) as unknown;
     // 旧形式(ID の配列)は送信時刻を持たないので捨てる。デプロイをまたいだ
     // セッションで1投稿につき最大1回多く送るだけで、DB dedup が吸収する。
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
+      return;
     }
-    const result: SentMap = {};
     for (const [id, at] of Object.entries(parsed as Record<string, unknown>)) {
-      if (typeof at === "number" && Number.isFinite(at)) {
-        result[id] = at;
+      if (typeof at === "number" && Number.isFinite(at) && now - at < IMPRESSION_WINDOW_MS) {
+        sentMemory.set(id, at);
       }
     }
-    return result;
   } catch {
-    return {};
+    // 読めない環境ではメモリだけで抑止する(このページロード中は同じ精度)
   }
 }
 
-function writeSentMap(map: SentMap): void {
+function persistToSession(): void {
   if (typeof window === "undefined") {
     return;
   }
   try {
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(map));
+    window.sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify(Object.fromEntries(sentMemory))
+    );
   } catch {
-    // sessionStorage 不可(プライベートモード等)でも計測は継続する
-    // (このセッション中の dedup はモジュール内 Map が担う)。
+    // 書けなくても計測は継続する(抑止は sentMemory が担う)
   }
 }
 
 /** 期限切れの記録を落とす(長時間セッションで際限なく肥大化させない)。 */
-function pruneExpired(map: SentMap, now: number): SentMap {
-  const pruned: SentMap = {};
-  for (const [id, at] of Object.entries(map)) {
-    if (now - at < IMPRESSION_WINDOW_MS) {
-      pruned[id] = at;
+function pruneExpired(now: number): void {
+  for (const [id, at] of sentMemory) {
+    if (now - at >= IMPRESSION_WINDOW_MS) {
+      sentMemory.delete(id);
     }
   }
-  return pruned;
 }
 
 // モジュールスコープの送信バッファ(ホーム滞在中に跨って共有)。
@@ -181,15 +191,16 @@ export function queuePostImpression(
   }
 
   const now = Date.now();
-  const sent = readSentMap();
-  const lastSentAt = sent[imageId];
-  if (typeof lastSentAt === "number" && now - lastSentAt < IMPRESSION_WINDOW_MS) {
+  hydrateFromSession(now);
+
+  const lastSentAt = sentMemory.get(imageId);
+  if (lastSentAt !== undefined && now - lastSentAt < IMPRESSION_WINDOW_MS) {
     return;
   }
   // キュー投入時点で「送信済み」として記録する(二重送信防止を最優先)。
-  const next = pruneExpired(sent, now);
-  next[imageId] = now;
-  writeSentMap(next);
+  pruneExpired(now);
+  sentMemory.set(imageId, now);
+  persistToSession();
 
   pending.set(imageId, viewMode);
   registerLifecycleFlush();

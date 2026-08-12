@@ -210,6 +210,47 @@ describe("impressions-client", () => {
     expect(beaconMock).toHaveBeenCalledTimes(1);
   });
 
+  it("sessionStorageが使えなくても30分の抑止は効く(固定枠の境界を跨がせない)", () => {
+    /*
+      DB 側は30分の固定枠なので、10:29 と 10:31 は別枠になる。
+      storage が読めない環境で抑止が外れると、2分しか経っていなくても
+      2回加算されてしまう(窓が1日だった頃は DB が受け止めていた)。
+      抑止の正本をモジュール内 Map に置いているのはこのため。
+    */
+    const original = Object.getOwnPropertyDescriptor(window, "sessionStorage");
+    Object.defineProperty(window, "sessionStorage", {
+      configurable: true,
+      get() {
+        throw new Error("SecurityError: access denied");
+      },
+    });
+    try {
+      const { queuePostImpression } = loadModule();
+
+      queuePostImpression(ID_A, "feed");
+      jest.advanceTimersByTime(1500);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      // 2分後(枠は跨ぐが30分は経っていない)に見直しても送らない
+      jest.advanceTimersByTime(2 * 60 * 1000);
+      queuePostImpression(ID_A, "feed");
+      jest.advanceTimersByTime(1500);
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+
+      // 30分経てば送る
+      jest.advanceTimersByTime(WINDOW_MS);
+      queuePostImpression(ID_A, "feed");
+      jest.advanceTimersByTime(1500);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      if (original) {
+        Object.defineProperty(window, "sessionStorage", original);
+      } else {
+        delete (window as { sessionStorage?: unknown }).sessionStorage;
+      }
+    }
+  });
+
   it("sessionStorageアクセスが例外を投げる環境でもクラッシュせず送信できる", () => {
     // Cookie無効設定等では window.sessionStorage への「プロパティアクセス自体」が
     // SecurityError を投げる。dedupは諦めて(DBのUNIQUEに委ねて)送信は継続する。

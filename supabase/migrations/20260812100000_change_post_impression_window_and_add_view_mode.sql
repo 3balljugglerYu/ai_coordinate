@@ -15,6 +15,19 @@
 -- グリッド由来かフィード由来かを切り分けられないと、ホーム既定をフィードへ
 -- 切り替える判断の材料が作れない(home_view_events は「タップ」しか見ていない)。
 -- 既存行は切替前で判別不能なため NULL のままにする。grid/feed に割り振ると嘘になる。
+--
+-- ## 適用順序
+--
+-- record_post_impressions の引数が 2 → 3 に増える。p_view_mode に DEFAULT NULL を
+-- 付けてあるので「migration適用 → デプロイ」の順なら旧アプリ(2引数)も動く。
+-- 逆順(デプロイが先)にすると3引数の呼び出しが解決先を失い、計測だけが静かに
+-- 止まる(アプリは落ちない)。必ずこの順で適用すること。
+--
+-- 全体を1トランザクションに包む。UNIQUE の差し替えと DROP/CREATE FUNCTION を
+-- 跨いで失敗すると、dedup制約なし(重複加算)または RPC なし(計測停止)の状態が
+-- 本番に残る。DROP と CREATE の間に来た呼び出しも、未コミットなら外から見えない。
+
+BEGIN;
 
 -- 1) 30分枠の列。既存行は event_date の JST 0時に置く
 --    (旧 UNIQUE が (image_id, viewer_key, event_date) だったので、
@@ -228,3 +241,5 @@ REVOKE ALL ON FUNCTION public.get_post_impression_stats(timestamptz, timestamptz
 REVOKE ALL ON FUNCTION public.get_post_impression_stats(timestamptz, timestamptz, integer) FROM anon;
 REVOKE ALL ON FUNCTION public.get_post_impression_stats(timestamptz, timestamptz, integer) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.get_post_impression_stats(timestamptz, timestamptz, integer) TO service_role;
+
+COMMIT;
