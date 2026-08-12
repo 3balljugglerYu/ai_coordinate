@@ -65,20 +65,64 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   const hasGatedCategory = cachedPresets.some((preset) =>
     categoryNeedsUnlockContext(preset.category),
   );
-  const presets =
+  const unlockContext =
     user && hasGatedCategory
-      ? applyCollectionUnlockGating(
+      ? await resolveCollectionUnlockContext(
           cachedPresets,
-          await resolveCollectionUnlockContext(
-            cachedPresets,
-            user.id,
-            await createClient(),
-            { includeAdminOnly: isAdminViewerFlag },
-          ),
+          user.id,
+          await createClient(),
+          { includeAdminOnly: isAdminViewerFlag },
         )
-      : applyCollectionUnlockGating(cachedPresets, EMPTY_UNLOCK_CONTEXT);
+      : EMPTY_UNLOCK_CONTEXT;
+  const presets = applyCollectionUnlockGating(cachedPresets, unlockContext);
   const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
+
+  /*
+    共有リンクや URL 直叩きで未開放の `?style=` が来たときの保険。
+
+    通常の導線(スタイル紹介ページ・投稿詳細)では押す前にロック表示になるが、
+    それらを経由せずここへ来ることがある。その場合、要求されたスタイルが
+    一覧に無いため黙って先頭のスタイルに差し替わってしまうので、理由を伝える。
+
+    公開一覧に**ある**のに解放後の一覧に**ない/シルエット** のときだけ案内する。
+    公開一覧にそもそも無い(未公開・admin_only)ときは黙る。存在を教えないため。
+
+    **未ログインには出さない。** 解放状態は「そのユーザーが何件生成したか」で
+    決まるので、進捗を持たないゲストには判定のしようがない。空の解放文脈で
+    ゲーティングすると全部が未開放に見えてしまい、ログインすれば使えるスタイルにも
+    「まだ開放されていません」と出てしまう。ゲストにはログインを促す既存の
+    仕組み(ゲストCTA)が別にある。`resolvePresetUnlockState` が未ログインを
+    `unknown` に倒しているのと同じ扱い。
+  */
+  const requestedPresetId = params.style ?? null;
+  const requestedPreset = requestedPresetId
+    ? cachedPresets.find((preset) => preset.id === requestedPresetId)
+    : undefined;
+  const requestedInGated = requestedPresetId
+    ? presets.find((preset) => preset.id === requestedPresetId)
+    : undefined;
+  const requestedPrerequisiteKey =
+    requestedPreset?.category.unlockPrerequisiteKey ?? null;
+  const requestedNotSelectable =
+    !!requestedPreset && (!requestedInGated || requestedInGated.locked === true);
+  /*
+    未ログインは「まだ開放されていません」ではなく「ログインすると使えます」。
+    ゲストは解放状態を持たないので、開放の話をしても次の行動につながらない。
+  */
+  const lockedRequestedReason:
+    | "sequential"
+    | "prerequisite"
+    | "login_required"
+    | null = requestedNotSelectable
+    ? !user
+      ? "login_required"
+      : // 理由は文脈から決める(前提を完走済みの人へ「完走してください」と言わない)
+        requestedPrerequisiteKey &&
+          !unlockContext.prerequisiteCompletedKeys.has(requestedPrerequisiteKey)
+        ? "prerequisite"
+        : "sequential"
+    : null;
 
   // 企画(コレクション)カードの「生成済み ✓」判定用に、本人が生成済みの
   // プリセットID一覧を取得する。collection-series カテゴリのみ集計(通常カテゴリは対象外)。
@@ -162,6 +206,7 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
           presets={presets}
           initialAuthState={user ? "authenticated" : "guest"}
           initialSelectedPresetId={params.style ?? null}
+          lockedRequestedReason={lockedRequestedReason}
           // ログインユーザーは生成結果一覧（下に並ぶ <CachedGeneratedImageGallery>）
           // が結果表示を担うため、即時結果パネルは非表示にする。
           showResultPanel={!user}

@@ -8,6 +8,7 @@ import { CommentSection } from "./CommentSection";
 import { CommentSectionSkeleton } from "./CommentSectionSkeleton";
 import { incrementViewCountAPI } from "../lib/api";
 import type { Post } from "../types";
+import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
 interface PostDetailContentProps {
   post: Post;
@@ -29,6 +30,8 @@ interface PostDetailContentProps {
    * あり、本文そのものは getPost が admin にだけ payload へ含める。
    */
   viewerIsAdmin?: boolean;
+  /** One-Tap のスタイルが、この閲覧者にとって開放済みか（ページ側で解決した値）。 */
+  presetUnlockState?: PresetUnlockState;
 }
 
 export function PostDetailContent({
@@ -44,6 +47,7 @@ export function PostDetailContent({
   originalImageUrl,
   viewerSubscriptionPlan,
   viewerIsAdmin,
+  presetUnlockState,
 }: PostDetailContentProps) {
   const [hiddenPostId, setHiddenPostId] = useState<string | null>(null);
   const router = useRouter();
@@ -90,8 +94,9 @@ export function PostDetailContent({
         isHidden={isHidden}
         onHidden={() => setHiddenPostId(postId)}
         viewerSubscriptionPlan={viewerSubscriptionPlan}
-          viewerIsAdmin={viewerIsAdmin}
-        />
+        viewerIsAdmin={viewerIsAdmin}
+        presetUnlockState={presetUnlockState}
+      />
 
       {!isHidden && (
         <Suspense fallback={<CommentSectionSkeleton />}>

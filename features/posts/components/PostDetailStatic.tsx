@@ -37,6 +37,7 @@ import type { SubscriptionPlan } from "@/features/subscription/subscription-conf
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { SubscriptionBadge } from "@/features/subscription/components/SubscriptionBadge";
 import type { Post } from "../types";
+import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
 // ImageFullscreenコンポーネントを動的インポート（SSR不要）
 const ImageFullscreen = lazy(() => import("./ImageFullscreen").then(module => ({ default: module.ImageFullscreen })));
@@ -66,6 +67,8 @@ interface PostDetailStaticProps {
    * 投稿者のプランではないので post.user.subscription_plan とは別物。
    */
   viewerSubscriptionPlan?: SubscriptionPlan;
+  /** One-Tap のスタイルが、この閲覧者にとって開放済みか（ページ側で解決した値）。 */
+  presetUnlockState?: PresetUnlockState;
 }
 
 /**
@@ -77,6 +80,7 @@ export function PostDetailStatic({
   currentUserId,
   viewerSubscriptionPlan = "free",
   viewerIsAdmin = false,
+  presetUnlockState,
   imageAspectRatio,
   postId,
   initialLikeCount,
@@ -632,7 +636,10 @@ export function PostDetailStatic({
         */}
         {promptDisplayMode === "one_tap_style" && oneTapStylePreset ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">
-            <OneTapStyleDetailCard preset={oneTapStylePreset} />
+            <OneTapStyleDetailCard
+              preset={oneTapStylePreset}
+              unlockState={presetUnlockState}
+            />
           </div>
         ) : promptDisplayMode === "source_reference" && post.source_reference ? (
           <div className="border-t border-gray-200 bg-white px-4 pt-3 pb-2">

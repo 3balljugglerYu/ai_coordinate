@@ -35,6 +35,7 @@ import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { Post } from "../types";
+import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
 interface PostDetailProps {
   post: Post;
@@ -46,6 +47,8 @@ interface PostDetailProps {
   viewerSubscriptionPlan?: SubscriptionPlan;
   /** 閲覧者が運営か。本文の表示だけ本人と同じ扱いにする（REQ-018）。 */
   viewerIsAdmin?: boolean;
+  /** One-Tap のスタイルが、この閲覧者にとって開放済みか（ページ側で解決した値）。 */
+  presetUnlockState?: PresetUnlockState;
 }
 
 /**
@@ -56,6 +59,7 @@ export function PostDetail({
   currentUserId,
   viewerSubscriptionPlan = "free",
   viewerIsAdmin = false,
+  presetUnlockState,
 }: PostDetailProps) {
   const t = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
@@ -456,7 +460,10 @@ export function PostDetail({
         */}
         {promptDisplayMode === "one_tap_style" && oneTapStylePreset ? (
           <div className="border-t border-gray-200 bg-white px-4 py-3">
-            <OneTapStyleDetailCard preset={oneTapStylePreset} />
+            <OneTapStyleDetailCard
+              preset={oneTapStylePreset}
+              unlockState={presetUnlockState}
+            />
           </div>
         ) : promptDisplayMode === "source_reference" && post.source_reference ? (
           <div className="border-t border-gray-200 bg-white px-4 py-3">

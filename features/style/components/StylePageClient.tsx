@@ -134,6 +134,15 @@ interface StylePageClientProps {
   initialAuthState?: "authenticated" | "guest";
   initialSelectedPresetId?: string | null;
   /**
+   * `?style=` で要求されたスタイルが未開放だったときの理由。
+   * 通常の導線では押す前に伝えるが、共有リンク等でここへ直接来たときの保険。
+   */
+  lockedRequestedReason?:
+    | "sequential"
+    | "prerequisite"
+    | "login_required"
+    | null;
+  /**
    * 生成直後の結果プレビュー（StyleResultPanel）を表示するかどうか。
    * 未指定 (true) のときは表示。ログインユーザー向けには
    * 生成結果一覧が同じ役割を担うため、ページ側から false を渡して
@@ -242,14 +251,25 @@ function resolveInitialSelectedPresetId(
   presets: readonly StylePresetPublicSummary[],
   initialSelectedPresetId?: string | null
 ): StylePresetPublicSummary["id"] {
+  /*
+    未開放(locked)のプリセットは選ばない。
+
+    sequential の段階解放では「次の1件」がシルエットとして一覧に残るため、
+    ID の存在だけで判定すると locked のまま選択され、フォームがそれを選んだ状態に
+    なってしまう。「まだ開放されていません」と伝えた直後に、その未開放スタイルで
+    生成できる状態が残るのは筋が通らない。
+  */
   if (
     initialSelectedPresetId &&
-    presets.some((preset) => preset.id === initialSelectedPresetId)
+    presets.some(
+      (preset) => preset.id === initialSelectedPresetId && preset.locked !== true
+    )
   ) {
     return initialSelectedPresetId;
   }
 
-  return presets[0]?.id ?? "";
+  // フォールバックも開放済みの先頭にする(先頭がシルエットのこともあるため)
+  return presets.find((preset) => preset.locked !== true)?.id ?? presets[0]?.id ?? "";
 }
 
 // StyleReferencePanel は features/style/components/StyleReferencePanel.tsx に抽出した
@@ -346,6 +366,7 @@ export function StylePageClient({
   presets,
   initialAuthState,
   initialSelectedPresetId,
+  lockedRequestedReason = null,
   showResultPanel = true,
   subscriptionPlan = "free",
   canUseFreePose = false,
@@ -356,6 +377,13 @@ export function StylePageClient({
 }: StylePageClientProps) {
   const router = useRouter();
   const t = useTranslations("style");
+  /*
+    共有リンク等で未開放の `?style=` に来たときの保険。通常の導線
+    (スタイル紹介ページ・投稿詳細)では押す前にロック表示になるため、ここは出ない。
+  */
+  const [isLockedRequestOpen, setIsLockedRequestOpen] = useState(
+    lockedRequestedReason !== null
+  );
   const coordinateT = useTranslations("coordinate");
   const postsT = useTranslations("posts");
   const locale = useLocale();
@@ -582,6 +610,9 @@ export function StylePageClient({
     !selectedPreset.category.allowGuestGeneration;
   const isGenerateDisabled =
     !selectedPreset ||
+    // 未開放(シルエット)のプリセットでは生成させない。
+    // 通常は選択されないが、押させてサーバーで 403 にするより手前で止める
+    selectedPreset.locked === true ||
     !hasSourceImage ||
     isGenerating ||
     isGuestDailyLimitReached ||
@@ -2493,6 +2524,48 @@ export function StylePageClient({
             <AlertDialogAction onClick={() => setRateLimitDialogMessage(null)}>
               {t("rateLimitDialogClose")}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/*
+        共有リンク・URL 直叩きで未開放の ?style= に来たときの保険。
+        通常の導線(スタイル紹介ページ・投稿詳細)では押す前にロック表示になる。
+      */}
+      <AlertDialog open={isLockedRequestOpen} onOpenChange={setIsLockedRequestOpen}>
+        <AlertDialogContent data-testid="style-locked-request-notice">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {lockedRequestedReason === "login_required"
+                ? t("presetLoginRequiredTitle")
+                : t("presetLockedTitle")}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {lockedRequestedReason === "login_required"
+                ? t("presetLoginRequiredDescription")
+                : lockedRequestedReason === "prerequisite"
+                  ? t("presetLockedPrerequisiteDescription")
+                  : t("presetLockedSequentialDescription")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            {lockedRequestedReason === "login_required" ? (
+              <>
+                <AlertDialogCancel>{t("presetLockedAction")}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setIsLockedRequestOpen(false);
+                    setShowAuthModal(true);
+                  }}
+                >
+                  {t("presetLoginRequiredAction")}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction onClick={() => setIsLockedRequestOpen(false)}>
+                {t("presetLockedAction")}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

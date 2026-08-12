@@ -764,6 +764,31 @@ describe("StylePageClient", () => {
     ).not.toBeNull();
   });
 
+  test("未開放(シルエット)のプリセットは初期選択しない", () => {
+    /*
+      sequential の段階解放では「次の1件」がシルエットとして一覧に残るため、
+      ID の存在だけで判定すると locked のまま選択され、
+      「まだ開放されていません」と伝えた直後に生成できる状態が残ってしまう。
+    */
+    const withLocked = presets.map((preset, index) =>
+      index === 0 ? { ...preset, locked: true } : preset
+    );
+
+    render(
+      <StylePageClient
+        presets={withLocked}
+        initialSelectedPresetId={withLocked[0].id}
+      />
+    );
+
+    // 開放済みの先頭へフォールバックする
+    expect(
+      screen.getByRole("button", {
+        name: new RegExp(`${withLocked[1].title} style card`, "i"),
+      })
+    ).toHaveAttribute("aria-pressed", "true");
+  });
+
   test("詳細画面からの初期選択後でも別スタイルへ切り替えられる", () => {
     render(
       <StylePageClient

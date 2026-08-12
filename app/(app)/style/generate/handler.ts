@@ -50,6 +50,7 @@ import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StyleUsageAuthState } from "@/features/style/lib/style-usage-events";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { resolveUserPromptMaxLength } from "@/features/style-presets/lib/resolve-user-prompt-settings";
+import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 
 const MAX_RETRYABLE_ATTEMPTS = 2;
 
@@ -273,6 +274,22 @@ export async function postStyleGenerateRoute(
     // この経路に到達するのは未認証ユーザーのみ（認証済みは上で 403 済み）だが、
     // 意図を明示するため !user を併記。未認証のため 401 を返す。
     if (!user && !preset.category.allowGuestGeneration) {
+      return jsonError(
+        copy.guestCategoryLoginHint,
+        "STYLE_CATEGORY_REQUIRES_AUTH",
+        401
+      );
+    }
+    /*
+      段階解放カテゴリはこの経路(未認証の同期生成)では通さない。
+
+      解放判定は「そのユーザーが何件生成したか」に依存するため、進捗を持たない
+      ゲストには判定のしようがない。認証経路(generate-async)は
+      authorizeStylePresetUnlock で認可しているが、こちらには無かったため、
+      カテゴリに allow_guest_generation を立てた瞬間に解放順を迂回できてしまう。
+      現状そのようなカテゴリは無いが、設定ひとつで穴が開くので fail closed にする。
+    */
+    if (!user && categoryNeedsUnlockContext(preset.category)) {
       return jsonError(
         copy.guestCategoryLoginHint,
         "STYLE_CATEGORY_REQUIRES_AUTH",

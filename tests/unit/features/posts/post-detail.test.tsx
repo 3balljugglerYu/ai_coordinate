@@ -33,6 +33,7 @@ jest.mock("next-intl", () => ({
 
 jest.mock("next/navigation", () => ({
   useRouter: jest.fn(),
+  usePathname: () => "/posts/test-post-id",
 }));
 
 jest.mock("@/components/ui/use-toast", () => ({
