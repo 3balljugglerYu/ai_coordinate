@@ -114,7 +114,37 @@ describe("POST /api/posts/impressions/batch", () => {
     expect(rpc).toHaveBeenCalledWith("record_post_impressions", {
       p_image_ids: [IMAGE_ID],
       p_viewer_key: "u:user-1",
+      // 送られてこなければ NULL(=不明)。古いクライアントを弾かない
+      p_view_mode: null,
     });
+  });
+
+  test("view_mode はそのままRPCへ渡す(表示形式別の内訳の元になる)", async () => {
+    mockGetUser.mockResolvedValue({ id: "user-1" } as Awaited<
+      ReturnType<typeof getUser>
+    >);
+    const rpc = mockRpc(1);
+    const res = await POST(
+      createRequest({ image_ids: [IMAGE_ID], view_mode: "feed" }),
+    );
+    expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("record_post_impressions", {
+      p_image_ids: [IMAGE_ID],
+      p_viewer_key: "u:user-1",
+      p_view_mode: "feed",
+    });
+  });
+
+  test("未知の view_mode は400(集計に想定外の値を混ぜない)", async () => {
+    mockGetUser.mockResolvedValue({ id: "user-1" } as Awaited<
+      ReturnType<typeof getUser>
+    >);
+    const rpc = mockRpc(1);
+    const res = await POST(
+      createRequest({ image_ids: [IMAGE_ID], view_mode: "carousel" }),
+    );
+    expect(res.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
   test("ゲストは g:<ip_hash> でRPCを呼ぶ", async () => {
@@ -125,6 +155,7 @@ describe("POST /api/posts/impressions/batch", () => {
     expect(rpc).toHaveBeenCalledWith("record_post_impressions", {
       p_image_ids: [IMAGE_ID],
       p_viewer_key: "g:abcdef",
+      p_view_mode: null,
     });
   });
 

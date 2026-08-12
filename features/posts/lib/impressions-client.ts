@@ -2,18 +2,26 @@
  * 投稿インプレッションのクライアント送信バッファ
  * (計画書: docs/planning/post-impressions-implementation-plan.md)
  *
- * PostCard が viewable(可視50%×1秒)を達成した image_id をここに積み、
+ * PostCard / PostFeedCard が viewable(可視50%×1秒)を達成した image_id をここに積み、
  * デバウンスで `POST /api/posts/impressions/batch` へまとめて送る。
  * ページ離脱時(visibilitychange: hidden / pagehide)は sendBeacon で flush する。
  *
  * 過剰加算ガード(ADR-002/003):
- * - sessionStorage(`post-impressions-sent-v1`)で「このセッションで送信済み」を抑止。
- *   キュー投入時点で記録するため、StrictMode 二重実行・BFCache 復帰・再マウントでも
- *   二重送信しない(送信失敗時の取りこぼしは DB 日次 dedup と翌セッションに委ねる)。
- * - サーバ側でも (image_id, viewer_key, event_date) UNIQUE が最終防波堤。
+ * - 「最後に送った時刻」をモジュール内 Map に持ち、30分経つまで同じ投稿を
+ *   再送しない。キュー投入時点で記録するため、StrictMode 二重実行・
+ *   BFCache 復帰・再マウントでも二重送信しない。
+ * - sessionStorage(`post-impressions-sent-v1`)はリロードをまたぐ引き継ぎ層。
+ *   **抑止の正本ではない**(読めない環境があるため)。
+ * - サーバ側でも (image_id, viewer_key, window_start) UNIQUE が最終防波堤。
+ *
+ * ここの抑止(前回送信から30分)は DB の固定枠より厳しい。緩い側にすると
+ * 枠をまたいだ瞬間に連続で送れてしまうため、意図的にこの向きにしている。
  */
 
 import { isPostImpressionsEnabled } from "@/lib/env";
+
+/** どこで見られたか。DB の post_impressions.view_mode と対応する。 */
+export type ImpressionViewMode = "grid" | "feed" | "detail";
 
 const SESSION_KEY = "post-impressions-sent-v1";
 const BATCH_ENDPOINT = "/api/posts/impressions/batch";
@@ -21,46 +29,86 @@ const BATCH_ENDPOINT = "/api/posts/impressions/batch";
 const FLUSH_DEBOUNCE_MS = 1500;
 /** API/RPC の上限(100)に合わせた1回あたりの最大送信件数。 */
 const MAX_BATCH_SIZE = 100;
+/** 再送を許すまでの間隔。SQL 側の 30分固定枠(floor(epoch/1800))と対になる。 */
+export const IMPRESSION_WINDOW_MS = 30 * 60 * 1000;
 
-function readSentIds(): Set<string> {
-  if (typeof window === "undefined") {
-    return new Set<string>();
+/**
+ * 「この投稿を最後に送った時刻」。**抑止の正本はこのメモリ側**。
+ *
+ * sessionStorage はプロパティアクセス自体が SecurityError を投げ得る
+ * (Cookie無効設定・一部のプライベートモード等)。そこに依存すると、
+ * 読めない環境で30分の抑止がまるごと外れる。DB 側は30分の固定枠なので、
+ * 10:29 と 10:31 が別枠になり、2分しか経っていなくても2回加算されてしまう。
+ * (窓が1日だった頃は DB 側が受け止めていたが、30分にした以上ここが要る)
+ */
+const sentMemory = new Map<string, number>();
+let hydrated = false;
+
+/**
+ * sessionStorage の内容をメモリへ取り込む(リロード・BFCache 復帰の引き継ぎ)。
+ * sessionStorage はタブ単位でこのモジュールしか書かないため、1回で足りる。
+ */
+function hydrateFromSession(now: number): void {
+  if (hydrated || typeof window === "undefined") {
+    return;
   }
-  // sessionStorage はプロパティアクセス自体が SecurityError を投げ得る
-  // (Cookie無効設定・一部のプライベートモード等)ため、全体を try-catch で守る。
-  // 読めない環境では空Set(=セッションdedupなし)にフォールバックし、
-  // 整合性は DB 日次 UNIQUE(最終防波堤)に委ねる。
+  hydrated = true;
   try {
     const raw = window.sessionStorage.getItem(SESSION_KEY);
     if (!raw) {
-      return new Set<string>();
+      return;
     }
-    const parsed = JSON.parse(raw) as string[];
-    return new Set(Array.isArray(parsed) ? parsed : []);
+    const parsed = JSON.parse(raw) as unknown;
+    // 旧形式(ID の配列)は送信時刻を持たないので捨てる。デプロイをまたいだ
+    // セッションで1投稿につき最大1回多く送るだけで、DB dedup が吸収する。
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return;
+    }
+    for (const [id, at] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof at === "number" && Number.isFinite(at) && now - at < IMPRESSION_WINDOW_MS) {
+        sentMemory.set(id, at);
+      }
+    }
   } catch {
-    return new Set<string>();
+    // 読めない環境ではメモリだけで抑止する(このページロード中は同じ精度)
   }
 }
 
-function writeSentIds(ids: Set<string>): void {
+function persistToSession(): void {
   if (typeof window === "undefined") {
     return;
   }
   try {
-    window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(Array.from(ids)));
+    window.sessionStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify(Object.fromEntries(sentMemory))
+    );
   } catch {
-    // sessionStorage 不可(プライベートモード等)でも計測は継続する
-    // (このセッション中の dedup はモジュール内 Set が担う)。
+    // 書けなくても計測は継続する(抑止は sentMemory が担う)
+  }
+}
+
+/** 期限切れの記録を落とす(長時間セッションで際限なく肥大化させない)。 */
+function pruneExpired(now: number): void {
+  for (const [id, at] of sentMemory) {
+    if (now - at >= IMPRESSION_WINDOW_MS) {
+      sentMemory.delete(id);
+    }
   }
 }
 
 // モジュールスコープの送信バッファ(ホーム滞在中に跨って共有)。
-const pending = new Set<string>();
+// 表示形式を切り替えた直後は grid と feed が混ざり得るので、投稿ごとに保持する。
+const pending = new Map<string, ImpressionViewMode>();
 let flushTimer: number | null = null;
 let lifecycleRegistered = false;
 
-function sendBatch(imageIds: string[], useBeacon: boolean): void {
-  const payload = JSON.stringify({ image_ids: imageIds });
+function sendBatch(
+  imageIds: string[],
+  viewMode: ImpressionViewMode,
+  useBeacon: boolean
+): void {
+  const payload = JSON.stringify({ image_ids: imageIds, view_mode: viewMode });
 
   if (useBeacon && typeof navigator !== "undefined" && navigator.sendBeacon) {
     const ok = navigator.sendBeacon(
@@ -91,10 +139,23 @@ export function flushPostImpressions(useBeacon = false): void {
   if (pending.size === 0) {
     return;
   }
-  const ids = Array.from(pending);
+
+  // 表示形式ごとに分けて送る(1リクエスト1 view_mode)。
+  const byMode = new Map<ImpressionViewMode, string[]>();
+  for (const [imageId, viewMode] of pending) {
+    const ids = byMode.get(viewMode);
+    if (ids) {
+      ids.push(imageId);
+    } else {
+      byMode.set(viewMode, [imageId]);
+    }
+  }
   pending.clear();
-  for (let i = 0; i < ids.length; i += MAX_BATCH_SIZE) {
-    sendBatch(ids.slice(i, i + MAX_BATCH_SIZE), useBeacon);
+
+  for (const [viewMode, ids] of byMode) {
+    for (let i = 0; i < ids.length; i += MAX_BATCH_SIZE) {
+      sendBatch(ids.slice(i, i + MAX_BATCH_SIZE), viewMode, useBeacon);
+    }
   }
 }
 
@@ -115,10 +176,13 @@ function registerLifecycleFlush(): void {
 }
 
 /**
- * viewable 達成した投稿をバッファに積む(セッション内で未送信のもののみ)。
+ * viewable 達成した投稿をバッファに積む(前回送信から30分経ったもののみ)。
  * デバウンス後にまとめて送信される。
  */
-export function queuePostImpression(imageId: string): void {
+export function queuePostImpression(
+  imageId: string,
+  viewMode: ImpressionViewMode
+): void {
   if (typeof window === "undefined" || !isPostImpressionsEnabled()) {
     return;
   }
@@ -126,15 +190,19 @@ export function queuePostImpression(imageId: string): void {
     return;
   }
 
-  const sent = readSentIds();
-  if (sent.has(imageId)) {
+  const now = Date.now();
+  hydrateFromSession(now);
+
+  const lastSentAt = sentMemory.get(imageId);
+  if (lastSentAt !== undefined && now - lastSentAt < IMPRESSION_WINDOW_MS) {
     return;
   }
   // キュー投入時点で「送信済み」として記録する(二重送信防止を最優先)。
-  sent.add(imageId);
-  writeSentIds(sent);
+  pruneExpired(now);
+  sentMemory.set(imageId, now);
+  persistToSession();
 
-  pending.add(imageId);
+  pending.set(imageId, viewMode);
   registerLifecycleFlush();
 
   if (flushTimer === null) {

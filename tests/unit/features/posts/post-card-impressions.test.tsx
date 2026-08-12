@@ -100,7 +100,8 @@ describe("PostCard の viewable 計測", () => {
       jest.advanceTimersByTime(1);
     });
     expect(queueSpy).toHaveBeenCalledTimes(1);
-    expect(queueSpy).toHaveBeenCalledWith(POST_ID);
+    // グリッドのカードは "grid" で記録する(フィードと内訳を分けるため)
+    expect(queueSpy).toHaveBeenCalledWith(POST_ID, "grid");
   });
 
   it("1秒未満で画面外に出たらキャンセルされる(高速スクロール)", () => {

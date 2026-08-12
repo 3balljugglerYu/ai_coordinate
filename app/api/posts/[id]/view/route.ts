@@ -16,7 +16,7 @@ import { postsRouteCopy } from "@/features/posts/lib/route-copy";
  * フラグON時は、詳細到達も viewable インプレッションとして計上する
  * (docs/planning/post-impressions-implementation-plan.md の v1.1 拡張)。
  * フィード計測と同じ record_post_impressions RPC / dedup を共有するため、
- * 「フィードでも詳細でも、同一投稿×同一視聴者×同一日は1回」となり二重カウントしない。
+ * 「フィードでも詳細でも、同一投稿×同一視聴者×同一30分枠は1回」となり二重カウントしない。
  */
 export async function POST(
   _request: NextRequest,
@@ -68,6 +68,7 @@ export async function POST(
           const { error } = await supabase.rpc("record_post_impressions", {
             p_image_ids: [id],
             p_viewer_key: viewerKey,
+            p_view_mode: "detail",
           });
           if (error) {
             console.error("[posts view] impression record failed:", error);

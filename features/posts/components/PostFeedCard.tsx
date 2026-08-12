@@ -117,7 +117,7 @@ export function PostFeedCard({
       return;
     }
     const timer = window.setTimeout(() => {
-      queuePostImpression(postId);
+      queuePostImpression(postId, "feed");
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [impressionsActive, impressionInView, postId]);

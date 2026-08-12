@@ -9,6 +9,7 @@ import { parseAdminDashboardTab } from "@/features/admin-dashboard/lib/dashboard
 import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
 import { getAiCostActuals } from "@/features/admin-dashboard/lib/get-ai-cost-actuals";
+import { getPostImpressionStats } from "@/features/admin-dashboard/lib/get-post-impression-stats";
 import {
   formatAdminDateTimeLabel,
   getCustomDashboardRangeBounds,
@@ -117,6 +118,7 @@ export default async function AdminDashboardPage({
           loginMethodMix={data.loginMethodMix}
           aiCostEstimate={data.aiCostEstimate}
           aiCostActualsPromise={getAiCostActuals(range)}
+          impressionsPromise={getPostImpressionStats(range)}
         />
       )}
     </AdminDashboardView>
