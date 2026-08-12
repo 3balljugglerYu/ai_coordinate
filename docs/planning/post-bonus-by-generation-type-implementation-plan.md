@@ -174,6 +174,10 @@ stateDiagram-v2
 - **REQ-05**: 同じ投稿IDで二重に付与しない（冪等）。
 - **REQ-05b**: **JSTの当日に生成された**画像のみ付与対象とする。前日以前に生成した
   画像を投稿しても付与しない（在庫の消化で毎日受け取れる状態をなくす）。
+  ただし**完走フィード投稿（`completion_id IS NOT NULL`）は鮮度条件の対象外**とし、
+  従来どおり付与する（ADR-008）。
+- **REQ-05c**: 付与対象は `is_posted = true` の投稿に限る。RPC を直接呼んで
+  投稿せずに受け取れる状態にしない（ADR-007）。
 - **REQ-06**: 課金プランの倍率と、無料ペルコインの5万キャップは既存どおり適用する。
 - **REQ-07**: When 付与が発生したとき, the system shall ホームでカウントアップ付きの
   モーダルを表示する（従来はトースト）。
@@ -183,7 +187,9 @@ stateDiagram-v2
 - **REQ-09**: ミッション画面は生成方法ごとに達成状況を出す（One-Tap 済 / Free 未 など）。
 - **REQ-10** (異常系): If 付与に失敗したら, then the system shall **投稿は成功させる**
   （現行踏襲。報酬は投稿の妨げにしない）。
-- **REQ-11** (権限): 額の変更は管理者のみ。付与RPCは service_role 専用。
+- **REQ-11** (権限): 額の変更は管理者のみ。付与RPCは service_role 専用にし、
+  **投稿APIの呼び出しを admin client へ変える**（ADR-007。現在は session client
+  から呼んでいるため、権限だけ絞ると付与が常に0になる）。
 
 ## ADR（設計判断記録）
 
@@ -216,18 +222,35 @@ stateDiagram-v2
   **0 を入れれば停止**でき、デプロイなしで額もON/OFFも変えられる。
 - **Consequence**: 「コーデは対象外」をコードで表現しない。将来復活させたいときは
   額を入れるだけで戻る。
+- **注意（レビュー指摘で判明）**: 現在の `percoin_bonus_defaults` は
+  **source ごとに許容範囲が決まっており、新しい source は足しただけでは INSERT できない**。
+  CHECK は「`prompt_usage_reward`/`style_usage_reward` は 0〜5、
+  `signup_bonus`/`tour_bonus`/`referral`/`daily_post` は 1〜1000」で、
+  **どちらにも属さない source は弾かれる**。しかも投稿系は**最小1**なので 0 停止もできない。
+  そのため「**投稿ボーナス系（0〜1000）**」の分類を新設し、
+  DB CHECK / `features/credits/lib/percoin-bonus-defaults.ts` /
+  admin API の zod / 管理フォームの min-max の**4箇所**を揃える
+  （この作りはファイル冒頭に「3箇所で同じ規則を使う」と明記されている）。
 
 ### ADR-004: プロンプトの公開を条件にしない
 
 - **Context**: 当初「公開して投稿」を条件にする案を出した。
 - **Decision**: **条件にしない**。公開・非公開を問わず付与する。
-- **Reason**: 実装を確認したところ、派生生成の検証（`validate_derived_generation`）は
-  `prompt_visibility <> 'private'` で弾いている。つまり
-  **「このプロンプトで生成する」は非公開プロンプト専用の経路**で、公開すると
-  この秘匿生成の対象から外れる。非公開のままの方が、他人に使ってもらえて・
-  コピーされず・還元も入る。公開を促すのは逆効果。
+- **Reason**: **公開・非公開のどちらでも他人は派生生成できる**。本番の
+  `validate_derived_prompt_source` は `prompt_visibility NOT IN ('public','private')`
+  で弾くだけ＝実質どちらも許可している。違いは
+  **公開すると中身が読めて（コピーできて）しまう**点だけ。
+  つまり非公開のままでも「使ってもらえる・還元も入る」は変わらず、
+  **公開する利点がクリエイター側に無い**。だから条件にも推奨にもしない。
 - **Consequence**: モーダルの文言は「公開しよう」ではなく
-  「**中身を見せずに使ってもらえる**」を軸にする。
+  「**中身を見せずに使ってもらえる**」を軸にする。文面自体は変更不要。
+- **訂正の経緯（同じ箇所で2度誤ったので記録する）**:
+  当初は「公開すると秘匿生成の対象から外れる」を根拠にしていたが、これは
+  `20260730200100_add_derived_generation_rpcs.sql` の**旧定義**を読んでいたため。
+  その後 `20260731090000_allow_public_origin_for_derived_prompt.sql` と
+  `20260731110000_allow_own_unposted_origin.sql` で上書きされ、関数名も
+  `validate_derived_prompt_source` に変わっていた。
+  **migration ファイルではなく本番の関数定義（`pg_get_functiondef`）を正本にすること。**
 
 ### ADR-004b: 鮮度の条件は「JSTの当日に生成」
 
@@ -258,9 +281,50 @@ stateDiagram-v2
 
 - **Context**: 適用日に既に `daily_post` を受け取っている人は、新テーブルが空だと
   もう一度受け取れてしまう。
-- **Decision**: migration 内で、**当日の `daily_post` 取引から新テーブルへ1行 seed** する。
-- **Reason**: 数人・数十ペルコインの話だが、「移行のせいで多くもらえた/もらえない」は
-  問い合わせの種になる。潰せるコストで潰す。
+- **Decision**: 当日の `daily_post` 取引を `related_generation_id` から
+  `generated_images.generation_type` に解決し、**その生成方法ぶんだけ** seed する。
+  他の生成方法は塞がない。
+- **Reason**: 「移行日から新仕様で動く」が一番わかりやすい。全生成方法を塞ぐと
+  移行日だけ新仕様の上限に届かない不整合が出る。コーデは新仕様では0なので、
+  「コーデで受け取ったからワンタップも塞ぐ」は新仕様の説明と噛み合わない。
+- **Consequence**: 移行日に既にコーデで20を受け取っていた人は、その日さらに
+  ワンタップ+フリーで40受け取れる。該当は数人・最大数十ペルコインなので許容する。
+  `related_generation_id` が NULL、または投稿行が消えている取引は解決できないので
+  seed をスキップする（**塞がない側に倒す**）。
+
+### ADR-007: 付与RPCの権限を絞り、投稿済みであることを確認する
+
+- **Context**: レビュー指摘の裏取り中に**既存の穴**が見つかった。現在の
+  `grant_daily_post_bonus` は EXECUTE が `anon` / `authenticated` にも与えられており、
+  RPC 内に `auth.uid() = p_user_id` の検証も `is_posted` の確認もない。
+  つまり**投稿しなくても、クライアントから直接呼んで受け取れる**。
+- **Decision**: 本PRでRPCを書き換えるついでに塞ぐ。
+  (1) EXECUTE を `service_role` のみへ絞る
+  (2) `app/api/posts/post/route.ts` の呼び出しを **admin client** へ変える
+  (3) RPC 内で `is_posted = true` を確認する
+- **Reason**: 権限だけ絞ると、session client から呼んでいる現行経路では
+  **付与が常に0**になる（レビュー指摘の Critical）。呼び出し側とセットで変える。
+  新しい RPC（`record_post_impressions` 等）は service_role 専用に揃えているので、
+  そちらの作法に合わせる。
+- **Consequence**: `create_collection_completion_post` からの `PERFORM` は
+  SECURITY DEFINER 内で実行されるため影響を受けない。
+
+### ADR-008: 完走フィード投稿は鮮度条件の対象外にする
+
+- **Context**: `create_collection_completion_post` は
+  `generation_type='one_tap_style'` の `generated_images` 行を作り、
+  `grant_daily_post_bonus` を呼ぶ。ただしこの行は生成物ではなく、
+  `created_at` は「完走をフィード投稿化した時刻」。
+- **Decision**: `completion_id IS NOT NULL` の行は**鮮度条件を適用せず、
+  従来どおり付与**する。
+- **Reason**: 完走投稿は「生成」ではないので鮮度で測れない。素直に条件を当てても
+  1ヶ月前に完走したものを今日投稿すれば `created_at` は今日なので通ってしまい、
+  判定として意味を持たない。対象外にするのは**現状維持**でもあり、
+  減る変更をこれ以上増やさない。
+- **Consequence**: お知らせの「その日に生成した作品が対象」には当てはまらない例外に
+  なるが、完走投稿は頻度が低いので文面には書かない。
+  **完走には別途 `collection_completion` 報酬があるため、投稿ボーナスを外す判断も
+  ありえる**（ユーザー確認事項）。
 
 ## 実装計画
 
@@ -276,29 +340,38 @@ flowchart LR
 目的: 生成方法ごとの額と「1日1回」の器を作る。
 ビルド確認: migration が Supabase Preview で通る。
 
-- [ ] migration: `daily_post_bonus_grants` 作成（RLS有効・ポリシーなし＝service_role専用）
+- [ ] migration: `daily_post_bonus_grants` 作成
   - `UNIQUE (user_id, generation_type, jst_date)` / `generation_type` は CHECK で
     `one_tap_style` / `free` / `coordinate` に限定
-- [ ] `percoin_bonus_defaults` に3行 seed（20 / 20 / 0）
+  - **RLS有効 + 本人SELECTポリシー**（`auth.uid() = user_id`）。書き込みポリシーは置かない
+    （＝INSERT は service_role/SECURITY DEFINER のみ）。
+    ミッション画面は browser client から読むため、ポリシー無しだと空になる
+- [ ] **`percoin_bonus_defaults` の CHECK を更新**し「投稿ボーナス系（0〜1000）」を新設
+      → `daily_post_one_tap` / `daily_post_free` / `daily_post_coordinate` を
+      20 / 20 / 0 で seed（**先に CHECK を直さないと INSERT が通らない**）
 - [ ] `grant_daily_post_bonus` を書き換え（**引数は変えない**）
   - `p_generation_id` から `generated_images.generation_type` を引く
     （呼び出し側に生成方法を渡させない＝偽装できない）
   - **JSTの当日に生成されたか**確認する
     （`(created_at at time zone 'Asia/Tokyo')::date`。同じ行から読めるので追加コストなし）
   - 生成方法別の額を `get_percoin_bonus_default` で引く。0 なら 0 を返して終了
+  - **`is_posted = true` を確認する**（投稿せずに直接呼んで受け取れる穴を塞ぐ・ADR-007）
+  - **`completion_id IS NOT NULL` なら鮮度条件を飛ばす**（ADR-008）
   - 新テーブルへ `ON CONFLICT DO NOTHING` で挿入し、挿入できなければ 0 を返す
   - 倍率・5万キャップ・7ヶ月有効期限・通知は既存踏襲
   - `profiles.last_daily_post_bonus_at` も更新（後方互換）
   - `metadata` に `generation_type` を入れる（ADR-001）
-- [ ] ADR-006 の seed
+- [ ] **EXECUTE を service_role のみへ**（`anon` / `authenticated` から REVOKE・ADR-007）
+- [ ] ADR-006 の seed（当日の `daily_post` を生成方法へ解決してから入れる）
 - [ ] **適用前に本番データでリハーサル**（`COMMIT` → `ROLLBACK` 置換で dry-run）
 
 ### Phase 2: 付与とAPI
 目的: 投稿時に生成方法が演出まで届くようにする。
 ビルド確認: `npm run build -- --webpack`
 
-- [ ] `app/api/posts/post/route.ts`: 応答に `generationType` を追加
-      （付与RPCの呼び出し自体は無改修＝引数を変えていないため）
+- [ ] `app/api/posts/post/route.ts`: **付与RPCの呼び出しを admin client へ変更**
+      （ADR-007。現在は session client。権限を絞るのとセットで必須）
+- [ ] 同ファイル: 応答に `generationType` を追加（RPCの**引数**は変えない）
 - [ ] `features/posts/lib/home-post-refresh.ts`: `PendingHomePostRefresh` の
       `posted` に `generationType` を追加
 - [ ] 投稿完了処理から `generationType` を持ち回す
@@ -334,7 +407,12 @@ flowchart LR
 ビルド確認: 同上
 
 - [ ] `features/challenges/lib/api.ts` / `server-api.ts`: 生成方法ごとの
-      当日受取状況を返す（新テーブルを引く）
+      当日受取状況を返す（新テーブルを引く。browser client から読むので
+      本人SELECTポリシーが前提）
+- [ ] **`MissionDotProvider` の未達判定を新テーブル由来へ**。いまは
+      `lastDailyPostBonusAt`（単一列）だけを見ているため、**ワンタップだけ達成した
+      時点で赤いドットが消え、フリーが未達なのに完了に見える**
+- [ ] `last_daily_post_bonus_at` は**履歴互換のみ**とし、達成判定には使わないと明記
 - [ ] `ChallengePageContent`: 投稿ミッションを2枚（One-Tap / Free Style）に分割。
       額が0の生成方法はカードを出さない（コーデが並ばない）
 - [ ] `get-percoin-defaults.ts`: 生成方法別の額を返す
@@ -342,7 +420,8 @@ flowchart LR
 ### Phase 5: テスト・検証
 - [ ] RPC: 生成方法ごとに1日1回 / 同日2回目は0 / 額0は付与しない /
       同じ投稿IDで冪等 / 5万キャップ / 生成方法を呼び出し側から偽装できない /
-      **前日23:00生成→当日00:05投稿は付与しない・当日00:05生成→当日00:10投稿は付与する**（境界）
+      **前日23:00生成→当日00:05投稿は付与しない・当日00:05生成→当日00:10投稿は付与する**（境界）/
+      **未投稿(`is_posted=false`)では付与しない** / **完走投稿は鮮度に関わらず付与する**
 - [ ] モーダル: 付与額のカウントアップ / Free Style のときだけ還元案内 /
       付与0なら出さない
 - [ ] ミッション画面: 片方だけ達成した状態の表示 / 額0のカードは出ない
@@ -362,7 +441,10 @@ flowchart LR
 | `features/challenges/lib/api.ts` / `server-api.ts` | 修正 | 生成方法別の受取状況 |
 | `features/challenges/components/ChallengePageContent.tsx` | 修正 | ミッションを2枚に |
 | `features/credits/lib/get-percoin-defaults.ts` | 修正 | 生成方法別の額 |
-| `features/credits/lib/percoin-bonus-defaults.ts` | 修正 | source を追加 |
+| `features/credits/lib/percoin-bonus-defaults.ts` | 修正 | 投稿ボーナス系(0〜1000)の分類を追加 |
+| `app/api/admin/percoin-defaults/route.ts` | 修正 | zod の許容範囲 |
+| `app/(app)/admin/percoin-defaults/*` | 修正 | フォームの min/max 分類 |
+| `features/challenges/components/MissionDotProvider.tsx` | 修正 | 未達判定を新テーブル由来へ |
 | `messages/*.ts` | 修正 | 15ロケールの文言 |
 
 ## 品質・テスト観点
@@ -372,6 +454,9 @@ flowchart LR
 - [ ] **投稿を妨げない**: 付与が失敗しても投稿は成功する
 - [ ] **止められる**: 額を0にすればデプロイなしで停止
 - [ ] **移行が滑らか**: 適用日に二重取りが起きない（ADR-006）
+- [ ] **権限**: `anon` / `authenticated` から RPC を直接呼べない（ADR-007）
+- [ ] **ミッション画面が読める**: RLS ポリシーがあり、browser client から空にならない
+- [ ] **0 が保存できる**: 管理画面でコーデを 0 にして保存できる（CHECK・zod・フォーム）
 - [ ] i18n: 15ロケール揃っている
 
 ## ロールバック方針
@@ -400,6 +485,8 @@ flowchart LR
 ## 未決（実装中にユーザーへ確認）
 
 - お知らせ本文の最終的な言い回し（たたき台は提示済み。運営の言葉に直す）
+- **完走フィード投稿に投稿ボーナスを付け続けるか**（ADR-008）。完走には別途
+  `collection_completion` 報酬があるため外す判断もありえる。既定は「従来どおり付与」
 
 ## 使用スキル
 
