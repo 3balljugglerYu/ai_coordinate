@@ -15,6 +15,10 @@ import {
   trackHomeViewed,
   trackViewModeChanged,
 } from "@/features/posts/lib/home-view-events";
+import {
+  clearHomeFeedRestoreSnapshot,
+  saveHomeFeedRestoreSnapshot,
+} from "@/features/posts/lib/home-feed-restore";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -439,6 +443,63 @@ describe("PostList", () => {
       await screen.findByTestId("post-card-initial-1");
       expect(screen.queryByLabelText("フィード表示")).not.toBeInTheDocument();
       expect(screen.getByTestId("masonry")).toBeInTheDocument();
+    });
+  });
+
+  describe("詳細から戻ったときの復元", () => {
+    /** 追加読み込み済み(21件以上)の一覧を保存した状態を作る。 */
+    function saveRestorableSnapshot(sortType: "newest" | "popular" = "newest") {
+      saveHomeFeedRestoreSnapshot({
+        posts: Array.from({ length: 25 }, (_, i) =>
+          createPost(`restored-${i}`, `restored ${i}`)
+        ),
+        offset: 25,
+        hasMore: true,
+        sortType,
+        viewMode: "grid",
+        searchQuery: "",
+        anchorPostId: "restored-20",
+        anchorTop: 100,
+        scrollY: 4000,
+      });
+    }
+
+    beforeEach(() => {
+      // 直前の describe が表示形式を feed のまま残すため、グリッド前提に戻す
+      window.localStorage.clear();
+    });
+
+    afterEach(() => {
+      clearHomeFeedRestoreSnapshot();
+    });
+
+    test("保存済みの一覧を_サーバー描画ぶんで上書きしない", async () => {
+      /*
+        初回ロードの effect が initialPosts で一覧を出し直す経路があり、
+        ここを塞がないと復元した25件が1件に潰れる。潰れると高さが足りず、
+        基準にするカードごと消えるのでスクロール位置も戻らない
+        （実機で最初にこの壊れ方をした）。
+      */
+      saveRestorableSnapshot();
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
+      expect(screen.queryByTestId("post-card-initial-1")).not.toBeInTheDocument();
+      // 復元できたなら取り直す必要はない
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    test("並び替えが違う保存は使わない（別の一覧なので）", async () => {
+      saveRestorableSnapshot("popular");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-initial-1");
+      expect(screen.queryByTestId("post-card-restored-0")).not.toBeInTheDocument();
     });
   });
 });

@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
@@ -35,6 +42,12 @@ import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
 import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
 import { trackHomeViewed, trackViewModeChanged } from "../lib/home-view-events";
+import {
+  clearHomeFeedRestoreSnapshot,
+  peekHomeFeedRestoreSnapshot,
+  restoreHomeFeedScroll,
+  saveHomeFeedRestoreSnapshot,
+} from "../lib/home-feed-restore";
 
 /** グリッドの先読み距離。複数カラムなので1行が低く、数行ぶんの余裕になる。 */
 const GRID_PREFETCH_MARGIN_PX = 500;
@@ -69,10 +82,6 @@ export function PostList({
 }: PostListProps) {
   const postsT = useTranslations("posts");
   const { toast } = useToast();
-  const [posts, setPosts] = useState<Post[]>(forceInitialLoading ? [] : initialPosts);
-  const [isLoading, setIsLoading] = useState(forceInitialLoading);
-  const [hasMore, setHasMore] = useState(forceInitialLoading ? true : initialPosts.length === 20);
-  const [offset, setOffset] = useState(forceInitialLoading ? 0 : initialPosts.length);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -83,6 +92,17 @@ export function PostList({
   const isSearchPage = pathname === "/search" || pathname?.endsWith("/search");
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
   const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
+
+  const [posts, setPosts] = useState<Post[]>(
+    forceInitialLoading ? [] : initialPosts
+  );
+  const [isLoading, setIsLoading] = useState(forceInitialLoading);
+  const [hasMore, setHasMore] = useState(
+    forceInitialLoading ? true : initialPosts.length === 20
+  );
+  const [offset, setOffset] = useState(
+    forceInitialLoading ? 0 : initialPosts.length
+  );
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -101,6 +121,15 @@ export function PostList({
   const [viewMode, setViewMode] = useState<HomeViewMode>(DEFAULT_HOME_VIEW_MODE);
   const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
+  /*
+    「サーバー描画ぶんより新しい newest を既に持っている」フラグ。
+
+    詳細から戻って一覧を復元したときもこれに当たるので、復元時に立てる。
+    立てないと初回ロードの effect が initialPosts(20件)で一覧を出し直し、
+    復元した件数ごと潰れて基準にするカードも消える(＝位置が戻らない)。
+    タブを切り替えて戻ってきたときは loadedSortType が変わるので、
+    この分岐には入らず通常どおり取り直される。
+  */
   const hasFreshNewestPostsRef = useRef(false);
   // 画面幅からフィードカードのおおよその高さを出すため。SSR では既定幅を使う。
   const [viewportWidth, setViewportWidth] = useState(FEED_CARD_MAX_WIDTH_PX);
@@ -278,6 +307,9 @@ export function PostList({
       if (nextMode === viewMode) {
         return;
       }
+      // 表示形式を自分で切り替えたら「続きから」は破棄する。
+      // 見え方を変えた直後に前の位置へ飛ばされる方が戸惑う
+      clearHomeFeedRestoreSnapshot();
       setViewMode(nextMode);
       setHomeViewMode(nextMode);
       trackViewModeChanged(viewMode, nextMode);
@@ -306,6 +338,8 @@ export function PostList({
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
   const handleSortChange = useCallback((newSortType: SortType) => {
+    // 並び替えたら別の一覧。保存済みの位置は意味を失う
+    clearHomeFeedRestoreSnapshot();
     setPrevSortType(sortType);
     setSortType(newSortType);
   }, [sortType]);
@@ -474,6 +508,75 @@ export function PostList({
     loadedSearchQuery,
   ]);
 
+  /*
+    詳細から戻ってきたときに一覧を復元し、タップした投稿を基準に位置を戻す。
+
+    **描画の初期値ではなくマウント後に入れる。** 初期値で復元すると、
+    サーバーには保存領域が無いのに クライアントだけ件数が増え、
+    ハイドレーション不一致で React がツリーを作り直す(実際に踏んだ)。
+    一瞬20件が見えるが、位置合わせは数フレーム追従するので実害はない。
+
+    useLayoutEffect なのは、初回ロードの effect(useEffect)より先に
+    hasFreshNewestPostsRef を立てて、20件での出し直しを止めるため。
+  */
+  useLayoutEffect(() => {
+    const snapshot = isSearchPage
+      ? null
+      : peekHomeFeedRestoreSnapshot({
+          sortType: defaultSortType,
+          searchQuery: normalizedSearchQuery,
+        });
+    if (!snapshot) {
+      return;
+    }
+    clearHomeFeedRestoreSnapshot();
+    hasFreshNewestPostsRef.current = true;
+    setPosts(snapshot.posts);
+    setOffset(snapshot.offset);
+    setHasMore(snapshot.hasMore);
+    return restoreHomeFeedScroll(snapshot);
+    // 復元はマウント時に1回だけ
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // タップ時に読む「いまの一覧」。クリックはレンダー後なので effect 同期で足りる
+  const feedStateRef = useRef({ posts, offset, hasMore, sortType, viewMode });
+  useEffect(() => {
+    feedStateRef.current = { posts, offset, hasMore, sortType, viewMode };
+  }, [posts, offset, hasMore, sortType, viewMode]);
+
+  /*
+    投稿をタップした瞬間の状態を控える。
+
+    位置は scrollY ではなく「タップしたカードが画面のどこにあったか」で持つ。
+    絶対位置は画像・フォント・上部バナー・表示形式の切替で簡単に変わるが、
+    「あのカードが画面のこの高さにあった」は変わらない。
+  */
+  const rememberFeedPosition = useCallback(
+    (postId: string | undefined, element: HTMLElement) => {
+      if (!postId || isSearchPage) {
+        return;
+      }
+      const current = feedStateRef.current;
+      // 初期20件のままなら、戻ってもサーバー描画で同じ高さになる(復元不要)
+      if (current.posts.length <= 20) {
+        return;
+      }
+      saveHomeFeedRestoreSnapshot({
+        posts: current.posts,
+        offset: current.offset,
+        hasMore: current.hasMore,
+        sortType: current.sortType,
+        viewMode: current.viewMode,
+        searchQuery: normalizedSearchQuery,
+        anchorPostId: postId,
+        anchorTop: element.getBoundingClientRect().top,
+        scrollY: window.scrollY,
+      });
+    },
+    [isSearchPage, normalizedSearchQuery]
+  );
+
   useEffect(() => {
     if (!highlightPostId) {
       return;
@@ -562,7 +665,15 @@ export function PostList({
             // 幅の正本は FEED_CARD_MAX_WIDTH_PX(Tailwind の任意値はリテラルが要るため直書き)
             <div className="mx-auto flex max-w-[600px] flex-col">
               {posts.map((post, index) => (
-                <div key={post.id} className="mb-4">
+                <div
+                  key={post.id}
+                  data-post-id={post.id}
+                  className="mb-4"
+                  // 遷移が始まる前に控える(キャプチャ段階)
+                  onClickCapture={(event) =>
+                    rememberFeedPosition(post.id, event.currentTarget)
+                  }
+                >
                   <PostFeedCard
                     post={post}
                     currentUserId={currentUserId}
@@ -597,7 +708,14 @@ export function PostList({
               columnClassName="pl-1 bg-clip-padding sm:pl-4"
             >
               {posts.map((post, index) => (
-                <div key={post.id} className="mb-4">
+                <div
+                  key={post.id}
+                  data-post-id={post.id}
+                  className="mb-4"
+                  onClickCapture={(event) =>
+                    rememberFeedPosition(post.id, event.currentTarget)
+                  }
+                >
                   <PostCard
                     post={post}
                     currentUserId={currentUserId}
