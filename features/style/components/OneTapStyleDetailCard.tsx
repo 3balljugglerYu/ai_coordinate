@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Lock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -32,6 +32,7 @@ export function OneTapStyleDetailCard({
   unlockState,
 }: OneTapStyleDetailCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const t = useTranslations("style");
   const locale = useLocale();
   const styleCardLocale = locale === "en" ? "en" : "ja";
@@ -46,6 +47,8 @@ export function OneTapStyleDetailCard({
   */
   const isLocked = unlockState?.status === "locked";
   const lockedReason = unlockState?.status === "locked" ? unlockState.reason : null;
+  // 未ログインは「開放されていない」ではなく「ログインすれば使える」
+  const needsLogin = unlockState?.status === "login_required";
 
   const handleConfirm = () => {
     setIsConfirmOpen(false);
@@ -61,18 +64,20 @@ export function OneTapStyleDetailCard({
         preset={preset}
         alt={t("detailPresetCardAlt", { name: preset.title })}
         onClick={() =>
-          isLocked ? setIsLockedNoticeOpen(true) : setIsConfirmOpen(true)
+          isLocked || needsLogin
+            ? setIsLockedNoticeOpen(true)
+            : setIsConfirmOpen(true)
         }
         locale={styleCardLocale}
       />
       {/* 押す前に分かるよう、カードの下にも状態を出す */}
-      {isLocked ? (
+      {isLocked || needsLogin ? (
         <p
           className="flex items-center gap-1 text-xs font-medium text-amber-700"
           data-testid="one-tap-style-locked-label"
         >
           <Lock className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          {t("presetLockedLabel")}
+          {needsLogin ? t("presetLoginRequiredLabel") : t("presetLockedLabel")}
         </p>
       ) : null}
       <AlertDialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
@@ -95,17 +100,36 @@ export function OneTapStyleDetailCard({
       <AlertDialog open={isLockedNoticeOpen} onOpenChange={setIsLockedNoticeOpen}>
         <AlertDialogContent data-testid="one-tap-style-locked-notice">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("presetLockedTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {needsLogin ? t("presetLoginRequiredTitle") : t("presetLockedTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {lockedReason === "prerequisite"
-                ? t("presetLockedPrerequisiteDescription")
-                : t("presetLockedSequentialDescription")}
+              {needsLogin
+                ? t("presetLoginRequiredDescription")
+                : lockedReason === "prerequisite"
+                  ? t("presetLockedPrerequisiteDescription")
+                  : t("presetLockedSequentialDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsLockedNoticeOpen(false)}>
-              {t("presetLockedAction")}
-            </AlertDialogAction>
+            {needsLogin ? (
+              <>
+                <AlertDialogCancel>{t("presetLockedAction")}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() =>
+                    router.push(
+                      `/login?redirect=${encodeURIComponent(pathname ?? "/")}`
+                    )
+                  }
+                >
+                  {t("presetLoginRequiredAction")}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction onClick={() => setIsLockedNoticeOpen(false)}>
+                {t("presetLockedAction")}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

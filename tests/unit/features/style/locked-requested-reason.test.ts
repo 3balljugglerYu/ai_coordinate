@@ -1,10 +1,10 @@
 /**
- * `/style?style=` の保険モーダルを出すかどうかの判定のテスト。
+ * `/style?style=` の案内を出すかどうかの判定のテスト。
  *
- * 実機で「未ログインだと、ログインすれば使えるスタイルにも
- * 『まだ開放されていません』と出る」不具合があった。解放状態は
- * 「そのユーザーが何件生成したか」で決まるため、進捗を持たないゲストには
- * 判定のしようがない（空の解放文脈でゲーティングすると全部が未開放に見える）。
+ * 実機で「未ログインだと『まだ開放されていません』と出る」不具合があった。
+ * 解放状態は「そのユーザーが何件生成したか」で決まるため、進捗を持たない
+ * ゲストには判定のしようがない。かといって黙って別のスタイルへ差し替えると、
+ * 何が起きたか分からないまま離脱する。ゲストには「ログインすると使えます」を出す。
  *
  * StylePageBody はサーバーコンポーネントで直接テストしづらいため、
  * 判定式そのものをここで固定する。式を変えるときは両方直すこと。
@@ -35,32 +35,47 @@ function buildPresets(count: number, gating: {
   })) as unknown as StylePresetPublicSummary[];
 }
 
-/** StylePageBody の判定式（未ログインは null に倒す）。 */
+/** StylePageBody の判定式（未ログインは login_required に倒す）。 */
 function resolveLockedRequestedReason(
   isAuthenticated: boolean,
   requestedPresetId: string | null,
   cachedPresets: StylePresetPublicSummary[],
   context: CollectionUnlockContext
-): "sequential" | "prerequisite" | null {
+): "sequential" | "prerequisite" | "login_required" | null {
   const gated = applyCollectionUnlockGating(cachedPresets, context);
-  const id = isAuthenticated ? requestedPresetId : null;
-  const requested = id ? cachedPresets.find((p) => p.id === id) : undefined;
-  const inGated = id ? gated.find((p) => p.id === id) : undefined;
+  const requested = requestedPresetId
+    ? cachedPresets.find((p) => p.id === requestedPresetId)
+    : undefined;
+  const inGated = requestedPresetId
+    ? gated.find((p) => p.id === requestedPresetId)
+    : undefined;
   const prerequisiteKey = requested?.category.unlockPrerequisiteKey ?? null;
-  return requested && (!inGated || inGated.locked === true)
-    ? prerequisiteKey && !context.prerequisiteCompletedKeys.has(prerequisiteKey)
-      ? "prerequisite"
-      : "sequential"
+  const notSelectable = !!requested && (!inGated || inGated.locked === true);
+  return notSelectable
+    ? !isAuthenticated
+      ? "login_required"
+      : prerequisiteKey && !context.prerequisiteCompletedKeys.has(prerequisiteKey)
+        ? "prerequisite"
+        : "sequential"
     : null;
 }
 
 describe("`?style=` の未開放案内", () => {
-  test("未ログインには出さない（ログインすれば使えるスタイルを止めない）", () => {
+  test("未ログインには「ログインすると使えます」を出す", () => {
+    // 「まだ開放されていません」は誤り(ゲストに解放状態は無い)。
+    // かといって黙って差し替えると、何が起きたか分からないまま離脱する
     const presets = buildPresets(5, { sequentialUnlock: true });
 
-    // 空の解放文脈では index 1 以降が未開放に見えるが、ゲストには案内しない
     expect(
       resolveLockedRequestedReason(false, "preset-4", presets, EMPTY_CONTEXT)
+    ).toBe("login_required");
+  });
+
+  test("未ログインでも選択できるスタイルには何も出さない", () => {
+    const presets = buildPresets(5, { sequentialUnlock: true });
+
+    expect(
+      resolveLockedRequestedReason(false, "preset-0", presets, EMPTY_CONTEXT)
     ).toBeNull();
   });
 

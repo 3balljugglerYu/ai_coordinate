@@ -95,7 +95,7 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
     仕組み(ゲストCTA)が別にある。`resolvePresetUnlockState` が未ログインを
     `unknown` に倒しているのと同じ扱い。
   */
-  const requestedPresetId = user ? (params.style ?? null) : null;
+  const requestedPresetId = params.style ?? null;
   const requestedPreset = requestedPresetId
     ? cachedPresets.find((preset) => preset.id === requestedPresetId)
     : undefined;
@@ -104,14 +104,25 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
     : undefined;
   const requestedPrerequisiteKey =
     requestedPreset?.category.unlockPrerequisiteKey ?? null;
-  const lockedRequestedReason: "sequential" | "prerequisite" | null =
-    requestedPreset && (!requestedInGated || requestedInGated.locked === true)
-      ? // 理由は文脈から決める(前提を完走済みの人へ「完走してください」と言わない)
+  const requestedNotSelectable =
+    !!requestedPreset && (!requestedInGated || requestedInGated.locked === true);
+  /*
+    未ログインは「まだ開放されていません」ではなく「ログインすると使えます」。
+    ゲストは解放状態を持たないので、開放の話をしても次の行動につながらない。
+  */
+  const lockedRequestedReason:
+    | "sequential"
+    | "prerequisite"
+    | "login_required"
+    | null = requestedNotSelectable
+    ? !user
+      ? "login_required"
+      : // 理由は文脈から決める(前提を完走済みの人へ「完走してください」と言わない)
         requestedPrerequisiteKey &&
-        !unlockContext.prerequisiteCompletedKeys.has(requestedPrerequisiteKey)
+          !unlockContext.prerequisiteCompletedKeys.has(requestedPrerequisiteKey)
         ? "prerequisite"
         : "sequential"
-      : null;
+    : null;
 
   // 企画(コレクション)カードの「生成済み ✓」判定用に、本人が生成済みの
   // プリセットID一覧を取得する。collection-series カテゴリのみ集計(通常カテゴリは対象外)。

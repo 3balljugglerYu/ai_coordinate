@@ -137,7 +137,11 @@ interface StylePageClientProps {
    * `?style=` で要求されたスタイルが未開放だったときの理由。
    * 通常の導線では押す前に伝えるが、共有リンク等でここへ直接来たときの保険。
    */
-  lockedRequestedReason?: "sequential" | "prerequisite" | null;
+  lockedRequestedReason?:
+    | "sequential"
+    | "prerequisite"
+    | "login_required"
+    | null;
   /**
    * 生成直後の結果プレビュー（StyleResultPanel）を表示するかどうか。
    * 未指定 (true) のときは表示。ログインユーザー向けには
@@ -2531,17 +2535,37 @@ export function StylePageClient({
       <AlertDialog open={isLockedRequestOpen} onOpenChange={setIsLockedRequestOpen}>
         <AlertDialogContent data-testid="style-locked-request-notice">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t("presetLockedTitle")}</AlertDialogTitle>
+            <AlertDialogTitle>
+              {lockedRequestedReason === "login_required"
+                ? t("presetLoginRequiredTitle")
+                : t("presetLockedTitle")}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              {lockedRequestedReason === "prerequisite"
-                ? t("presetLockedPrerequisiteDescription")
-                : t("presetLockedSequentialDescription")}
+              {lockedRequestedReason === "login_required"
+                ? t("presetLoginRequiredDescription")
+                : lockedRequestedReason === "prerequisite"
+                  ? t("presetLockedPrerequisiteDescription")
+                  : t("presetLockedSequentialDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setIsLockedRequestOpen(false)}>
-              {t("presetLockedAction")}
-            </AlertDialogAction>
+            {lockedRequestedReason === "login_required" ? (
+              <>
+                <AlertDialogCancel>{t("presetLockedAction")}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    setIsLockedRequestOpen(false);
+                    setShowAuthModal(true);
+                  }}
+                >
+                  {t("presetLoginRequiredAction")}
+                </AlertDialogAction>
+              </>
+            ) : (
+              <AlertDialogAction onClick={() => setIsLockedRequestOpen(false)}>
+                {t("presetLockedAction")}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -136,13 +136,25 @@ describe("resolvePresetUnlockState", () => {
     expect(mockResolveContext).not.toHaveBeenCalled();
   });
 
-  test("未ログインは判定しない（unknown）", async () => {
+  test("未ログインは login_required（黙って別スタイルに差し替えない）", async () => {
+    /*
+      ゲストは生成進捗を持たないので解放判定はできないが、黙って差し替えると
+      何が起きたか分からないまま離脱する。ログインすれば使えることを伝える。
+    */
     mockGetPresets.mockResolvedValue(buildPresets(3, { sequentialUnlock: true }));
 
     await expect(
       resolvePresetUnlockState("preset-0", null, supabase)
-    ).resolves.toEqual({ status: "unknown" });
+    ).resolves.toEqual({ status: "login_required" });
     expect(mockResolveContext).not.toHaveBeenCalled();
+  });
+
+  test("ゲートの無いカテゴリなら未ログインでも使える", async () => {
+    mockGetPresets.mockResolvedValue(buildPresets(3, {}));
+
+    await expect(
+      resolvePresetUnlockState("preset-0", null, supabase)
+    ).resolves.toEqual({ status: "unlocked" });
   });
 
   test("ID が空なら unknown", async () => {

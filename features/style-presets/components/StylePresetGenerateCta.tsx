@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Lock, Wand2 } from "lucide-react";
+import { LogIn, Lock, Wand2 } from "lucide-react";
 import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
 interface StylePresetGenerateCtaProps {
@@ -68,6 +68,28 @@ export function StylePresetGenerateCta({
       cancelled = true;
     };
   }, [isGatedCategory, presetId]);
+
+  /*
+    未ログイン。ゲストは解放状態を持たないので「まだ開放されていません」ではなく
+    「ログインすると使えます」と伝える。黙って生成画面へ飛ばすと、目的のスタイルが
+    選ばれないまま何の案内も無く終わってしまう。
+  */
+  if (unlockState?.status === "login_required") {
+    return (
+      <div className="space-y-2" data-testid="style-preset-cta-login-required">
+        <Link
+          href={`/login?redirect=${encodeURIComponent(href)}`}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+        >
+          <LogIn className="h-4 w-4" aria-hidden />
+          {t("presetLoginRequiredAction")}
+        </Link>
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          {t("presetLoginRequiredDescription")}
+        </p>
+      </div>
+    );
+  }
 
   if (unlockState?.status === "locked") {
     return (

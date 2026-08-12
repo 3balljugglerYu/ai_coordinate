@@ -9,7 +9,11 @@ import { resolveCollectionUnlockContext } from "./collection-unlock-server";
  *
  * - `unlocked`: 使える（ゲートの無いカテゴリを含む）
  * - `locked`: 公開されているが、この閲覧者にはまだ開放されていない
- * - `unknown`: 判定しない／できない（未ログイン、存在しない、未公開、admin_only）
+ * - `login_required`: 段階解放のスタイルを未ログインで指している。
+ *   解放状態は「そのユーザーが何件生成したか」で決まるため、進捗を持たない
+ *   ゲストには判定のしようがない。黙って別のスタイルへ差し替えると
+ *   「押し間違えた？」のまま離脱するので、**ログインすれば使えること**を伝える
+ * - `unknown`: 判定しない／できない（存在しない、未公開、admin_only）
  *
  * `unknown` を `locked` と区別するのは、**存在しないものの存在を教えないため**。
  * 未公開のIDを指定されたときに「まだ開放されていません」と返すと、そこに何かある
@@ -18,6 +22,7 @@ import { resolveCollectionUnlockContext } from "./collection-unlock-server";
 export type PresetUnlockState =
   | { status: "unlocked" }
   | { status: "locked"; reason: "sequential" | "prerequisite" }
+  | { status: "login_required" }
   | { status: "unknown" };
 
 const UNKNOWN: PresetUnlockState = { status: "unknown" };
@@ -58,8 +63,14 @@ export async function resolvePresetUnlockState(
   }
 
   if (!userId) {
-    // 未ログインに解放状態は無い。ログインを促すのは別の仕組みの役目
-    return UNKNOWN;
+    /*
+      未ログインに解放状態は無い（進捗が無いので判定できない）。
+
+      ただし黙って別のスタイルへ差し替えると、ゲストは何が起きたか分からないまま
+      離脱する。ここは「ログインすれば使える」と伝える場面なので、
+      unknown ではなく login_required を返す。
+    */
+    return { status: "login_required" };
   }
 
   const context = await resolveCollectionUnlockContext(
