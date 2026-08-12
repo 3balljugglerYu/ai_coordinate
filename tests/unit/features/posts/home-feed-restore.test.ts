@@ -175,7 +175,7 @@ describe("restoreHomeFeedScroll", () => {
     expect(scrollByMock).toHaveBeenLastCalledWith({ top: 180 });
   });
 
-  test("位置が合ったら止まる(延々と補正し続けない)", () => {
+  test("合っている間は動かさない", () => {
     mountAnchor(120);
     const m = loadModule();
 
@@ -187,7 +187,48 @@ describe("restoreHomeFeedScroll", () => {
     runFrames(10);
 
     expect(scrollByMock).not.toHaveBeenCalled();
-    // 数フレーム様子を見たら打ち切るので、無限にキューが積まれない
+  });
+
+  test("一瞬合っても諦めない(画像は後から読み込まれる)", () => {
+    /*
+      「数フレーム安定したら終わり」にしていたら、読み込みの谷間で一瞬
+      安定したところで打ち切られ、実機で 1,400px ズレたまま終わっていた。
+      合っていても見張り続けること。
+    */
+    const el = mountAnchor(120);
+    const m = loadModule();
+
+    m.restoreHomeFeedScroll({
+      anchorPostId: "post-42",
+      anchorTop: 120,
+      scrollY: 5000,
+    });
+    runFrames(5);
+    expect(scrollByMock).not.toHaveBeenCalled();
+
+    // 上の画像が読み込まれてカードが押し下げられた
+    el.getBoundingClientRect = () => ({ top: 900 }) as DOMRect;
+    runFrames(1);
+    expect(scrollByMock).toHaveBeenCalledWith({ top: 780 });
+  });
+
+  test("時間の上限で打ち切る(無限に補正し続けない)", () => {
+    // fake timers は requestAnimationFrame ごと差し替えてしまい、
+    // このテストが用意した rAF キューが使えなくなる。Date.now だけ動かす
+    const nowSpy = jest.spyOn(Date, "now").mockReturnValue(1_000);
+    mountAnchor(800);
+    const m = loadModule();
+
+    m.restoreHomeFeedScroll({
+      anchorPostId: "post-42",
+      anchorTop: 120,
+      scrollY: 5000,
+    });
+    runFrames(1);
+    expect(rafCallbacks.length).toBe(1);
+
+    nowSpy.mockReturnValue(1_000 + 3_000);
+    runFrames(1);
     expect(rafCallbacks.length).toBe(0);
   });
 

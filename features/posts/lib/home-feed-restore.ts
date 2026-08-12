@@ -49,16 +49,63 @@ export interface HomeFeedRestoreSnapshot {
  */
 export const HOME_FEED_RESTORE_TTL_MS = 30 * 60 * 1000;
 
+const STORAGE_KEY = "persta-ai:home-feed-restore-v1";
+
 let snapshot: HomeFeedRestoreSnapshot | null = null;
+
+/**
+ * sessionStorage にも控える理由。
+ *
+ * モジュール変数はページを読み込み直すと消える。開発中は Fast Refresh でも
+ * 消えるため「保存したのに復元されない」が起きて原因を見誤る(実際に嵌まった)。
+ * 控えておけばリロードやタブ復帰でも位置が戻り、開発時の挙動も本番と揃う。
+ * 書き込みは best-effort(容量超過・storage 不可でも計測ではないので落とさない)。
+ */
+function persist(value: HomeFeedRestoreSnapshot | null): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    if (value) {
+      window.sessionStorage.setItem(STORAGE_KEY, JSON.stringify(value));
+    } else {
+      window.sessionStorage.removeItem(STORAGE_KEY);
+    }
+  } catch {
+    // 容量超過やプライベートモード。モジュール変数だけで動く
+  }
+}
+
+function readPersisted(): HomeFeedRestoreSnapshot | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+  try {
+    const raw = window.sessionStorage.getItem(STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as HomeFeedRestoreSnapshot;
+    // 最低限の形だけ見る(古い版・壊れた値で描画を壊さない)
+    if (!Array.isArray(parsed?.posts) || typeof parsed?.savedAt !== "number") {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+}
 
 export function saveHomeFeedRestoreSnapshot(
   next: Omit<HomeFeedRestoreSnapshot, "savedAt">
 ): void {
   snapshot = { ...next, savedAt: Date.now() };
+  persist(snapshot);
 }
 
 export function clearHomeFeedRestoreSnapshot(): void {
   snapshot = null;
+  persist(null);
 }
 
 /**
@@ -72,11 +119,16 @@ export function peekHomeFeedRestoreSnapshot(match: {
   sortType: SortType;
   searchQuery: string;
 }): HomeFeedRestoreSnapshot | null {
+  // モジュール変数が空でも、同じタブの控えがあれば使う
+  // (リロード・タブ復帰・開発時の Fast Refresh をまたぐ)
+  if (!snapshot) {
+    snapshot = readPersisted();
+  }
   if (!snapshot) {
     return null;
   }
   if (Date.now() - snapshot.savedAt > HOME_FEED_RESTORE_TTL_MS) {
-    snapshot = null;
+    clearHomeFeedRestoreSnapshot();
     return null;
   }
   // 並び替えや検索語が違えば別の一覧。復元してはいけない
@@ -93,12 +145,17 @@ export function peekHomeFeedRestoreSnapshot(match: {
   return snapshot;
 }
 
-/** スクロール補正を打ち切るまでの上限。画像の読み込みで高さが動くため数フレーム粘る。 */
-const MAX_CORRECTION_FRAMES = 40;
-/** この差までは合っているとみなす(端数で延々と補正し続けない)。 */
+/**
+ * 補正を続ける時間。
+ *
+ * フレーム数で打ち切ると、**画像が読み込まれ終わる前に諦める**。
+ * 実測では 40 フレーム(≒0.65秒)では足りず、1,400px ほどズレたまま終わっていた。
+ * 「数フレーム安定したら終わり」も同じ理由で使わない(読み込みの谷間で
+ * 一瞬安定して見えるため)。指が触れたら即やめるので、長めでも害はない。
+ */
+const MAX_CORRECTION_MS = 3000;
+/** この差までは合っているとみなす(端数で延々と scrollBy し続けない)。 */
 const SETTLED_PX = 1;
-/** 連続で合っていたら早めに終わる。 */
-const SETTLED_FRAMES = 3;
 
 /**
  * 保存した位置へ戻す。
@@ -120,8 +177,8 @@ export function restoreHomeFeedScroll(
 
   let cancelled = false;
   let frames = 0;
-  let settled = 0;
   let rafId = 0;
+  const startedAt = Date.now();
 
   const cancel = () => {
     cancelled = true;
@@ -150,10 +207,9 @@ export function restoreHomeFeedScroll(
 
     if (anchor) {
       const diff = anchor.getBoundingClientRect().top - target.anchorTop;
-      if (Math.abs(diff) <= SETTLED_PX) {
-        settled += 1;
-      } else {
-        settled = 0;
+      // ズレていれば毎フレーム寄せ直す。上の画像が読み込まれるたびに
+      // カードは押し下げられるので、追いかけ続けないと最後にズレて終わる
+      if (Math.abs(diff) > SETTLED_PX) {
         window.scrollBy({ top: diff });
       }
     } else if (frames === 1) {
@@ -161,7 +217,7 @@ export function restoreHomeFeedScroll(
       window.scrollTo({ top: target.scrollY });
     }
 
-    if (settled >= SETTLED_FRAMES || frames >= MAX_CORRECTION_FRAMES) {
+    if (Date.now() - startedAt >= MAX_CORRECTION_MS) {
       cancel();
       return;
     }

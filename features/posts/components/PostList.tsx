@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
@@ -86,38 +93,15 @@ export function PostList({
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
   const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
 
-  /*
-    詳細から戻ってきたときに復元する一覧。
-
-    初期化関数で読むのは、20件で描画してから差し替えるとちらつくうえ、
-    スクロール補正の基準にするカードが最初の描画に存在しないことがあるため。
-    ここでは消さない(開発時は初期化関数が2回走り、2回目が空になる)。
-    破棄は復元し終わったあとの effect で行う。
-  */
-  const [restored] = useState(() =>
-    isSearchPage
-      ? null
-      : peekHomeFeedRestoreSnapshot({
-          sortType: defaultSortType,
-          searchQuery: normalizedSearchQuery,
-        })
-  );
-
   const [posts, setPosts] = useState<Post[]>(
-    restored ? restored.posts : forceInitialLoading ? [] : initialPosts
+    forceInitialLoading ? [] : initialPosts
   );
-  const [isLoading, setIsLoading] = useState(
-    restored ? false : forceInitialLoading
-  );
+  const [isLoading, setIsLoading] = useState(forceInitialLoading);
   const [hasMore, setHasMore] = useState(
-    restored
-      ? restored.hasMore
-      : forceInitialLoading
-        ? true
-        : initialPosts.length === 20
+    forceInitialLoading ? true : initialPosts.length === 20
   );
   const [offset, setOffset] = useState(
-    restored ? restored.offset : forceInitialLoading ? 0 : initialPosts.length
+    forceInitialLoading ? 0 : initialPosts.length
   );
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
@@ -140,14 +124,13 @@ export function PostList({
   /*
     「サーバー描画ぶんより新しい newest を既に持っている」フラグ。
 
-    復元した一覧はまさにこれに当たるので、最初から true で始める。
-    こうしないと初回ロードの effect が initialPosts(20件)で一覧を出し直し、
+    詳細から戻って一覧を復元したときもこれに当たるので、復元時に立てる。
+    立てないと初回ロードの effect が initialPosts(20件)で一覧を出し直し、
     復元した件数ごと潰れて基準にするカードも消える(＝位置が戻らない)。
-    この effect は複数回走るため「1回だけ止める」方式では防げない。
     タブを切り替えて戻ってきたときは loadedSortType が変わるので、
     この分岐には入らず通常どおり取り直される。
   */
-  const hasFreshNewestPostsRef = useRef(Boolean(restored));
+  const hasFreshNewestPostsRef = useRef(false);
   // 画面幅からフィードカードのおおよその高さを出すため。SSR では既定幅を使う。
   const [viewportWidth, setViewportWidth] = useState(FEED_CARD_MAX_WIDTH_PX);
   useEffect(() => {
@@ -526,16 +509,33 @@ export function PostList({
   ]);
 
   /*
-    復元した一覧を描画したあと、タップしていた投稿を基準に位置を戻す。
-    最初のマウントで1回だけ。画像の読み込みやグリッド↔フィードの切替で
-    高さが動くため、補正は数フレームかけて追従する(詳細は home-feed-restore)。
+    詳細から戻ってきたときに一覧を復元し、タップした投稿を基準に位置を戻す。
+
+    **描画の初期値ではなくマウント後に入れる。** 初期値で復元すると、
+    サーバーには保存領域が無いのに クライアントだけ件数が増え、
+    ハイドレーション不一致で React がツリーを作り直す(実際に踏んだ)。
+    一瞬20件が見えるが、位置合わせは数フレーム追従するので実害はない。
+
+    useLayoutEffect なのは、初回ロードの effect(useEffect)より先に
+    hasFreshNewestPostsRef を立てて、20件での出し直しを止めるため。
   */
-  useEffect(() => {
-    if (!restored) {
+  useLayoutEffect(() => {
+    const snapshot = isSearchPage
+      ? null
+      : peekHomeFeedRestoreSnapshot({
+          sortType: defaultSortType,
+          searchQuery: normalizedSearchQuery,
+        });
+    if (!snapshot) {
       return;
     }
     clearHomeFeedRestoreSnapshot();
-    return restoreHomeFeedScroll(restored);
+    hasFreshNewestPostsRef.current = true;
+    setPosts(snapshot.posts);
+    setOffset(snapshot.offset);
+    setHasMore(snapshot.hasMore);
+    return restoreHomeFeedScroll(snapshot);
+    // 復元はマウント時に1回だけ
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
