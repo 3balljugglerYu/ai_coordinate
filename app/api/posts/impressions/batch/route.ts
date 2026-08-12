@@ -23,6 +23,9 @@ import { getPopupBannerClientIpHash } from "@/features/popup-banners/lib/popup-b
 
 const bodySchema = z.object({
   image_ids: z.array(z.string().uuid()).min(1).max(100),
+  // どこで見られたか。表示形式別の内訳を出すための補助情報で、認可には使わない。
+  // 古いクライアントは送ってこないため任意(その場合は DB 側で NULL=不明)。
+  view_mode: z.enum(["grid", "feed", "detail"]).optional(),
 });
 
 function noop(): NextResponse {
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
     const { data, error } = await supabase.rpc("record_post_impressions", {
       p_image_ids: parsed.image_ids,
       p_viewer_key: viewerKey,
+      p_view_mode: parsed.view_mode ?? null,
     });
 
     if (error) {

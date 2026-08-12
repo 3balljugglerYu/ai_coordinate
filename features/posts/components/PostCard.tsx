@@ -61,7 +61,7 @@ export function PostCard({
       return;
     }
     const timer = window.setTimeout(() => {
-      queuePostImpression(postId);
+      queuePostImpression(postId, "grid");
     }, 1000);
     return () => window.clearTimeout(timer);
   }, [impressionsActive, impressionInView, postId]);

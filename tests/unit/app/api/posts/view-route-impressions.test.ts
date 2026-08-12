@@ -113,6 +113,8 @@ describe("POST /api/posts/[id]/view のインプレッション計上", () => {
     expect(rpc).toHaveBeenCalledWith("record_post_impressions", {
       p_image_ids: [POST_ID],
       p_viewer_key: "u:user-1",
+      // 詳細到達はフィード/グリッドと同じ枠で数えるが、内訳では区別する
+      p_view_mode: "detail",
     });
   });
 
@@ -122,6 +124,7 @@ describe("POST /api/posts/[id]/view のインプレッション計上", () => {
     expect(rpc).toHaveBeenCalledWith("record_post_impressions", {
       p_image_ids: [POST_ID],
       p_viewer_key: "g:hash123",
+      p_view_mode: "detail",
     });
   });
 

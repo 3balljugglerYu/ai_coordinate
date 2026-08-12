@@ -7,7 +7,7 @@
  */
 
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { PostFeedCard } from "@/features/posts/components/PostFeedCard";
 import type { Post } from "@/features/posts/types";
 
@@ -45,8 +45,11 @@ jest.mock("next/image", () => ({
     }),
 }));
 
+// 既定は「見えていない」。インプレッション計測のテストだけ true にする
+// (jest.mock のファクトリから参照するため mock 接頭辞が要る)
+let mockInView = false;
 jest.mock("react-intersection-observer", () => ({
-  useInView: () => ({ ref: jest.fn(), inView: false }),
+  useInView: () => ({ ref: jest.fn(), inView: mockInView }),
 }));
 
 const fullscreenSpy = jest.fn();
@@ -120,12 +123,14 @@ function ctaProps(): { isFollowingAuthor?: boolean } {
   return ctaSpy.mock.calls[ctaSpy.mock.calls.length - 1][0];
 }
 
+let mockImpressionsEnabled = false;
 jest.mock("@/lib/env", () => ({
-  isPostImpressionsEnabled: () => false,
+  isPostImpressionsEnabled: () => mockImpressionsEnabled,
 }));
 
+const mockQueueImpression = jest.fn();
 jest.mock("@/features/posts/lib/impressions-client", () => ({
-  queuePostImpression: jest.fn(),
+  queuePostImpression: (...args: unknown[]) => mockQueueImpression(...args),
 }));
 
 function createPost(overrides: Partial<Post> = {}): Post {
@@ -151,6 +156,50 @@ function createPost(overrides: Partial<Post> = {}): Post {
 describe("PostFeedCard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockInView = false;
+    mockImpressionsEnabled = false;
+  });
+
+  describe("インプレッション計測", () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test("可視50%が1秒続いたら feed として記録する", () => {
+      /*
+        グリッド(PostCard)と条件は同じにするが、記録する表示形式が違う。
+        ここが grid のままだと内訳が全部グリッドに寄り、フィード既定化の
+        判断材料にならない。
+      */
+      jest.useFakeTimers();
+      mockInView = true;
+      mockImpressionsEnabled = true;
+
+      render(<PostFeedCard post={createPost()} trackImpressions />);
+
+      act(() => {
+        jest.advanceTimersByTime(999);
+      });
+      expect(mockQueueImpression).not.toHaveBeenCalled();
+
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(mockQueueImpression).toHaveBeenCalledWith("post-1", "feed");
+    });
+
+    test("trackImpressions を渡さなければ計測しない", () => {
+      jest.useFakeTimers();
+      mockInView = true;
+      mockImpressionsEnabled = true;
+
+      render(<PostFeedCard post={createPost()} />);
+
+      act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+      expect(mockQueueImpression).not.toHaveBeenCalled();
+    });
   });
 
   describe("Before / After", () => {
