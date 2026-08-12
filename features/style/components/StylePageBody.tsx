@@ -65,18 +65,16 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   const hasGatedCategory = cachedPresets.some((preset) =>
     categoryNeedsUnlockContext(preset.category),
   );
-  const presets =
+  const unlockContext =
     user && hasGatedCategory
-      ? applyCollectionUnlockGating(
+      ? await resolveCollectionUnlockContext(
           cachedPresets,
-          await resolveCollectionUnlockContext(
-            cachedPresets,
-            user.id,
-            await createClient(),
-            { includeAdminOnly: isAdminViewerFlag },
-          ),
+          user.id,
+          await createClient(),
+          { includeAdminOnly: isAdminViewerFlag },
         )
-      : applyCollectionUnlockGating(cachedPresets, EMPTY_UNLOCK_CONTEXT);
+      : EMPTY_UNLOCK_CONTEXT;
+  const presets = applyCollectionUnlockGating(cachedPresets, unlockContext);
   const profile = user ? await getUserProfileServer(user.id) : null;
   const params = (await searchParams) ?? {};
 
@@ -89,22 +87,30 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
 
     公開一覧に**ある**のに解放後の一覧に**ない/シルエット** のときだけ案内する。
     公開一覧にそもそも無い(未公開・admin_only)ときは黙る。存在を教えないため。
+
+    **未ログインには出さない。** 解放状態は「そのユーザーが何件生成したか」で
+    決まるので、進捗を持たないゲストには判定のしようがない。空の解放文脈で
+    ゲーティングすると全部が未開放に見えてしまい、ログインすれば使えるスタイルにも
+    「まだ開放されていません」と出てしまう。ゲストにはログインを促す既存の
+    仕組み(ゲストCTA)が別にある。`resolvePresetUnlockState` が未ログインを
+    `unknown` に倒しているのと同じ扱い。
   */
-  const requestedPresetId = params.style ?? null;
-  const requestedInCatalog = requestedPresetId
-    ? cachedPresets.some((preset) => preset.id === requestedPresetId)
-    : false;
+  const requestedPresetId = user ? (params.style ?? null) : null;
+  const requestedPreset = requestedPresetId
+    ? cachedPresets.find((preset) => preset.id === requestedPresetId)
+    : undefined;
   const requestedInGated = requestedPresetId
     ? presets.find((preset) => preset.id === requestedPresetId)
     : undefined;
-  const requestedCategory = requestedPresetId
-    ? cachedPresets.find((preset) => preset.id === requestedPresetId)?.category
-    : undefined;
+  const requestedPrerequisiteKey =
+    requestedPreset?.category.unlockPrerequisiteKey ?? null;
   const lockedRequestedReason: "sequential" | "prerequisite" | null =
-    requestedInCatalog && (!requestedInGated || requestedInGated.locked === true)
-      ? requestedCategory?.sequentialUnlock === true
-        ? "sequential"
-        : "prerequisite"
+    requestedPreset && (!requestedInGated || requestedInGated.locked === true)
+      ? // 理由は文脈から決める(前提を完走済みの人へ「完走してください」と言わない)
+        requestedPrerequisiteKey &&
+        !unlockContext.prerequisiteCompletedKeys.has(requestedPrerequisiteKey)
+        ? "prerequisite"
+        : "sequential"
       : null;
 
   // 企画(コレクション)カードの「生成済み ✓」判定用に、本人が生成済みの
