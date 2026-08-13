@@ -59,6 +59,8 @@ export const getPercoinDefaultsForDisplay = cache(
         .in("source", [
           "referral",
           "daily_post",
+          "daily_post_one_tap",
+          "daily_post_free",
           "prompt_usage_reward",
           "style_usage_reward",
         ]),
@@ -70,8 +72,25 @@ export const getPercoinDefaultsForDisplay = cache(
 
     const referralAmount =
       bonusResult.data?.find((r) => r.source === "referral")?.amount ?? 100;
-    const dailyPostAmount =
+    /*
+      投稿ボーナスは生成方法ごとになったので、カード見出しとブースト表示は
+      **1日に受け取れる合計**を出す(ワンタップ + フリー)。
+      legacy の daily_post を出すと、生成方法別に額を変えた瞬間に嘘になる。
+      行ごとの「+◯」は postBonusAmounts 由来で別途出している。
+      migration 未適用の環境では行が無いので legacy にフォールバックする。
+    */
+    const oneTapAmount = bonusResult.data?.find(
+      (r) => r.source === "daily_post_one_tap"
+    )?.amount;
+    const freeAmount = bonusResult.data?.find(
+      (r) => r.source === "daily_post_free"
+    )?.amount;
+    const legacyDailyPostAmount =
       bonusResult.data?.find((r) => r.source === "daily_post")?.amount ?? 15;
+    const dailyPostAmount =
+      oneTapAmount === undefined && freeAmount === undefined
+        ? legacyDailyPostAmount
+        : (oneTapAmount ?? 0) + (freeAmount ?? 0);
 
     const streakSchedule =
       streakResult.data && streakResult.data.length === 14
