@@ -186,7 +186,7 @@ export const enMessages = {
     postBonusCreatorReward: "You earn {amount} Percoin every time someone uses this prompt.",
     postBonusPrivateNote: "If the prompt is set to private, others can never see it.",
     postBonusCreatorRewardLink: "About creator rewards",
-    postBonusClose: "Close",
+    postBonusClose: "OK",
     commentRequired: "Enter a comment.",
     commentInvalidCharacters: "< and > are not allowed.",
     commentTooLong: "Comment must be {max} characters or fewer.",

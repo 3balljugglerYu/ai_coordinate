@@ -186,7 +186,7 @@ export const hiMessages = {
     postBonusCreatorReward: "जब भी कोई इस प्रॉम्प्ट का उपयोग करता है, आपको {amount} पर्कॉइन मिलते हैं।",
     postBonusPrivateNote: "अगर प्रॉम्प्ट निजी सेट है, तो दूसरे उसे नहीं देख सकते।",
     postBonusCreatorRewardLink: "क्रिएटर रिवॉर्ड के बारे में",
-    postBonusClose: "बंद करें",
+    postBonusClose: "OK",
     commentRequired: "एक टिप्पणी दर्ज करें।",
     commentInvalidCharacters: "< और > अनुमत नहीं हैं।",
     commentTooLong: "टिप्पणी {max} वर्णों से अधिक नहीं हो सकती।",

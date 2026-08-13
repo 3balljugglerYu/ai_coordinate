@@ -186,7 +186,7 @@ export const arMessages = {
     postBonusCreatorReward: "تحصل على {amount} بيركوين في كل مرة يستخدم فيها شخص ما هذا النص.",
     postBonusPrivateNote: "إذا كان النص مضبوطًا على خاص، فلن يتمكن أحد من رؤيته.",
     postBonusCreatorRewardLink: "حول مكافآت المبدعين",
-    postBonusClose: "إغلاق",
+    postBonusClose: "OK",
     commentRequired: "أدخل تعليقًا.",
     commentInvalidCharacters: "حرفا < و > غير مسموح بهما.",
     commentTooLong: "يجب ألا يتجاوز التعليق {max} حرفًا.",

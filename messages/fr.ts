@@ -186,7 +186,7 @@ export const frMessages = {
     postBonusCreatorReward: "Vous gagnez {amount} Percoin chaque fois que quelqu'un utilise ce prompt.",
     postBonusPrivateNote: "Si le prompt est en privé, personne ne peut le voir.",
     postBonusCreatorRewardLink: "À propos des récompenses créateurs",
-    postBonusClose: "Fermer",
+    postBonusClose: "OK",
     commentRequired: "Saisissez un commentaire.",
     commentInvalidCharacters: "Les caractères < et > ne sont pas autorisés.",
     commentTooLong: "Le commentaire ne doit pas dépasser {max} caractères.",

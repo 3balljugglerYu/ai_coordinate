@@ -62,14 +62,19 @@ export function PostBonusModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm overflow-hidden">
+      {/*
+        max-w-sm だけ指定すると、基底の max-w-[calc(100%-2rem)] を
+        上書きしてしまい、スマホ(390px)で左右3pxしか残らず全幅に見える。
+        小さい画面では基底の余白を活かし、sm 以上でだけ幅を絞る。
+      */}
+      <DialogContent className="rounded-2xl sm:max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-center text-base font-semibold text-slate-900">
             {t("postBonusTitle")}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="relative flex flex-col items-center gap-1 py-2">
+        <div className="relative flex flex-col items-center gap-1 py-1">
           <RewardBurst
             show={showBurst}
             label={t("postBonusAmount", { amount })}
@@ -124,7 +129,14 @@ export function PostBonusModal({
           </div>
         ) : null}
 
-        <Button className="w-full" onClick={() => onOpenChange(false)}>
+        {/*
+          ブランドCTAの指定に揃える(チュートリアル開始モーダル等と同じ)。
+          投稿のたびに出る画面なので、既存のボタンと見た目を揃えておく。
+        */}
+        <Button
+          className="min-h-[48px] w-full rounded-full border-0 bg-gradient-to-r from-pink-500 to-orange-400 text-base font-bold text-white shadow-[0_6px_16px_rgba(236,72,153,0.28)] transition hover:from-pink-600 hover:to-orange-500"
+          onClick={() => onOpenChange(false)}
+        >
           {t("postBonusClose")}
         </Button>
       </DialogContent>

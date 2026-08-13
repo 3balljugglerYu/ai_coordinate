@@ -183,7 +183,7 @@ export const jaMessages = {
     postBonusCreatorReward: "このプロンプトを利用される度に、{amount}ペルコイン が入ります。",
     postBonusPrivateNote: "プロンプト非公開で設定の場合、相手にプロンプトを知られることはありません。",
     postBonusCreatorRewardLink: "クリエイター還元について",
-    postBonusClose: "閉じる",
+    postBonusClose: "OK",
     commentRequired: "コメントを入力してください",
     commentInvalidCharacters: "< と > は使用できません",
     commentTooLong: "コメントは{max}文字以内で入力してください",

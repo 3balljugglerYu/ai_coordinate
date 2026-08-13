@@ -186,7 +186,7 @@ export const zhCnMessages = {
     postBonusCreatorReward: "每当有人使用这个提示词，你就会获得 {amount} 佩尔币。",
     postBonusPrivateNote: "若将提示词设为不公开，对方无法看到内容。",
     postBonusCreatorRewardLink: "关于创作者回馈",
-    postBonusClose: "关闭",
+    postBonusClose: "OK",
     commentRequired: "请输入评论。",
     commentInvalidCharacters: "不能使用 < 和 > 。",
     commentTooLong: "评论不能超过 {max} 字。",

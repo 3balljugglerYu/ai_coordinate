@@ -186,7 +186,7 @@ export const koMessages = {
     postBonusCreatorReward: "다른 사람이 이 프롬프트를 사용할 때마다 {amount} 펄코인을 받습니다.",
     postBonusPrivateNote: "프롬프트를 비공개로 설정하면 상대방에게 내용이 보이지 않습니다.",
     postBonusCreatorRewardLink: "크리에이터 리워드 안내",
-    postBonusClose: "닫기",
+    postBonusClose: "OK",
     commentRequired: "댓글을 입력해 주세요.",
     commentInvalidCharacters: "< 와 > 는 사용할 수 없습니다.",
     commentTooLong: "댓글은 {max}자 이하로 입력해 주세요.",

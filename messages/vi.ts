@@ -186,7 +186,7 @@ export const viMessages = {
     postBonusCreatorReward: "Bạn nhận {amount} Percoin mỗi khi có người dùng prompt này.",
     postBonusPrivateNote: "Nếu đặt prompt ở chế độ riêng tư, người khác sẽ không thấy nội dung.",
     postBonusCreatorRewardLink: "Về phần thưởng cho nhà sáng tạo",
-    postBonusClose: "Đóng",
+    postBonusClose: "OK",
     commentRequired: "Vui lòng nhập bình luận.",
     commentInvalidCharacters: "Không cho phép các ký tự < và >.",
     commentTooLong: "Bình luận không được vượt quá {max} ký tự.",

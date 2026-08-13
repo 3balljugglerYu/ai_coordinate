@@ -186,7 +186,7 @@ export const deMessages = {
     postBonusCreatorReward: "Du erhältst {amount} Percoin, jedes Mal wenn jemand diesen Prompt verwendet.",
     postBonusPrivateNote: "Wenn der Prompt auf privat gestellt ist, kann ihn niemand einsehen.",
     postBonusCreatorRewardLink: "Über Creator-Belohnungen",
-    postBonusClose: "Schließen",
+    postBonusClose: "OK",
     commentRequired: "Bitte gib einen Kommentar ein.",
     commentInvalidCharacters: "Die Zeichen < und > sind nicht erlaubt.",
     commentTooLong: "Der Kommentar darf höchstens {max} Zeichen lang sein.",

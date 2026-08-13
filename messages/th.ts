@@ -186,7 +186,7 @@ export const thMessages = {
     postBonusCreatorReward: "คุณจะได้รับ {amount} เพอร์คอยน์ ทุกครั้งที่มีคนใช้พรอมต์นี้",
     postBonusPrivateNote: "หากตั้งพรอมต์เป็นส่วนตัว ผู้อื่นจะไม่เห็นเนื้อหา",
     postBonusCreatorRewardLink: "เกี่ยวกับรางวัลครีเอเตอร์",
-    postBonusClose: "ปิด",
+    postBonusClose: "OK",
     commentRequired: "กรุณากรอกความคิดเห็น",
     commentInvalidCharacters: "ไม่อนุญาตให้ใช้ < และ >",
     commentTooLong: "ความคิดเห็นยาวเกิน {max} ตัวอักษรไม่ได้",

@@ -186,7 +186,7 @@ export const idMessages = {
     postBonusCreatorReward: "Kamu mendapat {amount} Percoin setiap kali orang lain memakai prompt ini.",
     postBonusPrivateNote: "Jika prompt disetel privat, orang lain tidak bisa melihat isinya.",
     postBonusCreatorRewardLink: "Tentang imbalan kreator",
-    postBonusClose: "Tutup",
+    postBonusClose: "OK",
     commentRequired: "Masukkan komentar.",
     commentInvalidCharacters: "Karakter < dan > tidak diperbolehkan.",
     commentTooLong: "Komentar tidak boleh lebih dari {max} karakter.",
