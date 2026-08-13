@@ -150,10 +150,15 @@ export function MissionDotProvider({
       status.lastStreakLoginAt,
       nowDate
     );
-    const isDailyBonusReceived = isSameJstDate(
-      status.lastDailyPostBonusAt,
-      nowDate
-    );
+    /*
+      投稿ミッションは生成方法ごとに1日1回になったので、
+      単一列(lastDailyPostBonusAt)では「ワンタップだけ達成」と
+      「両方達成」を区別できない。片方だけで赤ドットが消えると、
+      フリースタイルが未達なのに完了に見えてしまう。
+    */
+    const received = new Set(status.postBonusReceivedTypes);
+    const isDailyBonusReceived =
+      received.has("one_tap_style") && received.has("free");
     const hasIncompleteTask = !isCheckedInToday || !isDailyBonusReceived;
     const isSnoozed = snoozedUntil !== null && now < snoozedUntil;
 

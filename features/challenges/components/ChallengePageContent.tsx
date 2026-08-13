@@ -93,7 +93,6 @@ export function ChallengePageContent({
   const {
     missionStatus,
     hasCheckInDot,
-    hasDailyPostDot,
     refreshMissionDots,
     markMissionTabSnoozed,
   } = useMissionDots();
@@ -120,14 +119,16 @@ export function ChallengePageContent({
     useState<OptimisticOverride | null>(null);
   const apiResolvedRef = useRef(false);
   const timelineDoneRef = useRef(false);
-  const [isDailyBonusReceived, setIsDailyBonusReceived] = useState<boolean>(
-    initialChallengeStatus?.lastDailyPostBonusAt
-      ? isSameJstDateString(
-          initialChallengeStatus.lastDailyPostBonusAt,
-          initialJstDateString
-        )
-      : false
-  );
+  /*
+    投稿ミッションは生成方法ごとに1日1回。ワンタップとフリースタイルを
+    別々に達成状況として出す（片方だけで完了に見せない）。
+  */
+  const [postBonusReceivedTypes, setPostBonusReceivedTypes] = useState<
+    string[]
+  >(initialChallengeStatus?.postBonusReceivedTypes ?? []);
+  const isOneTapBonusReceived = postBonusReceivedTypes.includes("one_tap_style");
+  const isFreeBonusReceived = postBonusReceivedTypes.includes("free");
+  const isDailyBonusReceived = isOneTapBonusReceived && isFreeBonusReceived;
   const [timeToReset, setTimeToReset] = useState<string>("");
   const bonusDisplay = buildMissionBonusDisplay({
     subscriptionPlan,
@@ -195,8 +196,8 @@ export function ChallengePageContent({
     setLastStreakLoginAt(missionStatus.lastStreakLoginAt);
     setSubscriptionPlan(missionStatus.subscriptionPlan);
     setIsCheckedInToday(!hasCheckInDot);
-    setIsDailyBonusReceived(!hasDailyPostDot);
-  }, [hasCheckInDot, hasDailyPostDot, missionStatus]);
+    setPostBonusReceivedTypes(missionStatus.postBonusReceivedTypes);
+  }, [hasCheckInDot, missionStatus]);
 
   // ミッションページ表示中はナビのバッジを楽観的に消す（URL 直アクセス時も含む）
   useEffect(() => {
@@ -616,60 +617,80 @@ export function ChallengePageContent({
                   </div>
                 </div>
               )}
-              {/* ステータス表示 */}
-              <div className={cn(
-                "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
-                isDailyBonusReceived
-                  ? "bg-green-50 border-green-200"
-                  : "border-blue-200/80 bg-blue-50/80 pr-7"
-              )}>
-                {!isDailyBonusReceived && <RedPulseDot />}
-                <div className="flex items-center gap-3">
-                  {isDailyBonusReceived ? (
-                    <div className="shrink-0 rounded-full bg-green-100 p-2">
-                      <CheckCircle2 className="w-6 h-6 text-green-600" />
+              {/* ステータス表示（生成方法ごと） */}
+              {(
+                [
+                  {
+                    key: "one_tap_style",
+                    received: isOneTapBonusReceived,
+                    label: t("dailyOneTapLabel"),
+                  },
+                  {
+                    key: "free",
+                    received: isFreeBonusReceived,
+                    label: t("dailyFreeLabel"),
+                  },
+                ] as const
+              ).map((row) => (
+                <div
+                  key={row.key}
+                  className={cn(
+                    "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
+                    row.received
+                      ? "bg-green-50 border-green-200"
+                      : "border-blue-200/80 bg-blue-50/80 pr-7"
+                  )}
+                >
+                  {!row.received && <RedPulseDot />}
+                  <div className="flex items-center gap-3">
+                    {row.received ? (
+                      <div className="shrink-0 rounded-full bg-green-100 p-2">
+                        <CheckCircle2 className="w-6 h-6 text-green-600" />
+                      </div>
+                    ) : (
+                      <div className="shrink-0 rounded-full bg-blue-100 p-2">
+                        <ImagePlus className="w-6 h-6 text-blue-600" />
+                      </div>
+                    )}
+                    <div>
+                      <div
+                        className={cn(
+                          "font-bold",
+                          row.received ? "text-green-800" : "text-blue-900"
+                        )}
+                      >
+                        {row.label}
+                      </div>
+                      <div
+                        className={cn(
+                          "mt-0.5 text-xs",
+                          row.received
+                            ? "text-muted-foreground"
+                            : "text-blue-700"
+                        )}
+                      >
+                        {row.received
+                          ? t("dailyReceivedDescription")
+                          : t("dailyPendingDescription", {
+                              amount: dailyPostBonusAmount,
+                            })}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="shrink-0 rounded-full bg-blue-100 p-2">
-                      <ImagePlus className="w-6 h-6 text-blue-600" />
+                  </div>
+
+                  {row.received && (
+                    <div className="text-right">
+                      <div className="text-xs text-muted-foreground mb-1">
+                        {t("resetIn")}
+                      </div>
+                      <div className="flex items-center justify-end gap-1.5 font-mono text-lg font-bold text-green-700">
+                        <Clock className="w-4 h-4" />
+                        {timeToReset}
+                      </div>
                     </div>
                   )}
-                  <div>
-                    <div className={cn(
-                      "font-bold",
-                      isDailyBonusReceived ? "text-green-800" : "text-blue-900"
-                    )}>
-                      {isDailyBonusReceived
-                        ? t("dailyReceivedTitle")
-                        : t("dailyPendingTitle")}
-                    </div>
-                    <div
-                      className={cn(
-                        "mt-0.5 text-xs",
-                        isDailyBonusReceived
-                          ? "text-muted-foreground"
-                          : "text-blue-700"
-                      )}
-                    >
-                      {isDailyBonusReceived
-                        ? t("dailyReceivedDescription")
-                        : t("dailyPendingDescription", {
-                            amount: dailyPostBonusAmount,
-                          })}
-                    </div>
-                  </div>
                 </div>
-
-                {isDailyBonusReceived && (
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground mb-1">{t("resetIn")}</div>
-                    <div className="flex items-center justify-end gap-1.5 font-mono text-lg font-bold text-green-700">
-                      <Clock className="w-4 h-4" />
-                      {timeToReset}
-                    </div>
-                  </div>
-                )}
-              </div>
+              ))}
 
               {!isDailyBonusReceived && (
                 <div className="flex items-center justify-end gap-1.5 text-xs text-muted-foreground">

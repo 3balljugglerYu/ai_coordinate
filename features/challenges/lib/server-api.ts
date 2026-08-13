@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
-import { isStreakBroken } from "./streak-utils";
+import { getJstDateString, isStreakBroken } from "./streak-utils";
 import {
   normalizeSubscriptionPlan,
   type SubscriptionPlan,
@@ -9,7 +9,13 @@ import {
 export interface ChallengeStatus {
   streakDays: number;
   lastStreakLoginAt: string | null;
+  /**
+   * @deprecated 履歴互換のみ。投稿ミッションの達成判定には使わないこと
+   * （生成方法ごとに1日1回になり、この単一列では区別できない）。
+   */
   lastDailyPostBonusAt: string | null;
+  /** 今日すでに投稿ボーナスを受け取った生成方法（JST）。 */
+  postBonusReceivedTypes: string[];
   subscriptionPlan: SubscriptionPlan;
 }
 
@@ -36,9 +42,16 @@ export async function getChallengeStatusServer(
       streakDays: 0,
       lastStreakLoginAt: null,
       lastDailyPostBonusAt: null,
+      postBonusReceivedTypes: [],
       subscriptionPlan: "free",
     };
   }
+
+  const { data: grants } = await supabase
+    .from("daily_post_bonus_grants")
+    .select("generation_type")
+    .eq("user_id", userId)
+    .eq("jst_date", getJstDateString(new Date()));
 
   let streakDays = data?.streak_days || 0;
   const lastStreakLoginAt = data?.last_streak_login_at || null;
@@ -53,6 +66,9 @@ export async function getChallengeStatusServer(
     streakDays,
     lastStreakLoginAt,
     lastDailyPostBonusAt: data?.last_daily_post_bonus_at || null,
+    postBonusReceivedTypes: (grants ?? []).map(
+      (g: { generation_type: string }) => g.generation_type
+    ),
     subscriptionPlan: normalizeSubscriptionPlan(data?.subscription_plan),
   };
 }

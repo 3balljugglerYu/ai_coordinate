@@ -179,6 +179,7 @@ export function PostModal({
         bonusGranted: response.bonus_granted,
         bonusMultiplier: response.bonus_multiplier,
         subscriptionPlan: response.subscription_plan,
+        generationType: response.generation_type,
       });
 
       // デイリー投稿特典が付与された場合、通知バッジだけは即時更新する

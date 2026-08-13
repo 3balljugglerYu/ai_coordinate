@@ -22,9 +22,27 @@ export const USAGE_REWARD_BONUS_SOURCES = [
   "style_usage_reward",
 ] as const;
 
+/**
+ * 生成方法ごとの投稿ボーナス。
+ *
+ * 0 は「その生成方法には付与しない」を意味するため **0 を許す**
+ * (`CLASSIC_BONUS_SOURCES` は最小1で、0 停止ができない)。
+ * 額を 0 にすればデプロイなしでその生成方法だけ止められる、が運用の前提。
+ *
+ * `daily_post_inspire` は Creator Looks 用。機能自体が本番では無効だが、
+ * 有効化したときに管理画面から額を入れるだけで動くよう枠だけ用意している。
+ */
+export const POST_BONUS_SOURCES = [
+  "daily_post_one_tap",
+  "daily_post_free",
+  "daily_post_coordinate",
+  "daily_post_inspire",
+] as const;
+
 export const BONUS_SOURCES = [
   ...CLASSIC_BONUS_SOURCES,
   ...USAGE_REWARD_BONUS_SOURCES,
+  ...POST_BONUS_SOURCES,
 ] as const;
 
 export type PercoinBonusSource = (typeof BONUS_SOURCES)[number];
@@ -42,11 +60,36 @@ export const CLASSIC_BONUS_MAX_AMOUNT = 1000;
 export const USAGE_REWARD_MIN_AMOUNT = 0;
 export const USAGE_REWARD_MAX_AMOUNT = 5;
 
+export const POST_BONUS_MIN_AMOUNT = 0;
+export const POST_BONUS_MAX_AMOUNT = 1000;
+
 const USAGE_REWARD_SOURCE_SET = new Set<string>(USAGE_REWARD_BONUS_SOURCES);
+const POST_BONUS_SOURCE_SET = new Set<string>(POST_BONUS_SOURCES);
 
 /** 利用のたびに付与される還元 source か。 */
 export function isUsageRewardBonusSource(source: string): boolean {
   return USAGE_REWARD_SOURCE_SET.has(source);
+}
+
+/** 生成方法ごとの投稿ボーナス source か（0 を許す）。 */
+export function isPostBonusSource(source: string): boolean {
+  return POST_BONUS_SOURCE_SET.has(source);
+}
+
+/** 生成方法 → 投稿ボーナスの source。対象外の生成方法は null。 */
+export function getPostBonusSource(generationType: string | null | undefined) {
+  switch (generationType) {
+    case "one_tap_style":
+      return "daily_post_one_tap" as const;
+    case "free":
+      return "daily_post_free" as const;
+    case "coordinate":
+      return "daily_post_coordinate" as const;
+    case "inspire":
+      return "daily_post_inspire" as const;
+    default:
+      return null;
+  }
 }
 
 /** source に応じた入力範囲(min/max とも境界を含む)。 */
@@ -54,9 +97,13 @@ export function getBonusAmountRange(source: string): {
   min: number;
   max: number;
 } {
-  return isUsageRewardBonusSource(source)
-    ? { min: USAGE_REWARD_MIN_AMOUNT, max: USAGE_REWARD_MAX_AMOUNT }
-    : { min: CLASSIC_BONUS_MIN_AMOUNT, max: CLASSIC_BONUS_MAX_AMOUNT };
+  if (isUsageRewardBonusSource(source)) {
+    return { min: USAGE_REWARD_MIN_AMOUNT, max: USAGE_REWARD_MAX_AMOUNT };
+  }
+  if (isPostBonusSource(source)) {
+    return { min: POST_BONUS_MIN_AMOUNT, max: POST_BONUS_MAX_AMOUNT };
+  }
+  return { min: CLASSIC_BONUS_MIN_AMOUNT, max: CLASSIC_BONUS_MAX_AMOUNT };
 }
 
 /**

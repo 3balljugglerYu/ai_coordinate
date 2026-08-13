@@ -1,5 +1,6 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { getPosts } from "../lib/server-api";
+import { getPercoinDefaultsForDisplay } from "@/features/credits/lib/get-percoin-defaults";
 import { PostList } from "./PostList";
 
 /**
@@ -13,9 +14,12 @@ export async function CachedHomePostList({ userId }: { userId: string | null }) 
   cacheTag("home-posts-week");
   cacheLife("minutes");
 
-  const [newestPosts, weekPosts] = await Promise.all([
+  const [newestPosts, weekPosts, percoinDefaults] = await Promise.all([
     getPosts(20, 0, "newest", undefined, userId),
     getPosts(20, 0, "week", undefined, userId),
+    // 付与モーダルの還元案内で使う。文言に焼き込まず設定値を出す
+    // (額を変えたときに嘘にならないように)
+    getPercoinDefaultsForDisplay(),
   ]);
 
   return (
@@ -26,6 +30,7 @@ export async function CachedHomePostList({ userId }: { userId: string | null }) 
       skipInitialFetch
       // viewable インプレッション計測はホームフィードのみ有効(検索等では計測しない)
       trackImpressions
+      promptUsageRewardAmount={percoinDefaults.promptUsageRewardAmount}
     />
   );
 }

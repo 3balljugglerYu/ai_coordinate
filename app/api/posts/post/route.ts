@@ -3,7 +3,6 @@ import { revalidateTag, revalidatePath } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
@@ -24,7 +23,9 @@ async function grantDailyPostBonus(
   generationId: string
 ): Promise<number> {
   try {
-    const supabase = await createClient();
+    // service_role 専用の RPC。session client からは呼べない
+    // (以前は anon/authenticated にも EXECUTE があり、投稿せずに直接呼べた)
+    const supabase = createAdminClient();
     const { data, error: rpcError } = await supabase.rpc(
       "grant_daily_post_bonus",
       {
@@ -158,9 +159,12 @@ export async function POST(request: NextRequest) {
       is_posted: result.is_posted,
       caption: result.caption ?? null,
       posted_at: result.posted_at || new Date().toISOString(),
-      bonus_granted, // 付与されたペルコイン数（0: 未付与、50: 付与成功）
+      bonus_granted, // 付与されたペルコイン数（0: 未付与）
       bonus_multiplier: bonusMeta?.bonusMultiplier,
       subscription_plan: bonusMeta?.subscriptionPlan,
+      // 付与モーダルの出し分けに使う。フリースタイルのときだけ
+      // クリエイター還元の案内を併記する
+      generation_type: result.generation_type ?? null,
     });
   } catch (error) {
     // free 以外の root で非公開を指定した場合は理由の分かる 400 を返す。

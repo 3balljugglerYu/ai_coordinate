@@ -1,10 +1,17 @@
 import { createClient } from "@/lib/supabase/client";
-import { isStreakBroken } from "./streak-utils";
+import { getJstDateString, isStreakBroken } from "./streak-utils";
 
 export interface ChallengeStatus {
   streakDays: number;
   lastStreakLoginAt: string | null;
+  /**
+   * @deprecated 履歴互換のみ。投稿ミッションの達成判定には使わないこと。
+   * 生成方法ごとに1日1回になったため、この単一列では
+   * 「ワンタップだけ達成」と「両方達成」を区別できない。
+   */
   lastDailyPostBonusAt: string | null;
+  /** 今日すでに投稿ボーナスを受け取った生成方法（JST）。 */
+  postBonusReceivedTypes: string[];
   subscriptionPlan: "free" | "light" | "standard" | "premium";
 }
 
@@ -34,6 +41,7 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
       streakDays: 0,
       lastStreakLoginAt: null,
       lastDailyPostBonusAt: null,
+      postBonusReceivedTypes: [],
       subscriptionPlan: "free",
     };
   }
@@ -50,9 +58,17 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
       streakDays: 0,
       lastStreakLoginAt: null,
       lastDailyPostBonusAt: null,
+      postBonusReceivedTypes: [],
       subscriptionPlan: "free",
     };
   }
+
+  // 生成方法ごとの受取状況。本人SELECTポリシーがあるのでブラウザから読める
+  const { data: grants } = await supabase
+    .from("daily_post_bonus_grants")
+    .select("generation_type")
+    .eq("user_id", user.id)
+    .eq("jst_date", getJstDateString(new Date()));
 
   let streakDays = data?.streak_days || 0;
   const lastStreakLoginAt = data?.last_streak_login_at || null;
@@ -66,6 +82,7 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
     streakDays,
     lastStreakLoginAt,
     lastDailyPostBonusAt: data?.last_daily_post_bonus_at || null,
+    postBonusReceivedTypes: (grants ?? []).map((g) => g.generation_type),
     subscriptionPlan:
       data?.subscription_plan === "light" ||
       data?.subscription_plan === "standard" ||
