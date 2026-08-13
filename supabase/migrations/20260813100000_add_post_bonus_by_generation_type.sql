@@ -218,6 +218,12 @@ BEGIN
     RETURN 0;
   END IF;
 
+  -- 無料枠の上限判定(get_grantable_free_percoin_amount)は残高を読むだけで
+  -- ロックを取らない。ワンタップとフリーは別キーなので同時にここまで来られ、
+  -- 同じ残高を基準に計算すると上限を超えて加算されうる。
+  -- 既存の還元RPC(20260806150000)と同じキー・同じ順序で受け手単位に直列化する。
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
+
   v_bonus_multiplier := public.get_subscription_bonus_multiplier(p_user_id);
   v_requested_bonus_amount := ceil(v_base_bonus_amount * v_bonus_multiplier)::integer;
   v_grant_amount := public.get_grantable_free_percoin_amount(
@@ -342,6 +348,48 @@ REVOKE ALL ON FUNCTION public.grant_daily_post_bonus(uuid, uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.grant_daily_post_bonus(uuid, uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.grant_daily_post_bonus(uuid, uuid) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.grant_daily_post_bonus(uuid, uuid) TO service_role;
+
+-- ============================================================
+-- 3b) 生成方法ごとの額を読むための関数
+-- ============================================================
+--
+-- percoin_bonus_defaults は RLS で anon/authenticated を拒否しているため、
+-- ミッション画面(ブラウザから読む)が額を知る手段がない。額が 0 の生成方法を
+-- 「未達の赤ドット」として出し続けると、達成不能なミッションになってしまう。
+-- 額そのものは画面に出している情報なので、投稿ボーナスぶんだけ読めるようにする。
+
+CREATE OR REPLACE FUNCTION public.get_post_bonus_amounts()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(
+    jsonb_object_agg(
+      CASE source
+        WHEN 'daily_post_one_tap' THEN 'one_tap_style'
+        WHEN 'daily_post_free' THEN 'free'
+        WHEN 'daily_post_coordinate' THEN 'coordinate'
+        WHEN 'daily_post_inspire' THEN 'inspire'
+      END,
+      amount
+    ),
+    '{}'::jsonb
+  )
+  FROM public.percoin_bonus_defaults
+  WHERE source IN (
+    'daily_post_one_tap',
+    'daily_post_free',
+    'daily_post_coordinate',
+    'daily_post_inspire'
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.get_post_bonus_amounts() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_post_bonus_amounts() TO anon;
+GRANT EXECUTE ON FUNCTION public.get_post_bonus_amounts() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_post_bonus_amounts() TO service_role;
 
 -- ============================================================
 -- 4) 移行日の二重取りを塞ぐ

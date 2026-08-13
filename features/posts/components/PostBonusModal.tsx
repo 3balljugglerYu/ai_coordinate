@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useLocale, useTranslations } from "next-intl";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -13,7 +13,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CountUpNumber } from "@/features/collections/components/CountUpNumber";
 import { RewardBurst } from "@/features/challenges/components/RewardBurst";
-import type { Locale } from "@/i18n/config";
 
 /**
  * 投稿ボーナスの付与モーダル。
@@ -54,7 +53,6 @@ export function PostBonusModal({
   promptUsageRewardAmount,
 }: PostBonusModalProps) {
   const t = useTranslations("posts");
-  const locale = useLocale() as Locale;
   const [showBurst, setShowBurst] = useState(false);
 
   const hasBoostedBonus = typeof multiplier === "number" && multiplier > 1;
@@ -115,7 +113,9 @@ export function PostBonusModal({
               {t("postBonusPrivateNote")}
             </p>
             <Link
-              href={`/${locale}/creator-rewards`}
+              // ロケール付きのルートは存在しない(app/creator-rewards のみ)。
+              // ミッション画面の導線も /creator-rewards に張っている
+              href="/creator-rewards"
               className="inline-block text-xs font-medium text-violet-700 underline"
               onClick={() => onOpenChange(false)}
             >

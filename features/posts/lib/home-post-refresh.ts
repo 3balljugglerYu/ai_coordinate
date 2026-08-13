@@ -94,6 +94,12 @@ export function consumePendingHomePostRefresh(): PendingHomePostRefresh | null {
           parsed.subscriptionPlan === "free"
             ? parsed.subscriptionPlan
             : undefined,
+        // ここで落とすと、付与モーダルの還元案内が永久に出ない
+        // (この施策の目的そのものが機能しなくなる)
+        generationType:
+          typeof parsed.generationType === "string"
+            ? parsed.generationType
+            : null,
       };
     }
 

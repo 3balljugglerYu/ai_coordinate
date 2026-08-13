@@ -126,9 +126,26 @@ export function ChallengePageContent({
   const [postBonusReceivedTypes, setPostBonusReceivedTypes] = useState<
     string[]
   >(initialChallengeStatus?.postBonusReceivedTypes ?? []);
-  const isOneTapBonusReceived = postBonusReceivedTypes.includes("one_tap_style");
-  const isFreeBonusReceived = postBonusReceivedTypes.includes("free");
-  const isDailyBonusReceived = isOneTapBonusReceived && isFreeBonusReceived;
+  const [postBonusAmounts, setPostBonusAmounts] = useState<
+    Record<string, number>
+  >(initialChallengeStatus?.postBonusAmounts ?? {});
+  /*
+    額が 0 の生成方法は停止中なので、行ごと出さない。
+    出すと「+0で達成できないミッション」が並び続ける。
+  */
+  const postBonusRows = (
+    [
+      { key: "one_tap_style", label: t("dailyOneTapLabel") },
+      { key: "free", label: t("dailyFreeLabel") },
+    ] as const
+  )
+    .map((row) => ({
+      ...row,
+      amount: postBonusAmounts[row.key] ?? 0,
+      received: postBonusReceivedTypes.includes(row.key),
+    }))
+    .filter((row) => row.amount > 0);
+  const isDailyBonusReceived = postBonusRows.every((row) => row.received);
   const [timeToReset, setTimeToReset] = useState<string>("");
   const bonusDisplay = buildMissionBonusDisplay({
     subscriptionPlan,
@@ -197,6 +214,7 @@ export function ChallengePageContent({
     setSubscriptionPlan(missionStatus.subscriptionPlan);
     setIsCheckedInToday(!hasCheckInDot);
     setPostBonusReceivedTypes(missionStatus.postBonusReceivedTypes);
+    setPostBonusAmounts(missionStatus.postBonusAmounts);
   }, [hasCheckInDot, missionStatus]);
 
   // ミッションページ表示中はナビのバッジを楽観的に消す（URL 直アクセス時も含む）
@@ -618,20 +636,7 @@ export function ChallengePageContent({
                 </div>
               )}
               {/* ステータス表示（生成方法ごと） */}
-              {(
-                [
-                  {
-                    key: "one_tap_style",
-                    received: isOneTapBonusReceived,
-                    label: t("dailyOneTapLabel"),
-                  },
-                  {
-                    key: "free",
-                    received: isFreeBonusReceived,
-                    label: t("dailyFreeLabel"),
-                  },
-                ] as const
-              ).map((row) => (
+              {postBonusRows.map((row) => (
                 <div
                   key={row.key}
                   className={cn(
@@ -672,7 +677,7 @@ export function ChallengePageContent({
                         {row.received
                           ? t("dailyReceivedDescription")
                           : t("dailyPendingDescription", {
-                              amount: dailyPostBonusAmount,
+                              amount: row.amount,
                             })}
                       </div>
                     </div>

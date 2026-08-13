@@ -157,8 +157,13 @@ export function MissionDotProvider({
       フリースタイルが未達なのに完了に見えてしまう。
     */
     const received = new Set(status.postBonusReceivedTypes);
-    const isDailyBonusReceived =
-      received.has("one_tap_style") && received.has("free");
+    // 額が 0 の生成方法は停止中。未達に数えると達成できない赤ドットが残る
+    const requiredTypes = ["one_tap_style", "free"].filter(
+      (type) => (status.postBonusAmounts?.[type] ?? 0) > 0
+    );
+    const isDailyBonusReceived = requiredTypes.every((type) =>
+      received.has(type)
+    );
     const hasIncompleteTask = !isCheckedInToday || !isDailyBonusReceived;
     const isSnoozed = snoozedUntil !== null && now < snoozedUntil;
 

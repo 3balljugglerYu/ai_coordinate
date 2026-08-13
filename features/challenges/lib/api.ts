@@ -12,6 +12,11 @@ export interface ChallengeStatus {
   lastDailyPostBonusAt: string | null;
   /** 今日すでに投稿ボーナスを受け取った生成方法（JST）。 */
   postBonusReceivedTypes: string[];
+  /**
+   * 生成方法ごとの投稿ボーナス額。0 は停止中。
+   * 0 の生成方法をミッションに出すと、達成できない赤ドットが残り続ける。
+   */
+  postBonusAmounts: Record<string, number>;
   subscriptionPlan: "free" | "light" | "standard" | "premium";
 }
 
@@ -42,6 +47,7 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
       lastStreakLoginAt: null,
       lastDailyPostBonusAt: null,
       postBonusReceivedTypes: [],
+      postBonusAmounts: {},
       subscriptionPlan: "free",
     };
   }
@@ -59,6 +65,7 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
       lastStreakLoginAt: null,
       lastDailyPostBonusAt: null,
       postBonusReceivedTypes: [],
+      postBonusAmounts: {},
       subscriptionPlan: "free",
     };
   }
@@ -69,6 +76,9 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
     .select("generation_type")
     .eq("user_id", user.id)
     .eq("jst_date", getJstDateString(new Date()));
+
+  // percoin_bonus_defaults は RLS で直接読めないため RPC 経由で取る
+  const { data: amounts } = await supabase.rpc("get_post_bonus_amounts");
 
   let streakDays = data?.streak_days || 0;
   const lastStreakLoginAt = data?.last_streak_login_at || null;
@@ -83,6 +93,7 @@ export async function getChallengeStatus(): Promise<ChallengeStatus> {
     lastStreakLoginAt,
     lastDailyPostBonusAt: data?.last_daily_post_bonus_at || null,
     postBonusReceivedTypes: (grants ?? []).map((g) => g.generation_type),
+    postBonusAmounts: (amounts as Record<string, number> | null) ?? {},
     subscriptionPlan:
       data?.subscription_plan === "light" ||
       data?.subscription_plan === "standard" ||

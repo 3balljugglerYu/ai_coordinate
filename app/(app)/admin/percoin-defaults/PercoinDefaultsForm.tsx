@@ -169,8 +169,10 @@ export function PercoinDefaultsForm({
                 <Input
                   id={`bonus-${source}`}
                   type="number"
-                  min={AMOUNT_MIN}
-                  max={AMOUNT_MAX}
+                  // 投稿ボーナス(生成方法ごと)は 0 が「付与しない」を意味する
+                  // 有効値。一律 1〜1000 にすると 0 停止を保存できない
+                  min={getBonusAmountRange(source).min}
+                  max={getBonusAmountRange(source).max}
                   value={bonusValues[source] ?? ""}
                   onChange={(e) => handleBonusChange(source, e.target.value)}
                   className="max-w-[120px]"
