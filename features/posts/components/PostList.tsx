@@ -14,11 +14,11 @@ import { useInView } from "react-intersection-observer";
 import Masonry from "react-masonry-css";
 import { PostCard } from "./PostCard";
 import { PostFeedCard } from "./PostFeedCard";
+import { PostBonusModal } from "./PostBonusModal";
 import { PostListSkeleton } from "./PostListSkeleton";
 import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
 import { HomeViewToggle } from "./HomeViewToggle";
-import { Badge } from "@/components/ui/badge";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useToast } from "@/components/ui/use-toast";
@@ -71,6 +71,11 @@ interface PostListProps {
   skipInitialFetch?: boolean;
   /** viewable インプレッション計測を有効にする(ホームフィードのみ true) */
   trackImpressions?: boolean;
+  /**
+   * 他人にプロンプトを使われたときに原作者へ入る額。付与モーダルの案内に使う。
+   * 0 なら還元は停止中なので案内を出さない。
+   */
+  promptUsageRewardAmount?: number;
 }
 
 export function PostList({
@@ -79,6 +84,7 @@ export function PostList({
   forceInitialLoading = false,
   skipInitialFetch = false,
   trackImpressions = false,
+  promptUsageRewardAmount = 0,
 }: PostListProps) {
   const postsT = useTranslations("posts");
   const { toast } = useToast();
@@ -114,6 +120,12 @@ export function PostList({
     forceInitialLoading ? null : ""
   );
   const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
+  // 投稿ボーナスの付与モーダル。付与があったときだけ開く
+  const [postBonus, setPostBonus] = useState<{
+    amount: number;
+    multiplier?: number;
+    generationType: string | null;
+  } | null>(null);
   const [pendingHomePostRefresh, setPendingHomePostRefresh] =
     useState<PendingHomePostRefresh | null>(null);
   // 表示形式は端末に記憶する。SSR とハイドレーション不一致を避けるため、
@@ -170,43 +182,33 @@ export function PostList({
     }
 
     setPendingHomePostRefresh(pending);
-    if (pending.action === "posted") {
+    if (pending.action !== "posted") {
+      return;
+    }
+
+    /*
+      付与があればモーダル、無ければ従来どおりトースト。
+
+      モーダルにするのは、**フリースタイル投稿の直後がクリエイター還元を
+      いちばん伝えやすい瞬間**だから。トーストは数秒で消えるうえ、
+      リンクを踏む間もない。
+    */
+    if (pending.bonusGranted && pending.bonusGranted > 0) {
       const hasBoostedBonus =
         pending.subscriptionPlan &&
         pending.subscriptionPlan !== "free" &&
         typeof pending.bonusMultiplier === "number" &&
         pending.bonusMultiplier > 1;
-      const boostedMultiplier = hasBoostedBonus
-        ? pending.bonusMultiplier
-        : null;
 
-      toast({
-        title:
-          pending.bonusGranted && pending.bonusGranted > 0
-            ? postsT("dailyBonusTitle")
-            : postsT("postSuccess"),
-        description:
-          pending.bonusGranted && pending.bonusGranted > 0
-            ? (
-                <div className="space-y-2">
-                  <p>{postsT("dailyBonusDescription", { amount: pending.bonusGranted })}</p>
-                  {hasBoostedBonus ? (
-                    <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-amber-700">
-                      <Badge
-                        variant="outline"
-                        className="gap-1.5 border-amber-200 bg-amber-50 px-2 py-0.5 text-amber-700 shadow-sm"
-                      >
-                        {postsT("dailyBonusMultiplierBadge", {
-                          multiplier: boostedMultiplier?.toFixed(1) ?? "1.0",
-                        })}
-                      </Badge>
-                    </div>
-                  ) : null}
-                </div>
-              )
-            : undefined,
+      setPostBonus({
+        amount: pending.bonusGranted,
+        multiplier: hasBoostedBonus ? pending.bonusMultiplier : undefined,
+        generationType: pending.generationType ?? null,
       });
+      return;
     }
+
+    toast({ title: postsT("postSuccess") });
   }, [postsT, toast]);
 
   useEffect(() => {
@@ -753,6 +755,20 @@ export function PostList({
         }}
         redirectTo={currentPath}
       />
+      {postBonus ? (
+        <PostBonusModal
+          open
+          onOpenChange={(next) => {
+            if (!next) {
+              setPostBonus(null);
+            }
+          }}
+          amount={postBonus.amount}
+          multiplier={postBonus.multiplier}
+          generationType={postBonus.generationType}
+          promptUsageRewardAmount={promptUsageRewardAmount}
+        />
+      ) : null}
     </>
   );
 }

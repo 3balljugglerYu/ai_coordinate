@@ -130,9 +130,11 @@ export interface PostImageResponse {
   is_posted: boolean;
   caption: string | null;
   posted_at: string;
-  bonus_granted?: number; // デイリー投稿特典で付与されたペルコイン数（0: 未付与、50: 付与成功）
+  bonus_granted?: number; // 投稿ボーナスで付与されたペルコイン数（0: 未付与）
   bonus_multiplier?: number;
   subscription_plan?: "free" | "light" | "standard" | "premium";
+  /** 付与モーダルの出し分け用（フリースタイルだけ還元の案内を併記する）。 */
+  generation_type?: string | null;
 }
 
 export interface Post extends GeneratedImageRecord {

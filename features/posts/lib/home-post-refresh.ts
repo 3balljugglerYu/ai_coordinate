@@ -5,6 +5,12 @@ export type PendingHomePostRefresh =
       bonusMultiplier?: number;
       postId: string;
       subscriptionPlan?: "free" | "light" | "standard" | "premium";
+      /**
+       * 投稿した作品の生成方法。付与モーダルの出し分けに使う。
+       * フリースタイルのときだけクリエイター還元の案内を併記する
+       * (ワンタップの利用還元は現在 0 = 未有効なので、出すと嘘になる)。
+       */
+      generationType?: string | null;
     }
   | {
       action: "unposted";
@@ -88,6 +94,12 @@ export function consumePendingHomePostRefresh(): PendingHomePostRefresh | null {
           parsed.subscriptionPlan === "free"
             ? parsed.subscriptionPlan
             : undefined,
+        // ここで落とすと、付与モーダルの還元案内が永久に出ない
+        // (この施策の目的そのものが機能しなくなる)
+        generationType:
+          typeof parsed.generationType === "string"
+            ? parsed.generationType
+            : null,
       };
     }
 

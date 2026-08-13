@@ -7,7 +7,11 @@ const BONUS_SOURCE_LABELS: Record<string, string> = {
   signup_bonus: "新規登録特典",
   tour_bonus: "チュートリアル完了特典",
   referral: "紹介成立特典",
-  daily_post: "デイリー投稿特典",
+  daily_post: "デイリー投稿特典（旧・生成方法を問わない）",
+  daily_post_one_tap: "投稿ボーナス：ワンタップスタイル",
+  daily_post_free: "投稿ボーナス：フリースタイル",
+  daily_post_coordinate: "投稿ボーナス：コーデ（0で停止中）",
+  daily_post_inspire: "投稿ボーナス：Creator Looks（機能自体が無効）",
   prompt_usage_reward: "Freeプロンプトが利用された時（作者へ）",
   style_usage_reward: "One-Tap Styleが利用された時（クリエイターへ）",
 };

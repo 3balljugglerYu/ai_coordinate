@@ -16,11 +16,13 @@ import {
   getBonusAmountRange,
   isUsageRewardBonusSource,
   validateBonusAmount,
+  POST_BONUS_SOURCES,
+  getPostBonusSource,
 } from "@/features/credits/lib/percoin-bonus-defaults";
 
 describe("percoin-bonus-defaults", () => {
-  test("BONUS_SOURCES は従来4種 + 還元2種の6種", () => {
-    expect(BONUS_SOURCES).toHaveLength(6);
+  test("BONUS_SOURCES は従来4種 + 還元2種 + 投稿4種", () => {
+    expect(BONUS_SOURCES).toHaveLength(10);
     expect(CLASSIC_BONUS_SOURCES).toEqual([
       "signup_bonus",
       "tour_bonus",
@@ -31,6 +33,30 @@ describe("percoin-bonus-defaults", () => {
       "prompt_usage_reward",
       "style_usage_reward",
     ]);
+    expect(POST_BONUS_SOURCES).toEqual([
+      "daily_post_one_tap",
+      "daily_post_free",
+      "daily_post_coordinate",
+      "daily_post_inspire",
+    ]);
+  });
+
+  test("投稿ボーナスは0を許す(0=その生成方法には付与しない)", () => {
+    // CLASSIC は最小1なので、この分類が無いとコーデを停止できない
+    expect(getBonusAmountRange("daily_post_coordinate")).toEqual({
+      min: 0,
+      max: 1000,
+    });
+    expect(validateBonusAmount("daily_post_coordinate", 0)).toBeNull();
+    expect(validateBonusAmount("daily_post", 0)).not.toBeNull();
+  });
+
+  test("生成方法から source を引ける(未対応は null)", () => {
+    expect(getPostBonusSource("one_tap_style")).toBe("daily_post_one_tap");
+    expect(getPostBonusSource("free")).toBe("daily_post_free");
+    expect(getPostBonusSource("coordinate")).toBe("daily_post_coordinate");
+    expect(getPostBonusSource("unknown")).toBeNull();
+    expect(getPostBonusSource(null)).toBeNull();
   });
 
   describe("isUsageRewardBonusSource", () => {
