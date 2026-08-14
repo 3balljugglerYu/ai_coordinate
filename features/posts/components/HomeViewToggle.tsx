@@ -4,6 +4,7 @@ import { LayoutGrid, Rows3 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { HOME_VIEW_MODES, type HomeViewMode } from "../lib/home-view-preference";
+import { HOME_VIEW_TOGGLE_TOUR_ID } from "./HomeViewSwitchNotice";
 
 interface HomeViewToggleProps {
   value: HomeViewMode;
@@ -28,7 +29,11 @@ export function HomeViewToggle({ value, onChange, showNewBadge = false }: HomeVi
   ];
 
   return (
-    <div className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-muted/60 p-0.5">
+    <div
+      // 既定をフィードへ切り替えた案内のスポットライトが、ここを指す
+      data-tour-id={HOME_VIEW_TOGGLE_TOUR_ID}
+      className="relative flex shrink-0 items-center gap-0.5 rounded-full bg-muted/60 p-0.5"
+    >
       {options.map(({ mode, label, Icon }) => {
         const isActive = value === mode;
         return (

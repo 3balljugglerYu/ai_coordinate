@@ -14,9 +14,9 @@ import {
 } from "@/features/posts/lib/home-view-preference";
 
 describe("home-view-preference (SSR)", () => {
-  test("window が無くても既定のグリッドを返す", () => {
+  test("window が無くても既定のフィードを返す", () => {
     expect(typeof window).toBe("undefined");
-    expect(getHomeViewMode()).toBe("grid");
+    expect(getHomeViewMode()).toBe("feed");
   });
 
   test("保存系は何もせず例外も投げない", () => {
