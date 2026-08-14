@@ -56,7 +56,10 @@ type GeneratedImageRow = {
   is_posted: boolean | null;
   moderation_status: string | null;
   model: string | null;
-  generation_type?: string | null;
+  /** AI原価の見積もり精度がこれに依存するため必須（旧データは null） */
+  generation_type: string | null;
+  /** 入力ぶんをジョブ単位で1回だけ数えるために使う */
+  image_job_id?: string | null;
   generation_metadata?: Record<string, unknown> | null;
   posted_at?: string | null;
 };
@@ -650,7 +653,7 @@ export async function getAdminDashboardData(
     supabase
       .from("generated_images")
       .select(
-        "user_id, created_at, is_posted, moderation_status, model, generation_type, generation_metadata, posted_at"
+        "user_id, created_at, is_posted, moderation_status, model, generation_type, image_job_id, generation_metadata, posted_at"
       )
       .gte("created_at", sharedFetchStartIso)
       .lte("created_at", sharedFetchEndIso),

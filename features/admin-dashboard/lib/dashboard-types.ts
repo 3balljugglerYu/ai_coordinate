@@ -65,6 +65,10 @@ export interface DashboardAiCostModelItem {
   model: string;
   provider: "openai" | "google";
   providerLabel: string;
+  /** 単価の根拠。外挿値を確定値と読み違えないようカードに出す */
+  basis: "measured" | "published" | "derived";
+  /** 入力ぶんをどこまで数えられているか（basis とは別の軸） */
+  inputCompleteness: "counted" | "partial";
   count: number;
   totalUsd: number;
   totalJpy: number;

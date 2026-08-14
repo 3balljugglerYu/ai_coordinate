@@ -97,15 +97,27 @@ export function isCanonicalGuestAllowedModel(
  * UI で南京錠を出すかどうかの正本（クリック時は SubscriptionUpsellDialog を開く）。
  *
  * 内訳:
- * - ChatGPT: Low × 1k（標準）のみ
+ * - ChatGPT: Low / Medium × 1k（標準）まで。High と 2k/4k は有料プラン限定
  * - Nano Banana Pro: 1k（標準）のみ
  * - Nano Banana 2 ファミリー: 全 SKU 許可
  *
  * light / standard / premium プランは制限なし（このリストは無関係）。
  * ゲスト経路は GUEST_ALLOWED_MODELS で別途制限される。
+ *
+ * ## Medium を無課金にも開いている理由（2026-08-14）
+ *
+ * 実測した1ペルコインあたりの原価は、Medium(¥0.500〜0.647)が
+ * **Low(¥0.342〜0.635)とほぼ同じ帯**に収まる。One-Tap Style は
+ * 数千文字のプロンプトを送るため、Low でも入力ぶんが原価の7割を占め、
+ * 長いプリセットでは Low のほうが割高になる逆転すら起きる。
+ * つまり Medium を開けても原価の上限は実質的に動かない。
+ * 一方でペルコインの消費は倍になり、出力の質も上がる。
+ * 対して High は ¥0.642〜0.701 と一段高いので有料プラン限定のまま残す。
+ * 根拠と測定手順は ADR-005（docs/planning/ai-cost-accuracy-and-medium-unlock-plan.md）。
  */
 const BASE_FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gpt-image-2-low-1k',
+  'gpt-image-2-medium-1k',
   'gemini-2.5-flash-image',
   'gemini-3.1-flash-image-preview-512',
   'gemini-3.1-flash-image-preview-1024',
