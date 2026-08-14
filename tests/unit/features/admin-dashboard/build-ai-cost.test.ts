@@ -42,11 +42,12 @@ describe("buildAiCostEstimate", () => {
   it("モデル別単価で合計USDと円換算を算出する", () => {
     const result = buildAiCostEstimate(
       [
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T01:00:00.000Z" },
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T02:00:00.000Z" },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T01:00:00.000Z", generation_type: null },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T02:00:00.000Z", generation_type: null },
         {
           model: "gemini-3.1-flash-image-preview-1024",
           created_at: "2026-07-25T03:00:00.000Z",
+          generation_type: null,
         },
       ],
       CURRENT_START,
@@ -63,7 +64,7 @@ describe("buildAiCostEstimate", () => {
       // Low は出力が 172 tok しかなく、原価の7割が入力画像。
       // 出力ぶん(0.00516)だけを数えていた頃は実額の 1/3 だった
       const result = buildAiCostEstimate(
-        [{ model: "gpt-image-2-low-1k", created_at: "2026-07-25T01:00:00.000Z" }],
+        [{ model: "gpt-image-2-low-1k", created_at: "2026-07-25T01:00:00.000Z", generation_type: null }],
         CURRENT_START,
         NOW
       );
@@ -100,6 +101,76 @@ describe("buildAiCostEstimate", () => {
 
       expect(oneTap.totalUsd).toBeCloseTo(GPT_LOW_ONE_TAP_USD, 4);
       expect(oneTap.totalUsd).toBeGreaterThan(coordinate.totalUsd);
+    });
+
+    it("同じジョブの複数枚は入力ぶんを1回しか数えない", () => {
+      // OpenAI は n 枚を1リクエストで返すので、入力画像・プロンプトの課金は
+      // リクエストにつき1回。行ごとに足すと4枚生成で入力ぶんが4倍になる
+      const fourImages = buildAiCostEstimate(
+        Array.from({ length: 4 }, () => ({
+          model: "gpt-image-2-low-1k",
+          created_at: "2026-07-25T01:00:00.000Z",
+          generation_type: "one_tap_style",
+          image_job_id: "job-1",
+        })),
+        CURRENT_START,
+        NOW
+      );
+
+      const inputUsd = GPT_INPUT_IMAGE_USD + 0.0082;
+      const expected = GPT_LOW_OUTPUT_USD * 4 + inputUsd;
+
+      expect(fourImages.totalUsd).toBeCloseTo(expected, 4);
+      // 行ごとに全額を足していた頃の値より確実に小さい
+      expect(fourImages.totalUsd).toBeLessThan(GPT_LOW_ONE_TAP_USD * 4);
+      expect(fourImages.byModel[0]?.count).toBe(4);
+    });
+
+    it("別ジョブなら入力ぶんをそれぞれ数える", () => {
+      const twoJobs = buildAiCostEstimate(
+        [
+          {
+            model: "gpt-image-2-low-1k",
+            created_at: "2026-07-25T01:00:00.000Z",
+            generation_type: "one_tap_style",
+            image_job_id: "job-1",
+          },
+          {
+            model: "gpt-image-2-low-1k",
+            created_at: "2026-07-25T02:00:00.000Z",
+            generation_type: "one_tap_style",
+            image_job_id: "job-2",
+          },
+        ],
+        CURRENT_START,
+        NOW
+      );
+
+      expect(twoJobs.totalUsd).toBeCloseTo(GPT_LOW_ONE_TAP_USD * 2, 4);
+    });
+
+    it("image_job_id が null の行は、その行だけで1リクエスト扱い", () => {
+      // 同期経路(ゲスト・One-Tap 同期)と旧データ。まとめてしまうと過小計上になる
+      const syncRows = buildAiCostEstimate(
+        [
+          {
+            model: "gpt-image-2-low-1k",
+            created_at: "2026-07-25T01:00:00.000Z",
+            generation_type: "one_tap_style",
+            image_job_id: null,
+          },
+          {
+            model: "gpt-image-2-low-1k",
+            created_at: "2026-07-25T02:00:00.000Z",
+            generation_type: "one_tap_style",
+            image_job_id: null,
+          },
+        ],
+        CURRENT_START,
+        NOW
+      );
+
+      expect(syncRows.totalUsd).toBeCloseTo(GPT_LOW_ONE_TAP_USD * 2, 4);
     });
 
     it("Gemini にはテキストぶんを乗せない（単価未確認のため）", () => {
@@ -170,10 +241,11 @@ describe("buildAiCostEstimate", () => {
   it("日別バケットをプロバイダ別に分けて積み上げる", () => {
     const result = buildAiCostEstimate(
       [
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-24T05:00:00.000Z" },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-24T05:00:00.000Z", generation_type: null },
         {
           model: "gemini-3.1-flash-image-preview-1024",
           created_at: "2026-07-26T05:00:00.000Z",
+          generation_type: null,
         },
       ],
       CURRENT_START,
@@ -193,7 +265,7 @@ describe("buildAiCostEstimate", () => {
     const result = buildAiCostEstimate(
       [
         // 2026-07-24T15:00Z = 2026-07-25 00:00 JST
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-24T15:00:00.000Z" },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-24T15:00:00.000Z", generation_type: null },
       ],
       CURRENT_START,
       NOW
@@ -209,8 +281,8 @@ describe("buildAiCostEstimate", () => {
   it("期間外の生成は集計しない", () => {
     const result = buildAiCostEstimate(
       [
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-01T00:00:00.000Z" },
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T00:00:00.000Z" },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-01T00:00:00.000Z", generation_type: null },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T00:00:00.000Z", generation_type: null },
       ],
       CURRENT_START,
       NOW
@@ -223,9 +295,9 @@ describe("buildAiCostEstimate", () => {
   it("単価未設定(nullと未知モデル)は金額に含めず件数だけ返す", () => {
     const result = buildAiCostEstimate(
       [
-        { model: null, created_at: "2026-07-25T00:00:00.000Z" },
-        { model: "unknown-model-x", created_at: "2026-07-25T00:00:00.000Z" },
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T00:00:00.000Z" },
+        { model: null, created_at: "2026-07-25T00:00:00.000Z", generation_type: null },
+        { model: "unknown-model-x", created_at: "2026-07-25T00:00:00.000Z", generation_type: null },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T00:00:00.000Z", generation_type: null },
       ],
       CURRENT_START,
       NOW
@@ -240,10 +312,11 @@ describe("buildAiCostEstimate", () => {
   it("モデル別内訳は金額降順で、プロバイダラベルを持つ", () => {
     const result = buildAiCostEstimate(
       [
-        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T00:00:00.000Z" },
+        { model: "gpt-image-2-low-1k", created_at: "2026-07-25T00:00:00.000Z", generation_type: null },
         {
           model: "gemini-3.1-flash-image-preview-1024",
           created_at: "2026-07-25T00:00:00.000Z",
+          generation_type: null,
         },
       ],
       CURRENT_START,

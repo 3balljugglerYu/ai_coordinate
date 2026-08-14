@@ -10,6 +10,8 @@ import {
   USD_JPY_RATE_NOTE,
   usdToJpy,
   type AiCostProvider,
+  type AiInputCompleteness,
+  type AiRateBasis,
 } from "./ai-cost-rates";
 import type {
   DashboardAiCostEstimate,
@@ -22,17 +24,32 @@ type GenerationLike = {
   created_at: string;
   /**
    * プロンプトの推定トークン数を引くために使う。
-   * 未指定なら既定値（coordinate 相当）で見積もる。
+   * 見積もり精度がこれに依存するので**必須**にしてある（旧データは null）。
    */
-  generation_type?: string | null;
+  generation_type: string | null;
+  /**
+   * 入力ぶんをジョブ単位で1回だけ数えるために使う。
+   * `null` は同期経路・旧データで、その行だけで1リクエストとみなす。
+   */
+  image_job_id?: string | null;
 };
 
 /**
- * 期間内の生成記録から推定 AI 原価を集計する（ADR-001 / ADR-005）。
+ * 期間内の生成記録から推定 AI 原価を集計する（ADR-001 / ADR-005 / ADR-008）。
  *
- * 1生成の原価は「出力画像 ＋ 入力画像 ＋ プロンプト」の合計で数える。
+ * ## 数え方
+ *
+ * 1リクエストの原価は「出力画像 × 枚数 ＋ 入力画像 ＋ プロンプト」。
  * 出力ぶんだけを数えていた頃は、One-Tap Style の Low で実額の 1/3 しか
  * 出ていなかった（入力ぶんが原価の7割を占めるため）。
+ *
+ * ## 入力ぶんは画像の行数ぶん掛けてはいけない
+ *
+ * OpenAI 経路は `requested_image_count` を `n` として **1リクエストで複数枚**返し、
+ * そのあと RPC が枚数ぶんの `generated_images` を作る。`usage` はレスポンス単位の
+ * 1オブジェクトなので、入力画像とプロンプトの課金は**リクエストにつき1回**。
+ * 行ごとに足すと 4枚生成で入力ぶんが4倍に膨らむ。
+ * そのため `image_job_id` 単位で入力ぶんを1度だけ積む。
  *
  * 日別バケットは JST。単価表に無いモデル（旧データの null を含む）は
  * 金額に含めず件数だけ返し、カード側で「単価未設定」として明示する。
@@ -58,11 +75,19 @@ export function buildAiCostEstimate(
 
   const modelUsdTotals = new Map<
     string,
-    { provider: AiCostProvider; count: number; usd: number }
+    {
+      provider: AiCostProvider;
+      basis: AiRateBasis;
+      inputCompleteness: AiInputCompleteness;
+      count: number;
+      usd: number;
+    }
   >();
 
   let totalUsd = 0;
   let unknownModelCount = 0;
+  /** 入力ぶんを既に積んだジョブ。同じリクエストで返った2枚目以降は出力ぶんだけ数える。 */
+  const jobsWithInputCounted = new Set<string>();
 
   for (const generation of generations) {
     if (!isWithinDateRange(generation.created_at, currentStart, now)) {
@@ -71,7 +96,7 @@ export function buildAiCostEstimate(
 
     const cost = estimateGenerationCost(
       generation.model,
-      generation.generation_type ?? null
+      generation.generation_type
     );
 
     if (!cost) {
@@ -79,21 +104,32 @@ export function buildAiCostEstimate(
       continue;
     }
 
-    totalUsd += cost.usd;
+    // image_job_id が無い行(同期経路・旧データ)は、その行だけで1リクエスト扱い
+    const jobId = generation.image_job_id ?? null;
+    const isFirstOfJob = jobId === null || !jobsWithInputCounted.has(jobId);
+    if (jobId !== null) {
+      jobsWithInputCounted.add(jobId);
+    }
+
+    const usd = cost.outputUsd + (isFirstOfJob ? cost.inputUsd : 0);
+
+    totalUsd += usd;
 
     const modelKey = generation.model as string;
     const modelTotal = modelUsdTotals.get(modelKey) ?? {
       provider: cost.provider,
+      basis: cost.basis,
+      inputCompleteness: cost.inputCompleteness,
       count: 0,
       usd: 0,
     };
     modelTotal.count += 1;
-    modelTotal.usd += cost.usd;
+    modelTotal.usd += usd;
     modelUsdTotals.set(modelKey, modelTotal);
 
     const bucket = dayMap.get(toJstDateKey(generation.created_at));
     if (bucket) {
-      const jpy = usdToJpy(cost.usd);
+      const jpy = usdToJpy(usd);
       if (cost.provider === "openai") {
         bucket.openaiJpy += jpy;
       } else {
@@ -120,6 +156,8 @@ export function buildAiCostEstimate(
       model,
       provider: total.provider,
       providerLabel: PROVIDER_LABELS[total.provider],
+      basis: total.basis,
+      inputCompleteness: total.inputCompleteness,
       count: total.count,
       totalUsd: Number(total.usd.toFixed(4)),
       totalJpy: roundJpy(usdToJpy(total.usd)),

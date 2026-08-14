@@ -40,6 +40,18 @@ export type AiCostProvider = "openai" | "google";
  */
 export type AiRateBasis = "measured" | "published" | "derived";
 
+/**
+ * 入力ぶん（入力画像＋プロンプト）をどこまで数えられているか。
+ *
+ * `basis` とは**別の軸**として持つ。出力ぶんが公表値で正確でも、
+ * 入力ぶんが未計上なら合計は実額に届かないため、片方だけでは実態を表せない。
+ *
+ * - `counted` 入力画像・プロンプトとも計上している（OpenAI）
+ * - `partial` 一部だけ計上している（Gemini: テキスト単価が未確認で常に未計上。
+ *   flash 系は入力画像の公表もない）
+ */
+export type AiInputCompleteness = "counted" | "partial";
+
 export interface AiModelRate {
   /** 出力画像ぶんの1生成あたり USD */
   outputUsd: number;
@@ -50,6 +62,7 @@ export interface AiModelRate {
   inputImageUsd: number;
   provider: AiCostProvider;
   basis: AiRateBasis;
+  inputCompleteness: AiInputCompleteness;
 }
 
 /** OpenAI のテキスト入力単価（per 1M tokens）。 */
@@ -104,17 +117,20 @@ const gptImage2 = (
     inputImageUsd: GPT_IMAGE_2_INPUT_IMAGE_USD,
     provider: "openai",
     basis: tier === "1k" ? "measured" : "derived",
+    inputCompleteness: "counted",
   };
 };
 
-const gemini = (
-  outputUsd: number,
-  inputImageUsd = 0
-): AiModelRate => ({
+/**
+ * Gemini は出力ぶんの公表値のみ。テキスト入力単価が未確認で常に未計上、
+ * 入力画像も pro 以外は公表がないため `partial` 固定。
+ */
+const gemini = (outputUsd: number, inputImageUsd = 0): AiModelRate => ({
   outputUsd,
   inputImageUsd,
   provider: "google",
   basis: "published",
+  inputCompleteness: "partial",
 });
 
 /** gemini-3-pro-image の入力画像は 560 tok = $0.0011/枚（公表値）。他モデルは未公表。 */
@@ -217,11 +233,17 @@ export function getPromptTextTokens(generationType: string | null): number {
 export interface AiGenerationCost {
   provider: AiCostProvider;
   basis: AiRateBasis;
-  /** 出力画像ぶん */
+  inputCompleteness: AiInputCompleteness;
+  /** 出力画像ぶん。**画像1枚ごと**にかかる */
   outputUsd: number;
-  /** 入力ぶん（入力画像 ＋ プロンプト） */
+  /**
+   * 入力ぶん（入力画像 ＋ プロンプト）。
+   *
+   * **リクエスト1回につき1度だけ**かかる。OpenAI は `n` 枚をまとめて1リクエストで
+   * 返すため、生成画像の行数ぶん掛けてはいけない（呼び出し側でジョブ単位に寄せる）。
+   */
   inputUsd: number;
-  /** 合計 */
+  /** 1リクエスト＝1枚のときの合計 */
   usd: number;
 }
 
@@ -249,6 +271,7 @@ export function estimateGenerationCost(
   return {
     provider: rate.provider,
     basis: rate.basis,
+    inputCompleteness: rate.inputCompleteness,
     outputUsd: rate.outputUsd,
     inputUsd,
     usd: rate.outputUsd + inputUsd,

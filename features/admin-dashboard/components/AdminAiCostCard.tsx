@@ -12,12 +12,34 @@ import {
 import type {
   DashboardAiCostDayPoint,
   DashboardAiCostEstimate,
+  DashboardAiCostModelItem,
 } from "../lib/dashboard-types";
 import { PROVIDER_CHART_COLORS } from "../lib/ai-cost-rates";
 import {
   ScrollingStackedBarChart,
   type StackedBarSeries,
 } from "./ScrollingStackedBarChart";
+
+/**
+ * 単価の根拠のラベル。
+ * 外挿値や入力ぶん未計上を確定値と読み違えると、原価を見た運用判断を誤るため出す。
+ */
+const RATE_BASIS_LABELS: Record<
+  DashboardAiCostModelItem["basis"],
+  string
+> = {
+  measured: "実測",
+  published: "公表値",
+  derived: "外挿",
+};
+
+function RateNoteChip({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] leading-none text-slate-500">
+      {label}
+    </span>
+  );
+}
 
 function formatJpy(value: number): string {
   return `¥${Math.round(value).toLocaleString("ja-JP")}`;
@@ -105,6 +127,11 @@ export default function AdminAiCostCard({
         <CardDescription className="text-sm leading-6 text-slate-600">
           画像生成モデルの単価 × 生成数による推定額です（{estimate.rateNote}）。
           テキスト生成など画像以外の API 利用は含みません。
+          モデルごとの札は単価の確からしさで、
+          <strong className="font-medium text-slate-700">外挿</strong>
+          は実測しておらず目安です。
+          <strong className="font-medium text-slate-700">入力ぶん未計上</strong>
+          が付いた行は、実額がこれより高くなります。
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
@@ -169,6 +196,12 @@ export default function AdminAiCostCard({
                     <p className="text-xs text-slate-500">
                       {item.providerLabel} ·{" "}
                       {item.count.toLocaleString("ja-JP")}件
+                    </p>
+                    <p className="mt-1 flex flex-wrap gap-1">
+                      <RateNoteChip label={RATE_BASIS_LABELS[item.basis]} />
+                      {item.inputCompleteness === "partial" ? (
+                        <RateNoteChip label="入力ぶん未計上" />
+                      ) : null}
                     </p>
                   </div>
                 </div>

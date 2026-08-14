@@ -107,6 +107,23 @@ Low の原価はほぼ全部が入力ぶんで、出力画像は ¥0.80 しか�
   しても出力トークンは増えなかった」ことから、**ピクセル比例の仮定は過大側に
   振れている可能性が高い**。精度が要るようになったら実測して置き換える。
 
+### ADR-008: 入力ぶんはジョブ単位で1回だけ数える
+
+- **Context**: OpenAI 経路は `requested_image_count` を `n` として**1リクエストで複数枚**返し
+  （`openai-image.ts:281` の `form.append("n", ...)`）、そのあと RPC が枚数ぶんの
+  `generated_images` を作る（`image_job_result_index`）。`usage` はレスポンス単位の
+  1オブジェクトなので、入力画像とプロンプトの課金はリクエストにつき1回。
+  画像行ごとに合計を足すと、4枚生成で入力ぶんが4倍に膨らむ。
+- **Decision**: `image_job_id` 単位で入力ぶんを1度だけ積み、出力ぶんは画像行ごとに積む。
+  `image_job_id` が null の行（同期経路・旧データ）は、その行だけで1リクエストとみなす。
+- **Reason**: レビュー指摘。実データでは gpt-image-2 の 3,379行のうち複数枚ジョブ由来は
+  29行（0.86%・直近30日は0件）で現時点の影響は小さいが、原価を正す目的の PR で
+  数え方が間違っているのは筋が通らない。有料ユーザーが増えるほど効いてくる。
+- **Consequence**: 集計に `image_job_id` の select が要る。
+  なお**入力画像が2枚の経路（inspire / One-Tap dual）と Creator Looks の2段階生成は、
+  逆に過小計上のまま**。入力画像の枚数を保存する列が無く、直近30日の inspire が
+  2件しかないため今回は見送った（残タスク参照）。
+
 ### ADR-007: Medium は無課金にも開放し、High は有料のまま残す
 
 - **Context**: 無課金ユーザーの品質選択を広げたい。ただし原価と有料プランへの影響が懸念。
@@ -129,7 +146,10 @@ Low の原価はほぼ全部が入力ぶんで、出力画像は ¥0.80 しか�
 | ファイル | 操作 | 変更内容 |
 |---|---|---|
 | `features/admin-dashboard/lib/ai-cost-rates.ts` | 修正 | 原価を3要素に分解。gpt-image-2 は実測値。未登録モデルを全登録。`estimateGenerationCost()` を追加 |
-| `features/admin-dashboard/lib/build-ai-cost.ts` | 修正 | `generation_type` を受け取り、入力ぶんを含めて集計 |
+| `features/admin-dashboard/lib/build-ai-cost.ts` | 修正 | `generation_type`（必須）と `image_job_id` を受け取り、入力ぶんをジョブ単位で1回だけ積む |
+| `features/admin-dashboard/lib/dashboard-types.ts` | 修正 | モデル別内訳に `basis` / `inputCompleteness` を追加 |
+| `features/admin-dashboard/components/AdminAiCostCard.tsx` | 修正 | モデル別行に「実測 / 公表値 / 外挿」「入力ぶん未計上」の札を出す |
+| `features/admin-dashboard/lib/get-admin-dashboard-data.ts` | 修正 | `image_job_id` を select。`generation_type` を必須化 |
 | `features/generation/lib/model-config.ts` | 修正 | `FREE_PLAN_ALLOWED_MODELS` に `gpt-image-2-medium-1k` を追加 |
 | `tests/unit/features/admin-dashboard/build-ai-cost.test.ts` | 修正 | 入力ぶんの計上・generation_type 別・単価表の網羅性を検証 |
 | `tests/unit/features/generation/model-config.test.ts` | 修正 | Medium 開放と High ロック維持を検証 |
@@ -159,3 +179,12 @@ DB マイグレーションなし。UI の変更なし（品質セレクタの�
 3. **`generation_type` が null の行**（直近30日で37件）— 単価未設定として金額から漏れている
 4. **`gpt-image-2-high-4k` の値付け** — 外挿値では ¥155/生成に対し 130pc（¥1.19/pc）で、
    他の帯（¥0.34〜0.70）から大きく外れる。実測して確かめる価値がある
+5. **入力画像が2枚の経路** — inspire / One-Tap dual は入力画像を2枚送るが、
+   単価表は1枚ぶんしか数えていない（**過小計上**）。枚数を保存する列が無く、
+   `image_jobs.style_reference_image_url` の有無からの間接推定しかできない。
+   直近30日の inspire が2件のため見送った
+6. **Creator Looks の2段階生成** — 1ジョブ内で OpenAI を2回呼ぶが、
+   ADR-008 のジョブ単位集計では入力ぶんを1回しか数えない（**過小計上**）。
+   本番では機能自体が非公開のため実害はないが、公開するなら要対応
+7. **worker で `usage` を保存する** — 上記5・6を含め、推定をやめて実測値を
+   正本にできる。`generated_images` / `image_jobs` にトークン列が無いのが根本原因
