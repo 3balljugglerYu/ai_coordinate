@@ -283,14 +283,27 @@ export function PostList({
       開いていると出せず次回へ持ち越すため、案内フラグだけで判定すると
       出せなかった端末を毎回上書きしてしまう。
     */
+    const isFirstVisitAfterRollout = shouldForceFeedView();
     const isForcedSwitch =
-      storedMode === HOME_VIEW_MODES.grid && shouldForceFeedView();
+      isFirstVisitAfterRollout && storedMode === HOME_VIEW_MODES.grid;
     const nextMode = isForcedSwitch ? HOME_VIEW_MODES.feed : storedMode;
 
     setViewMode(nextMode);
+
+    /*
+      フラグの意味は「切り替えた」ではなく「**この端末では移行処理を済ませた**」。
+
+      切り替えたときだけ立てると、保存が無い端末(新規・未ログイン)は
+      フラグが立たないまま残り、**あとからグリッドを選んだ瞬間に対象になって
+      設定を奪われる**。その人にとっては何も新しくなっていないのに
+      「表示が新しくなりました」まで出てしまう。
+    */
+    if (isFirstVisitAfterRollout) {
+      markForcedFeedView();
+    }
+
     if (isForcedSwitch) {
       setHomeViewMode(nextMode);
-      markForcedFeedView();
       setShowSwitchNotice(shouldShowHomeViewSwitchNotice());
     }
 

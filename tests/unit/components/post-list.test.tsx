@@ -450,11 +450,29 @@ describe("PostList", () => {
       render(<PostList initialPosts={initialPosts} skipInitialFetch />);
 
       await screen.findByTestId("post-feed-card-initial-1");
-      // 強制切替をしていないので、保存もしない
+      // 強制切替をしていないので、表示形式は保存しない
       expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBeNull();
+      // ただし「移行処理は済ませた」ことは記録する。
+      // ここを記録しないと、あとからグリッドを選んだ瞬間に対象になってしまう
       expect(
         window.localStorage.getItem("persta-ai:home-view-forced-feed-v1")
-      ).toBeNull();
+      ).toBe("1");
+    });
+
+    test("新規ユーザーが後からグリッドを選んでも_奪われない", async () => {
+      window.localStorage.clear();
+      const { unmount } = render(
+        <PostList initialPosts={initialPosts} skipInitialFetch />
+      );
+      await screen.findByTestId("post-feed-card-initial-1");
+      unmount();
+
+      // 「グリッドの方が好き」と自分で選んだ
+      setHomeViewMode("grid");
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("masonry")).toBeInTheDocument();
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("grid");
     });
 
     test("グリッドを選んでいた端末は_一度だけフィードに切り替える", async () => {
