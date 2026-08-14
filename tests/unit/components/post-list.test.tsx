@@ -19,6 +19,10 @@ import {
   clearHomeFeedRestoreSnapshot,
   saveHomeFeedRestoreSnapshot,
 } from "@/features/posts/lib/home-feed-restore";
+import {
+  markHomeViewSwitchNoticeSeen,
+  setHomeViewMode,
+} from "@/features/posts/lib/home-view-preference";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -223,6 +227,14 @@ describe("PostList", () => {
       },
     } as unknown as ReturnType<typeof createClient>);
     consumePendingHomePostRefreshMock.mockImplementation(() => pendingPayload);
+    /*
+      既定をフィードへ変えたのに加え、案内が未表示の端末は保存値を無視して
+      1回だけフィードへ強制切替する。既存テストはグリッド前提で書かれているので、
+      「案内済み・グリッド保存済み」の状態に揃える。
+      強制切替そのものは専用のテストで確かめる。
+    */
+    markHomeViewSwitchNoticeSeen();
+    setHomeViewMode("grid");
   });
 
   afterEach(() => {
@@ -379,7 +391,11 @@ describe("PostList", () => {
     );
 
     expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
-    expect(fetchMock).not.toHaveBeenCalled();
+    // 初期描画は既定(フィード)なので prompt-actions は飛ぶ。
+    // ここで見たいのは「投稿一覧を取り直していない」こと
+    expect(
+      fetchMock.mock.calls.filter((c) => String(c[0]).startsWith("/api/posts?"))
+    ).toHaveLength(0);
 
     pendingPayload = {
       action: "posted",
@@ -401,9 +417,14 @@ describe("PostList", () => {
   describe("表示形式のトグル", () => {
     beforeEach(() => {
       window.localStorage.clear();
+      markHomeViewSwitchNoticeSeen();
+      // 既定はフィードになったが、以下のテストはグリッド始点を前提にしている。
+      // 既定そのものは専用のテストで確かめる
+      setHomeViewMode("grid");
     });
 
-    test("既定はグリッド_Masonryで描画しNEWバッジを出す", async () => {
+    test("案内済みで保存がグリッドならグリッドのまま", async () => {
+      setHomeViewMode("grid");
       render(<PostList initialPosts={initialPosts} skipInitialFetch />);
 
       expect(await screen.findByTestId("masonry")).toBeInTheDocument();
@@ -411,25 +432,67 @@ describe("PostList", () => {
         "aria-pressed",
         "true"
       );
-      expect(screen.getByText("NEW")).toBeInTheDocument();
+      // NEW バッジは役目を終えた(既定がフィードになったため)
+      expect(screen.queryByText("NEW")).not.toBeInTheDocument();
     });
 
-    test("フィードに切り替えるとMasonryを使わず端末に記憶しNEWバッジが消える", async () => {
+    test("案内が未表示なら_保存がグリッドでもフィードに切り替える", async () => {
+      /*
+        既定値を変えるだけでは、過去にトグルを押した端末は保存値が優先されて
+        変わらない。まさに関心のある層(自分でグリッドを選んだ人)が
+        母数から抜けるため、1回だけ上書きする。
+      */
+      window.localStorage.clear();
+      setHomeViewMode("grid");
+
       render(<PostList initialPosts={initialPosts} skipInitialFetch />);
-      await screen.findByTestId("masonry");
 
-      fireEvent.click(screen.getByLabelText("フィード表示"));
-
+      await screen.findByTestId("post-feed-card-initial-1");
       expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
-      // 1列ではフィード用カードに差し替わる(グリッドの PostCard は使わない)
-      expect(screen.getByTestId("post-feed-card-initial-1")).toBeInTheDocument();
-      expect(screen.queryByTestId("post-card-initial-1")).not.toBeInTheDocument();
+      // 上書きは保存にも反映する(次回以降はフィードで開く)
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("feed");
+    });
+
+    test("強制切替は自発的な切替として記録しない", async () => {
+      /*
+        view_mode_changed は「自分で選んだ」記録として使う。運営都合の切替を
+        混ぜると全員が1回 grid→feed した形になり、
+        「戻した人の割合」が算出できなくなる(ADR-004)。
+      */
+      window.localStorage.clear();
+      setHomeViewMode("grid");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("post-feed-card-initial-1");
+
+      expect(trackViewModeChanged).not.toHaveBeenCalled();
+      // 分母は切替後の表示形式で記録する
+      expect(trackHomeViewed).toHaveBeenCalledWith("feed");
+    });
+
+    test("既定はフィード_Masonryを使わずフィード用カードで描画する", async () => {
+      window.localStorage.removeItem("persta-ai:home-view-mode");
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("post-feed-card-initial-1")).toBeInTheDocument();
+      expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
       expect(screen.getByLabelText("フィード表示")).toHaveAttribute(
         "aria-pressed",
         "true"
       );
       expect(screen.queryByText("NEW")).not.toBeInTheDocument();
-      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("feed");
+    });
+
+    test("グリッドへ戻すとMasonryに戻り端末に記憶する", async () => {
+      window.localStorage.removeItem("persta-ai:home-view-mode");
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+      await screen.findByTestId("post-feed-card-initial-1");
+
+      fireEvent.click(screen.getByLabelText("グリッド表示"));
+
+      expect(screen.getByTestId("masonry")).toBeInTheDocument();
+      expect(screen.queryByTestId("post-feed-card-initial-1")).not.toBeInTheDocument();
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("grid");
     });
 
     test("記憶済みのフィードは次回訪問時も復元される", async () => {
@@ -525,6 +588,10 @@ describe("PostList", () => {
     beforeEach(() => {
       // 直前の describe が表示形式を feed のまま残すため、グリッド前提に戻す
       window.localStorage.clear();
+      markHomeViewSwitchNoticeSeen();
+      // 既定はフィードになったが、以下のテストはグリッド始点を前提にしている。
+      // 既定そのものは専用のテストで確かめる
+      setHomeViewMode("grid");
     });
 
     afterEach(() => {

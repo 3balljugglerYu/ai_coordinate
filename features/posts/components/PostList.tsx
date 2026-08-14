@@ -35,9 +35,10 @@ import {
   HOME_VIEW_MODES,
   markHomeFeedNewBadgeSeen,
   setHomeViewMode,
-  shouldShowHomeFeedNewBadge,
+  shouldShowHomeViewSwitchNotice,
   type HomeViewMode,
 } from "../lib/home-view-preference";
+import { HomeViewSwitchNotice } from "./HomeViewSwitchNotice";
 import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { useFeedFollowStatus } from "../hooks/useFeedFollowStatus";
 import { useFeedPromptActions } from "../hooks/useFeedPromptActions";
@@ -132,6 +133,17 @@ export function PostList({
   // 初期値は既定(グリッド)にしてマウント後に localStorage から復元する。
   const [viewMode, setViewMode] = useState<HomeViewMode>(DEFAULT_HOME_VIEW_MODE);
   const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
+  // 既定をフィードへ切り替えたことの案内(スポットライト)。端末に1回だけ
+  const [showSwitchNotice, setShowSwitchNotice] = useState(false);
+  /*
+    端末の記憶から表示形式が確定したか。
+
+    初期描画は既定(フィード)なので、確定前に prompt-actions を取りに行くと
+    グリッドを選んでいる端末にも毎回無駄なリクエストが飛ぶ。
+    描画そのものは既定のまま進めて（フィード利用者にちらつきを出さない）、
+    問い合わせだけ確定後に回す。
+  */
+  const [isViewModeResolved, setIsViewModeResolved] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
   /*
     「サーバー描画ぶんより新しい newest を既に持っている」フラグ。
@@ -246,16 +258,31 @@ export function PostList({
     if (isSearchPage) {
       return;
     }
-    const storedMode = getHomeViewMode();
-    setViewMode(storedMode);
-    // 分母(ADR-006)。セッション内で表示形式ごとに1回だけ送られる。
-    trackHomeViewed(storedMode);
-    if (storedMode === HOME_VIEW_MODES.feed) {
-      // 既にフィードを使っている端末には NEW を出さない
-      markHomeFeedNewBadgeSeen();
-      return;
+    /*
+      切替の案内をまだ出していない端末は、**保存値を無視して1回だけ**
+      フィードにする。既定値を変えるだけでは、過去にトグルを押した端末は
+      保存値が優先されて変わらず、まさに関心のある層が母数から抜ける。
+
+      このときの切替は `trackViewModeChanged` を呼ばない。運営都合の切替を
+      混ぜると全員が1回 grid→feed した記録になり、「自分で戻した人の割合」が
+      出せなくなる（ADR-004）。
+    */
+    const needsSwitchNotice = shouldShowHomeViewSwitchNotice();
+    const nextMode = needsSwitchNotice
+      ? HOME_VIEW_MODES.feed
+      : getHomeViewMode();
+
+    setViewMode(nextMode);
+    if (needsSwitchNotice) {
+      setHomeViewMode(nextMode);
+      setShowSwitchNotice(true);
     }
-    setShowViewModeNewBadge(shouldShowHomeFeedNewBadge(Date.now()));
+
+    setIsViewModeResolved(true);
+
+    // 分母(ADR-006)。セッション内で表示形式ごとに1回だけ送られる。
+    trackHomeViewed(nextMode);
+    markHomeFeedNewBadgeSeen();
   }, [isSearchPage]);
 
   const isFeedView = viewMode === HOME_VIEW_MODES.feed && !isSearchPage;
@@ -263,10 +290,10 @@ export function PostList({
   // (一覧の payload には載らない。ADR-005)。
   const feedPostIds = useMemo(
     () =>
-      isFeedView
+      isFeedView && isViewModeResolved
         ? posts.map((post) => post.id).filter((id): id is string => Boolean(id))
         : [],
-    [isFeedView, posts]
+    [isFeedView, isViewModeResolved, posts]
   );
   const { summaries: promptActions, styleLinks } = useFeedPromptActions(
     feedPostIds,
@@ -662,7 +689,12 @@ export function PostList({
         )
       ) : (
         <>
-          {viewMode === HOME_VIEW_MODES.feed ? (
+          {/*
+            描画の判定は isFeedView(検索画面を除外済み)を使う。
+            viewMode を直接見ると、既定がフィードになった今は
+            トグルを出していない検索画面までフィードで描画される
+          */}
+          {isFeedView ? (
             // フィード: スマホもPCも1列。読みやすさのため最大幅を絞って中央寄せする。
             // 幅の正本は FEED_CARD_MAX_WIDTH_PX(Tailwind の任意値はリテラルが要るため直書き)
             <div className="mx-auto flex max-w-[600px] flex-col">
@@ -754,6 +786,10 @@ export function PostList({
           }
         }}
         redirectTo={currentPath}
+      />
+      <HomeViewSwitchNotice
+        open={showSwitchNotice}
+        onClose={() => setShowSwitchNotice(false)}
       />
       {postBonus ? (
         <PostBonusModal
