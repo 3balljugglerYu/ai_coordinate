@@ -20,6 +20,7 @@ import {
   saveHomeFeedRestoreSnapshot,
 } from "@/features/posts/lib/home-feed-restore";
 import {
+  markForcedFeedView,
   markHomeViewSwitchNoticeSeen,
   setHomeViewMode,
 } from "@/features/posts/lib/home-view-preference";
@@ -234,6 +235,7 @@ describe("PostList", () => {
       強制切替そのものは専用のテストで確かめる。
     */
     markHomeViewSwitchNoticeSeen();
+    markForcedFeedView();
     setHomeViewMode("grid");
   });
 
@@ -418,12 +420,13 @@ describe("PostList", () => {
     beforeEach(() => {
       window.localStorage.clear();
       markHomeViewSwitchNoticeSeen();
+      markForcedFeedView();
       // 既定はフィードになったが、以下のテストはグリッド始点を前提にしている。
       // 既定そのものは専用のテストで確かめる
       setHomeViewMode("grid");
     });
 
-    test("案内済みで保存がグリッドならグリッドのまま", async () => {
+    test("上書き済みで保存がグリッドならグリッドのまま", async () => {
       setHomeViewMode("grid");
       render(<PostList initialPosts={initialPosts} skipInitialFetch />);
 
@@ -436,7 +439,25 @@ describe("PostList", () => {
       expect(screen.queryByText("NEW")).not.toBeInTheDocument();
     });
 
-    test("案内が未表示なら_保存がグリッドでもフィードに切り替える", async () => {
+    test("保存が無い端末は上書きせず_案内も出さない(新規・未ログイン)", async () => {
+      /*
+        既定が feed になった時点でフィードで開くので、上書きの必要が無い。
+        ここを分けないと初めて来た人にも「表示が新しくなりました」が出て、
+        チュートリアル開始モーダルとも重なる。
+      */
+      window.localStorage.clear();
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-feed-card-initial-1");
+      // 強制切替をしていないので、保存もしない
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBeNull();
+      expect(
+        window.localStorage.getItem("persta-ai:home-view-forced-feed-v1")
+      ).toBeNull();
+    });
+
+    test("グリッドを選んでいた端末は_一度だけフィードに切り替える", async () => {
       /*
         既定値を変えるだけでは、過去にトグルを押した端末は保存値が優先されて
         変わらない。まさに関心のある層(自分でグリッドを選んだ人)が
@@ -451,6 +472,32 @@ describe("PostList", () => {
       expect(screen.queryByTestId("masonry")).not.toBeInTheDocument();
       // 上書きは保存にも反映する(次回以降はフィードで開く)
       expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("feed");
+      // 強制切替は案内とは別に記録する
+      expect(
+        window.localStorage.getItem("persta-ai:home-view-forced-feed-v1")
+      ).toBe("1");
+    });
+
+    test("一度上書きした端末は_自分でグリッドに戻しても再上書きしない", async () => {
+      /*
+        案内は他のモーダルが開いていると出せず次回へ持ち越す。案内フラグだけで
+        判定していると、出せなかった端末では毎回上書きされ、
+        グリッドに戻しても訪れるたびに奪われる。
+      */
+      window.localStorage.clear();
+      setHomeViewMode("grid");
+      const { unmount } = render(
+        <PostList initialPosts={initialPosts} skipInitialFetch />
+      );
+      await screen.findByTestId("post-feed-card-initial-1");
+      unmount();
+
+      // ユーザーが自分でグリッドに戻した状態を作る
+      setHomeViewMode("grid");
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("masonry")).toBeInTheDocument();
+      expect(window.localStorage.getItem("persta-ai:home-view-mode")).toBe("grid");
     });
 
     test("強制切替は自発的な切替として記録しない", async () => {
@@ -589,6 +636,7 @@ describe("PostList", () => {
       // 直前の describe が表示形式を feed のまま残すため、グリッド前提に戻す
       window.localStorage.clear();
       markHomeViewSwitchNoticeSeen();
+      markForcedFeedView();
       // 既定はフィードになったが、以下のテストはグリッド始点を前提にしている。
       // 既定そのものは専用のテストで確かめる
       setHomeViewMode("grid");

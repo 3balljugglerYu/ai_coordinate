@@ -55,6 +55,18 @@ export function HomeViewSwitchNotice({
     let destroy: (() => void) | null = null;
 
     const run = async () => {
+      /*
+        既にモーダルが開いているときは出さない（次回に持ち越す）。
+
+        driver.js のオーバーレイは z-index が極端に高く、開いている
+        ダイアログを覆ってしまう。ホームではチュートリアル開始モーダルや
+        ポップアップバナーが出ることがあり、重なると相手を操作できなくなる。
+        「案内が1回遅れる」より「他の導線を潰す」方がはるかに悪い。
+      */
+      if (document.querySelector('[role="dialog"]')) {
+        return;
+      }
+
       // 対象が描画される前に呼ぶと何も指せないので、要素の出現を待つ
       const target = document.querySelector<HTMLElement>(
         `[data-tour-id="${HOME_VIEW_TOGGLE_TOUR_ID}"]`

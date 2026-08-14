@@ -30,6 +30,15 @@ const NEW_BADGE_SEEN_KEY = "persta-ai:home-feed-badge-seen";
  * もう一度案内したくなったら `-v2` にすれば再実行できる。
  */
 const SWITCH_NOTICE_SEEN_KEY = "persta-ai:home-view-switch-notice-v1";
+/**
+ * 強制切替を済ませたか。**案内済みとは別に持つ**。
+ *
+ * 案内は「対象が描画されていない」「他のモーダルが開いている」などで
+ * 出せないことがあり、その場合は次回に持ち越す。案内フラグだけで判定すると、
+ * 出せなかった端末では**毎回フィードへ上書き**され、
+ * 自分でグリッドに戻しても訪れるたびに戻されてしまう。
+ */
+const FORCED_FEED_KEY = "persta-ai:home-view-forced-feed-v1";
 
 export const DEFAULT_HOME_VIEW_MODE: HomeViewMode = HOME_VIEW_MODES.feed;
 
@@ -94,6 +103,34 @@ export function shouldShowHomeViewSwitchNotice(): boolean {
     return window.localStorage.getItem(SWITCH_NOTICE_SEEN_KEY) !== "1";
   } catch {
     return false;
+  }
+}
+
+/**
+ * この端末をまだフィードへ強制切替していないか。
+ * localStorage が読めない環境では false(切り替えない)。判定できないまま
+ * 上書きすると、毎回ユーザーの選択を奪うことになる。
+ */
+export function shouldForceFeedView(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(FORCED_FEED_KEY) !== "1";
+  } catch {
+    return false;
+  }
+}
+
+/** 強制切替を済ませた(以後は上書きしない)。 */
+export function markForcedFeedView(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+  try {
+    window.localStorage.setItem(FORCED_FEED_KEY, "1");
+  } catch {
+    // 書けない環境では shouldForceFeedView() が false を返すので繰り返さない
   }
 }
 

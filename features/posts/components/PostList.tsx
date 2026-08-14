@@ -35,6 +35,8 @@ import {
   HOME_VIEW_MODES,
   markHomeFeedNewBadgeSeen,
   setHomeViewMode,
+  markForcedFeedView,
+  shouldForceFeedView,
   shouldShowHomeViewSwitchNotice,
   type HomeViewMode,
 } from "../lib/home-view-preference";
@@ -130,7 +132,7 @@ export function PostList({
   const [pendingHomePostRefresh, setPendingHomePostRefresh] =
     useState<PendingHomePostRefresh | null>(null);
   // 表示形式は端末に記憶する。SSR とハイドレーション不一致を避けるため、
-  // 初期値は既定(グリッド)にしてマウント後に localStorage から復元する。
+  // 初期値は既定(フィード)にして、マウント後に localStorage から復元する。
   const [viewMode, setViewMode] = useState<HomeViewMode>(DEFAULT_HOME_VIEW_MODE);
   const [showViewModeNewBadge, setShowViewModeNewBadge] = useState(false);
   // 既定をフィードへ切り替えたことの案内(スポットライト)。端末に1回だけ
@@ -267,15 +269,29 @@ export function PostList({
       混ぜると全員が1回 grid→feed した記録になり、「自分で戻した人の割合」が
       出せなくなる（ADR-004）。
     */
-    const needsSwitchNotice = shouldShowHomeViewSwitchNotice();
-    const nextMode = needsSwitchNotice
-      ? HOME_VIEW_MODES.feed
-      : getHomeViewMode();
+    const storedMode = getHomeViewMode();
+    /*
+      上書きするのは「**自分でグリッドを選んだ端末**」だけ。
+
+      保存が無い端末（新規・未ログイン、および一度もトグルを触っていない
+      既存ユーザー）は、既定が feed になった時点でフィードで開くので
+      上書きの必要が無い。ここを分けないと、初めて来た人にまで
+      「表示が新しくなりました」が出てしまい、
+      チュートリアル開始モーダルとも重なる。
+
+      強制切替の記録は案内とは別のフラグに持つ。案内は他のモーダルが
+      開いていると出せず次回へ持ち越すため、案内フラグだけで判定すると
+      出せなかった端末を毎回上書きしてしまう。
+    */
+    const isForcedSwitch =
+      storedMode === HOME_VIEW_MODES.grid && shouldForceFeedView();
+    const nextMode = isForcedSwitch ? HOME_VIEW_MODES.feed : storedMode;
 
     setViewMode(nextMode);
-    if (needsSwitchNotice) {
+    if (isForcedSwitch) {
       setHomeViewMode(nextMode);
-      setShowSwitchNotice(true);
+      markForcedFeedView();
+      setShowSwitchNotice(shouldShowHomeViewSwitchNotice());
     }
 
     setIsViewModeResolved(true);

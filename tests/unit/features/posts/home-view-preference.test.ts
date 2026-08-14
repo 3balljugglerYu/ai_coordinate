@@ -9,6 +9,8 @@ import {
   shouldShowHomeFeedNewBadge,
   shouldShowHomeViewSwitchNotice,
   markHomeViewSwitchNoticeSeen,
+  shouldForceFeedView,
+  markForcedFeedView,
 } from "@/features/posts/lib/home-view-preference";
 
 describe("home-view-preference", () => {
@@ -50,6 +52,21 @@ describe("home-view-preference", () => {
       expect(shouldShowHomeFeedNewBadge(HOME_FEED_NEW_BADGE_DEADLINE - 1)).toBe(
         false
       );
+    });
+  });
+
+  describe("強制切替", () => {
+    test("未実施なら切り替える・一度実施したら切り替えない", () => {
+      expect(shouldForceFeedView()).toBe(true);
+      markForcedFeedView();
+      expect(shouldForceFeedView()).toBe(false);
+    });
+
+    test("案内フラグとは独立している", () => {
+      // 案内は他のモーダルが開いていると出せず次回へ持ち越す。
+      // 同じフラグで判定すると、出せなかった端末を毎回上書きしてしまう
+      markHomeViewSwitchNoticeSeen();
+      expect(shouldForceFeedView()).toBe(true);
     });
   });
 
@@ -100,6 +117,9 @@ describe("home-view-preference", () => {
       // 読めない環境で「未表示」と判定すると、訪れるたびに案内が出てしまう
       expect(() => markHomeViewSwitchNoticeSeen()).not.toThrow();
       expect(shouldShowHomeViewSwitchNotice()).toBe(false);
+      // 判定できないまま上書きすると、毎回ユーザーの選択を奪うことになる
+      expect(() => markForcedFeedView()).not.toThrow();
+      expect(shouldForceFeedView()).toBe(false);
     });
   });
 });
