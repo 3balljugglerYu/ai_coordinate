@@ -274,10 +274,9 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
       JOB_CREATE_RPC,
       expect.anything()
     );
-    expect(supabase.profilesBuilder.eq).toHaveBeenCalledWith(
-      "user_id",
-      "user-123"
-    );
+    // プラン取得は枚数計算のためだけに存在していたので、
+    // 複数枚生成の廃止(2026-08-15)に伴い問い合わせ自体が無くなった
+    expect(supabase.profilesBuilder.eq).not.toHaveBeenCalled();
     expect(supabase.rpc).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
@@ -307,8 +306,6 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     }).toMatchInlineSnapshot(`
       {
         "body": {
-          "acceptedImageCount": 1,
-          "batchMode": "openai_single_job",
           "jobId": "job-001",
           "status": "queued",
           "warning": "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。",
@@ -386,8 +383,6 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     }).toMatchInlineSnapshot(`
       {
         "body": {
-          "acceptedImageCount": 1,
-          "batchMode": "openai_single_job",
           "jobId": "job-xyz",
           "status": "queued",
         },
@@ -498,8 +493,6 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     }).toMatchInlineSnapshot(`
       {
         "body": {
-          "acceptedImageCount": 1,
-          "batchMode": "openai_single_job",
           "jobId": "job-openai-001",
           "status": "queued",
         },

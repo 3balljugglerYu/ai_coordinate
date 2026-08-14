@@ -862,7 +862,7 @@ export const idMessages = {
     statusTitle: "Langganan",
     inactiveTitle: "Kamu sedang menggunakan paket gratis",
     inactiveDescription:
-      "Berlangganan untuk membuka Percoin bulanan, lebih banyak generasi, dan batas gambar stock yang lebih besar.",
+      "Berlangganan untuk membuka Percoin bulanan, batas gambar stock yang lebih besar, dan pengali bonus lebih tinggi.",
     joinAction: "Lihat paket",
     monthlyPercoins: "{amount} Percoin setiap bulan",
     cancelAtPeriodEnd: "Dijadwalkan dibatalkan pada {date}",
@@ -878,7 +878,6 @@ export const idMessages = {
       year: "tahun",
     },
     yearlySavings: "Tagihan tahunan menghemat sekitar 10%",
-    maxGenerationCount: "Hingga {count} gambar per generasi",
     stockImageLimit: "Batas gambar stock: {count}",
     bonusMultiplier: "Bonus posting/login: {multiplier}x",
     fullModelAccess: "Gunakan model, tingkat kualitas, dan ukuran output apa pun saat membuat",
@@ -950,11 +949,9 @@ export const idMessages = {
     },
     upsellTitle: "Fitur ini memerlukan paket berbayar",
     upsellDescription:
-      "Tingkatkan paketmu untuk membuka lebih banyak model, ukuran output, dan jumlah generasi.",
+      "Tingkatkan paketmu untuk membuka lebih banyak model dan ukuran output.",
     laterAction: "Nanti",
     seePlansAction: "Lihat harga",
-    generationLimitHint:
-      "Paketmu saat ini memungkinkan hingga {count} gambar per generasi. Tingkatkan untuk menaikkan batas.",
     purchaseBannerTitle: "Pertimbangkan langganan dulu",
     purchaseBannerDescription:
       "Jika kamu menggunakan Persta secara rutin, langganan biasanya lebih hemat dibanding membeli Percoin satuan.",
@@ -1061,10 +1058,6 @@ export const idMessages = {
     guestSubmitFailed: "Pembuatan gagal. Silakan coba lagi sebentar.",
     guestRateLimitDailyMessage:
       "Kamu telah mencapai batas percobaan hari ini (1 per hari). Daftar untuk melanjutkan.",
-    countLabel: "Pilih berapa banyak gambar yang dihasilkan",
-    countSingle: "1 gambar",
-    countMultiple: "{count} gambar",
-    countCostDescription: "{count} gambar memerlukan {amount} Percoin",
     generatingButton: "Mulai styling",
     generatingButtonLoading: "Menghasilkan...",
     missingPrompt: "Masukkan deskripsi outfit.",
@@ -1952,7 +1945,6 @@ export const idMessages = {
     formDescription:
       "Kami pertahankan sudut, pose, outfit, dan latar template, dan hanya mengganti karakternya dengan milikmu.",
     formImageLabel: "Gambar karakter (PNG / JPEG / WebP / HEIC, hingga 10MB)",
-    formCountLabel: "Jumlah gambar",
     formModelLabel: "Model",
     formGenerateButton: "Hasilkan",
     formGenerating: "Menghasilkan...",

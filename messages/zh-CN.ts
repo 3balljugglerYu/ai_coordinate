@@ -859,7 +859,7 @@ export const zhCnMessages = {
     statusTitle: "订阅",
     inactiveTitle: "你目前使用的是免费方案",
     inactiveDescription:
-      "订阅后即可解锁每月 Percoin、更多生成次数和更大的素材库容量。",
+      "订阅后即可解锁每月 Percoin、更大的素材库容量和更高的奖励倍率。",
     joinAction: "查看方案",
     monthlyPercoins: "每月 {amount} Percoin",
     cancelAtPeriodEnd: "将于 {date} 取消",
@@ -875,7 +875,6 @@ export const zhCnMessages = {
       year: "年",
     },
     yearlySavings: "按年付款约可节省 10%",
-    maxGenerationCount: "每次生成最多 {count} 张",
     stockImageLimit: "素材库上限: {count}",
     bonusMultiplier: "发布/登录奖励: {multiplier} 倍",
     fullModelAccess: "生成时可使用全部模型、画质和输出尺寸",
@@ -947,11 +946,9 @@ export const zhCnMessages = {
     },
     upsellTitle: "此功能仅限付费方案",
     upsellDescription:
-      "升级方案后，可使用更多模型、输出尺寸与生成数量。",
+      "升级方案后，可使用更多模型与输出尺寸。",
     laterAction: "稍后再说",
     seePlansAction: "查看价格",
-    generationLimitHint:
-      "你当前的方案每次生成最多 {count} 张。升级即可提升上限。",
     purchaseBannerTitle: "先考虑订阅看看",
     purchaseBannerDescription:
       "如果你定期使用 Persta，相比逐次购买 Percoin，订阅通常更划算。",
@@ -1058,10 +1055,6 @@ export const zhCnMessages = {
     guestSubmitFailed: "生成失败，请稍后重试。",
     guestRateLimitDailyMessage:
       "已达到今日体验上限 (每日 1 次)。注册后可继续使用。",
-    countLabel: "请选择生成张数",
-    countSingle: "1 张",
-    countMultiple: "{count} 张",
-    countCostDescription: "{count} 张图片需要 {amount} Percoin",
     generatingButton: "开始造型",
     generatingButtonLoading: "生成中...",
     missingPrompt: "请输入搭配描述。",
@@ -1946,7 +1939,6 @@ export const zhCnMessages = {
     formDescription:
       "保留模板的角度、姿势、服装与背景，仅将角色替换为你的图片。",
     formImageLabel: "角色图片 (PNG / JPEG / WebP / HEIC，最大 10MB)",
-    formCountLabel: "生成数量",
     formModelLabel: "模型",
     formGenerateButton: "生成",
     formGenerating: "生成中...",

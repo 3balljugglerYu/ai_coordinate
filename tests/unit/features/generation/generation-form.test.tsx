@@ -392,7 +392,6 @@ describe("GenerationForm (new image source picker integration)", () => {
       expect(screen.queryByText("sourceImageTypeLabel")).toBeNull();
       expect(screen.queryByText("backgroundLabel")).toBeNull();
       expect(screen.queryByText("poseModeLabel")).toBeNull();
-      expect(screen.queryByText("countLabel")).toBeNull();
       // モデル選択(レンダリング品質・出力サイズを含む)は じゆうモードでも出る
       expect(screen.getByTestId("mock-model-controls")).toBeInTheDocument();
       // 画像アップロードとプロンプト欄も出る
@@ -424,7 +423,8 @@ describe("GenerationForm (new image source picker integration)", () => {
       expect(arg.prompt).toBe("自由な指示");
       expect(arg.sourceImage).toBeInstanceOf(File);
       expect(arg.backgroundMode).toBe("keep");
-      expect(arg.count).toBe(1);
+      // count は送らない(複数枚生成の廃止で onSubmit の型から消えた)
+      expect(arg.count).toBeUndefined();
       // モデルは選択値(未操作なので既定)を送る
       expect(arg.model).toBe(DEFAULT_GENERATION_MODEL);
       // 背景/ポーズ設定が無いので framingMode は送らない
@@ -435,7 +435,8 @@ describe("GenerationForm (new image source picker integration)", () => {
       render(<GenerationForm subscriptionPlan="free" onSubmit={() => {}} />);
       expect(screen.getByText("sourceImageTypeLabel")).toBeInTheDocument();
       expect(screen.getByText("backgroundLabel")).toBeInTheDocument();
-      expect(screen.getByText("countLabel")).toBeInTheDocument();
+      // 生成枚数の選択は 2026-08-15 に廃止(1回の生成は常に1枚)
+      expect(screen.queryByText("countLabel")).toBeNull();
       expect(screen.getByTestId("mock-model-controls")).toBeInTheDocument();
     });
   });

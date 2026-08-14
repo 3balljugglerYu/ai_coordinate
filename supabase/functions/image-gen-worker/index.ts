@@ -729,14 +729,6 @@ function getPercoinCost(model: string | null): number {
   return costs[normalized] ?? 20;
 }
 
-function getRequestedImageCount(job: { requested_image_count?: unknown }): number {
-  const requested = Number(job.requested_image_count ?? 1);
-  if (!Number.isInteger(requested) || requested < 1) {
-    return 1;
-  }
-  return Math.min(requested, 4);
-}
-
 // Creator Looks 2段階(衣装＋背景)の割引率。
 // features/generation/lib/model-config.ts の CREATOR_LOOKS_TWO_STAGE_DISCOUNT と必ず一致させること。
 const CREATOR_LOOKS_TWO_STAGE_DISCOUNT = 0.9;
@@ -759,22 +751,19 @@ function creatorLooksWorkerCost(
 
 function getGenerationPercoinAmount(job: {
   model: string | null;
-  requested_image_count?: unknown;
   generation_metadata?: unknown;
 }): number {
   const normalizedModel = normalizeModelName(job.model);
   // Creator Looks 生成モード(metadata)があればモード別コスト(2段階=ceil(×2×0.9))を使う。
-  // (= API 層の残高チェックと一致させ、過少/過大課金を防ぐ。Creator Looks は count=1 固定)
+  // (= API 層の残高チェックと一致させ、過少/過大課金を防ぐ)
   const clMode = getCreatorLooksModeFromGenerationMetadata(
     job.generation_metadata,
   );
   if (clMode) {
     return creatorLooksWorkerCost(normalizedModel, clMode);
   }
-  const count = isOpenAIImageModel(normalizedModel)
-    ? getRequestedImageCount(job)
-    : 1;
-  return getPercoinCost(normalizedModel) * count;
+  // 1回の生成 = 1枚(複数枚生成は 2026-08-15 に廃止)
+  return getPercoinCost(normalizedModel);
 }
 
 /**
@@ -2604,7 +2593,6 @@ Deno.serve(async () => {
                 try {
                   // OpenAI 経路は provider 中立な substep 名を使用し、
                   // 運用ログ・タイムラインで Gemini 経路と区別できるようにする。
-                  const requestedImageCount = getRequestedImageCount(job);
                   const results = await measureGeneratingSubstep(
                     jobId,
                     "providerRequest",
@@ -2637,7 +2625,7 @@ Deno.serve(async () => {
                             timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
-                            n: requestedImageCount,
+                            n: 1,
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,
@@ -2646,7 +2634,7 @@ Deno.serve(async () => {
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
                             targetSize,
-                            n: requestedImageCount,
+                            n: 1,
                           }),
                     { attempt: 1 }
                   );
@@ -2660,7 +2648,7 @@ Deno.serve(async () => {
                     httpStatus: attemptHttpStatus,
                     httpOk: attemptHttpOk,
                     finishReasons: [],
-                    hasImage: results.length === requestedImageCount,
+                    hasImage: results.length === 1,
                     timedOut: false,
                     errorMessage: null,
                     reinforcementApplied: false,

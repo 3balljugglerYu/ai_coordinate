@@ -860,7 +860,7 @@ export const enMessages = {
     statusTitle: "Subscription",
     inactiveTitle: "You're currently on the free plan",
     inactiveDescription:
-      "Subscribe to unlock monthly Percoins, higher generation counts, and a larger stock image limit.",
+      "Subscribe to unlock monthly Percoins, a larger stock image limit, and higher bonus multipliers.",
     joinAction: "View plans",
     monthlyPercoins: "{amount} Percoins every month",
     cancelAtPeriodEnd: "Scheduled to cancel on {date}",
@@ -876,7 +876,6 @@ export const enMessages = {
       year: "year",
     },
     yearlySavings: "Yearly billing saves about 10%",
-    maxGenerationCount: "Up to {count} images per generation",
     stockImageLimit: "Stock image limit: {count}",
     bonusMultiplier: "Post/login bonus: {multiplier}x",
     fullModelAccess: "Use any model, quality level, and output size when generating",
@@ -948,11 +947,9 @@ export const enMessages = {
     },
     upsellTitle: "This feature requires a paid plan",
     upsellDescription:
-      "Upgrade your plan to unlock more models, output sizes, and generation counts.",
+      "Upgrade your plan to unlock more models and output sizes.",
     laterAction: "Later",
     seePlansAction: "See pricing",
-    generationLimitHint:
-      "Your current plan allows up to {count} images per generation. Upgrade to increase the limit.",
     purchaseBannerTitle: "Consider a subscription first",
     purchaseBannerDescription:
       "If you use Persta regularly, a subscription is usually more cost-effective than buying Percoins one by one.",
@@ -1060,10 +1057,6 @@ export const enMessages = {
     guestSubmitFailed: "Generation failed. Please try again in a few moments.",
     guestRateLimitDailyMessage:
       "You have reached today's trial limit (1 per day). Sign up to continue.",
-    countLabel: "Choose how many images to generate",
-    countSingle: "1 image",
-    countMultiple: "{count} images",
-    countCostDescription: "{count} images require {amount} Percoins",
     generatingButton: "Start styling",
     generatingButtonLoading: "Generating...",
     missingPrompt: "Enter an outfit description.",
@@ -1950,7 +1943,6 @@ export const enMessages = {
     formDescription:
       "We keep the template's angle, pose, outfit, and background intact, swapping only the character for yours.",
     formImageLabel: "Character image (PNG / JPEG / WebP / HEIC, up to 10MB)",
-    formCountLabel: "Number of images",
     formModelLabel: "Model",
     formGenerateButton: "Generate",
     formGenerating: "Generating...",

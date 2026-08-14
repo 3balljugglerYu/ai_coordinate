@@ -863,7 +863,7 @@ export const frMessages = {
     statusTitle: "Abonnement",
     inactiveTitle: "Vous utilisez actuellement le forfait gratuit",
     inactiveDescription:
-      "Abonnez-vous pour débloquer des Percoins mensuels, plus de générations et un quota d'images en stock plus important.",
+      "Abonnez-vous pour débloquer des Percoins mensuels, un quota d'images en stock plus important et des multiplicateurs de bonus plus élevés.",
     joinAction: "Voir les forfaits",
     monthlyPercoins: "{amount} Percoins par mois",
     cancelAtPeriodEnd: "Résiliation prévue le {date}",
@@ -879,7 +879,6 @@ export const frMessages = {
       year: "an",
     },
     yearlySavings: "La facturation annuelle permet d'économiser environ 10 %",
-    maxGenerationCount: "Jusqu'à {count} images par génération",
     stockImageLimit: "Limite d'images en stock : {count}",
     bonusMultiplier: "Bonus publication/connexion : {multiplier}x",
     fullModelAccess: "Utilisez n'importe quel modèle, niveau de qualité et taille de sortie lors de la génération",
@@ -951,11 +950,9 @@ export const frMessages = {
     },
     upsellTitle: "Cette fonctionnalité nécessite un forfait payant",
     upsellDescription:
-      "Mettez à niveau votre forfait pour débloquer plus de modèles, tailles de sortie et quantités de génération.",
+      "Mettez à niveau votre forfait pour débloquer plus de modèles et de tailles de sortie.",
     laterAction: "Plus tard",
     seePlansAction: "Voir les tarifs",
-    generationLimitHint:
-      "Votre forfait actuel autorise jusqu'à {count} images par génération. Mettez à niveau pour augmenter la limite.",
     purchaseBannerTitle: "Pensez d'abord à un abonnement",
     purchaseBannerDescription:
       "Si vous utilisez Persta régulièrement, un abonnement est généralement plus avantageux que d'acheter des Percoins à l'unité.",
@@ -1062,10 +1059,6 @@ export const frMessages = {
     guestSubmitFailed: "La génération a échoué. Veuillez réessayer dans quelques instants.",
     guestRateLimitDailyMessage:
       "Vous avez atteint la limite d'essai du jour (1 par jour). Inscrivez-vous pour continuer.",
-    countLabel: "Choisissez le nombre d'images à générer",
-    countSingle: "1 image",
-    countMultiple: "{count} images",
-    countCostDescription: "{count} images nécessitent {amount} Percoins",
     generatingButton: "Démarrer le styling",
     generatingButtonLoading: "Génération...",
     missingPrompt: "Saisissez une description de la tenue.",
@@ -1954,7 +1947,6 @@ export const frMessages = {
     formDescription:
       "Nous conservons l'angle, la pose, la tenue et l'arrière-plan du modèle, et ne remplaçons que le personnage par le vôtre.",
     formImageLabel: "Image du personnage (PNG / JPEG / WebP / HEIC, jusqu'à 10 Mo)",
-    formCountLabel: "Nombre d'images",
     formModelLabel: "Modèle",
     formGenerateButton: "Générer",
     formGenerating: "Génération...",

@@ -863,7 +863,7 @@ export const deMessages = {
     statusTitle: "Abonnement",
     inactiveTitle: "Du nutzt aktuell den kostenlosen Plan",
     inactiveDescription:
-      "Schließe ein Abo ab, um monatliche Percoins, mehr Generierungen und ein größeres Stock-Bild-Limit zu erhalten.",
+      "Schließe ein Abo ab, um monatliche Percoins, ein größeres Stock-Bild-Limit und höhere Bonus-Multiplikatoren zu erhalten.",
     joinAction: "Pläne ansehen",
     monthlyPercoins: "{amount} Percoins jeden Monat",
     cancelAtPeriodEnd: "Kündigung geplant für {date}",
@@ -879,7 +879,6 @@ export const deMessages = {
       year: "Jahr",
     },
     yearlySavings: "Bei jährlicher Abrechnung sparst du etwa 10 %",
-    maxGenerationCount: "Bis zu {count} Bilder pro Generierung",
     stockImageLimit: "Stock-Bilder-Limit: {count}",
     bonusMultiplier: "Beitrags-/Login-Bonus: {multiplier}x",
     fullModelAccess: "Nutze beim Generieren alle Modelle, Qualitätsstufen und Ausgabegrößen",
@@ -951,11 +950,9 @@ export const deMessages = {
     },
     upsellTitle: "Diese Funktion erfordert einen kostenpflichtigen Plan",
     upsellDescription:
-      "Upgrade deinen Plan, um mehr Modelle, Ausgabegrößen und Generierungsanzahlen freizuschalten.",
+      "Upgrade deinen Plan, um mehr Modelle und Ausgabegrößen freizuschalten.",
     laterAction: "Später",
     seePlansAction: "Preise ansehen",
-    generationLimitHint:
-      "Dein aktueller Plan erlaubt bis zu {count} Bilder pro Generierung. Upgrade, um das Limit zu erhöhen.",
     purchaseBannerTitle: "Denk zuerst über ein Abo nach",
     purchaseBannerDescription:
       "Wenn du Persta regelmäßig nutzt, ist ein Abo meist günstiger als der Einzelkauf von Percoins.",
@@ -1063,10 +1060,6 @@ export const deMessages = {
     guestSubmitFailed: "Generierung fehlgeschlagen. Bitte gleich erneut versuchen.",
     guestRateLimitDailyMessage:
       "Du hast das heutige Testlimit erreicht (1 pro Tag). Registriere dich, um weiterzumachen.",
-    countLabel: "Wähle, wie viele Bilder generiert werden",
-    countSingle: "1 Bild",
-    countMultiple: "{count} Bilder",
-    countCostDescription: "{count} Bilder benötigen {amount} Percoins",
     generatingButton: "Styling starten",
     generatingButtonLoading: "Wird generiert...",
     missingPrompt: "Gib eine Outfit-Beschreibung ein.",
@@ -1954,7 +1947,6 @@ export const deMessages = {
     formDescription:
       "Wir behalten Winkel, Pose, Outfit und Hintergrund der Vorlage bei und tauschen nur den Charakter gegen deinen aus.",
     formImageLabel: "Charakterbild (PNG / JPEG / WebP / HEIC, bis zu 10 MB)",
-    formCountLabel: "Anzahl der Bilder",
     formModelLabel: "Modell",
     formGenerateButton: "Generieren",
     formGenerating: "Wird generiert...",

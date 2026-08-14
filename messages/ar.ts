@@ -860,7 +860,7 @@ export const arMessages = {
     statusTitle: "الاشتراك",
     inactiveTitle: "أنت حاليًا على الباقة المجانية",
     inactiveDescription:
-      "اشترك لتفتح Percoin شهرية وعمليات توليد أكثر وسعة صور مخزون أكبر.",
+      "اشترك لتفتح Percoin شهرية وسعة صور مخزون أكبر ومضاعفات مكافآت أعلى.",
     joinAction: "عرض الباقات",
     monthlyPercoins: "{amount} Percoin كل شهر",
     cancelAtPeriodEnd: "مُجدوَل للإلغاء في {date}",
@@ -876,7 +876,6 @@ export const arMessages = {
       year: "سنة",
     },
     yearlySavings: "الفوترة السنوية توفّر حوالي 10%",
-    maxGenerationCount: "حتى {count} صورة لكل عملية توليد",
     stockImageLimit: "حد صور المخزون: {count}",
     bonusMultiplier: "مكافأة النشر/تسجيل الدخول: x{multiplier}",
     fullModelAccess: "استخدم أي نموذج ومستوى جودة وحجم إخراج عند الإنشاء",
@@ -948,11 +947,9 @@ export const arMessages = {
     },
     upsellTitle: "تتطلب هذه الميزة باقة مدفوعة",
     upsellDescription:
-      "قم بترقية باقتك لفتح المزيد من النماذج وأحجام الإخراج وأعداد الإنشاء.",
+      "قم بترقية باقتك لفتح المزيد من النماذج وأحجام الإخراج.",
     laterAction: "لاحقًا",
     seePlansAction: "عرض الأسعار",
-    generationLimitHint:
-      "تسمح باقتك الحالية بحتى {count} صورة لكل عملية توليد. رقِّ لزيادة الحد.",
     purchaseBannerTitle: "فكّر في الاشتراك أولًا",
     purchaseBannerDescription:
       "إذا كنت تستخدم Persta بانتظام، فإن الاشتراك عادةً أكثر اقتصادًا من شراء Percoin قطعة قطعة.",
@@ -1059,10 +1056,6 @@ export const arMessages = {
     guestSubmitFailed: "فشل التوليد. يُرجى المحاولة بعد لحظات.",
     guestRateLimitDailyMessage:
       "وصلت إلى حد التجربة اليومي (مرة واحدة في اليوم). سجّل للحصول على متابعة.",
-    countLabel: "اختر عدد الصور المراد توليدها",
-    countSingle: "صورة واحدة",
-    countMultiple: "{count} صور",
-    countCostDescription: "{count} صور تتطلب {amount} Percoin",
     generatingButton: "بدء التنسيق",
     generatingButtonLoading: "جارٍ التوليد...",
     missingPrompt: "أدخل وصف الإطلالة.",
@@ -1950,7 +1943,6 @@ export const arMessages = {
     formDescription:
       "نحتفظ بزاوية القالب ووضعيته وإطلالته وخلفيته كما هي، ونُبدّل الشخصية فقط بشخصيتك.",
     formImageLabel: "صورة الشخصية (PNG / JPEG / WebP / HEIC، حتى 10 ميغابايت)",
-    formCountLabel: "عدد الصور",
     formModelLabel: "النموذج",
     formGenerateButton: "توليد",
     formGenerating: "جارٍ التوليد...",

@@ -861,7 +861,7 @@ export const hiMessages = {
     statusTitle: "सदस्यता",
     inactiveTitle: "आप वर्तमान में निःशुल्क प्लान पर हैं",
     inactiveDescription:
-      "मासिक Percoin, अधिक जनरेशन और बड़ी स्टॉक छवि सीमा अनलॉक करने के लिए सदस्यता लें।",
+      "मासिक Percoin, बड़ी स्टॉक छवि सीमा और उच्च बोनस गुणक अनलॉक करने के लिए सदस्यता लें।",
     joinAction: "प्लान देखें",
     monthlyPercoins: "हर महीने {amount} Percoin",
     cancelAtPeriodEnd: "{date} को रद्द करने के लिए निर्धारित",
@@ -877,7 +877,6 @@ export const hiMessages = {
       year: "वर्ष",
     },
     yearlySavings: "वार्षिक बिलिंग से लगभग 10% की बचत होती है",
-    maxGenerationCount: "प्रति जनरेशन {count} छवियों तक",
     stockImageLimit: "स्टॉक छवि सीमा: {count}",
     bonusMultiplier: "पोस्ट/लॉगिन बोनस: {multiplier}x",
     fullModelAccess: "जनरेट करते समय किसी भी मॉडल, गुणवत्ता स्तर और आउटपुट साइज़ का उपयोग करें",
@@ -949,11 +948,9 @@ export const hiMessages = {
     },
     upsellTitle: "इस सुविधा के लिए सशुल्क योजना आवश्यक है",
     upsellDescription:
-      "अधिक मॉडल, आउटपुट साइज़, और जनरेशन गिनती के लिए अपनी योजना अपग्रेड करें।",
+      "अधिक मॉडल और आउटपुट साइज़ के लिए अपनी योजना अपग्रेड करें।",
     laterAction: "बाद में",
     seePlansAction: "मूल्य देखें",
-    generationLimitHint:
-      "आपका वर्तमान प्लान प्रति जनरेशन {count} छवियों तक की अनुमति देता है। सीमा बढ़ाने के लिए अपग्रेड करें।",
     purchaseBannerTitle: "पहले सदस्यता पर विचार करें",
     purchaseBannerDescription:
       "यदि आप Persta का नियमित रूप से उपयोग करते हैं, तो सदस्यता आमतौर पर एक-एक करके Percoin खरीदने से ज़्यादा किफ़ायती है।",
@@ -1060,10 +1057,6 @@ export const hiMessages = {
     guestSubmitFailed: "जनरेशन विफल। कुछ क्षणों में फिर से प्रयास करें।",
     guestRateLimitDailyMessage:
       "आप आज की ट्रायल सीमा (प्रति दिन 1) तक पहुँच गए हैं। जारी रखने के लिए साइन अप करें।",
-    countLabel: "उत्पन्न करने के लिए छवियों की संख्या चुनें",
-    countSingle: "1 छवि",
-    countMultiple: "{count} छवियाँ",
-    countCostDescription: "{count} छवियों के लिए {amount} Percoin चाहिए",
     generatingButton: "स्टाइलिंग शुरू करें",
     generatingButtonLoading: "उत्पन्न हो रहा है...",
     missingPrompt: "आउटफ़िट विवरण दर्ज करें।",
@@ -1951,7 +1944,6 @@ export const hiMessages = {
     formDescription:
       "हम टेम्पलेट के कोण, मुद्रा, आउटफ़िट और पृष्ठभूमि को बरकरार रखते हैं, केवल आपके कैरेक्टर को स्वैप करते हैं।",
     formImageLabel: "कैरेक्टर छवि (PNG / JPEG / WebP / HEIC, अधिकतम 10MB)",
-    formCountLabel: "छवियों की संख्या",
     formModelLabel: "मॉडल",
     formGenerateButton: "उत्पन्न करें",
     formGenerating: "उत्पन्न हो रहा है...",

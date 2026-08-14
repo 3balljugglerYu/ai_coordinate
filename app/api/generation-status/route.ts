@@ -5,7 +5,6 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
-import { isOpenAIImageModel } from "@/features/generation/types";
 
 type GeneratedImageSummary = {
   id: string;
@@ -148,14 +147,6 @@ export async function GET(request: NextRequest) {
       copy
     );
     const imageUrls = deriveImageUrls(job.status, job.result_image_url);
-    const requestedImageCount =
-      typeof job.requested_image_count === "number"
-        ? job.requested_image_count
-        : 1;
-    const batchMode =
-      requestedImageCount > 1 && isOpenAIImageModel(job.model)
-        ? "openai_single_job"
-        : "single_job";
     let resultImages: GeneratedImageSummary[] = [];
     if (job.status === "succeeded") {
       resultImages = await findGeneratedImagesForJob(supabase, user.id, job.id);
@@ -177,8 +168,6 @@ export async function GET(request: NextRequest) {
       id: job.id,
       status: job.status,
       processingStage: job.processing_stage ?? null,
-      requestedImageCount,
-      batchMode,
       previewImageUrl: imageUrls.previewImageUrl,
       resultImageUrl: firstResultImage?.url ?? imageUrls.resultImageUrl,
       resultImages,

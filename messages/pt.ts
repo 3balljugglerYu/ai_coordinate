@@ -863,7 +863,7 @@ export const ptMessages = {
     statusTitle: "Assinatura",
     inactiveTitle: "Você está no plano gratuito",
     inactiveDescription:
-      "Assine para desbloquear Percoins mensais, mais gerações e um limite maior de imagens em stock.",
+      "Assine para desbloquear Percoins mensais, um limite maior de imagens em stock e multiplicadores de bónus mais altos.",
     joinAction: "Ver planos",
     monthlyPercoins: "{amount} Percoins por mês",
     cancelAtPeriodEnd: "Cancelamento agendado para {date}",
@@ -879,7 +879,6 @@ export const ptMessages = {
       year: "ano",
     },
     yearlySavings: "A cobrança anual economiza cerca de 10%",
-    maxGenerationCount: "Até {count} imagens por geração",
     stockImageLimit: "Limite de imagens em stock: {count}",
     bonusMultiplier: "Bônus de publicação/login: {multiplier}x",
     fullModelAccess: "Use qualquer modelo, nível de qualidade e tamanho de saída ao gerar",
@@ -951,11 +950,9 @@ export const ptMessages = {
     },
     upsellTitle: "Este recurso requer um plano pago",
     upsellDescription:
-      "Faça upgrade do seu plano para desbloquear mais modelos, tamanhos de saída e quantidades de geração.",
+      "Faça upgrade do seu plano para desbloquear mais modelos e tamanhos de saída.",
     laterAction: "Depois",
     seePlansAction: "Ver preços",
-    generationLimitHint:
-      "Seu plano atual permite até {count} imagens por geração. Faça upgrade para aumentar o limite.",
     purchaseBannerTitle: "Considere primeiro uma assinatura",
     purchaseBannerDescription:
       "Se você usa Persta com regularidade, uma assinatura costuma ser mais econômica do que comprar Percoins um a um.",
@@ -1062,10 +1059,6 @@ export const ptMessages = {
     guestSubmitFailed: "Falha na geração. Tente novamente em instantes.",
     guestRateLimitDailyMessage:
       "Você atingiu o limite de teste de hoje (1 por dia). Cadastre-se para continuar.",
-    countLabel: "Escolha quantas imagens gerar",
-    countSingle: "1 imagem",
-    countMultiple: "{count} imagens",
-    countCostDescription: "{count} imagens consomem {amount} Percoins",
     generatingButton: "Iniciar styling",
     generatingButtonLoading: "Gerando...",
     missingPrompt: "Digite a descrição do look.",
@@ -1953,7 +1946,6 @@ export const ptMessages = {
     formDescription:
       "Mantemos o ângulo, a pose, a roupa e o fundo do modelo, e trocamos apenas o personagem pelo seu.",
     formImageLabel: "Imagem do personagem (PNG / JPEG / WebP / HEIC, até 10MB)",
-    formCountLabel: "Número de imagens",
     formModelLabel: "Modelo",
     formGenerateButton: "Gerar",
     formGenerating: "Gerando...",

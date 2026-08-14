@@ -287,7 +287,6 @@ Main errors:
   "sourceImageMimeType": "image/png | image/jpeg | image/jpg | image/webp | image/gif | image/heic | image/heif",
   "sourceImageType": "illustration | ...",
   "backgroundMode": "enum, optional",
-  "count": "1..4, optional",
   "generationType": "coordinate | specified_coordinate | full_body | chibi | one_tap_style | inspire | free",
   "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-{low|medium|high}-{1k|2k|4k}",
   "sourcePostId": "uuid, optional (派生生成)"
@@ -303,7 +302,7 @@ Main errors:
   - `2k`: `2048x2048` (1:1) / `1408x2496` (9:16) / `2496x1408` (16:9) / `1664x2496` (2:3) / `2496x1664` (3:2)
   - `4k`: `2880x2880` (1:1) / `2880x2880` 級にクランプ。長辺 ≤ 3840、総ピクセル ≤ 8,294,400。
   - GIF 入力は非対応です。
-- GPT Image 2 では `count` を `acceptedImageCount` として受理し、worker が OpenAI Images Edit API に 1 回で `n=acceptedImageCount` を渡します。上限はサブスクプランの生成枚数上限と `1..4` の小さい方です。
+- 1回のリクエストで生成される画像は常に1枚です（複数枚生成は 2026-08-15 に廃止）。
 - Gemini 系モデルでは互換性のため、この API 1 回につき 1 job / 1 画像です。複数枚生成はクライアント側が複数 job を投入します。
 - **Gemini 経路は `generationConfig.imageConfig.aspectRatio` を必ず付与** します。入力画像のアスペクトから 9 段階の離散ラベル (`9:16` / `4:5` / `3:4` / `2:3` / `1:1` / `3:2` / `4:3` / `5:4` / `16:9`) のうち最も近いものを選択し、範囲外は `9:16` / `16:9` にクランプします。`gemini-2.5-flash-image` 等 `imageSize` を持たないモデルでも `aspectRatio` だけは送信されます。
 - **派生生成（プロンプト公開・非公開モード）**: `sourcePostId` に原作（`/free` の root 投稿）の ID を渡すと、プロンプト本文をクライアントから送らずに原作と同じプロンプトで生成します。本文は Worker が provider 送信直前に author secret から解決します。
@@ -321,8 +320,6 @@ Success response:
 {
   "jobId": "job-id",
   "status": "queued",
-  "acceptedImageCount": 4,
-  "batchMode": "openai_single_job"
 }
 ```
 
@@ -332,8 +329,6 @@ Delayed response:
 {
   "jobId": "job-id",
   "status": "queued",
-  "acceptedImageCount": 4,
-  "batchMode": "openai_single_job",
   "warning": "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。"
 }
 ```
@@ -404,8 +399,6 @@ Response:
   "id": "job-id",
   "status": "queued",
   "processingStage": "queued",
-  "requestedImageCount": 1,
-  "batchMode": "single_job",
   "previewImageUrl": null,
   "resultImageUrl": null,
   "resultImages": [],
@@ -419,7 +412,7 @@ Response:
 - `failed` 時の `errorMessage` は、ユーザー向け文言に正規化される場合があります。
 - `processingStage` は `queued / processing / charging / generating / uploading / persisting / completed / failed` のいずれかです。
 - `previewImageUrl` は生成途中で先行表示できる画像 URL です。`status === "processing"` の間だけ返る場合があります。
-- `requestedImageCount` は job が要求した枚数です。OpenAI バッチでは `batchMode = "openai_single_job"` になり、成功時の `resultImages` に OpenAI レスポンス `data[]` の順序で複数画像が入ります。`resultImageUrl` / `generatedImageId` は後方互換用に先頭画像を返します。
+- 成功時の `resultImages` には生成画像が入ります（1回の生成は常に1枚なので要素は1つ）。`resultImageUrl` / `generatedImageId` は後方互換用に先頭画像を返します。
 - `id` は自分のジョブのみ取得できます。
 
 Main errors:
@@ -446,8 +439,6 @@ Response:
       "id": "job-id",
       "status": "processing",
       "processingStage": "generating",
-      "requestedImageCount": 4,
-      "batchMode": "openai_single_job",
       "createdAt": "2026-03-27T10:01:00.000Z"
     }
   ]

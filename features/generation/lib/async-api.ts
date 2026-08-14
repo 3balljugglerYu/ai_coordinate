@@ -44,8 +44,6 @@ interface AsyncGenerationErrorResponse {
 export interface AsyncGenerationResponse {
   jobId: string;
   status: string;
-  acceptedImageCount?: number;
-  batchMode?: "single_job" | "openai_single_job";
 }
 
 /**
@@ -55,8 +53,6 @@ export interface AsyncGenerationStatus {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
   processingStage: ImageJobProcessingStage | null;
-  requestedImageCount?: number;
-  batchMode?: "single_job" | "openai_single_job";
   previewImageUrl: string | null;
   resultImageUrl: string | null;
   resultImages?: Array<{ id: string; url: string }>;
@@ -121,7 +117,6 @@ export async function generateImageAsync(
       sourceImageType: request.sourceImageType || "illustration",
       backgroundMode,
       backgroundChange: backgroundModeToBackgroundChange(backgroundMode),
-      count: request.count ?? 1,
       generationType: request.generationType || "coordinate",
       model: request.model || DEFAULT_GENERATION_MODEL,
       // framing_mode は UI の選択 (free_pose / locked) を常に明示送信する。
@@ -182,14 +177,6 @@ export async function getGenerationStatus(
     id: data.id,
     status: data.status,
     processingStage: data.processingStage || null,
-    requestedImageCount:
-      typeof data.requestedImageCount === "number"
-        ? data.requestedImageCount
-        : undefined,
-    batchMode:
-      data.batchMode === "openai_single_job" || data.batchMode === "single_job"
-        ? data.batchMode
-        : undefined,
     previewImageUrl: data.previewImageUrl || null,
     resultImageUrl: data.resultImageUrl || null,
     resultImages: Array.isArray(data.resultImages)
@@ -214,8 +201,6 @@ export interface JobStatus {
   id: string;
   status: "queued" | "processing" | "succeeded" | "failed";
   processingStage: ImageJobProcessingStage | null;
-  requestedImageCount?: number;
-  batchMode?: "single_job" | "openai_single_job";
   createdAt: string;
 }
 

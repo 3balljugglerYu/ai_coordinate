@@ -2,11 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslations } from "next-intl";
-import { Lock } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -19,7 +16,6 @@ import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
-  getMaxGenerationCount,
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
 import type { SourceImageStock } from "../lib/database";
@@ -82,7 +78,6 @@ interface GenerationFormProps {
     sourceImageGeneratedId?: string;
     sourceImageType?: SourceImageType;
     backgroundMode: BackgroundMode;
-    count: number;
     model: GeminiModel;
     /** framing_mode。既定 free_pose / 「維持」チェックON で locked。locked は送らない(省略) */
     framingMode?: FramingMode;
@@ -111,8 +106,8 @@ interface GenerationFormProps {
   /**
    * 生成モード。
    * - "coordinate"(既定): 従来の詳細設定つきコーディネート生成。
-   * - "free": じゆうモード。設定UI(元画像タイプ/背景/ポーズ/モデル/枚数)を出さず、
-   *   画像+自由記述プロンプトのみ。既定値(model=DEFAULT, count=1, backgroundMode=keep)を
+   * - "free": じゆうモード。設定UI(元画像タイプ/背景/ポーズ/モデル)を出さず、
+   *   画像+自由記述プロンプトのみ。既定値(model=DEFAULT, backgroundMode=keep)を
    *   固定送信し、generationType="free" で生成する。プロンプト上限は30,000字。
    */
   mode?: "coordinate" | "free";
@@ -162,7 +157,6 @@ export function GenerationForm({
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
-  const subscriptionT = useTranslations("subscription");
   const isFree = mode === "free";
   // じゆうモードは上限30,000字、それ以外は1,500字。
   const promptMaxLength = isFree
@@ -233,7 +227,6 @@ export function GenerationForm({
     COORDINATE_DEFAULT_FRAMING_MODE
   );
   const shouldShowPoseModeControl = authState === "authenticated";
-  const [selectedCount, setSelectedCount] = useState(1);
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
@@ -260,18 +253,12 @@ export function GenerationForm({
 
   const promptLength = prompt.length;
   const isPromptTooLong = promptLength > promptMaxLength;
-  const maxGenerationCount = getMaxGenerationCount(subscriptionPlan);
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
     selectedModel,
     authState
   );
-  const totalPercoinCost =
-    selectedCount * getPercoinCost(effectiveSelectedModel);
+  const totalPercoinCost = getPercoinCost(effectiveSelectedModel);
   const showCost = authState === "authenticated";
-
-  useEffect(() => {
-    setSelectedCount((current) => Math.min(current, maxGenerationCount));
-  }, [maxGenerationCount]);
 
   // ブラウザに保存された前回の選択 (モデル / 背景設定) を復元する。
   // SSR との hydration mismatch を避けるため初期値は default のまま、useEffect で上書きする。
@@ -378,14 +365,13 @@ export function GenerationForm({
     } as const;
 
     // じゆうモードはモデル選択(品質・サイズ含む)のみ設定可能。それ以外は既定値を
-    // 固定送信する(背景=keep / 枚数=1 / framingMode なし / sourceImageType=illustration)。
+    // 固定送信する(背景=keep / framingMode なし / sourceImageType=illustration)。
     if (isFree) {
       onSubmit({
         prompt: trimmedPrompt,
         ...commonSourceImage,
         sourceImageType: "illustration",
         backgroundMode: "keep",
-        count: 1,
         model: effectiveSelectedModel,
         generationType: "free",
         // 出力比率(source は async-api 側で送信を省略=既定挙動)。
@@ -405,7 +391,6 @@ export function GenerationForm({
       ...commonSourceImage,
       sourceImageType,
       backgroundMode,
-      count: Math.min(selectedCount, maxGenerationCount),
       model: effectiveSelectedModel,
       // framing_mode は UI の選択を常に明示送信する (locked も含む)。
       // 省略に頼らないことで「サーバが省略=locked にフォールバックする」前提と
@@ -581,7 +566,6 @@ export function GenerationForm({
       setSourceImageType("illustration");
       setPrompt("");
       setBackgroundMode("keep");
-      setSelectedCount(1);
       setSelectedModel(DEFAULT_GENERATION_MODEL);
     };
     document.addEventListener("tutorial:clear", handler);
@@ -615,19 +599,6 @@ export function GenerationForm({
     document.addEventListener("tutorial:set-demo-image", handler);
     return () => document.removeEventListener("tutorial:set-demo-image", handler);
   }, [handleImageUpload]);
-
-  const handleCountSelection = (count: number) => {
-    if (isGenerating || isTutorialInProgress) {
-      return;
-    }
-
-    if (count > maxGenerationCount) {
-      setIsUpsellOpen(true);
-      return;
-    }
-
-    setSelectedCount(count);
-  };
 
   return (
     <Card className="p-6">
@@ -832,57 +803,6 @@ export function GenerationForm({
           }
         />
 
-        {/* 生成枚数選択(じゆうモードでは非表示・常に1枚) */}
-        {!isFree ? (
-        <div data-tour="tour-count-select">
-          <Label className="text-base font-medium mb-3 block">
-            {t("countLabel")}
-          </Label>
-          <div className="mt-2 grid grid-cols-4 gap-2 items-end">
-            <Button
-              type="button"
-              variant={selectedCount === 1 ? "default" : "outline"}
-              onClick={() => handleCountSelection(1)}
-              disabled={isGenerating || isTutorialInProgress}
-              className="h-12"
-            >
-              {t("countSingle")}
-            </Button>
-            {[2, 3, 4].map((count) => (
-              <Button
-                key={count}
-                type="button"
-                variant={selectedCount === count ? "default" : "outline"}
-                onClick={() => handleCountSelection(count)}
-                disabled={isGenerating || isTutorialInProgress}
-                aria-disabled={count > maxGenerationCount}
-                className={cn(
-                  "h-12",
-                  count > maxGenerationCount &&
-                    "relative border-dashed text-gray-400 hover:bg-background hover:text-gray-400"
-                )}
-              >
-                {count > maxGenerationCount ? (
-                  <span className="inline-flex items-center gap-1">
-                    <Lock className="h-3.5 w-3.5" />
-                    {t("countMultiple", { count })}
-                  </span>
-                ) : (
-                  t("countMultiple", { count })
-                )}
-              </Button>
-            ))}
-          </div>
-          {maxGenerationCount < 4 ? (
-            <p className="mt-2 text-xs text-amber-700">
-              {subscriptionT("generationLimitHint", {
-                count: maxGenerationCount,
-              })}
-            </p>
-          ) : null}
-        </div>
-        ) : null}
-        {/* --- 生成枚数(coordinate専用)ここまで --- */}
 
         {/* 生成ボタン */}
         <GenerationSubmitButton
