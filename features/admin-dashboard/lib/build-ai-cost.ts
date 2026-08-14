@@ -5,7 +5,7 @@ import {
   toJstDateKey,
 } from "./dashboard-range";
 import {
-  getModelRate,
+  estimateGenerationCost,
   PROVIDER_LABELS,
   USD_JPY_RATE_NOTE,
   usdToJpy,
@@ -20,10 +20,19 @@ import type {
 type GenerationLike = {
   model: string | null;
   created_at: string;
+  /**
+   * プロンプトの推定トークン数を引くために使う。
+   * 未指定なら既定値（coordinate 相当）で見積もる。
+   */
+  generation_type?: string | null;
 };
 
 /**
- * 期間内の生成記録から推定 AI 原価を集計する（ADR-001）。
+ * 期間内の生成記録から推定 AI 原価を集計する（ADR-001 / ADR-005）。
+ *
+ * 1生成の原価は「出力画像 ＋ 入力画像 ＋ プロンプト」の合計で数える。
+ * 出力ぶんだけを数えていた頃は、One-Tap Style の Low で実額の 1/3 しか
+ * 出ていなかった（入力ぶんが原価の7割を占めるため）。
  *
  * 日別バケットは JST。単価表に無いモデル（旧データの null を含む）は
  * 金額に含めず件数だけ返し、カード側で「単価未設定」として明示する。
@@ -60,29 +69,32 @@ export function buildAiCostEstimate(
       continue;
     }
 
-    const rate = getModelRate(generation.model);
+    const cost = estimateGenerationCost(
+      generation.model,
+      generation.generation_type ?? null
+    );
 
-    if (!rate) {
+    if (!cost) {
       unknownModelCount += 1;
       continue;
     }
 
-    totalUsd += rate.unitCostUsd;
+    totalUsd += cost.usd;
 
     const modelKey = generation.model as string;
     const modelTotal = modelUsdTotals.get(modelKey) ?? {
-      provider: rate.provider,
+      provider: cost.provider,
       count: 0,
       usd: 0,
     };
     modelTotal.count += 1;
-    modelTotal.usd += rate.unitCostUsd;
+    modelTotal.usd += cost.usd;
     modelUsdTotals.set(modelKey, modelTotal);
 
     const bucket = dayMap.get(toJstDateKey(generation.created_at));
     if (bucket) {
-      const jpy = usdToJpy(rate.unitCostUsd);
-      if (rate.provider === "openai") {
+      const jpy = usdToJpy(cost.usd);
+      if (cost.provider === "openai") {
         bucket.openaiJpy += jpy;
       } else {
         bucket.googleJpy += jpy;

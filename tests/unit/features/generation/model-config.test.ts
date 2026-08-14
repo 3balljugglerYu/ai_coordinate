@@ -3,6 +3,7 @@ import {
   creatorLooksCost,
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
+  isFreePlanAllowedModel,
   isModelAvailableForGeneration,
   parseGuestRequestedModel,
   resolveEffectiveModelForAuthState,
@@ -29,6 +30,34 @@ describe("model-config / model identification helpers", () => {
       expect(
         creatorLooksCost("gemini-3.1-flash-image-preview-1024", "outfit_and_background"),
       ).toBe(36); // ceil(20*2*0.9)=36
+    });
+  });
+
+  describe("isFreePlanAllowedModel", () => {
+    it("無課金でも ChatGPT の Low と Medium を 1k まで選べる", () => {
+      // 実測した1ペルコインあたりの原価が Low とほぼ同じ帯に収まるため開放した
+      // (2026-08-14 / ADR-005)。ペルコインの消費は倍になる
+      expect(isFreePlanAllowedModel("gpt-image-2-low-1k")).toBe(true);
+      expect(isFreePlanAllowedModel("gpt-image-2-medium-1k")).toBe(true);
+    });
+
+    it("High と 2k/4k は有料プラン限定のまま", () => {
+      // High は ¥0.642〜0.701/pc と一段高く、Low/Medium の帯から外れる
+      expect(isFreePlanAllowedModel("gpt-image-2-high-1k")).toBe(false);
+      expect(isFreePlanAllowedModel("gpt-image-2-medium-2k")).toBe(false);
+      expect(isFreePlanAllowedModel("gpt-image-2-medium-4k")).toBe(false);
+      expect(isFreePlanAllowedModel("gpt-image-2-high-4k")).toBe(false);
+    });
+
+    it("未知の値は false（ロック扱い）", () => {
+      expect(isFreePlanAllowedModel(null)).toBe(false);
+      expect(isFreePlanAllowedModel(undefined)).toBe(false);
+      expect(isFreePlanAllowedModel("gpt-image-2-ultra-8k")).toBe(false);
+    });
+
+    it("ゲストには Medium を開けていない（ログインの動機として残す）", () => {
+      expect(isCanonicalGuestAllowedModel("gpt-image-2-medium-1k")).toBe(false);
+      expect(parseGuestRequestedModel("gpt-image-2-medium-1k")).toBeNull();
     });
   });
 
