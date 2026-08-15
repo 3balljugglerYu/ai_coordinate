@@ -102,7 +102,7 @@ coordinate 画面と inspire 画面にあった「1回の生成で最大4枚」�
 | `schema.ts` | `count` フィールドを削除（旧クライアントが送っても無視される） |
 | `generate-async/handler.ts` | `acceptedImageCount` 算出とサブスクプラン取得RPCを削除。`requested_image_count: 1` 固定 |
 | `generation-status` 2経路 | `requestedImageCount` / `batchMode` をレスポンスから削除 |
-| `image-gen-worker/index.ts` | `getRequestedImageCount` を削除。`n: 1` 固定。課金の掛け算を削除 |
+| `image-gen-worker/index.ts` | `getRequestedImageCount` を `getLegacyRequestedImageCount` に改名し、旧ジョブ互換として残す（ADR-012）。新規ジョブは常に1枚 |
 | `subscription-config.ts` | `maxGenerationCount` と `getMaxGenerationCount()` を削除 |
 | `PricingPlans.tsx` | 特典行を削除 |
 | `messages/*.ts` × 15 | 枚数関連7キーと、説明文2件の「生成枚数」表現を削除 |
@@ -119,8 +119,8 @@ coordinate 画面と inspire 画面にあった「1回の生成で最大4枚」�
 
 ## 残タスク
 
-1. **過去に利用していた1人への告知の要否** — light プラン・最終利用 2026-08-15 時点で
-   2か月以上前。事実上の機能縮小にあたるため、運営判断が要る
+1. ~~過去に利用していた1人への告知~~ → **不要と判断済み**（2026-08-15）。
+   最終利用が2か月以上前で、料金は据え置き、他の4特典は維持されるため
 2. `resultImages` は配列のまま残している（要素は常に1つ）。結果表示の配線であり、
    inspire 側の表示にも波及するため今回は触っていない
 3. `buildGeminiRequest`（`features/generation/lib/nanobanana.ts:49`）は
