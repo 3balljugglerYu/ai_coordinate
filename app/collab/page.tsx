@@ -15,6 +15,7 @@ const PAGE_DESCRIPTION =
 
 // イタリア旅行の作品画像は静的アセットが無いため、公開プリセットのサムネから取る
 const ITALY_CATEGORY_KEY = "travel_to_italy";
+const AUSTRALIA_CATEGORY_KEY = "travel_to_australia";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -65,6 +66,17 @@ export default async function CollabRecruitPage() {
       src: preset.thumbnailImageUrl,
       alt: preset.title || "うちの子のイタリア旅行日記の作例",
     }));
+  const australiaWorks = presets
+    .filter(
+      (preset) =>
+        preset.category.key === AUSTRALIA_CATEGORY_KEY &&
+        Boolean(preset.thumbnailImageUrl),
+    )
+    .slice(0, 3)
+    .map((preset) => ({
+      src: preset.thumbnailImageUrl,
+      alt: preset.title || "うちの子のオーストラリア旅行の作例",
+    }));
 
   const pastCollabs: PastCollab[] = [
     {
@@ -97,6 +109,18 @@ export default async function CollabRecruitPage() {
       works: italyWorks,
       guideHref: "/collections/italy",
       guideLabel: "イタリア旅行の特設ページを見る",
+    },
+    {
+      name: "ちゃんりお さん",
+      xHandle: "@kyouchanlio",
+      xUrl: "https://x.com/kyouchanlio",
+      iconSrc: "/collections/italy/user-icons/chanlio-icon.jpeg",
+      projectTitle: "うちの子のオーストラリア旅行",
+      description:
+        "表紙「旅のはじまり」からケアンズ・ウルル・シドニーと1つずつ解放して全8種。10日間の旅程を8枚に集約し、あつめると“めくれる旅行日記”が完成するコラボ企画です。",
+      works: australiaWorks,
+      guideHref: "/collections/australia",
+      guideLabel: "オーストラリア旅行の特設ページを見る",
     },
     {
       name: "雑葉 さん",

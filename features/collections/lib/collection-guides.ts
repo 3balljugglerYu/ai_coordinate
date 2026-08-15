@@ -9,6 +9,7 @@
  */
 const COLLECTION_GUIDE_PATHS: Record<string, string> = {
   travel_to_italy: "/collections/italy",
+  travel_to_australia: "/collections/australia",
   // ことわざ辞典は上巻/下巻とも同じ遊び方ページを指す。
   kotowaza_dictionary: "/collections/kotowaza",
   kotowaza_dictionary_2: "/collections/kotowaza",
