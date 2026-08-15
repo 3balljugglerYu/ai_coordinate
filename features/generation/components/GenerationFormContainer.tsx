@@ -26,10 +26,7 @@ import { isPercoinInsufficientError } from "@/features/credits/constants";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import { getPercoinCost } from "../lib/model-config";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  getMaxGenerationCount,
-  type SubscriptionPlan,
-} from "@/features/subscription/subscription-config";
+import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 import { useGenerationState } from "../context/GenerationStateContext";
 import {
@@ -46,7 +43,7 @@ import {
 } from "../hooks/useCoordinateGenerationFeedback";
 import { summarizeJobProgress } from "../lib/job-progress";
 import type { ImageJobProcessingStage } from "../lib/job-types";
-import { isOpenAIImageModel, type GeneratedImageData } from "../types";
+import type { GeneratedImageData } from "../types";
 import { submitGuestCoordinateGeneration } from "../lib/coordinate-guest-api";
 import {
   getCoordinateSourceStockSavePromptPending,
@@ -96,11 +93,6 @@ type TrackedGenerationJobStatus = Pick<
   AsyncGenerationStatus,
   "status" | "processingStage"
 >;
-type ProgressUnitSource = Pick<
-  AsyncGenerationStatus,
-  "batchMode" | "requestedImageCount"
->;
-
 const FALLBACK_PROGRESS_PERCENT = 0;
 const RESULT_REVEAL_DELAY_MS = 5000;
 const PREPARING_PROGRESS_PERCENT = 10;
@@ -178,33 +170,6 @@ function appendUniqueErrorMessage(
   return `${previousMessage}; ${nextMessage}`;
 }
 
-function getProgressUnitCount(source: ProgressUnitSource): number {
-  if (source.batchMode !== "openai_single_job") {
-    return 1;
-  }
-
-  return Math.max(1, source.requestedImageCount ?? 1);
-}
-
-function sumProgressUnits(unitCounts: Iterable<number>): number {
-  let total = 0;
-  for (const count of unitCounts) {
-    total += count;
-  }
-  return total;
-}
-
-function sumCompletedProgressUnits(
-  completedJobIds: Set<string>,
-  progressUnitsByJobId: Map<string, number>
-): number {
-  let total = 0;
-  completedJobIds.forEach((jobId) => {
-    total += progressUnitsByJobId.get(jobId) ?? 1;
-  });
-  return total;
-}
-
 /**
  * クライアントコンポーネント: GenerationFormとその状態管理
  * Suspenseの外に配置して即座に表示される
@@ -257,8 +222,6 @@ export function GenerationFormContainer({
   const [jobStatuses, setJobStatuses] = useState<
     Record<string, TrackedGenerationJobStatus>
   >({});
-  const [isOpenAIBatchGeneration, setIsOpenAIBatchGeneration] =
-    useState(false);
   const [feedbackPhase, setFeedbackPhase] =
     useState<CoordinateGenerationFeedbackPhase>("idle");
 
@@ -401,7 +364,6 @@ export function GenerationFormContainer({
     setIsGenerating(false);
     setProgressCounts(0, 0);
     setJobStatuses({});
-    setIsOpenAIBatchGeneration(false);
     clearPreviewImages();
     setFeedbackPhase("idle");
   }, [
@@ -607,7 +569,9 @@ export function GenerationFormContainer({
       return t("generationCompletedTitle");
     }
 
-    if (isOpenAIBatchGeneration) {
+    // 1回の生成 = 1枚になったので枚数カウンタは出さない。
+    // 復旧時に別タブぶんのジョブが並ぶ場合だけ「n枚中m枚完了」を使う。
+    if (effectiveTotalCount <= 1) {
       return t("generatingStatusTitle");
     }
 
@@ -642,21 +606,12 @@ export function GenerationFormContainer({
         }
 
         const nextJobTotalCount = inProgressJobs.length;
-        const progressUnitsByJobId = new Map(
-          inProgressJobs.map((job) => [job.id, getProgressUnitCount(job)])
-        );
-        const nextProgressTotalCount = sumProgressUnits(
-          progressUnitsByJobId.values()
-        );
         const completedJobIds = new Set<string>();
 
         setIsGenerating(true);
         setFeedbackPhase("running");
         setError(null);
-        setIsOpenAIBatchGeneration(
-          inProgressJobs.some((job) => job.batchMode === "openai_single_job")
-        );
-        setProgressCounts(nextProgressTotalCount, 0);
+        setProgressCounts(nextJobTotalCount, 0);
         setJobStatuses(
           Object.fromEntries(
             inProgressJobs.map((job) => [
@@ -688,10 +643,7 @@ export function GenerationFormContainer({
 
             if (!completedJobIds.has(status.id)) {
               completedJobIds.add(status.id);
-              setProgressCounts(
-                nextProgressTotalCount,
-                sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
-              );
+              setProgressCounts(nextJobTotalCount, completedJobIds.size);
             }
 
             if (status.status === "failed" && options?.appendError !== false) {
@@ -756,8 +708,6 @@ export function GenerationFormContainer({
                 id: job.id,
                 status: "queued" as const,
                 processingStage: "queued" as const,
-                requestedImageCount: job.requestedImageCount,
-                batchMode: job.batchMode,
                 previewImageUrl: null,
                 resultImageUrl: null,
                 resultImages: undefined,
@@ -768,10 +718,7 @@ export function GenerationFormContainer({
 
             if (!completedJobIds.has(job.id)) {
               completedJobIds.add(job.id);
-              setProgressCounts(
-                nextProgressTotalCount,
-                sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
-              );
+              setProgressCounts(nextJobTotalCount, completedJobIds.size);
             }
 
             setError((previous) =>
@@ -904,7 +851,6 @@ export function GenerationFormContainer({
     sourceImageGeneratedId?: string;
     sourceImageType?: import("../types").SourceImageType;
     backgroundMode: import("../types").BackgroundMode;
-    count: number;
     model: import("../types").GeminiModel;
     generationType?: import("../types").GenerationType;
     /** framing_mode。free_pose(既定)のときのみ async 経路で送られる(locked は省略) */
@@ -975,20 +921,14 @@ export function GenerationFormContainer({
     }
 
     recoveryRequestIdRef.current += 1;
-    const allowedCount = Math.min(
-      data.count,
-      getMaxGenerationCount(subscriptionPlan)
-    );
-    const isOpenAIModel = isOpenAIImageModel(data.model);
 
     setIsGenerating(true);
     clearCompletionTimeout();
     clearPreviewImages();
-    setIsOpenAIBatchGeneration(isOpenAIModel);
     setFeedbackPhase("running");
     setError(null);
     setJobStatuses({});
-    setProgressCounts(allowedCount, 0);
+    setProgressCounts(1, 0);
 
     pollingStopFunctionsRef.current.forEach((stop) => stop());
     pollingStopFunctionsRef.current.clear();
@@ -1016,7 +956,7 @@ export function GenerationFormContainer({
 
     try {
       const percoinCost = getPercoinCost(data.model);
-      const requiredPercoins = allowedCount * percoinCost;
+      const requiredPercoins = percoinCost;
       const { balance } = await fetchPercoinBalance({
         fetchBalanceFailed: creditsT("fetchBalanceFailed"),
       });
@@ -1032,114 +972,32 @@ export function GenerationFormContainer({
         return;
       }
 
-      const jobIds: string[] = [];
-      const progressUnitsByJobId = new Map<string, number>();
-      let submittedImageCount = 0;
-      const submitGenerationJob = async (count: number) => {
-        const response = await generateImageAsync(
-          {
-            prompt: data.prompt,
-            sourceImage: data.sourceImage,
-            sourceImageStockId: data.sourceImageStockId,
-            sourceImageGeneratedId: data.sourceImageGeneratedId,
-            sourceImageType: data.sourceImageType,
-            backgroundMode: data.backgroundMode,
-            count,
-            generationType: data.generationType || "coordinate",
-            model: data.model,
-            framingMode: data.framingMode,
-            outputAspectRatioMode: data.outputAspectRatioMode,
-            // 派生生成。本文は送らない（schema が同時指定を 400 にする）。
-            sourcePostId: data.sourcePostId,
-          },
-          asyncApiMessages
-        );
+      // 1回の生成 = 1ジョブ = 1枚。複数枚生成の廃止(2026-08-15)により、
+      // OpenAI のバッチ送信と Gemini の N 回ループという2経路の分岐が不要になった。
+      const response = await generateImageAsync(
+        {
+          prompt: data.prompt,
+          sourceImage: data.sourceImage,
+          sourceImageStockId: data.sourceImageStockId,
+          sourceImageGeneratedId: data.sourceImageGeneratedId,
+          sourceImageType: data.sourceImageType,
+          backgroundMode: data.backgroundMode,
+          generationType: data.generationType || "coordinate",
+          model: data.model,
+          framingMode: data.framingMode,
+          outputAspectRatioMode: data.outputAspectRatioMode,
+          // 派生生成。本文は送らない（schema が同時指定を 400 にする）。
+          sourcePostId: data.sourcePostId,
+        },
+        asyncApiMessages
+      );
 
-        const reportedAcceptedImageCount =
-          typeof response.acceptedImageCount === "number"
-            ? response.acceptedImageCount
-            : null;
-        const hasExplicitAcceptedImageCount =
-          reportedAcceptedImageCount !== null;
-        const acceptedImageCount = Math.max(
-          1,
-          Math.min(
-            count,
-            hasExplicitAcceptedImageCount ? reportedAcceptedImageCount : 1
-          )
-        );
+      const jobIds = [response.jobId];
+      updateTrackedJob(response.jobId, {
+        status: response.status as AsyncGenerationStatus["status"],
+        processingStage: "queued",
+      });
 
-        jobIds.push(response.jobId);
-        submittedImageCount += acceptedImageCount;
-        const usesOpenAIBatch =
-          response.batchMode === "openai_single_job" ||
-          (isOpenAIModel && acceptedImageCount > 1);
-        progressUnitsByJobId.set(
-          response.jobId,
-          usesOpenAIBatch ? acceptedImageCount : 1
-        );
-        if (usesOpenAIBatch) {
-          setIsOpenAIBatchGeneration(true);
-        }
-        updateTrackedJob(response.jobId, {
-          status: response.status as AsyncGenerationStatus["status"],
-          processingStage: "queued",
-        });
-
-        return { acceptedImageCount, hasExplicitAcceptedImageCount };
-      };
-
-      if (isOpenAIModel) {
-        let firstSubmission: Awaited<ReturnType<typeof submitGenerationJob>>;
-        try {
-          firstSubmission = await submitGenerationJob(allowedCount);
-        } catch (submitError) {
-          throw submitError;
-        }
-
-        while (
-          !firstSubmission.hasExplicitAcceptedImageCount &&
-          submittedImageCount < allowedCount
-        ) {
-          try {
-            await submitGenerationJob(1);
-          } catch (submitError) {
-            const errorMessage =
-              submitError instanceof Error
-                ? submitError.message
-                : t("submitJobFailed");
-            setError((previous) =>
-              appendUniqueErrorMessage(previous, errorMessage)
-            );
-            showGenerationErrorToast(errorMessage);
-            break;
-          }
-        }
-      } else {
-        for (let index = 0; index < allowedCount; index += 1) {
-          try {
-            await submitGenerationJob(1);
-          } catch (submitError) {
-            if (jobIds.length === 0) {
-              throw submitError;
-            }
-
-            const errorMessage =
-              submitError instanceof Error
-                ? submitError.message
-                : t("submitJobFailed");
-            setError((previous) =>
-              appendUniqueErrorMessage(previous, errorMessage)
-            );
-            showGenerationErrorToast(errorMessage);
-            break;
-          }
-        }
-      }
-
-      if (jobIds.length === 0) {
-        throw new Error(t("submitJobFailed"));
-      }
 
       // ストック保存案内モーダル (SaveSourceImageToStockDialog) は現在無効化中。
       // 「アップロード由来生成 → 3 秒後にストック保存を促す」フローは仕様上
@@ -1227,11 +1085,8 @@ export function GenerationFormContainer({
       */
 
       const nextJobTotalCount = jobIds.length;
-      const nextProgressTotalCount = sumProgressUnits(
-        progressUnitsByJobId.values()
-      );
       const completedJobIds = new Set<string>();
-      setProgressCounts(nextProgressTotalCount, 0);
+      setProgressCounts(nextJobTotalCount, 0);
 
       const pollPromises = jobIds.map(async (jobId) => {
         const markTerminalJob = (
@@ -1243,10 +1098,7 @@ export function GenerationFormContainer({
 
           if (!completedJobIds.has(jobId)) {
             completedJobIds.add(jobId);
-            setProgressCounts(
-              nextProgressTotalCount,
-              sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
-            );
+            setProgressCounts(nextJobTotalCount, completedJobIds.size);
           }
 
           if (status.status === "failed") {
@@ -1296,11 +1148,6 @@ export function GenerationFormContainer({
               id: jobId,
               status: "queued" as const,
               processingStage: "queued" as const,
-              requestedImageCount: progressUnitsByJobId.get(jobId),
-              batchMode:
-                (progressUnitsByJobId.get(jobId) ?? 1) > 1
-                  ? "openai_single_job"
-                  : "single_job",
               previewImageUrl: null,
               resultImageUrl: null,
               resultImages: undefined,
@@ -1311,10 +1158,7 @@ export function GenerationFormContainer({
 
           if (!completedJobIds.has(jobId)) {
             completedJobIds.add(jobId);
-            setProgressCounts(
-              nextProgressTotalCount,
-              sumCompletedProgressUnits(completedJobIds, progressUnitsByJobId)
-            );
+            setProgressCounts(nextJobTotalCount, completedJobIds.size);
           }
 
           throw pollError;
@@ -1372,8 +1216,8 @@ export function GenerationFormContainer({
         succeededJobs > 0 ? RESULT_REVEAL_DELAY_MS : 0
       );
       track("coordinate_generation_complete", {
-        count: nextProgressTotalCount,
-        succeeded: nextProgressTotalCount - failedJobs.length,
+        count: nextJobTotalCount,
+        succeeded: nextJobTotalCount - failedJobs.length,
       });
     } catch (generationError) {
       const errorMessage =

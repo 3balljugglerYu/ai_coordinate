@@ -30,13 +30,10 @@ import {
 } from "@/features/inspire/lib/creator-looks-two-stage";
 import {
   DEFAULT_GENERATION_MODEL,
-  isOpenAIImageModel,
 } from "@/features/generation/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStyleTemplateById } from "@/features/inspire/lib/repository";
 import {
-  getMaxGenerationCount,
-  normalizeSubscriptionPlan,
 } from "@/features/subscription/subscription-config";
 import {
   createAsyncGenerationJobRepository,
@@ -146,7 +143,6 @@ export async function postGenerateAsyncRoute(
       sourceImageGeneratedId,
       sourceImageType,
       backgroundMode,
-      count,
       generationType,
       model,
       styleTemplateId,
@@ -171,7 +167,6 @@ export async function postGenerateAsyncRoute(
     // UI は常に framingMode を明示送信するため、ここに来る省略は レガシー/非 UI 経路。
     // その場合は保守的に DEFAULT_FRAMING_MODE (locked = 現行挙動) へフォールバックする。
     const effectiveFramingMode: FramingMode = framingMode ?? DEFAULT_FRAMING_MODE;
-    const isOpenAIBatchCandidate = isOpenAIImageModel(effectiveModel);
     const isInspireRequest = generationType === "inspire";
 
     // inspire 専用: テンプレ visibility 検証
@@ -400,43 +395,13 @@ export async function postGenerateAsyncRoute(
 
     const sourceImageProcessingMs = Date.now() - sourceImageProcessingStartedAt;
 
-    let acceptedImageCount = 1;
-    if (isOpenAIBatchCandidate) {
-      const subscriptionPlanResult =
-        await jobRepository.getUserSubscriptionPlan(user.id);
-
-      if (subscriptionPlanResult.error || !subscriptionPlanResult.data) {
-        console.error(
-          "Failed to fetch user subscription plan:",
-          subscriptionPlanResult.error
-        );
-        return jsonError(
-          copy.balanceFetchFailed,
-          "GENERATION_SUBSCRIPTION_PLAN_FETCH_FAILED",
-          500
-        );
-      }
-
-      const subscriptionPlan = normalizeSubscriptionPlan(
-        subscriptionPlanResult.data.subscription_plan
-      );
-      acceptedImageCount = Math.min(
-        count,
-        getMaxGenerationCount(subscriptionPlan)
-      );
-    }
-
-    const batchMode = isOpenAIBatchCandidate
-      ? "openai_single_job"
-      : "single_job";
-
     // ペルコイン残高チェック
     // Creator Looks はモード別コスト(衣装＋背景=ceil(モデルコスト×2×0.9))。
     // 実消費(worker)も同じ creatorLooksCost を使うこと(不整合防止)。
     const percoinCost = effectiveCreatorLooksMode
       ? creatorLooksCost(effectiveModel, effectiveCreatorLooksMode)
       : getPercoinCost(effectiveModel);
-    const requiredPercoinCost = percoinCost * acceptedImageCount;
+    const requiredPercoinCost = percoinCost;
 
     // 現在の残高を取得
     // user_idはUNIQUE制約があるため、single()を使用してデータ整合性の問題を早期検出
@@ -555,7 +520,8 @@ export async function postGenerateAsyncRoute(
       background_mode: backgroundMode,
       status: "queued",
       processing_stage: "queued",
-      requested_image_count: acceptedImageCount,
+      // 1回の生成 = 1枚。複数枚生成は 2026-08-15 に廃止(列は履歴と累計生成数のため残す)
+      requested_image_count: 1,
       attempts: 0,
       // inspire 列: 整合性 CHECK は (generation_type='inspire') = (style_template_id IS NOT NULL)
       style_template_id: isInspireRequest ? styleTemplateId ?? null : null,
@@ -647,8 +613,6 @@ export async function postGenerateAsyncRoute(
         {
           jobId: job.id,
           status: job.status,
-          acceptedImageCount,
-          batchMode,
           warning: queueError
             ? copy.queueDelayedWarning
             : undefined,
@@ -669,8 +633,6 @@ export async function postGenerateAsyncRoute(
     return NextResponse.json({
       jobId: job.id,
       status: job.status,
-      acceptedImageCount,
-      batchMode,
     });
   } catch (error) {
     const copy = getUnexpectedGenerateAsyncCopy(request);

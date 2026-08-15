@@ -860,7 +860,7 @@ export const viMessages = {
     statusTitle: "Đăng ký",
     inactiveTitle: "Bạn đang dùng gói miễn phí",
     inactiveDescription:
-      "Đăng ký để mở khóa Percoin hàng tháng, nhiều lượt tạo hơn và giới hạn hình stock lớn hơn.",
+      "Đăng ký để mở khóa Percoin hàng tháng, giới hạn hình stock lớn hơn và hệ số thưởng cao hơn.",
     joinAction: "Xem các gói",
     monthlyPercoins: "{amount} Percoin mỗi tháng",
     cancelAtPeriodEnd: "Đã lên lịch hủy vào ngày {date}",
@@ -876,7 +876,6 @@ export const viMessages = {
       year: "năm",
     },
     yearlySavings: "Thanh toán năm tiết kiệm khoảng 10%",
-    maxGenerationCount: "Tối đa {count} hình mỗi lần tạo",
     stockImageLimit: "Giới hạn hình stock: {count}",
     bonusMultiplier: "Thưởng đăng/đăng nhập: x{multiplier}",
     fullModelAccess: "Dùng mọi mô hình, mức chất lượng và kích thước đầu ra khi tạo",
@@ -948,11 +947,9 @@ export const viMessages = {
     },
     upsellTitle: "Tính năng này yêu cầu gói trả phí",
     upsellDescription:
-      "Nâng cấp gói để mở khóa thêm mô hình, kích thước đầu ra và số lượng tạo.",
+      "Nâng cấp gói để mở khóa thêm mô hình và kích thước đầu ra.",
     laterAction: "Để sau",
     seePlansAction: "Xem giá",
-    generationLimitHint:
-      "Gói hiện tại của bạn cho phép tối đa {count} hình mỗi lần tạo. Hãy nâng cấp để tăng giới hạn.",
     purchaseBannerTitle: "Hãy cân nhắc đăng ký trước",
     purchaseBannerDescription:
       "Nếu bạn dùng Persta thường xuyên, đăng ký thường tiết kiệm hơn so với mua Percoin từng lần.",
@@ -1059,10 +1056,6 @@ export const viMessages = {
     guestSubmitFailed: "Tạo thất bại. Vui lòng thử lại sau ít phút.",
     guestRateLimitDailyMessage:
       "Bạn đã đạt giới hạn dùng thử hôm nay (1 lần/ngày). Đăng ký để tiếp tục.",
-    countLabel: "Chọn số lượng hình muốn tạo",
-    countSingle: "1 hình",
-    countMultiple: "{count} hình",
-    countCostDescription: "{count} hình cần {amount} Percoin",
     generatingButton: "Bắt đầu styling",
     generatingButtonLoading: "Đang tạo...",
     missingPrompt: "Hãy nhập mô tả trang phục.",
@@ -1950,7 +1943,6 @@ export const viMessages = {
     formDescription:
       "Chúng tôi giữ góc, tư thế, trang phục và nền của mẫu, và chỉ thay nhân vật bằng của bạn.",
     formImageLabel: "Hình nhân vật (PNG / JPEG / WebP / HEIC, tối đa 10MB)",
-    formCountLabel: "Số lượng hình",
     formModelLabel: "Mô hình",
     formGenerateButton: "Tạo",
     formGenerating: "Đang tạo...",

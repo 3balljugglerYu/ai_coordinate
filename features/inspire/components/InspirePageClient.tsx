@@ -52,7 +52,6 @@ interface InspirePageClientCopy {
   formTitle: string;
   formDescription: string;
   formImageLabel: string;
-  formCountLabel: string;
   formModelLabel: string;
   formGenerateButton: string;
   formGenerating: string;
@@ -129,7 +128,6 @@ export function InspirePageClient({
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
-  const [count, setCount] = useState<number>(1);
   // 「すべて維持」状態（4 つすべてチェック済み）で初期化。
   // 1 つもチェックがない場合は生成ボタン disabled（hasAnyInspireOverride で判定）。
   const [overrides, setOverrides] = useState<InspireOverrides>({
@@ -142,7 +140,7 @@ export function InspirePageClient({
   // テンプレ画像が読み込まれた時点で natural サイズから aspect ratio を計算する。
   // /style と同等の見た目にするため、ImageUploader にも同じ aspectRatio を渡す。
   const [templateAspectRatio, setTemplateAspectRatio] = useState<number>(1);
-  const totalPercoinCost = getPercoinCost(selectedModel) * count;
+  const totalPercoinCost = getPercoinCost(selectedModel);
 
   const handleSelectStock = (stock: SourceImageStock) => {
     setSelectedRemoteSource({
@@ -184,7 +182,6 @@ export function InspirePageClient({
         prompt: "inspire",
         generationType: "inspire",
         model: selectedModel,
-        count,
         styleTemplateId: template.id,
         overrides,
       };
@@ -355,15 +352,6 @@ export function InspirePageClient({
             }
           />
 
-          <div className="space-y-3">
-            <p className="text-base font-medium">{copy.formCountLabel}</p>
-            <CountSelector
-              value={count}
-              onChange={setCount}
-              disabled={isGenerating}
-            />
-          </div>
-
           {error ? (
             <p className="text-sm text-destructive">{error}</p>
           ) : null}
@@ -437,36 +425,3 @@ export function InspirePageClient({
   );
 }
 
-function CountSelector({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: number;
-  onChange: (next: number) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div className="grid grid-cols-4 gap-2">
-      {[1, 2, 3, 4].map((n) => {
-        const isSelected = value === n;
-        return (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(n)}
-            disabled={disabled}
-            aria-pressed={isSelected}
-            className={`rounded-lg border px-3 py-2 text-sm font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 ${
-              isSelected
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-input bg-background hover:bg-accent"
-            }`}
-          >
-            {n}
-          </button>
-        );
-      })}
-    </div>
-  );
-}

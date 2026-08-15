@@ -252,8 +252,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
-        acceptedImageCount: 1,
-        batchMode: "openai_single_job",
       });
       expect(jobRepository.createImageJob).toHaveBeenCalledTimes(1);
       // 本文はユーザーが読める列に置かず、service-only の実行入力へ渡す。
@@ -346,8 +344,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         expect(body).toEqual({
           jobId: "job-001",
           status: "queued",
-          acceptedImageCount: 1,
-          batchMode: "openai_single_job",
         });
         expect(getStyleTemplateByIdMock).toHaveBeenCalledWith(
           expect.anything(),
@@ -504,8 +500,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
-        acceptedImageCount: 1,
-        batchMode: "single_job",
       });
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -517,7 +511,9 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
     });
 
-    test("postGenerateAsyncRoute_OpenAIでcount指定の場合_1ジョブにrequested_image_countを保存する", async () => {
+    test("postGenerateAsyncRoute_countを送っても無視して1枚で保存する", async () => {
+      // 複数枚生成は 2026-08-15 に廃止。旧クライアントや外部から count が
+      // 送られてきても schema が無視し、常に 1 枚のジョブになる
       const request = createRequest({
         prompt: "linen jacket",
         sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
@@ -537,16 +533,13 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
-        acceptedImageCount: 4,
-        batchMode: "openai_single_job",
       });
-      expect(jobRepository.getUserSubscriptionPlan).toHaveBeenCalledWith(
-        "user-123"
-      );
+      // 枚数計算のためだけに叩いていたプラン取得は不要になった
+      expect(jobRepository.getUserSubscriptionPlan).not.toHaveBeenCalled();
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({
           model: "gpt-image-2-low-1k",
-          requested_image_count: 4,
+          requested_image_count: 1,
         }),
         // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
         expect.objectContaining({ kind: expect.any(String) })
@@ -1173,8 +1166,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-202",
         status: "queued",
-        acceptedImageCount: 1,
-        batchMode: "openai_single_job",
         warning:
           "ジョブは作成されましたが、処理の開始が遅延する可能性があります。数秒後に再確認してください。",
       });
@@ -1212,8 +1203,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
-        acceptedImageCount: 1,
-        batchMode: "openai_single_job",
       });
       expect(invokeImageWorkerFn).toHaveBeenCalledWith(
         "https://example.supabase.co/functions/v1/image-gen-worker"
@@ -1250,8 +1239,6 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(body).toEqual({
         jobId: "job-001",
         status: "queued",
-        acceptedImageCount: 1,
-        batchMode: "openai_single_job",
       });
       expect(fetchMock).toHaveBeenCalledTimes(1);
     });

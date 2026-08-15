@@ -860,7 +860,7 @@ export const koMessages = {
     statusTitle: "구독",
     inactiveTitle: "현재 무료 플랜을 이용 중입니다",
     inactiveDescription:
-      "구독을 시작하면 월간 Percoin, 더 많은 생성 횟수, 더 큰 스톡 이미지 한도를 이용할 수 있습니다.",
+      "구독을 시작하면 월간 Percoin, 더 큰 스톡 이미지 한도, 더 높은 보너스 배율을 이용할 수 있습니다.",
     joinAction: "플랜 보기",
     monthlyPercoins: "매달 {amount} Percoin",
     cancelAtPeriodEnd: "{date}에 해지 예정",
@@ -876,7 +876,6 @@ export const koMessages = {
       year: "년",
     },
     yearlySavings: "연간 결제로 약 10% 할인",
-    maxGenerationCount: "1회 생성당 최대 {count}장",
     stockImageLimit: "스톡 이미지 한도: {count}",
     bonusMultiplier: "게시·로그인 보너스: {multiplier}배",
     fullModelAccess: "생성 시 모든 모델·품질·출력 크기 사용 가능",
@@ -948,11 +947,9 @@ export const koMessages = {
     },
     upsellTitle: "이 기능은 유료 플랜 전용입니다",
     upsellDescription:
-      "플랜을 업그레이드하면 더 다양한 모델·출력 크기·생성 매수를 선택할 수 있습니다.",
+      "플랜을 업그레이드하면 더 다양한 모델·출력 크기를 선택할 수 있습니다.",
     laterAction: "나중에",
     seePlansAction: "요금제 보기",
-    generationLimitHint:
-      "현재 플랜은 1회 생성당 최대 {count}장까지 가능합니다. 한도를 늘리려면 업그레이드해 주세요.",
     purchaseBannerTitle: "먼저 구독을 검토해 보세요",
     purchaseBannerDescription:
       "Persta를 정기적으로 사용한다면 Percoin을 한 번씩 구매하는 것보다 구독이 더 합리적입니다.",
@@ -1059,10 +1056,6 @@ export const koMessages = {
     guestSubmitFailed: "생성에 실패했습니다. 잠시 후 다시 시도해 주세요.",
     guestRateLimitDailyMessage:
       "오늘의 체험 한도(하루 1회)에 도달했습니다. 회원가입 후 계속 이용할 수 있습니다.",
-    countLabel: "생성 매수를 선택하세요",
-    countSingle: "1장",
-    countMultiple: "{count}장",
-    countCostDescription: "{count}장 생성에 {amount} Percoin이 필요합니다",
     generatingButton: "스타일링 시작",
     generatingButtonLoading: "생성 중...",
     missingPrompt: "코디 설명을 입력해 주세요.",
@@ -1949,7 +1942,6 @@ export const koMessages = {
     formDescription:
       "템플릿의 앵글, 포즈, 의상, 배경은 그대로 두고 캐릭터만 내 이미지로 교체합니다.",
     formImageLabel: "캐릭터 이미지(PNG / JPEG / WebP / HEIC, 최대 10MB)",
-    formCountLabel: "생성 매수",
     formModelLabel: "모델",
     formGenerateButton: "생성",
     formGenerating: "생성 중...",

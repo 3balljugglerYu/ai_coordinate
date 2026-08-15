@@ -860,7 +860,7 @@ export const thMessages = {
     statusTitle: "การสมัครสมาชิก",
     inactiveTitle: "ขณะนี้คุณใช้แพ็กเกจฟรี",
     inactiveDescription:
-      "สมัครสมาชิกเพื่อปลดล็อก Percoin รายเดือน การสร้างที่มากขึ้น และขีดจำกัดรูปสต็อกที่ใหญ่ขึ้น",
+      "สมัครสมาชิกเพื่อปลดล็อก Percoin รายเดือน ขีดจำกัดรูปสต็อกที่ใหญ่ขึ้น และตัวคูณโบนัสที่สูงขึ้น",
     joinAction: "ดูแพ็กเกจ",
     monthlyPercoins: "{amount} Percoin ต่อเดือน",
     cancelAtPeriodEnd: "กำหนดยกเลิกในวันที่ {date}",
@@ -876,7 +876,6 @@ export const thMessages = {
       year: "ปี",
     },
     yearlySavings: "เรียกเก็บแบบรายปีประหยัดประมาณ 10%",
-    maxGenerationCount: "สร้างได้สูงสุด {count} ภาพต่อครั้ง",
     stockImageLimit: "ขีดจำกัดรูปสต็อก: {count}",
     bonusMultiplier: "โบนัสโพสต์/เข้าสู่ระบบ: {multiplier}x",
     fullModelAccess: "ใช้โมเดล ระดับคุณภาพ และขนาดภาพใดก็ได้เมื่อสร้าง",
@@ -948,11 +947,9 @@ export const thMessages = {
     },
     upsellTitle: "ฟีเจอร์นี้ต้องใช้แผนแบบชำระเงิน",
     upsellDescription:
-      "อัปเกรดแพ็กเกจเพื่อปลดล็อกโมเดล ขนาดภาพ และจำนวนการสร้างที่มากขึ้น",
+      "อัปเกรดแพ็กเกจเพื่อปลดล็อกโมเดลและขนาดภาพที่มากขึ้น",
     laterAction: "ภายหลัง",
     seePlansAction: "ดูราคา",
-    generationLimitHint:
-      "แพ็กเกจปัจจุบันของคุณสร้างได้สูงสุด {count} ภาพต่อครั้ง อัปเกรดเพื่อเพิ่มขีดจำกัด",
     purchaseBannerTitle: "ลองพิจารณาการสมัครสมาชิกก่อน",
     purchaseBannerDescription:
       "หากคุณใช้ Persta เป็นประจำ การสมัครสมาชิกมักคุ้มกว่าการซื้อ Percoin ทีละแพ็ก",
@@ -1059,10 +1056,6 @@ export const thMessages = {
     guestSubmitFailed: "สร้างไม่สำเร็จ โปรดลองอีกครั้งภายหลัง",
     guestRateLimitDailyMessage:
       "ถึงขีดจำกัดทดลองของวันนี้แล้ว (1 ครั้งต่อวัน) สมัครสมาชิกเพื่อใช้ต่อ",
-    countLabel: "เลือกจำนวนรูปที่จะสร้าง",
-    countSingle: "1 รูป",
-    countMultiple: "{count} รูป",
-    countCostDescription: "{count} รูปต้องใช้ {amount} Percoin",
     generatingButton: "เริ่มจัดสไตล์",
     generatingButtonLoading: "กำลังสร้าง...",
     missingPrompt: "กรอกคำอธิบายชุด",
@@ -1949,7 +1942,6 @@ export const thMessages = {
     formDescription:
       "เราคงมุม ท่าทาง ชุด และพื้นหลังของเทมเพลตไว้ และเปลี่ยนเฉพาะตัวละครเป็นของคุณ",
     formImageLabel: "รูปตัวละคร (PNG / JPEG / WebP / HEIC, สูงสุด 10MB)",
-    formCountLabel: "จำนวนรูป",
     formModelLabel: "โมเดล",
     formGenerateButton: "สร้าง",
     formGenerating: "กำลังสร้าง...",

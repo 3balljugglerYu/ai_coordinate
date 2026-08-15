@@ -842,7 +842,7 @@ export const jaMessages = {
     statusTitle: "サブスクリプション",
     inactiveTitle: "現在は無料プランです",
     inactiveDescription:
-      "サブスクに加入すると、毎月のペルコイン付与、生成枚数の拡張、ストック画像上限の拡張が使えます。",
+      "サブスクに加入すると、毎月のペルコイン付与、ストック画像上限の拡張、ボーナス倍率アップが使えます。",
     joinAction: "プランを見る",
     monthlyPercoins: "毎月 {amount} ペルコイン付与",
     cancelAtPeriodEnd: "{date} で解約予定です",
@@ -858,7 +858,6 @@ export const jaMessages = {
       year: "年額",
     },
     yearlySavings: "年額は約10%OFFです",
-    maxGenerationCount: "1回の最大生成枚数: {count}枚",
     stockImageLimit: "ストック画像上限: {count}枚",
     bonusMultiplier: "投稿・ログイン特典: {multiplier}倍",
     fullModelAccess: "生成時に、すべてのモデル・品質・出力サイズを利用可能",
@@ -925,11 +924,9 @@ export const jaMessages = {
     },
     upsellTitle: "この機能は有料プラン限定です",
     upsellDescription:
-      "プランをアップグレードすると、より多くのモデル・出力サイズ・生成枚数を選べるようになります。",
+      "プランをアップグレードすると、より多くのモデル・出力サイズを選べるようになります。",
     laterAction: "あとで",
     seePlansAction: "料金プランを見る",
-    generationLimitHint:
-      "現在のプランでは1回に{count}枚まで生成できます。上位プランで上限を拡張できます。",
     purchaseBannerTitle: "まずはサブスクも検討してください",
     purchaseBannerDescription:
       "定期的に使うなら、都度購入よりサブスクの方がコスパよく運用できます。",
@@ -1030,10 +1027,6 @@ export const jaMessages = {
     guestSubmitFailed: "生成に失敗しました。少し時間をおいて再試行してください。",
     guestRateLimitDailyMessage:
       "本日のお試し回数（1 日 1 回）に達しました。ログイン / 新規登録すると引き続き利用できます。",
-    countLabel: "生成枚数を選択",
-    countSingle: "1枚",
-    countMultiple: "{count}枚",
-    countCostDescription: "{count}枚の生成には {amount} ペルコインが必要です",
     generatingButton: "コーデ開始！",
     generatingButtonLoading: "生成中...",
     missingPrompt: "着せ替え内容を入力してください",
@@ -1883,7 +1876,6 @@ export const jaMessages = {
     formDescription:
       "テンプレートのアングル・ポーズ・衣装・背景を維持し、キャラクターだけを差し替えた画像を生成します。",
     formImageLabel: "キャラ画像（PNG / JPEG / WebP / HEIC、10MB まで）",
-    formCountLabel: "生成枚数",
     formModelLabel: "モデル",
     formGenerateButton: "コーデ開始！",
     formGenerating: "生成中...",

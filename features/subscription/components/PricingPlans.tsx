@@ -470,14 +470,6 @@ export function PricingPlans({ subscription }: PricingPlansProps) {
                 <div className="flex items-start gap-2">
                   <Check className="mt-0.5 h-4 w-4 text-emerald-600" />
                   <span>
-                    {t("maxGenerationCount", {
-                      count: config.maxGenerationCount,
-                    })}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2">
-                  <Check className="mt-0.5 h-4 w-4 text-emerald-600" />
-                  <span>
                     {t("stockImageLimit", {
                       count: config.stockImageLimit,
                     })}

@@ -300,7 +300,6 @@ export interface GenerationRequest {
   // 後方互換（1リリース維持）
   // TODO(next-release): backgroundChangeの読み書きを削除し、backgroundModeへ完全移行する
   backgroundChange?: boolean;
-  count?: number; // 1-4枚
   generationType?: GenerationType;
   model?: GeminiModel;
   /**

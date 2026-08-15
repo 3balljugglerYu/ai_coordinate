@@ -26,7 +26,6 @@ type SubscriptionPriceConfig = {
 
 type SubscriptionPlanConfig = {
   monthlyPercoins: number;
-  maxGenerationCount: number;
   stockImageLimit: number;
   bonusMultiplier: number;
   prices: Record<SubscriptionBillingInterval, SubscriptionPriceConfig>;
@@ -58,7 +57,6 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
 > = {
   free: {
     monthlyPercoins: 0,
-    maxGenerationCount: 1,
     stockImageLimit: 2,
     bonusMultiplier: 1,
     prices: {
@@ -74,7 +72,6 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
   },
   light: {
     monthlyPercoins: 300,
-    maxGenerationCount: 2,
     stockImageLimit: 5,
     bonusMultiplier: 1.1,
     prices: {
@@ -92,7 +89,6 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
   },
   standard: {
     monthlyPercoins: 1000,
-    maxGenerationCount: 4,
     stockImageLimit: 10,
     bonusMultiplier: 1.3,
     prices: {
@@ -110,7 +106,6 @@ export const SUBSCRIPTION_PLAN_CONFIG: Record<
   },
   premium: {
     monthlyPercoins: 2500,
-    maxGenerationCount: 4,
     stockImageLimit: 30,
     bonusMultiplier: 1.5,
     prices: {
@@ -146,10 +141,6 @@ export function isSubscriptionStatus(
     value === "paused" ||
     value === "inactive"
   );
-}
-
-export function getMaxGenerationCount(plan: SubscriptionPlan): number {
-  return SUBSCRIPTION_PLAN_CONFIG[plan].maxGenerationCount;
 }
 
 export function getSubscriptionMonthlyPercoins(plan: SubscriptionPlan): number {

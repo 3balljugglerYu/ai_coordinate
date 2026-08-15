@@ -729,14 +729,6 @@ function getPercoinCost(model: string | null): number {
   return costs[normalized] ?? 20;
 }
 
-function getRequestedImageCount(job: { requested_image_count?: unknown }): number {
-  const requested = Number(job.requested_image_count ?? 1);
-  if (!Number.isInteger(requested) || requested < 1) {
-    return 1;
-  }
-  return Math.min(requested, 4);
-}
-
 // Creator Looks 2段階(衣装＋背景)の割引率。
 // features/generation/lib/model-config.ts の CREATOR_LOOKS_TWO_STAGE_DISCOUNT と必ず一致させること。
 const CREATOR_LOOKS_TWO_STAGE_DISCOUNT = 0.9;
@@ -757,6 +749,29 @@ function creatorLooksWorkerCost(
   return base;
 }
 
+/**
+ * 旧ジョブ互換: 複数枚生成の廃止(2026-08-15)より**前**に作られたジョブだけが >1 を持つ。
+ *
+ * 完了RPC `complete_image_job_with_prompt_secrets` は
+ * `requested_image_count` と `jsonb_array_length(p_images)` の一致を要求する。
+ * 新 Worker が常に1枚しか生成しないと、旧ジョブは1枚アップロードしたあと
+ * 完了RPCで count mismatch になり、OpenAI 実費だけ払って失敗扱いになる。
+ * それを避けるため、n と課金額の両方をジョブの値に合わせる。
+ *
+ * これにより Next.js と Worker のデプロイ順序に依存しない。
+ * API 側は常に 1 を書くので、未完了の複数枚ジョブが 0 件になったら
+ * この関数と呼び出し2箇所を削除してよい。
+ */
+function getLegacyRequestedImageCount(
+  job: { requested_image_count?: unknown },
+): number {
+  const requested = Number(job.requested_image_count ?? 1);
+  if (!Number.isInteger(requested) || requested < 1) {
+    return 1;
+  }
+  return Math.min(requested, 4);
+}
+
 function getGenerationPercoinAmount(job: {
   model: string | null;
   requested_image_count?: unknown;
@@ -764,17 +779,19 @@ function getGenerationPercoinAmount(job: {
 }): number {
   const normalizedModel = normalizeModelName(job.model);
   // Creator Looks 生成モード(metadata)があればモード別コスト(2段階=ceil(×2×0.9))を使う。
-  // (= API 層の残高チェックと一致させ、過少/過大課金を防ぐ。Creator Looks は count=1 固定)
+  // (= API 層の残高チェックと一致させ、過少/過大課金を防ぐ)
   const clMode = getCreatorLooksModeFromGenerationMetadata(
     job.generation_metadata,
   );
   if (clMode) {
     return creatorLooksWorkerCost(normalizedModel, clMode);
   }
-  const count = isOpenAIImageModel(normalizedModel)
-    ? getRequestedImageCount(job)
-    : 1;
-  return getPercoinCost(normalizedModel) * count;
+  // 1回の生成 = 1枚(複数枚生成は 2026-08-15 に廃止)。
+  // 旧ジョブだけは要求枚数ぶん課金する(廃止前に残高を押さえているため)。
+  return getPercoinCost(normalizedModel) *
+    (isOpenAIImageModel(normalizedModel)
+      ? getLegacyRequestedImageCount(job)
+      : 1);
 }
 
 /**
@@ -2581,6 +2598,8 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
+                // 旧ジョブ互換(通常は常に 1)。詳細は getLegacyRequestedImageCount。
+                const requestedImageCount = getLegacyRequestedImageCount(job);
                 // 出力比率(job-output-aspect の pure helper に集約)。明示比率のときだけ
                 // OpenAI の targetSize を上書きし、source / 非対象は undefined にして
                 // 入力画像ベース(resolveOpenAITargetSize=従来挙動)へ委ねる。
@@ -2604,7 +2623,6 @@ Deno.serve(async () => {
                 try {
                   // OpenAI 経路は provider 中立な substep 名を使用し、
                   // 運用ログ・タイムラインで Gemini 経路と区別できるようにする。
-                  const requestedImageCount = getRequestedImageCount(job);
                   const results = await measureGeneratingSubstep(
                     jobId,
                     "providerRequest",

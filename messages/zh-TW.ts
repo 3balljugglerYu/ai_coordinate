@@ -859,7 +859,7 @@ export const zhTwMessages = {
     statusTitle: "訂閱",
     inactiveTitle: "你目前使用的是免費方案",
     inactiveDescription:
-      "訂閱即可解鎖每月 Percoin、更多生成次數與更大的素材容量。",
+      "訂閱即可解鎖每月 Percoin、更大的素材容量與更高的獎勵倍率。",
     joinAction: "查看方案",
     monthlyPercoins: "每月 {amount} Percoin",
     cancelAtPeriodEnd: "將於 {date} 取消",
@@ -875,7 +875,6 @@ export const zhTwMessages = {
       year: "年",
     },
     yearlySavings: "年付可省約 10%",
-    maxGenerationCount: "每次生成最多 {count} 張",
     stockImageLimit: "素材上限: {count}",
     bonusMultiplier: "發佈/登入獎勵: {multiplier} 倍",
     fullModelAccess: "生成時可使用全部模型、畫質和輸出尺寸",
@@ -947,11 +946,9 @@ export const zhTwMessages = {
     },
     upsellTitle: "此功能僅限付費方案",
     upsellDescription:
-      "升級方案後，可使用更多模型、輸出尺寸與生成數量。",
+      "升級方案後，可使用更多模型與輸出尺寸。",
     laterAction: "稍後再說",
     seePlansAction: "查看價格",
-    generationLimitHint:
-      "目前方案每次生成最多 {count} 張，升級即可提升上限。",
     purchaseBannerTitle: "先考慮訂閱看看",
     purchaseBannerDescription:
       "若你定期使用 Persta，相較於逐次購買 Percoin，訂閱通常更划算。",
@@ -1058,10 +1055,6 @@ export const zhTwMessages = {
     guestSubmitFailed: "生成失敗，請稍後再試。",
     guestRateLimitDailyMessage:
       "已達到今日試用上限 (每日 1 次)。註冊後可繼續使用。",
-    countLabel: "請選擇生成張數",
-    countSingle: "1 張",
-    countMultiple: "{count} 張",
-    countCostDescription: "{count} 張需要 {amount} Percoin",
     generatingButton: "開始造型",
     generatingButtonLoading: "生成中...",
     missingPrompt: "請輸入穿搭描述。",
@@ -1946,7 +1939,6 @@ export const zhTwMessages = {
     formDescription:
       "保留範本的角度、姿勢、服裝與背景，僅將角色替換為你的圖片。",
     formImageLabel: "角色圖片 (PNG / JPEG / WebP / HEIC，最大 10MB)",
-    formCountLabel: "生成張數",
     formModelLabel: "模型",
     formGenerateButton: "生成",
     formGenerating: "生成中...",
