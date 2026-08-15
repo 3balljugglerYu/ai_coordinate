@@ -749,8 +749,32 @@ function creatorLooksWorkerCost(
   return base;
 }
 
+/**
+ * 旧ジョブ互換: 複数枚生成の廃止(2026-08-15)より**前**に作られたジョブだけが >1 を持つ。
+ *
+ * 完了RPC `complete_image_job_with_prompt_secrets` は
+ * `requested_image_count` と `jsonb_array_length(p_images)` の一致を要求する。
+ * 新 Worker が常に1枚しか生成しないと、旧ジョブは1枚アップロードしたあと
+ * 完了RPCで count mismatch になり、OpenAI 実費だけ払って失敗扱いになる。
+ * それを避けるため、n と課金額の両方をジョブの値に合わせる。
+ *
+ * これにより Next.js と Worker のデプロイ順序に依存しない。
+ * API 側は常に 1 を書くので、未完了の複数枚ジョブが 0 件になったら
+ * この関数と呼び出し2箇所を削除してよい。
+ */
+function getLegacyRequestedImageCount(
+  job: { requested_image_count?: unknown },
+): number {
+  const requested = Number(job.requested_image_count ?? 1);
+  if (!Number.isInteger(requested) || requested < 1) {
+    return 1;
+  }
+  return Math.min(requested, 4);
+}
+
 function getGenerationPercoinAmount(job: {
   model: string | null;
+  requested_image_count?: unknown;
   generation_metadata?: unknown;
 }): number {
   const normalizedModel = normalizeModelName(job.model);
@@ -762,8 +786,12 @@ function getGenerationPercoinAmount(job: {
   if (clMode) {
     return creatorLooksWorkerCost(normalizedModel, clMode);
   }
-  // 1回の生成 = 1枚(複数枚生成は 2026-08-15 に廃止)
-  return getPercoinCost(normalizedModel);
+  // 1回の生成 = 1枚(複数枚生成は 2026-08-15 に廃止)。
+  // 旧ジョブだけは要求枚数ぶん課金する(廃止前に残高を押さえているため)。
+  return getPercoinCost(normalizedModel) *
+    (isOpenAIImageModel(normalizedModel)
+      ? getLegacyRequestedImageCount(job)
+      : 1);
 }
 
 /**
@@ -2570,6 +2598,8 @@ Deno.serve(async () => {
                 }
                 const openAIRequestTimeoutMs =
                   resolveOpenAIRequestTimeoutMs(gptImage2);
+                // 旧ジョブ互換(通常は常に 1)。詳細は getLegacyRequestedImageCount。
+                const requestedImageCount = getLegacyRequestedImageCount(job);
                 // 出力比率(job-output-aspect の pure helper に集約)。明示比率のときだけ
                 // OpenAI の targetSize を上書きし、source / 非対象は undefined にして
                 // 入力画像ベース(resolveOpenAITargetSize=従来挙動)へ委ねる。
@@ -2625,7 +2655,7 @@ Deno.serve(async () => {
                             timeoutMs: openAIRequestTimeoutMs,
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
-                            n: 1,
+                            n: requestedImageCount,
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,
@@ -2634,7 +2664,7 @@ Deno.serve(async () => {
                             quality: gptImage2.quality,
                             sizeTier: gptImage2.sizeTier,
                             targetSize,
-                            n: 1,
+                            n: requestedImageCount,
                           }),
                     { attempt: 1 }
                   );
@@ -2648,7 +2678,7 @@ Deno.serve(async () => {
                     httpStatus: attemptHttpStatus,
                     httpOk: attemptHttpOk,
                     finishReasons: [],
-                    hasImage: results.length === 1,
+                    hasImage: results.length === requestedImageCount,
                     timedOut: false,
                     errorMessage: null,
                     reinforcementApplied: false,

@@ -52,7 +52,6 @@ interface InspirePageClientCopy {
   formTitle: string;
   formDescription: string;
   formImageLabel: string;
-  formCountLabel: string;
   formModelLabel: string;
   formGenerateButton: string;
   formGenerating: string;

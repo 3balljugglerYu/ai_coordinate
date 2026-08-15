@@ -120,7 +120,6 @@ const copy = {
   formTitle: "title",
   formDescription: "desc",
   formImageLabel: "image",
-  formCountLabel: "count",
   formModelLabel: "model",
   formGenerateButton: "生成",
   formGenerating: "生成中",

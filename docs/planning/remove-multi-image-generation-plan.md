@@ -64,6 +64,23 @@ coordinate 画面と inspire 画面にあった「1回の生成で最大4枚」�
   再定義されており、書き換えの手間とリスクに見合わない。
 - **Consequence**: 使われないカラムが残る。migration は1本も不要。
 
+### ADR-012: Worker は旧ジョブの枚数を尊重する（デプロイ順序に依存しない）
+
+- **Context**: 完了RPC `complete_image_job_with_prompt_secrets` は
+  `requested_image_count` と生成枚数の一致を要求する。新 Worker が常に1枚しか
+  生成しないと、廃止前に作られた in-flight ジョブは1枚アップロードしたあと
+  完了RPCで count mismatch になり、**OpenAI 実費だけ払って失敗扱い**になる。
+- **Decision**: Worker に `getLegacyRequestedImageCount()` を残し、
+  `n` と課金額の両方をジョブの値に合わせる。
+- **Reason**: レビュー指摘。「Next.js を先にデプロイすれば新規ジョブは作られない」
+  という運用手順でも防げるが、**デプロイ順序に正しさを依存させるのは脆い**
+  （過去にも適用順序で事故りかけている）。8行で順序制約そのものを消せる。
+  調査時点で複数枚ジョブは14件すべて終了済み・未完了ジョブは全体で0件だが、
+  デプロイまでの間に作られる可能性は残る。
+- **Consequence**: Worker 側は実質この PR 前と同じ挙動のまま。
+  簡素化されるのは API・クライアント側（新規ジョブは必ず1枚）。
+  **未完了の複数枚ジョブが0件になったら、この関数と呼び出し2箇所は削除してよい。**
+
 ### ADR-011: OpenAI クライアントの `n` は残す
 
 - **Context**: `callOpenAIImageEditBatch` / `callOpenAIImageEditMultiInputBatch` の
@@ -106,3 +123,7 @@ coordinate 画面と inspire 画面にあった「1回の生成で最大4枚」�
    2か月以上前。事実上の機能縮小にあたるため、運営判断が要る
 2. `resultImages` は配列のまま残している（要素は常に1つ）。結果表示の配線であり、
    inspire 側の表示にも波及するため今回は触っていない
+3. `buildGeminiRequest`（`features/generation/lib/nanobanana.ts:49`）は
+   **どこからも呼ばれていない死んだ関数**。今回は `count` と `candidateCount` 分岐だけ
+   外し、関数自体は残した。別途まとめて整理する
+4. Worker の `getLegacyRequestedImageCount` は、未完了の複数枚ジョブが0件になれば削除可

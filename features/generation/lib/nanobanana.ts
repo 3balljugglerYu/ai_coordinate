@@ -29,7 +29,6 @@ export interface GeminiGenerateRequest {
   backgroundMode?: BackgroundMode;
   // 後方互換（1リリース維持）
   backgroundChange?: boolean;
-  count?: number;
 }
 
 /**
@@ -105,13 +104,6 @@ export async function buildGeminiRequest(
       },
     ],
   };
-
-  // 生成枚数を指定（1-4枚）
-  if (request.count && request.count > 1) {
-    requestBody.generationConfig = {
-      candidateCount: Math.min(request.count, 4),
-    };
-  }
 
   return requestBody;
 }
