@@ -68,6 +68,17 @@ export const X_LOTTERY_CAMPAIGNS: Readonly<Record<string, XLotteryCopy>> = {
     attachmentNote:
       "投稿画面で、この企画で生成したイラストを1枚以上添付してください(応募条件)",
   },
+  // うちの子のオーストラリア旅行(2026-08-22 08:00〜08-30 21:59)
+  travel_to_australia: {
+    hashtags: ["うちの子のオーストラリア旅行", "PerstaAI"],
+    mention: "mickey_fuku",
+    message: "うちの子のオーストラリア旅行、完成しました！",
+    prizeLabel: "Amazonギフト券2,000円分",
+    winnersLabel: "5名様",
+    rulesPath: "/campaigns/australia-lottery",
+    attachmentNote:
+      "投稿画面で、この企画で生成したイラストを1枚以上添付してください(応募条件)",
+  },
 };
 
 /** カテゴリの文面を引く。未定義なら null(ボタン非表示)。 */
