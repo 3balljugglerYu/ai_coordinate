@@ -28,7 +28,12 @@ export type EnsureWebPVariantsResult =
     }
   | {
       status: "skipped";
-      reason: "already-exists" | "image-not-found" | "missing-source";
+      reason:
+        | "already-exists"
+        | "image-not-found"
+        | "missing-source"
+        /** アップロード中に行が削除された。実体は片付け済み。 */
+        | "image-deleted";
     };
 
 type EnsureWebPVariantsDependencies = {
@@ -155,25 +160,51 @@ export async function uploadWebPVariants(
  * @param imageId 画像ID
  * @param thumbPath サムネイルWebPのストレージパス
  * @param displayPath 表示用WebPのストレージパス
+ * @returns 更新できたか。false = 対象行が既に無い（削除された）
+ *
+ * 対象行が消えていても error にはならない(UPDATE の 0 行は正常)。
+ * ここで区別できないと、アップロード済みの WebP が誰からも参照されない
+ * 実体として残る。呼び出し側が片付けられるよう真偽値で返す。
  */
 export async function updateWebPStoragePaths(
   imageId: string,
   thumbPath: string,
   displayPath: string
-): Promise<void> {
+): Promise<{ updated: boolean }> {
   const supabase = createAdminClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("generated_images")
     .update({
       storage_path_thumb: thumbPath,
       storage_path_display: displayPath,
     })
-    .eq("id", imageId);
+    .eq("id", imageId)
+    .select("id");
 
   if (error) {
     console.error("WebPストレージパスの更新に失敗しました:", error);
     throw new Error(`WebPストレージパスの更新に失敗しました: ${error.message}`);
+  }
+
+  return { updated: (data ?? []).length > 0 };
+}
+
+/**
+ * 登録できなかった WebP の実体を消す。失敗してもログのみ(孤立ファイルが残るだけ)。
+ */
+async function removeUnregisteredWebPVariants(
+  paths: readonly string[],
+  supabase: ReturnType<typeof createAdminClient>
+): Promise<void> {
+  const { error } = await supabase.storage
+    .from(STORAGE_BUCKET)
+    .remove([...paths]);
+  if (error) {
+    console.warn(
+      "[webp-storage] failed to remove unregistered variants:",
+      { paths, error: error.message }
+    );
   }
 }
 
@@ -235,7 +266,24 @@ export async function ensureWebPVariants(
     3
   );
 
-  await updateStoragePaths(image.id, thumbPath, displayPath);
+  /*
+    生成成功後に fire-and-forget で走るため、この間にユーザーが画像を
+    削除していることがある。UPDATE の 0 行は error にならないので、
+    ここで検知してアップロード済みの実体を片付ける。
+    そうしないと「誰からも参照されない WebP」が残る。
+  */
+  const { updated } = await updateStoragePaths(image.id, thumbPath, displayPath);
+  if (!updated) {
+    await removeUnregisteredWebPVariants(
+      [thumbPath, displayPath],
+      deps.supabase ?? createAdminClient()
+    );
+    return {
+      status: "skipped",
+      reason: "image-deleted",
+    };
+  }
+
   revalidateGeneratedImageTags(image, revalidateTagFn);
 
   return {

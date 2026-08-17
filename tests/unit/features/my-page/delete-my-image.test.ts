@@ -81,6 +81,9 @@ describe("deleteMyImage", () => {
       expect(mock.select).toHaveBeenCalledWith(
         `user_id, ${GENERATED_IMAGE_STORAGE_PATH_COLUMNS}`,
       );
+      // 列の実測値 + 決定的に導ける派生パス。
+      // このケースは列がすべて埋まっているので導出ぶんは全部重複し、
+      // 4件に畳まれる(remove を無駄に膨らませない)。
       expect(mock.remove).toHaveBeenCalledWith([
         "user-1/img-1.png",
         "user-1/img-1_display.webp",
@@ -125,10 +128,19 @@ describe("deleteMyImage", () => {
 
     await deleteMyImage("img-1");
 
-    expect(mock.remove).toHaveBeenCalledWith([sharedPath]);
+    // 実測値は1つに畳まれる。導出ぶんは実在しなければ remove が無視するだけ。
+    expect(mock.remove).toHaveBeenCalledWith([
+      sharedPath,
+      "user-1/wardrobe-1_thumb.webp",
+      "user-1/wardrobe-1_display.webp",
+      "user-1/pre-generation/img-1_display.webp",
+    ]);
   });
 
-  test("Storage パスが無い行では remove を呼ばない", async () => {
+  test("列が空でも導出できる Before 画像のパスは remove する", async () => {
+    // Before 画像は upload → 列 UPDATE の順で作られる。列が空でも
+    // 実体が既にあることがあり、そのぶんを取りこぼさない。
+    // 実在しないパスの remove は Supabase 側でエラーにならない。
     const mock = buildDeleteClient({
       storage_path: null,
       storage_path_display: null,
@@ -140,6 +152,8 @@ describe("deleteMyImage", () => {
 
     await deleteMyImage("img-1");
 
-    expect(mock.remove).not.toHaveBeenCalled();
+    expect(mock.remove).toHaveBeenCalledWith([
+      "user-1/pre-generation/img-1_display.webp",
+    ]);
   });
 });

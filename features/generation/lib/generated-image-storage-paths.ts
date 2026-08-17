@@ -45,3 +45,58 @@ export function collectGeneratedImageStoragePaths(
   }
   return [...paths];
 }
+
+/**
+ * 行の情報から**決定的に導ける**派生パスを返す。
+ *
+ * なぜ必要か: 派生ファイル(WebP変換 / Before画像)は生成成功後に
+ * fire-and-forget で「upload → 列を UPDATE」の順に作られる。
+ * 削除が「行を SELECT した後・列が UPDATE される前」に走ると、
+ * 削除側の列には派生パスが入っておらず、実体だけが残る。
+ * 命名は元の storage_path と id から一意に決まるので、列に無くても消せる。
+ *
+ * 実在しないパスを remove しても Supabase Storage はエラーにしない
+ * (存在しないキーは黙って無視される)ため、常に足して問題ない。
+ *
+ * 命名の正本:
+ *   webp        uploadWebPVariants        `<storage_path から拡張子を除いた部分>_thumb.webp` / `_display.webp`
+ *   before画像   uploadBeforeImageWebP     `{user_id}/pre-generation/{generated_image_id}_display.webp`
+ */
+export function deriveGeneratedImageStoragePaths(row: {
+  id?: string | null;
+  user_id?: string | null;
+  storage_path?: string | null;
+}): string[] {
+  const paths: string[] = [];
+
+  if (row.storage_path) {
+    const withoutExtension = row.storage_path.replace(/\.[^.]+$/, "");
+    paths.push(`${withoutExtension}_thumb.webp`);
+    paths.push(`${withoutExtension}_display.webp`);
+  }
+
+  if (row.user_id && row.id) {
+    paths.push(`${row.user_id}/pre-generation/${row.id}_display.webp`);
+  }
+
+  return paths;
+}
+
+/**
+ * 削除時に remove すべきパスの最終形。
+ * 列に入っている実測値と、決定的に導ける派生パスの和(重複なし)。
+ */
+export function resolveGeneratedImageDeletablePaths(
+  rows: readonly (GeneratedImageStoragePathRow & {
+    id?: string | null;
+    user_id?: string | null;
+  })[],
+): string[] {
+  const paths = new Set(collectGeneratedImageStoragePaths(rows));
+  for (const row of rows) {
+    for (const derived of deriveGeneratedImageStoragePaths(row)) {
+      paths.add(derived);
+    }
+  }
+  return [...paths];
+}

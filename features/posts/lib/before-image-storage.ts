@@ -175,6 +175,10 @@ export async function persistBeforeImageFromUrl(
 
 /**
  * generated_images.pre_generation_storage_path を更新する。
+ *
+ * 対象行が既に削除されていた場合、UPDATE は 0 行で成功する(error にならない)。
+ * そのままだとアップロード済みの Before 画像が誰からも参照されない実体として
+ * 残るため、その場で片付ける。
  */
 export async function updatePreGenerationStoragePath(
   generatedImageId: string,
@@ -183,15 +187,32 @@ export async function updatePreGenerationStoragePath(
 ): Promise<void> {
   const supabase = createAdminClient();
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("generated_images")
     .update({ pre_generation_storage_path: path })
     .eq("id", generatedImageId)
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("id");
 
   if (error) {
     console.error("[BeforeImage] failed to update pre_generation_storage_path:", error);
     throw new Error(`pre_generation_storage_path update failed: ${error.message}`);
+  }
+
+  if ((data ?? []).length === 0) {
+    console.warn(
+      "[BeforeImage] target row is gone; removing unregistered before image:",
+      { generatedImageId, path }
+    );
+    const { error: removeError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([path]);
+    if (removeError) {
+      console.warn("[BeforeImage] failed to remove unregistered before image:", {
+        path,
+        error: removeError.message,
+      });
+    }
   }
 }
 

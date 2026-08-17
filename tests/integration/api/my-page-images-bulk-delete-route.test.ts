@@ -147,11 +147,18 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
     // 削除順は DB → Storage（壊れた DB レコードを残さないため）
     expect(callOrder).toEqual(["db_delete", "storage_remove"]);
 
-    // Storage は本体 + Before を含めて remove される
+    // Storage は本体 + Before に加えて、決定的に導ける派生パスも remove される
+    // (SELECT より後に非同期で upload された派生を取りこぼさないため)
     expect(storageRemove).toHaveBeenCalledWith([
       "user-1/a.png",
       "user-1/a-before.png",
       "user-1/b.png",
+      "user-1/a_thumb.webp",
+      "user-1/a_display.webp",
+      `user-1/pre-generation/${UUID_A}_display.webp`,
+      "user-1/b_thumb.webp",
+      "user-1/b_display.webp",
+      `user-1/pre-generation/${UUID_B}_display.webp`,
     ]);
 
     // DB 削除は eligible な ID のみで実行され、本人 user_id で絞られている
@@ -184,6 +191,7 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
       "user-1/a_display.webp",
       "user-1/a_thumb.webp",
       "user-1/a-before.png",
+      `user-1/pre-generation/${UUID_A}_display.webp`,
     ]);
   });
 

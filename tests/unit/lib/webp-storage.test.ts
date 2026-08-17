@@ -7,13 +7,17 @@ function createSupabaseMock(image: Record<string, unknown> | null) {
   const eq = jest.fn(() => ({ maybeSingle }));
   const select = jest.fn(() => ({ eq }));
   const from = jest.fn(() => ({ select }));
+  // 登録できなかった variants を消す経路で使う
+  const remove = jest.fn().mockResolvedValue({ error: null });
+  const storageFrom = jest.fn(() => ({ remove }));
 
   return {
-    client: { from },
+    client: { from, storage: { from: storageFrom } },
     from,
     select,
     eq,
     maybeSingle,
+    remove,
   };
 }
 
@@ -64,7 +68,7 @@ describe("ensureWebPVariants", () => {
       thumbPath: "user-2/original_thumb.webp",
       displayPath: "user-2/original_display.webp",
     });
-    const updateStoragePaths = jest.fn().mockResolvedValue(undefined);
+    const updateStoragePaths = jest.fn().mockResolvedValue({ updated: true });
     const revalidateTagFn = jest.fn();
 
     const result = await ensureWebPVariants("image-2", {
@@ -118,7 +122,7 @@ describe("ensureWebPVariants", () => {
       thumbPath: "user-4/original_thumb.webp",
       displayPath: "user-4/original_display.webp",
     });
-    const updateStoragePaths = jest.fn().mockResolvedValue(undefined);
+    const updateStoragePaths = jest.fn().mockResolvedValue({ updated: true });
     const revalidateTagFn = jest.fn();
 
     await ensureWebPVariants("image-4", {
@@ -153,7 +157,7 @@ describe("ensureWebPVariants", () => {
       thumbPath: "user-5/original_thumb.webp",
       displayPath: "user-5/original_display.webp",
     });
-    const updateStoragePaths = jest.fn().mockResolvedValue(undefined);
+    const updateStoragePaths = jest.fn().mockResolvedValue({ updated: true });
     const revalidateTagFn = jest.fn();
 
     const result = await ensureWebPVariants("image-5", {
@@ -232,5 +236,43 @@ describe("ensureWebPVariants", () => {
     expect(uploadVariants).not.toHaveBeenCalled();
     expect(updateStoragePaths).not.toHaveBeenCalled();
     expect(revalidateTagFn).not.toHaveBeenCalled();
+  });
+
+  test("アップロード中に行が削除された場合_実体を消してskippedを返す", async () => {
+    // 生成成功後に fire-and-forget で走るため、この間に削除できる。
+    // UPDATE の 0 行は error にならないので、更新できたかで判定する。
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const supabase = createSupabaseMock({
+      id: "image-9",
+      user_id: "user-9",
+      image_url: "https://example.com/original.png",
+      storage_path: "user-9/original.png",
+      storage_path_thumb: null,
+      storage_path_display: null,
+      is_posted: false,
+    });
+    const uploadVariants = jest.fn().mockResolvedValue({
+      thumbPath: "user-9/original_thumb.webp",
+      displayPath: "user-9/original_display.webp",
+    });
+    const updateStoragePaths = jest.fn().mockResolvedValue({ updated: false });
+    const revalidateTagFn = jest.fn();
+
+    const result = await ensureWebPVariants("image-9", {
+      supabase: supabase.client as never,
+      uploadVariants,
+      updateStoragePaths,
+      revalidateTagFn,
+    });
+
+    expect(result).toEqual({ status: "skipped", reason: "image-deleted" });
+    // 参照されない実体を残さない
+    expect(supabase.remove).toHaveBeenCalledWith([
+      "user-9/original_thumb.webp",
+      "user-9/original_display.webp",
+    ]);
+    // 行が無いのでキャッシュ再検証はしない
+    expect(revalidateTagFn).not.toHaveBeenCalled();
+    consoleWarn.mockRestore();
   });
 });

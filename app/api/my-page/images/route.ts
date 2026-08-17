@@ -6,8 +6,8 @@ import { getRouteLocale } from "@/lib/api/route-locale";
 import { getMyPageRouteCopy } from "@/features/my-page/lib/route-copy";
 import { createClient } from "@/lib/supabase/server";
 import {
-  collectGeneratedImageStoragePaths,
   GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
+  resolveGeneratedImageDeletablePaths,
 } from "@/features/generation/lib/generated-image-storage-paths";
 
 const UUID_PATTERN =
@@ -147,9 +147,16 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  // Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
-  // 原本 / 表示用 / サムネ / 生成前画像のすべてを対象に集める。
-  const storagePaths = collectGeneratedImageStoragePaths(eligibleRows);
+  /*
+    Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
+    列に入っている実測値 + 決定的に導ける派生パスの両方を消す。
+    派生(WebP変換/Before)は「upload → 列 UPDATE」の順に非同期で作られるため、
+    上の SELECT より後に upload されたぶんは列に入っておらず、
+    実測値だけでは実体が残る。
+  */
+  const storagePaths = resolveGeneratedImageDeletablePaths(
+    eligibleRows.map((row) => ({ ...row, user_id: user.id })),
+  );
 
   if (storagePaths.length > 0) {
     const { error: storageError } = await supabase.storage

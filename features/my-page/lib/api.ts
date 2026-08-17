@@ -2,8 +2,8 @@ import { createClient } from "@/lib/supabase/client";
 import { resolveOwnVisiblePrompts } from "@/features/generation/lib/prompt-secrets-client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import {
-  collectGeneratedImageStoragePaths,
   GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
+  resolveGeneratedImageDeletablePaths,
 } from "@/features/generation/lib/generated-image-storage-paths";
 import {
   redactSensitivePrompt,
@@ -335,8 +335,12 @@ export async function deleteMyImage(
   }
 
   // Storage から削除（原本 / 表示用 / サムネ / Before）。
+  // 列の実測値に加えて、決定的に導ける派生パスも消す(上の SELECT より後に
+  // 非同期で upload されたぶんは列に入っていない)。
   // 失敗しても孤立ファイルが残るだけなのでログに留める。
-  const pathsToRemove = collectGeneratedImageStoragePaths([image]);
+  const pathsToRemove = resolveGeneratedImageDeletablePaths([
+    { ...image, id: imageId },
+  ]);
   if (pathsToRemove.length > 0) {
     const { error: storageError } = await supabase.storage
       .from("generated-images")
