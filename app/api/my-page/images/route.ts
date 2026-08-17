@@ -5,6 +5,10 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getMyPageRouteCopy } from "@/features/my-page/lib/route-copy";
 import { createClient } from "@/lib/supabase/server";
+import {
+  GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
+  resolveGeneratedImageDeletablePaths,
+} from "@/features/generation/lib/generated-image-storage-paths";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -96,12 +100,10 @@ export async function DELETE(request: NextRequest) {
 
   // 対象画像をまとめて取得（RLS により本人レコードのみ返る前提で user_id も明示）。
   // is_posted=false の絞り込みは DB 側で行う（in-memory フィルタ削減）。
-  // storage_path_thumb も SELECT に含めて、後の Storage 削除で孤立サムネを残さない。
+  // Storage 実体の列は 1 箇所に集約している(列を並べると取りこぼす)。
   const { data: rows, error: fetchError } = await supabase
     .from("generated_images")
-    .select(
-      "id, storage_path, storage_path_thumb, pre_generation_storage_path",
-    )
+    .select(`id, ${GENERATED_IMAGE_STORAGE_PATH_COLUMNS}`)
     .eq("user_id", user.id)
     .eq("is_posted", false)
     .in("id", imageIds);
@@ -145,17 +147,16 @@ export async function DELETE(request: NextRequest) {
     );
   }
 
-  // Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
-  // 本体 / サムネ / 生成前画像のすべてを対象に集める。
-  const storagePaths = eligibleRows.flatMap((row) => {
-    const paths: string[] = [];
-    if (row.storage_path) paths.push(row.storage_path);
-    if (row.storage_path_thumb) paths.push(row.storage_path_thumb);
-    if (row.pre_generation_storage_path) {
-      paths.push(row.pre_generation_storage_path);
-    }
-    return paths;
-  });
+  /*
+    Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
+    列に入っている実測値 + 決定的に導ける派生パスの両方を消す。
+    派生(WebP変換/Before)は「upload → 列 UPDATE」の順に非同期で作られるため、
+    上の SELECT より後に upload されたぶんは列に入っておらず、
+    実測値だけでは実体が残る。
+  */
+  const storagePaths = resolveGeneratedImageDeletablePaths(
+    eligibleRows.map((row) => ({ ...row, user_id: user.id })),
+  );
 
   if (storagePaths.length > 0) {
     const { error: storageError } = await supabase.storage

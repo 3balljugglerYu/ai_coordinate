@@ -23,6 +23,7 @@ interface FakeRow {
   // ルートに返却される rows は必ず is_posted=false の前提。
   is_posted?: boolean;
   storage_path: string | null;
+  storage_path_display?: string | null;
   storage_path_thumb?: string | null;
   pre_generation_storage_path: string | null;
 }
@@ -146,16 +147,52 @@ describe("DELETE /api/my-page/images (bulk delete)", () => {
     // 削除順は DB → Storage（壊れた DB レコードを残さないため）
     expect(callOrder).toEqual(["db_delete", "storage_remove"]);
 
-    // Storage は本体 + Before を含めて remove される
+    // Storage は本体 + Before に加えて、決定的に導ける派生パスも remove される
+    // (SELECT より後に非同期で upload された派生を取りこぼさないため)
     expect(storageRemove).toHaveBeenCalledWith([
       "user-1/a.png",
       "user-1/a-before.png",
       "user-1/b.png",
+      "user-1/a_thumb.webp",
+      "user-1/a_display.webp",
+      `user-1/pre-generation/${UUID_A}_display.webp`,
+      "user-1/b_thumb.webp",
+      "user-1/b_display.webp",
+      `user-1/pre-generation/${UUID_B}_display.webp`,
     ]);
 
     // DB 削除は eligible な ID のみで実行され、本人 user_id で絞られている
     expect(deleteIn).toHaveBeenCalledWith("id", [UUID_A, UUID_B]);
     expect(deleteEq).toHaveBeenCalledWith("user_id", "user-1");
+  });
+
+  test("表示用WebPとサムネも Storage から削除する", async () => {
+    // 修正前は storage_path_display を消しておらず、削除ごとに
+    // 平均137kB の表示用WebPが残り続けていた(孤児の供給源)。
+    const { supabase, storageRemove } = buildSupabase({
+      rows: [
+        {
+          id: UUID_A,
+          is_posted: false,
+          storage_path: "user-1/a.png",
+          storage_path_display: "user-1/a_display.webp",
+          storage_path_thumb: "user-1/a_thumb.webp",
+          pre_generation_storage_path: "user-1/a-before.png",
+        },
+      ],
+    });
+    mockCreateClient.mockResolvedValue(supabase as never);
+
+    const res = await DELETE(createRequest({ imageIds: [UUID_A] }));
+
+    expect(res.status).toBe(200);
+    expect(storageRemove).toHaveBeenCalledWith([
+      "user-1/a.png",
+      "user-1/a_display.webp",
+      "user-1/a_thumb.webp",
+      "user-1/a-before.png",
+      `user-1/pre-generation/${UUID_A}_display.webp`,
+    ]);
   });
 
   test("投稿済みが混在する場合_投稿済みは failed に、未投稿のみ削除される", async () => {

@@ -306,6 +306,46 @@ describe("updatePreGenerationStoragePath", () => {
     expect(consoleError).toHaveBeenCalled();
     consoleError.mockRestore();
   });
+
+  test("対象行が既に削除されていたらアップロード済みのBefore画像を消す", async () => {
+    // 生成成功後に fire-and-forget で走るため、この間にユーザーが削除できる。
+    // UPDATE の 0 行は error にならないので、行数で検知して実体を片付ける。
+    const consoleWarn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const mock = buildSupabaseMock({
+      generatedImageRow: null,
+      imageJobRow: null,
+      updateResult: { data: [], error: null },
+    });
+    createAdminClientMock.mockReturnValue(mock.client);
+
+    await updatePreGenerationStoragePath(
+      "img-1",
+      "u1",
+      "u1/pre-generation/img-1_display.webp"
+    );
+
+    expect(mock.removeFn).toHaveBeenCalledWith([
+      "u1/pre-generation/img-1_display.webp",
+    ]);
+    consoleWarn.mockRestore();
+  });
+
+  test("更新できた場合はBefore画像を消さない", async () => {
+    const mock = buildSupabaseMock({
+      generatedImageRow: null,
+      imageJobRow: null,
+      updateResult: { data: [{ id: "img-1" }], error: null },
+    });
+    createAdminClientMock.mockReturnValue(mock.client);
+
+    await updatePreGenerationStoragePath(
+      "img-1",
+      "u1",
+      "u1/pre-generation/img-1_display.webp"
+    );
+
+    expect(mock.removeFn).not.toHaveBeenCalled();
+  });
 });
 
 type SupabaseQueryResult<T> = {
@@ -320,11 +360,16 @@ function buildSupabaseMock(opts: {
   imageJobRow: { input_image_url: string | null } | null;
   uploadResult?: SupabaseQueryResult<{ path: string } | null>;
   removeResult?: SupabaseQueryResult<unknown>;
-  updateResult?: { error: { message: string } | null };
+  updateResult?: { data?: { id: string }[]; error: { message: string } | null };
 }) {
-  const updateEqEq = jest
-    .fn()
-    .mockResolvedValue(opts.updateResult ?? { error: null });
+  // update(...).eq(...).eq(...).select("id") まで繋ぐ。
+  // select が返す行数で「対象行がまだ在るか」を判定するため、
+  // 既定は 1 行(=更新できた)にしておく。
+  const updateSelect = jest.fn().mockResolvedValue({
+    data: opts.updateResult?.data ?? [{ id: "img-1" }],
+    error: opts.updateResult?.error ?? null,
+  });
+  const updateEqEq = jest.fn(() => ({ select: updateSelect }));
   const updateEq1 = jest.fn(() => ({ eq: updateEqEq }));
   const updateFn = jest.fn(() => ({ eq: updateEq1 }));
 

@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/client";
 import { resolveOwnVisiblePrompts } from "@/features/generation/lib/prompt-secrets-client";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import {
+  GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
+  resolveGeneratedImageDeletablePaths,
+} from "@/features/generation/lib/generated-image-storage-paths";
+import {
   redactSensitivePrompt,
   redactSensitivePrompts,
 } from "@/features/generation/lib/prompt-visibility";
@@ -298,7 +302,7 @@ export async function deleteMyImage(
   // 画像情報を取得してStorageパスを確認
   const { data: image, error: fetchError } = await supabase
     .from("generated_images")
-    .select("storage_path, user_id, pre_generation_storage_path")
+    .select(`user_id, ${GENERATED_IMAGE_STORAGE_PATH_COLUMNS}`)
     .eq("id", imageId)
     .single();
 
@@ -312,20 +316,12 @@ export async function deleteMyImage(
     );
   }
 
-  // Storage から削除（生成画像本体 + Before（あれば））
-  const pathsToRemove = [image.storage_path];
-  if (image.pre_generation_storage_path) {
-    pathsToRemove.push(image.pre_generation_storage_path);
-  }
-  const { error: storageError } = await supabase.storage
-    .from("generated-images")
-    .remove(pathsToRemove);
-
-  if (storageError) {
-    console.error("Storage delete error:", storageError);
-  }
-
-  // データベースから削除
+  /*
+    DB → Storage の順で消す(一括削除と同じ順序)。
+    Storage を先に消すと、DB 削除が失敗したときに「行はあるが実体が無い」
+    = 表示が壊れた画像が残る。DB を真実とし Storage を後追いにすれば、
+    最悪でも孤立ファイルが残るだけで、後から掃除できる。
+  */
   const { error: deleteError } = await supabase
     .from("generated_images")
     .delete()
@@ -336,6 +332,23 @@ export async function deleteMyImage(
     throw new Error(
       `${messages?.deleteImageFailed || "画像の削除に失敗しました"}: ${deleteError.message}`
     );
+  }
+
+  // Storage から削除（原本 / 表示用 / サムネ / Before）。
+  // 列の実測値に加えて、決定的に導ける派生パスも消す(上の SELECT より後に
+  // 非同期で upload されたぶんは列に入っていない)。
+  // 失敗しても孤立ファイルが残るだけなのでログに留める。
+  const pathsToRemove = resolveGeneratedImageDeletablePaths([
+    { ...image, id: imageId },
+  ]);
+  if (pathsToRemove.length > 0) {
+    const { error: storageError } = await supabase.storage
+      .from("generated-images")
+      .remove(pathsToRemove);
+
+    if (storageError) {
+      console.error("Storage delete error:", storageError);
+    }
   }
 }
 
