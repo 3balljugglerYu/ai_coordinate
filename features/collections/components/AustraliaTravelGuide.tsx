@@ -433,7 +433,7 @@ export function AustraliaTravelGuide({
                 style={{ fontFamily: HEADING_FONT }}
               >
                 <span>
-                  2026/8/22
+                  2026/8/29
                   <span className="text-[11px] font-medium text-[#9a8a78]">(土)</span>{" "}
                   8:00
                 </span>
@@ -450,7 +450,7 @@ export function AustraliaTravelGuide({
                   <path d="M5 12h14M13 6l6 6-6 6" />
                 </svg>
                 <span>
-                  8/30
+                  9/6
                   <span className="text-[11px] font-medium text-[#9a8a78]">(日)</span>{" "}
                   21:59
                 </span>
