@@ -458,6 +458,49 @@ export function AustraliaTravelGuide({
             </div>
           </Reveal>
 
+          {/*
+            企画(スクラップブック)は 8/29 開始だが、その前の10日間は
+            コーデ用プロンプトを毎朝公開する(企画ではなく通常の共有)。
+            前半に来た人が「今は何をすればいいのか」で迷わないよう2段構成を示す。
+            旅程が10日間なので 8/19〜8/28 が Day1〜Day10 に対応する。
+          */}
+          <Reveal delay={230}>
+            <div className="mx-auto mt-5 w-full max-w-[330px] space-y-2 text-left">
+              <div
+                className="rounded-2xl border bg-white/85 px-4 py-3"
+                style={{ borderColor: "rgba(15,127,168,0.35)" }}
+              >
+                <p
+                  className="text-[11px] font-bold tracking-wide"
+                  style={{ color: AU_OCEAN, fontFamily: HEADING_FONT }}
+                >
+                  8/19(水)〜8/28(金) ・ 旅のあいだ
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[#7a6a58]">
+                  オーストラリアをめぐる
+                  <strong className="font-bold text-[#4a3b2c]">コーデのプロンプトを毎朝公開</strong>
+                  。10日間の旅を楽しんでください。
+                </p>
+              </div>
+              <div
+                className="rounded-2xl border-2 bg-white px-4 py-3"
+                style={{ borderColor: AU_OCHRE }}
+              >
+                <p
+                  className="text-[11px] font-bold tracking-wide"
+                  style={{ color: AU_OCHRE, fontFamily: HEADING_FONT }}
+                >
+                  8/29(土)〜9/6(日) ・ 旅のあと
+                </p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[#7a6a58]">
+                  思い出を振り返って、
+                  <strong className="font-bold text-[#4a3b2c]">めくれる旅行日記をつくる企画</strong>
+                  がはじまります。
+                </p>
+              </div>
+            </div>
+          </Reveal>
+
           <Reveal delay={240}>
             <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
               うちの子と、オーストラリアをめぐる10日間。
@@ -478,7 +521,7 @@ export function AustraliaTravelGuide({
               </svg>
             </Link>
             <p className="mt-3 text-xs text-[#9a8a78]">
-              企画がスタートしたら対象の「オーストラリア旅行」シリーズが表示されます！
+              日記づくりの企画は 8/29(土) 8:00 から。それまでは毎朝のコーデプロンプトをお楽しみください！
             </p>
           </Reveal>
         </div>
