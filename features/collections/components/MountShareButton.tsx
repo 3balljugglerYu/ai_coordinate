@@ -17,9 +17,12 @@ import { buildPublicMountUrl, trackMountShareEvent } from "../lib/share-mount";
 export function MountShareButton({
   completionId,
   mountImageUrl,
+  categoryKey,
 }: {
   completionId: string;
   mountImageUrl: string;
+  /** シェアURLに流入元タグを付けるために使う(どの企画経由の登録かを取る)。 */
+  categoryKey?: string | null;
 }) {
   const [downloading, setDownloading] = useState(false);
   const { toast } = useToast();
@@ -54,7 +57,9 @@ export function MountShareButton({
   return (
     <div className="flex flex-wrap justify-center gap-3">
       <ShareLinkButton
-        url={() => buildPublicMountUrl(completionId, mountImageUrl)}
+        url={() =>
+          buildPublicMountUrl(completionId, mountImageUrl, categoryKey)
+        }
         messages={MOUNT_SHARE_MESSAGES}
         onShared={() => trackMountShareEvent(completionId)}
         className="px-5"

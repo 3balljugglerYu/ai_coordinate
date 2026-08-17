@@ -153,9 +153,11 @@ describe("CollectionProgressModal: 完了ビューのシェア (PC)", () => {
         "https://persta.ai/m/completion-1?v=42",
       );
     });
+    // 第3引数はシェアURLの流入元タグ(どの企画経由の登録かを取るため)
     expect(mockBuildPublicMountUrl).toHaveBeenCalledWith(
       "completion-1",
       completedCelebration.mountImageUrl,
+      completedCelebration.categoryKey,
     );
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
