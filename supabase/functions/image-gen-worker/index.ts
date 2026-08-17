@@ -2996,61 +2996,104 @@ Deno.serve(async () => {
           };
 
           /**
-           * 完了 RPC がエラーを返したとき、**本当に失敗したのか**を DB に問い合わせる。
+           * 完了 RPC がエラーを返したときの「本当の結果」。
            *
-           * 520 / タイムアウト / 切断は「結果が不明」であって「失敗」ではない。
-           * RPC 側はコミット済みなのに応答だけが失われることがあり、そこで
-           * cleanupUploadedImages を走らせると **コミット済みの行が参照している
-           * 画像を消してしまう**(= 一覧に壊れた画像が出る)。
+           * ここを2値(成功/失敗)で扱うと危険。520・切断・タイムアウトは
+           * **結果が不明**であり、元トランザクションがまだ実行中の可能性がある。
+           * complete_image_job_with_prompt_secrets は job 行を FOR UPDATE した後に
+           * 画像を INSERT し、**最後に** status='succeeded' へ更新するため、
+           * 実行中に通常 SELECT すると旧値(processing)が見える。
+           * それを「未コミット」と決めつけて削除すると、直後にコミットされた瞬間に
+           * 「DB行あり・Storage実体なし」が再発する。
            *
-           * 実際に 2026-08-17 に発生している:
-           *   uploading 完了 → RPC が 65 秒かかる → Cloudflare 520 →
-           *   ワーカーが失敗と判断 → 画像を削除。しかし RPC は 211ms 前に
-           *   コミット済みで、image_jobs=succeeded / generated_images の行も存在した。
-           *
-           * ジョブが succeeded かつ行が存在すれば「応答が失われただけ」なので、
-           * RPC が返すはずだった形(id / storage_path)を復元して成功経路に合流させる。
-           * 判定できない場合は null を返し、従来どおり後始末して失敗させる。
+           * 方針: **迷ったら消さない**。
+           * 孤児は後から安全に掃除できるが、コミット済み行の参照先は復旧できない。
            */
-          const recoverCommittedImageRecords = async (): Promise<
+          type CompletionOutcome =
+            | { kind: "committed"; records: Array<{ id: string; storage_path: string }> }
+            | { kind: "failed" }
+            | { kind: "unknown" };
+
+          /**
+           * エラーが「サーバに届いて拒否された」ものかを見分ける。
+           *
+           * PostgREST / Postgres の構造化エラーは code を持つ(23505 / P0001 /
+           * 57014=statement timeout 等)。いずれもトランザクションは巻き戻っており、
+           * 後始末してよい。一方 520 はゲートウェイが HTML を返すため code が無く、
+           * 元トランザクションの生死が分からない。
+           */
+          const isRejectedByServer = (error: unknown): boolean => {
+            const code = (error as { code?: unknown } | null)?.code;
+            return typeof code === "string" && code.length > 0;
+          };
+
+          /** コミット済みなら RPC が返すはずだった形を復元する。未確定なら null。 */
+          const readCommittedImageRecords = async (): Promise<
             Array<{ id: string; storage_path: string }> | null
           > => {
-            try {
-              const { data: jobRow, error: jobError } = await supabase
-                .from("image_jobs")
-                .select("status")
-                .eq("id", jobId)
-                .maybeSingle();
-              if (jobError || jobRow?.status !== "succeeded") {
-                return null;
-              }
-
-              const { data: rows, error: rowsError } = await supabase
-                .from("generated_images")
-                .select("id, storage_path")
-                .eq("image_job_id", jobId);
-              if (rowsError || !rows || rows.length === 0) {
-                return null;
-              }
-
-              return rows
-                .map((row) => ({
-                  id: typeof row?.id === "string" ? row.id : null,
-                  storage_path:
-                    typeof row?.storage_path === "string" ? row.storage_path : null,
-                }))
-                .filter(
-                  (row): row is { id: string; storage_path: string } =>
-                    row.id !== null && row.storage_path !== null,
-                );
-            } catch (error) {
-              // 確認そのものが失敗したら「不明」として扱い、従来の後始末に委ねる
-              console.warn("[Worker] failed to verify committed persistence", {
-                jobId,
-                error,
-              });
+            const { data: jobRow, error: jobError } = await supabase
+              .from("image_jobs")
+              .select("status")
+              .eq("id", jobId)
+              .maybeSingle();
+            if (jobError || jobRow?.status !== "succeeded") {
               return null;
             }
+
+            const { data: rows, error: rowsError } = await supabase
+              .from("generated_images")
+              .select("id, storage_path")
+              .eq("image_job_id", jobId);
+            if (rowsError || !rows || rows.length === 0) {
+              return null;
+            }
+
+            const records = rows
+              .map((row) => ({
+                id: typeof row?.id === "string" ? row.id : null,
+                storage_path:
+                  typeof row?.storage_path === "string" ? row.storage_path : null,
+              }))
+              .filter(
+                (row): row is { id: string; storage_path: string } =>
+                  row.id !== null && row.storage_path !== null,
+              );
+            return records.length > 0 ? records : null;
+          };
+
+          /**
+           * 完了 RPC のエラーを 3 状態に分類する。
+           *
+           * コミットは応答が返った後に完了することがあるため、少しだけ待って
+           * 数回見に行く(bounded polling)。それでも掴めなければ unknown とし、
+           * 呼び出し側は**削除せずに**失敗させる。ジョブは再試行され、
+           * 完了 RPC は冪等なので、元トランザクションが後からコミットしていれば
+           * 再試行時に既存行が返り、そこで今回の孤児だけが掃除される。
+           */
+          const classifyCompletionOutcome = async (
+            error: unknown,
+          ): Promise<CompletionOutcome> => {
+            const attempts = 4;
+            for (let i = 0; i < attempts; i += 1) {
+              try {
+                const records = await readCommittedImageRecords();
+                if (records) {
+                  return { kind: "committed", records };
+                }
+              } catch (checkError) {
+                // 確認そのものの失敗は「未コミットの証拠」にはならない
+                console.warn("[Worker] failed to verify completion state", {
+                  jobId,
+                  checkError,
+                });
+                return { kind: "unknown" };
+              }
+              if (i < attempts - 1) {
+                await new Promise((resolve) => setTimeout(resolve, 750));
+              }
+            }
+            // サーバに届いて拒否されたことが分かっている場合だけ「失敗」と断定する
+            return isRejectedByServer(error) ? { kind: "failed" } : { kind: "unknown" };
           };
 
           /** 完了 RPC の返り値から storage_path を取り出す。 */
@@ -3167,17 +3210,26 @@ Deno.serve(async () => {
 
                 if (completeJobError) {
                   console.error("OpenAI batch completion RPC error:", completeJobError);
-                  // 応答が失われただけでコミット済みの可能性がある。消す前に確かめる。
-                  const recovered = await recoverCommittedImageRecords();
-                  if (!recovered) {
-                    await cleanupUploadedImages("persistence failure");
+                  const outcome = await classifyCompletionOutcome(completeJobError);
+                  if (outcome.kind === "committed") {
+                    console.warn(
+                      "[Worker] completion RPC response lost but the transaction was committed; keeping uploads",
+                      { jobId, images: outcome.records.length },
+                    );
+                    imageRecords = outcome.records;
+                  } else {
+                    if (outcome.kind === "failed") {
+                      // サーバに届いて拒否された = 巻き戻り済み。後始末してよい
+                      await cleanupUploadedImages("persistence failure");
+                    } else {
+                      // 結果が不明。消すと参照先を壊しうるので残す(孤児は後から掃除できる)
+                      console.warn(
+                        "[Worker] completion RPC outcome unknown; keeping uploads for reconciliation",
+                        { jobId },
+                      );
+                    }
                     throw new Error(`画像メタデータの保存に失敗しました: ${completeJobError.message}`);
                   }
-                  console.warn(
-                    "[Worker] completion RPC failed but the transaction was committed; keeping uploads",
-                    { jobId, images: recovered.length },
-                  );
-                  imageRecords = recovered;
                 }
 
                 const rpcImageRecordIds = Array.isArray(imageRecords)
@@ -3248,20 +3300,28 @@ Deno.serve(async () => {
                   "Failed to complete image job atomically:",
                   geminiCompleteError,
                 );
-                // 応答が失われただけでコミット済みの可能性がある。消す前に確かめる。
-                const recovered = await recoverCommittedImageRecords();
-                if (!recovered) {
-                  // DB に紐づかなかったアップロードを孤児にしない
-                  await cleanupUploadedImages("persistence failure");
+                const outcome = await classifyCompletionOutcome(geminiCompleteError);
+                if (outcome.kind === "committed") {
+                  console.warn(
+                    "[Worker] completion RPC response lost but the transaction was committed; keeping uploads",
+                    { jobId, images: outcome.records.length },
+                  );
+                  geminiImageRecords = outcome.records;
+                } else {
+                  if (outcome.kind === "failed") {
+                    // サーバに届いて拒否された = 巻き戻り済み。孤児にしないため消す
+                    await cleanupUploadedImages("persistence failure");
+                  } else {
+                    // 結果が不明。消すと参照先を壊しうるので残す
+                    console.warn(
+                      "[Worker] completion RPC outcome unknown; keeping uploads for reconciliation",
+                      { jobId },
+                    );
+                  }
                   throw new Error(
                     `画像メタデータの保存に失敗しました: ${geminiCompleteError.message}`,
                   );
                 }
-                console.warn(
-                  "[Worker] completion RPC failed but the transaction was committed; keeping uploads",
-                  { jobId, images: recovered.length },
-                );
-                geminiImageRecords = recovered;
               }
 
               const geminiRecordIds = Array.isArray(geminiImageRecords)
