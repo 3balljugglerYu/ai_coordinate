@@ -227,10 +227,32 @@ describe("MountShareButton: シェアする (PC, posts と同一挙動)", () => 
         "https://persta.ai/m/completion-1?v=123",
       );
     });
+    // 第3引数はシェアURLの流入元タグ。ここでは未指定なので undefined
     expect(mockBuildPublicMountUrl).toHaveBeenCalledWith(
       "completion-1",
       defaultProps.mountImageUrl,
+      undefined,
     );
+  });
+
+  test("categoryKey を渡すとシェアURLの組立に流入元タグが伝わる", async () => {
+    /*
+      シェアURL → 訪問 → 新規登録 を繋ぐための first-touch タグ(計測①)。
+      /m ページから categoryKey が渡らないと、どの企画経由の登録か分からなくなる。
+    */
+    render(
+      <MountShareButton {...defaultProps} categoryKey="travel_to_australia" />,
+    );
+
+    fireEvent.click(screen.getByRole("menuitem", { name: "リンクをコピー" }));
+
+    await waitFor(() => {
+      expect(mockBuildPublicMountUrl).toHaveBeenCalledWith(
+        "completion-1",
+        defaultProps.mountImageUrl,
+        "travel_to_australia",
+      );
+    });
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({ title: "URLをコピーしました" }),

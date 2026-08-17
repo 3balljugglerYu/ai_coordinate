@@ -631,7 +631,13 @@ export function CollectionProgressModal({
               /* posts / /m と同じ共有 UI(モバイル=シェアシート、PC=コピー/Web Share
                  メニュー)。成功時に share-event を計測する。 */
               <ShareLinkButton
-                url={() => buildPublicMountUrl(completionId, mountImageUrl)}
+                url={() =>
+                  buildPublicMountUrl(
+                    completionId,
+                    mountImageUrl,
+                    celebration.categoryKey,
+                  )
+                }
                 messages={MOUNT_SHARE_MESSAGES}
                 onShared={() => trackMountShareEvent(completionId)}
                 className="h-auto w-full rounded-full border-2 border-amber-300 bg-white px-6 py-3 text-base font-bold text-amber-600 transition-colors hover:bg-amber-50"

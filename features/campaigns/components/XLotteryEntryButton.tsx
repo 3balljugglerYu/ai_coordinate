@@ -62,8 +62,8 @@ export function XLotteryEntryButton({
   const handleClick = () => {
     const shareUrl =
       view === "book"
-        ? buildPublicBookUrl(completionId)
-        : buildPublicMountUrl(completionId, mountImageUrl);
+        ? buildPublicBookUrl(completionId, categoryKey)
+        : buildPublicMountUrl(completionId, mountImageUrl, categoryKey);
     const intentUrl = buildXLotteryIntentUrl(copy, shareUrl);
     // 応募=シェアなので既存の共有計測も呼ぶ(best-effort)。
     trackMountShareEvent(completionId);

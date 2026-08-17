@@ -97,6 +97,7 @@ export default async function CollectionBookPage({
       pages={pages}
       isOwner={isOwner}
       completionId={token}
+      categoryKey={book.categoryKey}
       rewardGranted={rewardGranted}
       coverOverlay={book.coverOverlay}
       backCoverImageUrl={backCoverImageUrl}

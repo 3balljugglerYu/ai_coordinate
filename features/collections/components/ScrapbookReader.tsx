@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { X, Share2, Maximize2, Minimize2, ChevronUp } from "lucide-react";
+import { buildPublicBookUrl } from "../lib/share-mount";
 import { CatalogBookView } from "@/features/catalog/components/CatalogBookView";
 import type { CatalogPageData } from "@/features/catalog/components/CatalogPage";
 import { CompletionFeedPostButton } from "@/features/collections/components/CompletionFeedPostButton";
@@ -31,6 +32,7 @@ export function ScrapbookReader({
   backCoverImageUrl = null,
   pageAspectRatio = null,
   lottery = null,
+  categoryKey = null,
 }: {
   title: string;
   coverImageUrl: string | null;
@@ -59,6 +61,12 @@ export function ScrapbookReader({
     entryStartsAt: string | null;
     entryEndsAt: string | null;
   } | null;
+  /**
+   * シェアURLに付ける流入元タグ用。**lottery とは独立して渡すこと**。
+   * lottery は抽選対象のカテゴリにしか入らないため、そこから取ると
+   * イタリア旅行のような抽選なしの book でタグが欠ける。
+   */
+  categoryKey?: string | null;
 }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -157,7 +165,17 @@ export function ScrapbookReader({
   };
 
   const handleShare = async () => {
-    const url = typeof window !== "undefined" ? window.location.href : "";
+    /*
+      window.location.href をそのまま共有すると、所有者が内部導線から開いた
+      タグ無しURLがそのまま出回り、シェア経由の登録が計測できない。
+      completionId があるときは必ずタグ付きURLを組み立て直す。
+    */
+    const url =
+      completionId
+        ? buildPublicBookUrl(completionId, categoryKey)
+        : typeof window !== "undefined"
+          ? window.location.href
+          : "";
     try {
       if (navigator.share) {
         await navigator.share({ title, url });
