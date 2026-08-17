@@ -46,4 +46,55 @@ describe("buildCollectionUuFunnel", () => {
     expect(f.generatesUu).toBe(1);
     expect(f.completionsUu).toBe(1);
   });
+
+  test("viewer_key でゲスト訪問UU・ゲスト生成UUと転換率を出す", () => {
+    const f = buildCollectionUuFunnel({
+      // 同一 IP ハッシュは1人として数える(端末/回線単位の近似)
+      visitMemberViewerKeys: ["u:u1", "u:u2", "u:u1"],
+      visitGuestViewerKeys: ["g:aaa", "g:bbb", "g:aaa", "g:ccc", "g:ddd"],
+      generateGuestViewerKeys: ["g:aaa", "g:aaa"],
+      generateMemberUserIds: ["u1"],
+      completerUserIds: [],
+      shareUserIds: [],
+      registeredUserIds: [],
+    });
+
+    expect(f.visitsMemberUu).toBe(2);
+    expect(f.visitsGuestUu).toBe(4);
+    expect(f.generatesGuestUu).toBe(1);
+    expect(f.guestGenerateRatePct).toBe(25); // 1/4
+  });
+
+  test("計装前(viewer_key が null)は訪問UUを0にし、率は N/A にする", () => {
+    const f = buildCollectionUuFunnel({
+      // 2026-08-17 の計装より前の行は viewer_key を持たない。
+      // 「0人が訪問した」ではなく「取れていない」ので率は出さない。
+      visitMemberViewerKeys: [null, null],
+      visitGuestViewerKeys: [null, null, null],
+      generateGuestViewerKeys: [null],
+      generateMemberUserIds: ["u1"],
+      completerUserIds: ["u1"],
+      shareUserIds: [],
+      registeredUserIds: [],
+    });
+
+    expect(f.visitsMemberUu).toBe(0);
+    expect(f.visitsGuestUu).toBe(0);
+    expect(f.generatesGuestUu).toBe(0);
+    expect(f.guestGenerateRatePct).toBeNull();
+  });
+
+  test("訪問系を渡さなくても既存の集計は壊れない(後方互換)", () => {
+    const f = buildCollectionUuFunnel({
+      generateMemberUserIds: ["u1", "u2"],
+      completerUserIds: ["u1"],
+      shareUserIds: [],
+      registeredUserIds: [],
+    });
+
+    expect(f.visitsMemberUu).toBe(0);
+    expect(f.guestGenerateRatePct).toBeNull();
+    expect(f.generatesUu).toBe(2);
+    expect(f.reachRatePct).toBe(50);
+  });
 });

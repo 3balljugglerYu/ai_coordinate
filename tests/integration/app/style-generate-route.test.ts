@@ -305,12 +305,16 @@ describe("StyleGenerateRoute integration tests", () => {
       authState: "guest",
       eventType: "generate_attempt",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
     expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
       userId: null,
       authState: "guest",
       eventType: "generate",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
   });
 
@@ -489,12 +493,16 @@ describe("StyleGenerateRoute integration tests", () => {
       authState: "guest",
       eventType: "generate_attempt",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
     expect(recordStyleUsageEventFn).toHaveBeenNthCalledWith(2, {
       userId: null,
       authState: "guest",
       eventType: "generate",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
   });
 
@@ -708,6 +716,8 @@ describe("StyleGenerateRoute integration tests", () => {
       authState: "guest",
       eventType: "rate_limited",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
   });
 
@@ -747,6 +757,8 @@ describe("StyleGenerateRoute integration tests", () => {
       authState: "guest",
       eventType: "rate_limited",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
   });
 
@@ -1284,6 +1296,8 @@ describe("StyleGenerateRoute integration tests", () => {
       authState: "guest",
       eventType: "generate_attempt",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
     expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
       reservation: {
@@ -1394,6 +1408,8 @@ describe("StyleGenerateRoute integration tests", () => {
       authState: "guest",
       eventType: "generate_attempt",
       styleId: STYLE_ID,
+      categoryKey: "coordinate",
+      viewerKey: null,
     });
     expect(releaseRateLimitAttemptFn).toHaveBeenCalledWith({
       reservation: {

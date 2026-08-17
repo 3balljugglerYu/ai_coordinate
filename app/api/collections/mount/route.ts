@@ -391,11 +391,15 @@ export async function POST(request: NextRequest) {
             userId: user.id,
             authState: "authenticated",
             eventType: "complete_achieved",
+            categoryKey,
+            viewerKey: `u:${user.id}`,
           }),
           recordStyleUsageEvent({
             userId: user.id,
             authState: "authenticated",
             eventType: "mount_generated",
+            categoryKey,
+            viewerKey: `u:${user.id}`,
           }),
         ]);
       } else {
@@ -590,11 +594,15 @@ export async function POST(request: NextRequest) {
           userId: user.id,
           authState: "authenticated",
           eventType: "complete_achieved",
+          categoryKey,
+          viewerKey: `u:${user.id}`,
         }),
         recordStyleUsageEvent({
           userId: user.id,
           authState: "authenticated",
           eventType: "mount_generated",
+          categoryKey,
+          viewerKey: `u:${user.id}`,
         }),
       ]);
     } else {

@@ -29,6 +29,7 @@ export type {
  * - completions / mountsFailed: collection_completions(completed_at で範囲絞り)
  * - seriesGenerations / outfitCounts: image_jobs(成功ジョブ・created_at で範囲絞り)
  * - ファネル: style_usage_events を当該カテゴリの preset id で絞って集計
+ *   (visit だけは style_id を持たないため category_key で別途取得する)
  */
 export async function getCollectionKpi(params: {
   categoryKey: string;
@@ -53,8 +54,13 @@ export async function getCollectionKpi(params: {
   }));
   const presetIds = presets.map((p) => p.id);
 
-  const [completionsResult, imageJobsResult, eventsResult, sharesResult] =
-    await Promise.all([
+  const [
+    completionsResult,
+    imageJobsResult,
+    eventsResult,
+    visitsResult,
+    sharesResult,
+  ] = await Promise.all([
       supabase
         .from("collection_completions")
         .select("mount_status, completed_at")
@@ -73,9 +79,28 @@ export async function getCollectionKpi(params: {
             .from("style_usage_events")
             .select("auth_state, event_type, created_at")
             .in("style_id", presetIds)
+            // visit は下の category_key クエリで数える。
+            // route 側で style_id を null に正規化しているが、集計側でも
+            // 除外して二重計上を二重に防ぐ(旧データ・将来の caller 対策)。
+            .neq("event_type", "visit")
             .gte("created_at", startIso)
             .lte("created_at", endIso)
         : Promise.resolve({ data: [] as CollectionEventRow[], error: null }),
+      /*
+        visit は style_id を持たない(1訪問=1プリセットではない)。
+        上の presetIds クエリには1件もヒットせず、**訪問カードは構造的に
+        常に 0 を表示していた**。企画別の訪問は category_key で数える。
+        二重計上は3重に防いでいる: route が visit の style_id を null に正規化 /
+        上のクエリが visit を除外 / このクエリが visit だけを取る。
+        category_key の計装は 2026-08-17 開始 = それ以前の訪問は取れない。
+      */
+      supabase
+        .from("style_usage_events")
+        .select("auth_state, event_type, created_at, viewer_key")
+        .eq("event_type", "visit")
+        .eq("category_key", params.categoryKey)
+        .gte("created_at", startIso)
+        .lte("created_at", endIso),
       // mount_shared は category_key を style_id に格納して記録(share-event route)。
       // series 固有のシェア数で絞る(計装変更前の旧 share は style_id=null のため対象外)。
       supabase
@@ -92,7 +117,10 @@ export async function getCollectionKpi(params: {
     presets,
     completionRows: (completionsResult.data ?? []) as CollectionCompletionRow[],
     imageJobRows: (imageJobsResult.data ?? []) as CollectionImageJobRow[],
-    eventRows: (eventsResult.data ?? []) as CollectionEventRow[],
+    eventRows: [
+      ...((eventsResult.data ?? []) as CollectionEventRow[]),
+      ...((visitsResult.data ?? []) as CollectionEventRow[]),
+    ],
     shareRows: (sharesResult.data ?? []) as CollectionEventRow[],
     currentStart: params.currentStart,
     previousStart: params.previousStart,
@@ -101,6 +129,11 @@ export async function getCollectionKpi(params: {
 }
 
 type UserIdRow = { user_id: string | null };
+type ViewerKeyRow = { viewer_key: string | null };
+
+function viewerKeys(rows: ViewerKeyRow[] | null): (string | null)[] {
+  return (rows ?? []).map((row) => row.viewer_key);
+}
 
 function distinctUserIds(rows: UserIdRow[] | null): string[] {
   return (rows ?? [])
@@ -111,7 +144,8 @@ function distinctUserIds(rows: UserIdRow[] | null): string[] {
 /**
  * 指定シリーズのユニークユーザー(UU)ファネルを取得する(現在期間のみ)。
  * - 生成UU(ログイン) → コンプリートUU → シェアUU、および期間内登録UU → コンプリート
- * - ゲストは user_id=NULL のため UU 計測対象外(ログイン側のみ)。admin 専用。
+ * - 訪問UU とゲストUU は viewer_key で数える(ゲストは user_id が NULL のため)。
+ *   2026-08-17 の計装以降のぶんだけ。admin 専用。
  */
 export async function getCollectionUuFunnel(params: {
   categoryKey: string;
@@ -129,8 +163,15 @@ export async function getCollectionUuFunnel(params: {
     .eq("category_id", params.categoryId);
   const presetIds = (presetRows ?? []).map((p) => p.id as string);
 
-  const [genResult, completedResult, shareResult, registeredResult] =
-    await Promise.all([
+  const [
+    genResult,
+    completedResult,
+    shareResult,
+    registeredResult,
+    visitMemberResult,
+    visitGuestResult,
+    genGuestResult,
+  ] = await Promise.all([
       presetIds.length > 0
         ? supabase
             .from("style_usage_events")
@@ -160,9 +201,46 @@ export async function getCollectionUuFunnel(params: {
         .select("user_id")
         .gte("created_at", startIso)
         .lte("created_at", endIso),
+      // 訪問UU: visit は style_id を持たないため category_key で絞る。
+      supabase
+        .from("style_usage_events")
+        .select("viewer_key")
+        .eq("event_type", "visit")
+        .eq("auth_state", "authenticated")
+        .eq("category_key", params.categoryKey)
+        .gte("created_at", startIso)
+        .lte("created_at", endIso),
+      supabase
+        .from("style_usage_events")
+        .select("viewer_key")
+        .eq("event_type", "visit")
+        .eq("auth_state", "guest")
+        .eq("category_key", params.categoryKey)
+        .gte("created_at", startIso)
+        .lte("created_at", endIso),
+      // ゲストの生成UU。ゲスト生成は style_id を持つので preset で絞れる。
+      presetIds.length > 0
+        ? supabase
+            .from("style_usage_events")
+            .select("viewer_key")
+            .eq("event_type", "generate")
+            .eq("auth_state", "guest")
+            .in("style_id", presetIds)
+            .gte("created_at", startIso)
+            .lte("created_at", endIso)
+        : Promise.resolve({ data: [] as ViewerKeyRow[], error: null }),
     ]);
 
   return buildCollectionUuFunnel({
+    visitMemberViewerKeys: viewerKeys(
+      visitMemberResult.data as ViewerKeyRow[] | null,
+    ),
+    visitGuestViewerKeys: viewerKeys(
+      visitGuestResult.data as ViewerKeyRow[] | null,
+    ),
+    generateGuestViewerKeys: viewerKeys(
+      genGuestResult.data as ViewerKeyRow[] | null,
+    ),
     generateMemberUserIds: distinctUserIds(genResult.data as UserIdRow[] | null),
     completerUserIds: distinctUserIds(completedResult.data as UserIdRow[] | null),
     shareUserIds: distinctUserIds(shareResult.data as UserIdRow[] | null),
