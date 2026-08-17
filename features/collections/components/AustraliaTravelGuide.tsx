@@ -217,23 +217,6 @@ const PAGES: { day: string; en: string }[] = [
   { day: "Day 10", en: "See You Again, Australia" },
 ];
 
-/**
- * Xシェア抽選の表示値。
- * 実際の応募ボタンの文面は features/campaigns/x-lottery-campaign.ts が正本なので、
- * 賞品・人数・タグを変えるときは**両方**を揃えること。
- */
-const LOTTERY = {
-  prizeLabel: "Amazonギフト券 2,000円分",
-  winnersLabel: "5名様",
-  hashtags: ["うちの子のオーストラリア旅行", "PerstaAI"],
-  /** 主催(当選連絡のDM送信元)。応募ポストのメンション先でもある。 */
-  mention: "mickey_fuku",
-  /** コラボ相手。今回はこちらもフォローを応募条件にしている。 */
-  collaborator: "kyouchanlio",
-  periodLabel: "8/22(土) 8:00 〜 8/30(日) 21:59",
-  rulesPath: "/campaigns/australia-lottery",
-} as const;
-
 /** 「2_青い海から始まる旅」→「青い海から始まる旅」。運用用の数字プレフィックスを落とす。 */
 function stripOrderPrefix(title: string): string {
   return title.replace(/^\d+[_.\-\s]\s*/, "");
@@ -621,226 +604,18 @@ export function AustraliaTravelGuide({
         </section>
       ) : null}
 
-      {/* ===== シェアして応募(Xシェア抽選) ===== */}
+      {/* ===== あそびかた ===== */}
+      {/*
+        抽選セクションを廃止した際、そこが担っていた「港の青(シドニー)」を
+        このセクションに引き継いだ。旅程で色が変わる設計を崩さないため。
+      */}
       <section
         className="relative overflow-hidden px-6 py-16"
-        style={{ background: `linear-gradient(180deg, ${BG.ochre} 0%, ${BG.harbour} 34%, ${BG.harbour} 100%)` }}
+        style={{ background: `linear-gradient(180deg, ${BG.ochre} 0%, ${BG.harbour} 38%, ${BG.cream} 100%)` }}
       >
-        <HarbourArchMotif className="pointer-events-none absolute -right-16 top-40 w-[72%] opacity-25" />
+        <HarbourArchMotif className="pointer-events-none absolute -right-16 top-24 w-[72%] opacity-25" />
         <Sparkle className="au-twinkle pointer-events-none absolute left-6 top-10 h-6 w-6 text-sky-400" />
-        <Sparkle className="au-twinkle pointer-events-none absolute right-8 top-24 h-4 w-4 text-amber-400" style={{ animationDelay: "1.1s" }} />
-        <div className="relative mx-auto max-w-md">
-          <Reveal>
-            <p
-              className="text-center text-[11px] font-bold uppercase tracking-[0.45em]"
-              style={{ color: AU_OCEAN }}
-            >
-              Present
-            </p>
-            <h2
-              className="mt-2 text-center text-2xl text-[#4a3b2c]"
-              style={{ fontFamily: HEADING_FONT }}
-            >
-              シェアして応募、抽選でギフト券
-            </h2>
-          </Reveal>
-
-          <Reveal delay={120}>
-            <div
-              className="au-float mx-auto mt-8 rounded-2xl border-2 border-dashed bg-white p-6 text-center shadow-[0_6px_0_rgba(194,85,31,0.18)]"
-              style={{ borderColor: AU_OCHRE }}
-            >
-              <p className="text-[10px] font-bold tracking-[0.3em] text-[#9a8a78]">
-                PRIZE
-              </p>
-              <p
-                className="mt-2 text-2xl font-bold text-[#4a3b2c]"
-                style={{ fontFamily: HEADING_FONT }}
-              >
-                {LOTTERY.prizeLabel}
-              </p>
-              <p className="mt-1 text-sm text-[#7a6a58]">
-                抽選で{" "}
-                <span className="font-bold" style={{ color: AU_OCHRE }}>
-                  {LOTTERY.winnersLabel}
-                </span>{" "}
-                に
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={180}>
-            <p className="mt-8 text-[10px] font-bold tracking-[0.3em] text-[#9a8a78]">
-              ENTRY
-            </p>
-            <ol className="mt-3 space-y-7 border-l border-[#e3d4b5] pl-5">
-              <li className="text-sm leading-loose text-[#7a6a58]">
-                <span className="font-bold text-[#4a3b2c]">
-                  1. 旅行日記をコンプリート
-                </span>
-                <br />
-                表紙から最終ページまで全8種を生成して、めくれる旅行日記を完成させます。
-                <span className="mt-3 block">
-                  <Image
-                    src="/collections/australia/entry-step1.webp"
-                    alt="コンプリート直後の画面。「シェアページへ」ボタンが表示される"
-                    width={640}
-                    height={1043}
-                    sizes="(max-width: 640px) 60vw, 230px"
-                    className="mx-auto h-auto w-full max-w-[230px] rounded-lg border border-[#ecdcc0] shadow-[0_6px_24px_rgba(120,90,40,0.16)]"
-                  />
-                  <span className="mt-2 block text-center text-[11px] tracking-wide text-[#9a8a78]">
-                    コンプリートすると、この画面が出ます
-                  </span>
-                </span>
-              </li>
-              <li className="text-sm leading-loose text-[#7a6a58]">
-                <span className="font-bold text-[#4a3b2c]">
-                  2. 完成した日記をXで公開ポスト
-                </span>
-                <br />
-                {/*
-                  かんたんな方(ボタン)を先に出し、手動の要件は後ろに畳む。
-                  要件4つを先頭に置くと、実際にはボタン1つで済むのに
-                  難しい応募に見えてしまうため。
-                */}
-                {/* この囲みは「港の青」のセクションに乗るので、枠も青に寄せる
-                    (オレンジだと背景から浮く)。上の PRIZE は赤土の上なのでオレンジのまま。 */}
-                <span
-                  className="mt-3 block rounded-2xl border-2 border-dashed bg-white px-4 py-4"
-                  style={{ borderColor: AU_OCEAN }}
-                >
-                  <span className="block text-base font-bold text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
-                    「Xで応募する」ボタンをタップするだけ！
-                  </span>
-                  <span className="mt-1 block text-sm text-[#7a6a58]">
-                    シェアURL・メンション・ハッシュタグは
-                    <span className="font-bold text-[#4a3b2c]">自動で入ります。</span>
-                  </span>
-                  <span
-                    className="mt-3 block rounded-xl px-3 py-2 text-sm font-bold text-[#4a3b2c]"
-                    style={{ background: "#FFEFD8" }}
-                  >
-                    ⚠️ イラストだけは自動で添付されません。
-                    <br />
-                    投稿画面でお好きな1枚を添付してください。
-                  </span>
-                  <span className="mt-3 block">
-                    <Image
-                      src="/collections/australia/entry-step2.webp"
-                      alt="シェアページの「Xで応募する」ボタン。選択すると必要な情報が入った状態で投稿できる"
-                      width={645}
-                      height={1064}
-                      sizes="(max-width: 640px) 60vw, 230px"
-                      className="mx-auto h-auto w-full max-w-[230px] rounded-lg border border-[#ecdcc0] shadow-[0_6px_24px_rgba(120,90,40,0.16)]"
-                    />
-                    <span className="mt-2 block text-center text-[11px] tracking-wide text-[#9a8a78]">
-                      シェアページの「Xで応募する」から投稿
-                    </span>
-                  </span>
-                </span>
-
-                <span className="mt-4 block text-sm text-[#7a6a58]">
-                  <span className="font-bold text-[#4a3b2c]">
-                    自分でポストしてもOKです。
-                  </span>
-                  その場合は、次の4つがそろっているか確かめてください。
-                </span>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#7a6a58]">
-                  <li>
-                    この企画で生成したイラスト
-                    <span className="font-bold">1枚以上</span>
-                    （8種のうちどれでもOK）
-                  </li>
-                  <li>完成ページのシェアURL</li>
-                  <li>
-                    <span className="font-bold">@{LOTTERY.mention}</span>{" "}
-                    のメンション
-                  </li>
-                  <li>
-                    <span className="font-bold">
-                      {LOTTERY.hashtags.map((h) => `#${h}`).join(" ")}
-                    </span>{" "}
-                    のハッシュタグ
-                  </li>
-                </ul>
-              </li>
-              <li className="text-sm leading-loose text-[#7a6a58]">
-                <span className="font-bold text-[#4a3b2c]">
-                  3. 2つのアカウントをフォロー
-                </span>
-                <br />
-                当選のご連絡をXのDMでお送りするため、主催の {`@${LOTTERY.mention}`}{" "}
-                のフォローをお願いしています(フォロー外だとDMが届かない設定の方が多いためです)。
-                あわせて、企画を一緒につくった {`@${LOTTERY.collaborator}`} さんもフォローしてください。
-                <span className="mt-4 grid grid-cols-2 gap-3">
-                  {[
-                    {
-                      role: "企画・主催",
-                      handle: LOTTERY.mention,
-                      icon: "/collections/wafer/user-icons/mikifuku-icon.webp",
-                    },
-                    {
-                      role: "旅行企画案・監修",
-                      handle: LOTTERY.collaborator,
-                      icon: "/collections/italy/user-icons/chanlio-icon.jpeg",
-                    },
-                  ].map((account) => (
-                    <span
-                      key={account.handle}
-                      className="flex flex-col items-center gap-2 rounded-2xl border border-[#ecdcc0] bg-white/70 px-3 py-4 text-center"
-                    >
-                      <span className="text-[11px] text-[#9a8a78]">
-                        {account.role}
-                      </span>
-                      <Image
-                        src={account.icon}
-                        alt={`@${account.handle} のアイコン`}
-                        width={64}
-                        height={64}
-                        className="h-14 w-14 rounded-full border border-[#f0d8c4] object-cover shadow-sm"
-                      />
-                      <XLink
-                        handle={`@${account.handle}`}
-                        url={`https://x.com/${account.handle}`}
-                      />
-                    </span>
-                  ))}
-                </span>
-              </li>
-            </ol>
-          </Reveal>
-
-          <Reveal delay={260}>
-            <div className="mt-6 border-t border-[#ecdcc0] pt-4 text-xs leading-relaxed text-[#9a8a78]">
-              <p>
-                応募期間: {LOTTERY.periodLabel} ／ 応募は無料です。
-                ペルコインの購入有無は当選確率に影響しません。
-              </p>
-              <p className="mt-2">
-                抽選と当選のご連絡は、企画終了後
-                <span className="font-bold">約1週間を目処</span>
-                に、XのDMで行います。
-              </p>
-              <p className="mt-2">
-                <Link
-                  href={LOTTERY.rulesPath}
-                  className="underline underline-offset-2 hover:text-[#7a6a58]"
-                >
-                  応募規約・注意事項の全文をみる
-                </Link>
-              </p>
-            </div>
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ===== あそびかた ===== */}
-      <section
-        className="px-6 py-16"
-        style={{ background: `linear-gradient(180deg, ${BG.harbour} 0%, ${BG.cream} 40%, ${BG.cream} 100%)` }}
-      >
-        <div className="mx-auto max-w-2xl">
+        <div className="relative mx-auto max-w-2xl">
           <Reveal>
             <h2 className="text-center text-2xl text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
               あそびかた
