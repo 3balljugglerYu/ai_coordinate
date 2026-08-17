@@ -1,5 +1,6 @@
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import { computeUnlockedCount, sequentialBatchSize } from "./collection-unlock";
+import { isCollectionDisplayPeriodActive } from "./collection-display-period";
 import type { CollectionUnlockContext } from "./collection-unlock-gating";
 
 /**
@@ -63,13 +64,16 @@ export interface CollectionUnlockAnnouncement {
  *
  * 対象は「解放ゲート付き(unlockPrerequisiteKey != null)かつ前提カテゴリ完走済み」かつ
  * 解放数が 1 以上のカテゴリのみ。前提未完走・ゲートなしカテゴリは対象外(空配列に寄与しない)。
+ * さらに**開催期間内**であることを要求する(終了した企画は告知しない)。
  *
  * @param presets サーバーで取得したプリセット一覧(sort_order 昇順)。locked 付与前でよい。
  * @param context resolveCollectionUnlockContext の結果。
+ * @param now 開催期間の判定に使う時刻(テスト用に注入可能)。
  */
 export function buildCollectionUnlockAnnouncements(
   presets: readonly StylePresetPublicSummary[],
   context: CollectionUnlockContext,
+  now: Date = new Date(),
 ): CollectionUnlockAnnouncement[] {
   // 告知対象を sort_order 昇順で集約する。対象は2系統:
   //  - 前提カテゴリ付き(例: ぷち神): 前提カテゴリ完走済みのときのみ。解放順は末尾(sort_order最大)から。
@@ -77,6 +81,28 @@ export function buildCollectionUnlockAnnouncements(
   const itemsByCategoryKey = new Map<string, StylePresetPublicSummary[]>();
   for (const preset of presets) {
     const cat = preset.category;
+    /*
+      終了した企画は告知しない。
+
+      これが無いと、開催期間を過ぎたカテゴリでも sequential/前提の条件だけで
+      対象に残り続ける。既読は localStorage(端末単位)なので、端末を変えた人・
+      ストレージを消した人・シークレットウィンドウの人には、**終了済みの企画の
+      解放モーダルが出てしまう**(実際にイタリア旅行で発生した)。
+      新しい企画の開始直後に前の企画のモーダルが混ざるのも避けたい。
+
+      期間未設定(NULL/NULL)は「常設のコラボ企画」として通す
+      (isCollectionDisplayPeriodActive の NULL=制限なし判定に合わせる)。
+      復刻で期間を開催中に戻せば、また対象に戻る。そのとき既に完走済みの人には
+      「前回見た解放数」と一致するので出ない(decideUnlockAnnouncement)。
+    */
+    if (
+      !isCollectionDisplayPeriodActive({
+        collectionDisplayStartsAt: cat.collectionDisplayStartsAt,
+        collectionDisplayEndsAt: cat.collectionDisplayEndsAt,
+      }, now)
+    ) {
+      continue;
+    }
     const prerequisite = cat.unlockPrerequisiteKey;
     const sequential = cat.sequentialUnlock === true;
     if (prerequisite) {
