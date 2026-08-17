@@ -72,15 +72,20 @@ Deno.serve(async (req) => {
   ).toISOString();
 
   while (batches < SAFE_MAX_BATCHES) {
-    // storage.list は再帰非対応 + ページング困難なため、storage.objects テーブルを直接 SELECT
-    const { data: rows, error: selectError } = await supabase
-      .schema("storage")
-      .from("objects")
-      .select("name")
-      .eq("bucket_id", STORAGE_BUCKET)
-      .like("name", "temp/%")
-      .lt("created_at", cutoffIso)
-      .limit(BATCH_SIZE);
+    /*
+      storage.list は再帰非対応(temp/ は temp/<user_id>/<file> の3階層)なので
+      storage.objects を読む必要があるが、**PostgREST は storage スキーマを
+      公開していない**(public / graphql_public のみ)。
+      `supabase.schema("storage").from("objects")` は毎回 500 で落ちる。
+
+      storage スキーマ全体を公開するのは影響範囲が広いため、必要な読み取りだけを
+      public の SECURITY DEFINER 関数(service_role 限定)として出して呼ぶ。
+      migration: 20260818090000_add_list_stale_temp_image_objects_rpc.sql
+    */
+    const { data: rows, error: selectError } = await supabase.rpc(
+      "list_stale_temp_image_objects",
+      { p_cutoff: cutoffIso, p_limit: BATCH_SIZE },
+    );
 
     if (selectError) {
       console.error("[cleanup-temp-images] SELECT failed", selectError);
