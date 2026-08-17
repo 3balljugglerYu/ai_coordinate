@@ -275,3 +275,134 @@ describe("buildCollectionUnlockAnnouncements", () => {
     });
   });
 });
+
+describe("開催期間の判定", () => {
+  /*
+    終了した企画は告知しない。既読は localStorage(端末単位)なので、
+    これが無いと端末を変えた人・シークレットウィンドウの人に
+    終了済み企画の解放モーダルが出る(イタリア旅行で実際に発生した)。
+  */
+  const NOW = new Date("2026-08-17T12:00:00+09:00");
+
+  function sequentialCategory(
+    key: string,
+    period: { startsAt: string | null; endsAt: string | null },
+  ) {
+    return makeCategory(key, {
+      displayNameJa: key,
+      unlockPrerequisiteKey: null,
+      sequentialUnlock: true,
+      progressiveBatchSize: null,
+      isCollectionSeries: true,
+      completionThreshold: 3,
+      collectionDisplayStartsAt: period.startsAt,
+      collectionDisplayEndsAt: period.endsAt,
+    });
+  }
+
+  function contextFor(key: string, distinctGenerated: number): CollectionUnlockContext {
+    return {
+      prerequisiteCompletedKeys: new Set<string>(),
+      distinctGeneratedByCategoryKey: new Map([[key, distinctGenerated]]),
+      prerequisiteUniqueCountByKey: new Map(),
+    };
+  }
+
+  test("終了した企画は告知対象から外れる", () => {
+    const cat = sequentialCategory("ended", {
+      startsAt: "2026-07-03T19:00:00+09:00",
+      endsAt: "2026-07-12T21:59:00+09:00",
+    });
+    const presets = [makePreset("p1", cat), makePreset("p2", cat), makePreset("p3", cat)];
+
+    expect(
+      buildCollectionUnlockAnnouncements(presets, contextFor("ended", 3), NOW),
+    ).toEqual([]);
+  });
+
+  test("開始前の企画も告知しない", () => {
+    const cat = sequentialCategory("upcoming", {
+      startsAt: "2026-08-29T08:00:00+09:00",
+      endsAt: "2026-09-06T21:59:00+09:00",
+    });
+    const presets = [makePreset("p1", cat), makePreset("p2", cat), makePreset("p3", cat)];
+
+    expect(
+      buildCollectionUnlockAnnouncements(presets, contextFor("upcoming", 1), NOW),
+    ).toEqual([]);
+  });
+
+  test("開催中なら告知する", () => {
+    const cat = sequentialCategory("running", {
+      startsAt: "2026-08-15T08:00:00+09:00",
+      endsAt: "2026-08-30T21:59:00+09:00",
+    });
+    const presets = [makePreset("p1", cat), makePreset("p2", cat), makePreset("p3", cat)];
+
+    const result = buildCollectionUnlockAnnouncements(
+      presets,
+      contextFor("running", 1),
+      NOW,
+    );
+    expect(result).toHaveLength(1);
+    expect(result[0].categoryKey).toBe("running");
+  });
+
+  test("期間未設定は常設のコラボ企画として告知する", () => {
+    // NULL は「制限なし」。isCollectionDisplayPeriodActive の仕様に合わせる
+    const cat = sequentialCategory("evergreen", { startsAt: null, endsAt: null });
+    const presets = [makePreset("p1", cat), makePreset("p2", cat), makePreset("p3", cat)];
+
+    expect(
+      buildCollectionUnlockAnnouncements(presets, contextFor("evergreen", 1), NOW),
+    ).toHaveLength(1);
+  });
+
+  test("復刻(期間を開催中に戻す)で再び告知対象になる", () => {
+    const cat = sequentialCategory("revived", {
+      startsAt: "2026-08-16T08:00:00+09:00",
+      endsAt: "2026-08-25T21:59:00+09:00",
+    });
+    const presets = [makePreset("p1", cat), makePreset("p2", cat), makePreset("p3", cat)];
+
+    const result = buildCollectionUnlockAnnouncements(
+      presets,
+      contextFor("revived", 2),
+      NOW,
+    );
+    // 対象には戻る。実際に出すかは既読(localStorage)との比較で決まるため、
+    // 完走済みの人には decideUnlockAnnouncement 側で "none" になる
+    expect(result).toHaveLength(1);
+    expect(result[0].unlockedCount).toBe(3);
+  });
+
+  test("終了済みと開催中が混在しても、開催中だけが残る", () => {
+    const ended = sequentialCategory("ended", {
+      startsAt: "2026-07-03T19:00:00+09:00",
+      endsAt: "2026-07-12T21:59:00+09:00",
+    });
+    const running = sequentialCategory("running", {
+      startsAt: "2026-08-15T08:00:00+09:00",
+      endsAt: "2026-08-30T21:59:00+09:00",
+    });
+    const presets = [
+      makePreset("e1", ended),
+      makePreset("e2", ended),
+      makePreset("e3", ended),
+      makePreset("r1", running),
+      makePreset("r2", running),
+      makePreset("r3", running),
+    ];
+    const context: CollectionUnlockContext = {
+      prerequisiteCompletedKeys: new Set<string>(),
+      distinctGeneratedByCategoryKey: new Map([
+        ["ended", 3],
+        ["running", 1],
+      ]),
+      prerequisiteUniqueCountByKey: new Map(),
+    };
+
+    const result = buildCollectionUnlockAnnouncements(presets, context, NOW);
+    expect(result.map((a) => a.categoryKey)).toEqual(["running"]);
+  });
+});
