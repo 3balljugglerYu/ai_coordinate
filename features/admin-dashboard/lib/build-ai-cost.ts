@@ -32,6 +32,12 @@ type GenerationLike = {
    * `null` は同期経路・旧データで、その行だけで1リクエストとみなす。
    */
   image_job_id?: string | null;
+  /**
+   * 完走フィード投稿(台紙の合成画像)は `completion_id` を持つ。
+   * **AI 生成ではない**ので原価は 0 が正しく、「単価未設定」にも数えない。
+   * (直近60日の model=NULL 51件のうち 47件がこれだった)
+   */
+  completion_id?: string | null;
 };
 
 /**
@@ -91,6 +97,15 @@ export function buildAiCostEstimate(
 
   for (const generation of generations) {
     if (!isWithinDateRange(generation.created_at, currentStart, now)) {
+      continue;
+    }
+
+    /*
+      完走フィード投稿は台紙画像を合成して作る行で、モデルを呼んでいない。
+      これを「単価未設定」に数えると、実際には穴が無いのに
+      「原価を取りこぼしている件数」がカードに出て判断を誤らせる。
+    */
+    if (generation.completion_id) {
       continue;
     }
 
