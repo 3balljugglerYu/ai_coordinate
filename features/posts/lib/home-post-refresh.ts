@@ -2,6 +2,11 @@ export type PendingHomePostRefresh =
   | {
       action: "posted";
       bonusGranted?: number;
+      /**
+       * 誰かのプロンプトを使ったことによる日次ボーナス。
+       * 付与は生成時に済んでいるが、伝える場を投稿直後の付与モーダルに寄せている。
+       */
+      promptUseBonusGranted?: number;
       bonusMultiplier?: number;
       postId: string;
       subscriptionPlan?: "free" | "light" | "standard" | "premium";
@@ -82,6 +87,10 @@ export function consumePendingHomePostRefresh(): PendingHomePostRefresh | null {
         bonusGranted:
           typeof parsed.bonusGranted === "number"
             ? parsed.bonusGranted
+            : undefined,
+        promptUseBonusGranted:
+          typeof parsed.promptUseBonusGranted === "number"
+            ? parsed.promptUseBonusGranted
             : undefined,
         bonusMultiplier:
           typeof parsed.bonusMultiplier === "number"

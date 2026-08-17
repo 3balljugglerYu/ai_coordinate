@@ -39,10 +39,26 @@ export const POST_BONUS_SOURCES = [
   "daily_post_inspire",
 ] as const;
 
+/**
+ * 日次ミッションのボーナス。
+ *
+ * `USAGE_REWARD_BONUS_SOURCES`(上限5)と**別枠にしている**理由:
+ * あちらの上限は「還元が利用のたびに無制限に発生する」ことに由来する
+ * (2アカウントで使い合うと生成のたびに残高が増えるため、X<=5 で縛る)。
+ * こちらは日次テーブルの UNIQUE(user_id, jst_date) で**頻度が1日1回に締まる**ので、
+ * 同じ上限は当てはまらない。ペアで組んでも増分は 1日あたり (額+還元)×2 - 20 で止まる。
+ *
+ * 0 は「そのミッションを止める」を意味するため 0 を許す。
+ */
+export const DAILY_MISSION_BONUS_SOURCES = [
+  "prompt_use_daily",
+] as const;
+
 export const BONUS_SOURCES = [
   ...CLASSIC_BONUS_SOURCES,
   ...USAGE_REWARD_BONUS_SOURCES,
   ...POST_BONUS_SOURCES,
+  ...DAILY_MISSION_BONUS_SOURCES,
 ] as const;
 
 export type PercoinBonusSource = (typeof BONUS_SOURCES)[number];
@@ -63,12 +79,21 @@ export const USAGE_REWARD_MAX_AMOUNT = 5;
 export const POST_BONUS_MIN_AMOUNT = 0;
 export const POST_BONUS_MAX_AMOUNT = 1000;
 
+export const DAILY_MISSION_MIN_AMOUNT = 0;
+export const DAILY_MISSION_MAX_AMOUNT = 1000;
+
 const USAGE_REWARD_SOURCE_SET = new Set<string>(USAGE_REWARD_BONUS_SOURCES);
 const POST_BONUS_SOURCE_SET = new Set<string>(POST_BONUS_SOURCES);
+const DAILY_MISSION_SOURCE_SET = new Set<string>(DAILY_MISSION_BONUS_SOURCES);
 
 /** 利用のたびに付与される還元 source か。 */
 export function isUsageRewardBonusSource(source: string): boolean {
   return USAGE_REWARD_SOURCE_SET.has(source);
+}
+
+/** 日次ミッションの source か（0 を許す）。 */
+export function isDailyMissionBonusSource(source: string): boolean {
+  return DAILY_MISSION_SOURCE_SET.has(source);
 }
 
 /** 生成方法ごとの投稿ボーナス source か（0 を許す）。 */
@@ -102,6 +127,9 @@ export function getBonusAmountRange(source: string): {
   }
   if (isPostBonusSource(source)) {
     return { min: POST_BONUS_MIN_AMOUNT, max: POST_BONUS_MAX_AMOUNT };
+  }
+  if (isDailyMissionBonusSource(source)) {
+    return { min: DAILY_MISSION_MIN_AMOUNT, max: DAILY_MISSION_MAX_AMOUNT };
   }
   return { min: CLASSIC_BONUS_MIN_AMOUNT, max: CLASSIC_BONUS_MAX_AMOUNT };
 }

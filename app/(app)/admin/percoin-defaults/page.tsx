@@ -12,6 +12,7 @@ const BONUS_SOURCE_LABELS: Record<string, string> = {
   daily_post_free: "投稿ボーナス：フリースタイル",
   daily_post_coordinate: "投稿ボーナス：コーデ（0で停止中）",
   daily_post_inspire: "投稿ボーナス：Creator Looks（機能自体が無効）",
+  prompt_use_daily: "誰かのFreeプロンプトを使った時（使った人へ・1日1回）",
   prompt_usage_reward: "Freeプロンプトが利用された時（作者へ）",
   style_usage_reward: "One-Tap Styleが利用された時（クリエイターへ）",
 };

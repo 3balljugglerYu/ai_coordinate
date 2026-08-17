@@ -177,6 +177,7 @@ export function PostModal({
         action: "posted",
         postId: response.id,
         bonusGranted: response.bonus_granted,
+        promptUseBonusGranted: response.prompt_use_bonus_granted,
         bonusMultiplier: response.bonus_multiplier,
         subscriptionPlan: response.subscription_plan,
         generationType: response.generation_type,
