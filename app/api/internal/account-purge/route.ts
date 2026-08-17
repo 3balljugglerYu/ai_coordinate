@@ -2,6 +2,10 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { connection, NextRequest, NextResponse } from "next/server";
 import { env } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  collectGeneratedImageStoragePaths,
+  GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
+} from "@/features/generation/lib/generated-image-storage-paths";
 
 const STORAGE_BUCKET = "generated-images";
 const STORAGE_REMOVE_CHUNK_SIZE = 100;
@@ -63,9 +67,7 @@ async function collectStoragePathsForUser(
   const [generatedResult, stockResult, profileResult] = await Promise.all([
     admin
       .from("generated_images")
-      .select(
-        "storage_path, storage_path_display, storage_path_thumb, pre_generation_storage_path"
-      )
+      .select(GENERATED_IMAGE_STORAGE_PATH_COLUMNS)
       .eq("user_id", userId),
     admin
       .from("source_image_stocks")
@@ -88,11 +90,10 @@ async function collectStoragePathsForUser(
     throw new Error(`profiles query failed: ${profileResult.error.message}`);
   }
 
-  for (const row of generatedResult.data ?? []) {
-    if (row.storage_path) paths.add(row.storage_path);
-    if (row.storage_path_display) paths.add(row.storage_path_display);
-    if (row.storage_path_thumb) paths.add(row.storage_path_thumb);
-    if (row.pre_generation_storage_path) paths.add(row.pre_generation_storage_path);
+  for (const path of collectGeneratedImageStoragePaths(
+    generatedResult.data ?? []
+  )) {
+    paths.add(path);
   }
 
   for (const row of stockResult.data ?? []) {

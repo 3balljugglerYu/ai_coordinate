@@ -5,6 +5,10 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getMyPageRouteCopy } from "@/features/my-page/lib/route-copy";
 import { createClient } from "@/lib/supabase/server";
+import {
+  collectGeneratedImageStoragePaths,
+  GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
+} from "@/features/generation/lib/generated-image-storage-paths";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -96,12 +100,10 @@ export async function DELETE(request: NextRequest) {
 
   // 対象画像をまとめて取得（RLS により本人レコードのみ返る前提で user_id も明示）。
   // is_posted=false の絞り込みは DB 側で行う（in-memory フィルタ削減）。
-  // storage_path_thumb も SELECT に含めて、後の Storage 削除で孤立サムネを残さない。
+  // Storage 実体の列は 1 箇所に集約している(列を並べると取りこぼす)。
   const { data: rows, error: fetchError } = await supabase
     .from("generated_images")
-    .select(
-      "id, storage_path, storage_path_thumb, pre_generation_storage_path",
-    )
+    .select(`id, ${GENERATED_IMAGE_STORAGE_PATH_COLUMNS}`)
     .eq("user_id", user.id)
     .eq("is_posted", false)
     .in("id", imageIds);
@@ -146,16 +148,8 @@ export async function DELETE(request: NextRequest) {
   }
 
   // Storage 削除（DB 成功後に実行。失敗しても孤立ファイルが残るのみなのでログだけ残して継続）
-  // 本体 / サムネ / 生成前画像のすべてを対象に集める。
-  const storagePaths = eligibleRows.flatMap((row) => {
-    const paths: string[] = [];
-    if (row.storage_path) paths.push(row.storage_path);
-    if (row.storage_path_thumb) paths.push(row.storage_path_thumb);
-    if (row.pre_generation_storage_path) {
-      paths.push(row.pre_generation_storage_path);
-    }
-    return paths;
-  });
+  // 原本 / 表示用 / サムネ / 生成前画像のすべてを対象に集める。
+  const storagePaths = collectGeneratedImageStoragePaths(eligibleRows);
 
   if (storagePaths.length > 0) {
     const { error: storageError } = await supabase.storage
