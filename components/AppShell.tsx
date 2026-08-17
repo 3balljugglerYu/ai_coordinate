@@ -65,7 +65,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isAdmin]);
 
   if (shouldBypassAppShell) {
-    return <>{children}</>;
+    /*
+      共通 chrome は出さないが、SignupSourceCapture だけは描く。
+      これを外すと、没入ビュー(/m/<token>/book 等)へ直接着地した人の
+      ?signup_source= が cookie に入らず、シェア経由の登録が計測できない。
+      表示は何も持たない(null を返す)ので chrome を出さない方針とは両立する。
+    */
+    return (
+      <>
+        <SignupSourceCapture />
+        {children}
+      </>
+    );
   }
 
   return (

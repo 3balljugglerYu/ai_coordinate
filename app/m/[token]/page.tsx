@@ -18,6 +18,7 @@ import { CompletionFeedPostButton } from "@/features/collections/components/Comp
 
 interface PublicMountPageProps {
   params: Promise<{ token: string }>;
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
 }
 
 // 注: i18n は Phase 7 で整える。当面は企画(JP)向けに日本語コピーを用いる。
@@ -106,14 +107,27 @@ export async function generateMetadata({
 
 export default async function PublicMountPage({
   params,
+  searchParams,
 }: PublicMountPageProps) {
   await connection();
   const { token } = await params;
+  const query = (await searchParams) ?? {};
 
   // book(めくれる日記帳)完走は没入の本リーダーへ。/m/<id> への既存導線を全てカバーする。
   const book = await getCollectionBookByToken(token);
   if (book) {
-    redirect(`/m/${token}/book`);
+    /*
+      signup_source は引き継ぐ。落とすと、mount 形式で共有された URL から
+      book 完走へリダイレクトされた人の流入元が失われる
+      (client の SignupSourceCapture はリダイレクト先でしか走らないため)。
+    */
+    const source = query.signup_source;
+    const value = Array.isArray(source) ? source[0] : source;
+    redirect(
+      value
+        ? `/m/${token}/book?signup_source=${encodeURIComponent(value)}`
+        : `/m/${token}/book`,
+    );
   }
 
   const mount = await getPublicMountByToken(token);
