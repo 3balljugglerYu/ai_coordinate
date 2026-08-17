@@ -2995,6 +2995,64 @@ Deno.serve(async () => {
             }
           };
 
+          /**
+           * 完了 RPC がエラーを返したとき、**本当に失敗したのか**を DB に問い合わせる。
+           *
+           * 520 / タイムアウト / 切断は「結果が不明」であって「失敗」ではない。
+           * RPC 側はコミット済みなのに応答だけが失われることがあり、そこで
+           * cleanupUploadedImages を走らせると **コミット済みの行が参照している
+           * 画像を消してしまう**(= 一覧に壊れた画像が出る)。
+           *
+           * 実際に 2026-08-17 に発生している:
+           *   uploading 完了 → RPC が 65 秒かかる → Cloudflare 520 →
+           *   ワーカーが失敗と判断 → 画像を削除。しかし RPC は 211ms 前に
+           *   コミット済みで、image_jobs=succeeded / generated_images の行も存在した。
+           *
+           * ジョブが succeeded かつ行が存在すれば「応答が失われただけ」なので、
+           * RPC が返すはずだった形(id / storage_path)を復元して成功経路に合流させる。
+           * 判定できない場合は null を返し、従来どおり後始末して失敗させる。
+           */
+          const recoverCommittedImageRecords = async (): Promise<
+            Array<{ id: string; storage_path: string }> | null
+          > => {
+            try {
+              const { data: jobRow, error: jobError } = await supabase
+                .from("image_jobs")
+                .select("status")
+                .eq("id", jobId)
+                .maybeSingle();
+              if (jobError || jobRow?.status !== "succeeded") {
+                return null;
+              }
+
+              const { data: rows, error: rowsError } = await supabase
+                .from("generated_images")
+                .select("id, storage_path")
+                .eq("image_job_id", jobId);
+              if (rowsError || !rows || rows.length === 0) {
+                return null;
+              }
+
+              return rows
+                .map((row) => ({
+                  id: typeof row?.id === "string" ? row.id : null,
+                  storage_path:
+                    typeof row?.storage_path === "string" ? row.storage_path : null,
+                }))
+                .filter(
+                  (row): row is { id: string; storage_path: string } =>
+                    row.id !== null && row.storage_path !== null,
+                );
+            } catch (error) {
+              // 確認そのものが失敗したら「不明」として扱い、従来の後始末に委ねる
+              console.warn("[Worker] failed to verify committed persistence", {
+                jobId,
+                error,
+              });
+              return null;
+            }
+          };
+
           /** 完了 RPC の返り値から storage_path を取り出す。 */
           const extractPersistedPaths = (rows: unknown): string[] =>
             Array.isArray(rows)
@@ -3085,7 +3143,7 @@ Deno.serve(async () => {
               });
 
               if (isOpenAIImageModel(dbModel)) {
-                const { data: imageRecords, error: completeJobError } = await supabase.rpc(
+                const { data: rpcImageRecords, error: completeJobError } = await supabase.rpc(
                   // 画像行・author secret・job 成功更新を同一トランザクションで
                   // 確定する。旧 complete_image_job_with_generated_images は
                   // 空になった prompt_text をコピーするだけで author secret を
@@ -3104,10 +3162,22 @@ Deno.serve(async () => {
                   }
                 );
 
+                // エラー時に「実際はコミット済みだった」行で差し替えるため let
+                let imageRecords: unknown = rpcImageRecords;
+
                 if (completeJobError) {
                   console.error("OpenAI batch completion RPC error:", completeJobError);
-                  await cleanupUploadedImages("persistence failure");
-                  throw new Error(`画像メタデータの保存に失敗しました: ${completeJobError.message}`);
+                  // 応答が失われただけでコミット済みの可能性がある。消す前に確かめる。
+                  const recovered = await recoverCommittedImageRecords();
+                  if (!recovered) {
+                    await cleanupUploadedImages("persistence failure");
+                    throw new Error(`画像メタデータの保存に失敗しました: ${completeJobError.message}`);
+                  }
+                  console.warn(
+                    "[Worker] completion RPC failed but the transaction was committed; keeping uploads",
+                    { jobId, images: recovered.length },
+                  );
+                  imageRecords = recovered;
                 }
 
                 const rpcImageRecordIds = Array.isArray(imageRecords)
@@ -3153,7 +3223,9 @@ Deno.serve(async () => {
               // source_image_stock_id は RPC 内で FOR UPDATE 付きに読み直した
               // ジョブの値を使う。生成中にユーザーがストック保存した場合の
               // 後追い更新も、Worker 起動時の古い値ではなく最新が反映される。
-              const { data: geminiImageRecords, error: geminiCompleteError } =
+              // エラー時に「実際はコミット済みだった」行で差し替えるため let
+              let geminiImageRecords: unknown;
+              const { data: rpcGeminiImageRecords, error: geminiCompleteError } =
                 await supabase.rpc("complete_image_job_with_prompt_secrets", {
                   p_job_id: jobId,
                   p_images: [
@@ -3169,17 +3241,27 @@ Deno.serve(async () => {
                   p_model: dbModel,
                   p_background_mode: backgroundMode,
                 });
+              geminiImageRecords = rpcGeminiImageRecords;
 
               if (geminiCompleteError) {
                 console.error(
                   "Failed to complete image job atomically:",
                   geminiCompleteError,
                 );
-                // DB に紐づかなかったアップロードを孤児にしない
-                await cleanupUploadedImages("persistence failure");
-                throw new Error(
-                  `画像メタデータの保存に失敗しました: ${geminiCompleteError.message}`,
+                // 応答が失われただけでコミット済みの可能性がある。消す前に確かめる。
+                const recovered = await recoverCommittedImageRecords();
+                if (!recovered) {
+                  // DB に紐づかなかったアップロードを孤児にしない
+                  await cleanupUploadedImages("persistence failure");
+                  throw new Error(
+                    `画像メタデータの保存に失敗しました: ${geminiCompleteError.message}`,
+                  );
+                }
+                console.warn(
+                  "[Worker] completion RPC failed but the transaction was committed; keeping uploads",
+                  { jobId, images: recovered.length },
                 );
+                geminiImageRecords = recovered;
               }
 
               const geminiRecordIds = Array.isArray(geminiImageRecords)
