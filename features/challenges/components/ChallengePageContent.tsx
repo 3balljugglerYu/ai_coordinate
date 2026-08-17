@@ -126,6 +126,13 @@ export function ChallengePageContent({
   const [postBonusReceivedTypes, setPostBonusReceivedTypes] = useState<
     string[]
   >(initialChallengeStatus?.postBonusReceivedTypes ?? []);
+  const [promptUseBonus, setPromptUseBonus] = useState<{
+    amount: number;
+    receivedToday: boolean;
+  }>({
+    amount: initialChallengeStatus?.promptUseBonusAmount ?? 0,
+    receivedToday: initialChallengeStatus?.promptUseBonusReceivedToday ?? false,
+  });
   const [postBonusAmounts, setPostBonusAmounts] = useState<
     Record<string, number>
   >(initialChallengeStatus?.postBonusAmounts ?? {});
@@ -215,6 +222,10 @@ export function ChallengePageContent({
     setIsCheckedInToday(!hasCheckInDot);
     setPostBonusReceivedTypes(missionStatus.postBonusReceivedTypes);
     setPostBonusAmounts(missionStatus.postBonusAmounts);
+    setPromptUseBonus({
+      amount: missionStatus.promptUseBonusAmount,
+      receivedToday: missionStatus.promptUseBonusReceivedToday,
+    });
   }, [hasCheckInDot, missionStatus]);
 
   // ミッションページ表示中はナビのバッジを楽観的に消す（URL 直アクセス時も含む）
@@ -711,6 +722,51 @@ export function ChallengePageContent({
             </div>
           </ChallengeCard>
         </div>
+
+        {/*
+          プロンプト利用ミッション。付与額 0 のときは停止中なのでカードごと出さない。
+
+          **一覧に出すことがこの施策の本体**。付与は生成時に確定するが、
+          「そういう遊び方がある」と気づかせるのが目的で、ペルコインはその合図。
+          クリエイター還元(作る側)の手前に置いて、使う側→作る側の順で読ませる。
+        */}
+        {promptUseBonus.amount > 0 && (
+          <div className="mb-6">
+            <ChallengeCard
+              title={t("promptUseTitle")}
+              description={t("promptUseDescription")}
+              percoinAmount={promptUseBonus.amount}
+              icon={Sparkles}
+              color="purple"
+              className="h-full"
+            >
+              <div className="space-y-3">
+                <div
+                  className={cn(
+                    "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
+                    promptUseBonus.receivedToday
+                      ? "border-green-200 bg-green-50"
+                      : "border-purple-200/80 bg-purple-50/80 pr-7"
+                  )}
+                >
+                  {!promptUseBonus.receivedToday && <RedPulseDot />}
+                  <span className="text-sm font-medium text-slate-700">
+                    {promptUseBonus.receivedToday
+                      ? t("promptUseReceived")
+                      : t("promptUseNotReceived")}
+                  </span>
+                  <span className="text-sm font-bold text-purple-600">
+                    +{promptUseBonus.amount}
+                  </span>
+                </div>
+                <div className="flex items-start gap-2 rounded-lg border border-purple-100 bg-purple-50/50 p-3 text-sm text-purple-700">
+                  <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
+                  <span>{t("promptUseNote")}</span>
+                </div>
+              </div>
+            </ChallengeCard>
+          </div>
+        )}
 
         {/*
           クリエイター還元。運営が付与額を 0 にしている間は停止中なので、

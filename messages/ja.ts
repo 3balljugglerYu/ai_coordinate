@@ -1343,6 +1343,11 @@ export const jaMessages = {
     resetIn: "リセットまで",
     tipsLabel: "Tips:",
     dailyResetDescription: "日本時間（JST）で毎日0時にリセットされます",
+    promptUseTitle: "誰かのプロンプトで作る",
+    promptUseDescription: "投稿から「このプロンプトで作る」を押して生成すると、1日1回もらえます",
+    promptUseReceived: "今日はもらいました",
+    promptUseNotReceived: "まだもらっていません",
+    promptUseNote: "自分のプロンプトは対象外です。作者にも還元が入ります",
     usageRewardTitle: "クリエイター還元",
     usageRewardDescription:
       "あなたのプロンプトやスタイルが他のユーザーに使われると、ペルコインが還元されます。",

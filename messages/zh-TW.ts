@@ -1395,6 +1395,11 @@ export const zhTwMessages = {
     resetIn: "距離重置",
     tipsLabel: "小提示:",
     dailyResetDescription: "本任務每天 JST 00:00 重置。",
+    promptUseTitle: "用別人的提示詞創作",
+    promptUseDescription: "在貼文中點擊「用這個提示詞創作」並生成，每日一次",
+    promptUseReceived: "今天已領取",
+    promptUseNotReceived: "尚未領取",
+    promptUseNote: "自己的提示詞不計入。作者也會獲得回饋",
     usageRewardTitle: "創作者回饋",
     usageRewardDescription:
       "當其他使用者使用你的提示詞或風格生成時，你將獲得佩爾幣。",

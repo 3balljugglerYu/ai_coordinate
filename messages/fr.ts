@@ -1400,6 +1400,11 @@ export const frMessages = {
     resetIn: "Réinitialisation dans",
     tipsLabel: "Astuce :",
     dailyResetDescription: "Cette mission se réinitialise chaque jour à 00:00 JST.",
+    promptUseTitle: "Créer avec le prompt d'un autre",
+    promptUseDescription: "Appuyez sur « Créer avec ce prompt » — une fois par jour",
+    promptUseReceived: "Reçu aujourd'hui",
+    promptUseNotReceived: "Pas encore reçu",
+    promptUseNote: "Vos propres prompts ne comptent pas. L'auteur reçoit aussi une récompense",
     usageRewardTitle: "Récompenses créateur",
     usageRewardDescription:
       "Gagnez des Percoins quand d'autres créent avec vos prompts ou styles.",

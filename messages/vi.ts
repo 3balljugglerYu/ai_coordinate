@@ -1397,6 +1397,11 @@ export const viMessages = {
     resetIn: "Reset trong",
     tipsLabel: "Mẹo:",
     dailyResetDescription: "Nhiệm vụ này reset hằng ngày lúc 00:00 JST.",
+    promptUseTitle: "Tạo bằng prompt của người khác",
+    promptUseDescription: "Nhấn “Tạo bằng prompt này” trong bài đăng — mỗi ngày 1 lần",
+    promptUseReceived: "Đã nhận hôm nay",
+    promptUseNotReceived: "Chưa nhận",
+    promptUseNote: "Prompt của chính bạn không tính. Tác giả cũng nhận được thưởng",
     usageRewardTitle: "Thưởng cho nhà sáng tạo",
     usageRewardDescription:
       "Nhận Percoin khi người khác sáng tạo bằng prompt hoặc style của bạn.",

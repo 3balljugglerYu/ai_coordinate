@@ -1398,6 +1398,11 @@ export const hiMessages = {
     resetIn: "रीसेट",
     tipsLabel: "सुझाव:",
     dailyResetDescription: "यह मिशन हर दिन 00:00 JST पर रीसेट होता है।",
+    promptUseTitle: "किसी और के प्रॉम्प्ट से बनाएं",
+    promptUseDescription: "पोस्ट पर “इस प्रॉम्प्ट से बनाएं” दबाकर बनाएं — दिन में एक बार",
+    promptUseReceived: "आज मिल गया",
+    promptUseNotReceived: "अभी नहीं मिला",
+    promptUseNote: "अपने प्रॉम्प्ट नहीं गिने जाते। लेखक को भी इनाम मिलता है",
     usageRewardTitle: "क्रिएटर रिवॉर्ड",
     usageRewardDescription:
       "जब दूसरे लोग आपके प्रॉम्प्ट या स्टाइल से बनाते हैं, तो आपको पर्कॉइन मिलते हैं।",

@@ -1399,6 +1399,11 @@ export const idMessages = {
     resetIn: "Reset dalam",
     tipsLabel: "Tips:",
     dailyResetDescription: "Misi ini reset setiap hari pukul 00:00 JST.",
+    promptUseTitle: "Berkarya dengan prompt orang lain",
+    promptUseDescription: "Ketuk “Buat dengan prompt ini” pada postingan — sekali sehari",
+    promptUseReceived: "Sudah diterima hari ini",
+    promptUseNotReceived: "Belum diterima",
+    promptUseNote: "Prompt sendiri tidak dihitung. Penulis juga mendapat imbalan",
     usageRewardTitle: "Imbalan kreator",
     usageRewardDescription:
       "Dapatkan Percoin saat pengguna lain berkreasi dengan prompt atau gaya kamu.",

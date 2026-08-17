@@ -1397,6 +1397,11 @@ export const arMessages = {
     resetIn: "إعادة التعيين خلال",
     tipsLabel: "نصيحة:",
     dailyResetDescription: "تُعاد هذه المهمة كل يوم في 00:00 JST.",
+    promptUseTitle: "أنشئ باستخدام برومبت شخص آخر",
+    promptUseDescription: "اضغط على «أنشئ بهذا البرومبت» في منشور — مرة واحدة يوميًا",
+    promptUseReceived: "تم الاستلام اليوم",
+    promptUseNotReceived: "لم يتم الاستلام بعد",
+    promptUseNote: "برومبتاتك الخاصة لا تُحتسب. يحصل المؤلف أيضًا على مكافأة",
     usageRewardTitle: "مكافآت صنّاع المحتوى",
     usageRewardDescription:
       "احصل على بيركوين عندما ينشئ الآخرون باستخدام برومبتاتك أو ستايلاتك.",

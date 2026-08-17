@@ -1397,6 +1397,11 @@ export const enMessages = {
     resetIn: "Resets in",
     tipsLabel: "Tip:",
     dailyResetDescription: "This mission resets every day at 00:00 JST.",
+    promptUseTitle: "Create with someone's prompt",
+    promptUseDescription: "Tap “Create with this prompt” on a post and generate — once a day",
+    promptUseReceived: "Received today",
+    promptUseNotReceived: "Not received yet",
+    promptUseNote: "Your own prompts don't count. The author also gets a reward",
     usageRewardTitle: "Creator rewards",
     usageRewardDescription:
       "Earn Percoins when other users create with your prompts or styles.",

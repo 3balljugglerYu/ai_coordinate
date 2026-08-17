@@ -1400,6 +1400,11 @@ export const esMessages = {
     resetIn: "Reinicio en",
     tipsLabel: "Consejo:",
     dailyResetDescription: "Esta misión se reinicia cada día a las 00:00 JST.",
+    promptUseTitle: "Crea con el prompt de alguien",
+    promptUseDescription: "Pulsa «Crear con este prompt» en una publicación: una vez al día",
+    promptUseReceived: "Recibido hoy",
+    promptUseNotReceived: "Aún no recibido",
+    promptUseNote: "Tus propios prompts no cuentan. El autor también recibe una recompensa",
     usageRewardTitle: "Recompensas para creadores",
     usageRewardDescription:
       "Gana Percoins cuando otras personas creen con tus prompts o estilos.",

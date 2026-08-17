@@ -1396,6 +1396,11 @@ export const koMessages = {
     resetIn: "초기화까지",
     tipsLabel: "팁:",
     dailyResetDescription: "이 미션은 매일 JST 00:00에 초기화됩니다.",
+    promptUseTitle: "다른 사람의 프롬프트로 만들기",
+    promptUseDescription: "게시물에서 ‘이 프롬프트로 만들기’를 눌러 생성하면 하루 1회 받을 수 있어요",
+    promptUseReceived: "오늘 받았어요",
+    promptUseNotReceived: "아직 받지 않았어요",
+    promptUseNote: "자신의 프롬프트는 제외됩니다. 작성자에게도 보상이 갑니다",
     usageRewardTitle: "크리에이터 보상",
     usageRewardDescription:
       "다른 사용자가 회원님의 프롬프트나 스타일로 생성하면 페르코인이 지급됩니다.",

@@ -1395,6 +1395,11 @@ export const zhCnMessages = {
     resetIn: "距重置",
     tipsLabel: "提示:",
     dailyResetDescription: "本任务每天 JST 00:00 重置。",
+    promptUseTitle: "用别人的提示词创作",
+    promptUseDescription: "在帖子中点击「用这个提示词创作」并生成，每日一次",
+    promptUseReceived: "今天已领取",
+    promptUseNotReceived: "尚未领取",
+    promptUseNote: "自己的提示词不计入。作者也会获得回馈",
     usageRewardTitle: "创作者回馈",
     usageRewardDescription:
       "当其他用户使用你的提示词或风格生成时，你将获得佩尔币。",

@@ -1400,6 +1400,11 @@ export const ptMessages = {
     resetIn: "Reseta em",
     tipsLabel: "Dica:",
     dailyResetDescription: "Esta missão reseta todos os dias às 00:00 JST.",
+    promptUseTitle: "Crie com o prompt de alguém",
+    promptUseDescription: "Toque em “Criar com este prompt” em um post — uma vez por dia",
+    promptUseReceived: "Recebido hoje",
+    promptUseNotReceived: "Ainda não recebido",
+    promptUseNote: "Seus próprios prompts não contam. O autor também recebe recompensa",
     usageRewardTitle: "Recompensas para criadores",
     usageRewardDescription:
       "Ganhe Percoins quando outras pessoas criarem com seus prompts ou estilos.",

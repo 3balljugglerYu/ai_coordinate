@@ -1401,6 +1401,11 @@ export const deMessages = {
     resetIn: "Zurücksetzen in",
     tipsLabel: "Tipp:",
     dailyResetDescription: "Diese Mission wird täglich um 00:00 JST zurückgesetzt.",
+    promptUseTitle: "Mit einem fremden Prompt erstellen",
+    promptUseDescription: "Tippe auf „Mit diesem Prompt erstellen“ – einmal täglich",
+    promptUseReceived: "Heute erhalten",
+    promptUseNotReceived: "Noch nicht erhalten",
+    promptUseNote: "Eigene Prompts zählen nicht. Auch die Autor:innen erhalten eine Belohnung",
     usageRewardTitle: "Creator-Belohnungen",
     usageRewardDescription:
       "Verdiene Percoins, wenn andere mit deinen Prompts oder Styles erstellen.",

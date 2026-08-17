@@ -1396,6 +1396,11 @@ export const thMessages = {
     resetIn: "รีเซ็ตในอีก",
     tipsLabel: "เคล็ดลับ:",
     dailyResetDescription: "ภารกิจนี้รีเซ็ตทุกวันเวลา 00:00 JST",
+    promptUseTitle: "สร้างด้วยพรอมต์ของคนอื่น",
+    promptUseDescription: "แตะ “สร้างด้วยพรอมต์นี้” ในโพสต์ — วันละ 1 ครั้ง",
+    promptUseReceived: "รับแล้ววันนี้",
+    promptUseNotReceived: "ยังไม่ได้รับ",
+    promptUseNote: "พรอมต์ของตัวเองไม่นับ ผู้สร้างก็ได้รับรางวัลด้วย",
     usageRewardTitle: "รางวัลครีเอเตอร์",
     usageRewardDescription:
       "รับเพอร์คอยน์เมื่อผู้ใช้คนอื่นสร้างผลงานด้วยพรอมต์หรือสไตล์ของคุณ",

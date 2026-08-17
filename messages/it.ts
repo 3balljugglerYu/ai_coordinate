@@ -1400,6 +1400,11 @@ export const itMessages = {
     resetIn: "Azzera tra",
     tipsLabel: "Suggerimento:",
     dailyResetDescription: "Questa missione si azzera ogni giorno alle 00:00 JST.",
+    promptUseTitle: "Crea con il prompt di qualcuno",
+    promptUseDescription: "Tocca «Crea con questo prompt» in un post — una volta al giorno",
+    promptUseReceived: "Ricevuto oggi",
+    promptUseNotReceived: "Non ancora ricevuto",
+    promptUseNote: "I tuoi prompt non contano. Anche l'autore riceve una ricompensa",
     usageRewardTitle: "Ricompense per i creator",
     usageRewardDescription:
       "Guadagna Percoin quando altri creano con i tuoi prompt o stili.",

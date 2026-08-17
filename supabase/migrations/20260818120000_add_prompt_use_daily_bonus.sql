@@ -340,6 +340,34 @@ END;
 $function$
 ;
 
+-- =============================================================================
+-- 6. ミッション一覧に出すための読み取り
+-- =============================================================================
+-- percoin_bonus_defaults は RLS で直接読めないため、投稿ボーナスと同じく
+-- RPC 経由で額を渡す。**一覧に出ないとミッションとして機能しない**
+-- (ペルコインは支払いではなく標識として効いている、というのが本施策の前提)。
+
+CREATE OR REPLACE FUNCTION public.get_prompt_use_bonus_amount()
+RETURNS integer
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT coalesce(
+    (SELECT amount FROM public.percoin_bonus_defaults WHERE source = 'prompt_use_daily'),
+    0
+  );
+$$;
+
+REVOKE ALL ON FUNCTION public.get_prompt_use_bonus_amount() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO anon;
+GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO service_role;
+
+COMMENT ON FUNCTION public.get_prompt_use_bonus_amount() IS
+  'プロンプト利用ミッションの付与額。0 のときはミッション自体を出さない';
+
 COMMENT ON FUNCTION public.record_prompt_usage(uuid) IS
   '成功済みジョブから origin / 利用者を導出して冪等記録し、原作者への還元と利用者への日次ボーナスを試みる。引数を信用しない';
 
