@@ -1155,13 +1155,15 @@ describe("StylePageClient", () => {
     render(<StylePageClient presets={presets} />);
 
     // 復帰 → getGenerationStatus(succeeded) → 確定処理(利用イベント記録)が走る。
+    // categoryKey は**引数の styleId から**引く。現在選択中の preset から取ると
+    // 企画Aのジョブ中に離脱して企画Bで復帰した場合に style_id と category_key が
+    // 食い違う行ができる。presets に無い styleId(公開停止等)は null にする。
     await waitFor(() =>
-      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith(
-        expect.objectContaining({
-          eventType: "generate",
-          styleId: "resumed-style-id",
-        }),
-      ),
+      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+        eventType: "generate",
+        styleId: "resumed-style-id",
+        categoryKey: null,
+      }),
     );
 
     // 完了確定したので保持はクリアされ、誤エラーも出ない。
@@ -1169,6 +1171,37 @@ describe("StylePageClient", () => {
       expect(
         window.sessionStorage.getItem("persta:style:active-async-job"),
       ).toBeNull(),
+    );
+  });
+
+  test("復帰時_categoryKeyは選択中ではなく復帰したstyleIdのカテゴリで記録する", async () => {
+    // 2枚目(FLUFFY)のジョブ中に離脱し、復帰時の初期選択は1枚目(PARIS)になる。
+    // それでも category_key は復帰した styleId 側から引く。
+    const resumedStyleId = presets[1].id;
+    window.sessionStorage.setItem(
+      "persta:style:active-async-job",
+      JSON.stringify({ jobId: "style-job-002", styleId: resumedStyleId }),
+    );
+    generationStatusResponseQueue = [
+      createJsonResponse({
+        id: "style-job-002",
+        status: "succeeded",
+        processingStage: "completed",
+        resultImageUrl: "https://cdn.example.com/generated-style-result.png",
+        previewImageUrl: null,
+        errorMessage: null,
+        generatedImageId: "generated-image-002",
+      }),
+    ];
+
+    render(<StylePageClient presets={presets} />);
+
+    await waitFor(() =>
+      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+        eventType: "generate",
+        styleId: resumedStyleId,
+        categoryKey: presets[1].category.key,
+      }),
     );
   });
 

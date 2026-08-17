@@ -69,6 +69,7 @@ describe("StyleEventsRoute integration tests", () => {
     getUserFn.mockResolvedValueOnce(null);
 
     const response = await postStyleEventsRoute(
+      // visit の styleId は route 側で必ず null に正規化される(下の期待値)。
       createRequest({ eventType: "visit", styleId: STYLE_ID }),
       {
         getUserFn,
@@ -85,7 +86,7 @@ describe("StyleEventsRoute integration tests", () => {
       userId: null,
       authState: "guest",
       eventType: "visit",
-      styleId: STYLE_ID,
+      styleId: null,
       categoryKey: null,
       // テストの request は IP ヘッダを持たないため viewer_key は解決できない。
       // 件数は数えるが UU には数えない(= null)。
@@ -343,6 +344,50 @@ describe("StyleEventsRoute integration tests", () => {
     expect(response.status).toBe(200);
     expect(recordStyleUsageEventFn).toHaveBeenCalledWith(
       expect.objectContaining({ viewerKey: null })
+    );
+  });
+
+  test("postStyleEventsRoute_visitのstyleIdは常にnullへ正規化する(二重計上防止)", async () => {
+    // 集計は「presetId で絞るクエリ」と「category_key で絞る visit クエリ」を
+    // 連結するため、visit が両方に入ると訪問数が2倍になる。
+    const response = await postStyleEventsRoute(
+      createRequest({
+        eventType: "visit",
+        styleId: STYLE_ID,
+        categoryKey: "travel_to_australia",
+      }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "visit",
+        styleId: null,
+        categoryKey: "travel_to_australia",
+      })
+    );
+  });
+
+  test("postStyleEventsRoute_visit以外のstyleIdは維持する", async () => {
+    const response = await postStyleEventsRoute(
+      createRequest({ eventType: "download", styleId: STYLE_ID }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "download", styleId: STYLE_ID })
     );
   });
 });

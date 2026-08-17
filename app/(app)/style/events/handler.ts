@@ -73,10 +73,20 @@ export async function postStyleEventsRoute(
       return jsonError(copy.invalidUsageEvent, "STYLE_INVALID_USAGE_EVENT", 400);
     }
 
-    const styleId =
+    const requestedStyleId =
       typeof payload?.styleId === "string" && payload.styleId.trim().length > 0
         ? payload.styleId.trim()
         : null;
+
+    /*
+      visit の style_id は**必ず null にする**。
+      1訪問=1プリセットではない(シート内で選び替えられる)ので意味を持たないうえ、
+      集計側が「presetId で絞るクエリ」と「category_key で絞る visit クエリ」を
+      連結するため、両方に入ると訪問数が2倍になる。
+      invariant をここで強制し、caller の実装ミスで壊れないようにする。
+      (本番の visit 行 7,295 件はすべて style_id NULL = 既存データとも整合)
+    */
+    const styleId = eventType === "visit" ? null : requestedStyleId;
 
     /*
       企画単位の集計キー。visit は style_id だけでは企画に紐づかないため

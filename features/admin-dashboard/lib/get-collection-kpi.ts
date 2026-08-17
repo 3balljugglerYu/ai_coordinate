@@ -79,6 +79,10 @@ export async function getCollectionKpi(params: {
             .from("style_usage_events")
             .select("auth_state, event_type, created_at")
             .in("style_id", presetIds)
+            // visit は下の category_key クエリで数える。
+            // route 側で style_id を null に正規化しているが、集計側でも
+            // 除外して二重計上を二重に防ぐ(旧データ・将来の caller 対策)。
+            .neq("event_type", "visit")
             .gte("created_at", startIso)
             .lte("created_at", endIso)
         : Promise.resolve({ data: [] as CollectionEventRow[], error: null }),
@@ -86,8 +90,8 @@ export async function getCollectionKpi(params: {
         visit は style_id を持たない(1訪問=1プリセットではない)。
         上の presetIds クエリには1件もヒットせず、**訪問カードは構造的に
         常に 0 を表示していた**。企画別の訪問は category_key で数える。
-        visit 行は style_id が必ず null なので上のクエリと重複しない
-        (event_type を visit に絞って二重計上を防いでいる)。
+        二重計上は3重に防いでいる: route が visit の style_id を null に正規化 /
+        上のクエリが visit を除外 / このクエリが visit だけを取る。
         category_key の計装は 2026-08-17 開始 = それ以前の訪問は取れない。
       */
       supabase

@@ -1491,10 +1491,20 @@ export function StylePageClient({
       router.refresh();
     })();
     if (styleId) {
+      /*
+        category_key は**引数の styleId から引く**。
+        selectedPreset から取ると、企画Aの非同期ジョブ中に離脱して復帰時の
+        初期選択が企画Bになっていた場合に style_id=A / category_key=B という
+        食い違う行ができ、企画別の生成数が混ざる(修復も難しい)。
+        presets から引けないとき(公開停止・期間終了等)は null にする
+        = 誤った企画に付けるより取れないほうがよい。
+      */
+      const generatedCategoryKey =
+        presets.find((preset) => preset.id === styleId)?.category.key ?? null;
       void recordStyleUsageClientEvent({
         eventType: "generate",
         styleId,
-        categoryKey: selectedPreset?.category.key ?? null,
+        categoryKey: generatedCategoryKey,
       }).catch(() => {
         // Tracking failures should not affect the page UX.
       });
