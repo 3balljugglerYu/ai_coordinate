@@ -718,9 +718,12 @@ describe("StylePageClient", () => {
     expect(
       document.querySelector('img[src="https://example.com/style-presets/paris-code.webp"]'),
     ).not.toBeNull();
+    // visit は styleId を持たず categoryKey で企画に紐づく
+    // (styleId で絞る集計では1件もヒットせず、admin の訪問カードが常に 0 だった)。
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
       eventType: "visit",
       styleId: null,
+      categoryKey: "coordinate",
     });
   });
 
@@ -1153,10 +1156,12 @@ describe("StylePageClient", () => {
 
     // 復帰 → getGenerationStatus(succeeded) → 確定処理(利用イベント記録)が走る。
     await waitFor(() =>
-      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
-        eventType: "generate",
-        styleId: "resumed-style-id",
-      }),
+      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: "generate",
+          styleId: "resumed-style-id",
+        }),
+      ),
     );
 
     // 完了確定したので保持はクリアされ、誤エラーも出ない。
@@ -1451,10 +1456,12 @@ describe("StylePageClient", () => {
     expect(screen.getByTestId("style-post-modal")).toHaveTextContent(
       "generated-image-001"
     );
-    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
-      eventType: "generate",
-      styleId: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
-    });
+    expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "generate",
+        styleId: "c3f48c0b-54d2-4c4d-a18c-bd358b58d3b1",
+      })
+    );
   });
 
   test("ログインユーザーの/style非同期生成中はpreview画像を先に表示する", async () => {

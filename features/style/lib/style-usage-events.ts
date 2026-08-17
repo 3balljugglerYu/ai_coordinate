@@ -31,6 +31,17 @@ export interface RecordStyleUsageEventInput {
   authState: StyleUsageAuthState;
   eventType: StyleUsageEventType;
   styleId?: string | null;
+  /**
+   * 企画(preset_categories.key)単位の集計キー。style_id とは独立に持つ。
+   * これが無いと visit のように style_id を持たないイベントを企画別に数えられない。
+   */
+  categoryKey?: string | null;
+  /**
+   * ユニーク視聴者キー(`u:<user_id>` / `g:<ip_hash>`)。
+   * **サーバー側でのみ解決すること**(body から受け取ると偽装できる)。
+   * IP が取れないゲストは null のままで、UU には数えない。
+   */
+  viewerKey?: string | null;
 }
 
 /**
@@ -45,6 +56,8 @@ export async function recordStyleUsageEvent({
   authState,
   eventType,
   styleId = null,
+  categoryKey = null,
+  viewerKey = null,
 }: RecordStyleUsageEventInput): Promise<void> {
   const supabase = createAdminClient();
 
@@ -53,6 +66,8 @@ export async function recordStyleUsageEvent({
     auth_state: authState,
     event_type: eventType,
     style_id: styleId,
+    category_key: categoryKey,
+    viewer_key: viewerKey,
   });
 
   if (error) {

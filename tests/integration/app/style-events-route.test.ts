@@ -86,6 +86,10 @@ describe("StyleEventsRoute integration tests", () => {
       authState: "guest",
       eventType: "visit",
       styleId: STYLE_ID,
+      categoryKey: null,
+      // テストの request は IP ヘッダを持たないため viewer_key は解決できない。
+      // 件数は数えるが UU には数えない(= null)。
+      viewerKey: null,
     });
   });
 
@@ -125,6 +129,8 @@ describe("StyleEventsRoute integration tests", () => {
       authState: "authenticated",
       eventType: "generate",
       styleId: STYLE_ID,
+      categoryKey: null,
+      viewerKey: "u:user-123",
     });
   });
 
@@ -164,6 +170,8 @@ describe("StyleEventsRoute integration tests", () => {
       authState: "authenticated",
       eventType: "download",
       styleId: STYLE_ID,
+      categoryKey: null,
+      viewerKey: "u:user-123",
     });
   });
 
@@ -192,6 +200,8 @@ describe("StyleEventsRoute integration tests", () => {
       authState: "authenticated",
       eventType: "download",
       styleId: STYLE_ID,
+      categoryKey: null,
+      viewerKey: "u:admin-1",
     });
   });
 
@@ -260,5 +270,79 @@ describe("StyleEventsRoute integration tests", () => {
     expect(response.status).toBe(200);
     expect(body).toEqual({ ok: true });
     expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+  });
+
+  test("postStyleEventsRoute_categoryKeyを受け取って企画別に記録する", async () => {
+    const response = await postStyleEventsRoute(
+      createRequest({
+        eventType: "visit",
+        styleId: null,
+        categoryKey: "travel_to_australia",
+      }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith({
+      userId: "user-123",
+      authState: "authenticated",
+      eventType: "visit",
+      styleId: null,
+      categoryKey: "travel_to_australia",
+      viewerKey: "u:user-123",
+    });
+  });
+
+  test("postStyleEventsRoute_書式不正なcategoryKeyはnullに落とす", async () => {
+    // DB の CHECK 制約に弾かれて記録そのものが落ちるのを防ぐ。
+    // 計測は UX をブロックしない方針なので、企画キーだけ捨てて記録は続ける。
+    const response = await postStyleEventsRoute(
+      createRequest({
+        eventType: "visit",
+        styleId: null,
+        categoryKey: "Travel To Australia!!",
+      }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryKey: null, eventType: "visit" })
+    );
+  });
+
+  test("postStyleEventsRoute_bodyのviewerKeyは採用しない(偽装防止)", async () => {
+    getUserFn.mockResolvedValueOnce(null);
+
+    const response = await postStyleEventsRoute(
+      createRequest({
+        eventType: "visit",
+        styleId: null,
+        categoryKey: "travel_to_australia",
+        // 攻撃者がゲストUUを膨らませようとしても効かないこと
+        viewerKey: "g:spoofed-viewer",
+      }),
+      {
+        getUserFn,
+        getAdminUserIdsFn,
+        getPublishedStylePresetByIdFn,
+        recordStyleUsageEventFn,
+      }
+    );
+
+    expect(response.status).toBe(200);
+    expect(recordStyleUsageEventFn).toHaveBeenCalledWith(
+      expect.objectContaining({ viewerKey: null })
+    );
   });
 });

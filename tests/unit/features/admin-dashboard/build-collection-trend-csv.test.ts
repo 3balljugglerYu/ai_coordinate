@@ -119,6 +119,10 @@ describe("buildCollectionSummaryCsv", () => {
       mountsFailed: metric(1, 0),
     } as unknown as CollectionKpi;
     const uuFunnel: CollectionUuFunnel = {
+      visitsMemberUu: 25,
+      visitsGuestUu: 80,
+      generatesGuestUu: 12,
+      guestGenerateRatePct: 15,
       generatesUu: 35,
       completionsUu: 10,
       sharesUu: 4,
@@ -153,6 +157,10 @@ describe("buildCollectionSummaryCsv", () => {
       mountsFailed: metric(0, 0),
     } as unknown as CollectionKpi;
     const uuFunnel: CollectionUuFunnel = {
+      visitsMemberUu: 0,
+      visitsGuestUu: 0,
+      generatesGuestUu: 0,
+      guestGenerateRatePct: null,
       generatesUu: 0,
       completionsUu: 0,
       sharesUu: 0,

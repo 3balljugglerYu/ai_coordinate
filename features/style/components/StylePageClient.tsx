@@ -1494,6 +1494,7 @@ export function StylePageClient({
       void recordStyleUsageClientEvent({
         eventType: "generate",
         styleId,
+        categoryKey: selectedPreset?.category.key ?? null,
       }).catch(() => {
         // Tracking failures should not affect the page UX.
       });
@@ -1802,7 +1803,11 @@ export function StylePageClient({
     hasTrackedVisitRef.current = true;
     void recordStyleUsageClientEvent({
       eventType: "visit",
+      // styleId は null のまま(1訪問=1プリセットではなく、シート内で選び替えられる)。
+      // 企画別の訪問数は categoryKey で数える。styleId で絞る集計では
+      // visit 行が1件もヒットしないため、admin の訪問カードは常に 0 だった。
       styleId: null,
+      categoryKey: selectedPreset.category.key,
     }).catch(() => {
       // Tracking failures should not affect the page UX.
     });

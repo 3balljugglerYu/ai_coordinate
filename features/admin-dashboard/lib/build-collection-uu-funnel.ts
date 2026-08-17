@@ -1,10 +1,16 @@
 /**
  * コレクション企画のユニークユーザー(UU)ファネル(B-2 / A-5 / A-8)。
- * - ログイン側のみ。ゲストは style_usage_events.user_id が NULL のため UU 計測不可。
  * - 生成UU → コンプリートUU → シェアUU の歩留まり、および
  *   期間内登録UU → コンプリート の到達率/離脱を算出する。
+ * - 訪問UU とゲストは viewer_key(`u:<user_id>` / `g:<ip_hash>`)で数える。
+ *   2026-08-17 の計装より前は viewer_key が NULL のため 0 になる(遡れない)。
+ *   ゲストは端末/回線単位の近似であり、実人数とは一致しない。
  */
 export interface CollectionUuFunnel {
+  visitsMemberUu: number; // 企画ページを訪れたログインUU
+  visitsGuestUu: number; // 同ゲストUU(IPハッシュ単位の近似)
+  generatesGuestUu: number; // 生成したゲストUU
+  guestGenerateRatePct: number | null; // ゲスト訪問UU → ゲスト生成UU
   generatesUu: number; // 神コレ生成したログインUU
   completionsUu: number; // コンプリート到達UU
   sharesUu: number; // シェアしたUU
@@ -23,6 +29,12 @@ function rate(numerator: number, denominator: number): number | null {
   return Number(((numerator / denominator) * 100).toFixed(1));
 }
 
+/** null / 空文字を捨てて distinct 件数を返す(viewer_key 用)。 */
+function countDistinct(values: (string | null)[] | undefined): number {
+  return new Set((values ?? []).filter((value): value is string => !!value))
+    .size;
+}
+
 function intersectionSize(target: Set<string>, other: Set<string>): number {
   let count = 0;
   for (const id of target) {
@@ -34,6 +46,10 @@ function intersectionSize(target: Set<string>, other: Set<string>): number {
 }
 
 export function buildCollectionUuFunnel(params: {
+  /** viewer_key。null(IP 取得不可・計装前)は除外して数える。 */
+  visitMemberViewerKeys?: (string | null)[];
+  visitGuestViewerKeys?: (string | null)[];
+  generateGuestViewerKeys?: (string | null)[];
   generateMemberUserIds: string[];
   completerUserIds: string[];
   shareUserIds: string[];
@@ -44,6 +60,10 @@ export function buildCollectionUuFunnel(params: {
   const sharers = new Set(params.shareUserIds.filter(Boolean));
   const registered = new Set(params.registeredUserIds.filter(Boolean));
 
+  const visitsMemberUu = countDistinct(params.visitMemberViewerKeys);
+  const visitsGuestUu = countDistinct(params.visitGuestViewerKeys);
+  const generatesGuestUu = countDistinct(params.generateGuestViewerKeys);
+
   const generatesUu = generates.size;
   const completionsUu = completers.size;
   const sharesUu = sharers.size;
@@ -52,6 +72,10 @@ export function buildCollectionUuFunnel(params: {
   const completedSharedUu = intersectionSize(completers, sharers);
 
   return {
+    visitsMemberUu,
+    visitsGuestUu,
+    generatesGuestUu,
+    guestGenerateRatePct: rate(generatesGuestUu, visitsGuestUu),
     generatesUu,
     completionsUu,
     sharesUu,

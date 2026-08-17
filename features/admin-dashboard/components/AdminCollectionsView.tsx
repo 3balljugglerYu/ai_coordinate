@@ -150,8 +150,16 @@ export function AdminCollectionsView({
           { label: "コンプリート達成数", metric: kpi.completions },
           { label: "台紙生成数", metric: kpi.completions },
           { label: "シリーズ生成数(成功)", metric: kpi.seriesGenerations },
-          { label: "訪問(ログイン)", metric: kpi.visitsMember },
-          { label: "訪問(ゲスト)", metric: kpi.visitsGuest },
+          {
+            label: "訪問(ログイン)",
+            metric: kpi.visitsMember,
+            sub: "2026-08-17〜",
+          },
+          {
+            label: "訪問(ゲスト)",
+            metric: kpi.visitsGuest,
+            sub: "2026-08-17〜",
+          },
           {
             label: "生成成功",
             metric: kpi.generates,
@@ -284,14 +292,18 @@ export function AdminCollectionsView({
       {uuFunnel ? (
         <div className="rounded-md border border-slate-200 bg-white p-4">
           <h3 className="text-sm font-semibold text-slate-800">
-            ユニークユーザー・ファネル（ログインのみ）
+            ユニークユーザー・ファネル
           </h3>
           <p className="mb-3 mt-1 text-[11px] text-slate-500">
             生成→コンプリート→シェアのUU歩留まり、および期間内に新規登録したUUのコンプリート到達。
-            ゲストは識別子を持たずUU計測できないためログイン側のみです。
+            訪問UUとゲストは 2026-08-17 の計装以降のぶんだけ数えます（それ以前は0)。
+            ゲストは回線・端末単位の近似のため実人数とは一致しません。
           </p>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {[
+              { label: "訪問UU(ログイン)", value: uuFunnel.visitsMemberUu },
+              { label: "訪問UU(ゲスト)", value: uuFunnel.visitsGuestUu },
+              { label: "生成UU(ゲスト)", value: uuFunnel.generatesGuestUu },
               { label: "生成UU", value: uuFunnel.generatesUu },
               { label: "コンプリートUU", value: uuFunnel.completionsUu },
               { label: "シェアUU", value: uuFunnel.sharesUu },
@@ -311,6 +323,11 @@ export function AdminCollectionsView({
           </div>
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
             {[
+              {
+                dt: "ゲスト訪問→生成率",
+                dd: formatRatePct(uuFunnel.guestGenerateRatePct),
+                note: "お試し生成UU / ゲスト訪問UU",
+              },
               {
                 dt: "コンプリート到達率 (B-2)",
                 dd: formatRatePct(uuFunnel.reachRatePct),

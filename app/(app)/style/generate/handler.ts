@@ -17,6 +17,7 @@ import {
 } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
+import { resolveStyleUsageViewerKey } from "@/features/style/lib/style-usage-viewer-key";
 import { shouldRecordStylePresetUsage } from "@/features/style-presets/lib/style-preset-usage-recording";
 import {
   checkAndConsumeStyleGenerateRateLimit,
@@ -264,9 +265,23 @@ export async function postStyleGenerateRoute(
     // 公開中でないプリセット(表示期間外・is_active=false 等)の利用イベントは記録しない
     // (「◯◯回つくられました」カウンタ/KPI へのテスト・期間外生成の混入防止)。
     // 生成自体は従来どおり動かし、以降の記録だけを no-op に差し替える。
+    /*
+      企画別集計(category_key)とユニーク視聴者(viewer_key)を、この経路の
+      すべての記録に一括で付ける。個々の呼び出し側に足すと必ず漏れが出る
+      (visit が category_key を持たず admin の訪問カードが常に 0 だったのが実例)。
+      viewer_key はリクエストから1度だけ解決する。
+    */
+    // この同期経路はゲスト専用(認証済みは上の 210 行で 403)。よって常に IP ハッシュ。
+    const usageViewerKey = resolveStyleUsageViewerKey(request, null);
+    const recordWithCollectionKeys: typeof recordStyleUsageEventFn = (input) =>
+      recordStyleUsageEventFn({
+        ...input,
+        categoryKey: input.categoryKey ?? preset.category.key,
+        viewerKey: input.viewerKey ?? usageViewerKey,
+      });
     const gatedRecordStyleUsageEventFn: typeof recordStyleUsageEventFn =
       shouldRecordStylePresetUsage(preset)
-        ? recordStyleUsageEventFn
+        ? recordWithCollectionKeys
         : async () => {};
     // ゲストの無料生成は category.allow_guest_generation が true のカテゴリのみ許可。
     // 許可カテゴリは admin のカテゴリ編集から切り替える(既定 false = ログイン必須)。
