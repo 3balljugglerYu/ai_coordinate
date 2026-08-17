@@ -46,9 +46,8 @@ export type AiRateBasis = "measured" | "published" | "derived";
  * `basis` とは**別の軸**として持つ。出力ぶんが公表値で正確でも、
  * 入力ぶんが未計上なら合計は実額に届かないため、片方だけでは実態を表せない。
  *
- * - `counted` 入力画像・プロンプトとも計上している（OpenAI）
- * - `partial` 一部だけ計上している（Gemini: テキスト単価が未確認で常に未計上。
- *   flash 系は入力画像の公表もない）
+ * - `counted` 入力画像・プロンプトとも計上している
+ * - `partial` 一部だけ計上している
  */
 export type AiInputCompleteness = "counted" | "partial";
 
@@ -60,6 +59,14 @@ export interface AiModelRate {
    * `0` は「課金されない」ではなく **「未計測」** を意味し、その分だけ原価を低く見ている。
    */
   inputImageUsd: number;
+  /**
+   * プロンプト(テキスト)入力の単価 per 1M tokens。
+   *
+   * **provider ではなくモデルごとに持つ。** Gemini は同じ Google でも
+   * pro $2.00 / flash $0.50 / flash-lite $0.25 と 8倍の開きがあり、
+   * provider 単位の定数では表せない。
+   */
+  textInputUsdPer1M: number;
   provider: AiCostProvider;
   basis: AiRateBasis;
   inputCompleteness: AiInputCompleteness;
@@ -115,6 +122,7 @@ const gptImage2 = (
   return {
     outputUsd: (tokens * OPENAI_IMAGE_OUTPUT_USD_PER_1M) / 1e6,
     inputImageUsd: GPT_IMAGE_2_INPUT_IMAGE_USD,
+    textInputUsdPer1M: OPENAI_TEXT_INPUT_USD_PER_1M,
     provider: "openai",
     basis: tier === "1k" ? "measured" : "derived",
     inputCompleteness: "counted",
@@ -122,19 +130,62 @@ const gptImage2 = (
 };
 
 /**
- * Gemini は出力ぶんの公表値のみ。テキスト入力単価が未確認で常に未計上、
- * 入力画像も pro 以外は公表がないため `partial` 固定。
+ * Gemini の入力トークン単価（per 1M tokens・2026-08-18 取得）。
+ * **テキストと画像が同一単価**なのが OpenAI との違い（OpenAI は text $5 / image $8）。
+ *
+ * https://ai.google.dev/gemini-api/docs/pricing
  */
-const gemini = (outputUsd: number, inputImageUsd = 0): AiModelRate => ({
-  outputUsd,
-  inputImageUsd,
-  provider: "google",
-  basis: "published",
-  inputCompleteness: "partial",
-});
+const GEMINI_INPUT_USD_PER_1M = {
+  pro: 2.0,
+  flash: 0.5,
+  flashLite: 0.25,
+  /** gemini-2.5-flash-image（旧世代） */
+  legacyFlash: 0.3,
+} as const;
 
-/** gemini-3-pro-image の入力画像は 560 tok = $0.0011/枚（公表値）。他モデルは未公表。 */
-const GEMINI_PRO_INPUT_IMAGE_USD = 0.0011;
+/**
+ * 入力画像1枚あたりのトークン数。
+ *
+ * **Gemini 3 は既定 1,120 tok。** `media_resolution` を指定しなければ
+ * MEDIA_RESOLUTION_UNSPECIFIED = 画像 1,120 tok が適用される。
+ * 本アプリはどこでも指定していないため既定が効く（2026-08-18 時点でコード上に
+ * mediaResolution の指定なしを確認済み）。
+ *
+ * ⚠️ 価格ページの「$0.0011 per image」は **560 tok（MEDIA_RESOLUTION_MEDIUM）前提**で、
+ * 実際の既定の半分。以前の実装はこの値をそのまま使っており、pro の入力画像費を
+ * 半分に見積もっていた。
+ *
+ * gemini-2.5（Gemini 3 以前）は media_resolution が無く、タイル方式:
+ * 384px 以下なら 258 tok、それ以上は 768x768 タイルごとに 258 tok。
+ * 本アプリの入力画像は長辺 2048 に正規化される(normalize-source-image.ts)ため、
+ * 1024x1536 相当で 6 タイル = 1,548 tok と見積もる。**実測していない**。
+ */
+const GEMINI_3_INPUT_IMAGE_TOKENS = 1120;
+const GEMINI_25_INPUT_IMAGE_TOKENS_ESTIMATE = 1548;
+
+/**
+ * Gemini の単価を組み立てる。
+ *
+ * 出力ぶんは公表の「1枚あたり価格」をそのまま使う（トークン数も公表されており、
+ * 単価×トークンと一致する）。入力ぶんは トークン数 × 入力単価 で算出する。
+ */
+const gemini = (
+  outputUsd: number,
+  tier: keyof typeof GEMINI_INPUT_USD_PER_1M,
+  inputImageTokens: number = GEMINI_3_INPUT_IMAGE_TOKENS
+): AiModelRate => {
+  const inputUsdPer1M = GEMINI_INPUT_USD_PER_1M[tier];
+  return {
+    outputUsd,
+    inputImageUsd: (inputImageTokens * inputUsdPer1M) / 1e6,
+    textInputUsdPer1M: inputUsdPer1M,
+    provider: "google",
+    basis: "published",
+    // 出力=公表値、入力=公表単価×トークン数。OpenAI の実測ほどではないが
+    // 3要素すべてを数えている状態になった。
+    inputCompleteness: "counted",
+  };
+};
 
 /**
  * `generated_images.model` に記録される値をキーにした単価表。
@@ -159,13 +210,17 @@ export const MODEL_COST_RATES: Record<string, AiModelRate> = {
   "gpt-image-2-low": gptImage2("low", "1k"),
 
   // --- Google（公表されている1枚あたりの価格）---
-  "gemini-2.5-flash-image": gemini(0.039),
-  "gemini-3.1-flash-image-preview-512": gemini(0.045),
-  "gemini-3.1-flash-image-preview-1024": gemini(0.067),
-  "gemini-3.1-flash-lite-image-1024": gemini(0.0336),
-  "gemini-3-pro-image-1k": gemini(0.134, GEMINI_PRO_INPUT_IMAGE_USD),
-  "gemini-3-pro-image-2k": gemini(0.134, GEMINI_PRO_INPUT_IMAGE_USD),
-  "gemini-3-pro-image-4k": gemini(0.24, GEMINI_PRO_INPUT_IMAGE_USD),
+  "gemini-2.5-flash-image": gemini(
+    0.039,
+    "legacyFlash",
+    GEMINI_25_INPUT_IMAGE_TOKENS_ESTIMATE
+  ),
+  "gemini-3.1-flash-image-preview-512": gemini(0.045, "flash"),
+  "gemini-3.1-flash-image-preview-1024": gemini(0.067, "flash"),
+  "gemini-3.1-flash-lite-image-1024": gemini(0.0336, "flashLite"),
+  "gemini-3-pro-image-1k": gemini(0.134, "pro"),
+  "gemini-3-pro-image-2k": gemini(0.134, "pro"),
+  "gemini-3-pro-image-4k": gemini(0.24, "pro"),
 };
 
 /**
@@ -251,8 +306,10 @@ export interface AiGenerationCost {
  * 1生成あたりの推定原価を、入力ぶんを含めて算出する。
  * 単価表に無いモデルは `null`（呼び出し側で「単価未設定」として件数だけ数える）。
  *
- * テキストぶんは OpenAI のみ計上する。Gemini のテキスト入力単価は未確認で、
- * 直近30日の Gemini 利用が全体の約1%しかないため、まず OpenAI を正確にした。
+ * テキストぶんはモデルごとの入力単価で計上する（2026-08-18 に Gemini も対応）。
+ * トークン数は OpenAI のトークナイザで数えた実測値を Gemini にも流用している。
+ * 両者のトークナイザは異なるが、日本語混じりの同じ文で概ね同じ桁に収まるため、
+ * Gemini が全体の約1%という利用比率に対しては十分な精度と判断した。
  */
 export function estimateGenerationCost(
   model: string | null,
@@ -262,9 +319,7 @@ export function estimateGenerationCost(
   if (!rate) return null;
 
   const textUsd =
-    rate.provider === "openai"
-      ? (getPromptTextTokens(generationType) * OPENAI_TEXT_INPUT_USD_PER_1M) / 1e6
-      : 0;
+    (getPromptTextTokens(generationType) * rate.textInputUsdPer1M) / 1e6;
 
   const inputUsd = rate.inputImageUsd + textUsd;
 

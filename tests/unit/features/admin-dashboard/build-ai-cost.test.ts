@@ -20,8 +20,18 @@ const GPT_LOW_OUTPUT_USD = 0.00516; //               172 tok × $30/1M
 const GPT_LOW_DEFAULT_USD = GPT_LOW_OUTPUT_USD + GPT_INPUT_IMAGE_USD + 0.00185;
 // one_tap_style → 1,640 tok
 const GPT_LOW_ONE_TAP_USD = GPT_LOW_OUTPUT_USD + GPT_INPUT_IMAGE_USD + 0.0082;
-// Gemini はテキストぶん未計上、入力画像も flash 系は未公表なので出力ぶんのみ
-const GEMINI_FLASH_USD = 0.067;
+/*
+  Gemini も 2026-08-18 から3要素すべてを数える。
+  入力はテキストも画像も同一単価（flash は $0.50/1M）で、
+  入力画像は media_resolution 既定の 1,120 tok。
+*/
+const GEMINI_FLASH_INPUT_IMAGE_USD = (1120 * 0.5) / 1e6; // = 0.00056
+// generation_type 未指定 → 既定 370 tok
+const GEMINI_FLASH_DEFAULT_USD =
+  0.067 + GEMINI_FLASH_INPUT_IMAGE_USD + (370 * 0.5) / 1e6;
+// one_tap_style → 1,640 tok
+const GEMINI_FLASH_ONE_TAP_USD =
+  0.067 + GEMINI_FLASH_INPUT_IMAGE_USD + (1640 * 0.5) / 1e6;
 
 describe("buildAiCostEstimate", () => {
   it("生成がなくても期間分の日別バケットを埋めて0円を返す", () => {
@@ -54,7 +64,7 @@ describe("buildAiCostEstimate", () => {
       NOW
     );
 
-    const expectedUsd = GPT_LOW_DEFAULT_USD * 2 + GEMINI_FLASH_USD;
+    const expectedUsd = GPT_LOW_DEFAULT_USD * 2 + GEMINI_FLASH_DEFAULT_USD;
     expect(result.totalUsd).toBeCloseTo(expectedUsd, 4);
     expect(result.totalJpy).toBeCloseTo(expectedUsd * USD_JPY_RATE, 1);
   });
@@ -173,7 +183,7 @@ describe("buildAiCostEstimate", () => {
       expect(syncRows.totalUsd).toBeCloseTo(GPT_LOW_ONE_TAP_USD * 2, 4);
     });
 
-    it("Gemini にはテキストぶんを乗せない（単価未確認のため）", () => {
+    it("Gemini もモデル別の入力単価でテキストぶんを計上する", () => {
       const withType = buildAiCostEstimate(
         [
           {
@@ -186,7 +196,10 @@ describe("buildAiCostEstimate", () => {
         NOW
       );
 
-      expect(withType.totalUsd).toBeCloseTo(GEMINI_FLASH_USD, 5);
+      // buildAiCostEstimate は合計を丸めるため精度4で比較する
+      expect(withType.totalUsd).toBeCloseTo(GEMINI_FLASH_ONE_TAP_USD, 4);
+      // 出力ぶんだけの頃(0.067)より高い = テキスト・入力画像を数えている
+      expect(withType.totalUsd).toBeGreaterThan(0.067);
     });
   });
 
@@ -230,6 +243,76 @@ describe("buildAiCostEstimate", () => {
       );
     });
 
+    it("完走フィード投稿は原価にも単価未設定にも数えない", () => {
+      // 台紙の合成画像でモデルを呼んでいない。単価未設定に混ぜると
+      // 「取りこぼしている件数」に見えて判断を誤らせる。
+      const result = buildAiCostEstimate(
+        [
+          {
+            model: null,
+            created_at: "2026-07-25T01:00:00.000Z",
+            generation_type: "one_tap_style",
+            completion_id: "11111111-1111-1111-1111-111111111111",
+          },
+          {
+            // completion_id が無い model=null は従来どおり単価未設定
+            model: null,
+            created_at: "2026-07-25T02:00:00.000Z",
+            generation_type: "one_tap_style",
+          },
+        ],
+        CURRENT_START,
+        NOW
+      );
+
+      expect(result.totalUsd).toBe(0);
+      expect(result.unknownModelCount).toBe(1);
+    });
+
+    it("すべてのモデルが入力ぶんを計上している", () => {
+      // inputCompleteness=partial が残っていると、そのモデルの合計は実額に届かない。
+      // 2026-08-18 に Gemini のテキスト・入力画像を計上して全モデル counted になった。
+      for (const [model, rate] of Object.entries(MODEL_COST_RATES)) {
+        expect([model, rate.inputCompleteness]).toEqual([model, "counted"]);
+        expect(rate.inputImageUsd).toBeGreaterThan(0);
+        expect(rate.textInputUsdPer1M).toBeGreaterThan(0);
+      }
+    });
+
+    it("Gemini はモデル階層ごとに入力単価が違う", () => {
+      // pro $2.00 / flash $0.50 / flash-lite $0.25。
+      // provider 単位の定数にすると 8倍の開きを潰してしまう。
+      expect(MODEL_COST_RATES["gemini-3-pro-image-1k"]?.textInputUsdPer1M).toBe(2.0);
+      expect(
+        MODEL_COST_RATES["gemini-3.1-flash-image-preview-1024"]?.textInputUsdPer1M
+      ).toBe(0.5);
+      expect(
+        MODEL_COST_RATES["gemini-3.1-flash-lite-image-1024"]?.textInputUsdPer1M
+      ).toBe(0.25);
+    });
+
+    it("Gemini 3 の入力画像は media_resolution 既定の 1,120 tok で数える", () => {
+      // 価格ページの「$0.0011/枚」は 560 tok(MEDIUM)前提で、既定の半分。
+      // アプリは media_resolution を指定していないので既定が効く。
+      expect(MODEL_COST_RATES["gemini-3-pro-image-1k"]?.inputImageUsd).toBeCloseTo(
+        (1120 * 2.0) / 1e6,
+        6
+      );
+      expect(
+        MODEL_COST_RATES["gemini-3-pro-image-1k"]?.inputImageUsd
+      ).toBeGreaterThan(0.0011);
+    });
+
+    it("Gemini でも出力ぶんが原価の大半を占める(OpenAI Low とは逆)", () => {
+      // OpenAI Low は入力が7割。Gemini は出力単価が高く入力単価が安いため、
+      // 入力を計上しても合計は数%しか動かない。値付けの直感を固定しておく。
+      const cost = estimateGenerationCost("gemini-3-pro-image-1k", "one_tap_style")!;
+      expect(cost.inputUsd / cost.usd).toBeLessThan(0.05);
+
+      const low = estimateGenerationCost("gpt-image-2-low-1k", "one_tap_style")!;
+      expect(low.inputUsd / low.usd).toBeGreaterThan(0.7);
+    });
+
     it("外挿した 2k/4k は basis で見分けられる", () => {
       // 実測していないことをカード側と将来の読み手に明示する
       expect(MODEL_COST_RATES["gpt-image-2-low-1k"]?.basis).toBe("measured");
@@ -256,7 +339,7 @@ describe("buildAiCostEstimate", () => {
 
     expect(first.openaiJpy).toBeCloseTo(GPT_LOW_DEFAULT_USD * USD_JPY_RATE, 1);
     expect(first.googleJpy).toBe(0);
-    expect(last.googleJpy).toBeCloseTo(GEMINI_FLASH_USD * USD_JPY_RATE, 1);
+    expect(last.googleJpy).toBeCloseTo(GEMINI_FLASH_DEFAULT_USD * USD_JPY_RATE, 1);
     expect(last.openaiJpy).toBe(0);
     expect(last.totalJpy).toBeCloseTo(last.googleJpy, 1);
   });
