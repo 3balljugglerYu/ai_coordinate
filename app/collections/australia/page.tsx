@@ -15,6 +15,7 @@ const PAGE_TITLE =
 const PAGE_DESCRIPTION =
   "うちの子をオーストラリア10日間の旅へ。表紙「旅のはじまり」からケアンズ・ウルル・シドニーと1つずつ解放して全8種をあつめると、1ページずつめくれる旅行日記(本)が完成。ダウンロードして SNS でシェア！";
 
+const OG_IMAGE = "/collections/australia/ogp.jpg";
 const OG_TITLE = "うちの子のオーストラリア旅行｜めくれる旅行日記をつくろう";
 const OG_DESCRIPTION =
   "うちの子をオーストラリアへ。全8種をあつめて、めくれる旅行日記をつくろう。";
@@ -28,11 +29,20 @@ export const metadata: Metadata = {
     description: OG_DESCRIPTION,
     type: "website",
     siteName: "Persta.AI",
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: "うちの子のオーストラリア旅行 — 10日間のわくわく旅日記",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: OG_TITLE,
     description: OG_DESCRIPTION,
+    images: [OG_IMAGE],
   },
 };
 

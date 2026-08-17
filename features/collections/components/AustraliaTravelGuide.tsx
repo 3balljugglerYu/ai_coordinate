@@ -22,6 +22,185 @@ const AU_OCHRE = "#C2551F";
 const AU_OCEAN = "#0F7FA8";
 
 /**
+ * 背景は「旅程の順」に色が変わる。
+ *
+ * 全面ベージュだと単調で、しかも8枚が“旅”であることがページから伝わらない。
+ * 観光素材を散りばめる案もあったが、プリセット画像自体が
+ * 「写真4枚＋マステ＋切手＋手書きメモ」の高密度コラージュなので、
+ * 装飾を足すと主役と competing して安く見える。背景色で語る方を選んだ。
+ *
+ *   ヒーロー   海の青   ケアンズ / グレートバリアリーフ
+ *   一覧(上)   森の緑   デインツリー熱帯雨林
+ *   一覧(下)   赤い大地 ウルル / カタ・ジュタ
+ *   応募       港の青   シドニー
+ *   CTA        夕焼け   帰国「またいつか」
+ *
+ * 隣り合うセクションの端の色を合わせて、境目が出ないようにしている。
+ * サムネが主役なので、いずれも彩度を落とした淡い色に留める。
+ */
+const BG = {
+  sea: "#CDECF7",
+  cream: "#FFF8EC",
+  forest: "#D9F0D6",
+  ochre: "#FFE3CB",
+  harbour: "#D6EAFA",
+  sunset: "#FFE6CE",
+} as const;
+
+const HERO_SP = "/collections/australia/hero-sp.webp";
+const HERO_PC = "/collections/australia/hero-pc.webp";
+
+/**
+ * 企画のキービジュアル。
+ *
+ * 縦長(スマホ 1024x1536)と横長(PC 1536x1024)を <picture> の media で出し分ける
+ * (next/image はアートディレクション非対応で、CSS 出し分けだと両方
+ * ダウンロードされうるため素の picture を使う。creator-rewards と同じ作法)。
+ *
+ * creator-rewards と違い、**タイトルは画像に焼き込まれている**ので HTML では重ねない。
+ * 見出しは h1 として持つが視覚的には隠し、読み上げと SEO だけで拾う。
+ */
+function HeroVisual() {
+  return (
+    <div className="relative w-full">
+      <picture>
+        <source media="(min-width: 640px)" srcSet={HERO_PC} width={1536} height={1024} />
+        <img
+          src={HERO_SP}
+          alt="うちの子のオーストラリア旅行 旅のはじまり — ケアンズ、デインツリー熱帯雨林、ウルル、シドニー、ブルーマウンテンズをめぐる10日間のわくわく旅日記"
+          width={1024}
+          height={1536}
+          fetchPriority="high"
+          className="block w-full"
+        />
+      </picture>
+    </div>
+  );
+}
+
+/** 背景モチーフ共通の props。style はアニメーションの遅延をずらすのに使う。 */
+interface MotifProps {
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/** 波(ケアンズ・グレートバリアリーフ)。 */
+function WaveMotif({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 400 120" aria-hidden className={className} style={style} fill="none">
+      <path
+        d="M0 60c40-30 80-30 120 0s80 30 120 0 80-30 120 0 80 30 120 0"
+        stroke={AU_OCEAN}
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M0 95c40-30 80-30 120 0s80 30 120 0 80-30 120 0 80 30 120 0"
+        stroke={AU_OCEAN}
+        strokeWidth="6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+/** ユーカリの枝(デインツリー熱帯雨林)。 */
+function EucalyptusMotif({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 200 260" aria-hidden className={className} style={style}>
+      <path
+        d="M100 255V25"
+        stroke="#2F6B3A"
+        strokeWidth="5"
+        strokeLinecap="round"
+      />
+      {[0, 1, 2, 3, 4].map((i) => {
+        const y = 45 + i * 42;
+        return (
+          <g key={i}>
+            <ellipse cx="66" cy={y} rx="34" ry="16" fill="#2F6B3A" transform={`rotate(-24 66 ${y})`} />
+            <ellipse cx="134" cy={y + 20} rx="34" ry="16" fill="#2F6B3A" transform={`rotate(24 134 ${y + 20})`} />
+          </g>
+        );
+      })}
+    </svg>
+  );
+}
+
+/** ウルルのシルエット(赤い大地)。 */
+function UluruMotif({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 480 180" aria-hidden className={className} style={style}>
+      <path
+        d="M0 180c18-14 44-52 78-74 30-20 66-34 118-36 62-3 108 10 146 30 34 18 78 58 100 80 8 8 22 0 38 0v0H0z"
+        fill={AU_OCHRE}
+      />
+    </svg>
+  );
+}
+
+/** 南十字星(星降る夜のウルル)。 */
+function SouthernCrossMotif({ className, style }: MotifProps) {
+  const stars: { x: number; y: number; r: number }[] = [
+    { x: 100, y: 18, r: 9 },
+    { x: 118, y: 92, r: 13 },
+    { x: 46, y: 74, r: 8 },
+    { x: 150, y: 138, r: 7 },
+    { x: 92, y: 176, r: 11 },
+  ];
+  return (
+    <svg viewBox="0 0 200 200" aria-hidden className={className} style={style}>
+      {stars.map((s) => (
+        <circle key={`${s.x}-${s.y}`} cx={s.x} cy={s.y} r={s.r} fill={AU_OCEAN} />
+      ))}
+    </svg>
+  );
+}
+
+/** キラキラ(4方向に伸びる星)。ポップさの主役なので彩度は落とさない。 */
+function Sparkle({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden className={className} style={style} fill="currentColor">
+      <path d="M12 0c.6 5.6 5.8 10.8 12 12-6.2 1.2-11.4 6.4-12 12-.6-5.6-5.8-10.8-12-12C6.2 10.8 11.4 5.6 12 0z" />
+    </svg>
+  );
+}
+
+/** 紙飛行機(旅立ち)。点線の航路とセットで使う。 */
+function PlaneMotif({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 48 48" aria-hidden className={className} style={style} fill="currentColor">
+      <path d="M45 4 3 22l14 5 4 15 6-10 12 10z" />
+    </svg>
+  );
+}
+
+/** カンガルーのシルエット。 */
+function KangarooMotif({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 120 140" aria-hidden className={className} style={style} fill="currentColor">
+      <path d="M74 12c5-6 12-8 15-3 3 4 0 10-4 14 6 8 8 18 6 28-2 9-8 16-8 24 0 7 6 12 14 16 5 3 3 9-3 9H62c-6 0-9-4-9-9 0-8-4-13-11-18-9-6-16-14-16-25 0-8 4-15 10-20l-16-6c-5-2-4-8 2-8l24 1c6-5 14-7 22-6 2-6 4-11 6-14z" />
+    </svg>
+  );
+}
+
+/** ハーバーブリッジのアーチ(シドニー)。 */
+function HarbourArchMotif({ className, style }: MotifProps) {
+  return (
+    <svg viewBox="0 0 420 180" aria-hidden className={className} style={style} fill="none">
+      <path d="M10 165h400" stroke={AU_OCEAN} strokeWidth="7" strokeLinecap="round" />
+      <path
+        d="M28 165C28 78 106 28 210 28s182 50 182 137"
+        stroke={AU_OCEAN}
+        strokeWidth="7"
+        strokeLinecap="round"
+      />
+      <path d="M78 165V96M140 165V56M210 165V32M280 165V56M342 165V96" stroke={AU_OCEAN} strokeWidth="5" />
+    </svg>
+  );
+}
+
+/**
  * 中身ページ(表紙を除く7枚)の Day ラベルと英字タイトル。
  *
  * DB のプリセット名は運用の並べ替え用に「2_青い海から始まる旅」のような
@@ -158,8 +337,8 @@ export function AustraliaTravelGuide({
   threshold: number;
   presets: GuidePreset[];
 }) {
-  // 先頭 = 表紙(旅のはじまり)。残り = 中身(Day1-2 〜 Day10)。
-  const cover = presets[0] ?? null;
+  // 先頭 = 表紙(旅のはじまり)。ヒーロー画像が表紙そのものなので一覧には出さず、
+  // 中身(Day1-2 〜 Day10)だけをグリッドに並べる。
   const days = presets.slice(1);
 
   const steps: { n: string; t: string; b: string }[] = [
@@ -186,147 +365,147 @@ export function AustraliaTravelGuide({
   ];
 
   return (
-    <main className="overflow-x-hidden bg-[#FBF5E9] text-[#5b4b3a]">
+    <main className="overflow-x-hidden text-[#5b4b3a]" style={{ background: BG.cream }}>
       <style>{`
-        @keyframes au-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-9px) } }
-        .au-float { animation: au-float 7s ease-in-out infinite; }
-        @media (prefers-reduced-motion: reduce){ .au-float { animation:none } }
+        @keyframes au-float { 0%,100% { transform: translateY(0) } 50% { transform: translateY(-10px) } }
+        .au-float { animation: au-float 6s ease-in-out infinite; }
+        @keyframes au-twinkle { 0%,100% { opacity:.35; transform: scale(.85) rotate(0deg) } 50% { opacity:1; transform: scale(1.15) rotate(20deg) } }
+        .au-twinkle { animation: au-twinkle 3.2s ease-in-out infinite; }
+        @keyframes au-drift { 0% { transform: translate(0,0) rotate(-6deg) } 50% { transform: translate(10px,-12px) rotate(2deg) } 100% { transform: translate(0,0) rotate(-6deg) } }
+        .au-drift { animation: au-drift 9s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce){
+          .au-float, .au-twinkle, .au-drift { animation:none }
+        }
       `}</style>
       <link
         href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700&display=swap"
         rel="stylesheet"
       />
 
-      {/* ===== Hero ===== */}
-      <section className="relative overflow-hidden px-6 pb-14 pt-12 text-center">
-        <Reveal>
-          <span
-            className="inline-flex items-center gap-2 rounded-full border-2 border-dashed px-4 py-1 text-xs font-bold"
-            style={{
-              borderColor: AU_OCHRE,
-              color: AU_OCHRE,
-              background: "rgba(255,255,255,0.7)",
-              fontFamily: HEADING_FONT,
-            }}
-          >
-            🇦🇺 全{threshold}種 ✦ うちの子のオーストラリア旅行
-          </span>
-        </Reveal>
-        <Reveal delay={100}>
-          <h1
-            className="mt-5 text-3xl leading-[1.4] sm:text-4xl"
-            style={{
-              fontFamily: HEADING_FONT,
-              background: `linear-gradient(90deg, ${AU_OCHRE}, #b08d57, ${AU_OCEAN})`,
-              WebkitBackgroundClip: "text",
-              backgroundClip: "text",
-              color: "transparent",
-            }}
-          >
-            うちの子の
-            <br />
-            オーストラリア旅行
+      {/*
+        ヒーローは画面幅いっぱいに上詰めで置く。
+        画像自体が紙のコラージュで完結しているので、上に背景色を覗かせない。
+        青(海)の背景は**この画像の下から**始める。
+      */}
+      <HeroVisual />
+
+      {/* ===== Hero(テキスト部) ===== */}
+      <section
+        className="relative overflow-hidden px-6 pb-14 pt-8 text-center"
+        style={{ background: `linear-gradient(180deg, ${BG.sea} 0%, ${BG.cream} 62%)` }}
+      >
+        <WaveMotif className="pointer-events-none absolute -left-10 top-16 w-[78%] opacity-25" />
+        <SouthernCrossMotif className="au-twinkle pointer-events-none absolute -right-4 top-16 w-28 opacity-40" />
+        <Sparkle className="au-twinkle pointer-events-none absolute left-7 top-6 h-5 w-5 text-amber-400" />
+        <Sparkle className="au-twinkle pointer-events-none absolute right-4 top-28 h-7 w-7 text-sky-400" />
+        <Sparkle className="au-twinkle pointer-events-none absolute left-5 bottom-24 h-5 w-5 text-orange-400" />
+        <PlaneMotif className="au-drift pointer-events-none absolute right-7 top-4 h-9 w-9 text-sky-500/70" />
+
+        {/*
+          モチーフは absolute なので、何もしないと static なテキストより前面に描かれる。
+          波がバッジの上を横切って文字が読みにくくなったため、本文側を z-10 で持ち上げる。
+        */}
+        <div className="relative z-10">
+
+          {/*
+            タイトルはヒーロー画像に焼き込まれているため、見出しは視覚的に出さない。
+            ただし h1 が無いと読み上げと検索で拾えないので sr-only で持つ。
+          */}
+          <h1 className="sr-only">
+            うちの子のオーストラリア旅行 — 旅のはじまり。全{threshold}種をあつめて、めくれる旅行日記をつくろう
           </h1>
-        </Reveal>
-        <Reveal delay={180}>
-          <div className="mt-4 flex justify-center">
-            <OutbackRibbon />
-          </div>
-        </Reveal>
-
-        {/* 会期(切符風) */}
-        <Reveal delay={210}>
-          <div
-            className="mx-auto mt-6 w-full max-w-[330px] rounded-2xl border-2 border-dashed bg-white/75 px-5 py-3 text-center shadow-[0_4px_14px_rgba(120,90,50,0.10)]"
-            style={{ borderColor: AU_OCHRE }}
-          >
-            <div
-              className="text-[11px] font-bold tracking-[0.22em]"
-              style={{ color: AU_OCEAN, fontFamily: HEADING_FONT }}
+          <Reveal>
+            <span
+              className="inline-flex items-center gap-2 rounded-full border-2 border-dashed px-4 py-1 text-xs font-bold"
+              style={{
+                borderColor: AU_OCHRE,
+                color: AU_OCHRE,
+                background: "#ffffff",
+                fontFamily: HEADING_FONT,
+              }}
             >
-              ✦ コラボ期間 ✦
-            </div>
-            <div
-              className="mt-1 flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-bold leading-snug text-[#5b4a36]"
-              style={{ fontFamily: HEADING_FONT }}
-            >
-              <span>
-                2026/8/22
-                <span className="text-[11px] font-medium text-[#9a8a78]">(土)</span>{" "}
-                8:00
-              </span>
-              <svg
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke={AU_OCHRE}
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-                className="h-4 w-4 shrink-0"
-              >
-                <path d="M5 12h14M13 6l6 6-6 6" />
-              </svg>
-              <span>
-                8/30
-                <span className="text-[11px] font-medium text-[#9a8a78]">(日)</span>{" "}
-                21:59
-              </span>
-            </div>
-          </div>
-        </Reveal>
-
-        <Reveal delay={240}>
-          <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
-            うちの子と、オーストラリアをめぐる10日間。
-            <br />
-            1ページずつあつめて、めくれる旅行日記を完成させよう。
-          </p>
-        </Reveal>
-
-        {/* 表紙プレビュー(旅のはじまり) */}
-        {cover ? (
-          <Reveal delay={300}>
-            <div className="mx-auto mt-8 w-full max-w-[260px]">
-              <div className="relative aspect-[9/16] overflow-hidden rounded-2xl border border-[#e3d4b5] bg-white shadow-[0_8px_24px_rgba(120,90,50,0.16)]">
-                <Image
-                  src={cover.thumbnailImageUrl}
-                  alt="表紙「旅のはじまり」のサンプル"
-                  fill
-                  sizes="(max-width: 480px) 70vw, 260px"
-                  className="object-cover"
-                />
-                <span
-                  className="absolute left-3 top-3 rounded-full px-2.5 py-1 text-[11px] font-bold text-white shadow"
-                  style={{ background: AU_OCHRE }}
-                >
-                  表紙 ・ 旅のはじまり
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-[#9a8a78]">＼ 10日間のわくわく旅日記 ／</p>
+              🇦🇺 全{threshold}種 ✦ あつめてめくれる旅行日記
+            </span>
+          </Reveal>
+          <Reveal delay={120}>
+            <div className="mt-4 flex justify-center">
+              <OutbackRibbon />
             </div>
           </Reveal>
-        ) : null}
 
-        <Reveal delay={380}>
-          <Link
-            href="/style"
-            className="mt-9 inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-base font-bold text-white shadow-[0_5px_0_rgba(194,85,31,0.3)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
-            style={{ background: AU_OCHRE, fontFamily: HEADING_FONT }}
-          >
-            いますぐはじめる
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
-              <path d="M5 12h14M13 6l6 6-6 6" />
-            </svg>
-          </Link>
-          <p className="mt-3 text-xs text-[#9a8a78]">
-            企画がスタートしたら対象の「オーストラリア旅行」シリーズが表示されます！
-          </p>
-        </Reveal>
+          {/* 会期(切符風) */}
+          <Reveal delay={210}>
+            <div
+              className="mx-auto mt-6 w-full max-w-[330px] rounded-2xl border-2 border-dashed bg-white/75 px-5 py-3 text-center shadow-[0_4px_14px_rgba(120,90,50,0.10)]"
+              style={{ borderColor: AU_OCHRE }}
+            >
+              <div
+                className="text-[11px] font-bold tracking-[0.22em]"
+                style={{ color: AU_OCEAN, fontFamily: HEADING_FONT }}
+              >
+                ✦ コラボ期間 ✦
+              </div>
+              <div
+                className="mt-1 flex items-center justify-center gap-2 whitespace-nowrap text-[15px] font-bold leading-snug text-[#5b4a36]"
+                style={{ fontFamily: HEADING_FONT }}
+              >
+                <span>
+                  2026/8/22
+                  <span className="text-[11px] font-medium text-[#9a8a78]">(土)</span>{" "}
+                  8:00
+                </span>
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke={AU_OCHRE}
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                  className="h-4 w-4 shrink-0"
+                >
+                  <path d="M5 12h14M13 6l6 6-6 6" />
+                </svg>
+                <span>
+                  8/30
+                  <span className="text-[11px] font-medium text-[#9a8a78]">(日)</span>{" "}
+                  21:59
+                </span>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={240}>
+            <p className="mt-4 text-sm leading-loose text-[#7a6a58]">
+              うちの子と、オーストラリアをめぐる10日間。
+              <br />
+              1ページずつあつめて、めくれる旅行日記を完成させよう。
+            </p>
+          </Reveal>
+
+          <Reveal delay={380}>
+            <Link
+              href="/style"
+              className="mt-9 inline-flex items-center gap-2 rounded-full px-8 py-3.5 text-base font-bold text-white shadow-[0_5px_0_rgba(194,85,31,0.3)] transition-transform hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+              style={{ background: AU_OCHRE, fontFamily: HEADING_FONT }}
+            >
+              いますぐはじめる
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
+                <path d="M5 12h14M13 6l6 6-6 6" />
+              </svg>
+            </Link>
+            <p className="mt-3 text-xs text-[#9a8a78]">
+              企画がスタートしたら対象の「オーストラリア旅行」シリーズが表示されます！
+            </p>
+          </Reveal>
+        </div>
       </section>
 
       {/* ===== コラボ クレジット ===== */}
-      <section className="px-6 pb-6">
+      <section
+        className="px-6 pb-10"
+        style={{ background: `linear-gradient(180deg, ${BG.cream} 0%, ${BG.forest} 100%)` }}
+      >
         <Reveal>
           <div
             className="mx-auto flex max-w-md flex-col items-center gap-3 rounded-2xl border bg-white/80 px-5 py-4 text-center"
@@ -371,8 +550,15 @@ export function AustraliaTravelGuide({
 
       {/* ===== あつめるページたち ===== */}
       {days.length > 0 ? (
-        <section className="bg-white/70 px-6 py-16">
-          <div className="mx-auto max-w-3xl">
+        <section
+          className="relative overflow-hidden px-6 py-16"
+          style={{ background: `linear-gradient(180deg, ${BG.forest} 0%, ${BG.ochre} 68%, ${BG.ochre} 100%)` }}
+        >
+          <EucalyptusMotif className="au-float pointer-events-none absolute -left-8 top-8 w-40 opacity-30" />
+          <KangarooMotif className="au-float pointer-events-none absolute right-4 top-6 w-16 text-[#B5651D] opacity-35" style={{ animationDelay: "1.2s" }} />
+          <UluruMotif className="pointer-events-none absolute inset-x-0 bottom-0 w-full opacity-30" />
+          <Sparkle className="au-twinkle pointer-events-none absolute right-16 top-28 h-5 w-5 text-amber-400" />
+          <div className="relative mx-auto max-w-3xl">
             <Reveal>
               <h2 className="text-center text-2xl text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
                 あつめる、10日間の旅
@@ -389,7 +575,10 @@ export function AustraliaTravelGuide({
                 const page = PAGES[i];
                 return (
                   <Reveal key={d.id} delay={i * 70}>
-                    <div className="relative rounded-2xl border border-[#ecdcc0] bg-white p-3 shadow-[0_6px_18px_rgba(120,90,50,0.08)]">
+                    <div
+                      className={`au-float relative rounded-2xl border-2 border-white bg-white p-3 shadow-[0_6px_0_rgba(194,85,31,0.18)] ${i % 2 ? "sm:translate-y-3" : ""}`}
+                      style={{ animationDelay: `${i * 0.4}s` }}
+                    >
                       <span
                         className="absolute -top-2 left-1/2 h-5 w-16 -translate-x-1/2 -rotate-3 rounded-sm"
                         style={{ background: "rgba(194,85,31,0.18)" }}
@@ -433,8 +622,14 @@ export function AustraliaTravelGuide({
       ) : null}
 
       {/* ===== シェアして応募(Xシェア抽選) ===== */}
-      <section className="px-6 py-16">
-        <div className="mx-auto max-w-md">
+      <section
+        className="relative overflow-hidden px-6 py-16"
+        style={{ background: `linear-gradient(180deg, ${BG.ochre} 0%, ${BG.harbour} 34%, ${BG.harbour} 100%)` }}
+      >
+        <HarbourArchMotif className="pointer-events-none absolute -right-16 top-40 w-[72%] opacity-25" />
+        <Sparkle className="au-twinkle pointer-events-none absolute left-6 top-10 h-6 w-6 text-sky-400" />
+        <Sparkle className="au-twinkle pointer-events-none absolute right-8 top-24 h-4 w-4 text-amber-400" style={{ animationDelay: "1.1s" }} />
+        <div className="relative mx-auto max-w-md">
           <Reveal>
             <p
               className="text-center text-[11px] font-bold uppercase tracking-[0.45em]"
@@ -452,7 +647,7 @@ export function AustraliaTravelGuide({
 
           <Reveal delay={120}>
             <div
-              className="mx-auto mt-8 rounded-2xl border-2 border-dashed bg-white/80 p-6 text-center"
+              className="au-float mx-auto mt-8 rounded-2xl border-2 border-dashed bg-white p-6 text-center shadow-[0_6px_0_rgba(194,85,31,0.18)]"
               style={{ borderColor: AU_OCHRE }}
             >
               <p className="text-[10px] font-bold tracking-[0.3em] text-[#9a8a78]">
@@ -504,8 +699,54 @@ export function AustraliaTravelGuide({
                   2. 完成した日記をXで公開ポスト
                 </span>
                 <br />
-                応募ポストに必要なものは、次の4つです。
-                <ul className="mt-2 list-disc space-y-1 pl-5">
+                {/*
+                  かんたんな方(ボタン)を先に出し、手動の要件は後ろに畳む。
+                  要件4つを先頭に置くと、実際にはボタン1つで済むのに
+                  難しい応募に見えてしまうため。
+                */}
+                {/* この囲みは「港の青」のセクションに乗るので、枠も青に寄せる
+                    (オレンジだと背景から浮く)。上の PRIZE は赤土の上なのでオレンジのまま。 */}
+                <span
+                  className="mt-3 block rounded-2xl border-2 border-dashed bg-white px-4 py-4"
+                  style={{ borderColor: AU_OCEAN }}
+                >
+                  <span className="block text-base font-bold text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
+                    「Xで応募する」ボタンをタップするだけ！
+                  </span>
+                  <span className="mt-1 block text-sm text-[#7a6a58]">
+                    シェアURL・メンション・ハッシュタグは
+                    <span className="font-bold text-[#4a3b2c]">自動で入ります。</span>
+                  </span>
+                  <span
+                    className="mt-3 block rounded-xl px-3 py-2 text-sm font-bold text-[#4a3b2c]"
+                    style={{ background: "#FFEFD8" }}
+                  >
+                    ⚠️ イラストだけは自動で添付されません。
+                    <br />
+                    投稿画面でお好きな1枚を添付してください。
+                  </span>
+                  <span className="mt-3 block">
+                    <Image
+                      src="/collections/australia/entry-step2.webp"
+                      alt="シェアページの「Xで応募する」ボタン。選択すると必要な情報が入った状態で投稿できる"
+                      width={645}
+                      height={1064}
+                      sizes="(max-width: 640px) 60vw, 230px"
+                      className="mx-auto h-auto w-full max-w-[230px] rounded-lg border border-[#ecdcc0] shadow-[0_6px_24px_rgba(120,90,40,0.16)]"
+                    />
+                    <span className="mt-2 block text-center text-[11px] tracking-wide text-[#9a8a78]">
+                      シェアページの「Xで応募する」から投稿
+                    </span>
+                  </span>
+                </span>
+
+                <span className="mt-4 block text-sm text-[#7a6a58]">
+                  <span className="font-bold text-[#4a3b2c]">
+                    自分でポストしてもOKです。
+                  </span>
+                  その場合は、次の4つがそろっているか確かめてください。
+                </span>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-[#7a6a58]">
                   <li>
                     この企画で生成したイラスト
                     <span className="font-bold">1枚以上</span>
@@ -523,25 +764,6 @@ export function AustraliaTravelGuide({
                     のハッシュタグ
                   </li>
                 </ul>
-                <p className="mt-2">
-                  「Xで応募する」ボタンを使うと、シェアURL・メンション・ハッシュタグの3つは自動で入ります。
-                  <span className="font-bold text-[#4a3b2c]">
-                    イラストは自動では添付されないため、投稿画面でお好きな1枚を添付してください。
-                  </span>
-                </p>
-                <span className="mt-3 block">
-                  <Image
-                    src="/collections/australia/entry-step2.webp"
-                    alt="シェアページの「Xで応募する」ボタン。選択すると必要な情報が入った状態で投稿できる"
-                    width={645}
-                    height={1064}
-                    sizes="(max-width: 640px) 60vw, 230px"
-                    className="mx-auto h-auto w-full max-w-[230px] rounded-lg border border-[#ecdcc0] shadow-[0_6px_24px_rgba(120,90,40,0.16)]"
-                  />
-                  <span className="mt-2 block text-center text-[11px] tracking-wide text-[#9a8a78]">
-                    シェアページの「Xで応募する」から投稿
-                  </span>
-                </span>
               </li>
               <li className="text-sm leading-loose text-[#7a6a58]">
                 <span className="font-bold text-[#4a3b2c]">
@@ -614,7 +836,10 @@ export function AustraliaTravelGuide({
       </section>
 
       {/* ===== あそびかた ===== */}
-      <section className="px-6 py-16">
+      <section
+        className="px-6 py-16"
+        style={{ background: `linear-gradient(180deg, ${BG.harbour} 0%, ${BG.cream} 40%, ${BG.cream} 100%)` }}
+      >
         <div className="mx-auto max-w-2xl">
           <Reveal>
             <h2 className="text-center text-2xl text-[#4a3b2c]" style={{ fontFamily: HEADING_FONT }}>
@@ -626,7 +851,7 @@ export function AustraliaTravelGuide({
               <Reveal key={s.n} delay={i * 80}>
                 <div className="flex items-start gap-4 rounded-3xl border border-[#ecdcc0] bg-white/80 p-5">
                   <span
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg text-white"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full text-lg text-white shadow-[0_4px_0_rgba(194,85,31,0.3)]"
                     style={{ background: AU_OCHRE, fontFamily: HEADING_FONT }}
                   >
                     {s.n}
@@ -645,7 +870,13 @@ export function AustraliaTravelGuide({
       </section>
 
       {/* ===== CTA ===== */}
-      <section className="bg-white/70 px-6 pb-20 pt-14 text-center">
+      <section
+        className="relative overflow-hidden px-6 pb-20 pt-14 text-center"
+        style={{ background: `linear-gradient(180deg, ${BG.cream} 0%, ${BG.sunset} 100%)` }}
+      >
+        <Sparkle className="au-twinkle pointer-events-none absolute left-8 top-8 h-6 w-6 text-amber-400" />
+        <Sparkle className="au-twinkle pointer-events-none absolute right-10 top-16 h-8 w-8 text-orange-400" style={{ animationDelay: "0.9s" }} />
+        <KangarooMotif className="au-float pointer-events-none absolute -left-2 bottom-6 w-20 text-[#B5651D] opacity-30" />
         <Reveal>
           <div className="mx-auto flex justify-center">
             <OutbackRibbon />
@@ -679,7 +910,7 @@ export function AustraliaTravelGuide({
       </section>
 
       {/* ===== クリエイター相談(控えめなフッターリンク) ===== */}
-      <div className="px-6 pb-10 text-center">
+      <div className="px-6 pb-10 text-center" style={{ background: BG.sunset }}>
         <Link
           href="/creators"
           className="text-xs text-[#b3a794] underline underline-offset-2 transition-colors hover:text-[#8a7c66]"
