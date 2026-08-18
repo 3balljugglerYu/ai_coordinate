@@ -2,6 +2,7 @@ import {
   hasCollectionDisplayPeriod,
   isActiveEventCategory,
   isCollectionDisplayPeriodActive,
+  isCollectionDisplayPeriodEnded,
 } from "@/features/collections/lib/collection-display-period";
 
 const NOW = new Date("2026-07-15T00:00:00Z");
@@ -80,6 +81,108 @@ describe("isCollectionDisplayPeriodActive", () => {
         NOW,
       ),
     ).toBe(true);
+  });
+});
+
+/**
+ * ここが緩むと「終了しました」を言ってはいけない相手に言ってしまう。
+ *
+ * 引用スタイルカードの `ended` 判定はこの helper が正本で、開始前・期間未設定を
+ * 終了扱いにすると (a) これから始まる企画の存在が漏れる (b) 開催中の企画に
+ * 「終了しました」と嘘をつく、のどちらかが起きる。
+ */
+describe("isCollectionDisplayPeriodEnded", () => {
+  test("終了日が NULL なら終了しない(常設・期間未設定)", () => {
+    expect(
+      isCollectionDisplayPeriodEnded(
+        { collectionDisplayStartsAt: null, collectionDisplayEndsAt: null },
+        NOW,
+      ),
+    ).toBe(false);
+    expect(
+      isCollectionDisplayPeriodEnded(
+        {
+          collectionDisplayStartsAt: "2026-07-01T00:00:00Z",
+          collectionDisplayEndsAt: null,
+        },
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
+  test("不正な日付は終了扱いにしない(判定できないなら黙る側へ倒す)", () => {
+    expect(
+      isCollectionDisplayPeriodEnded(
+        {
+          collectionDisplayStartsAt: null,
+          collectionDisplayEndsAt: "not-a-date",
+        },
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
+  test("終了時刻ちょうどから終了([starts, ends) と同じ境界)", () => {
+    expect(
+      isCollectionDisplayPeriodEnded(
+        {
+          collectionDisplayStartsAt: null,
+          collectionDisplayEndsAt: "2026-07-15T00:00:00Z",
+        },
+        NOW,
+      ),
+    ).toBe(true);
+  });
+
+  test("終了前は終了しない", () => {
+    expect(
+      isCollectionDisplayPeriodEnded(
+        {
+          collectionDisplayStartsAt: null,
+          collectionDisplayEndsAt: "2026-07-15T00:00:01Z",
+        },
+        NOW,
+      ),
+    ).toBe(false);
+  });
+
+  test("⭐開始前は終了ではない(active も ended も false になる)", () => {
+    const beforeStart = {
+      collectionDisplayStartsAt: "2026-08-01T00:00:00Z",
+      collectionDisplayEndsAt: "2026-08-10T00:00:00Z",
+    };
+
+    expect(isCollectionDisplayPeriodActive(beforeStart, NOW)).toBe(false);
+    expect(isCollectionDisplayPeriodEnded(beforeStart, NOW)).toBe(false);
+  });
+
+  test("⭐active と ended が同時に true になる期間はない", () => {
+    const cases = [
+      { collectionDisplayStartsAt: null, collectionDisplayEndsAt: null },
+      {
+        collectionDisplayStartsAt: "2026-07-01T00:00:00Z",
+        collectionDisplayEndsAt: "2026-07-20T00:00:00Z",
+      },
+      {
+        collectionDisplayStartsAt: "2026-07-01T00:00:00Z",
+        collectionDisplayEndsAt: "2026-07-15T00:00:00Z",
+      },
+      {
+        collectionDisplayStartsAt: "2026-08-01T00:00:00Z",
+        collectionDisplayEndsAt: "2026-08-10T00:00:00Z",
+      },
+      {
+        collectionDisplayStartsAt: null,
+        collectionDisplayEndsAt: "not-a-date",
+      },
+    ];
+
+    for (const period of cases) {
+      expect(
+        isCollectionDisplayPeriodActive(period, NOW) &&
+          isCollectionDisplayPeriodEnded(period, NOW),
+      ).toBe(false);
+    }
   });
 });
 
