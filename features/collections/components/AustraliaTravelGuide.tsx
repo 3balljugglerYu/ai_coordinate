@@ -201,13 +201,18 @@ function HarbourArchMotif({ className, style }: MotifProps) {
 }
 
 /**
- * 中身ページ(表紙を除く7枚)の Day ラベルと英字タイトル。
+ * あつめる全8枚(表紙 + 中身7枚)の Day ラベルと英字タイトル。
+ *
+ * 当初はヒーロー画像が表紙そのものだったため一覧から表紙を外していたが、
+ * ヒーローをコラボのキービジュアル(2人)へ差し替えて表紙と別物になったので、
+ * 表紙もあつめる対象として並べる。これで一覧の枚数が completion_threshold(8) と揃う。
  *
  * DB のプリセット名は運用の並べ替え用に「2_青い海から始まる旅」のような
  * 数字プレフィックスが付くため、表示用の情報はここで持つ。
- * 並びは style_presets.sort_order 昇順(表紙の次から)と一致させること。
+ * 並びは style_presets.sort_order 昇順(表紙から)と一致させること。
  */
 const PAGES: { day: string; en: string }[] = [
+  { day: "表紙", en: "The Journey Begins" },
   { day: "Day 1-2", en: "Cairns & Great Barrier Reef" },
   { day: "Day 3", en: "Daintree Rainforest" },
   { day: "Day 4", en: "Uluru Night" },
@@ -320,15 +325,15 @@ export function AustraliaTravelGuide({
   threshold: number;
   presets: GuidePreset[];
 }) {
-  // 先頭 = 表紙(旅のはじまり)。ヒーロー画像が表紙そのものなので一覧には出さず、
-  // 中身(Day1-2 〜 Day10)だけをグリッドに並べる。
-  const days = presets.slice(1);
+  // 表紙(旅のはじまり)を含む全8枚をグリッドに並べる。
+  // ヒーローはコラボのキービジュアルで表紙とは別物なので、表紙もここで見せる。
+  const pages = presets;
 
   const steps: { n: string; t: string; b: string }[] = [
     {
       n: "01",
       t: "表紙「旅のはじまり」を生成",
-      b: "まずは旅のはじまり。One-Tap Style で「いざ、オーストラリアへ！」を選んで、うちの子の旅行日記の表紙をつくろう。",
+      b: "まずは旅のはじまり。One-Tap Style で「うちの子のオーストラリア旅行」を選んで、うちの子の旅行日記の表紙をつくろう。",
     },
     {
       n: "02",
@@ -575,7 +580,7 @@ export function AustraliaTravelGuide({
       </section>
 
       {/* ===== あつめるページたち ===== */}
-      {days.length > 0 ? (
+      {pages.length > 0 ? (
         <section
           className="relative overflow-hidden px-6 py-16"
           style={{ background: `linear-gradient(180deg, ${BG.forest} 0%, ${BG.ochre} 68%, ${BG.ochre} 100%)` }}
@@ -597,7 +602,7 @@ export function AustraliaTravelGuide({
             </Reveal>
 
             <div className="mt-10 grid grid-cols-2 gap-4 sm:grid-cols-3">
-              {days.map((d, i) => {
+              {pages.map((d, i) => {
                 const page = PAGES[i];
                 return (
                   <Reveal key={d.id} delay={i * 70}>
@@ -623,7 +628,7 @@ export function AustraliaTravelGuide({
                         className="mt-3 text-center text-xs font-bold tracking-widest"
                         style={{ color: AU_OCHRE }}
                       >
-                        {page?.day ?? `Page ${i + 2}`}
+                        {page?.day ?? `Page ${i + 1}`}
                       </p>
                       {/* イタリアは「Day1 旅行日記」と短かったが、こちらは
                           「またいつか、オーストラリアへ」等が入るので2行まで許す。 */}
