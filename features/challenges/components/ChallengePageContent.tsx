@@ -19,6 +19,14 @@ import { useToast } from "@/components/ui/use-toast";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { useMissionDots } from "@/features/challenges/components/MissionDotProvider";
 import { ChallengeCard } from "./ChallengeCard";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { setHomeViewMode } from "@/features/posts/lib/home-view-preference";
 import { CheckInButton } from "./CheckInButton";
 import { RedPulseDot } from "./RedPulseDot";
 import { StreakDayCard } from "./StreakDayCard";
@@ -143,12 +151,13 @@ export function ChallengePageContent({
   const postBonusRows = [
     ...(
       [
-        { key: "one_tap_style", label: t("dailyOneTapLabel") },
-        { key: "free", label: t("dailyFreeLabel") },
+        { key: "one_tap_style", label: t("dailyOneTapLabel"), href: "/style" },
+        { key: "free", label: t("dailyFreeLabel"), href: "/free" },
       ] as const
     ).map((row) => ({
       key: row.key as string,
       label: row.label,
+      href: row.href as string,
       amount: postBonusAmounts[row.key] ?? 0,
       received: postBonusReceivedTypes.includes(row.key),
     })),
@@ -161,11 +170,33 @@ export function ChallengePageContent({
     {
       key: "prompt_use",
       label: t("dailyPromptUseLabel"),
+      /*
+        他の人のプロンプトはホームから探す。**グリッド表示のままだと
+        「このプロンプトで作る」の導線が見えない**ので、遷移前に
+        フィード表示へ切り替える(下の handleMissionNavigate)。
+      */
+      href: "/",
       amount: promptUseBonus.amount,
       received: promptUseBonus.receivedToday,
     },
   ].filter((row) => row.amount > 0);
   const isDailyBonusReceived = postBonusRows.every((row) => row.received);
+  /** タップされた行。確認モーダルを挟んでから遷移する。 */
+  const [pendingNavigation, setPendingNavigation] = useState<{
+    label: string;
+    href: string;
+  } | null>(null);
+
+  const handleMissionNavigate = () => {
+    if (!pendingNavigation) return;
+    // ホームへ送るのはプロンプト利用ミッションだけ。フィード表示で着地させる
+    if (pendingNavigation.href === "/") {
+      setHomeViewMode("feed");
+    }
+    router.push(pendingNavigation.href);
+    setPendingNavigation(null);
+  };
+
   const [timeToReset, setTimeToReset] = useState<string>("");
   const bonusDisplay = buildMissionBonusDisplay({
     subscriptionPlan,
@@ -667,22 +698,29 @@ export function ChallengePageContent({
                 <div className="flex items-start gap-2 rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-violet-700">
                   <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
                   <span>
-                    {t("dailyPromptUseHint", {
-                      amount:
-                        (postBonusAmounts["free"] ?? 0) + promptUseBonus.amount,
-                    })}
+                    {t("dailyPromptUseHint")}
                   </span>
                 </div>
               )}
               {/* ステータス表示（生成方法ごと） */}
               {postBonusRows.map((row) => (
-                <div
+                /*
+                  行そのものをボタンにして、その場からミッションを始められる
+                  ようにする。額を見ても「どこでやるのか」が分からないと
+                  一覧は掲示板で終わる。達成済みでも押せる(2回目以降は
+                  もらえないが、行きたい導線であることに変わりはない)。
+                */
+                <button
+                  type="button"
                   key={row.key}
+                  onClick={() =>
+                    setPendingNavigation({ label: row.label, href: row.href })
+                  }
                   className={cn(
-                    "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
+                    "relative flex w-full items-center justify-between rounded-lg border p-4 text-left transition-colors",
                     row.received
-                      ? "bg-green-50 border-green-200"
-                      : "border-blue-200/80 bg-blue-50/80 pr-7"
+                      ? "bg-green-50 border-green-200 hover:bg-green-100/70"
+                      : "border-blue-200/80 bg-blue-50/80 pr-7 hover:bg-blue-100/70"
                   )}
                 >
                   {!row.received && <RedPulseDot />}
@@ -733,7 +771,7 @@ export function ChallengePageContent({
                       </div>
                     </div>
                   )}
-                </div>
+                </button>
               ))}
 
               {!isDailyBonusReceived && (
@@ -750,6 +788,42 @@ export function ChallengePageContent({
             </div>
           </ChallengeCard>
         </div>
+
+        {/* 遷移前の確認。押した瞬間に画面が変わると、戻る手段が分からない人がいる */}
+        <Dialog
+          open={pendingNavigation !== null}
+          onOpenChange={(next) => {
+            if (!next) setPendingNavigation(null);
+          }}
+        >
+          <DialogContent className="rounded-2xl sm:max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="text-center text-base font-semibold text-slate-900">
+                {pendingNavigation?.label}
+              </DialogTitle>
+            </DialogHeader>
+            <p className="text-center text-sm text-slate-600">
+              {pendingNavigation?.href === "/"
+                ? t("missionNavigateHomeBody")
+                : t("missionNavigateBody")}
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setPendingNavigation(null)}
+              >
+                {t("missionNavigateCancel")}
+              </Button>
+              <Button
+                className="flex-1 rounded-xl"
+                onClick={handleMissionNavigate}
+              >
+                {t("missionNavigateConfirm")}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/*
           クリエイター還元。運営が付与額を 0 にしている間は停止中なので、

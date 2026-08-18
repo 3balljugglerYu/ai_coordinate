@@ -128,8 +128,8 @@ export function PostList({
     amount: number;
     multiplier?: number;
     generationType: string | null;
-    /** 他の人のプロンプトで作った作品への上乗せ */
-    promptUseBonusAmount: number;
+    /** 他の人のプロンプトで作った作品の投稿だったか（フリー投稿とは排他） */
+    isPromptUse: boolean;
   } | null>(null);
   const [pendingHomePostRefresh, setPendingHomePostRefresh] =
     useState<PendingHomePostRefresh | null>(null);
@@ -225,10 +225,10 @@ export function PostList({
         pending.bonusMultiplier > 1;
 
       setPostBonus({
-        amount: pending.bonusGranted ?? 0,
+        amount: (pending.bonusGranted ?? 0) + promptUseBonusGranted,
         multiplier: hasBoostedBonus ? pending.bonusMultiplier : undefined,
         generationType: pending.generationType ?? null,
-        promptUseBonusAmount: promptUseBonusGranted,
+        isPromptUse: promptUseBonusGranted > 0,
       });
       return;
     }
@@ -843,7 +843,7 @@ export function PostList({
           multiplier={postBonus.multiplier}
           generationType={postBonus.generationType}
           promptUsageRewardAmount={promptUsageRewardAmount}
-          promptUseBonusAmount={postBonus.promptUseBonusAmount}
+          isPromptUse={postBonus.isPromptUse}
         />
       ) : null}
     </>

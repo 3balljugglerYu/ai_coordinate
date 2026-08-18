@@ -277,7 +277,209 @@ COMMENT ON FUNCTION public.grant_prompt_use_daily_bonus(uuid, uuid) IS
   '他の人の Free プロンプトで作った作品を投稿したときの日次ボーナス。自己利用は除外。額は percoin_bonus_defaults.prompt_use_daily(0で停止)';
 
 -- =============================================================================
--- 5. ミッション一覧に出すための読み取り
+-- 5. フリー投稿ボーナスから「他の人のプロンプトで作った作品」を除く
+-- =============================================================================
+-- 「フリースタイルで投稿」は**自分でプロンプトを書いた**作品が条件、
+-- 「他の人のプロンプトで投稿」は**他人のプロンプトを使った**作品が条件。
+-- この2つは定義上**排他**で、1つの投稿が両方に当たることはない。
+--
+-- 従来の grant_daily_post_bonus は generation_type だけで判定しており、
+-- 派生作品(generation_type='free')も「ただのフリー投稿」として通していた。
+-- そのままだと1投稿で 20+20=40 になり、**提供する側と利用する側の区別が消える**
+-- (サイクルを作るという施策の目的そのものが失われる)。
+--
+-- 本文は現行定義(20260813100000)のままで、v_source を決めたあとに
+-- 派生判定を足しただけ。派生かどうかは image_jobs.origin_post_id が正本。
+
+CREATE OR REPLACE FUNCTION public.grant_daily_post_bonus(
+  p_user_id uuid,
+  p_generation_id uuid
+)
+RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_post record;
+  v_source text;
+  v_jst_today date;
+  v_made_on date;
+  v_is_derived boolean;
+  v_base_bonus_amount integer;
+  v_bonus_multiplier numeric;
+  v_requested_bonus_amount integer;
+  v_grant_amount integer;
+  v_grant_id uuid;
+  v_tx_id uuid;
+  v_expire_at timestamptz;
+BEGIN
+  v_jst_today := (current_timestamp AT TIME ZONE 'Asia/Tokyo')::date;
+
+  SELECT gi.user_id, gi.generation_type, gi.is_posted, gi.completion_id,
+         gi.created_at, gi.image_job_id
+  INTO v_post
+  FROM public.generated_images gi
+  WHERE gi.id = p_generation_id;
+
+  IF NOT FOUND THEN
+    RETURN 0;
+  END IF;
+
+  -- 本人の投稿であること。呼び出し側が別人の ID を渡しても通さない
+  IF v_post.user_id IS NULL OR v_post.user_id <> p_user_id THEN
+    RETURN 0;
+  END IF;
+
+  -- 投稿されていること(RPC を直接呼んでも、投稿していなければ受け取れない)
+  IF v_post.is_posted IS NOT TRUE THEN
+    RETURN 0;
+  END IF;
+
+  -- その日につくったものか。
+  -- 完走フィード投稿は生成物ではなく created_at が「投稿化した時刻」なので、
+  -- 代わりに完走した日で見る(でないと1ヶ月前の完走でも今日として通ってしまう)
+  IF v_post.completion_id IS NOT NULL THEN
+    SELECT (cc.completed_at AT TIME ZONE 'Asia/Tokyo')::date
+    INTO v_made_on
+    FROM public.collection_completions cc
+    WHERE cc.id = v_post.completion_id;
+  ELSE
+    v_made_on := (v_post.created_at AT TIME ZONE 'Asia/Tokyo')::date;
+  END IF;
+
+  IF v_made_on IS NULL OR v_made_on <> v_jst_today THEN
+    RETURN 0;
+  END IF;
+
+  -- 生成方法ごとの額。未対応の生成方法は付与しない
+  v_source := CASE v_post.generation_type
+    WHEN 'one_tap_style' THEN 'daily_post_one_tap'
+    WHEN 'free' THEN 'daily_post_free'
+    WHEN 'coordinate' THEN 'daily_post_coordinate'
+    WHEN 'inspire' THEN 'daily_post_inspire'
+    ELSE NULL
+  END;
+
+  IF v_source IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  /*
+    他の人のプロンプトで作った作品は「フリースタイルで投稿」の対象外。
+    そちらは prompt_use_bonus(他の人のプロンプトで投稿)で受け取る。
+    両方通すと1投稿で2重に付与され、作る側と使う側の区別が消える。
+  */
+  IF v_source = 'daily_post_free' AND v_post.image_job_id IS NOT NULL THEN
+    SELECT (ij.origin_post_id IS NOT NULL) INTO v_is_derived
+    FROM public.image_jobs ij
+    WHERE ij.id = v_post.image_job_id;
+
+    IF v_is_derived IS TRUE THEN
+      RETURN 0;
+    END IF;
+  END IF;
+
+  v_base_bonus_amount := public.get_percoin_bonus_default(v_source);
+
+  IF v_base_bonus_amount IS NULL OR v_base_bonus_amount <= 0 THEN
+    RETURN 0;
+  END IF;
+
+  -- 同じ投稿で二重に付与しない
+  IF EXISTS (
+    SELECT 1
+    FROM public.credit_transactions
+    WHERE related_generation_id = p_generation_id
+      AND transaction_type = 'daily_post'
+      AND user_id = p_user_id
+  ) THEN
+    RETURN 0;
+  END IF;
+
+  -- 生成方法ごとに1日1回。ここを通れた者だけが付与に進む
+  INSERT INTO public.daily_post_bonus_grants (user_id, generation_type, jst_date)
+  VALUES (p_user_id, v_post.generation_type, v_jst_today)
+  ON CONFLICT (user_id, generation_type, jst_date) DO NOTHING
+  RETURNING id INTO v_grant_id;
+
+  IF v_grant_id IS NULL THEN
+    RETURN 0;
+  END IF;
+
+  -- 無料枠の上限判定(get_grantable_free_percoin_amount)は残高を読むだけで
+  -- ロックを取らない。既存の還元RPCと同じキー・同じ順序で受け手単位に直列化する。
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
+
+  v_bonus_multiplier := public.get_subscription_bonus_multiplier(p_user_id);
+  v_requested_bonus_amount := ceil(v_base_bonus_amount * v_bonus_multiplier)::integer;
+  v_grant_amount := public.get_grantable_free_percoin_amount(
+    p_user_id,
+    v_requested_bonus_amount
+  );
+
+  -- 後方互換。履歴として残っている参照のために更新は続けるが、
+  -- 達成判定の正本は daily_post_bonus_grants
+  UPDATE public.profiles
+  SET last_daily_post_bonus_at = now(),
+      updated_at = now()
+  WHERE user_id = p_user_id;
+
+  IF v_grant_amount <= 0 THEN
+    RETURN 0;
+  END IF;
+
+  v_expire_at := (
+    date_trunc('month', now() AT TIME ZONE 'Asia/Tokyo')
+    + interval '7 months' - interval '1 second'
+  ) AT TIME ZONE 'Asia/Tokyo';
+
+  INSERT INTO public.credit_transactions (
+    user_id, amount, transaction_type, related_generation_id, metadata
+  )
+  VALUES (
+    p_user_id,
+    v_grant_amount,
+    'daily_post',
+    p_generation_id,
+    jsonb_build_object(
+      'posted_at', now(),
+      'generation_type', v_post.generation_type,
+      'bonus_source', v_source,
+      'base_bonus_amount', v_base_bonus_amount,
+      'bonus_multiplier', v_bonus_multiplier,
+      'requested_bonus_amount', v_requested_bonus_amount,
+      'granted_bonus_amount', v_grant_amount
+    )
+  )
+  RETURNING id INTO v_tx_id;
+
+  UPDATE public.daily_post_bonus_grants
+  SET credit_transaction_id = v_tx_id
+  WHERE id = v_grant_id;
+
+  INSERT INTO public.free_percoin_batches (
+    user_id, amount, remaining_amount, granted_at, expire_at, source, credit_transaction_id
+  )
+  VALUES (
+    p_user_id, v_grant_amount, v_grant_amount, now(), v_expire_at, 'daily_post', v_tx_id
+  );
+
+  INSERT INTO public.user_credits (user_id, balance, paid_balance)
+  VALUES (p_user_id, v_grant_amount, 0)
+  ON CONFLICT (user_id) DO UPDATE
+  SET balance = public.user_credits.balance + v_grant_amount,
+      updated_at = now();
+
+  RETURN v_grant_amount;
+END;
+$$;
+
+COMMENT ON FUNCTION public.grant_daily_post_bonus(uuid, uuid) IS
+  'その日つくった作品の投稿ボーナス。他の人のプロンプトで作った作品は対象外(prompt_use_bonus で受け取る)';
+
+-- =============================================================================
+-- 6. ミッション一覧に出すための読み取り
 -- =============================================================================
 -- percoin_bonus_defaults は RLS で直接読めないため、投稿ボーナスと同じく
 -- RPC 経由で額を渡す。**一覧に出ないとミッションとして機能しない**
