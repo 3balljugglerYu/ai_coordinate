@@ -4,6 +4,11 @@ import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
 import { AustraliaTravelGuide } from "@/features/collections/components/AustraliaTravelGuide";
+import {
+  AUSTRALIA_DAILY_LOOKS,
+  hasAustraliaScrapbookStarted,
+  type AustraliaDailyLook,
+} from "@/features/collections/lib/australia-daily-looks";
 
 // うちの子のオーストラリア旅行(表紙 + 7ページ の全8種)。ちゃんりおさんとのコラボ企画。
 // イタリア(travel_to_italy)と違い、10日間の旅程を8枚に集約しているため
@@ -56,6 +61,34 @@ export default async function AustraliaCollectionGuidePage() {
   ]);
 
   const threshold = category?.completionThreshold ?? 8;
+
+  /*
+    「旅のあいだ」の毎朝のコーデ。コーディネート2.0 に登録する運用なので
+    DB からは判別できず、ID の明示リストで拾う(australia-daily-looks.ts)。
+    未登録・未公開の ID は落とす。書き間違えてもページは壊れない。
+  */
+  const dailyLooks: AustraliaDailyLook[] = AUSTRALIA_DAILY_LOOKS.flatMap(
+    ({ day, presetId }) => {
+      const preset = allPresets.find((p) => p.id === presetId);
+      return preset
+        ? [
+            {
+              id: preset.id,
+              day,
+              title: preset.title,
+              thumbnailImageUrl: preset.thumbnailImageUrl,
+            },
+          ]
+        : [];
+    }
+  );
+
+  /*
+    スクラップブック企画は 8/29 開始。それまで「あつめる」のサムネイルはぼかす。
+    判定はここ(キャッシュ境界の外・connection() 済み)で解決して props で渡す。
+    クライアントで時刻を読むと SSR とズレて hydration 警告になる。
+  */
+  const hasScrapbookStarted = hasAustraliaScrapbookStarted();
   // sort_order 昇順(表紙 → Day1-2 → … → Day10)で取得済み。
   const presets = allPresets
     .filter((p) => p.category.key === AUSTRALIA_KEY)
@@ -65,5 +98,12 @@ export default async function AustraliaCollectionGuidePage() {
       thumbnailImageUrl: p.thumbnailImageUrl,
     }));
 
-  return <AustraliaTravelGuide threshold={threshold} presets={presets} />;
+  return (
+    <AustraliaTravelGuide
+      threshold={threshold}
+      presets={presets}
+      dailyLooks={dailyLooks}
+      hasScrapbookStarted={hasScrapbookStarted}
+    />
+  );
 }
