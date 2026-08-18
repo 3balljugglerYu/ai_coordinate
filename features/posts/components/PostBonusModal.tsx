@@ -42,6 +42,13 @@ interface PostBonusModalProps {
    * 文言に焼き込まず設定値を渡すこと（額を変えたときに嘘になるため）。
    */
   promptUsageRewardAmount: number;
+  /**
+   * 他の人のプロンプトで作った作品の投稿だったか。
+   *
+   * 「フリースタイルで投稿」と**排他**（1投稿はどちらか一方）なので、
+   * 額ではなく真偽で受け取り、文言の出し分けだけに使う。
+   */
+  isPromptUse?: boolean;
 }
 
 export function PostBonusModal({
@@ -51,14 +58,28 @@ export function PostBonusModal({
   multiplier,
   generationType,
   promptUsageRewardAmount,
+  isPromptUse = false,
 }: PostBonusModalProps) {
   const t = useTranslations("posts");
   const [showBurst, setShowBurst] = useState(false);
 
   const hasBoostedBonus = typeof multiplier === "number" && multiplier > 1;
   // 還元の案内はフリースタイルのときだけ。還元が停止中(0)なら出さない
+  /*
+    還元の案内は**自分で書いたフリー投稿**のときだけ。
+    他の人のプロンプトで作った投稿で「あなたのプロンプトが使われると還元」と
+    出すと、原作者が別にいるのに自分の手柄のように読めてしまう。
+  */
   const showCreatorReward =
-    generationType === "free" && promptUsageRewardAmount > 0;
+    generationType === "free" && !isPromptUse && promptUsageRewardAmount > 0;
+
+  const missionLabel = isPromptUse
+    ? t("postBonusMissionPromptUse")
+    : generationType === "one_tap_style"
+      ? t("postBonusMissionOneTap")
+      : generationType === "free"
+        ? t("postBonusMissionFree")
+        : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -72,6 +93,16 @@ export function PostBonusModal({
           <DialogTitle className="text-center text-base font-semibold text-slate-900">
             {t("postBonusTitle")}
           </DialogTitle>
+          {/*
+            どのミッションを達成したのかを見出しの直下に出す。
+            一覧と同じ「ミッション」という言葉で繋ぎ、達成した行が分かるようにする。
+            未対応の生成方法(コーデ等)では出さない。
+          */}
+          {missionLabel ? (
+            <p className="text-center text-sm font-semibold text-violet-600">
+              {missionLabel}
+            </p>
+          ) : null}
         </DialogHeader>
 
         <div className="relative flex flex-col items-center gap-1 py-1">

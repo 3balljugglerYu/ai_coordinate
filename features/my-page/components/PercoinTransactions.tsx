@@ -42,6 +42,7 @@ function formatTransactionType(
     tourBonus: string;
     forfeiture: string;
     collectionCompletion: string;
+    promptUseBonus: string;
     promptUsageReward: string;
     styleUsageReward: string;
   }
@@ -79,6 +80,8 @@ function formatTransactionType(
       return labels.forfeiture;
     case "collection_completion":
       return labels.collectionCompletion;
+    case "prompt_use_bonus":
+      return labels.promptUseBonus;
     case "prompt_usage_reward":
       return labels.promptUsageReward;
     case "style_usage_reward":
@@ -240,6 +243,7 @@ export function PercoinTransactions({
     adminDeductionDefault: t("transactionTypeAdminDeductionDefault"),
     tourBonus: t("transactionTypeTourBonus"),
     collectionCompletion: t("transactionTypeCollectionCompletion"),
+    promptUseBonus: t("transactionTypePromptUseBonus"),
     promptUsageReward: t("transactionTypePromptUsageReward"),
     styleUsageReward: t("transactionTypeStyleUsageReward"),
     forfeiture: t("transactionTypeForfeiture"),

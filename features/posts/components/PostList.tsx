@@ -128,6 +128,8 @@ export function PostList({
     amount: number;
     multiplier?: number;
     generationType: string | null;
+    /** 他の人のプロンプトで作った作品の投稿だったか（フリー投稿とは排他） */
+    isPromptUse: boolean;
   } | null>(null);
   const [pendingHomePostRefresh, setPendingHomePostRefresh] =
     useState<PendingHomePostRefresh | null>(null);
@@ -207,7 +209,15 @@ export function PostList({
       いちばん伝えやすい瞬間**だから。トーストは数秒で消えるうえ、
       リンクを踏む間もない。
     */
-    if (pending.bonusGranted && pending.bonusGranted > 0) {
+    /*
+      上乗せ(他の人のプロンプトで作った)だけが付いた場合もモーダルを出す。
+      投稿ボーナスの受け取り済み判定で弾くと、その日2回目の投稿で
+      上乗せをもらったのに何も出ない。
+    */
+    const promptUseBonusGranted = pending.promptUseBonusGranted ?? 0;
+    const grantedTotal = (pending.bonusGranted ?? 0) + promptUseBonusGranted;
+
+    if (grantedTotal > 0) {
       const hasBoostedBonus =
         pending.subscriptionPlan &&
         pending.subscriptionPlan !== "free" &&
@@ -215,9 +225,10 @@ export function PostList({
         pending.bonusMultiplier > 1;
 
       setPostBonus({
-        amount: pending.bonusGranted,
+        amount: (pending.bonusGranted ?? 0) + promptUseBonusGranted,
         multiplier: hasBoostedBonus ? pending.bonusMultiplier : undefined,
         generationType: pending.generationType ?? null,
+        isPromptUse: promptUseBonusGranted > 0,
       });
       return;
     }
@@ -832,6 +843,7 @@ export function PostList({
           multiplier={postBonus.multiplier}
           generationType={postBonus.generationType}
           promptUsageRewardAmount={promptUsageRewardAmount}
+          isPromptUse={postBonus.isPromptUse}
         />
       ) : null}
     </>

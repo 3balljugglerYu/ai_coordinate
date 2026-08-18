@@ -21,6 +21,10 @@ export interface ChallengeStatus {
    * 0 の生成方法をミッションに出すと、達成できない赤ドットが残り続ける。
    */
   postBonusAmounts: Record<string, number>;
+  /** プロンプト利用ミッションの付与額。0 = 停止中(一覧に出さない) */
+  promptUseBonusAmount: number;
+  /** 今日すでに受け取ったか */
+  promptUseBonusReceivedToday: boolean;
   subscriptionPlan: SubscriptionPlan;
 }
 
@@ -49,6 +53,8 @@ export async function getChallengeStatusServer(
       lastDailyPostBonusAt: null,
       postBonusReceivedTypes: [],
       postBonusAmounts: {},
+      promptUseBonusAmount: 0,
+      promptUseBonusReceivedToday: false,
       subscriptionPlan: "free",
     };
   }
@@ -61,6 +67,27 @@ export async function getChallengeStatusServer(
 
   // percoin_bonus_defaults は RLS で直接読めないため RPC 経由で取る
   const { data: amounts } = await supabase.rpc("get_post_bonus_amounts");
+
+  // プロンプト利用ミッション。額が 0(停止中)なら一覧に出さない。
+  const [
+    { data: promptUseAmount, error: promptUseAmountError },
+    { data: promptUseGrant },
+  ] = await Promise.all([
+    supabase.rpc("get_prompt_use_bonus_amount"),
+    supabase
+      .from("prompt_use_bonus_grants")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("jst_date", getJstDateString(new Date()))
+      .maybeSingle(),
+  ]);
+
+  if (promptUseAmountError) {
+    console.error(
+      "Failed to fetch prompt use bonus amount:",
+      promptUseAmountError
+    );
+  }
 
   let streakDays = data?.streak_days || 0;
   const lastStreakLoginAt = data?.last_streak_login_at || null;
@@ -79,6 +106,13 @@ export async function getChallengeStatusServer(
       (g: { generation_type: string }) => g.generation_type
     ),
     postBonusAmounts: (amounts as Record<string, number> | null) ?? {},
+    /*
+      取得に失敗すると 0 = 「ミッションを出さない」になり、一覧から行ごと消える。
+      例外にはならないので、原因(PostgREST のスキーマキャッシュ未更新など)に
+      気づけるようログだけ残す。
+    */
+    promptUseBonusAmount: typeof promptUseAmount === "number" ? promptUseAmount : 0,
+    promptUseBonusReceivedToday: Boolean(promptUseGrant?.id),
     subscriptionPlan: normalizeSubscriptionPlan(data?.subscription_plan),
   };
 }

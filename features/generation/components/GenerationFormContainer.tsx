@@ -1318,6 +1318,7 @@ export function GenerationFormContainer({
         onView={wardrobeSave.goToSavedImage}
         onClose={wardrobeSave.dismissClaim}
       />
+
     </div>
   );
 }

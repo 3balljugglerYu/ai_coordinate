@@ -177,13 +177,17 @@ export function PostModal({
         action: "posted",
         postId: response.id,
         bonusGranted: response.bonus_granted,
+        promptUseBonusGranted: response.prompt_use_bonus_granted,
         bonusMultiplier: response.bonus_multiplier,
         subscriptionPlan: response.subscription_plan,
         generationType: response.generation_type,
       });
 
       // デイリー投稿特典が付与された場合、通知バッジだけは即時更新する
-      if (response.bonus_granted && response.bonus_granted > 0) {
+      if (
+        (response.bonus_granted ?? 0) + (response.prompt_use_bonus_granted ?? 0) >
+        0
+      ) {
         await refreshUnreadCount().catch((error) => {
           console.error("Failed to refresh unread notification count:", error);
         });

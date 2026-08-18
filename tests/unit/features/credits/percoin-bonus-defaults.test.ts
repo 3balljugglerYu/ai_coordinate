@@ -4,12 +4,16 @@
  * /admin/percoin-defaults の付与額設定は source ごとに許容範囲が違う:
  *   - 従来のボーナス(登録・ツアー・紹介・デイリー): 1〜1000
  *   - クリエイター還元(prompt_usage_reward / style_usage_reward): 0〜5
+ *   - 日次ミッション(prompt_use_daily): 0〜1000
  *
  * 還元の上限5は経済的な不変条件（付与額 < 1生成の最低コスト10）を保つための
  * 制限で、API・管理フォーム・DB CHECK(20260806150000) の3箇所で同じ規則を使う。
  */
 import {
   BONUS_SOURCES,
+  DAILY_MISSION_BONUS_SOURCES,
+  DAILY_MISSION_MAX_AMOUNT,
+  isDailyMissionBonusSource,
   CLASSIC_BONUS_SOURCES,
   USAGE_REWARD_BONUS_SOURCES,
   USAGE_REWARD_MAX_AMOUNT,
@@ -21,8 +25,8 @@ import {
 } from "@/features/credits/lib/percoin-bonus-defaults";
 
 describe("percoin-bonus-defaults", () => {
-  test("BONUS_SOURCES は従来4種 + 還元2種 + 投稿4種", () => {
-    expect(BONUS_SOURCES).toHaveLength(10);
+  test("BONUS_SOURCES は従来4種 + 還元2種 + 投稿4種 + 日次ミッション1種", () => {
+    expect(BONUS_SOURCES).toHaveLength(11);
     expect(CLASSIC_BONUS_SOURCES).toEqual([
       "signup_bonus",
       "tour_bonus",
@@ -127,6 +131,54 @@ describe("percoin-bonus-defaults", () => {
       expect(validateBonusAmount("daily_post", 0)).toContain("daily_post");
       expect(validateBonusAmount("daily_post", 0)).toContain("1〜1000");
       expect(validateBonusAmount("style_usage_reward", 6)).toContain("0〜5");
+    });
+  });
+
+  describe("日次ミッション(prompt_use_daily)", () => {
+    test("還元の上限5ではなく 0〜1000 を使う", () => {
+      /*
+        還元の上限5は「利用のたびに無制限に発生する」ことに由来する制限
+        (2アカウントで使い合うと生成のたびに残高が増えるため)。
+        日次ミッションは UNIQUE(user_id, jst_date) で頻度が1日1回に締まるので
+        同じ上限は当てはまらない。ここを取り違えると 20pc が保存できない。
+      */
+      expect(DAILY_MISSION_BONUS_SOURCES).toEqual(["prompt_use_daily"]);
+      expect(getBonusAmountRange("prompt_use_daily")).toEqual({
+        min: 0,
+        max: DAILY_MISSION_MAX_AMOUNT,
+      });
+      expect(DAILY_MISSION_MAX_AMOUNT).toBeGreaterThan(USAGE_REWARD_MAX_AMOUNT);
+    });
+
+    test("DB の CHECK と同じ範囲になっている", () => {
+      /*
+        percoin_bonus_defaults_source_amount_check は source ごとに範囲が違う。
+        アプリ側の範囲がずれると、保存できるはずの値が 23514 で弾かれる
+        (migration で prompt_use_daily を 0〜1000 の枠に足している)。
+      */
+      expect(getBonusAmountRange("prompt_use_daily")).toEqual({
+        min: 0,
+        max: 1000,
+      });
+    });
+
+    test("運営が決めた 20pc を保存できる", () => {
+      expect(validateBonusAmount("prompt_use_daily", 20)).toBeNull();
+    });
+
+    test("0 で停止できる", () => {
+      expect(validateBonusAmount("prompt_use_daily", 0)).toBeNull();
+    });
+
+    test("上限超過と小数は弾く", () => {
+      expect(validateBonusAmount("prompt_use_daily", 1001)).not.toBeNull();
+      expect(validateBonusAmount("prompt_use_daily", 1.5)).not.toBeNull();
+    });
+
+    test("還元 source とは別物として判定される", () => {
+      expect(isDailyMissionBonusSource("prompt_use_daily")).toBe(true);
+      expect(isDailyMissionBonusSource("prompt_usage_reward")).toBe(false);
+      expect(isUsageRewardBonusSource("prompt_use_daily")).toBe(false);
     });
   });
 });

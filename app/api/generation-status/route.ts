@@ -163,6 +163,7 @@ export async function GET(request: NextRequest) {
     }
     const firstResultImage = resultImages[0] ?? null;
 
+
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
       id: job.id,
