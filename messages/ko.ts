@@ -149,6 +149,7 @@ export const koMessages = {
     feedQuoteRootDescription: "{name}님의 프롬프트로 생성할 수 있습니다",
     feedQuoteDerivedTitle: "이 프롬프트로 생성했습니다",
     feedQuoteStyleTitle: "이 스타일로 생성했습니다",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "더 보기",
     collapse: "접기",
     errorTitle: "오류",
@@ -1558,6 +1559,10 @@ export const koMessages = {
     guestLoginCtaAction: "로그인 / 회원가입",
     guestCategoryLoginAction: "로그인하면 생성 가능!",
     styleDripLockedLabel: "생성하면 해제",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "아직 열리지 않았습니다",
     presetLockedTitle: "이 스타일은 아직 열리지 않았습니다",
     presetLockedSequentialDescription: "이 기획의 스타일로 생성하면 다음 스타일이 순서대로 열립니다.",

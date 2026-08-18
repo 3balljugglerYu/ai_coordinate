@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
+import {
+  getPublishedStylePreset,
+  getPublishedStylePresets,
+} from "@/features/style-presets/lib/get-public-style-presets";
+import { isCollectionDisplayPeriodEnded } from "./collection-display-period";
 import { applyCollectionUnlockGating } from "./collection-unlock-gating";
 import { categoryNeedsUnlockContext } from "./collection-unlock";
 import { resolveCollectionUnlockContext } from "./collection-unlock-server";
@@ -13,19 +17,45 @@ import { resolveCollectionUnlockContext } from "./collection-unlock-server";
  *   解放状態は「そのユーザーが何件生成したか」で決まるため、進捗を持たない
  *   ゲストには判定のしようがない。黙って別のスタイルへ差し替えると
  *   「押し間違えた？」のまま離脱するので、**ログインすれば使えること**を伝える
- * - `unknown`: 判定しない／できない（存在しない、未公開、admin_only）
+ * - `ended`: 公開されていた企画の**会期が終わった**。もう生成できない
+ * - `unknown`: 判定しない／できない（存在しない、未公開、admin_only、開始前）
  *
  * `unknown` を `locked` と区別するのは、**存在しないものの存在を教えないため**。
  * 未公開のIDを指定されたときに「まだ開放されていません」と返すと、そこに何かある
  * ことが分かってしまう（ADR-005 と同じ考え方）。
+ *
+ * `ended` を `unknown` から切り出すのは、**終了した企画は秘匿対象ではない**ため。
+ * 投稿カードにプリセット名もサムネイルも出ている状態で黙ると、閲覧者には
+ * 「押しても反応しない」としか映らない。開始前は逆に伏せる（まだ言えない）。
  */
 export type PresetUnlockState =
   | { status: "unlocked" }
   | { status: "locked"; reason: "sequential" | "prerequisite" }
   | { status: "login_required" }
+  | { status: "ended" }
   | { status: "unknown" };
 
 const UNKNOWN: PresetUnlockState = { status: "unknown" };
+const ENDED: PresetUnlockState = { status: "ended" };
+
+/**
+ * 公開されていた企画で、会期だけが終わったプリセットか。
+ *
+ * `visibility === "public"` に限る。admin_only を「終了」と答えると、
+ * 未公開カテゴリの存在が漏れる。開始前も false（まだ言えない）。
+ */
+async function isEndedPublicPreset(presetId: string): Promise<boolean> {
+  const preset = await getPublishedStylePreset(presetId, {
+    includeAdminOnly: true,
+  });
+  if (!preset || preset.category.visibility !== "public") {
+    return false;
+  }
+  return isCollectionDisplayPeriodEnded({
+    collectionDisplayStartsAt: preset.category.collectionDisplayStartsAt,
+    collectionDisplayEndsAt: preset.category.collectionDisplayEndsAt,
+  });
+}
 
 /**
  * 1件のプリセットについて解放状態を解決する。
@@ -53,8 +83,12 @@ export async function resolvePresetUnlockState(
   });
   const target = presets.find((preset) => preset.id === presetId);
   if (!target) {
-    // 未公開・admin_only・存在しない。何も答えない
-    return UNKNOWN;
+    /*
+      一覧から外れる理由は「未公開・admin_only・存在しない」だけでなく
+      「会期が終わった」もある。前者は黙るが、後者は伝える必要があるので
+      1件だけ引き直して切り分ける（外れるのは稀なので追加の往復も稀）。
+    */
+    return (await isEndedPublicPreset(presetId)) ? ENDED : UNKNOWN;
   }
 
   // ゲートの無いカテゴリは常に使える（大多数のスタイルはここで終わる）

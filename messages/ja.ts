@@ -146,6 +146,7 @@ export const jaMessages = {
     feedQuoteRootDescription: "{name}さんのプロンプトを利用して、生成することができます",
     feedQuoteDerivedTitle: "このプロンプトで生成しました",
     feedQuoteStyleTitle: "このスタイルで生成しました",
+    feedQuoteEndedNote: "この企画は終了しました",
     readMore: "もっと見る",
     collapse: "折りたたむ",
     errorTitle: "エラー",
@@ -1503,6 +1504,10 @@ export const jaMessages = {
     guestLoginCtaAction: "ログイン / 新規登録",
     guestCategoryLoginAction: "ログインで生成可能！",
     styleDripLockedLabel: "生成すると開放",
+    presetEndedLabel: "この企画は終了しました",
+    presetEndedTitle: "この企画は終了しました",
+    presetEndedDescription:
+      "このスタイルは期間限定の企画のもので、今は生成できません。開催中の企画をのぞいてみてください。",
     presetLockedLabel: "まだ開放されていません",
     presetLockedTitle: "このスタイルはまだ開放されていません",
     presetLockedSequentialDescription: "同じ企画のスタイルを生成すると、次のスタイルが順に開放されます。",

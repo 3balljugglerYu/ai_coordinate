@@ -3,7 +3,10 @@ import { z } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveSourcePromptSummaries } from "@/features/posts/lib/source-prompt-reference";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
-import { isCollectionDisplayPeriodActive } from "@/features/collections/lib/collection-display-period";
+import {
+  isCollectionDisplayPeriodActive,
+  isCollectionDisplayPeriodEnded,
+} from "@/features/collections/lib/collection-display-period";
 import { getStyleGenerateTotalCounts } from "@/features/style/lib/style-popularity";
 import type { StylePresetLink } from "@/features/posts/types";
 
@@ -90,6 +93,8 @@ async function resolveStylePresetLinks(
   }
 
   const slugByPresetId = new Map<string, string>();
+  // 「公開されていたが会期が終わった」プリセット。リンクは出せないが理由は伝える。
+  const endedPresetIds = new Set<string>();
   for (const row of data ?? []) {
     // PostgREST の型推論は埋め込みリレーションを配列として扱うため unknown 経由で受ける
     const typed = row as unknown as {
@@ -112,6 +117,21 @@ async function resolveStylePresetLinks(
         collectionDisplayEndsAt: typed.category.collection_display_ends_at,
       });
     if (!typed.slug || !isPublic) {
+      /*
+        会期が終わっただけの企画は「無いもの」ではない。投稿カードにプリセット名も
+        サムネイルも出ているので秘匿対象ではなく、黙ってリンクを消すと
+        「押しても反応しないカード」になる。visibility=public のものに限り
+        終了として伝える（admin_only・未公開・開始前はこれまで通り黙る）。
+      */
+      if (
+        typed.category?.visibility === "public" &&
+        isCollectionDisplayPeriodEnded({
+          collectionDisplayStartsAt: typed.category.collection_display_starts_at,
+          collectionDisplayEndsAt: typed.category.collection_display_ends_at,
+        })
+      ) {
+        endedPresetIds.add(typed.id);
+      }
       continue;
     }
     slugByPresetId.set(typed.id, typed.slug);
@@ -129,6 +149,7 @@ async function resolveStylePresetLinks(
         限定公開・先行公開の運用でも漏れる。
       */
       usageCount: slug ? (generateTotals[presetId] ?? 0) : 0,
+      isEnded: endedPresetIds.has(presetId),
     };
   }
   return links;

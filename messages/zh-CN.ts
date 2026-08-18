@@ -149,6 +149,7 @@ export const zhCnMessages = {
     feedQuoteRootDescription: "你可以使用 {name} 的提示词生成",
     feedQuoteDerivedTitle: "使用这个提示词生成",
     feedQuoteStyleTitle: "使用这个风格生成",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "查看更多",
     collapse: "收起",
     errorTitle: "错误",
@@ -1555,6 +1556,10 @@ export const zhCnMessages = {
     guestLoginCtaAction: "登录 / 注册",
     guestCategoryLoginAction: "登录后即可生成！",
     styleDripLockedLabel: "生成后解锁",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "尚未解锁",
     presetLockedTitle: "该风格尚未解锁",
     presetLockedSequentialDescription: "使用本企划的风格生成后，下一个风格会依次解锁。",

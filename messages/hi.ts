@@ -149,6 +149,7 @@ export const hiMessages = {
     feedQuoteRootDescription: "आप {name} के प्रॉम्प्ट से जेनरेट कर सकते हैं",
     feedQuoteDerivedTitle: "इस प्रॉम्प्ट से बनाया गया",
     feedQuoteStyleTitle: "इस स्टाइल से बनाया गया",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "और पढ़ें",
     collapse: "कम दिखाएँ",
     errorTitle: "त्रुटि",
@@ -1560,6 +1561,10 @@ export const hiMessages = {
     guestLoginCtaAction: "साइन इन / साइन अप",
     guestCategoryLoginAction: "जनरेट करने के लिए लॉग इन करें!",
     styleDripLockedLabel: "जनरेट करके अनलॉक करें",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "अभी अनलॉक नहीं है",
     presetLockedTitle: "यह स्टाइल अभी अनलॉक नहीं है",
     presetLockedSequentialDescription: "इस कलेक्शन की स्टाइल से जेनरेट करें, अगली स्टाइल अनलॉक हो जाएगी।",

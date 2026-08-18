@@ -149,6 +149,7 @@ export const idMessages = {
     feedQuoteRootDescription: "Kamu bisa membuat dengan prompt {name}",
     feedQuoteDerivedTitle: "Dibuat dengan prompt ini",
     feedQuoteStyleTitle: "Dibuat dengan gaya ini",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "Selengkapnya",
     collapse: "Tutup",
     errorTitle: "Kesalahan",
@@ -1561,6 +1562,10 @@ export const idMessages = {
     guestLoginCtaAction: "Masuk / Daftar",
     guestCategoryLoginAction: "Masuk untuk membuat!",
     styleDripLockedLabel: "Buat untuk membuka",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "Belum terbuka",
     presetLockedTitle: "Gaya ini belum terbuka",
     presetLockedSequentialDescription: "Buat dengan gaya dari koleksi ini untuk membuka gaya berikutnya.",
