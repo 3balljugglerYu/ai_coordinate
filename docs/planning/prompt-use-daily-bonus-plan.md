@@ -48,12 +48,56 @@
 ⏰ 投稿ボーナス20/20は**9/6までの期限付き**。9/6 の判断時は投稿ボーナス単体ではなく
 **付与全体（streak 8,832 / daily_post 7,784 を含む）を一度に見直す**。
 
+## ユーザーストーリー
+
+### 使う側（プロンプトを利用する人）
+
+**US-01** 他の人のプロンプトで作った作品を投稿すると 20 ペルコインもらえる。
+- 投稿した直後に、投稿ボーナスと同じアニメーションのモーダルが出る
+- モーダルには「他の人のプロンプトで作った投稿としてカウントされました」と出る
+- **生成しただけでは付与されない**（投稿が条件）
+
+**US-02** ミッション一覧を見れば、何をすればよいか・どこでやるかが分かる。
+- 「他の人のプロンプトで生成して投稿！」という行で、未達成なら赤いドットが出る
+- 行をタップすると確認モーダルが出て、OK でその画面へ移動できる
+- 一覧に出るのは額が 1 以上のときだけ（0 なら行ごと消える）
+
+**US-03** 「他の人のプロンプト」を探せる場所へ案内される。
+- ホームへ移動し、**フィード表示に切り替わった状態で着地する**
+- グリッド表示のままだと「このプロンプトで作る」の導線が見えず探せない
+
+**US-04** 1日に「自分のプロンプト」と「他の人のプロンプト」の両方を投稿すると、
+20＋20 で 40 ペルコインもらえる。
+- 1つの投稿では必ずどちらか一方（二重取りできない）
+
+### 作る側（プロンプトを公開する人）
+
+**US-05** 自分のプロンプトが誰かに使われると 2 ペルコインの還元が入る（既存）。
+- 使う側にも動機ができるぶん、使われる機会が増える
+- 他の人のプロンプトで作った投稿の付与モーダルでは、**還元の案内を出さない**
+  （原作者が別にいるのに自分の手柄のように読めるため）
+
+### 運営
+
+**US-06** 額を admin から変更でき、0 にすれば止められる。
+- `/admin/percoin-defaults` の「誰かのFreeプロンプトを使った時（使った人へ・1日1回）」
+- デプロイ不要で即反映。0 にするとミッション一覧の行も消える
+
+**US-07** ファーミングが構造的に塞がれている。
+- 自分のプロンプトを自分で使っても付与されない
+- 同じ日に2回以上は付与されない
+- 投稿していなければ付与されない（RPC を直接呼んでも通らない）
+
 ## 仕様（EARS）
 
-- **PU-01** When a derived generation succeeds and its origin post was authored by another user,
-  the system shall grant `prompt_use_bonus` percoins to the generating user, once per JST day.
-  派生生成が成功し、その原作が他人の投稿であるとき、システムは利用者へ
-  `prompt_use_bonus` を JST 日付ごとに1回だけ付与しなければならない。
+- **PU-01** When a user posts a work created from another user's prompt,
+  the system shall grant `prompt_use_bonus` percoins once per JST day.
+  他人のプロンプトで作った作品を投稿したとき、システムは `prompt_use_bonus` を
+  JST 日付ごとに1回だけ付与しなければならない。
+- **PU-08** While a posted work was created from another user's prompt,
+  the system shall not grant the free post bonus for it.
+  他人のプロンプトで作った作品には「フリースタイルで投稿」を付与してはならない
+  （2つは定義上排他で、提供する側と利用する側の区別が消えるため）。
 - **PU-02** If the origin post was authored by the generating user, then the system shall not grant.
   原作が本人の投稿である場合、付与しない（ファーミング防止）。
 - **PU-03** While the user has already received the bonus on the same JST day,
