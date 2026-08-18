@@ -2,7 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import type { AustraliaDailyLook } from "@/features/collections/lib/australia-daily-looks";
 
 /* eslint-disable @next/next/no-page-custom-font -- 日本語の動的サブセットを使うため意図的に <link> で読み込む */
 
@@ -318,13 +330,105 @@ interface GuidePreset {
   thumbnailImageUrl: string;
 }
 
+/**
+ * 「旅のあいだ」に毎朝公開したコーデの棚。
+ *
+ * 溜まってきたら自動で横に流す(/creators の marquee と同じ作法: 配列を2周ぶん
+ * 並べて -50% までずらす)。**カードがリンクなので、触れているあいだは止める**。
+ * 動く的をタップさせるのは事故のもと。hover / focus / 押下中で止まる。
+ */
+function DailyLookCard({
+  look,
+  index,
+  isDuplicate = false,
+  onSelect,
+}: {
+  look: AustraliaDailyLook;
+  index: number;
+  /** 途切れさせないための2周目。読み上げもタブ移動も対象外にする。 */
+  isDuplicate?: boolean;
+  onSelect: (look: AustraliaDailyLook) => void;
+}) {
+  return (
+    /*
+      `Link` のまま preventDefault して確認を挟む。button にすると
+      クローラーが辿れず、長押しの「リンクを開く」も効かなくなる。
+    */
+    <Link
+      href={`/style?style=${encodeURIComponent(look.id)}`}
+      onClick={(e) => {
+        e.preventDefault();
+        onSelect(look);
+      }}
+      className={`group block w-28 shrink-0 focus-visible:outline-none${
+        isDuplicate ? " au-marquee-dup" : ""
+      }`}
+      aria-hidden={isDuplicate || undefined}
+      tabIndex={isDuplicate ? -1 : undefined}
+      data-testid={isDuplicate ? undefined : "australia-daily-look"}
+    >
+      <div
+        className="relative aspect-[9/16] overflow-hidden rounded-xl border-2 border-white bg-[#faf3e6] shadow-[0_4px_0_rgba(194,85,31,0.18)] transition group-hover:-translate-y-0.5 group-focus-visible:ring-2 group-focus-visible:ring-orange-400"
+      >
+        <Image
+          src={look.thumbnailImageUrl}
+          alt={look.title}
+          fill
+          sizes="112px"
+          className="object-cover"
+          /* 先頭だけ優先。棚は本文より下にあるので残りは遅延でよい */
+          loading={index === 0 ? "eager" : "lazy"}
+        />
+      </div>
+      <p
+        className="mt-1.5 text-center text-[10px] font-bold tracking-widest"
+        style={{ color: AU_OCEAN }}
+      >
+        {look.day}
+      </p>
+    </Link>
+  );
+}
+
+/**
+ * 「旅のあいだ」の棚が自動で流れはじめる枚数。
+ *
+ * **見切れてから流す**。棚が入るのは幅 330px のカードの中で、
+ * カード幅 112px + gap 12px なので 3枚(360px)で既にはみ出す。
+ * 2枚までは中央に静止させる(収まっているものを動かすと落ち着かない)。
+ */
+const DAILY_LOOK_MARQUEE_MIN = 3;
+
+/**
+ * 開始前でもぼかさない枚数（先頭から数えて）。表紙と Day 1-2 の2枚。
+ *
+ * 全部ぼかすと「何が集まるのか」が伝わらず、期待も作れない。
+ * 先頭だけ見せて残りを伏せる方が、続きが見たくなる。
+ */
+const UNBLURRED_LEAD_COUNT = 2;
+
 export function AustraliaTravelGuide({
   threshold,
   presets,
+  dailyLooks,
+  hasScrapbookStarted,
 }: {
   threshold: number;
   presets: GuidePreset[];
+  /** 「旅のあいだ」に毎朝公開したコーデ。0件ならセクションごと出さない。 */
+  dailyLooks: AustraliaDailyLook[];
+  /** スクラップブック企画(8/29〜)が始まったか。未開始はサムネイルをぼかす。 */
+  hasScrapbookStarted: boolean;
 }) {
+  // 見切れる量になってから流す。少ないうちは中央に静止させる
+  const isMarquee = dailyLooks.length >= DAILY_LOOK_MARQUEE_MIN;
+  const router = useRouter();
+  /*
+    タップしたら即移動ではなく、どこへ行くのかを一度伝える。
+    企画ページを読んでいる最中に別画面へ飛ばされると、読んでいた文脈を失う。
+    投稿詳細のスタイルカード(OneTapStyleDetailCard)と同じ作法・同じ文言。
+  */
+  const [pendingLook, setPendingLook] = useState<AustraliaDailyLook | null>(null);
   // 表紙(旅のはじまり)を含む全8枚をグリッドに並べる。
   // ヒーローはコラボのキービジュアルで表紙とは別物なので、表紙もここで見せる。
   const pages = presets;
@@ -361,8 +465,17 @@ export function AustraliaTravelGuide({
         .au-twinkle { animation: au-twinkle 3.2s ease-in-out infinite; }
         @keyframes au-drift { 0% { transform: translate(0,0) rotate(-6deg) } 50% { transform: translate(10px,-12px) rotate(2deg) } 100% { transform: translate(0,0) rotate(-6deg) } }
         .au-drift { animation: au-drift 9s ease-in-out infinite; }
+        @keyframes au-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
+        .au-marquee-track { animation: au-marquee 30s linear infinite; }
+        /* カードがリンクなので、触れているあいだは止める(動く的をタップさせない) */
+        .au-marquee-track:hover,
+        .au-marquee-track:focus-within,
+        .au-marquee-track:active { animation-play-state: paused; }
         @media (prefers-reduced-motion: reduce){
           .au-float, .au-twinkle, .au-drift { animation:none }
+          /* 止めるだけだと2周ぶんの重複が居座るので、複製を消して素の横スクロールへ */
+          .au-marquee-track { animation:none; width:auto }
+          .au-marquee-dup { display:none }
         }
       `}</style>
       <link
@@ -486,6 +599,43 @@ export function AustraliaTravelGuide({
                   <strong className="font-bold text-[#4a3b2c]">コーデのプロンプトを毎朝公開</strong>
                   。10日間の旅を楽しんでください。
                 </p>
+
+                {/*
+                  公開済みのコーデをその場で選べるようにする。読んだ直後に
+                  「今日のはこれ」と分かって押せることが、別ページへ探しに行くより強い。
+                */}
+                {dailyLooks.length > 0 ? (
+                  <div className="-mx-4 mt-3 overflow-hidden">
+                    <div
+                      className={
+                        isMarquee
+                          ? "au-marquee-track flex w-max gap-3 px-4"
+                          : "flex flex-wrap justify-center gap-3 px-4"
+                      }
+                    >
+                      {dailyLooks.map((look, i) => (
+                        <DailyLookCard
+                          key={look.id}
+                          look={look}
+                          index={i}
+                          onSelect={setPendingLook}
+                        />
+                      ))}
+                      {/* 流すときだけ、途切れないよう2周ぶん並べる(複製は読み上げない) */}
+                      {isMarquee
+                        ? dailyLooks.map((look, i) => (
+                            <DailyLookCard
+                              key={`dup-${look.id}`}
+                              look={look}
+                              index={i + 1}
+                              isDuplicate
+                              onSelect={setPendingLook}
+                            />
+                          ))
+                        : null}
+                    </div>
+                  </div>
+                ) : null}
               </div>
               <div
                 className="rounded-2xl border-2 bg-white px-4 py-3"
@@ -597,7 +747,9 @@ export function AustraliaTravelGuide({
             </Reveal>
             <Reveal delay={100}>
               <p className="mt-2 text-center text-sm text-[#7a6a58]">
-                表紙のあと、順番に解放されます。1ページずつめくる楽しみを。
+                {hasScrapbookStarted
+                  ? "表紙のあと、順番に解放されます。1ページずつめくる楽しみを。"
+                  : "8/29(土)から、表紙のあと順番に解放されます。1ページずつめくる楽しみを。"}
               </p>
             </Reveal>
 
@@ -621,7 +773,16 @@ export function AustraliaTravelGuide({
                           alt={stripOrderPrefix(d.title)}
                           fill
                           sizes="(max-width: 640px) 44vw, 200px"
-                          className="object-cover"
+                          /*
+                            開始前は「これから」の感じを出すため軽くぼかす。
+                            ただし先頭2枚(表紙・Day1-2)は見せて、何が集まるかを伝える。
+                            scale-105 は、ぼかしで縁が透けて枠が痩せて見えるのを防ぐぶん。
+                          */
+                          className={`object-cover${
+                            hasScrapbookStarted || i < UNBLURRED_LEAD_COUNT
+                              ? ""
+                              : " scale-105 blur-[3px]"
+                          }`}
                         />
                       </div>
                       <p
@@ -741,6 +902,33 @@ export function AustraliaTravelGuide({
           コラボご希望の方・プロンプト掲載のご相談はこちら ›
         </Link>
       </div>
+
+      <AlertDialog
+        open={pendingLook !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingLook(null);
+        }}
+      >
+        <AlertDialogContent data-testid="australia-daily-look-confirm">
+          <AlertDialogHeader>
+            <AlertDialogTitle>このコーデを利用しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「はい」を選択するとワンタップスタイル画面に移動します。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>キャンセル</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (!pendingLook) return;
+                router.push(`/style?style=${encodeURIComponent(pendingLook.id)}`);
+              }}
+            >
+              はい
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
