@@ -54,7 +54,6 @@ import { GuestResultPreview } from "./GuestResultPreview";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSave } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import { WardrobeClaimOverlay } from "@/features/wardrobe/components/WardrobeClaimOverlay";
-import { PromptUseBonusModal } from "@/features/credits/components/PromptUseBonusModal";
 import {
   clearGuestGeneration,
   setGuestGeneration,
@@ -312,24 +311,8 @@ export function GenerationFormContainer({
     [setCompletedCount, setGeneratingCount, setTotalCount]
   );
 
-  /*
-    誰かのプロンプトを使ったことによる日次ボーナス。
-    **付与された瞬間（生成成功）に伝える。** 投稿時のモーダルに寄せると、
-    投稿しない利用者には伝わらず、その日すでに投稿ボーナスを受け取っていると
-    モーダル自体が開かないため、もらったことに気づけない。
-  */
-  const [promptUseBonus, setPromptUseBonus] = useState(0);
-
   const syncPreviewFromStatus = useCallback(
     (status: AsyncGenerationStatus) => {
-      if (
-        status.status === "succeeded" &&
-        typeof status.promptUseBonusGranted === "number" &&
-        status.promptUseBonusGranted > 0
-      ) {
-        setPromptUseBonus(status.promptUseBonusGranted);
-      }
-
       const resultImages =
         status.status === "succeeded" && status.resultImages?.length
           ? status.resultImages
@@ -1336,14 +1319,6 @@ export function GenerationFormContainer({
         onClose={wardrobeSave.dismissClaim}
       />
 
-      {/* 誰かのプロンプトを使ったときの日次ボーナス（付与された瞬間に出す） */}
-      <PromptUseBonusModal
-        open={promptUseBonus > 0}
-        onOpenChange={(next) => {
-          if (!next) setPromptUseBonus(0);
-        }}
-        amount={promptUseBonus}
-      />
     </div>
   );
 }

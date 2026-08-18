@@ -42,6 +42,11 @@ interface PostBonusModalProps {
    * 文言に焼き込まず設定値を渡すこと（額を変えたときに嘘になるため）。
    */
   promptUsageRewardAmount: number;
+  /**
+   * 他の人のプロンプトで作った作品への上乗せ（0 なら対象外）。
+   * 投稿ボーナスとは別の付与なので、合計を出したうえで内訳も並べる。
+   */
+  promptUseBonusAmount?: number;
 }
 
 export function PostBonusModal({
@@ -51,11 +56,18 @@ export function PostBonusModal({
   multiplier,
   generationType,
   promptUsageRewardAmount,
+  promptUseBonusAmount = 0,
 }: PostBonusModalProps) {
   const t = useTranslations("posts");
   const [showBurst, setShowBurst] = useState(false);
 
   const hasBoostedBonus = typeof multiplier === "number" && multiplier > 1;
+  /*
+    大きな数字は**合計**を出す。もらった総額が一目で分かるのが第一で、
+    内訳はその下に並べる。別々にアニメーションさせると、同じ瞬間の付与が
+    2回に分かれて見えて「いくらもらったのか」が分からなくなる。
+  */
+  const totalAmount = amount + promptUseBonusAmount;
   // 還元の案内はフリースタイルのときだけ。還元が停止中(0)なら出さない
   const showCreatorReward =
     generationType === "free" && promptUsageRewardAmount > 0;
@@ -77,13 +89,13 @@ export function PostBonusModal({
         <div className="relative flex flex-col items-center gap-1 py-1">
           <RewardBurst
             show={showBurst}
-            label={t("postBonusAmount", { amount })}
+            label={t("postBonusAmount", { amount: totalAmount })}
             tier="bonus"
           />
           <p className="flex items-baseline gap-1 text-4xl font-bold text-violet-600">
             <span aria-hidden>+</span>
             <CountUpNumber
-              value={amount}
+              value={totalAmount}
               onDone={() => setShowBurst(true)}
               className="tabular-nums"
             />
@@ -102,6 +114,21 @@ export function PostBonusModal({
             </Badge>
           ) : null}
         </div>
+
+        {promptUseBonusAmount > 0 ? (
+          <div className="space-y-1 rounded-xl bg-violet-50/60 p-3 text-sm text-slate-700">
+            <div className="flex items-center justify-between">
+              <span>{t("postBonusBreakdownPost")}</span>
+              <span className="font-semibold tabular-nums">+{amount}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>{t("postBonusBreakdownPromptUse")}</span>
+              <span className="font-semibold tabular-nums">
+                +{promptUseBonusAmount}
+              </span>
+            </div>
+          </div>
+        ) : null}
 
         {showCreatorReward ? (
           /*

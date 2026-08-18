@@ -131,6 +131,8 @@ export interface PostImageResponse {
   caption: string | null;
   posted_at: string;
   bonus_granted?: number; // 投稿ボーナスで付与されたペルコイン数（0: 未付与）
+  /** 他の人のプロンプトで作った作品への上乗せ（0: 対象外） */
+  prompt_use_bonus_granted?: number;
   bonus_multiplier?: number;
   subscription_plan?: "free" | "light" | "standard" | "premium";
   /** 付与モーダルの出し分け用（フリースタイルだけ還元の案内を併記する）。 */

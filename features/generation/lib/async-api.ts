@@ -58,11 +58,6 @@ export interface AsyncGenerationStatus {
   resultImages?: Array<{ id: string; url: string }>;
   errorMessage: string | null;
   generatedImageId: string | null;
-  /**
-   * 誰かのプロンプトを使ったことによる日次ボーナス（0 なら付与なし）。
-   * 付与は生成成功時に確定しており、ここは確定済みの額を受け取るだけ。
-   */
-  promptUseBonusGranted?: number;
 }
 
 /**
@@ -196,10 +191,6 @@ export async function getGenerationStatus(
     errorMessage: data.errorMessage || null,
     generatedImageId:
       typeof data.generatedImageId === "string" ? data.generatedImageId : null,
-    promptUseBonusGranted:
-      typeof data.promptUseBonusGranted === "number"
-        ? data.promptUseBonusGranted
-        : 0,
   };
 }
 

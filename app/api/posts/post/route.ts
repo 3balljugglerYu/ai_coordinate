@@ -52,6 +52,37 @@ async function grantDailyPostBonus(
   }
 }
 
+/**
+ * 他の人のプロンプトで作った作品を投稿したときの日次ボーナス。
+ *
+ * **投稿を条件にしている。** 生成で終わるとその人の中で完結するが、投稿されて
+ * 初めてフィードで次の人の目に触れ、原作者にも露出が回って連鎖が起きる。
+ * 判定は RPC 側(派生か / 自己利用でないか / その日つくったか / 1日1回)。
+ */
+async function grantPromptUseBonus(
+  userId: string,
+  generationId: string
+): Promise<number> {
+  try {
+    const supabase = createAdminClient();
+    const { data, error } = await supabase.rpc("grant_prompt_use_daily_bonus", {
+      p_user_id: userId,
+      p_generation_id: generationId,
+    });
+
+    if (error) {
+      console.error("[Prompt Use Bonus] RPC error:", error);
+      return 0;
+    }
+
+    return typeof data === "number" ? data : 0;
+  } catch (error) {
+    // 付与に失敗しても投稿は成功させる(投稿ボーナスと同じ方針)
+    console.error("[Prompt Use Bonus] Exception:", error);
+    return 0;
+  }
+}
+
 async function getDailyPostBonusMeta(userId: string): Promise<{
   bonusMultiplier: number;
   subscriptionPlan: "free" | "light" | "standard" | "premium";
@@ -127,6 +158,11 @@ export async function POST(request: NextRequest) {
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
     const bonus_granted = await grantDailyPostBonus(user.id, result.id!);
+    // 他の人のプロンプトで作った作品なら上乗せ（対象外なら 0）
+    const prompt_use_bonus_granted = await grantPromptUseBonus(
+      user.id,
+      result.id!
+    );
     const bonusMeta =
       bonus_granted > 0 ? await getDailyPostBonusMeta(user.id) : null;
 
@@ -159,7 +195,9 @@ export async function POST(request: NextRequest) {
       is_posted: result.is_posted,
       caption: result.caption ?? null,
       posted_at: result.posted_at || new Date().toISOString(),
-      bonus_granted, // 付与されたペルコイン数（0: 未付与）
+      bonus_granted, // 投稿ボーナスで付与されたペルコイン数（0: 未付与）
+      // 他の人のプロンプトで作った作品への上乗せ（0: 対象外）
+      prompt_use_bonus_granted,
       bonus_multiplier: bonusMeta?.bonusMultiplier,
       subscription_plan: bonusMeta?.subscriptionPlan,
       // 付与モーダルの出し分けに使う。フリースタイルのときだけ

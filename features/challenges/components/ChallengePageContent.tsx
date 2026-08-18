@@ -140,18 +140,31 @@ export function ChallengePageContent({
     額が 0 の生成方法は停止中なので、行ごと出さない。
     出すと「+0で達成できないミッション」が並び続ける。
   */
-  const postBonusRows = (
-    [
-      { key: "one_tap_style", label: t("dailyOneTapLabel") },
-      { key: "free", label: t("dailyFreeLabel") },
-    ] as const
-  )
-    .map((row) => ({
-      ...row,
+  const postBonusRows = [
+    ...(
+      [
+        { key: "one_tap_style", label: t("dailyOneTapLabel") },
+        { key: "free", label: t("dailyFreeLabel") },
+      ] as const
+    ).map((row) => ({
+      key: row.key as string,
+      label: row.label,
       amount: postBonusAmounts[row.key] ?? 0,
       received: postBonusReceivedTypes.includes(row.key),
-    }))
-    .filter((row) => row.amount > 0);
+    })),
+    /*
+      他の人のプロンプトで作った作品の投稿。**同じカードの行として並べる。**
+      3つとも「その日つくったものを投稿したら」で規則が同じなので、別カードに
+      すると条件が違うように見えて分かりづらい(実際に運営がそう感じた)。
+      受け取り状況は prompt_use_bonus_grants 由来で、他の行と持ち方が違う。
+    */
+    {
+      key: "prompt_use",
+      label: t("dailyPromptUseLabel"),
+      amount: promptUseBonus.amount,
+      received: promptUseBonus.receivedToday,
+    },
+  ].filter((row) => row.amount > 0);
   const isDailyBonusReceived = postBonusRows.every((row) => row.received);
   const [timeToReset, setTimeToReset] = useState<string>("");
   const bonusDisplay = buildMissionBonusDisplay({
@@ -612,7 +625,11 @@ export function ChallengePageContent({
           <ChallengeCard
             title={t("dailyTitle")}
             description={t("dailyDescription")}
-            percoinAmount={dailyPostBonusAmount}
+            /*
+              見出しは1日に受け取れる**合計**。行を足したらここも動かないと
+              「+40 と書いてあるのに3行で60」になる。
+            */
+            percoinAmount={dailyPostBonusAmount + promptUseBonus.amount}
             headerBadge={missionBoostBadge}
             icon={CalendarCheck2}
             color="blue"
@@ -644,6 +661,17 @@ export function ChallengePageContent({
                       </div>
                     </div>
                   </div>
+                </div>
+              )}
+              {promptUseBonus.amount > 0 && (
+                <div className="flex items-start gap-2 rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-violet-700">
+                  <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
+                  <span>
+                    {t("dailyPromptUseHint", {
+                      amount:
+                        (postBonusAmounts["free"] ?? 0) + promptUseBonus.amount,
+                    })}
+                  </span>
                 </div>
               )}
               {/* ステータス表示（生成方法ごと） */}
@@ -722,51 +750,6 @@ export function ChallengePageContent({
             </div>
           </ChallengeCard>
         </div>
-
-        {/*
-          プロンプト利用ミッション。付与額 0 のときは停止中なのでカードごと出さない。
-
-          **一覧に出すことがこの施策の本体**。付与は生成時に確定するが、
-          「そういう遊び方がある」と気づかせるのが目的で、ペルコインはその合図。
-          クリエイター還元(作る側)の手前に置いて、使う側→作る側の順で読ませる。
-        */}
-        {promptUseBonus.amount > 0 && (
-          <div className="mb-6">
-            <ChallengeCard
-              title={t("promptUseTitle")}
-              description={t("promptUseDescription")}
-              percoinAmount={promptUseBonus.amount}
-              icon={Sparkles}
-              color="purple"
-              className="h-full"
-            >
-              <div className="space-y-3">
-                <div
-                  className={cn(
-                    "relative flex items-center justify-between rounded-lg border p-4 transition-colors",
-                    promptUseBonus.receivedToday
-                      ? "border-green-200 bg-green-50"
-                      : "border-purple-200/80 bg-purple-50/80 pr-7"
-                  )}
-                >
-                  {!promptUseBonus.receivedToday && <RedPulseDot />}
-                  <span className="text-sm font-medium text-slate-700">
-                    {promptUseBonus.receivedToday
-                      ? t("promptUseReceived")
-                      : t("promptUseNotReceived")}
-                  </span>
-                  <span className="text-sm font-bold text-purple-600">
-                    +{promptUseBonus.amount}
-                  </span>
-                </div>
-                <div className="flex items-start gap-2 rounded-lg border border-purple-100 bg-purple-50/50 p-3 text-sm text-purple-700">
-                  <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
-                  <span>{t("promptUseNote")}</span>
-                </div>
-              </div>
-            </ChallengeCard>
-          </div>
-        )}
 
         {/*
           クリエイター還元。運営が付与額を 0 にしている間は停止中なので、

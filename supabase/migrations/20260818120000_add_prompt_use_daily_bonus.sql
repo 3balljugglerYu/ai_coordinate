@@ -1,4 +1,5 @@
--- 誰かの Free プロンプトを使ったら、使った側にもペルコインを付与する（1日1回）。
+-- 他の人の Free プロンプトで作った作品を**投稿したら**、使った側にもペルコインを
+-- 付与する（1日1回）。
 --
 -- 背景: /free のプロンプトを公開する人は増えたが使う人が増えていない
 --   （公開46件・うち使われた22件に対し、使った人は7人）。
@@ -7,6 +8,14 @@
 --
 -- 既に作者側の還元 prompt_usage_reward(2pc) が動いている。本 migration は
 -- **利用者側**の付与を足す。両方が乗るため、自己利用の除外が必須。
+--
+-- **投稿を条件にする理由**: 生成で終わるとその人の中で完結してしまう。
+-- 投稿されて初めてフィードで次の人の目に触れ、原作者にもクレジット経由で
+-- 露出が回り「自分も使ってみよう」が連鎖する。使う人を増やすのが目的なので、
+-- 増やす装置がある投稿の側に報酬を置く。
+-- 既存の投稿ボーナス2種とも規則が揃い（その日つくったものを投稿したら20）、
+-- ミッションの説明が一行で済むという利点もある。
+-- 実データでは派生生成36件のうち投稿は17件(47%)で、残りを投稿へ押し出す力も働く。
 --
 -- 額は 20pc（admin の percoin_bonus_defaults から変更可）。
 -- ⚠️ Low 生成コスト10pc を超えるため、毎日使うだけで net +10pc が積み上がる。
@@ -80,7 +89,7 @@ CREATE TABLE IF NOT EXISTS public.prompt_use_bonus_grants (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   jst_date date NOT NULL,
-  prompt_usage_event_id uuid REFERENCES public.prompt_usage_events(id) ON DELETE SET NULL,
+  generation_id uuid REFERENCES public.generated_images(id) ON DELETE SET NULL,
   credit_transaction_id uuid REFERENCES public.credit_transactions(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   CONSTRAINT prompt_use_bonus_grants_user_day_unique UNIQUE (user_id, jst_date)
@@ -114,15 +123,20 @@ ON CONFLICT (source) DO NOTHING;
 -- 4. 付与RPC
 -- =============================================================================
 
-CREATE OR REPLACE FUNCTION public.grant_prompt_use_daily_bonus(p_event_id uuid)
+CREATE OR REPLACE FUNCTION public.grant_prompt_use_daily_bonus(
+  p_user_id uuid,
+  p_generation_id uuid
+)
 RETURNS integer
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_event public.prompt_usage_events%ROWTYPE;
+  v_post record;
+  v_origin_author uuid;
   v_jst_today date;
+  v_made_on date;
   v_base_amount integer;
   v_multiplier numeric;
   v_requested integer;
@@ -133,26 +147,46 @@ DECLARE
 BEGIN
   v_jst_today := (current_timestamp AT TIME ZONE 'Asia/Tokyo')::date;
 
-  SELECT * INTO v_event
-  FROM public.prompt_usage_events
-  WHERE id = p_event_id;
+  SELECT gi.user_id, gi.is_posted, gi.created_at, gi.image_job_id
+  INTO v_post
+  FROM public.generated_images gi
+  WHERE gi.id = p_generation_id;
 
-  IF NOT FOUND OR v_event.user_id IS NULL THEN
+  IF NOT FOUND THEN
+    RETURN 0;
+  END IF;
+
+  -- 本人の投稿であること。呼び出し側が別人の ID を渡しても通さない
+  IF v_post.user_id IS NULL OR v_post.user_id <> p_user_id THEN
+    RETURN 0;
+  END IF;
+
+  -- 投稿されていること(RPC を直接呼んでも、投稿していなければ受け取れない)
+  IF v_post.is_posted IS NOT TRUE THEN
+    RETURN 0;
+  END IF;
+
+  -- その日つくったものか(投稿ボーナスと同じ規則)
+  v_made_on := (v_post.created_at AT TIME ZONE 'Asia/Tokyo')::date;
+  IF v_made_on IS NULL OR v_made_on <> v_jst_today THEN
+    RETURN 0;
+  END IF;
+
+  -- 他の人のプロンプトから作った作品であること。
+  -- 派生かどうかは image_jobs.origin_post_id が正本(引数を信用しない)。
+  SELECT e.origin_author_id INTO v_origin_author
+  FROM public.prompt_usage_events e
+  WHERE e.image_job_id = v_post.image_job_id;
+
+  IF v_origin_author IS NULL THEN
     RETURN 0;
   END IF;
 
   -- 自己利用は付与しない。作者還元(2pc)と合わせて二重に取れてしまうため、
   -- ここが最重要のファーミング対策。
-  IF v_event.origin_author_id = v_event.user_id THEN
+  IF v_origin_author = p_user_id THEN
     RETURN 0;
   END IF;
-
-  /*
-    原作の公開状態はここで見ない（作者還元とは意図的に違う）。
-    派生生成そのものが原作の利用可否を強制しており（非公開・削除済みでは
-    生成できない）二重チェックになる。加えて、作者の後の操作で利用者の
-    報酬が消えるのは筋が通らない。
-  */
 
   v_base_amount := public.get_percoin_bonus_default('prompt_use_daily');
 
@@ -161,8 +195,8 @@ BEGIN
   END IF;
 
   -- 1日1回。ここを通れた者だけが付与に進む
-  INSERT INTO public.prompt_use_bonus_grants (user_id, jst_date, prompt_usage_event_id)
-  VALUES (v_event.user_id, v_jst_today, p_event_id)
+  INSERT INTO public.prompt_use_bonus_grants (user_id, jst_date, generation_id)
+  VALUES (p_user_id, v_jst_today, p_generation_id)
   ON CONFLICT (user_id, jst_date) DO NOTHING
   RETURNING id INTO v_grant_id;
 
@@ -173,14 +207,11 @@ BEGIN
   -- get_grantable_free_percoin_amount は残高を読むだけでロックを取らない。
   -- 同じ受け手に複数の付与が同時に来ると上限を越えて加算されうるため、
   -- 既存の還元RPC・投稿ボーナスと**同じキー・同じ順序**で直列化する。
-  PERFORM pg_advisory_xact_lock(hashtextextended(v_event.user_id::text, 0));
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
 
-  v_multiplier := public.get_subscription_bonus_multiplier(v_event.user_id);
+  v_multiplier := public.get_subscription_bonus_multiplier(p_user_id);
   v_requested := ceil(v_base_amount * v_multiplier)::integer;
-  v_grant_amount := public.get_grantable_free_percoin_amount(
-    v_event.user_id,
-    v_requested
-  );
+  v_grant_amount := public.get_grantable_free_percoin_amount(p_user_id, v_requested);
 
   -- 無料枠の上限に達している場合は0。枠は消費済みとして扱う(投稿ボーナスと同じ)
   IF v_grant_amount <= 0 THEN
@@ -196,18 +227,18 @@ BEGIN
     user_id,
     amount,
     transaction_type,
+    related_generation_id,
     metadata
   )
   VALUES (
-    v_event.user_id,
+    p_user_id,
     v_grant_amount,
     'prompt_use_bonus',
+    p_generation_id,
     jsonb_build_object(
       'source', 'grant_prompt_use_daily_bonus',
-      'event_id', p_event_id,
-      'origin_post_id', v_event.origin_post_id,
-      'origin_author_id', v_event.origin_author_id,
-      'image_job_id', v_event.image_job_id,
+      'origin_author_id', v_origin_author,
+      'image_job_id', v_post.image_job_id,
       'base_bonus_amount', v_base_amount,
       'bonus_multiplier', v_multiplier,
       'requested_bonus_amount', v_requested,
@@ -221,26 +252,14 @@ BEGIN
   WHERE id = v_grant_id;
 
   INSERT INTO public.free_percoin_batches (
-    user_id,
-    amount,
-    remaining_amount,
-    granted_at,
-    expire_at,
-    source,
-    credit_transaction_id
+    user_id, amount, remaining_amount, granted_at, expire_at, source, credit_transaction_id
   )
   VALUES (
-    v_event.user_id,
-    v_grant_amount,
-    v_grant_amount,
-    now(),
-    v_expire_at,
-    'prompt_use_bonus',
-    v_tx_id
+    p_user_id, v_grant_amount, v_grant_amount, now(), v_expire_at, 'prompt_use_bonus', v_tx_id
   );
 
   INSERT INTO public.user_credits (user_id, balance, paid_balance)
-  VALUES (v_event.user_id, v_grant_amount, 0)
+  VALUES (p_user_id, v_grant_amount, 0)
   ON CONFLICT (user_id) DO UPDATE
   SET balance = public.user_credits.balance + v_grant_amount,
       updated_at = now();
@@ -249,99 +268,16 @@ BEGIN
 END;
 $$;
 
-REVOKE ALL ON FUNCTION public.grant_prompt_use_daily_bonus(uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.grant_prompt_use_daily_bonus(uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.grant_prompt_use_daily_bonus(uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.grant_prompt_use_daily_bonus(uuid) TO service_role;
+REVOKE ALL ON FUNCTION public.grant_prompt_use_daily_bonus(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.grant_prompt_use_daily_bonus(uuid, uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.grant_prompt_use_daily_bonus(uuid, uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.grant_prompt_use_daily_bonus(uuid, uuid) TO service_role;
 
-COMMENT ON FUNCTION public.grant_prompt_use_daily_bonus(uuid) IS
-  '他人の Free プロンプトを使った利用者へ日次1回のボーナスを付与する。自己利用は除外。額は percoin_bonus_defaults.prompt_use_daily(0で停止)';
-
--- =============================================================================
--- 5. 記録時に利用者側の付与も試みる
--- =============================================================================
--- 本文は現行定義(20260806150000)のままで、末尾に利用者側の付与を足しただけ。
--- 作者還元とは受け手も条件も違うので、独立した例外ブロックに入れる。
--- この関数は complete_image_job_with_prompt_secrets から呼ばれ、例外を漏らすと
--- 生成全体が失敗扱い＋返金になる。
-
-CREATE OR REPLACE FUNCTION public.record_prompt_usage(p_image_job_id uuid)
- RETURNS void
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'pg_temp'
-AS $function$
-DECLARE
-  v_job public.image_jobs%ROWTYPE;
-  v_origin_author uuid;
-  v_event_id uuid;
-BEGIN
-  SELECT * INTO v_job
-  FROM public.image_jobs
-  WHERE id = p_image_job_id;
-
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'image job not found: %', p_image_job_id;
-  END IF;
-
-  -- 派生ジョブでなければ記録しない
-  IF v_job.origin_post_id IS NULL THEN
-    RETURN;
-  END IF;
-
-  IF v_job.status <> 'succeeded' THEN
-    RAISE EXCEPTION
-      '成功していないジョブの利用イベントは記録しない: %, status=%',
-      p_image_job_id, v_job.status;
-  END IF;
-
-  -- 原作者は原作行から取る。削除済みでも記録は残す。
-  SELECT user_id INTO v_origin_author
-  FROM public.generated_images
-  WHERE id = v_job.origin_post_id;
-
-  INSERT INTO public.prompt_usage_events (
-    image_job_id,
-    origin_post_id,
-    origin_author_id,
-    user_id
-  )
-  VALUES (
-    p_image_job_id,
-    v_job.origin_post_id,
-    COALESCE(v_origin_author, v_job.user_id),
-    v_job.user_id
-  )
-  ON CONFLICT (image_job_id) DO NOTHING
-  RETURNING id INTO v_event_id;
-
-  -- 還元付与(ADR-006)。
-  -- この関数にはハンドラが無く、例外は complete_image_job_with_prompt_secrets
-  -- 全体を中断させて生成を失敗扱い＋返金にしてしまう。付与だけを内側の
-  -- ブロックに閉じ込め、失敗しても pending のまま生成を成功させる。
-  IF v_event_id IS NOT NULL THEN
-    BEGIN
-      PERFORM public.grant_prompt_usage_reward(v_event_id);
-    EXCEPTION
-      WHEN OTHERS THEN
-        RAISE WARNING 'Failed to grant prompt usage reward (event=%): %', v_event_id, SQLERRM;
-    END;
-
-    -- 利用者側の日次ボーナス。作者還元とは別の受け手・別の条件なので独立させる。
-    -- ここも例外を漏らすと生成全体が失敗＋返金になるため隔離する。
-    BEGIN
-      PERFORM public.grant_prompt_use_daily_bonus(v_event_id);
-    EXCEPTION
-      WHEN OTHERS THEN
-        RAISE WARNING 'Failed to grant prompt use daily bonus (event=%): %', v_event_id, SQLERRM;
-    END;
-  END IF;
-END;
-$function$
-;
+COMMENT ON FUNCTION public.grant_prompt_use_daily_bonus(uuid, uuid) IS
+  '他の人の Free プロンプトで作った作品を投稿したときの日次ボーナス。自己利用は除外。額は percoin_bonus_defaults.prompt_use_daily(0で停止)';
 
 -- =============================================================================
--- 6. ミッション一覧に出すための読み取り
+-- 5. ミッション一覧に出すための読み取り
 -- =============================================================================
 -- percoin_bonus_defaults は RLS で直接読めないため、投稿ボーナスと同じく
 -- RPC 経由で額を渡す。**一覧に出ないとミッションとして機能しない**
@@ -367,8 +303,5 @@ GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO service_role;
 
 COMMENT ON FUNCTION public.get_prompt_use_bonus_amount() IS
   'プロンプト利用ミッションの付与額。0 のときはミッション自体を出さない';
-
-COMMENT ON FUNCTION public.record_prompt_usage(uuid) IS
-  '成功済みジョブから origin / 利用者を導出して冪等記録し、原作者への還元と利用者への日次ボーナスを試みる。引数を信用しない';
 
 COMMIT;
