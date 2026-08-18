@@ -149,6 +149,7 @@ export const ptMessages = {
     feedQuoteRootDescription: "Você pode gerar usando o prompt de {name}",
     feedQuoteDerivedTitle: "Gerado com este prompt",
     feedQuoteStyleTitle: "Gerado com este estilo",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "Ler mais",
     collapse: "Mostrar menos",
     errorTitle: "Erro",
@@ -1562,6 +1563,10 @@ export const ptMessages = {
     guestLoginCtaAction: "Entrar / Cadastrar",
     guestCategoryLoginAction: "Faça login para gerar!",
     styleDripLockedLabel: "Gere para desbloquear",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "Ainda não desbloqueado",
     presetLockedTitle: "Este estilo ainda não foi desbloqueado",
     presetLockedSequentialDescription: "Gere com estilos desta coleção para desbloquear o próximo.",

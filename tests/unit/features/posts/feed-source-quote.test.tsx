@@ -148,6 +148,48 @@ describe("FeedSourceQuote", () => {
     });
   });
 
+  describe("終了した企画", () => {
+    test("会期が終わっていたら理由を出す（無反応のカードにしない）", () => {
+      render(
+        <FeedSourceQuote variant="style" title="8枚目｜エンディング・裏表紙" isEnded />
+      );
+
+      expect(screen.getByTestId("feed-source-quote-ended")).toHaveTextContent(
+        "posts.feedQuoteEndedNote"
+      );
+      // リンク先が無いので押せないままでよい。理由が出ていることが要件
+      expect(screen.queryByTestId("feed-source-quote-link")).not.toBeInTheDocument();
+    });
+
+    test("終了の案内は利用回数より優先する（もう使えないため）", () => {
+      render(
+        <FeedSourceQuote
+          variant="style"
+          title="8枚目｜エンディング・裏表紙"
+          usageCount={9999}
+          isEnded
+        />
+      );
+
+      expect(screen.getByTestId("feed-source-quote-ended")).toBeInTheDocument();
+      expect(screen.queryByText(/styleUsageCount/)).not.toBeInTheDocument();
+    });
+
+    test("開催中は従来どおり利用回数を出す", () => {
+      render(
+        <FeedSourceQuote
+          variant="style"
+          title="夏のマリンコーデ"
+          href="/styles/summer-marine"
+          usageCount={9999}
+        />
+      );
+
+      expect(screen.queryByTestId("feed-source-quote-ended")).not.toBeInTheDocument();
+      expect(screen.getByTestId("feed-source-quote-link")).toBeInTheDocument();
+    });
+  });
+
   test("見出しは種類ごとに変わる", () => {
     const { rerender } = render(<FeedSourceQuote variant="derived" title="みきふく" />);
     expect(screen.getByText("posts.feedQuoteDerivedTitle")).toBeInTheDocument();

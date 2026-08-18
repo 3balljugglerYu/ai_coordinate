@@ -149,6 +149,7 @@ export const arMessages = {
     feedQuoteRootDescription: "يمكنك الإنشاء باستخدام أمر {name}",
     feedQuoteDerivedTitle: "تم الإنشاء بهذا الأمر",
     feedQuoteStyleTitle: "تم الإنشاء بهذا الستايل",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "اقرأ المزيد",
     collapse: "إظهار أقل",
     errorTitle: "خطأ",
@@ -1559,6 +1560,10 @@ export const arMessages = {
     guestLoginCtaAction: "تسجيل الدخول / إنشاء حساب",
     guestCategoryLoginAction: "سجّل الدخول للإنشاء!",
     styleDripLockedLabel: "أنشئ لإلغاء القفل",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "لم يُفتح بعد",
     presetLockedTitle: "هذا الستايل لم يُفتح بعد",
     presetLockedSequentialDescription: "أنشئ بستايلات هذه المجموعة ليُفتح الستايل التالي.",

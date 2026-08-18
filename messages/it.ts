@@ -149,6 +149,7 @@ export const itMessages = {
     feedQuoteRootDescription: "Puoi generare usando il prompt di {name}",
     feedQuoteDerivedTitle: "Generato con questo prompt",
     feedQuoteStyleTitle: "Generato con questo stile",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "Leggi di più",
     collapse: "Mostra meno",
     errorTitle: "Errore",
@@ -1562,6 +1563,10 @@ export const itMessages = {
     guestLoginCtaAction: "Accedi / Registrati",
     guestCategoryLoginAction: "Accedi per generare!",
     styleDripLockedLabel: "Genera per sbloccare",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "Non ancora sbloccato",
     presetLockedTitle: "Questo stile non è ancora sbloccato",
     presetLockedSequentialDescription: "Genera con gli stili di questa collezione per sbloccare il successivo.",

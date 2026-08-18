@@ -34,6 +34,11 @@ interface FeedSourceQuoteProps {
   href?: string | null;
   /** 累計利用回数。下限に届かないときは出さない。 */
   usageCount?: number;
+  /**
+   * 企画の会期が終了していて、もう生成できない状態。
+   * リンクが無いだけだと「押しても反応しないカード」になるため理由を出す。
+   */
+  isEnded?: boolean;
   /** 行動ボタン。原作が使えるときだけ渡す。 */
   action?: React.ReactNode;
 }
@@ -63,6 +68,7 @@ export function FeedSourceQuote({
   description,
   href,
   usageCount = 0,
+  isEnded = false,
   action,
 }: FeedSourceQuoteProps) {
   const t = useTranslations("posts");
@@ -151,7 +157,14 @@ export function FeedSourceQuote({
             {description}
           </p>
         ) : null}
-        {usageText ? (
+        {isEnded ? (
+          <p
+            className="text-[11px] leading-tight text-muted-foreground"
+            data-testid="feed-source-quote-ended"
+          >
+            {t("feedQuoteEndedNote")}
+          </p>
+        ) : usageText ? (
           <p className="text-[11px] leading-tight text-muted-foreground">{usageText}</p>
         ) : null}
       </div>

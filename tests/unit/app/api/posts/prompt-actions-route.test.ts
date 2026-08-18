@@ -171,6 +171,56 @@ describe("POST /api/posts/prompt-actions", () => {
         slug: "summer-marine",
         // 累計回数は /style の探索シートと同じ値を使う
         usageCount: 42,
+        isEnded: false,
+      });
+    });
+
+    test("会期が終わった公開カテゴリは isEnded を返す(押しても無反応にしない)", async () => {
+      mockQuery([oneTapRow], null, [
+        {
+          id: "preset-1",
+          slug: "summer-marine",
+          category: {
+            visibility: "public",
+            collection_display_starts_at: "2000-01-01T00:00:00.000Z",
+            collection_display_ends_at: "2000-01-10T00:00:00.000Z",
+          },
+        },
+      ]);
+
+      const response = await POST(buildRequest({ post_ids: [POST_A] }));
+      const body = await response.json();
+
+      // リンクは出せない(公開ページが 404 になる)が、理由は伝える
+      expect(body.styleLinks[POST_A]).toEqual({
+        presetId: "preset-1",
+        slug: null,
+        usageCount: 0,
+        isEnded: true,
+      });
+    });
+
+    test("開始前の公開カテゴリは isEnded にしない(存在も終了も伝えない)", async () => {
+      mockQuery([oneTapRow], null, [
+        {
+          id: "preset-1",
+          slug: "coming-soon",
+          category: {
+            visibility: "public",
+            collection_display_starts_at: "2999-01-01T00:00:00.000Z",
+            collection_display_ends_at: null,
+          },
+        },
+      ]);
+
+      const response = await POST(buildRequest({ post_ids: [POST_A] }));
+      const body = await response.json();
+
+      expect(body.styleLinks[POST_A]).toEqual({
+        presetId: "preset-1",
+        slug: null,
+        usageCount: 0,
+        isEnded: false,
       });
     });
 
@@ -190,11 +240,13 @@ describe("POST /api/posts/prompt-actions", () => {
       const response = await POST(buildRequest({ post_ids: [POST_A] }));
       const body = await response.json();
 
-      // リンクを出さないと決めたスタイルの人気度は公開しない
+      // リンクを出さないと決めたスタイルの人気度は公開しない。
+      // admin_only は「終了」も言わない(未公開カテゴリの存在が漏れる)
       expect(body.styleLinks[POST_A]).toEqual({
         presetId: "preset-1",
         slug: null,
         usageCount: 0,
+        isEnded: false,
       });
     });
 
@@ -208,6 +260,7 @@ describe("POST /api/posts/prompt-actions", () => {
         presetId: "preset-1",
         slug: null,
         usageCount: 0,
+        isEnded: false,
       });
     });
 

@@ -29,6 +29,24 @@ export function isCollectionDisplayPeriodActive(
 }
 
 /**
+ * 開催期間が**終了した**か（開始前は false）。
+ *
+ * `isCollectionDisplayPeriodActive` が false になる理由は「開始前」と「終了後」の
+ * 2つあり、閲覧者に伝えてよいのは**終了後だけ**。開始前は先行公開・準備中であり、
+ * 「終了しました」と言えば嘘になるうえ、これから始まる企画の存在を漏らす。
+ */
+export function isCollectionDisplayPeriodEnded(
+  period: CollectionDisplayPeriod,
+  now: Date = new Date(),
+): boolean {
+  const ends = period.collectionDisplayEndsAt;
+  if (!ends) return false;
+  const endsAt = new Date(ends);
+  if (Number.isNaN(endsAt.getTime())) return false;
+  return now >= endsAt;
+}
+
+/**
  * 開催期間(開始または終了のいずれか)が設定されているか。
  * 期間が未設定のコレクションシリーズは「常設(コラボ企画)」として扱い、
  * イベント(期間限定の企画)とはみなさない。

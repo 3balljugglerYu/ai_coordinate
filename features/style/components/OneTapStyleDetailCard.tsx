@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Lock } from "lucide-react";
+import { CalendarOff, Lock } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import {
   AlertDialog,
@@ -49,6 +49,12 @@ export function OneTapStyleDetailCard({
   const lockedReason = unlockState?.status === "locked" ? unlockState.reason : null;
   // 未ログインは「開放されていない」ではなく「ログインすれば使える」
   const needsLogin = unlockState?.status === "login_required";
+  /*
+    会期が終わった企画。飛ばしても一覧に無いので黙って別のスタイルに差し替わる。
+    locked と同じく、押した場所で理由を返す（開放待ちではなく「もう終わった」）。
+  */
+  const isEnded = unlockState?.status === "ended";
+  const isBlocked = isLocked || needsLogin || isEnded;
 
   const handleConfirm = () => {
     setIsConfirmOpen(false);
@@ -64,14 +70,20 @@ export function OneTapStyleDetailCard({
         preset={preset}
         alt={t("detailPresetCardAlt", { name: preset.title })}
         onClick={() =>
-          isLocked || needsLogin
-            ? setIsLockedNoticeOpen(true)
-            : setIsConfirmOpen(true)
+          isBlocked ? setIsLockedNoticeOpen(true) : setIsConfirmOpen(true)
         }
         locale={styleCardLocale}
       />
       {/* 押す前に分かるよう、カードの下にも状態を出す */}
-      {isLocked || needsLogin ? (
+      {isEnded ? (
+        <p
+          className="flex items-center gap-1 text-xs font-medium text-gray-500"
+          data-testid="one-tap-style-ended-label"
+        >
+          <CalendarOff className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          {t("presetEndedLabel")}
+        </p>
+      ) : isLocked || needsLogin ? (
         <p
           className="flex items-center gap-1 text-xs font-medium text-amber-700"
           data-testid="one-tap-style-locked-label"
@@ -101,14 +113,20 @@ export function OneTapStyleDetailCard({
         <AlertDialogContent data-testid="one-tap-style-locked-notice">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {needsLogin ? t("presetLoginRequiredTitle") : t("presetLockedTitle")}
+              {isEnded
+                ? t("presetEndedTitle")
+                : needsLogin
+                  ? t("presetLoginRequiredTitle")
+                  : t("presetLockedTitle")}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {needsLogin
-                ? t("presetLoginRequiredDescription")
-                : lockedReason === "prerequisite"
-                  ? t("presetLockedPrerequisiteDescription")
-                  : t("presetLockedSequentialDescription")}
+              {isEnded
+                ? t("presetEndedDescription")
+                : needsLogin
+                  ? t("presetLoginRequiredDescription")
+                  : lockedReason === "prerequisite"
+                    ? t("presetLockedPrerequisiteDescription")
+                    : t("presetLockedSequentialDescription")}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

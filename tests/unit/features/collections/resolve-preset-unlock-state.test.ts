@@ -10,6 +10,7 @@
 
 jest.mock("@/features/style-presets/lib/get-public-style-presets", () => ({
   getPublishedStylePresets: jest.fn(),
+  getPublishedStylePreset: jest.fn(),
 }));
 
 jest.mock("@/features/collections/lib/collection-unlock-server", () => ({
@@ -17,7 +18,10 @@ jest.mock("@/features/collections/lib/collection-unlock-server", () => ({
 }));
 
 import { resolvePresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
-import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
+import {
+  getPublishedStylePreset,
+  getPublishedStylePresets,
+} from "@/features/style-presets/lib/get-public-style-presets";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
@@ -26,6 +30,9 @@ const mockGetPresets = getPublishedStylePresets as jest.MockedFunction<
 >;
 const mockResolveContext = resolveCollectionUnlockContext as jest.MockedFunction<
   typeof resolveCollectionUnlockContext
+>;
+const mockGetPreset = getPublishedStylePreset as jest.MockedFunction<
+  typeof getPublishedStylePreset
 >;
 
 const USER_ID = "user-1";
@@ -60,9 +67,28 @@ function context(generated: number, prerequisites: string[] = []) {
   };
 }
 
+/** 一覧から外れた1件を引き直したときの戻り。会期・公開範囲を指定する。 */
+function buildSinglePreset(category: {
+  visibility?: string;
+  startsAt?: string | null;
+  endsAt?: string | null;
+}) {
+  return {
+    id: "preset-999",
+    category: {
+      key: "collection",
+      visibility: category.visibility ?? "public",
+      collectionDisplayStartsAt: category.startsAt ?? null,
+      collectionDisplayEndsAt: category.endsAt ?? null,
+    },
+  } as unknown as Awaited<ReturnType<typeof getPublishedStylePreset>>;
+}
+
 describe("resolvePresetUnlockState", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    // 既定は「引き直しても見つからない」。ended を返すテストだけ上書きする
+    mockGetPreset.mockResolvedValue(null);
   });
 
   test("ゲートの無いカテゴリは常に開放（問い合わせもしない）", async () => {
@@ -134,6 +160,46 @@ describe("resolvePresetUnlockState", () => {
       resolvePresetUnlockState("preset-999", USER_ID, supabase)
     ).resolves.toEqual({ status: "unknown" });
     expect(mockResolveContext).not.toHaveBeenCalled();
+  });
+
+  test("会期が終わった公開企画は ended（押しても無反応にしない）", async () => {
+    /*
+      終了した企画は投稿カードに名前もサムネイルも出ているので秘匿対象ではない。
+      unknown のまま黙ると、閲覧者には「押しても反応しない」としか映らない。
+    */
+    mockGetPresets.mockResolvedValue(buildPresets(3, { sequentialUnlock: true }));
+    mockGetPreset.mockResolvedValue(
+      buildSinglePreset({ endsAt: "2000-01-01T00:00:00.000Z" })
+    );
+
+    await expect(
+      resolvePresetUnlockState("preset-999", USER_ID, supabase)
+    ).resolves.toEqual({ status: "ended" });
+  });
+
+  test("admin_only は会期が終わっていても unknown（未公開の存在を漏らさない）", async () => {
+    mockGetPresets.mockResolvedValue(buildPresets(3, { sequentialUnlock: true }));
+    mockGetPreset.mockResolvedValue(
+      buildSinglePreset({
+        visibility: "admin_only",
+        endsAt: "2000-01-01T00:00:00.000Z",
+      })
+    );
+
+    await expect(
+      resolvePresetUnlockState("preset-999", USER_ID, supabase)
+    ).resolves.toEqual({ status: "unknown" });
+  });
+
+  test("開始前は unknown（「終了しました」は嘘になり、存在も漏れる）", async () => {
+    mockGetPresets.mockResolvedValue(buildPresets(3, { sequentialUnlock: true }));
+    mockGetPreset.mockResolvedValue(
+      buildSinglePreset({ startsAt: "2999-01-01T00:00:00.000Z" })
+    );
+
+    await expect(
+      resolvePresetUnlockState("preset-999", USER_ID, supabase)
+    ).resolves.toEqual({ status: "unknown" });
   });
 
   test("未ログインは login_required（黙って別スタイルに差し替えない）", async () => {

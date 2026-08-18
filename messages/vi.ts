@@ -149,6 +149,7 @@ export const viMessages = {
     feedQuoteRootDescription: "Bạn có thể tạo bằng prompt của {name}",
     feedQuoteDerivedTitle: "Được tạo bằng prompt này",
     feedQuoteStyleTitle: "Được tạo bằng style này",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "Xem thêm",
     collapse: "Thu gọn",
     errorTitle: "Lỗi",
@@ -1559,6 +1560,10 @@ export const viMessages = {
     guestLoginCtaAction: "Đăng nhập / Đăng ký",
     guestCategoryLoginAction: "Đăng nhập để tạo!",
     styleDripLockedLabel: "Tạo để mở khóa",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "Chưa mở khóa",
     presetLockedTitle: "Style này chưa được mở khóa",
     presetLockedSequentialDescription: "Hãy tạo bằng style trong bộ này để mở khóa style tiếp theo.",

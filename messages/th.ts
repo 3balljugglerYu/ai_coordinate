@@ -149,6 +149,7 @@ export const thMessages = {
     feedQuoteRootDescription: "คุณสร้างได้ด้วยพรอมต์ของ {name}",
     feedQuoteDerivedTitle: "สร้างด้วยพรอมต์นี้",
     feedQuoteStyleTitle: "สร้างด้วยสไตล์นี้",
+    feedQuoteEndedNote: "This campaign has ended",
     readMore: "อ่านต่อ",
     collapse: "ย่อ",
     errorTitle: "ข้อผิดพลาด",
@@ -1558,6 +1559,10 @@ export const thMessages = {
     guestLoginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     guestCategoryLoginAction: "เข้าสู่ระบบเพื่อสร้าง!",
     styleDripLockedLabel: "สร้างเพื่อปลดล็อก",
+    presetEndedLabel: "This campaign has ended",
+    presetEndedTitle: "This campaign has ended",
+    presetEndedDescription:
+      "This style was part of a limited-time campaign and can no longer be used. Take a look at the campaigns running now.",
     presetLockedLabel: "ยังไม่ปลดล็อก",
     presetLockedTitle: "สไตล์นี้ยังไม่ปลดล็อก",
     presetLockedSequentialDescription: "สร้างด้วยสไตล์ในชุดนี้ แล้วสไตล์ถัดไปจะปลดล็อกตามลำดับ",

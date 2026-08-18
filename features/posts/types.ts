@@ -123,6 +123,14 @@ export interface StylePresetLink {
    * /style の探索シートが出しているものと同じ値を使う（正本を増やさない）。
    */
   usageCount: number;
+  /**
+   * 公開されていた企画の**開催期間が終了した**ため使えない状態。
+   *
+   * 未公開・admin_only・開始前は `false` のまま（存在を伝えない）。
+   * 終了した企画は投稿カードに名前もサムネイルも出ているので秘匿対象ではなく、
+   * 「押しても反応しない」を避けるために理由を伝える。
+   */
+  isEnded: boolean;
 }
 
 export interface PostImageResponse {

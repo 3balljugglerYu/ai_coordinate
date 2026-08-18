@@ -408,6 +408,7 @@ export function PostFeedCard({
                   : null
               }
               usageCount={stylePresetLink?.usageCount ?? 0}
+              isEnded={stylePresetLink?.isEnded ?? false}
             />
           </div>
         ) : null}
