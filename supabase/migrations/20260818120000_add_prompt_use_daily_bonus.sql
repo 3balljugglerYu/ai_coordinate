@@ -566,4 +566,18 @@ GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO service_role;
 COMMENT ON FUNCTION public.get_prompt_use_bonus_amount() IS
   'プロンプト利用ミッションの付与額。0 のときはミッション自体を出さない';
 
+-- 新規 RPC(grant_prompt_use_daily_bonus / get_prompt_use_bonus_amount)を
+-- PostgREST のスキーマキャッシュへ明示反映する。
+-- event trigger(pgrst_ddl_watch/pgrst_drop_watch)による自動 reload は即時とは限らず、
+-- 過去に PGRST202 を踏んだ実績があるため明示する(20260805150000 と同じ方針)。
+--
+-- ここを省くと、キャッシュが古い間は**静かに壊れる**:
+--   投稿API   … grant_prompt_use_daily_bonus のエラーを握って 0 を返すため、
+--               投稿は成功するのに利用ミッションの付与だけ落ちる
+--   ミッション一覧 … get_prompt_use_bonus_amount が 0 扱いになり、行ごと消える
+-- どちらも例外にならないので、気づくのが遅れる。
+--
+-- NOTIFY はトランザクショナルで COMMIT 時に配送される。
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;

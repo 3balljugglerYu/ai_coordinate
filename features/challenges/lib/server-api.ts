@@ -69,7 +69,10 @@ export async function getChallengeStatusServer(
   const { data: amounts } = await supabase.rpc("get_post_bonus_amounts");
 
   // プロンプト利用ミッション。額が 0(停止中)なら一覧に出さない。
-  const [{ data: promptUseAmount }, { data: promptUseGrant }] = await Promise.all([
+  const [
+    { data: promptUseAmount, error: promptUseAmountError },
+    { data: promptUseGrant },
+  ] = await Promise.all([
     supabase.rpc("get_prompt_use_bonus_amount"),
     supabase
       .from("prompt_use_bonus_grants")
@@ -78,6 +81,13 @@ export async function getChallengeStatusServer(
       .eq("jst_date", getJstDateString(new Date()))
       .maybeSingle(),
   ]);
+
+  if (promptUseAmountError) {
+    console.error(
+      "Failed to fetch prompt use bonus amount:",
+      promptUseAmountError
+    );
+  }
 
   let streakDays = data?.streak_days || 0;
   const lastStreakLoginAt = data?.last_streak_login_at || null;
@@ -96,6 +106,11 @@ export async function getChallengeStatusServer(
       (g: { generation_type: string }) => g.generation_type
     ),
     postBonusAmounts: (amounts as Record<string, number> | null) ?? {},
+    /*
+      取得に失敗すると 0 = 「ミッションを出さない」になり、一覧から行ごと消える。
+      例外にはならないので、原因(PostgREST のスキーマキャッシュ未更新など)に
+      気づけるようログだけ残す。
+    */
     promptUseBonusAmount: typeof promptUseAmount === "number" ? promptUseAmount : 0,
     promptUseBonusReceivedToday: Boolean(promptUseGrant?.id),
     subscriptionPlan: normalizeSubscriptionPlan(data?.subscription_plan),
