@@ -131,11 +131,6 @@ export interface PostImageResponse {
   caption: string | null;
   posted_at: string;
   bonus_granted?: number; // 投稿ボーナスで付与されたペルコイン数（0: 未付与）
-  /**
-   * 誰かのプロンプトを使ったことによる日次ボーナス（0: 未付与）。
-   * 付与は生成時に確定しており、投稿APIは確定済みの取引を引いて返すだけ。
-   */
-  prompt_use_bonus_granted?: number;
   bonus_multiplier?: number;
   subscription_plan?: "free" | "light" | "standard" | "premium";
   /** 付与モーダルの出し分け用（フリースタイルだけ還元の案内を併記する）。 */

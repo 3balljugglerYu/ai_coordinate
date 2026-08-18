@@ -52,49 +52,6 @@ async function grantDailyPostBonus(
   }
 }
 
-/**
- * この投稿の生成で「誰かのプロンプトを使った日次ボーナス」が付与されていたか。
- *
- * 付与自体は**生成成功時**（record_prompt_usage 経由）に済んでいる。投稿とは
- * タイミングが違うが、伝える場は投稿直後の付与モーダルに寄せる
- * （生成直後は結果画像に集中しており、新しいUIを増やしたくない）。
- * 付与の判定はやり直さず、確定済みの取引を引くだけにする。
- */
-async function getPromptUseBonusForGeneration(
-  userId: string,
-  generationId: string
-): Promise<number> {
-  try {
-    const supabase = createAdminClient();
-    const { data: generation, error: generationError } = await supabase
-      .from("generated_images")
-      .select("image_job_id")
-      .eq("id", generationId)
-      .maybeSingle();
-
-    if (generationError || !generation?.image_job_id) {
-      return 0;
-    }
-
-    const { data, error } = await supabase
-      .from("credit_transactions")
-      .select("amount")
-      .eq("user_id", userId)
-      .eq("transaction_type", "prompt_use_bonus")
-      .eq("metadata->>image_job_id", generation.image_job_id as string)
-      .maybeSingle();
-
-    if (error || !data) {
-      return 0;
-    }
-
-    return typeof data.amount === "number" ? data.amount : 0;
-  } catch (error) {
-    console.error("[Prompt Use Bonus] lookup failed:", error);
-    return 0;
-  }
-}
-
 async function getDailyPostBonusMeta(userId: string): Promise<{
   bonusMultiplier: number;
   subscriptionPlan: "free" | "light" | "standard" | "premium";
@@ -172,11 +129,6 @@ export async function POST(request: NextRequest) {
     const bonus_granted = await grantDailyPostBonus(user.id, result.id!);
     const bonusMeta =
       bonus_granted > 0 ? await getDailyPostBonusMeta(user.id) : null;
-    // 誰かのプロンプトを使って生成した作品なら、その日次ボーナスも伝える
-    const prompt_use_bonus_granted = await getPromptUseBonusForGeneration(
-      user.id,
-      result.id!
-    );
 
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");
@@ -208,9 +160,6 @@ export async function POST(request: NextRequest) {
       caption: result.caption ?? null,
       posted_at: result.posted_at || new Date().toISOString(),
       bonus_granted, // 付与されたペルコイン数（0: 未付与）
-      // 誰かのプロンプトを使ったことによる日次ボーナス（0: 未付与）。
-      // 生成時に確定しているため、ここでは引くだけ
-      prompt_use_bonus_granted,
       bonus_multiplier: bonusMeta?.bonusMultiplier,
       subscription_plan: bonusMeta?.subscriptionPlan,
       // 付与モーダルの出し分けに使う。フリースタイルのときだけ

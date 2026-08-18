@@ -5,6 +5,7 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { normalizeUserFacingGenerationError } from "@/features/generation/lib/normalize-generation-error";
+import { getPromptUseBonusForJob } from "@/features/credits/lib/get-prompt-use-bonus";
 
 type GeneratedImageSummary = {
   id: string;
@@ -163,6 +164,19 @@ export async function GET(request: NextRequest) {
     }
     const firstResultImage = resultImages[0] ?? null;
 
+    /*
+      誰かのプロンプトを使ったことによる日次ボーナス。
+      **付与された瞬間に伝えたい**ので、投稿を待たずにここで返す
+      (投稿しない利用者には一生伝わらないし、その日すでに投稿ボーナスを
+      受け取っていると投稿時のモーダル自体が開かない)。
+    */
+    // 派生ジョブ(origin_post_id あり)のときだけ引く。通常の生成は大多数なので、
+    // ここで絞らないと毎回のポーリングで無駄な問い合わせが増える。
+    const promptUseBonusGranted =
+      job.status === "succeeded" && job.origin_post_id
+        ? await getPromptUseBonusForJob(user.id, job.id as string)
+        : 0;
+
     // ステータス、結果画像URL、エラーメッセージを返却
     return NextResponse.json({
       id: job.id,
@@ -173,6 +187,7 @@ export async function GET(request: NextRequest) {
       resultImages,
       errorMessage: normalizedErrorMessage,
       generatedImageId: firstResultImage?.id ?? null,
+      promptUseBonusGranted,
     });
   } catch (error) {
     console.error("Status check error:", error);

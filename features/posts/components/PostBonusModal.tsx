@@ -42,13 +42,6 @@ interface PostBonusModalProps {
    * 文言に焼き込まず設定値を渡すこと（額を変えたときに嘘になるため）。
    */
   promptUsageRewardAmount: number;
-  /**
-   * 誰かのプロンプトを使ったことによる日次ボーナス（0 なら出さない）。
-   *
-   * 投稿ボーナスとは**別の付与**で、生成時に確定している。ここで併記するのは
-   * 生成直後は結果画像に集中していて読まれないため。
-   */
-  promptUseBonusAmount?: number;
 }
 
 export function PostBonusModal({
@@ -58,7 +51,6 @@ export function PostBonusModal({
   multiplier,
   generationType,
   promptUsageRewardAmount,
-  promptUseBonusAmount = 0,
 }: PostBonusModalProps) {
   const t = useTranslations("posts");
   const [showBurst, setShowBurst] = useState(false);
@@ -110,19 +102,6 @@ export function PostBonusModal({
             </Badge>
           ) : null}
         </div>
-
-        {promptUseBonusAmount > 0 ? (
-          /*
-            「誰かのプロンプトを使った」ぶんの付与。上の数字（投稿ボーナス）とは
-            別口なので、合算せずに別行で出す。合算すると内訳が分からず、
-            額を変えたときに説明できなくなる。
-          */
-          <div className="rounded-xl bg-sky-50/80 p-3 text-sm text-slate-700">
-            <p>
-              {t("postBonusPromptUse", { amount: promptUseBonusAmount })}
-            </p>
-          </div>
-        ) : null}
 
         {showCreatorReward ? (
           /*

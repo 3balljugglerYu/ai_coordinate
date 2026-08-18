@@ -138,6 +138,8 @@ describe("GET /api/generation-status", () => {
       errorMessage:
         "画像生成に失敗しました。しばらくしてから、もう一度お試しください。",
       generatedImageId: null,
+      // 派生ジョブ(origin_post_id あり)でないので常に 0
+      promptUseBonusGranted: 0,
     });
   });
 
@@ -202,6 +204,8 @@ describe("GET /api/generation-status", () => {
       resultImages: [],
       errorMessage: null,
       generatedImageId: null,
+      // 派生ジョブ(origin_post_id あり)でないので常に 0
+      promptUseBonusGranted: 0,
     });
   });
 
@@ -248,6 +252,8 @@ describe("GET /api/generation-status", () => {
       ],
       errorMessage: null,
       generatedImageId: "generated-image-123",
+      // 派生ジョブ(origin_post_id あり)でないので 0
+      promptUseBonusGranted: 0,
     });
   });
 });
