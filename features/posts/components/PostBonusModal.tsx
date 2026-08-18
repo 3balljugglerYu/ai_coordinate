@@ -73,6 +73,14 @@ export function PostBonusModal({
   const showCreatorReward =
     generationType === "free" && !isPromptUse && promptUsageRewardAmount > 0;
 
+  const missionLabel = isPromptUse
+    ? t("postBonusMissionPromptUse")
+    : generationType === "one_tap_style"
+      ? t("postBonusMissionOneTap")
+      : generationType === "free"
+        ? t("postBonusMissionFree")
+        : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       {/*
@@ -85,6 +93,16 @@ export function PostBonusModal({
           <DialogTitle className="text-center text-base font-semibold text-slate-900">
             {t("postBonusTitle")}
           </DialogTitle>
+          {/*
+            どのミッションを達成したのかを見出しの直下に出す。
+            一覧と同じ「ミッション」という言葉で繋ぎ、達成した行が分かるようにする。
+            未対応の生成方法(コーデ等)では出さない。
+          */}
+          {missionLabel ? (
+            <p className="text-center text-sm font-semibold text-violet-600">
+              {missionLabel}
+            </p>
+          ) : null}
         </DialogHeader>
 
         <div className="relative flex flex-col items-center gap-1 py-1">
@@ -115,12 +133,6 @@ export function PostBonusModal({
             </Badge>
           ) : null}
         </div>
-
-        {isPromptUse ? (
-          <p className="rounded-xl bg-violet-50/60 p-3 text-center text-sm text-slate-700">
-            {t("postBonusPromptUseNote")}
-          </p>
-        ) : null}
 
         {showCreatorReward ? (
           /*
