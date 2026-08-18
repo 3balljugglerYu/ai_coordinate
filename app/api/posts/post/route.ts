@@ -163,8 +163,15 @@ export async function POST(request: NextRequest) {
       user.id,
       result.id!
     );
+    /*
+      倍率バッジ用のメタは**どちらかが付与されていれば**取る。
+      bonus_granted だけで判定すると、派生投稿(フリー投稿ボーナスは 0)で
+      上乗せだけ受け取ったとき、有料プランなのにバッジが出ない。
+    */
     const bonusMeta =
-      bonus_granted > 0 ? await getDailyPostBonusMeta(user.id) : null;
+      bonus_granted + prompt_use_bonus_granted > 0
+        ? await getDailyPostBonusMeta(user.id)
+        : null;
 
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");

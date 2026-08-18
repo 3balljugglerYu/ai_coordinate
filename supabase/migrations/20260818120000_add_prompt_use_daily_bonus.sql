@@ -115,6 +115,34 @@ CREATE POLICY "prompt_use_bonus_grants_select_own"
 -- =============================================================================
 -- 0 にすれば admin から停止できる（ミッション自体が存在しない扱いになる）。
 
+-- source ごとに許容範囲が違うため CHECK も source 単位で書かれている。
+-- **ここを忘れると INSERT が 23514 で落ちて migration 全体が適用できない**
+-- (credit_transactions / free_percoin_batches に加えて3つ目の CHECK)。
+-- 日次ミッションは投稿ボーナスと同じ 0〜1000（0 で停止できる）。
+ALTER TABLE public.percoin_bonus_defaults
+  DROP CONSTRAINT IF EXISTS percoin_bonus_defaults_source_amount_check;
+
+ALTER TABLE public.percoin_bonus_defaults
+  ADD CONSTRAINT percoin_bonus_defaults_source_amount_check
+  CHECK (
+    (
+      source = ANY (ARRAY['prompt_usage_reward'::text, 'style_usage_reward'::text])
+      AND amount >= 0 AND amount <= 5
+    )
+    OR (
+      source = ANY (ARRAY['signup_bonus'::text, 'tour_bonus'::text, 'referral'::text, 'daily_post'::text])
+      AND amount >= 1 AND amount <= 1000
+    )
+    OR (
+      source = ANY (ARRAY['daily_post_one_tap'::text, 'daily_post_free'::text, 'daily_post_coordinate'::text, 'daily_post_inspire'::text])
+      AND amount >= 0 AND amount <= 1000
+    )
+    OR (
+      source = 'prompt_use_daily'::text
+      AND amount >= 0 AND amount <= 1000
+    )
+  );
+
 INSERT INTO public.percoin_bonus_defaults (source, amount)
 VALUES ('prompt_use_daily', 20)
 ON CONFLICT (source) DO NOTHING;
@@ -470,6 +498,38 @@ BEGIN
   ON CONFLICT (user_id) DO UPDATE
   SET balance = public.user_credits.balance + v_grant_amount,
       updated_at = now();
+
+  INSERT INTO public.notifications (
+    recipient_id,
+    actor_id,
+    type,
+    entity_type,
+    entity_id,
+    title,
+    body,
+    data,
+    is_read,
+    created_at
+  )
+  VALUES (
+    p_user_id,
+    p_user_id,
+    'bonus',
+    'post',
+    p_generation_id,
+    'デイリー投稿特典獲得！',
+    '今日の投稿で' || v_grant_amount || 'ペルコインを獲得しました！',
+    jsonb_build_object(
+      'bonus_amount', v_grant_amount,
+      'bonus_type', 'daily_post',
+      'posted_at', now(),
+      'generation_type', v_post.generation_type,
+      'base_bonus_amount', v_base_bonus_amount,
+      'bonus_multiplier', v_bonus_multiplier
+    ),
+    false,
+    now()
+  );
 
   RETURN v_grant_amount;
 END;

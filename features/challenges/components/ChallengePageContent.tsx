@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { setHomeViewMode } from "@/features/posts/lib/home-view-preference";
+import { getSubscriptionBonusMultiplier } from "@/features/subscription/subscription-config";
 import { CheckInButton } from "./CheckInButton";
 import { RedPulseDot } from "./RedPulseDot";
 import { StreakDayCard } from "./StreakDayCard";
@@ -659,8 +660,18 @@ export function ChallengePageContent({
             /*
               見出しは1日に受け取れる**合計**。行を足したらここも動かないと
               「+40 と書いてあるのに3行で60」になる。
+
+              dailyPostBonusAmount は倍率込みなので、こちらも倍率を掛ける。
+              素の設定値を足すと、有料プランで実際の付与額とずれる
+              (付与RPC は他の投稿ボーナスと同じく倍率を掛けている)。
             */
-            percoinAmount={dailyPostBonusAmount + promptUseBonus.amount}
+            percoinAmount={
+              dailyPostBonusAmount +
+              Math.ceil(
+                promptUseBonus.amount *
+                  getSubscriptionBonusMultiplier(subscriptionPlan)
+              )
+            }
             headerBadge={missionBoostBadge}
             icon={CalendarCheck2}
             color="blue"

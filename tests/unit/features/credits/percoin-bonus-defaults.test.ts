@@ -150,6 +150,18 @@ describe("percoin-bonus-defaults", () => {
       expect(DAILY_MISSION_MAX_AMOUNT).toBeGreaterThan(USAGE_REWARD_MAX_AMOUNT);
     });
 
+    test("DB の CHECK と同じ範囲になっている", () => {
+      /*
+        percoin_bonus_defaults_source_amount_check は source ごとに範囲が違う。
+        アプリ側の範囲がずれると、保存できるはずの値が 23514 で弾かれる
+        (migration で prompt_use_daily を 0〜1000 の枠に足している)。
+      */
+      expect(getBonusAmountRange("prompt_use_daily")).toEqual({
+        min: 0,
+        max: 1000,
+      });
+    });
+
     test("運営が決めた 20pc を保存できる", () => {
       expect(validateBonusAmount("prompt_use_daily", 20)).toBeNull();
     });
