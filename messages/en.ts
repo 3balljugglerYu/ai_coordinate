@@ -1394,7 +1394,7 @@ export const enMessages = {
     dailyPendingTitle: "Post to earn today's bonus",
     dailyOneTapLabel: "Create with One-Tap Style and post!",
     dailyFreeLabel: "Create with Free Style and post!",
-    dailyPromptUseLabel: "Create with someone's prompt and post!",
+    dailyPromptUseLabel: "Create with another user's prompt and post!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     missionNavigateBody: "Go to this screen?",
     missionNavigateHomeBody: "We'll take you home. Open a post you like and tap “Create with this prompt”.",
