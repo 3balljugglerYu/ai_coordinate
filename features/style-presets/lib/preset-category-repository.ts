@@ -77,6 +77,8 @@ export interface PresetCategoryRow {
   collection_character_path?: string | null;
   collection_display_starts_at?: string | null;
   collection_display_ends_at?: string | null;
+  retrospective_note?: string | null;
+  retrospective_note_updated_at?: string | null;
   progress_modal_frame_path?: string | null;
   progress_modal_frame_width?: number | null;
   progress_modal_frame_height?: number | null;
@@ -152,6 +154,9 @@ export interface PresetCategoryAdmin {
   collectionCharacterPath: string | null;
   collectionDisplayStartsAt: string | null;
   collectionDisplayEndsAt: string | null;
+  /** 企画の振り返り所見(admin のみ)。更新時刻はサーバー側でのみ設定する */
+  retrospectiveNote: string | null;
+  retrospectiveNoteUpdatedAt: string | null;
   progressModalFramePath: string | null;
   progressModalFrameWidth: number | null;
   progressModalFrameHeight: number | null;
@@ -280,6 +285,12 @@ export interface PresetCategoryUpdate {
   collectionCharacterPath?: string | null;
   collectionDisplayStartsAt?: string | null;
   collectionDisplayEndsAt?: string | null;
+  /**
+   * 企画の振り返り所見。空文字・空白のみは null に正規化する。
+   * 更新時刻(`retrospective_note_updated_at`)は**サーバー側で自動設定**するため
+   * 入力には含めない(クライアントの値を信用しない)。
+   */
+  retrospectiveNote?: string | null;
   progressModalFramePath?: string | null;
   progressModalFrameWidth?: number | null;
   progressModalFrameHeight?: number | null;
@@ -364,6 +375,8 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     collectionCharacterPath: row.collection_character_path ?? null,
     collectionDisplayStartsAt: row.collection_display_starts_at ?? null,
     collectionDisplayEndsAt: row.collection_display_ends_at ?? null,
+    retrospectiveNote: row.retrospective_note ?? null,
+    retrospectiveNoteUpdatedAt: row.retrospective_note_updated_at ?? null,
     progressModalFramePath: row.progress_modal_frame_path ?? null,
     progressModalFrameWidth:
       typeof row.progress_modal_frame_width === "number"
@@ -630,6 +643,15 @@ export async function updatePresetCategory(
     payload.collection_display_starts_at = input.collectionDisplayStartsAt;
   if (input.collectionDisplayEndsAt !== undefined)
     payload.collection_display_ends_at = input.collectionDisplayEndsAt;
+  /*
+    所見の更新時刻は**サーバー側でのみ**設定する(クライアントの値は信用しない)。
+    本文と更新時刻は DB の CHECK で対になっているため、必ず同時に書く。
+  */
+  if (input.retrospectiveNote !== undefined) {
+    const note = input.retrospectiveNote?.trim() ? input.retrospectiveNote : null;
+    payload.retrospective_note = note;
+    payload.retrospective_note_updated_at = note ? new Date().toISOString() : null;
+  }
   if (input.progressModalFramePath !== undefined)
     payload.progress_modal_frame_path = input.progressModalFramePath;
   if (input.progressModalFrameWidth !== undefined)
