@@ -97,6 +97,11 @@ export default async function AdminDashboardPage({
           currentTo={collectionRangeBounds.toIso}
           currentFromLabel={formattedCollectionFrom}
           currentToLabel={formattedCollectionTo}
+          /*
+            未指定なら "campaign"(会期が既定)。会期の日付は企画ごとに違い
+            サーバー側でしか解決できないため、生の値のまま API へ渡す。
+          */
+          rangeParam={params.collectionRange ?? "campaign"}
         />
       ) : tab === "one-tap-style" ? (
         <AdminOneTapStyleFocusView

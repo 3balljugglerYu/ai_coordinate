@@ -6,6 +6,8 @@ import {
   getCollectionUuFunnel,
 } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import { getCollectionCompleters } from "@/features/admin-dashboard/lib/get-collection-completions";
+import { getOperatorUserIds } from "@/features/admin-dashboard/lib/get-operator-user-ids";
+import { resolveCampaignPeriod } from "@/features/admin-dashboard/lib/collection-campaign-period";
 import {
   getCustomDashboardRangeBounds,
   parseCustomDashboardRange,
@@ -17,6 +19,9 @@ const PAGE_SIZE = 20;
 /**
  * GET /api/admin/collections?categoryKey=...&page=0
  * 指定シリーズの KPI と達成者一覧(ページング)を返す。admin 専用。
+ *
+ * `range=campaign`(既定)のときは、その企画の表示期間を集計期間にする(ADR-006)。
+ * 表示期間が無い企画は従来どおり直近30日へ落ちる。
  */
 export async function GET(request: NextRequest) {
   await connection();
@@ -31,14 +36,7 @@ export async function GET(request: NextRequest) {
   const categoryKey = request.nextUrl.searchParams.get("categoryKey") ?? "";
   const pageRaw = request.nextUrl.searchParams.get("page") ?? "0";
   const page = Number.parseInt(pageRaw, 10);
-  const range = parseCustomDashboardRange(
-    request.nextUrl.searchParams.get("range") ?? undefined,
-  );
-  const { currentStart, previousStart, now } = getCustomDashboardRangeBounds({
-    range,
-    from: request.nextUrl.searchParams.get("from") ?? undefined,
-    to: request.nextUrl.searchParams.get("to") ?? undefined,
-  });
+  const rangeParam = request.nextUrl.searchParams.get("range") ?? "campaign";
 
   if (!KEY_PATTERN.test(categoryKey)) {
     return NextResponse.json({ error: "invalid categoryKey" }, { status: 400 });
@@ -56,28 +54,83 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  /*
+    会期を既定にする。会期は DB にあるのだから毎回手入力させる理由がない。
+    表示期間が無い / まだ始まっていない企画は resolveCampaignPeriod が null を返し、
+    従来の既定(直近30日)に落ちる。
+  */
+  const wantsCampaignRange = rangeParam === "campaign";
+  const campaignPeriod = wantsCampaignRange
+    ? resolveCampaignPeriod({
+        startsAt: category.collectionDisplayStartsAt,
+        endsAt: category.collectionDisplayEndsAt,
+      })
+    : null;
+
+  // 会期が解決できたら custom として扱う。解決できなければ従来の既定(30d)。
+  const range = parseCustomDashboardRange(
+    campaignPeriod ? "custom" : wantsCampaignRange ? "30d" : rangeParam,
+  );
+  const bounds = getCustomDashboardRangeBounds({
+    range,
+    from:
+      campaignPeriod?.fromIso ??
+      request.nextUrl.searchParams.get("from") ??
+      undefined,
+    to:
+      campaignPeriod?.toIso ??
+      request.nextUrl.searchParams.get("to") ??
+      undefined,
+  });
+
   try {
+    const operatorUserIds = await getOperatorUserIds();
+
     const [kpi, uuFunnel, completers] = await Promise.all([
       getCollectionKpi({
         categoryKey,
         categoryId: category.id,
-        currentStart,
-        previousStart,
-        now,
+        currentStart: bounds.currentStart,
+        previousStart: bounds.previousStart,
+        now: bounds.now,
+        operatorUserIds,
       }),
       getCollectionUuFunnel({
         categoryKey,
         categoryId: category.id,
-        currentStart,
-        now,
+        currentStart: bounds.currentStart,
+        now: bounds.now,
+        operatorUserIds,
       }),
       getCollectionCompleters({
         categoryKey,
         page: Number.isFinite(page) ? page : 0,
         pageSize: PAGE_SIZE,
+        operatorUserIds,
       }),
     ]);
-    return NextResponse.json({ kpi, uuFunnel, completers });
+
+    return NextResponse.json({
+      kpi,
+      uuFunnel,
+      completers,
+      /*
+        黙って引くと「なぜこの数字なのか」が追えなくなるので、引いた事実を返す
+        (ADR-002)。画面は「運営N名を除外中」を常時表示する。
+      */
+      operatorExcludedCount: operatorUserIds.length,
+      // 実際に集計した期間。会期に落ちたのか30日に落ちたのかを画面で示す。
+      resolvedRange: {
+        fromIso: bounds.currentStart.toISOString(),
+        toIso: bounds.now.toISOString(),
+        source: campaignPeriod
+          ? ("campaign" as const)
+          : wantsCampaignRange
+            ? ("fallback" as const)
+            : ("explicit" as const),
+        isOngoing: campaignPeriod?.isOngoing ?? false,
+      },
+    });
   } catch (error) {
     console.error("[admin collections GET] failed:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
