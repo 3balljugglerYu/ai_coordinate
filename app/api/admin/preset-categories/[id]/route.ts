@@ -16,6 +16,8 @@ import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
+/** DB の preset_categories_retrospective_note_length_check と一致させること。 */
+const MAX_RETROSPECTIVE_NOTE_LENGTH = 4000;
 const MAX_USER_GUIDANCE_LENGTH = 1000;
 const MAX_USER_PROMPT_LABEL_LENGTH = 120;
 const MAX_USER_PROMPT_PLACEHOLDER_LENGTH = 200;
@@ -360,6 +362,38 @@ export async function PATCH(
       );
     }
     update.isActive = body.is_active;
+  }
+
+  /*
+    企画の振り返り所見。DB の CHECK と同じ 4000 文字で縛る。
+    UI の maxLength だけだと API 直叩きで無制限に書けてしまう。
+    空文字・空白のみは null に正規化する(リポジトリ側でも同じ正規化をするが、
+    ここで弾いておくと「消したつもりが空文字で残る」経路が生まれない)。
+    更新時刻はリポジトリがサーバー側で入れる(クライアントの値は受け取らない)。
+  */
+  if (body.retrospective_note !== undefined) {
+    if (
+      body.retrospective_note !== null &&
+      typeof body.retrospective_note !== "string"
+    ) {
+      return NextResponse.json(
+        { error: "retrospective_note must be string or null" },
+        { status: 400 },
+      );
+    }
+    const note =
+      typeof body.retrospective_note === "string"
+        ? body.retrospective_note
+        : null;
+    if (note !== null && note.length > MAX_RETROSPECTIVE_NOTE_LENGTH) {
+      return NextResponse.json(
+        {
+          error: `retrospective_note must be <= ${MAX_RETROSPECTIVE_NOTE_LENGTH} chars`,
+        },
+        { status: 400 },
+      );
+    }
+    update.retrospectiveNote = note && note.trim().length > 0 ? note : null;
   }
 
   // コレクション設定(既存値とマージして R-02 を検証)

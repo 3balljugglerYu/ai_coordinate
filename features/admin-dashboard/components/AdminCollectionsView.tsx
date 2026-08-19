@@ -12,12 +12,6 @@ import type {
 import type { CollectionRetentionCohort } from "@/features/admin-dashboard/lib/get-collection-retention";
 import type { CollectionCampaignSummaries } from "@/features/admin-dashboard/lib/get-collection-campaign-summaries";
 
-/*
-  継続率を語るのに最低限ほしい観測日数。これ未満は「暫定」と明示する。
-  値の正本は get-collection-retention.ts の RETENTION_PROVISIONAL_DAYS だが、
-  あちらは server-only のためクライアントから値を import できない(型のみ可)。
-*/
-const RETENTION_PROVISIONAL_DAYS = 7;
 import type { CollectionCompletersPage } from "@/features/admin-dashboard/lib/get-collection-completions";
 import type {
   CustomDashboardRange,
@@ -33,9 +27,21 @@ import {
   resolveMetricAvailability,
 } from "@/features/admin-dashboard/lib/collection-metric-availability";
 import { AdminCollectionRangeControls } from "./AdminCollectionRangeControls";
+import { AdminCollectionRetrospectiveNote } from "./AdminCollectionRetrospectiveNote";
+import {
+  AdminCollectionReading,
+  AdminCollectionSection,
+} from "./AdminCollectionSection";
 import { AdminCsvExportButtons } from "./AdminCsvExportButtons";
 import { AdminCollectionTrendChartPanel } from "./AdminCollectionTrendChartPanel";
 import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects";
+
+/*
+  継続率を語るのに最低限ほしい観測日数。これ未満は「暫定」と明示する。
+  値の正本は get-collection-retention.ts の RETENTION_PROVISIONAL_DAYS だが、
+  あちらは server-only のためクライアントから値を import できない(型のみ可)。
+*/
+const RETENTION_PROVISIONAL_DAYS = 7;
 
 export interface AdminCollectionSeries {
   key: string;
@@ -58,6 +64,14 @@ interface ApiResponse {
   completers: CollectionCompletersPage;
   retention: CollectionRetentionCohort | null;
   summaries: CollectionCampaignSummaries;
+  /** 所見の保存に id が要る(PATCH は id 指定・画面は key しか持たない) */
+  category: {
+    id: string;
+    key: string;
+    displayName: string;
+    retrospectiveNote: string | null;
+    retrospectiveNoteUpdatedAt: string | null;
+  };
   operatorExcludedCount: number;
   resolvedRange: ResolvedRange;
 }
@@ -194,6 +208,7 @@ export function AdminCollectionsView({
   const operatorExcludedCount = data?.operatorExcludedCount ?? 0;
   const retention = data?.retention ?? null;
   const summaries = data?.summaries ?? null;
+  const category = data?.category ?? null;
   const totalPages = completers
     ? Math.max(1, Math.ceil(completers.total / completers.pageSize))
     : 1;
@@ -306,11 +321,34 @@ export function AdminCollectionsView({
         </p>
       ) : null}
 
+
       {loading ? <p className="text-sm text-slate-500">読み込み中…</p> : null}
 
+      {category ? (
+        <AdminCollectionRetrospectiveNote
+          categoryId={category.id}
+          displayName={category.displayName}
+          note={category.retrospectiveNote}
+          noteUpdatedAt={category.retrospectiveNoteUpdatedAt}
+          onSaved={() =>
+            void load(selectedKey, page, rangeParam, currentFrom, currentTo)
+          }
+        />
+      ) : null}
+
       {kpi ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2">
+        <AdminCollectionSection
+          step={1}
+          title="サマリー"
+          description="この企画で何がどれだけ起きたか。前期間比つき。"
+          actions={
+            <AdminCsvExportButtons
+              csv={summaryCsv}
+              filename={summaryCsvFilename}
+            />
+          }
+        >
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <div className="space-y-0.5">
               <p className="text-xs text-slate-500">
                 {resolvedRange
@@ -339,10 +377,6 @@ export function AdminCollectionsView({
                 </p>
               ) : null}
             </div>
-            <AdminCsvExportButtons
-              csv={summaryCsv}
-              filename={summaryCsvFilename}
-            />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {kpiCards.map((c) => {
@@ -396,29 +430,15 @@ export function AdminCollectionsView({
               );
             })}
           </div>
-        </div>
-      ) : null}
-
-      {kpi ? (
-        <div className="rounded-md border border-slate-200 bg-white p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">日別トレンド</h3>
-            <AdminCsvExportButtons csv={trendCsv} filename={trendCsvFilename} />
-          </div>
-          <AdminCollectionTrendChartPanel data={kpi.trend} />
-        </div>
+        </AdminCollectionSection>
       ) : null}
 
       {uuFunnel ? (
-        <div className="rounded-md border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-800">
-            ユニークユーザー・ファネル
-          </h3>
-          <p className="mb-3 mt-1 text-[11px] text-slate-500">
-            生成→コンプリート→シェアのUU歩留まり、および期間内に新規登録したUUのコンプリート到達。
-            訪問UUとゲストは 2026-08-17 の計装以降のぶんだけ数えます（それ以前は0)。
-            ゲストは回線・端末単位の近似のため実人数とは一致しません。
-          </p>
+        <AdminCollectionSection
+          step={2}
+          title="ファネル（ユニークユーザー）"
+          description="訪問から生成・完走・シェアまで、何人が次に進んだか。ゲストは回線・端末単位の近似のため実人数とは一致しません。"
+        >
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {[
               { label: "訪問UU(ログイン)", value: uuFunnel.visitsMemberUu },
@@ -479,23 +499,21 @@ export function AdminCollectionsView({
               </div>
             ))}
           </dl>
-        </div>
+        </AdminCollectionSection>
       ) : null}
 
       {kpi && kpi.outfitCounts.length > 0 ? (
-        <div className="rounded-md border border-slate-200 bg-white p-4">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              柱別の生成数
-            </h3>
+        <AdminCollectionSection
+          step={3}
+          title="ページ別の生成と到達"
+          description="生成数だけでは「人が多い」と「一人が粘った」を区別できません。到達UU（そのページを1回以上作った人数）と並べて読みます。CSV は日別 × ページのクロス集計です。"
+          actions={
             <AdminCsvExportButtons
               csv={outfitDailyCsv}
               filename={outfitDailyCsvFilename}
             />
-          </div>
-          <p className="mb-2 text-[11px] text-slate-500">
-            CSV は「日別 × 柱別」のクロス集計です（1日1柱お披露目の効果検証用）。
-          </p>
+          }
+        >
           {/*
             生成数だけだと「人が多かった」のか「一人が粘った」のかを区別できない。
             到達UU(そのページを1回以上作った人数)を並べて出す。
@@ -543,15 +561,28 @@ export function AdminCollectionsView({
               </tbody>
             </table>
           </div>
-        </div>
+          {kpi.participation.pageReach.length > 1 ? (
+            <AdminCollectionReading>
+              {(() => {
+                const first = kpi.participation.pageReach[0].reachedUu;
+                const last =
+                  kpi.participation.pageReach[
+                    kpi.participation.pageReach.length - 1
+                  ].reachedUu;
+                if (first === 0) return "まだ生成がありません。";
+                return `最初のページに ${first.toLocaleString()}名、最後のページに ${last.toLocaleString()}名（${ratePct(last, first)}）が到達しています。`;
+              })()}
+            </AdminCollectionReading>
+          ) : null}
+        </AdminCollectionSection>
       ) : null}
 
       {kpi && kpi.participation.generatorUu > 0 ? (
-        <div className="rounded-md border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-800">どこで止まったか</h3>
-          <p className="mb-3 mt-1 text-[11px] text-slate-500">
-            参加者が生成したページの種類数ごとの人数。離脱がどこに集中しているかを見ます。
-          </p>
+        <AdminCollectionSection
+          step={4}
+          title="どこで止まったか"
+          description="参加者が生成したページの種類数ごとの人数。離脱がどこに集中しているかを見ます。"
+        >
           <div className="mb-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div className="rounded-md border border-slate-200 p-3">
               <p className="text-xs text-slate-500">生成到達UU</p>
@@ -627,17 +658,40 @@ export function AdminCollectionsView({
               );
             })}
           </ul>
-        </div>
+          <AdminCollectionReading>
+            {(() => {
+              const dist = kpi.participation.pageCountDistribution;
+              const full = dist[dist.length - 1]?.users ?? 0;
+              const total = kpi.participation.generatorUu;
+              const half = Math.ceil(dist.length / 2);
+              const reachedHalf = dist
+                .filter((b) => b.pages >= half)
+                .reduce((sum, b) => sum + b.users, 0);
+              return `生成した ${total.toLocaleString()}名のうち ${full.toLocaleString()}名（${ratePct(full, total)}）が完走。${half}ページ以上まで進んだ ${reachedHalf.toLocaleString()}名に絞ると ${ratePct(full, reachedHalf)} が完走しています。`;
+            })()}
+          </AdminCollectionReading>
+        </AdminCollectionSection>
+      ) : null}
+
+      {kpi ? (
+        <AdminCollectionSection
+          step={5}
+          title="時系列（日別）"
+          description="いつ動いたか。公開・告知の効果と、締切前の駆け込みが見えます。"
+          actions={
+            <AdminCsvExportButtons csv={trendCsv} filename={trendCsvFilename} />
+          }
+        >
+          <AdminCollectionTrendChartPanel data={kpi.trend} />
+        </AdminCollectionSection>
       ) : null}
 
       {retention ? (
-        <div className="rounded-md border border-slate-200 bg-white p-4">
-          <h3 className="text-sm font-semibold text-slate-800">
-            会期終了後の継続
-          </h3>
-          <p className="mb-3 mt-1 text-[11px] text-slate-500">
-            会期のあとに「何かしら生成した」人の割合。企画が定着につながったかを見ます。
-          </p>
+        <AdminCollectionSection
+          step={6}
+          title="会期終了後の継続"
+          description="会期のあとに「何かしら生成した」人の割合。企画が定着につながったかを見ます。"
+        >
           {retention.isCampaignOngoing ? (
             <p className="rounded border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-600">
               開催中のため、継続はまだ判定できません。
@@ -685,7 +739,80 @@ export function AdminCollectionsView({
               </div>
             </>
           )}
-        </div>
+        </AdminCollectionSection>
+      ) : null}
+
+      {summaries && summaries.items.length > 0 ? (
+        <AdminCollectionSection
+          step={7}
+          title="企画の横並び比較"
+          description="カテゴリ単位の通算です（会期の定義が企画ごとに揺れるため）。完走率とページ数の関係が、次回の長さを決める材料になります。"
+          actions={
+            <p className="text-[11px] text-slate-400">
+              最終更新 {formatRangeLabel(summaries.generatedAt)}
+            </p>
+          }
+        >
+          {/*
+            会期ではなくカテゴリ単位の通算。企画ごとに会期の定義が揺れており
+            (神コレは表示期間より前から生成が始まっている)、会期で切ると比較にならない。
+          */}
+          <p className="mb-3 text-[11px] text-slate-500">
+            カテゴリ単位の通算です（会期の定義が企画ごとに揺れるため）。
+            完走率とページ数の関係が、次回の長さを決める材料になります。
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-sm">
+              <thead>
+                <tr className="border-b border-slate-200 text-left text-[11px] text-slate-500">
+                  <th className="py-1.5 pr-3 font-medium">企画</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">ページ数</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">生成数</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">生成UU</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">完走</th>
+                  <th className="py-1.5 pr-3 text-right font-medium">完走率</th>
+                  <th className="py-1.5 text-right font-medium">シェアUU</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summaries.items.map((item) => (
+                  <tr
+                    key={item.categoryKey}
+                    className={
+                      item.categoryKey === selectedKey
+                        ? "border-b border-slate-100 bg-violet-50/60 last:border-0"
+                        : "border-b border-slate-100 last:border-0"
+                    }
+                  >
+                    <td className="py-1.5 pr-3 text-slate-700">
+                      {item.displayName}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                      {item.pageCount.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                      {item.generations.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                      {item.generatorUu.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums">
+                      {item.completerUu.toLocaleString()}
+                    </td>
+                    <td className="py-1.5 pr-3 text-right tabular-nums font-semibold text-slate-900">
+                      {item.completionRatePct !== null
+                        ? `${item.completionRatePct.toLocaleString("ja-JP")}%`
+                        : "N/A"}
+                    </td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {item.shareUu.toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AdminCollectionSection>
       ) : null}
 
       {completers ? (
@@ -758,78 +885,6 @@ export function AdminCollectionsView({
               </button>
             </div>
           ) : null}
-        </div>
-      ) : null}
-
-      {summaries && summaries.items.length > 0 ? (
-        <div className="rounded-md border border-slate-200 bg-white p-4">
-          <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-            <h3 className="text-sm font-semibold text-slate-800">
-              企画の横並び比較
-            </h3>
-            <p className="text-[11px] text-slate-400">
-              最終更新 {formatRangeLabel(summaries.generatedAt)}
-            </p>
-          </div>
-          {/*
-            会期ではなくカテゴリ単位の通算。企画ごとに会期の定義が揺れており
-            (神コレは表示期間より前から生成が始まっている)、会期で切ると比較にならない。
-          */}
-          <p className="mb-3 text-[11px] text-slate-500">
-            カテゴリ単位の通算です（会期の定義が企画ごとに揺れるため）。
-            完走率とページ数の関係が、次回の長さを決める材料になります。
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-[11px] text-slate-500">
-                  <th className="py-1.5 pr-3 font-medium">企画</th>
-                  <th className="py-1.5 pr-3 text-right font-medium">ページ数</th>
-                  <th className="py-1.5 pr-3 text-right font-medium">生成数</th>
-                  <th className="py-1.5 pr-3 text-right font-medium">生成UU</th>
-                  <th className="py-1.5 pr-3 text-right font-medium">完走</th>
-                  <th className="py-1.5 pr-3 text-right font-medium">完走率</th>
-                  <th className="py-1.5 text-right font-medium">シェアUU</th>
-                </tr>
-              </thead>
-              <tbody>
-                {summaries.items.map((item) => (
-                  <tr
-                    key={item.categoryKey}
-                    className={
-                      item.categoryKey === selectedKey
-                        ? "border-b border-slate-100 bg-violet-50/60 last:border-0"
-                        : "border-b border-slate-100 last:border-0"
-                    }
-                  >
-                    <td className="py-1.5 pr-3 text-slate-700">
-                      {item.displayName}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums">
-                      {item.pageCount.toLocaleString()}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums">
-                      {item.generations.toLocaleString()}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums">
-                      {item.generatorUu.toLocaleString()}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums">
-                      {item.completerUu.toLocaleString()}
-                    </td>
-                    <td className="py-1.5 pr-3 text-right tabular-nums font-semibold text-slate-900">
-                      {item.completionRatePct !== null
-                        ? `${item.completionRatePct.toLocaleString("ja-JP")}%`
-                        : "N/A"}
-                    </td>
-                    <td className="py-1.5 text-right tabular-nums">
-                      {item.shareUu.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
         </div>
       ) : null}
     </div>

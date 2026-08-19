@@ -127,6 +127,17 @@ export async function GET(request: NextRequest) {
       retention,
       summaries,
       /*
+        所見の保存は既存の preset-categories PATCH を使う(監査ログもそちらに乗る)。
+        あちらは id 指定なので、key しか持たない画面のために id を返す。
+      */
+      category: {
+        id: category.id,
+        key: category.key,
+        displayName: category.displayNameJa,
+        retrospectiveNote: category.retrospectiveNote,
+        retrospectiveNoteUpdatedAt: category.retrospectiveNoteUpdatedAt,
+      },
+      /*
         黙って引くと「なぜこの数字なのか」が追えなくなるので、引いた事実を返す
         (ADR-002)。画面は「運営N名を除外中」を常時表示する。
       */
