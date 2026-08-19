@@ -19,6 +19,7 @@ import {
   normalizePromptActionPostIds,
   revalidatePromptActions,
 } from "@/features/posts/lib/prompt-action-cache";
+import { STYLE_PRESETS_CACHE_TAG } from "@/features/style-presets/lib/revalidate-style-presets";
 
 const mockCacheLife = cacheLife as jest.MockedFunction<typeof cacheLife>;
 const mockCacheTag = cacheTag as jest.MockedFunction<typeof cacheTag>;
@@ -86,7 +87,7 @@ describe("キャッシュの宣言", () => {
 
   test("共有タグと minutes で宣言する(失効させる側とタグが揃っている)", async () => {
     /*
-      require はモジュール評価を beforeEach の後にするため。
+      import はモジュール評価を beforeEach の後にするため。
       getPromptActions は解決本体を呼ぶので、DB 到達前に落ちてよい
       （ここで見たいのは cacheTag/cacheLife の宣言だけ）。
     */
@@ -98,5 +99,27 @@ describe("キャッシュの宣言", () => {
 
     expect(mockCacheTag).toHaveBeenCalledWith(PROMPT_ACTIONS_CACHE_TAG);
     expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+  });
+
+  /*
+    styleLinks はプリセットの公開状態・表示期間から slug と isEnded を決めている。
+    タグを付けないと、非公開化や企画終了の直後にフィードの引用カードだけ古い slug を
+    持ち続け、押すと /styles/[slug] が 404 になる。
+    内側の getStyleGenerateTotalCounts も "use cache" だが、内側のタグは外側の
+    エントリには伝播しないので、ここで明示する必要がある。
+  */
+  test("⭐style-presets タグも持つ(プリセットの公開状態変更に連動する)", async () => {
+    const { getPromptActions } = await import(
+      "@/features/posts/lib/prompt-action-cache"
+    );
+
+    await getPromptActions([POST_A]).catch(() => undefined);
+
+    expect(mockCacheTag).toHaveBeenCalledWith(STYLE_PRESETS_CACHE_TAG);
+  });
+
+  test("失効させる側と同じタグ文字列を使っている", () => {
+    // literal が散らばると、片方だけ変えても気づけない
+    expect(STYLE_PRESETS_CACHE_TAG).toBe("style-presets");
   });
 });

@@ -9,6 +9,7 @@ import {
   isCollectionDisplayPeriodEnded,
 } from "@/features/collections/lib/collection-display-period";
 import { getStyleGenerateTotalCounts } from "@/features/style/lib/style-popularity";
+import { STYLE_PRESETS_CACHE_TAG } from "@/features/style-presets/lib/revalidate-style-presets";
 import type { PromptActionSummary, StylePresetLink } from "../types";
 
 /**
@@ -32,10 +33,19 @@ import type { PromptActionSummary, StylePresetLink } from "../types";
  *
  * ## 鮮度
  *
- * `cacheLife("minutes")` に加え、投稿取消・モデレーション判定で明示的に
- * 失効させる。この2つは `isAvailable` を true → false へ落とすので、古い値を
- * 返すと「押せたのに作れない」になる。逆向き（作れるようになった）は CTA が
- * 少し遅れて出るだけなので、自然失効に任せて無効化の頻度を上げない。
+ * `cacheLife("minutes")` に加え、**`isAvailable` を true → false へ落とす操作**で
+ * 明示的に失効させる。古い値を返すと「押せたのに作れない」になるため。
+ *
+ * - 投稿取消（`DELETE /api/posts/[id]`）
+ * - モデレーション判定（admin decision）
+ * - 通報による pending 化（状態が変わったときだけ）
+ * - 退会申請（`request_account_deletion`。原作者が削除予定だと利用不可になる）
+ *
+ * 逆向き（作れるようになった）は CTA が少し遅れて出るだけなので、自然失効に
+ * 任せて共有キャッシュを無駄に捨てない。
+ *
+ * `styleLinks` はプリセットの公開状態にも依存するので `style-presets` タグも
+ * 持たせる（[[getPromptActions]] のコメントを参照）。
  */
 export const PROMPT_ACTIONS_CACHE_TAG = "prompt-actions";
 
@@ -88,6 +98,20 @@ export async function getPromptActions(
 ): Promise<PromptActionsPayload> {
   "use cache";
   cacheTag(PROMPT_ACTIONS_CACHE_TAG);
+  /*
+    styleLinks は `style_presets.status` とカテゴリの `visibility` / 表示期間から
+    slug・isEnded・利用回数を決めている。既存の管理APIはスタイルやカテゴリの
+    更新で `revalidateStylePresets()`(= `style-presets` タグ)を呼ぶので、
+    こちらにも同じタグを付けて連動させる。
+
+    内側で呼んでいる `getStyleGenerateTotalCounts` も "use cache" だが、
+    **内側のタグは外側のエントリには伝播しない**。ここで明示する必要がある。
+
+    付けないと、プリセットを非公開化したり企画終了を反映した直後に、
+    フィードの引用カードだけ古い slug を数分間持ち続け、押すと
+    `/styles/[slug]` が 404 になる（あるいは「終了しました」表示が遅れる）。
+  */
+  cacheTag(STYLE_PRESETS_CACHE_TAG);
   cacheLife("minutes");
 
   return resolvePromptActions(postIds);
