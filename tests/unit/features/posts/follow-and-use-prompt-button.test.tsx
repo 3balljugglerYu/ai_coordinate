@@ -118,9 +118,17 @@ describe("FollowAndUsePromptButton", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  /*
+    follow-status/batch は「失敗したが依存配列が変わらず再取得されない」
+    「セッションを解決できず 200 で空マップが返る」のいずれでも undefined のまま
+    固定される。ここで待たせる設計に戻すと、ボタンが永久スピナーで操作不能になる。
+  */
   describe("フォロー状態が未取得のあいだ", () => {
-    test("押せない(既フォローの人が follow API の 400 で詰まるのを防ぐ)", async () => {
-      const fetchMock = mockFetch({});
+    test("⭐押せる(待たせると永久スピナーになるため)", async () => {
+      mockFetch({
+        "/follow": () => jsonResponse({ success: true, created: true }),
+        "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
+      });
       render(
         <FollowAndUsePromptButton
           summary={buildSummary()}
@@ -130,37 +138,39 @@ describe("FollowAndUsePromptButton", () => {
       );
 
       const button = screen.getByTestId("feed-use-prompt-button");
-      expect(button).toBeDisabled();
+      expect(button).not.toBeDisabled();
 
-      fireEvent.click(button);
-      expect(fetchMock).not.toHaveBeenCalled();
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      expect(await screen.findByTestId("generation-sheet")).toBeInTheDocument();
     });
 
-    test("取得できたら押せるようになる", async () => {
+    test("未フォローに倒す(フォロー済みでも冪等に成功してシートが開く)", async () => {
       mockFetch({
+        "/follow": () => jsonResponse({ success: true, created: false }),
         "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
       });
-      const { rerender } = render(
+      render(
         <FollowAndUsePromptButton
           summary={buildSummary()}
           currentUserId="viewer-1"
           isFollowingAuthor={undefined}
         />
       );
-      expect(screen.getByTestId("feed-use-prompt-button")).toBeDisabled();
 
-      rerender(
-        <FollowAndUsePromptButton
-          summary={buildSummary()}
-          currentUserId="viewer-1"
-          isFollowingAuthor
-        />
-      );
-      expect(screen.getByTestId("feed-use-prompt-button")).not.toBeDisabled();
+      expect(screen.getByText("posts.feedFollowAndUsePrompt")).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("feed-use-prompt-button"));
+      });
+
+      expect(await screen.findByTestId("generation-sheet")).toBeInTheDocument();
+      expect(toastMock).not.toHaveBeenCalled();
     });
 
-    test("本人の投稿はフォロー不要なので押せる", () => {
-      mockFetch({
+    test("本人の投稿はフォローを呼ばずに開く", async () => {
+      const fetchMock = mockFetch({
         "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
       });
       render(
@@ -171,6 +181,14 @@ describe("FollowAndUsePromptButton", () => {
         />
       );
       expect(screen.getByTestId("feed-use-prompt-button")).not.toBeDisabled();
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("feed-use-prompt-button"));
+      });
+
+      expect(
+        fetchMock.mock.calls.some((call) => String(call[0]).includes("/follow"))
+      ).toBe(false);
     });
   });
 
@@ -358,6 +376,31 @@ describe("FollowAndUsePromptButton", () => {
         expect(trackFollowFromCard).toHaveBeenCalledWith("origin-1");
       });
       expect(trackPromptUseTapped).toHaveBeenCalledWith("origin-1");
+    });
+
+    test("⭐すでにフォロー済みだった場合はフォロー成立を記録しない", async () => {
+      /*
+        フォロー状態が未取得のまま既フォローの人が押すと、API は冪等に成功する。
+        ここを数えると「カードからのフォロー」が実際より多く出る。
+      */
+      mockFetch({
+        "/follow": () => jsonResponse({ success: true, created: false }),
+        "/api/users/me/subscription-plan": () => jsonResponse({ plan: "free" }),
+      });
+      render(
+        <FollowAndUsePromptButton
+          summary={buildSummary()}
+          currentUserId="viewer-1"
+          isFollowingAuthor={undefined}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId("feed-use-prompt-button"));
+      });
+
+      await waitFor(() => expect(trackPromptUseTapped).toHaveBeenCalled());
+      expect(trackFollowFromCard).not.toHaveBeenCalled();
     });
 
     test("フォローに失敗したら何も記録しない", async () => {
