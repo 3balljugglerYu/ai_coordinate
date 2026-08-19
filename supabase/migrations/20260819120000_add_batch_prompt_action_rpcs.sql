@@ -89,9 +89,16 @@ COMMENT ON FUNCTION public.validate_derived_prompt_sources(uuid[], uuid[]) IS
 -- ===============================================
 -- 2. 利用数をまとめて数える
 -- ===============================================
--- 単体版と同じ条件（原作者自身の生成は数えない）を GROUP BY で一度に出す。
--- 利用が0件の原作は行が返らない。呼び出し側が0を既定にすること
--- （行を作るために左結合を足すと、入力の重複除去まで持ち込むことになる）。
+-- こちらも**単体版を呼ぶだけ**にする。集計 SQL を書き写すと数え方がずれる。
+--
+-- 実際にこの migration を書いたとき、20260730200100 の定義
+-- （count(DISTINCT user_id) = ユニーク利用者数）を写してしまい、
+-- 20260811100000 で「累計利用回数」count(*) へ変わっていたことを見落とした。
+-- そのまま出していたら、カードの数字が全件で静かに小さくなっていた
+-- （実データで 5 → 2）。数え方の正本は単体版ただ1つに保つ。
+--
+-- 原作ごとの関数呼び出しは DB 内で閉じるので、削りたい**ネットワーク往復**は
+-- 1回のままである。入力は重複を除いてから渡すこと。
 
 CREATE OR REPLACE FUNCTION public.get_prompt_usage_counts(
   p_origin_post_ids uuid[]
@@ -106,17 +113,13 @@ STABLE
 SET search_path = public, pg_temp
 AS $function$
   SELECT
-    e.origin_post_id,
-    count(DISTINCT e.user_id)::integer AS usage_count
-  FROM public.prompt_usage_events AS e
-  WHERE e.origin_post_id = ANY(p_origin_post_ids)
-    -- 原作者自身の生成は数えない（単体版と同じ条件）
-    AND e.user_id <> e.origin_author_id
-  GROUP BY e.origin_post_id;
+    t.origin_post_id,
+    public.get_prompt_usage_count(t.origin_post_id) AS usage_count
+  FROM unnest(p_origin_post_ids) AS t(origin_post_id);
 $function$;
 
 COMMENT ON FUNCTION public.get_prompt_usage_counts(uuid[]) IS
-  '一覧用。原作ごとのユニーク利用者数をまとめて返す。原作者自身は除外。利用0の原作は行を返さない。service-only';
+  '一覧用。get_prompt_usage_count を原作ごとに呼ぶだけのラッパー。数え方の正本は単体版。service-only';
 
 -- ===============================================
 -- 3. EXECUTE 権限
@@ -153,7 +156,7 @@ DECLARE
   v_author uuid;
   v_single boolean;
   v_batch boolean;
-  v_count integer;
+  v_mismatch integer;
 BEGIN
   -- 実在しない原作は利用不可
   SELECT is_available INTO v_batch
@@ -195,13 +198,26 @@ BEGIN
         '原作 % の判定が単体版(%)とバッチ版(%)で食い違う', v_post, v_single, v_batch;
     END IF;
 
-    SELECT COALESCE(usage_count, 0) INTO v_count
-    FROM public.get_prompt_usage_counts(ARRAY[v_post]);
+  END IF;
 
-    IF COALESCE(v_count, 0)
-       IS DISTINCT FROM public.get_prompt_usage_count(v_post) THEN
-      RAISE EXCEPTION '原作 % の利用数が単体版とバッチ版で食い違う', v_post;
-    END IF;
+  /*
+    利用数は**実データを広く**突き合わせる。1件だけだと、利用イベントが
+    無い原作を引いてしまい 0 = 0 で通ってしまう。実際この検証を1件で書いて
+    いたときに数え方の取り違え（人数 と 累計回数）を取りこぼしかけた。
+  */
+  SELECT count(*) INTO v_mismatch
+  FROM (
+    SELECT DISTINCT origin_post_id
+    FROM public.prompt_usage_events
+    LIMIT 200
+  ) AS s
+  JOIN public.get_prompt_usage_counts(
+    ARRAY(SELECT DISTINCT origin_post_id FROM public.prompt_usage_events LIMIT 200)
+  ) AS b ON b.origin_post_id = s.origin_post_id
+  WHERE b.usage_count IS DISTINCT FROM public.get_prompt_usage_count(s.origin_post_id);
+
+  IF v_mismatch > 0 THEN
+    RAISE EXCEPTION '利用数が単体版とバッチ版で食い違う原作が % 件ある', v_mismatch;
   END IF;
 
   RAISE NOTICE '一覧用のバッチ RPC を追加した';

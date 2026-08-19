@@ -102,10 +102,10 @@ function createSupabaseStub(
       if (name === "get_prompt_usage_counts") {
         const typed = args as { p_origin_post_ids: string[] };
         return Promise.resolve({
-          // 利用0件の原作は行が返らない。それを再現する
-          data: typed.p_origin_post_ids
-            .filter(() => (options.usageCount ?? 3) > 0)
-            .map((id) => ({ origin_post_id: id, usage_count: options.usageCount ?? 3 })),
+          data: typed.p_origin_post_ids.map((id) => ({
+            origin_post_id: id,
+            usage_count: options.usageCount ?? 3,
+          })),
           error: null,
         });
       }
@@ -501,7 +501,7 @@ describe("resolveSourcePromptSummaries", () => {
     errorSpy.mockRestore();
   });
 
-  it("利用数の行が返らない原作は0にする(カードは描ける)", async () => {
+  it("利用数が0の原作でもカードは描ける", async () => {
     const { supabase } = createSupabaseStub({ usageCount: 0 });
 
     const summaries = await resolveSourcePromptSummaries(
@@ -511,6 +511,23 @@ describe("resolveSourcePromptSummaries", () => {
 
     expect(summaries[ORIGIN_A].usageCount).toBe(0);
     expect(summaries[ORIGIN_A].isAvailable).toBe(true);
+  });
+
+  it("利用数は原作ごとの値を取り違えずに配る", async () => {
+    const { supabase } = createSupabaseStub();
+
+    const summaries = await resolveSourcePromptSummaries(
+      [
+        { id: ORIGIN_A, user_id: AUTHOR_ID, generation_type: "free", source_post_id: null },
+        { id: ORIGIN_B, user_id: AUTHOR_ID, generation_type: "free", source_post_id: null },
+      ],
+      supabase
+    );
+
+    expect(summaries[ORIGIN_A].originPostId).toBe(ORIGIN_A);
+    expect(summaries[ORIGIN_B].originPostId).toBe(ORIGIN_B);
+    expect(summaries[ORIGIN_A].usageCount).toBe(3);
+    expect(summaries[ORIGIN_B].usageCount).toBe(3);
   });
 
   it("空配列なら問い合わせない", async () => {

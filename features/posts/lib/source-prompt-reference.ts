@@ -396,8 +396,11 @@ async function fetchIntrinsicAvailabilities(
 /**
  * 利用数をまとめて数える（一覧のバッチ解決用）。
  *
- * 利用が0件の原作は行が返らない。呼び出し側が0を既定にする。
- * 読めなければ空を返す（人数が出ないだけでカードは描ける）。
+ * 単体版の `get_prompt_usage_count` を原作ごとに呼ぶラッパー RPC を叩く。
+ * 集計 SQL を書き写さないのは、数え方がずれるのを防ぐため
+ * （実際にこの値は「ユニーク利用者数」から「累計利用回数」へ変わっている）。
+ *
+ * 読めなければ空を返す（数字が出ないだけでカードは描ける）。
  */
 async function fetchUsageCounts(
   supabase: SupabaseClient,
@@ -583,7 +586,8 @@ async function fetchUsageCount(
   prefetched?: Map<string, number>
 ): Promise<number> {
   if (prefetched) {
-    // 利用が0件の原作は行が返らないので、無い＝0。個別に引き直さない
+    // まとめて引いた結果に無い＝バッチ RPC が失敗している。個別に引き直さず
+    // 0 にする（数字が出ないだけでカードは描ける）
     return prefetched.get(originPostId) ?? 0;
   }
 
