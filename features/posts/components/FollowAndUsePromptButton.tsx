@@ -69,16 +69,21 @@ export function FollowAndUsePromptButton({
   // フォロー判定の対象は原作者。派生投稿が並んでいても原作者を見る。
   const hasAccess = isOwnPrompt || isFollowingAuthor === true;
   /*
-    フォロー状態がまだ取れていない間は押させない。
+    フォロー状態が未取得(`undefined`)でも押させる。
 
-    サマリ(prompt-actions)とフォロー状態(follow-status/batch)は別々に届くので、
-    その隙間で `undefined` のまま「フォローして生成する」を出してしまう。
-    既に原作者をフォローしている人がここを押すと、follow API が
-    FOLLOW_ALREADY_EXISTS(400) を返し、シートが開かずエラーになる。
-    未ログイン(AuthModal へ流す)と本人(フォロー不要)はこの限りではない。
+    以前はここで押下を止めていた。サマリ(prompt-actions)とフォロー状態
+    (follow-status/batch)は別々に届くので、その隙間でフォロー済みの人が押すと
+    follow API が 400 を返してシートが開かなかったためである。
+    その follow API を冪等にしたので、止める理由がなくなった。
+
+    止め続けるほうが害が大きい。follow-status/batch は
+    「失敗したが依存配列が変わらず再取得されない」「セッションを解決できず
+    200 で空マップが返る」のいずれでも `undefined` のまま固定されるので、
+    待たせる設計だとボタンが永久にスピナーのまま操作不能になる。
+
+    未取得のときは「未フォロー」に倒す(ラベルは『フォローして生成する』)。
+    実際はフォロー済みでも、押せば冪等に成功してシートが開く。
   */
-  const isFollowStatusPending =
-    !!currentUserId && !isOwnPrompt && isFollowingAuthor === undefined;
 
   // 原作が使えないときは導線ごと出さない。押しても解決しようがない。
   if (!summary.isAvailable || !authorId) {
@@ -118,7 +123,7 @@ export function FollowAndUsePromptButton({
   };
 
   const handleClick = async () => {
-    if (isWorking || isFollowStatusPending) {
+    if (isWorking) {
       return;
     }
     if (!currentUserId) {
@@ -136,15 +141,22 @@ export function FollowAndUsePromptButton({
       const response = await fetch(`/api/users/${authorId}/follow`, {
         method: "POST",
       });
+      const result = (await response.json().catch(() => null)) as
+        | { error?: string; created?: boolean }
+        | null;
       if (!response.ok) {
-        const error = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        throw new Error(error?.error || followT("followFailed"));
+        throw new Error(result?.error || followT("followFailed"));
       }
 
       onFollowChange?.(authorId, true);
-      trackFollowFromCard(summary.originPostId);
+      /*
+        フォロー状態が未取得のままフォロー済みの人が押すこともある。その場合
+        API は冪等に成功するが実際には増えていないので、計測には含めない
+        (`created` が無い古いレスポンスは、増えたものとして数える)。
+      */
+      if (result?.created !== false) {
+        trackFollowFromCard(summary.originPostId);
+      }
       await openSheet();
     } catch (error) {
       // 失敗したらシートは開かない。開くと生成APIで弾かれて二度手間になる。
@@ -168,11 +180,11 @@ export function FollowAndUsePromptButton({
         <button
           type="button"
           onClick={handleClick}
-          disabled={isWorking || isFollowStatusPending}
+          disabled={isWorking}
           data-testid="feed-use-prompt-button"
           className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
         >
-          {isWorking || isFollowStatusPending ? (
+          {isWorking ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
           ) : hasAccess ? (
             <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
