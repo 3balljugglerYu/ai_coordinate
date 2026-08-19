@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag, revalidatePath } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { unpostImageServer } from "@/features/generation/lib/server-database";
+import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 
@@ -42,6 +43,12 @@ export async function DELETE(
     revalidateTag(`user-profile-${user.id}`, "max");
     revalidateTag(`my-page-${user.id}`, "max");
     revalidateTag(`my-page-image-${user.id}-${id}`, { expire: 0 });
+    /*
+      フィードの CTA サマリは閲覧者をまたいで共有しているので、投稿取消は
+      明示的に失効させる。放っておくと最大で cacheLife("minutes") のあいだ
+      「使える」と返し続け、押した人が生成 API で弾かれる。
+    */
+    revalidatePromptActions();
     revalidatePath("/");
     revalidatePath(`/posts/${id}`);
 

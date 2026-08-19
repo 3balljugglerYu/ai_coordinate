@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
+import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 
 const deactivateRequestSchema = z.object({
   confirmText: z.string(),
@@ -65,6 +66,18 @@ export async function POST(request: NextRequest) {
     }
 
     const row = Array.isArray(data) && data.length > 0 ? data[0] : null;
+
+    /*
+      削除予定に入ると、その作者の原作は内在的に利用不可へ落ちる
+      (`validate_derived_prompt_source` が `profiles.deletion_scheduled_at` を
+      条件に入れている)。フィードの CTA サマリは閲覧者をまたいで共有している
+      ので、明示的に失効させないと数分間「使える」と返し続け、押した人が
+      生成 API で弾かれる。
+
+      復帰(`cancel_account_deletion`)は利用不可→可の向きなので、CTA が少し
+      遅れて戻るだけ。共有キャッシュを無駄に捨てないよう自然失効に任せる。
+    */
+    revalidatePromptActions();
 
     return NextResponse.json({
       success: true,

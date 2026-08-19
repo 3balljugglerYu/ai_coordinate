@@ -7,6 +7,17 @@
  * (b) 詳細と CTA の可否が食い違う、のいずれかが起きる。
  */
 
+/*
+  解決本体は "use cache" を付けた prompt-action-cache に移してある。
+  Jest には Next のキャッシュスコープが無いので cacheLife/cacheTag は
+  no-op に差し替える（他の "use cache" モジュールのテストと同じ扱い）。
+*/
+jest.mock("next/cache", () => ({
+  cacheLife: jest.fn(),
+  cacheTag: jest.fn(),
+  revalidateTag: jest.fn(),
+}));
+
 jest.mock("@/lib/supabase/admin", () => ({
   createAdminClient: jest.fn(),
 }));
