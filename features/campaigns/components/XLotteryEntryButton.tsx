@@ -65,8 +65,13 @@ export function XLotteryEntryButton({
         ? buildPublicBookUrl(completionId, categoryKey)
         : buildPublicMountUrl(completionId, mountImageUrl, categoryKey);
     const intentUrl = buildXLotteryIntentUrl(copy, shareUrl);
-    // 応募=シェアなので既存の共有計測も呼ぶ(best-effort)。
-    trackMountShareEvent(completionId);
+    /*
+      応募=シェアなので mount_shared は従来どおり記録する(発行数の定義を変えない)。
+      加えて lotteryEntry を立て、応募専用の lottery_entry_click も記録させる。
+      これが無いと、通常のシェアボタンと応募ボタンが同じ数字になり、
+      「Xシェアで応募」の効果が測れない。
+    */
+    trackMountShareEvent(completionId, { lotteryEntry: true });
     window.open(intentUrl, "_blank", "noopener,noreferrer");
   };
 

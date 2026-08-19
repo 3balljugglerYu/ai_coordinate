@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
@@ -99,11 +100,16 @@ export default async function AustraliaCollectionGuidePage() {
     }));
 
   return (
-    <AustraliaTravelGuide
-      threshold={threshold}
-      presets={presets}
-      dailyLooks={dailyLooks}
-      hasScrapbookStarted={hasScrapbookStarted}
-    />
+    <>
+      {/* この企画ページに着地した時点で流入元は確定している。X の投稿リンクに
+          毎回手でタグを付けなくても、企画経由の登録を数えられるようにする。 */}
+      <SignupSourceCapture fallbackSource={AUSTRALIA_KEY} />
+      <AustraliaTravelGuide
+        threshold={threshold}
+        presets={presets}
+        dailyLooks={dailyLooks}
+        hasScrapbookStarted={hasScrapbookStarted}
+      />
+    </>
   );
 }
