@@ -20,7 +20,18 @@ interface AdminCollectionRangeControlsProps {
   currentTo: string | null;
   currentFromLabel: string;
   currentToLabel: string;
+  /** URL の collectionRange をそのまま。未指定なら "campaign"(会期が既定) */
+  rangeParam: string;
 }
+
+/**
+ * 会期(企画の表示期間)を集計期間にする選択肢。
+ *
+ * 実際の日付は企画ごとに違い、サーバー側でしか解決できないため、
+ * ここでは値を送るだけにして解決は API に任せる。
+ * 表示期間が設定されていない企画では API が直近30日へ落とす。
+ */
+const CAMPAIGN_RANGE_VALUE = "campaign";
 
 function toDateTimeLocalValue(value: string | null): string {
   if (!value) {
@@ -43,8 +54,10 @@ export function AdminCollectionRangeControls({
   currentTo,
   currentFromLabel,
   currentToLabel,
+  rangeParam,
 }: AdminCollectionRangeControlsProps) {
   const router = useRouter();
+  const isCampaignSelected = rangeParam === CAMPAIGN_RANGE_VALUE;
   const [selectedRange, setSelectedRange] =
     useState<CustomDashboardRange>(currentRange);
   // SSR/CSR の Hydration Mismatch を避けるため、ローカル時刻(getTimezoneOffset)に
@@ -113,13 +126,34 @@ export function AdminCollectionRangeControls({
       <div className="space-y-1">
         <p className="text-sm font-semibold text-slate-900">集計期間</p>
         <p className="text-xs leading-5 text-slate-600">
-          既定の期間に加えて、企画の開催期間など任意の開始・終了日時で集計できます。
+          既定は選んだ企画の「会期」です。表示期間が未設定の企画は直近30日になります。
+          任意の開始・終了日時も指定できます。
         </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() =>
+            router.push(
+              buildAdminDashboardHref({
+                range: globalRange,
+                tab: "collections",
+                collectionRange: CAMPAIGN_RANGE_VALUE,
+              }),
+            )
+          }
+          className={cn(
+            "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+            isCampaignSelected
+              ? "border-violet-600 bg-violet-600 text-white"
+              : "border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:text-violet-700",
+          )}
+        >
+          会期
+        </button>
         {CUSTOM_DASHBOARD_RANGE_OPTIONS.map((option) => {
-          const isActive = option.value === selectedRange;
+          const isActive = !isCampaignSelected && option.value === selectedRange;
           return (
             <button
               key={option.value}

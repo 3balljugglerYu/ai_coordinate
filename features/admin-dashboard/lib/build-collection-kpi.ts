@@ -69,21 +69,30 @@ export interface CollectionKpi {
   trend: CollectionTrendPoint[];
 }
 
-// 集計元の生行(getCollectionKpi が Supabase から取得して渡す)
+/*
+  集計元の生行(getCollectionKpi が Supabase から取得して渡す)。
+
+  `user_id` は集計には使わないが、**運営除外のために取得している**
+  (`operator-exclusion.ts` を参照。取得後に純関数で落とす方式)。
+  ゲスト行では NULL になるため optional。
+*/
 export interface CollectionCompletionRow {
   mount_status: string | null;
   completed_at: string | null;
+  user_id?: string | null;
 }
 
 export interface CollectionImageJobRow {
   created_at: string;
   generation_metadata: Record<string, unknown> | null;
+  user_id?: string | null;
 }
 
 export interface CollectionEventRow {
   auth_state: string | null;
   event_type: string | null;
   created_at: string;
+  user_id?: string | null;
 }
 
 /**

@@ -26,6 +26,8 @@ export async function getCollectionCompleters(params: {
   categoryKey: string;
   page: number;
   pageSize: number;
+  /** 除外する運営の user_id。`getOperatorUserIds()` の結果を渡す */
+  operatorUserIds?: string[];
 }): Promise<CollectionCompletersPage> {
   const supabase = createAdminClient();
   const page = Math.max(0, params.page);
@@ -33,11 +35,25 @@ export async function getCollectionCompleters(params: {
   const from = page * pageSize;
   const to = from + pageSize - 1;
 
-  const { data, count, error } = await supabase
+  let query = supabase
     .from("collection_completions")
     .select("id, user_id, completed_at, mount_image_path", { count: "exact" })
     .eq("category_key", params.categoryKey)
-    .eq("mount_status", "completed")
+    .eq("mount_status", "completed");
+
+  /*
+    ここだけ PostgREST 側で除外する。`count: "exact"` + `range()` の
+    サーバー側ページングを使っているため、取得後に落とすと件数とページ送りが壊れる。
+
+    KPI 側で `not.in` を避けている理由(NULL 行まで落ちる)はここでは当たらない。
+    `collection_completions.user_id` は NOT NULL で、完走は必ず本人に紐づくため。
+  */
+  const operators = params.operatorUserIds ?? [];
+  if (operators.length > 0) {
+    query = query.not("user_id", "in", `(${operators.join(",")})`);
+  }
+
+  const { data, count, error } = await query
     .order("completed_at", { ascending: false })
     .range(from, to);
   if (error) throw error;

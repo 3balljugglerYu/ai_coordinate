@@ -19,6 +19,10 @@ import {
   buildCollectionSummaryCsv,
   buildCollectionTrendCsv,
 } from "@/features/admin-dashboard/lib/build-collection-trend-csv";
+import {
+  describeMetricAvailability,
+  resolveMetricAvailability,
+} from "@/features/admin-dashboard/lib/collection-metric-availability";
 import { AdminCollectionRangeControls } from "./AdminCollectionRangeControls";
 import { AdminCsvExportButtons } from "./AdminCsvExportButtons";
 import { AdminCollectionTrendChartPanel } from "./AdminCollectionTrendChartPanel";
@@ -30,10 +34,33 @@ export interface AdminCollectionSeries {
   threshold: number;
 }
 
+interface ResolvedRange {
+  fromIso: string;
+  toIso: string;
+  /** campaign=会期を使った / fallback=会期が無く30日 / explicit=手動指定 */
+  source: "campaign" | "fallback" | "explicit";
+  /** 会期の途中(開催中)で、終端を「今」に切り詰めたか */
+  isOngoing: boolean;
+}
+
 interface ApiResponse {
   kpi: CollectionKpi;
   uuFunnel: CollectionUuFunnel;
   completers: CollectionCompletersPage;
+  operatorExcludedCount: number;
+  resolvedRange: ResolvedRange;
+}
+
+function formatRangeLabel(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return iso;
+  return new Intl.DateTimeFormat("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  }).format(date);
 }
 
 function formatRatePct(value: number | null): string {
@@ -70,6 +97,7 @@ export function AdminCollectionsView({
   currentTo,
   currentFromLabel,
   currentToLabel,
+  rangeParam,
 }: {
   series: AdminCollectionSeries[];
   globalRange: DashboardRange;
@@ -78,6 +106,12 @@ export function AdminCollectionsView({
   currentTo: string | null;
   currentFromLabel: string;
   currentToLabel: string;
+  /*
+    URL の collectionRange をそのまま渡す(未指定なら "campaign")。
+    会期の解決はサーバー側でしかできない(企画ごとの表示期間が要る)ため、
+    ここではパースせず生の値を API へ送る。
+  */
+  rangeParam: string;
 }) {
   const [selectedKey, setSelectedKey] = useState(series[0]?.key ?? "");
   const [page, setPage] = useState(0);
@@ -89,7 +123,7 @@ export function AdminCollectionsView({
     async (
       categoryKey: string,
       pageIndex: number,
-      range: CustomDashboardRange,
+      range: string,
       from: string | null,
       to: string | null,
     ) => {
@@ -126,8 +160,8 @@ export function AdminCollectionsView({
   );
 
   useEffect(() => {
-    void load(selectedKey, page, currentRange, currentFrom, currentTo);
-  }, [load, selectedKey, page, currentRange, currentFrom, currentTo]);
+    void load(selectedKey, page, rangeParam, currentFrom, currentTo);
+  }, [load, selectedKey, page, rangeParam, currentFrom, currentTo]);
 
   if (series.length === 0) {
     return (
@@ -140,25 +174,36 @@ export function AdminCollectionsView({
   const kpi = data?.kpi;
   const uuFunnel = data?.uuFunnel;
   const completers = data?.completers;
+  const resolvedRange = data?.resolvedRange ?? null;
+  const operatorExcludedCount = data?.operatorExcludedCount ?? 0;
   const totalPages = completers
     ? Math.max(1, Math.ceil(completers.total / completers.pageSize))
     : 1;
 
-  const kpiCards: { label: string; metric: CollectionKpiMetric; sub?: string }[] =
-    kpi
+  const kpiCards: {
+    label: string;
+    metric: CollectionKpiMetric;
+    sub?: string;
+    /** 計装開始日を持つ指標のキー(collection-metric-availability.ts) */
+    metricKey?: string;
+  }[] = kpi
       ? [
+          /*
+            以前は「コンプリート達成数」と「台紙生成数」が同じ kpi.completions を
+            参照しており、常に同じ数字が2枚並んでいた。台紙生成は完走時に必ず走り、
+            失敗は「台紙生成失敗」カードで別に見えるため、重複カードは落とす。
+          */
           { label: "コンプリート達成数", metric: kpi.completions },
-          { label: "台紙生成数", metric: kpi.completions },
           { label: "シリーズ生成数(成功)", metric: kpi.seriesGenerations },
           {
             label: "訪問(ログイン)",
             metric: kpi.visitsMember,
-            sub: "2026-08-17〜",
+            metricKey: "visitsMember",
           },
           {
             label: "訪問(ゲスト)",
             metric: kpi.visitsGuest,
-            sub: "2026-08-17〜",
+            metricKey: "visitsGuest",
           },
           {
             label: "生成成功",
@@ -182,7 +227,7 @@ export function AdminCollectionsView({
           },
           { label: "保存クリック", metric: kpi.saveClicks },
           { label: "登録CTAクリック", metric: kpi.signupClicks },
-          { label: "シェア", metric: kpi.shares },
+          { label: "シェア", metric: kpi.shares, metricKey: "shares" },
           { label: "台紙生成失敗", metric: kpi.mountsFailed },
         ]
       : [];
@@ -229,6 +274,7 @@ export function AdminCollectionsView({
 
       <AdminCollectionRangeControls
         globalRange={globalRange}
+        rangeParam={rangeParam}
         currentRange={currentRange}
         currentFrom={currentFrom}
         currentTo={currentTo}
@@ -247,34 +293,90 @@ export function AdminCollectionsView({
       {kpi ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">
-              {currentRange === "custom"
-                ? `集計期間: ${currentFromLabel} 〜 ${currentToLabel}（前期間比つき）`
-                : `集計期間: 直近 ${currentRange}（前期間比つき）`}
-            </p>
+            <div className="space-y-0.5">
+              <p className="text-xs text-slate-500">
+                {resolvedRange
+                  ? `集計期間: ${formatRangeLabel(resolvedRange.fromIso)} 〜 ${formatRangeLabel(
+                      resolvedRange.toIso,
+                    )}（前期間比つき）`
+                  : "集計期間: 取得中"}
+                {resolvedRange?.source === "campaign" ? (
+                  <span className="ml-1.5 rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold text-violet-700">
+                    会期
+                  </span>
+                ) : null}
+                {resolvedRange?.isOngoing ? (
+                  <span className="ml-1 text-[11px] text-slate-500">
+                    開催中のため現時点まで
+                  </span>
+                ) : null}
+              </p>
+              {/*
+                黙って引くと「なぜこの数字なのか」が追えなくなるので、
+                引いた事実を常に見せる(ADR-002)。
+              */}
+              {operatorExcludedCount > 0 ? (
+                <p className="text-[11px] text-slate-500">
+                  運営 {operatorExcludedCount} 名を除外中（生成・完走・訪問・シェアすべて）
+                </p>
+              ) : null}
+            </div>
             <AdminCsvExportButtons
               csv={summaryCsv}
               filename={summaryCsvFilename}
             />
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {kpiCards.map((c) => (
-              <div
-                key={c.label}
-                className="rounded-md border border-slate-200 bg-white p-3"
-              >
-                <p className="text-xs text-slate-500">{c.label}</p>
-                <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
-                  {c.metric.current.toLocaleString()}
-                </p>
-                <div className="mt-1">
-                  <MetricDelta metric={c.metric} />
+            {kpiCards.map((c) => {
+              const availability = resolvedRange
+                ? resolveMetricAvailability(
+                    c.metricKey ?? c.label,
+                    resolvedRange.fromIso,
+                    resolvedRange.toIso,
+                  )
+                : { status: "available" as const, instrumentedSince: null };
+              const note = describeMetricAvailability(availability);
+              const isUnavailable = availability.status === "unavailable";
+
+              return (
+                <div
+                  key={c.label}
+                  className={
+                    isUnavailable
+                      ? "rounded-md border border-dashed border-amber-300 bg-amber-50/60 p-3"
+                      : "rounded-md border border-slate-200 bg-white p-3"
+                  }
+                >
+                  <p className="text-xs text-slate-500">{c.label}</p>
+                  {/*
+                    計装前の期間で「0」を出すと、0件だったのか取れていないのかが
+                    区別できない。数値そのものを出さず、理由を出す。
+                  */}
+                  {isUnavailable ? (
+                    <p className="mt-1 text-base font-bold text-amber-700">
+                      計測不可
+                    </p>
+                  ) : (
+                    <>
+                      <p className="mt-1 text-xl font-bold tabular-nums text-slate-900">
+                        {c.metric.current.toLocaleString()}
+                      </p>
+                      <div className="mt-1">
+                        <MetricDelta metric={c.metric} />
+                      </div>
+                    </>
+                  )}
+                  {note ? (
+                    <p className="mt-1 text-[11px] font-medium text-amber-700">
+                      {note}
+                    </p>
+                  ) : null}
+                  {c.sub ? (
+                    <p className="mt-1 text-[11px] text-slate-500">{c.sub}</p>
+                  ) : null}
                 </div>
-                {c.sub ? (
-                  <p className="mt-1 text-[11px] text-slate-500">{c.sub}</p>
-                ) : null}
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       ) : null}
