@@ -48,9 +48,13 @@ function buildParams(userId = AUTHOR_ID) {
  * follows テーブルのモック。
  *
  * @param existing すでにフォロー関係があるか
+ * @param insertError INSERT が返すエラー(同時POSTの競合を再現する)
  */
-function mockFollows(existing: boolean) {
-  const insert = jest.fn().mockResolvedValue({ error: null });
+function mockFollows(
+  existing: boolean,
+  insertError: { code: string } | null = null
+) {
+  const insert = jest.fn().mockResolvedValue({ error: insertError });
   const builder = {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
@@ -116,6 +120,49 @@ describe("POST /api/users/[userId]/follow", () => {
       await POST(buildRequest(), buildParams());
 
       expect(mockRevalidateTag).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    存在確認と INSERT のあいだは、アプリ側では閉じられない。別タブ・別カード・
+    再送が同じ行を作ると UNIQUE(follower_id, followee_id) が 23505 を返す。
+    ここを 500 にすると、正常な重複リクエストが「押せたのに進めない」になる。
+  */
+  describe("⭐同時POSTで INSERT が競合したとき", () => {
+    test("UNIQUE 違反(23505)も成功として返す", async () => {
+      mockFollows(false, { code: "23505" });
+
+      const response = await POST(buildRequest(), buildParams());
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        success: true,
+        isFollowing: true,
+        created: false,
+      });
+    });
+
+    test("競合はログに積まない(正常な重複なのでエラーではない)", async () => {
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      mockFollows(false, { code: "23505" });
+
+      await POST(buildRequest(), buildParams());
+
+      expect(errorSpy).not.toHaveBeenCalled();
+      errorSpy.mockRestore();
+    });
+
+    test("競合以外の INSERT 失敗は 500 のまま(握りつぶさない)", async () => {
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+      mockFollows(false, { code: "42501" });
+
+      const response = await POST(buildRequest(), buildParams());
+
+      expect(response.status).toBe(500);
+      await expect(response.json()).resolves.toMatchObject({
+        errorCode: "FOLLOW_INSERT_FAILED",
+      });
+      errorSpy.mockRestore();
     });
   });
 

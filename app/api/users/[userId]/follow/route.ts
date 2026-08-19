@@ -81,6 +81,25 @@ export async function POST(
     });
 
     if (insertError) {
+      /*
+        `follows` の UNIQUE(follower_id, followee_id) 競合(23505)も冪等に扱う。
+
+        上の存在確認と INSERT のあいだに、別タブ・別カード・再送などの
+        同時リクエストが同じ行を作ることがある。読んでから書くまでの隙間は
+        アプリ側では閉じられないので、競合したという結果そのものを
+        「すでにフォロー済み」と読み替える。求める状態は成立している。
+
+        ここを 500 にすると、正常な重複リクエストが「押せたのに進めない」に
+        なるうえ、エラーログにも積み上がる。
+      */
+      if (insertError.code === "23505") {
+        return NextResponse.json({
+          success: true,
+          isFollowing: true,
+          created: false,
+        });
+      }
+
       console.error("Database query error:", insertError);
       return NextResponse.json(
         {
