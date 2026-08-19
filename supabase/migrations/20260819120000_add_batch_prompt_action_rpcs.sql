@@ -224,4 +224,9 @@ BEGIN
 END;
 $$;
 
+-- 関数を追加したので Data API のキャッシュを再読み込みさせる。
+-- アプリは PostgREST 経由で呼ぶため、これが無いとキャッシュが古い間は
+-- PGRST202 になり、実装の fail closed でフィードの CTA が一斉に消える。
+NOTIFY pgrst, 'reload schema';
+
 COMMIT;
