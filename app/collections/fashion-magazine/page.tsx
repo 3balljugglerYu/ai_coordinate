@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { connection } from "next/server";
 import { createCanonicalAlternates } from "@/lib/metadata";
 import { FashionMagazineGuide } from "@/features/collections/components/FashionMagazineGuide";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 
 // うちの子のファッション雑誌：夏(8ページ構成・book 完走ビュー)。
-// カテゴリ: fashion_magazine_summer
+const FASHION_MAGAZINE_KEY = "fashion_magazine_summer";
 
 const PAGE_TITLE =
   "うちの子のファッション雑誌｜8ページそろえて1冊完成 | Persta.AI";
@@ -43,5 +44,12 @@ export const metadata: Metadata = {
 
 export default async function FashionMagazineGuidePage() {
   await connection();
-  return <FashionMagazineGuide />;
+  return (
+    <>
+      {/* この企画ページに着地した時点で流入元は確定している。X の投稿リンクに
+          毎回手でタグを付けなくても、企画経由の登録を数えられるようにする。 */}
+      <SignupSourceCapture fallbackSource={FASHION_MAGAZINE_KEY} />
+      <FashionMagazineGuide />
+    </>
+  );
 }

@@ -147,6 +147,36 @@ describe("trackMountShareEvent", () => {
     await waitForMicrotasks();
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
+
+  /*
+    応募ボタンは「シェアURLの発行」でもある。ここで mount_shared を送らなくなると
+    シェア発行数の定義が変わり、過去の企画と比較できなくなる。
+    lotteryEntry は**上乗せ**であって置き換えではない、というのがこの2件の趣旨。
+  */
+  test("⭐応募からの呼び出しは lotteryEntry を立てる(同じ1往復で送る)", async () => {
+    trackMountShareEvent("c9", { lotteryEntry: true });
+
+    await waitForMicrotasks();
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/collections/share-event",
+      expect.objectContaining({
+        body: JSON.stringify({ completionId: "c9", lotteryEntry: true }),
+      }),
+    );
+  });
+
+  test("⭐lotteryEntry が false のときは従来の body のまま(既存集計を動かさない)", async () => {
+    trackMountShareEvent("c9", { lotteryEntry: false });
+
+    await waitForMicrotasks();
+    expect(mockFetch).toHaveBeenCalledWith(
+      "/api/collections/share-event",
+      expect.objectContaining({
+        body: JSON.stringify({ completionId: "c9" }),
+      }),
+    );
+  });
 });
 
 async function waitForMicrotasks() {
