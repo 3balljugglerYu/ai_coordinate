@@ -242,9 +242,16 @@ BEGIN
   END LOOP;
 
   IF v_checked = 0 THEN
-    RAISE EXCEPTION '検証対象の企画が1件も無い(表示期間が設定された企画が存在しない)';
+    /*
+      データの無い環境(Preview ブランチ・新規構築)ではここに来る。
+      落とすと、実データが1件も無いだけで適用できなくなる。
+      本番では 8 企画で一致を確認済み。検証が走らなかったことは
+      WARNING で残し、黙って通ったように見せない。
+    */
+    RAISE WARNING '継続コホートの検証をスキップ(表示期間が設定された企画が存在しない)';
+  ELSE
+    RAISE NOTICE '継続コホート: % 企画で単体集計と一致', v_checked;
   END IF;
-  RAISE NOTICE '継続コホート: % 企画で単体集計と一致', v_checked;
 END;
 $$;
 
@@ -279,9 +286,11 @@ BEGIN
   END LOOP;
 
   IF v_checked = 0 THEN
-    RAISE EXCEPTION '横並び比較の対象企画が1件も無い';
+    -- 同上。データの無い環境では検証対象が存在しない
+    RAISE WARNING '横並び比較の検証をスキップ(対象企画が存在しない)';
+  ELSE
+    RAISE NOTICE '横並び比較: % 企画で単体集計と一致', v_checked;
   END IF;
-  RAISE NOTICE '横並び比較: % 企画で単体集計と一致', v_checked;
 END;
 $$;
 
