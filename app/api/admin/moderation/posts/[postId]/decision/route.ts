@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { moderationDecisionSchema } from "@/features/moderation/lib/schemas";
 import { findModerationPolicy } from "@/constants/moderation-policy";
 import { logAdminAction } from "@/lib/admin-audit";
+import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 
 /**
@@ -40,6 +41,13 @@ function revalidateModerationTags(postId: string, authorUserId: string | null) {
       console.error("[Moderation] revalidateTag failed:", { tag, error });
     }
   }
+
+  /*
+    フィードの CTA サマリも落とす。公開停止した投稿を原作として「使える」と
+    返し続けると、押した人が生成 API で弾かれる（approve による復帰も、
+    自然失効を待たずにここで戻る）。
+  */
+  revalidatePromptActions();
 }
 
 export async function POST(

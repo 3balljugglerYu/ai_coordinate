@@ -7,6 +7,7 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getModerationRouteCopy } from "@/features/moderation/lib/route-copy";
 import { getAdminUserIds } from "@/lib/env";
+import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 
 const REPORT_LIMIT_PER_10_MINUTES = 10;
 const REPORT_LIMIT_PER_24_HOURS = 50;
@@ -366,6 +367,15 @@ export async function POST(request: NextRequest) {
     }
     if (post?.id) {
       revalidateTag(`post-detail-${post.id}`, "max");
+    }
+    if (postModerationStatus !== "visible") {
+      /*
+        pending 化した投稿は原作として使えなくなる。フィードの CTA サマリは
+        閲覧者をまたいで共有しているので、明示的に失効させないと「使える」と
+        返し続け、押した人が生成 API で弾かれる。
+        状態が変わっていないときは落とさない（共有キャッシュを無駄に捨てない）。
+      */
+      revalidatePromptActions();
     }
 
     return NextResponse.json({
