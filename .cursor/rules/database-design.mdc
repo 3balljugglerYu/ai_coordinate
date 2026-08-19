@@ -552,6 +552,9 @@ alwaysApply: false
   - `resolve_derived_prompt_source(p_source_post_id uuid, p_requester_id uuid)` — 認可を再検証してから原作者の入力を返す。**本文を返す唯一の経路**。Worker が provider 送信直前にだけ使う
   - `record_prompt_usage(p_image_job_id uuid)` — 成功済みジョブから origin / 利用者を導出して冪等記録。引数を信用しない
   - `get_prompt_usage_count(p_origin_post_id uuid)` — 累計利用回数（原作者を除外）。マイルストーン通知と同じ数え方。service-only（任意 UUID での列挙を防ぐ）
+  - `validate_derived_prompt_sources(p_source_post_ids uuid[], p_requester_ids uuid[])` — 一覧（フィード）用。**上の単体版を組ごとに呼ぶだけのラッパー**で、判定の正本は単体版。入力は (原作ID, requester) の組で、2配列を添字で対応させる（長さ不一致は例外）。requester を原作 ID と別に取るのは、派生投稿が原作者を `source_author_id` にスナップショットしており、同じ原作でもレコードごとに変わり得るため。service-only
+  - `get_prompt_usage_counts(p_origin_post_ids uuid[])` — 一覧用。**`get_prompt_usage_count` を原作ごとに呼ぶだけのラッパー**で、数え方の正本は単体版。集計 SQL を書き写さないのは、実際にこの値が「ユニーク利用者数」から「累計利用回数」へ変わっており（20260811100000）、古い定義を写して静かに数字がずれかけたため。service-only
+  - ↑2つのバッチ版は往復数を原作数から切り離すためだけに存在する（50件のバッチで約100往復 → 2往復）。**条件や集計を写して二重管理にしないこと**
 - プロンプト秘匿境界（`service_role` のみ EXECUTE 可）:
   - `create_image_job_with_prompt_execution(p_job jsonb, p_prompt_execution jsonb)` — job と `generation_prompt_snapshots` を同一トランザクションで作成し、execution record を持たない job を作らせない。`prompt_text` は常に空へ正規化する
   - `complete_image_job_with_prompt_secrets(p_job_id uuid, p_images jsonb, p_generation_metadata jsonb DEFAULT NULL, p_result_image_url text DEFAULT NULL, p_model text DEFAULT NULL, p_background_mode text DEFAULT NULL)` — 生成画像・author secret・job 成功更新・`credit_transactions.related_generation_id` 更新を同一トランザクションで確定する。末尾2引数はWorkerが正規化済みの値を渡すために使い、NULL時だけjobの値へfallbackする。author secret は `snapshot_kind = 'materialized'` かつ `author_input` / owner が揃うときだけ作るため、派生 job には作られない
