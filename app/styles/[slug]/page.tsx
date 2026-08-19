@@ -17,6 +17,7 @@ import { getStylesCopy } from "@/i18n/page-copy";
 import { getSiteUrl } from "@/lib/env";
 import { StylePresetGenerateCta } from "@/features/style-presets/components/StylePresetGenerateCta";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 
 // locale は cookie 依存の getLocale() ではなく URL パラメータから解決する。
 // これによりページ全体が静的プリレンダ可能になり、JSON-LD が初期 HTML に含まれる
@@ -150,6 +151,17 @@ export default async function StyleDetailPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-gray-50">
+      {/*
+        企画(コレクションシリーズ)のプリセットページに着地した場合だけ、
+        流入元タグの既定値を企画キーにする。X の投稿リンクは大半がここへ着地するが、
+        タグを手で付けない限り何も記録されず、企画経由の登録が数えられなかった。
+        企画以外のプリセットを対象にしないのは、signup_source の意味を
+        「企画」から「着地したカテゴリ」へ広げてしまわないため。
+        URL に明示のタグがあればそちらが優先される。
+      */}
+      {preset.category.isCollectionSeries ? (
+        <SignupSourceCapture fallbackSource={preset.category.key} />
+      ) : null}
       <div className="mx-auto max-w-5xl px-4 pb-12 pt-6 md:pt-8">
         {/* パンくず: 内部リンクとして Home / styles 一覧への導線を明示する */}
         <nav

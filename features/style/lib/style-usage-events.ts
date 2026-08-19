@@ -15,7 +15,13 @@ export type StyleUsageEventType =
   // server 側でのみ記録。mount_shared は公開ページURLのシェア時に発火する。
   | "complete_achieved"
   | "mount_generated"
-  | "mount_shared";
+  | "mount_shared"
+  /*
+    抽選キャンペーンの「Xで応募する」押下。**mount_shared と同時に記録される**
+    (応募はシェアURLの発行でもあるため、発行数の定義は変えない)。
+    したがって「通常シェアのみ」= mount_shared - lottery_entry_click。
+  */
+  | "lottery_entry_click";
 // client から直接送信を許可する公開イベント。wardrobe_save_completed は
 // claim 成功時に server 側でのみ記録するため含めない。
 export type StylePublicUsageEventType =

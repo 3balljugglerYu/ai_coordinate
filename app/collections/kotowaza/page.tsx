@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { KotowazaGuide } from "@/features/collections/components/KotowazaGuide";
@@ -39,5 +40,12 @@ export default async function KotowazaCollectionGuidePage() {
   const category = await getPresetCategoryByKey(KOTOWAZA_KEY);
   const threshold = category?.completionThreshold ?? 6;
 
-  return <KotowazaGuide threshold={threshold} />;
+  return (
+    <>
+      {/* 企画ページ着地=流入元が確定。X の投稿リンクにタグが無くても数えられる。
+          上巻/下巻で同じページのため、代表として上巻の key を流入元タグに使う。 */}
+      <SignupSourceCapture fallbackSource={KOTOWAZA_KEY} />
+      <KotowazaGuide threshold={threshold} />
+    </>
+  );
 }
