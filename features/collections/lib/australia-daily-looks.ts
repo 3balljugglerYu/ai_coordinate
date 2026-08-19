@@ -18,7 +18,10 @@ export interface AustraliaDailyLookRef {
 }
 
 export const AUSTRALIA_DAILY_LOOKS: AustraliaDailyLookRef[] = [
+  // Cairns Esplanade Tropical White Dress Look
   { day: "Day 1", presetId: "b8fd5b8d-51ef-47eb-adea-b7c35aaa61c6" },
+  // Great Barrier Reef Stripe Shirt Travel Look
+  { day: "Day 2", presetId: "e5bce0ee-281d-4794-ab5a-13bde62da0ad" },
 ];
 
 /** ページに渡す解決済みの1件。 */
