@@ -97,6 +97,23 @@ export interface ResolveSourcePromptOptions {
    * 与えられていれば個別 SELECT を省く。
    */
   originRowById?: Map<string, OriginRow>;
+  /**
+   * 事前にまとめて判定した原作の可否（一覧のバッチ解決用）。
+   * キーは `${原作ID}::${requesterID}`（`availabilityKey` で作る）。
+   *
+   * 原作 ID だけをキーにしてはいけない。派生投稿は原作者をスナップショットで
+   * 持つため、同じ原作でもレコードによって requester が変わり得る。
+   */
+  availabilityByKey?: Map<string, boolean>;
+  /**
+   * 事前にまとめて数えた利用数（一覧のバッチ解決用）。キーは原作 ID。
+   */
+  usageCountByOriginId?: Map<string, number>;
+}
+
+/** `availabilityByKey` のキー。原作と requester の組で1件を指す。 */
+function availabilityKey(originPostId: string, requesterId: string): string {
+  return `${originPostId}::${requesterId}`;
 }
 
 export async function resolveSourcePromptReference(
@@ -133,9 +150,14 @@ export async function resolveSourcePromptReference(
   }
 
   const [validation, profile, usageCount] = await Promise.all([
-    fetchIntrinsicAvailability(supabase, originPostId, originAuthorId),
+    fetchIntrinsicAvailability(
+      supabase,
+      originPostId,
+      originAuthorId,
+      options.availabilityByKey
+    ),
     fetchAuthorProfile(supabase, originAuthorId, options.profileByUserId),
-    fetchUsageCount(supabase, originPostId),
+    fetchUsageCount(supabase, originPostId, options.usageCountByOriginId),
   ]);
 
   const base: SourcePromptReference = {
@@ -217,16 +239,31 @@ export async function resolveSourcePromptSummaries(
   }
 
   /*
-    原作の行と原作者プロフィールは**先にまとめて引く**。
+    原作にまつわる値は**すべて先にまとめて引く**。
 
-    原作ごとに個別 SELECT すると、1リクエストで原作数 × 4 回の往復になる。
+    原作ごとに個別に問い合わせると、1リクエストで原作数 × 4 回の往復になる。
     直近で Disk IO バジェット枯渇の障害が起きているので、公開フィードから
     呼ばれる経路の往復回数は削っておく。
 
+    判定・利用数は per-origin の RPC だったものを配列版に置き換えた。
+    配列版は単体版を LATERAL で呼ぶだけのラッパーなので、判定の正本は
+    単体版のまま1つに保たれている（migration 20260819120000）。
+
     判定そのものは詳細画面と同じ `resolveSourcePromptReference` に通したまま、
-    取得済みの値を渡して重複クエリだけを省く（正本は1つに保つ）。
+    取得済みの値を渡して重複クエリだけを省く。
   */
   const entries = Array.from(byOrigin.values());
+  /*
+    可否判定は (原作ID, requester) の**組**で引く。原作 ID だけでは足りない。
+    派生投稿は原作者をスナップショット(`source_author_id`)で持つため、
+    同じ原作でもレコードによって requester が変わり得る。
+    RPC は2つの配列を添字で対応させるので、ここで順序を崩さないこと。
+  */
+  const validationPairs = entries.flatMap(({ record }) => {
+    const originPostId = resolveOriginPostId(record);
+    const requesterId = record.source_author_id ?? record.user_id;
+    return originPostId && requesterId ? [{ originPostId, requesterId }] : [];
+  });
   const originIds = entries
     .map(({ record }) => resolveOriginPostId(record))
     .filter((id): id is string => Boolean(id));
@@ -234,10 +271,13 @@ export async function resolveSourcePromptSummaries(
     .map(({ record }) => record.source_author_id ?? record.user_id)
     .filter((id): id is string => Boolean(id));
 
-  const [publiclyUsableOrigins, profileByUserId] = await Promise.all([
-    fetchPubliclyUsableOrigins(supabase, originIds),
-    fetchAuthorProfiles(supabase, authorIds),
-  ]);
+  const [publiclyUsableOrigins, profileByUserId, availabilityByKey, usageCountByOriginId] =
+    await Promise.all([
+      fetchPubliclyUsableOrigins(supabase, originIds),
+      fetchAuthorProfiles(supabase, authorIds),
+      fetchIntrinsicAvailabilities(supabase, validationPairs),
+      fetchUsageCounts(supabase, originIds),
+    ]);
 
   const resolved = await Promise.all(
     entries.map(async ({ record, postIds }) => ({
@@ -245,6 +285,8 @@ export async function resolveSourcePromptSummaries(
       reference: await resolveSourcePromptReference(record, supabase, {
         profileByUserId,
         originRowById: publiclyUsableOrigins,
+        availabilityByKey,
+        usageCountByOriginId,
       }),
     }))
   );
@@ -307,6 +349,87 @@ async function fetchPubliclyUsableOrigins(
   }
 
   return new Map((data ?? []).map((row) => [(row as OriginRow).id, row as OriginRow]));
+}
+
+/**
+ * 原作の可否をまとめて判定する（一覧のバッチ解決用）。
+ *
+ * 単体版の `validate_derived_prompt_source` を組ごとに呼ぶラッパー RPC を叩く。
+ * 条件を TypeScript 側へ写さないのは、一覧と詳細で可否が食い違うのを防ぐため。
+ *
+ * 読めなければ空を返す（fail closed）。呼び出し側は「無い＝利用不可」に倒す。
+ */
+async function fetchIntrinsicAvailabilities(
+  supabase: SupabaseClient,
+  pairs: { originPostId: string; requesterId: string }[]
+): Promise<Map<string, boolean>> {
+  if (pairs.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase.rpc("validate_derived_prompt_sources", {
+    // RPC は2つの配列を添字で対応させる。長さが違うと例外になる
+    p_source_post_ids: pairs.map((pair) => pair.originPostId),
+    p_requester_ids: pairs.map((pair) => pair.requesterId),
+  });
+
+  if (error) {
+    console.error("Failed to validate source prompt availabilities", {
+      code: error.code,
+    });
+    return new Map();
+  }
+
+  const rows = (data ?? []) as {
+    source_post_id: string;
+    requester_id: string;
+    is_available: boolean | null;
+  }[];
+  return new Map(
+    rows.map((row) => [
+      availabilityKey(row.source_post_id, row.requester_id),
+      Boolean(row.is_available),
+    ])
+  );
+}
+
+/**
+ * 利用数をまとめて数える（一覧のバッチ解決用）。
+ *
+ * 利用が0件の原作は行が返らない。呼び出し側が0を既定にする。
+ * 読めなければ空を返す（人数が出ないだけでカードは描ける）。
+ */
+async function fetchUsageCounts(
+  supabase: SupabaseClient,
+  originPostIds: string[]
+): Promise<Map<string, number>> {
+  const uniqueIds = Array.from(new Set(originPostIds));
+  if (uniqueIds.length === 0) {
+    return new Map();
+  }
+
+  const { data, error } = await supabase.rpc("get_prompt_usage_counts", {
+    p_origin_post_ids: uniqueIds,
+  });
+
+  if (error) {
+    console.error("Failed to fetch prompt usage counts", { code: error.code });
+    return new Map();
+  }
+
+  const rows = (data ?? []) as {
+    origin_post_id: string;
+    usage_count: number | null;
+  }[];
+  return new Map(
+    rows.map((row) => {
+      const count = Number(row.usage_count);
+      return [
+        row.origin_post_id,
+        Number.isSafeInteger(count) && count > 0 ? count : 0,
+      ];
+    })
+  );
 }
 
 /** 原作者プロフィールをまとめて引く（一覧のバッチ解決用）。 */
@@ -394,8 +517,15 @@ export function toPromptActionSummary(
 async function fetchIntrinsicAvailability(
   supabase: SupabaseClient,
   originPostId: string,
-  originAuthorId: string
+  originAuthorId: string,
+  prefetched?: Map<string, boolean>
 ): Promise<boolean> {
+  if (prefetched) {
+    // まとめて判定した結果に無い＝バッチ RPC が失敗している。個別に引き直さず
+    // 利用不可にする（fail closed）。CTA が消えるだけで、詳細画面からは作れる。
+    return prefetched.get(availabilityKey(originPostId, originAuthorId)) ?? false;
+  }
+
   const { data, error } = await supabase
     .rpc("validate_derived_prompt_source", {
       p_source_post_id: originPostId,
@@ -449,8 +579,14 @@ async function fetchAuthorProfile(
  */
 async function fetchUsageCount(
   supabase: SupabaseClient,
-  originPostId: string
+  originPostId: string,
+  prefetched?: Map<string, number>
 ): Promise<number> {
+  if (prefetched) {
+    // 利用が0件の原作は行が返らないので、無い＝0。個別に引き直さない
+    return prefetched.get(originPostId) ?? 0;
+  }
+
   const { data, error } = await supabase.rpc("get_prompt_usage_count", {
     p_origin_post_id: originPostId,
   });

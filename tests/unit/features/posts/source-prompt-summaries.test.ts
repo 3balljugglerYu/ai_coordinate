@@ -46,6 +46,8 @@ function createSupabaseStub(
     isAvailable?: boolean;
     usageCount?: number;
     publiclyUsableOriginIds?: string[];
+    /** 可否判定のバッチ RPC を失敗させる(fail closed の確認用) */
+    availabilityRpcFails?: boolean;
   } = {}
 ) {
   const rpcCalls: Array<{ name: string; args: unknown }> = [];
@@ -76,18 +78,38 @@ function createSupabaseStub(
   const supabase = {
     rpc: jest.fn((name: string, args: unknown) => {
       rpcCalls.push({ name, args });
-      if (name === "validate_derived_prompt_source") {
-        return {
-          select: () => ({
-            maybeSingle: () =>
-              Promise.resolve({
-                data: { is_available: options.isAvailable ?? true },
-                error: null,
-              }),
-          }),
+      /*
+        一覧経路は配列版だけを使う。単体版(詳細経路)が呼ばれたら、
+        原作数に比例した往復に戻っているということなので落とす。
+      */
+      if (name === "validate_derived_prompt_sources") {
+        if (options.availabilityRpcFails) {
+          return Promise.resolve({ data: null, error: { code: "XX000" } });
+        }
+        const typed = args as {
+          p_source_post_ids: string[];
+          p_requester_ids: string[];
         };
+        return Promise.resolve({
+          data: typed.p_source_post_ids.map((id, index) => ({
+            source_post_id: id,
+            requester_id: typed.p_requester_ids[index],
+            is_available: options.isAvailable ?? true,
+          })),
+          error: null,
+        });
       }
-      return Promise.resolve({ data: options.usageCount ?? 3, error: null });
+      if (name === "get_prompt_usage_counts") {
+        const typed = args as { p_origin_post_ids: string[] };
+        return Promise.resolve({
+          // 利用0件の原作は行が返らない。それを再現する
+          data: typed.p_origin_post_ids
+            .filter(() => (options.usageCount ?? 3) > 0)
+            .map((id) => ({ origin_post_id: id, usage_count: options.usageCount ?? 3 })),
+          error: null,
+        });
+      }
+      throw new Error(`一覧経路で単体版 RPC が呼ばれた: ${name}`);
     }),
     from: jest.fn((table: string) => ({
       select: () => ({
@@ -245,10 +267,13 @@ describe("resolveSourcePromptSummaries", () => {
 
     expect(summaries[DERIVED_1]).toEqual(summaries[DERIVED_2]);
     expect(summaries[DERIVED_1].originPostId).toBe(ORIGIN_A);
-    // 検証RPCは原作1件ぶんだけ
-    expect(
-      rpcCalls.filter((call) => call.name === "validate_derived_prompt_source")
-    ).toHaveLength(1);
+    // 検証にかける組は原作1件ぶんだけ
+    const validation = rpcCalls.find(
+      (call) => call.name === "validate_derived_prompt_sources"
+    );
+    expect((validation?.args as { p_source_post_ids: string[] }).p_source_post_ids).toEqual([
+      ORIGIN_A,
+    ]);
   });
 
   it("原作が違えばそれぞれ解決する", async () => {
@@ -274,9 +299,12 @@ describe("resolveSourcePromptSummaries", () => {
       supabase
     );
 
+    const validation = rpcCalls.find(
+      (call) => call.name === "validate_derived_prompt_sources"
+    );
     expect(
-      rpcCalls.filter((call) => call.name === "validate_derived_prompt_source")
-    ).toHaveLength(2);
+      (validation?.args as { p_source_post_ids: string[] }).p_source_post_ids.sort()
+    ).toEqual([ORIGIN_A, ORIGIN_B].sort());
   });
 
   it("利用不可の原作も形状は同じで isAvailable=false になる", async () => {
@@ -383,6 +411,106 @@ describe("resolveSourcePromptSummaries", () => {
     expect(batchCalls.generated_images[0].sort()).toEqual([ORIGIN_A, ORIGIN_B].sort());
     expect(batchCalls.profiles).toHaveLength(1);
     expect(getSingleSelectCount()).toBe(0);
+  });
+
+  /*
+    ここが崩れると原作数に比例して DB 往復が増える。50件のバッチで原作45件なら
+    それだけで90往復になり、スクロール復元では一度に2バッチ走る。
+  */
+  describe("⭐往復数が原作数に依存しないこと", () => {
+    function manyOrigins(count: number) {
+      return Array.from({ length: count }, (_, index) => ({
+        id: `aaaaaaaa-aaaa-4aaa-8aaa-${String(index).padStart(12, "0")}`,
+        user_id: AUTHOR_ID,
+        generation_type: "free",
+        source_post_id: null,
+      }));
+    }
+
+    it("原作が10件でも RPC は2回(可否・利用数のバッチ各1)", async () => {
+      const { supabase, rpcCalls } = createSupabaseStub();
+
+      await resolveSourcePromptSummaries(manyOrigins(10), supabase);
+
+      expect(rpcCalls.map((call) => call.name).sort()).toEqual([
+        "get_prompt_usage_counts",
+        "validate_derived_prompt_sources",
+      ]);
+    });
+
+    it("原作が1件でも10件でも RPC の回数は変わらない", async () => {
+      const one = createSupabaseStub();
+      const ten = createSupabaseStub();
+
+      await resolveSourcePromptSummaries(manyOrigins(1), one.supabase);
+      await resolveSourcePromptSummaries(manyOrigins(10), ten.supabase);
+
+      expect(ten.rpcCalls).toHaveLength(one.rpcCalls.length);
+    });
+  });
+
+  /*
+    派生投稿は原作者をスナップショット(source_author_id)で持つ。同じ原作でも
+    レコードによって requester が変わり得るので、原作 ID だけをキーにすると
+    別人の判定結果を取り違える。
+  */
+  it("⭐可否は(原作ID, requester)の組で引く", async () => {
+    const { supabase, rpcCalls } = createSupabaseStub();
+
+    await resolveSourcePromptSummaries(
+      [
+        {
+          id: DERIVED_1,
+          user_id: DERIVER_ID,
+          generation_type: "free",
+          source_post_id: ORIGIN_A,
+          source_author_id: AUTHOR_ID,
+        },
+        {
+          // 同じ原作を指すが、スナップショットされた原作者が違う
+          id: DERIVED_2,
+          user_id: DERIVER_ID,
+          generation_type: "free",
+          source_post_id: ORIGIN_A,
+          source_author_id: DERIVER_ID,
+        },
+      ],
+      supabase
+    );
+
+    const args = rpcCalls.find(
+      (call) => call.name === "validate_derived_prompt_sources"
+    )?.args as { p_source_post_ids: string[]; p_requester_ids: string[] };
+
+    // 2組ぶん送る。配列は添字で対応するので長さも揃っていること
+    expect(args.p_source_post_ids).toEqual([ORIGIN_A, ORIGIN_A]);
+    expect(args.p_requester_ids).toEqual([AUTHOR_ID, DERIVER_ID]);
+    expect(args.p_source_post_ids).toHaveLength(args.p_requester_ids.length);
+  });
+
+  it("可否のバッチRPCが失敗したら利用不可にする(fail closed)", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { supabase } = createSupabaseStub({ availabilityRpcFails: true });
+
+    const summaries = await resolveSourcePromptSummaries(
+      [{ id: ORIGIN_A, user_id: AUTHOR_ID, generation_type: "free", source_post_id: null }],
+      supabase
+    );
+
+    expect(summaries[ORIGIN_A].isAvailable).toBe(false);
+    errorSpy.mockRestore();
+  });
+
+  it("利用数の行が返らない原作は0にする(カードは描ける)", async () => {
+    const { supabase } = createSupabaseStub({ usageCount: 0 });
+
+    const summaries = await resolveSourcePromptSummaries(
+      [{ id: ORIGIN_A, user_id: AUTHOR_ID, generation_type: "free", source_post_id: null }],
+      supabase
+    );
+
+    expect(summaries[ORIGIN_A].usageCount).toBe(0);
+    expect(summaries[ORIGIN_A].isAvailable).toBe(true);
   });
 
   it("空配列なら問い合わせない", async () => {
