@@ -71,11 +71,22 @@ export function buildPublicBookUrl(
 /**
  * mount_shared を記録する(best-effort)。失敗は握りつぶす。
  * 共有/コピーの成功時(ShareLinkButton の onShared)から呼ぶ。
+ *
+ * `lotteryEntry` を立てると、サーバー側が mount_shared に加えて
+ * lottery_entry_click も記録する。**mount_shared を置き換えない**のは、
+ * 応募もシェアURLの発行であり、発行数の定義を変えると過去の企画と
+ * 比較できなくなるため。2イベントを1往復で記録する。
  */
-export function trackMountShareEvent(completionId: string): void {
+export function trackMountShareEvent(
+  completionId: string,
+  options?: { lotteryEntry?: boolean },
+): void {
   void fetch("/api/collections/share-event", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ completionId }),
+    body: JSON.stringify({
+      completionId,
+      ...(options?.lotteryEntry ? { lotteryEntry: true } : {}),
+    }),
   }).catch(() => {});
 }

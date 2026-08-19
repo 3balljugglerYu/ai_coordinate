@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
@@ -51,5 +52,11 @@ export default async function ItalyCollectionGuidePage() {
       thumbnailImageUrl: p.thumbnailImageUrl,
     }));
 
-  return <ItalyTravelGuide threshold={threshold} presets={presets} />;
+  return (
+    <>
+      {/* 企画ページ着地=流入元が確定。X の投稿リンクにタグが無くても数えられる。 */}
+      <SignupSourceCapture fallbackSource={ITALY_KEY} />
+      <ItalyTravelGuide threshold={threshold} presets={presets} />
+    </>
+  );
 }

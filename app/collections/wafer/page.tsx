@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { createCanonicalAlternates } from "@/lib/metadata";
 import { getPresetCategoryByKey } from "@/features/style-presets/lib/preset-category-repository";
 import { WaferGuide } from "@/features/collections/components/WaferGuide";
@@ -46,5 +47,11 @@ export default async function WaferCollectionGuidePage() {
   const category = await getPresetCategoryByKey(WAFER_KEY);
   const threshold = category?.completionThreshold ?? 6;
 
-  return <WaferGuide threshold={threshold} />;
+  return (
+    <>
+      {/* 企画ページ着地=流入元が確定。X の投稿リンクにタグが無くても数えられる。 */}
+      <SignupSourceCapture fallbackSource={WAFER_KEY} />
+      <WaferGuide threshold={threshold} />
+    </>
+  );
 }

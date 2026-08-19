@@ -331,7 +331,9 @@ alwaysApply: false
 - 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `image_job_id`, `released_at`, `release_reason`, `created_at`
 - 外部キー: `user_id -> auth.users.id`（guest イベントでは `NULL`）
 - 外部キー: `image_job_id -> image_jobs.id`
-- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited/signup_click/wardrobe_save_click/wardrobe_save_completed/complete_achieved/mount_generated/mount_shared`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
+- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited/signup_click/wardrobe_save_click/wardrobe_save_completed/complete_achieved/mount_generated/mount_shared/lottery_entry_click`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
+- 注: `lottery_entry_click`（抽選キャンペーンの「Xで応募する」押下）は **`mount_shared` と必ず同時に記録される**（`app/api/collections/share-event/route.ts` が1リクエストで2行 INSERT する）。応募もシェアURLの発行なので、発行数の定義を変えて過去の企画と比較できなくなるのを避けている。したがって集計は常に `mount_shared >= lottery_entry_click` で、**通常シェアのみの回数 = `mount_shared` - `lottery_entry_click`**。応募だけを `mount_shared` から除いて数えないこと（20260819140000）
+- 注: 企画別に数えられる開始日は指標ごとに違う。`visit` の `category_key`/`viewer_key` と `generate` の `viewer_key` は **2026-08-17 以降**、`mount_shared` の `style_id`（categoryKey 格納）は **2026-06-13 以降**。それ以前は行があっても企画に紐づかないため、集計側は「0」ではなく「計測対象外」として扱うこと（神コレは 6/10 開始・シェア紐づけは 6/13 開始のため、シェア数が構造的に過小）
 - RLS: 公開アクセス禁止（`ALL false`）
 
 #### `style_guest_generate_attempts`
