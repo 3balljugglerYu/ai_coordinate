@@ -7,6 +7,8 @@ import {
 } from "@/features/admin-dashboard/lib/get-collection-kpi";
 import { getCollectionCompleters } from "@/features/admin-dashboard/lib/get-collection-completions";
 import { getOperatorUserIds } from "@/features/admin-dashboard/lib/get-operator-user-ids";
+import { getCollectionRetention } from "@/features/admin-dashboard/lib/get-collection-retention";
+import { getCollectionCampaignSummaries } from "@/features/admin-dashboard/lib/get-collection-campaign-summaries";
 import { resolveCampaignPeriod } from "@/features/admin-dashboard/lib/collection-campaign-period";
 import {
   getCustomDashboardRangeBounds,
@@ -86,7 +88,7 @@ export async function GET(request: NextRequest) {
   try {
     const operatorUserIds = await getOperatorUserIds();
 
-    const [kpi, uuFunnel, completers] = await Promise.all([
+    const [kpi, uuFunnel, completers, retention, summaries] = await Promise.all([
       getCollectionKpi({
         categoryKey,
         categoryId: category.id,
@@ -108,12 +110,22 @@ export async function GET(request: NextRequest) {
         pageSize: PAGE_SIZE,
         operatorUserIds,
       }),
+      getCollectionRetention({
+        categoryKey,
+        rangeStart: bounds.currentStart,
+        rangeEnd: bounds.now,
+        operatorUserIds,
+      }),
+      // 通算値なので企画を切り替えても同じ。キャッシュ済み(ADR-008)
+      getCollectionCampaignSummaries(operatorUserIds),
     ]);
 
     return NextResponse.json({
       kpi,
       uuFunnel,
       completers,
+      retention,
+      summaries,
       /*
         黙って引くと「なぜこの数字なのか」が追えなくなるので、引いた事実を返す
         (ADR-002)。画面は「運営N名を除外中」を常時表示する。

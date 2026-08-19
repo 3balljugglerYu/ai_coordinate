@@ -13,11 +13,28 @@ import {
   type CollectionUuFunnel,
 } from "./build-collection-uu-funnel";
 import {
+  buildCollectionParticipation,
+  type CollectionParticipation,
+} from "./build-collection-participation";
+import {
   excludeOperatorRows,
   excludeOperatorUserIds,
 } from "./operator-exclusion";
 
 export type { CollectionUuFunnel } from "./build-collection-uu-funnel";
+export type {
+  CollectionParticipation,
+  CollectionPageReach,
+  CollectionPageCountBucket,
+} from "./build-collection-participation";
+
+/**
+ * KPI に「どこで止まったか」を足した戻り値。
+ * 追加のクエリは要らない(同じ image_jobs / collection_completions の行を使い回す)。
+ */
+export interface CollectionKpiWithParticipation extends CollectionKpi {
+  participation: CollectionParticipation;
+}
 
 export type {
   CollectionKpi,
@@ -47,7 +64,7 @@ export async function getCollectionKpi(params: {
   now: Date;
   /** 除外する運営の user_id。`getOperatorUserIds()` の結果を渡す */
   operatorUserIds: string[];
-}): Promise<CollectionKpi> {
+}): Promise<CollectionKpiWithParticipation> {
   const supabase = createAdminClient();
   const startIso = params.previousStart.toISOString();
   const endIso = params.now.toISOString();
@@ -124,17 +141,21 @@ export async function getCollectionKpi(params: {
         .lte("created_at", endIso),
     ]);
 
-  return buildCollectionKpi({
+  // 運営を除いた行。KPI と参加状況で**同じ行**を使う(母数がずれない)
+  const completionRows = excludeOperatorRows(
+    (completionsResult.data ?? []) as CollectionCompletionRow[],
+    operators,
+  );
+  const imageJobRows = excludeOperatorRows(
+    (imageJobsResult.data ?? []) as CollectionImageJobRow[],
+    operators,
+  );
+
+  const kpi = buildCollectionKpi({
     categoryKey: params.categoryKey,
     presets,
-    completionRows: excludeOperatorRows(
-      (completionsResult.data ?? []) as CollectionCompletionRow[],
-      operators,
-    ),
-    imageJobRows: excludeOperatorRows(
-      (imageJobsResult.data ?? []) as CollectionImageJobRow[],
-      operators,
-    ),
+    completionRows,
+    imageJobRows,
     eventRows: [
       ...excludeOperatorRows(
         (eventsResult.data ?? []) as CollectionEventRow[],
@@ -153,6 +174,17 @@ export async function getCollectionKpi(params: {
     previousStart: params.previousStart,
     now: params.now,
   });
+
+  return {
+    ...kpi,
+    participation: buildCollectionParticipation({
+      presets,
+      imageJobRows,
+      completionRows,
+      currentStart: params.currentStart,
+      now: params.now,
+    }),
+  };
 }
 
 type UserIdRow = { user_id: string | null };
