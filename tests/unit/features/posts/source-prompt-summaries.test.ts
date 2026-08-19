@@ -48,6 +48,8 @@ function createSupabaseStub(
     publiclyUsableOriginIds?: string[];
     /** 可否判定のバッチ RPC を失敗させる(fail closed の確認用) */
     availabilityRpcFails?: boolean;
+    /** 利用数のバッチ RPC を失敗させる */
+    usageRpcFails?: boolean;
   } = {}
 ) {
   const rpcCalls: Array<{ name: string; args: unknown }> = [];
@@ -100,6 +102,9 @@ function createSupabaseStub(
         });
       }
       if (name === "get_prompt_usage_counts") {
+        if (options.usageRpcFails) {
+          return Promise.resolve({ data: null, error: { code: "42501" } });
+        }
         const typed = args as { p_origin_post_ids: string[] };
         return Promise.resolve({
           data: typed.p_origin_post_ids.map((id) => ({
@@ -528,6 +533,40 @@ describe("resolveSourcePromptSummaries", () => {
     expect(summaries[ORIGIN_B].originPostId).toBe(ORIGIN_B);
     expect(summaries[ORIGIN_A].usageCount).toBe(3);
     expect(summaries[ORIGIN_B].usageCount).toBe(3);
+  });
+
+  it("利用数のバッチRPCが失敗しても0でカードは描く(可否は落とさない)", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { supabase } = createSupabaseStub({ usageRpcFails: true });
+
+    const summaries = await resolveSourcePromptSummaries(
+      [{ id: ORIGIN_A, user_id: AUTHOR_ID, generation_type: "free", source_post_id: null }],
+      supabase
+    );
+
+    expect(summaries[ORIGIN_A].usageCount).toBe(0);
+    // 数字が出ないだけ。導線そのものは残す
+    expect(summaries[ORIGIN_A].isAvailable).toBe(true);
+    errorSpy.mockRestore();
+  });
+
+  it("原作者が分からない投稿は可否を問い合わせずに利用不可にする", async () => {
+    /*
+      requester が決まらないと可否判定にかけられない。組が1つも作れないので
+      判定 RPC 自体を送らず、系譜だけ残して利用不可にする。
+    */
+    const { supabase, rpcCalls } = createSupabaseStub();
+
+    const summaries = await resolveSourcePromptSummaries(
+      [{ id: ORIGIN_A, user_id: null, generation_type: "free", source_post_id: null }],
+      supabase
+    );
+
+    expect(summaries[ORIGIN_A].isAvailable).toBe(false);
+    expect(summaries[ORIGIN_A].originAuthorId).toBeNull();
+    expect(
+      rpcCalls.some((call) => call.name === "validate_derived_prompt_sources")
+    ).toBe(false);
   });
 
   it("空配列なら問い合わせない", async () => {
