@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { createCanonicalAlternates } from "@/lib/metadata";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { ImageSplitTool } from "@/features/tools/components/ImageSplitTool";
+import { IMAGE_SPLIT_SIGNUP_SOURCE } from "@/features/tools/lib/tool-signup-sources";
 
 // X 投稿用の画像分割ツール(未ログインで使える公開ページ)。
 // 処理はすべてブラウザ内で完結し、サーバーには何も送らない。
@@ -31,6 +33,12 @@ export const metadata: Metadata = {
 export default function ImageSplitPage() {
   return (
     <main className="min-h-screen bg-gray-50">
+      {/*
+        このページに着地した時点で流入元は確定している。CTA を押した人だけでなく、
+        ツールを使って後から登録した人も「ツール経由」として数えるために、
+        first-touch のタグをここで立てる(URL に明示のタグがあればそちらが優先)。
+      */}
+      <SignupSourceCapture fallbackSource={IMAGE_SPLIT_SIGNUP_SOURCE} />
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-8">
         <header className="mb-6 space-y-2">
           <h1 className="text-2xl font-bold text-slate-900">

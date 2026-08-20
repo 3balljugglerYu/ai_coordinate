@@ -370,3 +370,36 @@ describe("モバイル(共有シートが保存の正本)", () => {
     expect(screen.getAllByText("保存")).toHaveLength(4);
   });
 });
+
+describe("Persta への導線(流入元の計測)", () => {
+  beforeEach(() => setUserAgent(DESKTOP_UA));
+
+  /*
+    ツールは未ログインで完結するため、タグを付けないと
+    「ツールから来て登録した人」が1人も数えられない
+    (企画ページで実際にこれが起きていた)。
+  */
+  test("⭐生成リンクに signup_source が付く", () => {
+    render(<ImageSplitTool />);
+
+    const link = screen.getByText(
+      "Persta.AI でうちの子の画像を生成",
+    ) as HTMLAnchorElement;
+
+    expect(link.getAttribute("href")).toBe(
+      "/ja/style?style=8d6d595a-2b1b-4181-af82-cbec04e56fe3&signup_source=tool_image_split",
+    );
+  });
+
+  test("遷移先は「横長16:9 へ拡張」プリセット(このツールの入力に合う)", () => {
+    render(<ImageSplitTool />);
+
+    const link = screen.getByText(
+      "Persta.AI でうちの子の画像を生成",
+    ) as HTMLAnchorElement;
+
+    expect(link.getAttribute("href")).toContain(
+      "style=8d6d595a-2b1b-4181-af82-cbec04e56fe3",
+    );
+  });
+});
