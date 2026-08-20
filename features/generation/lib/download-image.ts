@@ -35,7 +35,14 @@ interface FetchedImagePayload {
   fileName: string;
 }
 
-function isMobileUserAgent(): boolean {
+/**
+ * モバイル判定(保存動線の分岐に使う)。
+ *
+ * PC は `<a download>`、モバイルは Web Share(共有シート)が保存の正本。
+ * この分岐の判定はここが正本で、書き写さずに import すること
+ * (画像分割ツール等、生成系以外の保存動線も同じ判定を使う)。
+ */
+export function isMobileUserAgent(): boolean {
   if (typeof navigator === "undefined") return false;
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
