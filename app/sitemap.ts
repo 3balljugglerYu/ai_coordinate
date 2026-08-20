@@ -31,7 +31,12 @@ const LOCALIZED_PUBLIC_PATHS = [
 ] as const;
 
 // ロケール分割していない公開ページ(単一 URL で公開)
-const UNLOCALIZED_PUBLIC_PATHS = ["/collections", "/creators", "/collab"] as const;
+const UNLOCALIZED_PUBLIC_PATHS = [
+  "/collections",
+  "/creators",
+  "/collab",
+  "/tools/image-split",
+] as const;
 
 type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];
 
