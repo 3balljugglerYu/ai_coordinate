@@ -53,6 +53,7 @@ export const viMessages = {
     catalog: "Danh mục họa sĩ",
     collections: "Bộ sưu tập",
     freeMaterials: "Tài nguyên miễn phí",
+    imageSplitTool: "Công cụ chia ảnh",
     creators: "Dành cho nhà sáng tạo",
   },
   searchBar: {

@@ -53,6 +53,7 @@ export const ptMessages = {
     catalog: "Catálogo de artistas",
     collections: "Coleções",
     freeMaterials: "Materiais gratuitos",
+    imageSplitTool: "Divisor de imagens",
     creators: "Para criadores",
   },
   searchBar: {
