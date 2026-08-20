@@ -32,12 +32,16 @@ export function ImageSplitSourcePreset({
       href={`/ja/style?style=${preset.id}&signup_source=${IMAGE_SPLIT_SIGNUP_SOURCE}`}
       className="group flex items-center gap-3 rounded-2xl border border-pink-200/70 bg-gradient-to-r from-pink-50 to-orange-50 p-3 transition hover:border-pink-300 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400"
     >
-      <div className="relative aspect-square w-24 shrink-0 overflow-hidden rounded-xl border-2 border-white bg-white shadow-sm">
+      {/*
+        比率は One-Tap Style のカード(PublicStyleCard)と同じ 3/4 に合わせる。
+        正方形だと縦の構図が上下で切れて、実際のカードと印象が変わってしまう。
+      */}
+      <div className="relative aspect-[3/4] w-28 shrink-0 overflow-hidden rounded-xl border-2 border-white bg-white shadow-sm sm:w-32">
         <Image
           src={preset.thumbnailImageUrl}
           alt={preset.title}
           fill
-          sizes="96px"
+          sizes="(min-width: 640px) 128px, 112px"
           className="object-cover transition group-hover:scale-105"
           loading="lazy"
         />

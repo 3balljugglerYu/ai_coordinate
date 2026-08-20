@@ -178,3 +178,20 @@ describe("プリセットが取得できないとき", () => {
     expect(container.querySelector('a[href*="signup_source"]')).toBeNull();
   });
 });
+
+describe("サムネイルの比率", () => {
+  /*
+    正方形にすると縦構図が上下で切れ、One-Tap Style のカードで見たときと
+    印象が変わる。PublicStyleCard と同じ 3/4 に揃える。
+  */
+  test("⭐One-Tap Style のカードと同じ 3/4(正方形にしない)", async () => {
+    const { container } = await renderPage();
+
+    const frame = container
+      .querySelector('a[href*="signup_source"] img')
+      ?.closest("div");
+
+    expect(frame?.className).toContain("aspect-[3/4]");
+    expect(frame?.className).not.toContain("aspect-square");
+  });
+});
