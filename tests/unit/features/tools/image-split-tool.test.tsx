@@ -2,9 +2,13 @@
  * 画像分割ツールの UI。
  *
  * 切り出しロジック(splitImageFile)は jsdom に Canvas が無いためモックし、
- * ここでは**ファイル選択 → 分割 → 保存/共有の流れと分岐**を固定する。
- * とくにスマホの主導線である Web Share の3分岐(成功 / ユーザーが閉じた /
- * 失敗)は、誤ると「共有シートを閉じただけでエラーが出る」体験になる。
+ * ここでは**ファイル選択 → 分割 → 保存の流れと、モバイル/PC の分岐**を固定する。
+ *
+ * 保存動線は既存の生成画像(shareOrDownloadGeneratedImage)と同じ分け方:
+ * モバイル(UA判定)= Web Share / PC = <a download>。
+ * この分岐を誤ると実機で壊れる。iOS Safari は連続ダウンロードで
+ * 「現在進行中のダウンロードは停止します」と前のダウンロードを潰すため、
+ * **モバイルに連続ダウンロードを出してはいけない**(実機で発生した不具合)。
  */
 
 jest.mock("@/features/tools/lib/split-image", () => {
@@ -20,6 +24,18 @@ import { ImageSplitTool } from "@/features/tools/components/ImageSplitTool";
 import { splitImageFile } from "@/features/tools/lib/split-image";
 
 const mockSplit = splitImageFile as jest.MockedFunction<typeof splitImageFile>;
+
+const DESKTOP_UA =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36";
+const IPHONE_UA =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15";
+
+function setUserAgent(ua: string) {
+  Object.defineProperty(window.navigator, "userAgent", {
+    value: ua,
+    configurable: true,
+  });
+}
 
 function makePieces(count = 4) {
   return Array.from({ length: count }, (_, i) => ({
@@ -43,18 +59,35 @@ async function selectFile(file: File) {
   });
 }
 
-describe("ImageSplitTool", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockSplit.mockResolvedValue(makePieces());
-    // jsdom に無い API をモックする
-    URL.createObjectURL = jest.fn(() => `blob:mock-${Math.random()}`);
-    URL.revokeObjectURL = jest.fn();
-    Object.assign(navigator, {
-      canShare: jest.fn(() => true),
-      share: jest.fn().mockResolvedValue(undefined),
-    });
+/** <a download> の発火を横取りして、落とされたファイル名を記録する。 */
+function captureAnchorClicks(): { clicks: string[]; restore: () => void } {
+  const clicks: string[] = [];
+  const original = HTMLAnchorElement.prototype.click;
+  HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
+    clicks.push(this.download);
+  };
+  return {
+    clicks,
+    restore: () => {
+      HTMLAnchorElement.prototype.click = original;
+    },
+  };
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockSplit.mockResolvedValue(makePieces());
+  // jsdom に無い API をモックする
+  URL.createObjectURL = jest.fn(() => `blob:mock-${Math.random()}`);
+  URL.revokeObjectURL = jest.fn();
+  Object.assign(navigator, {
+    canShare: jest.fn(() => true),
+    share: jest.fn().mockResolvedValue(undefined),
   });
+});
+
+describe("共通(端末に依らない)", () => {
+  beforeEach(() => setUserAgent(DESKTOP_UA));
 
   test("初期表示: アップロード領域と3つの分割モードが出る", () => {
     render(<ImageSplitTool />);
@@ -68,15 +101,13 @@ describe("ImageSplitTool", () => {
     expect(screen.getByText("2×2に4分割")).toBeInTheDocument();
   });
 
-  test("画像を選ぶと4枚のプレビューと保存導線が出る", async () => {
+  test("画像を選ぶと4枚のプレビューが出る", async () => {
     render(<ImageSplitTool />);
 
     await selectFile(imageFile());
 
     expect(mockSplit).toHaveBeenCalledWith(expect.any(File), "vertical4");
     expect(screen.getAllByRole("img")).toHaveLength(4);
-    expect(screen.getByText("4枚まとめて共有（Xへ投稿）")).toBeInTheDocument();
-    expect(screen.getByText("4枚まとめて保存")).toBeInTheDocument();
     expect(screen.getAllByText("保存")).toHaveLength(4);
   });
 
@@ -125,71 +156,7 @@ describe("ImageSplitTool", () => {
     errorSpy.mockRestore();
   });
 
-  describe("共有(スマホの主導線)", () => {
-    test("4枚の File を元ファイル名ベースの連番で navigator.share に渡す", async () => {
-      render(<ImageSplitTool />);
-      await selectFile(imageFile("fireworks.png"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("4枚まとめて共有（Xへ投稿）"));
-      });
-
-      const shared = (navigator.share as jest.Mock).mock.calls[0][0] as {
-        files: File[];
-      };
-      expect(shared.files).toHaveLength(4);
-      expect(shared.files.map((f) => f.name)).toEqual([
-        "fireworks_1.png",
-        "fireworks_2.png",
-        "fireworks_3.png",
-        "fireworks_4.png",
-      ]);
-    });
-
-    test("⭐共有シートを閉じただけ(AbortError)ではエラーを出さない", async () => {
-      const abort = new DOMException("cancelled", "AbortError");
-      (navigator.share as jest.Mock).mockRejectedValueOnce(abort);
-      render(<ImageSplitTool />);
-      await selectFile(imageFile());
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("4枚まとめて共有（Xへ投稿）"));
-      });
-
-      expect(screen.queryByText(/共有に失敗しました/)).not.toBeInTheDocument();
-    });
-
-    test("共有の失敗(AbortError以外)は1枚ずつの保存へ誘導する", async () => {
-      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-      (navigator.share as jest.Mock).mockRejectedValueOnce(
-        new DOMException("denied", "NotAllowedError"),
-      );
-      render(<ImageSplitTool />);
-      await selectFile(imageFile());
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("4枚まとめて共有（Xへ投稿）"));
-      });
-
-      expect(
-        screen.getByText("共有に失敗しました。1枚ずつ保存してください。"),
-      ).toBeInTheDocument();
-      errorSpy.mockRestore();
-    });
-
-    test("⭐canShare が無い環境では共有ボタンを出さない(PC はダウンロードのみ)", async () => {
-      Object.assign(navigator, { canShare: undefined, share: undefined });
-      render(<ImageSplitTool />);
-      await selectFile(imageFile());
-
-      expect(
-        screen.queryByText("4枚まとめて共有（Xへ投稿）"),
-      ).not.toBeInTheDocument();
-      expect(screen.getByText("4枚まとめて保存")).toBeInTheDocument();
-    });
-  });
-
-  test("ドラッグ&ドロップでも分割が走る(PC の主要導線)", async () => {
+  test("ドラッグ&ドロップでも分割が走る", async () => {
     render(<ImageSplitTool />);
     const dropZone = screen
       .getByText("画像を選ぶ / ドラッグ&ドロップ")
@@ -217,57 +184,189 @@ describe("ImageSplitTool", () => {
     fireEvent.dragLeave(dropZone);
     expect(dropZone.className).not.toContain("border-pink-400");
   });
+});
 
-  describe("ダウンロード", () => {
-    test("まとめて保存は4枚を時間差で落とす(同時発火だと2枚目以降が落ちない)", async () => {
-      jest.useFakeTimers();
-      const clicks: string[] = [];
-      const originalClick = HTMLAnchorElement.prototype.click;
-      HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
-        clicks.push(this.download);
-      };
-      try {
-        render(<ImageSplitTool />);
-        const input = document.querySelector(
-          'input[type="file"]',
-        ) as HTMLInputElement;
-        await act(async () => {
-          fireEvent.change(input, { target: { files: [imageFile("photo.jpg")] } });
-        });
+describe("PC(<a download> が保存の正本)", () => {
+  beforeEach(() => setUserAgent(DESKTOP_UA));
 
-        fireEvent.click(screen.getByText("4枚まとめて保存"));
-        act(() => {
-          jest.advanceTimersByTime(1000);
-        });
+  test("⭐canShare が true でも共有ボタンは出さない(既存の生成画像と同じ分け方)", async () => {
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
 
-        expect(clicks).toEqual([
-          "photo_1.png",
-          "photo_2.png",
-          "photo_3.png",
-          "photo_4.png",
-        ]);
-      } finally {
-        HTMLAnchorElement.prototype.click = originalClick;
-        jest.useRealTimers();
-      }
-    });
+    expect(screen.queryByText(/まとめて保存・共有/)).not.toBeInTheDocument();
+    expect(screen.getByText("4枚まとめて保存")).toBeInTheDocument();
+    expect(navigator.share).not.toHaveBeenCalled();
+  });
 
-    test("1枚ずつの保存ボタンはその1枚だけ落とす", async () => {
-      const clicks: string[] = [];
-      const originalClick = HTMLAnchorElement.prototype.click;
-      HTMLAnchorElement.prototype.click = function (this: HTMLAnchorElement) {
-        clicks.push(this.download);
-      };
-      try {
-        render(<ImageSplitTool />);
-        await selectFile(imageFile("photo.jpg"));
+  test("まとめて保存は4枚を時間差で落とす(同時発火だと2枚目以降が落ちない)", async () => {
+    jest.useFakeTimers();
+    const { clicks, restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      const input = document.querySelector(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(input, { target: { files: [imageFile("photo.jpg")] } });
+      });
 
+      fireEvent.click(screen.getByText("4枚まとめて保存"));
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+
+      expect(clicks).toEqual([
+        "photo_1.png",
+        "photo_2.png",
+        "photo_3.png",
+        "photo_4.png",
+      ]);
+    } finally {
+      restore();
+      jest.useRealTimers();
+    }
+  });
+
+  test("1枚ずつの保存はダウンロード(共有シートは開かない)", async () => {
+    const { clicks, restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile("photo.jpg"));
+
+      await act(async () => {
         fireEvent.click(screen.getAllByText("保存")[2]);
+      });
 
-        expect(clicks).toEqual(["photo_3.png"]);
-      } finally {
-        HTMLAnchorElement.prototype.click = originalClick;
-      }
+      expect(clicks).toEqual(["photo_3.png"]);
+      expect(navigator.share).not.toHaveBeenCalled();
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("モバイル(共有シートが保存の正本)", () => {
+  beforeEach(() => setUserAgent(IPHONE_UA));
+
+  test("⭐まとめてボタンは共有になり、連続ダウンロードのボタンは出ない", async () => {
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    expect(screen.getByText("4枚をまとめて保存・共有")).toBeInTheDocument();
+    /*
+      iOS Safari は連続ダウンロードで前のダウンロードを潰す
+      (「現在進行中のダウンロードは停止します」)。実機で発生した不具合。
+    */
+    expect(screen.queryByText("4枚まとめて保存")).not.toBeInTheDocument();
+  });
+
+  test("⭐「4枚の画像を保存」→ Xアプリ、の手順を案内する(直接Xへは行けない)", async () => {
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    expect(screen.getByText("「4枚の画像を保存」")).toBeInTheDocument();
+    expect(screen.getByText(/Xアプリの投稿画面で/)).toBeInTheDocument();
+  });
+
+  test("4枚の File を元ファイル名ベースの連番で navigator.share に渡す", async () => {
+    render(<ImageSplitTool />);
+    await selectFile(imageFile("fireworks.png"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
     });
+
+    const shared = (navigator.share as jest.Mock).mock.calls[0][0] as {
+      files: File[];
+    };
+    expect(shared.files).toHaveLength(4);
+    expect(shared.files.map((f) => f.name)).toEqual([
+      "fireworks_1.png",
+      "fireworks_2.png",
+      "fireworks_3.png",
+      "fireworks_4.png",
+    ]);
+  });
+
+  test("⭐共有シートを閉じただけ(AbortError)ではエラーを出さない", async () => {
+    (navigator.share as jest.Mock).mockRejectedValueOnce(
+      new DOMException("cancelled", "AbortError"),
+    );
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
+    });
+
+    expect(screen.queryByText(/まとめて保存に失敗しました/)).not.toBeInTheDocument();
+  });
+
+  test("共有の失敗(AbortError以外)は1枚ずつの保存へ誘導する", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    (navigator.share as jest.Mock).mockRejectedValueOnce(
+      new DOMException("denied", "NotAllowedError"),
+    );
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
+    });
+
+    expect(
+      screen.getByText(/1枚ずつ保存してください/),
+    ).toBeInTheDocument();
+    errorSpy.mockRestore();
+  });
+
+  test("⭐1枚ずつの保存も共有シート(写真に保存できる。ファイルには落とさない)", async () => {
+    const { clicks, restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile("photo.jpg"));
+
+      await act(async () => {
+        fireEvent.click(screen.getAllByText("保存")[0]);
+      });
+
+      const shared = (navigator.share as jest.Mock).mock.calls[0][0] as {
+        files: File[];
+      };
+      expect(shared.files.map((f) => f.name)).toEqual(["photo_1.png"]);
+      expect(clicks).toEqual([]);
+    } finally {
+      restore();
+    }
+  });
+
+  test("1枚ずつの保存で共有が失敗したらダウンロードへフォールバック", async () => {
+    (navigator.share as jest.Mock).mockRejectedValueOnce(
+      new DOMException("denied", "NotAllowedError"),
+    );
+    const { clicks, restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile("photo.jpg"));
+
+      await act(async () => {
+        fireEvent.click(screen.getAllByText("保存")[0]);
+      });
+
+      expect(clicks).toEqual(["photo_1.png"]);
+    } finally {
+      restore();
+    }
+  });
+
+  test("⭐canShare が無い環境ではまとめてボタン自体を出さない(連続DLはiOSが潰す)", async () => {
+    Object.assign(navigator, { canShare: undefined, share: undefined });
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    expect(screen.queryByText("4枚をまとめて保存・共有")).not.toBeInTheDocument();
+    expect(screen.queryByText("4枚まとめて保存")).not.toBeInTheDocument();
+    // 1枚ずつの保存(単発DL)は生きている
+    expect(screen.getAllByText("保存")).toHaveLength(4);
   });
 });

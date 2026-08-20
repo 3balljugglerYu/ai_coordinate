@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Download, Share2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { isMobileUserAgent } from "@/features/generation/lib/download-image";
 import {
   pieceFileName,
   splitImageFile,
@@ -19,10 +20,19 @@ interface PieceView extends SplitPiece {
 /**
  * X 投稿用の画像分割ツール。**すべてブラウザ内で完結**し、画像はどこにも送らない。
  *
- * スマホの保存は Web Share API を主導線にする。`<a download>` は iOS だと
- * 「ファイル」に落ちて写真アプリに入らないが、共有シートなら
- * 「画像を保存」で写真に入り、そのまま X アプリにも渡せる。
- * PC は普通に4連続ダウンロード。
+ * ## 保存動線は既存の生成画像と同じ分け方にする
+ *
+ * `shareOrDownloadGeneratedImage`(features/generation/lib/download-image)と同じく、
+ * **モバイル(UA判定)は Web Share、PC は `<a download>`** で分ける。
+ *
+ * - iOS Safari は連続ダウンロードで「現在進行中のダウンロードは停止します」と
+ *   **前のダウンロードを潰す**ため、モバイルに「まとめてダウンロード」は出せない。
+ *   保存先も写真ではなく「ファイル」になる。
+ * - 共有シートの「4枚の画像を保存」なら写真アプリに入る。
+ * - **X の iOS 共有拡張は Web からの複数画像ファイルを受け取らない**
+ *   (共有シートに LINE や Gmail は並ぶのに X は出ない)。したがって
+ *   「共有シートから直接 X へ」は成立しない。正しい導線は
+ *   写真に保存 → X アプリで4枚選んで投稿、で、文言もそう案内する。
  */
 export function ImageSplitTool() {
   const [mode, setMode] = useState<SplitMode>("vertical4");
@@ -32,12 +42,14 @@ export function ImageSplitTool() {
   const [pieces, setPieces] = useState<PieceView[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // navigator.canShare はクライアントでしか判定できない(SSR とのズレ防止で effect)
+  // UA と navigator.canShare はクライアントでしか判定できない(SSR とのズレ防止で effect)
   useEffect(() => {
+    setIsMobile(isMobileUserAgent());
     const probe = new File([""], "probe.png", { type: "image/png" });
     setCanShareFiles(
       typeof navigator !== "undefined" &&
@@ -113,6 +125,40 @@ export function ImageSplitTool() {
     [fileName],
   );
 
+  const toShareFile = useCallback(
+    (piece: PieceView) =>
+      new File([piece.blob], pieceFileName(fileName ?? "image", piece.index), {
+        type: "image/png",
+      }),
+    [fileName],
+  );
+
+  /**
+   * 1枚の保存。既存の生成画像と同じで、モバイルは共有シート
+   * (写真に保存できる)を優先し、閉じただけなら何もしない。
+   * 共有できない環境と PC は `<a download>`。
+   */
+  const savePiece = useCallback(
+    async (piece: PieceView) => {
+      if (isMobile && canShareFiles) {
+        try {
+          await navigator.share({ files: [toShareFile(piece)] });
+          return;
+        } catch (e) {
+          if ((e as DOMException)?.name === "AbortError") return;
+          // 失敗したらダウンロードへフォールバック(既存ヘルパと同じ方針)
+        }
+      }
+      downloadPiece(piece);
+    },
+    [isMobile, canShareFiles, toShareFile, downloadPiece],
+  );
+
+  /*
+    PC 用のまとめてダウンロード。**モバイルでは呼ばない**。
+    iOS Safari は新しいダウンロードが始まるたびに進行中のものを停止するため、
+    連続ダウンロードは1枚しか残らない。
+  */
   const downloadAll = useCallback(() => {
     // 同時に発火するとブラウザが2枚目以降を落とすことがあるため少しずらす
     pieces.forEach((piece, i) => {
@@ -121,30 +167,27 @@ export function ImageSplitTool() {
   }, [pieces, downloadPiece]);
 
   const shareAll = useCallback(async () => {
-    const files = pieces.map(
-      (piece) =>
-        new File([piece.blob], pieceFileName(fileName ?? "image", piece.index), {
-          type: "image/png",
-        }),
-    );
     try {
-      await navigator.share({ files });
+      await navigator.share({ files: pieces.map(toShareFile) });
     } catch (e) {
       // ユーザーが共有シートを閉じただけの AbortError は正常系
       if ((e as DOMException)?.name !== "AbortError") {
         console.error("[image-split] share failed:", e);
-        setError("共有に失敗しました。1枚ずつ保存してください。");
+        setError(
+          "まとめて保存に失敗しました。お手数ですが1枚ずつ保存してください。",
+        );
       }
     }
-  }, [pieces, fileName]);
+  }, [pieces, toShareFile]);
 
-  // プレビューの並びを分割の向きに合わせる(横4分割は上から下へ積む)
   const gridClass =
     mode === "vertical4"
       ? "grid-cols-4"
       : mode === "horizontal4"
         ? "grid-cols-1 max-w-md"
         : "grid-cols-2 max-w-md";
+
+  const showMobileShare = isMobile && canShareFiles;
 
   return (
     <div className="space-y-6">
@@ -238,7 +281,7 @@ export function ImageSplitTool() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => downloadPiece(piece)}
+                    onClick={() => void savePiece(piece)}
                     className="text-[11px] font-medium text-pink-600 underline hover:text-pink-800"
                   >
                     保存
@@ -249,25 +292,31 @@ export function ImageSplitTool() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            {canShareFiles ? (
+            {showMobileShare ? (
               <Button type="button" onClick={() => void shareAll()}>
                 <Share2 className="mr-1.5 h-4 w-4" aria-hidden />
-                4枚まとめて共有（Xへ投稿）
+                4枚をまとめて保存・共有
               </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant={canShareFiles ? "outline" : "default"}
-              onClick={downloadAll}
-            >
-              <Download className="mr-1.5 h-4 w-4" aria-hidden />
-              4枚まとめて保存
-            </Button>
+            ) : !isMobile ? (
+              <Button type="button" onClick={downloadAll}>
+                <Download className="mr-1.5 h-4 w-4" aria-hidden />
+                4枚まとめて保存
+              </Button>
+            ) : null /* モバイルで共有不可なら1枚ずつのみ(連続DLはiOSが潰す) */}
           </div>
-          <p className="text-xs leading-5 text-slate-500">
-            Xでは1枚目から順に選んで投稿してください。タイムラインでは2×2に並び、
-            タップしてスワイプすると1枚ずつつながって見えます。
-          </p>
+          {showMobileShare ? (
+            <p className="text-xs leading-5 text-slate-600">
+              開いたシートで<strong>「4枚の画像を保存」</strong>
+              を選ぶと写真アプリに入ります。Xアプリの投稿画面で、
+              写真から1枚目→4枚目の順に選んで投稿してください
+              （タイムラインでは2×2に並び、タップしてスワイプするとつながって見えます）。
+            </p>
+          ) : (
+            <p className="text-xs leading-5 text-slate-500">
+              Xでは1枚目から順に選んで投稿してください。タイムラインでは2×2に並び、
+              タップしてスワイプすると1枚ずつつながって見えます。
+            </p>
+          )}
         </div>
       ) : null}
 
