@@ -324,7 +324,15 @@ export function ImageSplitTool() {
       <div className="rounded-2xl border border-pink-200/70 bg-gradient-to-r from-pink-50 to-orange-50 px-4 py-3">
         <p className="text-xs leading-5 text-slate-600">
           分割する画像がまだないときは、
-          <Link href="/style" className="font-semibold text-pink-600 underline">
+          {/*
+            遷移先は「横長16:9 へ拡張」プリセット(special カテゴリ・公開中)。
+            このツールの入力は横長画像なので、/style のトップではなく
+            16:9 を作れるプリセットを直接開く。
+          */}
+          <Link
+            href="/ja/style?style=8d6d595a-2b1b-4181-af82-cbec04e56fe3"
+            className="font-semibold text-pink-600 underline"
+          >
             Persta.AI でうちの子の画像を生成
           </Link>
           してから分割できます。
