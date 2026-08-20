@@ -22,6 +22,8 @@ export const AUSTRALIA_DAILY_LOOKS: AustraliaDailyLookRef[] = [
   { day: "Day 1", presetId: "b8fd5b8d-51ef-47eb-adea-b7c35aaa61c6" },
   // Great Barrier Reef Stripe Shirt Travel Look
   { day: "Day 2", presetId: "e5bce0ee-281d-4794-ab5a-13bde62da0ad" },
+  // Daintree Rainforest Safari Look
+  { day: "Day 3", presetId: "ee4e8a7f-8e5d-427f-883f-44ba0564264e" },
 ];
 
 /** ページに渡す解決済みの1件。 */
