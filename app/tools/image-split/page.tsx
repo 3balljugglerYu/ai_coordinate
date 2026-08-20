@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   createCanonicalAlternates,
   getDefaultOpenGraphImages,
@@ -7,12 +6,22 @@ import {
 import { getSiteUrl } from "@/lib/env";
 import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { ImageSplitTool } from "@/features/tools/components/ImageSplitTool";
+import { ImageSplitSourcePreset } from "@/features/tools/components/ImageSplitSourcePreset";
 import { IMAGE_SPLIT_SIGNUP_SOURCE } from "@/features/tools/lib/tool-signup-sources";
+import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
 
 // 画像4分割ツール(未ログインで使える公開ページ)。
 // 処理はすべてブラウザ内で完結し、サーバーには何も送らない。
 
 const PAGE_PATH = "/tools/image-split";
+
+/**
+ * 分割の材料をつくるための One-Tap Style「横長16:9 へ拡張」。
+ *
+ * このツールの入力は横長画像なので、/style のトップではなく
+ * 16:9 を作れるプリセットを直接開く。
+ */
+const SOURCE_PRESET_ID = "8d6d595a-2b1b-4181-af82-cbec04e56fe3";
 
 /*
   検索される語は「画像 4分割」「画像 分割 無料」「写真 4分割」あたりで、
@@ -146,8 +155,20 @@ function buildJsonLd(siteUrl: string) {
   ];
 }
 
-export default function ImageSplitPage() {
+export default async function ImageSplitPage() {
   const siteUrl = getSiteUrl() || "https://persta.ai";
+  /*
+    サムネイルは DB から引く(タイトル・画像を焼き込むと差し替えに追従できない)。
+    未公開・非公開カテゴリになったら null が返り、カードごと出さない。
+  */
+  const preset = await getPublishedStylePresetById(SOURCE_PRESET_ID);
+  const sourcePreset = preset?.thumbnailImageUrl
+    ? {
+        id: preset.id,
+        title: preset.title,
+        thumbnailImageUrl: preset.thumbnailImageUrl,
+      }
+    : null;
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -205,6 +226,18 @@ export default function ImageSplitPage() {
 
         <section className="mt-10 space-y-3">
           <h2 className="text-lg font-bold text-slate-900">
+            分割する画像をつくる
+          </h2>
+          <p className="text-sm leading-6 text-slate-600">
+            分割したい横長画像が手元にないときは、手持ちのイラストを
+            16:9の横長に広げるところから始められます。広げた画像をこのページで
+            縦4分割すれば、そのままXに投稿できます。
+          </p>
+          <ImageSplitSourcePreset preset={sourcePreset} />
+        </section>
+
+        <section className="mt-10 space-y-3">
+          <h2 className="text-lg font-bold text-slate-900">
             どんなときに使えるか
           </h2>
           <ul className="list-disc space-y-1.5 pl-5 text-sm leading-6 text-slate-700">
@@ -237,23 +270,6 @@ export default function ImageSplitPage() {
               </div>
             ))}
           </dl>
-        </section>
-
-        <section className="mt-10 space-y-2">
-          <h2 className="text-lg font-bold text-slate-900">
-            分割する画像を作る
-          </h2>
-          <p className="text-sm leading-6 text-slate-600">
-            分割したい横長画像が手元にないときは、
-            <Link
-              href={`/ja/style?style=8d6d595a-2b1b-4181-af82-cbec04e56fe3&signup_source=${IMAGE_SPLIT_SIGNUP_SOURCE}`}
-              className="font-semibold text-pink-600 underline"
-            >
-              Persta.AI の「横長16:9へ拡張」
-            </Link>
-            で、手持ちのイラストを16:9の横長に広げられます。広げた画像をこのページで
-            縦4分割すれば、そのままXに投稿できます。
-          </p>
         </section>
       </div>
     </main>

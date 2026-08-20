@@ -8,6 +8,20 @@
 import { render } from "@testing-library/react";
 import ImageSplitPage from "@/app/tools/image-split/page";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
+
+jest.mock("@/features/style-presets/lib/style-preset-repository", () => ({
+  getPublishedStylePresetById: jest.fn().mockResolvedValue({
+    id: "8d6d595a-2b1b-4181-af82-cbec04e56fe3",
+    title: "横長16:9 へ拡張",
+    thumbnailImageUrl: "https://example.test/preset.png",
+  }),
+}));
+
+/** async な Server Component を解決してから描画する。 */
+async function renderPage() {
+  const ui = await ImageSplitPage();
+  return render(ui);
+}
 import { IMAGE_SPLIT_SIGNUP_SOURCE } from "@/features/tools/lib/tool-signup-sources";
 
 describe("IMAGE_SPLIT_SIGNUP_SOURCE", () => {
@@ -33,8 +47,8 @@ describe("IMAGE_SPLIT_SIGNUP_SOURCE", () => {
  * 構造化データにだけ書くとガイドライン違反になる)。ここでズレを検出する。
  */
 describe("画像4分割ツールのページ", () => {
-  test("⭐構造化データの FAQ が本文の FAQ と一致する", () => {
-    const { container } = render(<ImageSplitPage />);
+  test("⭐構造化データの FAQ が本文の FAQ と一致する", async () => {
+    const { container } = await renderPage();
     const script = container.querySelector(
       'script[type="application/ld+json"]',
     );
@@ -53,8 +67,8 @@ describe("画像4分割ツールのページ", () => {
     }
   });
 
-  test("⭐構造化データの HowTo が本文の手順と一致する", () => {
-    const { container } = render(<ImageSplitPage />);
+  test("⭐構造化データの HowTo が本文の手順と一致する", async () => {
+    const { container } = await renderPage();
     const jsonLd = JSON.parse(
       container.querySelector('script[type="application/ld+json"]')
         ?.textContent ?? "[]",
@@ -68,8 +82,8 @@ describe("画像4分割ツールのページ", () => {
     }
   });
 
-  test("無料ツールであることを SoftwareApplication で示す", () => {
-    const { container } = render(<ImageSplitPage />);
+  test("無料ツールであることを SoftwareApplication で示す", async () => {
+    const { container } = await renderPage();
     const jsonLd = JSON.parse(
       container.querySelector('script[type="application/ld+json"]')
         ?.textContent ?? "[]",
@@ -79,8 +93,8 @@ describe("画像4分割ツールのページ", () => {
     expect(app?.offers?.price).toBe("0");
   });
 
-  test("⭐生成導線に signup_source と 16:9 プリセットが入っている", () => {
-    const { container } = render(<ImageSplitPage />);
+  test("⭐生成導線に signup_source と 16:9 プリセットが入っている", async () => {
+    const { container } = await renderPage();
     const link = container.querySelector(
       'a[href*="signup_source"]',
     ) as HTMLAnchorElement | null;
@@ -90,8 +104,77 @@ describe("画像4分割ツールのページ", () => {
     );
   });
 
-  test("h1 が検索語(画像4分割)を含む", () => {
-    const { container } = render(<ImageSplitPage />);
+  test("h1 が検索語(画像4分割)を含む", async () => {
+    const { container } = await renderPage();
     expect(container.querySelector("h1")?.textContent).toContain("画像4分割");
+  });
+});
+
+/**
+ * 分割の材料をつくる導線(サムネイル付きカード)。
+ *
+ * 文字リンクだと読み飛ばされるため、サムネイルを主役にしてカードごと押せる形にした。
+ * 遷移することは矢印だけに頼らず文言でも伝える。
+ */
+describe("分割する画像をつくる のカード", () => {
+  test("⭐サムネイルとタイトルが出て、カード全体がリンクになっている", async () => {
+    const { container } = await renderPage();
+
+    const card = container.querySelector(
+      'a[href*="signup_source"]',
+    ) as HTMLAnchorElement;
+    expect(card).toBeTruthy();
+    // カードの中にサムネイルがある(文字だけのリンクではない)
+    expect(card.querySelector("img")).toBeTruthy();
+    expect(card.textContent).toContain("横長16:9 へ拡張");
+  });
+
+  test("⭐タップで遷移することを文言で伝える(矢印だけに頼らない)", async () => {
+    const { container } = await renderPage();
+
+    expect(container.textContent).toContain(
+      "タップすると生成ページへ移動します",
+    );
+  });
+
+  test("「どんなときに使えるか」より前に置く(視覚から入れるように)", async () => {
+    const { container } = await renderPage();
+
+    const headings = [...container.querySelectorAll("h2")].map(
+      (h) => h.textContent ?? "",
+    );
+    expect(headings.indexOf("分割する画像をつくる")).toBeLessThan(
+      headings.indexOf("どんなときに使えるか"),
+    );
+  });
+});
+
+describe("プリセットが取得できないとき", () => {
+  test("⭐カードごと出さない(壊れた画像枠を見せない)", async () => {
+    const { getPublishedStylePresetById } = jest.requireMock(
+      "@/features/style-presets/lib/style-preset-repository",
+    ) as { getPublishedStylePresetById: jest.Mock };
+    getPublishedStylePresetById.mockResolvedValueOnce(null);
+
+    const { container } = await renderPage();
+
+    expect(container.querySelector('a[href*="signup_source"]')).toBeNull();
+    // 見出しと説明文は残る(SEO の本文としても意味がある)
+    expect(container.textContent).toContain("分割する画像をつくる");
+  });
+
+  test("サムネイルURLが無いプリセットでもカードを出さない", async () => {
+    const { getPublishedStylePresetById } = jest.requireMock(
+      "@/features/style-presets/lib/style-preset-repository",
+    ) as { getPublishedStylePresetById: jest.Mock };
+    getPublishedStylePresetById.mockResolvedValueOnce({
+      id: "8d6d595a-2b1b-4181-af82-cbec04e56fe3",
+      title: "横長16:9 へ拡張",
+      thumbnailImageUrl: null,
+    });
+
+    const { container } = await renderPage();
+
+    expect(container.querySelector('a[href*="signup_source"]')).toBeNull();
   });
 });
