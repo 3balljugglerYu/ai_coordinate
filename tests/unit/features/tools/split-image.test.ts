@@ -8,6 +8,7 @@
 import {
   computeSplitRects,
   pieceFileName,
+  splitImageFile,
 } from "@/features/tools/lib/split-image";
 
 describe("computeSplitRects: 縦4分割", () => {
@@ -117,5 +118,78 @@ describe("pieceFileName", () => {
 
   test("空文字は image にフォールバック", () => {
     expect(pieceFileName("", 1)).toBe("image_1.png");
+  });
+});
+
+/*
+  splitImageFile は Canvas を使うため、jsdom には無い createImageBitmap と
+  2D コンテキストをモックして**流れ**を検証する(描画結果そのものは
+  実ブラウザで検証済み: 1672×941 → 418×941 × 4 が参考画像と一致)。
+*/
+describe("splitImageFile", () => {
+  const drawCalls: unknown[][] = [];
+
+  beforeEach(() => {
+    drawCalls.length = 0;
+    (globalThis as Record<string, unknown>).createImageBitmap = jest.fn(
+      async () => ({
+        width: 1672,
+        height: 941,
+        close: jest.fn(),
+      }),
+    );
+    HTMLCanvasElement.prototype.getContext = jest.fn(() => ({
+      drawImage: (...args: unknown[]) => drawCalls.push(args),
+    })) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) {
+      cb(new Blob(["png"], { type: "image/png" }));
+    };
+  });
+
+  test("⭐EXIF の回転を反映してからビットマップ化する", async () => {
+    await splitImageFile(new Blob(["img"]), "vertical4");
+
+    expect(globalThis.createImageBitmap).toHaveBeenCalledWith(
+      expect.any(Blob),
+      { imageOrientation: "from-image" },
+    );
+  });
+
+  test("4枚の PNG Blob を 1..4 の連番で返す", async () => {
+    const pieces = await splitImageFile(new Blob(["img"]), "vertical4");
+
+    expect(pieces).toHaveLength(4);
+    expect(pieces.map((p) => p.index)).toEqual([1, 2, 3, 4]);
+    expect(pieces.every((p) => p.blob.type === "image/png")).toBe(true);
+    // 参考画像と同じ 1672×941 → 418×941 × 4
+    expect(pieces.every((p) => p.width === 418 && p.height === 941)).toBe(true);
+    expect(drawCalls).toHaveLength(4);
+  });
+
+  test("失敗してもビットマップを解放する(メモリリークさせない)", async () => {
+    const close = jest.fn();
+    (globalThis.createImageBitmap as jest.Mock).mockResolvedValueOnce({
+      width: 100,
+      height: 100,
+      close,
+    });
+    HTMLCanvasElement.prototype.getContext = jest.fn(
+      () => null,
+    ) as unknown as typeof HTMLCanvasElement.prototype.getContext;
+
+    await expect(splitImageFile(new Blob(["img"]), "grid4")).rejects.toThrow(
+      "CANVAS_UNAVAILABLE",
+    );
+    expect(close).toHaveBeenCalled();
+  });
+
+  test("toBlob が null を返したら失敗として扱う", async () => {
+    HTMLCanvasElement.prototype.toBlob = function (cb: BlobCallback) {
+      cb(null);
+    };
+
+    await expect(
+      splitImageFile(new Blob(["img"]), "vertical4"),
+    ).rejects.toThrow("TO_BLOB_FAILED");
   });
 });
