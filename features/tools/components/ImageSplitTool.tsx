@@ -138,8 +138,13 @@ export function ImageSplitTool() {
     }
   }, [pieces, fileName]);
 
+  // プレビューの並びを分割の向きに合わせる(横4分割は上から下へ積む)
   const gridClass =
-    mode === "vertical4" ? "grid-cols-4" : "grid-cols-2 max-w-md";
+    mode === "vertical4"
+      ? "grid-cols-4"
+      : mode === "horizontal4"
+        ? "grid-cols-1 max-w-md"
+        : "grid-cols-2 max-w-md";
 
   return (
     <div className="space-y-6">
@@ -187,6 +192,7 @@ export function ImageSplitTool() {
         {(
           [
             { value: "vertical4", label: "縦に4分割（横長向け）" },
+            { value: "horizontal4", label: "横に4分割（縦長向け）" },
             { value: "grid4", label: "2×2に4分割" },
           ] as const
         ).map((option) => (

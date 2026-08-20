@@ -11,7 +11,7 @@
  * スワイプでパノラマがつながって見える——というのが流行の形。
  */
 
-export type SplitMode = "vertical4" | "grid4";
+export type SplitMode = "vertical4" | "horizontal4" | "grid4";
 
 export interface SplitPiece {
   blob: Blob;
@@ -45,6 +45,16 @@ export function computeSplitRects(
       // 最後の1枚が余りを引き受ける
       w: i === 3 ? width - base * 3 : base,
       h: height,
+    }));
+  }
+  if (mode === "horizontal4") {
+    // 縦長画像を横に4分割(上→下)。縦4分割の転置
+    const base = Math.floor(height / 4);
+    return [0, 1, 2, 3].map((i) => ({
+      x: 0,
+      y: base * i,
+      w: width,
+      h: i === 3 ? height - base * 3 : base,
     }));
   }
   const halfW = Math.floor(width / 2);

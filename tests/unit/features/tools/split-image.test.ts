@@ -54,6 +54,31 @@ describe("computeSplitRects: 縦4分割", () => {
   });
 });
 
+describe("computeSplitRects: 横4分割", () => {
+  test("縦長画像を上から4等分する(縦4分割の転置)", () => {
+    const rects = computeSplitRects(900, 1600, "horizontal4");
+
+    expect(rects).toEqual([
+      { x: 0, y: 0, w: 900, h: 400 },
+      { x: 0, y: 400, w: 900, h: 400 },
+      { x: 0, y: 800, w: 900, h: 400 },
+      { x: 0, y: 1200, w: 900, h: 400 },
+    ]);
+  });
+
+  test("⭐割り切れない高さは最後の1枚が余りを引き受ける(隙間も重複も無い)", () => {
+    const rects = computeSplitRects(1080, 1919, "horizontal4");
+
+    // 1919 / 4 = 479.75 → 479, 479, 479, 482
+    expect(rects.map((r) => r.h)).toEqual([479, 479, 479, 482]);
+    for (let i = 1; i < rects.length; i++) {
+      expect(rects[i].y).toBe(rects[i - 1].y + rects[i - 1].h);
+    }
+    const last = rects[rects.length - 1];
+    expect(last.y + last.h).toBe(1919);
+  });
+});
+
 describe("computeSplitRects: 2×2分割", () => {
   test("⭐並びは 左上 → 右上 → 左下 → 右下(X の 2×2 と同じ)", () => {
     const rects = computeSplitRects(1000, 800, "grid4");
