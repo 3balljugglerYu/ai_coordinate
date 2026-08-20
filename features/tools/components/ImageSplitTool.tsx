@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Download, Share2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isMobileUserAgent } from "@/features/generation/lib/download-image";
+import { IMAGE_SPLIT_SIGNUP_SOURCE } from "../lib/tool-signup-sources";
 import {
   pieceFileName,
   splitImageFile,
@@ -328,9 +329,13 @@ export function ImageSplitTool() {
             遷移先は「横長16:9 へ拡張」プリセット(special カテゴリ・公開中)。
             このツールの入力は横長画像なので、/style のトップではなく
             16:9 を作れるプリセットを直接開く。
+
+            signup_source はツール経由の登録を数えるため。ページ側でも
+            着地時に同じタグを立てている(直帰せず後から登録した人も拾うため)が、
+            ここにも明示しておくとリンクを見ただけで意図が分かる。
           */}
           <Link
-            href="/ja/style?style=8d6d595a-2b1b-4181-af82-cbec04e56fe3"
+            href={`/ja/style?style=8d6d595a-2b1b-4181-af82-cbec04e56fe3&signup_source=${IMAGE_SPLIT_SIGNUP_SOURCE}`}
             className="font-semibold text-pink-600 underline"
           >
             Persta.AI でうちの子の画像を生成
