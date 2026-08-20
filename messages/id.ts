@@ -53,6 +53,7 @@ export const idMessages = {
     catalog: "Katalog ilustrator",
     collections: "Koleksi",
     freeMaterials: "Materi gratis ganti baju",
+    imageSplitTool: "Alat Pembagi Gambar",
     creators: "Untuk kreator",
   },
   searchBar: {

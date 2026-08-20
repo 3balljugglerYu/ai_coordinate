@@ -53,6 +53,7 @@ export const zhCnMessages = {
     catalog: "画师目录",
     collections: "收藏图鉴",
     freeMaterials: "换装免费素材",
+    imageSplitTool: "图片四分割工具",
     creators: "创作者招募",
   },
   searchBar: {

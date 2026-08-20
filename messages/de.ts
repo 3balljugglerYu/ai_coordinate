@@ -53,6 +53,7 @@ export const deMessages = {
     catalog: "Künstlerkatalog",
     collections: "Sammlungen",
     freeMaterials: "Kostenlose Vorlagen",
+    imageSplitTool: "Bild-Splitter",
     creators: "Für Creator",
   },
   searchBar: {

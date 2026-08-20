@@ -53,6 +53,7 @@ export const esMessages = {
     catalog: "Catálogo de artistas",
     collections: "Colecciones",
     freeMaterials: "Materiales gratuitos",
+    imageSplitTool: "Divisor de imágenes",
     creators: "Para creadores",
   },
   searchBar: {

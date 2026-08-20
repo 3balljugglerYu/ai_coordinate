@@ -53,6 +53,7 @@ export const hiMessages = {
     catalog: "आर्टिस्ट कैटलॉग",
     collections: "कलेक्शन",
     freeMaterials: "मुफ़्त ड्रेस-अप सामग्री",
+    imageSplitTool: "इमेज स्प्लिट टूल",
     creators: "क्रिएटर्स के लिए",
   },
   searchBar: {

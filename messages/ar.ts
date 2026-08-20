@@ -53,6 +53,7 @@ export const arMessages = {
     catalog: "دليل الرسّامين",
     collections: "المجموعات",
     freeMaterials: "مواد مجانية لتبديل الملابس",
+    imageSplitTool: "أداة تقسيم الصور",
     creators: "للمبدعين",
   },
   searchBar: {

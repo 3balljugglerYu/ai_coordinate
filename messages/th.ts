@@ -53,6 +53,7 @@ export const thMessages = {
     catalog: "แคตตาล็อกนักวาด",
     collections: "คอลเลกชัน",
     freeMaterials: "สื่อฟรีสำหรับเปลี่ยนชุด",
+    imageSplitTool: "เครื่องมือแบ่งภาพ",
     creators: "รับสมัครครีเอเตอร์",
   },
   searchBar: {

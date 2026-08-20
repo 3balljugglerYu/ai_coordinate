@@ -53,6 +53,7 @@ export const enMessages = {
     catalog: "Artist Catalog",
     collections: "Collections",
     freeMaterials: "Free Dress-Up Materials",
+    imageSplitTool: "Image Split Tool",
     creators: "For Creators",
   },
   searchBar: {
