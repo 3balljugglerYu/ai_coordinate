@@ -159,6 +159,25 @@ describe("UsePromptsGuide", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("額を仮置きしている下見では、仮の額であることを明記する", () => {
+    renderGuide({ isPreview: true, previewAmount: 20, promptUseBonusAmount: 20 });
+
+    // 「もう 20 になっている」と読まれると、実施済みかの判断を誤る
+    expect(
+      screen.getByText(/下見用の仮の額です/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/実際の設定は 0（停止中）のまま/)
+    ).toBeInTheDocument();
+  });
+
+  test("仮置きしていない下見では、下見のしかたを案内する", () => {
+    renderGuide({ isPreview: true, previewAmount: null });
+
+    expect(screen.getByText(/\?amount=20 で下見できます/)).toBeInTheDocument();
+    expect(screen.queryByText(/下見用の仮の額です/)).not.toBeInTheDocument();
+  });
+
   test("ホームへの導線は、押すとフィード表示へ切り替えてから遷移する", () => {
     renderGuide();
 

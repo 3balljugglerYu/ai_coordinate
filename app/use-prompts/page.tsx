@@ -59,12 +59,41 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function UsePromptsPage() {
+/**
+ * 停止中の下見で額を仮置きする上限。`prompt_use_daily` の CHECK と同じ 1〜1000。
+ * 実際の付与とは無関係で、**表示だけ**に使う。
+ */
+const PREVIEW_AMOUNT_MAX = 1000;
+
+/**
+ * `?amount=` を下見用の仮の額として読む。運営が停止中に見ているときだけ有効。
+ *
+ * 停止中は額が 0 なので、額カードや「別々にもらえます」のセクションが
+ * 出ない(0 の項目は行ごと出さない)。それでは**公開後の見た目を確認できない**。
+ * かといって確認のために admin の額を入れると、その瞬間にミッションが
+ * 全ユーザーへ公開されて付与も走る = 周知より先に実施してしまう。
+ *
+ * そこで表示だけを差し替える逃げ道を用意する。DB は一切触らない。
+ */
+function parsePreviewAmount(value: string | string[] | undefined): number | null {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (!raw) return null;
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) return null;
+  return Math.min(parsed, PREVIEW_AMOUNT_MAX);
+}
+
+export default async function UsePromptsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await connection();
 
-  const [amounts, user] = await Promise.all([
+  const [amounts, user, params] = await Promise.all([
     getPromptUseGuideAmounts(),
     getUser(),
+    searchParams,
   ]);
 
   const isLive = amounts.promptUseBonusAmount > 0;
@@ -74,16 +103,21 @@ export default async function UsePromptsPage() {
     notFound();
   }
 
+  // 仮の額は停止中の運営にだけ効く。稼働中は常に実際の設定値を出す
+  const previewAmount = isLive ? null : parsePreviewAmount(params.amount);
+  const displayAmount = previewAmount ?? amounts.promptUseBonusAmount;
+
   // 404 が確定してから引く(出さないページのためにDBを叩かない)
   const showcase = await getUsablePromptShowcase();
 
   return (
     <UsePromptsGuide
-      promptUseBonusAmount={amounts.promptUseBonusAmount}
+      promptUseBonusAmount={displayAmount}
       freePostBonusAmount={amounts.freePostBonusAmount}
       creatorRewardAmount={amounts.creatorRewardAmount}
       showcase={showcase}
       isPreview={!isLive}
+      previewAmount={previewAmount}
       /*
         ヒーロー画像はユーザー支給待ち。`public/use-prompts/hero-sp.webp` と
         `hero-pc.webp` を置いたら true にする(それまでは寒色のグラデーションで

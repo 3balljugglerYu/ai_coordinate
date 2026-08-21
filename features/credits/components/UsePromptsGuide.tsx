@@ -199,17 +199,38 @@ function AmountCard({ amount }: { amount: number }) {
   );
 }
 
-/** 運営が停止中に見ているときの帯。一般ユーザーには 404 なので出ない。 */
-function PreviewBanner() {
+/**
+ * 運営が停止中に見ているときの帯。一般ユーザーには 404 なので出ない。
+ *
+ * `?amount=` で額を仮置きしているときは、**そう明記する**。
+ * 書いていないと「もう 20 になっている」と読めてしまい、
+ * 実施済みかどうかの判断を誤らせる。
+ */
+function PreviewBanner({ previewAmount }: { previewAmount: number | null }) {
   return (
     <div className="bg-slate-900 px-6 py-3 text-center">
       <p className="text-xs font-bold leading-relaxed text-amber-300">
         準備中：このページは運営にだけ見えています
       </p>
       <p className="mt-1 text-[11px] font-medium leading-relaxed text-white/70">
-        ミッションはまだ動いていません。
-        <br />
-        admin の「プロンプト利用」を 1 以上にすると公開されます。
+        {previewAmount === null ? (
+          <>
+            ミッションはまだ動いていません。
+            <br />
+            admin の「プロンプト利用」を 1 以上にすると公開されます。
+            <br />
+            <span className="text-white/55">
+              額を入れた状態の見た目は ?amount=20 で下見できます。
+            </span>
+          </>
+        ) : (
+          <>
+            表示している <span className="font-bold">+{previewAmount}</span>{" "}
+            は下見用の仮の額です。
+            <br />
+            実際の設定は 0（停止中）のままで、付与は動いていません。
+          </>
+        )}
       </p>
     </div>
   );
@@ -221,6 +242,7 @@ export function UsePromptsGuide({
   creatorRewardAmount,
   showcase = [],
   isPreview = false,
+  previewAmount = null,
   hasHeroImage = false,
 }: {
   /** 他の人のプロンプトで作った作品を投稿したときの付与額。0 = 停止中。 */
@@ -233,6 +255,8 @@ export function UsePromptsGuide({
   showcase?: UsablePromptShowcaseItem[];
   /** 停止中を運営が見ているか。true のとき準備中バナーを出す。 */
   isPreview?: boolean;
+  /** `?amount=` で仮置きした額。null なら実際の設定値を出している。 */
+  previewAmount?: number | null;
   /** ヒーロー画像が支給済みか。未支給のあいだはグラデーションで代替する。 */
   hasHeroImage?: boolean;
 }) {
@@ -243,7 +267,7 @@ export function UsePromptsGuide({
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-b from-sky-50 via-cyan-50 to-white">
-      {isPreview && <PreviewBanner />}
+      {isPreview && <PreviewBanner previewAmount={previewAmount} />}
 
       {/* ============ ヒーロー ============ */}
       <header className="relative pb-14 text-center">
