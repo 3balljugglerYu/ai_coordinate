@@ -160,6 +160,24 @@ export function PostBonusModal({
           </div>
         ) : null}
 
+        {isPromptUse ? (
+          /*
+            使った側の投稿では、還元の案内ではなく**利用の案内**を出す。
+            ここは投稿した本人に確実に届く数少ない場所なので、
+            「明日もまた使える」を伝えられるページへ繋いでおく。
+            ロケール付きのルートは存在しない(app/use-prompts のみ)。
+          */
+          <div className="rounded-xl bg-violet-50/70 p-3 text-center">
+            <Link
+              href="/use-prompts"
+              className="inline-block text-xs font-medium text-violet-700 underline"
+              onClick={() => onOpenChange(false)}
+            >
+              {t("postBonusPromptUseLink")}
+            </Link>
+          </div>
+        ) : null}
+
         {/*
           ブランドCTAの指定に揃える(チュートリアル開始モーダル等と同じ)。
           投稿のたびに出る画面なので、既存のボタンと見た目を揃えておく。
