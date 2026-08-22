@@ -6,9 +6,13 @@
  */
 
 import {
+  buildSplitMode,
   computeSplitRects,
+  parseSplitMode,
   pieceFileName,
   splitImageFile,
+  splitPieceCount,
+  SPLIT_COUNTS,
 } from "@/features/tools/lib/split-image";
 
 describe("computeSplitRects: 縦4分割", () => {
@@ -99,6 +103,92 @@ describe("computeSplitRects: 2×2分割", () => {
     expect(rects[1]).toEqual({ x: 500, y: 0, w: 501, h: 400 });
     expect(rects[2]).toEqual({ x: 0, y: 400, w: 500, h: 401 });
     expect(rects[3]).toEqual({ x: 500, y: 400, w: 501, h: 401 });
+  });
+});
+
+describe("computeSplitRects: 2分割・3分割", () => {
+  test("縦2分割は左右で等分される", () => {
+    const rects = computeSplitRects(1000, 800, "vertical2");
+
+    expect(rects).toEqual([
+      { x: 0, y: 0, w: 500, h: 800 },
+      { x: 500, y: 0, w: 500, h: 800 },
+    ]);
+  });
+
+  test("横3分割は上から3等分される", () => {
+    const rects = computeSplitRects(900, 1200, "horizontal3");
+
+    expect(rects).toEqual([
+      { x: 0, y: 0, w: 900, h: 400 },
+      { x: 0, y: 400, w: 900, h: 400 },
+      { x: 0, y: 800, w: 900, h: 400 },
+    ]);
+  });
+
+  test("⭐割り切れないときは最後の1枚が余りを引き受ける(2/3も4と同じ規則)", () => {
+    // 1000 / 3 = 333.33 → 333, 333, 334
+    const rects = computeSplitRects(1000, 500, "vertical3");
+
+    expect(rects.map((r) => r.w)).toEqual([333, 333, 334]);
+    for (let i = 1; i < rects.length; i++) {
+      expect(rects[i].x).toBe(rects[i - 1].x + rects[i - 1].w);
+    }
+    const last = rects[rects.length - 1];
+    expect(last.x + last.w).toBe(1000);
+  });
+
+  test("⭐対応する全モードで、隙間も重複もなく元画像を覆う", () => {
+    for (const axis of ["vertical", "horizontal"] as const) {
+      for (const count of SPLIT_COUNTS) {
+        const mode = buildSplitMode(axis, count);
+        const rects = computeSplitRects(1919, 1081, mode);
+
+        expect(rects).toHaveLength(count);
+        const covered = rects.reduce((sum, r) => sum + r.w * r.h, 0);
+        expect(covered).toBe(1919 * 1081);
+
+        for (let i = 1; i < rects.length; i++) {
+          const prev = rects[i - 1];
+          const cur = rects[i];
+          if (axis === "vertical") {
+            expect(cur.x).toBe(prev.x + prev.w);
+          } else {
+            expect(cur.y).toBe(prev.y + prev.h);
+          }
+        }
+      }
+    }
+  });
+});
+
+describe("parseSplitMode / splitPieceCount", () => {
+  test("軸と枚数に分解できる", () => {
+    expect(parseSplitMode("vertical2")).toEqual({
+      axis: "vertical",
+      count: 2,
+    });
+    expect(parseSplitMode("horizontal3")).toEqual({
+      axis: "horizontal",
+      count: 3,
+    });
+  });
+
+  test("2×2 は軸を持たないので null", () => {
+    expect(parseSplitMode("grid4")).toBeNull();
+  });
+
+  test("枚数は 2×2 も含めて数えられる", () => {
+    expect(splitPieceCount("vertical2")).toBe(2);
+    expect(splitPieceCount("horizontal3")).toBe(3);
+    expect(splitPieceCount("grid4")).toBe(4);
+  });
+
+  test("⭐未知のモードは黙って別の分割に倒さず失敗させる", () => {
+    expect(() =>
+      // 型では防いでいるが、実行時に紛れ込んだら気づけるようにする
+      computeSplitRects(100, 100, "vertical5" as never),
+    ).toThrow(/UNKNOWN_SPLIT_MODE/);
   });
 });
 

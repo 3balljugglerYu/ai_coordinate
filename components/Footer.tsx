@@ -20,7 +20,7 @@ export function Footer() {
 			label: t("freeMaterials"),
 		},
 		/*
-			画像4分割ツールはロケール分割していない単一URLなので localizePublicPath は通さない。
+			画像分割ツールはロケール分割していない単一URLなので localizePublicPath は通さない。
 			sitemap だけだと内部リンクが1本も無くクロール優先度が上がらないため、
 			ここから辿れるようにする(このリストの SEO 上の役割はコメント冒頭のとおり)。
 		*/

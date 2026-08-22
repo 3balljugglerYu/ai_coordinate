@@ -10,7 +10,7 @@ import { ImageSplitSourcePreset } from "@/features/tools/components/ImageSplitSo
 import { IMAGE_SPLIT_SIGNUP_SOURCE } from "@/features/tools/lib/tool-signup-sources";
 import { getPublishedStylePresetById } from "@/features/style-presets/lib/style-preset-repository";
 
-// 画像4分割ツール(未ログインで使える公開ページ)。
+// 画像分割ツール(未ログインで使える公開ページ)。
 // 処理はすべてブラウザ内で完結し、サーバーには何も送らない。
 
 const PAGE_PATH = "/tools/image-split";
@@ -24,19 +24,24 @@ const PAGE_PATH = "/tools/image-split";
 const SOURCE_PRESET_ID = "8d6d595a-2b1b-4181-af82-cbec04e56fe3";
 
 /*
-  検索される語は「画像 4分割」「画像 分割 無料」「写真 4分割」あたりで、
-  X はそのうちの一用途にすぎない。以前はタイトルを「X用」から始めていたため
-  一般的な分割ニーズの検索と噛み合っていなかった。
+  検索される語は「画像 4分割」「画像 2分割」「画像 分割 無料」「写真 3分割」
+  あたりで、X はそのうちの一用途にすぎない。以前はタイトルを「X用」から
+  始めていたため一般的な分割ニーズの検索と噛み合っていなかった。
   一般語を先頭に置き、用途(X・SNS)は後ろに回す。
+
+  ⭐ 見出し(h1)は「画像分割ツール」に一般化したが、**タイトルタグからは
+  「4分割」を落とさない**。2〜4に対応したからといって、いちばん検索される
+  「画像 4分割」との一致を捨てる理由は無い。枚数を具体的に併記しておけば、
+  2分割・3分割の検索にも同時に当たる。
 */
 const PAGE_TITLE =
-  "画像4分割ツール｜無料・登録不要で縦4分割・横4分割・2×2 | Persta.AI";
+  "画像分割ツール｜無料・登録不要で2分割・3分割・4分割 | Persta.AI";
 const PAGE_DESCRIPTION =
-  "画像を4分割できる無料ツール。横長画像の縦4分割、縦長画像の横4分割、2×2分割に対応。X（旧Twitter）の連続投稿やSNS用の分割画像がブラウザだけで作れます。画像はサーバーにアップロードされないので安心。登録不要・インストール不要でスマホからも使えます。";
+  "画像を2分割・3分割・4分割できる無料ツール。横長画像の縦分割、縦長画像の横分割、2×2分割に対応。SNSやXの連続投稿用の分割画像がブラウザだけで作れます。画像はサーバーにアップロードされないので安心。登録不要・インストール不要でスマホからも使えます。";
 
-const OG_TITLE = "画像4分割ツール｜無料・登録不要（縦4分割・横4分割・2×2）";
+const OG_TITLE = "画像分割ツール｜無料・登録不要（2分割・3分割・4分割）";
 const OG_DESCRIPTION =
-  "画像を4分割できる無料ツール。X の連続投稿用の縦4分割にも対応。ブラウザ内で処理するのでアップロード不要・登録不要。";
+  "画像を2〜4分割できる無料ツール。縦分割・横分割・2×2に対応。ブラウザ内で処理するのでアップロード不要・登録不要。";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,
@@ -65,11 +70,11 @@ const HOW_TO_STEPS = [
   },
   {
     name: "分割方法を選ぶ",
-    text: "縦に4分割（横長画像向け）、横に4分割（縦長画像向け）、2×2に4分割から選びます。切り替えるとすぐに再分割されます。",
+    text: "縦に分割（横長画像向け）、横に分割（縦長画像向け）をそれぞれ2分割・3分割・4分割から、または2×2の4分割から選びます。切り替えるとすぐに再分割されます。",
   },
   {
     name: "保存する",
-    text: "4枚まとめて、または1枚ずつ保存します。スマホでは共有シートから「4枚の画像を保存」を選ぶと写真アプリに入ります。",
+    text: "まとめて、または1枚ずつ保存します。スマホでは共有シートから「◯枚の画像を保存」を選ぶと写真アプリに入ります。",
   },
 ];
 
@@ -84,12 +89,16 @@ const FAQ_ITEMS = [
     a: "無料です。会員登録もインストールも必要ありません。ページを開いて画像を選ぶだけで使えます。",
   },
   {
+    q: "何分割できますか？",
+    a: "縦・横それぞれ2分割・3分割・4分割に対応しています。あわせて2×2の4分割も選べます。分割方法はいつでも切り替えられ、切り替えるとすぐに分割し直します。",
+  },
+  {
     q: "スマホでも使えますか？",
-    a: "使えます。iPhone・Android のブラウザで動作します。スマホでは共有シートから「4枚の画像を保存」を選ぶと、写真アプリに4枚とも保存されます。",
+    a: "使えます。iPhone・Android のブラウザで動作します。スマホでは共有シートから「◯枚の画像を保存」を選ぶと、分割した画像がすべて写真アプリに保存されます。",
   },
   {
     q: "X（旧Twitter）で分割画像を投稿するには？",
-    a: "4枚を写真に保存したあと、X アプリの投稿画面で1枚目から4枚目の順に選んで投稿します。タイムラインでは2×2に並び、タップしてスワイプすると1枚ずつつながって見えます。",
+    a: "写真に保存したあと、X アプリの投稿画面で1枚目から順に選んで投稿します。4枚のときはタイムラインで2×2に並び、タップしてスワイプすると1枚ずつつながって見えます。",
   },
   {
     q: "対応している画像形式は？",
@@ -97,7 +106,7 @@ const FAQ_ITEMS = [
   },
   {
     q: "分割した画像の境目にズレは出ませんか？",
-    a: "出ません。4等分できないサイズの画像でも、余りを最後の1枚が引き受けるように計算しているため、隙間や重なりは生じません。",
+    a: "出ません。等分できないサイズの画像でも、余りを最後の1枚が引き受けるように計算しているため、隙間や重なりは生じません。",
   },
 ];
 
@@ -114,15 +123,15 @@ function buildJsonLd(siteUrl: string) {
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      name: "画像4分割ツール",
+      name: "画像分割ツール",
       url: pageUrl,
       applicationCategory: "MultimediaApplication",
       operatingSystem: "Web",
       description: PAGE_DESCRIPTION,
       offers: { "@type": "Offer", price: "0", priceCurrency: "JPY" },
       featureList: [
-        "縦に4分割（横長画像向け）",
-        "横に4分割（縦長画像向け）",
+        "縦に2分割・3分割・4分割（横長画像向け）",
+        "横に2分割・3分割・4分割（縦長画像向け）",
         "2×2に4分割",
         "ブラウザ内で処理（アップロード不要）",
         "登録不要・無料",
@@ -132,9 +141,9 @@ function buildJsonLd(siteUrl: string) {
     {
       "@context": "https://schema.org",
       "@type": "HowTo",
-      name: "画像を4分割してSNSに投稿する方法",
+      name: "画像を分割してSNSに投稿する方法",
       description:
-        "画像4分割ツールを使って、横長画像を縦4分割し、X などのSNSに連続投稿する手順です。",
+        "画像分割ツールを使って、画像を2〜4分割し、X などのSNSに連続投稿する手順です。",
       totalTime: "PT1M",
       step: HOW_TO_STEPS.map((step, index) => ({
         "@type": "HowToStep",
@@ -188,13 +197,9 @@ export default async function ImageSplitPage() {
 
       <div className="mx-auto max-w-3xl px-4 pb-16 pt-8">
         <header className="mb-6 space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">画像4分割ツール</h1>
+          <h1 className="text-2xl font-bold text-slate-900">画像分割ツール</h1>
           <p className="text-sm leading-6 text-slate-600">
-            画像を4分割して保存できる無料ツールです。横長画像の
-            <strong>縦4分割</strong>、縦長画像の<strong>横4分割</strong>、
-            <strong>2×2分割</strong>に対応。X（旧Twitter）に連続投稿すると、
-            タイムラインでは2×2に並び、タップしてスワイプするとパノラマのように
-            つながって見えます。
+            画像を<strong>2分割・3分割・4分割</strong>して保存できる無料ツールです。
             <strong>登録不要・無料</strong>で、画像はサーバーにアップロードされません。
           </p>
         </header>
@@ -231,7 +236,7 @@ export default async function ImageSplitPage() {
           <p className="text-sm leading-6 text-slate-600">
             分割したい横長画像が手元にないときは、手持ちのイラストを
             16:9の横長に広げるところから始められます。広げた画像をこのページで
-            縦4分割すれば、そのままXに投稿できます。
+            縦に分割すれば、そのままXに投稿できます。
           </p>
           <ImageSplitSourcePreset preset={sourcePreset} />
         </section>
@@ -246,8 +251,12 @@ export default async function ImageSplitPage() {
               ：16:9などの横長イラストを縦4分割して、スワイプでつながる投稿にする
             </li>
             <li>
+              <strong>左右・上下で見せ分ける</strong>
+              ：ビフォーアフターや対比のある1枚を2分割して、別々に見せる
+            </li>
+            <li>
               <strong>縦長イラストの分割</strong>
-              ：縦に長い立ち絵やコマ割りを横4分割して、順番に見せる
+              ：縦に長い立ち絵やコマ割りを横に2〜4分割して、順番に見せる
             </li>
             <li>
               <strong>2×2の分割</strong>
@@ -255,7 +264,7 @@ export default async function ImageSplitPage() {
             </li>
             <li>
               <strong>大きい画像の切り分け</strong>
-              ：解像度の高い画像を4枚に分けて扱いやすくする
+              ：解像度の高い画像を分けて扱いやすくする
             </li>
           </ul>
         </section>
