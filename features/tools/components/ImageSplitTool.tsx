@@ -5,6 +5,12 @@ import { Download, Share2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isMobileUserAgent } from "@/features/generation/lib/download-image";
 import {
+  trackImageSplitFailed,
+  trackImageSplitRun,
+  trackImageSplitSaveAll,
+  trackImageSplitSavePiece,
+} from "../lib/image-split-events";
+import {
   buildSplitMode,
   parseSplitMode,
   pieceFileName,
@@ -106,12 +112,15 @@ export function ImageSplitTool() {
           url: URL.createObjectURL(piece.blob),
         }));
       });
+      // 分母は page_view、分子がこれ。成功したときだけ数える
+      trackImageSplitRun(nextMode, result.length);
     } catch (e) {
       console.error("[image-split] failed:", e);
       setError(
         "この画像を読み込めませんでした。別の画像でお試しください(HEIC など一部の形式は非対応です)。",
       );
       setPieces([]);
+      trackImageSplitFailed("decode_failed");
     } finally {
       setBusy(false);
     }
@@ -122,6 +131,7 @@ export function ImageSplitTool() {
       if (!file) return;
       if (!file.type.startsWith("image/")) {
         setError("画像ファイルを選んでください。");
+        trackImageSplitFailed("not_an_image");
         return;
       }
       setFileName(file.name);
@@ -171,13 +181,16 @@ export function ImageSplitTool() {
       if (isMobile && canShareFiles) {
         try {
           await navigator.share({ files: [toShareFile(piece)] });
+          trackImageSplitSavePiece("share");
           return;
         } catch (e) {
+          // 共有シートを閉じただけなら保存していないので数えない
           if ((e as DOMException)?.name === "AbortError") return;
           // 失敗したらダウンロードへフォールバック(既存ヘルパと同じ方針)
         }
       }
       downloadPiece(piece);
+      trackImageSplitSavePiece("download");
     },
     [isMobile, canShareFiles, toShareFile, downloadPiece],
   );
@@ -192,13 +205,15 @@ export function ImageSplitTool() {
     pieces.forEach((piece, i) => {
       setTimeout(() => downloadPiece(piece), i * 300);
     });
+    trackImageSplitSaveAll("download", pieces.length);
   }, [pieces, downloadPiece]);
 
   const shareAll = useCallback(async () => {
     try {
       await navigator.share({ files: pieces.map(toShareFile) });
+      trackImageSplitSaveAll("share", pieces.length);
     } catch (e) {
-      // ユーザーが共有シートを閉じただけの AbortError は正常系
+      // ユーザーが共有シートを閉じただけの AbortError は正常系(数えない)
       if ((e as DOMException)?.name !== "AbortError") {
         console.error("[image-split] share failed:", e);
         setError(
