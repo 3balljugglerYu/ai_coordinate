@@ -9,11 +9,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
 import {
+  deriveAspectRatioFromDimensions,
   getPostBeforeImageUrl,
   getPostThumbUrl,
   getPublicViewCount,
 } from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
+import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
@@ -170,7 +172,28 @@ export function PostCard({
           // 閲覧数は増えない。過去の「閲覧数が異常に増える」不具合は
           // サーバーレンダー中にカウントしていた旧実装が原因であり、
           // 現行構成では prefetch を有効化しても再発しない。
-          <Link href={detailHref} prefetch>
+          <Link
+            href={detailHref}
+            prefetch
+            /*
+              詳細の <img> はサーバー応答に含まれて届くので、要素が生まれるのは
+              約0.8秒後。サムネイルは既にキャッシュにあるのに、それまで
+              描きようがなかった。タップした時点で見た目だけ先に渡し、
+              スケルトンに描かせる(features/posts/lib/pending-post-preview)。
+            */
+            onClick={() => {
+              if (post.id && imageUrl) {
+                setPendingPostPreview({
+                  postId: post.id,
+                  thumbnailUrl: imageUrl,
+                  aspectRatio: deriveAspectRatioFromDimensions(
+                    post.width,
+                    post.height
+                  ),
+                });
+              }
+            }}
+          >
             {imageContent}
           </Link>
         ) : (

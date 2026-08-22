@@ -10,6 +10,10 @@ import React from "react";
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { PostFeedCard } from "@/features/posts/components/PostFeedCard";
 import type { Post } from "@/features/posts/types";
+import {
+  clearPendingPostPreview,
+  getPendingPostPreview,
+} from "@/features/posts/lib/pending-post-preview";
 
 const pushMock = jest.fn();
 
@@ -784,5 +788,51 @@ describe("PostFeedCard", () => {
     render(<PostFeedCard post={createPost({ caption: null })} currentUserId={null} />);
     expect(screen.queryByTestId("feed-caption")).not.toBeInTheDocument();
     expect(screen.getByTestId("post-feed-after-frame")).toBeInTheDocument();
+  });
+
+  /**
+   * 詳細へ入る前のサムネイル先渡し。
+   *
+   * ⭐ **入口が複数ある**のが要点。カード地・コメント・拡大は router.push を
+   * 通るが、時刻リンクは <Link> なので通らない。どれか1つ漏らすと、
+   * その経路だけ従来どおりグレーの箱に戻る(レビューで実際に指摘された)。
+   */
+  describe("サムネイルの先渡し", () => {
+    beforeEach(() => clearPendingPostPreview());
+
+    test("カード地をタップすると、その作品のサムネイルを先に渡す", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      fireEvent.click(screen.getByTestId("post-feed-card-post-1"));
+
+      expect(getPendingPostPreview()).toEqual({
+        postId: "post-1",
+        thumbnailUrl: "https://example.test/after.png",
+        aspectRatio: "portrait",
+      });
+    });
+
+    test("⭐時刻リンクからでも先に渡す(Link は router.push を通らない)", () => {
+      render(<PostFeedCard post={createPost()} currentUserId={null} />);
+
+      fireEvent.click(screen.getByTestId("post-feed-card-timestamp"));
+
+      expect(getPendingPostPreview()?.postId).toBe("post-1");
+      // 時刻リンクはカード地の遷移を止める。二重遷移させない
+      expect(pushMock).not.toHaveBeenCalled();
+    });
+
+    test("横長の作品では landscape として渡す(枠の高さの決め方が変わる)", () => {
+      render(
+        <PostFeedCard
+          post={createPost({ width: 1536, height: 1024 })}
+          currentUserId={null}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId("post-feed-card-post-1"));
+
+      expect(getPendingPostPreview()?.aspectRatio).toBe("landscape");
+    });
   });
 });

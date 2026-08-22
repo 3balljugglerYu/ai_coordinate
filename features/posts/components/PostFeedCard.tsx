@@ -21,6 +21,7 @@ import { FeedCaption } from "./FeedCaption";
 import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
 import { FeedSourceQuote } from "./FeedSourceQuote";
 import { queuePostImpression } from "../lib/impressions-client";
+import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import {
@@ -208,7 +209,29 @@ export function PostFeedCard({
     return null;
   }
 
-  const openDetail = () => router.push(detailHref);
+  /*
+    詳細の <img> はサーバー応答に含まれて届くので、要素が生まれるのは約0.8秒後。
+    サムネイルは既にキャッシュにあるのに、それまで描きようがなかった。
+    タップした時点で見た目だけ先に渡し、スケルトンに描かせる
+    (features/posts/lib/pending-post-preview)。
+
+    **詳細への入口すべてから呼ぶこと。** カード地・コメント・拡大だけでなく、
+    時刻リンク(Link なので router.push を通らない)も同じ入口。
+    どれか1つ漏らすと、その経路だけ従来どおりグレーの箱に戻る。
+  */
+  const primePendingPostPreview = () => {
+    if (!post.id || !afterUrl) return;
+    setPendingPostPreview({
+      postId: post.id,
+      thumbnailUrl: afterUrl,
+      aspectRatio: isLandscapeRatio(aspectRatio) ? "landscape" : "portrait",
+    });
+  };
+
+  const openDetail = () => {
+    primePendingPostPreview();
+    router.push(detailHref);
+  };
   /** カード地の遷移を止める。自分の役割だけを果たす導線に付ける。 */
   const stopCardNavigation = (event: React.MouseEvent) => event.stopPropagation();
 
@@ -280,7 +303,11 @@ export function PostFeedCard({
               // 押せると分かる入口をひとつ残す(キーボード操作の経路も兼ねる)。
               <Link
                 href={detailHref}
-                onClick={stopCardNavigation}
+                onClick={(event) => {
+                  // カード地の遷移は止めつつ、先渡しはこの経路でも行う
+                  stopCardNavigation(event);
+                  primePendingPostPreview();
+                }}
                 className="-my-1 shrink-0 py-1 text-xs text-muted-foreground transition-colors hover:text-gray-700"
                 data-testid="post-feed-card-timestamp"
               >
