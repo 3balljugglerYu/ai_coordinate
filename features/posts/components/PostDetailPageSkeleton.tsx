@@ -1,12 +1,17 @@
+import { PostDetailSkeletonImage } from "./PostDetailSkeletonImage";
+
 /**
- * 投稿詳細ページ用スケルトン
+ * 投稿詳細ページ用スケルトン。
+ *
+ * 画像枠だけは、一覧からタップして来たときに**そのサムネイルを描く**
+ * (PostDetailSkeletonImage)。サーバー応答を待たずに実物が出る。
  */
 export function PostDetailPageSkeleton() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-2xl">
-        {/* 画像エリア */}
-        <div className="aspect-square w-full animate-pulse bg-gray-200" />
+        {/* 画像エリア。一覧から来たときは実物のサムネイルが出る */}
+        <PostDetailSkeletonImage />
 
         {/* ユーザー情報・統計 */}
         <div className="border-b bg-white px-4 py-3">

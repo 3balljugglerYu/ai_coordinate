@@ -21,6 +21,7 @@ import { FeedCaption } from "./FeedCaption";
 import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
 import { FeedSourceQuote } from "./FeedSourceQuote";
 import { queuePostImpression } from "../lib/impressions-client";
+import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import {
@@ -208,7 +209,22 @@ export function PostFeedCard({
     return null;
   }
 
-  const openDetail = () => router.push(detailHref);
+  /*
+    詳細の <img> はサーバー応答に含まれて届くので、要素が生まれるのは約0.8秒後。
+    サムネイルは既にキャッシュにあるのに、それまで描きようがなかった。
+    タップした時点で見た目だけ先に渡し、スケルトンに描かせる
+    (features/posts/lib/pending-post-preview)。
+  */
+  const openDetail = () => {
+    if (post.id && afterUrl) {
+      setPendingPostPreview({
+        postId: post.id,
+        thumbnailUrl: afterUrl,
+        aspectRatio: isLandscapeRatio(aspectRatio) ? "landscape" : "portrait",
+      });
+    }
+    router.push(detailHref);
+  };
   /** カード地の遷移を止める。自分の役割だけを果たす導線に付ける。 */
   const stopCardNavigation = (event: React.MouseEvent) => event.stopPropagation();
 
