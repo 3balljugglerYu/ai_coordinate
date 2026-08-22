@@ -13,6 +13,12 @@
  * この案内を出すのは4枚のときだけにすること。
  */
 
+import {
+  createEqualBoundaries,
+  toBoundaryList,
+  type SplitBoundaries,
+} from "./split-boundaries";
+
 export type SplitAxis = "vertical" | "horizontal";
 
 /** 対応する分割数。増やすときは UI の grid クラス表も一緒に増やすこと。 */
@@ -64,13 +70,19 @@ export function buildSplitMode(axis: SplitAxis, count: SplitCount): SplitMode {
 }
 
 /**
- * 分割の矩形を計算する。端数は最後の1枚に寄せる
- * (等分できないサイズで 1px の隙間や重複を作らないため)。
+ * 分割の矩形を計算する。
+ *
+ * `boundaries` を渡すと、その位置で切る(端を詰めればトリミングになる)。
+ * 省略時は全体を等分する従来どおりの動き。
+ *
+ * **隣り合う断片は必ず接する。** 各断片の開始位置を前の断片の終わりに
+ * 揃えることで、丸め誤差で 1px の隙間(黒い線)や重複が出ないようにする。
  */
 export function computeSplitRects(
   width: number,
   height: number,
   mode: SplitMode,
+  boundaries?: SplitBoundaries,
 ): SplitRect[] {
   if (mode === "grid4") {
     const halfW = Math.floor(width / 2);
@@ -95,15 +107,22 @@ export function computeSplitRects(
 
   const { axis, count } = parsed;
   const total = axis === "vertical" ? width : height;
-  const base = Math.floor(total / count);
+  const list = toBoundaryList(boundaries ?? createEqualBoundaries(count));
+
+  /*
+    比率 → px。四捨五入したうえで、次の断片は前の終わりから始める。
+    個別に round すると隣どうしが 1px ずれて隙間や重なりになる。
+  */
+  const edges = list.map((ratio) => Math.round(ratio * total));
 
   return Array.from({ length: count }, (_, i) => {
-    // 最後の1枚が余りを引き受ける
-    const size = i === count - 1 ? total - base * (count - 1) : base;
-    const offset = base * i;
+    const from = edges[i];
+    const to = edges[i + 1];
+    // 丸めで潰れても 1px は残す(0 幅の canvas は例外になる)
+    const size = Math.max(1, to - from);
     return axis === "vertical"
-      ? { x: offset, y: 0, w: size, h: height }
-      : { x: 0, y: offset, w: width, h: size };
+      ? { x: from, y: 0, w: size, h: height }
+      : { x: 0, y: from, w: width, h: size };
   });
 }
 
@@ -116,12 +135,18 @@ export function computeSplitRects(
 export async function splitImageFile(
   file: File | Blob,
   mode: SplitMode,
+  boundaries?: SplitBoundaries,
 ): Promise<SplitPiece[]> {
   const bitmap = await createImageBitmap(file, {
     imageOrientation: "from-image",
   });
   try {
-    const rects = computeSplitRects(bitmap.width, bitmap.height, mode);
+    const rects = computeSplitRects(
+      bitmap.width,
+      bitmap.height,
+      mode,
+      boundaries,
+    );
     const pieces: SplitPiece[] = [];
     for (const [i, rect] of rects.entries()) {
       const canvas = document.createElement("canvas");

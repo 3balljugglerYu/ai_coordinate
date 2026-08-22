@@ -63,6 +63,15 @@ function imageFile(name = "fireworks.png") {
   return new File(["dummy"], name, { type: "image/png" });
 }
 
+/**
+ * 切り出した断片の <img> だけを数える。
+ * 分割位置の調整UI(SplitBoundaryEditor)が元画像を1枚出すので、
+ * 素の getAllByRole("img") だと1枚多くなる。
+ */
+function pieceImages() {
+  return screen.queryAllByAltText(/^分割 \d+ 枚目$/);
+}
+
 async function selectFile(file: File) {
   const input = document.querySelector(
     'input[type="file"]',
@@ -134,8 +143,12 @@ describe("共通(端末に依らない)", () => {
 
     await selectFile(imageFile());
 
-    expect(mockSplit).toHaveBeenCalledWith(expect.any(File), "vertical4");
-    expect(screen.getAllByRole("img")).toHaveLength(4);
+    expect(mockSplit).toHaveBeenCalledWith(
+      expect.any(File),
+      "vertical4",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
+    expect(pieceImages()).toHaveLength(4);
     expect(screen.getAllByText("保存")).toHaveLength(4);
   });
 
@@ -158,7 +171,11 @@ describe("共通(端末に依らない)", () => {
     });
 
     expect(mockSplit).toHaveBeenCalledTimes(2);
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "horizontal4");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "horizontal4",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
   });
 
   test("⭐枚数のピルは軸ごとに独立している(縦の2分割と横の2分割)", async () => {
@@ -168,12 +185,20 @@ describe("共通(端末に依らない)", () => {
     await act(async () => {
       fireEvent.click(screen.getAllByText("2分割")[0]);
     });
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "vertical2");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "vertical2",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
 
     await act(async () => {
       fireEvent.click(screen.getAllByText("2分割")[1]);
     });
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "horizontal2");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "horizontal2",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
   });
 
   test("3分割を選ぶと縦3分割で切り直す", async () => {
@@ -184,7 +209,11 @@ describe("共通(端末に依らない)", () => {
       fireEvent.click(screen.getAllByText("3分割")[0]);
     });
 
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "vertical3");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "vertical3",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
   });
 
   test("画像を選ぶ前のモード切り替えは分割を走らせない", async () => {
@@ -207,7 +236,7 @@ describe("共通(端末に依らない)", () => {
     expect(
       screen.getByText(/この画像を読み込めませんでした/),
     ).toBeInTheDocument();
-    expect(screen.queryAllByRole("img")).toHaveLength(0);
+    expect(pieceImages()).toHaveLength(0);
     errorSpy.mockRestore();
   });
 
@@ -224,8 +253,12 @@ describe("共通(端末に依らない)", () => {
       });
     });
 
-    expect(mockSplit).toHaveBeenCalledWith(expect.any(File), "vertical4");
-    expect(screen.getAllByRole("img")).toHaveLength(4);
+    expect(mockSplit).toHaveBeenCalledWith(
+      expect.any(File),
+      "vertical4",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
+    expect(pieceImages()).toHaveLength(4);
   });
 
   test("ドラッグが外れたらハイライトが戻る", () => {

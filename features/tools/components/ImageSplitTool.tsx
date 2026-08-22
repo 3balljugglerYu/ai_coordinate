@@ -10,11 +10,20 @@ import {
   trackImageSplitSaveAll,
   trackImageSplitSavePiece,
 } from "../lib/image-split-events";
+import { SplitBoundaryEditor } from "./SplitBoundaryEditor";
+import {
+  createEqualBoundaries,
+  isEqualBoundaries,
+  redistributeDividers,
+  resetBoundaries,
+  type SplitBoundaries,
+} from "../lib/split-boundaries";
 import {
   buildSplitMode,
   parseSplitMode,
   pieceFileName,
   splitImageFile,
+  splitPieceCount,
   SPLIT_COUNTS,
   type SplitAxis,
   type SplitCount,
@@ -79,6 +88,13 @@ export function ImageSplitTool() {
   const [isMobile, setIsMobile] = useState(false);
   const [canShareFiles, setCanShareFiles] = useState(false);
   const [dragging, setDragging] = useState(false);
+  /*
+    分割位置(使う範囲 + 仕切り)。等分だと切れ目がキャラクターを横切ることが
+    あるため、ユーザーが動かせるようにしている(features/tools/lib/split-boundaries)。
+  */
+  const [boundaries, setBoundaries] = useState<SplitBoundaries>(() =>
+    createEqualBoundaries(4),
+  );
   const inputRef = useRef<HTMLInputElement>(null);
 
   // UA と navigator.canShare はクライアントでしか判定できない(SSR とのズレ防止で effect)
@@ -100,11 +116,16 @@ export function ImageSplitTool() {
     };
   }, [pieces, sourceUrl]);
 
-  const runSplit = useCallback(async (file: File, nextMode: SplitMode) => {
+  const runSplit = useCallback(
+    async (
+      file: File,
+      nextMode: SplitMode,
+      nextBoundaries: SplitBoundaries,
+    ) => {
     setBusy(true);
     setError(null);
     try {
-      const result = await splitImageFile(file, nextMode);
+      const result = await splitImageFile(file, nextMode, nextBoundaries);
       setPieces((prev) => {
         prev.forEach((p) => URL.revokeObjectURL(p.url));
         return result.map((piece) => ({
@@ -124,7 +145,9 @@ export function ImageSplitTool() {
     } finally {
       setBusy(false);
     }
-  }, []);
+    },
+    [],
+  );
 
   const handleFile = useCallback(
     async (file: File | undefined | null) => {
@@ -140,7 +163,10 @@ export function ImageSplitTool() {
         if (prev) URL.revokeObjectURL(prev);
         return URL.createObjectURL(file);
       });
-      await runSplit(file, mode);
+      // 別の画像に替えたら位置調整はやり直し(前の絵に合わせた位置は意味を持たない)
+      const fresh = createEqualBoundaries(splitPieceCount(mode));
+      setBoundaries(fresh);
+      await runSplit(file, mode, fresh);
     },
     [mode, runSplit],
   );
@@ -148,10 +174,41 @@ export function ImageSplitTool() {
   const handleModeChange = useCallback(
     async (nextMode: SplitMode) => {
       setMode(nextMode);
-      if (sourceFile) await runSplit(sourceFile, nextMode);
+      /*
+        ⭐枚数を変えても**詰めた端は保つ**。ここで全部リセットすると、
+        せっかく合わせたトリミングが枚数を変えるたびに戻ってやり直しになる。
+      */
+      const next = redistributeDividers(
+        boundaries,
+        splitPieceCount(nextMode),
+      );
+      setBoundaries(next);
+      if (sourceFile) await runSplit(sourceFile, nextMode, next);
     },
-    [sourceFile, runSplit],
+    [sourceFile, runSplit, boundaries],
   );
+
+  /**
+   * 分割線を動かしたとき。**ドラッグ中は切り直さない**(1本動かすたびに
+   * 画像を4枚デコードすると指に追従しなくなる)。線の位置だけ先に反映し、
+   * 指を離してから切り直す。
+   */
+  const handleBoundariesChange = useCallback((next: SplitBoundaries) => {
+    setBoundaries(next);
+  }, []);
+
+  const handleBoundariesCommit = useCallback(
+    (next: SplitBoundaries) => {
+      if (sourceFile) void runSplit(sourceFile, mode, next);
+    },
+    [sourceFile, mode, runSplit],
+  );
+
+  const handleResetBoundaries = useCallback(() => {
+    const next = resetBoundaries(splitPieceCount(mode));
+    setBoundaries(next);
+    if (sourceFile) void runSplit(sourceFile, mode, next);
+  }, [mode, sourceFile, runSplit]);
 
   const downloadPiece = useCallback(
     (piece: PieceView) => {
@@ -224,6 +281,8 @@ export function ImageSplitTool() {
   }, [pieces, toShareFile]);
 
   const parsed = parseSplitMode(mode);
+  /** 2×2(grid4)は軸が2つあるので、線の調整は出さない。 */
+  const splitAxis = parsed?.axis ?? null;
   const gridClass =
     parsed === null
       ? "grid-cols-2 max-w-md"
@@ -330,6 +389,41 @@ export function ImageSplitTool() {
           </button>
         </div>
       </div>
+
+      {/*
+        分割位置の調整。等分だと切れ目がキャラクターを横切ることがあるので、
+        元画像の上で線を動かせるようにする。両端も動かせる(=トリミング)。
+        2×2 は軸が2つあり同じ操作にできないため、いまは等分のまま。
+      */}
+      {sourceUrl && splitAxis ? (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-slate-600">
+              分割位置（線をドラッグ）
+            </span>
+            {!isEqualBoundaries(boundaries, splitPieceCount(mode)) ? (
+              <button
+                type="button"
+                onClick={handleResetBoundaries}
+                className="text-xs font-medium text-pink-600 underline hover:text-pink-800"
+              >
+                均等に戻す
+              </button>
+            ) : null}
+          </div>
+          <SplitBoundaryEditor
+            imageUrl={sourceUrl}
+            axis={splitAxis}
+            boundaries={boundaries}
+            onChange={handleBoundariesChange}
+            onCommit={handleBoundariesCommit}
+            disabled={busy}
+          />
+          <p className="text-xs leading-5 text-slate-500">
+            両端を内側へ動かすと、その外側は切り取られます。
+          </p>
+        </div>
+      ) : null}
 
       {error ? (
         <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
