@@ -49,13 +49,14 @@ const THUMB_SIZES = `(max-width: ${FEED_CARD_MAX_WIDTH_PX}px) 100vw, ${FEED_CARD
  * 解像度は要らない。以前は `80vw` としており、DPR2 の PC で `w=3840`
  * (4K 幅)を要求していた。
  */
-const DISPLAY_SIZES = "(max-width: 896px) 100vw, 896px";
+const DEFAULT_DISPLAY_SIZES = "(max-width: 896px) 100vw, 896px";
 
 export function PostDetailHeroImage({
   displayUrl,
   thumbnailUrl,
   alt,
   className,
+  displaySizes = DEFAULT_DISPLAY_SIZES,
 }: {
   /** 表示用の画像(`_display.webp`)。これが本命。 */
   displayUrl: string;
@@ -66,6 +67,12 @@ export function PostDetailHeroImage({
   thumbnailUrl?: string | null;
   alt: string;
   className?: string;
+  /**
+   * 表示用画像の `sizes`。Before/After を横に並べる詳細では After が
+   * 66vw に収まるので、既定(全幅)のままだと必要の2倍近い解像度を落としてくる。
+   * **サムネ側は `unoptimized` なので影響を受けない**(生 URL のまま)。
+   */
+  displaySizes?: string;
 }) {
   const [displayLoaded, setDisplayLoaded] = useState(false);
 
@@ -79,7 +86,7 @@ export function PostDetailHeroImage({
         width={1200}
         height={1200}
         className={className}
-        sizes={DISPLAY_SIZES}
+        sizes={displaySizes}
         priority
       />
     );
@@ -115,7 +122,7 @@ export function PostDetailHeroImage({
         className={`absolute inset-0 h-full w-full transition-opacity duration-200 motion-reduce:transition-none ${
           displayLoaded ? "opacity-100" : "opacity-0"
         } ${className ?? ""}`}
-        sizes={DISPLAY_SIZES}
+        sizes={displaySizes}
         priority
         onLoad={() => setDisplayLoaded(true)}
       />

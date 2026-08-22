@@ -157,6 +157,24 @@ describe("PostDetailHeroImage", () => {
     expect(imgs()).toHaveLength(1);
   });
 
+  test("⭐displaySizes を渡すと表示用だけがそれに従う（Before/After 並びの 66vw 用）", () => {
+    render(
+      <PostDetailHeroImage
+        displayUrl={DISPLAY}
+        thumbnailUrl={THUMB}
+        alt="うちの子"
+        displaySizes="(max-width: 768px) 66vw, 66vw"
+      />
+    );
+
+    expect(imgs()[1].getAttribute("sizes")).toBe("(max-width: 768px) 66vw, 66vw");
+    // サムネ側は unoptimized なので sizes を変えても URL は変わらない（＝キャッシュに当たる）
+    expect(imgs()[0].getAttribute("sizes")).toBe(
+      `(max-width: ${FEED_CARD_MAX_WIDTH_PX}px) 100vw, ${FEED_CARD_MAX_WIDTH_PX}px`
+    );
+    expect(imgs()[0].getAttribute("data-unoptimized")).toBe("true");
+  });
+
   test("className は両方の layer に付く（比率・最大高の指定を落とさない）", () => {
     render(
       <PostDetailHeroImage

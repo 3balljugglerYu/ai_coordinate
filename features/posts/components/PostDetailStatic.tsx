@@ -384,14 +384,18 @@ export function PostDetailStatic({
               }}
             >
               {displayImageUrl ? (
-                <Image
-                  src={displayImageUrl}
+                /*
+                  Before あり(投稿の過半数)でもサムネを下敷きにする。
+                  ここを素の Image のままにすると、スケルトンでサムネを
+                  出せても**詳細本体へ切り替わった瞬間に After が白へ戻る**。
+                */
+                <PostDetailHeroImage
+                  displayUrl={displayImageUrl}
+                  thumbnailUrl={thumbnailUrl}
                   alt={postsT("afterImageAlt")}
-                  width={1200}
-                  height={1200}
                   className="block max-h-[80vh] max-w-[66vw] w-auto h-auto object-contain"
-                  sizes="(max-width: 768px) 66vw, 66vw"
-                  priority
+                  /* After は 66vw に収まるので、全幅ぶんの解像度は要らない */
+                  displaySizes="(max-width: 768px) 66vw, 66vw"
                 />
               ) : (
                 <div className="flex h-full min-h-[50vh] w-[50vh] items-center justify-center text-gray-400">
