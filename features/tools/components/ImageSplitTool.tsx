@@ -26,7 +26,6 @@ import {
   splitPieceCount,
   SPLIT_COUNTS,
   type SplitAxis,
-  type SplitCount,
   type SplitMode,
   type SplitPiece,
 } from "../lib/split-image";
@@ -48,16 +47,6 @@ const AXIS_ROWS: readonly {
   { axis: "vertical", label: "縦に分割", note: "横長向け" },
   { axis: "horizontal", label: "横に分割", note: "縦長向け" },
 ];
-
-/**
- * プレビューの列数。**Tailwind は文字列を静的に走査する**ので
- * `grid-cols-${n}` のような組み立てはクラスが生成されない。必ず表で持つ。
- */
-const VERTICAL_GRID_CLASS: Record<SplitCount, string> = {
-  2: "grid-cols-2",
-  3: "grid-cols-3",
-  4: "grid-cols-4",
-};
 
 /**
  * 画像分割ツール。**すべてブラウザ内で完結**し、画像はどこにも送らない。
@@ -283,12 +272,13 @@ export function ImageSplitTool() {
   const parsed = parseSplitMode(mode);
   /** 2×2(grid4)は軸が2つあるので、線の調整は出さない。 */
   const splitAxis = parsed?.axis ?? null;
+  const isVerticalSplit = splitAxis === "vertical";
+  /*
+    縦分割は flex で幅を比率配分するのでここは通らない。
+    2×2 は2列、横分割は1列に積む(どちらも元画像の並びと同じ)。
+  */
   const gridClass =
-    parsed === null
-      ? "grid-cols-2 max-w-md"
-      : parsed.axis === "vertical"
-        ? VERTICAL_GRID_CLASS[parsed.count]
-        : "grid-cols-1 max-w-md";
+    parsed === null ? "grid-cols-2 max-w-md" : "grid-cols-1 max-w-md";
 
   const showMobileShare = isMobile && canShareFiles;
   /*
@@ -436,24 +426,51 @@ export function ImageSplitTool() {
       {/* 結果 */}
       {pieces.length > 0 && !busy ? (
         <div className="space-y-4">
-          <div className={`grid gap-1 ${gridClass}`}>
+          <div className={isVerticalSplit ? "flex gap-1" : `grid gap-1 ${gridClass}`}>
             {pieces.map((piece) => (
-              <figure key={piece.index} className="space-y-1">
-                {/* 切り出した Blob のプレビュー。next/image は objectURL に使えない */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={piece.url}
-                  alt={`分割 ${piece.index} 枚目`}
-                  className="w-full rounded-md border border-slate-200"
-                />
-                <figcaption className="flex items-center justify-between px-0.5">
-                  <span className="text-[11px] tabular-nums text-slate-500">
-                    {piece.index}枚目
+              <figure
+                key={piece.index}
+                className="min-w-0 space-y-1"
+                /*
+                  ⭐ 縦分割は**幅を元の比率どおりに配る**。等幅の枠に流し込むと、
+                  元が細い断片ほど引き伸ばされて**縦に伸びる**(分割位置を動かすと
+                  高さがバラバラになる。実機で報告された)。
+                  幅を比率にすれば、どの断片も元の高さのままなので高さが揃い、
+                  並べたときに元画像と同じ見え方になる。
+                */
+                style={
+                  isVerticalSplit
+                    ? { flex: `${piece.width} 0 0%` }
+                    : undefined
+                }
+              >
+                <div className="relative">
+                  {/* 切り出した Blob のプレビュー。next/image は objectURL に使えない */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={piece.url}
+                    alt={`分割 ${piece.index} 枚目`}
+                    /*
+                      枠線は border ではなく ring(box-shadow)にする。border は
+                      幅に関わらず 2px を占めるので、細い断片ほど中身の比率が狂い、
+                      **高さが揃わない**(実測 185/194/192/192)。ring は
+                      レイアウトに影響しない。
+                    */
+                    className="block w-full rounded-md ring-1 ring-slate-200"
+                  />
+                  {/*
+                    順番は画像の上に置く。分割位置を動かすと断片が細くなることが
+                    あり、下に文字で置くと「1/枚/目」と折り返して並びが崩れる。
+                  */}
+                  <span className="pointer-events-none absolute left-1 top-1 rounded bg-black/55 px-1 text-[10px] font-bold leading-tight text-white">
+                    {piece.index}
                   </span>
+                </div>
+                <figcaption className="px-0.5 text-center">
                   <button
                     type="button"
                     onClick={() => void savePiece(piece)}
-                    className="text-[11px] font-medium text-pink-600 underline hover:text-pink-800"
+                    className="whitespace-nowrap text-[11px] font-medium text-pink-600 underline hover:text-pink-800"
                   >
                     保存
                   </button>
