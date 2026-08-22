@@ -11,6 +11,13 @@
  * **モバイルに連続ダウンロードを出してはいけない**(実機で発生した不具合)。
  */
 
+jest.mock("@/features/tools/lib/image-split-events", () => ({
+  trackImageSplitRun: jest.fn(),
+  trackImageSplitSavePiece: jest.fn(),
+  trackImageSplitSaveAll: jest.fn(),
+  trackImageSplitFailed: jest.fn(),
+}));
+
 jest.mock("@/features/tools/lib/split-image", () => {
   const actual = jest.requireActual("@/features/tools/lib/split-image");
   return {
@@ -22,6 +29,12 @@ jest.mock("@/features/tools/lib/split-image", () => {
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { ImageSplitTool } from "@/features/tools/components/ImageSplitTool";
 import { splitImageFile } from "@/features/tools/lib/split-image";
+import {
+  trackImageSplitFailed,
+  trackImageSplitRun,
+  trackImageSplitSaveAll,
+  trackImageSplitSavePiece,
+} from "@/features/tools/lib/image-split-events";
 
 const mockSplit = splitImageFile as jest.MockedFunction<typeof splitImageFile>;
 
@@ -481,5 +494,127 @@ describe("枚数に追従する文言", () => {
 
     // grid-cols-3 は静的なクラス表から引く(動的組み立てだと Tailwind が拾わない)
     expect(container.querySelector(".grid-cols-3")).not.toBeNull();
+  });
+});
+
+/**
+ * GA4 イベント。
+ *
+ * このツールはサーバーに何も送らないので、**イベントを送り損ねると
+ * 「使われたかどうか」を知る手段が完全に無くなる**。
+ * 画面の流れから確かに発火することを固定する。
+ */
+describe("GA4 イベント", () => {
+  const runMock = trackImageSplitRun as jest.Mock;
+  const savePieceMock = trackImageSplitSavePiece as jest.Mock;
+  const saveAllMock = trackImageSplitSaveAll as jest.Mock;
+  const failedMock = trackImageSplitFailed as jest.Mock;
+
+  test("分割が成功したら分割方法と枚数を送る", async () => {
+    setUserAgent(DESKTOP_UA);
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(runMock).toHaveBeenCalledWith("vertical4", 4);
+  });
+
+  test("分割方法を切り替えるたびに送る", async () => {
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockResolvedValue(makePieces(2));
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("2分割")[0]);
+    });
+
+    expect(runMock).toHaveBeenLastCalledWith("vertical2", 2);
+    expect(runMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("⭐分割に失敗したら成功イベントを送らず、失敗として記録する", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockRejectedValueOnce(new Error("decode failed"));
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(runMock).not.toHaveBeenCalled();
+    expect(failedMock).toHaveBeenCalledWith("decode_failed");
+    errorSpy.mockRestore();
+  });
+
+  test("画像以外を選んだときも失敗として記録する", async () => {
+    setUserAgent(DESKTOP_UA);
+    render(<ImageSplitTool />);
+
+    await selectFile(new File(["x"], "note.txt", { type: "text/plain" }));
+
+    expect(failedMock).toHaveBeenCalledWith("not_an_image");
+  });
+
+  test("PC のまとめて保存は download として枚数つきで送る", async () => {
+    setUserAgent(DESKTOP_UA);
+    const { restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile());
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("4枚まとめて保存"));
+      });
+
+      expect(saveAllMock).toHaveBeenCalledWith("download", 4);
+    } finally {
+      restore();
+    }
+  });
+
+  test("モバイルのまとめて共有は share として送る", async () => {
+    setUserAgent(IPHONE_UA);
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
+    });
+
+    expect(saveAllMock).toHaveBeenCalledWith("share", 4);
+  });
+
+  test("⭐共有シートを閉じただけ(AbortError)は保存として数えない", async () => {
+    setUserAgent(IPHONE_UA);
+    const abort = Object.assign(new Error("abort"), { name: "AbortError" });
+    Object.assign(navigator, {
+      canShare: jest.fn(() => true),
+      share: jest.fn().mockRejectedValue(abort),
+    });
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
+    });
+
+    expect(saveAllMock).not.toHaveBeenCalled();
+  });
+
+  test("1枚保存も手段つきで送る(PC はダウンロード)", async () => {
+    setUserAgent(DESKTOP_UA);
+    const { restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile());
+
+      await act(async () => {
+        fireEvent.click(screen.getAllByText("保存")[0]);
+      });
+
+      expect(savePieceMock).toHaveBeenCalledWith("download");
+    } finally {
+      restore();
+    }
   });
 });
