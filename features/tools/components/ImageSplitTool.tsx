@@ -5,8 +5,13 @@ import { Download, Share2, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { isMobileUserAgent } from "@/features/generation/lib/download-image";
 import {
+  buildSplitMode,
+  parseSplitMode,
   pieceFileName,
   splitImageFile,
+  SPLIT_COUNTS,
+  type SplitAxis,
+  type SplitCount,
   type SplitMode,
   type SplitPiece,
 } from "../lib/split-image";
@@ -17,7 +22,31 @@ interface PieceView extends SplitPiece {
 }
 
 /**
- * X 投稿用の画像分割ツール。**すべてブラウザ内で完結**し、画像はどこにも送らない。
+ * 分割方法の選択肢。**軸 × 枚数の表**にして、増えても一列に並べない。
+ * 2/3/4 を横並びのピルにすると7個になり、スマホで折り返して読めなくなる。
+ */
+const AXIS_ROWS: readonly {
+  axis: SplitAxis;
+  label: string;
+  note: string;
+}[] = [
+  { axis: "vertical", label: "縦に分割", note: "横長向け" },
+  { axis: "horizontal", label: "横に分割", note: "縦長向け" },
+];
+
+/**
+ * プレビューの列数。**Tailwind は文字列を静的に走査する**ので
+ * `grid-cols-${n}` のような組み立てはクラスが生成されない。必ず表で持つ。
+ */
+const VERTICAL_GRID_CLASS: Record<SplitCount, string> = {
+  2: "grid-cols-2",
+  3: "grid-cols-3",
+  4: "grid-cols-4",
+};
+
+/**
+ * 画像分割ツール。**すべてブラウザ内で完結**し、画像はどこにも送らない。
+ * 縦・横それぞれ 2/3/4 分割と、2×2 の4分割に対応する。
  *
  * ## 保存動線は既存の生成画像と同じ分け方にする
  *
@@ -27,11 +56,11 @@ interface PieceView extends SplitPiece {
  * - iOS Safari は連続ダウンロードで「現在進行中のダウンロードは停止します」と
  *   **前のダウンロードを潰す**ため、モバイルに「まとめてダウンロード」は出せない。
  *   保存先も写真ではなく「ファイル」になる。
- * - 共有シートの「4枚の画像を保存」なら写真アプリに入る。
+ * - 共有シートの「N枚の画像を保存」なら写真アプリに入る。
  * - **X の iOS 共有拡張は Web からの複数画像ファイルを受け取らない**
  *   (共有シートに LINE や Gmail は並ぶのに X は出ない)。したがって
  *   「共有シートから直接 X へ」は成立しない。正しい導線は
- *   写真に保存 → X アプリで4枚選んで投稿、で、文言もそう案内する。
+ *   写真に保存 → X アプリで選んで投稿、で、文言もそう案内する。
  */
 export function ImageSplitTool() {
   const [mode, setMode] = useState<SplitMode>("vertical4");
@@ -179,14 +208,25 @@ export function ImageSplitTool() {
     }
   }, [pieces, toShareFile]);
 
+  const parsed = parseSplitMode(mode);
   const gridClass =
-    mode === "vertical4"
-      ? "grid-cols-4"
-      : mode === "horizontal4"
-        ? "grid-cols-1 max-w-md"
-        : "grid-cols-2 max-w-md";
+    parsed === null
+      ? "grid-cols-2 max-w-md"
+      : parsed.axis === "vertical"
+        ? VERTICAL_GRID_CLASS[parsed.count]
+        : "grid-cols-1 max-w-md";
 
   const showMobileShare = isMobile && canShareFiles;
+  /*
+    文言の「N枚」は**実際に切り出した枚数**から出す(モードから計算しない)。
+    分割方法を変えた直後にプレビューと枚数がずれるのを防ぐ。
+  */
+  const pieceCount = pieces.length;
+  /*
+    X のタイムラインで 2×2 に畳まれ、スワイプでつながって見えるのは
+    **4枚のときだけ**。2枚・3枚では並び方が違うので、この案内は出さない。
+  */
+  const isFourPieces = pieceCount === 4;
 
   return (
     <div className="space-y-6">
@@ -228,29 +268,52 @@ export function ImageSplitTool() {
         </p>
       </label>
 
-      {/* 分割モード */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-xs font-semibold text-slate-600">分割方法:</span>
-        {(
-          [
-            { value: "vertical4", label: "縦に4分割（横長向け）" },
-            { value: "horizontal4", label: "横に4分割（縦長向け）" },
-            { value: "grid4", label: "2×2に4分割" },
-          ] as const
-        ).map((option) => (
+      {/* 分割方法(軸 × 枚数) */}
+      <div className="space-y-2">
+        <span className="text-xs font-semibold text-slate-600">分割方法</span>
+        {AXIS_ROWS.map((row) => (
+          <div key={row.axis} className="flex items-center gap-2">
+            <span className="w-[7.5rem] shrink-0 text-xs text-slate-600">
+              {row.label}
+              <span className="text-slate-400">（{row.note}）</span>
+            </span>
+            {SPLIT_COUNTS.map((count) => {
+              const value = buildSplitMode(row.axis, count);
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => void handleModeChange(value)}
+                  aria-pressed={mode === value}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                    mode === value
+                      ? "border-pink-500 bg-pink-500 text-white"
+                      : "border-slate-300 bg-white text-slate-600 hover:border-pink-300"
+                  }`}
+                >
+                  {count}分割
+                </button>
+              );
+            })}
+          </div>
+        ))}
+        <div className="flex items-center gap-2">
+          <span className="w-[7.5rem] shrink-0 text-xs text-slate-600">
+            そのほか
+          </span>
           <button
-            key={option.value}
             type="button"
-            onClick={() => void handleModeChange(option.value)}
+            onClick={() => void handleModeChange("grid4")}
+            aria-pressed={mode === "grid4"}
             className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-              mode === option.value
+              mode === "grid4"
                 ? "border-pink-500 bg-pink-500 text-white"
                 : "border-slate-300 bg-white text-slate-600 hover:border-pink-300"
             }`}
           >
-            {option.label}
+            2×2に4分割
           </button>
-        ))}
+        </div>
       </div>
 
       {error ? (
@@ -294,26 +357,32 @@ export function ImageSplitTool() {
             {showMobileShare ? (
               <Button type="button" onClick={() => void shareAll()}>
                 <Share2 className="mr-1.5 h-4 w-4" aria-hidden />
-                4枚をまとめて保存・共有
+                {pieceCount}枚をまとめて保存・共有
               </Button>
             ) : !isMobile ? (
               <Button type="button" onClick={downloadAll}>
                 <Download className="mr-1.5 h-4 w-4" aria-hidden />
-                4枚まとめて保存
+                {pieceCount}枚まとめて保存
               </Button>
             ) : null /* モバイルで共有不可なら1枚ずつのみ(連続DLはiOSが潰す) */}
           </div>
           {showMobileShare ? (
             <p className="text-xs leading-5 text-slate-600">
-              開いたシートで<strong>「4枚の画像を保存」</strong>
+              開いたシートで
+              <strong>「{pieceCount}枚の画像を保存」</strong>
               を選ぶと写真アプリに入ります。Xアプリの投稿画面で、
-              写真から1枚目→4枚目の順に選んで投稿してください
-              （タイムラインでは2×2に並び、タップしてスワイプするとつながって見えます）。
+              写真から1枚目→{pieceCount}枚目の順に選んで投稿してください
+              {isFourPieces
+                ? "（タイムラインでは2×2に並び、タップしてスワイプするとつながって見えます）"
+                : ""}
+              。
             </p>
           ) : (
             <p className="text-xs leading-5 text-slate-500">
-              Xでは1枚目から順に選んで投稿してください。タイムラインでは2×2に並び、
-              タップしてスワイプすると1枚ずつつながって見えます。
+              Xでは1枚目から順に選んで投稿してください。
+              {isFourPieces
+                ? "タイムラインでは2×2に並び、タップしてスワイプすると1枚ずつつながって見えます。"
+                : ""}
             </p>
           )}
         </div>

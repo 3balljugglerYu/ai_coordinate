@@ -53,7 +53,7 @@ export const zhTwMessages = {
     catalog: "繪師目錄",
     collections: "收藏圖鑑",
     freeMaterials: "換裝免費素材",
-    imageSplitTool: "圖片四分割工具",
+    imageSplitTool: "圖片分割工具",
     creators: "創作者招募",
   },
   searchBar: {

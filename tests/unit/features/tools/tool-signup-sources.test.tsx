@@ -6,7 +6,7 @@
  */
 
 import { render } from "@testing-library/react";
-import ImageSplitPage from "@/app/tools/image-split/page";
+import ImageSplitPage, { metadata } from "@/app/tools/image-split/page";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
 
 jest.mock("@/features/style-presets/lib/style-preset-repository", () => ({
@@ -104,9 +104,22 @@ describe("画像4分割ツールのページ", () => {
     );
   });
 
-  test("h1 が検索語(画像4分割)を含む", async () => {
+  test("h1 は枚数を限定しない(2〜4分割に対応したため)", async () => {
     const { container } = await renderPage();
-    expect(container.querySelector("h1")?.textContent).toContain("画像4分割");
+    const h1 = container.querySelector("h1")?.textContent ?? "";
+
+    expect(h1).toContain("画像分割");
+    // 4分割しかできないと読める見出しには戻さない
+    expect(h1).not.toContain("画像4分割");
+  });
+
+  test("⭐タイトルタグは具体的な枚数を残す(いちばん検索される語を捨てない)", () => {
+    const title = String(metadata.title ?? "");
+
+    expect(title).toContain("画像分割ツール");
+    for (const keyword of ["2分割", "3分割", "4分割"]) {
+      expect(title).toContain(keyword);
+    }
   });
 });
 

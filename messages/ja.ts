@@ -50,7 +50,7 @@ export const jaMessages = {
     catalog: "絵師カタログ",
     collections: "コレクション図鑑",
     freeMaterials: "着せ替えフリー素材",
-    imageSplitTool: "画像4分割ツール",
+    imageSplitTool: "画像分割ツール",
     creators: "クリエイター募集",
   },
   searchBar: {
