@@ -10,6 +10,13 @@ import { CountUpNumber } from "./CountUpNumber";
  * 「じらし→カウントアップ→着地ドーン」の3段構成:
  *   delayMs 後にポップイン → 0→amount カウントアップ(1.2s) → 着地でバウンス+コイン粒子バースト。
  *
+ * ## 高さを変えないこと
+ *
+ * 完走モーダルではこのパネルの**下にボタンが並ぶ**。演出の途中で高さが
+ * 変わると、その瞬間にボタンが動いて「押したつもりと違うものが押される」。
+ * ポップインは transform(scale)、「獲得！」は opacity で見せる。
+ * どちらもレイアウトを動かさない。
+ *
  * - amount<=0 なら何も描画しない(キャップ0/付与失敗/報酬なしで嘘をつかない)
  * - 表示額はサーバーの実付与額(キャップ後)のみを渡すこと
  * - 完走モーダル(mount)と日記帳リーダー(book, autoDismissMs指定)で共用
@@ -88,9 +95,20 @@ export function CompletionRewardPanel({
           </span>
           <span className="text-sm font-bold">ペルコイン</span>
         </p>
-        {landed ? (
-          <p className="text-xs font-bold text-amber-500">獲得！</p>
-        ) : null}
+        {/*
+          ⭐ 着地してから「獲得！」を**足す**と、パネルが1行ぶん(16px)伸びて
+          下のボタン群を押し下げる。押した瞬間にボタンが動いて別のものが
+          押される事故になるので、**最初から場所を取っておいて**
+          透明→不透明で見せる(高さは最初から最後まで変わらない)。
+        */}
+        <p
+          aria-hidden={!landed}
+          className={`text-xs font-bold text-amber-500 transition-opacity duration-200 motion-reduce:transition-none ${
+            landed ? "opacity-100" : "opacity-0"
+          }`}
+        >
+          獲得！
+        </p>
         {/* 着地バースト: コイン粒子を放射状に飛ばす(1回きり) */}
         {landed ? (
           <span aria-hidden className="reward-burst">

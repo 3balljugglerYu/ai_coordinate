@@ -10,6 +10,17 @@ import { useToast } from "@/components/ui/use-toast";
  * - 機能フラグ NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED が 'true' のときだけ描画(OFFは null)。
  * - マウント時に投稿済みかを取得し、未投稿=「ホームに投稿する」/ 投稿済み=「投稿済み ✓ + 取り消す」。
  * - 所有権・冪等性はサーバ(RPC/RLS)が担保するため、本コンポーネントは状態表示と送信のみ。
+ *
+ * ## ⭐ 取得中も同じ高さの場所を確保すること
+ *
+ * かつては取得が終わるまで `null` を返していた。その結果、完走モーダルでは
+ * **このボタンだけ数百ms遅れて出現し、下にある「シェアする」「カードを更新する」を
+ * 68px ぶん押し下げていた**(ピル52px + 親の space-y-4 の16px)。
+ * ちょうどボタン1個ぶんずれるので、押した瞬間に別のボタンが滑り込んで
+ * **意図しない方が押される**(実機で報告された)。
+ *
+ * 取得中はスケルトンを描いて場所を先に取る。こうすると
+ * **他のボタンは最初から最後まで一切動かない**。
  */
 const ENABLED =
   process.env.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED === "true";
@@ -47,7 +58,30 @@ export function CompletionFeedPostButton({
     };
   }, [completionId]);
 
-  if (!ENABLED || posted === null) return null;
+  if (!ENABLED) return null;
+
+  const isChromeVariant = variant === "chrome";
+
+  /*
+    取得中。**中身は空でも箱は本番と同じ寸法にする**(下のボタンを動かさない)。
+    押せると誤解させないよう、ボタンではなく淡いスケルトンとして描く。
+  */
+  if (posted === null) {
+    return (
+      <div
+        aria-hidden
+        className={
+          isChromeVariant
+            ? "inline-flex animate-pulse items-center gap-1.5 rounded-full bg-stone-200/70 px-3 py-2 text-sm font-bold text-transparent shadow-md"
+            : "flex w-full animate-pulse items-center justify-center gap-2 rounded-full border-2 border-stone-200 bg-stone-100 px-6 py-3 text-base font-bold text-transparent"
+        }
+      >
+        {/* 文字は透明。高さを本番と揃えるためだけに置く */}
+        <span className="h-4 w-4" />
+        ホームに投稿する
+      </div>
+    );
+  }
 
   async function submit() {
     setBusy(true);
@@ -105,14 +139,13 @@ export function CompletionFeedPostButton({
     }
   }
 
-  const isChrome = variant === "chrome";
 
   // 投稿済み表示
   if (posted) {
     return (
       <div
         className={
-          isChrome
+          isChromeVariant
             ? "inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-sm font-bold text-emerald-600 shadow-md"
             : "flex w-full items-center justify-center gap-2 rounded-full border-2 border-emerald-200 bg-emerald-50 px-6 py-3 text-base font-bold text-emerald-600"
         }
@@ -138,7 +171,7 @@ export function CompletionFeedPostButton({
         type="button"
         onClick={() => setExpanded(true)}
         className={
-          isChrome
+          isChromeVariant
             ? "inline-flex items-center gap-1.5 rounded-full bg-white/90 px-3 py-2 text-sm font-bold text-pink-500 shadow-md transition-transform hover:-translate-y-0.5"
             : "flex w-full items-center justify-center gap-2 rounded-full border-2 border-pink-300 bg-white px-6 py-3 text-base font-bold text-pink-500 transition-colors hover:bg-pink-50"
         }

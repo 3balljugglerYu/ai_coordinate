@@ -54,12 +54,16 @@ describe("CompletionRewardPanel", () => {
     expect(container.firstChild).toBeNull();
   });
 
-  it("じらし(delayMs)後にカウントし、到達で「獲得！」が表示される", () => {
+  it("じらし(delayMs)後にカウントし、到達で「獲得！」が見えるようになる", () => {
     render(<CompletionRewardPanel amount={100} delayMs={800} />);
 
     // じらし中: パネル(ラベル)は存在するが、まだ着地していない
     expect(screen.getByText("完走報酬")).not.toBeNull();
-    expect(screen.queryByText("獲得！")).toBeNull();
+    /*
+      「獲得！」は**最初から DOM にあり、透明**。後から足すとパネルが伸びて
+      下のボタンを押し下げてしまうため(下のテスト参照)。
+    */
+    expect(screen.getByText("獲得！").className).toContain("opacity-0");
 
     act(() => {
       jest.advanceTimersByTime(800);
@@ -71,7 +75,44 @@ describe("CompletionRewardPanel", () => {
 
     // reduce-motion により rAF 1フレームで即着地 → 最終値と「獲得！」
     expect(screen.getByText("100")).not.toBeNull();
-    expect(screen.getByText("獲得！")).not.toBeNull();
+    expect(screen.getByText("獲得！").className).toContain("opacity-100");
+  });
+
+  /**
+   * ⭐ 完走モーダルではこのパネルの**下にボタンが並ぶ**。演出の途中で高さが
+   * 変わると、その瞬間にボタンが動いて「押したつもりと違うものが押される」
+   * (実機で報告された不具合)。
+   */
+  it("⭐着地の前後で DOM の行数が変わらない(下のボタンを動かさない)", () => {
+    const { container } = render(
+      <CompletionRewardPanel amount={100} delayMs={800} />
+    );
+    const countBefore = container.querySelectorAll("p").length;
+
+    act(() => {
+      jest.advanceTimersByTime(800);
+    });
+    act(() => {
+      jest.advanceTimersByTime(20);
+    });
+
+    // 「獲得！」が後から**足される**と行数が増える = 高さが伸びる
+    expect(container.querySelectorAll("p").length).toBe(countBefore);
+  });
+
+  it("着地前は読み上げから外す(見えていないため)", () => {
+    render(<CompletionRewardPanel amount={100} delayMs={800} />);
+
+    expect(screen.getByText("獲得！")).toHaveAttribute("aria-hidden", "true");
+
+    act(() => {
+      jest.advanceTimersByTime(800);
+    });
+    act(() => {
+      jest.advanceTimersByTime(20);
+    });
+
+    expect(screen.getByText("獲得！")).toHaveAttribute("aria-hidden", "false");
   });
 
   it("autoDismissMs 指定時は着地後に自動で消える", () => {
