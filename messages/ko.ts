@@ -53,7 +53,7 @@ export const koMessages = {
     catalog: "일러스트레이터 카탈로그",
     collections: "컬렉션 도감",
     freeMaterials: "옷 갈아입히기 무료 소재",
-    imageSplitTool: "이미지 4분할 도구",
+    imageSplitTool: "이미지 분할 도구",
     creators: "크리에이터 모집",
   },
   searchBar: {

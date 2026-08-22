@@ -24,6 +24,8 @@ export const AUSTRALIA_DAILY_LOOKS: AustraliaDailyLookRef[] = [
   { day: "Day 2", presetId: "e5bce0ee-281d-4794-ab5a-13bde62da0ad" },
   // Daintree Rainforest Safari Look
   { day: "Day 3", presetId: "ee4e8a7f-8e5d-427f-883f-44ba0564264e" },
+  // Uluru Starry Night Midnight Gradient Gown Look
+  { day: "Day 4", presetId: "b73e84f9-9374-4e19-ba69-c21fc6de52a1" },
 ];
 
 /** ページに渡す解決済みの1件。 */

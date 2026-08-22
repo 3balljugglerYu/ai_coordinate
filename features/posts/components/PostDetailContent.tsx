@@ -20,6 +20,8 @@ interface PostDetailContentProps {
   initialViewCount: number;
   ownerId?: string | null;
   imageUrl?: string | null;
+  /** フィードと同じサムネイル URL。表示用画像が届くまでの繋ぎに使う */
+  thumbnailUrl?: string | null;
   /** ダウンロード用の元画像 URL（PNG/JPEG）。`<DownloadButton>` まで流す */
   originalImageUrl?: string | null;
   /** 閲覧者の購読プラン。派生生成シートのモデル選択・上限に使う。 */
@@ -44,6 +46,7 @@ export function PostDetailContent({
   initialViewCount,
   ownerId,
   imageUrl,
+  thumbnailUrl,
   originalImageUrl,
   viewerSubscriptionPlan,
   viewerIsAdmin,
@@ -90,6 +93,7 @@ export function PostDetailContent({
         initialViewCount={initialViewCount}
         ownerId={ownerId}
         imageUrl={imageUrl}
+        thumbnailUrl={thumbnailUrl}
         originalImageUrl={originalImageUrl}
         isHidden={isHidden}
         onHidden={() => setHiddenPostId(postId)}

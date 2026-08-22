@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useTranslations } from "next-intl";
+import { PostDetailHeroImage } from "./PostDetailHeroImage";
 import { PostDetailStatsContent } from "./PostDetailStatsContent";
 import { PostDetailStatsSkeleton } from "./PostDetailStatsSkeleton";
 import Image from "next/image";
@@ -52,6 +53,8 @@ interface PostDetailStaticProps {
   initialViewCount: number;
   ownerId?: string | null;
   imageUrl?: string | null;
+  /** フィードと同じサムネイル URL。表示用画像が届くまでの繋ぎに使う */
+  thumbnailUrl?: string | null;
   /** ダウンロード用の元画像 URL（PNG/JPEG）。`<DownloadButton>` まで流す */
   originalImageUrl?: string | null;
   isHidden?: boolean;
@@ -88,6 +91,7 @@ export function PostDetailStatic({
   initialViewCount,
   ownerId,
   imageUrl,
+  thumbnailUrl,
   originalImageUrl,
   isHidden = false,
   onHidden,
@@ -380,14 +384,18 @@ export function PostDetailStatic({
               }}
             >
               {displayImageUrl ? (
-                <Image
-                  src={displayImageUrl}
+                /*
+                  Before あり(投稿の過半数)でもサムネを下敷きにする。
+                  ここを素の Image のままにすると、スケルトンでサムネを
+                  出せても**詳細本体へ切り替わった瞬間に After が白へ戻る**。
+                */
+                <PostDetailHeroImage
+                  displayUrl={displayImageUrl}
+                  thumbnailUrl={thumbnailUrl}
                   alt={postsT("afterImageAlt")}
-                  width={1200}
-                  height={1200}
                   className="block max-h-[80vh] max-w-[66vw] w-auto h-auto object-contain"
-                  sizes="(max-width: 768px) 66vw, 66vw"
-                  priority
+                  /* After は 66vw に収まるので、全幅ぶんの解像度は要らない */
+                  displaySizes="(max-width: 768px) 66vw, 66vw"
                 />
               ) : (
                 <div className="flex h-full min-h-[50vh] w-[50vh] items-center justify-center text-gray-400">
@@ -444,18 +452,20 @@ export function PostDetailStatic({
               }}
             >
               {displayImageUrl ? (
-                <Image
-                  src={displayImageUrl}
+                /*
+                  フィードで読み込み済みのサムネイルを先に描いてから、
+                  表示用画像を重ねる。詳細を開くたびに 148KB を取り直して
+                  白いまま待たせていたのを解消する(PostDetailHeroImage)。
+                */
+                <PostDetailHeroImage
+                  displayUrl={displayImageUrl}
+                  thumbnailUrl={thumbnailUrl}
                   alt={post.caption || postsT("postImageAlt")}
-                  width={1200}
-                  height={1200}
                   className={`w-full h-auto object-contain ${
                     imageAspectRatio === "portrait" || imageAspectRatio === "landscape"
                       ? "max-h-[50vh]"
                       : ""
                   }`}
-                  sizes="(max-width: 768px) 100vw, 80vw"
-                  priority
                 />
               ) : (
                 <div className="flex h-full items-center justify-center text-gray-400">

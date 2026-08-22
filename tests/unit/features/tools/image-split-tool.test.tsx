@@ -11,6 +11,13 @@
  * **モバイルに連続ダウンロードを出してはいけない**(実機で発生した不具合)。
  */
 
+jest.mock("@/features/tools/lib/image-split-events", () => ({
+  trackImageSplitRun: jest.fn(),
+  trackImageSplitSavePiece: jest.fn(),
+  trackImageSplitSaveAll: jest.fn(),
+  trackImageSplitFailed: jest.fn(),
+}));
+
 jest.mock("@/features/tools/lib/split-image", () => {
   const actual = jest.requireActual("@/features/tools/lib/split-image");
   return {
@@ -22,6 +29,12 @@ jest.mock("@/features/tools/lib/split-image", () => {
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { ImageSplitTool } from "@/features/tools/components/ImageSplitTool";
 import { splitImageFile } from "@/features/tools/lib/split-image";
+import {
+  trackImageSplitFailed,
+  trackImageSplitRun,
+  trackImageSplitSaveAll,
+  trackImageSplitSavePiece,
+} from "@/features/tools/lib/image-split-events";
 
 const mockSplit = splitImageFile as jest.MockedFunction<typeof splitImageFile>;
 
@@ -89,16 +102,31 @@ beforeEach(() => {
 describe("共通(端末に依らない)", () => {
   beforeEach(() => setUserAgent(DESKTOP_UA));
 
-  test("初期表示: アップロード領域と3つの分割モードが出る", () => {
+  test("初期表示: アップロード領域と分割方法の表が出る", () => {
     render(<ImageSplitTool />);
 
     expect(screen.getByText("画像を選ぶ / ドラッグ&ドロップ")).toBeInTheDocument();
     expect(
       screen.getByText("画像はブラウザ内で処理され、サーバーにはアップロードされません"),
     ).toBeInTheDocument();
-    expect(screen.getByText("縦に4分割（横長向け）")).toBeInTheDocument();
-    expect(screen.getByText("横に4分割（縦長向け）")).toBeInTheDocument();
+    // 軸は2行、枚数は 2/3/4 の3つずつ。合わせて 2×2 の1つ
+    expect(screen.getByText("縦に分割")).toBeInTheDocument();
+    expect(screen.getByText("横に分割")).toBeInTheDocument();
+    expect(screen.getAllByText("2分割")).toHaveLength(2);
+    expect(screen.getAllByText("3分割")).toHaveLength(2);
+    expect(screen.getAllByText("4分割")).toHaveLength(2);
     expect(screen.getByText("2×2に4分割")).toBeInTheDocument();
+  });
+
+  test("⭐既定は縦4分割で、選択中の枚数だけが押された状態になる", () => {
+    render(<ImageSplitTool />);
+
+    const pressed = screen
+      .getAllByRole("button")
+      .filter((b) => b.getAttribute("aria-pressed") === "true");
+
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0].textContent).toBe("4分割");
   });
 
   test("画像を選ぶと4枚のプレビューが出る", async () => {
@@ -125,11 +153,38 @@ describe("共通(端末に依らない)", () => {
     await selectFile(imageFile());
 
     await act(async () => {
-      fireEvent.click(screen.getByText("横に4分割（縦長向け）"));
+      // 「横に分割」行の 4分割(= 2行目・3つ目のピル)
+      fireEvent.click(screen.getAllByText("4分割")[1]);
     });
 
     expect(mockSplit).toHaveBeenCalledTimes(2);
     expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "horizontal4");
+  });
+
+  test("⭐枚数のピルは軸ごとに独立している(縦の2分割と横の2分割)", async () => {
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("2分割")[0]);
+    });
+    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "vertical2");
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("2分割")[1]);
+    });
+    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "horizontal2");
+  });
+
+  test("3分割を選ぶと縦3分割で切り直す", async () => {
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("3分割")[0]);
+    });
+
+    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "vertical3");
   });
 
   test("画像を選ぶ前のモード切り替えは分割を走らせない", async () => {
@@ -368,5 +423,198 @@ describe("モバイル(共有シートが保存の正本)", () => {
     expect(screen.queryByText("4枚まとめて保存")).not.toBeInTheDocument();
     // 1枚ずつの保存(単発DL)は生きている
     expect(screen.getAllByText("保存")).toHaveLength(4);
+  });
+});
+
+/**
+ * 枚数に追従する文言。
+ *
+ * 2/3分割を足したとき、「4枚」と焼き込んだ文言が残っていると嘘になる。
+ * とくに **X のタイムラインで 2×2 に畳まれるのは4枚のときだけ**なので、
+ * 2枚・3枚でその案内を出してはいけない。
+ */
+describe("枚数に追従する文言", () => {
+  test("PC: まとめて保存のボタンが実際の枚数を出す", async () => {
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockResolvedValue(makePieces(2));
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(screen.getByText("2枚まとめて保存")).toBeInTheDocument();
+    expect(screen.queryByText("4枚まとめて保存")).not.toBeInTheDocument();
+  });
+
+  test("モバイル: 共有ボタンと共有シートの案内が実際の枚数を出す", async () => {
+    setUserAgent(IPHONE_UA);
+    mockSplit.mockResolvedValue(makePieces(3));
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(screen.getByText("3枚をまとめて保存・共有")).toBeInTheDocument();
+    expect(screen.getByText("「3枚の画像を保存」")).toBeInTheDocument();
+  });
+
+  test("⭐4枚のときだけ 2×2 に並ぶ案内を出す(PC)", async () => {
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockResolvedValue(makePieces(4));
+    const { unmount } = render(<ImageSplitTool />);
+    await selectFile(imageFile());
+    expect(screen.getByText(/タイムラインでは2×2に並び/)).toBeInTheDocument();
+    unmount();
+
+    mockSplit.mockResolvedValue(makePieces(3));
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+    // 3枚は 2×2 にならないので、この案内は出さない
+    expect(screen.queryByText(/タイムラインでは2×2に並び/)).not.toBeInTheDocument();
+    expect(screen.getByText(/1枚目から順に選んで投稿/)).toBeInTheDocument();
+  });
+
+  test("⭐4枚のときだけ 2×2 に並ぶ案内を出す(モバイル)", async () => {
+    setUserAgent(IPHONE_UA);
+    mockSplit.mockResolvedValue(makePieces(2));
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(screen.queryByText(/2×2に並び/)).not.toBeInTheDocument();
+  });
+
+  test("プレビューの列数は縦分割の枚数に追従する", async () => {
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockResolvedValue(makePieces(3));
+    const { container } = render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("3分割")[0]);
+    });
+
+    // grid-cols-3 は静的なクラス表から引く(動的組み立てだと Tailwind が拾わない)
+    expect(container.querySelector(".grid-cols-3")).not.toBeNull();
+  });
+});
+
+/**
+ * GA4 イベント。
+ *
+ * このツールはサーバーに何も送らないので、**イベントを送り損ねると
+ * 「使われたかどうか」を知る手段が完全に無くなる**。
+ * 画面の流れから確かに発火することを固定する。
+ */
+describe("GA4 イベント", () => {
+  const runMock = trackImageSplitRun as jest.Mock;
+  const savePieceMock = trackImageSplitSavePiece as jest.Mock;
+  const saveAllMock = trackImageSplitSaveAll as jest.Mock;
+  const failedMock = trackImageSplitFailed as jest.Mock;
+
+  test("分割が成功したら分割方法と枚数を送る", async () => {
+    setUserAgent(DESKTOP_UA);
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(runMock).toHaveBeenCalledWith("vertical4", 4);
+  });
+
+  test("分割方法を切り替えるたびに送る", async () => {
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockResolvedValue(makePieces(2));
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getAllByText("2分割")[0]);
+    });
+
+    expect(runMock).toHaveBeenLastCalledWith("vertical2", 2);
+    expect(runMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("⭐分割に失敗したら成功イベントを送らず、失敗として記録する", async () => {
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockRejectedValueOnce(new Error("decode failed"));
+    render(<ImageSplitTool />);
+
+    await selectFile(imageFile());
+
+    expect(runMock).not.toHaveBeenCalled();
+    expect(failedMock).toHaveBeenCalledWith("decode_failed");
+    errorSpy.mockRestore();
+  });
+
+  test("画像以外を選んだときも失敗として記録する", async () => {
+    setUserAgent(DESKTOP_UA);
+    render(<ImageSplitTool />);
+
+    await selectFile(new File(["x"], "note.txt", { type: "text/plain" }));
+
+    expect(failedMock).toHaveBeenCalledWith("not_an_image");
+  });
+
+  test("PC のまとめて保存は download として枚数つきで送る", async () => {
+    setUserAgent(DESKTOP_UA);
+    const { restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile());
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("4枚まとめて保存"));
+      });
+
+      expect(saveAllMock).toHaveBeenCalledWith("download", 4);
+    } finally {
+      restore();
+    }
+  });
+
+  test("モバイルのまとめて共有は share として送る", async () => {
+    setUserAgent(IPHONE_UA);
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
+    });
+
+    expect(saveAllMock).toHaveBeenCalledWith("share", 4);
+  });
+
+  test("⭐共有シートを閉じただけ(AbortError)は保存として数えない", async () => {
+    setUserAgent(IPHONE_UA);
+    const abort = Object.assign(new Error("abort"), { name: "AbortError" });
+    Object.assign(navigator, {
+      canShare: jest.fn(() => true),
+      share: jest.fn().mockRejectedValue(abort),
+    });
+    render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("4枚をまとめて保存・共有"));
+    });
+
+    expect(saveAllMock).not.toHaveBeenCalled();
+  });
+
+  test("1枚保存も手段つきで送る(PC はダウンロード)", async () => {
+    setUserAgent(DESKTOP_UA);
+    const { restore } = captureAnchorClicks();
+    try {
+      render(<ImageSplitTool />);
+      await selectFile(imageFile());
+
+      await act(async () => {
+        fireEvent.click(screen.getAllByText("保存")[0]);
+      });
+
+      expect(savePieceMock).toHaveBeenCalledWith("download");
+    } finally {
+      restore();
+    }
   });
 });

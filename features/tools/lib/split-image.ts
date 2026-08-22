@@ -6,16 +6,29 @@
  * - Vercel の 4.5MB ボディ制限と無関係(そもそも POST しない)
  * - 「画像はアップロードされません」とプライバシー訴求できる
  *
- * X の複数枚投稿はタイムラインで 2×2 グリッドに畳まれるが、タップして
- * スワイプすると1枚ずつ表示される。16:9 を縦4分割して順に投稿すると、
- * スワイプでパノラマがつながって見える——というのが流行の形。
+ * 分割数は 2/3/4 に対応する。**4分割だけは X で特別な見え方をする**:
+ * 複数枚投稿はタイムラインで 2×2 グリッドに畳まれ、タップしてスワイプすると
+ * 1枚ずつ表示される。16:9 を縦4分割して順に投稿するとパノラマがつながって
+ * 見える——というのが流行の形。2枚・3枚では並び方が違うので、
+ * この案内を出すのは4枚のときだけにすること。
  */
 
-export type SplitMode = "vertical4" | "horizontal4" | "grid4";
+export type SplitAxis = "vertical" | "horizontal";
+
+/** 対応する分割数。増やすときは UI の grid クラス表も一緒に増やすこと。 */
+export type SplitCount = 2 | 3 | 4;
+
+export const SPLIT_COUNTS: readonly SplitCount[] = [2, 3, 4];
+
+/**
+ * 分割方法。`vertical3` = 縦に3分割(縦の切れ目で左→右)。
+ * `grid4` だけは軸を持たない特別扱い。
+ */
+export type SplitMode = `${SplitAxis}${SplitCount}` | "grid4";
 
 export interface SplitPiece {
   blob: Blob;
-  /** X に投稿する順。1 始まり(左→右、2×2 は 左上→右上→左下→右下) */
+  /** X に投稿する順。1 始まり(左→右 / 上→下、2×2 は 左上→右上→左下→右下) */
   index: number;
   width: number;
   height: number;
@@ -28,44 +41,70 @@ interface SplitRect {
   h: number;
 }
 
+/** `vertical3` → `{ axis: "vertical", count: 3 }`。`grid4` は null。 */
+export function parseSplitMode(
+  mode: SplitMode,
+): { axis: SplitAxis; count: SplitCount } | null {
+  const matched = /^(vertical|horizontal)([234])$/.exec(mode);
+  if (!matched) return null;
+  return {
+    axis: matched[1] as SplitAxis,
+    count: Number(matched[2]) as SplitCount,
+  };
+}
+
+/** その分割方法で何枚に分かれるか。文言・ボタンの「N枚」に使う。 */
+export function splitPieceCount(mode: SplitMode): number {
+  return parseSplitMode(mode)?.count ?? 4;
+}
+
+/** `vertical` / `horizontal` / `grid` を組み立てる。 */
+export function buildSplitMode(axis: SplitAxis, count: SplitCount): SplitMode {
+  return `${axis}${count}` as SplitMode;
+}
+
 /**
- * 分割の矩形を計算する。端数は最後の行・列に寄せる
- * (4等分できない幅で 1px の隙間や重複を作らないため)。
+ * 分割の矩形を計算する。端数は最後の1枚に寄せる
+ * (等分できないサイズで 1px の隙間や重複を作らないため)。
  */
 export function computeSplitRects(
   width: number,
   height: number,
   mode: SplitMode,
 ): SplitRect[] {
-  if (mode === "vertical4") {
-    const base = Math.floor(width / 4);
-    return [0, 1, 2, 3].map((i) => ({
-      x: base * i,
-      y: 0,
-      // 最後の1枚が余りを引き受ける
-      w: i === 3 ? width - base * 3 : base,
-      h: height,
-    }));
+  if (mode === "grid4") {
+    const halfW = Math.floor(width / 2);
+    const halfH = Math.floor(height / 2);
+    // 左上 → 右上 → 左下 → 右下(X の 2×2 の並びと同じ)
+    return [
+      { x: 0, y: 0, w: halfW, h: halfH },
+      { x: halfW, y: 0, w: width - halfW, h: halfH },
+      { x: 0, y: halfH, w: halfW, h: height - halfH },
+      { x: halfW, y: halfH, w: width - halfW, h: height - halfH },
+    ];
   }
-  if (mode === "horizontal4") {
-    // 縦長画像を横に4分割(上→下)。縦4分割の転置
-    const base = Math.floor(height / 4);
-    return [0, 1, 2, 3].map((i) => ({
-      x: 0,
-      y: base * i,
-      w: width,
-      h: i === 3 ? height - base * 3 : base,
-    }));
+
+  const parsed = parseSplitMode(mode);
+  if (!parsed) {
+    /*
+      型で防いでいるので通常は到達しない。黙って別の分割に倒すと
+      「選んだ枚数と違うものが保存される」ので、必ず失敗させる。
+    */
+    throw new Error(`UNKNOWN_SPLIT_MODE: ${mode}`);
   }
-  const halfW = Math.floor(width / 2);
-  const halfH = Math.floor(height / 2);
-  // 左上 → 右上 → 左下 → 右下(X の 2×2 の並びと同じ)
-  return [
-    { x: 0, y: 0, w: halfW, h: halfH },
-    { x: halfW, y: 0, w: width - halfW, h: halfH },
-    { x: 0, y: halfH, w: halfW, h: height - halfH },
-    { x: halfW, y: halfH, w: width - halfW, h: height - halfH },
-  ];
+
+  const { axis, count } = parsed;
+  const total = axis === "vertical" ? width : height;
+  const base = Math.floor(total / count);
+
+  return Array.from({ length: count }, (_, i) => {
+    // 最後の1枚が余りを引き受ける
+    const size = i === count - 1 ? total - base * (count - 1) : base;
+    const offset = base * i;
+    return axis === "vertical"
+      ? { x: offset, y: 0, w: size, h: height }
+      : { x: 0, y: offset, w: width, h: size };
+  });
 }
 
 /**
