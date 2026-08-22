@@ -6,6 +6,7 @@ import {
   getImageAspectRatio,
   getPostDisplayUrl,
   getPostOriginalUrl,
+  getPostThumbUrl,
   getPublicViewCount,
 } from "../lib/utils";
 import { PostDetailContent } from "./PostDetailContent";
@@ -119,6 +120,12 @@ export async function CachedPostDetail({
   // この経路だけ二段構成にし、`<DownloadButton>` の挙動を `/coordinate` や
   // `/style` と揃える（生成直後の data URL と同じく拡張子で保存される）。
   const originalImageUrl = getPostOriginalUrl(post);
+  /*
+    フィード・グリッドが使っているサムネイル。詳細では**表示用画像が届くまでの
+    繋ぎ**として先に描く。ホームから来た人はこれをキャッシュ済みなので、
+    画像が実質0秒で出る(詳細は PostDetailHeroImage)。
+  */
+  const thumbnailUrl = getPostThumbUrl(post) || null;
   // 1) width/height が揃っていれば派生で済ませる
   // 2) それが無理なら画像をフェッチして判定（最後のフォールバック）
   let imageAspectRatio: "portrait" | "landscape" | null =
@@ -138,6 +145,7 @@ export async function CachedPostDetail({
       initialViewCount={getPublicViewCount(post)}
       ownerId={post.user_id}
       imageUrl={imageUrl}
+      thumbnailUrl={thumbnailUrl}
       originalImageUrl={originalImageUrl}
       viewerSubscriptionPlan={viewerSubscriptionPlan}
 
