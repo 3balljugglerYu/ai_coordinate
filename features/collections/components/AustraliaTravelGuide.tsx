@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAutoScrollMarquee } from "../lib/use-auto-scroll-marquee";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   AlertDialog,
@@ -333,9 +334,12 @@ interface GuidePreset {
 /**
  * 「旅のあいだ」に毎朝公開したコーデの棚。
  *
- * 溜まってきたら自動で横に流す(/creators の marquee と同じ作法: 配列を2周ぶん
- * 並べて -50% までずらす)。**カードがリンクなので、触れているあいだは止める**。
- * 動く的をタップさせるのは事故のもと。hover / focus / 押下中で止まる。
+ * 溜まってきたら自動で横に流す。**指でも動かせる**(scrollLeft を進める方式。
+ * 詳細は features/collections/lib/use-auto-scroll-marquee)。
+ * 途切れさせないため配列を2周ぶん並べ、半分を越えたら送り返す。
+ *
+ * カードがリンクなので、**触っているあいだは止める**。動く的をタップさせるのは
+ * 事故のもと。指を離してしばらくすると再開する。
  */
 function DailyLookCard({
   look,
@@ -360,9 +364,7 @@ function DailyLookCard({
         e.preventDefault();
         onSelect(look);
       }}
-      className={`group block w-28 shrink-0 focus-visible:outline-none${
-        isDuplicate ? " au-marquee-dup" : ""
-      }`}
+      className="group block w-28 shrink-0 focus-visible:outline-none"
       aria-hidden={isDuplicate || undefined}
       tabIndex={isDuplicate ? -1 : undefined}
       data-testid={isDuplicate ? undefined : "australia-daily-look"}
@@ -422,6 +424,13 @@ export function AustraliaTravelGuide({
 }) {
   // 見切れる量になってから流す。少ないうちは中央に静止させる
   const isMarquee = dailyLooks.length >= DAILY_LOOK_MARQUEE_MIN;
+  /*
+    自動で流しつつ、指でも動かせるようにする。触っているあいだは止まり、
+    手を離してしばらくすると再開する(features/collections/lib/use-auto-scroll-marquee)。
+  */
+  const marqueeRef = useAutoScrollMarquee<HTMLDivElement>({
+    enabled: isMarquee,
+  });
   const router = useRouter();
   /*
     タップしたら即移動ではなく、どこへ行くのかを一度伝える。
@@ -465,17 +474,8 @@ export function AustraliaTravelGuide({
         .au-twinkle { animation: au-twinkle 3.2s ease-in-out infinite; }
         @keyframes au-drift { 0% { transform: translate(0,0) rotate(-6deg) } 50% { transform: translate(10px,-12px) rotate(2deg) } 100% { transform: translate(0,0) rotate(-6deg) } }
         .au-drift { animation: au-drift 9s ease-in-out infinite; }
-        @keyframes au-marquee { from { transform: translateX(0) } to { transform: translateX(-50%) } }
-        .au-marquee-track { animation: au-marquee 30s linear infinite; }
-        /* カードがリンクなので、触れているあいだは止める(動く的をタップさせない) */
-        .au-marquee-track:hover,
-        .au-marquee-track:focus-within,
-        .au-marquee-track:active { animation-play-state: paused; }
         @media (prefers-reduced-motion: reduce){
           .au-float, .au-twinkle, .au-drift { animation:none }
-          /* 止めるだけだと2周ぶんの重複が居座るので、複製を消して素の横スクロールへ */
-          .au-marquee-track { animation:none; width:auto }
-          .au-marquee-dup { display:none }
         }
       `}</style>
       <link
@@ -605,11 +605,24 @@ export function AustraliaTravelGuide({
                   「今日のはこれ」と分かって押せることが、別ページへ探しに行くより強い。
                 */}
                 {dailyLooks.length > 0 ? (
-                  <div className="-mx-4 mt-3 overflow-hidden">
+                  /*
+                    流すときは**本物のスクロール領域**にする。以前は
+                    transform を動かしていたが、外側が overflow-hidden なので
+                    指でドラッグしても動かなかった(実機で報告)。
+                    自動送りは useAutoScrollMarquee が scrollLeft を進める。
+                  */
+                  <div
+                    ref={marqueeRef}
+                    className={
+                      isMarquee
+                        ? "-mx-4 mt-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                        : "-mx-4 mt-3 overflow-hidden"
+                    }
+                  >
                     <div
                       className={
                         isMarquee
-                          ? "au-marquee-track flex w-max gap-3 px-4"
+                          ? "flex w-max gap-3 px-4"
                           : "flex flex-wrap justify-center gap-3 px-4"
                       }
                     >
