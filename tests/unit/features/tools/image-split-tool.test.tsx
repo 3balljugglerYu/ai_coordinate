@@ -63,6 +63,15 @@ function imageFile(name = "fireworks.png") {
   return new File(["dummy"], name, { type: "image/png" });
 }
 
+/**
+ * 切り出した断片の <img> だけを数える。
+ * 分割位置の調整UI(SplitBoundaryEditor)が元画像を1枚出すので、
+ * 素の getAllByRole("img") だと1枚多くなる。
+ */
+function pieceImages() {
+  return screen.queryAllByAltText(/^分割 \d+ 枚目$/);
+}
+
 async function selectFile(file: File) {
   const input = document.querySelector(
     'input[type="file"]',
@@ -134,8 +143,12 @@ describe("共通(端末に依らない)", () => {
 
     await selectFile(imageFile());
 
-    expect(mockSplit).toHaveBeenCalledWith(expect.any(File), "vertical4");
-    expect(screen.getAllByRole("img")).toHaveLength(4);
+    expect(mockSplit).toHaveBeenCalledWith(
+      expect.any(File),
+      "vertical4",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
+    expect(pieceImages()).toHaveLength(4);
     expect(screen.getAllByText("保存")).toHaveLength(4);
   });
 
@@ -158,7 +171,11 @@ describe("共通(端末に依らない)", () => {
     });
 
     expect(mockSplit).toHaveBeenCalledTimes(2);
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "horizontal4");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "horizontal4",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
   });
 
   test("⭐枚数のピルは軸ごとに独立している(縦の2分割と横の2分割)", async () => {
@@ -168,12 +185,20 @@ describe("共通(端末に依らない)", () => {
     await act(async () => {
       fireEvent.click(screen.getAllByText("2分割")[0]);
     });
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "vertical2");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "vertical2",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
 
     await act(async () => {
       fireEvent.click(screen.getAllByText("2分割")[1]);
     });
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "horizontal2");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "horizontal2",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
   });
 
   test("3分割を選ぶと縦3分割で切り直す", async () => {
@@ -184,7 +209,11 @@ describe("共通(端末に依らない)", () => {
       fireEvent.click(screen.getAllByText("3分割")[0]);
     });
 
-    expect(mockSplit).toHaveBeenLastCalledWith(expect.any(File), "vertical3");
+    expect(mockSplit).toHaveBeenLastCalledWith(
+      expect.any(File),
+      "vertical3",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
   });
 
   test("画像を選ぶ前のモード切り替えは分割を走らせない", async () => {
@@ -207,7 +236,7 @@ describe("共通(端末に依らない)", () => {
     expect(
       screen.getByText(/この画像を読み込めませんでした/),
     ).toBeInTheDocument();
-    expect(screen.queryAllByRole("img")).toHaveLength(0);
+    expect(pieceImages()).toHaveLength(0);
     errorSpy.mockRestore();
   });
 
@@ -224,8 +253,12 @@ describe("共通(端末に依らない)", () => {
       });
     });
 
-    expect(mockSplit).toHaveBeenCalledWith(expect.any(File), "vertical4");
-    expect(screen.getAllByRole("img")).toHaveLength(4);
+    expect(mockSplit).toHaveBeenCalledWith(
+      expect.any(File),
+      "vertical4",
+      expect.objectContaining({ start: 0, end: 1 }),
+    );
+    expect(pieceImages()).toHaveLength(4);
   });
 
   test("ドラッグが外れたらハイライトが戻る", () => {
@@ -482,18 +515,43 @@ describe("枚数に追従する文言", () => {
     expect(screen.queryByText(/2×2に並び/)).not.toBeInTheDocument();
   });
 
-  test("プレビューの列数は縦分割の枚数に追従する", async () => {
+  /**
+   * ⭐ 縦分割のプレビューは**幅を元の比率どおりに配る**。
+   *
+   * 等幅の枠に流し込むと、元が細い断片ほど引き伸ばされて**縦に伸びる**。
+   * 分割位置を動かすと高さがバラバラになって並びが崩れる(実機で報告された)。
+   * 幅が比率なら、どの断片も元の高さのままなので高さが揃う。
+   */
+  test("⭐縦分割のプレビューは、幅を元の比率どおりに配る", async () => {
     setUserAgent(DESKTOP_UA);
-    mockSplit.mockResolvedValue(makePieces(3));
+    // 幅がバラバラな断片(等分でない分割位置を想定)
+    mockSplit.mockResolvedValue([
+      { blob: new Blob(["a"], { type: "image/png" }), index: 1, width: 100, height: 400 },
+      { blob: new Blob(["b"], { type: "image/png" }), index: 2, width: 300, height: 400 },
+    ]);
+    const { container } = render(<ImageSplitTool />);
+    await selectFile(imageFile());
+
+    const figures = Array.from(container.querySelectorAll("figure"));
+    expect(figures).toHaveLength(2);
+    // flex-grow に元の幅を入れて比率配分する
+    expect(figures[0].style.flex).toBe("100 0 0%");
+    expect(figures[1].style.flex).toBe("300 0 0%");
+  });
+
+  test("横分割は1列に積む(元画像の並びと同じ)", async () => {
+    setUserAgent(DESKTOP_UA);
+    mockSplit.mockResolvedValue(makePieces(2));
     const { container } = render(<ImageSplitTool />);
     await selectFile(imageFile());
 
     await act(async () => {
-      fireEvent.click(screen.getAllByText("3分割")[0]);
+      fireEvent.click(screen.getAllByText("2分割")[1]);
     });
 
-    // grid-cols-3 は静的なクラス表から引く(動的組み立てだと Tailwind が拾わない)
-    expect(container.querySelector(".grid-cols-3")).not.toBeNull();
+    expect(container.querySelector(".grid-cols-1")).not.toBeNull();
+    // 縦分割の比率配分は使わない
+    expect(container.querySelector("figure")?.style.flex).toBe("");
   });
 });
 

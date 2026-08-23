@@ -37,11 +37,11 @@ describe("computeSplitRects: 縦4分割", () => {
     expect(rects.every((r) => r.w === 418 && r.h === 941)).toBe(true);
   });
 
-  test("⭐割り切れない幅は最後の1枚が余りを引き受ける(隙間も重複も無い)", () => {
+  test("⭐割り切れない幅でも隙間も重複も出さず、1px差に収める", () => {
     const rects = computeSplitRects(1919, 1080, "vertical4");
 
-    // 1919 / 4 = 479.75 → 479, 479, 479, 482
-    expect(rects.map((r) => r.w)).toEqual([479, 479, 479, 482]);
+    // 1919 / 4 = 479.75。境界を丸めるので 480,480,479,480
+    expect(rects.map((r) => r.w)).toEqual([480, 480, 479, 480]);
     // 連続性: 前の右端 = 次の左端
     for (let i = 1; i < rects.length; i++) {
       expect(rects[i].x).toBe(rects[i - 1].x + rects[i - 1].w);
@@ -49,6 +49,9 @@ describe("computeSplitRects: 縦4分割", () => {
     // 全体を覆う
     const last = rects[rects.length - 1];
     expect(last.x + last.w).toBe(1919);
+    // 幅の差は最大1px(以前は最後の1枚に3px寄せていた)
+    const widths = rects.map((r) => r.w);
+    expect(Math.max(...widths) - Math.min(...widths)).toBeLessThanOrEqual(1);
   });
 
   test("縦長の画像でも動く(縦4分割の意味は薄いが壊れない)", () => {
@@ -71,11 +74,10 @@ describe("computeSplitRects: 横4分割", () => {
     ]);
   });
 
-  test("⭐割り切れない高さは最後の1枚が余りを引き受ける(隙間も重複も無い)", () => {
+  test("⭐割り切れない高さでも隙間も重複も出さず、1px差に収める", () => {
     const rects = computeSplitRects(1080, 1919, "horizontal4");
 
-    // 1919 / 4 = 479.75 → 479, 479, 479, 482
-    expect(rects.map((r) => r.h)).toEqual([479, 479, 479, 482]);
+    expect(rects.map((r) => r.h)).toEqual([480, 480, 479, 480]);
     for (let i = 1; i < rects.length; i++) {
       expect(rects[i].y).toBe(rects[i - 1].y + rects[i - 1].h);
     }
@@ -126,11 +128,11 @@ describe("computeSplitRects: 2分割・3分割", () => {
     ]);
   });
 
-  test("⭐割り切れないときは最後の1枚が余りを引き受ける(2/3も4と同じ規則)", () => {
-    // 1000 / 3 = 333.33 → 333, 333, 334
+  test("⭐割り切れないときも隙間も重複も出さない(2/3も4と同じ規則)", () => {
+    // 1000 / 3 = 333.33 → 333, 334, 333
     const rects = computeSplitRects(1000, 500, "vertical3");
 
-    expect(rects.map((r) => r.w)).toEqual([333, 333, 334]);
+    expect(rects.map((r) => r.w)).toEqual([333, 334, 333]);
     for (let i = 1; i < rects.length; i++) {
       expect(rects[i].x).toBe(rects[i - 1].x + rects[i - 1].w);
     }
