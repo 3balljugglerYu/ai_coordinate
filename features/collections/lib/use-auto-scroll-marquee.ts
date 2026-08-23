@@ -72,6 +72,24 @@ export function useAutoScrollMarquee<T extends HTMLElement>({
     /** 操作中は止める。指を離してしばらくしたら戻す。 */
     let paused = false;
     /**
+     * 自分が進めたぶんの位置(小数)。
+     *
+     * ブラウザによっては `scrollLeft` への代入が整数に丸められる。
+     * 毎フレーム 0.4px ずつ足しても丸められて 0 のままになり、**まったく
+     * 進まない**ことがあるため、小数はこちらで持ち越す。
+     */
+    let position = 0;
+    /**
+     * 直前に自分が設定した `scrollLeft`。
+     *
+     * ⭐ ここと実際の値がずれていたら、**自分以外の何かが動かした**。
+     * iOS の慣性スクロールは指を離したあとも流れ続け、touchstart のような
+     * イベントを出さないので、イベントだけを見ていると
+     * **慣性の最中に自動送りが割り込む**。位置で見れば、慣性・手動ドラッグ・
+     * スクロールバー・キーボードのすべてを一律に拾える。
+     */
+    let ownScrollLeft: number | null = null;
+    /**
      * 画面に入っているあいだだけ動かす。
      * 出ているうちに流れていると、たどり着いたときには途中から始まって
      * しまう(先頭のコーデが見えない)。電池の無駄でもある。
@@ -86,7 +104,10 @@ export function useAutoScrollMarquee<T extends HTMLElement>({
       }, resumeDelayMs);
     };
 
-    /** 折り返し。中身は2周ぶん並んでいるので、半分で送り返す。 */
+    /**
+     * 折り返し。中身は2周ぶん並んでいるので、半分で送り返す。
+     * **手動スクロール用**(自動送りの折り返しは tick 内で小数のまま行う)。
+     */
     const wrap = () => {
       const half = el.scrollWidth / 2;
       if (half <= 0) return;
@@ -101,10 +122,41 @@ export function useAutoScrollMarquee<T extends HTMLElement>({
       rafId = window.requestAnimationFrame(tick);
       const delta = lastTs === null ? 0 : (ts - lastTs) / 1000;
       lastTs = ts;
-      if (paused || !visible) return;
-      // 1フレームぶんの端数も積みたいので、代入前に足してから丸めに任せる
-      el.scrollLeft += speedPxPerSec * delta;
-      wrap();
+
+      /*
+        自分が置いた位置と違う = 誰かが動かした(慣性・指・ホイール等)。
+        止めたうえで、そこを新しい起点にする。
+      */
+      if (ownScrollLeft !== null && Math.abs(el.scrollLeft - ownScrollLeft) > 1) {
+        ownScrollLeft = null;
+        pause();
+      }
+
+      if (paused || !visible) {
+        // 止まっているあいだの手動移動を持ち越さない
+        ownScrollLeft = null;
+        return;
+      }
+
+      if (ownScrollLeft === null) {
+        position = el.scrollLeft;
+      }
+      position += speedPxPerSec * delta;
+
+      /*
+        折り返しは**小数のまま**行う。`el.scrollLeft` を読み直して
+        position に入れると、丸めるブラウザでは端数が毎フレーム捨てられ、
+        遅い速度(24px/秒 = 1フレーム 0.4px)でまったく進まなくなる。
+      */
+      const half = el.scrollWidth / 2;
+      if (half > 0) {
+        if (position >= half) position -= half;
+        else if (position < 0) position += half;
+      }
+
+      el.scrollLeft = position;
+      // 丸められた実際の値を控える(次フレームの比較の基準)
+      ownScrollLeft = el.scrollLeft;
     };
 
     // 手動スクロール後も折り返しを効かせる(端で止まらないように)

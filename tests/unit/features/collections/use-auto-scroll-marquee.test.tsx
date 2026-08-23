@@ -204,12 +204,77 @@ describe("useAutoScrollMarquee", () => {
 
   test("⭐半分を越えたら送り返す（2周ぶん並べた継ぎ目を隠す）", () => {
     const { el } = setup({ speedPxPerSec: 100, scrollWidth: 1000 });
+
     stepFrame(0);
-    el.scrollLeft = 499;
+    stepFrame(6000); // +600 → 半分(500)を越えるので -500
 
-    stepFrame(1000); // +100 → 599 → 半分(500)を越えるので -500
+    expect(el.scrollLeft).toBeCloseTo(100, 0);
+  });
 
-    expect(el.scrollLeft).toBeCloseTo(99, 0);
+  /**
+   * ⭐ iOS の慣性スクロールは、指を離したあとも流れ続けるのに
+   * `touchstart` のようなイベントを出さない。イベントだけを見ていると
+   * **慣性の最中に自動送りが割り込んで、両方が同時に動かす**。
+   * 「自分が置いた位置と違う＝誰かが動かした」で判定すれば一律に拾える。
+   */
+  test("⭐自分以外が動かしたら止まる（慣性スクロール対策）", () => {
+    const { el } = setup({ speedPxPerSec: 100 });
+    stepFrame(0);
+    stepFrame(1000); // 自動送りで 100 まで進む
+    expect(el.scrollLeft).toBeCloseTo(100, 0);
+
+    // 慣性で外から動いたことにする(イベントは出さない)
+    el.scrollLeft = 400;
+
+    stepFrame(1000);
+
+    // 割り込んで進めない
+    expect(el.scrollLeft).toBeCloseTo(400, 0);
+  });
+
+  test("外から動かされた位置を起点に再開する（元の位置へ戻さない）", () => {
+    // 折り返し(半分=2000)に掛からない広さにして、続きから進むことだけを見る
+    const { el } = setup({
+      speedPxPerSec: 100,
+      resumeDelayMs: 2000,
+      scrollWidth: 4000,
+    });
+    stepFrame(0);
+    stepFrame(1000);
+
+    el.scrollLeft = 400; // 慣性・手動で移動
+    stepFrame(16); // 検知して停止
+
+    act(() => {
+      jest.advanceTimersByTime(2000);
+    });
+    stepFrame(1000);
+
+    // 400 から続く(0 や 100 へ戻らない)
+    expect(el.scrollLeft).toBeCloseTo(500, 0);
+  });
+
+  /**
+   * ブラウザによっては `scrollLeft` への代入が整数へ丸められる。
+   * 毎フレームの端数を持ち越さないと、遅い速度でまったく進まなくなる。
+   */
+  test("⭐遅い速度でも進む（丸めで止まらない）", () => {
+    const { el } = setup({ speedPxPerSec: 24 });
+    // 代入時に整数へ丸めるブラウザを模す
+    let raw = 0;
+    Object.defineProperty(el, "scrollLeft", {
+      configurable: true,
+      get: () => raw,
+      set: (v: number) => {
+        raw = Math.floor(v);
+      },
+    });
+
+    stepFrame(0);
+    // 16ms ごとに 0.384px。丸めるだけだと永遠に 0 のまま
+    for (let i = 0; i < 60; i += 1) stepFrame(16);
+
+    expect(el.scrollLeft).toBeGreaterThan(15);
   });
 
   test("手動で左端より戻したときも送り返す", () => {
