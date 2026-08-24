@@ -82,6 +82,41 @@ describe("画像4分割ツールのページ", () => {
     }
   });
 
+  /**
+   * ⭐ 「Xでどう投稿するのか」の手順。
+   *
+   * 検索から来る人がいちばん知りたいのはここで、ツールの使い方ではない。
+   * 構造化データにも同じ内容を載せているので、本文から消えると
+   * **本文に無いことを構造化データだけに書いた状態**になる(ガイドライン違反)。
+   */
+  test("⭐Xへの投稿手順が本文と構造化データの両方にある", async () => {
+    const { container } = await renderPage();
+    const jsonLd = JSON.parse(
+      container.querySelector('script[type="application/ld+json"]')
+        ?.textContent ?? "[]",
+    ) as Array<{ "@type": string; name?: string; step?: Array<{ name: string; text: string }> }>;
+
+    const howTos = jsonLd.filter((node) => node["@type"] === "HowTo");
+    const xHowTo = howTos.find((node) => node.name?.includes("Xで画像を4分割"));
+
+    expect(xHowTo?.step).toHaveLength(4);
+    for (const step of xHowTo?.step ?? []) {
+      expect(container.textContent).toContain(step.name);
+      expect(container.textContent).toContain(step.text);
+    }
+  });
+
+  test("⭐つまずきやすいところを本文に置く(検索の意図に答える)", async () => {
+    const { container } = await renderPage();
+    const text = container.textContent ?? "";
+
+    expect(text).toContain("つまずきやすいところ");
+    // 上位の解説記事が触れていない・実装で分かった要点
+    expect(text).toContain("順番を");
+    expect(text).toContain("余白を入れます");
+    expect(text).toContain("2026年7月");
+  });
+
   test("無料ツールであることを SoftwareApplication で示す", async () => {
     const { container } = await renderPage();
     const jsonLd = JSON.parse(
