@@ -113,6 +113,25 @@ describe("画像4分割ツールのページ", () => {
     expect(h1).not.toContain("画像4分割");
   });
 
+  /**
+   * ⭐ X の複数画像の並び方を断定しない。
+   *
+   * X は 2026-07 から表示形式をカルーセル(横一列)へ順次変更しており、
+   * iOS アプリでは既にカルーセル、Android・ブラウザでは従来の並びが残る。
+   * 「2×2に並ぶ」と書くと **iOS で見ている人には事実と違う**
+   * (実機のスクリーンショットで判明。それまで誤った案内を公開していた)。
+   */
+  test("⭐並び方を断定せず、環境で異なることを添える", async () => {
+    const { container } = await renderPage();
+    const text = container.textContent ?? "";
+
+    expect(text).not.toContain("2×2に並び");
+    // 環境差に触れていること
+    expect(text).toContain("環境によって見え方が異なります");
+    // どの環境でも言えることは残す
+    expect(text).toContain("続きがつながって見えます");
+  });
+
   test("⭐タイトルタグは具体的な枚数を残す(いちばん検索される語を捨てない)", () => {
     const title = String(metadata.title ?? "");
 

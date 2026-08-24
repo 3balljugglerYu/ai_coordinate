@@ -489,30 +489,40 @@ describe("枚数に追従する文言", () => {
     expect(screen.getByText("「3枚の画像を保存」")).toBeInTheDocument();
   });
 
-  test("⭐4枚のときだけ 2×2 に並ぶ案内を出す(PC)", async () => {
+  /**
+   * ⭐ 「2×2に並ぶ」とは書かない。
+   *
+   * X は 2026-07 から複数画像の表示をカルーセル(横一列)へ順次変えており、
+   * iOS アプリでは既にカルーセル、Android・ブラウザでは従来の並びが残る。
+   * **環境で見え方が違う**ので断定できない(実機のスクリーンショットで判明)。
+   * どの環境でも言えるのは「横にスワイプすると続きが見える」ことだけ。
+   */
+  test("⭐4枚のときだけ「つながって見える」案内を出す(PC)", async () => {
     setUserAgent(DESKTOP_UA);
     mockSplit.mockResolvedValue(makePieces(4));
     const { unmount } = render(<ImageSplitTool />);
     await selectFile(imageFile());
-    expect(screen.getByText(/タイムラインでは2×2に並び/)).toBeInTheDocument();
+    expect(screen.getByText(/続きがつながって見えます/)).toBeInTheDocument();
+    // 環境で違うので並び方は断定しない
+    expect(screen.queryByText(/2×2に並び/)).not.toBeInTheDocument();
     unmount();
 
     mockSplit.mockResolvedValue(makePieces(3));
     render(<ImageSplitTool />);
     await selectFile(imageFile());
-    // 3枚は 2×2 にならないので、この案内は出さない
-    expect(screen.queryByText(/タイムラインでは2×2に並び/)).not.toBeInTheDocument();
+    // 3枚では出さない
+    expect(screen.queryByText(/続きがつながって見えます/)).not.toBeInTheDocument();
     expect(screen.getByText(/1枚目から順に選んで投稿/)).toBeInTheDocument();
   });
 
-  test("⭐4枚のときだけ 2×2 に並ぶ案内を出す(モバイル)", async () => {
+  test("⭐4枚のときだけ「つながって見える」案内を出す(モバイル)", async () => {
     setUserAgent(IPHONE_UA);
     mockSplit.mockResolvedValue(makePieces(2));
     render(<ImageSplitTool />);
 
     await selectFile(imageFile());
 
-    expect(screen.queryByText(/2×2に並び/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/続きがつながって見えます/)).not.toBeInTheDocument();
   });
 
   /**
