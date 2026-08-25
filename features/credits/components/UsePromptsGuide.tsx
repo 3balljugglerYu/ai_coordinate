@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { setHomeViewMode } from "@/features/posts/lib/home-view-preference";
 import type { UsablePromptShowcaseItem } from "../lib/get-usable-prompt-showcase";
 import { ImageSlot, PopIn, ScreenshotSlot, Sparkle } from "./reward-guide";
+import { ShowcaseLeaveDialog } from "./ShowcaseLeaveDialog";
 
 /**
  * プロンプト利用ミッションの紹介ページ本体(= **つかう側**)。
@@ -280,6 +282,9 @@ export function UsePromptsGuide({
   hasHeroImage?: boolean;
 }) {
   const hasCreatorReward = creatorRewardAmount > 0;
+  /** 確認モーダルで開いている作品。null なら閉じている。 */
+  const [pendingItem, setPendingItem] =
+    useState<UsablePromptShowcaseItem | null>(null);
   const hasFreePostBonus = freePostBonusAmount > 0;
   // 「1日に両方やったら」の合計。片方が停止中なら比較そのものを出さない
   const bothDayTotal = promptUseBonusAmount + freePostBonusAmount;
@@ -502,31 +507,31 @@ export function UsePromptsGuide({
               <br />
               タップすると投稿のページへ移動します。
             </p>
-            {/*
-              ⭐ 「運営が選んでいない」を**先に**言う。
-
-              自分の作品がここに並んでいるのを見た投稿者は、
-              「なぜ自分のが載っているのか」と受け取る。知りたいのは
-              並べ方の条件ではなく、**誰が選んだのか**の方。
-              条件を先に書くと、答えが最後まで読まないと出てこない。
-
-              条件は `getUsablePromptShowcase` の絞り込みと対になっている。
-              あちらを変えるときは、この文も必ず合わせること。
-            */}
-            <p className="mx-auto mt-4 max-w-sm rounded-2xl bg-slate-50 px-4 py-3 text-center text-xs font-medium leading-relaxed text-slate-500">
-              ここに並ぶ作品は、
-              <span className="font-bold text-slate-600">
-                運営が選んで載せているものではありません。
-              </span>
-              Free Style で投稿され、Before / After が載っている作品を、新しい順に自動で表示しています。新しい投稿があれば入れ替わります。
-            </p>
           </PopIn>
 
           <div className="mx-auto mt-8 grid max-w-sm grid-cols-3 gap-3">
             {showcase.map((item, i) => (
               <PopIn key={item.postId} delay={i * 50} rotate={i % 2 === 0 ? -3 : 3}>
+                {/*
+                  `Link` のまま onClick で受け止める。button に替えると
+                  href が消えて、長押しの「新しいタブで開く」も、
+                  クローラのたどり先も失われる。
+                */}
                 <Link
                   href={`/posts/${encodeURIComponent(item.postId)}`}
+                  onClick={(event) => {
+                    // 修飾キー・中クリックは本来の挙動(別タブ)に任せる
+                    if (
+                      event.metaKey ||
+                      event.ctrlKey ||
+                      event.shiftKey ||
+                      event.altKey
+                    ) {
+                      return;
+                    }
+                    event.preventDefault();
+                    setPendingItem(item);
+                  }}
                   className="group block focus-visible:outline-none"
                 >
                   <div className="relative aspect-[3/4] overflow-hidden rounded-2xl border-4 border-white bg-sky-50 shadow-[0_4px_0_rgba(14,165,233,0.15)] transition group-hover:shadow-[0_6px_0_rgba(14,165,233,0.25)] group-focus-visible:ring-2 group-focus-visible:ring-sky-400">
@@ -555,6 +560,31 @@ export function UsePromptsGuide({
               </PopIn>
             ))}
           </div>
+
+          {/*
+            ⭐ 並べ方の説明は**サムネイルの下**に置く。
+
+            見出しのすぐ下に置くと、肝心の作品にたどり着く前に説明を
+            読ませることになる。この文が要るのは、並んでいるものを見て
+            「なぜ自分のが載っているのか」と思った人で、その人はもう
+            サムネイルを見たあとにいる。
+
+            条件は `getUsablePromptShowcase` の絞り込みと対になっている。
+            あちらを変えるときは、この文も必ず合わせること。
+          */}
+          <p className="mx-auto mt-6 max-w-sm rounded-2xl bg-slate-50 px-4 py-3 text-center text-xs font-medium leading-relaxed text-slate-500">
+            <span className="font-bold text-slate-600">
+              運営が選んで載せているものではありません。
+            </span>
+            Free Style で投稿され、Before / After が載っている作品を、新しい順に自動で表示しています。新しい投稿があれば入れ替わります。
+          </p>
+
+          <ShowcaseLeaveDialog
+            item={pendingItem}
+            onOpenChange={(open) => {
+              if (!open) setPendingItem(null);
+            }}
+          />
         </section>
       )}
 

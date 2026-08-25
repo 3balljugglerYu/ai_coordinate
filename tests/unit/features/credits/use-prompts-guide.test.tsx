@@ -12,10 +12,15 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { UsePromptsGuide } from "@/features/credits/components/UsePromptsGuide";
 
 const setHomeViewModeMock = jest.fn();
+const routerPushMock = jest.fn();
+
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ push: (...args: unknown[]) => routerPushMock(...args) }),
+}));
 
 jest.mock("@/features/posts/lib/home-view-preference", () => ({
   setHomeViewMode: (...args: unknown[]) => setHomeViewModeMock(...args),
@@ -238,10 +243,10 @@ describe("UsePromptsGuide", () => {
     test("⭐運営が選んでいないことを先に書く（自分の作品を見つけた人向け）", () => {
       renderGuide({ showcase });
 
-      const note = screen.getByText(/ここに並ぶ作品は、/);
-      expect(note).toHaveTextContent(
-        "運営が選んで載せているものではありません"
-      );
+      // 否定は <span> で強調しているので、段落まで上がって全文を見る
+      const note = screen.getByText(
+        /運営が選んで載せているものではありません/
+      ).closest("p") as HTMLElement;
       // 条件も併記する（機械的であることの裏づけ）
       expect(note).toHaveTextContent("Before / After が載っている作品");
       expect(note).toHaveTextContent("新しい順に自動で表示");
@@ -252,12 +257,90 @@ describe("UsePromptsGuide", () => {
         toBeLessThan(text.indexOf("Free Style"));
     });
 
+    /**
+     * ⭐ 説明はサムネイルの**下**。
+     *
+     * 見出しのすぐ下に置くと、肝心の作品にたどり着く前に説明を読ませる。
+     * この文が要るのは、並んでいるものを見て「なぜ自分のが載っているのか」と
+     * 思った人で、その人はもうサムネイルを見たあとにいる。
+     */
+    test("⭐説明はサムネイルより後ろに置く", () => {
+      renderGuide({ showcase });
+
+      const note = screen
+        .getByText(/運営が選んで載せているものではありません/)
+        .closest("p") as HTMLElement;
+      const thumb = screen.getAllByRole("link", { name: /みきふく/ })[0];
+
+      // DOCUMENT_POSITION_FOLLOWING = 4 (note が thumb より後ろ)
+      expect(
+        thumb.compareDocumentPosition(note) &
+          Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+    });
+
     test("実データが無ければセクションごと出さない", () => {
       renderGuide({ showcase: [] });
 
       expect(
         screen.queryByText("使えるプロンプト")
       ).not.toBeInTheDocument();
+    });
+
+    /**
+     * ⭐ ここは読み物の途中にある。押した先は投稿の詳細で、戻ってこないと
+     * 続きが読めない。黙って飛ばすと、どこまで読んだか分からなくなる。
+     */
+    describe("サムネイルを押したとき", () => {
+      test("⭐すぐには移動せず、確認を出す", () => {
+        renderGuide({ showcase });
+
+        fireEvent.click(screen.getAllByRole("link", { name: /みきふく/ })[0]);
+
+        expect(
+          screen.getByText("この作品のページへ移動しますか？")
+        ).toBeInTheDocument();
+        expect(routerPushMock).not.toHaveBeenCalled();
+      });
+
+      test("「作品を見る」で投稿ページへ送る", () => {
+        renderGuide({ showcase });
+        fireEvent.click(screen.getAllByRole("link", { name: /みきふく/ })[0]);
+
+        fireEvent.click(screen.getByRole("button", { name: "作品を見る" }));
+
+        expect(routerPushMock).toHaveBeenCalledWith("/posts/post-1");
+      });
+
+      /**
+       * ⭐ クライアント遷移では、戻ったときにこのページの状態がそのまま
+       * 復元される。開いたままにすると**戻ってきた瞬間にモーダルが被さり**、
+       * 読んでいた場所が塞がれる(実機で確認して見つけた)。
+       */
+      test("⭐送り出す前に閉じる（戻ったときに被らない）", () => {
+        renderGuide({ showcase });
+        fireEvent.click(screen.getAllByRole("link", { name: /みきふく/ })[0]);
+
+        fireEvent.click(screen.getByRole("button", { name: "作品を見る" }));
+
+        expect(
+          screen.queryByText("この作品のページへ移動しますか？")
+        ).not.toBeInTheDocument();
+      });
+
+      test("「このページに戻る」で閉じ、移動しない", () => {
+        renderGuide({ showcase });
+        fireEvent.click(screen.getAllByRole("link", { name: /みきふく/ })[0]);
+
+        fireEvent.click(
+          screen.getByRole("button", { name: "このページに戻る" })
+        );
+
+        expect(
+          screen.queryByText("この作品のページへ移動しますか？")
+        ).not.toBeInTheDocument();
+        expect(routerPushMock).not.toHaveBeenCalled();
+      });
     });
   });
 });
