@@ -118,12 +118,7 @@ export default async function UsePromptsPage({
       showcase={showcase}
       isPreview={!isLive}
       previewAmount={previewAmount}
-      /*
-        ヒーロー画像はユーザー支給待ち。`public/use-prompts/hero-sp.webp` と
-        `hero-pc.webp` を置いたら true にする(それまでは寒色のグラデーションで
-        見出しだけ成立させる)。
-      */
-      hasHeroImage={false}
+      hasHeroImage
     />
   );
 }
