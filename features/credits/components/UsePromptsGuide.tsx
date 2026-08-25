@@ -34,6 +34,12 @@ import { ImageSlot, PopIn, ScreenshotSlot, Sparkle } from "./reward-guide";
 const PERCOIN_ICON = "/percoin.png";
 const HERO_SP = "/use-prompts/hero-sp.webp";
 const HERO_PC = "/use-prompts/hero-pc.webp";
+const STEP_IMAGES = [
+  "/use-prompts/step1.webp",
+  "/use-prompts/step2.webp",
+  "/use-prompts/step3.webp",
+  "/use-prompts/step4.webp",
+] as const;
 
 /** 支給待ちのあいだだけ見えるプレースホルダの配色(このページは寒色)。 */
 const PLACEHOLDER_CLASS = "border-sky-300 bg-white/70 text-sky-500";
@@ -436,6 +442,7 @@ export function UsePromptsGuide({
                     ratio="1 / 1"
                     alt={s.title}
                     label={s.label}
+                    src={STEP_IMAGES[i]}
                     className="mx-auto max-w-[240px]"
                     placeholderClassName={PLACEHOLDER_CLASS}
                     float
