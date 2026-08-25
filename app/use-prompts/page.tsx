@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { createCanonicalAlternates } from "@/lib/metadata";
 import { getUser } from "@/lib/auth";
-import { isAdminViewer } from "@/lib/env";
+import { isAdminViewer, isLocalPreviewAllowed } from "@/lib/env";
 import { getPromptUseGuideAmounts } from "@/features/credits/lib/get-prompt-use-guide-amounts";
 import { getUsablePromptShowcase } from "@/features/credits/lib/get-usable-prompt-showcase";
 import { UsePromptsGuide } from "@/features/credits/components/UsePromptsGuide";
@@ -98,13 +98,25 @@ export default async function UsePromptsPage({
   ]);
 
   const isLive = amounts.promptUseBonusAmount > 0;
-  const canPreview = isAdminViewer(user?.id);
+  /*
+    `?amount=` は開発サーバーでも通す。
+
+    ログインできない立場(自動でブラウザを動かして確認する側)からは、
+    このページを一度も開けなかった。確認のたびに使い捨ての入口ページを
+    作っていたが、そこは props を手で渡すので**本物とは別物**しか見られない。
+
+    合図(`?amount=`)を必須にしているのは、素で開いたときに
+    「一般ユーザーには 404」という本来の見え方も確認できるようにするため。
+    本番・Vercel プレビューは NODE_ENV が production なので開かない。
+  */
+  const localPreview = isLocalPreviewAllowed() && Boolean(params.amount);
+  const canPreview = isAdminViewer(user?.id) || localPreview;
 
   if (!isLive && !canPreview) {
     notFound();
   }
 
-  // 仮の額は停止中の運営にだけ効く。稼働中は常に実際の設定値を出す
+  // 仮の額は停止中の下見にだけ効く。稼働中は常に実際の設定値を出す
   const previewAmount = isLive ? null : parsePreviewAmount(params.amount);
   const displayAmount = previewAmount ?? amounts.promptUseBonusAmount;
 

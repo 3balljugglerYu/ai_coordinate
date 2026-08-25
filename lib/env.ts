@@ -356,6 +356,35 @@ export function isAdminViewer(userId: string | null | undefined): boolean {
   );
 }
 
+/**
+ * 開発サーバー(`next dev`)で、公開前のページをログイン無しで開いてよいか。
+ *
+ * ## なぜ要るのか
+ *
+ * 公開前のページは `isAdminViewer` で塞いである。ところがログインできない
+ * 立場の人(自動でブラウザを動かして確認する側)は、**そのページを一度も
+ * 見られない**。実際、確認のたびに使い捨ての入口ページを作って消す、という
+ * 手間が発生していた。しかもその入口は props を手で渡すので、
+ * **本物のページとは別物**しか見られない。
+ *
+ * ## 漏れない理由
+ *
+ * `NODE_ENV` が `development` になるのは `next dev` のときだけ。
+ * 本番ビルドも Vercel のプレビューも `production` なので、
+ * デプロイ先でこの逃げ道が開くことはない。
+ * (`lib/api-docs-auth.ts` が同じ手で API ドキュメントを守っている)
+ *
+ * ## 既定では開けないこと
+ *
+ * これ単体では true を返すだけで、呼び出し側は**明示的な合図**と
+ * 組み合わせること(`?amount=` など)。開発サーバーで無条件に開くと、
+ * 「一般ユーザーに見えている状態」をこちらで確認できなくなる。
+ * 塞がっている側の見え方も、確認したいものの一つ。
+ */
+export function isLocalPreviewAllowed(): boolean {
+  return process.env.NODE_ENV === "development";
+}
+
 function parseCsvUserIds(value: string | undefined): string[] {
   if (!value || value.trim() === "") {
     return [];
