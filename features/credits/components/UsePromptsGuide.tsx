@@ -569,14 +569,17 @@ export function UsePromptsGuide({
             「なぜ自分のが載っているのか」と思った人で、その人はもう
             サムネイルを見たあとにいる。
 
+            「運営が選んでいるわけではない」とは書かない。**条件と
+            「自動で」だけで足りる**という判断。わざわざ否定を置く方が、
+            かえって身構えさせる。
+
             条件は `getUsablePromptShowcase` の絞り込みと対になっている。
             あちらを変えるときは、この文も必ず合わせること。
           */}
           <p className="mx-auto mt-6 max-w-sm rounded-2xl bg-slate-50 px-4 py-3 text-center text-xs font-medium leading-relaxed text-slate-500">
-            <span className="font-bold text-slate-600">
-              運営が選んで載せているものではありません。
-            </span>
-            Free Style で投稿され、Before / After が載っている作品を、新しい順に自動で表示しています。新しい投稿があれば入れ替わります。
+            Free Style で投稿され、Before / After が載っている作品を、
+            <span className="font-bold text-slate-600">新しい順に自動で</span>
+            表示しています。新しい投稿があれば入れ替わります。
           </p>
 
           <ShowcaseLeaveDialog

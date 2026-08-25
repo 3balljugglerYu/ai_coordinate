@@ -234,27 +234,25 @@ describe("UsePromptsGuide", () => {
     });
 
     /**
-     * ⭐ 自分の作品がここに並んでいるのを見た投稿者が知りたいのは、
-     * 並べ方の条件ではなく**誰が選んだのか**。だから否定を先に置く。
+     * ⭐ 並べ方の条件は、ページ本文と `getUsablePromptShowcase` の絞り込みで
+     * **対**になっている。片方だけ変えると、書いてある基準と実際の並びが
+     * 食い違う。
      *
-     * 条件の記述は `getUsablePromptShowcase` の絞り込みと**対**になっている。
-     * 片方だけ変えると、書いてある基準と実際の並びが食い違う。
+     * 「運営が選んでいるわけではない」とは書かない。条件と「自動で」だけで
+     * 足りるという判断で、わざわざ否定を置く方がかえって身構えさせる。
      */
-    test("⭐運営が選んでいないことを先に書く（自分の作品を見つけた人向け）", () => {
+    test("⭐どういう基準で並んでいるかを書く", () => {
       renderGuide({ showcase });
 
-      // 否定は <span> で強調しているので、段落まで上がって全文を見る
-      const note = screen.getByText(
-        /運営が選んで載せているものではありません/
-      ).closest("p") as HTMLElement;
-      // 条件も併記する（機械的であることの裏づけ）
-      expect(note).toHaveTextContent("Before / After が載っている作品");
-      expect(note).toHaveTextContent("新しい順に自動で表示");
+      const note = screen
+        .getByText(/新しい順に自動で/)
+        .closest("p") as HTMLElement;
 
-      // 否定が条件より**先**にあること（最後まで読まないと答えが出ない形にしない）
-      const text = note.textContent ?? "";
-      expect(text.indexOf("運営が選んで載せているものではありません")).
-        toBeLessThan(text.indexOf("Free Style"));
+      expect(note).toHaveTextContent("Free Style で投稿され");
+      expect(note).toHaveTextContent("Before / After が載っている作品");
+      expect(note).toHaveTextContent("新しい投稿があれば入れ替わります");
+      // 否定は置かない
+      expect(note).not.toHaveTextContent("運営が選んで");
     });
 
     /**
@@ -268,7 +266,7 @@ describe("UsePromptsGuide", () => {
       renderGuide({ showcase });
 
       const note = screen
-        .getByText(/運営が選んで載せているものではありません/)
+        .getByText(/新しい順に自動で/)
         .closest("p") as HTMLElement;
       const thumb = screen.getAllByRole("link", { name: /みきふく/ })[0];
 
