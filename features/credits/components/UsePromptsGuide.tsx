@@ -34,6 +34,19 @@ import { ImageSlot, PopIn, ScreenshotSlot, Sparkle } from "./reward-guide";
 const PERCOIN_ICON = "/percoin.png";
 const HERO_SP = "/use-prompts/hero-sp.webp";
 const HERO_PC = "/use-prompts/hero-pc.webp";
+/**
+ * 各ステップの実画面スクショ。
+ *
+ * 寸法は**ここが正本**。ステップ定義側にも持たせると、画像を差し替えたときに
+ * 片方だけ直して比率が狂う。書き出した実寸をそのまま書くこと。
+ */
+const STEP_SUBS = [
+  { src: "/use-prompts/step1-sub.webp", width: 640, height: 551 },
+  { src: "/use-prompts/step2-sub.webp", width: 640, height: 495 },
+  { src: "/use-prompts/step3-sub.webp", width: 640, height: 330 },
+  { src: "/use-prompts/step4-sub.webp", width: 640, height: 390 },
+] as const;
+
 const STEP_IMAGES = [
   "/use-prompts/step1.webp",
   "/use-prompts/step2.webp",
@@ -381,8 +394,6 @@ export function UsePromptsGuide({
               label: "イラスト①（ホームで作品をさがす／chibi）",
               color: "from-sky-500 to-cyan-400",
               sub: {
-                width: 382,
-                height: 869,
                 alt: "ホームのフィード。投稿の下に原作のプロンプトを使うカードが表示されている",
                 caption: "実際のホーム画面",
               },
@@ -395,8 +406,6 @@ export function UsePromptsGuide({
               label: "イラスト②（フォローする／chibi）",
               color: "from-cyan-500 to-teal-400",
               sub: {
-                width: 382,
-                height: 240,
                 alt: "原作カードの「フォローして生成する」ボタン",
                 caption: "実際のボタン",
               },
@@ -409,8 +418,6 @@ export function UsePromptsGuide({
               label: "イラスト③（うちの子で生成する／chibi）",
               color: "from-teal-500 to-emerald-400",
               sub: {
-                width: 382,
-                height: 945,
                 alt: "生成のボトムシート。プロンプト欄が伏せられたまま画像を選んで生成できる",
                 caption: "実際の生成画面",
               },
@@ -423,8 +430,6 @@ export function UsePromptsGuide({
               label: "イラスト④（投稿してコインを受け取る／chibi）",
               color: "from-amber-400 to-orange-400",
               sub: {
-                width: 347,
-                height: 205,
                 alt: "投稿直後に出るペルコイン付与のモーダル",
                 caption: "実際に出るお知らせ",
               },
@@ -457,8 +462,9 @@ export function UsePromptsGuide({
                   <ScreenshotSlot
                     alt={s.sub.alt}
                     caption={s.sub.caption}
-                    width={s.sub.width}
-                    height={s.sub.height}
+                    src={STEP_SUBS[i].src}
+                    width={STEP_SUBS[i].width}
+                    height={STEP_SUBS[i].height}
                     placeholderClassName={PLACEHOLDER_CLASS}
                   />
                 </div>
