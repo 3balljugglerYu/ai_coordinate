@@ -43,7 +43,7 @@ const HERO_PC = "/use-prompts/hero-pc.webp";
 const STEP_SUBS = [
   { src: "/use-prompts/step1-sub.webp", width: 640, height: 551 },
   { src: "/use-prompts/step2-sub.webp", width: 640, height: 495 },
-  { src: "/use-prompts/step3-sub.webp", width: 640, height: 330 },
+  { src: "/use-prompts/step3-sub.webp", width: 560, height: 921 },
   { src: "/use-prompts/step4-sub.webp", width: 640, height: 390 },
 ] as const;
 
@@ -339,7 +339,13 @@ export function UsePromptsGuide({
               ? {
                   emoji: "🎁",
                   title: "原作者にも、届きます",
-                  body: `あなたが使うと、プロンプトを作った人にも +${creatorRewardAmount} ペルコインが還元されます。使うことが、そのままお返しになります。`,
+                  /*
+                    額は書かない。ここで伝わってほしいのは「作った人にも
+                    届く」であって金額ではない。数字を書くと、変えたときに
+                    このページだけが古い額を言い続ける。
+                    `creatorRewardAmount` は 0 のとき項目ごと出さない判定に使う。
+                  */
+                  body: "あなたが使うと、プロンプトを作った人にもペルコインが還元されます。使うことが、そのままお返しになります。",
                 }
               : null,
             {
@@ -390,7 +396,13 @@ export function UsePromptsGuide({
               no: "1",
               emoji: "👀",
               title: "気になる作品を見つける",
-              body: "ホームを眺めて「この作り方いいな」と思う作品をさがしましょう。Free Style でつくられた作品には、プロンプトを使うためのカードが付いています。",
+              /*
+                「カード」とは書かない。画面にその文字は出ないので、
+                読者は何を探せばよいのか分からない。ここでは**隣のスクショに
+                実際に写っているもの**(画像左下の「Free Style」表示)を指す。
+                プロンプトを使う欄の話はステップ2で実物とともに出す。
+              */
+              body: "ホームを眺めて「この作り方いいな」と思う作品をさがしましょう。使えるのは Free Style でつくられた作品です。画像の左下に「Free Style」と出ているのが目印です。",
               label: "イラスト①（ホームで作品をさがす／chibi）",
               color: "from-sky-500 to-cyan-400",
               sub: {
@@ -418,7 +430,7 @@ export function UsePromptsGuide({
               label: "イラスト③（うちの子で生成する／chibi）",
               color: "from-teal-500 to-emerald-400",
               sub: {
-                alt: "生成のボトムシート。プロンプト欄が伏せられたまま画像を選んで生成できる",
+                alt: "うちの子の画像を入れた生成画面。プロンプト欄は「プロンプトは非公開です」と伏せられたまま",
                 caption: "実際の生成画面",
               },
             },
@@ -489,6 +501,24 @@ export function UsePromptsGuide({
               いま投稿されている作品から。
               <br />
               タップすると投稿のページへ移動します。
+            </p>
+            {/*
+              ⭐ 「運営が選んでいない」を**先に**言う。
+
+              自分の作品がここに並んでいるのを見た投稿者は、
+              「なぜ自分のが載っているのか」と受け取る。知りたいのは
+              並べ方の条件ではなく、**誰が選んだのか**の方。
+              条件を先に書くと、答えが最後まで読まないと出てこない。
+
+              条件は `getUsablePromptShowcase` の絞り込みと対になっている。
+              あちらを変えるときは、この文も必ず合わせること。
+            */}
+            <p className="mx-auto mt-4 max-w-sm rounded-2xl bg-slate-50 px-4 py-3 text-center text-xs font-medium leading-relaxed text-slate-500">
+              ここに並ぶ作品は、
+              <span className="font-bold text-slate-600">
+                運営が選んで載せているものではありません。
+              </span>
+              Free Style で投稿され、Before / After が載っている作品を、新しい順に自動で表示しています。新しい投稿があれば入れ替わります。
             </p>
           </PopIn>
 

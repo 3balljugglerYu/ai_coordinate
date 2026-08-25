@@ -24,6 +24,8 @@ type Row = {
   storage_path_thumb: string | null;
   storage_path: string | null;
   image_url: string | null;
+  pre_generation_storage_path: string | null;
+  show_before_image: boolean | null;
 };
 
 function row(id: string, userId: string | null = `author-${id}`): Row {
@@ -32,6 +34,9 @@ function row(id: string, userId: string | null = `author-${id}`): Row {
     user_id: userId,
     storage_path_thumb: `thumb/${id}.webp`,
     storage_path: null,
+    // 既定は Before あり(この関数を使うテストは Before の有無を論点にしない)
+    pre_generation_storage_path: `before/${id}.webp`,
+    show_before_image: true,
     image_url: null,
   };
 }
@@ -211,11 +216,8 @@ describe("getUsablePromptShowcase", () => {
 
   test("サムネイルが解決できない行は落とす（壊れた画像枠を見せない）", async () => {
     const broken: Row = {
-      id: "a",
-      user_id: "author-1",
+      ...row("a", "author-1"),
       storage_path_thumb: null,
-      storage_path: null,
-      image_url: null,
     };
     mockTables({ candidates: [broken, row("b")] });
     mockRpc({ available: ["a", "b"] });
@@ -223,6 +225,54 @@ describe("getUsablePromptShowcase", () => {
     const result = await getUsablePromptShowcase();
 
     expect(result.map((item) => item.postId)).toEqual(["b"]);
+  });
+
+  /**
+   * ⭐ 並べる基準はページ本文の注意書きと対になっている
+   * (「Free Style で投稿された作品のうち、Before / After が載っているものを
+   * 新しい順に」)。ここが緩むと、書いてある基準と実際の並びが食い違う。
+   *
+   * 運営が見繕っているように見えると、投稿者は「勝手に使われている」と
+   * 受け取る。根拠を書けるのは、条件が機械的であるうちだけ。
+   */
+  test("⭐Before が無い作品は落とす（After だけでは何が起きるか伝わらない）", async () => {
+    const noBefore: Row = {
+      ...row("a", "author-1"),
+      pre_generation_storage_path: null,
+    };
+    mockTables({ candidates: [noBefore, row("b")] });
+    mockRpc({ available: ["a", "b"] });
+
+    const result = await getUsablePromptShowcase();
+
+    expect(result.map((item) => item.postId)).toEqual(["b"]);
+  });
+
+  test("⭐Before を隠している作品も落とす（投稿者が出さないと決めたもの）", async () => {
+    const hidden: Row = {
+      ...row("a", "author-1"),
+      show_before_image: false,
+    };
+    mockTables({ candidates: [hidden, row("b")] });
+    mockRpc({ available: ["a", "b"] });
+
+    const result = await getUsablePromptShowcase();
+
+    expect(result.map((item) => item.postId)).toEqual(["b"]);
+  });
+
+  test("Before で落ちた行は可否判定 RPC にも渡さない（無駄に問い合わせない）", async () => {
+    mockTables({
+      candidates: [{ ...row("a", "author-1"), pre_generation_storage_path: null }, row("b")],
+    });
+    mockRpc({ available: ["b"] });
+
+    await getUsablePromptShowcase();
+
+    const validateCall = rpcMock.mock.calls.find(
+      ([name]) => name === "validate_derived_prompt_sources"
+    );
+    expect(validateCall?.[1].p_source_post_ids).toEqual(["b"]);
   });
 
   test("候補が0件なら判定 RPC を呼ばない", async () => {

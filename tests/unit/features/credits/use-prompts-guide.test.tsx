@@ -87,12 +87,19 @@ describe("UsePromptsGuide", () => {
     expect(screen.getByText("+7")).toBeInTheDocument();
   });
 
-  test("還元額も props のまま本文に出る", () => {
+  /**
+   * ⭐ 額は本文に書かない。伝えたいのは「作った人にも届く」ことであって
+   * 金額ではない。数字を書くと、変えたときにこのページだけが古い額を
+   * 言い続ける(額の正本は `percoin_bonus_defaults`)。
+   */
+  test("⭐還元の案内に金額を書かない", () => {
     renderGuide({ creatorRewardAmount: 3 });
 
+    expect(screen.getByText("原作者にも、届きます")).toBeInTheDocument();
     expect(
-      screen.getByText(/\+3 ペルコインが還元されます/)
+      screen.getByText(/ペルコインが還元されます/)
     ).toBeInTheDocument();
+    expect(screen.queryByText(/\+3/)).not.toBeInTheDocument();
   });
 
   test("還元が停止中(0)なら、原作者に届く案内を出さない", () => {
@@ -219,6 +226,30 @@ describe("UsePromptsGuide", () => {
 
       expect(screen.getByText("12回使われました")).toBeInTheDocument();
       expect(screen.queryByText("0回使われました")).not.toBeInTheDocument();
+    });
+
+    /**
+     * ⭐ 自分の作品がここに並んでいるのを見た投稿者が知りたいのは、
+     * 並べ方の条件ではなく**誰が選んだのか**。だから否定を先に置く。
+     *
+     * 条件の記述は `getUsablePromptShowcase` の絞り込みと**対**になっている。
+     * 片方だけ変えると、書いてある基準と実際の並びが食い違う。
+     */
+    test("⭐運営が選んでいないことを先に書く（自分の作品を見つけた人向け）", () => {
+      renderGuide({ showcase });
+
+      const note = screen.getByText(/ここに並ぶ作品は、/);
+      expect(note).toHaveTextContent(
+        "運営が選んで載せているものではありません"
+      );
+      // 条件も併記する（機械的であることの裏づけ）
+      expect(note).toHaveTextContent("Before / After が載っている作品");
+      expect(note).toHaveTextContent("新しい順に自動で表示");
+
+      // 否定が条件より**先**にあること（最後まで読まないと答えが出ない形にしない）
+      const text = note.textContent ?? "";
+      expect(text.indexOf("運営が選んで載せているものではありません")).
+        toBeLessThan(text.indexOf("Free Style"));
     });
 
     test("実データが無ければセクションごと出さない", () => {

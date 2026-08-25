@@ -1,5 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getPostThumbUrl } from "@/features/posts/lib/utils";
+import {
+  getPostBeforeImageUrl,
+  getPostThumbUrl,
+} from "@/features/posts/lib/utils";
 import { shouldShowUsageCount } from "@/features/posts/lib/constants";
 
 /**
@@ -25,6 +28,21 @@ import { shouldShowUsageCount } from "@/features/posts/lib/constants";
  * (実在・投稿済み・visible・free・root・secret あり・作者が利用可)が残る。
  *
  * だから見出しは「使えます」ではなく **「フォローすると使えます」** にする。
+ *
+ * ## Before / After が載っているものだけ
+ *
+ * このページが伝えたいのは「**うちの子が変わる**」こと。After だけの作品を
+ * 並べると、ただの画像置き場に見えて、何が起きるのかが運ばれない。
+ *
+ * 判定は書き写さず `getPostBeforeImageUrl`(フィードと同じ) を通す。条件を
+ * TypeScript 側に写すと、フィードでは Before が出ているのにここでは落ちる
+ * (あるいはその逆)というズレが静かに入る。
+ *
+ * ⭐ この条件はページ本文の注意書きと**対になっている**。
+ * (「Free Style で投稿された作品のうち、Before / After が載っているものを
+ * 新しい順に」) 条件を変えるときは、あちらの文も必ず直すこと。
+ * 運営が見繕っているように見えると、投稿者は「勝手に使われている」と
+ * 受け取る。並び順の根拠を書けるのは、機械的な条件であるうちだけ。
  */
 
 /** ページに出す1件。 */
@@ -44,10 +62,19 @@ export interface UsablePromptShowcaseItem {
 const SHOWCASE_LIMIT = 6;
 
 /**
- * 候補の取得件数。可否判定で落ちるぶんを見込んで多めに取る。
+ * 候補の取得件数。Before の有無と可否判定で落ちるぶんを見込んで多めに取る。
  * 全件が落ちても「セクションごと出さない」に倒れるだけで、ページは壊れない。
  */
-const CANDIDATE_LIMIT = 24;
+const CANDIDATE_LIMIT = 60;
+
+/**
+ * 可否判定(RPC)へ渡す上限。
+ *
+ * RPC は1件ずつ LATERAL で回るので、入力を増やすとそのぶん DB 側の仕事が
+ * 増える。**Before の絞り込みを先に済ませてから**ここまで削り、RPC の負荷は
+ * 元のままに保つ。
+ */
+const VALIDATION_LIMIT = 24;
 
 type CandidateRow = {
   id: string;
@@ -55,6 +82,9 @@ type CandidateRow = {
   storage_path_thumb: string | null;
   storage_path: string | null;
   image_url: string | null;
+  /* Before の有無を見るための列。判定自体は getPostBeforeImageUrl に任せる */
+  pre_generation_storage_path: string | null;
+  show_before_image: boolean | null;
 };
 
 /**
@@ -70,7 +100,9 @@ export async function getUsablePromptShowcase(): Promise<
 
   const { data: candidates, error: candidateError } = await supabase
     .from("generated_images")
-    .select("id, user_id, storage_path_thumb, storage_path, image_url")
+    .select(
+      "id, user_id, storage_path_thumb, storage_path, image_url, pre_generation_storage_path, show_before_image"
+    )
     .eq("generation_type", "free")
     .eq("is_posted", true)
     .eq("moderation_status", "visible")
@@ -89,9 +121,24 @@ export async function getUsablePromptShowcase(): Promise<
     return [];
   }
 
-  const rows = (candidates as CandidateRow[]).filter(
-    (row): row is CandidateRow & { user_id: string } => Boolean(row.user_id)
-  );
+  const rows = (candidates as CandidateRow[])
+    .filter(
+      (row): row is CandidateRow & { user_id: string } => Boolean(row.user_id)
+    )
+    /*
+      Before が出ない作品は落とす。判定はフィードと同じ関数に任せる
+      (列の条件をここへ書き写すと、表示と食い違っても気づけない)。
+    */
+    .filter((row) =>
+      Boolean(
+        getPostBeforeImageUrl({
+          pre_generation_storage_path: row.pre_generation_storage_path,
+          show_before_image: row.show_before_image ?? true,
+        })
+      )
+    )
+    // RPC の入力はここで抑える(上の絞り込みを通ったものだけを渡す)
+    .slice(0, VALIDATION_LIMIT);
   if (rows.length === 0) {
     return [];
   }
