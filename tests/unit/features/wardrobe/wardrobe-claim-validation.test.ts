@@ -128,6 +128,42 @@ describe("parseWardrobeClaimRequest", () => {
       if (result.ok) return;
       expect(result.code).toBe("IMAGE_TOO_LARGE");
     });
+
+    /**
+     * ⭐ 巨大な入力で **例外を投げない**こと。
+     *
+     * かつては本体(payload)まで1本の正規表現
+     * `([A-Za-z0-9+/=]+)$` で見ており、数百万文字を渡すとバックトラックの
+     * 積み上げがスタックを食い潰して
+     * `RangeError: Maximum call stack size exceeded` で落ちていた。
+     *
+     * **スタックの余裕は環境で違う。** macOS では再現せず Linux(CI・Vercel)で
+     * だけ落ちるため、手元では気づけない。本番では「大きすぎます」と返すはずが
+     * 500 になる。判定結果ではなく「投げないこと」を明示的に固定する。
+     */
+    test("⭐上限いっぱいの入力でも例外を投げない(スタックを溢れさせない)", () => {
+      const huge = dataUrlOfSize("image/webp", WARDROBE_CLAIM_MAX_IMAGE_BYTES);
+
+      expect(() => parseWardrobeClaimRequest({ imageBase64: huge })).not.toThrow();
+    });
+
+    test("⭐巨大な入力の末尾が不正でも、例外ではなく INVALID_IMAGE を返す", () => {
+      /*
+        最も危ない形。全体一致の正規表現だと、末尾で失敗してから
+        1文字ずつ戻る(=バックトラックが最大になる)。
+      */
+      const huge =
+        dataUrlOfSize("image/webp", WARDROBE_CLAIM_MAX_IMAGE_BYTES) + "!";
+
+      let result: ReturnType<typeof parseWardrobeClaimRequest> | null = null;
+      expect(() => {
+        result = parseWardrobeClaimRequest({ imageBase64: huge });
+      }).not.toThrow();
+      expect(result).not.toBeNull();
+      expect(result!.ok).toBe(false);
+      if (result!.ok) return;
+      expect(result!.code).toBe("INVALID_IMAGE");
+    });
   });
 
   describe("異常系", () => {

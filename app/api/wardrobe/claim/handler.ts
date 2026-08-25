@@ -48,8 +48,33 @@ export type WardrobeClaimParseResult =
   | { ok: true; data: ParsedWardrobeClaim }
   | { ok: false; code: WardrobeClaimErrorCode };
 
-// `data:image/<subtype>;base64,<payload>` のみ受理 (生 base64 や非画像は弾く)
-const DATA_URL_RE = /^data:([a-z]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+/=]+)$/i;
+/*
+  `data:image/<subtype>;base64,<payload>` のみ受理 (生 base64 や非画像は弾く)。
+
+  ⭐ **本体(payload)を正規表現に通さないこと。**
+
+  かつては全体を1本の正規表現
+    /^data:([a-z]+\/[a-z0-9.+-]+);base64,([A-Za-z0-9+\/=]+)$/i
+  で見ていたが、末尾の `([A-Za-z0-9+/=]+)$` に数百万文字を渡すと
+  バックトラック用の積み上げがスタックを食い潰し、
+  **`RangeError: Maximum call stack size exceeded` で落ちる**。
+
+  上限は base64 で 5MB (デコード後 3MB) なので、3MB 弱の画像は長さ検査を
+  通り抜けてここへ到達する。**「大きすぎます」と返すはずが 500 になる。**
+
+  スタックの余裕は環境で違い、macOS では再現せず **Linux(CI・Vercel)でだけ**
+  落ちる。手元で気づけないので、この形に戻さないこと。
+
+  対処は2つ。
+  1. ヘッダ(`data:<mime>`)だけを正規表現で見る。数十文字なので安全
+  2. 本体は「**不正な文字が1つでもあるか**」を探す。量指定子も終端も無く、
+     単純な走査なのでバックトラックしない
+     (`^[A-Za-z0-9+/=]+$` と書くと元の木阿弥になる)
+*/
+const DATA_URL_HEADER_RE = /^data:([a-z]+\/[a-z0-9.+-]+)$/i;
+const BASE64_SEPARATOR = ";base64,";
+/** base64 に使えない文字。**見つかったら不正**(否定形なので走査1回で済む)。 */
+const NON_BASE64_CHAR_RE = /[^A-Za-z0-9+/=]/;
 
 // Storage バケット (generated-images) の allowed_mime_types に揃える。
 // gif / svg 等は弾く (svg は public バケットでの stored-XSS 防止も兼ねる)。
@@ -86,17 +111,36 @@ export function parseWardrobeClaimRequest(
     return { ok: false, code: "IMAGE_TOO_LARGE" };
   }
 
-  const match = DATA_URL_RE.exec(imageBase64);
-  if (!match) {
+  /*
+    ヘッダと本体を先に切り分ける。mime に `;` は使えない(上の文字クラス参照)ので、
+    最初の `;base64,` が必ず境界になる。
+  */
+  const separatorIndex = imageBase64.indexOf(BASE64_SEPARATOR);
+  if (separatorIndex < 0) {
     return { ok: false, code: "INVALID_IMAGE" };
   }
 
-  const contentType = match[1].toLowerCase();
+  const headerMatch = DATA_URL_HEADER_RE.exec(
+    imageBase64.slice(0, separatorIndex),
+  );
+  if (!headerMatch) {
+    return { ok: false, code: "INVALID_IMAGE" };
+  }
+
+  const payload = imageBase64.slice(
+    separatorIndex + BASE64_SEPARATOR.length,
+  );
+  // 本体は「不正な文字が1つでもあるか」で見る(全体一致だとスタックが溢れる)
+  if (payload.length === 0 || NON_BASE64_CHAR_RE.test(payload)) {
+    return { ok: false, code: "INVALID_IMAGE" };
+  }
+
+  const contentType = headerMatch[1].toLowerCase();
   if (!WARDROBE_CLAIM_ALLOWED_CONTENT_TYPES.has(contentType)) {
     return { ok: false, code: "INVALID_IMAGE" };
   }
 
-  const imageBuffer = Buffer.from(match[2], "base64");
+  const imageBuffer = Buffer.from(payload, "base64");
   if (imageBuffer.length === 0) {
     return { ok: false, code: "INVALID_IMAGE" };
   }

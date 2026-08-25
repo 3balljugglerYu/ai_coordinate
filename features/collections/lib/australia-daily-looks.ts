@@ -26,6 +26,12 @@ export const AUSTRALIA_DAILY_LOOKS: AustraliaDailyLookRef[] = [
   { day: "Day 3", presetId: "ee4e8a7f-8e5d-427f-883f-44ba0564264e" },
   // Uluru Starry Night Midnight Gradient Gown Look
   { day: "Day 4", presetId: "b73e84f9-9374-4e19-ba69-c21fc6de52a1" },
+  // Kata Tjuta Terracotta Gradient Dress Look
+  { day: "Day 5", presetId: "90648849-19c9-4153-a9bc-41636c406527" },
+  // Sydney Harbour Navy Pleated Marine Look
+  { day: "Day 6", presetId: "80dcdf5e-6ec7-4355-9f94-42a02e7b1642" },
+  // Harbour Bridge Aqua Cami & Wrap Skirt Look
+  { day: "Day 7", presetId: "3212b40c-63a6-4290-93c2-1383ab553a50" },
 ];
 
 /** ページに渡す解決済みの1件。 */
