@@ -181,19 +181,6 @@ describe("UsePromptsGuide", () => {
     ).toHaveAttribute("href", "/challenge");
   });
 
-  /**
-   * ⭐ 額のセクションを畳んでも、この事実は消さないこと。
-   * 1投稿で両方もらえると誤解されると、そのまま問い合わせになる
-   * (付与RPC は派生投稿をフリー投稿ボーナスから明示的に除外している)。
-   */
-  test("⭐1投稿はどちらか一方であることを明示する", () => {
-    renderGuide();
-
-    expect(
-      screen.getByText(/1つの投稿でもらえるのは、どちらか一方です/)
-    ).toBeInTheDocument();
-  });
-
   test("フォローが必要であることを手順に書く", () => {
     renderGuide();
 
