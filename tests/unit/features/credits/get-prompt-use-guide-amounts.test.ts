@@ -62,6 +62,8 @@ describe("getPromptUseGuideAmounts", () => {
     await expect(getPromptUseGuideAmounts()).resolves.toEqual({
       promptUseBonusAmount: 20,
       freePostBonusAmount: 15,
+      // ⭐ キーは `one_tap` ではなく `one_tap_style`(RPC の実返却で確認)
+      oneTapPostBonusAmount: 20,
       creatorRewardAmount: 2,
     });
   });
@@ -111,6 +113,7 @@ describe("getPromptUseGuideAmounts", () => {
     await expect(getPromptUseGuideAmounts()).resolves.toEqual({
       promptUseBonusAmount: 0,
       freePostBonusAmount: 0,
+      oneTapPostBonusAmount: 0,
       creatorRewardAmount: 2,
     });
   });
@@ -125,6 +128,7 @@ describe("getPromptUseGuideAmounts", () => {
     await expect(getPromptUseGuideAmounts()).resolves.toEqual({
       promptUseBonusAmount: 20,
       freePostBonusAmount: 20,
+      oneTapPostBonusAmount: 0,
       creatorRewardAmount: 0,
     });
   });
@@ -141,6 +145,7 @@ describe("getPromptUseGuideAmounts", () => {
     await expect(getPromptUseGuideAmounts()).resolves.toEqual({
       promptUseBonusAmount: 0,
       freePostBonusAmount: 0,
+      oneTapPostBonusAmount: 0,
       creatorRewardAmount: 0,
     });
   });

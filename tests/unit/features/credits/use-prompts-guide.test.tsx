@@ -84,12 +84,10 @@ function renderGuide(props: Partial<React.ComponentProps<typeof UsePromptsGuide>
 
 describe("UsePromptsGuide", () => {
   test("付与額は props のまま表示される（文言に埋め込まない）", () => {
-    // 比較セクションにも同じ額が出るので、フリー投稿側とは別の数にして識別する
     renderGuide({ promptUseBonusAmount: 15, freePostBonusAmount: 7 });
 
-    // ヒーローの額カードと、比較セクションの行の2箇所に出る
-    expect(screen.getAllByText("+15")).toHaveLength(2);
-    expect(screen.getByText("+7")).toBeInTheDocument();
+    // 額を出すのはヒーローの額カードだけ
+    expect(screen.getAllByText("+15")).toHaveLength(1);
   });
 
   /**
@@ -117,22 +115,83 @@ describe("UsePromptsGuide", () => {
     ).toBeInTheDocument();
   });
 
-  test("フリー投稿ボーナスが停止中なら、比較のセクションごと出さない", () => {
-    renderGuide({ freePostBonusAmount: 0 });
+  test("案内できるミッションが1つも無ければ、セクションごと出さない", () => {
+    renderGuide({
+      freePostBonusAmount: 0,
+      oneTapPostBonusAmount: 0,
+      creatorRewardAmount: 0,
+    });
 
-    expect(screen.queryByText("自分で書いて投稿")).not.toBeInTheDocument();
+    expect(screen.queryByText("ほかにも、")).not.toBeInTheDocument();
   });
 
-  test("1日に両方やったときの合計を、2つの額の和として出す", () => {
-    renderGuide({ promptUseBonusAmount: 20, freePostBonusAmount: 15 });
+  /**
+   * ⭐ 「ほかにも、もらえます」に**額は書かない**。
+   *
+   * 額は今後下げていく見込みで、大きく出すほど下げたときに
+   * 「取り上げられた」と受け取られる。伝えたいのは「もらえる機会が
+   * ほかにもある」ことで、金額ではない。
+   */
+  test("⭐ほかのミッションの案内に額を書かない", () => {
+    renderGuide({
+      promptUseBonusAmount: 20,
+      freePostBonusAmount: 15,
+      oneTapPostBonusAmount: 12,
+    });
 
-    expect(screen.getByText("+35")).toBeInTheDocument();
+    expect(screen.getByText("自分で書いて投稿する")).toBeInTheDocument();
+    expect(screen.queryByText("+15")).not.toBeInTheDocument();
+    expect(screen.queryByText("+12")).not.toBeInTheDocument();
+    // 合計も出さない
+    expect(screen.queryByText("+35")).not.toBeInTheDocument();
   });
 
-  test("1投稿はどちらか一方であることを明示する", () => {
+  /**
+   * ⭐ 額は出さないが**見る**。0 は停止中なので、もらえないミッションへ
+   * 案内してしまわないよう、その行ごと落とす。
+   */
+  test("⭐停止中(0)のミッションは案内しない", () => {
+    renderGuide({ freePostBonusAmount: 0, oneTapPostBonusAmount: 0 });
+
+    expect(screen.queryByText("自分で書いて投稿する")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("One-Tap Style で投稿する")
+    ).not.toBeInTheDocument();
+  });
+
+  test("案内は各ミッションのページへ送る", () => {
+    renderGuide({ freePostBonusAmount: 20, oneTapPostBonusAmount: 20 });
+
+    expect(
+      screen.getByRole("link", { name: /自分で書いて投稿する/ })
+    ).toHaveAttribute("href", "/free");
+    expect(
+      screen.getByRole("link", { name: /One-Tap Style で投稿する/ })
+    ).toHaveAttribute("href", "/style");
+    expect(
+      screen.getByRole("link", { name: /あなたのプロンプトが使われる/ })
+    ).toHaveAttribute("href", "/creator-rewards");
+  });
+
+  test("額の正本としてミッション画面へ案内する", () => {
+    renderGuide({ freePostBonusAmount: 20 });
+
+    expect(
+      screen.getByRole("link", { name: "ミッション画面" })
+    ).toHaveAttribute("href", "/challenge");
+  });
+
+  /**
+   * ⭐ 額のセクションを畳んでも、この事実は消さないこと。
+   * 1投稿で両方もらえると誤解されると、そのまま問い合わせになる
+   * (付与RPC は派生投稿をフリー投稿ボーナスから明示的に除外している)。
+   */
+  test("⭐1投稿はどちらか一方であることを明示する", () => {
     renderGuide();
 
-    expect(screen.getByText("どちらか一方")).toBeInTheDocument();
+    expect(
+      screen.getByText(/1つの投稿でもらえるのは、どちらか一方です/)
+    ).toBeInTheDocument();
   });
 
   test("フォローが必要であることを手順に書く", () => {

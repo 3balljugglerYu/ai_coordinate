@@ -260,6 +260,7 @@ function PreviewBanner({ previewAmount }: { previewAmount: number | null }) {
 export function UsePromptsGuide({
   promptUseBonusAmount,
   freePostBonusAmount,
+  oneTapPostBonusAmount = 0,
   creatorRewardAmount,
   showcase = [],
   isPreview = false,
@@ -268,8 +269,13 @@ export function UsePromptsGuide({
 }: {
   /** 他の人のプロンプトで作った作品を投稿したときの付与額。0 = 停止中。 */
   promptUseBonusAmount: number;
-  /** 自分で書いたプロンプトで投稿したときの付与額。0 なら比較の行を出さない。 */
+  /** 自分で書いたプロンプトで投稿したときの付与額。0 なら案内の行を出さない。 */
   freePostBonusAmount: number;
+  /**
+   * One-Tap Style で投稿したときの付与額。0 なら案内の行を出さない。
+   * **額そのものは出さない**(読むのは停止中へ案内しないためだけ)。
+   */
+  oneTapPostBonusAmount?: number;
   /** 使われた側(原作者)に入る還元額。0 なら還元の案内を出さない。 */
   creatorRewardAmount: number;
   /** いま使えるプロンプトの実データ。空ならセクションごと出さない。 */
@@ -285,9 +291,39 @@ export function UsePromptsGuide({
   /** 確認モーダルで開いている作品。null なら閉じている。 */
   const [pendingItem, setPendingItem] =
     useState<UsablePromptShowcaseItem | null>(null);
-  const hasFreePostBonus = freePostBonusAmount > 0;
-  // 「1日に両方やったら」の合計。片方が停止中なら比較そのものを出さない
-  const bothDayTotal = promptUseBonusAmount + freePostBonusAmount;
+  /*
+    「ほかにも、もらえます」に並べる行。
+
+    ⭐ 額は**出さないが、見る**。0 は停止中なので、その行は出さない
+    (もらえないミッションへ案内しない)。額を書かないのは、今後下げていく
+    見込みで、大きく出すほど下げたときに「取り上げられた」と受け取られるため。
+  */
+  const otherMissions = [
+    freePostBonusAmount > 0
+      ? {
+          emoji: "🖊️",
+          title: "自分で書いて投稿する",
+          body: "Free Style で自分が考えたプロンプトから作った作品も対象です。",
+          href: "/free",
+        }
+      : null,
+    oneTapPostBonusAmount > 0
+      ? {
+          emoji: "👗",
+          title: "One-Tap Style で投稿する",
+          body: "用意されたスタイルを選んで作った作品も対象です。",
+          href: "/style",
+        }
+      : null,
+    hasCreatorReward
+      ? {
+          emoji: "🎁",
+          title: "あなたのプロンプトが使われる",
+          body: "他の人があなたのプロンプトで作ると、あなたにも届きます。",
+          href: "/creator-rewards",
+        }
+      : null,
+  ].filter((row): row is NonNullable<typeof row> => row !== null);
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-b from-sky-50 via-cyan-50 to-white">
@@ -591,59 +627,73 @@ export function UsePromptsGuide({
         </section>
       )}
 
-      {/* ============ 自分で書いたぶんとは別 ============ */}
-      {hasFreePostBonus && promptUseBonusAmount > 0 && (
+      {/* ============ ほかにも、もらえます ============ */}
+      {/*
+        ⭐ ここに**額を書かない**。
+
+        額は今後下げていく見込みで、大きく出すほど下げたときに
+        「取り上げられた」と受け取られる。伝えたいのは
+        「もらえる機会がほかにもある」ことで、金額ではない。
+
+        ただし停止中(0)のミッションへ案内はしない。そのために額は
+        **読むが出さない**。いま何ペルコインかはミッション画面が持っている
+        (プランごとの倍率もあちらが正本)。
+      */}
+      {otherMissions.length > 0 && (
         <section className="relative bg-white px-6 py-16">
           <PopIn rotate={0}>
             <h2 className="text-center text-2xl font-black leading-tight text-slate-900">
-              自分で書いたぶんとは、
+              ほかにも、
               <br />
-              <span className="text-teal-500">別々にもらえます</span>
+              <span className="text-teal-500">もらえます</span>
             </h2>
+            <p className="mx-auto mt-3 max-w-sm text-center text-sm font-medium leading-loose text-slate-500">
+              ペルコインがもらえるのは、
+              <br />
+              これだけではありません。
+            </p>
           </PopIn>
 
           <div className="mx-auto mt-7 flex max-w-sm flex-col gap-3">
-            {[
-              {
-                label: "自分で書いて投稿",
-                note: "Free Style であなたが考えたプロンプト",
-                amount: freePostBonusAmount,
-              },
-              {
-                label: "他の人のプロンプトで投稿",
-                note: "「このプロンプトで生成する」から作った作品",
-                amount: promptUseBonusAmount,
-              },
-            ].map((row, i) => (
-              <PopIn key={row.label} delay={i * 70} rotate={i % 2 === 0 ? -2 : 2}>
-                <div className="flex items-center justify-between gap-3 rounded-2xl border-2 border-slate-200 bg-white px-5 py-4">
-                  <div className="min-w-0">
-                    <p className="text-sm font-black text-slate-900">
-                      {row.label}
-                    </p>
-                    <p className="mt-0.5 text-xs font-medium leading-relaxed text-slate-500">
-                      {row.note}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-lg font-black text-sky-600">
-                    +{row.amount}
+            {otherMissions.map((row, i) => (
+              <PopIn key={row.title} delay={i * 70} rotate={i % 2 === 0 ? -2 : 2}>
+                <Link
+                  href={row.href}
+                  className="flex items-center gap-3 rounded-2xl border-2 border-slate-200 bg-white px-5 py-4 transition hover:border-teal-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400"
+                >
+                  <span aria-hidden className="text-2xl">
+                    {row.emoji}
                   </span>
-                </div>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-black text-slate-900">
+                      {row.title}
+                    </span>
+                    <span className="mt-0.5 block text-xs font-medium leading-relaxed text-slate-500">
+                      {row.body}
+                    </span>
+                  </span>
+                  <span aria-hidden className="shrink-0 text-teal-500">
+                    →
+                  </span>
+                </Link>
               </PopIn>
             ))}
           </div>
 
           <PopIn delay={180} rotate={0}>
             {/*
-              1投稿で 40 もらえると誤解されると、そのまま問い合わせになる。
-              付与RPC は派生投稿をフリー投稿ボーナスから明示的に除外している。
+              額を書かない代わりに、**いつ見ても正しい場所**を指す。
+              ミッション画面はプランごとの倍率まで反映した実額を持っている。
             */}
-            <p className="mx-auto mt-5 max-w-sm rounded-2xl bg-sky-50 px-5 py-4 text-xs font-medium leading-relaxed text-slate-600">
-              1つの投稿でもらえるのは、
-              <span className="font-black text-slate-900">どちらか一方</span>
-              です。1日に両方やった日は、合わせて
-              <span className="font-black text-sky-600">+{bothDayTotal}</span>
-              ペルコインになります。
+            <p className="mx-auto mt-5 max-w-sm text-center text-xs font-medium leading-relaxed text-slate-500">
+              いま何ペルコインもらえるかは、
+              <Link
+                href="/challenge"
+                className="font-bold text-teal-600 underline underline-offset-2"
+              >
+                ミッション画面
+              </Link>
+              で確認できます。
             </p>
           </PopIn>
         </section>
@@ -665,6 +715,18 @@ export function UsePromptsGuide({
             {
               title: "自分のプロンプトを使ったとき",
               body: "ご自身の作品を使った生成は対象になりません。",
+            },
+            /*
+              ⭐ 「1投稿でどちらか一方」はここに置く。
+
+              以前は額を並べたセクションで説明していたが、額を出さない方針に
+              変えたので、行き場はここになる。**消してはいけない事実**で、
+              1投稿で両方もらえると誤解されるとそのまま問い合わせになる
+              (付与RPC は派生投稿をフリー投稿ボーナスから明示的に除外している)。
+            */
+            {
+              title: "同じ投稿で、フリー投稿ぶんも受け取りたいとき",
+              body: "1つの投稿でもらえるのは、どちらか一方です。別の投稿なら、それぞれ受け取れます。",
             },
             {
               title: "プロンプトをコピーして貼り付けたとき",

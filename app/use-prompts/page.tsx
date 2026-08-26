@@ -127,6 +127,7 @@ export default async function UsePromptsPage({
     <UsePromptsGuide
       promptUseBonusAmount={displayAmount}
       freePostBonusAmount={amounts.freePostBonusAmount}
+      oneTapPostBonusAmount={amounts.oneTapPostBonusAmount}
       creatorRewardAmount={amounts.creatorRewardAmount}
       showcase={showcase}
       isPreview={!isLive}

@@ -20,6 +20,14 @@ export interface PromptUseGuideAmounts {
    * 「1投稿はどちらか一方」を説明するために並べて出す。
    */
   freePostBonusAmount: number;
+  /**
+   * One-Tap Style で作った作品を投稿したときの付与額。
+   *
+   * **額そのものは表示しない**(今後下がる見込みなので出さない方針)。
+   * ここで読むのは、0 = 停止中のミッションへ案内してしまわないため。
+   * 「ほかにも、もらえます」の行の出し分けだけに使う。
+   */
+  oneTapPostBonusAmount: number;
   /** 使われた側(原作者)に入る還元額。0 なら還元の案内を出さない。 */
   creatorRewardAmount: number;
 }
@@ -27,6 +35,7 @@ export interface PromptUseGuideAmounts {
 const EMPTY_AMOUNTS: PromptUseGuideAmounts = {
   promptUseBonusAmount: 0,
   freePostBonusAmount: 0,
+  oneTapPostBonusAmount: 0,
   creatorRewardAmount: 0,
 };
 
@@ -84,6 +93,8 @@ export const getPromptUseGuideAmounts = cache(
       ...EMPTY_AMOUNTS,
       promptUseBonusAmount: toAmount(promptUseResult?.data),
       freePostBonusAmount: toAmount(postBonusAmounts?.free),
+      oneTapPostBonusAmount: // キーは `one_tap` ではなく **`one_tap_style`**(RPC の実返却で確認)
+      toAmount(postBonusAmounts?.one_tap_style),
       creatorRewardAmount: toAmount(defaults?.promptUsageRewardAmount),
     };
   }
