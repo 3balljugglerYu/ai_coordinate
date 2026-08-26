@@ -76,4 +76,8 @@ export interface Ga4DashboardData {
   topDropoffPages: Ga4DropoffPageRow[];
   pageFlowStatus: Ga4DashboardStatus;
   pageFlowStatusMessage: string | null;
+  /** 名指しで追いかけるページ(上位N に入らなくても必ず出す)。 */
+  watchlistStatus: Ga4DashboardStatus;
+  watchlistStatusMessage: string | null;
+  watchlistRows: Ga4TopPageRow[];
 }
