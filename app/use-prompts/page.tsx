@@ -31,7 +31,7 @@ const PAGE_DESCRIPTION =
 const OGP_IMAGE = "/use-prompts/ogp.jpg";
 const OGP_TITLE = "ユーザーのプロンプトで生成＆投稿して、ペルコインGET！";
 const OGP_DESCRIPTION =
-  "気に入った作品の作り方を借りて、うちの子でつくれます。もらえるまでの4ステップを紹介。";
+  "気に入った作品を、うちの子で生成できます。もらえるまでの4ステップを紹介。";
 
 export const metadata: Metadata = {
   title: PAGE_TITLE,

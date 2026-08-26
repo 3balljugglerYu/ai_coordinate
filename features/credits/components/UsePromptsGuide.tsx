@@ -335,9 +335,9 @@ export function UsePromptsGuide({
 
         <PopIn delay={80} rotate={0}>
           <p className="mx-auto mt-8 max-w-sm px-6 text-sm font-medium leading-loose text-slate-600">
-            気に入った作品の作り方を借りて、
+            気に入った作品を、
             <br />
-            あなたのうちの子でつくれます。
+            うちの子で生成できます。
           </p>
         </PopIn>
 
@@ -396,8 +396,8 @@ export function UsePromptsGuide({
             },
             {
               emoji: "🔒",
-              title: "中身は見えないままで大丈夫",
-              body: "プロンプトを非公開にしている人の作品も使えます。文章を読まなくても、同じプロンプトであなたのうちの子がつくれます。",
+              title: "プロンプトの非公開設定",
+              body: "投稿者はプロンプトを非公開に設定できます。非公開に設定されたプロンプトも、他のユーザーはそのプロンプトを使用して生成できます。",
             },
           ]
             .filter((item) => item !== null)
@@ -762,12 +762,8 @@ export function UsePromptsGuide({
             <br />
             うちの子で。
           </h2>
-          <p className="mx-auto mt-3 max-w-sm text-sm font-bold leading-loose text-white/95">
-            借りた作り方が、
-            <br />
-            あなたの1枚に変わります。
-          </p>
-          <div className="mt-8">
+          {/* 説明文は置かない。見出しとボタンだけで用が足りる */}
+          <div className="mt-7">
             <HomeCtaLink className="reward-breathe inline-flex items-center gap-2 rounded-full bg-white px-10 py-4 text-base font-black text-sky-600 shadow-[0_6px_0_rgba(0,0,0,0.18)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_rgba(0,0,0,0.18)]">
               プロンプトをさがす →
             </HomeCtaLink>
