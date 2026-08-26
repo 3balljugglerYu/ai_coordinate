@@ -706,11 +706,21 @@ export function ChallengePageContent({
                 </div>
               )}
               {promptUseBonus.amount > 0 && (
-                <div className="flex items-start gap-2 rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-violet-700">
-                  <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
-                  <span>
-                    {t("dailyPromptUseHint")}
-                  </span>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 rounded-lg border border-violet-100 bg-violet-50/60 p-3 text-sm text-violet-700">
+                    <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
+                    <span>
+                      {t("dailyPromptUseHint")}
+                    </span>
+                  </div>
+                  {/* まとまった説明は紹介ページへ。カード内は要点だけに保つ
+                      (クリエイター還元カードと同じ作法)。 */}
+                  <Link
+                    href="/use-prompts"
+                    className="inline-flex items-center gap-1 text-sm font-medium text-violet-600 underline hover:text-violet-700"
+                  >
+                    {t("dailyPromptUseGuideLink")}
+                  </Link>
                 </div>
               )}
               {/* ステータス表示（生成方法ごと） */}

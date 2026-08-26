@@ -6,6 +6,7 @@ import { getGa4EntryAccessData } from "./get-ga4-entry-access-data";
 import { getGa4ExternalAccessData } from "./get-ga4-external-access-data";
 import { getGa4PageFlowData } from "./get-ga4-page-flow-data";
 import { getGa4PageSummaryData } from "./get-ga4-page-summary-data";
+import { getGa4WatchlistPages } from "./get-ga4-watchlist-pages";
 import type { Ga4DashboardData } from "./ga4-types";
 
 export async function getGa4DashboardData(
@@ -17,6 +18,7 @@ export async function getGa4DashboardData(
     entryAccessResult,
     externalAccessResult,
     dauMauResult,
+    watchlistResult,
   ] =
     await Promise.allSettled([
       getGa4PageSummaryData(range),
@@ -24,6 +26,7 @@ export async function getGa4DashboardData(
       getGa4EntryAccessData(range),
       getGa4ExternalAccessData(range),
       getGa4DauMauData(range),
+      getGa4WatchlistPages(range),
     ]);
 
   const pageSummary =
@@ -80,8 +83,24 @@ export async function getGa4DashboardData(
           mau: 0,
         };
 
+  /*
+    ここだけ失敗しても他のカードを道連れにしない(Promise.allSettled と同じ趣旨)。
+    注目ページは Data API1本なので、BigQuery 未設定でも出る。
+  */
+  const watchlist =
+    watchlistResult.status === "fulfilled"
+      ? watchlistResult.value
+      : {
+          status: "error" as const,
+          statusMessage: "GA4 から注目ページを取得できませんでした。",
+          rows: [],
+        };
+
   return {
     range,
+    watchlistStatus: watchlist.status,
+    watchlistStatusMessage: watchlist.statusMessage,
+    watchlistRows: watchlist.rows,
     ...pageSummary,
     ...entryAccess,
     ...externalAccess,

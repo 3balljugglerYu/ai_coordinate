@@ -1,8 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import {
+  ImageSlot,
+  PopIn,
+  ScreenshotSlot,
+  Sparkle,
+} from "./reward-guide";
 
 /**
  * クリエイター還元の紹介ページ本体。
@@ -61,99 +66,6 @@ const HERO_FONT_HREF = `https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&
 
 const HERO_FONT_FAMILY =
   "'Mochiy Pop One', 'Hiragino Maru Gothic ProN', 'Yu Gothic', sans-serif";
-
-/**
- * 画像の枠。src が未指定(= 支給待ち)の間はプレースホルダを描く。
- * 画像が届いたら src を渡すだけで差し替わる。
- */
-function ImageSlot({
-  src,
-  alt,
-  label,
-  ratio,
-  className,
-  float = false,
-}: {
-  src?: string;
-  alt: string;
-  /** プレースホルダに出す説明(支給待ちの間だけ見える) */
-  label: string;
-  /** 例: "1 / 1", "9 / 16" */
-  ratio: string;
-  className?: string;
-  /** chibi イラストをふわふわ浮かせる */
-  float?: boolean;
-}) {
-  const floatClass = float ? "reward-float" : "";
-  if (!src) {
-    return (
-      <div
-        style={{ aspectRatio: ratio }}
-        className={`flex w-full items-center justify-center rounded-3xl border-[3px] border-dashed border-pink-300 bg-white/70 px-4 text-center text-xs font-bold leading-relaxed text-pink-400 ${floatClass} ${className ?? ""}`}
-      >
-        {label}
-      </div>
-    );
-  }
-  return (
-    <Image
-      src={src}
-      alt={alt}
-      width={1024}
-      height={1024}
-      style={{ aspectRatio: ratio }}
-      className={`w-full rounded-3xl object-contain ${floatClass} ${className ?? ""}`}
-      sizes="(max-width: 640px) 100vw, 480px"
-    />
-  );
-}
-
-/**
- * 実際のアプリ画面のスクリーンショット。
- * イラストの下に添えて「本当にこの画面でやるんだ」と伝わるようにする。
- * 端末の画面らしく見えるよう白フチ＋角丸で囲む。
- */
-function ScreenshotSlot({
-  src,
-  alt,
-  caption,
-  width,
-  height,
-}: {
-  src?: string;
-  alt: string;
-  caption: string;
-  width: number;
-  height: number;
-}) {
-  // 端末まるごとの縦長スクショと、通知だけを切り出した横長スクショが混在するため、
-  // 向きに応じて最大幅を変える(縦長を広げすぎず、横長を潰しすぎない)。
-  const maxWidthClass = width > height ? "max-w-[300px]" : "max-w-[190px]";
-  return (
-    <figure className={`mx-auto mt-5 w-full ${maxWidthClass}`}>
-      {src ? (
-        <Image
-          src={src}
-          alt={alt}
-          width={width}
-          height={height}
-          sizes="190px"
-          className="w-full rounded-2xl border-4 border-white shadow-[0_6px_0_rgba(0,0,0,0.06)]"
-        />
-      ) : (
-        <div
-          style={{ aspectRatio: `${width} / ${height}` }}
-          className="flex w-full items-center justify-center rounded-2xl border-[3px] border-dashed border-pink-300 bg-white/70 px-3 text-center text-[10px] font-bold leading-relaxed text-pink-400"
-        >
-          {caption}（支給待ち）
-        </div>
-      )}
-      <figcaption className="mt-2 text-center text-[11px] font-bold text-gray-500">
-        {caption}
-      </figcaption>
-    </figure>
-  );
-}
 
 /**
  * ヒーローの大きなキービジュアル(画面幅いっぱい)。
@@ -223,79 +135,6 @@ function HeroVisual() {
         </h1>
       </div>
     </div>
-  );
-}
-
-/**
- * 画面に入ったら「ぽん」と跳ねて現れる。
- * 従来のスライド+フェードより、勢いのあるポップな出方にする。
- */
-function PopIn({
-  children,
-  delay = 0,
-  rotate = -4,
-  className,
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  /** 出てくるときの傾き(度)。連続配置で交互にすると賑やかになる */
-  rotate?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            setShown(true);
-            io.disconnect();
-            break;
-          }
-        }
-      },
-      { threshold: 0.15, rootMargin: "0px 0px -8% 0px" },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-
-  return (
-    <div
-      ref={ref}
-      className={`${shown ? "reward-pop-in" : "opacity-0"} ${className ?? ""}`}
-      style={
-        {
-          animationDelay: `${delay}ms`,
-          "--reward-pop-rotate": `${rotate}deg`,
-        } as React.CSSProperties
-      }
-    >
-      {children}
-    </div>
-  );
-}
-
-/** 装飾のキラキラ。読み物の余白に散らして賑やかさを出す。 */
-function Sparkle({
-  className,
-  delay = 0,
-}: {
-  className?: string;
-  delay?: number;
-}) {
-  return (
-    <span
-      aria-hidden
-      className={`pointer-events-none absolute reward-sparkle select-none ${className ?? ""}`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      ✨
-    </span>
   );
 }
 

@@ -36,6 +36,7 @@ const UNLOCALIZED_PUBLIC_PATHS = [
   "/creators",
   "/collab",
   "/tools/image-split",
+  "/use-prompts",
 ] as const;
 
 type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];

@@ -19,6 +19,7 @@ import { AdminAiCostCardPanel } from "./AdminAiCostCardPanel";
 import { AdminLoginMethodMixChartPanel } from "./AdminLoginMethodMixChartPanel";
 import { AdminModelMixChartPanel } from "./AdminModelMixChartPanel";
 import { AdminTopLandingPagesCard } from "./AdminTopLandingPagesCard";
+import { AdminWatchlistPagesCard } from "./AdminWatchlistPagesCard";
 import { AdminTopPagesCard } from "./AdminTopPagesCard";
 import { AdminTopTransitionsCard } from "./AdminTopTransitionsCard";
 import { AdminOneTapStyleCard } from "./AdminOneTapStyleCard";
@@ -253,6 +254,19 @@ export function AdminPageAnalyticsDetailsSection({
           </div>
           <div className="xl:col-span-6">
             <AdminTopLandingPagesCard rows={ga4.topLandingPages} />
+          </div>
+          {/*
+            上位N とは別枠。新設ページは上位に入らないので、
+            名指しのカードが無いと「見たいページだけ見えない」。
+          */}
+          <div className="xl:col-span-12">
+            <AdminWatchlistPagesCard
+              data={{
+                status: ga4.watchlistStatus,
+                statusMessage: ga4.watchlistStatusMessage,
+                rows: ga4.watchlistRows,
+              }}
+            />
           </div>
         </div>
       ) : (

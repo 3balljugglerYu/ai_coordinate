@@ -103,4 +103,37 @@ describe("admin viewer env helpers", () => {
       expect(isAdminViewer("uid-stranger")).toBe(false);
     });
   });
+
+  /**
+   * ⭐ 公開前のページを、ログインできない立場からも確認できるようにする逃げ道。
+   *
+   * 塞いだままだと、確認のたびに使い捨ての入口ページを作ることになり、
+   * そこでは props を手で渡すので**本物のページとは別物**しか見られない。
+   *
+   * 漏れないことがこのヘルパーの生命線なので、本番相当では必ず false に
+   * なることを固定する(Vercel のプレビューも NODE_ENV は production)。
+   */
+  describe("isLocalPreviewAllowed", () => {
+    async function load(nodeEnv: string) {
+      Object.defineProperty(process.env, "NODE_ENV", {
+        value: nodeEnv,
+        configurable: true,
+      });
+      const { isLocalPreviewAllowed } = await import("@/lib/env");
+      return isLocalPreviewAllowed();
+    }
+
+    test("開発サーバー(next dev)でだけ true", async () => {
+      expect(await load("development")).toBe(true);
+    });
+
+    test("⭐本番ビルド・Vercel プレビューでは false（漏らさない）", async () => {
+      expect(await load("production")).toBe(false);
+    });
+
+    test("テスト実行時も false", async () => {
+      expect(await load("test")).toBe(false);
+    });
+  });
+
 });
