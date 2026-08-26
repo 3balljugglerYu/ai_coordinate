@@ -303,7 +303,7 @@ export function UsePromptsGuide({
       ? {
           emoji: "🖊️",
           title: "自分で書いて投稿する",
-          body: "Free Style で自分が考えたプロンプトから作った作品も対象です。",
+          body: "Free Style で自分が考えたプロンプトで生成し投稿するともらえます。",
           href: "/free",
         }
       : null,
@@ -311,7 +311,7 @@ export function UsePromptsGuide({
       ? {
           emoji: "👗",
           title: "One-Tap Style で投稿する",
-          body: "用意されたスタイルを選んで作った作品も対象です。",
+          body: "用意されたスタイルから生成し投稿するともらえます。",
           href: "/style",
         }
       : null,
@@ -319,7 +319,7 @@ export function UsePromptsGuide({
       ? {
           emoji: "🎁",
           title: "あなたのプロンプトが使われる",
-          body: "他の人があなたのプロンプトで作ると、あなたにも届きます。",
+          body: "他の人があなたのプロンプトで生成すると、ペルコインが届きます。",
           href: "/creator-rewards",
         }
       : null,
