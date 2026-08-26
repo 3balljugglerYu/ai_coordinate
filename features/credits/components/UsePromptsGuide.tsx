@@ -5,6 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { setHomeViewMode } from "@/features/posts/lib/home-view-preference";
 import type { UsablePromptShowcaseItem } from "../lib/get-usable-prompt-showcase";
+import {
+  NOT_ELIGIBLE_CASES,
+  USE_PROMPTS_STEPS,
+} from "../lib/use-prompts-content";
 import { ImageSlot, PopIn, ScreenshotSlot, Sparkle } from "./reward-guide";
 import { ShowcaseLeaveDialog } from "./ShowcaseLeaveDialog";
 
@@ -432,62 +436,7 @@ export function UsePromptsGuide({
         </PopIn>
 
         <div className="mx-auto mt-12 flex max-w-sm flex-col gap-14">
-          {[
-            {
-              no: "1",
-              emoji: "👀",
-              title: "気になる作品を見つける",
-              /*
-                「カード」とは書かない。画面にその文字は出ないので、
-                読者は何を探せばよいのか分からない。ここでは**隣のスクショに
-                実際に写っているもの**(画像左下の「Free Style」表示)を指す。
-                プロンプトを使う欄の話はステップ2で実物とともに出す。
-              */
-              body: "ホームを眺めて「この作り方いいな」と思う作品をさがしましょう。使えるのは Free Style でつくられた作品です。画像の左下に「Free Style」と出ているのが目印です。",
-              label: "イラスト①（ホームで作品をさがす／chibi）",
-              color: "from-sky-500 to-cyan-400",
-              sub: {
-                alt: "ホームのフィード。投稿の下に原作のプロンプトを使うカードが表示されている",
-                caption: "実際のホーム画面",
-              },
-            },
-            {
-              no: "2",
-              emoji: "🤝",
-              title: "フォローして、生成する",
-              body: "カードの「フォローして生成する」を押すと、フォローと生成の準備がいっぺんに終わります。プロンプトを使えるのは、その人をフォローしている人だけです。",
-              label: "イラスト②（フォローする／chibi）",
-              color: "from-cyan-500 to-teal-400",
-              sub: {
-                alt: "原作カードの「フォローして生成する」ボタン",
-                caption: "実際のボタン",
-              },
-            },
-            {
-              no: "3",
-              emoji: "🐾",
-              title: "うちの子の画像を入れる",
-              body: "プロンプトの中身は伏せられたままで大丈夫。あなたのうちの子の画像を選んで生成すると、同じプロンプトであなたの作品ができます。",
-              label: "イラスト③（うちの子で生成する／chibi）",
-              color: "from-teal-500 to-emerald-400",
-              sub: {
-                alt: "うちの子の画像を入れた生成画面。プロンプト欄は「プロンプトは非公開です」と伏せられたまま",
-                caption: "実際の生成画面",
-              },
-            },
-            {
-              no: "4",
-              emoji: "🪙",
-              title: "投稿すると、ペルコイン！",
-              body: "その日つくった作品を投稿すると、1日1回ペルコインが届きます。生成しただけでは届かないので、忘れずに投稿しましょう。",
-              label: "イラスト④（投稿してコインを受け取る／chibi）",
-              color: "from-amber-400 to-orange-400",
-              sub: {
-                alt: "投稿直後に出るペルコイン付与のモーダル",
-                caption: "実際に出るお知らせ",
-              },
-            },
-          ].map((s, i) => (
+          {USE_PROMPTS_STEPS.map((s, i) => (
             <PopIn key={s.no} delay={i * 60} rotate={i % 2 === 0 ? -5 : 5}>
               <div className="relative">
                 <div
@@ -711,28 +660,7 @@ export function UsePromptsGuide({
         </PopIn>
 
         <div className="mx-auto mt-6 flex max-w-sm flex-col gap-3">
-          {[
-            {
-              title: "自分のプロンプトを使ったとき",
-              body: "ご自身の作品をご自身で生成したものは対象になりません。",
-            },
-            {
-              title: "プロンプトをコピーして貼り付けたとき",
-              body: "アプリ内の「このプロンプトで生成する」から使った場合が対象です。公開されたプロンプトをコピーして貼り付けて生成したものは、あなたにも原作者にもペルコインは付与されません。",
-            },
-            {
-              title: "生成しただけで、投稿していないとき",
-              body: "投稿してはじめて受け取れます。生成した日のうちなら、あとから投稿しても間に合います。",
-            },
-            {
-              title: "前の日につくった作品を投稿したとき",
-              body: "その日つくった作品が対象です。",
-            },
-            {
-              title: "その日すでに受け取っているとき",
-              body: "1日1回までです。翌日また受け取れます。",
-            },
-          ].map((item, i) => (
+          {NOT_ELIGIBLE_CASES.map((item, i) => (
             <PopIn key={item.title} delay={i * 50} rotate={i % 2 === 0 ? -2 : 2}>
               <div className="rounded-2xl border-2 border-slate-200 bg-white px-5 py-4">
                 <p className="text-sm font-black text-slate-900">{item.title}</p>

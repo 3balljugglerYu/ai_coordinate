@@ -7,6 +7,11 @@ import { isAdminViewer, isLocalPreviewAllowed } from "@/lib/env";
 import { getPromptUseGuideAmounts } from "@/features/credits/lib/get-prompt-use-guide-amounts";
 import { getUsablePromptShowcase } from "@/features/credits/lib/get-usable-prompt-showcase";
 import { UsePromptsGuide } from "@/features/credits/components/UsePromptsGuide";
+import {
+  NOT_ELIGIBLE_CASES,
+  USE_PROMPTS_STEPS,
+} from "@/features/credits/lib/use-prompts-content";
+import { getSiteUrl } from "@/lib/env";
 
 /**
  * プロンプト利用ミッションの紹介ページ(= **つかう側**)。
@@ -91,6 +96,74 @@ function parsePreviewAmount(value: string | string[] | undefined): number | null
   return Math.min(parsed, PREVIEW_AMOUNT_MAX);
 }
 
+
+const PAGE_PATH = "/use-prompts";
+
+/**
+ * 構造化データ。**ページに見えているものを機械可読にしたもの**で、
+ * 文言は `use-prompts-content.ts` と共有している(片方だけ直すと、
+ * 書いてあることと申告している内容が食い違う)。
+ *
+ * ## リッチリザルトは期待しないこと
+ *
+ * HowTo は 2023-09、FAQPage は 2026-05-07 に Google の検索結果から
+ * **表示されなくなった**。それでも置くのは、Bing や AI 系のクローラが
+ * 今も読むため。「順位が上がる」「表示が広がる」ものではない。
+ *
+ * BreadcrumbList は別で、**いまも検索結果に出る**(URL の代わりに階層が
+ * 表示される)。見た目に効くのはこれだけ。
+ */
+function buildJsonLd(siteUrl: string) {
+  const pageUrl = `${siteUrl}${PAGE_PATH}`;
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          position: 1,
+          name: "Persta.AI",
+          item: siteUrl,
+        },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "プロンプト利用",
+          item: pageUrl,
+        },
+      ],
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "HowTo",
+      name: "他の人のプロンプトで生成して投稿し、ペルコインをもらう方法",
+      description: PAGE_DESCRIPTION,
+      totalTime: "PT3M",
+      step: USE_PROMPTS_STEPS.map((step, index) => ({
+        "@type": "HowToStep",
+        position: index + 1,
+        name: step.title,
+        text: step.body,
+      })),
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      /*
+        質問文はページに書いてある見出しをそのまま使う。言い回しを整えて
+        「〜はもらえますか？」にすると、**ページに無い文言を申告する**ことに
+        なる(構造化データは見えている内容と一致していること、が要件)。
+      */
+      mainEntity: NOT_ELIGIBLE_CASES.map((item) => ({
+        "@type": "Question",
+        name: item.title,
+        acceptedAnswer: { "@type": "Answer", text: item.body },
+      })),
+    },
+  ];
+}
+
 export default async function UsePromptsPage({
   searchParams,
 }: {
@@ -130,8 +203,16 @@ export default async function UsePromptsPage({
   // 404 が確定してから引く(出さないページのためにDBを叩かない)
   const showcase = await getUsablePromptShowcase();
 
+  const siteUrl = getSiteUrl();
+
   return (
-    <UsePromptsGuide
+    <>
+      {/* 生成元はこのファイルと use-prompts-content.ts の定数のみ(ユーザー入力を含まない) */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(buildJsonLd(siteUrl)) }}
+      />
+      <UsePromptsGuide
       promptUseBonusAmount={displayAmount}
       freePostBonusAmount={amounts.freePostBonusAmount}
       oneTapPostBonusAmount={amounts.oneTapPostBonusAmount}
@@ -140,6 +221,7 @@ export default async function UsePromptsPage({
       isPreview={!isLive}
       previewAmount={previewAmount}
       hasHeroImage
-    />
+      />
+    </>
   );
 }
