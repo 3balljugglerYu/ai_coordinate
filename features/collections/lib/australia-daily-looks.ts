@@ -32,6 +32,10 @@ export const AUSTRALIA_DAILY_LOOKS: AustraliaDailyLookRef[] = [
   { day: "Day 6", presetId: "80dcdf5e-6ec7-4355-9f94-42a02e7b1642" },
   // Harbour Bridge Aqua Cami & Wrap Skirt Look
   { day: "Day 7", presetId: "3212b40c-63a6-4290-93c2-1383ab553a50" },
+  // Blue Mountains Terracotta & Ivory Travel Look
+  { day: "Day 8", presetId: "9bc15744-0675-4ff9-a98e-d6b8b30112a1" },
+  // Sydney University Navy Polo & Tartan Mini Look
+  { day: "Day 9", presetId: "f42aaa5e-a00c-4d62-812b-acba13411dbc" },
 ];
 
 /** ページに渡す解決済みの1件。 */
