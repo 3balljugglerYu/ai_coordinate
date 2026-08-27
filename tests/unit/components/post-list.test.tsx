@@ -152,11 +152,17 @@ const translationFns = {
   }) as unknown as ReturnType<typeof useTranslations>,
 };
 
-function createSearchParamsMock(getQuery: () => string | null) {
+function createSearchParamsMock(
+  getQuery: () => string | null,
+  getSort: () => string | null = () => null
+) {
   return {
     get: (key: string) => {
       if (key === "q") {
         return getQuery();
+      }
+      if (key === "sort") {
+        return getSort();
       }
       return null;
     },
@@ -184,6 +190,7 @@ describe("PostList", () => {
   let fetchMock: jest.Mock;
   let toastMock: jest.Mock;
   let currentQuery: string | null;
+  let currentSort: string | null;
   let currentSearchParams: ReturnType<typeof useSearchParams>;
   let pendingPayload: PendingHomePostRefresh | null;
   let initialPosts: Post[];
@@ -194,7 +201,11 @@ describe("PostList", () => {
     fetchMock = jest.fn();
     toastMock = jest.fn();
     currentQuery = null;
-    currentSearchParams = createSearchParamsMock(() => currentQuery);
+    currentSort = null;
+    currentSearchParams = createSearchParamsMock(
+      () => currentQuery,
+      () => currentSort
+    );
     pendingPayload = null;
     initialPosts = [createPost("initial-1", "initial post")];
 
@@ -338,6 +349,80 @@ describe("PostList", () => {
     // 再レンダーが走っても増えないこと
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(postsCalls).toBe(1);
+  });
+
+  /**
+   * 「いま一覧に出ているのはどの条件で取ったものか」の控えは、
+   * newest / week / 未ログインのフォロータブでそれぞれ別に書き換わる。
+   * 依存配列を触った変更なので、分岐ごとに壊れていないことを見ておく。
+   */
+  describe("タブごとの初回ロード", () => {
+    test("週間タブは渡された週間ぶんを使い、取りに行かない", async () => {
+      currentSort = "week";
+      const weekPosts = [createPost("week-1", "今週の投稿")];
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialPostsForWeek={weekPosts}
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-week-1");
+
+      // 渡されているので API を叩かない
+      expect(
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith("/api/posts?")
+        )
+      ).toHaveLength(0);
+      // newest ぶんは出さない
+      expect(
+        screen.queryByTestId("post-card-initial-1")
+      ).not.toBeInTheDocument();
+    });
+
+    test("週間ぶんが渡されていなければ取りに行く", async () => {
+      currentSort = "week";
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          posts: [createPost("week-2", "取得した週間")],
+          hasMore: false,
+        }),
+      });
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-week-2");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/posts?limit=20&offset=0&sort=week",
+        expect.anything()
+      );
+    });
+
+    /**
+     * ⭐ 未ログインのフォロータブは、一覧を空にしてログインを促す。
+     * ここで控えを消しておかないと、ログイン後にタブを戻ったときに
+     * 「もう取得済み」と誤判定して空のままになる。
+     */
+    test("⭐未ログインのフォロータブは一覧を空にして取りに行かない", async () => {
+      currentSort = "following";
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("post-card-initial-1")
+        ).not.toBeInTheDocument()
+      );
+      expect(
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith("/api/posts?")
+        )
+      ).toHaveLength(0);
+    });
   });
 
   test("unpostedペイロードがある場合_初回だけno-storeで再取得しトーストは表示しない", async () => {
