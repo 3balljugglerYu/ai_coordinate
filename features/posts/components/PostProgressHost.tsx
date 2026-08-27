@@ -86,9 +86,15 @@ export function PostProgressHost() {
     toast({
       title: t("postSuccess"),
       action: (
+        /*
+          ボタンには見せない。投稿の完了は**報告**で、押させたい操作では
+          ないので、枠で主張させず下線のリンク調にとどめる。
+          `ToastAction` の既定は枠付きボタンなので、そこだけ打ち消す。
+        */
         <ToastAction
           altText={t("postSuccessViewAction")}
           onClick={() => openDetail(completed.id)}
+          className="h-auto rounded-none border-0 bg-transparent px-0 font-medium text-sky-600 underline underline-offset-4 hover:bg-transparent hover:text-sky-700"
         >
           {t("postSuccessViewAction")}
         </ToastAction>

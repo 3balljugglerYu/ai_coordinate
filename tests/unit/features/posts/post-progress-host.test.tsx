@@ -26,8 +26,8 @@ const routerPushMock = jest.fn();
 jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) =>
     ({
-      postSuccess: "投稿しました",
-      postSuccessViewAction: "見る",
+      postSuccess: "投稿が完了しました。",
+      postSuccessViewAction: "確認する",
       postSubmitting: "投稿中...",
     })[key] ?? key,
 }));
@@ -125,7 +125,7 @@ describe("PostProgressHost", () => {
     });
 
     await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1));
-    expect(toastMock.mock.calls[0][0].title).toBe("投稿しました");
+    expect(toastMock.mock.calls[0][0].title).toBe("投稿が完了しました。");
     expect(screen.queryByTestId("bonus-modal")).not.toBeInTheDocument();
   });
 
