@@ -152,11 +152,17 @@ const translationFns = {
   }) as unknown as ReturnType<typeof useTranslations>,
 };
 
-function createSearchParamsMock(getQuery: () => string | null) {
+function createSearchParamsMock(
+  getQuery: () => string | null,
+  getSort: () => string | null = () => null
+) {
   return {
     get: (key: string) => {
       if (key === "q") {
         return getQuery();
+      }
+      if (key === "sort") {
+        return getSort();
       }
       return null;
     },
@@ -184,6 +190,7 @@ describe("PostList", () => {
   let fetchMock: jest.Mock;
   let toastMock: jest.Mock;
   let currentQuery: string | null;
+  let currentSort: string | null;
   let currentSearchParams: ReturnType<typeof useSearchParams>;
   let pendingPayload: PendingHomePostRefresh | null;
   let initialPosts: Post[];
@@ -194,7 +201,11 @@ describe("PostList", () => {
     fetchMock = jest.fn();
     toastMock = jest.fn();
     currentQuery = null;
-    currentSearchParams = createSearchParamsMock(() => currentQuery);
+    currentSort = null;
+    currentSearchParams = createSearchParamsMock(
+      () => currentQuery,
+      () => currentSort
+    );
     pendingPayload = null;
     initialPosts = [createPost("initial-1", "initial post")];
 
@@ -290,6 +301,128 @@ describe("PostList", () => {
     // ⭐ ここが本題。二重に知らせない
     expect(toastMock).not.toHaveBeenCalled();
     expect(screen.queryByText("postBonusTitle")).not.toBeInTheDocument();
+  });
+
+  /**
+   * ⭐ 検索クエリありで**リクエストを投げ続けない**こと。
+   *
+   * 初回ロードの effect が `initialPostsForWeek` を依存に持っていた。
+   * 既定値を `= []` と書いていたため**レンダーのたびに新しい配列**になり、
+   * 依存が毎回変わる → effect 再実行 → setState → 再レンダー → …と止まらない。
+   * 検索画面は `initialPostsForWeek` を渡さないので常に既定値に落ち、
+   * 検索クエリありでだけ発症していた(実測 20秒で8,810回。Vercel が 503 を返し
+   * 画面はスケルトンのまま固まる)。これが検索を止めていた原因(PR #466)。
+   *
+   * 既定値は使い回しの定数にすること。`= []` に戻すと再発する。
+   */
+  test("⭐検索クエリがあっても取得は1回きり（無限ループしない）", async () => {
+    currentQuery = "星";
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ posts: [createPost("post-1", "星空")], hasMore: false }),
+    });
+
+    /*
+      注意: 壊れているときの落ち方は**きれいではない**。
+      これはレンダーのループなので、fetch 側で打ち切っても React は回り続け、
+      テストはハングするか Node ごとメモリ不足で落ちる(実測 exit=134)。
+      きれいな assertion にはならないが、再発すれば CI は必ず赤くなる。
+    */
+    let postsCalls = 0;
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url).startsWith("/api/posts?")) {
+        postsCalls += 1;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          posts: [createPost("post-1", "星空")],
+          hasMore: false,
+        }),
+      });
+    });
+
+    render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+    await screen.findByTestId("post-card-post-1");
+
+    // 再レンダーが走っても増えないこと
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postsCalls).toBe(1);
+  });
+
+  /**
+   * 「いま一覧に出ているのはどの条件で取ったものか」の控えは、
+   * newest / week / 未ログインのフォロータブでそれぞれ別に書き換わる。
+   * 依存配列を触った変更なので、分岐ごとに壊れていないことを見ておく。
+   */
+  describe("タブごとの初回ロード", () => {
+    test("週間タブは渡された週間ぶんを使い、取りに行かない", async () => {
+      currentSort = "week";
+      const weekPosts = [createPost("week-1", "今週の投稿")];
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialPostsForWeek={weekPosts}
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-week-1");
+
+      // 渡されているので API を叩かない
+      expect(
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith("/api/posts?")
+        )
+      ).toHaveLength(0);
+      // newest ぶんは出さない
+      expect(
+        screen.queryByTestId("post-card-initial-1")
+      ).not.toBeInTheDocument();
+    });
+
+    test("週間ぶんが渡されていなければ取りに行く", async () => {
+      currentSort = "week";
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          posts: [createPost("week-2", "取得した週間")],
+          hasMore: false,
+        }),
+      });
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-week-2");
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/posts?limit=20&offset=0&sort=week",
+        expect.anything()
+      );
+    });
+
+    /**
+     * ⭐ 未ログインのフォロータブは、一覧を空にしてログインを促す。
+     * ここで控えを消しておかないと、ログイン後にタブを戻ったときに
+     * 「もう取得済み」と誤判定して空のままになる。
+     */
+    test("⭐未ログインのフォロータブは一覧を空にして取りに行かない", async () => {
+      currentSort = "following";
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId("post-card-initial-1")
+        ).not.toBeInTheDocument()
+      );
+      expect(
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith("/api/posts?")
+        )
+      ).toHaveLength(0);
+    });
   });
 
   test("unpostedペイロードがある場合_初回だけno-storeで再取得しトーストは表示しない", async () => {

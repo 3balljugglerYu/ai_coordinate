@@ -80,9 +80,23 @@ interface PostListProps {
   promptUsageRewardAmount?: number;
 }
 
+/**
+ * 未指定の props に使う空配列。
+ *
+ * ⭐ **`= []` を既定値に書かないこと。** 既定値の配列リテラルは
+ * **レンダーのたびに新しい参照**になる。初回ロードの effect はこれを
+ * 依存に持っているので、依存が毎回変わり → effect が再実行 → setState →
+ * 再レンダー → また新しい配列…と止まらなくなる。
+ *
+ * 検索画面(`CachedSearchPostList`)は `initialPostsForWeek` を渡さないため
+ * 常に既定値に落ち、**検索クエリありで無限ループしていた**(PR #466 で
+ * 検索を止めた原因)。同じ参照を使い回せば依存は変わらない。
+ */
+const EMPTY_POSTS: Post[] = [];
+
 export function PostList({
-  initialPosts = [],
-  initialPostsForWeek = [],
+  initialPosts = EMPTY_POSTS,
+  initialPostsForWeek = EMPTY_POSTS,
   forceInitialLoading = false,
   skipInitialFetch = false,
   trackImpressions = false,
@@ -114,10 +128,22 @@ export function PostList({
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  const [loadedSortType, setLoadedSortType] = useState<SortType | null>(
+  /*
+    ⭐ 「いま一覧に出ているのは、どの条件で取ったものか」の控え。
+
+    **state ではなく ref。** 画面には一切描画しておらず、読むのは effect の中だけ。
+    state にすると初回ロードの effect の依存に入り、その effect が呼ぶ
+    loadPosts がこれらを更新するため、**依存が変わってまた effect が走る**。
+    検索クエリがあると早期 return する分岐をどれも通らないので止まらず、
+    リクエストを投げ続けて Vercel が 503 を返し、画面はスケルトンのまま固まる
+    (これが検索を一時停止していた理由。PR #466)。
+
+    ref なら更新しても再レンダーも再実行も起きないので、ループにならない。
+  */
+  const loadedSortTypeRef = useRef<SortType | null>(
     forceInitialLoading ? null : defaultSortType
   );
-  const [loadedSearchQuery, setLoadedSearchQuery] = useState(
+  const loadedSearchQueryRef = useRef<string | null>(
     forceInitialLoading ? null : ""
   );
   const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
@@ -153,7 +179,7 @@ export function PostList({
     詳細から戻って一覧を復元したときもこれに当たるので、復元時に立てる。
     立てないと初回ロードの effect が initialPosts(20件)で一覧を出し直し、
     復元した件数ごと潰れて基準にするカードも消える(＝位置が戻らない)。
-    タブを切り替えて戻ってきたときは loadedSortType が変わるので、
+    タブを切り替えて戻ってきたときは loadedSortTypeRef が変わるので、
     この分岐には入らず通常どおり取り直される。
   */
   const hasFreshNewestPostsRef = useRef(false);
@@ -426,8 +452,8 @@ export function PostList({
         if (reset) {
           setPosts(nextPosts);
           setOffset(nextPosts.length);
-          setLoadedSortType(sortType);
-          setLoadedSearchQuery(normalizedSearchQuery);
+          loadedSortTypeRef.current = sortType;
+          loadedSearchQueryRef.current = normalizedSearchQuery;
         } else {
           setPosts((prev) => [...prev, ...nextPosts]);
           setOffset((prev) => prev + nextPosts.length);
@@ -481,8 +507,8 @@ export function PostList({
       !didTriggerPostedRefreshRef.current;
     const shouldReuseFreshNewestPosts =
       sortType === defaultSortType &&
-      loadedSortType === defaultSortType &&
-      loadedSearchQuery === "" &&
+      loadedSortTypeRef.current === defaultSortType &&
+      loadedSearchQueryRef.current === "" &&
       !normalizedSearchQuery &&
       hasFreshNewestPostsRef.current;
 
@@ -505,8 +531,8 @@ export function PostList({
           setPosts(initialPosts);
           setHasMore(initialPosts.length === 20);
           setOffset(initialPosts.length);
-          setLoadedSortType(defaultSortType);
-          setLoadedSearchQuery("");
+          loadedSortTypeRef.current = defaultSortType;
+          loadedSearchQueryRef.current = "";
           setIsLoading(false);
           return;
         }
@@ -514,8 +540,8 @@ export function PostList({
           setPosts(initialPostsForWeek);
           setHasMore(initialPostsForWeek.length === 20);
           setOffset(initialPostsForWeek.length);
-          setLoadedSortType("week");
-          setLoadedSearchQuery("");
+          loadedSortTypeRef.current = "week";
+          loadedSearchQueryRef.current = "";
           setIsLoading(false);
           return;
         }
@@ -532,8 +558,8 @@ export function PostList({
       // 未ログインのフォロータブはリストをクリア
       setPosts([]);
       setHasMore(false);
-      setLoadedSortType(null);
-      setLoadedSearchQuery(null);
+      loadedSortTypeRef.current = null;
+      loadedSearchQueryRef.current = null;
     }
   }, [
     sortType,
@@ -545,8 +571,8 @@ export function PostList({
     initialPostsForWeek,
     defaultSortType,
     pendingHomePostRefresh,
-    loadedSortType,
-    loadedSearchQuery,
+    // loadedSortTypeRef / loadedSearchQueryRef は ref なので依存に入れない
+    // (入れていたころ、検索クエリありで無限ループしていた)
   ]);
 
   /*
