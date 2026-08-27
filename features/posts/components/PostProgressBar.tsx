@@ -7,13 +7,15 @@ import { useTranslations } from "next-intl";
  *
  * ## 置き場所
  *
- * スマホのボトムナビ(`NavigationBar` は `h-16` = 64px、`z-50`)の**すぐ上**に
- * 重ねる。ナビを隠すと現在地が分からなくなるので、被せない。
- * PC ではボトムナビが無い(`lg:hidden`)ので、画面下端に置く。
+ * **画面の下端**に置き、ボトムナビ(`z-50`)には被せる(こちらは `z-[60]`)。
  *
- * ⭐ ナビの高さは `h-16` だけではない。`safe-area-inset-bottom` が足されて
- * いるので(iPhone のホームインジケータぶん)、`bottom-16` で合わせると
- * その差だけ浮く。位置は `.post-progress-anchor` で env() ごと計算する。
+ * ⭐ 当初はナビの上に載せていたが、実機で「まだ高い」と感じられた。
+ * ナビは `h-16` に加えて `safe-area-inset-bottom` を足しているので、
+ * その上に置くと端に貼り付いている感じにならない。送信中は一時的な状態で、
+ * ナビを隠しても現在地を見失う場面ではないと判断した。
+ *
+ * 下端に置くぶん、中身がホームインジケータに掛からないよう、バーの内側に
+ * safe-area ぶんの余白を持たせている(位置ではなく余白で逃がす)。
  *
  * ## 進捗を割合で出さない理由
  *
@@ -31,11 +33,6 @@ export function PostProgressBar({ visible }: { visible: boolean }) {
 
   return (
     <div
-      /*
-        位置は `post-progress-anchor`(globals.css)で決める。
-        ボトムナビは h-16 に加えて safe-area-inset-bottom を足しているので、
-        Tailwind の `bottom-16` だけだと端末によって浮く。
-      */
       className="post-progress-anchor fixed inset-x-0 z-[60]"
       /*
         読み上げは「送信中」を一度伝えれば足りる。polite にして、
@@ -44,8 +41,13 @@ export function PostProgressBar({ visible }: { visible: boolean }) {
       role="status"
       aria-live="polite"
     >
-      <div className="border-t border-slate-200 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto flex max-w-7xl items-center px-4 py-2.5">
+      {/*
+        ⭐ 高さをナビに合わせる(`min-h-16` = ナビの `h-16`)。
+        バーの方が低いと、ナビのアイコンの頭だけが上にはみ出して見える。
+        背景も半透明にしない。透けるとアイコンが下から浮き出る。
+      */}
+      <div className="border-t border-slate-200 bg-white">
+        <div className="mx-auto flex min-h-16 max-w-7xl items-center px-4">
           <p className="text-sm font-medium text-slate-700">
             {t("postSubmitting")}
           </p>
@@ -54,6 +56,8 @@ export function PostProgressBar({ visible }: { visible: boolean }) {
         <div className="h-0.5 w-full overflow-hidden bg-slate-200">
           <div className="post-progress-indeterminate h-full w-1/3 bg-sky-500" />
         </div>
+        {/* ホームインジケータに掛からないための余白 */}
+        <div className="post-progress-safe-bottom" />
       </div>
     </div>
   );

@@ -1733,20 +1733,22 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 /*
  * 投稿中のバーの位置。
  *
- * ⭐ ボトムナビは `h-16`(64px)に加えて `safe-area-inset-bottom` を足している
- * (iPhone のホームインジケータぶん、約34px)。Tailwind の `bottom-16` だけだと
- * その差だけ浮き、実機で「少し上に出る」ことになる(iOS で報告された)。
- * 端末ごとに変わる値なので、決め打ちの px ではなく env() で足す。
+ * ⭐ **画面の下端**に置く。ボトムナビには被せてよい。
+ *
+ * 当初はナビの上に載せていたが、実機で「まだ高い」と感じられた。
+ * ナビ(h-16 + safe-area-inset-bottom)のぶんだけ浮くので、画面の端に
+ * 貼り付いている感じにならない。送信中は一時的な状態なので、ナビを
+ * 隠しても現在地を見失う場面ではない。
+ *
+ * 下端に置くぶん、中身がホームインジケータに掛からないよう、
+ * バーの内側に safe-area ぶんの余白を持たせる(位置ではなく余白で逃がす)。
  */
 .post-progress-anchor {
-  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  bottom: 0;
 }
 
-/* PC ではボトムナビが無い(`lg:hidden`)ので、画面の下端に置く */
-@media (min-width: 1024px) {
-  .post-progress-anchor {
-    bottom: env(safe-area-inset-bottom, 0px);
-  }
+.post-progress-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /*
