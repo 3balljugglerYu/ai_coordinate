@@ -160,6 +160,7 @@ export const itMessages = {
     noComments: "Ancora nessun commento.",
     allCommentsShown: "Vengono mostrati tutti i commenti.",
     postSuccess: "Il tuo post è online.",
+    postSuccessViewAction: "Vedi",
     postFailed: "Pubblicazione non riuscita.",
     postFailedRetry: "Pubblicazione non riuscita. Riprova.",
     updateFailed: "Impossibile aggiornare il post.",

@@ -38,6 +38,11 @@ import {
   cacheBeforeImageUrl,
 } from "../lib/before-image-cache";
 import {
+  abortPostProgress,
+  finishPostProgress,
+  startPostProgress,
+} from "../lib/post-progress-store";
+import {
   notifyPendingHomePostRefresh,
   persistPendingHomePostRefresh,
 } from "../lib/home-post-refresh";
@@ -64,12 +69,14 @@ interface PostModalProps {
    * 派生投稿は trigger が常に非公開へ強制するので選択肢にならない。
    */
   sourcePostId?: string | null;
-  onPostSuccess?: (
-    response: PostImageResponse
-  ) =>
-    | void
-    | { skipDefaultRedirect?: boolean }
-    | Promise<void | { skipDefaultRedirect?: boolean }>;
+  /**
+   * 投稿が成立したあとに呼ぶ。画面ごとの後始末(一覧の差し替えなど)用。
+   *
+   * 戻り値は見ない。以前は `{ skipDefaultRedirect: true }` で既定の
+   * ホーム遷移を止められたが、**投稿では画面を移動しなくなった**ので、
+   * 抑止するものが無くなった。
+   */
+  onPostSuccess?: (response: PostImageResponse) => void | Promise<void>;
 }
 
 const MAX_CAPTION_LENGTH = 200;
@@ -159,6 +166,7 @@ export function PostModal({
     }
 
     setIsSubmitting(true);
+    startPostProgress();
 
     try {
       const response = await postImageAPI({
@@ -193,28 +201,36 @@ export function PostModal({
         });
       }
 
-      // 投稿完了後、キャッシュ無効化してからホームに遷移
-      // ホーム側で一度だけ fresh fetch して新着一覧を同期する
+      /*
+        ⭐ 投稿しても画面を移動しない。
+
+        以前は `window.location.href = "/"` でホームへ**フル遷移**していた。
+        ページ全体の読み直しで重いうえ、生成した画面から引き剥がされるので、
+        続けてもう1枚つくる人ほど損をしていた。
+
+        完了の合図(トースト・付与モーダル)は `PostProgressHost` が出す。
+        ここでは結果をストアへ渡すだけにする。
+      */
       onOpenChange(false);
       try {
         await fetch("/api/revalidate/home", { method: "POST" });
       } catch {
-        // 無効化失敗時も遷移は実行
+        // 無効化に失敗しても投稿自体は成立している
       }
+      // 次にホームを開いたとき、新着として一度だけ同期させる
       notifyPendingHomePostRefresh();
 
-      const postSuccessResult = await onPostSuccess?.(response);
-      if (postSuccessResult?.skipDefaultRedirect) {
-        return;
-      }
+      finishPostProgress(response);
 
-      window.location.href = "/";
+      await onPostSuccess?.(response);
     } catch (err) {
       // 公開停止中のコンテンツは DB trigger が再公開を拒否する。
       // エラー文言をそのまま出すのではなく、異議申立てへ案内するダイアログを出す。
       // instanceof ではなく code の構造的チェックで判定する。
       // api.ts をモックするテストでは class が undefined になり instanceof が
       // 例外を投げるため（既存の PostModal テストで実際に発生した）。
+      abortPostProgress();
+
       if (isSuspendedPublishError(err)) {
         setSuspendedDialogOpen(true);
         setIsSubmitting(false);

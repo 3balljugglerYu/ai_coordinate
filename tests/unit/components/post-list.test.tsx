@@ -243,7 +243,17 @@ describe("PostList", () => {
     jest.restoreAllMocks();
   });
 
-  test("postedペイロードがある場合_初回だけno-storeで再取得して付与モーダルとハイライトを表示する", async () => {
+  /**
+   * ⭐ 完了の合図(トースト・付与モーダル)は、もうここでは出さない。
+   *
+   * 投稿しても画面が動かなくなったので、投稿したその場で
+   * `PostProgressHost` が出す。ここに残すと、あとでホームを開いたときに
+   * **もう一度**出てしまう(sessionStorage は遷移しなくても残るため)。
+   *
+   * ここが受け持つのは新着の同期(no-store の再取得とハイライト)だけ。
+   * 付与モーダルの中身は post-progress-host.test.tsx で見ている。
+   */
+  test("⭐postedペイロードがある場合_再取得とハイライトだけ行い、合図は出さない", async () => {
     pendingPayload = {
       action: "posted",
       postId: "post-1",
@@ -273,73 +283,13 @@ describe("PostList", () => {
     });
     await screen.findByTestId("post-card-post-1");
 
-    /*
-      付与があるときはトーストではなくモーダル。
-      投稿直後はクリエイター還元をいちばん伝えやすい瞬間で、
-      数秒で消えるトーストではリンクを踏む間もないため。
-    */
-    expect(toastMock).not.toHaveBeenCalled();
-    expect(await screen.findByText("postBonusTitle")).toBeInTheDocument();
-    // 倍率バッジ(文言の解決はモックなので、出ていることだけ見る)
-    expect(screen.getByText(/適用中/)).toBeInTheDocument();
     expect(screen.getByTestId("post-card-post-1")).toHaveAttribute(
       "data-highlighted",
       "true"
     );
-  });
-
-  test("フリースタイル投稿では還元の案内を出す(ワンタップでは出さない)", async () => {
-    /*
-      ワンタップのスタイルは運営・クリエイター枠が作ったもので、
-      投稿者に利用還元は入らない。全生成方法で出すと嘘になる。
-    */
-    pendingPayload = {
-      action: "posted",
-      postId: "post-1",
-      bonusGranted: 20,
-      generationType: "free",
-    };
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ posts: [createPost("post-1", "fresh")], hasMore: false }),
-    });
-
-    const { unmount } = render(
-      <PostList initialPosts={initialPosts} skipInitialFetch promptUsageRewardAmount={2} />
-    );
-    expect(await screen.findByText("postBonusCreatorReward")).toBeInTheDocument();
-    unmount();
-
-    pendingPayload = {
-      action: "posted",
-      postId: "post-1",
-      bonusGranted: 20,
-      generationType: "one_tap_style",
-    };
-    render(
-      <PostList initialPosts={initialPosts} skipInitialFetch promptUsageRewardAmount={2} />
-    );
-    expect(await screen.findByText("postBonusTitle")).toBeInTheDocument();
-    expect(screen.queryByText("postBonusCreatorReward")).not.toBeInTheDocument();
-  });
-
-  test("還元が停止中(0)なら案内を出さない", async () => {
-    pendingPayload = {
-      action: "posted",
-      postId: "post-1",
-      bonusGranted: 20,
-      generationType: "free",
-    };
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({ posts: [createPost("post-1", "fresh")], hasMore: false }),
-    });
-
-    render(
-      <PostList initialPosts={initialPosts} skipInitialFetch promptUsageRewardAmount={0} />
-    );
-    expect(await screen.findByText("postBonusTitle")).toBeInTheDocument();
-    expect(screen.queryByText("postBonusCreatorReward")).not.toBeInTheDocument();
+    // ⭐ ここが本題。二重に知らせない
+    expect(toastMock).not.toHaveBeenCalled();
+    expect(screen.queryByText("postBonusTitle")).not.toBeInTheDocument();
   });
 
   test("unpostedペイロードがある場合_初回だけno-storeで再取得しトーストは表示しない", async () => {

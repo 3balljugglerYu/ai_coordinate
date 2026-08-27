@@ -160,6 +160,7 @@ export const hiMessages = {
     noComments: "अभी कोई टिप्पणी नहीं।",
     allCommentsShown: "सभी टिप्पणियाँ दिखाई गई हैं।",
     postSuccess: "आपकी पोस्ट लाइव है।",
+    postSuccessViewAction: "देखें",
     postFailed: "पोस्ट करने में विफल।",
     postFailedRetry: "पोस्ट करने में विफल। कृपया फिर से प्रयास करें।",
     updateFailed: "पोस्ट अपडेट करने में विफल।",

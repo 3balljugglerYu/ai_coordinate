@@ -160,6 +160,7 @@ export const enMessages = {
     noComments: "No comments yet.",
     allCommentsShown: "All comments are shown.",
     postSuccess: "Your post is live.",
+    postSuccessViewAction: "View",
     postFailed: "Failed to publish the post.",
     postFailedRetry: "Failed to publish the post. Please try again.",
     updateFailed: "Failed to update the post.",

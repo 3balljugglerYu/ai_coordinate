@@ -160,6 +160,7 @@ export const deMessages = {
     noComments: "Noch keine Kommentare.",
     allCommentsShown: "Alle Kommentare werden angezeigt.",
     postSuccess: "Dein Beitrag ist online.",
+    postSuccessViewAction: "Ansehen",
     postFailed: "Veröffentlichen fehlgeschlagen.",
     postFailedRetry: "Veröffentlichen fehlgeschlagen. Bitte erneut versuchen.",
     updateFailed: "Beitrag konnte nicht aktualisiert werden.",

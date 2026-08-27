@@ -1730,6 +1730,26 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   animation: rewardGradientShift 8s ease-in-out infinite;
 }
 
+/*
+ * 投稿中のバーの帯。
+ *
+ * 投稿APIは進捗率を取れない(is_posted を立てる操作で、重い WebP 変換は
+ * レスポンス後の after() に逃がしてある)。取れない数字をそれらしく
+ * 動かすと嘘になるので、往復させて「進行中」だけを伝える。
+ */
+@keyframes postProgressIndeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.post-progress-indeterminate {
+  animation: postProgressIndeterminate 1.1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /*
    * 出現アニメは一瞬で終わらせて可視状態にする(要素が消えないよう both を維持)。
@@ -1744,5 +1764,15 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   .reward-breathe,
   .reward-gradient-shift {
     animation: none;
+  }
+
+  /*
+   * 帯は止めるが、要素は残す。消してしまうと「送信中」の合図が
+   * 文字だけになり、動きを減らす設定の人ほど状態が分かりにくくなる。
+   */
+  .post-progress-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
   }
 }

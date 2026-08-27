@@ -160,6 +160,7 @@ export const ptMessages = {
     noComments: "Ainda não há comentários.",
     allCommentsShown: "Todos os comentários estão sendo mostrados.",
     postSuccess: "Sua publicação está no ar.",
+    postSuccessViewAction: "Ver",
     postFailed: "Não foi possível publicar.",
     postFailedRetry: "Não foi possível publicar. Tente novamente.",
     updateFailed: "Não foi possível atualizar a publicação.",

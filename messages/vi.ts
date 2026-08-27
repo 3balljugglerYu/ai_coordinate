@@ -160,6 +160,7 @@ export const viMessages = {
     noComments: "Chưa có bình luận nào.",
     allCommentsShown: "Đang hiển thị tất cả bình luận.",
     postSuccess: "Bài viết của bạn đã được đăng.",
+    postSuccessViewAction: "Xem",
     postFailed: "Đăng bài thất bại.",
     postFailedRetry: "Đăng bài thất bại. Vui lòng thử lại.",
     updateFailed: "Cập nhật bài viết thất bại.",

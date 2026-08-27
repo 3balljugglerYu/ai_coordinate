@@ -160,6 +160,7 @@ export const arMessages = {
     noComments: "لا توجد تعليقات بعد.",
     allCommentsShown: "تم عرض جميع التعليقات.",
     postSuccess: "تم نشر منشورك.",
+    postSuccessViewAction: "عرض",
     postFailed: "فشل النشر.",
     postFailedRetry: "فشل النشر. يُرجى المحاولة مرة أخرى.",
     updateFailed: "فشل تحديث المنشور.",

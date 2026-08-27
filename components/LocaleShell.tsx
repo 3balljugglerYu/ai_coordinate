@@ -9,6 +9,7 @@ import { Ga4Script } from "@/features/analytics/components/Ga4Script";
 import { Ga4LoginStatus } from "@/features/analytics/components/Ga4LoginStatus";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
+import { PostProgressHost } from "@/features/posts/components/PostProgressHost";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -40,6 +41,12 @@ export async function LocaleShell({
         ストック保存促進モーダルが消えてしまう。
       */}
       <CoordinateSourceStockSavePromptDialogHost />
+      {/*
+        投稿の「送信中」と「完了」を受け持つ。ここも Suspense 境界の外側。
+        中に置くと、投稿後の router.refresh() で unmount され、
+        表示中の付与モーダルが消える。
+      */}
+      <PostProgressHost />
       <Toaster />
       <Ga4Script />
       <Ga4LoginStatus />

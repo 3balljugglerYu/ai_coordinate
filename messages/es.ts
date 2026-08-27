@@ -160,6 +160,7 @@ export const esMessages = {
     noComments: "Aún no hay comentarios.",
     allCommentsShown: "Se muestran todos los comentarios.",
     postSuccess: "Tu publicación está activa.",
+    postSuccessViewAction: "Ver",
     postFailed: "No se pudo publicar.",
     postFailedRetry: "No se pudo publicar. Inténtalo de nuevo.",
     updateFailed: "No se pudo actualizar la publicación.",
