@@ -292,6 +292,54 @@ describe("PostList", () => {
     expect(screen.queryByText("postBonusTitle")).not.toBeInTheDocument();
   });
 
+  /**
+   * ⭐ 検索クエリありで**リクエストを投げ続けない**こと。
+   *
+   * 初回ロードの effect が `initialPostsForWeek` を依存に持っていた。
+   * 既定値を `= []` と書いていたため**レンダーのたびに新しい配列**になり、
+   * 依存が毎回変わる → effect 再実行 → setState → 再レンダー → …と止まらない。
+   * 検索画面は `initialPostsForWeek` を渡さないので常に既定値に落ち、
+   * 検索クエリありでだけ発症していた(実測 20秒で8,810回。Vercel が 503 を返し
+   * 画面はスケルトンのまま固まる)。これが検索を止めていた原因(PR #466)。
+   *
+   * 既定値は使い回しの定数にすること。`= []` に戻すと再発する。
+   */
+  test("⭐検索クエリがあっても取得は1回きり（無限ループしない）", async () => {
+    currentQuery = "星";
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ posts: [createPost("post-1", "星空")], hasMore: false }),
+    });
+
+    /*
+      注意: 壊れているときの落ち方は**きれいではない**。
+      これはレンダーのループなので、fetch 側で打ち切っても React は回り続け、
+      テストはハングするか Node ごとメモリ不足で落ちる(実測 exit=134)。
+      きれいな assertion にはならないが、再発すれば CI は必ず赤くなる。
+    */
+    let postsCalls = 0;
+    fetchMock.mockImplementation((url: string) => {
+      if (String(url).startsWith("/api/posts?")) {
+        postsCalls += 1;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          posts: [createPost("post-1", "星空")],
+          hasMore: false,
+        }),
+      });
+    });
+
+    render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+    await screen.findByTestId("post-card-post-1");
+
+    // 再レンダーが走っても増えないこと
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(postsCalls).toBe(1);
+  });
+
   test("unpostedペイロードがある場合_初回だけno-storeで再取得しトーストは表示しない", async () => {
     pendingPayload = {
       action: "unposted",
