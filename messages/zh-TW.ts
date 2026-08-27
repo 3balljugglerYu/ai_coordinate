@@ -160,6 +160,7 @@ export const zhTwMessages = {
     noComments: "目前沒有留言。",
     allCommentsShown: "已顯示全部留言。",
     postSuccess: "已發佈。",
+    postSuccessViewAction: "查看",
     postFailed: "發佈失敗。",
     postFailedRetry: "發佈失敗，請重試。",
     updateFailed: "更新貼文失敗。",

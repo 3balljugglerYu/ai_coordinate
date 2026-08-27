@@ -13,6 +13,10 @@ import {
   persistPendingHomePostRefresh,
 } from "@/features/posts/lib/home-post-refresh";
 
+const startPostProgressMock = jest.fn();
+const finishPostProgressMock = jest.fn();
+const abortPostProgressMock = jest.fn();
+
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
 }));
@@ -24,6 +28,12 @@ jest.mock("@/features/posts/lib/api", () => ({
 
 jest.mock("@/features/notifications/components/UnreadNotificationProvider", () => ({
   useUnreadNotificationCount: jest.fn(),
+}));
+
+jest.mock("@/features/posts/lib/post-progress-store", () => ({
+  startPostProgress: (...args: unknown[]) => startPostProgressMock(...args),
+  finishPostProgress: (...args: unknown[]) => finishPostProgressMock(...args),
+  abortPostProgress: (...args: unknown[]) => abortPostProgressMock(...args),
 }));
 
 jest.mock("@/features/posts/lib/home-post-refresh", () => ({
@@ -165,8 +175,19 @@ describe("PostModal", () => {
     });
   });
 
-  test("投稿成功時_postedペイロードを保存してホーム再検証後に遷移する", async () => {
+  /**
+   * ⭐ 投稿しても**画面を移動しない**。
+   *
+   * 以前は `window.location.href = "/"` でホームへフル遷移していた。
+   * ページ全体の読み直しで重いうえ、生成した画面から引き剥がされるので、
+   * 続けてもう1枚つくる人ほど損をしていた。
+   *
+   * 完了の合図(トースト・付与モーダル)は `PostProgressHost` が出す。
+   * ここは結果をストアへ渡すところまでが仕事。
+   */
+  test("⭐投稿成功時_遷移せずに完了をストアへ渡す", async () => {
     const onOpenChange = jest.fn();
+    const hrefBefore = window.location.href;
 
     render(
       <PostModal
@@ -195,6 +216,18 @@ describe("PostModal", () => {
       );
     });
 
+    await waitFor(() => {
+      expect(finishPostProgressMock).toHaveBeenCalledWith({
+        id: "post-1",
+        is_posted: true,
+        caption: "fresh caption",
+        posted_at: "2026-03-16T00:00:00.000Z",
+        bonus_granted: 50,
+      });
+    });
+
+    // 送信中のバーを出すため、開始も伝える
+    expect(startPostProgressMock).toHaveBeenCalledTimes(1);
     expect(persistPendingHomePostRefreshMock).toHaveBeenCalledWith({
       action: "posted",
       postId: "post-1",
@@ -206,40 +239,21 @@ describe("PostModal", () => {
     });
     expect(notifyPendingHomePostRefreshMock).toHaveBeenCalledTimes(1);
     expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(window.location.href).toBe("/");
+    // ⭐ ここが本題。移動していないこと
+    expect(window.location.href).toBe(hrefBefore);
   });
 
-  test("投稿成功ハンドラが既定遷移を抑止した場合_ホームへ遷移しない", async () => {
-    const onOpenChange = jest.fn();
-    const onPostSuccess = jest
-      .fn()
-      .mockResolvedValue({ skipDefaultRedirect: true });
+  test("⭐投稿に失敗したら送信中のバーを畳む（エラーはこのモーダルが出す）", async () => {
+    postImageAPIMock.mockRejectedValueOnce(new Error("boom"));
 
-    render(
-      <PostModal
-        open
-        onOpenChange={onOpenChange}
-        imageId="image-1"
-        onPostSuccess={onPostSuccess}
-      />
-    );
+    render(<PostModal open onOpenChange={jest.fn()} imageId="image-1" />);
 
     fireEvent.submit(screen.getByLabelText("キャプション").closest("form")!);
 
     await waitFor(() => {
-      expect(onPostSuccess).toHaveBeenCalledWith({
-        id: "post-1",
-        is_posted: true,
-        caption: "fresh caption",
-        posted_at: "2026-03-16T00:00:00.000Z",
-        bonus_granted: 50,
-      });
+      expect(abortPostProgressMock).toHaveBeenCalledTimes(1);
     });
-
-    expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", { method: "POST" });
-    expect(notifyPendingHomePostRefreshMock).toHaveBeenCalledTimes(1);
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-    expect(window.location.href).toBe("");
+    expect(finishPostProgressMock).not.toHaveBeenCalled();
   });
 
   test("Before画像を自動取得してプレビューし_OFFで投稿するとshow_before_image=falseを送る", async () => {

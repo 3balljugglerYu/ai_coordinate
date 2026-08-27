@@ -160,6 +160,7 @@ export const idMessages = {
     noComments: "Belum ada komentar.",
     allCommentsShown: "Semua komentar ditampilkan.",
     postSuccess: "Postinganmu sudah tayang.",
+    postSuccessViewAction: "Lihat",
     postFailed: "Gagal memposting.",
     postFailedRetry: "Gagal memposting. Silakan coba lagi.",
     updateFailed: "Gagal memperbarui postingan.",

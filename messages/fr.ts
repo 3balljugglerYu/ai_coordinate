@@ -160,6 +160,7 @@ export const frMessages = {
     noComments: "Aucun commentaire pour l'instant.",
     allCommentsShown: "Tous les commentaires sont affichés.",
     postSuccess: "Votre publication est en ligne.",
+    postSuccessViewAction: "Voir",
     postFailed: "Impossible de publier.",
     postFailedRetry: "Impossible de publier. Veuillez réessayer.",
     updateFailed: "Impossible de mettre à jour la publication.",

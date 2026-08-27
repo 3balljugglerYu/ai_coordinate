@@ -160,6 +160,7 @@ export const koMessages = {
     noComments: "아직 댓글이 없습니다.",
     allCommentsShown: "모든 댓글을 표시했습니다.",
     postSuccess: "게시되었습니다.",
+    postSuccessViewAction: "보기",
     postFailed: "게시에 실패했습니다.",
     postFailedRetry: "게시에 실패했습니다. 다시 시도해 주세요.",
     updateFailed: "게시물 업데이트에 실패했습니다.",

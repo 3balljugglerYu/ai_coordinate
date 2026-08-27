@@ -21,7 +21,6 @@ import { SortTabs } from "./SortTabs";
 import { HomeViewToggle } from "./HomeViewToggle";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
-import { useToast } from "@/components/ui/use-toast";
 import type { Post, SortType } from "../types";
 import { isValidSortType } from "../lib/utils";
 import {
@@ -90,7 +89,6 @@ export function PostList({
   promptUsageRewardAmount = 0,
 }: PostListProps) {
   const postsT = useTranslations("posts");
-  const { toast } = useToast();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -197,44 +195,18 @@ export function PostList({
       return;
     }
 
+    /*
+      ⭐ 完了の合図はここでは出さない。
+
+      投稿しても画面が動かなくなったので、トーストと付与モーダルは
+      投稿したその場で `PostProgressHost` が出す。ここに残しておくと、
+      あとでホームを開いたときに**もう一度**出てしまう
+      (sessionStorage は遷移しなくても残るため)。
+
+      ここが受け持つのは新着の同期(ハイライト)だけ。
+    */
     setPendingHomePostRefresh(pending);
-    if (pending.action !== "posted") {
-      return;
-    }
-
-    /*
-      付与があればモーダル、無ければ従来どおりトースト。
-
-      モーダルにするのは、**フリースタイル投稿の直後がクリエイター還元を
-      いちばん伝えやすい瞬間**だから。トーストは数秒で消えるうえ、
-      リンクを踏む間もない。
-    */
-    /*
-      上乗せ(他の人のプロンプトで作った)だけが付いた場合もモーダルを出す。
-      投稿ボーナスの受け取り済み判定で弾くと、その日2回目の投稿で
-      上乗せをもらったのに何も出ない。
-    */
-    const promptUseBonusGranted = pending.promptUseBonusGranted ?? 0;
-    const grantedTotal = (pending.bonusGranted ?? 0) + promptUseBonusGranted;
-
-    if (grantedTotal > 0) {
-      const hasBoostedBonus =
-        pending.subscriptionPlan &&
-        pending.subscriptionPlan !== "free" &&
-        typeof pending.bonusMultiplier === "number" &&
-        pending.bonusMultiplier > 1;
-
-      setPostBonus({
-        amount: (pending.bonusGranted ?? 0) + promptUseBonusGranted,
-        multiplier: hasBoostedBonus ? pending.bonusMultiplier : undefined,
-        generationType: pending.generationType ?? null,
-        isPromptUse: promptUseBonusGranted > 0,
-      });
-      return;
-    }
-
-    toast({ title: postsT("postSuccess") });
-  }, [postsT, toast]);
+  }, []);
 
   useEffect(() => {
     consumePendingRefresh();

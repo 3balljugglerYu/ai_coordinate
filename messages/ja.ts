@@ -156,7 +156,9 @@ export const jaMessages = {
     commentsFetchFailed: "コメントの取得に失敗しました",
     noComments: "まだコメントがありません",
     allCommentsShown: "全てのコメントを表示しました",
-    postSuccess: "投稿しました",
+    postSuccess: "投稿が完了しました。",
+    /* 完了トーストのボタン。押すと投稿の詳細へ移動する */
+    postSuccessViewAction: "確認する",
     postFailed: "投稿に失敗しました",
     postFailedRetry: "投稿に失敗しました。もう一度お試しください。",
     updateFailed: "更新に失敗しました",

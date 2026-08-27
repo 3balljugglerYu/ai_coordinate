@@ -160,6 +160,7 @@ export const thMessages = {
     noComments: "ยังไม่มีความคิดเห็น",
     allCommentsShown: "แสดงความคิดเห็นทั้งหมดแล้ว",
     postSuccess: "โพสต์ของคุณเผยแพร่แล้ว",
+    postSuccessViewAction: "ดู",
     postFailed: "โพสต์ไม่สำเร็จ",
     postFailedRetry: "โพสต์ไม่สำเร็จ โปรดลองอีกครั้ง",
     updateFailed: "อัปเดตโพสต์ไม่สำเร็จ",

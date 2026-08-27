@@ -1730,6 +1730,58 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   animation: rewardGradientShift 8s ease-in-out infinite;
 }
 
+/*
+ * 投稿中のバーの位置。
+ *
+ * ⭐ **画面の下端**に置く。ボトムナビには被せてよい。
+ *
+ * 当初はナビの上に載せていたが、実機で「まだ高い」と感じられた。
+ * ナビ(h-16 + safe-area-inset-bottom)のぶんだけ浮くので、画面の端に
+ * 貼り付いている感じにならない。送信中は一時的な状態なので、ナビを
+ * 隠しても現在地を見失う場面ではない。
+ *
+ * 下端に置くぶん、中身がホームインジケータに掛からないよう、
+ * バーの内側に safe-area ぶんの余白を持たせる(位置ではなく余白で逃がす)。
+ */
+.post-progress-anchor {
+  bottom: 0;
+}
+
+.post-progress-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/*
+ * 送信中はボトムナビを隠す。
+ *
+ * バーは X に合わせた高さでナビより低いため、下端に重ねるとナビのアイコンの
+ * 頭だけが覗く。バーをナビの高さまで伸ばすと帯として高すぎるので、
+ * ナビ側を隠す。送信は数秒で終わる一時的な状態。
+ */
+body.post-progress-active nav.fixed.bottom-0 {
+  display: none;
+}
+
+/*
+ * 投稿中のバーの帯。
+ *
+ * 投稿APIは進捗率を取れない(is_posted を立てる操作で、重い WebP 変換は
+ * レスポンス後の after() に逃がしてある)。取れない数字をそれらしく
+ * 動かすと嘘になるので、往復させて「進行中」だけを伝える。
+ */
+@keyframes postProgressIndeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
+.post-progress-indeterminate {
+  animation: postProgressIndeterminate 1.1s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   /*
    * 出現アニメは一瞬で終わらせて可視状態にする(要素が消えないよう both を維持)。
@@ -1744,5 +1796,15 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   .reward-breathe,
   .reward-gradient-shift {
     animation: none;
+  }
+
+  /*
+   * 帯は止めるが、要素は残す。消してしまうと「送信中」の合図が
+   * 文字だけになり、動きを減らす設定の人ほど状態が分かりにくくなる。
+   */
+  .post-progress-indeterminate {
+    animation: none;
+    width: 100%;
+    opacity: 0.5;
   }
 }

@@ -160,6 +160,7 @@ export const zhCnMessages = {
     noComments: "还没有评论。",
     allCommentsShown: "已显示全部评论。",
     postSuccess: "发布成功。",
+    postSuccessViewAction: "查看",
     postFailed: "发布失败。",
     postFailedRetry: "发布失败，请重试。",
     updateFailed: "更新帖子失败。",
