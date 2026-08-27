@@ -11,6 +11,10 @@ import { useTranslations } from "next-intl";
  * 重ねる。ナビを隠すと現在地が分からなくなるので、被せない。
  * PC ではボトムナビが無い(`lg:hidden`)ので、画面下端に置く。
  *
+ * ⭐ ナビの高さは `h-16` だけではない。`safe-area-inset-bottom` が足されて
+ * いるので(iPhone のホームインジケータぶん)、`bottom-16` で合わせると
+ * その差だけ浮く。位置は `.post-progress-anchor` で env() ごと計算する。
+ *
  * ## 進捗を割合で出さない理由
  *
  * 投稿API は「画像のアップロード」ではなく `is_posted` を立てる操作で、
@@ -27,7 +31,12 @@ export function PostProgressBar({ visible }: { visible: boolean }) {
 
   return (
     <div
-      className="fixed inset-x-0 bottom-16 z-[60] lg:bottom-0"
+      /*
+        位置は `post-progress-anchor`(globals.css)で決める。
+        ボトムナビは h-16 に加えて safe-area-inset-bottom を足しているので、
+        Tailwind の `bottom-16` だけだと端末によって浮く。
+      */
+      className="post-progress-anchor fixed inset-x-0 z-[60]"
       /*
         読み上げは「送信中」を一度伝えれば足りる。polite にして、
         操作中の読み上げを遮らない。

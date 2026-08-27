@@ -1731,6 +1731,25 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 }
 
 /*
+ * 投稿中のバーの位置。
+ *
+ * ⭐ ボトムナビは `h-16`(64px)に加えて `safe-area-inset-bottom` を足している
+ * (iPhone のホームインジケータぶん、約34px)。Tailwind の `bottom-16` だけだと
+ * その差だけ浮き、実機で「少し上に出る」ことになる(iOS で報告された)。
+ * 端末ごとに変わる値なので、決め打ちの px ではなく env() で足す。
+ */
+.post-progress-anchor {
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* PC ではボトムナビが無い(`lg:hidden`)ので、画面の下端に置く */
+@media (min-width: 1024px) {
+  .post-progress-anchor {
+    bottom: env(safe-area-inset-bottom, 0px);
+  }
+}
+
+/*
  * 投稿中のバーの帯。
  *
  * 投稿APIは進捗率を取れない(is_posted を立てる操作で、重い WebP 変換は
