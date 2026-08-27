@@ -36,6 +36,8 @@ export const AUSTRALIA_DAILY_LOOKS: AustraliaDailyLookRef[] = [
   { day: "Day 8", presetId: "9bc15744-0675-4ff9-a98e-d6b8b30112a1" },
   // Sydney University Navy Polo & Tartan Mini Look
   { day: "Day 9", presetId: "f42aaa5e-a00c-4d62-812b-acba13411dbc" },
+  // Sydney Airport Trench & Smoky Blue Travel Look（帰国＝旅の締め）
+  { day: "Day 10", presetId: "afeb2b52-c18a-4368-a539-1ee14cebe9a4" },
 ];
 
 /** ページに渡す解決済みの1件。 */
