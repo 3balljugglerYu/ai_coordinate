@@ -1752,6 +1752,17 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 }
 
 /*
+ * 送信中はボトムナビを隠す。
+ *
+ * バーは X に合わせた高さでナビより低いため、下端に重ねるとナビのアイコンの
+ * 頭だけが覗く。バーをナビの高さまで伸ばすと帯として高すぎるので、
+ * ナビ側を隠す。送信は数秒で終わる一時的な状態。
+ */
+body.post-progress-active nav.fixed.bottom-0 {
+  display: none;
+}
+
+/*
  * 投稿中のバーの帯。
  *
  * 投稿APIは進捗率を取れない(is_posted を立てる操作で、重い WebP 変換は

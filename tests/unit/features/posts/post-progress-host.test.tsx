@@ -98,6 +98,37 @@ describe("PostProgressHost", () => {
     expect(screen.getByText("投稿中...")).toBeInTheDocument();
   });
 
+  /**
+   * ⭐ 送信中はボトムナビを隠す(バーが X に合わせた高さでナビより低く、
+   * 重ねるとアイコンの頭だけが覗くため)。
+   *
+   * **戻し忘れるとナビが消えたままになる**ので、付け外しを固定する。
+   */
+  test("⭐送信中だけボトムナビを隠し、終わったら必ず戻す", async () => {
+    const { unmount } = render(<PostProgressHost />);
+    expect(document.body).not.toHaveClass("post-progress-active");
+
+    act(() => {
+      startPostProgress();
+    });
+    expect(document.body).toHaveClass("post-progress-active");
+
+    act(() => {
+      finishPostProgress(response({ bonus_granted: 0 }));
+    });
+    await waitFor(() =>
+      expect(document.body).not.toHaveClass("post-progress-active")
+    );
+
+    // 表示中にアンマウントされても残さない
+    act(() => {
+      startPostProgress();
+    });
+    expect(document.body).toHaveClass("post-progress-active");
+    unmount();
+    expect(document.body).not.toHaveClass("post-progress-active");
+  });
+
   test("失敗したらバーを畳む（エラーは投稿モーダルが出す）", () => {
     render(<PostProgressHost />);
     act(() => {

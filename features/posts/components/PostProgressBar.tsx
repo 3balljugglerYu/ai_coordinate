@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useTranslations } from "next-intl";
 
 /**
@@ -27,6 +28,27 @@ import { useTranslations } from "next-intl";
 export function PostProgressBar({ visible }: { visible: boolean }) {
   const t = useTranslations("posts");
 
+  /*
+    ⭐ 送信中はボトムナビを隠す。
+
+    バーはナビより低い(X に合わせた高さ)ので、ただ下端に重ねると
+    **ナビのアイコンの頭だけが上にはみ出して見える**。バーをナビの高さまで
+    伸ばすと、今度は帯として高すぎる。隠すのがいちばん素直。
+
+    送信は数秒で終わる一時的な状態で、そのあいだ現在地を見失う場面ではない。
+    クラスは必ずクリーンアップで外すこと(付けっぱなしだとナビが消えたままになる)。
+  */
+  useEffect(() => {
+    if (!visible) {
+      return;
+    }
+
+    document.body.classList.add("post-progress-active");
+    return () => {
+      document.body.classList.remove("post-progress-active");
+    };
+  }, [visible]);
+
   if (!visible) {
     return null;
   }
@@ -42,12 +64,10 @@ export function PostProgressBar({ visible }: { visible: boolean }) {
       aria-live="polite"
     >
       {/*
-        ⭐ 高さをナビに合わせる(`min-h-16` = ナビの `h-16`)。
-        バーの方が低いと、ナビのアイコンの頭だけが上にはみ出して見える。
-        背景も半透明にしない。透けるとアイコンが下から浮き出る。
+        背景は半透明にしない。透けると下のものが浮き出る。
       */}
       <div className="border-t border-slate-200 bg-white">
-        <div className="mx-auto flex min-h-16 max-w-7xl items-center px-4">
+        <div className="mx-auto flex min-h-11 max-w-7xl items-center px-4">
           <p className="text-sm font-medium text-slate-700">
             {t("postSubmitting")}
           </p>
