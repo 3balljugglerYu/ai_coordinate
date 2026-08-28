@@ -66,7 +66,7 @@ export function CollapsibleText({
           return (
             <Link
               key={index}
-              href={buildHashtagSearchHref(token.normalized)}
+              href={buildHashtagSearchHref(token.name)}
               className="text-blue-600 hover:underline break-all"
             >
               {token.rawValue}

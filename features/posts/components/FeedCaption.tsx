@@ -61,7 +61,7 @@ export function FeedCaption({ caption, onOpenDetail, expandLabel }: FeedCaptionP
           return (
             <Link
               key={index}
-              href={buildHashtagSearchHref(token.normalized)}
+              href={buildHashtagSearchHref(token.name)}
               className="break-all text-blue-600 hover:underline"
               // カードの詳細遷移と競合させない（URL リンクと同じ作法）
               onClick={(event) => event.stopPropagation()}

@@ -172,8 +172,12 @@ export function tokenizeWithHashtags(text: string): HashtagToken[] {
 
 /**
  * タグリンクの遷移先。`/search?q=%23タグ` に統一する（ADR-003。専用ページは作らない）。
- * クエリには正規化キーを使う（`#AI` と `#ai` で同じ結果になるように）。
+ *
+ * クエリには**書かれたままの表記**を載せる。正規化キー（小文字化・NFKC 済み）を
+ * 載せると、`#PerstaAI` を押した先の検索ボックスが `#perstaai` になり、
+ * 自分が書いた見た目が勝手に崩れる。一致判定は検索側が正規化して行うので、
+ * 表記を保っても `#AI` と `#ai` は同じ結果になる。
  */
-export function buildHashtagSearchHref(normalized: string): string {
-  return `/search?q=${encodeURIComponent(`#${normalized}`)}`;
+export function buildHashtagSearchHref(name: string): string {
+  return `/search?q=${encodeURIComponent(`#${name}`)}`;
 }
