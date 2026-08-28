@@ -6,6 +6,7 @@ import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
+import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
 import {
   getSubscriptionBonusMultiplier,
   normalizeSubscriptionPlan,
@@ -153,6 +154,11 @@ export async function POST(request: NextRequest) {
       showBeforeImage,
       promptVisibility
     );
+
+    // キャプションのハッシュタグを保存する（失敗しても投稿は成功させる）。
+    // 保存済みの caption を渡す。リクエストのボディを渡すと、DB 側の
+    // 世代照合が常に一致してしまい競合検知の意味がなくなる。
+    await syncPostHashtags(result.id!, result.caption ?? null);
 
     // デイリー投稿特典の付与（エラーが発生しても投稿は成功させる）
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます

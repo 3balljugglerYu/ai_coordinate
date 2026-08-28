@@ -5,6 +5,7 @@ import { postImageServer } from "@/features/generation/lib/server-database";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
+import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
 
 /**
  * キャプション更新API
@@ -46,6 +47,9 @@ export async function PUT(request: NextRequest) {
       showBeforeImage,
       promptVisibility
     );
+
+    // キャプションが変わればタグも変わる。編集でも洗い替える（REQ-01）。
+    await syncPostHashtags(result.id!, result.caption ?? null);
 
     // 注意: デイリーボーナスは新しい投稿（POST /api/posts/post）でのみ付与されます
     // キャプション更新（PUT /api/posts/update）ではボーナスを付与しません
