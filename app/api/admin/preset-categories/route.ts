@@ -16,6 +16,10 @@ import {
 import { parseCollectionSettings } from "./collection-settings-payload";
 import type { MountLayoutKey } from "@/features/collections/lib/mount-layouts";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
+import {
+  HASHTAG_SUGGESTIONS_MAX,
+  isValidHashtagName,
+} from "@/lib/hashtag";
 
 const KEY_PATTERN = /^[a-z][a-z0-9_]{1,49}$/;
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
@@ -74,6 +78,7 @@ interface ParsedCreatePayload {
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
   userGuidanceEn?: string | null;
+  hashtagSuggestions?: string[];
   showSourceImageTypeControl?: boolean;
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
@@ -239,6 +244,16 @@ export async function POST(request: NextRequest) {
       );
     }
     payload.outputAspectRatioMode = mode;
+  }
+  if (body.hashtag_suggestions !== undefined) {
+    const parsed = parseHashtagSuggestionsBody(body.hashtag_suggestions);
+    if (parsed === null) {
+      return NextResponse.json(
+        { error: HASHTAG_SUGGESTIONS_ERROR },
+        { status: 400 },
+      );
+    }
+    payload.hashtagSuggestions = parsed;
   }
   if (body.user_guidance_ja !== undefined) {
     if (body.user_guidance_ja !== null && typeof body.user_guidance_ja !== "string") {
@@ -472,3 +487,27 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+/**
+ * タグ候補の検証。「設定できたのに投稿してもタグにならない」候補を作らせないため、
+ * 判定は抽出規則そのもの（lib/hashtag.ts）を使う。
+ *
+ * @returns 妥当なら候補の配列。形式が不正なら null
+ */
+function parseHashtagSuggestionsBody(value: unknown): string[] | null {
+  if (value === null) return [];
+  if (!Array.isArray(value)) return null;
+  if (value.length > HASHTAG_SUGGESTIONS_MAX) return null;
+
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") return null;
+    const name = item.trim();
+    if (!name) continue;
+    if (!isValidHashtagName(name)) return null;
+    result.push(name);
+  }
+  return result;
+}
+
+const HASHTAG_SUGGESTIONS_ERROR = `hashtag_suggestions must be up to ${HASHTAG_SUGGESTIONS_MAX} tag names (no '#', no spaces)`;

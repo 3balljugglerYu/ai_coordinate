@@ -170,6 +170,47 @@ export function tokenizeWithHashtags(text: string): HashtagToken[] {
   return tokens;
 }
 
+/** 1つの企画（プリセットカテゴリ）に設定できるタグ候補の上限。 */
+export const HASHTAG_SUGGESTIONS_MAX = 5;
+
+/**
+ * 「タグとして書ける名前か」を、抽出規則そのもので判定する。
+ *
+ * 別の正規表現で検証すると、設定はできるのに投稿するとタグにならない
+ * （説明文に入れても青くならない）候補を作れてしまう。
+ *
+ * @param name `#` を含まない表記
+ */
+export function isValidHashtagName(name: string): boolean {
+  const [tag] = extractHashtags(`#${name}`);
+  return Boolean(tag && tag.name === name);
+}
+
+/**
+ * admin の入力欄（改行・カンマ・空白区切り）を候補の配列にする。
+ *
+ * `#` を付けて書かれても受け付ける（付けるのが自然なので、弾くと迷わせる）。
+ * 同じタグの重複は畳み、上限を超えた分は捨てる。
+ */
+export function parseHashtagSuggestions(raw: string): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+
+  for (const token of raw.split(/[\s,、]+/)) {
+    const name = token.replace(/^[#＃]+/, "").trim();
+    if (!name || !isValidHashtagName(name)) continue;
+
+    const normalized = normalizeHashtag(name);
+    if (seen.has(normalized)) continue;
+    seen.add(normalized);
+
+    result.push(name);
+    if (result.length >= HASHTAG_SUGGESTIONS_MAX) break;
+  }
+
+  return result;
+}
+
 /**
  * タグリンクの遷移先。`/search?q=%23タグ` に統一する（ADR-003。専用ページは作らない）。
  *

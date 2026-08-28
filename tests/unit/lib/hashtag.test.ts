@@ -3,6 +3,9 @@
 import {
   buildHashtagSearchHref,
   extractHashtags,
+  HASHTAG_SUGGESTIONS_MAX,
+  isValidHashtagName,
+  parseHashtagSuggestions,
   HASHTAG_MAX_LENGTH,
   HASHTAG_MAX_PER_POST,
   normalizeHashtag,
@@ -256,6 +259,46 @@ describe("hashtag", () => {
       expect(buildHashtagSearchHref("冬服_みきふく")).toBe(
         "/search?q=%23%E5%86%AC%E6%9C%8D_%E3%81%BF%E3%81%8D%E3%81%B5%E3%81%8F",
       );
+    });
+  });
+
+
+  describe("企画ごとのタグ候補（admin 入力）", () => {
+    test("改行・カンマ・空白のどれで区切っても読む", () => {
+      expect(
+        parseHashtagSuggestions("うちの子のオーストラリア旅行\n豪州旅行, 旅行")
+      ).toEqual(["うちの子のオーストラリア旅行", "豪州旅行", "旅行"]);
+    });
+
+    test("`#` を付けて書かれても受け付ける", () => {
+      expect(parseHashtagSuggestions("#冬服 ＃ニット")).toEqual([
+        "冬服",
+        "ニット",
+      ]);
+    });
+
+    test("タグにできない書き方は捨てる", () => {
+      // 全数字・空文字は投稿してもタグにならない。設定できると迷わせるだけ
+      expect(parseHashtagSuggestions("123 冬服")).toEqual(["冬服"]);
+    });
+
+    test("同じタグは畳む（大文字小文字を区別しない）", () => {
+      expect(parseHashtagSuggestions("AI ai Ai")).toEqual(["AI"]);
+    });
+
+    test("上限を超えた分は捨てる", () => {
+      const raw = "a1 b1 c1 d1 e1 f1 g1";
+      expect(parseHashtagSuggestions(raw)).toHaveLength(HASHTAG_SUGGESTIONS_MAX);
+    });
+
+    test("isValidHashtagName は抽出規則そのもので判定する", () => {
+      expect(isValidHashtagName("冬服")).toBe(true);
+      expect(isValidHashtagName("冬服_みきふく")).toBe(true);
+      // 空白入り・`#` 入り・全数字は、説明文に書いてもタグにならない
+      expect(isValidHashtagName("冬 服")).toBe(false);
+      expect(isValidHashtagName("冬服#")).toBe(false);
+      expect(isValidHashtagName("123")).toBe(false);
+      expect(isValidHashtagName("")).toBe(false);
     });
   });
 });
