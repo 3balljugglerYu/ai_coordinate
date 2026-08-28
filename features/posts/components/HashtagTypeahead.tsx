@@ -103,8 +103,8 @@ export function HashtagTypeahead({
   const handleSelect = (name: string) => {
     const before = value.slice(0, found.start);
     const after = value.slice(found.end);
-    // 直後が空白でなければ空白を足す。続けて打った文字がタグに飲まれないようにする
-    const separator = after.startsWith(" ") || after === "" ? "" : " ";
+    // 直後が空白・改行でなければ空白を足す。続けて打った文字がタグに飲まれないようにする
+    const separator = after === "" || /^\s/.test(after) ? "" : " ";
     onSelect(`${before}#${name}${separator}${after}`);
   };
 

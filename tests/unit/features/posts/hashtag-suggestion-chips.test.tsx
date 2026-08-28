@@ -108,8 +108,19 @@ describe("appendHashtag", () => {
     expect(appendHashtag("", "冬服", 200)).toBe("#冬服");
   });
 
-  test("末尾の空白は増やさない", () => {
-    expect(appendHashtag("おでかけ  ", "冬服", 200)).toBe("おでかけ #冬服");
+  test("改行して次の行に入れられる（書いた文章を削らない）", () => {
+    // 以前は末尾を trim していたため、改行ごと消えて前の行に付いていた
+    expect(appendHashtag("今日のコーデ\n", "冬服", 200)).toBe(
+      "今日のコーデ\n#冬服"
+    );
+  });
+
+  test("空行を空けた書き方も保つ", () => {
+    expect(appendHashtag("本文\n\n", "冬服", 200)).toBe("本文\n\n#冬服");
+  });
+
+  test("末尾が空白なら区切りを増やさない", () => {
+    expect(appendHashtag("おでかけ ", "冬服", 200)).toBe("おでかけ #冬服");
   });
 
   test("上限を超えるなら何もしない", () => {

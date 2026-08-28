@@ -168,4 +168,15 @@ describe("HashtagTypeahead", () => {
     const chip = await screen.findByRole("button", { name: "#冬服" });
     expect(chip.textContent).toBe("#冬服");
   });
+
+
+  test("直後が改行なら空白を足さない", async () => {
+    const onSelect = jest.fn();
+    renderTypeahead({ value: "#冬\n続き", caret: 2, onSelect });
+    await flush();
+
+    fireEvent.click(await screen.findByRole("button", { name: "#冬服" }));
+
+    expect(onSelect).toHaveBeenCalledWith("#冬服\n続き");
+  });
 });

@@ -116,6 +116,10 @@ export function HashtagSuggestionChips({
  * 直前に区切りが無いと `おでかけ#冬服` のように前の文字と繋がり、
  * タグとして成立しなくなる（`#` の直前がタグ文字だと開始と見なさない規則）。
  * 上限を超える場合は何もしない。
+ *
+ * ⚠️ **書いた文章には手を入れない。** 以前は末尾を trim してから足していたため、
+ * 改行して次の行にタグを入れようとすると、その改行ごと消えて前の行に付いていた。
+ * 既に空白や改行で終わっているなら、それを区切りとしてそのまま使う。
  */
 export function appendHashtag(
   caption: string,
@@ -123,7 +127,7 @@ export function appendHashtag(
   maxLength: number
 ): string {
   const tag = `#${name}`;
-  const base = caption.trimEnd();
-  const next = base ? `${base} ${tag}` : tag;
+  const needsSeparator = caption.length > 0 && !/\s$/.test(caption);
+  const next = `${caption}${needsSeparator ? " " : ""}${tag}`;
   return next.length <= maxLength ? next : caption;
 }
