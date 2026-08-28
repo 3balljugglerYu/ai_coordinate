@@ -13,6 +13,10 @@ import {
 import { isStyleOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import { parseCollectionSettings } from "../collection-settings-payload";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
+import {
+  HASHTAG_SUGGESTIONS_MAX,
+  isValidHashtagName,
+} from "@/lib/hashtag";
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
@@ -183,6 +187,16 @@ export async function PATCH(
       );
     }
     update.outputAspectRatioMode = mode;
+  }
+  if (body.hashtag_suggestions !== undefined) {
+    const parsed = parseHashtagSuggestionsBody(body.hashtag_suggestions);
+    if (parsed === null) {
+      return NextResponse.json(
+        { error: HASHTAG_SUGGESTIONS_ERROR },
+        { status: 400 },
+      );
+    }
+    update.hashtagSuggestions = parsed;
   }
   if (body.user_guidance_ja !== undefined) {
     if (
@@ -500,3 +514,27 @@ export async function DELETE(
     );
   }
 }
+
+/**
+ * タグ候補の検証。「設定できたのに投稿してもタグにならない」候補を作らせないため、
+ * 判定は抽出規則そのもの（lib/hashtag.ts）を使う。
+ *
+ * @returns 妥当なら候補の配列。形式が不正なら null
+ */
+function parseHashtagSuggestionsBody(value: unknown): string[] | null {
+  if (value === null) return [];
+  if (!Array.isArray(value)) return null;
+  if (value.length > HASHTAG_SUGGESTIONS_MAX) return null;
+
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") return null;
+    const name = item.trim();
+    if (!name) continue;
+    if (!isValidHashtagName(name)) return null;
+    result.push(name);
+  }
+  return result;
+}
+
+const HASHTAG_SUGGESTIONS_ERROR = `hashtag_suggestions must be up to ${HASHTAG_SUGGESTIONS_MAX} tag names (no '#', no spaces)`;

@@ -174,6 +174,8 @@ export const hiMessages = {
     editModalDescription: "कैप्शन संपादित करें (अधिकतम {max} वर्ण)।",
     captionLabel: "कैप्शन",
     captionPlaceholder: "छवि का वर्णन करें (वैकल्पिक)",
+    hashtagSuggestionsLabel: "सुझाए गए टैग",
+    hashtagPopularLabel: "लोकप्रिय",
     captionTooLong: "कैप्शन {max} वर्णों से अधिक नहीं हो सकता।",
     charactersRemaining: "{count} वर्ण शेष",
     cancel: "रद्द करें",

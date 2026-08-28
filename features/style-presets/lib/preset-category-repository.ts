@@ -43,6 +43,7 @@ export interface PresetCategoryRow {
   output_aspect_ratio_mode?: StyleOutputAspectRatioMode | null;
   user_guidance_ja?: string | null;
   user_guidance_en?: string | null;
+  hashtag_suggestions?: string[] | null;
   show_source_image_type_control?: boolean | null;
   show_background_change_control?: boolean | null;
   show_generation_model_control?: boolean | null;
@@ -113,6 +114,8 @@ export interface PresetCategoryAdmin {
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string | null;
   userGuidanceEn: string | null;
+  /** 投稿時に出すタグ候補（最大5個・`#` を含めない表記）。空なら候補を出さない。 */
+  hashtagSuggestions: string[];
   showSourceImageTypeControl: boolean;
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
@@ -189,6 +192,7 @@ export interface PresetCategoryInsert {
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
   userGuidanceEn?: string | null;
+  hashtagSuggestions?: string[];
   showSourceImageTypeControl?: boolean;
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
@@ -251,6 +255,7 @@ export interface PresetCategoryUpdate {
   outputAspectRatioMode?: StyleOutputAspectRatioMode;
   userGuidanceJa?: string | null;
   userGuidanceEn?: string | null;
+  hashtagSuggestions?: string[];
   showSourceImageTypeControl?: boolean;
   showBackgroundChangeControl?: boolean;
   showGenerationModelControl?: boolean;
@@ -334,6 +339,7 @@ function mapRow(row: PresetCategoryRow): PresetCategoryAdmin {
     ),
     userGuidanceJa: row.user_guidance_ja ?? null,
     userGuidanceEn: row.user_guidance_en ?? null,
+    hashtagSuggestions: row.hashtag_suggestions ?? [],
     showSourceImageTypeControl: row.show_source_image_type_control ?? true,
     showBackgroundChangeControl: row.show_background_change_control ?? true,
     showGenerationModelControl: row.show_generation_model_control ?? true,
@@ -485,6 +491,7 @@ export async function createPresetCategory(
       output_aspect_ratio_mode: input.outputAspectRatioMode ?? "source",
       user_guidance_ja: input.userGuidanceJa ?? null,
       user_guidance_en: input.userGuidanceEn ?? null,
+      hashtag_suggestions: input.hashtagSuggestions ?? [],
       show_source_image_type_control: input.showSourceImageTypeControl ?? true,
       show_background_change_control: input.showBackgroundChangeControl ?? true,
       show_generation_model_control: input.showGenerationModelControl ?? true,
@@ -569,6 +576,8 @@ export async function updatePresetCategory(
     payload.default_image_input_mode = input.defaultImageInputMode;
   if (input.outputAspectRatioMode !== undefined)
     payload.output_aspect_ratio_mode = input.outputAspectRatioMode;
+  if (input.hashtagSuggestions !== undefined)
+    payload.hashtag_suggestions = input.hashtagSuggestions;
   if (input.userGuidanceJa !== undefined)
     payload.user_guidance_ja = input.userGuidanceJa;
   if (input.userGuidanceEn !== undefined)

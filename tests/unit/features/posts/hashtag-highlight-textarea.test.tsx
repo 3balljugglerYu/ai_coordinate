@@ -7,6 +7,11 @@ import {
   SearchAvailabilityUpgrade,
 } from "@/features/posts/components/SearchAvailabilityProvider";
 
+// 入力中候補（HashtagTypeahead）経由で next-intl を読むためモックする
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) => key,
+}));
+
 function renderField({
   available,
   value = "",

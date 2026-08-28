@@ -174,6 +174,8 @@ export const viMessages = {
     editModalDescription: "Chỉnh sửa chú thích (tối đa {max} ký tự).",
     captionLabel: "Chú thích",
     captionPlaceholder: "Mô tả hình ảnh (tùy chọn)",
+    hashtagSuggestionsLabel: "Thẻ gợi ý",
+    hashtagPopularLabel: "Phổ biến",
     captionTooLong: "Chú thích không được vượt quá {max} ký tự.",
     charactersRemaining: "Còn {count} ký tự",
     cancel: "Hủy",

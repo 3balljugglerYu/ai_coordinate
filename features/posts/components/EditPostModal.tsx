@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { HashtagHighlightTextarea } from "./HashtagHighlightTextarea";
+import { HashtagSuggestionChips } from "./HashtagSuggestionChips";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { GenerationType } from "@/features/generation/types";
@@ -201,6 +202,13 @@ export function EditPostModal({
                 rows={4}
                 maxLength={MAX_CAPTION_LENGTH}
                 className={isOverLimit ? "border-destructive" : ""}
+                disabled={isSubmitting}
+              />
+              <HashtagSuggestionChips
+                imageId={imageId}
+                caption={caption}
+                onInsert={setCaption}
+                maxLength={MAX_CAPTION_LENGTH}
                 disabled={isSubmitting}
               />
               <div className="flex justify-between text-sm">

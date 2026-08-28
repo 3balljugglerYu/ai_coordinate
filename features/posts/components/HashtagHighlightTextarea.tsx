@@ -1,10 +1,12 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { RichTextarea } from "rich-textarea";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { tokenizeWithHashtags } from "@/lib/hashtag";
 import { useSearchAvailable } from "./SearchAvailabilityProvider";
+import { HashtagTypeahead } from "./HashtagTypeahead";
 
 /**
  * 入力中の `#タグ` をその場で青くするキャプション入力欄（REQ-10）。
@@ -47,6 +49,17 @@ export function HashtagHighlightTextarea({
   disabled,
 }: HashtagHighlightTextareaProps) {
   const searchAvailable = useSearchAvailable();
+  // 入力中のタグ候補を出すために、カーソル位置と変換状態を見る。
+  // 変換中に候補を出すと変換候補と二重になるので、composing で止める。
+  const [caret, setCaret] = useState<number | null>(null);
+  const [composing, setComposing] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const trackCaret = (
+    event: React.SyntheticEvent<HTMLTextAreaElement>
+  ): void => {
+    setCaret(event.currentTarget.selectionStart ?? null);
+  };
 
   if (!searchAvailable) {
     return (
@@ -64,10 +77,33 @@ export function HashtagHighlightTextarea({
   }
 
   return (
+    <div className="space-y-2" ref={wrapperRef}>
     <RichTextarea
       id={id}
       value={value}
-      onChange={(event) => onChange(event.target.value)}
+      onChange={(event) => {
+        onChange(event.target.value);
+        trackCaret(event);
+      }}
+      onSelect={trackCaret}
+      onKeyUp={trackCaret}
+      onClick={trackCaret}
+      onBlur={(event) => {
+        /*
+          候補を押したときに blur が先に走ると、カーソル位置が消えて候補ごと
+          消える（= タップしても何も入らない）。候補ボタンは mousedown を
+          止めてフォーカスを奪わないが、端末によっては先に移ることがあるため、
+          移った先が自分の中なら閉じない。
+        */
+        const next = event.relatedTarget as Node | null;
+        if (next && wrapperRef.current?.contains(next)) return;
+        setCaret(null);
+      }}
+      onCompositionStart={() => setComposing(true)}
+      onCompositionEnd={(event) => {
+        setComposing(false);
+        trackCaret(event);
+      }}
       placeholder={placeholder}
       rows={rows}
       maxLength={maxLength}
@@ -91,5 +127,13 @@ export function HashtagHighlightTextarea({
         )
       }
     </RichTextarea>
+      <HashtagTypeahead
+        value={value}
+        caret={caret}
+        composing={composing}
+        onSelect={onChange}
+        disabled={disabled}
+      />
+    </div>
   );
 }

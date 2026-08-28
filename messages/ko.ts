@@ -174,6 +174,8 @@ export const koMessages = {
     editModalDescription: "캡션을 편집합니다(최대 {max}자).",
     captionLabel: "캡션",
     captionPlaceholder: "이미지를 설명해 주세요(선택 사항)",
+    hashtagSuggestionsLabel: "태그 추천",
+    hashtagPopularLabel: "많이 쓰이는 태그",
     captionTooLong: "캡션은 {max}자 이하로 입력해 주세요.",
     charactersRemaining: "{count}자 남음",
     cancel: "취소",

@@ -174,6 +174,8 @@ export const deMessages = {
     editModalDescription: "Beschriftung bearbeiten (bis zu {max} Zeichen).",
     captionLabel: "Beschriftung",
     captionPlaceholder: "Beschreibe das Bild (optional)",
+    hashtagSuggestionsLabel: "Vorgeschlagene Tags",
+    hashtagPopularLabel: "Beliebt",
     captionTooLong: "Die Beschriftung darf höchstens {max} Zeichen lang sein.",
     charactersRemaining: "Noch {count} Zeichen",
     cancel: "Abbrechen",

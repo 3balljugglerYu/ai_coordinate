@@ -22,6 +22,10 @@ import {
 } from "@/shared/generation/style-output-aspect-ratio";
 import type { BookBackCoverMode } from "@/features/collections/lib/book-display";
 import { AspectRatioCardSelector } from "@/components/AspectRatioCardSelector";
+import {
+  HASHTAG_SUGGESTIONS_MAX,
+  parseHashtagSuggestions,
+} from "@/lib/hashtag";
 import { MountSlotEditor } from "@/features/preset-categories/components/MountSlotEditor";
 import { ProgressModalColorPreview } from "@/features/preset-categories/components/ProgressModalColorPreview";
 
@@ -61,6 +65,8 @@ interface FormState {
   defaultImageInputMode: "single" | "dual";
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string;
+  /** 改行・カンマ区切りの生入力。保存時に配列へ変換する。 */
+  hashtagSuggestions: string;
   userGuidanceEn: string;
   showSourceImageTypeControl: boolean;
   showBackgroundChangeControl: boolean;
@@ -168,6 +174,7 @@ function toFormState(
     defaultImageInputMode: initial?.defaultImageInputMode ?? "single",
     outputAspectRatioMode: initial?.outputAspectRatioMode ?? "source",
     userGuidanceJa: initial?.userGuidanceJa ?? "",
+    hashtagSuggestions: (initial?.hashtagSuggestions ?? []).join(" "),
     userGuidanceEn: initial?.userGuidanceEn ?? "",
     showSourceImageTypeControl: initial?.showSourceImageTypeControl ?? true,
     showBackgroundChangeControl: initial?.showBackgroundChangeControl ?? true,
@@ -660,6 +667,9 @@ export function AdminPresetCategoryFormClient({
               allow_guest_generation: form.allowGuestGeneration,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
+              hashtag_suggestions: parseHashtagSuggestions(
+                form.hashtagSuggestions,
+              ),
               user_guidance_ja: form.userGuidanceJa.trim() || null,
               user_guidance_en: form.userGuidanceEn.trim() || null,
               show_source_image_type_control: form.showSourceImageTypeControl,
@@ -729,6 +739,9 @@ export function AdminPresetCategoryFormClient({
               allow_guest_generation: form.allowGuestGeneration,
               default_image_input_mode: form.defaultImageInputMode,
               output_aspect_ratio_mode: form.outputAspectRatioMode,
+              hashtag_suggestions: parseHashtagSuggestions(
+                form.hashtagSuggestions,
+              ),
               user_guidance_ja: form.userGuidanceJa.trim() || null,
               user_guidance_en: form.userGuidanceEn.trim() || null,
               show_source_image_type_control: form.showSourceImageTypeControl,
@@ -1026,6 +1039,33 @@ export function AdminPresetCategoryFormClient({
           </span>
         </label>
       </div>
+
+      <label className="block">
+        <span className="text-sm font-medium text-slate-700">
+          ハッシュタグ候補（最大{HASHTAG_SUGGESTIONS_MAX}個）
+        </span>
+        <input
+          type="text"
+          value={form.hashtagSuggestions}
+          onChange={(e) => update("hashtagSuggestions", e.target.value)}
+          className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+          placeholder="例: うちの子のオーストラリア旅行 豪州旅行"
+        />
+        <span className="mt-1 block text-xs text-slate-500">
+          このカテゴリのプリセットで作った作品を投稿するとき、説明欄の下に候補として出ます。
+          押して初めて説明文に入るので、自動でタグが付くことはありません。
+          空白・カンマ・改行で区切って複数書けます（`#` は付けても付けなくても可）。
+          空なら候補を出しません。
+        </span>
+        {parseHashtagSuggestions(form.hashtagSuggestions).length > 0 ? (
+          <span className="mt-1 block text-xs text-slate-600">
+            保存される候補:{" "}
+            {parseHashtagSuggestions(form.hashtagSuggestions)
+              .map((tag) => `#${tag}`)
+              .join("  ")}
+          </span>
+        ) : null}
+      </label>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <label className="block">

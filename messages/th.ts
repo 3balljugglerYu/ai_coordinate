@@ -174,6 +174,8 @@ export const thMessages = {
     editModalDescription: "แก้ไขคำบรรยาย (ไม่เกิน {max} ตัวอักษร)",
     captionLabel: "คำบรรยาย",
     captionPlaceholder: "อธิบายรูปภาพ (เลือกได้)",
+    hashtagSuggestionsLabel: "แท็กแนะนำ",
+    hashtagPopularLabel: "ยอดนิยม",
     captionTooLong: "คำบรรยายยาวเกิน {max} ตัวอักษรไม่ได้",
     charactersRemaining: "เหลืออีก {count} ตัวอักษร",
     cancel: "ยกเลิก",

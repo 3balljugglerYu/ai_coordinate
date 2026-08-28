@@ -174,6 +174,8 @@ export const zhTwMessages = {
     editModalDescription: "編輯說明 (最多 {max} 字)。",
     captionLabel: "說明",
     captionPlaceholder: "描述這張圖片 (選填)",
+    hashtagSuggestionsLabel: "標籤推薦",
+    hashtagPopularLabel: "熱門標籤",
     captionTooLong: "說明不能超過 {max} 字。",
     charactersRemaining: "還可輸入 {count} 字",
     cancel: "取消",

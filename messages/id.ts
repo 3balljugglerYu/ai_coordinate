@@ -174,6 +174,8 @@ export const idMessages = {
     editModalDescription: "Edit keterangan (hingga {max} karakter).",
     captionLabel: "Keterangan",
     captionPlaceholder: "Jelaskan gambar (opsional)",
+    hashtagSuggestionsLabel: "Tag yang disarankan",
+    hashtagPopularLabel: "Populer",
     captionTooLong: "Keterangan tidak boleh lebih dari {max} karakter.",
     charactersRemaining: "Sisa {count} karakter",
     cancel: "Batal",

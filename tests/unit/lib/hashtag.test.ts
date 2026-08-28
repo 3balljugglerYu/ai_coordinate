@@ -3,6 +3,10 @@
 import {
   buildHashtagSearchHref,
   extractHashtags,
+  findHashtagQueryAt,
+  HASHTAG_SUGGESTIONS_MAX,
+  isValidHashtagName,
+  parseHashtagSuggestions,
   HASHTAG_MAX_LENGTH,
   HASHTAG_MAX_PER_POST,
   normalizeHashtag,
@@ -256,6 +260,111 @@ describe("hashtag", () => {
       expect(buildHashtagSearchHref("冬服_みきふく")).toBe(
         "/search?q=%23%E5%86%AC%E6%9C%8D_%E3%81%BF%E3%81%8D%E3%81%B5%E3%81%8F",
       );
+    });
+  });
+
+
+  describe("企画ごとのタグ候補（admin 入力）", () => {
+    test("改行・カンマ・空白のどれで区切っても読む", () => {
+      expect(
+        parseHashtagSuggestions("うちの子のオーストラリア旅行\n豪州旅行, 旅行")
+      ).toEqual(["うちの子のオーストラリア旅行", "豪州旅行", "旅行"]);
+    });
+
+    test("`#` を付けて書かれても受け付ける", () => {
+      expect(parseHashtagSuggestions("#冬服 ＃ニット")).toEqual([
+        "冬服",
+        "ニット",
+      ]);
+    });
+
+    test("タグにできない書き方は捨てる", () => {
+      // 全数字・空文字は投稿してもタグにならない。設定できると迷わせるだけ
+      expect(parseHashtagSuggestions("123 冬服")).toEqual(["冬服"]);
+    });
+
+    test("同じタグは畳む（大文字小文字を区別しない）", () => {
+      expect(parseHashtagSuggestions("AI ai Ai")).toEqual(["AI"]);
+    });
+
+    test("上限を超えた分は捨てる", () => {
+      const raw = "a1 b1 c1 d1 e1 f1 g1";
+      expect(parseHashtagSuggestions(raw)).toHaveLength(HASHTAG_SUGGESTIONS_MAX);
+    });
+
+    test("isValidHashtagName は抽出規則そのもので判定する", () => {
+      expect(isValidHashtagName("冬服")).toBe(true);
+      expect(isValidHashtagName("冬服_みきふく")).toBe(true);
+      // 空白入り・`#` 入り・全数字は、説明文に書いてもタグにならない
+      expect(isValidHashtagName("冬 服")).toBe(false);
+      expect(isValidHashtagName("冬服#")).toBe(false);
+      expect(isValidHashtagName("123")).toBe(false);
+      expect(isValidHashtagName("")).toBe(false);
+    });
+  });
+
+
+  describe("入力中のタグ検出（findHashtagQueryAt）", () => {
+    test("打ちかけのタグを取り出す", () => {
+      const text = "今日は #冬";
+      expect(findHashtagQueryAt(text, text.length)).toEqual({
+        start: 4,
+        end: 6,
+        query: "冬",
+      });
+    });
+
+    test("`#` を打っただけでも検出する（候補を出すかは呼び出し側の判断）", () => {
+      expect(findHashtagQueryAt("#", 1)).toEqual({
+        start: 0,
+        end: 1,
+        query: "",
+      });
+    });
+
+    test("カーソルがタグの外なら null", () => {
+      const text = "#冬服 です";
+      expect(findHashtagQueryAt(text, text.length)).toBeNull();
+    });
+
+    test("タグの途中にカーソルがあればそこまでを返す", () => {
+      // 「#冬服」の「冬」の直後
+      expect(findHashtagQueryAt("#冬服", 2)).toEqual({
+        start: 0,
+        end: 2,
+        query: "冬",
+      });
+    });
+
+    test("直前が文字ならタグではない", () => {
+      expect(findHashtagQueryAt("abc#冬", 5)).toBeNull();
+    });
+
+    test("`#` が連続していたらタグではない", () => {
+      expect(findHashtagQueryAt("##冬", 3)).toBeNull();
+    });
+
+    test("全角 ＃ でも検出する", () => {
+      expect(findHashtagQueryAt("＃冬", 2)).toEqual({
+        start: 0,
+        end: 2,
+        query: "冬",
+      });
+    });
+
+    test("サロゲートペアの文字でも検出する", () => {
+      // コードユニット単位で戻ると、ペアの後半だけを見て必ず null になる。
+      // 保存側は 𠮷 を有効なタグとして扱うので、経路ごとに規則がズレる
+      const text = "#\u{20BB7}";
+      expect(findHashtagQueryAt(text, text.length)).toEqual({
+        start: 0,
+        end: text.length,
+        query: "\u{20BB7}",
+      });
+    });
+
+    test("タグが無い本文では null", () => {
+      expect(findHashtagQueryAt("ただの本文", 3)).toBeNull();
     });
   });
 });

@@ -174,6 +174,8 @@ export const frMessages = {
     editModalDescription: "Modifiez la légende (jusqu'à {max} caractères).",
     captionLabel: "Légende",
     captionPlaceholder: "Décrivez l'image (facultatif)",
+    hashtagSuggestionsLabel: "Tags suggérés",
+    hashtagPopularLabel: "Populaires",
     captionTooLong: "La légende ne doit pas dépasser {max} caractères.",
     charactersRemaining: "{count} caractères restants",
     cancel: "Annuler",

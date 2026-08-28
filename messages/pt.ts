@@ -174,6 +174,8 @@ export const ptMessages = {
     editModalDescription: "Edite a legenda (até {max} caracteres).",
     captionLabel: "Legenda",
     captionPlaceholder: "Descreva a imagem (opcional)",
+    hashtagSuggestionsLabel: "Tags sugeridas",
+    hashtagPopularLabel: "Populares",
     captionTooLong: "A legenda deve ter no máximo {max} caracteres.",
     charactersRemaining: "{count} caracteres restantes",
     cancel: "Cancelar",
