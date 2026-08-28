@@ -57,4 +57,22 @@ describe("parseGenerationTipOverrideFields", () => {
       value: { generationTipJa: "日本語", generationTipEn: "English" },
     });
   });
+
+
+  test("テキスト以外が来たらエラー", () => {
+    const formData = new FormData();
+    formData.append("generation_tip_ja", new Blob(["x"]));
+
+    const result = parseGenerationTipOverrideFields(formData);
+
+    expect(result.ok).toBe(false);
+  });
+
+  test("英語だけの上限超過も弾く", () => {
+    const result = parseGenerationTipOverrideFields(
+      formDataOf({ generation_tip_en: "a".repeat(MAX_GENERATION_TIP_LENGTH + 1) })
+    );
+
+    expect(result.ok).toBe(false);
+  });
 });
