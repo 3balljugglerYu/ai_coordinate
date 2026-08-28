@@ -98,12 +98,11 @@ flowchart TD
 
 > うちの子の冬コーデ☃️ #冬服 #ニット
 
-入力欄では普通の文字のまま（MVP では入力中の装飾はしない）。投稿すると、
-フィードのキャプションで **#冬服 と #ニット だけが青いリンク**になっている。
-自分の投稿にタグが付いた、と一目で分かる。
+**入力しているそばから、#冬服 が青くなる。** タグとして成立している、と
+書きながら分かる。投稿するとフィードでも同じ場所が青いリンクになっている。
 
-`#冬服#ニット` と続けて書いてしまった場合はどちらもリンクにならない。
-X と同じ挙動なので「あ、スペースが要るんだった」で通じる。
+`#冬服#` と続けて打った瞬間、**青が消えて普通の文字に戻る**。
+「あ、スペースが要るんだ」と、その場で気づいて直せる。X と同じ挙動。
 
 ### ② タグから作品を探す人（この機能の本命）
 
@@ -145,7 +144,8 @@ X と同じ使い分けなので、説明は要らない。
 - REQ-06: While 段階公開中, the system shall 検索の入口（ヘッダーの検索バーと `/search`）を運営権限のみに表示する。一般ユーザーには従来どおり閉じたまま
 - REQ-07: 権限: `hashtags` / `post_hashtags` は誰でも読める（公開投稿の派生情報のため）。書き込みは service_role の RPC のみ。クライアント直書き不可
 - REQ-08: If 投稿が非公開・削除・公開停止になったとき, then タグ検索の結果に**出ない**こと（既存の可視性フィルタが効く設計にする。post_hashtags の行削除には依存しない）
-- REQ-09: タグ抽出の規則は TS の 1 箇所を正本とし、表示リンク化と抽出が同じ関数を使う
+- REQ-09: タグ抽出の規則は TS の 1 箇所を正本とし、**入力中の着色・表示リンク化・抽出**の3つが同じ関数を使う
+- REQ-10: While キャプションを入力しているとき, the system shall タグとして成立している範囲を即座に青く表示し、成立しなくなったら（例: `#冬服#`）即座に通常表示へ戻す（**MVP 必須**）
 
 ## ADR
 
@@ -175,6 +175,21 @@ X と同じ使い分けなので、説明は要らない。
 - Context: `SEARCH_ENABLED` はクライアント定数。admin 判定（env の ID リスト）はサーバー秘匿
 - Decision: サーバーレイアウト/ページで `isAdminViewer` を判定し、`searchEnabled` として StickyHeader / キャプション表示へ props で渡す。一般公開時はこの値を全員 true にする（env フラグ）
 - Consequence: props の通り道が数ファイルに渡る。実装時にレイアウト構成を確認して最短経路を選ぶ（Phase 4 の最初の TODO）
+
+### ADR-005: 入力中の着色はオーバーレイ方式（contenteditable にしない）
+
+- Context: `<textarea>` は文字単位の色付けができない。入力中の青色表示（REQ-10）には
+  (a) contenteditable で自前エディタ化、(b) 透明文字の textarea の背後に同じテキストを
+  着色描画するオーバーレイ、の2方式がある
+- Decision: **(b) オーバーレイ方式**。textarea の文字色を透明にし（キャレットは残す）、
+  背後に同一のフォント・行間・折返しで `tokenizeWithHashtags` の結果を描画する
+- Reason: **日本語 IME との相性**。contenteditable は変換中テキストと React の制御が
+  衝突しやすく、undo・ペースト・モバイルキーボードで既知の地雷が多い。オーバーレイは
+  入力そのものが素の textarea のままなので、IME・undo・スマホの挙動を一切壊さない
+- Consequence: textarea と背面レイヤの**表示位置を完全一致**させる必要がある
+  （フォント・パディング・折返し・スクロール同期）。ズレると青の位置が文字とずれる。
+  実機（iOS Safari）での検証を必須とする。X の「成立しなくなったら白に戻る」挙動は、
+  トークナイザを共有しているだけで自然に再現される
 
 ## 実装フェーズ
 
@@ -217,14 +232,18 @@ flowchart LR
 - [ ] 遡りスクリプト: 公開 visible の caption 全件に `extractHashtags` → `sync_post_hashtags`（実測 1 件だが全件を通す。以後の運用にも使える）
 - [ ] 投稿取消/削除時は触らない（REQ-08: 検索側の可視性フィルタで消えるため）
 
-### Phase 4: 表示リンク化
-目的: キャプションの `#タグ` がリンクになる
-ビルド確認: lint / typecheck / test / build
+### Phase 4: 表示リンク化と入力中の着色
+目的: キャプションの `#タグ` がリンクになる。入力中もその場で青くなる
+ビルド確認: lint / typecheck / test / build + **iOS 実機（IME・折返し・スクロール）**
 
 - [ ] props の通り道を確認（ADR-004。`searchEnabled` をどこから渡すか）
 - [ ] `lib/linkify.tsx` にハッシュタグトークンを追加（`tokenizeWithHashtags` を利用）。`FeedCaption` と `CollapsibleText` の両方に効くことを確認
 - [ ] `searchEnabled=false` のときはリンク化しない（プレーン表示。リンクだけ出て 404 を防ぐ）
 - [ ] リンクは `next/link` で `/search?q=%23タグ`。フィードカード内はカード遷移と競合しないよう `stopPropagation`（`FeedCaption` の既存作法に合わせる）
+- [ ] **入力ハイライト部品 `HashtagHighlightTextarea`**（ADR-005 のオーバーレイ方式）。素の textarea + 背面レイヤ、スクロール同期、`tokenizeWithHashtags` 共有
+- [ ] `PostModal` と `EditPostModal` のキャプション欄を差し替え（見た目・挙動は textarea のまま）
+- [ ] 入力中の着色も `searchEnabled` でゲート（段階公開中、一般ユーザーには青を見せない。フィード表示と一貫させる）
+- [ ] iOS 実機で IME 変換中・改行折返し・長文スクロールの位置ズレがないことを確認
 
 ### Phase 5: 検索と段階公開
 目的: 運営だけが統合検索を使える状態
@@ -260,6 +279,9 @@ flowchart LR
 | `app/api/posts/update/route.ts` | 修正 | 編集後にタグ同期 |
 | `scripts/backfill-hashtags.ts`（相当） | 新規 | 遡り抽出 |
 | `lib/linkify.tsx` | 修正 | ハッシュタグトークン追加 |
+| `features/posts/components/HashtagHighlightTextarea.tsx` | 新規 | 入力中の着色（オーバーレイ方式） |
+| `features/posts/components/PostModal.tsx` | 修正 | キャプション欄を差し替え |
+| `features/posts/components/EditPostModal.tsx` | 修正 | 同上 |
 | `features/posts/components/FeedCaption.tsx` | 修正 | タグリンク描画 + searchEnabled |
 | `features/posts/components/CollapsibleText.tsx` | 修正 | 同上 |
 | `features/posts/lib/search-filters.ts` | 修正 | `#` 分岐 |
@@ -272,6 +294,8 @@ flowchart LR
 ## 品質・テスト観点
 
 - [ ] X 実測 5 例がすべてテストで固定されている（特に `#冬服#みきふく` → タグなし）
+- [ ] 入力中の着色: IME 変換中に崩れない・折返しやスクロールで青の位置がズレない（iOS 実機）
+- [ ] 入力中の着色と投稿後のリンク位置が一致する（トークナイザ共有の確認）
 - [ ] タグ同期失敗で投稿が失敗しない（REQ-02）
 - [ ] 非公開・削除・公開停止の投稿がタグ検索に出ない（REQ-08）
 - [ ] 一般ユーザーに検索バー・タグリンクが一切見えない（段階公開中）
