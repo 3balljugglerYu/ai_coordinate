@@ -184,4 +184,38 @@ describe("linkify", () => {
       expect(tokens[1]).toEqual({ type: "text", value: "、次は" });
     });
   });
+
+  describe("ハッシュタグ（opt-in）", () => {
+    test("既定ではタグをトークンにしない（bio やコメントで使うため）", () => {
+      const tokens = linkify("#冬服 が好き");
+      expect(tokens).toEqual([{ type: "text", value: "#冬服 が好き" }]);
+    });
+
+    test("hashtags を有効にするとタグトークンを返す", () => {
+      const tokens = linkify("今日は #冬服", { hashtags: true });
+      expect(tokens).toEqual([
+        { type: "text", value: "今日は " },
+        {
+          type: "hashtag",
+          name: "冬服",
+          normalized: "冬服",
+          rawValue: "#冬服",
+        },
+      ]);
+    });
+
+    test("URL のフラグメントはタグにしない", () => {
+      const tokens = linkify("https://example.com/a#section", {
+        hashtags: true,
+      });
+      expect(tokens.some((token) => token.type === "hashtag")).toBe(false);
+      expect(tokens[0].type).toBe("link");
+    });
+
+    test("URL とタグが混在しても両方リンクになる", () => {
+      const tokens = linkify("https://example.com #冬服", { hashtags: true });
+      expect(tokens.filter((token) => token.type === "link")).toHaveLength(1);
+      expect(tokens.filter((token) => token.type === "hashtag")).toHaveLength(1);
+    });
+  });
 });

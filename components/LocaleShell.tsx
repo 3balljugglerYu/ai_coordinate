@@ -10,6 +10,8 @@ import { Ga4LoginStatus } from "@/features/analytics/components/Ga4LoginStatus";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { PostProgressHost } from "@/features/posts/components/PostProgressHost";
+import { SearchAvailabilityProvider } from "@/features/posts/components/SearchAvailabilityProvider";
+import { SearchAvailabilityLoader } from "@/features/posts/components/SearchAvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -32,7 +34,19 @@ export async function LocaleShell({
     <NextIntlClientProvider locale={locale} messages={messages}>
       <LocaleDocumentAttributes />
       <UnreadNotificationProvider>
-        <MissionDotProvider>{appContent}</MissionDotProvider>
+        <MissionDotProvider>
+          <SearchAvailabilityProvider>
+            {appContent}
+            {/*
+              検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
+              認証を引くため独立した Suspense に置く（ここを appContent と
+              同じ境界にすると、全ページが認証待ちになる）。
+            */}
+            <Suspense fallback={null}>
+              <SearchAvailabilityLoader />
+            </Suspense>
+          </SearchAvailabilityProvider>
+        </MissionDotProvider>
       </UnreadNotificationProvider>
       {/*
         ナビゲーション中も生き残る必要があるため、Suspense 境界（appContent）の

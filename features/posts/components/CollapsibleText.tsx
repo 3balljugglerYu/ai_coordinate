@@ -2,9 +2,12 @@
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ChevronDown } from "lucide-react";
 import { linkify as linkifyText } from "@/lib/linkify";
+import { buildHashtagSearchHref } from "@/lib/hashtag";
+import { useSearchAvailable } from "./SearchAvailabilityProvider";
 
 interface CollapsibleTextProps {
   text: string;
@@ -12,6 +15,12 @@ interface CollapsibleTextProps {
   className?: string;
   textClassName?: string;
   linkify?: boolean;
+  /**
+   * `#タグ` もリンクにする。**キャプションでだけ true にすること。**
+   * この部品はプロフィール文・コメント・プロンプト表示でも使われており、
+   * そこのタグは保存も検索もされていない。
+   */
+  linkifyHashtags?: boolean;
 }
 
 /**
@@ -24,31 +33,51 @@ export function CollapsibleText({
   className = "",
   textClassName = "text-gray-700",
   linkify = false,
+  linkifyHashtags = false,
 }: CollapsibleTextProps) {
   const postsT = useTranslations("posts");
+  // 呼び出し側が許可し、かつ検索が開いているときだけタグをリンクにする
+  const searchAvailable = useSearchAvailable();
+  const hashtagsEnabled = linkifyHashtags && searchAvailable;
   const [isExpanded, setIsExpanded] = useState(false);
   const [shouldShowButton, setShouldShowButton] = useState(false);
   const textRef = useRef<HTMLParagraphElement>(null);
 
   const renderedContent = useMemo(() => {
     if (!linkify) return text;
-    return linkifyText(text).map((token, index) =>
-      token.type === "link" ? (
-        <a
-          key={index}
-          href={token.href}
-          target="_blank"
-          rel="noopener noreferrer nofollow"
-          title={token.rawValue}
-          className="text-blue-600 hover:underline break-all"
-        >
-          {token.displayValue}
-        </a>
-      ) : (
-        <span key={index}>{token.value}</span>
-      )
+    return linkifyText(text, { hashtags: hashtagsEnabled }).map(
+      (token, index) => {
+        if (token.type === "link") {
+          return (
+            <a
+              key={index}
+              href={token.href}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              title={token.rawValue}
+              className="text-blue-600 hover:underline break-all"
+            >
+              {token.displayValue}
+            </a>
+          );
+        }
+
+        if (token.type === "hashtag") {
+          return (
+            <Link
+              key={index}
+              href={buildHashtagSearchHref(token.normalized)}
+              className="text-blue-600 hover:underline break-all"
+            >
+              {token.rawValue}
+            </Link>
+          );
+        }
+
+        return <span key={index}>{token.value}</span>;
+      }
     );
-  }, [text, linkify]);
+  }, [text, linkify, hashtagsEnabled]);
 
   useEffect(() => {
     if (textRef.current) {
