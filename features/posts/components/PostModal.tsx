@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
+import { HashtagHighlightTextarea } from "./HashtagHighlightTextarea";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { GenerationType } from "@/features/generation/types";
@@ -309,10 +309,10 @@ export function PostModal({
 
             <div className="space-y-2">
               <Label htmlFor="caption">{t("captionLabel")}</Label>
-              <Textarea
+              <HashtagHighlightTextarea
                 id="caption"
                 value={caption}
-                onChange={(e) => setCaption(e.target.value)}
+                onChange={setCaption}
                 placeholder={t("captionPlaceholder")}
                 rows={4}
                 maxLength={MAX_CAPTION_LENGTH}
