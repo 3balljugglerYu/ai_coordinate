@@ -176,20 +176,25 @@ X と同じ使い分けなので、説明は要らない。
 - Decision: サーバーレイアウト/ページで `isAdminViewer` を判定し、`searchEnabled` として StickyHeader / キャプション表示へ props で渡す。一般公開時はこの値を全員 true にする（env フラグ）
 - Consequence: props の通り道が数ファイルに渡る。実装時にレイアウト構成を確認して最短経路を選ぶ（Phase 4 の最初の TODO）
 
-### ADR-005: 入力中の着色はオーバーレイ方式（contenteditable にしない）
+### ADR-005: 入力中の着色はオーバーレイ方式。実装は `rich-textarea` を第一候補にする
 
 - Context: `<textarea>` は文字単位の色付けができない。入力中の青色表示（REQ-10）には
   (a) contenteditable で自前エディタ化、(b) 透明文字の textarea の背後に同じテキストを
-  着色描画するオーバーレイ、の2方式がある
-- Decision: **(b) オーバーレイ方式**。textarea の文字色を透明にし（キャレットは残す）、
-  背後に同一のフォント・行間・折返しで `tokenizeWithHashtags` の結果を描画する
-- Reason: **日本語 IME との相性**。contenteditable は変換中テキストと React の制御が
-  衝突しやすく、undo・ペースト・モバイルキーボードで既知の地雷が多い。オーバーレイは
-  入力そのものが素の textarea のままなので、IME・undo・スマホの挙動を一切壊さない
-- Consequence: textarea と背面レイヤの**表示位置を完全一致**させる必要がある
-  （フォント・パディング・折返し・スクロール同期）。ズレると青の位置が文字とずれる。
-  実機（iOS Safari）での検証を必須とする。X の「成立しなくなったら白に戻る」挙動は、
-  トークナイザを共有しているだけで自然に再現される
+  着色描画するオーバーレイ、の2方式がある。(b) は自作もできるが、既存ライブラリがある
+- Decision: **(b) オーバーレイ方式**とし、自作せず **`rich-textarea`**（inokawa 作）を
+  第一候補に採用する。renderer に `tokenizeWithHashtags` を渡すだけで着色できる
+- Reason:
+  - contenteditable は日本語 IME・undo・ペースト・モバイルで既知の地雷が多い。
+    オーバーレイは入力が素の textarea のままなので、これらを壊さない
+  - `rich-textarea` は方式(b)の実装として **IME の composition 処理を内蔵**し、
+    位置合わせ（フォント・折返し・スクロール同期）という自作時の最難部を引き受ける
+  - 健全性を確認済み（2026-08-28 時点）: 最新 0.27.1 が **2026-07-13 公開**（活発）、
+    **週 6.6 万 DL**、**依存ゼロ**（peer は react >=16.14 のみ）、gzip 約 3kB
+  - 比較した `react-highlight-within-textarea` は **draft-js 依存**（Meta がアーカイブ
+    した旧エディタ）で 2024 年から更新なし。除外
+- Consequence: 外部依存が 1 つ増える。React 19 での動作と iOS 実機（IME 変換中・
+  折返し・スクロール）の検証を Phase 4 の最初に行い、**問題があれば同方式の自作へ
+  フォールバック**する（トークナイザは共有なので差し替えは局所）
 
 ## 実装フェーズ
 
@@ -240,7 +245,8 @@ flowchart LR
 - [ ] `lib/linkify.tsx` にハッシュタグトークンを追加（`tokenizeWithHashtags` を利用）。`FeedCaption` と `CollapsibleText` の両方に効くことを確認
 - [ ] `searchEnabled=false` のときはリンク化しない（プレーン表示。リンクだけ出て 404 を防ぐ）
 - [ ] リンクは `next/link` で `/search?q=%23タグ`。フィードカード内はカード遷移と競合しないよう `stopPropagation`（`FeedCaption` の既存作法に合わせる）
-- [ ] **入力ハイライト部品 `HashtagHighlightTextarea`**（ADR-005 のオーバーレイ方式）。素の textarea + 背面レイヤ、スクロール同期、`tokenizeWithHashtags` 共有
+- [ ] **最初に `rich-textarea` の検証**（ADR-005）: React 19 で動くか・iOS 実機で IME とズレが出ないか。NG なら同方式を自作へ切替
+- [ ] 入力ハイライト部品 `HashtagHighlightTextarea`（`rich-textarea` を包み、renderer に `tokenizeWithHashtags` を渡す）
 - [ ] `PostModal` と `EditPostModal` のキャプション欄を差し替え（見た目・挙動は textarea のまま）
 - [ ] 入力中の着色も `searchEnabled` でゲート（段階公開中、一般ユーザーには青を見せない。フィード表示と一貫させる）
 - [ ] iOS 実機で IME 変換中・改行折返し・長文スクロールの位置ズレがないことを確認
@@ -279,7 +285,8 @@ flowchart LR
 | `app/api/posts/update/route.ts` | 修正 | 編集後にタグ同期 |
 | `scripts/backfill-hashtags.ts`（相当） | 新規 | 遡り抽出 |
 | `lib/linkify.tsx` | 修正 | ハッシュタグトークン追加 |
-| `features/posts/components/HashtagHighlightTextarea.tsx` | 新規 | 入力中の着色（オーバーレイ方式） |
+| `package.json` | 修正 | `rich-textarea` 追加（依存ゼロ・3kB。ADR-005） |
+| `features/posts/components/HashtagHighlightTextarea.tsx` | 新規 | 入力中の着色（rich-textarea + 共有トークナイザ） |
 | `features/posts/components/PostModal.tsx` | 修正 | キャプション欄を差し替え |
 | `features/posts/components/EditPostModal.tsx` | 修正 | 同上 |
 | `features/posts/components/FeedCaption.tsx` | 修正 | タグリンク描画 + searchEnabled |
