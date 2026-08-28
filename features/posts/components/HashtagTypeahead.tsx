@@ -17,8 +17,9 @@ import { useSearchAvailable } from "./SearchAvailabilityProvider";
  * - **Enter では選ばない**。Enter は変換の確定に使われるので、候補の決定に
  *   割り当てると「確定したつもりでタグが入る」事故になる。押す（タップ）だけ
  *
- * 位置合わせの都合でキャレット直下に浮かせず、入力欄の下に並べる。
- * モーダルの中でも切れず、モバイルでも押しやすい。
+ * 表示は入力欄の直下に重ねる縦のリスト（X と同じ形）。キャレット直下への
+ * 追従はしない。位置合わせが要らず、モーダルの中でも切れず、1行1件なので
+ * 長いタグでも潰れず押しやすい。
  */
 
 interface Props {
@@ -108,29 +109,60 @@ export function HashtagTypeahead({
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">
-        {t("hashtagPopularLabel")}
-      </span>
-      {items.map((item) => (
-        <button
-          key={item.name}
-          type="button"
-          disabled={disabled}
-          /*
-            押した瞬間に textarea の blur が先に走ると、カーソル位置が消えて
-            この候補ごと消える（= タップしても何も入らない）。
-            mousedown の既定動作を止めてフォーカスを textarea に残す。
-            click は従来どおり発火する。
-          */
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => handleSelect(item.name)}
-          className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50"
-        >
-          #{item.name}
-          <span className="ml-1 text-slate-400">{item.post_count}</span>
-        </button>
-      ))}
+    <div
+      /*
+        listbox/option の ARIA は付けない。矢印キーでの移動と Enter での決定を
+        意図的に持たない（Enter は日本語変換の確定に使われる）ため、
+        listbox と名乗ると読み上げ側の期待と実際の操作がズレる。
+        素のボタンの並びとして扱う。
+      */
+      role="group"
+      aria-label={t("hashtagPopularLabel")}
+      className="absolute inset-x-0 top-full z-50 mt-1 max-h-56 overflow-y-auto rounded-md border border-slate-200 bg-white py-1 shadow-lg"
+    >
+      {items.map((item) => {
+        const [typed, rest] = splitByTypedPart(item.name, query);
+        return (
+          <button
+            key={item.name}
+            type="button"
+            // 表示は打った部分と続きで分けるが、読み上げと操作の名前は
+            // タグ全体で1つにする（分割した要素の間に空白が入るため）
+            aria-label={`#${item.name}`}
+            disabled={disabled}
+            /*
+              押した瞬間に textarea の blur が先に走ると、カーソル位置が消えて
+              この候補ごと消える（= タップしても何も入らない）。
+              mousedown の既定動作を止めてフォーカスを textarea に残す。
+              click は従来どおり発火する。
+            */
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => handleSelect(item.name)}
+            className="flex w-full items-center px-4 py-3 text-left text-sm transition-colors hover:bg-slate-50 disabled:opacity-50"
+          >
+            <span className="text-slate-500">#{typed}</span>
+            <span className="font-semibold text-slate-900">{rest}</span>
+          </button>
+        );
+      })}
     </div>
   );
+}
+
+/**
+ * 打った部分と補完される部分に分ける（打った側を細字、続きを太字で出す）。
+ *
+ * 正規化で文字数が変わる表記（半角カナなど）では境界がずれるため、
+ * 一致を確かめられたときだけ分ける。確かめられなければ全体を続き扱いにする。
+ */
+function splitByTypedPart(name: string, query: string): [string, string] {
+  const nameChars = [...name];
+  const queryLength = [...query].length;
+  const head = nameChars.slice(0, queryLength).join("");
+
+  if (normalizeHashtag(head) !== normalizeHashtag(query)) {
+    return ["", name];
+  }
+
+  return [head, nameChars.slice(queryLength).join("")];
 }

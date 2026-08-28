@@ -77,7 +77,8 @@ export function HashtagHighlightTextarea({
   }
 
   return (
-    <div className="space-y-2" ref={wrapperRef}>
+    // 候補リストを直下に重ねるための基準
+    <div className="relative" ref={wrapperRef}>
     <RichTextarea
       id={id}
       value={value}
