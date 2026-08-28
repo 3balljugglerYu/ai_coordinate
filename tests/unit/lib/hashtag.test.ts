@@ -3,6 +3,7 @@
 import {
   buildHashtagSearchHref,
   extractHashtags,
+  findHashtagQueryAt,
   HASHTAG_SUGGESTIONS_MAX,
   isValidHashtagName,
   parseHashtagSuggestions,
@@ -299,6 +300,60 @@ describe("hashtag", () => {
       expect(isValidHashtagName("冬服#")).toBe(false);
       expect(isValidHashtagName("123")).toBe(false);
       expect(isValidHashtagName("")).toBe(false);
+    });
+  });
+
+
+  describe("入力中のタグ検出（findHashtagQueryAt）", () => {
+    test("打ちかけのタグを取り出す", () => {
+      const text = "今日は #冬";
+      expect(findHashtagQueryAt(text, text.length)).toEqual({
+        start: 4,
+        end: 6,
+        query: "冬",
+      });
+    });
+
+    test("`#` を打っただけでも検出する（候補を出すかは呼び出し側の判断）", () => {
+      expect(findHashtagQueryAt("#", 1)).toEqual({
+        start: 0,
+        end: 1,
+        query: "",
+      });
+    });
+
+    test("カーソルがタグの外なら null", () => {
+      const text = "#冬服 です";
+      expect(findHashtagQueryAt(text, text.length)).toBeNull();
+    });
+
+    test("タグの途中にカーソルがあればそこまでを返す", () => {
+      // 「#冬服」の「冬」の直後
+      expect(findHashtagQueryAt("#冬服", 2)).toEqual({
+        start: 0,
+        end: 2,
+        query: "冬",
+      });
+    });
+
+    test("直前が文字ならタグではない", () => {
+      expect(findHashtagQueryAt("abc#冬", 5)).toBeNull();
+    });
+
+    test("`#` が連続していたらタグではない", () => {
+      expect(findHashtagQueryAt("##冬", 3)).toBeNull();
+    });
+
+    test("全角 ＃ でも検出する", () => {
+      expect(findHashtagQueryAt("＃冬", 2)).toEqual({
+        start: 0,
+        end: 2,
+        query: "冬",
+      });
+    });
+
+    test("タグが無い本文では null", () => {
+      expect(findHashtagQueryAt("ただの本文", 3)).toBeNull();
     });
   });
 });

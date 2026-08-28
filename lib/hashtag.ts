@@ -55,6 +55,8 @@ const VARIATION_SELECTORS = /[\uFE0E\uFE0F]/;
 // タグ本体に使える文字は Unicode の文字・結合文字・数字 + `_`。
 // 日本語限定にしないのは、アプリが 15 ロケール（ko/th/hi/ar 含む）で動くため。
 const HASHTAG_CANDIDATE = /[#＃][\p{L}\p{M}\p{Nd}_]+/gu;
+/** 1文字がタグ本体に使えるか（書きかけの検出に使う）。 */
+const TAG_CHAR_ONLY = /^[\p{L}\p{M}\p{Nd}_]$/u;
 
 interface HashtagMatch {
   start: number;
@@ -168,6 +170,46 @@ export function tokenizeWithHashtags(text: string): HashtagToken[] {
   }
 
   return tokens;
+}
+
+/**
+ * 入力位置がタグの途中かどうかを見て、書きかけのタグを取り出す。
+ *
+ * 「いま `#冬` まで打った」を検出して候補を出すために使う。書きかけなので
+ * {@link extractHashtags} では拾えない（まだタグとして完成していない）。
+ *
+ * @param caret 現在のカーソル位置（この手前までを見る）
+ * @returns 置き換え範囲と `#` を除いた入力中の文字。タグの途中でなければ null
+ */
+export function findHashtagQueryAt(
+  text: string,
+  caret: number
+): { start: number; end: number; query: string } | null {
+  if (caret < 0 || caret > text.length) return null;
+
+  let index = caret;
+  while (index > 0 && TAG_CHAR_ONLY.test(text[index - 1])) {
+    index -= 1;
+  }
+
+  // 直前が `#` でなければタグを書いている途中ではない
+  if (index === 0 || !HASH_SIGN.test(text[index - 1])) return null;
+
+  const signIndex = index - 1;
+  const preceding = precedingChar(text, signIndex);
+  if (
+    preceding &&
+    !VARIATION_SELECTORS.test(preceding) &&
+    (INVALID_PRECEDING.test(preceding) || HASH_SIGN.test(preceding))
+  ) {
+    return null;
+  }
+
+  return {
+    start: signIndex,
+    end: caret,
+    query: text.slice(index, caret),
+  };
 }
 
 /** 1つの企画（プリセットカテゴリ）に設定できるタグ候補の上限。 */
