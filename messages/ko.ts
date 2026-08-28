@@ -1719,6 +1719,7 @@ export const koMessages = {
     sourceImageReadFailed: "원본 이미지를 불러오지 못했습니다. 이미지를 다시 선택한 후 다시 시도해 주세요.",
     noCreditsFlow: "이 화면에서는 Percoin을 확인하거나 사용하지 않습니다.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "원포인트 조언",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

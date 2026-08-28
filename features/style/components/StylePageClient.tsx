@@ -44,6 +44,8 @@ import {
   resolveUserPromptMaxLength,
   resolveUserPromptPlaceholder,
 } from "@/features/style-presets/lib/resolve-user-prompt-settings";
+import { GenerationTipCard } from "@/features/style/components/GenerationTipCard";
+import { resolveGenerationTip } from "@/features/style-presets/lib/resolve-generation-tip";
 import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import { useImageSourcePicker } from "@/features/generation/hooks/useImageSourcePicker";
 import type { SourceImageStock } from "@/features/generation/lib/database";
@@ -2034,6 +2036,16 @@ export function StylePageClient({
             </div>
           </section>
         </div>
+
+        {(() => {
+          // うちの子カードと生成オプションの間。生成の操作についての助言なので、
+          // 選択肢の手前で目に入る位置に置く
+          if (!selectedPreset) return null;
+          const tip = resolveGenerationTip(selectedPreset, styleCardLocale);
+          return tip ? (
+            <GenerationTipCard tip={tip} label={t("generationTipLabel")} />
+          ) : null;
+        })()}
 
         <Card className="p-6">
           <div className="space-y-6">

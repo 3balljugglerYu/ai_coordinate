@@ -81,6 +81,8 @@ export function StylePresetForm({
         outputAspectRatioMode: preset.category.outputAspectRatioMode,
         userGuidanceJa: preset.category.userGuidanceJa,
         userGuidanceEn: preset.category.userGuidanceEn,
+        generationTipJa: preset.category.generationTipJa,
+        generationTipEn: preset.category.generationTipEn,
         showSourceImageTypeControl: preset.category.showSourceImageTypeControl,
         showBackgroundChangeControl: preset.category.showBackgroundChangeControl,
         showGenerationModelControl: preset.category.showGenerationModelControl,
@@ -146,6 +148,13 @@ export function StylePresetForm({
   const [referenceFile, setReferenceFile] = useState<File | null>(null);
   const [referencePreviewUrl, setReferencePreviewUrl] = useState<string | null>(
     preset?.referenceImageUrl ?? null,
+  );
+  // ワンポイントアドバイスのスタイル別上書き。空 = カテゴリ設定へ継承。
+  const [generationTipJa, setGenerationTipJa] = useState(
+    preset?.generationTipJa ?? ""
+  );
+  const [generationTipEn, setGenerationTipEn] = useState(
+    preset?.generationTipEn ?? ""
   );
   // ユーザープロンプト入力欄のスタイル別上書き。空 = カテゴリ設定へ継承。
   const [userPromptLabel, setUserPromptLabel] = useState(
@@ -287,6 +296,9 @@ export function StylePresetForm({
       formData.append("user_prompt_label", userPromptLabel);
       formData.append("user_prompt_placeholder", userPromptPlaceholder);
       formData.append("user_prompt_max_length", userPromptMaxLength);
+      // ワンポイントアドバイスのスタイル別上書き。空文字でカテゴリ設定へ継承。
+      formData.append("generation_tip_ja", generationTipJa);
+      formData.append("generation_tip_en", generationTipEn);
       if (file) {
         formData.append("file", file);
       }
@@ -493,6 +505,44 @@ export function StylePresetForm({
             <p className="mt-1 text-xs text-slate-500">
               category 切り替えで default が変わります。preset 単位で上書き可能。
             </p>
+          </div>
+        </div>
+
+        <div className="space-y-4 rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+          <div>
+            <p className="text-sm font-medium">
+              ワンポイントアドバイス（スタイル別上書き）
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              /style の生成オプションの手前に出る一言です。空欄ならカテゴリ設定を継承し、
+              どちらも空なら出しません。
+            </p>
+          </div>
+          <div>
+            <Label htmlFor="generation_tip_ja">日本語</Label>
+            <Textarea
+              id="generation_tip_ja"
+              value={generationTipJa}
+              onChange={(event) => setGenerationTipJa(event.target.value)}
+              maxLength={200}
+              placeholder={
+                selectedCategory?.generationTipJa ??
+                "例: レンダリング品質を「バランス良く生成」にすると崩れにくいです！"
+              }
+              className="mt-1 min-h-[64px] text-sm"
+            />
+            <p className="mt-1 text-xs text-slate-500">200 文字まで。改行可。</p>
+          </div>
+          <div>
+            <Label htmlFor="generation_tip_en">English</Label>
+            <Textarea
+              id="generation_tip_en"
+              value={generationTipEn}
+              onChange={(event) => setGenerationTipEn(event.target.value)}
+              maxLength={200}
+              placeholder={selectedCategory?.generationTipEn ?? ""}
+              className="mt-1 min-h-[64px] text-sm"
+            />
           </div>
         </div>
 

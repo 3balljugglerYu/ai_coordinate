@@ -1716,6 +1716,7 @@ export const zhCnMessages = {
     sourceImageReadFailed: "无法读取原始图片。请重新选择图片后再试。",
     noCreditsFlow: "本页面不会查询或消耗 Percoin。",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "小贴士",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

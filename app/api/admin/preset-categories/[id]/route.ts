@@ -17,6 +17,7 @@ import {
   HASHTAG_SUGGESTIONS_MAX,
   isValidHashtagName,
 } from "@/lib/hashtag";
+import { MAX_GENERATION_TIP_LENGTH } from "@/features/style-presets/lib/generation-tip";
 
 const HEX_COLOR_PATTERN = /^#[0-9a-fA-F]{6}$/;
 const MAX_DISPLAY_NAME_LENGTH = 60;
@@ -197,6 +198,20 @@ export async function PATCH(
       );
     }
     update.hashtagSuggestions = parsed;
+  }
+  if (body.generation_tip_ja !== undefined) {
+    const parsed = parseGenerationTipBody(body.generation_tip_ja);
+    if (parsed === undefined) {
+      return NextResponse.json({ error: GENERATION_TIP_ERROR }, { status: 400 });
+    }
+    update.generationTipJa = parsed;
+  }
+  if (body.generation_tip_en !== undefined) {
+    const parsed = parseGenerationTipBody(body.generation_tip_en);
+    if (parsed === undefined) {
+      return NextResponse.json({ error: GENERATION_TIP_ERROR }, { status: 400 });
+    }
+    update.generationTipEn = parsed;
   }
   if (body.user_guidance_ja !== undefined) {
     if (
@@ -538,3 +553,14 @@ function parseHashtagSuggestionsBody(value: unknown): string[] | null {
 }
 
 const HASHTAG_SUGGESTIONS_ERROR = `hashtag_suggestions must be up to ${HASHTAG_SUGGESTIONS_MAX} tag names (no '#', no spaces)`;
+
+/** ワンポイントアドバイスの検証。空文字は null(未設定)に倒す。undefined = 形式不正。 */
+function parseGenerationTipBody(value: unknown): string | null | undefined {
+  if (value === null) return null;
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  if (trimmed.length > MAX_GENERATION_TIP_LENGTH) return undefined;
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+const GENERATION_TIP_ERROR = `generation_tip must be a string of <= ${MAX_GENERATION_TIP_LENGTH} chars or null`;

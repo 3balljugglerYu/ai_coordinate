@@ -1723,6 +1723,7 @@ export const itMessages = {
     sourceImageReadFailed: "Impossibile leggere l’immagine di origine. Riseleziona l’immagine e riprova.",
     noCreditsFlow: "Questa schermata non controlla né consuma Percoin.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "Consiglio rapido",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

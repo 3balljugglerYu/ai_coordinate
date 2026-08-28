@@ -1720,6 +1720,7 @@ export const viMessages = {
     sourceImageReadFailed: "Không đọc được ảnh nguồn. Vui lòng chọn lại ảnh và thử lại.",
     noCreditsFlow: "Màn hình này không kiểm tra hoặc tiêu Percoin.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "Mẹo nhỏ",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

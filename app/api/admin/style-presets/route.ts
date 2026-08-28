@@ -16,6 +16,7 @@ import {
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { parseStylePresetSortOrder } from "@/features/style-presets/lib/parse-style-preset-sort-order";
 import { parseUserPromptOverrideFields } from "@/features/style-presets/lib/parse-user-prompt-override-fields";
+import { parseGenerationTipOverrideFields } from "@/features/style-presets/lib/parse-generation-tip-override";
 import {
   deleteStylePresetImage,
   uploadStylePresetImage,
@@ -190,6 +191,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // ワンポイントアドバイスのスタイル別上書き(空文字 = カテゴリ設定へ継承)
+    const generationTipOverrides = parseGenerationTipOverrideFields(formData);
+    if (!generationTipOverrides.ok) {
+      return NextResponse.json(
+        { error: generationTipOverrides.error },
+        { status: 400 }
+      );
+    }
+
     // クリエイター(提供者クレジット): 空なら null。指定時は allowlist 所属を必須にする。
     const providerUserId =
       typeof providerUserIdEntry === "string" && providerUserIdEntry.length > 0
@@ -254,6 +264,7 @@ export async function POST(request: NextRequest) {
       referenceImageHeight,
       providerUserId,
       ...userPromptOverrides.value,
+      ...generationTipOverrides.value,
     });
 
     revalidateStylePresets();

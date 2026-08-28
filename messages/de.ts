@@ -1724,6 +1724,7 @@ export const deMessages = {
     sourceImageReadFailed: "Das Quellbild konnte nicht gelesen werden. Bitte wähle das Bild erneut aus und versuche es noch einmal.",
     noCreditsFlow: "Dieser Bildschirm prüft oder verbraucht keine Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "Kurzer Tipp",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

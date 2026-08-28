@@ -52,6 +52,9 @@ export interface StylePresetCategoryRef {
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string | null;
   userGuidanceEn: string | null;
+  /** 生成画面のワンポイントアドバイス(任意)。プリセット側が優先。 */
+  generationTipJa: string | null;
+  generationTipEn: string | null;
   showSourceImageTypeControl: boolean;
   showBackgroundChangeControl: boolean;
   showGenerationModelControl: boolean;
@@ -143,6 +146,12 @@ export interface StylePresetAdmin {
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
   userPromptMaxLength?: number | null;
+  /**
+   * 生成画面のワンポイントアドバイスのスタイル別上書き。
+   * NULL はカテゴリ設定へ継承し、どちらも無ければ何も出さない。
+   */
+  generationTipJa?: string | null;
+  generationTipEn?: string | null;
   createdBy: string | null;
   updatedBy: string | null;
   createdAt: string;
@@ -193,6 +202,9 @@ export interface StylePresetPublicSummary {
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
   userPromptMaxLength?: number | null;
+  /** 生成画面のワンポイントアドバイス。null はカテゴリ設定へ継承。 */
+  generationTipJa?: string | null;
+  generationTipEn?: string | null;
   /**
    * 段階解放(drip)でまだ解放されていないプリセットのとき true。
    * /style では「コンプリートで解放」のシルエットカードとして表示し、選択・生成不可にする。
@@ -236,6 +248,9 @@ export interface StylePresetInsert {
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
   userPromptMaxLength?: number | null;
+  /** ワンポイントアドバイスのスタイル別上書き。null/未指定はカテゴリ設定へ継承。 */
+  generationTipJa?: string | null;
+  generationTipEn?: string | null;
 }
 
 export interface StylePresetUpdate {
@@ -263,6 +278,9 @@ export interface StylePresetUpdate {
   userPromptLabel?: string | null;
   userPromptPlaceholder?: string | null;
   userPromptMaxLength?: number | null;
+  /** ワンポイントアドバイスのスタイル別上書き。null で解除、未指定なら現状維持。 */
+  generationTipJa?: string | null;
+  generationTipEn?: string | null;
 }
 
 export const stylePresetReorderSchema = z.object({

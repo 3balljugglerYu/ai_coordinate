@@ -49,6 +49,8 @@ interface StylePresetCategoryRow {
   show_generation_model_control?: boolean | null;
   show_user_prompt_input?: boolean | null;
   user_prompt_label?: string | null;
+  generation_tip_ja?: string | null;
+  generation_tip_en?: string | null;
   user_prompt_placeholder?: string | null;
   user_prompt_max_length?: number | null;
   visibility?: StylePresetCategoryVisibility | string | null;
@@ -98,6 +100,8 @@ interface StylePresetRow {
   provider_user_id?: string | null;
   // ユーザープロンプト入力欄のスタイル別上書き(NULL はカテゴリ設定へ継承)
   user_prompt_label?: string | null;
+  generation_tip_ja?: string | null;
+  generation_tip_en?: string | null;
   user_prompt_placeholder?: string | null;
   user_prompt_max_length?: number | null;
   // クリエイター提供プロンプト 申請(Phase 1)用カラム(通常プリセットでは null)
@@ -114,7 +118,7 @@ interface StylePresetRow {
 }
 
 const STYLE_PRESET_WITH_CATEGORY_SELECT =
-  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, allow_guest_generation, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, visibility, is_active, collection_display_starts_at, collection_display_ends_at, is_collection_series, completion_threshold, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, sequential_unlock, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
+  "*, provider:profiles!style_presets_provider_user_id_fkey(id, nickname, avatar_url), category:preset_categories!style_presets_category_id_fkey(id, key, display_name_ja, display_name_en, badge_color, badge_text_color, skip_base_prefix, allow_guest_generation, output_aspect_ratio_mode, user_guidance_ja, user_guidance_en, show_source_image_type_control, show_background_change_control, show_generation_model_control, show_user_prompt_input, user_prompt_label, user_prompt_placeholder, user_prompt_max_length, generation_tip_ja, generation_tip_en, visibility, is_active, collection_display_starts_at, collection_display_ends_at, is_collection_series, completion_threshold, provider_user_id, provider:profiles!preset_categories_provider_user_id_fkey(id, nickname, avatar_url), unlock_prerequisite_key, progressive_batch_size, sequential_unlock, unlock_announcement_hero_path, unlock_announcement_initial_body, unlock_announcement_drip_body, unlock_announcement_accent_color, unlock_announcement_accent_hover_color, unlock_announcement_title_color, unlock_announcement_soft_color)";
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
@@ -188,6 +192,8 @@ function mapCategoryRefStrict(
       outputAspectRatioMode: "source",
       userGuidanceJa: null,
       userGuidanceEn: null,
+      generationTipJa: null,
+      generationTipEn: null,
       showSourceImageTypeControl: true,
       showBackgroundChangeControl: true,
       showGenerationModelControl: true,
@@ -235,6 +241,8 @@ function mapCategoryRefStrict(
     showBackgroundChangeControl: embedded.show_background_change_control ?? true,
     showGenerationModelControl: embedded.show_generation_model_control ?? true,
     showUserPromptInput: embedded.show_user_prompt_input ?? false,
+    generationTipJa: embedded.generation_tip_ja ?? null,
+    generationTipEn: embedded.generation_tip_en ?? null,
     userPromptLabel: embedded.user_prompt_label ?? null,
     userPromptPlaceholder: embedded.user_prompt_placeholder ?? null,
     userPromptMaxLength: embedded.user_prompt_max_length ?? null,
@@ -296,6 +304,8 @@ function mapRowToAdmin(row: StylePresetRow): StylePresetAdmin {
     providerUserId: row.provider_user_id ?? null,
     providerNickname: provider?.nickname ?? null,
     providerAvatarUrl: provider?.avatar_url ?? null,
+    generationTipJa: row.generation_tip_ja ?? null,
+    generationTipEn: row.generation_tip_en ?? null,
     userPromptLabel: row.user_prompt_label ?? null,
     userPromptPlaceholder: row.user_prompt_placeholder ?? null,
     userPromptMaxLength: row.user_prompt_max_length ?? null,
@@ -330,6 +340,8 @@ function mapRowToPublicSummary(row: StylePresetRow): StylePresetPublicSummary {
     providerUserId: row.provider_user_id ?? null,
     providerNickname: provider?.nickname ?? null,
     providerAvatarUrl: provider?.avatar_url ?? null,
+    generationTipJa: row.generation_tip_ja ?? null,
+    generationTipEn: row.generation_tip_en ?? null,
     userPromptLabel: row.user_prompt_label ?? null,
     userPromptPlaceholder: row.user_prompt_placeholder ?? null,
     userPromptMaxLength: row.user_prompt_max_length ?? null,
@@ -606,6 +618,8 @@ export async function createStylePreset(
     p_user_prompt_label: input.userPromptLabel ?? null,
     p_user_prompt_placeholder: input.userPromptPlaceholder ?? null,
     p_user_prompt_max_length: input.userPromptMaxLength ?? null,
+    p_generation_tip_ja: input.generationTipJa ?? null,
+    p_generation_tip_en: input.generationTipEn ?? null,
   });
 
   const row = mapRpcRow(data);
@@ -807,6 +821,14 @@ export async function updateStylePreset(
       input.userPromptMaxLength !== undefined
         ? input.userPromptMaxLength
         : existing.userPromptMaxLength ?? null,
+    p_generation_tip_ja:
+      input.generationTipJa !== undefined
+        ? input.generationTipJa
+        : existing.generationTipJa ?? null,
+    p_generation_tip_en:
+      input.generationTipEn !== undefined
+        ? input.generationTipEn
+        : existing.generationTipEn ?? null,
   });
 
   const row = mapRpcRow(data);
