@@ -21,16 +21,20 @@
 | `#冬服、かわいい` | タグ「冬服」（使える文字以外はすべて終端） |
 | `#AI` と `#ai` | **同じタグ**（大文字小文字を区別しない。X のサジェスト実測） |
 
-- 使える文字: ひらがな・カタカナ・漢字・英数字・`_`・長音「ー」
+- 使える文字: **Unicode の文字・結合文字・数字**（`\p{L}\p{M}\p{Nd}`）+ `_`。
+  日本語限定にしない — アプリは **15 ロケール**（ko/th/hi/ar 含む）で、日本語+英数に
+  限定すると他言語の利用者が母語のタグを作れない（レビュー指摘）。長音「ー」は `\p{L}` に含まれる
+- **全数字のタグ（`#123`）は無効**（twitter-text の公開仕様と同じ）
 - 開始: `#`（全角 `＃` も可）の直前がタグ文字でも `#` でもないこと
 - 正規化: NFKC + 小文字化した `name_normalized` で同一視。表示は書かれた原文
+- 受け入れテストに追加: 韓国語・タイ語・ヒンディー語・アラビア語・結合文字・半角カナ・全数字・全角 `＃`
 - 日本語のゆれ（`#冬服` と `#ふゆふく`）は別タグのまま（サジェストで自然収束を狙う）
 
 ## コードベース調査結果（2026-08-28）
 
 | 領域 | 現状 | 主要ファイル |
 |---|---|---|
-| キャプション表示 | **全箇所が `lib/linkify` を通る**（URL 自動リンク化のトークナイザ）。フィードは `FeedCaption`、詳細は `CollapsibleText linkify` | `lib/linkify.tsx`, `features/posts/components/FeedCaption.tsx`, `CollapsibleText.tsx` |
+| キャプション表示 | **全箇所が `lib/linkify` を通る**（URL 自動リンク化のトークナイザ）。フィードは `FeedCaption`、詳細は `CollapsibleText linkify` | `lib/linkify.ts`, `features/posts/components/FeedCaption.tsx`, `CollapsibleText.tsx` |
 | フリーワード検索 | 実装済み（caption ilike + nickname → user_id.in）。無限ループは #566 で修正済み | `features/posts/lib/search-filters.ts`, `server-api.ts:381` |
 | 検索の入口 | 閉じている。`SEARCH_ENABLED = false`（クライアント定数）と `/search` の redirect | `features/posts/components/StickyHeader.tsx:46`, `app/search/page.tsx` |
 | 検索 index | caption / nickname の trigram index 導入済み（`pg_trgm` は extensions スキーマ） | `20260729170000_add_search_indexes.sql` |
@@ -136,13 +140,14 @@ X と同じ使い分けなので、説明は要らない。
 
 ## EARS 要件
 
-- REQ-01: When 投稿またはキャプション編集が成立したとき, the system shall キャプションからタグを抽出し `post_hashtags` を洗い替える（When a post is created or its caption is edited, the system shall re-sync extracted hashtags）
+- REQ-01: When 投稿・キャプション編集・**完走フィード投稿**が成立したとき, the system shall キャプションからタグを抽出し `post_hashtags` を洗い替える（投稿を作る経路は 3 つ: `POST /api/posts/post`・`PUT /api/posts/update`・`POST /api/collections/completions/[id]/post`。どれも同じ同期 helper を通す）
 - REQ-02: If タグ同期に失敗したとき, then the system shall 投稿自体は成功させ、エラーはログに残す（非致命）
 - REQ-03: While キャプションを表示しているとき, the system shall `#タグ` をリンクとして描画し、タップで `/search?q=%23タグ` へ遷移させる
 - REQ-04: When 検索クエリが `#` で始まるとき, the system shall `name_normalized` の完全一致でタグ検索する
 - REQ-05: When 検索クエリが `#` で始まらないとき, the system shall 既存のフリーワード検索（caption + 作者名）を行う
 - REQ-06: While 段階公開中, the system shall 検索の入口（ヘッダーの検索バーと `/search`）を運営権限のみに表示する。一般ユーザーには従来どおり閉じたまま
-- REQ-07: 権限: `hashtags` / `post_hashtags` は誰でも読める（公開投稿の派生情報のため）。書き込みは service_role の RPC のみ。クライアント直書き不可
+- REQ-06b: While 段階公開中, the system shall **API 層でも**検索を認可する。`GET /api/posts` は認証不要で `q` を受けるため、UI を閉じても直接呼べば検索できてしまう（レビュー指摘）。サーバー共通の `isSearchAvailable(userId)`（公開 env OR isAdminViewer）を `q` 付きリクエストに適用し、不許可なら `q` を無視する
+- REQ-07: 権限: `hashtags` は誰でも読める。**`post_hashtags` の SELECT は「対応する投稿がいま公開されている場合」に限定**する（`EXISTS ... is_posted AND moderation_status='visible'`）。無条件公開だと、取消・公開停止した投稿のタグ対応を Data API から列挙できてしまう（レビュー指摘）。書き込みは service_role の RPC のみ
 - REQ-08: If 投稿が非公開・削除・公開停止になったとき, then タグ検索の結果に**出ない**こと（既存の可視性フィルタが効く設計にする。post_hashtags の行削除には依存しない）
 - REQ-09: タグ抽出の規則は TS の 1 箇所を正本とし、**入力中の着色・表示リンク化・抽出**の3つが同じ関数を使う
 - REQ-10: While キャプションを入力しているとき, the system shall タグとして成立している範囲を即座に青く表示し、成立しなくなったら（例: `#冬服#`）即座に通常表示へ戻す（**MVP 必須**）
@@ -162,6 +167,14 @@ X と同じ使い分けなので、説明は要らない。
 - Decision: 抽出・リンク化は TS の `lib/hashtag.ts` に集約。API がタグ配列まで作り、RPC `sync_post_hashtags(post_id, tags[])` が原子的に洗い替える
 - Reason: 規則の二重管理を避ける（`#冬服#` 無効などの細則は正規表現1本に閉じる）。原子性は RPC が担保
 - Consequence: RPC 単体ではタグの妥当性を検証しない（長さ・件数上限のみ検証）。呼び出し元は service_role のみ
+- 追記（レビュー反映）:
+  - **世代照合**: caption 更新とタグ同期は別トランザクションのため、編集 A→B→B同期→A同期の順で
+    本文とタグが食い違い得る。RPC に `p_expected_caption` を渡し、行ロック後に現在の caption と
+    一致しない要求は no-op にする。非致命方針の取りこぼしは、遡りスクリプトを再実行すれば
+    現在の caption から再同期できる（reconciliation を兼ねる）
+  - **source の扱い**: 洗い替えは `source='user'` の行だけに限定すると RPC に明記する。
+    将来 style/ai 由来を足したときに user の再同期が他 source の行を消さないため。
+    unique は `(post_id, hashtag_id, source)` にする
 
 ### ADR-003: リンク先は /search に統一（専用ページを作らない）
 
@@ -213,7 +226,7 @@ flowchart LR
 目的: 抽出・リンク化が共有する規則を 1 箇所に確定する
 ビルド確認: 新規 lib のみ。既存に触れない
 
-- [ ] `lib/hashtag.ts` — `extractHashtags(text)` と `tokenizeWithHashtags(text)`（`lib/linkify.tsx` のトークン形式に合わせる）
+- [ ] `lib/hashtag.ts` — `extractHashtags(text)` と `tokenizeWithHashtags(text)`（`lib/linkify.ts` のトークン形式に合わせる）
 - [ ] 正規化 `normalizeHashtag`（NFKC + toLowerCase）
 - [ ] X 実測 5 例（上表）を必須テストケースにする。特に「`#` が続くと前のタグごと無効」
 - [ ] 上限を決める: タグ長 50 文字・1 投稿 10 個まで（超過は無視。エラーにしない）
@@ -222,9 +235,17 @@ flowchart LR
 目的: 保存の器。既存 `20260813100000_add_post_bonus_by_generation_type.sql` の RLS/GRANT パターンを参考
 ビルド確認: migration のみ。アプリは未参照
 
-- [ ] `hashtags` / `post_hashtags` テーブル + unique 制約（name_normalized / post_id×hashtag_id）
-- [ ] RLS: SELECT は anon/authenticated に許可、書き込みポリシーなし（service_role のみ）
-- [ ] RPC `sync_post_hashtags(p_post_id uuid, p_tags text[])` — hashtags upsert + post_hashtags 洗い替え。SECURITY DEFINER、GRANT は service_role のみ
+- [ ] `hashtags` / `post_hashtags` テーブル + unique 制約（name_normalized / **post_id×hashtag_id×source**）
+- [ ] **FK は `post_id REFERENCES generated_images(id) ON DELETE CASCADE`（Critical 指摘）**。
+      無指定(NO ACTION)だと、タグ付き投稿の物理削除と退会 purge（`auth.users` CASCADE 連鎖）が FK 違反で止まる。
+      投稿単体の DELETE と auth user DELETE の両方で cascade を検証する
+- [ ] RLS: `hashtags` の SELECT は公開。**`post_hashtags` の SELECT は対応投稿が公開中の場合のみ**
+      （`EXISTS (SELECT 1 FROM generated_images g WHERE g.id = post_id AND g.is_posted AND g.moderation_status = 'visible')`）。書き込みポリシーなし
+- [ ] RPC `sync_post_hashtags(p_post_id uuid, p_tags text[], p_expected_caption text)` —
+      行ロック後に caption 一致を確認（不一致は no-op）→ hashtags upsert → `source='user'` の行だけ洗い替え。SECURITY DEFINER
+- [ ] **`REVOKE ALL ON FUNCTION ... FROM PUBLIC, anon, authenticated` → service_role へ GRANT**（レビュー指摘:
+      PostgreSQL は新規関数の EXECUTE を PUBLIC に既定付与するため、GRANT だけでは閉じない。
+      既存 `20260818120000` と同じ作法）。anon/authenticated からの RPC 拒否テストを追加
 - [ ] index: `post_hashtags(hashtag_id, post_id)`（タグ→投稿の逆引き）
 - [ ] 本番適用前に Supabase Preview で検証（マイグレーションは main マージで自動適用されない。手動 `supabase db push`）
 
@@ -232,8 +253,11 @@ flowchart LR
 目的: 新規投稿・編集でタグが貯まる
 ビルド確認: lint / typecheck / test / build
 
-- [ ] `POST /api/posts/post` に同期を追加（`grantDailyPostBonus` と同じ「失敗しても投稿は成功」パターン。`app/api/posts/post/route.ts:157` 参考）
-- [ ] `PUT /api/posts/update`（キャプション編集）にも同じ同期
+- [ ] 同期 helper を 1 つ作り、**投稿を作る 3 経路すべて**から呼ぶ（レビュー指摘: 完走フィード投稿が漏れていた）
+  - `POST /api/posts/post`（`grantDailyPostBonus` と同じ「失敗しても投稿は成功」パターン）
+  - `PUT /api/posts/update`（キャプション編集）
+  - `POST /api/collections/completions/[id]/post`（完走フィード投稿。caption を受けて投稿を作る）
+- [ ] 3 経路すべてで同期されることをテストで固定（作成・再投稿・編集）
 - [ ] 遡りスクリプト: 公開 visible の caption 全件に `extractHashtags` → `sync_post_hashtags`（実測 1 件だが全件を通す。以後の運用にも使える）
 - [ ] 投稿取消/削除時は触らない（REQ-08: 検索側の可視性フィルタで消えるため）
 
@@ -242,7 +266,11 @@ flowchart LR
 ビルド確認: lint / typecheck / test / build + **iOS 実機（IME・折返し・スクロール）**
 
 - [ ] props の通り道を確認（ADR-004。`searchEnabled` をどこから渡すか）
-- [ ] `lib/linkify.tsx` にハッシュタグトークンを追加（`tokenizeWithHashtags` を利用）。`FeedCaption` と `CollapsibleText` の両方に効くことを確認
+- [ ] `lib/linkify.ts` にハッシュタグトークンを追加（URL トークンとは type を分ける）
+- [ ] **リンク化は opt-in にする**（レビュー指摘: `CollapsibleText` はキャプションだけでなく
+      **プロフィール bio（ProfileHeader）とコメント（EditableComment）でも使われている**。
+      一律で効かせると、保存も検索もされない bio/コメントの `#タグ` がリンクになり、押しても
+      対応投稿が無い）。`linkifyHashtags` プロップを追加し、キャプション呼び出しだけ有効化
 - [ ] `searchEnabled=false` のときはリンク化しない（プレーン表示。リンクだけ出て 404 を防ぐ）
 - [ ] リンクは `next/link` で `/search?q=%23タグ`。フィードカード内はカード遷移と競合しないよう `stopPropagation`（`FeedCaption` の既存作法に合わせる）
 - [ ] **最初に `rich-textarea` の検証**（ADR-005）: React 19 で動くか・iOS 実機で IME とズレが出ないか。NG なら同方式を自作へ切替
@@ -255,7 +283,13 @@ flowchart LR
 目的: 運営だけが統合検索を使える状態
 ビルド確認: lint / typecheck / test / build + 実機（運営アカウント / 一般アカウントの両方）
 
-- [ ] `search-filters.ts` に `#` 分岐: タグなら `post_hashtags` から post_id を引いて `id.in.(...)`（`matchedAuthorIds` と同型。上限も同様に設ける）
+- [ ] `search-filters.ts` に `#` 分岐: タグ ID の解決だけを 1 件で行い、
+      **絞り込みは DB 側に残す**（PostgREST の `post_hashtags!inner` 埋め込み、または可視性・sort・
+      pagination まで含む参照 RPC）。**post_id を先取りして上限で切らない**（レビュー指摘:
+      50 件で切ると 51 件目以降がページングしても永久に出ない。`matchedAuthorIds` の上限は
+      「作者 50 人」であって投稿数の上限ではない — 同型に見えて意味が違う）
+- [ ] `GET /api/posts` に `isSearchAvailable(userId)` を適用（REQ-06b）。
+      不許可なら `q` を無視。一般 / preview admin / full admin / 一般公開後の 4 ケースを Route テストに追加
 - [ ] `app/search/page.tsx` の redirect を「一般のみ」に変更（運営は旧ページを表示。c1fc058^ から復元）
 - [ ] `StickyHeader` の `SEARCH_ENABLED` を props 化（サーバー判定を受ける）
 - [ ] sitemap は一般公開まで `/search` を載せない（現状のまま）
@@ -283,8 +317,10 @@ flowchart LR
 | `supabase/migrations/xxx_add_hashtags.sql` | 新規 | テーブル 2 本 + RLS + sync RPC + index |
 | `app/api/posts/post/route.ts` | 修正 | 投稿後にタグ同期（非致命） |
 | `app/api/posts/update/route.ts` | 修正 | 編集後にタグ同期 |
+| `app/api/collections/completions/[id]/post/route.ts` | 修正 | 完走フィード投稿でもタグ同期 |
+| `app/api/posts/route.ts` | 修正 | `q` 付きリクエストのサーバー認可（REQ-06b） |
 | `scripts/backfill-hashtags.ts`（相当） | 新規 | 遡り抽出 |
-| `lib/linkify.tsx` | 修正 | ハッシュタグトークン追加 |
+| `lib/linkify.ts` | 修正 | ハッシュタグトークン追加（URL と type 分離） |
 | `package.json` | 修正 | `rich-textarea` 追加（依存ゼロ・3kB。ADR-005） |
 | `features/posts/components/HashtagHighlightTextarea.tsx` | 新規 | 入力中の着色（rich-textarea + 共有トークナイザ） |
 | `features/posts/components/PostModal.tsx` | 修正 | キャプション欄を差し替え |
@@ -306,7 +342,12 @@ flowchart LR
 - [ ] タグ同期失敗で投稿が失敗しない（REQ-02）
 - [ ] 非公開・削除・公開停止の投稿がタグ検索に出ない（REQ-08）
 - [ ] 一般ユーザーに検索バー・タグリンクが一切見えない（段階公開中）
-- [ ] RLS: クライアントから post_hashtags へ INSERT できない
+- [ ] RLS: クライアントから post_hashtags へ INSERT できない・非公開投稿の行を SELECT できない
+- [ ] RPC: anon/authenticated から実行できない（REVOKE の確認。`has_function_privilege` で assert）
+- [ ] タグ付き投稿の物理削除と退会 purge が FK 違反にならない（CASCADE の確認）
+- [ ] `/api/posts?q=` が段階公開中の一般ユーザーに効かない
+- [ ] bio・コメントの `#タグ` はリンクにならない（キャプションのみ）
+- [ ] 多言語タグ（ko/th/hi/ar・結合文字・半角カナ）が成立し、全数字タグが無効
 - [ ] 全ロケールの文言が揃っている（postSuccessViewAction のとき 14 言語必須だった）
 
 ## ロールバック方針
