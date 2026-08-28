@@ -624,7 +624,13 @@ export function PostDetailStatic({
         {/* キャプション */}
         {post.caption && (
           <div className="bg-white px-4 py-3">
-            <CollapsibleText text={post.caption} maxLines={3} linkify />
+            {/* キャプションだけがタグの保存対象。下のプロンプト表示には付けない */}
+            <CollapsibleText
+              text={post.caption}
+              maxLines={3}
+              linkify
+              linkifyHashtags
+            />
           </div>
         )}
 

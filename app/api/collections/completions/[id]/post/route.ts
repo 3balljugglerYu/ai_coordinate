@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { isCollectionFeedPostEnabled } from "@/lib/env";
 import { postCompletionToFeed } from "@/features/collections/lib/completion-feed-post";
+import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
 
 /**
  * 完走フィード投稿(オプトイン)API。
@@ -73,6 +74,9 @@ export async function POST(
 
   try {
     const { postId } = await postCompletionToFeed(supabase, completionId, caption);
+    // 完走フィード投稿もキャプションを持つ。ここを忘れると、この経路の投稿だけ
+    // タグ検索に出てこない（表示は青くなるので気づきにくい）。
+    await syncPostHashtags(postId, caption);
     revalidateAfterChange(user.id, completionId, postId);
     return NextResponse.json({ posted: true, postId });
   } catch (error) {

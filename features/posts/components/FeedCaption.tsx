@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { linkify as linkifyText } from "@/lib/linkify";
+import { buildHashtagSearchHref } from "@/lib/hashtag";
+import { useSearchAvailable } from "./SearchAvailabilityProvider";
 import { FEED_CAPTION_MAX_LINES, normalizeFeedCaption } from "../lib/feed-caption";
 
 interface FeedCaptionProps {
@@ -31,27 +34,46 @@ export function FeedCaption({ caption, onOpenDetail, expandLabel }: FeedCaptionP
   const textRef = useRef<HTMLParagraphElement>(null);
 
   const text = useMemo(() => normalizeFeedCaption(caption), [caption]);
+  // 検索が開いていないあいだはタグをリンクにしない。
+  // リンクだけ出て遷移先が閉じている状態が、一番悪い体験になる。
+  const searchAvailable = useSearchAvailable();
 
   const content = useMemo(
     () =>
-      linkifyText(text).map((token, index) =>
-        token.type === "link" ? (
-          <a
-            key={index}
-            href={token.href}
-            target="_blank"
-            rel="noopener noreferrer nofollow"
-            title={token.rawValue}
-            className="break-all text-blue-600 hover:underline"
-            onClick={(event) => event.stopPropagation()}
-          >
-            {token.displayValue}
-          </a>
-        ) : (
-          <span key={index}>{token.value}</span>
-        )
-      ),
-    [text]
+      linkifyText(text, { hashtags: searchAvailable }).map((token, index) => {
+        if (token.type === "link") {
+          return (
+            <a
+              key={index}
+              href={token.href}
+              target="_blank"
+              rel="noopener noreferrer nofollow"
+              title={token.rawValue}
+              className="break-all text-blue-600 hover:underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {token.displayValue}
+            </a>
+          );
+        }
+
+        if (token.type === "hashtag") {
+          return (
+            <Link
+              key={index}
+              href={buildHashtagSearchHref(token.normalized)}
+              className="break-all text-blue-600 hover:underline"
+              // カードの詳細遷移と競合させない（URL リンクと同じ作法）
+              onClick={(event) => event.stopPropagation()}
+            >
+              {token.rawValue}
+            </Link>
+          );
+        }
+
+        return <span key={index}>{token.value}</span>;
+      }),
+    [text, searchAvailable]
   );
 
   // 5行に収まっているかを実測する。収まっていれば「もっと見る」を出さない

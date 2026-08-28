@@ -3,12 +3,26 @@
 jest.mock("@/features/posts/lib/server-api", () => ({
   getPosts: jest.fn(),
 }));
+jest.mock("@/lib/auth", () => ({ getUser: jest.fn() }));
+jest.mock("@/lib/env", () => ({
+  ...jest.requireActual("@/lib/env"),
+  isSearchPubliclyEnabled: jest.fn(),
+  isSearchAvailable: jest.fn(),
+}));
 
 import type { NextRequest } from "next/server";
 import { GET } from "@/app/api/posts/route";
 import { getPosts } from "@/features/posts/lib/server-api";
+import { getUser } from "@/lib/auth";
+import { isSearchAvailable, isSearchPubliclyEnabled } from "@/lib/env";
 
 const mockGetPosts = getPosts as jest.MockedFunction<typeof getPosts>;
+const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
+const mockIsSearchPubliclyEnabled =
+  isSearchPubliclyEnabled as jest.MockedFunction<typeof isSearchPubliclyEnabled>;
+const mockIsSearchAvailable = isSearchAvailable as jest.MockedFunction<
+  typeof isSearchAvailable
+>;
 
 function createRequest(url: string): NextRequest {
   const request = new Request(url, {
@@ -37,6 +51,10 @@ describe("GET /api/posts", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetPosts.mockResolvedValue([]);
+    // 既定は「一般公開済み」。段階公開の分岐は専用の describe で確かめる
+    mockIsSearchPubliclyEnabled.mockReturnValue(true);
+    mockIsSearchAvailable.mockReturnValue(true);
+    mockGetUser.mockResolvedValue(null);
   });
 
   test("GET_limit0の場合_400でinvalidLimit", async () => {
@@ -174,5 +192,56 @@ describe("GET /api/posts", () => {
 
     expect(res.status).toBe(400);
     expect(body.error).toBe("limit must be between 1 and 100.");
+  });
+
+  /**
+   * REQ-06b: UI を閉じるだけでは足りない。この API は認証不要で q を受けるため、
+   * ヘッダーの検索バーを隠しても直接叩けば検索できてしまう。
+   */
+  describe("段階公開中の検索認可", () => {
+    beforeEach(() => {
+      mockIsSearchPubliclyEnabled.mockReturnValue(false);
+    });
+
+    test("一般ユーザーの q は無視して通常の一覧を返す", async () => {
+      mockIsSearchAvailable.mockReturnValue(false);
+
+      const response = await GET(
+        createRequest("http://localhost/api/posts?q=foo")
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockGetPosts).toHaveBeenCalledWith(20, 0, "newest", undefined);
+    });
+
+    test("運営の q は通す", async () => {
+      mockGetUser.mockResolvedValue({ id: "admin-1" } as never);
+      mockIsSearchAvailable.mockReturnValue(true);
+
+      await GET(createRequest("http://localhost/api/posts?q=foo"));
+
+      expect(mockIsSearchAvailable).toHaveBeenCalledWith("admin-1");
+      expect(mockGetPosts).toHaveBeenCalledWith(20, 0, "newest", "foo");
+    });
+
+    test("認証が引けないときは検索させない（閉じる側に倒す）", async () => {
+      mockGetUser.mockRejectedValue(new Error("auth unavailable"));
+      mockIsSearchAvailable.mockReturnValue(false);
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const response = await GET(
+        createRequest("http://localhost/api/posts?q=foo")
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockGetPosts).toHaveBeenCalledWith(20, 0, "newest", undefined);
+      errorSpy.mockRestore();
+    });
+
+    test("q が無ければ認証を引かない（一覧の表示コストを増やさない）", async () => {
+      await GET(createRequest("http://localhost/api/posts"));
+
+      expect(mockGetUser).not.toHaveBeenCalled();
+    });
   });
 });

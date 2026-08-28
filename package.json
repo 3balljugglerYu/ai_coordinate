@@ -73,6 +73,7 @@
     "redoc": "^2.5.0",
     "remotion": "^4.0.435",
     "resend": "^6.9.2",
+    "rich-textarea": "^0.27.1",
     "sharp": "^0.34.5",
     "stripe": "^20.1.2",
     "swiper": "^12.0.3",

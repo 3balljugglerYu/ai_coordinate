@@ -23,6 +23,7 @@ import {
 import { APP_NAME, ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
+import { useSearchAvailable } from "@/features/posts/components/SearchAvailabilityProvider";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import { resolveStickyBackUrl } from "@/features/posts/lib/sticky-back-url";
@@ -36,14 +37,6 @@ import {
   localizePublicPath,
   stripLocalePrefix,
 } from "@/i18n/config";
-
-/**
- * 検索機能の有効フラグ。
- *
- * PostList の初回ロードがループする既存不具合のため一時的に閉じている。
- * 修正後に true へ戻す。あわせて app/search/page.tsx のリダイレクトも外すこと。
- */
-const SEARCH_ENABLED = false;
 
 interface StickyHeaderProps {
   children?: React.ReactNode;
@@ -62,6 +55,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const commonT = useTranslations("common");
+  // 検索の段階公開。公開フラグ or 運営のときだけ導線を出す
+  const searchAvailable = useSearchAvailable();
   const styleT = useTranslations("style");
   // 生成後のゲストはヘッダーのログインも「保存する」(signup固定+画像引き継ぎ)に切替。
   const saveTrigger = useWardrobeSaveTrigger();
@@ -331,16 +326,16 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // 検索バーの配置を条件分岐で切り替え
   const renderSearchBar = () => {
-    // 検索は一時的に無効化している。SEARCH_ENABLED を true に戻せば復帰する。
-    //
-    // 経緯: PostList の初回ロード useEffect が loadedSearchQuery / loadedSortType を
-    // 依存に持ちながら loadPosts 内でそれらを更新するため、検索クエリがあると
-    // ループする。ヒット 0 件だと即終了するので長く表に出ていなかったが、
-    // 検索対象を prompt から caption + 作者名へ変えたことで顕在化した。
-    // 旧 prompt 検索は全投稿に運営の錨が入っていて多くの語が大量にヒットしていた。
-    //
-    // 利用実績が乏しく、先に直す優先度が低いと判断して導線ごと閉じる。
-    if (!SEARCH_ENABLED) {
+    /*
+      段階公開中は運営にだけ出す（判定はサーバー。ADR-004）。
+      ここを閉じるだけでは足りず、/search と GET /api/posts?q= も同じ判定で
+      塞いである（UI を隠しても直接叩けるため。REQ-06b）。
+
+      無限ループで一時停止していた経緯: PostList の初回ロード useEffect が
+      毎レンダー変わる配列を依存に持っていたため、検索クエリがあると
+      止まらずリクエストを投げ続けていた（#566 で修正済み）。
+    */
+    if (!searchAvailable) {
       return null;
     }
 
@@ -375,7 +370,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   return (
     <header ref={headerRef} className={headerClassName}>
       {/* モバイル版の検索ページ: 簡素化されたヘッダー（検索バーのみ） */}
-      {SEARCH_ENABLED && isSearchPage && (
+      {searchAvailable && isSearchPage && (
         <div className="w-full px-4 py-3 flex items-center justify-center md:hidden">
           <div className="w-full max-w-2xl">
             <SearchBar />

@@ -87,6 +87,8 @@ const envSchema = {
   // 'true' のとき計測が有効になり、👁の表示元が view_count → impression_count に切替わる
   NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
     process.env.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED,
+  // 検索とハッシュタグの一般公開フラグ。'true' になるまでは運営のみ使える
+  NEXT_PUBLIC_SEARCH_ENABLED: process.env.NEXT_PUBLIC_SEARCH_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -197,6 +199,7 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED || "",
     NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
       envSchema.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED || "",
+    NEXT_PUBLIC_SEARCH_ENABLED: envSchema.NEXT_PUBLIC_SEARCH_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -423,6 +426,26 @@ export function isInspireFeatureEnabled(): boolean {
  */
 export function isCollectionFeedPostEnabled(): boolean {
   return env.NEXT_PUBLIC_COLLECTION_FEED_POST_ENABLED === "true";
+}
+
+/**
+ * 検索とハッシュタグが**全員に**公開されているか(段階公開の最終段)。
+ *
+ * false のあいだは運営だけが使える。判定の入口は必ず isSearchAvailable() を通すこと
+ * (このフラグ単体で分岐すると、運営に開けているつもりの導線が閉じる)。
+ */
+export function isSearchPubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_SEARCH_ENABLED === "true";
+}
+
+/**
+ * この利用者が検索・ハッシュタグを使えるか(REQ-06 / REQ-06b の唯一の判定)。
+ *
+ * UI を閉じるだけでは足りない。`GET /api/posts` は認証不要で `q` を受けるため、
+ * API 側でもこの関数で認可する。
+ */
+export function isSearchAvailable(userId: string | null | undefined): boolean {
+  return isSearchPubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

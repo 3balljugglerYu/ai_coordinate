@@ -11,6 +11,9 @@
  * このため既存の可視性フィルタ用 or とは独立に検索用 or を足してよい。
  */
 
+import { extractHashtags } from "@/lib/hashtag";
+import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+
 /** 検索クエリの最大長。既存のバリデーションと揃える。 */
 export const MAX_SEARCH_QUERY_LENGTH = 100;
 
@@ -77,4 +80,63 @@ export function buildPostSearchOrFilter(
  */
 export function buildAuthorNicknamePattern(searchQuery: string): string {
   return `%${escapeLikePattern(searchQuery.trim())}%`;
+}
+
+/**
+ * 検索クエリの種別。X と同じく入力欄は 1 つで、書き方で行き先が変わる。
+ *
+ * `#冬服` … タグ完全一致（`hashtags.name_normalized`）
+ * それ以外 … 従来のフリーワード（caption + 作者名）
+ *
+ * `#123` のようにタグとして成立しない書き方はフリーワードに倒す。
+ * 「タグが無いので 0 件」より「そのまま探す」方が、押した人の期待に近い。
+ */
+export type ParsedSearchQuery =
+  | { kind: "hashtag"; normalized: string }
+  | { kind: "freeText"; query: string };
+
+export function parseSearchQuery(searchQuery: string): ParsedSearchQuery {
+  const trimmed = searchQuery.trim();
+
+  if (/^[#＃]/.test(trimmed)) {
+    // 抽出規則は lib/hashtag が正本。ここで書き分けるとリンクと検索がズレる
+    const [tag] = extractHashtags(trimmed);
+    if (tag && `#${tag.name}` === trimmed.replace(/^＃/, "#")) {
+      return { kind: "hashtag", normalized: tag.normalized };
+    }
+  }
+
+  return { kind: "freeText", query: trimmed };
+}
+
+/**
+ * タグ検索の内部結合を付けた select 句。
+ * 付けたときは行に `post_hashtags` が混ざるので、後段へ渡す前に落とす。
+ */
+export function buildPostSelect(hashtagId: string | null): string {
+  return hashtagId ? "*, post_hashtags!inner(hashtag_id)" : "*";
+}
+
+/**
+ * 内部結合で付いてきた埋め込み列を落とし、同一投稿の重複行を畳む。
+ *
+ * select 句を実行時に組み立てるため supabase-js は行の型を解決できない。
+ * 型の付け直しはこの 1 箇所に閉じる。
+ */
+export function stripHashtagJoin(rows: unknown): GeneratedImageRecord[] {
+  if (!Array.isArray(rows)) return [];
+  const seen = new Set<string>();
+  const result: GeneratedImageRecord[] = [];
+
+  for (const row of rows as Array<Record<string, unknown>>) {
+    const rest = { ...row };
+    delete rest.post_hashtags;
+    const id = String(rest.id ?? "");
+    // 将来 source 違いの行が増えると、同じ投稿が複数行で返りうる
+    if (id && seen.has(id)) continue;
+    if (id) seen.add(id);
+    result.push(rest as unknown as GeneratedImageRecord);
+  }
+
+  return result;
 }
