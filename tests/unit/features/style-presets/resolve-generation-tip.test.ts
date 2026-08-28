@@ -53,6 +53,15 @@ describe("resolveGenerationTip", () => {
     );
   });
 
+  test("日本語ロケールで英語だけの設定は出さない", () => {
+    /*
+      呼び出し側は ko/th/hi/ar もまとめて "ja" として渡す。ここで英語へ倒すと、
+      英語欄だけ書いた設定が日本語・韓国語・タイ語の画面に英語のまま出る。
+    */
+    expect(resolveGenerationTip(build({ categoryEn: "English only" }), "ja")).toBeNull();
+    expect(resolveGenerationTip(build({ presetEn: "English only" }), "ko")).toBeNull();
+  });
+
   test("日本語以外のロケールは日本語に倒す（既存の説明文と同じ扱い）", () => {
     const preset = build({ categoryJa: "日本語", categoryEn: "English" });
     expect(resolveGenerationTip(preset, "ko")).toBe("日本語");

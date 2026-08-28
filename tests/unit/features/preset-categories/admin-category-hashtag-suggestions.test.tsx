@@ -98,4 +98,3 @@ describe("カテゴリ編集のワンポイントアドバイス欄", () => {
     expect(screen.getByDisplayValue("保存済みのヒント")).toBeInTheDocument();
   });
 });
-
