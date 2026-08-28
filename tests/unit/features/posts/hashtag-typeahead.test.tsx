@@ -146,4 +146,26 @@ describe("HashtagTypeahead", () => {
       await screen.findByRole("button", { name: /#𠮷野家/ })
     ).toBeInTheDocument();
   });
+
+
+  test("打った部分と補完される部分を分けて出す", async () => {
+    // X と同じく、打った側を細字・続きを太字にして何が補完されるかを示す
+    renderTypeahead({ value: "#冬", caret: 2 });
+    await flush();
+
+    const chip = await screen.findByRole("button", { name: "#冬服" });
+    const [typed, rest] = Array.from(chip.querySelectorAll("span"));
+
+    expect(typed).toHaveTextContent("#冬");
+    expect(rest).toHaveTextContent("服");
+    expect(rest.className).toContain("font-semibold");
+  });
+
+  test("件数は出さない（1件を「よく使われています」と紹介しない）", async () => {
+    renderTypeahead({ value: "今日は #冬", caret: 6 });
+    await flush();
+
+    const chip = await screen.findByRole("button", { name: "#冬服" });
+    expect(chip.textContent).toBe("#冬服");
+  });
 });
