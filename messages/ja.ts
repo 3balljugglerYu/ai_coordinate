@@ -1659,6 +1659,7 @@ export const jaMessages = {
     sourceImageReadFailed: "元画像を読み込めませんでした。お手数ですが画像を選び直して、もう一度お試しください。",
     noCreditsFlow: "この画面ではペルコイン確認や消費は行いません。",
     userGuidanceTooltipAria: "このスタイルの利用ガイドを開く",
+    generationTipLabel: "ワンポイントアドバイス",
     userReferenceImageLabel: "参考画像 (image_1)",
     userReferenceImageHint: "このスタイルでは、あなたが選んだ参考画像を組み合わせて生成します (JPEG / PNG / WebP)。",
     userPromptLabel: "追加のスタイル指示 (任意)",

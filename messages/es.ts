@@ -1723,6 +1723,7 @@ export const esMessages = {
     sourceImageReadFailed: "No se pudo leer la imagen de origen. Vuelve a seleccionar la imagen e inténtalo de nuevo.",
     noCreditsFlow: "Esta pantalla no comprueba ni consume Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "Consejo rápido",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

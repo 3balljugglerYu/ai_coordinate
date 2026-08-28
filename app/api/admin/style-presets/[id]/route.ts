@@ -17,6 +17,7 @@ import {
 import { getPresetCategoryById } from "@/features/style-presets/lib/preset-category-repository";
 import { parseStylePresetSortOrder } from "@/features/style-presets/lib/parse-style-preset-sort-order";
 import { parseUserPromptOverrideFields } from "@/features/style-presets/lib/parse-user-prompt-override-fields";
+import { parseGenerationTipOverrideFields } from "@/features/style-presets/lib/parse-generation-tip-override";
 import {
   deleteStylePresetImage,
   uploadStylePresetImage,
@@ -211,6 +212,15 @@ export async function PATCH(
       );
     }
 
+    // ワンポイントアドバイスのスタイル別上書き(空文字 = カテゴリ設定へ継承)
+    const generationTipOverrides = parseGenerationTipOverrideFields(formData);
+    if (!generationTipOverrides.ok) {
+      return NextResponse.json(
+        { error: generationTipOverrides.error },
+        { status: 400 }
+      );
+    }
+
     // 共通の更新ペイロード
     const updatePayload = {
       title,
@@ -234,6 +244,7 @@ export async function PATCH(
       providerUserId,
       // 上書き 3 項目も undefined(未送信)なら repository 側で現状維持。
       ...userPromptOverrides.value,
+      ...generationTipOverrides.value,
     };
 
     // 新しい reference file (= admin dual の場合のみ意味あり) を新規 object に保存し、DB 更新成功後に旧 object を削除する。

@@ -65,6 +65,8 @@ interface FormState {
   defaultImageInputMode: "single" | "dual";
   outputAspectRatioMode: StyleOutputAspectRatioMode;
   userGuidanceJa: string;
+  generationTipJa: string;
+  generationTipEn: string;
   /** 改行・カンマ区切りの生入力。保存時に配列へ変換する。 */
   hashtagSuggestions: string;
   userGuidanceEn: string;
@@ -174,6 +176,8 @@ function toFormState(
     defaultImageInputMode: initial?.defaultImageInputMode ?? "single",
     outputAspectRatioMode: initial?.outputAspectRatioMode ?? "source",
     userGuidanceJa: initial?.userGuidanceJa ?? "",
+    generationTipJa: initial?.generationTipJa ?? "",
+    generationTipEn: initial?.generationTipEn ?? "",
     hashtagSuggestions: (initial?.hashtagSuggestions ?? []).join(" "),
     userGuidanceEn: initial?.userGuidanceEn ?? "",
     showSourceImageTypeControl: initial?.showSourceImageTypeControl ?? true,
@@ -670,6 +674,8 @@ export function AdminPresetCategoryFormClient({
               hashtag_suggestions: parseHashtagSuggestions(
                 form.hashtagSuggestions,
               ),
+              generation_tip_ja: form.generationTipJa.trim() || null,
+              generation_tip_en: form.generationTipEn.trim() || null,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
               user_guidance_en: form.userGuidanceEn.trim() || null,
               show_source_image_type_control: form.showSourceImageTypeControl,
@@ -742,6 +748,8 @@ export function AdminPresetCategoryFormClient({
               hashtag_suggestions: parseHashtagSuggestions(
                 form.hashtagSuggestions,
               ),
+              generation_tip_ja: form.generationTipJa.trim() || null,
+              generation_tip_en: form.generationTipEn.trim() || null,
               user_guidance_ja: form.userGuidanceJa.trim() || null,
               user_guidance_en: form.userGuidanceEn.trim() || null,
               show_source_image_type_control: form.showSourceImageTypeControl,
@@ -1036,6 +1044,43 @@ export function AdminPresetCategoryFormClient({
           </select>
           <span className="mt-1 block text-xs text-slate-500">
             運営のみの場合、ADMIN_USER_IDS のユーザーだけ /style に表示・生成できます。
+          </span>
+        </label>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            ワンポイントアドバイス (日本語)
+          </span>
+          <textarea
+            value={form.generationTipJa}
+            onChange={(e) => update("generationTipJa", e.target.value)}
+            maxLength={200}
+            rows={3}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            placeholder="例: レンダリング品質を「バランス良く生成」にすると崩れにくいです！"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            /style の生成オプションの手前に、常に見える形で出ます。空なら出しません。
+            各スタイルの編集画面で個別に上書きできます。
+          </span>
+        </label>
+
+        <label className="block">
+          <span className="text-sm font-medium text-slate-700">
+            ワンポイントアドバイス (English)
+          </span>
+          <textarea
+            value={form.generationTipEn}
+            onChange={(e) => update("generationTipEn", e.target.value)}
+            maxLength={200}
+            rows={3}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            placeholder="e.g. Choosing Balanced quality gives more stable results!"
+          />
+          <span className="mt-1 block text-xs text-slate-500">
+            未入力なら日本語の文言を出します。
           </span>
         </label>
       </div>

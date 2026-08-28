@@ -188,6 +188,8 @@ describe("style-preset repository", () => {
         thumbnailWidth: 912,
         thumbnailHeight: 1173,
         hasBackgroundPrompt: true,
+        generationTipJa: null,
+        generationTipEn: null,
         createdAt: "2026-03-22T00:00:00.000Z",
         // fixture の row に published_at が無い場合は null(移行前データ相当)。
         publishedAt: null,
@@ -203,6 +205,8 @@ describe("style-preset repository", () => {
           outputAspectRatioMode: "source",
           userGuidanceJa: null,
           userGuidanceEn: null,
+          generationTipJa: null,
+          generationTipEn: null,
           showSourceImageTypeControl: true,
           showBackgroundChangeControl: true,
           showGenerationModelControl: true,
@@ -607,6 +611,8 @@ describe("style-preset repository", () => {
       p_title: "Updated",
       p_styling_prompt: "Before prompt",
       p_background_prompt: "Soft city background",
+      p_generation_tip_ja: null,
+      p_generation_tip_en: null,
       p_thumbnail_image_url: "https://example.com/old.webp",
       p_thumbnail_storage_path: "style-presets/preset-1/old.webp",
       p_thumbnail_width: 720,
@@ -927,6 +933,8 @@ describe("style-preset repository", () => {
       "create_style_preset",
       expect.objectContaining({
         p_dual_reference_source: "admin",
+        p_generation_tip_en: null,
+        p_generation_tip_ja: null,
       }),
     );
   });
@@ -1039,6 +1047,8 @@ describe("style-preset repository", () => {
       "update_style_preset",
       expect.objectContaining({
         p_dual_reference_source: "admin",
+        p_generation_tip_en: null,
+        p_generation_tip_ja: null,
       }),
     );
     expect(result.dualReferenceSource).toBe("admin");

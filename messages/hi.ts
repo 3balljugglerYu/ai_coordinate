@@ -1721,6 +1721,7 @@ export const hiMessages = {
     sourceImageReadFailed: "स्रोत छवि नहीं पढ़ी जा सकी. कृपया छवि दोबारा चुनें और फिर से प्रयास करें.",
     noCreditsFlow: "यह स्क्रीन Percoin की जाँच या उपयोग नहीं करती।",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "एक सलाह",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

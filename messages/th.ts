@@ -1719,6 +1719,7 @@ export const thMessages = {
     sourceImageReadFailed: "ไม่สามารถอ่านรูปต้นฉบับได้ โปรดเลือกรูปใหม่แล้วลองอีกครั้ง",
     noCreditsFlow: "หน้าจอนี้ไม่ตรวจสอบหรือใช้ Percoin",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "เคล็ดลับ",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

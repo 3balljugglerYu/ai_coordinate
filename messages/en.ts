@@ -1720,6 +1720,7 @@ export const enMessages = {
     sourceImageReadFailed: "Couldn't read the source image. Please re-select the image and try again.",
     noCreditsFlow: "This screen does not check or consume Percoins.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "Quick tip",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",

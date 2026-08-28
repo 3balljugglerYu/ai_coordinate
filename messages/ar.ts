@@ -1720,6 +1720,7 @@ export const arMessages = {
     sourceImageReadFailed: "تعذّر قراءة الصورة المصدر. يرجى إعادة اختيار الصورة والمحاولة مرة أخرى.",
     noCreditsFlow: "هذه الشاشة لا تتحقق من Percoin أو تستهلكها.",
     userGuidanceTooltipAria: "Open guidance for this style",
+    generationTipLabel: "نصيحة سريعة",
     userReferenceImageLabel: "Reference image (image_1)",
     userReferenceImageHint: "This style combines your reference image with your character (JPEG / PNG / WebP).",
     userPromptLabel: "Additional style instructions (optional)",
