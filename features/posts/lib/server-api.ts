@@ -26,6 +26,9 @@ import {
   MAX_MATCHED_AUTHORS,
   buildAuthorNicknamePattern,
   buildPostSearchOrFilter,
+  buildPostSelect,
+  parseSearchQuery,
+  stripHashtagJoin,
 } from "./search-filters";
 import {
   ensureImageDimensions,
@@ -391,6 +394,31 @@ async function findAuthorIdsByNickname(
     .filter(Boolean);
 }
 
+/**
+ * タグ名から hashtags.id を引く。無ければ null（= 該当投稿なし）。
+ *
+ * ここで解決するのは **タグ 1 件だけ**。投稿の絞り込みは DB 側の内部結合に残す。
+ * post_id を先に集めて上限で切ると、51 件目以降がページングしても永久に出ない
+ * （作者名検索の上限 50 は「作者の数」であって投稿数の上限ではない。同型に見えて違う）。
+ */
+async function findHashtagId(
+  normalized: string,
+  supabase: SupabaseClient
+): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("hashtags")
+    .select("id")
+    .eq("name_normalized", normalized)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Hashtag lookup failed:", error);
+    return null;
+  }
+
+  return (data as { id: string } | null)?.id ?? null;
+}
+
 async function getVisibilityExclusions(
   currentUserId?: string | null,
   supabaseOverride?: SupabaseClient
@@ -612,15 +640,34 @@ export const getPosts = cache(async (
     supabaseForHelpers
   );
 
-  // 検索対象は caption と作者の公開表示名。プロンプトは秘匿テーブルへ移すため
-  // 検索キーに使えない（ADR-007 / REQ-016）。
-  // 作者名は別テーブルなので、先に該当 user_id を解決してから or に混ぜる。
-  const searchOrFilter = normalizedSearchQuery
-    ? buildPostSearchOrFilter(
-        normalizedSearchQuery,
-        await findAuthorIdsByNickname(normalizedSearchQuery, supabase)
-      )
-    : undefined;
+  /*
+    入力欄は 1 つで、書き方によって行き先が変わる（X と同じ）。
+      `#冬服`   → タグ完全一致
+      それ以外  → caption + 作者の公開表示名（プロンプトは秘匿テーブルへ移した
+                  ため検索キーに使えない。ADR-007 / REQ-016）
+  */
+  const parsedQuery = normalizedSearchQuery
+    ? parseSearchQuery(normalizedSearchQuery)
+    : null;
+
+  let hashtagId: string | null = null;
+  if (parsedQuery?.kind === "hashtag") {
+    hashtagId = await findHashtagId(parsedQuery.normalized, supabase);
+    // そのタグが1件も使われていなければ、検索結果は空
+    if (!hashtagId) {
+      return [];
+    }
+  }
+
+  const searchOrFilter =
+    parsedQuery?.kind === "freeText" && parsedQuery.query
+      ? buildPostSearchOrFilter(
+          parsedQuery.query,
+          await findAuthorIdsByNickname(parsedQuery.query, supabase)
+        )
+      : undefined;
+
+  const postSelect = buildPostSelect(hashtagId);
 
   // フォロータブの場合の処理
   if (sort === "following") {
@@ -651,9 +698,13 @@ export const getPosts = cache(async (
     // データベース側でページネーションを適用（posted_atでソートするだけなので効率的）
     let followingQuery = supabase
       .from("generated_images")
-      .select("*")
+      .select(postSelect)
       .eq("is_posted", true)
       .in("user_id", followedUserIds);
+
+    if (hashtagId) {
+      followingQuery = followingQuery.eq("post_hashtags.hashtag_id", hashtagId);
+    }
 
     const followingOwnerOr = buildOwnerVisibleOrFilter(currentUserId);
     followingQuery = followingOwnerOr
@@ -683,14 +734,23 @@ export const getPosts = cache(async (
 
     // 投稿データにユーザー情報・いいね数・コメント数を付与
     // データベース側で既にページネーション済みなので、そのまま返す
-    return await enrichPosts(postsData, undefined, supabaseForHelpers);
+    return await enrichPosts(
+      stripHashtagJoin(postsData),
+      undefined,
+      supabaseForHelpers
+    );
   }
 
   // 投稿一覧を取得するクエリを構築
   let postsQuery = supabase
     .from("generated_images")
-    .select("*")
+    .select(postSelect)
     .eq("is_posted", true);
+
+  if (hashtagId) {
+    // 絞り込みは DB 側の内部結合に任せる（post_id を先取りして切らない）
+    postsQuery = postsQuery.eq("post_hashtags.hashtag_id", hashtagId);
+  }
 
   const ownerOr = buildOwnerVisibleOrFilter(currentUserId);
   postsQuery = ownerOr
@@ -756,7 +816,9 @@ export const getPosts = cache(async (
     throw new Error(`投稿画像の取得に失敗しました: ${postsError.message}`);
   }
 
-  if (!postsData || postsData.length === 0) {
+  const postRows = stripHashtagJoin(postsData);
+
+  if (postRows.length === 0) {
     return [];
   }
 
@@ -774,7 +836,9 @@ export const getPosts = cache(async (
     const likeRange = rangeMap[sort as "daily" | "week" | "month"];
     
     // 投稿IDのリストを取得
-    const postIds = postsData.map((post) => post.id);
+    const postIds = postRows
+      .map((post) => post.id)
+      .filter((id): id is string => Boolean(id));
     
     // バッチ処理で一括取得（N+1問題の解消）
     rangeLikeCounts = await getLikeCountsByRangeBatch(
@@ -786,7 +850,7 @@ export const getPosts = cache(async (
 
   // 投稿データにユーザー情報・いいね数・コメント数を付与
   const postsWithCounts = await enrichPosts(
-    postsData,
+    postRows,
     rangeLikeCounts,
     supabaseForHelpers
   );
