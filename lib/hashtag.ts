@@ -119,9 +119,29 @@ function scanHashtags(text: string): HashtagMatch[] {
 
 /** サロゲートペアを壊さずに index の直前の1文字を返す。 */
 function precedingChar(text: string, index: number): string {
-  if (index <= 0) return "";
-  const chars = [...text.slice(Math.max(0, index - 2), index)];
-  return chars[chars.length - 1] ?? "";
+  return previousCodePoint(text, index)?.char ?? "";
+}
+
+/**
+ * index の直前にある 1 コードポイントと、その開始位置を返す。
+ * サロゲートペアは 2 コードユニットまとめて 1 文字として扱う。
+ */
+function previousCodePoint(
+  text: string,
+  index: number
+): { char: string; index: number } | null {
+  if (index <= 0) return null;
+
+  const code = text.charCodeAt(index - 1);
+  const isLowSurrogate = code >= 0xdc00 && code <= 0xdfff;
+  if (isLowSurrogate && index >= 2) {
+    const previous = text.charCodeAt(index - 2);
+    if (previous >= 0xd800 && previous <= 0xdbff) {
+      return { char: text.slice(index - 2, index), index: index - 2 };
+    }
+  }
+
+  return { char: text[index - 1], index: index - 1 };
 }
 
 /**
@@ -187,9 +207,14 @@ export function findHashtagQueryAt(
 ): { start: number; end: number; query: string } | null {
   if (caret < 0 || caret > text.length) return null;
 
+  // コードポイント単位で戻る。`text[index - 1]` で1コードユニットずつ見ると、
+  // サロゲートペア（𠮷 など）の後半だけを判定して必ず false になり、
+  // 保存はできるのに入力中サジェストだけ出ない、という食い違いになる。
   let index = caret;
-  while (index > 0 && TAG_CHAR_ONLY.test(text[index - 1])) {
-    index -= 1;
+  for (;;) {
+    const previous = previousCodePoint(text, index);
+    if (!previous || !TAG_CHAR_ONLY.test(previous.char)) break;
+    index = previous.index;
   }
 
   // 直前が `#` でなければタグを書いている途中ではない

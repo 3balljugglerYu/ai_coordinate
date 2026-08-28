@@ -174,6 +174,8 @@ export const enMessages = {
     editModalDescription: "Edit the caption (up to {max} characters).",
     captionLabel: "Caption",
     captionPlaceholder: "Describe the image (optional)",
+    hashtagSuggestionsLabel: "Suggested tags",
+    hashtagPopularLabel: "Popular",
     captionTooLong: "Caption must be {max} characters or fewer.",
     charactersRemaining: "{count} characters remaining",
     cancel: "Cancel",

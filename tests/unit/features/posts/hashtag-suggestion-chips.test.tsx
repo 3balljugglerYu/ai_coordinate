@@ -10,6 +10,11 @@ import {
   SearchAvailabilityUpgrade,
 } from "@/features/posts/components/SearchAvailabilityProvider";
 
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    ({ hashtagSuggestionsLabel: "タグ候補" })[key] ?? key,
+}));
+
 function mockSuggestions(names: string[]) {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,

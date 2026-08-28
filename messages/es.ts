@@ -174,6 +174,8 @@ export const esMessages = {
     editModalDescription: "Edita la descripción (hasta {max} caracteres).",
     captionLabel: "Descripción",
     captionPlaceholder: "Describe la imagen (opcional)",
+    hashtagSuggestionsLabel: "Etiquetas sugeridas",
+    hashtagPopularLabel: "Populares",
     captionTooLong: "La descripción no puede superar los {max} caracteres.",
     charactersRemaining: "Quedan {count} caracteres",
     cancel: "Cancelar",

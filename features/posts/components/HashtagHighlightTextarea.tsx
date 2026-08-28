@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { RichTextarea } from "rich-textarea";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -53,6 +53,7 @@ export function HashtagHighlightTextarea({
   // 変換中に候補を出すと変換候補と二重になるので、composing で止める。
   const [caret, setCaret] = useState<number | null>(null);
   const [composing, setComposing] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const trackCaret = (
     event: React.SyntheticEvent<HTMLTextAreaElement>
@@ -76,7 +77,7 @@ export function HashtagHighlightTextarea({
   }
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" ref={wrapperRef}>
     <RichTextarea
       id={id}
       value={value}
@@ -87,7 +88,17 @@ export function HashtagHighlightTextarea({
       onSelect={trackCaret}
       onKeyUp={trackCaret}
       onClick={trackCaret}
-      onBlur={() => setCaret(null)}
+      onBlur={(event) => {
+        /*
+          候補を押したときに blur が先に走ると、カーソル位置が消えて候補ごと
+          消える（= タップしても何も入らない）。候補ボタンは mousedown を
+          止めてフォーカスを奪わないが、端末によっては先に移ることがあるため、
+          移った先が自分の中なら閉じない。
+        */
+        const next = event.relatedTarget as Node | null;
+        if (next && wrapperRef.current?.contains(next)) return;
+        setCaret(null);
+      }}
       onCompositionStart={() => setComposing(true)}
       onCompositionEnd={(event) => {
         setComposing(false);

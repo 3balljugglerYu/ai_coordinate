@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   extractHashtags,
   normalizeHashtag,
@@ -42,6 +43,7 @@ export function HashtagSuggestionChips({
   maxLength,
   disabled,
 }: Props) {
+  const t = useTranslations("posts");
   const searchAvailable = useSearchAvailable();
   // どの作品に対する候補かを一緒に持つ。作品が変わった瞬間に
   // 前の作品の候補が残って見えるのを防ぐ（effect 内で state を消さずに済む）。
@@ -88,12 +90,16 @@ export function HashtagSuggestionChips({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">タグ候補</span>
+      <span className="text-xs text-muted-foreground">
+        {t("hashtagSuggestionsLabel")}
+      </span>
       {remaining.map((item) => (
         <button
           key={item.name}
           type="button"
           disabled={disabled}
+          // 入力欄からフォーカスを奪わない（入力途中に押しても位置を失わない）
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => onInsert(appendHashtag(caption, item.name, maxLength))}
           className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs text-sky-700 transition-colors hover:bg-sky-100 disabled:opacity-50"
         >

@@ -7,6 +7,11 @@ import {
   SearchAvailabilityUpgrade,
 } from "@/features/posts/components/SearchAvailabilityProvider";
 
+jest.mock("next-intl", () => ({
+  useTranslations: () => (key: string) =>
+    ({ hashtagPopularLabel: "よく使われています" })[key] ?? key,
+}));
+
 function mockMatches(items: Array<{ name: string; post_count: number }>) {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
@@ -117,5 +122,28 @@ describe("HashtagTypeahead", () => {
 
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+
+  test("押しても入力欄のフォーカスを奪わない", async () => {
+    // blur が先に走ると候補ごと消えて、タップしても何も入らない
+    renderTypeahead({ value: "今日は #冬", caret: 6 });
+    await flush();
+
+    const chip = await screen.findByRole("button", { name: /#冬服/ });
+    const notCancelled = fireEvent.mouseDown(chip);
+
+    expect(notCancelled).toBe(false);
+  });
+
+  test("非BMP文字のタグでも候補を出す", async () => {
+    mockMatches([{ name: "𠮷野家", post_count: 2 }]);
+    const text = "#\u{20BB7}";
+    renderTypeahead({ value: text, caret: text.length });
+    await flush();
+
+    expect(
+      await screen.findByRole("button", { name: /#𠮷野家/ })
+    ).toBeInTheDocument();
   });
 });

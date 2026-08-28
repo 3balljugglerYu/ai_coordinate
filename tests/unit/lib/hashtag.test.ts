@@ -352,6 +352,17 @@ describe("hashtag", () => {
       });
     });
 
+    test("サロゲートペアの文字でも検出する", () => {
+      // コードユニット単位で戻ると、ペアの後半だけを見て必ず null になる。
+      // 保存側は 𠮷 を有効なタグとして扱うので、経路ごとに規則がズレる
+      const text = "#\u{20BB7}";
+      expect(findHashtagQueryAt(text, text.length)).toEqual({
+        start: 0,
+        end: text.length,
+        query: "\u{20BB7}",
+      });
+    });
+
     test("タグが無い本文では null", () => {
       expect(findHashtagQueryAt("ただの本文", 3)).toBeNull();
     });

@@ -174,6 +174,8 @@ export const arMessages = {
     editModalDescription: "عدّل الوصف (حتى {max} حرف).",
     captionLabel: "الوصف",
     captionPlaceholder: "صف الصورة (اختياري)",
+    hashtagSuggestionsLabel: "وسوم مقترحة",
+    hashtagPopularLabel: "الأكثر استخدامًا",
     captionTooLong: "يجب ألا يتجاوز الوصف {max} حرفًا.",
     charactersRemaining: "متبقي {count} حرفًا",
     cancel: "إلغاء",

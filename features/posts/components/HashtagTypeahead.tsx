@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { findHashtagQueryAt, normalizeHashtag } from "@/lib/hashtag";
 import { useSearchAvailable } from "./SearchAvailabilityProvider";
 
@@ -50,6 +51,7 @@ export function HashtagTypeahead({
   onSelect,
   disabled,
 }: Props) {
+  const t = useTranslations("posts");
   const searchAvailable = useSearchAvailable();
   const [matches, setMatches] = useState<{
     query: string;
@@ -107,12 +109,21 @@ export function HashtagTypeahead({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-xs text-muted-foreground">よく使われています</span>
+      <span className="text-xs text-muted-foreground">
+        {t("hashtagPopularLabel")}
+      </span>
       {items.map((item) => (
         <button
           key={item.name}
           type="button"
           disabled={disabled}
+          /*
+            押した瞬間に textarea の blur が先に走ると、カーソル位置が消えて
+            この候補ごと消える（= タップしても何も入らない）。
+            mousedown の既定動作を止めてフォーカスを textarea に残す。
+            click は従来どおり発火する。
+          */
+          onMouseDown={(event) => event.preventDefault()}
           onClick={() => handleSelect(item.name)}
           className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700 transition-colors hover:bg-slate-100 disabled:opacity-50"
         >

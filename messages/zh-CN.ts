@@ -174,6 +174,8 @@ export const zhCnMessages = {
     editModalDescription: "编辑说明（最多 {max} 字）。",
     captionLabel: "说明",
     captionPlaceholder: "描述这张图片（可选）",
+    hashtagSuggestionsLabel: "标签推荐",
+    hashtagPopularLabel: "热门标签",
     captionTooLong: "说明不能超过 {max} 字。",
     charactersRemaining: "还可输入 {count} 字",
     cancel: "取消",

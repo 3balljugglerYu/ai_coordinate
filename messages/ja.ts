@@ -172,6 +172,8 @@ export const jaMessages = {
     editModalDescription: "キャプションを編集します（最大{max}文字）",
     captionLabel: "キャプション",
     captionPlaceholder: "画像の説明を入力してください（任意）",
+    hashtagSuggestionsLabel: "タグ候補",
+    hashtagPopularLabel: "よく使われています",
     captionTooLong: "キャプションは{max}文字以内で入力してください",
     charactersRemaining: "{count}文字残り",
     cancel: "キャンセル",

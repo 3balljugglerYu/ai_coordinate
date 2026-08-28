@@ -18,7 +18,9 @@ export async function GET(request: NextRequest) {
   await connection();
 
   const prefix = request.nextUrl.searchParams.get("prefix")?.trim() ?? "";
-  if (!prefix || prefix.length > MAX_PREFIX_LENGTH) {
+  // 長さはコードポイント単位で見る。コードユニットで数えると、サロゲートペアを
+  // 含むタグ（𠮷 など）が実際の半分の長さで上限に当たる。
+  if (!prefix || [...prefix].length > MAX_PREFIX_LENGTH) {
     return NextResponse.json({ hashtags: [] });
   }
 

@@ -174,6 +174,8 @@ export const itMessages = {
     editModalDescription: "Modifica la didascalia (fino a {max} caratteri).",
     captionLabel: "Didascalia",
     captionPlaceholder: "Descrivi l'immagine (facoltativo)",
+    hashtagSuggestionsLabel: "Tag suggeriti",
+    hashtagPopularLabel: "Popolari",
     captionTooLong: "La didascalia non può superare {max} caratteri.",
     charactersRemaining: "{count} caratteri rimanenti",
     cancel: "Annulla",
