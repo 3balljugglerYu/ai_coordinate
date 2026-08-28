@@ -238,9 +238,17 @@ describe("hashtag", () => {
   });
 
   describe("buildHashtagSearchHref", () => {
-    test("正規化キーで /search に飛ばす", () => {
+    test("/search へ飛ばす", () => {
       expect(buildHashtagSearchHref("冬服")).toBe(
         `/search?q=${encodeURIComponent("#冬服")}`,
+      );
+    });
+
+    test("書かれたままの表記を載せる（小文字に潰さない）", () => {
+      // 正規化キーを載せると、押した先の検索ボックスが #perstaai になり、
+      // 自分が書いた見た目が勝手に崩れる。一致は検索側が正規化して行う
+      expect(buildHashtagSearchHref("PerstaAI")).toBe(
+        `/search?q=${encodeURIComponent("#PerstaAI")}`,
       );
     });
 

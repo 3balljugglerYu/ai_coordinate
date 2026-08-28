@@ -64,6 +64,22 @@ describe("キャプションのハッシュタグ表示", () => {
       );
     });
 
+    test("大文字小文字は書かれたまま遷移先に載せる", () => {
+      renderWithAvailability(
+        <FeedCaption
+          caption="#PerstaAI で作りました"
+          onOpenDetail={jest.fn()}
+          expandLabel="もっと見る"
+        />,
+        { available: true }
+      );
+
+      expect(screen.getByRole("link", { name: "#PerstaAI" })).toHaveAttribute(
+        "href",
+        `/search?q=${encodeURIComponent("#PerstaAI")}`
+      );
+    });
+
     test("URL リンクは従来どおり出す", () => {
       renderWithAvailability(
         <FeedCaption
