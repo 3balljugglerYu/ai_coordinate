@@ -78,8 +78,9 @@ sequenceDiagram
     PM->>API: id caption ほか
     API->>API: postImageServer 投稿確定
     API->>TS: caption からタグ抽出
-    API->>RPC: post_id と tags 配列
-    RPC->>RPC: hashtags を upsert し post_hashtags を洗い替え
+    API->>RPC: post_id と tags 配列 と expected_caption
+    RPC->>RPC: 行ロック後に caption 一致を確認 不一致は no-op
+    RPC->>RPC: hashtags を upsert し source=user の行だけ洗い替え
     API-->>PM: 応答 タグ同期の失敗は投稿を失敗させない
 ```
 
@@ -88,7 +89,7 @@ sequenceDiagram
 ```mermaid
 flowchart TD
     A["検索フィールドに入力"] --> B{"先頭が # か"}
-    B -->|はい| C["タグ検索 post_hashtags から post_id を引き id.in で絞る"]
+    B -->|はい| C["タグ検索 タグIDを1件解決し post_hashtags と inner join 可視性と並びとページングは DB 側"]
     B -->|いいえ| D["フリーワード caption ilike + 作者名"]
     C --> E["PostList で一覧表示"]
     D --> E
@@ -164,7 +165,7 @@ X と同じ使い分けなので、説明は要らない。
 ### ADR-002: 抽出規則の正本は TypeScript、書き込みは RPC
 
 - Context: リポジトリ方針は「複数テーブル跨りは RPC」。しかし抽出規則を SQL に書き写すと表示側（linkify）とズレる
-- Decision: 抽出・リンク化は TS の `lib/hashtag.ts` に集約。API がタグ配列まで作り、RPC `sync_post_hashtags(post_id, tags[])` が原子的に洗い替える
+- Decision: 抽出・リンク化は TS の `lib/hashtag.ts` に集約。API がタグ配列まで作り、RPC `sync_post_hashtags(p_post_id uuid, p_tags text[], p_expected_caption text)` が原子的に洗い替える（これが正規シグネチャ。Phase 2 と同一）
 - Reason: 規則の二重管理を避ける（`#冬服#` 無効などの細則は正規表現1本に閉じる）。原子性は RPC が担保
 - Consequence: RPC 単体ではタグの妥当性を検証しない（長さ・件数上限のみ検証）。呼び出し元は service_role のみ
 - 追記（レビュー反映）:
@@ -258,7 +259,11 @@ flowchart LR
   - `PUT /api/posts/update`（キャプション編集）
   - `POST /api/collections/completions/[id]/post`（完走フィード投稿。caption を受けて投稿を作る）
 - [ ] 3 経路すべてで同期されることをテストで固定（作成・再投稿・編集）
-- [ ] 遡りスクリプト: 公開 visible の caption 全件に `extractHashtags` → `sync_post_hashtags`（実測 1 件だが全件を通す。以後の運用にも使える）
+- [ ] 遡りスクリプト: 公開 visible の caption 全件に `extractHashtags` → `sync_post_hashtags`（実測 1 件だが全件を通す。**冪等にする** — 何度実行しても現在の caption と一致する状態に収束）
+- [ ] **同期失敗の検知と復旧手順**（レビュー指摘: 非致命方針の取りこぼしを運用でどう拾うか）
+  - 検知: 同期失敗時は `Hashtag sync failed` の接頭辞で `console.error`（post_id 付き）。Vercel の Logs でこの接頭辞を検索すれば一覧できる
+  - 契機: ①エラーログを見つけたとき ②リリース直後の確認 ③タグ表示と検索結果の食い違いが報告されたとき
+  - 手順: 遡りスクリプトを再実行するだけ（冪等なので対象を選ばず全件でよい）。定期 cron は現規模では作らない — スクリプト再実行が数秒で終わるため
 - [ ] 投稿取消/削除時は触らない（REQ-08: 検索側の可視性フィルタで消えるため）
 
 ### Phase 4: 表示リンク化と入力中の着色
@@ -328,7 +333,7 @@ flowchart LR
 | `features/posts/components/FeedCaption.tsx` | 修正 | タグリンク描画 + searchEnabled |
 | `features/posts/components/CollapsibleText.tsx` | 修正 | 同上 |
 | `features/posts/lib/search-filters.ts` | 修正 | `#` 分岐 |
-| `features/posts/lib/server-api.ts` | 修正 | タグ→post_id 解決 |
+| `features/posts/lib/server-api.ts` | 修正 | タグ検索（`post_hashtags!inner` 埋め込み or 参照 RPC。post_id の先取りはしない） |
 | `app/search/page.tsx` | 修正 | 運営のみ表示（redirect を条件付きに） |
 | `features/posts/components/StickyHeader.tsx` | 修正 | SEARCH_ENABLED の props 化 |
 | `messages/ja.ts` ほか全ロケール | 修正 | 文言（必要分） |
