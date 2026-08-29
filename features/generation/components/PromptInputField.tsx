@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -70,6 +71,26 @@ export function PromptInputField({
   const isAtLimit = maxLength > 0 && value.length >= maxLength;
   const ariaInvalid = invalid ?? value.length > maxLength;
 
+  /*
+    上限で止まった入力欄は、iOS だとスクロール中しかバーが出ないため
+    「そこで終わっている」ように見える。まだ下に続くときだけ、
+    欄の下端にぼかしを重ねて続きがあることを示す。
+  */
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [hasMoreBelow, setHasMoreBelow] = useState(false);
+
+  const updateScrollHint = useCallback(() => {
+    const element = textareaRef.current;
+    if (!element) return;
+    const remaining =
+      element.scrollHeight - element.scrollTop - element.clientHeight;
+    setHasMoreBelow(remaining > 4);
+  }, []);
+
+  useEffect(() => {
+    updateScrollHint();
+  }, [value, updateScrollHint]);
+
   return (
     <div {...containerProps}>
       {/*
@@ -110,11 +131,14 @@ export function PromptInputField({
           </Button>
         )}
       </div>
+      <div className="relative">
       <Textarea
+        ref={textareaRef}
         id={id}
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onScroll={updateScrollHint}
         /*
           高さの上限。共通 Textarea は field-sizing-content で内容に合わせて
           伸びるため、長いプロンプト(実測で最長 19,224 文字)を入れると入力欄が
@@ -125,11 +149,19 @@ export function PromptInputField({
           超えないようにする。小さい端末で 21 行を許すと、入力欄だけで画面が
           埋まって元の問題が戻るため。
         */
-        className="mt-2 max-h-[min(32.5rem,55vh)] min-h-[100px] overflow-y-auto"
+        className="mt-2 max-h-[min(32.5rem,55vh)] min-h-[100px] overflow-y-auto [scrollbar-width:thin]"
         maxLength={maxLength}
         aria-invalid={ariaInvalid || undefined}
         disabled={disabled}
       />
+      {hasMoreBelow ? (
+        <div
+          aria-hidden="true"
+          data-testid="prompt-scroll-hint"
+          className="pointer-events-none absolute inset-x-px bottom-px h-7 rounded-b-md bg-gradient-to-t from-white via-white/80 to-transparent"
+        />
+      ) : null}
+      </div>
       {(hint || showCharacterCount) && (
         <p className="mt-1 flex items-center justify-between gap-3 text-xs text-gray-500">
           {hint ? <span>{hint}</span> : <span />}
