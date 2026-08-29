@@ -78,18 +78,44 @@ export function PromptInputField({
   */
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
+  /*
+    自前のスクロール位置表示。iOS Safari は scrollbar-width などの指定を無視し、
+    標準のバーもスクロール中しか出さないため、CSS では常時表示できない。
+    「どのあたりを見ているか」を示すには自分で描くしかない。
+  */
+  const [thumb, setThumb] = useState<{ top: number; height: number } | null>(
+    null
+  );
 
   const updateScrollHint = useCallback(() => {
     const element = textareaRef.current;
     if (!element) return;
-    const remaining =
-      element.scrollHeight - element.scrollTop - element.clientHeight;
-    setHasMoreBelow(remaining > 4);
+
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    const overflow = scrollHeight - clientHeight;
+
+    setHasMoreBelow(overflow - scrollTop > 4);
+
+    if (overflow <= 4 || clientHeight === 0) {
+      setThumb(null);
+      return;
+    }
+
+    // つまみは短くなりすぎると掴みどころが無くなるので下限を置く
+    const height = Math.max(24, (clientHeight / scrollHeight) * clientHeight);
+    const top = (scrollTop / overflow) * (clientHeight - height);
+    setThumb({ top, height });
   }, []);
 
   useEffect(() => {
     updateScrollHint();
   }, [value, updateScrollHint]);
+
+  useEffect(() => {
+    // 画面回転や折返しの変化でも位置がずれないようにする
+    window.addEventListener("resize", updateScrollHint);
+    return () => window.removeEventListener("resize", updateScrollHint);
+  }, [updateScrollHint]);
 
   return (
     <div {...containerProps}>
@@ -159,6 +185,14 @@ export function PromptInputField({
           aria-hidden="true"
           data-testid="prompt-scroll-hint"
           className="pointer-events-none absolute inset-x-px bottom-px h-7 rounded-b-md bg-gradient-to-t from-white via-white/80 to-transparent"
+        />
+      ) : null}
+      {thumb ? (
+        <div
+          aria-hidden="true"
+          data-testid="prompt-scroll-thumb"
+          className="pointer-events-none absolute right-1.5 w-1 rounded-full bg-slate-400/60"
+          style={{ top: thumb.top + 2, height: thumb.height }}
         />
       ) : null}
       </div>
