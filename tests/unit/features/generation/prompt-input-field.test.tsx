@@ -195,4 +195,83 @@ describe("PromptInputField", () => {
 
     expect(screen.getByRole("textbox")).toHaveValue(value);
   });
+
+
+  test("下にまだ続くときは、続きがあることを示すぼかしを出す", () => {
+    /*
+      iOS はスクロール中しかバーを出さないため、上限で止まった欄が
+      「そこで終わっている」ように見える。下端のぼかしが唯一の手掛かりになる。
+    */
+    render(<PromptInputField value={"行\n".repeat(40)} onChange={() => {}} label="L" />);
+
+    const textarea = screen.getByRole("textbox");
+    // jsdom は高さを持たないので、スクロール可能な状態を作って再計算させる
+    Object.defineProperty(textarea, "scrollHeight", { value: 800, configurable: true });
+    Object.defineProperty(textarea, "clientHeight", { value: 300, configurable: true });
+    fireEvent.scroll(textarea, { target: { scrollTop: 0 } });
+
+    expect(screen.getByTestId("prompt-scroll-hint")).toBeInTheDocument();
+  });
+
+  test("最後まで見えているときはぼかしを出さない", () => {
+    render(<PromptInputField value="短い" onChange={() => {}} label="L" />);
+
+    expect(screen.queryByTestId("prompt-scroll-hint")).not.toBeInTheDocument();
+  });
+
+  test("末尾までスクロールしたらぼかしを消す", () => {
+    render(<PromptInputField value={"行\n".repeat(40)} onChange={() => {}} label="L" />);
+
+    const textarea = screen.getByRole("textbox");
+    Object.defineProperty(textarea, "scrollHeight", { value: 800, configurable: true });
+    Object.defineProperty(textarea, "clientHeight", { value: 300, configurable: true });
+    fireEvent.scroll(textarea, { target: { scrollTop: 0 } });
+    expect(screen.getByTestId("prompt-scroll-hint")).toBeInTheDocument();
+
+    Object.defineProperty(textarea, "scrollTop", { value: 500, configurable: true });
+    fireEvent.scroll(textarea);
+
+    expect(screen.queryByTestId("prompt-scroll-hint")).not.toBeInTheDocument();
+  });
+
+
+  test("スクロールできるときは位置を示すつまみを自前で描く", () => {
+    /*
+      iOS Safari は scrollbar-width などの指定を無視し、標準のバーも
+      スクロール中しか出さない。常時見せるには自分で描くしかない。
+    */
+    render(<PromptInputField value={"行\n".repeat(40)} onChange={() => {}} label="L" />);
+
+    const textarea = screen.getByRole("textbox");
+    Object.defineProperty(textarea, "scrollHeight", { value: 900, configurable: true });
+    Object.defineProperty(textarea, "clientHeight", { value: 300, configurable: true });
+    fireEvent.scroll(textarea, { target: { scrollTop: 0 } });
+
+    const thumb = screen.getByTestId("prompt-scroll-thumb");
+    expect(thumb).toBeInTheDocument();
+    // 全体の1/3が見えている → つまみは高さの約1/3
+    expect(thumb).toHaveStyle({ height: "100px" });
+  });
+
+  test("スクロールするとつまみが下へ動く", () => {
+    render(<PromptInputField value={"行\n".repeat(40)} onChange={() => {}} label="L" />);
+
+    const textarea = screen.getByRole("textbox");
+    Object.defineProperty(textarea, "scrollHeight", { value: 900, configurable: true });
+    Object.defineProperty(textarea, "clientHeight", { value: 300, configurable: true });
+    fireEvent.scroll(textarea, { target: { scrollTop: 0 } });
+    const initialTop = screen.getByTestId("prompt-scroll-thumb").style.top;
+
+    Object.defineProperty(textarea, "scrollTop", { value: 600, configurable: true });
+    fireEvent.scroll(textarea);
+
+    const movedTop = screen.getByTestId("prompt-scroll-thumb").style.top;
+    expect(parseFloat(movedTop)).toBeGreaterThan(parseFloat(initialTop));
+  });
+
+  test("スクロール不要な短さならつまみを出さない", () => {
+    render(<PromptInputField value="短い" onChange={() => {}} label="L" />);
+
+    expect(screen.queryByTestId("prompt-scroll-thumb")).not.toBeInTheDocument();
+  });
 });
