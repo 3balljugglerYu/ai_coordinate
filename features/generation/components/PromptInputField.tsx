@@ -115,7 +115,17 @@ export function PromptInputField({
         placeholder={placeholder}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-2 min-h-[100px]"
+        /*
+          高さの上限。共通 Textarea は field-sizing-content で内容に合わせて
+          伸びるため、長いプロンプト(実測で最長 19,224 文字)を入れると入力欄が
+          ページを埋め尽くし、文字数・クリア・生成ボタンが画面外へ出ていた。
+          上限に達したら**畳まずに**欄の中でスクロールする。
+
+          21 行ぶん(モバイルの text-base で約 520px)を上限にしつつ、画面の 55% を
+          超えないようにする。小さい端末で 21 行を許すと、入力欄だけで画面が
+          埋まって元の問題が戻るため。
+        */
+        className="mt-2 max-h-[min(32.5rem,55vh)] min-h-[100px] overflow-y-auto"
         maxLength={maxLength}
         aria-invalid={ariaInvalid || undefined}
         disabled={disabled}
