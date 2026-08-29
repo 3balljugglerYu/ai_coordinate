@@ -173,4 +173,26 @@ describe("PromptInputField", () => {
     const wrapper = container.querySelector('[data-tour="tour-foo"]');
     expect(wrapper).not.toBeNull();
   });
+
+
+  test("高さに上限を持ち、超えたぶんは欄の中でスクロールする", () => {
+    /*
+      長いプロンプトで入力欄がページを埋め尽くし、文字数・クリア・生成ボタンが
+      画面外へ出ていた。畳んで隠すのではなく、上限で止めて中をスクロールさせる。
+    */
+    render(
+      <PromptInputField value={"行\n".repeat(40)} onChange={() => {}} label="L" />
+    );
+
+    const textarea = screen.getByRole("textbox");
+    expect(textarea.className).toContain("max-h-[min(32.5rem,55vh)]");
+    expect(textarea.className).toContain("overflow-y-auto");
+  });
+
+  test("長い値でも文字は削らずそのまま保持する", () => {
+    const value = "あ".repeat(3000);
+    render(<PromptInputField value={value} onChange={() => {}} label="L" maxLength={5000} />);
+
+    expect(screen.getByRole("textbox")).toHaveValue(value);
+  });
 });
