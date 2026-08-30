@@ -143,10 +143,81 @@ describe("normalizeUserFacingGenerationError", () => {
     ).toBe(copy.providerBusy);
   });
 
-  it("passes through unknown failed messages unchanged", () => {
-    const message = "Something completely unexpected happened";
+  it("hides unknown English messages (they are upstream text)", () => {
+    // 私たちがユーザーへ出す文言は必ず日本語。英文は提供元由来と見なす
     expect(
-      normalizeUserFacingGenerationError("failed", message, copy),
-    ).toBe(message);
+      normalizeUserFacingGenerationError(
+        "failed",
+        "Something completely unexpected happened",
+        copy,
+      ),
+    ).toBe(copy.genericGenerationFailed);
+  });
+
+  it("passes through unknown Japanese messages", () => {
+    // 将来こちらで足す説明が握り潰されないようにする
+    const message = "この作品は編集中のため生成できません";
+    expect(normalizeUserFacingGenerationError("failed", message, copy)).toBe(
+      message,
+    );
+  });
+
+  it("hides messages containing a URL even if they are in Japanese", () => {
+    // 提供元のエラーはリンクを含むことが多い。私たちの文言にリンクは入れない
+    expect(
+      normalizeUserFacingGenerationError(
+        "failed",
+        "残高がありません https://platform.openai.com/settings/organization/billing/",
+        copy,
+      ),
+    ).toBe(copy.genericGenerationFailed);
+  });
+
+  describe("請求で止まったとき（2026-08-31 の障害）", () => {
+    /*
+      提供元は接頭辞なしの生文字列で返し、しかも文言が変わる。
+      hard limit だけを潰していたため、残高切れの文言が素通りし、
+      ユーザーに「あなたが課金してください」と読める英文と
+      当社の請求ページ URL が表示された。
+    */
+    it("maps 'no credits remaining' to copy.providerBusy", () => {
+      expect(
+        normalizeUserFacingGenerationError(
+          "failed",
+          "You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.",
+          copy,
+        ),
+      ).toBe(copy.providerBusy);
+    });
+
+    it("maps 'insufficient_quota' to copy.providerBusy", () => {
+      expect(
+        normalizeUserFacingGenerationError(
+          "failed",
+          "429 insufficient_quota: You exceeded your current quota",
+          copy,
+        ),
+      ).toBe(copy.providerBusy);
+    });
+
+    it("keeps mapping the previous wording (billing hard limit)", () => {
+      expect(
+        normalizeUserFacingGenerationError(
+          "failed",
+          "Billing hard limit has been reached.",
+          copy,
+        ),
+      ).toBe(copy.providerBusy);
+    });
+
+    it("never shows the billing URL to users", () => {
+      const result = normalizeUserFacingGenerationError(
+        "failed",
+        "You have no credits remaining. Add credits at https://platform.openai.com/settings/organization/billing/.",
+        copy,
+      );
+      expect(result).not.toContain("openai.com");
+      expect(result).not.toContain("credits");
+    });
   });
 });
