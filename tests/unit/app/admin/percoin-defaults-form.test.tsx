@@ -181,4 +181,70 @@ describe("PercoinDefaultsForm の予約", () => {
     expect(scheduleAmountInput(0).value).toBe("");
     expect(scheduleAtInput(0).value).toBe("");
   });
+
+
+  test("連続ログインの予約も送られる", async () => {
+    render(<PercoinDefaultsForm {...buildProps()} />);
+
+    // 先頭2つはボーナス欄。3つ目以降が連続ログイン1日目〜
+    const streakAmount = screen.getAllByLabelText("予約額")[2] as HTMLInputElement;
+    const streakAt = screen.getAllByLabelText("切替日時")[2] as HTMLInputElement;
+    fireEvent.change(streakAmount, { target: { value: "5" } });
+    fireEvent.change(streakAt, { target: { value: FUTURE_LOCAL } });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(await screen.findByRole("button", { name: "この内容で保存" }));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse(
+      (global.fetch as jest.Mock).mock.calls[0][1].body as string
+    );
+    const day1 = body.streakDefaults.find(
+      (s: { streak_day: number }) => s.streak_day === 1
+    );
+    expect(day1.scheduled_amount).toBe(5);
+    expect(day1.scheduled_at).toBe("2099-09-30T15:00:00.000Z");
+  });
+
+  test("予約額が空のまま一括指定を押しても何も入らない", () => {
+    render(<PercoinDefaultsForm {...buildProps()} />);
+
+    fireEvent.change(screen.getByLabelText("まとめて日時を入れる"), {
+      target: { value: FUTURE_LOCAL },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "予約額を入れた項目に適用" }));
+
+    expect(scheduleAtInput(0).value).toBe("");
+    expect(toast).toHaveBeenCalledWith(
+      expect.objectContaining({ variant: "destructive" })
+    );
+  });
+
+  test("確認から戻れる", async () => {
+    render(<PercoinDefaultsForm {...buildProps()} />);
+
+    fireEvent.change(scheduleAmountInput(0), { target: { value: "10" } });
+    fireEvent.change(scheduleAtInput(0), { target: { value: FUTURE_LOCAL } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    fireEvent.click(await screen.findByRole("button", { name: "戻って直す" }));
+
+    expect(screen.queryByTestId("schedule-confirm")).not.toBeInTheDocument();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("保存に失敗したら理由を出す", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: "予約の保存に失敗しました" }),
+    }) as unknown as typeof fetch;
+
+    render(<PercoinDefaultsForm {...buildProps()} />);
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "予約の保存に失敗しました" })
+      )
+    );
+  });
 });
