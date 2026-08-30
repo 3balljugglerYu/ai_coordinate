@@ -22,6 +22,7 @@ import {
 } from "@/features/credits/lib/percoin-schedule";
 import { parseDatetimeLocalJst } from "@/lib/datetime/format-datetime-local-jst";
 import { ScheduleFields, formatJst, type ScheduleInput } from "./ScheduleFields";
+import { BulkScheduleDate } from "./BulkScheduleDate";
 
 interface BonusDefault {
   source: string;
@@ -56,6 +57,29 @@ const USAGE_REWARD_MIN = USAGE_REWARD_MIN_AMOUNT;
 const USAGE_REWARD_MAX = USAGE_REWARD_MAX_AMOUNT;
 
 const EMPTY_SCHEDULE: ScheduleInput = { amount: "", at: "" };
+
+/** 保存時に見つかった不足。画面にまとめて出す。 */
+interface ScheduleIssue {
+  key: string;
+  label: string;
+  kind: "missingAmount" | "missingAt" | "range" | "invalidAt" | "pastAt";
+  range?: { min: number; max: number };
+}
+
+function describeIssue(issue: ScheduleIssue): string {
+  switch (issue.kind) {
+    case "missingAmount":
+      return "予約額が入っていません";
+    case "missingAt":
+      return "切替日時が入っていません";
+    case "range":
+      return `予約額は ${issue.range?.min}〜${issue.range?.max} で入力してください`;
+    case "invalidAt":
+      return "切替日時の形式が正しくありません";
+    case "pastAt":
+      return "切替日時が過去です";
+  }
+}
 
 function toScheduleInput(row: {
   scheduledAmount: number | null;
@@ -97,8 +121,17 @@ export function PercoinDefaultsForm({
     )
   );
 
-  /** 一括で入れる切替日時（datetime-local の値）。 */
-  const [bulkAt, setBulkAt] = useState("");
+  /**
+   * 一括で入れる切替日時（datetime-local の値）。
+   * 全体用とセクション用を別々に持つ（それぞれの欄に入れた値が混ざらないように）。
+   */
+  const [bulkAt, setBulkAt] = useState<Record<string, string>>({});
+
+  /**
+   * 保存時に見つかった不足。押すまで出さない（入力の途中で赤くしない）。
+   * 「日時だけ入っている」項目はまとめて消せるようにする。
+   */
+  const [saveIssues, setSaveIssues] = useState<ScheduleIssue[]>([]);
 
   /** 保存前の確認に出す内容。null なら確認中でない。 */
   const [pendingConfirm, setPendingConfirm] = useState<
@@ -129,117 +162,149 @@ export function PercoinDefaultsForm({
   };
 
   /**
-   * 一括適用。**予約額を入れた項目にだけ**日時を入れる。
-   * 全項目に日時を入れてしまうと、額の無い予約が大量にできて保存できなくなる。
+   * 一括適用。指定した範囲の項目に、**額の有無に関わらず**同じ日時を入れる。
+   *
+   * 以前は「額を入れた項目だけ」に入れていたが、それだと必ず額→日時の順で
+   * 操作する必要があり、順番を強いることになる。日時を先に決めて額を後から
+   * 埋める使い方もできるようにした。額の無い予約は保存時にまとめて指摘する。
    */
-  const applyBulkDate = () => {
-    if (!bulkAt) return;
+  const applyBulkDate = (
+    scope: "all" | "bonus" | "usageReward" | "streak"
+  ) => {
+    const at = bulkAt[scope] ?? "";
+    if (!at) return;
+
+    const wantsBonus = (source: string) =>
+      scope === "all" ||
+      (scope === "bonus" && !isUsageRewardBonusSource(source)) ||
+      (scope === "usageReward" && isUsageRewardBonusSource(source));
 
     let applied = 0;
-    setBonusSchedules((prev) => {
-      const next = { ...prev };
-      for (const [source, schedule] of Object.entries(prev)) {
-        if (schedule.amount !== "") {
-          next[source] = { ...schedule, at: bulkAt };
+
+    if (scope !== "streak") {
+      setBonusSchedules((prev) => {
+        const next = { ...prev };
+        for (const { source } of bonusDefaults) {
+          if (!wantsBonus(source)) continue;
+          next[source] = { ...(prev[source] ?? EMPTY_SCHEDULE), at };
           applied += 1;
         }
+        return next;
+      });
+    }
+
+    if (scope === "all" || scope === "streak") {
+      setStreakSchedules((prev) => {
+        const next = { ...prev };
+        for (const { streak_day: day } of streakDefaults) {
+          next[day] = { ...(prev[day] ?? EMPTY_SCHEDULE), at };
+          applied += 1;
+        }
+        return next;
+      });
+    }
+
+    toast({
+      title: "切替日時を入れました",
+      description: `${applied} 項目に同じ日時を設定しました。予約額を入れてから保存してください`,
+    });
+  };
+
+  /**
+   * 入力中の予約を、保存できる形（ISO）へ。
+   *
+   * ⚠️ **最初の1件で止めずに全部集める。** 一括で日時を入れたあとは不足も
+   * まとめて出るので、1件ずつ指摘されると直すのに何度も保存を押すことになる。
+   */
+  const collectSchedules = (): {
+    changes: ScheduleChange[];
+    issues: ScheduleIssue[];
+  } => {
+    const changes: ScheduleChange[] = [];
+    const issues: ScheduleIssue[] = [];
+
+    const inspect = (
+      key: string,
+      label: string,
+      schedule: ScheduleInput,
+      currentAmount: number,
+      range: { min: number; max: number }
+    ) => {
+      if (schedule.amount === "" && schedule.at === "") return;
+
+      if (schedule.amount === "") {
+        issues.push({ key, label, kind: "missingAmount" });
+        return;
+      }
+      if (schedule.at === "") {
+        issues.push({ key, label, kind: "missingAt" });
+        return;
+      }
+
+      const amount = Number(schedule.amount);
+      if (!Number.isInteger(amount) || amount < range.min || amount > range.max) {
+        issues.push({ key, label, kind: "range", range });
+        return;
+      }
+
+      const iso = parseDatetimeLocalJst(schedule.at);
+      if (!iso) {
+        issues.push({ key, label, kind: "invalidAt" });
+        return;
+      }
+      if (validateScheduledAt(iso)) {
+        issues.push({ key, label, kind: "pastAt" });
+        return;
+      }
+
+      changes.push({ label, currentAmount, nextAmount: amount, at: iso });
+    };
+
+    for (const { source, label } of bonusDefaults) {
+      inspect(
+        `bonus:${source}`,
+        label,
+        bonusSchedules[source] ?? EMPTY_SCHEDULE,
+        bonusValues[source] ?? 0,
+        getBonusAmountRange(source)
+      );
+    }
+
+    for (const { streak_day: day } of streakDefaults) {
+      inspect(
+        `streak:${day}`,
+        `連続ログイン ${day}日目`,
+        streakSchedules[day] ?? EMPTY_SCHEDULE,
+        streakValues[day] ?? 0,
+        { min: AMOUNT_MIN, max: AMOUNT_MAX }
+      );
+    }
+
+    return { changes, issues };
+  };
+
+  /** 「日時だけ入っている」項目の日時を消す（一括で入れたあとの後始末）。 */
+  const clearIncompleteDates = () => {
+    const targets = new Set(
+      saveIssues.filter((i) => i.kind === "missingAmount").map((i) => i.key)
+    );
+    if (targets.size === 0) return;
+
+    setBonusSchedules((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(prev)) {
+        if (targets.has(`bonus:${key}`)) next[key] = EMPTY_SCHEDULE;
       }
       return next;
     });
     setStreakSchedules((prev) => {
       const next = { ...prev };
-      for (const [day, schedule] of Object.entries(prev)) {
-        if (schedule.amount !== "") {
-          next[Number(day)] = { ...schedule, at: bulkAt };
-          applied += 1;
-        }
+      for (const key of Object.keys(prev)) {
+        if (targets.has(`streak:${key}`)) next[Number(key)] = EMPTY_SCHEDULE;
       }
       return next;
     });
-
-    toast({
-      title: applied > 0 ? "切替日時を入れました" : "予約額が未入力です",
-      description:
-        applied > 0
-          ? "予約額を入れた項目に同じ日時を設定しました"
-          : "先に予約額を入れてから、日時をまとめて設定してください",
-      variant: applied > 0 ? undefined : "destructive",
-    });
-  };
-
-  /** 入力中の予約を、保存できる形（ISO）へ。エラーがあれば文言を返す。 */
-  const collectSchedules = ():
-    | { ok: true; changes: ScheduleChange[] }
-    | { ok: false; error: string } => {
-    const changes: ScheduleChange[] = [];
-
-    for (const { source, label } of bonusDefaults) {
-      const schedule = bonusSchedules[source] ?? EMPTY_SCHEDULE;
-      if (schedule.amount === "" && schedule.at === "") continue;
-      if (schedule.amount === "" || schedule.at === "") {
-        return { ok: false, error: `${label} の予約は額と切替日時の両方が必要です` };
-      }
-
-      const amount = Number(schedule.amount);
-      const { min, max } = getBonusAmountRange(source);
-      if (!Number.isInteger(amount) || amount < min || amount > max) {
-        return {
-          ok: false,
-          error: `${label} の予約額は ${min}〜${max} で入力してください`,
-        };
-      }
-
-      const iso = parseDatetimeLocalJst(schedule.at);
-      if (!iso) {
-        return { ok: false, error: `${label} の切替日時が正しくありません` };
-      }
-      const atError = validateScheduledAt(iso);
-      if (atError) {
-        return { ok: false, error: `${label}: ${atError}` };
-      }
-
-      changes.push({
-        label,
-        currentAmount: bonusValues[source] ?? 0,
-        nextAmount: amount,
-        at: iso,
-      });
-    }
-
-    for (const { streak_day: day } of streakDefaults) {
-      const schedule = streakSchedules[day] ?? EMPTY_SCHEDULE;
-      if (schedule.amount === "" && schedule.at === "") continue;
-      const label = `連続ログイン ${day}日目`;
-      if (schedule.amount === "" || schedule.at === "") {
-        return { ok: false, error: `${label} の予約は額と切替日時の両方が必要です` };
-      }
-
-      const amount = Number(schedule.amount);
-      if (!Number.isInteger(amount) || amount < AMOUNT_MIN || amount > AMOUNT_MAX) {
-        return {
-          ok: false,
-          error: `${label} の予約額は ${AMOUNT_MIN}〜${AMOUNT_MAX} で入力してください`,
-        };
-      }
-
-      const iso = parseDatetimeLocalJst(schedule.at);
-      if (!iso) {
-        return { ok: false, error: `${label} の切替日時が正しくありません` };
-      }
-      const atError = validateScheduledAt(iso);
-      if (atError) {
-        return { ok: false, error: `${label}: ${atError}` };
-      }
-
-      changes.push({
-        label,
-        currentAmount: streakValues[day] ?? 0,
-        nextAmount: amount,
-        at: iso,
-      });
-    }
-
-    return { ok: true, changes };
+    setSaveIssues([]);
   };
 
   // 範囲は source ごとに違う(還元は 0 が「付与しない」を意味する有効値)。
@@ -357,22 +422,25 @@ export function PercoinDefaultsForm({
       return;
     }
 
-    const collected = collectSchedules();
-    if (!collected.ok) {
+    const { changes, issues } = collectSchedules();
+    if (issues.length > 0) {
+      // 一覧はフォーム内に出す。トーストは消えてしまい、直す手掛かりが残らない
+      setSaveIssues(issues);
       toast({
-        title: "予約の入力エラー",
-        description: collected.error,
+        title: "予約が完成していない項目があります",
+        description: `${issues.length} 項目を確認してください`,
         variant: "destructive",
       });
       return;
     }
+    setSaveIssues([]);
 
     /*
       予約がある保存は、押した瞬間ではなく将来効く。何がいつ変わるのかを
       一度見せてから確定させる（一括適用の取り違えはここで気づける）。
     */
-    if (collected.changes.length > 0) {
-      setPendingConfirm(summarizeScheduleChanges(collected.changes));
+    if (changes.length > 0) {
+      setPendingConfirm(summarizeScheduleChanges(changes));
       return;
     }
 
@@ -381,48 +449,43 @@ export function PercoinDefaultsForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-8">
-      {/* 予約の一括設定 */}
+      {/* 予約の説明と、全項目への一括指定 */}
       <section className="rounded-lg border border-violet-200 bg-violet-50/60 p-4">
         <h2 className="text-sm font-semibold text-violet-900">
           予約（指定した日時に自動で切り替わります）
         </h2>
         <p className="mt-1 text-xs text-violet-900/80">
           各項目に「予約額」と「切替日時」を入れて保存すると、その時刻から新しい額に
-          なります。現在の額は書き換わりません。
+          なります。現在の額は書き換わりません。日時は下のセクションごとにも
+          まとめて入れられます。
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <Label htmlFor="bulk-at" className="text-xs text-violet-900">
-            まとめて日時を入れる
-          </Label>
-          <Input
-            id="bulk-at"
-            type="datetime-local"
-            value={bulkAt}
-            onChange={(e) => setBulkAt(e.target.value)}
-            className="h-9 max-w-[210px] bg-white"
+        <div className="mt-3">
+          <BulkScheduleDate
+            id="bulk-at-all"
+            label="すべての項目に入れる"
+            value={bulkAt.all ?? ""}
+            onChange={(next) => setBulkAt((prev) => ({ ...prev, all: next }))}
+            onApply={() => applyBulkDate("all")}
             disabled={isPending}
           />
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="h-9"
-            onClick={applyBulkDate}
-            disabled={isPending || !bulkAt}
-          >
-            予約額を入れた項目に適用
-          </Button>
         </div>
-        <p className="mt-2 text-xs text-violet-900/70">
-          先に各項目の「予約額」を入れてから押してください。額が空の項目には入りません。
-        </p>
       </section>
 
       {/* 単一枚数タイプ */}
       <section>
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">
-          特典別デフォルト枚数
-        </h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-800">
+            特典別デフォルト枚数
+          </h2>
+          <BulkScheduleDate
+            id="bulk-at-bonus"
+            label="この欄の項目に入れる"
+            value={bulkAt.bonus ?? ""}
+            onChange={(next) => setBulkAt((prev) => ({ ...prev, bonus: next }))}
+            onApply={() => applyBulkDate("bonus")}
+            disabled={isPending}
+          />
+        </div>
         <div className="grid gap-5 sm:grid-cols-2">
           {bonusDefaults
             .filter(({ source }) => !isUsageRewardBonusSource(source))
@@ -468,9 +531,21 @@ export function PercoinDefaultsForm({
       {/* クリエイター還元（利用されるたびに付与） */}
       {usageRewardDefaults.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-slate-800 mb-1">
-            クリエイター還元（利用されるたびに付与）
-          </h2>
+          <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold text-slate-800">
+              クリエイター還元（利用されるたびに付与）
+            </h2>
+            <BulkScheduleDate
+              id="bulk-at-usage-reward"
+              label="この欄の項目に入れる"
+              value={bulkAt.usageReward ?? ""}
+              onChange={(next) =>
+                setBulkAt((prev) => ({ ...prev, usageReward: next }))
+              }
+              onApply={() => applyBulkDate("usageReward")}
+              disabled={isPending}
+            />
+          </div>
           <p className="mb-4 text-sm text-slate-600">
             他のユーザーが生成に利用するたび、プロンプトの作者・スタイルのクリエイターへ付与します。
           </p>
@@ -530,9 +605,19 @@ export function PercoinDefaultsForm({
 
       {/* ストリーク（日数別） */}
       <section>
-        <h2 className="text-lg font-semibold text-slate-800 mb-4">
-          連続ログイン特典（日数別）
-        </h2>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-lg font-semibold text-slate-800">
+            連続ログイン特典（日数別）
+          </h2>
+          <BulkScheduleDate
+            id="bulk-at-streak"
+            label="14日ぶんに入れる"
+            value={bulkAt.streak ?? ""}
+            onChange={(next) => setBulkAt((prev) => ({ ...prev, streak: next }))}
+            onApply={() => applyBulkDate("streak")}
+            disabled={isPending}
+          />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
@@ -600,6 +685,37 @@ export function PercoinDefaultsForm({
           </table>
         </div>
       </section>
+
+      {/* 保存時に見つかった不足 */}
+      {saveIssues.length > 0 ? (
+        <section
+          data-testid="schedule-issues"
+          className="rounded-lg border-2 border-red-300 bg-red-50 p-4"
+        >
+          <h2 className="text-sm font-semibold text-red-900">
+            予約が完成していない項目があります（{saveIssues.length} 件）
+          </h2>
+          <ul className="mt-2 space-y-0.5 text-sm text-red-900">
+            {saveIssues.map((issue) => (
+              <li key={issue.key}>
+                ・{issue.label}：{describeIssue(issue)}
+              </li>
+            ))}
+          </ul>
+          {saveIssues.some((issue) => issue.kind === "missingAmount") ? (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="mt-3"
+              onClick={clearIncompleteDates}
+              disabled={isPending}
+            >
+              予約額の無い日時をまとめて消す
+            </Button>
+          ) : null}
+        </section>
+      ) : null}
 
       {/* 保存前の確認 */}
       {pendingConfirm ? (

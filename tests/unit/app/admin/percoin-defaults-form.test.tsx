@@ -87,18 +87,72 @@ describe("PercoinDefaultsForm の予約", () => {
     ).toBeInTheDocument();
   });
 
-  test("一括指定は予約額を入れた項目にだけ日時を入れる", () => {
-    // 全項目に入れると、額の無い予約が大量にできて保存できなくなる
+  test("一括指定は予約額が空でも日時を入れる", () => {
+    /*
+      額→日時の順を強いないための仕様。額の無い予約は保存時に指摘する。
+    */
     render(<PercoinDefaultsForm {...buildProps()} />);
 
-    fireEvent.change(scheduleAmountInput(0), { target: { value: "10" } });
-    fireEvent.change(screen.getByLabelText("まとめて日時を入れる"), {
-      target: { value: FUTURE_LOCAL },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "予約額を入れた項目に適用" }));
+    const [allInput] = screen.getAllByLabelText("まとめて日時を入れる");
+    fireEvent.change(allInput, { target: { value: FUTURE_LOCAL } });
+    fireEvent.click(screen.getByRole("button", { name: "すべての項目に入れる" }));
 
     expect(scheduleAtInput(0).value).toBe(FUTURE_LOCAL);
+    expect(scheduleAtInput(1).value).toBe(FUTURE_LOCAL);
+    // 連続ログイン側にも入る
+    expect(scheduleAtInput(2).value).toBe(FUTURE_LOCAL);
+  });
+
+  test("セクションごとの一括指定はその範囲だけに入る", () => {
+    render(<PercoinDefaultsForm {...buildProps()} />);
+
+    const inputs = screen.getAllByLabelText("まとめて日時を入れる");
+    // 0=すべて 1=特典別 2=連続ログイン（還元は props に無いので出ない）
+    fireEvent.change(inputs[2], { target: { value: FUTURE_LOCAL } });
+    fireEvent.click(screen.getByRole("button", { name: "14日ぶんに入れる" }));
+
+    // 特典別（先頭2つ）は空のまま、連続ログインだけ入る
+    expect(scheduleAtInput(0).value).toBe("");
     expect(scheduleAtInput(1).value).toBe("");
+    expect(scheduleAtInput(2).value).toBe(FUTURE_LOCAL);
+  });
+
+  test("保存時に不足している項目をまとめて出す", async () => {
+    render(<PercoinDefaultsForm {...buildProps()} />);
+
+    const [allInput] = screen.getAllByLabelText("まとめて日時を入れる");
+    fireEvent.change(allInput, { target: { value: FUTURE_LOCAL } });
+    fireEvent.click(screen.getByRole("button", { name: "すべての項目に入れる" }));
+    // 1つだけ額を入れる → 残りは「額が無い」で指摘されるはず
+    fireEvent.change(scheduleAmountInput(0), { target: { value: "10" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    const panel = await screen.findByTestId("schedule-issues");
+    expect(panel).toHaveTextContent("予約額が入っていません");
+    // 16項目中1つだけ埋めたので 15 件
+    expect(panel).toHaveTextContent("15 件");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("額の無い日時をまとめて消せる", async () => {
+    render(<PercoinDefaultsForm {...buildProps()} />);
+
+    const [allInput] = screen.getAllByLabelText("まとめて日時を入れる");
+    fireEvent.change(allInput, { target: { value: FUTURE_LOCAL } });
+    fireEvent.click(screen.getByRole("button", { name: "すべての項目に入れる" }));
+    fireEvent.change(scheduleAmountInput(0), { target: { value: "10" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await screen.findByTestId("schedule-issues");
+    fireEvent.click(
+      screen.getByRole("button", { name: "予約額の無い日時をまとめて消す" })
+    );
+
+    // 額を入れた項目は残り、他は消える
+    expect(scheduleAtInput(0).value).toBe(FUTURE_LOCAL);
+    expect(scheduleAtInput(1).value).toBe("");
+    expect(screen.queryByTestId("schedule-issues")).not.toBeInTheDocument();
   });
 
   test("保存前に「いつ・何が・いくつになるか」を確認させる", async () => {
@@ -258,20 +312,6 @@ describe("PercoinDefaultsForm の予約", () => {
     );
     expect(day1.scheduled_amount).toBe(5);
     expect(day1.scheduled_at).toBe("2099-09-30T15:00:00.000Z");
-  });
-
-  test("予約額が空のまま一括指定を押しても何も入らない", () => {
-    render(<PercoinDefaultsForm {...buildProps()} />);
-
-    fireEvent.change(screen.getByLabelText("まとめて日時を入れる"), {
-      target: { value: FUTURE_LOCAL },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "予約額を入れた項目に適用" }));
-
-    expect(scheduleAtInput(0).value).toBe("");
-    expect(toast).toHaveBeenCalledWith(
-      expect.objectContaining({ variant: "destructive" })
-    );
   });
 
   test("確認から戻れる", async () => {
