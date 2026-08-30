@@ -132,3 +132,56 @@ export function summarizeScheduleChanges(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([at, items]) => ({ at, items }));
 }
+
+export interface FoldedSchedule {
+  /** いま有効な額（切替済みなら予約額） */
+  amount: number;
+  scheduledAmount: number | null;
+  scheduledAt: string | null;
+  /** 切替済みならその日時。未切替なら null */
+  appliedFrom: string | null;
+  /** 切替前の額。表示の説明にだけ使う */
+  previousAmount: number | null;
+}
+
+/**
+ * 切替日時を過ぎた予約を「もう起きたこと」として現在額に畳む。
+ *
+ * ⚠️ **admin 画面と API の両方がこれを通ること。** 片方が raw な予約を返すと、
+ * 「GET した内容をそのまま PATCH する」だけで過去日時が送られ、
+ * 「切替日時は未来を指定してください」で保存が詰まる。
+ *
+ * 畳まないともう1つ事故がある。切替済みの予約を消して保存すると、実際に
+ * 配られている額(予約額)が切替前の古い額へ**黙って戻る**。
+ */
+export function foldAppliedSchedule(
+  row: {
+    amount: number;
+    scheduled_amount: number | null;
+    scheduled_at: string | null;
+  },
+  now: Date = new Date()
+): FoldedSchedule {
+  const state = resolveScheduleState(
+    { scheduledAmount: row.scheduled_amount, scheduledAt: row.scheduled_at },
+    now
+  );
+
+  if (state.kind === "applied") {
+    return {
+      amount: state.amount,
+      scheduledAmount: null,
+      scheduledAt: null,
+      appliedFrom: row.scheduled_at,
+      previousAmount: row.amount,
+    };
+  }
+
+  return {
+    amount: row.amount,
+    scheduledAmount: row.scheduled_amount ?? null,
+    scheduledAt: row.scheduled_at ?? null,
+    appliedFrom: null,
+    previousAmount: null,
+  };
+}

@@ -15,7 +15,7 @@ jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 jest.mock("next/cache", () => ({ revalidateTag: jest.fn() }));
 
 import type { NextRequest } from "next/server";
-import { PATCH } from "@/app/api/admin/percoin-defaults/route";
+import { GET, PATCH } from "@/app/api/admin/percoin-defaults/route";
 import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -23,6 +23,20 @@ const mockRequireAdmin = requireAdmin as jest.MockedFunction<typeof requireAdmin
 const mockCreateAdminClient = createAdminClient as jest.MockedFunction<
   typeof createAdminClient
 >;
+
+/** GET 用。select → order で行を返すモック。 */
+function mockSupabaseRead(bonusRows: unknown[], streakRows: unknown[]) {
+  mockCreateAdminClient.mockReturnValue({
+    from: (table: string) => {
+      const data = table === "percoin_bonus_defaults" ? bonusRows : streakRows;
+      const builder = {
+        select: () => builder,
+        order: () => Promise.resolve({ data, error: null }),
+      };
+      return builder;
+    },
+  } as never);
+}
 
 /** upsert 呼び出しを記録するモック。 */
 function mockSupabase() {
@@ -186,6 +200,52 @@ describe("PATCH /api/admin/percoin-defaults の予約", () => {
     });
   });
 
+  test("予約に触る行と触らない行は別々の upsert に分ける", async () => {
+    /*
+      supabase-js は配列のキーの和集合を columns= に入れて送るため、混ぜると
+      省略したはずの行の scheduled_* まで対象列になり NULL で埋められる。
+      行ごとの省略は、配列を分けて初めて意味を持つ。
+    */
+    const calls = mockSupabase();
+
+    await PATCH(
+      buildRequest({
+        bonusDefaults: [
+          {
+            source: "daily_post_free",
+            amount: 20,
+            scheduled_amount: 10,
+            scheduled_at: FUTURE,
+          },
+          // 予約に触らない行（既存の予約を維持したい）
+          { source: "daily_post_one_tap", amount: 20 },
+        ],
+        streakDefaults: streakRows(),
+      })
+    );
+
+    const bonusCalls = calls.filter(
+      (c) => c.table === "percoin_bonus_defaults"
+    );
+    expect(bonusCalls).toHaveLength(2);
+
+    const withSchedule = bonusCalls.find((c) =>
+      (c.rows as Array<Record<string, unknown>>).some((r) => "scheduled_at" in r)
+    );
+    const withoutSchedule = bonusCalls.find((c) =>
+      (c.rows as Array<Record<string, unknown>>).every(
+        (r) => !("scheduled_at" in r)
+      )
+    );
+
+    expect(
+      (withSchedule?.rows as Array<Record<string, unknown>>)[0].source
+    ).toBe("daily_post_free");
+    expect(
+      (withoutSchedule?.rows as Array<Record<string, unknown>>)[0].source
+    ).toBe("daily_post_one_tap");
+  });
+
   test("予約を省略した行は予約に触らない（既存の予約を消さない）", async () => {
     /*
       省略を「解除」にすると、source と amount だけを送る従来のスクリプトや
@@ -264,5 +324,65 @@ describe("PATCH /api/admin/percoin-defaults の予約", () => {
     );
 
     expect(response.status).toBe(400);
+  });
+
+  test("GET は切替済みの予約を現在額へ畳んで返す", async () => {
+    /*
+      raw のまま返すと「GET した内容をそのまま PATCH する」だけで過去日時が
+      送られ、保存が詰まる。管理スクリプトの round-trip を壊さないための約束。
+    */
+    mockSupabaseRead(
+      [
+        {
+          source: "daily_post_free",
+          amount: 20,
+          scheduled_amount: 10,
+          scheduled_at: PAST,
+        },
+      ],
+      []
+    );
+
+    const response = await GET();
+    const body = await response.json();
+    const row = body.bonusDefaults[0];
+
+    expect(row.amount).toBe(10);
+    expect(row.scheduled_at).toBeNull();
+    expect(row.scheduled_amount).toBeNull();
+    // 切替があった事実は分かるようにする
+    expect(row.applied_from).toBe(PAST);
+    expect(row.previous_amount).toBe(20);
+  });
+
+  test("GET した内容をそのまま PATCH できる", async () => {
+    mockSupabaseRead(
+      [
+        {
+          source: "daily_post_free",
+          amount: 20,
+          scheduled_amount: 10,
+          scheduled_at: PAST,
+        },
+      ],
+      Array.from({ length: 14 }, (_, i) => ({
+        streak_day: i + 1,
+        amount: 10,
+        scheduled_amount: null,
+        scheduled_at: null,
+      }))
+    );
+
+    const body = await (await GET()).json();
+    mockSupabase();
+
+    const response = await PATCH(
+      buildRequest({
+        bonusDefaults: body.bonusDefaults,
+        streakDefaults: body.streakDefaults,
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 });
