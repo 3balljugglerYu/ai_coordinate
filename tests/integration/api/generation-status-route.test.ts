@@ -141,7 +141,13 @@ describe("GET /api/generation-status", () => {
     });
   });
 
-  test("GET_想定外エラーはそのまま返す", async () => {
+  test("GET_想定外の英文エラーは汎用文言に伏せる", async () => {
+    /*
+      2026-08-31 の障害で、提供元の生メッセージ（英文 + 当社の請求ページ URL）が
+      そのまま表示された。既知パターンの列挙だけでは文言変更で漏れるため、
+      日本語でない・URL を含むものは提供元由来と見なして伏せる。
+      生メッセージは image_jobs.error_message に残るので調査はできる。
+    */
     setupJobQuery({
       data: {
         id: "job-2",
@@ -161,7 +167,9 @@ describe("GET /api/generation-status", () => {
     };
 
     expect(res.status).toBe(200);
-    expect(body.errorMessage).toBe("custom backend error");
+    expect(body.errorMessage).toBe(
+      "Image generation failed. Please try again in a little while."
+    );
   });
 
   test("GET_processing中は previewImageUrl のみ返す", async () => {

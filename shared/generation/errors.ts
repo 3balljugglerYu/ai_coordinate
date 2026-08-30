@@ -74,3 +74,38 @@ export function isGeminiProviderErrorMessage(errorMessage: string): boolean {
 export function isOpenAIProviderErrorMessage(errorMessage: string): boolean {
   return errorMessage.toLowerCase().includes(OPENAI_PROVIDER_ERROR);
 }
+
+/**
+ * 請求まわりで生成が止まったときのメッセージか。
+ *
+ * 提供元は接頭辞なしの生文字列で返し、しかも**文言が変わる**。
+ * 実績: 2026-07-04 と 08-02 は `Billing hard limit has been reached.`、
+ * 08-31 は `You have no credits remaining.` だった。前者だけを潰していたため
+ * 後者が素通りし、ユーザーに「あなたが課金してください」と読める英文と
+ * 当社の請求ページ URL が表示された。
+ *
+ * ユーザーから見ればどれも「いま使えない・待てば直る」なので混雑扱いにする。
+ */
+export function isBillingBlockedErrorMessage(errorMessage: string): boolean {
+  return /billing.*hard limit|hard limit.*reached|no credits remaining|insufficient[_ ]?(quota|credit|balance)|exceeded your current quota/i.test(
+    errorMessage,
+  );
+}
+
+const URL_IN_MESSAGE = /https?:\/\//i;
+const JAPANESE_IN_MESSAGE = /[\p{sc=Hiragana}\p{sc=Katakana}\p{sc=Han}]/u;
+
+/**
+ * 「提供元が返した生メッセージ」らしいか。**最後の関門**として使う。
+ *
+ * 既知パターンの列挙だけだと、提供元が文言を変えるたびに漏れる（実際に漏れた）。
+ * 私たちがユーザーへ出す文言は**必ず日本語で、URL を含まない**ので、
+ * それを外れたものは表に出さない。
+ *
+ * 未知でも日本語の文言は通す。将来こちらで足す説明が握り潰されないため。
+ */
+export function looksLikeUpstreamErrorMessage(errorMessage: string): boolean {
+  return (
+    URL_IN_MESSAGE.test(errorMessage) || !JAPANESE_IN_MESSAGE.test(errorMessage)
+  );
+}

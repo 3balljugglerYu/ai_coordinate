@@ -1,5 +1,7 @@
 import {
   containsCredentialReference,
+  isBillingBlockedErrorMessage,
+  looksLikeUpstreamErrorMessage,
   GEMINI_DISABLED_MESSAGE,
   isInvalidGeminiArgumentErrorMessage,
   isGeminiProviderErrorMessage,
@@ -55,10 +57,9 @@ export function normalizeUserFacingGenerationError(
     return copy.genericGenerationFailed;
   }
 
-  // OpenAI 組織の請求上限到達(2026-07-04 の障害で確認)。内部事情(請求)を出さず
-  // 「混雑」として案内する。"Billing hard limit has been reached." 等、
-  // OpenAI がタグ無しの生メッセージで返すため個別にパターンマッチする。
-  if (/billing.*hard limit|hard limit.*reached/i.test(errorMessage)) {
+  // 請求上限到達・残高切れ。内部事情(請求)を出さず「混雑」として案内する。
+  // 提供元はタグ無しの生メッセージで返し、しかも文言が変わる(判定は共有関数)。
+  if (isBillingBlockedErrorMessage(errorMessage)) {
     return copy.providerBusy;
   }
 
@@ -66,6 +67,19 @@ export function normalizeUserFacingGenerationError(
   // 401・403 / GIF 拒否 / OPENAI_API_KEY 未設定）は upstream の生メッセージを
   // 表に出さず汎用文言に差し替える。詳細は Edge Function ログ参照。
   if (isOpenAIProviderErrorMessage(errorMessage)) {
+    return copy.genericGenerationFailed;
+  }
+
+  /*
+    最後の関門。既知パターンの列挙だけだと、提供元が文言を変えるたびに漏れる。
+    2026-08-31 の障害では `You have no credits remaining. ... https://platform.openai.com/...`
+    がそのまま表示され、ユーザーには「あなたが課金してください」と読めた。
+    日本語でない、または URL を含むメッセージは提供元由来と見なして伏せる。
+
+    生メッセージは image_jobs.error_message にそのまま残るので、調査は従来どおり
+    できる（今回の原因特定もそこから行った）。伏せるのは表示だけ。
+  */
+  if (looksLikeUpstreamErrorMessage(errorMessage)) {
     return copy.genericGenerationFailed;
   }
 
