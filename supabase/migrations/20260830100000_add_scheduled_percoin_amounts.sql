@@ -162,6 +162,123 @@ BEGIN
 END;
 $function$;
 
+
+-- =============================================================================
+-- 3. 額を直接読んでいた関数を、解決関数経由へ寄せる
+-- =============================================================================
+-- ⚠️ ここを直さないと**画面と実際の付与がズレる**。切替後、付与は新しい額に
+-- なるのに、ミッション一覧やガイドは `amount` を直読みして旧額を出し続ける。
+-- 「20と書いてあるのに10しか入らない」が一番たちの悪い壊れ方なので、
+-- 判定は get_percoin_bonus_default / get_percoin_streak_amount の 1 か所に集める。
+--
+-- どれも本体は現行のまま、額の取り方だけを差し替えている。
+-- 引数が変わらないので CREATE OR REPLACE で EXECUTE 権限は維持される。
+
+-- クリエイター還元の付与額。
+-- ⚠️ 本体は**本番の現行定義そのまま**（pg_get_functiondef で取得したもの）で、
+-- 額の取り方だけを差し替えている。書き写すと引数や本体を取り違える。
+CREATE OR REPLACE FUNCTION public.apply_usage_reward_grant(p_recipient_id uuid, p_source text, p_metadata jsonb)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+DECLARE
+  v_configured integer;
+  v_amount integer;
+  v_tx_id uuid;
+  v_expire_at timestamptz;
+  v_rows_updated integer;
+BEGIN
+  -- 予約の切替を含めた「いま有効な額」を使う（判定は解決関数に集約）
+  v_configured := public.get_percoin_bonus_default(p_source);
+
+  -- 未設定 = 付与しない(既定0で出荷するため、admin が額を入れるまでここで抜ける)
+  IF COALESCE(v_configured, 0) <= 0 THEN
+    RETURN 0;
+  END IF;
+
+  -- 5万無料残高キャップ。受け手単位の直列化は呼び出し元の付与RPCが冒頭で
+  -- 取る advisory lock で担保する(ADR-008。共有関数側には入れない)
+  v_amount := public.get_grantable_free_percoin_amount(p_recipient_id, v_configured);
+
+  IF v_amount IS NULL OR v_amount <= 0 THEN
+    RETURN 0;
+  END IF;
+
+  INSERT INTO public.credit_transactions (
+    user_id, amount, transaction_type, related_generation_id, metadata
+  ) VALUES (
+    p_recipient_id, v_amount, p_source, NULL, p_metadata
+  )
+  RETURNING id INTO v_tx_id;
+
+  v_expire_at := (
+    date_trunc('month', now() AT TIME ZONE 'Asia/Tokyo')
+    + interval '7 months' - interval '1 second'
+  ) AT TIME ZONE 'Asia/Tokyo';
+
+  INSERT INTO public.free_percoin_batches (
+    user_id, amount, remaining_amount, granted_at, expire_at, source, credit_transaction_id
+  )
+  VALUES (p_recipient_id, v_amount, v_amount, now(), v_expire_at, p_source, v_tx_id);
+
+  UPDATE public.user_credits
+  SET balance = balance + v_amount, updated_at = now()
+  WHERE user_id = p_recipient_id;
+
+  GET DIAGNOSTICS v_rows_updated = ROW_COUNT;
+
+  IF v_rows_updated = 0 THEN
+    INSERT INTO public.user_credits (user_id, balance, paid_balance)
+    VALUES (p_recipient_id, v_amount, 0)
+    ON CONFLICT (user_id) DO UPDATE SET
+      balance = user_credits.balance + v_amount,
+      updated_at = now();
+  END IF;
+
+  RETURN v_amount;
+END;
+$function$;
+
+-- 生成方法ごとの投稿ボーナス額(ミッション一覧の表示に使う)
+CREATE OR REPLACE FUNCTION public.get_post_bonus_amounts()
+RETURNS jsonb
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+  SELECT coalesce(
+    jsonb_object_agg(
+      t.key,
+      public.get_percoin_bonus_default(t.source)
+    ),
+    '{}'::jsonb
+  )
+  FROM (
+    VALUES
+      ('one_tap_style', 'daily_post_one_tap'),
+      ('free', 'daily_post_free'),
+      ('coordinate', 'daily_post_coordinate'),
+      ('inspire', 'daily_post_inspire')
+  ) AS t(key, source)
+  WHERE EXISTS (
+    SELECT 1 FROM public.percoin_bonus_defaults d WHERE d.source = t.source
+  );
+$function$;
+
+-- プロンプト利用ミッションの額(ミッション一覧の表示に使う)
+CREATE OR REPLACE FUNCTION public.get_prompt_use_bonus_amount()
+RETURNS integer
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+  SELECT public.get_percoin_bonus_default('prompt_use_daily');
+$function$;
+
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;

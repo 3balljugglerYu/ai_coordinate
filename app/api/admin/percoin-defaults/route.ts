@@ -8,6 +8,53 @@ import {
   BONUS_SOURCES,
   validateBonusAmount,
 } from "@/features/credits/lib/percoin-bonus-defaults";
+import { validateScheduledAt } from "@/features/credits/lib/percoin-schedule";
+
+/**
+ * 予約(額 + 日時)の検証。両方揃っているか・未来か・額が範囲内かを見る。
+ *
+ * 保存側で弾かないと、切替日時が過去の予約は「保存した瞬間に効いてしまう」。
+ * 画面では未来しか選べないが、API を直接叩ける以上ここでも守る。
+ */
+function addScheduleIssues(
+  ctx: z.RefinementCtx,
+  input: {
+    scheduledAmount: number | null;
+    scheduledAt: string | null;
+    validateAmount: (amount: number) => string | null;
+  }
+): void {
+  const { scheduledAmount, scheduledAt, validateAmount } = input;
+
+  if (scheduledAmount === null && scheduledAt === null) return;
+
+  if (scheduledAmount === null || scheduledAt === null) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["scheduled_at"],
+      message: "予約は切替日時と額の両方を指定してください",
+    });
+    return;
+  }
+
+  const amountError = validateAmount(scheduledAmount);
+  if (amountError) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["scheduled_amount"],
+      message: amountError,
+    });
+  }
+
+  const atError = validateScheduledAt(scheduledAt);
+  if (atError) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["scheduled_at"],
+      message: atError,
+    });
+  }
+}
 
 const patchBodySchema = z.object({
   bonusDefaults: z.array(
@@ -16,6 +63,12 @@ const patchBodySchema = z.object({
         source: z.enum(BONUS_SOURCES),
         // 範囲は source ごとに違うため、ここでは広めに受けて共有ルールで判定する
         amount: z.number().int(),
+        /*
+          予約。額と日時は必ず両方揃うか、両方 null。片方だけだと
+          「いつ切り替わるか分からない予約」になる（DB の CHECK と同じ規則）。
+        */
+        scheduled_amount: z.number().int().nullable().optional(),
+        scheduled_at: z.string().nullable().optional(),
       })
       .superRefine((value, ctx) => {
         const error = validateBonusAmount(value.source, value.amount);
@@ -26,13 +79,33 @@ const patchBodySchema = z.object({
             message: error,
           });
         }
+        addScheduleIssues(ctx, {
+          scheduledAmount: value.scheduled_amount ?? null,
+          scheduledAt: value.scheduled_at ?? null,
+          // 予約額にも現在額と同じ範囲を課す。緩めると切り替わった瞬間に
+          // 許容外の額で配り始める
+          validateAmount: (amount) => validateBonusAmount(value.source, amount),
+        });
       })
   ),
   streakDefaults: z.array(
-    z.object({
-      streak_day: z.number().int().min(1).max(14),
-      amount: z.number().int().min(1).max(1000),
-    })
+    z
+      .object({
+        streak_day: z.number().int().min(1).max(14),
+        amount: z.number().int().min(1).max(1000),
+        scheduled_amount: z.number().int().nullable().optional(),
+        scheduled_at: z.string().nullable().optional(),
+      })
+      .superRefine((value, ctx) => {
+        addScheduleIssues(ctx, {
+          scheduledAmount: value.scheduled_amount ?? null,
+          scheduledAt: value.scheduled_at ?? null,
+          validateAmount: (amount) =>
+            amount >= 1 && amount <= 1000
+              ? null
+              : "連続ログイン特典は 1〜1000 の整数で指定してください",
+        });
+      })
   ),
 });
 
@@ -56,11 +129,11 @@ export async function GET() {
     const [bonusResult, streakResult] = await Promise.all([
       supabase
         .from("percoin_bonus_defaults")
-        .select("source, amount")
+        .select("source, amount, scheduled_amount, scheduled_at")
         .order("source", { ascending: true }),
       supabase
         .from("percoin_streak_defaults")
-        .select("streak_day, amount")
+        .select("streak_day, amount, scheduled_amount, scheduled_at")
         .order("streak_day", { ascending: true }),
     ]);
 
@@ -136,15 +209,23 @@ export async function PATCH(request: NextRequest) {
 
     const supabase = createAdminClient();
 
+    /*
+      予約は「送られてこなければ解除」ではなく「null が来たら解除」。
+      画面は常に全項目を送るため、明示しないと予約を消せない。
+    */
     const bonusUpsert = bonusDefaults.map((b) => ({
       source: b.source,
       amount: b.amount,
+      scheduled_amount: b.scheduled_amount ?? null,
+      scheduled_at: b.scheduled_at ?? null,
       updated_at: new Date().toISOString(),
     }));
 
     const streakUpsert = streakDefaults.map((s) => ({
       streak_day: s.streak_day,
       amount: s.amount,
+      scheduled_amount: s.scheduled_amount ?? null,
+      scheduled_at: s.scheduled_at ?? null,
       updated_at: new Date().toISOString(),
     }));
 
