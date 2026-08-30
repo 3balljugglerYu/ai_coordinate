@@ -1,6 +1,7 @@
 /** @jest-environment node */
 
 import {
+  summarizeScheduleChanges,
   resolveEffectiveAmount,
   resolveScheduleState,
   validateScheduledAt,
@@ -101,5 +102,41 @@ describe("validateScheduledAt", () => {
 
   test("形式が不正なら弾く", () => {
     expect(validateScheduledAt("2026-13-45", NOW)).not.toBeNull();
+  });
+});
+
+describe("summarizeScheduleChanges", () => {
+  const change = (label: string, at: string) => ({
+    label,
+    currentAmount: 20,
+    nextAmount: 10,
+    at,
+  });
+
+  test("同じ日時のものをまとめる", () => {
+    const result = summarizeScheduleChanges([
+      change("フリー投稿", FUTURE),
+      change("ワンタップ投稿", FUTURE),
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].items.map((i) => i.label)).toEqual([
+      "フリー投稿",
+      "ワンタップ投稿",
+    ]);
+  });
+
+  test("日時が違えば分けて、早い順に並べる", () => {
+    const later = "2026-11-01T00:00:00+09:00";
+    const result = summarizeScheduleChanges([
+      change("後の予約", later),
+      change("先の予約", FUTURE),
+    ]);
+
+    expect(result.map((g) => g.items[0].label)).toEqual(["先の予約", "後の予約"]);
+  });
+
+  test("予約が無ければ空", () => {
+    expect(summarizeScheduleChanges([])).toEqual([]);
   });
 });

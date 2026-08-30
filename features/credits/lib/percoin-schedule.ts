@@ -83,3 +83,37 @@ export function validateScheduledAt(
   }
   return null;
 }
+
+export interface ScheduleChange {
+  /** 画面に出す項目名（例: 投稿ボーナス：フリースタイル / 連続ログイン 14日目） */
+  label: string;
+  /** いまの額 */
+  currentAmount: number;
+  /** 切替後の額 */
+  nextAmount: number;
+  /** 切替日時(ISO) */
+  at: string;
+}
+
+/**
+ * 保存前の確認に出す「いつ・何が・いくつになるか」を日時ごとにまとめる。
+ *
+ * 予約は複数の項目にまたがるうえ、一括指定を使うと同じ日時に何件も並ぶ。
+ * 保存ボタンを押す前にこの形で見せることで、「14日目だけ直したつもりが
+ * 全部に日時が入っていた」といった取り違えに気づける。
+ */
+export function summarizeScheduleChanges(
+  changes: ScheduleChange[]
+): Array<{ at: string; items: ScheduleChange[] }> {
+  const byDate = new Map<string, ScheduleChange[]>();
+
+  for (const change of changes) {
+    const list = byDate.get(change.at) ?? [];
+    list.push(change);
+    byDate.set(change.at, list);
+  }
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([at, items]) => ({ at, items }));
+}

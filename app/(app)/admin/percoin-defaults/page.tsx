@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { PercoinDefaultsForm } from "./PercoinDefaultsForm";
+import { formatDatetimeLocalJst } from "@/lib/datetime/format-datetime-local-jst";
 
 const BONUS_SOURCE_LABELS: Record<string, string> = {
   signup_bonus: "新規登録特典",
@@ -30,11 +31,11 @@ export default async function AdminPercoinDefaultsPage() {
   const [bonusResult, streakResult] = await Promise.all([
     supabase
       .from("percoin_bonus_defaults")
-      .select("source, amount")
+      .select("source, amount, scheduled_amount, scheduled_at")
       .order("source", { ascending: true }),
     supabase
       .from("percoin_streak_defaults")
-      .select("streak_day, amount")
+      .select("streak_day, amount, scheduled_amount, scheduled_at")
       .order("streak_day", { ascending: true }),
   ]);
 
@@ -43,12 +44,20 @@ export default async function AdminPercoinDefaultsPage() {
       source: r.source,
       amount: r.amount,
       label: BONUS_SOURCE_LABELS[r.source] ?? r.source,
+      scheduledAmount: r.scheduled_amount ?? null,
+      // datetime-local は JST 前提。サーバーで変換して渡し、
+      // クライアントで new Date() を読まない(Hydration Mismatch を避ける)
+      scheduledAtLocal: formatDatetimeLocalJst(r.scheduled_at),
+      scheduledAt: r.scheduled_at ?? null,
     })) ?? [];
 
   const streakDefaults =
     streakResult.data?.map((r) => ({
       streak_day: r.streak_day,
       amount: r.amount,
+      scheduledAmount: r.scheduled_amount ?? null,
+      scheduledAtLocal: formatDatetimeLocalJst(r.scheduled_at),
+      scheduledAt: r.scheduled_at ?? null,
     })) ?? [];
 
   return (
@@ -64,6 +73,7 @@ export default async function AdminPercoinDefaultsPage() {
         </h1>
         <p className="mt-1 text-slate-600">
           各特典のデフォルト付与枚数を変更できます。変更後は今後発生する付与に反映されます。
+          日時を指定した「予約」もでき、その時刻になると自動で切り替わります。
         </p>
       </header>
 
