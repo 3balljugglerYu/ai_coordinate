@@ -142,6 +142,20 @@ describe("PercoinDefaultsForm の予約", () => {
     expect(untouched.scheduled_at).toBeNull();
   });
 
+  test("項目が1つも無いときは保存させない", async () => {
+    /*
+      取得に失敗すると空のリストが渡りうる。その状態で保存すると
+      「全項目を空で上書き」に見える操作になるため、送信しない。
+      (ページ側でもエラー表示に切り替えているが、部品としても守る)
+    */
+    render(<PercoinDefaultsForm bonusDefaults={[]} streakDefaults={[]} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(toast).toHaveBeenCalled());
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
   test("予約が無ければ確認を挟まずそのまま保存する", async () => {
     render(<PercoinDefaultsForm {...buildProps()} />);
 

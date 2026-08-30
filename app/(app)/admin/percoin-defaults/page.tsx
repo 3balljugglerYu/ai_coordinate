@@ -56,6 +56,14 @@ export default async function AdminPercoinDefaultsPage() {
       .order("streak_day", { ascending: true }),
   ]);
 
+  /*
+    取得に失敗したときは**フォームを出さない**。
+    黙って空のフォームを出すと「設定が全部消えた」と誤解させ、しかも
+    その状態で保存を押せてしまう（実際、列を追加する migration を適用する
+    前にこの画面を開いて、空のリストが出た）。
+  */
+  const loadError = bonusResult.error ?? streakResult.error;
+
   const bonusDefaults =
     bonusResult.data?.map((r) => ({
       source: r.source,
@@ -86,6 +94,20 @@ export default async function AdminPercoinDefaultsPage() {
         </p>
       </header>
 
+      {loadError ? (
+        <Card className="border-red-300 bg-red-50">
+          <CardContent className="p-6 text-sm text-red-900">
+            <p className="font-semibold">設定を読み込めませんでした</p>
+            <p className="mt-1">
+              現在の設定は消えていません。読み取りに失敗しているだけです。
+              マイグレーションが未適用の場合は適用してから開き直してください。
+            </p>
+            <p className="mt-2 font-mono text-xs text-red-700">
+              {loadError.message}
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
           <PercoinDefaultsForm
@@ -94,6 +116,7 @@ export default async function AdminPercoinDefaultsPage() {
           />
         </CardContent>
       </Card>
+      )}
     </div>
   );
 }

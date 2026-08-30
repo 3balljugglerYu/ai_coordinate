@@ -334,6 +334,20 @@ export function PercoinDefaultsForm({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    /*
+      取得に失敗すると空のリストが渡りうる。その状態の保存は
+      「全項目を空で上書き」に見える操作なので送らない。
+    */
+    if (bonusDefaults.length === 0 && streakDefaults.length === 0) {
+      toast({
+        title: "保存できません",
+        description:
+          "設定を読み込めていません。画面を再読み込みしてから操作してください",
+        variant: "destructive",
+      });
+      return;
+    }
+
     if (!validate()) {
       toast({
         title: "入力エラー",
