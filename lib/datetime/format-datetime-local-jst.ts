@@ -23,3 +23,20 @@ export function formatDatetimeLocalJst(iso: string | null | undefined): string {
     `T${pad(jst.getUTCHours())}:${pad(jst.getUTCMinutes())}`
   );
 }
+
+/**
+ * `datetime-local` input の値 (`YYYY-MM-DDTHH:mm`) を JST として解釈し、
+ * ISO 8601 文字列へ戻す。{@link formatDatetimeLocalJst} の逆変換。
+ *
+ * input はタイムゾーンを持たないため、`new Date(value)` で素直に解釈すると
+ * **実行環境のタイムゾーン**で読まれる。admin が JST で入れた時刻が
+ * サーバーでは別の時刻になり、切替が9時間ずれる。明示的に +09:00 を付ける。
+ *
+ * 空/不正は null を返す。
+ */
+export function parseDatetimeLocalJst(value: string | null | undefined): string | null {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) return null;
+  const date = new Date(`${value}:00+09:00`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}

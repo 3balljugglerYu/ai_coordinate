@@ -5,6 +5,7 @@ import {
   normalizeSubscriptionPlan,
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
+import { resolveEffectiveAmount } from "@/features/credits/lib/percoin-schedule";
 
 export type PercoinDefaultsForDisplay = {
   referralBonusAmount: number;
@@ -55,7 +56,9 @@ export const getPercoinDefaultsForDisplay = cache(
     const [bonusResult, streakResult] = await Promise.all([
       supabase
         .from("percoin_bonus_defaults")
-        .select("source, amount")
+        // 予約の切替を含めた「いま有効な額」を出すため予約列も取る。
+        // amount だけを出すと、切替後に画面と実際の付与がズレる
+        .select("source, amount, scheduled_amount, scheduled_at")
         .in("source", [
           "referral",
           "daily_post",
@@ -66,12 +69,25 @@ export const getPercoinDefaultsForDisplay = cache(
         ]),
       supabase
         .from("percoin_streak_defaults")
-        .select("streak_day, amount")
+        .select("streak_day, amount, scheduled_amount, scheduled_at")
         .order("streak_day", { ascending: true }),
     ]);
 
+    /** 予約が来ていれば予約額を返す（DB の判定と同じ規則） */
+    const effective = (row?: {
+      amount: number;
+      scheduled_amount: number | null;
+      scheduled_at: string | null;
+    }): number | undefined =>
+      row === undefined
+        ? undefined
+        : resolveEffectiveAmount(row.amount, {
+            scheduledAmount: row.scheduled_amount,
+            scheduledAt: row.scheduled_at,
+          });
+
     const referralAmount =
-      bonusResult.data?.find((r) => r.source === "referral")?.amount ?? 100;
+      effective(bonusResult.data?.find((r) => r.source === "referral")) ?? 100;
     /*
       投稿ボーナスは生成方法ごとになったので、カード見出しとブースト表示は
       **1日に受け取れる合計**を出す(ワンタップ + フリー)。
@@ -79,14 +95,14 @@ export const getPercoinDefaultsForDisplay = cache(
       行ごとの「+◯」は postBonusAmounts 由来で別途出している。
       migration 未適用の環境では行が無いので legacy にフォールバックする。
     */
-    const oneTapAmount = bonusResult.data?.find(
-      (r) => r.source === "daily_post_one_tap"
-    )?.amount;
-    const freeAmount = bonusResult.data?.find(
-      (r) => r.source === "daily_post_free"
-    )?.amount;
+    const oneTapAmount = effective(
+      bonusResult.data?.find((r) => r.source === "daily_post_one_tap")
+    );
+    const freeAmount = effective(
+      bonusResult.data?.find((r) => r.source === "daily_post_free")
+    );
     const legacyDailyPostAmount =
-      bonusResult.data?.find((r) => r.source === "daily_post")?.amount ?? 15;
+      effective(bonusResult.data?.find((r) => r.source === "daily_post")) ?? 15;
     const dailyPostAmount =
       oneTapAmount === undefined && freeAmount === undefined
         ? legacyDailyPostAmount
@@ -94,16 +110,24 @@ export const getPercoinDefaultsForDisplay = cache(
 
     const streakSchedule =
       streakResult.data && streakResult.data.length === 14
-        ? (streakResult.data.map((r) => r.amount) as readonly number[])
+        ? (streakResult.data.map(
+            (r) =>
+              resolveEffectiveAmount(r.amount, {
+                scheduledAmount: r.scheduled_amount,
+                scheduledAt: r.scheduled_at,
+              })
+          ) as readonly number[])
         : ([10, 10, 20, 10, 10, 10, 50, 10, 10, 10, 10, 10, 10, 100] as const);
 
     // 還元は既定 0 = 停止中。行が無い環境でも 0 として扱い、告知を出さない。
     const promptUsageRewardAmount =
-      bonusResult.data?.find((r) => r.source === "prompt_usage_reward")?.amount ??
-      0;
+      effective(
+        bonusResult.data?.find((r) => r.source === "prompt_usage_reward")
+      ) ?? 0;
     const styleUsageRewardAmount =
-      bonusResult.data?.find((r) => r.source === "style_usage_reward")?.amount ??
-      0;
+      effective(
+        bonusResult.data?.find((r) => r.source === "style_usage_reward")
+      ) ?? 0;
 
     const defaults = {
       referralBonusAmount: referralAmount,

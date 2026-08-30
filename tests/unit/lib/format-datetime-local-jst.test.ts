@@ -1,4 +1,7 @@
-import { formatDatetimeLocalJst } from "@/lib/datetime/format-datetime-local-jst";
+import {
+  formatDatetimeLocalJst,
+  parseDatetimeLocalJst,
+} from "@/lib/datetime/format-datetime-local-jst";
 
 describe("formatDatetimeLocalJst", () => {
   test("null / undefined / 空文字は空文字を返す", () => {
@@ -37,5 +40,26 @@ describe("formatDatetimeLocalJst", () => {
     expect(formatDatetimeLocalJst("2026-06-10T09:30:00+05:00")).toBe(
       "2026-06-10T13:30",
     );
+  });
+});
+
+describe("parseDatetimeLocalJst", () => {
+  test("JST として解釈して ISO に戻す", () => {
+    // 実行環境のタイムゾーンで読むと切替が9時間ずれる
+    expect(parseDatetimeLocalJst("2026-10-01T00:00")).toBe(
+      "2026-09-30T15:00:00.000Z"
+    );
+  });
+
+  test("formatDatetimeLocalJst と往復できる", () => {
+    const iso = "2026-09-30T15:00:00.000Z";
+    expect(parseDatetimeLocalJst(formatDatetimeLocalJst(iso))).toBe(iso);
+  });
+
+  test("空や不正な形式は null", () => {
+    expect(parseDatetimeLocalJst("")).toBeNull();
+    expect(parseDatetimeLocalJst(null)).toBeNull();
+    expect(parseDatetimeLocalJst("2026-10-01")).toBeNull();
+    expect(parseDatetimeLocalJst("こわれた")).toBeNull();
   });
 });
