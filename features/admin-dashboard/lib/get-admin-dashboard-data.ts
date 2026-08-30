@@ -24,6 +24,7 @@ import {
   type StylePresetDashboardRow,
 } from "./build-one-tap-style-detailed";
 import { buildAiCostEstimate } from "./build-ai-cost";
+import { fetchAllRows } from "./fetch-all-rows";
 import type {
   AdminDashboardData,
   AdminDashboardKpi,
@@ -51,6 +52,8 @@ type AuthProviderSignupRow = {
 };
 
 type GeneratedImageRow = {
+  /** ページング（カーソル）に使う。取得漏れ防止のため必須 */
+  id: string;
   user_id: string | null;
   created_at: string;
   is_posted: boolean | null;
@@ -651,18 +654,26 @@ export async function getAdminDashboardData(
       .select("user_id, nickname, created_at, signup_source")
       .gte("created_at", sharedFetchStartIso)
       .lte("created_at", sharedFetchEndIso),
-    supabase
-      .from("generated_images")
-      .select(
-        "user_id, created_at, is_posted, moderation_status, model, generation_type, image_job_id, completion_id, generation_metadata, posted_at"
-      )
-      .gte("created_at", sharedFetchStartIso)
-      .lte("created_at", sharedFetchEndIso),
-    supabase
-      .from("style_usage_events")
-      .select("user_id, auth_state, event_type, style_id, created_at")
-      .gte("created_at", oneTapStyleFetchStartIso)
-      .lte("created_at", oneTapStyleBounds.nowIso),
+    fetchAllRows<GeneratedImageRow>((cursor, size) => {
+      let query = supabase
+        .from("generated_images")
+        .select(
+          "id, user_id, created_at, is_posted, moderation_status, model, generation_type, image_job_id, completion_id, generation_metadata, posted_at"
+        )
+        .gte("created_at", sharedFetchStartIso)
+        .lte("created_at", sharedFetchEndIso);
+      if (cursor) query = query.gt("id", cursor);
+      return query.order("id", { ascending: true }).limit(size);
+    }),
+    fetchAllRows<StyleUsageEventRow & { id: string }>((cursor, size) => {
+      let query = supabase
+        .from("style_usage_events")
+        .select("id, user_id, auth_state, event_type, style_id, created_at")
+        .gte("created_at", oneTapStyleFetchStartIso)
+        .lte("created_at", oneTapStyleBounds.nowIso);
+      if (cursor) query = query.gt("id", cursor);
+      return query.order("id", { ascending: true }).limit(size);
+    }),
     supabase
       .from("style_guest_generate_attempts")
       .select("created_at")
@@ -678,16 +689,24 @@ export async function getAdminDashboardData(
       .select("id", { count: "exact", head: true })
       .eq("is_posted", true)
       .eq("moderation_status", "pending"),
-    supabase
-      .from("credit_transactions")
-      .select("id, user_id, amount, transaction_type, metadata, created_at")
-      .gte("created_at", previousStartIso)
-      .lte("created_at", nowIso),
-    supabase
-      .from("image_jobs")
-      .select("id, status, created_at")
-      .gte("created_at", currentStartIso)
-      .lte("created_at", nowIso),
+    fetchAllRows<CreditTransactionRow>((cursor, size) => {
+      let query = supabase
+        .from("credit_transactions")
+        .select("id, user_id, amount, transaction_type, metadata, created_at")
+        .gte("created_at", previousStartIso)
+        .lte("created_at", nowIso);
+      if (cursor) query = query.gt("id", cursor);
+      return query.order("id", { ascending: true }).limit(size);
+    }),
+    fetchAllRows<ImageJobRow>((cursor, size) => {
+      let query = supabase
+        .from("image_jobs")
+        .select("id, status, created_at")
+        .gte("created_at", currentStartIso)
+        .lte("created_at", nowIso);
+      if (cursor) query = query.gt("id", cursor);
+      return query.order("id", { ascending: true }).limit(size);
+    }),
     supabase.from("user_credits").select("user_id, balance, paid_balance"),
     supabase
       .from("free_percoin_batches")
