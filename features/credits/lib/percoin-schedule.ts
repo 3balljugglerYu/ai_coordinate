@@ -8,6 +8,12 @@
  * DB 側の判定と食い違うと「画面では切替済みなのに実際は旧額」という
  * 一番たちの悪いズレになるため、判定式は 1 つに揃えること:
  *   予約日時が現在時刻以下 → 予約額が有効
+ *
+ * ⚠️ **既知の限界**: 切替時刻にはコードが何も動かないため、`use cache` で
+ * 額を含む画面（ミッション一覧・ホーム）は自然失効するまで旧額を出しうる。
+ * どちらも `cacheLife("minutes")` なので数分で追いつく。**付与は常に正しい**
+ * （DB 側が読み取り時に判定する）ので、ズレるのは表示だけ・数分だけ。
+ * 秒単位で揃える必要が出たら、表示もリクエスト時評価へ寄せること。
  */
 
 export interface PercoinSchedule {
@@ -69,11 +75,20 @@ export function resolveEffectiveAmount(
   return state.kind === "applied" ? state.amount : amount;
 }
 
-/** 保存できる予約日時か。過去は指定できない。 */
+/**
+ * 保存できる予約日時か。過去は指定できない。
+ *
+ * ⚠️ **タイムゾーンの無い文字列は受け付けない。** `"2026-10-01T00:00"` は
+ * 実行環境のローカル時刻として解釈されるため、JST のつもりで送ると
+ * Vercel(UTC)では9時間ずれた時刻で切り替わる。`Z` か `+09:00` を必須にする。
+ */
 export function validateScheduledAt(
   scheduledAt: string,
   now: Date = new Date()
 ): string | null {
+  if (!/(?:Z|[+-]\d{2}:?\d{2})$/.test(scheduledAt)) {
+    return "切替日時はタイムゾーン付きで指定してください（例: 2026-10-01T00:00:00+09:00）";
+  }
   const at = new Date(scheduledAt);
   if (Number.isNaN(at.getTime())) {
     return "切替日時の形式が正しくありません";

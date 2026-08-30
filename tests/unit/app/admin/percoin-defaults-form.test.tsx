@@ -33,6 +33,8 @@ function buildProps() {
         scheduledAmount: null,
         scheduledAtLocal: "",
         scheduledAt: null,
+        appliedFrom: null,
+        previousAmount: null,
       },
       {
         source: "daily_post_one_tap",
@@ -41,6 +43,8 @@ function buildProps() {
         scheduledAmount: null,
         scheduledAtLocal: "",
         scheduledAt: null,
+        appliedFrom: null,
+        previousAmount: null,
       },
     ],
     streakDefaults: Array.from({ length: 14 }, (_, i) => ({
@@ -49,6 +53,8 @@ function buildProps() {
       scheduledAmount: null,
       scheduledAtLocal: "",
       scheduledAt: null,
+      appliedFrom: null,
+      previousAmount: null,
     })),
   };
 }
@@ -156,19 +162,53 @@ describe("PercoinDefaultsForm の予約", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  test("切替済みの予約は「いま配られている額」を示す", () => {
+  test("切替済みの予約は現在額に畳まれ、経緯だけを示す", () => {
+    /*
+      サーバーで「切替済み」を現在額に畳んで渡す。畳まないと、過去日時の
+      予約が入力欄に残って別項目の保存まで弾かれ、さらにその予約を消すと
+      実際に配られている額が古い額へ黙って戻る。
+    */
     const props = buildProps();
     props.bonusDefaults[0] = {
       ...props.bonusDefaults[0],
-      scheduledAmount: 10,
-      scheduledAt: "2020-01-01T00:00:00.000Z",
-      scheduledAtLocal: "2020-01-01T09:00",
+      amount: 10,
+      scheduledAmount: null,
+      scheduledAt: null,
+      scheduledAtLocal: "",
+      appliedFrom: "2020-01-01T00:00:00.000Z",
+      previousAmount: 20,
     };
 
     render(<PercoinDefaultsForm {...props} />);
 
-    // amount は 20 のままだが、実際に配られているのは 10
     expect(screen.getByText(/いま配られているのは/)).toBeInTheDocument();
+    // 予約欄は空になっており、保存を妨げない
+    expect(scheduleAmountInput(0).value).toBe("");
+    expect(scheduleAtInput(0).value).toBe("");
+  });
+
+  test("切替済みの項目があっても保存できる", async () => {
+    const props = buildProps();
+    props.bonusDefaults[0] = {
+      ...props.bonusDefaults[0],
+      amount: 10,
+      appliedFrom: "2020-01-01T00:00:00.000Z",
+      previousAmount: 20,
+    };
+
+    render(<PercoinDefaultsForm {...props} />);
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+
+    await waitFor(() => expect(global.fetch).toHaveBeenCalled());
+    const body = JSON.parse(
+      (global.fetch as jest.Mock).mock.calls[0][1].body as string
+    );
+    const free = body.bonusDefaults.find(
+      (b: { source: string }) => b.source === "daily_post_free"
+    );
+    // 切替後の額がそのまま現在額として保存され、予約は解除される
+    expect(free.amount).toBe(10);
+    expect(free.scheduled_at).toBeNull();
   });
 
   test("予約を消せる", () => {

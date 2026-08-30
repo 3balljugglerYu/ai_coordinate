@@ -210,22 +210,33 @@ export async function PATCH(request: NextRequest) {
     const supabase = createAdminClient();
 
     /*
-      予約は「送られてこなければ解除」ではなく「null が来たら解除」。
-      画面は常に全項目を送るため、明示しないと予約を消せない。
+      予約は **null が来たら解除・項目ごと省略されたら現状維持**。
+      省略を解除にすると、`source` と `amount` だけを送る従来のスクリプトや
+      手元の curl が、設定済みの将来予約を黙って消してしまう。
+      画面は常に null を明示して送るので、これで解除もできる。
     */
+    const scheduleColumns = (row: {
+      scheduled_amount?: number | null;
+      scheduled_at?: string | null;
+    }) =>
+      row.scheduled_amount === undefined && row.scheduled_at === undefined
+        ? {}
+        : {
+            scheduled_amount: row.scheduled_amount ?? null,
+            scheduled_at: row.scheduled_at ?? null,
+          };
+
     const bonusUpsert = bonusDefaults.map((b) => ({
       source: b.source,
       amount: b.amount,
-      scheduled_amount: b.scheduled_amount ?? null,
-      scheduled_at: b.scheduled_at ?? null,
+      ...scheduleColumns(b),
       updated_at: new Date().toISOString(),
     }));
 
     const streakUpsert = streakDefaults.map((s) => ({
       streak_day: s.streak_day,
       amount: s.amount,
-      scheduled_amount: s.scheduled_amount ?? null,
-      scheduled_at: s.scheduled_at ?? null,
+      ...scheduleColumns(s),
       updated_at: new Date().toISOString(),
     }));
 

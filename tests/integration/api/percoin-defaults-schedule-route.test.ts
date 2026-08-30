@@ -186,8 +186,12 @@ describe("PATCH /api/admin/percoin-defaults の予約", () => {
     });
   });
 
-  test("予約を送らない行は予約なしとして保存する", async () => {
-    // 画面は常に全項目を送る。省略を「現状維持」にすると解除できなくなる
+  test("予約を省略した行は予約に触らない（既存の予約を消さない）", async () => {
+    /*
+      省略を「解除」にすると、source と amount だけを送る従来のスクリプトや
+      手元の curl が、設定済みの将来予約を黙って消してしまう。
+      解除したいときは null を明示する。
+    */
     const calls = mockSupabase();
 
     await PATCH(
@@ -199,7 +203,52 @@ describe("PATCH /api/admin/percoin-defaults の予約", () => {
 
     const bonusRows = calls.find((c) => c.table === "percoin_bonus_defaults")
       ?.rows as Array<Record<string, unknown>>;
-    expect(bonusRows[0].scheduled_at).toBeNull();
+    expect(bonusRows[0]).not.toHaveProperty("scheduled_at");
+    expect(bonusRows[0]).not.toHaveProperty("scheduled_amount");
+  });
+
+  test("タイムゾーンの無い日時は 400", async () => {
+    /*
+      "2026-10-01T00:00" は実行環境のローカル時刻として解釈される。
+      JST のつもりで送ると Vercel(UTC)では9時間ずれた時刻で切り替わる。
+    */
+    mockSupabase();
+
+    const response = await PATCH(
+      buildRequest({
+        bonusDefaults: [
+          {
+            source: "daily_post_free",
+            amount: 20,
+            scheduled_amount: 10,
+            scheduled_at: "2099-10-01T00:00",
+          },
+        ],
+        streakDefaults: streakRows(),
+      })
+    );
+
+    expect(response.status).toBe(400);
+  });
+
+  test("+09:00 付きなら通る", async () => {
+    mockSupabase();
+
+    const response = await PATCH(
+      buildRequest({
+        bonusDefaults: [
+          {
+            source: "daily_post_free",
+            amount: 20,
+            scheduled_amount: 10,
+            scheduled_at: "2099-10-01T00:00:00+09:00",
+          },
+        ],
+        streakDefaults: streakRows(),
+      })
+    );
+
+    expect(response.status).toBe(200);
   });
 
   test("連続ログインの予約額も範囲外なら 400", async () => {

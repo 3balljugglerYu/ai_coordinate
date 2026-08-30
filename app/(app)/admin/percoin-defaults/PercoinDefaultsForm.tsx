@@ -30,6 +30,9 @@ interface BonusDefault {
   scheduledAmount: number | null;
   scheduledAtLocal: string;
   scheduledAt: string | null;
+  /** 既に切り替わった予約（サーバーで判定済み）。amount には切替後の額が入っている */
+  appliedFrom: string | null;
+  previousAmount: number | null;
 }
 
 interface StreakDefault {
@@ -38,6 +41,8 @@ interface StreakDefault {
   scheduledAmount: number | null;
   scheduledAtLocal: string;
   scheduledAt: string | null;
+  appliedFrom: string | null;
+  previousAmount: number | null;
 }
 
 interface PercoinDefaultsFormProps {
@@ -424,11 +429,15 @@ export function PercoinDefaultsForm({
                 />
                 <ScheduleFields
                   idPrefix={`bonus-${row.source}`}
-                  currentAmount={bonusValues[row.source] ?? 0}
-                  savedSchedule={{
-                    scheduledAmount: row.scheduledAmount,
-                    scheduledAt: row.scheduledAt,
-                  }}
+                  applied={
+                    row.appliedFrom === null || row.previousAmount === null
+                      ? null
+                      : {
+                          from: row.appliedFrom,
+                          previousAmount: row.previousAmount,
+                          amount: row.amount,
+                        }
+                  }
                   value={bonusSchedules[row.source] ?? EMPTY_SCHEDULE}
                   onChange={(next) =>
                     setBonusSchedules((prev) => ({ ...prev, [row.source]: next }))
@@ -467,11 +476,15 @@ export function PercoinDefaultsForm({
                 />
                 <ScheduleFields
                   idPrefix={`bonus-${row.source}`}
-                  currentAmount={bonusValues[row.source] ?? 0}
-                  savedSchedule={{
-                    scheduledAmount: row.scheduledAmount,
-                    scheduledAt: row.scheduledAt,
-                  }}
+                  applied={
+                    row.appliedFrom === null || row.previousAmount === null
+                      ? null
+                      : {
+                          from: row.appliedFrom,
+                          previousAmount: row.previousAmount,
+                          amount: row.amount,
+                        }
+                  }
                   value={bonusSchedules[row.source] ?? EMPTY_SCHEDULE}
                   onChange={(next) =>
                     setBonusSchedules((prev) => ({ ...prev, [row.source]: next }))
@@ -544,11 +557,15 @@ export function PercoinDefaultsForm({
                   <td className="py-2 px-3">
                     <ScheduleFields
                       idPrefix={`streak-${row.streak_day}`}
-                      currentAmount={streakValues[row.streak_day] ?? 0}
-                      savedSchedule={{
-                        scheduledAmount: row.scheduledAmount,
-                        scheduledAt: row.scheduledAt,
-                      }}
+                      applied={
+                        row.appliedFrom === null || row.previousAmount === null
+                          ? null
+                          : {
+                              from: row.appliedFrom,
+                              previousAmount: row.previousAmount,
+                              amount: row.amount,
+                            }
+                      }
                       value={
                         streakSchedules[row.streak_day] ?? EMPTY_SCHEDULE
                       }

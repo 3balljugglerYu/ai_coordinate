@@ -12,6 +12,9 @@ export async function CachedHomePostList({ userId }: { userId: string | null }) 
   "use cache";
   cacheTag("home-posts");
   cacheTag("home-posts-week");
+  // 付与額を含むため、admin が額や予約を変えたら一緒に作り直す。
+  // 付けないと、投稿モーダルの還元案内が旧額のまま残る
+  cacheTag("percoin-defaults");
   cacheLife("minutes");
 
   const [newestPosts, weekPosts, percoinDefaults] = await Promise.all([

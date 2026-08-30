@@ -2,7 +2,6 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { resolveScheduleState } from "@/features/credits/lib/percoin-schedule";
 
 /**
  * 1 行ぶんの「予約」入力（予約額 + 切替日時 + 解除）。
@@ -22,10 +21,12 @@ export interface ScheduleInput {
 }
 
 interface Props {
-  /** いまテーブルに入っている額（切替前の値） */
-  currentAmount: number;
-  /** 保存済みの予約（切替済みかどうかの表示に使う） */
-  savedSchedule: { scheduledAmount: number | null; scheduledAt: string | null };
+  /**
+   * 既に切り替わった予約の情報（サーバーで判定済み）。
+   * render 中に現在時刻を読むと、切替時刻をまたいだときに SSR と hydration で
+   * 表示が食い違うため、判定結果だけを受け取る。
+   */
+  applied: { from: string; previousAmount: number; amount: number } | null;
   value: ScheduleInput;
   onChange: (next: ScheduleInput) => void;
   min: number;
@@ -35,8 +36,7 @@ interface Props {
 }
 
 export function ScheduleFields({
-  currentAmount,
-  savedSchedule,
+  applied,
   value,
   onChange,
   min,
@@ -44,7 +44,6 @@ export function ScheduleFields({
   disabled,
   idPrefix,
 }: Props) {
-  const savedState = resolveScheduleState(savedSchedule);
   const hasInput = value.amount !== "" || value.at !== "";
   const missingHalf = hasInput && (value.amount === "" || value.at === "");
 
@@ -92,10 +91,11 @@ export function ScheduleFields({
         </p>
       ) : null}
 
-      {savedState.kind === "applied" ? (
+      {applied ? (
         <p className="text-xs text-amber-700">
-          {formatJst(savedState.at)} に {currentAmount} → {savedState.amount}{" "}
-          へ切替済み。いま配られているのは <strong>{savedState.amount}</strong> です
+          {formatJst(new Date(applied.from))} に {applied.previousAmount} →{" "}
+          {applied.amount} へ切替済み。いま配られているのは{" "}
+          <strong>{applied.amount}</strong> です（上の欄がその額です）
         </p>
       ) : null}
     </div>

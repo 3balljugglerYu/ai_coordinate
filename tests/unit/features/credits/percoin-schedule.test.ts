@@ -103,6 +103,17 @@ describe("validateScheduledAt", () => {
   test("形式が不正なら弾く", () => {
     expect(validateScheduledAt("2026-13-45", NOW)).not.toBeNull();
   });
+
+  test("タイムゾーンが無い文字列は弾く", () => {
+    // 実行環境のローカル時刻として解釈され、JSTのつもりが9時間ずれる
+    expect(validateScheduledAt("2026-10-01T00:00", NOW)).not.toBeNull();
+    expect(validateScheduledAt("2026-10-01T00:00:00", NOW)).not.toBeNull();
+  });
+
+  test("Z でも +09:00 でも通る", () => {
+    expect(validateScheduledAt("2026-10-01T00:00:00Z", NOW)).toBeNull();
+    expect(validateScheduledAt("2026-10-01T00:00:00+09:00", NOW)).toBeNull();
+  });
 });
 
 describe("summarizeScheduleChanges", () => {

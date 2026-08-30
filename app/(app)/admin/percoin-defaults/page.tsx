@@ -3,6 +3,53 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { PercoinDefaultsForm } from "./PercoinDefaultsForm";
 import { formatDatetimeLocalJst } from "@/lib/datetime/format-datetime-local-jst";
+import { resolveScheduleState } from "@/features/credits/lib/percoin-schedule";
+
+/**
+ * 切替日時を過ぎた予約は「もう起きたこと」として現在額に畳んで画面へ渡す。
+ *
+ * ⚠️ 畳まないと2つの事故が起きる。
+ *  1. 過去日時の予約が入力欄に残り、**別の項目を直しただけでも保存が
+ *     「切替日時は未来を指定してください」で弾かれる**（保存が詰まる）
+ *  2. その予約を画面から消して保存すると、実際に配られている額(予約額)が
+ *     切替前の古い額へ**黙って戻る**
+ *
+ * 判定はサーバーで済ませる。クライアントの render 中に現在時刻を読むと、
+ * 切替時刻をまたいだときに SSR と hydration で表示が食い違う。
+ */
+function foldAppliedSchedule(row: {
+  amount: number;
+  scheduled_amount: number | null;
+  scheduled_at: string | null;
+}) {
+  const state = resolveScheduleState({
+    scheduledAmount: row.scheduled_amount,
+    scheduledAt: row.scheduled_at,
+  });
+
+  if (state.kind === "applied") {
+    return {
+      amount: state.amount,
+      scheduledAmount: null,
+      scheduledAtLocal: "",
+      scheduledAt: null,
+      // 「いつ切り替わって、いまいくつなのか」を画面に出すために残す
+      appliedFrom: row.scheduled_at,
+      previousAmount: row.amount,
+    };
+  }
+
+  return {
+    amount: row.amount,
+    scheduledAmount: row.scheduled_amount ?? null,
+    // datetime-local は JST 前提。サーバーで変換して渡し、
+    // クライアントで new Date() を読まない(Hydration Mismatch を避ける)
+    scheduledAtLocal: formatDatetimeLocalJst(row.scheduled_at),
+    scheduledAt: row.scheduled_at ?? null,
+    appliedFrom: null as string | null,
+    previousAmount: null as number | null,
+  };
+}
 
 const BONUS_SOURCE_LABELS: Record<string, string> = {
   signup_bonus: "新規登録特典",
@@ -42,22 +89,14 @@ export default async function AdminPercoinDefaultsPage() {
   const bonusDefaults =
     bonusResult.data?.map((r) => ({
       source: r.source,
-      amount: r.amount,
       label: BONUS_SOURCE_LABELS[r.source] ?? r.source,
-      scheduledAmount: r.scheduled_amount ?? null,
-      // datetime-local は JST 前提。サーバーで変換して渡し、
-      // クライアントで new Date() を読まない(Hydration Mismatch を避ける)
-      scheduledAtLocal: formatDatetimeLocalJst(r.scheduled_at),
-      scheduledAt: r.scheduled_at ?? null,
+      ...foldAppliedSchedule(r),
     })) ?? [];
 
   const streakDefaults =
     streakResult.data?.map((r) => ({
       streak_day: r.streak_day,
-      amount: r.amount,
-      scheduledAmount: r.scheduled_amount ?? null,
-      scheduledAtLocal: formatDatetimeLocalJst(r.scheduled_at),
-      scheduledAt: r.scheduled_at ?? null,
+      ...foldAppliedSchedule(r),
     })) ?? [];
 
   return (
