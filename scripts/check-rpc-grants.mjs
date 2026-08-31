@@ -77,6 +77,11 @@ const REQUIRED = {
     // セッションクライアント経由で呼ぶことを確認済み
     "public.get_collection_progress()",
     "public.create_post_moderation_appeal(p_decision_id uuid, p_body text)",
+    // 台紙生成 route がセッションクライアントで呼ぶ。関数内で auth.uid() を
+    // 必須にし、p_allow_admin_only は admin_users で検証している
+    "public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean)",
+    // 関数内で admin_users による本人確認あり（監査済み）
+    "public.get_creator_looks_secret_for_admin(p_template_id uuid)",
   ]),
 };
 
@@ -91,10 +96,8 @@ const REQUIRED = {
  */
 const KNOWN_UNAUDITED_BASELINE = {
   anon: new Set([]),
-  authenticated: new Set([
-    // 関数内に admin_users の本人確認があることを確認済み
-    "public.get_creator_looks_secret_for_admin(p_template_id uuid)",
-  ]),
+  // 現在は 0 本。増えたら「監査していない露出がある」ことを意味する。
+  authenticated: new Set([]),
 };
 
 const SQL = `

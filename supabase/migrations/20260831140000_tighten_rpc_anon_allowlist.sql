@@ -749,9 +749,13 @@ REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, json
 REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) TO service_role;
 
+-- ⭐ reserve_collection_completion は台紙生成 route が**セッションクライアント**で
+--    呼ぶ(app/api/collections/mount/route.ts)。authenticated を剥がすと
+--    完走済みユーザーがカードを生成できなくなるため残す(レビュー指摘)。
+--    代わりに p_allow_admin_only の自己申告を関数内で検証する(下の定義)。
 REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM anon;
-REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_collection_completion(text, boolean) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.reserve_collection_completion(text, boolean) TO service_role;
 
 REVOKE ALL ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() FROM PUBLIC;
@@ -769,6 +773,98 @@ REVOKE ALL ON FUNCTION public.current_post_removal_decision_id(uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.current_post_removal_decision_id(uuid) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.current_post_removal_decision_id(uuid) TO service_role;
 
+
+-- ---- 7) レビュー指摘: p_allow_admin_only の自己申告を関数内で検証する ----
+
+CREATE OR REPLACE FUNCTION public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean DEFAULT false)
+ RETURNS TABLE(completion_id uuid, mount_status text, newly_reserved boolean)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_uid UUID := auth.uid();
+  v_category_id UUID;
+  v_threshold INTEGER;
+  v_count INTEGER;
+  v_id UUID;
+  v_status TEXT;
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  /*
+    ⭐ p_allow_admin_only は route が isAdmin を計算して渡すが、RPC を直接
+    叩けば誰でも true を渡せる（自己申告）。admin_only の企画を予約できて
+    しまうため、関数内でも admin かどうかを確認する（レビュー指摘）。
+  */
+  IF p_allow_admin_only AND NOT EXISTS (
+    SELECT 1 FROM public.admin_users WHERE user_id = v_uid
+  ) THEN
+    RAISE EXCEPTION 'not_authorized' USING ERRCODE = '42501';
+  END IF;
+
+  SELECT pc.id, pc.completion_threshold
+    INTO v_category_id, v_threshold
+  FROM public.preset_categories pc
+  WHERE pc.key = p_category_key
+    AND pc.is_collection_series = true
+    AND (pc.visibility = 'public' OR (p_allow_admin_only AND pc.visibility = 'admin_only'))
+    AND pc.is_active = true;
+
+  IF v_category_id IS NULL THEN
+    RAISE EXCEPTION 'collection_series_not_found: %', p_category_key USING ERRCODE = '22023';
+  END IF;
+
+  SELECT COUNT(DISTINCT ij.generation_metadata -> 'oneTapStyle' ->> 'id')
+    INTO v_count
+  FROM public.image_jobs ij
+  WHERE ij.user_id = v_uid
+    AND ij.style_preset_category_key = p_category_key
+    AND ij.status = 'succeeded'
+    AND ij.generation_metadata -> 'oneTapStyle' ->> 'id' IS NOT NULL;
+
+  IF v_count < v_threshold THEN
+    RAISE EXCEPTION 'threshold_not_reached: % of %', v_count, v_threshold USING ERRCODE = '22023';
+  END IF;
+
+  INSERT INTO public.collection_completions
+    (user_id, category_id, category_key, threshold_at_completion, mount_status)
+  VALUES
+    (v_uid, v_category_id, p_category_key, v_threshold, 'generating')
+  ON CONFLICT (user_id, category_id) DO NOTHING
+  RETURNING id INTO v_id;
+
+  IF v_id IS NOT NULL THEN
+    RETURN QUERY SELECT v_id, 'generating'::TEXT, true;
+    RETURN;
+  END IF;
+
+  SELECT cc.id, cc.mount_status
+    INTO v_id, v_status
+  FROM public.collection_completions cc
+  WHERE cc.user_id = v_uid AND cc.category_id = v_category_id;
+
+  IF v_status = 'failed' THEN
+    UPDATE public.collection_completions cc
+    SET mount_status = 'generating',
+        mount_error = NULL,
+        mount_image_path = NULL,
+        completed_at = NULL
+    WHERE cc.id = v_id
+      AND cc.user_id = v_uid
+      AND cc.mount_status = 'failed'
+    RETURNING cc.id, cc.mount_status INTO v_id, v_status;
+
+    RETURN QUERY SELECT v_id, v_status, true;
+    RETURN;
+  END IF;
+
+  RETURN QUERY SELECT v_id, v_status, false;
+END;
+$function$
+;
 
 NOTIFY pgrst, 'reload schema';
 
