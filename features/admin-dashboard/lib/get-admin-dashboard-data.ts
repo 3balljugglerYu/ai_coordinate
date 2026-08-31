@@ -727,14 +727,32 @@ export async function getAdminDashboardData(
     supabase.rpc("get_auth_provider_signups"),
   ]);
 
-  if (profilesResult.error) console.error("Dashboard profiles fetch error:", profilesResult.error);
-  if (generatedResult.error) console.error("Dashboard generated fetch error:", generatedResult.error);
-  if (styleUsageEventsResult.error) {
-    console.error(
-      "Dashboard style usage events fetch error:",
-      styleUsageEventsResult.error
-    );
+  /*
+    fetchAllRows を通す4本は、失敗したら握りつぶさず throw する。
+
+    ここで `?? []` に落とすと「0件」が正常な集計結果として画面に出る。
+    上限到達時にエラーを返すようにしたのは silent undercount を止めるためなのに、
+    呼び出し側で空配列に潰すと**別の形で同じ事故に戻る**（0件は「0件だった」
+    という嘘の数字として読めてしまい、console を見ない限り気づけない）。
+
+    この4本はダッシュボードのほぼ全カードの土台なので、欠けた状態で
+    描画しても判断材料にならない。ページごとエラーにする方が正しい。
+  */
+  const criticalResults: Array<[string, { error: { message: string } | null }]> = [
+    ["generated_images", generatedResult],
+    ["style_usage_events", styleUsageEventsResult],
+    ["credit_transactions", transactionsResult],
+    ["image_jobs", jobsResult],
+  ];
+  for (const [label, result] of criticalResults) {
+    if (result.error) {
+      throw new Error(
+        `Admin dashboard: ${label} の取得に失敗しました: ${result.error.message}`
+      );
+    }
   }
+
+  if (profilesResult.error) console.error("Dashboard profiles fetch error:", profilesResult.error);
   if (styleGuestAttemptsResult.error) {
     console.error(
       "Dashboard style guest attempts fetch error:",
@@ -748,8 +766,6 @@ export async function getAdminDashboardData(
     );
   }
   if (pendingResult.error) console.error("Dashboard pending fetch error:", pendingResult.error);
-  if (transactionsResult.error) console.error("Dashboard transactions fetch error:", transactionsResult.error);
-  if (jobsResult.error) console.error("Dashboard jobs fetch error:", jobsResult.error);
   if (balancesResult.error) console.error("Dashboard balances fetch error:", balancesResult.error);
   if (expiringResult.error) console.error("Dashboard expiring fetch error:", expiringResult.error);
   if (reportsResult.error) console.error("Dashboard reports fetch error:", reportsResult.error);
