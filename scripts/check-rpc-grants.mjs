@@ -26,40 +26,109 @@
 import { execFileSync } from "node:child_process";
 
 /**
- * 未ログインから呼ばれる**必要がある**関数だけを列挙する。
+ * そのロールから呼ばれる**必要がある**関数だけを列挙する。
  *
  * ⭐ 「関数内で弾けるから開けておく」は理由にならない。弾けることと、
- * 開けておく必要があることは別。ログインが前提の機能はここに入れない。
+ * 開けておく必要があることは別。
+ *
+ * ⭐ 名前ではなく**シグネチャ**で持つ。同名の別オーバーロードが増えても
+ * 許可済みの名前に紛れて見逃さないため（RPC は署名ごとに別の API 面）。
  */
-const ALLOWLIST = new Set([
-  // 未ログインでも見えるプロフィールの数値
-  "get_follow_counts",
-  "get_user_like_count",
-  "get_user_view_count",
-  // 未ログインでも見えるミッションの付与額
-  "get_post_bonus_amounts",
-  "get_prompt_use_bonus_amount",
-  // 未ログインの閲覧もカウントする仕様
-  "increment_view_count",
-]);
+const ALLOWLIST = {
+  anon: new Set([
+    // 未ログインでも見えるプロフィールの数値
+    "public.get_follow_counts(p_user_id uuid)",
+    "public.get_user_like_count(p_user_id uuid)",
+    "public.get_user_view_count(p_user_id uuid)",
+    // 未ログインでも見えるミッションの付与額
+    "public.get_post_bonus_amounts()",
+    "public.get_prompt_use_bonus_amount()",
+    // 未ログインの閲覧もカウントする仕様
+    "public.increment_view_count(image_id_param uuid)",
+  ]),
+  /*
+    ログイン中のユーザーが呼ぶもの。
+    ⭐ anon だけ検査していると、新規関数の anon を剥がして
+    既定で付いた authenticated を残した状態を見逃す（レビュー指摘）。
+  */
+  authenticated: new Set([
+    "public.get_follow_counts(p_user_id uuid)",
+    "public.get_user_like_count(p_user_id uuid)",
+    "public.get_user_view_count(p_user_id uuid)",
+    "public.get_post_bonus_amounts()",
+    "public.get_prompt_use_bonus_amount()",
+    "public.increment_view_count(image_id_param uuid)",
+    "public.get_user_generated_count(p_user_id uuid)",
+    "public.apply_percoin_transaction(p_user_id uuid, p_amount integer, p_mode text, p_metadata jsonb, p_stripe_payment_intent_id text, p_related_generation_id uuid)",
+    "public.get_expiring_this_month_count(p_user_id uuid)",
+    "public.get_free_percoin_batches_expiring(p_user_id uuid)",
+    "public.cancel_account_deletion(p_user_id uuid)",
+    "public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text)",
+    "public.generate_referral_code(p_user_id uuid)",
+    "public.grant_streak_bonus(p_user_id uuid)",
+    "public.create_collection_completion_post(p_completion_id uuid, p_caption text, p_image_url text, p_storage_path text, p_storage_path_display text, p_storage_path_thumb text)",
+    "public.delete_comment_thread(p_comment_id uuid)",
+    "public.grant_tour_bonus(p_user_id uuid)",
+    "public.insert_source_image_stock(p_user_id uuid, p_image_url text, p_storage_path text, p_name text)",
+
+    /*
+      ⚠️ ここから下は**本 PR で監査していない既存分**。
+      許可した訳ではなく、「いまこうなっている」ことを固定して
+      **これ以上増えたら気づける**ようにするためのベースライン。
+
+      確認済み:
+        get_creator_looks_secret_for_admin … admin_users で本人確認しており安全
+      要調査（別作業）:
+        apply_user_style_template_decision / promote_user_style_template_draft /
+        withdraw_user_style_template … p_actor_id を引数で受け取っており、
+        呼び出し元の検証があるか未確認
+        cleanup_withdrawn_creator_looks_secrets /
+        monitor_creator_looks_extract_failures … cron 用途で authenticated に
+        開けておく理由が無い可能性
+    */
+    "public.apply_user_style_template_decision(p_template_id uuid, p_actor_id uuid, p_action text, p_reason text, p_decided_at timestamp with time zone, p_metadata jsonb)",
+    "public.cleanup_withdrawn_creator_looks_secrets()",
+    "public.create_post_moderation_appeal(p_decision_id uuid, p_body text)",
+    "public.create_user_style_template_draft(p_actor_id uuid, p_alt text)",
+    "public.current_post_removal_decision_id(p_post_id uuid)",
+    "public.get_collection_progress()",
+    "public.get_creator_looks_secret_for_admin(p_template_id uuid)",
+    "public.monitor_creator_looks_extract_failures()",
+    "public.promote_user_style_template_draft(p_template_id uuid, p_actor_id uuid, p_metadata jsonb)",
+    "public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean)",
+    "public.withdraw_user_style_template(p_template_id uuid, p_actor_id uuid, p_metadata jsonb)",
+  ]),
+};
 
 const SQL = `
-select p.proname
+select
+  n.nspname || '.' || p.proname || '(' || pg_get_function_identity_arguments(p.oid) || ')' as signature,
+  has_function_privilege('anon', p.oid, 'EXECUTE') as anon,
+  has_function_privilege('authenticated', p.oid, 'EXECUTE') as authenticated
 from pg_proc p
 join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'public'
   and p.prosecdef
-  and has_function_privilege('anon', p.oid, 'EXECUTE')
   and p.prorettype <> 'trigger'::regtype::oid
+  and (
+    has_function_privilege('anon', p.oid, 'EXECUTE')
+    or has_function_privilege('authenticated', p.oid, 'EXECUTE')
+  )
 order by 1
 `;
 
 function runQuery() {
   const dbUrlIndex = process.argv.indexOf("--db-url");
-  const args =
+  /*
+    ⭐ --output json --agent yes を必ず付ける。
+    supabase CLI は「人が実行した」と判定すると table 形式で出すため、
+    付けないと手で回したときだけ parse error で落ちる（レビュー指摘）。
+  */
+  const target =
     dbUrlIndex !== -1
-      ? ["db", "query", "--db-url", process.argv[dbUrlIndex + 1], SQL]
-      : ["db", "query", "--linked", SQL];
+      ? ["--db-url", process.argv[dbUrlIndex + 1]]
+      : ["--linked"];
+  const args = ["db", "query", "--output", "json", "--agent", "yes", ...target, SQL];
 
   const stdout = execFileSync("supabase", args, {
     encoding: "utf8",
@@ -71,43 +140,53 @@ function runQuery() {
   if (!match) {
     throw new Error(`クエリ結果を解釈できませんでした:\n${stdout}`);
   }
-  return JSON.parse(match[0]).rows.map((row) => row.proname);
+  return JSON.parse(match[0]).rows;
 }
 
 function main() {
-  const actual = runQuery();
+  const rows = runQuery();
+  let failed = false;
 
-  const unexpected = actual.filter((name) => !ALLOWLIST.has(name));
-  const missing = [...ALLOWLIST].filter((name) => !actual.includes(name));
+  for (const role of ["anon", "authenticated"]) {
+    const actual = rows.filter((row) => row[role]).map((row) => row.signature);
+    const allowed = ALLOWLIST[role];
 
-  console.log(`anon から実行できる SECURITY DEFINER 関数: ${actual.length}本`);
+    const unexpected = actual.filter((sig) => !allowed.has(sig));
+    const missing = [...allowed].filter((sig) => !actual.includes(sig));
 
-  if (unexpected.length > 0) {
-    console.error(
-      `\n❌ 許可リストに無い関数が ${unexpected.length}本 anon から実行できます:`
-    );
-    for (const name of unexpected) console.error(`   - ${name}`);
+    console.log(`${role} から実行できる SECURITY DEFINER 関数: ${actual.length}本`);
+
+    if (unexpected.length > 0) {
+      failed = true;
+      console.error(
+        `\n❌ 許可リストに無い関数が ${unexpected.length}本 ${role} から実行できます:`
+      );
+      for (const sig of unexpected) console.error(`   - ${sig}`);
+    }
+
+    if (missing.length > 0) {
+      /*
+        許可リストにあるのに実行できない = その画面が壊れている可能性。
+        閉じ過ぎも異常として扱う（気づかないまま機能が死ぬのを防ぐ）。
+      */
+      failed = true;
+      console.error(
+        `\n⚠️ 許可リストにあるが ${role} から実行できない関数が ${missing.length}本あります:`
+      );
+      for (const sig of missing) console.error(`   - ${sig}`);
+    }
+  }
+
+  if (failed) {
     console.error(
       "\n   新しい関数を追加したなら、migration に以下を書き足してください:\n" +
         "     REVOKE ALL ON FUNCTION public.<name>(<args>) FROM PUBLIC;\n" +
         "     REVOKE ALL ON FUNCTION public.<name>(<args>) FROM anon;\n" +
+        "     REVOKE ALL ON FUNCTION public.<name>(<args>) FROM authenticated;\n" +
         "     GRANT EXECUTE ON FUNCTION public.<name>(<args>) TO service_role;\n" +
-        "   ログイン中のユーザーから呼ぶなら authenticated にも GRANT します。"
+        "   ログイン中のユーザーから呼ぶなら authenticated にも GRANT し、\n" +
+        "   このスクリプトの ALLOWLIST にもシグネチャを追記してください。"
     );
-  }
-
-  if (missing.length > 0) {
-    /*
-      許可リストにあるのに実行できない = 未ログインの画面が壊れている可能性。
-      閉じ過ぎも異常として扱う（気づかないまま機能が死ぬのを防ぐ）。
-    */
-    console.error(
-      `\n⚠️ 許可リストにあるが anon から実行できない関数が ${missing.length}本あります:`
-    );
-    for (const name of missing) console.error(`   - ${name}`);
-  }
-
-  if (unexpected.length > 0 || missing.length > 0) {
     process.exitCode = 1;
     return;
   }

@@ -577,6 +577,77 @@ END;
 $function$
 ;
 
+-- ---- 4) レビュー指摘: authenticated 経由の露出も塞ぐ ----
+--      anon を剥がしただけでは「ログインさえしていれば他人の情報が読める」状態が残る。
+--      公開プロフィールの集計は、他人から見るとき RLS の公開条件に揃える。
+
+CREATE OR REPLACE FUNCTION public.get_user_generated_count(p_user_id uuid)
+ RETURNS bigint
+ LANGUAGE plpgsql
+ STABLE
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  /*
+    未投稿ぶんを含む本人の生成総数。公開情報ではないので他人には返さない。
+    anon は権限側で剥がしたが、それだけでは「ログインさえしていれば
+    他人の生成量が読める」状態が残る（レビュー指摘）。
+  */
+  IF auth.uid() IS DISTINCT FROM p_user_id
+     AND NOT public.is_trusted_lineage_writer() THEN
+    RAISE EXCEPTION 'Unauthorized: caller is not the target user';
+  END IF;
+
+  RETURN coalesce(
+    (SELECT sum(coalesce(requested_image_count, 1))
+     FROM public.image_jobs
+     WHERE user_id = p_user_id AND status = 'succeeded'),
+    0
+  )::bigint;
+END;
+$function$;
+
+CREATE OR REPLACE FUNCTION public.get_user_like_count(p_user_id uuid)
+ RETURNS bigint
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select count(*)::bigint
+  from public.likes as l
+  join public.generated_images as gi on gi.id = l.image_id
+  where gi.user_id = p_user_id
+    and gi.is_posted = true
+    AND (
+      -- 他人から見るときは公開中の投稿だけ。RLS の公開条件に合わせる
+      gi.moderation_status = 'visible'
+      OR auth.uid() = p_user_id
+      OR public.is_trusted_lineage_writer()
+    );
+$function$
+;
+
+CREATE OR REPLACE FUNCTION public.get_user_view_count(p_user_id uuid)
+ RETURNS bigint
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(sum(view_count), 0)::bigint
+  from public.generated_images
+  where user_id = p_user_id
+    and is_posted = true
+    and (
+      -- 他人から見るときは公開中の投稿だけ。RLS の公開条件に合わせる
+      moderation_status = 'visible'
+      OR auth.uid() = p_user_id
+      OR public.is_trusted_lineage_writer()
+    );
+$function$
+;
+
+
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;
