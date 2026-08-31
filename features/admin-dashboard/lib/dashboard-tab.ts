@@ -1,6 +1,10 @@
 import type { DashboardRange } from "./dashboard-range";
 
-export type AdminDashboardTab = "all" | "one-tap-style" | "collections";
+export type AdminDashboardTab =
+  | "all"
+  | "one-tap-style"
+  | "collections"
+  | "percoin";
 
 export const ADMIN_DASHBOARD_TAB_OPTIONS: Array<{
   value: AdminDashboardTab;
@@ -9,11 +13,13 @@ export const ADMIN_DASHBOARD_TAB_OPTIONS: Array<{
   { value: "all", label: "すべて" },
   { value: "one-tap-style", label: "ワンタップスタイル" },
   { value: "collections", label: "コレクション" },
+  { value: "percoin", label: "ペルコイン" },
 ];
 
 export function parseAdminDashboardTab(value?: string): AdminDashboardTab {
   if (value === "one-tap-style") return "one-tap-style";
   if (value === "collections") return "collections";
+  if (value === "percoin") return "percoin";
   return "all";
 }
 
