@@ -108,7 +108,7 @@ AS $function$
      -- 数値以外が入っていても落ちないようにガードする
      AND t.metadata->>'streak_days' ~ '^[0-9]+$'
     GROUP BY c.user_id, c.started_at
-  )
+  ),
   matured AS (
     /*
       ⭐ 経過は「24時間 × N」ではなく **JST の暦日**で数える。
