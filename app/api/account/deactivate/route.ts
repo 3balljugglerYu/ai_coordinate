@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getAccountRouteCopy } from "@/features/account/lib/route-copy";
@@ -54,7 +55,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const { data, error } = await supabase.rpc("request_account_deletion", {
+    /*
+      退会 RPC は service_role からのみ実行できるようにした。
+      authenticated に開けたままだと、上のパスワード再認証を通さずに
+      /rest/v1/rpc/request_account_deletion を直接叩けてしまい、
+      再認証という前提が DB 境界で成立しない（p_reauth_ok は自己申告のため）。
+      再認証を終えたこのルートだけが admin クライアントで呼ぶ。
+    */
+    const adminSupabase = createAdminClient();
+    const { data, error } = await adminSupabase.rpc("request_account_deletion", {
       p_user_id: user.id,
       p_confirm_text: confirmText,
       p_reauth_ok: true,

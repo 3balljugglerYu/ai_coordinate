@@ -6,9 +6,9 @@ BEGIN;
   ## 何が起きていたか
 
   Supabase は新規関数の EXECUTE を PUBLIC 既定付与に加えて anon と
-  authenticated にも直接 GRANT する。そのため多くの SECURITY DEFINER 関数が
+  authenticated にも直接 GRANT する。そのため SECURITY DEFINER 関数が
   **未ログインのまま /rest/v1/rpc/ から実行できる状態**だった
-  (2026-08-31 時点でトリガーを除き36本)。SET ROLE anon で実行できることを確認済み。
+  (トリガーを除き36本)。SET ROLE anon で実行できることを確認済み。
 
   特に危険だったもの:
   - refund_percoins / deduct_percoins_admin
@@ -17,33 +17,36 @@ BEGIN;
       「service_role のみ」という意図と実際の効果がずれていた
   - request_account_deletion
       確認条件が p_confirm_text='DELETE' と p_reauth_ok=true の**引数のみ**。
-      再認証したかを自称の引数で判定していた。通ると対象アカウントを停止し、
-      投稿を全部非公開にし、30日後の削除を予約する
+      通ると対象アカウントを停止し、投稿を全部非公開にし、削除を予約する
   - get_user_ids_by_emails
       auth.users を読み、メールから user_id と残高を返す。ガード無し
   - pgmq_send / pgmq_read / pgmq_delete
-      キューへの任意投入・読み取り・削除
 
-  ## 方針
+  ## 対象を絞った理由（レビュー指摘を受けて）
 
-  1. サーバー(service_role)からしか呼ばない関数 → anon と authenticated を剥がす
-  2. ログイン中のユーザーから呼ぶ関数 → anon だけ剥がし、authenticated は残す
-  3. 2 のうち呼び出し元を検証していなかった5本 → 本人ぶんのみ許す条件を追加
+  当初は36本すべてを分類して一度に閉じようとしたが、**分類を2度誤った**。
+  ファイル単位で `createAdminClient` の有無を見る方法だと、
+  1つのファイルに両方のクライアントが混在する場合に誤判定する
+  (`server-api.ts` の delete_comment_thread / increment_view_count は
+  セッションクライアント経由で、閉じると本番が壊れるところだった)。
 
-  呼び出し元は `rpc(` の文字列一致ではなく関数名で全走査して分類した
-  (`.rpc(` が複数行に折れている箇所があり、正規表現だと取りこぼす)。
+  そこで**呼び出し箇所ごとに、直前の supabase 代入まで遡って確認できたものだけ**に
+  絞った。判定しきれなかったものはこの PR では触れない。
+  安全側に倒す方が、閉じ漏れより優先度が高い(閉じ漏れは次の PR で拾える)。
 
-  ## 残る既知の限界
+  ## 残りの扱い
 
-  auth.uid() が NULL であることを service_role の代わりに使う書き方は
-  refund_percoins / deduct_percoins_admin に残っている。権限を剥がしたので
-  外からは届かないが、条件式の意味としては誤り。別途直す。
+  セッションクライアント経由で呼ぶ関数(increment_view_count / delete_comment_thread /
+  create_collection_completion_post / get_follow_counts / get_user_*_count /
+  get_post_bonus_amounts など)は権限を変更しない。未ログインの閲覧でも
+  呼ばれるものが含まれるため。呼び出し元の client を1件ずつ確定させてから別 PR で扱う。
+
+  refund_percoins / deduct_percoins_admin に残る
+  「auth.uid() が NULL であることを service_role の代わりに使う」書き方も
+  条件式としては誤りだが、権限を剥がすことで外からは届かなくなる。別途直す。
 */
 
--- ============================================================
--- 1) service_role からのみ呼ぶ関数: anon / authenticated を剥がす
---    (呼び出しが無い関数もここに含める。将来 anon から呼べても困るだけ)
--- ============================================================
+-- ---- service_role からのみ呼ぶ（呼び出し箇所ごとに確認済み） ----
 REVOKE ALL ON FUNCTION public.deduct_free_percoins(p_user_id uuid, p_amount integer, p_metadata jsonb, p_related_generation_id uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.deduct_free_percoins(p_user_id uuid, p_amount integer, p_metadata jsonb, p_related_generation_id uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.deduct_free_percoins(p_user_id uuid, p_amount integer, p_metadata jsonb, p_related_generation_id uuid) FROM authenticated;
@@ -53,11 +56,6 @@ REVOKE ALL ON FUNCTION public.deduct_percoins_admin(p_user_id uuid, p_amount int
 REVOKE ALL ON FUNCTION public.deduct_percoins_admin(p_user_id uuid, p_amount integer, p_balance_type text, p_idempotency_key text, p_metadata jsonb) FROM anon;
 REVOKE ALL ON FUNCTION public.deduct_percoins_admin(p_user_id uuid, p_amount integer, p_balance_type text, p_idempotency_key text, p_metadata jsonb) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.deduct_percoins_admin(p_user_id uuid, p_amount integer, p_balance_type text, p_idempotency_key text, p_metadata jsonb) TO service_role;
-
-REVOKE ALL ON FUNCTION public.delete_comment_thread(p_comment_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.delete_comment_thread(p_comment_id uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.delete_comment_thread(p_comment_id uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.delete_comment_thread(p_comment_id uuid) TO service_role;
 
 REVOKE ALL ON FUNCTION public.get_due_deletion_candidates(p_limit integer) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.get_due_deletion_candidates(p_limit integer) FROM anon;
@@ -69,35 +67,10 @@ REVOKE ALL ON FUNCTION public.get_expiration_notification_targets() FROM anon;
 REVOKE ALL ON FUNCTION public.get_expiration_notification_targets() FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.get_expiration_notification_targets() TO service_role;
 
-REVOKE ALL ON FUNCTION public.get_follow_counts(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_follow_counts(p_user_id uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.get_follow_counts(p_user_id uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.get_follow_counts(p_user_id uuid) TO service_role;
-
-REVOKE ALL ON FUNCTION public.get_user_generated_count(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_user_generated_count(p_user_id uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.get_user_generated_count(p_user_id uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.get_user_generated_count(p_user_id uuid) TO service_role;
-
 REVOKE ALL ON FUNCTION public.get_user_ids_by_emails(p_emails text[]) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.get_user_ids_by_emails(p_emails text[]) FROM anon;
 REVOKE ALL ON FUNCTION public.get_user_ids_by_emails(p_emails text[]) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.get_user_ids_by_emails(p_emails text[]) TO service_role;
-
-REVOKE ALL ON FUNCTION public.get_user_like_count(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_user_like_count(p_user_id uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.get_user_like_count(p_user_id uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.get_user_like_count(p_user_id uuid) TO service_role;
-
-REVOKE ALL ON FUNCTION public.get_user_view_count(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_user_view_count(p_user_id uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.get_user_view_count(p_user_id uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.get_user_view_count(p_user_id uuid) TO service_role;
-
-REVOKE ALL ON FUNCTION public.increment_view_count(image_id_param uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.increment_view_count(image_id_param uuid) FROM anon;
-REVOKE ALL ON FUNCTION public.increment_view_count(image_id_param uuid) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.increment_view_count(image_id_param uuid) TO service_role;
 
 REVOKE ALL ON FUNCTION public.pgmq_delete(p_queue_name text, p_msg_id bigint) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.pgmq_delete(p_queue_name text, p_msg_id bigint) FROM anon;
@@ -124,6 +97,12 @@ REVOKE ALL ON FUNCTION public.refund_percoins(p_user_id uuid, p_amount integer, 
 REVOKE ALL ON FUNCTION public.refund_percoins(p_user_id uuid, p_amount integer, p_to_promo integer, p_to_paid integer, p_job_id text, p_metadata jsonb) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.refund_percoins(p_user_id uuid, p_amount integer, p_to_promo integer, p_to_paid integer, p_job_id text, p_metadata jsonb) TO service_role;
 
+REVOKE ALL ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) TO service_role;
+
+-- ---- アプリコードからの呼び出しが無い ----
 REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login(p_user_id uuid) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login(p_user_id uuid) FROM anon;
 REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login(p_user_id uuid) FROM authenticated;
@@ -133,11 +112,6 @@ REVOKE ALL ON FUNCTION public.cleanup_cron_job_run_details() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.cleanup_cron_job_run_details() FROM anon;
 REVOKE ALL ON FUNCTION public.cleanup_cron_job_run_details() FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.cleanup_cron_job_run_details() TO service_role;
-
-REVOKE ALL ON FUNCTION public.create_collection_completion_post(p_completion_id uuid, p_caption text, p_image_url text, p_storage_path text, p_storage_path_display text, p_storage_path_thumb text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.create_collection_completion_post(p_completion_id uuid, p_caption text, p_image_url text, p_storage_path text, p_storage_path_display text, p_storage_path_thumb text) FROM anon;
-REVOKE ALL ON FUNCTION public.create_collection_completion_post(p_completion_id uuid, p_caption text, p_image_url text, p_storage_path text, p_storage_path_display text, p_storage_path_thumb text) FROM authenticated;
-GRANT EXECUTE ON FUNCTION public.create_collection_completion_post(p_completion_id uuid, p_caption text, p_image_url text, p_storage_path text, p_storage_path_display text, p_storage_path_thumb text) TO service_role;
 
 REVOKE ALL ON FUNCTION public.expire_free_percoin_batches() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.expire_free_percoin_batches() FROM anon;
@@ -164,74 +138,9 @@ REVOKE ALL ON FUNCTION public.monitor_generation_billing_anomalies(p_since times
 REVOKE ALL ON FUNCTION public.monitor_generation_billing_anomalies(p_since timestamp with time zone) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.monitor_generation_billing_anomalies(p_since timestamp with time zone) TO service_role;
 
--- ============================================================
--- 2) ログイン中のユーザーから呼ぶ関数: anon だけ剥がし authenticated は残す
--- ============================================================
-REVOKE ALL ON FUNCTION public.apply_percoin_transaction(p_user_id uuid, p_amount integer, p_mode text, p_metadata jsonb, p_stripe_payment_intent_id text, p_related_generation_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.apply_percoin_transaction(p_user_id uuid, p_amount integer, p_mode text, p_metadata jsonb, p_stripe_payment_intent_id text, p_related_generation_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.apply_percoin_transaction(p_user_id uuid, p_amount integer, p_mode text, p_metadata jsonb, p_stripe_payment_intent_id text, p_related_generation_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.apply_percoin_transaction(p_user_id uuid, p_amount integer, p_mode text, p_metadata jsonb, p_stripe_payment_intent_id text, p_related_generation_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.cancel_account_deletion(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.cancel_account_deletion(p_user_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.cancel_account_deletion(p_user_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.cancel_account_deletion(p_user_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) FROM anon;
-GRANT EXECUTE ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.generate_referral_code(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.generate_referral_code(p_user_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.generate_referral_code(p_user_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.generate_referral_code(p_user_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.get_expiring_this_month_count(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_expiring_this_month_count(p_user_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.get_expiring_this_month_count(p_user_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_expiring_this_month_count(p_user_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.get_free_percoin_batches_expiring(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_free_percoin_batches_expiring(p_user_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.get_free_percoin_batches_expiring(p_user_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_free_percoin_batches_expiring(p_user_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.get_post_bonus_amounts() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_post_bonus_amounts() FROM anon;
-GRANT EXECUTE ON FUNCTION public.get_post_bonus_amounts() TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_post_bonus_amounts() TO authenticated;
-
-REVOKE ALL ON FUNCTION public.get_prompt_use_bonus_amount() FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.get_prompt_use_bonus_amount() FROM anon;
-GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO service_role;
-GRANT EXECUTE ON FUNCTION public.get_prompt_use_bonus_amount() TO authenticated;
-
-REVOKE ALL ON FUNCTION public.grant_streak_bonus(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.grant_streak_bonus(p_user_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.grant_streak_bonus(p_user_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.grant_streak_bonus(p_user_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.grant_tour_bonus(p_user_id uuid) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.grant_tour_bonus(p_user_id uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.grant_tour_bonus(p_user_id uuid) TO service_role;
-GRANT EXECUTE ON FUNCTION public.grant_tour_bonus(p_user_id uuid) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.insert_source_image_stock(p_user_id uuid, p_image_url text, p_storage_path text, p_name text) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.insert_source_image_stock(p_user_id uuid, p_image_url text, p_storage_path text, p_name text) FROM anon;
-GRANT EXECUTE ON FUNCTION public.insert_source_image_stock(p_user_id uuid, p_image_url text, p_storage_path text, p_name text) TO service_role;
-GRANT EXECUTE ON FUNCTION public.insert_source_image_stock(p_user_id uuid, p_image_url text, p_storage_path text, p_name text) TO authenticated;
-
-REVOKE ALL ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) FROM PUBLIC;
-REVOKE ALL ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) FROM anon;
-GRANT EXECUTE ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) TO service_role;
-GRANT EXECUTE ON FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean) TO authenticated;
-
--- ============================================================
--- 3) 呼び出し元を検証していなかった関数に、本人ぶんのみ許す条件を追加
---    定義は pg_get_functiondef から取得したものに、先頭の BEGIN 直後へ
---    ガードを挿入しただけ(本文は書き換えていない)
--- ============================================================
+-- ---- セッションクライアント経由で呼ぶため authenticated は残し、
+--      代わりに「他人の user_id では実行できない」条件を足す ----
+--      定義は pg_get_functiondef の本文の BEGIN 直後へガードを挿入しただけ
 
 CREATE OR REPLACE FUNCTION public.cancel_account_deletion(p_user_id uuid)
  RETURNS TABLE(status text)
@@ -243,9 +152,10 @@ DECLARE
   v_was_scheduled boolean;
 BEGIN
   /*
-    呼び出し元の検証。JWT を伴う呼び出し(ログイン中のユーザー)は本人ぶんのみ許す。
+    呼び出し元の検証。これらはセッションクライアント経由で呼ばれるため
+    authenticated の EXECUTE を残す必要がある。その代わり、他人の user_id を
+    渡して実行できないようにする（ログインさえしていれば通る状態だった）。
     サーバー経由(service_role)は auth.uid() が NULL なので従来どおり通る。
-    これが無いと、ログインさえしていれば他人の user_id を渡して実行できた。
   */
   IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
     RAISE EXCEPTION 'Unauthorized: caller is not the target user';
@@ -290,9 +200,10 @@ DECLARE
   v_already_granted BOOLEAN;
 BEGIN
   /*
-    呼び出し元の検証。JWT を伴う呼び出し(ログイン中のユーザー)は本人ぶんのみ許す。
+    呼び出し元の検証。これらはセッションクライアント経由で呼ばれるため
+    authenticated の EXECUTE を残す必要がある。その代わり、他人の user_id を
+    渡して実行できないようにする（ログインさえしていれば通る状態だった）。
     サーバー経由(service_role)は auth.uid() が NULL なので従来どおり通る。
-    これが無いと、ログインさえしていれば他人の user_id を渡して実行できた。
   */
   IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
     RAISE EXCEPTION 'Unauthorized: caller is not the target user';
@@ -401,9 +312,10 @@ DECLARE
   v_max_attempts INTEGER := 3;
 BEGIN
   /*
-    呼び出し元の検証。JWT を伴う呼び出し(ログイン中のユーザー)は本人ぶんのみ許す。
+    呼び出し元の検証。これらはセッションクライアント経由で呼ばれるため
+    authenticated の EXECUTE を残す必要がある。その代わり、他人の user_id を
+    渡して実行できないようにする（ログインさえしていれば通る状態だった）。
     サーバー経由(service_role)は auth.uid() が NULL なので従来どおり通る。
-    これが無いと、ログインさえしていれば他人の user_id を渡して実行できた。
   */
   IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
     RAISE EXCEPTION 'Unauthorized: caller is not the target user';
@@ -493,9 +405,10 @@ declare
   v_expire_at timestamptz;
 begin
   /*
-    呼び出し元の検証。JWT を伴う呼び出し(ログイン中のユーザー)は本人ぶんのみ許す。
+    呼び出し元の検証。これらはセッションクライアント経由で呼ばれるため
+    authenticated の EXECUTE を残す必要がある。その代わり、他人の user_id を
+    渡して実行できないようにする（ログインさえしていれば通る状態だった）。
     サーバー経由(service_role)は auth.uid() が NULL なので従来どおり通る。
-    これが無いと、ログインさえしていれば他人の user_id を渡して実行できた。
   */
   IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
     RAISE EXCEPTION 'Unauthorized: caller is not the target user';
@@ -648,71 +561,6 @@ begin
 
   return v_grant_amount;
 end;
-$function$
-;
-
-CREATE OR REPLACE FUNCTION public.request_account_deletion(p_user_id uuid, p_confirm_text text, p_reauth_ok boolean)
- RETURNS TABLE(status text, scheduled_for timestamp with time zone)
- LANGUAGE plpgsql
- SECURITY DEFINER
- SET search_path TO 'public', 'auth', 'extensions'
-AS $function$
-DECLARE
-  v_now timestamptz := now();
-  v_existing_scheduled_at timestamptz;
-BEGIN
-  /*
-    呼び出し元の検証。JWT を伴う呼び出し(ログイン中のユーザー)は本人ぶんのみ許す。
-    サーバー経由(service_role)は auth.uid() が NULL なので従来どおり通る。
-    これが無いと、ログインさえしていれば他人の user_id を渡して実行できた。
-  */
-  IF auth.uid() IS NOT NULL AND auth.uid() <> p_user_id THEN
-    RAISE EXCEPTION 'Unauthorized: caller is not the target user';
-  END IF;
-
-  IF p_confirm_text IS DISTINCT FROM 'DELETE' THEN
-    RAISE EXCEPTION 'Invalid confirmation text';
-  END IF;
-
-  IF COALESCE(p_reauth_ok, false) = false THEN
-    RAISE EXCEPTION 'Re-authentication required';
-  END IF;
-
-  IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_user_id) THEN
-    RAISE EXCEPTION 'User not found';
-  END IF;
-
-  INSERT INTO public.profiles (id, user_id)
-  VALUES (p_user_id, p_user_id)
-  ON CONFLICT (user_id) DO NOTHING;
-
-  SELECT deletion_scheduled_at
-  INTO v_existing_scheduled_at
-  FROM public.profiles
-  WHERE user_id = p_user_id
-  FOR UPDATE;
-
-  IF v_existing_scheduled_at IS NOT NULL THEN
-    RETURN QUERY SELECT 'already_scheduled'::text, v_existing_scheduled_at;
-    RETURN;
-  END IF;
-
-  UPDATE public.profiles
-  SET
-    bio = NULL,
-    avatar_url = NULL,
-    deactivation_requested_at = v_now,
-    deletion_scheduled_at = v_now + interval '30 days',
-    deactivated_at = v_now
-  WHERE user_id = p_user_id;
-
-  UPDATE public.generated_images
-  SET is_posted = false
-  WHERE user_id = p_user_id
-    AND is_posted = true;
-
-  RETURN QUERY SELECT 'scheduled'::text, v_now + interval '30 days';
-END;
 $function$
 ;
 
