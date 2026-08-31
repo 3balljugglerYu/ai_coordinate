@@ -2,6 +2,24 @@ import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fetchAllById } from "./fetch-all-rows";
+
+/**
+ * 取得結果にエラーがあれば throw する。
+ *
+ * 企画 KPI は全部が「実際に起きた件数」なので、欠けた状態の数字に
+ * 意味が無い。0件として描画するより落とす方が正しい。
+ */
+function assertFetched(
+  results: ReadonlyArray<readonly [string, { error: { message: string } | null }]>
+): void {
+  for (const [label, result] of results) {
+    if (result.error) {
+      throw new Error(
+        `Collection KPI: ${label} の取得に失敗しました: ${result.error.message}`
+      );
+    }
+  }
+}
 import {
   buildCollectionKpi,
   type CollectionCompletionRow,
@@ -151,6 +169,22 @@ export async function getCollectionKpi(params: {
           .lte("created_at", endIso)
       ),
     ]);
+
+  /*
+    取得に失敗したら握りつぶさず throw する。
+
+    `?? []` に落とすと 0件が「0件だった」という正常な KPI として画面に出る。
+    企画の評価をその数字で行うと判断を誤るし、ログを見ない限り気づけない。
+    fetchAllById は上限到達や途中失敗で error を返すので、必ずここで受ける
+    （#579 と同じ方針）。
+  */
+  assertFetched([
+    ["collection_completions", completionsResult],
+    ["image_jobs", imageJobsResult],
+    ["style_usage_events", eventsResult],
+    ["style_usage_events(visit)", visitsResult],
+    ["style_usage_events(mount_shared)", sharesResult],
+  ]);
 
   // 運営を除いた行。KPI と参加状況で**同じ行**を使う(母数がずれない)
   const completionRows = excludeOperatorRows(
@@ -329,6 +363,24 @@ export async function getCollectionUuFunnel(params: {
           )
         : Promise.resolve({ data: [] as ViewerKeyRow[], error: null }),
     ]);
+
+  /*
+    取得に失敗したら握りつぶさず throw する。
+
+    `?? []` に落とすと 0件が「0件だった」という正常な KPI として画面に出る。
+    企画の評価をその数字で行うと判断を誤るし、ログを見ない限り気づけない。
+    fetchAllById は上限到達や途中失敗で error を返すので、必ずここで受ける
+    （#579 と同じ方針）。
+  */
+  assertFetched([
+    ["style_usage_events(generate)", genResult],
+    ["collection_completions", completedResult],
+    ["style_usage_events(mount_shared)", shareResult],
+    ["profiles", registeredResult],
+    ["style_usage_events(visit/member)", visitMemberResult],
+    ["style_usage_events(visit/guest)", visitGuestResult],
+    ["style_usage_events(generate/guest)", genGuestResult],
+  ]);
 
   return buildCollectionUuFunnel({
     visitMemberViewerKeys: viewerKeys(
