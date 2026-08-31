@@ -648,6 +648,128 @@ $function$
 ;
 
 
+-- ---- 5) レビュー指摘: 表示目的をロールで推測しない ----
+--
+-- ⭐ 他ユーザーのプロフィールは CachedUserProfileData が createAdminClient() で
+--    取得する。そのため is_trusted_lineage_writer() で分岐すると、
+--    **他人のプロフィールでも非公開ぶんが再び集計される**（レビュー指摘）。
+--    DB からは「誰の画面か」が分からないので、呼び出し側が明示する。
+--
+-- ⭐ 引数追加は別オーバーロードになるため DROP してから作り直す。
+--    DROP すると権限は既定（PUBLIC）に戻るので、必ず GRANT を書き直すこと。
+
+DROP FUNCTION IF EXISTS public.get_user_like_count(uuid);
+DROP FUNCTION IF EXISTS public.get_user_view_count(uuid);
+
+CREATE OR REPLACE FUNCTION public.get_user_like_count(
+  p_user_id uuid,
+  p_include_non_visible boolean DEFAULT false
+)
+ RETURNS bigint
+ LANGUAGE sql
+ STABLE
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select count(*)::bigint
+  from public.likes as l
+  join public.generated_images as gi on gi.id = l.image_id
+  where gi.user_id = p_user_id
+    and gi.is_posted = true
+    and (
+      gi.moderation_status = 'visible'
+      -- 非公開ぶみを含められるのは、本人の画面だと呼び出し側が明示し、
+      -- かつ実際に本人か信頼できる経路のときだけ
+      or (
+        p_include_non_visible
+        and (auth.uid() = p_user_id or public.is_trusted_lineage_writer())
+      )
+    );
+$function$;
+
+CREATE OR REPLACE FUNCTION public.get_user_view_count(
+  p_user_id uuid,
+  p_include_non_visible boolean DEFAULT false
+)
+ RETURNS bigint
+ LANGUAGE sql
+ STABLE
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+  select coalesce(sum(view_count), 0)::bigint
+  from public.generated_images
+  where user_id = p_user_id
+    and is_posted = true
+    and (
+      moderation_status = 'visible'
+      or (
+        p_include_non_visible
+        and (auth.uid() = p_user_id or public.is_trusted_lineage_writer())
+      )
+    );
+$function$;
+
+-- DROP で失われた権限を戻す（未ログインのプロフィール表示で使う）
+REVOKE ALL ON FUNCTION public.get_user_like_count(uuid, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_user_like_count(uuid, boolean) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_user_like_count(uuid, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_like_count(uuid, boolean) TO service_role;
+
+REVOKE ALL ON FUNCTION public.get_user_view_count(uuid, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_user_view_count(uuid, boolean) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_user_view_count(uuid, boolean) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_view_count(uuid, boolean) TO service_role;
+
+-- ---- 6) レビュー指摘(Critical): 関数内認可の無い特権 RPC を authenticated から剥がす ----
+--
+-- ⭐ apply_user_style_template_decision は admin 判定も auth.uid() 検証も無い。
+--    route 側は requireAdmin() 後に呼ぶが、RPC を直接叩けば
+--    **任意のログインユーザーがテンプレートを approve/reject/unpublish できた**。
+--    withdraw / create_draft も p_actor_id を検証しておらず他人名義で実行できた。
+--    いずれも呼び出しは createAdminClient() 経由であることを確認済み。
+
+REVOKE ALL ON FUNCTION public.apply_user_style_template_decision(uuid, uuid, text, text, timestamp with time zone, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.apply_user_style_template_decision(uuid, uuid, text, text, timestamp with time zone, jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.apply_user_style_template_decision(uuid, uuid, text, text, timestamp with time zone, jsonb) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.apply_user_style_template_decision(uuid, uuid, text, text, timestamp with time zone, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.withdraw_user_style_template(uuid, uuid, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.withdraw_user_style_template(uuid, uuid, jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.withdraw_user_style_template(uuid, uuid, jsonb) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.withdraw_user_style_template(uuid, uuid, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.create_user_style_template_draft(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.create_user_style_template_draft(uuid, text) FROM anon;
+REVOKE ALL ON FUNCTION public.create_user_style_template_draft(uuid, text) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.create_user_style_template_draft(uuid, text) TO service_role;
+
+REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) FROM anon;
+REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) TO service_role;
+
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_collection_completion(text, boolean) TO service_role;
+
+REVOKE ALL ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() FROM anon;
+REVOKE ALL ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() TO service_role;
+
+REVOKE ALL ON FUNCTION public.monitor_creator_looks_extract_failures() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.monitor_creator_looks_extract_failures() FROM anon;
+REVOKE ALL ON FUNCTION public.monitor_creator_looks_extract_failures() FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.monitor_creator_looks_extract_failures() TO service_role;
+
+REVOKE ALL ON FUNCTION public.current_post_removal_decision_id(uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.current_post_removal_decision_id(uuid) FROM anon;
+REVOKE ALL ON FUNCTION public.current_post_removal_decision_id(uuid) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.current_post_removal_decision_id(uuid) TO service_role;
+
+
 NOTIFY pgrst, 'reload schema';
 
 COMMIT;

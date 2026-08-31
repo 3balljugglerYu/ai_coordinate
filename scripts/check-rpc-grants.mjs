@@ -34,27 +34,31 @@ import { execFileSync } from "node:child_process";
  * ⭐ 名前ではなく**シグネチャ**で持つ。同名の別オーバーロードが増えても
  * 許可済みの名前に紛れて見逃さないため（RPC は署名ごとに別の API 面）。
  */
-const ALLOWLIST = {
+/**
+ * そのロールから呼ばれる**必要がある**関数だけを列挙する。
+ *
+ * ⭐ 「関数内で弾けるから開けておく」は理由にならない。弾けることと、
+ * 開けておく必要があることは別。
+ *
+ * ⭐ 名前ではなく**シグネチャ**で持つ。同名の別オーバーロードが増えても
+ * 許可済みの名前に紛れて見逃さないため（RPC は署名ごとに別の API 面）。
+ */
+const REQUIRED = {
   anon: new Set([
     // 未ログインでも見えるプロフィールの数値
     "public.get_follow_counts(p_user_id uuid)",
-    "public.get_user_like_count(p_user_id uuid)",
-    "public.get_user_view_count(p_user_id uuid)",
+    "public.get_user_like_count(p_user_id uuid, p_include_non_visible boolean)",
+    "public.get_user_view_count(p_user_id uuid, p_include_non_visible boolean)",
     // 未ログインでも見えるミッションの付与額
     "public.get_post_bonus_amounts()",
     "public.get_prompt_use_bonus_amount()",
     // 未ログインの閲覧もカウントする仕様
     "public.increment_view_count(image_id_param uuid)",
   ]),
-  /*
-    ログイン中のユーザーが呼ぶもの。
-    ⭐ anon だけ検査していると、新規関数の anon を剥がして
-    既定で付いた authenticated を残した状態を見逃す（レビュー指摘）。
-  */
   authenticated: new Set([
     "public.get_follow_counts(p_user_id uuid)",
-    "public.get_user_like_count(p_user_id uuid)",
-    "public.get_user_view_count(p_user_id uuid)",
+    "public.get_user_like_count(p_user_id uuid, p_include_non_visible boolean)",
+    "public.get_user_view_count(p_user_id uuid, p_include_non_visible boolean)",
     "public.get_post_bonus_amounts()",
     "public.get_prompt_use_bonus_amount()",
     "public.increment_view_count(image_id_param uuid)",
@@ -70,33 +74,26 @@ const ALLOWLIST = {
     "public.delete_comment_thread(p_comment_id uuid)",
     "public.grant_tour_bonus(p_user_id uuid)",
     "public.insert_source_image_stock(p_user_id uuid, p_image_url text, p_storage_path text, p_name text)",
-
-    /*
-      ⚠️ ここから下は**本 PR で監査していない既存分**。
-      許可した訳ではなく、「いまこうなっている」ことを固定して
-      **これ以上増えたら気づける**ようにするためのベースライン。
-
-      確認済み:
-        get_creator_looks_secret_for_admin … admin_users で本人確認しており安全
-      要調査（別作業）:
-        apply_user_style_template_decision / promote_user_style_template_draft /
-        withdraw_user_style_template … p_actor_id を引数で受け取っており、
-        呼び出し元の検証があるか未確認
-        cleanup_withdrawn_creator_looks_secrets /
-        monitor_creator_looks_extract_failures … cron 用途で authenticated に
-        開けておく理由が無い可能性
-    */
-    "public.apply_user_style_template_decision(p_template_id uuid, p_actor_id uuid, p_action text, p_reason text, p_decided_at timestamp with time zone, p_metadata jsonb)",
-    "public.cleanup_withdrawn_creator_looks_secrets()",
-    "public.create_post_moderation_appeal(p_decision_id uuid, p_body text)",
-    "public.create_user_style_template_draft(p_actor_id uuid, p_alt text)",
-    "public.current_post_removal_decision_id(p_post_id uuid)",
+    // セッションクライアント経由で呼ぶことを確認済み
     "public.get_collection_progress()",
+    "public.create_post_moderation_appeal(p_decision_id uuid, p_body text)",
+  ]),
+};
+
+/**
+ * まだ監査していない既存の露出。**許可した訳ではない。**
+ *
+ * ⭐ REQUIRED に混ぜてはいけない。混ぜると、後でこれらを閉じたときに
+ * 「不足」と判定されて失敗し、**閉じる修正が再び開く方向へ誘導される**
+ * （レビュー指摘）。増加の検知にだけ使い、不足は見ない。
+ *
+ * ここが 0 になるまで減らすのが目標。
+ */
+const KNOWN_UNAUDITED_BASELINE = {
+  anon: new Set([]),
+  authenticated: new Set([
+    // 関数内に admin_users の本人確認があることを確認済み
     "public.get_creator_looks_secret_for_admin(p_template_id uuid)",
-    "public.monitor_creator_looks_extract_failures()",
-    "public.promote_user_style_template_draft(p_template_id uuid, p_actor_id uuid, p_metadata jsonb)",
-    "public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean)",
-    "public.withdraw_user_style_template(p_template_id uuid, p_actor_id uuid, p_metadata jsonb)",
   ]),
 };
 
@@ -149,31 +146,47 @@ function main() {
 
   for (const role of ["anon", "authenticated"]) {
     const actual = rows.filter((row) => row[role]).map((row) => row.signature);
-    const allowed = ALLOWLIST[role];
+    const required = REQUIRED[role];
+    const baseline = KNOWN_UNAUDITED_BASELINE[role];
 
-    const unexpected = actual.filter((sig) => !allowed.has(sig));
-    const missing = [...allowed].filter((sig) => !actual.includes(sig));
+    // 許可でも既知でもないもの = 新しく開いた穴
+    const unexpected = actual.filter(
+      (sig) => !required.has(sig) && !baseline.has(sig)
+    );
+    // 不足は required にだけ適用する（baseline は閉じてよいので見ない）
+    const missing = [...required].filter((sig) => !actual.includes(sig));
+    const debt = actual.filter((sig) => baseline.has(sig));
 
-    console.log(`${role} から実行できる SECURITY DEFINER 関数: ${actual.length}本`);
+    console.log(
+      `${role}: 実行可 ${actual.length}本（必要 ${required.size} / 未監査 ${debt.length}）`
+    );
 
     if (unexpected.length > 0) {
       failed = true;
       console.error(
-        `\n❌ 許可リストに無い関数が ${unexpected.length}本 ${role} から実行できます:`
+        `\n❌ 許可リストにも既知リストにも無い関数が ${unexpected.length}本 ${role} から実行できます:`
       );
       for (const sig of unexpected) console.error(`   - ${sig}`);
     }
 
     if (missing.length > 0) {
       /*
-        許可リストにあるのに実行できない = その画面が壊れている可能性。
+        必要なのに実行できない = その画面が壊れている可能性。
         閉じ過ぎも異常として扱う（気づかないまま機能が死ぬのを防ぐ）。
       */
       failed = true;
       console.error(
-        `\n⚠️ 許可リストにあるが ${role} から実行できない関数が ${missing.length}本あります:`
+        `\n⚠️ 必要なのに ${role} から実行できない関数が ${missing.length}本あります:`
       );
       for (const sig of missing) console.error(`   - ${sig}`);
+    }
+
+    if (debt.length > 0) {
+      // 失敗にはしないが、残っていることを毎回見えるようにする
+      console.warn(
+        `\n📋 未監査のまま ${role} に開いている関数が ${debt.length}本あります（要調査）:`
+      );
+      for (const sig of debt) console.warn(`   - ${sig}`);
     }
   }
 
@@ -185,13 +198,13 @@ function main() {
         "     REVOKE ALL ON FUNCTION public.<name>(<args>) FROM authenticated;\n" +
         "     GRANT EXECUTE ON FUNCTION public.<name>(<args>) TO service_role;\n" +
         "   ログイン中のユーザーから呼ぶなら authenticated にも GRANT し、\n" +
-        "   このスクリプトの ALLOWLIST にもシグネチャを追記してください。"
+        "   このスクリプトの REQUIRED にもシグネチャを追記してください。"
     );
     process.exitCode = 1;
     return;
   }
 
-  console.log("✅ 許可リストと一致しています");
+  console.log("\n✅ 許可リストと一致しています");
 }
 
 main();

@@ -147,7 +147,15 @@ export const getUserStatsServer = cache(async (
   // いいね総数の集計: PostgREST の 1000 行返却上限を避けるため
   // Postgres 側の RPC で likes と generated_images を JOIN して集計済みの値を取得する。
   const { data: likeCountData, error: likeCountError } = await supabase
-    .rpc("get_user_like_count", { p_user_id: userId });
+    .rpc("get_user_like_count", {
+      p_user_id: userId,
+      /*
+        ⭐ 表示目的は呼び出し側が明示する。他ユーザーのプロフィールは
+        CachedUserProfileData が createAdminClient() で取得するため、
+        DB 側でロールから推測すると非公開ぶんが混ざる。
+      */
+      p_include_non_visible: isOwnProfile,
+    });
   let likeCount = 0;
   if (likeCountError) {
     console.error("Like count fetch error:", likeCountError);
@@ -158,7 +166,10 @@ export const getUserStatsServer = cache(async (
   // ビュー総数の集計: PostgREST の 1000 行返却上限を避けるため
   // Postgres 側の RPC で合計済みの値を取得する（投稿済み generated_images.view_count の合計）。
   const { data: viewCountData, error: viewCountError } = await supabase
-    .rpc("get_user_view_count", { p_user_id: userId });
+    .rpc("get_user_view_count", {
+      p_user_id: userId,
+      p_include_non_visible: isOwnProfile,
+    });
   let viewCount = 0;
   if (viewCountError) {
     console.error("View count fetch error:", viewCountError);
