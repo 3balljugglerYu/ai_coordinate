@@ -109,21 +109,32 @@ export const getUserStatsServer = cache(async (
 ): Promise<UserStats> => {
   const supabase = supabaseOverride ?? (await createClient());
 
-  // 投稿数の集計（RLS: 他ユーザーは is_posted=true のみ閲覧可能）
-  const { count: postedCount } = await supabase
+  /*
+    ⭐ isOwnProfile を先に決める。
+    他ユーザーのプロフィールは CachedUserProfileData が createAdminClient() で
+    取得するため RLS が効かず、条件を足さないと審査中・削除済みの投稿まで
+    「投稿数」に数えてしまう（レビュー指摘）。
+    絞り込みは getUserPostsServer と同じ基準に揃える
+    （本人 = visible + pending / 他人 = visible のみ）。
+  */
+  const isOwnProfile = supabaseOverride
+    ? (options?.isOwnProfile === true)
+    : (await supabase.auth.getUser()).data.user?.id === userId;
+
+  // 投稿数の集計
+  const postedCountQuery = supabase
     .from("generated_images")
     .select("*", { count: "exact", head: true })
     .eq("user_id", userId)
     .eq("is_posted", true);
+  const { count: postedCount } = await (isOwnProfile
+    ? postedCountQuery.in("moderation_status", ["visible", "pending"])
+    : postedCountQuery.eq("moderation_status", "visible"));
 
   // 生成画像数の集計
   // 自分のプロフィール: 全件カウント可能（RLS: user_id = auth.uid()）
   // 他ユーザー: RLS で is_posted=true のみ見えるため、生成数は投稿数と同じになる
   // → 自分の場合のみ全件取得、他人の場合は投稿数で代用（生成数は非公開）
-  const isOwnProfile = supabaseOverride
-    ? (options?.isOwnProfile === true)
-    : (await supabase.auth.getUser()).data.user?.id === userId;
-
   // 累計生成数: 削除に左右されないよう image_jobs（生成ジョブログ）から集計する。
   // PostgREST の 1000 行返却上限を避けるため Postgres 側の RPC で合計済みの値を取得する。
   // - 成功したジョブのみを対象（失敗は数えない）
@@ -147,7 +158,15 @@ export const getUserStatsServer = cache(async (
   // いいね総数の集計: PostgREST の 1000 行返却上限を避けるため
   // Postgres 側の RPC で likes と generated_images を JOIN して集計済みの値を取得する。
   const { data: likeCountData, error: likeCountError } = await supabase
-    .rpc("get_user_like_count", { p_user_id: userId });
+    .rpc("get_user_like_count", {
+      p_user_id: userId,
+      /*
+        ⭐ 表示目的は呼び出し側が明示する。他ユーザーのプロフィールは
+        CachedUserProfileData が createAdminClient() で取得するため、
+        DB 側でロールから推測すると非公開ぶんが混ざる。
+      */
+      p_include_non_visible: isOwnProfile,
+    });
   let likeCount = 0;
   if (likeCountError) {
     console.error("Like count fetch error:", likeCountError);
@@ -158,7 +177,10 @@ export const getUserStatsServer = cache(async (
   // ビュー総数の集計: PostgREST の 1000 行返却上限を避けるため
   // Postgres 側の RPC で合計済みの値を取得する（投稿済み generated_images.view_count の合計）。
   const { data: viewCountData, error: viewCountError } = await supabase
-    .rpc("get_user_view_count", { p_user_id: userId });
+    .rpc("get_user_view_count", {
+      p_user_id: userId,
+      p_include_non_visible: isOwnProfile,
+    });
   let viewCount = 0;
   if (viewCountError) {
     console.error("View count fetch error:", viewCountError);

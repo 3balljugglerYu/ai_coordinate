@@ -540,8 +540,8 @@ alwaysApply: false
   - 注: `get_style_generate_counts(p_days INT)` は `style_usage_events` の `event_type='generate'` を style_id 別に集計する参照 RPC。EXECUTE は service_role のみ（anon/authenticated 不可）。呼び出しは `features/style/lib/style-popularity.ts`（admin client + "use cache"）から。
   - 注: `reserve_style_guest_generate_attempt` は意味を画面横断ゲスト試行（`/style` と `/coordinate` 合算）に拡張済み。現行 default は `p_short_limit=999`（実質無効）/ `p_daily_limit=1`。引数の `p_client_ip_hash` には `SHA-256("<ip>|<persta_guest_id>|<salt>")` を渡す（`features/style/lib/style-rate-limit.ts`）。
   - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
-- コレクション: `get_collection_progress`, `reserve_collection_completion`, `finalize_collection_completion`, `fail_collection_completion`
-  - 注: `get_collection_progress` / `reserve_collection_completion` は authenticated 用で `auth.uid()` を使う。`finalize_collection_completion` / `fail_collection_completion` は service role route 専用で、ユーザーから直接実行させない。
+- コレクション: `get_collection_progress`, `reserve_collection_completion`, `reserve_collection_completion_for_user`, `finalize_collection_completion`, `fail_collection_completion`
+  - 注: `get_collection_progress` / `reserve_collection_completion` は authenticated 用で `auth.uid()` を使う。`reserve_collection_completion_for_user` / `finalize_collection_completion` / `fail_collection_completion` は service role route 専用で、ユーザーから直接実行させない。`reserve_collection_completion_for_user` は route が session user と `isAdminViewer()` を検証した後、admin_only の台紙生成予約を行う。
 - ポップアップバナー: `record_popup_banner_interaction`, `reorder_popup_banners`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`

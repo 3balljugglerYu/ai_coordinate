@@ -175,6 +175,7 @@ export async function POST(request: NextRequest) {
     return jsonError("コレクションが見つかりません", "CATEGORY_NOT_FOUND", 404);
   }
   const isAdmin = isAdminViewer(user.id);
+  const reserveAdminOnly = categoryGuard.visibility === "admin_only" && isAdmin;
   if (categoryGuard.visibility !== "public" && !isAdmin) {
     return jsonError("コレクションが見つかりません", "CATEGORY_NOT_FOUND", 404);
   }
@@ -202,10 +203,16 @@ export async function POST(request: NextRequest) {
   }
 
   // 3) 予約(N到達をサーバー側で再検証。冪等)
-  const { data: reserveData, error: reserveError } = await supabase.rpc(
-    "reserve_collection_completion",
-    { p_category_key: categoryKey, p_allow_admin_only: isAdmin },
-  );
+  const { data: reserveData, error: reserveError } = reserveAdminOnly
+    ? await adminForGuard.rpc("reserve_collection_completion_for_user", {
+        p_user_id: user.id,
+        p_category_key: categoryKey,
+        p_allow_admin_only: true,
+      })
+    : await supabase.rpc("reserve_collection_completion", {
+        p_category_key: categoryKey,
+        p_allow_admin_only: false,
+      });
   if (reserveError) {
     // threshold_not_reached / collection_series_not_found 等はクライアント起因
     return jsonError("カードを生成できませんでした", "RESERVE_FAILED", 400);
