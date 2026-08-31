@@ -17,6 +17,8 @@ export interface PercoinGrantRow {
 export interface PercoinStreakReachRow {
   streak_day: number;
   user_count: number;
+  /** その日数に到達しうるだけの日が経っている人。母数はこちらを使う */
+  eligible_count: number;
 }
 
 export interface PercoinCheckinReachRow {
@@ -48,8 +50,10 @@ export interface PercoinGrantItem {
 export interface PercoinStreakReachItem {
   day: number;
   userCount: number;
-  /** 1日目を分母にした到達率(%) */
-  reachPercent: number;
+  /** その日数に到達しうる人の数。少ないほど数字が揺れる */
+  eligibleCount: number;
+  /** 到達率(%)。母数0なら null（0% と区別する） */
+  reachPercent: number | null;
   previousReachPercent: number | null;
 }
 
@@ -66,6 +70,9 @@ export interface PercoinAnalytics {
     checkedInCount: number;
     notCheckedInCount: number;
     reachPercent: number | null;
+    previousReachPercent: number | null;
+    /** 到達率の前期からの差(ポイント)。率の差なので % ではなく pt */
+    reachPointDiff: number | null;
   };
   distribution: {
     holderCount: number;
@@ -113,11 +120,17 @@ function changePercent(current: number, previous: number): number | null {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
+/**
+ * その日数の到達率。
+ *
+ * 母数は day1 の人数ではなく eligible_count（到達しうるだけの日が経っている人）。
+ * 開始2日目の人を14日目の母数に入れると、続けているのに脱落して見える。
+ * 母数0は「まだ誰も到達しうる時期に来ていない」であって 0% ではないので null。
+ */
 function reachPercent(rows: PercoinStreakReachRow[], day: number): number | null {
-  const base = rows.find((row) => row.streak_day === 1)?.user_count ?? 0;
-  if (base === 0) return null;
-  const target = rows.find((row) => row.streak_day === day)?.user_count ?? 0;
-  return Math.round((target / base) * 1000) / 10;
+  const row = rows.find((r) => r.streak_day === day);
+  if (!row || row.eligible_count === 0) return null;
+  return Math.round((row.user_count / row.eligible_count) * 1000) / 10;
 }
 
 export function buildPercoinAnalytics(input: {
@@ -126,6 +139,7 @@ export function buildPercoinAnalytics(input: {
   streakReach: PercoinStreakReachRow[];
   previousStreakReach: PercoinStreakReachRow[];
   checkinReach: PercoinCheckinReachRow | null;
+  previousCheckinReach: PercoinCheckinReachRow | null;
   distribution: PercoinBalanceDistributionRow | null;
   operatorExcludedCount: number;
 }): PercoinAnalytics {
@@ -162,18 +176,36 @@ export function buildPercoinAnalytics(input: {
     .sort((a, b) => b.totalAmount - a.totalAmount);
 
   const streakDays = Array.from({ length: 14 }, (_, i) => i + 1);
-  const streakReach: PercoinStreakReachItem[] = streakDays.map((day) => ({
-    day,
-    userCount:
-      input.streakReach.find((row) => row.streak_day === day)?.user_count ?? 0,
-    reachPercent: reachPercent(input.streakReach, day) ?? 0,
-    previousReachPercent: reachPercent(input.previousStreakReach, day),
-  }));
+  const streakReach: PercoinStreakReachItem[] = streakDays.map((day) => {
+    const row = input.streakReach.find((r) => r.streak_day === day);
+    return {
+      day,
+      userCount: row?.user_count ?? 0,
+      eligibleCount: row?.eligible_count ?? 0,
+      // 母数0を 0% に潰さない。「継続がゼロだった」と誤読される
+      reachPercent: reachPercent(input.streakReach, day),
+      previousReachPercent: reachPercent(input.previousStreakReach, day),
+    };
+  });
 
   const day2Reach = reachPercent(input.streakReach, 2);
 
   const signupCount = input.checkinReach?.signup_count ?? 0;
   const checkedInCount = input.checkinReach?.checked_in_count ?? 0;
+  const checkinReachPercent =
+    signupCount > 0
+      ? Math.round((checkedInCount / signupCount) * 1000) / 10
+      : null;
+
+  const previousSignupCount = input.previousCheckinReach?.signup_count ?? 0;
+  const previousCheckinReachPercent =
+    previousSignupCount > 0
+      ? Math.round(
+          ((input.previousCheckinReach?.checked_in_count ?? 0) /
+            previousSignupCount) *
+            1000
+        ) / 10
+      : null;
 
   return {
     grants,
@@ -187,10 +219,13 @@ export function buildPercoinAnalytics(input: {
       signupCount,
       checkedInCount,
       notCheckedInCount: signupCount - checkedInCount,
-      reachPercent:
-        signupCount > 0
-          ? Math.round((checkedInCount / signupCount) * 1000) / 10
-          : null,
+      reachPercent: checkinReachPercent,
+      previousReachPercent: previousCheckinReachPercent,
+      reachPointDiff:
+        checkinReachPercent === null || previousCheckinReachPercent === null
+          ? null
+          : Math.round((checkinReachPercent - previousCheckinReachPercent) * 10) /
+            10,
     },
     distribution: {
       holderCount: input.distribution?.holder_count ?? 0,

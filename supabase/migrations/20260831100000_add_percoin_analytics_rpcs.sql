@@ -53,9 +53,19 @@ AS $function$
   ORDER BY total_amount DESC;
 $function$;
 
--- 連続ログインの日別到達人数。
--- streak_days は付与時の metadata に入る。1日目を分母にして
--- 「どこで離脱しているか」を見る(実測では1日目→2日目で最も落ちる)。
+-- 連続ログインのコホート到達率。
+--
+-- ⭐ 単に「期間内に streak_days=N が発生した人数」を数えると**コホートに
+-- ならない**。既存の長期ユーザーが混ざるため、実測で 7日窓の day10(9人) が
+-- day5(3人) を上回るなど単調に減らず、「1日目→2日目で何%離脱」という
+-- 読み方ができない（レビュー指摘）。
+--
+-- そこで「期間内に1日目を迎えた人」をコホートとして固定し、その人たちが
+-- どこまで伸ばせたかを追う。
+--
+-- 母数は day1 の人数ではなく **eligible_count**（その日数に到達しうるだけの
+-- 日が経っている人）にする。開始から2日しか経っていない人を14日目の母数に
+-- 入れると、続けているのに脱落したように見えてしまう。
 CREATE OR REPLACE FUNCTION public.get_percoin_streak_reach(
   p_start timestamptz,
   p_end timestamptz,
@@ -64,26 +74,49 @@ CREATE OR REPLACE FUNCTION public.get_percoin_streak_reach(
 )
 RETURNS TABLE (
   streak_day integer,
-  user_count bigint
+  user_count bigint,
+  eligible_count bigint
 )
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $function$
+  WITH cohort AS (
+    SELECT t.user_id, min(t.created_at) AS started_at
+    FROM public.credit_transactions t
+    WHERE t.transaction_type = 'streak'
+      AND t.created_at >= p_start
+      AND t.created_at < p_end
+      AND t.metadata->>'streak_days' = '1'
+      AND t.user_id IS NOT NULL
+      AND NOT (t.user_id = ANY (coalesce(p_exclude_user_ids, '{}')))
+    GROUP BY t.user_id
+  ),
+  reached AS (
+    SELECT
+      c.user_id,
+      c.started_at,
+      -- 開始以降に記録された最大の連続日数。1日目しか無ければ 1
+      coalesce(max((t.metadata->>'streak_days')::int), 1) AS max_day
+    FROM cohort c
+    LEFT JOIN public.credit_transactions t
+      ON t.user_id = c.user_id
+     AND t.transaction_type = 'streak'
+     AND t.created_at >= c.started_at
+     AND t.created_at < p_end
+     -- 数値以外が入っていても落ちないようにガードする
+     AND t.metadata->>'streak_days' ~ '^[0-9]+$'
+    GROUP BY c.user_id, c.started_at
+  )
   SELECT
     d.day AS streak_day,
-    count(DISTINCT t.user_id) AS user_count
+    count(*) FILTER (WHERE r.max_day >= d.day) AS user_count,
+    count(*) FILTER (
+      WHERE r.started_at <= p_end - ((d.day - 1) || ' days')::interval
+    ) AS eligible_count
   FROM generate_series(1, greatest(p_max_day, 1)) AS d(day)
-  LEFT JOIN public.credit_transactions t
-    ON t.transaction_type = 'streak'
-   AND t.created_at >= p_start
-   AND t.created_at < p_end
-   AND t.user_id IS NOT NULL
-   AND NOT (t.user_id = ANY (coalesce(p_exclude_user_ids, '{}')))
-   -- 数値以外が入っていても落ちないようにガードする
-   AND t.metadata->>'streak_days' ~ '^[0-9]+$'
-   AND (t.metadata->>'streak_days')::int = d.day
+  CROSS JOIN reached r
   GROUP BY d.day
   ORDER BY d.day;
 $function$;

@@ -29,8 +29,15 @@ export async function getPercoinAnalytics(
   const { currentStart, previousStart, now } = getRangeBounds(range);
   const operatorUserIds = await getOperatorUserIds();
 
-  const [current, previous, streak, previousStreak, checkin, distribution] =
-    await Promise.all([
+  const [
+    current,
+    previous,
+    streak,
+    previousStreak,
+    checkin,
+    previousCheckin,
+    distribution,
+  ] = await Promise.all([
       supabase.rpc("get_percoin_grant_breakdown", {
         p_start: currentStart.toISOString(),
         p_end: now.toISOString(),
@@ -58,6 +65,11 @@ export async function getPercoinAnalytics(
         p_end: now.toISOString(),
         p_exclude_user_ids: operatorUserIds,
       }),
+      supabase.rpc("get_percoin_checkin_reach", {
+        p_start: previousStart.toISOString(),
+        p_end: currentStart.toISOString(),
+        p_exclude_user_ids: operatorUserIds,
+      }),
       supabase.rpc("get_percoin_balance_distribution", {
         p_exclude_user_ids: operatorUserIds,
       }),
@@ -73,7 +85,8 @@ export async function getPercoinAnalytics(
     ["配布内訳(前期)", previous],
     ["連続ログイン到達(当期)", streak],
     ["連続ログイン到達(前期)", previousStreak],
-    ["チェックイン到達", checkin],
+    ["チェックイン到達(当期)", checkin],
+    ["チェックイン到達(前期)", previousCheckin],
     ["保有分布", distribution],
   ] as const;
   for (const [label, result] of results) {
@@ -90,6 +103,8 @@ export async function getPercoinAnalytics(
     streakReach: (streak.data ?? []) as PercoinStreakReachRow[],
     previousStreakReach: (previousStreak.data ?? []) as PercoinStreakReachRow[],
     checkinReach: ((checkin.data ?? [])[0] ?? null) as PercoinCheckinReachRow | null,
+    previousCheckinReach: ((previousCheckin.data ?? [])[0] ??
+      null) as PercoinCheckinReachRow | null,
     distribution: ((distribution.data ?? [])[0] ??
       null) as PercoinBalanceDistributionRow | null,
     operatorExcludedCount: operatorUserIds.length,

@@ -129,14 +129,15 @@ export function AdminPercoinView({
       <AdminCollectionSection
         step={2}
         title="連続ログインの到達率"
-        description="1日目を分母にした到達率。額を下げた影響が最初に出る場所。"
+        description="期間内に1日目を迎えた人だけを追ったコホート。母数は「その日数に到達しうるだけの日が経っている人」。"
       >
         <div className="overflow-x-auto">
           <table className="w-full min-w-[420px] text-xs">
             <thead>
               <tr className="border-b border-slate-200 text-left text-slate-500">
                 <th className="py-1.5 pr-2 font-medium">日数</th>
-                <th className="py-1.5 pr-2 text-right font-medium">人数</th>
+                <th className="py-1.5 pr-2 text-right font-medium">到達</th>
+                <th className="py-1.5 pr-2 text-right font-medium">母数</th>
                 <th className="py-1.5 pr-2 text-right font-medium">到達率</th>
                 <th className="py-1.5 text-right font-medium">前期</th>
               </tr>
@@ -150,8 +151,12 @@ export function AdminPercoinView({
                   <td className="py-1.5 pr-2 text-right tabular-nums text-slate-900">
                     {formatNumber(row.userCount)}
                   </td>
+                  <td className="py-1.5 pr-2 text-right tabular-nums text-slate-500">
+                    {formatNumber(row.eligibleCount)}
+                  </td>
                   <td className="py-1.5 pr-2 text-right font-semibold tabular-nums text-slate-900">
-                    {row.reachPercent}%
+                    {/* 母数0は「まだ到達しうる時期に来ていない」であって 0% ではない */}
+                    {row.reachPercent === null ? "—" : `${row.reachPercent}%`}
                   </td>
                   <td className="py-1.5 text-right tabular-nums text-slate-500">
                     {row.previousReachPercent === null
@@ -166,9 +171,9 @@ export function AdminPercoinView({
 
         {analytics.streakFirstDropPercent !== null ? (
           <AdminCollectionReading>
-            1日目から2日目で{analytics.streakFirstDropPercent}%が離脱しています。
-            落ち方が最も大きいのはここなので、日数を伸ばす施策より
-            「2日目に戻ってくる理由」を作る方が効きます。
+            この期間に始めた人のうち、2日目まで続かなかったのは
+            {analytics.streakFirstDropPercent}%です。落ち方が最も大きいのはここなので、
+            日数を伸ばす施策より「2日目に戻ってくる理由」を作る方が効きます。
           </AdminCollectionReading>
         ) : null}
       </AdminCollectionSection>
@@ -194,6 +199,15 @@ export function AdminPercoinView({
                 （{formatNumber(checkin.checkedInCount)}人）
               </span>
             </p>
+            <p className="text-[11px] tabular-nums text-slate-500">
+              前期{" "}
+              {checkin.previousReachPercent === null
+                ? "—"
+                : `${checkin.previousReachPercent}%`}
+              {checkin.reachPointDiff === null
+                ? null
+                : ` （${checkin.reachPointDiff > 0 ? "+" : ""}${checkin.reachPointDiff}pt）`}
+            </p>
           </div>
           <div>
             <p className="text-[11px] text-slate-500">一度も押していない</p>
@@ -215,8 +229,8 @@ export function AdminPercoinView({
 
       <AdminCollectionSection
         step={4}
-        title="保有の分布"
-        description="誰が持っているかより、どう散らばっているか。個人別は「ペルコイン集計」を参照。"
+        title="保有の分布（現在値）"
+        description="期間ではなく今この瞬間の残高。誰が持っているかより、どう散らばっているか。個人別は「ペルコイン集計」を参照。"
       >
         <div className="flex flex-wrap gap-4">
           <div>

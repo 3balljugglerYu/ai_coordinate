@@ -19,6 +19,7 @@ const EMPTY = {
   streakReach: [],
   previousStreakReach: [],
   checkinReach: null,
+  previousCheckinReach: null,
   distribution: null,
   operatorExcludedCount: 0,
 };
@@ -59,36 +60,58 @@ describe("buildPercoinAnalytics", () => {
     expect(result.totalChangePercent).toBeNull();
   });
 
-  test("連続ログインの到達率は1日目を分母にする", () => {
+  test("到達率の母数は day1 の人数ではなく「到達しうる人」", () => {
+    /*
+      開始から日が浅い人を母数に入れると、続けているのに脱落したように見える。
+      day14 は 34人が到達しうるうち 10人 = 29.4%。42人を分母にすると 23.8% と
+      低く出て、減額の影響と区別がつかなくなる。
+    */
     const result = buildPercoinAnalytics({
       ...EMPTY,
       streakReach: [
-        { streak_day: 1, user_count: 42 },
-        { streak_day: 2, user_count: 29 },
-        { streak_day: 14, user_count: 10 },
+        { streak_day: 1, user_count: 42, eligible_count: 42 },
+        { streak_day: 2, user_count: 29, eligible_count: 41 },
+        { streak_day: 14, user_count: 10, eligible_count: 34 },
       ],
     });
 
     expect(result.streakReach[0]?.reachPercent).toBe(100);
-    expect(result.streakReach[1]?.reachPercent).toBe(69);
-    expect(result.streakReach[13]?.reachPercent).toBe(23.8);
-    // 1日目→2日目の離脱率
-    expect(result.streakFirstDropPercent).toBe(31);
+    expect(result.streakReach[1]?.reachPercent).toBe(70.7);
+    expect(result.streakReach[13]?.reachPercent).toBe(29.4);
+    expect(result.streakReach[13]?.eligibleCount).toBe(34);
+    // 2日目まで続かなかった割合
+    expect(result.streakFirstDropPercent).toBe(29.3);
   });
 
-  test("1日目が0でも到達率で落ちない", () => {
+  test("母数0の日は 0% ではなく null（未到達期と区別する）", () => {
+    /*
+      「まだ誰も到達しうる時期に来ていない」を 0% と出すと、
+      継続がゼロだったと誤読される。24h 表示で必ず起きる。
+    */
+    const result = buildPercoinAnalytics({
+      ...EMPTY,
+      streakReach: [
+        { streak_day: 1, user_count: 5, eligible_count: 5 },
+        { streak_day: 14, user_count: 0, eligible_count: 0 },
+      ],
+    });
+
+    expect(result.streakReach[0]?.reachPercent).toBe(100);
+    expect(result.streakReach[13]?.reachPercent).toBeNull();
+  });
+
+  test("データが空でも 0% を作らない", () => {
     const result = buildPercoinAnalytics({ ...EMPTY, streakReach: [] });
 
-    // 0除算で NaN を表に出さないこと
     expect(result.streakReach).toHaveLength(14);
-    expect(result.streakReach[0]?.reachPercent).toBe(0);
+    expect(result.streakReach[0]?.reachPercent).toBeNull();
     expect(result.streakFirstDropPercent).toBeNull();
   });
 
   test("14日ぶんの行を必ず返す（データが飛んでいても欠番にしない）", () => {
     const result = buildPercoinAnalytics({
       ...EMPTY,
-      streakReach: [{ streak_day: 1, user_count: 10 }],
+      streakReach: [{ streak_day: 1, user_count: 10, eligible_count: 10 }],
     });
 
     expect(result.streakReach.map((r) => r.day)).toEqual([
@@ -97,14 +120,29 @@ describe("buildPercoinAnalytics", () => {
     expect(result.streakReach[5]?.userCount).toBe(0);
   });
 
-  test("チェックインは押していない人数も出す", () => {
+  test("チェックインは押していない人数と前期比も出す", () => {
     const result = buildPercoinAnalytics({
       ...EMPTY,
       checkinReach: { signup_count: 37, checked_in_count: 16 },
+      previousCheckinReach: { signup_count: 40, checked_in_count: 14 },
     });
 
     expect(result.checkin.reachPercent).toBe(43.2);
     expect(result.checkin.notCheckedInCount).toBe(21);
+    expect(result.checkin.previousReachPercent).toBe(35);
+    // 率の差なので % ではなく pt
+    expect(result.checkin.reachPointDiff).toBe(8.2);
+  });
+
+  test("前期の新規が0ならチェックインの前期比は出さない", () => {
+    const result = buildPercoinAnalytics({
+      ...EMPTY,
+      checkinReach: { signup_count: 10, checked_in_count: 5 },
+      previousCheckinReach: { signup_count: 0, checked_in_count: 0 },
+    });
+
+    expect(result.checkin.previousReachPercent).toBeNull();
+    expect(result.checkin.reachPointDiff).toBeNull();
   });
 
   test("新規登録が0なら到達率は出さない", () => {
