@@ -79,3 +79,32 @@ export async function fetchAllRows<Row extends { id: string }>(
     },
   };
 }
+
+/**
+ * `id` カーソルの決まり文句をまとめたもの。
+ *
+ * 呼び出し側は「どのテーブルから何を取るか」だけ書けばよく、
+ * `gt(id, cursor)` / `order(id)` / `limit()` の付け忘れを防げる。
+ * select に `id` を含めること（カーソルに使う）。
+ */
+export function fetchAllById<Row extends { id: string }>(
+  buildQuery: () => CursorQuery<Row>,
+  pageSize: number = POSTGREST_MAX_ROWS
+): Promise<PagedResult<Row>> {
+  return fetchAllRows<Row>((cursor, size) => {
+    let query = buildQuery();
+    if (cursor) {
+      query = query.gt("id", cursor);
+    }
+    return query.order("id", { ascending: true }).limit(size);
+  }, pageSize);
+}
+
+/** supabase-js のクエリビルダのうち、ページングに必要な部分だけ。 */
+export interface CursorQuery<Row> {
+  gt(column: string, value: string): CursorQuery<Row>;
+  order(
+    column: string,
+    options: { ascending: boolean }
+  ): { limit(count: number): PromiseLike<PagedResult<Row>> };
+}

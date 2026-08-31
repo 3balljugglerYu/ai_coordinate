@@ -1,6 +1,25 @@
 import "server-only";
 
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllById } from "./fetch-all-rows";
+
+/**
+ * 取得結果にエラーがあれば throw する。
+ *
+ * 企画 KPI は全部が「実際に起きた件数」なので、欠けた状態の数字に
+ * 意味が無い。0件として描画するより落とす方が正しい。
+ */
+function assertFetched(
+  results: ReadonlyArray<readonly [string, { error: { message: string } | null }]>
+): void {
+  for (const [label, result] of results) {
+    if (result.error) {
+      throw new Error(
+        `Collection KPI: ${label} の取得に失敗しました: ${result.error.message}`
+      );
+    }
+  }
+}
 import {
   buildCollectionKpi,
   type CollectionCompletionRow,
@@ -89,30 +108,36 @@ export async function getCollectionKpi(params: {
     visitsResult,
     sharesResult,
   ] = await Promise.all([
-      supabase
-        .from("collection_completions")
-        .select("mount_status, completed_at, user_id")
-        .eq("category_key", params.categoryKey)
-        .gte("completed_at", startIso)
-        .lte("completed_at", endIso),
-      supabase
-        .from("image_jobs")
-        .select("created_at, generation_metadata, user_id")
-        .eq("style_preset_category_key", params.categoryKey)
-        .eq("status", "succeeded")
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
+      fetchAllById(() =>
+        supabase
+          .from("collection_completions")
+          .select("id, mount_status, completed_at, user_id")
+          .eq("category_key", params.categoryKey)
+          .gte("completed_at", startIso)
+          .lte("completed_at", endIso)
+      ),
+      fetchAllById(() =>
+        supabase
+          .from("image_jobs")
+          .select("id, created_at, generation_metadata, user_id")
+          .eq("style_preset_category_key", params.categoryKey)
+          .eq("status", "succeeded")
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
       presetIds.length > 0
-        ? supabase
-            .from("style_usage_events")
-            .select("auth_state, event_type, created_at, user_id")
-            .in("style_id", presetIds)
-            // visit は下の category_key クエリで数える。
-            // route 側で style_id を null に正規化しているが、集計側でも
-            // 除外して二重計上を二重に防ぐ(旧データ・将来の caller 対策)。
-            .neq("event_type", "visit")
-            .gte("created_at", startIso)
-            .lte("created_at", endIso)
+        ? fetchAllById(() =>
+            supabase
+              .from("style_usage_events")
+              .select("id, auth_state, event_type, created_at, user_id")
+              .in("style_id", presetIds)
+              // visit は下の category_key クエリで数える。
+              // route 側で style_id を null に正規化しているが、集計側でも
+              // 除外して二重計上を二重に防ぐ(旧データ・将来の caller 対策)。
+              .neq("event_type", "visit")
+              .gte("created_at", startIso)
+              .lte("created_at", endIso)
+          )
         : Promise.resolve({ data: [] as CollectionEventRow[], error: null }),
       /*
         visit は style_id を持たない(1訪問=1プリセットではない)。
@@ -123,23 +148,43 @@ export async function getCollectionKpi(params: {
         category_key の計装は 2026-08-17 開始 = それ以前の訪問は取れない。
         「取れていない」ことは collection-metric-availability.ts が画面に伝える。
       */
-      supabase
-        .from("style_usage_events")
-        .select("auth_state, event_type, created_at, viewer_key, user_id")
-        .eq("event_type", "visit")
-        .eq("category_key", params.categoryKey)
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
+      fetchAllById(() =>
+        supabase
+          .from("style_usage_events")
+          .select("id, auth_state, event_type, created_at, viewer_key, user_id")
+          .eq("event_type", "visit")
+          .eq("category_key", params.categoryKey)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
       // mount_shared は category_key を style_id に格納して記録(share-event route)。
       // series 固有のシェア数で絞る(計装変更前の旧 share は style_id=null のため対象外)。
-      supabase
-        .from("style_usage_events")
-        .select("auth_state, event_type, created_at, user_id")
-        .eq("event_type", "mount_shared")
-        .eq("style_id", params.categoryKey)
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
+      fetchAllById(() =>
+        supabase
+          .from("style_usage_events")
+          .select("id, auth_state, event_type, created_at, user_id")
+          .eq("event_type", "mount_shared")
+          .eq("style_id", params.categoryKey)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
     ]);
+
+  /*
+    取得に失敗したら握りつぶさず throw する。
+
+    `?? []` に落とすと 0件が「0件だった」という正常な KPI として画面に出る。
+    企画の評価をその数字で行うと判断を誤るし、ログを見ない限り気づけない。
+    fetchAllById は上限到達や途中失敗で error を返すので、必ずここで受ける
+    （#579 と同じ方針）。
+  */
+  assertFetched([
+    ["collection_completions", completionsResult],
+    ["image_jobs", imageJobsResult],
+    ["style_usage_events", eventsResult],
+    ["style_usage_events(visit)", visitsResult],
+    ["style_usage_events(mount_shared)", sharesResult],
+  ]);
 
   // 運営を除いた行。KPI と参加状況で**同じ行**を使う(母数がずれない)
   const completionRows = excludeOperatorRows(
@@ -247,63 +292,95 @@ export async function getCollectionUuFunnel(params: {
     genGuestResult,
   ] = await Promise.all([
       presetIds.length > 0
-        ? supabase
-            .from("style_usage_events")
-            .select("user_id")
-            .eq("event_type", "generate")
-            .eq("auth_state", "authenticated")
-            .in("style_id", presetIds)
-            .gte("created_at", startIso)
-            .lte("created_at", endIso)
+        ? fetchAllById(() =>
+            supabase
+              .from("style_usage_events")
+              .select("id, user_id")
+              .eq("event_type", "generate")
+              .eq("auth_state", "authenticated")
+              .in("style_id", presetIds)
+              .gte("created_at", startIso)
+              .lte("created_at", endIso)
+          )
         : Promise.resolve({ data: [] as UserIdRow[], error: null }),
-      supabase
-        .from("collection_completions")
-        .select("user_id")
-        .eq("category_key", params.categoryKey)
-        .eq("mount_status", "completed")
-        .gte("completed_at", startIso)
-        .lte("completed_at", endIso),
-      supabase
-        .from("style_usage_events")
-        .select("user_id")
-        .eq("event_type", "mount_shared")
-        .eq("style_id", params.categoryKey)
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
-      supabase
-        .from("profiles")
-        .select("user_id")
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
+      fetchAllById(() =>
+        supabase
+          .from("collection_completions")
+          .select("id, user_id")
+          .eq("category_key", params.categoryKey)
+          .eq("mount_status", "completed")
+          .gte("completed_at", startIso)
+          .lte("completed_at", endIso)
+      ),
+      fetchAllById(() =>
+        supabase
+          .from("style_usage_events")
+          .select("id, user_id")
+          .eq("event_type", "mount_shared")
+          .eq("style_id", params.categoryKey)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
+      fetchAllById(() =>
+        supabase
+          .from("profiles")
+          .select("id, user_id")
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
       // 訪問UU: visit は style_id を持たないため category_key で絞る。
-      supabase
-        .from("style_usage_events")
-        .select("viewer_key, user_id")
-        .eq("event_type", "visit")
-        .eq("auth_state", "authenticated")
-        .eq("category_key", params.categoryKey)
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
-      supabase
-        .from("style_usage_events")
-        .select("viewer_key, user_id")
-        .eq("event_type", "visit")
-        .eq("auth_state", "guest")
-        .eq("category_key", params.categoryKey)
-        .gte("created_at", startIso)
-        .lte("created_at", endIso),
+      fetchAllById(() =>
+        supabase
+          .from("style_usage_events")
+          .select("id, viewer_key, user_id")
+          .eq("event_type", "visit")
+          .eq("auth_state", "authenticated")
+          .eq("category_key", params.categoryKey)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
+      fetchAllById(() =>
+        supabase
+          .from("style_usage_events")
+          .select("id, viewer_key, user_id")
+          .eq("event_type", "visit")
+          .eq("auth_state", "guest")
+          .eq("category_key", params.categoryKey)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso)
+      ),
       // ゲストの生成UU。ゲスト生成は style_id を持つので preset で絞れる。
       presetIds.length > 0
-        ? supabase
-            .from("style_usage_events")
-            .select("viewer_key, user_id")
-            .eq("event_type", "generate")
-            .eq("auth_state", "guest")
-            .in("style_id", presetIds)
-            .gte("created_at", startIso)
-            .lte("created_at", endIso)
+        ? fetchAllById(() =>
+            supabase
+              .from("style_usage_events")
+              .select("id, viewer_key, user_id")
+              .eq("event_type", "generate")
+              .eq("auth_state", "guest")
+              .in("style_id", presetIds)
+              .gte("created_at", startIso)
+              .lte("created_at", endIso)
+          )
         : Promise.resolve({ data: [] as ViewerKeyRow[], error: null }),
     ]);
+
+  /*
+    取得に失敗したら握りつぶさず throw する。
+
+    `?? []` に落とすと 0件が「0件だった」という正常な KPI として画面に出る。
+    企画の評価をその数字で行うと判断を誤るし、ログを見ない限り気づけない。
+    fetchAllById は上限到達や途中失敗で error を返すので、必ずここで受ける
+    （#579 と同じ方針）。
+  */
+  assertFetched([
+    ["style_usage_events(generate)", genResult],
+    ["collection_completions", completedResult],
+    ["style_usage_events(mount_shared)", shareResult],
+    ["profiles", registeredResult],
+    ["style_usage_events(visit/member)", visitMemberResult],
+    ["style_usage_events(visit/guest)", visitGuestResult],
+    ["style_usage_events(generate/guest)", genGuestResult],
+  ]);
 
   return buildCollectionUuFunnel({
     visitMemberViewerKeys: viewerKeys(
