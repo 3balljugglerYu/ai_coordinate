@@ -17,6 +17,10 @@ jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(),
 }));
 
+jest.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: jest.fn(),
+}));
+
 jest.mock("@/features/posts/lib/prompt-action-cache", () => ({
   revalidatePromptActions: jest.fn(),
 }));
@@ -25,10 +29,14 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/account/deactivate/route";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreateAdminClient = createAdminClient as jest.MockedFunction<
+  typeof createAdminClient
+>;
 const mockRevalidate = revalidatePromptActions as jest.MockedFunction<
   typeof revalidatePromptActions
 >;
@@ -52,12 +60,26 @@ function mockOAuthUser() {
   } as never);
 }
 
+/**
+ * 退会 RPC は **admin(service_role) クライアント**で呼ぶ。
+ *
+ * セッションクライアントで呼ぶ実装に戻すと、ログイン中のユーザーが
+ * /rest/v1/rpc/request_account_deletion を直接叩けてしまい、この route の
+ * パスワード再認証を通さずにアカウント停止まで進める（p_reauth_ok は自己申告）。
+ * どちらのクライアントで呼ぶかがセキュリティ境界そのものなので、ここで固定する。
+ */
 function mockRpc(result: { data: unknown; error: unknown }) {
   const rpc = jest.fn().mockResolvedValue(result);
+  // セッションクライアントは再認証(signInWithPassword)にだけ使う
+  const sessionRpc = jest.fn();
   mockCreateClient.mockResolvedValue({
-    rpc,
+    rpc: sessionRpc,
+    auth: { signInWithPassword: jest.fn().mockResolvedValue({ error: null }) },
   } as unknown as Awaited<ReturnType<typeof createClient>>);
-  return rpc;
+  mockCreateAdminClient.mockReturnValue({
+    rpc,
+  } as unknown as ReturnType<typeof createAdminClient>);
+  return { rpc, sessionRpc };
 }
 
 describe("POST /api/account/deactivate", () => {
@@ -67,7 +89,7 @@ describe("POST /api/account/deactivate", () => {
   });
 
   test("退会申請が通ったらフィードCTAのキャッシュを失効させる", async () => {
-    const rpc = mockRpc({
+    const { rpc, sessionRpc } = mockRpc({
       data: [{ status: "scheduled", scheduled_for: "2026-09-18T00:00:00.000Z" }],
       error: null,
     });
@@ -81,6 +103,8 @@ describe("POST /api/account/deactivate", () => {
       p_reauth_ok: true,
     });
     expect(mockRevalidate).toHaveBeenCalledTimes(1);
+    // セッションクライアント経由で呼んではいけない（再認証を迂回できるため）
+    expect(sessionRpc).not.toHaveBeenCalled();
   });
 
   test("⭐RPC が失敗したら失効させない(退会していないのにCTAを消さない)", async () => {
@@ -95,7 +119,7 @@ describe("POST /api/account/deactivate", () => {
   });
 
   test("確認文字列が違うときは RPC も失効も走らない", async () => {
-    const rpc = mockRpc({ data: [], error: null });
+    const { rpc } = mockRpc({ data: [], error: null });
 
     const response = await POST(buildRequest({ confirmText: "delete" }));
 
