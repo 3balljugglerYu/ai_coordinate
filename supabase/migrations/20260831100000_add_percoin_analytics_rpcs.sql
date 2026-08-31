@@ -109,19 +109,34 @@ AS $function$
      AND t.metadata->>'streak_days' ~ '^[0-9]+$'
     GROUP BY c.user_id, c.started_at
   )
+  matured AS (
+    /*
+      ⭐ 経過は「24時間 × N」ではなく **JST の暦日**で数える。
+      grant_streak_bonus が (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Tokyo')::DATE で
+      継続を判定しているため、23:50 に1日目・翌 00:10 に2日目を押せる。
+      24時間換算で母数を作ると、2日目に到達済みなのに「まだ到達しえない」と
+      判定されて **分子が分母を超える**（実際に到達1/母数0 が起きうる）。
+    */
+    SELECT
+      r.max_day,
+      (p_end AT TIME ZONE 'Asia/Tokyo')::date
+        - (r.started_at AT TIME ZONE 'Asia/Tokyo')::date AS elapsed_days
+    FROM reached r
+  )
   SELECT
     d.day AS streak_day,
-    count(*) FILTER (WHERE r.max_day >= d.day) AS user_count,
+    -- 分子にも母数と同じ条件を掛ける（掛けないと比率が100%を超えうる）
     count(*) FILTER (
-      WHERE r.started_at <= p_end - ((d.day - 1) || ' days')::interval
-    ) AS eligible_count
+      WHERE m.elapsed_days >= d.day - 1 AND m.max_day >= d.day
+    ) AS user_count,
+    count(*) FILTER (WHERE m.elapsed_days >= d.day - 1) AS eligible_count
   FROM generate_series(1, greatest(p_max_day, 1)) AS d(day)
-  CROSS JOIN reached r
+  CROSS JOIN matured m
   GROUP BY d.day
   ORDER BY d.day;
 $function$;
 
--- 期間内に登録した人のうち、チェックインを1度でも押した割合。
+-- 期間内に登録した人のうち、その期間の終了時点でチェックインを押していた割合。
 -- チェックインの実体は streak 付与なので、streak 取引の有無で判定する。
 -- 「押さなかった人」は導線に気づいていない可能性が高く、額を下げる前に
 -- 見るべき数字(実測で新規の約3割が一度も押していなかった)。
@@ -155,6 +170,13 @@ AS $function$
         FROM public.credit_transactions t
         WHERE t.user_id = s.user_id
           AND t.transaction_type = 'streak'
+          /*
+            ⭐ 期間で絞らないと、前期に登録した人が当期以降に初めて押したぶんが
+            **後から前期の実績に加算される**。前期ほど観測期間が長くなり、
+            当期 vs 前期の比較が成立しなくなる。各期間を「その期間の終了時点で
+            押していたか」で評価する（登録は期間内なので下限の指定は不要）。
+          */
+          AND t.created_at < p_end
       )
     ) AS checked_in_count
   FROM signups s;

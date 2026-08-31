@@ -181,7 +181,7 @@ export function AdminPercoinView({
       <AdminCollectionSection
         step={3}
         title="チェックインの到達率"
-        description="新規登録のうち、チェックインを一度でも押した割合。押していない人は導線に気づいていない。"
+        description="その期間に登録した人が、期間の終わりまでにチェックインを押していた割合。押していない人は導線に気づいていない。"
       >
         <div className="flex flex-wrap gap-4">
           <div>
