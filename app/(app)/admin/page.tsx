@@ -4,12 +4,14 @@ import {
   type AdminCollectionSeries,
 } from "@/features/admin-dashboard/components/AdminCollectionsView";
 import { AdminOneTapStyleFocusView } from "@/features/admin-dashboard/components/AdminOneTapStyleFocusView";
+import { AdminPercoinView } from "@/features/admin-dashboard/components/AdminPercoinView";
 import { AdminPageAnalyticsSectionServer } from "@/features/admin-dashboard/components/AdminPageAnalyticsSectionServer";
 import { parseAdminDashboardTab } from "@/features/admin-dashboard/lib/dashboard-tab";
 import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
 import { getAdminDashboardData } from "@/features/admin-dashboard/lib/get-admin-dashboard-data";
 import { getAiCostActuals } from "@/features/admin-dashboard/lib/get-ai-cost-actuals";
 import { getPostImpressionStats } from "@/features/admin-dashboard/lib/get-post-impression-stats";
+import { getPercoinAnalytics } from "@/features/admin-dashboard/lib/get-percoin-analytics";
 import {
   formatAdminDateTimeLabel,
   getCustomDashboardRangeBounds,
@@ -20,6 +22,14 @@ import {
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import { getGa4DashboardData } from "@/features/analytics/lib/get-ga4-dashboard-data";
 import { connection } from "next/server";
+
+/** 期間タブの表示名。画面の「期間は◯◯」に使う */
+const RANGE_LABELS: Record<string, string> = {
+  "24h": "直近24時間",
+  "7d": "直近7日",
+  "30d": "直近30日",
+  "90d": "直近90日",
+};
 
 interface AdminDashboardPageProps {
   searchParams?: Promise<{
@@ -65,6 +75,13 @@ export default async function AdminDashboardPage({
     collectionRangeBounds.toIso,
   );
 
+  /*
+    ペルコイン分析はタブを開いたときだけ引く。集計 RPC を4本叩くので、
+    「すべて」タブの表示を毎回重くする理由がない。
+  */
+  const percoinAnalytics =
+    tab === "percoin" ? await getPercoinAnalytics(range) : null;
+
   let collectionSeries: AdminCollectionSeries[] = [];
   if (tab === "collections") {
     const categories = await listPresetCategories({ includeInactive: true });
@@ -102,6 +119,11 @@ export default async function AdminDashboardPage({
             サーバー側でしか解決できないため、生の値のまま API へ渡す。
           */
           rangeParam={params.collectionRange ?? "campaign"}
+        />
+      ) : tab === "percoin" && percoinAnalytics ? (
+        <AdminPercoinView
+          analytics={percoinAnalytics}
+          rangeLabel={RANGE_LABELS[range]}
         />
       ) : tab === "one-tap-style" ? (
         <AdminOneTapStyleFocusView
