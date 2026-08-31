@@ -138,8 +138,34 @@ REVOKE ALL ON FUNCTION public.monitor_generation_billing_anomalies(p_since times
 REVOKE ALL ON FUNCTION public.monitor_generation_billing_anomalies(p_since timestamp with time zone) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.monitor_generation_billing_anomalies(p_since timestamp with time zone) TO service_role;
 
--- ---- セッションクライアント経由で呼ぶため authenticated は残し、
---      代わりに「他人の user_id では実行できない」条件を足す ----
+-- ---- セッションクライアント経由で呼ぶため authenticated は残し、anon だけ剥がす ----
+--
+--      ⭐ ガード(auth.uid() <> p_user_id)だけでは anon を止められない。
+--      anon は auth.uid() が NULL なので条件を素通りし、任意の p_user_id で
+--      実行できてしまう(grant_streak_bonus はペルコイン付与まで進む)。
+--      CREATE OR REPLACE は既存の EXECUTE 権限を閉じないので、権限側でも剥がす。
+
+REVOKE ALL ON FUNCTION public.cancel_account_deletion(p_user_id uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.cancel_account_deletion(p_user_id uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.cancel_account_deletion(p_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.cancel_account_deletion(p_user_id uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.check_and_grant_referral_bonus_on_first_login_with_reason(p_user_id uuid, p_referral_code text) TO service_role;
+
+REVOKE ALL ON FUNCTION public.generate_referral_code(p_user_id uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.generate_referral_code(p_user_id uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.generate_referral_code(p_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.generate_referral_code(p_user_id uuid) TO service_role;
+
+REVOKE ALL ON FUNCTION public.grant_streak_bonus(p_user_id uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.grant_streak_bonus(p_user_id uuid) FROM anon;
+GRANT EXECUTE ON FUNCTION public.grant_streak_bonus(p_user_id uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.grant_streak_bonus(p_user_id uuid) TO service_role;
+
+-- ---- 上記4本に「他人の user_id では実行できない」条件を足す ----
 --      定義は pg_get_functiondef の本文の BEGIN 直後へガードを挿入しただけ
 
 CREATE OR REPLACE FUNCTION public.cancel_account_deletion(p_user_id uuid)
