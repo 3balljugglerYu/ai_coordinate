@@ -749,14 +749,14 @@ REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, json
 REVOKE ALL ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.promote_user_style_template_draft(uuid, uuid, jsonb) TO service_role;
 
--- ⭐ reserve_collection_completion は台紙生成 route が**セッションクライアント**で
---    呼ぶ(app/api/collections/mount/route.ts)。authenticated を剥がすと
---    完走済みユーザーがカードを生成できなくなるため残す(レビュー指摘)。
---    代わりに p_allow_admin_only の自己申告を関数内で検証する(下の定義)。
+-- ⭐ reserve_collection_completion は公開コレクションの互換 session RPC として残す。
+--    admin_only は route が isAdminViewer を検証した上で、下の service_role 専用
+--    reserve_collection_completion_for_user に流す。DB は ADMIN_PREVIEW_USER_IDS
+--    (env) を見られないため、session RPC だけでは同じ権限集合を再現できない。
 REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM service_role;
 GRANT EXECUTE ON FUNCTION public.reserve_collection_completion(text, boolean) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.reserve_collection_completion(text, boolean) TO service_role;
 
 REVOKE ALL ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.cleanup_withdrawn_creator_looks_secrets() FROM anon;
@@ -776,33 +776,25 @@ GRANT EXECUTE ON FUNCTION public.current_post_removal_decision_id(uuid) TO servi
 
 -- ---- 7) レビュー指摘: p_allow_admin_only の自己申告を関数内で検証する ----
 
-CREATE OR REPLACE FUNCTION public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean DEFAULT false)
+CREATE OR REPLACE FUNCTION public.reserve_collection_completion_internal(
+  p_user_id uuid,
+  p_category_key text,
+  p_allow_admin_only boolean DEFAULT false
+)
  RETURNS TABLE(completion_id uuid, mount_status text, newly_reserved boolean)
  LANGUAGE plpgsql
  SECURITY DEFINER
  SET search_path TO 'public'
 AS $function$
 DECLARE
-  v_uid UUID := auth.uid();
   v_category_id UUID;
   v_threshold INTEGER;
   v_count INTEGER;
   v_id UUID;
   v_status TEXT;
 BEGIN
-  IF v_uid IS NULL THEN
-    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
-  END IF;
-
-  /*
-    ⭐ p_allow_admin_only は route が isAdmin を計算して渡すが、RPC を直接
-    叩けば誰でも true を渡せる（自己申告）。admin_only の企画を予約できて
-    しまうため、関数内でも admin かどうかを確認する（レビュー指摘）。
-  */
-  IF p_allow_admin_only AND NOT EXISTS (
-    SELECT 1 FROM public.admin_users WHERE user_id = v_uid
-  ) THEN
-    RAISE EXCEPTION 'not_authorized' USING ERRCODE = '42501';
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id_required' USING ERRCODE = '22023';
   END IF;
 
   SELECT pc.id, pc.completion_threshold
@@ -820,7 +812,7 @@ BEGIN
   SELECT COUNT(DISTINCT ij.generation_metadata -> 'oneTapStyle' ->> 'id')
     INTO v_count
   FROM public.image_jobs ij
-  WHERE ij.user_id = v_uid
+  WHERE ij.user_id = p_user_id
     AND ij.style_preset_category_key = p_category_key
     AND ij.status = 'succeeded'
     AND ij.generation_metadata -> 'oneTapStyle' ->> 'id' IS NOT NULL;
@@ -832,7 +824,7 @@ BEGIN
   INSERT INTO public.collection_completions
     (user_id, category_id, category_key, threshold_at_completion, mount_status)
   VALUES
-    (v_uid, v_category_id, p_category_key, v_threshold, 'generating')
+    (p_user_id, v_category_id, p_category_key, v_threshold, 'generating')
   ON CONFLICT (user_id, category_id) DO NOTHING
   RETURNING id INTO v_id;
 
@@ -844,7 +836,7 @@ BEGIN
   SELECT cc.id, cc.mount_status
     INTO v_id, v_status
   FROM public.collection_completions cc
-  WHERE cc.user_id = v_uid AND cc.category_id = v_category_id;
+  WHERE cc.user_id = p_user_id AND cc.category_id = v_category_id;
 
   IF v_status = 'failed' THEN
     UPDATE public.collection_completions cc
@@ -853,7 +845,7 @@ BEGIN
         mount_image_path = NULL,
         completed_at = NULL
     WHERE cc.id = v_id
-      AND cc.user_id = v_uid
+      AND cc.user_id = p_user_id
       AND cc.mount_status = 'failed'
     RETURNING cc.id, cc.mount_status INTO v_id, v_status;
 
@@ -865,6 +857,95 @@ BEGIN
 END;
 $function$
 ;
+
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_internal(uuid, text, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_internal(uuid, text, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_internal(uuid, text, boolean) FROM authenticated;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_internal(uuid, text, boolean) FROM service_role;
+
+COMMENT ON FUNCTION public.reserve_collection_completion_internal(uuid, text, boolean) IS
+  'collection completion reserve の共通実装。外部実行不可。session/service_role wrapper からのみ呼ぶ';
+
+CREATE OR REPLACE FUNCTION public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean DEFAULT false)
+ RETURNS TABLE(completion_id uuid, mount_status text, newly_reserved boolean)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+DECLARE
+  v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '28000';
+  END IF;
+
+  /*
+    p_allow_admin_only は直接RPCでは自己申告になるため、session RPC では
+    DB上の admin_users に限る。preview admin(env)を含むアプリ経路は
+    reserve_collection_completion_for_user を service_role で呼ぶ。
+  */
+  IF p_allow_admin_only AND NOT EXISTS (
+    SELECT 1 FROM public.admin_users WHERE user_id = v_uid
+  ) THEN
+    RAISE EXCEPTION 'not_authorized' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  SELECT *
+  FROM public.reserve_collection_completion_internal(
+    v_uid,
+    p_category_key,
+    p_allow_admin_only
+  );
+END;
+$function$
+;
+
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion(text, boolean) FROM service_role;
+GRANT EXECUTE ON FUNCTION public.reserve_collection_completion(text, boolean) TO authenticated;
+
+COMMENT ON FUNCTION public.reserve_collection_completion(text, boolean) IS
+  '公開コレクションの完走予約用 session RPC。p_allow_admin_only=true は DB admin_users の直接実行だけ許可し、preview admin のアプリ経路は service_role wrapper を使う';
+
+CREATE OR REPLACE FUNCTION public.reserve_collection_completion_for_user(
+  p_user_id uuid,
+  p_category_key text,
+  p_allow_admin_only boolean DEFAULT false
+)
+ RETURNS TABLE(completion_id uuid, mount_status text, newly_reserved boolean)
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF p_user_id IS NULL THEN
+    RAISE EXCEPTION 'user_id_required' USING ERRCODE = '22023';
+  END IF;
+
+  IF NOT public.is_trusted_lineage_writer() THEN
+    RAISE EXCEPTION 'service_role_required' USING ERRCODE = '42501';
+  END IF;
+
+  RETURN QUERY
+  SELECT *
+  FROM public.reserve_collection_completion_internal(
+    p_user_id,
+    p_category_key,
+    p_allow_admin_only
+  );
+END;
+$function$
+;
+
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_for_user(uuid, text, boolean) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_for_user(uuid, text, boolean) FROM anon;
+REVOKE ALL ON FUNCTION public.reserve_collection_completion_for_user(uuid, text, boolean) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.reserve_collection_completion_for_user(uuid, text, boolean) TO service_role;
+
+COMMENT ON FUNCTION public.reserve_collection_completion_for_user(uuid, text, boolean) IS
+  'service_role route 専用。route が認証ユーザーと isAdminViewer を検証した後、admin_only を含む台紙生成予約を行う';
 
 NOTIFY pgrst, 'reload schema';
 
