@@ -164,13 +164,14 @@ describe("getUsablePromptShowcase", () => {
     expect(result).toHaveLength(6);
   });
 
-  test("利用回数は閾値(10)未満なら出さない", async () => {
+  test("利用回数は丸めて返し、下限未満は出さない", async () => {
     mockTables({ candidates: [row("a"), row("b")] });
-    mockRpc({ available: ["a", "b"], usage: { a: 12, b: 9 } });
+    mockRpc({ available: ["a", "b"], usage: { a: 12, b: 2 } });
 
     const result = await getUsablePromptShowcase();
 
-    expect(result[0].usageCount).toBe(12);
+    // 表示は「◯回以上」なので必ず切り捨てる(12 → 10)
+    expect(result[0].usageCount).toBe(10);
     // 少ない数字は「誰も使っていない」という逆の証明になるので出さない
     expect(result[1].usageCount).toBeNull();
   });

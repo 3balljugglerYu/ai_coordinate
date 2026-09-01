@@ -20,6 +20,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { usageCountBucket } from "@/features/posts/lib/constants";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
@@ -528,14 +529,21 @@ export function StyleBrowseSheet({
                     />
                   ) : null;
                 })()}
-                {/* 累計利用回数(0回は出さない)。 */}
-                {(generateTotals[confirmingPreset.id] ?? 0) > 0 ? (
-                  <p className="text-xs text-slate-500">
-                    {t("styleUsageCount", {
-                      count: generateTotals[confirmingPreset.id],
-                    })}
-                  </p>
-                ) : null}
+                {/*
+                  累計利用回数。表示は丸めた値に統一する(フィードの引用ブロックと
+                  同じ規則)。文言が「◯回以上」で固定なので、ここだけ生の回数を
+                  渡すと嘘になる。下限未満は null＝非表示。
+                */}
+                {(() => {
+                  const usageBucket = usageCountBucket(
+                    generateTotals[confirmingPreset.id] ?? 0,
+                  );
+                  return usageBucket !== null ? (
+                    <p className="text-xs text-slate-500">
+                      {t("styleUsageCount", { count: usageBucket })}
+                    </p>
+                  ) : null;
+                })()}
               </div>
             ) : null}
             <div className="flex flex-col gap-2">

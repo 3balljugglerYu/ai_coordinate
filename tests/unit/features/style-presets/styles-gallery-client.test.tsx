@@ -50,7 +50,7 @@ jest.mock("next-intl", () => ({
       if (key === "styleNewSortNote") return `直近${values?.days}日の新着`;
       if (key === "styleCardAlt") return `スタイル ${values?.name}`;
       if (key === "styleUsageCount")
-        return `これまでに${values?.count}回つくられました`;
+        return `このスタイルが${values?.count}回以上利用されました`;
       return T[key] ?? key;
     },
 }));
@@ -353,7 +353,10 @@ describe("StylesGalleryClient", () => {
     // モーダル内に提供者クレジットと累計生成数が表示される
     const dialog = within(screen.getByRole("dialog"));
     expect(dialog.getByText(/氷洞つらら/)).toBeTruthy();
-    expect(dialog.getByText("これまでに12回つくられました")).toBeTruthy();
+    // 表示は「◯回以上」なので丸めた値になる(12 → 10)
+    expect(
+      dialog.getByText("このスタイルが10回以上利用されました"),
+    ).toBeTruthy();
     // 探索シートと同じボタン構成(「他のスタイルをみる」で閉じる)
     expect(dialog.getByText("他のスタイルをみる")).toBeTruthy();
   });

@@ -9,7 +9,7 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
 import { FeedSourceQuote } from "@/features/posts/components/FeedSourceQuote";
-import { USAGE_COUNT_DISPLAY_THRESHOLD } from "@/features/posts/lib/constants";
+import { USAGE_COUNT_DISPLAY_MIN } from "@/features/posts/lib/constants";
 
 jest.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string, values?: Record<string, unknown>) =>
@@ -46,7 +46,7 @@ describe("FeedSourceQuote", () => {
           variant="derived"
           thumbnailUrl={null}
           title="みきふく"
-          usageCount={USAGE_COUNT_DISPLAY_THRESHOLD - 1}
+          usageCount={USAGE_COUNT_DISPLAY_MIN - 1}
         />
       );
       expect(screen.queryByText(/UsageCount/)).not.toBeInTheDocument();
@@ -58,13 +58,31 @@ describe("FeedSourceQuote", () => {
           variant="derived"
           thumbnailUrl={null}
           title="みきふく"
-          usageCount={USAGE_COUNT_DISPLAY_THRESHOLD}
+          usageCount={USAGE_COUNT_DISPLAY_MIN}
         />
       );
       expect(
         screen.getByText(
-          `posts.sourcePromptUsageCount:{"count":${USAGE_COUNT_DISPLAY_THRESHOLD}}`
+          `posts.sourcePromptUsageCount:{"count":${USAGE_COUNT_DISPLAY_MIN}}`
         )
+      ).toBeInTheDocument();
+    });
+
+    /*
+      文言が「◯回以上」なので、渡すのは必ず切り捨てた値。
+      8 回を「10回以上」と出したら表示が嘘になる。
+    */
+    test("回数は切り捨てて丸めた値を文言に渡す", () => {
+      render(
+        <FeedSourceQuote
+          variant="derived"
+          thumbnailUrl={null}
+          title="みきふく"
+          usageCount={8}
+        />
+      );
+      expect(
+        screen.getByText('posts.sourcePromptUsageCount:{"count":5}')
       ).toBeInTheDocument();
     });
 
@@ -78,7 +96,7 @@ describe("FeedSourceQuote", () => {
         />
       );
       expect(
-        screen.getByText('style.styleUsageCount:{"count":42}')
+        screen.getByText('style.styleUsageCount:{"count":40}')
       ).toBeInTheDocument();
     });
 

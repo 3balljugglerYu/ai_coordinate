@@ -46,7 +46,8 @@ const T: Record<string, string> = {
 jest.mock("next-intl", () => ({
   useTranslations: () => (key: string, values?: Record<string, unknown>) => {
     if (key === "styleCardAlt") return `スタイル ${values?.name}`;
-    if (key === "styleUsageCount") return `これまでに${values?.count}回つくられました`;
+    if (key === "styleUsageCount")
+      return `このスタイルが${values?.count}回以上利用されました`;
     return T[key] ?? key;
   },
 }));
@@ -155,7 +156,8 @@ describe("StyleBrowseSheet", () => {
     fireEvent.click(screen.getByText("p1"));
     // 利用回数
     expect(
-      screen.getByText("これまでに52回つくられました"),
+      // 表示は「◯回以上」なので丸めた値になる(52 → 50)
+      screen.getByText("このスタイルが50回以上利用されました"),
     ).toBeInTheDocument();
     // ダイアログ内のしおりトグル(グリッド側と合わせて複数存在するので最後=ダイアログ側)
     const toggles = screen.getAllByRole("button", { name: "お気に入りに追加" });
