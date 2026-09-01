@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { usageCountBucket } from "@/features/posts/lib/constants";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
@@ -23,8 +24,8 @@ interface StyleTryOnConfirmDialogProps {
   /** 提供者クレジットの「提供/by」接頭辞用 locale。 */
   locale: "ja" | "en";
   /**
-   * プリセットID -> 累計生成数。「これまでに◯回つくられました」表示用
-   * (0 または未指定のプリセットでは表示しない)。
+   * プリセットID -> 累計生成数。「◯回以上利用されました」表示用
+   * (下限に届かない・未指定のプリセットでは表示しない)。
    */
   generateTotals?: Readonly<Record<string, number>>;
 }
@@ -50,6 +51,11 @@ export function StyleTryOnConfirmDialog({
   const t = useTranslations("style");
   const provider = resolveStylePresetProvider(preset);
   const generateTotal = preset ? (generateTotals?.[preset.id] ?? 0) : 0;
+  /*
+    表示は丸めた値に統一する（フィードの引用ブロックと同じ規則）。
+    文言が「◯回以上」で固定なので、ここだけ生の回数を渡すと嘘になる。
+  */
+  const usageBucket = usageCountBucket(generateTotal);
 
   return (
     <Dialog open={preset !== null} onOpenChange={onOpenChange}>
@@ -97,10 +103,10 @@ export function StyleTryOnConfirmDialog({
                 locale={locale}
               />
             ) : null}
-            {/* 累計利用回数(0回は出さない)。 */}
-            {generateTotal > 0 ? (
+            {/* 累計利用回数(丸めた値。下限未満は出さない)。 */}
+            {usageBucket !== null ? (
               <p className="text-xs text-slate-500">
-                {t("styleUsageCount", { count: generateTotal })}
+                {t("styleUsageCount", { count: usageBucket })}
               </p>
             ) : null}
           </div>

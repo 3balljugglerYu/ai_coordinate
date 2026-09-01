@@ -25,7 +25,7 @@ import {
   FALLBACK_ASPECT_RATIO,
   isLandscapeRatio,
 } from "./BeforeAfterFrame";
-import { shouldShowUsageCount } from "../lib/constants";
+import { usageCountBucket } from "../lib/constants";
 import { copyTextFromPromise } from "@/lib/clipboard";
 import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
@@ -165,6 +165,13 @@ export function SourcePromptReferenceCard({
     入力内容を失うためである（One-Tap Style のカードと同じ作法）。
   */
   const canOpenOrigin = isDerivedPost && reference.isAvailable;
+
+  /*
+    利用回数は丸めてから出す。文言が「◯回以上」で固定なので、生の回数を
+    渡した箇所だけが嘘になる（下限未満は null＝非表示）。
+  */
+  const usageBucket = usageCountBucket(reference.usageCount);
+
   /*
     コピーできる条件。
 
@@ -319,9 +326,9 @@ export function SourcePromptReferenceCard({
               </div>
             ) : null}
 
-            {shouldShowUsageCount(reference.usageCount) ? (
+            {usageBucket !== null ? (
               <p className="text-[11px] leading-tight text-muted-foreground">
-                {t("sourcePromptUsageCount", { count: reference.usageCount })}
+                {t("sourcePromptUsageCount", { count: usageBucket })}
               </p>
             ) : null}
           </div>

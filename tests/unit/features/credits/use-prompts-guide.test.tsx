@@ -253,7 +253,8 @@ describe("UsePromptsGuide", () => {
         postId: "post-1",
         thumbnailUrl: "https://example.test/a.webp",
         authorName: "みきふく",
-        usageCount: 12,
+        // 呼び出し側(getUsablePromptShowcase)で丸め済みの値が来る
+        usageCount: 10,
       },
       {
         postId: "post-2",
@@ -275,8 +276,12 @@ describe("UsePromptsGuide", () => {
     test("利用回数は閾値を満たしたものだけ出る（null は出さない）", () => {
       renderGuide({ showcase });
 
-      expect(screen.getByText("12回使われました")).toBeInTheDocument();
-      expect(screen.queryByText("0回使われました")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("10回以上利用されました")
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText("0回以上利用されました")
+      ).not.toBeInTheDocument();
     });
 
     /**

@@ -242,7 +242,8 @@ describe("生成できる状態", () => {
 
     expect(screen.getByText("原作 原作者さん")).toBeInTheDocument();
     expect(
-      screen.getByText("42人がこのプロンプトを使いました")
+      // 表示は「◯回以上」なので丸めた値が渡る(42 → 40)
+      screen.getByText("40人がこのプロンプトを使いました")
     ).toBeInTheDocument();
   });
 

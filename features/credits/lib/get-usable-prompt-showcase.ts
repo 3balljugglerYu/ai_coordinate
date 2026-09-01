@@ -3,7 +3,7 @@ import {
   getPostBeforeImageUrl,
   getPostThumbUrl,
 } from "@/features/posts/lib/utils";
-import { shouldShowUsageCount } from "@/features/posts/lib/constants";
+import { usageCountBucket } from "@/features/posts/lib/constants";
 
 /**
  * `/use-prompts` の「フォローすると使えるプロンプト」に出す実データ。
@@ -52,8 +52,9 @@ export interface UsablePromptShowcaseItem {
   thumbnailUrl: string;
   authorName: string;
   /**
-   * 利用回数。**閾値未満は null**(`shouldShowUsageCount`)。
+   * 表示用に丸めた利用回数。**下限未満は null**(`usageCountBucket`)。
    * 少ない数字は社会的証明として働かず、逆の証明になるため出さない。
+   * 丸めた値なので、表示側は必ず「◯回以上」と書くこと。
    */
   usageCount: number | null;
 }
@@ -202,7 +203,7 @@ export async function getUsablePromptShowcase(): Promise<
         postId: row.id,
         thumbnailUrl,
         authorName: profiles.get(row.user_id) ?? "匿名ユーザー",
-        usageCount: shouldShowUsageCount(count) ? count : null,
+        usageCount: usageCountBucket(count),
       },
     ];
   });

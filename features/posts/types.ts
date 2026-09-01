@@ -98,9 +98,10 @@ export interface PromptActionSummary {
   /** 引用カードに1行だけ出す原作のキャプション（公開情報）。 */
   originCaption: string | null;
   /**
-   * 原作の累計利用回数（原作者自身は除外）。
+   * 原作の累計利用回数（原作者自身は除外）。**生の回数**なので、
+   * 画面に出すときは必ず `usageCountBucket` で丸めること。
    * 少ない数字は「使われていない」と読まれて逆効果なので、
-   * 表示するかどうかは `shouldShowUsageCount` が決める。
+   * 出すかどうか（下限）も同じ関数が決める。
    */
   usageCount: number;
   /** 生成シートに渡す公開設定。本文そのものは含まない。 */

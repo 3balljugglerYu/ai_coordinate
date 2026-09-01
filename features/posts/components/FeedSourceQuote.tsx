@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Sparkles, User } from "lucide-react";
-import { shouldShowUsageCount } from "../lib/constants";
+import { usageCountBucket } from "../lib/constants";
 
 /** 引用サムネイルの一辺。X の引用リポストと同じく正方形にトリミングする。 */
 const QUOTE_THUMBNAIL_PX = 56;
@@ -57,8 +57,9 @@ interface FeedSourceQuoteProps {
  * サムネイルは縦長・横長にかかわらず**正方形にトリミング**する。原作の比率に
  * 従わせるとカードの高さが投稿ごとにばらつき、フィードが読みづらくなる。
  *
- * 利用回数は下限（`USAGE_COUNT_DISPLAY_THRESHOLD`）に届くまで出さない。
- * 少ない数字は社会的証明にならず、逆に「誰も使っていない」証明になってしまう。
+ * 利用回数は `usageCountBucket` で丸めて出す。下限に届くまでは出さない
+ * （少ない数字は社会的証明にならず、逆に「誰も使っていない」証明になる）。
+ * 丸めた値なので文言は必ず「◯回以上」側を使うこと。
  */
 export function FeedSourceQuote({
   variant,
@@ -81,11 +82,15 @@ export function FeedSourceQuote({
         ? t("feedQuoteStyleTitle")
         : t("feedQuoteDerivedTitle");
 
-  const usageText = shouldShowUsageCount(usageCount)
-    ? variant === "style"
-      ? styleT("styleUsageCount", { count: usageCount })
-      : t("sourcePromptUsageCount", { count: usageCount })
-    : null;
+  // 生の回数ではなく丸めた値を渡す。文言が「◯回以上」で固定なので、
+  // 素の数字を渡すと表示が嘘になる。
+  const usageBucket = usageCountBucket(usageCount);
+  const usageText =
+    usageBucket !== null
+      ? variant === "style"
+        ? styleT("styleUsageCount", { count: usageBucket })
+        : t("sourcePromptUsageCount", { count: usageBucket })
+      : null;
 
   /*
     root は引用ではなくお知らせ。サムネイルも作者名も出さず、

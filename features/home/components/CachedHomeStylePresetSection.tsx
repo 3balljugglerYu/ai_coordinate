@@ -167,7 +167,7 @@ export async function CachedHomeStylePresetSection({
 
   // 全ユーザー共通の "use cache" 済み集計。
   // 人気(直近30日)はカルーセルの並び順、累計は試着確認モーダルの
-  // 「これまでに◯回つくられました」表示に使う。
+  // 「◯回以上利用されました」表示に使う(表示側で usageCountBucket が丸める)。
   const [generateCounts, generateTotals] = await Promise.all([
     getStyleGenerateCounts(),
     getStyleGenerateTotalCounts(),
