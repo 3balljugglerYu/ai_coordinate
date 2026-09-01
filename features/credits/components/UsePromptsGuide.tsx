@@ -537,10 +537,15 @@ export function UsePromptsGuide({
                     (投稿詳細・フィードと同じ規則)。少ない数字は
                     「誰も使っていない」という逆の証明になる。
                     丸めてあるので必ず「以上」を付けて書く。
+
+                    ⭐ ここだけ他の画面より短い「◯回以上利用」にしている。
+                    3列グリッドの器は 390px 幅の端末で 106px しかなく、
+                    10px フォントだと「◯回以上利用されました」は truncate に
+                    かかって「…」で切れる(実測で確認)。4桁でも収まる長さにする。
                   */}
                   {item.usageCount !== null && (
                     <p className="truncate text-center text-[10px] font-bold text-sky-500">
-                      {item.usageCount}回以上利用されました
+                      {item.usageCount}回以上利用
                     </p>
                   )}
                 </Link>

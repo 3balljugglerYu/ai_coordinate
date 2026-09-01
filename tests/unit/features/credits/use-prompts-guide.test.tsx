@@ -276,12 +276,9 @@ describe("UsePromptsGuide", () => {
     test("利用回数は閾値を満たしたものだけ出る（null は出さない）", () => {
       renderGuide({ showcase });
 
-      expect(
-        screen.getByText("10回以上利用されました")
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByText("0回以上利用されました")
-      ).not.toBeInTheDocument();
+      // この画面だけ器が狭く、文言を「◯回以上利用」に詰めている
+      expect(screen.getByText("10回以上利用")).toBeInTheDocument();
+      expect(screen.queryByText("0回以上利用")).not.toBeInTheDocument();
     });
 
     /**
