@@ -51,6 +51,32 @@ Do **not** perform the following without an explicit user request or confirmatio
 
 Regenerable build outputs and temporary paths (`.next/`, `node_modules/`, `dist/`, `coverage/`, `/tmp/...`, build caches) may be removed freely as part of normal work.
 
+## Database Migration Verification
+
+When a migration creates or replaces a function in the `public` schema, also run:
+
+```
+node scripts/check-rpc-grants.mjs
+```
+
+Supabase grants `EXECUTE` on new functions to `anon` and `authenticated` by default,
+so a `CREATE FUNCTION` silently opens the RPC to unauthenticated callers unless the
+migration revokes it. `ALTER DEFAULT PRIVILEGES` cannot fix this (the `supabase_admin`
+default is not ours to change), so this check is the only guard.
+
+In 2026-08 this default exposed 22 RPCs, including balance mutation, account
+deactivation, and template moderation. A warning comment in a migration did not
+prevent a recurrence; running the check does.
+
+The script compares the live grants against an allowlist and exits non-zero on any
+difference. Both directions matter: an unexpected function means a new hole, and a
+missing one means a logged-out screen just broke.
+
+Prefer applying the migration **before** merging. New parameters carry `DEFAULT`s, so
+the currently deployed app keeps working, and a bad migration can be rolled back with
+`GRANT` before any user-facing code ships. Merging first breaks the app in the window
+between deploy and apply.
+
 ## UI Verification Workflow
 
 When verifying UI changes via browser automation (Playwright MCP, Puppeteer, headless browsers, etc.):
