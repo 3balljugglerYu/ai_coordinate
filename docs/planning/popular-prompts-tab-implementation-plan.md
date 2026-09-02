@@ -327,15 +327,38 @@ limit 3 offset 125 → position 126 の 1 件のみ）。
   week のデータが入る。Phase 5 で全公開すると全員 true になり、
   Phase 6 で week を消すときに false 側の分岐ごと削除できる。
 
-### Phase 3: UI と段階公開フラグ
+### Phase 3: UI と段階公開フラグ ✅ 完了（2026-09-03）
 
 **目的**: タブとカードを出す。ただし**運営にしか見えない状態**にする。
 **ビルド確認**: `npm run build -- --webpack` と `npm run test` が通る。
 
-- [ ] `lib/env.ts` に `NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED` を追加
-- [ ] `isPopularPromptsPubliclyEnabled()` と `isPopularPromptsAvailable(userId)` を実装
+**実施メモ（2026-09-03）**
+
+- タブ名はユーザー確定で **「🔥人気」**（3 タブ横並びのため短く）。
+  空状態は「まだ表示できる作品がありません」、🆕 ラベルは「NEW」。15 ロケール投入済み。
+- ⭐ **🆕 の置き場所を実機で直した。** 当初は一覧のラッパーへ絶対配置していたが、
+  フィードカードでは**作者アイコンに重なっていた**（スクリーンショットで確認）。
+  カードの四隅は用途が決まっている（左上=完走 / 右上=三点リーダー /
+  左下=生成モード / 右下=Before）ため、**左上を横並びの器**にして
+  完走バッジと同居できる形にし、`PostCard` / `PostFeedCard` の画像上へ移した。
+- `showNewBadges` のようなタブ判定フラグは持たない。`isNew` を付けるのは
+  `getPopularPrompts` だけなので、**データ自体がタブにスコープされている**。
+
+**実機確認（ローカル dev + Playwright / 390px）**
+
+| 確認項目 | 結果 |
+|---|---|
+| タブ | 新着 / 🔥人気 / フォロー の **3 つ**・**折り返しなし**・横はみ出しなし |
+| 4 タブ化 | 起きない（オススメが 🔥人気に**差し替わる**） |
+| 🆕 | フィード・グリッドとも **3 件**、位置 **4 / 5 / 7**（DB の `is_new` と一致） |
+| 重なり | 作者アイコン・三点リーダーと重ならないことを座標で確認 |
+| 選択状態 | 🔥人気が active（下線）になる |
+
+
+- [x] `lib/env.ts` に `NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED` を追加
+- [x] `isPopularPromptsPubliclyEnabled()` と `isPopularPromptsAvailable(userId)` を実装
   - 既存の `isSearchAvailable`（`lib/env.ts:447`）と同形にする
-- [ ] ⭐ **クライアントだけでは運営判定ができない。** `ADMIN_USER_IDS` は
+- [x] ⭐ **クライアントだけでは運営判定ができない。** `ADMIN_USER_IDS` は
   `NEXT_PUBLIC_` を持たないサーバー専用の値で、`SortTabs.tsx` は `"use client"` のため
   ブラウザでは常に false になる。検索と同じ **Loader + Provider 方式**を使う
   - `PopularPromptsAvailabilityLoader`（サーバー）を新規作成
@@ -350,8 +373,8 @@ limit 3 offset 125 → position 126 の 1 件のみ）。
       `:46` で `SearchAvailabilityLoader` を独立 Suspense 内に置いている
     - **ここに追加しないと Provider の外で false に倒れ、運営もタブを使えない**
     - Loader は**キャッシュ境界の外**に置く
-- [ ] `SortType` に `"popular_prompts"` を追加
-- [ ] `SortTabs.tsx`: **中間タブを可否で差し替える**
+- [x] `SortType` に `"popular_prompts"` を追加
+- [x] `SortTabs.tsx`: **中間タブを可否で差し替える**
   ```
   中間タブ = available ? "popular_prompts" : "week"
   ```
@@ -359,10 +382,10 @@ limit 3 offset 125 → position 126 の 1 件のみ）。
   運営に**4タブが並ぶ**。差し替えにすれば、公開中は popular のみ、
   フラグを閉じた一般ユーザーには week が復帰する
   - Phase 6 で week を消したあとは、この分岐も削除して popular 固定にする
-- [ ] **`app/api/posts/route.ts` でも同じ関数で認可する**
+- [x] **`app/api/posts/route.ts` でも同じ関数で認可する**
   - UI を隠すだけでは足りない。この API は認証不要で `sort` を受けるため、直接叩けば取得できてしまう（検索で踏んだ REQ-06b と同型）
   - 許可されていない相手には `sort` を無視して新着順を返す（エラーにしない。未公開機能の存在を失敗の仕方から推測させないため）
-- [ ] ⭐ **`PostList` の初期配列を「中間タブ」で抽象化する**
+- [x] ⭐ **`PostList` の初期配列を「中間タブ」で抽象化する**
 
   現行は `PostList.tsx:539` が **`sortType === "week"` を直書き**して
   `initialPostsForWeek` を再利用している。中間タブが可否によって
@@ -388,7 +411,7 @@ limit 3 offset 125 → position 126 の 1 件のみ）。
   `PostList` は **`sortType === initialMiddleSort` のときだけ**初期配列を再利用する。
   Phase 6 で week を消したあとは `MiddleSort` が1値になり、この抽象も畳める。
 
-- [ ] ⭐ **昇格前に week を選んだ場合の遷移を入れる**
+- [x] ⭐ **昇格前に week を選んだ場合の遷移を入れる**
 
   `SearchAvailabilityProvider` と同型なので、**初期値は公開フラグ（段階公開中は false）**で、
   Loader が遅れて `false → true` へ**昇格だけ**させる（ページ本体は待たない）。
@@ -398,9 +421,9 @@ limit 3 offset 125 → position 126 の 1 件のみ）。
 
   可否が `false → true` に変わったとき `sortType === "week"` なら
   `handleSortChange("popular_prompts")` を呼んで追随させる。
-- [ ] 🆕 ラベルのコンポーネントを追加（プリセット側の NEW バッジとは**別の定数**にする。あちらは14日窓で意味が違う）
-- [ ] 15ロケールに文言を追加（タブ名・空状態・🆕ラベル）
-- [ ] 空状態の文言を用意（現在は `postsT("preparing")` を流用している）
+- [x] 🆕 ラベルのコンポーネントを追加（プリセット側の NEW バッジとは**別の定数**にする。あちらは14日窓で意味が違う）
+- [x] 15ロケールに文言を追加（タブ名・空状態・🆕ラベル）
+- [x] 空状態の文言を用意（現在は `postsT("preparing")` を流用している）
 
 ### Phase 4: 運営のみで検証
 

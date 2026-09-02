@@ -130,6 +130,11 @@ export const hiMessages = {
     unpost: "पोस्ट हटाएँ",
     newest: "नवीनतम",
     recommended: "अनुशंसित",
+    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "🔥 लोकप्रिय",
+    noPopularPrompts: "अभी दिखाने के लिए कोई कृति नहीं है",
+    // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
+    popularPromptsNewBadge: "नया",
     following: "फ़ॉलो किए गए",
     noMatch: "\"{query}\" से मेल खाती कोई पोस्ट नहीं मिली",
     noFollowingPosts: "जिन्हें आप फ़ॉलो करते हैं उनकी अभी कोई पोस्ट नहीं है।",

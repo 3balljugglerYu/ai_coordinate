@@ -130,6 +130,11 @@ export const viMessages = {
     unpost: "Gỡ bài",
     newest: "Mới nhất",
     recommended: "Đề xuất",
+    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "🔥 Phổ biến",
+    noPopularPrompts: "Chưa có tác phẩm nào để hiển thị",
+    // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
+    popularPromptsNewBadge: "MỚI",
     following: "Đang theo dõi",
     noMatch: "Không có bài viết nào khớp với \"{query}\"",
     noFollowingPosts: "Người bạn đang theo dõi chưa có bài đăng nào.",

@@ -130,6 +130,11 @@ export const zhCnMessages = {
     unpost: "取消发布",
     newest: "最新",
     recommended: "推荐",
+    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "🔥 热门",
+    noPopularPrompts: "暂时没有可显示的作品",
+    // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
+    popularPromptsNewBadge: "NEW",
     following: "关注中",
     noMatch: "没有与 \"{query}\" 匹配的帖子",
     noFollowingPosts: "你关注的人还没有发布任何帖子。",
