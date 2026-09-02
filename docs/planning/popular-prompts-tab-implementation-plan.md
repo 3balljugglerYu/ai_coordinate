@@ -224,8 +224,55 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
   - 現行は `app/[locale]/page.tsx:332` → `CachedHomePostListSection` → `CachedHomePostList` → `PostList`
   - 新規に `CachedPopularPromptsSection` を作っても**接続先が無い**。
     `CachedHomePostList` に `initialPopularPrompts` を追加し、`cacheTag("popular-prompts")` を付ける
-  - ⭐ **一般ユーザー向けの SSR ペイロードに人気投稿の配列を載せない。**
-    取得自体を Phase 3 のサーバー判定で閉じる（載せると公開前の中身が HTML に出る）
+
+- [ ] ⭐ **SSR の取得可否はサーバーで決める（Loader では決められない）**
+
+  `PopularPromptsAvailabilityLoader` は**クライアントの後段昇格**なので、
+  SSR 時点の取得可否は決められない。**一般ユーザーの HTML に人気投稿の配列を
+  含めない**という不変条件は、次の経路で担保する。
+
+  `CachedHomePostListSection` は `"use cache: private"` で `getUser()` を
+  呼べる位置にあるので、ここで可否を確定させて引数で渡す。
+
+  ```tsx
+  // features/home/components/CachedHomePostListSection.tsx
+  const user = await getUser();
+  const popularPromptsAvailable = isPopularPromptsAvailable(user?.id);
+
+  return (
+    <CachedHomePostList
+      userId={user?.id ?? null}
+      popularPromptsAvailable={popularPromptsAvailable}
+    />
+  );
+  ```
+
+  `CachedHomePostList` は `"use cache"` なので、**この引数がそのまま
+  キャッシュキーに入る**（`userId` と同じ扱い）。true / false でエントリが
+  分かれるため、一般ユーザーのキャッシュに人気配列が混ざらない。
+
+  ```tsx
+  // features/posts/components/CachedHomePostList.tsx
+  export async function CachedHomePostList({
+    userId,
+    popularPromptsAvailable,
+  }: { userId: string | null; popularPromptsAvailable: boolean }) {
+    "use cache";
+    ...
+    const [newestPosts, popularPrompts, percoinDefaults] = await Promise.all([
+      getPosts(20, 0, "newest", undefined, userId),
+      // ★ true のときだけ取得する。false なら week 用データを維持する
+      //   （Phase 6 で week を消したあとは、初期配列なしで通常 API 取得へ倒す）
+      popularPromptsAvailable
+        ? getPopularPrompts(20, 0, userId)
+        : getPosts(20, 0, "week", undefined, userId),
+      getPercoinDefaultsForDisplay(),
+    ]);
+  ```
+
+  **Phase 3〜4 のあいだは week がまだ存在する**ので、false 側は自然に
+  week のデータが入る。Phase 5 で全公開すると全員 true になり、
+  Phase 6 で week を消すときに false 側の分岐ごと削除できる。
 
 ### Phase 3: UI と段階公開フラグ
 
@@ -444,7 +491,7 @@ jitter(post_id) = 1 + (r(post_id || ':' || bucket) * 2 - 1) * 0.15
 | `features/posts/components/SortTabs.tsx` | 修正 | タブの入れ替え |
 | `features/posts/components/PostList.tsx` | 修正 | 分岐の差し替え・🆕ラベル |
 | `features/posts/components/CachedHomePostList.tsx` | 修正 | `initialPopularPrompts` の追加 / week の取得を削除 |
-| `features/home/components/CachedHomePostListSection.tsx` | 修正 | `cacheTag` の差し替え（**前回の一覧から漏れていた**） |
+| `features/home/components/CachedHomePostListSection.tsx` | 修正 | サーバー側の可否判定と `cacheTag` の差し替え |
 | `features/posts/components/PopularPromptsAvailabilityLoader.tsx` | 新規 | サーバー側の運営判定 |
 | `features/posts/components/PopularPromptsAvailabilityProvider.tsx` | 新規 | クライアントへの昇格 |
 | `components/LocaleShell.tsx` | 修正 | Provider と Loader のマウント（**前回の一覧から漏れていた**） |
@@ -487,7 +534,8 @@ jitter(post_id) = 1 + (r(post_id || ':' || bucket) * 2 - 1) * 0.15
 | Provider | `LocaleShell` の外側で参照しても false に倒れるだけでクラッシュしない |
 | ページング | ブロック・通報で除外が起きても、20件揃うまで返り `hasMore` が誤らない |
 | 導線 | `sort=popular_prompts` が実際に `getPopularPrompts()` へ到達する |
-| 段階公開 | 未公開時、一般ユーザーの SSR HTML に人気投稿の配列が含まれない |
+| 段階公開 | 未公開時、一般ユーザーの **SSR HTML に人気投稿の配列が含まれない**（`popularPromptsAvailable=false` のキャッシュエントリを検証する） |
+| キャッシュ分離 | `popularPromptsAvailable` の true / false でキャッシュエントリが分かれる |
 | 権限 | 未ログイン・一般ユーザーから再計算RPCを呼べない |
 | 実機 | 🆕ラベルの表示、空状態、モバイル幅でのタブ折り返し |
 
