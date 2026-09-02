@@ -19,22 +19,32 @@ const mockCreateAdminClient = createAdminClient as jest.MockedFunction<
 const mockEnrichPosts = enrichPosts as jest.MockedFunction<typeof enrichPosts>;
 const mockGetPosts = getPosts as jest.MockedFunction<typeof getPosts>;
 
-type RankingRow = { post_id: string; rank_position: number; is_new: boolean };
-type PostRow = { id: string };
+type RankingRow = {
+  post: { id: string };
+  rank_position: number;
+  is_new: boolean;
+};
+
+/** 順位 1 件ぶんの RPC 行を組み立てる。投稿本体は RPC が同じ 1 文で返す。 */
+function rankingRow(id: string, position: number, isNew = false): RankingRow {
+  return { post: { id }, rank_position: position, is_new: isNew };
+}
 
 /**
- * getPopularPrompts が使う 3 つの呼び出しだけを備えたスタブ。
+ * getPopularPrompts が使う 2 つの呼び出しだけを備えたスタブ。
  *   1. popular_prompt_rankings から computed_at を 1 行
- *   2. rpc("get_popular_prompt_page")
- *   3. generated_images を id の集合で取得
+ *   2. rpc("get_popular_prompt_page")  ← 投稿本体もここで返る
+ *
+ * ⭐ generated_images への SELECT は**あってはならない**。
+ *    ID だけ受け取って別文で引くと、2 文の間の状態変化で除外が効かなくなり、
+ *    行が消えると件数が limit を下回って hasMore が誤る（PR #590 の指摘）。
+ *    from("generated_images") が呼ばれたらテストを落とす。
  */
 function createSupabaseStub(options: {
   computedAt?: string | null;
   freshnessError?: { message: string } | null;
   ranking?: RankingRow[];
   rankingError?: { message: string } | null;
-  postRows?: PostRow[];
-  postsError?: { message: string } | null;
 }) {
   const rpc = jest.fn().mockResolvedValue({
     data: options.ranking ?? [],
@@ -61,14 +71,9 @@ function createSupabaseStub(options: {
         }),
       };
     }
-    return {
-      select: () => ({
-        in: async () => ({
-          data: options.postRows ?? [],
-          error: options.postsError ?? null,
-        }),
-      }),
-    };
+    throw new Error(
+      `投稿本体は RPC が返すべきで、${table} への追加クエリを発行してはいけない`
+    );
   });
 
   return { from, rpc } as unknown as ReturnType<typeof createAdminClient> & {
@@ -122,8 +127,7 @@ describe("getPopularPrompts", () => {
       ).toISOString();
       const stub = createSupabaseStub({
         computedAt: fresh,
-        ranking: [{ post_id: "p1", rank_position: 1, is_new: false }],
-        postRows: [{ id: "p1" }],
+        ranking: [rankingRow("p1", 1)],
       });
       mockCreateAdminClient.mockReturnValue(stub);
 
@@ -162,19 +166,13 @@ describe("getPopularPrompts", () => {
   });
 
   describe("並び順と 🆕", () => {
-    /*
-      `.in()` は順序を保証しない。順位テーブルの並びへ戻せていないと、
-      無限スクロールの各ページ内で順序が崩れる。
-    */
-    test("取得行が順不同でも順位の並びに戻す", async () => {
+    test("RPC が返した順序をそのまま保ち_🆕を紐づける", async () => {
       const stub = createSupabaseStub({
         ranking: [
-          { post_id: "p1", rank_position: 1, is_new: false },
-          { post_id: "p2", rank_position: 2, is_new: true },
-          { post_id: "p3", rank_position: 3, is_new: false },
+          rankingRow("p1", 1),
+          rankingRow("p2", 2, true),
+          rankingRow("p3", 3),
         ],
-        // DB から返る順序は順位と一致しない
-        postRows: [{ id: "p3" }, { id: "p1" }, { id: "p2" }],
       });
       mockCreateAdminClient.mockReturnValue(stub);
 
@@ -184,19 +182,38 @@ describe("getPopularPrompts", () => {
       expect(posts.map((post) => post.isNew)).toEqual([false, true, false]);
     });
 
-    test("順位にあるのに投稿行が引けなければ落とす", async () => {
+    /*
+      ⭐ 本体を別クエリで引かないこと自体をテストで固定する。
+      スタブは generated_images へのアクセスで例外を投げる。
+    */
+    test("⭐投稿本体を別クエリで引かない（同一スナップショットに閉じる）", async () => {
       const stub = createSupabaseStub({
-        ranking: [
-          { post_id: "p1", rank_position: 1, is_new: false },
-          { post_id: "gone", rank_position: 2, is_new: false },
-        ],
-        postRows: [{ id: "p1" }],
+        ranking: [rankingRow("p1", 1), rankingRow("p2", 2)],
       });
       mockCreateAdminClient.mockReturnValue(stub);
 
       const posts = await getPopularPrompts(20, 0, null);
 
-      expect(posts.map((post) => post.id)).toEqual(["p1"]);
+      expect(posts).toHaveLength(2);
+      // rpc 以外のテーブルアクセスは鮮度チェックの 1 回だけ
+      expect(stub.from).toHaveBeenCalledTimes(1);
+      expect(stub.from).toHaveBeenCalledWith("popular_prompt_rankings");
+    });
+
+    /*
+      ⭐ 除外で件数が減っても、返す件数は RPC が LIMIT 後に決めた件数と一致する。
+      これが崩れると route の hasMore = posts.length === limit が誤り、
+      無限スクロールが途中で止まる。
+    */
+    test("⭐RPCが返した件数をそのまま返す（hasMoreの根拠を壊さない）", async () => {
+      const stub = createSupabaseStub({
+        ranking: [rankingRow("p1", 1), rankingRow("p2", 2)],
+      });
+      mockCreateAdminClient.mockReturnValue(stub);
+
+      const posts = await getPopularPrompts(2, 0, null);
+
+      expect(posts).toHaveLength(2);
     });
 
     test("順位が空なら新着順へは倒さず空配列を返す", async () => {

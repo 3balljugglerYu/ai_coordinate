@@ -245,6 +245,14 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
   そこで `get_popular_prompt_page(p_viewer_id, p_limit, p_offset)` を追加し、
   順位 × 投稿の結合・公開条件・ブロック・通報を SQL で適用してから
   `LIMIT/OFFSET` する形にした（`20260902120000_add_popular_prompt_page_rpc.sql`）。
+- ⭐ **射影も同じ 1 文に閉じた**（`20260903100000`・PR #590 のレビュー指摘）。
+  当初は RPC が `post_id` だけを返し、投稿本体はアプリが別の SELECT で引いていた。
+  これだと **2 文の間に**投稿取消・モデレーション・ブロック・通報が起きたときに
+  除外が効かず、行が消えると件数が limit を下回って `hasMore` が誤る。
+  `to_jsonb(g)` で行ごと返す形に変更（列を列挙しないので将来の列追加に追随不要。
+  PostgREST の `select=*` と同じ形になることを実データで確認済み）。
+  ⭐ 戻り値型の変更は `CREATE OR REPLACE` で置き換えられず **DROP が要る**。
+  **DROP すると EXECUTE が既定の PUBLIC に戻る**ので REVOKE / GRANT を必ず通す。
 - ⭐ **公開条件は毎回引き直す。** 順位は最大 1 時間前のスナップショットなので、
   cron 実行後に取消・非公開・モデレーションで消えた投稿が残りうる。
   RPC の join で `is_posted` / `moderation_status` を**現在値**で再確認している。

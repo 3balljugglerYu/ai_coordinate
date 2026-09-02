@@ -9,8 +9,8 @@
  * スコア定義の正本は docs/planning/popular-prompts-tab-implementation-plan.md §5。
  */
 import { createAdminClient } from "@/lib/supabase/admin";
+import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import type { Post } from "../types";
-import { buildPostSelect, stripHashtagJoin } from "./search-filters";
 import { enrichPosts, getPosts } from "./server-api";
 
 /**
@@ -23,7 +23,12 @@ import { enrichPosts, getPosts } from "./server-api";
 export const POPULAR_PROMPTS_STALE_AFTER_MS = 3 * 60 * 60 * 1000;
 
 type RankingRow = {
-  post_id: string;
+  /**
+   * 投稿行そのもの（RPC が to_jsonb で返す）。
+   * PostgREST の `select=*` と同じ形（41 列・同じ型・同じ日時書式）であることを
+   * 実データで確認済み。列が増えても RPC 側を追随させる必要はない。
+   */
+  post: GeneratedImageRecord;
   rank_position: number;
   is_new: boolean;
 };
@@ -31,9 +36,14 @@ type RankingRow = {
 /**
  * 人気のプロンプト一覧を順位順に取得する。
  *
- * ⭐ 除外（ブロック・通報・非公開）は DB 側で LIMIT より前に適用している。
- *    ここで取得後に絞ると、20 件取って数件落とした時点で hasMore=false になり
- *    一覧に穴が空く。フィルタは `get_popular_prompt_page` RPC の中にある。
+ * ⭐ 除外（ブロック・通報・非公開）・並び・ページング・**投稿本体の射影**まで
+ *    すべて `get_popular_prompt_page` RPC の 1 文で行う。ここで取得後に絞ったり、
+ *    ID を受け取ってから投稿本体を別クエリで引いたりしてはいけない。
+ *
+ *    - 取得後に絞ると、20 件取って数件落とした時点で hasMore=false になり穴が空く。
+ *    - ID だけ受け取って別文で引くと、**2 文の間に**投稿取消・モデレーション・
+ *      ブロック・通報が起きたときに除外が効かず、行が消えた場合は件数が
+ *      limit を下回って無限スクロールが途中で止まる（PR #590 のレビュー指摘）。
  *
  * @param currentUserId 閲覧者。**必ずサーバー側の getUser() から解決した値**を渡すこと。
  *                      クライアントから受け取った値を渡してはならない。
@@ -97,30 +107,12 @@ export async function getPopularPrompts(
     return [];
   }
 
-  const orderedIds = ranking.map((row) => row.post_id);
+  // RPC が既に順位順で返しているので、並べ替え直さない。
+  // 投稿本体も同じ 1 文の結果なので、追加のクエリを発行しない。
+  const orderedRows = ranking.map((row) => row.post);
   const newPostIds = new Set(
-    ranking.filter((row) => row.is_new).map((row) => row.post_id)
+    ranking.filter((row) => row.is_new).map((row) => row.post?.id)
   );
-
-  // 本文は RPC の結果に含めていないので、投稿行はここで引く。
-  // 件数は 1 ページ分（最大 100）なので PostgREST の行上限に当たらない。
-  const { data: postsData, error: postsError } = await supabase
-    .from("generated_images")
-    .select(buildPostSelect(null))
-    .in("id", orderedIds);
-
-  if (postsError) {
-    console.error("Popular prompts posts fetch failed:", postsError);
-    return getPosts(limit, offset, "newest", undefined, currentUserId);
-  }
-
-  // `.in()` は順序を保証しないため、順位テーブルの並びへ戻す。
-  const rowById = new Map(
-    stripHashtagJoin(postsData).map((row) => [row.id, row])
-  );
-  const orderedRows = orderedIds
-    .map((id) => rowById.get(id))
-    .filter((row): row is NonNullable<typeof row> => Boolean(row));
 
   const enriched = await enrichPosts(orderedRows, undefined, supabase);
 
