@@ -309,7 +309,42 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
 - [ ] **`app/api/posts/route.ts` でも同じ関数で認可する**
   - UI を隠すだけでは足りない。この API は認証不要で `sort` を受けるため、直接叩けば取得できてしまう（検索で踏んだ REQ-06b と同型）
   - 許可されていない相手には `sort` を無視して新着順を返す（エラーにしない。未公開機能の存在を失敗の仕方から推測させないため）
-- [ ] `PostList.tsx` に分岐を追加。`initialPostsForWeek` は `initialPopularPrompts` へ置き換え
+- [ ] ⭐ **`PostList` の初期配列を「中間タブ」で抽象化する**
+
+  現行は `PostList.tsx:539` が **`sortType === "week"` を直書き**して
+  `initialPostsForWeek` を再利用している。中間タブが可否によって
+  week / popular のどちらにもなるため、**プロップ名だけ変えると片方が未使用**になる
+  （popular 固定なら一般ユーザーの week 初期配列が、week 固定なら
+  運営の popular 初期配列が捨てられる）。
+
+  sort 値そのものを引数で受け取る形にする。
+
+  ```tsx
+  type MiddleSort = "week" | "popular_prompts";
+
+  // CachedHomePostList 側
+  const initialMiddleSort: MiddleSort =
+    popularPromptsAvailable ? "popular_prompts" : "week";
+
+  <PostList
+    initialMiddlePosts={middlePosts}
+    initialMiddleSort={initialMiddleSort}
+  />
+  ```
+
+  `PostList` は **`sortType === initialMiddleSort` のときだけ**初期配列を再利用する。
+  Phase 6 で week を消したあとは `MiddleSort` が1値になり、この抽象も畳める。
+
+- [ ] ⭐ **昇格前に week を選んだ場合の遷移を入れる**
+
+  `SearchAvailabilityProvider` と同型なので、**初期値は公開フラグ（段階公開中は false）**で、
+  Loader が遅れて `false → true` へ**昇格だけ**させる（ページ本体は待たない）。
+
+  この間に運営が中間タブ（このとき week）を選ぶと、昇格後に **week タブだけ消えて
+  `sortType` は `"week"` のまま残る**（選択中のタブが無い状態になる）。
+
+  可否が `false → true` に変わったとき `sortType === "week"` なら
+  `handleSortChange("popular_prompts")` を呼んで追随させる。
 - [ ] 🆕 ラベルのコンポーネントを追加（プリセット側の NEW バッジとは**別の定数**にする。あちらは14日窓で意味が違う）
 - [ ] 15ロケールに文言を追加（タブ名・空状態・🆕ラベル）
 - [ ] 空状態の文言を用意（現在は `postsT("preparing")` を流用している）
@@ -532,6 +567,8 @@ jitter(post_id) = 1 + (r(post_id || ':' || bucket) * 2 - 1) * 0.15
 | 決定性 | 同時刻の利用イベント・コメントがあっても、再実行で順位が変わらない |
 | タブ差し替え | 可否 false のとき中間タブが week、true のとき popular になり、**4タブにならない** |
 | Provider | `LocaleShell` の外側で参照しても false に倒れるだけでクラッシュしない |
+| 初期配列の再利用 | 未公開時は week の初期配列が、運営時は popular の初期配列が**それぞれ再利用される**（どちらも捨てられない） |
+| 昇格時の追随 | 昇格前に week を選んだ後、`false → true` で popular へ遷移し、選択中のタブが消えたままにならない |
 | ページング | ブロック・通報で除外が起きても、20件揃うまで返り `hasMore` が誤らない |
 | 導線 | `sort=popular_prompts` が実際に `getPopularPrompts()` へ到達する |
 | 段階公開 | 未公開時、一般ユーザーの **SSR HTML に人気投稿の配列が含まれない**（`popularPromptsAvailable=false` のキャッシュエントリを検証する） |
