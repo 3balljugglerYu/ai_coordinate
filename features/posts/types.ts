@@ -176,6 +176,10 @@ export interface Post extends GeneratedImageRecord {
   // プロンプト非公開投稿・派生投稿の参照カード用（REQ-013）。
   // 詳細取得の経路だけで解決する。一覧はプロンプト欄を持たないため付けない。
   source_reference?: SourcePromptReference | null;
+  // 🔥人気のプロンプトタブの新着枠に差し込まれた投稿。UI の 🆕 ラベルはこれを見る。
+  // 判定は DB 側(popular_prompt_rankings.is_new)が正本で、直近24時間の上位3件だけが true。
+  // お着替えプリセットの NEW バッジ(14日窓)とは別物なので、定数を共有しないこと。
+  isNew?: boolean;
 }
 
 export interface CommentProfile {
@@ -241,4 +245,11 @@ export interface CommentDeleteResult {
 /**
  * 投稿のソートタイプ
  */
-export type SortType = "newest" | "following" | "daily" | "week" | "month" | "popular";
+export type SortType =
+  | "newest"
+  | "following"
+  | "daily"
+  | "week"
+  | "month"
+  | "popular"
+  | "popular_prompts";

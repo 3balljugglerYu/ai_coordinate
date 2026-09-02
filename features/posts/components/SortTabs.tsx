@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import type { SortType } from "../types";
+import { usePopularPromptsAvailable } from "./PopularPromptsAvailabilityProvider";
 
 interface SortTabsProps {
   value: SortType;
@@ -12,9 +13,22 @@ interface SortTabsProps {
 
 export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
   const postsT = useTranslations("posts");
+  const popularPromptsAvailable = usePopularPromptsAvailable();
+
+  /*
+    ⭐ 中間タブは「追加」ではなく「差し替え」。
+    🔥人気を足すだけにすると、week が残っている全公開前のあいだ運営には
+    4 タブが並び、モバイル幅で折り返す。差し替えにすれば、見えるタブは常に 3 つで、
+    フラグを閉じ直せば一般ユーザーにはオススメ(week)が復帰する。
+    week を消す Phase 6 で、この分岐ごと畳んで popular_prompts 固定にする。
+  */
+  const middleTab: { value: SortType; label: string } = popularPromptsAvailable
+    ? { value: "popular_prompts", label: postsT("popularPrompts") }
+    : { value: "week", label: postsT("recommended") };
+
   const tabs: { value: SortType; label: string; disabled?: boolean }[] = [
     { value: "newest", label: postsT("newest") },
-    { value: "week", label: postsT("recommended") },
+    middleTab,
     { value: "following", label: postsT("following") },
     // { value: "daily", label: "Daily" },
     // { value: "month", label: "Monthly" },

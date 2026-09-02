@@ -127,6 +127,11 @@ export const jaMessages = {
     unpost: "投稿を取り消す",
     newest: "新着",
     recommended: "オススメ",
+    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "🔥人気",
+    noPopularPrompts: "まだ表示できる作品がありません",
+    // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
+    popularPromptsNewBadge: "NEW",
     following: "フォロー",
     noMatch: "\"{query}\"に一致する投稿が見つかりませんでした",
     noFollowingPosts: "フォローしているユーザーの投稿がありません",

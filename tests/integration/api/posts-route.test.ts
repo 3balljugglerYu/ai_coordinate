@@ -3,18 +3,27 @@
 jest.mock("@/features/posts/lib/server-api", () => ({
   getPosts: jest.fn(),
 }));
+jest.mock("@/features/posts/lib/popular-prompts-api", () => ({
+  getPopularPrompts: jest.fn(),
+}));
 jest.mock("@/lib/auth", () => ({ getUser: jest.fn() }));
 jest.mock("@/lib/env", () => ({
   ...jest.requireActual("@/lib/env"),
   isSearchPubliclyEnabled: jest.fn(),
   isSearchAvailable: jest.fn(),
+  isPopularPromptsAvailable: jest.fn(),
 }));
 
 import type { NextRequest } from "next/server";
 import { GET } from "@/app/api/posts/route";
 import { getPosts } from "@/features/posts/lib/server-api";
+import { getPopularPrompts } from "@/features/posts/lib/popular-prompts-api";
 import { getUser } from "@/lib/auth";
-import { isSearchAvailable, isSearchPubliclyEnabled } from "@/lib/env";
+import {
+  isPopularPromptsAvailable,
+  isSearchAvailable,
+  isSearchPubliclyEnabled,
+} from "@/lib/env";
 
 const mockGetPosts = getPosts as jest.MockedFunction<typeof getPosts>;
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
@@ -23,6 +32,13 @@ const mockIsSearchPubliclyEnabled =
 const mockIsSearchAvailable = isSearchAvailable as jest.MockedFunction<
   typeof isSearchAvailable
 >;
+const mockGetPopularPrompts = getPopularPrompts as jest.MockedFunction<
+  typeof getPopularPrompts
+>;
+const mockIsPopularPromptsAvailable =
+  isPopularPromptsAvailable as jest.MockedFunction<
+    typeof isPopularPromptsAvailable
+  >;
 
 function createRequest(url: string): NextRequest {
   const request = new Request(url, {
@@ -54,6 +70,8 @@ describe("GET /api/posts", () => {
     // 既定は「一般公開済み」。段階公開の分岐は専用の describe で確かめる
     mockIsSearchPubliclyEnabled.mockReturnValue(true);
     mockIsSearchAvailable.mockReturnValue(true);
+    mockGetPopularPrompts.mockResolvedValue([]);
+    mockIsPopularPromptsAvailable.mockReturnValue(true);
     mockGetUser.mockResolvedValue(null);
   });
 
@@ -242,6 +260,85 @@ describe("GET /api/posts", () => {
       await GET(createRequest("http://localhost/api/posts"));
 
       expect(mockGetUser).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("🔥人気のプロンプトの導線と段階公開", () => {
+    /*
+      ⭐ この API は getPosts しか呼んでいなかったため、validSorts に
+      "popular_prompts" を足すだけでは新着順が返るだけで新APIに到達しない。
+      「到達すること」自体をテストで固定する。
+    */
+    test("sort=popular_prompts_許可されていれば_getPopularPromptsへ到達する", async () => {
+      mockGetUser.mockResolvedValue({ id: "admin-1" } as never);
+      mockIsPopularPromptsAvailable.mockReturnValue(true);
+
+      await GET(
+        createRequest("http://localhost/api/posts?sort=popular_prompts")
+      );
+
+      expect(mockIsPopularPromptsAvailable).toHaveBeenCalledWith("admin-1");
+      expect(mockGetPopularPrompts).toHaveBeenCalledWith(20, 0, "admin-1");
+      expect(mockGetPosts).not.toHaveBeenCalled();
+    });
+
+    test("limitとoffsetがそのまま渡る", async () => {
+      mockGetUser.mockResolvedValue({ id: "admin-1" } as never);
+
+      await GET(
+        createRequest(
+          "http://localhost/api/posts?sort=popular_prompts&limit=5&offset=40"
+        )
+      );
+
+      expect(mockGetPopularPrompts).toHaveBeenCalledWith(5, 40, "admin-1");
+    });
+
+    test("許可されていない相手にはエラーではなく新着順を返す", async () => {
+      // 失敗の仕方から未公開機能の存在を推測させないため、403 にはしない
+      mockIsPopularPromptsAvailable.mockReturnValue(false);
+
+      const response = await GET(
+        createRequest("http://localhost/api/posts?sort=popular_prompts")
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockGetPopularPrompts).not.toHaveBeenCalled();
+      expect(mockGetPosts).toHaveBeenCalledWith(20, 0, "newest", undefined);
+    });
+
+    test("認証が引けないときは閉じる側に倒す", async () => {
+      mockGetUser.mockRejectedValue(new Error("auth unavailable"));
+      mockIsPopularPromptsAvailable.mockReturnValue(false);
+      const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+      const response = await GET(
+        createRequest("http://localhost/api/posts?sort=popular_prompts")
+      );
+
+      expect(response.status).toBe(200);
+      expect(mockIsPopularPromptsAvailable).toHaveBeenCalledWith(null);
+      expect(mockGetPopularPrompts).not.toHaveBeenCalled();
+      expect(mockGetPosts).toHaveBeenCalledWith(20, 0, "newest", undefined);
+      errorSpy.mockRestore();
+    });
+
+    test("他のソートでは人気のプロンプトの認証を引かない", async () => {
+      await GET(createRequest("http://localhost/api/posts?sort=newest"));
+
+      expect(mockGetUser).not.toHaveBeenCalled();
+      expect(mockGetPopularPrompts).not.toHaveBeenCalled();
+    });
+
+    test("hasMore_取得件数がlimit未満なら打ち止め", async () => {
+      mockGetUser.mockResolvedValue({ id: "admin-1" } as never);
+      mockGetPopularPrompts.mockResolvedValue([{ id: "p1" }] as never);
+
+      const response = await GET(
+        createRequest("http://localhost/api/posts?sort=popular_prompts&limit=2")
+      );
+
+      await expect(response.json()).resolves.toMatchObject({ hasMore: false });
     });
   });
 });

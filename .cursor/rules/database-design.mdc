@@ -44,6 +44,7 @@ alwaysApply: false
 - `popup_banner_guest_events`
 - `popup_banner_views`
 - `popup_banners`
+- `popular_prompt_rankings`
 - `post_reports`
 - `profiles`
 - `prompt_overrides`
@@ -167,6 +168,20 @@ alwaysApply: false
 - 外部キー: なし（すべてスナップショット値。`image_jobs` には本人 DELETE ポリシーがあり、FK CASCADE にすると派生者が自分のジョブを消すだけで原作者に見える利用数を減らせるため張らない）
 - 備考: 派生生成の成功イベント。利用数の算出根拠。`image_job_id` UNIQUE で Worker 再試行・キュー再配送時の重複を防ぐ。`generated_images` を数える案は所有者が書き換えられるため採らない。記録されるのは `sourcePostId` を伴う生成のみで、コピーして /free に貼った生成はアプリ内でも数えられない
 - RLS: 全アクション deny。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（service_role のみ）
+
+#### `popular_prompt_rankings`
+- 主キー: `post_id`（**FKなし**）
+- 主要カラム: `position`（**UNIQUE**・`>= 1` の CHECK）, `score`, `is_new`, `bucket`, `computed_at`
+- 外部キー: なし（派生データ。`generated_images` の削除で順位計算そのものが壊れないようにする。表示時の突き合わせは `get_popular_prompt_page` の join が担う）
+- 備考: 🔥人気タブの確定順位。`recompute_popular_prompts()` が全件を洗い替える。対象は Free Style の原本（`generation_type='free'` かつ `source_post_id IS NULL` かつ visible）。`score` はゆらぎを掛ける**前**の基礎スコアで、表示値は `score x jitter(post_id, bucket)`。`bucket` は 6 時間ごとに変わるゆらぎのシード。`computed_at` は鮮度判定に使い、読み出し側が閾値（3時間）を超えたら新着順へフォールバックする。スコア定義の正本は `docs/planning/popular-prompts-tab-implementation-plan.md` §5
+- 運用: ⭐ **cron `recompute_popular_prompts_hourly`（毎時15分）は `active = false` で登録されている**（`20260902110100`）。既存の `cleanup_temp_images_daily` と同じ「登録するが動かさない」方式で、有効化は Phase 4 でユーザー承認を得てから行う。**したがって現時点では順位は自動更新されず**、手動実行から 3 時間経つと読み出し側が新着順へフォールバックする。有効化 / 停止は次のとおり:
+  ```sql
+  SELECT cron.alter_job(
+    job_id := (SELECT jobid FROM cron.job WHERE jobname = 'recompute_popular_prompts_hourly'),
+    active := true  -- 止めるときは false
+  );
+  ```
+- RLS: 全アクション deny のポリシー 1 本。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（= `service_role` と SECURITY DEFINER 関数のみ）。**SELECT を開けると段階公開中に PostgREST 経由で未公開の順位が読める**ため開けない
 
 #### `source_image_stocks`
 - 主キー: `id`
@@ -542,6 +557,10 @@ alwaysApply: false
   - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
 - コレクション: `get_collection_progress`, `reserve_collection_completion`, `reserve_collection_completion_for_user`, `finalize_collection_completion`, `fail_collection_completion`
   - 注: `get_collection_progress` / `reserve_collection_completion` は authenticated 用で `auth.uid()` を使う。`reserve_collection_completion_for_user` / `finalize_collection_completion` / `fail_collection_completion` は service role route 専用で、ユーザーから直接実行させない。`reserve_collection_completion_for_user` は route が session user と `isAdminViewer()` を検証した後、admin_only の台紙生成予約を行う。
+- 🔥人気のプロンプト: `recompute_popular_prompts`, `get_popular_prompt_page`
+  - 注: **いずれも EXECUTE は service_role のみ**（`PUBLIC` / `anon` / `authenticated` から REVOKE 済み）。`recompute_popular_prompts()` は SECURITY DEFINER で、入口で `is_trusted_lineage_writer()` を検証する（`auth.uid()` では未ログインを弾けない）。呼び出しは pg_cron から。**ただしその cron は現在 `active = false`**（有効化は Phase 4。`popular_prompt_rankings` の「運用」を参照）。
+  - 注: `get_popular_prompt_page(p_viewer_id, p_limit, p_offset)` は 1 ページ分を**投稿本体ごと**（`to_jsonb(generated_images)`）順位順に返す。公開条件・ブロック・通報の除外と射影を**同一 SQL 文**に閉じてあり、ID だけ返して別クエリで本体を引く形にしてはならない（2 文の間の状態変化で除外が効かなくなり、行が消えると件数が limit を下回って `hasMore` が誤る）。`p_viewer_id` は**サーバー側の `getUser()` から解決した値のみ**を渡す。
+  - 注: helper の `popular_prompts_hash_unit(text)`（決定的な擬似乱数 `[0,1)`）と `popular_prompts_decay(timestamptz, timestamptz)`（半減期 7 日）も service_role のみ。前者は `bit(32)::int` が符号付きである点に注意（`::bigint` へ広げて `2^31` を足す）。
 - ポップアップバナー: `record_popup_banner_interaction`, `reorder_popup_banners`
 - 紹介・プロフィール: `generate_referral_code`, `check_and_grant_referral_bonus_on_first_login`, `check_and_grant_referral_bonus_on_first_login_with_reason`, `get_follow_counts`, `get_user_ids_by_emails`
 - 通知: `create_notification`

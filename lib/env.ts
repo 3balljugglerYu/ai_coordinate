@@ -89,6 +89,9 @@ const envSchema = {
     process.env.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED,
   // 検索とハッシュタグの一般公開フラグ。'true' になるまでは運営のみ使える
   NEXT_PUBLIC_SEARCH_ENABLED: process.env.NEXT_PUBLIC_SEARCH_ENABLED,
+  // 🔥人気のプロンプトタブの一般公開フラグ(ADR-006)。'true' になるまでは運営のみ使える
+  NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED:
+    process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -200,6 +203,8 @@ function getEnv() {
     NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED:
       envSchema.NEXT_PUBLIC_INSPIRE_HOME_CAROUSEL_ENABLED || "",
     NEXT_PUBLIC_SEARCH_ENABLED: envSchema.NEXT_PUBLIC_SEARCH_ENABLED || "",
+    NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED:
+      envSchema.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -446,6 +451,26 @@ export function isSearchPubliclyEnabled(): boolean {
  */
 export function isSearchAvailable(userId: string | null | undefined): boolean {
   return isSearchPubliclyEnabled() || isAdminViewer(userId);
+}
+
+/**
+ * 🔥人気のプロンプトタブが一般公開されているか(ADR-006)。
+ */
+export function isPopularPromptsPubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED === "true";
+}
+
+/**
+ * この利用者が🔥人気のプロンプトタブを使えるか(唯一の判定)。
+ *
+ * 検索(isSearchAvailable)と同じ形にしてある。判定関数を1本に集約しておかないと、
+ * UI を隠したのに API が開いたままになる(REQ-06b で踏んだ事故と同型)。
+ * `GET /api/posts` は認証不要で `sort` を受けるため、API 側でもこれで認可する。
+ */
+export function isPopularPromptsAvailable(
+  userId: string | null | undefined
+): boolean {
+  return isPopularPromptsPubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

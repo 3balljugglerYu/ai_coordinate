@@ -12,6 +12,8 @@ import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation
 import { PostProgressHost } from "@/features/posts/components/PostProgressHost";
 import { SearchAvailabilityProvider } from "@/features/posts/components/SearchAvailabilityProvider";
 import { SearchAvailabilityLoader } from "@/features/posts/components/SearchAvailabilityLoader";
+import { PopularPromptsAvailabilityProvider } from "@/features/posts/components/PopularPromptsAvailabilityProvider";
+import { PopularPromptsAvailabilityLoader } from "@/features/posts/components/PopularPromptsAvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -36,15 +38,25 @@ export async function LocaleShell({
       <UnreadNotificationProvider>
         <MissionDotProvider>
           <SearchAvailabilityProvider>
-            {appContent}
-            {/*
-              検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
-              認証を引くため独立した Suspense に置く（ここを appContent と
-              同じ境界にすると、全ページが認証待ちになる）。
-            */}
-            <Suspense fallback={null}>
-              <SearchAvailabilityLoader />
-            </Suspense>
+            <PopularPromptsAvailabilityProvider>
+              {appContent}
+              {/*
+                検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
+                認証を引くため独立した Suspense に置く（ここを appContent と
+                同じ境界にすると、全ページが認証待ちになる）。
+              */}
+              <Suspense fallback={null}>
+                <SearchAvailabilityLoader />
+              </Suspense>
+              {/*
+                🔥人気タブの段階公開。検索と同じく運営だけ true に昇格させる。
+                ⭐ ここに Provider を置かないと SortTabs が context の外になり、
+                閉じる側（false）に倒れて運営もタブを使えない。
+              */}
+              <Suspense fallback={null}>
+                <PopularPromptsAvailabilityLoader />
+              </Suspense>
+            </PopularPromptsAvailabilityProvider>
           </SearchAvailabilityProvider>
         </MissionDotProvider>
       </UnreadNotificationProvider>

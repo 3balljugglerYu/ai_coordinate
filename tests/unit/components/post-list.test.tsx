@@ -306,10 +306,10 @@ describe("PostList", () => {
   /**
    * ⭐ 検索クエリありで**リクエストを投げ続けない**こと。
    *
-   * 初回ロードの effect が `initialPostsForWeek` を依存に持っていた。
+   * 初回ロードの effect が `initialMiddlePosts` を依存に持っていた。
    * 既定値を `= []` と書いていたため**レンダーのたびに新しい配列**になり、
    * 依存が毎回変わる → effect 再実行 → setState → 再レンダー → …と止まらない。
-   * 検索画面は `initialPostsForWeek` を渡さないので常に既定値に落ち、
+   * 検索画面は `initialMiddlePosts` を渡さないので常に既定値に落ち、
    * 検索クエリありでだけ発症していた(実測 20秒で8,810回。Vercel が 503 を返し
    * 画面はスケルトンのまま固まる)。これが検索を止めていた原因(PR #466)。
    *
@@ -364,7 +364,8 @@ describe("PostList", () => {
       render(
         <PostList
           initialPosts={initialPosts}
-          initialPostsForWeek={weekPosts}
+          initialMiddlePosts={weekPosts}
+          initialMiddleSort="week"
           skipInitialFetch
         />
       );
@@ -380,6 +381,59 @@ describe("PostList", () => {
       // newest ぶんは出さない
       expect(
         screen.queryByTestId("post-card-initial-1")
+      ).not.toBeInTheDocument();
+    });
+
+    /*
+      ⭐ 中間タブは可否によって week / popular_prompts のどちらにもなる。
+      プロップ名を week 固定にしていたころは、運営に渡した人気の初期配列が
+      そのまま捨てられていた。渡された sort と一致するときだけ再利用する。
+    */
+    test("人気タブは渡された人気ぶんを使い、取りに行かない", async () => {
+      currentSort = "popular_prompts";
+      const popularPosts = [createPost("popular-1", "よく使われている")];
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={popularPosts}
+          initialMiddleSort="popular_prompts"
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-popular-1");
+
+      expect(
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith("/api/posts?")
+        )
+      ).toHaveLength(0);
+    });
+
+    test("渡された初期配列と別の中間タブなら再利用せず取りに行く", async () => {
+      // 人気ぶんを渡されているのに week を見ている状態。中身が違うので流用してはいけない
+      currentSort = "week";
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          posts: [createPost("week-3", "取得した週間")],
+          hasMore: false,
+        }),
+      });
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("popular-2", "人気ぶん")]}
+          initialMiddleSort="popular_prompts"
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-week-3");
+      expect(
+        screen.queryByTestId("post-card-popular-2")
       ).not.toBeInTheDocument();
     });
 

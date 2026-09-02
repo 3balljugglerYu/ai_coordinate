@@ -20,6 +20,7 @@ import {
 import { FeedCaption } from "./FeedCaption";
 import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
 import { FeedSourceQuote } from "./FeedSourceQuote";
+import { NewPromptBadge } from "./NewPromptBadge";
 import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
@@ -376,12 +377,19 @@ export function PostFeedCard({
             priority={prioritizeImage}
             clampPortraitToWidth
           />
-          {/* バッジの位置は PostCard と揃える(完走=左上 / 生成モード=左下)。
-              AFTER・BEFORE ラベルは右下なので重ならない。 */}
-          {post.completion_id ? (
-            <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-              {t("completionBadge")}
-            </span>
+          {/* バッジの位置は PostCard と揃える(完走・🆕=左上 / 生成モード=左下)。
+              AFTER・BEFORE ラベルは右下なので重ならない。
+              左上は横並びの器にして、完走と 🆕 が同時に立っても重ならないようにする
+              (現データでは同時に立たないが、片方を握りつぶす作りにはしない)。 */}
+          {post.completion_id || post.isNew ? (
+            <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
+              {post.completion_id ? (
+                <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                  {t("completionBadge")}
+                </span>
+              ) : null}
+              {post.isNew ? <NewPromptBadge /> : null}
+            </div>
           ) : null}
           {generationModeLabelKey ? (
             <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">

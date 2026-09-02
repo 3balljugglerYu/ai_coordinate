@@ -130,6 +130,11 @@ export const frMessages = {
     unpost: "Retirer la publication",
     newest: "Plus récent",
     recommended: "Recommandé",
+    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "🔥 Populaire",
+    noPopularPrompts: "Aucune œuvre à afficher pour le moment",
+    // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
+    popularPromptsNewBadge: "NOUVEAU",
     following: "Abonnements",
     noMatch: "Aucune publication ne correspond à \"{query}\"",
     noFollowingPosts: "Les personnes que vous suivez n'ont pas encore publié.",

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPosts } from "@/features/posts/lib/server-api";
+import type { SortType } from "@/features/posts/types";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { getUser } from "@/lib/auth";
-import { isSearchAvailable, isSearchPubliclyEnabled } from "@/lib/env";
+import { getPopularPrompts } from "@/features/posts/lib/popular-prompts-api";
+import {
+  isPopularPromptsAvailable,
+  isSearchAvailable,
+  isSearchPubliclyEnabled,
+} from "@/lib/env";
 
 /**
  * 投稿一覧取得API
@@ -30,8 +36,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const validSorts = ["newest", "following", "daily", "week", "month", "popular"];
-    const sortType = validSorts.includes(sort) ? (sort as "newest" | "following" | "daily" | "week" | "month" | "popular") : "newest";
+    const validSorts: SortType[] = [
+      "newest",
+      "following",
+      "daily",
+      "week",
+      "month",
+      "popular",
+      "popular_prompts",
+    ];
+    let sortType: SortType = validSorts.includes(sort as SortType)
+      ? (sort as SortType)
+      : "newest";
     
     // 検索クエリを取得（空文字列の場合はundefinedとして扱う）
     const searchQuery = searchParams.get("q");
@@ -57,8 +73,37 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    
-    const posts = await getPosts(limit, offset, sortType, normalizedSearchQuery);
+    /*
+      🔥人気のプロンプトも検索と同じ段階公開で、判定は isPopularPromptsAvailable に
+      一本化している(ADR-006)。UI のタブを隠すだけでは足りない。この API は
+      認証不要で `sort` を受けるため、直接叩けば未公開の順位が取れてしまう。
+      許可されていない相手には `sort` を無視して新着順を返す(エラーにはしない。
+      公開前の機能の存在を、失敗の仕方から推測させないため)。
+    */
+    let popularPromptsViewerId: string | null = null;
+    if (sortType === "popular_prompts") {
+      try {
+        popularPromptsViewerId = (await getUser())?.id ?? null;
+      } catch (error) {
+        // 認証が引けないときは閉じる側に倒す。一覧そのものは返せるのでリクエストは落とさない。
+        console.error("Popular prompts authorization check failed:", error);
+      }
+      // 判定はこの 1 本だけ(= 公開フラグ or 運営)。検索のように getUser() を
+      // 省略する余地は無い。ブロック・通報の除外に閲覧者 ID が要るためである。
+      if (!isPopularPromptsAvailable(popularPromptsViewerId)) {
+        sortType = "newest";
+        popularPromptsViewerId = null;
+      }
+    }
+
+    /*
+      ⭐ validSorts に足すだけでは新着順が返るだけで、人気のプロンプトには到達しない。
+      この API は getPosts しか呼んでいないので、明示的に分岐させる必要がある。
+    */
+    const posts =
+      sortType === "popular_prompts"
+        ? await getPopularPrompts(limit, offset, popularPromptsViewerId)
+        : await getPosts(limit, offset, sortType, normalizedSearchQuery);
 
     return NextResponse.json({
       posts,

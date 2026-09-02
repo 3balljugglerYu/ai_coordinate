@@ -8,6 +8,7 @@ import { useInView } from "react-intersection-observer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Eye, MessageCircle, User } from "lucide-react";
 import { PostCardLikeButton } from "./PostCardLikeButton";
+import { NewPromptBadge } from "./NewPromptBadge";
 import {
   deriveAspectRatioFromDimensions,
   getPostBeforeImageUrl,
@@ -111,10 +112,17 @@ export function PostCard({
           {t("noImage")}
         </div>
       )}
-      {post.completion_id ? (
-        <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-          {t("completionBadge")}
-        </span>
+      {/* 左上は横並びの器。完走と 🆕 が同時に立っても重ならないようにする。
+          右上は三点リーダー、左下は生成モード、右下は Before ラベルが使っている。 */}
+      {post.completion_id || post.isNew ? (
+        <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
+          {post.completion_id ? (
+            <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+              {t("completionBadge")}
+            </span>
+          ) : null}
+          {post.isNew ? <NewPromptBadge /> : null}
+        </div>
       ) : null}
       {/* 生成モードラベル(左下)。coordinate系/one_tap_style/inspire/free を表示。
           不明・null は非表示。 */}

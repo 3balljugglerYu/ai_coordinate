@@ -130,6 +130,11 @@ export const koMessages = {
     unpost: "게시 취소",
     newest: "최신순",
     recommended: "추천",
+    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "🔥 인기",
+    noPopularPrompts: "아직 표시할 작품이 없습니다",
+    // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
+    popularPromptsNewBadge: "NEW",
     following: "팔로잉",
     noMatch: "\"{query}\"에 해당하는 게시물이 없습니다",
     noFollowingPosts: "팔로우 중인 사용자의 게시물이 아직 없습니다.",

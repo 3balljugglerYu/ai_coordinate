@@ -18,6 +18,7 @@ import { PostBonusModal } from "./PostBonusModal";
 import { PostListSkeleton } from "./PostListSkeleton";
 import { PostListLoadMoreSkeleton } from "./PostListLoadMoreSkeleton";
 import { SortTabs } from "./SortTabs";
+import { usePopularPromptsAvailable } from "./PopularPromptsAvailabilityProvider";
 import { HomeViewToggle } from "./HomeViewToggle";
 import { createClient } from "@/lib/supabase/client";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -64,10 +65,27 @@ const FEED_CARD_CHROME_PX = 170;
 /** フィードで何枚ぶん手前から次を取りに行くか。 */
 const FEED_PREFETCH_CARDS = 3;
 
+/**
+ * 中間タブ（新着とフォローの間）に入りうる sort。
+ *
+ * 段階公開のあいだ、ここは閲覧者によって week（オススメ）と
+ * popular_prompts（🔥人気）のどちらにもなる。Phase 6 で week を消せば
+ * 1 値になり、この型ごと畳める。
+ */
+export type MiddleSort = "week" | "popular_prompts";
+
 interface PostListProps {
   initialPosts?: Post[];
-  /** オススメタブ用のキャッシュ済みデータ（CachedHomePostList から渡す） */
-  initialPostsForWeek?: Post[];
+  /**
+   * 中間タブ用のキャッシュ済みデータ（CachedHomePostList から渡す）。
+   *
+   * ⭐ プロップ名を week 固定にすると、可否によって中間タブが
+   * popular_prompts になったときに初期配列が丸ごと捨てられる。
+   * どの sort のデータなのかを {@link initialMiddleSort} で併せて受け取る。
+   */
+  initialMiddlePosts?: Post[];
+  /** initialMiddlePosts がどの sort のデータか。既定は既存挙動どおり week。 */
+  initialMiddleSort?: MiddleSort;
   forceInitialLoading?: boolean;
   /** 親がデータを提供している場合、初回の loadPosts をスキップ（キャッシュ表示の最適化用） */
   skipInitialFetch?: boolean;
@@ -88,7 +106,7 @@ interface PostListProps {
  * 依存に持っているので、依存が毎回変わり → effect が再実行 → setState →
  * 再レンダー → また新しい配列…と止まらなくなる。
  *
- * 検索画面(`CachedSearchPostList`)は `initialPostsForWeek` を渡さないため
+ * 検索画面(`CachedSearchPostList`)は `initialMiddlePosts` を渡さないため
  * 常に既定値に落ち、**検索クエリありで無限ループしていた**(PR #466 で
  * 検索を止めた原因)。同じ参照を使い回せば依存は変わらない。
  */
@@ -96,7 +114,8 @@ const EMPTY_POSTS: Post[] = [];
 
 export function PostList({
   initialPosts = EMPTY_POSTS,
-  initialPostsForWeek = EMPTY_POSTS,
+  initialMiddlePosts = EMPTY_POSTS,
+  initialMiddleSort = "week",
   forceInitialLoading = false,
   skipInitialFetch = false,
   trackImpressions = false,
@@ -124,6 +143,7 @@ export function PostList({
   const [offset, setOffset] = useState(
     forceInitialLoading ? 0 : initialPosts.length
   );
+  const popularPromptsAvailable = usePopularPromptsAvailable();
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -411,6 +431,21 @@ export function PostList({
     setSortType(newSortType);
   }, [sortType]);
 
+  /*
+    ⭐ 昇格前に中間タブ（このとき week）を選んでいた場合の追随。
+
+    可否の初期値は公開フラグなので、段階公開中は false から始まり、
+    `PopularPromptsAvailabilityLoader` が遅れて true へ昇格させる。
+    その間に運営が中間タブを選んでいると、昇格後は SortTabs から week が
+    消えるのに `sortType` は "week" のまま残り、**選択中のタブが無い状態**になる。
+    可否が変わった瞬間に popular_prompts へ寄せて、表示と選択を一致させる。
+  */
+  useEffect(() => {
+    if (popularPromptsAvailable && sortType === "week") {
+      handleSortChange("popular_prompts");
+    }
+  }, [popularPromptsAvailable, sortType, handleSortChange]);
+
   const loadPosts = useCallback(async (newOffset: number, reset: boolean = false) => {
     if (sortType === "following" && !currentUserId) {
       setPosts([]);
@@ -536,11 +571,14 @@ export function PostList({
           setIsLoading(false);
           return;
         }
-        if (sortType === "week" && initialPostsForWeek.length > 0) {
-          setPosts(initialPostsForWeek);
-          setHasMore(initialPostsForWeek.length === 20);
-          setOffset(initialPostsForWeek.length);
-          loadedSortTypeRef.current = "week";
+        // ⭐ `sortType === "week"` の直書きをやめる。中間タブは可否によって
+        //    week / popular_prompts のどちらにもなるため、渡された sort と
+        //    突き合わせないと片方の初期配列が捨てられる。
+        if (sortType === initialMiddleSort && initialMiddlePosts.length > 0) {
+          setPosts(initialMiddlePosts);
+          setHasMore(initialMiddlePosts.length === 20);
+          setOffset(initialMiddlePosts.length);
+          loadedSortTypeRef.current = initialMiddleSort;
           loadedSearchQueryRef.current = "";
           setIsLoading(false);
           return;
@@ -568,7 +606,8 @@ export function PostList({
     loadPosts,
     skipInitialFetch,
     initialPosts,
-    initialPostsForWeek,
+    initialMiddlePosts,
+    initialMiddleSort,
     defaultSortType,
     pendingHomePostRefresh,
     // loadedSortTypeRef / loadedSearchQueryRef は ref なので依存に入れない
@@ -688,6 +727,8 @@ export function PostList({
       return postsT("preparing");
     } else if (sortType === "week") {
       return postsT("preparing");
+    } else if (sortType === "popular_prompts") {
+      return postsT("noPopularPrompts");
     } else if (sortType === "month") {
       return postsT("preparing");
     }

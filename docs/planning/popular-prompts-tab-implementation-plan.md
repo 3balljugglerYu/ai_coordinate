@@ -182,33 +182,94 @@ flowchart LR
 **Phase 4 までは運営にしか見えない。** タブ自体が運営以外には描画されず、
 API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）は**全公開が安定するまで残す**（削除は Phase 6）。
 
-### Phase 1: テーブルと再計算関数
+### Phase 1: テーブルと再計算関数 ✅ 完了（2026-09-02・本番適用済み）
 
 **目的**: 順位を保存する器と、それを埋める関数を用意する。UI からはまだ使わない。
 **ビルド確認**: マイグレーションのみ。アプリのビルドに影響しない。
 
-- [ ] `popular_prompt_rankings` テーブルを作成（`post_id` PK / `position` / `score` / `is_new` / `bucket` / `computed_at`）
-- [ ] `position` に **UNIQUE 制約**（表示の唯一の順序であり、重複すると並びが不定になる）
-  - 洗い替え中に一時的に重複するなら `DEFERRABLE INITIALLY DEFERRED` にする
-- [ ] 読み出しも `ORDER BY position, post_id` として二重に固定する
-- [ ] `computed_at` は鮮度判定に使う
-- [ ] RLS: **全操作を拒否**し、`createAdminClient()`（service_role）からのみ読む
-  - 既存の `style_usage_events` と同じ方式（`features/style/lib/style-popularity.ts` のコメント参照）
-  - ⭐ SELECT を公開にすると、**段階公開中に PostgREST 経由で順位が読めてしまう**。公開前の機能の中身が漏れる
-- [ ] `recompute_popular_prompts()` を SECURITY DEFINER で作成
-  - 呼び出し元の検証は `is_trusted_lineage_writer()` を使う（`auth.uid()` では未ログインを弾けない。`20260831140000` 参照）
-  - **`SET search_path = public, pg_temp` を明記する**（`20260214120001_fix_function_search_path.sql` と同じ作法）
-  - anon / authenticated から EXECUTE を剥がす
-- [ ] **`node scripts/check-rpc-grants.mjs` を実行して権限を検証する**（AGENTS.md の手順）
-- [ ] 計算内容は「5. スコア定義」のとおり
-- [ ] `supabase db push` 前に `supabase db diff` の結果をユーザーに提示する
+**追加したファイル**
 
-### Phase 2: サーバーサイド
+| ファイル | 内容 |
+|---|---|
+| `supabase/migrations/20260902110000_add_popular_prompt_rankings.sql` | テーブル・ヘルパー2本・`recompute_popular_prompts()` |
+| `supabase/migrations/20260902110100_schedule_popular_prompts_cron.sql` | cron 登録（inactive・毎時15分） |
+
+- [x] `popular_prompt_rankings` テーブルを作成（`post_id` PK / `position` / `score` / `is_new` / `bucket` / `computed_at`）
+- [x] `position` に **UNIQUE 制約**（表示の唯一の順序であり、重複すると並びが不定になる）
+  - 洗い替えは「全件 DELETE → 1 文で INSERT」なので途中で重複する瞬間が無く、`DEFERRABLE` は**不要だった**
+- [ ] 読み出しも `ORDER BY position, post_id` として二重に固定する → **Phase 2 で実施**
+- [x] `computed_at` は鮮度判定に使う
+- [x] RLS: **全操作を拒否**し、`createAdminClient()`（service_role）からのみ読む
+  - `prompt_usage_events`（`20260730200100`）と同じ形。`ENABLE ROW LEVEL SECURITY` + deny-all ポリシー + PUBLIC/anon/authenticated から `REVOKE ALL`
+- [x] `recompute_popular_prompts()` を SECURITY DEFINER で作成
+  - 入口で `is_trusted_lineage_writer()` を検証（`auth.uid()` では未ログインを弾けない）
+  - `SET search_path = public, pg_temp` を明記
+  - anon / authenticated から EXECUTE を剥がす
+- [x] **`node scripts/check-rpc-grants.mjs` を実行して権限を検証する**
+- [x] 計算内容は「5. スコア定義」のとおり
+- [x] 適用内容をユーザーに提示してから `supabase db push`
+  - ⭐ `supabase db diff` はローカル shadow DB（Docker）が要るため**この環境では動かない**。
+    代わりに `supabase db push --dry-run` で対象マイグレーションを提示した
+  - ⭐ `check-rpc-grants.mjs` は本番の `pg_proc` を見るので、**push の前には実行できない**。
+    そのため本番適用を Phase 4 から Phase 1 へ前倒しした（追加のみ・cron は inactive・DOWN 記載済み）
+
+**実施結果（本番実測）**
+
+| 検証項目 | 結果 |
+|---|---|
+| 対象件数 | 126 件（Free 原本・visible） |
+| `recompute_popular_prompts()` | 126 行を書き込んで正常終了 |
+| `position` の整合 | 1〜126・重複なし・`post_id` 重複なし |
+| 新着枠 | 3 件が position **4 / 5 / 7**（規定の 2〜9 内） |
+| **決定性** | 同一バケットで 2 回実行 → `position` 変化 **0 件**・`is_new` 変化 **0 件** |
+| **ゆらぎ（符号付き `bit(32)` の罠）** | 126 件全件で `r` ∈ 0.0017〜0.9975（範囲外 **0 件**）、`jitter` ∈ **0.8505〜1.1492**、新着枠位置 ∈ **2〜9** |
+| 充実度 `k` | 0.70 / 0.75 / 0.80 / 0.85 / 0.90 / 0.95 を実データで確認（9字=+0・15字=+0.05・31字=+0.10・121字=+0.15 の境界が一致） |
+| 権限 | `check-rpc-grants.mjs` = anon 6/6・authenticated 22/22・未監査 0 |
+| RLS / GRANT | anon・authenticated とも SELECT 権限なし・EXECUTE 権限なし。service_role のみ可。`relrowsecurity = true` |
+| cron | `recompute_popular_prompts_hourly` / `15 * * * *` / **active = false** |
+
+⭐ **リピート上限 3.0 は現データでは発動していない。** 自己利用を除いた利用イベント 156 件のうち
+新規 121・リピート 35（投稿あり 5／投稿なし 30）で、1 組あたり最大 5 件。
+上限は将来の自己操作に対する保険であって、いまの順位には効いていない。
+
+### Phase 2: サーバーサイド ✅ 完了（2026-09-02）
 
 **目的**: 順位テーブルから投稿を取得する経路を作り、**既存の導線に接続する**。
 **ビルド確認**: `npm run build -- --webpack` が通る。
 
-- [ ] `features/posts/lib/popular-prompts-api.ts` を新規作成
+**実施メモ（2026-09-02）**
+
+- ⭐ **除外を LIMIT より前に置くため、読み出しも SQL 側へ寄せた。**
+  `popular_prompt_rankings` は RLS 全拒否で PostgREST から join できず、
+  `generated_images` との間に FK も張っていない（削除で順位が壊れないようにするため）。
+  そこで `get_popular_prompt_page(p_viewer_id, p_limit, p_offset)` を追加し、
+  順位 × 投稿の結合・公開条件・ブロック・通報を SQL で適用してから
+  `LIMIT/OFFSET` する形にした（`20260902120000_add_popular_prompt_page_rpc.sql`）。
+- ⭐ **射影も同じ 1 文に閉じた**（`20260903100000`・PR #590 のレビュー指摘）。
+  当初は RPC が `post_id` だけを返し、投稿本体はアプリが別の SELECT で引いていた。
+  これだと **2 文の間に**投稿取消・モデレーション・ブロック・通報が起きたときに
+  除外が効かず、行が消えると件数が limit を下回って `hasMore` が誤る。
+  `to_jsonb(g)` で行ごと返す形に変更（列を列挙しないので将来の列追加に追随不要。
+  PostgREST の `select=*` と同じ形になることを実データで確認済み）。
+  ⭐ 戻り値型の変更は `CREATE OR REPLACE` で置き換えられず **DROP が要る**。
+  **DROP すると EXECUTE が既定の PUBLIC に戻る**ので REVOKE / GRANT を必ず通す。
+- ⭐ **公開条件は毎回引き直す。** 順位は最大 1 時間前のスナップショットなので、
+  cron 実行後に取消・非公開・モデレーションで消えた投稿が残りうる。
+  RPC の join で `is_posted` / `moderation_status` を**現在値**で再確認している。
+- ⭐ **`lib/env.ts` のフラグは Phase 2 に前倒しした。** 計画では Phase 3 だが、
+  Phase 2 の API 認可がこの判定関数を使うため、切り離せない。
+- **コンポーネント配線（ホームの初期データ供給）は Phase 3 へ移した。**
+  `CachedHomePostList` の変更は `PostList` の `initialMiddleSort` 対応と
+  同時でないと初期配列が捨てられるため、UI 側と 1 コミットにまとめる。
+- `enrichPosts` を `server-api.ts` から export した（整形を二重に持たないため）。
+
+**検証結果**: `npm run lint` / `typecheck`（非テスト 0 件）/ `test`（4255 passed）/
+`build -- --webpack` すべて通過。`check-rpc-grants.mjs` は anon 6/6・authenticated 22/22・未監査 0。
+RPC の実挙動も本番で確認（limit 5 offset 0 → position 1〜5・`is_new` が 4,5 で true、
+limit 3 offset 125 → position 126 の 1 件のみ）。
+
+
+- [x] `features/posts/lib/popular-prompts-api.ts` を新規作成
   - `getPopularPrompts(limit, offset, currentUserId)` を実装
   - `createAdminClient()` で `popular_prompt_rankings` を読む（RLS 全拒否のため）
   - ⭐ **除外はページングより前に適用する。** 「順位取得 → 投稿取得 → 除外」の順だと、
@@ -216,16 +277,16 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
     順位テーブルと `generated_images` を join し、公開条件・ブロック・通報を
     **DB 側で適用してから `.range()`** する（現行 `getPosts` と同じ作法）
   - `computed_at` が閾値（例: 3時間）より古ければ新着順にフォールバックし、`console.error` を残す
-- [ ] **`app/api/posts/route.ts` に明示的な分岐を足す**
+- [x] **`app/api/posts/route.ts` に明示的な分岐を足す**
   - ⭐ 現状この API は `getPosts()` しか呼ばない（`route.ts:61`）。
     `validSorts` に足すだけでは**新着順が返るだけで新APIに到達しない**
   - `sort === "popular_prompts"` かつ認可 OK のときだけ `getPopularPrompts()` を呼ぶ
-- [ ] **ホームの初期データ供給を既存の連鎖に載せる**
+- [ ] **ホームの初期データ供給を既存の連鎖に載せる** → **Phase 3 で実施**
   - 現行は `app/[locale]/page.tsx:332` → `CachedHomePostListSection` → `CachedHomePostList` → `PostList`
   - 新規に `CachedPopularPromptsSection` を作っても**接続先が無い**。
     `CachedHomePostList` に `initialPopularPrompts` を追加し、`cacheTag("popular-prompts")` を付ける
 
-- [ ] ⭐ **SSR の取得可否はサーバーで決める（Loader では決められない）**
+- [ ] ⭐ **SSR の取得可否はサーバーで決める（Loader では決められない）** → **Phase 3 で実施**
 
   `PopularPromptsAvailabilityLoader` は**クライアントの後段昇格**なので、
   SSR 時点の取得可否は決められない。**一般ユーザーの HTML に人気投稿の配列を
@@ -274,15 +335,38 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
   week のデータが入る。Phase 5 で全公開すると全員 true になり、
   Phase 6 で week を消すときに false 側の分岐ごと削除できる。
 
-### Phase 3: UI と段階公開フラグ
+### Phase 3: UI と段階公開フラグ ✅ 完了（2026-09-03）
 
 **目的**: タブとカードを出す。ただし**運営にしか見えない状態**にする。
 **ビルド確認**: `npm run build -- --webpack` と `npm run test` が通る。
 
-- [ ] `lib/env.ts` に `NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED` を追加
-- [ ] `isPopularPromptsPubliclyEnabled()` と `isPopularPromptsAvailable(userId)` を実装
+**実施メモ（2026-09-03）**
+
+- タブ名はユーザー確定で **「🔥人気」**（3 タブ横並びのため短く）。
+  空状態は「まだ表示できる作品がありません」、🆕 ラベルは「NEW」。15 ロケール投入済み。
+- ⭐ **🆕 の置き場所を実機で直した。** 当初は一覧のラッパーへ絶対配置していたが、
+  フィードカードでは**作者アイコンに重なっていた**（スクリーンショットで確認）。
+  カードの四隅は用途が決まっている（左上=完走 / 右上=三点リーダー /
+  左下=生成モード / 右下=Before）ため、**左上を横並びの器**にして
+  完走バッジと同居できる形にし、`PostCard` / `PostFeedCard` の画像上へ移した。
+- `showNewBadges` のようなタブ判定フラグは持たない。`isNew` を付けるのは
+  `getPopularPrompts` だけなので、**データ自体がタブにスコープされている**。
+
+**実機確認（ローカル dev + Playwright / 390px）**
+
+| 確認項目 | 結果 |
+|---|---|
+| タブ | 新着 / 🔥人気 / フォロー の **3 つ**・**折り返しなし**・横はみ出しなし |
+| 4 タブ化 | 起きない（オススメが 🔥人気に**差し替わる**） |
+| 🆕 | フィード・グリッドとも **3 件**、位置 **4 / 5 / 7**（DB の `is_new` と一致） |
+| 重なり | 作者アイコン・三点リーダーと重ならないことを座標で確認 |
+| 選択状態 | 🔥人気が active（下線）になる |
+
+
+- [x] `lib/env.ts` に `NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED` を追加
+- [x] `isPopularPromptsPubliclyEnabled()` と `isPopularPromptsAvailable(userId)` を実装
   - 既存の `isSearchAvailable`（`lib/env.ts:447`）と同形にする
-- [ ] ⭐ **クライアントだけでは運営判定ができない。** `ADMIN_USER_IDS` は
+- [x] ⭐ **クライアントだけでは運営判定ができない。** `ADMIN_USER_IDS` は
   `NEXT_PUBLIC_` を持たないサーバー専用の値で、`SortTabs.tsx` は `"use client"` のため
   ブラウザでは常に false になる。検索と同じ **Loader + Provider 方式**を使う
   - `PopularPromptsAvailabilityLoader`（サーバー）を新規作成
@@ -297,8 +381,8 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
       `:46` で `SearchAvailabilityLoader` を独立 Suspense 内に置いている
     - **ここに追加しないと Provider の外で false に倒れ、運営もタブを使えない**
     - Loader は**キャッシュ境界の外**に置く
-- [ ] `SortType` に `"popular_prompts"` を追加
-- [ ] `SortTabs.tsx`: **中間タブを可否で差し替える**
+- [x] `SortType` に `"popular_prompts"` を追加
+- [x] `SortTabs.tsx`: **中間タブを可否で差し替える**
   ```
   中間タブ = available ? "popular_prompts" : "week"
   ```
@@ -306,10 +390,10 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
   運営に**4タブが並ぶ**。差し替えにすれば、公開中は popular のみ、
   フラグを閉じた一般ユーザーには week が復帰する
   - Phase 6 で week を消したあとは、この分岐も削除して popular 固定にする
-- [ ] **`app/api/posts/route.ts` でも同じ関数で認可する**
+- [x] **`app/api/posts/route.ts` でも同じ関数で認可する**
   - UI を隠すだけでは足りない。この API は認証不要で `sort` を受けるため、直接叩けば取得できてしまう（検索で踏んだ REQ-06b と同型）
   - 許可されていない相手には `sort` を無視して新着順を返す（エラーにしない。未公開機能の存在を失敗の仕方から推測させないため）
-- [ ] ⭐ **`PostList` の初期配列を「中間タブ」で抽象化する**
+- [x] ⭐ **`PostList` の初期配列を「中間タブ」で抽象化する**
 
   現行は `PostList.tsx:539` が **`sortType === "week"` を直書き**して
   `initialPostsForWeek` を再利用している。中間タブが可否によって
@@ -335,7 +419,7 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
   `PostList` は **`sortType === initialMiddleSort` のときだけ**初期配列を再利用する。
   Phase 6 で week を消したあとは `MiddleSort` が1値になり、この抽象も畳める。
 
-- [ ] ⭐ **昇格前に week を選んだ場合の遷移を入れる**
+- [x] ⭐ **昇格前に week を選んだ場合の遷移を入れる**
 
   `SearchAvailabilityProvider` と同型なので、**初期値は公開フラグ（段階公開中は false）**で、
   Loader が遅れて `false → true` へ**昇格だけ**させる（ページ本体は待たない）。
@@ -345,16 +429,16 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
 
   可否が `false → true` に変わったとき `sortType === "week"` なら
   `handleSortChange("popular_prompts")` を呼んで追随させる。
-- [ ] 🆕 ラベルのコンポーネントを追加（プリセット側の NEW バッジとは**別の定数**にする。あちらは14日窓で意味が違う）
-- [ ] 15ロケールに文言を追加（タブ名・空状態・🆕ラベル）
-- [ ] 空状態の文言を用意（現在は `postsT("preparing")` を流用している）
+- [x] 🆕 ラベルのコンポーネントを追加（プリセット側の NEW バッジとは**別の定数**にする。あちらは14日窓で意味が違う）
+- [x] 15ロケールに文言を追加（タブ名・空状態・🆕ラベル）
+- [x] 空状態の文言を用意（現在は `postsT("preparing")` を流用している）
 
 ### Phase 4: 運営のみで検証
 
 **目的**: 本番データで順位の妥当性を確かめる。ユーザーには一切見えない。
 **ビルド確認**: 影響なし。
 
-- [ ] 本番へマイグレーション適用（`supabase db push`）
+- [x] ~~本番へマイグレーション適用（`supabase db push`）~~ → **Phase 1 で実施済み**（2026-09-02）
 - [ ] cron を有効化する（`cron.alter_job(active := true)`）
   - マイグレーションでは既存方針どおり **inactive で投入**済み。ここで初めて動かす
   - 有効化はユーザー承認を得てから行う
