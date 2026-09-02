@@ -188,13 +188,18 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
 **ビルド確認**: マイグレーションのみ。アプリのビルドに影響しない。
 
 - [ ] `popular_prompt_rankings` テーブルを作成（`post_id` PK / `position` / `score` / `is_new` / `bucket` / `computed_at`）
-- [ ] `position` にインデックス。`computed_at` は鮮度判定に使う
+- [ ] `position` に **UNIQUE 制約**（表示の唯一の順序であり、重複すると並びが不定になる）
+  - 洗い替え中に一時的に重複するなら `DEFERRABLE INITIALLY DEFERRED` にする
+- [ ] 読み出しも `ORDER BY position, post_id` として二重に固定する
+- [ ] `computed_at` は鮮度判定に使う
 - [ ] RLS: **全操作を拒否**し、`createAdminClient()`（service_role）からのみ読む
   - 既存の `style_usage_events` と同じ方式（`features/style/lib/style-popularity.ts` のコメント参照）
   - ⭐ SELECT を公開にすると、**段階公開中に PostgREST 経由で順位が読めてしまう**。公開前の機能の中身が漏れる
 - [ ] `recompute_popular_prompts()` を SECURITY DEFINER で作成
   - 呼び出し元の検証は `is_trusted_lineage_writer()` を使う（`auth.uid()` では未ログインを弾けない。`20260831140000` 参照）
+  - **`SET search_path = public, pg_temp` を明記する**（`20260214120001_fix_function_search_path.sql` と同じ作法）
   - anon / authenticated から EXECUTE を剥がす
+- [ ] **`node scripts/check-rpc-grants.mjs` を実行して権限を検証する**（AGENTS.md の手順）
 - [ ] 計算内容は「5. スコア定義」のとおり
 - [ ] `supabase db push` 前に `supabase db diff` の結果をユーザーに提示する
 
@@ -240,8 +245,20 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
     - **独立した Suspense の中に置く**（同じ境界だとページ全体が認証待ちになる）
   - `PopularPromptsAvailabilityProvider` / `...Upgrade`（クライアント）を新規作成し、
     運営だけ可否を true へ昇格させる
+  - ⭐ **`components/LocaleShell.tsx` にマウントする**（検索と同じ配置）
+    - `:38` で `SearchAvailabilityProvider` が app content を包み、
+      `:46` で `SearchAvailabilityLoader` を独立 Suspense 内に置いている
+    - **ここに追加しないと Provider の外で false に倒れ、運営もタブを使えない**
+    - Loader は**キャッシュ境界の外**に置く
 - [ ] `SortType` に `"popular_prompts"` を追加
-- [ ] `SortTabs.tsx`: Provider の値が false ならタブ自体を出さない
+- [ ] `SortTabs.tsx`: **中間タブを可否で差し替える**
+  ```
+  中間タブ = available ? "popular_prompts" : "week"
+  ```
+  ⭐ 「popular を隠す」だけだと、week が残っている Phase 5 までのあいだ
+  運営に**4タブが並ぶ**。差し替えにすれば、公開中は popular のみ、
+  フラグを閉じた一般ユーザーには week が復帰する
+  - Phase 6 で week を消したあとは、この分岐も削除して popular 固定にする
 - [ ] **`app/api/posts/route.ts` でも同じ関数で認可する**
   - UI を隠すだけでは足りない。この API は認証不要で `sort` を受けるため、直接叩けば取得できてしまう（検索で踏んだ REQ-06b と同型）
   - 許可されていない相手には `sort` を無視して新着順を返す（エラーにしない。未公開機能の存在を失敗の仕方から推測させないため）
@@ -324,7 +341,9 @@ weight(t) = 0.5 ^ (経過日数 ÷ 7)      経過日数 = (now() - イベント�
 
 ### 5-3. 利用（本人以外のみ。`user_id <> origin_author_id`）
 
-投稿×利用者の組ごとに、`created_at` の**降順**に並べる。
+投稿×利用者の組ごとに、**`created_at DESC, id DESC`** の順に並べる。
+⭐ `created_at` だけでは同時刻イベントの「最新」が定まらず、実行ごとに
+3.0 が付く行が入れ替わりうる。`id` を最終タイブレークにして固定する。
 
 | 行 | 重み | 減衰に使う日時 |
 |---|---|---|
@@ -343,7 +362,8 @@ weight(t) = 0.5 ^ (経過日数 ÷ 7)      経過日数 = (now() - イベント�
 - `deleted_at IS NULL` のみ
 - `user_id <> 投稿者` のみ（本人のコメントは数えない）
 - **親コメントと返信を区別しない**（どちらも1件として扱う）
-- **1人1票**。同一人が複数書いた場合は、**その人の最新の `created_at`** で減衰させる
+- **1人1票**。同一人が複数書いた場合は、**`created_at DESC, id DESC` の先頭行の `created_at`** で減衰させる
+  （利用と同じく、同時刻のときに揺れないよう `id` で固定する）
 - 係数 **1.5**
 
 ### 5-5. いいね
@@ -363,16 +383,34 @@ k = 0.70
 → 0.70 〜 1.00
 ```
 
-### 5-7. 表示順の確定
+### 5-7. 決定的な擬似乱数 r(key)
+
+ゆらぎと新着枠の位置は、同じ入力で必ず同じ値を返す必要がある。**次の1本だけを使う。**
+
+```sql
+-- r(key) ∈ [0, 1)
+((('x' || substr(md5(key), 1, 8))::bit(32)::int)::bigint + 2147483648) / 4294967296.0
+```
+
+⭐ **`bit(32)::int` は符号付き**なので、`::bigint` へ広げて `2^31` を足し、`2^32` で割る。
+これを省くとハッシュのおよそ半数で負になり（実測16件中6件）、
+`r ∈ [-0.5, 0.5]` → jitter が `0.70〜1.00` に偏る（＝常に減点・±15%にならない）。
+
+実測での確認値（16サンプル）:
+
+| 式 | 範囲 |
+|---|---|
+| `r` | 0.0096 〜 0.9826（範囲外0件） |
+| `jitter` | **0.853 〜 1.145**（＝±15%） |
+| 新着枠の位置 | **2 〜 9** |
+
+### 5-8. 表示順の確定
 
 ```
-bucket = floor(extract(epoch from now()) / 21600)        -- 6時間
+bucket = floor(extract(epoch from now()) / 21600)          -- 6時間
 
-jitter(post_id) = 1 + (r × 2 − 1) × 0.15
-  r = ('x' || substr(md5(post_id::text || ':' || bucket), 1, 8))::bit(32)::int / 4294967295.0
-      → r は [0, 1] の決定的な値
-
-表示値 = スコア × jitter(post_id)
+jitter(post_id) = 1 + (r(post_id || ':' || bucket) * 2 - 1) * 0.15
+表示値          = スコア × jitter(post_id)
 ```
 
 並べ替えの順序（**すべて決定的**にする）:
@@ -381,12 +419,16 @@ jitter(post_id) = 1 + (r × 2 − 1) × 0.15
 2. 同値なら `posted_at` の降順
 3. それも同値なら `post_id` の昇順（最終タイブレーク）
 
-### 5-8. 新着枠
+保存時に `position` を 1 から採番する。`position` には **UNIQUE 制約**を付け、
+読み出しも `ORDER BY position, post_id` として二重に固定する。
+
+### 5-9. 新着枠
 
 - 候補: `posted_at >= now() - interval '24 hours'` の対象投稿
-- **候補が3件を超える場合は `posted_at` の降順で上位3件**を採る
-- 挿入位置: `1 + floor(rnd('newpos:' || post_id || ':' || bucket) × 8)` に、
-  採った順に1つずつずらして差し込む（＝2〜9番目あたりに散る）
+- **選出**: `ORDER BY posted_at DESC, post_id ASC` で上位3件
+  （`post_id` を入れないと、同時刻投稿のときに採用される3件が実行ごとに変わる）
+- **挿入位置**: `2 + floor(r('newpos:' || post_id || ':' || bucket) * 8)` → **2〜9番目**
+  採った順に1つずつずらして差し込む
 - 新着枠に入った投稿は `is_new = true` として保存し、UI は 🆕 を出す
 - 作者上限は設けない
 
@@ -405,6 +447,7 @@ jitter(post_id) = 1 + (r × 2 − 1) × 0.15
 | `features/home/components/CachedHomePostListSection.tsx` | 修正 | `cacheTag` の差し替え（**前回の一覧から漏れていた**） |
 | `features/posts/components/PopularPromptsAvailabilityLoader.tsx` | 新規 | サーバー側の運営判定 |
 | `features/posts/components/PopularPromptsAvailabilityProvider.tsx` | 新規 | クライアントへの昇格 |
+| `components/LocaleShell.tsx` | 修正 | Provider と Loader のマウント（**前回の一覧から漏れていた**） |
 | `lib/env.ts` | 修正 | フラグと判定関数の追加 |
 | `features/posts/lib/server-api.ts` | 修正 | `sort === "week"` 分岐の削除 |
 | `features/posts/lib/date-utils.ts` | 修正 | 未使用になる関数の削除 |
@@ -438,6 +481,10 @@ jitter(post_id) = 1 + (r × 2 − 1) × 0.15
 | ゆらぎ | 同じ post_id と同じバケットなら必ず同じ値（ページネーション整合） |
 | フォールバック | `computed_at` が古いとき新着順に倒れる |
 | RLS | anon / authenticated から順位テーブルを直接 SELECT できない |
+| ゆらぎの範囲 | `r ∈ [0,1)` であること／jitter が 0.85〜1.15 に収まること（符号付き int の取りこぼしを検出する） |
+| 決定性 | 同時刻の利用イベント・コメントがあっても、再実行で順位が変わらない |
+| タブ差し替え | 可否 false のとき中間タブが week、true のとき popular になり、**4タブにならない** |
+| Provider | `LocaleShell` の外側で参照しても false に倒れるだけでクラッシュしない |
 | ページング | ブロック・通報で除外が起きても、20件揃うまで返り `hasMore` が誤らない |
 | 導線 | `sort=popular_prompts` が実際に `getPopularPrompts()` へ到達する |
 | 段階公開 | 未公開時、一般ユーザーの SSR HTML に人気投稿の配列が含まれない |
@@ -461,7 +508,7 @@ jitter(post_id) = 1 + (r × 2 − 1) × 0.15
 | # | 内容 |
 |---|---|
 | 1 | cron を1時間ごとにすると、新着枠の反映遅延は最大1時間。初回利用の中央値が6時間なので許容範囲と判断しているが、要確認 |
-| 2 | 追跡できない利用イベント**35件（163件中）**は「未投稿」に倒す。`generated_images.image_job_id` での直接結合に切り替えて再計測したが、**URL 一致と同じ 128/163** で件数は変わらなかった。残り35件は生成後に画像が削除された等と推定 |
+| 2 | 追跡できない利用イベント**35件（163件中）**は「未投稿」に倒す。`generated_images.image_job_id` での直接結合に切り替えて再計測したが、**URL 一致と同じ 128/163** で件数は変わらなかった。残り35件は**画像行を追跡できないところまでしか言えない**（削除されたとは断定しない） |
 | 3 | ~~お知らせ文の最終文面~~ → レビュー案で確定 |
 
 ---
