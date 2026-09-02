@@ -10,7 +10,15 @@ import { isPostImpressionsEnabled } from "@/lib/env";
  * 文字列が有効なSortTypeかどうかを判定する
  */
 export function isValidSortType(value: string): value is SortType {
-  const validSorts: SortType[] = ["newest", "following", "daily", "week", "month", "popular"];
+  const validSorts: SortType[] = [
+    "newest",
+    "following",
+    "daily",
+    "week",
+    "month",
+    "popular",
+    "popular_prompts",
+  ];
   return validSorts.includes(value as SortType);
 }
 

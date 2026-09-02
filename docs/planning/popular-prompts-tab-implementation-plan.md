@@ -232,12 +232,36 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
 新規 121・リピート 35（投稿あり 5／投稿なし 30）で、1 組あたり最大 5 件。
 上限は将来の自己操作に対する保険であって、いまの順位には効いていない。
 
-### Phase 2: サーバーサイド
+### Phase 2: サーバーサイド ✅ 完了（2026-09-02）
 
 **目的**: 順位テーブルから投稿を取得する経路を作り、**既存の導線に接続する**。
 **ビルド確認**: `npm run build -- --webpack` が通る。
 
-- [ ] `features/posts/lib/popular-prompts-api.ts` を新規作成
+**実施メモ（2026-09-02）**
+
+- ⭐ **除外を LIMIT より前に置くため、読み出しも SQL 側へ寄せた。**
+  `popular_prompt_rankings` は RLS 全拒否で PostgREST から join できず、
+  `generated_images` との間に FK も張っていない（削除で順位が壊れないようにするため）。
+  そこで `get_popular_prompt_page(p_viewer_id, p_limit, p_offset)` を追加し、
+  順位 × 投稿の結合・公開条件・ブロック・通報を SQL で適用してから
+  `LIMIT/OFFSET` する形にした（`20260902120000_add_popular_prompt_page_rpc.sql`）。
+- ⭐ **公開条件は毎回引き直す。** 順位は最大 1 時間前のスナップショットなので、
+  cron 実行後に取消・非公開・モデレーションで消えた投稿が残りうる。
+  RPC の join で `is_posted` / `moderation_status` を**現在値**で再確認している。
+- ⭐ **`lib/env.ts` のフラグは Phase 2 に前倒しした。** 計画では Phase 3 だが、
+  Phase 2 の API 認可がこの判定関数を使うため、切り離せない。
+- **コンポーネント配線（ホームの初期データ供給）は Phase 3 へ移した。**
+  `CachedHomePostList` の変更は `PostList` の `initialMiddleSort` 対応と
+  同時でないと初期配列が捨てられるため、UI 側と 1 コミットにまとめる。
+- `enrichPosts` を `server-api.ts` から export した（整形を二重に持たないため）。
+
+**検証結果**: `npm run lint` / `typecheck`（非テスト 0 件）/ `test`（4255 passed）/
+`build -- --webpack` すべて通過。`check-rpc-grants.mjs` は anon 6/6・authenticated 22/22・未監査 0。
+RPC の実挙動も本番で確認（limit 5 offset 0 → position 1〜5・`is_new` が 4,5 で true、
+limit 3 offset 125 → position 126 の 1 件のみ）。
+
+
+- [x] `features/posts/lib/popular-prompts-api.ts` を新規作成
   - `getPopularPrompts(limit, offset, currentUserId)` を実装
   - `createAdminClient()` で `popular_prompt_rankings` を読む（RLS 全拒否のため）
   - ⭐ **除外はページングより前に適用する。** 「順位取得 → 投稿取得 → 除外」の順だと、
@@ -245,16 +269,16 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
     順位テーブルと `generated_images` を join し、公開条件・ブロック・通報を
     **DB 側で適用してから `.range()`** する（現行 `getPosts` と同じ作法）
   - `computed_at` が閾値（例: 3時間）より古ければ新着順にフォールバックし、`console.error` を残す
-- [ ] **`app/api/posts/route.ts` に明示的な分岐を足す**
+- [x] **`app/api/posts/route.ts` に明示的な分岐を足す**
   - ⭐ 現状この API は `getPosts()` しか呼ばない（`route.ts:61`）。
     `validSorts` に足すだけでは**新着順が返るだけで新APIに到達しない**
   - `sort === "popular_prompts"` かつ認可 OK のときだけ `getPopularPrompts()` を呼ぶ
-- [ ] **ホームの初期データ供給を既存の連鎖に載せる**
+- [ ] **ホームの初期データ供給を既存の連鎖に載せる** → **Phase 3 で実施**
   - 現行は `app/[locale]/page.tsx:332` → `CachedHomePostListSection` → `CachedHomePostList` → `PostList`
   - 新規に `CachedPopularPromptsSection` を作っても**接続先が無い**。
     `CachedHomePostList` に `initialPopularPrompts` を追加し、`cacheTag("popular-prompts")` を付ける
 
-- [ ] ⭐ **SSR の取得可否はサーバーで決める（Loader では決められない）**
+- [ ] ⭐ **SSR の取得可否はサーバーで決める（Loader では決められない）** → **Phase 3 で実施**
 
   `PopularPromptsAvailabilityLoader` は**クライアントの後段昇格**なので、
   SSR 時点の取得可否は決められない。**一般ユーザーの HTML に人気投稿の配列を

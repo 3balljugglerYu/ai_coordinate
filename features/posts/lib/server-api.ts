@@ -505,7 +505,7 @@ function buildOwnerVisibleOrFilter(currentUserId: string | null): string | null 
  * @param rangeLikeCounts 期間別いいね数（オプショナル、daily/week/monthの場合のみ）
  * @param supabaseOverride - use cache 用。指定時は cookies を使わない
  */
-async function enrichPosts(
+export async function enrichPosts(
   postsData: GeneratedImageRecord[],
   rangeLikeCounts?: Record<string, number>,
   supabaseOverride?: SupabaseClient
