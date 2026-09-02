@@ -182,26 +182,55 @@ flowchart LR
 **Phase 4 までは運営にしか見えない。** タブ自体が運営以外には描画されず、
 API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）は**全公開が安定するまで残す**（削除は Phase 6）。
 
-### Phase 1: テーブルと再計算関数
+### Phase 1: テーブルと再計算関数 ✅ 完了（2026-09-02・本番適用済み）
 
 **目的**: 順位を保存する器と、それを埋める関数を用意する。UI からはまだ使わない。
 **ビルド確認**: マイグレーションのみ。アプリのビルドに影響しない。
 
-- [ ] `popular_prompt_rankings` テーブルを作成（`post_id` PK / `position` / `score` / `is_new` / `bucket` / `computed_at`）
-- [ ] `position` に **UNIQUE 制約**（表示の唯一の順序であり、重複すると並びが不定になる）
-  - 洗い替え中に一時的に重複するなら `DEFERRABLE INITIALLY DEFERRED` にする
-- [ ] 読み出しも `ORDER BY position, post_id` として二重に固定する
-- [ ] `computed_at` は鮮度判定に使う
-- [ ] RLS: **全操作を拒否**し、`createAdminClient()`（service_role）からのみ読む
-  - 既存の `style_usage_events` と同じ方式（`features/style/lib/style-popularity.ts` のコメント参照）
-  - ⭐ SELECT を公開にすると、**段階公開中に PostgREST 経由で順位が読めてしまう**。公開前の機能の中身が漏れる
-- [ ] `recompute_popular_prompts()` を SECURITY DEFINER で作成
-  - 呼び出し元の検証は `is_trusted_lineage_writer()` を使う（`auth.uid()` では未ログインを弾けない。`20260831140000` 参照）
-  - **`SET search_path = public, pg_temp` を明記する**（`20260214120001_fix_function_search_path.sql` と同じ作法）
+**追加したファイル**
+
+| ファイル | 内容 |
+|---|---|
+| `supabase/migrations/20260902110000_add_popular_prompt_rankings.sql` | テーブル・ヘルパー2本・`recompute_popular_prompts()` |
+| `supabase/migrations/20260902110100_schedule_popular_prompts_cron.sql` | cron 登録（inactive・毎時15分） |
+
+- [x] `popular_prompt_rankings` テーブルを作成（`post_id` PK / `position` / `score` / `is_new` / `bucket` / `computed_at`）
+- [x] `position` に **UNIQUE 制約**（表示の唯一の順序であり、重複すると並びが不定になる）
+  - 洗い替えは「全件 DELETE → 1 文で INSERT」なので途中で重複する瞬間が無く、`DEFERRABLE` は**不要だった**
+- [ ] 読み出しも `ORDER BY position, post_id` として二重に固定する → **Phase 2 で実施**
+- [x] `computed_at` は鮮度判定に使う
+- [x] RLS: **全操作を拒否**し、`createAdminClient()`（service_role）からのみ読む
+  - `prompt_usage_events`（`20260730200100`）と同じ形。`ENABLE ROW LEVEL SECURITY` + deny-all ポリシー + PUBLIC/anon/authenticated から `REVOKE ALL`
+- [x] `recompute_popular_prompts()` を SECURITY DEFINER で作成
+  - 入口で `is_trusted_lineage_writer()` を検証（`auth.uid()` では未ログインを弾けない）
+  - `SET search_path = public, pg_temp` を明記
   - anon / authenticated から EXECUTE を剥がす
-- [ ] **`node scripts/check-rpc-grants.mjs` を実行して権限を検証する**（AGENTS.md の手順）
-- [ ] 計算内容は「5. スコア定義」のとおり
-- [ ] `supabase db push` 前に `supabase db diff` の結果をユーザーに提示する
+- [x] **`node scripts/check-rpc-grants.mjs` を実行して権限を検証する**
+- [x] 計算内容は「5. スコア定義」のとおり
+- [x] 適用内容をユーザーに提示してから `supabase db push`
+  - ⭐ `supabase db diff` はローカル shadow DB（Docker）が要るため**この環境では動かない**。
+    代わりに `supabase db push --dry-run` で対象マイグレーションを提示した
+  - ⭐ `check-rpc-grants.mjs` は本番の `pg_proc` を見るので、**push の前には実行できない**。
+    そのため本番適用を Phase 4 から Phase 1 へ前倒しした（追加のみ・cron は inactive・DOWN 記載済み）
+
+**実施結果（本番実測）**
+
+| 検証項目 | 結果 |
+|---|---|
+| 対象件数 | 126 件（Free 原本・visible） |
+| `recompute_popular_prompts()` | 126 行を書き込んで正常終了 |
+| `position` の整合 | 1〜126・重複なし・`post_id` 重複なし |
+| 新着枠 | 3 件が position **4 / 5 / 7**（規定の 2〜9 内） |
+| **決定性** | 同一バケットで 2 回実行 → `position` 変化 **0 件**・`is_new` 変化 **0 件** |
+| **ゆらぎ（符号付き `bit(32)` の罠）** | 126 件全件で `r` ∈ 0.0017〜0.9975（範囲外 **0 件**）、`jitter` ∈ **0.8505〜1.1492**、新着枠位置 ∈ **2〜9** |
+| 充実度 `k` | 0.70 / 0.75 / 0.80 / 0.85 / 0.90 / 0.95 を実データで確認（9字=+0・15字=+0.05・31字=+0.10・121字=+0.15 の境界が一致） |
+| 権限 | `check-rpc-grants.mjs` = anon 6/6・authenticated 22/22・未監査 0 |
+| RLS / GRANT | anon・authenticated とも SELECT 権限なし・EXECUTE 権限なし。service_role のみ可。`relrowsecurity = true` |
+| cron | `recompute_popular_prompts_hourly` / `15 * * * *` / **active = false** |
+
+⭐ **リピート上限 3.0 は現データでは発動していない。** 自己利用を除いた利用イベント 156 件のうち
+新規 121・リピート 35（投稿あり 5／投稿なし 30）で、1 組あたり最大 5 件。
+上限は将来の自己操作に対する保険であって、いまの順位には効いていない。
 
 ### Phase 2: サーバーサイド
 
@@ -354,7 +383,7 @@ API も同じ判定関数で閉じる。`sort="week"`（既存のオススメ）
 **目的**: 本番データで順位の妥当性を確かめる。ユーザーには一切見えない。
 **ビルド確認**: 影響なし。
 
-- [ ] 本番へマイグレーション適用（`supabase db push`）
+- [x] ~~本番へマイグレーション適用（`supabase db push`）~~ → **Phase 1 で実施済み**（2026-09-02）
 - [ ] cron を有効化する（`cron.alter_job(active := true)`）
   - マイグレーションでは既存方針どおり **inactive で投入**済み。ここで初めて動かす
   - 有効化はユーザー承認を得てから行う
