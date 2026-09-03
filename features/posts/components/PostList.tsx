@@ -490,7 +490,34 @@ export function PostList({
           loadedSortTypeRef.current = sortType;
           loadedSearchQueryRef.current = normalizedSearchQuery;
         } else {
-          setPosts((prev) => [...prev, ...nextPosts]);
+          /*
+            ⭐ 追加ページは 1 ページ目と別のスナップショットから来ることがある。
+
+            1 ページ目はサーバーが用意した配列（`"use cache"` の写し）で、
+            2 ページ目以降はスクロール時に API を叩いた結果である。その間に
+            順位や並びが動くと、境界をまたいだ投稿が **2 回並び**、
+            `key={post.id}` も重複する。
+
+            例: 人気タブで cron が順位を洗い替え、新着枠の差し込みで
+            20 位の投稿が 21 位へ下がると、1 ページ目の末尾と
+            2 ページ目の先頭に同じ投稿が出る。新着タブでも、追加取得までの
+            間に新規投稿があれば同じことが起きる。
+
+            既出 id を落として繋ぐ。既存 200 件でも 0.01ms 未満なので、
+            この位置の負荷としては無視できる（サーバー側の
+            `stripHashtagJoin` と同じ作法）。
+          */
+          setPosts((prev) => {
+            const seen = new Set(prev.map((post) => post.id));
+            return [
+              ...prev,
+              ...nextPosts.filter((post) => !post.id || !seen.has(post.id)),
+            ];
+          });
+          /*
+            offset は「除いた後の件数」ではなく取得件数で進める。
+            DB 側のページ位置とずらすと、次の取得が重複・欠落する。
+          */
           setOffset((prev) => prev + nextPosts.length);
         }
         setHasMore(data.hasMore);

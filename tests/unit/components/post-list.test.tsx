@@ -352,6 +352,67 @@ describe("PostList", () => {
   });
 
   /**
+   * ⭐ 追加ページに 1 ページ目と同じ投稿が混ざっても、二重に並べないこと。
+   *
+   * 1 ページ目はサーバーが用意した配列（`"use cache"` の写し）で、
+   * 2 ページ目以降はスクロール時の API 取得である。その間に順位や並びが動くと
+   * 境界をまたいだ投稿が両方に入る。人気タブなら cron の洗い替えで
+   * 20 位が 21 位へ下がったとき、新着タブなら追加取得までに新規投稿があったとき。
+   *
+   * 素で連結していたころは同じカードが 2 枚並び、`key={post.id}` も重複していた。
+   */
+  describe("追加ページの重複", () => {
+    async function loadSecondPage(secondPage: Post[]) {
+      // 1 ページ目はサーバー配列（20 件 = hasMore の条件を満たす）
+      const firstPage = Array.from({ length: 20 }, (_, i) =>
+        createPost(`p${i + 1}`, `投稿${i + 1}`)
+      );
+      fetchMock.mockImplementation((url: string) => {
+        if (String(url).startsWith("/api/posts?")) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ posts: secondPage, hasMore: false }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      // 追加取得のトリガー（無限スクロールの監視要素が画面に入った状態）
+      useInViewMock.mockImplementation((options?: { rootMargin?: string }) => {
+        useInViewOptions.push(options ?? {});
+        return { ref: jest.fn(), inView: true } as ReturnType<typeof useInView>;
+      });
+
+      render(<PostList initialPosts={firstPage} skipInitialFetch />);
+      await screen.findByTestId("post-card-p1");
+      return firstPage;
+    }
+
+    test("⭐1ページ目と重なる投稿は2枚並べない", async () => {
+      // p20 が押し下げられ、2 ページ目の先頭に再登場したケース
+      await loadSecondPage([
+        createPost("p20", "投稿20"),
+        createPost("p21", "投稿21"),
+      ]);
+
+      await screen.findByTestId("post-card-p21");
+      expect(screen.getAllByTestId("post-card-p20")).toHaveLength(1);
+    });
+
+    test("重ならない投稿は落とさない", async () => {
+      await loadSecondPage([
+        createPost("p21", "投稿21"),
+        createPost("p22", "投稿22"),
+      ]);
+
+      await screen.findByTestId("post-card-p22");
+      expect(screen.getByTestId("post-card-p21")).toBeInTheDocument();
+      // 1 ページ目も消えない
+      expect(screen.getByTestId("post-card-p20")).toBeInTheDocument();
+    });
+  });
+
+  /**
    * 「いま一覧に出ているのはどの条件で取ったものか」の控えは、
    * newest / week / 未ログインのフォロータブでそれぞれ別に書き換わる。
    * 依存配列を触った変更なので、分岐ごとに壊れていないことを見ておく。
