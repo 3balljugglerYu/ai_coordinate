@@ -72,7 +72,7 @@ const FEED_PREFETCH_CARDS = 3;
  * popular_prompts（🔥人気）のどちらにもなる。Phase 6 で week を消せば
  * 1 値になり、この型ごと畳める。
  */
-export type MiddleSort = "week" | "popular_prompts";
+export type MiddleSort = "week" | "popular_prompts" | "newest";
 
 interface PostListProps {
   initialPosts?: Post[];
@@ -86,6 +86,15 @@ interface PostListProps {
   initialMiddlePosts?: Post[];
   /** initialMiddlePosts がどの sort のデータか。既定は既存挙動どおり week。 */
   initialMiddleSort?: MiddleSort;
+  /**
+   * ホームで最初に開くタブ。
+   *
+   * ⭐ サーバーで確定させて渡す。PICK UP が使えるかは `ADMIN_USER_IDS`
+   * （サーバー専用）に依存するため、クライアントで決めると Provider の
+   * 後段昇格まで false に倒れ、描画後にタブが飛ぶ。
+   * 既定は既存挙動どおり newest。
+   */
+  initialDefaultSort?: "newest" | MiddleSort;
   forceInitialLoading?: boolean;
   /** 親がデータを提供している場合、初回の loadPosts をスキップ（キャッシュ表示の最適化用） */
   skipInitialFetch?: boolean;
@@ -116,6 +125,7 @@ export function PostList({
   initialPosts = EMPTY_POSTS,
   initialMiddlePosts = EMPTY_POSTS,
   initialMiddleSort = "week",
+  initialDefaultSort = "newest",
   forceInitialLoading = false,
   skipInitialFetch = false,
   trackImpressions = false,
@@ -131,7 +141,9 @@ export function PostList({
   const hasModerationRefresh = searchParams.get("mod_refresh") === "1";
   const isSearchPage = pathname === "/search" || pathname?.endsWith("/search");
   // 検索画面の場合はデフォルトでpopular、それ以外はnewest
-  const defaultSortType: SortType = isSearchPage ? "popular" : "newest";
+  const defaultSortType: SortType = isSearchPage
+    ? "popular"
+    : initialDefaultSort;
 
   const [posts, setPosts] = useState<Post[]>(
     forceInitialLoading ? [] : initialPosts
@@ -143,7 +155,15 @@ export function PostList({
   const [offset, setOffset] = useState(
     forceInitialLoading ? 0 : initialPosts.length
   );
-  const popularPromptsAvailable = usePopularPromptsAvailable();
+  /*
+    ⭐ サーバーが PICK UP の配列を配っていれば、その時点で可否は確定している。
+    context の初期値（公開フラグ）は段階公開中 false で、Loader が遅れて昇格
+    させるため、これを待つと初回描画でタブが飛ぶ。サーバーの合図を OR する。
+  */
+  const popularPromptsAvailable =
+    usePopularPromptsAvailable() ||
+    initialDefaultSort === "popular_prompts" ||
+    initialMiddleSort === "popular_prompts";
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -166,7 +186,6 @@ export function PostList({
   const loadedSearchQueryRef = useRef<string | null>(
     forceInitialLoading ? null : ""
   );
-  const [highlightPostId, setHighlightPostId] = useState<string | null>(null);
   // 投稿ボーナスの付与モーダル。付与があったときだけ開く
   const [postBonus, setPostBonus] = useState<{
     amount: number;
@@ -524,12 +543,6 @@ export function PostList({
 
         if (shouldBypassClientCache) {
           hasFreshNewestPostsRef.current = true;
-          if (
-            pendingHomePostRefresh?.action === "posted" &&
-            nextPosts.some((post) => post.id === pendingHomePostRefresh.postId)
-          ) {
-            setHighlightPostId(pendingHomePostRefresh?.postId ?? null);
-          }
         }
       } else {
         console.error("Failed to load posts:", data.error);
@@ -562,8 +575,21 @@ export function PostList({
   // sortType / currentUserId / searchQuery に応じたモーダル表示とデータロード
   useEffect(() => {
     const shouldShowAuth = sortType === "following" && !currentUserId;
+    /*
+      投稿直後の取り直し。
+
+      ⭐ `posted` は「投稿した作品が既定タブに出うる」ときだけ意味がある。
+      PICK UP は順位テーブル由来で、投稿したての作品はスコア 0 なので
+      新着枠(直近24hの上位3件)に入らない限り載らない。既定が PICK UP の人に
+      走らせると、手元の配列を捨ててネットワークを待たせた挙げ句、
+      自分の投稿は出てこない。
+
+      `unposted` は「消えるべきものを消す」ので、どの既定タブでも走らせる。
+    */
+    const canShowPostedInDefaultTab = defaultSortType === "newest";
     const shouldForceNewestRefresh =
       pendingHomePostRefresh !== null &&
+      (pendingHomePostRefresh.action !== "posted" || canShowPostedInDefaultTab) &&
       sortType === defaultSortType &&
       !normalizedSearchQuery &&
       !didTriggerPostedRefreshRef.current;
@@ -581,31 +607,34 @@ export function PostList({
         return;
       }
 
-      // skipInitialFetch かつキャッシュデータがある場合、該当タブのときは初回フェッチをスキップ
-      // 他タブから戻ってきたときはキャッシュデータを復元する
+      /*
+        skipInitialFetch のとき、サーバーが配ってくれた配列があるタブは
+        初回フェッチをスキップする（他タブから戻ってきたときも復元する）。
+
+        `initialPosts` は**既定タブの配列**（検索画面もこの意味で渡している）、
+        `initialMiddlePosts` はもう一方のタブの配列。
+
+        ⭐ sort を直書きしない。既定タブも、もう一方のタブも、可否によって
+        中身が変わる（運営なら既定=PICK UP / もう一方=新着、一般なら
+        既定=新着 / もう一方=オススメ）。直書きすると片方の初期配列が捨てられる。
+      */
       if (skipInitialFetch && !normalizedSearchQuery) {
-        if (
-          !shouldForceNewestRefresh &&
+        const cachedForSort =
+          sortType === defaultSortType
+            ? initialPosts
+            : sortType === initialMiddleSort
+              ? initialMiddlePosts
+              : undefined;
+        // 投稿直後の取り直しと、取得済みの新しい一覧は既定タブでだけ優先する
+        const blockedByRefresh =
           sortType === defaultSortType &&
-          initialPosts.length > 0 &&
-          !hasFreshNewestPostsRef.current
-        ) {
-          setPosts(initialPosts);
-          setHasMore(initialPosts.length === 20);
-          setOffset(initialPosts.length);
-          loadedSortTypeRef.current = defaultSortType;
-          loadedSearchQueryRef.current = "";
-          setIsLoading(false);
-          return;
-        }
-        // ⭐ `sortType === "week"` の直書きをやめる。中間タブは可否によって
-        //    week / popular_prompts のどちらにもなるため、渡された sort と
-        //    突き合わせないと片方の初期配列が捨てられる。
-        if (sortType === initialMiddleSort && initialMiddlePosts.length > 0) {
-          setPosts(initialMiddlePosts);
-          setHasMore(initialMiddlePosts.length === 20);
-          setOffset(initialMiddlePosts.length);
-          loadedSortTypeRef.current = initialMiddleSort;
+          (shouldForceNewestRefresh || hasFreshNewestPostsRef.current);
+
+        if (cachedForSort && cachedForSort.length > 0 && !blockedByRefresh) {
+          setPosts(cachedForSort);
+          setHasMore(cachedForSort.length === 20);
+          setOffset(cachedForSort.length);
+          loadedSortTypeRef.current = sortType;
           loadedSearchQueryRef.current = "";
           setIsLoading(false);
           return;
@@ -711,20 +740,6 @@ export function PostList({
   );
 
   useEffect(() => {
-    if (!highlightPostId) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      setHighlightPostId(null);
-    }, 4000);
-
-    return () => {
-      window.clearTimeout(timeoutId);
-    };
-  }, [highlightPostId]);
-
-  useEffect(() => {
     if (inView && hasMore && !isLoading) {
       loadMorePosts();
     }
@@ -768,7 +783,12 @@ export function PostList({
       {!isSearchPage && (
         <div className="mb-4 flex items-end justify-between gap-2 border-b">
           {/* タブ=何を見るか / トグル=どう見るか。両者は独立している */}
-          <SortTabs value={sortType} onChange={handleSortChange} currentUserId={currentUserId} />
+          <SortTabs
+            value={sortType}
+            onChange={handleSortChange}
+            currentUserId={currentUserId}
+            popularPromptsAvailable={popularPromptsAvailable}
+          />
           {/* トグルは 40px(タブの 36px より少し高い)。ホームのスケルトンも 40px なので
               差し替え時のレイアウトシフトは出ない */}
           <div>
@@ -817,7 +837,6 @@ export function PostList({
                   <PostFeedCard
                     post={post}
                     currentUserId={currentUserId}
-                    isHighlighted={post.id === highlightPostId}
                     prioritizeImage={index < 2}
                     trackImpressions={trackImpressions}
                     isFollowingAuthor={
@@ -859,7 +878,6 @@ export function PostList({
                   <PostCard
                     post={post}
                     currentUserId={currentUserId}
-                    isHighlighted={post.id === highlightPostId}
                     prioritizeImage={index < 2}
                     trackImpressions={trackImpressions}
                   />

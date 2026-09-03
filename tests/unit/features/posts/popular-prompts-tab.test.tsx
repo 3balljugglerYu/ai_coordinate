@@ -32,41 +32,62 @@ function renderTabs(children?: React.ReactNode) {
   );
 }
 
-describe("SortTabs の中間タブ差し替え", () => {
+/** 表示されているタブのラベルを左から順に返す。 */
+function tabLabels() {
+  return screen.getAllByRole("button").map((b) => b.textContent);
+}
+
+describe("SortTabs の差し替えと並び順", () => {
   /*
     ⭐ タブは「追加」ではなく「差し替え」。足すだけにすると、week が残っている
     全公開前のあいだ運営に 4 タブが並び、モバイル幅で折り返す。
   */
-  test("可否falseなら中間タブはオススメ(week)_タブは3つ", () => {
+  test("可否falseなら_新着・オススメ・フォローの順（従来どおり）", () => {
     delete process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED;
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(3);
-    expect(screen.getByText("recommended")).toBeInTheDocument();
-    expect(screen.queryByText("popularPrompts")).not.toBeInTheDocument();
+    expect(tabLabels()).toEqual(["newest", "recommended", "following"]);
   });
 
-  test("公開フラグONなら中間タブは人気_タブは3つのまま", () => {
+  /* ⭐ PICK UP は既定タブなので、選択中のタブが左端に来るよう先頭へ置く。 */
+  test("公開フラグONなら_PICK UPが先頭・タブは3つのまま", () => {
     process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED = "true";
 
     renderTabs();
 
-    expect(screen.getAllByRole("button")).toHaveLength(3);
-    expect(screen.getByText("popularPrompts")).toBeInTheDocument();
+    expect(tabLabels()).toEqual(["popularPrompts", "newest", "following"]);
     // ⭐ 4タブにならない（オススメは消える）
     expect(screen.queryByText("recommended")).not.toBeInTheDocument();
   });
 
-  test("昇格すると中間タブが人気へ入れ替わる_4タブにはならない", () => {
+  test("昇格すると並びが入れ替わる_4タブにはならない", () => {
     // 段階公開中は false から始まり、Loader が遅れて true へ昇格させる
     delete process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED;
 
     renderTabs(<PopularPromptsAvailabilityUpgrade />);
 
-    expect(screen.getAllByRole("button")).toHaveLength(3);
-    expect(screen.getByText("popularPrompts")).toBeInTheDocument();
-    expect(screen.queryByText("recommended")).not.toBeInTheDocument();
+    expect(tabLabels()).toEqual(["popularPrompts", "newest", "following"]);
+  });
+
+  /*
+    ⭐ サーバーが可否を確定させている場合は、context の後段昇格を待たない。
+    待つと初回描画で「どのタブも選択されていない」瞬間ができる。
+  */
+  test("propで可否を渡されたら_contextがfalseでも先頭に出す", () => {
+    delete process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED;
+
+    render(
+      <PopularPromptsAvailabilityProvider>
+        <SortTabs
+          value="popular_prompts"
+          onChange={jest.fn()}
+          popularPromptsAvailable
+        />
+      </PopularPromptsAvailabilityProvider>
+    );
+
+    expect(tabLabels()).toEqual(["popularPrompts", "newest", "following"]);
   });
 
   test("新着とフォローは可否に関わらず残る", () => {

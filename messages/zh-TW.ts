@@ -130,8 +130,8 @@ export const zhTwMessages = {
     unpost: "取消發佈",
     newest: "最新",
     recommended: "推薦",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 熱門",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "精選",
     noPopularPrompts: "目前沒有可顯示的作品",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "NEW",

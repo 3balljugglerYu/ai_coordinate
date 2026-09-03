@@ -36,13 +36,12 @@ import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
 import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
-import { cn, formatCountEnUS } from "@/lib/utils";
+import { formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
 
 interface PostFeedCardProps {
   post: Post;
   currentUserId?: string | null;
-  isHighlighted?: boolean;
   prioritizeImage?: boolean;
   trackImpressions?: boolean;
   /**
@@ -88,7 +87,6 @@ interface PostFeedCardProps {
 export function PostFeedCard({
   post,
   currentUserId,
-  isHighlighted = false,
   prioritizeImage = false,
   trackImpressions = false,
   isFollowingAuthor,
@@ -251,11 +249,7 @@ export function PostFeedCard({
       */}
       <Card
         onClick={openDetail}
-        className={cn(
-          "gap-0 cursor-pointer overflow-visible p-0 transition-[box-shadow,background-color,border-color] duration-700",
-          isHighlighted &&
-            "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
-        )}
+        className="gap-0 cursor-pointer overflow-visible p-0"
         data-testid={`post-feed-card-${post.id}`}
       >
         {/* 作者行。名前・アイコン・メニューはそれぞれの導線を持つので、カード地の遷移とは分ける */}

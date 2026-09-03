@@ -261,10 +261,13 @@ describe("PostList", () => {
    * `PostProgressHost` が出す。ここに残すと、あとでホームを開いたときに
    * **もう一度**出てしまう(sessionStorage は遷移しなくても残るため)。
    *
-   * ここが受け持つのは新着の同期(no-store の再取得とハイライト)だけ。
+   * ここが受け持つのは新着の同期(no-store の再取得)だけ。
    * 付与モーダルの中身は post-progress-host.test.tsx で見ている。
+   *
+   * 緑のハイライトは廃止した。投稿できたかの確認は、投稿したその場で出る
+   * トーストの「確認する」(PostProgressHost) が投稿詳細へ連れて行く。
    */
-  test("⭐postedペイロードがある場合_再取得とハイライトだけ行い、合図は出さない", async () => {
+  test("⭐postedペイロードがある場合_再取得だけ行い、合図は出さない", async () => {
     pendingPayload = {
       action: "posted",
       postId: "post-1",
@@ -294,10 +297,6 @@ describe("PostList", () => {
     });
     await screen.findByTestId("post-card-post-1");
 
-    expect(screen.getByTestId("post-card-post-1")).toHaveAttribute(
-      "data-highlighted",
-      "true"
-    );
     // ⭐ ここが本題。二重に知らせない
     expect(toastMock).not.toHaveBeenCalled();
     expect(screen.queryByText("postBonusTitle")).not.toBeInTheDocument();
@@ -349,6 +348,55 @@ describe("PostList", () => {
     // 再レンダーが走っても増えないこと
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(postsCalls).toBe(1);
+  });
+
+  /**
+   * ⭐ 既定タブが PICK UP の人には、投稿直後の強制取り直しを走らせないこと。
+   *
+   * PICK UP は順位テーブル由来で、投稿したての作品はスコア 0 なので
+   * 新着枠(直近24hの上位3件)に入らない限り載らない。走らせると手元の配列を
+   * 捨ててネットワークを待たせた挙げ句、自分の投稿は出てこない。
+   */
+  test("⭐既定がPICK UPなら_投稿直後でも取り直さずサーバー配布を使う", async () => {
+    pendingPayload = { action: "posted", postId: "post-1" };
+    const pickupPosts = [createPost("pickup-1", "人気の作品")];
+
+    render(
+      <PostList
+        initialPosts={pickupPosts}
+        initialDefaultSort="popular_prompts"
+        initialMiddlePosts={initialPosts}
+        initialMiddleSort="newest"
+        skipInitialFetch
+      />
+    );
+
+    await screen.findByTestId("post-card-pickup-1");
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).startsWith("/api/posts?")
+      )
+    ).toHaveLength(0);
+  });
+
+  test("既定が新着なら_投稿直後は従来どおり取り直す", async () => {
+    pendingPayload = { action: "posted", postId: "post-1" };
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        posts: [createPost("post-1", "fresh post")],
+        hasMore: false,
+      }),
+    });
+
+    render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/posts?limit=20&offset=0&sort=newest",
+        { cache: "no-store" }
+      );
+    });
   });
 
   /**

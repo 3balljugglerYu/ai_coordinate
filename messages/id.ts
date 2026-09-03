@@ -130,8 +130,8 @@ export const idMessages = {
     unpost: "Cabut postingan",
     newest: "Terbaru",
     recommended: "Rekomendasi",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 Populer",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "Pilihan",
     noPopularPrompts: "Belum ada karya untuk ditampilkan",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "BARU",

@@ -130,8 +130,8 @@ export const arMessages = {
     unpost: "إزالة المنشور",
     newest: "الأحدث",
     recommended: "مقترح",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 الأكثر رواجًا",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "مختارات",
     noPopularPrompts: "لا توجد أعمال لعرضها بعد",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "جديد",

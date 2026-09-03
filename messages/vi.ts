@@ -130,8 +130,8 @@ export const viMessages = {
     unpost: "Gỡ bài",
     newest: "Mới nhất",
     recommended: "Đề xuất",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 Phổ biến",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "Tuyển chọn",
     noPopularPrompts: "Chưa có tác phẩm nào để hiển thị",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "MỚI",
