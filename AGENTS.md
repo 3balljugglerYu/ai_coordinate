@@ -1,3 +1,32 @@
+## Claims and Verification
+
+State only what you have actually read. A wrong sentence is cheap; an implementation built
+on top of it is not.
+
+- **Cite `file:line` for any behavioral claim.** If you cannot point at the line, label the
+  claim unverified. "I read the code and confirmed" must mean you read that exact line — not
+  that you inferred it from a symbol name, a type, or a plausible-sounding flow.
+- **Read both ends of a decoupled path.** When state crosses files, processes, or layers —
+  `sessionStorage`, custom events, React context, `cacheTag` / `revalidateTag`, DB triggers,
+  pg_cron, RPCs — read the writer *and* the reader. The comment that explains the behavior
+  is usually at the end you did not open.
+- **Read the whole source you cite.** Taking a document's conclusion while skipping its
+  premise turns an accurate record into support for the opposite claim.
+- **Raise the bar with consequence, not confidence.** A claim that decides what gets built
+  needs the strictest verification, however obvious it feels.
+- **When a claim turns out to be wrong, restate the mechanism, not just the conclusion.**
+  A conclusion that survives on a broken explanation will mislead the next decision.
+
+In 2026-09 an agent asserted that publishing a post navigates the user back to home. It had
+read only the consumer of the pending-refresh flag (`features/posts/components/PostList.tsx`)
+and inferred the rest from the flag's name. The producer
+(`features/posts/components/PostModal.tsx`) carries a comment stating the opposite — that
+navigation was deliberately removed in #565 — and the agent cited the incident record for
+that very removal as supporting evidence, using its conclusion while skipping its premise.
+The claim was load-bearing for a design decision and was caught only because the user
+questioned it. One `grep` for the producer settled it in seconds. Reporting the verification
+as broader than it was is the failure here; being careful is not a control, citing lines is.
+
 ## Repository Docs
 
 - Canonical architecture and onboarding docs live in `docs/architecture/`.
