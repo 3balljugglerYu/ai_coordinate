@@ -130,8 +130,8 @@ export const deMessages = {
     unpost: "Beitrag zurückziehen",
     newest: "Neueste",
     recommended: "Empfohlen",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 Beliebt",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "Auswahl",
     noPopularPrompts: "Hier gibt es noch keine Werke",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "NEU",

@@ -9,31 +9,51 @@ interface SortTabsProps {
   value: SortType;
   onChange: (value: SortType) => void;
   currentUserId?: string | null;
+  /**
+   * サーバーで確定した可否。渡された場合はこちらを使う。
+   *
+   * ⭐ context の初期値は公開フラグ（段階公開中は false）で、Loader が遅れて
+   * 昇格させる。ホームは既定タブをサーバーで決めているので、context の昇格を
+   * 待つと**初回描画でどのタブも選択されていない状態**になる。
+   */
+  popularPromptsAvailable?: boolean;
 }
 
-export function SortTabs({ value, onChange, currentUserId }: SortTabsProps) {
+export function SortTabs({
+  value,
+  onChange,
+  currentUserId,
+  popularPromptsAvailable: popularPromptsAvailableProp,
+}: SortTabsProps) {
   const postsT = useTranslations("posts");
-  const popularPromptsAvailable = usePopularPromptsAvailable();
+  const availableFromContext = usePopularPromptsAvailable();
+  const popularPromptsAvailable =
+    popularPromptsAvailableProp ?? availableFromContext;
 
   /*
-    ⭐ 中間タブは「追加」ではなく「差し替え」。
-    🔥人気を足すだけにすると、week が残っている全公開前のあいだ運営には
-    4 タブが並び、モバイル幅で折り返す。差し替えにすれば、見えるタブは常に 3 つで、
-    フラグを閉じ直せば一般ユーザーにはオススメ(week)が復帰する。
-    week を消す Phase 6 で、この分岐ごと畳んで popular_prompts 固定にする。
-  */
-  const middleTab: { value: SortType; label: string } = popularPromptsAvailable
-    ? { value: "popular_prompts", label: postsT("popularPrompts") }
-    : { value: "week", label: postsT("recommended") };
+    ⭐ タブは「追加」ではなく「差し替え」。PICK UP を足すだけにすると、
+    week が残っている全公開前のあいだ運営には 4 タブが並び、モバイル幅で折り返す。
+    差し替えにすれば見えるタブは常に 3 つで、フラグを閉じ直せば一般ユーザーには
+    オススメ(week)が復帰する。week を消す Phase 6 で、この分岐ごと畳める。
 
-  const tabs: { value: SortType; label: string; disabled?: boolean }[] = [
-    { value: "newest", label: postsT("newest") },
-    middleTab,
-    { value: "following", label: postsT("following") },
-    // { value: "daily", label: "Daily" },
-    // { value: "month", label: "Monthly" },
-    // { value: "popular", label: "いいね" }, // 検索画面でのみ使用
-  ];
+    ⭐ 並び順も可否で変える。PICK UP が使えるなら**先頭**（既定タブなので、
+    選択中のタブが左端に来る）。使えないなら従来どおり 新着 → オススメ → フォロー。
+  */
+  const tabs: { value: SortType; label: string; disabled?: boolean }[] =
+    popularPromptsAvailable
+      ? [
+          { value: "popular_prompts", label: postsT("popularPrompts") },
+          { value: "newest", label: postsT("newest") },
+          { value: "following", label: postsT("following") },
+        ]
+      : [
+          { value: "newest", label: postsT("newest") },
+          { value: "week", label: postsT("recommended") },
+          { value: "following", label: postsT("following") },
+        ];
+  // { value: "daily", label: "Daily" },
+  // { value: "month", label: "Monthly" },
+  // { value: "popular", label: "いいね" }, // 検索画面でのみ使用
 
   return (
     // 下線(border-b)は親(PostList)が表示形式トグルと同じ行に引くため、ここでは持たない

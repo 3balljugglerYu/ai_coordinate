@@ -130,8 +130,8 @@ export const enMessages = {
     unpost: "Remove post",
     newest: "Newest",
     recommended: "Recommended",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 Popular",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "Picks",
     noPopularPrompts: "No works to show here yet",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "NEW",

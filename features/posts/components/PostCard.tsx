@@ -22,13 +22,12 @@ import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
-import { cn, formatCountEnUS } from "@/lib/utils";
+import { formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
 
 interface PostCardProps {
   post: Post;
   currentUserId?: string | null;
-  isHighlighted?: boolean;
   prioritizeImage?: boolean;
   /**
    * viewable インプレッション計測(可視50%×1秒)を行うか。
@@ -41,7 +40,6 @@ interface PostCardProps {
 export function PostCard({
   post,
   currentUserId,
-  isHighlighted = false,
   prioritizeImage = false,
   trackImpressions = false,
 }: PostCardProps) {
@@ -160,11 +158,7 @@ export function PostCard({
       // 描画されるため。画像の角丸クリップは imageContent 側の rounded-t-xl
       // + overflow-hidden が担い、Card 自体は rounded-xl の border-radius と
       // ring/shadow のみで角丸の見た目を維持する。
-      className={cn(
-        "pt-0 pb-0 gap-1 transition-[box-shadow,background-color,border-color] duration-700",
-        isHighlighted &&
-          "border-emerald-300 bg-emerald-50/40 ring-2 ring-emerald-300/70 shadow-[0_18px_40px_-24px_rgba(16,185,129,0.65)]"
-      )}
+      className="pt-0 pb-0 gap-1"
     >
       {/* viewable 判定はカード面積の大半を占める画像エリアで行う(構造変更を避けるため既存 div に ref を付与) */}
       <div className="relative" ref={impressionRef}>

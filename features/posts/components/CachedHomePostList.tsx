@@ -46,15 +46,33 @@ export async function CachedHomePostList({
     getPercoinDefaultsForDisplay(),
   ]);
 
+  /*
+    `initialPosts` は**既定タブの配列**、`initialMiddlePosts` はもう一方の配列。
+    運営: 既定=PICK UP / もう一方=新着
+    一般: 既定=新着   / もう一方=オススメ(week)
+  */
+  const initialPosts = popularPromptsAvailable ? middlePosts : newestPosts;
+  const secondaryPosts = popularPromptsAvailable ? newestPosts : middlePosts;
   const initialMiddleSort: MiddleSort = popularPromptsAvailable
-    ? "popular_prompts"
+    ? "newest"
     : "week";
+  /*
+    ⭐ 既定タブはサーバーで決めてから渡す。可否は ADMIN_USER_IDS
+    （サーバー専用）に依存するので、クライアントで決めると Provider の
+    後段昇格まで false に倒れ、描画後にタブが飛ぶ。
+
+    PICK UP が使えない一般ユーザーは従来どおり新着で開く。
+  */
+  const initialDefaultSort = popularPromptsAvailable
+    ? ("popular_prompts" as const)
+    : ("newest" as const);
 
   return (
     <PostList
-      initialPosts={newestPosts}
-      initialMiddlePosts={middlePosts}
+      initialPosts={initialPosts}
+      initialMiddlePosts={secondaryPosts}
       initialMiddleSort={initialMiddleSort}
+      initialDefaultSort={initialDefaultSort}
       forceInitialLoading={false}
       skipInitialFetch
       // viewable インプレッション計測はホームフィードのみ有効(検索等では計測しない)

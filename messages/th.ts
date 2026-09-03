@@ -130,8 +130,8 @@ export const thMessages = {
     unpost: "เพิกถอนโพสต์",
     newest: "ใหม่ที่สุด",
     recommended: "แนะนำ",
-    // 🔥人気のプロンプト タブ。タブは 3 つ横並びなので短く保つ
-    popularPrompts: "🔥 ยอดนิยม",
+    // PICK UP タブ。タブは 3 つ横並びなので短く保つ
+    popularPrompts: "คัดสรร",
     noPopularPrompts: "ยังไม่มีผลงานที่จะแสดง",
     // 新着枠(直近24時間の上位3件)の印。プリセットの styleNewBadge とは別物
     popularPromptsNewBadge: "ใหม่",
