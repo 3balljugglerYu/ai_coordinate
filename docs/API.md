@@ -1,6 +1,6 @@
 # Persta.AI API Reference
 
-最終更新: 2026-03-29  
+最終更新: 2026-09-04  
 ソース: `app/api/**/*.ts`
 閲覧用ビューア: `/api-docs`（`npm run dev` 実行中かつ `API_DOCS_BASIC_AUTH_USER` / `API_DOCS_BASIC_AUTH_PASSWORD` 設定時のみ）
 
@@ -18,7 +18,7 @@ Persta.AI の API は、Next.js App Router の Route Handler として実装さ�
 | Access | Description |
 | --- | --- |
 | `public` | セッション不要。未ログインでも呼び出せる |
-| `user session` | Supabase のログインセッションが必要。主にブラウザ Cookie を前提にする |
+| `user session` | Supabase のログインセッションが必要。ブラウザは Cookie、ネイティブアプリは `Authorization: Bearer <Supabase access token>`（下記）で同じ本人として扱う |
 | `admin session` | `requireAdmin()` による管理者判定が必要。`ADMIN_USER_IDS` 環境変数で許可ユーザーを判定する |
 | `webhook` | 外部サービスからの callback を受ける入口。通常のフロントエンドからは呼ばない |
 | `bearer secret` | `Authorization: Bearer <secret>` が必要な内部運用 API |
@@ -26,6 +26,7 @@ Persta.AI の API は、Next.js App Router の Route Handler として実装さ�
 ### Authentication Notes
 
 - `user session` と `admin session` は、API トークンではなくアプリのログイン状態を前提としています。
+- ネイティブアプリ（persta-app）は Cookie を持てないため、Supabase のアクセストークン（JWT）を `Authorization: Bearer <access_token>` で送ります。サーバーは `lib/supabase/server.ts` でこのトークンをセッションとして扱い、`getUser()` / RLS / `requireAdmin()` は Cookie 経路と同じ本人で動きます。Bearer の JWT があり `Origin` ヘッダーが無いリクエストは `ensureSameOrigin()` の同一オリジン検査を通過します（CSRF は Cookie 前提の脅威のため）。トークンの更新はサーバーでは行わず、期限切れは `401` としてアプリ側でリフレッシュして再送します。`/api` への Bearer リクエストは proxy で退会チェック（`profiles.deactivated_at`）を Cookie 経路と同じ `403` で行います。
 - `requireAuth()` はページ用途ではリダイレクトを行いますが、API Route では `getUser()` を使って `401` を返す実装も混在しています。
 - `admin session` は `ADMIN_USER_IDS` に含まれるユーザー ID のみ許可されます。
 - `/api/internal/account-purge` は `ACCOUNT_PURGE_CRON_SECRET` または `CRON_SECRET` の Bearer 認証が必要です。

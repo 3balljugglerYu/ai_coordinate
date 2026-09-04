@@ -10,7 +10,8 @@ info:
 
     Important notes:
     - This API surface is primarily used by the first-party web app, not as a stable public API.
-    - Session-authenticated operations usually depend on Supabase browser cookies.
+    - Session-authenticated operations depend on Supabase browser cookies, or on
+      `Authorization: Bearer <Supabase access token>` for the native app (see SupabaseBearerToken).
     - Several endpoints are intentionally documented as operational or webhook entry points.
     - Some response bodies remain approximate and should be refined against runtime payloads.
 servers:
@@ -2106,6 +2107,17 @@ components:
       description: |
         Draft placeholder for Supabase SSR/browser session cookies.
         Actual cookie names may vary by project and runtime configuration.
+        Native apps use `SupabaseBearerToken` instead; both resolve to the same user.
+    SupabaseBearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase access token sent by the native app (persta-app) as
+        `Authorization: Bearer <access_token>`. Accepted wherever a user session
+        is required; mutation routes skip the same-origin check when this header
+        is present and no `Origin` header is sent. Expired tokens yield 401 and
+        must be refreshed client-side (the server never refreshes them).
     BearerSecret:
       type: http
       scheme: bearer
