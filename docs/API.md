@@ -85,6 +85,15 @@ Persta.AI の API は、Next.js App Router の Route Handler として実装さ�
 curl "http://localhost:3000/api/posts?limit=20&offset=0&sort=newest"
 ```
 
+Response:
+
+```json
+{
+  "posts": [],
+  "hasMore": false
+}
+```
+
 ### ネイティブアプリ（Bearer 認証）で本人向け API を呼ぶ
 
 ネイティブアプリは Cookie を持たないため、Supabase のアクセストークン（JWT）を `Authorization: Bearer` で送ります。Cookie 経路と同じ本人として扱われます。
@@ -102,8 +111,7 @@ Response:
 
 ```json
 {
-  "posts": [],
-  "hasMore": false
+  "count": 3
 }
 ```
 
