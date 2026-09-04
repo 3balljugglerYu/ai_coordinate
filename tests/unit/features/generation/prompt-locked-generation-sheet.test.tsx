@@ -3,10 +3,15 @@
 /**
  * `PromptLockedGenerationSheet` とバックグラウンド進捗ストアの配線。
  *
- * ⭐ 呼び出し元（`FollowAndUsePromptButton` / `SourcePromptReferenceCard`）は
- * どちらも `{isSheetOpen && ... ? (<Sheet/>) : null}` という形で毎回作り直す
- * ため、このコンポーネントは `open=false` を props として受け取ることが無い。
- * mount ＝ 開いている・unmount ＝ 閉じている、の二値に一致する。
+ * ⭐ 呼び出し元2つは挙動が違う（PR #594 レビューで判明。当初「どちらも
+ * 閉じる＝即unmount」と誤認していた）。
+ *   - `FollowAndUsePromptButton`: `{isSheetOpen && ... ? (<Sheet/>) : null}`
+ *     で閉じると unmount する
+ *   - `SourcePromptReferenceCard`: `{canGenerate ? (<Sheet open={isSheetOpen} .../>) : null}`
+ *     で `canGenerate`（投稿詳細を見ている間はずっと true）だけを見ており、
+ *     閉じても unmount せず `open` prop だけが変わる
+ * ライフサイクル effect は mount/unmount ではなく `open` prop の変化で
+ * 判定するため、両方のパターンをテストする。
  *
  * 重い子コンポーネント（`GenerationFormContainer` 等）と vaul の `Drawer` は
  * モック化し、配線ロジックだけを検証する。モバイル経路（`Drawer`）だけを
@@ -142,7 +147,7 @@ describe("PromptLockedGenerationSheet と進捗ストアの配線", () => {
     expect(resumeMock).not.toHaveBeenCalled();
   });
 
-  test("mountでバーを抑制し、unmountで解除する", () => {
+  test("mountでバーを抑制し、unmountで解除する（FollowAndUsePromptButtonのパターン）", () => {
     const { unmount } = render(<PromptLockedGenerationSheet {...defaultProps} />);
 
     expect(pauseMock).toHaveBeenCalledTimes(1);
@@ -151,6 +156,35 @@ describe("PromptLockedGenerationSheet と進捗ストアの配線", () => {
     unmount();
 
     expect(resumeMock).toHaveBeenCalledTimes(1);
+  });
+
+  /*
+    ⭐ レビュー指摘の回帰テスト。SourcePromptReferenceCard は
+    `canGenerate` だけで mount 判定するため、投稿詳細を見ている間は
+    シートを閉じても unmount されず、`open` prop だけが false になる。
+    mount/unmount だけで pause/resume を判定していると、この経路では
+    resume が一生呼ばれず sheetOpenCount が上がったままになっていた。
+  */
+  test("⭐unmountせずopenのrerenderだけでも動く（SourcePromptReferenceCardのパターン）", () => {
+    const { rerender } = render(
+      <PromptLockedGenerationSheet {...defaultProps} open={true} />
+    );
+    expect(pauseMock).toHaveBeenCalledTimes(1);
+    expect(resumeMock).not.toHaveBeenCalled();
+
+    // 閉じる。canGenerate は変わらないので unmount はされない想定
+    // （このテストでは実際に unmount せず rerender で表現する）。
+    rerender(<PromptLockedGenerationSheet {...defaultProps} open={false} />);
+    expect(resumeMock).toHaveBeenCalledTimes(1);
+    expect(pauseMock).toHaveBeenCalledTimes(1); // 増えない
+
+    // 同じ投稿から、もう一度開く
+    rerender(<PromptLockedGenerationSheet {...defaultProps} open={true} />);
+    expect(pauseMock).toHaveBeenCalledTimes(2);
+    expect(resumeMock).toHaveBeenCalledTimes(1); // まだ増えない
+
+    rerender(<PromptLockedGenerationSheet {...defaultProps} open={false} />);
+    expect(resumeMock).toHaveBeenCalledTimes(2);
   });
 
   /*

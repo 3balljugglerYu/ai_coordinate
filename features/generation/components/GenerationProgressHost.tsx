@@ -80,7 +80,15 @@ export function GenerationProgressHost() {
   const [jobSnapshot, setJobSnapshot] = useState<TrackedJobSnapshot | null>(null);
 
   useEffect(() => {
-    if (!available || !trackedJobId) {
+    /*
+      ⭐ `sheetOpenCount > 0` もここで止める（表示条件の `visible` だけに
+      入れていたため、シートを開き直してもポーリングが裏で続き、
+      完了検知でトースト＋ストアのクリアが起きていた。シート側の
+      `GenerationFormContainer` も同じジョブを見ているため、シート内の
+      完了表示とバックグラウンドの完了トーストが二重に出ていた。
+      PR #594 レビューで指摘）。
+    */
+    if (!available || sheetOpenCount > 0 || !trackedJobId) {
       setJobSnapshot(null);
       return;
     }
@@ -176,8 +184,8 @@ export function GenerationProgressHost() {
       isCancelled = true;
       stop?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId/available の変化だけで再実行したい
-  }, [trackedJobId, available]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId/available/sheetOpenCount の変化だけで再実行したい
+  }, [trackedJobId, available, sheetOpenCount]);
 
   const stageCopy = useMemo(() => buildCoordinateStageCopy(t), [t]);
   const phase = jobSnapshot ? "running" : "idle";

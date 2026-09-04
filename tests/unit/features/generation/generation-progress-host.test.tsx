@@ -145,11 +145,19 @@ describe("GenerationProgressHost", () => {
 
   /*
     ⭐ シートが開いている間は、追跡中のジョブがあってもバーを出さない
-    （二重表示防止）。閉じると復帰する。
+    （二重表示防止）だけでなく、**ポーリング自体を止める**こと。
+
+    以前は表示条件（visible）だけが sheetOpenCount を見ており、
+    ポーリングを行う useEffect の依存配列には含まれていなかった。
+    そのため、シートを開き直しても裏で pollGenerationStatus が続き、
+    完了検知でトースト＋ストアのクリアが起きていた。開いたシート側の
+    GenerationFormContainer も同じジョブを見ているため、シート内の
+    完了表示とバックグラウンドの完了トーストが二重に出ていた
+    （PR #594 レビューで指摘）。
   */
-  test("⭐シートが開いている間はバーを隠す", async () => {
+  test("⭐シートを開くとポーリングを止め、閉じ直すと取り直す", async () => {
     mockGetGenerationStatus.mockResolvedValue(status());
-    deferredPoll();
+    const firstPoll = deferredPoll();
 
     render(<GenerationProgressHost />);
     await trackJob();
@@ -157,15 +165,39 @@ describe("GenerationProgressHost", () => {
       expect(screen.getByText("画像を生成中...")).toBeInTheDocument()
     );
 
+    // シートを開く(sheetOpenCount 0→1)。バーが隠れるだけでなく、
+    // 進行中だったポーリングの stop() が呼ばれること。
     act(() => {
       pauseGenerationProgressBar();
     });
     expect(screen.queryByText("画像を生成中...")).not.toBeInTheDocument();
+    expect(firstPoll.stop).toHaveBeenCalledTimes(1);
 
+    // 止めた後に元のポーリングが解決しても、トーストは出ない
+    // (isCancelled ガードにより、シートを開いている間の完了を無視する)。
+    await act(async () => {
+      firstPoll.resolve(status({ status: "succeeded", generatedImageId: "img-1" }));
+    });
+    expect(toastMock).not.toHaveBeenCalled();
+
+    // シートを閉じる(sheetOpenCount 1→0)。取り直しのため
+    // getGenerationStatus がもう一度呼ばれ、まだ進行中ならバーが復帰する。
+    mockGetGenerationStatus.mockClear();
+    mockGetGenerationStatus.mockResolvedValue(status());
+    const secondPoll = deferredPoll();
     act(() => {
       resumeGenerationProgressBarIfNeeded();
     });
-    expect(screen.getByText("画像を生成中...")).toBeInTheDocument();
+    await waitFor(() => expect(mockGetGenerationStatus).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(screen.getByText("画像を生成中...")).toBeInTheDocument()
+    );
+
+    // 取り直した2回目のポーリングは生きている
+    await act(async () => {
+      secondPoll.resolve(status({ status: "succeeded", generatedImageId: "img-2" }));
+    });
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1));
   });
 
   test("送信中だけボトムナビを隠し、終わったら必ず戻す", async () => {

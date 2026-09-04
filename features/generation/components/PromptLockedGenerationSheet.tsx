@@ -105,23 +105,31 @@ export function PromptLockedGenerationSheet({
   const backgroundProgressAvailable = useGenerationProgressAvailable();
 
   /*
-    このコンポーネントは呼び出し元（`FollowAndUsePromptButton` /
-    `SourcePromptReferenceCard`）が `{isSheetOpen && ... ? (<Sheet/>) : null}`
-    という形で毎回作り直すため、「隠す」のではなく mount ＝ 開いている・
-    unmount ＝ 閉じている、の二値に一致する。これを利用して、
-    バックグラウンド進捗バーの抑制（開いている間は隠す）を
-    mount/unmount だけで判定する。`open` の変化は見ない
-    （このコンポーネントは `open=false` を props として受け取ることが無い）。
+    ⭐ `open` prop の変化で判定する（mount/unmount では判定しない）。
+
+    `FollowAndUsePromptButton` は `{isSheetOpen && ... ? (<Sheet/>) : null}`
+    で閉じると unmount するが、`SourcePromptReferenceCard` は
+    `{canGenerate ? (<Sheet open={isSheetOpen} .../>) : null}` で
+    `canGenerate`（投稿詳細を見ている間はずっと true）だけを見ており、
+    閉じても unmount しない。当初は「両呼び出し元とも閉じる＝即unmount」と
+    誤認しており（PR #594 レビューで指摘）、mount/unmount だけで判定すると
+    投稿詳細からの生成では resume が一生呼ばれず sheetOpenCount が
+    上がったままになっていた。
+
+    `open` を条件にも依存配列にも入れれば、unmount する呼び出し元・
+    しない呼び出し元の両方で「開いている間だけ pause」が成立する
+    （前者は unmount 時にこの effect 自身のクリーンアップが走るので、
+    従来どおり正しく resume される）。
   */
   useEffect(() => {
-    if (!backgroundProgressAvailable) {
+    if (!backgroundProgressAvailable || !open) {
       return;
     }
     pauseGenerationProgressBar();
     return () => {
       resumeGenerationProgressBarIfNeeded();
     };
-  }, [backgroundProgressAvailable]);
+  }, [backgroundProgressAvailable, open]);
 
   /*
     シートを閉じる直前に、進行中のジョブが無いかサーバーへ確認する。

@@ -78,6 +78,17 @@ export async function checkAndTrackInProgressJob(): Promise<void> {
   }
 
   if (jobs.length === 0) {
+    /*
+      ⭐ 何もせず return すると、シートを開いている間にポーリングを止めた
+      せいで trackedJobId が古いまま残る（GenerationProgressHost は
+      sheetOpenCount > 0 の間ポーリングしないため、その間に完了しても
+      検知できない）。そのシートが再び閉じたとき、ここで空配列が返って
+      「何もしない」を選ぶと、古い（既に終端に達した）jobId が残り続け、
+      次にポーリングが再開した瞬間に**今更ながらの完了トースト**が出る
+      （PR #594 レビューで指摘された「二重表示」の遅延版）。
+      進行中が無いと分かった時点で、追跡自体を必ず畳む。
+    */
+    clearTrackedGenerationJob();
     return;
   }
 
