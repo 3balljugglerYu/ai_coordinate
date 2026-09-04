@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { readBearerJwt } from "@/lib/auth/bearer";
 
 /**
  * Same-Origin チェック helper。cookie 認証つき mutation route (admin / authenticated async)
@@ -22,6 +23,20 @@ export function ensureSameOrigin(request: NextRequest): NextResponse | null {
   }
 
   const originHeader = request.headers.get("origin");
+
+  /*
+    ネイティブアプリ(Bearer 認証)は Origin ヘッダーを送らない。
+    このチェックが守るのは「ブラウザが Cookie を勝手に付けて送る cross-site
+    リクエスト」であり、Bearer トークンはスクリプトが明示的に付けない限り送られず、
+    他サイトのページからは CORS のプリフライトで拒否される。したがって
+    「Bearer の JWT があり、かつ Origin が無い」= アプリからのリクエストだけを通す。
+    Origin がある(= ブラウザ発)場合は Bearer の有無に関わらず従来どおり検査する。
+    設計: docs/planning/flutter-app-parity-implementation-plan.md Phase 1 REQ-03
+  */
+  if (!originHeader && readBearerJwt(request.headers)) {
+    return null;
+  }
+
   if (!originHeader) {
     return NextResponse.json(
       { error: "Missing Origin header" },

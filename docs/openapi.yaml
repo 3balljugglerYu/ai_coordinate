@@ -10,7 +10,8 @@ info:
 
     Important notes:
     - This API surface is primarily used by the first-party web app, not as a stable public API.
-    - Session-authenticated operations usually depend on Supabase browser cookies.
+    - Session-authenticated operations depend on Supabase browser cookies, or on
+      `Authorization: Bearer <Supabase access token>` for the native app (see SupabaseBearerToken).
     - Several endpoints are intentionally documented as operational or webhook entry points.
     - Some response bodies remain approximate and should be refined against runtime payloads.
 servers:
@@ -107,6 +108,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       requestBody:
         required: true
         content:
@@ -236,6 +238,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/jobId"
       responses:
@@ -264,6 +267,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       requestBody:
         required: true
         content:
@@ -308,6 +312,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       requestBody:
         required: true
         content:
@@ -443,6 +448,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       requestBody:
@@ -496,6 +502,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       requestBody:
@@ -530,6 +537,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Streak status retrieved.
@@ -548,6 +556,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Streak check-in completed.
@@ -598,6 +607,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/blockedUserId"
       responses:
@@ -618,6 +628,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -636,6 +647,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -654,6 +666,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -672,6 +685,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/postId"
       responses:
@@ -692,6 +706,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -710,6 +725,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -730,6 +746,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -750,6 +767,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -772,6 +790,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -792,6 +811,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -810,6 +830,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -830,6 +851,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -850,6 +872,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -870,6 +893,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -890,6 +914,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -910,10 +935,11 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - name: scope
           in: query
-          description: `posted` は公開済みのみ、`all` は全件を対象にする。
+          description: "`posted` は公開済みのみ、`all` は全件を対象にする。"
           schema:
             type: string
             enum: [posted, all]
@@ -951,10 +977,11 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - name: scope
           in: query
-          description: `posted` は公開済みのみ、`all` は全件を対象にする。
+          description: "`posted` は公開済みのみ、`all` は全件を対象にする。"
           schema:
             type: string
             enum: [posted, all]
@@ -979,6 +1006,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       requestBody:
         required: true
         content:
@@ -1012,6 +1040,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/slug"
         - $ref: "#/components/parameters/id"
@@ -1033,6 +1062,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/slug"
         - $ref: "#/components/parameters/id"
@@ -1056,6 +1086,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/slug"
       responses:
@@ -1078,6 +1109,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/slug"
       responses:
@@ -1098,6 +1130,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/slug"
       responses:
@@ -1120,6 +1153,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/postId"
       responses:
@@ -1142,6 +1176,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1162,6 +1197,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1180,6 +1216,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1200,6 +1237,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1220,6 +1258,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1240,6 +1279,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1260,6 +1300,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -1282,6 +1323,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -1304,6 +1346,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -1326,6 +1369,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1346,6 +1390,7 @@ paths:
       x-access-level: admin session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1381,6 +1426,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -1399,6 +1445,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -1419,6 +1466,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1437,6 +1485,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1455,6 +1504,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1473,6 +1523,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1491,6 +1542,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1524,6 +1576,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1557,6 +1610,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1575,6 +1629,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1593,6 +1648,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1611,6 +1667,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1629,6 +1686,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1647,6 +1705,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -1667,6 +1726,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -1687,6 +1747,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -1756,6 +1817,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1774,6 +1836,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1792,6 +1855,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1810,6 +1874,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1828,6 +1893,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1846,6 +1912,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1864,6 +1931,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1882,6 +1950,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/id"
       responses:
@@ -1902,6 +1971,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1920,6 +1990,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       responses:
         "200":
           description: Successful response.
@@ -1938,6 +2009,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -1958,6 +2030,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -1976,6 +2049,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -1996,6 +2070,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -2016,6 +2091,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -2034,6 +2110,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -2054,6 +2131,7 @@ paths:
       x-access-level: user session
       security:
         - SupabaseSessionCookie: []
+        - SupabaseBearerToken: []
       parameters:
         - $ref: "#/components/parameters/userId"
       responses:
@@ -2106,6 +2184,17 @@ components:
       description: |
         Draft placeholder for Supabase SSR/browser session cookies.
         Actual cookie names may vary by project and runtime configuration.
+        Native apps use `SupabaseBearerToken` instead; both resolve to the same user.
+    SupabaseBearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Supabase access token sent by the native app (persta-app) as
+        `Authorization: Bearer <access_token>`. Accepted wherever a user session
+        is required; mutation routes skip the same-origin check when this header
+        is present and no `Origin` header is sent. Expired tokens yield 401 and
+        must be refreshed client-side (the server never refreshes them).
     BearerSecret:
       type: http
       scheme: bearer
