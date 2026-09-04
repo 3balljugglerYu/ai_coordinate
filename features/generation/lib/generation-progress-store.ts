@@ -67,8 +67,26 @@ function emit(next: GenerationProgressState) {
  * ⭐ 問い合わせ自体が失敗しても握りつぶす。バックグラウンドの補助機能であり、
  * 失敗してもシートを閉じる操作そのものをブロックしてはならない
  * （`PostModal.tsx` の `revalidate/home` 失敗時と同じ考え方）。
+ *
+ * ⭐⭐ 呼び出し側（`PromptLockedGenerationSheet`）はこの関数を `await` せず
+ * `onOpenChange(next)` を続けて呼ぶ。そのため `sheetOpenCount` は、この
+ * 問い合わせが解決するより先に 0 へ戻ることがある（むしろ通常はそうなる）。
+ *
+ * 問い合わせを始める**前**に、いま追跡している（かもしれない）jobId を
+ * 即座に無効化しておく。こうしないと、`sheetOpenCount` が 0 に戻った瞬間
+ * `GenerationProgressHost` のポーリング effect が「古い trackedJobId」で
+ * 動き出し、この問い合わせより先に `getGenerationStatus()` が `succeeded`
+ * を返してしまう。シート内で見届けた完了が、閉じた直後にもう一度
+ * トーストとして出る（PR #594 のレビューで、前回の修正だけでは
+ * このタイミング次第の抜け道が残っていると指摘された）。
+ *
+ * 先に null にしておけば、問い合わせが終わるまで Host は「追跡対象が無い」
+ * ため何もしない。問い合わせが解決した時点で初めて、その時点の真の状態
+ * （新しい jobId か、本当に何も無いか）を反映する。
  */
 export async function checkAndTrackInProgressJob(): Promise<void> {
+  clearTrackedGenerationJob();
+
   let jobs;
   try {
     jobs = await getInProgressJobs(false);
@@ -78,17 +96,7 @@ export async function checkAndTrackInProgressJob(): Promise<void> {
   }
 
   if (jobs.length === 0) {
-    /*
-      ⭐ 何もせず return すると、シートを開いている間にポーリングを止めた
-      せいで trackedJobId が古いまま残る（GenerationProgressHost は
-      sheetOpenCount > 0 の間ポーリングしないため、その間に完了しても
-      検知できない）。そのシートが再び閉じたとき、ここで空配列が返って
-      「何もしない」を選ぶと、古い（既に終端に達した）jobId が残り続け、
-      次にポーリングが再開した瞬間に**今更ながらの完了トースト**が出る
-      （PR #594 レビューで指摘された「二重表示」の遅延版）。
-      進行中が無いと分かった時点で、追跡自体を必ず畳む。
-    */
-    clearTrackedGenerationJob();
+    // 上ですでに clear 済み。進行中が無いと確定しただけ。
     return;
   }
 

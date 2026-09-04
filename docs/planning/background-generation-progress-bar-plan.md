@@ -303,6 +303,7 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
 - [x] **権限**: `getInProgressJobs` は既存の認証チェック（`getUser()`）に依存しており、新規のAPIエンドポイントを追加しないため、権限まわりの新たな懸念は無い（`app/api/generation-status/in-progress/route.ts:18-19` で確認済み）
 - [x] **二重表示**: シートが開いている間、バーが絶対に描画されないこと（`sheetOpenCount` のカウンタ判定）→ ユニットテストで確認済み
   - ⭐ **訂正（PR #594 レビューで判明）**: 当初は表示条件（`visible`）だけが `sheetOpenCount` を見ており、ポーリングを行う `useEffect` の依存配列には含めていなかった。シートを開き直しても裏でポーリングが続き、シート内の完了表示とバックグラウンドの完了トーストが二重に出ていた。ガード・依存配列の両方に `sheetOpenCount` を追加して修正。あわせて、ポーリングを止めている間にジョブが完了すると `trackedJobId` が古いまま残る点も見つかり、`checkAndTrackInProgressJob()` が進行中ジョブを見つけられなかったときに `clearTrackedGenerationJob()` で追跡を畳むよう修正した
+  - ⭐⭐ **さらに訂正（PR #594 レビュー2巡目で判明）**: 上記の修正だけでは競合が残っていた。`handleOpenChange` は `checkAndTrackInProgressJob()` を `await` せず `onOpenChange(next)` を続けて呼ぶため、`sheetOpenCount` はこの問い合わせが解決するより先に 0 へ戻ることが普通に起こる。その間 `trackedJobId` が古い値のままだと、`GenerationProgressHost` のポーリング effect が `sheetOpenCount` の変化だけで動き出し、この問い合わせより先に「古いjobIdの現在の状態」を取得してしまう（シート内で見届けた完了が、閉じた直後にもう一度トーストとして出る）。`checkAndTrackInProgressJob()` の**先頭**（問い合わせを始める前）で `clearTrackedGenerationJob()` を同期的に呼ぶよう修正し、問い合わせが解決するまでの間 Host が「追跡対象が無い」状態を保つようにした
 - [x] **リーク**: `pollGenerationStatus` は成功/失敗で `resolve()` した後は追加の `setTimeout` を積まない（`async-api.ts:296-299`）ため終端到達時に自然に止まる。unmount 時は `stop?.()` を呼ぶ（`GenerationProgressHost.tsx` のクリーンアップ）ので、いずれの経路でもタイマーは残らない
 - [x] **i18n**: 15言語すべてに新規トースト文言（`generationCompletedToastAction`）があることを確認済み
 

@@ -88,6 +88,73 @@ describe("generation-progress-store", () => {
 
       expect(mockGetInProgressJobs).toHaveBeenCalledWith(false);
     });
+
+    /*
+      ⭐ PR #594 レビュー2巡目で指摘された競合の回帰テスト。
+
+      呼び出し側(PromptLockedGenerationSheet)はこの関数を await せず
+      onOpenChange(next) を続けて呼ぶため、sheetOpenCount はこの問い合わせが
+      解決するより先に 0 へ戻ることがある。その間 trackedJobId が古い値の
+      ままだと、GenerationProgressHost のポーリング effect が
+      sheetOpenCount の変化だけで動き出し、この問い合わせより先に
+      「古いjobIdの現在の状態」を取得してしまう。シート内で見届けた
+      完了が、閉じた直後にもう一度トーストとして出る。
+
+      問い合わせを始める**前**に trackedJobId を同期的に無効化していれば、
+      問い合わせが解決するまでの間、Host は「追跡対象が無い」ため
+      何もしない。
+    */
+    test("⭐問い合わせが解決するより前にtrackedJobIdを同期的に無効化する", async () => {
+      // 既に job-old を追跡している状態を作る
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-old", "2026-09-04T09:00:00Z"),
+      ]);
+      await checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-old");
+
+      // 次の問い合わせは、テストが明示的に解決するまで pending のままにする
+      let resolveJobs!: (jobs: JobStatus[]) => void;
+      mockGetInProgressJobs.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveJobs = resolve;
+        })
+      );
+
+      const pending = checkAndTrackInProgressJob();
+
+      // ⭐ ここが本題。await する前(=問い合わせがまだ解決していない時点)で
+      // 既に trackedJobId が null になっていること。
+      // これが無いと、sheetOpenCount が先に 0 へ戻った瞬間、Host が
+      // "job-old" のまま古い状態を取りに行ってしまう。
+      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+
+      // 問い合わせが解決すると、その時点の真の状態が反映される
+      resolveJobs([job("job-new", "2026-09-04T10:00:00Z")]);
+      await pending;
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-new");
+    });
+
+    test("⭐無効化後に問い合わせが空配列で解決してもnullのまま", async () => {
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-old", "2026-09-04T09:00:00Z"),
+      ]);
+      await checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-old");
+
+      let resolveJobs!: (jobs: JobStatus[]) => void;
+      mockGetInProgressJobs.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveJobs = resolve;
+        })
+      );
+
+      const pending = checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+
+      resolveJobs([]);
+      await pending;
+      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+    });
   });
 
   describe("pause/resume のカウンタ", () => {
