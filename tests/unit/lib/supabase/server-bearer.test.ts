@@ -4,9 +4,12 @@
  * `createClient()`(サーバー)の Bearer 経路。
  *
  * - `Authorization: Bearer <JWT>` があれば Cookie を読まず、トークンを
- *   `auth.setSession` でセッションにする(既存ルートの getUser / RLS がそのまま本人で動く)
- * - 期限切れトークンは setSession を呼ばない(リフレッシュ通信を起こさない)
+ *   `global.headers.Authorization` に載せたクライアントを返す(セッションは保存しない)
+ * - 期限切れトークンはヘッダー無し(= 未認証)のクライアントにする
  * - 非 JWT の Bearer(秘密鍵)や Bearer 無しは従来の Cookie 経路
+ *
+ * 実クライアントでの通信内容(リフレッシュ要求が起きないこと)は
+ * tests/integration/lib/supabase/server-bearer-real-client.test.ts で確認する。
  */
 
 jest.mock("next/headers", () => ({
@@ -63,54 +66,40 @@ describe("createClient (server) Bearer path", () => {
       getAll: getAllCookies,
       set: jest.fn(),
     } as unknown as Awaited<ReturnType<typeof cookies>>);
-    setSession = jest.fn().mockResolvedValue({ data: {}, error: null });
+    setSession = jest.fn();
     createServerClientMock.mockReturnValue({
       auth: { setSession },
     } as unknown as ReturnType<typeof createServerClient>);
   });
 
-  test("Bearer JWT があれば Cookie を読まず setSession でセッションにする", async () => {
+  test("Bearer JWT があれば Cookie を読まず、トークンをヘッダーに載せたクライアントを返す", async () => {
     const jwt = makeJwt(Math.floor(Date.now() / 1000) + 3600);
     setRequestHeaders({ authorization: `Bearer ${jwt}` });
 
     await createClient();
 
     expect(cookiesMock).not.toHaveBeenCalled();
-    expect(setSession).toHaveBeenCalledWith({
-      access_token: jwt,
-      refresh_token: expect.any(String),
-    });
-    // Cookie アダプタは何も返さず何も書かない
+    expect(createServerClientMock).toHaveBeenCalledTimes(1);
     const options = createServerClientMock.mock.calls[0][2]!;
+    expect(options.global?.headers).toEqual({ Authorization: `Bearer ${jwt}` });
+    // セッションは保存しない(サーバーでリフレッシュが起きない)
+    expect(setSession).not.toHaveBeenCalled();
+    // Cookie アダプタは何も返さず何も書かない
     expect(options.cookies.getAll()).toEqual([]);
     expect(() => options.cookies.setAll?.([])).not.toThrow();
   });
 
-  test("期限切れの JWT は setSession を呼ばない(未認証のクライアント)", async () => {
+  test("期限切れの JWT はヘッダーを付けない未認証クライアントにする", async () => {
     setRequestHeaders({
       authorization: `Bearer ${makeJwt(Math.floor(Date.now() / 1000) - 10)}`,
     });
 
     await createClient();
 
-    expect(setSession).not.toHaveBeenCalled();
     expect(cookiesMock).not.toHaveBeenCalled();
-  });
-
-  test("setSession が失敗しても例外にせず未認証クライアントを返す", async () => {
-    setSession.mockResolvedValue({
-      data: {},
-      error: { message: "invalid JWT" },
-    });
-    setRequestHeaders({
-      authorization: `Bearer ${makeJwt(Math.floor(Date.now() / 1000) + 60)}`,
-    });
-    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
-
-    await expect(createClient()).resolves.toBeDefined();
-
-    expect(warn).toHaveBeenCalled();
-    warn.mockRestore();
+    const options = createServerClientMock.mock.calls[0][2]!;
+    expect(options.global).toBeUndefined();
+    expect(setSession).not.toHaveBeenCalled();
   });
 
   test("Bearer 無しは従来どおり Cookie 経路", async () => {
@@ -119,8 +108,8 @@ describe("createClient (server) Bearer path", () => {
     await createClient();
 
     expect(cookiesMock).toHaveBeenCalledTimes(1);
-    expect(setSession).not.toHaveBeenCalled();
     const options = createServerClientMock.mock.calls[0][2]!;
+    expect(options.global).toBeUndefined();
     options.cookies.getAll();
     expect(getAllCookies).toHaveBeenCalled();
   });
@@ -131,6 +120,7 @@ describe("createClient (server) Bearer path", () => {
     await createClient();
 
     expect(cookiesMock).toHaveBeenCalledTimes(1);
-    expect(setSession).not.toHaveBeenCalled();
+    const options = createServerClientMock.mock.calls[0][2]!;
+    expect(options.global).toBeUndefined();
   });
 });

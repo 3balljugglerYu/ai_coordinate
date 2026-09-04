@@ -3,17 +3,6 @@ import { cookies, headers } from "next/headers";
 import { env } from "@/lib/env";
 import { isJwtUnexpired, readBearerJwt } from "@/lib/auth/bearer";
 
-/**
- * Bearer 経路で `auth.setSession` に渡すダミーの refresh token。
- *
- * auth-js の `setSession` は refresh_token が空だと AuthSessionMissingError を投げる
- * (`@supabase/auth-js` GoTrueClient._setSession)。アプリはトークンの更新を自前で行い
- * (401 を受けたら Supabase SDK でリフレッシュして再送)、サーバー側では決して
- * リフレッシュしないため、この値が Supabase に送られることはない。
- * 期限切れトークンは `isJwtUnexpired` で事前に弾き、リフレッシュ通信自体を起こさない。
- */
-const BEARER_REFRESH_TOKEN_PLACEHOLDER = "persta-bearer-no-refresh";
-
 function requireSupabaseEnv() {
   const url = env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -32,7 +21,7 @@ function requireSupabaseEnv() {
  *
  * - ブラウザ(従来): クッキーから認証情報を取得する。挙動は無変更
  * - ネイティブアプリ: `Authorization: Bearer <Supabase access token>` があれば
- *   Cookie を読まず、そのトークンをセッションとして持つクライアントを返す
+ *   Cookie を読まず、そのトークンを Authorization ヘッダーとして持つクライアントを返す
  *   (`createBearerClient`)。同じリクエストで両方が来た場合は Bearer を優先する
  *   (アプリは Cookie を持たないので実際には共存しない)
  *
@@ -69,43 +58,40 @@ export async function createClient() {
 }
 
 /**
- * Bearer トークンをセッションとして持つサーバークライアント。
+ * Bearer トークンを Authorization ヘッダーとして持つサーバークライアント。
  *
- * `setSession` は Supabase Auth の `/user` でトークンを検証してからセッションを
- * 組み立てる(`@supabase/auth-js` GoTrueClient._setSession)。そのため無効な
- * トークンはセッション無し(= 未認証)になり、既存ルートの `getUser()` /
- * `supabase.auth.getUser()` / PostgREST の RLS がすべて「その本人」として動く。
- * Cookie アダプタは何も読まず何も書かない(アプリのリクエストに Set-Cookie は不要)。
+ * セッションは保存しない(= サーバーでは絶対にリフレッシュしない)。
+ * - `global.headers.Authorization` を付けると supabase-js は
+ *   `hasCustomAuthorizationHeader` を立て、`auth.getUser()`(引数なし)がセッション無しでも
+ *   そのヘッダーで Supabase Auth の `/user` に問い合わせる
+ *   (`@supabase/auth-js` GoTrueClient._getUser / supabase-js SupabaseClient)。
+ *   よって既存ルートの `getUser()` と `supabase.auth.getUser()` が変更なしで本人として動く
+ * - PostgREST / Storage へのリクエストも既に Authorization があればそれを使う
+ *   (supabase-js fetchWithAuth)ため、RLS はトークンの本人で評価される
+ * - 無効・改ざんトークンは Supabase Auth / PostgREST 側が拒否し、未認証(401)になる
+ * - 期限切れは事前に弾いてヘッダーを付けない(= 未認証)。残り時間に関わらず
+ *   `/token` へのリフレッシュ要求は発生しない。アプリ側が SDK でリフレッシュして再送する
+ * - Cookie アダプタは何も読まず何も書かない(アプリのレスポンスに Set-Cookie は不要)
  */
-async function createBearerClient(
-  url: string,
-  anonKey: string,
-  accessToken: string
-) {
-  const client = createServerClient(url, anonKey, {
-    cookies: {
-      getAll() {
-        return [];
-      },
-      setAll() {
-        // Bearer 経路では Cookie を発行しない
-      },
+function createBearerClient(url: string, anonKey: string, accessToken: string) {
+  const noCookies = {
+    getAll() {
+      return [];
     },
-  });
+    setAll() {
+      // Bearer 経路では Cookie を発行しない
+    },
+  };
 
   if (!isJwtUnexpired(accessToken)) {
-    // 期限切れはセッション無し(未認証)。アプリ側がリフレッシュして再送する
-    return client;
+    // 期限切れはセッション無し・ヘッダー無しの未認証クライアント
+    return createServerClient(url, anonKey, { cookies: noCookies });
   }
 
-  const { error } = await client.auth.setSession({
-    access_token: accessToken,
-    refresh_token: BEARER_REFRESH_TOKEN_PLACEHOLDER,
+  return createServerClient(url, anonKey, {
+    cookies: noCookies,
+    global: {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    },
   });
-  if (error) {
-    // 検証に失敗したトークンはセッション無し(未認証)として扱う
-    console.warn("[supabase/server] Bearer token rejected:", error.message);
-  }
-
-  return client;
 }

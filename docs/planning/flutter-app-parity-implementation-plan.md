@@ -303,14 +303,15 @@ Phase 0（アプリ）と Phase 1（Web）は別リポジトリで独立して�
 目的: アプリが Web の API を「同じ本人として」呼べるようにする。Cookie 経路は無変更。
 ビルド確認: `npm run lint`、`npm run typecheck`、`npm run test`、`npm run build -- --webpack` が通り、既存の Cookie 経路のテストが緑のまま Bearer の単体・統合テストが追加で緑。
 
-- [x] `lib/supabase/server.ts`: `headers()` に `Authorization: Bearer` があれば、Cookie を読まずそのトークンを `global.headers` に載せたクライアントを返す。ユーザー解決は `supabase.auth.getUser(token)` で行い、無効トークンは未認証扱いにする
-- [x] `lib/auth.ts`: `getUser()` は上記に乗るので変更最小。`getSession()` の Bearer 経路を明示する
-- [x] `lib/security/same-origin.ts`: Bearer 付きの更新系リクエストは検査をスキップ（REQ-03）。Cookie 経路は従来どおり
-- [x] 退会チェック: `proxy.ts:129-142` 相当を Bearer 経路で行う共通ヘルパー（`requireActiveUser()` など）を `lib/auth.ts` に追加し、B 層で使う全ルートに適用（REQ-02）
+- [x] `lib/supabase/server.ts`: `headers()` に `Authorization: Bearer` の JWT があれば、Cookie を読まずそのトークンを `global.headers.Authorization` に載せたクライアントを返す（セッションは保存せず、サーバーではリフレッシュしない）。本人解決は既存の `getUser()` / `supabase.auth.getUser()` がカスタム Authorization ヘッダー経由でそのまま動く。期限切れ・無効トークンは未認証扱い（PR #595）
+- [x] `lib/auth.ts`: `getUser()` は上記に乗るので変更なし。`getSession()` は Bearer 経路では常に null になることをコメントで明示（PR #595）
+- [x] `lib/security/same-origin.ts`: 「Bearer の JWT があり、かつ `Origin` ヘッダーが無い」更新系リクエストだけ検査を通す（REQ-03）。`Origin` あり（ブラウザ発）と Cookie 経路は従来どおり（PR #595）
+- [x] 退会チェック（REQ-02）: `proxy.ts` の退会チェックを Bearer 経路でも行う。`/api` で Bearer の JWT があれば Cookie より先にその本人を解決し、`profiles.deactivated_at` を本人（RLS）として参照して Cookie 経路と同じ `403` を返す。無効トークンは Cookie にフォールバックしない。当初案の `requireActiveUser()` ヘルパーは proxy で一括して行うため作らない（PR #595）
 - [ ] `/api/generate-async`（`app/api/generate-async/handler.ts`）と `/style/generate-async`（`app/(app)/style/generate-async/handler.ts`）を Bearer で疎通確認。ゲスト識別 Cookie に依存する分岐は認証済みのみ通す
 - [ ] 以下を Bearer で疎通確認: `POST /api/posts/post`、`GET /api/posts?sort=following`、`GET /api/notifications`、`POST /api/users/[userId]/avatar`、`PATCH /api/users/[userId]/profile`、`POST /api/reports/posts`、`POST /api/posts/prompt-actions`、`GET /api/posts/[id]/prompt-text`、`POST /api/contact`、`POST /api/account/deactivate`、`GET /api/announcements*`、`GET /api/hashtags/*`、`GET /api/style-presets/[id]/unlock-status`
-- [x] `docs/API.md` と `/openapi.yaml` に Bearer 認証を追記
-- [x] テスト: `tests/unit/lib/` に Bearer 解決の単体テスト、`tests/integration/` に generate-async の Bearer 統合テスト（既存の Cookie テストを参考）
+- [x] `docs/API.md`（Access Model・Authentication Notes・Quick Start の Bearer 例）と `docs/openapi.yaml`（`SupabaseBearerToken` スキームと、`user session` / `admin session` の各 operation への OR 追加）に Bearer 認証を追記（PR #595）
+- [x] テスト（PR #595）: `tests/unit/lib/auth/bearer.test.ts`（ヘッダー読み取り・期限判定）、`tests/unit/lib/security/same-origin-bearer.test.ts`（同一オリジン検査の Bearer 規則）、`tests/unit/lib/supabase/server-bearer.test.ts`（`createClient` の Bearer / Cookie 経路）、`tests/integration/lib/supabase/server-bearer-real-client.test.ts`（実クライアント + fetch スタブでリフレッシュ要求が出ないこと）、`tests/integration/proxy/bearer-api-route.test.ts`（proxy の退会チェックと Cookie 併存時の優先順位）
+- [ ] テスト: `tests/integration/` に generate-async の Bearer 統合テスト（既存の Cookie テストを参考）
 - [ ] 悪用面の再確認: Bearer でも残高チェックと RPC の権限は変わらないこと、`node scripts/check-rpc-grants.mjs` が緑のままであること
 
 ### Phase 2: 認証（persta-app）

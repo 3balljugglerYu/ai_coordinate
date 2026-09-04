@@ -85,6 +85,19 @@ Persta.AI の API は、Next.js App Router の Route Handler として実装さ�
 curl "http://localhost:3000/api/posts?limit=20&offset=0&sort=newest"
 ```
 
+### ネイティブアプリ（Bearer 認証）で本人向け API を呼ぶ
+
+ネイティブアプリは Cookie を持たないため、Supabase のアクセストークン（JWT）を `Authorization: Bearer` で送ります。Cookie 経路と同じ本人として扱われます。
+
+```bash
+curl "http://localhost:3000/api/notifications/unread-count" \
+  -H "Authorization: Bearer <supabase_access_token>" \
+  -H "Accept-Language: ja"
+```
+
+- 期限切れ・不正なトークンは `401` になります。サーバーはトークンを更新しないため、クライアント側で Supabase SDK を使って更新してから再送してください。
+- 更新系 API は `Origin` ヘッダーを送らなくても、Bearer の JWT があれば同一オリジン検査を通過します。
+
 Response:
 
 ```json

@@ -26,6 +26,9 @@ export const getUser = cache(async () => {
 
 /**
  * 認証されたユーザーセッションを取得
+ *
+ * Bearer 経路(ネイティブアプリ)ではセッションを保存しないため常に null になる。
+ * 本人が必要な処理は `getUser()` を使うこと(Cookie / Bearer の両経路で本人を返す)。
  */
 export async function getSession() {
   const supabase = await createClient();

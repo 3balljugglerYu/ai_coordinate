@@ -69,68 +69,74 @@ export async function proxy(request: NextRequest) {
     return response;
   }
 
-  let supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-    cookies: {
-      getAll() {
-        return request.cookies.getAll();
-      },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value }) =>
-          request.cookies.set(name, value)
-        );
-        response = createNextResponse(request, resolvedLocale);
-        cookiesToSet.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options)
-        );
-      },
-    },
-  });
-
-  // Proxy では cookie/session から軽量にユーザーを解決する。
-  const {
-    data: { session },
-    error: sessionError,
-  } = await supabase.auth.getSession();
-  if (sessionError) {
-    console.warn("[proxy] Failed to read auth session:", sessionError.message);
-  }
-  let userId = session?.user?.id ?? null;
-
   /*
     ネイティブアプリは Cookie を持たず `Authorization: Bearer <access token>` で
-    API を呼ぶ。Cookie セッションが無い /api リクエストに限り、そのトークンで本人を
-    解決し、下の退会チェック(profiles.deactivated_at)を Cookie 経路と同じく通す。
+    API を呼ぶ。/api で Bearer の JWT があるリクエストは、Route Handler 側の
+    `createClient()`(lib/supabase/server.ts)と同じく **Cookie より先に・Cookie を
+    読まずに** そのトークンで本人を解決し、下の退会チェック(profiles.deactivated_at)を
+    Cookie 経路と同じく通す。トークンが無効でも Cookie にはフォールバックしない
+    (Handler 側も Bearer を優先して未認証にするため、本人の判定を一致させる)。
     ページ系のリダイレクトは Bearer では起きない(/api 以外では読まない)。
     設計: docs/planning/flutter-app-parity-implementation-plan.md Phase 1 REQ-02
   */
-  if (!userId && pathname.startsWith("/api")) {
-    const bearerJwt = readBearerJwt(request.headers);
-    if (bearerJwt) {
-      const {
-        data: { user: bearerUser },
-        error: bearerError,
-      } = await supabase.auth.getUser(bearerJwt);
-      if (bearerError) {
-        console.warn("[proxy] Bearer token rejected:", bearerError.message);
-      } else if (bearerUser) {
-        userId = bearerUser.id;
-        // 退会チェックの profiles 参照を本人(RLS)として行うため、トークンを
-        // 載せたクライアントに差し替える(Cookie は読まない・書かない)。
-        supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
-          cookies: {
-            getAll() {
-              return [];
-            },
-            setAll() {
-              // Bearer 経路では Cookie を発行しない
-            },
-          },
-          global: {
-            headers: { Authorization: `Bearer ${bearerJwt}` },
-          },
-        });
-      }
+  const bearerJwt = pathname.startsWith("/api")
+    ? readBearerJwt(request.headers)
+    : null;
+
+  let supabase: ReturnType<typeof createServerClient>;
+  let userId: string | null = null;
+
+  if (bearerJwt) {
+    // 退会チェックの profiles 参照を本人(RLS)として行うため、トークンを
+    // 載せたクライアントを使う(Cookie は読まない・書かない)。
+    supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return [];
+        },
+        setAll() {
+          // Bearer 経路では Cookie を発行しない
+        },
+      },
+      global: {
+        headers: { Authorization: `Bearer ${bearerJwt}` },
+      },
+    });
+    const {
+      data: { user: bearerUser },
+      error: bearerError,
+    } = await supabase.auth.getUser(bearerJwt);
+    if (bearerError) {
+      console.warn("[proxy] Bearer token rejected:", bearerError.message);
     }
+    userId = bearerUser?.id ?? null;
+  } else {
+    supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() {
+          return request.cookies.getAll();
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) =>
+            request.cookies.set(name, value)
+          );
+          response = createNextResponse(request, resolvedLocale);
+          cookiesToSet.forEach(({ name, value, options }) =>
+            response.cookies.set(name, value, options)
+          );
+        },
+      },
+    });
+
+    // Proxy では cookie/session から軽量にユーザーを解決する。
+    const {
+      data: { session },
+      error: sessionError,
+    } = await supabase.auth.getSession();
+    if (sessionError) {
+      console.warn("[proxy] Failed to read auth session:", sessionError.message);
+    }
+    userId = session?.user?.id ?? null;
   }
 
   if (userId) {
