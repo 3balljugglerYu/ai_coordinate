@@ -73,12 +73,17 @@ describe("generation-progress-store", () => {
     /*
       ⭐ バックグラウンドの補助機能なので、問い合わせ自体が失敗しても
       握りつぶす。シートを閉じる操作そのものをブロックしてはならない。
+      何も追跡していなかった状態からの失敗は、そのまま何も追跡しない。
     */
-    test("問い合わせが失敗しても例外を投げない", async () => {
+    test("何も追跡していない状態で問い合わせが失敗しても例外を投げない", async () => {
       mockGetInProgressJobs.mockRejectedValue(new Error("network error"));
 
       await expect(checkAndTrackInProgressJob()).resolves.toBeUndefined();
-      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+      expect(getGenerationProgressSnapshot()).toEqual({
+        trackedJobId: null,
+        sheetOpenCount: 0,
+        isReconciliationPending: false,
+      });
     });
 
     test("既定では queued/processing のみを対象にする(includeRecentを渡さない)", async () => {
@@ -88,29 +93,38 @@ describe("generation-progress-store", () => {
 
       expect(mockGetInProgressJobs).toHaveBeenCalledWith(false);
     });
+  });
 
-    /*
-      ⭐ PR #594 レビュー2巡目で指摘された競合の回帰テスト。
+  /*
+    ⭐⭐ PR #594 レビュー3巡目で指摘された内容の回帰テスト。
 
-      呼び出し側(PromptLockedGenerationSheet)はこの関数を await せず
-      onOpenChange(next) を続けて呼ぶため、sheetOpenCount はこの問い合わせが
-      解決するより先に 0 へ戻ることがある。その間 trackedJobId が古い値の
-      ままだと、GenerationProgressHost のポーリング effect が
-      sheetOpenCount の変化だけで動き出し、この問い合わせより先に
-      「古いjobIdの現在の状態」を取得してしまう。シート内で見届けた
-      完了が、閉じた直後にもう一度トーストとして出る。
+    2巡目の修正（問い合わせ前に trackedJobId を同期で null にする）は、
+    「シート内で見届けた完了が閉じた直後にもう一度トーストとして出る」
+    競合は防げたが、**問い合わせ自体が失敗したときに正規の追跡を失う**
+    新しい退行を生んでいた。既にバックグラウンドでジョブAを追跡中に、
+    別のシートを開閉しただけでこの問い合わせが一時的なネットワーク不調で
+    失敗すると、ジョブAはまだ進行中なのにバー・ポーリング・完了通知が
+    失われる。
 
-      問い合わせを始める**前**に trackedJobId を同期的に無効化していれば、
-      問い合わせが解決するまでの間、Host は「追跡対象が無い」ため
-      何もしない。
-    */
-    test("⭐問い合わせが解決するより前にtrackedJobIdを同期的に無効化する", async () => {
-      // 既に job-old を追跡している状態を作る
+    `trackedJobId` には触れず、`isReconciliationPending` で
+    Host のポーリングだけを止める設計に直した。承認条件（レビュー本文より）:
+      1. 照会中は既存ポーリングが停止し、古いIDの status API を呼ばない
+      2. 照会成功時は空配列なら追跡解除、ジョブありなら最新IDへ置換する
+      3. 照会失敗時は既存の trackedJobId を保持し、Host がそのIDの
+         追跡を再開する
+      4. 先行した古い照会結果が後発の照会結果を上書きしない
+  */
+  describe("checkAndTrackInProgressJob の照会中ガード(isReconciliationPending)", () => {
+    test("問い合わせ中はtrackedJobIdに触れず、isReconciliationPendingだけtrueにする（条件1）", async () => {
+      // 既に job-A を追跡している状態を作る
       mockGetInProgressJobs.mockResolvedValueOnce([
-        job("job-old", "2026-09-04T09:00:00Z"),
+        job("job-A", "2026-09-04T09:00:00Z"),
       ]);
       await checkAndTrackInProgressJob();
-      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-old");
+      expect(getGenerationProgressSnapshot()).toMatchObject({
+        trackedJobId: "job-A",
+        isReconciliationPending: false,
+      });
 
       // 次の問い合わせは、テストが明示的に解決するまで pending のままにする
       let resolveJobs!: (jobs: JobStatus[]) => void;
@@ -122,38 +136,116 @@ describe("generation-progress-store", () => {
 
       const pending = checkAndTrackInProgressJob();
 
-      // ⭐ ここが本題。await する前(=問い合わせがまだ解決していない時点)で
-      // 既に trackedJobId が null になっていること。
-      // これが無いと、sheetOpenCount が先に 0 へ戻った瞬間、Host が
-      // "job-old" のまま古い状態を取りに行ってしまう。
-      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+      // ⭐ await する前(=問い合わせがまだ解決していない時点)で、
+      // trackedJobId は job-A のまま・isReconciliationPending だけ true。
+      expect(getGenerationProgressSnapshot()).toEqual({
+        trackedJobId: "job-A",
+        sheetOpenCount: 0,
+        isReconciliationPending: true,
+      });
 
-      // 問い合わせが解決すると、その時点の真の状態が反映される
-      resolveJobs([job("job-new", "2026-09-04T10:00:00Z")]);
+      resolveJobs([job("job-A", "2026-09-04T09:00:00Z")]);
       await pending;
+    });
+
+    test("照会成功時、空配列なら追跡解除・ジョブがあれば最新IDへ置換する（条件2）", async () => {
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-A", "2026-09-04T09:00:00Z"),
+      ]);
+      await checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-A");
+
+      mockGetInProgressJobs.mockResolvedValueOnce([]);
+      await checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot()).toMatchObject({
+        trackedJobId: null,
+        isReconciliationPending: false,
+      });
+
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-B", "2026-09-04T10:00:00Z"),
+      ]);
+      await checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot()).toMatchObject({
+        trackedJobId: "job-B",
+        isReconciliationPending: false,
+      });
+    });
+
+    /*
+      ⭐⭐ レビューが名指しした回帰テスト:
+      「既存IDあり → 照会pending → Host停止 → 照会reject → 既存IDで追跡再開」
+    */
+    test("⭐既存IDあり→照会pending→照会失敗→既存IDを保持したまま追跡再開できる（条件3）", async () => {
+      // 既存ID(job-A)を確立する
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-A", "2026-09-04T09:00:00Z"),
+      ]);
+      await checkAndTrackInProgressJob();
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-A");
+
+      // 別のシートの開閉が失敗する問い合わせを発火させる
+      mockGetInProgressJobs.mockRejectedValueOnce(new Error("network error"));
+      await checkAndTrackInProgressJob();
+
+      // ⭐ 失敗しても job-A は失われない。isReconciliationPending は false に戻る
+      // (Host はここで trackedJobId="job-A" を使ってポーリングを再開できる)。
+      expect(getGenerationProgressSnapshot()).toEqual({
+        trackedJobId: "job-A",
+        sheetOpenCount: 0,
+        isReconciliationPending: false,
+      });
+    });
+
+    /*
+      ⭐ 先行した古い照会結果が後発の照会結果を上書きしない（条件4）。
+      シートを立て続けに開閉すると問い合わせが重複して発火しうる。
+    */
+    test("⭐古い問い合わせの応答が後発の応答より遅れて届いても上書きしない", async () => {
+      let resolveFirst!: (jobs: JobStatus[]) => void;
+      mockGetInProgressJobs.mockReturnValueOnce(
+        new Promise((resolve) => {
+          resolveFirst = resolve;
+        })
+      );
+      const first = checkAndTrackInProgressJob();
+
+      // 1回目がまだ解決しないうちに、2回目(より新しい)を発火する
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-new", "2026-09-04T10:00:00Z"),
+      ]);
+      const second = checkAndTrackInProgressJob();
+      await second;
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-new");
+
+      // 1回目(古い)が今頃になって解決しても、2回目の結果を上書きしない
+      resolveFirst([job("job-old", "2026-09-04T09:00:00Z")]);
+      await first;
       expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-new");
     });
 
-    test("⭐無効化後に問い合わせが空配列で解決してもnullのまま", async () => {
-      mockGetInProgressJobs.mockResolvedValueOnce([
-        job("job-old", "2026-09-04T09:00:00Z"),
-      ]);
-      await checkAndTrackInProgressJob();
-      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-old");
-
-      let resolveJobs!: (jobs: JobStatus[]) => void;
+    test("古い問い合わせが後発より先に失敗しても、後発の結果を上書きしない", async () => {
+      let rejectFirst!: (error: Error) => void;
       mockGetInProgressJobs.mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveJobs = resolve;
+        new Promise((_resolve, reject) => {
+          rejectFirst = reject;
         })
       );
+      const first = checkAndTrackInProgressJob();
 
-      const pending = checkAndTrackInProgressJob();
-      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+      mockGetInProgressJobs.mockResolvedValueOnce([
+        job("job-new", "2026-09-04T10:00:00Z"),
+      ]);
+      const second = checkAndTrackInProgressJob();
+      await second;
+      expect(getGenerationProgressSnapshot().trackedJobId).toBe("job-new");
 
-      resolveJobs([]);
-      await pending;
-      expect(getGenerationProgressSnapshot().trackedJobId).toBeNull();
+      rejectFirst(new Error("network error"));
+      await first;
+      expect(getGenerationProgressSnapshot()).toMatchObject({
+        trackedJobId: "job-new",
+        isReconciliationPending: false,
+      });
     });
   });
 
@@ -198,6 +290,7 @@ describe("generation-progress-store", () => {
     expect(getGenerationProgressSnapshot()).toEqual({
       trackedJobId: null,
       sheetOpenCount: 1,
+      isReconciliationPending: false,
     });
   });
 });

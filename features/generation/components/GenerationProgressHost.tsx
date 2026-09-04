@@ -71,11 +71,12 @@ export function GenerationProgressHost() {
   */
   const available = useGenerationProgressAvailable();
 
-  const { trackedJobId, sheetOpenCount } = useSyncExternalStore(
-    subscribeGenerationProgress,
-    getGenerationProgressSnapshot,
-    getGenerationProgressServerSnapshot
-  );
+  const { trackedJobId, sheetOpenCount, isReconciliationPending } =
+    useSyncExternalStore(
+      subscribeGenerationProgress,
+      getGenerationProgressSnapshot,
+      getGenerationProgressServerSnapshot
+    );
 
   const [jobSnapshot, setJobSnapshot] = useState<TrackedJobSnapshot | null>(null);
 
@@ -87,8 +88,13 @@ export function GenerationProgressHost() {
       `GenerationFormContainer` も同じジョブを見ているため、シート内の
       完了表示とバックグラウンドの完了トーストが二重に出ていた。
       PR #594 レビューで指摘）。
+
+      ⭐⭐ `isReconciliationPending` も止める。`checkAndTrackInProgressJob()`
+      の問い合わせが解決するまでの間、`trackedJobId` は「まだ検証されていない
+      値」のまま残る（ストア側は問い合わせ失敗時に既存の値を保持するため、
+      ここで動いてしまうと確定前の古い状態をポーリングしてしまう）。
     */
-    if (!available || sheetOpenCount > 0 || !trackedJobId) {
+    if (!available || sheetOpenCount > 0 || isReconciliationPending || !trackedJobId) {
       setJobSnapshot(null);
       return;
     }
@@ -184,8 +190,8 @@ export function GenerationProgressHost() {
       isCancelled = true;
       stop?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId/available/sheetOpenCount の変化だけで再実行したい
-  }, [trackedJobId, available, sheetOpenCount]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId/available/sheetOpenCount/isReconciliationPending の変化だけで再実行したい
+  }, [trackedJobId, available, sheetOpenCount, isReconciliationPending]);
 
   const stageCopy = useMemo(() => buildCoordinateStageCopy(t), [t]);
   const phase = jobSnapshot ? "running" : "idle";

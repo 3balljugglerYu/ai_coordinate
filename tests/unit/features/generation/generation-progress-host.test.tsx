@@ -317,6 +317,41 @@ describe("GenerationProgressHost", () => {
   });
 
   /*
+    ⭐⭐ PR #594 レビュー3巡目の指摘に対する end-to-end 回帰テスト。
+    「既存IDあり → 照会pending → Host停止 → 照会reject → 既存IDで
+    追跡再開」を、実物のストア + Host を通して確認する
+    （store 単体のテストは generation-progress-store.test.ts 側にもある）。
+  */
+  test("⭐checkAndTrackInProgressJobが失敗しても、既存の追跡は失われずHostが再開する", async () => {
+    mockGetGenerationStatus.mockResolvedValue(status());
+    deferredPoll();
+
+    render(<GenerationProgressHost />);
+    await trackJob(); // job-1 を追跡開始
+    await waitFor(() =>
+      expect(screen.getByText("画像を生成中...")).toBeInTheDocument()
+    );
+
+    // 別のシートの開閉に相当する、失敗する問い合わせ
+    mockGetInProgressJobs.mockRejectedValueOnce(new Error("network error"));
+    const secondPoll = deferredPoll();
+    await act(async () => {
+      await checkAndTrackInProgressJob();
+    });
+
+    // ⭐ 失敗しても job-1 の追跡は失われず、Host はそのIDでポーリングを
+    // 再開している(バーが消えたままにならない)。
+    await waitFor(() =>
+      expect(screen.getByText("画像を生成中...")).toBeInTheDocument()
+    );
+
+    await act(async () => {
+      secondPoll.resolve(status({ status: "succeeded", generatedImageId: "img-1" }));
+    });
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1));
+  });
+
+  /*
     ⭐ 段階公開: available が false の間は、追跡中のジョブがあっても
     何も描画しない（本番でまず運営のみに見せるため）。
   */

@@ -44,15 +44,33 @@ export interface GenerationProgressState {
    * 0 より大きい間、バーは表示しない（二重表示防止）。
    */
   sheetOpenCount: number;
+  /**
+   * `checkAndTrackInProgressJob()` の問い合わせが解決していない間 true。
+   * true の間、`GenerationProgressHost` はポーリングを開始しない
+   * （`trackedJobId` を古いまま使わせないための抑制。PR #594 レビュー参照）。
+   */
+  isReconciliationPending: boolean;
 }
 
 const INITIAL: GenerationProgressState = {
   trackedJobId: null,
   sheetOpenCount: 0,
+  isReconciliationPending: false,
 };
 
 let state: GenerationProgressState = INITIAL;
 const listeners = new Set<() => void>();
+
+/**
+ * `checkAndTrackInProgressJob()` の呼び出しごとに増える通し番号。
+ *
+ * シートを立て続けに開閉すると問い合わせが重複して発火しうる。
+ * ネットワークの遅延次第で古い呼び出しの応答が新しい呼び出しより
+ * 後に届くことがあるため、**発火順ではなく応答順**で state を書き換えると
+ * 新しい方の結果を古い方の結果が上書きしてしまう。呼び出し時点の番号を
+ * 覚えておき、応答時にそれが最新でなければ何もしない（stale response guard）。
+ */
+let reconciliationVersion = 0;
 
 function emit(next: GenerationProgressState) {
   state = next;
@@ -71,38 +89,59 @@ function emit(next: GenerationProgressState) {
  * ⭐⭐ 呼び出し側（`PromptLockedGenerationSheet`）はこの関数を `await` せず
  * `onOpenChange(next)` を続けて呼ぶ。そのため `sheetOpenCount` は、この
  * 問い合わせが解決するより先に 0 へ戻ることがある（むしろ通常はそうなる）。
+ * 何もしないと `sheetOpenCount` が 0 に戻った瞬間 `GenerationProgressHost`
+ * のポーリング effect が「古い trackedJobId」で動き出し、この問い合わせより
+ * 先に `getGenerationStatus()` が `succeeded` を返してしまう（シート内で
+ * 見届けた完了が、閉じた直後にもう一度トーストとして出る）。
  *
- * 問い合わせを始める**前**に、いま追跡している（かもしれない）jobId を
- * 即座に無効化しておく。こうしないと、`sheetOpenCount` が 0 に戻った瞬間
- * `GenerationProgressHost` のポーリング effect が「古い trackedJobId」で
- * 動き出し、この問い合わせより先に `getGenerationStatus()` が `succeeded`
- * を返してしまう。シート内で見届けた完了が、閉じた直後にもう一度
- * トーストとして出る（PR #594 のレビューで、前回の修正だけでは
- * このタイミング次第の抜け道が残っていると指摘された）。
+ * ⭐⭐⭐ 対処として当初 `trackedJobId` を問い合わせ前に同期で `null` にしていたが、
+ * これだと**問い合わせ自体が失敗したとき**に正規の追跡を失う（例: 既に
+ * バックグラウンドでジョブAを追跡中に、別のシートを開閉しただけでこの
+ * 問い合わせが一時的なネットワーク不調で失敗すると、ジョブAはまだ進行中
+ * なのにバー・ポーリング・完了通知が失われる。PR #594 レビューで指摘）。
  *
- * 先に null にしておけば、問い合わせが終わるまで Host は「追跡対象が無い」
- * ため何もしない。問い合わせが解決した時点で初めて、その時点の真の状態
- * （新しい jobId か、本当に何も無いか）を反映する。
+ * `trackedJobId` には触れず、代わりに `isReconciliationPending` で
+ * Host のポーリングだけを止める。
+ *   - 問い合わせ中: `trackedJobId` は**そのまま**、`isReconciliationPending: true`
+ *   - 成功: 空配列なら追跡解除・見つかれば置換。`isReconciliationPending: false`
+ *   - 失敗: `trackedJobId` は**保持**（何も分からなかっただけで、追跡していた
+ *     ジョブが消えたとは限らない）。`isReconciliationPending: false` に戻すのみ
+ *
+ * `reconciliationVersion` は、応答が発火順と異なる順序で届いても
+ * 古い方が新しい方を上書きしないためのガード。
  */
 export async function checkAndTrackInProgressJob(): Promise<void> {
-  clearTrackedGenerationJob();
+  const requestVersion = ++reconciliationVersion;
+  emit({ ...state, isReconciliationPending: true });
 
   let jobs;
   try {
     jobs = await getInProgressJobs(false);
   } catch (error) {
     console.error("Failed to check in-progress jobs for background bar:", error);
+    if (requestVersion !== reconciliationVersion) {
+      // より新しい問い合わせが既に発火済み。この失敗は無視する。
+      return;
+    }
+    // trackedJobId には触れない。何も分からなかっただけで、
+    // 追跡していたジョブが本当に消えたとは限らない（安全側）。
+    emit({ ...state, isReconciliationPending: false });
     return;
   }
 
-  if (jobs.length === 0) {
-    // 上ですでに clear 済み。進行中が無いと確定しただけ。
+  if (requestVersion !== reconciliationVersion) {
+    // 応答が届く前に、より新しい問い合わせが発火していた。
+    // この（古い）結果で state を書き換えない。
     return;
   }
 
   // getInProgressJobs は created_at DESC で返す。ADR-004: 直近1件のみ追跡し、
-  // 新しいジョブを検知したら上書きする。
-  emit({ ...state, trackedJobId: jobs[0].id });
+  // 新しいジョブを検知したら上書きする。空配列なら追跡解除。
+  emit({
+    ...state,
+    isReconciliationPending: false,
+    trackedJobId: jobs.length > 0 ? jobs[0].id : null,
+  });
 }
 
 /** シートが開いた。バーを隠す。 */
@@ -144,4 +183,5 @@ export function getGenerationProgressServerSnapshot(): GenerationProgressState {
 /** テスト用。module 変数なのでテスト間で持ち越さないよう明示的に戻す。 */
 export function resetGenerationProgressStoreForTest() {
   state = INITIAL;
+  reconciliationVersion = 0;
 }
