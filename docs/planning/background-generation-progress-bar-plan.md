@@ -112,6 +112,10 @@ stateDiagram-v2
 - **Reason**: 両呼び出し元（`FollowAndUsePromptButton.tsx` / `SourcePromptReferenceCard.tsx`）はシートを「隠す」のではなく「毎回作り直す」実装なので、閉じる＝即 unmount である。unmount のタイミングでサーバーに直接聞けば、シート内部の React state を外へ持ち出す配線が一切不要になる。`getInProgressJobs` は既存の復旧経路と全く同じ API なので、举動の一貫性も保てる。
 - **Consequence**: 閉じた瞬間にジョブがまだ `queued`/`processing` でなければ（既に `succeeded` していれば）追跡は始まらない。ただしその場合、閉じる直前までシート自身が完了状態を表示していたはずなので、ユーザーへの実害はない（後述 ADR-003）。
 
+⭐ **訂正（PR #594 レビューで判明・2026-09-04）**: 「両呼び出し元とも閉じる＝即unmount」という上記の Reason は誤りだった。`SourcePromptReferenceCard.tsx:460` は `canGenerate ? (...) : null`（`canGenerate` は投稿詳細を見ている間ずっと true）でシートを描画しており、閉じても unmount されず `open` prop だけが変わる。`FollowAndUsePromptButton.tsx:205` の `isSheetOpen && ... ? (...) : null` とは異なる。一方だけを確認した内容を両方に一般化していた（AGENTS.md「Claims and Verification」が防ごうとしている失敗そのもの）。
+
+**影響と対処**: `pauseGenerationProgressBar` / `resumeGenerationProgressBarIfNeeded` を mount/unmount ではなく `open` prop の変化で判定するよう修正した（`useEffect` の条件・依存配列に `open` を追加）。`checkAndTrackInProgressJob()` の呼び出しタイミング（`onOpenChange(false)` をラップしたハンドラ内）自体は誤りではなく、そのまま維持している。
+
 ### ADR-002: 見た目は `GenerationStatusCard` をそのまま流用する
 
 - **Context**: 新しいバー専用のデザインを作ることもできるが、既存の生成中カードと見た目がずれると「同じ生成なのに表示が変わる」違和感が出る。
@@ -298,6 +302,7 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
 
 - [x] **権限**: `getInProgressJobs` は既存の認証チェック（`getUser()`）に依存しており、新規のAPIエンドポイントを追加しないため、権限まわりの新たな懸念は無い（`app/api/generation-status/in-progress/route.ts:18-19` で確認済み）
 - [x] **二重表示**: シートが開いている間、バーが絶対に描画されないこと（`sheetOpenCount` のカウンタ判定）→ ユニットテストで確認済み
+  - ⭐ **訂正（PR #594 レビューで判明）**: 当初は表示条件（`visible`）だけが `sheetOpenCount` を見ており、ポーリングを行う `useEffect` の依存配列には含めていなかった。シートを開き直しても裏でポーリングが続き、シート内の完了表示とバックグラウンドの完了トーストが二重に出ていた。ガード・依存配列の両方に `sheetOpenCount` を追加して修正。あわせて、ポーリングを止めている間にジョブが完了すると `trackedJobId` が古いまま残る点も見つかり、`checkAndTrackInProgressJob()` が進行中ジョブを見つけられなかったときに `clearTrackedGenerationJob()` で追跡を畳むよう修正した
 - [x] **リーク**: `pollGenerationStatus` は成功/失敗で `resolve()` した後は追加の `setTimeout` を積まない（`async-api.ts:296-299`）ため終端到達時に自然に止まる。unmount 時は `stop?.()` を呼ぶ（`GenerationProgressHost.tsx` のクリーンアップ）ので、いずれの経路でもタイマーは残らない
 - [x] **i18n**: 15言語すべてに新規トースト文言（`generationCompletedToastAction`）があることを確認済み
 
