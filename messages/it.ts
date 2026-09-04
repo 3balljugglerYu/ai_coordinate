@@ -1094,6 +1094,7 @@ export const itMessages = {
     generationProgressTitle:
       "Generazione delle immagini ({completed} / {total} completate)",
     generationCompletedTitle: "La generazione delle immagini è completata",
+    generationCompletedToastAction: "Vedi",
     // preparing
     generationStagePreparingMessage1: "Sto controllando l'outfit...",
     generationStagePreparingMessage2: "Sto osservando l'outfit...",

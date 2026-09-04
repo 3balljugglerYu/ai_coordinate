@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Drawer } from "vaul";
 import {
@@ -16,6 +16,12 @@ import { PromptLockedGenerationHeader } from "@/features/generation/components/P
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useIsDesktopViewport } from "@/features/generation/hooks/useIsDesktopViewport";
 import { fetchSourcePromptText } from "@/features/posts/lib/source-prompt-text-api";
+import {
+  checkAndTrackInProgressJob,
+  pauseGenerationProgressBar,
+  resumeGenerationProgressBarIfNeeded,
+} from "@/features/generation/lib/generation-progress-store";
+import { useGenerationProgressAvailable } from "@/features/generation/components/GenerationProgressAvailabilityProvider";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 
 interface PromptLockedGenerationSheetProps {
@@ -90,6 +96,57 @@ export function PromptLockedGenerationSheet({
   const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
 
   /*
+    段階公開（本番でまず運営のみ）。実機の完全なE2E検証が未実施のため、
+    一般公開前に本番で自分だけ確認できる状態にしている。
+    false のあいだはストア操作を一切行わない
+    （ストアが populate されなければ GenerationProgressHost 側の
+    ガードを待たずとも何も起きない、という二重の安全）。
+  */
+  const backgroundProgressAvailable = useGenerationProgressAvailable();
+
+  /*
+    ⭐ `open` prop の変化で判定する（mount/unmount では判定しない）。
+
+    `FollowAndUsePromptButton` は `{isSheetOpen && ... ? (<Sheet/>) : null}`
+    で閉じると unmount するが、`SourcePromptReferenceCard` は
+    `{canGenerate ? (<Sheet open={isSheetOpen} .../>) : null}` で
+    `canGenerate`（投稿詳細を見ている間はずっと true）だけを見ており、
+    閉じても unmount しない。当初は「両呼び出し元とも閉じる＝即unmount」と
+    誤認しており（PR #594 レビューで指摘）、mount/unmount だけで判定すると
+    投稿詳細からの生成では resume が一生呼ばれず sheetOpenCount が
+    上がったままになっていた。
+
+    `open` を条件にも依存配列にも入れれば、unmount する呼び出し元・
+    しない呼び出し元の両方で「開いている間だけ pause」が成立する
+    （前者は unmount 時にこの effect 自身のクリーンアップが走るので、
+    従来どおり正しく resume される）。
+  */
+  useEffect(() => {
+    if (!backgroundProgressAvailable || !open) {
+      return;
+    }
+    pauseGenerationProgressBar();
+    return () => {
+      resumeGenerationProgressBarIfNeeded();
+    };
+  }, [backgroundProgressAvailable, open]);
+
+  /*
+    シートを閉じる直前に、進行中のジョブが無いかサーバーへ確認する。
+    見つかればバックグラウンド追跡を開始し、閉じた後もバーで進捗を追える
+    ようにする（`GenerationStateContext` には一切触れない。ADR-001）。
+  */
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next && backgroundProgressAvailable) {
+        void checkAndTrackInProgressJob();
+      }
+      onOpenChange(next);
+    },
+    [onOpenChange, backgroundProgressAvailable]
+  );
+
+  /*
     公開プロンプトの本文は開いてから取りに行く。
 
     props へ載せると未フォロワーのブラウザにも届いてしまうため、
@@ -127,7 +184,7 @@ export function PromptLockedGenerationSheet({
 
   if (isDesktop) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         {/*
           幅と高さは inline style で指定する。shadcn の sm:max-w-lg と
           Tailwind v4 のスキャナ生成事情で class 上書きが効きにくい
@@ -166,7 +223,7 @@ export function PromptLockedGenerationSheet({
   }
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    <Drawer.Root open={open} onOpenChange={handleOpenChange}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <Drawer.Content

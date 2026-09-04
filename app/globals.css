@@ -1763,6 +1763,21 @@ body.post-progress-active nav.fixed.bottom-0 {
 }
 
 /*
+ * バックグラウンド生成中のバー(`GenerationProgressHost`)の safe-area 余白と
+ * ボトムナビ非表示。「このプロンプトで生成する」シートを閉じても
+ * 進捗を見失わないようにするための下部固定バー。post-progress と同じ
+ * 理由・同じ作法だが、投稿の送信中バーとは独立な状態なので別クラスにする
+ * (どちらか一方が畳んでも、もう一方の表示に影響しないようにするため)。
+ */
+.generation-progress-safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body.generation-progress-active nav.fixed.bottom-0 {
+  display: none;
+}
+
+/*
  * 投稿中のバーの帯。
  *
  * 投稿APIは進捗率を取れない(is_posted を立てる操作で、重い WebP 変換は

@@ -1091,6 +1091,7 @@ export const koMessages = {
     generationProgressTitle:
       "이미지 생성 중 ({completed} / {total} 완료)",
     generationCompletedTitle: "이미지 생성이 완료되었습니다",
+    generationCompletedToastAction: "보기",
     // preparing
     generationStagePreparingMessage1: "코디를 확인하는 중...",
     generationStagePreparingMessage2: "코디를 살펴보는 중...",

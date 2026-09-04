@@ -1092,6 +1092,7 @@ export const hiMessages = {
     generationProgressTitle:
       "छवियाँ उत्पन्न हो रही हैं ({completed} / {total} पूर्ण)",
     generationCompletedTitle: "छवि जनरेशन पूर्ण है",
+    generationCompletedToastAction: "देखें",
     // preparing
     generationStagePreparingMessage1: "आउटफ़िट जाँच रहे हैं...",
     generationStagePreparingMessage2: "आउटफ़िट को देख रहे हैं...",

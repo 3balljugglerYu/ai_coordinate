@@ -1091,6 +1091,7 @@ export const thMessages = {
     generationProgressTitle:
       "กำลังสร้างรูป ({completed} / {total} เสร็จแล้ว)",
     generationCompletedTitle: "สร้างรูปเสร็จแล้ว",
+    generationCompletedToastAction: "ดู",
     // preparing
     generationStagePreparingMessage1: "กำลังตรวจสอบชุด...",
     generationStagePreparingMessage2: "กำลังพิจารณาชุด...",

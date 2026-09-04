@@ -1093,6 +1093,7 @@ export const idMessages = {
     generationProgressTitle:
       "Menghasilkan gambar ({completed} / {total} selesai)",
     generationCompletedTitle: "Pembuatan gambar selesai",
+    generationCompletedToastAction: "Lihat",
     // preparing
     generationStagePreparingMessage1: "Memeriksa outfit...",
     generationStagePreparingMessage2: "Mengamati outfit...",

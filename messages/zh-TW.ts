@@ -1090,6 +1090,7 @@ export const zhTwMessages = {
     generationProgressTitle:
       "圖片生成中 ({completed} / {total} 完成)",
     generationCompletedTitle: "圖片生成已完成",
+    generationCompletedToastAction: "查看",
     // preparing
     generationStagePreparingMessage1: "正在確認穿搭...",
     generationStagePreparingMessage2: "正在端詳穿搭...",

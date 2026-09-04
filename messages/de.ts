@@ -1095,6 +1095,7 @@ export const deMessages = {
     generationProgressTitle:
       "Bilder werden generiert ({completed} / {total} fertig)",
     generationCompletedTitle: "Bildgenerierung abgeschlossen",
+    generationCompletedToastAction: "Ansehen",
     // preparing
     generationStagePreparingMessage1: "Outfit wird geprüft...",
     generationStagePreparingMessage2: "Wir schauen uns das Outfit an...",
