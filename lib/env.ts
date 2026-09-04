@@ -92,6 +92,10 @@ const envSchema = {
   // 🔥人気のプロンプトタブの一般公開フラグ(ADR-006)。'true' になるまでは運営のみ使える
   NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED:
     process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED,
+  // バックグラウンド生成進捗バー(PR #594)の一般公開フラグ。実機の完全なE2E検証が
+  // 未実施のため、'true' になるまでは運営のみ使える
+  NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED:
+    process.env.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -205,6 +209,8 @@ function getEnv() {
     NEXT_PUBLIC_SEARCH_ENABLED: envSchema.NEXT_PUBLIC_SEARCH_ENABLED || "",
     NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED:
       envSchema.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED || "",
+    NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED:
+      envSchema.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -471,6 +477,28 @@ export function isPopularPromptsAvailable(
   userId: string | null | undefined
 ): boolean {
   return isPopularPromptsPubliclyEnabled() || isAdminViewer(userId);
+}
+
+/**
+ * バックグラウンド生成進捗バー（PR #594）が一般公開されているか。
+ *
+ * 実機での完全なE2E検証（実際に課金してのAI生成→シートを閉じる→
+ * 完了トースト→遷移→戻るボタン）はローカルdevサーバーの制約
+ * （nextUrl.host が常に localhost 固定になり same-origin チェックに
+ * 引っかかる）で行えなかったため、本番で運営のみ確認できる状態にする。
+ */
+export function isBackgroundGenerationProgressPubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED === "true";
+}
+
+/**
+ * この利用者がバックグラウンド生成進捗バーを使えるか(唯一の判定)。
+ * `isPopularPromptsAvailable` と同じ形にしてある。
+ */
+export function isBackgroundGenerationProgressAvailable(
+  userId: string | null | undefined
+): boolean {
+  return isBackgroundGenerationProgressPubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

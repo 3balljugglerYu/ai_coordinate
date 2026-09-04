@@ -15,6 +15,8 @@ import { SearchAvailabilityProvider } from "@/features/posts/components/SearchAv
 import { SearchAvailabilityLoader } from "@/features/posts/components/SearchAvailabilityLoader";
 import { PopularPromptsAvailabilityProvider } from "@/features/posts/components/PopularPromptsAvailabilityProvider";
 import { PopularPromptsAvailabilityLoader } from "@/features/posts/components/PopularPromptsAvailabilityLoader";
+import { GenerationProgressAvailabilityProvider } from "@/features/generation/components/GenerationProgressAvailabilityProvider";
+import { GenerationProgressAvailabilityLoader } from "@/features/generation/components/GenerationProgressAvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -36,50 +38,67 @@ export async function LocaleShell({
   return (
     <NextIntlClientProvider locale={locale} messages={messages}>
       <LocaleDocumentAttributes />
-      <UnreadNotificationProvider>
-        <MissionDotProvider>
-          <SearchAvailabilityProvider>
-            <PopularPromptsAvailabilityProvider>
-              {appContent}
-              {/*
-                検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
-                認証を引くため独立した Suspense に置く（ここを appContent と
-                同じ境界にすると、全ページが認証待ちになる）。
-              */}
-              <Suspense fallback={null}>
-                <SearchAvailabilityLoader />
-              </Suspense>
-              {/*
-                🔥人気タブの段階公開。検索と同じく運営だけ true に昇格させる。
-                ⭐ ここに Provider を置かないと SortTabs が context の外になり、
-                閉じる側（false）に倒れて運営もタブを使えない。
-              */}
-              <Suspense fallback={null}>
-                <PopularPromptsAvailabilityLoader />
-              </Suspense>
-            </PopularPromptsAvailabilityProvider>
-          </SearchAvailabilityProvider>
-        </MissionDotProvider>
-      </UnreadNotificationProvider>
       {/*
-        ナビゲーション中も生き残る必要があるため、Suspense 境界（appContent）の
-        外側にマウントする。AppShell 配下に置くと router.refresh() などで
-        Suspense が再活性化した際に Host も unmount され、表示中の
-        ストック保存促進モーダルが消えてしまう。
+        ⭐ appContent（シートを含むページ本体）と GenerationProgressHost
+        （Suspense 境界の外側の別ツリー）の両方をこの Provider の内側に
+        収める必要がある。PromptLockedGenerationSheet はページの中で開かれ、
+        GenerationProgressHost はそれとは別の位置にマウントされるため、
+        両者に届く最も外側の位置に置く（PopularPromptsAvailabilityProvider
+        と同じ「ここに置かないと閉じる側に倒れる」注意が当てはまる）。
       */}
-      <CoordinateSourceStockSavePromptDialogHost />
-      {/*
-        投稿の「送信中」と「完了」を受け持つ。ここも Suspense 境界の外側。
-        中に置くと、投稿後の router.refresh() で unmount され、
-        表示中の付与モーダルが消える。
-      */}
-      <PostProgressHost />
-      {/*
-        「このプロンプトで生成する」シートを閉じても生成の進捗を見失わない
-        ようにするバー。理由は PostProgressHost と同じで、ここも
-        Suspense 境界の外側に置く。
-      */}
-      <GenerationProgressHost />
+      <GenerationProgressAvailabilityProvider>
+        <UnreadNotificationProvider>
+          <MissionDotProvider>
+            <SearchAvailabilityProvider>
+              <PopularPromptsAvailabilityProvider>
+                {appContent}
+                {/*
+                  検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
+                  認証を引くため独立した Suspense に置く（ここを appContent と
+                  同じ境界にすると、全ページが認証待ちになる）。
+                */}
+                <Suspense fallback={null}>
+                  <SearchAvailabilityLoader />
+                </Suspense>
+                {/*
+                  🔥人気タブの段階公開。検索と同じく運営だけ true に昇格させる。
+                  ⭐ ここに Provider を置かないと SortTabs が context の外になり、
+                  閉じる側（false）に倒れて運営もタブを使えない。
+                */}
+                <Suspense fallback={null}>
+                  <PopularPromptsAvailabilityLoader />
+                </Suspense>
+              </PopularPromptsAvailabilityProvider>
+            </SearchAvailabilityProvider>
+          </MissionDotProvider>
+        </UnreadNotificationProvider>
+        {/*
+          ナビゲーション中も生き残る必要があるため、Suspense 境界（appContent）の
+          外側にマウントする。AppShell 配下に置くと router.refresh() などで
+          Suspense が再活性化した際に Host も unmount され、表示中の
+          ストック保存促進モーダルが消えてしまう。
+        */}
+        <CoordinateSourceStockSavePromptDialogHost />
+        {/*
+          投稿の「送信中」と「完了」を受け持つ。ここも Suspense 境界の外側。
+          中に置くと、投稿後の router.refresh() で unmount され、
+          表示中の付与モーダルが消える。
+        */}
+        <PostProgressHost />
+        {/*
+          「このプロンプトで生成する」シートを閉じても生成の進捗を見失わない
+          ようにするバー。理由は PostProgressHost と同じで、ここも
+          Suspense 境界の外側に置く。
+        */}
+        <GenerationProgressHost />
+        {/*
+          バックグラウンド生成進捗バーの段階公開。運営だけ true に昇格させる。
+          実機の完全なE2E検証が未実施のため、本番でまず運営のみ確認する。
+        */}
+        <Suspense fallback={null}>
+          <GenerationProgressAvailabilityLoader />
+        </Suspense>
+      </GenerationProgressAvailabilityProvider>
       <Toaster />
       <Ga4Script />
       <Ga4LoginStatus />

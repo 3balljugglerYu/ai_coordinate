@@ -19,6 +19,7 @@ import {
 import { normalizeProcessingStage, summarizeJobProgress } from "../lib/job-progress";
 import { buildCoordinateStageCopy } from "../lib/coordinate-stage-copy";
 import { useCoordinateGenerationFeedback } from "../hooks/useCoordinateGenerationFeedback";
+import { useGenerationProgressAvailable } from "./GenerationProgressAvailabilityProvider";
 import type { ImageJobProcessingStage, ImageJobStatus } from "../lib/job-types";
 import { GenerationStatusCard } from "./GenerationStatusCard";
 
@@ -64,6 +65,12 @@ export function GenerationProgressHost() {
   const router = useRouter();
   const { toast } = useToast();
 
+  /*
+    段階公開（本番でまず運営のみ）。実機の完全なE2E検証が未実施のため、
+    一般公開前に本番で自分だけ確認できる状態にしている。
+  */
+  const available = useGenerationProgressAvailable();
+
   const { trackedJobId, sheetOpenCount } = useSyncExternalStore(
     subscribeGenerationProgress,
     getGenerationProgressSnapshot,
@@ -73,7 +80,7 @@ export function GenerationProgressHost() {
   const [jobSnapshot, setJobSnapshot] = useState<TrackedJobSnapshot | null>(null);
 
   useEffect(() => {
-    if (!trackedJobId) {
+    if (!available || !trackedJobId) {
       setJobSnapshot(null);
       return;
     }
@@ -169,8 +176,8 @@ export function GenerationProgressHost() {
       isCancelled = true;
       stop?.();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId の変化だけで再実行したい
-  }, [trackedJobId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId/available の変化だけで再実行したい
+  }, [trackedJobId, available]);
 
   const stageCopy = useMemo(() => buildCoordinateStageCopy(t), [t]);
   const phase = jobSnapshot ? "running" : "idle";
@@ -181,7 +188,7 @@ export function GenerationProgressHost() {
   const { activeMessage, displayedMessage, activeHint, prefersReducedMotion } =
     useCoordinateGenerationFeedback(phase, stageCopy[stage]);
 
-  const visible = sheetOpenCount === 0 && jobSnapshot !== null;
+  const visible = available && sheetOpenCount === 0 && jobSnapshot !== null;
 
   /*
     ⭐ 送信中はボトムナビを隠す(投稿側と同じ理由: バーがナビより低いため、

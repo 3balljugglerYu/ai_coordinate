@@ -21,6 +21,7 @@ import {
   pauseGenerationProgressBar,
   resumeGenerationProgressBarIfNeeded,
 } from "@/features/generation/lib/generation-progress-store";
+import { useGenerationProgressAvailable } from "@/features/generation/components/GenerationProgressAvailabilityProvider";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 
 interface PromptLockedGenerationSheetProps {
@@ -95,6 +96,15 @@ export function PromptLockedGenerationSheet({
   const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
 
   /*
+    段階公開（本番でまず運営のみ）。実機の完全なE2E検証が未実施のため、
+    一般公開前に本番で自分だけ確認できる状態にしている。
+    false のあいだはストア操作を一切行わない
+    （ストアが populate されなければ GenerationProgressHost 側の
+    ガードを待たずとも何も起きない、という二重の安全）。
+  */
+  const backgroundProgressAvailable = useGenerationProgressAvailable();
+
+  /*
     このコンポーネントは呼び出し元（`FollowAndUsePromptButton` /
     `SourcePromptReferenceCard`）が `{isSheetOpen && ... ? (<Sheet/>) : null}`
     という形で毎回作り直すため、「隠す」のではなく mount ＝ 開いている・
@@ -104,11 +114,14 @@ export function PromptLockedGenerationSheet({
     （このコンポーネントは `open=false` を props として受け取ることが無い）。
   */
   useEffect(() => {
+    if (!backgroundProgressAvailable) {
+      return;
+    }
     pauseGenerationProgressBar();
     return () => {
       resumeGenerationProgressBarIfNeeded();
     };
-  }, []);
+  }, [backgroundProgressAvailable]);
 
   /*
     シートを閉じる直前に、進行中のジョブが無いかサーバーへ確認する。
@@ -117,12 +130,12 @@ export function PromptLockedGenerationSheet({
   */
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (!next) {
+      if (!next && backgroundProgressAvailable) {
         void checkAndTrackInProgressJob();
       }
       onOpenChange(next);
     },
-    [onOpenChange]
+    [onOpenChange, backgroundProgressAvailable]
   );
 
   /*

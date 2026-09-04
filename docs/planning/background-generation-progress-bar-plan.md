@@ -140,6 +140,13 @@ stateDiagram-v2
 - **Reason**: ユーザー承認済み。スコープを広げずMVPとして出す。
 - **Consequence**: ページを完全リロードすると、追跡中だった `trackedJobId` は失われる。その後は既存の復旧経路（シートを開き直したときの `queued`/`processing` 限定の復旧）に頼ることになり、既に `succeeded` していた場合はマイページから探すしかない（現状と同じ制約が残る）。
 
+### ADR-006: 本番マージ後、まず運営のみに公開する（段階公開）
+
+- **Context**: 実機での完全なE2E検証（実際に課金してのAI生成→シートを閉じる→完了トースト→遷移→戻るボタン）は、ローカルdevサーバーの制約で行えなかった。`ensureSameOrigin`（`lib/security/same-origin.ts`）が正しいCSRF対策として機能する一方、`request.nextUrl.host` が dev server では常に `localhost` 固定になり（`--hostname 0.0.0.0` を指定すると `0.0.0.0` 固定になる。実測で確認済み）、LAN経由の実機からの mutation（生成ジョブ投入）が同一オリジン扱いにならず弾かれる。これは本番（Vercel）では発生しない dev server 固有の制約。
+- **Decision**: 🔥人気タブ・検索と同じ「公開フラグ or 運営」の段階公開にする。`NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED` を追加し、`isBackgroundGenerationProgressAvailable(userId)` で判定する。`GenerationProgressAvailabilityProvider` / `...Loader` を新設し、`PopularPromptsAvailabilityProvider` / `...Loader` と同じ構造にする。
+- **Reason**: 本番で運営アカウントだけがまず実機確認できる状態にし、実際の課金を伴う生成で一連の流れ（バー表示→完了→トースト→遷移→戻る）を確認してから一般公開する。判定は2箇所（`GenerationProgressHost` と `PromptLockedGenerationSheet`）で二重に効かせる。`PromptLockedGenerationSheet` 側で `false` ならストア操作自体を行わないため、`GenerationProgressHost` 側の判定を待たずとも何も起きない。
+- **Consequence**: `GenerationProgressAvailabilityProvider` は `appContent`（シートを含むページ本体）と `GenerationProgressHost`（Suspense 境界の外側の別ツリー）の両方に届く必要があるため、`LocaleShell.tsx` の中で最も外側の位置に置く必要があった（`PopularPromptsAvailabilityProvider` は `appContent` 側だけで完結していたため、この点は今回で新たに踏んだ制約）。全公開までのあいだ、コード自体は本番に存在するが実行されない。
+
 ---
 
 ## 4. 実装計画
@@ -244,6 +251,24 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
 
 **次に実機で確認する場合の手順**: `/style` 等で実際にログインし、他者の Free Style 投稿から「このプロンプトで生成する」を開始 → 生成中にシートを下へスワイプして閉じる → 画面下部にバーが出ることを確認 → 完了を待ち、トーストの「確認する」→ 詳細ページ → 戻るボタンで元にいた画面（ホーム等）へ戻ることを確認する。
 
+### Phase 5: 段階公開フラグ ✅ 完了（2026-09-04）
+
+**目的**: ローカルdevサーバーの制約（`ensureSameOrigin` が `nextUrl.host` の dev server 固有の解決限界により LAN 実機からの生成リクエストを弾く。ADR-006）で完全なE2Eが未実施のため、本番にマージ後もまず運営のみが実機確認できる状態にする。
+**ビルド確認**: `npm run lint` / `typecheck` / `test` / `build -- --webpack` がすべて通る。
+
+- [x] `lib/env.ts` に `NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED` を追加
+- [x] `isBackgroundGenerationProgressPubliclyEnabled()` と `isBackgroundGenerationProgressAvailable(userId)` を実装（`isPopularPromptsAvailable` と同形）
+- [x] `GenerationProgressAvailabilityProvider.tsx` / `GenerationProgressAvailabilityLoader.tsx` を新設（`PopularPromptsAvailabilityProvider` / `...Loader` と同形）
+- [x] `components/LocaleShell.tsx` にマウント
+  - ⭐ `appContent`（シートを含むページ本体）と `GenerationProgressHost`（Suspense 境界の外側の別ツリー）の**両方**に届く必要があるため、既存の `SearchAvailabilityProvider` 系よりさらに外側（`NextIntlClientProvider` 直下）に置いた
+- [x] `GenerationProgressHost.tsx`: `useGenerationProgressAvailable()` が false ならポーリングを開始せず、バーも描画しない
+- [x] `PromptLockedGenerationSheet.tsx`: false ならストア操作（pause/resume/checkAndTrackInProgressJob）自体を行わない（二重の安全）
+- [x] ユニットテスト
+  - `generation-progress-availability.test.tsx`: Provider外でfalseに倒れる・初期値は公開フラグ・Upgradeの昇格（`popular-prompts-tab.test.tsx` の同等テストを踏襲）
+  - `generation-progress-host.test.tsx` に「availableがfalseなら描画しない」を追加
+  - `prompt-locked-generation-sheet.test.tsx` に「availableがfalseならストア操作を一切行わない」を追加
+- [x] 実機確認: フラグOFF・未ログインでページがクラッシュせず、バーも一切現れないことをPlaywrightで確認（`role="status"[aria-live="polite"]` が存在しないこと）
+
 ---
 
 ## 5. 修正対象ファイル一覧
@@ -258,6 +283,10 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
 | `tests/unit/features/generation/generation-progress-store.test.ts` | 新規 | ストアのテスト |
 | `tests/unit/features/generation/generation-progress-host.test.tsx` | 新規 | ホストのテスト |
 | `tests/unit/features/generation/prompt-locked-generation-sheet.test.tsx` | 修正または新規 | 配線のテスト |
+| `lib/env.ts` | 修正 | 段階公開フラグと判定関数の追加（Phase 5） |
+| `features/generation/components/GenerationProgressAvailabilityProvider.tsx` | 新規 | 段階公開の可否をクライアント側に配る Provider（Phase 5） |
+| `features/generation/components/GenerationProgressAvailabilityLoader.tsx` | 新規 | サーバー側の運営判定（Phase 5） |
+| `tests/unit/features/generation/generation-progress-availability.test.tsx` | 新規 | Provider/Upgrade のテスト（Phase 5） |
 
 **触らないファイル（当初想定から除外できたもの）**: `features/posts/components/FollowAndUsePromptButton.tsx`、`features/posts/components/SourcePromptReferenceCard.tsx`、`features/generation/components/GenerationFormContainer.tsx`、`features/generation/context/GenerationStateContext.tsx`
 
@@ -288,6 +317,7 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
 
 - **Phase 1〜2**: 新規ファイルのみで、既存のシート呼び出し元には触れないため、`PromptLockedGenerationSheet.tsx` の変更差分を revert すれば即座に元の挙動に戻る
 - **Phase 3〜4**: トースト表示ロジックの追加のみ。既存の投稿・生成フローには影響しない
+- **Phase 5（段階公開）**: `NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED` を設定しない、または消して再デプロイするだけで運営以外には見えない状態に戻せる（検索・🔥人気タブと同じ運用）。一般公開後に問題が見つかった場合も同じ操作で閉じ直せる
 - **Git**: フェーズごとにコミットする。DBマイグレーションが無いため、コード側の revert だけで完全に元に戻せる
 
 ---

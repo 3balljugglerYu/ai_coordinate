@@ -28,6 +28,13 @@ jest.mock("@/features/generation/lib/generation-progress-store", () => ({
   checkAndTrackInProgressJob: () => checkAndTrackMock(),
 }));
 
+// ⭐ 既定は available(段階公開で運営に見えている状態)。false のケースは
+// 専用のテストで個別に上書きする。
+const availableMock = jest.fn(() => true);
+jest.mock("@/features/generation/components/GenerationProgressAvailabilityProvider", () => ({
+  useGenerationProgressAvailable: () => availableMock(),
+}));
+
 jest.mock("@/features/generation/hooks/useIsDesktopViewport", () => ({
   useIsDesktopViewport: () => false,
 }));
@@ -109,9 +116,32 @@ const defaultProps = {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  availableMock.mockReturnValue(true);
 });
 
 describe("PromptLockedGenerationSheet と進捗ストアの配線", () => {
+  /*
+    ⭐ 段階公開: available が false のあいだは、ストア操作を一切行わない
+    （本番でまず運営のみに見せるため。GenerationProgressHost 側の
+    ガードだけに頼らず、ここでも二重に閉じる）。
+  */
+  test("段階公開でavailableがfalseなら_ストア操作を一切行わない", () => {
+    availableMock.mockReturnValue(false);
+    const onOpenChange = jest.fn();
+    const { getByTestId, unmount } = render(
+      <PromptLockedGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />
+    );
+
+    expect(pauseMock).not.toHaveBeenCalled();
+
+    getByTestId("drawer-close").click();
+    expect(checkAndTrackMock).not.toHaveBeenCalled();
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    unmount();
+    expect(resumeMock).not.toHaveBeenCalled();
+  });
+
   test("mountでバーを抑制し、unmountで解除する", () => {
     const { unmount } = render(<PromptLockedGenerationSheet {...defaultProps} />);
 

@@ -59,6 +59,13 @@ jest.mock("@/features/generation/lib/async-api", () => ({
   pollGenerationStatus: jest.fn(),
 }));
 
+// ⭐ 既定は available(段階公開で運営に見えている状態)。false のケースは
+// 専用の describe で個別に上書きする。
+const mockUseGenerationProgressAvailable = jest.fn(() => true);
+jest.mock("@/features/generation/components/GenerationProgressAvailabilityProvider", () => ({
+  useGenerationProgressAvailable: () => mockUseGenerationProgressAvailable(),
+}));
+
 const mockGetInProgressJobs = getInProgressJobs as jest.MockedFunction<
   typeof getInProgressJobs
 >;
@@ -113,6 +120,7 @@ async function trackJob() {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUseGenerationProgressAvailable.mockReturnValue(true);
   resetGenerationProgressStoreForTest();
   document.body.className = "";
 });
@@ -273,6 +281,25 @@ describe("GenerationProgressHost", () => {
       expect(toastMock).toHaveBeenCalledWith(
         expect.objectContaining({ variant: "destructive" })
       );
+    });
+  });
+
+  /*
+    ⭐ 段階公開: available が false の間は、追跡中のジョブがあっても
+    何も描画しない（本番でまず運営のみに見せるため）。
+  */
+  describe("段階公開でavailableがfalseのとき", () => {
+    test("追跡中のジョブがあってもバーを描画しない", async () => {
+      mockUseGenerationProgressAvailable.mockReturnValue(false);
+      mockGetGenerationStatus.mockResolvedValue(status());
+      deferredPoll();
+
+      render(<GenerationProgressHost />);
+      await trackJob();
+
+      expect(screen.queryByText("画像を生成中...")).not.toBeInTheDocument();
+      // ⭐ ポーリング自体も始めない(無駄なリクエストを打たない)
+      expect(mockPollGenerationStatus).not.toHaveBeenCalled();
     });
   });
 
