@@ -1091,6 +1091,7 @@ export const viMessages = {
     generationProgressTitle:
       "Đang tạo hình ({completed} / {total} hoàn thành)",
     generationCompletedTitle: "Đã hoàn tất tạo hình",
+    generationCompletedToastAction: "Xem",
     // preparing
     generationStagePreparingMessage1: "Đang kiểm tra trang phục...",
     generationStagePreparingMessage2: "Đang ngắm bộ trang phục...",

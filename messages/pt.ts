@@ -1094,6 +1094,7 @@ export const ptMessages = {
     generationProgressTitle:
       "Gerando imagens ({completed} / {total} concluídas)",
     generationCompletedTitle: "A geração de imagens foi concluída",
+    generationCompletedToastAction: "Ver",
     // preparing
     generationStagePreparingMessage1: "Conferindo o look...",
     generationStagePreparingMessage2: "Olhando o look...",

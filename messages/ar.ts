@@ -1091,6 +1091,7 @@ export const arMessages = {
     generationProgressTitle:
       "جارٍ توليد الصور (اكتملت {completed} / {total})",
     generationCompletedTitle: "اكتمل توليد الصور",
+    generationCompletedToastAction: "عرض",
     // preparing
     generationStagePreparingMessage1: "أتفقد الإطلالة...",
     generationStagePreparingMessage2: "أتأمل الإطلالة...",

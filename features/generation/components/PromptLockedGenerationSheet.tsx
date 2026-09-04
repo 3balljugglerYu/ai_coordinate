@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Drawer } from "vaul";
 import {
@@ -16,6 +16,11 @@ import { PromptLockedGenerationHeader } from "@/features/generation/components/P
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useIsDesktopViewport } from "@/features/generation/hooks/useIsDesktopViewport";
 import { fetchSourcePromptText } from "@/features/posts/lib/source-prompt-text-api";
+import {
+  checkAndTrackInProgressJob,
+  pauseGenerationProgressBar,
+  resumeGenerationProgressBarIfNeeded,
+} from "@/features/generation/lib/generation-progress-store";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 
 interface PromptLockedGenerationSheetProps {
@@ -90,6 +95,37 @@ export function PromptLockedGenerationSheet({
   const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
 
   /*
+    このコンポーネントは呼び出し元（`FollowAndUsePromptButton` /
+    `SourcePromptReferenceCard`）が `{isSheetOpen && ... ? (<Sheet/>) : null}`
+    という形で毎回作り直すため、「隠す」のではなく mount ＝ 開いている・
+    unmount ＝ 閉じている、の二値に一致する。これを利用して、
+    バックグラウンド進捗バーの抑制（開いている間は隠す）を
+    mount/unmount だけで判定する。`open` の変化は見ない
+    （このコンポーネントは `open=false` を props として受け取ることが無い）。
+  */
+  useEffect(() => {
+    pauseGenerationProgressBar();
+    return () => {
+      resumeGenerationProgressBarIfNeeded();
+    };
+  }, []);
+
+  /*
+    シートを閉じる直前に、進行中のジョブが無いかサーバーへ確認する。
+    見つかればバックグラウンド追跡を開始し、閉じた後もバーで進捗を追える
+    ようにする（`GenerationStateContext` には一切触れない。ADR-001）。
+  */
+  const handleOpenChange = useCallback(
+    (next: boolean) => {
+      if (!next) {
+        void checkAndTrackInProgressJob();
+      }
+      onOpenChange(next);
+    },
+    [onOpenChange]
+  );
+
+  /*
     公開プロンプトの本文は開いてから取りに行く。
 
     props へ載せると未フォロワーのブラウザにも届いてしまうため、
@@ -127,7 +163,7 @@ export function PromptLockedGenerationSheet({
 
   if (isDesktop) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         {/*
           幅と高さは inline style で指定する。shadcn の sm:max-w-lg と
           Tailwind v4 のスキャナ生成事情で class 上書きが効きにくい
@@ -166,7 +202,7 @@ export function PromptLockedGenerationSheet({
   }
 
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    <Drawer.Root open={open} onOpenChange={handleOpenChange}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
         <Drawer.Content

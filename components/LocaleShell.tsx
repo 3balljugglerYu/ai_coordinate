@@ -10,6 +10,7 @@ import { Ga4LoginStatus } from "@/features/analytics/components/Ga4LoginStatus";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { PostProgressHost } from "@/features/posts/components/PostProgressHost";
+import { GenerationProgressHost } from "@/features/generation/components/GenerationProgressHost";
 import { SearchAvailabilityProvider } from "@/features/posts/components/SearchAvailabilityProvider";
 import { SearchAvailabilityLoader } from "@/features/posts/components/SearchAvailabilityLoader";
 import { PopularPromptsAvailabilityProvider } from "@/features/posts/components/PopularPromptsAvailabilityProvider";
@@ -73,6 +74,12 @@ export async function LocaleShell({
         表示中の付与モーダルが消える。
       */}
       <PostProgressHost />
+      {/*
+        「このプロンプトで生成する」シートを閉じても生成の進捗を見失わない
+        ようにするバー。理由は PostProgressHost と同じで、ここも
+        Suspense 境界の外側に置く。
+      */}
+      <GenerationProgressHost />
       <Toaster />
       <Ga4Script />
       <Ga4LoginStatus />

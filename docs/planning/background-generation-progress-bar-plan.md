@@ -153,12 +153,12 @@ flowchart LR
 
 DB変更は無いため、Phase 1 から着手する（データベース設計フェーズは無し）。
 
-### Phase 1: グローバルストアとホストの新設
+### Phase 1: グローバルストアとホストの新設 ✅ 完了（2026-09-04）
 
 **目的**: 投稿側と同じ3点セット（ストア・ホスト・バー）を生成側にも作る。まだどこからも呼ばれない状態で用意する。
 **ビルド確認**: `npm run build -- --webpack` が通る。
 
-- [ ] `features/generation/lib/generation-progress-store.ts` を新規作成
+- [x] `features/generation/lib/generation-progress-store.ts` を新規作成
   - 既存の `post-progress-store.ts` と同じ形（module 変数 + `useSyncExternalStore` 用の `subscribe`/`getSnapshot`/`getServerSnapshot`）
   - 状態: `{ trackedJobId: string | null; sheetOpenCount: number }`
     - ⭐ 真偽フラグではなく**カウンタ**にする。理由: 将来的に複数のシート呼び出し元が同時にマウントされる可能性を考慮すると、bool の on/off だと片方が閉じた瞬間にもう片方が開いていてもバーが出てしまう事故が起きうる。カウンタなら 0 判定で正しく扱える（現状は呼び出し元が同時に2つ開くことは無いはずだが、堅牢性のため）
@@ -166,7 +166,7 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
   - `pauseGenerationProgressBar()` / `resumeGenerationProgressBarIfNeeded()`: `sheetOpenCount` を増減する
   - `clearTrackedJob()`: 完了検知後にストアを畳む
   - `resetGenerationProgressStoreForTest()`: テスト用（`post-progress-store.ts` に倣う）
-- [ ] `features/generation/components/GenerationProgressHost.tsx` を新規作成
+- [x] `features/generation/components/GenerationProgressHost.tsx` を新規作成
   - `useSyncExternalStore` でストアを購読
   - `sheetOpenCount > 0` または `trackedJobId` が null なら何も描画しない
   - `trackedJobId` があれば、自前で `pollGenerationStatus(trackedJobId, {...})` を呼ぶ（`GenerationFormContainer` は経由しない）
@@ -174,15 +174,15 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
   - 文言は `buildCoordinateStageCopy(t)`（`t = useTranslations("coordinate")`）+ `useCoordinateGenerationFeedback(phase, stageCopy)` をそのまま呼ぶ（`GenerationFormContainer.tsx:504-518` の呼び方を参考にする。ただし `isPreparingSubmission` 相当の分岐は簡略化してよい: 1ジョブのみなので「準備中」を出す必要は薄い）
   - 表示は `<GenerationStatusCard {...props} />` を `fixed inset-x-0 z-[60]` のラッパーに入れる（`PostProgressBar.tsx` の配置パターンを踏襲。ボトムナビを隠すクラスの付け外しも同様に行う）
   - 終端状態（`succeeded`/`failed`）を検知したら、トースト表示（Phase 3 で実装）をして `clearTrackedJob()` を呼ぶ
-- [ ] `components/LocaleShell.tsx` に `<GenerationProgressHost />` を追加
+- [x] `components/LocaleShell.tsx` に `<GenerationProgressHost />` を追加
   - `PostProgressHost` と同じ理由で Suspense 境界の外側にマウント（`router.refresh()` 等で unmount されると表示中のバーが消えるため）
 
-### Phase 2: シートへの配線（②の抑制ロジック含む）
+### Phase 2: シートへの配線（②の抑制ロジック含む） ✅ 完了（2026-09-04）
 
 **目的**: シートの開閉と新しいストアをつなぐ。この時点でシートを閉じるとバーが出るようになる。
 **ビルド確認**: `npm run build -- --webpack` と `npm run test` が通る。
 
-- [ ] `features/generation/components/PromptLockedGenerationSheet.tsx` を修正
+- [x] `features/generation/components/PromptLockedGenerationSheet.tsx` を修正
   - mount 時に `pauseGenerationProgressBar()`、unmount 時（クリーンアップ）に `resumeGenerationProgressBarIfNeeded()` を呼ぶ `useEffect`（依存配列は空）
     - ⭐ `open` の変化を見るのではなく mount/unmount で判定する。両呼び出し元とも「隠す」ではなく「作り直す」実装なので、このコンポーネントは `open=false` を props として受け取ることが無く、mount＝開いている・unmount＝閉じている、の二値に一致する
   - `onOpenChange` をラップしたハンドラを作り、`Dialog`（デスクトップ）と `Drawer.Root`（モバイル）の両方にこちらを渡す
@@ -196,12 +196,12 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
     ```
   - ⭐ `checkAndTrackInProgressJob()` は unmount 直前に発火させる（`onOpenChange(false)` が呼ばれた時点ではまだ unmount されていないので、この位置で呼べば確実）
 
-### Phase 3: 完了トーストと遷移
+### Phase 3: 完了トーストと遷移 ✅ 完了（2026-09-04）
 
 **目的**: 追跡中のジョブが終端状態になったら知らせ、投稿導線へつなげる。
 **ビルド確認**: `npm run build -- --webpack` と `npm run test` が通る。
 
-- [ ] `GenerationProgressHost.tsx` に終端状態検知時のトースト表示を追加
+- [x] `GenerationProgressHost.tsx` に終端状態検知時のトースト表示を追加
   - 成功時: タイトルは既存の `coordinate.generationCompletedTitle`（「画像の生成が完了しました」）をそのまま流用する（A案で確定。新規キーは作らない）。アクションは新規キー「確認する」
     - アクションの遷移先は `router.push('/posts/${encodeURIComponent(generatedImageId)}')`（**`from` パラメータを付けない**。ADR-003 参照）
     - `generatedImageId` は `pollGenerationStatus` の `onStatusUpdate` / 完了時の `AsyncGenerationStatus.generatedImageId` から取得する（`async-api.ts` の型に既存）
@@ -209,23 +209,40 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
   - `PostProgressHost.tsx` の `ToastAction` の書き方（枠を消してリンク調にする）を踏襲する
   - ⭐ **10分のポーリングタイムアウトも失敗として扱う。** `pollGenerationStatus` は `timeout`（既定 600000ms）を超えると `messages.pollingTimeout` でreject する（`async-api.ts:281-282`）。`GenerationFormContainer.tsx` 側は `errorMessage === asyncApiMessages.pollingStopped`（＝自分で `stop()` した場合）だけを非終端として扱い、それ以外の reject は終端の失敗として扱っている（`:697-716` 付近）。新しいホストも同じ判定を踏襲し、タイムアウトを「進行中のまま」放置しない
 
-### Phase 4: i18n と仕上げ
+### Phase 4: i18n と仕上げ ✅ 完了（2026-09-04）
 
 **目的**: 15ロケール分の文言を揃え、テストを整備する。
 **ビルド確認**: `npm run lint` / `typecheck` / `test` / `build -- --webpack` がすべて通る。
 
-- [ ] `messages/*.ts`（15言語）の `coordinate` 名前空間に新規キーを追加
+- [x] `messages/*.ts`（15言語）の `coordinate` 名前空間に新規キーを追加
   - 完了トーストのタイトルは新規キー不要（`generationCompletedTitle` を流用・A案で確定）。アクション文言「確認する」のみ新規キーを追加
   - 失敗トーストの文言（新規が必要か確認。`generationFailedTitle` が流用できないか先に確認する）
-- [ ] ユニットテスト
+    → 既存の `generationFailedTitle`（「画像を生成できませんでした」）をそのまま流用できた。新規キーは不要
+- [x] ユニットテスト
   - `generation-progress-store.test.ts`: `checkAndTrackInProgressJob` が空配列で何もしないこと・最新のjobIdを採用すること・`pause`/`resume` のカウンタが正しく増減すること
   - `GenerationProgressHost.test.tsx`: `sheetOpenCount > 0` のとき何も描画しないこと・`trackedJobId` が無いとき何も描画しないこと・終端状態でトーストを出し `clearTrackedJob` を呼ぶこと（`post-progress-host.test.tsx` のパターンを踏襲）
   - `PromptLockedGenerationSheet.test.tsx`（既存があれば追記・無ければ新規）: unmount 時に `checkAndTrackInProgressJob` 相当が呼ばれること・mount/unmount で `pause`/`resume` が対になって呼ばれること
-- [ ] 実機確認
-  - シートを閉じてバーが出ること、進捗が実際のジョブと連動すること
-  - シートを再度開くとバーが消え、シート内のインライン表示に戻ること（二重表示にならないこと）
-  - 完了トーストの「確認する」から `/posts/{id}` へ遷移し、戻るボタンで元の画面（ホーム等）に正しく戻ること（スクロール位置の復元も確認）
-  - 失敗時にトーストが出ること
+- [x] 実機確認（一部）
+
+**実施した内容**
+
+- ローカル dev + Playwright で、`GenerationProgressHost` の `visible` を一時的に強制 true にし（この作業に限定した診断的な変更・検証後に revert 済み）、実際のホーム画面上でバーのレイアウトを確認した
+  - バーが画面下部に固定表示され、ボトムナビが隠れること・`body` に `generation-progress-active` クラスが付くこと・横スクロールが発生しないことを確認（`role="status"[aria-live="polite"]` の存在・`display` も確認）
+  - スクリーンショットで `GenerationStatusCard`（タイトル・メッセージ・進捗バー）が見た目として破綻していないことを確認
+  - Next.js dev overlay の「1 Issue」はこの変更とは無関係（`STRIPE_SECRET_KEY` 未設定というローカル環境固有の既存警告であることをコンソールログで確認済み）
+
+**実施しなかった内容（理由）**
+
+実際の生成ジョブを課金して発生させ、シートを閉じてから完了まで見届ける、という**完全な実機E2E**は行っていない。理由は次の2点:
+
+1. 実際のAI生成には課金が発生する（OpenAI/Gemini呼び出し）
+2. ロジック面（ストアの状態遷移・ポーリングの成功/失敗/タイムアウト分岐・トースト内容・遷移先URL）は Phase 4 のユニットテスト（21件: store 10 + host 9 + sheet配線 2）で、実際のAPIレスポンスを模したモックにより網羅的に検証済み
+
+そのため、下記は**ユニットテストで検証済みだが、実際の課金を伴う生成では未確認**:
+- 実際の `image-gen-worker` の進捗ステージ変化がリアルタイムに反映されること
+- 完了トーストの「確認する」から実際の `/posts/{id}` へ遷移し、戻るボタンで元の画面に戻ること（`sticky-back-url.ts` の既存ロジックを読み解いて設計した内容であり、そのロジック自体の実機確認はしていない）
+
+**次に実機で確認する場合の手順**: `/style` 等で実際にログインし、他者の Free Style 投稿から「このプロンプトで生成する」を開始 → 生成中にシートを下へスワイプして閉じる → 画面下部にバーが出ることを確認 → 完了を待ち、トーストの「確認する」→ 詳細ページ → 戻るボタンで元にいた画面（ホーム等）へ戻ることを確認する。
 
 ---
 
@@ -250,10 +267,10 @@ DB変更は無いため、Phase 1 から着手する（データベース設計�
 
 ### 品質チェックリスト
 
-- [ ] **権限**: `getInProgressJobs` は既存の認証チェック（`getUser()`）に依存しており、新規のAPIエンドポイントを追加しないため、権限まわりの新たな懸念は無い
-- [ ] **二重表示**: シートが開いている間、バーが絶対に描画されないこと（`sheetOpenCount` のカウンタ判定）
-- [ ] **リーク**: `GenerationProgressHost` の `pollGenerationStatus` は、完了検知後またはコンポーネントの unmount 時に必ず `stop()` されること（`GenerationFormContainer.tsx:824-833` のクリーンアップ作法を踏襲）
-- [ ] **i18n**: 15言語すべてに新規トースト文言があるか
+- [x] **権限**: `getInProgressJobs` は既存の認証チェック（`getUser()`）に依存しており、新規のAPIエンドポイントを追加しないため、権限まわりの新たな懸念は無い（`app/api/generation-status/in-progress/route.ts:18-19` で確認済み）
+- [x] **二重表示**: シートが開いている間、バーが絶対に描画されないこと（`sheetOpenCount` のカウンタ判定）→ ユニットテストで確認済み
+- [x] **リーク**: `pollGenerationStatus` は成功/失敗で `resolve()` した後は追加の `setTimeout` を積まない（`async-api.ts:296-299`）ため終端到達時に自然に止まる。unmount 時は `stop?.()` を呼ぶ（`GenerationProgressHost.tsx` のクリーンアップ）ので、いずれの経路でもタイマーは残らない
+- [x] **i18n**: 15言語すべてに新規トースト文言（`generationCompletedToastAction`）があることを確認済み
 
 ### テスト観点
 
