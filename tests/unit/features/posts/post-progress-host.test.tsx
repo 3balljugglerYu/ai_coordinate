@@ -99,34 +99,32 @@ describe("PostProgressHost", () => {
   });
 
   /**
-   * ⭐ 送信中はボトムナビを隠す(バーが X に合わせた高さでナビより低く、
-   * 重ねるとアイコンの頭だけが覗くため)。
-   *
-   * **戻し忘れるとナビが消えたままになる**ので、付け外しを固定する。
+   * ⭐ 表示中もボトムナビを隠さない(以前は隠していたが、「送信中は
+   * どこにも行けない」という指摘を生成中バー修正時に受け、揃えた)。
+   * バーはナビより奥のレイヤー(z-40、ナビは z-50)に敷いてナビの背面へ
+   * 回り込むだけで、body のクラス操作は一切行わない。ナビを隠す実装を
+   * 二度と持ち込まないための回帰ガード。
    */
-  test("⭐送信中だけボトムナビを隠し、終わったら必ず戻す", async () => {
+  test("⭐表示中もボトムナビ用のクラスを一切操作しない(隠さない)", async () => {
     const { unmount } = render(<PostProgressHost />);
-    expect(document.body).not.toHaveClass("post-progress-active");
+    expect(document.body.className).toBe("");
 
     act(() => {
       startPostProgress();
     });
-    expect(document.body).toHaveClass("post-progress-active");
+    expect(document.body.className).toBe("");
 
     act(() => {
       finishPostProgress(response({ bonus_granted: 0 }));
     });
-    await waitFor(() =>
-      expect(document.body).not.toHaveClass("post-progress-active")
-    );
+    await waitFor(() => expect(document.body.className).toBe(""));
 
-    // 表示中にアンマウントされても残さない
     act(() => {
       startPostProgress();
     });
-    expect(document.body).toHaveClass("post-progress-active");
+    expect(document.body.className).toBe("");
     unmount();
-    expect(document.body).not.toHaveClass("post-progress-active");
+    expect(document.body.className).toBe("");
   });
 
   test("失敗したらバーを畳む（エラーは投稿モーダルが出す）", () => {
