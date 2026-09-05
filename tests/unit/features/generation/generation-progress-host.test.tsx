@@ -200,25 +200,34 @@ describe("GenerationProgressHost", () => {
     await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1));
   });
 
-  test("送信中だけボトムナビを隠し、終わったら必ず戻す", async () => {
+  /*
+    ⭐ 表示中もボトムナビを隠さない(投稿の送信中バーとの意図的な違い)。
+    投稿は数秒で終わる一時的な状態だからナビを隠しても許容できるが、
+    生成はそうではない。「シートを閉じても他の画面へ移動できる」ことが
+    この機能の存在理由そのものなので、ナビを隠す副作用を二度と持ち込まない
+    ための回帰ガード。ナビの上に重ねる配置自体は CSS(`.generation-progress-anchor`)
+    で行っており、JSDOM では実レイアウトを検証できないため、ここでは
+    「body のクラスには一切手を出さない」ことだけを保証する。
+  */
+  test("表示中もボトムナビ用のクラスを一切操作しない(隠さない)", async () => {
     mockGetGenerationStatus.mockResolvedValue(status());
     const poll = deferredPoll();
 
     render(<GenerationProgressHost />);
-    expect(document.body).not.toHaveClass("generation-progress-active");
+    expect(document.body.className).toBe("");
 
     await trackJob();
     await waitFor(() =>
-      expect(document.body).toHaveClass("generation-progress-active")
+      expect(screen.getByText("画像を生成中...")).toBeInTheDocument()
     );
+    expect(document.body.className).toBe("");
 
     await act(async () => {
       poll.resolve(status({ status: "succeeded", generatedImageId: "img-1" }));
     });
 
-    await waitFor(() =>
-      expect(document.body).not.toHaveClass("generation-progress-active")
-    );
+    await waitFor(() => expect(toastMock).toHaveBeenCalledTimes(1));
+    expect(document.body.className).toBe("");
   });
 
   describe("完了時", () => {
