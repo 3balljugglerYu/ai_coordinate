@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ToastAction } from "@/components/ui/toast";
@@ -16,12 +16,10 @@ import {
   pollGenerationStatus,
   type AsyncGenerationStatus,
 } from "../lib/async-api";
-import { normalizeProcessingStage, summarizeJobProgress } from "../lib/job-progress";
-import { buildCoordinateStageCopy } from "../lib/coordinate-stage-copy";
-import { useCoordinateGenerationFeedback } from "../hooks/useCoordinateGenerationFeedback";
+import { summarizeJobProgress } from "../lib/job-progress";
 import { useGenerationProgressAvailable } from "./GenerationProgressAvailabilityProvider";
 import type { ImageJobProcessingStage, ImageJobStatus } from "../lib/job-types";
-import { GenerationStatusCard } from "./GenerationStatusCard";
+import { GenerationProgressBar } from "./GenerationProgressBar";
 
 interface TrackedJobSnapshot {
   status: ImageJobStatus;
@@ -42,10 +40,18 @@ interface TrackedJobSnapshot {
  * ## GenerationFormContainer からは何も借りない
  *
  * `generation-progress-store.ts` が持つのは `trackedJobId` だけ。
- * ここから先の進捗計算・文言生成は、`GenerationFormContainer` が使っている
- * のと同じ**独立した部品**（`summarizeJobProgress` / `buildCoordinateStageCopy` /
- * `useCoordinateGenerationFeedback`）をこのホスト自身が直接呼ぶ。
+ * ここから先の進捗計算は、`GenerationFormContainer` が使っているのと同じ
+ * **独立した部品**（`summarizeJobProgress`）をこのホスト自身が直接呼ぶ。
  * `GenerationStateContext` には一切触れない。
+ *
+ * ## 見た目は GenerationProgressBar(投稿の送信中バー相当)にした
+ *
+ * 当初は `GenerationStatusCard`（メッセージ・ライブメッセージ・フッター付き）
+ * をそのまま流用していたが、実機で見た結果「情報過多で野暮ったい、投稿の
+ * 送信中バーと同じ最小構成にしたい」との判断で、タイトル1行＋帯だけの
+ * `GenerationProgressBar` に差し替えた。シートを開いている間に見える
+ * `GenerationFormContainer` 内のカードはこれまで通り `GenerationStatusCard` の
+ * ままで、変更していない。
  *
  * ## 完了時に「completing」状態を経由しない
  *
@@ -193,59 +199,10 @@ export function GenerationProgressHost() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- trackedJobId/available/sheetOpenCount/isReconciliationPending の変化だけで再実行したい
   }, [trackedJobId, available, sheetOpenCount, isReconciliationPending]);
 
-  const stageCopy = useMemo(() => buildCoordinateStageCopy(t), [t]);
-  const phase = jobSnapshot ? "running" : "idle";
-  const stage = normalizeProcessingStage(
-    jobSnapshot?.status ?? "queued",
-    jobSnapshot?.processingStage
-  );
-  const { activeMessage, displayedMessage, activeHint, prefersReducedMotion } =
-    useCoordinateGenerationFeedback(phase, stageCopy[stage]);
-
   const visible = available && sheetOpenCount === 0 && jobSnapshot !== null;
+  const progressPercent = jobSnapshot
+    ? summarizeJobProgress([jobSnapshot]).progressPercent
+    : 0;
 
-  /*
-    ⭐ 送信中はボトムナビを隠す(投稿側と同じ理由: バーがナビより低いため、
-    重ねるとアイコンの頭だけが覗く)。クラスは必ずクリーンアップで外すこと。
-  */
-  useEffect(() => {
-    if (!visible) {
-      return;
-    }
-
-    document.body.classList.add("generation-progress-active");
-    return () => {
-      document.body.classList.remove("generation-progress-active");
-    };
-  }, [visible]);
-
-  if (!visible || !jobSnapshot) {
-    return null;
-  }
-
-  const progressPercent = summarizeJobProgress([jobSnapshot]).progressPercent;
-
-  return (
-    <div
-      className="fixed inset-x-0 bottom-0 z-[60]"
-      role="status"
-      aria-live="polite"
-    >
-      <div className="border-t border-slate-200 bg-white px-4 pt-3">
-        <div className="mx-auto max-w-7xl">
-          <GenerationStatusCard
-            title={t("generatingStatusTitle")}
-            message={displayedMessage}
-            liveMessage={activeMessage}
-            footerText={activeHint}
-            progress={progressPercent}
-            isComplete={false}
-            prefersReducedMotion={prefersReducedMotion}
-          />
-        </div>
-        {/* ホームインジケータに掛からないための余白 */}
-        <div className="generation-progress-safe-bottom" />
-      </div>
-    </div>
-  );
+  return <GenerationProgressBar visible={visible} progress={progressPercent} />;
 }
