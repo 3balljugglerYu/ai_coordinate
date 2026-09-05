@@ -1733,33 +1733,22 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 /*
  * 投稿中のバーの位置。
  *
- * ⭐ **画面の下端**に置く。ボトムナビには被せてよい。
+ * ⭐ **画面の下端**に置くが、ボトムナビ(z-50)より奥のレイヤー(z-40)に
+ * 敷き、ナビは隠さない(以前は隠していたが、「送信中はどこにも行けない」
+ * という指摘を生成中バー修正時に受け、揃えた)。
  *
- * 当初はナビの上に載せていたが、実機で「まだ高い」と感じられた。
- * ナビ(h-16 + safe-area-inset-bottom)のぶんだけ浮くので、画面の端に
- * 貼り付いている感じにならない。送信中は一時的な状態なので、ナビを
- * 隠しても現在地を見失う場面ではない。
- *
- * 下端に置くぶん、中身がホームインジケータに掛からないよう、
- * バーの内側に safe-area ぶんの余白を持たせる(位置ではなく余白で逃がす)。
+ * 当初は単純にナビの上に浮かせる案もあったが、実機で「まだ高い」と
+ * 感じられた過去の経緯がある。ナビ(h-16 + safe-area-inset-bottom)の
+ * 高さぶん、白背景ごと `post-progress-nav-clearance` で下に伸ばして
+ * ナビの背面へ回り込ませることで、タイトル行はナビの上端にちょうど
+ * 接する位置に来る。画面下端への「貼り付いた」感覚はナビ自身が担保する。
  */
 .post-progress-anchor {
   bottom: 0;
 }
 
-.post-progress-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-}
-
-/*
- * 送信中はボトムナビを隠す。
- *
- * バーは X に合わせた高さでナビより低いため、下端に重ねるとナビのアイコンの
- * 頭だけが覗く。バーをナビの高さまで伸ばすと帯として高すぎるので、
- * ナビ側を隠す。送信は数秒で終わる一時的な状態。
- */
-body.post-progress-active nav.fixed.bottom-0 {
-  display: none;
+.post-progress-nav-clearance {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
 /*
