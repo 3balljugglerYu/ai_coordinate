@@ -1763,18 +1763,30 @@ body.post-progress-active nav.fixed.bottom-0 {
 }
 
 /*
- * バックグラウンド生成中のバー(`GenerationProgressHost`)の safe-area 余白と
- * ボトムナビ非表示。「このプロンプトで生成する」シートを閉じても
- * 進捗を見失わないようにするための下部固定バー。post-progress と同じ
- * 理由・同じ作法だが、投稿の送信中バーとは独立な状態なので別クラスにする
- * (どちらか一方が畳んでも、もう一方の表示に影響しないようにするため)。
+ * バックグラウンド生成中のバー(`GenerationProgressHost`)の位置。
+ * 「このプロンプトで生成する」シートを閉じても進捗を見失わないようにする
+ * ための下部固定バー。
+ *
+ * ⭐ 投稿の送信中バー(`post-progress-anchor`)と違い、ボトムナビは
+ * 隠さずナビの上に重ねる。投稿は数秒で終わる一時的な状態だからナビを
+ * 隠しても許容できるが、生成はそうではない。むしろ「シートを閉じても
+ * 他の画面へ移動できる」ことがこの機能の存在理由そのものなので、ナビを
+ * 隠すと本末転倒(生成中はどこにも行けなくなる)。
+ *
+ * ナビの高さ(h-16 = 4rem)+ ナビ自身の safe-area-inset-bottom の
+ * ぶんだけ浮かせる。ナビ側が既に safe-area を確保しているため、
+ * このバー自身は safe-area の余白を持たなくてよい。
  */
-.generation-progress-safe-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+.generation-progress-anchor {
+  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
-body.generation-progress-active nav.fixed.bottom-0 {
-  display: none;
+/*
+ * 出現時、下から上へスライドインする。トースト(`toastSlideInBottom`、
+ * このファイル内で定義済み)と同じ動きを再利用し、モーションの言語を揃える。
+ */
+.generation-progress-bar-enter {
+  animation: toastSlideInBottom 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 /*
@@ -1821,5 +1833,13 @@ body.generation-progress-active nav.fixed.bottom-0 {
     animation: none;
     width: 100%;
     opacity: 0.5;
+  }
+
+  /*
+    出現アニメの終着点(translate3d(0,0,0)、つまり無変形)は元々の
+    静止位置と同じなので、animation: none にするだけで既に正しい位置に見える。
+  */
+  .generation-progress-bar-enter {
+    animation: none;
   }
 }
