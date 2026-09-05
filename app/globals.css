@@ -1767,18 +1767,24 @@ body.post-progress-active nav.fixed.bottom-0 {
  * 「このプロンプトで生成する」シートを閉じても進捗を見失わないようにする
  * ための下部固定バー。
  *
- * ⭐ 投稿の送信中バー(`post-progress-anchor`)と違い、ボトムナビは
- * 隠さずナビの上に重ねる。投稿は数秒で終わる一時的な状態だからナビを
- * 隠しても許容できるが、生成はそうではない。むしろ「シートを閉じても
- * 他の画面へ移動できる」ことがこの機能の存在理由そのものなので、ナビを
- * 隠すと本末転倒(生成中はどこにも行けなくなる)。
+ * ⭐ 投稿の送信中バー(`post-progress-anchor`)と同じく、ボトムナビは
+ * 隠さない。投稿は数秒で終わる一時的な状態だからナビを隠しても許容
+ * できるが、生成はそうではない。むしろ「シートを閉じても他の画面へ
+ * 移動できる」ことがこの機能の存在理由そのものなので、ナビを隠すと
+ * 本末転倒(生成中はどこにも行けなくなる)。
  *
- * ナビの高さ(h-16 = 4rem)+ ナビ自身の safe-area-inset-bottom の
- * ぶんだけ浮かせる。ナビ側が既に safe-area を確保しているため、
- * このバー自身は safe-area の余白を持たなくてよい。
+ * `post-progress-anchor` と同じ技法に統一した: ナビより奥のレイヤー
+ * (z-40、ナビは z-50)に敷き、`generation-progress-nav-clearance` で
+ * ナビの高さ(h-16 = 4rem)+ ナビ自身の safe-area-inset-bottom ぶんだけ
+ * 白背景を下へ回り込ませてナビの背面に隠す。単純にナビの上へ浮かせる
+ * 案は、投稿側で実機に「まだ高い」と感じられた過去の経緯があり避けた。
  */
 .generation-progress-anchor {
-  bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
+  bottom: 0;
+}
+
+.generation-progress-nav-clearance {
+  padding-bottom: calc(4rem + env(safe-area-inset-bottom, 0px));
 }
 
 /*

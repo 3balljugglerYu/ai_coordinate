@@ -27,26 +27,36 @@ describe("GenerationProgressBar", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  test("visibleがtrueならタイトルと進捗率ぶんの帯を描画する", () => {
+  /*
+    ⭐ ボトムナビ(z-50)より奥のレイヤーに敷く(z-40、PostProgressBar と
+    同じ技法に統一)。ナビの高さぶんの padding-bottom
+    (generation-progress-nav-clearance)で白背景をナビの背面へ回り込ませる。
+  */
+  test("visibleがtrueならナビより奥のレイヤーでタイトルと進捗率ぶんの帯を描画する", () => {
     render(<GenerationProgressBar visible progress={40} />);
 
     expect(screen.getByText("画像を生成中...")).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveClass(
+    const status = screen.getByRole("status");
+    expect(status).toHaveClass(
       "generation-progress-anchor",
-      "generation-progress-bar-enter"
+      "generation-progress-bar-enter",
+      "z-40"
     );
+    expect(
+      status.querySelector(".generation-progress-nav-clearance")
+    ).not.toBeNull();
 
-    const track = screen.getByRole("status").querySelector(".bg-slate-200");
+    const track = status.querySelector(".bg-slate-200");
     const fill = track?.firstElementChild as HTMLElement | null;
     expect(fill).toHaveStyle({ width: "40%" });
   });
 
   /*
-    ⭐ 投稿の送信中バー(PostProgressBar)と違い、ボトムナビは隠さない
-    (`.generation-progress-anchor` でナビの上に重ねるだけ)。かつて
-    `document.body.classList` を操作してナビを `display: none` にしていたが、
-    「シートを閉じても他の画面へ移動できる」ことがこの機能の存在理由その
-    ものなので、ナビを隠す実装を二度と持ち込まないための回帰ガード。
+    ⭐ 投稿の送信中バー(PostProgressBar)と同じく、ボトムナビは隠さない
+    (ナビより奥のレイヤーに敷くだけ)。かつて `document.body.classList` を
+    操作してナビを `display: none` にしていたが、「シートを閉じても他の
+    画面へ移動できる」ことがこの機能の存在理由そのものなので、ナビを
+    隠す実装を二度と持ち込まないための回帰ガード。
   */
   test("⭐ボトムナビ用にbodyのクラスを一切操作しない(隠さない)", () => {
     const { rerender, unmount } = render(
