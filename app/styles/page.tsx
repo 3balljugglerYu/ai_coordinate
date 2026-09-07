@@ -1,15 +1,23 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { StylesGalleryClient } from "@/features/style-presets/components/StylesGalleryClient";
+import { StylesGallerySkeleton } from "@/features/style-presets/components/StylesGallerySkeleton";
 import {
   getStyleGenerateCounts,
   getStyleGenerateTotalCounts,
 } from "@/features/style/lib/style-popularity";
-import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+  type Locale,
+} from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
-import { getSiteUrl } from "@/lib/env";
+import { getSiteUrl, isAdminViewer } from "@/lib/env";
+import { getUser } from "@/lib/auth";
 
 /**
  * 「✨新着」「🎉イベント」チップ判定の基準時刻。
@@ -50,18 +58,48 @@ export async function generateMetadata({
   });
 }
 
+/**
+ * ギャラリー本体。運営(admin / プレビュー admin)には admin_only カテゴリも
+ * 見せるため、ここで認証を引く。
+ *
+ * ⭐ **必ず独立した Suspense の中に置くこと。** このページは JSON-LD を初期 HTML に
+ * 載せるため静的シェルを保つ設計(ファイル冒頭のコメント参照)で、認証のような
+ * リクエスト依存の処理をページ本体で待つとその前提が崩れる。認証を待つのは
+ * この穴だけにして、見出し・JSON-LD は静的なまま残す
+ * (ホームの `HomeStylePresetSectionLoader` と同じ作法)。
+ *
+ * JSON-LD 側は運営かどうかに関わらず**公開分だけ**で組み立てる(ページ本体で別途
+ * 取得している)。検索エンジンに出す一覧が閲覧者によって変わらないようにするため。
+ */
+async function StylesGallerySection({ locale }: { locale: Locale }) {
+  const user = await getUser();
+  const isAdminViewerFlag = isAdminViewer(user?.id ?? null);
+  const [presets, generateCounts, generateTotals, nowIso] = await Promise.all([
+    getPublishedStylePresets({ includeAdminOnly: isAdminViewerFlag }),
+    getStyleGenerateCounts(),
+    getStyleGenerateTotalCounts(),
+    getStylesGalleryNowIso(),
+  ]);
+
+  return (
+    <StylesGalleryClient
+      presets={presets}
+      generateCounts={generateCounts}
+      generateTotals={generateTotals}
+      nowIso={nowIso}
+      locale={locale}
+    />
+  );
+}
+
 export default async function StylesIndexPage({
   params,
 }: StylesIndexPageProps) {
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
   const copy = getStylesCopy(locale);
-  const [presets, generateCounts, generateTotals, nowIso] = await Promise.all([
-    getPublishedStylePresets(),
-    getStyleGenerateCounts(),
-    getStyleGenerateTotalCounts(),
-    getStylesGalleryNowIso(),
-  ]);
+  // JSON-LD 用。閲覧者に依らない公開分のみ(運営プレビュー分は含めない)。
+  const presets = await getPublishedStylePresets();
   // HomeStructuredData と同じ方針: 環境変数未設定時も既定ドメインで JSON-LD を出す
   const siteUrl = getSiteUrl() || "https://persta.ai";
 
@@ -90,13 +128,9 @@ export default async function StylesIndexPage({
           </p>
         </header>
 
-        <StylesGalleryClient
-          presets={presets}
-          generateCounts={generateCounts}
-          generateTotals={generateTotals}
-          nowIso={nowIso}
-          locale={locale}
-        />
+        <Suspense fallback={<StylesGallerySkeleton />}>
+          <StylesGallerySection locale={locale} />
+        </Suspense>
       </div>
 
       <script
