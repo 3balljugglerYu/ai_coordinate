@@ -357,7 +357,13 @@ Phase 0（アプリ）と Phase 1（Web）は別リポジトリで独立して�
 - 生成後の「元画像をストックに保存しますか？」の自動案内は Web 側で無効化中（`GenerationFormContainer.tsx`）のため追加していない
 - 段階解放カテゴリの一覧シルエット表示は `resolveCollectionUnlockContext`（`get_collection_progress` 等）を要するためコレクション機能として対象外。サーバー 403 は表示して解放状態を再確認する
 - `GEMINI_GENERATION_ENABLED` の本番値は Web 側の `NEXT_PUBLIC_GEMINI_GENERATION_ENABLED` に合わせて `env/*.json` で設定する（既定 true）
-- 実機確認は未実施（作業環境でエミュレータが動かない）。本番で運営アカウントにより 3 モードの生成成功・残高不足・共有シートからの保存を確認すること
+- 実機確認済み（2026-09-07、iPhone 16 Plus / iOS 26.6.1、本番環境の `env/dev.json` で release ビルド）。運営アカウントで動作に問題なし
+- ⭐実機ビルドの手順（この作業環境ではエミュレータが動かないため、実機確認はこの経路で行う）:
+  1. `fvm flutter build ios --release --dart-define-from-file=env/dev.json`
+  2. `xcrun devicectl device install app --device <CoreDevice UUID> build/ios/iphoneos/Runner.app`
+  3. `xcrun devicectl device process launch --device <CoreDevice UUID> ai.persta.app`
+
+  macOS 14.8 + Xcode 16.0 は iOS 26 を正式サポートしないが、CoreDevice 経由（Developer Mode 有効・有線接続）でインストールと起動ができる
 
 ### Phase 4: 投稿と閲覧（persta-app）
 
