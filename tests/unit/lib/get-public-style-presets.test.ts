@@ -14,6 +14,7 @@ jest.mock("@/features/style-presets/lib/style-preset-repository", () => ({
 import { cacheLife, cacheTag } from "next/cache";
 import {
   getPublishedStylePreset,
+  getPublishedStylePresetBySlugForAdmin,
   getPublishedStylePresetBySlugPublic,
   getPublishedStylePresets,
 } from "@/features/style-presets/lib/get-public-style-presets";
@@ -164,6 +165,45 @@ describe("get-public-style-presets", () => {
 
     await expect(
       getPublishedStylePresetBySlugPublic("unknown-slug")
+    ).resolves.toBeNull();
+  });
+
+  /*
+    ⭐ 運営プレビュー用の slug 取得。/styles の一覧は運営に admin_only も出すため、
+    そこからタップした運営が詳細ページで 404 に落ちないようにする逃げ道
+    (公開分で引けなかったときだけ呼ばれる)。
+  */
+  test("getPublishedStylePresetBySlugForAdmin_運営限定カテゴリも含めてslugで引く", async () => {
+    mockGetPublishedStylePresetBySlug.mockResolvedValueOnce({
+      id: "preset-admin",
+      slug: "god-odin",
+      title: "神コレ_オーディン",
+      thumbnailImageUrl: "https://example.com/god.webp",
+      thumbnailWidth: 912,
+      thumbnailHeight: 1173,
+      hasBackgroundPrompt: true,
+      createdAt: "2026-06-13T00:00:00.000Z",
+      publishedAt: "2026-09-07T00:00:00.000Z",
+      category: { ...baseCategory, visibility: "admin_only" },
+      imageInputMode: "single",
+      dualReferenceSource: "admin",
+    } as never);
+
+    const result = await getPublishedStylePresetBySlugForAdmin("god-odin");
+
+    expect(mockCacheTag).toHaveBeenCalledWith("style-presets");
+    expect(mockCacheLife).toHaveBeenCalledWith("minutes");
+    expect(mockGetPublishedStylePresetBySlug).toHaveBeenCalledWith("god-odin", {
+      includeAdminOnly: true,
+    });
+    expect(result?.id).toBe("preset-admin");
+  });
+
+  test("getPublishedStylePresetBySlugForAdmin_見つからなければnullを返す", async () => {
+    mockGetPublishedStylePresetBySlug.mockResolvedValueOnce(null);
+
+    await expect(
+      getPublishedStylePresetBySlugForAdmin("unknown-slug")
     ).resolves.toBeNull();
   });
 });
