@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ChevronRight } from "lucide-react";
 import {
   getPublishedStylePresets,
+  getPublishedStylePresetBySlugForAdmin,
   getPublishedStylePresetBySlugPublic,
 } from "@/features/style-presets/lib/get-public-style-presets";
 import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
@@ -14,7 +15,8 @@ import {
   getDefaultTwitterImages,
 } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
-import { getSiteUrl } from "@/lib/env";
+import { getSiteUrl, isAdminViewer } from "@/lib/env";
+import { getUser } from "@/lib/auth";
 import { StylePresetGenerateCta } from "@/features/style-presets/components/StylePresetGenerateCta";
 import { categoryNeedsUnlockContext } from "@/features/collections/lib/collection-unlock";
 import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
@@ -84,7 +86,25 @@ export default async function StyleDetailPage({ params }: PageProps) {
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
   const copy = getStylesCopy(locale);
 
-  const preset = await getPublishedStylePresetBySlugPublic(slug);
+  /*
+    ⭐ まず公開分だけで引く。大多数のアクセスはここで見つかり、認証(cookie)を
+    一切引かないので静的プリレンダのまま = 一般の閲覧者に認証往復を発生させない。
+
+    公開分に無い場合だけ「存在しない」か「admin_only(公開前)」かを区別するため
+    認証を引き、運営(admin / プレビュー admin)にだけ admin_only を見せる。
+    一覧(/styles)は運営に admin_only も出すので、そこからタップした運営が
+    ここで 404 に落ちないようにするための逃げ道。
+  */
+  const publicPreset = await getPublishedStylePresetBySlugPublic(slug);
+  let preset = publicPreset;
+  let isAdminPreview = false;
+  if (!preset) {
+    const user = await getUser();
+    isAdminPreview = isAdminViewer(user?.id ?? null);
+    if (isAdminPreview) {
+      preset = await getPublishedStylePresetBySlugForAdmin(slug);
+    }
+  }
   if (!preset) {
     notFound();
   }
@@ -101,7 +121,12 @@ export default async function StyleDetailPage({ params }: PageProps) {
   const stylesIndexPath = localizePublicPath("/styles", locale);
   const generatePath = `${localizePublicPath("/style", locale)}?style=${preset.id}`;
 
-  const allPresets = await getPublishedStylePresets();
+  // 運営プレビュー中は関連スタイルも admin_only を含める(admin_only カテゴリの
+  // 同カテゴリ内はすべて admin_only なので、含めないと関連が常に空になる)。
+  // 公開スタイル表示時は従来どおり公開分のみ = 同じキャッシュを再利用する。
+  const allPresets = await getPublishedStylePresets({
+    includeAdminOnly: isAdminPreview,
+  });
   const relatedPresets = allPresets
     .filter(
       (candidate) =>

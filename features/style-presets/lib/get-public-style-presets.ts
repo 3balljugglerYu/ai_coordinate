@@ -60,6 +60,16 @@ async function getPublishedStylePresetForAdminCached(
   return getPublishedStylePresetById(id, { includeAdminOnly: true });
 }
 
+async function getPublishedStylePresetBySlugForAdminCached(
+  slug: string
+): Promise<StylePresetPublicSummary | null> {
+  "use cache";
+  cacheTag("style-presets");
+  cacheLife("minutes");
+
+  return getPublishedStylePresetBySlug(slug, { includeAdminOnly: true });
+}
+
 export async function getPublishedStylePresets(
   options: PublicStylePresetAccessOptions = {},
 ): Promise<StylePresetPublicSummary[]> {
@@ -84,4 +94,18 @@ export async function getPublishedStylePresetBySlugPublic(
   slug: string
 ): Promise<StylePresetPublicSummary | null> {
   return getPublishedStylePresetBySlugCached(slug);
+}
+
+/**
+ * /styles/[slug] の**運営プレビュー**用。admin_only カテゴリも含めて slug で引く。
+ *
+ * 呼び出し側で運営(isAdminViewer)を確認してから使うこと。公開ページの既定は
+ * あくまで `getPublishedStylePresetBySlugPublic`(非 admin_only のみ)で、
+ * こちらは「公開分に見つからなかったときだけ」試す逃げ道として使う
+ * (公開スタイルの表示に認証往復を持ち込まないため)。
+ */
+export async function getPublishedStylePresetBySlugForAdmin(
+  slug: string
+): Promise<StylePresetPublicSummary | null> {
+  return getPublishedStylePresetBySlugForAdminCached(slug);
 }
