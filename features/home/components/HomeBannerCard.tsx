@@ -39,8 +39,11 @@ export function HomeBannerCard({
 }: HomeBannerCardProps) {
   const linkUrl = getSafeLinkUrl(banner.linkUrl);
   const card = (
-    <Card className="overflow-hidden hover:scale-[1.02] transition-transform duration-200 p-0">
-      <div className="relative w-full overflow-hidden bg-gray-100">
+    /* 角丸は控えめに、枠線・影・読み込み中のグレー地は持たない。
+       バナー画像そのものに角の飾りが入っていることが多く、強い角丸だと
+       絵が削れて見え、border と shadow-sm が角の外側にグレーの縁として残る。 */
+    <Card className="overflow-hidden rounded-lg border-0 shadow-none hover:scale-[1.02] transition-transform duration-200 p-0">
+      <div className="relative w-full overflow-hidden">
         <Image
           src={banner.imageUrl}
           alt={banner.alt}
