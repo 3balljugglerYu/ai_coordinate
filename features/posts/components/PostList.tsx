@@ -51,6 +51,7 @@ import {
   restoreHomeFeedScroll,
   saveHomeFeedRestoreSnapshot,
 } from "../lib/home-feed-restore";
+import { getHomeSortType, setHomeSortType } from "../lib/home-sort-preference";
 
 /** グリッドの先読み距離。複数カラムなので1行が低く、数行ぶんの余裕になる。 */
 const GRID_PREFETCH_MARGIN_PX = 500;
@@ -436,19 +437,36 @@ export function PostList({
       setPrevSortType(sortType); // 現在のタブを記録
       setSortType(sortParam);
     } else {
-      // sortパラメータがない場合はデフォルト値を使用
-      setSortType(defaultSortType);
+      /*
+        ⭐ sort パラメータが無いときは、まず**直前に選んでいたタブ**へ戻す。
+
+        投稿詳細へ行って戻るとページセグメントが作り直され、ここが既定タブ
+        (PICK UP)で上書きしていた。「新着を見ていたのに戻ると PICK UP に居る」
+        という迷子の原因。保存はセッション内だけなので、開き直せば既定に戻る。
+
+        描画の初期値ではなくこの effect(マウント後)で入れるのは、
+        サーバーは保存を読めずハイドレーション不一致になるため
+        (表示形式の localStorage 復元と同じ理由)。
+      */
+      setSortType(isSearchPage ? defaultSortType : getHomeSortType() ?? defaultSortType);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
 
   // ソートタイプ変更時の処理（タブの見た目を即反映）
-  const handleSortChange = useCallback((newSortType: SortType) => {
-    // 並び替えたら別の一覧。保存済みの位置は意味を失う
-    clearHomeFeedRestoreSnapshot();
-    setPrevSortType(sortType);
-    setSortType(newSortType);
-  }, [sortType]);
+  const handleSortChange = useCallback(
+    (newSortType: SortType) => {
+      // 並び替えたら別の一覧。保存済みの位置は意味を失う
+      clearHomeFeedRestoreSnapshot();
+      // 詳細から戻ったときに同じタブへ戻れるよう控える(検索画面は対象外)
+      if (!isSearchPage) {
+        setHomeSortType(newSortType);
+      }
+      setPrevSortType(sortType);
+      setSortType(newSortType);
+    },
+    [sortType, isSearchPage]
+  );
 
   /*
     ⭐ 昇格前に中間タブ（このとき week）を選んでいた場合の追随。
@@ -682,10 +700,17 @@ export function PostList({
     hasFreshNewestPostsRef を立てて、20件での出し直しを止めるため。
   */
   useLayoutEffect(() => {
+    /*
+      ⭐ 突き合わせるのは既定タブではなく「戻ったときに居るタブ」。
+
+      既定タブで突き合わせていたため、新着タブで読み進めてから詳細へ行って
+      戻ると、保存(sortType=newest)と既定(PICK UP)が一致せず復元が丸ごと
+      捨てられていた。タブと一覧はセットで戻す。
+    */
     const snapshot = isSearchPage
       ? null
       : peekHomeFeedRestoreSnapshot({
-          sortType: defaultSortType,
+          sortType: getHomeSortType() ?? defaultSortType,
           searchQuery: normalizedSearchQuery,
         });
     if (!snapshot) {

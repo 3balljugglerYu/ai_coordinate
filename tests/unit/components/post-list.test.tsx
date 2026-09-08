@@ -24,6 +24,7 @@ import {
   markHomeViewSwitchNoticeSeen,
   setHomeViewMode,
 } from "@/features/posts/lib/home-view-preference";
+import { setHomeSortType } from "@/features/posts/lib/home-sort-preference";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -62,7 +63,20 @@ jest.mock("@/features/auth/components/AuthModal", () => ({
 }));
 
 jest.mock("@/features/posts/components/SortTabs", () => ({
-  SortTabs: ({ value }: { value: string }) => <div data-testid="sort-tabs">{value}</div>,
+  SortTabs: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (next: string) => void;
+  }) => (
+    <div data-testid="sort-tabs">
+      <span data-testid="sort-tabs-value">{value}</span>
+      <button data-testid="sort-tab-newest" onClick={() => onChange("newest")}>
+        newest
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock("@/features/posts/components/PostListSkeleton", () => ({
@@ -197,6 +211,13 @@ describe("PostList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    /*
+      ⭐ タブの控え(persta-ai:home-sort-type)は sessionStorage に残り、
+      テストをまたいで前のケースで押したタブが復元されてしまう。
+      各ケースは既定タブから始まる前提なので、毎回まっさらにする。
+    */
+    window.sessionStorage.clear();
 
     fetchMock = jest.fn();
     toastMock = jest.fn();
@@ -937,6 +958,72 @@ describe("PostList", () => {
 
       await screen.findByTestId("post-card-initial-1");
       expect(screen.queryByTestId("post-card-restored-0")).not.toBeInTheDocument();
+    });
+  });
+
+  /*
+    ⭐ 詳細画面から戻ったときのタブ。
+
+    投稿詳細へ行くとページセグメントが作り直され、URL に sort パラメータが
+    無いため既定タブ(PICK UP)で上書きされていた。「新着を見ていたのに戻ると
+    PICK UP に居る」という迷子を防ぐ回帰ガード。
+  */
+  describe("タブの復元", () => {
+    test("⭐新着を選んでから作り直されても新着タブのまま", async () => {
+      const first = render(
+        <PostList initialPosts={initialPosts} skipInitialFetch />
+      );
+      await screen.findByTestId("sort-tabs-value");
+      expect(screen.getByTestId("sort-tabs-value")).toHaveTextContent("newest");
+
+      // 既定が新着の状態から PICK UP へ切り替え、そのうえで新着へ戻す
+      // (押した結果が控えられることを見る)
+      act(() => {
+        fireEvent.click(screen.getByTestId("sort-tab-newest"));
+      });
+      expect(window.sessionStorage.getItem("persta-ai:home-sort-type")).toBe(
+        "newest"
+      );
+
+      // 詳細へ遷移して戻る = セグメントの作り直し
+      first.unmount();
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "newest"
+      );
+    });
+
+    test("控えが無ければ既定タブから始まる", async () => {
+      window.sessionStorage.clear();
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "popular_prompts"
+      );
+    });
+
+    test("控えたタブは既定より優先される(戻り先が PICK UP に奪われない)", async () => {
+      setHomeSortType("newest");
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "newest"
+      );
     });
   });
 });
