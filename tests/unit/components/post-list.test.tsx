@@ -902,7 +902,7 @@ describe("PostList", () => {
   describe("詳細から戻ったときの復元", () => {
     /** 追加読み込み済み(21件以上)の一覧を保存した状態を作る。 */
     function saveRestorableSnapshot(
-      sortType: "newest" | "popular" | "week" = "newest"
+      sortType: "newest" | "popular" | "week" | "following" | "popular_prompts" = "newest"
     ) {
       saveHomeFeedRestoreSnapshot({
         posts: Array.from({ length: 25 }, (_, i) =>
@@ -990,6 +990,60 @@ describe("PostList", () => {
       expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
       expect(screen.queryByTestId("post-card-middle-1")).not.toBeInTheDocument();
       // 取り直しも走らない(復元した一覧をそのまま使う)
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    /*
+      ⭐ フォロータブは currentUserId(getUser の非同期解決)に依存する。
+      確定前は null なので、待たずに進むとログイン済みでも「未ログイン」と
+      誤判定して一覧を空にし、復元ぶんまで捨てていた。
+    */
+    test("⭐フォロータブでも復元する(認証の確定前に一覧を空にしない)", async () => {
+      createClientMock.mockReturnValue({
+        auth: {
+          getUser: jest
+            .fn()
+            .mockResolvedValue({ data: { user: { id: "user-1" } } }),
+          onAuthStateChange: jest.fn().mockReturnValue({
+            data: { subscription: { unsubscribe: jest.fn() } },
+          }),
+        },
+      } as unknown as ReturnType<typeof createClient>);
+      setHomeSortType("following");
+      saveRestorableSnapshot("following");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    /*
+      ⭐ 運営だけに見える PICK UP(既定タブ)。サーバーが initialDefaultSort で
+      渡すため既定タブ側の経路になるが、復元の判定がタブ非依存になったことを
+      ここでも固定しておく。
+    */
+    test("⭐PICK UPタブ(運営の既定タブ)でも復元する", async () => {
+      setHomeSortType("popular_prompts");
+      saveRestorableSnapshot("popular_prompts");
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("middle-1", "middle post")]}
+          initialMiddleSort="newest"
+          initialDefaultSort="popular_prompts"
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
       expect(fetchMock).not.toHaveBeenCalled();
     });
   });

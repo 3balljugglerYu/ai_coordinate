@@ -170,6 +170,15 @@ export function PostList({
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   /*
+    認証の確定が済んだか。
+
+    `currentUserId` は `getUser()` の解決までは null で、未ログインと区別できない。
+    フォロータブはこの値で「未ログインだから一覧を空にする」判断をするため、
+    確定前に進むとログイン済みでも一覧を空にしてしまう(詳細から戻ったときの
+    復元ぶんまで捨て、認証モーダルも一瞬出る)。
+  */
+  const [isUserResolved, setIsUserResolved] = useState(false);
+  /*
     ⭐ 「いま一覧に出ているのは、どの条件で取ったものか」の控え。
 
     **state ではなく ref。** 画面には一切描画しておらず、読むのは effect の中だけ。
@@ -300,6 +309,7 @@ export function PostList({
     const supabase = createClient();
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id ?? null);
+      setIsUserResolved(true);
     });
 
     // 認証状態の変更を監視
@@ -307,6 +317,7 @@ export function PostList({
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setCurrentUserId(session?.user?.id ?? null);
+      setIsUserResolved(true);
     });
 
     return () => {
@@ -606,10 +617,29 @@ export function PostList({
     loadPosts(offset, false);
   }, [loadPosts, offset]);
 
+  /*
+    フォロータブの認証待ちゲート。
+
+    ⭐ `isUserResolved` を直接データロードの effect の依存に入れないこと。
+    認証が確定した瞬間に**全タブで** effect が再実行され、検索クエリありの
+    ときは再取得のガードが無いため 2 回目の取得が走る(無限ループ防止の
+    テストが検知する)。フォロータブ以外は常に true にしておけば値が
+    変化しないので、余計な再実行が起きない。
+
+    フォロータブだけ確定を待つのは、`currentUserId` が確定前も null で
+    未ログインと区別できないため。待たずに進むとログイン済みでも一覧を
+    空にし、詳細から戻ったときの復元ぶんまで捨ててしまう。
+  */
+  const followingAuthGate = sortType === "following" ? isUserResolved : true;
+
   // sortType / currentUserId / searchQuery に応じたモーダル表示とデータロード
   useEffect(() => {
     // 保存していたタブの適用待ち。既定タブのぶんを一度取りに行かないための足止め
     if (!isSortResolved) {
+      return;
+    }
+    // フォロータブの認証待ち(下の followingAuthGate のコメント参照)
+    if (!followingAuthGate) {
       return;
     }
     const shouldShowAuth = sortType === "following" && !currentUserId;
@@ -704,6 +734,7 @@ export function PostList({
     }
   }, [
     isSortResolved,
+    followingAuthGate,
     sortType,
     currentUserId,
     normalizedSearchQuery,
