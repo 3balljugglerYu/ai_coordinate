@@ -24,6 +24,7 @@ import {
   markHomeViewSwitchNoticeSeen,
   setHomeViewMode,
 } from "@/features/posts/lib/home-view-preference";
+import { setHomeSortType } from "@/features/posts/lib/home-sort-preference";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -62,7 +63,20 @@ jest.mock("@/features/auth/components/AuthModal", () => ({
 }));
 
 jest.mock("@/features/posts/components/SortTabs", () => ({
-  SortTabs: ({ value }: { value: string }) => <div data-testid="sort-tabs">{value}</div>,
+  SortTabs: ({
+    value,
+    onChange,
+  }: {
+    value: string;
+    onChange: (next: string) => void;
+  }) => (
+    <div data-testid="sort-tabs">
+      <span data-testid="sort-tabs-value">{value}</span>
+      <button data-testid="sort-tab-newest" onClick={() => onChange("newest")}>
+        newest
+      </button>
+    </div>
+  ),
 }));
 
 jest.mock("@/features/posts/components/PostListSkeleton", () => ({
@@ -197,6 +211,13 @@ describe("PostList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    /*
+      ⭐ タブの控え(persta-ai:home-sort-type)は sessionStorage に残り、
+      テストをまたいで前のケースで押したタブが復元されてしまう。
+      各ケースは既定タブから始まる前提なので、毎回まっさらにする。
+    */
+    window.sessionStorage.clear();
 
     fetchMock = jest.fn();
     toastMock = jest.fn();
@@ -880,7 +901,9 @@ describe("PostList", () => {
 
   describe("詳細から戻ったときの復元", () => {
     /** 追加読み込み済み(21件以上)の一覧を保存した状態を作る。 */
-    function saveRestorableSnapshot(sortType: "newest" | "popular" = "newest") {
+    function saveRestorableSnapshot(
+      sortType: "newest" | "popular" | "week" | "following" | "popular_prompts" = "newest"
+    ) {
       saveHomeFeedRestoreSnapshot({
         posts: Array.from({ length: 25 }, (_, i) =>
           createPost(`restored-${i}`, `restored ${i}`)
@@ -937,6 +960,157 @@ describe("PostList", () => {
 
       await screen.findByTestId("post-card-initial-1");
       expect(screen.queryByTestId("post-card-restored-0")).not.toBeInTheDocument();
+    });
+
+    /*
+      ⭐ 既定タブ以外(一般ユーザーのオススメ等)でも復元できること。
+
+      復元した一覧が「どのタブのぶんか」を記録していなかったため、初回ロードの
+      effect が「このタブはまだ読み込んでいない」と判断し、サーバー配布の20件で
+      上書きしていた。基準にしていたカードごと消えるので位置が戻らず、
+      「20件を超えたあたりから戻れない」状態になっていた。
+    */
+    test("⭐既定タブ以外でも復元する(サーバー配布の20件で上書きしない)", async () => {
+      setHomeSortType("week");
+      saveRestorableSnapshot("week");
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("middle-1", "middle post")]}
+          initialMiddleSort="week"
+          skipInitialFetch
+        />
+      );
+
+      // 復元した25件が出ること(サーバー配布の initialMiddlePosts で潰れない)
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
+      expect(screen.queryByTestId("post-card-middle-1")).not.toBeInTheDocument();
+      // 取り直しも走らない(復元した一覧をそのまま使う)
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    /*
+      ⭐ フォロータブは currentUserId(getUser の非同期解決)に依存する。
+      確定前は null なので、待たずに進むとログイン済みでも「未ログイン」と
+      誤判定して一覧を空にし、復元ぶんまで捨てていた。
+    */
+    test("⭐フォロータブでも復元する(認証の確定前に一覧を空にしない)", async () => {
+      createClientMock.mockReturnValue({
+        auth: {
+          getUser: jest
+            .fn()
+            .mockResolvedValue({ data: { user: { id: "user-1" } } }),
+          onAuthStateChange: jest.fn().mockReturnValue({
+            data: { subscription: { unsubscribe: jest.fn() } },
+          }),
+        },
+      } as unknown as ReturnType<typeof createClient>);
+      setHomeSortType("following");
+      saveRestorableSnapshot("following");
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    /*
+      ⭐ 運営だけに見える PICK UP(既定タブ)。サーバーが initialDefaultSort で
+      渡すため既定タブ側の経路になるが、復元の判定がタブ非依存になったことを
+      ここでも固定しておく。
+    */
+    test("⭐PICK UPタブ(運営の既定タブ)でも復元する", async () => {
+      setHomeSortType("popular_prompts");
+      saveRestorableSnapshot("popular_prompts");
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("middle-1", "middle post")]}
+          initialMiddleSort="newest"
+          initialDefaultSort="popular_prompts"
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+  });
+
+  /*
+    ⭐ 詳細画面から戻ったときのタブ。
+
+    投稿詳細へ行くとページセグメントが作り直され、URL に sort パラメータが
+    無いため既定タブ(PICK UP)で上書きされていた。「新着を見ていたのに戻ると
+    PICK UP に居る」という迷子を防ぐ回帰ガード。
+  */
+  describe("タブの復元", () => {
+    test("⭐新着を選んでから作り直されても新着タブのまま", async () => {
+      const first = render(
+        <PostList initialPosts={initialPosts} skipInitialFetch />
+      );
+      await screen.findByTestId("sort-tabs-value");
+      expect(screen.getByTestId("sort-tabs-value")).toHaveTextContent("newest");
+
+      // 既定が新着の状態から PICK UP へ切り替え、そのうえで新着へ戻す
+      // (押した結果が控えられることを見る)
+      act(() => {
+        fireEvent.click(screen.getByTestId("sort-tab-newest"));
+      });
+      expect(window.sessionStorage.getItem("persta-ai:home-sort-type")).toBe(
+        "newest"
+      );
+
+      // 詳細へ遷移して戻る = セグメントの作り直し
+      first.unmount();
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "newest"
+      );
+    });
+
+    test("控えが無ければ既定タブから始まる", async () => {
+      window.sessionStorage.clear();
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "popular_prompts"
+      );
+    });
+
+    test("控えたタブは既定より優先される(戻り先が PICK UP に奪われない)", async () => {
+      setHomeSortType("newest");
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "newest"
+      );
     });
   });
 });
