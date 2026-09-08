@@ -901,7 +901,9 @@ describe("PostList", () => {
 
   describe("詳細から戻ったときの復元", () => {
     /** 追加読み込み済み(21件以上)の一覧を保存した状態を作る。 */
-    function saveRestorableSnapshot(sortType: "newest" | "popular" = "newest") {
+    function saveRestorableSnapshot(
+      sortType: "newest" | "popular" | "week" = "newest"
+    ) {
       saveHomeFeedRestoreSnapshot({
         posts: Array.from({ length: 25 }, (_, i) =>
           createPost(`restored-${i}`, `restored ${i}`)
@@ -958,6 +960,37 @@ describe("PostList", () => {
 
       await screen.findByTestId("post-card-initial-1");
       expect(screen.queryByTestId("post-card-restored-0")).not.toBeInTheDocument();
+    });
+
+    /*
+      ⭐ 既定タブ以外(一般ユーザーのオススメ等)でも復元できること。
+
+      復元した一覧が「どのタブのぶんか」を記録していなかったため、初回ロードの
+      effect が「このタブはまだ読み込んでいない」と判断し、サーバー配布の20件で
+      上書きしていた。基準にしていたカードごと消えるので位置が戻らず、
+      「20件を超えたあたりから戻れない」状態になっていた。
+    */
+    test("⭐既定タブ以外でも復元する(サーバー配布の20件で上書きしない)", async () => {
+      setHomeSortType("week");
+      saveRestorableSnapshot("week");
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("middle-1", "middle post")]}
+          initialMiddleSort="week"
+          skipInitialFetch
+        />
+      );
+
+      // 復元した25件が出ること(サーバー配布の initialMiddlePosts で潰れない)
+      await screen.findByTestId("post-card-restored-24");
+      await act(async () => {});
+
+      expect(screen.getByTestId("post-card-restored-0")).toBeInTheDocument();
+      expect(screen.queryByTestId("post-card-middle-1")).not.toBeInTheDocument();
+      // 取り直しも走らない(復元した一覧をそのまま使う)
+      expect(fetchMock).not.toHaveBeenCalled();
     });
   });
 

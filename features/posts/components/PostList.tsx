@@ -212,6 +212,16 @@ export function PostList({
     問い合わせだけ確定後に回す。
   */
   const [isViewModeResolved, setIsViewModeResolved] = useState(false);
+  /*
+    保存していたタブ(sessionStorage)の適用が済んだか。
+
+    初期描画は既定タブ(サーバーと一致させるため)で、保存の反映はマウント後の
+    effect になる。確定を待たずにデータロードの effect を走らせると、
+    **既定タブのぶんを一度取りに行って**復元した一覧を潰してしまう
+    (詳細から戻ったときに 20 件へ戻り、位置合わせの基準カードごと消える)。
+    表示形式の `isViewModeResolved` と同じ考え方。
+  */
+  const [isSortResolved, setIsSortResolved] = useState(false);
   const didTriggerPostedRefreshRef = useRef(false);
   /*
     「サーバー描画ぶんより新しい newest を既に持っている」フラグ。
@@ -450,6 +460,12 @@ export function PostList({
       */
       setSortType(isSearchPage ? defaultSortType : getHomeSortType() ?? defaultSortType);
     }
+    /*
+      ⭐ ここでタブが確定する。データロードの effect はこの合図を待つ
+      (この effect の方が宣言順で先なので、同じ flush 内ではロード側が
+      まだ false を見て早期 return し、確定後の再実行で正しいタブを読む)。
+    */
+    setIsSortResolved(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname, searchParams]);
 
@@ -592,6 +608,10 @@ export function PostList({
 
   // sortType / currentUserId / searchQuery に応じたモーダル表示とデータロード
   useEffect(() => {
+    // 保存していたタブの適用待ち。既定タブのぶんを一度取りに行かないための足止め
+    if (!isSortResolved) {
+      return;
+    }
     const shouldShowAuth = sortType === "following" && !currentUserId;
     /*
       投稿直後の取り直し。
@@ -611,9 +631,18 @@ export function PostList({
       sortType === defaultSortType &&
       !normalizedSearchQuery &&
       !didTriggerPostedRefreshRef.current;
+    /*
+      ⭐ 「いま出ている一覧が、このタブ用に取得済みか」で判断する。
+
+      以前は既定タブ固定(`sortType === defaultSortType`)で見ていたため、
+      既定タブ以外で詳細から戻ると、復元した一覧をこの下の
+      `skipInitialFetch` 分岐が20件で上書きしていた。
+      復元時に `loadedSortTypeRef` へ復元元のタブを入れているので、
+      タブ一致で見れば既定タブ以外でも一覧を保てる
+      (既定タブのときの挙動は従来と同じ)。
+    */
     const shouldReuseFreshNewestPosts =
-      sortType === defaultSortType &&
-      loadedSortTypeRef.current === defaultSortType &&
+      loadedSortTypeRef.current === sortType &&
       loadedSearchQueryRef.current === "" &&
       !normalizedSearchQuery &&
       hasFreshNewestPostsRef.current;
@@ -674,6 +703,7 @@ export function PostList({
       loadedSearchQueryRef.current = null;
     }
   }, [
+    isSortResolved,
     sortType,
     currentUserId,
     normalizedSearchQuery,
@@ -718,6 +748,16 @@ export function PostList({
     }
     clearHomeFeedRestoreSnapshot();
     hasFreshNewestPostsRef.current = true;
+    /*
+      ⭐ 復元した一覧が**どのタブのぶんか**も記録する。
+
+      これが無いと、既定タブ以外(一般ユーザーのオススメ等)で戻ったときに
+      初回ロードの effect が「このタブはまだ読み込んでいない」と判断し、
+      サーバー配布の20件で上書きしてしまう。基準にしていたカードごと消えるため
+      位置合わせが効かず、「20件を超えたあたりから戻れない」状態になっていた。
+    */
+    loadedSortTypeRef.current = snapshot.sortType;
+    loadedSearchQueryRef.current = "";
     setPosts(snapshot.posts);
     setOffset(snapshot.offset);
     setHasMore(snapshot.hasMore);
