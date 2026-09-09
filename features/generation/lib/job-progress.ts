@@ -16,6 +16,34 @@ const STAGE_PROGRESS: Record<ImageJobProcessingStage, number> = {
   failed: 100,
 };
 
+/**
+ * ステージごとに「帯を伸ばしきるのにかける時間」。上の `STAGE_PROGRESS`
+ * (到達点)と対になる表。
+ *
+ * ⭐ `generating` だけ 25 秒と極端に長い。25% → 90% の大ジャンプをその時間
+ * かけて描くことで「ずっと伸び続けている」見え方を作るため。実際の生成も
+ * 数十秒かかるので体感と合う。ここを短くすると一瞬で 90% に達して静止し、
+ * 「止まっている」ように見える。
+ *
+ * ⭐⭐ シート内のカード(`GenerationFormContainer` → `GenerationStatusCard`)と、
+ * シートを閉じたあとのバー(`GenerationProgressHost` → `GenerationProgressBar`)の
+ * **両方がここを参照する**。片方だけ変えると、シートを閉じた瞬間に進み方が
+ * 変わって見える(実際にバー側が一律 500ms でその症状になっていた)。
+ */
+export const STAGE_PROGRESS_TRANSITION_MS: Record<
+  ImageJobProcessingStage,
+  number
+> = {
+  queued: 3000,
+  processing: 600,
+  charging: 500,
+  generating: 25000,
+  uploading: 1200,
+  persisting: 800,
+  completed: 1000,
+  failed: 1000,
+};
+
 export function normalizeProcessingStage(
   status: ImageJobStatus,
   processingStage?: ImageJobProcessingStage | null

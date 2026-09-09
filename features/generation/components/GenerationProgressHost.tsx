@@ -16,7 +16,11 @@ import {
   pollGenerationStatus,
   type AsyncGenerationStatus,
 } from "../lib/async-api";
-import { summarizeJobProgress } from "../lib/job-progress";
+import {
+  normalizeProcessingStage,
+  STAGE_PROGRESS_TRANSITION_MS,
+  summarizeJobProgress,
+} from "../lib/job-progress";
 import { useGenerationProgressAvailable } from "./GenerationProgressAvailabilityProvider";
 import type { ImageJobProcessingStage, ImageJobStatus } from "../lib/job-types";
 import { GenerationProgressBar } from "./GenerationProgressBar";
@@ -203,6 +207,30 @@ export function GenerationProgressHost() {
   const progressPercent = jobSnapshot
     ? summarizeJobProgress([jobSnapshot]).progressPercent
     : 0;
+  /*
+    ⭐ 帯を伸ばしきる時間はステージごとに違う(`generating` は 25 秒)。
+    シート内のカードと同じ表を引くことで、シートを閉じた瞬間に進み方が
+    変わって見えないようにする。一律の短い時間にすると 90% まで一瞬で
+    駆け上がって静止し、「アニメーションが無い」ように見える。
+  */
+  const stage = jobSnapshot
+    ? normalizeProcessingStage(jobSnapshot.status, jobSnapshot.processingStage)
+    : "queued";
 
-  return <GenerationProgressBar visible={visible} progress={progressPercent} />;
+  /*
+    ⭐ 非表示のときは**描かない**(バー側で return null しない)。
+    バーは「出るたびに 0% から伸ばす」ために内部 state を持つので、
+    畳んでいる間もマウントしたままだと前回の値が残り、次に出たときに
+    静止して見える。mount/unmount で状態ごと作り直す。
+  */
+  if (!visible) {
+    return null;
+  }
+
+  return (
+    <GenerationProgressBar
+      progress={progressPercent}
+      progressTransitionDurationMs={STAGE_PROGRESS_TRANSITION_MS[stage]}
+    />
+  );
 }

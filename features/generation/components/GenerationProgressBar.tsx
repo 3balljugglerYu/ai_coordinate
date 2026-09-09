@@ -1,10 +1,15 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 interface GenerationProgressBarProps {
-  visible: boolean;
   progress: number;
+  /**
+   * 帯を現在値まで伸ばしきるのにかける時間。
+   * ステージ別の表(`STAGE_PROGRESS_TRANSITION_MS`)から Host が引いて渡す。
+   */
+  progressTransitionDurationMs: number;
 }
 
 /**
@@ -45,14 +50,37 @@ interface GenerationProgressBarProps {
  * するため、キーフレーム自体は変更していない。
  */
 export function GenerationProgressBar({
-  visible,
   progress,
+  progressTransitionDurationMs,
 }: GenerationProgressBarProps) {
   const t = useTranslations("coordinate");
+  /*
+    ⭐ 出現時は 0% から現在値へ伸ばす(シート内カードの
+    `animateFromZeroOnMount` と同じ演出)。
 
-  if (!visible) {
-    return null;
-  }
+    シートを閉じるのは多くの場合 `generating`(90%)の最中で、そのまま
+    現在値で描くと初回レンダーに transition が乗らず、90% のまま数十秒
+    静止する = 「アニメーションが無い」に見える。0% から 25 秒かけて
+    伸ばせばシート内と同じ「伸び続けている」見え方になる。
+
+    値の反映を1フレーム遅らせるのは、`width: 0%` を一度描いてからでないと
+    transition が発火しないため(カード側も同じ理由で rAF を使っている)。
+    動きを減らす設定の人には `motion-reduce:transition-none` が効くので、
+    ここでの分岐は不要(次のフレームで即座に現在値へ飛ぶ)。
+
+    ⭐⭐ 表示/非表示は**呼び出し元(Host)が mount/unmount で切り替える**。
+    ここで `visible` を持って `return null` すると state が残り、
+    次に出たときに 0% から始められない(前回の値のまま静止する)。
+  */
+  const [renderedProgress, setRenderedProgress] = useState(0);
+  useEffect(() => {
+    const frameId = window.requestAnimationFrame(() => {
+      setRenderedProgress(progress);
+    });
+    return () => {
+      window.cancelAnimationFrame(frameId);
+    };
+  }, [progress]);
 
   return (
     <div
@@ -74,8 +102,12 @@ export function GenerationProgressBar({
         {/* 実際の進捗率で伸びる帯(投稿側は割合を取れないため不定アニメーション、こちらは割合表示) */}
         <div className="h-0.5 w-full overflow-hidden bg-slate-200">
           <div
-            className="h-full bg-emerald-500 transition-[width] duration-500 ease-out motion-reduce:transition-none"
-            style={{ width: `${progress}%` }}
+            className="h-full bg-emerald-500 transition-[width] ease-out motion-reduce:transition-none"
+            style={{
+              width: `${renderedProgress}%`,
+              // ステージ別の所要時間(Host が STAGE_PROGRESS_TRANSITION_MS から渡す)
+              transitionDuration: `${progressTransitionDurationMs}ms`,
+            }}
           />
         </div>
       </div>

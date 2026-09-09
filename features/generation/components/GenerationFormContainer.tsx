@@ -41,8 +41,10 @@ import {
   useCoordinateGenerationFeedback,
   type CoordinateGenerationFeedbackPhase,
 } from "../hooks/useCoordinateGenerationFeedback";
-import { summarizeJobProgress } from "../lib/job-progress";
-import type { ImageJobProcessingStage } from "../lib/job-types";
+import {
+  STAGE_PROGRESS_TRANSITION_MS,
+  summarizeJobProgress,
+} from "../lib/job-progress";
 import type { GeneratedImageData } from "../types";
 import { submitGuestCoordinateGeneration } from "../lib/coordinate-guest-api";
 import {
@@ -100,19 +102,13 @@ const PREPARING_PROGRESS_TRANSITION_MS = 3000;
 const DEFAULT_POLLING_INTERVAL_MS = 1200;
 const FAST_POLLING_INTERVAL_MS = 400;
 const SLOW_POLLING_INTERVAL_MS = 1600;
-const COORDINATE_PROGRESS_TRANSITION_MS: Record<
-  ImageJobProcessingStage,
-  number
-> = {
-  queued: 3000,
-  processing: 600,
-  charging: 500,
-  generating: 25000,
-  uploading: 1200,
-  persisting: 800,
-  completed: 1000,
-  failed: 1000,
-};
+/*
+  ステージ別の所要時間は `job-progress.ts` の
+  `STAGE_PROGRESS_TRANSITION_MS` に移した。シートを閉じたあとのバー
+  (`GenerationProgressBar`)も同じ表を参照する必要があるため
+  (ここに置いたままバー側を一律 500ms にしていたので、シートを閉じた
+  瞬間に進み方が変わって「止まった」ように見えていた)。
+*/
 type BrowserTimerId = number;
 
 function createPreviewImage(
@@ -563,7 +559,7 @@ export function GenerationFormContainer({
     ? 200
     : isPreparingSubmission
       ? PREPARING_PROGRESS_TRANSITION_MS
-      : COORDINATE_PROGRESS_TRANSITION_MS[statusCardStage];
+      : STAGE_PROGRESS_TRANSITION_MS[statusCardStage];
   const generationStatusTitle = (() => {
     if (feedbackPhase === "completing") {
       return t("generationCompletedTitle");
