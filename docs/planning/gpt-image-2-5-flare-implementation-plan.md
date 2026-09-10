@@ -143,6 +143,29 @@ Loader は「一般公開後は即 return null」「`sb-` cookie が無ければ
 
 `isModelAvailableForGeneration()` は **userId を取らない**ので、運営限定ゲートは別途この2ハンドラに足す必要がある(いずれも `user.id` は手元にある)。
 
+なお `isFreePlanAllowedModel` は**クライアント側でしか使われていない**(サーバー側に呼び出しが1つも無い)。無課金プランのモデル制限は意図的に「UI の南京錠 + アップセル」であって認可境界ではない。**2.5 の運営限定ゲートはこれとは性質が違い、実在の境界として作る必要がある。**
+
+### 1-6b. ⭐ 受付後にジョブの `model` を差し替えられる(TOCTOU)
+
+**本番DBで実測した事実:**
+
+| 確認項目 | 結果 |
+|---|---|
+| `image_jobs` の RLS UPDATE ポリシー | `Users can update their own image_jobs` が `auth.uid() = user_id` のみ。**列の制限なし** |
+| `authenticated` への列権限 | `model` を含む**全30列に UPDATE 権限あり** |
+| worker のジョブ取得 | 処理時に `select("*").eq("id", jobId)` で**行を再取得**(`supabase/functions/image-gen-worker/index.ts:1543-1547`) |
+| worker が使う model | 再取得した `job.model`(同 `:1759`)。**受付時の検証は再評価されない** |
+
+つまり、ログイン済みユーザーは **許可されたモデルでジョブを作った直後、自分の行を PATCH して `model` を差し替えられる**。worker はその値で実行する。
+
+**影響範囲を正確に切ると:**
+
+- ❌ **ペルコインの窃取はできない。** worker の課金額 `getGenerationPercoinAmount(job)` も同じ `job.model` から引くため(同 `:777-796`)、差し替え後のモデルの正価が課金される。残高が足りなければ charging で失敗する
+- ➖ **無課金プランの制限突破は、そもそも今でも直接 POST で可能**(上記のとおり UI のみの制限で、意図的にそう設計されている)
+- 🚨 **2.5 の運営限定ゲートは、この経路で完全に迂回される。** CHECK 制約に 2.5 を足した瞬間、非運営ユーザーが 2.0 のジョブを作って `model` を `gpt-image-2.5-flare-high-4k` へ書き換えれば実行できてしまう
+
+段階公開の「運営だけ」を実在の境界にするには、**DB 層で `model` を作成後不変にする**必要がある。詳細は ADR-007。
+
 ### 1-7. 原価表
 
 `features/admin-dashboard/lib/ai-cost-rates.ts`
@@ -157,7 +180,7 @@ Loader は「一般公開後は即 return null」「`sb-` cookie が無ければ
 
 ### 1-9. i18n
 
-`messages/` は **16言語**。`messages/ja.ts` が正本で、他15ファイルが `satisfies DeepReplaceStrings<typeof jaMessages>` を持つ。**ja.ts にキーを足すと残り15ファイルすべてで typecheck が落ちる**ため、16ファイル同時に追加する必要がある。モデル名はブランド名なので全言語同一の値でよい(既存 `modelChatGptImages: "ChatGPT Images 2.0"` が16ファイルとも同じ)。
+`messages/` は **15言語**(`i18n/config.ts:1-17` の `locales` が15個)。`messages/*.ts` は15ファイルで、`messages/ja.ts` が型の正本、**他14ファイル**が `satisfies DeepReplaceStrings<typeof jaMessages>` を持つ。**ja.ts にキーを足すと残り14ファイルすべてで typecheck が落ちる**ため、15ファイル同時に追加する必要がある。モデル名はブランド名なので全言語同一の値でよい(既存 `modelChatGptImages: "ChatGPT Images 2.0"` が15ファイルとも同じ)。
 
 ### 1-10. DB の CHECK 制約
 
@@ -220,7 +243,12 @@ flowchart TD
     REQ --> G{"サーバー側 isGptImage25Available"}
     G -->|true| JOB["ジョブ作成"]
     G -->|false| ERR["400 で拒否"]
+    JOB --> PATCH{"本人が model を PATCH"}
+    PATCH -->|"trigger 無し"| BYPASS["worker が差し替え後の model で実行 = ゲート迂回"]
+    PATCH -->|"freeze trigger 有り"| DENY["DB 層で拒否"]
 ```
+
+⭐ **3層目の `freeze trigger` が要る**理由は §1-6b。worker は処理時にジョブ行を再取得するため、**受付時の検証は再評価されない**。UI とサーバーの2層だけでは、ジョブ作成後の PATCH で迂回できる。
 
 ### 2-4. 検証から一般公開までの状態遷移
 
@@ -291,6 +319,9 @@ stateDiagram-v2
 - **REQ-014** (異常系) — If a stored preference in `localStorage` names a 2.5 model but the viewer may not use it, then the system shall clamp the effective model to `DEFAULT_GENERATION_MODEL` without rewriting the stored value.
   localStorage に 2.5 が残っている利用者が権限を失った場合、保存値は書き換えず実効値だけ既定モデルへ丸めること。
 
+- **REQ-015** (異常系) — If any update attempts to change `image_jobs.model` after the row is created, then the system shall reject the update at the database layer.
+  作成済みの `image_jobs.model` を変更しようとする更新は、DB 層で拒否すること(§1-6b の TOCTOU を塞ぐ。これが無いと REQ-006 の受付ゲートは PATCH 1本で迂回される)。
+
 ---
 
 ## 4. ADR(設計判断記録)
@@ -308,6 +339,8 @@ stateDiagram-v2
 - **Decision**: `shared/generation/openai-image-model.ts` に `OPENAI_IMAGE_FAMILIES` / `composeOpenAIImageModel(family, quality, sizeTier)` / `parseOpenAIImageModel()` を追加し、8箇所を移行する。`parseGptImage2Model` は削除する。
 - **Reason**: `shared/generation/gemini-banana-model.ts` が全く同じ形(`GEMINI_BANANA_FAMILIES` / `composeGeminiBananaModel` / `parseGeminiBananaModel`)で既に動いており、Gemini 側の selector もこれで書かれている。**新しいパターンを持ち込まずに済む。**
 - **Consequence**: `parseGptImage2Model` を残して並存させる案より初期の変更点は多いが、「2.0 用と汎用の2つのパーサ」が並ぶ状態を作らない。片方だけ直して事故る型を潰す。
+- ⭐ **実装上の必須事項**: 新パーサは **位置固定の `split("-")` を使わないこと**。現行 `parseGptImage2Model` は `const [, , , quality, sizeTier] = normalized.split("-")` で3番目・4番目を取っている(`shared/generation/openai-image-model.ts:78-85`)。2.5 は `["gpt","image","2.5","flare","low","1k"]` と分割されるため、同じ添字だと `quality="flare"` になる。`parseGeminiBananaModel` と同じく **canonical set への所属確認 + 明示的なマッピング(switch もしくは Record)**で復元する。
+- ⭐ 旧 export を削除するときは `features/generation/types.ts:166-179` の **re-export ブロックも更新対象**(`composeGptImage2Model` / `parseGptImage2Model` / `GPT_IMAGE_2_*` をここから再輸出している)。
 
 ### ADR-003: 運営限定は Provider + Loader パターンで配る(props を引き回さない)
 
@@ -332,6 +365,8 @@ stateDiagram-v2
   - worker が古いまま 2.5 のジョブが積まれると、worker の `normalizeModelName()` が `Invalid GPT Image 2 model` を投げてジョブが全部 failed になる
   - 逆順(migration → worker)は**どちらも既存の挙動を1ミリも変えない**ので、間に人間の確認時間を挟んでよい
 - **Consequence**: 3ステップの手動デプロイになる。Phase 5 の手順に明記する。
+- ⭐ **worker デプロイの完了判定を挟む**。`supabase functions deploy` の成功は「アップロードが通った」であって「新 bundle が実際に走っている」ではない。Next.js を出す前に、**既存 2.0 のジョブを1件流して新 bundle が処理していることを確認する**(completion barrier)。Next.js より前に積まれるのは既存 2.0 のジョブだけなので、通常のキュー待ち自体は問題にならない。
+- ⭐ **ロールバック時は「新規受付を閉じる」が先**。旧 worker へ戻すと 2.5 のジョブは `Invalid GPT Image 2 model` で全 failed になる。手順は ①Next.js から 2.5 の受付を止める(行を消す or フラグ) → ②2.5 の `queued` / `processing` が 0 件になるまで待つ → ③worker を戻す、の順。②を飛ばすと処理中のジョブを落とす。
 
 ### ADR-006: 品質は 3段のまま。`xhigh` / `max` は入れない
 
@@ -339,6 +374,17 @@ stateDiagram-v2
 - **Decision**: `low / medium / high` の3段に限る。
 - **Reason**: 検証の目的は「同じ設定で 2.0 と 2.5 を見比べる」こと。段数が違うと比較にならない。加えて `xhigh` / `max` は出力トークン数が未知で、原価とタイムアウトの両方を実測しないと出せない。
 - **Consequence**: quality と sizeTier の軸を 2.0 とそのまま共有できる(`GPT_IMAGE_2_QUALITIES` / `GPT_IMAGE_2_SIZE_TIERS` を使い回す)。将来 `xhigh` を足すときは family ごとに許可 quality を持つ形へ拡張する。
+
+### ADR-007: `image_jobs.model` を作成後不変にする(DB trigger)
+
+- **Context**: §1-6b のとおり、受付時にモデルを検証してジョブを作っても、ユーザーは自分の行を PATCH して `model` を差し替えられる。worker は処理時に行を再取得するため、受付時の検証が無効化される(TOCTOU)。
+- **Decision**: `image_jobs` に **`model` 列を作成後変更させない trigger** を追加する。`service_role` からの更新だけは許可する(worker が正規化後の値を書き戻す経路があるため)。
+- **Reason**: 段階公開の「運営だけ」を実在の境界にするには、**受付だけを守っても足りない**。API ハンドラ側の `isGptImage25Available` は「意図しない選択」を防ぐ UX の層で、悪意ある PATCH に対しては DB 層でしか止められない。RLS の UPDATE ポリシーを列単位に絞る案もあるが、Postgres の RLS は列単位の制限を表現できず、`GRANT UPDATE (col...)` で列権限を絞ると **他の正当な更新経路まで巻き込む**ため、trigger で「変わったこと」を検出するほうが影響が小さい。
+- **Consequence**:
+  - これは 2.5 に閉じない**モデル選択全体の穴を塞ぐ変更**になる(無課金プランの制限は意図的に UI のみなのでここでは変わらない)
+  - trigger 追加後は `node scripts/check-rpc-grants.mjs` の実施対象になる(スクリプトの実在は確認済み)
+  - ⭐ **`image_jobs.model` を後から書き戻す経路は存在しない**(TS 側の `.from("image_jobs").update()` 全28箇所と、SQL 側の `UPDATE public.image_jobs` のいずれにも `model` の代入が無いことを確認済み)。したがって trigger は **`OLD.model IS DISTINCT FROM NEW.model` なら無条件で `RAISE EXCEPTION`** の形にしてよく、role による例外を設ける必要がない
+  - 認証ユーザーの直接 UPDATE が拒否されることを integration test で固定する
 
 ---
 
@@ -401,6 +447,15 @@ flowchart LR
 - [ ] `supabase/functions/image-gen-worker/openai-image.ts:274,393` の `form.append("model", "gpt-image-2")` を、呼び出し側から渡された family へ差し替え(REQ-005)
   - `CallOpenAIImageEditBatchParams` / `CallOpenAIImageEditMultiInputParams` に `family` を必須で追加
 - [ ] `features/generation/lib/openai-image.ts:322,433` に**同じ変更**を入れる(2ファイルはビット同等を保つ規約)
+- [ ] ⭐ **Node client の呼び出し元3つに `family: "gpt-image-2"` を明示的に渡す**(必須引数化で typecheck が落ちるため。いずれも `quality: "low", sizeTier: "1k"` 固定のプレビュー経路)
+  - `app/api/style-templates/preview-generation/handler.ts:429-440`
+  - `app/api/internal/generate-creator-looks-admin-preview/route.ts:134-144`
+  - `app/api/internal/generate-style-preset-preview/route.ts:117-127`
+  - 注: `app/(app)/style/generate/handler.ts:170-172` は client を `dispatchGuestImageGeneration` へ**そのまま渡すだけ**(`:597-605`)なので、この3つとは別に直す必要はない
+- [ ] ⭐ **OpenAI レスポンスの `usage` を取り出して記録する**(現状 Node/Deno とも `json.data[].b64_json` しか読まず、worker に `usage` の語が1つも無い)
+  - `OpenAIImageEditResult` に `usage` を追加(`input_tokens` / `output_tokens` / `input_tokens_details`)。**base64 は絶対に含めない**
+  - worker 側で jobId・canonical model・実際に送った API model と紐づけて構造化ログに出す
+  - これが無いと Phase 5 の合格ライン③(実原価)が判定できない
 - [ ] `supabase/functions/image-gen-worker/index.ts` の呼び出し2箇所(1101, 2595 付近)で `family` を渡す
 - [ ] `features/generation/lib/guest-generate.ts:287` の OpenAI dispatch で `family` を渡す
 - [ ] `resolveOpenAIRequestTimeoutMs()`(94-103行)の引数型を新パーサの戻り値へ更新(REQ-008: タイムアウト値そのものは 2.0 と同じまま)
@@ -425,6 +480,11 @@ flowchart LR
   - `app/api/generate-async/handler.ts:158-165` の `isModelAvailableForGeneration` チェックの直後に、2.5 なら `isGptImage25Available(user.id)` を要求する分岐を追加
   - `app/(app)/style/generate-async/handler.ts:288-296` に同じ分岐を追加
 - [ ] `features/generation/lib/model-config.ts` の `resolveEffectiveModelForAuthState()` に 2.5 の clamp を追加(REQ-014)
+- [ ] 🚨 **`supabase/migrations/<ts>_freeze_image_jobs_model.sql` を追加**(ADR-007 / REQ-015)。**この migration が無いまま 2.5 を CHECK に足すと、運営限定ゲートが PATCH 1本で迂回される**
+  - `BEFORE UPDATE ON public.image_jobs` の trigger で `OLD.model IS DISTINCT FROM NEW.model` なら `RAISE EXCEPTION`
+  - `SECURITY DEFINER` を付ける場合は `SET search_path = public, pg_temp` を忘れない
+  - 適用後に `node scripts/check-rpc-grants.mjs` を実行
+- [ ] integration test: 認証ユーザーが自分の `image_jobs.model` を UPDATE しようとすると拒否されること
 - [ ] 権限テスト: 非運営 + フラグ OFF で 2.5 を直接 POST すると 400 になり `image_jobs` が作られないこと
 
 ---
@@ -446,8 +506,11 @@ flowchart LR
   - ⚠️ `getModelBrandName()`: **`startsWith("gpt-image-2.5-")` の分岐を `startsWith("gpt-image-")` より前に置く**(順序を誤ると 2.5 が 2.0 と表示される。REQ-012)
   - `MODEL_LIST_DISPLAY_MAP` に 2.5 の9値を追加(`"ChatGPT Images 2.5 | Low"` 等)
 - [ ] `features/generation/lib/model-tags.ts` の `getModelTagsForCanonicalModel()` に 2.5 の3分岐を追加(`gpt-image-2.5-flare-low` / `-medium` / `-high`)
-- [ ] i18n: `modelChatGptImages25: "ChatGPT Images 2.5"` を **16ファイルすべて**に追加(`messages/ja.ts` が正本。他15ファイルは `satisfies` により同時追加が必須)
+- [ ] i18n: `modelChatGptImages25: "ChatGPT Images 2.5"` を **15ファイルすべて**に追加(`messages/ja.ts` が型の正本。他14ファイルは `satisfies` により同時追加が必須)
 - [ ] ⭐ 回帰ガード: 2.0 のブランド名・tier チップ・表示名が変わらないことをテストで固定
+- [ ] エラー分類の堅牢化(Node/Deno 両方)。公式の安定した識別子は `error.code === "moderation_blocked"`(`error.type = "image_generation_user_error"`)だが、現行は `content_policy_violation` かメッセージ正規表現 `/moderation|safety/i` の2段構え(`supabase/functions/image-gen-worker/openai-image.ts:92-99` / `features/generation/lib/openai-image.ts:147-153`)。**`moderation_blocked` を code 側の判定に加える**
+  - 補足: 直近180日の OpenAI 系失敗 252件のうち、未分類のまま漏れた moderation 系は0件だった(190件が `safety_policy_blocked` に分類済み、残り62件は課金上限・保存サイズ超過など別種)。ただし DB には分類後の定数しか残らず**生メッセージが破棄されている**ため、「code で当たったのか正規表現で当たったのか」は判別できない。**現時点で壊れている証拠は無いが、正規表現頼みなのは事実**なので予防的に足す
+  - 返金経路(`SAFETY_POLICY_BLOCKED_ERROR` → non-retriable + 返金)に乗ることをテストで固定
 
 ---
 
@@ -456,17 +519,49 @@ flowchart LR
 **目的**: 本番で運営だけが 2.5 を使える状態にし、合格ライン4項目を計測する。
 **ビルド確認**: 本番で運営アカウントの生成が成功し、`generated_images.model` に 2.5 の canonical 値が入る。
 
-- [ ] **手順1**: `supabase db push --dry-run` で Phase 2 のマイグレーション1本だけが出ることを確認してから適用
-- [ ] **手順2**: `supabase functions deploy image-gen-worker` で worker をデプロイ。**この時点で既存 2.0 の生成が従来どおり動くことを1件確認する**
+#### 5-A. デプロイ(ADR-005 の順序を厳守)
+
+- [ ] **手順1**: `supabase db push --dry-run` で Phase 2/3 のマイグレーション(CHECK 制約 + `model` freeze trigger)だけが出ることを確認してから適用
+- [ ] **手順2**: `supabase functions deploy image-gen-worker` で worker をデプロイ
+- [ ] ⭐ **手順2の完了判定(completion barrier)**: デプロイ成功は「アップロードが通った」であって「新 bundle が走っている」ではない。**既存 2.0 の生成を1件実際に流し、新 bundle が処理していることを確認してから**次へ進む
 - [ ] **手順3**: Next.js を本番デプロイ。`NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED` は**登録しない**(運営だけが `isAdminViewer` で通る状態)
 - [ ] 一般アカウント(または未ログイン)で 2.5 の行が出ないことを実機確認
-- [ ] 運営アカウントで、同じうちの子・同じプロンプト・**`low` × `1k`**(実データの83%を占める SKU。§1-0b)で 2.0 と 2.5 を各1件生成し比較
-  - ①同一性: 目視で見比べる
-  - ②生成時間: `image_jobs` の `started_at` → `completed_at` の差。**基準は `low-1k` の中央値 32.4 秒**(§1-0b)
-  - ③実原価: OpenAI レスポンスの `usage` を Edge ログ(`function_logs`)から読む
+- [ ] 🚨 **ゲート迂回のネガティブ確認**: 一般アカウントで 2.0 のジョブを作り、`image_jobs.model` を 2.5 へ PATCH しようとして**拒否される**ことを確認(ADR-007 の trigger が効いているか)
+
+#### 5-B. smoke test(1件ずつ・機能が壊れていないかの確認)
+
+**ここは合格判定ではない。**「そもそも動くか」を最小コストで見るための工程。
+
+- [ ] `low` × `1k` で 2.5 を1件生成し、成功して `generated_images.model` に 2.5 の canonical 値が入ることを確認
+- [ ] ⭐ **多入力経路**(Creator Looks もしくは One-Tap Style の dual プリセット)を1件。`image[]` の複数 append が 2.5 で通るか(§10 前提3)
+- [ ] ⭐ **`high` × `4k`** を1件。出力 PNG のバイト数を測り、**25MB の上限に対してどれだけ余裕があるか**を記録する(上限引き上げは容量の余裕であって、2.5 の最大 PNG が必ず収まる保証ではない)
+- [ ] レスポンスの `usage` がログに出ていること(Phase 2 で追加した記録が機能しているか)
+
+#### 5-C. 合格判定のための測定(paired run)
+
+⭐ **各1件では判定できない。** 比較対象の 2.0 は n=3,642 の中央値(32.4秒)で、そこに 2.5 の1サンプルをぶつけても、プロバイダ側の揺らぎ・キュー待ち・入力依存を分離できない。
+
+- [ ] **同一入力の paired run** を組む
+  - 同じうちの子・同じプロンプト・同じ品質/サイズ(`low` × `1k`)で 2.0 と 2.5 を対にして回す
+  - **順序を交互またはランダム化**する(時間帯によるプロバイダ側の混雑が片方に偏るのを防ぐ)
+  - 最低でも各 10 ペア。原価は 1件あたり ¥0.35 前後(§1-7 の実測ベース)なので、20件でも実費は小さい
+- [ ] 記録する指標を分ける
+  - **provider request 時間**(OpenAI への fetch の往復。Phase 2 のログから)
+  - **end-to-end 時間**(`image_jobs` の `started_at` → `completed_at`。入力画像取得と Storage 保存を含む)
+  - **p50 / p90**(平均だけ見ない。2.0 の p90 は 50.4 秒)
+  - **失敗率**
+  - **usage 由来の実原価**(input_tokens / output_tokens をそれぞれ記録)
+- [ ] 合格ラインの判定
+  - ①同一性: paired の画像を並べて目視
+  - ②生成時間: **provider request 時間の p50** で比較する。end-to-end には Persta 側の固定費が乗るので、公称の「50%減」がそのまま出るとは限らない
+  - ③実原価: usage から算出した1生成あたりの USD が 2.0 と同等以下か
   - ④事故: `processing_stage` が `uploading` / `persisting` で落ちていないか、`error_message` の有無
+
+#### 5-D. 実測値の反映
+
 - [ ] 実測値で `features/admin-dashboard/lib/ai-cost-rates.ts` の 2.5 の単価を更新し、`basis` を `"measured"` へ(1k のみ。2k/4k は `"derived"` のまま)
 - [ ] 実測した生成時間に応じて `resolveOpenAIRequestTimeoutMs()` の 2.5 側を調整(短縮できるなら別 family の表へ分ける)
+- [ ] ⭐ **再現性の担保**: 実測期間中は API 側で dated snapshot **`gpt-image-2.5-flare-2026-09-08`** を pin するか、少なくとも**実際に送った API model / snapshot をジョブ単位で記録**する(公式に snapshot の存在を確認済み)。DB の canonical ID は family のままでよい。これが無いと、OpenAI 側がエイリアスの中身を差し替えたときに測定値がいつのものか分からなくなる
 
 ---
 
@@ -494,6 +589,10 @@ flowchart LR
 | `features/generation/lib/form-preferences.ts` | 修正 | `PERSISTABLE_MODELS` に 2.5 | 1 |
 | `features/admin-dashboard/lib/ai-cost-rates.ts` | 修正 | `MODEL_COST_RATES` に 2.5 の9値(`derived`)。Phase 5 で `measured` へ | 1,5 |
 | `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` | 新規 | 2テーブルの CHECK 制約に9値追加 | 2 |
+| `supabase/migrations/<ts>_freeze_image_jobs_model.sql` | 新規 | 🚨 `image_jobs.model` を作成後不変にする trigger(ADR-007 / REQ-015) | 3 |
+| `app/api/style-templates/preview-generation/handler.ts` | 修正 | Node client に `family: "gpt-image-2"` を明示 | 2 |
+| `app/api/internal/generate-creator-looks-admin-preview/route.ts` | 修正 | 同上 | 2 |
+| `app/api/internal/generate-style-preset-preview/route.ts` | 修正 | 同上 | 2 |
 | `supabase/functions/image-gen-worker/index.ts` | 修正 | `normalizeModelName` / パーサ移行 / family を client へ渡す | 2 |
 | `supabase/functions/image-gen-worker/openai-image.ts` | 修正 | `model` を family から送る(274, 393) | 2 |
 | `features/generation/lib/openai-image.ts` | 修正 | 同上(322, 433)。Deno 版とビット同等を保つ | 2 |
@@ -510,7 +609,7 @@ flowchart LR
 | `features/generation/components/GptImage2SizeSelector.tsx` | 修正 | family 対応 | 1,4 |
 | `features/generation/lib/model-display.ts` | 修正 | ⚠️ 2.5 分岐を先に置く・表示名9値 | 4 |
 | `features/generation/lib/model-tags.ts` | 修正 | 2.5 の tier チップ3分岐 | 4 |
-| `messages/{ja,en,ar,de,es,fr,hi,id,it,ko,pt,th,vi,zh-CN,zh-TW}.ts` | 修正 | `modelChatGptImages25` を16ファイルに追加 | 4 |
+| `messages/{ja,en,ar,de,es,fr,hi,id,it,ko,pt,th,vi,zh-CN,zh-TW}.ts` | 修正 | `modelChatGptImages25` を15ファイルに追加 | 4 |
 | `tests/unit/features/generation/*.test.ts(x)` | 修正 | 既存の 2.0 テストを新 API へ・2.5 のケース追加 | 1-4 |
 
 ---
@@ -522,8 +621,9 @@ flowchart LR
 - [ ] **エラーハンドリング**: 2.5 で `content_policy_violation` が返ったとき、既存の `SAFETY_POLICY_BLOCKED_ERROR` → 返金経路にそのまま乗るか
 - [ ] **権限制御**: フラグ OFF + 非運営で、UI に出ないこと **と** API が 400 で拒否すること の両方(片方だけでは REQ-06b で踏んだ事故と同型)
 - [ ] **データ整合性**: CHECK 制約が Next.js デプロイより先に入っていること(ADR-005)
+- [ ] 🚨 **TOCTOU**: `image_jobs.model` の freeze trigger が入っていること。**CHECK 制約に 2.5 を足すのと同じか、それより先**でないと、運営限定ゲートが開いた状態になる
 - [ ] **セキュリティ**: `model` はクライアントから来る値。`isKnownModelInput()` の whitelist を必ず通すこと
-- [ ] **i18n**: 16ファイルすべてにキーがあること(1つ欠けると typecheck が落ちる)
+- [ ] **i18n**: 15ファイルすべてにキーがあること(1つ欠けると typecheck が落ちる)
 - [ ] **既存への非干渉**: 2.0 の canonical / percoin / API モデル名 / 表示名 / 原価が1つも変わらないこと
 
 ⭐ **DB 層で強制できないもの**: 「2.5 は運営だけ」は model 値そのものが不正ではないため、CHECK 制約では表せない。**API ハンドラ2箇所が唯一の砦**になる(`app/api/generate-async/handler.ts` と `app/(app)/style/generate-async/handler.ts`)。片方だけに入れると、もう片方の導線から抜ける。Phase 3 で両方に入れること。
@@ -538,6 +638,9 @@ flowchart LR
 | 異常系 | 原価表に9値すべて登録済み(未登録なら 0 円で消えるため、テーブル全走査でテストする) |
 | 権限テスト | フラグ OFF + 非運営で 2.5 を POST → 400、`image_jobs` が作られない |
 | 権限テスト | フラグ OFF + 運営で 2.5 を POST → ジョブ作成成功 |
+| 権限テスト | 認証ユーザーが自分の `image_jobs.model` を UPDATE → DB 層で拒否(REQ-015) |
+| 異常系 | `moderation_blocked` の code が返ったとき `SAFETY_POLICY_BLOCKED_ERROR` に分類され、返金経路に乗る(Node/Deno 両方) |
+| contract | Node/Deno 双方で、family を渡さない既存経路の FormData `model` が `gpt-image-2` のままであること |
 | 回帰 | 2.0 の canonical 9値の percoin / 表示名 / tier チップ / API モデル名がスナップショットと一致 |
 | 実機確認 | 本番・運営アカウントで 2.0 と 2.5 を同条件生成し4項目を計測 |
 | 実機確認 | 一般アカウントで 2.5 の行が出ないこと |
@@ -561,8 +664,9 @@ flowchart LR
 |---|---|
 | **UI(最速)** | `LockableModelSelect` の `MODEL_OPTIONS` から 2.5 の行を消して再デプロイ。既存データの表示は壊れない |
 | **フラグ** | 一般公開後の緊急停止は `NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED` を消して再デプロイ(検索・人気タブと同じ手) |
-| **worker** | 直前のバージョンを `supabase functions deploy` で再デプロイ。ただし **2.5 のジョブがキューに残っていると全 failed になる**ので、キューが空なことを確認してから |
-| **マイグレーション** | **戻さない。** CHECK 制約から値を消すと、既に 2.5 で生成された行が制約違反になり `generated_images` への以後の書き込みが全部落ちる。追加した値は残す |
+| **worker** | ①Next.js から 2.5 の受付を止める → ②2.5 の `queued` / `processing` が 0 件になるまで待つ → ③直前のバージョンを `supabase functions deploy` で再デプロイ。**②を飛ばすと処理中のジョブを落とす**(旧 worker は 2.5 を `Invalid GPT Image 2 model` で弾く) |
+| **マイグレーション(CHECK)** | **戻さない。** CHECK 制約から値を消すと、既に 2.5 で生成された行が制約違反になり `generated_images` への以後の書き込みが全部落ちる。追加した値は残す |
+| **マイグレーション(freeze trigger)** | **戻さない。** これは 2.5 に閉じないセキュリティ修正で、撤退しても残しておくべきもの |
 | **原価表** | 2.5 のエントリは残す(消すと既存 2.5 データの原価が 0 円で消える) |
 | **Git** | Phase ごとにコミットする。Phase 1(型体系)は UI 変更を含まないので単独 revert 可能 |
 
@@ -587,11 +691,14 @@ flowchart LR
 
 | # | 前提 | 確かめ方 | リスク |
 |---|---|---|---|
-| 1 | 2.5 が `moderation: "low"` と `output_format: "png"` を受理する | Phase 5 の初回リクエストで確認 | 400 が返る。その場合はフィールドを family ごとに出し分ける |
-| 2 | 2.5 の出力サイズ制約(長辺 3840 / 総ピクセル 8,294,400 / 16の倍数)が 2.0 と同じ | 同上 | `GPT_IMAGE_2_TIER_LIMITS` を family ごとに分ける必要が出る |
-| 3 | 2.5 が `image[]` の多入力(inspire / Creator Looks / dual モード)に対応する | Phase 5 で Creator Looks を1件試す | 単入力経路だけに 2.5 を出す形へ縮める |
+| 1 | ~~2.5 が `moderation: "low"` と `output_format: "png"` を受理する~~ | ✅ **公式ガイドで確認済み**。`moderation` は `auto` / `low`、`output_format` は `png` / `jpeg` / `webp`。現行の送信値のままでよい。Phase 5-B の smoke で最終確認 | — |
+| 2 | ~~2.5 の出力サイズ制約が 2.0 と同じ~~ | ✅ **公式ガイドで確認済み**。長辺 3,840 / 総 8,294,400px / 16の倍数 で 2.0 と同一。`GPT_IMAGE_2_TIER_LIMITS` を family で分ける必要はない | — |
 | 4 | 2.5 の入力画像トークン数が 2.0 と同じ 1,496 tok | Edge ログの `usage` を読む | 原価表の `inputImageUsd` を分ける |
 | 5 | ~~Supabase DB へコマンドで接続できる~~ | ✅ **解決済み**。CLI を v2.95.4 へ戻し `brew pin` した(2026-09-10) | — |
-| 6 | 2.5 も streaming 非対応(2.0 と同じ) | Phase 5 で 90秒超のケースが出たら確認 | タイムアウト設計を見直す |
+| 6 | ~~2.5 も streaming 非対応(2.0 と同じ)~~ | ❌ **この前提は誤り**。公式ガイドは Image API の `partial_images`(0〜3)を **`gpt-image-2.5-flare` / `-sunburst` が対応**すると明記している。2.0 が非対応だったのとは状況が違う | 今回は使わないが、将来 90秒制約を回避する手段が増えた |
+| 7 | 2.5 の最大 PNG が `generated-images` の 25MB 上限に収まる | Phase 5-B で `high` × `4k` を1件生成し、バイト数と余裕を記録 | 4K だけ保存段階で落ちる(2026-02〜08 に4件の前例あり) |
+| 8 | 2.5 が多入力 `image[]`(Creator Looks / dual プリセット / inspire)に対応する | Phase 5-B で1件試す | 単入力経路だけに 2.5 を出す形へ縮める |
 
-⭐ **`gpt-image-2.5-flare` は生成時間が短い**とされているため、前提6 は 2.0 より起きにくいはず。ただし `high` × `4k` は要注意。
+⭐ 前提 1 / 2 / 6 は、レビュー指摘を受けて **OpenAI 公式の Image generation guide を直接確認して解決した**(2026-09-10)。当初「Phase 5 の初回リクエストで確かめる」としていたが、公式に記載があった。
+
+⭐ 残る未確認は **7(保存サイズ)・8(多入力)・4(入力画像トークン数)** の3件で、いずれも Phase 5-B の smoke test で判明する。
