@@ -594,6 +594,8 @@ describe("guest-generate", () => {
       expect(openaiClient).toHaveBeenCalledWith(
         expect.objectContaining({
           apiKey: "openai-key",
+          // ゲスト経路は canonical から parse した family を API 呼び出しへ渡す
+          family: "gpt-image-2",
           quality: "low",
           sizeTier: "1k",
         })
@@ -684,6 +686,7 @@ describe("guest-generate", () => {
           ],
           targetSizeBaseIndex: 0,
           apiKey: "openai-key",
+          family: "gpt-image-2",
           quality: "low",
           sizeTier: "1k",
           n: 1,

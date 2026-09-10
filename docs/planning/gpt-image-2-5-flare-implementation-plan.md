@@ -367,6 +367,7 @@ stateDiagram-v2
 - **Consequence**: 3ステップの手動デプロイになる。Phase 5 の手順に明記する。
 - ⭐ **worker デプロイの完了判定を挟む**。`supabase functions deploy` の成功は「アップロードが通った」であって「新 bundle が実際に走っている」ではない。Next.js を出す前に、**既存 2.0 のジョブを1件流して新 bundle が処理していることを確認する**(completion barrier)。Next.js より前に積まれるのは既存 2.0 のジョブだけなので、通常のキュー待ち自体は問題にならない。
 - ⭐ **ロールバック時は「新規受付を閉じる」が先**。旧 worker へ戻すと 2.5 のジョブは `Invalid GPT Image 2 model` で全 failed になる。手順は ①Next.js から 2.5 の受付を止める(行を消す or フラグ) → ②2.5 の `queued` / `processing` が 0 件になるまで待つ → ③worker を戻す、の順。②を飛ばすと処理中のジョブを落とす。
+- ⭐ **補正(Phase 2 実装時 2026-09-10)**: 上の順序は「UI を含む Next.js(Phase 4)」を出すときの話。**CHECK 制約の拡張だけは、Phase 3 のサーバー側ゲートより先に出してはいけない**。Phase 1 から `KNOWN_MODEL_INPUTS` が 2.5 を受理しているため、ゲート無しで CHECK を広げると一般ユーザーが直接 POST で 2.5 のジョブを INSERT できる(UI 無しでも API は叩ける)。したがって本番適用の実順序は **①Phase 3 の Next.js(ゲート・UI 無し) → ②worker → ③マイグレーション(CHECK + freeze trigger) → ④Phase 4 の Next.js(UI)**。①〜③はどれも既存 2.0 の挙動を変えないので、間に確認時間を挟んでよい。
 
 ### ADR-006: 品質は 3段のまま。`xhigh` / `max` は入れない
 
@@ -444,30 +445,38 @@ flowchart LR
 **目的**: 2.5 の canonical 値を DB が受け入れ、worker が正しい API モデル名で OpenAI を呼べるようにする。
 **ビルド確認**: worker の `deno check` が通る。マイグレーションは `supabase db push --dry-run` で本ファイル1本だけが出る。
 
-- [ ] `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` を作成(既存 `supabase/migrations/20260510120000_extend_gpt_image_2_models.sql` と同じ DROP → ADD 全列挙形式)
+- [ ] `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` を作成(既存 `supabase/migrations/20260510120000_extend_gpt_image_2_models.sql` と同じ DROP → ADD 全列挙形式)**→ Phase 3 の PR へ移動**(理由は下の実装メモ)
   - `generated_images_model_check` に 2.5 の9値を追加
   - `image_jobs_model_check` に同じ9値を追加
   - 適用後の検証ブロック(`DO $$` で制約の存在を確認)を付ける
-- [ ] `supabase/functions/image-gen-worker/index.ts` の `normalizeModelName()` から **Phase 1 で入れた暫定 family ガード(`family !== "gpt-image-2"` で throw)を撤去**し、2.5 canonical を通す
+- [x] `supabase/functions/image-gen-worker/index.ts` の `normalizeModelName()` から **Phase 1 で入れた暫定 family ガード(`family !== "gpt-image-2"` で throw)を撤去**し、2.5 canonical を通す
   - `parseOpenAIImageModel()` 起点への置き換え自体は Phase 1 で完了済み。残っているのはガードの撤去だけ
-- [ ] `supabase/functions/image-gen-worker/openai-image.ts:274,393` の `form.append("model", "gpt-image-2")` を、呼び出し側から渡された family へ差し替え(REQ-005)
+- [x] `supabase/functions/image-gen-worker/openai-image.ts:274,393` の `form.append("model", "gpt-image-2")` を、呼び出し側から渡された family へ差し替え(REQ-005)
   - `CallOpenAIImageEditBatchParams` / `CallOpenAIImageEditMultiInputParams` に `family` を必須で追加
-- [ ] `features/generation/lib/openai-image.ts:322,433` に**同じ変更**を入れる(2ファイルはビット同等を保つ規約)
-- [ ] ⭐ **Node client の呼び出し元3つに `family: "gpt-image-2"` を明示的に渡す**(必須引数化で typecheck が落ちるため。いずれも `quality: "low", sizeTier: "1k"` 固定のプレビュー経路)
+- [x] `features/generation/lib/openai-image.ts:322,433` に**同じ変更**を入れる(2ファイルはビット同等を保つ規約)
+- [x] ⭐ **Node client の呼び出し元3つに `family: "gpt-image-2"` を明示的に渡す**(必須引数化で typecheck が落ちるため。いずれも `quality: "low", sizeTier: "1k"` 固定のプレビュー経路)
   - `app/api/style-templates/preview-generation/handler.ts:429-440`
   - `app/api/internal/generate-creator-looks-admin-preview/route.ts:134-144`
   - `app/api/internal/generate-style-preset-preview/route.ts:117-127`
   - 注: `app/(app)/style/generate/handler.ts:170-172` は client を `dispatchGuestImageGeneration` へ**そのまま渡すだけ**(`:597-605`)なので、この3つとは別に直す必要はない
-- [ ] ⭐ **OpenAI レスポンスの `usage` を取り出して記録する**(現状 Node/Deno とも `json.data[].b64_json` しか読まず、worker に `usage` の語が1つも無い)
+- [x] ⭐ **OpenAI レスポンスの `usage` を取り出して記録する**(現状 Node/Deno とも `json.data[].b64_json` しか読まず、worker に `usage` の語が1つも無い)
   - `OpenAIImageEditResult` に `usage` を追加(`input_tokens` / `output_tokens` / `input_tokens_details`)。**base64 は絶対に含めない**
   - worker 側で jobId・canonical model・実際に送った API model と紐づけて構造化ログに出す
   - これが無いと Phase 5 の合格ライン③(実原価)が判定できない
-- [ ] `supabase/functions/image-gen-worker/index.ts` の呼び出し2箇所(1101, 2595 付近)で `family` を渡す
-- [ ] `features/generation/lib/guest-generate.ts:287` の OpenAI dispatch で `family` を渡す
+- [x] `supabase/functions/image-gen-worker/index.ts` の呼び出し2箇所(1101, 2595 付近)で `family` を渡す
+- [x] `features/generation/lib/guest-generate.ts:287` の OpenAI dispatch で `family` を渡す
 - [x] `resolveOpenAIRequestTimeoutMs()`(94-103行)の引数型を新パーサの戻り値へ更新(REQ-008: タイムアウト値そのものは 2.0 と同じまま)→ Phase 1 で完了(`ParsedOpenAIImageModel`)
-- [ ] `.cursor/rules/database-design.mdc` の `model` 許容値リスト(133行 / 142行付近)を更新
+- [ ] `.cursor/rules/database-design.mdc` の `model` 許容値リスト(133行 / 142行付近)を更新 **→ Phase 3 の PR へ移動**(マイグレーションと同じ PR で更新する)
 
-**⚠️ このフェーズのマイグレーションと worker は、Next.js より先にデプロイする(ADR-005)。**
+**Phase 2 の実装メモ(2026-09-10)**:
+- **マイグレーションと `.cursor/rules/database-design.mdc` の更新は Phase 3 の PR へ移した**。理由: CHECK 拡張のマイグレーションを main に置いたまま Phase 3 のゲートが未マージだと、その間に別件で `supabase db push` した瞬間にゲート無しで 2.5 が INSERT できる窓が開く(地雷)。ゲートのコードと同じ PR に入れれば「マイグレーションが main にある ⇒ ゲートも main にある」が常に成り立つ
+- **usage は構造化ログに加えて `image_jobs.generation_metadata.geminiAttempts[]` にも保存する**(`apiModel` + `openaiUsage`)。計画は「構造化ログに出す」だったが、Edge ログは Management API + PAT が要る(`persta-edge-logs-access`)ので、Phase 5 の paired run を DB クエリで済ませられるよう attempt 記録に載せた。ログは `[Job Timeline] OpenAI usage jobId=… stage=main|creator_looks_stage1 dbModel=… apiModel=… inputTokens=… outputTokens=…` の1行
+  - `generation_metadata` は `unknown` 型で `mergeSuccessGenerationMetadata` がそのまま書くので、DB 側の変更は不要
+  - Creator Looks の段階1(衣装着せ)は `geminiAttempts` に載らない経路なのでログのみ
+- `OpenAIImageEditResult` の `apiModel` / `usage` は **optional**(テストのモック結果 ~23 箇所を触らないため)。`family` の引数は**必須**
+- worker の暫定 family ガードは撤去した。撤去後も DB の `image_jobs_model_check` が 2.0 のみなので、2.5 のジョブは依然として INSERT 段階で弾かれる(worker まで届かない)
+- **worker だけ先にデプロイしても安全**(2.0 のジョブは `family="gpt-image-2"` で今までと同じモデル名を送る)。むしろ先に出しておくと、既存 2.0 のジョブで usage 記録が機能しているかを本番で確かめられる。ただしデプロイはユーザーの指示があってから
+- ⚠️ **本番の適用順は ADR-005 の補正どおり**: Phase 3 Next.js(ゲート) → worker → マイグレーション → Phase 4 Next.js(UI)
 
 ---
 
@@ -486,6 +495,8 @@ flowchart LR
   - `app/api/generate-async/handler.ts:158-165` の `isModelAvailableForGeneration` チェックの直後に、2.5 なら `isGptImage25Available(user.id)` を要求する分岐を追加
   - `app/(app)/style/generate-async/handler.ts:288-296` に同じ分岐を追加
 - [ ] `features/generation/lib/model-config.ts` の `resolveEffectiveModelForAuthState()` に 2.5 の clamp を追加(REQ-014)
+- [ ] **(Phase 2 から移動)** `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` を作成(`generated_images_model_check` / `image_jobs_model_check` に 2.5 の9値。既存 `20260510120000_extend_gpt_image_2_models.sql` と同じ DROP → ADD 全列挙形式 + `DO $$` 検証ブロック)。**ゲートのコードと同じ PR に入れる**
+- [ ] **(Phase 2 から移動)** `.cursor/rules/database-design.mdc` の `model` 許容値リストを更新
 - [ ] 🚨 **`supabase/migrations/<ts>_freeze_image_jobs_model.sql` を追加**(ADR-007 / REQ-015)。**この migration が無いまま 2.5 を CHECK に足すと、運営限定ゲートが PATCH 1本で迂回される**
   - `BEFORE UPDATE ON public.image_jobs` の trigger で `OLD.model IS DISTINCT FROM NEW.model` なら `RAISE EXCEPTION`
   - `SECURITY DEFINER` を付ける場合は `SET search_path = public, pg_temp` を忘れない
@@ -525,12 +536,13 @@ flowchart LR
 **目的**: 本番で運営だけが 2.5 を使える状態にし、合格ライン4項目を計測する。
 **ビルド確認**: 本番で運営アカウントの生成が成功し、`generated_images.model` に 2.5 の canonical 値が入る。
 
-#### 5-A. デプロイ(ADR-005 の順序を厳守)
+#### 5-A. デプロイ(ADR-005 + その補正の順序を厳守)
 
-- [ ] **手順1**: `supabase db push --dry-run` で Phase 2/3 のマイグレーション(CHECK 制約 + `model` freeze trigger)だけが出ることを確認してから適用
-- [ ] **手順2**: `supabase functions deploy image-gen-worker` で worker をデプロイ
-- [ ] ⭐ **手順2の完了判定(completion barrier)**: デプロイ成功は「アップロードが通った」であって「新 bundle が走っている」ではない。**既存 2.0 の生成を1件実際に流し、新 bundle が処理していることを確認してから**次へ進む
-- [ ] **手順3**: Next.js を本番デプロイ。`NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED` は**登録しない**(運営だけが `isAdminViewer` で通る状態)
+- [ ] **手順0**: Phase 3(サーバー側ゲート・UI 無し)を含む Next.js が本番に出ていることを確認(Phase 3 PR のマージで Vercel が自動デプロイ)。**これより前に CHECK 制約を広げない**
+- [ ] **手順1**: `supabase functions deploy image-gen-worker` で worker をデプロイ(Phase 2 の変更。2.0 の挙動は不変)
+- [ ] ⭐ **手順1の完了判定(completion barrier)**: デプロイ成功は「アップロードが通った」であって「新 bundle が走っている」ではない。**既存 2.0 の生成を1件実際に流し、新 bundle が処理していること(`generation_metadata.geminiAttempts[0].apiModel = "gpt-image-2"` と `openaiUsage` が入ること)を確認してから**次へ進む
+- [ ] **手順2**: `supabase db push --dry-run` で Phase 3 のマイグレーション(CHECK 制約 + `model` freeze trigger)だけが出ることを確認してから適用
+- [ ] **手順3**: Phase 4(UI)の Next.js を本番デプロイ。`NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED` は**登録しない**(運営だけが `isAdminViewer` で通る状態)
 - [ ] 一般アカウント(または未ログイン)で 2.5 の行が出ないことを実機確認
 - [ ] 🚨 **ゲート迂回のネガティブ確認**: 一般アカウントで 2.0 のジョブを作り、`image_jobs.model` を 2.5 へ PATCH しようとして**拒否される**ことを確認(ADR-007 の trigger が効いているか)
 
@@ -541,7 +553,7 @@ flowchart LR
 - [ ] `low` × `1k` で 2.5 を1件生成し、成功して `generated_images.model` に 2.5 の canonical 値が入ることを確認
 - [ ] ⭐ **多入力経路**(Creator Looks もしくは One-Tap Style の dual プリセット)を1件。`image[]` の複数 append が 2.5 で通るか(§10 前提3)
 - [ ] ⭐ **`high` × `4k`** を1件。出力 PNG のバイト数を測り、**25MB の上限に対してどれだけ余裕があるか**を記録する(上限引き上げは容量の余裕であって、2.5 の最大 PNG が必ず収まる保証ではない)
-- [ ] レスポンスの `usage` がログに出ていること(Phase 2 で追加した記録が機能しているか)
+- [ ] レスポンスの `usage` がログと `image_jobs.generation_metadata.geminiAttempts[].openaiUsage` に入っていること(Phase 2 で追加した記録が機能しているか)
 
 #### 5-C. 合格判定のための測定(paired run)
 
@@ -594,16 +606,17 @@ flowchart LR
 | `features/generation/lib/model-config.ts` | 修正 | percoin 表の起点差し替え・`resolveEffectiveModelForAuthState` の clamp | 1,3 |
 | `features/generation/lib/form-preferences.ts` | 修正 | `PERSISTABLE_MODELS` に 2.5 | 1 |
 | `features/admin-dashboard/lib/ai-cost-rates.ts` | 修正 | `MODEL_COST_RATES` に 2.5 の9値(`derived`)。Phase 5 で `measured` へ | 1,5 |
-| `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` | 新規 | 2テーブルの CHECK 制約に9値追加 | 2 |
+| `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` | 新規 | 2テーブルの CHECK 制約に9値追加(Phase 2 から移動) | 3 |
 | `supabase/migrations/<ts>_freeze_image_jobs_model.sql` | 新規 | 🚨 `image_jobs.model` を作成後不変にする trigger(ADR-007 / REQ-015) | 3 |
 | `app/api/style-templates/preview-generation/handler.ts` | 修正 | Node client に `family: "gpt-image-2"` を明示 | 2 |
 | `app/api/internal/generate-creator-looks-admin-preview/route.ts` | 修正 | 同上 | 2 |
 | `app/api/internal/generate-style-preset-preview/route.ts` | 修正 | 同上 | 2 |
-| `supabase/functions/image-gen-worker/index.ts` | 修正 | `normalizeModelName` / パーサ移行 / family を client へ渡す | 2 |
-| `supabase/functions/image-gen-worker/openai-image.ts` | 修正 | `model` を family から送る(274, 393) | 2 |
+| `supabase/functions/image-gen-worker/index.ts` | 修正 | `normalizeModelName` / パーサ移行 / family を client へ渡す / usage を attempt 記録とログへ | 2 |
+| `supabase/functions/image-gen-worker/openai-image.ts` | 修正 | `model` を family から送る(274, 393)・`apiModel` / `usage` を結果に載せる | 2 |
 | `features/generation/lib/openai-image.ts` | 修正 | 同上(322, 433)。Deno 版とビット同等を保つ | 2 |
+| `shared/generation/openai-types.ts` | 修正 | `OpenAIImageUsage` 型と `parseOpenAIImageUsage()`(Node / Deno 共有) | 2 |
 | `features/generation/lib/guest-generate.ts` | 修正 | パーサ移行・family を渡す | 1,2 |
-| `.cursor/rules/database-design.mdc` | 修正 | `model` 許容値の記述を更新 | 2 |
+| `.cursor/rules/database-design.mdc` | 修正 | `model` 許容値の記述を更新(Phase 2 から移動) | 3 |
 | `lib/env.ts` | 修正 | フラグ登録 + `isGptImage25PubliclyEnabled` / `isGptImage25Available` | 3 |
 | `features/generation/components/GptImage25AvailabilityProvider.tsx` | 新規 | context + 昇格 | 3 |
 | `features/generation/components/GptImage25AvailabilityLoader.tsx` | 新規 | サーバーで運営判定して昇格 | 3 |

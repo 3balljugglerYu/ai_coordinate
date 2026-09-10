@@ -29,6 +29,7 @@ const PNG_1024x1024_HEADER = (() => {
 const PNG_1024x1024_BASE64 = PNG_1024x1024_HEADER.toString("base64");
 
 const DEFAULT_OPENAI_EDIT_PARAMS = {
+  family: "gpt-image-2" as const,
   quality: "low" as const,
   sizeTier: "1k" as const,
 };
@@ -301,7 +302,11 @@ describe("openai-image (Node port)", () => {
         fetchFn: fetchFn as unknown as typeof fetch,
         apiKey: "test-key",
       });
-      expect(result).toEqual({ data: "RESULT_BASE64", mimeType: "image/png" });
+      expect(result).toEqual({
+        data: "RESULT_BASE64",
+        mimeType: "image/png",
+        apiModel: "gpt-image-2",
+      });
       expect(fetchFn).toHaveBeenCalledWith(
         "https://api.openai.com/v1/images/edits",
         expect.objectContaining({ method: "POST" })
@@ -411,7 +416,11 @@ describe("openai-image (Node port)", () => {
           fetchFn: fetchFn as unknown as typeof fetch,
           apiKey: "test-key",
         })
-      ).resolves.toEqual({ data: "RESULT_BASE64", mimeType: "image/png" });
+      ).resolves.toEqual({
+        data: "RESULT_BASE64",
+        mimeType: "image/png",
+        apiModel: "gpt-image-2",
+      });
 
       expect(fetchFn).toHaveBeenCalledTimes(2);
       const firstBody = (fetchFn.mock.calls[0][1] as RequestInit)
@@ -455,7 +464,11 @@ describe("openai-image (Node port)", () => {
           fetchFn: fetchFn as unknown as typeof fetch,
           apiKey: "test-key",
         })
-      ).resolves.toEqual({ data: "RESULT_BASE64", mimeType: "image/png" });
+      ).resolves.toEqual({
+        data: "RESULT_BASE64",
+        mimeType: "image/png",
+        apiModel: "gpt-image-2",
+      });
 
       expect(fetchFn).toHaveBeenCalledTimes(2);
     });
@@ -481,8 +494,8 @@ describe("openai-image (Node port)", () => {
           n: 2,
         })
       ).resolves.toEqual([
-        { data: "RESULT_A", mimeType: "image/png" },
-        { data: "RESULT_B", mimeType: "image/png" },
+        { data: "RESULT_A", mimeType: "image/png", apiModel: "gpt-image-2" },
+        { data: "RESULT_B", mimeType: "image/png", apiModel: "gpt-image-2" },
       ]);
 
       const requestBody = (
@@ -542,6 +555,7 @@ describe("openai-image (Node port)", () => {
 
       await expect(
         callOpenAIImageEditMultiInput({
+          family: "gpt-image-2",
           quality: "high",
           sizeTier: "2k",
           prompt: "test",
@@ -559,8 +573,8 @@ describe("openai-image (Node port)", () => {
           n: 2,
         })
       ).resolves.toEqual([
-        { data: "RESULT_A", mimeType: "image/png" },
-        { data: "RESULT_B", mimeType: "image/png" },
+        { data: "RESULT_A", mimeType: "image/png", apiModel: "gpt-image-2" },
+        { data: "RESULT_B", mimeType: "image/png", apiModel: "gpt-image-2" },
       ]);
 
       const requestBody = (
@@ -666,6 +680,133 @@ describe("openai-image (Node port)", () => {
           apiKey: "test-key",
         })
       ).rejects.toThrow(/No images generated/);
+    });
+
+    test("family=gpt-image-2.5-flare は FormData の model に gpt-image-2.5-flare を載せ、結果の apiModel にも返す", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({ data: [{ b64_json: "RESULT_BASE64" }] }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const result = await callOpenAIImageEdit({
+        ...DEFAULT_OPENAI_EDIT_PARAMS,
+        family: "gpt-image-2.5-flare",
+        prompt: "test",
+        inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+        timeoutMs: 1000,
+        fetchFn: fetchFn as unknown as typeof fetch,
+        apiKey: "test-key",
+      });
+      expect(result).toEqual({
+        data: "RESULT_BASE64",
+        mimeType: "image/png",
+        apiModel: "gpt-image-2.5-flare",
+      });
+      const requestBody = (
+        fetchFn.mock.calls[0][1] as RequestInit
+      ).body as FormData;
+      expect(requestBody.get("model")).toBe("gpt-image-2.5-flare");
+      // family が変わっても quality / size の扱いは 2.0 と同じ(1k 正方形 = 1248x1248)
+      expect(requestBody.get("quality")).toBe("low");
+      expect(requestBody.get("size")).toBe("1248x1248");
+    });
+
+    test("multi input でも family に応じた model を FormData に載せる", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({ data: [{ b64_json: "RESULT_A" }] }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      await expect(
+        callOpenAIImageEditMultiInput({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
+          family: "gpt-image-2.5-flare",
+          prompt: "test",
+          inputImages: [
+            { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+          ],
+          timeoutMs: 1000,
+          fetchFn: fetchFn as unknown as typeof fetch,
+          apiKey: "test-key",
+        })
+      ).resolves.toEqual([
+        { data: "RESULT_A", mimeType: "image/png", apiModel: "gpt-image-2.5-flare" },
+      ]);
+      const requestBody = (
+        fetchFn.mock.calls[0][1] as RequestInit
+      ).body as FormData;
+      expect(requestBody.get("model")).toBe("gpt-image-2.5-flare");
+    });
+
+    test("レスポンスの usage を camelCase で結果に載せる(batch は全要素で同じ値)", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: [{ b64_json: "RESULT_A" }, { b64_json: "RESULT_B" }],
+            usage: {
+              total_tokens: 1300,
+              input_tokens: 300,
+              output_tokens: 1000,
+              input_tokens_details: { text_tokens: 40, image_tokens: 260 },
+            },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const expectedUsage = {
+        inputTokens: 300,
+        outputTokens: 1000,
+        totalTokens: 1300,
+        inputTokensDetails: { textTokens: 40, imageTokens: 260 },
+      };
+      await expect(
+        callOpenAIImageEditBatch({
+          ...DEFAULT_OPENAI_EDIT_PARAMS,
+          prompt: "test",
+          inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+          timeoutMs: 1000,
+          fetchFn: fetchFn as unknown as typeof fetch,
+          apiKey: "test-key",
+          n: 2,
+        })
+      ).resolves.toEqual([
+        {
+          data: "RESULT_A",
+          mimeType: "image/png",
+          apiModel: "gpt-image-2",
+          usage: expectedUsage,
+        },
+        {
+          data: "RESULT_B",
+          mimeType: "image/png",
+          apiModel: "gpt-image-2",
+          usage: expectedUsage,
+        },
+      ]);
+    });
+
+    test("usage が無い/壊れているレスポンスでは結果に usage キーを持たない", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            data: [{ b64_json: "RESULT_BASE64" }],
+            usage: { input_tokens: "300" },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const result = await callOpenAIImageEdit({
+        ...DEFAULT_OPENAI_EDIT_PARAMS,
+        prompt: "test",
+        inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+        timeoutMs: 1000,
+        fetchFn: fetchFn as unknown as typeof fetch,
+        apiKey: "test-key",
+      });
+      expect(result).not.toHaveProperty("usage");
+      expect(result.apiModel).toBe("gpt-image-2");
     });
   });
 });

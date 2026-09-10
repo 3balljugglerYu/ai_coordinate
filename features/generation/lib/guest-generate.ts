@@ -284,8 +284,8 @@ async function dispatchOpenAI(
   const openaiClient = input.openaiClient ?? callOpenAIImageEdit;
   const openaiMultiInputClient =
     input.openaiMultiInputClient ?? callOpenAIImageEditMultiInput;
-  // ゲストは GUEST_ALLOWED_MODELS(gpt-image-2 low-1k のみ)で絞られて到達するため
-  // family 分岐は不要。API へ送るモデル名の family 対応は Phase 2 で行う。
+  // ゲストは GUEST_ALLOWED_MODELS(gpt-image-2 low-1k のみ)で絞られて到達する。
+  // API へ送るモデル名は canonical から parse した family で決める(ハードコードしない)。
   const openaiModel = parseOpenAIImageModel(input.model);
   if (!openaiModel) {
     return {
@@ -332,6 +332,7 @@ async function dispatchOpenAI(
         ],
         targetSizeBaseIndex: 0,
         timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
+        family: openaiModel.family,
         quality: openaiModel.quality,
         sizeTier: openaiModel.sizeTier,
         targetSize,
@@ -347,6 +348,7 @@ async function dispatchOpenAI(
         prompt: input.promptText,
         inputImage: { base64, mimeType: input.uploadImage.type },
         timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
+        family: openaiModel.family,
         quality: openaiModel.quality,
         sizeTier: openaiModel.sizeTier,
         targetSize,
