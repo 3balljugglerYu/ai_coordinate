@@ -121,6 +121,12 @@ export function isCanonicalGuestAllowedModel(
 const BASE_FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gpt-image-2-low-1k',
   'gpt-image-2-medium-1k',
+  // ChatGPT Images 2.5 も 2.0 と同じ 2 つを無課金へ開く。ペルコイン消費が
+  // 2.0 と同額である以上、無料枠だけ 2.0 に据え置くと「無課金だけ 2.5 が
+  // 南京錠」という状態になるため揃える。段階公開中は 2.5 の行そのものが
+  // 運営にしか出ないので、ここを開けても一般ユーザーへの影響は無い。
+  'gpt-image-2.5-flare-low-1k',
+  'gpt-image-2.5-flare-medium-1k',
   'gemini-2.5-flash-image',
   'gemini-3.1-flash-image-preview-512',
   'gemini-3.1-flash-image-preview-1024',

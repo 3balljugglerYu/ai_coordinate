@@ -69,14 +69,16 @@ interface ModelOption {
 }
 
 const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
-  {
-    value: "gpt-image-2-row",
-    labelKey: "modelChatGptImages",
-    engineTag: "engineOpenai",
-  },
+  // 2.5 を先頭に置く。全公開後は 2.5 を既定にする想定のため、
+  // 検証中から並びを最終形に合わせておく(既定モデル自体はまだ 2.0)。
   {
     value: "gpt-image-2.5-flare-row",
     labelKey: "modelChatGptImages25",
+    engineTag: "engineOpenai",
+  },
+  {
+    value: "gpt-image-2-row",
+    labelKey: "modelChatGptImages",
     engineTag: "engineOpenai",
   },
   {
@@ -176,7 +178,7 @@ function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
  *
  * 3 行（ChatGPT Images 2.0 / Nano Banana 2 / Nano Banana Pro）でファミリーを切り替える。
  * 段階公開中の ChatGPT Images 2.5 は、運営（`useGptImage25Available()` が true）にだけ
- * 4 行目として現れる。
+ * **先頭行**として現れる（全公開後に既定へ据える想定の並び）。
  * 行クリック時、現在の size が新ファミリーで有効なら維持、無効なら 1K へフォールバック。
  * Quality（Low/Medium/High）は別カードの `GptImage2QualitySelector` で、size は
  * `GptImage2SizeSelector` / `GeminiBananaSizeSelector` でそれぞれ選ぶ。

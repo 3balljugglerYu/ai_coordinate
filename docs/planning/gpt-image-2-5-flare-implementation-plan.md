@@ -529,7 +529,7 @@ flowchart LR
 **ビルド確認**: 4検証コマンドが通る。ローカルで運営アカウントに行が出て、非運営に出ないことを確認。
 
 - [x] `features/generation/components/LockableModelSelect.tsx`
-  - `MODEL_OPTIONS` に `gpt-image-2.5-flare-row`(`labelKey: "modelChatGptImages25"`, `engineTag: "engineOpenai"`)を追加(2.0 の直後 = 2 行目)
+  - `MODEL_OPTIONS` に `gpt-image-2.5-flare-row`(`labelKey: "modelChatGptImages25"`, `engineTag: "engineOpenai"`)を**先頭行**として追加
   - `useGptImage25Available()` が false のとき、その行を出さない(REQ-001 / REQ-002)
   - `toOptionCanonicalValue()` の family 切り替えロジックを 2.5 に対応(REQ-003: size を維持、無効なら 1k、quality は low)
   - `getCurrentRowValue()` を `parseOpenAIImageModel().family` 起点に変更
@@ -545,7 +545,9 @@ flowchart LR
   - 返金経路: throw した文字列が `isSafetyPolicyBlockedErrorMessage()` で true になることをテストで固定(= non-retriable + 返金の既存経路に載る)
 
 **Phase 4 の実装メモ(2026-09-10)**:
-- **行の並びは 2.0 → 2.5 → Nano Banana 2 → Nano Banana Pro**。2.5 は検証中なので既定(2.0)を先頭に残した。全公開時に並べ替えるかは Phase 6 で判断する
+- **行の並びは 2.5 → 2.0 → Nano Banana 2 → Nano Banana Pro**(2026-09-10 の決定)。全公開後は 2.5 を既定にする想定なので、検証中から並びを最終形に合わせた。**既定モデル(`DEFAULT_GENERATION_MODEL`)はまだ `gpt-image-2-low-1k` のまま**で、切り替えは Phase 6 で行う
+- **無課金プランへの開放は 2.0 と同じ線引き**(2026-09-10 の決定)。`BASE_FREE_PLAN_ALLOWED_MODELS` に `gpt-image-2.5-flare-low-1k` と `gpt-image-2.5-flare-medium-1k` を追加した。ペルコイン消費が 2.0 と同額である以上、無料枠だけ 2.0 に据え置くと全公開時に「無課金だけ 2.5 が南京錠」になるため。段階公開中は行そのものが運営にしか出ないので、一般ユーザーへの影響は無い
+  - ⭐ この南京錠は**実際にローカルで再現した**(free プランで描画すると 2.5 行に鍵アイコンが付く)。運営アカウントは `subscription_plan = 'premium'` なので Phase 5 の検証には支障が無いことも DB で確認済み
 - **`useGptImage25Available()` の配線は Phase 3 で前倒し済み**だったので、Phase 4 で足したのは「行を出す / 出さない」の分岐だけ。`resolveEffectiveModelForAuthState` 側の clamp は Phase 3 のまま効いている
 - ⭐ **`getModelTagsForCanonicalModel` は元々 2.5 を誤判定しない**(`gpt-image-2.5-flare-low-1k` は `startsWith("gpt-image-2-low")` に一致しない)。それでも 2.5 の分岐を明示したのは、2.0 側の判定を将来 `gpt-image-2` プレフィックスに緩めたときの事故を防ぐため。**危ないのは `model-display.ts` の `startsWith("gpt-image-")` だけ**で、こちらは実際に 2.5 を巻き込むので順序で対処した
 - **worker の `isOpenAIImageModel()`(`startsWith("gpt-image-")`)は変更不要**。2.5 も OpenAI 経路に流すのが正しいため、ここは巻き込んで良い箇所

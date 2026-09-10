@@ -125,6 +125,24 @@ describe("ChatGPT Images 2.5 の行（段階公開 / REQ-001・REQ-002）", () =
     ).toBeInTheDocument();
   });
 
+  test("運営には 2.5 が先頭行に並ぶ（全公開後に既定へ据える想定の並び）", () => {
+    renderAsAdmin(
+      <LockableModelSelect
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    const rows = screen
+      .getAllByRole("button")
+      .map((el) => el.textContent ?? "")
+      .filter((text) => /ChatGPT|Nano Banana/.test(text));
+    expect(rows[0]).toContain("ChatGPT Images 2.5");
+    expect(rows[1]).toContain("ChatGPT Images 2.0");
+  });
+
   test("2.5 の行にも [OpenAI] エンジンチップを添える", () => {
     renderAsAdmin(
       <LockableModelSelect

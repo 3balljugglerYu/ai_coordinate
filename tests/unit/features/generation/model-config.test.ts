@@ -39,11 +39,18 @@ describe("model-config / model identification helpers", () => {
       // (2026-08-14 / ADR-005)。ペルコインの消費は倍になる
       expect(isFreePlanAllowedModel("gpt-image-2-low-1k")).toBe(true);
       expect(isFreePlanAllowedModel("gpt-image-2-medium-1k")).toBe(true);
+      // 2.5 も 2.0 と同じ 2 つを無課金へ開く（ペルコイン消費が同額のため）
+      expect(isFreePlanAllowedModel("gpt-image-2.5-flare-low-1k")).toBe(true);
+      expect(isFreePlanAllowedModel("gpt-image-2.5-flare-medium-1k")).toBe(true);
     });
 
     it("High と 2k/4k は有料プラン限定のまま", () => {
       // High は ¥0.642〜0.701/pc と一段高く、Low/Medium の帯から外れる
       expect(isFreePlanAllowedModel("gpt-image-2-high-1k")).toBe(false);
+      // 2.5 側も 2.0 と同じ線引き（high と 2k/4k は有料プランのまま）
+      expect(isFreePlanAllowedModel("gpt-image-2.5-flare-high-1k")).toBe(false);
+      expect(isFreePlanAllowedModel("gpt-image-2.5-flare-medium-2k")).toBe(false);
+      expect(isFreePlanAllowedModel("gpt-image-2.5-flare-low-4k")).toBe(false);
       expect(isFreePlanAllowedModel("gpt-image-2-medium-2k")).toBe(false);
       expect(isFreePlanAllowedModel("gpt-image-2-medium-4k")).toBe(false);
       expect(isFreePlanAllowedModel("gpt-image-2-high-4k")).toBe(false);
