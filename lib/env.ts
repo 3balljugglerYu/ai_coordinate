@@ -96,6 +96,11 @@ const envSchema = {
   // 未実施のため、'true' になるまでは運営のみ使える
   NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED:
     process.env.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED,
+  // ChatGPT Images 2.5(gpt-image-2.5-flare)の一般公開フラグ。本番で運営だけが
+  // 合格ライン4項目(同一性・生成時間・実原価・事故なし)を検証し終えるまでは
+  // 'true' にしない(docs/planning/gpt-image-2-5-flare-implementation-plan.md ADR-003)
+  NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
+    process.env.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -211,6 +216,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED || "",
     NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED:
       envSchema.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED || "",
+    NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
+      envSchema.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -499,6 +506,31 @@ export function isBackgroundGenerationProgressAvailable(
   userId: string | null | undefined
 ): boolean {
   return isBackgroundGenerationProgressPubliclyEnabled() || isAdminViewer(userId);
+}
+
+/**
+ * ChatGPT Images 2.5(`gpt-image-2.5-flare`)が一般公開されているか。
+ *
+ * 2.5 は本番で運営だけが先に使い、合格ライン4項目(同一性・生成時間・実原価・
+ * 事故なし)を確かめてから全公開する(gpt-image-2-5-flare 計画 ADR-003)。
+ * それまでは env を未設定のままにしておく。
+ */
+export function isGptImage25PubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED === "true";
+}
+
+/**
+ * この利用者が 2.5 のモデルを選べる・実行できるか(唯一の判定)。
+ *
+ * `isPopularPromptsAvailable` と同じ形。UI の行を出す/出さないだけでなく、
+ * `generate-async` の両ハンドラがジョブ作成前に **必ずこれで弾く**(REQ-006)。
+ * 無料プランのモデル制限(`FREE_PLAN_ALLOWED_MODELS`)は UI だけの制限で
+ * サーバーは見ていないため、同じ作りにすると直接 POST で通ってしまう。
+ */
+export function isGptImage25Available(
+  userId: string | null | undefined
+): boolean {
+  return isGptImage25PubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

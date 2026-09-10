@@ -34,6 +34,7 @@ import {
   writePreferredAspectMode,
 } from "../lib/form-preferences";
 import { AspectRatioSelector } from "./AspectRatioSelector";
+import { useGptImage25Available } from "./GptImage25AvailabilityProvider";
 import type { FreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
@@ -253,9 +254,12 @@ export function GenerationForm({
 
   const promptLength = prompt.length;
   const isPromptTooLong = promptLength > promptMaxLength;
+  // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は実効値を既定モデルへ丸める。
+  const gptImage25Available = useGptImage25Available();
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
     selectedModel,
-    authState
+    authState,
+    { gptImage25Available }
   );
   const totalPercoinCost = getPercoinCost(effectiveSelectedModel);
   const showCost = authState === "authenticated";

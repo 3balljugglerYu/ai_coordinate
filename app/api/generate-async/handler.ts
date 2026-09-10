@@ -3,7 +3,7 @@ import { getUser } from "@/lib/auth";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
-import { env, isAdminViewer } from "@/lib/env";
+import { env, isAdminViewer, isGptImage25Available } from "@/lib/env";
 import {
   DEFAULT_FRAMING_MODE,
   type FramingMode,
@@ -24,6 +24,7 @@ import {
   maxStagesForCreatorLooksMode,
 } from "@/shared/generation/creator-looks-mode";
 import { normalizeFreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
+import { isGptImage25FlareModel } from "@/shared/generation/openai-image-model";
 import {
   getCreatorLooksTwoStageVisibility,
   isTwoStageModeAvailable,
@@ -159,6 +160,19 @@ export async function postGenerateAsyncRoute(
       return jsonError(
         copy.modelTemporarilyUnavailable,
         "GENERATION_MODEL_TEMPORARILY_UNAVAILABLE",
+        400
+      );
+    }
+    // ChatGPT Images 2.5 の段階公開(REQ-006)。KNOWN_MODEL_INPUTS は 2.5 を受理するため、
+    // UI に行が無くても直接 POST で通る。ジョブ作成・temp アップロードより前に
+    // サーバー側で必ず弾く(無料プランのモデル制限は UI だけで、ここが唯一の実行ゲート)。
+    if (
+      isGptImage25FlareModel(effectiveModel) &&
+      !isGptImage25Available(user.id)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "GENERATION_MODEL_NOT_AVAILABLE_FOR_USER",
         400
       );
     }

@@ -21,6 +21,7 @@ import {
   MODEL_TAG_DISPLAY,
   type ModelTagKey,
 } from "@/features/generation/lib/model-tags";
+import { useGptImage25Available } from "@/features/generation/components/GptImage25AvailabilityProvider";
 import {
   GEMINI_BANANA_2_SIZE_TIERS,
   GEMINI_BANANA_PRO_SIZE_TIERS,
@@ -169,9 +170,12 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
   const isGuest = props.authState === "guest";
   const isModelSelectable = props.isModelSelectable;
 
+  // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は表示上も既定モデルへ丸める。
+  const gptImage25Available = useGptImage25Available();
   const displayModel = resolveEffectiveModelForAuthState(
     props.value,
-    props.authState
+    props.authState,
+    { gptImage25Available }
   );
   const displayValue: ModelRowValue | string =
     getCurrentRowValue(displayModel) ?? displayModel;

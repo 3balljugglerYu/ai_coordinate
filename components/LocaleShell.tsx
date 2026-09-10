@@ -17,6 +17,8 @@ import { PopularPromptsAvailabilityProvider } from "@/features/posts/components/
 import { PopularPromptsAvailabilityLoader } from "@/features/posts/components/PopularPromptsAvailabilityLoader";
 import { GenerationProgressAvailabilityProvider } from "@/features/generation/components/GenerationProgressAvailabilityProvider";
 import { GenerationProgressAvailabilityLoader } from "@/features/generation/components/GenerationProgressAvailabilityLoader";
+import { GptImage25AvailabilityProvider } from "@/features/generation/components/GptImage25AvailabilityProvider";
+import { GptImage25AvailabilityLoader } from "@/features/generation/components/GptImage25AvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -51,23 +53,36 @@ export async function LocaleShell({
           <MissionDotProvider>
             <SearchAvailabilityProvider>
               <PopularPromptsAvailabilityProvider>
-                {appContent}
-                {/*
-                  検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
-                  認証を引くため独立した Suspense に置く（ここを appContent と
-                  同じ境界にすると、全ページが認証待ちになる）。
-                */}
-                <Suspense fallback={null}>
-                  <SearchAvailabilityLoader />
-                </Suspense>
-                {/*
-                  🔥人気タブの段階公開。検索と同じく運営だけ true に昇格させる。
-                  ⭐ ここに Provider を置かないと SortTabs が context の外になり、
-                  閉じる側（false）に倒れて運営もタブを使えない。
-                */}
-                <Suspense fallback={null}>
-                  <PopularPromptsAvailabilityLoader />
-                </Suspense>
+                <GptImage25AvailabilityProvider>
+                  {appContent}
+                  {/*
+                    検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
+                    認証を引くため独立した Suspense に置く（ここを appContent と
+                    同じ境界にすると、全ページが認証待ちになる）。
+                  */}
+                  <Suspense fallback={null}>
+                    <SearchAvailabilityLoader />
+                  </Suspense>
+                  {/*
+                    🔥人気タブの段階公開。検索と同じく運営だけ true に昇格させる。
+                    ⭐ ここに Provider を置かないと SortTabs が context の外になり、
+                    閉じる側（false）に倒れて運営もタブを使えない。
+                  */}
+                  <Suspense fallback={null}>
+                    <PopularPromptsAvailabilityLoader />
+                  </Suspense>
+                  {/*
+                    ChatGPT Images 2.5 の段階公開。運営だけ true に昇格させる。
+                    モデルセレクター（/coordinate・/free・/style）と、localStorage の
+                    選択を実効値へ丸める側が appContent の中にあるため、Provider は
+                    appContent を包む位置に置く。
+                    ⚠️ これは「行を見せる」層。実行の可否はサーバーの
+                    isGptImage25Available が両 generate-async ハンドラで別途判定する。
+                  */}
+                  <Suspense fallback={null}>
+                    <GptImage25AvailabilityLoader />
+                  </Suspense>
+                </GptImage25AvailabilityProvider>
               </PopularPromptsAvailabilityProvider>
             </SearchAvailabilityProvider>
           </MissionDotProvider>

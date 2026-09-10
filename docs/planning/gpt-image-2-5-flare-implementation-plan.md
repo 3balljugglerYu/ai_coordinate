@@ -379,13 +379,13 @@ stateDiagram-v2
 ### ADR-007: `image_jobs.model` を作成後不変にする(DB trigger)
 
 - **Context**: §1-6b のとおり、受付時にモデルを検証してジョブを作っても、ユーザーは自分の行を PATCH して `model` を差し替えられる。worker は処理時に行を再取得するため、受付時の検証が無効化される(TOCTOU)。
-- **Decision**: `image_jobs` に **`model` 列を作成後変更させない trigger** を追加する。`service_role` からの更新だけは許可する(worker が正規化後の値を書き戻す経路があるため)。
+- **Decision**: `image_jobs` に **`model` 列を作成後変更させない trigger** を追加する。~~`service_role` からの更新だけは許可する(worker が正規化後の値を書き戻す経路があるため)~~ → **補正(Phase 3 実装時)**: 下記 Consequence のとおり書き戻す経路が存在しないため、role の例外は設けず無条件に拒否する(`20260910120100_freeze_image_jobs_model.sql`)。
 - **Reason**: 段階公開の「運営だけ」を実在の境界にするには、**受付だけを守っても足りない**。API ハンドラ側の `isGptImage25Available` は「意図しない選択」を防ぐ UX の層で、悪意ある PATCH に対しては DB 層でしか止められない。RLS の UPDATE ポリシーを列単位に絞る案もあるが、Postgres の RLS は列単位の制限を表現できず、`GRANT UPDATE (col...)` で列権限を絞ると **他の正当な更新経路まで巻き込む**ため、trigger で「変わったこと」を検出するほうが影響が小さい。
 - **Consequence**:
   - これは 2.5 に閉じない**モデル選択全体の穴を塞ぐ変更**になる(無課金プランの制限は意図的に UI のみなのでここでは変わらない)
   - trigger 追加後は `node scripts/check-rpc-grants.mjs` の実施対象になる(スクリプトの実在は確認済み)
   - ⭐ **`image_jobs.model` を後から書き戻す経路は存在しない**(TS 側の `.from("image_jobs").update()` 全28箇所と、SQL 側の `UPDATE public.image_jobs` のいずれにも `model` の代入が無いことを確認済み)。したがって trigger は **`OLD.model IS DISTINCT FROM NEW.model` なら無条件で `RAISE EXCEPTION`** の形にしてよく、role による例外を設ける必要がない
-  - 認証ユーザーの直接 UPDATE が拒否されることを integration test で固定する
+  - 認証ユーザーの直接 UPDATE が拒否されることを ~~integration test で固定する~~ → SQL のテスト基盤が無いため、migration 内の `DO $$` 自己検証(一時テーブル)+ Phase 5 の本番適用直後の手動確認で固定する(Phase 3 の実装メモを参照)
 
 ---
 
@@ -485,24 +485,41 @@ flowchart LR
 **目的**: 2.5 を「運営だけが選べて、運営だけが実行できる」状態にする。UI にはまだ出さない。
 **ビルド確認**: 4検証コマンドが通る。フラグ未設定・非運営で `isGptImage25Available()` が false を返すテストが通る。
 
-- [ ] `lib/env.ts` に判定を追加(既存 `isPopularPromptsPubliclyEnabled` / `isPopularPromptsAvailable`(`lib/env.ts:465,476`)と同じ形)
+- [x] `lib/env.ts` に判定を追加(既存 `isPopularPromptsPubliclyEnabled` / `isPopularPromptsAvailable`(`lib/env.ts:465,476`)と同じ形)
   - `NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED` を `envSchema` と `env` に登録(91-98行 / 209-213行付近)
   - `isGptImage25PubliclyEnabled()` / `isGptImage25Available(userId)`
-- [ ] `features/generation/components/GptImage25AvailabilityProvider.tsx` を新規作成(既存 `features/posts/components/PopularPromptsAvailabilityProvider.tsx` を写す)
-- [ ] `features/generation/components/GptImage25AvailabilityLoader.tsx` を新規作成(既存 `features/posts/components/PopularPromptsAvailabilityLoader.tsx` を写す。一般公開後の早期 return と `sb-` cookie チェックも含める)
-- [ ] `components/LocaleShell.tsx` に Provider と、独立した `<Suspense>` 内の Loader を追加(既存 53行 / 69行の並びに足す)
-- [ ] ⭐ サーバー側の実行ゲート(REQ-006)。UI を閉じるだけでは足りない
+- [x] `features/generation/components/GptImage25AvailabilityProvider.tsx` を新規作成(既存 `features/posts/components/PopularPromptsAvailabilityProvider.tsx` を写す)
+- [x] `features/generation/components/GptImage25AvailabilityLoader.tsx` を新規作成(既存 `features/posts/components/PopularPromptsAvailabilityLoader.tsx` を写す。一般公開後の早期 return と `sb-` cookie チェックも含める)
+- [x] `components/LocaleShell.tsx` に Provider と、独立した `<Suspense>` 内の Loader を追加(既存 53行 / 69行の並びに足す)
+- [x] ⭐ サーバー側の実行ゲート(REQ-006)。UI を閉じるだけでは足りない
   - `app/api/generate-async/handler.ts:158-165` の `isModelAvailableForGeneration` チェックの直後に、2.5 なら `isGptImage25Available(user.id)` を要求する分岐を追加
   - `app/(app)/style/generate-async/handler.ts:288-296` に同じ分岐を追加
-- [ ] `features/generation/lib/model-config.ts` の `resolveEffectiveModelForAuthState()` に 2.5 の clamp を追加(REQ-014)
-- [ ] **(Phase 2 から移動)** `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` を作成(`generated_images_model_check` / `image_jobs_model_check` に 2.5 の9値。既存 `20260510120000_extend_gpt_image_2_models.sql` と同じ DROP → ADD 全列挙形式 + `DO $$` 検証ブロック)。**ゲートのコードと同じ PR に入れる**
-- [ ] **(Phase 2 から移動)** `.cursor/rules/database-design.mdc` の `model` 許容値リストを更新
-- [ ] 🚨 **`supabase/migrations/<ts>_freeze_image_jobs_model.sql` を追加**(ADR-007 / REQ-015)。**この migration が無いまま 2.5 を CHECK に足すと、運営限定ゲートが PATCH 1本で迂回される**
-  - `BEFORE UPDATE ON public.image_jobs` の trigger で `OLD.model IS DISTINCT FROM NEW.model` なら `RAISE EXCEPTION`
-  - `SECURITY DEFINER` を付ける場合は `SET search_path = public, pg_temp` を忘れない
-  - 適用後に `node scripts/check-rpc-grants.mjs` を実行
-- [ ] integration test: 認証ユーザーが自分の `image_jobs.model` を UPDATE しようとすると拒否されること
-- [ ] 権限テスト: 非運営 + フラグ OFF で 2.5 を直接 POST すると 400 になり `image_jobs` が作られないこと
+- [x] `features/generation/lib/model-config.ts` の `resolveEffectiveModelForAuthState()` に 2.5 の clamp を追加(REQ-014)
+- [x] **(Phase 2 から移動)** `supabase/migrations/20260910120000_allow_gpt_image_2_5_flare_models.sql` を作成(`generated_images_model_check` / `image_jobs_model_check` に 2.5 の9値。既存 `20260510120000_extend_gpt_image_2_models.sql` と同じ DROP → ADD 全列挙形式 + `DO $$` 検証ブロック)。**ゲートのコードと同じ PR に入れる**
+- [x] **(Phase 2 から移動)** `.cursor/rules/database-design.mdc` の `model` 許容値リストを更新
+- [x] 🚨 **`supabase/migrations/20260910120100_freeze_image_jobs_model.sql` を追加**(ADR-007 / REQ-015)。**この migration が無いまま 2.5 を CHECK に足すと、運営限定ゲートが PATCH 1本で迂回される**
+  - `BEFORE UPDATE OF model ON public.image_jobs` の trigger で `OLD.model IS DISTINCT FROM NEW.model` なら `RAISE EXCEPTION`(計画の `BEFORE UPDATE` から `OF model` に絞った。理由は実装メモ)
+  - `SECURITY DEFINER` は付けていない(OLD/NEW しか読まないので不要。`SET search_path = public, pg_temp` は付けた)
+  - ~~適用後に `node scripts/check-rpc-grants.mjs` を実行~~ → Phase 5 の適用後に実行する(スクリプトの対象は SECURITY DEFINER かつ trigger 以外の関数なので、この trigger 関数自体は検査対象外。実行は他の関数に影響が無いことの確認として行う)
+- [x] ~~integration test: 認証ユーザーが自分の `image_jobs.model` を UPDATE しようとすると拒否されること~~ → **リポジトリに SQL を実行するテスト基盤が無い**(Docker 不可・migration を読む Jest テストも無い)ため、migration 内の `DO $$` 自己検証(一時テーブルに同じ trigger 関数を付けて「同値 UPDATE は通る / 変更は拒否 / NULL 化も拒否」を固定)+ PR の Supabase Preview + Phase 5 の本番適用直後の手動確認(下記)で代替する
+- [x] 権限テスト: 非運営 + フラグ OFF で 2.5 を直接 POST すると 400 になり `image_jobs` が作られないこと(`tests/integration/api/generate-async-route.test.ts` / `tests/integration/app/style-generate-async-route.test.ts`)
+
+**Phase 3 の実装メモ(2026-09-10)**:
+- **2.5 判定のヘルパー `isGptImage25FlareModel(model)` を `shared/generation/openai-image-model.ts` に追加**した(`parseOpenAIImageModel(model)?.family === "gpt-image-2.5-flare"`)。§1-3 のとおり `startsWith("gpt-image-2")` は 2.5 にも一致するので、ハンドラと clamp はこのヘルパーだけを使う
+- **サーバーゲートのエラーコード**: `/api/generate-async` は `GENERATION_MODEL_NOT_AVAILABLE_FOR_USER`、`/style/generate-async` は `STYLE_MODEL_NOT_AVAILABLE_FOR_USER`(いずれも 400)。文言は既存の `copy.modelTemporarilyUnavailable`(7言語)を再利用した。UI に 2.5 の行が無い Phase 3 では直接 POST 以外でこの分岐に来ないので、専用文言は追加していない
+- **ゲートの位置**: 両ハンドラとも `isModelAvailableForGeneration` の直後 = temp アップロード・残高確認・ジョブ作成のすべてより前。integration test で `uploadSourceImage` / `getUserCreditBalance` / `createImageJob` が呼ばれないことを固定した(Phase 1 時点の「500・temp 画像が残る」から 400 に戻る)
+- **`resolveEffectiveModelForAuthState(model, authState, options)`** に `options.gptImage25Available?: boolean` を足した(既定 false = fail closed)。**Phase 4 の予定だった呼び出し側の配線を前倒し**し、`GenerationForm.tsx` / `LockableModelSelect.tsx` / `StylePageClient.tsx` の3箇所で `useGptImage25Available()` の値を渡している。2.5 の行がまだ無いので**表示は何も変わらない**が、Phase 4 で行を足したときに配線忘れで一般ユーザーへ 2.5 が漏れる余地を先に潰した。ゲストは `gptImage25Available=true` でも `GUEST_ALLOWED_MODELS` 外なので既定へ丸まる
+- **freeze trigger は `BEFORE UPDATE OF model`**(計画の `BEFORE UPDATE` より絞った)。worker の status 更新(queued → processing → succeeded)は SET 句に `model` を含まないため trigger 自体が呼ばれず、ホットパスに PL/pgSQL の呼び出しが乗らない。既存 `trg_enforce_image_job_origin`(`UPDATE OF origin_post_id`)と同じ考え方。ADR-007 のとおり作成後に `model` を書く正規経路は無い(`complete_image_job_with_prompt_secrets` の `p_model` も `generated_images` の INSERT にしか使わない)ので、role の例外は設けず**無条件に拒否**する
+- **migration の自己検証**: SQL のテスト基盤が無いため、`20260910120100` は `DO $$` 内で一時テーブルに同じ関数を `UPDATE OF model` で付け、(a) 他列の更新は通る (b) 同値の SET は通る (c) 値の変更は `raise_exception` で止まり、メッセージに `ADR-007` を含む (d) NULL 化も止まる、を確認してから一時テーブルを落とす。さらに `pg_trigger` で本番テーブルに有効な trigger が付いたことを確認する。`20260910120000` は `pg_get_constraintdef` に 2.5 の9値と旧 `gpt-image-2-low` が含まれることを確認する
+- ⭐ **Phase 5 の本番適用直後の手動確認**(trigger の実在確認。ROLLBACK するので副作用なし):
+  ```sql
+  BEGIN;
+  UPDATE public.image_jobs SET model = 'gpt-image-2-low-2k'
+  WHERE id = (SELECT id FROM public.image_jobs ORDER BY created_at DESC LIMIT 1);
+  ROLLBACK;
+  ```
+  → `image_jobs.model は作成後に変更できない (ADR-007 / REQ-015)` の例外で止まれば OK
+- ⚠️ **この PR をマージしても本番には何も出ない**: migration は手動 `supabase db push`(`persta-migration-apply-workflow`)、Next.js は Vercel の自動デプロイでゲートだけが出る(非運営には 400、運営にも UI が無いので実行経路は直接 POST のみ)。**適用順は Phase 5-A のとおり Next.js(この PR) → worker → migration 2本 → Phase 4**
 
 ---
 
@@ -601,13 +618,13 @@ flowchart LR
 
 | ファイル | 操作 | 変更内容 | Phase |
 |---|---|---|---|
-| `shared/generation/openai-image-model.ts` | 修正 | family 型体系・18値の canonical・compose/parse・percoin | 1 |
+| `shared/generation/openai-image-model.ts` | 修正 | family 型体系・18値の canonical・compose/parse・percoin(1)・`isGptImage25FlareModel`(3) | 1,3 |
 | `features/generation/types.ts` | 修正 | union と `KNOWN_MODEL_INPUTS` に 2.5 の9値 | 1 |
 | `features/generation/lib/model-config.ts` | 修正 | percoin 表の起点差し替え・`resolveEffectiveModelForAuthState` の clamp | 1,3 |
 | `features/generation/lib/form-preferences.ts` | 修正 | `PERSISTABLE_MODELS` に 2.5 | 1 |
 | `features/admin-dashboard/lib/ai-cost-rates.ts` | 修正 | `MODEL_COST_RATES` に 2.5 の9値(`derived`)。Phase 5 で `measured` へ | 1,5 |
-| `supabase/migrations/<ts>_allow_gpt_image_2_5_flare_models.sql` | 新規 | 2テーブルの CHECK 制約に9値追加(Phase 2 から移動) | 3 |
-| `supabase/migrations/<ts>_freeze_image_jobs_model.sql` | 新規 | 🚨 `image_jobs.model` を作成後不変にする trigger(ADR-007 / REQ-015) | 3 |
+| `supabase/migrations/20260910120000_allow_gpt_image_2_5_flare_models.sql` | 新規 | 2テーブルの CHECK 制約に9値追加(Phase 2 から移動) | 3 |
+| `supabase/migrations/20260910120100_freeze_image_jobs_model.sql` | 新規 | 🚨 `image_jobs.model` を作成後不変にする trigger(ADR-007 / REQ-015)+ 一時テーブルでの自己検証 | 3 |
 | `app/api/style-templates/preview-generation/handler.ts` | 修正 | Node client に `family: "gpt-image-2"` を明示 | 2 |
 | `app/api/internal/generate-creator-looks-admin-preview/route.ts` | 修正 | 同上 | 2 |
 | `app/api/internal/generate-style-preset-preview/route.ts` | 修正 | 同上 | 2 |
@@ -623,13 +640,18 @@ flowchart LR
 | `components/LocaleShell.tsx` | 修正 | Provider と Suspense 隔離の Loader を追加 | 3 |
 | `app/api/generate-async/handler.ts` | 修正 | 2.5 のサーバー側実行ゲート | 3 |
 | `app/(app)/style/generate-async/handler.ts` | 修正 | 同上 | 3 |
-| `features/generation/components/LockableModelSelect.tsx` | 修正 | 4行目の追加・可否 hook・family 切替 | 4 |
+| `features/generation/components/LockableModelSelect.tsx` | 修正 | 可否 hook を clamp へ配線(3)・4行目の追加・family 切替(4) | 3,4 |
+| `features/generation/components/GenerationForm.tsx` | 修正 | 可否 hook を `resolveEffectiveModelForAuthState` へ配線(Phase 4 から前倒し) | 3 |
+| `features/style/components/StylePageClient.tsx` | 修正 | 同上 | 3 |
 | `features/generation/components/GptImage2QualitySelector.tsx` | 修正 | family 対応 | 1,4 |
 | `features/generation/components/GptImage2SizeSelector.tsx` | 修正 | family 対応 | 1,4 |
 | `features/generation/lib/model-display.ts` | 修正 | ⚠️ 2.5 分岐を先に置く・表示名9値 | 4 |
 | `features/generation/lib/model-tags.ts` | 修正 | 2.5 の tier チップ3分岐 | 4 |
 | `messages/{ja,en,ar,de,es,fr,hi,id,it,ko,pt,th,vi,zh-CN,zh-TW}.ts` | 修正 | `modelChatGptImages25` を15ファイルに追加 | 4 |
 | `tests/unit/features/generation/*.test.ts(x)` | 修正 | 既存の 2.0 テストを新 API へ・2.5 のケース追加 | 1-4 |
+| `tests/unit/lib/gpt-image-2-5-env.test.ts` | 新規 | `isGptImage25PubliclyEnabled` / `isGptImage25Available` | 3 |
+| `tests/unit/features/generation/gpt-image-2-5-availability.test.tsx` | 新規 | Provider / Upgrade / hook(Provider 外は false) | 3 |
+| `tests/integration/api/generate-async-route.test.ts` / `tests/integration/app/style-generate-async-route.test.ts` | 修正 | 非運営 + フラグ OFF の 2.5 POST が 400 でアップロード・ジョブ作成に進まないこと | 3 |
 
 ---
 

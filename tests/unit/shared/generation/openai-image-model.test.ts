@@ -9,6 +9,7 @@ import {
   OPENAI_IMAGE_FAMILIES,
   OPENAI_IMAGE_PERCOIN_COSTS,
   composeOpenAIImageModel,
+  isGptImage25FlareModel,
   isOpenAIImageCanonicalModel,
   parseOpenAIImageModel,
   toOpenAIApiModelName,
@@ -175,5 +176,31 @@ describe("toOpenAIApiModelName", () => {
 
   it("gpt-image-2.5-flare は API モデル名 `gpt-image-2.5-flare`", () => {
     expect(toOpenAIApiModelName("gpt-image-2.5-flare")).toBe("gpt-image-2.5-flare");
+  });
+});
+
+describe("isGptImage25FlareModel", () => {
+  it("gpt-image-2.5-flare の canonical 9 件は true", () => {
+    for (const model of GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS) {
+      expect([model, isGptImage25FlareModel(model)]).toEqual([model, true]);
+    }
+  });
+
+  it("gpt-image-2 の canonical と legacy alias は false(startsWith に頼らない)", () => {
+    // "gpt-image-2.5-flare-low-1k".startsWith("gpt-image-2") は true になるため、
+    // 逆方向(2.0 を 2.5 と誤判定)が起きないことをここで固定する(ADR-002)。
+    for (const model of GPT_IMAGE_2_CANONICAL_MODELS) {
+      expect([model, isGptImage25FlareModel(model)]).toEqual([model, false]);
+    }
+    expect(isGptImage25FlareModel(GPT_IMAGE_2_LEGACY_LOW_MODEL)).toBe(false);
+  });
+
+  it("Gemini 系・未知の値・null / undefined は false", () => {
+    expect(isGptImage25FlareModel("gemini-3-pro-image-1k")).toBe(false);
+    expect(isGptImage25FlareModel("gpt-image-2.5-sunburst-low-1k")).toBe(false);
+    expect(isGptImage25FlareModel("gpt-image-2.5-flare-low")).toBe(false);
+    expect(isGptImage25FlareModel("")).toBe(false);
+    expect(isGptImage25FlareModel(null)).toBe(false);
+    expect(isGptImage25FlareModel(undefined)).toBe(false);
   });
 });

@@ -22,10 +22,12 @@ jest.mock("@/features/generation/lib/model-config", () => ({
   ),
 }));
 
-// framingMode (free_pose) の admin viewer ゲートをテストごとに制御する
+// framingMode (free_pose) の admin viewer ゲートと、ChatGPT Images 2.5 の
+// 運営限定ゲート (isGptImage25Available) をテストごとに制御する
 jest.mock("@/lib/env", () => ({
   ...jest.requireActual("@/lib/env"),
   isAdminViewer: jest.fn(() => false),
+  isGptImage25Available: jest.fn(() => false),
 }));
 
 import { NextRequest } from "next/server";
@@ -38,10 +40,13 @@ import {
   STYLE_PROMPT_REAL_SUFFIX,
 } from "@/shared/generation/style-prompts";
 import { PROMPT_REGISTRY } from "@/shared/generation/prompt-registry";
-import { isAdminViewer } from "@/lib/env";
+import { isAdminViewer, isGptImage25Available } from "@/lib/env";
 
 const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
   typeof isAdminViewer
+>;
+const isGptImage25AvailableMock = isGptImage25Available as jest.MockedFunction<
+  typeof isGptImage25Available
 >;
 
 type JsonRecord = Record<string, unknown>;
@@ -186,6 +191,8 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     isAdminViewerMock.mockReset();
     isAdminViewerMock.mockReturnValue(false);
+    isGptImage25AvailableMock.mockReset();
+    isGptImage25AvailableMock.mockReturnValue(false);
     jobRepository = createAsyncGenerationJobRepositoryMock();
     getPublishedStylePresetForGenerationFn = jest
       .fn()
@@ -767,6 +774,120 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
       expect.objectContaining({ kind: expect.any(String) })
     );
+  });
+
+  describe("ChatGPT Images 2.5 (運営限定ゲート / REQ-006)", () => {
+    // docs/planning/gpt-image-2-5-flare-implementation-plan.md Phase 3。
+    // /api/generate-async と同じ理由で、temp アップロード・残高確認・ジョブ作成より前に塞ぐ。
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildFormData(model: string): FormData {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      formData.set("model", model);
+      return formData;
+    }
+
+    test("利用不可のユーザーが 2.5 を指定すると 400 STYLE_MODEL_NOT_AVAILABLE_FOR_USER (アップロード前に止まる)", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gpt-image-2.5-flare-low-1k")),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_MODEL_NOT_AVAILABLE_FOR_USER");
+      expect(isGptImage25AvailableMock).toHaveBeenCalledWith("user-123");
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      expect(recordStyleUsageEventFn).not.toHaveBeenCalled();
+    });
+
+    test("quality / size を問わず 2.5 の canonical はすべて塞がれる", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      for (const model of [
+        "gpt-image-2.5-flare-low-4k",
+        "gpt-image-2.5-flare-medium-2k",
+        "gpt-image-2.5-flare-high-1k",
+      ]) {
+        const response = await postStyleGenerateAsyncRoute(
+          createRequest(buildFormData(model)),
+          dependencies()
+        );
+        expect([model, response.status]).toEqual([model, 400]);
+      }
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("利用可能なユーザー (運営 / 公開後) は 2.5 のままジョブが作られる", async () => {
+      isGptImage25AvailableMock.mockReturnValue(true);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gpt-image-2.5-flare-low-1k")),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual(
+        expect.objectContaining({ jobId: "style-job-001", status: "queued" })
+      );
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gpt-image-2.5-flare-low-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
+
+    test("showGenerationModelControl=false のカテゴリでは 2.5 を送っても既定モデルに固定されゲートは発火しない", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: {
+            ...TEST_COORDINATE_CATEGORY,
+            showGenerationModelControl: false,
+          },
+        })
+      );
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gpt-image-2.5-flare-high-4k")),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(isGptImage25AvailableMock).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gpt-image-2-low-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
+
+    test("gpt-image-2 (2.0) は利用不可のユーザーでも影響を受けない", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gpt-image-2-medium-1k")),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gpt-image-2-medium-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
   });
 
   test("upload 失敗時は 500 STYLE_SOURCE_UPLOAD_FAILED (reservation がないので release も呼ばない)", async () => {
