@@ -77,6 +77,7 @@ import {
 } from "@/features/generation/lib/job-progress";
 import type { ImageJobProcessingStage } from "@/features/generation/lib/job-types";
 import type { UploadedImage } from "@/features/generation/types";
+
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
@@ -101,6 +102,7 @@ import {
   getPercoinCost,
   isFreePlanAllowedModel,
   resolveEffectiveModelForAuthState,
+  resolveRequestedModelFromUrl,
 } from "@/features/generation/lib/model-config";
 import { buildStyleSignupPath } from "@/features/auth/lib/signup-source";
 import { ImageDownloadButton } from "@/features/generation/components/ImageDownloadButton";
@@ -136,6 +138,13 @@ interface StylePageClientProps {
   presets: readonly StylePresetPublicSummary[];
   initialAuthState?: "authenticated" | "guest";
   initialSelectedPresetId?: string | null;
+  /**
+   * 告知バナーからの着地(`/style?model=...`)で先に選んでおくモデル。
+   * ⚠️ URL 由来の外部入力。`isKnownModelInput` → `normalizeModelName` →
+   * `resolveEffectiveModelForAuthState` を通してから state に入れること。
+   * 生の値を使うと、無料プラン・未ログインの制限を URL で迂回されうる。
+   */
+  requestedModel?: string | null;
   /**
    * `?style=` で要求されたスタイルが未開放だったときの理由。
    * 通常の導線では押す前に伝えるが、共有リンク等でここへ直接来たときの保険。
@@ -369,6 +378,7 @@ export function StylePageClient({
   presets,
   initialAuthState,
   initialSelectedPresetId,
+  requestedModel = null,
   lockedRequestedReason = null,
   showResultPanel = true,
   subscriptionPlan = "free",
@@ -840,10 +850,32 @@ export function StylePageClient({
     }, 0);
   };
 
-  // localStorage に保存された前回選択モデルを復元 (Phase 5 / UCL-013)
+  // localStorage に保存された前回選択モデルを復元 (Phase 5 / UCL-013)。
+  // 告知バナーからの着地(`?model=`)があるときはそちらを優先する。
+  //
+  // ⚠️ URL 由来の値なので生では使わない。`isKnownModelInput` で未知文字列を弾き、
+  // canonical へ正規化したうえで `resolveEffectiveModelForAuthState` に通す。
+  // 通した結果が要求と違う(= 権限や段階公開で丸められた)なら採用せず、
+  // 従来どおり localStorage の値を使う。
   useEffect(() => {
+    const requested = resolveRequestedModelFromUrl(
+      requestedModel,
+      modelAuthState,
+      {
+        gptImage25Available,
+        isFreePlan: subscriptionPlan === "free",
+      }
+    );
+    if (requested) {
+      setSelectedModel(requested);
+      setAspectMode(readPreferredStyleAspectMode());
+      return;
+    }
     setSelectedModel(readPreferredModel());
     setAspectMode(readPreferredStyleAspectMode());
+    // requestedModel は URL 由来でマウント中に変わらない。認証状態の確定後に
+    // 上書きされないよう、依存は初回マウントのみに保つ。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ユーザー操作経由の比率変更だけ localStorage に書く

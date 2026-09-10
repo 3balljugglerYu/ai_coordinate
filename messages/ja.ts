@@ -999,6 +999,7 @@ export const jaMessages = {
     modelGptImage2High: "ChatGPT Images 2.0",
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
+    modelNewBadge: "NEW",
     modelTagEngineOpenai: "OpenAI",
     modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",

@@ -1026,6 +1026,7 @@ export const hiMessages = {
     modelGptImage2High: "ChatGPT Images 2.0",
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
+    modelNewBadge: "नया",
     modelTagEngineOpenai: "OpenAI",
     modelTagEngineGemini: "Gemini",
     modelNanoBanana2: "Nano Banana 2",
