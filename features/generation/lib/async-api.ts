@@ -35,12 +35,29 @@ interface AsyncGenerationApiMessages {
  * モバイル回線では 90 秒級の生成中に取得が 1 回落ちることが普通にある。
  * 1 回で打ち切ると、サーバー側では走り続けているジョブを UI が見失い、
  * ユーザーには「失敗した」ように見える(2026-09-10 の実障害)。
+ *
+ * トンネル・エレベーター・駅間などの電波断は 30 秒級になるため、
+ * 待ち時間の合計(2 + 4 + 8 + 16 = 30 秒)がその程度を吸収する回数にする。
+ * ジョブはサーバーで走り続けており、待っている間の「生成中」表示は事実として
+ * 正しい。ここで諦めても jobId は残すので、画面を開き直せば結果を拾える。
  */
-const MAX_CONSECUTIVE_POLL_FAILURES = 3;
+const MAX_CONSECUTIVE_POLL_FAILURES = 5;
 
-/** 失敗後の待ち時間。連続失敗ごとに伸ばす(2s → 4s)。 */
+const POLL_RETRY_BASE_DELAY_MS = 2000;
+const POLL_RETRY_MAX_DELAY_MS = 16_000;
+
+/**
+ * 失敗後の待ち時間。2s → 4s → 8s → 16s と指数で伸ばす。
+ *
+ * 毎回同じ間隔で叩くと、復旧していないサーバーに無駄な負荷をかける。
+ * 指数で伸ばすのは OpenAI クライアントの再試行
+ * (`features/generation/lib/openai-image.ts` の `2 ** (attempt - 1)`)と同じ形。
+ */
 function pollRetryDelayMs(consecutiveFailures: number): number {
-  return Math.min(2000 * consecutiveFailures, 6000);
+  return Math.min(
+    POLL_RETRY_BASE_DELAY_MS * 2 ** (consecutiveFailures - 1),
+    POLL_RETRY_MAX_DELAY_MS
+  );
 }
 
 /**

@@ -106,10 +106,12 @@ describe("pollGenerationStatus: 一時的な取得失敗", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  test("2 回続けて失敗しても、3 回目に回復すれば完了を返す", async () => {
+  test("4 回続けて失敗しても、5 回目に回復すれば完了を返す", async () => {
     jest.useFakeTimers();
     const fetchMock = jest
       .fn()
+      .mockRejectedValueOnce(new TypeError("Load failed"))
+      .mockRejectedValueOnce(new TypeError("Load failed"))
       .mockRejectedValueOnce(new TypeError("Load failed"))
       .mockRejectedValueOnce(new TypeError("Load failed"))
       .mockResolvedValueOnce(jsonResponse(statusBody("succeeded")));
@@ -120,12 +122,13 @@ describe("pollGenerationStatus: 一時的な取得失敗", () => {
       messages: { networkErrorPolling: NETWORK_POLLING_MESSAGE },
     });
 
-    await jest.advanceTimersByTimeAsync(20000);
+    // 2 + 4 + 8 + 16 = 30 秒の猶予を使い切る手前で回復する
+    await jest.advanceTimersByTimeAsync(35000);
     await expect(promise).resolves.toMatchObject({ status: "succeeded" });
-    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(fetchMock).toHaveBeenCalledTimes(5);
   });
 
-  test("3 回連続で失敗したら諦め、生メッセージではなく日本語で reject する", async () => {
+  test("5 回連続で失敗したら諦め、生メッセージではなく日本語で reject する", async () => {
     jest.useFakeTimers();
     const fetchMock = jest
       .fn()
@@ -138,9 +141,45 @@ describe("pollGenerationStatus: 一時的な取得失敗", () => {
     });
     const assertion = expect(promise).rejects.toThrow(NETWORK_POLLING_MESSAGE);
 
-    await jest.advanceTimersByTimeAsync(20000);
+    await jest.advanceTimersByTimeAsync(35000);
     await assertion;
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  test("待ち時間が指数で伸びる(2s → 4s → 8s → 16s)", async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .fn()
+      .mockRejectedValue(new TypeError("Load failed"));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const { promise } = pollGenerationStatus("job-1", {
+      interval: 10,
+      messages: { networkErrorPolling: NETWORK_POLLING_MESSAGE },
+    });
+    // reject を拾い損ねて unhandled rejection にしないよう先に繋いでおく
+    const assertion = expect(promise).rejects.toThrow(NETWORK_POLLING_MESSAGE);
+
+    // 初回の失敗直後。次は 2 秒後なので、1.9 秒では叩かれない
+    await jest.advanceTimersByTimeAsync(1900);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    await jest.advanceTimersByTimeAsync(200); // 2.1s: 2 回目
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await jest.advanceTimersByTimeAsync(3800); // 5.9s: 3 回目は 6.0s なのでまだ
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    await jest.advanceTimersByTimeAsync(200); // 6.1s: 3 回目(4 秒待ち)
     expect(fetchMock).toHaveBeenCalledTimes(3);
+
+    await jest.advanceTimersByTimeAsync(8000); // 14.1s: 4 回目(8 秒待ち)
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    await jest.advanceTimersByTimeAsync(16000); // 30.1s: 5 回目(16 秒待ち)で断念
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+
+    await assertion;
   });
 
   test("ジョブ自体の失敗は reject ではなく failed として resolve する", async () => {
