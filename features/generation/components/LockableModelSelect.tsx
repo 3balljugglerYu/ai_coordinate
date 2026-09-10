@@ -285,11 +285,14 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
           // default variant の背景色に潰されないようにするため。
           //
           // グラデーションは `reward-gradient-shift`(既存クラス)で流す。
-          // クリエイター還元の案内で使っているのと同じ色・同じ動きで、
-          // `prefers-reduced-motion: reduce` のときは globals.css 側で
-          // animation: none になる(動きを減らす設定の人にも文字は残る)。
+          // クリエイター還元の案内で使っているのと同じ色・同じ動き。
           // 動かすには色が 3 つ要るので via-rose-400 を挟む。
-          <span className="reward-gradient-shift pointer-events-none inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-orange-400 px-2 py-0.5 text-[10px] font-bold leading-tight text-white shadow">
+          //
+          // 速度はバッジ用の `model-new-badge-shift`(2s)を使う。共有クラスの
+          // 8s は大きな面向けで、小さなバッジでは動きが伝わらないため。
+          // `prefers-reduced-motion: reduce` では globals.css 側で
+          // animation: none になり、動きだけ止まって文字と色は残る。
+          <span className="model-new-badge-shift pointer-events-none inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-orange-400 px-2 py-0.5 text-[10px] font-bold leading-tight text-white shadow">
             {t("modelNewBadge")}
           </span>
         ) : null}

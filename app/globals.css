@@ -1731,6 +1731,22 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
 }
 
 /*
+ * モデルセレクターの「NEW」バッジ用。動き(keyframes)は還元案内と同じで、
+ * 速度だけ速い。
+ *
+ * 8s は大きな面(還元案内のヒーローなど)向けの速度で、40px ほどの
+ * バッジでは動いていることが伝わらない。共有クラスの 8s を書き換えると
+ * 還元案内・プロンプト利用案内の 4 箇所も変わってしまうため、別クラスにする。
+ *
+ * Tailwind の `[animation-duration:3s]` では上書きできない。この宣言は
+ * レイヤー外にあり、@layer utilities のユーティリティより強いため。
+ */
+.model-new-badge-shift {
+  background-size: 200% 200%;
+  animation: rewardGradientShift 2s ease-in-out infinite;
+}
+
+/*
  * 投稿中のバーの位置。
  *
  * ⭐ **画面の下端**に置くが、ボトムナビ(z-50)より奥のレイヤー(z-40)に
@@ -1816,7 +1832,8 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
   .reward-float,
   .reward-sparkle,
   .reward-breathe,
-  .reward-gradient-shift {
+  .reward-gradient-shift,
+  .model-new-badge-shift {
     animation: none;
   }
 
