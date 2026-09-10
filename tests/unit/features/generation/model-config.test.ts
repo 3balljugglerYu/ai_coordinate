@@ -123,8 +123,11 @@ describe("model-config / model identification helpers", () => {
   });
 
   describe("GUEST_ALLOWED_MODELS / isCanonicalGuestAllowedModel", () => {
-    it("Gemini 停止中は ChatGPT Image 2.0 のみ", () => {
-      expect(GUEST_ALLOWED_MODELS).toEqual(["gpt-image-2-low-1k"]);
+    it("Gemini 停止中は ChatGPT Images の Low(2.0 / 2.5)のみ", () => {
+      expect(GUEST_ALLOWED_MODELS).toEqual([
+        "gpt-image-2-low-1k",
+        "gpt-image-2.5-flare-low-1k",
+      ]);
     });
 
     it("canonical な許可モデルだけ true", () => {
@@ -262,13 +265,38 @@ describe("model-config / model identification helpers", () => {
         ).toBe("gpt-image-2.5-flare-medium-2k");
       });
 
-      it("ゲストは gptImage25Available=true でもゲスト許可リスト外なので丸める", () => {
-        // GUEST_ALLOWED_MODELS に 2.5 は入れない(Phase 3 では公開しない)
+      it("ゲストでも 2.5 の Low(1k)は許可リスト内なので保つ", () => {
+        // 2026-09-10: お試しにも 2.5 の Low を開いた(2.0 と同額・原価もほぼ同じ)。
         expect(
           resolveEffectiveModelForAuthState(
             "gpt-image-2.5-flare-low-1k",
             "guest",
             { gptImage25Available: true }
+          )
+        ).toBe("gpt-image-2.5-flare-low-1k");
+      });
+
+      it("ゲストの 2.5 は Low(1k)以外なら丸める", () => {
+        for (const model of [
+          "gpt-image-2.5-flare-low-2k",
+          "gpt-image-2.5-flare-medium-1k",
+          "gpt-image-2.5-flare-high-1k",
+        ] as const) {
+          expect(
+            resolveEffectiveModelForAuthState(model, "guest", {
+              gptImage25Available: true,
+            })
+          ).toBe("gpt-image-2-low-1k");
+        }
+      });
+
+      it("段階公開中(available=false)はゲストの 2.5 Low も丸める", () => {
+        // 許可リストには入っているが、公開フラグ側で閉じる(fail closed)。
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2.5-flare-low-1k",
+            "guest",
+            { gptImage25Available: false }
           )
         ).toBe("gpt-image-2-low-1k");
       });
@@ -310,6 +338,7 @@ describe("model-config / model identification helpers", () => {
       const { GUEST_ALLOWED_MODELS } = loadConfigWithGemini(true);
       expect(GUEST_ALLOWED_MODELS).toEqual([
         "gpt-image-2-low-1k",
+        "gpt-image-2.5-flare-low-1k",
         "gemini-3.1-flash-image-preview-512",
       ]);
     });
