@@ -1335,6 +1335,8 @@ export const deMessages = {
     fetchStatusFailed: "Generierungsstatus konnte nicht abgerufen werden.",
     fetchJobsFailed: "Laufende Aufträge konnten nicht abgerufen werden.",
     pollingTimeout: "Polling hat das Zeitlimit überschritten.",
+    networkErrorSubmit: "Die Verbindung war instabil, daher konnte die Generierung nicht gestartet werden. Bitte versuche es mit einer besseren Verbindung erneut.",
+    networkErrorPolling: "Die Verbindung ist instabil. Die Generierung läuft möglicherweise weiter – bitte öffne diesen Bildschirm gleich noch einmal.",
     statusCardTitle: "Status der Bildgenerierung",
     statusCardErrorTitle: "Fehler",
     statusCardErrorDescription: "Generierungsstatus konnte nicht abgerufen werden.",

@@ -1331,6 +1331,8 @@ export const arMessages = {
     fetchStatusFailed: "فشل جلب حالة التوليد.",
     fetchJobsFailed: "فشل جلب المهام قيد التشغيل.",
     pollingTimeout: "انتهت مهلة التحقق.",
+    networkErrorSubmit: "تعذّر بدء الإنشاء بسبب عدم استقرار الاتصال. يُرجى المحاولة مرة أخرى عند توفّر اتصال أفضل.",
+    networkErrorPolling: "الاتصال غير مستقر. قد يكون الإنشاء ما زال جاريًا، لذا يُرجى إعادة فتح هذه الشاشة بعد قليل.",
     statusCardTitle: "حالة توليد الصور",
     statusCardErrorTitle: "خطأ",
     statusCardErrorDescription: "فشل جلب حالة التوليد.",

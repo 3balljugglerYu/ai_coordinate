@@ -1334,6 +1334,8 @@ export const itMessages = {
     fetchStatusFailed: "Impossibile recuperare lo stato della generazione.",
     fetchJobsFailed: "Impossibile recuperare i job in corso.",
     pollingTimeout: "Polling scaduto.",
+    networkErrorSubmit: "La connessione era instabile, quindi la generazione non è potuta partire. Riprova con una connessione migliore.",
+    networkErrorPolling: "La connessione è instabile. La generazione potrebbe essere ancora in corso: riapri questa schermata tra poco.",
     statusCardTitle: "Stato della generazione delle immagini",
     statusCardErrorTitle: "Errore",
     statusCardErrorDescription: "Impossibile recuperare lo stato della generazione.",

@@ -1528,7 +1528,11 @@ export function StylePageClient({
   const pollAndFinalizeStyleJob = async (jobId: string, styleId: string) => {
     const { promise, stop } = pollGenerationStatus(jobId, {
       interval: getStyleAsyncPollingIntervalMs,
-      messages: { pollingStopped: STYLE_POLLING_STOPPED_SENTINEL },
+      messages: {
+        pollingStopped: STYLE_POLLING_STOPPED_SENTINEL,
+        networkErrorPolling: coordinateT("networkErrorPolling"),
+        networkErrorSubmit: coordinateT("networkErrorSubmit"),
+      },
       onStatusUpdate: (status) => {
         setActiveAsyncJobStatus(status);
       },
@@ -1558,7 +1562,11 @@ export function StylePageClient({
         // エラー表示せず、永続化を残して復帰時の再ポーリングに委ねる。
         return;
       }
-      clearActiveStyleJob();
+      // ここに来るのは「停止 / タイムアウト / 取得の連続失敗」だけで、
+      // ジョブ自体の失敗は status === "failed" として resolve される。
+      // つまりサーバー側ではまだ走っている可能性が高いので、
+      // sessionStorage の jobId は消さない。画面を開き直せば
+      // 下の復帰 useEffect が現在の状態を取り直し、完了していれば結果を出す。
       handleGenerationError(message);
       void refreshPercoinBalance();
     }
@@ -1683,10 +1691,18 @@ export function StylePageClient({
         formData.set("uploadImage", normalizedFile);
       }
 
-      const response = await fetch("/style/generate-async", {
-        method: "POST",
-        body: formData,
-      });
+      // fetch そのものが拒否したとき(通信断)は、ブラウザの生メッセージ
+      // (iOS Safari: "Load failed" / Chrome: "Failed to fetch")が
+      // 下の catch でそのまま画面に出てしまうため、ここで日本語に置き換える。
+      let response: Response;
+      try {
+        response = await fetch("/style/generate-async", {
+          method: "POST",
+          body: formData,
+        });
+      } catch {
+        throw new Error(coordinateT("networkErrorSubmit"));
+      }
 
       const payload = (await response.json().catch(() => null)) as
         | {

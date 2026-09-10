@@ -1329,6 +1329,8 @@ export const zhTwMessages = {
     fetchStatusFailed: "取得生成狀態失敗。",
     fetchJobsFailed: "取得進行中工作失敗。",
     pollingTimeout: "輪詢逾時。",
+    networkErrorSubmit: "網路不穩定，未能開始生成。請在訊號良好的地方重試。",
+    networkErrorPolling: "網路不穩定。生成可能仍在進行中，請稍後重新開啟此頁面。",
     statusCardTitle: "圖片生成狀態",
     statusCardErrorTitle: "錯誤",
     statusCardErrorDescription: "取得生成狀態失敗。",

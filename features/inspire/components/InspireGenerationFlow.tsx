@@ -191,12 +191,25 @@ export function InspireGenerationFlow({
     }
   }, [phase, status]);
 
+  // GenerationFormContainer の asyncApiMessages と同じ形（`t` は next-intl 側で
+  // メモ化されているので、これを effect の依存に入れても張り直されない）。
+  const pollingMessages = useMemo(
+    () => ({
+      networkErrorPolling: t("networkErrorPolling"),
+      networkErrorSubmit: t("networkErrorSubmit"),
+    }),
+    [t]
+  );
+
   // job poll（adaptive interval は /style と同じ）
   useEffect(() => {
     if (!jobId) return;
     let isMounted = true;
     const { promise, stop } = pollGenerationStatus(jobId, {
       interval: getStatusPollingIntervalMs,
+      // 取得が続けて失敗したときに、ブラウザの生メッセージ
+      // ("Load failed" 等)が下の setError で表示されないようにする。
+      messages: pollingMessages,
       onStatusUpdate: (s) => {
         if (!isMounted) return;
         setStatus(s);
@@ -230,7 +243,7 @@ export function InspireGenerationFlow({
       stopRef.current?.();
       stopRef.current = null;
     };
-  }, [jobId]);
+  }, [jobId, pollingMessages]);
 
   // /coordinate / /style と同じタイトル選択ロジック
   const generationStatusTitle = isCompleting

@@ -1278,6 +1278,8 @@ export const jaMessages = {
     fetchStatusFailed: "ステータスの取得に失敗しました",
     fetchJobsFailed: "ジョブの取得に失敗しました",
     pollingTimeout: "ポーリングがタイムアウトしました",
+    networkErrorSubmit: "通信が不安定なため、生成を開始できませんでした。電波の良い場所でもう一度お試しください。",
+    networkErrorPolling: "通信が不安定です。生成は続いている可能性があるため、しばらくしてから画面を開き直してください。",
     statusCardTitle: "画像生成ステータス",
     statusCardErrorTitle: "エラー",
     statusCardErrorDescription: "ステータスの取得に失敗しました",
