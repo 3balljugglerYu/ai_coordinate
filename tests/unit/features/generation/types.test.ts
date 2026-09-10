@@ -3,8 +3,9 @@ import {
   extractImageSize,
   isKnownModelInput,
   KNOWN_MODEL_INPUTS,
-  composeGptImage2Model,
-  parseGptImage2Model,
+  composeOpenAIImageModel,
+  normalizeModelName,
+  parseOpenAIImageModel,
   toApiModelName,
 } from "@/features/generation/types";
 
@@ -39,25 +40,51 @@ describe("generation types", () => {
     });
   });
 
-  describe("GPT Image 2 canonical helpers", () => {
-    test("quality と size tier から canonical model を合成する", () => {
-      expect(composeGptImage2Model("medium", "2k")).toBe(
+  describe("OpenAI image canonical helpers (types 経由の再エクスポート)", () => {
+    test("family + quality + size tier から canonical model を合成する", () => {
+      expect(composeOpenAIImageModel("gpt-image-2", "medium", "2k")).toBe(
         "gpt-image-2-medium-2k"
       );
+      expect(
+        composeOpenAIImageModel("gpt-image-2.5-flare", "medium", "2k")
+      ).toBe("gpt-image-2.5-flare-medium-2k");
     });
 
     test("canonical model と legacy low を分解する", () => {
-      expect(parseGptImage2Model("gpt-image-2-high-4k")).toEqual({
+      expect(parseOpenAIImageModel("gpt-image-2-high-4k")).toEqual({
         canonical: "gpt-image-2-high-4k",
+        family: "gpt-image-2",
         quality: "high",
         sizeTier: "4k",
       });
-      expect(parseGptImage2Model("gpt-image-2-low")).toEqual({
+      expect(parseOpenAIImageModel("gpt-image-2-low")).toEqual({
         canonical: "gpt-image-2-low-1k",
+        family: "gpt-image-2",
         quality: "low",
         sizeTier: "1k",
       });
-      expect(parseGptImage2Model("gemini-3-pro-image-1k")).toBeNull();
+      expect(parseOpenAIImageModel("gemini-3-pro-image-1k")).toBeNull();
+    });
+
+    test("KNOWN_MODEL_INPUTS は 2.0 / 2.5 の canonical 18 件と legacy low を含む", () => {
+      expect(isKnownModelInput("gpt-image-2-low-1k")).toBe(true);
+      expect(isKnownModelInput("gpt-image-2.5-flare-high-4k")).toBe(true);
+      expect(isKnownModelInput("gpt-image-2-low")).toBe(true);
+      expect(isKnownModelInput("gpt-image-2.5-flare-low")).toBe(false);
+      expect(isKnownModelInput("gpt-image-2.5-sunburst-low-1k")).toBe(false);
+      expect(
+        KNOWN_MODEL_INPUTS.filter((value) => value.startsWith("gpt-image-"))
+      ).toHaveLength(19);
+    });
+
+    test("normalizeModelName は OpenAI 系を family を問わず canonical のまま返す", () => {
+      expect(normalizeModelName("gpt-image-2-low")).toBe("gpt-image-2-low-1k");
+      expect(normalizeModelName("gpt-image-2-high-2k")).toBe("gpt-image-2-high-2k");
+      expect(normalizeModelName("gpt-image-2.5-flare-low-1k")).toBe(
+        "gpt-image-2.5-flare-low-1k"
+      );
+      // 未知の OpenAI 風文字列は既定モデルへ寄せる(従来どおり)
+      expect(normalizeModelName("gpt-image-bogus")).toBe(DEFAULT_GENERATION_MODEL);
     });
   });
 

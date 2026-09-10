@@ -22,8 +22,8 @@ import {
 } from "@/features/generation/lib/model-tags";
 import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import {
-  composeGptImage2Model,
-  parseGptImage2Model,
+  composeOpenAIImageModel,
+  parseOpenAIImageModel,
   type GeminiModel,
   type GptImage2Quality,
 } from "@/features/generation/types";
@@ -73,7 +73,7 @@ export function GptImage2QualitySelector({
   isModelSelectable,
 }: GptImage2QualitySelectorProps) {
   const t = useTranslations("coordinate");
-  const parsed = parseGptImage2Model(value);
+  const parsed = parseOpenAIImageModel(value);
 
   if (!parsed) {
     return null;
@@ -83,7 +83,11 @@ export function GptImage2QualitySelector({
 
   const handleValueChange = (next: string) => {
     const nextQuality = next as GptImage2Quality;
-    const nextModel = composeGptImage2Model(nextQuality, parsed.sizeTier);
+    const nextModel = composeOpenAIImageModel(
+      parsed.family,
+      nextQuality,
+      parsed.sizeTier
+    );
     if (!isModelAvailableForGeneration(nextModel)) {
       return;
     }
@@ -121,7 +125,8 @@ export function GptImage2QualitySelector({
         </SelectTrigger>
         <SelectContent>
           {QUALITY_OPTIONS.map((option) => {
-            const optionModel = composeGptImage2Model(
+            const optionModel = composeOpenAIImageModel(
+              parsed.family,
               option.value,
               parsed.sizeTier
             );

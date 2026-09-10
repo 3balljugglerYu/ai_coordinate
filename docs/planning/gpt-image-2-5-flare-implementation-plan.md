@@ -408,7 +408,7 @@ flowchart LR
 **目的**: canonical model ID に family の概念を導入し、既存 9 値の挙動を1ミリも変えないまま 2.5 の 9 値を型として受け入れられる状態にする。
 **ビルド確認**: `npm run lint` / `npm run typecheck` / `npm run test` / `npm run build -- --webpack` がすべて通る。UI 上は何も変わらない(2.5 はどこにも出ない)。
 
-- [ ] `shared/generation/openai-image-model.ts` に family 型体系を追加(既存 `shared/generation/gemini-banana-model.ts` の構造をそのまま写す)
+- [x] `shared/generation/openai-image-model.ts` に family 型体系を追加(既存 `shared/generation/gemini-banana-model.ts` の構造をそのまま写す)
   - `OPENAI_IMAGE_FAMILIES = ["gpt-image-2", "gpt-image-2.5-flare"]`
   - `GptImage25FlareCanonicalModel` / `OpenAIImageCanonicalModel`
   - `OPENAI_IMAGE_CANONICAL_MODELS`(18値)
@@ -416,18 +416,24 @@ flowchart LR
   - `parseOpenAIImageModel(value) -> {canonical, family, quality, sizeTier} | null`(legacy `gpt-image-2-low` の正規化もここに含める)
   - `toOpenAIApiModelName(family)`(family 文字列がそのまま API モデル名)
   - `OPENAI_IMAGE_PERCOIN_COSTS`(2.5 は 2.0 と同額の9値を追加)
-- [ ] `parseGptImage2Model` / `composeGptImage2Model` / `GPT_IMAGE_2_PERCOIN_COSTS` の呼び出し元を新 API へ移行し、旧 API を削除(ADR-002)
+- [x] `parseGptImage2Model` / `composeGptImage2Model` / `GPT_IMAGE_2_PERCOIN_COSTS` の呼び出し元を新 API へ移行し、旧 API を削除(ADR-002)
   - `features/generation/components/GptImage2QualitySelector.tsx:76,86,124`
   - `features/generation/components/GptImage2SizeSelector.tsx:55,65,108`
   - `features/generation/components/LockableModelSelect.tsx:120,128,147`
   - `features/generation/lib/guest-generate.ts:287`
   - `features/generation/lib/model-config.ts:63`
   - `supabase/functions/image-gen-worker/index.ts:94,1097,2595,727`
-- [ ] `features/generation/types.ts` の `GeminiModel` union と `KNOWN_MODEL_INPUTS` に 2.5 の9値を追加(既存 `GPT_IMAGE_2_CANONICAL_MODELS` の展開を `OPENAI_IMAGE_CANONICAL_MODELS` へ差し替え)
-- [ ] `features/generation/lib/model-config.ts` の `MODEL_PERCOIN_COSTS` を `OPENAI_IMAGE_PERCOIN_COSTS` 起点に変更(REQ-009)
-- [ ] `features/generation/lib/form-preferences.ts:60` の `PERSISTABLE_MODELS` に 2.5 を追加
-- [ ] `features/admin-dashboard/lib/ai-cost-rates.ts` の `MODEL_COST_RATES` に 2.5 の9値を `basis: "derived"` で追加(REQ-010 / REQ-011 / ADR-004)
-- [ ] ⭐ 回帰ガード: 既存 `gpt-image-2-*` の canonical / percoin / API モデル名 / 原価が 1つも変わらないことをテストで固定(REQ-013)
+- [x] `features/generation/types.ts` の `GeminiModel` union と `KNOWN_MODEL_INPUTS` に 2.5 の9値を追加(既存 `GPT_IMAGE_2_CANONICAL_MODELS` の展開を `OPENAI_IMAGE_CANONICAL_MODELS` へ差し替え)
+- [x] `features/generation/lib/model-config.ts` の `MODEL_PERCOIN_COSTS` を `OPENAI_IMAGE_PERCOIN_COSTS` 起点に変更(REQ-009)
+- [ ] `features/generation/lib/form-preferences.ts:60` の `PERSISTABLE_MODELS` に 2.5 を追加 → **Phase 4 へ移動**(この配列の不変条件は「`GenerationForm` の `<SelectItem>` と一致させる」なので、2.5 の行を出す Phase 4 で一緒に追加する。Phase 1 で先に入れると、選べないモデルが localStorage から復元されうる)
+- [x] `features/admin-dashboard/lib/ai-cost-rates.ts` の `MODEL_COST_RATES` に 2.5 の9値を `basis: "derived"` で追加(REQ-010 / REQ-011 / ADR-004)
+- [x] ⭐ 回帰ガード: 既存 `gpt-image-2-*` の canonical / percoin / API モデル名 / 原価が 1つも変わらないことをテストで固定(REQ-013)
+  - `tests/unit/shared/generation/openai-image-model.test.ts`(新規)と `tests/unit/features/admin-dashboard/build-ai-cost.test.ts` に追加
+
+**Phase 1 の実装メモ(2026-09-10)**:
+- worker の `normalizeModelName()` に **暫定の family ガード**を入れた(`family !== "gpt-image-2"` なら throw)。API へ送るモデル名を family に追従させるのは Phase 2 なので、それまで 2.5 のジョブが 2.0 として実行・課金されないための保険。**Phase 2 で撤去する**
+- Phase 1 の時点で 2.5 は `KNOWN_MODEL_INPUTS` を通るが、`image_jobs_model_check` が 2.0 のみなので INSERT で弾かれる(route handler は残高チェックと INSERT だけで減算は worker → 課金なし)。**穴が開くのは Phase 2 のマイグレーション + worker デプロイから Phase 3 のゲートまでの間**なので、Phase 2 の本番適用は Phase 3 のコードと同時に行う
+- worker の `deno check` は main 時点で 26 件の既存エラー(SupabaseClient 型不一致 / `EdgeRuntime` / `never`)があり、Phase 1 で増減なし
 
 **注意**: この時点では **`GUEST_ALLOWED_MODELS` と `FREE_PLAN_ALLOWED_MODELS` に 2.5 を追加しない**。運営限定の段階では不要で、追加すると一般公開前に穴が開く。
 
@@ -442,8 +448,8 @@ flowchart LR
   - `generated_images_model_check` に 2.5 の9値を追加
   - `image_jobs_model_check` に同じ9値を追加
   - 適用後の検証ブロック(`DO $$` で制約の存在を確認)を付ける
-- [ ] `supabase/functions/image-gen-worker/index.ts` の `normalizeModelName()`(657-690行)を、2.5 canonical を通すよう更新
-  - 現状 `isOpenAIImageModel(model)` かつ 2.0 canonical でない場合に `Invalid GPT Image 2 model` を投げる。ここを `parseOpenAIImageModel()` 起点に置き換える
+- [ ] `supabase/functions/image-gen-worker/index.ts` の `normalizeModelName()` から **Phase 1 で入れた暫定 family ガード(`family !== "gpt-image-2"` で throw)を撤去**し、2.5 canonical を通す
+  - `parseOpenAIImageModel()` 起点への置き換え自体は Phase 1 で完了済み。残っているのはガードの撤去だけ
 - [ ] `supabase/functions/image-gen-worker/openai-image.ts:274,393` の `form.append("model", "gpt-image-2")` を、呼び出し側から渡された family へ差し替え(REQ-005)
   - `CallOpenAIImageEditBatchParams` / `CallOpenAIImageEditMultiInputParams` に `family` を必須で追加
 - [ ] `features/generation/lib/openai-image.ts:322,433` に**同じ変更**を入れる(2ファイルはビット同等を保つ規約)
@@ -458,7 +464,7 @@ flowchart LR
   - これが無いと Phase 5 の合格ライン③(実原価)が判定できない
 - [ ] `supabase/functions/image-gen-worker/index.ts` の呼び出し2箇所(1101, 2595 付近)で `family` を渡す
 - [ ] `features/generation/lib/guest-generate.ts:287` の OpenAI dispatch で `family` を渡す
-- [ ] `resolveOpenAIRequestTimeoutMs()`(94-103行)の引数型を新パーサの戻り値へ更新(REQ-008: タイムアウト値そのものは 2.0 と同じまま)
+- [x] `resolveOpenAIRequestTimeoutMs()`(94-103行)の引数型を新パーサの戻り値へ更新(REQ-008: タイムアウト値そのものは 2.0 と同じまま)→ Phase 1 で完了(`ParsedOpenAIImageModel`)
 - [ ] `.cursor/rules/database-design.mdc` の `model` 許容値リスト(133行 / 142行付近)を更新
 
 **⚠️ このフェーズのマイグレーションと worker は、Next.js より先にデプロイする(ADR-005)。**

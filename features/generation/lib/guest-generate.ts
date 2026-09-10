@@ -13,7 +13,7 @@ import {
 import {
   extractImageSize,
   isOpenAIImageModel,
-  parseGptImage2Model,
+  parseOpenAIImageModel,
   toApiModelName,
   type GeminiModel,
   type GeminiOnlyModel,
@@ -284,11 +284,13 @@ async function dispatchOpenAI(
   const openaiClient = input.openaiClient ?? callOpenAIImageEdit;
   const openaiMultiInputClient =
     input.openaiMultiInputClient ?? callOpenAIImageEditMultiInput;
-  const gptImage2 = parseGptImage2Model(input.model);
-  if (!gptImage2) {
+  // ゲストは GUEST_ALLOWED_MODELS(gpt-image-2 low-1k のみ)で絞られて到達するため
+  // family 分岐は不要。API へ送るモデル名の family 対応は Phase 2 で行う。
+  const openaiModel = parseOpenAIImageModel(input.model);
+  if (!openaiModel) {
     return {
       kind: "openai_provider_error",
-      message: `Invalid GPT Image 2 model: ${input.model}`,
+      message: `Invalid OpenAI image model: ${input.model}`,
     };
   }
   try {
@@ -310,7 +312,7 @@ async function dispatchOpenAI(
           );
     const targetSize = targetLabel
       ? getGptImage2TargetSize(
-          gptImage2.sizeTier,
+          openaiModel.sizeTier,
           aspectLabelToDimensions(targetLabel),
         )
       : undefined;
@@ -330,8 +332,8 @@ async function dispatchOpenAI(
         ],
         targetSizeBaseIndex: 0,
         timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
-        quality: gptImage2.quality,
-        sizeTier: gptImage2.sizeTier,
+        quality: openaiModel.quality,
+        sizeTier: openaiModel.sizeTier,
         targetSize,
         apiKey: input.openaiApiKey,
         n: 1,
@@ -345,8 +347,8 @@ async function dispatchOpenAI(
         prompt: input.promptText,
         inputImage: { base64, mimeType: input.uploadImage.type },
         timeoutMs: input.openaiTimeoutMs ?? GUEST_OPENAI_TIMEOUT_MS,
-        quality: gptImage2.quality,
-        sizeTier: gptImage2.sizeTier,
+        quality: openaiModel.quality,
+        sizeTier: openaiModel.sizeTier,
         targetSize,
         apiKey: input.openaiApiKey,
       });

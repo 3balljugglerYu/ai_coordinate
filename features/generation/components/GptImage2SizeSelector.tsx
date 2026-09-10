@@ -16,8 +16,8 @@ import {
   isModelAvailableForGeneration,
 } from "@/features/generation/lib/model-config";
 import {
-  composeGptImage2Model,
-  parseGptImage2Model,
+  composeOpenAIImageModel,
+  parseOpenAIImageModel,
   type GeminiModel,
   type GptImage2SizeTier,
 } from "@/features/generation/types";
@@ -52,7 +52,7 @@ export function GptImage2SizeSelector({
   isModelSelectable,
 }: GptImage2SizeSelectorProps) {
   const t = useTranslations("coordinate");
-  const parsed = parseGptImage2Model(value);
+  const parsed = parseOpenAIImageModel(value);
 
   if (!parsed) {
     return null;
@@ -62,7 +62,11 @@ export function GptImage2SizeSelector({
 
   const handleValueChange = (next: string) => {
     const nextSizeTier = next as GptImage2SizeTier;
-    const nextModel = composeGptImage2Model(parsed.quality, nextSizeTier);
+    const nextModel = composeOpenAIImageModel(
+      parsed.family,
+      parsed.quality,
+      nextSizeTier
+    );
     if (!isModelAvailableForGeneration(nextModel)) {
       return;
     }
@@ -105,7 +109,8 @@ export function GptImage2SizeSelector({
         </SelectTrigger>
         <SelectContent>
           {SIZE_OPTIONS.map((option) => {
-            const optionModel = composeGptImage2Model(
+            const optionModel = composeOpenAIImageModel(
+              parsed.family,
               parsed.quality,
               option.value
             );
