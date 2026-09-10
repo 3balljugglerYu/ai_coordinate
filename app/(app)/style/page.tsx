@@ -11,6 +11,12 @@ import { getPublishedStylePreset } from "@/features/style-presets/lib/get-public
 interface StylePageProps {
   searchParams?: Promise<{
     style?: string;
+    /**
+     * 告知バナーからの着地でモデルを先に選んでおくためのパラメータ。
+     * URL 由来の外部入力なので、値の検証は StylePageClient 側の
+     * `resolveEffectiveModelForAuthState` に必ず通す(生の値を使わない)。
+     */
+    model?: string;
   }>;
 }
 

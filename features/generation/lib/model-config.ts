@@ -204,6 +204,44 @@ export function resolveEffectiveModelForAuthState(
 }
 
 /**
+ * URL クエリ(`/style?model=...`)で指定されたモデルを、先に選んでおいてよいか判定する。
+ *
+ * 告知バナーからの着地で「もう選んである」状態を作るための入口だが、
+ * **URL は誰でも書き換えられる外部入力**なので、UI で選べないモデルを
+ * ここで通してしまうと南京錠(ゲスト制限・無料プラン制限・段階公開)を
+ * URL 一本で迂回できてしまう。
+ *
+ * 判定は「その人がセレクターで実際に選べるか」と同じ条件に揃える:
+ *   1. 既知のモデル文字列か(未知・legacy 別名は canonical へ正規化)
+ *   2. `resolveEffectiveModelForAuthState` を通して値が変わらないか
+ *      (ゲスト許可・段階公開フラグ・kill switch)
+ *   3. 無料プランなら `isFreePlanAllowedModel` に含まれるか
+ *      (サーバー強制ではない UI 制限だが、URL で破れる状態は作らない)
+ *
+ * 通らなければ `null` を返す。呼び出し側は従来どおり localStorage の値を使う。
+ */
+export function resolveRequestedModelFromUrl(
+  raw: string | null | undefined,
+  authState: 'guest' | 'authenticated',
+  options: { gptImage25Available?: boolean; isFreePlan?: boolean } = {}
+): GeminiModel | null {
+  if (!isKnownModelInput(raw)) {
+    return null;
+  }
+  const canonical = normalizeModelName(raw);
+  const effective = resolveEffectiveModelForAuthState(canonical, authState, {
+    gptImage25Available: options.gptImage25Available,
+  });
+  if (effective !== canonical) {
+    return null;
+  }
+  if (options.isFreePlan && !isFreePlanAllowedModel(canonical)) {
+    return null;
+  }
+  return canonical;
+}
+
+/**
  * モデル名からペルコイン消費量を取得
  */
 export function getPercoinCost(model: string | null | undefined): number {

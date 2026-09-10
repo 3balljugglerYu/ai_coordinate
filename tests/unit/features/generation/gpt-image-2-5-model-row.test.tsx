@@ -63,6 +63,7 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
 const labels: Record<string, string> = {
   modelChatGptImages: "ChatGPT Images 2.0",
   modelChatGptImages25: "ChatGPT Images 2.5",
+  modelNewBadge: "NEW",
   modelNanoBanana2: "Nano Banana 2",
   modelNanoBananaPro: "Nano Banana Pro",
   modelTagEngineOpenai: "OpenAI",
@@ -78,6 +79,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  jest.useRealTimers();
   jest.clearAllMocks();
 });
 
@@ -217,6 +219,64 @@ describe("ChatGPT Images 2.5 の行（段階公開 / REQ-001・REQ-002）", () =
     fireEvent.click(screen.getByRole("button", { name: /ChatGPT Images 2\.5/ }));
     expect(onChange).toHaveBeenCalledWith("gpt-image-2.5-flare-low-1k");
     expect(onLockedClick).not.toHaveBeenCalled();
+  });
+
+  // NEW バッジは期限付き(2026-09-30 23:59:59 JST)。時刻を固定しないと
+  // 期限を過ぎた日にこのテストが勝手に落ちるため、期間内に固定する。
+  const withinPeriod = () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-09-15T00:00:00Z"));
+  };
+
+  test("2.5 の行には NEW バッジを出す（ホームの新着バッジと同じ意匠）", () => {
+    withinPeriod();
+    renderAsAdmin(
+      <LockableModelSelect
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    const row25 = screen.getByRole("button", { name: /ChatGPT Images 2\.5/ });
+    expect(row25).toHaveTextContent("NEW");
+
+    // 2.0 の行には出さない
+    const row20 = screen.getByRole("button", { name: /ChatGPT Images 2\.0/ });
+    expect(row20).not.toHaveTextContent("NEW");
+  });
+
+  test("期限を過ぎたら NEW バッジは消える（設定変更なしで自動的に）", () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-10-01T00:00:00Z"));
+    renderAsAdmin(
+      <LockableModelSelect
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByRole("button", { name: /ChatGPT Images 2\.5/ })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("NEW")).not.toBeInTheDocument();
+  });
+
+  test("2.5 を選べない人には NEW バッジも出ない", () => {
+    withinPeriod();
+    render(
+      <LockableModelSelect
+        value="gpt-image-2-low-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByText("NEW")).not.toBeInTheDocument();
   });
 
   test("非運営に 2.5 の値が渡っても、表示は 2.0 の行へ丸める（REQ-014）", () => {

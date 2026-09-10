@@ -4,6 +4,7 @@ import {
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
   isFreePlanAllowedModel,
+  resolveRequestedModelFromUrl,
   isModelAvailableForGeneration,
   parseGuestRequestedModel,
   resolveEffectiveModelForAuthState,
@@ -197,6 +198,99 @@ describe("model-config / model identification helpers", () => {
       expect(parseGuestRequestedModel("")).toBeNull();
       expect(parseGuestRequestedModel(null)).toBeNull();
       expect(parseGuestRequestedModel(undefined)).toBeNull();
+    });
+  });
+
+  describe("resolveRequestedModelFromUrl（告知バナーの ?model= 対策）", () => {
+    it("未知の文字列・空・null は採用しない", () => {
+      for (const raw of ["", "not-a-model", "javascript:alert(1)", null, undefined]) {
+        expect(
+          resolveRequestedModelFromUrl(raw, "authenticated", {
+            gptImage25Available: true,
+          })
+        ).toBeNull();
+      }
+    });
+
+    it("legacy 別名は canonical に正規化して採用する", () => {
+      expect(
+        resolveRequestedModelFromUrl("gpt-image-2-low", "authenticated", {
+          gptImage25Available: true,
+        })
+      ).toBe("gpt-image-2-low-1k");
+    });
+
+    it("バナーが使う 2.5 Low(1k)は、ゲストでも採用する", () => {
+      expect(
+        resolveRequestedModelFromUrl(
+          "gpt-image-2.5-flare-low-1k",
+          "guest",
+          { gptImage25Available: true }
+        )
+      ).toBe("gpt-image-2.5-flare-low-1k");
+    });
+
+    it("段階公開中(available=false)は 2.5 を採用しない", () => {
+      expect(
+        resolveRequestedModelFromUrl(
+          "gpt-image-2.5-flare-low-1k",
+          "authenticated",
+          { gptImage25Available: false }
+        )
+      ).toBeNull();
+    });
+
+    it("ゲストが許可外モデルを URL で指定しても採用しない", () => {
+      for (const raw of [
+        "gpt-image-2-high-4k",
+        "gpt-image-2.5-flare-medium-1k",
+        "gemini-3-pro-image-4k",
+      ]) {
+        expect(
+          resolveRequestedModelFromUrl(raw, "guest", {
+            gptImage25Available: true,
+          })
+        ).toBeNull();
+      }
+    });
+
+    it("⭐ 無料プランが URL で有料モデルを指定しても採用しない（南京錠の迂回防止）", () => {
+      for (const raw of [
+        "gpt-image-2-high-1k",
+        "gpt-image-2.5-flare-high-4k",
+        "gpt-image-2.5-flare-medium-2k",
+      ]) {
+        expect(
+          resolveRequestedModelFromUrl(raw, "authenticated", {
+            gptImage25Available: true,
+            isFreePlan: true,
+          })
+        ).toBeNull();
+      }
+    });
+
+    it("無料プランでも許可内(2.5 の Low / Medium の 1k)は採用する", () => {
+      for (const raw of [
+        "gpt-image-2.5-flare-low-1k",
+        "gpt-image-2.5-flare-medium-1k",
+      ]) {
+        expect(
+          resolveRequestedModelFromUrl(raw, "authenticated", {
+            gptImage25Available: true,
+            isFreePlan: true,
+          })
+        ).toBe(raw);
+      }
+    });
+
+    it("有料プランなら High / 4K も採用する", () => {
+      expect(
+        resolveRequestedModelFromUrl(
+          "gpt-image-2.5-flare-high-4k",
+          "authenticated",
+          { gptImage25Available: true, isFreePlan: false }
+        )
+      ).toBe("gpt-image-2.5-flare-high-4k");
     });
   });
 

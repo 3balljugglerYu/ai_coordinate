@@ -35,6 +35,7 @@ const EMPTY_UNLOCK_CONTEXT: CollectionUnlockContext = {
 interface StylePageBodyProps {
   searchParams?: Promise<{
     style?: string;
+    model?: string;
   }>;
 }
 
@@ -206,6 +207,9 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
           presets={presets}
           initialAuthState={user ? "authenticated" : "guest"}
           initialSelectedPresetId={params.style ?? null}
+          // 告知バナーからの着地(?model=)。生の文字列のまま渡し、
+          // 検証と丸めはクライアント側の共通ロジックに任せる。
+          requestedModel={params.model ?? null}
           lockedRequestedReason={lockedRequestedReason}
           // ログインユーザーは生成結果一覧（下に並ぶ <CachedGeneratedImageGallery>）
           // が結果表示を担うため、即時結果パネルは非表示にする。
