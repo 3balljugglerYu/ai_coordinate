@@ -124,6 +124,20 @@ describe("GptImage2SizeSelector", () => {
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-medium-4k");
   });
 
+  test("ChatGPT Images 2.5 を選択中でも family を保ったまま size tier を合成する", () => {
+    const onChange = jest.fn();
+    render(
+      <GptImage2SizeSelector
+        value="gpt-image-2.5-flare-medium-1k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /4K/ }));
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2.5-flare-medium-4k");
+  });
+
   test("size tier ラベル（1K / 2K / 4K）が並ぶ", () => {
     // 759e2ab で per-option の percoin cost 表示はツールチップに移動され、
     // セレクタ自体は tier ラベルのみを描画する。価格情報は tooltip 経由で参照する。

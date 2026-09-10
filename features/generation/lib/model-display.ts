@@ -14,6 +14,12 @@ export function getModelBrandName(
   if (typeof model !== "string" || model.length === 0) {
     return null;
   }
+  // ⚠️ 2.5 の判定を 2.0 より前に置く。`gpt-image-2.5-flare-low-1k` は
+  // `startsWith("gpt-image-")` にも一致するため、順序を逆にすると 2.5 が
+  // 「ChatGPT Images 2.0」と表示される（REQ-012）。
+  if (model.startsWith("gpt-image-2.5-")) {
+    return "ChatGPT Images 2.5";
+  }
   if (model.startsWith("gpt-image-")) {
     return "ChatGPT Images 2.0";
   }
@@ -82,6 +88,44 @@ const MODEL_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> = {
   },
   "gpt-image-2-high-4k": {
     displayName: "ChatGPT Images 2.0 | High",
+    defaultSize: { width: 2880, height: 2880 },
+  },
+  // ChatGPT Images 2.5(flare)。tier ごとのピクセル予算は 2.0 と共通
+  // （`GPT_IMAGE_2_TIER_LIMITS`）なので defaultSize も同じ値を使う。
+  "gpt-image-2.5-flare-low-1k": {
+    displayName: "ChatGPT Images 2.5 | Low",
+    defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2.5-flare-low-2k": {
+    displayName: "ChatGPT Images 2.5 | Low",
+    defaultSize: { width: 2048, height: 2048 },
+  },
+  "gpt-image-2.5-flare-low-4k": {
+    displayName: "ChatGPT Images 2.5 | Low",
+    defaultSize: { width: 2880, height: 2880 },
+  },
+  "gpt-image-2.5-flare-medium-1k": {
+    displayName: "ChatGPT Images 2.5 | Medium",
+    defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2.5-flare-medium-2k": {
+    displayName: "ChatGPT Images 2.5 | Medium",
+    defaultSize: { width: 2048, height: 2048 },
+  },
+  "gpt-image-2.5-flare-medium-4k": {
+    displayName: "ChatGPT Images 2.5 | Medium",
+    defaultSize: { width: 2880, height: 2880 },
+  },
+  "gpt-image-2.5-flare-high-1k": {
+    displayName: "ChatGPT Images 2.5 | High",
+    defaultSize: { width: 1024, height: 1024 },
+  },
+  "gpt-image-2.5-flare-high-2k": {
+    displayName: "ChatGPT Images 2.5 | High",
+    defaultSize: { width: 2048, height: 2048 },
+  },
+  "gpt-image-2.5-flare-high-4k": {
+    displayName: "ChatGPT Images 2.5 | High",
     defaultSize: { width: 2880, height: 2880 },
   },
   // Nano Banana 系も Gemini API が入力アスペクト比から自動選択した

@@ -15,6 +15,29 @@ describe("getModelBrandName", () => {
     });
   });
 
+  describe("ChatGPT Images 2.5", () => {
+    it("returns 'ChatGPT Images 2.5' for the gpt-image-2.5-* prefix", () => {
+      expect(getModelBrandName("gpt-image-2.5-flare-low-1k")).toBe(
+        "ChatGPT Images 2.5",
+      );
+      expect(getModelBrandName("gpt-image-2.5-flare-high-4k")).toBe(
+        "ChatGPT Images 2.5",
+      );
+      // sunburst は未導入だが、family 名が変わっても 2.5 として扱う
+      expect(getModelBrandName("gpt-image-2.5-sunburst-low-1k")).toBe(
+        "ChatGPT Images 2.5",
+      );
+    });
+
+    it("2.5 の判定が 2.0 より前にある（REQ-012 の回帰ガード）", () => {
+      // `gpt-image-2.5-flare-low-1k` は startsWith("gpt-image-") にも一致するため、
+      // 分岐順を逆にするとこのテストが落ちる
+      expect(getModelBrandName("gpt-image-2.5-flare-medium-2k")).not.toBe(
+        "ChatGPT Images 2.0",
+      );
+    });
+  });
+
   describe("Nano Banana Pro", () => {
     it("returns 'Nano Banana Pro' for gemini-3-pro-image-* prefix", () => {
       expect(getModelBrandName("gemini-3-pro-image-1k")).toBe("Nano Banana Pro");
@@ -95,6 +118,38 @@ describe("getModelDisplayInfo", () => {
     expect(getModelDisplayInfo("unknown-model")).toEqual(fallback);
     expect(getModelDisplayInfo(null)).toEqual(fallback);
     expect(getModelDisplayInfo(undefined)).toEqual(fallback);
+  });
+});
+
+describe("getModelDisplayInfo（ChatGPT Images 2.5）", () => {
+  it("2.5 の 9 値すべてが専用の displayName を返す", () => {
+    const expected: Array<[string, string, number]> = [
+      ["gpt-image-2.5-flare-low-1k", "ChatGPT Images 2.5 | Low", 1024],
+      ["gpt-image-2.5-flare-low-2k", "ChatGPT Images 2.5 | Low", 2048],
+      ["gpt-image-2.5-flare-low-4k", "ChatGPT Images 2.5 | Low", 2880],
+      ["gpt-image-2.5-flare-medium-1k", "ChatGPT Images 2.5 | Medium", 1024],
+      ["gpt-image-2.5-flare-medium-2k", "ChatGPT Images 2.5 | Medium", 2048],
+      ["gpt-image-2.5-flare-medium-4k", "ChatGPT Images 2.5 | Medium", 2880],
+      ["gpt-image-2.5-flare-high-1k", "ChatGPT Images 2.5 | High", 1024],
+      ["gpt-image-2.5-flare-high-2k", "ChatGPT Images 2.5 | High", 2048],
+      ["gpt-image-2.5-flare-high-4k", "ChatGPT Images 2.5 | High", 2880],
+    ];
+    for (const [model, displayName, edge] of expected) {
+      expect(getModelDisplayInfo(model)).toEqual({
+        displayName,
+        defaultSize: { width: edge, height: edge },
+      });
+    }
+  });
+
+  it("2.0 の表示は変わらない（回帰ガード）", () => {
+    expect(getModelDisplayInfo("gpt-image-2-low-1k").displayName).toBe(
+      "ChatGPT Images 2.0 | Low",
+    );
+    expect(getModelDisplayInfo("gpt-image-2-high-4k")).toEqual({
+      displayName: "ChatGPT Images 2.0 | High",
+      defaultSize: { width: 2880, height: 2880 },
+    });
   });
 });
 

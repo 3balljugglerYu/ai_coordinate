@@ -528,23 +528,29 @@ flowchart LR
 **目的**: 運営に「ChatGPT Images 2.5」の行が見え、生成結果に正しいブランド名が出る。
 **ビルド確認**: 4検証コマンドが通る。ローカルで運営アカウントに行が出て、非運営に出ないことを確認。
 
-- [ ] `features/generation/components/LockableModelSelect.tsx`
-  - `MODEL_OPTIONS` に `gpt-image-2.5-flare-row`(`labelKey: "modelChatGptImages25"`, `engineTag: "engineOpenai"`)を追加
+- [x] `features/generation/components/LockableModelSelect.tsx`
+  - `MODEL_OPTIONS` に `gpt-image-2.5-flare-row`(`labelKey: "modelChatGptImages25"`, `engineTag: "engineOpenai"`)を追加(2.0 の直後 = 2 行目)
   - `useGptImage25Available()` が false のとき、その行を出さない(REQ-001 / REQ-002)
   - `toOptionCanonicalValue()` の family 切り替えロジックを 2.5 に対応(REQ-003: size を維持、無効なら 1k、quality は low)
-  - `getCurrentRowValue()`(146-152行)を `parseOpenAIImageModel().family` 起点に変更
-- [ ] `features/generation/components/GptImage2QualitySelector.tsx` / `GptImage2SizeSelector.tsx` を family 対応
-  - `parseOpenAIImageModel()` に差し替え、`composeOpenAIImageModel(parsed.family, ...)` で組み立てる
-  - 品質選択肢は 3段のまま(REQ-004 / ADR-006)
-- [ ] `features/generation/lib/model-display.ts`
-  - ⚠️ `getModelBrandName()`: **`startsWith("gpt-image-2.5-")` の分岐を `startsWith("gpt-image-")` より前に置く**(順序を誤ると 2.5 が 2.0 と表示される。REQ-012)
-  - `MODEL_LIST_DISPLAY_MAP` に 2.5 の9値を追加(`"ChatGPT Images 2.5 | Low"` 等)
-- [ ] `features/generation/lib/model-tags.ts` の `getModelTagsForCanonicalModel()` に 2.5 の3分岐を追加(`gpt-image-2.5-flare-low` / `-medium` / `-high`)
-- [ ] i18n: `modelChatGptImages25: "ChatGPT Images 2.5"` を **15ファイルすべて**に追加(`messages/ja.ts` が型の正本。他14ファイルは `satisfies` により同時追加が必須)
-- [ ] ⭐ 回帰ガード: 2.0 のブランド名・tier チップ・表示名が変わらないことをテストで固定
-- [ ] エラー分類の堅牢化(Node/Deno 両方)。公式の安定した識別子は `error.code === "moderation_blocked"`(`error.type = "image_generation_user_error"`)だが、現行は `content_policy_violation` かメッセージ正規表現 `/moderation|safety/i` の2段構え(`supabase/functions/image-gen-worker/openai-image.ts:92-99` / `features/generation/lib/openai-image.ts:147-153`)。**`moderation_blocked` を code 側の判定に加える**
-  - 補足: 直近180日の OpenAI 系失敗 252件のうち、未分類のまま漏れた moderation 系は0件だった(190件が `safety_policy_blocked` に分類済み、残り62件は課金上限・保存サイズ超過など別種)。ただし DB には分類後の定数しか残らず**生メッセージが破棄されている**ため、「code で当たったのか正規表現で当たったのか」は判別できない。**現時点で壊れている証拠は無いが、正規表現頼みなのは事実**なので予防的に足す
-  - 返金経路(`SAFETY_POLICY_BLOCKED_ERROR` → non-retriable + 返金)に乗ることをテストで固定
+  - `getCurrentRowValue()` を `parseOpenAIImageModel().family` 起点に変更
+- [x] ~~`GptImage2QualitySelector.tsx` / `GptImage2SizeSelector.tsx` を family 対応~~ → **Phase 1 で対応済みだった**。両者とも `parseOpenAIImageModel(value)` → `composeOpenAIImageModel(parsed.family, ...)` の形になっており、2.5 でも family を保ったまま quality / size を組み替える。Phase 4 では**その挙動をテストで固定**し、doc コメントを 2.0 限定の記述から直しただけ
+- [x] `features/generation/lib/model-display.ts`
+  - `getModelBrandName()`: `startsWith("gpt-image-2.5-")` の分岐を `startsWith("gpt-image-")` より**前**に置いた(REQ-012)。順序を逆にすると落ちるテストも足した
+  - `MODEL_LIST_DISPLAY_MAP` に 2.5 の 9 値を追加(`"ChatGPT Images 2.5 | Low"` 等)。`defaultSize` は `GPT_IMAGE_2_TIER_LIMITS` が family 非依存なので 2.0 と同値(1024 / 2048 / 2880)
+- [x] `features/generation/lib/model-tags.ts` の `getModelTagsForCanonicalModel()` に 2.5 の3分岐を追加
+- [x] i18n: `modelChatGptImages25: "ChatGPT Images 2.5"` を **15ファイルすべて**に追加(ブランド名なので全ロケール同一文字列)
+- [x] **(Phase 1 から移動)** `features/generation/lib/form-preferences.ts` の `PERSISTABLE_MODELS` に `GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS` を追加
+- [x] ⭐ 回帰ガード: 2.0 のブランド名・tier チップ・表示名が変わらないことをテストで固定
+- [x] エラー分類の堅牢化(Node/Deno 両方)。`code === "moderation_blocked"` を **status に依存しない**独立分岐として追加し、既存の `content_policy_violation` + 正規表現(400 限定)はそのまま残した
+  - 返金経路: throw した文字列が `isSafetyPolicyBlockedErrorMessage()` で true になることをテストで固定(= non-retriable + 返金の既存経路に載る)
+
+**Phase 4 の実装メモ(2026-09-10)**:
+- **行の並びは 2.0 → 2.5 → Nano Banana 2 → Nano Banana Pro**。2.5 は検証中なので既定(2.0)を先頭に残した。全公開時に並べ替えるかは Phase 6 で判断する
+- **`useGptImage25Available()` の配線は Phase 3 で前倒し済み**だったので、Phase 4 で足したのは「行を出す / 出さない」の分岐だけ。`resolveEffectiveModelForAuthState` 側の clamp は Phase 3 のまま効いている
+- ⭐ **`getModelTagsForCanonicalModel` は元々 2.5 を誤判定しない**(`gpt-image-2.5-flare-low-1k` は `startsWith("gpt-image-2-low")` に一致しない)。それでも 2.5 の分岐を明示したのは、2.0 側の判定を将来 `gpt-image-2` プレフィックスに緩めたときの事故を防ぐため。**危ないのは `model-display.ts` の `startsWith("gpt-image-")` だけ**で、こちらは実際に 2.5 を巻き込むので順序で対処した
+- **worker の `isOpenAIImageModel()`(`startsWith("gpt-image-")`)は変更不要**。2.5 も OpenAI 経路に流すのが正しいため、ここは巻き込んで良い箇所
+- **Deno 側の `moderation_blocked` 追加は Jest のテスト対象外**(worker は tsconfig の exclude)。Node 側と同一の差分を当てているので、パリティは目視 + `deno check` で担保する
+- ⚠️ **検証環境の注意: `deno check --node-modules-dir=auto` を実行してはいけない**。Deno が npm 依存を `node_modules/.deno/` 配下へ入れ直し、`node_modules/stripe` などが package-lock より新しい版へのシンボリックリンクに置き換わる。その状態では lint 22→109 errors・`tsc` の非テストエラー 0→11・`npm run build` が失敗・`style-page-client.test.tsx` が落ちる、という**コード変更と無関係の赤**が一斉に出る。復旧は `npm ci`。worker の型検査が要るときは、リポジトリ本体から切り離した場所で行うこと
 
 ---
 
