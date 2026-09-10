@@ -370,17 +370,39 @@ Phase 0（アプリ）と Phase 1（Web）は別リポジトリで独立して�
 目的: ホームからの閲覧、投稿、いいね、コメント、フォローが Web と同じルールで動く。
 ビルド確認: アプリで投稿した作品が Web のホームに出て、Web でのいいねとコメントがアプリの詳細に反映される。
 
-- [ ] ホーム一覧: `GET /api/posts?sort=newest|following&limit=&offset=`（`following` は Bearer）。`home_repository.dart:82-90, 175-220` の直読みとメモリ集計を置換（ADR-002）
-- [ ] 🔥人気タブ: `sort=popular_prompts`。表示は `--dart-define` の `POPULAR_PROMPTS_ENABLED` に連動（ADR-009）
-- [ ] 投稿詳細: `generated_images` と `profiles` の公開行を直読み（RLS）、いいね数とコメント数、投稿者、引用元。プロンプト本文は `GET /api/posts/[id]/prompt-text`（Bearer。REQ-09）
-- [ ] 投稿: `POST /api/posts/post`（Bearer。REQ-08）。付与されたボーナスを結果表示。編集と削除は `generated_images` 本人 UPDATE／DELETE
-- [ ] いいね: `likes` 直接 INSERT／DELETE。コメントと返信: `comments` 直接、削除は `delete_comment_thread` RPC
-- [ ] フォローとブロック: `follows`、`user_blocks` 直接。件数は `get_follow_counts`
-- [ ] 閲覧数: `increment_view_count` RPC。通報: `POST /api/reports/posts`（Bearer）
-- [ ] プロンプト利用（派生）: `POST /api/posts/prompt-actions`（Bearer）→ Phase 3 の生成へ `sourcePostId` を渡す
-- [ ] ハッシュタグ: 投稿時の同期は API 側（`features/posts/lib/hashtag-sync.ts`）。入力補完は `GET /api/hashtags/search`（Bearer）。検索は `GET /api/posts?q=`（フラグ連動）
-- [ ] 共有: `share_plus`（Web の `download-image.ts` と同じく、モバイルは共有シート）
-- [ ] 戻り導線: `from` 相当のナビゲーション状態を auto_route で保持（`docs/product/screen-flow.md` 戻る導線のルール）
+- [x] ホーム一覧: `GET /api/posts`（`following` は Bearer）— 新着/人気は Phase 0 で、`following` は persta-app #25 で API 経由に。`getPosts` が `getUser()` で閲覧者を解決するため Bearer で動き、サーバー側のブロック・通報除外がそのまま効く（アプリ側の直読みと再実装を削除）
+- [x] 🔥人気タブ: `sort=popular_prompts`、表示は `POPULAR_PROMPTS_ENABLED` に連動（Phase 0 で実施済み）
+- [x] 投稿詳細: `generated_images` と `profiles` の直読み、いいね数・コメント数・投稿者・引用元（Phase 0）。プロンプト本文は `GET /api/posts/[id]/prompt-text` — persta-app #24
+- [x] 投稿: `POST /api/posts/post`（Bearer）— persta-app #23。付与されたボーナスをミッション名つきで表示。編集は `PUT /api/posts/update`、投稿取り消しは `DELETE /api/posts/[id]`（本人 UPDATE/DELETE ではなくルート経由。ボーナス付与・ハッシュタグ同期・キャッシュ無効化がルート側にあるため）
+- [x] いいね・コメント・返信（Phase 0 で実施済み）
+- [x] フォローとブロック（Phase 0）。プロンプト利用のフォローゲートは #24 で追加
+- [x] 閲覧数: `increment_view_count`（Phase 0）。通報: `POST /api/reports/posts`（Bearer）— persta-app #25。通報者の重み付け・レート制限・自動非表示がルート側にあるため `post_reports` への直接 INSERT はしない
+- [x] プロンプト利用（派生）: `POST /api/posts/prompt-actions` でカード、生成は `sourcePostId` のみ送り本文は送らない — persta-app #24
+- [x] ハッシュタグ: 投稿時の同期は API 側。`lib/hashtag.ts` を Dart へ移植して入力と保存の食い違いを防ぐ（#23）。候補は `GET /api/hashtags/suggestions`
+- [x] 共有: 共有シートへファイルを渡す（Phase 3 #22）
+- [x] 戻り導線: `from` 相当は auto_route のスタックが担っており、入口ごとに戻り先が変わる挙動は既に成立。persta-app #26 でテストとして固定
+
+#### Phase 4 の実施結果（2026-09-07）
+
+| PR | 内容 |
+|----|------|
+| persta-app #23 | 投稿（投稿シート・タグ候補・プロンプト公開設定・ボーナス表示・編集/取り消し） |
+| persta-app #24 | 他人のプロンプトで生成（カード・フォローゲート・本文の開示条件・派生生成） |
+| persta-app #25 | フォロー中タブの API 化、アプリ内通報 |
+| persta-app #26 | 戻り導線のテスト固定 |
+| persta-app #27 | 投稿詳細の3点メニューに投稿者本人の「編集」「投稿を取り消す」、生成ボタンの無効化条件を Web と同じに（実機報告の対応） |
+| persta-app #28 | 派生生成が端末で送信されずに落ちていた不具合の修正。生成中の連打防止、ステータスの逐次アニメーション、完了後に消える挙動を Web に合わせた（実機報告の対応） |
+
+判断と残課題:
+
+- プロンプトの公開設定は Web と同じ条件（`generation_type = free` かつ非派生）のときだけ送る。条件外で `prompt_visibility` を送ると DB trigger が拒否するため、列自体に触れない
+- 他人の非公開プロンプトは取得要求自体を出さない（表示だけ伏せる作りにしない）
+- 投稿ボーナスのダイアログで Web はクリエイター還元額も案内するが、額は service_role でしか読めないためアプリでは出していない
+- ⭐autoDispose の ViewModel へ別画面から書き込むと watch 前に破棄される。派生生成の受け渡しは共有 provider を経由する（ウィジェットテストで実際に失われて発覚）
+- 実機確認済み（2026-09-08、Phase 3 と同じ端末・手順）。実機でしか出ない不具合が 2 件見つかり、#27・#28 で対応した
+- ⭐派生生成は本文を送らないのが仕様（ワーカーが投稿者の秘匿テーブルから解決し、両方送ると API が拒否する）。ところがリポジトリ側に「prompt 必須」の検証が残っていて、送信前に派生生成を全て弾いていた。リクエストが端末を出ないためサーバー由来の文言も出ず、「ボタンが無反応」に見える（#28）
+- ⭐投稿者本人の編集・取り消しは生成結果カードに置いていたが、Web のモバイル版では投稿詳細の3点メニューにある。置き場所が違うと機能が無いのと同じで、見つけてもらえない（#27）
+- ⭐実機だけで起きる不具合は推測で直さない。`fvm flutter logs` に診断出力を仕込んで原因を確定させる（3 回推測して外したあと、ログ 1 回で確定した）
 
 ### Phase 5: マイページとアカウント（persta-app）
 
