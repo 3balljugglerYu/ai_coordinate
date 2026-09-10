@@ -41,11 +41,14 @@ import {
 import {
   OPENAI_IMAGE_PERCOIN_COSTS,
   parseOpenAIImageModel,
+  toOpenAIApiModelName,
 } from "../../../shared/generation/openai-image-model.ts";
 import type {
+  OpenAIImageApiModelName,
   OpenAIImageCanonicalModel,
   ParsedOpenAIImageModel,
 } from "../../../shared/generation/openai-image-model.ts";
+import type { OpenAIImageUsage } from "../../../shared/generation/openai-types.ts";
 import {
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
@@ -60,6 +63,7 @@ import {
   callOpenAIImageEditMultiInputBatch,
   parseImageDimensions,
 } from "./openai-image.ts";
+import type { OpenAIImageEditResult } from "./openai-image.ts";
 import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import {
@@ -137,6 +141,16 @@ type GeminiAttemptMetadata = {
   timedOut: boolean;
   errorMessage: string | null;
   reinforcementApplied: boolean;
+  /**
+   * OpenAI 経路のみ: 実際に API へ送ったモデル名(gpt-image-2 / gpt-image-2.5-flare)。
+   * DB の canonical model(family-quality-size)と突き合わせ、2.5 へ正しく投げたかを検証する。
+   */
+  apiModel?: OpenAIImageApiModelName;
+  /**
+   * OpenAI 経路のみ: レスポンスの usage(トークン消費)。API が返さなかった場合は null。
+   * 2.0 / 2.5 の実原価比較(Phase 5)を Edge ログではなく DB クエリでできるようにする。
+   */
+  openaiUsage?: OpenAIImageUsage | null;
 };
 
 function extractGeminiFinishReasons(payload: GeminiResponse | null | undefined): string[] {
@@ -661,14 +675,8 @@ function normalizeModelName(model: string | null): GeminiModel {
   }
   const openaiModel = parseOpenAIImageModel(model);
   if (openaiModel) {
-    // Phase 1(型体系の family 化)の暫定ガード。OpenAI API へ送るモデル名を family に
-    // 追従させるのは Phase 2 なので、それまでは gpt-image-2 以外の family を受理しない
-    // (DB の CHECK 制約も 2.0 のみのため通常はここに到達しない)。Phase 2 で撤去する。
-    if (openaiModel.family !== "gpt-image-2") {
-      throw new Error(
-        `Unsupported OpenAI image model family (not yet enabled): ${model}`,
-      );
-    }
+    // family(gpt-image-2 / gpt-image-2.5-flare)は API 呼び出し側で
+    // toOpenAIApiModelName(family) に解決するため、ここでは canonical に正規化するだけ。
     return openaiModel.canonical;
   }
   if (isOpenAIImageModel(model)) {
@@ -1089,10 +1097,11 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
  *
  * - image_0(ユーザーキャラ) + image_1(参照画像) + 衣装プロンプトで生成する。
  * - リトライ・計測・課金はしない(本体の段階2側で計測/課金/返金する)。
- * - Gemini / OpenAI(gpt-image-2) の両モデルに対応。アスペクト比は image_0 基準。
+ * - Gemini / OpenAI(gpt-image-2 / gpt-image-2.5-flare) の両モデルに対応。アスペクト比は image_0 基準。
  * - 戻り値は段階2の image_0 として使う。
  */
 async function generateCreatorLooksOutfitStage(params: {
+  jobId: string;
   dbModel: string;
   apiModel: string;
   geminiApiKey: string;
@@ -1100,7 +1109,8 @@ async function generateCreatorLooksOutfitStage(params: {
   image1: InputImageData;
   prompt: string;
 }): Promise<InputImageData> {
-  const { dbModel, apiModel, geminiApiKey, image0, image1, prompt } = params;
+  const { jobId, dbModel, apiModel, geminiApiKey, image0, image1, prompt } =
+    params;
 
   if (isOpenAIImageModel(dbModel)) {
     const openaiModel = parseOpenAIImageModel(dbModel);
@@ -1113,6 +1123,7 @@ async function generateCreatorLooksOutfitStage(params: {
       // 衣装着せの出力フレームは image_0(ユーザーキャラ)基準に固定する。
       targetSizeBaseIndex: 0,
       timeoutMs: resolveOpenAIRequestTimeoutMs(openaiModel),
+      family: openaiModel.family,
       quality: openaiModel.quality,
       sizeTier: openaiModel.sizeTier,
       n: 1,
@@ -1120,6 +1131,8 @@ async function generateCreatorLooksOutfitStage(params: {
     if (!result) {
       throw new Error("Creator Looks stage1(outfit) produced no image");
     }
+    // 段階1は geminiAttempts に載らないため、usage はログにだけ残す。
+    logOpenAIImageUsage(jobId, dbModel, openaiModel, result, "creator_looks_stage1");
     return { base64: result.data, mimeType: result.mimeType };
   }
 
@@ -1252,6 +1265,34 @@ function buildGeneratingSubstepSummary(
         )}`
     )
     .join(",");
+}
+
+/**
+ * OpenAI 経路の usage(トークン消費)と実際に送ったモデル名を 1 行で残す。
+ * 2.0 / 2.5 の実原価・レイテンシ比較(Phase 5)を Edge ログからも追えるようにする。
+ * usage が無い(API が返さなかった)場合もモデル名だけは出す。
+ */
+function logOpenAIImageUsage(
+  jobId: string,
+  dbModel: string,
+  openaiModel: ParsedOpenAIImageModel,
+  result: OpenAIImageEditResult | undefined,
+  stage: string = "main"
+): void {
+  const usage = result?.usage ?? null;
+  logJobTimeline(jobId, "OpenAI usage", {
+    stage,
+    dbModel,
+    apiModel: result?.apiModel ?? toOpenAIApiModelName(openaiModel.family),
+    quality: openaiModel.quality,
+    sizeTier: openaiModel.sizeTier,
+    inputTokens: usage?.inputTokens ?? null,
+    outputTokens: usage?.outputTokens ?? null,
+    totalTokens: usage?.totalTokens ?? null,
+    inputTextTokens: usage?.inputTokensDetails?.textTokens ?? null,
+    inputImageTokens: usage?.inputTokensDetails?.imageTokens ?? null,
+    usageAvailable: usage !== null,
+  });
 }
 
 function logJobTimeline(
@@ -2443,6 +2484,7 @@ Deno.serve(async () => {
                       const cameraDirective =
                         promptTemplates["creator_looks.camera_directive"] ?? "";
                       const stage1 = await generateCreatorLooksOutfitStage({
+                        jobId,
                         dbModel,
                         apiModel,
                         geminiApiKey: geminiApiKey ?? "",
@@ -2591,7 +2633,7 @@ Deno.serve(async () => {
                 // ===== OpenAI 経路 =====
                 if (!resolvedInputImageData) {
                   // coordinate 系は schema で input image 必須化済みだが念のため
-                  throw new Error("OpenAI gpt-image-2 requires an input image");
+                  throw new Error("OpenAI image edit requires an input image");
                 }
                 const openAIInputImage = resolvedInputImageData;
                 // image_1 を多入力で渡すケース:
@@ -2662,6 +2704,7 @@ Deno.serve(async () => {
                                 : 0,
                             targetSize,
                             timeoutMs: openAIRequestTimeoutMs,
+                            family: openaiModel.family,
                             quality: openaiModel.quality,
                             sizeTier: openaiModel.sizeTier,
                             n: requestedImageCount,
@@ -2670,6 +2713,7 @@ Deno.serve(async () => {
                             prompt: basePromptText,
                             inputImage: openAIInputImage,
                             timeoutMs: openAIRequestTimeoutMs,
+                            family: openaiModel.family,
                             quality: openaiModel.quality,
                             sizeTier: openaiModel.sizeTier,
                             targetSize,
@@ -2680,6 +2724,9 @@ Deno.serve(async () => {
                   attemptHttpOk = true;
                   attemptHttpStatus = 200;
                   generatedImages = results;
+                  // usage はレスポンス単位(全要素で同じ)なので先頭から読む。
+                  const firstResult = results[0];
+                  logOpenAIImageUsage(jobId, dbModel, openaiModel, firstResult);
                   geminiAttempts.push({
                     attempt: 1,
                     startedAt: new Date(attemptStartedAtMs).toISOString(),
@@ -2691,6 +2738,10 @@ Deno.serve(async () => {
                     timedOut: false,
                     errorMessage: null,
                     reinforcementApplied: false,
+                    apiModel:
+                      firstResult?.apiModel ??
+                      toOpenAIApiModelName(openaiModel.family),
+                    openaiUsage: firstResult?.usage ?? null,
                   });
                 } catch (openAIError) {
                   attemptErrorMessage =

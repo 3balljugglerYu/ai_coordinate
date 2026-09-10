@@ -435,6 +435,8 @@ export async function handlePreviewGeneration(
         targetSizeBaseIndex: 1,
         timeoutMs: OPENAI_TIMEOUT_MS,
         n: 1,
+        // 管理プレビューは 2.0 固定(2.5 の運営検証は本番の生成経路で行う)
+        family: "gpt-image-2",
         quality: "low",
         sizeTier: "1k",
       });

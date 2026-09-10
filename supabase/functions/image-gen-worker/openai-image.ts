@@ -1,7 +1,8 @@
-// OpenAI gpt-image-2 クライアント
+// OpenAI 画像モデル(gpt-image-2 / gpt-image-2.5-flare)クライアント
 // - POST https://api.openai.com/v1/images/edits を multipart/form-data で叩く
 // - 入力画像のアスペクト比と size tier (1k/2k/4k) から出力サイズを選択
-// - `quality` (low/medium/high) と `sizeTier` は呼び出し側から必須で渡す
+// - `family`(投げ先の API モデル)、`quality` (low/medium/high)、`sizeTier` は呼び出し側から必須で渡す
+// - API へ送るモデル名は `toOpenAIApiModelName(family)` で決める(ハードコードしない)
 // - moderation/safety 系のエラーは SAFETY_POLICY_BLOCKED_ERROR に統一
 // - GIF 入力は OpenAI 経路では非対応（呼び出し側で再試行不可エラーとして扱う）
 
@@ -12,12 +13,17 @@ import {
 } from "../../../shared/generation/errors.ts";
 import {
   getGptImage2TargetSize,
+  toOpenAIApiModelName,
 } from "../../../shared/generation/openai-image-model.ts";
 import type {
   GptImage2Quality,
   GptImage2SizeTier,
   GptImage2TargetSize,
+  OpenAIImageApiModelName,
+  OpenAIImageFamily,
 } from "../../../shared/generation/openai-image-model.ts";
+import { parseOpenAIImageUsage } from "../../../shared/generation/openai-types.ts";
+import type { OpenAIImageUsage } from "../../../shared/generation/openai-types.ts";
 
 const OPENAI_IMAGES_EDITS_URL = "https://api.openai.com/v1/images/edits";
 const OPENAI_MAX_ATTEMPTS = 3;
@@ -37,6 +43,8 @@ export interface CallOpenAIImageEditParams {
   prompt: string;
   inputImage: OpenAIImageInput;
   timeoutMs: number;
+  /** API へ送るモデルの family(canonical model から parse した値を渡す) */
+  family: OpenAIImageFamily;
   quality: GptImage2Quality;
   sizeTier: GptImage2SizeTier;
   targetSize?: OpenAITargetSize;
@@ -45,6 +53,17 @@ export interface CallOpenAIImageEditParams {
 export interface OpenAIImageEditResult {
   data: string;
   mimeType: "image/png";
+  /**
+   * 実際に API へ送ったモデル名(`toOpenAIApiModelName(family)`)。
+   * DB の canonical model と突き合わせて「本当に 2.5 へ投げたか」を検証するために返す。
+   * テストのモック結果では省略されることがあるため optional。
+   */
+  apiModel?: OpenAIImageApiModelName;
+  /**
+   * レスポンスの `usage`(トークン消費)。API が返さなかった/読めなかった場合はキー自体を持たない。
+   * レスポンス単位の値なので同一呼び出しの全要素で同じ。
+   */
+  usage?: OpenAIImageUsage;
 }
 
 export interface CallOpenAIImageEditBatchParams
@@ -265,13 +284,14 @@ export async function callOpenAIImageEditBatch(
     params.targetSize ??
     resolveOpenAITargetSize(params.inputImage, params.sizeTier);
   const bytes = decodeBase64(params.inputImage.base64);
+  const apiModel = toOpenAIApiModelName(params.family);
 
   const buildForm = () => {
     const file = new File([bytes], "input.png", {
       type: params.inputImage.mimeType,
     });
     const form = new FormData();
-    form.append("model", "gpt-image-2");
+    form.append("model", apiModel);
     form.append("prompt", params.prompt);
     form.append("image[]", file);
     form.append("size", targetSize);
@@ -311,12 +331,18 @@ export async function callOpenAIImageEditBatch(
       }
 
       const json = await response.json().catch(() => ({}));
-      const results = (json?.data ?? [])
+      const usage = parseOpenAIImageUsage(json?.usage);
+      const results: OpenAIImageEditResult[] = (json?.data ?? [])
         .map((item: { b64_json?: unknown }) => item?.b64_json)
         .filter((b64: unknown): b64 is string =>
           typeof b64 === "string" && b64.length > 0
         )
-        .map((b64: string) => ({ data: b64, mimeType: "image/png" as const }));
+        .map((b64: string) => ({
+          data: b64,
+          mimeType: "image/png" as const,
+          apiModel,
+          ...(usage ? { usage } : {}),
+        }));
 
       if (results.length === 0) {
         throw new Error("No images generated");
@@ -352,6 +378,8 @@ export interface CallOpenAIImageEditMultiInputParams {
   prompt: string;
   inputImages: ReadonlyArray<OpenAIImageInput>;
   timeoutMs: number;
+  /** API へ送るモデルの family(canonical model から parse した値を渡す) */
+  family: OpenAIImageFamily;
   quality: GptImage2Quality;
   sizeTier: GptImage2SizeTier;
   targetSizeBaseIndex?: number;
@@ -388,9 +416,11 @@ export async function callOpenAIImageEditMultiInputBatch(
   const targetSize =
     params.targetSize ?? resolveOpenAITargetSize(baseImage, params.sizeTier);
 
+  const apiModel = toOpenAIApiModelName(params.family);
+
   const buildForm = () => {
     const form = new FormData();
-    form.append("model", "gpt-image-2");
+    form.append("model", apiModel);
     form.append("prompt", params.prompt);
     for (let idx = 0; idx < params.inputImages.length; idx++) {
       const img = params.inputImages[idx];
@@ -433,12 +463,18 @@ export async function callOpenAIImageEditMultiInputBatch(
       }
 
       const json = await response.json().catch(() => ({}));
-      const results = (json?.data ?? [])
+      const usage = parseOpenAIImageUsage(json?.usage);
+      const results: OpenAIImageEditResult[] = (json?.data ?? [])
         .map((item: { b64_json?: unknown }) => item?.b64_json)
         .filter((b64: unknown): b64 is string =>
           typeof b64 === "string" && b64.length > 0
         )
-        .map((b64: string) => ({ data: b64, mimeType: "image/png" as const }));
+        .map((b64: string) => ({
+          data: b64,
+          mimeType: "image/png" as const,
+          apiModel,
+          ...(usage ? { usage } : {}),
+        }));
 
       if (results.length === 0) {
         throw new Error("No images generated");
