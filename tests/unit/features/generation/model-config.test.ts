@@ -217,6 +217,72 @@ describe("model-config / model identification helpers", () => {
         )
       ).toBe("gpt-image-2-low-1k");
     });
+
+    describe("ChatGPT Images 2.5 の段階公開(REQ-014)", () => {
+      it("gptImage25Available 省略時は 2.5 を DEFAULT_GENERATION_MODEL に丸める(fail closed)", () => {
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2.5-flare-low-1k",
+            "authenticated"
+          )
+        ).toBe("gpt-image-2-low-1k");
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2.5-flare-high-4k",
+            "authenticated",
+            {}
+          )
+        ).toBe("gpt-image-2-low-1k");
+      });
+
+      it("gptImage25Available=false なら quality / size に関わらず丸める", () => {
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2.5-flare-medium-2k",
+            "authenticated",
+            { gptImage25Available: false }
+          )
+        ).toBe("gpt-image-2-low-1k");
+      });
+
+      it("gptImage25Available=true なら 2.5 をそのまま返す(運営)", () => {
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2.5-flare-medium-2k",
+            "authenticated",
+            { gptImage25Available: true }
+          )
+        ).toBe("gpt-image-2.5-flare-medium-2k");
+      });
+
+      it("ゲストは gptImage25Available=true でもゲスト許可リスト外なので丸める", () => {
+        // GUEST_ALLOWED_MODELS に 2.5 は入れない(Phase 3 では公開しない)
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2.5-flare-low-1k",
+            "guest",
+            { gptImage25Available: true }
+          )
+        ).toBe("gpt-image-2-low-1k");
+      });
+
+      it("gpt-image-2 は gptImage25Available の値に影響されない", () => {
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2-high-4k",
+            "authenticated",
+            { gptImage25Available: false }
+          )
+        ).toBe("gpt-image-2-high-4k");
+        expect(
+          resolveEffectiveModelForAuthState(
+            "gpt-image-2-high-4k",
+            "authenticated",
+            { gptImage25Available: true }
+          )
+        ).toBe("gpt-image-2-high-4k");
+      });
+    });
   });
 
   describe("isModelAvailableForGeneration", () => {

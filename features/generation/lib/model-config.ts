@@ -9,7 +9,10 @@ import {
   normalizeModelName,
   type GeminiModel,
 } from "../types";
-import { OPENAI_IMAGE_PERCOIN_COSTS } from "@/shared/generation/openai-image-model";
+import {
+  OPENAI_IMAGE_PERCOIN_COSTS,
+  isGptImage25FlareModel,
+} from "@/shared/generation/openai-image-model";
 import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
 export { DEFAULT_GENERATION_MODEL };
@@ -164,15 +167,26 @@ export function parseGuestRequestedModel(
  *
  * ゲスト時は保存値そのものを書き換えず、送信・表示・料金表示で使う実効値だけを
  * DEFAULT_GENERATION_MODEL に clamp する。ログイン後は保存済みの選択をそのまま復元する。
+ *
+ * ChatGPT Images 2.5(gpt-image-2.5-flare)は段階公開中(REQ-014)。
+ * `options.gptImage25Available`(`useGptImage25Available()` の値)が true のときだけ
+ * 2.5 を実効値として通し、それ以外は DEFAULT_GENERATION_MODEL に丸める。
+ * 省略時は false(fail closed)。運営が 2.5 を選んだ端末の localStorage を
+ * 一般ユーザーが引き継ぐことは無いが、公開フラグを戻したときに残った保存値を
+ * 送信させないためにここでも clamp する(実行はサーバー側の isGptImage25Available が正本)。
  */
 export function resolveEffectiveModelForAuthState(
   model: GeminiModel,
-  authState: "guest" | "authenticated"
+  authState: "guest" | "authenticated",
+  options: { gptImage25Available?: boolean } = {}
 ): GeminiModel {
   if (!isModelAvailableForGeneration(model)) {
     return DEFAULT_GENERATION_MODEL;
   }
   if (authState === "guest" && !isCanonicalGuestAllowedModel(model)) {
+    return DEFAULT_GENERATION_MODEL;
+  }
+  if (isGptImage25FlareModel(model) && !options.gptImage25Available) {
     return DEFAULT_GENERATION_MODEL;
   }
   return model;

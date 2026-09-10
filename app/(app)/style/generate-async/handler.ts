@@ -12,7 +12,7 @@ import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
-import { env, isAdminViewer } from "@/lib/env";
+import { env, isAdminViewer, isGptImage25Available } from "@/lib/env";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
   createAsyncGenerationJobRepository,
@@ -39,6 +39,7 @@ import {
 } from "@/shared/generation/framing-mode";
 import { buildOneTapStyleGenerationMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { isUserSelectableOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
+import { isGptImage25FlareModel } from "@/shared/generation/openai-image-model";
 import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
@@ -291,6 +292,18 @@ export async function postStyleGenerateAsyncRoute(
       return jsonError(
         copy.modelTemporarilyUnavailable,
         "STYLE_MODEL_TEMPORARILY_UNAVAILABLE",
+        400
+      );
+    }
+    // ChatGPT Images 2.5 の段階公開(REQ-006)。/api/generate-async と同じ理由で、
+    // ジョブ作成・temp アップロードより前にサーバー側で必ず弾く。
+    if (
+      isGptImage25FlareModel(effectiveModel) &&
+      !isGptImage25Available(user.id)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "STYLE_MODEL_NOT_AVAILABLE_FOR_USER",
         400
       );
     }

@@ -109,6 +109,7 @@ import {
   normalizeSourceImage,
 } from "@/features/generation/lib/normalize-source-image";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
+import { useGptImage25Available } from "@/features/generation/components/GptImage25AvailabilityProvider";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
@@ -560,9 +561,12 @@ export function StylePageClient({
   });
   const modelAuthState =
     effectiveAuthState === "authenticated" ? "authenticated" : "guest";
+  // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は実効値を既定モデルへ丸める。
+  const gptImage25Available = useGptImage25Available();
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
     shouldShowGenerationModelControl ? selectedModel : DEFAULT_GENERATION_MODEL,
-    modelAuthState
+    modelAuthState,
+    { gptImage25Available }
   );
   const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
   const isGuestDailyLimitReached =

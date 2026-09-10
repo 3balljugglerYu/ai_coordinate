@@ -23,10 +23,12 @@ jest.mock("@/lib/supabase/admin", () => ({
   createAdminClient: jest.fn(),
 }));
 
-// framingMode (free_pose) の admin viewer ゲートをテストごとに制御する
+// framingMode (free_pose) の admin viewer ゲートと、ChatGPT Images 2.5 の
+// 運営限定ゲート (isGptImage25Available) をテストごとに制御する
 jest.mock("@/lib/env", () => ({
   ...jest.requireActual("@/lib/env"),
   isAdminViewer: jest.fn(() => false),
+  isGptImage25Available: jest.fn(() => false),
 }));
 
 jest.mock("@/features/inspire/lib/repository", () => ({
@@ -59,12 +61,15 @@ import {
   type UserStyleTemplateRow,
 } from "@/features/inspire/lib/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminViewer } from "@/lib/env";
+import { isAdminViewer, isGptImage25Available } from "@/lib/env";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { getCreatorLooksTwoStageVisibility } from "@/features/inspire/lib/creator-looks-two-stage";
 
 const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
   typeof isAdminViewer
+>;
+const isGptImage25AvailableMock = isGptImage25Available as jest.MockedFunction<
+  typeof isGptImage25Available
 >;
 const isCreatorLooksEnabledForUserMock =
   isCreatorLooksEnabledForUser as jest.MockedFunction<
@@ -155,6 +160,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
     getUserFn = jest.fn().mockResolvedValue({ id: "user-123" });
     isAdminViewerMock.mockReset();
     isAdminViewerMock.mockReturnValue(false);
+    isGptImage25AvailableMock.mockReset();
+    isGptImage25AvailableMock.mockReturnValue(false);
     jobRepository = createAsyncGenerationJobRepositoryMock();
     invokeImageWorkerFn = jest.fn();
     createAdminClientMock = createAdminClient as jest.MockedFunction<
@@ -1420,6 +1427,111 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
       expect("generation_metadata" in jobData).toBe(false);
+    });
+  });
+
+  describe("ChatGPT Images 2.5 (運営限定ゲート / REQ-006)", () => {
+    // docs/planning/gpt-image-2-5-flare-implementation-plan.md Phase 3。
+    // KNOWN_MODEL_INPUTS は Phase 1 から 2.5 を受理するため、UI に行が無くても
+    // 直接 POST で通ってしまう。ここが唯一の実行ゲート(無料プランのモデル制限は UI だけ)。
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildBody(extra: Record<string, unknown> = {}): JsonRecord {
+      return {
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        ...extra,
+      };
+    }
+
+    test("利用不可のユーザーが 2.5 を指定すると 400 (GENERATION_MODEL_NOT_AVAILABLE_FOR_USER) でジョブを作らない", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gpt-image-2.5-flare-low-1k" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("GENERATION_MODEL_NOT_AVAILABLE_FOR_USER");
+      expect(isGptImage25AvailableMock).toHaveBeenCalledWith("user-123");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+    });
+
+    test("ゲートは temp アップロードより前にある (sourceImageBase64 でも uploadSourceImage を呼ばない)", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest({
+          prompt: "linen jacket",
+          sourceImageBase64: Buffer.from("png-bytes").toString("base64"),
+          sourceImageMimeType: "image/png",
+          model: "gpt-image-2.5-flare-medium-2k",
+        }),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("GENERATION_MODEL_NOT_AVAILABLE_FOR_USER");
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("quality / size を問わず 2.5 の canonical はすべて塞がれる", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      for (const model of [
+        "gpt-image-2.5-flare-low-4k",
+        "gpt-image-2.5-flare-medium-1k",
+        "gpt-image-2.5-flare-high-4k",
+      ]) {
+        const response = await postGenerateAsyncRoute(
+          createRequest(buildBody({ model })),
+          dependencies()
+        );
+        expect([model, response.status]).toEqual([model, 400]);
+      }
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("利用可能なユーザー (運営 / 公開後) は 2.5 のままジョブが作られる", async () => {
+      isGptImage25AvailableMock.mockReturnValue(true);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gpt-image-2.5-flare-low-1k" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ jobId: "job-001", status: "queued" });
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gpt-image-2.5-flare-low-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
+
+    test("gpt-image-2 (2.0) は利用不可のユーザーでも影響を受けない", async () => {
+      isGptImage25AvailableMock.mockReturnValue(false);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gpt-image-2-medium-1k" })),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gpt-image-2-medium-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
     });
   });
 

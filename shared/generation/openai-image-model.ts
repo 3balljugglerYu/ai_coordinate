@@ -151,6 +151,19 @@ export function parseOpenAIImageModel(
 }
 
 /**
+ * `gpt-image-2.5-flare` family のモデルか。
+ *
+ * 段階公開ゲート(REQ-006 / REQ-014)の判定に使う。canonical(と legacy alias)以外
+ * (未知の文字列・Gemini 系・null)は false。`startsWith("gpt-image-2")` は 2.5 にも
+ * 一致するため、family の判定は必ずこの parser 経由にする(ADR-002)。
+ */
+export function isGptImage25FlareModel(
+  model: string | null | undefined
+): boolean {
+  return parseOpenAIImageModel(model)?.family === "gpt-image-2.5-flare";
+}
+
+/**
  * OpenAI images API の `model` フィールドに送る名前。
  * 現状は family 文字列そのものだが、API 側の改名に canonical を巻き込まないよう
  * 対応表として持つ。
