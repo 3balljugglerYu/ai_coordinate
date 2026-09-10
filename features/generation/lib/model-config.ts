@@ -75,6 +75,11 @@ export const MODEL_PERCOIN_COSTS = {
  */
 const BASE_GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   'gpt-image-2-low-1k',
+  // ChatGPT Images 2.5 の Low も未ログインのお試しに開く。実測でペルコイン消費が
+  // 同額かつ原価もほぼ同じ(2026-09-10: ¥3.58 と ¥3.59)で、生成時間だけが短い。
+  // 2.5 の行そのものは段階公開フラグで制御されるため、ここを開けても
+  // 公開前のゲストに 2.5 が見えるわけではない。
+  'gpt-image-2.5-flare-low-1k',
   'gemini-3.1-flash-image-preview-512',
 ];
 

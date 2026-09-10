@@ -202,8 +202,7 @@ describe("ChatGPT Images 2.5 の行（段階公開 / REQ-001・REQ-002）", () =
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-low-2k");
   });
 
-  test("ゲストには 2.5 が見えても南京錠になり、クリックで onLockedClick に飛ぶ", () => {
-    // GUEST_ALLOWED_MODELS に 2.5 は入れていない（Phase 3 の決定）。
+  test("ゲストも 2.5 の Low(1k)なら選べる（2026-09-10 にお試しへ開放）", () => {
     const onChange = jest.fn();
     const onLockedClick = jest.fn();
     renderAsAdmin(
@@ -216,8 +215,8 @@ describe("ChatGPT Images 2.5 の行（段階公開 / REQ-001・REQ-002）", () =
     );
 
     fireEvent.click(screen.getByRole("button", { name: /ChatGPT Images 2\.5/ }));
-    expect(onLockedClick).toHaveBeenCalledTimes(1);
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2.5-flare-low-1k");
+    expect(onLockedClick).not.toHaveBeenCalled();
   });
 
   test("非運営に 2.5 の値が渡っても、表示は 2.0 の行へ丸める（REQ-014）", () => {
