@@ -39,12 +39,13 @@ import {
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
 import {
-  GPT_IMAGE_2_PERCOIN_COSTS,
-  isGptImage2CanonicalModel,
-  normalizeLegacyGptImage2Model,
-  parseGptImage2Model,
+  OPENAI_IMAGE_PERCOIN_COSTS,
+  parseOpenAIImageModel,
 } from "../../../shared/generation/openai-image-model.ts";
-import type { GptImage2CanonicalModel } from "../../../shared/generation/openai-image-model.ts";
+import type {
+  OpenAIImageCanonicalModel,
+  ParsedOpenAIImageModel,
+} from "../../../shared/generation/openai-image-model.ts";
 import {
   resolveGeminiAspectRatio,
   type GeminiAspectRatio,
@@ -91,7 +92,7 @@ const OPENAI_REQUEST_TIMEOUT_HIGH_MS = 300_000;
 const OPENAI_REQUEST_TIMEOUT_MEDIUM_MS = 180_000;
 
 function resolveOpenAIRequestTimeoutMs(
-  parsed: NonNullable<ReturnType<typeof parseGptImage2Model>>
+  parsed: ParsedOpenAIImageModel
 ): number {
   if (parsed.quality === "high") {
     return OPENAI_REQUEST_TIMEOUT_HIGH_MS;
@@ -601,7 +602,7 @@ type GeminiModel =
   | "gemini-3-pro-image-1k"
   | "gemini-3-pro-image-2k"
   | "gemini-3-pro-image-4k"
-  | GptImage2CanonicalModel;
+  | OpenAIImageCanonicalModel;
 type GeminiApiModel =
   | "gemini-2.5-flash-image"
   | "gemini-3.1-flash-image-preview"
@@ -658,12 +659,20 @@ function normalizeModelName(model: string | null): GeminiModel {
   if (!model) {
     return WORKER_UNKNOWN_MODEL_FALLBACK;
   }
-  const normalizedGptImage2 = normalizeLegacyGptImage2Model(model);
-  if (isGptImage2CanonicalModel(normalizedGptImage2)) {
-    return normalizedGptImage2;
+  const openaiModel = parseOpenAIImageModel(model);
+  if (openaiModel) {
+    // Phase 1(型体系の family 化)の暫定ガード。OpenAI API へ送るモデル名を family に
+    // 追従させるのは Phase 2 なので、それまでは gpt-image-2 以外の family を受理しない
+    // (DB の CHECK 制約も 2.0 のみのため通常はここに到達しない)。Phase 2 で撤去する。
+    if (openaiModel.family !== "gpt-image-2") {
+      throw new Error(
+        `Unsupported OpenAI image model family (not yet enabled): ${model}`,
+      );
+    }
+    return openaiModel.canonical;
   }
   if (isOpenAIImageModel(model)) {
-    throw new Error(`Invalid GPT Image 2 model: ${model}`);
+    throw new Error(`Invalid OpenAI image model: ${model}`);
   }
   if (model === "gemini-2.5-flash-image-preview" || model === "gemini-2.5-flash-image") {
     return "gemini-3.1-flash-image-preview-512";
@@ -724,7 +733,7 @@ function getPercoinCost(model: string | null): number {
     'gemini-3-pro-image-1k': 50,
     'gemini-3-pro-image-2k': 80,
     'gemini-3-pro-image-4k': 100,
-    ...GPT_IMAGE_2_PERCOIN_COSTS,
+    ...OPENAI_IMAGE_PERCOIN_COSTS,
   };
   return costs[normalized] ?? 20;
 }
@@ -1094,18 +1103,18 @@ async function generateCreatorLooksOutfitStage(params: {
   const { dbModel, apiModel, geminiApiKey, image0, image1, prompt } = params;
 
   if (isOpenAIImageModel(dbModel)) {
-    const gptImage2 = parseGptImage2Model(dbModel);
-    if (!gptImage2) {
-      throw new Error(`Invalid GPT Image 2 model: ${dbModel}`);
+    const openaiModel = parseOpenAIImageModel(dbModel);
+    if (!openaiModel) {
+      throw new Error(`Invalid OpenAI image model: ${dbModel}`);
     }
     const [result] = await callOpenAIImageEditMultiInputBatch({
       prompt,
       inputImages: [image0, image1],
       // 衣装着せの出力フレームは image_0(ユーザーキャラ)基準に固定する。
       targetSizeBaseIndex: 0,
-      timeoutMs: resolveOpenAIRequestTimeoutMs(gptImage2),
-      quality: gptImage2.quality,
-      sizeTier: gptImage2.sizeTier,
+      timeoutMs: resolveOpenAIRequestTimeoutMs(openaiModel),
+      quality: openaiModel.quality,
+      sizeTier: openaiModel.sizeTier,
       n: 1,
     });
     if (!result) {
@@ -2592,12 +2601,12 @@ Deno.serve(async () => {
                   (job.generation_type === "inspire" ||
                     job.generation_type === "one_tap_style") &&
                   resolvedInspireTemplateImage !== null;
-                const gptImage2 = parseGptImage2Model(dbModel);
-                if (!gptImage2) {
-                  throw new Error(`Invalid GPT Image 2 model: ${dbModel}`);
+                const openaiModel = parseOpenAIImageModel(dbModel);
+                if (!openaiModel) {
+                  throw new Error(`Invalid OpenAI image model: ${dbModel}`);
                 }
                 const openAIRequestTimeoutMs =
-                  resolveOpenAIRequestTimeoutMs(gptImage2);
+                  resolveOpenAIRequestTimeoutMs(openaiModel);
                 // 旧ジョブ互換(通常は常に 1)。詳細は getLegacyRequestedImageCount。
                 const requestedImageCount = getLegacyRequestedImageCount(job);
                 // 出力比率(job-output-aspect の pure helper に集約)。明示比率のときだけ
@@ -2613,7 +2622,7 @@ Deno.serve(async () => {
                     | null,
                   oneTapStyleMetadata,
                   inputDimensions: null,
-                  sizeTier: gptImage2.sizeTier,
+                  sizeTier: openaiModel.sizeTier,
                 });
                 const attemptStartedAtMs = Date.now();
                 let attemptHttpStatus: number | null = null;
@@ -2653,16 +2662,16 @@ Deno.serve(async () => {
                                 : 0,
                             targetSize,
                             timeoutMs: openAIRequestTimeoutMs,
-                            quality: gptImage2.quality,
-                            sizeTier: gptImage2.sizeTier,
+                            quality: openaiModel.quality,
+                            sizeTier: openaiModel.sizeTier,
                             n: requestedImageCount,
                           })
                         : callOpenAIImageEditBatch({
                             prompt: basePromptText,
                             inputImage: openAIInputImage,
                             timeoutMs: openAIRequestTimeoutMs,
-                            quality: gptImage2.quality,
-                            sizeTier: gptImage2.sizeTier,
+                            quality: openaiModel.quality,
+                            sizeTier: openaiModel.sizeTier,
                             targetSize,
                             n: requestedImageCount,
                           }),

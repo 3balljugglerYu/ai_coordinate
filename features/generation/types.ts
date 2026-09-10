@@ -10,12 +10,11 @@ import type { FramingMode } from "@/shared/generation/framing-mode";
 import type { FreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   DEFAULT_GPT_IMAGE_2_MODEL,
-  GPT_IMAGE_2_CANONICAL_MODELS,
   GPT_IMAGE_2_LEGACY_LOW_MODEL,
-  isGptImage2CanonicalModel,
-  normalizeLegacyGptImage2Model,
+  OPENAI_IMAGE_CANONICAL_MODELS,
+  parseOpenAIImageModel,
 } from "@/shared/generation/openai-image-model";
-import type { GptImage2CanonicalModel } from "@/shared/generation/openai-image-model";
+import type { OpenAIImageCanonicalModel } from "@/shared/generation/openai-image-model";
 
 export {
   BACKGROUND_MODES,
@@ -112,7 +111,7 @@ export type GeminiModel =
   | 'gemini-3-pro-image-1k'
   | 'gemini-3-pro-image-2k'
   | 'gemini-3-pro-image-4k'
-  | GptImage2CanonicalModel;
+  | OpenAIImageCanonicalModel;
 
 // 画像生成モデル全体の型エイリアス（将来のリネーム足場）
 export type ImageGenerationModel = GeminiModel;
@@ -122,7 +121,7 @@ export type ImageGenerationModel = GeminiModel;
  * `toApiModelName()` の入力を「Gemini ファミリーのみ」に絞るために使う。
  * OpenAI 系（`gpt-image-*`）は別経路（`features/generation/lib/openai-image.ts`）で扱う。
  */
-export type GeminiOnlyModel = Exclude<GeminiModel, GptImage2CanonicalModel>;
+export type GeminiOnlyModel = Exclude<GeminiModel, OpenAIImageCanonicalModel>;
 
 /**
  * クライアントが API に送ってよい model 値の正本リスト。
@@ -140,7 +139,7 @@ export const KNOWN_MODEL_INPUTS = [
   'gemini-3-pro-image-1k',
   'gemini-3-pro-image-2k',
   'gemini-3-pro-image-4k',
-  ...GPT_IMAGE_2_CANONICAL_MODELS,
+  ...OPENAI_IMAGE_CANONICAL_MODELS,
   GPT_IMAGE_2_LEGACY_LOW_MODEL,
   'gemini-2.5-flash-image-preview',
   'gemini-3-pro-image-preview',
@@ -165,17 +164,25 @@ export const DEFAULT_GENERATION_MODEL: GeminiModel = DEFAULT_GPT_IMAGE_2_MODEL;
 
 export {
   DEFAULT_GPT_IMAGE_2_MODEL,
+  GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
   GPT_IMAGE_2_CANONICAL_MODELS,
   GPT_IMAGE_2_LEGACY_LOW_MODEL,
   GPT_IMAGE_2_QUALITIES,
   GPT_IMAGE_2_SIZE_TIERS,
-  composeGptImage2Model,
-  parseGptImage2Model,
+  OPENAI_IMAGE_CANONICAL_MODELS,
+  OPENAI_IMAGE_FAMILIES,
+  composeOpenAIImageModel,
+  parseOpenAIImageModel,
+  toOpenAIApiModelName,
 } from "@/shared/generation/openai-image-model";
 export type {
+  GptImage25FlareCanonicalModel,
   GptImage2CanonicalModel,
   GptImage2Quality,
   GptImage2SizeTier,
+  OpenAIImageCanonicalModel,
+  OpenAIImageFamily,
+  ParsedOpenAIImageModel,
 } from "@/shared/generation/openai-image-model";
 
 export {
@@ -218,9 +225,10 @@ export function normalizeModelName(model: string | null | undefined): GeminiMode
     return DEFAULT_GENERATION_MODEL;
   }
 
-  const normalizedGptImage2 = normalizeLegacyGptImage2Model(model);
-  if (isGptImage2CanonicalModel(normalizedGptImage2)) {
-    return normalizedGptImage2;
+  // OpenAI 系は family を問わず canonical へ(legacy `gpt-image-2-low` もここで吸収)
+  const openaiModel = parseOpenAIImageModel(model);
+  if (openaiModel) {
+    return openaiModel.canonical;
   }
 
   // 廃止した 2.5 は新しい軽量モデルへ吸収する

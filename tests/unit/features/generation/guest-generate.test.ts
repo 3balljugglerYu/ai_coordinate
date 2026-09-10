@@ -818,11 +818,11 @@ describe("guest-generate", () => {
       });
     });
 
-    test("parseGptImage2Model が null になる無効モデルは openai_provider_error", async () => {
-      // OpenAI 経路は model の suffix 解析（low/medium/high × 1k/2k/4k）必須。
+    test("parseOpenAIImageModel が null になる無効モデルは openai_provider_error", async () => {
+      // OpenAI 経路は model の解析（family × low/medium/high × 1k/2k/4k）必須。
       // 解析失敗時は OpenAI を呼ばずに openai_provider_error を返す（防御ガード）。
       // isOpenAIImageModel は "gpt-image-" prefix を見るだけなので
-      // "gpt-image-bogus" は分岐に入るが、parseGptImage2Model が null を返す。
+      // "gpt-image-bogus" は分岐に入るが、parseOpenAIImageModel が null を返す。
       const openaiClient = jest.fn();
       const result = (await dispatchGuestImageGeneration({
         model: "gpt-image-bogus" as never,
@@ -836,7 +836,7 @@ describe("guest-generate", () => {
         { kind: "openai_provider_error" }
       >;
       expect(result.kind).toBe("openai_provider_error");
-      expect(result.message).toContain("Invalid GPT Image 2 model");
+      expect(result.message).toContain("Invalid OpenAI image model");
       expect(openaiClient).not.toHaveBeenCalled();
     });
   });

@@ -4,6 +4,10 @@ import {
   MODEL_COST_RATES,
   USD_JPY_RATE,
 } from "@/features/admin-dashboard/lib/ai-cost-rates";
+import {
+  GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
+  GPT_IMAGE_2_CANONICAL_MODELS,
+} from "@/shared/generation/openai-image-model";
 
 // 固定ウィンドウ(3日): current=[07-24T00:00Z, 07-26T12:00Z]
 const NOW = new Date("2026-07-26T12:00:00.000Z");
@@ -318,6 +322,40 @@ describe("buildAiCostEstimate", () => {
       expect(MODEL_COST_RATES["gpt-image-2-low-1k"]?.basis).toBe("measured");
       expect(MODEL_COST_RATES["gpt-image-2-high-4k"]?.basis).toBe("derived");
       expect(MODEL_COST_RATES["gemini-3-pro-image-1k"]?.basis).toBe("published");
+    });
+
+    it("gpt-image-2.5-flare は全 canonical が登録済みで、実測するまで 2.0 と同値の derived", () => {
+      // 未登録だと getModelRate() が null になり原価が黙って ¥0 になる。
+      // 単価表は 2.0 と同額だが出力トークン数は未実測なので 1k も derived にしておく。
+      expect(GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS).toHaveLength(9);
+      for (const model of GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS) {
+        const rate = MODEL_COST_RATES[model];
+        expect([model, rate?.basis]).toEqual([model, "derived"]);
+        const counterpart = model.replace("gpt-image-2.5-flare-", "gpt-image-2-");
+        expect([model, rate?.outputUsd]).toEqual([
+          model,
+          MODEL_COST_RATES[counterpart]?.outputUsd,
+        ]);
+        expect(rate?.inputImageUsd).toBe(MODEL_COST_RATES[counterpart]?.inputImageUsd);
+        expect(rate?.provider).toBe("openai");
+      }
+    });
+
+    it("回帰ガード: 既存 gpt-image-2 の原価と basis は family 化で変わらない", () => {
+      expect(GPT_IMAGE_2_CANONICAL_MODELS).toHaveLength(9);
+      for (const model of GPT_IMAGE_2_CANONICAL_MODELS) {
+        const rate = MODEL_COST_RATES[model];
+        expect([model, rate?.basis]).toEqual([
+          model,
+          model.endsWith("-1k") ? "measured" : "derived",
+        ]);
+      }
+      // 1k の実測値(2026-08-14): 出力 172 / 1587 / 6345 tok × $30/1M
+      expect(MODEL_COST_RATES["gpt-image-2-low-1k"]?.outputUsd).toBeCloseTo(0.00516, 6);
+      expect(MODEL_COST_RATES["gpt-image-2-medium-1k"]?.outputUsd).toBeCloseTo(0.04761, 6);
+      expect(MODEL_COST_RATES["gpt-image-2-high-1k"]?.outputUsd).toBeCloseTo(0.19035, 6);
+      // 入力画像 1,496 tok × $8/1M
+      expect(MODEL_COST_RATES["gpt-image-2-low-1k"]?.inputImageUsd).toBeCloseTo(0.011968, 6);
     });
   });
 

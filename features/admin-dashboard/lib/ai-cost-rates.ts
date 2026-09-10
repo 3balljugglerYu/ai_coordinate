@@ -130,6 +130,20 @@ const gptImage2 = (
 };
 
 /**
+ * gpt-image-2.5-flare は**実測するまで 2.0 と同値と仮定**する(単価表は 2.0 と
+ * 完全に同額だが、出力画像のトークン数が同じとは限らない)。
+ * 1k も含めて全て `derived` にしておき、実測で置き換えるまで
+ * ダッシュボードで「未検証」と分かるようにする。
+ */
+const gptImage25Flare = (
+  quality: GptImage2Quality,
+  tier: GptImage2Tier
+): AiModelRate => ({
+  ...gptImage2(quality, tier),
+  basis: "derived",
+});
+
+/**
  * Gemini の入力トークン単価（per 1M tokens・2026-08-18 取得）。
  * **テキストと画像が同一単価**なのが OpenAI との違い（OpenAI は text $5 / image $8）。
  *
@@ -208,6 +222,17 @@ export const MODEL_COST_RATES: Record<string, AiModelRate> = {
   "gpt-image-2-high-4k": gptImage2("high", "4k"),
   // 旧データに残る legacy alias（正規化前の値がそのまま保存されている）
   "gpt-image-2-low": gptImage2("low", "1k"),
+
+  // --- OpenAI gpt-image-2.5-flare（実測するまで 2.0 と同値の仮定 / 全て derived）---
+  "gpt-image-2.5-flare-low-1k": gptImage25Flare("low", "1k"),
+  "gpt-image-2.5-flare-medium-1k": gptImage25Flare("medium", "1k"),
+  "gpt-image-2.5-flare-high-1k": gptImage25Flare("high", "1k"),
+  "gpt-image-2.5-flare-low-2k": gptImage25Flare("low", "2k"),
+  "gpt-image-2.5-flare-medium-2k": gptImage25Flare("medium", "2k"),
+  "gpt-image-2.5-flare-high-2k": gptImage25Flare("high", "2k"),
+  "gpt-image-2.5-flare-low-4k": gptImage25Flare("low", "4k"),
+  "gpt-image-2.5-flare-medium-4k": gptImage25Flare("medium", "4k"),
+  "gpt-image-2.5-flare-high-4k": gptImage25Flare("high", "4k"),
 
   // --- Google（公表されている1枚あたりの価格）---
   "gemini-2.5-flash-image": gemini(

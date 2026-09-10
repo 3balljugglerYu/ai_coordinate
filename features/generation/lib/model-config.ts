@@ -9,7 +9,7 @@ import {
   normalizeModelName,
   type GeminiModel,
 } from "../types";
-import { GPT_IMAGE_2_PERCOIN_COSTS } from "@/shared/generation/openai-image-model";
+import { OPENAI_IMAGE_PERCOIN_COSTS } from "@/shared/generation/openai-image-model";
 import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
 export { DEFAULT_GENERATION_MODEL };
@@ -60,7 +60,7 @@ export const MODEL_PERCOIN_COSTS = {
   'gemini-3-pro-image-1k': 50,
   'gemini-3-pro-image-2k': 80,
   'gemini-3-pro-image-4k': 100,
-  ...GPT_IMAGE_2_PERCOIN_COSTS,
+  ...OPENAI_IMAGE_PERCOIN_COSTS,
 } as const;
 
 /**

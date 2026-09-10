@@ -26,9 +26,9 @@ import {
   GEMINI_BANANA_PRO_SIZE_TIERS,
   GPT_IMAGE_2_SIZE_TIERS,
   composeGeminiBananaModel,
-  composeGptImage2Model,
+  composeOpenAIImageModel,
   parseGeminiBananaModel,
-  parseGptImage2Model,
+  parseOpenAIImageModel,
   type GeminiBanana2SizeTier,
   type GeminiBananaProSizeTier,
   type GeminiBananaSizeTier,
@@ -117,15 +117,16 @@ function toOptionCanonicalValue(
   option: ModelOption,
   currentModel: GeminiModel
 ): GeminiModel {
-  const parsedGptImage2 = parseGptImage2Model(currentModel);
+  const parsedOpenAI = parseOpenAIImageModel(currentModel);
   const parsedGeminiBanana = parseGeminiBananaModel(currentModel);
   const currentSize: GptImage2SizeTier | GeminiBananaSizeTier =
-    parsedGptImage2?.sizeTier ?? parsedGeminiBanana?.sizeTier ?? "1k";
+    parsedOpenAI?.sizeTier ?? parsedGeminiBanana?.sizeTier ?? "1k";
 
   if (option.value === "gpt-image-2-row") {
-    if (parsedGptImage2) return currentModel;
+    // この行は family `gpt-image-2` 専用。2.5 の行は Phase 4 で別行として追加する
+    if (parsedOpenAI?.family === "gpt-image-2") return currentModel;
     const size = isGptImage2Size(currentSize) ? currentSize : "1k";
-    return composeGptImage2Model("low", size);
+    return composeOpenAIImageModel("gpt-image-2", "low", size);
   }
   if (option.value === "nano-banana-2-row") {
     if (parsedGeminiBanana?.family === "nano-2") return currentModel;
@@ -144,7 +145,9 @@ function toOptionCanonicalValue(
  * canonical モデルから「今選択中の 1 段目行」を導出する。
  */
 function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
-  if (parseGptImage2Model(model)) return "gpt-image-2-row";
+  if (parseOpenAIImageModel(model)?.family === "gpt-image-2") {
+    return "gpt-image-2-row";
+  }
   const parsed = parseGeminiBananaModel(model);
   if (parsed?.family === "nano-2") return "nano-banana-2-row";
   if (parsed?.family === "nano-pro") return "nano-banana-pro-row";
