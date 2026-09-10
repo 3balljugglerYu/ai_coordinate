@@ -61,6 +61,26 @@ describe("form-preferences", () => {
       }
     });
 
+    it("returns the stored value for each ChatGPT Images 2.5 option", () => {
+      // 2.5 は段階公開中だが localStorage への保存は許す。非運営に復元されても
+      // resolveEffectiveModelForAuthState が既定モデルへ丸める（REQ-014）。
+      const options = [
+        "gpt-image-2.5-flare-low-1k",
+        "gpt-image-2.5-flare-low-2k",
+        "gpt-image-2.5-flare-low-4k",
+        "gpt-image-2.5-flare-medium-1k",
+        "gpt-image-2.5-flare-medium-2k",
+        "gpt-image-2.5-flare-medium-4k",
+        "gpt-image-2.5-flare-high-1k",
+        "gpt-image-2.5-flare-high-2k",
+        "gpt-image-2.5-flare-high-4k",
+      ] as const;
+      for (const value of options) {
+        window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, value);
+        expect(readPreferredModel()).toBe(value);
+      }
+    });
+
     it("returns the stored value for each visible Gemini option", () => {
       const options = [
         "gemini-3.1-flash-image-preview-512",

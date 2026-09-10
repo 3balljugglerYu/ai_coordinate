@@ -147,6 +147,22 @@ describe("GptImage2QualitySelector", () => {
     expect(onChange).toHaveBeenCalledWith("gpt-image-2-high-4k");
   });
 
+  test("ChatGPT Images 2.5 を選択中でも family を保ったまま quality を合成する", () => {
+    // 品質は family を跨いで同じ 3 段（ADR-006）。2.5 で medium を選んでも
+    // 2.0 に落ちないことを固定する。
+    const onChange = jest.fn();
+    render(
+      <GptImage2QualitySelector
+        value="gpt-image-2.5-flare-low-2k"
+        authState="authenticated"
+        onChange={onChange}
+        onLockedClick={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Generate carefully/ }));
+    expect(onChange).toHaveBeenCalledWith("gpt-image-2.5-flare-high-2k");
+  });
+
   test("各行に行ラベルと色付き tier チップを並べて表示する", () => {
     render(
       <GptImage2QualitySelector

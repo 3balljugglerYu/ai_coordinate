@@ -53,17 +53,29 @@ export interface LockableModelSelectProps {
 
 type ModelRowValue =
   | "gpt-image-2-row"
+  | "gpt-image-2.5-flare-row"
   | "nano-banana-2-row"
   | "nano-banana-pro-row";
 
 interface ModelOption {
   value: ModelRowValue;
-  labelKey: "modelChatGptImages" | "modelNanoBanana2" | "modelNanoBananaPro";
+  labelKey:
+    | "modelChatGptImages"
+    | "modelChatGptImages25"
+    | "modelNanoBanana2"
+    | "modelNanoBananaPro";
   /** 行に添えるエンジンチップ */
   engineTag: ModelTagKey;
 }
 
 const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
+  // 2.5 を先頭に置く。全公開後は 2.5 を既定にする想定のため、
+  // 検証中から並びを最終形に合わせておく(既定モデル自体はまだ 2.0)。
+  {
+    value: "gpt-image-2.5-flare-row",
+    labelKey: "modelChatGptImages25",
+    engineTag: "engineOpenai",
+  },
   {
     value: "gpt-image-2-row",
     labelKey: "modelChatGptImages",
@@ -124,10 +136,16 @@ function toOptionCanonicalValue(
     parsedOpenAI?.sizeTier ?? parsedGeminiBanana?.sizeTier ?? "1k";
 
   if (option.value === "gpt-image-2-row") {
-    // この行は family `gpt-image-2` 専用。2.5 の行は Phase 4 で別行として追加する
+    // この行は family `gpt-image-2` 専用（2.5 は別行）
     if (parsedOpenAI?.family === "gpt-image-2") return currentModel;
     const size = isGptImage2Size(currentSize) ? currentSize : "1k";
     return composeOpenAIImageModel("gpt-image-2", "low", size);
+  }
+  if (option.value === "gpt-image-2.5-flare-row") {
+    // size tier は 2.0 と共通（GPT_IMAGE_2_TIER_LIMITS）なのでそのまま維持できる
+    if (parsedOpenAI?.family === "gpt-image-2.5-flare") return currentModel;
+    const size = isGptImage2Size(currentSize) ? currentSize : "1k";
+    return composeOpenAIImageModel("gpt-image-2.5-flare", "low", size);
   }
   if (option.value === "nano-banana-2-row") {
     if (parsedGeminiBanana?.family === "nano-2") return currentModel;
@@ -146,9 +164,9 @@ function toOptionCanonicalValue(
  * canonical モデルから「今選択中の 1 段目行」を導出する。
  */
 function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
-  if (parseOpenAIImageModel(model)?.family === "gpt-image-2") {
-    return "gpt-image-2-row";
-  }
+  const openAIFamily = parseOpenAIImageModel(model)?.family;
+  if (openAIFamily === "gpt-image-2") return "gpt-image-2-row";
+  if (openAIFamily === "gpt-image-2.5-flare") return "gpt-image-2.5-flare-row";
   const parsed = parseGeminiBananaModel(model);
   if (parsed?.family === "nano-2") return "nano-banana-2-row";
   if (parsed?.family === "nano-pro") return "nano-banana-pro-row";
@@ -159,6 +177,8 @@ function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
  * /style と /coordinate で共有する 1 段目の「生成モデル」セレクター。
  *
  * 3 行（ChatGPT Images 2.0 / Nano Banana 2 / Nano Banana Pro）でファミリーを切り替える。
+ * 段階公開中の ChatGPT Images 2.5 は、運営（`useGptImage25Available()` が true）にだけ
+ * **先頭行**として現れる（全公開後に既定へ据える想定の並び）。
  * 行クリック時、現在の size が新ファミリーで有効なら維持、無効なら 1K へフォールバック。
  * Quality（Low/Medium/High）は別カードの `GptImage2QualitySelector` で、size は
  * `GptImage2SizeSelector` / `GeminiBananaSizeSelector` でそれぞれ選ぶ。
@@ -186,10 +206,18 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
   const availableModelOptions = useMemo(
     () =>
       MODEL_OPTIONS.filter((option) => {
+        // ChatGPT Images 2.5 は段階公開中。運営（またはフラグ ON）以外には
+        // 行そのものを出さない（REQ-001 / REQ-002）。
+        if (
+          option.value === "gpt-image-2.5-flare-row" &&
+          !gptImage25Available
+        ) {
+          return false;
+        }
         const canonical = toOptionCanonicalValue(option, displayModel);
         return isModelAvailableForGeneration(canonical);
       }),
-    [displayModel]
+    [displayModel, gptImage25Available]
   );
 
   const handleValueChange = (next: string) => {

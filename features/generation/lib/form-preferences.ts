@@ -20,6 +20,7 @@ import {
 } from "@/shared/generation/prompt-core";
 import {
   DEFAULT_GENERATION_MODEL,
+  GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
   GPT_IMAGE_2_CANONICAL_MODELS,
   GPT_IMAGE_2_LEGACY_LOW_MODEL,
   normalizeModelName,
@@ -58,6 +59,10 @@ const PERSISTABLE_MODELS: ReadonlyArray<GeminiModel> = [
   "gemini-3-pro-image-2k",
   "gemini-3-pro-image-4k",
   ...GPT_IMAGE_2_CANONICAL_MODELS,
+  // 2.5 は段階公開中だが、localStorage には保存を許す。運営が 2.5 を選んだ状態で
+  // リロードしても選択が保たれ、非運営が（何らかの経路で）復元しても
+  // `resolveEffectiveModelForAuthState` が既定モデルへ丸める（REQ-014）。
+  ...GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
 ];
 
 function safeReadLocalStorage(key: string): string | null {

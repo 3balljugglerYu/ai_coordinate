@@ -72,3 +72,29 @@ describe("getModelTagsForCanonicalModel", () => {
     }
   });
 });
+
+describe("getModelTagsForCanonicalModel（ChatGPT Images 2.5）", () => {
+  it("2.5 の quality から tier チップを返す", () => {
+    expect(getModelTagsForCanonicalModel("gpt-image-2.5-flare-low-1k")).toEqual([
+      "tierLight",
+    ]);
+    expect(
+      getModelTagsForCanonicalModel("gpt-image-2.5-flare-medium-2k"),
+    ).toEqual(["tierBalanced"]);
+    expect(getModelTagsForCanonicalModel("gpt-image-2.5-flare-high-4k")).toEqual(
+      ["tierQuality"],
+    );
+  });
+
+  it("2.0 の tier チップは変わらない（回帰ガード）", () => {
+    expect(getModelTagsForCanonicalModel("gpt-image-2-low-1k")).toEqual([
+      "tierLight",
+    ]);
+    expect(getModelTagsForCanonicalModel("gpt-image-2-medium-2k")).toEqual([
+      "tierBalanced",
+    ]);
+    expect(getModelTagsForCanonicalModel("gpt-image-2-high-4k")).toEqual([
+      "tierQuality",
+    ]);
+  });
+});

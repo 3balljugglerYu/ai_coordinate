@@ -109,6 +109,13 @@ function throwOpenAIResponseError(
   code: string,
   message: string,
 ): never {
+  // モデレーション拒否。公式に安定した識別子は `moderation_blocked`
+  // (`error.type = "image_generation_user_error"`) なので、status に依存せず
+  // code だけで判定する。旧来の `content_policy_violation` とメッセージ正規表現は
+  // 取りこぼし防止のため 400 限定で残す(計画書 Phase 4)。
+  if (code === "moderation_blocked") {
+    throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+  }
   if (
     status === 400 &&
     (code === "content_policy_violation" ||

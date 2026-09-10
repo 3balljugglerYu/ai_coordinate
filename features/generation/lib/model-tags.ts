@@ -75,6 +75,19 @@ export function getModelTagsForCanonicalModel(
   if (typeof model !== "string" || model.length === 0) {
     return [];
   }
+  // ⚠️ 2.5 を先に判定する。`gpt-image-2.5-flare-low-1k` は
+  // `startsWith("gpt-image-2-low")` には一致しないが、将来 2.0 側の判定を
+  // `gpt-image-2` プレフィックスへ緩めたときに 2.5 を巻き込まないよう、
+  // family ごとの分岐をここで明示しておく（REQ-012）。
+  if (model.startsWith("gpt-image-2.5-flare-low")) {
+    return ["tierLight"];
+  }
+  if (model.startsWith("gpt-image-2.5-flare-medium")) {
+    return ["tierBalanced"];
+  }
+  if (model.startsWith("gpt-image-2.5-flare-high")) {
+    return ["tierQuality"];
+  }
   if (model.startsWith("gpt-image-2-low")) {
     return ["tierLight"];
   }

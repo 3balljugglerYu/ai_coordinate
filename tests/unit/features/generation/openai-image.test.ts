@@ -10,6 +10,7 @@ import {
 import {
   OPENAI_PROVIDER_ERROR,
   SAFETY_POLICY_BLOCKED_ERROR,
+  isSafetyPolicyBlockedErrorMessage,
 } from "@/shared/generation/errors";
 
 const PNG_1024x1024_HEADER = (() => {
@@ -339,6 +340,59 @@ describe("openai-image (Node port)", () => {
           apiKey: "test-key",
         })
       ).rejects.toThrow(SAFETY_POLICY_BLOCKED_ERROR);
+    });
+
+    test("moderation_blocked は status に依存せず SAFETY_POLICY_BLOCKED_ERROR で throw", async () => {
+      // 公式の安定した識別子。`content_policy_violation` とメッセージ正規表現に
+      // 頼らずに分類できることを固定する（計画書 Phase 4）。
+      for (const status of [400, 403, 422]) {
+        const fetchFn = jest.fn().mockResolvedValue(
+          new Response(
+            JSON.stringify({
+              error: {
+                code: "moderation_blocked",
+                type: "image_generation_user_error",
+                // メッセージ側に moderation / safety を含まないケース
+                message: "Your request was rejected.",
+              },
+            }),
+            { status, headers: { "Content-Type": "application/json" } }
+          )
+        );
+        await expect(
+          callOpenAIImageEdit({
+            ...DEFAULT_OPENAI_EDIT_PARAMS,
+            prompt: "test",
+            inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+            timeoutMs: 1000,
+            fetchFn: fetchFn as unknown as typeof fetch,
+            apiKey: "test-key",
+          })
+        ).rejects.toThrow(SAFETY_POLICY_BLOCKED_ERROR);
+      }
+    });
+
+    test("moderation_blocked の throw が返金/非リトライの分類に載る", async () => {
+      // 分類側（isSafetyPolicyBlockedErrorMessage）が true を返すことまで見て、
+      // 「throw はするが返金経路に乗らない」という取りこぼしを防ぐ。
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: { code: "moderation_blocked", message: "rejected" },
+          }),
+          { status: 400, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const error = await callOpenAIImageEdit({
+        ...DEFAULT_OPENAI_EDIT_PARAMS,
+        prompt: "test",
+        inputImage: { base64: PNG_1024x1024_BASE64, mimeType: "image/png" },
+        timeoutMs: 1000,
+        fetchFn: fetchFn as unknown as typeof fetch,
+        apiKey: "test-key",
+      }).catch((e: unknown) => e as Error);
+
+      expect(isSafetyPolicyBlockedErrorMessage(error.message)).toBe(true);
     });
 
     test("HTTP 401 (認証エラー) は OPENAI_PROVIDER_ERROR で throw", async () => {
