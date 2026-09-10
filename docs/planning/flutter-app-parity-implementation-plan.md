@@ -334,15 +334,36 @@ Phase 0（アプリ）と Phase 1（Web）は別リポジトリで独立して�
 目的: コーデ／じゆう／One-Tap Style を Web と同じ API で生成し、進捗と失敗が正しく見える。
 ビルド確認: 実機で 3 モードとも生成成功と残高不足の失敗が表示され、`image_jobs` への直接 INSERT がコードに残っていない。
 
-- [ ] `coordinate_repository.dart:96-132` の直接 INSERT と `pgmq_send` を削除し、`POST /api/generate-async`（JSON。項目は `handler.ts:137-153`）へ置換（REQ-06）
-- [ ] One-Tap Style: `POST /style/generate-async`（multipart。項目は `app/(app)/style/generate-async/handler.ts:147-165`）。プリセットは `style_presets`（published）と `preset_categories` を直読み、解放状態は `GET /api/style-presets/[id]/unlock-status`、ワンポイントアドバイスは `style_presets.generation_tip_ja/en`
-- [ ] じゆうモード: プロンプト上限 30,000 文字、公開／非公開の選択（既定は非公開。Web `/free` と同じ）
-- [ ] 元画像: Phase 0 の正規化を通して base64 送信。ストックは `source_image_stocks` 直読み、`insert_source_image_stock` RPC と Storage 直接アップロード（`features/generation/lib/database.ts:254-438`、`storage.ts:32-46` を参考）。ダミー 3 件（`coordinate_generation_form_section.dart:492-495`）を廃止
-- [ ] 進捗: `image_jobs` ポーリング（既存 1.2 秒／90 秒）と再入時の復旧を維持（REQ-10、ADR-004）。`GET /api/generation-status/in-progress` は使わない
-- [ ] エラー表示: `shared/generation/errors.ts` のコードを移植し、日本語でないメッセージや URL 入りは伏せる（`normalize-generation-error.ts` と同方針）
-- [ ] 費用表示: クライアント定数（`coordinate_repository.dart:583-591`）を廃止し、Web の料金表（`features/generation/lib/model-config.ts`）と同じ値を持つ。共有方法は要確認（10 章）
-- [ ] 生成結果: プレビュー → 拡大 → 保存（`share_plus` とギャラリー保存。iOS は連続保存を潰すので 1 枚ずつ）→ 投稿モーダル（Phase 4）
-- [ ] 生成タブは Web と同じく「コーデ／One-Tap Style／じゆう」のモード切替で同一タブ（`docs/product/screen-flow.md` 生成導線）
+- [x] `coordinate_repository.dart` の直接 INSERT と `pgmq_send` を削除し、`POST /api/generate-async`（JSON）へ置換（REQ-06）— Phase 0 の persta-app #3 で実施済み。Bearer 稼働後に #20 で送信項目を Web の `GenerationForm` と同じにした（`framingMode` 常時明示、Free Style は `backgroundMode: keep` / `sourceImageType: illustration` 固定、`outputAspectRatioMode` は `source` 以外のみ）
+- [x] One-Tap Style: `POST /style/generate-async`（multipart）— persta-app #21。カテゴリの `show_*` フラグで送信項目を決め、段階解放のカテゴリだけ画面を開いたときに `GET /api/style-presets/[id]/unlock-status` を 1 回問い合わせる（Web の `StylePresetGenerateCta` と同じ）。一覧のシルエット表示（コレクション機能）は対象外
+- [x] じゆうモード: プロンプト上限 30,000 文字 — #20。公開／非公開の選択は Web でも投稿時（投稿モーダル）に行うため Phase 4 で扱う
+- [x] 元画像: Phase 0 の正規化を通して base64 送信。ストックは `source_image_stocks` 直読み。追加・削除は RPC と Storage の直接操作ではなく Web ルート `POST/DELETE /api/source-image-stocks` を Bearer で呼ぶ（上限判定と Storage 保存をサーバー側に残す）— #22。ダミー 3 件は廃止済み
+- [x] 進捗: `image_jobs` ポーリング（1.2 秒／90 秒）と再入時の復旧を維持。One-Tap Style も同じ経路で追跡
+- [x] エラー表示: `normalize-generation-error.ts` を `generation_error_normalizer.dart` に移植（日本語でない・URL 入りは伏せる）— #20
+- [x] 費用表示: `generation_models.dart` が `model-config.ts` / `openai-image-model.ts` / `gemini-banana-model.ts` と同じ id・料金・free プランの許可リストを持つ — #20。共有方法は「同じ値を両方に持ち、改定時は両方を直す」（10 章の課題は継続）
+- [x] 生成結果: プレビュー → 拡大 → 保存（画像ファイルを共有シートへ渡す。アプリは写真ライブラリへ直接書かない）— #22。投稿モーダルは Phase 4
+- [x] 生成タブは「Coordinate / One-Tap Style / Free Style」のモード切替で同一タブ — #20（ラベルは Web の `tabLabel` と同じ）
+
+#### Phase 3 の実施結果（2026-09-06）
+
+| PR | 内容 |
+|----|------|
+| persta-app #20 | 生成モデル選択を Web と同じ 3 系統に。free プランのロック、Gemini キルスイッチ（`GEMINI_GENERATION_ENABLED`）、3 モード切替、Free Style、「生成済み」ソース、失敗文言の正規化 |
+| persta-app #21 | One-Tap Style 生成（multipart）、解放状態の問い合わせ、カテゴリ別の設定表示 |
+| persta-app #22 | 生成結果カード（Web の履歴リストと同じ情報・操作）、ダウンロード＝共有シート、ストック追加／削除／上限、設定の端末記憶 |
+
+判断と残課題:
+
+- 生成後の「元画像をストックに保存しますか？」の自動案内は Web 側で無効化中（`GenerationFormContainer.tsx`）のため追加していない
+- 段階解放カテゴリの一覧シルエット表示は `resolveCollectionUnlockContext`（`get_collection_progress` 等）を要するためコレクション機能として対象外。サーバー 403 は表示して解放状態を再確認する
+- `GEMINI_GENERATION_ENABLED` の本番値は Web 側の `NEXT_PUBLIC_GEMINI_GENERATION_ENABLED` に合わせて `env/*.json` で設定する（既定 true）
+- 実機確認済み（2026-09-07、iPhone 16 Plus / iOS 26.6.1、本番環境の `env/dev.json` で release ビルド）。運営アカウントで動作に問題なし
+- ⭐実機ビルドの手順（この作業環境ではエミュレータが動かないため、実機確認はこの経路で行う）:
+  1. `fvm flutter build ios --release --dart-define-from-file=env/dev.json`
+  2. `xcrun devicectl device install app --device <CoreDevice UUID> build/ios/iphoneos/Runner.app`
+  3. `xcrun devicectl device process launch --device <CoreDevice UUID> ai.persta.app`
+
+  macOS 14.8 + Xcode 16.0 は iOS 26 を正式サポートしないが、CoreDevice 経由（Developer Mode 有効・有線接続）でインストールと起動ができる
 
 ### Phase 4: 投稿と閲覧（persta-app）
 
