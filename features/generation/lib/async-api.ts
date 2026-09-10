@@ -23,6 +23,61 @@ interface AsyncGenerationApiMessages {
   fetchJobsFailed?: string;
   pollingStopped?: string;
   pollingTimeout?: string;
+  /** 送信そのものが通信エラーで届かなかったとき */
+  networkErrorSubmit?: string;
+  /** 進捗の取得が続けて失敗し、追跡を諦めたとき */
+  networkErrorPolling?: string;
+}
+
+/**
+ * ポーリングを諦めるまでに許す「連続」失敗回数。
+ *
+ * モバイル回線では 90 秒級の生成中に取得が 1 回落ちることが普通にある。
+ * 1 回で打ち切ると、サーバー側では走り続けているジョブを UI が見失い、
+ * ユーザーには「失敗した」ように見える(2026-09-10 の実障害)。
+ *
+ * トンネル・エレベーター・駅間などの電波断は 30 秒級になるため、
+ * 待ち時間の合計(2 + 4 + 8 + 16 = 30 秒)がその程度を吸収する回数にする。
+ * ジョブはサーバーで走り続けており、待っている間の「生成中」表示は事実として
+ * 正しい。ここで諦めても jobId は残すので、画面を開き直せば結果を拾える。
+ */
+const MAX_CONSECUTIVE_POLL_FAILURES = 5;
+
+const POLL_RETRY_BASE_DELAY_MS = 2000;
+const POLL_RETRY_MAX_DELAY_MS = 16_000;
+
+/**
+ * 失敗後の待ち時間。2s → 4s → 8s → 16s と指数で伸ばす。
+ *
+ * 毎回同じ間隔で叩くと、復旧していないサーバーに無駄な負荷をかける。
+ * 指数で伸ばすのは OpenAI クライアントの再試行
+ * (`features/generation/lib/openai-image.ts` の `2 ** (attempt - 1)`)と同じ形。
+ */
+function pollRetryDelayMs(consecutiveFailures: number): number {
+  return Math.min(
+    POLL_RETRY_BASE_DELAY_MS * 2 ** (consecutiveFailures - 1),
+    POLL_RETRY_MAX_DELAY_MS
+  );
+}
+
+/**
+ * `fetch` が拒否したとき(= ネットワーク層の失敗)に、ブラウザの生メッセージを
+ * そのまま投げないためのラッパー。
+ *
+ * iOS Safari は `TypeError: Load failed`、Chrome は `Failed to fetch` を返す。
+ * 呼び出し側はこれを画面に出してしまうため、ここでロケール済みの文言に置き換える。
+ * HTTP レスポンスが返ってきた場合(4xx/5xx 含む)は素通しし、従来どおり呼び出し側で扱う。
+ */
+async function fetchOrThrowLocalized(
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  networkErrorMessage: string
+): Promise<Response> {
+  try {
+    return await fetch(input, init);
+  } catch {
+    throw new Error(networkErrorMessage);
+  }
 }
 
 function logCoordinateGenerationTiming(
@@ -99,7 +154,7 @@ export async function generateImageAsync(
   }
   // sourceImageStockIdの場合は、サーバー側で処理するためここでは何もしない
 
-  const response = await fetch("/api/generate-async", {
+  const response = await fetchOrThrowLocalized("/api/generate-async", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -132,7 +187,10 @@ export async function generateImageAsync(
         ? { outputAspectRatioMode: request.outputAspectRatioMode }
         : {}),
     }),
-  });
+  },
+    messages?.networkErrorSubmit ||
+      "通信が不安定なため、生成を開始できませんでした。電波の良い場所でもう一度お試しください。"
+  );
 
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as
@@ -161,7 +219,12 @@ export async function getGenerationStatus(
   jobId: string,
   messages?: AsyncGenerationApiMessages
 ): Promise<AsyncGenerationStatus> {
-  const response = await fetch(`/api/generation-status?id=${encodeURIComponent(jobId)}`);
+  const response = await fetchOrThrowLocalized(
+    `/api/generation-status?id=${encodeURIComponent(jobId)}`,
+    undefined,
+    messages?.networkErrorPolling ||
+      "通信が不安定です。生成は続いている可能性があるため、しばらくしてから画面を開き直してください。"
+  );
 
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as
@@ -217,7 +280,12 @@ export async function getInProgressJobs(
     ? "/api/generation-status/in-progress?includeRecent=true"
     : "/api/generation-status/in-progress";
   
-  const response = await fetch(url);
+  const response = await fetchOrThrowLocalized(
+    url,
+    undefined,
+    messages?.networkErrorPolling ||
+      "通信が不安定です。生成は続いている可能性があるため、しばらくしてから画面を開き直してください。"
+  );
 
   if (!response.ok) {
     const error = (await response.json().catch(() => null)) as
@@ -259,6 +327,8 @@ export function pollGenerationStatus(
   const startTime = Date.now();
   let timeoutId: number | null = null;
   let isStopped = false;
+  // 連続で失敗した回数。1 回でも取得できたらリセットする。
+  let consecutiveFailures = 0;
 
   const stop = () => {
     isStopped = true;
@@ -284,7 +354,8 @@ export function pollGenerationStatus(
         }
 
         const status = await getGenerationStatus(jobId, messages);
-        
+        consecutiveFailures = 0;
+
         // 停止された場合は処理を中断
         if (isStopped) {
           reject(new Error(messages?.pollingStopped || "ポーリングが停止されました"));
@@ -311,6 +382,20 @@ export function pollGenerationStatus(
         if (isStopped) {
           return;
         }
+
+        // 取得の失敗はジョブの失敗ではない。ジョブが失敗したときは
+        // status === "failed" で resolve される経路を通る。
+        // ここに来るのは通信断・一時的な 5xx なので、続けて何度も落ちるまでは
+        // 追跡を諦めない(2026-09-10 の実障害: 1 回の取得失敗で生成を見失った)。
+        consecutiveFailures += 1;
+        if (consecutiveFailures < MAX_CONSECUTIVE_POLL_FAILURES) {
+          timeoutId = window.setTimeout(
+            poll,
+            pollRetryDelayMs(consecutiveFailures)
+          );
+          return;
+        }
+
         reject(error);
       }
     };

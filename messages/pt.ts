@@ -1334,6 +1334,8 @@ export const ptMessages = {
     fetchStatusFailed: "Não foi possível obter o status da geração.",
     fetchJobsFailed: "Não foi possível obter os jobs em andamento.",
     pollingTimeout: "O polling expirou.",
+    networkErrorSubmit: "A conexão estava instável, então a geração não pôde começar. Tente novamente com uma conexão melhor.",
+    networkErrorPolling: "A conexão está instável. A geração pode ainda estar em andamento, então reabra esta tela em instantes.",
     statusCardTitle: "Status da geração de imagens",
     statusCardErrorTitle: "Erro",
     statusCardErrorDescription: "Não foi possível obter o status da geração.",

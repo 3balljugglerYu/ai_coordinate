@@ -1330,6 +1330,8 @@ export const koMessages = {
     fetchStatusFailed: "생성 상태를 불러오지 못했습니다.",
     fetchJobsFailed: "진행 중인 작업을 불러오지 못했습니다.",
     pollingTimeout: "폴링이 시간 초과되었습니다.",
+    networkErrorSubmit: "연결이 불안정하여 생성을 시작하지 못했습니다. 통신 상태가 좋은 곳에서 다시 시도해 주세요.",
+    networkErrorPolling: "연결이 불안정합니다. 생성이 계속 진행 중일 수 있으니 잠시 후 화면을 다시 열어 주세요.",
     statusCardTitle: "이미지 생성 상태",
     statusCardErrorTitle: "오류",
     statusCardErrorDescription: "생성 상태를 불러오지 못했습니다.",

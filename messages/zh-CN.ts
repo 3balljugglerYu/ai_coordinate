@@ -1329,6 +1329,8 @@ export const zhCnMessages = {
     fetchStatusFailed: "获取生成状态失败。",
     fetchJobsFailed: "获取进行中的任务失败。",
     pollingTimeout: "轮询超时。",
+    networkErrorSubmit: "网络不稳定，未能开始生成。请在信号良好的地方重试。",
+    networkErrorPolling: "网络不稳定。生成可能仍在进行中，请稍后重新打开此页面。",
     statusCardTitle: "图像生成状态",
     statusCardErrorTitle: "错误",
     statusCardErrorDescription: "获取生成状态失败。",

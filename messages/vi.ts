@@ -1331,6 +1331,8 @@ export const viMessages = {
     fetchStatusFailed: "Không lấy được trạng thái tạo.",
     fetchJobsFailed: "Không lấy được các công việc đang chạy.",
     pollingTimeout: "Polling đã quá thời gian.",
+    networkErrorSubmit: "Kết nối không ổn định nên không thể bắt đầu tạo ảnh. Vui lòng thử lại ở nơi có sóng tốt hơn.",
+    networkErrorPolling: "Kết nối không ổn định. Quá trình tạo ảnh có thể vẫn đang chạy, vui lòng mở lại màn hình này sau giây lát.",
     statusCardTitle: "Trạng thái tạo hình",
     statusCardErrorTitle: "Lỗi",
     statusCardErrorDescription: "Không lấy được trạng thái tạo.",

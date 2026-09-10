@@ -1331,6 +1331,8 @@ export const enMessages = {
     fetchStatusFailed: "Failed to fetch the generation status.",
     fetchJobsFailed: "Failed to fetch in-progress jobs.",
     pollingTimeout: "Polling timed out.",
+    networkErrorSubmit: "The connection was unstable, so the generation could not start. Please try again with a better connection.",
+    networkErrorPolling: "The connection is unstable. Your generation may still be running, so please reopen this screen in a moment.",
     statusCardTitle: "Image generation status",
     statusCardErrorTitle: "Error",
     statusCardErrorDescription: "Failed to fetch the generation status.",

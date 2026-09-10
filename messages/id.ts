@@ -1333,6 +1333,8 @@ export const idMessages = {
     fetchStatusFailed: "Gagal mengambil status pembuatan.",
     fetchJobsFailed: "Gagal mengambil pekerjaan yang sedang berlangsung.",
     pollingTimeout: "Polling kedaluwarsa.",
+    networkErrorSubmit: "Koneksi tidak stabil sehingga proses pembuatan tidak dapat dimulai. Coba lagi di tempat dengan sinyal lebih baik.",
+    networkErrorPolling: "Koneksi tidak stabil. Proses pembuatan mungkin masih berjalan, jadi buka kembali layar ini beberapa saat lagi.",
     statusCardTitle: "Status pembuatan gambar",
     statusCardErrorTitle: "Kesalahan",
     statusCardErrorDescription: "Gagal mengambil status pembuatan.",

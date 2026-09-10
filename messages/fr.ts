@@ -1334,6 +1334,8 @@ export const frMessages = {
     fetchStatusFailed: "Impossible de récupérer l'état de la génération.",
     fetchJobsFailed: "Impossible de récupérer les tâches en cours.",
     pollingTimeout: "Délai dépassé pour le polling.",
+    networkErrorSubmit: "La connexion était instable : la génération n’a pas pu démarrer. Réessayez avec une meilleure connexion.",
+    networkErrorPolling: "La connexion est instable. La génération est peut-être toujours en cours : rouvrez cet écran dans un instant.",
     statusCardTitle: "État de la génération d'images",
     statusCardErrorTitle: "Erreur",
     statusCardErrorDescription: "Impossible de récupérer l'état de la génération.",

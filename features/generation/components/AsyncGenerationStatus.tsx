@@ -33,6 +33,8 @@ export function AsyncGenerationStatus({
       fetchStatusFailed: t("fetchStatusFailed"),
       pollingStopped: t("inProgressStopped"),
       pollingTimeout: t("pollingTimeout"),
+      networkErrorSubmit: t("networkErrorSubmit"),
+      networkErrorPolling: t("networkErrorPolling"),
     }),
     [t]
   );

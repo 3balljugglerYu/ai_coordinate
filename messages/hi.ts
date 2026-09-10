@@ -1332,6 +1332,8 @@ export const hiMessages = {
     fetchStatusFailed: "जनरेशन स्थिति प्राप्त करने में विफल।",
     fetchJobsFailed: "प्रगति में जॉब प्राप्त करने में विफल।",
     pollingTimeout: "पोलिंग टाइम आउट हो गया।",
+    networkErrorSubmit: "कनेक्शन अस्थिर होने के कारण जनरेशन शुरू नहीं हो सका। बेहतर नेटवर्क में दोबारा प्रयास करें।",
+    networkErrorPolling: "कनेक्शन अस्थिर है। जनरेशन अभी भी चल रहा हो सकता है, कृपया थोड़ी देर बाद यह स्क्रीन दोबारा खोलें।",
     statusCardTitle: "छवि जनरेशन स्थिति",
     statusCardErrorTitle: "त्रुटि",
     statusCardErrorDescription: "जनरेशन स्थिति प्राप्त करने में विफल।",

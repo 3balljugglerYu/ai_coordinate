@@ -1334,6 +1334,8 @@ export const esMessages = {
     fetchStatusFailed: "No se pudo obtener el estado de la generación.",
     fetchJobsFailed: "No se pudieron obtener los trabajos en curso.",
     pollingTimeout: "El sondeo agotó el tiempo de espera.",
+    networkErrorSubmit: "La conexión era inestable, por lo que no se pudo iniciar la generación. Inténtalo de nuevo con mejor conexión.",
+    networkErrorPolling: "La conexión es inestable. Es posible que la generación siga en curso, así que vuelve a abrir esta pantalla en un momento.",
     statusCardTitle: "Estado de la generación de imágenes",
     statusCardErrorTitle: "Error",
     statusCardErrorDescription: "No se pudo obtener el estado de la generación.",

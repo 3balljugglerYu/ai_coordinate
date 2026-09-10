@@ -1330,6 +1330,8 @@ export const thMessages = {
     fetchStatusFailed: "ดึงสถานะการสร้างไม่สำเร็จ",
     fetchJobsFailed: "ดึงงานที่กำลังดำเนินการอยู่ไม่สำเร็จ",
     pollingTimeout: "การ poll หมดเวลา",
+    networkErrorSubmit: "การเชื่อมต่อไม่เสถียร จึงไม่สามารถเริ่มสร้างภาพได้ กรุณาลองใหม่ในบริเวณที่สัญญาณดี",
+    networkErrorPolling: "การเชื่อมต่อไม่เสถียร การสร้างภาพอาจยังดำเนินอยู่ กรุณาเปิดหน้าจอนี้อีกครั้งในอีกสักครู่",
     statusCardTitle: "สถานะการสร้างรูป",
     statusCardErrorTitle: "ข้อผิดพลาด",
     statusCardErrorDescription: "ดึงสถานะการสร้างไม่สำเร็จ",
