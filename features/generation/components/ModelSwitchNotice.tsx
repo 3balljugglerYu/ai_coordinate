@@ -27,6 +27,19 @@ import { markModelSwitchNoticeSeen } from "@/features/generation/lib/form-prefer
 /** スポットライトを当てる先。GenerationModelControls の data-tour と同じ値。 */
 export const MODEL_SELECT_TOUR_TARGET = '[data-tour="tour-model-select"]';
 
+/**
+ * 対象を画面中央へ寄せてから driver を起動するまでの待ち時間。
+ *
+ * `app/globals.css` が `html { scroll-behavior: smooth }` を指定しているため、
+ * `scrollIntoView` は(driver.js 側の設定に関わらず)アニメーションで動く。
+ * 動いている最中に driver が吹き出しの位置を計算すると、**スクロール前の
+ * 位置**に吹き出しが置かれ、実機で「対象は画面中央なのに吹き出しは画面下端」
+ * という見え方になる(2026-09-11 に iPhone で発生)。
+ *
+ * TutorialTourProvider の SCROLL_TRANSITION_MS と同じ 450ms を使う。
+ */
+const SCROLL_SETTLE_MS = 450;
+
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined" || !window.matchMedia) {
     return false;
@@ -78,6 +91,23 @@ export function ModelSwitchNotice({ open, onClose }: ModelSwitchNoticeProps) {
         return;
       }
 
+      /*
+        先に自分で対象を画面中央へ寄せ、スクロールが落ち着いてから driver を
+        起動する。こうすると driver 側は「既に見えている要素」を扱うことになり、
+        自前のスクロールが走らないので位置計算がずれない。
+      */
+      target.scrollIntoView({
+        behavior: prefersReducedMotion() ? "auto" : "smooth",
+        block: "center",
+        inline: "nearest",
+      });
+      await new Promise((resolve) =>
+        window.setTimeout(resolve, SCROLL_SETTLE_MS)
+      );
+      if (destroyed) {
+        return;
+      }
+
       const driverObj = driver({
         showProgress: false,
         animate: !prefersReducedMotion(),
@@ -105,8 +135,21 @@ export function ModelSwitchNotice({ open, onClose }: ModelSwitchNoticeProps) {
         },
       });
 
-      destroy = () => driverObj.destroy();
+      destroy = () => {
+        window.clearTimeout(refreshTimer);
+        driverObj.destroy();
+      };
       driverObj.drive(0);
+
+      /*
+        保険。iOS の慣性スクロールやアドレスバーの出入りで、drive 直後の
+        レイアウトがまだ動いていることがある。一度だけ位置を計算し直す。
+      */
+      const refreshTimer = window.setTimeout(() => {
+        if (!destroyed) {
+          driverObj.refresh();
+        }
+      }, SCROLL_SETTLE_MS);
     };
 
     // セレクターの描画を待ってから起動する
