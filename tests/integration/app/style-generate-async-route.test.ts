@@ -867,9 +867,37 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       );
 
       expect(response.status).toBe(200);
-      expect(isGptImage25AvailableMock).not.toHaveBeenCalled();
+      /*
+        サーバーは「その人が使えるモデル」を既定に選ぶため、
+        isGptImage25Available は参照する(以前は参照しない前提だった)。
+        ここで 2.5 を選ばないからこそ、自分のゲートで 400 にならない。
+      */
+      expect(isGptImage25AvailableMock).toHaveBeenCalled();
       expect(jobRepository.createImageJob).toHaveBeenCalledWith(
         expect.objectContaining({ model: "gpt-image-2-low-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
+
+    test("2.5 が使えるなら、モデル選択を出さないカテゴリの既定も 2.5 になる", async () => {
+      isGptImage25AvailableMock.mockReturnValue(true);
+      getPublishedStylePresetForGenerationFn.mockResolvedValueOnce(
+        buildStylePresetForGeneration({
+          category: {
+            ...TEST_COORDINATE_CATEGORY,
+            showGenerationModelControl: false,
+          },
+        })
+      );
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gpt-image-2-high-4k")),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gpt-image-2.5-flare-low-1k" }),
         expect.objectContaining({ kind: expect.any(String) })
       );
     });

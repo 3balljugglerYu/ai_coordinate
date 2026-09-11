@@ -70,8 +70,18 @@ export const GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS: ReadonlyArray<GptImage25Flare
 export const OPENAI_IMAGE_CANONICAL_MODELS: ReadonlyArray<OpenAIImageCanonicalModel> =
   [...GPT_IMAGE_2_CANONICAL_MODELS, ...GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS];
 
+/**
+ * legacy alias `gpt-image-2-low` の正規化先。2.0 の最小構成。
+ *
+ * ⚠️ ここは「既定で選ばれるモデル」ではない。既定は
+ * `DEFAULT_GENERATION_MODEL`(features/generation/types.ts)を見ること。
+ */
 export const DEFAULT_GPT_IMAGE_2_MODEL =
   "gpt-image-2-low-1k" satisfies GptImage2CanonicalModel;
+
+/** ChatGPT Images 2.5 の最小構成。2026-09-11 から全画面の既定。 */
+export const DEFAULT_GPT_IMAGE_2_5_FLARE_MODEL =
+  "gpt-image-2.5-flare-low-1k" satisfies GptImage25FlareCanonicalModel;
 
 /**
  * モデルごとのペルコイン消費量。

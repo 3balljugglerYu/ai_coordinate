@@ -24,7 +24,6 @@ import type {
 } from "@/features/generation/lib/job-types";
 import { getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import {
-  DEFAULT_GENERATION_MODEL,
   backgroundChangeToBackgroundMode,
   isKnownModelInput,
   normalizeModelName,
@@ -32,6 +31,7 @@ import {
 import {
   getPercoinCost,
   isModelAvailableForGeneration,
+  resolveServerDefaultModel,
 } from "@/features/generation/lib/model-config";
 import {
   parseFramingMode,
@@ -160,12 +160,17 @@ export async function postStyleGenerateAsyncRoute(
     }
 
     // model 受け取り (Phase 5)。フロントから明示的に送られる前提だが、
-    // 後方互換のため未送信なら DEFAULT_GENERATION_MODEL を使う。
+    // 後方互換のため未送信ならサーバー側の既定を使う。
+    // ⚠️ 既定は 2.5 だが、その人が 2.5 を使えないなら 2.0 を選ぶ
+    // (サーバー自身が選んだモデルを自分のゲートで弾かないため)。
+    const serverDefaultModel = resolveServerDefaultModel(
+      isGptImage25Available(user.id)
+    );
     const modelEntry = formData.get("model");
     const rawModel = typeof modelEntry === "string" ? modelEntry : null;
     const model = rawModel && isKnownModelInput(rawModel)
       ? normalizeModelName(rawModel)
-      : DEFAULT_GENERATION_MODEL;
+      : serverDefaultModel;
 
     const isAdminUser = isAdminViewer(user.id);
     const preset = await getPublishedStylePresetForGenerationFn(styleId, {
@@ -287,7 +292,7 @@ export async function postStyleGenerateAsyncRoute(
       : false;
     const effectiveModel = preset.category.showGenerationModelControl
       ? model
-      : DEFAULT_GENERATION_MODEL;
+      : serverDefaultModel;
     if (!isModelAvailableForGeneration(effectiveModel)) {
       return jsonError(
         copy.modelTemporarilyUnavailable,
