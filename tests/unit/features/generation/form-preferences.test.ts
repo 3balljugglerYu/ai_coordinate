@@ -3,6 +3,12 @@
 import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
 import {
   BACKGROUND_MODE_STORAGE_KEY,
+  FORCED_GPT_IMAGE_2_5_KEY,
+  MODEL_SWITCH_NOTICE_SEEN_KEY,
+  markGptImage25Forced,
+  markModelSwitchNoticeSeen,
+  shouldForceGptImage25,
+  shouldShowModelSwitchNotice,
   COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
   SELECTED_MODEL_STORAGE_KEY,
   FREE_ASPECT_MODE_STORAGE_KEY,
@@ -111,6 +117,52 @@ describe("form-preferences", () => {
 
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "");
       expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
+    });
+  });
+
+  describe("2.5 への1回だけの切り替え / 案内の既読", () => {
+    it("初回は切り替え対象。記録すると2度目以降は対象外になる", () => {
+      expect(shouldForceGptImage25()).toBe(true);
+      markGptImage25Forced();
+      expect(shouldForceGptImage25()).toBe(false);
+      expect(window.localStorage.getItem(FORCED_GPT_IMAGE_2_5_KEY)).toBe("1");
+    });
+
+    it("初回は案内対象。既読にすると2度目以降は出さない", () => {
+      expect(shouldShowModelSwitchNotice()).toBe(true);
+      markModelSwitchNoticeSeen();
+      expect(shouldShowModelSwitchNotice()).toBe(false);
+      expect(window.localStorage.getItem(MODEL_SWITCH_NOTICE_SEEN_KEY)).toBe(
+        "1"
+      );
+    });
+
+    it("⭐ localStorage が読めない環境では切り替えない（毎回選択を奪わないため）", () => {
+      const getItem = jest
+        .spyOn(Storage.prototype, "getItem")
+        .mockImplementation(() => {
+          throw new Error("denied");
+        });
+      try {
+        expect(shouldForceGptImage25()).toBe(false);
+        expect(shouldShowModelSwitchNotice()).toBe(false);
+      } finally {
+        getItem.mockRestore();
+      }
+    });
+
+    it("書き込めない環境でも例外にしない", () => {
+      const setItem = jest
+        .spyOn(Storage.prototype, "setItem")
+        .mockImplementation(() => {
+          throw new Error("quota");
+        });
+      try {
+        expect(() => markGptImage25Forced()).not.toThrow();
+        expect(() => markModelSwitchNoticeSeen()).not.toThrow();
+      } finally {
+        setItem.mockRestore();
+      }
     });
   });
 
