@@ -17,6 +17,7 @@ import {
   getPercoinCost,
   creatorLooksCost,
   isModelAvailableForGeneration,
+  resolveServerDefaultModel,
 } from "@/features/generation/lib/model-config";
 import {
   type CreatorLooksMode,
@@ -30,7 +31,6 @@ import {
   isTwoStageModeAvailable,
 } from "@/features/inspire/lib/creator-looks-two-stage";
 import {
-  DEFAULT_GENERATION_MODEL,
 } from "@/features/generation/types";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getStyleTemplateById } from "@/features/inspire/lib/repository";
@@ -152,7 +152,10 @@ export async function postGenerateAsyncRoute(
       creatorLooksMode,
       outputAspectRatioMode,
     } = validationResult.data;
-    const effectiveModel = model || DEFAULT_GENERATION_MODEL;
+    // 未送信のときは「その人が使えるモデル」を選ぶ(段階公開中に自分のゲートで
+    // 弾かれないようにするため)。明示送信された 2.5 は従来どおりゲートで判定する。
+    const effectiveModel =
+      model || resolveServerDefaultModel(isGptImage25Available(user.id));
     // Creator Looks 投稿テンプレ(is_creator_looks)に対してのみ有効な生成モード。
     // 一般 inspire には適用しない。inspire 検証ブロックで template 確認後に確定する。
     let effectiveCreatorLooksMode: CreatorLooksMode | null = null;

@@ -118,11 +118,15 @@ import type { SubscriptionPlan } from "@/features/subscription/subscription-conf
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { COLLECTION_PROGRESS_REFRESH_EVENT } from "@/features/collections/hooks/useCollectionProgress";
 import {
+  markGptImage25Forced,
   readPreferredModel,
+  shouldForceGptImage25,
+  shouldShowModelSwitchNotice,
   writePreferredModel,
   readPreferredStyleAspectMode,
   writePreferredStyleAspectMode,
 } from "@/features/generation/lib/form-preferences";
+import { ModelSwitchNotice } from "@/features/generation/components/ModelSwitchNotice";
 import { AspectRatioCardSelector } from "@/components/AspectRatioCardSelector";
 import {
   USER_SELECTABLE_OUTPUT_ASPECT_RATIO_MODES,
@@ -459,6 +463,8 @@ export function StylePageClient({
   const [selectedModel, setSelectedModel] = useState<GeminiModel>(
     DEFAULT_GENERATION_MODEL
   );
+  // 既定を 2.5 へ切り替えたことの案内(端末ごとに1回だけ)。
+  const [isModelSwitchNoticeOpen, setIsModelSwitchNoticeOpen] = useState(false);
   // dual + user_upload preset 用の image_1。preset.dualReferenceSource='user_upload' のときのみ意味あり。
   const [userReferenceImage, setUserReferenceImage] = useState<File | null>(
     null,
@@ -871,7 +877,40 @@ export function StylePageClient({
       setAspectMode(readPreferredStyleAspectMode());
       return;
     }
-    setSelectedModel(readPreferredModel());
+    const stored = readPreferredModel();
+
+    /*
+      既定を 2.5 にしても、以前 2.0 を選んだ端末は保存値が復元されて 2.0 のまま
+      になる。公開しても既定が変わらないとほとんど切り替わらないことは #517
+      (ホームのフィード既定化)で経験済みなので、**端末ごとに1回だけ** 2.5 へ寄せ、
+      同時に案内を出す。2 度目以降はユーザーの選択を尊重する。
+
+      2.5 を選べない状態(段階公開フラグ OFF・ゲスト許可外)では寄せない。
+      resolveEffectiveModelForAuthState で丸まるだけで、案内も無意味になるため。
+    */
+    const canSwitch =
+      resolveEffectiveModelForAuthState(
+        DEFAULT_GENERATION_MODEL,
+        modelAuthState,
+        { gptImage25Available }
+      ) === DEFAULT_GENERATION_MODEL;
+
+    if (canSwitch && stored !== DEFAULT_GENERATION_MODEL && shouldForceGptImage25()) {
+      markGptImage25Forced();
+      setSelectedModel(DEFAULT_GENERATION_MODEL);
+      writePreferredModel(DEFAULT_GENERATION_MODEL);
+      setAspectMode(readPreferredStyleAspectMode());
+      if (shouldShowModelSwitchNotice()) {
+        setIsModelSwitchNoticeOpen(true);
+      }
+      return;
+    }
+
+    if (canSwitch) {
+      // 既に 2.5 の人にも、切り替わったことは一度だけ伝える
+      markGptImage25Forced();
+    }
+    setSelectedModel(stored);
     setAspectMode(readPreferredStyleAspectMode());
     // requestedModel は URL 由来でマウント中に変わらない。認証状態の確定後に
     // 上書きされないよう、依存は初回マウントのみに保つ。
@@ -2318,6 +2357,11 @@ export function StylePageClient({
             ) : null}
 
             {shouldShowGenerationModelControl ? (
+              <>
+              <ModelSwitchNotice
+                open={isModelSwitchNoticeOpen}
+                onClose={() => setIsModelSwitchNoticeOpen(false)}
+              />
               <GenerationModelControls
                 value={effectiveSelectedModel}
                 onChange={handleSelectedModelChange}
@@ -2338,6 +2382,7 @@ export function StylePageClient({
                     : undefined
                 }
               />
+              </>
             ) : null}
 
             <div data-tour="style-tour-generate">

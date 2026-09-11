@@ -5,11 +5,14 @@ import {
   isCanonicalGuestAllowedModel,
   isFreePlanAllowedModel,
   resolveRequestedModelFromUrl,
+  resolveServerDefaultModel,
   isModelAvailableForGeneration,
   parseGuestRequestedModel,
   resolveEffectiveModelForAuthState,
 } from "@/features/generation/lib/model-config";
 import {
+  DEFAULT_GENERATION_MODEL,
+  FALLBACK_GENERATION_MODEL,
   isOpenAIImageModel,
   normalizeModelName,
 } from "@/features/generation/types";
@@ -198,6 +201,32 @@ describe("model-config / model identification helpers", () => {
       expect(parseGuestRequestedModel("")).toBeNull();
       expect(parseGuestRequestedModel(null)).toBeNull();
       expect(parseGuestRequestedModel(undefined)).toBeNull();
+    });
+  });
+
+  describe("resolveServerDefaultModel（サーバーが自分で決める既定値）", () => {
+    it("2.5 が使えるなら既定(2.5)を返す", () => {
+      expect(resolveServerDefaultModel(true)).toBe("gpt-image-2.5-flare-low-1k");
+      expect(resolveServerDefaultModel(true)).toBe(DEFAULT_GENERATION_MODEL);
+    });
+
+    it("⭐ 2.5 が使えないなら 2.0 を返す（自分のゲートで自分を弾かないため）", () => {
+      // ここが DEFAULT のままだと、段階公開フラグを戻したときに
+      // 「サーバーが選んだ 2.5」をサーバーのゲートが 400 にして、
+      // そのユーザーは何をしても生成できなくなる。
+      expect(resolveServerDefaultModel(false)).toBe("gpt-image-2-low-1k");
+      expect(resolveServerDefaultModel(false)).toBe(FALLBACK_GENERATION_MODEL);
+    });
+
+    it("返す値は常に誰でも実行できる（ゲストでも丸められない）", () => {
+      for (const available of [true, false]) {
+        const model = resolveServerDefaultModel(available);
+        expect(
+          resolveEffectiveModelForAuthState(model, "guest", {
+            gptImage25Available: available,
+          })
+        ).toBe(model);
+      }
     });
   });
 

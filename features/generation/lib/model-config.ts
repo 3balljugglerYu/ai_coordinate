@@ -4,6 +4,7 @@
 
 import {
   DEFAULT_GENERATION_MODEL,
+  FALLBACK_GENERATION_MODEL,
   isKnownModelInput,
   isOpenAIImageModel,
   normalizeModelName,
@@ -15,7 +16,7 @@ import {
 } from "@/shared/generation/openai-image-model";
 import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
-export { DEFAULT_GENERATION_MODEL };
+export { DEFAULT_GENERATION_MODEL, FALLBACK_GENERATION_MODEL };
 
 /**
  * Gemini 画像生成の kill switch。
@@ -177,11 +178,11 @@ export function parseGuestRequestedModel(
  * UI state / localStorage に残ったモデルを、現在の認証状態で実際に使えるモデルへ丸める。
  *
  * ゲスト時は保存値そのものを書き換えず、送信・表示・料金表示で使う実効値だけを
- * DEFAULT_GENERATION_MODEL に clamp する。ログイン後は保存済みの選択をそのまま復元する。
+ * FALLBACK_GENERATION_MODEL(常に 2.0)に clamp する。ログイン後は保存済みの選択をそのまま復元する。
  *
  * ChatGPT Images 2.5(gpt-image-2.5-flare)は段階公開中(REQ-014)。
  * `options.gptImage25Available`(`useGptImage25Available()` の値)が true のときだけ
- * 2.5 を実効値として通し、それ以外は DEFAULT_GENERATION_MODEL に丸める。
+ * 2.5 を実効値として通し、それ以外は FALLBACK_GENERATION_MODEL に丸める。
  * 省略時は false(fail closed)。運営が 2.5 を選んだ端末の localStorage を
  * 一般ユーザーが引き継ぐことは無いが、公開フラグを戻したときに残った保存値を
  * 送信させないためにここでも clamp する(実行はサーバー側の isGptImage25Available が正本)。
@@ -191,16 +192,42 @@ export function resolveEffectiveModelForAuthState(
   authState: "guest" | "authenticated",
   options: { gptImage25Available?: boolean } = {}
 ): GeminiModel {
+  // ⚠️ 丸め先は DEFAULT ではなく FALLBACK(常に 2.0)。既定が 2.5 になった今、
+  // DEFAULT へ丸めると「2.5 を 2.5 に丸める」になり、段階公開フラグを戻したときに
+  // 一般ユーザーがサーバーのゲートで 400 になる。
   if (!isModelAvailableForGeneration(model)) {
-    return DEFAULT_GENERATION_MODEL;
+    return FALLBACK_GENERATION_MODEL;
   }
   if (authState === "guest" && !isCanonicalGuestAllowedModel(model)) {
-    return DEFAULT_GENERATION_MODEL;
+    return FALLBACK_GENERATION_MODEL;
   }
   if (isGptImage25FlareModel(model) && !options.gptImage25Available) {
-    return DEFAULT_GENERATION_MODEL;
+    return FALLBACK_GENERATION_MODEL;
   }
   return model;
+}
+
+/**
+ * サーバーが「モデルを自分で決める」ときの既定値。
+ *
+ * 使う場面は 2 つ。
+ *   - リクエストに model が無い(後方互換)
+ *   - カテゴリがモデル選択 UI を出さない(サーバー側で固定する)
+ *
+ * ⚠️ ここで素の `DEFAULT_GENERATION_MODEL`(= 2.5)を返してはいけない。
+ * 段階公開フラグが OFF のとき、サーバー自身が選んだ 2.5 を自分のゲートで
+ * 弾いて 400 にしてしまう(= その人は何をしても生成できない)。
+ * **ユーザーが実際に実行できるモデルだけを選ぶ**のがこの関数の役目。
+ *
+ * ユーザーが明示的に 2.5 を送ってきた場合はこの関数を通さない。
+ * そちらは従来どおりゲートで 400 にして「選べないものを選んだ」と伝える。
+ */
+export function resolveServerDefaultModel(
+  gptImage25Available: boolean
+): GeminiModel {
+  return gptImage25Available
+    ? DEFAULT_GENERATION_MODEL
+    : FALLBACK_GENERATION_MODEL;
 }
 
 /**

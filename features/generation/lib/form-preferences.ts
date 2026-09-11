@@ -40,6 +40,18 @@ export const COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY =
 export const FREE_ASPECT_MODE_STORAGE_KEY = "persta-ai:free-output-aspect-mode";
 /** One-Tap Style の比率は Free とは別に記憶する(モードごとに好みが異なるため)。 */
 export const STYLE_ASPECT_MODE_STORAGE_KEY = "persta-ai:style-output-aspect-mode";
+/**
+ * この端末を 2.5 へ 1 回だけ切り替えたか。
+ *
+ * 既定を 2.5 にしても、既に 2.0 を選んだことがある人は localStorage の
+ * 前回値が復元されて 2.0 のままになる。公開しても既定が変わらないと
+ * ほとんど切り替えられないことは #517(ホームのフィード既定化)で経験済み。
+ * そこで**端末ごとに 1 回だけ**保存値を 2.5 へ寄せ、以後はユーザーの選択を尊重する。
+ */
+export const FORCED_GPT_IMAGE_2_5_KEY = "persta-ai:forced-gpt-image-2-5";
+/** 切り替えの案内(スポットライト)を出したか。 */
+export const MODEL_SWITCH_NOTICE_SEEN_KEY =
+  "persta-ai:model-switch-notice-seen";
 
 const DEFAULT_MODEL: GeminiModel = DEFAULT_GENERATION_MODEL;
 const DEFAULT_BACKGROUND_MODE: BackgroundMode = "keep";
@@ -103,6 +115,45 @@ export function readPreferredModel(): GeminiModel {
     return stored as GeminiModel;
   }
   return DEFAULT_MODEL;
+}
+
+/**
+ * この端末をまだ 2.5 へ切り替えていないか。
+ *
+ * localStorage が読めない環境では false(切り替えない)。判定できないまま
+ * 上書きすると、毎回ユーザーの選択を奪うことになる(#517 と同じ考え方)。
+ */
+export function shouldForceGptImage25(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(FORCED_GPT_IMAGE_2_5_KEY) !== "1";
+  } catch {
+    return false;
+  }
+}
+
+/** 切り替え済みとして記録する(2 度目以降は保存値を尊重する)。 */
+export function markGptImage25Forced(): void {
+  safeWriteLocalStorage(FORCED_GPT_IMAGE_2_5_KEY, "1");
+}
+
+/** 切り替えの案内をまだ出していないか。 */
+export function shouldShowModelSwitchNotice(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  try {
+    return window.localStorage.getItem(MODEL_SWITCH_NOTICE_SEEN_KEY) !== "1";
+  } catch {
+    return false;
+  }
+}
+
+/** 何で閉じられても「案内済み」にする(再訪で出し続けないため)。 */
+export function markModelSwitchNoticeSeen(): void {
+  safeWriteLocalStorage(MODEL_SWITCH_NOTICE_SEEN_KEY, "1");
 }
 
 export function writePreferredModel(model: GeminiModel): void {

@@ -1,5 +1,6 @@
 /** @jest-environment jsdom */
 
+import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
 import {
   BACKGROUND_MODE_STORAGE_KEY,
   COORDINATE_STOCK_SAVE_PROMPT_DISMISSED_STORAGE_KEY,
@@ -23,10 +24,11 @@ describe("form-preferences", () => {
 
   describe("readPreferredModel", () => {
     it("returns default when nothing is stored", () => {
-      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+      expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
     });
 
     it("returns the stored value when it is a known persistable model", () => {
+      // 保存値の尊重を見るテストなので、既定(2.5)ではなく保存した 2.0 が返る
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "gpt-image-2-low-1k");
       expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
     });
@@ -37,6 +39,7 @@ describe("form-preferences", () => {
         GPT_IMAGE_2_LEGACY_LOW_MODEL
       );
 
+      // legacy 別名は 2.0 の canonical へ正規化される(既定の 2.5 にはしない)
       expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
       expect(window.localStorage.getItem(SELECTED_MODEL_STORAGE_KEY)).toBe(
         "gpt-image-2-low-1k"
@@ -97,17 +100,17 @@ describe("form-preferences", () => {
 
     it("falls back to default for unknown / legacy / empty values", () => {
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "dall-e-3");
-      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+      expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
 
       // legacy ID (not in dropdown) も default に丸める
       window.localStorage.setItem(
         SELECTED_MODEL_STORAGE_KEY,
         "gemini-2.5-flash-image",
       );
-      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+      expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
 
       window.localStorage.setItem(SELECTED_MODEL_STORAGE_KEY, "");
-      expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+      expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
     });
   });
 
@@ -217,7 +220,7 @@ describe("form-preferences", () => {
         throw new Error("SecurityError");
       });
       try {
-        expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+      expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
         expect(readPreferredBackgroundMode()).toBe("keep");
       } finally {
         getItemSpy.mockRestore();
@@ -232,7 +235,7 @@ describe("form-preferences", () => {
       });
 
       try {
-        expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
+        expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
         expect(readPreferredBackgroundMode()).toBe("keep");
         expect(() => writePreferredModel("gpt-image-2-low-1k")).not.toThrow();
         expect(() => writePreferredBackgroundMode("ai_auto")).not.toThrow();

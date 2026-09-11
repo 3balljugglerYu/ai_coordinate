@@ -27,7 +27,9 @@ import {
 } from "../lib/model-config";
 import {
   readPreferredBackgroundMode,
+  markGptImage25Forced,
   readPreferredModel,
+  shouldForceGptImage25,
   writePreferredBackgroundMode,
   writePreferredModel,
   readPreferredAspectMode,
@@ -267,12 +269,38 @@ export function GenerationForm({
   // ブラウザに保存された前回の選択 (モデル / 背景設定) を復元する。
   // SSR との hydration mismatch を避けるため初期値は default のまま、useEffect で上書きする。
   useEffect(() => {
-    setSelectedModel(readPreferredModel());
+    const stored = readPreferredModel();
+
+    /*
+      既定を 2.5 にしても、以前 2.0 を選んだ端末は保存値が復元されて 2.0 のまま
+      になる。**端末ごとに1回だけ** 2.5 へ寄せる(/style と同じ扱い。案内の
+      スポットライトは主要導線である /style 側だけで出す)。
+    */
+    const canSwitch =
+      resolveEffectiveModelForAuthState(DEFAULT_GENERATION_MODEL, authState, {
+        gptImage25Available,
+      }) === DEFAULT_GENERATION_MODEL;
+
+    if (canSwitch && shouldForceGptImage25()) {
+      markGptImage25Forced();
+      if (stored !== DEFAULT_GENERATION_MODEL) {
+        setSelectedModel(DEFAULT_GENERATION_MODEL);
+        writePreferredModel(DEFAULT_GENERATION_MODEL);
+      } else {
+        setSelectedModel(stored);
+      }
+    } else {
+      setSelectedModel(stored);
+    }
+
     setBackgroundMode(readPreferredBackgroundMode());
     // 比率は Free のみ。マウント後に復元(SSR は source、hydration 後に前回値へ)。
     if (isFree) {
       setAspectMode(readPreferredAspectMode());
     }
+    // authState / gptImage25Available は確定後に変わりうるが、この寄せは
+    // マウント時の 1 回だけでよい(2 度目以降は保存値を尊重する)。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFree]);
 
   const handleSelectedModelChange = useCallback((value: GeminiModel) => {

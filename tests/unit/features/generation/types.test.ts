@@ -1,5 +1,6 @@
 import {
   DEFAULT_GENERATION_MODEL,
+  FALLBACK_GENERATION_MODEL,
   extractImageSize,
   isKnownModelInput,
   KNOWN_MODEL_INPUTS,
@@ -19,8 +20,8 @@ describe("generation types", () => {
   });
 
   describe("DEFAULT_GENERATION_MODEL", () => {
-    test("既定モデルは ChatGPT Image 2.0 (gpt-image-2-low-1k)", () => {
-      expect(DEFAULT_GENERATION_MODEL).toBe("gpt-image-2-low-1k");
+    test("既定モデルは ChatGPT Images 2.5 (gpt-image-2.5-flare-low-1k)", () => {
+      expect(DEFAULT_GENERATION_MODEL).toBe("gpt-image-2.5-flare-low-1k");
     });
   });
 
@@ -83,8 +84,12 @@ describe("generation types", () => {
       expect(normalizeModelName("gpt-image-2.5-flare-low-1k")).toBe(
         "gpt-image-2.5-flare-low-1k"
       );
-      // 未知の OpenAI 風文字列は既定モデルへ寄せる(従来どおり)
-      expect(normalizeModelName("gpt-image-bogus")).toBe(DEFAULT_GENERATION_MODEL);
+      // 未知の OpenAI 風文字列は FALLBACK(常に誰でも実行できる 2.0)へ寄せる。
+      // 既定(2.5)に寄せると、段階公開フラグ OFF のときサーバーのゲートで
+      // 弾かれて生成できなくなるため。
+      expect(normalizeModelName("gpt-image-bogus")).toBe(
+        FALLBACK_GENERATION_MODEL
+      );
     });
   });
 

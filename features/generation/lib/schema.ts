@@ -1,6 +1,5 @@
 import { z } from "zod";
 import {
-  DEFAULT_GENERATION_MODEL,
   KNOWN_MODEL_INPUTS,
   normalizeModelName,
   backgroundModeToBackgroundChange,
@@ -99,11 +98,14 @@ export const generationRequestSchema = z.object({
     .default('coordinate'),
   // 受理可能な model 値は types.ts の KNOWN_MODEL_INPUTS を単一の正本とする。
   // ゲスト sync 経路は同 enum を経由してから whitelist 判定するため、二重管理を避ける。
+  // ⚠️ ここで既定値(2.5)を埋めない。埋めると「ユーザーが明示的に 2.5 を選んだ」
+  // のと区別が付かず、段階公開フラグ OFF のときサーバーが自分で入れた 2.5 を
+  // 自分のゲートで弾いて 400 にしてしまう。未送信は undefined のまま渡し、
+  // handler 側が resolveServerDefaultModel で「その人が使えるモデル」を選ぶ。
   model: z
     .enum(KNOWN_MODEL_INPUTS)
-    .optional()
-    .default(DEFAULT_GENERATION_MODEL)
-    .transform(normalizeModelName), // データベース保存用に正規化
+    .transform(normalizeModelName) // データベース保存用に正規化
+    .optional(),
   /**
    * framing_mode。"free_pose"(既定)は image_0 の identity を維持しつつ、衣装/ポーズ/
    * カメラ/背景をユーザー指示に委ねる。"locked"(「維持」チェックON)は現行どおり厳密維持。

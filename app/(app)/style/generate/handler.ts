@@ -10,7 +10,12 @@ import {
 } from "@/shared/generation/style-output-aspect-ratio";
 import { downloadStylePresetReferenceImage } from "@/features/style-presets/lib/style-preset-storage";
 import { STYLE_GENERATION_MODEL } from "@/features/style/lib/constants";
-import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
+import {
+  GEMINI_GENERATION_ENABLED,
+  resolveServerDefaultModel,
+} from "@/features/generation/lib/model-config";
+import { isGptImage25Available } from "@/lib/env";
+import { isGptImage25FlareModel } from "@/shared/generation/openai-image-model";
 import {
   buildStyleAttemptReinforcementPrefix,
   buildStyleGenerationPrompt,
@@ -38,7 +43,6 @@ import {
   callOpenAIImageEditMultiInput,
 } from "@/features/generation/lib/openai-image";
 import {
-  DEFAULT_GENERATION_MODEL,
   isOpenAIImageModel,
   normalizeModelName,
   type GeminiModel,
@@ -237,6 +241,13 @@ export async function postStyleGenerateRoute(
     // model は Phase 5 でフロントから明示的に送られるようになる。それまでは未送信が多数。
     // - 未送信 → 現在利用可能な既定モデル
     // - 送信あり → guest 許可 whitelist で検証。許可外なら 400。
+    // サーバーが自分で決める既定値。その人が 2.5 を使えないなら 2.0 を選ぶ
+    // (自分で選んだモデルを自分のゲートで弾かないため)。
+    // この経路は未ログイン専用(上で認証済みを弾いている)。運営判定は効かず、
+    // 公開フラグだけで決まる。
+    const serverDefaultModel = resolveServerDefaultModel(
+      isGptImage25Available(null)
+    );
     const modelEntry = formData.get("model");
     let model: GeminiModel;
     if (typeof modelEntry === "string" && modelEntry.length > 0) {
@@ -252,7 +263,7 @@ export async function postStyleGenerateRoute(
     } else {
       model = GEMINI_GENERATION_ENABLED
         ? normalizeModelName(STYLE_GENERATION_MODEL)
-        : DEFAULT_GENERATION_MODEL;
+        : serverDefaultModel;
     }
 
     const preset = await getPublishedStylePresetForGenerationFn(styleId);
@@ -345,7 +356,24 @@ export async function postStyleGenerateRoute(
       : false;
     const effectiveModel = preset.category.showGenerationModelControl
       ? model
-      : DEFAULT_GENERATION_MODEL;
+      : serverDefaultModel;
+
+    /*
+      ChatGPT Images 2.5 の段階公開ゲート(REQ-006)。非同期版と同じ判定をここにも置く。
+      この経路は未ログインでも通る(allowGuestGeneration のカテゴリ)ため、
+      ゲスト許可リストに 2.5 の Low が入っている以上、フラグ OFF のときに
+      ここだけ素通りしてしまう。
+    */
+    if (
+      isGptImage25FlareModel(effectiveModel) &&
+      !isGptImage25Available(null)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "STYLE_MODEL_NOT_AVAILABLE_FOR_USER",
+        400
+      );
+    }
 
     const uploadImage = getFile(formData.get("uploadImage"));
     if (!uploadImage) {

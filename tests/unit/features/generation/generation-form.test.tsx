@@ -115,7 +115,7 @@ jest.mock("@/lib/build-current-url", () => ({
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
-import { DEFAULT_GENERATION_MODEL } from "@/features/generation/types";
+import { FALLBACK_GENERATION_MODEL } from "@/features/generation/types";
 
 let fetchMock: jest.Mock;
 beforeEach(() => {
@@ -426,7 +426,12 @@ describe("GenerationForm (new image source picker integration)", () => {
       // count は送らない(複数枚生成の廃止で onSubmit の型から消えた)
       expect(arg.count).toBeUndefined();
       // モデルは選択値(未操作なので既定)を送る
-      expect(arg.model).toBe(DEFAULT_GENERATION_MODEL);
+      /*
+        既定は 2.5 だが、このテストは GptImage25AvailabilityProvider の外で
+        描画している = 2.5 を選べない状態。fail closed で 2.0 の
+        FALLBACK_GENERATION_MODEL へ丸まるのが正しい。
+      */
+      expect(arg.model).toBe(FALLBACK_GENERATION_MODEL);
       // 背景/ポーズ設定が無いので framingMode は送らない
       expect(arg.framingMode).toBeUndefined();
     });

@@ -9,6 +9,7 @@ import type {
 import type { FramingMode } from "@/shared/generation/framing-mode";
 import type { FreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
+  DEFAULT_GPT_IMAGE_2_5_FLARE_MODEL,
   DEFAULT_GPT_IMAGE_2_MODEL,
   GPT_IMAGE_2_LEGACY_LOW_MODEL,
   OPENAI_IMAGE_CANONICAL_MODELS,
@@ -156,14 +157,31 @@ export function isKnownModelInput(value: unknown): value is KnownModelInput {
 }
 
 /**
- * 全画面共通の既定モデル ID。
- * フォーム初期値、サーバー側スキーマ default、normalize の fallback の単一の正本。
- * 拡張ヘルパは @/features/generation/lib/model-config.ts を参照。
+ * 全画面共通の既定モデル ID。フォーム初期値と、サーバー側でモデル選択 UI を
+ * 出さないカテゴリの強制値に使う。
+ *
+ * 2026-09-11 に 2.0 → 2.5 へ切り替えた。公開しても既定が 2.0 のままでは
+ * ほとんど切り替えられなかったため(公開 3 時間で外部ユーザーの 2.5 利用が 0 件)。
+ *
+ * ⚠️ **丸め先には使わないこと**。「選べないモデルを何に丸めるか」は
+ * `FALLBACK_GENERATION_MODEL` が担う。両者を同じ定数にすると、段階公開の
+ * フラグを戻したときに「2.5 を 2.5 に丸める」が起き、一般ユーザーが
+ * サーバーのゲートで 400 になる。
  */
-export const DEFAULT_GENERATION_MODEL: GeminiModel = DEFAULT_GPT_IMAGE_2_MODEL;
+export const DEFAULT_GENERATION_MODEL: GeminiModel =
+  DEFAULT_GPT_IMAGE_2_5_FLARE_MODEL;
+
+/**
+ * 選べないモデルを丸める先。**常に 2.0 の最小構成**に固定する。
+ *
+ * ゲスト許可外・段階公開フラグ OFF・kill switch のいずれでも、ここへ落ちれば
+ * 誰でも必ず実行できる、という不変条件を保つための定数。
+ */
+export const FALLBACK_GENERATION_MODEL: GeminiModel = DEFAULT_GPT_IMAGE_2_MODEL;
 
 export {
   DEFAULT_GPT_IMAGE_2_MODEL,
+  DEFAULT_GPT_IMAGE_2_5_FLARE_MODEL,
   GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
   GPT_IMAGE_2_CANONICAL_MODELS,
   GPT_IMAGE_2_LEGACY_LOW_MODEL,
@@ -221,8 +239,11 @@ export function isOpenAIImageModel(model: string | null | undefined): boolean {
  * データベース保存用のモデル名に正規化（APIエンドポイント名から変換）
  */
 export function normalizeModelName(model: string | null | undefined): GeminiModel {
+  // ⚠️ 空・未知の値を寄せる先は DEFAULT(=2.5)ではなく FALLBACK(=2.0)。
+  // 「何が来たか分からない」ときに段階公開中のモデルを割り当てると、
+  // サーバーのゲートで弾かれて生成できなくなる。
   if (!model) {
-    return DEFAULT_GENERATION_MODEL;
+    return FALLBACK_GENERATION_MODEL;
   }
 
   // OpenAI 系は family を問わず canonical へ(legacy `gpt-image-2-low` もここで吸収)
@@ -252,8 +273,8 @@ export function normalizeModelName(model: string | null | undefined): GeminiMode
   if (model === 'gemini-3-pro-image-1k' || model === 'gemini-3-pro-image-2k' || model === 'gemini-3-pro-image-4k') {
     return model as GeminiModel;
   }
-  // 不明な値は全画面共通の既定モデルへ寄せる
-  return DEFAULT_GENERATION_MODEL;
+  // 不明な値は FALLBACK(常に誰でも実行できる 2.0)へ寄せる
+  return FALLBACK_GENERATION_MODEL;
 }
 
 /**
