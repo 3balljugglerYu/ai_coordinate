@@ -24,7 +24,7 @@ type DriverConfig = {
   onDestroyed: () => void;
 };
 
-const driverInstance = { drive: jest.fn(), destroy: jest.fn() };
+const driverInstance = { drive: jest.fn(), destroy: jest.fn(), refresh: jest.fn() };
 let capturedConfig: DriverConfig | null = null;
 const mockDriverFactory = jest.fn((config: DriverConfig) => {
   capturedConfig = config;
@@ -41,10 +41,14 @@ const useTranslationsMock = useTranslations as jest.MockedFunction<
   typeof useTranslations
 >;
 
+/** jsdom には scrollIntoView が無いので差し替える(呼ばれたことも検証する) */
+const scrollIntoViewMock = jest.fn();
+
 /** スポットライトの対象（モデルセレクター）を DOM に用意する */
 function mountTarget(): HTMLElement {
   const el = document.createElement("div");
   el.setAttribute("data-tour", "tour-model-select");
+  el.scrollIntoView = scrollIntoViewMock;
   document.body.appendChild(el);
   return el;
 }
@@ -53,6 +57,7 @@ beforeEach(() => {
   jest.useFakeTimers();
   jest.clearAllMocks();
   capturedConfig = null;
+  scrollIntoViewMock.mockClear();
   document.body.innerHTML = "";
   window.localStorage.clear();
 
@@ -77,9 +82,12 @@ afterEach(() => {
   jest.useRealTimers();
 });
 
-/** 起動待ちのタイマー(300ms)を進めて driver の生成を待つ */
+/**
+ * 起動までのタイマーを進める。
+ * 300ms(描画待ち) + 450ms(スクロール沈静待ち) を跨ぐ必要がある。
+ */
 async function advanceAndFlush() {
-  await jest.advanceTimersByTimeAsync(400);
+  await jest.advanceTimersByTimeAsync(1000);
 }
 
 describe("ModelSwitchNotice", () => {
@@ -107,6 +115,30 @@ describe("ModelSwitchNotice", () => {
     expect(config.nextBtnText).toBe("modelSwitchNoticeConfirm");
     // Persta 共通のトーンを使う
     expect(config.popoverClass).toBe("persta-tour-popover");
+  });
+
+  test("⭐ 先に対象を画面中央へ寄せてから起動する（吹き出しの位置ズレ対策）", async () => {
+    mountTarget();
+    render(<ModelSwitchNotice open onClose={jest.fn()} />);
+    await advanceAndFlush();
+    await waitFor(() => expect(mockDriverFactory).toHaveBeenCalled());
+
+    // globals.css の scroll-behavior: smooth でスクロールが動いている最中に
+    // driver が位置を計算すると、実機で吹き出しが画面下端に取り残される。
+    expect(scrollIntoViewMock).toHaveBeenCalledWith(
+      expect.objectContaining({ block: "center" })
+    );
+  });
+
+  test("⭐ 起動後に一度だけ位置を計算し直す（iOS の慣性スクロール対策）", async () => {
+    mountTarget();
+    render(<ModelSwitchNotice open onClose={jest.fn()} />);
+    await advanceAndFlush();
+    await waitFor(() => expect(mockDriverFactory).toHaveBeenCalled());
+
+    expect(driverInstance.refresh).not.toHaveBeenCalled();
+    await jest.advanceTimersByTimeAsync(500);
+    expect(driverInstance.refresh).toHaveBeenCalledTimes(1);
   });
 
   test("⭐ 対象が無い画面（モデル選択を出さないカテゴリ）では出さない", async () => {
