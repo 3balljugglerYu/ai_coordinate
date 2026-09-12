@@ -413,7 +413,7 @@ export function StylePresetListClient({
       </div>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:h-auto sm:max-h-[90vh]">
+        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>スタイルを追加</DialogTitle>
           </DialogHeader>
@@ -437,7 +437,7 @@ export function StylePresetListClient({
           }
         }}
       >
-        <DialogContent className="h-[90dvh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:h-auto sm:max-h-[90vh]">
+        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>スタイルを編集</DialogTitle>
           </DialogHeader>

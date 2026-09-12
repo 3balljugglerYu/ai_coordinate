@@ -416,7 +416,7 @@ export function StylePresetForm({
             value={stylingPrompt}
             onChange={(event) => setStylingPrompt(event.target.value)}
             placeholder="Wearing Smart Casual style outfit..."
-            className="mt-1 min-h-[220px] text-sm"
+            className="mt-1 field-sizing-fixed min-h-[220px] text-sm sm:field-sizing-content"
             required
           />
           <p className="mt-1 text-xs text-slate-500">
@@ -431,7 +431,7 @@ export function StylePresetForm({
             value={backgroundPrompt}
             onChange={(event) => setBackgroundPrompt(event.target.value)}
             placeholder="Soft spring city street with blossoms..."
-            className="mt-1 min-h-[160px] text-sm"
+            className="mt-1 field-sizing-fixed min-h-[160px] text-sm sm:field-sizing-content"
           />
           <p className="mt-1 text-xs text-slate-500">
             ユーザーが「背景もスタイルに合わせて変更する」を ON にした時だけ利用されます。
