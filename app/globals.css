@@ -160,6 +160,13 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     }
   }
 
+  /* ダイアログ表示中はブラウザ主導のスクロール（入力欄をキーボードの上へ寄せる
+     動作）をアニメーションさせない。途中値で位置計算が走ると、fixed のダイアログが
+     ガタついて見えるため。 */
+  html:has([data-slot="dialog-content"]) {
+    scroll-behavior: auto;
+  }
+
   @media (min-width: 1024px) {
     html {
       /* PC版ではナビバーがサイドバーになるためリセット */

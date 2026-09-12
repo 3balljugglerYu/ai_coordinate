@@ -356,7 +356,7 @@ export function MaterialImageListClient({
         open={!!editingImage}
         onOpenChange={(o) => !o && setEditingImage(null)}
       >
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl h-[90dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90svh] sm:max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>画像を編集</DialogTitle>
           </DialogHeader>
@@ -372,7 +372,7 @@ export function MaterialImageListClient({
       </Dialog>
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl h-[90dvh] sm:h-auto sm:max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-[calc(100vw-2rem)] max-w-2xl max-h-[90svh] sm:max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>画像を追加</DialogTitle>
           </DialogHeader>

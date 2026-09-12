@@ -228,7 +228,7 @@ export function AnnouncementListClient({
       )}
 
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="h-[90dvh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto sm:h-auto sm:max-h-[90vh]">
+        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto sm:max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>お知らせを作成</DialogTitle>
           </DialogHeader>
@@ -252,7 +252,7 @@ export function AnnouncementListClient({
           }
         }}
       >
-        <DialogContent className="h-[90dvh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto sm:h-auto sm:max-h-[90vh]">
+        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-4xl overflow-y-auto sm:max-h-[90vh]">
           <DialogHeader>
             <DialogTitle>お知らせを編集</DialogTitle>
           </DialogHeader>
