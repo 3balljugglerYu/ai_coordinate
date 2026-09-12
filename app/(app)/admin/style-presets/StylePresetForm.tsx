@@ -416,7 +416,7 @@ export function StylePresetForm({
             value={stylingPrompt}
             onChange={(event) => setStylingPrompt(event.target.value)}
             placeholder="Wearing Smart Casual style outfit..."
-            className="mt-1 field-sizing-fixed min-h-[220px] text-sm sm:field-sizing-content"
+            className="mt-1 field-sizing-fixed min-h-[220px] sm:field-sizing-content"
             required
           />
           <p className="mt-1 text-xs text-slate-500">
@@ -431,7 +431,7 @@ export function StylePresetForm({
             value={backgroundPrompt}
             onChange={(event) => setBackgroundPrompt(event.target.value)}
             placeholder="Soft spring city street with blossoms..."
-            className="mt-1 field-sizing-fixed min-h-[160px] text-sm sm:field-sizing-content"
+            className="mt-1 field-sizing-fixed min-h-[160px] sm:field-sizing-content"
           />
           <p className="mt-1 text-xs text-slate-500">
             ユーザーが「背景もスタイルに合わせて変更する」を ON にした時だけ利用されます。
@@ -529,7 +529,7 @@ export function StylePresetForm({
                 selectedCategory?.generationTipJa ??
                 "例: レンダリング品質を「バランス良く生成」にすると崩れにくいです！"
               }
-              className="mt-1 min-h-[64px] text-sm"
+              className="mt-1 min-h-[64px]"
             />
             <p className="mt-1 text-xs text-slate-500">200 文字まで。改行可。</p>
           </div>
@@ -541,7 +541,7 @@ export function StylePresetForm({
               onChange={(event) => setGenerationTipEn(event.target.value)}
               maxLength={200}
               placeholder={selectedCategory?.generationTipEn ?? ""}
-              className="mt-1 min-h-[64px] text-sm"
+              className="mt-1 min-h-[64px]"
             />
           </div>
         </div>
@@ -568,7 +568,7 @@ export function StylePresetForm({
                   selectedCategory?.userPromptLabel ??
                   "例: 💡 キャラクターの名前を入力してください（任意）"
                 }
-                className="mt-1 min-h-[64px] text-sm"
+                className="mt-1 min-h-[64px]"
               />
               <p className="mt-1 text-xs text-slate-500">120 文字まで。改行可。</p>
             </div>
@@ -584,7 +584,7 @@ export function StylePresetForm({
                 }
                 maxLength={200}
                 placeholder={selectedCategory?.userPromptPlaceholder ?? "例: ノエル"}
-                className="mt-1 min-h-[44px] text-sm"
+                className="mt-1 min-h-[44px]"
               />
             </div>
             <div>
@@ -601,7 +601,7 @@ export function StylePresetForm({
                     ? String(selectedCategory.userPromptMaxLength)
                     : "1500"
                 }
-                className="mt-1 min-h-[44px] w-40 text-sm"
+                className="mt-1 min-h-[44px] w-40"
               />
               <p className="mt-1 text-xs text-slate-500">
                 1〜1500 の整数。空欄はカテゴリ設定（無ければ 1500）。
