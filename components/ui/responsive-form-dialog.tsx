@@ -39,6 +39,47 @@ function useIsMobileViewport() {
   return isMobile;
 }
 
+/** キーボードが開ききってからシート内をスクロールするまでの待ち時間。 */
+const SCROLL_INTO_VIEW_DELAY_MS = 150;
+
+/**
+ * フォーカス中の入力欄をシート内で見える位置へ寄せる。
+ *
+ * vaul はキーボードが出ると `visualViewport` の resize を受けてシートの
+ * `height` と `bottom` を詰める。ブラウザによる scroll-into-view はその**前**に
+ * 走り終えているため、詰まったあとは入力欄が折り返し位置より下に隠れたままになる
+ * （内側のスクロール位置は先頭のまま）。resize が収まってから寄せ直す。
+ */
+function useKeepFocusedInputVisible(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled || typeof window === "undefined") return;
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    let timer: number | undefined;
+    const scheduleScroll = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        const focused = document.activeElement;
+        if (!(focused instanceof HTMLElement)) return;
+        // シートの外（PC 側ダイアログや背面）には触らない
+        if (!focused.closest("[data-vaul-drawer]")) return;
+        // globals.css の scroll-behavior: smooth に引きずられないよう instant で寄せる
+        focused.scrollIntoView({ block: "center", behavior: "instant" });
+      }, SCROLL_INTO_VIEW_DELAY_MS);
+    };
+
+    viewport.addEventListener("resize", scheduleScroll);
+    // キーボードが出たまま別の欄へ移ると resize は起きないので focusin も見る
+    document.addEventListener("focusin", scheduleScroll);
+    return () => {
+      window.clearTimeout(timer);
+      viewport.removeEventListener("resize", scheduleScroll);
+      document.removeEventListener("focusin", scheduleScroll);
+    };
+  }, [enabled]);
+}
+
 interface ResponsiveFormDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,6 +97,7 @@ export function ResponsiveFormDialog({
   children,
 }: ResponsiveFormDialogProps) {
   const isMobile = useIsMobileViewport();
+  useKeepFocusedInputVisible(open && isMobile);
 
   return (
     <>
