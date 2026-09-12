@@ -88,4 +88,110 @@ describe("ResponsiveFormDialog", () => {
       document.querySelector('[data-slot="dialog-content"]'),
     ).toBeNull();
   });
+
+  describe("キーボードで隠れた入力欄の寄せ直し", () => {
+    let listeners: Record<string, Array<() => void>>;
+    let originalVisualViewport: PropertyDescriptor | undefined;
+
+    beforeEach(() => {
+      jest.useFakeTimers();
+      listeners = {};
+      originalVisualViewport = Object.getOwnPropertyDescriptor(
+        window,
+        "visualViewport",
+      );
+      Object.defineProperty(window, "visualViewport", {
+        configurable: true,
+        writable: true,
+        value: {
+          height: 400,
+          addEventListener: (type: string, fn: () => void) => {
+            (listeners[type] ??= []).push(fn);
+          },
+          removeEventListener: (type: string, fn: () => void) => {
+            listeners[type] = (listeners[type] ?? []).filter((f) => f !== fn);
+          },
+        },
+      });
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+      if (originalVisualViewport) {
+        Object.defineProperty(
+          window,
+          "visualViewport",
+          originalVisualViewport,
+        );
+      } else {
+        delete (window as { visualViewport?: unknown }).visualViewport;
+      }
+    });
+
+    function renderWithInput() {
+      return render(
+        <ResponsiveFormDialog
+          open
+          onOpenChange={() => {}}
+          title="スタイルを追加"
+        >
+          <input aria-label="タイトル" />
+        </ResponsiveFormDialog>,
+      );
+    }
+
+    it("visualViewport の resize 後にフォーカス中の入力欄を見える位置へ寄せる", () => {
+      mockMatchMedia(true);
+      renderWithInput();
+
+      const input = screen.getByLabelText("タイトル");
+      const scrollIntoView = jest.fn();
+      input.scrollIntoView = scrollIntoView;
+      input.focus();
+
+      // フォーカスした時点ではまだ呼ばれない(遅延させている)
+      expect(scrollIntoView).not.toHaveBeenCalled();
+
+      listeners.resize?.forEach((fn) => fn());
+      jest.runAllTimers();
+
+      expect(scrollIntoView).toHaveBeenCalledWith({
+        block: "center",
+        // globals.css の scroll-behavior: smooth に引きずられないこと
+        behavior: "instant",
+      });
+    });
+
+    it("シートの外の要素にフォーカスがあるときは寄せない", () => {
+      mockMatchMedia(true);
+      renderWithInput();
+
+      const outside = document.createElement("input");
+      document.body.appendChild(outside);
+      const scrollIntoView = jest.fn();
+      outside.scrollIntoView = scrollIntoView;
+      outside.focus();
+
+      listeners.resize?.forEach((fn) => fn());
+      jest.runAllTimers();
+
+      expect(scrollIntoView).not.toHaveBeenCalled();
+      outside.remove();
+    });
+
+    it("PC 幅では寄せ直しをしない", () => {
+      mockMatchMedia(false);
+      renderWithInput();
+
+      const input = screen.getByLabelText("タイトル");
+      const scrollIntoView = jest.fn();
+      input.scrollIntoView = scrollIntoView;
+      input.focus();
+
+      listeners.resize?.forEach((fn) => fn());
+      jest.runAllTimers();
+
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+  });
 });
