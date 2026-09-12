@@ -38,12 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ResponsiveFormDialog } from "@/components/ui/responsive-form-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -412,49 +407,46 @@ export function StylePresetListClient({
         ) : null}
       </div>
 
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>スタイルを追加</DialogTitle>
-          </DialogHeader>
-          <StylePresetForm
-            categories={categories}
-            creators={creators}
-            onSuccess={async () => {
-              setIsCreateOpen(false);
-              await reload();
-            }}
-            onCancel={() => setIsCreateOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
+      <ResponsiveFormDialog
+        open={isCreateOpen}
+        onOpenChange={setIsCreateOpen}
+        title="スタイルを追加"
+        desktopClassName="max-w-2xl"
+      >
+        <StylePresetForm
+          categories={categories}
+          creators={creators}
+          onSuccess={async () => {
+            setIsCreateOpen(false);
+            await reload();
+          }}
+          onCancel={() => setIsCreateOpen(false)}
+        />
+      </ResponsiveFormDialog>
 
-      <Dialog
+      <ResponsiveFormDialog
         open={editingPreset !== null}
         onOpenChange={(open) => {
           if (!open) {
             setEditingPreset(null);
           }
         }}
+        title="スタイルを編集"
+        desktopClassName="max-w-2xl"
       >
-        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>スタイルを編集</DialogTitle>
-          </DialogHeader>
-          {editingPreset ? (
-            <StylePresetForm
-              preset={editingPreset}
-              categories={categories}
-              creators={creators}
-              onSuccess={async () => {
-                setEditingPreset(null);
-                await reload();
-              }}
-              onCancel={() => setEditingPreset(null)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
+        {editingPreset ? (
+          <StylePresetForm
+            preset={editingPreset}
+            categories={categories}
+            creators={creators}
+            onSuccess={async () => {
+              setEditingPreset(null);
+              await reload();
+            }}
+            onCancel={() => setEditingPreset(null)}
+          />
+        ) : null}
+      </ResponsiveFormDialog>
 
       <AlertDialog
         open={deleteConfirmId !== null}
