@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useTranslations } from "next-intl";
 import { User, Heart, Copy, Check, MoreHorizontal, Edit, Trash2, Share2, Lock } from "lucide-react";
@@ -15,7 +16,6 @@ import { ImageFullscreen } from "./ImageFullscreen";
 import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
-import { PostModal } from "./PostModal";
 import { PostActions } from "./PostActions";
 import { CommentInput } from "./CommentInput";
 import { CommentList, type CommentListRef } from "./CommentList";
@@ -61,13 +61,13 @@ export function PostDetail({
   viewerIsAdmin = false,
   presetUnlockState,
 }: PostDetailProps) {
+  const router = useRouter();
   const t = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [imageAspectRatio, setImageAspectRatio] = useState<"portrait" | "landscape" | null>(null);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [postModalOpen, setPostModalOpen] = useState(false);
   const [commentCount, setCommentCount] = useState(post.comment_count || 0);
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   const { toast } = useToast();
@@ -391,7 +391,9 @@ export function PostDetail({
                 <DropdownMenuContent align="end">
                   {!post.is_posted ? (
                     <>
-                      <DropdownMenuItem onClick={() => setPostModalOpen(true)}>
+                      <DropdownMenuItem
+                        onClick={() => router.push(`/posts/new/${post.id}`)}
+                      >
                         <Share2 className="mr-2 h-4 w-4" />
                         {t("postSubmit")}
                       </DropdownMenuItem>
@@ -610,19 +612,6 @@ export function PostDetail({
         />
       )}
 
-      {/* 投稿モーダル（未投稿画像の場合） */}
-      {post.id && !post.is_posted && (
-        <PostModal
-          open={postModalOpen}
-          onOpenChange={setPostModalOpen}
-          imageId={post.id}
-          currentCaption={post.caption || undefined}
-          afterImageUrl={imageUrl}
-          beforeImageUrl={beforeImageUrl}
-          generationType={post.generation_type ?? null}
-          sourcePostId={post.source_post_id ?? null}
-        />
-      )}
     </div>
   );
 }

@@ -89,7 +89,7 @@ describe("PromptVisibilityField の還元まわりの表示", () => {
     expect(screen.queryByText(/還元されます/)).not.toBeInTheDocument();
   });
 
-  test("還元が有効なら、案内を出し説明文も還元込みに切り替わる", () => {
+  test("還元が有効なら、案内を出し説明文も還元込みに切り替わる", async () => {
     useUsageRewardAmountsMock.mockReturnValue({
       promptUsageRewardAmount: 2,
       styleUsageRewardAmount: 3,
@@ -102,8 +102,13 @@ describe("PromptVisibilityField の還元まわりの表示", () => {
         "フォロワーはプロンプトをコピーできます。コピーから作られた分は、利用数にもペルコイン還元にも含まれません。フォロワー以外は生成できません。"
       )
     ).toBeInTheDocument();
+    /*
+      案内はマウント後に出す。取得結果はモジュール変数にキャッシュされ、
+      サーバー側でもリクエストをまたいで残るため、初回描画で出すと
+      ハイドレーションが壊れる(投稿フォームのページ化で表面化した)。
+    */
     expect(
-      screen.getByText(
+      await screen.findByText(
         "あなたをフォローしている人がこのプロンプトで生成すると、1回につき +2 ペルコインが還元されます。"
       )
     ).toBeInTheDocument();

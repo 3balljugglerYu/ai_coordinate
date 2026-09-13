@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { PostDetailHeroImage } from "./PostDetailHeroImage";
 import { PostDetailStatsContent } from "./PostDetailStatsContent";
@@ -18,7 +19,6 @@ import {
 import { CollapsibleText } from "./CollapsibleText";
 import { EditPostModal } from "./EditPostModal";
 import { DeletePostDialog } from "./DeletePostDialog";
-import { PostModal } from "./PostModal";
 import { PostMetaLine } from "./PostMetaLine";
 import { getPostImageUrl, getPostBeforeImageUrl } from "../lib/utils";
 import { getCompletionImmersivePath } from "@/lib/url-utils";
@@ -96,13 +96,13 @@ export function PostDetailStatic({
   isHidden = false,
   onHidden,
 }: PostDetailStaticProps) {
+  const router = useRouter();
   const postsT = useTranslations("posts");
   const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [fullscreenInitialIndex, setFullscreenInitialIndex] = useState(0);
   const [isPromptCopied, setIsPromptCopied] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [postModalOpen, setPostModalOpen] = useState(false);
   const afterImageFrameRef = useRef<HTMLDivElement | null>(null);
   const [beforeMaxHeightPx, setBeforeMaxHeightPx] = useState<number | null>(
     null
@@ -597,7 +597,11 @@ export function PostDetailStatic({
                 caption={post.caption}
                 imageUrl={imageUrl}
                 originalImageUrl={originalImageUrl}
-                onPostClick={!post.is_posted ? () => setPostModalOpen(true) : undefined}
+                onPostClick={
+                  !post.is_posted
+                    ? () => router.push(`/posts/new/${post.id}`)
+                    : undefined
+                }
               />
             </Suspense>
           </div>
@@ -801,19 +805,6 @@ export function PostDetailStatic({
         />
       )}
 
-      {/* 投稿モーダル（未投稿画像の場合） */}
-      {post.id && !post.is_posted && (
-        <PostModal
-          open={postModalOpen}
-          onOpenChange={setPostModalOpen}
-          imageId={post.id}
-          currentCaption={post.caption || undefined}
-          afterImageUrl={displayImageUrl}
-          beforeImageUrl={beforeImageUrl}
-          generationType={post.generation_type ?? null}
-          sourcePostId={post.source_post_id ?? null}
-        />
-      )}
     </div>
   );
 }

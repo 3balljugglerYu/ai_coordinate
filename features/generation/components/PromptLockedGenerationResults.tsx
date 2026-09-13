@@ -119,7 +119,6 @@ export function PromptLockedGenerationResults() {
         images={images}
         isGenerating={isGenerating}
         generatingCount={generatingCount}
-        generationType="free"
       />
     </div>
   );

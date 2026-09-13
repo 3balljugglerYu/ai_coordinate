@@ -605,14 +605,26 @@ test("フォロー_上部のボタンでフォローすると再読込なしで�
     );
   });
 
-  test("表示_未投稿かつidあり_PostModalをマウント", async () => {
+  test("表示_未投稿_投稿は専用ページへ遷移する", async () => {
     // Spec: POSTDET-016
+    /*
+      以前はこの場でモーダルをマウントしていた。キーボードに合わせて位置と
+      高さを計算し直す「浮いた箱」をやめ、専用ページへ移した(#617〜#623)。
+    */
     const post = createPost({ is_posted: false });
     await act(async () => {
       render(<PostDetail post={post} currentUserId="owner-1" />);
     });
-    const modal = screen.getByTestId("post-modal");
-    expect(modal).toHaveAttribute("data-image-id", "img-1");
+
+    // その場にモーダルは無い
+    expect(screen.queryByTestId("post-modal")).not.toBeInTheDocument();
+
+    // メニューの「投稿」を押すと専用ページへ送る
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Submit post" }));
+    });
+
+    expect(routerPushMock).toHaveBeenCalledWith("/posts/new/img-1");
   });
 
   test("表示_画像URLあり_クリックで全画面", async () => {

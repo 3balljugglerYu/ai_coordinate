@@ -32,6 +32,7 @@ interface HashtagHighlightTextareaProps {
   maxLength?: number;
   className?: string;
   disabled?: boolean;
+  onFocus?: (event: React.FocusEvent<HTMLTextAreaElement>) => void;
 }
 
 /** 素の Textarea と見た目を合わせるための共通クラス。 */
@@ -47,6 +48,7 @@ export function HashtagHighlightTextarea({
   maxLength,
   className,
   disabled,
+  onFocus,
 }: HashtagHighlightTextareaProps) {
   const searchAvailable = useSearchAvailable();
   // 入力中のタグ候補を出すために、カーソル位置と変換状態を見る。
@@ -72,6 +74,7 @@ export function HashtagHighlightTextarea({
         maxLength={maxLength}
         className={className}
         disabled={disabled}
+        onFocus={onFocus}
       />
     );
   }
@@ -86,6 +89,7 @@ export function HashtagHighlightTextarea({
         onChange(event.target.value);
         trackCaret(event);
       }}
+      onFocus={onFocus}
       onSelect={trackCaret}
       onKeyUp={trackCaret}
       onClick={trackCaret}

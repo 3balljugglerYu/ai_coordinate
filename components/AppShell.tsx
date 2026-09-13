@@ -43,6 +43,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!pathname) return false;
     return stripLocalePrefix(pathname).pathname === "/creators/submit";
   })();
+  // 投稿フォーム(/posts/new/[imageId])は集中画面にするため共通 chrome を出さない。
+  // 閉じる・投稿するはページ側の上部バーで行う。/creators/submit と同じ扱い。
+  const isPostComposer = (() => {
+    if (!pathname) return false;
+    return /^\/posts\/new\/[^/]+\/?$/.test(stripLocalePrefix(pathname).pathname);
+  })();
   // コレクション完走の「めくれる日記帳」シェアは没入ビュー(/m/<token>/book)。
   const isCollectionBook = (() => {
     if (!pathname) return false;
@@ -53,6 +59,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     isStandaloneDocs ||
     isCatalogReader ||
     isCreatorPromptSubmit ||
+    isPostComposer ||
     isCollectionBook;
 
   useEffect(() => {

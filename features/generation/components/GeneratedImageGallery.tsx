@@ -5,11 +5,10 @@ import { Download, ZoomIn, Plus } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PostModal } from "@/features/posts/components/PostModal";
-import { resolveBeforeImageUrlSync } from "@/features/posts/lib/before-image-cache";
-import type { GeneratedImageData, GenerationType } from "../types";
+import type { GeneratedImageData } from "../types";
 import { ImageModal } from "./ImageModal";
 import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 
@@ -24,7 +23,6 @@ interface GeneratedImageGalleryProps {
    * 画像単位ではなく一覧単位で渡すのは、生成直後の画像（DB 未取得）でも
    * 種別が確定しているため。
    */
-  generationType?: GenerationType | null;
 }
 
 const FALLBACK_SHOW_DELAY_MS = 800;
@@ -38,12 +36,18 @@ export function GeneratedImageGallery({
   isGenerating = false,
   generatingCount = 0,
   onDownload,
-  generationType,
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const [postModalImage, setPostModalImage] =
-    useState<GeneratedImageData | null>(null);
+  const router = useRouter();
+  /**
+   * 投稿フォームは専用ページ（/posts/new/[imageId]）へ遷移して開く。
+   * ダイアログのままだと、キーボードに合わせて位置と高さを計算し直す
+   * 「浮いた箱」になり、その途中の値が見えてガクつく（#617〜#623）。
+   */
+  const openPostPage = (imageId: string) => {
+    router.push(`/posts/new/${imageId}`);
+  };
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
 
   const handleImageLoad = (imageRenderKey: string) => {
@@ -239,7 +243,7 @@ export function GeneratedImageGallery({
                         disabled={disablePostAndDownload}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setPostModalImage(image);
+                          openPostPage(image.id);
                         }}
                       >
                         <Plus className="h-4 w-4" />
@@ -278,27 +282,10 @@ export function GeneratedImageGallery({
             if (image.isPreview) {
               return;
             }
-            setPostModalImage(image);
             setSelectedImageIndex(null);
+            openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
-        />
-      )}
-
-      {/* 投稿モーダル */}
-      {postModalImage && (
-        <PostModal
-          open={!!postModalImage}
-          onOpenChange={(open) => {
-            if (!open) setPostModalImage(null);
-          }}
-          imageId={postModalImage.id}
-          afterImageUrl={postModalImage.url}
-          // Before 画像 URL を同期解決できれば PostModal 側の遅延を回避できる。
-          // 解決不可（undefined）の場合は PostModal 側で API fallback。
-          beforeImageUrl={resolveBeforeImageUrlSync(postModalImage) ?? undefined}
-          generationType={generationType}
-          sourcePostId={postModalImage.sourcePostId ?? null}
         />
       )}
 
