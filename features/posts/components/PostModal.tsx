@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Image from "next/image";
 import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import {
@@ -318,13 +317,20 @@ export function PostModal({
                     showBeforeInPreview ? "max-w-[66%]" : "max-w-full"
                   }`}
                 >
-                  <Image
+                  {/*
+                    next/image ではなく素の img。グリッドや拡大表示と**同じ URL**
+                    (表示用 WebP の直リンク)にそろえることで、直前に見ていた画面で
+                    落とした画像をブラウザがそのまま再利用できる。
+                    next/image を通すと `/_next/image?url=...&w=...` という別 URL に
+                    なり、キャッシュが効かないうえ既定が loading="lazy" になるため
+                    表示が遅れていた。表示用 WebP は長辺1280px・約137kB なので
+                    最適化を挟む利点が小さい。
+                  */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
                     src={afterImageUrl}
                     alt={t("afterImageAlt")}
-                    width={1200}
-                    height={1200}
                     className="block h-auto max-h-[30vh] w-auto max-w-full object-contain"
-                    sizes="(max-width: 768px) 60vw, 320px"
                   />
                   <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
                     {t("afterImageLabel")}
@@ -332,13 +338,12 @@ export function PostModal({
                 </div>
                 {showBeforeInPreview && effectiveBeforeImageUrl && (
                   <div className="relative min-w-0 max-w-[34%]">
-                    <Image
+                    {/* After と同じ理由で素の img を使う */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={effectiveBeforeImageUrl}
                       alt={t("beforeImageAlt")}
-                      width={400}
-                      height={400}
                       className="block h-auto max-h-[15vh] w-auto max-w-full object-contain"
-                      sizes="(max-width: 768px) 30vw, 160px"
                     />
                     <div className="absolute bottom-1 right-1 z-10 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
                       {t("beforeImageLabel")}

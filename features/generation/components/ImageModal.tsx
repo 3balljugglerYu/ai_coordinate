@@ -101,7 +101,9 @@ export function ImageModal({
     if (!currentImage) return [];
     const result: Slide[] = [
       {
-        src: currentImage.url,
+        // 拡大表示も表示用WebP(長辺1280px)で足りる。原本(約1.9MB)は
+        // ダウンロード時だけ使う。
+        src: currentImage.displayUrl ?? currentImage.url,
         alt: t("generatedImageAltIndexed", { index: 1 }),
       },
     ];

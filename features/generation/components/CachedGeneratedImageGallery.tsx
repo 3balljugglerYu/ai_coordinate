@@ -3,6 +3,7 @@ import { getGeneratedImagesServer } from "../lib/server-database";
 import { GeneratedImageGalleryClient } from "./GeneratedImageGalleryClient";
 import type { GeneratedImageData, GenerationType } from "../types";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getImageUrlFromStoragePath } from "@/features/posts/lib/utils";
 
 const PAGE_SIZE = 4;
 
@@ -73,6 +74,9 @@ export async function CachedGeneratedImageGallery({
       return {
         id: record.id,
         url: record.image_url,
+        displayUrl: record.storage_path_display
+          ? getImageUrlFromStoragePath(record.storage_path_display)
+          : null,
         is_posted: record.is_posted ?? false,
         prompt: record.prompt ?? "",
         createdAt: record.created_at,

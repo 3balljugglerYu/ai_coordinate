@@ -364,7 +364,20 @@ export interface GenerationResponse {
 
 export interface GeneratedImageData {
   id: string;
+  /**
+   * 原本(PNG 等・平均 約1.9MB)の URL。
+   *
+   * ⭐ **ダウンロードがこれを読む**(`lib/download-image.ts`)ので、表示用に
+   * 差し替えてはいけない。画面へ出すときは `displayUrl` を使う。
+   */
   url: string;
+  /**
+   * 表示用 WebP(長辺1280px・平均 約137kB)の URL。無い行では null。
+   *
+   * グリッド・リスト・拡大表示・投稿フォームはすべてこれを使う。同じ URL に
+   * そろえることで、画面をまたいでもブラウザキャッシュがそのまま効く。
+   */
+  displayUrl?: string | null;
   data?: string;
   is_posted: boolean;
   galleryKey?: string;
