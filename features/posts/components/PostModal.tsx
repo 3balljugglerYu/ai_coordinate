@@ -2,15 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { X } from "lucide-react";
 import { useTranslations } from "next-intl";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -48,6 +41,23 @@ import {
   persistPendingHomePostRefresh,
 } from "../lib/home-post-refresh";
 import type { PostImageResponse } from "../types";
+
+/**
+ * 入力欄にフォーカスしたとき、その欄をラベルごと画面の上端へ寄せる。
+ *
+ * iOS ではキーボードの表示タイミングを制御できない（フォーカスの直接の結果
+ * として OS が出す。操作の外で focus() を呼んでもキーボードは出ない）。
+ * そこでフォーカスと同時に**アニメーションなしで**スクロールを終わらせ、
+ * 250〜300ms かけて上がってくるキーボードより先に位置を確定させる。
+ *
+ * `behavior: "instant"` は必須。globals.css の `scroll-behavior: smooth` に
+ * 引きずられるとスクロールがキーボードと競走してしまう。
+ */
+function scrollFieldToTop(event: React.FocusEvent<HTMLElement>) {
+  const group = event.currentTarget.closest("[data-field-group]");
+  if (!(group instanceof HTMLElement)) return;
+  group.scrollIntoView({ block: "start", behavior: "instant" });
+}
 
 interface PostModalProps {
   open: boolean;
@@ -256,18 +266,48 @@ export function PostModal({
   // チェック ON のときだけ Before も並べて表示する（OFF 時は After 単独）
   const showBeforeInPreview = showBeforeImage && !!effectiveBeforeImageUrl;
 
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto px-3 py-6 sm:max-w-[500px] sm:px-6">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{t("postModalTitle")}</DialogTitle>
-            <DialogDescription>
-              {t("postModalDescription", { max: MAX_CAPTION_LENGTH })}
-            </DialogDescription>
-          </DialogHeader>
+  if (!open) {
+    return null;
+  }
 
-          <div className="py-4 space-y-4">
+  return (
+    <div className="mx-auto w-full max-w-[600px] pb-12">
+      <form onSubmit={handleSubmit}>
+        {/*
+          閉じる・投稿するは上部に固定する。`fixed` ではなく `sticky`。
+          fixed はキーボード表示時にブラウザが visual viewport をパンする際
+          ずれて見えるが、sticky は通常のドキュメントと一緒に動く。
+        */}
+        <div className="bg-background/95 sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b px-4 backdrop-blur-sm">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onOpenChange(false)}
+              disabled={isSubmitting}
+              aria-label={t("cancel")}
+              className="shrink-0 cursor-pointer"
+            >
+              <X className="h-5 w-5" aria-hidden />
+            </Button>
+            <span className="truncate text-base font-semibold">
+              {t("postModalTitle")}
+            </span>
+          </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting || isOverLimit}
+            className="shrink-0 cursor-pointer"
+          >
+            {isSubmitting ? t("postSubmitting") : t("postSubmit")}
+          </Button>
+        </div>
+
+        <div className="space-y-4 px-4 py-4">
+          <p className="text-muted-foreground text-sm">
+            {t("postModalDescription", { max: MAX_CAPTION_LENGTH })}
+          </p>
             {/* 画像プレビュー（After 左 / Before 右、下端揃え、隙間ゼロ）。
                 各画像は Dialog コンテナ幅に対する % で制限し、横長画像も
                 必ず収まるようにする（vw ベースだと sm:max-w-[500px] を超えうる）。*/}
@@ -308,12 +348,14 @@ export function PostModal({
               </div>
             )}
 
-            <div className="space-y-2">
+            {/* 上部バー(h-14) の分だけ余白を確保して上端へ寄せる */}
+            <div data-field-group className="scroll-mt-[3.5rem] space-y-2">
               <Label htmlFor="caption">{t("captionLabel")}</Label>
               <HashtagHighlightTextarea
                 id="caption"
                 value={caption}
                 onChange={setCaption}
+                onFocus={scrollFieldToTop}
                 placeholder={t("captionPlaceholder")}
                 rows={4}
                 maxLength={MAX_CAPTION_LENGTH}
@@ -376,21 +418,7 @@ export function PostModal({
             )}
           </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              {t("cancel")}
-            </Button>
-            <Button type="submit" disabled={isSubmitting || isOverLimit}>
-              {isSubmitting ? t("postSubmitting") : t("postSubmit")}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+      </form>
 
       {/*
         公開停止中コンテンツの再投稿を試みたときの案内。
@@ -417,6 +445,6 @@ export function PostModal({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Dialog>
+    </div>
   );
 }

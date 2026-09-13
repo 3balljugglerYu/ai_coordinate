@@ -26,8 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { copyTextToClipboard } from "@/lib/clipboard";
-import { PostModal } from "@/features/posts/components/PostModal";
-import { resolveBeforeImageUrlSync } from "@/features/posts/lib/before-image-cache";
 import type { GeneratedImageData } from "../types";
 import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 import { ImageModal } from "./ImageModal";
@@ -100,8 +98,14 @@ export function GeneratedImageList({
   const router = useRouter();
   const t = useTranslations("coordinate");
   const { toast } = useToast();
-  const [postModalImage, setPostModalImage] =
-    useState<GeneratedImageData | null>(null);
+  /**
+   * 投稿フォームは専用ページ（/posts/new/[imageId]）へ遷移して開く。
+   * ダイアログのままだと、キーボードに合わせて位置と高さを計算し直す
+   * 「浮いた箱」になり、その途中の値が見えてガクつく（#617〜#623）。
+   */
+  const openPostPage = (imageId: string) => {
+    router.push(`/posts/new/${imageId}`);
+  };
   const [selectedImageIndex, setSelectedImageIndex] =
     useState<number | null>(null);
   const [navigateConfirmImage, setNavigateConfirmImage] =
@@ -359,7 +363,7 @@ export function GeneratedImageList({
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => setPostModalImage(image)}
+                  onClick={() => openPostPage(image.id)}
                   disabled={disablePostAndDownload}
                 >
                   <Plus className="h-3.5 w-3.5" />
@@ -451,29 +455,14 @@ export function GeneratedImageList({
             if (image.isPreview) {
               return;
             }
-            setPostModalImage(image);
             setSelectedImageIndex(null);
+            openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
         />
       )}
 
-      {postModalImage && (
-        <PostModal
-          open={!!postModalImage}
-          onOpenChange={(open) => {
-            if (!open) setPostModalImage(null);
-          }}
-          imageId={postModalImage.id}
-          afterImageUrl={postModalImage.url}
-          // Before 画像 URL を同期解決できれば PostModal 側の遅延を回避できる。
-          // 解決不可（undefined）の場合は PostModal 側で API fallback。
-          beforeImageUrl={resolveBeforeImageUrlSync(postModalImage) ?? undefined}
-          generationType={generationType}
-          sourcePostId={postModalImage.sourcePostId ?? null}
-        />
-      )}
-
+      
       <AlertDialog
         open={!!navigateConfirmImage}
         onOpenChange={(open) => {

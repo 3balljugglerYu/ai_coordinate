@@ -95,7 +95,6 @@ import {
 } from "@/features/wardrobe/lib/guest-generation-store";
 import { StyleGenerationStatusCard } from "@/features/style/components/StyleGenerationStatusCard";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
-import { PostModal } from "@/features/posts/components/PostModal";
 import { fetchPercoinBalance } from "@/features/credits/lib/api";
 import { getPercoinPurchaseUrl } from "@/features/credits/lib/urls";
 import {
@@ -496,7 +495,6 @@ export function StylePageClient({
   const [rateLimitDialogMessage, setRateLimitDialogMessage] = useState<string | null>(null);
   const [isReferenceCardCollapsed, setIsReferenceCardCollapsed] = useState(false);
   const [isResultResetDialogOpen, setIsResultResetDialogOpen] = useState(false);
-  const [isPostModalOpen, setIsPostModalOpen] = useState(false);
   const [isPresetStripDragging, setIsPresetStripDragging] = useState(false);
   const [resultConfirmationIntent, setResultConfirmationIntent] =
     useState<ResultConfirmationIntent>("change");
@@ -2539,14 +2537,6 @@ export function StylePageClient({
         </div>
       ) : null}
 
-      {resultGeneratedImageId ? (
-        <PostModal
-          open={isPostModalOpen}
-          onOpenChange={setIsPostModalOpen}
-          imageId={resultGeneratedImageId}
-        />
-      ) : null}
-
       {/*
         即時結果表示パネルは未ログインユーザー向け（履歴 DB が無いため）。
         ログインユーザーは生成結果一覧（GenerationStateProvider 配下の
@@ -2588,7 +2578,11 @@ export function StylePageClient({
                       type="button"
                       variant="outline"
                       size="sm"
-                      onClick={() => setIsPostModalOpen(true)}
+                      onClick={() => {
+                        if (resultGeneratedImageId) {
+                          router.push(`/posts/new/${resultGeneratedImageId}`);
+                        }
+                      }}
                       className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
                     >
                       <Share2 className="h-4 w-4" />

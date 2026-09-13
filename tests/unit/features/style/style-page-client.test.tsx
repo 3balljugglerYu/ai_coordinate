@@ -117,18 +117,6 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
   ),
 }));
 
-jest.mock("@/features/posts/components/PostModal", () => ({
-  PostModal: ({
-    open,
-    imageId,
-  }: {
-    open: boolean;
-    imageId: string;
-  }) =>
-    open ? (
-      <div data-testid="style-post-modal">post modal for {imageId}</div>
-    ) : null,
-}));
 
 jest.mock("@/features/auth/components/AuthModal", () => ({
   AuthModal: ({ open }: { open: boolean }) =>
@@ -1485,9 +1473,13 @@ describe("StylePageClient", () => {
       "src",
       "https://cdn.example.com/generated-style-result.png"
     );
+    /*
+      投稿フォームはモーダルではなく専用ページに移した(#617〜#623)。
+      キーボードに合わせて位置と高さを計算し直す「浮いた箱」を無くすため。
+    */
     fireEvent.click(screen.getByRole("button", { name: "Post" }));
-    expect(screen.getByTestId("style-post-modal")).toHaveTextContent(
-      "generated-image-001"
+    expect(routerPushMock).toHaveBeenCalledWith(
+      "/posts/new/generated-image-001"
     );
     expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith(
       expect.objectContaining({

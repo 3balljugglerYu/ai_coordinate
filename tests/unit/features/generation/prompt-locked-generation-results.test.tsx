@@ -34,19 +34,16 @@ jest.mock("@/features/generation/components/GeneratedImageGallery", () => ({
     images,
     isGenerating,
     generatingCount,
-    generationType,
   }: {
     images: GeneratedImageData[];
     isGenerating: boolean;
     generatingCount: number;
-    generationType?: string | null;
   }) => (
     <div
       data-testid="gallery"
       data-count={images.length}
       data-generating={String(isGenerating)}
       data-generating-count={generatingCount}
-      data-generation-type={generationType ?? ""}
     />
   ),
 }));
@@ -132,18 +129,24 @@ describe("生成結果の描画", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it("一覧へ free を渡す", () => {
-    // 投稿モーダルの「プロンプトを公開する」トグルの出し分けに使われる。
-    // 渡さないと、派生生成の結果を投稿するときにトグルが出ない。
+  it("一覧へ generationType を渡さない（投稿ページが DB から引くため）", () => {
+    /*
+      以前はここから投稿モーダルへ generationType を流し、「プロンプトを
+      公開する」トグルの出し分けに使っていた。投稿フォームを専用ページに
+      移したあとは、ページ側が generated_images.generation_type を読むので
+      クライアントから渡す必要がない。DB が正本になったぶん確実になった。
+
+      トグルが出ることの保証は
+      tests/unit/features/posts/post-composer-page.test.tsx が引き継ぐ。
+    */
     useGenerationStateMock.mockReturnValue(
       stubState({ previewImages: [buildImage("a")] })
     );
 
     render(<PromptLockedGenerationResults />);
 
-    expect(screen.getByTestId("gallery")).toHaveAttribute(
-      "data-generation-type",
-      "free"
+    expect(screen.getByTestId("gallery")).not.toHaveAttribute(
+      "data-generation-type"
     );
   });
 });

@@ -192,7 +192,6 @@ export function GeneratedImageGalleryClient({
           images={galleryImages}
           isGenerating={genState?.isGenerating ?? false}
           generatingCount={genState?.generatingCount ?? 0}
-          generationType={generationType}
         />
       ) : (
         <GeneratedImageList
