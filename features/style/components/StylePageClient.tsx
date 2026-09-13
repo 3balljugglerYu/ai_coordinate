@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { usePostPageNavigation } from "@/features/posts/hooks/usePostPageNavigation";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import {
   useCallback,
@@ -11,7 +12,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { LayoutGrid, Maximize2, Minimize2, Share2 } from "lucide-react";
+import { LayoutGrid, Loader2, Maximize2, Minimize2, Share2 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StyleBrowseSheet } from "@/features/style/components/StyleBrowseSheet";
 import { StyleReferencePanel } from "@/features/style/components/StyleReferencePanel";
@@ -392,6 +393,8 @@ export function StylePageClient({
   initialFavoritePresetIds,
 }: StylePageClientProps) {
   const router = useRouter();
+  const { isNavigating: isPostNavigating, openPostPage } =
+    usePostPageNavigation();
   const t = useTranslations("style");
   /*
     共有リンク等で未開放の `?style=` に来たときの保険。通常の導線
@@ -2580,12 +2583,22 @@ export function StylePageClient({
                       size="sm"
                       onClick={() => {
                         if (resultGeneratedImageId) {
-                          router.push(`/posts/new/${resultGeneratedImageId}`);
+                          openPostPage(resultGeneratedImageId);
                         }
                       }}
-                      className="flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm"
+                      // 遷移中は native の disabled にしない（フォーカスが
+                      // body に落ちる）。操作は openPostPage 側で弾いている。
+                      aria-disabled={isPostNavigating}
+                      aria-busy={isPostNavigating}
+                      className={`flex h-9 items-center gap-2 rounded-full border-slate-300 px-3 text-sm font-medium text-slate-700 shadow-sm${
+                        isPostNavigating ? " opacity-70" : ""
+                      }`}
                     >
-                      <Share2 className="h-4 w-4" />
+                      {isPostNavigating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                      ) : (
+                        <Share2 className="h-4 w-4" />
+                      )}
                       <span>{postsT("postSubmit")}</span>
                     </Button>
                   ) : null}

@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Download, ZoomIn, Plus } from "lucide-react";
+import { Download, ZoomIn, Plus, Loader2 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePostPageNavigation } from "@/features/posts/hooks/usePostPageNavigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
@@ -39,15 +39,7 @@ export function GeneratedImageGallery({
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
-  const router = useRouter();
-  /**
-   * 投稿フォームは専用ページ（/posts/new/[imageId]）へ遷移して開く。
-   * ダイアログのままだと、キーボードに合わせて位置と高さを計算し直す
-   * 「浮いた箱」になり、その途中の値が見えてガクつく（#617〜#623）。
-   */
-  const openPostPage = (imageId: string) => {
-    router.push(`/posts/new/${imageId}`);
-  };
+  const { isNavigating, openPostPage } = usePostPageNavigation();
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
 
   const handleImageLoad = (imageRenderKey: string) => {
@@ -243,12 +235,22 @@ export function GeneratedImageGallery({
                         variant="secondary"
                         aria-label={t("postAction")}
                         disabled={disablePostAndDownload}
+                        // 遷移中は native の disabled にしない。フォーカス中の
+                        // 要素を disabled にするとフォーカスが body に落ちる。
+                        // 操作は openPostPage 側で弾いている。
+                        aria-disabled={isNavigating}
+                        aria-busy={isNavigating}
+                        className={isNavigating ? "opacity-70" : undefined}
                         onClick={(e) => {
                           e.stopPropagation();
                           openPostPage(image.id);
                         }}
                       >
-                        <Plus className="h-4 w-4" />
+                        {isNavigating ? (
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        ) : (
+                          <Plus className="h-4 w-4" />
+                        )}
                         <span className="ml-1">{t("postAction")}</span>
                       </Button>
                     )}
@@ -292,6 +294,7 @@ export function GeneratedImageGallery({
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
+          isPostNavigating={isNavigating}
         />
       )}
 
