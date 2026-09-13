@@ -271,14 +271,14 @@ export function PostModal({
   }
 
   return (
-    <div className="mx-auto w-full max-w-[600px] pb-12">
+    <div className="mx-auto w-full max-w-[600px] pb-24">
       <form onSubmit={handleSubmit}>
         {/*
           閉じる・投稿するは上部に固定する。`fixed` ではなく `sticky`。
           fixed はキーボード表示時にブラウザが visual viewport をパンする際
           ずれて見えるが、sticky は通常のドキュメントと一緒に動く。
         */}
-        <div className="bg-background/95 sticky top-0 z-20 flex h-14 items-center justify-between gap-3 border-b px-4 backdrop-blur-sm">
+        <div className="bg-background/95 sticky top-[var(--app-header-height,64px)] z-20 flex h-14 items-center justify-between gap-3 border-b px-4 backdrop-blur-sm">
           <div className="flex min-w-0 items-center gap-2">
             <Button
               type="button"
@@ -348,8 +348,15 @@ export function PostModal({
               </div>
             )}
 
-            {/* 上部バー(h-14) の分だけ余白を確保して上端へ寄せる */}
-            <div data-field-group className="scroll-mt-[3.5rem] space-y-2">
+            {/*
+              アプリ共通ヘッダー(sticky。実測値を StickyHeader が
+              --app-header-height に公開している)と、この画面の上部バー(h-14)の
+              合計だけ余白を確保して上端へ寄せる。
+            */}
+            <div
+              data-field-group
+              className="scroll-mt-[calc(var(--app-header-height,64px)+3.5rem)] space-y-2"
+            >
               <Label htmlFor="caption">{t("captionLabel")}</Label>
               <HashtagHighlightTextarea
                 id="caption"
