@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   closestCenter,
   DndContext,
@@ -39,22 +41,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { StylePresetForm } from "./StylePresetForm";
 import type { StylePresetAdmin } from "@/features/style-presets/lib/schema";
-import type { PresetCategoryAdmin } from "@/features/style-presets/lib/preset-category-repository";
-import type { AllowlistedCreator } from "@/features/style-presets/lib/style-preset-repository";
 
 interface SortableStylePresetCardProps {
   preset: StylePresetAdmin;
@@ -222,28 +215,28 @@ const pointerSensorOptions = {
 
 interface StylePresetListClientProps {
   initialPresets: StylePresetAdmin[];
-  categories: PresetCategoryAdmin[];
-  creators: AllowlistedCreator[];
 }
 
 export function StylePresetListClient({
   initialPresets,
-  categories,
-  creators,
 }: StylePresetListClientProps) {
   const [presets, setPresets] = useState<StylePresetAdmin[]>(initialPresets);
-  const [editingPreset, setEditingPreset] = useState<StylePresetAdmin | null>(
-    null
-  );
-  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
 
   const sensors = useSensors(
     useSensor(PointerSensor, pointerSensorOptions),
     useSensor(KeyboardSensor)
+  );
+
+  const openEditPage = useCallback(
+    (preset: StylePresetAdmin) => {
+      router.push(`/admin/style-presets/${preset.id}/edit`);
+    },
+    [router]
   );
 
   const reload = useCallback(async () => {
@@ -369,12 +362,11 @@ export function StylePresetListClient({
               画像・タイトル・styling/background prompt・公開状態を管理し、ドラッグで表示順を変更できます。
             </p>
           </div>
-          <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="min-h-[44px] cursor-pointer"
-          >
-            <Plus className="mr-2 h-4 w-4" aria-hidden />
-            新規追加
+          <Button asChild className="min-h-[44px] cursor-pointer">
+            <Link href="/admin/style-presets/new">
+              <Plus className="mr-2 h-4 w-4" aria-hidden />
+              新規追加
+            </Link>
           </Button>
         </div>
 
@@ -397,7 +389,7 @@ export function StylePresetListClient({
                   <SortableStylePresetCard
                     key={preset.id}
                     preset={preset}
-                    onEdit={setEditingPreset}
+                    onEdit={openEditPage}
                     onDelete={requestDelete}
                     isDeleting={deletingId === preset.id}
                   />
@@ -411,50 +403,6 @@ export function StylePresetListClient({
           <p className="text-xs text-slate-500">表示順を保存しています...</p>
         ) : null}
       </div>
-
-      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>スタイルを追加</DialogTitle>
-          </DialogHeader>
-          <StylePresetForm
-            categories={categories}
-            creators={creators}
-            onSuccess={async () => {
-              setIsCreateOpen(false);
-              await reload();
-            }}
-            onCancel={() => setIsCreateOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
-        open={editingPreset !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setEditingPreset(null);
-          }
-        }}
-      >
-        <DialogContent className="max-h-[90svh] w-[calc(100vw-2rem)] max-w-2xl overflow-y-auto sm:max-h-[90vh]">
-          <DialogHeader>
-            <DialogTitle>スタイルを編集</DialogTitle>
-          </DialogHeader>
-          {editingPreset ? (
-            <StylePresetForm
-              preset={editingPreset}
-              categories={categories}
-              creators={creators}
-              onSuccess={async () => {
-                setEditingPreset(null);
-                await reload();
-              }}
-              onCancel={() => setEditingPreset(null)}
-            />
-          ) : null}
-        </DialogContent>
-      </Dialog>
 
       <AlertDialog
         open={deleteConfirmId !== null}

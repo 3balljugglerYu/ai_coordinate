@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { Loader2, Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,12 +26,34 @@ import type { AllowlistedCreator } from "@/features/style-presets/lib/style-pres
 /** クリエイター(提供者クレジット)未選択を表す Select 用センチネル値。 */
 const NO_PROVIDER_VALUE = "__none__";
 
+/**
+ * 入力欄にフォーカスしたとき、その欄をラベルごと画面の上端へ寄せる。
+ *
+ * iOS ではキーボードの表示タイミングを制御できない（フォーカスの直接の結果
+ * として OS が出す。操作の外で focus() を呼んでもキーボードは出ない）。
+ * そこでフォーカスと同時に**アニメーションなしで**スクロールを終わらせ、
+ * 250〜300ms かけて上がってくるキーボードより先に位置を確定させる。
+ *
+ * `behavior: "instant"` は必須。globals.css の `scroll-behavior: smooth` に
+ * 引きずられるとスクロールがキーボードと競走してしまう。
+ */
+function scrollFieldToTop(event: React.FocusEvent<HTMLElement>) {
+  const group = event.currentTarget.closest("[data-field-group]");
+  if (!(group instanceof HTMLElement)) return;
+  group.scrollIntoView({ block: "start", behavior: "instant" });
+}
+
 interface StylePresetFormProps {
   preset?: StylePresetAdmin;
   categories: PresetCategoryAdmin[];
   creators: AllowlistedCreator[];
   onSuccess: () => void | Promise<void>;
   onCancel: () => void;
+  /**
+   * 指定すると、閉じる・保存を上部バーに固定して最下部のボタンを出さない。
+   * 専用ページ（新規・編集）で使う。
+   */
+  headerTitle?: string;
 }
 
 export function StylePresetForm({
@@ -40,6 +62,7 @@ export function StylePresetForm({
   creators,
   onSuccess,
   onCancel,
+  headerTitle,
 }: StylePresetFormProps) {
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -342,6 +365,40 @@ export function StylePresetForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {headerTitle ? (
+        // fixed ではなく sticky。fixed はキーボード表示時にブラウザが
+        // visual viewport をパンする際ずれて見えるが、sticky は通常の
+        // ドキュメントと一緒に動くためその問題が起きない。
+        // top-16 は AdminHeader(fixed h-16) の直下。
+        <div className="sticky top-16 z-20 -mx-4 flex h-14 items-center justify-between gap-3 border-b border-slate-200 bg-white/95 px-4 backdrop-blur-sm sm:-mx-6 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={onCancel}
+              disabled={isSubmitting}
+              className="shrink-0 cursor-pointer"
+              aria-label="閉じる"
+            >
+              <X className="h-5 w-5" aria-hidden />
+            </Button>
+            <span className="truncate text-base font-semibold text-slate-900">
+              {headerTitle}
+            </span>
+          </div>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="min-h-[40px] shrink-0 cursor-pointer"
+          >
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+            ) : null}
+            保存
+          </Button>
+        </div>
+      ) : null}
       <div className="space-y-4">
         <div>
           <Label htmlFor="file">サムネイル画像（{preset ? "変更時のみ" : "必須"}）</Label>
@@ -397,24 +454,26 @@ export function StylePresetForm({
           </div>
         </div>
 
-        <div>
+        <div data-field-group className="scroll-mt-[7.5rem]">
           <Label htmlFor="title">タイトル</Label>
           <Input
             id="title"
             value={title}
             onChange={(event) => setTitle(event.target.value)}
+            onFocus={scrollFieldToTop}
             placeholder="SPRING SMART CASUAL"
             className="mt-1 min-h-[44px] text-base"
             required
           />
         </div>
 
-        <div>
+        <div data-field-group className="scroll-mt-[7.5rem]">
           <Label htmlFor="styling_prompt">Styling Prompt</Label>
           <Textarea
             id="styling_prompt"
             value={stylingPrompt}
             onChange={(event) => setStylingPrompt(event.target.value)}
+            onFocus={scrollFieldToTop}
             placeholder="Wearing Smart Casual style outfit..."
             className="mt-1 field-sizing-fixed min-h-[220px] sm:field-sizing-content"
             required
@@ -424,12 +483,13 @@ export function StylePresetForm({
           </p>
         </div>
 
-        <div>
+        <div data-field-group className="scroll-mt-[7.5rem]">
           <Label htmlFor="background_prompt">Background Prompt（任意）</Label>
           <Textarea
             id="background_prompt"
             value={backgroundPrompt}
             onChange={(event) => setBackgroundPrompt(event.target.value)}
+            onFocus={scrollFieldToTop}
             placeholder="Soft spring city street with blossoms..."
             className="mt-1 field-sizing-fixed min-h-[160px] sm:field-sizing-content"
           />
@@ -736,27 +796,29 @@ export function StylePresetForm({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse justify-end gap-3 pt-4 sm:flex-row">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onCancel}
-          disabled={isSubmitting}
-          className="min-h-[44px] w-full cursor-pointer sm:w-auto"
-        >
-          キャンセル
-        </Button>
-        <Button
-          type="submit"
-          disabled={isSubmitting}
-          className="min-h-[44px] w-full cursor-pointer sm:w-auto"
-        >
-          {isSubmitting ? (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-          ) : null}
-          保存
-        </Button>
-      </div>
+      {headerTitle ? null : (
+        <div className="flex flex-col-reverse justify-end gap-3 pt-4 sm:flex-row">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancel}
+            disabled={isSubmitting}
+            className="min-h-[44px] w-full cursor-pointer sm:w-auto"
+          >
+            キャンセル
+          </Button>
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            className="min-h-[44px] w-full cursor-pointer sm:w-auto"
+          >
+            {isSubmitting ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+            ) : null}
+            保存
+          </Button>
+        </div>
+      )}
     </form>
   );
 }
