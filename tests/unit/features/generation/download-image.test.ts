@@ -164,6 +164,28 @@ describe("shareOrDownloadGeneratedImage", () => {
     expect(onDownloadSuccess).toHaveBeenCalledTimes(1);
   });
 
+  test("⭐表示用WebPではなく原本(url)を取りに行く", async () => {
+    /*
+      一覧・拡大表示・投稿フォームは表示用WebP(displayUrl・長辺1280px)を出すが、
+      ダウンロードだけは原本(url)でなければならない。ここが入れ替わると、
+      保存される画像が黙って劣化する(画面を見ても気づけない)。
+    */
+    const withDisplay = {
+      ...target,
+      displayUrl: "https://cdn.example.com/x_display.webp",
+    };
+
+    setNavigator({ userAgent: DESKTOP_UA });
+
+    await shareOrDownloadGeneratedImage(withDisplay, messages, {});
+
+    const calledUrls = (global.fetch as jest.Mock).mock.calls.map(
+      (call) => call[0]
+    );
+    expect(calledUrls).toContain(target.url);
+    expect(calledUrls).not.toContain(withDisplay.displayUrl);
+  });
+
   test("401 のときは accessDenied メッセージで例外を投げる", async () => {
     setNavigator({ userAgent: DESKTOP_UA });
     (global.fetch as jest.Mock).mockResolvedValue({

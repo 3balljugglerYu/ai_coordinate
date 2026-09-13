@@ -401,7 +401,7 @@ export function GeneratedImageList({
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={image.url}
+                    src={image.displayUrl ?? image.url}
                     alt={t("listThumbnailAlt")}
                     className="h-full w-full object-cover"
                   />

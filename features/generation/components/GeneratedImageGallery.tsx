@@ -164,7 +164,9 @@ export function GeneratedImageGallery({
                   )}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={image.url}
+                    // 原本(約1.9MB)ではなく表示用WebP(約137kB)を出す。
+                    // url はダウンロードが読むので触らない。
+                    src={image.displayUrl ?? image.url}
                     alt={t("generatedImageAltIndexed", { index: index + 1 })}
                     className={`block object-contain transition-opacity duration-200 ${
                       loadedImageIds.has(getImageRenderKey(image))
