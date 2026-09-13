@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Coins } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -50,6 +51,18 @@ export function PromptVisibilityField({
   // 還元が停止中(0)なら告知は出さない。取得前・失敗時も 0 なので、
   // 「もらえないのに告知だけ出る」ことはない。
   const { promptUsageRewardAmount } = useUsageRewardAmounts();
+  /*
+    告知はマウント後にだけ出す。取得結果はモジュール変数にキャッシュされ、
+    サーバー側でもリクエストをまたいで残るため、サーバーとクライアントの
+    初回描画が食い違ってハイドレーションが壊れることがある(投稿フォームを
+    ページ化してSSRされるようになり表面化した)。
+  */
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    // エフェクト内の同期 setState は連鎖レンダーになるので次のティックへ回す
+    // (useUsageRewardAmounts と同じ扱い)。
+    void Promise.resolve().then(() => setMounted(true));
+  }, []);
   const publicId = `${idPrefix}-prompt-visibility-public`;
   const privateId = `${idPrefix}-prompt-visibility-private`;
 
@@ -57,7 +70,7 @@ export function PromptVisibilityField({
     <div className="space-y-2">
       <p className="text-sm font-medium">{t("promptVisibilityLabel")}</p>
 
-      {promptUsageRewardAmount > 0 && (
+      {mounted && promptUsageRewardAmount > 0 && (
         <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/60 p-2.5 text-xs text-amber-900">
           <Coins className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <span>
