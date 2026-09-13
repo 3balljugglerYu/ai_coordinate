@@ -3,15 +3,9 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { usePostPageNavigation } from "@/features/posts/hooks/usePostPageNavigation";
 import { useTranslations } from "next-intl";
-import {
-  Calendar,
-  Copy,
-  Download,
-  Plus,
-  Sparkles,
-  Wand2,
-} from "lucide-react";
+import { Calendar, Copy, Download, Loader2, Plus, Sparkles, Wand2 } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -98,14 +92,8 @@ export function GeneratedImageList({
   const router = useRouter();
   const t = useTranslations("coordinate");
   const { toast } = useToast();
-  /**
-   * 投稿フォームは専用ページ（/posts/new/[imageId]）へ遷移して開く。
-   * ダイアログのままだと、キーボードに合わせて位置と高さを計算し直す
-   * 「浮いた箱」になり、その途中の値が見えてガクつく（#617〜#623）。
-   */
-  const openPostPage = (imageId: string) => {
-    router.push(`/posts/new/${imageId}`);
-  };
+  // router は別用途（/coordinate への遷移）でも使うので残す
+  const { isNavigating, openPostPage } = usePostPageNavigation();
   const [selectedImageIndex, setSelectedImageIndex] =
     useState<number | null>(null);
   const [navigateConfirmImage, setNavigateConfirmImage] =
@@ -365,8 +353,16 @@ export function GeneratedImageList({
                   variant="outline"
                   onClick={() => openPostPage(image.id)}
                   disabled={disablePostAndDownload}
+                  // グリッド側と同じ理由で native の disabled にはしない
+                  aria-disabled={isNavigating}
+                  aria-busy={isNavigating}
+                  className={isNavigating ? "opacity-70" : undefined}
                 >
-                  <Plus className="h-3.5 w-3.5" />
+                  {isNavigating ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  ) : (
+                    <Plus className="h-3.5 w-3.5" />
+                  )}
                   <span className="ml-1.5">{t("postAction")}</span>
                 </Button>
               )
@@ -463,6 +459,7 @@ export function GeneratedImageList({
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
+          isPostNavigating={isNavigating}
         />
       )}
 

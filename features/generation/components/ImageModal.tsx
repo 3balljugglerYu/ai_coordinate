@@ -9,7 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowLeftRight, Download, Plus } from "lucide-react";
+import { ArrowLeftRight, Download, Loader2, Plus } from "lucide-react";
 import Lightbox, { type Slide } from "yet-another-react-lightbox";
 import Zoom from "yet-another-react-lightbox/plugins/zoom";
 // styles.css は app/layout.tsx でグローバル import 済み。
@@ -33,6 +33,11 @@ interface ImageModalProps {
   onPost?: (image: GeneratedImageData) => void;
   /** チュートリアルStep11（PC）時に投稿・ダウンロードを無効化 */
   disablePostAndDownload?: boolean;
+  /**
+   * 投稿フォームへの遷移中。押したことが伝わるようボタンを処理中に見せる。
+   * native の disabled にはしない（フォーカスが body に落ちるため）。
+   */
+  isPostNavigating?: boolean;
 }
 
 /**
@@ -53,6 +58,7 @@ export function ImageModal({
   onClose,
   onDownload,
   onPost,
+  isPostNavigating = false,
   disablePostAndDownload = false,
 }: ImageModalProps) {
   const t = useTranslations("coordinate");
@@ -182,12 +188,17 @@ export function ImageModal({
         key="post"
         type="button"
         className="yarl__button"
-        style={labeledButtonStyle}
+        style={{
+          ...labeledButtonStyle,
+          ...(isPostNavigating ? { opacity: 0.7 } : {}),
+        }}
         disabled={disablePostAndDownload}
+        aria-disabled={isPostNavigating}
+        aria-busy={isPostNavigating}
         onClick={() => onPost(currentImage)}
         aria-label={t("postAction")}
       >
-        <Plus />
+        {isPostNavigating ? <Loader2 className="animate-spin" /> : <Plus />}
         <span>{t("postAction")}</span>
       </button>,
     );
