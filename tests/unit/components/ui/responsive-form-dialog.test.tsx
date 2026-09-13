@@ -140,11 +140,20 @@ describe("ResponsiveFormDialog", () => {
       );
     }
 
-    it("visualViewport の resize 後にフォーカス中の入力欄を見える位置へ寄せる", () => {
+    /** jsdom は矩形を全て 0 で返すので、可視判定用に差し込む。 */
+    function setRect(el: HTMLElement, top: number, bottom: number) {
+      el.getBoundingClientRect = () =>
+        ({ top, bottom, left: 0, right: 0, width: 0, height: bottom - top,
+           x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+    }
+
+    it("キーボードに隠れている入力欄を見える位置へ寄せる", () => {
       mockMatchMedia(true);
       renderWithInput();
 
       const input = screen.getByLabelText("タイトル");
+      // visualViewport.height=400 に対し下端 520 = キーボードの裏
+      setRect(input, 480, 520);
       const scrollIntoView = jest.fn();
       input.scrollIntoView = scrollIntoView;
       input.focus();
@@ -162,12 +171,30 @@ describe("ResponsiveFormDialog", () => {
       });
     });
 
+    it("既に全体が見えている入力欄は動かさない", () => {
+      mockMatchMedia(true);
+      renderWithInput();
+
+      const input = screen.getByLabelText("タイトル");
+      // visualViewport.height=400 の内側に収まっている
+      setRect(input, 100, 140);
+      const scrollIntoView = jest.fn();
+      input.scrollIntoView = scrollIntoView;
+      input.focus();
+
+      listeners.resize?.forEach((fn) => fn());
+      jest.runAllTimers();
+
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
     it("シートの外の要素にフォーカスがあるときは寄せない", () => {
       mockMatchMedia(true);
       renderWithInput();
 
       const outside = document.createElement("input");
       document.body.appendChild(outside);
+      setRect(outside, 480, 520);
       const scrollIntoView = jest.fn();
       outside.scrollIntoView = scrollIntoView;
       outside.focus();
@@ -184,6 +211,7 @@ describe("ResponsiveFormDialog", () => {
       renderWithInput();
 
       const input = screen.getByLabelText("タイトル");
+      setRect(input, 480, 520);
       const scrollIntoView = jest.fn();
       input.scrollIntoView = scrollIntoView;
       input.focus();
