@@ -3,11 +3,7 @@ import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
-import {
-  listAllowlistedCreators,
-  listStylePresetsForAdmin,
-} from "@/features/style-presets/lib/style-preset-repository";
-import { listPresetCategories } from "@/features/style-presets/lib/preset-category-repository";
+import { listStylePresetsForAdmin } from "@/features/style-presets/lib/style-preset-repository";
 import { StylePresetListClient } from "./StylePresetListClient";
 import { CreatorPromptReviewPanel } from "./CreatorPromptReviewPanel";
 
@@ -21,13 +17,8 @@ export default async function AdminStylePresetsPage() {
     redirect("/");
   }
 
-  const [presets, categories, creators] = await Promise.all([
-    listStylePresetsForAdmin(),
-    // 編集時に既存の inactive category を維持できるよう includeInactive=true
-    listPresetCategories({ includeInactive: true }),
-    // クリエイター(提供者クレジット)選択肢 = 招待クリエイター(allowlist)。
-    listAllowlistedCreators(),
-  ]);
+  // カテゴリとクリエイターは新規・編集の専用ページ側で取得する
+  const presets = await listStylePresetsForAdmin();
 
   // クリエイター提供プロンプトの申請(pending かつ申請者あり)を審査パネルに出す。
   const pendingCreatorPresets = presets.filter(
@@ -63,11 +54,7 @@ export default async function AdminStylePresetsPage() {
 
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
-          <StylePresetListClient
-            initialPresets={presets}
-            categories={categories}
-            creators={creators}
-          />
+          <StylePresetListClient initialPresets={presets} />
         </CardContent>
       </Card>
     </div>
