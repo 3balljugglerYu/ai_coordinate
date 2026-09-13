@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 /**
  * 異議申立てキュー（クライアント側 fetch）
@@ -301,6 +302,13 @@ export function AppealQueueClient() {
                   disabled={processingId === appeal.id || !noteFilled}
                   onClick={() => handleDecision(appeal, "overturn")}
                 >
+                  {/*
+                    disabled は「処理中」と「理由が未入力」の両方で立つので、
+                    回転は処理中のときだけ出す。
+                  */}
+                  {processingId === appeal.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  ) : null}
                   認める（公開を再開）
                 </Button>
                 <Button
@@ -309,6 +317,9 @@ export function AppealQueueClient() {
                   disabled={processingId === appeal.id || !noteFilled}
                   onClick={() => handleDecision(appeal, "uphold")}
                 >
+                  {processingId === appeal.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                  ) : null}
                   棄却する（公開停止を維持）
                 </Button>
                 {!noteFilled && (
