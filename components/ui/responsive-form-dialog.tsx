@@ -43,6 +43,19 @@ function useIsMobileViewport() {
 const SCROLL_INTO_VIEW_DELAY_MS = 150;
 
 /**
+ * 要素の全体がキーボードを除いた表示領域に収まっているか。
+ *
+ * `visualViewport.height` はキーボードが出ている間その分だけ小さいので、
+ * これと突き合わせれば「キーボードに隠れていないか」を判定できる。
+ */
+function isFullyVisibleInViewport(element: HTMLElement): boolean {
+  const viewport = window.visualViewport;
+  if (!viewport) return false;
+  const rect = element.getBoundingClientRect();
+  return rect.top >= 0 && rect.bottom <= viewport.height;
+}
+
+/**
  * フォーカス中の入力欄をシート内で見える位置へ寄せる。
  *
  * vaul はキーボードが出ると `visualViewport` の resize を受けてシートの
@@ -64,6 +77,9 @@ function useKeepFocusedInputVisible(enabled: boolean) {
         if (!(focused instanceof HTMLElement)) return;
         // シートの外（PC 側ダイアログや背面）には触らない
         if (!focused.closest("[data-vaul-drawer]")) return;
+        // 既に全体が見えているなら動かさない。見えているものを動かすと
+        // それ自体がガクつきとして見えるため。
+        if (isFullyVisibleInViewport(focused)) return;
         // globals.css の scroll-behavior: smooth に引きずられないよう instant で寄せる
         focused.scrollIntoView({ block: "center", behavior: "instant" });
       }, SCROLL_INTO_VIEW_DELAY_MS);
@@ -104,7 +120,15 @@ export function ResponsiveFormDialog({
       <Drawer.Root open={open && isMobile} onOpenChange={onOpenChange}>
         <Drawer.Portal>
           <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
-          <Drawer.Content className="bg-background fixed inset-x-0 bottom-0 z-50 flex max-h-[92dvh] flex-col rounded-t-2xl outline-none">
+          {/*
+            高さは中身なりにせず全高で固定する。vaul はキーボードが出ると
+            `visualViewportHeight - シートの上端位置` を新しい高さにするため、
+            上端が画面途中にあると「縮む→上端が下がる→さらに縮む」を繰り返し、
+            一瞬シートがつぶれて背景が透ける。全高なら上端が常に 0 で、
+            一度の計算でキーボードの上にぴたりと収まる。
+            `ImageSourcePicker` の全高シートと同じ指定。
+          */}
+          <Drawer.Content className="bg-background fixed inset-x-0 bottom-0 z-50 flex h-[100dvh] flex-col rounded-t-2xl outline-none">
             <div className="flex-shrink-0">
               <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
               <div className="px-4 pt-3 pb-2">
