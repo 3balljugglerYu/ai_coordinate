@@ -284,7 +284,11 @@ export function GeneratedImageGallery({
             if (image.isPreview) {
               return;
             }
-            setSelectedImageIndex(null);
+            /*
+              ここで拡大表示を閉じない。閉じると遷移が終わるまでの間だけ
+              下の一覧が見えてしまう（実際にチラつきとして報告があった）。
+              遷移すればこの画面ごと外れるので、開いたまま渡す。
+            */
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
