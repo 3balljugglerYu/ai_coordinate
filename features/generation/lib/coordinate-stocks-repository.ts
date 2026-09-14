@@ -3,11 +3,6 @@ import { COORDINATE_STOCKS_LINK_MAX_JOBS } from "./coordinate-stocks-constants";
 
 type SupabaseClient = ReturnType<typeof createAdminClient>;
 
-export interface CoordinateStocksUnreadState {
-  hasDot: boolean;
-  latestStockCreatedAt: string | null;
-}
-
 export interface LinkStockToJobsResult {
   updatedJobIds: string[];
   updatedGeneratedImageIds: string[];
@@ -17,109 +12,6 @@ const MAX_LINK_JOB_IDS = COORDINATE_STOCKS_LINK_MAX_JOBS;
 
 function getSupabase(client?: SupabaseClient) {
   return client ?? createAdminClient();
-}
-
-function isCreatedAfter(seenAt: string | null, latestCreatedAt: string | null) {
-  if (!latestCreatedAt) {
-    return false;
-  }
-  if (!seenAt) {
-    return true;
-  }
-  return new Date(latestCreatedAt).getTime() > new Date(seenAt).getTime();
-}
-
-/**
- * ストックタブ未確認状態の判定。
- * profiles.coordinate_stocks_tab_seen_at と source_image_stocks.created_at の最新を比較する。
- */
-export async function getCoordinateStocksUnreadStateForUser(
-  userId: string,
-  client?: SupabaseClient
-): Promise<CoordinateStocksUnreadState> {
-  const supabase = getSupabase(client);
-
-  const [
-    { data: profile, error: profileError },
-    { data: latestStock, error: latestError },
-  ] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("coordinate_stocks_tab_seen_at")
-      .eq("user_id", userId)
-      .maybeSingle(),
-    supabase
-      .from("source_image_stocks")
-      .select("created_at")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
-  ]);
-
-  if (profileError) {
-    console.error("[coordinate-stocks] unread state profile error:", profileError);
-    throw new Error("ストックの未確認状態の取得に失敗しました");
-  }
-
-  if (latestError) {
-    console.error("[coordinate-stocks] unread state latest error:", latestError);
-    throw new Error("ストックの未確認状態の取得に失敗しました");
-  }
-
-  const latestStockCreatedAt =
-    typeof latestStock?.created_at === "string" ? latestStock.created_at : null;
-  const seenAt =
-    typeof profile?.coordinate_stocks_tab_seen_at === "string"
-      ? profile.coordinate_stocks_tab_seen_at
-      : null;
-
-  return {
-    hasDot: isCreatedAfter(seenAt, latestStockCreatedAt),
-    latestStockCreatedAt,
-  };
-}
-
-/**
- * ストックタブを開いたタイミングで `coordinate_stocks_tab_seen_at` を now() に更新する。
- * profiles 行が無い場合は INSERT する（announcements 側の seen API と同じ振る舞い）。
- */
-export async function markCoordinateStocksTabSeenForUser(
-  userId: string,
-  client?: SupabaseClient
-): Promise<string> {
-  const supabase = getSupabase(client);
-  const nowIso = new Date().toISOString();
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .update({
-      coordinate_stocks_tab_seen_at: nowIso,
-      updated_at: nowIso,
-    })
-    .eq("user_id", userId)
-    .select("user_id");
-
-  if (error) {
-    console.error("[coordinate-stocks] mark seen update error:", error);
-    throw new Error("ストックタブの既読状態の更新に失敗しました");
-  }
-
-  if (!data?.length) {
-    const { error: insertError } = await supabase.from("profiles").insert({
-      id: userId,
-      user_id: userId,
-      coordinate_stocks_tab_seen_at: nowIso,
-      updated_at: nowIso,
-    });
-
-    if (insertError) {
-      console.error("[coordinate-stocks] mark seen insert error:", insertError);
-      throw new Error("ストックタブの既読状態の更新に失敗しました");
-    }
-  }
-
-  return nowIso;
 }
 
 /**

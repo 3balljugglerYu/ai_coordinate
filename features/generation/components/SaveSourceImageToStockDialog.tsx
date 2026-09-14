@@ -25,7 +25,6 @@ import {
   writeCoordinateStockSavePromptDismissed,
 } from "../lib/form-preferences";
 import { normalizeSourceImage } from "../lib/normalize-source-image";
-import { COORDINATE_STOCK_CREATED_EVENT } from "../hooks/useCoordinateStocksUnread";
 
 interface SaveSourceImageToStockDialogProps {
   open: boolean;
@@ -190,11 +189,6 @@ export function SaveSourceImageToStockDialog({
 
       // 別タブ / 他コンポーネントへ「ストックが新規追加された」と通知
       if (typeof window !== "undefined") {
-        window.dispatchEvent(
-          new CustomEvent(COORDINATE_STOCK_CREATED_EVENT, {
-            detail: { stockId: data.id },
-          })
-        );
       }
 
       // 関連 jobId を image_jobs / generated_images に紐づけ（best-effort）

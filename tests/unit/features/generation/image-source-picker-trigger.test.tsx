@@ -30,10 +30,17 @@ describe("ImageSourcePickerTrigger", () => {
     expect(button).toBeDisabled();
   });
 
-  test("showUnreadDot のときドットが描画される", () => {
-    render(<ImageSourcePickerTrigger onClick={() => {}} showUnreadDot />);
-    const button = screen.getByRole("button");
-    const dot = button.querySelector("span.bg-red-500");
-    expect(dot).not.toBeNull();
+  test("未読の赤丸は出さない", () => {
+    /*
+      以前は「自分がストックに入れた画像をまだストックタブで見ていない」ときに
+      右上へ赤丸を出していた。ただしピッカーの既定タブが「生成済み」で、
+      ストックタブを開かない限り既読にならず、消えないまま残り続けていた。
+      ストック機能自体は現役（今日も作成されている）なので残し、通知としての
+      役目だけをやめた。
+    */
+    render(<ImageSourcePickerTrigger onClick={() => {}} />);
+    expect(
+      screen.getByRole("button").querySelector("span.bg-red-500"),
+    ).toBeNull();
   });
 });
