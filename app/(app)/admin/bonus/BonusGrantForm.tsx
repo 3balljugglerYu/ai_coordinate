@@ -296,7 +296,7 @@ export function BonusGrantForm() {
         </Label>
       </div>
 
-      <Button type="submit" disabled={isSubmitting} className="w-full">
+      <Button type="submit" pending={isSubmitting} className="w-full">
         {isSubmitting ? "付与中..." : "ボーナスを付与"}
       </Button>
     </form>

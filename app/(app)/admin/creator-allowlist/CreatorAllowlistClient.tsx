@@ -164,7 +164,7 @@ export function CreatorAllowlistClient({
             }}
             placeholder="ニックネーム または ユーザーID で検索"
           />
-          <Button type="button" onClick={handleSearch} disabled={searching}>
+          <Button type="button" onClick={handleSearch} pending={searching}>
             {searching ? "検索中..." : "検索"}
           </Button>
         </div>
@@ -192,7 +192,7 @@ export function CreatorAllowlistClient({
                       type="button"
                       size="sm"
                       onClick={() => handleAdd(u.user_id)}
-                      disabled={busyUserId === u.user_id}
+                      pending={busyUserId === u.user_id}
                     >
                       招待
                     </Button>
@@ -236,7 +236,7 @@ export function CreatorAllowlistClient({
                     size="sm"
                     variant="outline"
                     onClick={() => handleToggle(m.userId, !m.isActive)}
-                    disabled={busyUserId === m.userId}
+                    pending={busyUserId === m.userId}
                   >
                     {m.isActive ? "無効化" : "有効化"}
                   </Button>
@@ -245,7 +245,7 @@ export function CreatorAllowlistClient({
                     size="sm"
                     variant="destructive"
                     onClick={() => handleRemove(m.userId)}
-                    disabled={busyUserId === m.userId}
+                    pending={busyUserId === m.userId}
                   >
                     削除
                   </Button>

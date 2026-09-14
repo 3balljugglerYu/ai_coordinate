@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { BannerPreview } from "./BannerPreview";
 import type { Banner } from "@/features/banners/lib/schema";
 
@@ -304,12 +304,9 @@ export function BannerForm({
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting}
+          pending={isSubmitting}
           className="min-h-[44px] w-full sm:w-auto cursor-pointer"
         >
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden />
-          ) : null}
           保存
         </Button>
       </div>

@@ -329,7 +329,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
           ※ カバー画像は作成後に下の一覧からアップロードできます。
         </p>
         <div className="mt-4 flex justify-end">
-          <Button type="button" onClick={handleCreate} disabled={isSubmitting}>
+          <Button type="button" onClick={handleCreate} pending={isSubmitting}>
             {isSubmitting ? "作成中..." : "企画を作成"}
           </Button>
         </div>
@@ -413,7 +413,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
                           onClick={() =>
                             coverInputRefs.current[campaign.id]?.click()
                           }
-                          disabled={isUploadingCover}
+                          pending={isUploadingCover}
                         >
                           {campaign.cover_storage_path
                             ? "カバー画像を差し替え"
@@ -425,7 +425,7 @@ export function AdminCatalogCampaignsClient({ initialCampaigns }: Props) {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleCoverRemove(campaign)}
-                            disabled={isUploadingCover}
+                            pending={isUploadingCover}
                           >
                             画像を外す
                           </Button>

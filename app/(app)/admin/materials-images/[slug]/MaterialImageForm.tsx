@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import type { MaterialPageImage } from "@/features/materials-images/lib/schema";
 
 interface MaterialImageFormProps {
@@ -187,12 +187,9 @@ export function MaterialImageForm({
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting}
+          pending={isSubmitting}
           className="min-h-[44px] w-full sm:w-auto cursor-pointer"
         >
-          {isSubmitting ? (
-            <Loader2 className="h-4 w-4 animate-spin mr-2" aria-hidden />
-          ) : null}
           保存
         </Button>
       </div>

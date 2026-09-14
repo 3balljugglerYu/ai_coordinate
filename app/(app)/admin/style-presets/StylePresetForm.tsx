@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Loader2, Upload, X } from "lucide-react";
+import { Upload, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -389,12 +389,9 @@ export function StylePresetForm({
           </div>
           <Button
             type="submit"
-            disabled={isSubmitting}
+            pending={isSubmitting}
             className="min-h-[40px] shrink-0 cursor-pointer"
           >
-            {isSubmitting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-            ) : null}
             保存
           </Button>
         </div>
@@ -809,12 +806,9 @@ export function StylePresetForm({
           </Button>
           <Button
             type="submit"
-            disabled={isSubmitting}
+            pending={isSubmitting}
             className="min-h-[44px] w-full cursor-pointer sm:w-auto"
           >
-            {isSubmitting ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-            ) : null}
             保存
           </Button>
         </div>

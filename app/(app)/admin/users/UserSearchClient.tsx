@@ -158,12 +158,8 @@ export function UserSearchClient() {
             aria-label="検索クエリ"
           />
         </div>
-        <Button type="submit" disabled={searchLoading}>
-          {searchLoading ? (
-            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-          ) : (
-            "検索"
-          )}
+        <Button type="submit" pending={searchLoading}>
+          検索
         </Button>
       </form>
 
@@ -231,7 +227,7 @@ export function UserSearchClient() {
                 variant="outline"
                 size="sm"
                 onClick={() => fetchList(0)}
-                disabled={listLoading}
+                pending={listLoading}
               >
                 適用
               </Button>
