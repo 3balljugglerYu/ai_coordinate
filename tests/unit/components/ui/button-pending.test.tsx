@@ -66,7 +66,8 @@ describe("Button の pending", () => {
     // Slot は子を1つしか受け取れない。回転を差し込むと壊れる
     render(
       <Button asChild pending>
-        <a href="/x">リンク</a>
+        {/* Next のページへのリンクではないので素の a で足りる */}
+        <a href="https://example.test/x">リンク</a>
       </Button>,
     );
 
