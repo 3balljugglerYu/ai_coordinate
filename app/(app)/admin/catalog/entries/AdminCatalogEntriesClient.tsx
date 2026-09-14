@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import type { AdminCatalogEntryRow } from "@/features/catalog/lib/admin-repository";
+import { Loader2 } from "lucide-react";
 
 interface EnrichedEntry extends AdminCatalogEntryRow {
   image_url: string | null;
@@ -278,6 +279,12 @@ export function AdminCatalogEntriesClient({
                             onClick={() => handleDecision(entry, "approve")}
                             disabled={isProcessing}
                           >
+                            {isProcessing ? (
+                              <Loader2
+                                className="mr-2 h-4 w-4 animate-spin"
+                                aria-hidden
+                              />
+                            ) : null}
                             承認
                           </Button>
                           <Button
@@ -287,6 +294,12 @@ export function AdminCatalogEntriesClient({
                             onClick={() => handleDecision(entry, "reject")}
                             disabled={isProcessing}
                           >
+                            {isProcessing ? (
+                              <Loader2
+                                className="mr-2 h-4 w-4 animate-spin"
+                                aria-hidden
+                              />
+                            ) : null}
                             差戻し
                           </Button>
                         </>
@@ -299,6 +312,9 @@ export function AdminCatalogEntriesClient({
                           onClick={() => handleDecision(entry, "unpublish")}
                           disabled={isProcessing}
                         >
+                          {isProcessing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                          ) : null}
                           非公開化
                         </Button>
                       )}
@@ -309,6 +325,9 @@ export function AdminCatalogEntriesClient({
                           onClick={() => handleDecision(entry, "approve")}
                           disabled={isProcessing}
                         >
+                          {isProcessing ? (
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
+                          ) : null}
                           再承認
                         </Button>
                       )}

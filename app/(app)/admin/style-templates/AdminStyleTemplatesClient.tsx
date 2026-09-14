@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ExternalLink, User as UserIcon } from "lucide-react";
@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { Loader2 } from "lucide-react";
 
 export interface AdminStyleTemplateItem {
   id: string;
@@ -114,6 +115,17 @@ export function AdminStyleTemplatesClient({
   // ADR-008 admin 信頼境界扱い (= devtools で見えても admin の責任とする)
   const [hiddenPrompt, setHiddenPrompt] = useState<string | null>(null);
   const [hiddenPromptLoading, setHiddenPromptLoading] = useState(false);
+  /*
+    並び替えは待ち状態を持っていなかったため、押しても何も起きないように見え、
+    連打すると PATCH が何度も飛んでいた。処理中の対象を持って止める。
+  */
+  const [reorderingId, setReorderingId] = useState<string | null>(null);
+  /*
+    ⭐ ガードに state は使えない。setState は次のレンダーまで反映されないので、
+    同じティックの連打を素通りさせる（投稿ボタンで実測済み。#627）。
+    ref なら同期的に効く。
+  */
+  const reorderingRef = useRef(false);
   const [hiddenPromptError, setHiddenPromptError] = useState<string | null>(null);
 
   // 詳細パネルの 3 つの画像（テンプレ → OpenAI → Gemini）。URL が無いものは除外。
@@ -181,6 +193,9 @@ export function AdminStyleTemplatesClient({
 
   const handleOrderUpdate = useCallback(
     async (item: AdminStyleTemplateItem, delta: number) => {
+      if (reorderingRef.current) return;
+      reorderingRef.current = true;
+      setReorderingId(item.id);
       const next = Math.max(0, item.display_order + delta);
       const response = await fetch(
         `/api/admin/style-templates/${item.id}/order`,
@@ -192,9 +207,13 @@ export function AdminStyleTemplatesClient({
       );
       if (!response.ok) {
         toast({ title: copy.orderUpdateFailed, variant: "destructive" });
+        reorderingRef.current = false;
+        setReorderingId(null);
         return;
       }
       toast({ title: copy.orderUpdateSuccess });
+      reorderingRef.current = false;
+      setReorderingId(null);
       router.refresh();
     },
     [copy, router, toast]
@@ -273,16 +292,26 @@ export function AdminStyleTemplatesClient({
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={reorderingId !== null}
                         onClick={() => handleOrderUpdate(item, -1)}
                       >
-                        ↑
+                        {reorderingId === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        ) : (
+                          "↑"
+                        )}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
+                        disabled={reorderingId !== null}
                         onClick={() => handleOrderUpdate(item, 1)}
                       >
-                        ↓
+                        {reorderingId === item.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                        ) : (
+                          "↓"
+                        )}
                       </Button>
                     </div>
                   </div>
@@ -293,7 +322,7 @@ export function AdminStyleTemplatesClient({
         </ul>
       );
     },
-    [handleOrderUpdate]
+    [handleOrderUpdate, reorderingId]
   );
 
   const isPending = openItem?.moderation_status === "pending";
