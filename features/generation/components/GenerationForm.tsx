@@ -19,7 +19,6 @@ import {
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
 import type { SourceImageStock } from "../lib/database";
-import { useCoordinateStocksUnread } from "../hooks/useCoordinateStocksUnread";
 import {
   getPercoinCost,
   isFreePlanAllowedModel,
@@ -239,20 +238,7 @@ export function GenerationForm({
   const [isTutorialInProgress, setIsTutorialInProgress] = useState(false);
   const [isUpsellOpen, setIsUpsellOpen] = useState(false);
   const isAuthenticated = authState === "authenticated";
-  const {
-    hasDot: hasStockTabDot,
-    markSeen: markStockTabSeen,
-  } = useCoordinateStocksUnread({ enabled: isAuthenticated });
-
-  // ピッカー: 「ストック」タブをアクティブにした瞬間に未読ドットを既読化する。
-  const picker = useImageSourcePicker({
-    defaultTab: "generated",
-    onTabChange: (tab) => {
-      if (tab === "stock" && isAuthenticated) {
-        void markStockTabSeen();
-      }
-    },
-  });
+  const picker = useImageSourcePicker({ defaultTab: "generated" });
 
   const promptLength = prompt.length;
   const isPromptTooLong = promptLength > promptMaxLength;
@@ -673,7 +659,6 @@ export function GenerationForm({
           <ImageSourcePickerTrigger
             onClick={picker.openPicker}
             disabled={isGenerating || isTutorialInProgress}
-            showUnreadDot={hasStockTabDot}
           />
         </div>
 

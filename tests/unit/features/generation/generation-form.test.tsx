@@ -95,10 +95,6 @@ jest.mock(
   }),
 );
 
-jest.mock("@/features/generation/hooks/useCoordinateStocksUnread", () => ({
-  useCoordinateStocksUnread: () => ({ hasDot: false, markSeen: jest.fn() }),
-  COORDINATE_STOCK_CREATED_EVENT: "coordinate:stock-created",
-}));
 
 jest.mock("@/features/generation/context/GenerationStateContext", () => ({
   useGenerationState: () => null,
