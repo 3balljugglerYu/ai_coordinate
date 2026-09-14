@@ -103,7 +103,7 @@ export function CreatorLooksTwoStageForm({ initialVisibility }: Props) {
         ))}
       </fieldset>
 
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" pending={isPending}>
         {isPending ? "保存中..." : "保存"}
       </Button>
     </form>

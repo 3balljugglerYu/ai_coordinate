@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, Download, Loader2, Check } from "lucide-react";
+import { Upload, Download, Check } from "lucide-react";
 import {
   ADMIN_PERCOIN_BALANCE_TYPES,
   ADMIN_PERCOIN_BALANCE_TYPE_DESCRIPTIONS,
@@ -356,13 +356,9 @@ export function BulkGrantClient() {
               type="button"
               variant="outline"
               onClick={handleLookup}
-              disabled={isLookingUp}
+              pending={isLookingUp}
             >
-              {isLookingUp ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Upload className="mr-2 h-4 w-4" />
-              )}
+              {isLookingUp ? null : <Upload className="mr-2 h-4 w-4" />}
               登録確認
             </Button>
             <Button
@@ -533,11 +529,9 @@ export function BulkGrantClient() {
             <Button
               type="button"
               onClick={handleGrant}
-              disabled={!canGrant || isGranting}
+              disabled={!canGrant}
+                  pending={isGranting}
             >
-              {isGranting ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : null}
               一括付与を実行
             </Button>
             {grantResults && grantResults.length > 0 && (

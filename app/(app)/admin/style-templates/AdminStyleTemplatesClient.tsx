@@ -21,7 +21,6 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Loader2 } from "lucide-react";
 
 export interface AdminStyleTemplateItem {
   id: string;
@@ -292,26 +291,25 @@ export function AdminStyleTemplatesClient({
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={reorderingId !== null}
+                        // 他の行を並び替え中は触れないが、回っているのは対象の行だけ
+                        disabled={
+                          reorderingId !== null && reorderingId !== item.id
+                        }
+                        pending={reorderingId === item.id}
                         onClick={() => handleOrderUpdate(item, -1)}
                       >
-                        {reorderingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        ) : (
-                          "↑"
-                        )}
+                        ↑
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={reorderingId !== null}
+                        disabled={
+                          reorderingId !== null && reorderingId !== item.id
+                        }
+                        pending={reorderingId === item.id}
                         onClick={() => handleOrderUpdate(item, 1)}
                       >
-                        {reorderingId === item.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        ) : (
-                          "↓"
-                        )}
+                        ↓
                       </Button>
                     </div>
                   </div>
@@ -431,7 +429,7 @@ export function AdminStyleTemplatesClient({
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={hiddenPromptLoading}
+                      pending={hiddenPromptLoading}
                       onClick={async () => {
                         setHiddenPromptLoading(true);
                         setHiddenPromptError(null);
@@ -663,14 +661,14 @@ export function AdminStyleTemplatesClient({
                   <>
                     <Button
                       onClick={() => handleDecision("approve")}
-                      disabled={submitting !== null}
+                      pending={submitting !== null}
                     >
                       {copy.actionApprove}
                     </Button>
                     <Button
                       variant="destructive"
                       onClick={() => handleDecision("reject")}
-                      disabled={submitting !== null}
+                      pending={submitting !== null}
                     >
                       {copy.actionReject}
                     </Button>
@@ -680,7 +678,7 @@ export function AdminStyleTemplatesClient({
                   <Button
                     variant="destructive"
                     onClick={() => handleDecision("unpublish")}
-                    disabled={submitting !== null}
+                    pending={submitting !== null}
                   >
                     {copy.actionUnpublish}
                   </Button>

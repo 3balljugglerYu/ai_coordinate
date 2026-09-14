@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { ShieldBan, UserCheck, Loader2 } from "lucide-react";
+import { ShieldBan, UserCheck } from "lucide-react";
 
 interface UserDetailActionsProps {
   userId: string;
@@ -76,14 +76,10 @@ export function UserDetailActions({
           variant="outline"
           size="sm"
           onClick={handleReactivate}
-          disabled={loading}
+          pending={loading}
           className="text-emerald-600 border-emerald-200 hover:bg-emerald-50"
         >
-          {loading ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <UserCheck className="h-4 w-4" />
-          )}
+          {loading ? null : <UserCheck className="h-4 w-4" />}
           復帰させる
         </Button>
       ) : (
@@ -111,13 +107,9 @@ export function UserDetailActions({
               <Button
                 variant="destructive"
                 onClick={handleSuspend}
-                disabled={loading}
+                pending={loading}
               >
-                {loading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "停止する"
-                )}
+                停止する
               </Button>
             </AlertDialogFooter>
           </AlertDialogContent>

@@ -1,6 +1,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
+import { Loader2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
@@ -43,19 +44,66 @@ function Button({
   variant,
   size,
   asChild = false,
+  pending = false,
+  disabled,
+  onClick,
+  children,
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
     asChild?: boolean
+    /**
+     * 処理中。回転を出し、押しても何も起きないようにする。
+     *
+     * ⭐ native の `disabled` にはしない。フォーカスされている要素を disabled に
+     * するとフォーカスが body に落ち、支援技術の利用者が現在位置を見失う。
+     * 代わりに `aria-disabled` + `aria-busy` を付け、クリックをここで止める
+     * （`aria-disabled` だけでは押せてしまうため、この組み合わせが必須）。
+     *
+     * `disabled` とは意味が違うので使い分ける。`disabled` は「まだ押せる状態に
+     * なっていない」（入力が足りない等）、`pending` は「押した結果を処理中」。
+     * 両方を1つの式にまとめると、入力が足りないだけのボタンまで回り続ける。
+     */
+    pending?: boolean
   }) {
   const Comp = asChild ? Slot : "button"
+  /*
+    asChild のとき Slot は子を1つしか受け取れない。`{null}{children}` でも
+    子が配列になって React.Children.only が落ちるので、差し込むときだけ
+    フラグメントで包んで渡す。
+  */
+  const content =
+    pending && !asChild ? (
+      <>
+        <Loader2 className="animate-spin" aria-hidden />
+        {children}
+      </>
+    ) : (
+      children
+    )
 
   return (
     <Comp
       data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+      className={cn(
+        buttonVariants({ variant, size, className }),
+        pending && "opacity-70"
+      )}
+      disabled={disabled}
+      // native の disabled が付いているときは冗長になるので重ねない
+      aria-disabled={pending && !disabled ? true : undefined}
+      aria-busy={pending ? true : undefined}
+      onClick={(event) => {
+        if (pending) {
+          event.preventDefault()
+          return
+        }
+        onClick?.(event)
+      }}
       {...props}
-    />
+    >
+      {content}
+    </Comp>
   )
 }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -318,12 +318,9 @@ export function PopupBannerForm({
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting}
+          pending={isSubmitting}
           className="min-h-[44px] w-full cursor-pointer sm:w-auto"
         >
-          {isSubmitting && (
-            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-          )}
           保存
         </Button>
       </div>

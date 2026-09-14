@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -189,19 +189,10 @@ export function AnnouncementForm({
         </Button>
         <Button
           type="submit"
-          disabled={isSubmitting}
+          pending={isSubmitting}
           className="min-h-[44px] w-full cursor-pointer sm:w-auto"
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-              保存中...
-            </>
-          ) : announcement ? (
-            "更新する"
-          ) : (
-            "作成する"
-          )}
+          {isSubmitting ? "保存中..." : announcement ? "更新する" : "作成する"}
         </Button>
       </div>
     </form>

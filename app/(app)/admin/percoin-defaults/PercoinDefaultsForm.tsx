@@ -709,7 +709,7 @@ export function PercoinDefaultsForm({
               size="sm"
               className="mt-3"
               onClick={clearIncompleteDates}
-              disabled={isPending}
+              pending={isPending}
             >
               予約額の無い日時をまとめて消す
             </Button>
@@ -749,7 +749,7 @@ export function PercoinDefaultsForm({
               onClick={() =>
                 void save(pendingConfirm.flatMap((group) => group.items))
               }
-              disabled={isPending}
+              pending={isPending}
             >
               {isPending ? "保存中..." : "この内容で保存"}
             </Button>
@@ -765,7 +765,7 @@ export function PercoinDefaultsForm({
         </section>
       ) : (
         <div className="pt-4">
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" pending={isPending}>
             {isPending ? "保存中..." : "保存"}
           </Button>
         </div>

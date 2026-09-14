@@ -312,16 +312,11 @@ function SortablePopupBannerCard({
             variant="outline"
             size="icon"
             onClick={() => onDelete(banner.id)}
-            disabled={isDeleting}
+            pending={isDeleting}
             className="min-h-[44px] min-w-[44px] cursor-pointer text-red-600 hover:bg-red-50 hover:text-red-700"
             aria-label="削除"
           >
-            {isDeleting ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <Trash2 className="h-4 w-4" aria-hidden />
-            )}
-          </Button>
+            </Button>
         </div>
       </div>
     </div>

@@ -18,7 +18,6 @@ import { useToast } from "@/components/ui/use-toast";
 import type { ModerationQueueItem } from "@/features/moderation/types";
 import { MODERATION_POLICY_CATALOG } from "@/constants/moderation-policy";
 import { REPORT_TAXONOMY } from "@/constants/report-taxonomy";
-import { Loader2 } from "lucide-react";
 
 interface QueueResponse {
   posts: ModerationQueueItem[];
@@ -322,27 +321,22 @@ export function ModerationQueueClient() {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={processingId === post.id}
+                  pending={processingId === post.id}
                   onClick={() => handleDecision(post.id, "approve")}
                 >
                   {/*
                     disabled は「処理中」と「入力が足りない」の両方で立つので、
                     回転は処理中のときだけ出す。
                   */}
-                  {processingId === post.id ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
                   問題なし
                 </Button>
                 <Button
                   size="sm"
                   variant="destructive"
-                  disabled={processingId === post.id || !canReject(post.id)}
+                  disabled={!canReject(post.id)}
+                  pending={processingId === post.id}
                   onClick={() => handleDecision(post.id, "reject")}
                 >
-                  {processingId === post.id ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden />
-                  ) : null}
                   不適切
                 </Button>
                 {!canReject(post.id) && (

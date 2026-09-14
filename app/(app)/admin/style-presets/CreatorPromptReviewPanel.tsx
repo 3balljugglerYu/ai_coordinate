@@ -128,7 +128,7 @@ export function CreatorPromptReviewPanel({
               <Button
                 type="button"
                 className="rounded-full bg-emerald-600 hover:bg-emerald-700"
-                disabled={busyId === p.id}
+                pending={busyId === p.id}
                 onClick={() => decide(p.id, "approve")}
               >
                 {busyId === p.id ? "処理中..." : "承認(下書き保存)"}
@@ -137,7 +137,7 @@ export function CreatorPromptReviewPanel({
                 type="button"
                 variant="outline"
                 className="rounded-full"
-                disabled={busyId === p.id}
+                pending={busyId === p.id}
                 onClick={() => decide(p.id, "reject")}
               >
                 却下
