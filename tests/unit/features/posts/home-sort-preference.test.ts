@@ -151,6 +151,21 @@ describe("home-sort-preference", () => {
     });
 
     /*
+      ⭐ 端末の時計が進んでいるときに控えると savedAt が未来になる。
+      単純な引き算だと負になって**いつまでも失効しない**ので、
+      未来の控えも同じように捨てる。
+    */
+    test("控えた時刻が未来なら捨てる(時計が進んでいた端末)", () => {
+      const now = Date.now();
+      window.localStorage.setItem(
+        VISIT_KEY,
+        JSON.stringify({ value: "newest", savedAt: now + HOME_SORT_TTL_MS + 1 })
+      );
+
+      expect(getHomeSortType()).toBeNull();
+    });
+
+    /*
       滞在のなかでは期限に関係なく戻る。滞在層は sessionStorage なので
       そもそも滞在より長く生きない。
     */

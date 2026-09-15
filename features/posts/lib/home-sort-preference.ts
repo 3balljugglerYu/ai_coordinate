@@ -150,7 +150,13 @@ export function getHomeSortType(): SortType | null {
     if (!stored) {
       return null;
     }
-    if (Date.now() - stored.savedAt > HOME_SORT_TTL_MS) {
+    /*
+      ⭐ 差の**絶対値**で見る。端末の時計が進んでいるときに控えると savedAt が
+      未来になり、単純な引き算では負になって**いつまでも失効しない**
+      (時計を戻したあとも、実時間が追いつくまで期限が効かない)。
+      未来の控えはそもそも信用できないので、同じように捨てる。
+    */
+    if (Math.abs(Date.now() - stored.savedAt) > HOME_SORT_TTL_MS) {
       return null;
     }
     return stored.value;
