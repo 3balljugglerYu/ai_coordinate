@@ -165,6 +165,25 @@ export function PostList({
     usePopularPromptsAvailable() ||
     initialDefaultSort === "popular_prompts" ||
     initialMiddleSort === "popular_prompts";
+  /*
+    控えてあるタブ。**いま画面に無いタブは既定へ倒す**。
+
+    ⭐ 控えが訪問をまたいで残るようになったので(24時間)、PICK UP が
+    使えるようになった瞬間をまたぐ人が出る。そのとき控えが "week" だと、
+    SortTabs からオススメが消えているのに `sortType` は "week" のままになり、
+    **どのタブも選択されていない一瞬**が挟まる。下の追随 effect が直すが、
+    読むところで倒しておけば最初から起きない。
+  */
+  const readStoredSortType = (): SortType | null => {
+    const stored = getHomeSortType();
+    if (stored === null) {
+      return null;
+    }
+    if (popularPromptsAvailable && stored === "week") {
+      return null;
+    }
+    return stored;
+  };
   const [sortType, setSortType] = useState<SortType>(defaultSortType);
   const [prevSortType, setPrevSortType] = useState<SortType>(defaultSortType);
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -469,7 +488,9 @@ export function PostList({
         サーバーは保存を読めずハイドレーション不一致になるため
         (表示形式の localStorage 復元と同じ理由)。
       */
-      setSortType(isSearchPage ? defaultSortType : getHomeSortType() ?? defaultSortType);
+      setSortType(
+        isSearchPage ? defaultSortType : readStoredSortType() ?? defaultSortType
+      );
     }
     /*
       ⭐ ここでタブが確定する。データロードの effect はこの合図を待つ
@@ -771,7 +792,7 @@ export function PostList({
     const snapshot = isSearchPage
       ? null
       : peekHomeFeedRestoreSnapshot({
-          sortType: getHomeSortType() ?? defaultSortType,
+          sortType: readStoredSortType() ?? defaultSortType,
           searchQuery: normalizedSearchQuery,
         });
     if (!snapshot) {

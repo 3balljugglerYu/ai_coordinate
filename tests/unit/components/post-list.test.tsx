@@ -24,7 +24,10 @@ import {
   markHomeViewSwitchNoticeSeen,
   setHomeViewMode,
 } from "@/features/posts/lib/home-view-preference";
-import { setHomeSortType } from "@/features/posts/lib/home-sort-preference";
+import {
+  HOME_SORT_TTL_MS,
+  setHomeSortType,
+} from "@/features/posts/lib/home-sort-preference";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next/navigation", () => ({
@@ -62,6 +65,15 @@ jest.mock("@/features/auth/components/AuthModal", () => ({
   AuthModal: () => null,
 }));
 
+/*
+  ⭐ 描画された選択タブを**毎回**記録する。
+
+  最終状態だけを見ていると「一瞬どのタブも選択されていない」を捕まえられない
+  (追随の effect が直した後を見てしまう)。名前が mock で始まるものだけが
+  jest.mock のファクトリから参照できる。
+*/
+const mockRenderedSortValues: string[] = [];
+
 jest.mock("@/features/posts/components/SortTabs", () => ({
   SortTabs: ({
     value,
@@ -69,14 +81,17 @@ jest.mock("@/features/posts/components/SortTabs", () => ({
   }: {
     value: string;
     onChange: (next: string) => void;
-  }) => (
-    <div data-testid="sort-tabs">
-      <span data-testid="sort-tabs-value">{value}</span>
-      <button data-testid="sort-tab-newest" onClick={() => onChange("newest")}>
-        newest
-      </button>
-    </div>
-  ),
+  }) => {
+    mockRenderedSortValues.push(value);
+    return (
+      <div data-testid="sort-tabs">
+        <span data-testid="sort-tabs-value">{value}</span>
+        <button data-testid="sort-tab-newest" onClick={() => onChange("newest")}>
+          newest
+        </button>
+      </div>
+    );
+  },
 }));
 
 jest.mock("@/features/posts/components/PostListSkeleton", () => ({
@@ -211,13 +226,22 @@ describe("PostList", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    /*
+      ⭐ spyOn はケースをまたいで残る(このリポジトリの jest 設定に
+      restoreMocks は無い)。期限のケースで Date.now を固定するので、
+      戻しておかないと以降のケースが凍った時刻で走る。
+    */
+    jest.restoreAllMocks();
 
     /*
-      ⭐ タブの控え(persta-ai:home-sort-type)は sessionStorage に残り、
-      テストをまたいで前のケースで押したタブが復元されてしまう。
-      各ケースは既定タブから始まる前提なので、毎回まっさらにする。
+      ⭐ タブの控えはテストをまたいで残り、前のケースで押したタブが
+      復元されてしまう。各ケースは既定タブから始まる前提なので、毎回
+      まっさらにする。**2層あるので両方消す**(滞在=sessionStorage /
+      訪問=localStorage。片方だけだと訪問の控えが次のケースへ漏れる)。
     */
     window.sessionStorage.clear();
+    window.localStorage.clear();
+    mockRenderedSortValues.length = 0;
 
     fetchMock = jest.fn();
     toastMock = jest.fn();
@@ -1110,6 +1134,134 @@ describe("PostList", () => {
 
       expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
         "newest"
+      );
+    });
+  });
+
+  /*
+    ⭐ 滞在をまたいだときのタブ(タブを閉じて開き直す / PWA が落ちる)。
+
+    控えが sessionStorage だけだった頃は、ここで必ず既定タブへ戻っていた。
+    モバイルではタブや PWA が頻繁に落とされるため、体感は「毎回リセット」に
+    近かった。訪問層(localStorage・24時間)を足して前回のタブで開く。
+  */
+  describe("開き直したときのタブ", () => {
+    /** タブを閉じて開き直した状態。滞在層だけが消える。 */
+    const reopen = () => window.sessionStorage.clear();
+
+    test("⭐新着で終えたら、次に開いたときも新着", async () => {
+      setHomeSortType("newest");
+      reopen();
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "newest"
+      );
+    });
+
+    /*
+      ⭐ フォローのまま離脱しても、次は新着で開くこと。
+
+      フォロー0人なら空の画面で、未ログインなら開いた瞬間にログインモーダルで
+      アプリが始まってしまう(控えのほうが認証判定より先に走るため)。
+    */
+    test("⭐フォローで終えても、次は前に読んでいたタブで開く", async () => {
+      setHomeSortType("newest");
+      setHomeSortType("following");
+      reopen();
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "newest"
+      );
+    });
+
+    /*
+      ⭐ 期限が無いと既定タブ(PICK UP)が死ぬ。新着は「探しに行くとき」に押す
+      タブなので、一度押しただけの人が永久に新着へ固定されてしまう。
+    */
+    test("⭐24時間を超えていたら既定タブで開く", async () => {
+      const savedAt = Date.now();
+      setHomeSortType("newest");
+      reopen();
+      jest
+        .spyOn(Date, "now")
+        .mockReturnValue(savedAt + HOME_SORT_TTL_MS + 1);
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          skipInitialFetch
+          initialDefaultSort="popular_prompts"
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "popular_prompts"
+      );
+    });
+
+    /*
+      ⭐ PICK UP が使えるようになった瞬間をまたぐ人。
+
+      控えが訪問をまたぐようになったので、昇格前に選んだ "week" が残っている
+      状態で開くことがある。SortTabs からオススメは消えているのに sortType は
+      "week" のままになり、**どのタブも選択されていない**状態で描画される。
+    */
+    test("⭐昇格前のオススメの控えは既定タブへ倒す(無選択にしない)", async () => {
+      setHomeSortType("week");
+      reopen();
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("middle-1", "middle post")]}
+          initialMiddleSort="newest"
+          initialDefaultSort="popular_prompts"
+          skipInitialFetch
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "popular_prompts"
+      );
+      /*
+        ⭐ 最終状態だけでは足りない。追随の effect があるので、倒さなくても
+        最後は popular_prompts に落ち着く。**一度も** week で描画しないこと
+        (SortTabs から消えているタブなので、その1フレームは無選択になる)。
+      */
+      expect(mockRenderedSortValues).not.toContain("week");
+    });
+
+    test("PICK UP が無ければオススメの控えはそのまま復元する", async () => {
+      setHomeSortType("week");
+      reopen();
+
+      render(
+        <PostList
+          initialPosts={initialPosts}
+          initialMiddlePosts={[createPost("middle-1", "middle post")]}
+          initialMiddleSort="week"
+          skipInitialFetch
+        />
+      );
+
+      expect(await screen.findByTestId("sort-tabs-value")).toHaveTextContent(
+        "week"
       );
     });
   });
