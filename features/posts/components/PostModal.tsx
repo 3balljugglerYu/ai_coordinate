@@ -199,6 +199,8 @@ export function PostModal({
         bonusMultiplier: response.bonus_multiplier,
         subscriptionPlan: response.subscription_plan,
         generationType: response.generation_type,
+        // ホームの新着へ差し込むカード（サーバーが一覧と同じ形で返す）
+        post: response.post ?? null,
       });
 
       // デイリー投稿特典が付与された場合、通知バッジだけは即時更新する

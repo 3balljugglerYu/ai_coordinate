@@ -1,3 +1,5 @@
+import type { Post } from "../types";
+
 export type PendingHomePostRefresh =
   | {
       action: "posted";
@@ -13,6 +15,14 @@ export type PendingHomePostRefresh =
        * (ワンタップの利用還元は現在 0 = 未有効なので、出すと嘘になる)。
        */
       generationType?: string | null;
+      /**
+       * 投稿した作品のカード。ホームの新着へそのまま差し込む。
+       *
+       * サーバーが一覧と同じ形で返したものを持ち回るだけで、ここで
+       * 組み立て直さない（[[PostImageResponse.post]] のコメント参照）。
+       * 取れなかったときは差し込みを諦める（次の取得で出てくる）。
+       */
+      post?: Post | null;
     }
   | {
       action: "unposted";
@@ -106,6 +116,13 @@ export function consumePendingHomePostRefresh(): PendingHomePostRefresh | null {
           typeof parsed.generationType === "string"
             ? parsed.generationType
             : null,
+        /*
+          中身は検査しない（サーバーが返した一覧と同じ形をそのまま運んで
+          いるだけで、列を数え上げると形が変わるたびに落ちる）。
+          差し込み側が id の有無で弾く。
+        */
+        post:
+          parsed.post && typeof parsed.post === "object" ? parsed.post : null,
       };
     }
 

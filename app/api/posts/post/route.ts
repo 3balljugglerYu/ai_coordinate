@@ -7,6 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
+import { enrichPosts } from "@/features/posts/lib/server-api";
+import type { Post } from "@/features/posts/types";
 import {
   getSubscriptionBonusMultiplier,
   normalizeSubscriptionPlan,
@@ -203,7 +205,30 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    /*
+      投稿した作品を、一覧カードと同じ形で返す。
+
+      ホームの新着へ楽観的に差し込むのに使う。投稿のたびに一覧を丸ごと
+      取り直すと待たせてしまうため、**このレスポンスに相乗りさせて
+      追加のネットワークを0にする**。
+
+      ⭐ クライアントで組み立てさせないこと。`Post` は DB 行の全列 +
+      作者 + 各種カウントで、手で組むと列が抜けてカードの一部が黙って
+      欠ける。一覧と同じ `enrichPosts` を通すので形は必ず一致する。
+
+      ここが失敗しても投稿そのものは成立しているので、握りつぶして
+      null を返す（差し込みが効かないだけで、次の取得で出てくる）。
+    */
+    let postForFeed: Post | null = null;
+    try {
+      const [enriched] = await enrichPosts([result]);
+      postForFeed = enriched ?? null;
+    } catch (error) {
+      console.error("Failed to build the just-posted feed card:", error);
+    }
+
     return NextResponse.json({
+      post: postForFeed,
       id: result.id!,
       is_posted: result.is_posted,
       caption: result.caption ?? null,

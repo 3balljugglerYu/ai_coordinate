@@ -32,9 +32,43 @@ describe("home-post-refresh", () => {
       bonusGranted: 50,
       // 生成方法を持たない保存は「不明」として null になる
       generationType: null,
+      // 一覧へ差し込むカード。持たない保存は差し込まない
+      post: null,
     });
     expect(window.sessionStorage.getItem(STORAGE_KEY)).toBeNull();
     expect(consumePendingHomePostRefresh()).toBeNull();
+  });
+
+  /*
+    ⭐ 一覧へ差し込むカードを、そのまま往復させること。
+
+    投稿APIが一覧と同じ形で返したものを運ぶだけで、ここで組み立て直したり
+    列を検査したりしない(検査すると `Post` の形が変わるたびに落ちる)。
+  */
+  test("⭐差し込み用のカードをそのまま往復させる", () => {
+    const card = {
+      id: "post-1",
+      caption: "投稿したて",
+      user: { id: "user-1", nickname: "みきふく" },
+      like_count: 0,
+    };
+
+    persistPendingHomePostRefresh({
+      action: "posted",
+      postId: "post-1",
+      post: card as never,
+    });
+
+    expect(consumePendingHomePostRefresh()).toMatchObject({ post: card });
+  });
+
+  test("カードがオブジェクトでなければ落とす(差し込みを諦める)", () => {
+    window.sessionStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({ action: "posted", postId: "post-1", post: "post-1" })
+    );
+
+    expect(consumePendingHomePostRefresh()).toMatchObject({ post: null });
   });
 
   test("persistPendingHomePostRefresh_unpostedを保存しconsumePendingHomePostRefreshで消費する", () => {
