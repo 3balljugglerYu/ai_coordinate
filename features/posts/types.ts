@@ -146,6 +146,15 @@ export interface PostImageResponse {
   subscription_plan?: "free" | "light" | "standard" | "premium";
   /** 付与モーダルの出し分け用（フリースタイルだけ還元の案内を併記する）。 */
   generation_type?: string | null;
+  /**
+   * 投稿した作品を、そのままホームの新着へ差し込むためのカード。
+   *
+   * ⭐ クライアントで組み立てないこと。`Post` は DB 行の全列 + 作者 +
+   * 各種カウントなので、手で組むと列が抜けてカードの一部が黙って欠ける
+   * （表示用WebPのURL・ハッシュタグ・生成方法など）。サーバーが一覧と
+   * 同じ `enrichPosts` を通した結果をそのまま返す。
+   */
+  post?: Post | null;
 }
 
 export interface Post extends GeneratedImageRecord {

@@ -14,6 +14,7 @@ import {
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createClient } from "@/lib/supabase/server";
 import { getRouteLocale } from "@/lib/api/route-locale";
+import { enrichPosts } from "@/features/posts/lib/server-api";
 
 jest.mock("next/cache");
 jest.mock("next/server", () => {
@@ -28,7 +29,9 @@ jest.mock("@/features/generation/lib/server-database");
 jest.mock("@/features/generation/lib/webp-storage");
 jest.mock("@/lib/supabase/server");
 jest.mock("@/lib/api/route-locale");
+jest.mock("@/features/posts/lib/server-api");
 
+const mockEnrichPosts = enrichPosts as jest.MockedFunction<typeof enrichPosts>;
 const mockAfter = after as jest.MockedFunction<typeof after>;
 const mockRevalidateTag = revalidateTag as jest.MockedFunction<typeof revalidateTag>;
 const mockRevalidatePath = revalidatePath as jest.MockedFunction<typeof revalidatePath>;
@@ -84,6 +87,7 @@ describe("Posts cache invalidation routes", () => {
       thumbPath: "user-1/post-1_thumb.webp",
       displayPath: "user-1/post-1_display.webp",
     });
+    mockEnrichPosts.mockResolvedValue([]);
   });
 
   test("POST /api/posts/post_詳細系タグを即時失効し一覧系はmaxのまま再検証する", async () => {
@@ -131,6 +135,66 @@ describe("Posts cache invalidation routes", () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith("/posts/post-1");
     expect(mockAfter).toHaveBeenCalledTimes(1);
     expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-1");
+  });
+
+  /*
+    ⭐ 投稿した作品を、一覧カードと同じ形でレスポンスに載せること。
+
+    ホームの新着へ楽観的に差し込むのに使う。ここが無いと、投稿のたびに
+    一覧を丸ごと取り直すことになり、スケルトンで待たされる。
+
+    ⭐ 手で組まず `enrichPosts` を通す。`Post` は DB 行の全列 + 作者 +
+    各種カウントなので、組み立て直すと列が抜けてカードの一部が黙って欠ける。
+  */
+  test("⭐POST /api/posts/post_一覧と同じ形のカードを返す", async () => {
+    const row = {
+      id: "post-1",
+      user_id: "user-1",
+      is_posted: true,
+      caption: "fresh caption",
+      posted_at: "2026-03-16T00:00:00.000Z",
+    };
+    mockPostImageServer.mockResolvedValue(row as never);
+    mockEnrichPosts.mockResolvedValue([
+      { ...row, like_count: 0, comment_count: 0 },
+    ] as never);
+
+    const response = await postRoute(
+      createRequest("POST", { id: "post-1", caption: "fresh caption" })
+    );
+    const body = await readJson(response);
+
+    // 投稿した行そのものを渡す(別クエリで引き直さない)
+    expect(mockEnrichPosts).toHaveBeenCalledWith([row]);
+    expect(body.post).toMatchObject({ id: "post-1", like_count: 0 });
+  });
+
+  /*
+    ⭐ カードを組めなくても投稿そのものは成立している。
+    ここで 500 を返すと、投稿できたのに失敗したように見える。
+  */
+  test("⭐カードの組み立てに失敗しても投稿は成功として返す", async () => {
+    mockPostImageServer.mockResolvedValue({
+      id: "post-1",
+      user_id: "user-1",
+      is_posted: true,
+      caption: "fresh caption",
+      posted_at: "2026-03-16T00:00:00.000Z",
+    } as never);
+    mockEnrichPosts.mockRejectedValue(new Error("boom"));
+    const consoleError = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    const response = await postRoute(
+      createRequest("POST", { id: "post-1", caption: "fresh caption" })
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(body.id).toBe("post-1");
+    expect(body.post).toBeNull();
+    consoleError.mockRestore();
   });
 
   test("POST /api/posts/post_show_before_imageをbooleanのままpostImageServerへ渡す", async () => {

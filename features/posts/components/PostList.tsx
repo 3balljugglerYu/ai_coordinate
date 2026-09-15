@@ -250,7 +250,7 @@ export function PostList({
     表示形式の `isViewModeResolved` と同じ考え方。
   */
   const [isSortResolved, setIsSortResolved] = useState(false);
-  const didTriggerPostedRefreshRef = useRef(false);
+  const didTriggerRefreshRef = useRef(false);
   /*
     「サーバー描画ぶんより新しい newest を既に持っている」フラグ。
 
@@ -404,14 +404,45 @@ export function PostList({
   }, [isSearchPage]);
 
   const isFeedView = viewMode === HOME_VIEW_MODES.feed && !isSearchPage;
+  /*
+    ⭐ 投稿したての作品を新着の先頭に見せる（楽観挿入）。
+
+    投稿のたびに一覧を取り直すと、投稿するたびにスケルトンで待たされる。
+    そのかわり、投稿APIが一覧と同じ形で返したカードをそのまま差し込む。
+
+    **嘘ではない。** 本人には自分の pending 投稿も新着に出る
+    （`features/posts/lib/server-api.ts` の buildOwnerVisibleOrFilter）ので、
+    その作品は本当に新着一覧の一部で、まだ取りに行っていないだけである。
+    順位由来の PICK UP には差し込まない（そちらは本当に載っていない）。
+
+    ⭐ state ではなく描画時に重ねる。state に混ぜると、初回ロードが非同期に
+    `setPosts` するのと競合して、差し込んだそばから消される。
+    ⭐ 既に一覧に入っていれば触らない（サーバーのキャッシュが失効していれば
+    最初から入っている。重ねると同じ作品が2枚並ぶ）。
+  */
+  const justPostedCard =
+    pendingHomePostRefresh?.action === "posted"
+      ? (pendingHomePostRefresh.post ?? null)
+      : null;
+  const displayPosts = useMemo(() => {
+    if (!justPostedCard?.id || sortType !== "newest" || normalizedSearchQuery) {
+      return posts;
+    }
+    if (posts.some((post) => post.id === justPostedCard.id)) {
+      return posts;
+    }
+    return [justPostedCard, ...posts];
+  }, [justPostedCard, posts, sortType, normalizedSearchQuery]);
   // 「このプロンプトで作る」の可否は、詳細と同じ検証経路からサーバーで導出する
   // (一覧の payload には載らない。ADR-005)。
   const feedPostIds = useMemo(
     () =>
       isFeedView && isViewModeResolved
-        ? posts.map((post) => post.id).filter((id): id is string => Boolean(id))
+        ? displayPosts
+            .map((post) => post.id)
+            .filter((id): id is string => Boolean(id))
         : [],
-    [isFeedView, isViewModeResolved, posts]
+    [isFeedView, isViewModeResolved, displayPosts]
   );
   const { summaries: promptActions, styleLinks } = useFeedPromptActions(
     feedPostIds,
@@ -545,11 +576,16 @@ export function PostList({
     }
     setIsLoading(true);
     try {
+      /*
+        取り消しの直後は、ブラウザのキャッシュに残った古い一覧を使わない。
+
+        ⭐ 既定タブに限定しない。新着が中間タブになる人（既定が PICK UP）
+        では効かず、取り消した作品が残ったままになる。
+      */
       const shouldBypassClientCache =
         reset &&
-        sortType === defaultSortType &&
         !normalizedSearchQuery &&
-        pendingHomePostRefresh !== null;
+        pendingHomePostRefresh?.action === "unposted";
 
       // 検索クエリが存在する場合、APIリクエストにqパラメータを追加
       const params = new URLSearchParams({
@@ -675,13 +711,20 @@ export function PostList({
 
       `unposted` は「消えるべきものを消す」ので、どの既定タブでも走らせる。
     */
-    const canShowPostedInDefaultTab = defaultSortType === "newest";
+    /*
+      ⭐ 投稿(`posted`)では取り直さない。上の `displayPosts` が先頭に
+      差し込むので、ネットワークを待たせる理由が無い。
+
+      取り消し(`unposted`)は「消えるべきものを消す」ので取り直す。
+
+      ⭐ 既定タブに限定しない。以前は `sortType === defaultSortType` を
+      要求していたため、**新着が中間タブになる人（既定が PICK UP）では
+      まったく動かなかった**。取り消しはどのタブでも反映されるべきである。
+    */
     const shouldForceNewestRefresh =
-      pendingHomePostRefresh !== null &&
-      (pendingHomePostRefresh.action !== "posted" || canShowPostedInDefaultTab) &&
-      sortType === defaultSortType &&
+      pendingHomePostRefresh?.action === "unposted" &&
       !normalizedSearchQuery &&
-      !didTriggerPostedRefreshRef.current;
+      !didTriggerRefreshRef.current;
     /*
       ⭐ 「いま出ている一覧が、このタブ用に取得済みか」で判断する。
 
@@ -724,9 +767,14 @@ export function PostList({
               ? initialMiddlePosts
               : undefined;
         // 投稿直後の取り直しと、取得済みの新しい一覧は既定タブでだけ優先する
+        /*
+          ⭐ 取り直しが要るときは、どのタブでもサーバー配布の配列を使わない。
+          以前は既定タブ限定だったので、中間タブでは取り消した作品が
+          そのまま残っていた。
+        */
         const blockedByRefresh =
-          sortType === defaultSortType &&
-          (shouldForceNewestRefresh || hasFreshNewestPostsRef.current);
+          shouldForceNewestRefresh ||
+          (sortType === defaultSortType && hasFreshNewestPostsRef.current);
 
         if (cachedForSort && cachedForSort.length > 0 && !blockedByRefresh) {
           setPosts(cachedForSort);
@@ -740,7 +788,7 @@ export function PostList({
       }
 
       if (shouldForceNewestRefresh) {
-        didTriggerPostedRefreshRef.current = true;
+        didTriggerRefreshRef.current = true;
       }
 
       // フォロータブかつログイン済み、または他タブの場合のみロード
@@ -917,7 +965,7 @@ export function PostList({
           </div>
         </div>
       )}
-      {posts.length === 0 ? (
+      {displayPosts.length === 0 ? (
         // ローディング中はスケルトン表示
         isLoading ? (
           <PostListSkeleton />
@@ -941,7 +989,7 @@ export function PostList({
             // フィード: スマホもPCも1列。読みやすさのため最大幅を絞って中央寄せする。
             // 幅の正本は FEED_CARD_MAX_WIDTH_PX(Tailwind の任意値はリテラルが要るため直書き)
             <div className="mx-auto flex max-w-[600px] flex-col">
-              {posts.map((post, index) => (
+              {displayPosts.map((post, index) => (
                 <div
                   key={post.id}
                   data-post-id={post.id}
@@ -983,7 +1031,7 @@ export function PostList({
               className="flex -ml-1 w-auto sm:-ml-4"
               columnClassName="pl-1 bg-clip-padding sm:pl-4"
             >
-              {posts.map((post, index) => (
+              {displayPosts.map((post, index) => (
                 <div
                   key={post.id}
                   data-post-id={post.id}
@@ -1011,7 +1059,7 @@ export function PostList({
           )}
 
           {/* 全て読み込み完了時のメッセージ */}
-          {!hasMore && posts.length > 0 && (
+          {!hasMore && displayPosts.length > 0 && (
             <div className="py-8 text-center text-muted-foreground">
               {postsT("allShown")}
             </div>

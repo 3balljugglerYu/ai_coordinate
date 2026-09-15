@@ -306,27 +306,21 @@ describe("PostList", () => {
    * `PostProgressHost` が出す。ここに残すと、あとでホームを開いたときに
    * **もう一度**出てしまう(sessionStorage は遷移しなくても残るため)。
    *
-   * ここが受け持つのは新着の同期(no-store の再取得)だけ。
+   * ここが受け持つのは新着への差し込みだけ。
    * 付与モーダルの中身は post-progress-host.test.tsx で見ている。
    *
    * 緑のハイライトは廃止した。投稿できたかの確認は、投稿したその場で出る
    * トーストの「確認する」(PostProgressHost) が投稿詳細へ連れて行く。
    */
-  test("⭐postedペイロードがある場合_再取得だけ行い、合図は出さない", async () => {
+  test("⭐postedペイロードがある場合_差し込むだけで合図は出さない", async () => {
     pendingPayload = {
       action: "posted",
       postId: "post-1",
       bonusGranted: 20,
       bonusMultiplier: 1.3,
       subscriptionPlan: "standard",
+      post: createPost("post-1", "fresh post"),
     };
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        posts: [createPost("post-1", "fresh post")],
-        hasMore: false,
-      }),
-    });
 
     render(
       <PostList
@@ -335,12 +329,13 @@ describe("PostList", () => {
       />
     );
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/posts?limit=20&offset=0&sort=newest", {
-        cache: "no-store",
-      });
-    });
     await screen.findByTestId("post-card-post-1");
+    // 取り直しはしない(投稿のたびにスケルトンで待たせない)
+    expect(
+      fetchMock.mock.calls.filter(([url]) =>
+        String(url).startsWith("/api/posts?")
+      )
+    ).toHaveLength(0);
 
     // ⭐ ここが本題。二重に知らせない
     expect(toastMock).not.toHaveBeenCalled();
@@ -395,53 +390,127 @@ describe("PostList", () => {
     expect(postsCalls).toBe(1);
   });
 
-  /**
-   * ⭐ 既定タブが PICK UP の人には、投稿直後の強制取り直しを走らせないこと。
-   *
-   * PICK UP は順位テーブル由来で、投稿したての作品はスコア 0 なので
-   * 新着枠(直近24hの上位3件)に入らない限り載らない。走らせると手元の配列を
-   * 捨ててネットワークを待たせた挙げ句、自分の投稿は出てこない。
-   */
-  test("⭐既定がPICK UPなら_投稿直後でも取り直さずサーバー配布を使う", async () => {
-    pendingPayload = { action: "posted", postId: "post-1" };
-    const pickupPosts = [createPost("pickup-1", "人気の作品")];
+  /*
+    ⭐ 投稿したての作品を差し込んでよいのは新着だけ。
 
-    render(
-      <PostList
-        initialPosts={pickupPosts}
-        initialDefaultSort="popular_prompts"
-        initialMiddlePosts={initialPosts}
-        initialMiddleSort="newest"
-        skipInitialFetch
-      />
-    );
+    PICK UP は順位テーブル由来で、投稿したての作品はスコア 0 なので
+    新着枠(直近24hの上位3件)に入らない限り**本当に載っていない**。
+    差し込むと順位を偽ることになり、次に開いたとき消える。
 
-    await screen.findByTestId("post-card-pickup-1");
+    新着は違う。本人には自分の pending 投稿も出る(server-api の
+    buildOwnerVisibleOrFilter)ので、その作品は本当に一覧の一部であり、
+    まだ取りに行っていないだけである。
+  */
+  describe("投稿直後の差し込み", () => {
+    const justPosted = { action: "posted", postId: "mine-1" } as const;
+
+    test("⭐PICK UPタブには差し込まない(順位を偽らない)", async () => {
+      pendingPayload = {
+        ...justPosted,
+        post: createPost("mine-1", "投稿したて"),
+      };
+      const pickupPosts = [createPost("pickup-1", "人気の作品")];
+
+      render(
+        <PostList
+          initialPosts={pickupPosts}
+          initialDefaultSort="popular_prompts"
+          initialMiddlePosts={initialPosts}
+          initialMiddleSort="newest"
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-pickup-1");
+      expect(screen.queryByTestId("post-card-mine-1")).not.toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.filter(([url]) =>
+          String(url).startsWith("/api/posts?")
+        )
+      ).toHaveLength(0);
+    });
+
+    /*
+      ⭐ ユーザーが報告した症状の回帰ガード。
+
+      既定が PICK UP の人にとって新着は「中間タブ」。以前は取り直しの条件が
+      **既定タブかどうか**で書かれていたため、新着を見ていても投稿が反映されず、
+      画面を更新するまで自分の投稿が出てこなかった。
+    */
+    test("⭐新着が中間タブ(既定がPICK UP)でも差し込む", async () => {
+      setHomeSortType("newest");
+      pendingPayload = {
+        ...justPosted,
+        post: createPost("mine-1", "投稿したて"),
+      };
+
+      render(
+        <PostList
+          initialPosts={[createPost("pickup-1", "人気の作品")]}
+          initialDefaultSort="popular_prompts"
+          initialMiddlePosts={initialPosts}
+          initialMiddleSort="newest"
+          skipInitialFetch
+        />
+      );
+
+      expect(await screen.findByTestId("post-card-mine-1")).toBeInTheDocument();
+      expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
+    });
+
+    /*
+      ⭐ サーバーのキャッシュが失効していれば、投稿は最初から一覧に入っている。
+      重ねると同じ作品が2枚並び、`key` も重複する。
+    */
+    test("⭐既に一覧に入っていれば重ねない", async () => {
+      pendingPayload = {
+        ...justPosted,
+        post: createPost("mine-1", "投稿したて"),
+      };
+
+      render(
+        <PostList
+          initialPosts={[createPost("mine-1", "投稿したて"), ...initialPosts]}
+          skipInitialFetch
+        />
+      );
+
+      await screen.findByTestId("post-card-initial-1");
+      expect(screen.getAllByTestId("post-card-mine-1")).toHaveLength(1);
+    });
+
+    test("カードが取れなかったときは何も差し込まない", async () => {
+      pendingPayload = { ...justPosted, post: null };
+
+      render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+      await screen.findByTestId("post-card-initial-1");
+      expect(screen.queryByTestId("post-card-mine-1")).not.toBeInTheDocument();
+    });
+  });
+
+  /*
+    ⭐ 既定が新着の人でも取り直さない。
+
+    以前はここで一覧を丸ごと取り直していたので、**投稿するたびに
+    スケルトンで待たされていた**。差し込みで先に見せる。
+  */
+  test("既定が新着でも_投稿直後は取り直さず差し込む", async () => {
+    pendingPayload = {
+      action: "posted",
+      postId: "post-1",
+      post: createPost("post-1", "fresh post"),
+    };
+
+    render(<PostList initialPosts={initialPosts} skipInitialFetch />);
+
+    await screen.findByTestId("post-card-post-1");
+    expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
     expect(
       fetchMock.mock.calls.filter(([url]) =>
         String(url).startsWith("/api/posts?")
       )
     ).toHaveLength(0);
-  });
-
-  test("既定が新着なら_投稿直後は従来どおり取り直す", async () => {
-    pendingPayload = { action: "posted", postId: "post-1" };
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: async () => ({
-        posts: [createPost("post-1", "fresh post")],
-        hasMore: false,
-      }),
-    });
-
-    render(<PostList initialPosts={initialPosts} skipInitialFetch />);
-
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith(
-        "/api/posts?limit=20&offset=0&sort=newest",
-        { cache: "no-store" }
-      );
-    });
   });
 
   /**
@@ -633,6 +702,43 @@ describe("PostList", () => {
     });
   });
 
+  /*
+    ⭐ 取り消しは**どのタブでも**取り直すこと。
+
+    以前は取り直しの条件が「既定タブかどうか」で書かれていたため、
+    新着が中間タブになる人(既定が PICK UP)では取り消した作品が
+    サーバー配布の配列に残ったままだった。
+  */
+  test("⭐取り消しは新着が中間タブでも取り直す", async () => {
+    setHomeSortType("newest");
+    pendingPayload = { action: "unposted", postId: "gone-1" };
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        posts: [createPost("remaining-1", "残った投稿")],
+        hasMore: false,
+      }),
+    });
+
+    render(
+      <PostList
+        initialPosts={[createPost("pickup-1", "人気の作品")]}
+        initialDefaultSort="popular_prompts"
+        initialMiddlePosts={[createPost("gone-1", "取り消した投稿")]}
+        initialMiddleSort="newest"
+        skipInitialFetch
+      />
+    );
+
+    await screen.findByTestId("post-card-remaining-1");
+    expect(screen.queryByTestId("post-card-gone-1")).not.toBeInTheDocument();
+    // ブラウザのキャッシュに残った古い一覧も使わないこと
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/posts?limit=20&offset=0&sort=newest",
+      { cache: "no-store" }
+    );
+  });
+
   test("unpostedペイロードがある場合_初回だけno-storeで再取得しトーストは表示しない", async () => {
     pendingPayload = {
       action: "unposted",
@@ -667,15 +773,11 @@ describe("PostList", () => {
     );
   });
 
-  test("ホームがマウント済みの場合_投稿更新イベントでno-store再取得する", async () => {
-    fetchMock.mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        posts: [createPost("post-4", "event refreshed post")],
-        hasMore: false,
-      }),
-    });
-
+  /*
+    ホームの上にシートを開いたまま投稿した場合。ホームはマウント済みなので、
+    合図はイベントで届く。
+  */
+  test("ホームがマウント済みの場合_投稿更新イベントで差し込む", async () => {
     render(
       <PostList
         initialPosts={initialPosts}
@@ -684,27 +786,21 @@ describe("PostList", () => {
     );
 
     expect(screen.getByTestId("post-card-initial-1")).toBeInTheDocument();
-    // 初期描画は既定(フィード)なので prompt-actions は飛ぶ。
-    // ここで見たいのは「投稿一覧を取り直していない」こと
-    expect(
-      fetchMock.mock.calls.filter((c) => String(c[0]).startsWith("/api/posts?"))
-    ).toHaveLength(0);
 
     pendingPayload = {
       action: "posted",
       postId: "post-4",
+      post: createPost("post-4", "event posted"),
     };
 
     act(() => {
       window.dispatchEvent(new Event(HOME_POST_REFRESH_EVENT));
     });
 
-    await waitFor(() => {
-      expect(fetchMock).toHaveBeenCalledWith("/api/posts?limit=20&offset=0&sort=newest", {
-        cache: "no-store",
-      });
-    });
     await screen.findByTestId("post-card-post-4");
+    expect(
+      fetchMock.mock.calls.filter((c) => String(c[0]).startsWith("/api/posts?"))
+    ).toHaveLength(0);
   });
 
   describe("表示形式のトグル", () => {

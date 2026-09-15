@@ -228,11 +228,15 @@ describe("PostModal", () => {
 
     // 送信中のバーを出すため、開始も伝える
     expect(startPostProgressMock).toHaveBeenCalledTimes(1);
-    expect(persistPendingHomePostRefreshMock).toHaveBeenCalledWith({
-      action: "posted",
-      postId: "post-1",
-      bonusGranted: 50,
-    });
+    expect(persistPendingHomePostRefreshMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: "posted",
+        postId: "post-1",
+        bonusGranted: 50,
+        // レスポンスにカードが無ければ差し込みは諦める(投稿自体は成立)
+        post: null,
+      })
+    );
     expect(refreshUnreadCountMock).toHaveBeenCalled();
     expect(fetchMock).toHaveBeenCalledWith("/api/revalidate/home", {
       method: "POST",
