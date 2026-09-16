@@ -208,11 +208,40 @@ describe("FeedSourceQuote", () => {
     });
   });
 
-  test("見出しは種類ごとに変わる", () => {
-    const { rerender } = render(<FeedSourceQuote variant="derived" title="みきふく" />);
-    expect(screen.getByText("posts.feedQuoteDerivedTitle")).toBeInTheDocument();
+  describe("見出し(出どころのクレジット)", () => {
+    /*
+      結果物の2種が「〜しました」で揃っていて見分けられない、という指摘への対応。
+      見出しは手順ではなく「誰のものか」を出す。root だけは招待なので据え置き
+      （文の形が違うこと自体が見分けの手がかりになる）。
+    */
+    test("種類ごとに変わる", () => {
+      const { rerender } = render(<FeedSourceQuote variant="derived" title="みきふく" />);
+      expect(
+        screen.getByText('posts.feedQuoteDerivedTitle:{"name":"みきふく"}')
+      ).toBeInTheDocument();
 
-    rerender(<FeedSourceQuote variant="style" title="夏のマリンコーデ" />);
-    expect(screen.getByText("posts.feedQuoteStyleTitle")).toBeInTheDocument();
+      rerender(<FeedSourceQuote variant="style" title="夏のマリンコーデ" />);
+      expect(screen.getByText("posts.feedQuoteStyleTitle")).toBeInTheDocument();
+    });
+
+    test("derived は見出しだけで誰のプロンプトか読める", () => {
+      render(<FeedSourceQuote variant="derived" title="八月公" />);
+
+      expect(
+        screen.getByText('posts.feedQuoteDerivedTitle:{"name":"八月公"}')
+      ).toBeInTheDocument();
+    });
+
+    test("作者名が無くても見出しが途中で切れない", () => {
+      /*
+        原作者が退会した等で名前が無いとき。"ORIGINAL by " で終わるとラベルとして
+        壊れるので、名前行と同じ既定値で埋める。
+      */
+      render(<FeedSourceQuote variant="derived" />);
+
+      expect(
+        screen.getByText('posts.feedQuoteDerivedTitle:{"name":"posts.anonymousUser"}')
+      ).toBeInTheDocument();
+    });
   });
 });
