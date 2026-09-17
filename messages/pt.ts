@@ -152,7 +152,6 @@ export const ptMessages = {
     feedUsePrompt: "Gerar com este prompt",
     feedFollowAndUsePrompt: "Seguir para gerar",
     feedQuoteRootTitle: "Criador do prompt",
-    feedQuoteRootDescription: "Um prompt criado por {name}",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",

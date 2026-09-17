@@ -152,7 +152,6 @@ export const zhTwMessages = {
     feedUsePrompt: "用這個提示詞生成",
     feedFollowAndUsePrompt: "追蹤後生成",
     feedQuoteRootTitle: "提示詞作者",
-    feedQuoteRootDescription: "{name} 創作的提示詞",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",

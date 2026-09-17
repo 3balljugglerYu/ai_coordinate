@@ -152,7 +152,6 @@ export const koMessages = {
     feedUsePrompt: "이 프롬프트로 생성",
     feedFollowAndUsePrompt: "팔로우하고 생성",
     feedQuoteRootTitle: "프롬프트 제작자",
-    feedQuoteRootDescription: "{name}님이 만든 프롬프트입니다",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",

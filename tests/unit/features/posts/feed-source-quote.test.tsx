@@ -146,18 +146,47 @@ describe("FeedSourceQuote", () => {
   });
 
   describe("root(投稿自身のプロンプトが公開されている場合)", () => {
-    test("サムネイルも作者アイコンも出さず_説明文で誰の何かを伝える", () => {
+    test("⭐サムネイルは出さない(原作＝この投稿なので上の本体と同じ画像になる)", () => {
+      render(
+        <FeedSourceQuote variant="root" title="八月公" thumbnailUrl="https://example.test/a.png" />
+      );
+
+      // thumbnailUrl を渡しても描画しない。root で出すのは顔（アイコン）だけ
+      expect(screen.queryByTestId("feed-source-quote-thumbnail")).not.toBeInTheDocument();
+      expect(screen.getByText("posts.feedQuoteRootTitle")).toBeInTheDocument();
+    });
+
+    test("作者アイコンとニックネームを出す", () => {
+      render(
+        <FeedSourceQuote
+          variant="root"
+          title="八月公"
+          avatarUrl="https://example.test/avatar.png"
+        />
+      );
+
+      expect(screen.getByTestId("feed-source-quote-avatar")).toHaveAttribute(
+        "src",
+        "https://example.test/avatar.png"
+      );
+      expect(screen.getByText("八月公")).toBeInTheDocument();
+    });
+
+    test("アイコン未設定でも枠が欠けない(人型のプレースホルダを出す)", () => {
+      render(<FeedSourceQuote variant="root" title="八月公" />);
+
+      expect(screen.getByTestId("feed-source-quote-avatar")).toBeInTheDocument();
+    });
+
+    test("⭐アイコンはニックネームと利用回数の2行分の大きさにする", () => {
       /*
-        原作＝この投稿なので、サムネイルと作者名はすぐ上の投稿本体と同じものになる。
-        繰り返すと情報量ゼロで寂しく見えるため、説明文に置き換える。
+        root にはサムネイルが無く、ここが唯一の図像になる。引用行と同じ 20px だと
+        「作成者」の主張が弱い。大きさが変わるとレイアウトの意図が崩れるので固定する。
       */
       render(<FeedSourceQuote variant="root" title="八月公" />);
 
-      expect(screen.queryByTestId("feed-source-quote-thumbnail")).not.toBeInTheDocument();
-      expect(screen.getByText("posts.feedQuoteRootTitle")).toBeInTheDocument();
-      expect(
-        screen.getByText('posts.feedQuoteRootDescription:{"name":"八月公"}')
-      ).toBeInTheDocument();
+      const avatar = screen.getByTestId("feed-source-quote-avatar");
+      expect(avatar).toHaveStyle({ width: "40px", height: "40px" });
     });
 
     test("自分自身へのリンクは張らない", () => {

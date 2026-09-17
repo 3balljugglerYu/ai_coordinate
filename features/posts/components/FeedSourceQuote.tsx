@@ -9,6 +9,17 @@ import { usageCountBucket } from "../lib/constants";
 /** 引用サムネイルの一辺。X の引用リポストと同じく正方形にトリミングする。 */
 const QUOTE_THUMBNAIL_PX = 56;
 
+/** 引用行に添える作者アイコン。名前の高さに合わせた小さいもの。 */
+const QUOTE_AVATAR_PX = 20;
+
+/**
+ * root の作者アイコン。**ニックネームと利用回数の2行分**の高さにする。
+ *
+ * root にはサムネイルが無く、ここが唯一の図像になる。引用行と同じ 20px では
+ * 「作成者」の主張が弱く、見出しのラベルだけが浮いて見える。
+ */
+const ROOT_AVATAR_PX = 40;
+
 /**
  * 引用元ブロックの種類。
  *
@@ -20,13 +31,47 @@ const QUOTE_THUMBNAIL_PX = 56;
  */
 export type FeedSourceQuoteVariant = "root" | "derived" | "style";
 
+/**
+ * 作者アイコン。未設定なら人型のプレースホルダを出す。
+ *
+ * 引用行(20px)と root(40px)で大きさが変わるので、Tailwind の固定クラスではなく
+ * inline style で受ける（動的なクラス名は Tailwind が拾えない）。
+ */
+function CreatorAvatar({ url, size }: { url?: string | null; size: number }) {
+  const box = { width: size, height: size };
+
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt=""
+        width={size}
+        height={size}
+        style={box}
+        className="shrink-0 rounded-full object-cover ring-1 ring-black/10"
+        data-testid="feed-source-quote-avatar"
+      />
+    );
+  }
+  return (
+    <span
+      aria-hidden="true"
+      style={box}
+      className="flex shrink-0 items-center justify-center rounded-full bg-gray-200 ring-1 ring-black/10"
+      data-testid="feed-source-quote-avatar"
+    >
+      <User style={{ width: size * 0.5, height: size * 0.5 }} className="text-gray-500" />
+    </span>
+  );
+}
+
 interface FeedSourceQuoteProps {
   variant: FeedSourceQuoteVariant;
   /** 引用元のサムネイル。正方形にトリミングして出す（root では使わない）。 */
   thumbnailUrl?: string | null;
   /** 引用元の名前（原作者名 / プリセット名）。 */
   title?: string;
-  /** 原作者のアイコン。プリセット引用では出さない。 */
+  /** 作者のアイコン。root では 2 行分の大きさで出す。プリセット引用では出さない。 */
   avatarUrl?: string | null;
   /** 引用元の説明（原作のキャプション等）。1行で切る。 */
   description?: string | null;
@@ -72,8 +117,9 @@ interface FeedSourceQuoteProps {
  * ⭐ **root の見出しは以前「このプロンプトで生成してみる」だった。**
  * すぐ下の CTA が「このプロンプトで生成する」なので**ほぼ同じ文が2回**並び、
  * 見出しが場所を取るだけになっていた。説明文も「生成することができます」で、
- * 1枚のカードに「生成」が3回出ていた。見出しは作成者のクレジットに寄せ、
- * 説明文からは「生成できます」を外してある（CTA が言うので不要）。
+ * 1枚のカードに「生成」が3回出ていた。見出しを作成者のクレジットに寄せ、
+ * **説明文は丸ごと落とした**（「誰が作ったか」は見出し＋アイコン＋名前で足り、
+ * 「生成できます」は CTA が言う）。いまカード内の「生成」は CTA の1回だけ。
  *
  * ⭐ 3種とも見出しは同じ体裁（11px / bold / `tracking-wide`）。
  * 見分けは体裁ではなく**中身**で付ける。root の見出しに付けていた ✨ は
@@ -132,8 +178,16 @@ export function FeedSourceQuote({
       : null;
 
   /*
-    root は引用ではなくお知らせ。サムネイルも作者名も出さず、
-    「誰のプロンプトで何ができるか」を1文で説明するだけにする。
+    root は引用ではなく作成者のクレジット。
+
+    ⭐ **サムネイルは出さない。** 原作＝この投稿なので、すぐ上の投稿本体と
+    同じ画像を繰り返すことになり情報量がゼロになる。アイコンは別で、
+    「誰が作ったか」という顔が付くぶん意味がある。
+
+    ⭐ 説明文（「{name}さんが作ったプロンプトです」）は**見出しと重複する**ので
+    置かない。見出しが「プロンプト作成者」と言っている以上、続けて
+    「作ったプロンプトです」と書くのは同じことの二度言いになる。
+    アイコンの横はニックネームと利用回数の2行に絞る。
   */
   if (variant === "root") {
     return (
@@ -144,14 +198,18 @@ export function FeedSourceQuote({
         >
           {heading}
         </p>
-        {title ? (
-          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {t("feedQuoteRootDescription", { name: title })}
-          </p>
-        ) : null}
-        {usageText ? (
-          <p className="mt-1 text-[11px] leading-tight text-muted-foreground">{usageText}</p>
-        ) : null}
+        <div className="flex items-center gap-2.5">
+          <CreatorAvatar url={avatarUrl} size={ROOT_AVATAR_PX} />
+          {/* 利用回数が下限に届かない投稿では1行になる。アイコンは中央に揃える */}
+          <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+            {title ? (
+              <span className="truncate text-xs font-bold text-slate-900">{title}</span>
+            ) : null}
+            {usageText ? (
+              <span className="text-[11px] leading-tight text-muted-foreground">{usageText}</span>
+            ) : null}
+          </div>
+        </div>
         {action ? <div className="mt-2.5">{action}</div> : null}
       </div>
     );
@@ -180,21 +238,8 @@ export function FeedSourceQuote({
         <div className="flex min-w-0 items-center gap-1.5">
           {variant === "style" ? (
             <Sparkles className="h-3.5 w-3.5 shrink-0 text-pink-500" aria-hidden="true" />
-          ) : avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt=""
-              width={20}
-              height={20}
-              className="h-5 w-5 shrink-0 rounded-full object-cover ring-1 ring-black/10"
-            />
           ) : (
-            <span
-              aria-hidden="true"
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-200 ring-1 ring-black/10"
-            >
-              <User className="h-3 w-3 text-gray-500" />
-            </span>
+            <CreatorAvatar url={avatarUrl} size={QUOTE_AVATAR_PX} />
           )}
           <span className="truncate text-xs font-bold text-slate-900">{title}</span>
         </div>
