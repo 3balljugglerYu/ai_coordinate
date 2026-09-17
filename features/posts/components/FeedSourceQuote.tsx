@@ -9,7 +9,7 @@ import { usageCountBucket } from "../lib/constants";
 /** 引用サムネイルの一辺。X の引用リポストと同じく正方形にトリミングする。 */
 const QUOTE_THUMBNAIL_PX = 56;
 
-/** 引用行に添える作者アイコン。名前の高さに合わせた小さいもの。 */
+/** 引用行の作者アイコン。ニックネームと同じ行に並ぶので名前の高さに合わせる。 */
 const QUOTE_AVATAR_PX = 20;
 
 /**
@@ -18,7 +18,7 @@ const QUOTE_AVATAR_PX = 20;
  * root にはサムネイルが無く、ここが唯一の図像になる。引用行と同じ 20px では
  * 「作成者」の主張が弱く、見出しのラベルだけが浮いて見える。
  */
-const ROOT_AVATAR_PX = 40;
+const CREATOR_AVATAR_PX = 40;
 
 /**
  * 引用元ブロックの種類。
@@ -73,8 +73,6 @@ interface FeedSourceQuoteProps {
   title?: string;
   /** 作者のアイコン。root では 2 行分の大きさで出す。プリセット引用では出さない。 */
   avatarUrl?: string | null;
-  /** 引用元の説明（原作のキャプション等）。1行で切る。 */
-  description?: string | null;
   /** 引用元へのリンク。無いときはリンクにしない（未公開プリセット等）。 */
   href?: string | null;
   /** 累計利用回数。下限に届かないときは出さない。 */
@@ -121,6 +119,32 @@ interface FeedSourceQuoteProps {
  * **説明文は丸ごと落とした**（「誰が作ったか」は見出し＋アイコン＋名前で足り、
  * 「生成できます」は CTA が言う）。いまカード内の「生成」は CTA の1回だけ。
  *
+ * ## ⭐ 作者の出し方（root / derived）
+ *
+ * ```
+ * root                      derived
+ * ───────────────────       ─────────────────────────────────
+ * プロンプト作成者           ORIGINAL
+ *                           ┌──────┐ プロンプト作成者
+ * (顔40px) ニックネーム      │ 原作  │ (顔20px) ニックネーム
+ *          利用回数          └──────┘ 利用回数
+ * ```
+ *
+ * どちらも `プロンプト作成者` と名乗るが、置き場所が違う。root はカード全体が
+ * 作成者の話なので**見出し**、derived は引用の中の一要素なので**サムネイルの横**。
+ *
+ * ⭐ derived のラベルは**アイコンの上**に置く。名前の横に並べると先に名前が
+ * 目に入り、ラベルが飾りになる。
+ *
+ * ⭐ アイコンの大きさが違うのは、隣に何があるかが違うため。root はサムネイルが
+ * 無くここが唯一の図像なので 2 行分(40px)、derived はサムネイルが figure の役を
+ * 担うので名前の高さ(20px)に留める。**derived で 40px にするとサムネイルと
+ * 合わせて右の幅が 200px しか残らず、利用回数が2行に折り返す**（実測）。
+ *
+ * `プロンプト作成者` の文字列は root の見出しと**同じキー**を使う
+ * (`feedQuotePromptCreator`)。同じことを指すので、別キーにすると片方だけ
+ * 直されて食い違う。
+ *
  * ⭐ 3種とも見出しは同じ体裁（11px / bold / `tracking-wide`）。
  * 見分けは体裁ではなく**中身**で付ける。root の見出しに付けていた ✨ は
  * 「試してみて」という誘いに添えたもので、クレジットには合わないので外した。
@@ -151,7 +175,6 @@ export function FeedSourceQuote({
   thumbnailUrl,
   title,
   avatarUrl,
-  description,
   href,
   usageCount = 0,
   isEnded = false,
@@ -162,7 +185,7 @@ export function FeedSourceQuote({
 
   const heading =
     variant === "root"
-      ? t("feedQuoteRootTitle")
+      ? t("feedQuotePromptCreator")
       : variant === "style"
         ? t("feedQuoteStyleTitle")
         : t("feedQuoteDerivedTitle");
@@ -199,7 +222,7 @@ export function FeedSourceQuote({
           {heading}
         </p>
         <div className="flex items-center gap-2.5">
-          <CreatorAvatar url={avatarUrl} size={ROOT_AVATAR_PX} />
+          <CreatorAvatar url={avatarUrl} size={CREATOR_AVATAR_PX} />
           {/* 利用回数が下限に届かない投稿では1行になる。アイコンは中央に揃える */}
           <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
             {title ? (
@@ -215,49 +238,60 @@ export function FeedSourceQuote({
     );
   }
 
+  /** 利用回数 or 終了案内。どちらも出ないことがある（下限未満・開催中）。 */
+  const metaLine = isEnded ? (
+    <p
+      className="text-[11px] leading-tight text-muted-foreground"
+      data-testid="feed-source-quote-ended"
+    >
+      {t("feedQuoteEndedNote")}
+    </p>
+  ) : usageText ? (
+    <p className="text-[11px] leading-tight text-muted-foreground">{usageText}</p>
+  ) : null;
+
+  const thumbnail = (
+    <div
+      className="relative shrink-0 overflow-hidden rounded-lg bg-gray-100"
+      style={{ width: QUOTE_THUMBNAIL_PX, height: QUOTE_THUMBNAIL_PX }}
+      data-testid="feed-source-quote-thumbnail"
+    >
+      {thumbnailUrl ? (
+        <Image
+          src={thumbnailUrl}
+          alt=""
+          fill
+          sizes={`${QUOTE_THUMBNAIL_PX}px`}
+          // 縦長でも横長でも正方形に収める。顔が切れないよう上寄せ
+          className="object-cover object-top"
+        />
+      ) : null}
+    </div>
+  );
+
   const inner = (
     <div className="flex items-center gap-2.5">
-      <div
-        className="relative shrink-0 overflow-hidden rounded-lg bg-gray-100"
-        style={{ width: QUOTE_THUMBNAIL_PX, height: QUOTE_THUMBNAIL_PX }}
-        data-testid="feed-source-quote-thumbnail"
-      >
-        {thumbnailUrl ? (
-          <Image
-            src={thumbnailUrl}
-            alt=""
-            fill
-            sizes={`${QUOTE_THUMBNAIL_PX}px`}
-            // 縦長でも横長でも正方形に収める。顔が切れないよう上寄せ
-            className="object-cover object-top"
-          />
-        ) : null}
-      </div>
-
+      {thumbnail}
       <div className="flex min-w-0 flex-1 flex-col justify-center gap-0.5">
+        {variant === "derived" ? (
+          /*
+            ⭐ ラベルは**アイコンの上**に置く。名前の横に並べると、先に名前が
+            目に入ってラベルが飾りになり、「この人が作った人だ」が伝わらない。
+          */
+          <span className="text-[11px] leading-tight text-muted-foreground">
+            {t("feedQuotePromptCreator")}
+          </span>
+        ) : null}
         <div className="flex min-w-0 items-center gap-1.5">
           {variant === "style" ? (
+            /* 引用先が人ではなくプリセットなので、顔ではなく ✨ を添える */
             <Sparkles className="h-3.5 w-3.5 shrink-0 text-pink-500" aria-hidden="true" />
           ) : (
             <CreatorAvatar url={avatarUrl} size={QUOTE_AVATAR_PX} />
           )}
           <span className="truncate text-xs font-bold text-slate-900">{title}</span>
         </div>
-        {description ? (
-          <p className="truncate text-xs leading-tight text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
-        {isEnded ? (
-          <p
-            className="text-[11px] leading-tight text-muted-foreground"
-            data-testid="feed-source-quote-ended"
-          >
-            {t("feedQuoteEndedNote")}
-          </p>
-        ) : usageText ? (
-          <p className="text-[11px] leading-tight text-muted-foreground">{usageText}</p>
-        ) : null}
+        {metaLine}
       </div>
     </div>
   );

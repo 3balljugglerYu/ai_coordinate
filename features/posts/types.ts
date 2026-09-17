@@ -95,7 +95,14 @@ export interface PromptActionSummary {
   originAuthorAvatarUrl: string | null;
   /** 引用カードのサムネイル。正方形にトリミングして出す。 */
   originThumbnailUrl: string | null;
-  /** 引用カードに1行だけ出す原作のキャプション（公開情報）。 */
+  /**
+   * 原作のキャプション（公開情報）。
+   *
+   * ⭐ **いまは画面に出していない。** 引用カードに1行で出していたが、切り詰められて
+   * 意味が取れず「誰が作ったか」をぼかすため落とした。取得元の行（原作の可否判定で
+   * すでに引いている `publiclyUsableOrigins`）にもともと含まれる列なので、
+   * 残しても追加のクエリは発生しない。
+   */
   originCaption: string | null;
   /**
    * 原作の累計利用回数（原作者自身は除外）。**生の回数**なので、

@@ -151,7 +151,7 @@ export const thMessages = {
     feedComments: "ความคิดเห็น",
     feedUsePrompt: "สร้างด้วยพรอมต์นี้",
     feedFollowAndUsePrompt: "ติดตามเพื่อสร้าง",
-    feedQuoteRootTitle: "ผู้สร้างพรอมต์",
+    feedQuotePromptCreator: "ผู้สร้างพรอมต์",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",

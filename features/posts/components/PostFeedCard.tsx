@@ -408,7 +408,6 @@ export function PostFeedCard({
               thumbnailUrl={promptAction.originThumbnailUrl}
               title={promptAction.originAuthorNickname || t("anonymousUser")}
               avatarUrl={promptAction.originAuthorAvatarUrl}
-              description={promptAction.originCaption}
               href={
                 promptAction.originPostId === post.id
                   ? null

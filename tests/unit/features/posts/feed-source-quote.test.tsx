@@ -124,25 +124,73 @@ describe("FeedSourceQuote", () => {
     });
   });
 
-  test("説明とアクションを渡せば描画する", () => {
+  test("アクションを渡せば描画する", () => {
     render(
       <FeedSourceQuote
         variant="derived"
         thumbnailUrl={null}
         title="みきふく"
-        description="赤白ボーダーのマリンコーデ"
         action={<button type="button">つくる</button>}
       />
     );
-    expect(screen.getByText("赤白ボーダーのマリンコーデ")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "つくる" })).toBeInTheDocument();
   });
 
-  test("説明が無ければ行ごと出さない(高さを無駄に取らない)", () => {
-    const { container } = render(
-      <FeedSourceQuote variant="derived" thumbnailUrl={null} title="みきふく" />
-    );
-    expect(container.querySelectorAll("p")).toHaveLength(1); // 見出しのみ
+  describe("derived(他人のプロンプトで生成した投稿)", () => {
+    test("⭐「プロンプト作成者」はアイコンの上に置く(名前の横だと飾りになる)", () => {
+      render(
+        <FeedSourceQuote
+          variant="derived"
+          thumbnailUrl="https://example.test/a.png"
+          title="みきふく"
+          avatarUrl="https://example.test/avatar.png"
+        />
+      );
+
+      const label = screen.getByText("posts.feedQuotePromptCreator");
+      const avatar = screen.getByTestId("feed-source-quote-avatar");
+      expect(screen.getByText("みきふく")).toBeInTheDocument();
+
+      /*
+        ラベルがアイコンより前に来ていること。DOCUMENT_POSITION_FOLLOWING は
+        「引数のノードが自分より後ろ」を表すので、label から見て avatar が後ろ。
+      */
+      expect(label.compareDocumentPosition(avatar) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(
+        Node.DOCUMENT_POSITION_FOLLOWING
+      );
+    });
+
+    test("⭐原作のキャプションは出さない(切り詰められて意味が取れず_誰が作ったかをぼかす)", () => {
+      const { container } = render(
+        <FeedSourceQuote
+          variant="derived"
+          thumbnailUrl="https://example.test/a.png"
+          title="みきふく"
+          avatarUrl="https://example.test/avatar.png"
+          usageCount={USAGE_COUNT_DISPLAY_MIN}
+        />
+      );
+
+      /*
+        出てよい <p> は見出しと利用回数の2つだけ。キャプションの行が戻ると増える。
+        （作成者ラベルとニックネームは <span> なのでここには数えない）
+      */
+      expect(container.querySelectorAll("p")).toHaveLength(2);
+    });
+
+    test("⭐作成者アイコンは名前の高さに留める(root の 40px にしない)", () => {
+      /*
+        ここはサムネイルが figure の役を担うので、アイコンは名前に添える小さいもの。
+        40px にするとサムネイルと合わせて右の幅が 200px ほどしか残らず、
+        利用回数が「…利用されまし / た」と2行に折り返す。
+      */
+      render(<FeedSourceQuote variant="derived" thumbnailUrl={null} title="みきふく" />);
+
+      expect(screen.getByTestId("feed-source-quote-avatar")).toHaveStyle({
+        width: "20px",
+        height: "20px",
+      });
+    });
   });
 
   describe("root(投稿自身のプロンプトが公開されている場合)", () => {
@@ -153,7 +201,7 @@ describe("FeedSourceQuote", () => {
 
       // thumbnailUrl を渡しても描画しない。root で出すのは顔（アイコン）だけ
       expect(screen.queryByTestId("feed-source-quote-thumbnail")).not.toBeInTheDocument();
-      expect(screen.getByText("posts.feedQuoteRootTitle")).toBeInTheDocument();
+      expect(screen.getByText("posts.feedQuotePromptCreator")).toBeInTheDocument();
     });
 
     test("作者アイコンとニックネームを出す", () => {

@@ -151,7 +151,7 @@ export const arMessages = {
     feedComments: "التعليقات",
     feedUsePrompt: "أنشئ بهذا الأمر",
     feedFollowAndUsePrompt: "تابع للإنشاء",
-    feedQuoteRootTitle: "منشئ الأمر",
+    feedQuotePromptCreator: "منشئ الأمر",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",

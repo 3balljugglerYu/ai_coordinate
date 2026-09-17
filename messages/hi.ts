@@ -151,7 +151,7 @@ export const hiMessages = {
     feedComments: "टिप्पणियाँ",
     feedUsePrompt: "इस प्रॉम्प्ट से जेनरेट करें",
     feedFollowAndUsePrompt: "जेनरेट के लिए फ़ॉलो करें",
-    feedQuoteRootTitle: "प्रॉम्प्ट निर्माता",
+    feedQuotePromptCreator: "प्रॉम्प्ट निर्माता",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",

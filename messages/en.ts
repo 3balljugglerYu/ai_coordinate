@@ -151,7 +151,7 @@ export const enMessages = {
     feedComments: "Comments",
     feedUsePrompt: "Generate with this prompt",
     feedFollowAndUsePrompt: "Follow to generate",
-    feedQuoteRootTitle: "Prompt creator",
+    feedQuotePromptCreator: "Prompt creator",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
