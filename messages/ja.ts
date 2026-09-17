@@ -150,7 +150,7 @@ export const jaMessages = {
     feedFollowAndUsePrompt: "フォローして生成する",
     feedQuoteRootTitle: "このプロンプトで生成してみる",
     feedQuoteRootDescription: "{name}さんのプロンプトを利用して、生成することができます",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "この企画は終了しました",
     readMore: "もっと見る",

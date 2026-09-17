@@ -153,7 +153,7 @@ export const koMessages = {
     feedFollowAndUsePrompt: "팔로우하고 생성",
     feedQuoteRootTitle: "이 프롬프트로 생성해 보기",
     feedQuoteRootDescription: "{name}님의 프롬프트로 생성할 수 있습니다",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
     readMore: "더 보기",

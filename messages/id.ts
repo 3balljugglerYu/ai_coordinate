@@ -153,7 +153,7 @@ export const idMessages = {
     feedFollowAndUsePrompt: "Ikuti untuk membuat",
     feedQuoteRootTitle: "Coba buat dengan prompt ini",
     feedQuoteRootDescription: "Kamu bisa membuat dengan prompt {name}",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
     readMore: "Selengkapnya",

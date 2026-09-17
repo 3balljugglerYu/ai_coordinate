@@ -153,7 +153,7 @@ export const zhCnMessages = {
     feedFollowAndUsePrompt: "关注后生成",
     feedQuoteRootTitle: "用这个提示词生成",
     feedQuoteRootDescription: "你可以使用 {name} 的提示词生成",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
     readMore: "查看更多",

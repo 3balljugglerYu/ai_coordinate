@@ -153,7 +153,7 @@ export const arMessages = {
     feedFollowAndUsePrompt: "تابع للإنشاء",
     feedQuoteRootTitle: "جرّب الإنشاء بهذا الأمر",
     feedQuoteRootDescription: "يمكنك الإنشاء باستخدام أمر {name}",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
     readMore: "اقرأ المزيد",

@@ -153,7 +153,7 @@ export const frMessages = {
     feedFollowAndUsePrompt: "S'abonner pour générer",
     feedQuoteRootTitle: "Générer avec ce prompt",
     feedQuoteRootDescription: "Vous pouvez générer avec le prompt de {name}",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
     readMore: "Lire la suite",

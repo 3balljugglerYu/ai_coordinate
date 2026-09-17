@@ -62,16 +62,20 @@ interface FeedSourceQuoteProps {
  * | variant | 見出し | 意味 |
  * |---|---|---|
  * | `style` | `Persta.AI ORIGINAL` | 運営が作ったスタイルを使った |
- * | `derived` | `ORIGINAL by {name}` | その人が作ったプロンプトを使った |
+ * | `derived` | `ORIGINAL` | 誰かが作ったプロンプトを使った（名前は直下の行） |
  * | `root` | このプロンプトで生成してみる | **据え置き** |
  *
  * ⭐ **root を変えないのは、3つのうち root だけが「招待」だから。** 他2つが
  * 出どころの表示になったので、文の形が違うこと自体が見分けの手がかりになる。
  * 全部を `ORIGINAL` で揃えると、今度は root と derived が衝突する。
  *
- * ⭐ `derived` では作者名が見出しと名前行の**2回**出る。冗長だが意図的で、
- * 雑誌のクレジット行と同じ扱い。名前行はリンクの実体（押すと原作へ飛ぶ）なので
- * 名前を落とすとアバターの横が無名になり、何を押すのか分からなくなる。
+ * ⭐ **`derived` の見出しに作者名を入れてはいけない。** 一度
+ * `ORIGINAL by {name}` にしたが、**すぐ下の名前行と隣接して同じ名前が2回**並び、
+ * 明らかに冗長だった。名前を出す役目は名前行が持つ（そちらはリンクの実体で、
+ * 押すと原作の投稿へ飛ぶ）。見出しは種別を示すだけでよい。
+ *
+ * `style` にだけ `Persta.AI` が入るのは非対称に見えるが、こちらは名前行が
+ * プリセット名なので、**運営名義を書く場所が見出し以外に無い**ため。
  *
  * ⭐ 見出しは全ロケールで同じ英字のまま（`messages/*.ts` 15言語すべて同一）。
  * `ORIGINAL` はブランドのロックアップとして扱い、翻訳しない。
@@ -105,9 +109,7 @@ export function FeedSourceQuote({
       ? t("feedQuoteRootTitle")
       : variant === "style"
         ? t("feedQuoteStyleTitle")
-        : // 名前が無いのは原作者が退会した等の例外。見出しが "ORIGINAL by " で
-          // 途切れるとラベルとして壊れるので、名前行と同じ既定値で埋める
-          t("feedQuoteDerivedTitle", { name: title || t("anonymousUser") });
+        : t("feedQuoteDerivedTitle");
 
   // 生の回数ではなく丸めた値を渡す。文言が「◯回以上」で固定なので、
   // 素の数字を渡すと表示が嘘になる。
@@ -126,7 +128,10 @@ export function FeedSourceQuote({
   if (variant === "root") {
     return (
       <div className="rounded-xl border bg-white/60 p-2.5" data-testid="feed-source-quote">
-        <p className="flex items-center gap-1 text-xs font-bold text-slate-900">
+        <p
+          className="flex items-center gap-1 text-xs font-bold text-slate-900"
+          data-testid="feed-source-quote-heading"
+        >
           <Sparkles className="h-3.5 w-3.5 shrink-0 text-pink-500" aria-hidden="true" />
           {heading}
         </p>
@@ -205,7 +210,10 @@ export function FeedSourceQuote({
 
   return (
     <div className="rounded-xl border bg-white/60 p-2.5" data-testid="feed-source-quote">
-      <p className="mb-1.5 truncate text-[11px] font-bold tracking-wide text-slate-900">
+      <p
+        className="mb-1.5 text-[11px] font-bold tracking-wide text-slate-900"
+        data-testid="feed-source-quote-heading"
+      >
         {heading}
       </p>
       {href ? (

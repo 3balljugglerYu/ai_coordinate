@@ -153,7 +153,7 @@ export const viMessages = {
     feedFollowAndUsePrompt: "Theo dõi để tạo",
     feedQuoteRootTitle: "Thử tạo bằng prompt này",
     feedQuoteRootDescription: "Bạn có thể tạo bằng prompt của {name}",
-    feedQuoteDerivedTitle: "ORIGINAL by {name}",
+    feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "This campaign has ended",
     readMore: "Xem thêm",
