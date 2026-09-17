@@ -63,11 +63,21 @@ interface FeedSourceQuoteProps {
  * |---|---|---|
  * | `style` | `Persta.AI ORIGINAL` | 運営が作ったスタイルを使った |
  * | `derived` | `ORIGINAL` | 誰かが作ったプロンプトを使った（名前は直下の行） |
- * | `root` | このプロンプトで生成してみる | **据え置き** |
+ * | `root` | `プロンプト作成者` | この人が作った（＝原作がこの投稿） |
  *
- * ⭐ **root を変えないのは、3つのうち root だけが「招待」だから。** 他2つが
- * 出どころの表示になったので、文の形が違うこと自体が見分けの手がかりになる。
- * 全部を `ORIGINAL` で揃えると、今度は root と derived が衝突する。
+ * ⭐ **軸は「使った側」と「作った側」**。`ORIGINAL` は借りてきた出どころの表示、
+ * `プロンプト作成者` は原作者のクレジット。root にも `ORIGINAL` を使うと、
+ * 同じ語が「これを使った」と「これが原作」の両方を指してしまい衝突する。
+ *
+ * ⭐ **root の見出しは以前「このプロンプトで生成してみる」だった。**
+ * すぐ下の CTA が「このプロンプトで生成する」なので**ほぼ同じ文が2回**並び、
+ * 見出しが場所を取るだけになっていた。説明文も「生成することができます」で、
+ * 1枚のカードに「生成」が3回出ていた。見出しは作成者のクレジットに寄せ、
+ * 説明文からは「生成できます」を外してある（CTA が言うので不要）。
+ *
+ * ⭐ 3種とも見出しは同じ体裁（11px / bold / `tracking-wide`）。
+ * 見分けは体裁ではなく**中身**で付ける。root の見出しに付けていた ✨ は
+ * 「試してみて」という誘いに添えたもので、クレジットには合わないので外した。
  *
  * ⭐ **`derived` の見出しに作者名を入れてはいけない。** 一度
  * `ORIGINAL by {name}` にしたが、**すぐ下の名前行と隣接して同じ名前が2回**並び、
@@ -129,10 +139,9 @@ export function FeedSourceQuote({
     return (
       <div className="rounded-xl border bg-white/60 p-2.5" data-testid="feed-source-quote">
         <p
-          className="flex items-center gap-1 text-xs font-bold text-slate-900"
+          className="mb-1.5 text-[11px] font-bold tracking-wide text-slate-900"
           data-testid="feed-source-quote-heading"
         >
-          <Sparkles className="h-3.5 w-3.5 shrink-0 text-pink-500" aria-hidden="true" />
           {heading}
         </p>
         {title ? (
