@@ -162,6 +162,14 @@ describe("home-sort-preference", () => {
         JSON.stringify({ value: "newest", savedAt: now + HOME_SORT_TTL_MS + 1 })
       );
 
+      /*
+        ⭐ 読む時刻を固定する。実時間のまま走らせると、savedAt を組み立ててから
+        `getHomeSortType` が `Date.now()` を呼ぶまでに時計が進み、境界ちょうどの
+        1ms の余裕が消えて判定が入れ替わる（実測で 30 回中 3 回落ちた）。
+        境界値を見るテストは、比較の両辺を同じ時刻に固定すること。
+      */
+      jest.spyOn(Date, "now").mockReturnValue(now);
+
       expect(getHomeSortType()).toBeNull();
     });
 
