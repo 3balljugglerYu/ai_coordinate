@@ -150,7 +150,7 @@ SEO 向けに静的プリレンダできる**。フォロー有無はカード�
 
 新規が大半で、既存への変更は小さい。
 
-- `app/sitemap.ts` — `/user-styles` を `LOCALIZED_PUBLIC_PATHS` に追加
+- `app/sitemap.ts` — フラグが立っているときだけ `/user-styles` を出す（無条件追加は不可）
 - `app/styles/page.tsx` — トグルを差し込む（既存の見出し・JSON-LD は触らない）
 - `i18n/page-copy.ts` — `stylesCopy` に対になるコピーを追加（**15ロケール**）
 - `lib/env.ts` — 段階公開フラグ
@@ -185,7 +185,7 @@ sequenceDiagram
     participant R as RPC get_user_style_page
     participant V as validate_derived_prompt_source
     participant DB as generated_images
-    P->>L: limit と offset と sort と authorId と viewerId
+    P->>L: limit と cursor と sort と authorId と viewerId
     L->>R: 1文で呼ぶ
     R->>DB: free と is_posted と visible と root を絞る
     R->>DB: Before ありに絞る
@@ -250,8 +250,11 @@ stateDiagram-v2
 - **REQ-006** When the viewer is signed in, the system shall exclude origins whose author has a block
   relationship with the viewer, and origins the viewer has reported.
 
-- **REQ-007** When the list has more items than one page, the system shall load the next page on demand
-  without re-ordering already shown items.
+- **REQ-007** When the list has more items than one page, the system shall load the next page using a
+  keyset cursor over a total order that includes a unique tie-breaker, and shall neither repeat nor
+  skip an item across page boundaries.
+  次ページは**一意のタイブレーカーを含む全順序**に対する keyset cursor で取得し、
+  ページ境界で項目を重複させても飛ばしてもいけない（ADR-002）。
 
 - **REQ-008** While rendering this list, the system shall not record post impressions.
   この一覧ではインプレッションを記録しないこと（ホーム専用の指標を汚さない）。
@@ -266,9 +269,11 @@ stateDiagram-v2
   👑 チップは**累計利用回数が3回以上**の原作だけを、利用回数の降順（同数は新着順）で並べること。
 
 - **REQ-011** While the viewer is signed in, the system shall show one chip per followed author who has
-  at least one listed origin, each showing the author's avatar and nickname.
-  ログイン済みのとき、**掲載対象を1件以上持つフォロー中の作者**ごとに、
-  アイコンとニックネームのチップを1つずつ出すこと。
+  at least one origin that survives the same viewer-scoped exclusions as the list itself, each showing
+  the author's avatar and nickname.
+  ログイン済みのとき、**一覧と同じ閲覧者基準の除外（ブロック・通報）を通したうえで**
+  掲載対象を1件以上持つフォロー中の作者ごとに、アイコンとニックネームのチップを1つずつ出すこと。
+  **押して空になるチップを出してはならない。**
 
 - **REQ-012** When ordering author chips, the system shall order them by each author's most recent
   listed origin, newest first.
@@ -328,7 +333,7 @@ stateDiagram-v2
 ### ADR-002: 一覧は専用 RPC 1文で返す（取得後に絞らない）
 
 - **Context**: 掲載対象 161 件・直近30日で 141 件という増え方なので、全件取得は将来通らない。
-- **Decision**: `get_user_style_page(p_viewer_id, p_limit, p_offset, p_sort, p_author_id)` を新設し、
+- **Decision**: `get_user_style_page(p_viewer_id, p_limit, p_sort, p_author_id, p_cursor_posted_at, p_cursor_id)` を新設し、
   **絞り込み・除外・並び・ページング・投稿本体の射影まで 1 文で**行う。
 - **Reason**: `popular-prompts-api.ts` 冒頭に記録された2つの失敗を繰り返さないため。
   - 取得後に絞ると、20件取って数件落とした時点で `hasMore=false` になり穴が空く。
@@ -339,6 +344,17 @@ stateDiagram-v2
   これは**書き込み**の話。今回は読み取りなので、その根拠では正当化できない。
   正当化は上の**ページングの整合性**であり、先例は `get_popular_prompt_page`（同じ理由で読み取りRPC）。
   **単純な読み取りをRPCにしてよい、という一般則にはしないこと。**
+- **ページングは offset ではなく keyset cursor にする**（レビュー#2 を受けて改訂）。
+  `get_popular_prompt_page` は `OFFSET` を使っている（`20260903100000...:81`）が、
+  **あちらが安全なのは順位が事前計算テーブルで固定されているから**で、
+  同じ理屈はこの一覧には効かない。
+  - `'newest'`: `posted_at DESC` **単独ではタイブレーカーが無く**、同時刻の行で順序が不定になる。
+    `(posted_at, id)` の keyset cursor にして、ページ境界を値で決める。
+    これで「1ページ目の表示中に新規投稿が入る」ケースでもズレない
+  - `'usage'`: 利用回数はライブに動くので、どんな cursor でも順序の固定は保証できない。
+    **現在33件・`p_limit` 上限40なので1ページで返し切り、ページングしない。**
+    ⭐ **件数が上限に近づいたら、事前計算スナップショット方式へ移すこと**
+    （`popular_prompt_rankings` と同じ発想）。これがこの設計のトリップワイヤ。
 - **Consequence**: SQL が1本増える。ただし判定は書き写さない（ADR-003）。
 
 ### ADR-003: 可否判定は既存関数を LATERAL で呼ぶだけにする
@@ -486,6 +502,10 @@ stateDiagram-v2
     **初見の人にはチップが2つしかない**ことを受け入れる。
   - **掲載対象を1件も持たない作者はチップに出さない**（押して空になるのを防ぐ）。
     そのため専用 RPC で「フォロー中 かつ 掲載対象あり」を判定する。
+  - ⭐ **その判定には一覧と同じ `p_viewer_id` 基準の除外を通すこと**（レビュー#3）。
+    `validate_derived_prompt_source` は **`post_reports` を見ておらず**（実測: 出現0回）、
+    ブロックも requester＝原作者では自分対自分になって効かない。
+    可否関数を通すだけでは「チップはあるのに中身が0件」が起きる。
 
 ---
 
@@ -505,7 +525,9 @@ flowchart LR
 **ビルド確認**: SQL のみ。アプリ側は無変更なのでビルドは通る。
 
 - [ ] `supabase/migrations/<ts>_add_user_style_page_rpc.sql`
-  - **`get_user_style_page(p_viewer_id uuid, p_limit int, p_offset int, p_sort text, p_author_id uuid)`**
+  - **`get_user_style_page(p_viewer_id uuid, p_limit int, p_sort text, p_author_id uuid,
+    p_cursor_posted_at timestamptz, p_cursor_id uuid)`**
+    — **offset ではなく keyset cursor**（レビュー#2）
   - 返す列: `post jsonb`（`to_jsonb(g)`）, `usage_count int`
   - **`get_popular_prompt_page` を参考**（`20260903100000_return_posts_from_popular_prompt_page.sql`）に、
     `user_blocks` / `post_reports` の除外条件をそのまま揃える
@@ -514,37 +536,59 @@ flowchart LR
   - 可否は `validate_derived_prompt_source(g.id, g.user_id)` を LATERAL で呼ぶ（ADR-003/004）
   - 利用数は `get_prompt_usage_counts` と**同じ数え方**にする。別の集計 SQL を書かない
   - `p_sort`:
-    - `'newest'`（既定）— `posted_at desc`
-    - `'usage'` — **`usage_count >= 3` に絞り**、`usage_count desc, posted_at desc`（ADR-007）。
+    - `'newest'`（既定）— **`posted_at DESC, id DESC`**。`p_cursor_*` が非 NULL なら
+      `(g.posted_at, g.id) < (p_cursor_posted_at, p_cursor_id)` で続きを取る。
+      **タイブレーカー無しの `posted_at DESC` 単独にしない**（同時刻の行で順序が不定になり、
+      ページ境界で重複・欠落が出る ─ ADR-002）
+    - `'usage'` — **`usage_count >= 3` に絞り**、`usage_count DESC, posted_at DESC, id DESC`（ADR-007）。
+      **ページングしない。1回で返し切る**（現在33件・`p_limit` 上限40。ADR-002 の後段）。
       `usage_count` は `get_prompt_usage_count` を LATERAL で呼んで得る。
       **`generated_images` を数える集計を自分で書かない**（所有者が書き換えられる。
       `database-design.mdc` の `prompt_usage_events` の項）
-  - `p_author_id` が非 NULL なら `g.user_id = p_author_id` で絞る（`'newest'` 固定）
+  - `p_author_id` が非 NULL なら `g.user_id = p_author_id` で絞る（`'newest'` 固定・cursor も同じ）
   - `p_limit` は 1..40 に制限し、範囲外は `RAISE EXCEPTION`
   - `SECURITY DEFINER` + `SET search_path = public, pg_temp`
   - **権限**: `REVOKE ALL FROM PUBLIC, anon, authenticated` → `GRANT EXECUTE TO service_role`
     （`persta-rpc-anon-execute-exposure` の教訓。`auth.uid()` は service_role の代わりにならない）
+  - **末尾に `NOTIFY pgrst, 'reload schema';`**（レビュー#1）。
+    DDL の event trigger による自動 reload は即時とは限らず、
+    **過去に実際に `PGRST202`（function not found）を踏んでいる**
+    （`20260730200100_add_derived_generation_rpcs.sql:649-654` の記録）。
+    これが無いと適用直後の一覧取得が fail closed で空表示になる
 - [ ] `supabase/migrations/<ts>_add_user_style_authors_rpc.sql`
   - **`get_user_style_followed_authors(p_viewer_id uuid, p_limit int)`**
   - 返す列: `author_id uuid`, `nickname text`, `avatar_url text`, `latest_posted_at timestamptz`
   - 条件: 閲覧者がフォローしている、かつ **掲載対象の原作を1件以上持つ**（ADR-011）
   - 並び: `latest_posted_at desc`（REQ-012）
-  - 可否判定は一覧と同じ関数を通す（「チップはあるのに中身が0件」を作らない）
-  - 権限は上と同じ
+  - 可否判定は一覧と同じ関数を通す
+  - ⭐ **一覧と同じ `p_viewer_id` 基準の `user_blocks` / `post_reports` 除外を、
+    EXISTS と最新日時を出す**前に**適用する**（レビュー#3）。
+    `validate_derived_prompt_source` は **`post_reports` を一切見ておらず**（実測: 出現0回）、
+    ブロック判定も requester＝原作者にすると自分対自分になって無効化される。
+    これを入れないと「フォロー中の作者の唯一の掲載投稿を閲覧者が通報した」ときに
+    **チップは出るのに押すと空**になり、REQ-011 と品質チェックの
+    「チップと中身が一致」が満たせない
+  - 権限は上と同じ。**末尾に `NOTIFY pgrst, 'reload schema';`**（レビュー#1）
 - [ ] `supabase/migrations/<ts>_add_user_styles_usage_event_types.sql`（**計測**・整合性チェック#4）
   - `style_usage_events.event_type` の CHECK に `user_styles_visit` と `user_styles_chip` を足す
   - **既存の `visit` を流用しない。** `/style` の訪問数に混ざって過去と比較できなくなる
   - **`category_key` も流用しない。** 企画別訪問カードに `/user-styles` が「企画」として現れる
     （`persta-collection-visit-guest-measurement` の設計）
-  - CHECK の差し替えだけなので既存行への影響なし
+  - CHECK の差し替えだけなので既存行への影響なし（関数を作らないので NOTIFY は不要）
 - [ ] 部分インデックス
   - `create index concurrently ... on generated_images (posted_at desc)
      where generation_type='free' and is_posted and source_post_id is null
        and pre_generation_storage_path is not null and show_before_image;`
   - 作者チップ用に `(user_id, posted_at desc)` の同条件の部分インデックスも追加
   - **`concurrently` はトランザクション外**なので、このマイグレーションは `BEGIN` で囲まない
+- [ ] **`.cursor/rules/database-design.mdc` を更新する**（レビュー#6）。
+  この台帳は関数・index・`event_type` の正本で、`style_usage_events` の許可 `event_type`
+  （`:344-349`）と主要 RPC（`:549-562`）が注釈付きで列挙されている。
+  追加する RPC 2本・部分index 2本・`event_type` 2値をここに書かないと、
+  **次の実装者が古い情報を見て同じ調査を繰り返す**
 - [ ] `supabase db push --dry-run` で差分を提示（`db diff` は Docker 必須で動かない）
 - [ ] 適用後に `scripts/check-rpc-grants.mjs` を実行（本番の `pg_proc` を見るので push 後のみ）
+- [ ] **適用直後に RPC を1回呼んで `PGRST202` が出ないことを確認する**（レビュー#1）
 
 ### Phase 2: 取得層と API
 
@@ -559,16 +603,33 @@ flowchart LR
 - [ ] `features/user-styles/lib/get-followed-authors.ts`
   - `get_user_style_followed_authors` を呼ぶだけ。fail closed（チップを出さない）
 - [ ] `app/api/user-styles/route.ts` — 2ページ目以降・チップ切替後の取り直し
-  - `limit` 1..40 / `offset` >= 0 のバリデーションは `app/api/posts/route.ts` に揃える
-  - `sort` は `newest` / `usage` のみ許可。未知の値は `newest` へ倒す
+  - `limit` 1..40 のバリデーションは `app/api/posts/route.ts` に揃える
+  - **ページングは cursor**（`cursorPostedAt` / `cursorId`）。`offset` は受け取らない（ADR-002）。
+    両方揃っているか両方無いかのみ許可し、片方だけなら 400
+  - `sort` は `newest` / `usage` のみ許可。未知の値は `newest` へ倒す。
+    **`usage` は cursor を受け付けない**（1ページで返し切るため）
   - `author` は UUID として検証する
   - **`p_viewer_id` は必ずサーバーの `getUser()` から解決する。**
     クライアントのボディ・クエリから受け取らない
   - フラグ無効かつ非運営なら 404（REQ-018。UI を閉じるだけでは足りない）
 - [ ] `app/api/user-styles/authors/route.ts` — 作者チップ（ログイン必須）
   - 未ログインは空配列を返す（エラーにしない）
+- [ ] **`app/api/user-styles/events/route.ts` — 計測の送信経路**（レビュー#4）
+  - ⭐ **クライアントから既存の経路では送れない。**
+    `recordStyleUsageEvent` は `features/style/lib/style-usage-events.ts:1` が
+    `import "server-only"` で、型 `StyleUsageEventType` にも新しい2値が無い。
+    既存のブラウザ向け route（`app/(app)/style/events/handler.ts:16-22`）は
+    許可集合が `visit/download/generate/signup_click/wardrobe_save_click` の**固定5値**で、
+    未知の値は 400 になる
+  - **`/style/events` の許可集合は広げない。** あちらは `/style` 用で役割が違う。
+    `user_styles_visit` / `user_styles_chip` **だけ**を許可する専用 route を新設する
+  - `auth_state` と `viewer_key` は**サーバーで解決**する
+    （`resolveStyleUsageViewerKey` を再利用。クライアントから受け取らない）
+  - `features/style/lib/style-usage-events.ts` の `StyleUsageEventType` に2値を追加する
+    （型を足すだけ。既存の呼び出しには影響しない）
 - [ ] ユニットテスト: 取得層の正常系・空・RPC エラー時の fail closed・
-      **Before 無しの行が混ざってきたら落とす**こと・`usage` で3回未満が出ないこと
+      **Before 無しの行が混ざってきたら落とす**こと・`usage` で3回未満が出ないこと・
+      **cursor の片方だけで 400**・**events route が未知の event_type を 400 にする**
 
 ### Phase 3: 画面（フィードとチップとトグル）
 
@@ -602,10 +663,19 @@ flowchart LR
     ページングと両立しないため）
   - 👑 選択中は専用の注記を出す（`/styles` の「直近30日の利用回数順」は流用しない ─ ADR-007）
 - [ ] **計測を入れる**（整合性チェック#4）
-  - 訪問時に `user_styles_visit` を記録（`recordStyleUsageEvent` を再利用。
-    `viewer_key` はサーバー解決、`auth_state` は authenticated/guest）
-  - チップ選択時に `user_styles_chip` を記録（どのチップかは `category_key` の形式制約
-    `^[a-z][a-z0-9_]{1,49}$` に合う値で。例: `all` / `usage` / `author`）
+  - ⭐ **測る目的は「訪問とチップ選択の把握」に限定する**（レビュー#7）。
+    **「ここから生成に至ったか」は測れないし、今回は測らない。**
+    成功生成の記録 `prompt_usage_events` の列は
+    `image_job_id / origin_post_id / origin_author_id / user_id` **だけ**で、
+    入口ページも選択チップも保存されない
+    （`20260730200100_add_derived_generation_rpcs.sql:276-288`）。
+    測れるようにするには CTA で確定した入口を改ざん不能な形で job へ引き継ぐ必要があり、
+    **`PostFeedCard` / `PromptLockedGenerationSheet` / 生成系 RPC に手を入れることになる**。
+    今回の「既存を変えない」方針と引き換えにはしない
+  - 訪問時に `user_styles_visit`、チップ選択時に `user_styles_chip` を
+    **`/api/user-styles/events` へ送る**（Phase 2。既存の `/style/events` は使えない）
+  - どのチップかは `category_key` の形式制約 `^[a-z][a-z0-9_]{1,49}$` に合う値で
+    （例: `all` / `usage` / `author`）
   - **公開と同時に入れる。** あとから足すと初期の期間が構造的に欠け、
     「0」と「未計測」が区別できなくなる（`persta-collection-kpi-instrumentation-dates`）
 - [ ] `app/styles/page.tsx` にトグルを差し込む（見出し・JSON-LD には触らない）
@@ -632,8 +702,15 @@ flowchart LR
   - `Persta.AI ORIGINAL` / `User ORIGINAL` は**全ロケール同一**にする
     （`feedQuoteStyleTitle` / `feedQuoteDerivedTitle` と同じ扱い）
 - [ ] `ItemList` JSON-LD（`/styles` と同じ形。**閲覧者に依らない公開分だけ**で組む）
-- [ ] `app/sitemap.ts` の `LOCALIZED_PUBLIC_PATHS` に `/user-styles` を追加
-  （`changeFrequencyFor` / `priorityFor` も `/styles` に揃えて `daily` / `0.8`）
+- [ ] `app/sitemap.ts` — **フラグが立っているときだけ** `/user-styles` を出す（レビュー#5）
+  - ⭐ **静的配列に足すだけでは段階公開が壊れる。**
+    `app/sitemap.ts:132-138` は `LOCALIZED_PUBLIC_PATHS` を**無条件に全ロケール展開**するので、
+    配列に入れた時点で公開前の URL が sitemap に載り、検索エンジンが 404 へ誘導される
+  - **`isUserStylesPubliclyEnabled()`（admin を含まない純粋なフラグ判定）を新設し、
+    sitemap はそれだけを見る。**`isUserStylesAvailable()` は `isAdminViewer` を含むが、
+    sitemap には閲覧者がいないので使ってはならない
+  - `changeFrequencyFor` / `priorityFor` は `/styles` に揃えて `daily` / `0.8`
+  - **フラグ true / false の両方をテストする**
 - [ ] canonical / hreflang が `/styles` と同じ形で出ることを確認
 
 ### Phase 5: 段階公開と実機
@@ -641,7 +718,9 @@ flowchart LR
 **目的**: 運営だけで確認してから開ける。
 **ビルド確認**: フラグ無効時に既存挙動が一切変わらない。
 
-- [ ] `lib/env.ts` に `isUserStylesAvailable()` を追加
+- [ ] `lib/env.ts` に **2つ**追加する
+  - `isUserStylesPubliclyEnabled()` — 純粋なフラグ判定。**sitemap はこちらだけを見る**（レビュー#5）
+  - `isUserStylesAvailable(userId)` — 上記 or `isAdminViewer`。画面と API の認可はこちら
   （`isPopularPromptsAvailable`（`lib/env.ts:483-487`）と同じ形: 公開フラグ or `isAdminViewer`）
 - [ ] **ゲートはサーバー側に置く**（`persta-free-plan-model-lock-ui-only` の教訓。
   UI を閉じるだけでは API を直接叩ける）
@@ -659,6 +738,9 @@ flowchart LR
   - [ ] 作者チップがフォロー中だけ・最新投稿順
   - [ ] 投稿を取り消した原作が一覧から消える／ブロックした相手の原作が出ない
   - [ ] **ホームのインプレッション数が増えていない**（計測が漏れていないこと）
+  - [ ] **フラグ無効のあいだ sitemap に `/user-styles` が出ない**（レビュー#5）
+  - [ ] **migration 適用直後に RPC が `PGRST202` を出さない**（レビュー#1）
+  - [ ] **フォロー中の作者の唯一の投稿を通報すると、その作者チップが消える**（レビュー#3）
   - [ ] モバイル（Web モバイル版が正本）で崩れない
 - [ ] お知らせで周知（ADR-008 / ADR-009）してから `NEXT_PUBLIC_USER_STYLES_ENABLED=true`
   - 周知に**「Before / After を表示にすると一覧に載ります」を必ず含める**。
@@ -677,6 +759,9 @@ flowchart LR
 | `features/user-styles/lib/get-followed-authors.ts` | 新規 | 作者チップの取得 |
 | `app/api/user-styles/route.ts` | 新規 | 2ページ目以降。viewer はサーバー解決 |
 | `app/api/user-styles/authors/route.ts` | 新規 | 作者チップ（ログイン必須） |
+| `app/api/user-styles/events/route.ts` | 新規 | 計測の送信経路（この2値だけ許可） |
+| `features/style/lib/style-usage-events.ts` | 修正 | `StyleUsageEventType` に2値を追加 |
+| `.cursor/rules/database-design.mdc` | 修正 | RPC 2本・部分index 2本・event_type 2値を台帳へ |
 | `app/user-styles/page.tsx` | 新規 | 一覧ページ（静的シェル＋注記＋JSON-LD＋Suspense） |
 | `app/[locale]/user-styles/page.tsx` | 新規 | re-export |
 | `features/user-styles/components/UserStylesFeedClient.tsx` | 新規 | `PostFeedCard` の1列フィード＋無限スクロール |
@@ -686,12 +771,12 @@ flowchart LR
 | `i18n/page-copy.ts` | 修正 | `userStylesCopy`（15ロケール） |
 | `messages/*.ts`（15ファイル） | 修正 | チップ・空状態・注記の文言 |
 | `app/sitemap.ts` | 修正 | `/user-styles` を追加 |
-| `lib/env.ts` | 修正 | `isUserStylesAvailable()` |
+| `lib/env.ts` | 修正 | `isUserStylesPubliclyEnabled()` と `isUserStylesAvailable()` |
 | `tests/unit/features/user-styles/*.test.ts(x)` | 新規 | 取得層・フィード・チップ |
 
 **変更しないもの**: `PostFeedCard` / `useFeedPromptActions` / `useFeedFollowStatus` /
-`PromptLockedGenerationSheet` / `SourcePromptReferenceCard` / `GenerationModeTabs` / `PostList`。
-読むだけで、手を入れない。
+`PromptLockedGenerationSheet` / `SourcePromptReferenceCard` / `GenerationModeTabs` / `PostList` /
+**`app/(app)/style/events/handler.ts`**（許可集合を広げない）。読むだけで、手を入れない。
 
 ---
 
@@ -827,6 +912,24 @@ flowchart LR
 
 → `user_styles_visit` / `user_styles_chip` を `event_type` の CHECK に追加し、
 公開と同時に記録する。既存の `visit` や `category_key` は**流用しない**（混ざると過去と比較できない）。
+
+### レビュー #638 の指摘（2026-09-18・Codex / GPT-5）
+
+Critical 0 / Warning 5 / Info 2。**7件すべて実コードで裏を取り、すべて妥当と判断して反映済み**。
+
+| # | 指摘 | 反映先 |
+|---|---|---|
+| 1 | 新規RPCに `NOTIFY pgrst, 'reload schema'` が無い | Phase 1（両 RPC の末尾）/ Phase 5 の検証 |
+| 2 | offset ページングでは重複・欠落を防げない | ADR-002 / Phase 1 / Phase 2 / REQ-007 |
+| 3 | 作者チップに閲覧者基準の通報・ブロック除外が無い | Phase 1 / ADR-011 / REQ-011 / Phase 5 の検証 |
+| 4 | 計測イベントを送れる経路と型定義が無い | Phase 2（専用 route 新設）/ Phase 3 / ファイル一覧 |
+| 5 | フラグ無効時に sitemap から外す実装が無い | Phase 4 / Phase 5 / 影響範囲 / ファイル一覧 |
+| 6 | DBスキーマ台帳の更新が対象外 | Phase 1 / ファイル一覧 |
+| 7 | visit/chip だけでは生成到達を測れない | Phase 3（**目的を「訪問とチップ選択の把握」に限定**） |
+
+#7 は「入口を job へ引き継いで測る」案もあったが、
+**`PostFeedCard` / `PromptLockedGenerationSheet` / 生成系 RPC に手を入れることになる**ため見送り、
+測定の目的そのものを狭めた。今回の「既存を変えない」方針を優先している。
 
 ### #6 補足: フラグを DB 層で強制しない理由
 
