@@ -42,7 +42,7 @@ jest.mock("@/features/user-styles/components/UserStylesFeedSkeleton", () => ({
   UserStylesFeedSkeleton: () => null,
 }));
 
-import UserStylesPage from "@/app/user-styles/page";
+import UserStylesPage from "@/app/(styles-catalog)/user-styles/page";
 import { getUser } from "@/lib/auth";
 import { isUserStylesAvailable, isUserStylesPubliclyEnabled } from "@/lib/env";
 

@@ -31,7 +31,7 @@ jest.mock("@/features/user-styles/components/UserStylesFeedSkeleton", () => ({
   UserStylesFeedSkeleton: () => null,
 }));
 
-import UserStylesPage, { generateMetadata } from "@/app/user-styles/page";
+import UserStylesPage, { generateMetadata } from "@/app/(styles-catalog)/user-styles/page";
 import { getPublicUserStyleFirstPage } from "@/features/user-styles/lib/get-public-user-style-page";
 import { isUserStylesPubliclyEnabled } from "@/lib/env";
 import { isSitemapPathEnabled } from "@/lib/sitemap-paths";

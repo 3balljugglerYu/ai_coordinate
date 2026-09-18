@@ -15,7 +15,6 @@ import {
   localizePublicPath,
   type Locale,
 } from "@/i18n/config";
-import { OriginalKindTabs } from "@/features/style-presets/components/OriginalKindTabs";
 import { UserStylesFeedClient } from "@/features/user-styles/components/UserStylesFeedClient";
 import { UserStylesFeedSkeleton } from "@/features/user-styles/components/UserStylesFeedSkeleton";
 import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
@@ -129,10 +128,6 @@ export default async function UserStylesPage({ params }: UserStylesPageProps) {
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 md:pt-8">
-        <div className="mb-5 flex justify-center md:mb-6">
-          <OriginalKindTabs active="user" locale={locale} />
-        </div>
-
         <header className="mb-6 space-y-2 md:mb-8">
           <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
             {copy.indexHeading}

@@ -1,8 +1,10 @@
 /**
  * Persta.AI ORIGINAL ⇄ User ORIGINAL のトグル。
  *
- * ここが誤ると (a) 棚の名前とフィードのカードの名前が食い違う、
- * (b) ロケールを落として言語が切り替わる、のどちらかが起きる。
+ * ⭐ このコンポーネントは **layout に置く前提**。ページの中に置くと遷移のたびに
+ * remount され、ピルがスライドせず瞬間移動する（一度それで「UX として最悪」と
+ * 指摘を受けた）。そのため現在地は props ではなく `usePathname()` から決める
+ * ── layout はどのページが下にいるかを知らないため。
  */
 
 import React from "react";
@@ -11,6 +13,11 @@ import { OriginalKindTabs } from "@/features/style-presets/components/OriginalKi
 
 jest.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
+}));
+
+const mockPathname = jest.fn<string, []>();
+jest.mock("next/navigation", () => ({
+  usePathname: () => mockPathname(),
 }));
 
 jest.mock("next/link", () => ({
@@ -25,70 +32,95 @@ jest.mock("next/link", () => ({
     children: React.ReactNode;
     prefetch?: boolean;
   }) => {
-    // prefetch は Link 固有の prop。DOM へ渡すと React が
-    // 「non-boolean attribute」を警告するので、ここで捨てる。
+    // prefetch は Link 固有の prop。DOM へ渡すと React が警告するので捨てる。
     void prefetch;
     return React.createElement("a", { href, ...props }, children);
   },
 }));
 
+beforeEach(() => jest.clearAllMocks());
+
 describe("OriginalKindTabs", () => {
   test("2つのタブを常に両方出す（片方だけアイコンにしない）", () => {
-    render(<OriginalKindTabs active="official" locale="ja" />);
+    mockPathname.mockReturnValue("/ja/styles");
+    render(<OriginalKindTabs publiclyEnabled />);
 
     expect(screen.getByText("userStyles.tabOfficial")).toBeInTheDocument();
     expect(screen.getByText("userStyles.tabUser")).toBeInTheDocument();
   });
 
   test.each([
-    ["official", "userStyles.tabOfficial"],
-    ["user", "userStyles.tabUser"],
-  ] as const)("active=%s のタブに aria-selected が立つ", (active, label) => {
-    render(<OriginalKindTabs active={active} locale="ja" />);
+    ["/ja/styles", "userStyles.tabOfficial"],
+    ["/ja/user-styles", "userStyles.tabUser"],
+  ])("%s ではそのタブに aria-selected が立つ", (pathname, label) => {
+    mockPathname.mockReturnValue(pathname);
+    render(<OriginalKindTabs publiclyEnabled />);
 
-    const tabs = screen.getAllByRole("tab");
-    const selected = tabs.filter(
-      (tab) => tab.getAttribute("aria-selected") === "true"
-    );
+    const selected = screen
+      .getAllByRole("tab")
+      .filter((tab) => tab.getAttribute("aria-selected") === "true");
     expect(selected).toHaveLength(1);
     expect(selected[0]).toHaveTextContent(label);
   });
 
   /*
     ⭐ ロケールを落とすと、押した瞬間に言語が既定へ戻る。
+    layout に置いた以上、ロケールは props ではなく pathname から拾うしかない。
   */
-  test.each(["en", "ja", "ko"] as const)(
-    "リンク先に %s のロケールを付ける",
-    (locale) => {
-      render(<OriginalKindTabs active="user" locale={locale} />);
+  test.each(["ja", "en", "ko"])("リンク先に %s のロケールを引き継ぐ", (locale) => {
+    mockPathname.mockReturnValue(`/${locale}/user-styles`);
+    render(<OriginalKindTabs publiclyEnabled />);
 
-      const hrefs = screen
-        .getAllByRole("tab")
-        .map((tab) => tab.getAttribute("href"));
-      expect(hrefs).toEqual([`/${locale}/styles`, `/${locale}/user-styles`]);
+    const hrefs = screen.getAllByRole("tab").map((tab) => tab.getAttribute("href"));
+    expect(hrefs).toEqual([`/${locale}/styles`, `/${locale}/user-styles`]);
+  });
+
+  test("ロケール無しのパスでもリンクは壊れない", () => {
+    mockPathname.mockReturnValue("/user-styles");
+    render(<OriginalKindTabs publiclyEnabled />);
+
+    const hrefs = screen.getAllByRole("tab").map((tab) => tab.getAttribute("href"));
+    expect(hrefs).toEqual(["/styles", "/user-styles"]);
+  });
+
+  /*
+    ⭐ layout 配下にはスタイル紹介ページ(/styles/[slug])も入る。
+    そこにトグルを出すと「一覧の切替」という意味が壊れる。
+  */
+  test.each(["/ja/styles/some-slug", "/ja/posts/abc", "/"])(
+    "%s では出さない",
+    (pathname) => {
+      mockPathname.mockReturnValue(pathname);
+      const { container } = render(<OriginalKindTabs publiclyEnabled />);
+
+      expect(container).toBeEmptyDOMElement();
     }
   );
 
   /*
-    ⭐ `/user-styles` が i18n/config.ts の PUBLIC_PATH_PATTERNS に無いと、
-    localizePublicPath がロケールを付けずに返す。押した瞬間に言語が既定へ戻り、
-    app/[locale]/user-styles の re-export ルートも使われなくなる。
+    ⭐ 公開前は /styles 側に出さない（存在を知らせない）。
+    /user-styles 側は、到達できている時点で権限があるので出してよい。
   */
-  test("/user-styles は公開パスとして登録されている", () => {
-    render(<OriginalKindTabs active="official" locale="ko" />);
+  test("公開前の /styles には出さない", () => {
+    mockPathname.mockReturnValue("/ja/styles");
+    const { container } = render(<OriginalKindTabs publiclyEnabled={false} />);
 
-    const hrefs = screen
-      .getAllByRole("tab")
-      .map((tab) => tab.getAttribute("href"));
-    expect(hrefs).toContain("/ko/user-styles");
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  test("公開前でも /user-styles には出す（運営が戻れるように）", () => {
+    mockPathname.mockReturnValue("/ja/user-styles");
+    render(<OriginalKindTabs publiclyEnabled={false} />);
+
+    expect(screen.getAllByRole("tab")).toHaveLength(2);
   });
 
   /*
     ⭐ タッチターゲットは最低 44x44px（project-conventions の Mobile-first ルール）。
-    /styles の既存チップ(py-1.5)を写すと足りない。
   */
   test("タッチターゲットの高さを確保する", () => {
-    render(<OriginalKindTabs active="official" locale="ja" />);
+    mockPathname.mockReturnValue("/ja/styles");
+    render(<OriginalKindTabs publiclyEnabled />);
 
     for (const tab of screen.getAllByRole("tab")) {
       expect(tab.className).toContain("min-h-[44px]");

@@ -34,6 +34,9 @@ const expectedClientNamespaces = [
   "popupBanners",
   "tutorial",
   "home",
+  // /user-styles の Client Component (OriginalKindTabs / UserStyleChips /
+  // UserStylesFeedClient) が useTranslations("userStyles") を使うため含まれる
+  "userStyles",
 ] as const;
 
 function collectLeafPaths(
