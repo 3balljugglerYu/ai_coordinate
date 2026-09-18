@@ -164,6 +164,45 @@ describe("JSON-LD", () => {
   });
 });
 
+describe("掲載条件の明示（REQ-015）", () => {
+  /** 要素ツリーからテキストを集める。 */
+  function collectText(node: unknown, out: string[] = []): string[] {
+    if (typeof node === "string") {
+      out.push(node);
+      return out;
+    }
+    if (Array.isArray(node)) {
+      for (const child of node) collectText(child, out);
+      return out;
+    }
+    const children = (node as { props?: { children?: unknown } })?.props?.children;
+    if (children) collectText(children, out);
+    return out;
+  }
+
+  /*
+    ⭐ 掲載条件を書かずに並べると、運営が見繕っているように見えて
+    「勝手に使われている」と受け取られる。並び順の根拠を書けるのは、
+    機械的な条件であるうちだけ（計画書 ADR-009 / REQ-015）。
+  */
+  test("Before / After が条件であることを画面に書く", async () => {
+    const texts = collectText(
+      await UserStylesPage({ params: Promise.resolve({ locale: "ja" }) })
+    );
+
+    expect(texts.join("\n")).toContain("Before / After");
+  });
+
+  test("ロケールごとの文言を使う（日本語を焼き込まない）", async () => {
+    const texts = collectText(
+      await UserStylesPage({ params: Promise.resolve({ locale: "en" }) })
+    ).join("\n");
+
+    expect(texts).toContain("Before / After");
+    expect(texts).not.toContain("表示しています");
+  });
+});
+
 describe("canonical と hreflang", () => {
   /*
     ⭐ `/user-styles` が PUBLIC_PATH_PATTERNS に無いと、canonical からも
