@@ -2080,4 +2080,16 @@ export const koMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "전체",
+    chipUsage: "많이 사용된",
+    usageSortNote: "사용된 횟수가 많은 순",
+    empty: "아직 작품이 없습니다.",
+    loadMore: "더 보기",
+    loadFailed: "불러오지 못했습니다.",
+    authorChipsLabel: "팔로우 중인 제작자",
+    chipRowLabel: "필터",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

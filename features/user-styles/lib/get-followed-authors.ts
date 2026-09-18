@@ -10,16 +10,12 @@
  * ── あちらは通報を一切見ておらず、requester＝原作者にするとブロック判定も
  * 無効化されるため、「チップはあるのに押すと空」が起きる（PR #638 レビュー#3）。
  */
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
+import { USER_STYLE_AUTHOR_CHIP_LIMIT } from "@/features/user-styles/lib/constants";
 import type { UserStyleAuthor } from "@/features/user-styles/types";
 
-/**
- * チップに出す作者の上限。**RPC 側の `p_limit` 制約（1..50）以下にすること。**
- *
- * チップ列は横スクロールなので多すぎても壊れないが、実データの作者は13人なので
- * 当面これで足りる。フォロー数が多い人でも横に伸びすぎないようにする意味もある。
- */
-export const USER_STYLE_AUTHOR_CHIP_LIMIT = 30;
 
 interface AuthorRow {
   author_id: string;

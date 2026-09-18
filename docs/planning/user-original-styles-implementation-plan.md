@@ -691,7 +691,18 @@ flowchart LR
     （例: `all` / `usage` / `author`）
   - **公開と同時に入れる。** あとから足すと初期の期間が構造的に欠け、
     「0」と「未計測」が区別できなくなる（`persta-collection-kpi-instrumentation-dates`）
-- [ ] `app/styles/page.tsx` にトグルを差し込む（見出し・JSON-LD には触らない）
+- [ ] ⚠️ **`i18n/config.ts` の `PUBLIC_PATH_PATTERNS` に `/user-styles` を追加する（実装時に判明）。**
+  ここに無いと `localizePublicPath` がロケールを付けずに返し、トグルを押した瞬間に
+  言語が既定へ戻る。`app/[locale]/user-styles/` の re-export とセットで必須
+- [ ] ⚠️ **定数は `features/user-styles/lib/constants.ts` に分ける（実装時に判明）。**
+  クライアントのフィードが1ページの件数を知る必要があるが、取得層は
+  `createAdminClient` 経由で `next/server` を引くのでクライアントから import できない。
+  取得層2本には `import "server-only"` を付けて再発を防ぐ
+- [ ] `app/styles/page.tsx` にトグルを差し込む
+  - ⚠️ 判定は **`isUserStylesPubliclyEnabled()`**（運営を含まない方）にする。
+    `isUserStylesAvailable` は閲覧者が要るので、呼ぶと `/styles` の静的シェルが崩れる。
+    そのため**公開前は運営にも `/styles` にトグルが出ない**（`/user-styles` を直接開く）
+- [ ] `UserStylesFeedSkeleton` — チップ列とカードの高さを本物と揃える
 - [ ] テスト
   - フィードが1列で `PostFeedCard` を使っていること
   - **掲載条件の注記が出ていること**（REQ-015）
@@ -700,12 +711,16 @@ flowchart LR
   - 作者チップが最新投稿順に並ぶこと
   - チップ切替でサーバーから取り直すこと
 
-### Phase 4: i18n と SEO
+### Phase 4: SEO（JSON-LD と sitemap）
 
-**目的**: 15ロケールで成立し、検索エンジンから入れる。
+**目的**: 検索エンジンから入れる。
 **ビルド確認**: `npm run build -- --webpack` が通る。
 
-- [ ] `i18n/page-copy.ts` に `userStylesCopy` を追加（**15ロケール**。
+> ⚠️ **i18n は Phase 3 で完了済み（実装時に前倒し）。** 文字列が無いと画面が描けないため。
+> `messages/*.ts` の `userStyles` 名前空間（15ロケール）と `i18n/page-copy.ts` の
+> `userStylesCopy`（15ロケール）は Phase 3 で入っている。ここに残るのは JSON-LD と sitemap。
+
+- [ ] ~~`i18n/page-copy.ts` に `userStylesCopy` を追加~~（Phase 3 で完了。**15ロケール**。
   `stylesCopy` と同じ形: `indexTitle` / `indexDescription` / `indexHeading` / `indexIntro`
   ＋ 掲載条件の注記 `listingNote`）
   - `indexDescription` に**「プロンプト」を必ず残す**
@@ -782,6 +797,12 @@ flowchart LR
 | `app/[locale]/user-styles/page.tsx` | 新規 | re-export |
 | `features/user-styles/components/UserStylesFeedClient.tsx` | 新規 | `PostFeedCard` の1列フィード＋無限スクロール |
 | `features/user-styles/components/UserStyleChips.tsx` | 新規 | チップ列（作者チップはマウント後） |
+| `features/user-styles/components/UserStylesFeedSkeleton.tsx` | 新規 | 一覧の骨組み（高さを本物と揃える） |
+| `features/user-styles/lib/constants.ts` | 新規 | 件数の定数（サーバー・クライアント共有） |
+| `features/user-styles/lib/track-event.ts` | 新規 | 計測の送信（クライアント） |
+| `i18n/config.ts` | 修正 | `PUBLIC_PATH_PATTERNS` に `/user-styles` |
+| `i18n/page-copy.ts` | 修正 | `userStylesCopy`（15ロケール・Phase 3 で実施） |
+| `messages/*.ts`（15ファイル） | 修正 | `userStyles` 名前空間（Phase 3 で実施） |
 | `features/style-presets/components/OriginalKindTabs.tsx` | 新規 | 2セグメントトグル |
 | `app/styles/page.tsx` | 修正 | トグルを差し込む |
 | `i18n/page-copy.ts` | 修正 | `userStylesCopy`（15ロケール） |

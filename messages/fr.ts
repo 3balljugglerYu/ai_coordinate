@@ -2086,4 +2086,16 @@ export const frMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "Tout",
+    chipUsage: "Les plus utilisés",
+    usageSortNote: "Classé par nombre d'utilisations",
+    empty: "Aucune œuvre pour l'instant.",
+    loadMore: "Voir plus",
+    loadFailed: "Échec du chargement.",
+    authorChipsLabel: "Créateurs que vous suivez",
+    chipRowLabel: "Filtrer",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

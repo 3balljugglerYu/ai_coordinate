@@ -9,23 +9,20 @@
  *   - 取得後に絞ると、20件取って数件落とした時点で hasMore が false になり穴が空く
  *   - 2文に分けると、その間の投稿取消・モデレーション・ブロック・通報で除外が効かない
  */
+import "server-only";
+
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
 import { enrichPosts } from "@/features/posts/lib/server-api";
+import {
+  USER_STYLE_PAGE_SIZE,
+} from "@/features/user-styles/lib/constants";
 import type {
   UserStyleCursor,
   UserStylePage,
   UserStyleSort,
 } from "@/features/user-styles/types";
 
-/** 1ページの既定件数。ホームのフィード（/api/posts）と揃える。 */
-export const USER_STYLE_PAGE_SIZE = 20;
-
-/**
- * 1回で取れる上限。**RPC 側の `p_limit` 制約（1..40）と同じ値にすること。**
- * 超えると RPC が例外を投げる（黙って丸めない設計）。
- */
-export const USER_STYLE_PAGE_MAX = 40;
 
 interface PageRow {
   /** 投稿行そのもの（RPC が to_jsonb で返す）。PostgREST の select=* と同じ形。 */

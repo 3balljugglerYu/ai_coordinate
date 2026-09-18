@@ -2,10 +2,8 @@
 
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
-import {
-  USER_STYLE_AUTHOR_CHIP_LIMIT,
-  getUserStyleFollowedAuthors,
-} from "@/features/user-styles/lib/get-followed-authors";
+import { getUserStyleFollowedAuthors } from "@/features/user-styles/lib/get-followed-authors";
+import { USER_STYLE_AUTHOR_CHIP_LIMIT } from "@/features/user-styles/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const mockCreateAdminClient = createAdminClient as jest.MockedFunction<
@@ -109,3 +107,4 @@ describe("getUserStyleFollowedAuthors", () => {
     spy.mockRestore();
   });
 });
+

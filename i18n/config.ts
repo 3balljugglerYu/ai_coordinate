@@ -62,6 +62,8 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/free$/,
   /^\/styles$/,
   /^\/styles\/[^/]+$/,
+  // User ORIGINAL 一覧。app/[locale]/user-styles/page.tsx の re-export が対応する。
+  /^\/user-styles$/,
 ];
 
 export function isLocale(value: string | undefined | null): value is Locale {

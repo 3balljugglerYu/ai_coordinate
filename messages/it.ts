@@ -2085,4 +2085,16 @@ export const itMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "Tutti",
+    chipUsage: "Più usati",
+    usageSortNote: "Ordinati per numero di utilizzi",
+    empty: "Ancora nessuna opera.",
+    loadMore: "Mostra altro",
+    loadFailed: "Caricamento non riuscito.",
+    authorChipsLabel: "Creator che segui",
+    chipRowLabel: "Filtra",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

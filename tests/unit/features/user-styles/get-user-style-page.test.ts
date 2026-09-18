@@ -3,11 +3,11 @@
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 jest.mock("@/features/posts/lib/server-api", () => ({ enrichPosts: jest.fn() }));
 
+import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
 import {
   USER_STYLE_PAGE_MAX,
   USER_STYLE_PAGE_SIZE,
-  getUserStylePage,
-} from "@/features/user-styles/lib/get-user-style-page";
+} from "@/features/user-styles/lib/constants";
 import { enrichPosts } from "@/features/posts/lib/server-api";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -209,3 +209,4 @@ describe("getUserStylePage", () => {
     });
   });
 });
+

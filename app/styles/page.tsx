@@ -16,7 +16,8 @@ import {
 } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
-import { getSiteUrl, isAdminViewer } from "@/lib/env";
+import { getSiteUrl, isAdminViewer, isUserStylesPubliclyEnabled } from "@/lib/env";
+import { OriginalKindTabs } from "@/features/style-presets/components/OriginalKindTabs";
 import { getUser } from "@/lib/auth";
 
 /**
@@ -119,6 +120,21 @@ export default async function StylesIndexPage({
   return (
     <main className="min-h-screen bg-gray-50">
       <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 md:pt-8">
+        {/*
+          Persta.AI ORIGINAL ⇄ User ORIGINAL のトグル。
+
+          ⭐ **`isUserStylesAvailable`(運営を含む)を使わないこと。** あちらは閲覧者が
+          要るので、ここで呼ぶとページ全体がリクエスト依存になり、このページの
+          静的シェル + 初期 HTML の JSON-LD という前提が崩れる(ファイル冒頭を参照)。
+          そのため公開前は運営にもここにトグルが出ない。運営は `/user-styles` を
+          直接開いて確認する(計画書 Phase 5 の確認手順)。
+        */}
+        {isUserStylesPubliclyEnabled() ? (
+          <div className="mb-5 flex justify-center md:mb-6">
+            <OriginalKindTabs active="official" locale={locale} />
+          </div>
+        ) : null}
+
         <header className="mb-6 space-y-2 md:mb-8">
           <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
             {copy.indexHeading}

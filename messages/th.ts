@@ -2080,4 +2080,16 @@ export const thMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "ทั้งหมด",
+    chipUsage: "ถูกใช้บ่อย",
+    usageSortNote: "เรียงตามจำนวนครั้งที่ถูกใช้",
+    empty: "ยังไม่มีผลงาน",
+    loadMore: "ดูเพิ่มเติม",
+    loadFailed: "โหลดไม่สำเร็จ",
+    authorChipsLabel: "ครีเอเตอร์ที่คุณติดตาม",
+    chipRowLabel: "ตัวกรอง",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

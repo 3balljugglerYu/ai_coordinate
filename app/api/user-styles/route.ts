@@ -4,11 +4,11 @@ import { isUserStylesAvailable } from "@/lib/env";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { userStylesRouteCopy } from "@/features/user-styles/lib/route-copy";
+import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
 import {
   USER_STYLE_PAGE_MAX,
   USER_STYLE_PAGE_SIZE,
-  getUserStylePage,
-} from "@/features/user-styles/lib/get-user-style-page";
+} from "@/features/user-styles/lib/constants";
 import type { UserStyleSort } from "@/features/user-styles/types";
 import { UUID_PATTERN } from "@/features/user-styles/lib/validation";
 

@@ -950,8 +950,212 @@ export function getSiteCopy(locale: Locale) {
   return siteCopy[locale];
 }
 
+// /user-styles(User ORIGINAL 一覧)の SEO 向けコピー。
+//
+// ⭐ indexDescription には**「プロンプト」を必ず残す**。検索でこのページに来る人は
+//    まずこの語で探す(/use-prompts に同じ判断が記録されている)。URL からは
+//    落ちているので、ここで担保する(計画書 ADR-001 の Consequence)。
+// ⭐ listingNote は**画面に必ず出す**。掲載条件を書かずに並べると、
+//    運営が見繕っているように見えて「勝手に使われている」と受け取られる。
+//    並び順の根拠を書けるのは、機械的な条件であるうちだけ(計画書 ADR-009 / REQ-015)。
+const userStylesCopy = {
+  ja: {
+    indexTitle:
+      "みんなのプロンプトで着せ替え｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "ユーザーがフリースタイルで作ったプロンプトの一覧。気に入った作品を選んで、うちの子や推しキャラを同じプロンプトで生成できます。プロンプトが非公開のままでも使えます。",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "ユーザーがフリースタイルで作った作品の棚です。気に入ったものを選んで、うちの子で生成できます。",
+    listingNote:
+      "Free Style で投稿された作品のうち、Before / After が載っているものを新しい順に表示しています。",
+  },
+  en: {
+    indexTitle:
+      "Dress up with community prompts｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Browse prompts created by Persta users in Free Style. Pick one you like and generate your own OC or favorite character with the same prompt — even when the prompt itself stays private.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "A shelf of works users made in Free Style. Pick one and generate with your own character.",
+    listingNote:
+      "Showing Free Style posts that include a Before / After, newest first.",
+  },
+  ko: {
+    indexTitle:
+      "모두의 프롬프트로 갈아입히기｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "유저가 프리스타일로 만든 프롬프트 목록. 마음에 드는 작품을 골라 내 캐릭터를 같은 프롬프트로 생성할 수 있습니다. 프롬프트가 비공개여도 사용할 수 있습니다.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "유저가 프리스타일로 만든 작품 목록입니다. 마음에 드는 것을 골라 내 캐릭터로 생성해 보세요.",
+    listingNote:
+      "Free Style로 올라온 작품 중 Before / After가 있는 것을 최신순으로 표시합니다.",
+  },
+  "zh-CN": {
+    indexTitle:
+      "用大家的提示词换装｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "用户在自由模式下创作的提示词一览。挑选喜欢的作品，用同一个提示词生成你的角色。即使提示词未公开也可以使用。",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "用户在自由模式下创作的作品集。挑一个喜欢的，为你的角色生成吧。",
+    listingNote:
+      "展示自由模式投稿中带有 Before / After 的作品，按最新排序。",
+  },
+  "zh-TW": {
+    indexTitle:
+      "用大家的提示詞換裝｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "使用者在自由模式下創作的提示詞一覽。挑選喜歡的作品，用同一個提示詞生成你的角色。即使提示詞未公開也可以使用。",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "使用者在自由模式下創作的作品集。挑一個喜歡的，為你的角色生成吧。",
+    listingNote:
+      "顯示自由模式投稿中附有 Before / After 的作品，依最新排序。",
+  },
+  es: {
+    indexTitle:
+      "Viste con prompts de la comunidad｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Explora los prompts creados por usuarios en modo libre. Elige el que te guste y genera tu propio personaje con el mismo prompt, incluso si el prompt es privado.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Una galería de obras creadas por usuarios en modo libre. Elige una y genera con tu personaje.",
+    listingNote:
+      "Mostramos publicaciones de modo libre que incluyen Before / After, de más reciente a más antigua.",
+  },
+  pt: {
+    indexTitle:
+      "Vista com prompts da comunidade｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Explore prompts criados por usuários no modo livre. Escolha o que gostar e gere seu próprio personagem com o mesmo prompt, mesmo quando o prompt é privado.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Uma galeria de obras criadas por usuários no modo livre. Escolha uma e gere com seu personagem.",
+    listingNote:
+      "Exibindo publicações do modo livre que incluem Before / After, das mais recentes para as mais antigas.",
+  },
+  fr: {
+    indexTitle:
+      "Habillez avec les prompts de la communauté｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Parcourez les prompts créés par les utilisateurs en mode libre. Choisissez celui qui vous plaît et générez votre propre personnage avec le même prompt, même s'il reste privé.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Une galerie d'œuvres créées par les utilisateurs en mode libre. Choisissez-en une et générez avec votre personnage.",
+    listingNote:
+      "Publications en mode libre comportant un Before / After, de la plus récente à la plus ancienne.",
+  },
+  de: {
+    indexTitle:
+      "Mit Community-Prompts einkleiden｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Entdecke Prompts, die Nutzer im freien Modus erstellt haben. Wähle eines aus und erzeuge deine eigene Figur mit demselben Prompt – auch wenn der Prompt privat bleibt.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Eine Sammlung von Werken, die Nutzer im freien Modus erstellt haben. Wähle eines und erzeuge mit deiner Figur.",
+    listingNote:
+      "Angezeigt werden Beiträge aus dem freien Modus mit Before / After, neueste zuerst.",
+  },
+  it: {
+    indexTitle:
+      "Vesti con i prompt della community｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Sfoglia i prompt creati dagli utenti in modalità libera. Scegli quello che ti piace e genera il tuo personaggio con lo stesso prompt, anche se il prompt resta privato.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Una raccolta di opere create dagli utenti in modalità libera. Scegline una e genera con il tuo personaggio.",
+    listingNote:
+      "Mostriamo i post in modalità libera che includono un Before / After, dal più recente.",
+  },
+  id: {
+    indexTitle:
+      "Ganti busana dengan prompt komunitas｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Jelajahi prompt yang dibuat pengguna di mode bebas. Pilih yang kamu suka dan hasilkan karaktermu dengan prompt yang sama, bahkan saat prompt-nya tetap privat.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Kumpulan karya yang dibuat pengguna di mode bebas. Pilih satu dan hasilkan dengan karaktermu.",
+    listingNote:
+      "Menampilkan kiriman mode bebas yang menyertakan Before / After, dari yang terbaru.",
+  },
+  th: {
+    indexTitle:
+      "แต่งตัวด้วยพรอมป์ของทุกคน｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "รวมพรอมป์ที่ผู้ใช้สร้างในโหมดอิสระ เลือกผลงานที่ชอบแล้วสร้างตัวละครของคุณด้วยพรอมป์เดียวกัน แม้พรอมป์จะไม่เปิดเผยก็ใช้ได้",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "ชั้นวางผลงานที่ผู้ใช้สร้างในโหมดอิสระ เลือกสักชิ้นแล้วสร้างด้วยตัวละครของคุณ",
+    listingNote:
+      "แสดงโพสต์โหมดอิสระที่มี Before / After เรียงจากใหม่ไปเก่า",
+  },
+  vi: {
+    indexTitle:
+      "Thay đồ bằng prompt của mọi người｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "Khám phá các prompt do người dùng tạo ở chế độ tự do. Chọn tác phẩm bạn thích và tạo nhân vật của bạn bằng chính prompt đó, kể cả khi prompt không công khai.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "Bộ sưu tập tác phẩm người dùng tạo ở chế độ tự do. Chọn một và tạo với nhân vật của bạn.",
+    listingNote:
+      "Hiển thị bài đăng chế độ tự do có kèm Before / After, mới nhất trước.",
+  },
+  hi: {
+    indexTitle:
+      "सबके प्रॉम्प्ट से ड्रेस-अप｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "फ्री स्टाइल में उपयोगकर्ताओं द्वारा बनाए गए प्रॉम्प्ट देखें। पसंदीदा रचना चुनें और उसी प्रॉम्प्ट से अपना किरदार बनाएं — प्रॉम्प्ट निजी हो तब भी।",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "फ्री स्टाइल में उपयोगकर्ताओं की बनाई रचनाओं का संग्रह। एक चुनें और अपने किरदार के साथ बनाएं।",
+    listingNote:
+      "फ्री स्टाइल की वे पोस्ट दिखाई जा रही हैं जिनमें Before / After है, नई से पुरानी।",
+  },
+  ar: {
+    indexTitle:
+      "بدّل الأزياء بمطالبات المجتمع｜User ORIGINAL | Persta.AI",
+    indexDescription:
+      "تصفّح المطالبات التي أنشأها المستخدمون في الوضع الحر. اختر ما يعجبك وأنشئ شخصيتك بالمطالبة نفسها، حتى لو بقيت المطالبة خاصة.",
+    indexHeading:
+      "User ORIGINAL",
+    indexIntro:
+      "مجموعة من الأعمال التي أنشأها المستخدمون في الوضع الحر. اختر واحدًا وأنشئ بشخصيتك.",
+    listingNote:
+      "نعرض منشورات الوضع الحر التي تتضمّن Before / After، من الأحدث إلى الأقدم.",
+  },
+} as const satisfies Record<
+  Locale,
+  {
+    indexTitle: string;
+    indexDescription: string;
+    indexHeading: string;
+    indexIntro: string;
+    listingNote: string;
+  }
+>;
+
 export function getStylesCopy(locale: Locale) {
   return stylesCopy[locale];
+}
+
+export function getUserStylesCopy(locale: Locale) {
+  return userStylesCopy[locale];
 }
 
 export function getHomeCopy(locale: Locale) {
