@@ -132,7 +132,8 @@ export default async function UserStylesPage({ params }: UserStylesPageProps) {
           <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
             {copy.indexHeading}
           </h1>
-          <p className="max-w-3xl text-sm text-gray-600 md:text-base">
+          {/* 文中の改行をそのまま出す（コピーが2行で設計されている） */}
+          <p className="max-w-3xl whitespace-pre-line text-sm text-gray-600 md:text-base">
             {copy.indexIntro}
           </p>
           {/*

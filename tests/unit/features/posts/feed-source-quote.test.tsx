@@ -316,4 +316,75 @@ describe("FeedSourceQuote", () => {
       );
     });
   });
+
+  /*
+    ⭐ `/user-styles` は原作だけで構成されていて投稿者＝原作者なので、
+    root のクレジットはカード上部の作者行の繰り返しになる。枠ごと落とす。
+
+    ⭐ **既定では落とさない。** ホームは root と派生が混ざるので、
+    「これは誰のプロンプトか」を毎回示す必要がある。ここが逆になると
+    ホームの全カードから出どころが消える。
+  */
+  describe("hideRootCredit", () => {
+    test("渡すと枠・見出し・アイコンが消えて行動ボタンだけになる", () => {
+      render(
+        <FeedSourceQuote
+          variant="root"
+          title="みきふく"
+          avatarUrl="https://example.test/a.webp"
+          usageCount={10}
+          hideRootCredit
+          action={<button type="button">このプロンプトで生成する</button>}
+        />
+      );
+
+      expect(screen.queryByTestId("feed-source-quote")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("feed-source-quote-heading")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("feed-source-quote-avatar")).not.toBeInTheDocument();
+      expect(screen.queryByText("みきふく")).not.toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "このプロンプトで生成する" })
+      ).toBeInTheDocument();
+    });
+
+    test("既定（渡さない）ではクレジットを出す（ホームの挙動を変えない）", () => {
+      render(
+        <FeedSourceQuote
+          variant="root"
+          title="みきふく"
+          avatarUrl="https://example.test/a.webp"
+          usageCount={10}
+          action={<button type="button">このプロンプトで生成する</button>}
+        />
+      );
+
+      expect(screen.getByTestId("feed-source-quote")).toBeInTheDocument();
+      expect(screen.getByTestId("feed-source-quote-heading")).toBeInTheDocument();
+      expect(screen.getByText("みきふく")).toBeInTheDocument();
+    });
+
+    test("行動ボタンが無ければ何も描かない（空の枠を残さない）", () => {
+      const { container } = render(
+        <FeedSourceQuote variant="root" title="みきふく" hideRootCredit />
+      );
+
+      expect(container).toBeEmptyDOMElement();
+    });
+
+    test.each(["derived", "style"] as const)(
+      "%s には影響しない（root 専用の逃がし口）",
+      (variant) => {
+        render(
+          <FeedSourceQuote
+            variant={variant}
+            title="みきふく"
+            thumbnailUrl="https://example.test/t.webp"
+            hideRootCredit
+          />
+        );
+
+        expect(screen.getByTestId("feed-source-quote")).toBeInTheDocument();
+      }
+    );
+  });
 });

@@ -247,6 +247,12 @@ export function UserStylesFeedClient({
                 prioritizeImage={index < 2}
                 // ⭐ ホーム専用の指標なので、この画面では記録しない
                 trackImpressions={false}
+                /*
+                  ⭐ この一覧は原作だけで構成されていて投稿者＝原作者なので、
+                  引用元のクレジット（枠・見出し・アイコン・名前）は
+                  カード上部の作者行の繰り返しになる。ボタンだけ残す。
+                */
+                hideRootCredit
                 isFollowingAuthor={
                   post.user?.id ? followStatuses[post.user.id] : undefined
                 }
