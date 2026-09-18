@@ -2,14 +2,24 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { getUser } from "@/lib/auth";
-import { isUserStylesAvailable, isUserStylesPubliclyEnabled } from "@/lib/env";
+import {
+  getSiteUrl,
+  isUserStylesAvailable,
+  isUserStylesPubliclyEnabled,
+} from "@/lib/env";
 import { getUserStylesCopy } from "@/i18n/page-copy";
 import { createMarketingPageMetadata } from "@/lib/metadata";
-import { DEFAULT_LOCALE, isLocale, type Locale } from "@/i18n/config";
+import {
+  DEFAULT_LOCALE,
+  isLocale,
+  localizePublicPath,
+  type Locale,
+} from "@/i18n/config";
 import { OriginalKindTabs } from "@/features/style-presets/components/OriginalKindTabs";
 import { UserStylesFeedClient } from "@/features/user-styles/components/UserStylesFeedClient";
 import { UserStylesFeedSkeleton } from "@/features/user-styles/components/UserStylesFeedSkeleton";
 import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
+import { getPublicUserStyleFirstPage } from "@/features/user-styles/lib/get-public-user-style-page";
 
 /**
  * User ORIGINAL 一覧（/user-styles）。
@@ -60,9 +70,14 @@ export async function generateMetadata({
  */
 async function UserStylesFeedSection() {
   const user = await getUser();
-  const { posts, nextCursor } = await getUserStylePage({
-    currentUserId: user?.id ?? null,
-  });
+  /*
+    未ログインは閲覧者依存の除外（双方向ブロック・本人の通報）が無いので、
+    JSON-LD と同じキャッシュを使い回せる（往復を1回に抑える）。
+    ⭐ ログイン済みには**絶対にこれを使わない**。除外の結果を他人と共有してしまう。
+  */
+  const { posts, nextCursor } = user
+    ? await getUserStylePage({ currentUserId: user.id })
+    : await getPublicUserStyleFirstPage();
 
   return (
     <UserStylesFeedClient
@@ -85,6 +100,31 @@ export default async function UserStylesPage({ params }: UserStylesPageProps) {
       notFound();
     }
   }
+
+  /*
+    ItemList: 検索エンジンに「一覧」と「投稿詳細」の関係を伝える。
+
+    ⭐ **閲覧者に依らない公開分だけ**で組む（`/styles` と同じ方針）。
+    検索エンジンに出す一覧が閲覧者によって変わらないようにするため。
+    ⭐ 作品のキャプションは入れない。ユーザーの本文を一覧ページの構造化データへ
+    複製する必要はなく、URL の関係を伝えるだけで目的は足りる。
+  */
+  const { posts: publicPosts } = await getPublicUserStyleFirstPage();
+  // HomeStructuredData と同じ方針: 環境変数未設定時も既定ドメインで JSON-LD を出す
+  const siteUrl = getSiteUrl() || "https://persta.ai";
+  const itemListJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: copy.indexHeading,
+    itemListElement: publicPosts
+      .filter((post) => !!post.id)
+      .slice(0, 50)
+      .map((post, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: `${siteUrl}${localizePublicPath(`/posts/${post.id}`, locale)}`,
+      })),
+  };
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -112,6 +152,11 @@ export default async function UserStylesPage({ params }: UserStylesPageProps) {
           <UserStylesFeedSection />
         </Suspense>
       </div>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
+      />
     </main>
   );
 }

@@ -22,6 +22,12 @@ jest.mock("@/lib/env", () => ({
 jest.mock("@/features/user-styles/lib/get-user-style-page", () => ({
   getUserStylePage: jest.fn().mockResolvedValue({ posts: [], nextCursor: null }),
 }));
+// "use cache" は next/cache のリクエスト文脈を要求するので差し替える。
+jest.mock("@/features/user-styles/lib/get-public-user-style-page", () => ({
+  getPublicUserStyleFirstPage: jest
+    .fn()
+    .mockResolvedValue({ posts: [], nextCursor: null }),
+}));
 /*
   クライアントコンポーネントは next-intl(ESM)を引くので、node 環境では素通しできない。
   ここで見たいのはゲートだけなので、描画は差し替える。

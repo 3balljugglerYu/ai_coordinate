@@ -730,6 +730,12 @@ flowchart LR
   - `Persta.AI ORIGINAL` / `User ORIGINAL` は**全ロケール同一**にする
     （`feedQuoteStyleTitle` / `feedQuoteDerivedTitle` と同じ扱い）
 - [ ] `ItemList` JSON-LD（`/styles` と同じ形。**閲覧者に依らない公開分だけ**で組む）
+  - ⚠️ **1ページ目を2回引かないこと（実装時に判明）。** JSON-LD と一覧で同じものが要る。
+    `"use cache"` の `getPublicUserStyleFirstPage()` を作り、
+    **JSON-LD と「未ログインの一覧」で共有**する。
+    ログイン済みには**絶対に使わない**（ブロック・通報の除外は閲覧者ごとに違うので、
+    キャッシュを共有すると他人の除外結果を見せることになる）
+  - 作品のキャプションは JSON-LD に入れない。URL の関係を伝えるだけで目的は足りる
 - [ ] `app/sitemap.ts` — **フラグが立っているときだけ** `/user-styles` を出す（レビュー#5）
   - ⭐ **静的配列に足すだけでは段階公開が壊れる。**
     `app/sitemap.ts:132-138` は `LOCALIZED_PUBLIC_PATHS` を**無条件に全ロケール展開**するので、
@@ -739,6 +745,8 @@ flowchart LR
     sitemap には閲覧者がいないので使ってはならない
   - `changeFrequencyFor` / `priorityFor` は `/styles` に揃えて `daily` / `0.8`
   - **フラグ true / false の両方をテストする**
+  - 実装は `lib/sitemap-paths.ts` の `isSitemapPathEnabled()` に切り出した
+    （`app/sitemap.ts` は route ファイルなので、テストしたい判定を外に出す）
 - [ ] canonical / hreflang が `/styles` と同じ形で出ることを確認
 
 ### Phase 5: 段階公開と実機
@@ -807,7 +815,9 @@ flowchart LR
 | `app/styles/page.tsx` | 修正 | トグルを差し込む |
 | `i18n/page-copy.ts` | 修正 | `userStylesCopy`（15ロケール） |
 | `messages/*.ts`（15ファイル） | 修正 | チップ・空状態・注記の文言 |
-| `app/sitemap.ts` | 修正 | `/user-styles` を追加 |
+| `app/sitemap.ts` | 修正 | `/user-styles` をフラグ付きで追加 |
+| `lib/sitemap-paths.ts` | 新規 | `isSitemapPathEnabled()`（段階公開の判定） |
+| `features/user-styles/lib/get-public-user-style-page.ts` | 新規 | 閲覧者非依存の1ページ目（`"use cache"`） |
 | `lib/env.ts` | 修正 | `isUserStylesPubliclyEnabled()` と `isUserStylesAvailable()` |
 | `tests/unit/features/user-styles/*.test.ts(x)` | 新規 | 取得層・フィード・チップ |
 
