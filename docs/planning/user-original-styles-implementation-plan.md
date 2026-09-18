@@ -575,12 +575,20 @@ flowchart LR
   - **`category_key` も流用しない。** 企画別訪問カードに `/user-styles` が「企画」として現れる
     （`persta-collection-visit-guest-measurement` の設計）
   - CHECK の差し替えだけなので既存行への影響なし（関数を作らないので NOTIFY は不要）
-- [ ] 部分インデックス
-  - `create index concurrently ... on generated_images (posted_at desc)
-     where generation_type='free' and is_posted and source_post_id is null
-       and pre_generation_storage_path is not null and show_before_image;`
-  - 作者チップ用に `(user_id, posted_at desc)` の同条件の部分インデックスも追加
-  - **`concurrently` はトランザクション外**なので、このマイグレーションは `BEGIN` で囲まない
+- [ ] 部分インデックス2本
+  - `idx_generated_images_user_style_feed` — `(posted_at DESC, id DESC)`
+  - `idx_generated_images_user_style_by_author` — `(user_id, posted_at DESC, id DESC)`
+  - 部分条件はどちらも
+    `generation_type='free' AND is_posted AND source_post_id IS NULL
+     AND pre_generation_storage_path IS NOT NULL AND show_before_image`
+  - ⚠️ **`moderation_status` は部分条件に入れない。** 後から変わる（公開停止）ので、
+    入れると状態変化のたびに索引から出入りする
+  - ⚠️ **訂正（2026-09-18・実装時）: `CONCURRENTLY` は使えない。**
+    当初この計画は「`concurrently` を使い `BEGIN` で囲まない」と書いていたが、
+    supabase CLI のパイプライン実行では `25001 (cannot be executed within a pipeline)`
+    で失敗する（`20260729170000_add_search_indexes.sql` に同じ記録がある）。
+    `generated_images` は約6,000行・17MB と小さく通常の `CREATE INDEX` で一瞬なので、
+    **`BEGIN` + `SET LOCAL lock_timeout = '5s'` で囲む**
 - [ ] **`.cursor/rules/database-design.mdc` を更新する**（レビュー#6）。
   この台帳は関数・index・`event_type` の正本で、`style_usage_events` の許可 `event_type`
   （`:344-349`）と主要 RPC（`:549-562`）が注釈付きで列挙されている。
