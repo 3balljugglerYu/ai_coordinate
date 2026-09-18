@@ -21,7 +21,15 @@ export type StyleUsageEventType =
     (応募はシェアURLの発行でもあるため、発行数の定義は変えない)。
     したがって「通常シェアのみ」= mount_shared - lottery_entry_click。
   */
-  | "lottery_entry_click";
+  | "lottery_entry_click"
+  /*
+    User ORIGINAL(/user-styles)の訪問とチップ選択。
+    ⭐ 既存の "visit" を流用しない。/style の訪問数に混ざって過去と比較できなくなる。
+    ⭐ 測る目的は「訪問とチップ選択の把握」に限定している。「ここから生成に至ったか」は
+       測れない(prompt_usage_events が入口を保存しないため。計画書 §12 レビュー#7)。
+  */
+  | "user_styles_visit"
+  | "user_styles_chip";
 // client から直接送信を許可する公開イベント。wardrobe_save_completed は
 // claim 成功時に server 側でのみ記録するため含めない。
 export type StylePublicUsageEventType =

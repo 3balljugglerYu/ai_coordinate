@@ -92,6 +92,8 @@ const envSchema = {
   // 🔥人気のプロンプトタブの一般公開フラグ(ADR-006)。'true' になるまでは運営のみ使える
   NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED:
     process.env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED,
+  // User ORIGINAL(/user-styles)の一般公開フラグ。'true' になるまでは運営のみ使える
+  NEXT_PUBLIC_USER_STYLES_ENABLED: process.env.NEXT_PUBLIC_USER_STYLES_ENABLED,
   // バックグラウンド生成進捗バー(PR #594)の一般公開フラグ。実機の完全なE2E検証が
   // 未実施のため、'true' になるまでは運営のみ使える
   NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED:
@@ -214,6 +216,8 @@ function getEnv() {
     NEXT_PUBLIC_SEARCH_ENABLED: envSchema.NEXT_PUBLIC_SEARCH_ENABLED || "",
     NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED:
       envSchema.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED || "",
+    NEXT_PUBLIC_USER_STYLES_ENABLED:
+      envSchema.NEXT_PUBLIC_USER_STYLES_ENABLED || "",
     NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED:
       envSchema.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED || "",
     NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
@@ -471,6 +475,29 @@ export function isSearchAvailable(userId: string | null | undefined): boolean {
  */
 export function isPopularPromptsPubliclyEnabled(): boolean {
   return env.NEXT_PUBLIC_POPULAR_PROMPTS_ENABLED === "true";
+}
+
+/**
+ * User ORIGINAL(/user-styles)が**一般公開**されているか。
+ *
+ * ⭐ **sitemap はこちらだけを見ること。** `isUserStylesAvailable` は運営を含むが、
+ * sitemap には閲覧者がいないので、あちらを使うと公開前の URL が
+ * 検索エンジンに載って 404 へ誘導してしまう(PR #638 レビュー#5)。
+ */
+export function isUserStylesPubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_USER_STYLES_ENABLED === "true";
+}
+
+/**
+ * この利用者が User ORIGINAL(/user-styles)を使えるか(唯一の判定)。
+ *
+ * 画面・API の認可はこれを使う。`isPopularPromptsAvailable` と同じ形にしてある。
+ * 判定関数を1本に集約しておかないと、UI を隠したのに API が開いたままになる。
+ */
+export function isUserStylesAvailable(
+  userId: string | null | undefined
+): boolean {
+  return isUserStylesPubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

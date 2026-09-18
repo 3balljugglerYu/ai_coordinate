@@ -635,9 +635,14 @@ flowchart LR
     （`resolveStyleUsageViewerKey` を再利用。クライアントから受け取らない）
   - `features/style/lib/style-usage-events.ts` の `StyleUsageEventType` に2値を追加する
     （型を足すだけ。既存の呼び出しには影響しない）
+- [ ] `features/user-styles/types.ts` / `lib/route-copy.ts`（15ロケール）/ `lib/validation.ts`
+- [ ] ⚠️ **`lib/env.ts` のフラグはここで入れる（計画では Phase 5 だったが前倒し）。**
+  route が最初から 404 を返せないと、存在した瞬間だけ公開前の一覧が読める。
+  Phase 5 に残るのは Vercel への登録と公開確認だけ
 - [ ] ユニットテスト: 取得層の正常系・空・RPC エラー時の fail closed・
-      **Before 無しの行が混ざってきたら落とす**こと・`usage` で3回未満が出ないこと・
-      **cursor の片方だけで 400**・**events route が未知の event_type を 400 にする**
+      `usage` で nextCursor を出さないこと・**cursor は RPC の生の行から作ること**・
+      **cursor の片方だけで 400**・**フラグ無効で 404（本文なし）**・
+      **閲覧者をクエリから受け取らないこと**・**events route が既存の event_type を 400 にする**
 
 ### Phase 3: 画面（フィードとチップとトグル）
 
@@ -768,6 +773,9 @@ flowchart LR
 | `app/api/user-styles/route.ts` | 新規 | 2ページ目以降。viewer はサーバー解決 |
 | `app/api/user-styles/authors/route.ts` | 新規 | 作者チップ（ログイン必須） |
 | `app/api/user-styles/events/route.ts` | 新規 | 計測の送信経路（この2値だけ許可） |
+| `features/user-styles/types.ts` | 新規 | `UserStyleSort` / `UserStyleCursor` / `UserStyleAuthor` |
+| `features/user-styles/lib/route-copy.ts` | 新規 | route のエラー文言（15ロケール） |
+| `features/user-styles/lib/validation.ts` | 新規 | UUID の形（RPC で 22P02 にしない） |
 | `features/style/lib/style-usage-events.ts` | 修正 | `StyleUsageEventType` に2値を追加 |
 | `.cursor/rules/database-design.mdc` | 修正 | RPC 2本・部分index 2本・event_type 2値を台帳へ |
 | `app/user-styles/page.tsx` | 新規 | 一覧ページ（静的シェル＋注記＋JSON-LD＋Suspense） |
