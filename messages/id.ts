@@ -2088,7 +2088,7 @@ export const idMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "Semua",
-    chipUsage: "Paling sering dipakai",
+    chipUsage: "Populer",
     usageSortNote: "Diurutkan berdasarkan jumlah pemakaian",
     empty: "Belum ada karya.",
     loadMore: "Muat lebih banyak",

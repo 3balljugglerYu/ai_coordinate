@@ -2087,7 +2087,7 @@ export const hiMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "सभी",
-    chipUsage: "सबसे ज़्यादा इस्तेमाल",
+    chipUsage: "लोकप्रिय",
     usageSortNote: "इस्तेमाल की संख्या के अनुसार",
     empty: "अभी कोई रचना नहीं है।",
     loadMore: "और देखें",

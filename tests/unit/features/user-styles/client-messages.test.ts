@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getClientMessages } from "@/i18n/messages";
 import { locales } from "@/i18n/config";
+import { getAllMessages } from "@/i18n/messages";
 
 /** /user-styles の Client Component。増えたらここに足す。 */
 const CLIENT_COMPONENTS = [
@@ -66,5 +67,29 @@ describe("client bundle の i18n 名前空間", () => {
     expect(messages).toHaveProperty("userStyles");
     expect((messages as Record<string, Record<string, string>>).userStyles)
       .toHaveProperty("chipAll");
+  });
+});
+
+/*
+  ⭐ 👑 のチップは `/styles` の「👑人気」と**同じ語彙**にする。
+  トグルで棚を切り替えたときに、同じ意味のチップが別の言葉で出ると
+  「違う絞り込みなのか」と読めてしまう。
+
+  ⭐ ただし**注記は別物**。`/styles` は「直近30日の利用回数順」、こちらは窓なしの
+  累計なので、あちらの文言を流用してはいけない（計画書 ADR-007）。
+*/
+describe("👑 チップの文言", () => {
+  test.each(locales)("%s で /styles の人気チップと一致する", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.userStyles.chipUsage).toBe(messages.style.styleChipPopular);
+  });
+
+  test.each(locales)("%s の注記は /styles のものを流用していない", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.userStyles.usageSortNote).not.toBe(
+      messages.style.stylePopularSortNote
+    );
   });
 });
