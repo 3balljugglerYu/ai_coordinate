@@ -19,6 +19,8 @@ import { GenerationProgressAvailabilityProvider } from "@/features/generation/co
 import { GenerationProgressAvailabilityLoader } from "@/features/generation/components/GenerationProgressAvailabilityLoader";
 import { GptImage25AvailabilityProvider } from "@/features/generation/components/GptImage25AvailabilityProvider";
 import { GptImage25AvailabilityLoader } from "@/features/generation/components/GptImage25AvailabilityLoader";
+import { UserStylesAvailabilityProvider } from "@/features/user-styles/components/UserStylesAvailabilityProvider";
+import { UserStylesAvailabilityLoader } from "@/features/user-styles/components/UserStylesAvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -54,6 +56,7 @@ export async function LocaleShell({
             <SearchAvailabilityProvider>
               <PopularPromptsAvailabilityProvider>
                 <GptImage25AvailabilityProvider>
+                  <UserStylesAvailabilityProvider>
                   {appContent}
                   {/*
                     検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
@@ -82,6 +85,18 @@ export async function LocaleShell({
                   <Suspense fallback={null}>
                     <GptImage25AvailabilityLoader />
                   </Suspense>
+                  {/*
+                    User ORIGINAL(/user-styles)の段階公開。運営だけ true に昇格させる。
+                    ⭐ Provider をここに置くのは、トグル(OriginalKindTabs)が
+                    (styles-catalog)/layout.tsx にあり appContent の内側だから。
+                    レイアウトで isUserStylesAvailable(閲覧者が要る)を呼ぶと
+                    /styles が丸ごとリクエスト依存になり、静的シェルと
+                    初期 HTML の JSON-LD という前提が崩れる。
+                  */}
+                  <Suspense fallback={null}>
+                    <UserStylesAvailabilityLoader />
+                  </Suspense>
+                  </UserStylesAvailabilityProvider>
                 </GptImage25AvailabilityProvider>
               </PopularPromptsAvailabilityProvider>
             </SearchAvailabilityProvider>

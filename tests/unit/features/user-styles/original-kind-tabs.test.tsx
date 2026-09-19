@@ -20,6 +20,11 @@ jest.mock("next/navigation", () => ({
   usePathname: () => mockPathname(),
 }));
 
+const mockAvailable = jest.fn<boolean, []>();
+jest.mock("@/features/user-styles/components/UserStylesAvailabilityProvider", () => ({
+  useUserStylesAvailable: () => mockAvailable(),
+}));
+
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({
@@ -38,12 +43,15 @@ jest.mock("next/link", () => ({
   },
 }));
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockAvailable.mockReturnValue(true);
+});
 
 describe("OriginalKindTabs", () => {
   test("2つのタブを常に両方出す（片方だけアイコンにしない）", () => {
     mockPathname.mockReturnValue("/ja/styles");
-    render(<OriginalKindTabs publiclyEnabled />);
+    render(<OriginalKindTabs />);
 
     expect(screen.getByText("userStyles.tabOfficial")).toBeInTheDocument();
     expect(screen.getByText("userStyles.tabUser")).toBeInTheDocument();
@@ -54,7 +62,7 @@ describe("OriginalKindTabs", () => {
     ["/ja/user-styles", "userStyles.tabUser"],
   ])("%s ではそのタブに aria-selected が立つ", (pathname, label) => {
     mockPathname.mockReturnValue(pathname);
-    render(<OriginalKindTabs publiclyEnabled />);
+    render(<OriginalKindTabs />);
 
     const selected = screen
       .getAllByRole("tab")
@@ -69,7 +77,7 @@ describe("OriginalKindTabs", () => {
   */
   test.each(["ja", "en", "ko"])("リンク先に %s のロケールを引き継ぐ", (locale) => {
     mockPathname.mockReturnValue(`/${locale}/user-styles`);
-    render(<OriginalKindTabs publiclyEnabled />);
+    render(<OriginalKindTabs />);
 
     const hrefs = screen.getAllByRole("tab").map((tab) => tab.getAttribute("href"));
     expect(hrefs).toEqual([`/${locale}/styles`, `/${locale}/user-styles`]);
@@ -77,7 +85,7 @@ describe("OriginalKindTabs", () => {
 
   test("ロケール無しのパスでもリンクは壊れない", () => {
     mockPathname.mockReturnValue("/user-styles");
-    render(<OriginalKindTabs publiclyEnabled />);
+    render(<OriginalKindTabs />);
 
     const hrefs = screen.getAllByRole("tab").map((tab) => tab.getAttribute("href"));
     expect(hrefs).toEqual(["/styles", "/user-styles"]);
@@ -91,7 +99,7 @@ describe("OriginalKindTabs", () => {
     "%s では出さない",
     (pathname) => {
       mockPathname.mockReturnValue(pathname);
-      const { container } = render(<OriginalKindTabs publiclyEnabled />);
+      const { container } = render(<OriginalKindTabs />);
 
       expect(container).toBeEmptyDOMElement();
     }
@@ -101,16 +109,22 @@ describe("OriginalKindTabs", () => {
     ⭐ 公開前は /styles 側に出さない（存在を知らせない）。
     /user-styles 側は、到達できている時点で権限があるので出してよい。
   */
-  test("公開前の /styles には出さない", () => {
+  test("運営と判定される前の /styles には出さない", () => {
     mockPathname.mockReturnValue("/ja/styles");
-    const { container } = render(<OriginalKindTabs publiclyEnabled={false} />);
+    mockAvailable.mockReturnValue(false);
+    const { container } = render(<OriginalKindTabs />);
 
     expect(container).toBeEmptyDOMElement();
   });
 
-  test("公開前でも /user-styles には出す（運営が戻れるように）", () => {
+  /*
+    ⭐ /user-styles は**到達できている時点で権限がある**ので昇格を待たない。
+    待たせると、運営にだけトグルが遅れて現れてガタつく。
+  */
+  test("/user-styles では昇格を待たずに出す", () => {
     mockPathname.mockReturnValue("/ja/user-styles");
-    render(<OriginalKindTabs publiclyEnabled={false} />);
+    mockAvailable.mockReturnValue(false);
+    render(<OriginalKindTabs />);
 
     expect(screen.getAllByRole("tab")).toHaveLength(2);
   });
@@ -120,7 +134,7 @@ describe("OriginalKindTabs", () => {
   */
   test("タッチターゲットの高さを確保する", () => {
     mockPathname.mockReturnValue("/ja/styles");
-    render(<OriginalKindTabs publiclyEnabled />);
+    render(<OriginalKindTabs />);
 
     for (const tab of screen.getAllByRole("tab")) {
       expect(tab.className).toContain("min-h-[44px]");

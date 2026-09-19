@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { stripLocalePrefix } from "@/i18n/config";
+import { useUserStylesAvailable } from "@/features/user-styles/components/UserStylesAvailabilityProvider";
 import { cn } from "@/lib/utils";
 
 /**
@@ -40,20 +41,16 @@ const TABS = [
   { path: "/user-styles", labelKey: "tabUser" },
 ] as const;
 
-export function OriginalKindTabs({
-  /**
-   * User ORIGINAL が一般公開されているか。
-   *
-   * ⭐ 公開前は `/styles` 側にトグルを出さない（存在を知らせないため）。
-   * 判定に `isUserStylesAvailable`（運営を含む方）を使うと閲覧者が必要になり、
-   * `/styles` の静的シェルが崩れるので、**純粋なフラグだけ**を受け取る。
-   * 運営は公開前も `/user-styles` を直接開いて確認する。
-   */
-  publiclyEnabled,
-}: {
-  publiclyEnabled: boolean;
-}) {
+export function OriginalKindTabs() {
   const t = useTranslations("userStyles");
+  /*
+    ⭐ 可否は context から取る。レイアウトで `isUserStylesAvailable`（閲覧者が要る）を
+    呼ぶと `/styles` が丸ごとリクエスト依存になり、静的シェルと初期 HTML の
+    JSON-LD という前提が崩れる。初期値は公開フラグで、段階公開中は
+    `UserStylesAvailabilityLoader` がサーバーで運営と判定できたときだけ
+    **後から true へ昇格**させる（🔥人気タブと同じ仕組み）。
+  */
+  const isAvailable = useUserStylesAvailable();
   const pathname = usePathname();
 
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
@@ -68,8 +65,12 @@ export function OriginalKindTabs({
   if (activeIndex === -1) {
     return null;
   }
-  // 公開前の /styles には出さない（/user-styles 側は到達できる時点で権限がある）。
-  if (!publiclyEnabled && normalizedPathname === "/styles") {
+  /*
+    公開前の `/styles` には、運営と判定できるまで出さない。
+    `/user-styles` 側は**到達できている時点で権限がある**ので、昇格を待たずに出す
+    （待つと運営にだけトグルが遅れて現れてガタつく）。
+  */
+  if (!isAvailable && normalizedPathname === "/styles") {
     return null;
   }
 
