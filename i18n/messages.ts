@@ -73,6 +73,12 @@ const clientNamespaces = [
   // Creator Looks 詳細ページの Client Component (CreatorLooksDetailClient) が
   // useTranslations("creatorLooksDetail") を使うため client bundle に含める
   "creatorLooksDetail",
+  // /user-styles の Client Component (OriginalKindTabs / UserStyleChips /
+  // UserStylesFeedClient) が useTranslations("userStyles") を使うため含める。
+  // ⭐ ここに入れ忘れると**キー名がそのまま画面に出る**（"userStyles.chipAll" 等）。
+  // 型では防げない（この配列は名前空間の部分集合を許す）ので、
+  // tests/unit/features/user-styles/client-messages.test.ts が実物で検査している。
+  "userStyles",
 ] as const satisfies readonly ClientMessageNamespace[];
 
 type NamespaceSelection<TMessages, TNamespaces extends readonly (keyof TMessages)[]> = {

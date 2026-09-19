@@ -2084,4 +2084,16 @@ export const idMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "Semua",
+    chipUsage: "Paling sering dipakai",
+    usageSortNote: "Diurutkan berdasarkan jumlah pemakaian",
+    empty: "Belum ada karya.",
+    loadMore: "Muat lebih banyak",
+    loadFailed: "Gagal memuat.",
+    authorChipsLabel: "Kreator yang kamu ikuti",
+    chipRowLabel: "Filter",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

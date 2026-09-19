@@ -2081,4 +2081,16 @@ export const enMessages = {
     appliedFromGeneratedFailedToast: "Failed to load the selected image",
     confirmAction: "Apply",
   },
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "All",
+    chipUsage: "Most used",
+    usageSortNote: "Sorted by how many times each prompt has been used",
+    empty: "No works yet.",
+    loadMore: "Load more",
+    loadFailed: "Failed to load.",
+    authorChipsLabel: "Creators you follow",
+    chipRowLabel: "Filter",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

@@ -2081,4 +2081,16 @@ export const viMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "Tất cả",
+    chipUsage: "Được dùng nhiều",
+    usageSortNote: "Sắp xếp theo số lần được dùng",
+    empty: "Chưa có tác phẩm nào.",
+    loadMore: "Xem thêm",
+    loadFailed: "Tải không thành công.",
+    authorChipsLabel: "Nhà sáng tạo bạn theo dõi",
+    chipRowLabel: "Bộ lọc",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

@@ -2083,4 +2083,16 @@ export const hiMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "सभी",
+    chipUsage: "सबसे ज़्यादा इस्तेमाल",
+    usageSortNote: "इस्तेमाल की संख्या के अनुसार",
+    empty: "अभी कोई रचना नहीं है।",
+    loadMore: "और देखें",
+    loadFailed: "लोड नहीं हो सका।",
+    authorChipsLabel: "आपके फ़ॉलो किए क्रिएटर",
+    chipRowLabel: "फ़िल्टर",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

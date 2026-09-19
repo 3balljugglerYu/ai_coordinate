@@ -84,6 +84,19 @@ interface FeedSourceQuoteProps {
   isEnded?: boolean;
   /** 行動ボタン。原作が使えるときだけ渡す。 */
   action?: React.ReactNode;
+  /**
+   * `root` のクレジット（枠・見出し・アイコン・名前・利用回数）を出さず、
+   * **行動ボタンだけ**にする。
+   *
+   * ⭐ 一覧そのものが「その人が作った原作」だけで構成されている面
+   * （`/user-styles`）用。あそこでは投稿者＝原作者なので、このクレジットは
+   * すぐ上の**作者行の繰り返し**にしかならず、枠のぶんだけカードが伸びる。
+   *
+   * ⭐ **ホーム（root と派生が混ざる）では使わないこと。** あちらは
+   * 「これは誰のプロンプトか」を毎回示す必要がある。既定は false で、
+   * 渡さなければ挙動は変わらない。
+   */
+  hideRootCredit?: boolean;
 }
 
 /**
@@ -179,6 +192,7 @@ export function FeedSourceQuote({
   usageCount = 0,
   isEnded = false,
   action,
+  hideRootCredit = false,
 }: FeedSourceQuoteProps) {
   const t = useTranslations("posts");
   const styleT = useTranslations("style");
@@ -213,6 +227,14 @@ export function FeedSourceQuote({
     アイコンの横はニックネームと利用回数の2行に絞る。
   */
   if (variant === "root") {
+    /*
+      クレジットを出さない面では、枠ごと落として行動ボタンだけにする。
+      見出しもアイコンも名前も、カード上部の作者行と同じものを繰り返すだけなので、
+      残すと「同じ人が2回出てくる」ことになる。
+    */
+    if (hideRootCredit) {
+      return action ? <>{action}</> : null;
+    }
     return (
       <div className="rounded-xl border bg-white/60 p-2.5" data-testid="feed-source-quote">
         <p

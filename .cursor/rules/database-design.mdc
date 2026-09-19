@@ -346,7 +346,7 @@ alwaysApply: false
 - 主要カラム: `user_id`, `auth_state`, `event_type`, `style_id`, `image_job_id`, `released_at`, `release_reason`, `created_at`
 - 外部キー: `user_id -> auth.users.id`（guest イベントでは `NULL`）
 - 外部キー: `image_job_id -> image_jobs.id`
-- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited/signup_click/wardrobe_save_click/wardrobe_save_completed/complete_achieved/mount_generated/mount_shared/lottery_entry_click`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
+- 備考: `auth_state` は `authenticated/guest`、`event_type` は `visit/generate_attempt/generate/download/rate_limited/signup_click/wardrobe_save_click/wardrobe_save_completed/complete_achieved/mount_generated/mount_shared/lottery_entry_click/user_styles_visit/user_styles_chip`、`release_reason` は `upload_failed/job_create_failed/queue_failed/timeout/upstream_error/no_image_generated/worker_failed/infra_error`
 - 注: `lottery_entry_click`（抽選キャンペーンの「Xで応募する」押下）は **`mount_shared` と必ず同時に記録される**（`app/api/collections/share-event/route.ts` が1リクエストで2行 INSERT する）。応募もシェアURLの発行なので、発行数の定義を変えて過去の企画と比較できなくなるのを避けている。したがって集計は常に `mount_shared >= lottery_entry_click` で、**通常シェアのみの回数 = `mount_shared` - `lottery_entry_click`**。応募だけを `mount_shared` から除いて数えないこと（20260819140000）
 - 注: 企画別に数えられる開始日は指標ごとに違う。`visit` の `category_key`/`viewer_key` と `generate` の `viewer_key` は **2026-08-17 以降**、`mount_shared` の `style_id`（categoryKey 格納）は **2026-06-13 以降**。それ以前は行があっても企画に紐づかないため、集計側は「0」ではなく「計測対象外」として扱うこと（神コレは 6/10 開始・シェア紐づけは 6/13 開始のため、シェア数が構造的に過小）
 - RLS: 公開アクセス禁止（`ALL false`）
@@ -478,6 +478,8 @@ alwaysApply: false
 - `idx_generated_images_moderation_approved_at`
 - ~~`idx_generated_images_prompt_trgm`~~（Phase 0C で削除。prompt 列は常に空）
 - `idx_generated_images_caption_trgm`（`is_posted = true` 部分索引・検索の作品説明マッチ用）
+- `idx_generated_images_user_style_feed`（`/user-styles` の一覧。`(posted_at DESC, id DESC)`。部分索引の条件は `generation_type='free' AND is_posted AND source_post_id IS NULL AND pre_generation_storage_path IS NOT NULL AND show_before_image`。**`moderation_status` は入れない**（後から変わるので索引から出入りしてしまう））
+- `idx_generated_images_user_style_by_author`（`/user-styles` の作者チップと作者絞り込み。`(user_id, posted_at DESC, id DESC)`・部分条件は上と同じ）
 - `idx_profiles_nickname_trgm`（検索の作者名マッチ用）
 - `idx_generated_images_source_post_id`（`source_post_id IS NOT NULL` 部分索引・派生投稿から原作への参照用）
 - `idx_image_jobs_user_id_status`
@@ -557,6 +559,12 @@ alwaysApply: false
   - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
 - コレクション: `get_collection_progress`, `reserve_collection_completion`, `reserve_collection_completion_for_user`, `finalize_collection_completion`, `fail_collection_completion`
   - 注: `get_collection_progress` / `reserve_collection_completion` は authenticated 用で `auth.uid()` を使う。`reserve_collection_completion_for_user` / `finalize_collection_completion` / `fail_collection_completion` は service role route 専用で、ユーザーから直接実行させない。`reserve_collection_completion_for_user` は route が session user と `isAdminViewer()` を検証した後、admin_only の台紙生成予約を行う。
+- User ORIGINAL (`/user-styles`): `get_user_style_page`, `get_user_style_followed_authors`
+  - 注: **いずれも EXECUTE は service_role のみ**（`PUBLIC` / `anon` / `authenticated` から REVOKE 済み）。`p_viewer_id` は**サーバー側の `getUser()` から解決した値のみ**を渡す。
+  - 注: `get_user_style_page(p_viewer_id, p_limit, p_sort, p_author_id, p_cursor_posted_at, p_cursor_id)` は 1 ページ分を**投稿本体ごと**（`to_jsonb(generated_images)`）返す。除外・並び・ページング・射影を**同一 SQL 文**に閉じること（`get_popular_prompt_page` と同じ理由）。**ページングは OFFSET ではなく `(posted_at, id)` の keyset cursor**（あちらは順位が事前計算テーブルで固定されているから OFFSET で安全なのであって、この一覧には同じ理屈が効かない）。`p_sort='usage'` は**利用回数3回以上を1ページで返し切る**（ライブ集計なので cursor でも順序を固定できない）。⭐ 該当件数が `p_limit` 上限 40 に近づいたら事前計算スナップショット方式へ移すこと。
+  - 注: 掲載条件（**CANONICAL LISTING PREDICATE**）は `generation_type='free' AND is_posted AND moderation_status='visible' AND source_post_id IS NULL AND user_id IS NOT NULL AND posted_at IS NOT NULL AND pre_generation_storage_path IS NOT NULL AND show_before_image`。**2つの関数に同じものが入っているので、片方だけ変えないこと**（チップと中身が食い違う）。
+  - 注: 可否は `validate_derived_prompt_source(g.id, g.user_id)` を LATERAL で呼ぶ（requester に**原作者自身**を渡して閲覧者依存の条件を外し、内在的な可否だけを取る手）。⭐ **そのため閲覧者依存の除外（双方向ブロック・本人の通報）は呼び出す側の2関数が `p_viewer_id` で行う。`validate_derived_prompt_source` は `post_reports` を一切見ていない。**
+  - 注: 利用回数は `get_prompt_usage_count` を LATERAL で呼ぶ。**`generated_images` を数え直さないこと**（`prompt_usage_events` の項を参照）。
 - 🔥人気のプロンプト: `recompute_popular_prompts`, `get_popular_prompt_page`
   - 注: **いずれも EXECUTE は service_role のみ**（`PUBLIC` / `anon` / `authenticated` から REVOKE 済み）。`recompute_popular_prompts()` は SECURITY DEFINER で、入口で `is_trusted_lineage_writer()` を検証する（`auth.uid()` では未ログインを弾けない）。呼び出しは pg_cron から。**ただしその cron は現在 `active = false`**（有効化は Phase 4。`popular_prompt_rankings` の「運用」を参照）。
   - 注: `get_popular_prompt_page(p_viewer_id, p_limit, p_offset)` は 1 ページ分を**投稿本体ごと**（`to_jsonb(generated_images)`）順位順に返す。公開条件・ブロック・通報の除外と射影を**同一 SQL 文**に閉じてあり、ID だけ返して別クエリで本体を引く形にしてはならない（2 文の間の状態変化で除外が効かなくなり、行が消えると件数が limit を下回って `hasMore` が誤る）。`p_viewer_id` は**サーバー側の `getUser()` から解決した値のみ**を渡す。

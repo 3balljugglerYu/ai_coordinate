@@ -2016,4 +2016,24 @@ export const jaMessages = {
     appliedFromGeneratedFailedToast: "画像の読み込みに失敗しました",
     confirmAction: "決定",
   },
+  /*
+    User ORIGINAL(/user-styles)。
+    ⭐ tabOfficial / tabUser は**全ロケール同一**にする。フィードの引用元カードの
+    ラベル(feedQuoteStyleTitle / feedQuoteDerivedTitle)と同じ語彙で、翻訳すると
+    「棚の名前」と「カードの名前」が食い違う。
+    ⭐ usageSortNote は /styles の stylePopularSortNote(直近30日)を流用しないこと。
+    こちらは窓なしの累計で定義が違う(計画書 ADR-007)。
+  */
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "すべて",
+    chipUsage: "よく使われている",
+    usageSortNote: "利用された回数が多い順",
+    empty: "まだ作品がありません",
+    loadMore: "もっと見る",
+    loadFailed: "読み込みに失敗しました",
+    authorChipsLabel: "フォロー中の作者",
+    chipRowLabel: "絞り込み",
+  },
 } as const;

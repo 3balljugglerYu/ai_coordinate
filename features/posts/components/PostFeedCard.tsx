@@ -66,6 +66,15 @@ interface PostFeedCardProps {
    * 表題とサムネイルは投稿の generation_metadata から読むので、ここは slug だけ。
    */
   stylePresetLink?: StylePresetLink;
+  /**
+   * 原作＝この投稿のとき、引用元ブロックのクレジットを出さず
+   * **「このプロンプトで生成する」ボタンだけ**にする。
+   *
+   * ⭐ `/user-styles` 専用。あの一覧は原作だけで構成されていて投稿者＝原作者なので、
+   * クレジットは作者行の繰り返しになる。**ホームでは渡さないこと**
+   * （root と派生が混ざるため、出どころを毎回示す必要がある）。既定は false。
+   */
+  hideRootCredit?: boolean;
 }
 
 /**
@@ -94,6 +103,7 @@ export function PostFeedCard({
   onFollowChange,
   promptAction,
   stylePresetLink,
+  hideRootCredit = false,
 }: PostFeedCardProps) {
   const t = useTranslations("posts");
   const locale = useLocale() as Locale;
@@ -414,6 +424,7 @@ export function PostFeedCard({
                   : `/posts/${encodeURIComponent(promptAction.originPostId)}`
               }
               usageCount={promptAction.usageCount}
+              hideRootCredit={hideRootCredit}
               action={
                 <FollowAndUsePromptButton
                   summary={promptAction}

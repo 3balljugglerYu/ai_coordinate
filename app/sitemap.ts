@@ -8,6 +8,7 @@ import {
   localizePublicPath,
 } from "@/i18n/config";
 import { listPublishedStylePresets } from "@/features/style-presets/lib/style-preset-repository";
+import { isSitemapPathEnabled } from "@/lib/sitemap-paths";
 
 // ロケール展開する公開ページ(PUBLIC_PATH_PATTERNS に含まれるパス)
 const LOCALIZED_PUBLIC_PATHS = [
@@ -28,6 +29,8 @@ const LOCALIZED_PUBLIC_PATHS = [
   "/thanks-sample",
   "/free-materials",
   "/catalog",
+  // 段階公開中は載せない。判定は isSitemapPathEnabled（lib/sitemap-paths.ts）。
+  "/user-styles",
 ] as const;
 
 // ロケール分割していない公開ページ(単一 URL で公開)
@@ -50,6 +53,7 @@ function changeFrequencyFor(
     path === "/coordinate" ||
     path === "/free" ||
     path === "/styles" ||
+    path === "/user-styles" ||
     path === "/catalog"
   ) {
     return "daily";
@@ -64,7 +68,7 @@ function priorityFor(path: LocalizedPath): number {
   if (path === "/") return 1;
   if (path === "/style" || path === "/coordinate" || path === "/free")
     return 0.9;
-  if (path === "/styles" || path === "/catalog") {
+  if (path === "/styles" || path === "/user-styles" || path === "/catalog") {
     return 0.8;
   }
   if (path === "/about" || path === "/credits/purchase") return 0.7;
@@ -129,8 +133,14 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
 
   // 主要な静的ページ(ロケール展開)
   // lastModified は省略（正確な更新日が不明なため。new Date() は生成のたびに変わり changeFrequency と矛盾する）
+  // ⭐ 段階公開中のパスをここで落とす。配列へ足しただけでは公開前の URL が
+  //    全ロケールぶん sitemap に載ってしまう（PR #638 レビュー#5）。
+  const localizedPaths = LOCALIZED_PUBLIC_PATHS.filter((path) =>
+    isSitemapPathEnabled(path)
+  );
+
   const staticPages: MetadataRoute.Sitemap = locales.flatMap((locale) =>
-    LOCALIZED_PUBLIC_PATHS.map((path) => ({
+    localizedPaths.map((path) => ({
       url: `${baseUrl}${localizePublicPath(path, locale)}`,
       changeFrequency: changeFrequencyFor(path),
       priority: priorityFor(path),

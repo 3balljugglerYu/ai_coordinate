@@ -2077,4 +2077,16 @@ export const zhCnMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "全部",
+    chipUsage: "常被使用",
+    usageSortNote: "按被使用次数从多到少排序",
+    empty: "还没有作品。",
+    loadMore: "查看更多",
+    loadFailed: "加载失败。",
+    authorChipsLabel: "你关注的创作者",
+    chipRowLabel: "筛选",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

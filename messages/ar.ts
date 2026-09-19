@@ -2081,4 +2081,16 @@ export const arMessages = {
     confirmAction: "Apply",
   },
 
+  userStyles: {
+    tabOfficial: "Persta.AI ORIGINAL",
+    tabUser: "User ORIGINAL",
+    chipAll: "الكل",
+    chipUsage: "الأكثر استخدامًا",
+    usageSortNote: "مرتّبة حسب عدد مرات الاستخدام",
+    empty: "لا توجد أعمال بعد.",
+    loadMore: "عرض المزيد",
+    loadFailed: "تعذّر التحميل.",
+    authorChipsLabel: "المبدعون الذين تتابعهم",
+    chipRowLabel: "تصفية",
+  },
 } satisfies DeepReplaceStrings<typeof jaMessages>;
