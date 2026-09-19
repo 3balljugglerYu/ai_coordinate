@@ -2085,7 +2085,7 @@ export const enMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "All",
-    chipUsage: "Most used",
+    chipUsage: "Popular",
     usageSortNote: "Sorted by how many times each prompt has been used",
     empty: "No works yet.",
     loadMore: "Load more",

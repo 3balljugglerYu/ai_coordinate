@@ -2089,7 +2089,7 @@ export const itMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "Tutti",
-    chipUsage: "Più usati",
+    chipUsage: "Popolari",
     usageSortNote: "Ordinati per numero di utilizzi",
     empty: "Ancora nessuna opera.",
     loadMore: "Mostra altro",
