@@ -2085,7 +2085,7 @@ export const arMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "الكل",
-    chipUsage: "الأكثر استخدامًا",
+    chipUsage: "عدد مرات الاستخدام",
     usageSortNote: "مرتّبة حسب عدد مرات الاستخدام",
     empty: "لا توجد أعمال بعد.",
     loadMore: "عرض المزيد",

@@ -2028,7 +2028,7 @@ export const jaMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "すべて",
-    chipUsage: "よく使われている",
+    chipUsage: "利用回数",
     usageSortNote: "利用された回数が多い順",
     empty: "まだ作品がありません",
     loadMore: "もっと見る",

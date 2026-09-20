@@ -16,6 +16,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { getClientMessages } from "@/i18n/messages";
 import { locales } from "@/i18n/config";
+import { getAllMessages } from "@/i18n/messages";
 
 /** /user-styles の Client Component。増えたらここに足す。 */
 const CLIENT_COMPONENTS = [
@@ -66,5 +67,46 @@ describe("client bundle の i18n 名前空間", () => {
     expect(messages).toHaveProperty("userStyles");
     expect((messages as Record<string, Record<string, string>>).userStyles)
       .toHaveProperty("chipAll");
+  });
+});
+
+/*
+  ⭐ このチップは **`/styles` の「👑人気」とは別の言葉にする**。軸が違うため。
+
+  | | 軸 | 定義 |
+  |---|---|---|
+  | `/styles` | 人気 | **直近30日**の利用回数（窓あり・流行を見せる） |
+  | `/user-styles` | 利用回数 | **窓なしの累計**（常設カタログ） |
+
+  一度「人気」に揃えたが、実データ（対象33件・最大8回・161件中71件が0回）に対して
+  「人気」は言葉が実態より大きい、という判断で**軸そのものを名乗る**形へ戻した。
+  見た目の統一のために再び同じ語へ寄せないこと。
+
+  ⭐ 注記も同じ理由で流用禁止（`/styles` は「直近30日の利用回数順」。計画書 ADR-007）。
+*/
+describe("👑 チップの文言", () => {
+  test.each(locales)(
+    "%s で /styles の人気チップとは別の言葉になっている",
+    async (locale) => {
+      const messages = await getAllMessages(locale);
+
+      expect(messages.userStyles.chipUsage).not.toBe(
+        messages.style.styleChipPopular
+      );
+    }
+  );
+
+  test.each(locales)("%s で空文字になっていない", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.userStyles.chipUsage.trim().length).toBeGreaterThan(0);
+  });
+
+  test.each(locales)("%s の注記は /styles のものを流用していない", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.userStyles.usageSortNote).not.toBe(
+      messages.style.stylePopularSortNote
+    );
   });
 });

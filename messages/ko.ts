@@ -2084,7 +2084,7 @@ export const koMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "전체",
-    chipUsage: "많이 사용된",
+    chipUsage: "사용 횟수",
     usageSortNote: "사용된 횟수가 많은 순",
     empty: "아직 작품이 없습니다.",
     loadMore: "더 보기",

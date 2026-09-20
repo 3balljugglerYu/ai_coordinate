@@ -2081,7 +2081,7 @@ export const zhTwMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "全部",
-    chipUsage: "常被使用",
+    chipUsage: "使用次數",
     usageSortNote: "依被使用次數由多到少排序",
     empty: "還沒有作品。",
     loadMore: "查看更多",

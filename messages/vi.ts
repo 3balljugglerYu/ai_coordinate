@@ -2085,7 +2085,7 @@ export const viMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "Tất cả",
-    chipUsage: "Được dùng nhiều",
+    chipUsage: "Số lần dùng",
     usageSortNote: "Sắp xếp theo số lần được dùng",
     empty: "Chưa có tác phẩm nào.",
     loadMore: "Xem thêm",
