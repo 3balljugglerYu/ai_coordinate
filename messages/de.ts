@@ -2090,7 +2090,7 @@ export const deMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "Alle",
-    chipUsage: "Beliebt",
+    chipUsage: "Verwendungen",
     usageSortNote: "Sortiert nach Anzahl der Nutzungen",
     empty: "Noch keine Werke.",
     loadMore: "Mehr anzeigen",

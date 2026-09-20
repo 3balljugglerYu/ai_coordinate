@@ -2084,7 +2084,7 @@ export const thMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "ทั้งหมด",
-    chipUsage: "ยอดนิยม",
+    chipUsage: "จำนวนครั้งที่ใช้",
     usageSortNote: "เรียงตามจำนวนครั้งที่ถูกใช้",
     empty: "ยังไม่มีผลงาน",
     loadMore: "ดูเพิ่มเติม",

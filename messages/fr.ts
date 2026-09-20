@@ -2090,7 +2090,7 @@ export const frMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     chipAll: "Tout",
-    chipUsage: "Populaires",
+    chipUsage: "Nombre d'utilisations",
     usageSortNote: "Classé par nombre d'utilisations",
     empty: "Aucune œuvre pour l'instant.",
     loadMore: "Voir plus",
