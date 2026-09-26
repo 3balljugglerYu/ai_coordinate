@@ -57,6 +57,18 @@ describe("OriginalKindTabs", () => {
     expect(screen.getByText("userStyles.tabUser")).toBeInTheDocument();
   });
 
+  test.each(["/ja/styles", "/ja/user-styles"])(
+    "%s ではタブの上にカタログのタイトル(h1)を出す",
+    (pathname) => {
+      mockPathname.mockReturnValue(pathname);
+      render(<OriginalKindTabs />);
+
+      expect(
+        screen.getByRole("heading", { level: 1, name: "userStyles.catalogTitle" }),
+      ).toBeTruthy();
+    },
+  );
+
   test.each([
     ["/ja/styles", "userStyles.tabOfficial"],
     ["/ja/user-styles", "userStyles.tabUser"],

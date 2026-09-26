@@ -22,6 +22,7 @@ const T: Record<string, string> = {
   styleBrowseSheetTitle: "スタイルをさがす",
   styleBrowseEmpty: "該当するスタイルがありません",
   styleChipAll: "すべて",
+  styleChipAllNewest: "すべて（新着順）",
   styleChipEvent: "イベント",
   styleChipFavorites: "お気に入り",
   styleChipNew: "新着",
@@ -53,6 +54,12 @@ jest.mock("next-intl", () => ({
         return `このスタイルが${values?.count}回以上利用されました`;
       return T[key] ?? key;
     },
+}));
+
+// カタログ刷新(User ORIGINAL の段階公開と連動)の可否。既定は刷新前。
+const catalogRevampMock = jest.fn(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => catalogRevampMock(),
 }));
 
 const routerPushMock = jest.fn();
@@ -131,6 +138,7 @@ describe("StylesGalleryClient", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    catalogRevampMock.mockReturnValue(false);
     getUserMock.mockResolvedValue({ data: { user: null } });
     favoritesSelectMock.mockResolvedValue({ data: [] });
     fetchMock.mockResolvedValue({ ok: true });
@@ -162,6 +170,44 @@ describe("StylesGalleryClient", () => {
     // 未ログインではお気に入りチップは出さない
     await waitFor(() => expect(getUserMock).toHaveBeenCalled());
     expect(screen.queryByRole("tab", { name: /お気に入り/ })).toBeNull();
+  });
+
+  test("刷新前_すべてはそのまま・✨新着チップを出し・チップ列は固定しない", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("fresh", { publishedDaysAgo: 1 }), preset("old")]}
+        generateCounts={{}}
+        generateTotals={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "すべて" })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "✨ 新着" })).toBeTruthy();
+    expect(screen.queryByTestId("styles-catalog-chip-bar")).toBeNull();
+  });
+
+  test("刷新後_✨すべて（新着順）にし✨新着チップを出さずチップ列を固定する", () => {
+    catalogRevampMock.mockReturnValue(true);
+    render(
+      <StylesGalleryClient
+        presets={[preset("fresh", { publishedDaysAgo: 1 }), preset("old")]}
+        generateCounts={{}}
+        generateTotals={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "✨ すべて（新着順）" })).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: /新着$/ })).toBeNull();
+    const bar = screen.getByTestId("styles-catalog-chip-bar");
+    expect(bar.className).toContain("sticky");
+    // チップ列はバーの中にある
+    expect(
+      within(bar).getByRole("tab", { name: "✨ すべて（新着順）" }),
+    ).toBeTruthy();
   });
 
   test("カード_admin設定色のカテゴリバッジを表示しcoordinateには出さない", () => {

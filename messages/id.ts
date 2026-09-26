@@ -1516,6 +1516,8 @@ export const idMessages = {
     styleBrowseEmpty: "Tidak ada gaya yang cocok",
     styleBrowseClose: "Tutup",
     styleChipAll: "Semua",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "Semua (terbaru)",
     styleChipEvent: "Acara",
     styleChipFavorites: "Favorit",
     styleFavoriteTutorialTitle: "🔖 Ketuk untuk menambahkan ke favorit!",
@@ -2087,8 +2089,10 @@ export const idMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "Semua",
-    chipUsage: "Paling sering dipakai",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "Semua (terbaru)",
+    chipUsage: "Dipakai semua orang",
     usageSortNote: "Diurutkan berdasarkan jumlah pemakaian",
     empty: "Belum ada karya.",
     loadMore: "Muat lebih banyak",

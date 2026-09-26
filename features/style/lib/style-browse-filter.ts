@@ -61,6 +61,13 @@ export interface StyleBrowseContext {
   generateCounts: Readonly<Record<string, number>>;
   now: Date;
   isAuthenticated: boolean;
+  /**
+   * 「✨新着」チップを出さない。
+   * カタログ刷新(User ORIGINAL の段階公開と連動)では「すべて」自体が
+   * 「✨すべて（新着順）」を名乗るため、別チップにすると重複する。
+   * 刷新前の表示では未指定(false)のまま。
+   */
+  hideNewChip?: boolean;
 }
 
 /**
@@ -88,6 +95,7 @@ function hasCreator(preset: StylePresetPublicSummary): boolean {
 /**
  * presets から表示すべきチップ列を導出する(空になる軸のチップは出さない)。
  * 並び: すべて → お気に入り(ログイン時) → イベント(開催中のみ) → 新着 → 人気 → クリエイター → コラボ企画 → カテゴリ別。
+ * 新着は context.hideNewChip のとき出さない。
  */
 export function deriveStyleBrowseChips(
   presets: readonly StylePresetPublicSummary[],
@@ -100,7 +108,10 @@ export function deriveStyleBrowseChips(
   if (presets.some((p) => isActiveEventCategory(p.category, context.now))) {
     chips.push({ id: "event" });
   }
-  if (presets.some((p) => isNewPreset(p, context.now))) {
+  if (
+    !context.hideNewChip &&
+    presets.some((p) => isNewPreset(p, context.now))
+  ) {
     chips.push({ id: "new" });
   }
   if (presets.some((p) => (context.generateCounts[p.id] ?? 0) > 0)) {

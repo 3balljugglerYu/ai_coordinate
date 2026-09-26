@@ -1511,6 +1511,8 @@ export const zhTwMessages = {
     styleBrowseEmpty: "沒有符合的風格",
     styleBrowseClose: "關閉",
     styleChipAll: "全部",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "全部（最新）",
     styleChipEvent: "活動",
     styleChipFavorites: "收藏",
     styleFavoriteTutorialTitle: "🔖 點擊加入收藏！",
@@ -2080,8 +2082,10 @@ export const zhTwMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "全部",
-    chipUsage: "常被使用",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "全部（最新）",
+    chipUsage: "大家都在用",
     usageSortNote: "依被使用次數由多到少排序",
     empty: "還沒有作品。",
     loadMore: "查看更多",

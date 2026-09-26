@@ -1518,6 +1518,8 @@ export const deMessages = {
     styleBrowseEmpty: "Keine Stile gefunden",
     styleBrowseClose: "Schließen",
     styleChipAll: "Alle",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "Alle (neueste zuerst)",
     styleChipEvent: "Events",
     styleChipFavorites: "Favoriten",
     styleFavoriteTutorialTitle: "🔖 Tippen und als Favorit speichern!",
@@ -2089,8 +2091,10 @@ export const deMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "Alle",
-    chipUsage: "Am häufigsten genutzt",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "Alle (neueste zuerst)",
+    chipUsage: "Nutzen alle gerade",
     usageSortNote: "Sortiert nach Anzahl der Nutzungen",
     empty: "Noch keine Werke.",
     loadMore: "Mehr anzeigen",

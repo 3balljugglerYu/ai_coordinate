@@ -1514,6 +1514,8 @@ export const viMessages = {
     styleBrowseEmpty: "Không tìm thấy phong cách",
     styleBrowseClose: "Đóng",
     styleChipAll: "Tất cả",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "Tất cả (mới nhất)",
     styleChipEvent: "Sự kiện",
     styleChipFavorites: "Yêu thích",
     styleFavoriteTutorialTitle: "🔖 Chạm để thêm vào yêu thích!",
@@ -2084,8 +2086,10 @@ export const viMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "Tất cả",
-    chipUsage: "Được dùng nhiều",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "Tất cả (mới nhất)",
+    chipUsage: "Mọi người đang dùng",
     usageSortNote: "Sắp xếp theo số lần được dùng",
     empty: "Chưa có tác phẩm nào.",
     loadMore: "Xem thêm",

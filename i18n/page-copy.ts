@@ -703,6 +703,10 @@ const postPageCopy = {
 >;
 
 // /styles(スタイル一覧)と /styles/[slug](スタイル紹介)の SEO 向けコピー。
+// ⭐ originalIntro はカタログ刷新(User ORIGINAL の段階公開と連動)後の画面上の説明。
+//    刷新後は見出しを出さない(上の「Catalog」がページの h1)。刷新前は indexHeading /
+//    indexIntro を出す(StylesCatalogHeading)。
+//    検索・SNS 向け(indexTitle / OG / JSON-LD)は indexHeading 系のまま変えない。
 // detailDescription の {title} はスタイル名で置換して使う。
 const stylesCopy = {
   ja: {
@@ -712,6 +716,8 @@ const stylesCopy = {
     indexHeading: "スタイル一覧",
     indexIntro:
       "キャラクターのイラストをワンタップで着せ替えできるAIスタイルのカタログです。",
+    originalIntro:
+      "安定して生成できるプロンプトを選んで掲載しています。",
     detailTitleSuffix: "AI着せ替えスタイル | Persta.AI",
     detailDescription:
       "「{title}」スタイルで、うちの子・推しキャラのイラストをAIが着せ替え。画像をアップロードするだけで、{title}のAIイラストをワンタップ生成できます。",
@@ -727,6 +733,8 @@ const stylesCopy = {
     indexHeading: "Style Gallery",
     indexIntro:
       "A catalog of AI styles that dress up character illustrations in one tap.",
+    originalIntro:
+      "We hand-pick prompts that generate reliably.",
     detailTitleSuffix: "AI Dress-Up Style | Persta.AI",
     detailDescription:
       "Dress up your OCs and favorite characters in the \"{title}\" style. Just upload an image and generate a {title} AI illustration in one tap.",
@@ -742,6 +750,8 @@ const stylesCopy = {
     indexHeading: "스타일 목록",
     indexIntro:
       "캐릭터 일러스트를 원탭으로 갈아입힐 수 있는 AI 스타일 카탈로그입니다.",
+    originalIntro:
+      "안정적으로 생성되는 프롬프트를 골라서 소개합니다.",
     detailTitleSuffix: "AI 옷 갈아입히기 스타일 | Persta.AI",
     detailDescription:
       "\"{title}\" 스타일로 내 캐릭터와 최애 일러스트를 AI가 갈아입혀 드립니다. 이미지를 업로드하면 {title} AI 일러스트를 원탭으로 생성할 수 있습니다.",
@@ -757,6 +767,8 @@ const stylesCopy = {
     indexHeading: "风格一览",
     indexIntro:
       "一键为角色插画换装的 AI 风格目录。",
+    originalIntro:
+      "我们精选了能够稳定生成的提示词。",
     detailTitleSuffix: "AI 换装风格 | Persta.AI",
     detailDescription:
       "用「{title}」风格为你的自设角色和本命角色换装。只需上传图片，即可一键生成 {title} 的 AI 插画。",
@@ -772,6 +784,8 @@ const stylesCopy = {
     indexHeading: "風格一覽",
     indexIntro:
       "一鍵為角色插畫換裝的 AI 風格目錄。",
+    originalIntro:
+      "我們精選了能夠穩定生成的提示詞。",
     detailTitleSuffix: "AI 換裝風格 | Persta.AI",
     detailDescription:
       "用「{title}」風格為你的自創角色和本命角色換裝。只需上傳圖片，即可一鍵生成 {title} 的 AI 插畫。",
@@ -787,6 +801,8 @@ const stylesCopy = {
     indexHeading: "Galería de estilos",
     indexIntro:
       "Un catálogo de estilos de IA para vestir ilustraciones de personajes con un toque.",
+    originalIntro:
+      "Seleccionamos prompts que generan resultados de forma estable.",
     detailTitleSuffix: "Estilo de cambio de ropa con IA | Persta.AI",
     detailDescription:
       "Viste a tus OCs y personajes favoritos con el estilo «{title}». Solo sube una imagen y genera una ilustración de IA de {title} con un toque.",
@@ -802,6 +818,8 @@ const stylesCopy = {
     indexHeading: "Galeria de estilos",
     indexIntro:
       "Um catálogo de estilos de IA para vestir ilustrações de personagens com um toque.",
+    originalIntro:
+      "Selecionamos prompts que geram resultados de forma estável.",
     detailTitleSuffix: "Estilo de troca de roupa com IA | Persta.AI",
     detailDescription:
       "Vista seus OCs e personagens favoritos com o estilo \"{title}\". Basta enviar uma imagem para gerar uma ilustração de IA de {title} com um toque.",
@@ -817,6 +835,8 @@ const stylesCopy = {
     indexHeading: "Galerie de styles",
     indexIntro:
       "Un catalogue de styles IA pour habiller des illustrations de personnages en un geste.",
+    originalIntro:
+      "Nous sélectionnons des prompts qui génèrent des résultats de façon fiable.",
     detailTitleSuffix: "Style d'habillage IA | Persta.AI",
     detailDescription:
       "Habillez vos OC et personnages préférés avec le style « {title} ». Téléversez une image et générez une illustration IA {title} en un geste.",
@@ -832,6 +852,8 @@ const stylesCopy = {
     indexHeading: "Stil-Galerie",
     indexIntro:
       "Ein Katalog von KI-Stilen, mit denen du Charakter-Illustrationen mit einem Tipp umziehst.",
+    originalIntro:
+      "Wir wählen Prompts aus, die zuverlässig gute Ergebnisse liefern.",
     detailTitleSuffix: "KI-Anzieh-Stil | Persta.AI",
     detailDescription:
       "Ziehe deine OCs und Lieblingscharaktere im Stil „{title}“ um. Einfach ein Bild hochladen und mit einem Tipp eine {title}-KI-Illustration erstellen.",
@@ -847,6 +869,8 @@ const stylesCopy = {
     indexHeading: "Galleria di stili",
     indexIntro:
       "Un catalogo di stili IA per vestire illustrazioni di personaggi con un tocco.",
+    originalIntro:
+      "Selezioniamo prompt che generano risultati in modo affidabile.",
     detailTitleSuffix: "Stile di cambio d'abito con IA | Persta.AI",
     detailDescription:
       "Vesti i tuoi OC e personaggi preferiti con lo stile «{title}». Carica un'immagine e genera un'illustrazione IA di {title} con un tocco.",
@@ -862,6 +886,8 @@ const stylesCopy = {
     indexHeading: "Galeri gaya",
     indexIntro:
       "Katalog gaya AI untuk mendandani ilustrasi karakter dalam sekali tap.",
+    originalIntro:
+      "Kami memilih prompt yang bisa menghasilkan gambar dengan stabil.",
     detailTitleSuffix: "Gaya ganti baju AI | Persta.AI",
     detailDescription:
       "Dandani OC dan karakter favoritmu dengan gaya \"{title}\". Cukup unggah gambar dan buat ilustrasi AI {title} dalam sekali tap.",
@@ -877,6 +903,8 @@ const stylesCopy = {
     indexHeading: "แกลเลอรีสไตล์",
     indexIntro:
       "แคตตาล็อกสไตล์ AI สำหรับเปลี่ยนชุดให้ภาพประกอบตัวละครในแตะเดียว",
+    originalIntro:
+      "เราคัดเลือกพรอมต์ที่สร้างภาพได้อย่างเสถียรมาให้",
     detailTitleSuffix: "สไตล์ AI เปลี่ยนชุด | Persta.AI",
     detailDescription:
       "เปลี่ยนชุดให้ OC และตัวละครที่คุณรักด้วยสไตล์ \"{title}\" แค่อัปโหลดภาพก็สร้างภาพประกอบ AI สไตล์ {title} ได้ในแตะเดียว",
@@ -892,6 +920,8 @@ const stylesCopy = {
     indexHeading: "Thư viện phong cách",
     indexIntro:
       "Danh mục các phong cách AI giúp thay trang phục cho ảnh minh họa nhân vật chỉ với một chạm.",
+    originalIntro:
+      "Chúng tôi chọn lọc những prompt tạo ảnh ổn định.",
     detailTitleSuffix: "Phong cách thay trang phục AI | Persta.AI",
     detailDescription:
       "Thay trang phục cho OC và nhân vật yêu thích với phong cách \"{title}\". Chỉ cần tải ảnh lên là tạo được ảnh minh họa AI {title} trong một chạm.",
@@ -907,6 +937,8 @@ const stylesCopy = {
     indexHeading: "स्टाइल गैलरी",
     indexIntro:
       "एक टैप में किरदारों के इलस्ट्रेशन को नए आउटफ़िट पहनाने वाले AI स्टाइल का कैटलॉग।",
+    originalIntro:
+      "हम ऐसे प्रॉम्प्ट चुनकर रखते हैं जो भरोसेमंद तरीके से जनरेट होते हैं।",
     detailTitleSuffix: "AI ड्रेस-अप स्टाइल | Persta.AI",
     detailDescription:
       "\"{title}\" स्टाइल में अपने OC और पसंदीदा किरदारों को सजाएँ। बस एक इमेज अपलोड करें और एक टैप में {title} की AI इलस्ट्रेशन बनाएँ।",
@@ -922,6 +954,8 @@ const stylesCopy = {
     indexHeading: "معرض الأنماط",
     indexIntro:
       "دليل أنماط الذكاء الاصطناعي لتبديل ملابس رسوم الشخصيات بلمسة واحدة.",
+    originalIntro:
+      "نختار لكم مطالبات تُنتج نتائج ثابتة.",
     detailTitleSuffix: "نمط تبديل الملابس بالذكاء الاصطناعي | Persta.AI",
     detailDescription:
       "بدّل ملابس شخصياتك الأصلية وشخصياتك المفضلة بنمط «{title}». ما عليك سوى رفع صورة لتوليد رسم بالذكاء الاصطناعي بنمط {title} بلمسة واحدة.",
@@ -937,6 +971,7 @@ const stylesCopy = {
     indexDescription: string;
     indexHeading: string;
     indexIntro: string;
+    originalIntro: string;
     detailTitleSuffix: string;
     detailDescription: string;
     cta: string;

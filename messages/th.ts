@@ -1513,6 +1513,8 @@ export const thMessages = {
     styleBrowseEmpty: "ไม่พบสไตล์ที่ตรงกัน",
     styleBrowseClose: "ปิด",
     styleChipAll: "ทั้งหมด",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "ทั้งหมด (ใหม่ล่าสุด)",
     styleChipEvent: "อีเวนต์",
     styleChipFavorites: "รายการโปรด",
     styleFavoriteTutorialTitle: "🔖 แตะเพื่อเพิ่มในรายการโปรด!",
@@ -2083,8 +2085,10 @@ export const thMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "ทั้งหมด",
-    chipUsage: "ถูกใช้บ่อย",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "ทั้งหมด (ใหม่ล่าสุด)",
+    chipUsage: "ใคร ๆ ก็ใช้",
     usageSortNote: "เรียงตามจำนวนครั้งที่ถูกใช้",
     empty: "ยังไม่มีผลงาน",
     loadMore: "ดูเพิ่มเติม",

@@ -24,6 +24,7 @@ import { usageCountBucket } from "@/features/posts/lib/constants";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { resolveStylePresetProvider } from "@/features/style-presets/lib/schema";
 import {
   deriveStyleBrowseChips,
@@ -203,9 +204,17 @@ export function StyleBrowseSheet({
     };
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // カタログ刷新(段階公開中は運営のみ)では「すべて」が新着順を名乗り、✨新着チップは出さない。
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const context = useMemo(
-    () => ({ favoriteIds, generateCounts, now, isAuthenticated }),
-    [favoriteIds, generateCounts, now, isAuthenticated],
+    () => ({
+      favoriteIds,
+      generateCounts,
+      now,
+      isAuthenticated,
+      hideNewChip: isCatalogRevamp,
+    }),
+    [favoriteIds, generateCounts, now, isAuthenticated, isCatalogRevamp],
   );
   const chips = useMemo(
     () => deriveStyleBrowseChips(presets, context),
@@ -233,7 +242,7 @@ export function StyleBrowseSheet({
     }
     switch (chip.id) {
       case "all":
-        return t("styleChipAll");
+        return isCatalogRevamp ? t("styleChipAllNewest") : t("styleChipAll");
       case "event":
         return t("styleChipEvent");
       case "favorites":
@@ -290,7 +299,13 @@ export function StyleBrowseSheet({
           >
             {chips.map((chip) => {
               const active = chip.id === activeChip;
-              const emoji = CHIP_EMOJI[chip.id];
+              // 刷新後の「すべて」は旧「✨新着」の役割を引き継ぐので ✨ を付ける
+              const emoji =
+                chip.id === "all"
+                  ? isCatalogRevamp
+                    ? "✨"
+                    : undefined
+                  : CHIP_EMOJI[chip.id];
               return (
                 <button
                   key={chip.id}

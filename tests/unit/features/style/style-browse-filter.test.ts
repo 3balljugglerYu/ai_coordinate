@@ -115,6 +115,24 @@ describe("deriveStyleBrowseChips", () => {
     );
   });
 
+  test("hideNewChip: 新着のプリセットがあっても✨新着チップを出さない(カタログ刷新)", () => {
+    const presets = [
+      preset("new1", { createdDaysAgo: 3 }),
+      preset("pop1", { categoryKey: "taste", categoryNameJa: "テイスト" }),
+    ];
+    const chips = deriveStyleBrowseChips(
+      presets,
+      context({ generateCounts: { pop1: 5 }, hideNewChip: true }),
+    );
+    expect(chips.map((c) => c.id)).toEqual([
+      "all",
+      "favorites",
+      "popular",
+      "category:taste",
+      "category:coordinate",
+    ]);
+  });
+
   test("カテゴリが1種類だけならカテゴリチップは出さない(すべてと同義)", () => {
     const chips = deriveStyleBrowseChips(
       [preset("a"), preset("b")],

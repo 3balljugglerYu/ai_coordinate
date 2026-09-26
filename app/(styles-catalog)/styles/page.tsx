@@ -4,6 +4,8 @@ import { cacheLife, cacheTag } from "next/cache";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { StylesGalleryClient } from "@/features/style-presets/components/StylesGalleryClient";
 import { StylesGallerySkeleton } from "@/features/style-presets/components/StylesGallerySkeleton";
+import { StylesCatalogHeading } from "@/features/style-presets/components/StylesCatalogHeading";
+import { StylesCatalogMain } from "@/features/style-presets/components/StylesCatalogMain";
 import {
   getStyleGenerateCounts,
   getStyleGenerateTotalCounts,
@@ -117,26 +119,21 @@ export default async function StylesIndexPage({
   };
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 md:pt-8">
-        <header className="mb-6 space-y-2 md:mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {copy.indexHeading}
-          </h1>
-          <p className="max-w-3xl text-sm text-gray-600 md:text-base">
-            {copy.indexIntro}
-          </p>
-        </header>
+    <StylesCatalogMain>
+      <StylesCatalogHeading
+        heading={copy.indexHeading}
+        intro={copy.indexIntro}
+        originalIntro={copy.originalIntro}
+      />
 
-        <Suspense fallback={<StylesGallerySkeleton />}>
-          <StylesGallerySection locale={locale} />
-        </Suspense>
-      </div>
+      <Suspense fallback={<StylesGallerySkeleton />}>
+        <StylesGallerySection locale={locale} />
+      </Suspense>
 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
       />
-    </main>
+    </StylesCatalogMain>
   );
 }

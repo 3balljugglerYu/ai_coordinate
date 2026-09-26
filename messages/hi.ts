@@ -1515,6 +1515,8 @@ export const hiMessages = {
     styleBrowseEmpty: "कोई स्टाइल नहीं मिली",
     styleBrowseClose: "बंद करें",
     styleChipAll: "सभी",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "सभी (नए पहले)",
     styleChipEvent: "इवेंट",
     styleChipFavorites: "पसंदीदा",
     styleFavoriteTutorialTitle: "🔖 टैप करके पसंदीदा में जोड़ें!",
@@ -2086,8 +2088,10 @@ export const hiMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "सभी",
-    chipUsage: "सबसे ज़्यादा इस्तेमाल",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "सभी (नए पहले)",
+    chipUsage: "सब इस्तेमाल कर रहे हैं",
     usageSortNote: "इस्तेमाल की संख्या के अनुसार",
     empty: "अभी कोई रचना नहीं है।",
     loadMore: "और देखें",
