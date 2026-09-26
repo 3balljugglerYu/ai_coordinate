@@ -1513,6 +1513,8 @@ export const koMessages = {
     styleBrowseEmpty: "해당하는 스타일이 없습니다",
     styleBrowseClose: "닫기",
     styleChipAll: "전체",
+    // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
+    styleChipAllNewest: "전체 (최신순)",
     styleChipEvent: "이벤트",
     styleChipFavorites: "즐겨찾기",
     styleFavoriteTutorialTitle: "🔖 탭해서 즐겨찾기에 추가!",
@@ -2083,8 +2085,10 @@ export const koMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    chipAll: "전체",
-    chipUsage: "많이 사용된",
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    catalogTitle: "Catalog",
+    chipAll: "전체 (최신순)",
+    chipUsage: "모두가 쓰는 중",
     usageSortNote: "사용된 횟수가 많은 순",
     empty: "아직 작품이 없습니다.",
     loadMore: "더 보기",

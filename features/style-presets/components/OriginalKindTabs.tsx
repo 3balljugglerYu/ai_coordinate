@@ -77,7 +77,17 @@ export function OriginalKindTabs() {
   const labels = TABS.map((tab) => t(tab.labelKey));
 
   return (
-    <div className="border-b border-pink-100/70 bg-white/80 backdrop-blur-sm">
+    // 下の区切り線は付けない(見出し・チップの帯と同じ白の面で続けて見せる)
+    <div className="bg-white/80 backdrop-blur-sm">
+      {/*
+        カタログ全体のタイトル。ホームの "Persta | ペルスタ"(HomeHeading)と同じ見た目。
+        上余白はどの画面幅でも少しだけ(pt-3 = 12px)。
+        タブの下の各ページの見出しは出さず、このタイトルをページの h1 にする。
+        ⭐ タブと同じ表示条件(公開前は運営のみ・/styles/[slug] では出さない)に乗せるため、ここに置く。
+      */}
+      <div className="mx-auto max-w-6xl px-4 pt-3">
+        <h1 className="text-3xl font-bold">{t("catalogTitle")}</h1>
+      </div>
       <div className="mx-auto flex max-w-6xl justify-center px-4 py-3">
         <div
           role="tablist"

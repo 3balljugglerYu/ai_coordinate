@@ -19,6 +19,7 @@ import { UserStylesFeedClient } from "@/features/user-styles/components/UserStyl
 import { UserStylesFeedSkeleton } from "@/features/user-styles/components/UserStylesFeedSkeleton";
 import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
 import { getPublicUserStyleFirstPage } from "@/features/user-styles/lib/get-public-user-style-page";
+import { StylesCatalogMain } from "@/features/style-presets/components/StylesCatalogMain";
 
 /**
  * User ORIGINAL 一覧（/user-styles）。
@@ -126,33 +127,35 @@ export default async function UserStylesPage({ params }: UserStylesPageProps) {
   };
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      <div className="mx-auto max-w-6xl px-4 pb-12 pt-6 md:pt-8">
-        <header className="mb-6 space-y-2 md:mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 md:text-3xl">
-            {copy.indexHeading}
-          </h1>
-          {/* 文中の改行をそのまま出す（コピーが2行で設計されている） */}
-          <p className="max-w-3xl whitespace-pre-line text-sm text-gray-600 md:text-base">
-            {copy.indexIntro}
-          </p>
-          {/*
-            ⭐ 掲載条件を必ず出す（REQ-015）。書かずに並べると、運営が見繕って
-            いるように見えて「勝手に使われている」と受け取られる。並び順の根拠を
-            書けるのは、機械的な条件であるうちだけ。
-          */}
-          <p className="max-w-3xl text-xs text-gray-500">{copy.listingNote}</p>
-        </header>
+    <StylesCatalogMain>
+      {/*
+        見出し(User ORIGINAL)は出さない。ページの h1 は上の「Catalog」(OriginalKindTabs)で、
+        タブの「User ORIGINAL」が見出しの役を兼ねる。/styles の刷新後と同じ形。
+        ⭐ 判定なしで外してよい: このページに来られる時点で刷新後の表示になる
+        (公開前は運営だけ、公開後は全員が User ORIGINAL を見られる)。
+        indexHeading は OG / JSON-LD で使い続ける。
+      */}
+      <header className="mb-6 space-y-2 md:mb-8">
+        {/* 文中の改行をそのまま出す（コピーが2行で設計されている） */}
+        <p className="max-w-3xl whitespace-pre-line text-sm text-gray-600 md:text-base">
+          {copy.indexIntro}
+        </p>
+        {/*
+          ⭐ 掲載条件を必ず出す（REQ-015）。書かずに並べると、運営が見繕って
+          いるように見えて「勝手に使われている」と受け取られる。並び順の根拠を
+          書けるのは、機械的な条件であるうちだけ。
+        */}
+        <p className="max-w-3xl text-xs text-gray-500">{copy.listingNote}</p>
+      </header>
 
-        <Suspense fallback={<UserStylesFeedSkeleton />}>
-          <UserStylesFeedSection />
-        </Suspense>
-      </div>
+      <Suspense fallback={<UserStylesFeedSkeleton />}>
+        <UserStylesFeedSection />
+      </Suspense>
 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(itemListJsonLd) }}
       />
-    </main>
+    </StylesCatalogMain>
   );
 }

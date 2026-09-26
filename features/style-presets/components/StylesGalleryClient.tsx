@@ -7,8 +7,10 @@ import { Bookmark } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { useStyleFavorites } from "@/features/style/hooks/useStyleFavorites";
 import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { PublicStyleCard } from "@/features/style-presets/components/PublicStyleCard";
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
+import { StylesCatalogChipBar } from "@/features/style-presets/components/StylesCatalogChipBar";
 import {
   deriveStyleBrowseChips,
   filterStyleBrowsePresets,
@@ -120,14 +122,17 @@ export function StylesGalleryClient({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // カタログ刷新(段階公開中は運営のみ)では「すべて」が新着順を名乗り、✨新着チップは出さない。
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const context = useMemo(
     () => ({
       favoriteIds: favoritePresetIds,
       generateCounts,
       now: new Date(nowIso),
       isAuthenticated,
+      hideNewChip: isCatalogRevamp,
     }),
-    [favoritePresetIds, generateCounts, nowIso, isAuthenticated]
+    [favoritePresetIds, generateCounts, nowIso, isAuthenticated, isCatalogRevamp]
   );
   const chips = useMemo(
     () => deriveStyleBrowseChips(presets, context),
@@ -139,7 +144,11 @@ export function StylesGalleryClient({
     setScrollEl: setChipRowEl,
     trackRef: chipIndicatorTrackRef,
     thumbRef: chipIndicatorThumbRef,
-  } = useHorizontalScrollIndicator({ remeasureKey: chips });
+  } = useHorizontalScrollIndicator({
+    remeasureKey: chips,
+    // 刷新後は、チップがはみ出さないときスクロールバーの空白を詰める
+    collapseWhenFits: isCatalogRevamp,
+  });
   const filtered = useMemo(
     () => filterStyleBrowsePresets(presets, activeChip, context),
     [presets, activeChip, context]
@@ -154,7 +163,7 @@ export function StylesGalleryClient({
     }
     switch (chip.id) {
       case "all":
-        return t("styleChipAll");
+        return isCatalogRevamp ? t("styleChipAllNewest") : t("styleChipAll");
       case "event":
         return t("styleChipEvent");
       case "favorites":
@@ -174,50 +183,62 @@ export function StylesGalleryClient({
 
   return (
     <div>
-      {/* チップ列(横スクロール)。探索シートと同じ操作感。 */}
-      <div
-        ref={setChipRowEl}
-        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-        role="tablist"
-        aria-label={t("styleBrowseSheetTitle")}
-      >
-        {chips.map((chip) => {
-          const active = chip.id === activeChip;
-          const emoji = CHIP_EMOJI[chip.id];
-          return (
-            <button
-              key={chip.id}
-              type="button"
-              role="tab"
-              aria-selected={active}
-              onClick={() => setActiveChip(chip.id)}
-              className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                active
-                  ? "border-primary bg-primary text-white"
-                  : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {emoji ? `${emoji} ` : ""}
-              {chipLabel(chip)}
-            </button>
-          );
-        })}
-      </div>
-      {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
-          ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
-          位置・表示はフックが DOM を直接更新する(visibility 初期値 hidden、
-          はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
-      <div
-        ref={chipIndicatorTrackRef}
-        className="relative mx-1 mb-4 mt-1 h-1 overflow-hidden rounded-full bg-slate-100"
-        style={{ visibility: "hidden" }}
-        aria-hidden="true"
-      >
+      {/* チップ列(横スクロール)。探索シートと同じ操作感。
+          刷新後はスクロールで上端に固定する(StylesCatalogChipBar)。 */}
+      <StylesCatalogChipBar>
         <div
-          ref={chipIndicatorThumbRef}
-          className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
-        />
-      </div>
+          ref={setChipRowEl}
+          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label={t("styleBrowseSheetTitle")}
+        >
+          {chips.map((chip) => {
+            const active = chip.id === activeChip;
+            // 刷新後の「すべて」は旧「✨新着」の役割を引き継ぐので ✨ を付ける
+            const emoji =
+              chip.id === "all"
+                ? isCatalogRevamp
+                  ? "✨"
+                  : undefined
+                : CHIP_EMOJI[chip.id];
+            return (
+              <button
+                key={chip.id}
+                type="button"
+                role="tab"
+                aria-selected={active}
+                onClick={() => setActiveChip(chip.id)}
+                className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                  active
+                    ? "border-primary bg-primary text-white"
+                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {emoji ? `${emoji} ` : ""}
+                {chipLabel(chip)}
+              </button>
+            );
+          })}
+        </div>
+        {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
+            ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
+            位置・表示はフックが DOM を直接更新する(visibility 初期値 hidden、
+            はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
+        <div
+          ref={chipIndicatorTrackRef}
+          // 刷新後はバーが上下の余白と下の余白(mb-4)を持つので、ここはバー内の間隔だけにする
+          className={`relative mx-1 mt-1 h-1 overflow-hidden rounded-full bg-slate-100 ${
+            isCatalogRevamp ? "mb-1" : "mb-4"
+          }`}
+          style={{ visibility: "hidden" }}
+          aria-hidden="true"
+        >
+          <div
+            ref={chipIndicatorThumbRef}
+            className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
+          />
+        </div>
+      </StylesCatalogChipBar>
 
       {/* 人気/新着の基準を明示する(探索シートと同じ注記)。 */}
       {activeChip === "popular" && filtered.length > 0 ? (

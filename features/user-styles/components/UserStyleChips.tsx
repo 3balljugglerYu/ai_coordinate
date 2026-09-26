@@ -5,6 +5,8 @@ import { useTranslations } from "next-intl";
 import { User } from "lucide-react";
 import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
 import { cn } from "@/lib/utils";
+import { StylesCatalogChipBar } from "@/features/style-presets/components/StylesCatalogChipBar";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { UserStyleAuthor } from "@/features/user-styles/types";
 
 /** 選択中のチップ。作者チップは `author:<id>` で表す。 */
@@ -16,12 +18,12 @@ const AUTHOR_AVATAR_PX = 20;
 /**
  * /user-styles のチップ列。
  *
- * `すべて` / `👑よく使われている` は最初から描き、**作者チップだけをマウント後に足す**。
+ * `✨すべて（新着順）` / `💖みんなが使ってる` は最初から描き、**作者チップだけをマウント後に足す**。
  * 作者チップは閲覧者依存（フォロー中の人しか出ない）なので、静的シェルに載せられない
  * ── `/styles` のお気に入りチップと同じ作法。
  *
- * ⭐ **高さを先に確保する。** あとから足す列で行の高さが変わると、
- * 一覧全体が下へずれる（レイアウトシフト）。
+ * ⭐ 作者チップはアバター(20px)を文字の行の高さに合わせてあるので、
+ * 後から足しても列の高さは変わらない（一覧全体が下へずれない）。
  */
 export function UserStyleChips({
   active,
@@ -34,30 +36,38 @@ export function UserStyleChips({
   onSelect: (chip: UserStyleChipId) => void;
 }) {
   const t = useTranslations("userStyles");
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const {
     setScrollEl,
     trackRef,
     thumbRef,
-  } = useHorizontalScrollIndicator({ remeasureKey: authors });
+  } = useHorizontalScrollIndicator({
+    remeasureKey: authors,
+    // 刷新後は、チップがはみ出さないときスクロールバーの空白を詰める
+    collapseWhenFits: isCatalogRevamp,
+  });
 
   return (
-    <div>
+    // 刷新後はスクロールで上端に固定する(/styles と同じ部品)
+    <StylesCatalogChipBar>
       <div
         ref={setScrollEl}
         role="tablist"
         aria-label={t("chipRowLabel")}
-        // ⭐ min-h でチップ列の高さを先に確保する(作者チップの後乗せでずらさない)
-        className="-mx-1 flex min-h-[52px] items-center gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        // /styles のチップ列(StylesGalleryClient)と同じ寸法にそろえる。
+        // 作者チップ(アバター 20px)も文字だけのチップと同じ高さなので、後乗せで列の高さは変わらない
+        className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <Chip
           active={active === "all"}
           onClick={() => onSelect("all")}
-          label={t("chipAll")}
+          label={`✨ ${t("chipAll")}`}
         />
         <Chip
           active={active === "usage"}
           onClick={() => onSelect("usage")}
-          label={`👑 ${t("chipUsage")}`}
+          // ⭐ 👑 は /styles の「人気」(直近30日)が使っている。こちらは累計なので別の絵文字にする
+          label={`💖 ${t("chipUsage")}`}
         />
         {authors.map((author) => {
           const id: UserStyleChipId = `author:${author.authorId}`;
@@ -77,7 +87,11 @@ export function UserStyleChips({
           高さは常に確保してレイアウトシフトを防ぐ。 */}
       <div
         ref={trackRef}
-        className="relative mx-1 mb-4 mt-1 h-1 overflow-hidden rounded-full bg-slate-100"
+        // 刷新後はバーが上下の余白と下の余白(mb-4)を持つので、ここはバー内の間隔だけにする
+        className={cn(
+          "relative mx-1 mt-1 h-1 overflow-hidden rounded-full bg-slate-100",
+          isCatalogRevamp ? "mb-1" : "mb-4"
+        )}
         style={{ visibility: "hidden" }}
         aria-hidden="true"
       >
@@ -86,7 +100,7 @@ export function UserStyleChips({
           className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
         />
       </div>
-    </div>
+    </StylesCatalogChipBar>
   );
 }
 
@@ -108,9 +122,8 @@ function Chip({
       aria-selected={active}
       onClick={onClick}
       className={cn(
-        // ⭐ タッチターゲット 44x44px（project-conventions の Mobile-first ルール）。
-        // /styles のチップ(px-3.5 py-1.5)は高さが足りないので、写さずに広げている。
-        "flex min-h-[44px] shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 text-sm font-medium transition-colors",
+        // /styles のチップ(px-3.5 py-1.5)と同じ大きさにそろえる(2つのタブで見た目を統一する)。
+        "flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400",
         active
           ? "border-primary bg-primary text-white"

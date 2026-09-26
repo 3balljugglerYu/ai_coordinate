@@ -27,6 +27,7 @@ import { useSearchAvailable } from "@/features/posts/components/SearchAvailabili
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 import { resolveStickyBackUrl } from "@/features/posts/lib/sticky-back-url";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import {
   hasInAppHistory,
   recordInAppNavigation,
@@ -121,6 +122,19 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   }, [normalizedPathname]);
   const shouldUseHistoryBack =
     canGoBackInHistory && backUrl === localizedHomePath;
+
+  /*
+    スタイルカタログ(/styles・/user-styles)では、lg 未満でヘッダーを固定せず
+    ページと一緒に流す(カタログ刷新。段階公開中は運営のみ)。上へ戻しても
+    再表示はせず、ページの先頭まで戻ったときだけ見える。上端にはカタログの
+    チップ列(StylesCatalogChipBar)が固定される。
+    ⭐ lg 以上は固定のまま。左サイドバー(AppSidebar)がヘッダーの直下から
+    始まる固定配置なので、ヘッダーだけ流すとサイドバーの上に隙間が空く。
+  */
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const isStylesCatalogPage =
+    normalizedPathname === "/styles" || normalizedPathname === "/user-styles";
+  const shouldScrollAwayOnMobile = isCatalogRevamp && isStylesCatalogPage;
 
   useEffect(() => {
     const updateHeaderHeight = () => {
@@ -363,9 +377,12 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
 
   // モバイル版: マイページではヘッダーを非表示（ハンバーガーメニューでナビゲーション）
   const isMyPage = pathname === "/my-page";
-  const headerClassName = isMyPage
+  const headerBaseClassName = isMyPage
     ? "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm hidden lg:flex"
     : "sticky top-0 z-50 w-full bg-white/95 backdrop-blur-sm border-b shadow-sm";
+  const headerClassName = shouldScrollAwayOnMobile
+    ? `${headerBaseClassName} max-lg:static`
+    : headerBaseClassName;
 
   return (
     <header ref={headerRef} className={headerClassName}>

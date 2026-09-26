@@ -17,15 +17,23 @@ import { useEffect, useRef, useState } from "react";
  *     実際に DOM が生えたときに effect を再実行させるため callback ref を使う)
  *  - トラックは `style={{ visibility: "hidden" }}` で初期化し、はみ出しがある
  *    ときだけこのフックが表示に切り替える
+ *  - 既定では、はみ出しが無いときも高さは確保する(出し入れで下の一覧がずれない)。
+ *    `collapseWhenFits` を指定すると場所ごと消して詰める(ずれは許容する)
  */
 export function useHorizontalScrollIndicator({
   active = true,
   remeasureKey,
+  collapseWhenFits = false,
 }: {
   /** false の間は監視しない(シートが閉じている間など)。 */
   active?: boolean;
   /** チップ構成の変化など、再計測をトリガーしたい値。 */
   remeasureKey?: unknown;
+  /**
+   * はみ出しが無いとき、トラックを場所ごと消す(display: none)。
+   * チップが少ないと、見えないバーの分の空白がチップの下に残るため。
+   */
+  collapseWhenFits?: boolean;
 } = {}) {
   const [scrollEl, setScrollEl] = useState<HTMLDivElement | null>(null);
   const trackRef = useRef<HTMLDivElement | null>(null);
@@ -47,8 +55,11 @@ export function useHorizontalScrollIndicator({
       const { scrollWidth, clientWidth, scrollLeft } = el;
       if (scrollWidth <= clientWidth + 1) {
         track.style.visibility = "hidden";
+        track.style.display = collapseWhenFits ? "none" : "";
         return;
       }
+      // 幅を測る前に表示へ戻す(display: none のままだと clientWidth が 0 になる)
+      track.style.display = "";
       track.style.visibility = "visible";
       const trackWidth = track.clientWidth;
       const thumbWidth = trackWidth * (clientWidth / scrollWidth);
@@ -77,7 +88,7 @@ export function useHorizontalScrollIndicator({
       el.removeEventListener("scroll", schedule);
       resizeObserver.disconnect();
     };
-  }, [active, scrollEl, remeasureKey]);
+  }, [active, scrollEl, remeasureKey, collapseWhenFits]);
 
   return { setScrollEl, trackRef, thumbRef };
 }
