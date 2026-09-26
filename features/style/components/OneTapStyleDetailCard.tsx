@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
+import { PresetUnlockNoticeDialog } from "@/features/style/components/PresetUnlockNoticeDialog";
 import type { OneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
@@ -46,7 +47,6 @@ export function OneTapStyleDetailCard({
     「押し間違えた？」という状態になる。押した場所で理由を返す。
   */
   const isLocked = unlockState?.status === "locked";
-  const lockedReason = unlockState?.status === "locked" ? unlockState.reason : null;
   // 未ログインは「開放されていない」ではなく「ログインすれば使える」
   const needsLogin = unlockState?.status === "login_required";
   /*
@@ -109,48 +109,14 @@ export function OneTapStyleDetailCard({
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={isLockedNoticeOpen} onOpenChange={setIsLockedNoticeOpen}>
-        <AlertDialogContent data-testid="one-tap-style-locked-notice">
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isEnded
-                ? t("presetEndedTitle")
-                : needsLogin
-                  ? t("presetLoginRequiredTitle")
-                  : t("presetLockedTitle")}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isEnded
-                ? t("presetEndedDescription")
-                : needsLogin
-                  ? t("presetLoginRequiredDescription")
-                  : lockedReason === "prerequisite"
-                    ? t("presetLockedPrerequisiteDescription")
-                    : t("presetLockedSequentialDescription")}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            {needsLogin ? (
-              <>
-                <AlertDialogCancel>{t("presetLockedAction")}</AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={() =>
-                    router.push(
-                      `/login?redirect=${encodeURIComponent(pathname ?? "/")}`
-                    )
-                  }
-                >
-                  {t("presetLoginRequiredAction")}
-                </AlertDialogAction>
-              </>
-            ) : (
-              <AlertDialogAction onClick={() => setIsLockedNoticeOpen(false)}>
-                {t("presetLockedAction")}
-              </AlertDialogAction>
-            )}
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <PresetUnlockNoticeDialog
+        open={isLockedNoticeOpen}
+        onOpenChange={setIsLockedNoticeOpen}
+        unlockState={unlockState}
+        onLogin={() =>
+          router.push(`/login?redirect=${encodeURIComponent(pathname ?? "/")}`)
+        }
+      />
     </div>
   );
 }

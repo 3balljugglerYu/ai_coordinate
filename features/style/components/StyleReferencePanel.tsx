@@ -21,6 +21,7 @@ export function StyleReferencePanel({
   aspectRatio,
   tooltip,
   providerOverlay,
+  showLoadingSkeleton = false,
 }: {
   label: string;
   imageSrc: string;
@@ -38,10 +39,25 @@ export function StyleReferencePanel({
    * タップで提供者プロフィールへ遷移できる。
    */
   providerOverlay?: React.ReactNode;
+  /**
+   * 画像が読み込まれるまでスケルトンを出す。
+   * /styles の生成シートは開いた瞬間にこの画像を読み始めるため、空の枠のあとに
+   * 画像がパッと出る。/style ではページと一緒に読み込まれるので出さない(既定 false)。
+   */
+  showLoadingSkeleton?: boolean;
 }) {
   const t = useTranslations("style");
   const [zoomed, setZoomed] = useState(false);
   const ar = aspectRatio ?? 1;
+  /*
+    読み込みが終わった画像の src。src が変わったら自動的に「未読み込み」に戻る
+    (effect で状態を戻さずに済む)。next/image はキャッシュ済みで読み込み完了の画像
+    でも onLoad を呼ぶので、スケルトンが残り続けることはない。
+    読み込みに失敗したときもスケルトンは外す(点滅したまま残さない)。
+  */
+  const [settledImageSrc, setSettledImageSrc] = useState<string | null>(null);
+  const isImageSettled = settledImageSrc === imageSrc;
+  const isShowingSkeleton = showLoadingSkeleton && !isImageSettled;
 
   return (
     <div className={className ?? "space-y-3"}>
@@ -73,10 +89,33 @@ export function StyleReferencePanel({
               alt=""
               fill
               sizes="(max-width: 768px) 100vw, 50vw"
-              className="object-cover"
+              className={
+                showLoadingSkeleton
+                  ? `object-cover transition-opacity duration-200 ${
+                      isShowingSkeleton ? "opacity-0" : "opacity-100"
+                    }`
+                  : "object-cover"
+              }
               priority
+              onLoad={
+                showLoadingSkeleton
+                  ? () => setSettledImageSrc(imageSrc)
+                  : undefined
+              }
+              onError={
+                showLoadingSkeleton
+                  ? () => setSettledImageSrc(imageSrc)
+                  : undefined
+              }
             />
           </button>
+          {isShowingSkeleton ? (
+            <div
+              data-testid="style-reference-skeleton"
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 z-[1] animate-pulse bg-slate-200"
+            />
+          ) : null}
           {/* タップで拡大できる合図。四隅で唯一どの要素とも競合しない左上に置く
               (右上=ツールチップ / 左下=提供者クレジットは長い名前で max-w-[180px] まで伸びる)。 */}
           <span

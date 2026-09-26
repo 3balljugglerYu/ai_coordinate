@@ -1519,6 +1519,9 @@ export const esMessages = {
     styleChipAll: "Todo",
     // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
     styleChipAllNewest: "Todo (más recientes)",
+    // /styles の生成シートの読み上げ用タイトル・説明(画面には出さない)
+    generationSheetTitle: "Generar con este estilo",
+    generationSheetDescription: "Genera a partir de la imagen de tu personaje con el estilo elegido.",
     styleChipEvent: "Eventos",
     styleChipFavorites: "Favoritos",
     styleFavoriteTutorialTitle: "🔖 ¡Toca para guardar en favoritos!",
@@ -2090,7 +2093,7 @@ export const esMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "Todos (más recientes)",
     chipUsage: "Los que todos usan",
