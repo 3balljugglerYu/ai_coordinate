@@ -90,6 +90,8 @@ async function StylesGallerySection({ locale }: { locale: Locale }) {
       generateTotals={generateTotals}
       nowIso={nowIso}
       locale={locale}
+      // 生成シートのポーズ指定欄(運営のみの先行公開)。サーバーでも検証される
+      canUseFreePose={isAdminViewerFlag}
     />
   );
 }

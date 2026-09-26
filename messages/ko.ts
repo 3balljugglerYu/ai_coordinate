@@ -1515,6 +1515,9 @@ export const koMessages = {
     styleChipAll: "전체",
     // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
     styleChipAllNewest: "전체 (최신순)",
+    // /styles の生成シートの読み上げ用タイトル・説明(画面には出さない)
+    generationSheetTitle: "이 스타일로 생성하기",
+    generationSheetDescription: "선택한 스타일로 캐릭터 이미지에서 생성합니다.",
     styleChipEvent: "이벤트",
     styleChipFavorites: "즐겨찾기",
     styleFavoriteTutorialTitle: "🔖 탭해서 즐겨찾기에 추가!",
@@ -2085,7 +2088,7 @@ export const koMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "전체 (최신순)",
     chipUsage: "모두가 쓰는 중",

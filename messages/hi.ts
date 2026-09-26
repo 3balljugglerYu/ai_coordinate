@@ -1517,6 +1517,9 @@ export const hiMessages = {
     styleChipAll: "सभी",
     // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
     styleChipAllNewest: "सभी (नए पहले)",
+    // /styles の生成シートの読み上げ用タイトル・説明(画面には出さない)
+    generationSheetTitle: "इस स्टाइल से बनाएँ",
+    generationSheetDescription: "चुनी गई स्टाइल से अपने किरदार की इमेज से बनाएँ।",
     styleChipEvent: "इवेंट",
     styleChipFavorites: "पसंदीदा",
     styleFavoriteTutorialTitle: "🔖 टैप करके पसंदीदा में जोड़ें!",
@@ -2088,7 +2091,7 @@ export const hiMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "सभी (नए पहले)",
     chipUsage: "सब इस्तेमाल कर रहे हैं",

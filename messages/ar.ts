@@ -1516,6 +1516,9 @@ export const arMessages = {
     styleChipAll: "الكل",
     // カタログ刷新(User ORIGINAL の段階公開と連動)後の「すべて」。先頭に ✨ が付く
     styleChipAllNewest: "الكل (الأحدث)",
+    // /styles の生成シートの読み上げ用タイトル・説明(画面には出さない)
+    generationSheetTitle: "أنشئ بهذا النمط",
+    generationSheetDescription: "أنشئ من صورة شخصيتك بالنمط الذي اخترته.",
     styleChipEvent: "الفعاليات",
     styleChipFavorites: "المفضلة",
     styleFavoriteTutorialTitle: "🔖 انقر للإضافة إلى المفضلة!",
@@ -2086,7 +2089,7 @@ export const arMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。全ロケール同一
+    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "الكل (الأحدث)",
     chipUsage: "الجميع يستخدمها",

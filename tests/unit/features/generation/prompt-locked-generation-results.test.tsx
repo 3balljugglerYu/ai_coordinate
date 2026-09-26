@@ -188,6 +188,33 @@ describe("過去のじゆうモード生成", () => {
     });
   });
 
+  it("/styles の生成シートでは One-Tap Style の生成を引き、見出しも One-Tap Style 側にする", async () => {
+    useGenerationStateMock.mockReturnValue(
+      stubState({ previewImages: [buildImage("a")] })
+    );
+    useTranslationsMock.mockImplementation(
+      ((namespace?: string) =>
+        (key: string) =>
+          key === "resultsTitle"
+            ? namespace === "style"
+              ? "生成結果"
+              : "生成結果一覧"
+            : key) as unknown as typeof useTranslations
+    );
+
+    render(<PromptLockedGenerationResults generationType="one_tap_style" />);
+
+    expect(screen.getByText("生成結果")).toBeTruthy();
+    await waitFor(() => {
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith(
+        "user-1",
+        4,
+        0,
+        "one_tap_style"
+      );
+    });
+  });
+
   it("新しく作った分を先頭に置く", async () => {
     // 生成直後に DB からも引けた場合、進捗つきのプレビュー側を優先する
     useGenerationStateMock.mockReturnValue(
