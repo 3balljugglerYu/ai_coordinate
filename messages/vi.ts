@@ -37,6 +37,7 @@ export const viMessages = {
     contact: "Liên hệ",
     creditsPurchase: "Mua Percoin",
     logout: "Đăng xuất",
+    logoutFailed: "Đăng xuất thất bại. Vui lòng kiểm tra kết nối và thử lại.",
     others: "Khác",
     openOthers: "Mở menu Khác",
     collapseSidebar: "Thu gọn thanh bên",

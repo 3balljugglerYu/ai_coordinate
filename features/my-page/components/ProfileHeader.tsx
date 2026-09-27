@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { User, Edit, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,7 +11,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { signOut } from "@/features/auth/lib/auth-client";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
 import { ProfileEditModal } from "./ProfileEditModal";
 import { AvatarUpload } from "./AvatarUpload";
@@ -41,7 +40,6 @@ export function ProfileHeader({
   currentUserId,
   onProfileUpdate,
 }: ProfileHeaderProps) {
-  const router = useRouter();
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const navT = useTranslations("nav");
@@ -50,14 +48,11 @@ export function ProfileHeader({
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentProfile, setCurrentProfile] = useState(profile);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push(localizePublicPath("/", locale));
-      router.refresh();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
+  const signOutAndLeave = useSignOut();
+
+  const handleSignOut = () => {
+    // 成功したらホームへ全画面遷移、失敗したらトーストで知らせる
+    void signOutAndLeave(localizePublicPath("/", locale));
   };
 
   // profile が変わったら state を同期（別アカウント切り替え時に古いユーザー情報が表示されるのを防ぐ）

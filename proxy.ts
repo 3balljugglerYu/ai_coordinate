@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { readBearerJwt } from "@/lib/auth/bearer";
+import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
 import {
   ensureGuestIdOnResponse,
@@ -58,6 +59,17 @@ export async function proxy(request: NextRequest) {
   }
 
   let response = createNextResponse(request, resolvedLocale);
+
+  /*
+    ログアウトの受け皿(POST /api/auth/signout)では Supabase のセッションに触らない。
+    ここでトークンを更新すると、proxy が載せる新しい認証 Cookie と、ルートが消す
+    認証 Cookie が同じレスポンスに並び、順序しだいでログアウトが打ち消される。
+    退会予約中の本人を 403 にしてログアウトまで塞ぐこともない。
+    完全一致で判定する(前方一致にすると退会チェックの抜け道が広がる)。
+  */
+  if (pathname === SIGN_OUT_API_PATH) {
+    return response;
+  }
 
   // 環境変数が設定されていない場合は、認証チェックをスキップ
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;

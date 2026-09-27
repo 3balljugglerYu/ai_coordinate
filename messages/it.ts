@@ -37,6 +37,7 @@ export const itMessages = {
     contact: "Contatti",
     creditsPurchase: "Acquista Percoin",
     logout: "Esci",
+    logoutFailed: "Disconnessione non riuscita. Controlla la connessione e riprova.",
     others: "Altro",
     openOthers: "Apri il menu Altro",
     collapseSidebar: "Comprimi la barra laterale",

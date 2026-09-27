@@ -1,8 +1,15 @@
 "use client";
 
 import { createClient } from "@/lib/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
+import {
+  isAuthApiError,
+  isAuthSessionMissingError,
+  type AuthChangeEvent,
+  type User,
+  type Session,
+} from "@supabase/supabase-js";
 import { getSiteUrlForClient } from "@/lib/public-env";
+import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 import type { SignupSource } from "./signup-source";
 import {
@@ -803,19 +810,91 @@ export async function updatePassword(newPassword: string) {
   return data;
 }
 
+/** ブラウザ側のログアウトを待つ上限。超えたらサーバー経由に切り替える */
+const CLIENT_SIGN_OUT_TIMEOUT_MS = 8000;
+/** サーバー経由でログアウトしたあと、このタブの認証状態を片付けるのを待つ上限 */
+const LOCAL_SIGN_OUT_TIMEOUT_MS = 3000;
+/** 例外や無応答のときに翻訳へ渡す文言(通信の問題として伝える) */
+const NETWORK_FAILURE_MESSAGE = "network error";
+
+const TIMED_OUT = Symbol("timed-out");
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  ms: number
+): Promise<T | typeof TIMED_OUT> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<typeof TIMED_OUT>((resolve) => {
+        timer = setTimeout(() => resolve(TIMED_OUT), ms);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * ブラウザ側でログアウトする。成功なら null、失敗なら翻訳に渡すエラー文言を返す。
+ */
+async function signOutInBrowser(
+  supabase: ReturnType<typeof createClient>
+): Promise<string | null> {
+  try {
+    const result = await withTimeout(
+      supabase.auth.signOut(),
+      CLIENT_SIGN_OUT_TIMEOUT_MS
+    );
+    if (result === TIMED_OUT) {
+      return NETWORK_FAILURE_MESSAGE;
+    }
+    return result.error ? result.error.message : null;
+  } catch {
+    return NETWORK_FAILURE_MESSAGE;
+  }
+}
+
+async function signOutOnServer(): Promise<boolean> {
+  try {
+    // ブラウザ側のログアウトが失敗・無応答だったときの受け皿(app/api/auth/signout/route.ts)
+    const response = await fetch(SIGN_OUT_API_PATH, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * サインアウト
+ *
+ * ブラウザ側のログアウトが失敗・無応答なら、サーバー経由でログアウトする
+ * (Supabase のログアウトと、このブラウザの認証 Cookie の削除)。以前はブラウザ側が
+ * タブ間ロック待ちで失敗すると Supabase に何も届かず、画面も変わらなかった(2026-09-27)。
+ * どちらも失敗したときだけ例外を投げる。
  */
 export async function signOut() {
   const supabase = createClient();
   const locale = resolveClientLocale();
 
-  const { error } = await supabase.auth.signOut();
+  const browserError = await signOutInBrowser(supabase);
 
-  if (error) {
-    // エラーメッセージを日本語に変換
-    const translatedMessage = translateAuthError(error.message, locale);
-    throw new Error(translatedMessage);
+  if (browserError) {
+    const signedOutOnServer = await signOutOnServer();
+    if (!signedOutOnServer) {
+      // エラーメッセージを日本語に変換
+      throw new Error(translateAuthError(browserError, locale));
+    }
+    // Cookie はサーバーが消した。このタブの認証状態も片付けて SIGNED_OUT を流す。
+    // セッションが無ければ通信せずに終わる。失敗してもログアウト自体は済んでいる
+    await withTimeout(
+      supabase.auth.signOut({ scope: "local" }),
+      LOCAL_SIGN_OUT_TIMEOUT_MS
+    ).catch(() => undefined);
   }
 
   if (typeof document !== "undefined") {
@@ -883,6 +962,51 @@ export async function getCurrentUser(): Promise<User | null> {
 }
 
 /**
+ * ログイン確認の結果。
+ * - unknown: 確認できなかった(通信失敗・サーバー側の失敗・例外)。「未ログイン」ではない
+ */
+export type CurrentUserResult =
+  | { status: "signed-in"; user: User }
+  | { status: "signed-out" }
+  | { status: "unknown" };
+
+/**
+ * 未ログインと言い切れるエラーか。セッションが無い・トークンが拒否された場合だけ。
+ */
+function isSignedOutError(error: unknown): boolean {
+  if (!error) {
+    return true;
+  }
+  if (isAuthSessionMissingError(error)) {
+    return true;
+  }
+  return isAuthApiError(error) && (error.status === 401 || error.status === 403);
+}
+
+/**
+ * 現在のユーザーを確認し、「ログイン中 / 未ログイン / 分からない」に分けて返す。
+ *
+ * getCurrentUser は確認に失敗しても null(= 未ログイン)を返すため、表示に使うと
+ * ログイン中なのに「ログイン」ボタンが出たまま戻らなかった(2026-09-27)。
+ */
+export async function resolveCurrentUser(): Promise<CurrentUserResult> {
+  try {
+    const supabase = createClient();
+    const {
+      data: { user },
+      error,
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      return { status: "signed-in", user };
+    }
+    return isSignedOutError(error) ? { status: "signed-out" } : { status: "unknown" };
+  } catch {
+    return { status: "unknown" };
+  }
+}
+
+/**
  * 現在のセッションを取得
  */
 export async function getCurrentSession(): Promise<Session | null> {
@@ -897,14 +1021,19 @@ export async function getCurrentSession(): Promise<Session | null> {
 
 /**
  * 認証状態の変更を監視
+ *
+ * 2つ目の引数はイベント名。INITIAL_SESSION の null は「セッションが無い」と
+ * 「読めなかった」を区別できないため、受け手が判別に使う。
  */
-export function onAuthStateChange(callback: (user: User | null) => void) {
+export function onAuthStateChange(
+  callback: (user: User | null, event: AuthChangeEvent) => void
+) {
   const supabase = createClient();
 
   const {
     data: { subscription },
-  } = supabase.auth.onAuthStateChange((_event, session) => {
-    callback(session?.user ?? null);
+  } = supabase.auth.onAuthStateChange((event, session) => {
+    callback(session?.user ?? null, event);
   });
 
   return subscription;

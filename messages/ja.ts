@@ -34,6 +34,7 @@ export const jaMessages = {
     contact: "お問い合わせ",
     creditsPurchase: "ペルコイン購入",
     logout: "ログアウト",
+    logoutFailed: "ログアウトできませんでした。通信状況を確認して、もう一度お試しください。",
     others: "その他",
     openOthers: "その他メニューを開く",
     collapseSidebar: "サイドバーを折りたたむ",

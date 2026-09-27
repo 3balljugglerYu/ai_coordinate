@@ -9,7 +9,7 @@ import {
   COORDINATE_GENERATED_LIST_HASH,
   COORDINATE_GENERATED_LIST_ID,
 } from "@/features/generation/components/CoordinateGeneratedListHashScroll";
-import { getCurrentUserId } from "@/features/generation/lib/current-user";
+import { getCurrentSession } from "@/features/auth/lib/auth-client";
 import {
   getGeneratedImages,
   listCoordinateImagesCreatedAfter,
@@ -46,6 +46,11 @@ function maxIsoTimestamps(values: string[]): string | null {
  * 画像生成完了通知チェックコンポーネント
  * グローバルにマウントし、coordinate 生成の新規画像をトーストする。
  * 重複防止は profiles.last_coordinate_toast_ack_at（サーバー）で端末をまたいで共有する。
+ *
+ * ⭐ ユーザーは手元のセッションから取り、画面が裏にある間は確かめない。
+ * 以前は10秒ごとに getUser(Supabase への通信)を呼び、裏のタブでも続けていた。
+ * supabase-js 2.90 の getUser は通信の間ずっと認証のロックを握るため、裏に回った
+ * タブがその途中で止まると、他のタブのログイン確認まで止まった(2026-09-27)。
  */
 export function GeneratedImageNotificationChecker() {
   const { toast } = useToast();
@@ -72,7 +77,8 @@ export function GeneratedImageNotificationChecker() {
       isCheckingRef.current = true;
 
       try {
-        const userId = await getCurrentUserId();
+        const session = await getCurrentSession();
+        const userId = session?.user?.id;
         if (!userId) {
           return;
         }
@@ -158,13 +164,20 @@ export function GeneratedImageNotificationChecker() {
       }
     };
 
-    void checkNewImages();
-    const intervalId = setInterval(() => {
-      void checkNewImages();
-    }, 10000);
+    // 表に出ているときだけ確かめる。裏から戻ったらすぐ1回確かめる
+    const checkIfVisible = () => {
+      if (document.visibilityState === "visible") {
+        void checkNewImages();
+      }
+    };
+
+    checkIfVisible();
+    const intervalId = setInterval(checkIfVisible, 10000);
+    document.addEventListener("visibilitychange", checkIfVisible);
 
     return () => {
       clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", checkIfVisible);
     };
   }, []);
 
