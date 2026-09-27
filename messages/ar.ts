@@ -1324,7 +1324,7 @@ export const arMessages = {
       "غير متاح لأن هذه الصورة أُنشئت بقالب نمط من مساهمات المجتمع.",
     listApplyForNext: "توليد من هذه الصورة",
     listApplyForNextSuccess: "تم تعيين الصورة في حقل الرفع.",
-    listApplyForNextConfirmTitle: "الانتقال إلى صفحة التنسيق",
+    listApplyForNextConfirmTitle: "الانتقال إلى Free Style",
     listApplyForNextConfirmDescription: "هل أنت متأكد؟",
     listApplyForNextConfirmCancel: "إلغاء",
     listApplyForNextConfirmOk: "متابعة",
@@ -1902,9 +1902,6 @@ export const arMessages = {
     bonusTourTitle: "حصلت على مكافأة الدليل!",
     bonusTourBody:
       "حصلت على {amount} Percoin لإكمالك الدليل!",
-    generatedImageReadyTitle: "صور جديدة جاهزة",
-    generatedImageReadySingle: "تمت إضافة صورة واحدة.",
-    generatedImageReadyMultiple: "تمت إضافة {count} صور.",
     justNow: "للتو",
     minutesAgo: "قبل {count} دقيقة",
     hoursAgo: "قبل {count} ساعة",

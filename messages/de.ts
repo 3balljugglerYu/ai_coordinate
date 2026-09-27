@@ -1328,7 +1328,7 @@ export const deMessages = {
       "Nicht verfügbar, da dieses Bild mit einer Community-Stilvorlage generiert wurde.",
     listApplyForNext: "Aus diesem Bild generieren",
     listApplyForNextSuccess: "Bild wurde im Upload-Feld eingestellt.",
-    listApplyForNextConfirmTitle: "Zur Koordinieren-Seite gehen",
+    listApplyForNextConfirmTitle: "Zu Free Style wechseln",
     listApplyForNextConfirmDescription: "Bist du sicher?",
     listApplyForNextConfirmCancel: "Abbrechen",
     listApplyForNextConfirmOk: "Weiter",
@@ -1906,9 +1906,6 @@ export const deMessages = {
     bonusTourTitle: "Tutorial-Bonus erhalten!",
     bonusTourBody:
       "Du hast {amount} Percoins für den Abschluss des Tutorials erhalten!",
-    generatedImageReadyTitle: "Neue Bilder sind fertig",
-    generatedImageReadySingle: "1 Bild wurde hinzugefügt.",
-    generatedImageReadyMultiple: "{count} Bilder wurden hinzugefügt.",
     justNow: "Gerade eben",
     minutesAgo: "vor {count} Min.",
     hoursAgo: "vor {count} Std.",

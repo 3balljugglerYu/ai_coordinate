@@ -179,7 +179,7 @@ export default async function InspirePage({ params }: InspirePageProps) {
                   title={t("resultsTitle")}
                   detailFromParam="coordinate"
                   returnToImageIdKey="persta-ai:inspire-return-to-image-id"
-                  applyActionMode="navigate-coordinate"
+                  applyActionMode="navigate-free"
                 />
               </Suspense>
             </div>

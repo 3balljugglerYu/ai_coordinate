@@ -1324,7 +1324,7 @@ export const enMessages = {
     listPromptInspireEmpty: "Not available because this image was generated with a community style template.",
     listApplyForNext: "Generate from this image",
     listApplyForNextSuccess: "Image has been set to the upload field.",
-    listApplyForNextConfirmTitle: "Going to the coordinate page",
+    listApplyForNextConfirmTitle: "Going to Free Style",
     listApplyForNextConfirmDescription: "Are you sure?",
     listApplyForNextConfirmCancel: "Cancel",
     listApplyForNextConfirmOk: "Continue",
@@ -1902,9 +1902,6 @@ export const enMessages = {
     bonusTourTitle: "Tutorial bonus earned!",
     bonusTourBody:
       "You earned {amount} Percoins for completing the tutorial!",
-    generatedImageReadyTitle: "New images are ready",
-    generatedImageReadySingle: "1 image was added.",
-    generatedImageReadyMultiple: "{count} images were added.",
     justNow: "Just now",
     minutesAgo: "{count}m ago",
     hoursAgo: "{count}h ago",

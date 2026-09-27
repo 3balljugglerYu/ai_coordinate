@@ -3,14 +3,7 @@ import { resolveStickyBackUrl } from "@/features/posts/lib/sticky-back-url";
 const HOME = "/ja";
 
 describe("resolveStickyBackUrl", () => {
-  it("maps each from-param to its generation mode page", () => {
-    expect(
-      resolveStickyBackUrl({
-        fromParam: "coordinate",
-        isMyPageSubPath: false,
-        localizedHomePath: HOME,
-      }),
-    ).toBe("/coordinate");
+  it("returns /style for from=style", () => {
     expect(
       resolveStickyBackUrl({
         fromParam: "style",
@@ -18,6 +11,17 @@ describe("resolveStickyBackUrl", () => {
         localizedHomePath: HOME,
       }),
     ).toBe("/style");
+  });
+
+  it("returns /free for from=coordinate (Coordinate は廃止して Free Style へ転送している)", () => {
+    // 旧 URL に残るほか、Inspire の結果一覧も from=coordinate を付けている
+    expect(
+      resolveStickyBackUrl({
+        fromParam: "coordinate",
+        isMyPageSubPath: false,
+        localizedHomePath: HOME,
+      }),
+    ).toBe("/free");
   });
 
   it("returns /free for from=free (じゆうモードの戻り先がホームに落ちない)", () => {

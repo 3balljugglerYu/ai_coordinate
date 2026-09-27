@@ -1327,7 +1327,7 @@ export const ptMessages = {
       "Indisponível porque esta imagem foi gerada com um template de estilo da comunidade.",
     listApplyForNext: "Gerar a partir desta imagem",
     listApplyForNextSuccess: "A imagem foi colocada no campo de upload.",
-    listApplyForNextConfirmTitle: "Indo para a página Coordenar",
+    listApplyForNextConfirmTitle: "Indo para o Free Style",
     listApplyForNextConfirmDescription: "Tem certeza?",
     listApplyForNextConfirmCancel: "Cancelar",
     listApplyForNextConfirmOk: "Continuar",
@@ -1905,9 +1905,6 @@ export const ptMessages = {
     bonusTourTitle: "Bônus do tutorial recebido!",
     bonusTourBody:
       "Você ganhou {amount} Percoins por concluir o tutorial!",
-    generatedImageReadyTitle: "Novas imagens estão prontas",
-    generatedImageReadySingle: "1 imagem foi adicionada.",
-    generatedImageReadyMultiple: "{count} imagens foram adicionadas.",
     justNow: "Agora mesmo",
     minutesAgo: "{count} min atrás",
     hoursAgo: "{count} h atrás",

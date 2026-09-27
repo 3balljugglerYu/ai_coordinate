@@ -1325,7 +1325,7 @@ export const hiMessages = {
       "उपलब्ध नहीं क्योंकि यह छवि कम्युनिटी स्टाइल टेम्पलेट से उत्पन्न की गई थी।",
     listApplyForNext: "इस छवि से उत्पन्न करें",
     listApplyForNextSuccess: "अपलोड फ़ील्ड में छवि सेट कर दी गई है।",
-    listApplyForNextConfirmTitle: "कोऑर्डिनेट पेज पर जा रहे हैं",
+    listApplyForNextConfirmTitle: "Free Style पर जा रहे हैं",
     listApplyForNextConfirmDescription: "क्या आप सुनिश्चित हैं?",
     listApplyForNextConfirmCancel: "रद्द करें",
     listApplyForNextConfirmOk: "जारी रखें",
@@ -1903,9 +1903,6 @@ export const hiMessages = {
     bonusTourTitle: "ट्यूटोरियल बोनस मिला!",
     bonusTourBody:
       "ट्यूटोरियल पूरा करने के लिए आपने {amount} Percoin कमाए!",
-    generatedImageReadyTitle: "नई छवियाँ तैयार हैं",
-    generatedImageReadySingle: "1 छवि जोड़ी गई।",
-    generatedImageReadyMultiple: "{count} छवियाँ जोड़ी गईं।",
     justNow: "अभी-अभी",
     minutesAgo: "{count} मिनट पहले",
     hoursAgo: "{count} घंटे पहले",

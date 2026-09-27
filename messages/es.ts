@@ -1327,7 +1327,7 @@ export const esMessages = {
       "No disponible porque esta imagen se generó con una plantilla de estilo comunitaria.",
     listApplyForNext: "Generar a partir de esta imagen",
     listApplyForNextSuccess: "La imagen se ha establecido en el campo de subida.",
-    listApplyForNextConfirmTitle: "Yendo a la página Coordinar",
+    listApplyForNextConfirmTitle: "Yendo a Free Style",
     listApplyForNextConfirmDescription: "¿Seguro que quieres continuar?",
     listApplyForNextConfirmCancel: "Cancelar",
     listApplyForNextConfirmOk: "Continuar",
@@ -1905,9 +1905,6 @@ export const esMessages = {
     bonusTourTitle: "¡Has ganado la bonificación del tutorial!",
     bonusTourBody:
       "¡Has ganado {amount} Percoins por completar el tutorial!",
-    generatedImageReadyTitle: "Hay nuevas imágenes listas",
-    generatedImageReadySingle: "Se añadió 1 imagen.",
-    generatedImageReadyMultiple: "Se añadieron {count} imágenes.",
     justNow: "Justo ahora",
     minutesAgo: "Hace {count} min",
     hoursAgo: "Hace {count} h",

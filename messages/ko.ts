@@ -1323,7 +1323,7 @@ export const koMessages = {
     listPromptInspireEmpty: "투고 스타일 템플릿으로 생성된 이미지라 표시할 수 없습니다.",
     listApplyForNext: "이 이미지로 다시 생성",
     listApplyForNextSuccess: "업로드 칸에 이미지를 설정했습니다.",
-    listApplyForNextConfirmTitle: "코디 페이지로 이동합니다",
+    listApplyForNextConfirmTitle: "Free Style로 이동합니다",
     listApplyForNextConfirmDescription: "진행하시겠습니까?",
     listApplyForNextConfirmCancel: "취소",
     listApplyForNextConfirmOk: "계속",
@@ -1901,9 +1901,6 @@ export const koMessages = {
     bonusTourTitle: "튜토리얼 보너스 획득!",
     bonusTourBody:
       "튜토리얼 완료로 {amount} Percoin을 획득했습니다!",
-    generatedImageReadyTitle: "새 이미지가 준비되었습니다",
-    generatedImageReadySingle: "이미지 1장이 추가되었습니다.",
-    generatedImageReadyMultiple: "이미지 {count}장이 추가되었습니다.",
     justNow: "방금 전",
     minutesAgo: "{count}분 전",
     hoursAgo: "{count}시간 전",

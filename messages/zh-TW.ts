@@ -1322,7 +1322,7 @@ export const zhTwMessages = {
     listPromptInspireEmpty: "因此圖片是以投稿樣式範本生成，無法顯示。",
     listApplyForNext: "用此圖片再次生成",
     listApplyForNextSuccess: "已將圖片設定到上傳欄。",
-    listApplyForNextConfirmTitle: "前往穿搭頁面",
+    listApplyForNextConfirmTitle: "前往 Free Style",
     listApplyForNextConfirmDescription: "確定要繼續嗎?",
     listApplyForNextConfirmCancel: "取消",
     listApplyForNextConfirmOk: "繼續",
@@ -1898,9 +1898,6 @@ export const zhTwMessages = {
     bonusTourTitle: "獲得教學獎勵!",
     bonusTourBody:
       "完成教學獲得 {amount} Percoin!",
-    generatedImageReadyTitle: "新圖片已就緒",
-    generatedImageReadySingle: "新增 1 張圖片。",
-    generatedImageReadyMultiple: "新增 {count} 張圖片。",
     justNow: "剛剛",
     minutesAgo: "{count} 分鐘前",
     hoursAgo: "{count} 小時前",

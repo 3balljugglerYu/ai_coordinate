@@ -236,7 +236,7 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
                 title={coordinateT("resultsTitle")}
                 detailFromParam="style"
                 returnToImageIdKey="persta-ai:style-return-to-image-id"
-                applyActionMode="navigate-coordinate"
+                applyActionMode="navigate-free"
               />
             </Suspense>
           </div>

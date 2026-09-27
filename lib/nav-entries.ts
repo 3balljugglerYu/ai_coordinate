@@ -15,13 +15,22 @@ import {
  *
  * カタログ刷新(段階公開中は運営のみ。`useStylesCatalogRevamp`)の前後で変わる。
  *  - 刷新前: 生成の入口は「コーディネート」。押すと前回使った生成モードへ戻る。
- *    /coordinate と /style で選択中にする
+ *    /style で選択中にする
  *  - 刷新後: 生成の入口は「つくる」。押すと毎回 Free Style を開く。
- *    /coordinate・/style・/free のどこでも選択中にする。
+ *    /style・/free のどこでも選択中にする。
  *    ホームの右に「カタログ」(/styles)が加わり、/styles・/user-styles で選択中にする
+ *
+ * 生成モード Coordinate(/coordinate)は廃止し、Free Style へ転送している
+ * (docs/planning/coordinate-mode-deprecation-plan.md)。入口はもう /coordinate を開かない。
  */
 
-/** 生成の入口(コーディネート / つくる)の項目を表すパス。遷移先は押したときに決める。 */
+/**
+ * 生成の入口(コーディネート / つくる)の項目を表す識別子。
+ *
+ * 値は廃止した /coordinate のままだが、ルートとしては使わない。押すと必ず
+ * resolveGenerationEntryPath で行き先を決め直す(NavigationBar / AppSidebar の
+ * handleNavigation)。
+ */
 export const GENERATION_ENTRY_PATH = "/coordinate";
 
 /** カタログの項目のパス(Persta.AI ORIGINAL)。刷新後だけナビに出す。 */

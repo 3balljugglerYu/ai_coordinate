@@ -1322,7 +1322,7 @@ export const zhCnMessages = {
     listPromptInspireEmpty: "由于此图片是通过投稿样式模板生成的，无法显示。",
     listApplyForNext: "用此图片再次生成",
     listApplyForNextSuccess: "已将图片设置到上传栏。",
-    listApplyForNextConfirmTitle: "前往搭配页面",
+    listApplyForNextConfirmTitle: "前往 Free Style",
     listApplyForNextConfirmDescription: "确定要继续吗?",
     listApplyForNextConfirmCancel: "取消",
     listApplyForNextConfirmOk: "继续",
@@ -1898,9 +1898,6 @@ export const zhCnMessages = {
     bonusTourTitle: "获得教程奖励!",
     bonusTourBody:
       "完成教程，获得 {amount} Percoin!",
-    generatedImageReadyTitle: "新图片已就绪",
-    generatedImageReadySingle: "新增 1 张图片。",
-    generatedImageReadyMultiple: "新增 {count} 张图片。",
     justNow: "刚刚",
     minutesAgo: "{count} 分钟前",
     hoursAgo: "{count} 小时前",

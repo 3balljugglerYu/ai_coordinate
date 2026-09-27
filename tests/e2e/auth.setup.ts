@@ -16,7 +16,7 @@ test("authenticate test user", async ({ page }) => {
 
   await mkdir(path.dirname(authFile), { recursive: true });
 
-  await page.goto("/login?next=/coordinate");
+  await page.goto("/login?next=/free");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
   await page.locator('form button[type="submit"]').click();

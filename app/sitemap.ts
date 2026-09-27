@@ -14,7 +14,8 @@ import { isSitemapPathEnabled } from "@/lib/sitemap-paths";
 const LOCALIZED_PUBLIC_PATHS = [
   "/",
   "/style",
-  "/coordinate",
+  // /coordinate は廃止して /free へ転送しているため載せない
+  // (docs/planning/coordinate-mode-deprecation-plan.md)
   "/free",
   "/styles",
   // 検索は一時的に無効化中（ホームへリダイレクト）のため sitemap から外す
@@ -50,7 +51,6 @@ function changeFrequencyFor(
   if (path === "/") return "daily";
   if (
     path === "/style" ||
-    path === "/coordinate" ||
     path === "/free" ||
     path === "/styles" ||
     path === "/user-styles" ||
@@ -66,8 +66,7 @@ function changeFrequencyFor(
 
 function priorityFor(path: LocalizedPath): number {
   if (path === "/") return 1;
-  if (path === "/style" || path === "/coordinate" || path === "/free")
-    return 0.9;
+  if (path === "/style" || path === "/free") return 0.9;
   if (path === "/styles" || path === "/user-styles" || path === "/catalog") {
     return 0.8;
   }

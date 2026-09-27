@@ -1,7 +1,18 @@
 import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
+import { locales } from "./i18n/config";
 
 const withNextIntl = createNextIntlPlugin("./i18n/request.ts");
+
+/*
+  生成モード Coordinate は廃止した（docs/planning/coordinate-mode-deprecation-plan.md）。
+  検索・ブックマーク・お知らせ本文に残る旧 URL は Free Style へ送る。
+  - ロケールは列挙する。任意の1階層（/:locale/coordinate）にすると
+    /styles/coordinate のような別ページまで拾ってしまう
+  - いまは一時転送(307)。ページのコードを消す段階で恒久転送(308)にする。
+    恒久転送はブラウザや検索エンジンに覚えられ、戻しにくいため
+*/
+const COORDINATE_REDIRECT_PERMANENT = false;
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
@@ -20,6 +31,16 @@ const nextConfig: NextConfig = {
         source: "/thanks",
         destination: "/thanks-sample",
         permanent: true,
+      },
+      {
+        source: "/coordinate",
+        destination: "/free",
+        permanent: COORDINATE_REDIRECT_PERMANENT,
+      },
+      {
+        source: `/:locale(${locales.join("|")})/coordinate`,
+        destination: "/:locale/free",
+        permanent: COORDINATE_REDIRECT_PERMANENT,
       },
     ];
   },

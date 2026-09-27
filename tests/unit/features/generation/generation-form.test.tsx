@@ -108,9 +108,17 @@ jest.mock("@/lib/build-current-url", () => ({
   useCurrentUrlForRedirect: () => "/coordinate",
 }));
 
+// 別画面から持ち越した画像 URL をファイルにする境界(fetch + 画像の読み込み)
+const mockFetchSourceImage = jest.fn();
+jest.mock("@/features/generation/lib/source-image-to-file", () => ({
+  fetchSourceImageAsUploadedImage: (...args: unknown[]) =>
+    mockFetchSourceImage(...args),
+}));
+
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
+import { COORDINATE_PENDING_SOURCE_IMAGE_KEY } from "@/features/generation/lib/apply-from-history-event";
 import { FALLBACK_GENERATION_MODEL } from "@/features/generation/types";
 
 let fetchMock: jest.Mock;
@@ -439,6 +447,160 @@ describe("GenerationForm (new image source picker integration)", () => {
       // 生成枚数の選択は 2026-08-15 に廃止(1回の生成は常に1枚)
       expect(screen.queryByText("countLabel")).toBeNull();
       expect(screen.getByTestId("mock-model-controls")).toBeInTheDocument();
+    });
+  });
+
+  /*
+    One-Tap Style の結果一覧の「このイラストで生成」は、画像 URL を sessionStorage に
+    積んで Free Style を開く(書き手は GeneratedImageList)。Coordinate の廃止で、
+    受け取り手を Coordinate のフォームから Free Style のフォームに移した。
+  */
+  describe("別画面から持ち越した画像（このイラストで生成）", () => {
+    const PENDING_URL =
+      "https://example.supabase.co/storage/v1/object/public/generated-images/u/prev.png";
+    let pendingFile: File;
+
+    beforeEach(() => {
+      window.sessionStorage.clear();
+      pendingFile = new File(["y"], "style-history.png", { type: "image/png" });
+      mockFetchSourceImage.mockReset();
+      mockFetchSourceImage.mockResolvedValue({
+        file: pendingFile,
+        previewUrl: "blob:pending",
+        width: 100,
+        height: 100,
+      });
+    });
+
+    afterEach(() => {
+      // 施錠のテストは印を残したまま終わる。後のテストに持ち越さない
+      window.sessionStorage.clear();
+    });
+
+    test("Free Style のフォームは持ち越し画像を元画像に入れ、印を消す", async () => {
+      const user = userEvent.setup();
+      const onSubmit = jest.fn();
+      window.sessionStorage.setItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY, PENDING_URL);
+
+      render(
+        <GenerationForm subscriptionPlan="free" onSubmit={onSubmit} mode="free" />,
+      );
+
+      // ファイル名の手がかりなど、取得の付帯オプションは問わない
+      await waitFor(() =>
+        expect(mockFetchSourceImage).toHaveBeenCalledWith(
+          PENDING_URL,
+          expect.anything(),
+        ),
+      );
+      // 一度だけ受け取る(再訪で同じ画像が入り直さない)
+      expect(
+        window.sessionStorage.getItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY),
+      ).toBeNull();
+
+      // 受け取った画像がそのまま元画像として送られる
+      await user.type(screen.getByRole("textbox"), "自由な指示");
+      const submit = screen.getByTestId("mock-submit");
+      await waitFor(() => expect(submit).toHaveProperty("disabled", false));
+      await user.click(submit);
+
+      expect(onSubmit).toHaveBeenCalledTimes(1);
+      expect(onSubmit.mock.calls[0][0].sourceImage).toBe(pendingFile);
+      expect(onSubmit.mock.calls[0][0].generationType).toBe("free");
+    });
+
+    test("派生生成（プロンプト施錠）のフォームは持ち越し画像を受け取らない", async () => {
+      // 派生生成シートは別の画面の上に開く。遷移に失敗して残った印を拾わない
+      window.sessionStorage.setItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY, PENDING_URL);
+
+      render(
+        <GenerationForm
+          subscriptionPlan="free"
+          onSubmit={() => {}}
+          mode="free"
+          promptLocked
+          sourcePostId="post-1"
+        />,
+      );
+      await act(async () => {});
+
+      expect(mockFetchSourceImage).not.toHaveBeenCalled();
+      expect(
+        window.sessionStorage.getItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY),
+      ).toBe(PENDING_URL);
+    });
+
+    test("sessionStorage を読めない環境では何もせず、フォームはそのまま使える", async () => {
+      // 印はあるが、読もうとすると例外になる環境
+      window.sessionStorage.setItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY, PENDING_URL);
+      const originalGetItem = Storage.prototype.getItem;
+      let pendingReadAttempted = false;
+      const getItem = jest
+        .spyOn(Storage.prototype, "getItem")
+        .mockImplementation(function (this: Storage, key: string) {
+          if (
+            this === window.sessionStorage &&
+            key === COORDINATE_PENDING_SOURCE_IMAGE_KEY
+          ) {
+            pendingReadAttempted = true;
+            throw new Error("SecurityError");
+          }
+          return originalGetItem.call(this, key);
+        });
+
+      try {
+        render(
+          <GenerationForm subscriptionPlan="free" onSubmit={() => {}} mode="free" />,
+        );
+        await act(async () => {});
+
+        // 読もうとはした(例外を握ったのであって、読まなかったのではない)
+        expect(pendingReadAttempted).toBe(true);
+        expect(mockFetchSourceImage).not.toHaveBeenCalled();
+        expect(screen.getByRole("textbox")).toBeTruthy();
+      } finally {
+        getItem.mockRestore();
+      }
+    });
+
+    test("画像の取得に失敗したら、元画像は空のまま(印は消える)", async () => {
+      // 取得前に印を消す作り。失敗した画像を次の訪問で拾い直して同じ失敗を繰り返さない
+      const user = userEvent.setup();
+      const consoleError = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      mockFetchSourceImage.mockRejectedValue(new Error("fetch failed: 404"));
+      window.sessionStorage.setItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY, PENDING_URL);
+
+      try {
+        render(
+          <GenerationForm subscriptionPlan="free" onSubmit={() => {}} mode="free" />,
+        );
+        await waitFor(() =>
+          expect(consoleError).toHaveBeenCalledWith(
+            expect.stringContaining("[apply-from-history]"),
+            expect.any(Error),
+          ),
+        );
+
+        expect(mockFetchSourceImage).toHaveBeenCalledWith(
+          PENDING_URL,
+          expect.anything(),
+        );
+        expect(
+          window.sessionStorage.getItem(COORDINATE_PENDING_SOURCE_IMAGE_KEY),
+        ).toBeNull();
+        // 元画像は入っていない(アップロード欄のモックは値があるときだけ「mock-remove」を出す)
+        expect(screen.queryByText("mock-remove")).toBeNull();
+        // 指示を書いても生成は押せない
+        await user.type(screen.getByRole("textbox"), "自由な指示");
+        expect(screen.getByTestId("mock-submit")).toHaveProperty(
+          "disabled",
+          true,
+        );
+      } finally {
+        consoleError.mockRestore();
+      }
     });
   });
 });
