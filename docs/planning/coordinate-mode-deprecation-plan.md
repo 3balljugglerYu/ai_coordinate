@@ -40,7 +40,7 @@
 | 廃止するか | する | 決定（2026-09-27） |
 | 直近の利用者2人への案内 | 出さない | 決定（2026-09-27） |
 | 進め方 | 段階的に進める | 決定（2026-09-27）。段階の切り方は本書の提案 |
-| `/coordinate` の転送先 | `/free` を推奨（ADR-001） | **要確認** |
+| `/coordinate` の転送先 | `/free`（ADR-001） | 決定（2026-09-27） |
 
 ## 「coordinate」は4つの意味で使われている
 
@@ -195,7 +195,7 @@ Next.js の全エントリ（`app/**` の page / layout / route 等と `proxy.ts
 
 - **Context**: `/coordinate` は公開パスで（`i18n/config.ts:60`）、サイトマップに15言語で載っている（`app/sitemap.ts:17`）。
   外部にも旧URLがある（上記のお知らせ本文）。404 にはしたくない。候補は `/free` と `/style`。
-- **Decision**: **`/free`（要確認）。** `next.config.ts` の `redirects()`（既存の前例 `next.config.ts:12-24`）に
+- **Decision**: **`/free`（2026-09-27 決定）。** `next.config.ts` の `redirects()`（既存の前例 `next.config.ts:12-24`）に
   `/coordinate` → `/free` と `/:locale(ja|en|…)/coordinate` → `/:locale/free` を足す。ロケールは
   `i18n/config.ts:1-17` の `locales` から組み立てる。段階1は `permanent: false`（307）、
   ページを消す段階2で `permanent: true`（308）にする。
@@ -213,8 +213,8 @@ Next.js の全エントリ（`app/**` の page / layout / route 等と `proxy.ts
     Next 自身のルート照合で確認済み（2026-09-27）
 - **Consequence**:
   - 未ログインで来た人は `/free` でログイン誘導だけを見る（`FreePageBody.tsx:32-35`）。
-    `/style` ならログインせずに1日1回試せる。未ログインの流入を重く見るなら `/style` を選ぶ
-    （GA4 で `/ja/coordinate` などの閲覧数を見れば判断材料になる。管理画面の Top Pages は上位8件だけ:
+    比べた `/style` なら、ログインせずに1日1回試せた。未ログインの流入よりも、後継としての自然さを取った
+    （GA4 の閲覧数は見ていない。管理画面の Top Pages は上位8件しか出さない:
     `features/analytics/lib/get-ga4-page-summary-data.ts:14`）
   - ロケール無しの `/coordinate` は `/free` へ転送されたあと、proxy がもう一度 `/{locale}/free` へ転送する
     （`proxy.ts:47-58`）。2回になるが実害は無い
