@@ -30,6 +30,8 @@ export const koMessages = {
   nav: {
     home: "홈",
     coordinate: "코디",
+    catalog: "Catalog",
+    create: "만들기",
     challenge: "미션",
     notifications: "알림",
     myPage: "마이 페이지",

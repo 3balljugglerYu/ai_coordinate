@@ -30,6 +30,8 @@ export const ptMessages = {
   nav: {
     home: "Início",
     coordinate: "Coordenar",
+    catalog: "Catalog",
+    create: "Criar",
     challenge: "Missões",
     notifications: "Notificações",
     myPage: "Minha página",

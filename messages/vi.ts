@@ -30,6 +30,8 @@ export const viMessages = {
   nav: {
     home: "Trang chủ",
     coordinate: "Phối đồ",
+    catalog: "Catalog",
+    create: "Tạo",
     challenge: "Nhiệm vụ",
     notifications: "Thông báo",
     myPage: "Trang của tôi",

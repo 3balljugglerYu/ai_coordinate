@@ -27,6 +27,8 @@ export const jaMessages = {
   nav: {
     home: "ホーム",
     coordinate: "コーディネート",
+    catalog: "カタログ",
+    create: "つくる",
     challenge: "ミッション",
     notifications: "お知らせ",
     myPage: "マイページ",

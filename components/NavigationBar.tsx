@@ -9,7 +9,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Home, Sparkles, User as UserIcon, Trophy, Bell /* , Coins */ } from "lucide-react";
+import { Home, LayoutGrid, Sparkles, User as UserIcon, Trophy, Bell /* , Coins */ } from "lucide-react";
 import { getCurrentUser, onAuthStateChange } from "@/features/auth/lib/auth-client";
 import type { User } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
@@ -27,11 +27,13 @@ import {
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
 import { handleNavigationRetap } from "@/lib/nav-retap";
-import { getLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import {
-  TUTORIAL_TOUR_ENTRY_PATH,
-  isTutorialTourInProgress,
-} from "@/features/tutorial/lib/tutorial-status";
+  CATALOG_ENTRY_PATH,
+  GENERATION_ENTRY_PATH,
+  isNavItemActive,
+  resolveGenerationEntryPath,
+} from "@/lib/nav-entries";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 export function NavigationBar() {
   const pathname = usePathname();
@@ -39,6 +41,8 @@ export function NavigationBar() {
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const navT = useTranslations("nav");
+  // カタログ刷新(段階公開中は運営のみ)では「カタログ」を足し、生成の入口を「つくる」にする
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const [user, setUser] = useState<User | null>(null);
   // トランジション状態: ナビゲーションを非ブロッキングにする
   const [, startTransition] = useTransition();
@@ -96,6 +100,15 @@ export function NavigationBar() {
     }
   }, [localizedHomePath, locale, user, router]);
 
+  // 刷新後に増える行き先(カタログと Free Style)も先読みする。
+  // 運営の判定はマウント後に確定するので、上の1回きりの先読みとは分けて見る。
+  useEffect(() => {
+    if (user && isCatalogRevamp) {
+      router.prefetch(localizePublicPath(CATALOG_ENTRY_PATH, locale));
+      router.prefetch(localizePublicPath("/free", locale));
+    }
+  }, [isCatalogRevamp, locale, user, router]);
+
   useEffect(() => {
     if (!pendingPathname) {
       return;
@@ -128,18 +141,15 @@ export function NavigationBar() {
     let normalizedTargetPath = stripLocalePrefix(path).pathname;
     let resolvedPath = path;
 
-    // 「コーディネート」入口は前回使った生成モードへ復帰させる。
-    // 前回 One-Tap Style だった場合は /style へ遷移する。
-    // ただしチュートリアルツアー進行中は直近モードに関わらずツアーの目的地
-    // (/style)へ固定する(他モードへ流すとツアーが再開できず詰まる)。
-    if (normalizedTargetPath === "/coordinate") {
-      const preferred = isTutorialTourInProgress()
-        ? TUTORIAL_TOUR_ENTRY_PATH
-        : getLastGenerationModePath();
-      if (preferred !== "/coordinate") {
+    // 生成の入口は押したときに行き先を決める。刷新前(コーディネート)は前回使った
+    // 生成モードへ、刷新後(つくる)は毎回 Free Style へ。チュートリアルツアー中は
+    // ツアーの目的地(/style)へ固定する(詳細は lib/nav-entries.ts)。
+    if (normalizedTargetPath === GENERATION_ENTRY_PATH) {
+      const preferred = resolveGenerationEntryPath(isCatalogRevamp);
+      if (preferred !== GENERATION_ENTRY_PATH) {
         // path 内の "/coordinate" のみ差し替え、ロケールプレフィックスや
         // クエリ・ハッシュ等の付随情報を維持する。
-        resolvedPath = path.replace("/coordinate", preferred);
+        resolvedPath = path.replace(GENERATION_ENTRY_PATH, preferred);
         normalizedTargetPath = preferred;
       }
     }
@@ -202,7 +212,14 @@ export function NavigationBar() {
 
   const navItems = [
     { path: localizedHomePath, label: navT("home"), icon: Home },
-    { path: "/coordinate", label: navT("coordinate"), icon: Sparkles },
+    ...(isCatalogRevamp
+      ? [{ path: CATALOG_ENTRY_PATH, label: navT("catalog"), icon: LayoutGrid }]
+      : []),
+    {
+      path: GENERATION_ENTRY_PATH,
+      label: isCatalogRevamp ? navT("create") : navT("coordinate"),
+      icon: Sparkles,
+    },
     { path: "/challenge", label: navT("challenge"), icon: Trophy },
     { path: "/notifications", label: navT("notifications"), icon: Bell },
     { path: "/my-page", label: navT("myPage"), icon: UserIcon },
@@ -217,20 +234,24 @@ export function NavigationBar() {
           <div className="flex flex-1 items-center justify-around">
             {navItems.map(({ path, label, icon: Icon }) => {
               const normalizedItemPath = stripLocalePrefix(path).pathname;
-              // 「コーディネート」入口は生成モード全体の入口として扱い、
-              // /style 滞在中もアクティブ表示する。
-              const isActive =
-                effectiveActivePathname === normalizedItemPath ||
-                (normalizedItemPath === "/coordinate" &&
-                  effectiveActivePathname === "/style");
+              // 生成の入口は生成モード全体の入口、カタログは /user-styles も含めて
+              // アクティブ表示する(lib/nav-entries.ts)。
+              const isActive = isNavItemActive(
+                normalizedItemPath,
+                effectiveActivePathname,
+                isCatalogRevamp
+              );
               return (
                 <button
                   key={path}
-                  data-tour={path === "/coordinate" ? "coordinate-nav-mobile" : undefined}
+                  data-tour={path === GENERATION_ENTRY_PATH ? "coordinate-nav-mobile" : undefined}
                   onClick={() => handleNavigation(path)}
                   disabled={pendingPathname !== null}
                   className={cn(
-                    "relative flex min-w-[60px] flex-col items-center gap-1 px-2 py-2 text-[10px] font-medium transition-all duration-200 ease-out",
+                    "relative flex flex-col items-center gap-1 py-2 text-[10px] font-medium transition-all duration-200 ease-out",
+                    // 刷新後は6項目になる。1項目60px のままだと幅の狭いスマホ(iPhone SE など)で
+                    // 収まらないので、最小幅をやめて左右の余白を詰め、長いラベルは省略する
+                    isCatalogRevamp ? "min-w-0 px-1" : "min-w-[60px] px-2",
                     "active:scale-80 active:opacity-80 disabled:cursor-wait",
                     "md:flex-row md:gap-2 md:text-sm",
                     pendingPathname !== null && !isActive && "opacity-60",
@@ -257,7 +278,7 @@ export function NavigationBar() {
                     {path === "/notifications" && hasSidebarDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}
-                    {path === "/coordinate" &&
+                    {path === GENERATION_ENTRY_PATH &&
                       hasCoordinateSourceStockSavePromptDot && (
                         <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                       )}
@@ -266,7 +287,12 @@ export function NavigationBar() {
                     )}
                   </div>
                   {/* ラベル */}
-                  <span className="transition-all duration-200">
+                  <span
+                    className={cn(
+                      "transition-all duration-200",
+                      isCatalogRevamp && "max-w-full truncate"
+                    )}
+                  >
                     {label}
                   </span>
                 </button>

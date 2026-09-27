@@ -30,6 +30,8 @@ export const itMessages = {
   nav: {
     home: "Home",
     coordinate: "Coordina",
+    catalog: "Catalog",
+    create: "Crea",
     challenge: "Missioni",
     notifications: "Notifiche",
     myPage: "La mia pagina",

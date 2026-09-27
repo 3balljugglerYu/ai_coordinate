@@ -30,6 +30,8 @@ export const zhCnMessages = {
   nav: {
     home: "首页",
     coordinate: "搭配",
+    catalog: "Catalog",
+    create: "创作",
     challenge: "任务",
     notifications: "通知",
     myPage: "我的页面",

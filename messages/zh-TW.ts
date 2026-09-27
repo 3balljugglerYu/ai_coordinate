@@ -30,6 +30,8 @@ export const zhTwMessages = {
   nav: {
     home: "首頁",
     coordinate: "穿搭",
+    catalog: "Catalog",
+    create: "創作",
     challenge: "任務",
     notifications: "通知",
     myPage: "我的頁面",

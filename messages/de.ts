@@ -30,6 +30,8 @@ export const deMessages = {
   nav: {
     home: "Startseite",
     coordinate: "Koordinieren",
+    catalog: "Catalog",
+    create: "Erstellen",
     challenge: "Missionen",
     notifications: "Benachrichtigungen",
     myPage: "Meine Seite",

@@ -30,6 +30,8 @@ export const arMessages = {
   nav: {
     home: "الرئيسية",
     coordinate: "تنسيق",
+    catalog: "Catalog",
+    create: "إنشاء",
     challenge: "المهام",
     notifications: "الإشعارات",
     myPage: "صفحتي",

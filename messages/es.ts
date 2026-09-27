@@ -30,6 +30,8 @@ export const esMessages = {
   nav: {
     home: "Inicio",
     coordinate: "Coordinar",
+    catalog: "Catalog",
+    create: "Crear",
     challenge: "Misiones",
     notifications: "Notificaciones",
     myPage: "Mi página",
