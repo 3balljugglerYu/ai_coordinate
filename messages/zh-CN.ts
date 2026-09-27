@@ -39,6 +39,7 @@ export const zhCnMessages = {
     contact: "联系我们",
     creditsPurchase: "购买 Percoin",
     logout: "退出登录",
+    logoutFailed: "退出登录失败，请检查网络后重试。",
     others: "更多",
     openOthers: "打开更多菜单",
     collapseSidebar: "收起侧栏",

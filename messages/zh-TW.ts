@@ -39,6 +39,7 @@ export const zhTwMessages = {
     contact: "聯絡我們",
     creditsPurchase: "購買 Percoin",
     logout: "登出",
+    logoutFailed: "登出失敗，請檢查網路後重試。",
     others: "更多",
     openOthers: "開啟更多選單",
     collapseSidebar: "收合側邊欄",

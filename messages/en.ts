@@ -39,6 +39,7 @@ export const enMessages = {
     contact: "Contact",
     creditsPurchase: "Buy Percoins",
     logout: "Log out",
+    logoutFailed: "Couldn't log out. Check your connection and try again.",
     others: "More",
     openOthers: "Open more menu",
     collapseSidebar: "Collapse sidebar",

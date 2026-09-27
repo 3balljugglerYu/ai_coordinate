@@ -39,6 +39,7 @@ export const esMessages = {
     contact: "Contacto",
     creditsPurchase: "Comprar Percoins",
     logout: "Cerrar sesión",
+    logoutFailed: "No se pudo cerrar la sesión. Comprueba tu conexión e inténtalo de nuevo.",
     others: "Más",
     openOthers: "Abrir más opciones",
     collapseSidebar: "Contraer barra lateral",

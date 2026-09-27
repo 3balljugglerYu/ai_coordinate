@@ -39,6 +39,7 @@ export const arMessages = {
     contact: "تواصل معنا",
     creditsPurchase: "شراء Percoin",
     logout: "تسجيل الخروج",
+    logoutFailed: "فشل تسجيل الخروج. يُرجى التحقق من الاتصال والمحاولة مرة أخرى.",
     others: "المزيد",
     openOthers: "فتح قائمة المزيد",
     collapseSidebar: "طي الشريط الجانبي",

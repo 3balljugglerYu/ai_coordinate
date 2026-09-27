@@ -39,6 +39,7 @@ export const frMessages = {
     contact: "Contact",
     creditsPurchase: "Acheter des Percoins",
     logout: "Se déconnecter",
+    logoutFailed: "Impossible de se déconnecter. Vérifiez votre connexion, puis réessayez.",
     others: "Plus",
     openOthers: "Ouvrir le menu Plus",
     collapseSidebar: "Réduire la barre latérale",
