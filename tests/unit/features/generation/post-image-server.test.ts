@@ -85,6 +85,23 @@ describe("postImageServer", () => {
     });
   });
 
+  test("新規投稿では posted_at を今にする", async () => {
+    const mock = buildSupabaseMock({
+      id: "img-1",
+      is_posted: true,
+      caption: "hello",
+    });
+    createClientMock.mockReturnValue(mock.client);
+
+    const before = Date.now();
+    await postImageServer("img-1", "hello");
+    const after = Date.now();
+
+    const postedAt = Date.parse(mock.capturedUpdate[0].posted_at as string);
+    expect(postedAt).toBeGreaterThanOrEqual(before);
+    expect(postedAt).toBeLessThanOrEqual(after);
+  });
+
   test("DB エラー時は例外を投げる", async () => {
     const single = jest
       .fn()

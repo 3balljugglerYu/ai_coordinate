@@ -5,7 +5,10 @@ import { POST as postRoute } from "@/app/api/posts/post/route";
 import { PUT as updateRoute } from "@/app/api/posts/update/route";
 import { POST as completionPostRoute } from "@/app/api/collections/completions/[id]/post/route";
 import { getUser } from "@/lib/auth";
-import { postImageServer } from "@/features/generation/lib/server-database";
+import {
+  postImageServer,
+  updatePostedImageServer,
+} from "@/features/generation/lib/server-database";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createClient } from "@/lib/supabase/server";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -34,6 +37,8 @@ const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockPostImageServer = postImageServer as jest.MockedFunction<
   typeof postImageServer
 >;
+const mockUpdatePostedImageServer =
+  updatePostedImageServer as jest.MockedFunction<typeof updatePostedImageServer>;
 const mockEnsureWebPVariants = ensureWebPVariants as jest.MockedFunction<
   typeof ensureWebPVariants
 >;
@@ -98,7 +103,7 @@ describe("ハッシュタグ同期の呼び出し経路", () => {
   });
 
   test("PUT /api/posts/update_編集でも洗い替える", async () => {
-    mockPostImageServer.mockResolvedValue({
+    mockUpdatePostedImageServer.mockResolvedValue({
       id: "post-1",
       is_posted: true,
       caption: "#ニット に変えた",

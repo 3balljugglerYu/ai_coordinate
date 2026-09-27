@@ -10,6 +10,7 @@ import { getUser } from "@/lib/auth";
 import {
   postImageServer,
   unpostImageServer,
+  updatePostedImageServer,
 } from "@/features/generation/lib/server-database";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +38,8 @@ const mockRevalidateTag = revalidateTag as jest.MockedFunction<typeof revalidate
 const mockRevalidatePath = revalidatePath as jest.MockedFunction<typeof revalidatePath>;
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockPostImageServer = postImageServer as jest.MockedFunction<typeof postImageServer>;
+const mockUpdatePostedImageServer =
+  updatePostedImageServer as jest.MockedFunction<typeof updatePostedImageServer>;
 const mockUnpostImageServer =
   unpostImageServer as jest.MockedFunction<typeof unpostImageServer>;
 const mockEnsureWebPVariants = ensureWebPVariants as jest.MockedFunction<
@@ -225,7 +228,7 @@ describe("Posts cache invalidation routes", () => {
 
   test("PUT /api/posts/update_詳細系タグを即時失効する", async () => {
     // Spec: PCIR-002
-    mockPostImageServer.mockResolvedValue({
+    mockUpdatePostedImageServer.mockResolvedValue({
       id: "post-2",
       user_id: "user-1",
       is_posted: true,
@@ -241,7 +244,7 @@ describe("Posts cache invalidation routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockPostImageServer).toHaveBeenCalledWith(
+    expect(mockUpdatePostedImageServer).toHaveBeenCalledWith(
       "post-2",
       "updated caption",
       undefined,
@@ -261,8 +264,8 @@ describe("Posts cache invalidation routes", () => {
     expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-2");
   });
 
-  test("PUT /api/posts/update_show_before_imageをbooleanのままpostImageServerへ渡す", async () => {
-    mockPostImageServer.mockResolvedValue({
+  test("PUT /api/posts/update_show_before_imageをbooleanのままupdatePostedImageServerへ渡す", async () => {
+    mockUpdatePostedImageServer.mockResolvedValue({
       id: "post-2",
       user_id: "user-1",
       is_posted: true,
@@ -279,12 +282,73 @@ describe("Posts cache invalidation routes", () => {
     );
 
     expect(response.status).toBe(200);
-    expect(mockPostImageServer).toHaveBeenCalledWith(
+    expect(mockUpdatePostedImageServer).toHaveBeenCalledWith(
       "post-2",
       "updated caption",
       false,
       undefined
     );
+  });
+
+  test("PUT /api/posts/update_新規投稿用のpostImageServerを呼ばず元のposted_atを返す", async () => {
+    mockUpdatePostedImageServer.mockResolvedValue({
+      id: "post-2",
+      user_id: "user-1",
+      is_posted: true,
+      caption: "updated caption",
+      posted_at: "2026-03-16T00:00:00.000Z",
+    } as never);
+
+    const response = await updateRoute(
+      createRequest("PUT", {
+        id: "post-2",
+        caption: "updated caption",
+      })
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(200);
+    expect(mockPostImageServer).not.toHaveBeenCalled();
+    expect(body.posted_at).toBe("2026-03-16T00:00:00.000Z");
+  });
+
+  test("PUT /api/posts/update_未投稿の画像は公開せず404を返す", async () => {
+    mockUpdatePostedImageServer.mockRejectedValue(
+      new Error("post_not_posted: 投稿済みの画像が見つかりません")
+    );
+
+    const response = await updateRoute(
+      createRequest("PUT", {
+        id: "draft-1",
+        caption: "caption",
+      })
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(404);
+    expect(body.errorCode).toBe("POSTS_NOT_POSTED");
+    expect(mockPostImageServer).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).not.toHaveBeenCalled();
+  });
+
+  test("PUT /api/posts/update_非公開にできない投稿の非公開指定は400を返す", async () => {
+    mockUpdatePostedImageServer.mockRejectedValue(
+      new Error(
+        "画像の更新に失敗しました: prompt_visibility=private は generation_type=free のみ: coordinate"
+      )
+    );
+
+    const response = await updateRoute(
+      createRequest("PUT", {
+        id: "post-2",
+        caption: "caption",
+        prompt_visibility: "private",
+      })
+    );
+    const body = await readJson(response);
+
+    expect(response.status).toBe(400);
+    expect(body.errorCode).toBe("POSTS_PROMPT_VISIBILITY_NOT_ALLOWED");
   });
 
   test("DELETE /api/posts/[id]_詳細系とマイページ画像タグを即時失効する", async () => {
