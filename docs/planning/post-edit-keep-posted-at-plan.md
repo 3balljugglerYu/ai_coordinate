@@ -66,9 +66,22 @@
 
 ## 41件を元に戻す手順
 
-> ⚠️ **本番データベースへの接続が要る。** クラウドのセッションには本番へつなぐ設定が無いので、
-> この手順は本番に接続できる手元のセッション（`supabase db query --linked` が使える環境）で行うか、
-> 手順2〜5の SQL を Supabase の管理画面の SQL エディタで実行する。
+> ⚠️ **本番データベースへの接続が要る。** 次のどれかで行う。
+>
+> - **クラウドのセッション**: 環境の **API credentials** に Supabase のアクセストークン
+>   （Allowed websites = `api.supabase.com`、ヘッダー `Authorization` / Prefix `Bearer`）が登録されていれば、
+>   Supabase Management API の SQL の窓口（`POST /v1/projects/{ref}/database/query`、ベータ）を curl で呼ぶ。
+>   トークンはエージェントのプロキシが付けるので、セッションからは見えない。読み取りには `"read_only": true` を付ける
+>   ```sh
+>   curl -s -X POST "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/database/query" \
+>     -H "Content-Type: application/json" \
+>     -d '{"query": "select 1", "read_only": true}'
+>   ```
+>   `SUPABASE_PROJECT_REF`（本番は `hnrccaxrvhtbuihfvitc`。`NEXT_PUBLIC_SUPABASE_URL` のサブドメインで、秘密ではない）は
+>   環境変数に置く。Supabase CLI のデータベース操作（`supabase db query` など）は直接つなぐ方式で、
+>   クラウドの HTTP/HTTPS の中継を通れない見込みなので使わない
+> - **手元のセッション**: `supabase db query --linked`
+> - **Supabase の管理画面の SQL エディタ**
 
 1. **コードの修正を本番に出してから**戻す。先に戻すと、また編集で上がる
 2. 数え直す。元の投稿時刻は、デイリー投稿ボーナスの記録にだけ残っている
