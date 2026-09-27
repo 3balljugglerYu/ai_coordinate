@@ -790,6 +790,27 @@ describe("PostFeedCard", () => {
     expect(screen.getByTestId("post-feed-after-frame")).toBeInTheDocument();
   });
 
+  /*
+    カタログ(User ORIGINAL)で横スワイプするとき、隣のタブの見本は画面の外に置く。
+    そこでアイコンを先に読んでおかないと、払い始めてから読み込みが始まる。
+  */
+  test("投稿者のアイコンは既定では画面に近づいてから読み、eagerAvatar ならすぐ読む", () => {
+    const post = createPost({
+      user: {
+        id: "author-1",
+        nickname: "みきふく",
+        avatar_url: "https://example.test/avatar.png",
+      } as Post["user"],
+    });
+
+    const { unmount } = render(<PostFeedCard post={post} currentUserId={null} />);
+    expect(screen.getByAltText("みきふく").getAttribute("loading")).toBeNull();
+    unmount();
+
+    render(<PostFeedCard post={post} currentUserId={null} eagerAvatar />);
+    expect(screen.getByAltText("みきふく").getAttribute("loading")).toBe("eager");
+  });
+
   /**
    * 詳細へ入る前のサムネイル先渡し。
    *

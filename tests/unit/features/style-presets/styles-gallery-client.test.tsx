@@ -1,6 +1,7 @@
 /** @jest-environment jsdom */
 
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -238,6 +239,158 @@ describe("StylesGalleryClient", () => {
     expect(
       within(bar).getByRole("tab", { name: "✨ すべて（新着順）" }),
     ).toBeTruthy();
+  });
+
+  test("刷新前_チップのまま(タブの下線も横スワイプの領域も出さない)", () => {
+    render(
+      <StylesGalleryClient
+        presets={[preset("style-a")]}
+        generateCounts={{}}
+        generateTotals={{}}
+        nowIso={NOW_ISO}
+        locale="ja"
+      />,
+    );
+
+    expect(screen.getByRole("tab", { name: "すべて" }).className).toContain(
+      "rounded-full",
+    );
+    expect(screen.queryByTestId("catalog-tab-indicator")).toBeNull();
+    expect(screen.queryByTestId("catalog-swipe-panel")).toBeNull();
+  });
+
+  describe("刷新後_タブと横スワイプ", () => {
+    beforeEach(() => {
+      catalogRevampMock.mockReturnValue(true);
+    });
+
+    type Point = { x: number; y: number };
+
+    /** タッチのイベントを投げる(スワイプは touchmove を止めるため addEventListener で受けている)。 */
+    function dispatchTouch(
+      target: Element,
+      type: "touchstart" | "touchmove" | "touchend",
+      touches: Point[],
+      changed: Point[] = touches,
+    ) {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      const toTouchList = (points: Point[]) =>
+        points.map((point, index) => ({
+          identifier: index,
+          clientX: point.x,
+          clientY: point.y,
+        }));
+      Object.defineProperty(event, "touches", { value: toTouchList(touches) });
+      Object.defineProperty(event, "changedTouches", {
+        value: toTouchList(changed),
+      });
+      act(() => {
+        target.dispatchEvent(event);
+      });
+    }
+
+    /** 一覧の上で、指を startX から endX まで横に動かして離す。 */
+    function swipeList(target: Element, startX: number, endX: number) {
+      dispatchTouch(target, "touchstart", [{ x: startX, y: 300 }]);
+      for (let i = 1; i <= 6; i += 1) {
+        dispatchTouch(target, "touchmove", [
+          { x: startX + ((endX - startX) * i) / 6, y: 300 },
+        ]);
+      }
+      dispatchTouch(target, "touchend", [], [{ x: endX, y: 300 }]);
+    }
+
+    function renderGallery() {
+      render(
+        <StylesGalleryClient
+          presets={[
+            preset("style-a"),
+            preset("style-b", {
+              categoryKey: "character_remix",
+              categoryLabelJa: "アレンジ",
+            }),
+          ]}
+          generateCounts={{}}
+          generateTotals={{}}
+          nowIso={NOW_ISO}
+          locale="ja"
+        />,
+      );
+    }
+
+    function selectedTab() {
+      return screen
+        .getAllByRole("tab")
+        .find((tab) => tab.getAttribute("aria-selected") === "true")
+        ?.textContent;
+    }
+
+    /** 選択中のタブの一覧(払っている間に横に見せる隣のタブの見本は含めない)。 */
+    function currentList() {
+      return within(screen.getByTestId("catalog-swipe-current"));
+    }
+
+    test("チップではなくタブ(選択中に下線)で見せ、一覧を横スワイプの領域で包む", () => {
+      renderGallery();
+
+      const bar = screen.getByTestId("styles-catalog-chip-bar");
+      expect(
+        within(bar)
+          .getAllByRole("tab")
+          .map((tab) => tab.textContent),
+      ).toEqual(["✨ すべて（新着順）", "アレンジ", "コーディネート"]);
+      expect(within(bar).getByTestId("catalog-tab-indicator")).toBeTruthy();
+      expect(
+        within(bar).getByRole("tab", { name: "✨ すべて（新着順）" }).className,
+      ).not.toContain("rounded-full");
+      // 一覧(カード)は横スワイプの領域の中
+      expect(currentList().getByText("style-a")).toBeTruthy();
+    });
+
+    test("一覧を左へ払うと次のタブで絞り込み、右へ払うと戻る", () => {
+      renderGallery();
+
+      swipeList(currentList().getByText("style-a"), 300, 120);
+
+      expect(selectedTab()).toBe("アレンジ");
+      expect(currentList().queryByText("style-a")).toBeNull();
+      expect(currentList().getByText("style-b")).toBeTruthy();
+
+      swipeList(currentList().getByText("style-b"), 300, 120);
+
+      expect(selectedTab()).toBe("コーディネート");
+      expect(currentList().getByText("style-a")).toBeTruthy();
+      expect(currentList().queryByText("style-b")).toBeNull();
+
+      swipeList(currentList().getByText("style-a"), 120, 300);
+
+      expect(selectedTab()).toBe("アレンジ");
+    });
+
+    test("払い始めると、隣のタブの一覧の先頭を横に用意する(画像はすぐ読み込む)", () => {
+      renderGallery();
+
+      dispatchTouch(currentList().getByText("style-a"), "touchstart", [
+        { x: 300, y: 300 },
+      ]);
+
+      const next = screen.getByTestId("catalog-swipe-peek-next");
+      // 次のタブ(アレンジ)の一覧の見本。操作はできない
+      expect(within(next).getByText("style-b")).toBeTruthy();
+      expect(within(next).queryByText("style-a")).toBeNull();
+      expect(next.hasAttribute("inert")).toBe(true);
+      // 先頭のタブなので前は無い
+      expect(screen.queryByTestId("catalog-swipe-peek-previous")).toBeNull();
+    });
+
+    test("タブを押しても切り替わる", () => {
+      renderGallery();
+
+      fireEvent.click(screen.getByRole("tab", { name: "アレンジ" }));
+
+      expect(selectedTab()).toBe("アレンジ");
+      expect(currentList().queryByText("style-a")).toBeNull();
+    });
   });
 
   test("カード_admin設定色のカテゴリバッジを表示しcoordinateには出さない", () => {
