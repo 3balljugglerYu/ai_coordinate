@@ -37,6 +37,7 @@ export const deMessages = {
     contact: "Kontakt",
     creditsPurchase: "Percoins kaufen",
     logout: "Abmelden",
+    logoutFailed: "Abmelden fehlgeschlagen. Bitte Verbindung prüfen und erneut versuchen.",
     others: "Mehr",
     openOthers: "Mehr-Menü öffnen",
     collapseSidebar: "Seitenleiste einklappen",

@@ -37,6 +37,7 @@ export const thMessages = {
     contact: "ติดต่อ",
     creditsPurchase: "ซื้อ Percoin",
     logout: "ออกจากระบบ",
+    logoutFailed: "ออกจากระบบไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง",
     others: "เพิ่มเติม",
     openOthers: "เปิดเมนูเพิ่มเติม",
     collapseSidebar: "ย่อแถบด้านข้าง",

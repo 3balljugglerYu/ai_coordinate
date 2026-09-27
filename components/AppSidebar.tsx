@@ -11,10 +11,10 @@ import {
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle, Heart /* , Coins */ } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getCurrentUser, onAuthStateChange, signOut } from "@/features/auth/lib/auth-client";
+import { useAuthUser } from "@/features/auth/hooks/use-auth-user";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import {
   getCoordinateSourceStockSavePromptDot,
@@ -60,7 +60,9 @@ export function AppSidebar() {
   const commonT = useTranslations("common");
   const styleT = useTranslations("style");
   const saveTrigger = useWardrobeSaveTrigger();
-  const [user, setUser] = useState<User | null>(null);
+  // 確認に失敗した間は loading のまま取り直す(「ログイン」に倒さない。2026-09-27)
+  const { status: authStatus, user } = useAuthUser();
+  const signOutAndLeave = useSignOut();
   const [isOpen, setIsOpen] = useState(() => {
     if (typeof window === "undefined") {
       return true;
@@ -85,20 +87,6 @@ export function AppSidebar() {
   const sidebarActive = useMemo(() => shouldShowSidebar(pathname), [pathname]);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
-
-  useEffect(() => {
-    getCurrentUser().then((currentUser) => {
-      setUser(currentUser);
-    });
-
-    const subscription = onAuthStateChange((nextUser) => {
-      setUser(nextUser);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     if (user && !hasPrefetched.current) {
@@ -138,14 +126,9 @@ export function AppSidebar() {
     return null;
   }
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      router.push(localizedHomePath);
-      router.refresh();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
+  const handleSignOut = () => {
+    // 成功したらホームへ全画面遷移、失敗したらトーストで知らせる
+    void signOutAndLeave(localizedHomePath);
   };
 
   const handleNavigation = (path: string) => {
@@ -180,7 +163,12 @@ export function AppSidebar() {
     }
 
     startTransition(() => {
-      if (requiresAuthForGuestNavigation(normalizedTargetPath) && !user) {
+      // 未ログインと確定したときだけログインへ回す。確認中(loading)は目的地へ進み、
+      // 本当に未ログインなら行き先のページ側がログインへ回す
+      if (
+        requiresAuthForGuestNavigation(normalizedTargetPath) &&
+        authStatus === "signed-out"
+      ) {
         router.push(`/login?redirect=/`);
         return;
       }
@@ -369,7 +357,10 @@ export function AppSidebar() {
       </div>
 
       <div className="border-t py-3">
-        {user ? (
+        {authStatus === "loading" ? (
+          // 確認が済むまではログイン・ログアウト・保存するのどれも出さない(高さだけ確保)
+          <div className="h-9" aria-hidden="true" />
+        ) : user ? (
           <button
             className={cn(
               "group flex w-full items-center py-2 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-100",

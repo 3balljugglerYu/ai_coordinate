@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { reactivateAccount, signOut } from "@/features/auth/lib/auth-client";
+import { reactivateAccount } from "@/features/auth/lib/auth-client";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 
 interface ReactivateAccountCardProps {
   deletionScheduledAt: string | null;
@@ -37,10 +38,11 @@ export function ReactivateAccountCard({
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    router.push("/login");
-    router.refresh();
+  const signOutAndLeave = useSignOut();
+
+  const handleSignOut = () => {
+    // 成功したらログイン画面へ全画面遷移、失敗したらトーストで知らせる
+    void signOutAndLeave("/login");
   };
 
   return (

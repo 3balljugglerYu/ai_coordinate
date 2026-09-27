@@ -37,6 +37,7 @@ export const ptMessages = {
     contact: "Contato",
     creditsPurchase: "Comprar Percoins",
     logout: "Sair",
+    logoutFailed: "Não foi possível sair. Verifique sua conexão e tente novamente.",
     others: "Mais",
     openOthers: "Abrir mais opções",
     collapseSidebar: "Recolher barra lateral",

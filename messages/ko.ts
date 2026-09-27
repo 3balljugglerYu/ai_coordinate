@@ -37,6 +37,7 @@ export const koMessages = {
     contact: "문의",
     creditsPurchase: "Percoin 구매",
     logout: "로그아웃",
+    logoutFailed: "로그아웃하지 못했습니다. 네트워크 상태를 확인한 후 다시 시도해 주세요.",
     others: "더 보기",
     openOthers: "더보기 메뉴 열기",
     collapseSidebar: "사이드바 접기",

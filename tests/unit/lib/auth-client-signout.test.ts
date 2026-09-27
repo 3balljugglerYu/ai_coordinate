@@ -70,7 +70,7 @@ describe("auth-client signOut locale persistence", () => {
     );
   });
 
-  test("signOut_認証エラーの場合_localeCookieを再設定せず例外を投げる", async () => {
+  test("signOut_ブラウザもサーバー経由も失敗した場合_localeCookieを再設定せず例外を投げる", async () => {
     createClientMock.mockReturnValue({
       auth: {
         signOut: jest.fn().mockResolvedValue({
@@ -78,13 +78,27 @@ describe("auth-client signOut locale persistence", () => {
         }),
       },
     } as never);
+    // サーバー経由の受け皿(/api/auth/signout)にも届かない
+    const originalFetch = global.fetch;
+    const fetchMock = jest.fn().mockRejectedValue(new TypeError("Load failed"));
+    global.fetch = fetchMock as unknown as typeof fetch;
     document.cookie = `${LOCALE_COOKIE}=ja; path=/`;
 
-    await expect(signOut()).rejects.toThrow(
-      "ネットワークエラーが発生しました。インターネット接続を確認してください。"
+    try {
+      await expect(signOut()).rejects.toThrow(
+        "ネットワークエラーが発生しました。インターネット接続を確認してください。"
+      );
+    } finally {
+      global.fetch = originalFetch;
+    }
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/auth/signout",
+      expect.objectContaining({ method: "POST" })
     );
     expect(cookieSetterSpy).toHaveBeenNthCalledWith(1, `${LOCALE_COOKIE}=; path=/; max-age=0`);
     expect(cookieSetterSpy).toHaveBeenNthCalledWith(2, `${LOCALE_COOKIE}=ja; path=/`);
+    expect(cookieSetterSpy).toHaveBeenCalledTimes(2);
   });
 
   test("signOut_cookieの有効期限はlocale cookie設定と同じ値を使う", async () => {

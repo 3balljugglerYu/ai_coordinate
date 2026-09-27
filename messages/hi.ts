@@ -37,6 +37,7 @@ export const hiMessages = {
     contact: "संपर्क",
     creditsPurchase: "Percoin खरीदें",
     logout: "लॉग आउट",
+    logoutFailed: "लॉग आउट करने में विफल। कृपया अपना कनेक्शन जाँचें और फिर से प्रयास करें।",
     others: "और",
     openOthers: "अधिक मेनू खोलें",
     collapseSidebar: "साइडबार छोटा करें",

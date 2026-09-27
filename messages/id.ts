@@ -37,6 +37,7 @@ export const idMessages = {
     contact: "Kontak",
     creditsPurchase: "Beli Percoin",
     logout: "Keluar",
+    logoutFailed: "Gagal keluar. Periksa koneksi Anda, lalu silakan coba lagi.",
     others: "Lainnya",
     openOthers: "Buka menu lainnya",
     collapseSidebar: "Tutup sidebar",

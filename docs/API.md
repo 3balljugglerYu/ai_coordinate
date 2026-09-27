@@ -750,6 +750,12 @@ Main errors:
 | GET | `/api/admin/users` | admin session | 管理画面向けユーザー一覧を取得する |
 | GET | `/api/admin/users/search` | admin session | 管理画面向けユーザー検索を行う |
 
+### auth
+
+| Method | Path | Access | Summary |
+| --- | --- | --- | --- |
+| POST | `/api/auth/signout` | public | サーバー経由でログアウトし、このブラウザの Supabase 認証 Cookie を消す（ブラウザ側のログアウトが失敗・無応答だったときの受け皿。同一オリジンのみ。proxy はこの経路でセッションに触らない） |
+
 ### banners
 
 | Method | Path | Access | Summary |

@@ -6,7 +6,6 @@ import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { ArrowLeft, Heart, User } from "lucide-react";
-import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -15,11 +14,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { LanguageSettingsMenu } from "@/components/LanguageSettingsMenu";
 import { UserMenuItems } from "@/features/auth/components/UserMenuItems";
-import {
-  getCurrentUser,
-  signOut,
-  onAuthStateChange,
-} from "@/features/auth/lib/auth-client";
+import { useAuthUser } from "@/features/auth/hooks/use-auth-user";
+import { useSignOut } from "@/features/auth/hooks/use-sign-out";
 import { APP_NAME, ROUTES } from "@/constants";
 import { createClient } from "@/lib/supabase/client";
 import { SearchBar } from "@/features/posts/components/SearchBar";
@@ -61,8 +57,15 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const styleT = useTranslations("style");
   // 生成後のゲストはヘッダーのログインも「保存する」(signup固定+画像引き継ぎ)に切替。
   const saveTrigger = useWardrobeSaveTrigger();
-  const [currentUser, setCurrentUser] = useState<{ id: string; avatar_url?: string | null } | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  /*
+    ログイン状態は useAuthUser に任せる。確認に失敗した間は loading のまま取り直すので、
+    「ログイン中なのに『ログイン』ボタン」にはならない(2026-09-27 の不具合)。
+  */
+  const auth = useAuthUser();
+  const signOutAndLeave = useSignOut();
+  const signedInUserId = auth.status === "signed-in" ? auth.user.id : null;
+  // 取り終えたアバター。誰の分かを持ち、取り終えるまではスケルトンを出す
+  const [avatar, setAvatar] = useState<{ userId: string; url: string | null } | null>(null);
   const headerRef = useRef<HTMLElement | null>(null);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
@@ -118,6 +121,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   useEffect(() => {
     // 表示のたびに数える。初回表示は1で、2以上なら戻る先がアプリ内にある。
     recordInAppNavigation();
+    // sessionStorage(外部システム)に記録した遷移回数との同期のための意図的な setState。
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCanGoBackInHistory(hasInAppHistory());
   }, [normalizedPathname]);
   const shouldUseHistoryBack =
@@ -150,80 +155,49 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   }, []);
 
   useEffect(() => {
+    if (!signedInUserId) {
+      return;
+    }
+    let active = true;
     const supabase = createClient();
-    let isMounted = true;
 
-    const fetchProfileAvatar = async (userId: string) => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("avatar_url")
-        .eq("user_id", userId)
-        .maybeSingle();
+    const fetchAvatarUrl = async (): Promise<string | null> => {
+      try {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("avatar_url")
+          .eq("user_id", signedInUserId)
+          .maybeSingle();
 
-      if (error) {
+        if (error) {
+          console.error("Profile fetch error:", error);
+          return null;
+        }
+        return data?.avatar_url ?? null;
+      } catch (error) {
+        // 画像が取れなくてもログイン中の表示は崩さない(人型アイコンで出す)
         console.error("Profile fetch error:", error);
         return null;
       }
-
-      return data?.avatar_url ?? null;
     };
 
-    async function checkAuth() {
-      try {
-        const user = await getCurrentUser();
-        if (user) {
-          const avatarUrl = await fetchProfileAvatar(user.id);
-          if (!isMounted) return;
-          setCurrentUser({
-            id: user.id,
-            avatar_url: avatarUrl,
-          });
-        } else {
-          setCurrentUser(null);
-        }
-      } catch (error) {
-        console.error("Auth check error:", error);
-        setCurrentUser(null);
-      } finally {
-        setIsLoading(false);
+    void fetchAvatarUrl().then((url) => {
+      if (active) {
+        setAvatar({ userId: signedInUserId, url });
       }
-    }
-
-    checkAuth();
-
-    // 認証状態の変更を監視
-    const subscription = onAuthStateChange((user: SupabaseUser | null) => {
-      const handleUserChange = async () => {
-        if (user) {
-          const avatarUrl = await fetchProfileAvatar(user.id);
-          if (!isMounted) return;
-          setCurrentUser({
-            id: user.id,
-            avatar_url: avatarUrl,
-          });
-        } else {
-          setCurrentUser(null);
-        }
-        setIsLoading(false);
-      };
-
-      handleUserChange();
     });
 
     return () => {
-      isMounted = false;
-      subscription.unsubscribe();
+      active = false;
     };
-  }, []);
+  }, [signedInUserId]);
 
   useEffect(() => {
     const handleAvatarUpdated = (event: Event) => {
       const newAvatarUrl =
         (event as CustomEvent<{ avatarUrl?: string | null }>).detail?.avatarUrl ?? null;
 
-      setCurrentUser((prev) =>
-        prev ? { ...prev, avatar_url: newAvatarUrl } : prev
-      );
+      setAvatar((prev) => (prev ? { ...prev, url: newAvatarUrl } : prev));
     };
 
     window.addEventListener("profile:avatarUpdated", handleAvatarUpdated);
@@ -232,22 +206,23 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     };
   }, []);
 
-  const handleSignOut = async () => {
-    try {
-      await signOut();
-      // 状態を即座に更新
-      setCurrentUser(null);
-      router.push(localizedHomePath);
-      router.refresh();
-    } catch (error) {
-      console.error("Sign out error:", error);
-    }
+  const currentUser =
+    signedInUserId && avatar?.userId === signedInUserId
+      ? { id: signedInUserId, avatar_url: avatar.url }
+      : null;
+  // 確認が済むまで、ログイン中ならアバターを取り終えるまではスケルトン
+  const isLoading =
+    auth.status === "loading" || (signedInUserId !== null && currentUser === null);
+
+  const handleSignOut = () => {
+    // 成功したらホームへ全画面遷移、失敗したらトーストで知らせる
+    void signOutAndLeave(localizedHomePath);
   };
 
   const isSearchPage = normalizedPathname === "/search";
 
   // ヘッダー左側（戻るボタン + ロゴ）の共通コンポーネント
-  const HeaderLeft = () => (
+  const renderHeaderLeft = () => (
     <div className="flex items-center gap-4 flex-shrink-0">
       {shouldShowBackButton &&
         (shouldUseHistoryBack ? (
@@ -285,7 +260,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   );
 
   // ヘッダー右側（ユーザーアイコン）の共通コンポーネント
-  const HeaderRight = () => (
+  const renderHeaderRight = () => (
     <div className="flex items-center gap-2 flex-shrink-0">
       <LanguageSettingsMenu variant="header" />
       {isLoading ? (
@@ -293,7 +268,12 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
       ) : currentUser ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              data-testid="sticky-header-user-menu"
+            >
               {currentUser.avatar_url ? (
                 <Image
                   src={currentUser.avatar_url}
@@ -396,9 +376,9 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
       )}
       {/* PC版のヘッダー（検索ページ含む）とモバイル版の通常ヘッダー */}
       <div className={`w-full px-4 py-3 flex items-center justify-between gap-2 flex-nowrap ${isSearchPage ? "hidden md:flex" : ""}`}>
-        <HeaderLeft />
+        {renderHeaderLeft()}
         {renderSearchBar()}
-        <HeaderRight />
+        {renderHeaderRight()}
       </div>
 
       {/* 生成後ゲストの保存導線(signup固定)。 */}
