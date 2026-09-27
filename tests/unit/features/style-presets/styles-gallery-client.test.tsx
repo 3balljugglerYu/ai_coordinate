@@ -65,6 +65,36 @@ jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
 const routerPushMock = jest.fn();
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: routerPushMock }),
+  usePathname: () => "/ja/styles",
+}));
+
+// シートの見出しのコインのアイコンを先読みする(シートを開ける状態になったら)
+const preloadPercoinIconMock = jest.fn();
+jest.mock(
+  "@/features/generation/components/PromptLockedGenerationHeader",
+  () => ({
+    preloadPercoinIcon: () => preloadPercoinIconMock(),
+  })
+);
+
+// その場で生成するシート(next/dynamic で遅延読み込み)。渡された値だけを見る。
+jest.mock("next/dynamic", () => ({
+  __esModule: true,
+  default: () => {
+    const Sheet = (props: {
+      preset: { id: string };
+      subscriptionPlan: string;
+      canUseFreePose?: boolean;
+    }) => (
+      <div
+        data-testid="style-generation-sheet"
+        data-preset={props.preset.id}
+        data-plan={props.subscriptionPlan}
+        data-can-use-free-pose={String(props.canUseFreePose ?? false)}
+      />
+    );
+    return Sheet;
+  },
 }));
 
 // /styles は静的ページのため、認証状態とお気に入りはブラウザ側で取得する。
@@ -558,5 +588,202 @@ describe("StylesGalleryClient", () => {
 
     expect(screen.queryByText("style-a")).toBeNull();
     expect(screen.getByText("style-b")).toBeTruthy();
+  });
+
+  /*
+    カードを押したときの分岐(Persta.AI ORIGINAL の生成シート)。
+    計画書: docs/planning/styles-generation-sheet-implementation-plan.md §10-5
+  */
+  describe("生成シート(刷新後・ログイン中)", () => {
+    /** 段階解放のカテゴリ(開く前に解放状態を確かめる)。 */
+    function gatedPreset(id: string): StylePresetPublicSummary {
+      const base = preset(id);
+      return {
+        ...base,
+        category: {
+          ...base.category,
+          sequentialUnlock: true,
+          unlockPrerequisiteKey: null,
+        },
+      } as unknown as StylePresetPublicSummary;
+    }
+
+    function respondTo(
+      routes: Record<string, { ok?: boolean; body?: unknown } | Error>
+    ) {
+      fetchMock.mockImplementation((input: RequestInfo | URL) => {
+        const url = String(input);
+        const route = routes[url];
+        if (route instanceof Error) {
+          return Promise.reject(route);
+        }
+        if (!route) {
+          return Promise.resolve({ ok: true, json: async () => ({}) });
+        }
+        return Promise.resolve({
+          ok: route.ok ?? true,
+          json: async () => route.body,
+        });
+      });
+    }
+
+    async function renderAsSignedIn(
+      presets: StylePresetPublicSummary[],
+      props: { canUseFreePose?: boolean } = {}
+    ) {
+      getUserMock.mockResolvedValue({ data: { user: { id: "user-1" } } });
+      render(
+        <StylesGalleryClient
+          presets={presets}
+          generateCounts={{}}
+          generateTotals={{}}
+          nowIso={NOW_ISO}
+          locale="ja"
+          {...props}
+        />,
+      );
+      // 認証状態がクライアントで解決されるのを待つ(お気に入りチップの出現で判定)
+      await screen.findByRole("tab", { name: /お気に入り/ });
+    }
+
+    beforeEach(() => {
+      catalogRevampMock.mockReturnValue(true);
+    });
+
+    test("シートを開ける状態(刷新後・ログイン中)になったらコインのアイコンを先読みする", async () => {
+      await renderAsSignedIn([preset("style-a")]);
+
+      expect(preloadPercoinIconMock).toHaveBeenCalled();
+    });
+
+    test("未ログインではコインのアイコンを先読みしない", async () => {
+      render(
+        <StylesGalleryClient
+          presets={[preset("style-a")]}
+          generateCounts={{}}
+          generateTotals={{}}
+          nowIso={NOW_ISO}
+          locale="ja"
+        />,
+      );
+      await waitFor(() => expect(getUserMock).toHaveBeenCalled());
+
+      expect(preloadPercoinIconMock).not.toHaveBeenCalled();
+    });
+
+    test("ログイン中はシートを開き_試着確認は出さない", async () => {
+      respondTo({
+        "/api/users/me/subscription-plan": { body: { plan: "premium" } },
+      });
+      await renderAsSignedIn([preset("style-a")], { canUseFreePose: true });
+
+      fireEvent.click(screen.getByText("style-a"));
+
+      const sheet = await screen.findByTestId("style-generation-sheet");
+      expect(sheet?.getAttribute("data-preset")).toBe("style-a");
+      expect(sheet?.getAttribute("data-plan")).toBe("premium");
+      expect(sheet?.getAttribute("data-can-use-free-pose")).toBe("true");
+      expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+      // 段階解放でないカテゴリは解放状態を問い合わせない
+      expect(fetchMock).not.toHaveBeenCalledWith(
+        expect.stringContaining("/unlock-status")
+      );
+    });
+
+    test("プランが取れなくても無料プランとしてシートを開く", async () => {
+      respondTo({
+        "/api/users/me/subscription-plan": new Error("network"),
+      });
+      jest.spyOn(console, "error").mockImplementation(() => {});
+      await renderAsSignedIn([preset("style-a")]);
+
+      fireEvent.click(screen.getByText("style-a"));
+
+      expect(
+        (await screen.findByTestId("style-generation-sheet")).getAttribute("data-plan")
+      ).toBe("free");
+    });
+
+    test("未ログインは今までどおり試着確認から/styleへ", async () => {
+      render(
+        <StylesGalleryClient
+          presets={[preset("style-a")]}
+          generateCounts={{}}
+          generateTotals={{}}
+          nowIso={NOW_ISO}
+          locale="ja"
+        />,
+      );
+      await waitFor(() => expect(getUserMock).toHaveBeenCalled());
+
+      fireEvent.click(screen.getByText("style-a"));
+
+      expect(screen.getByText("こちらを試着しますか？")).toBeTruthy();
+      expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+    });
+
+    test("刷新前はログイン中でも今までどおり試着確認", async () => {
+      catalogRevampMock.mockReturnValue(false);
+      await renderAsSignedIn([preset("style-a")]);
+
+      fireEvent.click(screen.getByText("style-a"));
+
+      expect(screen.getByText("こちらを試着しますか？")).toBeTruthy();
+      expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+    });
+
+    test("段階解放で解放済みならシートを開く", async () => {
+      respondTo({
+        "/api/style-presets/style-gated/unlock-status": {
+          body: { status: "unlocked" },
+        },
+        "/api/users/me/subscription-plan": { body: { plan: "free" } },
+      });
+      await renderAsSignedIn([gatedPreset("style-gated")]);
+
+      fireEvent.click(screen.getByText("style-gated"));
+
+      expect(
+        (await screen.findByTestId("style-generation-sheet")).getAttribute("data-preset")
+      ).toBe("style-gated");
+    });
+
+    test.each([
+      [{ status: "locked", reason: "sequential" }, "presetLockedTitle"],
+      [{ status: "ended" }, "presetEndedTitle"],
+      [{ status: "login_required" }, "presetLoginRequiredTitle"],
+    ])(
+      "段階解放でまだ使えない(%o)ときはシートを開かず理由を出す",
+      async (unlockState, title) => {
+        respondTo({
+          "/api/style-presets/style-gated/unlock-status": { body: unlockState },
+        });
+        await renderAsSignedIn([gatedPreset("style-gated")]);
+
+        fireEvent.click(screen.getByText("style-gated"));
+
+        const notice = await screen.findByTestId("one-tap-style-locked-notice");
+        expect(notice.textContent).toContain(title);
+        expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+        expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+      }
+    );
+
+    test.each([
+      ["取得に失敗", new Error("network")],
+      ["判定できない(unknown)", { body: { status: "unknown" } }],
+    ])(
+      "段階解放で解放状態が%sのときは今までどおり試着確認へ戻す",
+      async (_label, route) => {
+        respondTo({ "/api/style-presets/style-gated/unlock-status": route });
+        jest.spyOn(console, "error").mockImplementation(() => {});
+        await renderAsSignedIn([gatedPreset("style-gated")]);
+
+        fireEvent.click(screen.getByText("style-gated"));
+
+        expect(await screen.findByText("こちらを試着しますか？")).toBeTruthy();
+        expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+      }
+    );
   });
 });

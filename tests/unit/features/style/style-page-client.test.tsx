@@ -2,7 +2,9 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
+import { OneTapStyleGenerationForm } from "@/features/style/components/OneTapStyleGenerationForm";
 import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
+import { COLLECTION_PROGRESS_REFRESH_EVENT } from "@/features/collections/hooks/useCollectionProgress";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
 jest.mock("next-intl", () => ({
@@ -2108,6 +2110,380 @@ describe("StylePageClient", () => {
     fireEvent.click(screen.getByRole("button", { name: "Buy Percoins" }));
 
     expect(routerPushMock).toHaveBeenCalledWith("/credits/purchase");
+  });
+
+  /*
+    生成フォームを部品へ切り出す(Persta.AI ORIGINAL の生成シートと共用する)前に、
+    切り出しで壊れやすいのに固めていなかった動きをここで固める。
+    計画書: docs/planning/styles-generation-sheet-implementation-plan.md §10-4
+  */
+  describe("フォーム切り出し前の動き", () => {
+    const findAsyncGenerateFormData = () => {
+      const call = fetchMock.mock.calls.find(([input]) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : (input as Request).url;
+        return url === "/style/generate-async";
+      });
+      expect(call).toBeDefined();
+      return call![1]?.body as FormData;
+    };
+
+    const startAsyncGeneration = async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+    };
+
+    const finishAsyncGeneration = async () => {
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+      expect((await screen.findByAltText("Generated result")).getAttribute("src")).toBe("https://cdn.example.com/generated-style-result.png");
+    };
+
+    test("チュートリアルの目印(data-tour)を1つずつ出す", () => {
+      const { container } = render(<StylePageClient presets={presets} />);
+
+      for (const anchor of [
+        "style-tour-preset",
+        "style-tour-character",
+        "style-tour-generate",
+      ]) {
+        expect(
+          container.querySelectorAll(`[data-tour="${anchor}"]`)
+        ).toHaveLength(1);
+      }
+    });
+
+    test.each([
+      ["sequential", "presetLockedTitle", "presetLockedSequentialDescription"],
+      ["prerequisite", "presetLockedTitle", "presetLockedPrerequisiteDescription"],
+      ["login_required", "presetLoginRequiredTitle", "presetLoginRequiredDescription"],
+    ] as const)(
+      "未開放の?style=で来たとき_%sの案内を出す",
+      (reason, title, description) => {
+        render(
+          <StylePageClient presets={presets} lockedRequestedReason={reason} />
+        );
+
+        const notice = screen.getByTestId("style-locked-request-notice");
+        expect(notice.textContent).toContain(title);
+        expect(notice.textContent).toContain(description);
+      }
+    );
+
+    test("未開放の案内_ログインが必要なときはログインで認証モーダルを開く", () => {
+      render(
+        <StylePageClient
+          presets={presets}
+          lockedRequestedReason="login_required"
+        />
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "presetLoginRequiredAction" })
+      );
+
+      expect(screen.getByTestId("mock-auth-modal")).toBeTruthy();
+      expect(
+        screen.queryByTestId("style-locked-request-notice")).toBeNull();
+    });
+
+    test("告知バナーのrequestedModelを初期モデルにして生成で送る", async () => {
+      jest.useFakeTimers();
+
+      render(
+        <StylePageClient
+          presets={presets}
+          initialAuthState="authenticated"
+          requestedModel="gpt-image-2-medium-1k"
+        />
+      );
+      await startAsyncGeneration();
+
+      expect(findAsyncGenerateFormData().get("model")).toBe(
+        "gpt-image-2-medium-1k"
+      );
+    });
+
+    test("未知のrequestedModelは使わない", async () => {
+      jest.useFakeTimers();
+
+      render(
+        <StylePageClient
+          presets={presets}
+          initialAuthState="authenticated"
+          requestedModel="not-a-model"
+        />
+      );
+      await startAsyncGeneration();
+
+      expect(findAsyncGenerateFormData().get("model")).not.toBe("not-a-model");
+    });
+
+    test("運営(canUseFreePose)かつログイン中だけポーズ指定欄を出し_入力をposePromptで送る", async () => {
+      jest.useFakeTimers();
+
+      render(
+        <StylePageClient
+          presets={presets}
+          initialAuthState="authenticated"
+          canUseFreePose
+        />
+      );
+
+      fireEvent.click(
+        screen.getByRole("checkbox", { name: "posePromptToggleLabel" })
+      );
+      fireEvent.change(screen.getByLabelText("posePromptLabel"), {
+        target: { value: "raise both hands" },
+      });
+      await startAsyncGeneration();
+
+      expect(findAsyncGenerateFormData().get("posePrompt")).toBe(
+        "raise both hands"
+      );
+    });
+
+    test("運営でない人とゲストにはポーズ指定欄を出さない", () => {
+      const { unmount } = render(
+        <StylePageClient presets={presets} initialAuthState="authenticated" />
+      );
+      expect(
+        screen.queryByRole("checkbox", { name: "posePromptToggleLabel" })).toBeNull();
+      unmount();
+
+      render(
+        <StylePageClient
+          presets={presets}
+          initialAuthState="guest"
+          canUseFreePose
+        />
+      );
+      expect(
+        screen.queryByRole("checkbox", { name: "posePromptToggleLabel" })).toBeNull();
+    });
+
+    test("2枚目の参照画像を使うスタイルでは選んだ画像をuploadImage2で送る", async () => {
+      jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+      const dualPreset: StylePresetPublicSummary = {
+        ...presets[0],
+        id: "dual-user-upload-preset",
+        imageInputMode: "dual",
+        dualReferenceSource: "user_upload",
+      };
+
+      const { container } = render(<StylePageClient presets={[dualPreset]} />);
+
+      const referenceFile = new File(["reference-bytes"], "reference.png", {
+        type: "image/png",
+      });
+      fireEvent.change(
+        container.querySelector("#user-reference-image") as HTMLInputElement,
+        { target: { files: [referenceFile] } }
+      );
+      await uploadImageAndWaitUntilReady();
+      await startStylingAndWaitForRequest();
+
+      const generateCall = fetchMock.mock.calls.find(
+        ([input]) => input === "/style/generate"
+      );
+      const formData = generateCall![1]?.body as FormData;
+      expect((formData.get("uploadImage2") as File).name).toBe("reference.png");
+    });
+
+    test("非同期生成の成功後に一覧を再検証してrefreshし_コレクション進捗の再チェックを知らせる", async () => {
+      jest.useFakeTimers();
+      const refreshMock = jest.fn();
+      useRouterMock.mockReturnValue({
+        push: routerPushMock,
+        refresh: refreshMock,
+      } as unknown as ReturnType<typeof useRouter>);
+      const collectionRefreshListener = jest.fn();
+      window.addEventListener(
+        COLLECTION_PROGRESS_REFRESH_EVENT,
+        collectionRefreshListener
+      );
+
+      try {
+        render(
+          <StylePageClient presets={presets} initialAuthState="authenticated" />
+        );
+        await startAsyncGeneration();
+        await finishAsyncGeneration();
+
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/revalidate/style",
+          expect.objectContaining({ method: "POST" })
+        );
+        await waitFor(() => expect(refreshMock).toHaveBeenCalled());
+        expect(collectionRefreshListener).toHaveBeenCalled();
+      } finally {
+        window.removeEventListener(
+          COLLECTION_PROGRESS_REFRESH_EVENT,
+          collectionRefreshListener
+        );
+      }
+    });
+
+    test("ログインユーザーが生成結果ありで別スタイルを選ぶと_確認に同意したら切り替えて結果を消す", async () => {
+      jest.useFakeTimers();
+
+      render(
+        <StylePageClient presets={presets} initialAuthState="authenticated" />
+      );
+      await startAsyncGeneration();
+      await finishAsyncGeneration();
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
+        })
+      );
+      expect(
+        screen.getByText("This will switch the result shown on this screen")
+      ).toBeTruthy();
+
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
+      expect(screen.queryByAltText("Generated result")).toBeNull();
+      expect(
+        screen.getByRole("button", {
+          name: /FLUFFY PAJAMAS CODE LONG TITLE style card/i,
+        })
+      ?.getAttribute("aria-pressed")).toBe("true");
+    });
+
+    test("ゲストの生成結果にはワードローブ保存ボタンを出す", async () => {
+      jest.useFakeTimers({ doNotFake: ["queueMicrotask"] });
+
+      render(<StylePageClient presets={presets} />);
+      await uploadImageAndWaitUntilReady();
+      await startStylingAndWaitForRequest();
+      act(() => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      expect(
+        await screen.findByRole("button", { name: /wardrobeSaveButton/ })
+      ).toBeTruthy();
+    });
+  });
+
+  /*
+    /styles の生成シートの中で使う形(variant="sheet")。
+    ページ前提の処理(チュートリアルの目印・/style のジョブ再開キー・ページ全体の
+    再読み込み・完了トースト)を行わないことを固める(計画書 §10-2, ADR-003)。
+  */
+  describe("生成シートの中のフォーム(variant=sheet)", () => {
+    const renderSheetForm = () =>
+      render(
+        <OneTapStyleGenerationForm
+          variant="sheet"
+          preset={presets[1]}
+          initialAuthState="authenticated"
+          showResultPanel={false}
+        />
+      );
+
+    test("One-Tap Style のチュートリアルの目印(style-tour-*)を出さない", () => {
+      const { container } = renderSheetForm();
+
+      /*
+        /style のチュートリアルは目印を querySelector で探すため、シートにも置くと
+        重複しうる。モデル選択の部品が持つ tour-model-* などは別のチュートリアル
+        (/coordinate 等)のもので、User ORIGINAL の生成シートにも出ている。
+      */
+      expect(
+        container.querySelectorAll('[data-tour^="style-tour"]')
+      ).toHaveLength(0);
+    });
+
+    test("/styleのジョブ再開キーを読まない", async () => {
+      window.sessionStorage.setItem(
+        "persta:style:active-async-job",
+        JSON.stringify({ jobId: "page-job", styleId: presets[0].id })
+      );
+
+      renderSheetForm();
+      await act(async () => {
+        await Promise.resolve();
+      });
+
+      expect(
+        fetchMock.mock.calls.some(([input]) =>
+          String(input).startsWith("/api/generation-status?")
+        )
+      ).toBe(false);
+      // /style のジョブはそのまま残る(消すと /style で再開できなくなる)
+      expect(
+        window.sessionStorage.getItem("persta:style:active-async-job")
+      ).not.toBeNull();
+    });
+
+    test("生成しても再開キーを書かず_成功後は一覧の再検証だけしてページ全体は再読み込みしない", async () => {
+      jest.useFakeTimers();
+      const refreshMock = jest.fn();
+      useRouterMock.mockReturnValue({
+        push: routerPushMock,
+        refresh: refreshMock,
+      } as unknown as ReturnType<typeof useRouter>);
+
+      renderSheetForm();
+      fireEvent.click(screen.getByRole("button", { name: "Add image" }));
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: /Start Styling/ }));
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      expect(
+        window.sessionStorage.getItem("persta:style:active-async-job")
+      ).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(2000);
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+      await waitFor(() =>
+        expect(fetchMock).toHaveBeenCalledWith(
+          "/api/revalidate/style",
+          expect.objectContaining({ method: "POST" })
+        )
+      );
+      await act(async () => {
+        await Promise.resolve();
+        await Promise.resolve();
+      });
+
+      expect(refreshMock).not.toHaveBeenCalled();
+      // categoryKey は渡されたスタイルのカテゴリで記録する
+      expect(mockRecordStyleUsageClientEvent).toHaveBeenCalledWith({
+        eventType: "generate",
+        styleId: presets[1].id,
+        categoryKey: presets[1].category.key,
+      });
+      // 完了トーストは出さない(結果はシートの一覧に出る)
+      expect(mockToast).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "The outfit change is ready! Want to check it out?",
+        })
+      );
+      // 生成開始時にページをスクロールしない
+      expect(scrollIntoViewMock).not.toHaveBeenCalled();
+    });
   });
 
   // 本 PR で追加した selectedRemoteSource 経路 (ストック / 生成済み) のテスト

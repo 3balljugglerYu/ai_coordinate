@@ -6,7 +6,7 @@ import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import { useGenerationState } from "../context/GenerationStateContext";
 import { getGeneratedImages } from "../lib/database";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
-import type { GeneratedImageData } from "../types";
+import type { GeneratedImageData, GenerationType } from "../types";
 
 /**
  * 直近の生成をいくつ出すか。
@@ -33,9 +33,19 @@ const RECENT_LIMIT = 4;
  *
  * `GeneratedImageGallery` をそのまま使うので、拡大表示と投稿モーダルも
  * 付いてくる。シートを閉じずに投稿まで進める。
+ *
+ * `/styles` の生成シート(One-Tap Style)でも使う。そのときは
+ * `generationType="one_tap_style"` で、One-Tap Style の過去の生成を並べる。
  */
-export function PromptLockedGenerationResults() {
-  const t = useTranslations("free");
+export function PromptLockedGenerationResults({
+  generationType = "free",
+}: {
+  /** どの生成の一覧か。既定は Free Style(User ORIGINAL の生成シート)。 */
+  generationType?: Extract<GenerationType, "free" | "one_tap_style">;
+} = {}) {
+  const freeT = useTranslations("free");
+  const styleT = useTranslations("style");
+  const t = generationType === "one_tap_style" ? styleT : freeT;
   const generationState = useGenerationState();
   const [recentImages, setRecentImages] = useState<GeneratedImageData[]>([]);
 
@@ -63,7 +73,7 @@ export function PromptLockedGenerationResults() {
         user.id,
         RECENT_LIMIT,
         0,
-        "free"
+        generationType
       ).catch(() => []);
       if (cancelled) return;
 
@@ -95,7 +105,7 @@ export function PromptLockedGenerationResults() {
       cancelled = true;
     };
     // 生成中フラグが落ちた（＝完了した）タイミングで引き直す
-  }, [isGenerating]);
+  }, [isGenerating, generationType]);
 
   // 新しいものを先頭に。ID が重なったら先頭側を残す。
   const seen = new Set<string>();
