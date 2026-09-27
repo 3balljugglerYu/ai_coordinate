@@ -505,12 +505,14 @@ export function GenerationForm({
       );
   }, [handleImageUpload]);
 
-  // /style → 「このイラストで生成」 → 確認 → /coordinate 遷移時に
+  // /style・/inspire → 「このイラストで生成」 → 確認 → /free 遷移時に
   // sessionStorage に画像 URL が積まれていれば apply-from-history へ転送する。
-  // この pending key は /coordinate 専用の持ち越し経路なので、じゆうモードでは消費しない
-  // (誤ってじゆうモードのフォームに coordinate 由来の画像を差し込まないため)。
+  // 受け取るのは Free Style のページのフォームだけ。派生生成シート(promptLocked)も
+  // 同じ mode="free" だが別の画面の上に開くので、遷移に失敗して残った印を拾わない。
+  // 持ち越し先は廃止した Coordinate から Free Style に移した
+  // (docs/planning/coordinate-mode-deprecation-plan.md ADR-004)。
   useEffect(() => {
-    if (isFree) return;
+    if (!isFree || promptLocked) return;
     if (typeof window === "undefined") return;
     let pendingUrl: string | null = null;
     try {
@@ -531,7 +533,9 @@ export function GenerationForm({
         detail: { imageUrl: pendingUrl, fileNameHint: "style-history" },
       }),
     );
-  }, []);
+    // isFree / promptLocked はフォームごとに固定(呼び出し側がリテラルで渡す)。
+    // 実質 mount 時の1回だけ動く。印は読んだ時点で消すので、再実行されても二重に入らない
+  }, [isFree, promptLocked]);
 
   // チュートリアルモード: 背景設定をセット（step5のonHighlightedで自動セット）
   useEffect(() => {

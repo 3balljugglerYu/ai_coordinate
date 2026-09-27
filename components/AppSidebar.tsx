@@ -93,11 +93,13 @@ export function AppSidebar() {
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
 
+  // 生成の入口の行き先になりうる /style と /free を読む。廃止した /coordinate は
+  // Free Style へ転送しているので、代わりに転送先の /free を読む。
   useEffect(() => {
     if (user && !hasPrefetched.current) {
       router.prefetch(localizedHomePath);
-      router.prefetch(localizePublicPath("/coordinate", locale));
       router.prefetch(localizePublicPath("/style", locale));
+      router.prefetch(localizePublicPath("/free", locale));
       router.prefetch("/challenge");
       router.prefetch("/notifications");
       router.prefetch("/my-page");
@@ -106,12 +108,11 @@ export function AppSidebar() {
     }
   }, [localizedHomePath, locale, user, router]);
 
-  // 刷新後に増える行き先(カタログと Free Style)も先読みする。
+  // 刷新後に増える行き先(カタログ)も先読みする。
   // 運営の判定はマウント後に確定するので、上の1回きりの先読みとは分けて見る。
   useEffect(() => {
     if (user && isCatalogRevamp) {
       router.prefetch(localizePublicPath(CATALOG_ENTRY_PATH, locale));
-      router.prefetch(localizePublicPath("/free", locale));
     }
   }, [isCatalogRevamp, locale, user, router]);
 

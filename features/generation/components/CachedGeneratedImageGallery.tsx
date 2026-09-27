@@ -40,10 +40,10 @@ interface CachedGeneratedImageGalleryProps {
   returnToImageIdKey: string;
   /**
    * 「このイラストで生成」ボタンの挙動を制御する。
-   *   - "dispatch-event": 同一ページ上の GenerationForm へ apply イベントを発火（/coordinate）
-   *   - "navigate-coordinate": 確認ダイアログを出して /coordinate へ遷移し、画像を持ち越す（/style）
+   *   - "dispatch-event": 同一ページ上の GenerationForm へ apply イベントを発火（/free）
+   *   - "navigate-free": 確認ダイアログを出して /free へ遷移し、画像を持ち越す（/style・/inspire）
    */
-  applyActionMode: "dispatch-event" | "navigate-coordinate";
+  applyActionMode: "dispatch-event" | "navigate-free";
 }
 
 export async function CachedGeneratedImageGallery({

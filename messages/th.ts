@@ -1323,7 +1323,7 @@ export const thMessages = {
     listPromptInspireEmpty: "ไม่สามารถแสดงได้เพราะรูปนี้ถูกสร้างด้วยเทมเพลตสไตล์ที่ผู้ใช้ส่งเข้ามา",
     listApplyForNext: "สร้างจากรูปนี้",
     listApplyForNextSuccess: "ตั้งรูปไว้ในช่องอัปโหลดแล้ว",
-    listApplyForNextConfirmTitle: "กำลังไปหน้าจัดเซ็ต",
+    listApplyForNextConfirmTitle: "กำลังไปที่ Free Style",
     listApplyForNextConfirmDescription: "แน่ใจหรือไม่?",
     listApplyForNextConfirmCancel: "ยกเลิก",
     listApplyForNextConfirmOk: "ดำเนินการต่อ",
@@ -1901,9 +1901,6 @@ export const thMessages = {
     bonusTourTitle: "ได้รับโบนัสบทเรียน!",
     bonusTourBody:
       "คุณได้รับ {amount} Percoin จากการทำบทเรียนเสร็จ!",
-    generatedImageReadyTitle: "รูปใหม่พร้อมแล้ว",
-    generatedImageReadySingle: "เพิ่มรูปแล้ว 1 รูป",
-    generatedImageReadyMultiple: "เพิ่มรูปแล้ว {count} รูป",
     justNow: "เมื่อสักครู่",
     minutesAgo: "{count} นาทีที่แล้ว",
     hoursAgo: "{count} ชั่วโมงที่แล้ว",

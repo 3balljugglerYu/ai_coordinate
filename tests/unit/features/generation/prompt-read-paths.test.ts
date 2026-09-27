@@ -58,7 +58,7 @@ const ALLOWED_WITHOUT_RESOLUTION: Array<{ file: string; reason: string }> = [
   {
     file: "features/generation/lib/database.ts",
     reason:
-      "取得2経路は resolveOwnVisiblePrompts を通す。saveGeneratedImages は書き込み、listCoordinateImagesCreatedAfter は未使用",
+      "取得2経路は resolveOwnVisiblePrompts を通す。saveGeneratedImages は書き込み",
   },
 ];
 

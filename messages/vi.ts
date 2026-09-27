@@ -1324,7 +1324,7 @@ export const viMessages = {
       "Không khả dụng vì hình này được tạo bằng mẫu phong cách do người dùng đóng góp.",
     listApplyForNext: "Tạo từ hình này",
     listApplyForNextSuccess: "Đã đặt hình vào ô tải lên.",
-    listApplyForNextConfirmTitle: "Đang đến trang Phối đồ",
+    listApplyForNextConfirmTitle: "Đang đến Free Style",
     listApplyForNextConfirmDescription: "Bạn có chắc không?",
     listApplyForNextConfirmCancel: "Hủy",
     listApplyForNextConfirmOk: "Tiếp tục",
@@ -1902,9 +1902,6 @@ export const viMessages = {
     bonusTourTitle: "Đã nhận thưởng hướng dẫn!",
     bonusTourBody:
       "Bạn nhận được {amount} Percoin nhờ hoàn thành hướng dẫn!",
-    generatedImageReadyTitle: "Hình mới đã sẵn sàng",
-    generatedImageReadySingle: "Đã thêm 1 hình.",
-    generatedImageReadyMultiple: "Đã thêm {count} hình.",
     justNow: "Vừa xong",
     minutesAgo: "{count} phút trước",
     hoursAgo: "{count} giờ trước",

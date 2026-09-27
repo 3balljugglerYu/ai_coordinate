@@ -5,7 +5,6 @@ loadEnvConfig(process.cwd());
 
 const port = Number(process.env.PLAYWRIGHT_PORT ?? '3001');
 const baseURL = `http://127.0.0.1:${port}`;
-const authFile = 'playwright/.auth/user.json';
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -27,17 +26,13 @@ export default defineConfig({
       name: 'setup',
       testMatch: /.*\.setup\.ts/,
     },
+    // ログイン済みで動かす project(chromium-auth)は Coordinate の E2E 専用だった。
+    // Coordinate の廃止で E2E ごと外した(docs/planning/coordinate-mode-deprecation-plan.md)。
+    // ログイン状態を作る setup は残してある(playwright/.auth/user.json)
     {
       name: 'chromium',
-      testIgnore: [/.*\.setup\.ts/, /.*coordinate\.spec\.ts/],
+      testIgnore: [/.*\.setup\.ts/],
       use: { ...devices['Desktop Chrome'] },
-    },
-    {
-      name: 'chromium-auth',
-      testMatch: /.*coordinate\.spec\.ts/,
-      testIgnore: /.*\.setup\.ts/,
-      use: { ...devices['Desktop Chrome'], storageState: authFile },
-      dependencies: ['setup'],
     },
   ],
   webServer: {

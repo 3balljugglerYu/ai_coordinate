@@ -25,7 +25,7 @@ interface GeneratedImageGalleryClientProps {
   title: string;
   detailFromParam: string;
   returnToImageIdKey: string;
-  applyActionMode: "dispatch-event" | "navigate-coordinate";
+  applyActionMode: "dispatch-event" | "navigate-free";
 }
 
 /**

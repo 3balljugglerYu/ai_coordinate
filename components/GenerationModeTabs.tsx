@@ -4,16 +4,18 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
-import { Sparkles, Wand2, PenLine } from "lucide-react";
+import { Wand2, PenLine } from "lucide-react";
 import { stripLocalePrefix } from "@/i18n/config";
 import { setLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import { cn } from "@/lib/utils";
 
 /**
- * /style・/free・/coordinate を相互に行き来するためのアニメーション付き
+ * /style・/free を相互に行き来するためのアニメーション付き
  * セグメントタブ。ボトムナビ/サイドバーに無い style / free 画面への導線を兼ねる。
- * 並び順は利用を促したい順(ワンタップ > フリー > コーディネート)。
- * コーディネートは将来的な縮退を見据えて末尾に置く。
+ * 並び順は利用を促したい順(ワンタップ > フリー)。
+ *
+ * 生成モード Coordinate(/coordinate)は廃止して Free Style へ転送しているので、
+ * タブにも出さない(docs/planning/coordinate-mode-deprecation-plan.md)。
  *
  * (app)/layout.tsx に配置されており、モード間の遷移中も
  * インスタンスが保持される。そのため usePathname の更新に合わせて
@@ -21,20 +23,16 @@ import { cn } from "@/lib/utils";
  * 遷移完了を待たずに即座に切り替わって見える。ページ本文の読み込みは
  * (app)/loading.tsx のスケルトンがタブの下で受け持つ。
  *
- * ラベルは coordinate.tabLabel / style.pageTitle / free.tabLabel を使う。
- * coordinate.tabLabel はタブ専用(ボトムナビ/サイドバーの nav.coordinate=「コーディネート」
- * とは別キー)にして、タブだけ英語ブランド名「Coordinate」にできるようにしている。
+ * ラベルは style.pageTitle / free.tabLabel を使う。
  */
 const TABS = [
   { path: "/style", icon: Wand2 },
   { path: "/free", icon: PenLine },
-  { path: "/coordinate", icon: Sparkles },
 ] as const;
 
 export function GenerationModeTabs() {
   const pathname = usePathname();
   const router = useRouter();
-  const coordinateT = useTranslations("coordinate");
   const styleT = useTranslations("style");
   const freeT = useTranslations("free");
 
@@ -85,7 +83,7 @@ export function GenerationModeTabs() {
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [activeIndex, localePrefix, freeT, coordinateT, styleT]);
+  }, [activeIndex, localePrefix, freeT, styleT]);
 
   // 滞在中のモードを「直近に使った生成モード」として記憶する。
   // ボトムナビ/サイドバーの「コーディネート」入口がこれを読み、前回モードへ復帰する。
@@ -94,19 +92,15 @@ export function GenerationModeTabs() {
     setLastGenerationModePath(TABS[activeIndex].path);
   }, [activeIndex]);
 
-  // coordinate / style / free 以外のルートでは表示しない。
+  // style / free 以外のルートでは表示しない。
   if (activeIndex === -1) return null;
 
-  const labels = [
-    styleT("pageTitle"),
-    freeT("tabLabel"),
-    coordinateT("tabLabel"),
-  ];
+  const labels = [styleT("pageTitle"), freeT("tabLabel")];
 
   return (
     <div className="border-b border-pink-100/70 bg-white/80 backdrop-blur-sm">
       <div className="mx-auto max-w-6xl px-4 py-3">
-        {/* 3タブをスマホ幅に収めるため、アクティブタブだけラベル込みで広げ、
+        {/* タブをスマホ幅に収めるため、アクティブタブだけラベル込みで広げ、
             非アクティブはアイコンのみに縮める(ラベルは sr-only で読み上げ対象に残す)。
             グラデ背景は実測位置へスライドするピルで表現する(従来のスライド演出を維持)。 */}
         <div

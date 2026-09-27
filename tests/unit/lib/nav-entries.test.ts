@@ -4,7 +4,10 @@ import {
   isNavItemActive,
   resolveGenerationEntryPath,
 } from "@/lib/nav-entries";
-import { setLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
+import {
+  LAST_GENERATION_MODE_STORAGE_KEY,
+  setLastGenerationModePath,
+} from "@/features/generation/lib/generation-mode-preference";
 import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 /**
@@ -22,18 +25,25 @@ describe("nav-entries", () => {
       setLastGenerationModePath("/free");
       expect(resolveGenerationEntryPath(false)).toBe("/free");
 
-      setLastGenerationModePath("/coordinate");
-      expect(resolveGenerationEntryPath(false)).toBe("/coordinate");
+      setLastGenerationModePath("/style");
+      expect(resolveGenerationEntryPath(false)).toBe("/style");
+    });
+
+    test("刷新前: 前回が廃止した Coordinate なら Free Style", () => {
+      // 廃止前にタブが保存した値。/coordinate は Free Style へ転送されるので、
+      // 転送を待たずに行き先を Free Style にする
+      window.localStorage.setItem(LAST_GENERATION_MODE_STORAGE_KEY, "/coordinate");
+      expect(resolveGenerationEntryPath(false)).toBe("/free");
     });
 
     test("刷新前: 前回のモードが無ければ One-Tap Style", () => {
       expect(resolveGenerationEntryPath(false)).toBe("/style");
     });
 
-    test.each(["/style", "/coordinate", "/free"] as const)(
+    test.each(["/style", "/coordinate", "/free"])(
       "刷新後(つくる): 前回のモードが %s でも毎回 Free Style",
       (lastMode) => {
-        setLastGenerationModePath(lastMode);
+        window.localStorage.setItem(LAST_GENERATION_MODE_STORAGE_KEY, lastMode);
         expect(resolveGenerationEntryPath(true)).toBe("/free");
       }
     );
@@ -54,13 +64,12 @@ describe("nav-entries", () => {
       expect(isNavItemActive("/challenge", "/notifications", true)).toBe(false);
     });
 
-    test("刷新前: 生成の入口は /coordinate と /style で選択中(/free はこれまでどおり対象外)", () => {
-      expect(isNavItemActive(GENERATION_ENTRY_PATH, "/coordinate", false)).toBe(true);
+    test("刷新前: 生成の入口は /style で選択中(/free はこれまでどおり対象外)", () => {
       expect(isNavItemActive(GENERATION_ENTRY_PATH, "/style", false)).toBe(true);
       expect(isNavItemActive(GENERATION_ENTRY_PATH, "/free", false)).toBe(false);
     });
 
-    test.each(["/coordinate", "/style", "/free"])(
+    test.each(["/style", "/free"])(
       "刷新後: 生成の入口(つくる)は %s で選択中",
       (pathname) => {
         expect(isNavItemActive(GENERATION_ENTRY_PATH, pathname, true)).toBe(true);

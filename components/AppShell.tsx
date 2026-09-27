@@ -6,7 +6,6 @@ import { NavigationBar } from "@/components/NavigationBar";
 import { Footer } from "@/components/Footer";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
-import { GeneratedImageNotificationChecker } from "@/components/GeneratedImageNotificationChecker";
 import { CollectionProgressChecker } from "@/components/CollectionProgressChecker";
 import { CollectionUnlockDripListener } from "@/features/collections/components/CollectionUnlockDripListener";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
@@ -95,9 +94,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={null}>
         <AppSidebar />
       </Suspense>
-      <Suspense fallback={null}>
-        <GeneratedImageNotificationChecker />
-      </Suspense>
+      {/*
+        Coordinate の生成完了を10秒ごとに確かめていた常駐処理は、Coordinate の廃止で
+        外した(docs/planning/coordinate-mode-deprecation-plan.md)。
+      */}
       <Suspense fallback={null}>
         <CollectionProgressChecker />
       </Suspense>

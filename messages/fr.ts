@@ -1327,7 +1327,7 @@ export const frMessages = {
       "Indisponible : cette image a été générée avec un modèle de style communautaire.",
     listApplyForNext: "Générer à partir de cette image",
     listApplyForNextSuccess: "L'image a été placée dans le champ d'envoi.",
-    listApplyForNextConfirmTitle: "Aller à la page Coordonner",
+    listApplyForNextConfirmTitle: "Aller à Free Style",
     listApplyForNextConfirmDescription: "Êtes-vous sûr ?",
     listApplyForNextConfirmCancel: "Annuler",
     listApplyForNextConfirmOk: "Continuer",
@@ -1906,9 +1906,6 @@ export const frMessages = {
     bonusTourTitle: "Bonus de tutoriel obtenu !",
     bonusTourBody:
       "Vous avez gagné {amount} Percoins pour avoir terminé le tutoriel !",
-    generatedImageReadyTitle: "De nouvelles images sont prêtes",
-    generatedImageReadySingle: "1 image a été ajoutée.",
-    generatedImageReadyMultiple: "{count} images ont été ajoutées.",
     justNow: "À l'instant",
     minutesAgo: "Il y a {count} min",
     hoursAgo: "Il y a {count} h",

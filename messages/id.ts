@@ -1326,7 +1326,7 @@ export const idMessages = {
       "Tidak tersedia karena gambar ini dibuat dengan template gaya kiriman komunitas.",
     listApplyForNext: "Hasilkan dari gambar ini",
     listApplyForNextSuccess: "Gambar telah disetel ke kolom unggah.",
-    listApplyForNextConfirmTitle: "Menuju halaman Koordinat",
+    listApplyForNextConfirmTitle: "Menuju Free Style",
     listApplyForNextConfirmDescription: "Apakah kamu yakin?",
     listApplyForNextConfirmCancel: "Batal",
     listApplyForNextConfirmOk: "Lanjutkan",
@@ -1904,9 +1904,6 @@ export const idMessages = {
     bonusTourTitle: "Bonus tutorial diperoleh!",
     bonusTourBody:
       "Kamu mendapat {amount} Percoin karena menyelesaikan tutorial!",
-    generatedImageReadyTitle: "Gambar baru sudah siap",
-    generatedImageReadySingle: "1 gambar telah ditambahkan.",
-    generatedImageReadyMultiple: "{count} gambar telah ditambahkan.",
     justNow: "Baru saja",
     minutesAgo: "{count} menit lalu",
     hoursAgo: "{count} jam lalu",

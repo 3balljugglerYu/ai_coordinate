@@ -17,10 +17,13 @@ export interface CoordinateApplyFromHistoryDetail {
 }
 
 /**
- * /style の「このイラストで生成」確認後 → /coordinate 遷移時に、
+ * /style・/inspire の「このイラストで生成」確認後 → /free 遷移時に、
  * 画像 URL を持ち越すための sessionStorage キー。
- * /coordinate ページの GenerationForm が mount 時に値を取り出し、
+ * /free ページの GenerationForm が mount 時に値を取り出し、
  * `coordinate:apply-from-history` イベントを発火する。
+ *
+ * 持ち越し先は廃止した Coordinate から Free Style に移した。キーとイベントの
+ * 名前は歴史的経緯でそのまま(docs/planning/coordinate-mode-deprecation-plan.md ADR-003)。
  */
 export const COORDINATE_PENDING_SOURCE_IMAGE_KEY =
   "persta-ai:coordinate-pending-source-image-url";

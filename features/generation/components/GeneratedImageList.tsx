@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePostPageNavigation } from "@/features/posts/hooks/usePostPageNavigation";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { Calendar, Copy, Download, Loader2, Plus, Sparkles, Wand2 } from "lucide-react";
 import {
   AlertDialog,
@@ -19,6 +19,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
+import { ROUTES } from "@/constants";
+import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import type { GeneratedImageData } from "../types";
 import { shareOrDownloadGeneratedImage } from "../lib/download-image";
@@ -50,10 +52,13 @@ interface GeneratedImageListProps {
   returnToImageIdKey: string;
   /**
    * 「このイラストで生成」ボタンの挙動制御。
-   *   - "dispatch-event": 同一ページ上の GenerationForm へ apply イベントを発火（/coordinate）
-   *   - "navigate-coordinate": 確認ダイアログを出して /coordinate へ遷移し、画像を持ち越す（/style）
+   *   - "dispatch-event": 同一ページ上の GenerationForm へ apply イベントを発火（/free）
+   *   - "navigate-free": 確認ダイアログを出して /free へ遷移し、画像を持ち越す（/style・/inspire）
+   *
+   * 持ち越し先は廃止した Coordinate から Free Style に移した
+   * （docs/planning/coordinate-mode-deprecation-plan.md ADR-004）。
    */
-  applyActionMode: "dispatch-event" | "navigate-coordinate";
+  applyActionMode: "dispatch-event" | "navigate-free";
   /**
    * 元データの generation_type。one_tap_style はプロンプトを運営側で
    * 機密扱いにしているため、空 prompt 時の表示文言とコピーボタン表示を分岐する。
@@ -90,9 +95,11 @@ export function GeneratedImageList({
   // 使用プロンプトを非表示・コピー不可とする。
   const isPromptHidden = isOneTapStyle || generationType === "inspire";
   const router = useRouter();
+  const localeValue = useLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const t = useTranslations("coordinate");
   const { toast } = useToast();
-  // router は別用途（/coordinate への遷移）でも使うので残す
+  // router は別用途（/free への遷移）でも使うので残す
   const { isNavigating, openPostPage } = usePostPageNavigation();
   const [selectedImageIndex, setSelectedImageIndex] =
     useState<number | null>(null);
@@ -190,12 +197,12 @@ export function GeneratedImageList({
   };
 
   const handleApplyForNextGeneration = (image: GeneratedImageData) => {
-    if (applyActionMode === "navigate-coordinate") {
-      // /style 等: 確認ダイアログを出して /coordinate へ遷移
+    if (applyActionMode === "navigate-free") {
+      // /style 等: 確認ダイアログを出して /free へ遷移
       setNavigateConfirmImage(image);
       return;
     }
-    // /coordinate: 同一ページの GenerationForm へイベント発火
+    // /free: 同一ページの GenerationForm へイベント発火
     const detail: CoordinateApplyFromHistoryDetail = {
       imageUrl: image.url,
       fileNameHint: image.id,
@@ -214,11 +221,12 @@ export function GeneratedImageList({
     toast({ title: t("listApplyForNextSuccess") });
   };
 
-  const handleConfirmNavigateToCoordinate = () => {
+  const handleConfirmNavigateToFree = () => {
     const image = navigateConfirmImage;
     if (!image) return;
     if (typeof window !== "undefined") {
       try {
+        // 受け取り手は Free Style の GenerationForm（mount 時に1度だけ読む）
         window.sessionStorage.setItem(
           COORDINATE_PENDING_SOURCE_IMAGE_KEY,
           image.url,
@@ -226,7 +234,8 @@ export function GeneratedImageList({
       } catch {
         // sessionStorage 書き込み不可は遷移だけ実行
       }
-      router.push("/coordinate");
+      // ロケール付きで開き、proxy のロケール付与の転送を挟まない
+      router.push(localizePublicPath(ROUTES.FREE, locale));
     }
     setNavigateConfirmImage(null);
   };
@@ -483,7 +492,7 @@ export function GeneratedImageList({
             <AlertDialogCancel>
               {t("listApplyForNextConfirmCancel")}
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmNavigateToCoordinate}>
+            <AlertDialogAction onClick={handleConfirmNavigateToFree}>
               {t("listApplyForNextConfirmOk")}
             </AlertDialogAction>
           </AlertDialogFooter>

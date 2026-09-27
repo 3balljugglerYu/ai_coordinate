@@ -1327,7 +1327,7 @@ export const itMessages = {
       "Non disponibile perché questa immagine è stata generata con un modello di stile della community.",
     listApplyForNext: "Genera a partire da questa immagine",
     listApplyForNextSuccess: "L'immagine è stata impostata nel campo di caricamento.",
-    listApplyForNextConfirmTitle: "Sto andando alla pagina Coordina",
+    listApplyForNextConfirmTitle: "Sto andando a Free Style",
     listApplyForNextConfirmDescription: "Sei sicuro?",
     listApplyForNextConfirmCancel: "Annulla",
     listApplyForNextConfirmOk: "Continua",
@@ -1905,9 +1905,6 @@ export const itMessages = {
     bonusTourTitle: "Bonus tutorial ottenuto!",
     bonusTourBody:
       "Hai guadagnato {amount} Percoin per aver completato il tutorial!",
-    generatedImageReadyTitle: "Nuove immagini sono pronte",
-    generatedImageReadySingle: "È stata aggiunta 1 immagine.",
-    generatedImageReadyMultiple: "Sono state aggiunte {count} immagini.",
     justNow: "Adesso",
     minutesAgo: "{count} min fa",
     hoursAgo: "{count} h fa",

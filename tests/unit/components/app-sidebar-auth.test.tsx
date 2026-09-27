@@ -16,9 +16,10 @@ jest.mock("next-intl", () => ({
 }));
 
 const mockPush = jest.fn();
+const mockPrefetch = jest.fn();
 jest.mock("next/navigation", () => ({
   usePathname: () => "/ja",
-  useRouter: () => ({ push: mockPush, prefetch: jest.fn(), refresh: jest.fn() }),
+  useRouter: () => ({ push: mockPush, prefetch: mockPrefetch, refresh: jest.fn() }),
 }));
 
 jest.mock("@/components/LanguageSettingsMenu", () => ({
@@ -60,6 +61,12 @@ jest.mock("@/features/generation/lib/coordinate-source-stock-save-prompt-state",
 jest.mock("@/features/auth/lib/auth-client", () => ({
   resolveCurrentUser: jest.fn(),
   onAuthStateChange: jest.fn(),
+}));
+
+// カタログ刷新(運営のみ)は切っておく。刷新時だけの先読みと取り違えないように
+const mockCatalogRevamp = jest.fn(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockCatalogRevamp(),
 }));
 
 const mockSignOutAndLeave = jest.fn();
@@ -191,5 +198,32 @@ describe("AppSidebar のログイン／ログアウト表示", () => {
 
     expect(authButtons().login).not.toBeNull();
     expect(authButtons().logout).toBeNull();
+  });
+});
+
+describe("AppSidebar の先読み", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockResolve.mockReset();
+    mockPrefetch.mockReset();
+    mockOnAuthStateChange.mockReset();
+    mockOnAuthStateChange.mockReturnValue({ unsubscribe: jest.fn() } as never);
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test("ログイン中は /coordinate ではなく、転送先の /free を先読みする", async () => {
+    mockResolve.mockResolvedValue({ status: "signed-in", user: USER });
+
+    render(<AppSidebar />);
+    await flush();
+
+    const prefetched = mockPrefetch.mock.calls.map(([href]) => href);
+    expect(prefetched).toContain("/ja/style");
+    // 入口の行き先(前回のモード)になりうる Free Style も、刷新前から先読みする
+    expect(prefetched).toContain("/ja/free");
+    expect(prefetched.filter((href) => href.includes("coordinate"))).toEqual([]);
   });
 });
