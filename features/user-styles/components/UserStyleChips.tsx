@@ -6,6 +6,10 @@ import { User } from "lucide-react";
 import { useHorizontalScrollIndicator } from "@/features/style/hooks/useHorizontalScrollIndicator";
 import { cn } from "@/lib/utils";
 import { StylesCatalogChipBar } from "@/features/style-presets/components/StylesCatalogChipBar";
+import {
+  CatalogTabBar,
+  type CatalogTab,
+} from "@/features/style-presets/components/CatalogTabBar";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { UserStyleAuthor } from "@/features/user-styles/types";
 
@@ -16,7 +20,7 @@ export type UserStyleChipId = "all" | "usage" | `author:${string}`;
 const AUTHOR_AVATAR_PX = 20;
 
 /**
- * /user-styles のチップ列。
+ * /user-styles のチップ列。カタログ刷新(段階公開中は運営のみ)ではタブ(`CatalogTabBar`)にする。
  *
  * `✨すべて（新着順）` / `💖みんなが使ってる` は最初から描き、**作者チップだけをマウント後に足す**。
  * 作者チップは閲覧者依存（フォロー中の人しか出ない）なので、静的シェルに載せられない
@@ -42,13 +46,38 @@ export function UserStyleChips({
     trackRef,
     thumbRef,
   } = useHorizontalScrollIndicator({
+    // 刷新後はタブにするので、このインジケーターはチップ列(刷新前)だけで使う
     remeasureKey: authors,
-    // 刷新後は、チップがはみ出さないときスクロールバーの空白を詰める
-    collapseWhenFits: isCatalogRevamp,
   });
 
+  if (isCatalogRevamp) {
+    // /styles と同じタブ。スクロールで上端に固定する。
+    // ⭐ 並び順は userStyleChipIds(一覧のスワイプで隣を決める)と同じにすること
+    const tabs: CatalogTab<UserStyleChipId>[] = [
+      { id: "all", label: `✨ ${t("chipAll")}` },
+      // ⭐ 👑 は /styles の「人気」(直近30日)が使っている。こちらは累計なので別の絵文字にする
+      { id: "usage", label: `💖 ${t("chipUsage")}` },
+      ...authors.map(
+        (author): CatalogTab<UserStyleChipId> => ({
+          id: `author:${author.authorId}`,
+          label: author.nickname ?? "",
+          icon: <AuthorAvatar url={author.avatarUrl} />,
+        })
+      ),
+    ];
+    return (
+      <StylesCatalogChipBar>
+        <CatalogTabBar
+          tabs={tabs}
+          activeId={active}
+          onSelect={onSelect}
+          ariaLabel={t("chipRowLabel")}
+        />
+      </StylesCatalogChipBar>
+    );
+  }
+
   return (
-    // 刷新後はスクロールで上端に固定する(/styles と同じ部品)
     <StylesCatalogChipBar>
       <div
         ref={setScrollEl}
@@ -87,11 +116,7 @@ export function UserStyleChips({
           高さは常に確保してレイアウトシフトを防ぐ。 */}
       <div
         ref={trackRef}
-        // 刷新後はバーが上下の余白と下の余白(mb-4)を持つので、ここはバー内の間隔だけにする
-        className={cn(
-          "relative mx-1 mt-1 h-1 overflow-hidden rounded-full bg-slate-100",
-          isCatalogRevamp ? "mb-1" : "mb-4"
-        )}
+        className="relative mx-1 mb-4 mt-1 h-1 overflow-hidden rounded-full bg-slate-100"
         style={{ visibility: "hidden" }}
         aria-hidden="true"
       >

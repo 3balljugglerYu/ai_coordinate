@@ -20,15 +20,20 @@ import type { StylePresetPublicSummary } from "@/features/style-presets/lib/sche
  * (/styles 一覧の「試着しますか？」モーダル用)。href はそのまま残るため、
  * クローラーは紹介ページへのリンクとして辿れ、Cmd/Ctrl+クリックや中クリックの
  * 「新しいタブで開く」も既定どおり動く。
+ *
+ * imageLoading="eager" は、画面の外でもすぐ画像を読み込む(カタログのタブを横スワイプするとき、
+ * 隣のタブの一覧を先に用意しておくため。CatalogSwipePanel)。既定は画面に近づいてから読む。
  */
 export function PublicStyleCard({
   preset,
   locale,
   onSelect,
+  imageLoading,
 }: {
   preset: StylePresetPublicSummary;
   locale: Locale;
   onSelect?: (preset: StylePresetPublicSummary) => void;
+  imageLoading?: "lazy" | "eager";
 }) {
   const badgeLocale = locale === "ja" ? "ja" : "en";
   const categoryName =
@@ -67,6 +72,7 @@ export function PublicStyleCard({
           src={preset.thumbnailImageUrl}
           alt={preset.title}
           fill
+          loading={imageLoading}
           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
           className="object-cover object-top transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none"
         />

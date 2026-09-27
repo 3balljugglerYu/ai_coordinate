@@ -30,6 +30,8 @@ export const hiMessages = {
   nav: {
     home: "होम",
     coordinate: "कोऑर्डिनेट",
+    catalog: "Catalog",
+    create: "बनाएं",
     challenge: "मिशन",
     notifications: "सूचनाएँ",
     myPage: "मेरा पेज",

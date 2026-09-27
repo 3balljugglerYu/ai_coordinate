@@ -30,6 +30,8 @@ export const idMessages = {
   nav: {
     home: "Beranda",
     coordinate: "Koordinat",
+    catalog: "Catalog",
+    create: "Buat",
     challenge: "Misi",
     notifications: "Notifikasi",
     myPage: "Halaman saya",

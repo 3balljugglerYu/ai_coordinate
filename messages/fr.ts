@@ -30,6 +30,8 @@ export const frMessages = {
   nav: {
     home: "Accueil",
     coordinate: "Coordonner",
+    catalog: "Catalog",
+    create: "Créer",
     challenge: "Missions",
     notifications: "Notifications",
     myPage: "Mon espace",

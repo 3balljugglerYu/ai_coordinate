@@ -30,6 +30,8 @@ export const enMessages = {
   nav: {
     home: "Home",
     coordinate: "Coordinate",
+    catalog: "Catalog",
+    create: "Create",
     challenge: "Missions",
     notifications: "Notifications",
     myPage: "My Page",

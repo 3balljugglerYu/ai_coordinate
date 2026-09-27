@@ -10,7 +10,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Home, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle, Heart /* , Coins */ } from "lucide-react";
+import { Home, LayoutGrid, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle, Heart /* , Coins */ } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuthUser } from "@/features/auth/hooks/use-auth-user";
@@ -34,11 +34,13 @@ import {
   stripLocalePrefix,
 } from "@/i18n/config";
 import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
-import { getLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import {
-  TUTORIAL_TOUR_ENTRY_PATH,
-  isTutorialTourInProgress,
-} from "@/features/tutorial/lib/tutorial-status";
+  CATALOG_ENTRY_PATH,
+  GENERATION_ENTRY_PATH,
+  isNavItemActive,
+  resolveGenerationEntryPath,
+} from "@/lib/nav-entries";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { AuthModal } from "@/features/auth/components/AuthModal";
 import { useWardrobeSaveTrigger } from "@/features/wardrobe/hooks/use-wardrobe-save";
 
@@ -59,6 +61,9 @@ export function AppSidebar() {
   const navT = useTranslations("nav");
   const commonT = useTranslations("common");
   const styleT = useTranslations("style");
+  // カタログ刷新(段階公開中は運営のみ)では「カタログ」を足し、生成の入口を「つくる」にする。
+  // ボトムナビ(NavigationBar)と同じ並び・同じ判定にする(lib/nav-entries.ts)。
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const saveTrigger = useWardrobeSaveTrigger();
   // 確認に失敗した間は loading のまま取り直す(「ログイン」に倒さない。2026-09-27)
   const { status: authStatus, user } = useAuthUser();
@@ -101,6 +106,15 @@ export function AppSidebar() {
     }
   }, [localizedHomePath, locale, user, router]);
 
+  // 刷新後に増える行き先(カタログと Free Style)も先読みする。
+  // 運営の判定はマウント後に確定するので、上の1回きりの先読みとは分けて見る。
+  useEffect(() => {
+    if (user && isCatalogRevamp) {
+      router.prefetch(localizePublicPath(CATALOG_ENTRY_PATH, locale));
+      router.prefetch(localizePublicPath("/free", locale));
+    }
+  }, [isCatalogRevamp, locale, user, router]);
+
   useEffect(() => {
     return subscribeCoordinateSourceStockSavePromptDot(
       setHasCoordinateSourceStockSavePromptDot
@@ -135,18 +149,15 @@ export function AppSidebar() {
     let normalizedTargetPath = stripLocalePrefix(path).pathname;
     let resolvedPath = path;
 
-    // 「コーディネート」入口は前回使った生成モードへ復帰させる。
-    // 前回 One-Tap Style だった場合は /style へ遷移する。
-    // ただしチュートリアルツアー進行中は直近モードに関わらずツアーの目的地
-    // (/style)へ固定する(他モードへ流すとツアーが再開できず詰まる)。
-    if (normalizedTargetPath === "/coordinate") {
-      const preferred = isTutorialTourInProgress()
-        ? TUTORIAL_TOUR_ENTRY_PATH
-        : getLastGenerationModePath();
-      if (preferred !== "/coordinate") {
+    // 生成の入口は押したときに行き先を決める。刷新前(コーディネート)は前回使った
+    // 生成モードへ、刷新後(つくる)は毎回 Free Style へ。チュートリアルツアー中は
+    // ツアーの目的地(/style)へ固定する(詳細は lib/nav-entries.ts)。
+    if (normalizedTargetPath === GENERATION_ENTRY_PATH) {
+      const preferred = resolveGenerationEntryPath(isCatalogRevamp);
+      if (preferred !== GENERATION_ENTRY_PATH) {
         // path 内の "/coordinate" のみ差し替え、ロケールプレフィックスや
         // クエリ・ハッシュ等の付随情報を維持する。
-        resolvedPath = path.replace("/coordinate", preferred);
+        resolvedPath = path.replace(GENERATION_ENTRY_PATH, preferred);
         normalizedTargetPath = preferred;
       }
     }
@@ -188,7 +199,14 @@ export function AppSidebar() {
 
   const navItems = [
     { path: localizedHomePath, label: navT("home"), icon: Home },
-    { path: "/coordinate", label: navT("coordinate"), icon: Sparkles },
+    ...(isCatalogRevamp
+      ? [{ path: CATALOG_ENTRY_PATH, label: navT("catalog"), icon: LayoutGrid }]
+      : []),
+    {
+      path: GENERATION_ENTRY_PATH,
+      label: isCatalogRevamp ? navT("create") : navT("coordinate"),
+      icon: Sparkles,
+    },
     { path: "/challenge", label: navT("challenge"), icon: Trophy },
     { path: "/notifications", label: navT("notifications"), icon: Bell },
     { path: "/my-page", label: navT("myPage"), icon: UserIcon },
@@ -232,16 +250,17 @@ export function AppSidebar() {
       <div className="flex-1 space-y-1">
         {navItems.map(({ path, label, icon: Icon }) => {
           const normalizedItemPath = stripLocalePrefix(path).pathname;
-          // 「コーディネート」入口は生成モード全体の入口として扱い、
-          // /style 滞在中もアクティブ表示する。
-          const isActive =
-            normalizedPathname === normalizedItemPath ||
-            (normalizedItemPath === "/coordinate" &&
-              normalizedPathname === "/style");
+          // 生成の入口は生成モード全体の入口、カタログは /user-styles も含めて
+          // アクティブ表示する(lib/nav-entries.ts)。
+          const isActive = isNavItemActive(
+            normalizedItemPath,
+            normalizedPathname,
+            isCatalogRevamp
+          );
           return (
             <button
               key={path}
-              data-tour={path === "/coordinate" ? "coordinate-nav-desktop" : undefined}
+              data-tour={path === GENERATION_ENTRY_PATH ? "coordinate-nav-desktop" : undefined}
               onClick={() => handleNavigation(path)}
               title={!isOpen ? label : undefined}
               className={cn(
@@ -264,7 +283,7 @@ export function AppSidebar() {
                   {path === "/notifications" && hasSidebarDot && (
                     <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                   )}
-                  {path === "/coordinate" &&
+                  {path === GENERATION_ENTRY_PATH &&
                     hasCoordinateSourceStockSavePromptDot && (
                       <span className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500" />
                     )}

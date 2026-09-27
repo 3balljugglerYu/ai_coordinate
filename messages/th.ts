@@ -30,6 +30,8 @@ export const thMessages = {
   nav: {
     home: "หน้าแรก",
     coordinate: "จัดเซ็ต",
+    catalog: "Catalog",
+    create: "สร้าง",
     challenge: "ภารกิจ",
     notifications: "การแจ้งเตือน",
     myPage: "หน้าของฉัน",

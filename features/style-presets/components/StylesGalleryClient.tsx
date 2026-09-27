@@ -18,6 +18,14 @@ import { PublicStyleCard } from "@/features/style-presets/components/PublicStyle
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
 import { StylesCatalogChipBar } from "@/features/style-presets/components/StylesCatalogChipBar";
 import {
+  CatalogTabBar,
+  type CatalogTab,
+} from "@/features/style-presets/components/CatalogTabBar";
+import {
+  CatalogSwipePanel,
+  type CatalogTabMode,
+} from "@/features/style-presets/components/CatalogSwipePanel";
+import {
   deriveStyleBrowseChips,
   filterStyleBrowsePresets,
   STYLE_NEW_WINDOW_DAYS,
@@ -76,6 +84,13 @@ async function fetchSubscriptionPlan(): Promise<SubscriptionPlan> {
     return "free";
   }
 }
+
+/**
+ * 横スワイプで隣のタブを見せるときに描くカードの数(カタログ刷新後)。
+ * 払っている間に見えるのは画面の高さの分だけなので、先頭だけ描いて画像も先に読み込む
+ * (スマホの2列で4段、タブレットの3列でも画面の高さを埋める数)。
+ */
+const PEEK_CARD_COUNT = 8;
 
 /** チップ先頭の絵文字(装飾)。探索シート(StyleBrowseSheet)と同じ見た目に揃える。 */
 const CHIP_EMOJI: Partial<Record<string, string>> = {
@@ -279,9 +294,8 @@ export function StylesGalleryClient({
     trackRef: chipIndicatorTrackRef,
     thumbRef: chipIndicatorThumbRef,
   } = useHorizontalScrollIndicator({
+    // 刷新後はタブ(CatalogTabBar)にするので、このインジケーターはチップ列(刷新前)だけで使う
     remeasureKey: chips,
-    // 刷新後は、チップがはみ出さないときスクロールバーの空白を詰める
-    collapseWhenFits: isCatalogRevamp,
   });
   const filtered = useMemo(
     () => filterStyleBrowsePresets(presets, activeChip, context),
@@ -315,121 +329,169 @@ export function StylesGalleryClient({
     }
   }
 
+  /** チップ(刷新後はタブ)の表示名。先頭の絵文字も含める。 */
+  function chipText(chip: (typeof chips)[number]): string {
+    // 刷新後の「すべて」は旧「✨新着」の役割を引き継ぐので ✨ を付ける
+    const emoji =
+      chip.id === "all"
+        ? isCatalogRevamp
+          ? "✨"
+          : undefined
+        : CHIP_EMOJI[chip.id];
+    return `${emoji ? `${emoji} ` : ""}${chipLabel(chip)}`;
+  }
+
+  const tabs: CatalogTab<StyleBrowseChipId>[] = chips.map((chip) => ({
+    id: chip.id,
+    label: chipText(chip),
+  }));
+
+  /**
+   * タブの一覧(注記・グリッド)。
+   * - page: 選択中のタブの一覧(全件)
+   * - peek: 横スワイプ中に隣に見せる、隣のタブの一覧の先頭(カタログ刷新後)。
+   *   同じ形で先頭の数件だけ描き、画像はすぐ読み込む(操作はさせない)。
+   *   ⭐ 切り替えるとこの見本がそのまま一覧になる(CatalogSwipePanel)。形を変えると
+   *   カードが作り直され、表示済みの画像が一瞬消えるので、page と peek で形をそろえること
+   */
+  function renderList(chipId: StyleBrowseChipId, mode: CatalogTabMode) {
+    const items =
+      chipId === activeChip
+        ? filtered
+        : filterStyleBrowsePresets(presets, chipId, context);
+    const shown = mode === "peek" ? items.slice(0, PEEK_CARD_COUNT) : items;
+    return (
+      <>
+        {/* 人気/新着の基準を明示する(探索シートと同じ注記)。 */}
+        {chipId === "popular" && items.length > 0 ? (
+          <p className="mb-3 text-xs text-slate-500">
+            {t("stylePopularSortNote")}
+          </p>
+        ) : null}
+        {chipId === "new" && items.length > 0 ? (
+          <p className="mb-3 text-xs text-slate-500">
+            {t("styleNewSortNote", { days: STYLE_NEW_WINDOW_DAYS })}
+          </p>
+        ) : null}
+
+        {items.length === 0 ? (
+          <p className="py-16 text-center text-sm text-gray-500">
+            {chipId === "favorites"
+              ? t("styleFavoritesEmpty")
+              : t("styleBrowseEmpty")}
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
+            {shown.map((preset) => {
+              const isFavorite = favoritePresetIds.has(preset.id);
+              return (
+                <div key={preset.id} className="relative">
+                  <PublicStyleCard
+                    preset={preset}
+                    locale={locale}
+                    onSelect={(selected) => void handleSelectPreset(selected)}
+                    imageLoading={mode === "peek" ? "eager" : undefined}
+                  />
+                  {/* お気に入り(しおり)はカード(リンク)の兄弟としてオーバーレイ配置
+                      (a 要素への button ネスト回避)。探索シートと同じ意匠。
+                      ゲストのタップはフック側がログイン誘導トーストを出す。 */}
+                  <button
+                    type="button"
+                    onClick={() => void toggleFavorite(preset.id, !isFavorite)}
+                    aria-label={
+                      isFavorite
+                        ? t("styleFavoriteRemove")
+                        : t("styleFavoriteAdd")
+                    }
+                    aria-pressed={isFavorite}
+                    className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:left-2 sm:top-2 sm:h-9 sm:w-9"
+                  >
+                    <Bookmark
+                      className={`h-4 w-4 sm:h-5 sm:w-5 ${
+                        isFavorite
+                          ? "fill-pink-500 text-pink-500"
+                          : "text-slate-400"
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </>
+    );
+  }
+
   return (
     <div>
-      {/* チップ列(横スクロール)。探索シートと同じ操作感。
-          刷新後はスクロールで上端に固定する(StylesCatalogChipBar)。 */}
+      {/* 刷新後はタブ(スクロールで上端に固定)。刷新前はこれまでのチップ列。 */}
       <StylesCatalogChipBar>
-        <div
-          ref={setChipRowEl}
-          className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-          role="tablist"
-          aria-label={t("styleBrowseSheetTitle")}
-        >
-          {chips.map((chip) => {
-            const active = chip.id === activeChip;
-            // 刷新後の「すべて」は旧「✨新着」の役割を引き継ぐので ✨ を付ける
-            const emoji =
-              chip.id === "all"
-                ? isCatalogRevamp
-                  ? "✨"
-                  : undefined
-                : CHIP_EMOJI[chip.id];
-            return (
-              <button
-                key={chip.id}
-                type="button"
-                role="tab"
-                aria-selected={active}
-                onClick={() => setActiveChip(chip.id)}
-                className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                  active
-                    ? "border-primary bg-primary text-white"
-                    : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {emoji ? `${emoji} ` : ""}
-                {chipLabel(chip)}
-              </button>
-            );
-          })}
-        </div>
-        {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
-            ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
-            位置・表示はフックが DOM を直接更新する(visibility 初期値 hidden、
-            はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
-        <div
-          ref={chipIndicatorTrackRef}
-          // 刷新後はバーが上下の余白と下の余白(mb-4)を持つので、ここはバー内の間隔だけにする
-          className={`relative mx-1 mt-1 h-1 overflow-hidden rounded-full bg-slate-100 ${
-            isCatalogRevamp ? "mb-1" : "mb-4"
-          }`}
-          style={{ visibility: "hidden" }}
-          aria-hidden="true"
-        >
-          <div
-            ref={chipIndicatorThumbRef}
-            className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
+        {isCatalogRevamp ? (
+          <CatalogTabBar
+            tabs={tabs}
+            activeId={activeChip}
+            onSelect={setActiveChip}
+            ariaLabel={t("styleBrowseSheetTitle")}
           />
-        </div>
+        ) : (
+          <>
+            {/* チップ列(横スクロール)。探索シートと同じ操作感。 */}
+            <div
+              ref={setChipRowEl}
+              className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              role="tablist"
+              aria-label={t("styleBrowseSheetTitle")}
+            >
+              {chips.map((chip) => {
+                const active = chip.id === activeChip;
+                return (
+                  <button
+                    key={chip.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setActiveChip(chip.id)}
+                    className={`shrink-0 whitespace-nowrap rounded-full border px-3.5 py-1.5 text-sm font-medium transition-colors ${
+                      active
+                        ? "border-primary bg-primary text-white"
+                        : "border-gray-200 bg-white text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {chipText(chip)}
+                  </button>
+                );
+              })}
+            </div>
+            {/* チップ列の常時表示スクロールインジケーター。iOS はスクロール中しか
+                ネイティブバーが出ず「横に続きがある」ことに気づきにくいため自前描画。
+                位置・表示はフックが DOM を直接更新する(visibility 初期値 hidden、
+                はみ出しがあるときだけ表示)。高さは常に確保しレイアウトシフトを防ぐ。 */}
+            <div
+              ref={chipIndicatorTrackRef}
+              className="relative mx-1 mb-4 mt-1 h-1 overflow-hidden rounded-full bg-slate-100"
+              style={{ visibility: "hidden" }}
+              aria-hidden="true"
+            >
+              <div
+                ref={chipIndicatorThumbRef}
+                className="absolute top-0 h-full rounded-full bg-slate-300 [inset-inline-start:0]"
+              />
+            </div>
+          </>
+        )}
       </StylesCatalogChipBar>
 
-      {/* 人気/新着の基準を明示する(探索シートと同じ注記)。 */}
-      {activeChip === "popular" && filtered.length > 0 ? (
-        <p className="mb-3 text-xs text-slate-500">
-          {t("stylePopularSortNote")}
-        </p>
-      ) : null}
-      {activeChip === "new" && filtered.length > 0 ? (
-        <p className="mb-3 text-xs text-slate-500">
-          {t("styleNewSortNote", { days: STYLE_NEW_WINDOW_DAYS })}
-        </p>
-      ) : null}
-
-      {filtered.length === 0 ? (
-        <p className="py-16 text-center text-sm text-gray-500">
-          {activeChip === "favorites"
-            ? t("styleFavoritesEmpty")
-            : t("styleBrowseEmpty")}
-        </p>
+      {isCatalogRevamp ? (
+        <CatalogSwipePanel
+          tabKeys={chips.map((chip) => chip.id)}
+          activeKey={activeChip}
+          onSwipeTo={setActiveChip}
+          renderTab={renderList}
+        />
       ) : (
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:gap-4 lg:grid-cols-4">
-          {filtered.map((preset) => {
-            const isFavorite = favoritePresetIds.has(preset.id);
-            return (
-              <div key={preset.id} className="relative">
-                <PublicStyleCard
-                  preset={preset}
-                  locale={locale}
-                  onSelect={(selected) => void handleSelectPreset(selected)}
-                />
-                {/* お気に入り(しおり)はカード(リンク)の兄弟としてオーバーレイ配置
-                    (a 要素への button ネスト回避)。探索シートと同じ意匠。
-                    ゲストのタップはフック側がログイン誘導トーストを出す。 */}
-                <button
-                  type="button"
-                  onClick={() => void toggleFavorite(preset.id, !isFavorite)}
-                  aria-label={
-                    isFavorite
-                      ? t("styleFavoriteRemove")
-                      : t("styleFavoriteAdd")
-                  }
-                  aria-pressed={isFavorite}
-                  className="absolute left-1.5 top-1.5 z-20 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow transition-transform hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 sm:left-2 sm:top-2 sm:h-9 sm:w-9"
-                >
-                  <Bookmark
-                    className={`h-4 w-4 sm:h-5 sm:w-5 ${
-                      isFavorite
-                        ? "fill-pink-500 text-pink-500"
-                        : "text-slate-400"
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
-              </div>
-            );
-          })}
-        </div>
+        renderList(activeChip, "page")
       )}
 
       {/* ホームのカルーセルと共通の試着確認モーダル。「試着する」で /style へ遷移する。 */}

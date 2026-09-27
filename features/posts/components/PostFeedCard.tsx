@@ -43,6 +43,12 @@ interface PostFeedCardProps {
   post: Post;
   currentUserId?: string | null;
   prioritizeImage?: boolean;
+  /**
+   * 投稿者のアイコンを、画面の外でもすぐ読み込む。
+   * カタログ(User ORIGINAL)で横スワイプするとき、隣のタブの見本として画面の外に置いた
+   * カードのアイコンを先に読み込んでおくため。既定は画面に近づいてから読む。
+   */
+  eagerAvatar?: boolean;
   trackImpressions?: boolean;
   /**
    * 閲覧者が**投稿者**をフォローしているか。未取得は undefined。
@@ -97,6 +103,7 @@ export function PostFeedCard({
   post,
   currentUserId,
   prioritizeImage = false,
+  eagerAvatar = false,
   trackImpressions = false,
   isFollowingAuthor,
   isFollowingPromptAuthor,
@@ -276,6 +283,7 @@ export function PostFeedCard({
                   alt={displayName}
                   width={36}
                   height={36}
+                  loading={eagerAvatar ? "eager" : undefined}
                   className="h-full w-full rounded-full object-cover"
                   onError={() => setAvatarUrl(null)}
                 />
