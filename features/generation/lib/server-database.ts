@@ -155,6 +155,56 @@ export async function postImageServer(
 }
 
 /**
+ * サーバーサイドで投稿済み画像の内容を編集する
+ *
+ * postImageServer と違い posted_at / is_posted には触れない。
+ * 編集のたびに posted_at を今にすると、新着の先頭へ上がってしまうため。
+ * 対象は投稿済みに限り、未投稿なら 0 行になるので例外を投げる
+ * （編集 API から未投稿画像を公開させない）。
+ *
+ * @param showBeforeImage - 未指定なら show_before_image 列は更新しない（既存値維持）。
+ * @param promptVisibility - 未指定なら prompt_visibility 列は更新しない（既存値維持）。
+ *                           許されない組み合わせは DB trigger が拒否する。
+ */
+export async function updatePostedImageServer(
+  id: string,
+  caption?: string,
+  showBeforeImage?: boolean,
+  promptVisibility?: "public" | "private"
+): Promise<GeneratedImageRecord> {
+  const supabase = await createClient();
+
+  const updates: Record<string, unknown> = {
+    caption: caption || null,
+  };
+  if (typeof showBeforeImage === "boolean") {
+    updates.show_before_image = showBeforeImage;
+  }
+  if (promptVisibility) {
+    updates.prompt_visibility = promptVisibility;
+  }
+
+  const { data, error } = await supabase
+    .from("generated_images")
+    .update(updates)
+    .eq("id", id)
+    .eq("is_posted", true)
+    .select()
+    .maybeSingle();
+
+  if (error) {
+    console.error("Database update error:", error);
+    throw new Error(`画像の更新に失敗しました: ${error.message}`);
+  }
+
+  if (!data) {
+    throw new Error("post_not_posted: 投稿済みの画像が見つかりません");
+  }
+
+  return data;
+}
+
+/**
  * サーバーサイドで投稿を取り消す（is_postedをfalseに戻す）
  * 投稿一覧からは削除されるが、マイページには残る
  * @param id 画像ID

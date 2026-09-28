@@ -1,7 +1,7 @@
 import { after, NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
-import { postImageServer } from "@/features/generation/lib/server-database";
+import { updatePostedImageServer } from "@/features/generation/lib/server-database";
 import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
@@ -40,8 +40,10 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // キャプション・show_before_image・prompt_visibility の更新処理
-    const result = await postImageServer(
+    // キャプション・show_before_image・prompt_visibility の更新処理。
+    // 新規投稿用の postImageServer は posted_at を今にするため使わない
+    // （編集しただけで新着の先頭へ上がってしまう）。
+    const result = await updatePostedImageServer(
       id,
       caption,
       showBeforeImage,
@@ -84,6 +86,14 @@ export async function PUT(request: NextRequest) {
       posted_at: result.posted_at || new Date().toISOString(),
     });
   } catch (error) {
+    // 未投稿の画像は編集 API では公開しない（updatePostedImageServer が 0 行で投げる）
+    if (error instanceof Error && error.message.includes("post_not_posted")) {
+      return NextResponse.json(
+        { error: copy.updateFailed, errorCode: "POSTS_NOT_POSTED" },
+        { status: 404 }
+      );
+    }
+
     // instanceof ではなくメッセージの構造的チェックにする。
     // server-database をモックするテストでは helper が undefined になり、
     // 呼び出し自体が例外になる（隣の post_suspended_cannot_publish と同じ理由）。
