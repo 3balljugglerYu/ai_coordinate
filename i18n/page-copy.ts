@@ -1002,9 +1002,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "ユーザーがFreeStyleで生成した作品一覧です！\n気に入ったものを生成できます。",
+      "ユーザーがCREATEで生成した作品一覧です！\n気に入ったものを生成できます。",
     listingNote:
-      "※Free Style で投稿された作品のうち、Before / After が載っているものを表示しています。",
+      "※CREATE で投稿された作品のうち、Before / After が載っているものを表示しています。",
   },
   en: {
     indexTitle:
@@ -1014,9 +1014,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Works users generated with Free Style.\nPick one you like and generate it yourself.",
+      "Works users generated with CREATE.\nPick one you like and generate it yourself.",
     listingNote:
-      "* Showing Free Style posts that include a Before / After.",
+      "* Showing CREATE posts that include a Before / After.",
   },
   ko: {
     indexTitle:
@@ -1026,9 +1026,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "유저가 Free Style로 생성한 작품 목록입니다!\n마음에 드는 작품을 생성할 수 있습니다.",
+      "유저가 CREATE로 생성한 작품 목록입니다!\n마음에 드는 작품을 생성할 수 있습니다.",
     listingNote:
-      "※ Free Style로 올라온 작품 중 Before / After가 있는 것을 표시합니다.",
+      "※ CREATE로 올라온 작품 중 Before / After가 있는 것을 표시합니다.",
   },
   "zh-CN": {
     indexTitle:
@@ -1038,9 +1038,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "用户用 Free Style 生成的作品一览！\n挑中意的即可自己生成。",
+      "用户用 CREATE 生成的作品一览！\n挑中意的即可自己生成。",
     listingNote:
-      "※ 仅显示自由模式（Free Style）投稿中带有 Before / After 的作品。",
+      "※ 仅显示 CREATE 投稿中带有 Before / After 的作品。",
   },
   "zh-TW": {
     indexTitle:
@@ -1050,9 +1050,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "使用者用 Free Style 生成的作品一覽！\n挑中意的即可自己生成。",
+      "使用者用 CREATE 生成的作品一覽！\n挑中意的即可自己生成。",
     listingNote:
-      "※ 僅顯示自由模式（Free Style）投稿中附有 Before / After 的作品。",
+      "※ 僅顯示 CREATE 投稿中附有 Before / After 的作品。",
   },
   es: {
     indexTitle:
@@ -1062,9 +1062,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Obras que los usuarios generaron con Free Style.\nElige la que te guste y genérala tú.",
+      "Obras que los usuarios generaron con CREATE.\nElige la que te guste y genérala tú.",
     listingNote:
-      "* Mostramos publicaciones de Free Style que incluyen un Before / After.",
+      "* Mostramos publicaciones de CREATE que incluyen un Before / After.",
   },
   pt: {
     indexTitle:
@@ -1074,9 +1074,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Obras que os usuários geraram com o Free Style.\nEscolha a que gostar e gere você mesmo.",
+      "Obras que os usuários geraram com o CREATE.\nEscolha a que gostar e gere você mesmo.",
     listingNote:
-      "* Exibindo publicações do Free Style que incluem um Before / After.",
+      "* Exibindo publicações do CREATE que incluem um Before / After.",
   },
   fr: {
     indexTitle:
@@ -1086,9 +1086,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Œuvres créées par les utilisateurs avec Free Style.\nChoisissez celle qui vous plaît et générez-la.",
+      "Œuvres créées par les utilisateurs avec CREATE.\nChoisissez celle qui vous plaît et générez-la.",
     listingNote:
-      "* Nous affichons les publications Free Style comportant un Before / After.",
+      "* Nous affichons les publications CREATE comportant un Before / After.",
   },
   de: {
     indexTitle:
@@ -1098,9 +1098,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Werke, die Nutzer mit Free Style erzeugt haben.\nWähle eines aus und erzeuge es selbst.",
+      "Werke, die Nutzer mit CREATE erzeugt haben.\nWähle eines aus und erzeuge es selbst.",
     listingNote:
-      "* Angezeigt werden Free-Style-Beiträge mit Before / After.",
+      "* Angezeigt werden CREATE-Beiträge mit Before / After.",
   },
   it: {
     indexTitle:
@@ -1110,9 +1110,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Opere create dagli utenti con Free Style.\nScegli quella che ti piace e generala tu.",
+      "Opere create dagli utenti con CREATE.\nScegli quella che ti piace e generala tu.",
     listingNote:
-      "* Mostriamo i post in Free Style che includono un Before / After.",
+      "* Mostriamo i post in CREATE che includono un Before / After.",
   },
   id: {
     indexTitle:
@@ -1122,9 +1122,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Karya yang dibuat pengguna dengan Free Style.\nPilih yang kamu suka dan hasilkan sendiri.",
+      "Karya yang dibuat pengguna dengan CREATE.\nPilih yang kamu suka dan hasilkan sendiri.",
     listingNote:
-      "* Menampilkan kiriman Free Style yang menyertakan Before / After.",
+      "* Menampilkan kiriman CREATE yang menyertakan Before / After.",
   },
   th: {
     indexTitle:
@@ -1134,9 +1134,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "ผลงานที่ผู้ใช้สร้างด้วย Free Style\nเลือกชิ้นที่ชอบแล้วสร้างเองได้เลย",
+      "ผลงานที่ผู้ใช้สร้างด้วย CREATE\nเลือกชิ้นที่ชอบแล้วสร้างเองได้เลย",
     listingNote:
-      "※ แสดงเฉพาะโพสต์ Free Style ที่มี Before / After",
+      "※ แสดงเฉพาะโพสต์ CREATE ที่มี Before / After",
   },
   vi: {
     indexTitle:
@@ -1146,9 +1146,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "Tác phẩm người dùng tạo bằng Free Style.\nChọn tác phẩm bạn thích và tự tạo.",
+      "Tác phẩm người dùng tạo bằng CREATE.\nChọn tác phẩm bạn thích và tự tạo.",
     listingNote:
-      "* Chỉ hiển thị bài đăng Free Style có kèm Before / After.",
+      "* Chỉ hiển thị bài đăng CREATE có kèm Before / After.",
   },
   hi: {
     indexTitle:
@@ -1158,9 +1158,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "उपयोगकर्ताओं ने Free Style से बनाई रचनाएँ।\nपसंद की रचना चुनकर खुद बनाएं।",
+      "उपयोगकर्ताओं ने CREATE से बनाई रचनाएँ।\nपसंद की रचना चुनकर खुद बनाएं।",
     listingNote:
-      "* केवल वे Free Style पोस्ट दिखाई जा रही हैं जिनमें Before / After है।",
+      "* केवल वे CREATE पोस्ट दिखाई जा रही हैं जिनमें Before / After है।",
   },
   ar: {
     indexTitle:
@@ -1170,9 +1170,9 @@ const userStylesCopy = {
     indexHeading:
       "User ORIGINAL",
     indexIntro:
-      "أعمال أنشأها المستخدمون بوضع Free Style.\nاختر ما يعجبك وأنشئه بنفسك.",
+      "أعمال أنشأها المستخدمون بوضع CREATE.\nاختر ما يعجبك وأنشئه بنفسك.",
     listingNote:
-      "* نعرض منشورات Free Style التي تتضمّن Before / After.",
+      "* نعرض منشورات CREATE التي تتضمّن Before / After.",
   },
 } as const satisfies Record<
   Locale,
