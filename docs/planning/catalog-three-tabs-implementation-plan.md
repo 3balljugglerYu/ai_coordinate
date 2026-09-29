@@ -132,7 +132,7 @@ flowchart TB
         C1 --> S1["/styles と /user-styles"]
     end
     subgraph After["変更後"]
-        L2["app/locale/layout: タブの入れ物を1つ置く"] --> A2["(app)/layout: タブなし"]
+        L2["app/locale/layout: 運営用のタブの入れ物"] --> A2["(app)/layout: 一般の利用者用の生成モードのタブ"]
         L2 --> C2["(styles-catalog)/layout: タブなし"]
         A2 --> F2["/free"]
         C2 --> S2["/styles と /user-styles"]
@@ -163,14 +163,19 @@ flowchart TB
 - **Context**: 3つのタブのうち `/free` だけが `(app)` の枠、ほかの2つは `(styles-catalog)` の枠にある。
   枠をまたぐとタブが作り直され、ピルが滑らずに一度消える
 - **Decision**: 3画面に共通の親の `app/[locale]/layout.tsx` に、タブの入れ物（クライアント部品）を1つ置く。
-  入れ物が、今いるパスと刷新の状態を見て、次のどちらかを出す
-  - 刷新後: `/styles`・`/user-styles`・`/free` → カタログの3つのタブ
-  - それ以外: `/style`・`/free` → 生成モードのタブ（今と同じ）
-  - グループごとの layout（`(app)`・`(styles-catalog)`）からはタブを外す
-- **Reason**: URL を変えずに、一般の利用者と運営の両方で「枠をまたいでもタブが残る」を満たせる。
+  **入れ物を使うのは刷新後（公開前は運営だけ）に限り、一般の利用者は今の置き場所のままにする**（2026-09-29 ユーザー指示「まずは運営だけ」）
+  - 刷新後: `/styles`・`/user-styles`・`/free` → カタログの3つのタブ、`/style` → 生成モードのタブ（入れ物が出す）
+  - 刷新前（一般の利用者）: 今と同じく `(app)/layout.tsx` の生成モードのタブ（`/style` ⇄ `/free`）。コードの通り道も変えない
+  - `(app)/layout.tsx` の生成モードのタブは、刷新後の人には出さない（入れ物と二重にならないように）
+  - カタログのタブ（`(styles-catalog)/layout.tsx`）は、公開前は運営にしか出ていない（`/styles` は運営とわかるまで出さず
+    `OriginalKindTabs.tsx:73`、`/user-styles` は運営以外には「見つかりません」を返す `app/(styles-catalog)/user-styles/page.tsx:99-100`）。
+    なので、入れ物へそのまま移しても一般の利用者には何も変わらない
+  - 一般公開のあとで、古い置き場所を片付ける（Phase 6）
+- **Reason**: URL を変えずに「枠をまたいでもタブが残る」を満たせる。しかも一般の利用者の画面は、公開の日まで今のコードのまま動く。
   `/free` を `(styles-catalog)` へ移す案だと、一般の利用者の `/style` ⇄ `/free` が枠をまたぐことになり、今のなめらかな動きが壊れる
-- **Consequence**: 一般の利用者の生成モードのタブも置き場所が変わる。見た目と動きは同じになるはずだが、実機で確かめる（Phase 1）。
-  読み込み中のスケルトン（`[locale]/loading.tsx` など）がタブの下に出るかも確かめる。
+- **Consequence**: 一般公開までは、生成モードのタブの置き場所が2つある（一般の利用者用の古い場所と、運営用の入れ物）。
+  運営が画面を開いた直後は、運営だとわかるまで古い場所のタブが出て、そのあと入れ物のタブに替わることがある（ADR-007 と同じ理由で許す）。
+  読み込み中のスケルトン（`[locale]/loading.tsx` など）がタブの下に出るかを確かめる。
   入れ物はサーバーで認証を引かない（`/styles` の静的シェルを崩さないため。`(styles-catalog)/layout.tsx` のコメントと同じ理由）
 
 ### ADR-002: タブは可変幅にし、選んでいるタブだけ名前を出す
@@ -249,18 +254,23 @@ flowchart LR
     P2 --> P4["Phase 4: カタログをつくるの説明"]
     P3 --> P5["Phase 5: 確認と公開"]
     P4 --> P5
+    P5 --> P6["Phase 6: 一般公開のあとの片付け"]
 ```
 
-### Phase 1: タブの置き場所を1つにする（見た目は変えない）
+### Phase 1: 運営用のタブの入れ物を作る（一般の利用者は今のまま）
 
-目的: タブを3画面の共通の親に移し、枠をまたいでも残る土台を作る。この時点では、利用者から見た変化はない。
+目的: 刷新後（運営）だけ、タブを3画面の共通の親に置き、枠をまたいでも残る土台を作る。一般の利用者の画面とコードの通り道は変えない。
 ビルド確認: lint・typecheck（main と同じ件数）・test・`npm run build -- --webpack` が通る。
 
-- [ ] タブの入れ物（例: `components/TopTabsSlot.tsx`）を新しく作る。パスと `useStylesCatalogRevamp()` を見て、`GenerationModeTabs` か `OriginalKindTabs` を出す
+- [ ] タブの入れ物（例: `components/TopTabsSlot.tsx`）を新しく作る。`useStylesCatalogRevamp()` が true のときだけ、
+      パスに合わせて `OriginalKindTabs`（`/styles`・`/user-styles`）か `GenerationModeTabs`（`/style`・`/free`）を出す
 - [ ] `app/[locale]/layout.tsx` に入れ物を置く（サーバーで認証を引かない）
-- [ ] `app/(app)/layout.tsx`・`app/(styles-catalog)/layout.tsx` からタブを外す（コメントの「理由の正本」も新しい場所へ移す）
-- [ ] `/style` ⇄ `/free` と `/styles` ⇄ `/user-styles` で、ピルが今までどおり滑ることを、ローカルの dev サーバーと Playwright で確かめる
-- [ ] 読み込み中のスケルトンがタブの下に出ることを確かめる
+- [ ] `app/(app)/layout.tsx` の生成モードのタブは残し、刷新後の人には出さない（二重にしない）
+- [ ] `app/(styles-catalog)/layout.tsx` のカタログのタブは入れ物へ移す（コメントの「理由の正本」も一緒に移す）
+- [ ] 確かめ方: ローカルの dev サーバーを `NEXT_PUBLIC_USER_STYLES_ENABLED=true` で起動すると、誰でも刷新後の画面になる。
+      これで運営の見え方を確かめる。付けずに起動すれば、一般の利用者の見え方になる（`.env` のファイルは変えない）
+- [ ] 刷新後: `/style` ⇄ `/free` と `/styles` ⇄ `/user-styles` で、ピルが滑り、読み込み中のスケルトンがタブの下に出る
+- [ ] 刷新前: 一般の利用者の `/style` ⇄ `/free` が今と同じに動く
 
 ### Phase 2: カタログのタブを3つにする（刷新後だけ）
 
@@ -298,7 +308,14 @@ flowchart LR
 - [ ] 本番に出したあと、運営のアカウントで実機を確かめる（タブの切り替え・ナビ・ツアー）
 - [ ] 一般公開は、今のカタログ刷新と同じ `NEXT_PUBLIC_USER_STYLES_ENABLED` で行う（この計画では公開しない）
 
-PR は Phase 1 と、Phase 2〜4 の2つに分ける。Phase 1 は一般の利用者の画面に触れるので、単独で出して確かめる。
+### Phase 6: 一般公開のあとの片付け（別の PR）
+
+目的: 全員が刷新後の画面になったあとで、使われなくなった古い道を消す。
+
+- [ ] `app/(app)/layout.tsx` の生成モードのタブ（一般の利用者用の古い置き場所）を消す。以後は入れ物だけがタブを出す
+- [ ] ナビ・タブの「刷新前」の分岐を消す
+
+Phase 1〜4 は、どれも一般の利用者には出ないので、1つの PR にまとめてよい（大きくなりすぎたら Phase 1 と 2〜4 に分ける）。
 
 ## 修正対象ファイル一覧
 
@@ -306,8 +323,8 @@ PR は Phase 1 と、Phase 2〜4 の2つに分ける。Phase 1 は一般の利�
 |---|---|---|
 | `components/TopTabsSlot.tsx`（名前は仮） | 新規 | パスと刷新の状態でタブを出し分ける入れ物 |
 | `app/[locale]/layout.tsx` | 修正 | 入れ物を置く |
-| `app/(app)/layout.tsx` | 修正 | 生成モードのタブを外す |
-| `app/(styles-catalog)/layout.tsx` | 修正 | カタログのタブを外す |
+| `app/(app)/layout.tsx` | 修正 | 生成モードのタブは一般の利用者用に残し、刷新後の人には出さない（一般公開後の Phase 6 で消す） |
+| `app/(styles-catalog)/layout.tsx` | 修正 | カタログのタブを入れ物へ移す |
 | `features/style-presets/components/OriginalKindTabs.tsx` | 修正 | 3つのタブ・可変幅・2段の名前・アイコン |
 | `components/GenerationModeTabs.tsx` | 修正 | 刷新後の `/free` では出さない（入れ物側で出し分けるなら変更なし） |
 | `app/(app)/free/page.tsx` | 修正 | h1 を1つにする |
@@ -346,8 +363,7 @@ PR は Phase 1 と、Phase 2〜4 の2つに分ける。Phase 1 は一般の利�
 
 ## ロールバック方針
 
-- 刷新後の変更（Phase 2〜4）は段階公開の内側（公開前は運営だけ）なので、一般の利用者には出ない。問題があれば PR を revert する
-- Phase 1 は一般の利用者のタブの置き場所に触れる。単独の PR にして、問題があればそれだけを revert する
+- Phase 1〜4 は、すべて段階公開の内側（公開前は運営だけ）に入れる。一般の利用者の画面とコードの通り道は変わらない。問題があれば PR を revert する
 - データベースの変更は無い
 - 一般公開したあとに戻すなら、`NEXT_PUBLIC_USER_STYLES_ENABLED` を外して再デプロイする（今のカタログ刷新と同じ）
 
