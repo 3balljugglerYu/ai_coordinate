@@ -118,7 +118,7 @@ describe("タブの置き場所", () => {
   });
 
   /*
-    ⭐ 刷新後の /free は h1 をカタログの見出し(「カタログ」)に譲るが、ページの <title> と
+    ⭐ 刷新後の /free は h1 をタブの上の見出し(「カタログをつくる」)に譲るが、ページの <title> と
     説明文は Free Style のまま。検索結果の見え方は変えない
     (docs/planning/catalog-three-tabs-implementation-plan.md Phase 2 の実装時の決定)。
   */

@@ -1,9 +1,11 @@
 /**
  * カタログのタブと「カタログをつくる」の文言。
  *
- * ⭐ 英語の2段目(Persta.AI ORIGINAL / User ORIGINAL / CREATE)は全言語で同じにする。
+ * ⭐ タブの中の名前(英語。Persta ORIGINAL / User ORIGINAL / CREATE)は全言語で同じにする。
  * フィードの引用元カードと同じ語彙で、翻訳すると「棚の名前」と「カードの名前」が
  * 食い違う(messages/ja.ts の userStyles のコメント)。
+ * ただしタブの「Persta ORIGINAL」は、タブに入れるために短くした(2026-09-29 ユーザー指示)。
+ * フィードの引用元カード(一般の利用者に見える)は「Persta.AI ORIGINAL」のまま。
  * ⭐ タブの名前は「誰が届けるか」だけで分け、よし悪しの差をつけない
  * (docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)。
  */
@@ -12,16 +14,24 @@ import { locales } from "@/i18n/config";
 import { getAllMessages } from "@/i18n/messages";
 
 describe("カタログのタブの文言", () => {
-  test.each(locales)("%s: 英語の2段目は全言語で同じ", async (locale) => {
+  test.each(locales)("%s: タブの中の名前(英語)は全言語で同じ", async (locale) => {
     const messages = await getAllMessages(locale);
 
-    expect(messages.userStyles.tabOfficial).toBe("Persta.AI ORIGINAL");
+    expect(messages.userStyles.tabOfficial).toBe("Persta ORIGINAL");
     expect(messages.userStyles.tabUser).toBe("User ORIGINAL");
     expect(messages.userStyles.tabCreate).toBe("CREATE");
   });
 
+  // ⭐ 一般の利用者に見えるフィードの引用元カードの名前は、タブの名前を短くしても変えない
+  test.each(locales)("%s: フィードの引用元カードの名前は今のまま", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.posts.feedQuoteStyleTitle).toBe("Persta.AI ORIGINAL");
+    expect(messages.posts.feedQuoteDerivedTitle).toBe("ORIGINAL");
+  });
+
   test.each(locales)(
-    "%s: タブの見出しと「カタログをつくる」の説明がそろっている",
+    "%s: ページの見出し(タブごとの名前)と「カタログをつくる」の説明がそろっている",
     async (locale) => {
       const messages = await getAllMessages(locale);
 

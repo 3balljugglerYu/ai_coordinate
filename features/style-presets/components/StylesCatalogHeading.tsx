@@ -24,8 +24,8 @@ export function StylesCatalogHeading({
 
   if (isCatalogRevamp) {
     /*
-      刷新後は見出しを出さず説明だけにする。ページの h1 は上の
-      「Catalog」(OriginalKindTabs)で、タブの「Persta.AI ORIGINAL」が見出しの役を兼ねる。
+      刷新後は見出しを出さず説明だけにする。ページの h1 はタブの上の見出し
+      (OriginalKindTabs。選んでいるタブの名前=「ペルスタのカタログ」)。
     */
     return (
       <header className="mb-6 md:mb-8">

@@ -63,7 +63,7 @@ describe("カタログ刷新の段階公開", () => {
       );
     });
 
-    // 見出しは出さず(ページの h1 は上の「Catalog」)、説明だけを新しい文言にする
+    // 見出しは出さず(ページの h1 はタブの上の「ペルスタのカタログ」)、説明だけを新しい文言にする
     expect(screen.queryByRole("heading")).toBeNull();
     expect(screen.getByText(HEADING_PROPS.originalIntro)).toBeTruthy();
     const bar = screen.getByTestId("styles-catalog-chip-bar");

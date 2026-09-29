@@ -7,7 +7,7 @@
  * 見た目を変えない。docs/planning/catalog-three-tabs-implementation-plan.md）。
  *
  * カタログ刷新（公開前は運営だけ）では、/free は「カタログをつくる」のタブになる。
- *  - h1 はタブの上のカタログのタイトルが持つので、ここでは出さない（1ページに h1 は1つ）
+ *  - h1 はタブの上の見出し（「カタログをつくる」）が持つので、ここでは出さない（1ページに h1 は1つ）
  *  - つくって投稿すると「みんなのカタログ」に並ぶこと、フォロワーが使えること、
  *    還元があること（還元額が 0 のときは言わない）を伝える
  */
@@ -78,7 +78,7 @@ describe("FreePageHeader", () => {
       mockRevamp.mockReturnValue(true);
     });
 
-    test("h1 は出さず(カタログのタイトルが持つ)、説明とカタログに並ぶ条件・フォロワーのことを出す", () => {
+    test("h1 は出さず(タブの上の見出しが持つ)、説明とカタログに並ぶ条件・フォロワーのことを出す", () => {
       render(<FreePageHeader {...COPY} />);
 
       expect(screen.queryByRole("heading", { level: 1 })).toBeNull();

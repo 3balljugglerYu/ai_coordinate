@@ -32,7 +32,7 @@ export default async function FreePage() {
           {/*
             静的コンテンツ: タイトルと説明文(データに依存しないので即時表示)。
             カタログ刷新(公開前は運営だけ)では「カタログをつくる」のタブになり、
-            h1 はタブの上のカタログのタイトルが持つ。出し分けは FreePageHeader が行う。
+            h1 はタブの上の見出し(「カタログをつくる」)が持つ。出し分けは FreePageHeader が行う。
           */}
           <FreePageHeader
             title={t("pageTitle")}

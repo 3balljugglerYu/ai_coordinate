@@ -129,8 +129,8 @@ export default async function UserStylesPage({ params }: UserStylesPageProps) {
   return (
     <StylesCatalogMain>
       {/*
-        見出し(User ORIGINAL)は出さない。ページの h1 は上の「Catalog」(OriginalKindTabs)で、
-        タブの「User ORIGINAL」が見出しの役を兼ねる。/styles の刷新後と同じ形。
+        見出し(User ORIGINAL)は出さない。ページの h1 はタブの上の見出し
+        (OriginalKindTabs。選んでいるタブの名前=「みんなのカタログ」)。/styles の刷新後と同じ形。
         ⭐ 判定なしで外してよい: このページに来られる時点で刷新後の表示になる
         (公開前は運営だけ、公開後は全員が User ORIGINAL を見られる)。
         indexHeading は OG / JSON-LD で使い続ける。

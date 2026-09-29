@@ -24,7 +24,7 @@ interface FreePageHeaderProps {
  * 見た目を変えない）。
  *
  * カタログ刷新（公開前は運営だけ）では、/free は「カタログをつくる」のタブになる。
- * h1 はタブの上のカタログのタイトル（OriginalKindTabs）が持つので、ここでは出さない。
+ * h1 はタブの上の見出し（OriginalKindTabs。「カタログをつくる」）が持つので、ここでは出さない。
  */
 export function FreePageHeader({
   title,

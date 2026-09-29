@@ -22,7 +22,14 @@ jest.mock("next-intl", () => ({
   useTranslations: (namespace: string) => {
     let translate = mockTranslators.get(namespace);
     if (!translate) {
-      translate = (key: string) => `${namespace}.${key}`;
+      // タブの中の名前(英語)だけ本物の文言を返す。冒頭4文字で切る動きを確かめるため
+      const labels: Record<string, string> = {
+        tabOfficial: "Persta ORIGINAL",
+        tabUser: "User ORIGINAL",
+        tabCreate: "CREATE",
+      };
+      translate = (key: string) =>
+        namespace === "userStyles" && labels[key] ? labels[key] : `${namespace}.${key}`;
       mockTranslators.set(namespace, translate);
     }
     return translate;
@@ -53,16 +60,16 @@ jest.mock("next/link", () => ({
   }),
 }));
 
+// ページの見出し(選んでいるタブの名前)
 const TITLES = [
   "userStyles.tabOfficialTitle",
   "userStyles.tabUserTitle",
   "userStyles.tabCreateTitle",
 ];
-const SUBTITLES = [
-  "userStyles.tabOfficial",
-  "userStyles.tabUser",
-  "userStyles.tabCreate",
-];
+// タブの中の名前(英語)
+const LABELS = ["Persta ORIGINAL", "User ORIGINAL", "CREATE"];
+// 選んでいないタブに出す、名前の冒頭4文字
+const SHORT_LABELS = ["Pers…", "User…", "CREA…"];
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -81,7 +88,8 @@ describe("OriginalKindTabs", () => {
     render(<OriginalKindTabs />);
 
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((tab) => tab.getAttribute("aria-label"))).toEqual(TITLES);
+    // タブの名前は英語(Persta.AI ORIGINAL / User ORIGINAL / CREATE)。読み上げもこの名前
+    expect(tabs.map((tab) => tab.getAttribute("aria-label"))).toEqual(LABELS);
     expect(tabs.map((tab) => tab.getAttribute("href"))).toEqual([
       "/ja/styles",
       "/ja/user-styles",
@@ -90,50 +98,210 @@ describe("OriginalKindTabs", () => {
   });
 
   /*
-    ⭐ 3つ並べると、スマホでは名前が入りきらない。今の生成モードのタブと同じく、
-    選んでいるタブだけ名前（見出し＋英語）を出し、ほかはアイコンだけにする。
-    名前は読み上げ用に残す（aria-label と sr-only）。
+    ⭐ タブの中は英語の名前(Persta ORIGINAL / User ORIGINAL / CREATE)だけ。日本語の名前は
+    ページの見出し(h1)に出す(2026-09-29 ユーザー指示)。
+    3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前を全部出し、
+    ほかはアイコンと名前の冒頭4文字(「Pers…」など)にする(2026-09-29 ユーザー指示)。
+    読み上げには名前を全部渡す(sr-only)。冒頭4文字は読み上げない(aria-hidden)。
   */
   test.each([
     ["/ja/styles", 0],
     ["/ja/user-styles", 1],
     ["/ja/free", 2],
   ])(
-    "%s では選んでいるタブだけ見出しと英語を出し、ほかはアイコンだけにする",
+    "%s では選んでいるタブだけ英語の名前を全部出し、ほかはアイコンと冒頭4文字にする(日本語の名前はタブに入れない)",
     (pathname, activeIndex) => {
       mockPathname.mockReturnValue(pathname);
       render(<OriginalKindTabs />);
 
+      // タブの並びの名前も英語の名前にそろえる
+      expect(screen.getByRole("tablist").getAttribute("aria-label")).toBe(
+        LABELS.join(" / ")
+      );
       const tabs = screen.getAllByRole("tab");
       expect(tabs).toHaveLength(3);
       tabs.forEach((tab, index) => {
         expect(tab.querySelector("svg")).not.toBeNull();
-        const title = within(tab).getByText(TITLES[index]);
+        // マウスを乗せたときの名前(title)も英語の名前。日本語の名前は入れない
+        expect(tab.getAttribute("title")).toBe(LABELS[index]);
+        const label = within(tab).getByText(LABELS[index]);
+        for (const title of TITLES) {
+          expect(within(tab).queryByText(title)).toBeNull();
+        }
         if (index === activeIndex) {
           expect(tab.getAttribute("aria-selected")).toBe("true");
           expect(tab.getAttribute("aria-current")).toBe("page");
-          expect(title.className).not.toContain("sr-only");
-          expect(within(tab).getByText(SUBTITLES[index])).toBeTruthy();
+          expect(label.closest(".sr-only")).toBeNull();
+          expect(within(tab).queryByText(SHORT_LABELS[index])).toBeNull();
         } else {
           expect(tab.getAttribute("aria-selected")).toBe("false");
-          expect(title.className).toContain("sr-only");
-          expect(within(tab).queryByText(SUBTITLES[index])).toBeNull();
+          expect(label.closest(".sr-only")).not.toBeNull();
+          const short = within(tab).getByText(SHORT_LABELS[index]);
+          expect(short.closest(".sr-only")).toBeNull();
+          expect(short.closest('[aria-hidden="true"]')).not.toBeNull();
         }
       });
     }
   );
 
-  test.each(["/ja/styles", "/ja/user-styles", "/ja/free"])(
-    "%s ではタブの上にカタログのタイトル(h1)を出す",
-    (pathname) => {
-      mockPathname.mockReturnValue(pathname);
+  test.each([
+    ["/ja/styles", "userStyles.tabOfficialTitle"],
+    ["/ja/user-styles", "userStyles.tabUserTitle"],
+    ["/ja/free", "userStyles.tabCreateTitle"],
+  ])("%s の見出し(h1)は、選んでいるタブの名前(%s)", (pathname, title) => {
+    mockPathname.mockReturnValue(pathname);
+    render(<OriginalKindTabs />);
+
+    const headings = screen.getAllByRole("heading", { level: 1 });
+    expect(headings).toHaveLength(1);
+    expect(headings[0].textContent).toBe(title);
+    // 3つに共通の「カタログ」だけの見出しは、もう出さない
+    expect(screen.queryByText("userStyles.catalogTitle")).toBeNull();
+  });
+
+  // タブは layout に置いたまま作り直されないので、画面を移ったら見出しも変わること
+  test("タブを移ると、作り直されなくても見出し(h1)が変わる", () => {
+    mockPathname.mockReturnValue("/ja/styles");
+    const { rerender } = render(<OriginalKindTabs />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "userStyles.tabOfficialTitle"
+    );
+
+    mockPathname.mockReturnValue("/ja/free");
+    rerender(<OriginalKindTabs />);
+
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
+      "userStyles.tabCreateTitle"
+    );
+  });
+
+  /*
+    ⭐ 見出しはどの言語でも1行に収める(2026-09-29 ユーザー指示)。折り返さず、入りきらない
+    言語だけ文字を小さくする。大きさが変わっても行の高さは変えない(タブが上下に動かない)。
+  */
+  test("見出しは折り返さず、行の高さは一定", () => {
+    mockPathname.mockReturnValue("/ja/styles");
+    render(<OriginalKindTabs />);
+
+    const heading = screen.getByRole("heading", { level: 1 });
+    // 大きさの基準(30px)は text-3xl。縮めるときも行の高さ(leading-9 = 36px)は変えない
+    for (const cls of ["text-3xl", "whitespace-nowrap", "leading-9"]) {
+      expect(heading.className).toContain(cls);
+    }
+  });
+
+  describe("見出しの文字の大きさ", () => {
+    /*
+      jsdom は幅を測れないので、見出しに使える幅(h1 の clientWidth)と、30px で書いたときの
+      見出しの幅(測る用の要素 [data-heading-measure] の offsetWidth)を決め打ちする。
+    */
+    const originals = {
+      clientWidth: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth"),
+      offsetWidth: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth"),
+    };
+    /** 見出しごとの幅(30px で書いたとき)。一番長いのは2番目の「みんなのカタログ」 */
+    const TITLE_WIDTHS: Record<string, number> = {
+      "userStyles.tabOfficialTitle": 400,
+      "userStyles.tabUserTitle": 540,
+      "userStyles.tabCreateTitle": 300,
+    };
+    function mockWidths(availablePx: number) {
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+        configurable: true,
+        get(this: HTMLElement) {
+          return this.tagName === "H1" ? availablePx : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+        configurable: true,
+        get(this: HTMLElement) {
+          return this.hasAttribute("data-heading-measure")
+            ? (TITLE_WIDTHS[this.textContent ?? ""] ?? 0)
+            : 0;
+        },
+      });
+    }
+    afterEach(() => {
+      for (const key of ["clientWidth", "offsetWidth"] as const) {
+        const original = originals[key];
+        if (original) {
+          Object.defineProperty(HTMLElement.prototype, key, original);
+        } else {
+          delete (HTMLElement.prototype as unknown as Record<string, unknown>)[key];
+        }
+      }
+    });
+
+    test("一番長い見出しも入るなら、大きさは変えない", () => {
+      // 一番長い見出しは 540px。使える幅 600px なら入る
+      mockWidths(600);
+      mockPathname.mockReturnValue("/ja/styles");
       render(<OriginalKindTabs />);
 
-      expect(
-        screen.getByRole("heading", { level: 1, name: "userStyles.catalogTitle" })
-      ).toBeTruthy();
+      expect(screen.getByRole("heading", { level: 1 }).style.fontSize).toBe("");
+    });
+
+    test("入りきらないなら、3つとも同じ大きさに縮める(タブを移っても大きさは同じ)", () => {
+      // 一番長い 540px を 450px に収める: 30 × 450 / 540 = 25px
+      // (一番長い見出しは2番目。選んでいる画面の見出しでも、1番目・3番目でもない)
+      mockWidths(450);
+      mockPathname.mockReturnValue("/ja/styles");
+      const { rerender } = render(<OriginalKindTabs />);
+      expect(screen.getByRole("heading", { level: 1 }).style.fontSize).toBe("25px");
+
+      // 別の画面へ移っても同じ大きさ
+      mockPathname.mockReturnValue("/ja/free");
+      rerender(<OriginalKindTabs />);
+      expect(screen.getByRole("heading", { level: 1 }).style.fontSize).toBe("25px");
+    });
+
+    /*
+      測る用の要素は、3つの見出しを見出しと同じ書き方(30px・太字・折り返さない)で持つ。
+      読み上げず、見出しの外に置き、隠さない(display:none だと幅が 0 になる)。
+    */
+    test("測る用の要素は3つの見出しを同じ書き方で持ち、読み上げない", () => {
+      mockPathname.mockReturnValue("/ja/styles");
+      const { container } = render(<OriginalKindTabs />);
+
+      const heading = screen.getByRole("heading", { level: 1 });
+      const measures = Array.from(container.querySelectorAll<HTMLElement>("[data-heading-measure]"));
+      expect(measures.map((node) => node.textContent)).toEqual(TITLES);
+      for (const node of measures) {
+        expect(node.closest('[aria-hidden="true"]')).not.toBeNull();
+        for (const cls of ["text-3xl", "font-bold", "whitespace-nowrap"]) {
+          expect(node.className).toContain(cls);
+        }
+        expect(node.style.fontSize).toBe("");
+        expect(heading.contains(node)).toBe(false);
+        expect(node.closest('.hidden, [hidden]')).toBeNull();
+      }
+    });
+  });
+
+  /*
+    ⭐ タブの列は中央ぞろえにしない。見出しと同じ入れ物に入れ、見出しの左端にそろえる
+    (2026-09-29 ユーザー指示)。jsdom では位置を測れないので、入れ物と並べ方で確かめる
+    (実際の位置は Playwright で左端の座標をそろえて確かめる)。
+  */
+  test("タブの列は見出しの左端にそろえる(中央ぞろえにしない)", () => {
+    mockPathname.mockReturnValue("/ja/user-styles");
+    render(<OriginalKindTabs />);
+
+    const heading = screen.getByRole("heading", { level: 1 });
+    const tablist = screen.getByRole("tablist");
+    expect(tablist.parentElement).toBe(heading.parentElement);
+    // 見出しの下にタブが来る
+    expect(
+      heading.compareDocumentPosition(tablist) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    // 入れ物とその外側に、中央ぞろえ(justify-center / text-center / items-center /
+    // place-content-center など)が無いこと
+    const container = tablist.parentElement!;
+    expect(container.closest('[class*="center"]')).toBeNull();
+    for (const centering of ["mx-auto", "self-center"]) {
+      expect(tablist.className).not.toContain(centering);
     }
-  );
+  });
 
   /*
     ⭐ ロケールを落とすと、押した瞬間に言語が既定へ戻る。
