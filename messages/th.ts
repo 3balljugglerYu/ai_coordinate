@@ -31,7 +31,6 @@ export const thMessages = {
     home: "หน้าแรก",
     coordinate: "จัดเซ็ต",
     catalog: "Catalog",
-    create: "สร้าง",
     challenge: "ภารกิจ",
     notifications: "การแจ้งเตือน",
     myPage: "หน้าของฉัน",
@@ -1493,6 +1492,10 @@ export const thMessages = {
     loginCtaTitle: "Free Style ต้องเข้าสู่ระบบ",
     loginCtaDescription: "เข้าสู่ระบบเพื่อสร้างภาพประกอบตัวละครของคุณด้วยคำสั่งของคุณเอง",
     loginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "สร้างด้วยพรอมต์ที่คุณเขียนเอง แล้วโพสต์พร้อมแสดงรูปก่อนเปลี่ยนด้วย ผลงานจะไปอยู่ในแคตตาล็อกของทุกคน",
+    catalogCreateFollowers: "ผู้ติดตามของคุณสร้างด้วยพรอมต์นั้นได้ (ตั้งพรอมต์เป็นส่วนตัวไว้ก็ได้)",
+    catalogCreateReward: "ทุกครั้งที่ผู้ติดตามสร้างด้วยพรอมต์นั้น คุณจะได้รับเพอร์คอยน์",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2088,7 +2091,12 @@ export const thMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "แคตตาล็อก Persta",
+    tabUserTitle: "แคตตาล็อกของทุกคน",
+    tabCreateTitle: "สร้างแคตตาล็อก",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "ทั้งหมด (ใหม่ล่าสุด)",
     chipUsage: "ใคร ๆ ก็ใช้",

@@ -31,7 +31,6 @@ export const idMessages = {
     home: "Beranda",
     coordinate: "Koordinat",
     catalog: "Catalog",
-    create: "Buat",
     challenge: "Misi",
     notifications: "Notifikasi",
     myPage: "Halaman saya",
@@ -1496,6 +1495,10 @@ export const idMessages = {
     loginCtaTitle: "Free Style memerlukan login",
     loginCtaDescription: "Masuk untuk menghasilkan ilustrasi karaktermu dengan instruksimu sendiri.",
     loginCtaAction: "Masuk / Daftar",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "Buat dengan prompt tulisanmu sendiri, lalu posting dengan gambar sebelum ikut ditampilkan — karyamu akan muncul di Katalog semua orang.",
+    catalogCreateFollowers: "Pengikutmu bisa membuat dengan prompt tersebut (prompt boleh tetap privat).",
+    catalogCreateReward: "Setiap kali pengikut membuat dengan prompt itu, kamu dapat Percoin.",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2092,7 +2095,12 @@ export const idMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "Katalog Persta",
+    tabUserTitle: "Katalog semua orang",
+    tabCreateTitle: "Buat katalog",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "Semua (terbaru)",
     chipUsage: "Dipakai semua orang",

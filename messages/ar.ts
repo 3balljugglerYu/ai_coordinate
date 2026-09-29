@@ -31,7 +31,6 @@ export const arMessages = {
     home: "الرئيسية",
     coordinate: "تنسيق",
     catalog: "Catalog",
-    create: "إنشاء",
     challenge: "المهام",
     notifications: "الإشعارات",
     myPage: "صفحتي",
@@ -1494,6 +1493,10 @@ export const arMessages = {
     loginCtaTitle: "Free Style يتطلب تسجيل الدخول",
     loginCtaDescription: "سجّل الدخول لإنشاء رسوم لشخصيتك بتعليماتك الخاصة.",
     loginCtaAction: "تسجيل الدخول / إنشاء حساب",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "أنشئ ببرومبت كتبته بنفسك، وانشره مع عرض الصورة قبل التغيير أيضًا، وسيظهر في دليل الجميع.",
+    catalogCreateFollowers: "يمكن لمتابعيك الإنشاء بهذا البرومبت (ويمكن أن يبقى البرومبت خاصًا).",
+    catalogCreateReward: "في كل مرة ينشئ فيها أحد متابعيك به، تحصل على بيركوين.",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2089,7 +2092,12 @@ export const arMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "دليل Persta",
+    tabUserTitle: "دليل الجميع",
+    tabCreateTitle: "أنشئ دليلًا",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "الكل (الأحدث)",
     chipUsage: "الجميع يستخدمها",

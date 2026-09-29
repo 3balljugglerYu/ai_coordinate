@@ -31,7 +31,6 @@ export const esMessages = {
     home: "Inicio",
     coordinate: "Coordinar",
     catalog: "Catalog",
-    create: "Crear",
     challenge: "Misiones",
     notifications: "Notificaciones",
     myPage: "Mi página",
@@ -1497,6 +1496,10 @@ export const esMessages = {
     loginCtaTitle: "Free Style requiere iniciar sesión",
     loginCtaDescription: "Inicia sesión para generar ilustraciones de tu personaje con tus propias instrucciones.",
     loginCtaAction: "Iniciar sesión / Registrarse",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "Crea con un prompt escrito por ti y publícalo mostrando también la imagen original: aparecerá en el Catálogo de todos.",
+    catalogCreateFollowers: "Tus seguidores pueden generar con ese prompt (puedes mantenerlo privado).",
+    catalogCreateReward: "Cada vez que un seguidor genera con él, ganas Percoins.",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2093,7 +2096,12 @@ export const esMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "Catálogo de Persta",
+    tabUserTitle: "Catálogo de todos",
+    tabCreateTitle: "Crear catálogo",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "Todos (más recientes)",
     chipUsage: "Los que todos usan",

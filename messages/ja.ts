@@ -28,7 +28,6 @@ export const jaMessages = {
     home: "ホーム",
     coordinate: "コーディネート",
     catalog: "カタログ",
-    create: "つくる",
     challenge: "ミッション",
     notifications: "お知らせ",
     myPage: "マイページ",
@@ -1439,6 +1438,10 @@ export const jaMessages = {
     loginCtaTitle: "Free Style はログインが必要です",
     loginCtaDescription: "ログインすると、自由な指示でうちの子のイラストを生成できます。",
     loginCtaAction: "ログイン / 新規登録",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "自分でプロンプトを書いてつくり、生成前の画像も表示して投稿すると、みんなのカタログに並びます。",
+    catalogCreateFollowers: "あなたのフォロワーは、そのプロンプトで生成できます（プロンプトは非公開のままでもOK）。",
+    catalogCreateReward: "フォロワーが生成するたびに、ペルコインが還元されます。",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2023,16 +2026,21 @@ export const jaMessages = {
   },
   /*
     User ORIGINAL(/user-styles)。
-    ⭐ tabOfficial / tabUser は**全ロケール同一**にする。フィードの引用元カードの
-    ラベル(feedQuoteStyleTitle / feedQuoteDerivedTitle)と同じ語彙で、翻訳すると
-    「棚の名前」と「カードの名前」が食い違う。
+    ⭐ tabOfficial / tabUser / tabCreate(タブの英語の2段目)は**全ロケール同一**にする。
+    tabOfficial / tabUser はフィードの引用元カードのラベル(feedQuoteStyleTitle /
+    feedQuoteDerivedTitle)と同じ語彙で、翻訳すると「棚の名前」と「カードの名前」が食い違う。
     ⭐ usageSortNote は /styles の stylePopularSortNote(直近30日)を流用しないこと。
     こちらは窓なしの累計で定義が違う(計画書 ADR-007)。
   */
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "ペルスタのカタログ",
+    tabUserTitle: "みんなのカタログ",
+    tabCreateTitle: "カタログをつくる",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "カタログ",
     chipAll: "すべて（新着順）",
     chipUsage: "みんなが使ってる",

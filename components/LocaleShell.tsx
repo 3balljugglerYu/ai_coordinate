@@ -87,8 +87,8 @@ export async function LocaleShell({
                   </Suspense>
                   {/*
                     User ORIGINAL(/user-styles)の段階公開。運営だけ true に昇格させる。
-                    ⭐ Provider をここに置くのは、トグル(OriginalKindTabs)が
-                    (styles-catalog)/layout.tsx にあり appContent の内側だから。
+                    ⭐ Provider をここに置くのは、カタログのタブ(TopTabsSlot)が
+                    app/[locale]/layout.tsx にあり appContent の内側だから。
                     レイアウトで isUserStylesAvailable(閲覧者が要る)を呼ぶと
                     /styles が丸ごとリクエスト依存になり、静的シェルと
                     初期 HTML の JSON-LD という前提が崩れる。

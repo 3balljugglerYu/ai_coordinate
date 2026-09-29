@@ -31,7 +31,6 @@ export const koMessages = {
     home: "홈",
     coordinate: "코디",
     catalog: "Catalog",
-    create: "만들기",
     challenge: "미션",
     notifications: "알림",
     myPage: "마이 페이지",
@@ -1493,6 +1492,10 @@ export const koMessages = {
     loginCtaTitle: "Free Style는 로그인이 필요합니다",
     loginCtaDescription: "로그인하면 자유로운 지시로 내 캐릭터의 일러스트를 생성할 수 있습니다.",
     loginCtaAction: "로그인 / 회원가입",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "직접 쓴 프롬프트로 만들고, 변경 전 이미지도 함께 표시해서 게시하면 모두의 카탈로그에 올라갑니다.",
+    catalogCreateFollowers: "회원님의 팔로워는 그 프롬프트로 생성할 수 있습니다(프롬프트는 비공개로 두어도 됩니다).",
+    catalogCreateReward: "팔로워가 생성할 때마다 페르코인이 지급됩니다.",
   },
   style: {
     pageTitle: "원탭 스타일",
@@ -2088,7 +2091,12 @@ export const koMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "Persta 카탈로그",
+    tabUserTitle: "모두의 카탈로그",
+    tabCreateTitle: "카탈로그 만들기",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "전체 (최신순)",
     chipUsage: "모두가 쓰는 중",

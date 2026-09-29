@@ -14,9 +14,9 @@ import {
  *
  * ## なぜ context なのか
  *
- * トグル（`OriginalKindTabs`）は `(styles-catalog)/layout.tsx` にある。
+ * カタログのタブ（`TopTabsSlot`）は `app/[locale]/layout.tsx` にある。
  * レイアウトで `isUserStylesAvailable`（閲覧者が要る）を呼ぶと、
- * **`/styles` が丸ごとリクエスト依存になり静的シェルが崩れる**
+ * **`/styles` などが丸ごとリクエスト依存になり静的シェルが崩れる**
  * ── あのページは JSON-LD を初期 HTML に載せる前提で作られている。
  * かといって `ADMIN_USER_IDS` は `NEXT_PUBLIC_` を持たない**サーバー専用の値**なので、
  * クライアントでは判定そのものができない。

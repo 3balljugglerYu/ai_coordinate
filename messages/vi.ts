@@ -31,7 +31,6 @@ export const viMessages = {
     home: "Trang chủ",
     coordinate: "Phối đồ",
     catalog: "Catalog",
-    create: "Tạo",
     challenge: "Nhiệm vụ",
     notifications: "Thông báo",
     myPage: "Trang của tôi",
@@ -1494,6 +1493,10 @@ export const viMessages = {
     loginCtaTitle: "Free Style cần đăng nhập",
     loginCtaDescription: "Đăng nhập để tạo ảnh minh họa nhân vật của bạn bằng chỉ dẫn của riêng bạn.",
     loginCtaAction: "Đăng nhập / Đăng ký",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "Tạo ảnh bằng prompt do chính bạn viết và đăng kèm hình trước khi đổi, tác phẩm sẽ xuất hiện trong Danh mục của mọi người.",
+    catalogCreateFollowers: "Người theo dõi bạn có thể tạo ảnh bằng prompt đó (prompt vẫn có thể để riêng tư).",
+    catalogCreateReward: "Mỗi lần người theo dõi tạo ảnh bằng prompt đó, bạn nhận Percoin.",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2089,7 +2092,12 @@ export const viMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "Danh mục Persta",
+    tabUserTitle: "Danh mục của mọi người",
+    tabCreateTitle: "Tạo danh mục",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "Tất cả (mới nhất)",
     chipUsage: "Mọi người đang dùng",

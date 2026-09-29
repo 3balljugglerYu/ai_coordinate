@@ -23,6 +23,9 @@ import { cn } from "@/lib/utils";
  * 遷移完了を待たずに即座に切り替わって見える。ページ本文の読み込みは
  * (app)/loading.tsx のスケルトンがタブの下で受け持つ。
  *
+ * カタログ刷新後(公開前は運営だけ)は、/style でだけ app/[locale]/layout.tsx の
+ * TopTabsSlot から出す(/free はカタログのタブ「カタログをつくる」になる)。
+ *
  * ラベルは style.pageTitle / free.tabLabel を使う。
  */
 const TABS = [

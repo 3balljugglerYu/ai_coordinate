@@ -6,7 +6,8 @@
  *  - GenerationModeTabs が /style・/free 滞在中に現在モードを保存する
  *  - ボトムナビ/サイドバーの「コーディネート」入口が、クリック時に前回モードを
  *    読み取り、前回が One-Tap Style / じゆうモード なら該当ページへ復帰させる
- *    (カタログ刷新後の「つくる」は毎回 Free Style を開くので読まない。lib/nav-entries.ts)
+ *    (カタログ刷新後はナビに生成の入口が無く、「カタログ」は /styles を開くので読まない。
+ *    lib/nav-entries.ts)
  *
  * localStorage のみを使い、読み取り失敗(プライベートモード等)時は既定の
  * /style にフォールバックする(新規ユーザーの初回着地を One-Tap Style に
