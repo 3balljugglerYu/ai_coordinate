@@ -30,36 +30,43 @@ import { cn } from "@/lib/utils";
  * 出ている生成モードのタブで、一般公開の日まで見た目を変えない約束がある。
  * 作り（可変幅・ピルの実測）だけを同じにしている。
  *
+ * ## 見出しとタブの名前（2026-09-29 ユーザー指示）
+ *
+ * - ページの見出し（h1）は、選んでいるタブの名前を各言語で出す
+ *   （ペルスタのカタログ / みんなのカタログ / カタログをつくる）
+ * - タブの中は英語の名前だけ（Persta.AI ORIGINAL / User ORIGINAL / CREATE）。
+ *   フィードの引用元カードと同じ語彙（`posts.feedQuoteStyleTitle` /
+ *   `posts.feedQuoteDerivedTitle`）で、**全ロケール同一**
+ * - タブの列は中央ぞろえにせず、見出しの左端にそろえる（見出しと同じ入れ物に入れる）
+ *
+ * 名前は「誰が届けるか」だけで分け、よし悪しの差をつけない（計画書 ADR-008）。
+ *
  * ## 幅
  *
- * 3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前
- * （見出し＋英語の2段）を出し、ほかはアイコンだけにする。名前は読み上げ用に
- * aria-label と sr-only で残す。幅が変わるので、選んでいるタブの位置と幅を
- * 測ってピルを動かす（`GenerationModeTabs` と同じ）。
- *
- * ## ラベル
- *
- * 英語の2段目はフィードの引用元カードと同じ語彙（`posts.feedQuoteStyleTitle` /
- * `posts.feedQuoteDerivedTitle`）で、**全ロケール同一**。見出しは各言語に訳す。
- * 名前は「誰が届けるか」だけで分け、よし悪しの差をつけない（計画書 ADR-008）。
+ * 3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前を出し、
+ * ほかはアイコンだけにする。名前は読み上げ用に aria-label と sr-only で残す。
+ * 幅が変わるので、選んでいるタブの位置と幅を測ってピルを動かす
+ * （`GenerationModeTabs` と同じ）。
  */
 const TABS = [
   {
     path: "/styles",
+    // ページの見出し(各言語)
     titleKey: "tabOfficialTitle",
-    subtitleKey: "tabOfficial",
+    // タブの中の名前(英語。全ロケール同一)
+    labelKey: "tabOfficial",
     icon: Wand2,
   },
   {
     path: "/user-styles",
     titleKey: "tabUserTitle",
-    subtitleKey: "tabUser",
+    labelKey: "tabUser",
     icon: Users,
   },
   {
     path: "/free",
     titleKey: "tabCreateTitle",
-    subtitleKey: "tabCreate",
+    labelKey: "tabCreate",
     icon: PenLine,
   },
 ] as const;
@@ -109,26 +116,24 @@ export function OriginalKindTabs() {
     return null;
   }
 
-  const titles = TABS.map((tab) => t(tab.titleKey));
+  const labels = TABS.map((tab) => t(tab.labelKey));
 
   return (
     // 下の区切り線は付けない(見出し・チップの帯と同じ白の面で続けて見せる)
     <div className="bg-white/80 backdrop-blur-sm">
       {/*
-        カタログ全体のタイトル。ホームの "Persta | ペルスタ"(HomeHeading)と同じ見た目。
-        上余白はどの画面幅でも少しだけ(pt-3 = 12px)。
-        タブの下の各ページの見出しは出さず、このタイトルをページの h1 にする
+        見出しとタブは同じ入れ物に入れ、タブの列を見出しの左端にそろえる。
+        見出しは選んでいるタブの名前。ホームの "Persta | ペルスタ"(HomeHeading)と同じ大きさ。
+        タブの下の各ページの見出しは出さず、これをページの h1 にする
         (/free では FreePageHeader が自分の h1 を出さない)。
       */}
-      <div className="mx-auto max-w-6xl px-4 pt-3">
-        <h1 className="text-3xl font-bold">{t("catalogTitle")}</h1>
-      </div>
-      <div className="mx-auto flex max-w-6xl justify-center px-4 py-3">
+      <div className="mx-auto max-w-6xl px-4 pt-3 pb-3">
+        <h1 className="text-3xl font-bold">{t(TABS[activeIndex].titleKey)}</h1>
         <div
           ref={listRef}
           role="tablist"
-          aria-label={titles.join(" / ")}
-          className="relative inline-flex w-auto max-w-full items-stretch gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
+          aria-label={labels.join(" / ")}
+          className="relative mt-3 flex w-fit max-w-full items-stretch gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
         >
           {pill ? (
             <span
@@ -159,8 +164,8 @@ export function OriginalKindTabs() {
                 role="tab"
                 aria-selected={isActive}
                 aria-current={isActive ? "page" : undefined}
-                aria-label={titles[index]}
-                title={titles[index]}
+                aria-label={labels[index]}
+                title={labels[index]}
                 className={cn(
                   // タッチターゲットを確保する(Mobile-first ルールの 44x44px)。
                   "relative z-10 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full py-1.5 whitespace-nowrap",
@@ -180,15 +185,10 @@ export function OriginalKindTabs() {
                   )}
                 />
                 {isActive ? (
-                  <span className="flex flex-col items-start text-left leading-tight">
-                    <span className="text-sm font-bold">{titles[index]}</span>
-                    <span className="text-[10px] font-semibold tracking-wide opacity-90">
-                      {t(tab.subtitleKey)}
-                    </span>
-                  </span>
+                  <span className="text-sm font-bold">{labels[index]}</span>
                 ) : (
                   // 選んでいないタブは読み上げ用に sr-only で残す
-                  <span className="sr-only">{titles[index]}</span>
+                  <span className="sr-only">{labels[index]}</span>
                 )}
               </Link>
             );

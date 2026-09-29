@@ -2093,12 +2093,10 @@ export const viMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     tabCreate: "CREATE",
-    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    // カタログのページの見出し(h1)。選んでいるタブの名前を各言語で出す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
     tabOfficialTitle: "Danh mục Persta",
     tabUserTitle: "Danh mục của mọi người",
     tabCreateTitle: "Tạo danh mục",
-    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
-    catalogTitle: "Catalog",
     chipAll: "Tất cả (mới nhất)",
     chipUsage: "Mọi người đang dùng",
     usageSortNote: "Sắp xếp theo số lần được dùng",

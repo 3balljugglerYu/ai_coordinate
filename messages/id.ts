@@ -2096,12 +2096,10 @@ export const idMessages = {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
     tabCreate: "CREATE",
-    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    // カタログのページの見出し(h1)。選んでいるタブの名前を各言語で出す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
     tabOfficialTitle: "Katalog Persta",
     tabUserTitle: "Katalog semua orang",
     tabCreateTitle: "Buat katalog",
-    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
-    catalogTitle: "Catalog",
     chipAll: "Semua (terbaru)",
     chipUsage: "Dipakai semua orang",
     usageSortNote: "Diurutkan berdasarkan jumlah pemakaian",

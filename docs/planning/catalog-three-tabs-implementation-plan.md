@@ -33,7 +33,7 @@ User ORIGINAL に並ぶ条件は「Free Style の元の投稿・公開中・削�
 | 項目 | 決定 |
 |---|---|
 | タブ | 3つ。左から **ペルスタのカタログ**（`/styles`）・**みんなのカタログ**（`/user-styles`）・**カタログをつくる**（`/free`）。名前は 2026-09-29 にユーザーが決定（ADR-008） |
-| タブの2段目（英語） | ペルスタのカタログ = `Persta.AI ORIGINAL`、みんなのカタログ = `User ORIGINAL`、カタログをつくる = `CREATE` |
+| タブの中の名前（英語） | ペルスタのカタログ = `Persta.AI ORIGINAL`、みんなのカタログ = `User ORIGINAL`、カタログをつくる = `CREATE`。日本語の名前はページの見出し（h1）に出す（2026-09-29 変更。ADR-002） |
 | 英語の言葉 | 今の「Persta.AI ORIGINAL」「User ORIGINAL」を変えない（`User’s` にしない。ADR-003） |
 | タブの幅 | 今の生成モードのタブと同じく、**選んでいるタブだけ名前を出し、ほかはアイコンだけ**（3つ並べると切れるため） |
 | ナビ | 「カタログ」1つにまとめ、「つくる」を外す（スマホの下のナビは6つ→5つ） |
@@ -144,7 +144,7 @@ flowchart TB
 | ID | 要件（英語） | 要件（日本語） |
 |---|---|---|
 | REQ-01 | Where the catalog revamp is enabled, when the user opens /styles, /user-styles or /free, the system shall show the catalog title and three tabs in this order: Persta's catalog, Everyone's catalog, Create a catalog. | 刷新後は、`/styles`・`/user-styles`・`/free` で、カタログの見出しと3つのタブ（ペルスタのカタログ・みんなのカタログ・カタログをつくる）をこの順で出す |
-| REQ-02 | While a tab is selected, the system shall show its localized title with the English subtitle below it; unselected tabs shall show only an icon with an accessible name. | 選んでいるタブは見出し（各言語）と英語の2段目を出し、ほかのタブはアイコンだけにする（読み上げ用の名前は付ける） |
+| REQ-02 | While a tab is selected, the system shall show the tab's English name inside the tab and its localized name as the page heading above the tabs; unselected tabs shall show only an icon with an accessible name. | 選んでいるタブは英語の名前を出し、タブの上の見出し（h1）にそのタブの名前（各言語）を出す。ほかのタブはアイコンだけにする（読み上げ用の名前は付ける）（2026-09-29 変更） |
 | REQ-03 | When the user moves between the three tabs, the system shall keep the tab bar mounted and slide the active background to the new tab. | 3つのタブのあいだを移るとき、タブは消えずに残り、選択中の背景が滑って移る |
 | REQ-04 | The system shall not overflow the tab bar horizontally at a viewport width of 360px or wider. | 幅 360px 以上で、タブが横にはみ出さない |
 | REQ-05 | Where the catalog revamp is enabled, the navigation shall show Home, Catalog, Challenge, Notifications and My page, and Catalog shall open /styles. | 刷新後のナビは ホーム / カタログ / チャレンジ / 通知 / マイページ にし、カタログは `/styles` を開く |
@@ -152,7 +152,7 @@ flowchart TB
 | REQ-07 | While the tutorial tour is in progress, the tour's first step shall point at Catalog, and pressing Catalog shall open /style. | ツアー中は、最初の一歩が「カタログ」を指し、押すと `/style` を開く |
 | REQ-08 | Where the catalog revamp is enabled, /free shall tell the user that posts appear in Everyone's catalog, that prompts can stay private, and that creators receive Percoin when their style is used. | 刷新後の `/free` で、投稿するとみんなのカタログに並ぶこと・プロンプトは見せずに使ってもらえること・使われるとペルコインが還元されることを伝える |
 | REQ-09 | Where the catalog revamp is not enabled, the system shall keep the navigation, the generation mode tabs (/style and /free) and the catalog exactly as they are today. | 刷新前（一般の利用者）は、ナビ・生成モードのタブ（`/style` ⇄ `/free`）・カタログを今のままにする |
-| REQ-10 | The system shall use the same English subtitles in every locale, and shall provide the tab titles in all 15 locales. | 英語の2段目は全言語で同じにし、タブの見出しは15言語すべてに用意する |
+| REQ-10 | The system shall use the same English tab names in every locale, and shall provide the page headings in all 15 locales. | タブの中の名前（英語）は全言語で同じにし、ページの見出し（タブごとの名前）は15言語すべてに用意する |
 | REQ-11 | The system shall render at most one h1 on /styles, /user-styles and /free. | `/styles`・`/user-styles`・`/free` では、h1 を1つだけにする |
 | REQ-12 | The system shall not show the tabs on /styles/[slug]. | `/styles/[slug]`（スタイルの個別ページ）ではタブを出さない（今と同じ） |
 
@@ -185,8 +185,12 @@ flowchart TB
   選択中のタブは見出し（上）と英語（下、小さく）の2段、ほかのタブはアイコンだけ。ピルは選択中のタブを測って動かす
 - **Reason**: ユーザーの指示（今の「つくる」画面のタブのように、一部を隠す形でよい）。すでに使っている作法をそのまま使える
 - **Consequence**: 選んでいないタブはアイコンだけで見分けることになるので、アイコン選びが大事（ペルスタ・みんな・つくる。実装時に見本で確かめる）
+- **変更（2026-09-29 ユーザー指示、#652 のあと）**: 日本語の名前はタブから外し、**ページの見出し（h1）** に出す
+  （選んでいるタブに合わせて「ペルスタのカタログ」「みんなのカタログ」「カタログをつくる」）。タブの中は英語の名前だけ
+  （Persta.AI ORIGINAL / User ORIGINAL / CREATE。選んでいるタブはアイコン＋英語、ほかはアイコンだけ）。
+  タブの列は中央ぞろえをやめ、見出しの左端にそろえる。3つに共通の「カタログ」という見出し（`userStyles.catalogTitle`）は無くした
 
-### ADR-003: 英語の2段目は今の言葉を変えない（`User’s` にしない）
+### ADR-003: タブの英語の名前は今の言葉を変えない（`User’s` にしない）
 
 - **Context**: ユーザーの案は「User’s ORIGINAL」
 - **Decision**: 「Persta.AI ORIGINAL」「User ORIGINAL」のまま。3つ目だけ「CREATE」を足す
@@ -280,14 +284,16 @@ flowchart LR
 - [ ] `OriginalKindTabs` を3つのタブにする（`/free` を追加）。`GenerationModeTabs` の作りを参考に、可変幅＋ピルの実測にする。
       ⚠️ `GenerationModeTabs` 本体は変えない（共通の部品に作り替えない）。一般の利用者のタブを1文字も変えないため
 - [ ] 選択中は「見出し＋英語」の2段、ほかはアイコン＋読み上げ用の名前
+      - **変更（2026-09-29 ユーザー指示）**: 選択中はアイコン＋英語の名前だけ。日本語の名前はタブの上の見出し（h1）に出し、タブの列は見出しの左端にそろえる（ADR-002）
 - [ ] 刷新後の `/free` では、生成モードのタブの代わりにカタログのタブを出す（入れ物の出し分け）
 - [ ] 刷新後の人だけ、`/free` で h1 が1つになるようにする（一般の利用者の `/free` の見出しは今のまま）。カタログの見出しを h1 にしないか、ページ側の見出しを隠すかは、
       `/free` の SEO（公開ページの h1）を見て実装時に決める
-      - **実装時の決定（2026-09-29）**: カタログの見出し（「カタログ」）を h1 のままにし、`/free` のページ側の h1（Free Style）は刷新後の人には出さない
+      - **実装時の決定（2026-09-29）**: タブの上の見出しを h1 にし、`/free` のページ側の h1（Free Style）は刷新後の人には出さない
         （`FreePageHeader`）。`/styles`・`/user-styles` と同じ形になる。
+        見出しは選んでいるタブの名前なので、刷新後の `/free` の h1 は「カタログをつくる」（ADR-002 の変更を参照）。
         ページの `<title>` と説明文は今の Free Style のまま（`generateMetadata` は変えていない）ので、検索結果に出るタイトル・説明文は変わらない。
-        変わるのは一般公開のあとの h1 の文言だけ（「Free Style」→「カタログ」）。h1 を Free Style のまま残したくなったら、一般公開の前に見直す
-- [ ] 文言: `userStyles` に3つの見出し（ペルスタのカタログ・みんなのカタログ・カタログをつくる）と `CREATE` を15言語で追加する。英語の2段目は全言語で同じ
+        変わるのは一般公開のあとの h1 の文言だけ（「Free Style」→「カタログをつくる」）
+- [ ] 文言: `userStyles` に3つの見出し（ペルスタのカタログ・みんなのカタログ・カタログをつくる）と `CREATE` を15言語で追加する。タブの中の名前（英語）は全言語で同じ
 
 ### Phase 3: ナビを「カタログ」1つにまとめる
 
@@ -335,7 +341,7 @@ Phase 1〜4 は、どれも一般の利用者には出ないので、1つの PR 
 | `app/[locale]/layout.tsx` | 修正 | 入れ物を置く |
 | `app/(app)/layout.tsx` | 修正 | 生成モードのタブは一般の利用者用に残し、刷新後の人には出さない（一般公開後の Phase 6 で消す） |
 | `app/(styles-catalog)/layout.tsx` | 修正 | カタログのタブを入れ物へ移す |
-| `features/style-presets/components/OriginalKindTabs.tsx` | 修正 | 3つのタブ・可変幅・2段の名前・アイコン |
+| `features/style-presets/components/OriginalKindTabs.tsx` | 修正 | 3つのタブ・可変幅・英語の名前・アイコン。タブの上の見出しは選んでいるタブの名前（2026-09-29 変更） |
 | `components/GenerationModeTabs.tsx` | 変更しない | 出し分けは入れ物と `(app)/layout.tsx` 側で行う。一般の利用者のタブを1文字も変えないため |
 | `app/(app)/free/page.tsx` | 修正 | 刷新後の人だけ h1 を1つにする（一般の利用者の見出しは今のまま） |
 | `features/generation/components/FreePageHeader.tsx` | 新規 | `/free` の見出し。一般の利用者は今と同じ HTML、刷新後だけ h1 を出さず「カタログをつくる」の説明を出す（実装時に `FreePageBody` から変更） |
@@ -371,7 +377,7 @@ Phase 1〜4 は、どれも一般の利用者には出ないので、1つの PR 
 | 種類 | 観点 |
 |---|---|
 | 正常 | 刷新後、`/styles`・`/user-styles`・`/free` で3つのタブが出て、今いる画面のタブが選択中になる |
-| 正常 | 選択中のタブは見出しと英語、ほかはアイコンと読み上げ用の名前 |
+| 正常 | 選択中のタブは英語の名前、ほかはアイコンと読み上げ用の名前。タブの上の見出しは選んでいるタブの名前（2026-09-29 変更） |
 | 正常 | 刷新後のナビは5つで「つくる」が無く、「カタログ」は `/styles` を開く |
 | 正常 | 刷新後、`/free`・`/style` でも「カタログ」が選択中 |
 | 正常 | ツアー中は「カタログ」に目印があり、押すと `/style` を開く |
