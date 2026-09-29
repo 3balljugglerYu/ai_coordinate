@@ -74,13 +74,17 @@ export const getStockImageLimitServer = cache(async (userId: string): Promise<{
  * generationType が指定された場合はそのタイプのみを取得し、
  * 指定されない場合は全てのタイプを取得する。
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
+ *
+ * `options.ownPromptsOnly` を立てると、ほかの人のプロンプトで作ったもの(派生生成。
+ * `source_post_id` に元の投稿が入る)を除く。カタログ刷新後の CREATE(/free)の一覧で使う。
  */
 export const getGeneratedImagesServer = cache(async (
   userId: string,
   limit = 4,
   offset = 0,
   generationType?: GenerationType,
-  supabaseOverride?: SupabaseClient
+  supabaseOverride?: SupabaseClient,
+  options?: { ownPromptsOnly?: boolean }
 ): Promise<GeneratedImageRecord[]> => {
   const supabase = supabaseOverride ?? (await createClient());
 
@@ -92,6 +96,9 @@ export const getGeneratedImagesServer = cache(async (
   // generationType が指定された場合のみフィルタリング
   if (generationType) {
     query = query.eq("generation_type", generationType);
+  }
+  if (options?.ownPromptsOnly) {
+    query = query.is("source_post_id", null);
   }
 
   const { data, error } = await query

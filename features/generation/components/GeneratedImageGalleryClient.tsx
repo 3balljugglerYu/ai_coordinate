@@ -26,6 +26,8 @@ interface GeneratedImageGalleryClientProps {
   detailFromParam: string;
   returnToImageIdKey: string;
   applyActionMode: "dispatch-event" | "navigate-free";
+  /** ほかの人のプロンプトで作ったもの(派生生成)を除く。最初の読み込みと同じ条件で続きも読む */
+  ownPromptsOnly?: boolean;
 }
 
 /**
@@ -38,6 +40,7 @@ export function GeneratedImageGalleryClient({
   detailFromParam,
   returnToImageIdKey,
   applyActionMode,
+  ownPromptsOnly = false,
 }: GeneratedImageGalleryClientProps) {
   const genState = useGenerationState();
   const [images, setImages] = useState<GeneratedImageData[]>(initialImages);
@@ -109,7 +112,8 @@ export function GeneratedImageGalleryClient({
           userId,
           PAGE_SIZE,
           offset,
-          generationType
+          generationType,
+          { ownPromptsOnly }
         );
 
         const converted: GeneratedImageData[] = records
@@ -136,7 +140,7 @@ export function GeneratedImageGalleryClient({
     };
 
     void fetchMore();
-  }, [inView, isLoading, hasMore, offset, generationType]);
+  }, [inView, isLoading, hasMore, offset, generationType, ownPromptsOnly]);
 
   const previewImages = genState?.previewImages ?? [];
   const previewImagesByUrl = new Map(

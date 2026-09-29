@@ -79,12 +79,16 @@ export interface SourceImageStock {
  * ユーザーの生成画像一覧を取得
  * generationType が指定された場合はそのタイプのみを取得し、
  * 指定されない場合は全てのタイプを取得する。
+ *
+ * `options.ownPromptsOnly` を立てると、ほかの人のプロンプトで作ったもの(派生生成)を除く
+ * (サーバー側の getGeneratedImagesServer と同じ条件)。
  */
 export async function getGeneratedImages(
   userId: string,
   limit = 50,
   offset = 0,
-  generationType?: GenerationType
+  generationType?: GenerationType,
+  options?: { ownPromptsOnly?: boolean }
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 
@@ -96,6 +100,9 @@ export async function getGeneratedImages(
   // generationType が指定された場合のみフィルタリング
   if (generationType) {
     query = query.eq("generation_type", generationType);
+  }
+  if (options?.ownPromptsOnly) {
+    query = query.is("source_post_id", null);
   }
 
   const { data, error } = await query
