@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { getModelBrandName } from "@/features/generation/lib/model-display";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { GenerationType } from "@/features/generation/types";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 interface PostMetaLineProps {
   model: string | null;
@@ -11,6 +12,11 @@ interface PostMetaLineProps {
   height: number | null;
   /** 生成モード(coordinate系/one_tap_style/inspire/free)。null/不明はラベル非表示。 */
   generationType?: GenerationType | string | null;
+  /**
+   * 派生生成の原作(`source_post_id`)。カタログ刷新後に、自分のプロンプト(User ORIGINAL)か
+   * ほかの人のプロンプト(with User ORIGINAL)かを見分ける。
+   */
+  sourcePostId?: string | null;
 }
 
 /**
@@ -28,10 +34,16 @@ export function PostMetaLine({
   width,
   height,
   generationType,
+  sourcePostId = null,
 }: PostMetaLineProps) {
   const t = useTranslations("posts");
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const brandName = getModelBrandName(model);
-  const modeLabelKey = getGenerationModeLabelKey(generationType);
+  // カードのラベルと同じ名前にする(刷新後は Persta ORIGINAL / User ORIGINAL)
+  const modeLabelKey = getGenerationModeLabelKey(generationType, {
+    sourcePostId,
+    isCatalogRevamp,
+  });
   const modeLabel = modeLabelKey ? t(modeLabelKey) : null;
 
   // モデルもモードも無ければ従来どおり何も描画しない。

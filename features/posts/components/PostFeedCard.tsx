@@ -24,7 +24,7 @@ import { NewPromptBadge } from "./NewPromptBadge";
 import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
-import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
+import { getCardGenerationModeLabelKey } from "../lib/generation-mode-label";
 import {
   getPostBeforeImageUrl,
   getPostDisplayUrl,
@@ -38,6 +38,7 @@ import { FEED_CARD_MAX_WIDTH_PX } from "../lib/constants";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import { formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 interface PostFeedCardProps {
   post: Post;
@@ -142,7 +143,13 @@ export function PostFeedCard({
   const afterUrl = getPostThumbUrl(post);
   const beforeUrl = getPostBeforeImageUrl(post);
   const detailHref = getPostCardHref(post, locale);
-  const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type);
+  // カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に User ORIGINAL を出し、
+  // 使って作った投稿には出さない(出どころは下の引用元カードが示す)。
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const generationModeLabelKey = getCardGenerationModeLabelKey(post.generation_type, {
+    sourcePostId: post.source_post_id,
+    isCatalogRevamp,
+  });
   // One-Tap Style のプリセットは投稿の generation_metadata に入っているため
   // サーバーへ問い合わせずに読める（リンクに要る slug だけ別途もらう）。
   const oneTapPreset = getOneTapStylePresetMetadata(post);
@@ -388,6 +395,18 @@ export function PostFeedCard({
             imageButtonLabel={t("feedExpandImage")}
             priority={prioritizeImage}
             clampPortraitToWidth
+            /*
+              刷新後は名前が従来より長い(User ORIGINAL)ので、After の中で AFTER と
+              同じ行に並べ、入りきらないときは折り返す(幅 320px で重なるため)。
+              一般の利用者は下の従来の形のまま。
+            */
+            afterCornerLabel={
+              isCatalogRevamp && generationModeLabelKey ? (
+                <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+              {t(generationModeLabelKey)}
+            </span>
+              ) : undefined
+            }
           />
           {/* バッジの位置は PostCard と揃える(完走・🆕=左上 / 生成モード=左下)。
               AFTER・BEFORE ラベルは右下なので重ならない。
@@ -403,7 +422,7 @@ export function PostFeedCard({
               {post.isNew ? <NewPromptBadge /> : null}
             </div>
           ) : null}
-          {generationModeLabelKey ? (
+          {!isCatalogRevamp && generationModeLabelKey ? (
             <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
               {t(generationModeLabelKey)}
             </span>

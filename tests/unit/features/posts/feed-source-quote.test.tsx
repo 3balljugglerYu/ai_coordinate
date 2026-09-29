@@ -28,6 +28,12 @@ jest.mock("next/image", () => ({
     React.createElement("img", { alt, src, ...props }),
 }));
 
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
+
 describe("FeedSourceQuote", () => {
   test("サムネイルは比率にかかわらず正方形にする", () => {
     render(
@@ -385,6 +391,49 @@ describe("FeedSourceQuote", () => {
 
         expect(screen.getByTestId("feed-source-quote")).toBeInTheDocument();
       }
+    );
+  });
+});
+
+/*
+  カタログ刷新後(公開前は運営だけ)の見出し。引用元はカタログに並んでいるものなので、
+  カタログのタブの名前(userStyles.tabOfficial / tabUser)をそのまま使う。
+*/
+describe("FeedSourceQuote の見出し(カタログ刷新後)", () => {
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  test("style は Persta ORIGINAL、derived は User ORIGINAL(タブの名前と同じキー)", () => {
+    mockRevamp.mockReturnValue(true);
+    const { rerender } = render(<FeedSourceQuote variant="style" title="夏のマリンコーデ" />);
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "userStyles.tabOfficial"
+    );
+
+    rerender(<FeedSourceQuote variant="derived" title="みきふく" />);
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "userStyles.tabUser"
+    );
+  });
+
+  test("root(プロンプト作成者)は変えない", () => {
+    mockRevamp.mockReturnValue(true);
+    render(<FeedSourceQuote variant="root" title="みきふく" />);
+
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "posts.feedQuotePromptCreator"
+    );
+  });
+
+  test("⭐一般の利用者には今の見出し(Persta.AI ORIGINAL / ORIGINAL)のまま", () => {
+    mockRevamp.mockReturnValue(false);
+    const { rerender } = render(<FeedSourceQuote variant="style" title="夏のマリンコーデ" />);
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "posts.feedQuoteStyleTitle"
+    );
+
+    rerender(<FeedSourceQuote variant="derived" title="みきふく" />);
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "posts.feedQuoteDerivedTitle"
     );
   });
 });

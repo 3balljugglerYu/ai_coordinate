@@ -36,8 +36,9 @@ import { fitHeadingFontSize } from "@/features/style-presets/lib/fit-heading-fon
  * - ページの見出し（h1）は、選んでいるタブの名前を各言語で出す
  *   （ペルスタのカタログ / みんなのカタログ / カタログをつくる）
  * - タブの中は英語の名前だけ（Persta ORIGINAL / User ORIGINAL / CREATE）で、**全ロケール同一**。
- *   「Persta ORIGINAL」はタブに入れるために短くした。フィードの引用元カード
- *   （`posts.feedQuoteStyleTitle`。一般の利用者に見える）は「Persta.AI ORIGINAL」のまま
+ *   「Persta ORIGINAL」はタブに入れるために短くした。フィードの引用元カードは、
+ *   一般の利用者には「Persta.AI ORIGINAL」（`posts.feedQuoteStyleTitle`）のまま出し、
+ *   刷新後はこのタブの名前をそのまま使う（`FeedSourceQuote`）
  * - 見出しは、どの言語でも1行に収める。入りきらない言語だけ文字を小さくし、
  *   3つの見出しを同じ大きさにそろえる（`fitHeadingFontSize`）
  * - タブの列は中央ぞろえにせず、見出しの左端にそろえる（見出しと同じ入れ物に入れる）

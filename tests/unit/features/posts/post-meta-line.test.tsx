@@ -10,9 +10,18 @@ jest.mock("next-intl", () => ({
       modeOneTapStyle: "One-Tap Style",
       modeInspire: "Creator Style",
       modeFree: "Free Style",
+      modeWithPerstaOriginal: "with Persta ORIGINAL",
+      modeWithUserOriginal: "with User ORIGINAL",
+      modeUserOriginal: "User ORIGINAL",
     };
     return messages[key] ?? key;
   }),
+}));
+
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
 }));
 
 import { PostMetaLine } from "@/features/posts/components/PostMetaLine";
@@ -153,5 +162,72 @@ describe("PostMetaLine", () => {
       />,
     );
     expect(container.firstChild).toBeNull();
+  });
+});
+
+describe("PostMetaLine(カタログ刷新後)", () => {
+  beforeEach(() => mockRevamp.mockReturnValue(true));
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  it("ほかの人のプロンプトで作った投稿は with User ORIGINAL", () => {
+    render(
+      <PostMetaLine
+        model="gpt-image-2-low-1k"
+        width={1024}
+        height={1536}
+        generationType="free"
+        sourcePostId="source-post-1"
+      />,
+    );
+    const node = screen.getByTestId("post-meta-line");
+    expect(node.textContent).toBe(
+      "with User ORIGINAL ・ ChatGPT Images 2.0 / 1024×1536",
+    );
+    expect(node.getAttribute("aria-label")).toBe(
+      "生成モード: with User ORIGINAL, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
+    );
+  });
+
+  it("自分のプロンプトは User ORIGINAL、ペルスタのスタイルは with Persta ORIGINAL", () => {
+    const { rerender } = render(
+      <PostMetaLine
+        model={null}
+        width={null}
+        height={null}
+        generationType="free"
+        sourcePostId={null}
+      />,
+    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe(
+      "User ORIGINAL",
+    );
+
+    rerender(
+      <PostMetaLine
+        model={null}
+        width={null}
+        height={null}
+        generationType="one_tap_style"
+      />,
+    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe(
+      "with Persta ORIGINAL",
+    );
+  });
+});
+
+describe("PostMetaLine(一般の利用者)", () => {
+  it("⭐元の投稿があっても今の名前(Free Style)のまま", () => {
+    mockRevamp.mockReturnValue(false);
+    render(
+      <PostMetaLine
+        model={null}
+        width={null}
+        height={null}
+        generationType="free"
+        sourcePostId="source-post-1"
+      />,
+    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe("Free Style");
   });
 });

@@ -116,6 +116,10 @@ export const jaMessages = {
     modeOneTapStyle: "One-Tap Style",
     modeInspire: "Creator Style",
     modeFree: "Free Style",
+    // カタログ刷新後(公開前は運営だけ)のラベル。作った本人のものは「〜 ORIGINAL」、それを使って作ったものは「with 〜」。with 〜 は投稿の詳細の行だけで使い、画像の上には出さない。全言語同一(features/posts/lib/generation-mode-label.ts)
+    modeWithPerstaOriginal: "with Persta ORIGINAL",
+    modeWithUserOriginal: "with User ORIGINAL",
+    modeUserOriginal: "User ORIGINAL",
     copy: "コピー",
     copied: "コピー済み",
     followRequiredTitle: "フォローが必要です",
@@ -1426,6 +1430,9 @@ export const jaMessages = {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
     pageDescription: "画像をアップロードして、自由な指示で思いのままに。着せ替えはもちろん、ポーズ・背景・シーンごと自在に作れます。",
+    // カタログ刷新後(公開前は運営だけ)の生成シート(User ORIGINAL のプロンプトで作る)の見出しと説明。一般の利用者は pageTitle / pageDescription のまま
+    catalogSheetTitle: "User ORIGINAL でつくる",
+    catalogSheetDescription: "このプロンプトで、あなたの画像からつくります。",
     aspectSectionTitle: "画像の比率",
     aspectAuto: "自動",
     aspectAutoDescription: "アップロード画像に合わせる",
@@ -1449,6 +1456,8 @@ export const jaMessages = {
     pageTitle: "One-Tap Style",
     pageDescription:
       "プロンプト不要！好きなスタイルを選択するだけで、そのスタイルに変身！！",
+    // カタログ刷新後(公開前は運営だけ)の生成シート(Persta ORIGINAL のスタイルで作る)の見出し。説明は pageDescription のまま(スタイルを選ぶだけ、はシートでも合っている)
+    catalogSheetTitle: "Persta ORIGINAL でつくる",
     totalGenerationCount: "これまでに生成された枚数 {count} 枚！",
     sectionTitle: "スタイル選択",
     sectionDescription: "着せ替えたいスタイルを選択してください。",
@@ -2032,7 +2041,8 @@ export const jaMessages = {
     tabOfficial / tabUser はフィードの引用元カードのラベル(feedQuoteStyleTitle /
     feedQuoteDerivedTitle)と同じ語彙で、翻訳すると「棚の名前」と「カードの名前」が食い違う。
     ただし tabOfficial は、タブに入れるために「Persta ORIGINAL」へ短くした(2026-09-29 ユーザー指示)。
-    フィードの引用元カード(一般の利用者に見える)は「Persta.AI ORIGINAL」のまま。
+    フィードの引用元カードは、一般の利用者には「Persta.AI ORIGINAL」「ORIGINAL」のまま出し、
+    カタログ刷新後(公開前は運営だけ)は tabOfficial / tabUser をそのまま使う(FeedSourceQuote)。
     ⭐ usageSortNote は /styles の stylePopularSortNote(直近30日)を流用しないこと。
     こちらは窓なしの累計で定義が違う(計画書 ADR-007)。
   */

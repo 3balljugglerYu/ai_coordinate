@@ -79,6 +79,12 @@ jest.mock("@/features/credits/lib/api", () => ({
   fetchPercoinBalance: jest.fn().mockResolvedValue({ balance: 1234 }),
 }));
 
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
+
 describe("PromptLockedGenerationHeader", () => {
   test("既定は Free Style の見出しで、購入ページからは /free へ戻る", async () => {
     render(<PromptLockedGenerationHeader />);
@@ -159,5 +165,40 @@ describe("PromptLockedGenerationHeader", () => {
       percoinIcon.src,
       expect.objectContaining({ as: "image" })
     );
+  });
+});
+
+/*
+  カタログ刷新後(公開前は運営だけ)は、カタログのタブの名前で「〜でつくる」にする
+  (2026-09-29 ユーザー決定)。User ORIGINAL の説明は、プロンプトを変えられない
+  このシートに合わせる(Free Style の「自由な指示で思いのままに」と食い違うため)。
+*/
+describe("PromptLockedGenerationHeader(カタログ刷新後)", () => {
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  test("User ORIGINAL のシートは「User ORIGINAL でつくる」と、このシートに合った説明", async () => {
+    mockRevamp.mockReturnValue(true);
+    render(<PromptLockedGenerationHeader />);
+
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "free.catalogSheetTitle"
+    );
+    expect(screen.getByText("free.catalogSheetDescription")).toBeTruthy();
+    expect(screen.queryByText("free.pageTitle")).toBeNull();
+    expect(screen.queryByText("free.pageDescription")).toBeNull();
+    // 購入ページからの戻り先は変えない
+    expect((await screen.findByRole("link")).getAttribute("href")).toBe("/credits/purchase?from=free");
+  });
+
+  test("Persta ORIGINAL のシートは「Persta ORIGINAL でつくる」で、説明は今のまま", async () => {
+    mockRevamp.mockReturnValue(true);
+    render(<PromptLockedGenerationHeader mode="style" />);
+
+    expect(screen.getByRole("heading", { level: 2 }).textContent).toBe(
+      "style.catalogSheetTitle"
+    );
+    expect(screen.getByText("style.pageDescription")).toBeTruthy();
+    expect(screen.queryByText("style.pageTitle")).toBeNull();
+    expect((await screen.findByRole("link")).getAttribute("href")).toBe("/credits/purchase?from=style");
   });
 });
