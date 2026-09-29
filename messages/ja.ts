@@ -2029,11 +2029,13 @@ export const jaMessages = {
     ⭐ tabOfficial / tabUser / tabCreate(タブの中の名前。英語)は**全ロケール同一**にする。
     tabOfficial / tabUser はフィードの引用元カードのラベル(feedQuoteStyleTitle /
     feedQuoteDerivedTitle)と同じ語彙で、翻訳すると「棚の名前」と「カードの名前」が食い違う。
+    ただし tabOfficial は、タブに入れるために「Persta ORIGINAL」へ短くした(2026-09-29 ユーザー指示)。
+    フィードの引用元カード(一般の利用者に見える)は「Persta.AI ORIGINAL」のまま。
     ⭐ usageSortNote は /styles の stylePopularSortNote(直近30日)を流用しないこと。
     こちらは窓なしの累計で定義が違う(計画書 ADR-007)。
   */
   userStyles: {
-    tabOfficial: "Persta.AI ORIGINAL",
+    tabOfficial: "Persta ORIGINAL",
     tabUser: "User ORIGINAL",
     tabCreate: "CREATE",
     // カタログのページの見出し(h1)。選んでいるタブの名前を各言語で出す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)

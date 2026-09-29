@@ -22,7 +22,14 @@ jest.mock("next-intl", () => ({
   useTranslations: (namespace: string) => {
     let translate = mockTranslators.get(namespace);
     if (!translate) {
-      translate = (key: string) => `${namespace}.${key}`;
+      // タブの中の名前(英語)だけ本物の文言を返す。冒頭4文字で切る動きを確かめるため
+      const labels: Record<string, string> = {
+        tabOfficial: "Persta ORIGINAL",
+        tabUser: "User ORIGINAL",
+        tabCreate: "CREATE",
+      };
+      translate = (key: string) =>
+        namespace === "userStyles" && labels[key] ? labels[key] : `${namespace}.${key}`;
       mockTranslators.set(namespace, translate);
     }
     return translate;
@@ -60,11 +67,9 @@ const TITLES = [
   "userStyles.tabCreateTitle",
 ];
 // タブの中の名前(英語)
-const LABELS = [
-  "userStyles.tabOfficial",
-  "userStyles.tabUser",
-  "userStyles.tabCreate",
-];
+const LABELS = ["Persta ORIGINAL", "User ORIGINAL", "CREATE"];
+// 選んでいないタブに出す、名前の冒頭4文字
+const SHORT_LABELS = ["Pers…", "User…", "CREA…"];
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -93,17 +98,18 @@ describe("OriginalKindTabs", () => {
   });
 
   /*
-    ⭐ タブの中は英語の名前(Persta.AI ORIGINAL / User ORIGINAL / CREATE)だけ。日本語の名前は
+    ⭐ タブの中は英語の名前(Persta ORIGINAL / User ORIGINAL / CREATE)だけ。日本語の名前は
     ページの見出し(h1)に出す(2026-09-29 ユーザー指示)。
-    3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前を出し、ほかは
-    アイコンだけにする(名前は読み上げ用に sr-only で残す)。
+    3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前を全部出し、
+    ほかはアイコンと名前の冒頭4文字(「Pers…」など)にする(2026-09-29 ユーザー指示)。
+    読み上げには名前を全部渡す(sr-only)。冒頭4文字は読み上げない(aria-hidden)。
   */
   test.each([
     ["/ja/styles", 0],
     ["/ja/user-styles", 1],
     ["/ja/free", 2],
   ])(
-    "%s では選んでいるタブだけ英語の名前を出し、ほかはアイコンだけにする(日本語の名前はタブに入れない)",
+    "%s では選んでいるタブだけ英語の名前を全部出し、ほかはアイコンと冒頭4文字にする(日本語の名前はタブに入れない)",
     (pathname, activeIndex) => {
       mockPathname.mockReturnValue(pathname);
       render(<OriginalKindTabs />);
@@ -126,9 +132,13 @@ describe("OriginalKindTabs", () => {
           expect(tab.getAttribute("aria-selected")).toBe("true");
           expect(tab.getAttribute("aria-current")).toBe("page");
           expect(label.closest(".sr-only")).toBeNull();
+          expect(within(tab).queryByText(SHORT_LABELS[index])).toBeNull();
         } else {
           expect(tab.getAttribute("aria-selected")).toBe("false");
           expect(label.closest(".sr-only")).not.toBeNull();
+          const short = within(tab).getByText(SHORT_LABELS[index]);
+          expect(short.closest(".sr-only")).toBeNull();
+          expect(short.closest('[aria-hidden="true"]')).not.toBeNull();
         }
       });
     }
@@ -163,6 +173,109 @@ describe("OriginalKindTabs", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
       "userStyles.tabCreateTitle"
     );
+  });
+
+  /*
+    ⭐ 見出しはどの言語でも1行に収める(2026-09-29 ユーザー指示)。折り返さず、入りきらない
+    言語だけ文字を小さくする。大きさが変わっても行の高さは変えない(タブが上下に動かない)。
+  */
+  test("見出しは折り返さず、行の高さは一定", () => {
+    mockPathname.mockReturnValue("/ja/styles");
+    render(<OriginalKindTabs />);
+
+    const heading = screen.getByRole("heading", { level: 1 });
+    // 大きさの基準(30px)は text-3xl。縮めるときも行の高さ(leading-9 = 36px)は変えない
+    for (const cls of ["text-3xl", "whitespace-nowrap", "leading-9"]) {
+      expect(heading.className).toContain(cls);
+    }
+  });
+
+  describe("見出しの文字の大きさ", () => {
+    /*
+      jsdom は幅を測れないので、見出しに使える幅(h1 の clientWidth)と、30px で書いたときの
+      見出しの幅(測る用の要素 [data-heading-measure] の offsetWidth)を決め打ちする。
+    */
+    const originals = {
+      clientWidth: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth"),
+      offsetWidth: Object.getOwnPropertyDescriptor(HTMLElement.prototype, "offsetWidth"),
+    };
+    /** 見出しごとの幅(30px で書いたとき)。一番長いのは2番目の「みんなのカタログ」 */
+    const TITLE_WIDTHS: Record<string, number> = {
+      "userStyles.tabOfficialTitle": 400,
+      "userStyles.tabUserTitle": 540,
+      "userStyles.tabCreateTitle": 300,
+    };
+    function mockWidths(availablePx: number) {
+      Object.defineProperty(HTMLElement.prototype, "clientWidth", {
+        configurable: true,
+        get(this: HTMLElement) {
+          return this.tagName === "H1" ? availablePx : 0;
+        },
+      });
+      Object.defineProperty(HTMLElement.prototype, "offsetWidth", {
+        configurable: true,
+        get(this: HTMLElement) {
+          return this.hasAttribute("data-heading-measure")
+            ? (TITLE_WIDTHS[this.textContent ?? ""] ?? 0)
+            : 0;
+        },
+      });
+    }
+    afterEach(() => {
+      for (const key of ["clientWidth", "offsetWidth"] as const) {
+        const original = originals[key];
+        if (original) {
+          Object.defineProperty(HTMLElement.prototype, key, original);
+        } else {
+          delete (HTMLElement.prototype as unknown as Record<string, unknown>)[key];
+        }
+      }
+    });
+
+    test("一番長い見出しも入るなら、大きさは変えない", () => {
+      // 一番長い見出しは 540px。使える幅 600px なら入る
+      mockWidths(600);
+      mockPathname.mockReturnValue("/ja/styles");
+      render(<OriginalKindTabs />);
+
+      expect(screen.getByRole("heading", { level: 1 }).style.fontSize).toBe("");
+    });
+
+    test("入りきらないなら、3つとも同じ大きさに縮める(タブを移っても大きさは同じ)", () => {
+      // 一番長い 540px を 450px に収める: 30 × 450 / 540 = 25px
+      // (一番長い見出しは2番目。選んでいる画面の見出しでも、1番目・3番目でもない)
+      mockWidths(450);
+      mockPathname.mockReturnValue("/ja/styles");
+      const { rerender } = render(<OriginalKindTabs />);
+      expect(screen.getByRole("heading", { level: 1 }).style.fontSize).toBe("25px");
+
+      // 別の画面へ移っても同じ大きさ
+      mockPathname.mockReturnValue("/ja/free");
+      rerender(<OriginalKindTabs />);
+      expect(screen.getByRole("heading", { level: 1 }).style.fontSize).toBe("25px");
+    });
+
+    /*
+      測る用の要素は、3つの見出しを見出しと同じ書き方(30px・太字・折り返さない)で持つ。
+      読み上げず、見出しの外に置き、隠さない(display:none だと幅が 0 になる)。
+    */
+    test("測る用の要素は3つの見出しを同じ書き方で持ち、読み上げない", () => {
+      mockPathname.mockReturnValue("/ja/styles");
+      const { container } = render(<OriginalKindTabs />);
+
+      const heading = screen.getByRole("heading", { level: 1 });
+      const measures = Array.from(container.querySelectorAll<HTMLElement>("[data-heading-measure]"));
+      expect(measures.map((node) => node.textContent)).toEqual(TITLES);
+      for (const node of measures) {
+        expect(node.closest('[aria-hidden="true"]')).not.toBeNull();
+        for (const cls of ["text-3xl", "font-bold", "whitespace-nowrap"]) {
+          expect(node.className).toContain(cls);
+        }
+        expect(node.style.fontSize).toBe("");
+        expect(heading.contains(node)).toBe(false);
+        expect(node.closest('.hidden, [hidden]')).toBeNull();
+      }
+    });
   });
 
   /*

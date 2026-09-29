@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { PenLine, Users, Wand2 } from "lucide-react";
 import { stripLocalePrefix } from "@/i18n/config";
 import { cn } from "@/lib/utils";
+import { fitHeadingFontSize } from "@/features/style-presets/lib/fit-heading-font-size";
 
 /**
  * カタログのタブ（ペルスタのカタログ / みんなのカタログ / カタログをつくる）。
@@ -34,17 +35,20 @@ import { cn } from "@/lib/utils";
  *
  * - ページの見出し（h1）は、選んでいるタブの名前を各言語で出す
  *   （ペルスタのカタログ / みんなのカタログ / カタログをつくる）
- * - タブの中は英語の名前だけ（Persta.AI ORIGINAL / User ORIGINAL / CREATE）。
- *   フィードの引用元カードと同じ語彙（`posts.feedQuoteStyleTitle` /
- *   `posts.feedQuoteDerivedTitle`）で、**全ロケール同一**
+ * - タブの中は英語の名前だけ（Persta ORIGINAL / User ORIGINAL / CREATE）で、**全ロケール同一**。
+ *   「Persta ORIGINAL」はタブに入れるために短くした。フィードの引用元カード
+ *   （`posts.feedQuoteStyleTitle`。一般の利用者に見える）は「Persta.AI ORIGINAL」のまま
+ * - 見出しは、どの言語でも1行に収める。入りきらない言語だけ文字を小さくし、
+ *   3つの見出しを同じ大きさにそろえる（`fitHeadingFontSize`）
  * - タブの列は中央ぞろえにせず、見出しの左端にそろえる（見出しと同じ入れ物に入れる）
  *
  * 名前は「誰が届けるか」だけで分け、よし悪しの差をつけない（計画書 ADR-008）。
  *
  * ## 幅
  *
- * 3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前を出し、
- * ほかはアイコンだけにする。名前は読み上げ用に aria-label と sr-only で残す。
+ * 3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前を全部出し、
+ * ほかはアイコンと名前の冒頭4文字（「Pers…」など）にする。名前は読み上げ用に
+ * aria-label と sr-only で全部残す（冒頭4文字は読み上げない）。
  * 幅が変わるので、選んでいるタブの位置と幅を測ってピルを動かす
  * （`GenerationModeTabs` と同じ）。
  */
@@ -70,6 +74,16 @@ const TABS = [
     icon: PenLine,
   },
 ] as const;
+
+/** 選んでいないタブに出す、名前の文字数 */
+const SHORT_LABEL_LENGTH = 4;
+/** 見出しの大きさ(text-3xl)と、縮めるときの下限 */
+const HEADING_BASE_PX = 30;
+const HEADING_MIN_PX = 20;
+
+function shortLabel(label: string): string {
+  return `${label.slice(0, SHORT_LABEL_LENGTH).trimEnd()}…`;
+}
 
 export function OriginalKindTabs() {
   const t = useTranslations("userStyles");
@@ -111,8 +125,41 @@ export function OriginalKindTabs() {
     };
   }, [activeIndex, localePrefix, t]);
 
+  // 見出しを1行に収める大きさ。3つの見出しを見出しと同じ書き方(30px)で測り、一番長いものが
+  // 入らなければ3つとも同じ大きさに縮める(タブを移っても大きさが変わらない)。
+  const titles = TABS.map((tab) => t(tab.titleKey));
+  const titlesKey = titles.join("\n");
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
+  const measureRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const [headingFontPx, setHeadingFontPx] = useState<number | null>(null);
+  const isCatalogPage = activeIndex !== -1;
+
+  useLayoutEffect(() => {
+    if (!isCatalogPage) return;
+    const heading = headingRef.current;
+    if (!heading) return;
+    const fit = () => {
+      setHeadingFontPx(
+        fitHeadingFontSize({
+          basePx: HEADING_BASE_PX,
+          minPx: HEADING_MIN_PX,
+          availablePx: heading.clientWidth,
+          titleWidthsPx: measureRefs.current.map((node) => node?.offsetWidth ?? 0),
+        })
+      );
+    };
+    fit();
+    // 画面の回転・リサイズと、Web フォントの読み込み(見出しの幅が変わる)に追従する。
+    const ro = new ResizeObserver(fit);
+    ro.observe(heading);
+    for (const node of measureRefs.current) {
+      if (node) ro.observe(node);
+    }
+    return () => ro.disconnect();
+  }, [isCatalogPage, titlesKey]);
+
   // /styles/[slug] など対象外のルートでは出さない。
-  if (activeIndex === -1) {
+  if (!isCatalogPage) {
     return null;
   }
 
@@ -127,8 +174,37 @@ export function OriginalKindTabs() {
         タブの下の各ページの見出しは出さず、これをページの h1 にする
         (/free では FreePageHeader が自分の h1 を出さない)。
       */}
-      <div className="mx-auto max-w-6xl px-4 pt-3 pb-3">
-        <h1 className="text-3xl font-bold">{t(TABS[activeIndex].titleKey)}</h1>
+      <div className="relative mx-auto max-w-6xl px-4 pt-3 pb-3">
+        {/*
+          1行に収める(折り返さない)。縮めても行の高さ(leading-9 = 36px)は変えないので、
+          タブが上下に動かない。測り終わる前(サーバーの HTML)に長い見出しがはみ出しても、
+          ページが横に揺れないよう横だけ切る(上の記号・声調記号は切らない)。
+        */}
+        <h1
+          ref={headingRef}
+          className="text-3xl leading-9 font-bold whitespace-nowrap overflow-x-clip"
+          style={headingFontPx ? { fontSize: `${headingFontPx}px` } : undefined}
+        >
+          {titles[activeIndex]}
+        </h1>
+        {/* 見出しの幅を測る用(見えない・読み上げない)。見出しと同じ書き方にする */}
+        <div
+          aria-hidden
+          className="pointer-events-none invisible absolute top-0 left-0 overflow-hidden"
+        >
+          {titles.map((title, index) => (
+            <span
+              key={TABS[index].path}
+              data-heading-measure
+              ref={(node) => {
+                measureRefs.current[index] = node;
+              }}
+              className="absolute text-3xl font-bold whitespace-nowrap"
+            >
+              {title}
+            </span>
+          ))}
+        </div>
         <div
           ref={listRef}
           role="tablist"
@@ -172,9 +248,11 @@ export function OriginalKindTabs() {
                   // 幅(名前の出し入れ)と文字色を同じ duration で変え、ピルのスライドと歩調を合わせる。
                   "transition-[color,padding] duration-300",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1",
+                  // 選んでいるタブは縮めない(名前を全部見せる)。選んでいないタブは幅が足りなければ
+                  // 少し縮み、入りきらない分はタブの中で隠す(隣のタブに文字を重ねない)。
                   isActive
-                    ? "gap-2 px-4 text-white"
-                    : "px-3 text-gray-500 hover:text-pink-600"
+                    ? "shrink-0 gap-2 px-4 text-white"
+                    : "gap-1.5 overflow-hidden px-3 text-gray-500 hover:text-pink-600"
                 )}
               >
                 <Icon
@@ -187,8 +265,16 @@ export function OriginalKindTabs() {
                 {isActive ? (
                   <span className="text-sm font-bold">{labels[index]}</span>
                 ) : (
-                  // 選んでいないタブは読み上げ用に sr-only で残す
-                  <span className="sr-only">{labels[index]}</span>
+                  <>
+                    {/*
+                      選んでいないタブは冒頭4文字。読み上げは名前全部(sr-only)に任せる。
+                      幅 360px 未満の狭いスマホでは入りきらずアイコンが欠けるので、アイコンだけにする。
+                    */}
+                    <span aria-hidden className="hidden text-sm font-semibold min-[360px]:inline">
+                      {shortLabel(labels[index])}
+                    </span>
+                    <span className="sr-only">{labels[index]}</span>
+                  </>
                 )}
               </Link>
             );

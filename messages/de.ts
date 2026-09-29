@@ -2095,7 +2095,7 @@ export const deMessages = {
   },
 
   userStyles: {
-    tabOfficial: "Persta.AI ORIGINAL",
+    tabOfficial: "Persta ORIGINAL",
     tabUser: "User ORIGINAL",
     tabCreate: "CREATE",
     // カタログのページの見出し(h1)。選んでいるタブの名前を各言語で出す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
