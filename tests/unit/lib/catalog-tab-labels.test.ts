@@ -5,7 +5,10 @@
  * フィードの引用元カードと同じ語彙で、翻訳すると「棚の名前」と「カードの名前」が
  * 食い違う(messages/ja.ts の userStyles のコメント)。
  * ただしタブの「Persta ORIGINAL」は、タブに入れるために短くした(2026-09-29 ユーザー指示)。
- * フィードの引用元カード(一般の利用者に見える)は「Persta.AI ORIGINAL」のまま。
+ * フィードの引用元カードは、一般の利用者には「Persta.AI ORIGINAL」のまま出し、
+ * カタログ刷新後(公開前は運営だけ)はタブの名前をそのまま使う(FeedSourceQuote)。
+ * ⭐ 刷新後の投稿のラベルは、作った本人のものは「〜 ORIGINAL」、それを使って
+ * 作ったものは「with 〜」(2026-09-29 ユーザー決定)。
  * ⭐ タブの名前は「誰が届けるか」だけで分け、よし悪しの差をつけない
  * (docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)。
  */
@@ -28,6 +31,27 @@ describe("カタログのタブの文言", () => {
 
     expect(messages.posts.feedQuoteStyleTitle).toBe("Persta.AI ORIGINAL");
     expect(messages.posts.feedQuoteDerivedTitle).toBe("ORIGINAL");
+  });
+
+  test.each(locales)(
+    "%s: 刷新後の投稿のラベルは、タブの名前(使って作ったものは with 付き)",
+    async (locale) => {
+      const messages = await getAllMessages(locale);
+
+      expect(messages.posts.modeWithPerstaOriginal).toBe(
+        `with ${messages.userStyles.tabOfficial}`
+      );
+      expect(messages.posts.modeWithUserOriginal).toBe(`with ${messages.userStyles.tabUser}`);
+      expect(messages.posts.modeUserOriginal).toBe(messages.userStyles.tabUser);
+    }
+  );
+
+  test.each(locales)("%s: 刷新後の生成シートの見出しに、タブの名前が入っている", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.free.catalogSheetTitle).toContain(messages.userStyles.tabUser);
+    expect(messages.style.catalogSheetTitle).toContain(messages.userStyles.tabOfficial);
+    expect(messages.free.catalogSheetDescription.trim()).not.toBe("");
   });
 
   test.each(locales)(
@@ -65,5 +89,12 @@ describe("カタログのタブの文言", () => {
     expect(messages.userStyles.tabOfficialTitle).toBe("ペルスタのカタログ");
     expect(messages.userStyles.tabUserTitle).toBe("みんなのカタログ");
     expect(messages.userStyles.tabCreateTitle).toBe("カタログをつくる");
+  });
+
+  test("日本語の生成シートの見出しは「〜でつくる」", async () => {
+    const messages = await getAllMessages("ja");
+
+    expect(messages.free.catalogSheetTitle).toBe("User ORIGINAL でつくる");
+    expect(messages.style.catalogSheetTitle).toBe("Persta ORIGINAL でつくる");
   });
 });

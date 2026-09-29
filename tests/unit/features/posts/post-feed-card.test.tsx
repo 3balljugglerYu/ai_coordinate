@@ -7,7 +7,7 @@
  */
 
 import React from "react";
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { PostFeedCard } from "@/features/posts/components/PostFeedCard";
 import type { Post } from "@/features/posts/types";
 import {
@@ -135,6 +135,12 @@ jest.mock("@/lib/env", () => ({
 const mockQueueImpression = jest.fn();
 jest.mock("@/features/posts/lib/impressions-client", () => ({
   queuePostImpression: (...args: unknown[]) => mockQueueImpression(...args),
+}));
+
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
 }));
 
 function createPost(overrides: Partial<Post> = {}): Post {
@@ -855,5 +861,109 @@ describe("PostFeedCard", () => {
 
       expect(getPendingPostPreview()?.aspectRatio).toBe("landscape");
     });
+  });
+});
+
+/*
+  画像左下の生成方法ラベル。カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に
+  User ORIGINAL を出し、使って作った投稿(ペルスタのスタイル・ほかの人のプロンプト)には出さない。
+  出どころは画像の下の引用元カードが示す(2026-09-30 ユーザー決定)。
+*/
+describe("PostFeedCard の生成方法ラベル", () => {
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  test("刷新後: 自分のプロンプトで作った投稿は User ORIGINAL を出す", () => {
+    mockRevamp.mockReturnValue(true);
+    const post = createPost({ generation_type: "free", source_post_id: null });
+    render(<PostFeedCard post={post} currentUserId={null} />);
+
+    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
+    expect(screen.queryByText("modeFree")).toBeNull();
+  });
+
+  test.each([
+    ["ペルスタのスタイル", createPost({ generation_type: "one_tap_style" })],
+    ["ほかの人のプロンプト", createPost({ generation_type: "free", source_post_id: "source-post-1" })],
+  ])("刷新後: %sで作った投稿には画像の上のラベルを出さない", (_label, post) => {
+    mockRevamp.mockReturnValue(true);
+    render(<PostFeedCard post={post} currentUserId={null} />);
+
+    for (const key of [
+      "modeWithPerstaOriginal",
+      "modeWithUserOriginal",
+      "modeOneTapStyle",
+      "modeFree",
+    ]) {
+      expect(screen.queryByText(key)).toBeNull();
+    }
+  });
+
+  test("刷新後も Coordinate のラベルは出す", () => {
+    mockRevamp.mockReturnValue(true);
+    const post = createPost({ generation_type: "coordinate" });
+    render(<PostFeedCard post={post} currentUserId={null} />);
+
+    expect(screen.getByText("modeCoordinate")).toBeTruthy();
+  });
+
+  /*
+    刷新後の名前(User ORIGINAL)は従来より長く、枠の外から重ねると幅 320px で AFTER と重なった。
+    After の中で AFTER と同じ行に並べ、入りきらないときはラベルが折り返す。
+  */
+  test("刷新後は、ラベルを After の中で AFTER と同じ行に並べる", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <PostFeedCard
+        post={createPost({
+          generation_type: "free",
+          input_image_url_fallback: "https://example.test/before.png",
+        })}
+        currentUserId={null}
+      />
+    );
+
+    const row = within(screen.getByTestId("post-feed-after-frame")).getByTestId(
+      "post-feed-after-corner-row"
+    );
+    expect(within(row).getByText("modeUserOriginal")).toBeTruthy();
+    expect(within(row).getByText("afterImageLabel")).toBeTruthy();
+    // 枠の外に同じラベルを重ねない
+    expect(screen.getAllByText("modeUserOriginal")).toHaveLength(1);
+  });
+
+  test("一般の利用者は従来どおり、ラベルを枠の外から重ねる(After の中に行を作らない)", () => {
+    mockRevamp.mockReturnValue(false);
+    render(
+      <PostFeedCard
+        post={createPost({
+          generation_type: "one_tap_style",
+          input_image_url_fallback: "https://example.test/before.png",
+        })}
+        currentUserId={null}
+      />
+    );
+
+    expect(screen.queryByTestId("post-feed-after-corner-row")).toBeNull();
+    const afterFrame = screen.getByTestId("post-feed-after-frame");
+    expect(within(afterFrame).queryByText("modeOneTapStyle")).toBeNull();
+    expect(screen.getByText("modeOneTapStyle").className).toContain("absolute bottom-2 left-2");
+  });
+
+  test("⭐一般の利用者には今の名前(One-Tap Style / Free Style)のまま", () => {
+    mockRevamp.mockReturnValue(false);
+    const { unmount } = render(
+      <PostFeedCard post={createPost({ generation_type: "one_tap_style" })} currentUserId={null} />
+    );
+    expect(screen.getByText("modeOneTapStyle")).toBeTruthy();
+    unmount();
+
+    render(
+      <PostFeedCard
+        post={createPost({ generation_type: "free", source_post_id: "source-post-1" })}
+        currentUserId={null}
+      />
+    );
+    expect(screen.getByText("modeFree")).toBeTruthy();
+    expect(screen.queryByText("modeWithUserOriginal")).toBeNull();
   });
 });

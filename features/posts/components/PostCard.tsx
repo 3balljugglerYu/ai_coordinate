@@ -17,11 +17,12 @@ import {
 } from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
-import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
+import { getCardGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
 import { PostModerationMenu } from "@/features/moderation/components/PostModerationMenu";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
 
@@ -69,7 +70,13 @@ export function PostCard({
   // Supabase Storageから画像URLを生成（WebPサムネイル優先、フォールバック付き）
   const imageUrl = getPostThumbUrl(post);
   // 生成モードラベル(カード左下)。coordinate系/one_tap_style/inspire/free 以外は null。
-  const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type);
+  // カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に User ORIGINAL を出し、
+  // 使って作った投稿には出さない(出どころは引用元カードが示す)。
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const generationModeLabelKey = getCardGenerationModeLabelKey(post.generation_type, {
+    sourcePostId: post.source_post_id,
+    isCatalogRevamp,
+  });
   // 生成元画像が実際に表示できる投稿かどうか（右下ラベルの表示判定）
   const hasBeforeImage = getPostBeforeImageUrl(post) !== null;
 
@@ -122,9 +129,32 @@ export function PostCard({
           {post.isNew ? <NewPromptBadge /> : null}
         </div>
       ) : null}
+      {/*
+        カタログ刷新後(公開前は運営だけ)の名前(User ORIGINAL)は従来より長い。
+        左下と右下を1つの行に並べ、入りきらないときは左下を折り返す。
+        それぞれを角に重ねる従来の形では、幅 320px で右下と重なった。
+        一般の利用者は下の従来の形のまま。
+      */}
+      {isCatalogRevamp && (generationModeLabelKey || hasBeforeImage) ? (
+        <div
+          className="absolute inset-x-2 bottom-2 z-10 flex items-end gap-1"
+          data-testid="post-card-corner-row"
+        >
+          {generationModeLabelKey ? (
+            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+              {t(generationModeLabelKey)}
+            </span>
+          ) : null}
+          {hasBeforeImage ? (
+            <span className="ml-auto shrink-0 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+              {t("sourceImageLabel")}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
       {/* 生成モードラベル(左下)。coordinate系/one_tap_style/inspire/free を表示。
           不明・null は非表示。 */}
-      {generationModeLabelKey ? (
+      {!isCatalogRevamp && generationModeLabelKey ? (
         <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
           {t(generationModeLabelKey)}
         </span>
@@ -140,7 +170,7 @@ export function PostCard({
           判定する。正典の解決ロジックである getPostBeforeImageUrl に委ねることで、
           表示ロジックと判定が同じ関数を通り、将来ずれない。
           右上は三点リーダーが占めているため右下に置く。 */}
-      {hasBeforeImage ? (
+      {!isCatalogRevamp && hasBeforeImage ? (
         <span className="absolute bottom-2 right-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
           {t("sourceImageLabel")}
         </span>

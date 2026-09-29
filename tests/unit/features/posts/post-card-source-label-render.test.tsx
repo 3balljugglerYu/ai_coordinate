@@ -14,7 +14,7 @@
 
 process.env.NEXT_PUBLIC_SUPABASE_URL = "https://example.supabase.co";
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("react-intersection-observer", () => ({
@@ -49,6 +49,12 @@ jest.mock("@/features/posts/components/PostCardLikeButton", () => ({
 
 jest.mock("@/features/moderation/components/PostModerationMenu", () => ({
   PostModerationMenu: () => <div data-testid="moderation-menu" />,
+}));
+
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
 }));
 
 import { PostCard } from "@/features/posts/components/PostCard";
@@ -150,5 +156,111 @@ describe("PostCard の完走投稿描画", () => {
     expect(link?.getAttribute("href") ?? "").not.toContain("/m/");
     // コメント数が表示される(旧仕様では完走投稿のみ非表示だった)
     expect(screen.getByText("3")).toBeInTheDocument();
+  });
+});
+
+/*
+  左下の生成方法ラベル。カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に
+  User ORIGINAL を出し、使って作った投稿(ペルスタのスタイル・ほかの人のプロンプト)には出さない。
+  出どころは画像の下の引用元カードが示す(2026-09-30 ユーザー決定)。
+*/
+describe("PostCard の生成方法ラベル", () => {
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  it("刷新後: 自分のプロンプトで作った投稿は User ORIGINAL を出す", () => {
+    mockRevamp.mockReturnValue(true);
+    const post = makePost({ generation_type: "free", source_post_id: null });
+    render(<PostCard post={post} />);
+
+    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
+    expect(screen.queryByText("modeFree")).toBeNull();
+  });
+
+  it.each([
+    ["ペルスタのスタイル", makePost({ generation_type: "one_tap_style" })],
+    ["ほかの人のプロンプト", makePost({ generation_type: "free", source_post_id: "source-post-1" })],
+  ])("刷新後: %sで作った投稿には画像の上のラベルを出さない", (_label, post) => {
+    mockRevamp.mockReturnValue(true);
+    render(<PostCard post={post} />);
+
+    for (const key of [
+      "modeWithPerstaOriginal",
+      "modeWithUserOriginal",
+      "modeOneTapStyle",
+      "modeFree",
+    ]) {
+      expect(screen.queryByText(key)).toBeNull();
+    }
+  });
+
+  it("刷新後も Coordinate のラベルは出す", () => {
+    mockRevamp.mockReturnValue(true);
+    const post = makePost({ generation_type: "coordinate" });
+    render(<PostCard post={post} />);
+
+    expect(screen.getByText("modeCoordinate")).toBeTruthy();
+  });
+
+  /*
+    刷新後の名前(User ORIGINAL)は従来より長く、角に重ねる従来の形では幅 320px で
+    右下の「元画像 ✔︎」と重なった。1つの行に並べ、入りきらないときは左下が折り返す。
+  */
+  it("刷新後は、左下のラベルと右下の元画像を1つの行に並べる", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <PostCard
+        post={makePost({
+          generation_type: "free",
+          pre_generation_storage_path: SOURCE_PATH,
+          show_before_image: true,
+        })}
+      />
+    );
+
+    const row = screen.getByTestId("post-card-corner-row");
+    expect(within(row).getByText("modeUserOriginal")).toBeTruthy();
+    const source = within(row).getByText("sourceImageLabel");
+    // 右下は縮めず右端へ寄せる(左下の方が折り返す)
+    expect(source.className).toContain("shrink-0");
+    expect(source.className).toContain("ml-auto");
+    expect(screen.getAllByText("sourceImageLabel")).toHaveLength(1);
+  });
+
+  it("刷新後も、元画像が無い投稿には右下を出さない", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <PostCard post={makePost({ generation_type: "free", pre_generation_storage_path: null })} />
+    );
+
+    const row = screen.getByTestId("post-card-corner-row");
+    expect(within(row).getByText("modeUserOriginal")).toBeTruthy();
+    expect(screen.queryByText("sourceImageLabel")).toBeNull();
+  });
+
+  it("一般の利用者は従来どおり、左下と右下を別々に角へ重ねる(行を作らない)", () => {
+    mockRevamp.mockReturnValue(false);
+    render(
+      <PostCard
+        post={makePost({
+          generation_type: "one_tap_style",
+          pre_generation_storage_path: SOURCE_PATH,
+          show_before_image: true,
+        })}
+      />
+    );
+
+    expect(screen.queryByTestId("post-card-corner-row")).toBeNull();
+    expect(screen.getByText("modeOneTapStyle").className).toContain("absolute bottom-2 left-2");
+    expect(screen.getByText("sourceImageLabel").className).toContain("absolute bottom-2 right-2");
+  });
+
+  it("⭐一般の利用者には、ほかの人のプロンプトで作った投稿も今の名前(modeFree)のまま", () => {
+    mockRevamp.mockReturnValue(false);
+    render(
+      <PostCard post={makePost({ generation_type: "free", source_post_id: "source-post-1" })} />
+    );
+
+    expect(screen.getByText("modeFree")).toBeTruthy();
+    expect(screen.queryByText("modeWithUserOriginal")).toBeNull();
   });
 });

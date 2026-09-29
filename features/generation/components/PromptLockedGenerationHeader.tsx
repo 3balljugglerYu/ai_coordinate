@@ -11,6 +11,7 @@ import {
   getPercoinPurchaseUrl,
   type PercoinPurchaseReferrer,
 } from "@/features/credits/lib/urls";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 /**
  * 残高の行のコインのアイコン(読み込み中も枠を出す showBalancePlaceholder のとき)。
@@ -64,6 +65,18 @@ export function preloadPercoinIcon() {
  *
  * `/styles` の生成シート(One-Tap Style)でも使う。そのときは `mode="style"` で
  * One-Tap Style の見出し・説明と、購入ページからの戻り先を切り替える。
+ *
+ * ## カタログ刷新後(公開前は運営だけ)
+ *
+ * 刷新後は Free Style / One-Tap Style という名前が画面から消え、カタログのタブ
+ * (Persta ORIGINAL / User ORIGINAL)で呼ぶ。見出しは「User ORIGINAL でつくる」
+ * 「Persta ORIGINAL でつくる」にする(2026-09-29 ユーザー決定)。これから使って作る
+ * 画面だと分かるように「でつくる」を付ける。
+ *
+ * User ORIGINAL の説明は、Free Style の説明(「自由な指示で思いのままに」)が
+ * プロンプトを変えられないこのシートと食い違うので、「このプロンプトで、あなたの
+ * 画像からつくります」にする。Persta ORIGINAL の説明(スタイルを選ぶだけ)は
+ * このシートでも合っているので今のまま。
  */
 export function PromptLockedGenerationHeader({
   mode = "free",
@@ -83,6 +96,12 @@ export function PromptLockedGenerationHeader({
   const styleT = useTranslations("style");
   const t = mode === "style" ? styleT : freeT;
   const creditsT = useTranslations("credits");
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const title = t(isCatalogRevamp ? "catalogSheetTitle" : "pageTitle");
+  const description =
+    isCatalogRevamp && mode === "free"
+      ? freeT("catalogSheetDescription")
+      : t("pageDescription");
   const [balance, setBalance] = useState<number | null>(null);
 
   useEffect(() => {
@@ -102,9 +121,9 @@ export function PromptLockedGenerationHeader({
   return (
     <div className="space-y-3">
       <div className="space-y-1">
-        <h2 className="text-2xl font-bold text-gray-900">{t("pageTitle")}</h2>
+        <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          {t("pageDescription")}
+          {description}
         </p>
       </div>
 

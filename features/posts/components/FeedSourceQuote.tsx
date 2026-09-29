@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Sparkles, User } from "lucide-react";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { usageCountBucket } from "../lib/constants";
 
 /** 引用サムネイルの一辺。X の引用リポストと同じく正方形にトリミングする。 */
@@ -173,6 +174,12 @@ interface FeedSourceQuoteProps {
  * ⭐ 見出しは全ロケールで同じ英字のまま（`messages/*.ts` 15言語すべて同一）。
  * `ORIGINAL` はブランドのロックアップとして扱い、翻訳しない。
  *
+ * ⭐ **カタログ刷新後（公開前は運営だけ）は、カタログのタブの名前をそのまま使う。**
+ * `style` は `Persta ORIGINAL`、`derived` は `User ORIGINAL`（`userStyles.tabOfficial` /
+ * `userStyles.tabUser`）。引用元はカタログに並んでいるものなので、棚の名前と
+ * カードの名前を1つのキーにしておけば、片方だけ直されて食い違うことがない。
+ * root（`プロンプト作成者`）は変えない。
+ *
  * 一方、**行動を促す文言は従来どおり「生成」で統一する**（CTA と root の見出し）。
  * 「使う」は目的語が曖昧で、閲覧者に「自分の何かが使われるのか」と読まれ得る。
  *
@@ -196,13 +203,19 @@ export function FeedSourceQuote({
 }: FeedSourceQuoteProps) {
   const t = useTranslations("posts");
   const styleT = useTranslations("style");
+  const catalogT = useTranslations("userStyles");
+  const isCatalogRevamp = useStylesCatalogRevamp();
 
   const heading =
     variant === "root"
       ? t("feedQuotePromptCreator")
       : variant === "style"
-        ? t("feedQuoteStyleTitle")
-        : t("feedQuoteDerivedTitle");
+        ? isCatalogRevamp
+          ? catalogT("tabOfficial")
+          : t("feedQuoteStyleTitle")
+        : isCatalogRevamp
+          ? catalogT("tabUser")
+          : t("feedQuoteDerivedTitle");
 
   // 生の回数ではなく丸めた値を渡す。文言が「◯回以上」で固定なので、
   // 素の数字を渡すと表示が嘘になる。

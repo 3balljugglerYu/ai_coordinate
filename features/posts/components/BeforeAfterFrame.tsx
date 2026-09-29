@@ -58,6 +58,17 @@ interface BeforeAfterFrameProps {
    * うちの子の全身を切るより、余白が出る方が投稿者の意図に沿う。
    */
   clampPortraitToWidth?: boolean;
+  /**
+   * After の左下に出すラベル(生成方法)。
+   *
+   * 渡すと、After の右下のラベル(AFTER)と同じ行に並べ、入りきらないときは
+   * こちらを折り返す。枠の外から重ねる従来の形では、名前が長いと
+   * 狭い画面で AFTER と重なる(カタログ刷新後の名前は従来より長い)。
+   * 位置は従来と同じ(左下は端から 8px、AFTER は 4px)。
+   *
+   * 渡さないときは何も出さず、描画は従来のまま(呼び出し側が外から重ねる)。
+   */
+  afterCornerLabel?: React.ReactNode;
 }
 
 /**
@@ -99,6 +110,7 @@ export function BeforeAfterFrame({
   imageButtonLabel,
   priority = false,
   clampPortraitToWidth = false,
+  afterCornerLabel,
 }: BeforeAfterFrameProps) {
   const showsBefore = !!afterUrl && !!beforeUrl;
   const isLandscape = isLandscapeRatio(aspectRatio);
@@ -156,7 +168,23 @@ export function BeforeAfterFrame({
             unoptimized
           />
         ) : null}
-        {showsBefore ? (
+        {afterCornerLabel ? (
+          /*
+            生成方法のラベル(左下)と AFTER(右下)を1つの行に並べる。
+            入りきらないときは左が折り返し、AFTER は縮めない(重ならない)。
+          */
+          <div
+            className="absolute inset-x-1 bottom-1 z-10 flex items-end gap-1"
+            data-testid={`${testIdPrefix}-after-corner-row`}
+          >
+            <div className="mb-1 ml-1 flex">{afterCornerLabel}</div>
+            {showsBefore ? (
+              <span className="ml-auto shrink-0 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
+                {afterLabel}
+              </span>
+            ) : null}
+          </div>
+        ) : showsBefore ? (
           <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white">
             {afterLabel}
           </span>
