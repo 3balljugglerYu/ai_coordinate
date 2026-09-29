@@ -1,4 +1,4 @@
-# カタログを3つのタブにする（公式カタログ / みんなのカタログ / カタログをつくる）実装計画
+# カタログを3つのタブにする（ペルスタのカタログ / みんなのカタログ / カタログをつくる）実装計画
 
 作成: 2026-09-29（main `202a456` で調査）
 
@@ -32,12 +32,12 @@ User ORIGINAL に並ぶ条件は「Free Style の元の投稿・公開中・削�
 
 | 項目 | 決定 |
 |---|---|
-| タブ | 3つ。左から **公式カタログ**（`/styles`）・**みんなのカタログ**（`/user-styles`）・**カタログをつくる**（`/free`） |
-| タブの2段目（英語） | 公式カタログ = `Persta.AI ORIGINAL`、みんなのカタログ = `User ORIGINAL`、カタログをつくる = `CREATE` |
+| タブ | 3つ。左から **ペルスタのカタログ**（`/styles`）・**みんなのカタログ**（`/user-styles`）・**カタログをつくる**（`/free`）。名前は 2026-09-29 にユーザーが決定（ADR-008） |
+| タブの2段目（英語） | ペルスタのカタログ = `Persta.AI ORIGINAL`、みんなのカタログ = `User ORIGINAL`、カタログをつくる = `CREATE` |
 | 英語の言葉 | 今の「Persta.AI ORIGINAL」「User ORIGINAL」を変えない（`User’s` にしない。ADR-003） |
 | タブの幅 | 今の生成モードのタブと同じく、**選んでいるタブだけ名前を出し、ほかはアイコンだけ**（3つ並べると切れるため） |
 | ナビ | 「カタログ」1つにまとめ、「つくる」を外す（スマホの下のナビは6つ→5つ） |
-| 最初に開くタブ | 公式カタログ（ナビの「カタログ」→ `/styles`） |
+| 最初に開くタブ | ペルスタのカタログ（ナビの「カタログ」→ `/styles`） |
 | カタログをつくるの説明 | 「投稿すると、みんなのカタログに並びます。プロンプトは見せずに使ってもらえ、使われるとペルコインが還元されます」を伝える |
 | 公開の仕方 | 今のカタログ刷新と同じ段階公開に乗せる（公開前は運営だけ） |
 
@@ -112,10 +112,10 @@ User ORIGINAL に並ぶ条件は「Free Style の元の投稿・公開中・削�
 
 ```mermaid
 flowchart TD
-    Nav["ナビ: カタログ"] --> Official["公式カタログ /styles"]
-    Official -->|"タブ"| Users["みんなのカタログ /user-styles"]
+    Nav["ナビ: カタログ"] --> Persta["ペルスタのカタログ /styles"]
+    Persta -->|"タブ"| Users["みんなのカタログ /user-styles"]
     Users -->|"タブ"| Create["カタログをつくる /free"]
-    Official -->|"カードから1タップ"| Gen1["One-Tap で生成"]
+    Persta -->|"カードから1タップ"| Gen1["One-Tap で生成"]
     Users -->|"カードから"| Gen2["ほかの人のプロンプトで生成"]
     Create -->|"書いて生成して投稿"| Post["Free Style の投稿"]
     Post -->|"Before を表示していれば"| Users
@@ -143,7 +143,7 @@ flowchart TB
 
 | ID | 要件（英語） | 要件（日本語） |
 |---|---|---|
-| REQ-01 | Where the catalog revamp is enabled, when the user opens /styles, /user-styles or /free, the system shall show the catalog title and three tabs in this order: Official catalog, Everyone's catalog, Create a catalog. | 刷新後は、`/styles`・`/user-styles`・`/free` で、カタログの見出しと3つのタブ（公式カタログ・みんなのカタログ・カタログをつくる）をこの順で出す |
+| REQ-01 | Where the catalog revamp is enabled, when the user opens /styles, /user-styles or /free, the system shall show the catalog title and three tabs in this order: Persta's catalog, Everyone's catalog, Create a catalog. | 刷新後は、`/styles`・`/user-styles`・`/free` で、カタログの見出しと3つのタブ（ペルスタのカタログ・みんなのカタログ・カタログをつくる）をこの順で出す |
 | REQ-02 | While a tab is selected, the system shall show its localized title with the English subtitle below it; unselected tabs shall show only an icon with an accessible name. | 選んでいるタブは見出し（各言語）と英語の2段目を出し、ほかのタブはアイコンだけにする（読み上げ用の名前は付ける） |
 | REQ-03 | When the user moves between the three tabs, the system shall keep the tab bar mounted and slide the active background to the new tab. | 3つのタブのあいだを移るとき、タブは消えずに残り、選択中の背景が滑って移る |
 | REQ-04 | The system shall not overflow the tab bar horizontally at a viewport width of 360px or wider. | 幅 360px 以上で、タブが横にはみ出さない |
@@ -179,7 +179,7 @@ flowchart TB
 - **Decision**: 生成モードのタブ（`GenerationModeTabs.tsx`）と同じ作りにする。
   選択中のタブは見出し（上）と英語（下、小さく）の2段、ほかのタブはアイコンだけ。ピルは選択中のタブを測って動かす
 - **Reason**: ユーザーの指示（今の「つくる」画面のタブのように、一部を隠す形でよい）。すでに使っている作法をそのまま使える
-- **Consequence**: 選んでいないタブはアイコンだけで見分けることになるので、アイコン選びが大事（公式・みんな・つくる。実装時に見本で確かめる）
+- **Consequence**: 選んでいないタブはアイコンだけで見分けることになるので、アイコン選びが大事（ペルスタ・みんな・つくる。実装時に見本で確かめる）
 
 ### ADR-003: 英語の2段目は今の言葉を変えない（`User’s` にしない）
 
@@ -187,6 +187,11 @@ flowchart TB
 - **Decision**: 「Persta.AI ORIGINAL」「User ORIGINAL」のまま。3つ目だけ「CREATE」を足す
 - **Reason**: フィードの引用元カードと同じ言葉で、全言語で同じにしてある（`messages/ja.ts:2026-2034`）。
   また「みんなの」は複数の人を指すが、「User’s」は単数の所有格で「ある1人のユーザーの」と読める。2026-09-29 にユーザーと合意
+- **クリエイターの作品が混ざることについて**: `/styles` の公開中のスタイル236件のうち34件は、クリエイター9人の作品
+  （2026-09-29 時点。アレンジ・テイスト・ことわざ辞典に多い）。それでも「ORIGINAL」は、
+  「ペルスタのために作られたオリジナル」と読めば合う（配信サービスの「〇〇オリジナル」作品が、
+  外部の制作会社の作品でもそう呼ばれるのと同じ）。作者の名前はカードに出る。
+  「Persta.AI SELECT」も検討したが、「選んだ」の意味が入り、みんなのカタログとの間に上下がつくので採らない（ADR-008）
 
 ### ADR-004: ナビは「カタログ」1つにまとめ、ツアー中だけ `/style` へ案内する
 
@@ -220,6 +225,18 @@ flowchart TB
 - **Context**: 運営かどうかは、画面が出たあとで判定される（`UserStylesAvailabilityProvider.tsx:51,67`）
 - **Decision**: 運営が `/free` を開くと、はじめは生成モードのタブ、判定のあとでカタログのタブに替わる。これを許す
 - **Reason**: 一般公開後は最初から true になり、起きない。今の `/styles` も、運営にはタブを遅れて出している（同じ仕組み）
+
+### ADR-008: タブの名前は「誰が届けるか」だけで分け、よし悪しの差をつけない
+
+- **Context**: 仮の名前「公式カタログ」は、かたくて面白さがない（ユーザーの指摘）
+- **Decision**: 「ペルスタのカタログ」にする。「みんなのカタログ」と形（〇〇のカタログ）をそろえ、違いを「誰の」だけにする
+- **Reason**: 2つの棚の名前に上下がつくと、みんなのカタログ（利用者の作品）が劣って見え、作る人の意欲をそぐ。
+  検討して採らなかった名前:
+  - 公式・公認: かたい。並べると、みんなのほうが「非公式・非公認」に見える
+  - えりすぐり・とっておき・イチオシ・セレクト（SELECT）: 「選び抜いた＝上」の意味が入る
+  - 編集部のカタログ: 楽しいが、「編集部」が誰か伝わりにくい
+- **Consequence**: 今後この棚やバッジに名前を付けるときも、利用者の作品との間に上下がつかないかを確かめる
+  （「ペルスタ公認」のような言葉は、棚の名前ではなく、みんなのカタログの中の作品に付けるバッジなら合う）
 
 ## 実装計画
 
@@ -255,7 +272,7 @@ flowchart LR
 - [ ] 刷新後の `/free` では、生成モードのタブの代わりにカタログのタブを出す（入れ物の出し分け）
 - [ ] `/free` で h1 が1つになるようにする。カタログの見出しを h1 にしないか、ページ側の見出しを隠すかは、
       `/free` の SEO（公開ページの h1）を見て実装時に決める
-- [ ] 文言: `userStyles` に3つの見出し（公式カタログ・みんなのカタログ・カタログをつくる）と `CREATE` を15言語で追加する。英語の2段目は全言語で同じ
+- [ ] 文言: `userStyles` に3つの見出し（ペルスタのカタログ・みんなのカタログ・カタログをつくる）と `CREATE` を15言語で追加する。英語の2段目は全言語で同じ
 
 ### Phase 3: ナビを「カタログ」1つにまとめる
 
@@ -336,7 +353,7 @@ PR は Phase 1 と、Phase 2〜4 の2つに分ける。Phase 1 は一般の利�
 
 ## 残っている確認事項
 
-- アイコンの選び方（公式カタログ・みんなのカタログ・カタログをつくる）。実装時に画面の見本（gpt-image-2.5）で確かめる
+- アイコンの選び方（ペルスタのカタログ・みんなのカタログ・カタログをつくる）。実装時に画面の見本（gpt-image-2.5）で確かめる
 - `/style`（One-Tap の画面）をこの先どうするか（カタログのカードからの生成に寄せるか）。ツアーの作り直しを伴うので別の計画にする（ADR-006）
 - Coordinate の廃止の段階2（画面側のコード削除）と、生成モードのタブ・ナビの箇所が近い。先にどちらを出すかを、実装を始めるときに決める
 
