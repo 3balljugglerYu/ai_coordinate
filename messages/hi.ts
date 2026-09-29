@@ -31,7 +31,6 @@ export const hiMessages = {
     home: "होम",
     coordinate: "कोऑर्डिनेट",
     catalog: "Catalog",
-    create: "बनाएं",
     challenge: "मिशन",
     notifications: "सूचनाएँ",
     myPage: "मेरा पेज",
@@ -1495,6 +1494,10 @@ export const hiMessages = {
     loginCtaTitle: "Free Style के लिए लॉगिन ज़रूरी है",
     loginCtaDescription: "अपने निर्देशों से अपने किरदार की इलस्ट्रेशन बनाने के लिए लॉगिन करें।",
     loginCtaAction: "लॉगिन / साइन अप",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "अपने लिखे प्रॉम्प्ट से बनाएँ और पहले की छवि भी दिखाते हुए पोस्ट करें, तो आपकी रचना “सबका कैटलॉग” में दिखेगी।",
+    catalogCreateFollowers: "आपके फ़ॉलोअर उस प्रॉम्प्ट से बना सकते हैं (प्रॉम्प्ट निजी रखा जा सकता है)।",
+    catalogCreateReward: "हर बार जब कोई फ़ॉलोअर उससे बनाता है, आपको पर्कॉइन मिलते हैं।",
   },
   style: {
     pageTitle: "One-Tap Style",
@@ -2091,7 +2094,12 @@ export const hiMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "Persta कैटलॉग",
+    tabUserTitle: "सबका कैटलॉग",
+    tabCreateTitle: "कैटलॉग बनाएँ",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "सभी (नए पहले)",
     chipUsage: "सब इस्तेमाल कर रहे हैं",

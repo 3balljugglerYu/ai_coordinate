@@ -2,55 +2,70 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { PenLine, Users, Wand2 } from "lucide-react";
 import { stripLocalePrefix } from "@/i18n/config";
-import { useUserStylesAvailable } from "@/features/user-styles/components/UserStylesAvailabilityProvider";
 import { cn } from "@/lib/utils";
 
 /**
- * 「Persta.AI ORIGINAL ⇄ User ORIGINAL」の2セグメントトグル。
+ * カタログのタブ（ペルスタのカタログ / みんなのカタログ / カタログをつくる）。
+ * docs/planning/catalog-three-tabs-implementation-plan.md
  *
  * ⭐ **必ず layout に置くこと（ページの中に置いてはいけない）。**
- * `app/(styles-catalog)/layout.tsx` に置くことで `/styles` ⇄ `/user-styles` の
- * 遷移中もこのコンポーネントのインスタンスが保持され、
+ * 今は `app/[locale]/layout.tsx` の `TopTabsSlot` から出す。3つの画面は
+ * `/styles`・`/user-styles` が `(styles-catalog)`、`/free` が `(app)` と枠が分かれて
+ * いるので、共通の親に置かないと枠をまたぐたびに作り直される。layout に置けば
+ * インスタンスが保持され、
  *
  *  - ピルが**滑らかにスライド**する（ページ内に置くと remount されて瞬間移動する）
  *  - 遷移中もタブが消えず、差し替わるのは下の本文だけになる
- *    （`(styles-catalog)/loading.tsx` のスケルトンがタブの下に出る）
  *
- * `GenerationModeTabs`（/style・/free・/coordinate）が `(app)/layout.tsx` で
- * 同じことをしている。最初この作法を外してページ内に置いたところ、
- * 「UX として最悪」という指摘を受けた。
+ * 最初この作法を外してページ内に置いたところ、「UX として最悪」という指摘を受けた。
  *
- * ⭐ **`GenerationModeTabs` を書き換えて兼用しないこと。** あちらは生成モードの
- * 3タブで、役割も置き場所も違う。
+ * ⭐ 出すかどうか（段階公開中は運営だけ）は `TopTabsSlot` が決める。ここは
+ * 「今どの画面か」だけを見る。
  *
- * ## ピルの動かし方
+ * ⭐ **`GenerationModeTabs` を書き換えて兼用しないこと。** あちらは一般の利用者にも
+ * 出ている生成モードのタブで、一般公開の日まで見た目を変えない約束がある。
+ * 作り（可変幅・ピルの実測）だけを同じにしている。
  *
- * あちらは可変幅（アクティブだけラベルを出す）なので実測してピルを動かしているが、
- * ここは2つとも常にラベルを出す等幅なので、**グリッド2列 + translateX で足りる**。
+ * ## 幅
+ *
+ * 3つ並べるとスマホでは名前が入りきらないので、選んでいるタブだけ名前
+ * （見出し＋英語の2段）を出し、ほかはアイコンだけにする。名前は読み上げ用に
+ * aria-label と sr-only で残す。幅が変わるので、選んでいるタブの位置と幅を
+ * 測ってピルを動かす（`GenerationModeTabs` と同じ）。
  *
  * ## ラベル
  *
- * フィードの引用元カードと同じ語彙（`posts.feedQuoteStyleTitle` /
- * `posts.feedQuoteDerivedTitle`）。**全ロケール同一**にしてあるので、
- * 「棚の名前」と「カードの名前」が食い違わない。
+ * 英語の2段目はフィードの引用元カードと同じ語彙（`posts.feedQuoteStyleTitle` /
+ * `posts.feedQuoteDerivedTitle`）で、**全ロケール同一**。見出しは各言語に訳す。
+ * 名前は「誰が届けるか」だけで分け、よし悪しの差をつけない（計画書 ADR-008）。
  */
 const TABS = [
-  { path: "/styles", labelKey: "tabOfficial" },
-  { path: "/user-styles", labelKey: "tabUser" },
+  {
+    path: "/styles",
+    titleKey: "tabOfficialTitle",
+    subtitleKey: "tabOfficial",
+    icon: Wand2,
+  },
+  {
+    path: "/user-styles",
+    titleKey: "tabUserTitle",
+    subtitleKey: "tabUser",
+    icon: Users,
+  },
+  {
+    path: "/free",
+    titleKey: "tabCreateTitle",
+    subtitleKey: "tabCreate",
+    icon: PenLine,
+  },
 ] as const;
 
 export function OriginalKindTabs() {
   const t = useTranslations("userStyles");
-  /*
-    ⭐ 可否は context から取る。レイアウトで `isUserStylesAvailable`（閲覧者が要る）を
-    呼ぶと `/styles` が丸ごとリクエスト依存になり、静的シェルと初期 HTML の
-    JSON-LD という前提が崩れる。初期値は公開フラグで、段階公開中は
-    `UserStylesAvailabilityLoader` がサーバーで運営と判定できたときだけ
-    **後から true へ昇格**させる（🔥人気タブと同じ仕組み）。
-  */
-  const isAvailable = useUserStylesAvailable();
   const pathname = usePathname();
 
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
@@ -61,20 +76,40 @@ export function OriginalKindTabs() {
     : "";
   const activeIndex = TABS.findIndex((tab) => tab.path === normalizedPathname);
 
+  // スライドするピル(選んでいるタブの背景)。タブが可変幅なので、選んでいるタブの
+  // 位置・幅を実測して transition で移動させる。
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const tabRefs = useRef<(HTMLAnchorElement | null)[]>([]);
+  const [pill, setPill] = useState<{ left: number; width: number } | null>(null);
+  // 初回描画ではスライドさせず(左端0からの不自然な移動を防ぐ)、
+  // 2回目以降の切り替えでのみ transition を効かせる。
+  const [pillReady, setPillReady] = useState(false);
+
+  // 切り替え・言語切替(ラベルの幅が変わる)のあと、レイアウトが決まってから測る。
+  useLayoutEffect(() => {
+    if (activeIndex === -1) return;
+    const measure = () => {
+      const node = tabRefs.current[activeIndex];
+      if (!node) return;
+      setPill({ left: node.offsetLeft, width: node.offsetWidth });
+    };
+    measure();
+    const raf = requestAnimationFrame(() => setPillReady(true));
+    // 画面の回転・リサイズにも追従する。
+    const ro = new ResizeObserver(measure);
+    if (listRef.current) ro.observe(listRef.current);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+    };
+  }, [activeIndex, localePrefix, t]);
+
   // /styles/[slug] など対象外のルートでは出さない。
   if (activeIndex === -1) {
     return null;
   }
-  /*
-    公開前の `/styles` には、運営と判定できるまで出さない。
-    `/user-styles` 側は**到達できている時点で権限がある**ので、昇格を待たずに出す
-    （待つと運営にだけトグルが遅れて現れてガタつく）。
-  */
-  if (!isAvailable && normalizedPathname === "/styles") {
-    return null;
-  }
 
-  const labels = TABS.map((tab) => t(tab.labelKey));
+  const titles = TABS.map((tab) => t(tab.titleKey));
 
   return (
     // 下の区切り線は付けない(見出し・チップの帯と同じ白の面で続けて見せる)
@@ -82,51 +117,79 @@ export function OriginalKindTabs() {
       {/*
         カタログ全体のタイトル。ホームの "Persta | ペルスタ"(HomeHeading)と同じ見た目。
         上余白はどの画面幅でも少しだけ(pt-3 = 12px)。
-        タブの下の各ページの見出しは出さず、このタイトルをページの h1 にする。
-        ⭐ タブと同じ表示条件(公開前は運営のみ・/styles/[slug] では出さない)に乗せるため、ここに置く。
+        タブの下の各ページの見出しは出さず、このタイトルをページの h1 にする
+        (/free では FreePageHeader が自分の h1 を出さない)。
       */}
       <div className="mx-auto max-w-6xl px-4 pt-3">
         <h1 className="text-3xl font-bold">{t("catalogTitle")}</h1>
       </div>
       <div className="mx-auto flex max-w-6xl justify-center px-4 py-3">
         <div
+          ref={listRef}
           role="tablist"
-          aria-label={labels.join(" / ")}
-          className="relative grid w-full max-w-md grid-cols-2 gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
+          aria-label={titles.join(" / ")}
+          className="relative inline-flex w-auto max-w-full items-stretch gap-1 overflow-hidden rounded-full border border-pink-100/80 bg-white/70 p-1 shadow-[0_2px_10px_rgba(236,72,153,0.08)]"
         >
-          {/* アクティブ背景。2列等幅なので幅は50%固定、位置だけ動かす。
-              layout に置いてインスタンスが保たれるので、この transition が実際に効く。 */}
-          <span
-            aria-hidden
-            className={cn(
-              "pointer-events-none absolute inset-y-1 left-1 z-0 w-[calc(50%-0.25rem)] rounded-full",
-              "bg-gradient-to-r from-pink-500 to-orange-400",
-              "shadow-[0_4px_14px_rgba(236,72,153,0.35)]",
-              "transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none"
-            )}
-            style={{
-              transform:
-                activeIndex === 1 ? "translateX(calc(100% + 0.25rem))" : "none",
-            }}
-          />
+          {pill ? (
+            <span
+              aria-hidden
+              className={cn(
+                "pointer-events-none absolute inset-y-1 z-0 rounded-full",
+                "bg-gradient-to-r from-pink-500 to-orange-400",
+                "shadow-[0_4px_14px_rgba(236,72,153,0.35)]",
+                pillReady
+                  ? "transition-[left,width] duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none"
+                  : ""
+              )}
+              style={{ left: pill.left, width: pill.width }}
+            />
+          ) : null}
+
           {TABS.map((tab, index) => {
+            const Icon = tab.icon;
             const isActive = activeIndex === index;
             return (
               <Link
                 key={tab.path}
                 href={`${localePrefix}${tab.path}`}
                 prefetch
+                ref={(node) => {
+                  tabRefs.current[index] = node;
+                }}
                 role="tab"
                 aria-selected={isActive}
                 aria-current={isActive ? "page" : undefined}
+                aria-label={titles[index]}
+                title={titles[index]}
                 className={cn(
                   // タッチターゲットを確保する(Mobile-first ルールの 44x44px)。
-                  "relative z-10 flex min-h-[44px] items-center justify-center rounded-full px-3 text-center text-xs font-bold leading-tight transition-colors duration-300 sm:text-sm",
+                  "relative z-10 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full py-1.5 whitespace-nowrap",
+                  // 幅(名前の出し入れ)と文字色を同じ duration で変え、ピルのスライドと歩調を合わせる。
+                  "transition-[color,padding] duration-300",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-400 focus-visible:ring-offset-1",
-                  isActive ? "text-white" : "text-gray-500 hover:text-pink-600"
+                  isActive
+                    ? "gap-2 px-4 text-white"
+                    : "px-3 text-gray-500 hover:text-pink-600"
                 )}
               >
-                {labels[index]}
+                <Icon
+                  aria-hidden
+                  className={cn(
+                    "h-4 w-4 shrink-0 transition-transform duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)] motion-reduce:transition-none",
+                    isActive ? "scale-110 -rotate-6" : "scale-100 rotate-0"
+                  )}
+                />
+                {isActive ? (
+                  <span className="flex flex-col items-start text-left leading-tight">
+                    <span className="text-sm font-bold">{titles[index]}</span>
+                    <span className="text-[10px] font-semibold tracking-wide opacity-90">
+                      {t(tab.subtitleKey)}
+                    </span>
+                  </span>
+                ) : (
+                  // 選んでいないタブは読み上げ用に sr-only で残す
+                  <span className="sr-only">{titles[index]}</span>
+                )}
               </Link>
             );
           })}

@@ -11,9 +11,10 @@ import { TUTORIAL_STORAGE_KEYS } from "@/features/tutorial/types";
 
 /**
  * ボトムナビ。カタログ刷新(段階公開中は運営のみ)で次のように変わる。
- *  - ホームの右に「カタログ」(/styles)が加わる
- *  - 「コーディネート」が「つくる」になり、押すと毎回 Free Style を開く
- * 刷新前(一般の閲覧者)はこれまでどおり。
+ *  - 生成の入口を「カタログ」(/styles)1つにまとめる。「コーディネート」も「つくる」も出さない
+ *  - Free Style はカタログの中の「カタログをつくる」タブになる
+ *    (docs/planning/catalog-three-tabs-implementation-plan.md ADR-004)
+ * 刷新前(一般の閲覧者)はこれまでどおり。見た目も動きも変えない。
  */
 
 const pushMock = jest.fn();
@@ -132,6 +133,19 @@ describe("NavigationBar", () => {
       );
     });
 
+    test("前回のモードの画面(/free)にいるときに「コーディネート」を押しても、どこへも行かない", async () => {
+      setLastGenerationModePath("/free");
+      pathnameMock.mockReturnValue("/ja/free");
+      const nav = await renderNav();
+
+      fireEvent.click(nav.getByRole("button", { name: "コーディネート" }));
+
+      expect(pushMock).not.toHaveBeenCalled();
+      for (const button of nav.getAllByRole("button")) {
+        expect((button as HTMLButtonElement).disabled).toBe(false);
+      }
+    });
+
     test("/free にいても「コーディネート」は選択中にしない(これまでどおり)", async () => {
       pathnameMock.mockReturnValue("/ja/free");
       const nav = await renderNav();
@@ -142,45 +156,162 @@ describe("NavigationBar", () => {
     });
   });
 
+  describe("刷新前の見た目を変えない(一般の閲覧者)", () => {
+    /*
+      ⭐ ツアーの最初の一歩は、この目印の付いたボタンを指す(querySelector で最初の1つ)。
+      刷新後に目印を「カタログ」へ移すとき、一般の閲覧者のナビまで変えると
+      一般の閲覧者のツアーが止まる。
+    */
+    test("チュートリアルの目印は「コーディネート」に1つだけ付く", async () => {
+      catalogRevampMock.mockReturnValue(false);
+      const nav = await renderNav();
+
+      expect(
+        nav.getByRole("button", { name: "コーディネート" }).getAttribute("data-tour")
+      ).toBe("coordinate-nav-mobile");
+      expect(
+        document.querySelectorAll('[data-tour="coordinate-nav-mobile"]')
+      ).toHaveLength(1);
+    });
+
+    test("ボタンとラベルは今の形のまま(最小幅 60px・省略なし)", async () => {
+      catalogRevampMock.mockReturnValue(false);
+      const nav = await renderNav();
+
+      const button = nav.getByRole("button", { name: "マイページ" });
+      expect(button.className).toContain("min-w-[60px] px-2");
+      expect(button.className).not.toContain("min-w-0");
+      expect(within(button).getByText("マイページ").className).not.toContain(
+        "truncate"
+      );
+    });
+  });
+
   describe("刷新後(運営・公開後)", () => {
     beforeEach(() => {
       catalogRevampMock.mockReturnValue(true);
     });
 
-    test("ホームの右に「カタログ」、生成の入口は「つくる」の6項目", async () => {
+    /*
+      ⭐ 生成の入口は「カタログ」1つにまとめた(「つくる」は無い)。Free Style は
+      カタログの中の「カタログをつくる」タブになる
+      (docs/planning/catalog-three-tabs-implementation-plan.md ADR-004)。
+    */
+    test("ホームの右に「カタログ」を置いた5項目で、「つくる」は無い", async () => {
       const nav = await renderNav();
 
       expect(labels(nav.getAllByRole("button"))).toEqual([
         "ホーム",
         "カタログ",
-        "つくる",
         "ミッション",
         "お知らせ",
         "マイページ",
       ]);
-      // チュートリアルの目印は「つくる」に付いたまま
-      expect(
-        nav.getByRole("button", { name: "つくる" }).getAttribute("data-tour")
-      ).toBe("coordinate-nav-mobile");
+      expect(nav.queryByRole("button", { name: "つくる" })).toBeNull();
     });
 
-    test("「つくる」は前回のモードに関わらず Free Style を開く", async () => {
-      setLastGenerationModePath("/style");
+    test("チュートリアルの目印は「カタログ」に付ける(ツアーの最初の一歩が指す先)", async () => {
       const nav = await renderNav();
 
-      fireEvent.click(nav.getByRole("button", { name: "つくる" }));
-
-      expect(pushMock).toHaveBeenCalledWith("/ja/free");
+      expect(
+        nav.getByRole("button", { name: "カタログ" }).getAttribute("data-tour")
+      ).toBe("coordinate-nav-mobile");
+      expect(
+        document.querySelectorAll('[data-tour="coordinate-nav-mobile"]')
+      ).toHaveLength(1);
     });
 
-    test("チュートリアルツアー中の「つくる」は One-Tap Style を開く", async () => {
+    test("「カタログ」はペルスタのカタログ(/styles)を開く", async () => {
+      const nav = await renderNav();
+
+      fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
+
+      expect(pushMock).toHaveBeenCalledWith("/ja/styles");
+    });
+
+    test("チュートリアルツアー中の「カタログ」は One-Tap Style を開く", async () => {
       window.sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS, "true");
       const nav = await renderNav();
 
-      fireEvent.click(nav.getByRole("button", { name: "つくる" }));
+      fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
 
       expect(pushMock).toHaveBeenCalledWith("/ja/style");
     });
+
+    // ペルスタのカタログ(/styles)にいても、ツアー中の行き先は /style なので進む(ツアーを止めない)
+    test("ツアー中はペルスタのカタログ(/styles)にいても、「カタログ」で One-Tap Style を開く", async () => {
+      window.sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS, "true");
+      pathnameMock.mockReturnValue("/ja/styles");
+      const nav = await renderNav();
+
+      fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
+
+      expect(pushMock).toHaveBeenCalledTimes(1);
+      expect(pushMock).toHaveBeenCalledWith("/ja/style");
+    });
+
+    /*
+      ⭐ 押したあと、行き先に着くまでボタンは押せない(二重に押させない)。行き先を
+      /styles のまま覚えると、実際は /style に着くので解けず、10秒間どのボタンも
+      押せなくなる。
+    */
+    test("ツアー中に「カタログ」で /style に着いたら、ボタンはまた押せる", async () => {
+      window.sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS, "true");
+      let rerender: (ui: React.ReactElement) => void = () => {};
+      await act(async () => {
+        ({ rerender } = render(<NavigationBar />));
+      });
+      const nav = within(screen.getByRole("navigation"));
+
+      fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
+      pathnameMock.mockReturnValue("/ja/style");
+      await act(async () => {
+        rerender(<NavigationBar />);
+      });
+
+      for (const button of nav.getAllByRole("button")) {
+        expect((button as HTMLButtonElement).disabled).toBe(false);
+      }
+    });
+
+    test.each(["/ja/free", "/ja/style"])(
+      "%s にいるときに「カタログ」を押すと、ペルスタのカタログ(/styles)を開く",
+      async (pathname) => {
+        pathnameMock.mockReturnValue(pathname);
+        const nav = await renderNav();
+
+        fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
+
+        expect(pushMock).toHaveBeenCalledWith("/ja/styles");
+      }
+    );
+
+    /*
+      行き先(押したときに決め直したパス)が今の画面と同じなら、何もしない(push しない)。
+      ツアー中の /style は、項目のパス(/styles)ではなく決め直した行き先(/style)で比べている
+      ことを確かめる行。この行だけは、待ち状態(着くはずのない遷移を10秒待ってボタンが
+      押せない)になっていないことも、ボタンの状態で確かめられる。
+    */
+    test.each<[string, boolean]>([
+      ["/ja/styles", false],
+      ["/ja/style", true],
+    ])(
+      "%s にいて(ツアー中=%s)「カタログ」の行き先が今の画面なら、どこへも行かない",
+      async (pathname, tourInProgress) => {
+        if (tourInProgress) {
+          window.sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS, "true");
+        }
+        pathnameMock.mockReturnValue(pathname);
+        const nav = await renderNav();
+
+        fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
+
+        expect(pushMock).not.toHaveBeenCalled();
+        for (const button of nav.getAllByRole("button")) {
+          expect((button as HTMLButtonElement).disabled).toBe(false);
+        }
+      }
+    );
 
     test("ログイン中はカタログと Free Style を先読みする", async () => {
       getCurrentUserMock.mockImplementation(() =>
@@ -196,37 +327,39 @@ describe("NavigationBar", () => {
       );
     });
 
-    test("「カタログ」は Persta.AI ORIGINAL(/styles)を開く", async () => {
+    test.each(["/ja/styles", "/ja/user-styles", "/ja/free", "/ja/style"])(
+      "%s では「カタログ」を選択中にする",
+      async (pathname) => {
+        pathnameMock.mockReturnValue(pathname);
+        const nav = await renderNav();
+
+        const active = nav
+          .getAllByRole("button")
+          .filter((button) => button.className.includes("text-primary"))
+          .map((button) => button.textContent);
+        expect(active).toEqual(["カタログ"]);
+      }
+    );
+
+    test("5項目なので、ボタンとラベルは刷新前とまったく同じ形で並べる", async () => {
+      catalogRevampMock.mockReturnValue(false);
+      let unmount: () => void = () => {};
+      await act(async () => {
+        ({ unmount } = render(<NavigationBar />));
+      });
+      const before = within(screen.getByRole("navigation")).getByRole("button", {
+        name: "マイページ",
+      });
+      const beforeButtonClass = before.className;
+      const beforeLabelClass = within(before).getByText("マイページ").className;
+      unmount();
+
+      catalogRevampMock.mockReturnValue(true);
       const nav = await renderNav();
+      const after = nav.getByRole("button", { name: "マイページ" });
 
-      fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
-
-      expect(pushMock).toHaveBeenCalledWith("/ja/styles");
-    });
-
-    test.each([
-      ["/ja/styles", "カタログ"],
-      ["/ja/user-styles", "カタログ"],
-      ["/ja/free", "つくる"],
-      ["/ja/style", "つくる"],
-    ])("%s では「%s」を選択中にする", async (pathname, activeLabel) => {
-      pathnameMock.mockReturnValue(pathname);
-      const nav = await renderNav();
-
-      const active = nav
-        .getAllByRole("button")
-        .filter((button) => button.className.includes("text-primary"))
-        .map((button) => button.textContent);
-      expect(active).toEqual([activeLabel]);
-    });
-
-    test("6項目が狭い画面に収まるよう、最小幅をやめて長いラベルは省略する", async () => {
-      const nav = await renderNav();
-
-      const button = nav.getByRole("button", { name: "マイページ" });
-      expect(button.className).toContain("min-w-0");
-      expect(button.className).not.toContain("min-w-[60px]");
-      expect(within(button).getByText("マイページ").className).toContain("truncate");
+      expect(after.className).toBe(beforeButtonClass);
+      expect(within(after).getByText("マイページ").className).toBe(beforeLabelClass);
     });
   });
 });

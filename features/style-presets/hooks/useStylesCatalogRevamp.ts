@@ -10,6 +10,9 @@ import { useUserStylesAvailable } from "@/features/user-styles/components/UserSt
  *  - 「すべて」を「✨すべて（新着順）」にし、「✨新着」チップをなくす
  *    （`/styles` と `/style` の探索シートの両方）
  *  - `/styles`・`/user-styles` でスクロールに合わせてヘッダーを隠し、チップ列を上部に固定する
+ *  - カタログを3つのタブ（ペルスタのカタログ / みんなのカタログ / カタログをつくる = `/free`）
+ *    にし、ナビの生成の入口を「カタログ」1つにまとめる
+ *    （docs/planning/catalog-three-tabs-implementation-plan.md）
  *
  * ⭐ **User ORIGINAL と同じ段階公開に乗せる。** 見出しの「Persta.AI ORIGINAL」は
  * User ORIGINAL と対になる名前で、片方だけ公開されると意味が通らない。

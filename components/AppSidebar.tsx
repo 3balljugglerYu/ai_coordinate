@@ -10,7 +10,7 @@ import {
 } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { Home, LayoutGrid, Sparkles, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle, Heart /* , Coins */ } from "lucide-react";
+import { Home, User as UserIcon, LogOut, PanelLeft, PanelRight, Trophy, Bell, MoreHorizontal, MessageCircle, Heart /* , Coins */ } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuthUser } from "@/features/auth/hooks/use-auth-user";
@@ -37,8 +37,9 @@ import { requiresAuthForGuestNavigation } from "@/lib/navigation-auth";
 import {
   CATALOG_ENTRY_PATH,
   GENERATION_ENTRY_PATH,
+  getGenerationEntryItem,
   isNavItemActive,
-  resolveGenerationEntryPath,
+  resolveNavEntryDestination,
 } from "@/lib/nav-entries";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { AuthModal } from "@/features/auth/components/AuthModal";
@@ -61,7 +62,7 @@ export function AppSidebar() {
   const navT = useTranslations("nav");
   const commonT = useTranslations("common");
   const styleT = useTranslations("style");
-  // カタログ刷新(段階公開中は運営のみ)では「カタログ」を足し、生成の入口を「つくる」にする。
+  // カタログ刷新(段階公開中は運営のみ)では、生成の入口を「カタログ」1つにまとめる。
   // ボトムナビ(NavigationBar)と同じ並び・同じ判定にする(lib/nav-entries.ts)。
   const isCatalogRevamp = useStylesCatalogRevamp();
   const saveTrigger = useWardrobeSaveTrigger();
@@ -150,17 +151,16 @@ export function AppSidebar() {
     let normalizedTargetPath = stripLocalePrefix(path).pathname;
     let resolvedPath = path;
 
-    // 生成の入口は押したときに行き先を決める。刷新前(コーディネート)は前回使った
-    // 生成モードへ、刷新後(つくる)は毎回 Free Style へ。チュートリアルツアー中は
-    // ツアーの目的地(/style)へ固定する(詳細は lib/nav-entries.ts)。
-    if (normalizedTargetPath === GENERATION_ENTRY_PATH) {
-      const preferred = resolveGenerationEntryPath(isCatalogRevamp);
-      if (preferred !== GENERATION_ENTRY_PATH) {
-        // path 内の "/coordinate" のみ差し替え、ロケールプレフィックスや
-        // クエリ・ハッシュ等の付随情報を維持する。
-        resolvedPath = path.replace(GENERATION_ENTRY_PATH, preferred);
-        normalizedTargetPath = preferred;
-      }
+    // 生成の入口(刷新前のコーディネート)とカタログ(刷新後)は、押したときに行き先を
+    // 決める。コーディネートは前回使った生成モードへ、カタログは /styles へ。
+    // チュートリアルツアー中はどちらもツアーの目的地(/style)へ固定する
+    // (詳細は lib/nav-entries.ts)。
+    const preferred = resolveNavEntryDestination(normalizedTargetPath);
+    if (preferred !== null && preferred !== normalizedTargetPath) {
+      // path 内の項目のパスだけ差し替え、ロケールプレフィックスや
+      // クエリ・ハッシュ等の付随情報を維持する。
+      resolvedPath = path.replace(normalizedTargetPath, preferred);
+      normalizedTargetPath = preferred;
     }
 
     if (
@@ -198,15 +198,15 @@ export function AppSidebar() {
     });
   };
 
+  // 生成の入口(刷新前はコーディネート、刷新後はカタログ)。チュートリアルの目印もここに付ける
+  const generationEntry = getGenerationEntryItem(isCatalogRevamp);
+
   const navItems = [
     { path: localizedHomePath, label: navT("home"), icon: Home },
-    ...(isCatalogRevamp
-      ? [{ path: CATALOG_ENTRY_PATH, label: navT("catalog"), icon: LayoutGrid }]
-      : []),
     {
-      path: GENERATION_ENTRY_PATH,
-      label: isCatalogRevamp ? navT("create") : navT("coordinate"),
-      icon: Sparkles,
+      path: generationEntry.path,
+      label: navT(generationEntry.labelKey),
+      icon: generationEntry.icon,
     },
     { path: "/challenge", label: navT("challenge"), icon: Trophy },
     { path: "/notifications", label: navT("notifications"), icon: Bell },
@@ -255,13 +255,14 @@ export function AppSidebar() {
           // アクティブ表示する(lib/nav-entries.ts)。
           const isActive = isNavItemActive(
             normalizedItemPath,
-            normalizedPathname,
-            isCatalogRevamp
+            normalizedPathname
           );
           return (
             <button
               key={path}
-              data-tour={path === GENERATION_ENTRY_PATH ? "coordinate-nav-desktop" : undefined}
+              data-tour={
+                path === generationEntry.path ? "coordinate-nav-desktop" : undefined
+              }
               onClick={() => handleNavigation(path)}
               title={!isOpen ? label : undefined}
               className={cn(

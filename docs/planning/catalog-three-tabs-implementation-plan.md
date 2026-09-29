@@ -283,6 +283,10 @@ flowchart LR
 - [ ] 刷新後の `/free` では、生成モードのタブの代わりにカタログのタブを出す（入れ物の出し分け）
 - [ ] 刷新後の人だけ、`/free` で h1 が1つになるようにする（一般の利用者の `/free` の見出しは今のまま）。カタログの見出しを h1 にしないか、ページ側の見出しを隠すかは、
       `/free` の SEO（公開ページの h1）を見て実装時に決める
+      - **実装時の決定（2026-09-29）**: カタログの見出し（「カタログ」）を h1 のままにし、`/free` のページ側の h1（Free Style）は刷新後の人には出さない
+        （`FreePageHeader`）。`/styles`・`/user-styles` と同じ形になる。
+        ページの `<title>` と説明文は今の Free Style のまま（`generateMetadata` は変えていない）ので、検索結果に出るタイトル・説明文は変わらない。
+        変わるのは一般公開のあとの h1 の文言だけ（「Free Style」→「カタログ」）。h1 を Free Style のまま残したくなったら、一般公開の前に見直す
 - [ ] 文言: `userStyles` に3つの見出し（ペルスタのカタログ・みんなのカタログ・カタログをつくる）と `CREATE` を15言語で追加する。英語の2段目は全言語で同じ
 
 ### Phase 3: ナビを「カタログ」1つにまとめる
@@ -300,6 +304,8 @@ flowchart LR
 ビルド確認: 同上。
 
 - [ ] `features/generation/components/FreePageBody.tsx` の上部などに、刷新後だけの説明を出す
+      - **実装時の変更**: 新しい見出しの部品 `features/generation/components/FreePageHeader.tsx` に置いた。一般の利用者には今の見出しを
+        まったく同じ HTML で出し、刷新後の人にだけ説明を出し分けるため（`FreePageBody` は変えていない）
 - [ ] 文言を15言語で追加する
 - [ ] 還元の額は書かない（額は運営が変えるため。「使われるとペルコインが還元されます」まで）
 
@@ -325,14 +331,14 @@ Phase 1〜4 は、どれも一般の利用者には出ないので、1つの PR 
 
 | ファイル | 操作 | 変更内容 |
 |---|---|---|
-| `components/TopTabsSlot.tsx`（名前は仮） | 新規 | パスと刷新の状態でタブを出し分ける入れ物 |
+| `components/TopTabsSlot.tsx` | 新規 | パスと刷新の状態でタブを出し分ける入れ物 |
 | `app/[locale]/layout.tsx` | 修正 | 入れ物を置く |
 | `app/(app)/layout.tsx` | 修正 | 生成モードのタブは一般の利用者用に残し、刷新後の人には出さない（一般公開後の Phase 6 で消す） |
 | `app/(styles-catalog)/layout.tsx` | 修正 | カタログのタブを入れ物へ移す |
 | `features/style-presets/components/OriginalKindTabs.tsx` | 修正 | 3つのタブ・可変幅・2段の名前・アイコン |
 | `components/GenerationModeTabs.tsx` | 変更しない | 出し分けは入れ物と `(app)/layout.tsx` 側で行う。一般の利用者のタブを1文字も変えないため |
 | `app/(app)/free/page.tsx` | 修正 | 刷新後の人だけ h1 を1つにする（一般の利用者の見出しは今のまま） |
-| `features/generation/components/FreePageBody.tsx` | 修正 | 刷新後だけの「カタログをつくる」の説明 |
+| `features/generation/components/FreePageHeader.tsx` | 新規 | `/free` の見出し。一般の利用者は今と同じ HTML、刷新後だけ h1 を出さず「カタログをつくる」の説明を出す（実装時に `FreePageBody` から変更） |
 | `lib/nav-entries.ts` | 修正 | 刷新後の生成の入口をなくす・選択中の判定・ツアー中の行き先 |
 | `components/NavigationBar.tsx` | 修正 | 刷新後は「つくる」を出さない・ツアーの目印を付け替え |
 | `components/AppSidebar.tsx` | 修正 | 同上（PC） |

@@ -31,7 +31,6 @@ export const zhTwMessages = {
     home: "首頁",
     coordinate: "穿搭",
     catalog: "Catalog",
-    create: "創作",
     challenge: "任務",
     notifications: "通知",
     myPage: "我的頁面",
@@ -1491,6 +1490,10 @@ export const zhTwMessages = {
     loginCtaTitle: "Free Style 需要登入",
     loginCtaDescription: "登入後即可用你自己的指令生成角色插畫。",
     loginCtaAction: "登入 / 註冊",
+    // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
+    catalogCreateListed: "用自己寫的提示詞創作，發布時同時顯示更換前的圖片，作品就會出現在「大家的目錄」中。",
+    catalogCreateFollowers: "你的追蹤者可以用這個提示詞生成（提示詞維持私密也沒關係）。",
+    catalogCreateReward: "追蹤者每次用它生成，你都會獲得佩爾幣。",
   },
   style: {
     pageTitle: "一鍵造型",
@@ -2085,7 +2088,12 @@ export const zhTwMessages = {
   userStyles: {
     tabOfficial: "Persta.AI ORIGINAL",
     tabUser: "User ORIGINAL",
-    // カタログ(/styles・/user-styles)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
+    tabCreate: "CREATE",
+    // タブの見出し(選んでいるタブの1段目)。各言語に訳す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
+    tabOfficialTitle: "Persta 目錄",
+    tabUserTitle: "大家的目錄",
+    tabCreateTitle: "建立目錄",
+    // カタログ(/styles・/user-styles。刷新後は /free も)上部のタイトル。ホームの "Persta | ペルスタ" に当たる。日本語は「カタログ」、ほかのロケールは "Catalog"
     catalogTitle: "Catalog",
     chipAll: "全部（最新）",
     chipUsage: "大家都在用",
