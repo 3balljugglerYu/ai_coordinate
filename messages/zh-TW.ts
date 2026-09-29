@@ -1488,6 +1488,8 @@ export const zhTwMessages = {
     promptLabel: "想生成的內容",
     promptPlaceholder: "例：請換上制服。讓他站在櫻花樹下，沐浴柔和的春光。",
     loginCtaTitle: "Free Style 需要登入",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE 需要登入",
     loginCtaDescription: "登入後即可用你自己的指令生成角色插畫。",
     loginCtaAction: "登入 / 註冊",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

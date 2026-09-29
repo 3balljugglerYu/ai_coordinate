@@ -5,6 +5,7 @@ import { Sparkles } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 /**
  * /free (じゆうモード) を未ログインで開いたときに表示するログイン誘導 CTA。
@@ -12,9 +13,13 @@ import { useCurrentUrlForRedirect } from "@/lib/build-current-url";
  * じゆうモードはゲスト生成に対応しない(ログイン必須)ため、ゲスト試用バナー
  * (GuestGenerationTrialCta) ではなくログイン専用の CTA を出す。生成フォーム自体を
  * 表示しないので、ここではフルページ /login への遷移のみを提供する。
+ *
+ * カタログ刷新(公開前は運営だけ)では /free は「カタログをつくる(CREATE)」のタブなので、
+ * 見出しを「CREATE はログインが必要です」にする。一般の利用者の見出しは今のまま。
  */
 export function FreeGuestLoginCta() {
   const t = useTranslations("free");
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const redirectUrl = useCurrentUrlForRedirect();
   const loginHref = redirectUrl
     ? `/login?redirect=${encodeURIComponent(redirectUrl)}`
@@ -28,7 +33,7 @@ export function FreeGuestLoginCta() {
       <Sparkles className="h-8 w-8 text-pink-500" aria-hidden="true" />
       <div className="space-y-1">
         <p className="text-base font-semibold text-gray-900">
-          {t("loginCtaTitle")}
+          {t(isCatalogRevamp ? "loginCtaTitleCreate" : "loginCtaTitle")}
         </p>
         <p className="text-sm text-gray-600">{t("loginCtaDescription")}</p>
       </div>

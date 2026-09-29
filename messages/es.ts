@@ -1494,6 +1494,8 @@ export const esMessages = {
     promptLabel: "Qué generar",
     promptPlaceholder: "p. ej. Ponle un uniforme escolar. Que esté bajo los cerezos con una luz suave de primavera.",
     loginCtaTitle: "Free Style requiere iniciar sesión",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE requiere iniciar sesión",
     loginCtaDescription: "Inicia sesión para generar ilustraciones de tu personaje con tus propias instrucciones.",
     loginCtaAction: "Iniciar sesión / Registrarse",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

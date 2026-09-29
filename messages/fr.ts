@@ -1494,6 +1494,8 @@ export const frMessages = {
     promptLabel: "Ce qu'il faut générer",
     promptPlaceholder: "ex. : Mets-lui un uniforme scolaire. Place-le sous les cerisiers dans une douce lumière printanière.",
     loginCtaTitle: "Free Style nécessite une connexion",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE nécessite une connexion",
     loginCtaDescription: "Connectez-vous pour générer des illustrations de votre personnage avec vos propres instructions.",
     loginCtaAction: "Se connecter / S'inscrire",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

@@ -8,6 +8,7 @@
 
 import { locales } from "@/i18n/config";
 import { getUserStylesCopy } from "@/i18n/page-copy";
+import { getAllMessages } from "@/i18n/messages";
 
 describe("みんなのカタログの説明文", () => {
   test("日本語は「CREATE で生成した作品」と書く", () => {
@@ -28,5 +29,26 @@ describe("みんなのカタログの説明文", () => {
       expect(text).toContain("CREATE");
       expect(text).not.toMatch(/Free[ -]?Style|自由模式/i);
     }
+  });
+});
+
+/*
+  ⭐ /free を未ログインで開いたときの見出し。刷新後だけ「CREATE」にし、一般の利用者の
+  見出し(free.loginCtaTitle)は今のまま「Free Style」。
+*/
+describe("カタログをつくる(/free)のログインの案内", () => {
+  test("日本語は「CREATE はログインが必要です」", async () => {
+    const messages = await getAllMessages("ja");
+
+    expect(messages.free.loginCtaTitleCreate).toBe("CREATE はログインが必要です");
+    expect(messages.free.loginCtaTitle).toBe("Free Style はログインが必要です");
+  });
+
+  test.each(locales)("%s: 刷新後の見出しは CREATE、一般の利用者の見出しは Free Style のまま", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.free.loginCtaTitleCreate).toContain("CREATE");
+    expect(messages.free.loginCtaTitleCreate).not.toMatch(/Free[ -]?Style/i);
+    expect(messages.free.loginCtaTitle).toContain("Free Style");
   });
 });

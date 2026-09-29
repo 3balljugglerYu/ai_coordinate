@@ -1488,6 +1488,8 @@ export const zhCnMessages = {
     promptLabel: "想生成的内容",
     promptPlaceholder: "例：请换上校服。让他站在樱花树下，沐浴柔和的春光。",
     loginCtaTitle: "Free Style 需要登录",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE 需要登录",
     loginCtaDescription: "登录后即可用你自己的指令生成角色插画。",
     loginCtaAction: "登录 / 注册",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

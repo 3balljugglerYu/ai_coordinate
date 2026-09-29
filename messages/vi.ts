@@ -1491,6 +1491,8 @@ export const viMessages = {
     promptLabel: "Nội dung muốn tạo",
     promptPlaceholder: "vd: Hãy cho mặc đồng phục học sinh. Đặt đứng dưới hoa anh đào trong ánh sáng dịu của mùa xuân.",
     loginCtaTitle: "Free Style cần đăng nhập",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE cần đăng nhập",
     loginCtaDescription: "Đăng nhập để tạo ảnh minh họa nhân vật của bạn bằng chỉ dẫn của riêng bạn.",
     loginCtaAction: "Đăng nhập / Đăng ký",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

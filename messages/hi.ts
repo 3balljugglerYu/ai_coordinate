@@ -1492,6 +1492,8 @@ export const hiMessages = {
     promptLabel: "क्या जेनरेट करना है",
     promptPlaceholder: "उदा. स्कूल यूनिफ़ॉर्म पहनाइए। चेरी ब्लॉसम के नीचे खड़ा कीजिए, वसंत की मुलायम रोशनी में।",
     loginCtaTitle: "Free Style के लिए लॉगिन ज़रूरी है",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE के लिए लॉगिन ज़रूरी है",
     loginCtaDescription: "अपने निर्देशों से अपने किरदार की इलस्ट्रेशन बनाने के लिए लॉगिन करें।",
     loginCtaAction: "लॉगिन / साइन अप",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

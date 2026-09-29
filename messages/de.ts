@@ -1495,6 +1495,8 @@ export const deMessages = {
     promptLabel: "Was generiert werden soll",
     promptPlaceholder: "z. B. Zieh ihr eine Schuluniform an. Stell sie unter Kirschblüten in weiches Frühlingslicht.",
     loginCtaTitle: "Free Style erfordert eine Anmeldung",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE erfordert eine Anmeldung",
     loginCtaDescription: "Melde dich an, um Illustrationen deiner Figur mit eigenen Anweisungen zu generieren.",
     loginCtaAction: "Anmelden / Registrieren",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
