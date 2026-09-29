@@ -1491,6 +1491,8 @@ export const arMessages = {
     promptLabel: "ما تريد إنشاءه",
     promptPlaceholder: "مثال: ألبسه زيًا مدرسيًا. اجعله يقف تحت أزهار الكرز بضوء ربيعي ناعم.",
     loginCtaTitle: "Free Style يتطلب تسجيل الدخول",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE يتطلب تسجيل الدخول",
     loginCtaDescription: "سجّل الدخول لإنشاء رسوم لشخصيتك بتعليماتك الخاصة.",
     loginCtaAction: "تسجيل الدخول / إنشاء حساب",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

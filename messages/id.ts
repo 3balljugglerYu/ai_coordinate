@@ -1493,6 +1493,8 @@ export const idMessages = {
     promptLabel: "Apa yang ingin dibuat",
     promptPlaceholder: "mis. Kenakan seragam sekolah. Buat dia berdiri di bawah bunga sakura dengan cahaya lembut musim semi.",
     loginCtaTitle: "Free Style memerlukan login",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE memerlukan login",
     loginCtaDescription: "Masuk untuk menghasilkan ilustrasi karaktermu dengan instruksimu sendiri.",
     loginCtaAction: "Masuk / Daftar",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

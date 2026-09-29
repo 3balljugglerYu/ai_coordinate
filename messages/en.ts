@@ -1491,6 +1491,8 @@ export const enMessages = {
     promptLabel: "What to generate",
     promptPlaceholder: "e.g. Put them in a school uniform. Have them stand under cherry blossoms in soft spring light.",
     loginCtaTitle: "Free Style requires login",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE requires login",
     loginCtaDescription: "Log in to generate illustrations of your character with your own instructions.",
     loginCtaAction: "Log in / Sign up",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

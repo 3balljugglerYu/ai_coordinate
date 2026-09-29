@@ -1436,6 +1436,8 @@ export const jaMessages = {
     promptLabel: "生成したい内容",
     promptPlaceholder: "例: 制服姿にしてください。桜の下に立たせて、春の柔らかい光が当たるようにしてください。",
     loginCtaTitle: "Free Style はログインが必要です",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE はログインが必要です",
     loginCtaDescription: "ログインすると、自由な指示でうちの子のイラストを生成できます。",
     loginCtaAction: "ログイン / 新規登録",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

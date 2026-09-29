@@ -1494,6 +1494,8 @@ export const ptMessages = {
     promptLabel: "O que gerar",
     promptPlaceholder: "ex.: Coloque um uniforme escolar. Deixe-o sob as cerejeiras com uma luz suave de primavera.",
     loginCtaTitle: "Free Style exige login",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE exige login",
     loginCtaDescription: "Faça login para gerar ilustrações do seu personagem com suas próprias instruções.",
     loginCtaAction: "Entrar / Cadastrar",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)

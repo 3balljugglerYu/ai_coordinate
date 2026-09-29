@@ -36,6 +36,11 @@ jest.mock("@/features/generation/components/FreePageHeader", () => ({
 jest.mock("@/features/generation/components/FreePageBody", () => ({
   FreePageBody: () => <div data-testid="free-page-body" />,
 }));
+jest.mock("@/features/generation/components/FreePageFrame", () => ({
+  FreePageFrame: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="free-page-frame">{children}</div>
+  ),
+}));
 
 jest.mock("next-intl/server", () => ({
   setRequestLocale: jest.fn(),
@@ -115,6 +120,16 @@ describe("タブの置き場所", () => {
       catalogReward: "free.catalogCreateReward",
     });
     expect(screen.getByTestId("free-page-body")).toBeTruthy();
+  });
+
+  // 背景と余白の出し分け(刷新後は白)は FreePageFrame が受け持つ。見出しも本体もその中
+  test("Free Style のページは、背景と余白を FreePageFrame に任せる", async () => {
+    const element = await FreePage();
+    render(element);
+
+    const frame = screen.getByTestId("free-page-frame");
+    expect(frame.contains(screen.getByTestId("free-page-header"))).toBe(true);
+    expect(frame.contains(screen.getByTestId("free-page-body"))).toBe(true);
   });
 
   /*

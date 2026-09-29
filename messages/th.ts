@@ -1490,6 +1490,8 @@ export const thMessages = {
     promptLabel: "สิ่งที่ต้องการสร้าง",
     promptPlaceholder: "เช่น ให้ใส่ชุดนักเรียน แล้วยืนอยู่ใต้ต้นซากุระโดยมีแสงนุ่มนวลของฤดูใบไม้ผลิส่องมา",
     loginCtaTitle: "Free Style ต้องเข้าสู่ระบบ",
+    // カタログ刷新後(/free が「カタログをつくる(CREATE)」のタブ)の見出し。一般の利用者は loginCtaTitle のまま
+    loginCtaTitleCreate: "CREATE ต้องเข้าสู่ระบบ",
     loginCtaDescription: "เข้าสู่ระบบเพื่อสร้างภาพประกอบตัวละครของคุณด้วยคำสั่งของคุณเอง",
     loginCtaAction: "เข้าสู่ระบบ / สมัครสมาชิก",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
