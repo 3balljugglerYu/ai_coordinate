@@ -44,6 +44,11 @@ interface CachedGeneratedImageGalleryProps {
    *   - "navigate-free": 確認ダイアログを出して /free へ遷移し、画像を持ち越す（/style・/inspire）
    */
   applyActionMode: "dispatch-event" | "navigate-free";
+  /**
+   * ほかの人のプロンプトで作ったもの(派生生成。source_post_id あり)を除く。
+   * カタログ刷新後の CREATE(/free)の一覧で使う(自分のプロンプトで作ったものだけ)。
+   */
+  ownPromptsOnly?: boolean;
 }
 
 export async function CachedGeneratedImageGallery({
@@ -54,6 +59,7 @@ export async function CachedGeneratedImageGallery({
   detailFromParam,
   returnToImageIdKey,
   applyActionMode,
+  ownPromptsOnly = false,
 }: CachedGeneratedImageGalleryProps) {
   "use cache";
   cacheTag(cacheTagValue);
@@ -65,7 +71,8 @@ export async function CachedGeneratedImageGallery({
     PAGE_SIZE,
     0,
     generationType,
-    supabase
+    supabase,
+    { ownPromptsOnly }
   );
 
   const initialImages: GeneratedImageData[] = records
@@ -80,6 +87,7 @@ export async function CachedGeneratedImageGallery({
       detailFromParam={detailFromParam}
       returnToImageIdKey={returnToImageIdKey}
       applyActionMode={applyActionMode}
+      ownPromptsOnly={ownPromptsOnly}
     />
   );
 }

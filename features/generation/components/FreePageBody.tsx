@@ -2,6 +2,7 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
+import { isUserStylesAvailable } from "@/lib/env";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "./GenerationFormContainer";
 import { GenerationFormSkeleton } from "./GenerationFormSkeleton";
@@ -75,6 +76,10 @@ export async function FreePageBody() {
               detailFromParam="free"
               returnToImageIdKey="persta-ai:free-return-to-image-id"
               applyActionMode="dispatch-event"
+              // カタログ刷新後(公開前は運営だけ)の /free は「カタログをつくる(CREATE)」。一覧には
+              // 自分のプロンプトで作ったものだけを出し、ほかの人のプロンプトで作ったものは混ぜない。
+              // 一般の利用者は一般公開の日まで今のまま(判定はタブの出し分けと同じ)。
+              ownPromptsOnly={isUserStylesAvailable(user.id)}
             />
           </Suspense>
         </div>
