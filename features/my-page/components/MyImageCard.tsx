@@ -26,6 +26,11 @@ interface MyImageCardProps {
   onToggleSelect?: () => void;
   /** 通常モードで長押しされたとき（選択モードに入る／対象を即選択する） */
   onLongPressEnterSelection?: () => void;
+  /**
+   * 画像の読み込み方。横スワイプで隣に見せる一覧(画面の外)は "eager" にして先に読み込む
+   * (CatalogSwipePanel)。省略時は画面に近づいてから読む。
+   */
+  imageLoading?: "eager" | "lazy";
 }
 
 const LONG_PRESS_MS = 500;
@@ -38,6 +43,7 @@ export function MyImageCard({
   pendingDeletion = false,
   onToggleSelect,
   onLongPressEnterSelection,
+  imageLoading,
 }: MyImageCardProps) {
   const t = useTranslations("myPage");
 
@@ -99,6 +105,7 @@ export function MyImageCard({
       height={800}
       className="w-full h-auto object-contain transition-transform hover:scale-105"
       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
+      loading={imageLoading}
       unoptimized
     />
   ) : (

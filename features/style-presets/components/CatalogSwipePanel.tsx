@@ -94,16 +94,42 @@ function findTouch(list: TouchList, identifier: number): Touch | null {
 }
 
 /**
+ * タブ列を上に固定していない画面(マイページ)で、一覧の先頭を見せたい位置。
+ * lg 未満はヘッダーが流れるので画面の上端、lg 以上は固定ヘッダーの直下
+ * (`StylesCatalogChipBar` の top と同じ考え方)。
+ */
+function viewportListTop(): number {
+  if (
+    typeof window.matchMedia !== "function" ||
+    !window.matchMedia("(min-width: 1024px)").matches
+  ) {
+    return 0;
+  }
+  return (
+    Number.parseFloat(
+      window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue("--app-header-height")
+    ) || 64
+  );
+}
+
+/**
  * 一覧の先頭を見せたい位置(画面の上からの距離)と、いまの一覧の先頭の位置。
  * 一覧の先頭は、上に固定したタブ列(`StylesCatalogChipBar` の `data-catalog-tab-bar`)の
  * すぐ下に来るのが正しい。タブ列はこの領域と同じ親の中にある。
+ * タブ列を固定していない画面(マイページ)では、画面の上端にそろえる。
+ * 一覧の途中までスクロールしていても、隣のタブの一覧を先頭から見せるため。
  */
-function measureListTop(panel: HTMLElement): { desired: number; current: number } | null {
+function measureListTop(panel: HTMLElement): { desired: number; current: number } {
   const bar = panel.parentElement?.querySelector<HTMLElement>(
     "[data-catalog-tab-bar]"
   );
   if (!bar) {
-    return null;
+    return {
+      desired: viewportListTop(),
+      current: panel.getBoundingClientRect().top,
+    };
   }
   const gap = Number.parseFloat(window.getComputedStyle(bar).marginBottom) || 0;
   return {
@@ -118,7 +144,7 @@ function measureListTop(panel: HTMLElement): { desired: number; current: number 
  */
 function revealListTop(panel: HTMLElement) {
   const top = measureListTop(panel);
-  if (top && top.current < top.desired - 1) {
+  if (top.current < top.desired - 1) {
     window.scrollBy({ top: top.current - top.desired, behavior: "instant" });
   }
 }
@@ -275,7 +301,7 @@ export function CatalogSwipePanel<K extends string>({
       return;
     }
     const top = measureListTop(panel);
-    const offset = top ? Math.max(0, top.desired - top.current) : 0;
+    const offset = Math.max(0, top.desired - top.current);
     for (const peek of [previousPeekRef.current, nextPeekRef.current]) {
       if (peek) {
         peek.style.top = `${offset}px`;

@@ -459,4 +459,50 @@ describe("CatalogSwipePanel", () => {
     expect(scrollBy).not.toHaveBeenCalled();
     scrollBy.mockRestore();
   });
+
+  // マイページはタブ列を上に固定していない(data-catalog-tab-bar が無い)
+  describe("タブ列を固定していない画面(マイページ)", () => {
+    test("横に動かし始めたら、隣の一覧の先頭を画面の上端にそろえる", () => {
+      renderPanel();
+      const panel = screen.getByTestId("catalog-swipe-panel");
+      // 一覧は 500px 上までスクロールしている
+      panel.getBoundingClientRect = () => ({ top: -500 }) as DOMRect;
+      const card = screen.getByRole("button", { name: "card" });
+
+      swipe(card, 300, 200, { release: false });
+
+      expect(screen.getByTestId("catalog-swipe-peek-next").style.top).toBe("500px");
+    });
+
+    test("一覧の先頭が見えているときは、隣の一覧もずらさない", () => {
+      renderPanel();
+      const panel = screen.getByTestId("catalog-swipe-panel");
+      panel.getBoundingClientRect = () => ({ top: 320 }) as DOMRect;
+      const card = screen.getByRole("button", { name: "card" });
+
+      swipe(card, 300, 200, { release: false });
+
+      expect(screen.getByTestId("catalog-swipe-peek-next").style.top).toBe("0px");
+    });
+
+    test("タブが変わったら、画面の上に隠れた一覧の先頭まで戻す", () => {
+      const scrollBy = jest.spyOn(window, "scrollBy").mockImplementation(() => {});
+      const renderBare = (activeKey: string) => (
+        <CatalogSwipePanel
+          tabKeys={tabKeys(3)}
+          activeKey={activeKey}
+          onSwipeTo={jest.fn()}
+          renderTab={(key) => <p>list {key}</p>}
+        />
+      );
+      const { rerender } = render(renderBare("tab-0"));
+      const panel = screen.getByTestId("catalog-swipe-panel");
+      panel.getBoundingClientRect = () => ({ top: -500 }) as DOMRect;
+
+      rerender(renderBare("tab-1"));
+
+      expect(scrollBy).toHaveBeenCalledWith({ top: -500, behavior: "instant" });
+      scrollBy.mockRestore();
+    });
+  });
 });
