@@ -415,18 +415,44 @@ describe("FeedSourceQuote の見出し(カタログ刷新後)", () => {
     );
   });
 
-  test("root(プロンプト作成者)は変えない", () => {
+  test("derived を原作者本人が見るときは My ORIGINAL(自分のカタログが使われたと分かる)", () => {
     mockRevamp.mockReturnValue(true);
-    render(<FeedSourceQuote variant="root" title="みきふく" />);
+    render(<FeedSourceQuote variant="derived" title="みきふく" isViewerOriginAuthor />);
 
     expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
-      "posts.feedQuotePromptCreator"
+      "posts.modeMyOriginal"
     );
   });
 
-  test("⭐一般の利用者には今の見出し(Persta.AI ORIGINAL / ORIGINAL)のまま", () => {
+  test("「プロンプト作成者」は「カタログ作成者」に、利用回数は「このカタログが〜」にする", () => {
+    mockRevamp.mockReturnValue(true);
+    const { rerender } = render(<FeedSourceQuote variant="root" title="みきふく" />);
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "posts.feedQuoteCatalogCreator"
+    );
+
+    rerender(
+      <FeedSourceQuote variant="derived" title="みきふく" usageCount={USAGE_COUNT_DISPLAY_MIN} />
+    );
+    expect(screen.getByText("posts.feedQuoteCatalogCreator")).toBeTruthy();
+    expect(screen.getByText(/posts\.sourceCatalogUsageCount/)).toBeTruthy();
+
+    // Persta ORIGINAL(スタイル)の利用回数も同じ文言にそろえる
+    rerender(
+      <FeedSourceQuote variant="style" title="夏のマリンコーデ" usageCount={USAGE_COUNT_DISPLAY_MIN} />
+    );
+    expect(screen.getByText(/posts\.sourceCatalogUsageCount/)).toBeTruthy();
+    expect(screen.queryByText(/style\.styleUsageCount/)).toBeNull();
+  });
+
+  test("⭐一般の利用者には今の見出し(Persta.AI ORIGINAL / ORIGINAL / プロンプト作成者)のまま", () => {
     mockRevamp.mockReturnValue(false);
-    const { rerender } = render(<FeedSourceQuote variant="style" title="夏のマリンコーデ" />);
+    const { rerender } = render(<FeedSourceQuote variant="root" title="みきふく" />);
+    expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
+      "posts.feedQuotePromptCreator"
+    );
+
+    rerender(<FeedSourceQuote variant="style" title="夏のマリンコーデ" />);
     expect(screen.getByTestId("feed-source-quote-heading").textContent).toBe(
       "posts.feedQuoteStyleTitle"
     );

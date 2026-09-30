@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(() => (key: string) => {
@@ -10,9 +10,9 @@ jest.mock("next-intl", () => ({
       modeOneTapStyle: "One-Tap Style",
       modeInspire: "Creator Style",
       modeFree: "Free Style",
-      modeWithPerstaOriginal: "with Persta ORIGINAL",
-      modeWithUserOriginal: "with User ORIGINAL",
+      modeFromCatalog: "カタログから生成",
       modeUserOriginal: "User ORIGINAL",
+      modeMyOriginal: "My ORIGINAL",
     };
     return messages[key] ?? key;
   }),
@@ -169,7 +169,7 @@ describe("PostMetaLine(カタログ刷新後)", () => {
   beforeEach(() => mockRevamp.mockReturnValue(true));
   afterEach(() => mockRevamp.mockReturnValue(false));
 
-  it("ほかの人のプロンプトで作った投稿は with User ORIGINAL", () => {
+  it("カタログの原本を使って作った投稿は「カタログから生成」", () => {
     render(
       <PostMetaLine
         model="gpt-image-2-low-1k"
@@ -180,16 +180,32 @@ describe("PostMetaLine(カタログ刷新後)", () => {
       />,
     );
     const node = screen.getByTestId("post-meta-line");
-    expect(node.textContent).toBe(
-      "with User ORIGINAL ・ ChatGPT Images 2.0 / 1024×1536",
-    );
+    expect(node.textContent).toBe("カタログから生成 ・ ChatGPT Images 2.0 / 1024×1536");
     expect(node.getAttribute("aria-label")).toBe(
-      "生成モード: with User ORIGINAL, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
+      "生成モード: カタログから生成, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
     );
+
+    cleanup();
+    render(
+      <PostMetaLine model={null} width={null} height={null} generationType="one_tap_style" />,
+    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe("カタログから生成");
   });
 
-  it("自分のプロンプトは User ORIGINAL、ペルスタのスタイルは with Persta ORIGINAL", () => {
+  it("原本(自分のプロンプト)は、投稿者本人には My ORIGINAL、ほかの人には User ORIGINAL", () => {
     const { rerender } = render(
+      <PostMetaLine
+        model={null}
+        width={null}
+        height={null}
+        generationType="free"
+        sourcePostId={null}
+        isViewerAuthor
+      />,
+    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe("My ORIGINAL");
+
+    rerender(
       <PostMetaLine
         model={null}
         width={null}
@@ -198,21 +214,7 @@ describe("PostMetaLine(カタログ刷新後)", () => {
         sourcePostId={null}
       />,
     );
-    expect(screen.getByTestId("post-meta-line").textContent).toBe(
-      "User ORIGINAL",
-    );
-
-    rerender(
-      <PostMetaLine
-        model={null}
-        width={null}
-        height={null}
-        generationType="one_tap_style"
-      />,
-    );
-    expect(screen.getByTestId("post-meta-line").textContent).toBe(
-      "with Persta ORIGINAL",
-    );
+    expect(screen.getByTestId("post-meta-line").textContent).toBe("User ORIGINAL");
   });
 });
 

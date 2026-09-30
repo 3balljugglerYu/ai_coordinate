@@ -199,7 +199,7 @@ export function PromptLockedGenerationSheet({
             maxHeight: "85vh",
           }}
         >
-          {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「User ORIGINAL でつくる」)が担う。 */}
+          {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「カタログから生成」)が担う。 */}
           <DialogHeader className="sr-only">
             <DialogTitle>{t("lockedSheetTitle")}</DialogTitle>
             <DialogDescription>{t("lockedSheetDescription")}</DialogDescription>
@@ -236,7 +236,7 @@ export function PromptLockedGenerationSheet({
           */}
           <div className="flex-shrink-0">
             <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
-            {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「User ORIGINAL でつくる」)が担う。 */}
+            {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「カタログから生成」)が担う。 */}
             <Drawer.Title className="sr-only">
               {t("lockedSheetTitle")}
             </Drawer.Title>

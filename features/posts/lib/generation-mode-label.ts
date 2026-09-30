@@ -6,9 +6,9 @@ export type GenerationModeLabelKey =
   | "modeOneTapStyle"
   | "modeInspire"
   | "modeFree"
-  | "modeWithPerstaOriginal"
-  | "modeWithUserOriginal"
-  | "modeUserOriginal";
+  | "modeFromCatalog"
+  | "modeUserOriginal"
+  | "modeMyOriginal";
 
 /**
  * generated_images.generation_type を、投稿カード/詳細に出す生成モードラベルの
@@ -21,19 +21,18 @@ export type GenerationModeLabelKey =
  *
  * ## カタログ刷新後(`isCatalogRevamp`。公開前は運営だけ)
  *
- * カタログのタブの名前(Persta ORIGINAL / User ORIGINAL)に合わせる。
- * ⭐ **作った本人のものは「ORIGINAL」、それを使って作ったものは「with 〜」**にする
- * (2026-09-29 ユーザー決定)。使っただけの投稿に「Persta ORIGINAL」と付けると、
- * 投稿者がそのオリジナルを作ったように見えるため。
+ * ⭐ **「ORIGINAL」は原本だけに付け、カタログの原本を使って作ったものは
+ * 「カタログから生成」にする**(2026-09-30 ユーザー決定)。使っただけの投稿に
+ * 「Persta ORIGINAL」と付けると、投稿者がそのオリジナルを作ったように見えるため。
+ * 原本は、見ている人が作者本人なら「My ORIGINAL」、ほかの人には「User ORIGINAL」。
  *
  * | 生成 | ラベル |
  * |---|---|
- * | one_tap_style(ペルスタのスタイル) | with Persta ORIGINAL |
- * | free・元の投稿あり(ほかの人のプロンプト) | with User ORIGINAL |
- * | free・元の投稿なし(自分のプロンプト) | User ORIGINAL |
+ * | one_tap_style(ペルスタのカタログのスタイル) | カタログから生成 |
+ * | free・元の投稿あり(ほかの人のカタログ) | カタログから生成 |
+ * | free・元の投稿なし(自分のプロンプト=原本)を本人が見る | My ORIGINAL |
+ * | 同上をほかの人が見る | User ORIGINAL |
  * | coordinate 系 / inspire | 今のまま |
- *
- * 画像の上のラベルでは with 〜 を出さない({@link getCardGenerationModeLabelKey})。
  *
  * 自分のプロンプトかどうかは `source_post_id`(派生生成の原作)の有無で決まる。
  * 元の投稿を持つのは free だけ(本番実測。one_tap_style などには入らない)。
@@ -46,11 +45,21 @@ export function getGenerationModeLabelKey(
   {
     sourcePostId = null,
     isCatalogRevamp = false,
+    isViewerResolved = true,
+    isViewerAuthor = false,
   }: {
     /** 派生生成の原作(`source_post_id`)。刷新後に自分のプロンプトかを見分ける。 */
     sourcePostId?: string | null;
     /** カタログ刷新後の名前にするか。`useStylesCatalogRevamp()` の値を渡す。 */
     isCatalogRevamp?: boolean;
+    /**
+     * 見ている人(ログイン中の人)が確定したか。確定前は本人かどうかが分からないので、
+     * 原本のラベルは出さずに待つ(「User ORIGINAL」→「My ORIGINAL」と書き換わる
+     * ちらつきを避ける。2026-09-30 ユーザー指摘)。サーバーで確定済みなら既定の true。
+     */
+    isViewerResolved?: boolean;
+    /** 見ている人が投稿者本人か。本人には「My ORIGINAL」を出す。 */
+    isViewerAuthor?: boolean;
   } = {},
 ): GenerationModeLabelKey | null {
   switch (generationType) {
@@ -60,35 +69,21 @@ export function getGenerationModeLabelKey(
     case "chibi":
       return "modeCoordinate";
     case "one_tap_style":
-      return isCatalogRevamp ? "modeWithPerstaOriginal" : "modeOneTapStyle";
+      return isCatalogRevamp ? "modeFromCatalog" : "modeOneTapStyle";
     case "inspire":
       return "modeInspire";
     case "free":
       if (!isCatalogRevamp) {
         return "modeFree";
       }
-      return sourcePostId ? "modeWithUserOriginal" : "modeUserOriginal";
+      if (sourcePostId) {
+        return "modeFromCatalog";
+      }
+      if (!isViewerResolved) {
+        return null;
+      }
+      return isViewerAuthor ? "modeMyOriginal" : "modeUserOriginal";
     default:
       return null;
   }
-}
-
-/**
- * 画像の上(カードの左下)に出す生成モードラベルのキー。
- *
- * カタログ刷新後は、**使って作った投稿(with 〜)には出さない**(2026-09-30 ユーザー決定)。
- * 出どころは画像の下の引用元カード(Persta ORIGINAL / User ORIGINAL)が示すので、
- * 画像の上で繰り返す必要がない。「with Persta ORIGINAL」は長く、狭いカードでは
- * 2行になって画像を隠すことも理由。自分のプロンプトの投稿(User ORIGINAL)と、
- * Coordinate / Creator Style は出す。
- *
- * 投稿の詳細の「生成モード」の行は1行の文なので、こちらではなく
- * {@link getGenerationModeLabelKey} をそのまま使い、with 〜 も出す。
- */
-export function getCardGenerationModeLabelKey(
-  generationType: GenerationType | string | null | undefined,
-  options: { sourcePostId?: string | null; isCatalogRevamp?: boolean } = {},
-): GenerationModeLabelKey | null {
-  const key = getGenerationModeLabelKey(generationType, options);
-  return key === "modeWithPerstaOriginal" || key === "modeWithUserOriginal" ? null : key;
 }

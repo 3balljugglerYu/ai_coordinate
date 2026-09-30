@@ -127,7 +127,7 @@ export function StyleGenerationSheet({
             maxHeight: "85vh",
           }}
         >
-          {/* 読み上げ用。見出しは本文側の One-Tap Style 表記(刷新後は「Persta ORIGINAL でつくる」)が担う。 */}
+          {/* 読み上げ用。見出しは本文側の One-Tap Style 表記(刷新後は「カタログから生成」)が担う。 */}
           <DialogHeader className="sr-only">
             <DialogTitle>{t("generationSheetTitle")}</DialogTitle>
             <DialogDescription>{t("generationSheetDescription")}</DialogDescription>
@@ -161,7 +161,7 @@ export function StyleGenerationSheet({
           {/* つまみ。ここを引くと閉じる(本文が先頭なら本文を引いても閉じる)。 */}
           <div className="flex-shrink-0">
             <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
-            {/* 読み上げ用。見出しは本文側の One-Tap Style 表記(刷新後は「Persta ORIGINAL でつくる」)が担う。 */}
+            {/* 読み上げ用。見出しは本文側の One-Tap Style 表記(刷新後は「カタログから生成」)が担う。 */}
             <Drawer.Title className="sr-only">
               {t("generationSheetTitle")}
             </Drawer.Title>

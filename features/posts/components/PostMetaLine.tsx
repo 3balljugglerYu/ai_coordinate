@@ -14,9 +14,11 @@ interface PostMetaLineProps {
   generationType?: GenerationType | string | null;
   /**
    * 派生生成の原作(`source_post_id`)。カタログ刷新後に、自分のプロンプト(User ORIGINAL)か
-   * ほかの人のプロンプト(with User ORIGINAL)かを見分ける。
+   * ほかの人のプロンプト(カタログから生成)かを見分ける。
    */
   sourcePostId?: string | null;
+  /** 見ている人が投稿者本人か。刷新後、自分のプロンプトの投稿を本人が見るときは My ORIGINAL。 */
+  isViewerAuthor?: boolean;
 }
 
 /**
@@ -35,14 +37,16 @@ export function PostMetaLine({
   height,
   generationType,
   sourcePostId = null,
+  isViewerAuthor = false,
 }: PostMetaLineProps) {
   const t = useTranslations("posts");
   const isCatalogRevamp = useStylesCatalogRevamp();
   const brandName = getModelBrandName(model);
-  // カードのラベルと同じ名前にする(刷新後は Persta ORIGINAL / User ORIGINAL)
+  // カードのラベルと同じ名前にする(刷新後はカタログから生成 / My ORIGINAL / User ORIGINAL)
   const modeLabelKey = getGenerationModeLabelKey(generationType, {
     sourcePostId,
     isCatalogRevamp,
+    isViewerAuthor,
   });
   const modeLabel = modeLabelKey ? t(modeLabelKey) : null;
 

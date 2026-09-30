@@ -98,6 +98,11 @@ interface FeedSourceQuoteProps {
    * 渡さなければ挙動は変わらない。
    */
   hideRootCredit?: boolean;
+  /**
+   * 見ている人が原作者本人か。カタログ刷新後の derived の見出しを「My ORIGINAL」にする
+   * (自分のプロンプトが使われたことが分かるように)。ほかの人には「User ORIGINAL」。
+   */
+  isViewerOriginAuthor?: boolean;
 }
 
 /**
@@ -179,6 +184,7 @@ interface FeedSourceQuoteProps {
  * `userStyles.tabUser`）。引用元はカタログに並んでいるものなので、棚の名前と
  * カードの名前を1つのキーにしておけば、片方だけ直されて食い違うことがない。
  * root（`プロンプト作成者`）は変えない。
+ * derived を原作者本人が見るときは `My ORIGINAL`（`posts.modeMyOriginal`。画像の上のラベルと同じキー）。
  *
  * 一方、**行動を促す文言は従来どおり「生成」で統一する**（CTA と root の見出し）。
  * 「使う」は目的語が曖昧で、閲覧者に「自分の何かが使われるのか」と読まれ得る。
@@ -200,21 +206,29 @@ export function FeedSourceQuote({
   isEnded = false,
   action,
   hideRootCredit = false,
+  isViewerOriginAuthor = false,
 }: FeedSourceQuoteProps) {
   const t = useTranslations("posts");
   const styleT = useTranslations("style");
   const catalogT = useTranslations("userStyles");
   const isCatalogRevamp = useStylesCatalogRevamp();
 
+  // 刷新後は「カタログ作成者」。ボタン(このカタログで生成する)と言葉をそろえる
+  const creatorLabel = isCatalogRevamp
+    ? t("feedQuoteCatalogCreator")
+    : t("feedQuotePromptCreator");
+
   const heading =
     variant === "root"
-      ? t("feedQuotePromptCreator")
+      ? creatorLabel
       : variant === "style"
         ? isCatalogRevamp
           ? catalogT("tabOfficial")
           : t("feedQuoteStyleTitle")
         : isCatalogRevamp
-          ? catalogT("tabUser")
+          ? isViewerOriginAuthor
+            ? t("modeMyOriginal")
+            : catalogT("tabUser")
           : t("feedQuoteDerivedTitle");
 
   // 生の回数ではなく丸めた値を渡す。文言が「◯回以上」で固定なので、
@@ -223,8 +237,12 @@ export function FeedSourceQuote({
   const usageText =
     usageBucket !== null
       ? variant === "style"
-        ? styleT("styleUsageCount", { count: usageBucket })
-        : t("sourcePromptUsageCount", { count: usageBucket })
+        ? isCatalogRevamp
+          ? t("sourceCatalogUsageCount", { count: usageBucket })
+          : styleT("styleUsageCount", { count: usageBucket })
+        : t(isCatalogRevamp ? "sourceCatalogUsageCount" : "sourcePromptUsageCount", {
+            count: usageBucket,
+          })
       : null;
 
   /*
@@ -314,7 +332,7 @@ export function FeedSourceQuote({
             目に入ってラベルが飾りになり、「この人が作った人だ」が伝わらない。
           */
           <span className="text-[11px] leading-tight text-muted-foreground">
-            {t("feedQuotePromptCreator")}
+            {creatorLabel}
           </span>
         ) : null}
         <div className="flex min-w-0 items-center gap-1.5">

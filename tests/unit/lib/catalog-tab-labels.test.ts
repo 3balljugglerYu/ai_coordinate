@@ -7,8 +7,8 @@
  * ただしタブの「Persta ORIGINAL」は、タブに入れるために短くした(2026-09-29 ユーザー指示)。
  * フィードの引用元カードは、一般の利用者には「Persta.AI ORIGINAL」のまま出し、
  * カタログ刷新後(公開前は運営だけ)はタブの名前をそのまま使う(FeedSourceQuote)。
- * ⭐ 刷新後の投稿のラベルは、作った本人のものは「〜 ORIGINAL」、それを使って
- * 作ったものは「with 〜」(2026-09-29 ユーザー決定)。
+ * ⭐ 刷新後の投稿のラベルは、原本は「My / User ORIGINAL」、カタログの原本を使って
+ * 作ったものは「カタログから生成」(2026-09-30 ユーザー決定)。
  * ⭐ タブの名前は「誰が届けるか」だけで分け、よし悪しの差をつけない
  * (docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)。
  */
@@ -33,25 +33,36 @@ describe("カタログのタブの文言", () => {
     expect(messages.posts.feedQuoteDerivedTitle).toBe("ORIGINAL");
   });
 
+  test.each(locales)("%s: 刷新後の原本のラベルは、タブの名前と同じ語(User / My ORIGINAL)", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    expect(messages.posts.modeUserOriginal).toBe(messages.userStyles.tabUser);
+    expect(messages.posts.modeMyOriginal).toBe("My ORIGINAL");
+  });
+
   test.each(locales)(
-    "%s: 刷新後の投稿のラベルは、タブの名前(使って作ったものは with 付き)",
+    "%s: 刷新後の「カタログから生成」「このカタログで生成する」「カタログ作成者」などが空でない",
     async (locale) => {
       const messages = await getAllMessages(locale);
 
-      expect(messages.posts.modeWithPerstaOriginal).toBe(
-        `with ${messages.userStyles.tabOfficial}`
-      );
-      expect(messages.posts.modeWithUserOriginal).toBe(`with ${messages.userStyles.tabUser}`);
-      expect(messages.posts.modeUserOriginal).toBe(messages.userStyles.tabUser);
+      for (const text of [
+        messages.posts.modeFromCatalog,
+        messages.posts.feedUseCatalog,
+        messages.posts.feedQuoteCatalogCreator,
+        messages.free.catalogSheetTitle,
+        messages.free.catalogSheetDescription,
+      ]) {
+        expect(text.trim()).not.toBe("");
+      }
+      expect(messages.posts.sourceCatalogUsageCount).toContain("{count}");
     }
   );
 
-  test.each(locales)("%s: 刷新後の生成シートの見出しに、タブの名前が入っている", async (locale) => {
+  // 2つの生成シート(User ORIGINAL / Persta ORIGINAL)の見出しは共通(2026-09-30 ユーザー決定)
+  test.each(locales)("%s: 刷新後の生成シートの見出しは、2つのシートで同じ", async (locale) => {
     const messages = await getAllMessages(locale);
 
-    expect(messages.free.catalogSheetTitle).toContain(messages.userStyles.tabUser);
-    expect(messages.style.catalogSheetTitle).toContain(messages.userStyles.tabOfficial);
-    expect(messages.free.catalogSheetDescription.trim()).not.toBe("");
+    expect(messages.style.catalogSheetTitle).toBe(messages.free.catalogSheetTitle);
   });
 
   test.each(locales)(
@@ -91,10 +102,12 @@ describe("カタログのタブの文言", () => {
     expect(messages.userStyles.tabCreateTitle).toBe("カタログをつくる");
   });
 
-  test("日本語の生成シートの見出しは「〜でつくる」", async () => {
+  test("日本語の刷新後の文言は、決めた言葉どおり", async () => {
     const messages = await getAllMessages("ja");
 
-    expect(messages.free.catalogSheetTitle).toBe("User ORIGINAL でつくる");
-    expect(messages.style.catalogSheetTitle).toBe("Persta ORIGINAL でつくる");
+    expect(messages.free.catalogSheetTitle).toBe("カタログから生成");
+    expect(messages.posts.modeFromCatalog).toBe("カタログから生成");
+    expect(messages.posts.feedUseCatalog).toBe("このカタログで生成する");
+    expect(messages.posts.feedQuoteCatalogCreator).toBe("カタログ作成者");
   });
 });

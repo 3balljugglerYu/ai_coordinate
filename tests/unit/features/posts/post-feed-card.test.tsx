@@ -122,6 +122,15 @@ jest.mock("@/features/posts/components/FollowAndUsePromptButton", () => ({
   },
 }));
 
+// Persta ORIGINAL の「このカタログで生成する」(刷新後)。押したあとの流れは専用のテストで見る
+const styleButtonSpy = jest.fn();
+jest.mock("@/features/posts/components/UseStylePresetButton", () => ({
+  UseStylePresetButton: (props: { presetId: string; slug: string; isViewerResolved: boolean }) => {
+    styleButtonSpy(props);
+    return <div data-testid="use-style-button" data-preset={props.presetId} data-slug={props.slug} />;
+  },
+}));
+
 /** CTA に渡された props（フォロー判定の取り違えを検出する）。 */
 function ctaProps(): { isFollowingAuthor?: boolean } {
   return ctaSpy.mock.calls[ctaSpy.mock.calls.length - 1][0];
@@ -865,74 +874,90 @@ describe("PostFeedCard", () => {
 });
 
 /*
-  画像左下の生成方法ラベル。カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に
-  User ORIGINAL を出し、使って作った投稿(ペルスタのスタイル・ほかの人のプロンプト)には出さない。
-  出どころは画像の下の引用元カードが示す(2026-09-30 ユーザー決定)。
+  カタログ刷新後(公開前は運営だけ)の、画像左下のラベルと引用元カード。
+  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作った投稿は「カタログから生成」。
+  原本は、見ている人が投稿者本人なら My ORIGINAL、ほかの人には User ORIGINAL(2026-09-30 ユーザー決定)。
 */
-describe("PostFeedCard の生成方法ラベル", () => {
+describe("PostFeedCard(カタログ刷新後)", () => {
+  const ONE_TAP_METADATA = {
+    oneTapStyle: {
+      id: "preset-1",
+      title: "夏のマリンコーデ",
+      thumbnailImageUrl: "https://example.test/preset.png",
+      thumbnailWidth: 300,
+      thumbnailHeight: 400,
+      hasBackgroundPrompt: false,
+      billingMode: "free",
+      outputAspectRatioMode: "portrait",
+    },
+  };
+  const derivedSummary = {
+    originPostId: "origin-1",
+    isAvailable: true,
+    originAuthorId: "origin-author",
+    originAuthorNickname: "みきふく",
+    originAuthorAvatarUrl: null,
+    originThumbnailUrl: "https://example.test/origin.png",
+    originCaption: null,
+    usageCount: 12,
+    promptVisibility: "private" as const,
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRevamp.mockReturnValue(true);
+  });
   afterEach(() => mockRevamp.mockReturnValue(false));
 
-  test("刷新後: 自分のプロンプトで作った投稿は User ORIGINAL を出す", () => {
-    mockRevamp.mockReturnValue(true);
-    const post = createPost({ generation_type: "free", source_post_id: null });
+  test.each([
+    ["ペルスタのカタログのスタイル", createPost({ generation_type: "one_tap_style" })],
+    ["ほかの人のカタログ", createPost({ generation_type: "free", source_post_id: "origin-1" })],
+  ])("%sで作った投稿は「カタログから生成」", (_label, post) => {
     render(<PostFeedCard post={post} currentUserId={null} />);
 
-    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
+    expect(screen.getByText("modeFromCatalog")).toBeTruthy();
+    expect(screen.queryByText("modeOneTapStyle")).toBeNull();
     expect(screen.queryByText("modeFree")).toBeNull();
   });
 
-  test.each([
-    ["ペルスタのスタイル", createPost({ generation_type: "one_tap_style" })],
-    ["ほかの人のプロンプト", createPost({ generation_type: "free", source_post_id: "source-post-1" })],
-  ])("刷新後: %sで作った投稿には画像の上のラベルを出さない", (_label, post) => {
-    mockRevamp.mockReturnValue(true);
-    render(<PostFeedCard post={post} currentUserId={null} />);
+  test("原本(自分のプロンプト)は、投稿者本人には My ORIGINAL、ほかの人には User ORIGINAL", () => {
+    const post = createPost({ generation_type: "free", source_post_id: null });
+    const { unmount } = render(<PostFeedCard post={post} currentUserId="author-1" />);
+    expect(screen.getByText("modeMyOriginal")).toBeTruthy();
+    unmount();
 
-    for (const key of [
-      "modeWithPerstaOriginal",
-      "modeWithUserOriginal",
-      "modeOneTapStyle",
-      "modeFree",
-    ]) {
-      expect(screen.queryByText(key)).toBeNull();
-    }
+    render(<PostFeedCard post={post} currentUserId="viewer-1" />);
+    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
   });
 
-  test("刷新後も Coordinate のラベルは出す", () => {
-    mockRevamp.mockReturnValue(true);
-    const post = createPost({ generation_type: "coordinate" });
-    render(<PostFeedCard post={post} currentUserId={null} />);
-
-    expect(screen.getByText("modeCoordinate")).toBeTruthy();
-  });
-
-  /*
-    刷新後の名前(User ORIGINAL)は従来より長く、枠の外から重ねると幅 320px で AFTER と重なった。
-    After の中で AFTER と同じ行に並べ、入りきらないときはラベルが折り返す。
-  */
-  test("刷新後は、ラベルを After の中で AFTER と同じ行に並べる", () => {
-    mockRevamp.mockReturnValue(true);
+  test("⭐見ている人が確定するまで、原本のラベルと引用元カード(見出しが人で変わる)は出さない", () => {
     render(
       <PostFeedCard
-        post={createPost({
-          generation_type: "free",
-          input_image_url_fallback: "https://example.test/before.png",
-        })}
+        post={createPost({ generation_type: "free", source_post_id: null })}
         currentUserId={null}
+        isViewerResolved={false}
+        promptAction={{ ...derivedSummary, originPostId: "post-1", originAuthorId: "author-1" }}
       />
     );
 
-    const row = within(screen.getByTestId("post-feed-after-frame")).getByTestId(
-      "post-feed-after-corner-row"
-    );
-    expect(within(row).getByText("modeUserOriginal")).toBeTruthy();
-    expect(within(row).getByText("afterImageLabel")).toBeTruthy();
-    // 枠の外に同じラベルを重ねない
-    expect(screen.getAllByText("modeUserOriginal")).toHaveLength(1);
+    expect(screen.queryByText("modeUserOriginal")).toBeNull();
+    expect(screen.queryByText("modeMyOriginal")).toBeNull();
+    expect(screen.queryByTestId("feed-source-quote")).toBeNull();
   });
 
-  test("一般の利用者は従来どおり、ラベルを枠の外から重ねる(After の中に行を作らない)", () => {
-    mockRevamp.mockReturnValue(false);
+  test("引用元カードには、見ている人が原作者本人かを渡す(本人には My ORIGINAL)", () => {
+    const post = createPost({ generation_type: "free", source_post_id: "origin-1" });
+    const { unmount } = render(
+      <PostFeedCard post={post} currentUserId="origin-author" promptAction={derivedSummary} />
+    );
+    expect((quoteProps() as { isViewerOriginAuthor?: boolean }).isViewerOriginAuthor).toBe(true);
+    unmount();
+
+    render(<PostFeedCard post={post} currentUserId="viewer-1" promptAction={derivedSummary} />);
+    expect((quoteProps() as { isViewerOriginAuthor?: boolean }).isViewerOriginAuthor).toBe(false);
+  });
+
+  test("ラベルは After の中で AFTER と同じ行に並べる(狭い画面で重ならないように)", () => {
     render(
       <PostFeedCard
         post={createPost({
@@ -943,27 +968,114 @@ describe("PostFeedCard の生成方法ラベル", () => {
       />
     );
 
-    expect(screen.queryByTestId("post-feed-after-corner-row")).toBeNull();
-    const afterFrame = screen.getByTestId("post-feed-after-frame");
-    expect(within(afterFrame).queryByText("modeOneTapStyle")).toBeNull();
-    expect(screen.getByText("modeOneTapStyle").className).toContain("absolute bottom-2 left-2");
+    const row = within(screen.getByTestId("post-feed-after-frame")).getByTestId(
+      "post-feed-after-corner-row"
+    );
+    expect(within(row).getByText("modeFromCatalog")).toBeTruthy();
+    expect(within(row).getByText("afterImageLabel")).toBeTruthy();
+    expect(screen.getAllByText("modeFromCatalog")).toHaveLength(1);
   });
 
-  test("⭐一般の利用者には今の名前(One-Tap Style / Free Style)のまま", () => {
-    mockRevamp.mockReturnValue(false);
-    const { unmount } = render(
-      <PostFeedCard post={createPost({ generation_type: "one_tap_style" })} currentUserId={null} />
+  test("Persta ORIGINAL の引用元カードに「このカタログで生成する」を置く", () => {
+    render(
+      <PostFeedCard
+        post={createPost({ generation_type: "one_tap_style", generation_metadata: ONE_TAP_METADATA })}
+        currentUserId="viewer-1"
+        stylePresetLink={{ presetId: "preset-1", slug: "summer-marine", usageCount: 0, isEnded: false }}
+      />
     );
-    expect(screen.getByText("modeOneTapStyle")).toBeTruthy();
+
+    const button = within(screen.getByTestId("feed-source-quote")).getByTestId("use-style-button");
+    expect(button.getAttribute("data-preset")).toBe("preset-1");
+    expect(button.getAttribute("data-slug")).toBe("summer-marine");
+  });
+
+  test.each([
+    ["非公開(slug なし)", { presetId: "preset-1", slug: null, usageCount: 0, isEnded: false }],
+    ["会期終了", { presetId: "preset-1", slug: "summer-marine", usageCount: 0, isEnded: true }],
+  ])("%sのスタイルにはボタンを置かない", (_label, link) => {
+    render(
+      <PostFeedCard
+        post={createPost({ generation_type: "one_tap_style", generation_metadata: ONE_TAP_METADATA })}
+        currentUserId="viewer-1"
+        stylePresetLink={link}
+      />
+    );
+
+    expect(screen.getByTestId("feed-source-quote")).toBeTruthy();
+    expect(screen.queryByTestId("use-style-button")).toBeNull();
+  });
+});
+
+describe("PostFeedCard(一般の利用者)", () => {
+  beforeEach(() => mockRevamp.mockReturnValue(false));
+
+  test("⭐今の名前(One-Tap Style / Free Style)のまま。ラベルは枠の外から重ねる", () => {
+    const { unmount } = render(
+      <PostFeedCard
+        post={createPost({
+          generation_type: "one_tap_style",
+          input_image_url_fallback: "https://example.test/before.png",
+        })}
+        currentUserId={null}
+      />
+    );
+    expect(screen.queryByTestId("post-feed-after-corner-row")).toBeNull();
+    expect(screen.getByText("modeOneTapStyle").className).toContain("absolute bottom-2 left-2");
     unmount();
 
     render(
       <PostFeedCard
-        post={createPost({ generation_type: "free", source_post_id: "source-post-1" })}
+        post={createPost({ generation_type: "free", source_post_id: "origin-1" })}
         currentUserId={null}
       />
     );
     expect(screen.getByText("modeFree")).toBeTruthy();
-    expect(screen.queryByText("modeWithUserOriginal")).toBeNull();
+  });
+
+  test("⭐見ている人が確定する前でも、引用元カードは今までどおり出す", () => {
+    render(
+      <PostFeedCard
+        post={createPost()}
+        currentUserId={null}
+        isViewerResolved={false}
+        promptAction={{
+          originPostId: "origin-1",
+          isAvailable: true,
+          originAuthorId: "author-2",
+          originAuthorNickname: "みきふく",
+          originAuthorAvatarUrl: null,
+          originThumbnailUrl: null,
+          originCaption: null,
+          usageCount: 0,
+          promptVisibility: "private",
+        }}
+      />
+    );
+    expect(screen.getByTestId("feed-source-quote")).toBeTruthy();
+  });
+
+  test("Persta ORIGINAL の引用元カードにボタンは置かない", () => {
+    render(
+      <PostFeedCard
+        post={createPost({ generation_type: "one_tap_style", generation_metadata: ONE_TAP_METADATA_GENERAL })}
+        currentUserId="viewer-1"
+        stylePresetLink={{ presetId: "preset-1", slug: "summer-marine", usageCount: 0, isEnded: false }}
+      />
+    );
+    expect(screen.queryByTestId("use-style-button")).toBeNull();
   });
 });
+
+const ONE_TAP_METADATA_GENERAL = {
+  oneTapStyle: {
+    id: "preset-1",
+    title: "夏のマリンコーデ",
+    thumbnailImageUrl: "https://example.test/preset.png",
+    thumbnailWidth: 300,
+    thumbnailHeight: 400,
+    hasBackgroundPrompt: false,
+    billingMode: "free",
+    outputAspectRatioMode: "portrait",
+  },
+};

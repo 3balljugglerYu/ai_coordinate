@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/use-toast";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { trackFollowFromCard, trackPromptUseTapped } from "../lib/home-view-events";
 import type { PromptActionSummary } from "../types";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 /**
  * 生成シートは遅延読み込みにする。じゆうモードの生成フォーム一式を抱えており、
@@ -54,6 +55,8 @@ export function FollowAndUsePromptButton({
   onFollowChange,
 }: FollowAndUsePromptButtonProps) {
   const t = useTranslations("posts");
+  // カタログ刷新後(公開前は運営だけ)は「このカタログで生成する」。原本はカタログに並ぶもの
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const followT = useTranslations("follow");
   const { toast } = useToast();
   const pathname = usePathname();
@@ -171,7 +174,9 @@ export function FollowAndUsePromptButton({
     }
   };
 
-  const label = hasAccess ? t("feedUsePrompt") : t("feedFollowAndUsePrompt");
+  const label = hasAccess
+    ? t(isCatalogRevamp ? "feedUseCatalog" : "feedUsePrompt")
+    : t("feedFollowAndUsePrompt");
 
   return (
     <>

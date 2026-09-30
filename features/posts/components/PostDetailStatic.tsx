@@ -648,6 +648,7 @@ export function PostDetailStatic({
             height={post.height ?? null}
             generationType={post.generation_type ?? null}
             sourcePostId={post.source_post_id ?? null}
+            isViewerAuthor={!!currentUserId && currentUserId === post.user_id}
           />
         )}
 

@@ -20,11 +20,12 @@ import {
 import { FeedCaption } from "./FeedCaption";
 import { FollowAndUsePromptButton } from "./FollowAndUsePromptButton";
 import { FeedSourceQuote } from "./FeedSourceQuote";
+import { UseStylePresetButton } from "./UseStylePresetButton";
 import { NewPromptBadge } from "./NewPromptBadge";
 import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
-import { getCardGenerationModeLabelKey } from "../lib/generation-mode-label";
+import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import {
   getPostBeforeImageUrl,
   getPostDisplayUrl,
@@ -51,6 +52,12 @@ interface PostFeedCardProps {
    */
   eagerAvatar?: boolean;
   trackImpressions?: boolean;
+  /**
+   * 見ている人(currentUserId)が確定したか。ホームの一覧はページを開いたあとに
+   * ブラウザで確かめるので、確定するまでは「自分の投稿か」で変わる表示
+   * (My ORIGINAL)を出さずに待つ。サーバーで確定した値を渡す画面は既定の true のまま。
+   */
+  isViewerResolved?: boolean;
   /**
    * 閲覧者が**投稿者**をフォローしているか。未取得は undefined。
    * PostList がバッチで解決した値を渡す(カードごとの問い合わせを避けるため)。
@@ -106,6 +113,7 @@ export function PostFeedCard({
   prioritizeImage = false,
   eagerAvatar = false,
   trackImpressions = false,
+  isViewerResolved = true,
   isFollowingAuthor,
   isFollowingPromptAuthor,
   onFollowChange,
@@ -146,9 +154,11 @@ export function PostFeedCard({
   // カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に User ORIGINAL を出し、
   // 使って作った投稿には出さない(出どころは下の引用元カードが示す)。
   const isCatalogRevamp = useStylesCatalogRevamp();
-  const generationModeLabelKey = getCardGenerationModeLabelKey(post.generation_type, {
+  const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type, {
     sourcePostId: post.source_post_id,
     isCatalogRevamp,
+    isViewerResolved,
+    isViewerAuthor: !!currentUserId && currentUserId === post.user_id,
   });
   // One-Tap Style のプリセットは投稿の generation_metadata に入っているため
   // サーバーへ問い合わせずに読める（リンクに要る slug だけ別途もらう）。
@@ -434,7 +444,11 @@ export function PostFeedCard({
           「誰の何を使ったか」→「自分も作る」が一続きに読めるよう、行動ボタンは
           この中に入れる。同じ場所にブロックが2つ並ぶのを避ける意味もある。
         */}
-        {promptAction?.isAvailable ? (
+        {/*
+          刷新後は、見出しが見ている人で変わる(原作者本人には My ORIGINAL)ので、
+          見ている人が確定してから出す(User ORIGINAL → My ORIGINAL と書き換わらないように)。
+        */}
+        {promptAction?.isAvailable && (!isCatalogRevamp || isViewerResolved) ? (
           <div className="px-3 pt-3" onClick={stopCardNavigation}>
             <FeedSourceQuote
               /*
@@ -442,6 +456,9 @@ export function PostFeedCard({
                 出すと、すぐ上の投稿本体と同じものを繰り返すだけになる。
               */
               variant={promptAction.originPostId === post.id ? "root" : "derived"}
+              isViewerOriginAuthor={
+                !!currentUserId && promptAction.originAuthorId === currentUserId
+              }
               thumbnailUrl={promptAction.originThumbnailUrl}
               title={promptAction.originAuthorNickname || t("anonymousUser")}
               avatarUrl={promptAction.originAuthorAvatarUrl}
@@ -475,6 +492,22 @@ export function PostFeedCard({
               }
               usageCount={stylePresetLink?.usageCount ?? 0}
               isEnded={stylePresetLink?.isEnded ?? false}
+              /*
+                刷新後は User ORIGINAL と同じく「このカタログで生成する」を置き、
+                その場で生成シートを開く(公開中で会期内のスタイルだけ)。
+              */
+              action={
+                isCatalogRevamp &&
+                stylePresetLink?.slug &&
+                !stylePresetLink.isEnded ? (
+                  <UseStylePresetButton
+                    presetId={stylePresetLink.presetId}
+                    slug={stylePresetLink.slug}
+                    currentUserId={currentUserId ?? null}
+                    isViewerResolved={isViewerResolved}
+                  />
+                ) : undefined
+              }
             />
           </div>
         ) : null}

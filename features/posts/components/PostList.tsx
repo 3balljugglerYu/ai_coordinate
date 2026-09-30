@@ -1002,6 +1002,7 @@ export function PostList({
                   <PostFeedCard
                     post={post}
                     currentUserId={currentUserId}
+                    isViewerResolved={isUserResolved}
                     prioritizeImage={index < 2}
                     trackImpressions={trackImpressions}
                     isFollowingAuthor={
@@ -1043,6 +1044,7 @@ export function PostList({
                   <PostCard
                     post={post}
                     currentUserId={currentUserId}
+                    isViewerResolved={isUserResolved}
                     prioritizeImage={index < 2}
                     trackImpressions={trackImpressions}
                   />

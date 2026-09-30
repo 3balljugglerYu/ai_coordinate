@@ -53,6 +53,12 @@ jest.mock("@/features/posts/lib/home-view-events", () => ({
   trackFollowFromCard: jest.fn(),
 }));
 
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
+
 const AUTHOR_ID = "author-1";
 
 function buildSummary(overrides: Partial<PromptActionSummary> = {}): PromptActionSummary {
@@ -432,5 +438,50 @@ describe("FollowAndUsePromptButton", () => {
       />
     );
     expect(screen.queryByText("posts.sourcePromptUsageCount")).not.toBeInTheDocument();
+  });
+});
+
+/*
+  カタログ刷新後(公開前は運営だけ)は「このカタログで生成する」(2026-09-30 ユーザー決定)。
+  フォローが要るときの「フォローして生成する」は変えない。
+*/
+describe("FollowAndUsePromptButton の文言(カタログ刷新後)", () => {
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  test("生成できる人には「このカタログで生成する」", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <FollowAndUsePromptButton
+        summary={buildSummary()}
+        currentUserId="viewer-1"
+        isFollowingAuthor
+      />
+    );
+    expect(screen.getByText("posts.feedUseCatalog")).toBeTruthy();
+    expect(screen.queryByText("posts.feedUsePrompt")).toBeNull();
+  });
+
+  test("フォローが要る人には今までどおり「フォローして生成する」", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <FollowAndUsePromptButton
+        summary={buildSummary()}
+        currentUserId="viewer-1"
+        isFollowingAuthor={false}
+      />
+    );
+    expect(screen.getByText("posts.feedFollowAndUsePrompt")).toBeTruthy();
+  });
+
+  test("⭐一般の利用者には「このプロンプトで生成する」のまま", () => {
+    mockRevamp.mockReturnValue(false);
+    render(
+      <FollowAndUsePromptButton
+        summary={buildSummary()}
+        currentUserId="viewer-1"
+        isFollowingAuthor
+      />
+    );
+    expect(screen.getByText("posts.feedUsePrompt")).toBeTruthy();
   });
 });
