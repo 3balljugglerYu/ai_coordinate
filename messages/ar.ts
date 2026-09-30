@@ -121,7 +121,7 @@ export const arMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "من الدليل",
+    modeFromCatalog: "from CATALOG",
     copy: "نسخ",
     copied: "تم النسخ",
     followRequiredTitle: "المتابعة مطلوبة",

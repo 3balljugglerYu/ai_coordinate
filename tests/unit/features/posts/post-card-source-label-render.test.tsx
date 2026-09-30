@@ -161,7 +161,7 @@ describe("PostCard の完走投稿描画", () => {
 
 /*
   左下の生成方法ラベル(カタログ刷新後。公開前は運営だけ)。
-  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作った投稿は「カタログから生成」。
+  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作った投稿は「from CATALOG」。
   原本は、見ている人が投稿者本人なら My ORIGINAL、ほかの人には User ORIGINAL。
   右下の「元画像 ✔︎」は出さない(2026-09-30 ユーザー決定)。
 */
@@ -171,7 +171,7 @@ describe("PostCard の生成方法ラベル", () => {
   it.each([
     ["ペルスタのカタログのスタイル", makePost({ generation_type: "one_tap_style" })],
     ["ほかの人のカタログ", makePost({ generation_type: "free", source_post_id: "source-post-1" })],
-  ])("刷新後: %sで作った投稿は「カタログから生成」", (_label, post) => {
+  ])("刷新後: %sで作った投稿は「from CATALOG」", (_label, post) => {
     mockRevamp.mockReturnValue(true);
     render(<PostCard post={post} />);
 

@@ -121,7 +121,7 @@ export const koMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "카탈로그에서 생성",
+    modeFromCatalog: "from CATALOG",
     copy: "복사",
     copied: "복사됨",
     followRequiredTitle: "팔로우가 필요합니다",

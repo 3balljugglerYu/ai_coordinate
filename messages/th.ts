@@ -121,7 +121,7 @@ export const thMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "สร้างจากแคตตาล็อก",
+    modeFromCatalog: "from CATALOG",
     copy: "คัดลอก",
     copied: "คัดลอกแล้ว",
     followRequiredTitle: "ต้องติดตามก่อน",

@@ -121,7 +121,7 @@ export const idMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "Dari katalog",
+    modeFromCatalog: "from CATALOG",
     copy: "Salin",
     copied: "Tersalin",
     followRequiredTitle: "Perlu mengikuti",

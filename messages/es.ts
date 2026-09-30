@@ -121,7 +121,7 @@ export const esMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "Desde el catálogo",
+    modeFromCatalog: "from CATALOG",
     copy: "Copiar",
     copied: "Copiado",
     followRequiredTitle: "Necesitas seguir",

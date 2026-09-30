@@ -121,7 +121,7 @@ export const zhCnMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "从目录生成",
+    modeFromCatalog: "from CATALOG",
     copy: "复制",
     copied: "已复制",
     followRequiredTitle: "需要先关注",

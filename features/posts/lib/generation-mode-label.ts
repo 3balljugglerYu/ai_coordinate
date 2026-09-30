@@ -22,14 +22,14 @@ export type GenerationModeLabelKey =
  * ## カタログ刷新後(`isCatalogRevamp`。公開前は運営だけ)
  *
  * ⭐ **「ORIGINAL」は原本だけに付け、カタログの原本を使って作ったものは
- * 「カタログから生成」にする**(2026-09-30 ユーザー決定)。使っただけの投稿に
+ * 「from CATALOG」にする**(2026-09-30 ユーザー決定。My / User ORIGINAL にそろえて英語、全言語同一)。使っただけの投稿に
  * 「Persta ORIGINAL」と付けると、投稿者がそのオリジナルを作ったように見えるため。
  * 原本は、見ている人が作者本人なら「My ORIGINAL」、ほかの人には「User ORIGINAL」。
  *
  * | 生成 | ラベル |
  * |---|---|
- * | one_tap_style(ペルスタのカタログのスタイル) | カタログから生成 |
- * | free・元の投稿あり(ほかの人のカタログ) | カタログから生成 |
+ * | one_tap_style(ペルスタのカタログのスタイル) | from CATALOG |
+ * | free・元の投稿あり(ほかの人のカタログ) | from CATALOG |
  * | free・元の投稿なし(自分のプロンプト=原本)を本人が見る | My ORIGINAL |
  * | 同上をほかの人が見る | User ORIGINAL |
  * | coordinate 系 / inspire | 今のまま |

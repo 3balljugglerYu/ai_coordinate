@@ -121,7 +121,7 @@ export const deMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "Aus dem Katalog",
+    modeFromCatalog: "from CATALOG",
     copy: "Kopieren",
     copied: "Kopiert",
     followRequiredTitle: "Folgen erforderlich",
