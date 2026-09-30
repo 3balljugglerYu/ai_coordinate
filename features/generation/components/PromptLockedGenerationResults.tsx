@@ -30,8 +30,8 @@ const RECENT_LIMIT = 4;
 /**
  * カタログ刷新後(公開前は運営だけ)の1ページの件数。
  *
- * 刷新後は「開いたカタログで作ったもの」だけを並べ、下へ進むと続きを読み込む
- * (2026-09-30 ユーザー決定)。/style の一覧(4件ずつ)より多めにし、下端の
+ * 刷新後は、そのカタログ(Persta ORIGINAL / User ORIGINAL)で作ったもの全部を並べ、
+ * 下へ進むと続きを読み込む(2026-09-30 ユーザー決定)。/style の一覧(4件ずつ)より多めにし、下端の
  * {@link LOAD_MORE_ROOT_MARGIN} 手前から先読みして、待たされる感じを減らす。
  */
 const CATALOG_PAGE_SIZE = 8;
@@ -87,15 +87,9 @@ function toImageData(records: GeneratedImageRecord[]): GeneratedImageData[] {
  */
 export function PromptLockedGenerationResults({
   generationType = "free",
-  sourcePostId,
-  stylePresetId,
 }: {
   /** どの生成の一覧か。既定は Free Style(User ORIGINAL の生成シート)。 */
   generationType?: Extract<GenerationType, "free" | "one_tap_style">;
-  /** 刷新後: 開いたカタログ(User ORIGINAL の原作の投稿)で作ったものだけにする。 */
-  sourcePostId?: string;
-  /** 刷新後: 開いたカタログ(Persta ORIGINAL のスタイル)で作ったものだけにする。 */
-  stylePresetId?: string;
 } = {}) {
   const freeT = useTranslations("free");
   const styleT = useTranslations("style");
@@ -126,20 +120,22 @@ export function PromptLockedGenerationResults({
   const generatingCount = generationState?.generatingCount ?? 0;
 
   /*
-    刷新後は、開いたカタログで作ったものだけをページごとに読む。
+    刷新後は、そのカタログで作ったもの全部をページごとに読む(2026-09-30 ユーザー決定。
+    開いたスタイルや投稿だけには絞らない)。
+    - Persta ORIGINAL のシート: One-Tap Style の生成すべて(どのスタイルでも)
+    - User ORIGINAL のシート: みんなのカタログを使って作ったものすべて(source_post_id あり)。
+      自分でプロンプトを書いて作ったもの(CREATE の一覧に並ぶ)は入れない
     一般の利用者は今までどおり、その生成の種類の最新 RECENT_LIMIT 件だけ。
   */
   const pageSize = isCatalogRevamp ? CATALOG_PAGE_SIZE : RECENT_LIMIT;
-  const scopedSourcePostId = isCatalogRevamp ? sourcePostId : undefined;
-  const scopedStylePresetId = isCatalogRevamp ? stylePresetId : undefined;
+  const catalogDerivedOnly = isCatalogRevamp && generationType === "free";
 
   const fetchPage = useCallback(
     async (userId: string, offset: number) =>
       getGeneratedImages(userId, pageSize, offset, generationType, {
-        sourcePostId: scopedSourcePostId,
-        stylePresetId: scopedStylePresetId,
+        catalogDerivedOnly,
       }),
-    [pageSize, generationType, scopedSourcePostId, scopedStylePresetId]
+    [pageSize, generationType, catalogDerivedOnly]
   );
 
   /*

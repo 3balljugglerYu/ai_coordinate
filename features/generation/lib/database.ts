@@ -91,16 +91,11 @@ export async function getGeneratedImages(
   options?: {
     ownPromptsOnly?: boolean;
     /**
-     * ほかの人のカタログ(原作の投稿)で作ったものだけにする(`source_post_id`)。
-     * 「カタログから生成」のシート(User ORIGINAL)の一覧で使う。
+     * みんなのカタログ(User ORIGINAL)を使って作ったものだけにする(`source_post_id` あり)。
+     * 「カタログから生成」のシート(User ORIGINAL)の一覧で使う。`ownPromptsOnly` の逆
+     * (自分でプロンプトを書いて作った CREATE のぶんは入れない)。
      */
-    sourcePostId?: string;
-    /**
-     * ペルスタのカタログの1つのスタイルで作ったものだけにする
-     * (`generation_metadata.oneTapStyle.id`。直近の One-Tap Style 生成の98%に入っている)。
-     * 「カタログから生成」のシート(Persta ORIGINAL)の一覧で使う。
-     */
-    stylePresetId?: string;
+    catalogDerivedOnly?: boolean;
   }
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
@@ -117,11 +112,8 @@ export async function getGeneratedImages(
   if (options?.ownPromptsOnly) {
     query = query.is("source_post_id", null);
   }
-  if (options?.sourcePostId) {
-    query = query.eq("source_post_id", options.sourcePostId);
-  }
-  if (options?.stylePresetId) {
-    query = query.eq("generation_metadata->oneTapStyle->>id", options.stylePresetId);
+  if (options?.catalogDerivedOnly) {
+    query = query.not("source_post_id", "is", null);
   }
 
   const { data, error } = await query

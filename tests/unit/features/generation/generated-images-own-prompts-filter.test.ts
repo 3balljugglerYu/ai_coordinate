@@ -14,7 +14,7 @@ type Call = [method: string, ...args: unknown[]];
 /** 呼ばれたメソッドと引数を記録する PostgREST ビルダーの代わり。await すると空の結果を返す */
 function createRecordingBuilder(calls: Call[]) {
   const builder: Record<string, unknown> = {};
-  for (const method of ["select", "eq", "is", "order", "range"]) {
+  for (const method of ["select", "eq", "is", "not", "order", "range"]) {
     builder[method] = (...args: unknown[]) => {
       calls.push([method, ...args]);
       return builder;
@@ -89,35 +89,23 @@ describe("getGeneratedImages(続きの読み込み)", () => {
 
 
 /*
-  「カタログから生成」のシート(カタログ刷新後)の一覧: 開いたカタログで作ったものだけ。
+  「カタログから生成」のシート(カタログ刷新後)の一覧。
+  User ORIGINAL のシートは、みんなのカタログを使って作ったものすべて(source_post_id あり)。
+  開いたカタログ(投稿)には絞らない(2026-09-30 ユーザー決定)。
 */
-describe("getGeneratedImages(開いたカタログで絞る)", () => {
-  test("User ORIGINAL: 元の投稿(source_post_id)で絞る", async () => {
-    await getGeneratedImages("user-1", 8, 0, "free", { sourcePostId: "origin-1" });
+describe("getGeneratedImages(みんなのカタログを使って作ったものだけ)", () => {
+  test("source_post_id があるものだけにする(自分のプロンプトの CREATE のぶんは入れない)", async () => {
+    await getGeneratedImages("user-1", 8, 8, "free", { catalogDerivedOnly: true });
 
     expect(browserCalls).toContainEqual(["eq", "user_id", "user-1"]);
-    expect(browserCalls).toContainEqual(["eq", "source_post_id", "origin-1"]);
-    expect(browserCalls).toContainEqual(["range", 0, 7]);
-  });
-
-  test("Persta ORIGINAL: 生成時に記録したスタイルの id で絞る", async () => {
-    await getGeneratedImages("user-1", 8, 8, "one_tap_style", { stylePresetId: "preset-1" });
-
-    expect(browserCalls).toContainEqual(["eq", "generation_type", "one_tap_style"]);
-    expect(browserCalls).toContainEqual([
-      "eq",
-      "generation_metadata->oneTapStyle->>id",
-      "preset-1",
-    ]);
+    expect(browserCalls).toContainEqual(["eq", "generation_type", "free"]);
+    expect(browserCalls).toContainEqual(["not", "source_post_id", "is", null]);
     expect(browserCalls).toContainEqual(["range", 8, 15]);
   });
 
   test("指定しなければ絞らない", async () => {
     await getGeneratedImages("user-1", 4, 0, "free", {});
 
-    expect(browserCalls.some(([, column]) => column === "source_post_id")).toBe(false);
-    expect(
-      browserCalls.some(([, column]) => column === "generation_metadata->oneTapStyle->>id")
-    ).toBe(false);
+    expect(browserCalls.some(([method]) => method === "not")).toBe(false);
   });
 });
