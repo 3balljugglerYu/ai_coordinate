@@ -206,7 +206,7 @@ describe("過去のじゆうモード生成", () => {
         0,
         "free",
         // 一般の利用者はカタログで絞らない
-        { sourcePostId: undefined, stylePresetId: undefined }
+        { catalogDerivedOnly: false }
       );
     });
   });
@@ -235,7 +235,7 @@ describe("過去のじゆうモード生成", () => {
         0,
         "one_tap_style",
         // 一般の利用者はカタログで絞らない
-        { sourcePostId: undefined, stylePresetId: undefined }
+        { catalogDerivedOnly: false }
       );
     });
   });
@@ -280,9 +280,10 @@ describe("過去のじゆうモード生成", () => {
 
 /*
   カタログ刷新後(公開前は運営だけ)の「カタログから生成」のシート。
-  開いたカタログで作ったものだけを並べ、下へ進むと続きを読み込む(2026-09-30 ユーザー決定)。
+  そのカタログで作ったもの全部を並べ(開いたスタイルや投稿には絞らない)、
+  下へ進むと続きを読み込む(2026-09-30 ユーザー決定)。
 */
-describe("カタログ刷新後: 開いたカタログのぶんだけ、ページごとに読む", () => {
+describe("カタログ刷新後: そのカタログで作ったもの全部を、ページごとに読む", () => {
   function record(id: string) {
     return {
       id,
@@ -306,30 +307,23 @@ describe("カタログ刷新後: 開いたカタログのぶんだけ、ペー�
     mockInView = false;
   });
 
-  it("User ORIGINAL のシートは、元の投稿で作ったものだけを8件ずつ引く", async () => {
-    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+  it("User ORIGINAL のシートは、みんなのカタログを使って作ったもの全部を8件ずつ引く", async () => {
+    render(<PromptLockedGenerationResults />);
 
     await waitFor(() => {
       expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 8, 0, "free", {
-        sourcePostId: "origin-1",
-        stylePresetId: undefined,
+        catalogDerivedOnly: true,
       });
     });
   });
 
-  it("Persta ORIGINAL のシートは、そのスタイルで作ったものだけを引く", async () => {
-    render(
-      <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId="preset-1" />
-    );
+  it("Persta ORIGINAL のシートは、One-Tap Style の生成全部を引く(スタイルで絞らない)", async () => {
+    render(<PromptLockedGenerationResults generationType="one_tap_style" />);
 
     await waitFor(() => {
-      expect(getGeneratedImagesMock).toHaveBeenCalledWith(
-        "user-1",
-        8,
-        0,
-        "one_tap_style",
-        { sourcePostId: undefined, stylePresetId: "preset-1" }
-      );
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 8, 0, "one_tap_style", {
+        catalogDerivedOnly: false,
+      });
     });
   });
 
@@ -338,21 +332,20 @@ describe("カタログ刷新後: 開いたカタログのぶんだけ、ペー�
       .mockResolvedValueOnce(page("first", 8))
       .mockResolvedValueOnce(page("second", 3));
 
-    const { rerender } = render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    const { rerender } = render(<PromptLockedGenerationResults />);
     await waitFor(() => {
       expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("8");
     });
     expect(screen.getByTestId("prompt-locked-results-more")).toBeTruthy();
 
     mockInView = true;
-    rerender(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    rerender(<PromptLockedGenerationResults />);
 
     await waitFor(() => {
       expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("11");
     });
     expect(getGeneratedImagesMock).toHaveBeenLastCalledWith("user-1", 8, 8, "free", {
-      sourcePostId: "origin-1",
-      stylePresetId: undefined,
+      catalogDerivedOnly: true,
     });
     // 8件に満たなければ、それで終わり(目印を消す)
     expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
@@ -361,7 +354,7 @@ describe("カタログ刷新後: 開いたカタログのぶんだけ、ペー�
   it("1ページに満たなければ、続きの目印を置かない", async () => {
     getGeneratedImagesMock.mockResolvedValueOnce(page("only", 5));
 
-    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    render(<PromptLockedGenerationResults />);
 
     await waitFor(() => {
       expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("5");
@@ -374,13 +367,13 @@ describe("カタログ刷新後: 開いたカタログのぶんだけ、ペー�
       .mockResolvedValueOnce(page("first", 8))
       .mockRejectedValueOnce(new Error("network"));
 
-    const { rerender } = render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    const { rerender } = render(<PromptLockedGenerationResults />);
     await waitFor(() => {
       expect(screen.getByTestId("prompt-locked-results-more")).toBeTruthy();
     });
 
     mockInView = true;
-    rerender(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    rerender(<PromptLockedGenerationResults />);
 
     await waitFor(() => {
       expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
@@ -392,14 +385,13 @@ describe("カタログ刷新後: 開いたカタログのぶんだけ、ペー�
     mockRevamp.mockReturnValue(false);
     getGeneratedImagesMock.mockResolvedValueOnce(page("recent", 4));
 
-    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    render(<PromptLockedGenerationResults />);
 
     await waitFor(() => {
       expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("4");
     });
     expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 4, 0, "free", {
-      sourcePostId: undefined,
-      stylePresetId: undefined,
+      catalogDerivedOnly: false,
     });
     expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
   });
@@ -423,7 +415,7 @@ describe("カタログ刷新後: グリッドとリストの切り替え", () =>
   });
 
   it("切り替えのボタンを出し、リストを選ぶとリスト表示にして覚える", () => {
-    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    render(<PromptLockedGenerationResults />);
 
     expect(screen.getByTestId("gallery")).toBeTruthy();
     const buttons = screen.getAllByRole("button");
@@ -439,7 +431,7 @@ describe("カタログ刷新後: グリッドとリストの切り替え", () =>
   it("前に選んだ表示(リスト)で開く", () => {
     window.localStorage.setItem(STORAGE_KEY, "list");
 
-    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    render(<PromptLockedGenerationResults />);
 
     expect(screen.getByTestId("list")).toBeTruthy();
   });
@@ -447,7 +439,7 @@ describe("カタログ刷新後: グリッドとリストの切り替え", () =>
   it("User ORIGINAL のシートの「このイラストで生成」は、シートの中のフォームへ渡す", () => {
     window.localStorage.setItem(STORAGE_KEY, "list");
 
-    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    render(<PromptLockedGenerationResults />);
 
     expect(listSpy).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -463,7 +455,7 @@ describe("カタログ刷新後: グリッドとリストの切り替え", () =>
     window.localStorage.setItem(STORAGE_KEY, "list");
 
     render(
-      <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId="preset-1" />
+      <PromptLockedGenerationResults generationType="one_tap_style" />
     );
 
     expect(listSpy).toHaveBeenLastCalledWith(
