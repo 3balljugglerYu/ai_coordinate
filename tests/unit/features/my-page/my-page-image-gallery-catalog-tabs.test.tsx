@@ -170,6 +170,116 @@ describe("マイページの生成画像一覧: カタログのタブ", () => {
     expect(await screen.findByText("emptyCatalogImagesTitle")).toBeTruthy();
     expect(screen.getByText("emptyImagesDescriptionUserOriginal")).toBeTruthy();
   });
+
+  describe("一覧を横に払って隣のカタログへ移る", () => {
+    /** 一覧の上で、指を startX から endX まで横に動かして離す */
+    function swipeHorizontally(target: Element, startX: number, endX: number) {
+      const send = (
+        type: "touchstart" | "touchmove" | "touchend",
+        x: number,
+        timeStamp: number,
+      ) => {
+        const event = new Event(type, { bubbles: true, cancelable: true });
+        const touches = [{ identifier: 0, clientX: x, clientY: 300 }];
+        Object.defineProperty(event, "touches", {
+          value: type === "touchend" ? [] : touches,
+        });
+        Object.defineProperty(event, "changedTouches", { value: touches });
+        Object.defineProperty(event, "timeStamp", { value: timeStamp });
+        act(() => {
+          target.dispatchEvent(event);
+        });
+      };
+      send("touchstart", startX, 1000);
+      for (let i = 1; i <= 8; i += 1) {
+        send("touchmove", startX + ((endX - startX) * i) / 8, 1000 + i * 50);
+      }
+      send("touchend", endX, 1400);
+    }
+
+    const originalMatchMedia = window.matchMedia;
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
+    /** 指で操作する端末にする(隣のカタログの一覧を先に読む) */
+    function useTouchDevice() {
+      window.matchMedia = ((query: string) => ({
+        matches: query === "(pointer: coarse)",
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      })) as unknown as typeof window.matchMedia;
+    }
+
+    test("公開前・一般の利用者: 払って切り替える仕組みを出さない", () => {
+      render(
+        <UserStylesAvailabilityProvider>
+          <MyPageImageGalleryClient initialImages={INITIAL_IMAGES} />
+        </UserStylesAvailabilityProvider>,
+      );
+
+      expect(screen.queryByTestId("catalog-swipe-panel")).toBeNull();
+      expect(screen.getAllByTestId("my-image-card")).toHaveLength(2);
+    });
+
+    test("公開後: 左へ払うと次のカタログ(My Catalog)へ移り、サーバーで絞り込む", async () => {
+      process.env.NEXT_PUBLIC_USER_STYLES_ENABLED = "true";
+      fetchMock.mockImplementation(async () => mockFetchResponse([{ id: "mine-1" }]));
+
+      render(
+        <UserStylesAvailabilityProvider>
+          <MyPageImageGalleryClient initialImages={INITIAL_IMAGES} />
+        </UserStylesAvailabilityProvider>,
+      );
+
+      swipeHorizontally(screen.getByTestId("catalog-swipe-panel"), 600, 400);
+
+      expect(
+        screen
+          .getByRole("tab", { name: "imageCatalogMyCatalog" })
+          .getAttribute("aria-selected"),
+      ).toBe("true");
+      await waitFor(() =>
+        expect(fetchMock.mock.calls[0][0]).toBe(
+          "/api/my-page/images?filter=all&limit=20&offset=0&catalog=my_catalog",
+        ),
+      );
+      expect(await screen.findByText("mine-1")).toBeTruthy();
+    });
+
+    test("公開後・指で操作する端末: 隣のカタログの先頭を先に読み、払ったらそのまま今の一覧にする", async () => {
+      process.env.NEXT_PUBLIC_USER_STYLES_ENABLED = "true";
+      useTouchDevice();
+      fetchMock.mockImplementation(async () => mockFetchResponse([{ id: "mine-1" }]));
+
+      render(
+        <UserStylesAvailabilityProvider>
+          <MyPageImageGalleryClient initialImages={INITIAL_IMAGES} />
+        </UserStylesAvailabilityProvider>,
+      );
+
+      // 「全カタログ」の隣(My Catalog)だけを、今のタブ(すべて)で読む
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+      expect(fetchMock.mock.calls[0][0]).toBe(
+        "/api/my-page/images?filter=all&limit=20&offset=0&catalog=my_catalog",
+      );
+      // 払う前から、隣に見本として置いてある
+      const peek = await screen.findByTestId("catalog-swipe-peek-next");
+      await waitFor(() => expect(peek.textContent).toContain("mine-1"));
+
+      swipeHorizontally(screen.getByTestId("catalog-swipe-panel"), 600, 400);
+
+      expect(screen.getByTestId("catalog-swipe-current").textContent).toContain(
+        "mine-1",
+      );
+      // 移った先の隣(Persta ORIGINAL)を読むが、My Catalog は読み直さない
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+      expect(fetchMock.mock.calls[1][0]).toBe(
+        "/api/my-page/images?filter=all&limit=20&offset=0&catalog=persta_original",
+      );
+    });
+  });
 });
 
 /*
@@ -212,4 +322,5 @@ describe("マイページの生成画像一覧: 読み込みに失敗したと�
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByTestId("my-images-load-failed")).toBeNull();
   });
+
 });

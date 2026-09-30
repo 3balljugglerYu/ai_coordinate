@@ -18,6 +18,10 @@ import {
   CatalogTabBar,
   type CatalogTab,
 } from "@/features/style-presets/components/CatalogTabBar";
+import {
+  CatalogSwipePanel,
+  type CatalogTabMode,
+} from "@/features/style-presets/components/CatalogSwipePanel";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { MyImageCatalog } from "@/features/my-page/lib/my-image-catalog";
 
@@ -57,6 +61,18 @@ const EMPTY_LIST: ListState = {
   hasLoaded: false,
   loadFailed: false,
 };
+
+/** 横スワイプ中に隣に見せる、隣のカタログの一覧の先頭の枚数(2列で画面を埋める分) */
+const PEEK_IMAGE_COUNT = 8;
+
+/** 指で操作する端末か(PC では隣のカタログの一覧を先に読まない。CatalogSwipePanel と同じ判定) */
+function isTouchDevice(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
 
 /**
  * カタログのタブの並び(全カタログ / My Catalog / Persta ORIGINAL / User ORIGINAL)と、
@@ -105,6 +121,10 @@ const CATALOG_TABS: {
  * どのカタログで作ったかのタブ(`/styles` の「すべて・お気に入り・人気」と同じ
  * `CatalogTabBar`)を出し、2つを組み合わせて絞り込む。絞り込みはサーバーで行う
  * (`my-image-catalog.ts`)。一般の利用者はカタログが常に "all" で、これまでと同じ。
+ *
+ * 刷新後は、一覧を横に払って隣のカタログへ移れる(`/styles` と同じ `CatalogSwipePanel`)。
+ * 払っている間に隣のカタログの一覧の先頭を見せるため、指で操作する端末では
+ * 今のタブ(すべて / 投稿済み / 未投稿)での隣のカタログの最初の20件を先に読んでおく。
  */
 export function MyPageImageGalleryClient({
   initialImages,
@@ -300,6 +320,33 @@ export function MyPageImageGalleryClient({
     }));
   }, [currentKey, defaultList]);
 
+  // 今のタブでの、隣のカタログの組み合わせ(横スワイプで移る先)
+  const neighborKeys = useMemo(() => {
+    const index = CATALOG_TABS.findIndex((tab) => tab.id === catalog);
+    return [index - 1, index + 1]
+      .filter((i) => i >= 0 && i < CATALOG_TABS.length)
+      .map((i): ListKey => `${filter}:${CATALOG_TABS[i].id}`);
+  }, [filter, catalog]);
+
+  // 指で操作する端末では、今の一覧を読んだあとで隣のカタログの先頭も読んでおく
+  // (払い始めたときに、隣の一覧がもう見えているように)
+  useEffect(() => {
+    if (!isCatalogRevamp || !currentList.hasLoaded || !isTouchDevice()) return;
+    for (const key of neighborKeys) {
+      const state = lists[key] ?? defaultList(key);
+      if (!state.hasLoaded && !state.isLoading && !state.loadFailed) {
+        loadNext(key);
+      }
+    }
+  }, [
+    isCatalogRevamp,
+    currentList.hasLoaded,
+    neighborKeys,
+    lists,
+    defaultList,
+    loadNext,
+  ]);
+
   // タブ・カタログの切り替え時に選択状態をリセット
   const handleFilterChange = useCallback((next: ImageFilter) => {
     setFilter(next);
@@ -442,6 +489,16 @@ export function MyPageImageGalleryClient({
     }
   }, [selectedIds, t, toast]);
 
+  /** 組み合わせの一覧に出す画像(削除済みを除く)。隣のカタログの見本にも使う */
+  const imagesForKey = (key: ListKey): GeneratedImageRecord[] => {
+    const list = lists[key] ?? defaultList(key);
+    const raw =
+      key === INITIAL_LIST_KEY ? [...initialImages, ...list.images] : list.images;
+    return deletedIds.size === 0
+      ? raw
+      : raw.filter((img) => img.id == null || !deletedIds.has(img.id));
+  };
+
   // 表示対象の画像をレンダー時に算出（rerender-derived-state-no-effect）
   const rawDisplayImages = useMemo(
     () =>
@@ -469,8 +526,72 @@ export function MyPageImageGalleryClient({
     id: tab.id,
     label: t(tab.labelKey),
   }));
-  const activeCatalogTab =
-    CATALOG_TABS.find((tab) => tab.id === catalog) ?? CATALOG_TABS[0];
+  const catalogTabFor = (id: MyImageCatalog) =>
+    CATALOG_TABS.find((tab) => tab.id === id) ?? CATALOG_TABS[0];
+
+  /** 空のときの見出しと案内(刷新後はカタログに合わせる) */
+  const emptyCopyFor = (id: MyImageCatalog) => ({
+    emptyTitle:
+      isCatalogRevamp && id !== "all" ? t("emptyCatalogImagesTitle") : undefined,
+    emptyDescription: isCatalogRevamp
+      ? t(catalogTabFor(id).emptyDescriptionKey)
+      : undefined,
+  });
+
+  /**
+   * カタログの一覧を描く。page は今のカタログの一覧(全部・続きの読み込みと選択あり)、
+   * peek は横スワイプ中に隣に見せる先頭部分(操作なし)。
+   * ⭐ peek から page に変わっても作り直されないよう、同じ形(同じ並び・同じ key)で描く
+   * (CatalogSwipePanel)。形を変えると、表示済みの画像が一瞬消える。
+   */
+  const renderList = (id: MyImageCatalog, mode: CatalogTabMode) => {
+    const isPage = mode === "page";
+    const key: ListKey = `${filter}:${id}`;
+    const list = isPage ? currentList : (lists[key] ?? defaultList(key));
+    const images = isPage ? displayImages : imagesForKey(key);
+    const loading = isPage ? isInitialLoading : !list.hasLoaded;
+    return (
+      <>
+        {loading ? (
+          <UserProfilePostsLoadMoreSkeleton />
+        ) : list.loadFailed && images.length === 0 ? null : (
+          <MyImageGallery
+            images={isPage ? images : images.slice(0, PEEK_IMAGE_COUNT)}
+            currentUserId={currentUserId}
+            imageLoading={isPage ? undefined : "eager"}
+            loadMoreRef={isPage ? ref : undefined}
+            isLoadingMore={isPage && isLoadingMore}
+            hasMore={isPage && hasMore}
+            selectionMode={isPage && selectionMode}
+            selectedIds={selectedIds}
+            pendingDeletionIds={pendingDeletionIds}
+            onToggleSelect={isPage ? handleToggleSelect : undefined}
+            onLongPressEnterSelection={
+              isPage && isUnpostedTab ? handleLongPressEnterSelection : undefined
+            }
+            {...emptyCopyFor(id)}
+          />
+        )}
+
+        {/*
+          読み込みに失敗したとき。1枚も無ければ「まだ画像がありません」と取り違えないよう
+          空の案内の代わりに出し、続きの読み込みで失敗したときは一覧の下に出す。
+        */}
+        {isPage && list.loadFailed ? (
+          <div
+            className="flex flex-col items-center gap-3 py-8"
+            role="alert"
+            data-testid="my-images-load-failed"
+          >
+            <p className="text-sm text-gray-500">{t("imageLoadFailed")}</p>
+            <Button variant="outline" size="sm" onClick={retryCurrentList}>
+              {t("imageLoadRetry")}
+            </Button>
+          </div>
+        ) : null}
+      </>
+    );
+  };
 
   const selectedCount = selectedIds.size;
 
@@ -547,49 +668,17 @@ export function MyPageImageGalleryClient({
         </div>
       )}
 
-      {isInitialLoading ? (
-        <UserProfilePostsLoadMoreSkeleton />
-      ) : currentList.loadFailed && displayImages.length === 0 ? null : (
-        <MyImageGallery
-          images={displayImages}
-          currentUserId={currentUserId}
-          loadMoreRef={ref}
-          isLoadingMore={isLoadingMore}
-          hasMore={hasMore}
-          selectionMode={selectionMode}
-          selectedIds={selectedIds}
-          pendingDeletionIds={pendingDeletionIds}
-          onToggleSelect={handleToggleSelect}
-          onLongPressEnterSelection={
-            isUnpostedTab ? handleLongPressEnterSelection : undefined
-          }
-          emptyTitle={
-            isCatalogRevamp && catalog !== "all"
-              ? t("emptyCatalogImagesTitle")
-              : undefined
-          }
-          emptyDescription={
-            isCatalogRevamp ? t(activeCatalogTab.emptyDescriptionKey) : undefined
-          }
+      {/* 刷新後は、一覧を横に払って隣のカタログへ移れる。刷新前はこれまでの一覧のまま */}
+      {isCatalogRevamp ? (
+        <CatalogSwipePanel
+          tabKeys={CATALOG_TABS.map((tab) => tab.id)}
+          activeKey={catalog}
+          onSwipeTo={handleCatalogChange}
+          renderTab={renderList}
         />
+      ) : (
+        renderList(catalog, "page")
       )}
-
-      {/*
-        読み込みに失敗したとき。1枚も無ければ「まだ画像がありません」と取り違えないよう
-        空の案内の代わりに出し、続きの読み込みで失敗したときは一覧の下に出す。
-      */}
-      {currentList.loadFailed ? (
-        <div
-          className="flex flex-col items-center gap-3 py-8"
-          role="alert"
-          data-testid="my-images-load-failed"
-        >
-          <p className="text-sm text-gray-500">{t("imageLoadFailed")}</p>
-          <Button variant="outline" size="sm" onClick={retryCurrentList}>
-            {t("imageLoadRetry")}
-          </Button>
-        </div>
-      ) : null}
 
       <BulkDeleteConfirmDialog
         open={confirmOpen}

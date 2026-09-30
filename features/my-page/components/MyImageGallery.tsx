@@ -27,6 +27,8 @@ interface MyImageGalleryProps {
   emptyTitle?: string;
   /** 空のときの案内。省略時は `myPage.emptyImagesDescription` */
   emptyDescription?: string;
+  /** カードの画像の読み込み方(横スワイプで隣に見せる一覧は "eager") */
+  imageLoading?: "eager" | "lazy";
 }
 
 export function MyImageGallery({
@@ -42,6 +44,7 @@ export function MyImageGallery({
   onLongPressEnterSelection,
   emptyTitle,
   emptyDescription,
+  imageLoading,
 }: MyImageGalleryProps) {
   const t = useTranslations("myPage");
   if (images.length === 0) {
@@ -78,6 +81,7 @@ export function MyImageGallery({
               <MyImageCard
                 image={image}
                 currentUserId={currentUserId}
+                imageLoading={imageLoading}
                 selectionMode={selectionMode}
                 selected={
                   imageId != null && (selectedIds?.has(imageId) ?? false)
