@@ -17,7 +17,7 @@ import {
 } from "../lib/utils";
 import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
-import { getCardGenerationModeLabelKey } from "../lib/generation-mode-label";
+import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
@@ -36,6 +36,12 @@ interface PostCardProps {
    * 混入を防ぐため既定 false(docs/planning/post-impressions-implementation-plan.md)。
    */
   trackImpressions?: boolean;
+  /**
+   * 見ている人(currentUserId)が確定したか。ホームの一覧はページを開いたあとに
+   * ブラウザで確かめるので、確定するまでは「自分の投稿か」で変わる表示
+   * (My ORIGINAL)を出さずに待つ。サーバーで確定した値を渡す画面は既定の true のまま。
+   */
+  isViewerResolved?: boolean;
 }
 
 export function PostCard({
@@ -43,6 +49,7 @@ export function PostCard({
   currentUserId,
   prioritizeImage = false,
   trackImpressions = false,
+  isViewerResolved = true,
 }: PostCardProps) {
   const t = useTranslations("posts");
   const locale = useLocale() as Locale;
@@ -73,9 +80,11 @@ export function PostCard({
   // カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に User ORIGINAL を出し、
   // 使って作った投稿には出さない(出どころは引用元カードが示す)。
   const isCatalogRevamp = useStylesCatalogRevamp();
-  const generationModeLabelKey = getCardGenerationModeLabelKey(post.generation_type, {
+  const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type, {
     sourcePostId: post.source_post_id,
     isCatalogRevamp,
+    isViewerResolved,
+    isViewerAuthor: !!currentUserId && currentUserId === post.user_id,
   });
   // 生成元画像が実際に表示できる投稿かどうか（右下ラベルの表示判定）
   const hasBeforeImage = getPostBeforeImageUrl(post) !== null;
@@ -130,26 +139,19 @@ export function PostCard({
         </div>
       ) : null}
       {/*
-        カタログ刷新後(公開前は運営だけ)の名前(User ORIGINAL)は従来より長い。
-        左下と右下を1つの行に並べ、入りきらないときは左下を折り返す。
-        それぞれを角に重ねる従来の形では、幅 320px で右下と重なった。
+        カタログ刷新後(公開前は運営だけ)は、左下のラベルだけを出す。
+        ⭐ 右下の「元画像 ✔︎」は出さない(2026-09-30 ユーザー決定)。生成前の画像は詳細で
+        見られる。ラベルはカードの幅まで使い、入りきらないときは折り返す。
         一般の利用者は下の従来の形のまま。
       */}
-      {isCatalogRevamp && (generationModeLabelKey || hasBeforeImage) ? (
+      {isCatalogRevamp && generationModeLabelKey ? (
         <div
           className="absolute inset-x-2 bottom-2 z-10 flex items-end gap-1"
           data-testid="post-card-corner-row"
         >
-          {generationModeLabelKey ? (
-            <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
-              {t(generationModeLabelKey)}
-            </span>
-          ) : null}
-          {hasBeforeImage ? (
-            <span className="ml-auto shrink-0 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
-              {t("sourceImageLabel")}
-            </span>
-          ) : null}
+          <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+            {t(generationModeLabelKey)}
+          </span>
         </div>
       ) : null}
       {/* 生成モードラベル(左下)。coordinate系/one_tap_style/inspire/free を表示。

@@ -160,81 +160,86 @@ describe("PostCard の完走投稿描画", () => {
 });
 
 /*
-  左下の生成方法ラベル。カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に
-  User ORIGINAL を出し、使って作った投稿(ペルスタのスタイル・ほかの人のプロンプト)には出さない。
-  出どころは画像の下の引用元カードが示す(2026-09-30 ユーザー決定)。
+  左下の生成方法ラベル(カタログ刷新後。公開前は運営だけ)。
+  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作った投稿は「カタログから生成」。
+  原本は、見ている人が投稿者本人なら My ORIGINAL、ほかの人には User ORIGINAL。
+  右下の「元画像 ✔︎」は出さない(2026-09-30 ユーザー決定)。
 */
 describe("PostCard の生成方法ラベル", () => {
   afterEach(() => mockRevamp.mockReturnValue(false));
 
-  it("刷新後: 自分のプロンプトで作った投稿は User ORIGINAL を出す", () => {
+  it.each([
+    ["ペルスタのカタログのスタイル", makePost({ generation_type: "one_tap_style" })],
+    ["ほかの人のカタログ", makePost({ generation_type: "free", source_post_id: "source-post-1" })],
+  ])("刷新後: %sで作った投稿は「カタログから生成」", (_label, post) => {
     mockRevamp.mockReturnValue(true);
-    const post = makePost({ generation_type: "free", source_post_id: null });
     render(<PostCard post={post} />);
 
-    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
+    expect(screen.getByText("modeFromCatalog")).toBeTruthy();
+    expect(screen.queryByText("modeOneTapStyle")).toBeNull();
     expect(screen.queryByText("modeFree")).toBeNull();
   });
 
-  it.each([
-    ["ペルスタのスタイル", makePost({ generation_type: "one_tap_style" })],
-    ["ほかの人のプロンプト", makePost({ generation_type: "free", source_post_id: "source-post-1" })],
-  ])("刷新後: %sで作った投稿には画像の上のラベルを出さない", (_label, post) => {
+  it("刷新後: 原本(自分のプロンプト)は、投稿者本人には My ORIGINAL", () => {
     mockRevamp.mockReturnValue(true);
-    render(<PostCard post={post} />);
+    render(
+      <PostCard
+        post={makePost({ generation_type: "free", source_post_id: null })}
+        currentUserId="user-1"
+      />
+    );
 
-    for (const key of [
-      "modeWithPerstaOriginal",
-      "modeWithUserOriginal",
-      "modeOneTapStyle",
-      "modeFree",
-    ]) {
-      expect(screen.queryByText(key)).toBeNull();
-    }
+    expect(screen.getByText("modeMyOriginal")).toBeTruthy();
+    expect(screen.queryByText("modeUserOriginal")).toBeNull();
   });
 
-  it("刷新後も Coordinate のラベルは出す", () => {
+  it("刷新後: 原本(自分のプロンプト)は、ほかの人と未ログインには User ORIGINAL", () => {
     mockRevamp.mockReturnValue(true);
-    const post = makePost({ generation_type: "coordinate" });
-    render(<PostCard post={post} />);
+    const post = makePost({ generation_type: "free", source_post_id: null });
+    const { unmount } = render(<PostCard post={post} currentUserId="someone-else" />);
+    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
+    unmount();
 
-    expect(screen.getByText("modeCoordinate")).toBeTruthy();
+    render(<PostCard post={post} currentUserId={null} />);
+    expect(screen.getByText("modeUserOriginal")).toBeTruthy();
   });
 
-  /*
-    刷新後の名前(User ORIGINAL)は従来より長く、角に重ねる従来の形では幅 320px で
-    右下の「元画像 ✔︎」と重なった。1つの行に並べ、入りきらないときは左下が折り返す。
-  */
-  it("刷新後は、左下のラベルと右下の元画像を1つの行に並べる", () => {
+  it("⭐刷新後: 見ている人が確定するまで、原本のラベルは出さない(User → My と書き換わらない)", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <PostCard
+        post={makePost({ generation_type: "free", source_post_id: null })}
+        currentUserId={null}
+        isViewerResolved={false}
+      />
+    );
+
+    expect(screen.queryByText("modeUserOriginal")).toBeNull();
+    expect(screen.queryByText("modeMyOriginal")).toBeNull();
+  });
+
+  it("刷新後: 右下の「元画像 ✔︎」は出さない。左下のラベルはカードの幅の行に置く", () => {
     mockRevamp.mockReturnValue(true);
     render(
       <PostCard
         post={makePost({
-          generation_type: "free",
+          generation_type: "one_tap_style",
           pre_generation_storage_path: SOURCE_PATH,
           show_before_image: true,
         })}
       />
     );
 
+    expect(screen.queryByText("sourceImageLabel")).toBeNull();
     const row = screen.getByTestId("post-card-corner-row");
-    expect(within(row).getByText("modeUserOriginal")).toBeTruthy();
-    const source = within(row).getByText("sourceImageLabel");
-    // 右下は縮めず右端へ寄せる(左下の方が折り返す)
-    expect(source.className).toContain("shrink-0");
-    expect(source.className).toContain("ml-auto");
-    expect(screen.getAllByText("sourceImageLabel")).toHaveLength(1);
+    expect(within(row).getByText("modeFromCatalog")).toBeTruthy();
   });
 
-  it("刷新後も、元画像が無い投稿には右下を出さない", () => {
+  it("刷新後も Coordinate のラベルは出す", () => {
     mockRevamp.mockReturnValue(true);
-    render(
-      <PostCard post={makePost({ generation_type: "free", pre_generation_storage_path: null })} />
-    );
+    render(<PostCard post={makePost({ generation_type: "coordinate" })} />);
 
-    const row = screen.getByTestId("post-card-corner-row");
-    expect(within(row).getByText("modeUserOriginal")).toBeTruthy();
-    expect(screen.queryByText("sourceImageLabel")).toBeNull();
+    expect(screen.getByText("modeCoordinate")).toBeTruthy();
   });
 
   it("一般の利用者は従来どおり、左下と右下を別々に角へ重ねる(行を作らない)", () => {
@@ -261,6 +266,6 @@ describe("PostCard の生成方法ラベル", () => {
     );
 
     expect(screen.getByText("modeFree")).toBeTruthy();
-    expect(screen.queryByText("modeWithUserOriginal")).toBeNull();
+    expect(screen.queryByText("modeFromCatalog")).toBeNull();
   });
 });

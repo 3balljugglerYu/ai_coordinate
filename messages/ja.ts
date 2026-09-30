@@ -116,10 +116,12 @@ export const jaMessages = {
     modeOneTapStyle: "One-Tap Style",
     modeInspire: "Creator Style",
     modeFree: "Free Style",
-    // カタログ刷新後(公開前は運営だけ)のラベル。作った本人のものは「〜 ORIGINAL」、それを使って作ったものは「with 〜」。with 〜 は投稿の詳細の行だけで使い、画像の上には出さない。全言語同一(features/posts/lib/generation-mode-label.ts)
-    modeWithPerstaOriginal: "with Persta ORIGINAL",
-    modeWithUserOriginal: "with User ORIGINAL",
+    // カタログ刷新後(公開前は運営だけ)の原本のラベル。全言語同一(features/posts/lib/generation-mode-label.ts)
     modeUserOriginal: "User ORIGINAL",
+    // 自分のプロンプトの投稿を、作った本人が見たときの名前(ほかの人には User ORIGINAL)。全言語同一
+    modeMyOriginal: "My ORIGINAL",
+    // カタログ刷新後、カタログの原本(Persta ORIGINAL / User ORIGINAL)を使って作った投稿のラベル。各言語に訳す
+    modeFromCatalog: "カタログから生成",
     copy: "コピー",
     copied: "コピー済み",
     followRequiredTitle: "フォローが必要です",
@@ -153,8 +155,13 @@ export const jaMessages = {
     feedExpandImage: "画像を拡大表示",
     feedComments: "コメント",
     feedUsePrompt: "このプロンプトで生成する",
+    // カタログ刷新後の feedUsePrompt(一般の利用者は feedUsePrompt のまま)
+    feedUseCatalog: "このカタログで生成する",
     feedFollowAndUsePrompt: "フォローして生成する",
     feedQuotePromptCreator: "プロンプト作成者",
+    // カタログ刷新後の feedQuotePromptCreator / sourcePromptUsageCount(一般の利用者は今のまま)
+    feedQuoteCatalogCreator: "カタログ作成者",
+    sourceCatalogUsageCount: "このカタログが{count}回以上利用されました",
     feedQuoteDerivedTitle: "ORIGINAL",
     feedQuoteStyleTitle: "Persta.AI ORIGINAL",
     feedQuoteEndedNote: "この企画は終了しました",
@@ -1430,8 +1437,8 @@ export const jaMessages = {
     tabLabel: "Free Style",
     pageTitle: "Free Style",
     pageDescription: "画像をアップロードして、自由な指示で思いのままに。着せ替えはもちろん、ポーズ・背景・シーンごと自在に作れます。",
-    // カタログ刷新後(公開前は運営だけ)の生成シート(User ORIGINAL のプロンプトで作る)の見出しと説明。一般の利用者は pageTitle / pageDescription のまま
-    catalogSheetTitle: "User ORIGINAL でつくる",
+    // カタログ刷新後(公開前は運営だけ)の生成シート(User ORIGINAL のプロンプトで作る)の見出しと説明。見出しは Persta ORIGINAL のシートと共通の「カタログから生成」(2026-09-30)。一般の利用者は pageTitle / pageDescription のまま
+    catalogSheetTitle: "カタログから生成",
     catalogSheetDescription: "このプロンプトで、あなたの画像からつくります。",
     aspectSectionTitle: "画像の比率",
     aspectAuto: "自動",
@@ -1456,8 +1463,8 @@ export const jaMessages = {
     pageTitle: "One-Tap Style",
     pageDescription:
       "プロンプト不要！好きなスタイルを選択するだけで、そのスタイルに変身！！",
-    // カタログ刷新後(公開前は運営だけ)の生成シート(Persta ORIGINAL のスタイルで作る)の見出し。説明は pageDescription のまま(スタイルを選ぶだけ、はシートでも合っている)
-    catalogSheetTitle: "Persta ORIGINAL でつくる",
+    // カタログ刷新後(公開前は運営だけ)の生成シート(Persta ORIGINAL のスタイルで作る)の見出し。User ORIGINAL のシートと共通の「カタログから生成」。説明は pageDescription のまま(スタイルを選ぶだけ、はシートでも合っている)
+    catalogSheetTitle: "カタログから生成",
     totalGenerationCount: "これまでに生成された枚数 {count} 枚！",
     sectionTitle: "スタイル選択",
     sectionDescription: "着せ替えたいスタイルを選択してください。",

@@ -69,9 +69,9 @@ export function preloadPercoinIcon() {
  * ## カタログ刷新後(公開前は運営だけ)
  *
  * 刷新後は Free Style / One-Tap Style という名前が画面から消え、カタログのタブ
- * (Persta ORIGINAL / User ORIGINAL)で呼ぶ。見出しは「User ORIGINAL でつくる」
- * 「Persta ORIGINAL でつくる」にする(2026-09-29 ユーザー決定)。これから使って作る
- * 画面だと分かるように「でつくる」を付ける。
+ * (Persta ORIGINAL / User ORIGINAL)で呼ぶ。見出しはどちらのシートも共通の
+ * 「カタログから生成」にする(2026-09-30 ユーザー決定)。ホームのボタン
+ * (このカタログで生成する)と、使って作った投稿のラベル(カタログから生成)にそろえる。
  *
  * User ORIGINAL の説明は、Free Style の説明(「自由な指示で思いのままに」)が
  * プロンプトを変えられないこのシートと食い違うので、「このプロンプトで、あなたの
