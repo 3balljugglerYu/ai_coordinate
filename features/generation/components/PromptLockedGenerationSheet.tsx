@@ -213,7 +213,7 @@ export function PromptLockedGenerationSheet({
                 {form}
               </div>
               <div className="w-1/2 overflow-y-auto border-l pl-6">
-                <PromptLockedGenerationResults />
+                <PromptLockedGenerationResults sourcePostId={sourcePostId} />
               </div>
             </div>
           </GenerationStateProvider>
@@ -254,7 +254,7 @@ export function PromptLockedGenerationSheet({
             <PromptLockedGenerationHeader />
             <GenerationStateProvider>
               {form}
-              <PromptLockedGenerationResults />
+              <PromptLockedGenerationResults sourcePostId={sourcePostId} />
             </GenerationStateProvider>
           </div>
         </Drawer.Content>

@@ -141,7 +141,7 @@ export function StyleGenerationSheet({
                 {form}
               </div>
               <div className="w-1/2 overflow-y-auto border-l pl-6">
-                <PromptLockedGenerationResults generationType="one_tap_style" />
+                <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId={preset.id} />
               </div>
             </div>
           </GenerationStateProvider>
@@ -174,7 +174,7 @@ export function StyleGenerationSheet({
             <PromptLockedGenerationHeader mode="style" showBalancePlaceholder />
             <GenerationStateProvider>
               {form}
-              <PromptLockedGenerationResults generationType="one_tap_style" />
+              <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId={preset.id} />
             </GenerationStateProvider>
           </div>
         </Drawer.Content>

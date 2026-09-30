@@ -29,6 +29,18 @@ jest.mock("@/features/auth/lib/auth-client", () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: "user-1" }),
 }));
 
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
+
+// 続きの目印が見えているか。テストごとに切り替える
+let mockInView = false;
+jest.mock("react-intersection-observer", () => ({
+  useInView: () => ({ ref: jest.fn(), inView: mockInView }),
+}));
+
 jest.mock("@/features/generation/components/GeneratedImageGallery", () => ({
   GeneratedImageGallery: ({
     images,
@@ -183,7 +195,9 @@ describe("過去のじゆうモード生成", () => {
         "user-1",
         4,
         0,
-        "free"
+        "free",
+        // 一般の利用者はカタログで絞らない
+        { sourcePostId: undefined, stylePresetId: undefined }
       );
     });
   });
@@ -210,7 +224,9 @@ describe("過去のじゆうモード生成", () => {
         "user-1",
         4,
         0,
-        "one_tap_style"
+        "one_tap_style",
+        // 一般の利用者はカタログで絞らない
+        { sourcePostId: undefined, stylePresetId: undefined }
       );
     });
   });
@@ -250,5 +266,132 @@ describe("過去のじゆうモード生成", () => {
     await waitFor(() => {
       expect(screen.getByTestId("gallery")).toHaveAttribute("data-count", "1");
     });
+  });
+});
+
+/*
+  カタログ刷新後(公開前は運営だけ)の「カタログから生成」のシート。
+  開いたカタログで作ったものだけを並べ、下へ進むと続きを読み込む(2026-09-30 ユーザー決定)。
+*/
+describe("カタログ刷新後: 開いたカタログのぶんだけ、ページごとに読む", () => {
+  function record(id: string) {
+    return {
+      id,
+      user_id: "user-1",
+      image_url: `https://cdn.example/${id}.webp`,
+      storage_path: id,
+      prompt: "",
+      is_posted: false,
+    };
+  }
+  const page = (prefix: string, count: number) =>
+    Array.from({ length: count }, (_, index) => record(`${prefix}-${index}`));
+
+  beforeEach(() => {
+    mockRevamp.mockReturnValue(true);
+    mockInView = false;
+    useGenerationStateMock.mockReturnValue(stubState({}));
+  });
+  afterEach(() => {
+    mockRevamp.mockReturnValue(false);
+    mockInView = false;
+  });
+
+  it("User ORIGINAL のシートは、元の投稿で作ったものだけを8件ずつ引く", async () => {
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 8, 0, "free", {
+        sourcePostId: "origin-1",
+        stylePresetId: undefined,
+      });
+    });
+  });
+
+  it("Persta ORIGINAL のシートは、そのスタイルで作ったものだけを引く", async () => {
+    render(
+      <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId="preset-1" />
+    );
+
+    await waitFor(() => {
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith(
+        "user-1",
+        8,
+        0,
+        "one_tap_style",
+        { sourcePostId: undefined, stylePresetId: "preset-1" }
+      );
+    });
+  });
+
+  it("1ページぶん(8件)あれば続きの目印を置き、見えたら次の8件を足す", async () => {
+    getGeneratedImagesMock
+      .mockResolvedValueOnce(page("first", 8))
+      .mockResolvedValueOnce(page("second", 3));
+
+    const { rerender } = render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("8");
+    });
+    expect(screen.getByTestId("prompt-locked-results-more")).toBeTruthy();
+
+    mockInView = true;
+    rerender(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("11");
+    });
+    expect(getGeneratedImagesMock).toHaveBeenLastCalledWith("user-1", 8, 8, "free", {
+      sourcePostId: "origin-1",
+      stylePresetId: undefined,
+    });
+    // 8件に満たなければ、それで終わり(目印を消す)
+    expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+  });
+
+  it("1ページに満たなければ、続きの目印を置かない", async () => {
+    getGeneratedImagesMock.mockResolvedValueOnce(page("only", 5));
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("5");
+    });
+    expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+  });
+
+  it("続きの読み込みに失敗したら、読み込み中を残さず止める", async () => {
+    getGeneratedImagesMock
+      .mockResolvedValueOnce(page("first", 8))
+      .mockRejectedValueOnce(new Error("network"));
+
+    const { rerender } = render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId("prompt-locked-results-more")).toBeTruthy();
+    });
+
+    mockInView = true;
+    rerender(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+    });
+    expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("8");
+  });
+
+  it("⭐一般の利用者は、最新4件だけで続きを読まない", async () => {
+    mockRevamp.mockReturnValue(false);
+    getGeneratedImagesMock.mockResolvedValueOnce(page("recent", 4));
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("4");
+    });
+    expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 4, 0, "free", {
+      sourcePostId: undefined,
+      stylePresetId: undefined,
+    });
+    expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
   });
 });

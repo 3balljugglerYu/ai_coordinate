@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useInView } from "react-intersection-observer";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
 import { useGenerationState } from "../context/GenerationStateContext";
 import { getGeneratedImages } from "../lib/database";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
 import type { GeneratedImageData, GenerationType } from "../types";
+import type { GeneratedImageRecord } from "../lib/database";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 /**
  * 直近の生成をいくつ出すか。
@@ -16,6 +19,37 @@ import type { GeneratedImageData, GenerationType } from "../types";
  * `/free` へ行けばよい。
  */
 const RECENT_LIMIT = 4;
+
+/**
+ * カタログ刷新後(公開前は運営だけ)の1ページの件数。
+ *
+ * 刷新後は「開いたカタログで作ったもの」だけを並べ、下へ進むと続きを読み込む
+ * (2026-09-30 ユーザー決定)。/style の一覧(4件ずつ)より多めにし、下端の
+ * {@link LOAD_MORE_ROOT_MARGIN} 手前から先読みして、待たされる感じを減らす。
+ */
+const CATALOG_PAGE_SIZE = 8;
+const LOAD_MORE_ROOT_MARGIN = "400px";
+
+function toImageData(records: GeneratedImageRecord[]): GeneratedImageData[] {
+  return records.flatMap((record) =>
+    record.id
+      ? [
+          {
+            id: record.id,
+            url: record.image_url,
+            is_posted: record.is_posted ?? false,
+            createdAt: record.created_at,
+            model: record.model ?? null,
+            width: record.width ?? null,
+            height: record.height ?? null,
+            preGenerationStoragePath: record.pre_generation_storage_path ?? null,
+            showBeforeImage: record.show_before_image ?? true,
+            sourcePostId: record.source_post_id ?? null,
+          } satisfies GeneratedImageData,
+        ]
+      : []
+  );
+}
 
 /**
  * 派生生成シート内の結果一覧。
@@ -39,73 +73,115 @@ const RECENT_LIMIT = 4;
  */
 export function PromptLockedGenerationResults({
   generationType = "free",
+  sourcePostId,
+  stylePresetId,
 }: {
   /** どの生成の一覧か。既定は Free Style(User ORIGINAL の生成シート)。 */
   generationType?: Extract<GenerationType, "free" | "one_tap_style">;
+  /** 刷新後: 開いたカタログ(User ORIGINAL の原作の投稿)で作ったものだけにする。 */
+  sourcePostId?: string;
+  /** 刷新後: 開いたカタログ(Persta ORIGINAL のスタイル)で作ったものだけにする。 */
+  stylePresetId?: string;
 } = {}) {
   const freeT = useTranslations("free");
   const styleT = useTranslations("style");
   const t = generationType === "one_tap_style" ? styleT : freeT;
   const generationState = useGenerationState();
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const [recentImages, setRecentImages] = useState<GeneratedImageData[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // 読み込みの世代。条件が変わったり取り直したりしたら、古い応答を捨てる
+  const generationRef = useRef(0);
+  const userIdRef = useRef<string | null>(null);
 
   const previewImages = generationState?.previewImages;
   const isGenerating = generationState?.isGenerating ?? false;
   const generatingCount = generationState?.generatingCount ?? 0;
 
   /*
-    過去のじゆうモード生成を取りに行く。
+    刷新後は、開いたカタログで作ったものだけをページごとに読む。
+    一般の利用者は今までどおり、その生成の種類の最新 RECENT_LIMIT 件だけ。
+  */
+  const pageSize = isCatalogRevamp ? CATALOG_PAGE_SIZE : RECENT_LIMIT;
+  const scopedSourcePostId = isCatalogRevamp ? sourcePostId : undefined;
+  const scopedStylePresetId = isCatalogRevamp ? stylePresetId : undefined;
+
+  const fetchPage = useCallback(
+    async (userId: string, offset: number) =>
+      getGeneratedImages(userId, pageSize, offset, generationType, {
+        sourcePostId: scopedSourcePostId,
+        stylePresetId: scopedStylePresetId,
+      }),
+    [pageSize, generationType, scopedSourcePostId, scopedStylePresetId]
+  );
+
+  /*
+    過去の生成を取りに行く(1ページ目)。
 
     サーバーコンポーネントの一覧 (CachedGeneratedImageGallery) は投稿詳細
     ページから使えないため、ブラウザの Supabase クライアントで引く。
     RLS が本人の行だけに絞るので、他人の生成物は返らない。
 
-    生成が終わるたびに引き直して、投稿済みバッジなどの状態を追従させる。
+    生成が終わるたびに1ページ目から引き直して、投稿済みバッジなどの状態を追従させる。
   */
   useEffect(() => {
-    let cancelled = false;
+    const generation = ++generationRef.current;
 
     const load = async () => {
       const user = await getCurrentUser();
-      if (!user || cancelled) return;
+      if (!user || generation !== generationRef.current) return;
+      userIdRef.current = user.id;
 
-      const records = await getGeneratedImages(
-        user.id,
-        RECENT_LIMIT,
-        0,
-        generationType
-      ).catch(() => []);
-      if (cancelled) return;
+      const records = await fetchPage(user.id, 0).catch(() => []);
+      if (generation !== generationRef.current) return;
 
-      setRecentImages(
-        records.flatMap((record) =>
-          record.id
-            ? [
-                {
-                  id: record.id,
-                  url: record.image_url,
-                  is_posted: record.is_posted ?? false,
-                  createdAt: record.created_at,
-                  model: record.model ?? null,
-                  width: record.width ?? null,
-                  height: record.height ?? null,
-                  preGenerationStoragePath:
-                    record.pre_generation_storage_path ?? null,
-                  showBeforeImage: record.show_before_image ?? true,
-                  sourcePostId: record.source_post_id ?? null,
-                } satisfies GeneratedImageData,
-              ]
-            : []
-        )
-      );
+      setRecentImages(toImageData(records));
+      // 一般の利用者は最新だけを出す(続きは読まない)
+      setHasMore(isCatalogRevamp && records.length === pageSize);
+      setIsLoadingMore(false);
     };
 
     void load();
-    return () => {
-      cancelled = true;
-    };
     // 生成中フラグが落ちた（＝完了した）タイミングで引き直す
-  }, [isGenerating, generationType]);
+  }, [isGenerating, fetchPage, isCatalogRevamp, pageSize]);
+
+  // 下端が近づいたら続きを読む(刷新後だけ)。シートの中のスクロールでも効く
+  const { ref: loadMoreRef, inView } = useInView({
+    rootMargin: LOAD_MORE_ROOT_MARGIN,
+    skip: !hasMore,
+  });
+
+  useEffect(() => {
+    const userId = userIdRef.current;
+    if (!inView || !hasMore || isLoadingMore || !userId) return;
+    const generation = generationRef.current;
+
+    const fetchMore = async () => {
+      setIsLoadingMore(true);
+      const records = await fetchPage(userId, recentImages.length).catch(
+        () => null
+      );
+      if (generation !== generationRef.current) return;
+      if (records === null) {
+        // 失敗したら続きは諦める(直らない読み込み中を残さない)
+        setHasMore(false);
+      } else {
+        // 取得の間に先頭へ増えた分とかぶることがあるので、ID で重ねない
+        setRecentImages((prev) => {
+          const existingIds = new Set(prev.map((image) => image.id));
+          return [
+            ...prev,
+            ...toImageData(records).filter((image) => !existingIds.has(image.id)),
+          ];
+        });
+        setHasMore(records.length === pageSize);
+      }
+      setIsLoadingMore(false);
+    };
+
+    void fetchMore();
+  }, [inView, hasMore, isLoadingMore, fetchPage, recentImages.length, pageSize]);
 
   // 新しいものを先頭に。ID が重なったら先頭側を残す。
   const seen = new Set<string>();
@@ -130,6 +206,25 @@ export function PromptLockedGenerationResults({
         isGenerating={isGenerating}
         generatingCount={generatingCount}
       />
+      {hasMore ? (
+        /*
+          続きの目印。読み込み中は画像の枠を先に出して待つ
+          (一覧が急に伸びてスクロール位置が跳ねないように、高さを確保しておく)。
+        */
+        <div ref={loadMoreRef} data-testid="prompt-locked-results-more">
+          {isLoadingMore ? (
+            <div className="grid grid-cols-2 gap-4" aria-hidden="true">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="overflow-hidden rounded-lg border bg-gray-100">
+                  <div className="aspect-square w-full animate-pulse bg-gray-200" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="h-8" />
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }
