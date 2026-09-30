@@ -4,6 +4,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import { GeneratedImageGallery } from "./GeneratedImageGallery";
+import { GeneratedImageList } from "./GeneratedImageList";
+import { GalleryViewToggle } from "./GalleryViewToggle";
+import {
+  readPreferredGalleryView,
+  writePreferredGalleryView,
+  type CoordinateGalleryView,
+} from "../lib/gallery-view-preference";
 import { useGenerationState } from "../context/GenerationStateContext";
 import { getGeneratedImages } from "../lib/database";
 import { getCurrentUser } from "@/features/auth/lib/auth-client";
@@ -29,6 +36,13 @@ const RECENT_LIMIT = 4;
  */
 const CATALOG_PAGE_SIZE = 8;
 const LOAD_MORE_ROOT_MARGIN = "400px";
+
+/**
+ * リスト表示の「詳細画面へ」から戻ったときの位置合わせ用のキー。
+ * シートはホームなどの上に開くので、/style・/free のキーを使い回さない
+ * (使い回すと、あとで /style を開いたときに関係ない位置へ飛ぶ)。
+ */
+const CATALOG_SHEET_RETURN_TO_IMAGE_ID_KEY = "persta-ai:catalog-sheet-return-to-image-id";
 
 function toImageData(records: GeneratedImageRecord[]): GeneratedImageData[] {
   return records.flatMap((record) =>
@@ -91,6 +105,18 @@ export function PromptLockedGenerationResults({
   const [recentImages, setRecentImages] = useState<GeneratedImageData[]>([]);
   const [hasMore, setHasMore] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  /*
+    刷新後はグリッドとリストを切り替えられる(/style の一覧と同じ部品・同じ記憶)。
+    この一覧はシートの中にしか無く、シートはどれもブラウザだけで描く(dynamic の
+    ssr: false)ので、覚えている表示を最初から読んでよい(SSR とずれない)。
+  */
+  const [viewMode, setViewMode] = useState<CoordinateGalleryView>(() =>
+    typeof window === "undefined" ? "grid" : readPreferredGalleryView()
+  );
+  const handleViewChange = (next: CoordinateGalleryView) => {
+    setViewMode(next);
+    writePreferredGalleryView(next);
+  };
   // 読み込みの世代。条件が変わったり取り直したりしたら、古い応答を捨てる
   const generationRef = useRef(0);
   const userIdRef = useRef<string | null>(null);
@@ -198,14 +224,36 @@ export function PromptLockedGenerationResults({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-base font-semibold text-gray-900">
-        {t("resultsTitle")}
-      </h3>
-      <GeneratedImageGallery
-        images={images}
-        isGenerating={isGenerating}
-        generatingCount={generatingCount}
-      />
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-base font-semibold text-gray-900">
+          {t("resultsTitle")}
+        </h3>
+        {isCatalogRevamp ? (
+          <GalleryViewToggle value={viewMode} onChange={handleViewChange} />
+        ) : null}
+      </div>
+      {isCatalogRevamp && viewMode === "list" ? (
+        <GeneratedImageList
+          images={images}
+          isGenerating={isGenerating}
+          generatingCount={generatingCount}
+          detailFromParam={generationType === "one_tap_style" ? "style" : "free"}
+          returnToImageIdKey={CATALOG_SHEET_RETURN_TO_IMAGE_ID_KEY}
+          /*
+            「このイラストで生成」: User ORIGINAL のシートは、シートの中のフォーム
+            (GenerationForm)がその場で受け取る。Persta ORIGINAL のシートのフォームは
+            受け取れないので、/style と同じく確認して /free へ移る。
+          */
+          applyActionMode={generationType === "one_tap_style" ? "navigate-free" : "dispatch-event"}
+          generationType={generationType}
+        />
+      ) : (
+        <GeneratedImageGallery
+          images={images}
+          isGenerating={isGenerating}
+          generatingCount={generatingCount}
+        />
+      )}
       {hasMore ? (
         /*
           続きの目印。読み込み中は画像の枠を先に出して待つ

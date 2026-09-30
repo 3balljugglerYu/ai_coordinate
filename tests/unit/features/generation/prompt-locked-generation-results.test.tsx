@@ -6,7 +6,7 @@
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useGenerationState } from "@/features/generation/context/GenerationStateContext";
@@ -27,6 +27,15 @@ jest.mock("@/features/generation/lib/database", () => ({
 
 jest.mock("@/features/auth/lib/auth-client", () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: "user-1" }),
+}));
+
+// リスト表示に渡った props を見る
+const listSpy = jest.fn();
+jest.mock("@/features/generation/components/GeneratedImageList", () => ({
+  GeneratedImageList: (props: { images: unknown[] }) => {
+    listSpy(props);
+    return <div data-testid="list" data-count={props.images.length} />;
+  },
 }));
 
 // カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
@@ -393,5 +402,87 @@ describe("カタログ刷新後: 開いたカタログのぶんだけ、ペー�
       stylePresetId: undefined,
     });
     expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+  });
+});
+
+/*
+  カタログ刷新後は、/style の一覧と同じくグリッドとリストを切り替えられる(2026-09-30 ユーザー依頼)。
+  選んだ表示は /coordinate・/free・/style と同じ場所に覚える。
+*/
+describe("カタログ刷新後: グリッドとリストの切り替え", () => {
+  const STORAGE_KEY = "persta-ai:coordinate-gallery-view";
+
+  beforeEach(() => {
+    mockRevamp.mockReturnValue(true);
+    window.localStorage.clear();
+    useGenerationStateMock.mockReturnValue(stubState({ previewImages: [buildImage("a")] }));
+  });
+  afterEach(() => {
+    mockRevamp.mockReturnValue(false);
+    window.localStorage.clear();
+  });
+
+  it("切り替えのボタンを出し、リストを選ぶとリスト表示にして覚える", () => {
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    expect(screen.getByTestId("gallery")).toBeTruthy();
+    const buttons = screen.getAllByRole("button");
+    const listButton = buttons.find((button) => button.getAttribute("aria-pressed") === "false");
+    expect(listButton).toBeTruthy();
+    fireEvent.click(listButton as HTMLElement);
+
+    expect(screen.getByTestId("list")).toBeTruthy();
+    expect(screen.queryByTestId("gallery")).toBeNull();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("list");
+  });
+
+  it("前に選んだ表示(リスト)で開く", () => {
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    expect(screen.getByTestId("list")).toBeTruthy();
+  });
+
+  it("User ORIGINAL のシートの「このイラストで生成」は、シートの中のフォームへ渡す", () => {
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    expect(listSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        applyActionMode: "dispatch-event",
+        detailFromParam: "free",
+        generationType: "free",
+        returnToImageIdKey: "persta-ai:catalog-sheet-return-to-image-id",
+      })
+    );
+  });
+
+  it("Persta ORIGINAL のシートの「このイラストで生成」は、/style と同じく /free へ移る", () => {
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(
+      <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId="preset-1" />
+    );
+
+    expect(listSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        applyActionMode: "navigate-free",
+        detailFromParam: "style",
+        generationType: "one_tap_style",
+      })
+    );
+  });
+
+  it("⭐一般の利用者には切り替えを出さず、覚えた表示がリストでもグリッドのまま", () => {
+    mockRevamp.mockReturnValue(false);
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(<PromptLockedGenerationResults />);
+
+    expect(screen.getByTestId("gallery")).toBeTruthy();
+    expect(screen.queryByTestId("list")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });
