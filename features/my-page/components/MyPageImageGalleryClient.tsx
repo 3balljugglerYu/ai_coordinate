@@ -35,6 +35,12 @@ interface ListState {
   hasMore: boolean;
   isLoading: boolean;
   hasLoaded: boolean;
+  /**
+   * 直前の読み込みに失敗した。立っている間は自動で読み直さない
+   * (以前は失敗するとすぐ読み直し、失敗が続くあいだ問い合わせを繰り返していた)。
+   * 「もう一度読み込む」で下ろすと、そこから読み直す。
+   */
+  loadFailed: boolean;
 }
 
 /** 一覧は「タブ × カタログ」の組み合わせごとに持つ(例: "unposted:persta_original") */
@@ -49,16 +55,17 @@ const EMPTY_LIST: ListState = {
   hasMore: true,
   isLoading: false,
   hasLoaded: false,
+  loadFailed: false,
 };
 
 /**
- * カタログのタブの並び(すべて / My Catalog / Persta ORIGINAL / User ORIGINAL)と、
+ * カタログのタブの並び(全カタログ / My Catalog / Persta ORIGINAL / User ORIGINAL)と、
  * 空のときの案内の文言キー。
  */
 const CATALOG_TABS: {
   id: MyImageCatalog;
   labelKey:
-    | "imageTabAll"
+    | "imageCatalogAll"
     | "imageCatalogMyCatalog"
     | "imageCatalogPerstaOriginal"
     | "imageCatalogUserOriginal";
@@ -70,7 +77,7 @@ const CATALOG_TABS: {
 }[] = [
   {
     id: "all",
-    labelKey: "imageTabAll",
+    labelKey: "imageCatalogAll",
     emptyDescriptionKey: "emptyImagesDescriptionCatalogAll",
   },
   {
@@ -127,6 +134,7 @@ export function MyPageImageGalleryClient({
             hasMore: initialImages.length === IMAGES_PER_PAGE,
             isLoading: false,
             hasLoaded: true,
+            loadFailed: false,
           }
         : EMPTY_LIST,
     [initialImages.length]
@@ -222,6 +230,7 @@ export function MyPageImageGalleryClient({
               hasMore: newImages.length === 0 ? false : hasMore,
               isLoading: false,
               hasLoaded: true,
+              loadFailed: false,
             },
           };
         });
@@ -229,7 +238,11 @@ export function MyPageImageGalleryClient({
         console.error(`Failed to load images (${key}):`, error);
         setLists((prev) => ({
           ...prev,
-          [key]: { ...(prev[key] ?? defaultList(key)), isLoading: false },
+          [key]: {
+            ...(prev[key] ?? defaultList(key)),
+            isLoading: false,
+            loadFailed: true,
+          },
         }));
       } finally {
         inFlightKeysRef.current.delete(key);
@@ -240,15 +253,30 @@ export function MyPageImageGalleryClient({
 
   // タブ・カタログを切り替えたら、その組み合わせを初めて開くときに読む
   useEffect(() => {
-    if (!currentList.hasLoaded && !currentList.isLoading) {
+    if (
+      !currentList.hasLoaded &&
+      !currentList.isLoading &&
+      !currentList.loadFailed
+    ) {
       loadNext(currentKey);
     }
-  }, [currentKey, currentList.hasLoaded, currentList.isLoading, loadNext]);
+  }, [
+    currentKey,
+    currentList.hasLoaded,
+    currentList.isLoading,
+    currentList.loadFailed,
+    loadNext,
+  ]);
 
   // 無限スクロール(同じタブ・カタログの続きを読む)
   useEffect(() => {
     if (!inView) return;
-    if (currentList.hasLoaded && currentList.hasMore && !currentList.isLoading) {
+    if (
+      currentList.hasLoaded &&
+      currentList.hasMore &&
+      !currentList.isLoading &&
+      !currentList.loadFailed
+    ) {
       loadNext(currentKey);
     }
   }, [
@@ -257,8 +285,20 @@ export function MyPageImageGalleryClient({
     currentList.hasLoaded,
     currentList.hasMore,
     currentList.isLoading,
+    currentList.loadFailed,
     loadNext,
   ]);
+
+  /** 失敗の印を下ろす。上の2つの effect が、先頭(未読)か続きを読み直す */
+  const retryCurrentList = useCallback(() => {
+    setLists((prev) => ({
+      ...prev,
+      [currentKey]: {
+        ...(prev[currentKey] ?? defaultList(currentKey)),
+        loadFailed: false,
+      },
+    }));
+  }, [currentKey, defaultList]);
 
   // タブ・カタログの切り替え時に選択状態をリセット
   const handleFilterChange = useCallback((next: ImageFilter) => {
@@ -509,7 +549,7 @@ export function MyPageImageGalleryClient({
 
       {isInitialLoading ? (
         <UserProfilePostsLoadMoreSkeleton />
-      ) : (
+      ) : currentList.loadFailed && displayImages.length === 0 ? null : (
         <MyImageGallery
           images={displayImages}
           currentUserId={currentUserId}
@@ -533,6 +573,23 @@ export function MyPageImageGalleryClient({
           }
         />
       )}
+
+      {/*
+        読み込みに失敗したとき。1枚も無ければ「まだ画像がありません」と取り違えないよう
+        空の案内の代わりに出し、続きの読み込みで失敗したときは一覧の下に出す。
+      */}
+      {currentList.loadFailed ? (
+        <div
+          className="flex flex-col items-center gap-3 py-8"
+          role="alert"
+          data-testid="my-images-load-failed"
+        >
+          <p className="text-sm text-gray-500">{t("imageLoadFailed")}</p>
+          <Button variant="outline" size="sm" onClick={retryCurrentList}>
+            {t("imageLoadRetry")}
+          </Button>
+        </div>
+      ) : null}
 
       <BulkDeleteConfirmDialog
         open={confirmOpen}

@@ -3,9 +3,16 @@ import {
   parseMyImageCatalog,
 } from "@/features/my-page/lib/my-image-catalog";
 
+/** 自分自身を返すクエリビルダーの代わり(型を先に決めて、自己参照の any を避ける) */
+interface RecordingQuery {
+  eq: jest.Mock<RecordingQuery, unknown[]>;
+  is: jest.Mock<RecordingQuery, unknown[]>;
+  not: jest.Mock<RecordingQuery, unknown[]>;
+}
+
 function createQuery() {
   const calls: unknown[][] = [];
-  const query = {
+  const query: RecordingQuery = {
     eq: jest.fn((...args: unknown[]) => {
       calls.push(["eq", ...args]);
       return query;

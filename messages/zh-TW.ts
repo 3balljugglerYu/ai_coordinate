@@ -432,6 +432,9 @@ export const zhTwMessages = {
     imageTabUnposted: "未發佈",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "依目錄篩選",
+    imageCatalogAll: "全部目錄",
+    imageLoadFailed: "無法載入圖片",
+    imageLoadRetry: "重新載入",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

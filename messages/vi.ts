@@ -432,6 +432,9 @@ export const viMessages = {
     imageTabUnposted: "Chưa đăng",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "Lọc theo danh mục",
+    imageCatalogAll: "Tất cả danh mục",
+    imageLoadFailed: "Không tải được ảnh",
+    imageLoadRetry: "Tải lại",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

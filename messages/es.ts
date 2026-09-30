@@ -432,6 +432,9 @@ export const esMessages = {
     imageTabUnposted: "Sin publicar",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "Filtrar por catálogo",
+    imageCatalogAll: "Todos los catálogos",
+    imageLoadFailed: "No se pudieron cargar las imágenes",
+    imageLoadRetry: "Reintentar",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

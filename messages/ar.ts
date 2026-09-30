@@ -432,6 +432,9 @@ export const arMessages = {
     imageTabUnposted: "غير منشورة",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "التصفية حسب الدليل",
+    imageCatalogAll: "كل الأدلة",
+    imageLoadFailed: "تعذّر تحميل الصور",
+    imageLoadRetry: "إعادة المحاولة",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

@@ -97,7 +97,7 @@ describe("マイページの生成画像一覧: カタログのタブ", () => {
     expect(await screen.findByText("emptyImagesDescription")).toBeTruthy();
   });
 
-  test("公開前・運営: カタログのタブを出す(すべて / My Catalog / Persta ORIGINAL / User ORIGINAL)", async () => {
+  test("公開前・運営: カタログのタブを出す(全カタログ / My Catalog / Persta ORIGINAL / User ORIGINAL)", async () => {
     await act(async () => {
       render(
         <UserStylesAvailabilityProvider>
@@ -112,7 +112,7 @@ describe("マイページの生成画像一覧: カタログのタブ", () => {
       (tab) => tab.textContent,
     );
     expect(tabs).toEqual([
-      "imageTabAll",
+      "imageCatalogAll",
       "imageCatalogMyCatalog",
       "imageCatalogPerstaOriginal",
       "imageCatalogUserOriginal",
@@ -146,7 +146,7 @@ describe("マイページの生成画像一覧: カタログのタブ", () => {
     expect(await screen.findByText("onetap-1")).toBeTruthy();
 
     // 一度開いた組み合わせは、戻ったときに読み直さない
-    fireEvent.click(screen.getByRole("tab", { name: "imageTabAll" }));
+    fireEvent.click(screen.getByRole("tab", { name: "imageCatalogAll" }));
     fireEvent.click(screen.getByRole("tab", { name: "imageCatalogPerstaOriginal" }));
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -169,5 +169,47 @@ describe("マイページの生成画像一覧: カタログのタブ", () => {
     );
     expect(await screen.findByText("emptyCatalogImagesTitle")).toBeTruthy();
     expect(screen.getByText("emptyImagesDescriptionUserOriginal")).toBeTruthy();
+  });
+});
+
+/*
+  読み込みに失敗したとき。以前は失敗するとすぐ読み直し、失敗が続くあいだ問い合わせを
+  繰り返していた。失敗したら止めて案内を出し、「もう一度読み込む」を押したときだけ読み直す。
+  一般の利用者にも同じく効く(不具合の修正)。
+*/
+describe("マイページの生成画像一覧: 読み込みに失敗したとき", () => {
+  const originalFetch = global.fetch;
+  afterAll(() => {
+    global.fetch = originalFetch;
+  });
+
+  test("自動では読み直さず、案内と「もう一度読み込む」を出す。押すと読み直す", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "boom" }) })
+      .mockResolvedValue(mockFetchResponse([{ id: "posted-1" }]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <UserStylesAvailabilityProvider>
+        <MyPageImageGalleryClient initialImages={INITIAL_IMAGES} />
+      </UserStylesAvailabilityProvider>,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "imageTabPosted" }));
+
+    expect(await screen.findByTestId("my-images-load-failed")).toBeTruthy();
+    // 失敗したまま少し待っても、問い合わせを繰り返さない
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // 「まだ画像がありません」と取り違えない
+    expect(screen.queryByText("emptyImagesTitle")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "imageLoadRetry" }));
+
+    expect(await screen.findByText("posted-1")).toBeTruthy();
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByTestId("my-images-load-failed")).toBeNull();
   });
 });

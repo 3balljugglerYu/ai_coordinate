@@ -432,6 +432,9 @@ export const hiMessages = {
     imageTabUnposted: "पोस्ट नहीं किया गया",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "कैटलॉग के अनुसार फ़िल्टर करें",
+    imageCatalogAll: "सभी कैटलॉग",
+    imageLoadFailed: "इमेज लोड नहीं हो सकीं",
+    imageLoadRetry: "फिर से लोड करें",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

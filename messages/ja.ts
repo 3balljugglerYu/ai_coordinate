@@ -434,6 +434,11 @@ export const jaMessages = {
     imageTabUnposted: "未投稿",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "カタログで絞り込む",
+    // カタログの列の「すべて」。上の「すべて / 投稿済み / 未投稿」と見分けるため「全カタログ」にする(各言語に訳す)
+    imageCatalogAll: "全カタログ",
+    // 画像一覧の読み込みに失敗したとき。自動では読み直さず、押したときだけ読み直す
+    imageLoadFailed: "画像を読み込めませんでした",
+    imageLoadRetry: "もう一度読み込む",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

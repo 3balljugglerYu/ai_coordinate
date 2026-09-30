@@ -432,6 +432,9 @@ export const koMessages = {
     imageTabUnposted: "미게시",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "카탈로그로 필터",
+    imageCatalogAll: "전체 카탈로그",
+    imageLoadFailed: "이미지를 불러오지 못했습니다",
+    imageLoadRetry: "다시 불러오기",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",

@@ -432,6 +432,9 @@ export const thMessages = {
     imageTabUnposted: "ยังไม่โพสต์",
     // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
     imageCatalogTabsLabel: "กรองตามแคตตาล็อก",
+    imageCatalogAll: "แคตตาล็อกทั้งหมด",
+    imageLoadFailed: "โหลดรูปภาพไม่สำเร็จ",
+    imageLoadRetry: "โหลดอีกครั้ง",
     imageCatalogMyCatalog: "My Catalog",
     imageCatalogPerstaOriginal: "Persta ORIGINAL",
     imageCatalogUserOriginal: "User ORIGINAL",
