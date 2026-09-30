@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslations } from "next-intl";
 import { useInView } from "react-intersection-observer";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,12 @@ import {
   bulkDeleteMyImages,
 } from "@/features/my-page/lib/api";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
+import {
+  CatalogTabBar,
+  type CatalogTab,
+} from "@/features/style-presets/components/CatalogTabBar";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import type { MyImageCatalog } from "@/features/my-page/lib/my-image-catalog";
 
 interface MyPageImageGalleryClientProps {
   initialImages: GeneratedImageRecord[];
@@ -22,16 +28,83 @@ interface MyPageImageGalleryClientProps {
 
 const IMAGES_PER_PAGE = 20;
 
-interface TabState {
+interface ListState {
   images: GeneratedImageRecord[];
+  /** 次に読む位置(サーバーから読んだ件数) */
   offset: number;
   hasMore: boolean;
   isLoading: boolean;
   hasLoaded: boolean;
+  /**
+   * 直前の読み込みに失敗した。立っている間は自動で読み直さない
+   * (以前は失敗するとすぐ読み直し、失敗が続くあいだ問い合わせを繰り返していた)。
+   * 「もう一度読み込む」で下ろすと、そこから読み直す。
+   */
+  loadFailed: boolean;
 }
+
+/** 一覧は「タブ × カタログ」の組み合わせごとに持つ(例: "unposted:persta_original") */
+type ListKey = `${ImageFilter}:${MyImageCatalog}`;
+
+/** サーバーでキャッシュした最初の20件(initialImages)を使う組み合わせ */
+const INITIAL_LIST_KEY: ListKey = "all:all";
+
+const EMPTY_LIST: ListState = {
+  images: [],
+  offset: 0,
+  hasMore: true,
+  isLoading: false,
+  hasLoaded: false,
+  loadFailed: false,
+};
+
+/**
+ * カタログのタブの並び(全カタログ / My Catalog / Persta ORIGINAL / User ORIGINAL)と、
+ * 空のときの案内の文言キー。
+ */
+const CATALOG_TABS: {
+  id: MyImageCatalog;
+  labelKey:
+    | "imageCatalogAll"
+    | "imageCatalogMyCatalog"
+    | "imageCatalogPerstaOriginal"
+    | "imageCatalogUserOriginal";
+  emptyDescriptionKey:
+    | "emptyImagesDescriptionCatalogAll"
+    | "emptyImagesDescriptionMyCatalog"
+    | "emptyImagesDescriptionPerstaOriginal"
+    | "emptyImagesDescriptionUserOriginal";
+}[] = [
+  {
+    id: "all",
+    labelKey: "imageCatalogAll",
+    emptyDescriptionKey: "emptyImagesDescriptionCatalogAll",
+  },
+  {
+    id: "my_catalog",
+    labelKey: "imageCatalogMyCatalog",
+    emptyDescriptionKey: "emptyImagesDescriptionMyCatalog",
+  },
+  {
+    id: "persta_original",
+    labelKey: "imageCatalogPerstaOriginal",
+    emptyDescriptionKey: "emptyImagesDescriptionPerstaOriginal",
+  },
+  {
+    id: "user_original",
+    labelKey: "imageCatalogUserOriginal",
+    emptyDescriptionKey: "emptyImagesDescriptionUserOriginal",
+  },
+];
 
 /**
  * クライアントコンポーネント: マイページの画像一覧（タブ別遅延ロード・無限スクロール）
+ *
+ * カタログ刷新後(`useStylesCatalogRevamp()`。公開前は運営だけ、
+ * `NEXT_PUBLIC_USER_STYLES_ENABLED` で全員)は、「すべて / 投稿済み / 未投稿」の下に
+ * どのカタログで作ったかのタブ(`/styles` の「すべて・お気に入り・人気」と同じ
+ * `CatalogTabBar`)を出し、2つを組み合わせて絞り込む。絞り込みはサーバーで行う
+ * (`my-image-catalog.ts`)。一般の利用者はカタログが常に "all" で、これまでと同じ。
  */
 export function MyPageImageGalleryClient({
   initialImages,
@@ -39,32 +112,35 @@ export function MyPageImageGalleryClient({
 }: MyPageImageGalleryClientProps) {
   const t = useTranslations("myPage");
   const { toast } = useToast();
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const [filter, setFilter] = useState<ImageFilter>("all");
+  const [selectedCatalog, setSelectedCatalog] = useState<MyImageCatalog>("all");
+  // 刷新前は常に "all"(タブも出さない)
+  const catalog: MyImageCatalog = isCatalogRevamp ? selectedCatalog : "all";
+  const currentKey: ListKey = `${filter}:${catalog}`;
 
-  // 「すべて」タブ: initialImages + 追加読み込み分
-  const [allTabAdditionalImages, setAllTabAdditionalImages] = useState<
-    GeneratedImageRecord[]
-  >([]);
-  const [allTabHasMore, setAllTabHasMore] = useState(
-    initialImages.length === IMAGES_PER_PAGE
+  // 一度開いた組み合わせは、戻ったときに読み直さない。
+  // "all:all" の images は initialImages に続けて読んだ分だけを持つ。
+  const [lists, setLists] = useState<Partial<Record<ListKey, ListState>>>({});
+  // 同じ組み合わせを二重に読みに行かないための印(state の反映を待たずに効かせる)
+  const inFlightKeysRef = useRef<Set<ListKey>>(new Set());
+
+  const defaultList = useCallback(
+    (key: ListKey): ListState =>
+      key === INITIAL_LIST_KEY
+        ? {
+            images: [],
+            offset: initialImages.length,
+            hasMore: initialImages.length === IMAGES_PER_PAGE,
+            isLoading: false,
+            hasLoaded: true,
+            loadFailed: false,
+          }
+        : EMPTY_LIST,
+    [initialImages.length]
   );
-  const [allTabIsLoading, setAllTabIsLoading] = useState(false);
 
-  // 「投稿済み」「未投稿」タブ
-  const [postedTab, setPostedTab] = useState<TabState>({
-    images: [],
-    offset: 0,
-    hasMore: true,
-    isLoading: false,
-    hasLoaded: false,
-  });
-  const [unpostedTab, setUnpostedTab] = useState<TabState>({
-    images: [],
-    offset: 0,
-    hasMore: true,
-    isLoading: false,
-    hasLoaded: false,
-  });
+  const currentList = lists[currentKey] ?? defaultList(currentKey);
 
   // ===== 一括削除関連の state =====
   const [selectionMode, setSelectionMode] = useState(false);
@@ -73,17 +149,21 @@ export function MyPageImageGalleryClient({
   const [pendingDeletionIds, setPendingDeletionIds] = useState<Set<string>>(
     new Set()
   );
-  // 削除完了済み ID（initial / all tab additional / unposted tab の表示から除外）
+  // 削除完了済み ID（どのタブ・カタログの組み合わせの表示からも除外）
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set());
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isUnpostedTab = filter === "unposted";
 
-  // initialImages が変更されたら「すべて」タブの追加分をリセット
+  // initialImages が変更されたら「すべて」の追加分をリセット
   useEffect(() => {
-    setAllTabAdditionalImages([]);
-    setAllTabHasMore(initialImages.length === IMAGES_PER_PAGE);
+    setLists((prev) => {
+      if (!(INITIAL_LIST_KEY in prev)) return prev;
+      const next = { ...prev };
+      delete next[INITIAL_LIST_KEY];
+      return next;
+    });
   }, [initialImages]);
 
   const { ref, inView } = useInView({
@@ -93,11 +173,15 @@ export function MyPageImageGalleryClient({
 
   const fetchImages = useCallback(
     async (
-      filterParam: "all" | "posted" | "unposted",
+      filterParam: ImageFilter,
+      catalogParam: MyImageCatalog,
       offset: number
     ): Promise<{ images: GeneratedImageRecord[]; hasMore: boolean }> => {
+      // カタログは絞るときだけ付ける(一般の利用者のリクエストはこれまでと同じ)
+      const catalogQuery =
+        catalogParam === "all" ? "" : `&catalog=${catalogParam}`;
       const response = await fetch(
-        `/api/my-page/images?filter=${filterParam}&limit=${IMAGES_PER_PAGE}&offset=${offset}`
+        `/api/my-page/images?filter=${filterParam}&limit=${IMAGES_PER_PAGE}&offset=${offset}${catalogQuery}`
       );
       if (!response.ok) {
         const error = (await response.json().catch(() => null)) as
@@ -114,167 +198,117 @@ export function MyPageImageGalleryClient({
     [t]
   );
 
-  const loadMoreAll = useCallback(async () => {
-    if (allTabIsLoading || !allTabHasMore) return;
+  /** 組み合わせの続き(初回は先頭)を読む */
+  const loadNext = useCallback(
+    async (key: ListKey) => {
+      const state = lists[key] ?? defaultList(key);
+      if (inFlightKeysRef.current.has(key)) return;
+      if (state.hasLoaded && !state.hasMore) return;
 
-    setAllTabIsLoading(true);
-    try {
-      const offset = initialImages.length + allTabAdditionalImages.length;
-      const { images: newImages, hasMore } = await fetchImages("all", offset);
-      if (newImages.length === 0) {
-        setAllTabHasMore(false);
-      } else {
-        setAllTabAdditionalImages((prev) => [...prev, ...newImages]);
-        setAllTabHasMore(hasMore);
+      inFlightKeysRef.current.add(key);
+      setLists((prev) => ({
+        ...prev,
+        [key]: { ...(prev[key] ?? defaultList(key)), isLoading: true },
+      }));
+      const [filterParam, catalogParam] = key.split(":") as [
+        ImageFilter,
+        MyImageCatalog,
+      ];
+      try {
+        const { images: newImages, hasMore } = await fetchImages(
+          filterParam,
+          catalogParam,
+          state.offset
+        );
+        setLists((prev) => {
+          const current = prev[key] ?? defaultList(key);
+          return {
+            ...prev,
+            [key]: {
+              images: [...current.images, ...newImages],
+              offset: current.offset + newImages.length,
+              hasMore: newImages.length === 0 ? false : hasMore,
+              isLoading: false,
+              hasLoaded: true,
+              loadFailed: false,
+            },
+          };
+        });
+      } catch (error) {
+        console.error(`Failed to load images (${key}):`, error);
+        setLists((prev) => ({
+          ...prev,
+          [key]: {
+            ...(prev[key] ?? defaultList(key)),
+            isLoading: false,
+            loadFailed: true,
+          },
+        }));
+      } finally {
+        inFlightKeysRef.current.delete(key);
       }
-    } catch (error) {
-      console.error("Failed to load more images:", error);
-    } finally {
-      setAllTabIsLoading(false);
+    },
+    [lists, defaultList, fetchImages]
+  );
+
+  // タブ・カタログを切り替えたら、その組み合わせを初めて開くときに読む
+  useEffect(() => {
+    if (
+      !currentList.hasLoaded &&
+      !currentList.isLoading &&
+      !currentList.loadFailed
+    ) {
+      loadNext(currentKey);
     }
   }, [
-    allTabIsLoading,
-    allTabHasMore,
-    initialImages.length,
-    allTabAdditionalImages.length,
-    fetchImages,
+    currentKey,
+    currentList.hasLoaded,
+    currentList.isLoading,
+    currentList.loadFailed,
+    loadNext,
   ]);
 
-  const loadPostedTab = useCallback(async () => {
-    if (postedTab.isLoading || postedTab.hasLoaded) return;
-
-    setPostedTab((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { images: newImages, hasMore } = await fetchImages("posted", 0);
-      setPostedTab({
-        images: newImages,
-        offset: newImages.length,
-        hasMore,
-        isLoading: false,
-        hasLoaded: true,
-      });
-    } catch (error) {
-      console.error("Failed to load posted images:", error);
-      setPostedTab((prev) => ({ ...prev, isLoading: false }));
-    }
-  }, [postedTab.isLoading, postedTab.hasLoaded, fetchImages]);
-
-  const loadMorePosted = useCallback(async () => {
-    if (postedTab.isLoading || !postedTab.hasMore) return;
-
-    setPostedTab((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { images: newImages, hasMore } = await fetchImages(
-        "posted",
-        postedTab.offset
-      );
-      if (newImages.length === 0) {
-        setPostedTab((prev) => ({ ...prev, hasMore: false, isLoading: false }));
-      } else {
-        setPostedTab((prev) => ({
-          ...prev,
-          images: [...prev.images, ...newImages],
-          offset: prev.offset + newImages.length,
-          hasMore,
-          isLoading: false,
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to load more posted images:", error);
-      setPostedTab((prev) => ({ ...prev, isLoading: false }));
-    }
-  }, [postedTab.isLoading, postedTab.hasMore, postedTab.offset, fetchImages]);
-
-  const loadUnpostedTab = useCallback(async () => {
-    if (unpostedTab.isLoading || unpostedTab.hasLoaded) return;
-
-    setUnpostedTab((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { images: newImages, hasMore } = await fetchImages("unposted", 0);
-      setUnpostedTab({
-        images: newImages,
-        offset: newImages.length,
-        hasMore,
-        isLoading: false,
-        hasLoaded: true,
-      });
-    } catch (error) {
-      console.error("Failed to load unposted images:", error);
-      setUnpostedTab((prev) => ({ ...prev, isLoading: false }));
-    }
-  }, [unpostedTab.isLoading, unpostedTab.hasLoaded, fetchImages]);
-
-  const loadMoreUnposted = useCallback(async () => {
-    if (unpostedTab.isLoading || !unpostedTab.hasMore) return;
-
-    setUnpostedTab((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const { images: newImages, hasMore } = await fetchImages(
-        "unposted",
-        unpostedTab.offset
-      );
-      if (newImages.length === 0) {
-        setUnpostedTab((prev) => ({ ...prev, hasMore: false, isLoading: false }));
-      } else {
-        setUnpostedTab((prev) => ({
-          ...prev,
-          images: [...prev.images, ...newImages],
-          offset: prev.offset + newImages.length,
-          hasMore,
-          isLoading: false,
-        }));
-      }
-    } catch (error) {
-      console.error("Failed to load more unposted images:", error);
-      setUnpostedTab((prev) => ({ ...prev, isLoading: false }));
-    }
-  }, [unpostedTab.isLoading, unpostedTab.hasMore, unpostedTab.offset, fetchImages]);
-
-  // タブ切り替え時に初回取得をトリガー
-  useEffect(() => {
-    if (filter === "posted" && !postedTab.hasLoaded && !postedTab.isLoading) {
-      loadPostedTab();
-    } else if (
-      filter === "unposted" &&
-      !unpostedTab.hasLoaded &&
-      !unpostedTab.isLoading
-    ) {
-      loadUnpostedTab();
-    }
-  }, [filter, postedTab.hasLoaded, postedTab.isLoading, unpostedTab.hasLoaded, unpostedTab.isLoading, loadPostedTab, loadUnpostedTab]);
-
-  // 無限スクロール
+  // 無限スクロール(同じタブ・カタログの続きを読む)
   useEffect(() => {
     if (!inView) return;
-
-    if (filter === "all" && allTabHasMore && !allTabIsLoading) {
-      loadMoreAll();
-    } else if (filter === "posted" && postedTab.hasMore && !postedTab.isLoading) {
-      loadMorePosted();
-    } else if (
-      filter === "unposted" &&
-      unpostedTab.hasMore &&
-      !unpostedTab.isLoading
+    if (
+      currentList.hasLoaded &&
+      currentList.hasMore &&
+      !currentList.isLoading &&
+      !currentList.loadFailed
     ) {
-      loadMoreUnposted();
+      loadNext(currentKey);
     }
   }, [
     inView,
-    filter,
-    allTabHasMore,
-    allTabIsLoading,
-    postedTab.hasMore,
-    postedTab.isLoading,
-    unpostedTab.hasMore,
-    unpostedTab.isLoading,
-    loadMoreAll,
-    loadMorePosted,
-    loadMoreUnposted,
+    currentKey,
+    currentList.hasLoaded,
+    currentList.hasMore,
+    currentList.isLoading,
+    currentList.loadFailed,
+    loadNext,
   ]);
 
-  // タブ切り替え時に選択状態をリセット
+  /** 失敗の印を下ろす。上の2つの effect が、先頭(未読)か続きを読み直す */
+  const retryCurrentList = useCallback(() => {
+    setLists((prev) => ({
+      ...prev,
+      [currentKey]: {
+        ...(prev[currentKey] ?? defaultList(currentKey)),
+        loadFailed: false,
+      },
+    }));
+  }, [currentKey, defaultList]);
+
+  // タブ・カタログの切り替え時に選択状態をリセット
   const handleFilterChange = useCallback((next: ImageFilter) => {
     setFilter(next);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleCatalogChange = useCallback((next: MyImageCatalog) => {
+    setSelectedCatalog(next);
     setSelectionMode(false);
     setSelectedIds(new Set());
   }, []);
@@ -409,21 +443,13 @@ export function MyPageImageGalleryClient({
   }, [selectedIds, t, toast]);
 
   // 表示対象の画像をレンダー時に算出（rerender-derived-state-no-effect）
-  const rawDisplayImages = useMemo(() => {
-    if (filter === "all") {
-      return [...initialImages, ...allTabAdditionalImages];
-    }
-    if (filter === "posted") {
-      return postedTab.images;
-    }
-    return unpostedTab.images;
-  }, [
-    filter,
-    initialImages,
-    allTabAdditionalImages,
-    postedTab.images,
-    unpostedTab.images,
-  ]);
+  const rawDisplayImages = useMemo(
+    () =>
+      currentKey === INITIAL_LIST_KEY
+        ? [...initialImages, ...currentList.images]
+        : currentList.images,
+    [currentKey, initialImages, currentList.images]
+  );
 
   const displayImages = useMemo(
     () =>
@@ -435,29 +461,33 @@ export function MyPageImageGalleryClient({
     [rawDisplayImages, deletedIds]
   );
 
-  const isLoadingMore =
-    filter === "all"
-      ? allTabIsLoading
-      : filter === "posted"
-        ? postedTab.isLoading
-        : unpostedTab.isLoading;
+  const isLoadingMore = currentList.isLoading;
+  const hasMore = currentList.hasMore;
+  const isInitialLoading = !currentList.hasLoaded && currentList.isLoading;
 
-  const hasMore =
-    filter === "all"
-      ? allTabHasMore
-      : filter === "posted"
-        ? postedTab.hasMore
-        : unpostedTab.hasMore;
-
-  const isInitialLoading =
-    (filter === "posted" && !postedTab.hasLoaded && postedTab.isLoading) ||
-    (filter === "unposted" && !unpostedTab.hasLoaded && unpostedTab.isLoading);
+  const catalogTabs: CatalogTab<MyImageCatalog>[] = CATALOG_TABS.map((tab) => ({
+    id: tab.id,
+    label: t(tab.labelKey),
+  }));
+  const activeCatalogTab =
+    CATALOG_TABS.find((tab) => tab.id === catalog) ?? CATALOG_TABS[0];
 
   const selectedCount = selectedIds.size;
 
   return (
     <div>
       <ImageTabs value={filter} onChange={handleFilterChange} />
+
+      {isCatalogRevamp && (
+        <div className="mb-4 -mt-2">
+          <CatalogTabBar
+            tabs={catalogTabs}
+            activeId={catalog}
+            onSelect={handleCatalogChange}
+            ariaLabel={t("imageCatalogTabsLabel")}
+          />
+        </div>
+      )}
 
       {/* 未投稿タブ・未選択モード時のみ「一括削除」ボタン */}
       {isUnpostedTab && !selectionMode && displayImages.length > 0 && (
@@ -519,7 +549,7 @@ export function MyPageImageGalleryClient({
 
       {isInitialLoading ? (
         <UserProfilePostsLoadMoreSkeleton />
-      ) : (
+      ) : currentList.loadFailed && displayImages.length === 0 ? null : (
         <MyImageGallery
           images={displayImages}
           currentUserId={currentUserId}
@@ -533,8 +563,33 @@ export function MyPageImageGalleryClient({
           onLongPressEnterSelection={
             isUnpostedTab ? handleLongPressEnterSelection : undefined
           }
+          emptyTitle={
+            isCatalogRevamp && catalog !== "all"
+              ? t("emptyCatalogImagesTitle")
+              : undefined
+          }
+          emptyDescription={
+            isCatalogRevamp ? t(activeCatalogTab.emptyDescriptionKey) : undefined
+          }
         />
       )}
+
+      {/*
+        読み込みに失敗したとき。1枚も無ければ「まだ画像がありません」と取り違えないよう
+        空の案内の代わりに出し、続きの読み込みで失敗したときは一覧の下に出す。
+      */}
+      {currentList.loadFailed ? (
+        <div
+          className="flex flex-col items-center gap-3 py-8"
+          role="alert"
+          data-testid="my-images-load-failed"
+        >
+          <p className="text-sm text-gray-500">{t("imageLoadFailed")}</p>
+          <Button variant="outline" size="sm" onClick={retryCurrentList}>
+            {t("imageLoadRetry")}
+          </Button>
+        </div>
+      ) : null}
 
       <BulkDeleteConfirmDialog
         open={confirmOpen}

@@ -61,6 +61,7 @@ type QueryCalls = {
   eq: unknown[][];
   in: unknown[][];
   is: unknown[][];
+  not: unknown[][];
   order: unknown[][];
   range: unknown[][];
   single: number;
@@ -72,6 +73,7 @@ type QueryControl = {
     eq: jest.Mock;
     in: jest.Mock;
     is: jest.Mock;
+    not: jest.Mock;
     order: jest.Mock;
     range: jest.Mock;
     single: jest.Mock;
@@ -98,6 +100,7 @@ function createAsyncQuery(config: QueryConfig = {}): QueryControl {
     eq: [],
     in: [],
     is: [],
+    not: [],
     order: [],
     range: [],
     single: 0,
@@ -118,6 +121,10 @@ function createAsyncQuery(config: QueryConfig = {}): QueryControl {
     }),
     is: jest.fn((...args: unknown[]) => {
       calls.is.push(args);
+      return builder;
+    }),
+    not: jest.fn((...args: unknown[]) => {
+      calls.not.push(args);
       return builder;
     }),
     order: jest.fn((...args: unknown[]) => {
@@ -1053,6 +1060,96 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         ["created_at", { ascending: false }],
       ]);
       expect(supabase.fromCalls.generated_images[0].calls.range).toEqual([[0, 49]]);
+    });
+
+    // カタログ刷新後のタブ(my-image-catalog.ts)。「カタログから生成」のシート(#661)と同じ分け方
+    test.each([
+      [
+        "my_catalog",
+        [["user_id", "user-4"], ["generation_type", "free"]],
+        [["completion_id", null], ["source_post_id", null]],
+        [],
+      ],
+      [
+        "persta_original",
+        [["user_id", "user-4"], ["generation_type", "one_tap_style"]],
+        [["completion_id", null]],
+        [],
+      ],
+      [
+        "user_original",
+        [["user_id", "user-4"], ["generation_type", "free"]],
+        [["completion_id", null]],
+        [["source_post_id", "is", null]],
+      ],
+    ] as const)(
+      "getMyImagesServer_catalog=%s指定時_カタログの条件を重ねる",
+      async (catalog, expectedEq, expectedIs, expectedNot) => {
+        const supabase = createSupabaseMock({
+          from: {
+            generated_images: [{ rangeResult: { data: [], error: null } }],
+          },
+        });
+
+        await getMyImagesServer(
+          "user-4",
+          "all",
+          20,
+          0,
+          supabase.client as never,
+          catalog
+        );
+
+        const calls = supabase.fromCalls.generated_images[0].calls;
+        expect(calls.eq).toEqual(expectedEq);
+        expect(calls.is).toEqual(expectedIs);
+        expect(calls.not).toEqual(expectedNot);
+        expect(calls.order).toEqual([["created_at", { ascending: false }]]);
+      }
+    );
+
+    test("getMyImagesServer_posted×catalog指定時_投稿済みの条件と並び順は今のまま", async () => {
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [{ rangeResult: { data: [], error: null } }],
+        },
+      });
+
+      await getMyImagesServer(
+        "user-5",
+        "posted",
+        20,
+        0,
+        supabase.client as never,
+        "persta_original"
+      );
+
+      const calls = supabase.fromCalls.generated_images[0].calls;
+      // 完走の投稿(completion_id 付き)は投稿済みには出す(今のまま)
+      expect(calls.is).toEqual([]);
+      expect(calls.eq).toEqual([
+        ["user_id", "user-5"],
+        ["generation_type", "one_tap_style"],
+        ["is_posted", true],
+      ]);
+      expect(calls.order).toEqual([["posted_at", { ascending: false }]]);
+    });
+
+    test("getMyImagesServer_catalog省略時_カタログの条件を付けない", async () => {
+      const supabase = createSupabaseMock({
+        from: {
+          generated_images: [{ rangeResult: { data: [], error: null } }],
+        },
+      });
+
+      await getMyImagesServer("user-6", "unposted", 20, 0, supabase.client as never);
+
+      const calls = supabase.fromCalls.generated_images[0].calls;
+      expect(calls.eq).toEqual([
+        ["user_id", "user-6"],
+        ["is_posted", false],
+      ]);
+      expect(calls.not).toEqual([]);
     });
 
     test("getMyImagesServer_one_tap_styleのpromptは空文字にする", async () => {

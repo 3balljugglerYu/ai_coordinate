@@ -49,7 +49,14 @@ describe("GET /api/my-page/images", () => {
     const body = await res.json();
 
     expect(res.status).toBe(200);
-    expect(mockGetMyImagesServer).toHaveBeenCalledWith("user-1", "all", 20, 0);
+    expect(mockGetMyImagesServer).toHaveBeenCalledWith(
+      "user-1",
+      "all",
+      20,
+      0,
+      undefined,
+      "all",
+    );
     expect(body.images).toEqual(images);
     expect(body.hasMore).toBe(true);
   });
@@ -76,6 +83,39 @@ describe("GET /api/my-page/images", () => {
       "unposted",
       10,
       30,
+      undefined,
+      "all",
+    );
+  });
+
+  test("catalog を渡した場合_filter と組み合わせて getMyImagesServer に渡す", async () => {
+    mockGetMyImagesServer.mockResolvedValue([] as never);
+
+    await GET(createRequest({ filter: "posted", catalog: "persta_original" }));
+
+    expect(mockGetMyImagesServer).toHaveBeenCalledWith(
+      "user-1",
+      "posted",
+      20,
+      0,
+      undefined,
+      "persta_original",
+    );
+  });
+
+  test("知らない catalog の場合_400 にせず all として扱う", async () => {
+    mockGetMyImagesServer.mockResolvedValue([] as never);
+
+    const res = await GET(createRequest({ catalog: "coordinate" }));
+
+    expect(res.status).toBe(200);
+    expect(mockGetMyImagesServer).toHaveBeenCalledWith(
+      "user-1",
+      "all",
+      20,
+      0,
+      undefined,
+      "all",
     );
   });
 

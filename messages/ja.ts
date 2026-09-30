@@ -432,6 +432,21 @@ export const jaMessages = {
     imageTabAll: "すべて",
     imageTabPosted: "投稿済み",
     imageTabUnposted: "未投稿",
+    // カタログ刷新後(段階公開中は運営のみ)の、どのカタログで作ったかのタブ。名前は英語で全言語同一
+    imageCatalogTabsLabel: "カタログで絞り込む",
+    // カタログの列の「すべて」。上の「すべて / 投稿済み / 未投稿」と見分けるため「全カタログ」にする(各言語に訳す)
+    imageCatalogAll: "全カタログ",
+    // 画像一覧の読み込みに失敗したとき。自動では読み直さず、押したときだけ読み直す
+    imageLoadFailed: "画像を読み込めませんでした",
+    imageLoadRetry: "もう一度読み込む",
+    imageCatalogMyCatalog: "My Catalog",
+    imageCatalogPerstaOriginal: "Persta ORIGINAL",
+    imageCatalogUserOriginal: "User ORIGINAL",
+    emptyCatalogImagesTitle: "このカタログで作った画像はまだありません",
+    emptyImagesDescriptionCatalogAll: "カタログから選んで、画像を生成してみましょう",
+    emptyImagesDescriptionMyCatalog: "CREATE で、自分のプロンプトからつくってみましょう",
+    emptyImagesDescriptionPerstaOriginal: "Persta ORIGINAL のカタログから選んでみましょう",
+    emptyImagesDescriptionUserOriginal: "User ORIGINAL のカタログから選んでみましょう",
     emptyImagesTitle: "まだ画像を生成していません",
     emptyImagesDescription: "「コーディネート」タブから画像を生成してみましょう",
     detailPostAction: "投稿",

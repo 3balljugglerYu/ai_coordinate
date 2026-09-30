@@ -7,6 +7,10 @@ import {
   stripFreePromptsForList,
 } from "@/features/generation/lib/prompt-visibility";
 import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
+import {
+  applyMyImageCatalogFilter,
+  type MyImageCatalog,
+} from "./my-image-catalog";
 
 export interface PercoinTransaction {
   id: string;
@@ -263,6 +267,8 @@ export async function getUserPostsServer(
 /**
  * ユーザーの生成画像一覧を取得（サーバーサイド）
  * @param filter - "all" | "posted" | "unposted"
+ * @param catalog - どのカタログで作ったか（カタログ刷新後のタブ。`my-image-catalog.ts`）。
+ *   `filter` と組み合わせて絞る。既定の "all" は条件なし
  * React Cacheでラップして、同一リクエスト内での重複取得を防止
  */
 export const getMyImagesServer = cache(async (
@@ -270,7 +276,8 @@ export const getMyImagesServer = cache(async (
   filter: "all" | "posted" | "unposted" = "all",
   limit = 50,
   offset = 0,
-  supabaseOverride?: SupabaseClient
+  supabaseOverride?: SupabaseClient,
+  catalog: MyImageCatalog = "all"
 ): Promise<GeneratedImageRecord[]> => {
   try {
     const supabase = supabaseOverride ?? (await createClient());
@@ -285,6 +292,8 @@ export const getMyImagesServer = cache(async (
     if (filter !== "posted") {
       query = query.is("completion_id", null);
     }
+
+    query = applyMyImageCatalogFilter(query, catalog);
 
     if (filter === "posted") {
       query = query.eq("is_posted", true).order("posted_at", { ascending: false });
