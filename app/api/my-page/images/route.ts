@@ -5,6 +5,7 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getMyPageRouteCopy } from "@/features/my-page/lib/route-copy";
 import { createClient } from "@/lib/supabase/server";
+import { parseMyImageCatalog } from "@/features/my-page/lib/my-image-catalog";
 import {
   GENERATED_IMAGE_STORAGE_PATH_COLUMNS,
   resolveGeneratedImageDeletablePaths,
@@ -31,8 +32,17 @@ export async function GET(request: NextRequest) {
     const filter = (searchParams.get("filter") || "all") as "all" | "posted" | "unposted";
     const limit = parseInt(searchParams.get("limit") || "20", 10);
     const offset = parseInt(searchParams.get("offset") || "0", 10);
+    // どのカタログで作ったか（カタログ刷新後のタブ）。知らない値は all
+    const catalog = parseMyImageCatalog(searchParams.get("catalog"));
 
-    const images = await getMyImagesServer(user.id, filter, limit, offset);
+    const images = await getMyImagesServer(
+      user.id,
+      filter,
+      limit,
+      offset,
+      undefined,
+      catalog,
+    );
 
     return NextResponse.json({
       images,

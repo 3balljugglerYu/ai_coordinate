@@ -23,6 +23,10 @@ interface MyImageGalleryProps {
   onToggleSelect?: (imageId: string) => void;
   /** 通常モードで長押しされたとき（選択モードに入る + 対象を即選択） */
   onLongPressEnterSelection?: (imageId: string) => void;
+  /** 空のときの見出し。省略時は `myPage.emptyImagesTitle` */
+  emptyTitle?: string;
+  /** 空のときの案内。省略時は `myPage.emptyImagesDescription` */
+  emptyDescription?: string;
 }
 
 export function MyImageGallery({
@@ -36,16 +40,18 @@ export function MyImageGallery({
   pendingDeletionIds,
   onToggleSelect,
   onLongPressEnterSelection,
+  emptyTitle,
+  emptyDescription,
 }: MyImageGalleryProps) {
   const t = useTranslations("myPage");
   if (images.length === 0) {
     return (
       <Card className="border-dashed p-12">
         <p className="text-center text-sm text-gray-500">
-          {t("emptyImagesTitle")}
+          {emptyTitle ?? t("emptyImagesTitle")}
         </p>
         <p className="mt-2 text-center text-xs text-gray-400">
-          {t("emptyImagesDescription")}
+          {emptyDescription ?? t("emptyImagesDescription")}
         </p>
       </Card>
     );
