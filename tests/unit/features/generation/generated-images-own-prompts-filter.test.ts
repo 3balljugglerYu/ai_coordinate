@@ -86,3 +86,38 @@ describe("getGeneratedImages(続きの読み込み)", () => {
     expect(browserCalls.some(([method]) => method === "is")).toBe(false);
   });
 });
+
+
+/*
+  「カタログから生成」のシート(カタログ刷新後)の一覧: 開いたカタログで作ったものだけ。
+*/
+describe("getGeneratedImages(開いたカタログで絞る)", () => {
+  test("User ORIGINAL: 元の投稿(source_post_id)で絞る", async () => {
+    await getGeneratedImages("user-1", 8, 0, "free", { sourcePostId: "origin-1" });
+
+    expect(browserCalls).toContainEqual(["eq", "user_id", "user-1"]);
+    expect(browserCalls).toContainEqual(["eq", "source_post_id", "origin-1"]);
+    expect(browserCalls).toContainEqual(["range", 0, 7]);
+  });
+
+  test("Persta ORIGINAL: 生成時に記録したスタイルの id で絞る", async () => {
+    await getGeneratedImages("user-1", 8, 8, "one_tap_style", { stylePresetId: "preset-1" });
+
+    expect(browserCalls).toContainEqual(["eq", "generation_type", "one_tap_style"]);
+    expect(browserCalls).toContainEqual([
+      "eq",
+      "generation_metadata->oneTapStyle->>id",
+      "preset-1",
+    ]);
+    expect(browserCalls).toContainEqual(["range", 8, 15]);
+  });
+
+  test("指定しなければ絞らない", async () => {
+    await getGeneratedImages("user-1", 4, 0, "free", {});
+
+    expect(browserCalls.some(([, column]) => column === "source_post_id")).toBe(false);
+    expect(
+      browserCalls.some(([, column]) => column === "generation_metadata->oneTapStyle->>id")
+    ).toBe(false);
+  });
+});

@@ -6,7 +6,7 @@
  */
 
 import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useGenerationState } from "@/features/generation/context/GenerationStateContext";
@@ -27,6 +27,27 @@ jest.mock("@/features/generation/lib/database", () => ({
 
 jest.mock("@/features/auth/lib/auth-client", () => ({
   getCurrentUser: jest.fn().mockResolvedValue({ id: "user-1" }),
+}));
+
+// リスト表示に渡った props を見る
+const listSpy = jest.fn();
+jest.mock("@/features/generation/components/GeneratedImageList", () => ({
+  GeneratedImageList: (props: { images: unknown[] }) => {
+    listSpy(props);
+    return <div data-testid="list" data-count={props.images.length} />;
+  },
+}));
+
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
+
+// 続きの目印が見えているか。テストごとに切り替える
+let mockInView = false;
+jest.mock("react-intersection-observer", () => ({
+  useInView: () => ({ ref: jest.fn(), inView: mockInView }),
 }));
 
 jest.mock("@/features/generation/components/GeneratedImageGallery", () => ({
@@ -183,7 +204,9 @@ describe("過去のじゆうモード生成", () => {
         "user-1",
         4,
         0,
-        "free"
+        "free",
+        // 一般の利用者はカタログで絞らない
+        { sourcePostId: undefined, stylePresetId: undefined }
       );
     });
   });
@@ -210,7 +233,9 @@ describe("過去のじゆうモード生成", () => {
         "user-1",
         4,
         0,
-        "one_tap_style"
+        "one_tap_style",
+        // 一般の利用者はカタログで絞らない
+        { sourcePostId: undefined, stylePresetId: undefined }
       );
     });
   });
@@ -250,5 +275,214 @@ describe("過去のじゆうモード生成", () => {
     await waitFor(() => {
       expect(screen.getByTestId("gallery")).toHaveAttribute("data-count", "1");
     });
+  });
+});
+
+/*
+  カタログ刷新後(公開前は運営だけ)の「カタログから生成」のシート。
+  開いたカタログで作ったものだけを並べ、下へ進むと続きを読み込む(2026-09-30 ユーザー決定)。
+*/
+describe("カタログ刷新後: 開いたカタログのぶんだけ、ページごとに読む", () => {
+  function record(id: string) {
+    return {
+      id,
+      user_id: "user-1",
+      image_url: `https://cdn.example/${id}.webp`,
+      storage_path: id,
+      prompt: "",
+      is_posted: false,
+    };
+  }
+  const page = (prefix: string, count: number) =>
+    Array.from({ length: count }, (_, index) => record(`${prefix}-${index}`));
+
+  beforeEach(() => {
+    mockRevamp.mockReturnValue(true);
+    mockInView = false;
+    useGenerationStateMock.mockReturnValue(stubState({}));
+  });
+  afterEach(() => {
+    mockRevamp.mockReturnValue(false);
+    mockInView = false;
+  });
+
+  it("User ORIGINAL のシートは、元の投稿で作ったものだけを8件ずつ引く", async () => {
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 8, 0, "free", {
+        sourcePostId: "origin-1",
+        stylePresetId: undefined,
+      });
+    });
+  });
+
+  it("Persta ORIGINAL のシートは、そのスタイルで作ったものだけを引く", async () => {
+    render(
+      <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId="preset-1" />
+    );
+
+    await waitFor(() => {
+      expect(getGeneratedImagesMock).toHaveBeenCalledWith(
+        "user-1",
+        8,
+        0,
+        "one_tap_style",
+        { sourcePostId: undefined, stylePresetId: "preset-1" }
+      );
+    });
+  });
+
+  it("1ページぶん(8件)あれば続きの目印を置き、見えたら次の8件を足す", async () => {
+    getGeneratedImagesMock
+      .mockResolvedValueOnce(page("first", 8))
+      .mockResolvedValueOnce(page("second", 3));
+
+    const { rerender } = render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("8");
+    });
+    expect(screen.getByTestId("prompt-locked-results-more")).toBeTruthy();
+
+    mockInView = true;
+    rerender(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("11");
+    });
+    expect(getGeneratedImagesMock).toHaveBeenLastCalledWith("user-1", 8, 8, "free", {
+      sourcePostId: "origin-1",
+      stylePresetId: undefined,
+    });
+    // 8件に満たなければ、それで終わり(目印を消す)
+    expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+  });
+
+  it("1ページに満たなければ、続きの目印を置かない", async () => {
+    getGeneratedImagesMock.mockResolvedValueOnce(page("only", 5));
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("5");
+    });
+    expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+  });
+
+  it("続きの読み込みに失敗したら、読み込み中を残さず止める", async () => {
+    getGeneratedImagesMock
+      .mockResolvedValueOnce(page("first", 8))
+      .mockRejectedValueOnce(new Error("network"));
+
+    const { rerender } = render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+    await waitFor(() => {
+      expect(screen.getByTestId("prompt-locked-results-more")).toBeTruthy();
+    });
+
+    mockInView = true;
+    rerender(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+    });
+    expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("8");
+  });
+
+  it("⭐一般の利用者は、最新4件だけで続きを読まない", async () => {
+    mockRevamp.mockReturnValue(false);
+    getGeneratedImagesMock.mockResolvedValueOnce(page("recent", 4));
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("gallery").getAttribute("data-count")).toBe("4");
+    });
+    expect(getGeneratedImagesMock).toHaveBeenCalledWith("user-1", 4, 0, "free", {
+      sourcePostId: undefined,
+      stylePresetId: undefined,
+    });
+    expect(screen.queryByTestId("prompt-locked-results-more")).toBeNull();
+  });
+});
+
+/*
+  カタログ刷新後は、/style の一覧と同じくグリッドとリストを切り替えられる(2026-09-30 ユーザー依頼)。
+  選んだ表示は /coordinate・/free・/style と同じ場所に覚える。
+*/
+describe("カタログ刷新後: グリッドとリストの切り替え", () => {
+  const STORAGE_KEY = "persta-ai:coordinate-gallery-view";
+
+  beforeEach(() => {
+    mockRevamp.mockReturnValue(true);
+    window.localStorage.clear();
+    useGenerationStateMock.mockReturnValue(stubState({ previewImages: [buildImage("a")] }));
+  });
+  afterEach(() => {
+    mockRevamp.mockReturnValue(false);
+    window.localStorage.clear();
+  });
+
+  it("切り替えのボタンを出し、リストを選ぶとリスト表示にして覚える", () => {
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    expect(screen.getByTestId("gallery")).toBeTruthy();
+    const buttons = screen.getAllByRole("button");
+    const listButton = buttons.find((button) => button.getAttribute("aria-pressed") === "false");
+    expect(listButton).toBeTruthy();
+    fireEvent.click(listButton as HTMLElement);
+
+    expect(screen.getByTestId("list")).toBeTruthy();
+    expect(screen.queryByTestId("gallery")).toBeNull();
+    expect(window.localStorage.getItem(STORAGE_KEY)).toBe("list");
+  });
+
+  it("前に選んだ表示(リスト)で開く", () => {
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    expect(screen.getByTestId("list")).toBeTruthy();
+  });
+
+  it("User ORIGINAL のシートの「このイラストで生成」は、シートの中のフォームへ渡す", () => {
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(<PromptLockedGenerationResults sourcePostId="origin-1" />);
+
+    expect(listSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        applyActionMode: "dispatch-event",
+        detailFromParam: "free",
+        generationType: "free",
+        returnToImageIdKey: "persta-ai:catalog-sheet-return-to-image-id",
+      })
+    );
+  });
+
+  it("Persta ORIGINAL のシートの「このイラストで生成」は、/style と同じく /free へ移る", () => {
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(
+      <PromptLockedGenerationResults generationType="one_tap_style" stylePresetId="preset-1" />
+    );
+
+    expect(listSpy).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        applyActionMode: "navigate-free",
+        detailFromParam: "style",
+        generationType: "one_tap_style",
+      })
+    );
+  });
+
+  it("⭐一般の利用者には切り替えを出さず、覚えた表示がリストでもグリッドのまま", () => {
+    mockRevamp.mockReturnValue(false);
+    window.localStorage.setItem(STORAGE_KEY, "list");
+
+    render(<PromptLockedGenerationResults />);
+
+    expect(screen.getByTestId("gallery")).toBeTruthy();
+    expect(screen.queryByTestId("list")).toBeNull();
+    expect(screen.queryByRole("button")).toBeNull();
   });
 });

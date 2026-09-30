@@ -88,7 +88,20 @@ export async function getGeneratedImages(
   limit = 50,
   offset = 0,
   generationType?: GenerationType,
-  options?: { ownPromptsOnly?: boolean }
+  options?: {
+    ownPromptsOnly?: boolean;
+    /**
+     * ほかの人のカタログ(原作の投稿)で作ったものだけにする(`source_post_id`)。
+     * 「カタログから生成」のシート(User ORIGINAL)の一覧で使う。
+     */
+    sourcePostId?: string;
+    /**
+     * ペルスタのカタログの1つのスタイルで作ったものだけにする
+     * (`generation_metadata.oneTapStyle.id`。直近の One-Tap Style 生成の98%に入っている)。
+     * 「カタログから生成」のシート(Persta ORIGINAL)の一覧で使う。
+     */
+    stylePresetId?: string;
+  }
 ): Promise<GeneratedImageRecord[]> {
   const supabase = createBrowserClient();
 
@@ -103,6 +116,12 @@ export async function getGeneratedImages(
   }
   if (options?.ownPromptsOnly) {
     query = query.is("source_post_id", null);
+  }
+  if (options?.sourcePostId) {
+    query = query.eq("source_post_id", options.sourcePostId);
+  }
+  if (options?.stylePresetId) {
+    query = query.eq("generation_metadata->oneTapStyle->>id", options.stylePresetId);
   }
 
   const { data, error } = await query
