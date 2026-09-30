@@ -120,8 +120,8 @@ export const jaMessages = {
     modeUserOriginal: "User ORIGINAL",
     // 自分のプロンプトの投稿を、作った本人が見たときの名前(ほかの人には User ORIGINAL)。全言語同一
     modeMyOriginal: "My ORIGINAL",
-    // カタログ刷新後、カタログの原本(Persta ORIGINAL / User ORIGINAL)を使って作った投稿のラベル。各言語に訳す
-    modeFromCatalog: "カタログから生成",
+    // カタログ刷新後、カタログの原本(Persta ORIGINAL / User ORIGINAL)を使って作った投稿のラベル。My / User ORIGINAL にそろえて英語にし、全言語同一(2026-09-30 ユーザー決定)
+    modeFromCatalog: "from CATALOG",
     copy: "コピー",
     copied: "コピー済み",
     followRequiredTitle: "フォローが必要です",

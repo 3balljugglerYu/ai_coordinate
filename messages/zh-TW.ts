@@ -121,7 +121,7 @@ export const zhTwMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "從目錄生成",
+    modeFromCatalog: "from CATALOG",
     copy: "複製",
     copied: "已複製",
     followRequiredTitle: "需要追蹤",

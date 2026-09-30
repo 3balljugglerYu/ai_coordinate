@@ -10,7 +10,7 @@ jest.mock("next-intl", () => ({
       modeOneTapStyle: "One-Tap Style",
       modeInspire: "Creator Style",
       modeFree: "Free Style",
-      modeFromCatalog: "カタログから生成",
+      modeFromCatalog: "from CATALOG",
       modeUserOriginal: "User ORIGINAL",
       modeMyOriginal: "My ORIGINAL",
     };
@@ -169,7 +169,7 @@ describe("PostMetaLine(カタログ刷新後)", () => {
   beforeEach(() => mockRevamp.mockReturnValue(true));
   afterEach(() => mockRevamp.mockReturnValue(false));
 
-  it("カタログの原本を使って作った投稿は「カタログから生成」", () => {
+  it("カタログの原本を使って作った投稿は「from CATALOG」", () => {
     render(
       <PostMetaLine
         model="gpt-image-2-low-1k"
@@ -180,16 +180,16 @@ describe("PostMetaLine(カタログ刷新後)", () => {
       />,
     );
     const node = screen.getByTestId("post-meta-line");
-    expect(node.textContent).toBe("カタログから生成 ・ ChatGPT Images 2.0 / 1024×1536");
+    expect(node.textContent).toBe("from CATALOG ・ ChatGPT Images 2.0 / 1024×1536");
     expect(node.getAttribute("aria-label")).toBe(
-      "生成モード: カタログから生成, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
+      "生成モード: from CATALOG, 生成モデル: ChatGPT Images 2.0, サイズ: 1024×1536",
     );
 
     cleanup();
     render(
       <PostMetaLine model={null} width={null} height={null} generationType="one_tap_style" />,
     );
-    expect(screen.getByTestId("post-meta-line").textContent).toBe("カタログから生成");
+    expect(screen.getByTestId("post-meta-line").textContent).toBe("from CATALOG");
   });
 
   it("原本(自分のプロンプト)は、投稿者本人には My ORIGINAL、ほかの人には User ORIGINAL", () => {

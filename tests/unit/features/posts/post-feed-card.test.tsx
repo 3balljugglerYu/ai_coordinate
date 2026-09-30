@@ -875,7 +875,7 @@ describe("PostFeedCard", () => {
 
 /*
   カタログ刷新後(公開前は運営だけ)の、画像左下のラベルと引用元カード。
-  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作った投稿は「カタログから生成」。
+  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作った投稿は「from CATALOG」。
   原本は、見ている人が投稿者本人なら My ORIGINAL、ほかの人には User ORIGINAL(2026-09-30 ユーザー決定)。
 */
 describe("PostFeedCard(カタログ刷新後)", () => {
@@ -912,7 +912,7 @@ describe("PostFeedCard(カタログ刷新後)", () => {
   test.each([
     ["ペルスタのカタログのスタイル", createPost({ generation_type: "one_tap_style" })],
     ["ほかの人のカタログ", createPost({ generation_type: "free", source_post_id: "origin-1" })],
-  ])("%sで作った投稿は「カタログから生成」", (_label, post) => {
+  ])("%sで作った投稿は「from CATALOG」", (_label, post) => {
     render(<PostFeedCard post={post} currentUserId={null} />);
 
     expect(screen.getByText("modeFromCatalog")).toBeTruthy();

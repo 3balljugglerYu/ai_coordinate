@@ -121,7 +121,7 @@ export const hiMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "कैटलॉग से बना",
+    modeFromCatalog: "from CATALOG",
     copy: "कॉपी करें",
     copied: "कॉपी हो गया",
     followRequiredTitle: "फ़ॉलो आवश्यक",

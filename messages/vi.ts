@@ -121,7 +121,7 @@ export const viMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "Tạo từ danh mục",
+    modeFromCatalog: "from CATALOG",
     copy: "Sao chép",
     copied: "Đã sao chép",
     followRequiredTitle: "Cần theo dõi",

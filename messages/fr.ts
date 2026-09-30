@@ -121,7 +121,7 @@ export const frMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "Depuis le catalogue",
+    modeFromCatalog: "from CATALOG",
     copy: "Copier",
     copied: "Copié",
     followRequiredTitle: "Abonnement requis",

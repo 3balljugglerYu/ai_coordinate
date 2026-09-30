@@ -8,7 +8,7 @@
  * フィードの引用元カードは、一般の利用者には「Persta.AI ORIGINAL」のまま出し、
  * カタログ刷新後(公開前は運営だけ)はタブの名前をそのまま使う(FeedSourceQuote)。
  * ⭐ 刷新後の投稿のラベルは、原本は「My / User ORIGINAL」、カタログの原本を使って
- * 作ったものは「カタログから生成」(2026-09-30 ユーザー決定)。
+ * 作ったものは「from CATALOG」(2026-09-30 ユーザー決定)。
  * ⭐ タブの名前は「誰が届けるか」だけで分け、よし悪しの差をつけない
  * (docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)。
  */
@@ -33,15 +33,17 @@ describe("カタログのタブの文言", () => {
     expect(messages.posts.feedQuoteDerivedTitle).toBe("ORIGINAL");
   });
 
-  test.each(locales)("%s: 刷新後の原本のラベルは、タブの名前と同じ語(User / My ORIGINAL)", async (locale) => {
+  test.each(locales)("%s: 刷新後のラベルは英語で全言語同じ(User / My ORIGINAL・from CATALOG)", async (locale) => {
     const messages = await getAllMessages(locale);
 
     expect(messages.posts.modeUserOriginal).toBe(messages.userStyles.tabUser);
     expect(messages.posts.modeMyOriginal).toBe("My ORIGINAL");
+    // 原本を使って作った投稿のラベルも、My / User ORIGINAL にそろえて英語・全言語同一
+    expect(messages.posts.modeFromCatalog).toBe("from CATALOG");
   });
 
   test.each(locales)(
-    "%s: 刷新後の「カタログから生成」「このカタログで生成する」「カタログ作成者」などが空でない",
+    "%s: 刷新後の「このカタログで生成する」「カタログ作成者」「カタログから生成」(シートの見出し)などが空でない",
     async (locale) => {
       const messages = await getAllMessages(locale);
 
@@ -106,7 +108,6 @@ describe("カタログのタブの文言", () => {
     const messages = await getAllMessages("ja");
 
     expect(messages.free.catalogSheetTitle).toBe("カタログから生成");
-    expect(messages.posts.modeFromCatalog).toBe("カタログから生成");
     expect(messages.posts.feedUseCatalog).toBe("このカタログで生成する");
     expect(messages.posts.feedQuoteCatalogCreator).toBe("カタログ作成者");
   });

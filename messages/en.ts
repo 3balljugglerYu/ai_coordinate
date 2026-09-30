@@ -121,7 +121,7 @@ export const enMessages = {
     modeFree: "Free Style",
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
-    modeFromCatalog: "From catalog",
+    modeFromCatalog: "from CATALOG",
     copy: "Copy",
     copied: "Copied",
     followRequiredTitle: "Follow required",

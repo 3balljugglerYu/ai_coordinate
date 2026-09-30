@@ -28,18 +28,18 @@ describe("getGenerationModeLabelKey", () => {
 
 /*
   カタログ刷新後(公開前は運営だけ)。
-  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作ったものは「カタログから生成」。
+  ⭐ ORIGINAL は原本だけ。カタログの原本を使って作ったものは「from CATALOG」。
   原本は、見ている人が作者本人なら My ORIGINAL、ほかの人には User ORIGINAL(2026-09-30 ユーザー決定)。
 */
 describe("getGenerationModeLabelKey(カタログ刷新後)", () => {
   const SOURCE_POST_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const revamp = { isCatalogRevamp: true } as const;
 
-  it("ペルスタのカタログのスタイルで作ったものは「カタログから生成」", () => {
+  it("ペルスタのカタログのスタイルで作ったものは「from CATALOG」", () => {
     expect(getGenerationModeLabelKey("one_tap_style", revamp)).toBe("modeFromCatalog");
   });
 
-  it("ほかの人のカタログ(元の投稿あり)で作ったものも「カタログから生成」。見ている人に関係しない", () => {
+  it("ほかの人のカタログ(元の投稿あり)で作ったものも「from CATALOG」。見ている人に関係しない", () => {
     for (const isViewerAuthor of [false, true]) {
       expect(
         getGenerationModeLabelKey("free", {
