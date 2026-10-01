@@ -86,9 +86,11 @@ jest.mock("next/dynamic", () => ({
       preset: { id: string };
       subscriptionPlan: string;
       canUseFreePose?: boolean;
+      isGuest?: boolean;
     }) => (
       <div
         data-testid="style-generation-sheet"
+        data-guest={String(props.isGuest ?? false)}
         data-preset={props.preset.id}
         data-plan={props.subscriptionPlan}
         data-can-use-free-pose={String(props.canUseFreePose ?? false)}
@@ -747,7 +749,7 @@ describe("StylesGalleryClient", () => {
     カードを押したときの分岐(Persta.AI ORIGINAL の生成シート)。
     計画書: docs/planning/styles-generation-sheet-implementation-plan.md §10-5
   */
-  describe("生成シート(刷新後・ログイン中)", () => {
+  describe("生成シート(刷新後)", () => {
     /** 段階解放のカテゴリ(開く前に解放状態を確かめる)。 */
     function gatedPreset(id: string): StylePresetPublicSummary {
       const base = preset(id);
@@ -857,22 +859,87 @@ describe("StylesGalleryClient", () => {
       ).toBe("free");
     });
 
-    test("未ログインは今までどおり試着確認から/styleへ", async () => {
+    /*
+      刷新後は /style を使わない(開くとスタイル紹介ページへ移される)ので、
+      未ログインもその場で決める(ホーム・投稿詳細と同じ範囲)。
+    */
+    async function renderAsGuest(presets: StylePresetPublicSummary[]) {
       render(
         <StylesGalleryClient
-          presets={[preset("style-a")]}
+          presets={presets}
           generateCounts={{}}
           generateTotals={{}}
           nowIso={NOW_ISO}
           locale="ja"
         />,
       );
+      // ログイン状態を確かめ終えるまで待つ(終える前の押下は無視される)
       await waitFor(() => expect(getUserMock).toHaveBeenCalled());
+      await act(async () => {});
+    }
+
+    function guestAllowed(
+      base: StylePresetPublicSummary,
+      allowGuestGeneration: boolean
+    ): StylePresetPublicSummary {
+      return {
+        ...base,
+        category: { ...base.category, allowGuestGeneration },
+      } as unknown as StylePresetPublicSummary;
+    }
+
+    test("未ログイン: ログインなしで生成できるカテゴリはその場でシートを開く", async () => {
+      await renderAsGuest([guestAllowed(preset("style-a"), true)]);
 
       fireEvent.click(screen.getByText("style-a"));
 
-      expect(screen.getByText("こちらを試着しますか？")).toBeTruthy();
+      const sheet = await screen.findByTestId("style-generation-sheet");
+      expect(sheet.getAttribute("data-guest")).toBe("true");
+      expect(sheet.getAttribute("data-plan")).toBe("free");
+      expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+      // プランは問い合わせない(未ログインは無料)
+      expect(fetchMock).not.toHaveBeenCalledWith("/api/users/me/subscription-plan");
+    });
+
+    test("未ログイン: それ以外のカテゴリはログインの案内を出す", async () => {
+      await renderAsGuest([guestAllowed(preset("style-a"), false)]);
+
+      fireEvent.click(screen.getByText("style-a"));
+
+      const notice = await screen.findByTestId("one-tap-style-locked-notice");
+      expect(notice.textContent).toContain("presetLoginRequiredTitle");
       expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+      expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+    });
+
+    test("未ログイン: 段階解放のカテゴリは(開放を確かめられないので)ログインの案内", async () => {
+      await renderAsGuest([guestAllowed(gatedPreset("style-gated"), true)]);
+
+      fireEvent.click(screen.getByText("style-gated"));
+
+      expect(
+        (await screen.findByTestId("one-tap-style-locked-notice")).textContent
+      ).toContain("presetLoginRequiredTitle");
+      expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+    });
+
+    test("ログイン状態を確かめ終える前は、押しても何もしない", () => {
+      getUserMock.mockReturnValue(new Promise(() => {}));
+      render(
+        <StylesGalleryClient
+          presets={[guestAllowed(preset("style-a"), true)]}
+          generateCounts={{}}
+          generateTotals={{}}
+          nowIso={NOW_ISO}
+          locale="ja"
+        />,
+      );
+
+      fireEvent.click(screen.getByText("style-a"));
+
+      expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+      expect(screen.queryByTestId("one-tap-style-locked-notice")).toBeNull();
+      expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
     });
 
     test("刷新前はログイン中でも今までどおり試着確認", async () => {
@@ -926,7 +993,7 @@ describe("StylesGalleryClient", () => {
       ["取得に失敗", new Error("network")],
       ["判定できない(unknown)", { body: { status: "unknown" } }],
     ])(
-      "段階解放で解放状態が%sのときは今までどおり試着確認へ戻す",
+      "段階解放で解放状態が%sのときは、理由を伝えられるスタイル紹介ページへ",
       async (_label, route) => {
         respondTo({ "/api/style-presets/style-gated/unlock-status": route });
         jest.spyOn(console, "error").mockImplementation(() => {});
@@ -934,7 +1001,11 @@ describe("StylesGalleryClient", () => {
 
         fireEvent.click(screen.getByText("style-gated"));
 
-        expect(await screen.findByText("こちらを試着しますか？")).toBeTruthy();
+        await waitFor(() =>
+          expect(routerPushMock).toHaveBeenCalledWith("/ja/styles/style-gated")
+        );
+        // 古い /style へは移らない(開くとこのページへ戻されるため)
+        expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
         expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
       }
     );

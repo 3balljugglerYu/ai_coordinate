@@ -145,6 +145,8 @@ export function StylesGalleryClient({
   const pathname = usePathname();
   const [activeChip, setActiveChip] = useState<StyleBrowseChipId>("all");
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // ログイン状態を確かめ終えたか。終える前はゲストと区別できない
+  const [isViewerResolved, setIsViewerResolved] = useState(false);
   // お気に入り(しおり)の集合と楽観更新トグル。/style・ホームと同じフックを共用する
   // (ゲストのタップはフック側がログイン誘導トーストを出す)。
   const { favoritePresetIds, toggleFavorite, hydrateFavorites } =
@@ -166,6 +168,8 @@ export function StylesGalleryClient({
   const [unlockNotice, setUnlockNotice] = useState<PresetUnlockState | null>(
     null
   );
+  // 未ログインで開いたシートか(結果はシートの中で見せる)
+  const [isGuestSheet, setIsGuestSheet] = useState(false);
   // 解放状態・プランを確認している間の二度押しを止める
   const isOpeningSheetRef = useRef(false);
 
@@ -190,7 +194,11 @@ export function StylesGalleryClient({
         const {
           data: { user },
         } = await supabase.auth.getUser();
-        if (cancelled || !user) {
+        if (cancelled) {
+          return;
+        }
+        setIsViewerResolved(true);
+        if (!user) {
           return;
         }
         setIsAuthenticated(true);
@@ -207,6 +215,9 @@ export function StylesGalleryClient({
         );
       } catch {
         // 認証状態の取得に失敗してもゲスト表示として成立する
+        if (!cancelled) {
+          setIsViewerResolved(true);
+        }
       }
     })();
     return () => {
@@ -242,8 +253,29 @@ export function StylesGalleryClient({
   }, [isCatalogRevamp, isAuthenticated]);
 
   const handleSelectPreset = async (preset: StylePresetPublicSummary) => {
-    if (!isCatalogRevamp || !isAuthenticated) {
+    if (!isCatalogRevamp) {
       setConfirmingPreset(preset);
+      return;
+    }
+    /*
+      刷新後は /style を使わない(開くとスタイル紹介ページへ移される)。
+      未ログインは、ログインなしで生成できるカテゴリ(コーディネート系)ならその場で
+      シートを開き、それ以外はログインの案内を出す(ホーム・投稿詳細と同じ範囲)。
+    */
+    if (!isAuthenticated) {
+      if (!isViewerResolved) {
+        return;
+      }
+      if (
+        preset.category.allowGuestGeneration &&
+        !categoryNeedsUnlockContext(preset.category)
+      ) {
+        setIsGuestSheet(true);
+        setSubscriptionPlan("free");
+        setSheetPreset(preset);
+        return;
+      }
+      setUnlockNotice({ status: "login_required" });
       return;
     }
     if (isOpeningSheetRef.current) {
@@ -262,12 +294,19 @@ export function StylesGalleryClient({
           return;
         }
         if (unlockState?.status !== "unlocked") {
-          setConfirmingPreset(preset);
+          // 確かめられないときは、理由を伝えられるスタイル紹介ページへ
+          router.push(
+            localizePublicPath(`/styles/${encodeURIComponent(preset.slug)}`, locale)
+          );
           return;
         }
       }
-      const plan = subscriptionPlan ?? (await fetchSubscriptionPlan());
+      const plan =
+        subscriptionPlan && !isGuestSheet
+          ? subscriptionPlan
+          : await fetchSubscriptionPlan();
       setSubscriptionPlan(plan);
+      setIsGuestSheet(false);
       setSheetPreset(preset);
     } finally {
       isOpeningSheetRef.current = false;
@@ -521,7 +560,7 @@ export function StylesGalleryClient({
         }
       />
 
-      {/* その場で生成するシート(刷新後・ログイン中)。閉じたらアンマウントする。 */}
+      {/* その場で生成するシート(刷新後)。閉じたらアンマウントする。 */}
       {sheetPreset && subscriptionPlan ? (
         <StyleGenerationSheet
           open
@@ -533,6 +572,7 @@ export function StylesGalleryClient({
           preset={sheetPreset}
           subscriptionPlan={subscriptionPlan}
           canUseFreePose={canUseFreePose}
+          isGuest={isGuestSheet}
         />
       ) : null}
     </div>

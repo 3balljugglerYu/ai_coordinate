@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { LogIn, Lock, Wand2 } from "lucide-react";
+import { Loader2, LogIn, Lock, Wand2 } from "lucide-react";
 import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import { useStylePresetGenerationSheet } from "@/features/style/hooks/useStylePresetGenerationSheet";
+import { createClient } from "@/lib/supabase/client";
 
 interface StylePresetGenerateCtaProps {
   presetId: string;
@@ -41,6 +44,39 @@ export function StylePresetGenerateCta({
 }: StylePresetGenerateCtaProps) {
   const t = useTranslations("style");
   const [unlockState, setUnlockState] = useState<PresetUnlockState | null>(null);
+
+  /*
+    カタログ刷新後(公開前は運営だけ)は /style を使わない(開くとこのページへ戻される)。
+    ホーム・投稿詳細と同じく、その場で生成シートを開く(2026-10-01 ユーザー決定)。
+    このページは閲覧者を知らないので、ここで確かめる。
+  */
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const [viewer, setViewer] = useState<{ id: string | null } | null>(null);
+  useEffect(() => {
+    if (!isCatalogRevamp) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        const {
+          data: { user },
+        } = await createClient().auth.getUser();
+        if (!cancelled) setViewer({ id: user?.id ?? null });
+      } catch (error) {
+        console.error("Failed to resolve viewer:", error);
+        if (!cancelled) setViewer({ id: null });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isCatalogRevamp]);
+  const generationSheet = useStylePresetGenerationSheet({
+    presetId,
+    currentUserId: viewer?.id ?? null,
+    isViewerResolved: viewer !== null,
+  });
 
   useEffect(() => {
     if (!isGatedCategory) {
@@ -104,6 +140,28 @@ export function StylePresetGenerateCta({
             : t("presetLockedSequentialDescription")}
         </p>
       </div>
+    );
+  }
+
+  if (isCatalogRevamp) {
+    return (
+      <>
+        <button
+          type="button"
+          onClick={() => void generationSheet.open()}
+          disabled={generationSheet.isWorking || viewer === null}
+          className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-6 py-3 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
+          data-testid="style-preset-cta"
+        >
+          {generationSheet.isWorking ? (
+            <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Wand2 className="h-4 w-4" aria-hidden />
+          )}
+          {label}
+        </button>
+        {generationSheet.overlays}
+      </>
     );
   }
 
