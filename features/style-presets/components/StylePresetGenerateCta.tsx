@@ -7,7 +7,7 @@ import { Loader2, LogIn, Lock, Wand2 } from "lucide-react";
 import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { useStylePresetGenerationSheet } from "@/features/style/hooks/useStylePresetGenerationSheet";
-import { createClient } from "@/lib/supabase/client";
+import { useResolvedViewer } from "@/features/style/hooks/useResolvedViewer";
 
 interface StylePresetGenerateCtaProps {
   presetId: string;
@@ -51,27 +51,7 @@ export function StylePresetGenerateCta({
     このページは閲覧者を知らないので、ここで確かめる。
   */
   const isCatalogRevamp = useStylesCatalogRevamp();
-  const [viewer, setViewer] = useState<{ id: string | null } | null>(null);
-  useEffect(() => {
-    if (!isCatalogRevamp) {
-      return;
-    }
-    let cancelled = false;
-    void (async () => {
-      try {
-        const {
-          data: { user },
-        } = await createClient().auth.getUser();
-        if (!cancelled) setViewer({ id: user?.id ?? null });
-      } catch (error) {
-        console.error("Failed to resolve viewer:", error);
-        if (!cancelled) setViewer({ id: null });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isCatalogRevamp]);
+  const viewer = useResolvedViewer(isCatalogRevamp);
   const generationSheet = useStylePresetGenerationSheet({
     presetId,
     currentUserId: viewer?.id ?? null,

@@ -19,7 +19,8 @@ const StyleGenerationSheet = dynamic(
 );
 
 interface UseStylePresetGenerationSheetParams {
-  presetId: string;
+  /** 開くスタイル。棚のように押すまで決まらないときは省き、`open` に渡す。 */
+  presetId?: string;
   /**
    * スタイル紹介ページ(/styles/[slug])。シートを開けないときの行き先。
    * 分からなければ、スタイルを取れたときはその slug、取れなければ /styles へ。
@@ -34,9 +35,19 @@ interface UseStylePresetGenerationSheetParams {
   isViewerResolved: boolean;
 }
 
+interface StylePresetTarget {
+  presetId: string;
+  slug?: string | null;
+}
+
 interface UseStylePresetGenerationSheetResult {
-  /** シートを開く(開けないときはログインの案内・スタイル紹介ページへ)。 */
-  open: () => Promise<void>;
+  /**
+   * シートを開く(開けないときはログインの案内・スタイル紹介ページへ)。
+   * `target` を渡すと、フックに渡したスタイルの代わりにそれを開く。
+   */
+  open: (target?: StylePresetTarget) => Promise<void>;
+  /** シートかログインの案内が開いている間 true(自動で流れる棚を止めるのに使う)。 */
+  isOpen: boolean;
   /** スタイル・開放状態・プランを取りに行っている間 true。 */
   isWorking: boolean;
   /** シートとログインの案内。呼び出し側の描画に含めること。 */
@@ -101,8 +112,8 @@ function styleHrefFor(slug: string | null | undefined): string {
  * - それ以外 → シートを開く
  */
 export function useStylePresetGenerationSheet({
-  presetId,
-  slug,
+  presetId: defaultPresetId,
+  slug: defaultSlug,
   currentUserId,
   isViewerResolved,
 }: UseStylePresetGenerationSheetParams): UseStylePresetGenerationSheetResult {
@@ -122,7 +133,7 @@ export function useStylePresetGenerationSheet({
     それ以外・取れなかったとき・段階解放のカテゴリ(未ログインは開放を確かめられない)は
     ログインの案内。
   */
-  const openGuestSheetOrAskLogin = async () => {
+  const openGuestSheetOrAskLogin = async (presetId: string) => {
     setIsWorking(true);
     try {
       const preset = await fetchPresetSummary(presetId);
@@ -139,12 +150,14 @@ export function useStylePresetGenerationSheet({
     }
   };
 
-  const open = async () => {
-    if (isWorking || !isViewerResolved) {
+  const open = async (target?: StylePresetTarget) => {
+    const presetId = target?.presetId ?? defaultPresetId;
+    const slug = target ? target.slug : defaultSlug;
+    if (isWorking || !isViewerResolved || !presetId) {
       return;
     }
     if (!currentUserId) {
-      await openGuestSheetOrAskLogin();
+      await openGuestSheetOrAskLogin(presetId);
       return;
     }
     setIsWorking(true);
@@ -190,5 +203,5 @@ export function useStylePresetGenerationSheet({
     </>
   );
 
-  return { open, isWorking, overlays };
+  return { open, isOpen: sheet !== null || showAuthModal, isWorking, overlays };
 }

@@ -20,6 +20,9 @@ import { mountAspectForCategory } from "@/features/collections/lib/mount-aspects
 import { EventShelfCountdown } from "@/features/home/components/EventShelfCountdown";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import { useResolvedViewer } from "@/features/style/hooks/useResolvedViewer";
+import { useStylePresetGenerationSheet } from "@/features/style/hooks/useStylePresetGenerationSheet";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -71,6 +74,25 @@ export function HomeEventShelfSection({
   const { toast } = useToast();
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
+
+  /*
+    カタログ刷新後(公開前は運営だけ)は /style を使わない。確認を挟まず、
+    押したスタイルでその場で生成シートを開く(2026-10-01 ユーザー決定。
+    ホームのスタイルカルーセルと同じ)。
+  */
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const viewer = useResolvedViewer(isCatalogRevamp);
+  const generationSheet = useStylePresetGenerationSheet({
+    currentUserId: viewer?.id ?? null,
+    isViewerResolved: viewer !== null,
+  });
+  const handleSelectPreset = (preset: StylePresetPublicSummary) => {
+    if (isCatalogRevamp) {
+      void generationSheet.open({ presetId: preset.id, slug: preset.slug });
+      return;
+    }
+    setConfirmingPreset(preset);
+  };
 
   // 完成台紙タップ時のモーダル(マイページの openMountModal と同挙動)。
   const [mountCelebration, setMountCelebration] =
@@ -313,7 +335,7 @@ export function HomeEventShelfSection({
             // スクリーンリーダーへ二重読み上げにならないようにする。
             alt={`${t("eventShelfDoneBadge")} - ${tStyle("styleCardAlt", { name: preset.title })}`}
             locale={cardLocale}
-            onClick={() => setConfirmingPreset(preset)}
+            onClick={() => handleSelectPreset(preset)}
           />
           <span
             className="pointer-events-none absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full bg-green-600 text-xs font-bold text-white shadow"
@@ -332,7 +354,7 @@ export function HomeEventShelfSection({
           preset={preset}
           alt={`${t("eventShelfNewBadge")} - ${tStyle("styleCardAlt", { name: preset.title })}`}
           locale={cardLocale}
-          onClick={() => setConfirmingPreset(preset)}
+          onClick={() => handleSelectPreset(preset)}
         />
         <span
           className="pointer-events-none absolute left-2 top-2 z-10 rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white shadow"
@@ -397,6 +419,7 @@ export function HomeEventShelfSection({
         locale={cardLocale}
         generateTotals={generateTotals}
       />
+      {generationSheet.overlays}
       <CollectionProgressModal
         key={
           mountCelebration
