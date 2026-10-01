@@ -35,6 +35,15 @@ import type { Post } from "@/features/posts/types";
  */
 const PEEK_POST_COUNT = 2;
 
+/** 指で操作する端末か(PC では隣のタブを先に読まない。CatalogSwipePanel と同じ判定) */
+function isTouchDevice(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}
+
 /**
  * /user-styles の一覧本体。
  *
@@ -128,7 +137,10 @@ export function UserStylesFeedClient({
       } else if (target.startsWith("author:")) {
         params.set("author", target.slice("author:".length));
       }
-      if (nextCursor) {
+      if (nextCursor && "position" in nextCursor) {
+        // 👑 よく使われる は確定順位で続きを読む
+        params.set("cursorPosition", String(nextCursor.position));
+      } else if (nextCursor) {
         params.set("cursorPostedAt", nextCursor.postedAt);
         params.set("cursorId", nextCursor.id);
       }
@@ -241,9 +253,11 @@ export function UserStylesFeedClient({
     隣のタブの1ページ目を先に取っておく(カタログ刷新後のみ)。
     払い始めたときに中身が見え、切り替えた瞬間に一覧を出せるようにする。
     失敗しても、切り替えたときにいつもどおり取り直すだけ。
+    ⭐ 指で操作する端末だけ(マイページと同じ)。PC は横に払わないので、
+    開くたびに隣のタブを読むのは無駄な問い合わせになる(一般公開後は全員が開く)。
   */
   useEffect(() => {
-    if (!isCatalogRevamp) {
+    if (!isCatalogRevamp || !isTouchDevice()) {
       return;
     }
     const neighbors = [chipIds[activeChipIndex - 1], chipIds[activeChipIndex + 1]];

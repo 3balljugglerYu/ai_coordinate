@@ -5,11 +5,15 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { userStylesRouteCopy } from "@/features/user-styles/lib/route-copy";
 import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
+import { getPublicUserStylePage } from "@/features/user-styles/lib/get-public-user-style-page";
 import {
   USER_STYLE_PAGE_MAX,
   USER_STYLE_PAGE_SIZE,
 } from "@/features/user-styles/lib/constants";
-import type { UserStyleSort } from "@/features/user-styles/types";
+import type {
+  UserStyleCursor,
+  UserStyleSort,
+} from "@/features/user-styles/types";
 import { UUID_PATTERN } from "@/features/user-styles/lib/validation";
 
 /**
@@ -63,24 +67,58 @@ export async function GET(request: NextRequest) {
     if (cursorPostedAt !== null && Number.isNaN(Date.parse(cursorPostedAt))) {
       return jsonError(copy.invalidCursor, "USER_STYLES_INVALID_CURSOR", 400);
     }
-    // usage は1ページで返し切る設計なので cursor を受け付けない
-    // （渡すと RPC 側が例外を投げる）。
+    /*
+      👑 よく使われる は確定順位(position)で続きを読む。並びと cursor の形が
+      合わないものは取り違えなので落とす(newest に position、usage に posted_at/id)。
+    */
+    const cursorPositionParam = params.get("cursorPosition");
     if (sort === "usage" && cursorPostedAt !== null) {
       return jsonError(copy.invalidCursor, "USER_STYLES_INVALID_CURSOR", 400);
     }
+    if (sort !== "usage" && cursorPositionParam !== null) {
+      return jsonError(copy.invalidCursor, "USER_STYLES_INVALID_CURSOR", 400);
+    }
+    let cursorPosition: number | null = null;
+    if (cursorPositionParam !== null) {
+      cursorPosition = Number(cursorPositionParam);
+      if (!Number.isInteger(cursorPosition) || cursorPosition < 1) {
+        return jsonError(copy.invalidCursor, "USER_STYLES_INVALID_CURSOR", 400);
+      }
+    }
+    // 👑 は作者で絞らない(チップは排他。RPC も作者を受け取らない)
+    if (sort === "usage" && authorParam !== null) {
+      return jsonError(copy.invalidAuthor, "USER_STYLES_INVALID_AUTHOR", 400);
+    }
 
-    const page = await getUserStylePage({
-      limit,
-      sort,
-      authorId: authorParam,
-      cursor:
-        cursorPostedAt !== null && cursorId !== null
+    const cursor: UserStyleCursor | null =
+      cursorPosition !== null
+        ? { position: cursorPosition }
+        : cursorPostedAt !== null && cursorId !== null
           ? { postedAt: cursorPostedAt, id: cursorId }
-          : null,
-      // ⭐ 閲覧者は必ずサーバーで解決する。クエリから受け取ってはいけない
-      //    （ブロック・通報の除外基準になるため、偽装できると他人の除外を外せる）。
-      currentUserId: user?.id ?? null,
-    });
+          : null;
+
+    /*
+      未ログインは閲覧者依存の除外(双方向ブロック・本人の通報)が無いので、
+      閲覧者に依らないキャッシュを使い回す。一般公開後は未ログイン・クローラーも
+      開くので、毎回 DB を引かないようにする。
+      ⭐ ログイン済みには**絶対に使わない**(除外の結果を他人と共有してしまう)。
+    */
+    const page = user
+      ? await getUserStylePage({
+          limit,
+          sort,
+          authorId: authorParam,
+          cursor,
+          // ⭐ 閲覧者は必ずサーバーで解決する。クエリから受け取ってはいけない
+          //    （ブロック・通報の除外基準になるため、偽装できると他人の除外を外せる）。
+          currentUserId: user.id,
+        })
+      : await getPublicUserStylePage({
+          limit,
+          sort,
+          authorId: authorParam,
+          cursor,
+        });
 
     return NextResponse.json(page);
   } catch (error) {

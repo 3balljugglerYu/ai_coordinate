@@ -3,7 +3,11 @@
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 jest.mock("@/features/posts/lib/server-api", () => ({ enrichPosts: jest.fn() }));
 
-import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
+import {
+  fetchUserStylePage,
+  getUserStylePage,
+  UserStylePageFetchError,
+} from "@/features/user-styles/lib/get-user-style-page";
 import {
   USER_STYLE_PAGE_MAX,
   USER_STYLE_PAGE_SIZE,
@@ -16,7 +20,11 @@ const mockCreateAdminClient = createAdminClient as jest.MockedFunction<
 >;
 const mockEnrichPosts = enrichPosts as jest.MockedFunction<typeof enrichPosts>;
 
-type PageRow = { post: { id: string; posted_at: string }; usage_count: number };
+type PageRow = {
+  post: { id: string; posted_at: string };
+  usage_count: number;
+  rank_position?: number;
+};
 
 function row(id: string, postedAt: string, usage = 0): PageRow {
   return { post: { id, posted_at: postedAt }, usage_count: usage };
@@ -71,7 +79,7 @@ describe("getUserStylePage", () => {
 
     await getUserStylePage({
       limit: 5,
-      sort: "usage",
+      sort: "newest",
       authorId: "author-1",
       cursor: { postedAt: "2026-09-01T00:00:00Z", id: "cursor-1" },
       currentUserId: "viewer-1",
@@ -80,10 +88,31 @@ describe("getUserStylePage", () => {
     expect(stub.rpc).toHaveBeenCalledWith("get_user_style_page", {
       p_viewer_id: "viewer-1",
       p_limit: 5,
-      p_sort: "usage",
+      p_sort: "newest",
       p_author_id: "author-1",
       p_cursor_posted_at: "2026-09-01T00:00:00Z",
       p_cursor_id: "cursor-1",
+    });
+  });
+
+  /*
+    👑 よく使われる は、毎時確定する順位を順位で 20 件ずつ読む(2026-10-01 にページング化)。
+  */
+  test("usage 並びは確定順位の RPC を呼び、cursor は順位で渡す", async () => {
+    const stub = createSupabaseStub({ rows: [] });
+    mockCreateAdminClient.mockReturnValue(stub);
+
+    await getUserStylePage({
+      limit: 20,
+      sort: "usage",
+      cursor: { position: 20 },
+      currentUserId: "viewer-1",
+    });
+
+    expect(stub.rpc).toHaveBeenCalledWith("get_user_style_usage_page", {
+      p_viewer_id: "viewer-1",
+      p_limit: 20,
+      p_cursor_position: 20,
     });
   });
 
@@ -151,12 +180,26 @@ describe("getUserStylePage", () => {
     });
 
     /*
-      ⭐ usage は1ページで返し切る設計。利用回数はライブに動くので、
-      cursor を出してしまうとページ境界で重複・欠落が起きる。
+      👑 は確定順位(rank_position)で続きを指す。順位は毎時確定して固定されているので、
+      順位で境界を決めればページ境界で重複・欠落しない。
     */
-    test("usage 並びは limit ちょうどでも null", async () => {
+    test("usage 並びは limit ちょうどなら最後の行の順位から作る", async () => {
       const stub = createSupabaseStub({
-        rows: [row("a", "2026-09-18T00:00:00Z", 5), row("b", "2026-09-17T00:00:00Z", 3)],
+        rows: [
+          { ...row("a", "2026-09-18T00:00:00Z", 9), rank_position: 21 },
+          { ...row("b", "2026-09-17T00:00:00Z", 5), rank_position: 23 },
+        ],
+      });
+      mockCreateAdminClient.mockReturnValue(stub);
+
+      const { nextCursor } = await getUserStylePage({ limit: 2, sort: "usage" });
+
+      expect(nextCursor).toEqual({ position: 23 });
+    });
+
+    test("usage 並びも limit に満たなければ null（最後のページ）", async () => {
+      const stub = createSupabaseStub({
+        rows: [{ ...row("a", "2026-09-18T00:00:00Z", 9), rank_position: 41 }],
       });
       mockCreateAdminClient.mockReturnValue(stub);
 
@@ -186,6 +229,21 @@ describe("getUserStylePage", () => {
   });
 
   describe("fail closed", () => {
+    /*
+      キャッシュ層("use cache")からはこちらを使う。空を返すと、一時的な失敗が
+      「空の一覧」としてキャッシュの寿命のあいだ全員に出続けるため、投げて覚えさせない。
+    */
+    test("fetchUserStylePage は RPC エラーなら投げる(空を返さない)", async () => {
+      const stub = createSupabaseStub({ rows: [], error: { code: "57014" } });
+      mockCreateAdminClient.mockReturnValue(stub);
+      const spy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+      await expect(fetchUserStylePage()).rejects.toBeInstanceOf(
+        UserStylePageFetchError
+      );
+      spy.mockRestore();
+    });
+
     test("RPC エラーなら空。新着順へフォールバックしない", async () => {
       const stub = createSupabaseStub({ rows: [], error: { code: "42883" } });
       mockCreateAdminClient.mockReturnValue(stub);
