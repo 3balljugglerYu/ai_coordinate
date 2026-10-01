@@ -18,6 +18,9 @@ jest.mock("@/features/user-styles/lib/get-user-style-page", () => ({
   ...jest.requireActual("@/features/user-styles/lib/get-user-style-page"),
   getUserStylePage: jest.fn(),
 }));
+jest.mock("@/features/user-styles/lib/get-public-user-style-page", () => ({
+  getPublicUserStylePage: jest.fn(),
+}));
 jest.mock("@/features/user-styles/lib/get-followed-authors", () => ({
   ...jest.requireActual("@/features/user-styles/lib/get-followed-authors"),
   getUserStyleFollowedAuthors: jest.fn(),
@@ -37,6 +40,7 @@ import { getUser } from "@/lib/auth";
 import { isUserStylesAvailable } from "@/lib/env";
 import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
 import { getUserStyleFollowedAuthors } from "@/features/user-styles/lib/get-followed-authors";
+import { getPublicUserStylePage } from "@/features/user-styles/lib/get-public-user-style-page";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
@@ -45,6 +49,9 @@ const mockAvailable = isUserStylesAvailable as jest.MockedFunction<
 >;
 const mockGetPage = getUserStylePage as jest.MockedFunction<
   typeof getUserStylePage
+>;
+const mockGetPublicPage = getPublicUserStylePage as jest.MockedFunction<
+  typeof getPublicUserStylePage
 >;
 const mockGetAuthors = getUserStyleFollowedAuthors as jest.MockedFunction<
   typeof getUserStyleFollowedAuthors
@@ -60,6 +67,12 @@ function listRequest(query = ""): NextRequest {
   return new NextRequest(`https://example.test/api/user-styles${query}`);
 }
 
+function loginAs(id: string) {
+  mockGetUser.mockResolvedValue({ id } as unknown as Awaited<
+    ReturnType<typeof getUser>
+  >);
+}
+
 function eventRequest(body: unknown): NextRequest {
   return new NextRequest("https://example.test/api/user-styles/events", {
     method: "POST",
@@ -73,6 +86,7 @@ beforeEach(() => {
   mockAvailable.mockReturnValue(true);
   mockGetUser.mockResolvedValue(null as unknown as Awaited<ReturnType<typeof getUser>>);
   mockGetPage.mockResolvedValue({ posts: [], nextCursor: null });
+  mockGetPublicPage.mockResolvedValue({ posts: [], nextCursor: null });
   mockGetAuthors.mockResolvedValue([]);
   mockRecord.mockResolvedValue(undefined);
 });
@@ -188,6 +202,7 @@ describe("GET /api/user-styles", () => {
   });
 
   test("未知の sort は既定(newest)へ倒す（エラーにしない）", async () => {
+    loginAs("viewer-1");
     await getList(listRequest("?sort=carousel"));
 
     expect(mockGetPage).toHaveBeenCalledWith(
@@ -196,6 +211,7 @@ describe("GET /api/user-styles", () => {
   });
 
   test("正しい cursor は postedAt と id に分解して渡す", async () => {
+    loginAs("viewer-1");
     await getList(
       listRequest(`?cursorPostedAt=2026-09-18T00:00:00Z&cursorId=${UUID_B}`)
     );
@@ -208,6 +224,7 @@ describe("GET /api/user-styles", () => {
   });
 
   test("取得結果をそのまま返す", async () => {
+    loginAs("viewer-1");
     mockGetPage.mockResolvedValue({
       posts: [{ id: "p1" }] as never,
       nextCursor: { postedAt: "2026-09-17T00:00:00Z", id: UUID_A },
@@ -219,6 +236,79 @@ describe("GET /api/user-styles", () => {
       posts: [{ id: "p1" }],
       nextCursor: { postedAt: "2026-09-17T00:00:00Z", id: UUID_A },
     });
+  });
+});
+
+/*
+  👑 よく使われる は確定順位(position)で続きを読む(2026-10-01 にページング化)。
+  並びと cursor の形が合わないものは取り違えなので落とす。
+*/
+describe("GET /api/user-styles: 👑 よく使われる のページング", () => {
+  test("cursorPosition を順位の cursor にして渡す", async () => {
+    loginAs("viewer-1");
+
+    await getList(listRequest("?sort=usage&cursorPosition=20"));
+
+    expect(mockGetPage).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: "usage", cursor: { position: 20 } })
+    );
+  });
+
+  test.each([
+    ["usage に posted_at/id", `?sort=usage&cursorPostedAt=2026-09-18T00:00:00Z&cursorId=${UUID_B}`],
+    ["newest に position", "?cursorPosition=20"],
+    ["position が 0", "?sort=usage&cursorPosition=0"],
+    ["position が数でない", "?sort=usage&cursorPosition=abc"],
+  ])("%s は 400", async (_label, query) => {
+    const res = await getList(listRequest(query));
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      errorCode: "USER_STYLES_INVALID_CURSOR",
+    });
+    expect(mockGetPage).not.toHaveBeenCalled();
+    expect(mockGetPublicPage).not.toHaveBeenCalled();
+  });
+
+  test("👑 を作者で絞る組み合わせは 400(チップは排他)", async () => {
+    const res = await getList(listRequest(`?sort=usage&author=${UUID_A}`));
+
+    expect(res.status).toBe(400);
+  });
+});
+
+/*
+  一般公開後は未ログイン・クローラーも開くので、未ログインは閲覧者に依らない
+  キャッシュから返す。⭐ ログイン済みには使わない(除外の結果を他人と共有するため)。
+*/
+describe("GET /api/user-styles: 未ログインはキャッシュから返す", () => {
+  test("未ログインはキャッシュから返し、閲覧者付きの取得はしない", async () => {
+    mockGetPublicPage.mockResolvedValue({
+      posts: [{ id: "p1" }] as never,
+      nextCursor: { position: 20 },
+    });
+
+    const res = await getList(listRequest("?sort=usage"));
+
+    expect(mockGetPublicPage).toHaveBeenCalledWith(
+      expect.objectContaining({ sort: "usage", cursor: null })
+    );
+    expect(mockGetPage).not.toHaveBeenCalled();
+    await expect(res.json()).resolves.toEqual({
+      posts: [{ id: "p1" }],
+      nextCursor: { position: 20 },
+    });
+  });
+
+  test("ログイン済みはキャッシュを使わない", async () => {
+    loginAs("viewer-1");
+
+    await getList(listRequest("?sort=usage"));
+
+    expect(mockGetPublicPage).not.toHaveBeenCalled();
+    expect(mockGetPage).toHaveBeenCalledWith(
+      expect.objectContaining({ currentUserId: "viewer-1" })
+    );
   });
 });
 

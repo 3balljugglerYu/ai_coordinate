@@ -304,6 +304,26 @@ describe("UserStylesFeedClient", () => {
       dispatchTouch(target, "touchend", [], [{ x: endX, y: 300 }]);
     }
 
+    /*
+      横に払うのは指で操作する端末だけなので、このまとまりは指の端末として動かす
+      (隣のタブの先読みも指の端末だけ。PC は下の「PC では…」で確かめる)。
+    */
+    const originalMatchMedia = window.matchMedia;
+    function setTouchDevice(isTouch: boolean) {
+      window.matchMedia = ((query: string) => ({
+        matches: isTouch && query === "(pointer: coarse)",
+        media: query,
+        addEventListener: jest.fn(),
+        removeEventListener: jest.fn(),
+      })) as unknown as typeof window.matchMedia;
+    }
+    beforeEach(() => {
+      setTouchDevice(true);
+    });
+    afterEach(() => {
+      window.matchMedia = originalMatchMedia;
+    });
+
     /** 選択中のタブの一覧(払っている間に横に見せる隣のタブの見本は含めない)。 */
     function currentList() {
       return within(screen.getByTestId("catalog-swipe-current"));
@@ -328,6 +348,29 @@ describe("UserStylesFeedClient", () => {
 
       expect(screen.queryByTestId("catalog-swipe-panel")).toBeNull();
       await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+      expect(calls.some((u) => u.includes("sort=usage"))).toBe(false);
+    });
+
+    test("PC では隣のタブを先に取らない(横に払わないので無駄な問い合わせになる)", async () => {
+      setTouchDevice(false);
+      catalogRevampMock.mockReturnValue(true);
+      const calls = stubFetch((url) =>
+        url.includes("/api/user-styles?")
+          ? { ok: true, body: { posts: [post("u1")], nextCursor: null } }
+          : { ok: true, body: { authors: [] } }
+      );
+
+      render(
+        <UserStylesFeedClient
+          initialPosts={[post("p1")]}
+          initialCursor={null}
+          currentUserId={null}
+        />
+      );
+
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      });
       expect(calls.some((u) => u.includes("sort=usage"))).toBe(false);
     });
 

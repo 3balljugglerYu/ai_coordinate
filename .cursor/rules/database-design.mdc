@@ -56,6 +56,7 @@ alwaysApply: false
 - `style_usage_events`
 - `style_guest_generate_attempts`
 - `user_blocks`
+- `user_style_usage_rankings`
 - `user_credits`
 
 ## 旧版からの主な差分
@@ -182,6 +183,20 @@ alwaysApply: false
   );
   ```
 - RLS: 全アクション deny のポリシー 1 本。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（= `service_role` と SECURITY DEFINER 関数のみ）。**SELECT を開けると段階公開中に PostgREST 経由で未公開の順位が読める**ため開けない
+
+#### `user_style_usage_rankings`
+- 主キー: `post_id`（**FKなし**）
+- 主要カラム: `position`（**UNIQUE**・`>= 1` の CHECK）, `usage_count`（確定時点の利用回数・`>= 0`）, `computed_at`
+- 外部キー: なし（派生データ。表示時の突き合わせと掲載条件の再確認は `get_user_style_usage_page` の join が担う）
+- 備考: `/user-styles` 👑「よく使われる」の確定順位（2026-10-01 追加。`20261001100000`）。`recompute_user_style_usage_rankings()` が全件を洗い替える。対象は User ORIGINAL の掲載条件（CANONICAL LISTING PREDICATE）を満たし、`validate_derived_prompt_source(g.id, g.user_id)` が可、かつ利用回数 3 回以上。並びは `usage_count DESC, posted_at DESC, id DESC`。閲覧者依存の除外（双方向ブロック・本人の通報）は確定時ではなく読み出し時に掛ける。`computed_at` が 3 時間より古ければ、読み出し側は従来のライブ集計（`get_user_style_page` の usage 分岐・1 ページのみ）へフォールバックする
+- 運用: cron `recompute_user_style_usage_rankings_hourly`（毎時25分）は**登録直後から `active = true`**（`20261001100100`。🔥人気のプロンプトと違い、動かさないと常にライブ集計へ倒れて目的を果たさないため）。止めるときは:
+  ```sql
+  SELECT cron.alter_job(
+    job_id := (SELECT jobid FROM cron.job WHERE jobname = 'recompute_user_style_usage_rankings_hourly'),
+    active := false
+  );
+  ```
+- RLS: 全アクション deny のポリシー 1 本。`PUBLIC` / `anon` / `authenticated` から全 REVOKE（= `service_role` と SECURITY DEFINER 関数のみ）
 
 #### `source_image_stocks`
 - 主キー: `id`
@@ -559,9 +574,11 @@ alwaysApply: false
   - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
 - コレクション: `get_collection_progress`, `reserve_collection_completion`, `reserve_collection_completion_for_user`, `finalize_collection_completion`, `fail_collection_completion`
   - 注: `get_collection_progress` / `reserve_collection_completion` は authenticated 用で `auth.uid()` を使う。`reserve_collection_completion_for_user` / `finalize_collection_completion` / `fail_collection_completion` は service role route 専用で、ユーザーから直接実行させない。`reserve_collection_completion_for_user` は route が session user と `isAdminViewer()` を検証した後、admin_only の台紙生成予約を行う。
-- User ORIGINAL (`/user-styles`): `get_user_style_page`, `get_user_style_followed_authors`
+- User ORIGINAL (`/user-styles`): `get_user_style_page`, `get_user_style_followed_authors`, `get_user_style_usage_page`, `recompute_user_style_usage_rankings`
   - 注: **いずれも EXECUTE は service_role のみ**（`PUBLIC` / `anon` / `authenticated` から REVOKE 済み）。`p_viewer_id` は**サーバー側の `getUser()` から解決した値のみ**を渡す。
-  - 注: `get_user_style_page(p_viewer_id, p_limit, p_sort, p_author_id, p_cursor_posted_at, p_cursor_id)` は 1 ページ分を**投稿本体ごと**（`to_jsonb(generated_images)`）返す。除外・並び・ページング・射影を**同一 SQL 文**に閉じること（`get_popular_prompt_page` と同じ理由）。**ページングは OFFSET ではなく `(posted_at, id)` の keyset cursor**（あちらは順位が事前計算テーブルで固定されているから OFFSET で安全なのであって、この一覧には同じ理屈が効かない）。`p_sort='usage'` は**利用回数3回以上を1ページで返し切る**（ライブ集計なので cursor でも順序を固定できない）。⭐ 該当件数が `p_limit` 上限 40 に近づいたら事前計算スナップショット方式へ移すこと。
+  - 注: `get_user_style_page(p_viewer_id, p_limit, p_sort, p_author_id, p_cursor_posted_at, p_cursor_id)` は 1 ページ分を**投稿本体ごと**（`to_jsonb(generated_images)`）返す。除外・並び・ページング・射影を**同一 SQL 文**に閉じること（`get_popular_prompt_page` と同じ理由）。**ページングは OFFSET ではなく `(posted_at, id)` の keyset cursor**（あちらは順位が事前計算テーブルで固定されているから OFFSET で安全なのであって、この一覧には同じ理屈が効かない）。`p_sort='usage'` は**利用回数3回以上を1ページで返し切る**（ライブ集計なので cursor でも順序を固定できない）。⭐ 2026-10-01 に該当が上限 40 を超えたため、アプリの 👑 は `get_user_style_usage_page` へ移した。この usage 分岐は、順位が古いときのフォールバックとしてだけ使われる。
+  - 注: `get_user_style_usage_page(p_viewer_id, p_limit, p_cursor_position)` は 👑 の1ページ分を投稿本体ごと返す。確定順位（`user_style_usage_rankings`）を **`position` の keyset cursor** で読む（順位が固定されているので境界がずれない）。読み出し時にも掲載条件・`validate_derived_prompt_source`・閲覧者依存の除外を掛け直す（確定から最大 1 時間の間の取消・モデレーション等を即反映）。戻り値の `usage_count` はライブ値、`rank_position` は確定順位。順位が 3 時間より古ければ `get_user_style_page(..., 'usage', ...)` の 1 ページに倒し、2 ページ目以降は空を返す。
+  - 注: `recompute_user_style_usage_rankings()` は SECURITY DEFINER で、入口で `is_trusted_lineage_writer()` を検証する（`recompute_popular_prompts` と同じ）。呼び出しは pg_cron から。
   - 注: 掲載条件（**CANONICAL LISTING PREDICATE**）は `generation_type='free' AND is_posted AND moderation_status='visible' AND source_post_id IS NULL AND user_id IS NOT NULL AND posted_at IS NOT NULL AND pre_generation_storage_path IS NOT NULL AND show_before_image`。**2つの関数に同じものが入っているので、片方だけ変えないこと**（チップと中身が食い違う）。
   - 注: 可否は `validate_derived_prompt_source(g.id, g.user_id)` を LATERAL で呼ぶ（requester に**原作者自身**を渡して閲覧者依存の条件を外し、内在的な可否だけを取る手）。⭐ **そのため閲覧者依存の除外（双方向ブロック・本人の通報）は呼び出す側の2関数が `p_viewer_id` で行う。`validate_derived_prompt_source` は `post_reports` を一切見ていない。**
   - 注: 利用回数は `get_prompt_usage_count` を LATERAL で呼ぶ。**`generated_images` を数え直さないこと**（`prompt_usage_events` の項を参照）。
