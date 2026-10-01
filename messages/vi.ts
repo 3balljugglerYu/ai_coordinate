@@ -90,6 +90,8 @@ export const viMessages = {
     promptVisibilityRetractWarning: "Chuyển sang riêng tư không hoàn tác những gì đã được xem hoặc sao chép.",
     sourcePromptCardTitle: "Tạo bằng câu lệnh này",
     sourcePromptCardTitleDerived: "Tạo bằng câu lệnh gốc",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "Tạo bằng User ORIGINAL",
     sourcePromptCredit: "Nguyên tác của {name}",
     sourcePromptUsageCount: "Prompt này đã được dùng ít nhất {count} lần",
     sourcePromptUnavailable: "Hiện không dùng được",

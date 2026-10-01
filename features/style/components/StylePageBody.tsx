@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -9,9 +10,9 @@ import { CachedGenerationPercoinBalance } from "@/features/credits/components/Ca
 import { GeneratedImageGallerySkeleton } from "@/features/generation/components/GeneratedImageGallerySkeleton";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
-import { type Locale } from "@/i18n/config";
+import { localizePublicPath, type Locale } from "@/i18n/config";
 import { getUser } from "@/lib/auth";
-import { isAdminViewer } from "@/lib/env";
+import { isAdminViewer, isUserStylesAvailable } from "@/lib/env";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { createClient } from "@/lib/supabase/server";
 import { resolveCollectionUnlockContext } from "@/features/collections/lib/collection-unlock-server";
@@ -58,6 +59,28 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
   const cachedPresets = await getPublishedStylePresets({
     includeAdminOnly: isAdminViewerFlag,
   });
+  const params = (await searchParams) ?? {};
+
+  /*
+    カタログ刷新後(公開前は運営だけ)は、この画面を使わない(2026-10-01 ユーザー決定)。
+    生成はペルスタのカタログ(/styles)の生成シートで行う。
+
+    アプリ内のリンク(収集ガイド・解放の案内・生成モードのタブなど)や
+    共有URL・ブックマークを1つずつ直すと漏れるので、ここで一括して移す。
+    `?style=` があればそのスタイルの紹介ページへ(生成シートはそこから開ける)。
+  */
+  if (isUserStylesAvailable(user?.id ?? null)) {
+    const requestedSlug = params.style
+      ? cachedPresets.find((preset) => preset.id === params.style)?.slug
+      : undefined;
+    redirect(
+      localizePublicPath(
+        requestedSlug ? `/styles/${encodeURIComponent(requestedSlug)}` : "/styles",
+        locale,
+      ),
+    );
+  }
+
   // 解放ゲート(unlock gating)はユーザー依存のため、グローバルキャッシュの外で適用する。
   //  - 前提条件カテゴリ未完走 → 解放対象カテゴリのプリセットを一覧から除去
   //  - 完走済み → 段階解放(drip)で未解放ぶんに locked フラグを立てる
@@ -77,7 +100,6 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
       : EMPTY_UNLOCK_CONTEXT;
   const presets = applyCollectionUnlockGating(cachedPresets, unlockContext);
   const profile = user ? await getUserProfileServer(user.id) : null;
-  const params = (await searchParams) ?? {};
 
   /*
     共有リンクや URL 直叩きで未開放の `?style=` が来たときの保険。

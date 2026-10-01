@@ -990,6 +990,18 @@ describe("PostFeedCard(カタログ刷新後)", () => {
     expect(button.getAttribute("data-slug")).toBe("summer-marine");
   });
 
+  test("⭐Persta ORIGINAL の引用元カードは、押してもスタイル紹介ページへ移動しない", () => {
+    render(
+      <PostFeedCard
+        post={createPost({ generation_type: "one_tap_style", generation_metadata: ONE_TAP_METADATA })}
+        currentUserId="viewer-1"
+        stylePresetLink={{ presetId: "preset-1", slug: "summer-marine", usageCount: 0, isEnded: false }}
+      />
+    );
+
+    expect(screen.getByTestId("feed-source-quote").getAttribute("data-href")).toBe("");
+  });
+
   test.each([
     ["非公開(slug なし)", { presetId: "preset-1", slug: null, usageCount: 0, isEnded: false }],
     ["会期終了", { presetId: "preset-1", slug: "summer-marine", usageCount: 0, isEnded: true }],
@@ -1064,6 +1076,10 @@ describe("PostFeedCard(一般の利用者)", () => {
       />
     );
     expect(screen.queryByTestId("use-style-button")).toBeNull();
+    // 押すとスタイル紹介ページへ移動する(今のまま)
+    expect(screen.getByTestId("feed-source-quote").getAttribute("data-href")).toBe(
+      "/styles/summer-marine"
+    );
   });
 });
 

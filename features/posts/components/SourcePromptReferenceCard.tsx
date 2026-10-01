@@ -20,6 +20,7 @@ import {
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import {
   BeforeAfterFrame,
   FALLBACK_ASPECT_RATIO,
@@ -134,6 +135,12 @@ export function SourcePromptReferenceCard({
   const t = useTranslations("posts");
   const router = useRouter();
   const { toast } = useToast();
+  /*
+    カタログ刷新後(公開前は運営だけ)は、Persta ORIGINAL のカード(OneTapStyleDetailCard)と
+    同じく「User ORIGINAL で生成」の見出しと「このカタログで生成する」にそろえる
+    (2026-10-01 ユーザー決定)。
+  */
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isOpenOriginConfirmOpen, setIsOpenOriginConfirmOpen] = useState(false);
@@ -239,9 +246,11 @@ export function SourcePromptReferenceCard({
   return (
     <div className="space-y-2">
       <p className="text-sm font-bold text-gray-700">
-        {isDerivedPost
-          ? t("sourcePromptCardTitleDerived")
-          : t("sourcePromptCardTitle")}
+        {isCatalogRevamp
+          ? t("sourcePromptCardTitleRevamp")
+          : isDerivedPost
+            ? t("sourcePromptCardTitleDerived")
+            : t("sourcePromptCardTitle")}
       </p>
 
       {/*
@@ -370,7 +379,7 @@ export function SourcePromptReferenceCard({
             className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
           >
             <Sparkles className="h-4 w-4" aria-hidden="true" />
-            {t("sourcePromptCardTitle")}
+            {t(isCatalogRevamp ? "feedUseCatalog" : "sourcePromptCardTitle")}
           </button>
         ) : null}
 

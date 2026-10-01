@@ -90,6 +90,8 @@ export const zhTwMessages = {
     promptVisibilityRetractWarning: "改為私密無法撤回已被看到或複製的內容。",
     sourcePromptCardTitle: "用這個提示詞創作",
     sourcePromptCardTitleDerived: "用原作提示詞創作",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "由User ORIGINAL生成",
     sourcePromptCredit: "原作 {name}",
     sourcePromptUsageCount: "這個提示詞已被使用 {count} 次以上",
     sourcePromptUnavailable: "目前無法使用",

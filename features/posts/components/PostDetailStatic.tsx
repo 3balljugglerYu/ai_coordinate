@@ -661,6 +661,7 @@ export function PostDetailStatic({
             <OneTapStyleDetailCard
               preset={oneTapStylePreset}
               unlockState={presetUnlockState}
+              currentUserId={currentUserId ?? null}
             />
           </div>
         ) : promptDisplayMode === "source_reference" && post.source_reference ? (

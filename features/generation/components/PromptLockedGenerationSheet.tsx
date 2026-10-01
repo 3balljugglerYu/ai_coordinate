@@ -22,6 +22,7 @@ import {
   resumeGenerationProgressBarIfNeeded,
 } from "@/features/generation/lib/generation-progress-store";
 import { useGenerationProgressAvailable } from "@/features/generation/components/GenerationProgressAvailabilityProvider";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 
 interface PromptLockedGenerationSheetProps {
@@ -92,6 +93,9 @@ export function PromptLockedGenerationSheet({
   promptVisibility,
 }: PromptLockedGenerationSheetProps) {
   const t = useTranslations("posts");
+  // カタログ刷新後(公開前は運営だけ)は、開いたボタンと同じ「このカタログで生成する」にする
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const sheetTitle = t(isCatalogRevamp ? "feedUseCatalog" : "lockedSheetTitle");
   const isDesktop = useIsDesktopViewport();
   const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
 
@@ -201,7 +205,7 @@ export function PromptLockedGenerationSheet({
         >
           {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「カタログから生成」)が担う。 */}
           <DialogHeader className="sr-only">
-            <DialogTitle>{t("lockedSheetTitle")}</DialogTitle>
+            <DialogTitle>{sheetTitle}</DialogTitle>
             <DialogDescription>{t("lockedSheetDescription")}</DialogDescription>
           </DialogHeader>
 
@@ -238,7 +242,7 @@ export function PromptLockedGenerationSheet({
             <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
             {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「カタログから生成」)が担う。 */}
             <Drawer.Title className="sr-only">
-              {t("lockedSheetTitle")}
+              {sheetTitle}
             </Drawer.Title>
             <Drawer.Description className="sr-only">
               {t("lockedSheetDescription")}

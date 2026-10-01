@@ -90,6 +90,8 @@ export const ptMessages = {
     promptVisibilityRetractWarning: "Mudar para privado não desfaz o que já foi visto ou copiado.",
     sourcePromptCardTitle: "Criar com este prompt",
     sourcePromptCardTitleDerived: "Criar com o prompt original",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "Gerado com User ORIGINAL",
     sourcePromptCredit: "Original de {name}",
     sourcePromptUsageCount: "Este prompt foi usado pelo menos {count} vezes",
     sourcePromptUnavailable: "Indisponível no momento",

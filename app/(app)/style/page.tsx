@@ -4,6 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { StyleTourButton } from "@/features/style/components/StyleTourButton";
 import { StylePageHeading } from "@/features/style/components/StylePageHeading";
 import { StylePageBody } from "@/features/style/components/StylePageBody";
+import { HiddenWhenCatalogRevamp } from "@/features/style/components/HiddenWhenCatalogRevamp";
 import { StyleTotalGenerationCount } from "@/features/style/components/StyleTotalGenerationCount";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
@@ -100,22 +101,25 @@ export default async function StylePage({ searchParams }: StylePageProps) {
     <div className="min-h-screen bg-gray-50">
       <div className="px-4 pb-8 pt-6 md:pb-10 md:pt-8">
         <div className="mx-auto max-w-6xl space-y-8 animate-page-enter motion-reduce:animate-none">
-          {/* 累計生成枚数(動的): 高さ確保のスケルトンでレイアウトシフトを防ぐ */}
-          <Suspense
-            fallback={<div className="h-[52px] animate-pulse rounded-xl bg-gray-200" />}
-          >
-            <StyleTotalGenerationCount />
-          </Suspense>
+          {/* 刷新後は本体が /styles へ移すので、移る前の見出しを見せない */}
+          <HiddenWhenCatalogRevamp>
+            {/* 累計生成枚数(動的): 高さ確保のスケルトンでレイアウトシフトを防ぐ */}
+            <Suspense
+              fallback={<div className="h-[52px] animate-pulse rounded-xl bg-gray-200" />}
+            >
+              <StyleTotalGenerationCount />
+            </Suspense>
 
-          {/* 静的ヘッダ: データに依存しないので即時表示される */}
-          <div className="space-y-2">
-            <StylePageHeading />
-            {/* モバイルでタイトルを圧縮しないよう、チュートリアルボタンはタイトル下に左詰めで置く */}
-            <StyleTourButton />
-            <p className="text-sm font-medium text-gray-700">
-              {t("pageDescription")}
-            </p>
-          </div>
+            {/* 静的ヘッダ: データに依存しないので即時表示される */}
+            <div className="space-y-2">
+              <StylePageHeading />
+              {/* モバイルでタイトルを圧縮しないよう、チュートリアルボタンはタイトル下に左詰めで置く */}
+              <StyleTourButton />
+              <p className="text-sm font-medium text-gray-700">
+                {t("pageDescription")}
+              </p>
+            </div>
+          </HiddenWhenCatalogRevamp>
 
           {/* ユーザー依存の本体(認証・プリセット・生成結果)をストリーミング */}
           <Suspense fallback={<StylePageBodyFallback />}>

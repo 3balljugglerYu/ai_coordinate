@@ -90,6 +90,8 @@ export const deMessages = {
     promptVisibilityRetractWarning: "Der Wechsel zu privat macht nicht rückgängig, was schon gesehen oder kopiert wurde.",
     sourcePromptCardTitle: "Mit diesem Prompt erstellen",
     sourcePromptCardTitleDerived: "Mit dem Original-Prompt erstellen",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "Mit User ORIGINAL generiert",
     sourcePromptCredit: "Original von {name}",
     sourcePromptUsageCount: "Dieser Prompt wurde mindestens {count}-mal verwendet",
     sourcePromptUnavailable: "Derzeit nicht verfügbar",
