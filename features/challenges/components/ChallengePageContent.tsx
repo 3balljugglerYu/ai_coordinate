@@ -38,6 +38,7 @@ import type {
   CheckInStreakBonusResponse,
 } from "@/features/challenges/lib/api";
 import { checkInStreakBonus } from "@/features/challenges/lib/api";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { cn } from "@/lib/utils";
 import {
   buildMissionBonusDisplay,
@@ -89,6 +90,8 @@ export function ChallengePageContent({
   vercelEnv,
 }: ChallengePageContentProps) {
   const t = useTranslations("challenge");
+  // カタログ刷新後(公開前は運営だけ)は新しい名前(Persta ORIGINAL / CREATE)で案内する
+  const isCatalogRevamp = useStylesCatalogRevamp();
   // カード見出しの「+◯」には、Free / Style のうち大きい方を出す
   const maxUsageRewardAmount = Math.max(
     promptUsageRewardAmount,
@@ -152,8 +155,17 @@ export function ChallengePageContent({
   const postBonusRows = [
     ...(
       [
-        { key: "one_tap_style", label: t("dailyOneTapLabel"), href: "/style" },
-        { key: "free", label: t("dailyFreeLabel"), href: "/free" },
+        // 刷新後の Persta ORIGINAL の入口はカタログ(/styles)。/free は CREATE タブ
+        {
+          key: "one_tap_style",
+          label: t(isCatalogRevamp ? "dailyOneTapLabelRevamp" : "dailyOneTapLabel"),
+          href: isCatalogRevamp ? "/styles" : "/style",
+        },
+        {
+          key: "free",
+          label: t(isCatalogRevamp ? "dailyFreeLabelRevamp" : "dailyFreeLabel"),
+          href: "/free",
+        },
       ] as const
     ).map((row) => ({
       key: row.key as string,
@@ -825,7 +837,11 @@ export function ChallengePageContent({
             </DialogHeader>
             <p className="text-center text-sm text-slate-600">
               {pendingNavigation?.href === "/"
-                ? t("missionNavigateHomeBody")
+                ? t(
+                    isCatalogRevamp
+                      ? "missionNavigateHomeBodyRevamp"
+                      : "missionNavigateHomeBody"
+                  )
                 : t("missionNavigateBody")}
             </p>
             <div className="flex gap-2">
@@ -866,7 +882,7 @@ export function ChallengePageContent({
                     <li className="flex items-start gap-2">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
                       <span>
-                        {t("usageRewardFreeItem", {
+                        {t(isCatalogRevamp ? "usageRewardFreeItemRevamp" : "usageRewardFreeItem", {
                           amount: promptUsageRewardAmount,
                         })}
                       </span>
@@ -876,7 +892,7 @@ export function ChallengePageContent({
                     <li className="flex items-start gap-2">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-orange-500" />
                       <span>
-                        {t("usageRewardStyleItem", {
+                        {t(isCatalogRevamp ? "usageRewardStyleItemRevamp" : "usageRewardStyleItem", {
                           amount: styleUsageRewardAmount,
                         })}
                       </span>
@@ -885,7 +901,9 @@ export function ChallengePageContent({
                 </ul>
                 <div className="flex items-start gap-2 rounded-lg border border-orange-100 bg-orange-50/50 p-3 text-sm text-orange-700">
                   <span className="shrink-0 font-bold">{t("tipsLabel")}</span>
-                  <span>{t("usageRewardNote")}</span>
+                  <span>
+                    {t(isCatalogRevamp ? "usageRewardNoteRevamp" : "usageRewardNote")}
+                  </span>
                 </div>
                 {/* まとまった説明は紹介ページへ。カード内は要点だけに保つ。 */}
                 <Link

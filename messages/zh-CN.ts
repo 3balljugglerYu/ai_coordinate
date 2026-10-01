@@ -30,7 +30,7 @@ export const zhCnMessages = {
   nav: {
     home: "首页",
     coordinate: "搭配",
-    catalog: "Catalog",
+    catalog: "目录",
     challenge: "任务",
     notifications: "通知",
     myPage: "我的页面",
@@ -204,7 +204,9 @@ export const zhCnMessages = {
     postBonusUnit: "佩尔币",
     postBonusAmount: "+{amount} 佩尔币",
     postBonusMissionOneTap: "用 One-Tap Style 投稿！",
+    postBonusMissionOneTapRevamp: "用 Persta ORIGINAL 投稿！",
     postBonusMissionFree: "用 Free Style 创作并投稿！",
+    postBonusMissionFreeRevamp: "用 CREATE 创作并投稿！",
     postBonusMissionPromptUse: "使用提示词投稿！",
     postBonusCreatorReward: "每当有人使用这个提示词，你就会获得 {amount} 佩尔币。",
     postBonusPrivateNote: "若将提示词设为不公开，对方无法看到内容。",
@@ -1430,12 +1432,15 @@ export const zhCnMessages = {
     dailyReceivedTitle: "今日奖励已领取",
     dailyPendingTitle: "发布以领取今日奖励",
     dailyOneTapLabel: "用 One-Tap Style 创作并投稿！",
+    dailyOneTapLabelRevamp: "用 Persta ORIGINAL 创作并投稿！",
     dailyFreeLabel: "用 Free Style 创作并投稿！",
+    dailyFreeLabelRevamp: "用 CREATE 创作并投稿！",
     dailyPromptUseLabel: "用其他用户的提示词创作并投稿！",
     dailyPromptUseHint: "自己写的和用别人的提示词，可以分别领取",
     dailyPromptUseGuideLink: "了解提示词的使用方式",
     missionNavigateBody: "要前往该页面吗？",
     missionNavigateHomeBody: "将前往首页。打开喜欢的帖子，点击「用这个提示词创作」即可。",
+    missionNavigateHomeBodyRevamp: "将前往首页。打开喜欢的帖子，点击「用这个目录生成」即可。",
     missionNavigateConfirm: "确定",
     missionNavigateCancel: "取消",
     dailyReceivedDescription: "明天再发布即可继续累积。",
@@ -1448,10 +1453,13 @@ export const zhCnMessages = {
       "当其他用户使用你的提示词或风格生成时，你将获得佩尔币。",
     usageRewardFreeItem:
       "你的 /free 提示词被使用时 最多 +{amount} 佩尔币",
+    usageRewardFreeItemRevamp: "你的 CREATE 提示词被使用时 最多 +{amount} 佩尔币",
     usageRewardStyleItem:
       "你的 One-Tap Style 被使用时 最多 +{amount} 佩尔币",
+    usageRewardStyleItemRevamp: "你的 Persta ORIGINAL 被使用时 最多 +{amount} 佩尔币",
     usageRewardNote:
       "自己使用不计入。复制粘贴提示词的生成也不计入，仅限从应用内“用这个提示词创作”发起的生成。免费佩尔币余额达到上限后将不再发放。",
+    usageRewardNoteRevamp: "自己使用不计入。复制粘贴提示词的生成也不计入，仅限从应用内“用这个目录生成”发起的生成。免费佩尔币余额达到上限后将不再发放。",
     usageRewardGuideLink: "了解创作者回馈机制",
     referralTitle: "推荐奖励",
     referralDescription:
@@ -1495,6 +1503,7 @@ export const zhCnMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "上传图片，用自由的指示随心创作。不仅能换装，还能自由打造姿势、背景乃至整个场景。",
     catalogSheetTitle: "从目录生成",
@@ -1520,6 +1529,7 @@ export const zhCnMessages = {
   },
   style: {
     pageTitle: "一键造型",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "无需输入提示词。选择造型，一键变身。",
     catalogSheetTitle: "从目录生成",
@@ -1570,10 +1580,12 @@ export const zhCnMessages = {
     styleUsageCount: "该风格已被使用 {count} 次以上",
     styleCardAlt: "{name} 造型卡",
     detailPresetLabel: "由一键造型生成",
+    detailPresetLabelRevamp: "由Persta ORIGINAL生成",
     detailPresetCardAlt: "{name} 造型卡",
     detailReuseConfirmTitle: "要使用此搭配吗?",
     detailReuseConfirmDescription:
       "选择是会以预先选中此卡片的状态打开一键造型。",
+    detailReuseConfirmDescriptionRevamp: "选择是会以预先选中此卡片的状态打开Persta ORIGINAL。",
     detailReuseConfirmCancel: "取消",
     detailReuseConfirmAction: "是",
     uploadImageLabel: "已上传的图片",

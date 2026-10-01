@@ -10,6 +10,7 @@ import { ChallengeTutorialCard } from "@/features/challenges/components/Challeng
 import { getJstDateString } from "@/features/challenges/lib/streak-utils";
 import { getPercoinDefaultsForDisplay } from "@/features/credits/lib/get-percoin-defaults";
 import { requireAuth } from "@/lib/auth";
+import { isUserStylesAvailable } from "@/lib/env";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("challenge");
@@ -104,7 +105,9 @@ async function ChallengeTopCards({
   const user = await userPromise;
   const tutorialCompleted = user.user_metadata?.tutorial_completed === true;
 
-  if (tutorialCompleted) {
+  // カタログ刷新後は初回チュートリアルを出さないので、始めるカードも出さない
+  // (TutorialTourProvider と同じ判定。公開前は運営だけ)
+  if (tutorialCompleted || isUserStylesAvailable(user.id)) {
     return null;
   }
 
@@ -177,7 +180,8 @@ async function ChallengeCompletedTutorialSection({
   const user = await userPromise;
   const tutorialCompleted = user.user_metadata?.tutorial_completed === true;
 
-  if (!tutorialCompleted) {
+  // カタログ刷新後は、もう一度始めるカードも出さない(ツアーが成り立たないため)
+  if (!tutorialCompleted || isUserStylesAvailable(user.id)) {
     return null;
   }
 

@@ -30,7 +30,7 @@ export const viMessages = {
   nav: {
     home: "Trang chủ",
     coordinate: "Phối đồ",
-    catalog: "Catalog",
+    catalog: "Danh mục",
     challenge: "Nhiệm vụ",
     notifications: "Thông báo",
     myPage: "Trang của tôi",
@@ -204,7 +204,9 @@ export const viMessages = {
     postBonusUnit: "Percoin",
     postBonusAmount: "+{amount} Percoin",
     postBonusMissionOneTap: "Posted with One-Tap Style!",
+    postBonusMissionOneTapRevamp: "Posted with Persta ORIGINAL!",
     postBonusMissionFree: "Created with Free Style and posted!",
+    postBonusMissionFreeRevamp: "Created with CREATE and posted!",
     postBonusMissionPromptUse: "Posted using someone's prompt!",
     postBonusCreatorReward: "Bạn nhận {amount} Percoin mỗi khi có người dùng prompt này.",
     postBonusPrivateNote: "Nếu đặt prompt ở chế độ riêng tư, người khác sẽ không thấy nội dung.",
@@ -1432,12 +1434,15 @@ export const viMessages = {
     dailyReceivedTitle: "Đã nhận thưởng hôm nay",
     dailyPendingTitle: "Đăng bài để nhận thưởng hôm nay",
     dailyOneTapLabel: "Tạo bằng One-Tap Style và đăng!",
+    dailyOneTapLabelRevamp: "Tạo bằng Persta ORIGINAL và đăng!",
     dailyFreeLabel: "Tạo bằng Free Style và đăng!",
+    dailyFreeLabelRevamp: "Tạo bằng CREATE và đăng!",
     dailyPromptUseLabel: "Tạo bằng prompt của người dùng khác và đăng!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "Xem cách sử dụng prompt",
     missionNavigateBody: "Chuyển đến màn hình này?",
     missionNavigateHomeBody: "Về trang chủ. Mở bài đăng bạn thích và nhấn “Tạo bằng prompt này”.",
+    missionNavigateHomeBodyRevamp: "Về trang chủ. Mở bài đăng bạn thích và nhấn “Tạo bằng danh mục này”.",
     missionNavigateConfirm: "OK",
     missionNavigateCancel: "Hủy",
     dailyReceivedDescription: "Mai đăng tiếp để kiếm thêm xu.",
@@ -1450,10 +1455,13 @@ export const viMessages = {
       "Nhận Percoin khi người khác sáng tạo bằng prompt hoặc style của bạn.",
     usageRewardFreeItem:
       "Tối đa +{amount} Percoin khi prompt /free của bạn được dùng",
+    usageRewardFreeItemRevamp: "Tối đa +{amount} Percoin khi prompt CREATE của bạn được dùng",
     usageRewardStyleItem:
       "Tối đa +{amount} Percoin khi One-Tap Style của bạn được dùng",
+    usageRewardStyleItemRevamp: "Tối đa +{amount} Percoin khi Persta ORIGINAL của bạn được dùng",
     usageRewardNote:
       "Bạn tự dùng thì không tính. Tạo ảnh bằng cách sao chép prompt cũng không tính — chỉ tính khi bắt đầu từ “Tạo với prompt này” trong ứng dụng. Sẽ không được cộng khi số dư Percoin miễn phí đã đạt giới hạn.",
+    usageRewardNoteRevamp: "Bạn tự dùng thì không tính. Tạo ảnh bằng cách sao chép prompt cũng không tính — chỉ tính khi bắt đầu từ “Tạo bằng danh mục này” trong ứng dụng. Sẽ không được cộng khi số dư Percoin miễn phí đã đạt giới hạn.",
     usageRewardGuideLink: "Tìm hiểu cách nhận thưởng",
     referralTitle: "Thưởng giới thiệu",
     referralDescription:
@@ -1498,6 +1506,7 @@ export const viMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "Tải ảnh lên và sáng tạo tự do theo ý bạn. Không chỉ thay trang phục, bạn còn tự do tạo tư thế, bối cảnh và cả khung cảnh.",
     catalogSheetTitle: "Tạo từ danh mục",
@@ -1523,6 +1532,7 @@ export const viMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "Không cần prompt. Chọn một phong cách và biến đổi diện mạo chỉ với một chạm.",
     catalogSheetTitle: "Tạo từ danh mục",
@@ -1573,10 +1583,12 @@ export const viMessages = {
     styleUsageCount: "Style này đã được dùng ít nhất {count} lần",
     styleCardAlt: "Thẻ phong cách {name}",
     detailPresetLabel: "Tạo bằng One-Tap Style",
+    detailPresetLabelRevamp: "Tạo bằng Persta ORIGINAL",
     detailPresetCardAlt: "Thẻ phong cách {name}",
     detailReuseConfirmTitle: "Dùng bộ trang phục này?",
     detailReuseConfirmDescription:
       "Chọn Có sẽ mở One-Tap Style với thẻ này được chọn sẵn.",
+    detailReuseConfirmDescriptionRevamp: "Chọn Có sẽ mở Persta ORIGINAL với thẻ này được chọn sẵn.",
     detailReuseConfirmCancel: "Hủy",
     detailReuseConfirmAction: "Có",
     uploadImageLabel: "Hình đã tải lên",

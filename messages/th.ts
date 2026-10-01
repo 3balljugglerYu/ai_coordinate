@@ -30,7 +30,7 @@ export const thMessages = {
   nav: {
     home: "หน้าแรก",
     coordinate: "จัดเซ็ต",
-    catalog: "Catalog",
+    catalog: "แคตตาล็อก",
     challenge: "ภารกิจ",
     notifications: "การแจ้งเตือน",
     myPage: "หน้าของฉัน",
@@ -204,7 +204,9 @@ export const thMessages = {
     postBonusUnit: "เพอร์คอยน์",
     postBonusAmount: "+{amount} เพอร์คอยน์",
     postBonusMissionOneTap: "โพสต์ด้วย One-Tap Style!",
+    postBonusMissionOneTapRevamp: "โพสต์ด้วย Persta ORIGINAL!",
     postBonusMissionFree: "สร้างด้วย Free Style แล้วโพสต์!",
+    postBonusMissionFreeRevamp: "สร้างด้วย CREATE แล้วโพสต์!",
     postBonusMissionPromptUse: "ใช้พรอมต์แล้วโพสต์!",
     postBonusCreatorReward: "คุณจะได้รับ {amount} เพอร์คอยน์ ทุกครั้งที่มีคนใช้พรอมต์นี้",
     postBonusPrivateNote: "หากตั้งพรอมต์เป็นส่วนตัว ผู้อื่นจะไม่เห็นเนื้อหา",
@@ -1431,12 +1433,15 @@ export const thMessages = {
     dailyReceivedTitle: "รับโบนัสของวันนี้แล้ว",
     dailyPendingTitle: "โพสต์เพื่อรับโบนัสของวันนี้",
     dailyOneTapLabel: "สร้างด้วย One-Tap Style แล้วโพสต์!",
+    dailyOneTapLabelRevamp: "สร้างด้วย Persta ORIGINAL แล้วโพสต์!",
     dailyFreeLabel: "สร้างด้วย Free Style แล้วโพสต์!",
+    dailyFreeLabelRevamp: "สร้างด้วย CREATE แล้วโพสต์!",
     dailyPromptUseLabel: "สร้างด้วยพรอมต์ของผู้ใช้คนอื่นแล้วโพสต์!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "ดูวิธีการใช้พรอมต์",
     missionNavigateBody: "ไปที่หน้านี้ไหม?",
     missionNavigateHomeBody: "ไปที่หน้าแรก เปิดโพสต์ที่ชอบแล้วแตะ “สร้างด้วยพรอมต์นี้”",
+    missionNavigateHomeBodyRevamp: "ไปที่หน้าแรก เปิดโพสต์ที่ชอบแล้วแตะ “สร้างด้วยแคตตาล็อกนี้”",
     missionNavigateConfirm: "ตกลง",
     missionNavigateCancel: "ยกเลิก",
     dailyReceivedDescription: "พรุ่งนี้โพสต์อีกครั้งเพื่อรับเหรียญเพิ่ม",
@@ -1449,10 +1454,13 @@ export const thMessages = {
       "รับเพอร์คอยน์เมื่อผู้ใช้คนอื่นสร้างผลงานด้วยพรอมต์หรือสไตล์ของคุณ",
     usageRewardFreeItem:
       "สูงสุด +{amount} เพอร์คอยน์ เมื่อพรอมต์ /free ของคุณถูกใช้",
+    usageRewardFreeItemRevamp: "สูงสุด +{amount} เพอร์คอยน์ เมื่อพรอมต์ CREATE ของคุณถูกใช้",
     usageRewardStyleItem:
       "สูงสุด +{amount} เพอร์คอยน์ เมื่อ One-Tap Style ของคุณถูกใช้",
+    usageRewardStyleItemRevamp: "สูงสุด +{amount} เพอร์คอยน์ เมื่อ Persta ORIGINAL ของคุณถูกใช้",
     usageRewardNote:
       "การใช้งานของคุณเองไม่นับ การสร้างด้วยการคัดลอกพรอมต์ไปวางก็ไม่นับ นับเฉพาะที่เริ่มจาก “สร้างด้วยพรอมต์นี้” ในแอปเท่านั้น และจะไม่ได้รับเมื่อยอดเพอร์คอยน์ฟรีถึงขีดจำกัดแล้ว",
+    usageRewardNoteRevamp: "การใช้งานของคุณเองไม่นับ การสร้างด้วยการคัดลอกพรอมต์ไปวางก็ไม่นับ นับเฉพาะที่เริ่มจาก “สร้างด้วยแคตตาล็อกนี้” ในแอปเท่านั้น และจะไม่ได้รับเมื่อยอดเพอร์คอยน์ฟรีถึงขีดจำกัดแล้ว",
     usageRewardGuideLink: "ดูวิธีการรับรางวัลครีเอเตอร์",
     referralTitle: "โบนัสแนะนำ",
     referralDescription:
@@ -1497,6 +1505,7 @@ export const thMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "อัปโหลดรูปแล้วสร้างสรรค์ได้อย่างอิสระตามใจ ไม่ใช่แค่เปลี่ยนชุด แต่กำหนดท่าทาง ฉากหลัง และซีนทั้งหมดได้ตามต้องการ",
     catalogSheetTitle: "สร้างจากแคตตาล็อก",
@@ -1522,6 +1531,7 @@ export const thMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "ไม่ต้องใส่พรอมป์ เลือกสไตล์แล้วเปลี่ยนลุคได้ในแตะเดียว",
     catalogSheetTitle: "สร้างจากแคตตาล็อก",
@@ -1572,10 +1582,12 @@ export const thMessages = {
     styleUsageCount: "สไตล์นี้ถูกใช้ไปแล้วอย่างน้อย {count} ครั้ง",
     styleCardAlt: "การ์ดสไตล์ {name}",
     detailPresetLabel: "สร้างด้วย One-Tap Style",
+    detailPresetLabelRevamp: "สร้างด้วย Persta ORIGINAL",
     detailPresetCardAlt: "การ์ดสไตล์ {name}",
     detailReuseConfirmTitle: "ใช้ชุดนี้?",
     detailReuseConfirmDescription:
       "เลือกใช่จะเปิด One-Tap Style โดยเลือกการ์ดนี้ไว้ล่วงหน้า",
+    detailReuseConfirmDescriptionRevamp: "เลือกใช่จะเปิด Persta ORIGINAL โดยเลือกการ์ดนี้ไว้ล่วงหน้า",
     detailReuseConfirmCancel: "ยกเลิก",
     detailReuseConfirmAction: "ใช่",
     uploadImageLabel: "รูปที่อัปโหลด",

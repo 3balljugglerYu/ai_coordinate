@@ -204,7 +204,9 @@ export const enMessages = {
     postBonusUnit: "Percoin",
     postBonusAmount: "+{amount} Percoin",
     postBonusMissionOneTap: "Posted with One-Tap Style!",
+    postBonusMissionOneTapRevamp: "Posted with Persta ORIGINAL!",
     postBonusMissionFree: "Created with Free Style and posted!",
+    postBonusMissionFreeRevamp: "Created with CREATE and posted!",
     postBonusMissionPromptUse: "Posted using someone's prompt!",
     postBonusCreatorReward: "You earn {amount} Percoin every time someone uses this prompt.",
     postBonusPrivateNote: "If the prompt is set to private, others can never see it.",
@@ -1432,12 +1434,15 @@ export const enMessages = {
     dailyReceivedTitle: "Today's bonus claimed",
     dailyPendingTitle: "Post to earn today's bonus",
     dailyOneTapLabel: "Create with One-Tap Style and post!",
+    dailyOneTapLabelRevamp: "Create with Persta ORIGINAL and post!",
     dailyFreeLabel: "Create with Free Style and post!",
+    dailyFreeLabelRevamp: "Create with CREATE and post!",
     dailyPromptUseLabel: "Create with another user's prompt and post!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "See how using prompts works",
     missionNavigateBody: "Go to this screen?",
     missionNavigateHomeBody: "We'll take you home. Open a post you like and tap “Create with this prompt”.",
+    missionNavigateHomeBodyRevamp: "We'll take you home. Open a post you like and tap “Generate with this catalog”.",
     missionNavigateConfirm: "OK",
     missionNavigateCancel: "Cancel",
     dailyReceivedDescription: "Post again tomorrow to earn more coins.",
@@ -1450,10 +1455,13 @@ export const enMessages = {
       "Earn Percoins when other users create with your prompts or styles.",
     usageRewardFreeItem:
       "Up to +{amount} Percoins when your /free prompt is used",
+    usageRewardFreeItemRevamp: "Up to +{amount} Percoins when your CREATE prompt is used",
     usageRewardStyleItem:
       "Up to +{amount} Percoins when your One-Tap Style is used",
+    usageRewardStyleItemRevamp: "Up to +{amount} Percoins when your Persta ORIGINAL style is used",
     usageRewardNote:
       "Your own usage doesn't count. Generations made by copy-pasting a prompt don't count either — only those started from “Create with this prompt” in the app. Nothing is granted once your free Percoin balance reaches its cap.",
+    usageRewardNoteRevamp: "Your own usage doesn't count. Generations made by copy-pasting a prompt don't count either — only those started from “Generate with this catalog” in the app. Nothing is granted once your free Percoin balance reaches its cap.",
     usageRewardGuideLink: "See how creator rewards work",
     referralTitle: "Referral bonus",
     referralDescription:
@@ -1498,6 +1506,7 @@ export const enMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "Upload an image and create freely, just as you imagine. Beyond outfit changes, you can freely craft the pose, background, and whole scene.",
     catalogSheetTitle: "Generate from catalog",
@@ -1523,6 +1532,7 @@ export const enMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "No prompt needed. Pick a style and transform your look in one tap.",
     catalogSheetTitle: "Generate from catalog",
@@ -1573,10 +1583,12 @@ export const enMessages = {
     styleUsageCount: "This style has been used {count}+ times",
     styleCardAlt: "{name} style card",
     detailPresetLabel: "Generated with One-Tap Style",
+    detailPresetLabelRevamp: "Generated with Persta ORIGINAL",
     detailPresetCardAlt: "{name} style card",
     detailReuseConfirmTitle: "Use this outfit?",
     detailReuseConfirmDescription:
       "Selecting yes will open One-Tap Style with this card preselected.",
+    detailReuseConfirmDescriptionRevamp: "Selecting yes will open Persta ORIGINAL with this card preselected.",
     detailReuseConfirmCancel: "Cancel",
     detailReuseConfirmAction: "Yes",
     uploadImageLabel: "Uploaded image",

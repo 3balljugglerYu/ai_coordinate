@@ -30,7 +30,7 @@ export const koMessages = {
   nav: {
     home: "홈",
     coordinate: "코디",
-    catalog: "Catalog",
+    catalog: "카탈로그",
     challenge: "미션",
     notifications: "알림",
     myPage: "마이 페이지",
@@ -204,7 +204,9 @@ export const koMessages = {
     postBonusUnit: "펄코인",
     postBonusAmount: "+{amount} 펄코인",
     postBonusMissionOneTap: "One-Tap Style로 게시!",
+    postBonusMissionOneTapRevamp: "Persta ORIGINAL로 게시!",
     postBonusMissionFree: "Free Style로 만들어 게시!",
+    postBonusMissionFreeRevamp: "CREATE로 만들어 게시!",
     postBonusMissionPromptUse: "프롬프트를 이용해 게시!",
     postBonusCreatorReward: "다른 사람이 이 프롬프트를 사용할 때마다 {amount} 펄코인을 받습니다.",
     postBonusPrivateNote: "프롬프트를 비공개로 설정하면 상대방에게 내용이 보이지 않습니다.",
@@ -1431,12 +1433,15 @@ export const koMessages = {
     dailyReceivedTitle: "오늘 보너스 수령 완료",
     dailyPendingTitle: "게시하고 오늘의 보너스를 받으세요",
     dailyOneTapLabel: "One-Tap Style로 만들어 게시!",
+    dailyOneTapLabelRevamp: "Persta ORIGINAL로 만들어 게시!",
     dailyFreeLabel: "Free Style로 만들어 게시!",
+    dailyFreeLabelRevamp: "CREATE로 만들어 게시!",
     dailyPromptUseLabel: "다른 사용자의 프롬프트로 만들어 게시!",
     dailyPromptUseHint: "직접 쓴 프롬프트와 다른 사람의 프롬프트는 각각 따로 받을 수 있어요",
     dailyPromptUseGuideLink: "프롬프트 이용 방법 보기",
     missionNavigateBody: "이 화면으로 이동할까요?",
     missionNavigateHomeBody: "홈으로 이동합니다. 마음에 드는 게시물을 열고 ‘이 프롬프트로 만들기’를 눌러보세요.",
+    missionNavigateHomeBodyRevamp: "홈으로 이동합니다. 마음에 드는 게시물을 열고 ‘이 카탈로그로 생성’를 눌러보세요.",
     missionNavigateConfirm: "확인",
     missionNavigateCancel: "취소",
     dailyReceivedDescription: "내일도 게시하면 보너스를 더 받을 수 있습니다.",
@@ -1449,10 +1454,13 @@ export const koMessages = {
       "다른 사용자가 회원님의 프롬프트나 스타일로 생성하면 페르코인이 지급됩니다.",
     usageRewardFreeItem:
       "회원님의 /free 프롬프트가 이용되면 최대 +{amount} 페르코인",
+    usageRewardFreeItemRevamp: "회원님의 CREATE 프롬프트가 이용되면 최대 +{amount} 페르코인",
     usageRewardStyleItem:
       "회원님의 One-Tap Style이 이용되면 최대 +{amount} 페르코인",
+    usageRewardStyleItemRevamp: "회원님의 Persta ORIGINAL이 이용되면 최대 +{amount} 페르코인",
     usageRewardNote:
       "본인의 이용은 제외됩니다. 프롬프트를 복사해 붙여넣은 생성도 제외되며, 앱 내 ‘이 프롬프트로 만들기’에서 이용된 경우가 대상입니다. 무료 페르코인 잔액이 상한에 도달하면 지급되지 않습니다.",
+    usageRewardNoteRevamp: "본인의 이용은 제외됩니다. 프롬프트를 복사해 붙여넣은 생성도 제외되며, 앱 내 ‘이 카탈로그로 생성’에서 이용된 경우가 대상입니다. 무료 페르코인 잔액이 상한에 도달하면 지급되지 않습니다.",
     usageRewardGuideLink: "크리에이터 리워드 구조 보기",
     referralTitle: "추천 보너스",
     referralDescription:
@@ -1497,6 +1505,7 @@ export const koMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "이미지를 업로드하고 자유로운 지시로 원하는 대로. 옷 갈아입히기는 물론, 포즈·배경·장면까지 자유롭게 만들 수 있습니다.",
     catalogSheetTitle: "카탈로그에서 생성",
@@ -1522,6 +1531,7 @@ export const koMessages = {
   },
   style: {
     pageTitle: "원탭 스타일",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "프롬프트가 필요 없습니다. 스타일을 골라 한 번의 탭으로 룩을 바꿔보세요.",
     catalogSheetTitle: "카탈로그에서 생성",
@@ -1572,10 +1582,12 @@ export const koMessages = {
     styleUsageCount: "이 스타일이 {count}번 이상 사용되었습니다",
     styleCardAlt: "{name} 스타일 카드",
     detailPresetLabel: "원탭 스타일로 생성됨",
+    detailPresetLabelRevamp: "Persta ORIGINAL로 생성됨",
     detailPresetCardAlt: "{name} 스타일 카드",
     detailReuseConfirmTitle: "이 코디를 사용하시겠습니까?",
     detailReuseConfirmDescription:
       "예를 선택하면 이 카드가 미리 선택된 상태로 원탭 스타일이 열립니다.",
+    detailReuseConfirmDescriptionRevamp: "예를 선택하면 이 카드가 미리 선택된 상태로 Persta ORIGINAL이 열립니다.",
     detailReuseConfirmCancel: "취소",
     detailReuseConfirmAction: "예",
     uploadImageLabel: "업로드한 이미지",

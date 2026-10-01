@@ -7,11 +7,24 @@ import { FreePageHeader } from "@/features/generation/components/FreePageHeader"
 import { FreePageFrame } from "@/features/generation/components/FreePageFrame";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
+import { isUserStylesPubliclyEnabled } from "@/lib/env";
 
 export async function generateMetadata(): Promise<Metadata> {
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const t = await getTranslations("free");
+
+  // 一般公開後(カタログ刷新)は、画面の見出し(カタログをつくる)と新しい名前(CREATE)にそろえる。
+  // 運営だけの段階では変えない(検索エンジンに公開前の名前を出さないため)
+  if (isUserStylesPubliclyEnabled()) {
+    const userStylesT = await getTranslations("userStyles");
+    return createMarketingPageMetadata({
+      title: `${userStylesT("tabCreateTitle")} (${t("tabLabelRevamp")})`,
+      description: t("pageDescription"),
+      path: "/free",
+      locale,
+    });
+  }
 
   return createMarketingPageMetadata({
     title: t("pageTitle"),

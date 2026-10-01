@@ -41,6 +41,18 @@ describe("UserStylesAvailabilityProvider", () => {
     expect(screen.getByTestId("available")).toHaveTextContent("false");
   });
 
+  /*
+    Provider より外に置く面(投稿の進行バー・投稿ボーナスなど)も、一般公開後は
+    刷新後の表記にそろえる。公開フラグが立つまでは上のとおり閉じたまま。
+  */
+  test("Provider の外でも、一般公開後は true", () => {
+    process.env.NEXT_PUBLIC_USER_STYLES_ENABLED = "true";
+
+    render(<Probe />);
+
+    expect(screen.getByTestId("available")).toHaveTextContent("true");
+  });
+
   test("公開フラグが立っていなければ初期値は false", () => {
     delete process.env.NEXT_PUBLIC_USER_STYLES_ENABLED;
 

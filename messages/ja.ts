@@ -207,7 +207,10 @@ export const jaMessages = {
     postBonusUnit: "ペルコイン",
     postBonusAmount: "+{amount}ペルコイン",
     postBonusMissionOneTap: "One-Tap Style で投稿！",
+    // カタログ刷新後(公開前は運営だけ)の表記。One-Tap Style → Persta ORIGINAL、Free Style → CREATE(2026-10-01 ユーザー決定)
+    postBonusMissionOneTapRevamp: "Persta ORIGINAL で投稿！",
     postBonusMissionFree: "Free Style で生成して投稿！",
+    postBonusMissionFreeRevamp: "CREATE で生成して投稿！",
     postBonusMissionPromptUse: "プロンプトを利用して投稿！",
     postBonusCreatorReward: "このプロンプトを利用される度に、{amount}ペルコイン が入ります。",
     postBonusPrivateNote: "プロンプト非公開で設定の場合、相手にプロンプトを知られることはありません。",
@@ -1386,12 +1389,16 @@ export const jaMessages = {
     dailyReceivedTitle: "今日のボーナス獲得済み",
     dailyPendingTitle: "投稿でボーナス獲得",
     dailyOneTapLabel: "One-Tap Styleで生成して投稿！",
+    // カタログ刷新後(公開前は運営だけ)の表記。One-Tap Style → Persta ORIGINAL、Free Style → CREATE(2026-10-01 ユーザー決定)
+    dailyOneTapLabelRevamp: "Persta ORIGINALで生成して投稿！",
     dailyFreeLabel: "Free Styleで生成して投稿！",
+    dailyFreeLabelRevamp: "CREATEで生成して投稿！",
     dailyPromptUseLabel: "他ユーザーのプロンプトで生成して投稿！",
     dailyPromptUseHint: "自分で書いたぶんと、他の人のプロンプトで作ったぶんは別々にもらえます",
     dailyPromptUseGuideLink: "プロンプト利用のしくみをみる",
     missionNavigateBody: "この画面へ移動しますか？",
     missionNavigateHomeBody: "ホームへ移動します。気に入った投稿を開いて「このプロンプトで作る」から生成できます。",
+    missionNavigateHomeBodyRevamp: "ホームへ移動します。気に入った投稿を開いて「このカタログで生成する」から生成できます。",
     missionNavigateConfirm: "OK",
     missionNavigateCancel: "キャンセル",
     dailyReceivedDescription: "明日も投稿してコインをゲットしよう！",
@@ -1404,10 +1411,13 @@ export const jaMessages = {
       "あなたのプロンプトやスタイルが他のユーザーに使われると、ペルコインが還元されます。",
     usageRewardFreeItem:
       "あなたの /free のプロンプトが使われると 最大 +{amount} ペルコイン",
+    usageRewardFreeItemRevamp: "あなたの CREATE のプロンプトが使われると 最大 +{amount} ペルコイン",
     usageRewardStyleItem:
       "あなたの One-Tap Style が使われると 最大 +{amount} ペルコイン",
+    usageRewardStyleItemRevamp: "あなたの Persta ORIGINAL のスタイルが使われると 最大 +{amount} ペルコイン",
     usageRewardNote:
       "自分自身の利用は対象外です。プロンプトをコピーして貼り付けた生成も対象外で、アプリ内の「このプロンプトで作る」から使われた場合が対象です。無料ペルコイン残高が上限に達している場合は還元されません。",
+    usageRewardNoteRevamp: "自分自身の利用は対象外です。プロンプトをコピーして貼り付けた生成も対象外で、アプリ内の「このカタログで生成する」から使われた場合が対象です。無料ペルコイン残高が上限に達している場合は還元されません。",
     usageRewardGuideLink: "クリエイター還元のしくみをみる",
     referralTitle: "友達紹介特典",
     referralDescription:
@@ -1450,6 +1460,7 @@ export const jaMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "画像をアップロードして、自由な指示で思いのままに。着せ替えはもちろん、ポーズ・背景・シーンごと自在に作れます。",
     // カタログ刷新後(公開前は運営だけ)の生成シート(User ORIGINAL のプロンプトで作る)の見出しと説明。見出しは Persta ORIGINAL のシートと共通の「カタログから生成」(2026-09-30)。一般の利用者は pageTitle / pageDescription のまま
@@ -1476,6 +1487,8 @@ export const jaMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    // カタログ刷新後(公開前は運営だけ)の表記。One-Tap Style → Persta ORIGINAL、Free Style → CREATE(2026-10-01 ユーザー決定)
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "プロンプト不要！好きなスタイルを選択するだけで、そのスタイルに変身！！",
     // カタログ刷新後(公開前は運営だけ)の生成シート(Persta ORIGINAL のスタイルで作る)の見出し。User ORIGINAL のシートと共通の「カタログから生成」。説明は pageDescription のまま(スタイルを選ぶだけ、はシートでも合っている)
@@ -1527,10 +1540,13 @@ export const jaMessages = {
     styleUsageCount: "このスタイルが{count}回以上利用されました",
     styleCardAlt: "{name} のスタイルカード",
     detailPresetLabel: "ワンタップスタイルで生成",
+    // カタログ刷新後(公開前は運営だけ)の表記。One-Tap Style → Persta ORIGINAL、Free Style → CREATE(2026-10-01 ユーザー決定)
+    detailPresetLabelRevamp: "Persta ORIGINAL で生成",
     detailPresetCardAlt: "{name} のスタイルカード",
     detailReuseConfirmTitle: "このコーデを利用しますか？",
     detailReuseConfirmDescription:
       "「はい」を選択するとワンタップスタイル画面に移動し、このスタイルが選択された状態になります。",
+    detailReuseConfirmDescriptionRevamp: "「はい」を選択すると Persta ORIGINAL の生成画面に移動し、このスタイルが選択された状態になります。",
     detailReuseConfirmCancel: "キャンセル",
     detailReuseConfirmAction: "はい",
     uploadImageLabel: "アップロード画像",

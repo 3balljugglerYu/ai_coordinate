@@ -2,11 +2,13 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { StyleTourButton } from "@/features/style/components/StyleTourButton";
+import { StylePageHeading } from "@/features/style/components/StylePageHeading";
 import { StylePageBody } from "@/features/style/components/StylePageBody";
 import { StyleTotalGenerationCount } from "@/features/style/components/StyleTotalGenerationCount";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { getPublishedStylePreset } from "@/features/style-presets/lib/get-public-style-presets";
+import { isUserStylesPubliclyEnabled } from "@/lib/env";
 
 interface StylePageProps {
   searchParams?: Promise<{
@@ -26,8 +28,13 @@ export async function generateMetadata({
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const t = await getTranslations("style");
+  // 一般公開後(カタログ刷新)は One-Tap Style を Persta ORIGINAL と呼ぶ。
+  // 運営だけの段階では変えない(検索エンジンに公開前の名前を出さないため)
+  const pageTitle = t(
+    isUserStylesPubliclyEnabled() ? "pageTitleRevamp" : "pageTitle"
+  );
   const metadata = createMarketingPageMetadata({
-    title: t("pageTitle"),
+    title: pageTitle,
     description: t("pageDescription"),
     path: "/style",
     locale,
@@ -73,7 +80,7 @@ export async function generateMetadata({
           url: "/og/one-tap-style.png",
           width: 1200,
           height: 630,
-          alt: `${t("pageTitle")} | Persta.AI`,
+          alt: `${pageTitle} | Persta.AI`,
         },
       ],
     },
@@ -102,9 +109,7 @@ export default async function StylePage({ searchParams }: StylePageProps) {
 
           {/* 静的ヘッダ: データに依存しないので即時表示される */}
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-gray-900">
-              {t("pageTitle")}
-            </h1>
+            <StylePageHeading />
             {/* モバイルでタイトルを圧縮しないよう、チュートリアルボタンはタイトル下に左詰めで置く */}
             <StyleTourButton />
             <p className="text-sm font-medium text-gray-700">

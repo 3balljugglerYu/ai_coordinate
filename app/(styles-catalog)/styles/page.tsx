@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cacheLife, cacheTag } from "next/cache";
+import { getTranslations } from "next-intl/server";
 import { getPublishedStylePresets } from "@/features/style-presets/lib/get-public-style-presets";
 import { StylesGalleryClient } from "@/features/style-presets/components/StylesGalleryClient";
 import { StylesGallerySkeleton } from "@/features/style-presets/components/StylesGallerySkeleton";
@@ -20,6 +21,7 @@ import { createMarketingPageMetadata } from "@/lib/metadata";
 import { getStylesCopy } from "@/i18n/page-copy";
 import { getSiteUrl, isAdminViewer } from "@/lib/env";
 import { getUser } from "@/lib/auth";
+import { isUserStylesPubliclyEnabled } from "@/lib/env";
 
 /**
  * 「✨新着」「🎉イベント」チップ判定の基準時刻。
@@ -48,6 +50,24 @@ export async function generateMetadata({
   const { locale: localeParam } = await params;
   const locale = isLocale(localeParam) ? localeParam : DEFAULT_LOCALE;
   const copy = getStylesCopy(locale);
+
+  /*
+    一般公開後(カタログ刷新)は、画面の見出し(ペルスタのカタログ)にタイトルをそろえる。
+    検索で拾われる「AI着せ替えスタイル一覧」は後ろに残す(2026-10-01 ユーザー決定)。
+    ⭐ 運営だけの段階では変えない。検索エンジンには公開前の名前を出さないため
+    (閲覧者がいないので isUserStylesPubliclyEnabled だけを見る。sitemap と同じ)。
+  */
+  if (isUserStylesPubliclyEnabled()) {
+    const t = await getTranslations({ locale, namespace: "userStyles" });
+    const catalogTitle = t("tabOfficialTitle");
+    return createMarketingPageMetadata({
+      title: `${catalogTitle} - ${copy.indexTitle}`,
+      description: copy.indexDescription,
+      path: "/styles",
+      locale,
+      ogTitle: catalogTitle,
+    });
+  }
 
   return createMarketingPageMetadata({
     title: copy.indexTitle,
