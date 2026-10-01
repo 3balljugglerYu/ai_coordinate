@@ -23,11 +23,16 @@ jest.mock("next/navigation", () => ({
 jest.mock("next/dynamic", () => ({
   __esModule: true,
   default: () => {
-    const Sheet = (props: { preset: { id: string }; subscriptionPlan: string }) => (
+    const Sheet = (props: {
+      preset: { id: string };
+      subscriptionPlan: string;
+      isGuest?: boolean;
+    }) => (
       <div
         data-testid="style-generation-sheet"
         data-preset={props.preset.id}
         data-plan={props.subscriptionPlan}
+        data-guest={String(props.isGuest ?? false)}
       />
     );
     return Sheet;
@@ -80,14 +85,77 @@ describe("UseStylePresetButton", () => {
     expect(screen.getByText("posts.feedUseCatalog")).toBeTruthy();
   });
 
-  test("未ログインにはログインの案内を出し、問い合わせない", () => {
-    const fetchMock = mockFetch({});
-    renderButton({ currentUserId: null });
+  /*
+    未ログインは、ログインなしで生成できるカテゴリ(コーディネート系)のときだけシートを開く
+    (2026-10-01 ユーザー決定。/style の未ログインと同じ範囲)。それ以外はログインの案内。
+  */
+  describe("未ログイン", () => {
+    test("ログインなしで生成できるカテゴリなら、未ログインのシートを開く(購読プランは引かない)", async () => {
+      const fetchMock = mockFetch({
+        "/api/style-presets/preset-1/summary": () =>
+          jsonResponse({
+            preset: { ...PRESET, category: { ...PRESET.category, allowGuestGeneration: true } },
+          }),
+      });
+      renderButton({ currentUserId: null });
 
-    fireEvent.click(screen.getByTestId("feed-use-style-button"));
+      fireEvent.click(screen.getByTestId("feed-use-style-button"));
 
-    expect(screen.getByTestId("auth-modal")).toBeTruthy();
-    expect(fetchMock).not.toHaveBeenCalled();
+      const sheet = await screen.findByTestId("style-generation-sheet");
+      expect(sheet.getAttribute("data-guest")).toBe("true");
+      expect(sheet.getAttribute("data-plan")).toBe("free");
+      expect(screen.queryByTestId("auth-modal")).toBeNull();
+      expect(
+        fetchMock.mock.calls.some(([url]) => String(url).includes("subscription-plan"))
+      ).toBe(false);
+    });
+
+    test("ログインが要るカテゴリなら、ログインの案内を出す", async () => {
+      mockFetch({
+        "/api/style-presets/preset-1/summary": () =>
+          jsonResponse({
+            preset: { ...PRESET, category: { ...PRESET.category, allowGuestGeneration: false } },
+          }),
+      });
+      renderButton({ currentUserId: null });
+
+      fireEvent.click(screen.getByTestId("feed-use-style-button"));
+
+      expect(await screen.findByTestId("auth-modal")).toBeTruthy();
+      expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
+    });
+
+    test("段階解放のカテゴリは、ログインなしで生成できても開放を確かめられないのでログインの案内", async () => {
+      mockFetch({
+        "/api/style-presets/preset-1/summary": () =>
+          jsonResponse({
+            preset: {
+              ...PRESET,
+              category: {
+                unlockPrerequisiteKey: "collection-a",
+                sequentialUnlock: false,
+                allowGuestGeneration: true,
+              },
+            },
+          }),
+      });
+      renderButton({ currentUserId: null });
+
+      fireEvent.click(screen.getByTestId("feed-use-style-button"));
+
+      expect(await screen.findByTestId("auth-modal")).toBeTruthy();
+    });
+
+    test("スタイルが取れなければ、ログインの案内を出す", async () => {
+      mockFetch({
+        "/api/style-presets/preset-1/summary": () => jsonResponse({}, 404),
+      });
+      renderButton({ currentUserId: null });
+
+      fireEvent.click(screen.getByTestId("feed-use-style-button"));
+
+      expect(await screen.findByTestId("auth-modal")).toBeTruthy();
+    });
   });
 
   test("⭐見ている人が確定する前は何もしない(ログイン中の人にログインの案内を出さない)", () => {

@@ -32,6 +32,12 @@ interface StyleGenerationSheetProps {
   subscriptionPlan: SubscriptionPlan;
   /** ポーズ指定欄(運営のみの先行公開)を出すか。サーバーでも検証される。 */
   canUseFreePose?: boolean;
+  /**
+   * 未ログインで開くか(ログインなしで生成できるカテゴリのときだけ。呼び出し側が判定する)。
+   * `/style` の未ログインと同じく、結果はフォームの結果パネルで見せ、残高・生成結果一覧・
+   * 全体の生成中バーへの引き継ぎは出さない(どれもログインが前提のため)。
+   */
+  isGuest?: boolean;
 }
 
 /**
@@ -45,9 +51,12 @@ interface StyleGenerationSheetProps {
  * 中身は `/style` と同じ `OneTapStyleGenerationForm`(スタイルは固定)。
  * フォームを2つ持たない(計画書 ADR-001)。
  *
- * 開くのはログイン中だけ(未ログインは今の「試着確認 → /style」。計画書 §0-2)。
- * そのためフォームには `initialAuthState="authenticated"` を渡し、結果は
+ * ログイン中は、フォームに `initialAuthState="authenticated"` を渡し、結果は
  * フォームの結果パネルではなく、シートの生成結果一覧で見せる(ADR-006)。
+ *
+ * 未ログイン(`isGuest`)でも開ける(2026-10-01 ユーザー決定。ホームの「このカタログで生成する」
+ * から、ログインなしで生成できるカテゴリのときだけ)。`/style` の未ログインと同じく、
+ * 結果はフォームの結果パネルで見せる(未ログインの生成は一覧に残らないため)。
  *
  * 計画書: docs/planning/styles-generation-sheet-implementation-plan.md
  */
@@ -57,6 +66,7 @@ export function StyleGenerationSheet({
   preset,
   subscriptionPlan,
   canUseFreePose = false,
+  isGuest = false,
 }: StyleGenerationSheetProps) {
   const t = useTranslations("style");
   const isDesktop = useIsDesktopViewport();
@@ -68,14 +78,15 @@ export function StyleGenerationSheet({
     (閉じてもアンマウントしない呼び出し方でも、止めたままにならない)。
   */
   useEffect(() => {
-    if (!backgroundProgressAvailable || !open) {
+    // 未ログインは全体の生成中バーを使わない(進行中のジョブを追えないため)
+    if (!backgroundProgressAvailable || !open || isGuest) {
       return;
     }
     pauseGenerationProgressBar();
     return () => {
       resumeGenerationProgressBarIfNeeded();
     };
-  }, [backgroundProgressAvailable, open]);
+  }, [backgroundProgressAvailable, open, isGuest]);
 
   /*
     閉じる直前に、進行中のジョブが無いかサーバーへ確認し、あれば全体の
@@ -84,12 +95,12 @@ export function StyleGenerationSheet({
   */
   const handleOpenChange = useCallback(
     (next: boolean) => {
-      if (!next && backgroundProgressAvailable) {
+      if (!next && backgroundProgressAvailable && !isGuest) {
         void checkAndTrackInProgressJob();
       }
       onOpenChange(next);
     },
-    [onOpenChange, backgroundProgressAvailable]
+    [onOpenChange, backgroundProgressAvailable, isGuest]
   );
 
   /*
@@ -103,8 +114,8 @@ export function StyleGenerationSheet({
       <OneTapStyleGenerationForm
         variant="sheet"
         preset={preset}
-        initialAuthState="authenticated"
-        showResultPanel={false}
+        initialAuthState={isGuest ? "guest" : "authenticated"}
+        showResultPanel={isGuest}
         subscriptionPlan={subscriptionPlan}
         canUseFreePose={canUseFreePose}
       />
@@ -121,8 +132,9 @@ export function StyleGenerationSheet({
         <DialogContent
           className="flex flex-col p-0"
           style={{
-            width: "min(95vw, 1100px)",
-            maxWidth: "min(95vw, 1100px)",
+            // 未ログインは右の生成結果一覧が無いので、入力だけの幅にする
+            width: isGuest ? "min(95vw, 640px)" : "min(95vw, 1100px)",
+            maxWidth: isGuest ? "min(95vw, 640px)" : "min(95vw, 1100px)",
             height: "85vh",
             maxHeight: "85vh",
           }}
@@ -136,13 +148,24 @@ export function StyleGenerationSheet({
           <GenerationStateProvider>
             {/* 左: 入力 / 右: 生成結果。どちらも独立にスクロールさせる。 */}
             <div className="flex flex-1 gap-6 px-6 py-6" style={{ minHeight: 0 }}>
-              <div className="w-1/2 space-y-6 overflow-y-auto pr-1">
-                <PromptLockedGenerationHeader mode="style" showBalancePlaceholder />
+              <div
+                className={
+                  isGuest
+                    ? "w-full space-y-6 overflow-y-auto pr-1"
+                    : "w-1/2 space-y-6 overflow-y-auto pr-1"
+                }
+              >
+                <PromptLockedGenerationHeader
+                  mode="style"
+                  showBalancePlaceholder={!isGuest}
+                />
                 {form}
               </div>
-              <div className="w-1/2 overflow-y-auto border-l pl-6">
-                <PromptLockedGenerationResults generationType="one_tap_style" />
-              </div>
+              {isGuest ? null : (
+                <div className="w-1/2 overflow-y-auto border-l pl-6">
+                  <PromptLockedGenerationResults generationType="one_tap_style" />
+                </div>
+              )}
             </div>
           </GenerationStateProvider>
         </DialogContent>
@@ -171,10 +194,15 @@ export function StyleGenerationSheet({
           </div>
 
           <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-8 pt-2">
-            <PromptLockedGenerationHeader mode="style" showBalancePlaceholder />
+            <PromptLockedGenerationHeader
+              mode="style"
+              showBalancePlaceholder={!isGuest}
+            />
             <GenerationStateProvider>
               {form}
-              <PromptLockedGenerationResults generationType="one_tap_style" />
+              {isGuest ? null : (
+                <PromptLockedGenerationResults generationType="one_tap_style" />
+              )}
             </GenerationStateProvider>
           </div>
         </Drawer.Content>

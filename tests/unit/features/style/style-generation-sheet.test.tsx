@@ -260,4 +260,49 @@ describe("StyleGenerationSheet", () => {
     expect(resumeMock).not.toHaveBeenCalled();
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
+
+  /*
+    未ログイン(ホームの「このカタログで生成する」から、ログインなしで生成できる
+    カテゴリのときだけ。2026-10-01)。/style の未ログインと同じく、結果はフォームの
+    結果パネルで見せ、ログインが前提のもの(残高・生成結果一覧・生成中バー)は出さない。
+  */
+  describe("未ログイン", () => {
+    test("フォームは未ログイン扱いで、結果はフォームの結果パネルで見せる", () => {
+      render(<StyleGenerationSheet {...defaultProps} isGuest />);
+
+      expect(formPropsMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          initialAuthState: "guest",
+          showResultPanel: true,
+        })
+      );
+    });
+
+    test.each([
+      ["スマホ", false],
+      ["PC", true],
+    ])("%sでも生成結果一覧と残高の枠を出さない", (_label, isDesktop) => {
+      isDesktopMock.mockReturnValue(isDesktop);
+
+      render(<StyleGenerationSheet {...defaultProps} isGuest />);
+
+      expect(screen.queryByTestId("results")).toBeNull();
+      expect(
+        screen.getByTestId("header").getAttribute("data-balance-placeholder")
+      ).toBe("false");
+    });
+
+    test("生成中バーを止めず、閉じても引き継がない", () => {
+      const onOpenChange = jest.fn();
+
+      render(
+        <StyleGenerationSheet {...defaultProps} isGuest onOpenChange={onOpenChange} />
+      );
+      screen.getByTestId("drawer-close").click();
+
+      expect(pauseMock).not.toHaveBeenCalled();
+      expect(checkAndTrackMock).not.toHaveBeenCalled();
+      expect(onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
 });
