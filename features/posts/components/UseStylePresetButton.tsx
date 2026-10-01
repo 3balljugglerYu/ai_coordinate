@@ -82,7 +82,8 @@ async function fetchSubscriptionPlan(): Promise<SubscriptionPlan> {
  * User ORIGINAL の「このカタログで生成する」(FollowAndUsePromptButton)と同じく、
  * その場で生成シートを開く。中身は /styles(ペルスタのカタログ)の生成シートと同じ。
  *
- * - 未ログイン → ログインの案内(シートの上では保存まで完結しないため。/styles と同じ)
+ * - 未ログイン → ログインなしで生成できるカテゴリ(コーディネート系)ならシートを開く。
+ *   それ以外はログインの案内(2026-10-01 ユーザー決定。/style の未ログインと同じ範囲)
  * - 段階解放のカテゴリで、開放済みと確かめられないとき → スタイル紹介ページへ
  *   (未開放・会期終了の理由はそのページが伝える)
  * - それ以外 → シートを開く
@@ -101,16 +102,40 @@ export function UseStylePresetButton({
   const [sheet, setSheet] = useState<{
     preset: StylePresetPublicSummary;
     plan: SubscriptionPlan;
+    isGuest: boolean;
   } | null>(null);
 
   const styleHref = `/styles/${encodeURIComponent(slug)}`;
+
+  /*
+    未ログイン。ログインなしで生成できるカテゴリ(`allowGuestGeneration`)のときだけ
+    シートを開く(/style の未ログインと同じ範囲。サーバーの生成 API も同じ判定で守る)。
+    それ以外・取れなかったとき・段階解放のカテゴリ(未ログインは開放を確かめられない)は
+    ログインの案内。
+  */
+  const openGuestSheetOrAskLogin = async () => {
+    setIsWorking(true);
+    try {
+      const preset = await fetchPresetSummary(presetId);
+      if (
+        preset?.category.allowGuestGeneration &&
+        !categoryNeedsUnlockContext(preset.category)
+      ) {
+        setSheet({ preset, plan: "free", isGuest: true });
+        return;
+      }
+      setShowAuthModal(true);
+    } finally {
+      setIsWorking(false);
+    }
+  };
 
   const handleClick = async () => {
     if (isWorking || !isViewerResolved) {
       return;
     }
     if (!currentUserId) {
-      setShowAuthModal(true);
+      await openGuestSheetOrAskLogin();
       return;
     }
     setIsWorking(true);
@@ -128,7 +153,7 @@ export function UseStylePresetButton({
         }
       }
       const plan = await fetchSubscriptionPlan();
-      setSheet({ preset, plan });
+      setSheet({ preset, plan, isGuest: false });
     } finally {
       setIsWorking(false);
     }
@@ -167,6 +192,7 @@ export function UseStylePresetButton({
           }}
           preset={sheet.preset}
           subscriptionPlan={sheet.plan}
+          isGuest={sheet.isGuest}
         />
       ) : null}
     </>
