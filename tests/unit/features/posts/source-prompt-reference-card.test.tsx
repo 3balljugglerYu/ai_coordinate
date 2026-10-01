@@ -105,6 +105,11 @@ jest.mock("@/features/posts/lib/source-prompt-text-api", () => ({
   fetchSourcePromptText: jest.fn().mockResolvedValue("白いワンピースにして"),
 }));
 
+const mockRevamp = jest.fn(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
+
 jest.mock("@/features/users/components/FollowButton", () => ({
   FollowButton: ({
     userId,
@@ -127,6 +132,8 @@ jest.mock("@/features/users/components/FollowButton", () => ({
 const translations = {
   sourcePromptCardTitle: "このプロンプトで作る",
   sourcePromptCardTitleDerived: "原作のプロンプトで作る",
+  sourcePromptCardTitleRevamp: "User ORIGINAL で生成",
+  feedUseCatalog: "このカタログで生成する",
   sourcePromptCredit: ({ name }: { name: string }) => `原作 ${name}`,
   sourcePromptUsageCount: ({ count }: { count: number }) =>
     `${count}人がこのプロンプトを使いました`,
@@ -775,4 +782,26 @@ describe("秘匿", () => {
     expect(container.textContent).not.toContain("prompt");
     expect(Object.keys(buildReference())).not.toContain("prompt");
   });
+});
+
+describe("SourcePromptReferenceCard(カタログ刷新後)", () => {
+  beforeEach(() => mockRevamp.mockReturnValue(true));
+  afterEach(() => mockRevamp.mockReturnValue(false));
+
+  test.each([
+    ["原作", false],
+    ["派生", true],
+  ])(
+    "%sの投稿でも、見出しは「User ORIGINAL で生成」、ボタンは「このカタログで生成する」",
+    (_label, isDerivedPost) => {
+      renderCard({ isDerivedPost });
+
+      expect(screen.getByText("User ORIGINAL で生成")).toBeTruthy();
+      expect(
+        screen.getByRole("button", { name: "このカタログで生成する" })
+      ).toBeTruthy();
+      expect(screen.queryByText("このプロンプトで作る")).toBeNull();
+      expect(screen.queryByText("原作のプロンプトで作る")).toBeNull();
+    }
+  );
 });

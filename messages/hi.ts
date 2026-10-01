@@ -90,6 +90,8 @@ export const hiMessages = {
     promptVisibilityRetractWarning: "निजी करने से वह पीछे नहीं हटता जो पहले ही देखा या कॉपी हो चुका है।",
     sourcePromptCardTitle: "इस प्रॉम्प्ट से बनाएँ",
     sourcePromptCardTitleDerived: "मूल प्रॉम्प्ट से बनाएँ",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "User ORIGINAL से उत्पन्न",
     sourcePromptCredit: "मूल रचना {name}",
     sourcePromptUsageCount: "इस प्रॉम्प्ट का कम से कम {count} बार उपयोग हुआ है",
     sourcePromptUnavailable: "अभी उपलब्ध नहीं है",

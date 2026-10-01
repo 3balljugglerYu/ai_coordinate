@@ -90,6 +90,8 @@ export const koMessages = {
     promptVisibilityRetractWarning: "비공개로 바꿔도 이미 보였거나 복사된 내용은 되돌릴 수 없습니다.",
     sourcePromptCardTitle: "이 프롬프트로 만들기",
     sourcePromptCardTitleDerived: "원작 프롬프트로 만들기",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "User ORIGINAL로 생성됨",
     sourcePromptCredit: "원작 {name}",
     sourcePromptUsageCount: "이 프롬프트가 {count}번 이상 사용되었습니다",
     sourcePromptUnavailable: "현재 사용할 수 없습니다",

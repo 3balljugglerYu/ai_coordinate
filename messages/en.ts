@@ -90,6 +90,8 @@ export const enMessages = {
     promptVisibilityRetractWarning: "Switching to private does not undo what has already been seen or copied.",
     sourcePromptCardTitle: "Create with this prompt",
     sourcePromptCardTitleDerived: "Create with the original prompt",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "Generated with User ORIGINAL",
     sourcePromptCredit: "Original by {name}",
     sourcePromptUsageCount: "This prompt has been used {count}+ times",
     sourcePromptUnavailable: "Currently unavailable",

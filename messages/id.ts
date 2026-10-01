@@ -90,6 +90,8 @@ export const idMessages = {
     promptVisibilityRetractWarning: "Mengubah ke privat tidak membatalkan apa yang sudah dilihat atau disalin.",
     sourcePromptCardTitle: "Buat dengan prompt ini",
     sourcePromptCardTitleDerived: "Buat dengan prompt aslinya",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "Dibuat dengan User ORIGINAL",
     sourcePromptCredit: "Asli oleh {name}",
     sourcePromptUsageCount: "Prompt ini sudah dipakai minimal {count} kali",
     sourcePromptUnavailable: "Saat ini tidak tersedia",

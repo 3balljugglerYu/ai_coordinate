@@ -90,6 +90,8 @@ export const thMessages = {
     promptVisibilityRetractWarning: "การเปลี่ยนเป็นส่วนตัวไม่ย้อนคืนสิ่งที่ถูกเห็นหรือคัดลอกไปแล้ว",
     sourcePromptCardTitle: "สร้างด้วยพรอมต์นี้",
     sourcePromptCardTitleDerived: "สร้างด้วยพรอมต์ต้นฉบับ",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "สร้างด้วย User ORIGINAL",
     sourcePromptCredit: "ต้นฉบับโดย {name}",
     sourcePromptUsageCount: "พรอมต์นี้ถูกใช้ไปแล้วอย่างน้อย {count} ครั้ง",
     sourcePromptUnavailable: "ยังไม่พร้อมใช้งาน",

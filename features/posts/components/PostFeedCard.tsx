@@ -485,8 +485,12 @@ export function PostFeedCard({
               variant="style"
               thumbnailUrl={oneTapPreset.thumbnailImageUrl}
               title={oneTapPreset.title}
+              /*
+                刷新後はカードを押しても移動しない(2026-10-01 ユーザー決定)。
+                生成は横の「このカタログで生成する」からその場で行う。
+              */
               href={
-                stylePresetLink?.slug
+                !isCatalogRevamp && stylePresetLink?.slug
                   ? `/styles/${encodeURIComponent(stylePresetLink.slug)}`
                   : null
               }

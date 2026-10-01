@@ -87,6 +87,8 @@ export const jaMessages = {
     promptVisibilityRetractWarning: "非公開に変えても、すでに見られた内容やコピーされた内容は取り消せません。",
     sourcePromptCardTitle: "このプロンプトで作る",
     sourcePromptCardTitleDerived: "原作のプロンプトで作る",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "User ORIGINAL で生成",
     sourcePromptCredit: "原作 {name}",
     sourcePromptUsageCount: "このプロンプトが{count}回以上利用されました",
     sourcePromptUnavailable: "現在、ご利用できません",

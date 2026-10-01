@@ -10,6 +10,9 @@ import { FreeMode } from "swiper/modules";
 import type { Swiper as SwiperType } from "swiper";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { StyleTryOnConfirmDialog } from "@/features/style-presets/components/StyleTryOnConfirmDialog";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import { useResolvedViewer } from "@/features/style/hooks/useResolvedViewer";
+import { useStylePresetGenerationSheet } from "@/features/style/hooks/useStylePresetGenerationSheet";
 import {
   DEFAULT_LOCALE,
   isLocale,
@@ -94,6 +97,22 @@ export function HomeStylePresetCarousel({
   const [confirmingPreset, setConfirmingPreset] =
     useState<StylePresetPublicSummary | null>(null);
   const newPresetIdSet = new Set(newPresetIds ?? []);
+
+  /*
+    カタログ刷新後(公開前は運営だけ)は /style を使わない。確認を挟まず、
+    押したスタイルでその場で生成シートを開く(2026-10-01 ユーザー決定)。
+    この棚は全員で同じキャッシュなので、閲覧者はここで確かめる。
+  */
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  const viewer = useResolvedViewer(isCatalogRevamp);
+  const generationSheet = useStylePresetGenerationSheet({
+    currentUserId: viewer?.id ?? null,
+    isViewerResolved: viewer !== null,
+  });
+  // シートを開いている間は自動スクロールを止める(確認ダイアログと同じ)
+  useEffect(() => {
+    isDialogOpenRef.current = generationSheet.isOpen;
+  }, [generationSheet.isOpen]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -207,6 +226,10 @@ export function HomeStylePresetCarousel({
 
   const handleSelect = (preset: StylePresetPublicSummary) => {
     saveCurrentTranslate(swiperRef.current);
+    if (isCatalogRevamp) {
+      void generationSheet.open({ presetId: preset.id, slug: preset.slug });
+      return;
+    }
     isDialogOpenRef.current = true;
     setConfirmingPreset(preset);
   };
@@ -334,6 +357,7 @@ export function HomeStylePresetCarousel({
         locale={locale === "ja" ? "ja" : "en"}
         generateTotals={generateTotals}
       />
+      {generationSheet.overlays}
     </div>
   );
 }

@@ -90,6 +90,8 @@ export const arMessages = {
     promptVisibilityRetractWarning: "التحويل إلى خاص لا يلغي ما تم رؤيته أو نسخه بالفعل.",
     sourcePromptCardTitle: "أنشئ بهذا الأمر",
     sourcePromptCardTitleDerived: "أنشئ بالأمر الأصلي",
+    // カタログ刷新後の投稿詳細のカードの見出し(Persta ORIGINAL の detailPresetLabelRevamp と揃える)
+    sourcePromptCardTitleRevamp: "أُنشئت بـ User ORIGINAL",
     sourcePromptCredit: "العمل الأصلي لـ {name}",
     sourcePromptUsageCount: "استُخدم هذا الأمر {count} مرة على الأقل",
     sourcePromptUnavailable: "غير متاح حاليًا",
