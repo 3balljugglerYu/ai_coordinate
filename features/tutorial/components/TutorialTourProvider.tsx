@@ -11,6 +11,7 @@ import { getTourSteps, type TutorialTourCopy } from "../lib/tour-steps";
 import { TUTORIAL_STORAGE_KEYS } from "../types";
 import { TUTORIAL_TOUR_ENTRY_PATH } from "../lib/tutorial-status";
 import { stripLocalePrefix } from "@/i18n/config";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 const prefersReducedMotion = () =>
   typeof window !== "undefined" &&
@@ -72,6 +73,13 @@ function runTransitionFlow(
  * に固定する) → ②〜④は One-Tap Style のミニツアーと同じアンカー →
  * ⑤締めの「完了」で /api/tutorial/complete を呼び、完了ボーナスを付与する。
  * 生成・デモ画像挿入は行わない(課金経路に影響しない)。
+ *
+ * ⭐ **カタログ刷新後(`useStylesCatalogRevamp()`。公開前は運営だけ)は出さない**
+ * (2026-10-01 ユーザー決定)。刷新後の生成の入口は /styles(カタログ)で、先頭に来る
+ * カテゴリがその時々で変わるため、決まった場所を指すツアーが成り立たない。
+ * /styles 向けに作り直すまでは無しにする。開始モーダルを出さず、刷新前に始めた
+ * ツアーの続き(sessionStorage)も捨てる。ナビがツアー中に /style へ固定するのを止めるため。
+ * 完了ボーナス(tour_bonus)は、新しく来た人は受け取れなくなる(了承済み)。
  */
 export function TutorialTourProvider() {
   const pathname = usePathname();
@@ -79,6 +87,7 @@ export function TutorialTourProvider() {
   const searchParams = useSearchParams();
   const t = useTranslations("tutorial");
   const styleT = useTranslations("style");
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const [showModal, setShowModal] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const driverRef = useRef<Driver | null>(null);
@@ -92,8 +101,8 @@ export function TutorialTourProvider() {
 
     const checkAndShowModal = async () => {
       try {
-        // ホーム画面以外ではモーダルを非表示
-        if (normalizedPath !== "/") {
+        // カタログ刷新後は出さない。ホーム画面以外でもモーダルを非表示
+        if (isCatalogRevamp || normalizedPath !== "/") {
           setShowModal(false);
           setIsChecking(false);
           return;
@@ -133,7 +142,18 @@ export function TutorialTourProvider() {
     return () => {
       mounted = false;
     };
-  }, [normalizedPath, tutorialReset]);
+  }, [isCatalogRevamp, normalizedPath, tutorialReset]);
+
+  // カタログ刷新後は、刷新前に始めたツアーの続きも捨てる(運営は後から刷新に切り替わる)
+  useEffect(() => {
+    if (!isCatalogRevamp) return;
+    setShowModal(false);
+    if (typeof sessionStorage !== "undefined") {
+      sessionStorage.removeItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS);
+    }
+    driverRef.current?.destroy();
+    driverRef.current = null;
+  }, [isCatalogRevamp]);
 
   const markTutorialCompleted = async () => {
     const supabase = createClient();
@@ -435,7 +455,7 @@ export function TutorialTourProvider() {
       styleTourStartedRef.current = false;
       return;
     }
-    if (isChecking) return;
+    if (isChecking || isCatalogRevamp) return;
     if (styleTourStartedRef.current) return;
 
     styleTourStartedRef.current = true;
@@ -461,9 +481,9 @@ export function TutorialTourProvider() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [isChecking, normalizedPath]);
+  }, [isCatalogRevamp, isChecking, normalizedPath]);
 
-  if (isChecking) return null;
+  if (isChecking || isCatalogRevamp) return null;
 
   return (
     <>

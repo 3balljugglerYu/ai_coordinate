@@ -76,8 +76,12 @@ export function UserStylesAvailabilityUpgrade() {
 }
 
 /**
- * User ORIGINAL を出してよいか。Provider の外では false（閉じる側に倒す）。
+ * User ORIGINAL を出してよいか。Provider の外では公開フラグ(公開前は false = 閉じる側)。
  */
 export function useUserStylesAvailable(): boolean {
-  return useContext(UserStylesAvailabilityContext)?.available ?? false;
+  const context = useContext(UserStylesAvailabilityContext);
+  // Provider の外(PostProgressHost など LocaleShell で Provider より外に置く面)では
+  // 公開フラグに倒す。公開前は false(閉じる側)のままで、一般公開後はそこでも刷新後になる。
+  // 運営の昇格だけは届かない(公開前の運営には刷新前の表示になる)。
+  return context ? context.available : isPubliclyEnabled();
 }

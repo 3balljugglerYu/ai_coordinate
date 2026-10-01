@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { StylePresetPreviewCard } from "@/features/style/components/StylePresetPreviewCard";
 import { PresetUnlockNoticeDialog } from "@/features/style/components/PresetUnlockNoticeDialog";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { OneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
 import type { PresetUnlockState } from "@/features/collections/lib/resolve-preset-unlock-state";
 
@@ -35,6 +36,8 @@ export function OneTapStyleDetailCard({
   const router = useRouter();
   const pathname = usePathname();
   const t = useTranslations("style");
+  // カタログ刷新後(公開前は運営だけ)は One-Tap Style を Persta ORIGINAL と呼ぶ
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const locale = useLocale();
   const styleCardLocale = locale === "en" ? "en" : "ja";
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
@@ -64,7 +67,7 @@ export function OneTapStyleDetailCard({
   return (
     <div className="space-y-3">
       <p className="text-sm font-medium text-gray-700">
-        {t("detailPresetLabel")}
+        {t(isCatalogRevamp ? "detailPresetLabelRevamp" : "detailPresetLabel")}
       </p>
       <StylePresetPreviewCard
         preset={preset}
@@ -97,7 +100,11 @@ export function OneTapStyleDetailCard({
           <AlertDialogHeader>
             <AlertDialogTitle>{t("detailReuseConfirmTitle")}</AlertDialogTitle>
             <AlertDialogDescription>
-              {t("detailReuseConfirmDescription")}
+              {t(
+                isCatalogRevamp
+                  ? "detailReuseConfirmDescriptionRevamp"
+                  : "detailReuseConfirmDescription"
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

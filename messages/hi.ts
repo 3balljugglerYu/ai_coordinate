@@ -30,7 +30,7 @@ export const hiMessages = {
   nav: {
     home: "होम",
     coordinate: "कोऑर्डिनेट",
-    catalog: "Catalog",
+    catalog: "कैटलॉग",
     challenge: "मिशन",
     notifications: "सूचनाएँ",
     myPage: "मेरा पेज",
@@ -204,7 +204,9 @@ export const hiMessages = {
     postBonusUnit: "पर्कॉइन",
     postBonusAmount: "+{amount} पर्कॉइन",
     postBonusMissionOneTap: "One-Tap Style से पोस्ट!",
+    postBonusMissionOneTapRevamp: "Persta ORIGINAL से पोस्ट!",
     postBonusMissionFree: "Free Style से बनाकर पोस्ट!",
+    postBonusMissionFreeRevamp: "CREATE से बनाकर पोस्ट!",
     postBonusMissionPromptUse: "प्रॉम्प्ट का उपयोग कर पोस्ट!",
     postBonusCreatorReward: "जब भी कोई इस प्रॉम्प्ट का उपयोग करता है, आपको {amount} पर्कॉइन मिलते हैं।",
     postBonusPrivateNote: "अगर प्रॉम्प्ट निजी सेट है, तो दूसरे उसे नहीं देख सकते।",
@@ -1433,12 +1435,15 @@ export const hiMessages = {
     dailyReceivedTitle: "आज का बोनस मिल गया",
     dailyPendingTitle: "आज का बोनस कमाने के लिए पोस्ट करें",
     dailyOneTapLabel: "One-Tap Style से बनाकर पोस्ट करें!",
+    dailyOneTapLabelRevamp: "Persta ORIGINAL से बनाकर पोस्ट करें!",
     dailyFreeLabel: "Free Style से बनाकर पोस्ट करें!",
+    dailyFreeLabelRevamp: "CREATE से बनाकर पोस्ट करें!",
     dailyPromptUseLabel: "दूसरे यूज़र के प्रॉम्प्ट से बनाकर पोस्ट करें!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "प्रॉम्प्ट का उपयोग कैसे होता है देखें",
     missionNavigateBody: "क्या इस स्क्रीन पर जाएं?",
     missionNavigateHomeBody: "होम पर ले जाएंगे। पसंदीदा पोस्ट खोलकर “इस प्रॉम्प्ट से बनाएं” दबाएं।",
+    missionNavigateHomeBodyRevamp: "होम पर ले जाएंगे। पसंदीदा पोस्ट खोलकर “इस कैटलॉग से जेनरेट करें” दबाएं।",
     missionNavigateConfirm: "ठीक है",
     missionNavigateCancel: "रद्द करें",
     dailyReceivedDescription: "अधिक सिक्के कमाने के लिए कल फिर से पोस्ट करें।",
@@ -1451,10 +1456,13 @@ export const hiMessages = {
       "जब दूसरे लोग आपके प्रॉम्प्ट या स्टाइल से बनाते हैं, तो आपको पर्कॉइन मिलते हैं।",
     usageRewardFreeItem:
       "आपका /free प्रॉम्प्ट इस्तेमाल होने पर अधिकतम +{amount} पर्कॉइन",
+    usageRewardFreeItemRevamp: "आपका CREATE प्रॉम्प्ट इस्तेमाल होने पर अधिकतम +{amount} पर्कॉइन",
     usageRewardStyleItem:
       "आपका One-Tap Style इस्तेमाल होने पर अधिकतम +{amount} पर्कॉइन",
+    usageRewardStyleItemRevamp: "आपका Persta ORIGINAL इस्तेमाल होने पर अधिकतम +{amount} पर्कॉइन",
     usageRewardNote:
       "अपना उपयोग नहीं गिना जाता। प्रॉम्प्ट कॉपी-पेस्ट करके बनाई गई इमेज भी नहीं — केवल ऐप में “इस प्रॉम्प्ट से बनाएं” से शुरू की गई। मुफ़्त पर्कॉइन बैलेंस सीमा पर पहुँचने के बाद कुछ नहीं मिलता।",
+    usageRewardNoteRevamp: "अपना उपयोग नहीं गिना जाता। प्रॉम्प्ट कॉपी-पेस्ट करके बनाई गई इमेज भी नहीं — केवल ऐप में “इस कैटलॉग से जेनरेट करें” से शुरू की गई। मुफ़्त पर्कॉइन बैलेंस सीमा पर पहुँचने के बाद कुछ नहीं मिलता।",
     usageRewardGuideLink: "क्रिएटर रिवॉर्ड कैसे काम करता है",
     referralTitle: "रेफ़रल बोनस",
     referralDescription:
@@ -1499,6 +1507,7 @@ export const hiMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "इमेज अपलोड करें और अपने निर्देशों से मनचाहा बनाएं। सिर्फ़ पहनावा ही नहीं, पोज़, बैकग्राउंड और पूरा सीन भी स्वतंत्र रूप से बना सकते हैं।",
     catalogSheetTitle: "कैटलॉग से बनाएँ",
@@ -1524,6 +1533,7 @@ export const hiMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "कोई प्रॉम्प्ट नहीं चाहिए। एक स्टाइल चुनें और एक टैप में अपना लुक बदलें।",
     catalogSheetTitle: "कैटलॉग से बनाएँ",
@@ -1574,10 +1584,12 @@ export const hiMessages = {
     styleUsageCount: "इस स्टाइल का कम से कम {count} बार उपयोग हुआ है",
     styleCardAlt: "{name} स्टाइल कार्ड",
     detailPresetLabel: "One-Tap Style से उत्पन्न",
+    detailPresetLabelRevamp: "Persta ORIGINAL से उत्पन्न",
     detailPresetCardAlt: "{name} स्टाइल कार्ड",
     detailReuseConfirmTitle: "इस आउटफ़िट का उपयोग करें?",
     detailReuseConfirmDescription:
       "हाँ चुनने पर इस कार्ड के पहले से चयनित होकर One-Tap Style खुलेगा।",
+    detailReuseConfirmDescriptionRevamp: "हाँ चुनने पर इस कार्ड के पहले से चयनित होकर Persta ORIGINAL खुलेगा।",
     detailReuseConfirmCancel: "रद्द करें",
     detailReuseConfirmAction: "हाँ",
     uploadImageLabel: "अपलोड की गई छवि",

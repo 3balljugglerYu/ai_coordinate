@@ -30,7 +30,7 @@ export const zhTwMessages = {
   nav: {
     home: "首頁",
     coordinate: "穿搭",
-    catalog: "Catalog",
+    catalog: "目錄",
     challenge: "任務",
     notifications: "通知",
     myPage: "我的頁面",
@@ -204,7 +204,9 @@ export const zhTwMessages = {
     postBonusUnit: "佩爾幣",
     postBonusAmount: "+{amount} 佩爾幣",
     postBonusMissionOneTap: "用 One-Tap Style 投稿！",
+    postBonusMissionOneTapRevamp: "用 Persta ORIGINAL 投稿！",
     postBonusMissionFree: "用 Free Style 創作並投稿！",
+    postBonusMissionFreeRevamp: "用 CREATE 創作並投稿！",
     postBonusMissionPromptUse: "使用提示詞投稿！",
     postBonusCreatorReward: "每當有人使用這個提示詞，你就會獲得 {amount} 佩爾幣。",
     postBonusPrivateNote: "若將提示詞設為不公開，對方無法看到內容。",
@@ -1430,12 +1432,15 @@ export const zhTwMessages = {
     dailyReceivedTitle: "今日獎勵已領取",
     dailyPendingTitle: "發佈以領取今日獎勵",
     dailyOneTapLabel: "用 One-Tap Style 創作並投稿！",
+    dailyOneTapLabelRevamp: "用 Persta ORIGINAL 創作並投稿！",
     dailyFreeLabel: "用 Free Style 創作並投稿！",
+    dailyFreeLabelRevamp: "用 CREATE 創作並投稿！",
     dailyPromptUseLabel: "用其他用戶的提示詞創作並投稿！",
     dailyPromptUseHint: "自己寫的和用別人的提示詞，可以分別領取",
     dailyPromptUseGuideLink: "了解提示詞的使用方式",
     missionNavigateBody: "要前往該頁面嗎？",
     missionNavigateHomeBody: "將前往首頁。打開喜歡的貼文，點擊「用這個提示詞創作」即可。",
+    missionNavigateHomeBodyRevamp: "將前往首頁。打開喜歡的貼文，點擊「用這個目錄生成」即可。",
     missionNavigateConfirm: "確定",
     missionNavigateCancel: "取消",
     dailyReceivedDescription: "明天再發佈即可繼續累積。",
@@ -1448,10 +1453,13 @@ export const zhTwMessages = {
       "當其他使用者使用你的提示詞或風格生成時，你將獲得佩爾幣。",
     usageRewardFreeItem:
       "你的 /free 提示詞被使用時 最多 +{amount} 佩爾幣",
+    usageRewardFreeItemRevamp: "你的 CREATE 提示詞被使用時 最多 +{amount} 佩爾幣",
     usageRewardStyleItem:
       "你的 One-Tap Style 被使用時 最多 +{amount} 佩爾幣",
+    usageRewardStyleItemRevamp: "你的 Persta ORIGINAL 被使用時 最多 +{amount} 佩爾幣",
     usageRewardNote:
       "自己使用不計入。複製貼上提示詞的生成也不計入，僅限從應用程式內「用這個提示詞創作」發起的生成。免費佩爾幣餘額達到上限後將不再發放。",
+    usageRewardNoteRevamp: "自己使用不計入。複製貼上提示詞的生成也不計入，僅限從應用程式內「用這個目錄生成」發起的生成。免費佩爾幣餘額達到上限後將不再發放。",
     usageRewardGuideLink: "了解創作者回饋機制",
     referralTitle: "推薦獎勵",
     referralDescription:
@@ -1495,6 +1503,7 @@ export const zhTwMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "上傳圖片，用自由的指示隨心創作。不僅能換裝，還能自由打造姿勢、背景乃至整個場景。",
     catalogSheetTitle: "從目錄生成",
@@ -1520,6 +1529,7 @@ export const zhTwMessages = {
   },
   style: {
     pageTitle: "一鍵造型",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "不必輸入提示詞，挑選造型即可一鍵變身。",
     catalogSheetTitle: "從目錄生成",
@@ -1570,10 +1580,12 @@ export const zhTwMessages = {
     styleUsageCount: "這個風格已被使用 {count} 次以上",
     styleCardAlt: "{name} 造型卡",
     detailPresetLabel: "由一鍵造型生成",
+    detailPresetLabelRevamp: "由Persta ORIGINAL生成",
     detailPresetCardAlt: "{name} 造型卡",
     detailReuseConfirmTitle: "要使用此穿搭嗎?",
     detailReuseConfirmDescription:
       "選擇是會以預先選中此卡片的狀態開啟一鍵造型。",
+    detailReuseConfirmDescriptionRevamp: "選擇是會以預先選中此卡片的狀態開啟Persta ORIGINAL。",
     detailReuseConfirmCancel: "取消",
     detailReuseConfirmAction: "是",
     uploadImageLabel: "已上傳的圖片",

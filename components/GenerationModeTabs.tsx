@@ -8,6 +8,7 @@ import { Wand2, PenLine } from "lucide-react";
 import { stripLocalePrefix } from "@/i18n/config";
 import { setLastGenerationModePath } from "@/features/generation/lib/generation-mode-preference";
 import { cn } from "@/lib/utils";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 /**
  * /style・/free を相互に行き来するためのアニメーション付き
@@ -38,6 +39,7 @@ export function GenerationModeTabs() {
   const router = useRouter();
   const styleT = useTranslations("style");
   const freeT = useTranslations("free");
+  const isCatalogRevamp = useStylesCatalogRevamp();
 
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   // 現在の pathname からロケールプレフィックス(例: /ja)を取り出し、遷移先 URL に
@@ -98,7 +100,11 @@ export function GenerationModeTabs() {
   // style / free 以外のルートでは表示しない。
   if (activeIndex === -1) return null;
 
-  const labels = [styleT("pageTitle"), freeT("tabLabel")];
+  // カタログ刷新後(公開前は運営だけ)は新しい名前(Persta ORIGINAL / CREATE)。
+  // 幅が変わってもピルは ResizeObserver が測り直す
+  const labels = isCatalogRevamp
+    ? [styleT("pageTitleRevamp"), freeT("tabLabelRevamp")]
+    : [styleT("pageTitle"), freeT("tabLabel")];
 
   return (
     <div className="border-b border-pink-100/70 bg-white/80 backdrop-blur-sm">

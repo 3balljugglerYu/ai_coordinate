@@ -1,6 +1,8 @@
 import { generateMetadata } from "@/app/(app)/style/page";
 import { getPublishedStylePreset } from "@/features/style-presets/lib/get-public-style-presets";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+import { createMarketingPageMetadata } from "@/lib/metadata";
+import { isUserStylesPubliclyEnabled } from "@/lib/env";
 
 // generateMetadata だけを検証するため、default export が引き込む重いクライアント
 // コンポーネント群はスタブ化する(メタデータ生成には無関係)。
@@ -12,6 +14,12 @@ jest.mock("@/features/style/components/StylePageBody", () => ({
 }));
 jest.mock("@/features/style/components/StyleTotalGenerationCount", () => ({
   StyleTotalGenerationCount: () => null,
+}));
+jest.mock("@/features/style/components/StylePageHeading", () => ({
+  StylePageHeading: () => null,
+}));
+jest.mock("@/lib/env", () => ({
+  isUserStylesPubliclyEnabled: jest.fn(() => false),
 }));
 
 jest.mock("next-intl/server", () => ({
@@ -92,3 +100,41 @@ describe("style page generateMetadata", () => {
     expect(firstOgImageUrl(meta)).toBe(DEFAULT_OG);
   });
 });
+
+describe("generateMetadata(/style): 一般公開後の名前", () => {
+  const mockPubliclyEnabled = isUserStylesPubliclyEnabled as jest.MockedFunction<
+    typeof isUserStylesPubliclyEnabled
+  >;
+  const mockCreateMetadata = createMarketingPageMetadata as jest.MockedFunction<
+    typeof createMarketingPageMetadata
+  >;
+
+  afterEach(() => {
+    mockPubliclyEnabled.mockReturnValue(false);
+  });
+
+  test("公開前は One-Tap Style のまま(運営だけの段階では検索向けの名前を変えない)", async () => {
+    mockGetPreset.mockResolvedValue(null);
+
+    await generateMetadata({ searchParams: Promise.resolve({}) });
+
+    expect(mockCreateMetadata).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "pageTitle" }),
+    );
+  });
+
+  test("一般公開後は Persta ORIGINAL にそろえる", async () => {
+    mockPubliclyEnabled.mockReturnValue(true);
+    mockGetPreset.mockResolvedValue(null);
+
+    const metadata = await generateMetadata({ searchParams: Promise.resolve({}) });
+
+    expect(mockCreateMetadata).toHaveBeenLastCalledWith(
+      expect.objectContaining({ title: "pageTitleRevamp" }),
+    );
+    expect(metadata.openGraph?.images).toEqual([
+      expect.objectContaining({ alt: "pageTitleRevamp | Persta.AI" }),
+    ]);
+  });
+});
+

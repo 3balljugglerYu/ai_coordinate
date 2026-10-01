@@ -30,7 +30,7 @@ export const idMessages = {
   nav: {
     home: "Beranda",
     coordinate: "Koordinat",
-    catalog: "Catalog",
+    catalog: "Katalog",
     challenge: "Misi",
     notifications: "Notifikasi",
     myPage: "Halaman saya",
@@ -204,7 +204,9 @@ export const idMessages = {
     postBonusUnit: "Percoin",
     postBonusAmount: "+{amount} Percoin",
     postBonusMissionOneTap: "Posted with One-Tap Style!",
+    postBonusMissionOneTapRevamp: "Posted with Persta ORIGINAL!",
     postBonusMissionFree: "Created with Free Style and posted!",
+    postBonusMissionFreeRevamp: "Created with CREATE and posted!",
     postBonusMissionPromptUse: "Posted using someone's prompt!",
     postBonusCreatorReward: "Kamu mendapat {amount} Percoin setiap kali orang lain memakai prompt ini.",
     postBonusPrivateNote: "Jika prompt disetel privat, orang lain tidak bisa melihat isinya.",
@@ -1434,12 +1436,15 @@ export const idMessages = {
     dailyReceivedTitle: "Bonus hari ini diklaim",
     dailyPendingTitle: "Posting untuk mendapat bonus hari ini",
     dailyOneTapLabel: "Buat dengan One-Tap Style lalu posting!",
+    dailyOneTapLabelRevamp: "Buat dengan Persta ORIGINAL lalu posting!",
     dailyFreeLabel: "Buat dengan Free Style lalu posting!",
+    dailyFreeLabelRevamp: "Buat dengan CREATE lalu posting!",
     dailyPromptUseLabel: "Buat dengan prompt pengguna lain lalu posting!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "Lihat cara kerja penggunaan prompt",
     missionNavigateBody: "Buka layar ini?",
     missionNavigateHomeBody: "Menuju beranda. Buka postingan favoritmu dan ketuk “Buat dengan prompt ini”.",
+    missionNavigateHomeBodyRevamp: "Menuju beranda. Buka postingan favoritmu dan ketuk “Buat dengan katalog ini”.",
     missionNavigateConfirm: "OK",
     missionNavigateCancel: "Batal",
     dailyReceivedDescription: "Posting lagi besok untuk mendapat lebih banyak koin.",
@@ -1452,10 +1457,13 @@ export const idMessages = {
       "Dapatkan Percoin saat pengguna lain berkreasi dengan prompt atau gaya kamu.",
     usageRewardFreeItem:
       "Hingga +{amount} Percoin saat prompt /free kamu dipakai",
+    usageRewardFreeItemRevamp: "Hingga +{amount} Percoin saat prompt CREATE kamu dipakai",
     usageRewardStyleItem:
       "Hingga +{amount} Percoin saat One-Tap Style kamu dipakai",
+    usageRewardStyleItemRevamp: "Hingga +{amount} Percoin saat Persta ORIGINAL kamu dipakai",
     usageRewardNote:
       "Penggunaan sendiri tidak dihitung. Generasi hasil salin-tempel prompt juga tidak — hanya yang dimulai dari “Buat dengan prompt ini” di aplikasi. Tidak ada pemberian saat saldo Percoin gratismu mencapai batas.",
+    usageRewardNoteRevamp: "Penggunaan sendiri tidak dihitung. Generasi hasil salin-tempel prompt juga tidak — hanya yang dimulai dari “Buat dengan katalog ini” di aplikasi. Tidak ada pemberian saat saldo Percoin gratismu mencapai batas.",
     usageRewardGuideLink: "Cara kerja imbalan kreator",
     referralTitle: "Bonus referral",
     referralDescription:
@@ -1500,6 +1508,7 @@ export const idMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "Unggah gambar dan berkreasi bebas sesukamu. Bukan hanya ganti busana, kamu bisa mengatur pose, latar, hingga seluruh suasana.",
     catalogSheetTitle: "Buat dari katalog",
@@ -1525,6 +1534,7 @@ export const idMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "Tanpa prompt. Pilih gaya dan ubah tampilanmu dengan satu sentuhan.",
     catalogSheetTitle: "Buat dari katalog",
@@ -1575,10 +1585,12 @@ export const idMessages = {
     styleUsageCount: "Gaya ini sudah dipakai minimal {count} kali",
     styleCardAlt: "Kartu gaya {name}",
     detailPresetLabel: "Dibuat dengan One-Tap Style",
+    detailPresetLabelRevamp: "Dibuat dengan Persta ORIGINAL",
     detailPresetCardAlt: "Kartu gaya {name}",
     detailReuseConfirmTitle: "Pakai outfit ini?",
     detailReuseConfirmDescription:
       "Memilih Ya akan membuka One-Tap Style dengan kartu ini terpilih.",
+    detailReuseConfirmDescriptionRevamp: "Memilih Ya akan membuka Persta ORIGINAL dengan kartu ini terpilih.",
     detailReuseConfirmCancel: "Batal",
     detailReuseConfirmAction: "Ya",
     uploadImageLabel: "Gambar yang diunggah",

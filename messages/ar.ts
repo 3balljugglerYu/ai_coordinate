@@ -30,7 +30,7 @@ export const arMessages = {
   nav: {
     home: "الرئيسية",
     coordinate: "تنسيق",
-    catalog: "Catalog",
+    catalog: "الدليل",
     challenge: "المهام",
     notifications: "الإشعارات",
     myPage: "صفحتي",
@@ -204,7 +204,9 @@ export const arMessages = {
     postBonusUnit: "بيركوين",
     postBonusAmount: "+{amount} بيركوين",
     postBonusMissionOneTap: "نُشر باستخدام One-Tap Style!",
+    postBonusMissionOneTapRevamp: "نُشر باستخدام Persta ORIGINAL!",
     postBonusMissionFree: "أُنشئ بـ Free Style ونُشر!",
+    postBonusMissionFreeRevamp: "أُنشئ بـ CREATE ونُشر!",
     postBonusMissionPromptUse: "نُشر باستخدام برومبت!",
     postBonusCreatorReward: "تحصل على {amount} بيركوين في كل مرة يستخدم فيها شخص ما هذا النص.",
     postBonusPrivateNote: "إذا كان النص مضبوطًا على خاص، فلن يتمكن أحد من رؤيته.",
@@ -1432,12 +1434,15 @@ export const arMessages = {
     dailyReceivedTitle: "تم استلام مكافأة اليوم",
     dailyPendingTitle: "انشر لكسب مكافأة اليوم",
     dailyOneTapLabel: "أنشئ بـ One-Tap Style وانشر!",
+    dailyOneTapLabelRevamp: "أنشئ بـ Persta ORIGINAL وانشر!",
     dailyFreeLabel: "أنشئ بـ Free Style وانشر!",
+    dailyFreeLabelRevamp: "أنشئ بـ CREATE وانشر!",
     dailyPromptUseLabel: "أنشئ ببرومبت مستخدم آخر وانشر!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "تعرّف على كيفية استخدام المطالبات",
     missionNavigateBody: "هل تريد الانتقال إلى هذه الشاشة؟",
     missionNavigateHomeBody: "سننتقل إلى الصفحة الرئيسية. افتح منشورًا يعجبك واضغط «أنشئ بهذا البرومبت».",
+    missionNavigateHomeBodyRevamp: "سننتقل إلى الصفحة الرئيسية. افتح منشورًا يعجبك واضغط «أنشئ بهذا الدليل».",
     missionNavigateConfirm: "موافق",
     missionNavigateCancel: "إلغاء",
     dailyReceivedDescription: "انشر مرة أخرى غدًا لكسب المزيد من العملات.",
@@ -1450,10 +1455,13 @@ export const arMessages = {
       "احصل على بيركوين عندما ينشئ الآخرون باستخدام برومبتاتك أو ستايلاتك.",
     usageRewardFreeItem:
       "‏حتى +{amount} بيركوين عند استخدام برومبت /free الخاص بك",
+    usageRewardFreeItemRevamp: "‏حتى +{amount} بيركوين عند استخدام برومبت CREATE الخاص بك",
     usageRewardStyleItem:
       "‏حتى +{amount} بيركوين عند استخدام One-Tap Style الخاص بك",
+    usageRewardStyleItemRevamp: "‏حتى +{amount} بيركوين عند استخدام Persta ORIGINAL الخاص بك",
     usageRewardNote:
       "استخدامك الشخصي لا يُحتسب، وكذلك ما يُنشأ بنسخ البرومبت ولصقه — يُحتسب فقط ما يبدأ من «أنشئ بهذا البرومبت» داخل التطبيق. ولا يُمنح شيء عند بلوغ رصيد البيركوين المجاني حدَّه الأقصى.",
+    usageRewardNoteRevamp: "استخدامك الشخصي لا يُحتسب، وكذلك ما يُنشأ بنسخ البرومبت ولصقه — يُحتسب فقط ما يبدأ من «أنشئ بهذا الدليل» داخل التطبيق. ولا يُمنح شيء عند بلوغ رصيد البيركوين المجاني حدَّه الأقصى.",
     usageRewardGuideLink: "كيف تعمل مكافآت المبدعين",
     referralTitle: "مكافأة الإحالة",
     referralDescription:
@@ -1498,6 +1506,7 @@ export const arMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "ارفع صورة وأبدع بحرية كما تتخيّل. ليس تغيير الملابس فحسب، بل يمكنك تصميم الوضعية والخلفية والمشهد بالكامل كما تريد.",
     catalogSheetTitle: "أنشئ من الدليل",
@@ -1523,6 +1532,7 @@ export const arMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "بدون نص موجِّه. اختر أسلوبًا وحوّل إطلالتك بضغطة واحدة.",
     catalogSheetTitle: "أنشئ من الدليل",
@@ -1573,10 +1583,12 @@ export const arMessages = {
     styleUsageCount: "استُخدم هذا الستايل {count} مرة على الأقل",
     styleCardAlt: "بطاقة أسلوب {name}",
     detailPresetLabel: "أُنشئت بـ One-Tap Style",
+    detailPresetLabelRevamp: "أُنشئت بـ Persta ORIGINAL",
     detailPresetCardAlt: "بطاقة أسلوب {name}",
     detailReuseConfirmTitle: "هل تريد استخدام هذه الإطلالة؟",
     detailReuseConfirmDescription:
       "اختيار نعم سيفتح One-Tap Style مع تحديد هذه البطاقة مسبقًا.",
+    detailReuseConfirmDescriptionRevamp: "اختيار نعم سيفتح Persta ORIGINAL مع تحديد هذه البطاقة مسبقًا.",
     detailReuseConfirmCancel: "إلغاء",
     detailReuseConfirmAction: "نعم",
     uploadImageLabel: "الصورة المرفوعة",

@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { CountUpNumber } from "@/features/collections/components/CountUpNumber";
 import { RewardBurst } from "@/features/challenges/components/RewardBurst";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 
 /**
  * 投稿ボーナスの付与モーダル。
@@ -61,6 +62,8 @@ export function PostBonusModal({
   isPromptUse = false,
 }: PostBonusModalProps) {
   const t = useTranslations("posts");
+  // カタログ刷新後(公開前は運営だけ)は新しい名前(Persta ORIGINAL / CREATE)で出す
+  const isCatalogRevamp = useStylesCatalogRevamp();
   const [showBurst, setShowBurst] = useState(false);
 
   const hasBoostedBonus = typeof multiplier === "number" && multiplier > 1;
@@ -76,9 +79,9 @@ export function PostBonusModal({
   const missionLabel = isPromptUse
     ? t("postBonusMissionPromptUse")
     : generationType === "one_tap_style"
-      ? t("postBonusMissionOneTap")
+      ? t(isCatalogRevamp ? "postBonusMissionOneTapRevamp" : "postBonusMissionOneTap")
       : generationType === "free"
-        ? t("postBonusMissionFree")
+        ? t(isCatalogRevamp ? "postBonusMissionFreeRevamp" : "postBonusMissionFree")
         : null;
 
   return (

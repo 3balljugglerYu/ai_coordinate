@@ -30,7 +30,7 @@ export const deMessages = {
   nav: {
     home: "Startseite",
     coordinate: "Koordinieren",
-    catalog: "Catalog",
+    catalog: "Katalog",
     challenge: "Missionen",
     notifications: "Benachrichtigungen",
     myPage: "Meine Seite",
@@ -204,7 +204,9 @@ export const deMessages = {
     postBonusUnit: "Percoin",
     postBonusAmount: "+{amount} Percoin",
     postBonusMissionOneTap: "Posted with One-Tap Style!",
+    postBonusMissionOneTapRevamp: "Posted with Persta ORIGINAL!",
     postBonusMissionFree: "Created with Free Style and posted!",
+    postBonusMissionFreeRevamp: "Created with CREATE and posted!",
     postBonusMissionPromptUse: "Posted using someone's prompt!",
     postBonusCreatorReward: "Du erhältst {amount} Percoin, jedes Mal wenn jemand diesen Prompt verwendet.",
     postBonusPrivateNote: "Wenn der Prompt auf privat gestellt ist, kann ihn niemand einsehen.",
@@ -1436,12 +1438,15 @@ export const deMessages = {
     dailyReceivedTitle: "Heutiger Bonus erhalten",
     dailyPendingTitle: "Veröffentliche, um den heutigen Bonus zu erhalten",
     dailyOneTapLabel: "Mit One-Tap Style erstellen und posten!",
+    dailyOneTapLabelRevamp: "Mit Persta ORIGINAL erstellen und posten!",
     dailyFreeLabel: "Mit Free Style erstellen und posten!",
+    dailyFreeLabelRevamp: "Mit CREATE erstellen und posten!",
     dailyPromptUseLabel: "Mit dem Prompt einer anderen Person erstellen und posten!",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "So funktioniert die Prompt-Nutzung",
     missionNavigateBody: "Zu diesem Bildschirm wechseln?",
     missionNavigateHomeBody: "Wir bringen dich zur Startseite. Öffne einen Beitrag und tippe auf „Mit diesem Prompt erstellen“.",
+    missionNavigateHomeBodyRevamp: "Wir bringen dich zur Startseite. Öffne einen Beitrag und tippe auf „Mit diesem Katalog generieren“.",
     missionNavigateConfirm: "OK",
     missionNavigateCancel: "Abbrechen",
     dailyReceivedDescription: "Veröffentliche morgen wieder, um mehr Coins zu verdienen.",
@@ -1454,10 +1459,13 @@ export const deMessages = {
       "Verdiene Percoins, wenn andere mit deinen Prompts oder Styles erstellen.",
     usageRewardFreeItem:
       "Bis zu +{amount} Percoins, wenn dein /free-Prompt genutzt wird",
+    usageRewardFreeItemRevamp: "Bis zu +{amount} Percoins, wenn dein CREATE-Prompt genutzt wird",
     usageRewardStyleItem:
       "Bis zu +{amount} Percoins, wenn dein One-Tap Style genutzt wird",
+    usageRewardStyleItemRevamp: "Bis zu +{amount} Percoins, wenn dein Persta ORIGINAL genutzt wird",
     usageRewardNote:
       "Eigene Nutzung zählt nicht. Generierungen per Copy-Paste des Prompts ebenfalls nicht – nur solche über „Mit diesem Prompt erstellen“ in der App. Sobald dein Guthaben an kostenlosen Percoins die Obergrenze erreicht, wird nichts mehr gutgeschrieben.",
+    usageRewardNoteRevamp: "Eigene Nutzung zählt nicht. Generierungen per Copy-Paste des Prompts ebenfalls nicht – nur solche über „Mit diesem Katalog generieren“ in der App. Sobald dein Guthaben an kostenlosen Percoins die Obergrenze erreicht, wird nichts mehr gutgeschrieben.",
     usageRewardGuideLink: "So funktionieren die Creator-Boni",
     referralTitle: "Empfehlungsbonus",
     referralDescription:
@@ -1502,6 +1510,7 @@ export const deMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "Lade ein Bild hoch und gestalte frei nach deinen Vorstellungen. Nicht nur das Outfit: Pose, Hintergrund und die ganze Szene lassen sich frei erstellen.",
     catalogSheetTitle: "Aus dem Katalog generieren",
@@ -1527,6 +1536,7 @@ export const deMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "Kein Prompt nötig. Wähle einen Stil und verwandle deinen Look mit einem Tipp.",
     catalogSheetTitle: "Aus dem Katalog generieren",
@@ -1577,10 +1587,12 @@ export const deMessages = {
     styleUsageCount: "Dieser Style wurde mindestens {count}-mal verwendet",
     styleCardAlt: "Stilkarte {name}",
     detailPresetLabel: "Mit One-Tap Style generiert",
+    detailPresetLabelRevamp: "Mit Persta ORIGINAL generiert",
     detailPresetCardAlt: "Stilkarte {name}",
     detailReuseConfirmTitle: "Dieses Outfit verwenden?",
     detailReuseConfirmDescription:
       "Mit Ja öffnest du One-Tap Style, wobei diese Karte vorausgewählt ist.",
+    detailReuseConfirmDescriptionRevamp: "Mit Ja öffnest du Persta ORIGINAL, wobei diese Karte vorausgewählt ist.",
     detailReuseConfirmCancel: "Abbrechen",
     detailReuseConfirmAction: "Ja",
     uploadImageLabel: "Hochgeladenes Bild",

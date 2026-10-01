@@ -30,7 +30,7 @@ export const frMessages = {
   nav: {
     home: "Accueil",
     coordinate: "Coordonner",
-    catalog: "Catalog",
+    catalog: "Catalogue",
     challenge: "Missions",
     notifications: "Notifications",
     myPage: "Mon espace",
@@ -204,7 +204,9 @@ export const frMessages = {
     postBonusUnit: "Percoin",
     postBonusAmount: "+{amount} Percoin",
     postBonusMissionOneTap: "Posted with One-Tap Style!",
+    postBonusMissionOneTapRevamp: "Posted with Persta ORIGINAL!",
     postBonusMissionFree: "Created with Free Style and posted!",
+    postBonusMissionFreeRevamp: "Created with CREATE and posted!",
     postBonusMissionPromptUse: "Posted using someone's prompt!",
     postBonusCreatorReward: "Vous gagnez {amount} Percoin chaque fois que quelqu'un utilise ce prompt.",
     postBonusPrivateNote: "Si le prompt est en privé, personne ne peut le voir.",
@@ -1435,12 +1437,15 @@ export const frMessages = {
     dailyReceivedTitle: "Bonus du jour reçu",
     dailyPendingTitle: "Publiez pour gagner le bonus du jour",
     dailyOneTapLabel: "Créez avec One-Tap Style et publiez !",
+    dailyOneTapLabelRevamp: "Créez avec Persta ORIGINAL et publiez !",
     dailyFreeLabel: "Créez avec Free Style et publiez !",
+    dailyFreeLabelRevamp: "Créez avec CREATE et publiez !",
     dailyPromptUseLabel: "Créez avec le prompt d'un autre utilisateur et publiez !",
     dailyPromptUseHint: "Your own prompt and someone else's prompt each count separately",
     dailyPromptUseGuideLink: "Voir comment utiliser les prompts",
     missionNavigateBody: "Aller à cet écran ?",
     missionNavigateHomeBody: "Direction l'accueil. Ouvrez une publication et appuyez sur « Créer avec ce prompt ».",
+    missionNavigateHomeBodyRevamp: "Direction l'accueil. Ouvrez une publication et appuyez sur «Générer avec ce catalogue».",
     missionNavigateConfirm: "OK",
     missionNavigateCancel: "Annuler",
     dailyReceivedDescription: "Publiez à nouveau demain pour gagner plus de pièces.",
@@ -1453,10 +1458,13 @@ export const frMessages = {
       "Gagnez des Percoins quand d'autres créent avec vos prompts ou styles.",
     usageRewardFreeItem:
       "Jusqu'à +{amount} Percoins quand votre prompt /free est utilisé",
+    usageRewardFreeItemRevamp: "Jusqu'à +{amount} Percoins quand votre prompt CREATE est utilisé",
     usageRewardStyleItem:
       "Jusqu'à +{amount} Percoins quand votre One-Tap Style est utilisé",
+    usageRewardStyleItemRevamp: "Jusqu'à +{amount} Percoins quand votre Persta ORIGINAL est utilisé",
     usageRewardNote:
       "Votre propre utilisation ne compte pas. Les générations faites en copiant-collant le prompt non plus : seules comptent celles lancées depuis « Créer avec ce prompt » dans l'app. Rien n'est attribué lorsque votre solde de Percoins gratuits atteint le plafond.",
+    usageRewardNoteRevamp: "Votre propre utilisation ne compte pas. Les générations faites en copiant-collant le prompt non plus : seules comptent celles lancées depuis «Générer avec ce catalogue» dans l'app. Rien n'est attribué lorsque votre solde de Percoins gratuits atteint le plafond.",
     usageRewardGuideLink: "Comment fonctionnent les récompenses",
     referralTitle: "Bonus de parrainage",
     referralDescription:
@@ -1501,6 +1509,7 @@ export const frMessages = {
   },
   free: {
     tabLabel: "Free Style",
+    tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
     pageDescription: "Importez une image et créez librement, comme vous l'imaginez. Au-delà des tenues, composez la pose, l'arrière-plan et toute la scène à votre guise.",
     catalogSheetTitle: "Générer depuis le catalogue",
@@ -1526,6 +1535,7 @@ export const frMessages = {
   },
   style: {
     pageTitle: "One-Tap Style",
+    pageTitleRevamp: "Persta ORIGINAL",
     pageDescription:
       "Sans prompt. Choisissez un style et transformez votre look en un toucher.",
     catalogSheetTitle: "Générer depuis le catalogue",
@@ -1576,10 +1586,12 @@ export const frMessages = {
     styleUsageCount: "Ce style a été utilisé au moins {count} fois",
     styleCardAlt: "Carte de style {name}",
     detailPresetLabel: "Généré avec One-Tap Style",
+    detailPresetLabelRevamp: "Généré avec Persta ORIGINAL",
     detailPresetCardAlt: "Carte de style {name}",
     detailReuseConfirmTitle: "Utiliser cette tenue ?",
     detailReuseConfirmDescription:
       "Sélectionner Oui ouvrira One-Tap Style avec cette carte présélectionnée.",
+    detailReuseConfirmDescriptionRevamp: "Sélectionner Oui ouvrira Persta ORIGINAL avec cette carte présélectionnée.",
     detailReuseConfirmCancel: "Annuler",
     detailReuseConfirmAction: "Oui",
     uploadImageLabel: "Image téléchargée",
