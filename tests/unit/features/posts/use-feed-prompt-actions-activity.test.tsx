@@ -93,3 +93,60 @@ test("フォロー状態も、取得中にページが隠れて戻ったとき�
 
   expect(screen.getByTestId("follow").textContent).toBe("true");
 });
+
+/*
+  開いた直後の1回目の取得が失敗しても、再読み込みせずにボタンが出るようにする
+  (2026-10-02 /user-styles で「開いてすぐだけ出ない・再読み込みで出る」)。
+*/
+test("サマリの取得が一度失敗しても、少し待って取り直し、ボタンを出す", async () => {
+  jest.useFakeTimers();
+  try {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          summaries: { "post-1": { originPostId: "post-1", isAvailable: true } },
+          styleLinks: {},
+        }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    render(<App mode="visible" />);
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("count").textContent).toBe("0");
+
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(1000);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("count").textContent).toBe("1");
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("取り直しても取れなければあきらめる(取り直しは2回まで)", async () => {
+  jest.useFakeTimers();
+  try {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    render(<App mode="visible" />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10000);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    expect(screen.getByTestId("count").textContent).toBe("0");
+  } finally {
+    jest.useRealTimers();
+  }
+});
