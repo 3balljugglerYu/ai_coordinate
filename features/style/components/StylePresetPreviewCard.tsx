@@ -2,7 +2,7 @@
 
 import type { Ref } from "react";
 import Image from "next/image";
-import { Lock } from "lucide-react";
+import { Loader2, Lock } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StyleProviderCredit } from "@/features/style/components/StyleProviderCredit";
 import { truncateStylePresetName } from "@/features/style/lib/style-preset-name";
@@ -92,6 +92,17 @@ interface StylePresetPreviewCardProps {
    * 画像は 3:4 のアスペクト比を維持する(ストリップの 180x240 と同比率)。
    */
   fluid?: boolean;
+  /**
+   * 押したあと、次の画面(生成シートなど)を開く準備をしている間 true。
+   * サムネに読み込み中を重ね、押したことが分かるようにする(押しても何も起きないと
+   * 何度も押されてしまうため)。
+   */
+  loading?: boolean;
+  /**
+   * 押した瞬間にカードを少し縮める(押し込んだ感触)。押してから次の画面が開くまで
+   * 間がある面で付ける。
+   */
+  pressFeedback?: boolean;
 }
 
 export function buildStylePresetImageSrc(
@@ -119,6 +130,8 @@ export function StylePresetPreviewCard({
   generatedLabel,
   newBadgeLabel,
   fluid = false,
+  loading = false,
+  pressFeedback = false,
 }: StylePresetPreviewCardProps) {
   const selected = isSelected === true;
   const isLocked = typeof lockedLabel === "string" && lockedLabel.length > 0;
@@ -173,6 +186,19 @@ export function StylePresetPreviewCard({
             }
             priority={selected && !dripLocked}
           />
+          {loading && !dripLocked ? (
+            <div
+              className="absolute inset-0 z-30 flex items-center justify-center bg-white/55 backdrop-blur-[1px]"
+              data-testid="style-preset-card-loading"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white shadow-md">
+                <Loader2
+                  className="h-6 w-6 animate-spin text-pink-500"
+                  aria-hidden="true"
+                />
+              </span>
+            </div>
+          ) : null}
           {dripLocked && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-1.5 bg-slate-900/55 px-2 text-center">
               <Lock className="h-6 w-6 text-white/90" aria-hidden="true" />
@@ -262,8 +288,13 @@ export function StylePresetPreviewCard({
       onClick={onClick}
       className={`text-left disabled:cursor-not-allowed disabled:opacity-60 ${
         fluid ? "w-full" : "flex-shrink-0"
-      }`}
+      } ${
+        pressFeedback
+          ? "transition-transform duration-100 ease-out active:scale-[0.96] motion-reduce:transition-none motion-reduce:active:scale-100"
+          : ""
+      } ${loading ? "scale-[0.98]" : ""}`}
       aria-pressed={typeof isSelected === "boolean" ? selected : undefined}
+      aria-busy={loading || undefined}
       disabled={disabled}
     >
       {card}

@@ -108,6 +108,8 @@ export function HomeStylePresetCarousel({
   const generationSheet = useStylePresetGenerationSheet({
     currentUserId: viewer?.id ?? null,
     isViewerResolved: viewer !== null,
+    // 押される見込みが高いので、シートの部品と料金プランを先に読んでおく
+    prefetch: isCatalogRevamp,
   });
   // シートを開いている間は自動スクロールを止める(確認ダイアログと同じ)
   useEffect(() => {
@@ -227,7 +229,8 @@ export function HomeStylePresetCarousel({
   const handleSelect = (preset: StylePresetPublicSummary) => {
     saveCurrentTranslate(swiperRef.current);
     if (isCatalogRevamp) {
-      void generationSheet.open({ presetId: preset.id, slug: preset.slug });
+      // 一覧の取得でスタイルを持っているので、問い合わせずにすぐ開く
+      void generationSheet.open({ presetId: preset.id, slug: preset.slug, preset });
       return;
     }
     isDialogOpenRef.current = true;
@@ -338,6 +341,9 @@ export function HomeStylePresetCarousel({
                   preset={preset}
                   alt={t("styleCardAlt", { name: preset.title })}
                   onClick={() => handleSelect(preset)}
+                  // 押したことが分かるよう、縮めてからシートが開くまで読み込み中を出す
+                  pressFeedback={isCatalogRevamp}
+                  loading={generationSheet.workingPresetId === preset.id}
                   newBadgeLabel={
                     newPresetIdSet.has(preset.id)
                       ? t("styleNewBadge")

@@ -51,11 +51,21 @@ jest.mock("@/features/style/components/StylePresetPreviewCard", () => ({
   StylePresetPreviewCard: ({
     preset,
     onClick,
+    loading,
+    pressFeedback,
   }: {
     preset: { id: string };
     onClick?: () => void;
+    loading?: boolean;
+    pressFeedback?: boolean;
   }) => (
-    <button type="button" data-testid={`card-${preset.id}`} onClick={onClick} />
+    <button
+      type="button"
+      data-testid={`card-${preset.id}`}
+      data-loading={String(loading ?? false)}
+      data-press-feedback={String(pressFeedback ?? false)}
+      onClick={onClick}
+    />
   ),
 }));
 jest.mock("@/features/style-presets/components/StyleTryOnConfirmDialog", () => ({
@@ -81,10 +91,18 @@ jest.mock("@/features/style/hooks/useResolvedViewer", () => ({
 }));
 const openSheetMock = jest.fn(async () => {});
 const sheetParams = jest.fn();
+const mockWorkingPresetId = jest.fn((): string | null => null);
 jest.mock("@/features/style/hooks/useStylePresetGenerationSheet", () => ({
   useStylePresetGenerationSheet: (params: unknown) => {
     sheetParams(params);
-    return { open: openSheetMock, isOpen: false, isWorking: false, overlays: null };
+    const workingPresetId = mockWorkingPresetId();
+    return {
+      open: openSheetMock,
+      isOpen: false,
+      isWorking: workingPresetId !== null,
+      workingPresetId,
+      overlays: null,
+    };
   },
 }));
 
@@ -111,6 +129,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockRevamp.mockReturnValue(true);
   mockViewer.mockReturnValue({ id: "viewer-1" });
+  mockWorkingPresetId.mockReturnValue(null);
   // jsdom に無いので、自動スクロールの描画ループは止めておく
   window.requestAnimationFrame = jest.fn(() => 0);
   window.cancelAnimationFrame = jest.fn();
@@ -143,16 +162,38 @@ describe.each([
 
     fireEvent.click(screen.getAllByTestId(`card-${presetId}`)[0]);
 
+    // 一覧で持っているスタイルを渡し、問い合わせずに開けるようにする
     expect(openSheetMock).toHaveBeenCalledWith({
       presetId,
       slug: `slug-${presetId}`,
+      preset: expect.objectContaining({ id: presetId }),
     });
     expect(screen.queryByTestId("try-on-confirm")).toBeNull();
     expect(pushMock).not.toHaveBeenCalled();
+    // 押される見込みが高いので、シートの部品と料金プランを先に読んでおく
     expect(sheetParams).toHaveBeenLastCalledWith({
       currentUserId: "viewer-1",
       isViewerResolved: true,
+      prefetch: true,
     });
+  });
+
+  test("刷新後: 押した瞬間に縮み、シートが開くまで押したカードに読み込み中を出す", () => {
+    mockWorkingPresetId.mockReturnValue(presetId);
+    renderTarget();
+
+    const card = screen.getAllByTestId(`card-${presetId}`)[0];
+    expect(card.getAttribute("data-press-feedback")).toBe("true");
+    expect(card.getAttribute("data-loading")).toBe("true");
+  });
+
+  test("刷新後: 準備していないカードには読み込み中を出さない", () => {
+    mockWorkingPresetId.mockReturnValue("other-preset");
+    renderTarget();
+
+    expect(
+      screen.getAllByTestId(`card-${presetId}`)[0].getAttribute("data-loading")
+    ).toBe("false");
   });
 
   test("刷新後: 閲覧者を確かめ終える前は、未確定のままシートに渡す(押しても開かない)", () => {
@@ -162,6 +203,7 @@ describe.each([
     expect(sheetParams).toHaveBeenLastCalledWith({
       currentUserId: null,
       isViewerResolved: false,
+      prefetch: true,
     });
   });
 
@@ -169,7 +211,9 @@ describe.each([
     mockRevamp.mockReturnValue(false);
     renderTarget();
 
-    fireEvent.click(screen.getAllByTestId(`card-${presetId}`)[0]);
+    const card = screen.getAllByTestId(`card-${presetId}`)[0];
+    expect(card.getAttribute("data-press-feedback")).toBe("false");
+    fireEvent.click(card);
     expect(openSheetMock).not.toHaveBeenCalled();
 
     fireEvent.click(screen.getByTestId("try-on-confirm"));
