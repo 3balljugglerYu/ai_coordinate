@@ -147,6 +147,12 @@ export function StylesGalleryClient({
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   // ログイン状態を確かめ終えたか。終える前はゲストと区別できない
   const [isViewerResolved, setIsViewerResolved] = useState(false);
+  /*
+    ログイン状態の確認(ログイン中なら true)。確認が終わる前に押されたら、
+    これを待ってから続ける。押した操作を捨てると「押しても何も起きない」になり、
+    何度も押されてしまう(2026-10-02 ホームのカルーセルで同じ指摘)。
+  */
+  const viewerCheckRef = useRef<Promise<boolean> | null>(null);
   // お気に入り(しおり)の集合と楽観更新トグル。/style・ホームと同じフックを共用する
   // (ゲストのタップはフック側がログイン誘導トーストを出す)。
   const { favoritePresetIds, toggleFavorite, hydrateFavorites } =
@@ -188,12 +194,17 @@ export function StylesGalleryClient({
   // 未ログイン・取得失敗時はチップが出ないだけで、一覧表示には影響しない。
   useEffect(() => {
     let cancelled = false;
+    let settleViewerCheck: (isSignedIn: boolean) => void = () => {};
+    viewerCheckRef.current = new Promise<boolean>((resolve) => {
+      settleViewerCheck = resolve;
+    });
     void (async () => {
       try {
         const supabase = createClient();
         const {
           data: { user },
         } = await supabase.auth.getUser();
+        settleViewerCheck(!!user);
         if (cancelled) {
           return;
         }
@@ -215,6 +226,7 @@ export function StylesGalleryClient({
         );
       } catch {
         // 認証状態の取得に失敗してもゲスト表示として成立する
+        settleViewerCheck(false);
         if (!cancelled) {
           setIsViewerResolved(true);
         }
@@ -262,10 +274,23 @@ export function StylesGalleryClient({
       未ログインは、ログインなしで生成できるカテゴリ(コーディネート系)ならその場で
       シートを開き、それ以外はログインの案内を出す(ホーム・投稿詳細と同じ範囲)。
     */
-    if (!isAuthenticated) {
-      if (!isViewerResolved) {
+    /*
+      確認が終わる前に押されたら、終わるのを待ってから続ける(押した操作を捨てない)。
+      確認中に2回目が押されても、同じ確認を待つだけなので二重には進まない。
+    */
+    let isSignedIn = isAuthenticated;
+    if (!isViewerResolved && !isAuthenticated) {
+      if (isOpeningSheetRef.current || !viewerCheckRef.current) {
         return;
       }
+      isOpeningSheetRef.current = true;
+      try {
+        isSignedIn = await viewerCheckRef.current;
+      } finally {
+        isOpeningSheetRef.current = false;
+      }
+    }
+    if (!isSignedIn) {
       if (
         preset.category.allowGuestGeneration &&
         !categoryNeedsUnlockContext(preset.category)

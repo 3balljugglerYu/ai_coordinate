@@ -7,12 +7,63 @@ import type { PromptActionSummary, StylePresetLink } from "../types";
 const BATCH_SIZE = 50;
 
 /**
+ * 取得に失敗したときの取り直しの待ち時間(ミリ秒)。この回数だけ取り直す。
+ *
+ * 取り直さないと、開いた直後の1回が失敗しただけで、再読み込みするまで
+ * ボタンが出ないままになる(posts が変わらない限り effect は再実行されない)。
+ * 2026-10-02 /user-styles で「開いてすぐだけ出ない・再読み込みで出る」が起きた。
+ */
+const RETRY_DELAYS_MS = [1000, 3000] as const;
+
+function wait(ms: number) {
+  return new Promise<void>((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * サマリを1バッチ取る。失敗したら少し待って取り直し、それでもだめなら投げる。
+ * `canRetry` が false を返したら(画面が閉じた・隠れた)取り直さずに投げる。
+ */
+async function fetchPromptActionsBatch(
+  batch: string[],
+  canRetry: () => boolean
+): Promise<{
+  summaries?: Record<string, PromptActionSummary>;
+  styleLinks?: Record<string, StylePresetLink>;
+}> {
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      const response = await fetch("/api/posts/prompt-actions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ post_ids: batch }),
+      });
+      if (!response.ok) {
+        throw new Error(`prompt-actions failed: ${response.status}`);
+      }
+      return (await response.json()) as {
+        summaries?: Record<string, PromptActionSummary>;
+        styleLinks?: Record<string, StylePresetLink>;
+      };
+    } catch (error) {
+      const delay = RETRY_DELAYS_MS[attempt];
+      if (delay === undefined || !canRetry()) {
+        throw error;
+      }
+      await wait(delay);
+      if (!canRetry()) {
+        throw error;
+      }
+    }
+  }
+}
+
+/**
  * フィードに並ぶ投稿の「このプロンプトで作る」サマリをまとめて解決するフック。
  *
  * - フィード表示中だけ動く(グリッドには CTA が無いので取得コストを増やさない)
  * - 未取得の投稿だけを問い合わせる(スクロールで追加された分だけ増分取得する)
- * - 失敗しても投げない。サマリが無い投稿は CTA を出さないだけで、
- *   詳細画面からは従来どおり生成できる(fail closed)
+ * - 失敗したら少し待って取り直す(RETRY_DELAYS_MS)。それでも取れなければ投げない。
+ *   サマリが無い投稿は CTA を出さないだけで、詳細画面からは従来どおり生成できる(fail closed)
  */
 export function useFeedPromptActions(postIds: string[], enabled: boolean) {
   const [summaries, setSummaries] = useState<Record<string, PromptActionSummary>>({});
@@ -20,15 +71,26 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
   // 問い合わせ済み(取得中を含む)の投稿。二重取得を防ぐ。
   const requestedRef = useRef<Set<string>>(new Set());
   /*
-    取得中に依存配列が変わっても結果を捨てないよう、中断はアンマウント時だけに限る。
-    effect ごとの cancelled フラグにすると、無限スクロールで posts が伸びた瞬間に
-    進行中のサマリ取得が丸ごと破棄され、CTA が出ないまま残る。
+    ⭐ 届いた結果は**捨てない**(中断しない)。
+
+    - effect ごとの cancelled フラグにすると、無限スクロールで posts が伸びた瞬間に
+      進行中のサマリ取得が丸ごと破棄され、CTA が出ないまま残る。
+    - 「アンマウントされたら捨てる」もしてはいけない。Next.js 16(Cache Components)は
+      離れたページを捨てずに隠しておき(<Activity>)、隠している間は effect の
+      後片付けが走る。取得中にページを離れると結果を捨て、取得済みとして覚えた
+      投稿は二度と問い合わせないので、戻ってもボタンが出なくなる
+      (2026-10-02 /user-styles で発生)。
+      本当にアンマウントされた後の setState は React が何もせず捨てるので害はない。
+
+    ただし**取り直し**は、画面が閉じた・隠れたらやめる(isActiveRef)。閉じた画面のために
+    裏で問い合わせ続けないため。やめたぶんは取得済みから外すので、隠れた画面が
+    戻ったときは effect が走り直して取り直す。
   */
-  const isMountedRef = useRef(true);
+  const isActiveRef = useRef(true);
   useEffect(() => {
-    isMountedRef.current = true;
+    isActiveRef.current = true;
     return () => {
-      isMountedRef.current = false;
+      isActiveRef.current = false;
     };
   }, []);
 
@@ -50,21 +112,10 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
       for (let index = 0; index < pending.length; index += BATCH_SIZE) {
         const batch = pending.slice(index, index + BATCH_SIZE);
         try {
-          const response = await fetch("/api/posts/prompt-actions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ post_ids: batch }),
-          });
-          if (!response.ok) {
-            throw new Error(`prompt-actions failed: ${response.status}`);
-          }
-          const data = (await response.json()) as {
-            summaries?: Record<string, PromptActionSummary>;
-            styleLinks?: Record<string, StylePresetLink>;
-          };
-          if (!isMountedRef.current) {
-            return;
-          }
+          const data = await fetchPromptActionsBatch(
+            batch,
+            () => isActiveRef.current
+          );
           if (data.summaries) {
             setSummaries((prev) => ({ ...prev, ...data.summaries }));
           }

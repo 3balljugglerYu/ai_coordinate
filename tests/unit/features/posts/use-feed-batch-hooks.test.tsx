@@ -6,7 +6,7 @@
  * （posts が変わらない限り effect は再実行されないため）。
  */
 
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useFeedPromptActions } from "@/features/posts/hooks/useFeedPromptActions";
 import { useFeedFollowStatus } from "@/features/posts/hooks/useFeedFollowStatus";
 
@@ -138,23 +138,33 @@ describe("useFeedPromptActions", () => {
     });
   });
 
-  test("失敗した投稿は再取得できるよう戻す", async () => {
+  test("取り直しても失敗した投稿は、再取得できるよう戻す", async () => {
+    jest.useFakeTimers();
     const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
-    const failing = jest.fn(async () => ({ ok: false, status: 500 }) as Response);
-    global.fetch = failing as unknown as typeof fetch;
+    try {
+      const failing = jest.fn(async () => ({ ok: false, status: 500 }) as Response);
+      global.fetch = failing as unknown as typeof fetch;
 
-    const list = ids("post", 2);
-    const { rerender } = renderHook(({ items }) => useFeedPromptActions(items, true), {
-      initialProps: { items: list },
-    });
+      const list = ids("post", 2);
+      const { rerender } = renderHook(({ items }) => useFeedPromptActions(items, true), {
+        initialProps: { items: list },
+      });
 
-    await waitFor(() => expect(failing).toHaveBeenCalledTimes(1));
+      // 1回目 + 取り直し2回(1秒後・さらに3秒後)
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(4000);
+      });
+      expect(failing).toHaveBeenCalledTimes(3);
 
-    // 別の配列参照で再実行すると、失敗ぶんがもう一度送られる
-    rerender({ items: [...list] });
+      // 別の配列参照で再実行すると、失敗ぶんがもう一度送られる
+      rerender({ items: [...list] });
+      await act(async () => {});
 
-    await waitFor(() => expect(failing).toHaveBeenCalledTimes(2));
-    errorSpy.mockRestore();
+      expect(failing).toHaveBeenCalledTimes(4);
+    } finally {
+      errorSpy.mockRestore();
+      jest.useRealTimers();
+    }
   });
 });
 

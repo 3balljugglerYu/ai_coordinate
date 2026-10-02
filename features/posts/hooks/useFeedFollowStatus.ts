@@ -25,17 +25,17 @@ export function useFeedFollowStatus(
   // 問い合わせ済み(取得中を含む)の作者。二重取得を防ぐ。
   const requestedRef = useRef<Set<string>>(new Set());
   /*
-    取得中に依存配列が変わっても結果を捨てないよう、中断はアンマウント時だけに限る。
-    effect ごとの cancelled フラグにすると、フィードでサマリが届いて authorIds が
-    作り直された瞬間に、進行中のフォロー状態取得が丸ごと破棄されてしまう。
+    ⭐ 届いた結果は**捨てない**(中断しない)。
+
+    - effect ごとの cancelled フラグにすると、フィードでサマリが届いて authorIds が
+      作り直された瞬間に、進行中のフォロー状態取得が丸ごと破棄されてしまう。
+    - 「アンマウントされたら捨てる」もしてはいけない。Next.js 16(Cache Components)は
+      離れたページを隠しておき(<Activity>)、隠している間は effect の後片付けが走る。
+      取得中にページを離れると結果を捨て、取得済みとして覚えた作者は二度と
+      問い合わせないので、戻ってもフォロー状態が分からないままになる
+      (useFeedPromptActions と同じ。2026-10-02)。
+      本当にアンマウントされた後の setState は React が何もせず捨てるので害はない。
   */
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   // ログインし直したら、前の閲覧者のフォロー状態は無効になる。
   // 初回マウントでは何も持っていないので走らせない(余計な再レンダーを避ける)。
@@ -83,9 +83,6 @@ export function useFeedFollowStatus(
           const data = (await response.json()) as {
             following?: Record<string, boolean>;
           };
-          if (!isMountedRef.current) {
-            return;
-          }
           if (data.following) {
             setStatuses((prev) => ({ ...prev, ...data.following }));
           }
