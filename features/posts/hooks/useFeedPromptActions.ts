@@ -20,17 +20,17 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
   // 問い合わせ済み(取得中を含む)の投稿。二重取得を防ぐ。
   const requestedRef = useRef<Set<string>>(new Set());
   /*
-    取得中に依存配列が変わっても結果を捨てないよう、中断はアンマウント時だけに限る。
-    effect ごとの cancelled フラグにすると、無限スクロールで posts が伸びた瞬間に
-    進行中のサマリ取得が丸ごと破棄され、CTA が出ないまま残る。
+    ⭐ 届いた結果は**捨てない**(中断しない)。
+
+    - effect ごとの cancelled フラグにすると、無限スクロールで posts が伸びた瞬間に
+      進行中のサマリ取得が丸ごと破棄され、CTA が出ないまま残る。
+    - 「アンマウントされたら捨てる」もしてはいけない。Next.js 16(Cache Components)は
+      離れたページを捨てずに隠しておき(<Activity>)、隠している間は effect の
+      後片付けが走る。取得中にページを離れると結果を捨て、取得済みとして覚えた
+      投稿は二度と問い合わせないので、戻ってもボタンが出なくなる
+      (2026-10-02 /user-styles で発生)。
+      本当にアンマウントされた後の setState は React が何もせず捨てるので害はない。
   */
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -62,9 +62,6 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
             summaries?: Record<string, PromptActionSummary>;
             styleLinks?: Record<string, StylePresetLink>;
           };
-          if (!isMountedRef.current) {
-            return;
-          }
           if (data.summaries) {
             setSummaries((prev) => ({ ...prev, ...data.summaries }));
           }
