@@ -217,3 +217,50 @@ describe("StylePresetPreviewCard - ロック表示", () => {
     expect(onClick).toHaveBeenCalledTimes(1);
   });
 });
+
+/*
+  押してから次の画面(生成シート)が開くまで間がある面(ホームの棚)で、
+  押したことが分かるようにする(2026-10-02 ユーザー指摘: 何度も押されてしまう)。
+*/
+describe("StylePresetPreviewCard - 押したときの反応", () => {
+  test("loading のときはサムネに読み込み中を重ね、読み上げにも伝える", () => {
+    render(
+      <StylePresetPreviewCard
+        preset={makePreset()}
+        alt="alt"
+        onClick={() => {}}
+        loading
+      />,
+    );
+
+    expect(screen.getByTestId("style-preset-card-loading")).toBeTruthy();
+    expect(screen.getByRole("button").getAttribute("aria-busy")).toBe("true");
+  });
+
+  test("loading でなければ読み込み中は出さない", () => {
+    render(
+      <StylePresetPreviewCard preset={makePreset()} alt="alt" onClick={() => {}} />,
+    );
+
+    expect(screen.queryByTestId("style-preset-card-loading")).toBeNull();
+    expect(screen.getByRole("button").getAttribute("aria-busy")).toBeNull();
+  });
+
+  test("pressFeedback を付けた面だけ、押した瞬間に縮める", () => {
+    const { unmount } = render(
+      <StylePresetPreviewCard
+        preset={makePreset()}
+        alt="alt"
+        onClick={() => {}}
+        pressFeedback
+      />,
+    );
+    expect(screen.getByRole("button").className).toContain("active:scale-[0.96]");
+    unmount();
+
+    render(
+      <StylePresetPreviewCard preset={makePreset()} alt="alt" onClick={() => {}} />,
+    );
+    expect(screen.getByRole("button").className).not.toContain("active:scale");
+  });
+});
