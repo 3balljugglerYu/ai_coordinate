@@ -923,8 +923,9 @@ describe("StylesGalleryClient", () => {
       expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
     });
 
-    test("ログイン状態を確かめ終える前は、押しても何もしない", () => {
-      getUserMock.mockReturnValue(new Promise(() => {}));
+    test("ログイン状態を確かめ終える前に押したら、確かめ終えてから開く(押した操作を捨てない)", async () => {
+      let resolveUser: (value: unknown) => void = () => {};
+      getUserMock.mockReturnValue(new Promise((resolve) => (resolveUser = resolve)));
       render(
         <StylesGalleryClient
           presets={[guestAllowed(preset("style-a"), true)]}
@@ -936,10 +937,44 @@ describe("StylesGalleryClient", () => {
       );
 
       fireEvent.click(screen.getByText("style-a"));
-
+      // 確かめている間は何も開かない
       expect(screen.queryByTestId("style-generation-sheet")).toBeNull();
       expect(screen.queryByTestId("one-tap-style-locked-notice")).toBeNull();
       expect(screen.queryByText("こちらを試着しますか？")).toBeNull();
+
+      await act(async () => {
+        resolveUser({ data: { user: null } });
+      });
+
+      expect(
+        (await screen.findByTestId("style-generation-sheet")).getAttribute("data-guest")
+      ).toBe("true");
+    });
+
+    test("ログイン状態を確かめ終える前に押し、ログイン中と分かったら、ログイン中としてシートを開く", async () => {
+      respondTo({
+        "/api/users/me/subscription-plan": { body: { plan: "premium" } },
+      });
+      let resolveUser: (value: unknown) => void = () => {};
+      getUserMock.mockReturnValue(new Promise((resolve) => (resolveUser = resolve)));
+      render(
+        <StylesGalleryClient
+          presets={[preset("style-a")]}
+          generateCounts={{}}
+          generateTotals={{}}
+          nowIso={NOW_ISO}
+          locale="ja"
+        />,
+      );
+
+      fireEvent.click(screen.getByText("style-a"));
+      await act(async () => {
+        resolveUser({ data: { user: { id: "user-1" } } });
+      });
+
+      const sheet = await screen.findByTestId("style-generation-sheet");
+      expect(sheet.getAttribute("data-guest")).toBe("false");
+      expect(sheet.getAttribute("data-plan")).toBe("premium");
     });
 
     test("刷新前はログイン中でも今までどおり試着確認", async () => {

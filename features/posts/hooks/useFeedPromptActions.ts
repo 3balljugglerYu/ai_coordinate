@@ -19,8 +19,14 @@ function wait(ms: number) {
   return new Promise<void>((resolve) => setTimeout(resolve, ms));
 }
 
-/** サマリを1バッチ取る。失敗したら少し待って取り直し、それでもだめなら投げる。 */
-async function fetchPromptActionsBatch(batch: string[]): Promise<{
+/**
+ * サマリを1バッチ取る。失敗したら少し待って取り直し、それでもだめなら投げる。
+ * `canRetry` が false を返したら(画面が閉じた・隠れた)取り直さずに投げる。
+ */
+async function fetchPromptActionsBatch(
+  batch: string[],
+  canRetry: () => boolean
+): Promise<{
   summaries?: Record<string, PromptActionSummary>;
   styleLinks?: Record<string, StylePresetLink>;
 }> {
@@ -40,10 +46,13 @@ async function fetchPromptActionsBatch(batch: string[]): Promise<{
       };
     } catch (error) {
       const delay = RETRY_DELAYS_MS[attempt];
-      if (delay === undefined) {
+      if (delay === undefined || !canRetry()) {
         throw error;
       }
       await wait(delay);
+      if (!canRetry()) {
+        throw error;
+      }
     }
   }
 }
@@ -72,7 +81,18 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
       投稿は二度と問い合わせないので、戻ってもボタンが出なくなる
       (2026-10-02 /user-styles で発生)。
       本当にアンマウントされた後の setState は React が何もせず捨てるので害はない。
+
+    ただし**取り直し**は、画面が閉じた・隠れたらやめる(isActiveRef)。閉じた画面のために
+    裏で問い合わせ続けないため。やめたぶんは取得済みから外すので、隠れた画面が
+    戻ったときは effect が走り直して取り直す。
   */
+  const isActiveRef = useRef(true);
+  useEffect(() => {
+    isActiveRef.current = true;
+    return () => {
+      isActiveRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!enabled) {
@@ -92,7 +112,10 @@ export function useFeedPromptActions(postIds: string[], enabled: boolean) {
       for (let index = 0; index < pending.length; index += BATCH_SIZE) {
         const batch = pending.slice(index, index + BATCH_SIZE);
         try {
-          const data = await fetchPromptActionsBatch(batch);
+          const data = await fetchPromptActionsBatch(
+            batch,
+            () => isActiveRef.current
+          );
           if (data.summaries) {
             setSummaries((prev) => ({ ...prev, ...data.summaries }));
           }

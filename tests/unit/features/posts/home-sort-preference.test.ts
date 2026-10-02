@@ -132,8 +132,14 @@ describe("home-sort-preference", () => {
     タブなので、last-write-wins だと一度押しただけの人が永久に新着へ固定される。
   */
   describe("訪問の控えの期限", () => {
+    /*
+      控えた時刻は時計を止めてから決める。Date.now() を2回読むと、その間に
+      1ミリ秒進んだとき「24時間を1ミリ秒超えた」がちょうど24時間になり、
+      負荷の高い CI でだけ落ちる。
+    */
     test("24時間ちょうどはまだ有効", () => {
       const savedAt = Date.now();
+      jest.spyOn(Date, "now").mockReturnValue(savedAt);
       setHomeSortType("newest");
       endSession();
 
@@ -143,6 +149,7 @@ describe("home-sort-preference", () => {
 
     test("24時間を超えたら既定タブへ倒す", () => {
       const savedAt = Date.now();
+      jest.spyOn(Date, "now").mockReturnValue(savedAt);
       setHomeSortType("newest");
       endSession();
 

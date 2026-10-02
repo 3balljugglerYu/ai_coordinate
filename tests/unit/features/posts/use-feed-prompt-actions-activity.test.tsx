@@ -150,3 +150,62 @@ test("取り直しても取れなければあきらめる(取り直しは2回ま
     jest.useRealTimers();
   }
 });
+
+test("画面を閉じたら取り直しをやめる(閉じた画面のために裏で問い合わせ続けない)", async () => {
+  jest.useFakeTimers();
+  try {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValue({ ok: false, status: 500, json: async () => ({}) });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const { unmount } = render(<App mode="visible" />);
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    unmount();
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10000);
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("隠れている間に取り直しをやめても、戻ったときに取り直してボタンを出す", async () => {
+  jest.useFakeTimers();
+  try {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: false, status: 500, json: async () => ({}) })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          summaries: { "post-1": { originPostId: "post-1", isAvailable: true } },
+          styleLinks: {},
+        }),
+      });
+    global.fetch = fetchMock as unknown as typeof fetch;
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const { rerender } = render(<App mode="visible" />);
+    await act(async () => {});
+    rerender(<App mode="hidden" />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(10000);
+    });
+    // 隠れている間は取り直さない
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    rerender(<App mode="visible" />);
+    await act(async () => {});
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId("count").textContent).toBe("1");
+  } finally {
+    jest.useRealTimers();
+  }
+});
