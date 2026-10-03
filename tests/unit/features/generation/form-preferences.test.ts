@@ -20,6 +20,9 @@ import {
   writePreferredBackgroundMode,
   writePreferredModel,
   writePreferredAspectMode,
+  readPreferredStyleBackgroundChange,
+  writePreferredStyleBackgroundChange,
+  STYLE_BACKGROUND_CHANGE_STORAGE_KEY,
 } from "@/features/generation/lib/form-preferences";
 import { GPT_IMAGE_2_LEGACY_LOW_MODEL } from "@/features/generation/types";
 
@@ -329,5 +332,23 @@ describe("form-preferences", () => {
         "source",
       );
     });
+  });
+});
+
+describe("One-Tap Style の「背景も変える」", () => {
+  afterEach(() => window.localStorage.clear());
+
+  test("保存が無ければオフ、書いた値を読み戻す", () => {
+    expect(readPreferredStyleBackgroundChange()).toBe(false);
+    writePreferredStyleBackgroundChange(true);
+    expect(window.localStorage.getItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY)).toBe("true");
+    expect(readPreferredStyleBackgroundChange()).toBe(true);
+    writePreferredStyleBackgroundChange(false);
+    expect(readPreferredStyleBackgroundChange()).toBe(false);
+  });
+
+  test("知らない値はオフ", () => {
+    window.localStorage.setItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY, "yes");
+    expect(readPreferredStyleBackgroundChange()).toBe(false);
   });
 });

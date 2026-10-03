@@ -123,7 +123,10 @@ import {
   writePreferredModel,
   readPreferredStyleAspectMode,
   writePreferredStyleAspectMode,
+  readPreferredStyleBackgroundChange,
+  writePreferredStyleBackgroundChange,
 } from "@/features/generation/lib/form-preferences";
+import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { ModelSwitchNotice } from "@/features/generation/components/ModelSwitchNotice";
 import { AspectRatioCardSelector } from "@/components/AspectRatioCardSelector";
 import {
@@ -429,6 +432,18 @@ export function OneTapStyleGenerationForm({
   }, [uploadedImage?.previewUrl]);
   const [sourceImageType, setSourceImageType] = useState<SourceImageType>("illustration");
   const [backgroundChange, setBackgroundChange] = useState(false);
+  /*
+    カタログ刷新後(公開前は運営だけ)は「背景も変える」を端末に覚え、開いたときに戻す。
+    生成シートは開くたびにフォームを作り直すので、覚えていないと毎回オフに戻る。
+    運営かどうかはマウント後に分かる(昇格する)ので、刷新に切り替わったときに読み戻す。
+    背景を指定できないスタイルでは、下の effect が今までどおりオフに戻す(保存は変えない)。
+  */
+  const isCatalogRevamp = useStylesCatalogRevamp();
+  useEffect(() => {
+    if (isCatalogRevamp) {
+      setBackgroundChange(readPreferredStyleBackgroundChange());
+    }
+  }, [isCatalogRevamp]);
   // ポーズ・アングル入力欄 (admin viewer 限定先行公開)。
   // チェック ON で入力欄を表示し、非空のままで生成するとサーバ側が free_pose を含意する。
   // 最大文字数はサーバ側 STYLE_POSE_PROMPT_MAX_LENGTH と揃える。
@@ -1232,6 +1247,10 @@ export function OneTapStyleGenerationForm({
 
     runAfterResultResetCheck(() => {
       setBackgroundChange(checked);
+      // 利用者が自分で切り替えたときだけ覚える(刷新後のみ)
+      if (isCatalogRevamp) {
+        writePreferredStyleBackgroundChange(checked);
+      }
       setErrorState(null);
       setResultImageUrl(null);
     });
