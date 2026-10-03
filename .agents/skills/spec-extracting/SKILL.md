@@ -6,7 +6,7 @@ disable-model-invocation: false
 
 # Spec Extracting
 
-You are extracting EARS-format specifications from existing code. This skill analyzes Flutter/Dart classes to generate structured requirement specifications.
+You are extracting EARS-format specifications from existing code. This skill analyzes TypeScript route handlers, server utilities, and components to generate structured requirement specifications.
 
 ## Workflow
 
@@ -16,19 +16,16 @@ Usage: `/spec-extract <ClassName>`
 
 Example:
 ```
-/spec-extract AuthViewModel
+/spec-extract BulkBonusGrant
 ```
 
 If no class name is provided, ask the user which class to analyze.
 
 ### Step 2: Read the Target Class File
 
-1. Search for the class file using Glob:
-   ```
-   **/<class_name_snake_case>.dart
-   ```
+1. Find the source file: look the target up in `docs/test-progress.yaml` (`file:`), or search `app/api/**/route.ts`, `features/**/lib/*.ts`, and `lib/**/*.ts` for the matching name
 2. Read the file content completely
-3. If multiple files found, ask user to select or use the most likely match (ViewModel in `lib/ui/`, Repository in `lib/domain/repository/`, Service in `lib/service/`)
+3. If multiple files match, ask the user to select one
 
 ### Step 3: Extract Metadata
 
@@ -37,7 +34,7 @@ Create the metadata section:
 ```yaml
 metadata:
   class: <ClassName>
-  source: <relative/path/to/file.dart>
+  source: <relative/path/to/file.ts>
   version: "1.0"
   created_at: "<YYYY-MM-DD>"
 ```
@@ -57,13 +54,13 @@ dependencies:
 ```
 
 **Dependency Detection:**
-- Look for `locator.get<T>()` calls
-- Check constructor injection parameters
-- Identify direct external calls (Amplify, Firebase, Platform APIs)
+- Read the `import` statements (`@/lib/auth`, `@/lib/supabase/*`, `@/features/*/lib/*`)
+- Check parameters passed in as dependencies
+- Identify direct external calls (Supabase RPCs and tables, Stripe, Gemini / OpenAI, `fetch`)
 
 ### Step 5: Identify State Properties
 
-For StateNotifier/ChangeNotifier classes, extract state properties:
+For React components or hooks that hold state, extract state properties (route handlers and server utilities usually have none: write `state_properties: []`):
 
 ```yaml
 state_properties:
@@ -73,9 +70,9 @@ state_properties:
 ```
 
 **Detection Method:**
-- Look for State class definitions (`AuthState`, `EventState`)
+- Look for `useState` / `useReducer` calls and context values
 - Extract fields with their types
-- Identify initial values from constructors
+- Identify initial values
 
 ### Step 6: Generate EARS Specifications
 
@@ -131,11 +128,11 @@ specifications:
   type: event-driven
   ears: |
     When signIn is invoked with valid credentials,
-    the AuthViewModel shall authenticate the user
+    the auth service shall authenticate the user
     and update isLoggedIn to true.
   ears_ja: |
     有効な認証情報でsignInが呼び出された場合、
-    AuthViewModelはユーザーを認証し、
+    認証サービスはユーザーを認証し、
     isLoggedInをtrueに更新する。
   preconditions:
     - User is not currently signed in
@@ -174,11 +171,11 @@ specifications:
   type: state-driven
   ears: |
     While the user is logged in,
-    the AuthViewModel shall refresh the session token
+    the auth service shall refresh the session token
     before it expires.
   ears_ja: |
     ユーザーがログイン中の間、
-    AuthViewModelはセッショントークンの
+    認証サービスはセッショントークンの
     有効期限が切れる前にリフレッシュする。
   preconditions:
     - isLoggedIn is true
@@ -211,11 +208,11 @@ specifications:
   type: unwanted
   ears: |
     If network error occurs during signIn,
-    then the AuthViewModel shall return otherError status
+    then the auth service shall return otherError status
     and not modify the logged-in state.
   ears_ja: |
     signIn中にネットワークエラーが発生した場合、
-    AuthViewModelはotherErrorステータスを返し、
+    認証サービスはotherErrorステータスを返し、
     ログイン状態を変更しない。
   preconditions:
     - Network is unavailable
@@ -240,20 +237,22 @@ specifications:
 Save to: `docs/specs/{feature}/{class}_spec.yaml`
 
 **Feature Detection:**
-- Extract from path: `lib/ui/auth/` -> feature = `auth`
-- For repositories: `lib/domain/repository/` -> use class context
-- For services: `lib/service/` -> use class context
+- Route handlers: `app/api/admin/...` -> feature = `admin`; other routes -> `api`
+- Feature modules: `features/{feature}/` -> feature = `{feature}`
+- Shared utilities: `lib/` -> feature = `lib`
 
 ### Prefix Convention
 
-| Class Type | Prefix |
+Use an uppercase abbreviation of the target name. Existing examples:
+
+| Target | Prefix |
 |------------|--------|
-| AuthViewModel | AUTH |
-| EventViewModel | EVENT |
-| LoginViewModel | LOGIN |
-| LiveViewRepository | LVREPO |
-| AnalyticsService | ANALYTICS |
-| Other ViewModels | First 3-5 letters uppercase |
+| BulkBonusGrant | BBG |
+| AdminGenerateWebPByIdRoute | AGWPI |
+| CommentDeleteRoute | CDR |
+| ContactRoute | CONTACT |
+
+Check `docs/specs/` for an existing prefix before choosing one, so prefixes stay unique.
 
 ## Output Template
 
@@ -262,7 +261,7 @@ Save to: `docs/specs/{feature}/{class}_spec.yaml`
 
 metadata:
   class: <ClassName>
-  source: <relative/path/to/file.dart>
+  source: <relative/path/to/file.ts>
   version: "1.0"
   created_at: "<YYYY-MM-DD>"
 

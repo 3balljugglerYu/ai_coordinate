@@ -29,13 +29,13 @@ Step 6.5: Test Review (/test-reviewing)       ← THIS SKILL
 Usage patterns:
 ```bash
 # Review tests for a specific class
-/test-reviewing LiveViewRepository
+/test-reviewing BulkBonusGrant
 
 # Review with verbose output
-/test-reviewing AuthViewModel --verbose
+/test-reviewing GenerateAsyncRoute --verbose
 
 # Review multiple classes (will use subagents)
-/test-reviewing LiveViewRepository AuthViewModel SecureRepository
+/test-reviewing BulkBonusGrant GenerateAsyncRoute PercoinService
 ```
 
 ### Step 1.5: Evaluate Scope and Parallelize
@@ -71,7 +71,7 @@ The subagent must invoke `/test-reviewing` - do NOT just describe the workflow i
 
 **Parallel execution example:**
 
-When reviewing `LiveViewRepository`, `AuthViewModel`, and `SecureRepository`:
+When reviewing `BulkBonusGrant`, `GenerateAsyncRoute`, and `PercoinService`:
 
 1. Launch 3 subagents in parallel (single message with multiple Task tool calls)
 2. Each subagent runs Steps 2-7 independently
@@ -85,9 +85,9 @@ When reviewing `LiveViewRepository`, `AuthViewModel`, and `SecureRepository`:
 ### Individual Results
 | Class | Tests | Passed | Failed | Status |
 |-------|-------|--------|--------|--------|
-| LiveViewRepository | 135 | 130 | 5 | ⚠️ Issues |
-| AuthViewModel | 24 | 24 | 0 | ✓ Pass |
-| SecureRepository | 18 | 18 | 0 | ✓ Pass |
+| BulkBonusGrant | 135 | 130 | 5 | ⚠️ Issues |
+| GenerateAsyncRoute | 24 | 24 | 0 | ✓ Pass |
+| PercoinService | 18 | 18 | 0 | ✓ Pass |
 
 ### Summary
 - Total: 177 tests
@@ -95,20 +95,23 @@ When reviewing `LiveViewRepository`, `AuthViewModel`, and `SecureRepository`:
 - Failed: 5 (2.8%)
 
 ### Next Actions
-- LiveViewRepository: Run `/test-fixing` to resolve 5 issues
-- AuthViewModel: Run `/spec-verify AuthViewModel`
-- SecureRepository: Run `/spec-verify SecureRepository`
+- BulkBonusGrant: Run `/test-fixing` to resolve 5 issues
+- GenerateAsyncRoute: Run `/spec-verify GenerateAsyncRoute`
+- PercoinService: Run `/spec-verify PercoinService`
 ```
 
 ### Step 2: Locate Test File
 
 Based on class type, find test file:
 
-| Class Type | Test Location |
+Use `test_file:` for the target in `docs/test-progress.yaml` when present; otherwise look in the default locations:
+
+| Target Type | Test Location |
 |------------|---------------|
-| ViewModel | `test/unit_tests/ui/{feature}/{class}_test.dart` |
-| Repository | `test/unit_tests/domain/repository/{class}_test.dart` |
-| Service | `test/unit_tests/service/{class}_test.dart` |
+| API Route | `tests/integration/api/{target}.test.ts` |
+| Feature module | `tests/unit/features/{feature}/{target}.test.ts(x)` |
+| Component | `tests/unit/components/{target}.test.tsx` |
+| Server Utility | `tests/unit/lib/{target}.test.ts` |
 
 If test file not found, report error and suggest running `/test-generate` first.
 
@@ -117,7 +120,7 @@ If test file not found, report error and suggest running `/test-generate` first.
 Execute tests and capture output:
 
 ```bash
-flutter test <test_file> --no-pub 2>&1
+npx jest <test_file> 2>&1
 ```
 
 ### Step 4: Analyze Test Structure
@@ -164,7 +167,7 @@ Output the following format:
 ### Summary
 | Metric | Value |
 |--------|-------|
-| Test File | `test/unit_tests/.../{class}_test.dart` |
+| Test File | `tests/.../{target}.test.ts` |
 | Total Tests | {count} |
 | Passed | {count} |
 | Failed | {count} |
