@@ -36,7 +36,7 @@ npx jest <test_file> 2>&1 | head -100
 | **A. Implementation Bug** | Implementation violates specification | Implementation code |
 | **B. Test Error** | Test doesn't reflect specification correctly | Test code |
 | **C. Mock Configuration Issue** | Wrong return value, type, or method name | Test mock setup |
-| **D. Test Infrastructure Issue** | Mockito dummy values, imports, etc. | Test setup |
+| **D. Test Infrastructure Issue** | Jest environment, module mocks, imports, etc. | Test setup |
 | **E. Specification Ambiguity** | Spec is missing or contradictory | Update specification |
 
 ### Step 3: Cross-Reference with Specification (MANDATORY)
@@ -48,7 +48,7 @@ Before fixing, ALWAYS:
    docs/specs/{feature}/{class}_spec.yaml
    ```
 
-2. **Identify the spec ID** from test tags (e.g., `LVREPO-001`)
+2. **Identify the spec ID** from the enclosing `describe` title (e.g., `BBG-001`)
 
 3. **Verify expected behavior**
    - `preconditions`: What must be true before
@@ -66,7 +66,7 @@ Before making changes, state:
 ```markdown
 ## Test Fix Reason
 
-**Test**: `methodName_GivenScenario_ShouldResult`
+**Test**: `methodName_{条件}_{結果}`
 **Spec ID**: SPEC-XXX
 **Classification**: B. Test Error
 
@@ -95,21 +95,21 @@ docs/specs/{feature}/{class}_bugs.md
 
 #### B. Test Error
 
-Fix test to match specification. Add comment explaining the fix:
+Fix test to match specification. Add a comment explaining the fix:
 
-```dart
-test('methodName_GivenScenario_ShouldResult', () async {
-  // Fixed: Changed mock target to apiAccountsUserIdCheckPost
-  // Reason: Implementation calls apiAccountsUserIdCheckPost (L984)
-  when(mockApi.apiAccountsUserIdCheckPost(...)).thenAnswer(...);
+```ts
+test("bulkLookup_有効なメール配列の場合_usersとnot_foundを返す", async () => {
+  // Fixed: mock get_user_ids_by_emails instead of the user_credits table
+  // Reason: the route calls the RPC (route.ts L{line})
+  rpc.mockResolvedValue({ data: [...], error: null });
 });
 ```
 
 #### C. Mock Configuration Issue
 
-1. Check which API method the implementation calls
-2. Update mock to correct method
-3. Verify return type matches (`Response<Account>` vs `Response<dynamic>`)
+1. Check which function, RPC, or table the implementation calls
+2. Update the mock to that target
+3. Verify the mocked return shape matches (`{ data, error }` for Supabase)
 
 #### D. Test Infrastructure Issue
 
@@ -117,41 +117,10 @@ Common issues and solutions:
 
 | Issue | Solution |
 |-------|----------|
-| `MissingDummyValueError` | Add `provideDummy`/`provideDummyBuilder` in setUpAll |
-| `ArgumentMatcher` error | Use `param: anyNamed('param')` not `anyNamed('param')` |
-| Missing imports | Import required enums/models |
-| Type mismatch | Check generated model class structure |
-
-**MissingDummyValueError fix:**
-
-```dart
-setUpAll(() {
-  provideDummy<Response<Account>>(
-    Response(http.Response('', 200), null),
-  );
-  provideDummy<Response<dynamic>>(
-    Response(http.Response('', 200), null),
-  );
-});
-```
-
-**ArgumentMatcher fix:**
-
-```dart
-// WRONG
-when(mockApi.method(accountId: anyNamed('accountId')))
-
-// CORRECT
-when(mockApi.method(accountId: any)).thenAnswer(...);
-```
-
-**HttpException testing:**
-
-```dart
-// HttpErrorHandlingInterceptor converts 401 to HttpException
-final response = Response(http.Response('', 401), null);
-when(mockApi.someMethod()).thenThrow(HttpException(response));
-```
+| `Request` / `Response` is not defined in a route test | Add `/** @jest-environment node */` on the first line |
+| Mock not applied | Put `jest.mock("@/...")` above the import of the module under test |
+| Mock state leaks between tests | `mockReset()` in `beforeEach`, `jest.restoreAllMocks()` in `afterEach` |
+| Type error on a mocked function | Cast with `jest.MockedFunction<typeof fn>` |
 
 #### E. Specification Ambiguity
 
@@ -168,14 +137,14 @@ Add fix to `.serena/memories/test_implementation_issues.md`:
 
 **Date**: YYYY-MM-DD
 **Classification**: B. Test Error
-**Fix**: Changed mock target to apiAccountsUserIdCheckPost
-**Reason**: Implementation calls different API than test was mocking
+**Fix**: Changed mock target to get_user_ids_by_emails RPC
+**Reason**: Implementation calls a different target than the test was mocking
 ```
 
 ### Step 7: Re-run Tests
 
 ```bash
-flutter test <test_file> --no-pub
+npx jest <test_file>
 ```
 
 ## Pre-Fix Checklist

@@ -16,7 +16,7 @@ Usage: `/spec-verify <ClassName>`
 
 Example:
 ```
-/spec-verify AuthViewModel
+/spec-verify BulkBonusGrant
 ```
 
 If no class name is provided, ask the user which class to verify.
@@ -24,7 +24,7 @@ If no class name is provided, ask the user which class to verify.
 ### Step 2: Read the Specification File
 
 1. Convert class name to path:
-   - Determine feature from class name (e.g., `AuthViewModel` -> `auth`)
+   - Use `spec_file:` for the target in `docs/test-progress.yaml` when present; otherwise find it with `ls docs/specs/*/{class_snake_case}_spec.yaml`
    - Look for spec at: `docs/specs/{feature}/{class_snake_case}_spec.yaml`
 
 2. Read and parse the spec file
@@ -36,14 +36,14 @@ If no class name is provided, ask the user which class to verify.
 
 ### Step 3: Read the Test File
 
-1. Determine test file location based on class type:
+1. Use `test_file:` for the target in `docs/test-progress.yaml` when present; otherwise look in the default locations:
 
-   | Class Type | Test Location |
+   | Target Type | Test Location |
    |------------|---------------|
-   | ViewModel | `test/unit_tests/ui/{feature}/{class_snake_case}_test.dart` |
-   | Repository | `test/unit_tests/domain/repository/{class_snake_case}_test.dart` |
-   | Service | `test/unit_tests/service/{class_snake_case}_test.dart` |
-   | Widget | `test/widget_tests/{feature}/{widget_snake_case}_test.dart` |
+   | API Route | `tests/integration/api/{target}.test.ts` |
+   | Feature module | `tests/unit/features/{feature}/{target}.test.ts(x)` |
+   | Component | `tests/unit/components/{target}.test.tsx` |
+   | Server Utility | `tests/unit/lib/{target}.test.ts` |
 
 2. Read the test file content
 3. If test file not found, note it as "not implemented"
@@ -52,10 +52,9 @@ If no class name is provided, ask the user which class to verify.
 
 Parse the test file to extract:
 
-1. **Test Groups**: `group('SPEC-ID description', () {...})`
-2. **Test Cases**: `test('methodName_GivenScenario_ShouldResult', ...)`
-3. **Tags**: `@Tags(['unit', 'AUTH-001'])` and `tags: ['AUTH-001']`
-4. **Spec Comments**: `// Spec: AUTH-001`
+1. **Test Groups**: `describe("SPEC-ID methodName", () => {...})`
+2. **Test Cases**: `test("methodName_{条件}_{結果}", ...)`
+3. **Spec Comments**: `// Spec: BBG-001` (optional)
 
 Build a map of spec IDs to test cases:
 ```
@@ -108,7 +107,7 @@ Codexのレビュー結果を受け取ったら:
 
 1. **各指摘を個別に検証する**
    - ソースコードを読んで指摘の正確性を確認
-   - Dart/Flutter固有の仕様を考慮（例：Dart 3のswitch文にfall-throughはない）
+   - TypeScript / Next.js 固有の仕様を考慮（例：route handler の戻り値は `Response`）
 
 2. **必要に応じて反論する**
    - 指摘が誤りの場合、証拠を示して反論
@@ -208,7 +207,7 @@ These tests don't follow the naming convention `Method_GivenScenario_ShouldResul
 ## Output Example (from TEST_PLAN.md Section 8.6)
 
 ```
-## AuthViewModel Spec-Test Consistency Report
+## BulkBonusGrant Spec-Test Consistency Report
 
 ### Summary
 | Metric | Count |
@@ -229,10 +228,9 @@ These tests don't follow the naming convention `Method_GivenScenario_ShouldResul
 
 A test is considered to match a spec if ANY of these conditions are true:
 
-1. Test has `tags: ['SPEC-ID']` annotation
+1. Test is inside a `describe` named with the spec ID: `describe("SPEC-ID ...")`
 2. Test contains `// Spec: SPEC-ID` comment
-3. Test is inside a group named with the spec ID: `group('SPEC-ID ...'`
-4. Test name starts with the method name from the spec
+3. Test name starts with the method name from the spec
 
 ### Coverage Calculation
 

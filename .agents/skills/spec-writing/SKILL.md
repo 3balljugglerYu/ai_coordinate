@@ -23,7 +23,7 @@ For each field, always provide both the English version and the corresponding `_
 
 **NEVER remove existing `_ja` fields.** When adding or updating a field, always update both the English and Japanese versions.
 
-See `docs/specs/repository/live_view_repository_spec.yaml` as the reference example for bilingual format.
+See `docs/specs/admin/bulk_bonus_grant_spec.yaml` as the reference example for bilingual format.
 
 ## When to Use
 
@@ -38,7 +38,7 @@ See `docs/specs/repository/live_view_repository_spec.yaml` as the reference exam
 
 The user provides a class name as argument:
 ```
-/spec-write AuthViewModel
+/spec-write BulkBonusGrant
 ```
 
 ### Step 2: Locate Specification File

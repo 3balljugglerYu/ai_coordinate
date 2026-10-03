@@ -16,7 +16,7 @@ Usage: `/test-generate <ClassName>`
 
 Example:
 ```
-/test-generate AuthViewModel
+/test-generate BulkBonusGrant
 ```
 
 If no class name is provided, ask the user which class to generate tests for.
@@ -41,86 +41,20 @@ Based on target type, determine the test file location:
 | Component | `tests/unit/components/{target}.test.tsx` |
 | Server Utility | `tests/unit/lib/{target}.test.ts` |
 
-### Step 4: Generate Test File Structure
+### Step 4: Generate the Test File
 
-Create the test file with the following structure:
+Use `tests/integration/api/admin-bonus-bulk.test.ts` (generated from `docs/specs/admin/bulk_bonus_grant_spec.yaml`) as the reference for structure and style. Read it before writing a new file.
 
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-// Import target class
-import 'package:live_view/{path_to_class}.dart';
-
-// Import dependencies for mocking
-import 'package:live_view/{path_to_dependency}.dart';
-
-// Import test helpers
-import '../../../mocks/mock_locator.dart';
-import '../../../helpers/test_listener.dart';
-
-@GenerateMocks([
-  // List all dependencies to mock
-])
-import '{class}_test.mocks.dart';
-
-@Tags(['unit', '{SPEC_PREFIX}'])
-void main() {
-  // Declare mocks
-  late Mock{Dependency} mock{Dependency};
-  late {ClassName} viewModel;
-
-  setUp(() async {
-    // Initialize mocks
-    mock{Dependency} = Mock{Dependency}();
-
-    // Setup mock locator
-    await setupMockLocatorForTest(
-      {dependency}: mock{Dependency},
-    );
-  });
-
-  tearDown(() async {
-    await locator.reset();
-  });
-
-  // Test groups for each specification
-}
-```
+- Mock every dependency listed under the spec's `dependencies` with `jest.mock("@/...")` at the top of the file, and reset mocks in `beforeEach`.
+- Wrap the file in one `describe` for the target, then one `describe("{SPEC_ID} {methodName}")` per specification.
+- Add `/** @jest-environment node */` on the first line for route handlers and server utilities.
 
 ### Step 5: Generate Test Methods for Each Specification
 
-For each specification in the spec file, generate test methods:
+For each specification in the spec file, write one or more `test(...)` blocks inside its `describe("{SPEC_ID} {methodName}")`, each split into `// Arrange`, `// Act`, and `// Assert` sections.
 
-```dart
-group('{SPEC_ID} {methodName}', () {
-  test('{methodName}_{条件の日本語}_{結果の日本語}', () async {
-    // ============================================================
-    // Arrange: Set up test preconditions
-    // ============================================================
-    when(mock{Dependency}.{method}(any))
-        .thenAnswer((_) async => {expectedValue});
-
-    // ============================================================
-    // Act: Execute the method under test
-    // ============================================================
-    viewModel = {ClassName}();
-    final result = await viewModel.{methodName}();
-
-    // ============================================================
-    // Assert: Verify the results
-    // ============================================================
-    // State assertions (primary)
-    expect(result, equals({expectedValue}));
-    expect(viewModel.state.{property}, {matcher});
-
-    // Interaction assertions (for side effects only)
-    verify(mock{Dependency}.{method}(any)).called(1);
-  }, tags: ['{SPEC_ID}']);
-});
-```
+- Assert on the returned value or response first (status, body).
+- Assert on mock calls only for side effects the spec names (an RPC call, an audit log, a cache revalidation).
 
 ### Step 6: Apply Test Naming Convention
 
@@ -132,267 +66,37 @@ Test method names follow the pattern using Japanese from spec file:
 Use the spec file's `preconditions_ja` and `postconditions_ja` to generate readable Japanese test names.
 
 Examples:
-- `signIn_有効な認証情報の場合_成功を返す`
-- `signIn_無効なパスワードの場合_エラーを返す`
-- `fetchAccount_ネットワークエラーの場合_nullを返す`
+- `bulkLookup_有効なメール配列の場合_usersとnot_foundを返す`
+- `bulkLookup_未認証管理者の場合_401を返す`
+- `bulkLookup_RPCエラーの場合_500を返す`
 
-### Step 7: Add Specification Tags
+### Step 7: Keep Specification Traceability
 
-Add tags for traceability:
-
-```dart
-@Tags(['unit', '{SPEC_PREFIX}'])  // File level
-void main() {
-  group('{SPEC_ID} {methodName}', () {  // Group level
-    test('{testName}', () async {
-      // Spec: {SPEC_ID}  // Comment
-      ...
-    }, tags: ['{SPEC_ID}']);  // Test level
-  });
-}
-```
-
-## Test Template for Different Class Types
-
-### ViewModel Test Template
-
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
-
-import 'package:live_view/ui/{feature}/{class}.dart';
-import 'package:live_view/ui/{feature}/{class}_state.dart';
-import 'package:live_view/domain/repository/{repository}.dart';
-import 'package:live_view/di/locator.dart';
-
-import '../../../mocks/mock_locator.dart';
-import '../../../helpers/test_listener.dart';
-
-@GenerateMocks([{Repository}, {Service}])
-import '{class}_test.mocks.dart';
-
-@Tags(['unit', '{PREFIX}'])
-void main() {
-  late Mock{Repository} mockRepository;
-  late {ClassName} viewModel;
-
-  setUp(() async {
-    mockRepository = Mock{Repository}();
-    await setupMockLocatorForTest(
-      {repositoryParam}: mockRepository,
-    );
-  });
-
-  tearDown(() async {
-    await locator.reset();
-  });
-
-  group('{PREFIX}-001 {methodName}', () {
-    test('{methodName}_成功の場合_状態を更新する', () async {
-      // Spec: {PREFIX}-001
-      // ============================================================
-      // Arrange
-      // ============================================================
-      when(mockRepository.{method}(any))
-          .thenAnswer((_) async => testData);
-
-      // ============================================================
-      // Act
-      // ============================================================
-      viewModel = {ClassName}();
-      final result = await viewModel.{methodName}();
-
-      // ============================================================
-      // Assert
-      // ============================================================
-      expect(result, equals(expectedValue));
-      expect(viewModel.state.{property}, isTrue);
-      verify(mockRepository.{method}(any)).called(1);
-    }, tags: ['{PREFIX}-001']);
-  });
-}
-```
-
-### Repository Test Template
-
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-
-import 'package:live_view/domain/repository/{class}.dart';
-import 'package:live_view/service/interfaces/i_dio_client.dart';
-import 'package:live_view/di/locator.dart';
-
-import '../../../mocks/mock_locator.dart';
-
-@GenerateMocks([IDioClient, IClock])
-import '{class}_test.mocks.dart';
-
-@Tags(['unit', '{PREFIX}'])
-void main() {
-  late MockIDioClient mockDioClient;
-  late MockIClock mockClock;
-  late {ClassName} repository;
-
-  setUp(() async {
-    mockDioClient = MockIDioClient();
-    mockClock = MockIClock();
-    await setupMockLocatorForTest(
-      dioClient: mockDioClient,
-      clock: mockClock,
-    );
-  });
-
-  tearDown(() async {
-    await locator.reset();
-  });
-
-  group('{PREFIX}-001 {methodName}', () {
-    test('{methodName}_有効なレスポンスの場合_データを返す', () async {
-      // Spec: {PREFIX}-001
-      // ============================================================
-      // Arrange
-      // ============================================================
-      when(mockDioClient.get(any))
-          .thenAnswer((_) async => Response(data: testData, statusCode: 200));
-
-      // ============================================================
-      // Act
-      // ============================================================
-      repository = {ClassName}();
-      final result = await repository.{methodName}();
-
-      // ============================================================
-      // Assert
-      // ============================================================
-      expect(result, equals(expectedValue));
-      verify(mockDioClient.get(any)).called(1);
-    }, tags: ['{PREFIX}-001']);
-  });
-}
-```
-
-### Service Test Template
-
-```dart
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-
-import 'package:live_view/service/{class}.dart';
-import 'package:live_view/service/interfaces/{interface}.dart';
-import 'package:live_view/di/locator.dart';
-
-import '../../mocks/mock_locator.dart';
-
-@GenerateMocks([{ExternalInterface}])
-import '{class}_test.mocks.dart';
-
-@Tags(['unit', '{PREFIX}'])
-void main() {
-  late Mock{ExternalInterface} mockExternal;
-  late {ClassName} service;
-
-  setUp(() async {
-    mockExternal = Mock{ExternalInterface}();
-    await setupMockLocatorForTest(
-      {externalParam}: mockExternal,
-    );
-  });
-
-  tearDown(() async {
-    await locator.reset();
-  });
-
-  group('{PREFIX}-001 {methodName}', () {
-    test('{methodName}_成功の場合_期待する結果を返す', () async {
-      // Spec: {PREFIX}-001
-      // ============================================================
-      // Arrange
-      // ============================================================
-      when(mockExternal.{method}(any))
-          .thenAnswer((_) async => expectedResult);
-
-      // ============================================================
-      // Act
-      // ============================================================
-      service = {ClassName}();
-      final result = await service.{methodName}();
-
-      // ============================================================
-      // Assert
-      // ============================================================
-      expect(result, equals(expectedResult));
-      verify(mockExternal.{method}(any)).called(1);
-    }, tags: ['{PREFIX}-001']);
-  });
-}
-```
-
-## Arrange-Act-Assert Pattern (from TEST_PLAN.md Section 6.3)
-
-Each test method follows the AAA pattern:
-
-```dart
-test('methodName_{条件の日本語}_{結果の日本語}', () async {
-  // ============================================================
-  // Arrange: Set up test preconditions
-  // ============================================================
-  when(mockRepository.someMethod(any))
-      .thenAnswer((_) async => expectedValue);
-
-  // ============================================================
-  // Act: Execute the method under test
-  // ============================================================
-  final result = await viewModel.someMethod();
-
-  // ============================================================
-  // Assert: Verify results
-  // ============================================================
-  // State verification (primary)
-  expect(result, equals(expectedValue));
-  expect(viewModel.state.someProperty, isTrue);
-
-  // Interaction verification (for side effects only)
-  verify(mockRepository.someMethod(any)).called(1);
-});
-```
+The spec ID in each `describe` title is the link between the spec and the test; `/spec-verify` matches on it. Keep exactly one `describe` per spec ID.
 
 ## Checklist Before Completion
 
 - [ ] All specifications have corresponding test methods
-- [ ] Test file placed in correct location based on class type
+- [ ] Test file placed in correct location based on target type
 - [ ] Each test follows `Method_{条件の日本語}_{結果の日本語}` naming
 - [ ] Arrange-Act-Assert sections are clearly commented
-- [ ] Tags added at file, group, and test levels
-- [ ] @GenerateMocks includes all dependencies
-- [ ] setUp/tearDown properly initializes and resets locator
-- [ ] Run `flutter pub run build_runner build` to generate mocks
+- [ ] Each spec ID appears in exactly one `describe` title
+- [ ] Every dependency in the spec is mocked with `jest.mock`
 
 ## Post-Generation Steps
 
 After generating the test file:
 
-1. Run build_runner to generate mocks:
+1. Run the tests:
    ```bash
-   flutter pub run build_runner build --delete-conflicting-outputs
+   npx jest {test_file_path}
    ```
 
-2. Run the tests:
-   ```bash
-   flutter test {test_file_path}
-   ```
+2. Fix any import issues or missing mocks
 
-3. Fix any import issues or missing dependencies
-
-4. Verify coverage with `/spec-verify`
+3. Verify coverage with `/spec-verify`
 
 ## References
 
-- TEST_PLAN.md Section 5.2: ViewModel test implementation procedure
-- TEST_PLAN.md Section 6.3: Arrange-Act-Assert pattern
-- TEST_PLAN.md Section 6.1: Test file locations
-- TEST_PLAN.md Section 6.4: Traceability with tags
+- `docs/TEST_PLAN.md` Section 6: Test writing rules (6.1 Unit, 6.2 Integration)
+- `tests/integration/api/admin-bonus-bulk.test.ts`: Reference test generated from a spec

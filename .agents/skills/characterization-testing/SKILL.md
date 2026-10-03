@@ -1,6 +1,6 @@
 ---
 name: characterization-testing
-description: Creates characterization tests to capture existing behavior before refactoring. Use when writing char tests, creating golden tests, preparing for refactoring, or preserving legacy code behavior.
+description: Creates characterization tests to capture existing behavior before refactoring. Use when writing char tests, creating snapshot tests, preparing for refactoring, or preserving legacy code behavior.
 disable-model-invocation: false
 ---
 
@@ -18,202 +18,32 @@ Characterization tests (also known as "Golden Master Tests" or "Snapshot Tests")
 
 ### Step 1: Accept Target
 
-Accept the class name as argument:
-- `/char-test AuthViewModel` - for ViewModel/Repository/Service
-- `/char-test EventPage --widget` - for Widget with golden tests
+Accept the target name as argument, e.g. `/char-test GenerateAsyncRoute`.
 
-### Step 2: Read and Analyze Target Class
+### Step 2: Read and Analyze Target
 
-1. Read the target file from `lib/` directory
-2. List all public methods and their signatures
-3. Identify state properties (for ViewModels)
-4. Note dependencies (repositories, services, external APIs)
+1. Read the target file (look it up in `docs/test-progress.yaml` under `file:`)
+2. List its exported functions or route handlers and their signatures
+3. Note dependencies (Supabase clients, `lib/auth`, `lib/env`, external APIs, `fetch`)
 
 ### Step 3: Identify Input Patterns
 
-For each public method, identify test scenarios:
+For each exported function or handler, identify test scenarios:
 
 | Pattern | Description | Example |
 |---------|-------------|---------|
-| Normal | Valid inputs | `signIn(valid_email, valid_password)` |
-| Error | Invalid/malformed inputs | `signIn("", "")` |
-| Boundary | Edge cases | `signIn(max_length_email, min_password)` |
-| Null | Nullable parameters | `fetchData(null)` |
+| Normal | Valid inputs | `POST` with a valid body |
+| Error | Invalid/malformed inputs | `POST` with an empty `prompt` |
+| Boundary | Edge cases | Credit balance just below the cost |
+| Auth | Missing or wrong user | `getUser()` returns `null` |
 
 ### Step 4: Generate Test Code
 
-#### For ViewModel/Repository/Service (ApprovalTests)
+Use `tests/characterization/api/generate-async-route.char.test.ts` as the reference for structure and style. Read it before writing a new file.
 
-Generate test file at: `test/characterization/{feature}/{class}_char_test.dart`
-
-```dart
-import 'package:approval_tests/approval_tests.dart';
-import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
-
-// Import target class
-import 'package:live_view/ui/{feature}/{class}.dart';
-
-// Import mocks
-import '../../../mocks/mock_locator.dart';
-
-@GenerateMocks([/* dependencies */])
-import '{class}_char_test.mocks.dart';
-
-@Tags(['characterization'])
-void main() {
-  group('Characterization: {ClassName}', () {
-    late {ClassName} target;
-    late MockIClock mockClock;
-    late MockIDioClient mockDioClient;
-
-    setUp(() async {
-      mockClock = MockIClock();
-      mockDioClient = MockIDioClient();
-
-      // Fix time for deterministic tests
-      when(mockClock.now()).thenReturn(DateTime(2025, 1, 30, 12, 0, 0));
-
-      // Return recorded responses
-      when(mockDioClient.get(any)).thenAnswer((_) async =>
-        Response(data: recordedApiResponse, statusCode: 200));
-
-      await setupMockLocatorForTest(
-        clock: mockClock,
-        dioClient: mockDioClient,
-      );
-
-      target = {ClassName}();
-    });
-
-    tearDown(() async {
-      await locator.reset();
-    });
-
-    test('CHAR-{PREFIX}-001: {methodName} states snapshot', () async {
-      final results = <String>[];
-
-      // Pattern 1: Normal case
-      try {
-        final result = await target.{methodName}(/* normal inputs */);
-        results.add('{methodName}(normal): $result, state=${target.state}');
-      } catch (e) {
-        results.add('{methodName}(normal): threw $e');
-      }
-
-      // Pattern 2: Error case
-      try {
-        final result = await target.{methodName}(/* error inputs */);
-        results.add('{methodName}(error): $result');
-      } catch (e) {
-        results.add('{methodName}(error): threw $e');
-      }
-
-      // Pattern 3: Boundary case
-      try {
-        final result = await target.{methodName}(/* boundary inputs */);
-        results.add('{methodName}(boundary): $result');
-      } catch (e) {
-        results.add('{methodName}(boundary): threw $e');
-      }
-
-      // Compare with approved snapshot
-      Approvals.verify(results.join('\n'));
-    });
-
-    test('CHAR-{PREFIX}-002: {methodName} response snapshot', () async {
-      final result = await target.{methodName}(/* inputs */);
-
-      final snapshot = {
-        'result': result?.toJson(),
-        'state': {
-          'property1': target.state.property1,
-          'property2': target.state.property2,
-        },
-      };
-
-      Approvals.verifyAsJson(snapshot);
-    });
-  });
-}
-```
-
-#### For Widget (Golden Tests)
-
-Generate test file at: `test/characterization/widgets/{widget}_char_test.dart`
-
-```dart
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
-
-// Import target widget
-import 'package:live_view/ui/{feature}/{widget}.dart';
-
-// Import test helpers
-import '../../helpers/test_app.dart';
-
-@Tags(['characterization', 'golden'])
-void main() {
-  group('Characterization: {WidgetName}', () {
-    testWidgets('CHAR-WIDGET-001: {WidgetName} loading state', (tester) async {
-      await tester.pumpWidget(
-        TestApp(child: {WidgetName}()),
-      );
-
-      await expectLater(
-        find.byType({WidgetName}),
-        matchesGoldenFile('goldens/{widget}_loading.png'),
-      );
-    });
-
-    testWidgets('CHAR-WIDGET-002: {WidgetName} with data', (tester) async {
-      await tester.pumpWidget(
-        TestApp(
-          overrides: [{provider}.overrideWith((ref) => mock{State})],
-          child: {WidgetName}(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType({WidgetName}),
-        matchesGoldenFile('goldens/{widget}_loaded.png'),
-      );
-    });
-
-    testWidgets('CHAR-WIDGET-003: {WidgetName} empty state', (tester) async {
-      await tester.pumpWidget(
-        TestApp(
-          overrides: [{provider}.overrideWith((ref) => emptyMock)],
-          child: {WidgetName}(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType({WidgetName}),
-        matchesGoldenFile('goldens/{widget}_empty.png'),
-      );
-    });
-
-    testWidgets('CHAR-WIDGET-004: {WidgetName} error state', (tester) async {
-      await tester.pumpWidget(
-        TestApp(
-          overrides: [{provider}.overrideWith((ref) => errorMock)],
-          child: {WidgetName}(),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      await expectLater(
-        find.byType({WidgetName}),
-        matchesGoldenFile('goldens/{widget}_error.png'),
-      );
-    });
-  });
-}
-```
+- Mock dependencies with `jest.mock("@/...")` at the top of the file.
+- Wrap the file in `describe("Characterization: {Target}")` and name each test `CHAR-{PREFIX}-{NNN}: {observed behavior}`.
+- Record the observed output with `toMatchInlineSnapshot()` (or `toMatchSnapshot()` for large payloads). Snapshot the current behavior as-is, even where it looks wrong.
 
 ### Step 5: Output Location
 
@@ -249,14 +79,14 @@ git add tests/characterization/{area}/
 Example update:
 ```yaml
 # Before
-LiveViewRepository:
+GenerateAsyncRoute:
   status: pending
   char_test: null
 
 # After
-LiveViewRepository:
+GenerateAsyncRoute:
   status: char_test_created
-  char_test: test/characterization/domain/repository/live_view_repository_char_test.dart
+  char_test: tests/characterization/api/generate-async-route.char.test.ts
 ```
 
 This step is mandatory. Do not skip it.
@@ -267,11 +97,11 @@ Characterization tests must produce the same output for the same input. Handle n
 
 | Element | Solution |
 |---------|----------|
-| `DateTime.now()` | Mock with `IClock` interface |
-| Random values | Seed fixed or mock |
-| Network responses | Mock with `IDioClient` |
-| File paths | Use relative or test directories |
-| Platform differences | Run on CI environment (ubuntu-latest) |
+| `Date.now()` / `new Date()` | `jest.useFakeTimers().setSystemTime(...)` |
+| Random values / UUIDs | Mock the generator (`jest.spyOn(crypto, "randomUUID")`) |
+| Network responses | Replace `global.fetch` with a `jest.fn()` |
+| Supabase calls | Mock `createClient` / `createAdminClient` with a query-builder stub |
+| Console noise | `jest.spyOn(console, "error").mockImplementation(() => {})` |
 
 ## Post-Refactoring Verification
 
@@ -296,15 +126,14 @@ Before completing characterization test generation:
 - [ ] Normal, error, boundary patterns covered
 - [ ] Non-deterministic elements mocked
 - [ ] Test file created at correct path
-- [ ] Import statements correct
-- [ ] Mock generation annotations added
-- [ ] Tags added (`@Tags(['characterization'])`)
-- [ ] User instructed on next steps (generate/approve snapshots)
+- [ ] Every dependency mocked with `jest.mock`
+- [ ] Test names follow `CHAR-{PREFIX}-{NNN}: ...`
+- [ ] User instructed on next steps (review and commit snapshots)
 - [ ] **docs/test-progress.yaml updated** (status: char_test_created, char_test: path)
 
 ## References
 
 - `docs/TEST_PLAN.md` section 4.3 - Characterization Test Implementation
 - `docs/TEST_PLAN.md` section 8.3 - /char-test Skill Usage
-- [ApprovalTests.Dart](https://github.com/approvals/ApprovalTests.Dart)
-- [Flutter Golden Tests](https://api.flutter.dev/flutter/flutter_test/matchesGoldenFile.html)
+- `tests/characterization/api/generate-async-route.char.test.ts` - Reference characterization test
+- [Jest snapshot testing](https://jestjs.io/docs/snapshot-testing)

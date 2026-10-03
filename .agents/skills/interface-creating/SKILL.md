@@ -1,233 +1,90 @@
 ---
 name: interface-creating
-description: Creates interfaces to abstract external dependencies for testability. Use when wrapping Amplify, Firebase, Platform APIs, or other external dependencies.
+description: Creates interfaces to abstract external dependencies for testability. Use when wrapping Supabase, Stripe, Gemini / OpenAI image APIs, email, fetch, or other external dependencies behind a boundary module.
 disable-model-invocation: false
 ---
 
 # Interface Creating
 
-Creates interfaces to wrap external dependencies (Amplify, Firebase, Platform APIs, etc.) for testability.
+Moves direct calls to an external dependency (an SDK, `fetch` to a third-party API, `Date.now()`) behind a small TypeScript interface, so tests can replace it with a mock and the call sites stop depending on the SDK.
 
 ## Prerequisites
 
 Before creating an interface, ensure:
-1. **Characterization tests exist** for the class that depends on the external service
-2. Run characterization tests after interface creation to verify behavior preservation
+1. **Characterization tests exist** for the code that calls the external service
+2. Run those characterization tests after the change to verify behavior is preserved
 
-If characterization tests don't exist, use `/char-test ClassName` first.
+If characterization tests don't exist, use `/char-test {Target}` first.
+
+## Where boundaries live
+
+`docs/TEST_PLAN.md` Section 4.2 sets the boundary for each area. Put the interface there instead of creating a new layer:
+
+| Area | Boundary |
+|---|---|
+| Auth / DB | `lib/supabase/*` |
+| Billing | `features/credits/lib/*` (Stripe calls) |
+| Image generation | `features/generation/lib/*` |
+| Notifications / email | A helper function, not a direct SDK call in the route |
 
 ## Workflow
 
 ### Step 1: Accept Interface Name
 
-The skill accepts an interface name as an argument:
+```bash
+/interface-create GenerationProvider
+```
+
+### Step 2: Identify the Direct Calls
+
+Find every place that calls the dependency directly (`grep` for the SDK import, the API host, or `fetch(`), and list the operations the callers actually use. The interface covers those operations only.
+
+### Step 3: Create the Interface, Implementation, and Factory
+
+Follow `features/generation/lib/nanobanana-client.ts`, which wraps the Gemini `generateContent` endpoint. Read it before writing a new one. It has three parts in one file:
+
+- an exported `interface` with only the operations callers use (`NanobananaClient`)
+- a class that implements it against the real dependency (`HttpNanobananaClient`)
+- a factory that callers use, with the low-level dependency injectable (`createNanobananaClient(fetchImpl = fetch)`)
+
+Keep secrets and environment lookups out of the interface: pass them in as parameters, or read them through `lib/env.ts` inside the implementation.
+
+### Step 4: Update Call Sites
+
+Replace each direct call with the factory (`createNanobananaClient()`), or accept the interface as a parameter where the caller is already a function with dependencies passed in.
+
+### Step 5: Verify Behavior Preservation
+
+Run the characterization tests from the prerequisite step:
 
 ```bash
-/interface-create IAuthService
+npx jest tests/characterization/{area}/
 ```
 
-### Step 2: Identify External Dependency
+A snapshot diff means behavior changed: fix the refactoring, or confirm with the user that the change is intended.
 
-Analyze the external dependency being wrapped:
-- Amplify Auth, Storage, Analytics
-- Firebase Analytics, Crashlytics
-- Platform APIs (Geolocator, SharedPreferences)
-- System APIs (DateTime, Timer, File)
+### Step 6: Update Progress Tracker
 
-### Step 3: Create Interface File
-
-Create interface at `lib/service/interfaces/{interface_name}.dart`:
-
-```dart
-// lib/service/interfaces/i_auth_service.dart
-
-/// Interface for authentication operations.
-/// Wraps Amplify.Auth for testability.
-abstract interface class IAuthService {
-  /// Signs in a user with email and password.
-  Future<SignInResult> signIn({
-    required String email,
-    required String password,
-  });
-
-  /// Signs out the current user.
-  Future<void> signOut();
-
-  /// Fetches the current authentication session.
-  Future<AuthSession> fetchAuthSession();
-
-  // ... other methods
-}
-```
-
-### Step 4: Create Implementation Wrapper
-
-Create wrapper at `lib/service/impl/{implementation_name}.dart`:
-
-```dart
-// lib/service/impl/amplify_auth_service.dart
-
-import 'package:amplify_flutter/amplify_flutter.dart';
-import '../interfaces/i_auth_service.dart';
-
-/// Production implementation of [IAuthService] using Amplify.
-class AmplifyAuthService implements IAuthService {
-  @override
-  Future<SignInResult> signIn({
-    required String email,
-    required String password,
-  }) async {
-    return Amplify.Auth.signIn(username: email, password: password);
-  }
-
-  @override
-  Future<void> signOut() async {
-    await Amplify.Auth.signOut();
-  }
-
-  @override
-  Future<AuthSession> fetchAuthSession() async {
-    return Amplify.Auth.fetchAuthSession();
-  }
-}
-```
-
-### Step 5: Update locator.dart
-
-Add interface registration to `lib/locator.dart`:
-
-```dart
-import 'service/interfaces/i_auth_service.dart';
-import 'service/impl/amplify_auth_service.dart';
-
-Future<void> setupLocator() async {
-  await locator.reset();
-
-  locator
-    // Add interface registration
-    ..registerLazySingleton<IAuthService>(AmplifyAuthService.new)
-    // ... existing registrations
-}
-```
-
-### Step 6: Update Dependent Classes
-
-Update classes to use the interface instead of direct dependency:
-
-```dart
-// Before
-class AuthViewModel {
-  Future<void> signIn(String email, String password) async {
-    await Amplify.Auth.signIn(username: email, password: password);
-  }
-}
-
-// After
-class AuthViewModel {
-  final IAuthService _authService;
-
-  AuthViewModel({IAuthService? authService})
-      : _authService = authService ?? locator<IAuthService>();
-
-  Future<void> signIn(String email, String password) async {
-    await _authService.signIn(email: email, password: password);
-  }
-}
-```
-
-### Step 7: Verify Behavior Preservation
-
-Run characterization tests to verify the refactoring didn't break behavior:
-
-```bash
-flutter test test/characterization/{feature}/
-```
-
-## Interface Priority Reference
-
-Based on TEST_PLAN.md section 4.1:
-
-### Phase 0: Characterization Test Foundation (Create First)
-
-| Interface | Wraps | Purpose |
-|-----------|-------|---------|
-| IClock | DateTime.now() | Eliminate time dependency |
-| IDioClient | Dio | Eliminate network dependency |
-| IPreferencesProvider | SharedPreferences | Mock local storage |
-
-### Phase A: Highest Priority (Test Foundation)
-
-| Interface | Wraps | Impact |
-|-----------|-------|--------|
-| IAuthService | Amplify.Auth.* | AuthViewModel |
-| IAuthSessionProvider | Amplify.Auth.fetchAuthSession() | Interceptors |
-| ISecureStorageProvider | FlutterSecureStorage | SecureRepository |
-
-### Phase B: High Priority (Core Features)
-
-| Interface | Wraps | Impact |
-|-----------|-------|--------|
-| IAnalyticsService | FirebaseAnalytics | All ViewModels |
-| ILocationProvider | Geolocator | LocationService |
-| IFileService | File, Directory | HomeViewModel |
-
-### Phase C: Medium Priority (UI/UX)
-
-| Interface | Wraps |
-|-----------|-------|
-| INavigationService | Navigator |
-| IDialogService | showDialog() |
-| ISnackBarService | ScaffoldMessenger |
-| IPermissionService | PermissionHelper |
-
-### Phase D: Low Priority (Supporting Features)
-
-| Interface | Wraps |
-|-----------|-------|
-| IMapControllerFactory | GoogleMapController |
-| IVideoPlayerFactory | VideoPlayerController |
-| IPlatformProvider | Platform.isIOS/Android |
-
-## Example: IClock Interface
-
-Simple but essential for deterministic tests:
-
-```dart
-// lib/service/interfaces/i_clock.dart
-abstract interface class IClock {
-  DateTime now();
-}
-
-// lib/service/impl/system_clock.dart
-class SystemClock implements IClock {
-  @override
-  DateTime now() => DateTime.now();
-}
-
-// In tests
-class MockIClock extends Mock implements IClock {}
-
-when(mockClock.now()).thenReturn(DateTime(2025, 1, 30, 12, 0, 0));
-```
+Set the target's `status` in `docs/test-progress.yaml` to `interface_created`.
 
 ## Checklist
 
-- [ ] Characterization tests exist for dependent class
-- [ ] Interface file created at `lib/service/interfaces/`
-- [ ] Implementation wrapper created at `lib/service/impl/`
-- [ ] `lib/locator.dart` updated with interface registration
-- [ ] Dependent classes updated to use interface
+- [ ] Characterization tests exist for the calling code
+- [ ] Interface placed in the boundary for its area (TEST_PLAN 4.2)
+- [ ] Interface lists only operations callers use
+- [ ] Every direct call site now goes through the factory or the interface
 - [ ] Characterization tests pass (behavior preserved)
+- [ ] `docs/test-progress.yaml` updated
 
 ## Output Summary
 
 After running this skill, display:
 1. Created files (interface, implementation)
-2. Modified files (locator.dart, dependent classes)
-3. Reminder to run characterization tests
+2. Modified call sites
+3. Characterization test result
 
 ## References
 
-- TEST_PLAN.md Section 4.1: Required Interfaces
-- TEST_PLAN.md Section 8.4: /interface-create Usage
-- Appendix D: Full Interface List (26 interfaces)
+- `docs/TEST_PLAN.md` Section 4.2: Boundary modules
+- `docs/TEST_PLAN.md` Section 8.4: /interface-create usage
+- `features/generation/lib/nanobanana-client.ts`: Reference boundary module
