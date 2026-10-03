@@ -14,6 +14,12 @@ import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
+import { GachaPromptField } from "./GachaPromptField";
+import {
+  GACHA_FIELD_TEMPLATE,
+  composeGachaPrompt,
+  validateGachaField,
+} from "@/shared/generation/gacha-prompt";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import {
   type SubscriptionPlan,
@@ -135,7 +141,11 @@ interface GenerationFormProps {
    * 表示専用である。生成に使う本文はサーバーが原作の author secret から
    * 解決するため、ここを書き換えても送信内容は変わらない。
    */
-  lockedPromptText?: string | null;
+  lockedPromptText?: string | null;  /**
+   * 「ガチャプロンプトにする」を出してよいか。/free のサーバー側で
+   * `isGachaPromptAvailable`(公開フラグ OR 運営)を判定して渡す。既定は出さない。
+   */
+  gachaPromptAvailable?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -156,6 +166,7 @@ export function GenerationForm({
   promptLocked = false,
   lockedPromptText,
   sourcePostId,
+  gachaPromptAvailable = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -240,8 +251,21 @@ export function GenerationForm({
   const isAuthenticated = authState === "authenticated";
   const picker = useImageSourcePicker({ defaultTab: "generated" });
 
+  // ガチャプロンプト(公開前は運営だけ。カタログ刷新とは別のフラグ)。カタログをつくる(/free)の
+  // 自分で書く本文にだけ出す。候補欄は本文の末尾に付けて送り、生成のたびに Worker が候補から1つを選ぶ。
+  const canUseGacha =
+    isFree && !promptLocked && isAuthenticated && gachaPromptAvailable;
+  const [isGachaEnabled, setIsGachaEnabled] = useState(false);
+  const [gachaField, setGachaField] = useState(GACHA_FIELD_TEMPLATE);
+  const isGachaActive = canUseGacha && isGachaEnabled;
+  const gachaValidation = isGachaActive ? validateGachaField(gachaField) : null;
+
   const promptLength = prompt.length;
-  const isPromptTooLong = promptLength > promptMaxLength;
+  // 上限は送る本文(ガチャの候補欄を付けた後)で判定する。
+  const isPromptTooLong =
+    (isGachaActive
+      ? composeGachaPrompt(prompt, gachaField).length
+      : promptLength) > promptMaxLength;
   // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は実効値を既定モデルへ丸める。
   const gptImage25Available = useGptImage25Available();
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
@@ -344,10 +368,10 @@ export function GenerationForm({
 
   const handleSubmit = async () => {
     // 施錠時は入力させないので本文は常に空。長さ検証も対象外。
-    const trimmedPrompt = resolveSubmittedPrompt(promptLocked, prompt);
+    const bodyPrompt = resolveSubmittedPrompt(promptLocked, prompt);
 
     if (!promptLocked) {
-      if (!trimmedPrompt) {
+      if (!bodyPrompt) {
         alert(t("missingPrompt"));
         return;
       }
@@ -357,6 +381,12 @@ export function GenerationForm({
         return;
       }
     }
+
+    // 送信ボタンは押せない状態にしてあるが、念のため送る前にも止める。
+    if (gachaValidation && !gachaValidation.ok) return;
+    const trimmedPrompt = isGachaActive
+      ? composeGachaPrompt(bodyPrompt, gachaField)
+      : bodyPrompt;
 
     if (!uploadedImage && !selectedStock && !selectedGenerated) {
       alert(t("missingUploadedImage"));
@@ -419,14 +449,16 @@ export function GenerationForm({
 
   const hasSourceImage =
     !!uploadedImage || !!selectedStock || !!selectedGenerated;
-  const isSubmitDisabled = isGenerationSubmitDisabled({
-    promptLocked,
-    prompt,
-    isPromptTooLong,
-    hasSourceImage,
-    isGenerating,
-    guestGenerationLocked,
-  });
+  const isSubmitDisabled =
+    isGenerationSubmitDisabled({
+      promptLocked,
+      prompt,
+      isPromptTooLong,
+      hasSourceImage,
+      isGenerating,
+      guestGenerationLocked,
+    }) ||
+    (gachaValidation !== null && !gachaValidation.ok);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -731,6 +763,17 @@ export function GenerationForm({
           // じゆうモードはラベルが短い(「生成したい内容」)ためスマホでも 1 行に収める。
           labelRowSingleLine={isFree}
         />
+
+        {canUseGacha ? (
+          <GachaPromptField
+            enabled={isGachaEnabled}
+            onEnabledChange={setIsGachaEnabled}
+            value={gachaField}
+            onChange={setGachaField}
+            validation={gachaValidation}
+            disabled={isGenerating || isTutorialInProgress}
+          />
+        ) : null}
 
         {/* --- ここから下の設定UIはコーディネート専用。じゆうモードでは全て非表示 --- */}
         {!isFree ? (

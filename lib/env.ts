@@ -103,6 +103,10 @@ const envSchema = {
   // 'true' にしない(docs/planning/gpt-image-2-5-flare-implementation-plan.md ADR-003)
   NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
     process.env.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED,
+  // ガチャプロンプト(カタログをつくるの「ガチャプロンプトにする」)の一般公開フラグ。
+  // カタログ刷新(NEXT_PUBLIC_USER_STYLES_ENABLED)とは別に公開する。'true' になるまでは運営のみ
+  NEXT_PUBLIC_GACHA_PROMPT_ENABLED:
+    process.env.NEXT_PUBLIC_GACHA_PROMPT_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -222,6 +226,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED || "",
     NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
       envSchema.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED || "",
+    NEXT_PUBLIC_GACHA_PROMPT_ENABLED:
+      envSchema.NEXT_PUBLIC_GACHA_PROMPT_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -558,6 +564,19 @@ export function isGptImage25Available(
   userId: string | null | undefined
 ): boolean {
   return isGptImage25PubliclyEnabled() || isAdminViewer(userId);
+}
+
+/**
+ * ガチャプロンプト(カタログをつくるの「ガチャプロンプトにする」)を出してよいか。
+ *
+ * カタログ刷新とは別に公開する(2026-10-03 ユーザー決定)。公開フラグ
+ * `NEXT_PUBLIC_GACHA_PROMPT_ENABLED` が立つまでは運営だけ。
+ * 判定は /free のサーバー側(FreePageBody)で行い、フォームへ props で渡す。
+ */
+export function isGachaPromptAvailable(
+  userId: string | null | undefined
+): boolean {
+  return env.NEXT_PUBLIC_GACHA_PROMPT_ENABLED === "true" || isAdminViewer(userId);
 }
 
 /**

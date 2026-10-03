@@ -1530,6 +1530,17 @@ export const koMessages = {
     catalogCreateListed: "직접 쓴 프롬프트로 만들고, 변경 전 이미지도 함께 표시해서 게시하면 모두의 카탈로그에 올라갑니다.",
     catalogCreateFollowers: "회원님의 팔로워는 그 프롬프트로 생성할 수 있습니다(프롬프트는 비공개로 두어도 됩니다).",
     catalogCreateReward: "팔로워가 생성할 때마다 페르코인이 지급됩니다.",
+    // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。運営のみの段階では日本語以外は英語のまま、一般公開のときに訳す
+    gachaToggleLabel: "Make it a gacha prompt",
+    gachaFieldLabel: "Gacha",
+    gachaHintRandom: "Each time you generate, one candidate is picked at random",
+    gachaHintPerCandidate: "Write everything that changes per candidate (outfit, place, action, etc.) on that candidate's line",
+    gachaHintBody: "In the main prompt, write in a way that fits every candidate, e.g. \"the specified job\"",
+    gachaInsertExample: "Insert example",
+    gachaReset: "Reset",
+    gachaMissingBlock: "The {open} and {close} tags are missing. Use \"Reset\" to restore them.",
+    gachaTooFewCandidates: "Enter at least 2 candidates (empty lines are not counted).",
+    gachaExample: "1. Pastry chef. White chef's jacket and toque. In a patisserie kitchen, piping cream onto a cake\n2. Firefighter. Orange turnout gear and helmet. In front of a fire truck, holding a hose\n3. Florist. Beige apron. At a street-corner flower shop, tying a ribbon around a bouquet\n4. Station attendant. Navy uniform and cap. On a station platform, doing a pointing safety check",
   },
   style: {
     pageTitle: "원탭 스타일",

@@ -14,6 +14,11 @@ export interface MergeSuccessGenerationMetadataParams {
   jobGenerationMetadata: Record<string, unknown> | null | undefined;
   /** 成功時に追記する実績情報(プロバイダ試行のログ等)。 */
   geminiAttempts: unknown;
+  /**
+   * ガチャプロンプトで選ばれた候補（何番が出たか）。本文は秘匿なので番号と
+   * 候補数だけを残す。ガチャを使っていない生成ではキーを足さない。
+   */
+  gachaPicks?: ReadonlyArray<{ number: number; total: number }>;
 }
 
 /**
@@ -23,9 +28,11 @@ export interface MergeSuccessGenerationMetadataParams {
 export function mergeSuccessGenerationMetadata({
   jobGenerationMetadata,
   geminiAttempts,
+  gachaPicks,
 }: MergeSuccessGenerationMetadataParams): Record<string, unknown> {
   return {
     ...(jobGenerationMetadata ?? {}),
     geminiAttempts,
+    ...(gachaPicks && gachaPicks.length > 0 ? { gachaPicks } : {}),
   };
 }
