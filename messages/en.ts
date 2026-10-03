@@ -1531,6 +1531,17 @@ export const enMessages = {
     catalogCreateListed: "Create with a prompt you wrote yourself and post it with the before image shown, and it will appear in Everyone’s Catalog.",
     catalogCreateFollowers: "Your followers can generate with that prompt (you can keep the prompt private).",
     catalogCreateReward: "Each time a follower generates with it, you earn Percoins.",
+    // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。運営のみの段階では日本語以外は英語のまま、一般公開のときに訳す
+    gachaToggleLabel: "Make it a gacha prompt",
+    gachaFieldLabel: "Gacha",
+    gachaHintRandom: "Each time you generate, one candidate is picked at random",
+    gachaHintPerCandidate: "Write everything that changes per candidate (outfit, place, action, etc.) on that candidate's line",
+    gachaHintBody: "In the main prompt, write in a way that fits every candidate, e.g. \"the specified job\"",
+    gachaInsertExample: "Insert example",
+    gachaReset: "Reset",
+    gachaMissingBlock: "The {open} and {close} tags are missing. Use \"Reset\" to restore them.",
+    gachaTooFewCandidates: "Enter at least 2 candidates (empty lines are not counted).",
+    gachaExample: "1. Pastry chef. White chef's jacket and toque. In a patisserie kitchen, piping cream onto a cake\n2. Firefighter. Orange turnout gear and helmet. In front of a fire truck, holding a hose\n3. Florist. Beige apron. At a street-corner flower shop, tying a ribbon around a bouquet\n4. Station attendant. Navy uniform and cap. On a station platform, doing a pointing safety check",
   },
   style: {
     pageTitle: "One-Tap Style",
