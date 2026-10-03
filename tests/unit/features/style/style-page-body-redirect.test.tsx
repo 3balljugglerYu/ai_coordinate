@@ -1,7 +1,7 @@
 /**
  * カタログ刷新後の /style(2026-10-01 ユーザー決定)。
  *
- * 刷新後(公開前は運営だけ)はこの画面を使わず、ペルスタのカタログ(/styles)へ移す。
+ * 刷新後(公開前は運営だけ)はこの画面を使わず、Perstaのカタログ(/styles)へ移す。
  * アプリ内のリンク・共有URL・ブックマークのどれから来ても、ここで一括して移る。
  * 刷新前(一般の利用者)は今のまま。
  */
@@ -88,7 +88,7 @@ beforeEach(() => {
 describe("StylePageBody(カタログ刷新後)", () => {
   beforeEach(() => mockAvailable.mockReturnValue(true));
 
-  test("ペルスタのカタログ(/styles)へ移す", async () => {
+  test("Perstaのカタログ(/styles)へ移す", async () => {
     await expect(StylePageBody({})).rejects.toThrow("NEXT_REDIRECT:/ja/styles");
     expect(mockAvailable).toHaveBeenCalledWith("admin-1");
   });

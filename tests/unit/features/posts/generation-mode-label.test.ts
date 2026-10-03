@@ -35,7 +35,7 @@ describe("getGenerationModeLabelKey(カタログ刷新後)", () => {
   const SOURCE_POST_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
   const revamp = { isCatalogRevamp: true } as const;
 
-  it("ペルスタのカタログのスタイルで作ったものは「from CATALOG」", () => {
+  it("Perstaのカタログのスタイルで作ったものは「from CATALOG」", () => {
     expect(getGenerationModeLabelKey("one_tap_style", revamp)).toBe("modeFromCatalog");
   });
 
