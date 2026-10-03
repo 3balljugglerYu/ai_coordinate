@@ -41,6 +41,13 @@ export const FREE_ASPECT_MODE_STORAGE_KEY = "persta-ai:free-output-aspect-mode";
 /** One-Tap Style の比率は Free とは別に記憶する(モードごとに好みが異なるため)。 */
 export const STYLE_ASPECT_MODE_STORAGE_KEY = "persta-ai:style-output-aspect-mode";
 /**
+ * One-Tap Style の「背景も変える」のチェック。カタログ刷新後(公開前は運営だけ)だけ使う。
+ *
+ * 生成シートは開くたびにフォームを作り直すので、覚えていないと毎回オフに戻る
+ * (/style の画面はスタイルを選び直してもフォームが残るため、その場では残って見えていた)。
+ */
+export const STYLE_BACKGROUND_CHANGE_STORAGE_KEY = "persta-ai:style-background-change";
+/**
  * この端末を 2.5 へ 1 回だけ切り替えたか。
  *
  * 既定を 2.5 にしても、既に 2.0 を選んだことがある人は localStorage の
@@ -217,6 +224,15 @@ export function writePreferredStyleAspectMode(
     STYLE_ASPECT_MODE_STORAGE_KEY,
     normalizeUserSelectableOutputAspectRatioMode(mode),
   );
+}
+
+/** One-Tap Style の「背景も変える」の前回の選択。保存が無い・読めないときはオフ。 */
+export function readPreferredStyleBackgroundChange(): boolean {
+  return safeReadLocalStorage(STYLE_BACKGROUND_CHANGE_STORAGE_KEY) === "true";
+}
+
+export function writePreferredStyleBackgroundChange(checked: boolean): void {
+  safeWriteLocalStorage(STYLE_BACKGROUND_CHANGE_STORAGE_KEY, checked ? "true" : "false");
 }
 
 export function readCoordinateStockSavePromptDismissed(): boolean {

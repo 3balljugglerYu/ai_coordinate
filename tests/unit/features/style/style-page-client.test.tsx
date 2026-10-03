@@ -3,7 +3,10 @@ import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { StylePageClient } from "@/features/style/components/StylePageClient";
 import { OneTapStyleGenerationForm } from "@/features/style/components/OneTapStyleGenerationForm";
-import { SELECTED_MODEL_STORAGE_KEY } from "@/features/generation/lib/form-preferences";
+import {
+  SELECTED_MODEL_STORAGE_KEY,
+  STYLE_BACKGROUND_CHANGE_STORAGE_KEY,
+} from "@/features/generation/lib/form-preferences";
 import { COLLECTION_PROGRESS_REFRESH_EVENT } from "@/features/collections/hooks/useCollectionProgress";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
 
@@ -119,6 +122,12 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
   ),
 }));
 
+
+// カタログ刷新(公開前は運営だけ)の可否。既定は刷新前(一般の利用者)
+const mockRevamp = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
+  useStylesCatalogRevamp: () => mockRevamp(),
+}));
 
 jest.mock("@/features/auth/components/AuthModal", () => ({
   AuthModal: ({ open }: { open: boolean }) =>
@@ -2577,6 +2586,63 @@ describe("StylePageClient", () => {
       expect(formData.get("sourceImageGeneratedId")).toBe("gen-A");
       expect(formData.get("uploadImage")).toBeNull();
       expect(formData.get("sourceImageStockId")).toBeNull();
+    });
+  });
+
+  /*
+    「背景も変える」を端末に覚える(カタログ刷新後のみ。公開前は運営だけ)。
+    生成シートは開くたびにフォームを作り直すので、覚えていないと毎回オフに戻っていた。
+  */
+  describe("背景の選択を覚える", () => {
+    const BACKGROUND_CHECKBOX = { name: "Change the background to match the style too" };
+    afterEach(() => mockRevamp.mockReturnValue(false));
+
+    test("刷新後: 前回オンにしていれば、オンで開く", () => {
+      mockRevamp.mockReturnValue(true);
+      window.localStorage.setItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY, "true");
+
+      render(<StylePageClient presets={presets} />);
+
+      expect(screen.getByRole("checkbox", BACKGROUND_CHECKBOX).getAttribute("aria-checked")).toBe("true");
+    });
+
+    test("刷新後: 切り替えるたびに覚える", () => {
+      mockRevamp.mockReturnValue(true);
+      render(<StylePageClient presets={presets} />);
+      const checkbox = screen.getByRole("checkbox", BACKGROUND_CHECKBOX);
+      expect(checkbox.getAttribute("aria-checked")).toBe("false");
+
+      fireEvent.click(checkbox);
+      expect(window.localStorage.getItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY)).toBe("true");
+
+      fireEvent.click(screen.getByRole("checkbox", BACKGROUND_CHECKBOX));
+      expect(window.localStorage.getItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY)).toBe("false");
+    });
+
+    test("刷新後でも、背景を指定できないスタイルではオフのまま(覚えた値は消さない)", () => {
+      mockRevamp.mockReturnValue(true);
+      window.localStorage.setItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY, "true");
+
+      render(<StylePageClient presets={[presets[1]]} />);
+
+      const checkbox = screen.queryByRole("checkbox", BACKGROUND_CHECKBOX);
+      if (checkbox) {
+        expect(checkbox.getAttribute("aria-checked")).toBe("false");
+      }
+      expect(window.localStorage.getItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY)).toBe("true");
+    });
+
+    test("⭐一般の利用者(刷新前)は今のまま: 覚えた値を使わず、切り替えても覚えない", () => {
+      mockRevamp.mockReturnValue(false);
+      window.localStorage.setItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY, "true");
+
+      render(<StylePageClient presets={presets} />);
+      const checkbox = screen.getByRole("checkbox", BACKGROUND_CHECKBOX);
+      expect(checkbox.getAttribute("aria-checked")).toBe("false");
+
+      window.localStorage.removeItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY);
+      fireEvent.click(checkbox);
+      expect(window.localStorage.getItem(STYLE_BACKGROUND_CHANGE_STORAGE_KEY)).toBeNull();
     });
   });
 });
