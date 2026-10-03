@@ -1,6 +1,6 @@
 ---
 name: git-sync-main
-description: Sync local main with origin/main and clean up merged branch safely. Use when user invokes /git-sync-main or says "マージしました".
+description: Sync local main with origin/main and clean up merged branch safely. Use when user invokes /git-merge or /git-sync-main, or says "マージしました".
 ---
 
 # Git Sync Main

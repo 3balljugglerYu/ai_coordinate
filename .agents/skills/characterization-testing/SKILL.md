@@ -219,41 +219,22 @@ void main() {
 
 | Type | Output Path |
 |------|-------------|
-| ViewModel | `test/characterization/{feature}/{class}_char_test.dart` |
-| Repository | `test/characterization/domain/repository/{class}_char_test.dart` |
-| Service | `test/characterization/service/{class}_char_test.dart` |
-| Widget | `test/characterization/widgets/{widget}_char_test.dart` |
-| Golden files | `test/characterization/goldens/{widget}_{state}.png` |
-| Approval files | `test/characterization/{feature}/{class}_char_test.{ID}.approved.txt` |
+| API Route | `tests/characterization/api/{target}.char.test.ts` |
+| Feature module | `tests/characterization/{feature}/{target}.char.test.ts` |
+| Component | `tests/characterization/components/{target}.char.test.tsx` |
+| Snapshots | `__snapshots__/` next to the test (Jest `toMatchSnapshot`) |
 
 ### Step 6: Provide Next Steps
 
 After generating the test file, instruct the user:
 
-**For ApprovalTests (ViewModel/Repository/Service):**
 ```bash
-# 1. Run the test (first run generates .received files)
-flutter test test/characterization/{feature}/
+# 1. Run the test (first run writes the snapshot)
+npx jest tests/characterization/{area}/
 
-# 2. Review the .received files
-# 3. If correct, rename to .approved
-mv test/characterization/{feature}/{class}_char_test.CHAR-{PREFIX}-001.received.txt \
-   test/characterization/{feature}/{class}_char_test.CHAR-{PREFIX}-001.approved.txt
-
-# 4. Commit the .approved files
-git add test/characterization/{feature}/*.approved.txt
-```
-
-**For Golden Tests (Widget):**
-```bash
-# 1. Generate golden files
-flutter test --update-goldens test/characterization/widgets/
-
-# 2. Review generated PNGs
-ls test/characterization/goldens/
-
-# 3. Commit golden files
-git add test/characterization/goldens/*.png
+# 2. Review the generated __snapshots__/*.snap
+# 3. If correct, commit the test and its snapshot
+git add tests/characterization/{area}/
 ```
 
 ### Step 7: Update Progress Tracker
@@ -298,7 +279,7 @@ After completing the refactoring (e.g., `/interface-create`):
 
 ```bash
 # Run characterization tests
-flutter test test/characterization/{feature}/
+npx jest tests/characterization/{area}/
 
 # Expected results:
 # - No diff = Refactoring successful

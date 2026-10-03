@@ -17,15 +17,10 @@ on top of it is not.
 - **When a claim turns out to be wrong, restate the mechanism, not just the conclusion.**
   A conclusion that survives on a broken explanation will mislead the next decision.
 
-In 2026-09 an agent asserted that publishing a post navigates the user back to home. It had
-read only the consumer of the pending-refresh flag (`features/posts/components/PostList.tsx`)
-and inferred the rest from the flag's name. The producer
-(`features/posts/components/PostModal.tsx`) carries a comment stating the opposite — that
-navigation was deliberately removed in #565 — and the agent cited the incident record for
-that very removal as supporting evidence, using its conclusion while skipping its premise.
-The claim was load-bearing for a design decision and was caught only because the user
-questioned it. One `grep` for the producer settled it in seconds. Reporting the verification
-as broader than it was is the failure here; being careful is not a control, citing lines is.
+Example of the failure: reading only the consumer of a flag (`features/posts/components/PostList.tsx`)
+and inferring the producer's behavior from the flag's name, when the producer
+(`features/posts/components/PostModal.tsx`) carries a comment stating the opposite. One `grep`
+for the producer settles it. Being careful is not a control; citing lines is.
 
 ## Repository Docs
 

@@ -27,21 +27,19 @@ If no class name is provided, ask the user which class to generate tests for.
    ```
    docs/specs/{feature}/{class}_spec.yaml
    ```
-2. Extract feature from class type:
-   - ViewModel: feature from `lib/ui/{feature}/`
-   - Repository: use class context (e.g., `live_view` for LiveViewRepository)
-   - Service: use class context (e.g., `analytics` for AnalyticsService)
+2. Take the feature from the source path (`features/{feature}/`, `app/api/{route}/`, or `lib/` for shared utilities).
 3. If spec file not found, suggest running `/spec-extract <ClassName>` first
 
 ### Step 3: Determine Output Location
 
-Based on class type, determine the test file location:
+Based on target type, determine the test file location:
 
-| Class Type | Test Location |
+| Target Type | Test Location |
 |------------|---------------|
-| ViewModel | `test/unit_tests/ui/{feature}/{class}_test.dart` |
-| Repository | `test/unit_tests/domain/repository/{class}_test.dart` |
-| Service | `test/unit_tests/service/{class}_test.dart` |
+| API Route | `tests/integration/api/{target}.test.ts` |
+| Feature module | `tests/unit/features/{feature}/{target}.test.ts(x)` |
+| Component | `tests/unit/components/{target}.test.tsx` |
+| Server Utility | `tests/unit/lib/{target}.test.ts` |
 
 ### Step 4: Generate Test File Structure
 

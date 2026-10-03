@@ -24,7 +24,7 @@ Guides proper test failure resolution to prevent the anti-pattern of "fixing tes
 Run tests and capture output:
 
 ```bash
-flutter test <test_file> --no-pub 2>&1 | head -100
+npx jest <test_file> 2>&1 | head -100
 ```
 
 ### Step 2: Classify Failure Cause (MANDATORY)
