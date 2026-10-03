@@ -169,7 +169,7 @@ describe("PostCard の生成方法ラベル", () => {
   afterEach(() => mockRevamp.mockReturnValue(false));
 
   it.each([
-    ["ペルスタのカタログのスタイル", makePost({ generation_type: "one_tap_style" })],
+    ["Persta のカタログのスタイル", makePost({ generation_type: "one_tap_style" })],
     ["ほかの人のカタログ", makePost({ generation_type: "free", source_post_id: "source-post-1" })],
   ])("刷新後: %sで作った投稿は「from CATALOG」", (_label, post) => {
     mockRevamp.mockReturnValue(true);

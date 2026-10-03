@@ -2091,7 +2091,7 @@ export const jaMessages = {
     tabUser: "User ORIGINAL",
     tabCreate: "CREATE",
     // カタログのページの見出し(h1)。選んでいるタブの名前を各言語で出す。名前は「誰が届けるか」だけで分け、よし悪しの差をつけない(docs/planning/catalog-three-tabs-implementation-plan.md ADR-008)
-    tabOfficialTitle: "ペルスタのカタログ",
+    tabOfficialTitle: "Persta のカタログ",
     tabUserTitle: "みんなのカタログ",
     tabCreateTitle: "カタログをつくる",
     chipAll: "すべて（新着順）",

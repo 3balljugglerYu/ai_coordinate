@@ -7,7 +7,7 @@ import { OriginalKindTabs } from "@/features/style-presets/components/OriginalKi
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import { GENERATION_MODE_PATHS } from "@/features/generation/lib/generation-mode-preference";
 
-/** カタログの3つのタブの画面(ペルスタのカタログ・みんなのカタログ・カタログをつくる)。 */
+/** カタログの3つのタブの画面(Persta のカタログ・みんなのカタログ・カタログをつくる)。 */
 const CATALOG_TAB_PATHS = new Set(["/styles", "/user-styles", "/free"]);
 
 /**

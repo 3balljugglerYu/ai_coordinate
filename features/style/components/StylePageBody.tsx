@@ -63,7 +63,7 @@ export async function StylePageBody({ searchParams }: StylePageBodyProps) {
 
   /*
     カタログ刷新後(公開前は運営だけ)は、この画面を使わない(2026-10-01 ユーザー決定)。
-    生成はペルスタのカタログ(/styles)の生成シートで行う。
+    生成はPersta のカタログ(/styles)の生成シートで行う。
 
     アプリ内のリンク(収集ガイド・解放の案内・生成モードのタブなど)や
     共有URL・ブックマークを1つずつ直すと漏れるので、ここで一括して移す。

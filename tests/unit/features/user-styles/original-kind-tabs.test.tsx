@@ -1,5 +1,5 @@
 /**
- * カタログのタブ（ペルスタのカタログ / みんなのカタログ / カタログをつくる）。
+ * カタログのタブ（Persta のカタログ / みんなのカタログ / カタログをつくる）。
  *
  * ⭐ このコンポーネントは **layout に置く前提**（今は app/[locale]/layout.tsx の
  * TopTabsSlot から出す）。ページの中に置くと遷移のたびに remount され、ピルが
@@ -83,7 +83,7 @@ describe("OriginalKindTabs", () => {
     expect(screen.getAllByRole("tab")).toHaveLength(3);
   });
 
-  test("タブは3つで、ペルスタのカタログ・みんなのカタログ・カタログをつくるの順", () => {
+  test("タブは3つで、Persta のカタログ・みんなのカタログ・カタログをつくるの順", () => {
     mockPathname.mockReturnValue("/ja/styles");
     render(<OriginalKindTabs />);
 

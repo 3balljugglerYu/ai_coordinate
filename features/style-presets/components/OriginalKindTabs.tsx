@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { fitHeadingFontSize } from "@/features/style-presets/lib/fit-heading-font-size";
 
 /**
- * カタログのタブ（ペルスタのカタログ / みんなのカタログ / カタログをつくる）。
+ * カタログのタブ（Persta のカタログ / みんなのカタログ / カタログをつくる）。
  * docs/planning/catalog-three-tabs-implementation-plan.md
  *
  * ⭐ **必ず layout に置くこと（ページの中に置いてはいけない）。**
@@ -34,7 +34,7 @@ import { fitHeadingFontSize } from "@/features/style-presets/lib/fit-heading-fon
  * ## 見出しとタブの名前（2026-09-29 ユーザー指示）
  *
  * - ページの見出し（h1）は、選んでいるタブの名前を各言語で出す
- *   （ペルスタのカタログ / みんなのカタログ / カタログをつくる）
+ *   （Persta のカタログ / みんなのカタログ / カタログをつくる）
  * - タブの中は英語の名前だけ（Persta ORIGINAL / User ORIGINAL / CREATE）で、**全ロケール同一**。
  *   「Persta ORIGINAL」はタブに入れるために短くした。フィードの引用元カードは、
  *   一般の利用者には「Persta.AI ORIGINAL」（`posts.feedQuoteStyleTitle`）のまま出し、
