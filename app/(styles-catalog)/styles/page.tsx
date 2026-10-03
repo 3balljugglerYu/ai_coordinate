@@ -52,7 +52,7 @@ export async function generateMetadata({
   const copy = getStylesCopy(locale);
 
   /*
-    一般公開後(カタログ刷新)は、画面の見出し(Persta のカタログ)にタイトルをそろえる。
+    一般公開後(カタログ刷新)は、画面の見出し(Perstaのカタログ)にタイトルをそろえる。
     検索で拾われる「AI着せ替えスタイル一覧」は後ろに残す(2026-10-01 ユーザー決定)。
     ⭐ 運営だけの段階では変えない。検索エンジンには公開前の名前を出さないため
     (閲覧者がいないので isUserStylesPubliclyEnabled だけを見る。sitemap と同じ)。

@@ -28,7 +28,7 @@ export type GenerationModeLabelKey =
  *
  * | 生成 | ラベル |
  * |---|---|
- * | one_tap_style(Persta のカタログのスタイル) | from CATALOG |
+ * | one_tap_style(Perstaのカタログのスタイル) | from CATALOG |
  * | free・元の投稿あり(ほかの人のカタログ) | from CATALOG |
  * | free・元の投稿なし(自分のプロンプト=原本)を本人が見る | My ORIGINAL |
  * | 同上をほかの人が見る | User ORIGINAL |

@@ -910,7 +910,7 @@ describe("PostFeedCard(カタログ刷新後)", () => {
   afterEach(() => mockRevamp.mockReturnValue(false));
 
   test.each([
-    ["Persta のカタログのスタイル", createPost({ generation_type: "one_tap_style" })],
+    ["Perstaのカタログのスタイル", createPost({ generation_type: "one_tap_style" })],
     ["ほかの人のカタログ", createPost({ generation_type: "free", source_post_id: "origin-1" })],
   ])("%sで作った投稿は「from CATALOG」", (_label, post) => {
     render(<PostFeedCard post={post} currentUserId={null} />);

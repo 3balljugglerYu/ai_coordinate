@@ -99,7 +99,7 @@ describe("カタログのタブの文言", () => {
   test("日本語の見出しは、決めた名前どおり", async () => {
     const messages = await getAllMessages("ja");
 
-    expect(messages.userStyles.tabOfficialTitle).toBe("Persta のカタログ");
+    expect(messages.userStyles.tabOfficialTitle).toBe("Perstaのカタログ");
     expect(messages.userStyles.tabUserTitle).toBe("みんなのカタログ");
     expect(messages.userStyles.tabCreateTitle).toBe("カタログをつくる");
   });

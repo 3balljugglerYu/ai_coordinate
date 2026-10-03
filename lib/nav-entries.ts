@@ -37,7 +37,7 @@ import {
  */
 export const GENERATION_ENTRY_PATH = "/coordinate";
 
-/** カタログの項目のパス(Persta のカタログ)。刷新後だけナビに出す。 */
+/** カタログの項目のパス(Perstaのカタログ)。刷新後だけナビに出す。 */
 export const CATALOG_ENTRY_PATH = "/styles";
 
 /**

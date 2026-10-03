@@ -57,7 +57,7 @@ describe("nav-entries", () => {
   });
 
   describe("resolveCatalogEntryPath(カタログを押したときの行き先)", () => {
-    test("ふだんはPersta のカタログ(/styles)を開く", () => {
+    test("ふだんはPerstaのカタログ(/styles)を開く", () => {
       expect(resolveCatalogEntryPath()).toBe("/styles");
     });
 
@@ -84,7 +84,7 @@ describe("nav-entries", () => {
       expect(resolveNavEntryDestination(GENERATION_ENTRY_PATH)).toBe("/free");
     });
 
-    test("カタログは、Persta のカタログ(/styles)へ", () => {
+    test("カタログは、Perstaのカタログ(/styles)へ", () => {
       expect(resolveNavEntryDestination(CATALOG_ENTRY_PATH)).toBe("/styles");
     });
 

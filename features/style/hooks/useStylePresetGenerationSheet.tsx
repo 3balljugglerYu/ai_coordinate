@@ -112,7 +112,7 @@ function styleHrefFor(slug: string | null | undefined): string {
 /**
  * Persta ORIGINAL の「このカタログで生成する」で、その場で生成シートを開く。
  * ホームの引用元カード(UseStylePresetButton)と投稿詳細(OneTapStyleDetailCard)で共有する。
- * 中身は /styles(Persta のカタログ)の生成シートと同じ。
+ * 中身は /styles(Perstaのカタログ)の生成シートと同じ。
  *
  * - 未ログイン → ログインなしで生成できるカテゴリ(コーディネート系)ならシートを開く。
  *   それ以外はログインの案内(2026-10-01 ユーザー決定。/style の未ログインと同じ範囲)

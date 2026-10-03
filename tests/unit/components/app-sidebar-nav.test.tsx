@@ -222,7 +222,7 @@ describe("AppSidebar のナビの項目", () => {
       ).toHaveLength(1);
     });
 
-    test("「カタログ」はPersta のカタログ(/styles)を開く", async () => {
+    test("「カタログ」はPerstaのカタログ(/styles)を開く", async () => {
       await renderSidebar();
 
       fireEvent.click(screen.getByRole("button", { name: "catalog" }));
@@ -239,8 +239,8 @@ describe("AppSidebar のナビの項目", () => {
       expect(mockPush).toHaveBeenCalledWith("/ja/style");
     });
 
-    // Persta のカタログ(/styles)にいても、ツアー中の行き先は /style なので進む(ツアーを止めない)
-    test("ツアー中はPersta のカタログ(/styles)にいても、「カタログ」で One-Tap Style を開く", async () => {
+    // Perstaのカタログ(/styles)にいても、ツアー中の行き先は /style なので進む(ツアーを止めない)
+    test("ツアー中はPerstaのカタログ(/styles)にいても、「カタログ」で One-Tap Style を開く", async () => {
       window.sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS, "true");
       mockPathname.mockReturnValue("/ja/styles");
       await renderSidebar();
@@ -253,10 +253,10 @@ describe("AppSidebar のナビの項目", () => {
 
     /*
       ⭐ 「カタログ」を選択中にしている画面(/free・/style・/user-styles)でも、押せば
-      Persta のカタログへ行く。「選択中なら何もしない」にすると、ここから戻れなくなる。
+      Perstaのカタログへ行く。「選択中なら何もしない」にすると、ここから戻れなくなる。
     */
     test.each(["/ja/free", "/ja/style", "/ja/user-styles"])(
-      "%s にいるときに「カタログ」を押すと、Persta のカタログ(/styles)を開く",
+      "%s にいるときに「カタログ」を押すと、Perstaのカタログ(/styles)を開く",
       async (pathname) => {
         mockPathname.mockReturnValue(pathname);
         await renderSidebar();

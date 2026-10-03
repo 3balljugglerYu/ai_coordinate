@@ -63,7 +63,7 @@ describe("カタログ刷新の段階公開", () => {
       );
     });
 
-    // 見出しは出さず(ページの h1 はタブの上の「Persta のカタログ」)、説明だけを新しい文言にする
+    // 見出しは出さず(ページの h1 はタブの上の「Perstaのカタログ」)、説明だけを新しい文言にする
     expect(screen.queryByRole("heading")).toBeNull();
     expect(screen.getByText(HEADING_PROPS.originalIntro)).toBeTruthy();
     const bar = screen.getByTestId("styles-catalog-chip-bar");

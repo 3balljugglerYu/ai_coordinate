@@ -221,7 +221,7 @@ describe("NavigationBar", () => {
       ).toHaveLength(1);
     });
 
-    test("「カタログ」はPersta のカタログ(/styles)を開く", async () => {
+    test("「カタログ」はPerstaのカタログ(/styles)を開く", async () => {
       const nav = await renderNav();
 
       fireEvent.click(nav.getByRole("button", { name: "カタログ" }));
@@ -238,8 +238,8 @@ describe("NavigationBar", () => {
       expect(pushMock).toHaveBeenCalledWith("/ja/style");
     });
 
-    // Persta のカタログ(/styles)にいても、ツアー中の行き先は /style なので進む(ツアーを止めない)
-    test("ツアー中はPersta のカタログ(/styles)にいても、「カタログ」で One-Tap Style を開く", async () => {
+    // Perstaのカタログ(/styles)にいても、ツアー中の行き先は /style なので進む(ツアーを止めない)
+    test("ツアー中はPerstaのカタログ(/styles)にいても、「カタログ」で One-Tap Style を開く", async () => {
       window.sessionStorage.setItem(TUTORIAL_STORAGE_KEYS.IN_PROGRESS, "true");
       pathnameMock.mockReturnValue("/ja/styles");
       const nav = await renderNav();
@@ -275,7 +275,7 @@ describe("NavigationBar", () => {
     });
 
     test.each(["/ja/free", "/ja/style"])(
-      "%s にいるときに「カタログ」を押すと、Persta のカタログ(/styles)を開く",
+      "%s にいるときに「カタログ」を押すと、Perstaのカタログ(/styles)を開く",
       async (pathname) => {
         pathnameMock.mockReturnValue(pathname);
         const nav = await renderNav();
