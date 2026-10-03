@@ -15,7 +15,6 @@ import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
 import { GachaPromptField } from "./GachaPromptField";
-import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import {
   GACHA_FIELD_TEMPLATE,
   composeGachaPrompt,
@@ -142,7 +141,11 @@ interface GenerationFormProps {
    * 表示専用である。生成に使う本文はサーバーが原作の author secret から
    * 解決するため、ここを書き換えても送信内容は変わらない。
    */
-  lockedPromptText?: string | null;
+  lockedPromptText?: string | null;  /**
+   * 「ガチャプロンプトにする」を出してよいか。/free のサーバー側で
+   * `isGachaPromptAvailable`(公開フラグ OR 運営)を判定して渡す。既定は出さない。
+   */
+  gachaPromptAvailable?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -163,6 +166,7 @@ export function GenerationForm({
   promptLocked = false,
   lockedPromptText,
   sourcePostId,
+  gachaPromptAvailable = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -247,11 +251,10 @@ export function GenerationForm({
   const isAuthenticated = authState === "authenticated";
   const picker = useImageSourcePicker({ defaultTab: "generated" });
 
-  // ガチャプロンプト(公開前は運営だけ)。カタログをつくる(/free)の自分で書く本文にだけ出す。
-  // 候補欄は本文の末尾に付けて送り、生成のたびに Worker が候補から1つを選ぶ。
-  const isCatalogRevamp = useStylesCatalogRevamp();
+  // ガチャプロンプト(公開前は運営だけ。カタログ刷新とは別のフラグ)。カタログをつくる(/free)の
+  // 自分で書く本文にだけ出す。候補欄は本文の末尾に付けて送り、生成のたびに Worker が候補から1つを選ぶ。
   const canUseGacha =
-    isFree && !promptLocked && isAuthenticated && isCatalogRevamp;
+    isFree && !promptLocked && isAuthenticated && gachaPromptAvailable;
   const [isGachaEnabled, setIsGachaEnabled] = useState(false);
   const [gachaField, setGachaField] = useState(GACHA_FIELD_TEMPLATE);
   const isGachaActive = canUseGacha && isGachaEnabled;

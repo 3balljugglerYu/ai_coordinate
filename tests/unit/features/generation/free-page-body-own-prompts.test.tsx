@@ -26,15 +26,20 @@ jest.mock("@/features/my-page/lib/server-api", () => ({
   getUserProfileServer: async () => ({ subscription_plan: "free" }),
 }));
 const mockAvailable = jest.fn<boolean, [string | null | undefined]>();
+const mockGachaAvailable = jest.fn<boolean, [string | null | undefined]>();
 jest.mock("@/lib/env", () => ({
   isUserStylesAvailable: (userId: string | null | undefined) => mockAvailable(userId),
+  isGachaPromptAvailable: (userId: string | null | undefined) =>
+    mockGachaAvailable(userId),
 }));
 jest.mock("@/components/RefreshOnMount", () => ({ RefreshOnMount: () => null }));
 jest.mock("@/features/credits/components/CachedGenerationPercoinBalance", () => ({
   CachedGenerationPercoinBalance: () => null,
 }));
+const mockFormContainer = jest.fn<null, [Record<string, unknown>]>(() => null);
 jest.mock("@/features/generation/components/GenerationFormContainer", () => ({
-  GenerationFormContainer: () => null,
+  GenerationFormContainer: (props: Record<string, unknown>) =>
+    mockFormContainer(props),
 }));
 jest.mock("@/features/generation/context/GenerationStateContext", () => ({
   GenerationStateProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
@@ -49,6 +54,8 @@ import { FreePageBody } from "@/features/generation/components/FreePageBody";
 beforeEach(() => {
   mockGallery.mockClear();
   mockAvailable.mockReset();
+  mockGachaAvailable.mockReset();
+  mockFormContainer.mockClear();
 });
 
 describe("FreePageBody の生成結果一覧", () => {
@@ -74,4 +81,25 @@ describe("FreePageBody の生成結果一覧", () => {
       ownPromptsOnly: false,
     });
   });
+});
+
+describe("FreePageBody のガチャプロンプト", () => {
+  // カタログ刷新とは別のフラグで出し分ける(刷新の判定と独立していること)
+  test.each([
+    { catalog: true, gacha: false },
+    { catalog: false, gacha: true },
+  ])(
+    "刷新=$catalog でも、ガチャの判定($gacha)をそのままフォームへ渡す",
+    async ({ catalog, gacha }) => {
+      mockAvailable.mockReturnValue(catalog);
+      mockGachaAvailable.mockReturnValue(gacha);
+      render(await FreePageBody());
+
+      expect(mockGachaAvailable).toHaveBeenCalledWith("user-1");
+      expect(mockFormContainer.mock.calls[0][0]).toMatchObject({
+        mode: "free",
+        gachaPromptAvailable: gacha,
+      });
+    },
+  );
 });

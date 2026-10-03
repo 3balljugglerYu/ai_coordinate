@@ -2,7 +2,8 @@
  * @jest-environment jsdom
  *
  * カタログをつくる(/free)の「ガチャプロンプトにする」。
- * 公開前は運営だけ(useStylesCatalogRevamp)。候補欄は本文の末尾に付けて送る。
+ * 出してよいかは /free のサーバー側が判定して gachaPromptAvailable で渡す
+ * (公開フラグ NEXT_PUBLIC_GACHA_PROMPT_ENABLED OR 運営)。候補欄は本文の末尾に付けて送る。
  */
 
 const stableTranslate = (key: string) => key;
@@ -113,11 +114,6 @@ jest.mock("@/features/generation/lib/source-image-to-file", () => ({
     mockFetchSourceImage(...args),
 }));
 
-let mockIsCatalogRevamp = true;
-jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
-  useStylesCatalogRevamp: () => mockIsCatalogRevamp,
-}));
-
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
@@ -166,6 +162,7 @@ function renderFreeForm(
       subscriptionPlan="free"
       onSubmit={onSubmit}
       mode="free"
+      gachaPromptAvailable
       {...props}
     />,
   );
@@ -183,13 +180,8 @@ function gachaCheckbox() {
 }
 
 describe("GenerationForm のガチャプロンプト", () => {
-  beforeEach(() => {
-    mockIsCatalogRevamp = true;
-  });
-
-  test("一般の利用者(刷新前)にはチェックが出ない", () => {
-    mockIsCatalogRevamp = false;
-    renderFreeForm(jest.fn());
+  test("出してよいと判定されていない利用者にはチェックが出ない", () => {
+    renderFreeForm(jest.fn(), { gachaPromptAvailable: false });
     expect(gachaCheckbox()).toBeNull();
   });
 
