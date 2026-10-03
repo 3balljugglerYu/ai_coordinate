@@ -1486,6 +1486,17 @@ export const jaMessages = {
     catalogCreateListed: "自分でプロンプトを書いてつくり、生成前の画像も表示して投稿すると、みんなのカタログに並びます。",
     catalogCreateFollowers: "あなたのフォロワーは、そのプロンプトで生成できます（プロンプトは非公開のままでもOK）。",
     catalogCreateReward: "フォロワーが生成するたびに、ペルコインが還元されます。",
+    // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。運営のみの段階では日本語以外は英語のまま、一般公開のときに訳す
+    gachaToggleLabel: "ガチャプロンプトにする",
+    gachaFieldLabel: "ガチャ",
+    gachaHintRandom: "生成のたびに、候補から1つがランダムに選ばれます",
+    gachaHintPerCandidate: "候補ごとに変えたいこと（服装・場所・動作など）は、その候補の行にまとめて書いてください",
+    gachaHintBody: "本文では「指定された職業」のように、どの候補でも通じる書き方にしてください",
+    gachaInsertExample: "例を入れる",
+    gachaReset: "空に戻す",
+    gachaMissingBlock: "{open} と {close} の囲みが見つかりません。「空に戻す」で戻せます。",
+    gachaTooFewCandidates: "候補を2つ以上入れてください（中身のない行は数えません）。",
+    gachaExample: "1. パティシエ。白いコックコートとコック帽。洋菓子店の厨房で、ケーキにクリームを絞っている\n2. 消防士。オレンジ色の防火服とヘルメット。消防車の前で、ホースを構えている\n3. 花屋。ベージュのエプロン。街角の花屋で、ブーケにリボンを結んでいる\n4. 駅員。紺色の制服と制帽。駅のホームで、指差し確認をしている",
   },
   style: {
     pageTitle: "One-Tap Style",

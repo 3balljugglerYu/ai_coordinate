@@ -49,4 +49,22 @@ describe("mergeSuccessGenerationMetadata", () => {
     expect(merged).not.toBe(original);
     expect(original).toEqual({ outputAspectRatioMode: "1:1" });
   });
+  test("ガチャで選ばれた番号を残す（使っていない生成ではキーを足さない）", () => {
+    const withGacha = mergeSuccessGenerationMetadata({
+      jobGenerationMetadata: { outputAspectRatioMode: "source" },
+      geminiAttempts: [],
+      gachaPicks: [{ number: 7, total: 17 }],
+    });
+    expect(withGacha.gachaPicks).toEqual([{ number: 7, total: 17 }]);
+    expect(withGacha.outputAspectRatioMode).toBe("source");
+
+    for (const gachaPicks of [undefined, []]) {
+      const merged = mergeSuccessGenerationMetadata({
+        jobGenerationMetadata: null,
+        geminiAttempts: [],
+        gachaPicks,
+      });
+      expect("gachaPicks" in merged).toBe(false);
+    }
+  });
 });

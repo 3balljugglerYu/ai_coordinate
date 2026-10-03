@@ -59,6 +59,10 @@ import {
 } from "../../../shared/generation/job-output-aspect.ts";
 import { mergeSuccessGenerationMetadata } from "../../../shared/generation/job-metadata.ts";
 import {
+  expandGachaPrompt,
+  type GachaPick,
+} from "../../../shared/generation/gacha-prompt.ts";
+import {
   callOpenAIImageEditBatch,
   callOpenAIImageEditMultiInputBatch,
   parseImageDimensions,
@@ -2164,6 +2168,8 @@ Deno.serve(async () => {
 
         // ===== フェーズ4-1: Gemini API呼び出しの実装 =====
         const geminiAttempts: GeminiAttemptMetadata[] = [];
+        // ガチャプロンプトで選ばれた候補（何番が出たか）。成功時の metadata に残す。
+        let gachaPicks: GachaPick[] = [];
         try {
           let generatedImages: GeneratedImageResult[] = [];
           if (isDerivedJob) {
@@ -2200,6 +2206,15 @@ Deno.serve(async () => {
             }
 
             generationInput = resolvedInput;
+          }
+
+          // ガチャプロンプト: {{GACHA}} の候補から1つを選び、それだけを残す。
+          // 派生生成の本文はここで初めて手元に来るので、解決の後で行う。
+          // 囲みの無い本文はそのまま（既存のプロンプトには影響しない）。
+          if (job.generation_type === "free") {
+            const gacha = expandGachaPrompt(generationInput);
+            generationInput = gacha.prompt;
+            gachaPicks = gacha.picks;
           }
 
           currentStage = "generating";
@@ -3234,6 +3249,7 @@ Deno.serve(async () => {
               | Record<string, unknown>
               | null,
             geminiAttempts,
+            gachaPicks,
           });
           currentStage = "persisting";
           await measureJobStage(
