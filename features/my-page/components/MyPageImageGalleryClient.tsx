@@ -24,6 +24,7 @@ import {
 } from "@/features/style-presets/components/CatalogSwipePanel";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { MyImageCatalog } from "@/features/my-page/lib/my-image-catalog";
+import { useFinishedGenerationWatcher } from "@/features/my-page/hooks/useFinishedGenerationWatcher";
 
 interface MyPageImageGalleryClientProps {
   initialImages: GeneratedImageRecord[];
@@ -34,6 +35,11 @@ const IMAGES_PER_PAGE = 20;
 
 interface ListState {
   images: GeneratedImageRecord[];
+  /**
+   * 開いているあいだに終わった生成で、先頭に差し込んだ画像(新しい順)。
+   * 一覧を作り直さずに足すので、スクロール位置と読み込み済みの画像はそのまま。
+   */
+  prepended: GeneratedImageRecord[];
   /** 次に読む位置(サーバーから読んだ件数) */
   offset: number;
   hasMore: boolean;
@@ -55,12 +61,31 @@ const INITIAL_LIST_KEY: ListKey = "all:all";
 
 const EMPTY_LIST: ListState = {
   images: [],
+  prepended: [],
   offset: 0,
   hasMore: true,
   isLoading: false,
   hasLoaded: false,
   loadFailed: false,
 };
+
+/**
+ * 一覧に出す並び: 先頭に差し込んだもの → (すべて×全カタログなら)サーバーの最初の20件 → 続き。
+ * 差し込んだあとに読んだ続きと重なることがあるので、同じ画像は最初の1つだけにする。
+ */
+function combineListImages(
+  list: ListState,
+  initial: GeneratedImageRecord[],
+): GeneratedImageRecord[] {
+  if (list.prepended.length === 0) return [...initial, ...list.images];
+  const seen = new Set<string>();
+  return [...list.prepended, ...initial, ...list.images].filter((image) => {
+    if (image.id == null) return true;
+    if (seen.has(image.id)) return false;
+    seen.add(image.id);
+    return true;
+  });
+}
 
 /** 横スワイプ中に隣に見せる、隣のカタログの一覧の先頭の枚数(2列で画面を埋める分) */
 const PEEK_IMAGE_COUNT = 8;
@@ -152,6 +177,7 @@ export function MyPageImageGalleryClient({
       key === INITIAL_LIST_KEY
         ? {
             images: [],
+            prepended: [],
             offset: initialImages.length,
             hasMore: initialImages.length === IMAGES_PER_PAGE,
             isLoading: false,
@@ -250,6 +276,7 @@ export function MyPageImageGalleryClient({
           return {
             ...prev,
             [key]: {
+              ...current,
               images: [...current.images, ...newImages],
               offset: current.offset + newImages.length,
               hasMore: newImages.length === 0 ? false : hasMore,
@@ -328,6 +355,71 @@ export function MyPageImageGalleryClient({
       },
     }));
   }, [currentKey, defaultList]);
+
+  /**
+   * 開いているあいだに生成が終わったら、今の一覧の先頭を読み、まだ無い画像だけを差し込む。
+   * 一覧を作り直さないので、スクロール位置と読み込み済みの画像はそのまま
+   * (ページ全体の読み直しは、見ていた場所が先頭へ飛ぶので避ける)。
+   * ほかの組み合わせの控えは捨て、開いたときに読み直す。「すべて × 全カタログ」は
+   * サーバーの最初の20件が古いままなので、今見ていなくても先頭を読んで差し込む。
+   */
+  const prependTop = useCallback(
+    async (key: ListKey) => {
+      const [filterParam, catalogParam] = key.split(":") as [
+        ImageFilter,
+        MyImageCatalog,
+      ];
+      const generation = listsGenerationRef.current;
+      let fetched: GeneratedImageRecord[];
+      try {
+        ({ images: fetched } = await fetchImages(filterParam, catalogParam, 0));
+      } catch (error) {
+        // 差し込めなくても、今の一覧はそのまま見られる
+        console.error(`Failed to load new images (${key}):`, error);
+        return;
+      }
+      if (generation !== listsGenerationRef.current) return;
+      setLists((prev) => {
+        const current = prev[key] ?? defaultList(key);
+        const existing = new Set(
+          [
+            ...current.prepended,
+            ...(key === INITIAL_LIST_KEY ? initialImages : []),
+            ...current.images,
+          ].map((image) => image.id),
+        );
+        const fresh = fetched.filter(
+          (image) => image.id != null && !existing.has(image.id),
+        );
+        if (fresh.length === 0) return prev;
+        return {
+          ...prev,
+          [key]: {
+            ...current,
+            prepended: [...fresh, ...current.prepended],
+            // サーバー側の並びが新しい分だけ後ろへずれるので、続きの位置も進める
+            offset: current.offset + fresh.length,
+          },
+        };
+      });
+    },
+    [defaultList, fetchImages, initialImages]
+  );
+
+  const handleGenerationFinished = useCallback(() => {
+    const currentIsLoaded = (lists[currentKey] ?? defaultList(currentKey)).hasLoaded;
+    setLists((prev) => {
+      const next: typeof prev = {};
+      for (const key of [currentKey, INITIAL_LIST_KEY] as ListKey[]) {
+        if (prev[key]) next[key] = prev[key];
+      }
+      return next;
+    });
+    if (currentIsLoaded) void prependTop(currentKey);
+    if (currentKey !== INITIAL_LIST_KEY) void prependTop(INITIAL_LIST_KEY);
+  }, [currentKey, defaultList, lists, prependTop]);
+
+  useFinishedGenerationWatcher(handleGenerationFinished);
 
   // 今のタブでの、隣のカタログの組み合わせ(横スワイプで移る先)
   const neighborKeys = useMemo(() => {
@@ -501,8 +593,10 @@ export function MyPageImageGalleryClient({
   /** 組み合わせの一覧に出す画像(削除済みを除く)。隣のカタログの見本にも使う */
   const imagesForKey = (key: ListKey): GeneratedImageRecord[] => {
     const list = lists[key] ?? defaultList(key);
-    const raw =
-      key === INITIAL_LIST_KEY ? [...initialImages, ...list.images] : list.images;
+    const raw = combineListImages(
+      list,
+      key === INITIAL_LIST_KEY ? initialImages : [],
+    );
     return deletedIds.size === 0
       ? raw
       : raw.filter((img) => img.id == null || !deletedIds.has(img.id));
@@ -511,10 +605,11 @@ export function MyPageImageGalleryClient({
   // 表示対象の画像をレンダー時に算出（rerender-derived-state-no-effect）
   const rawDisplayImages = useMemo(
     () =>
-      currentKey === INITIAL_LIST_KEY
-        ? [...initialImages, ...currentList.images]
-        : currentList.images,
-    [currentKey, initialImages, currentList.images]
+      combineListImages(
+        currentList,
+        currentKey === INITIAL_LIST_KEY ? initialImages : [],
+      ),
+    [currentKey, initialImages, currentList]
   );
 
   const displayImages = useMemo(
