@@ -575,7 +575,7 @@ k = 0.70
 ### 5-8. 表示順の確定
 
 ```
-bucket = floor(extract(epoch from now()) / 21600)          -- 6時間
+bucket = floor(extract(epoch from now()) / 10800)          -- 3時間（2026-10-05 に 6時間 から変更）
 
 jitter(post_id) = 1 + (r(post_id || ':' || bucket) * 2 - 1) * 0.15
 表示値          = スコア × jitter(post_id)

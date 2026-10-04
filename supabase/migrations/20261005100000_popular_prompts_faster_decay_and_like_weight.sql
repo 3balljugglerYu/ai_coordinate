@@ -1,8 +1,9 @@
 -- PICK UP の順位を動きやすくする(2026-10-05 ユーザー決定)。
 --
--- 変えるのは2つだけ。対象・利用・コメント・充実度・ゆらぎ・新着枠は変えない。
+-- 変えるのは3つだけ。対象・利用・コメント・充実度・ゆらぎの幅(±15%)・新着枠の件数は変えない。
 --   1. 減衰の半減期 7 日 → 3 日(popular_prompts_decay)
 --   2. いいねの係数 1.0 → 2.0(recompute_popular_prompts の like_total)
+--   3. ゆらぎの切り替え 6 時間 → 3 時間(recompute_popular_prompts の v_bucket。🆕 の位置も同じ)
 --
 -- 背景: 直近7日で他人のプロンプトを使った人は12人。スコアの大半は「使った人」(3.0)で、
 -- 半減期7日だと1週間前の反応が強く残り、1位が9/27の投稿のまま動かなかった。
@@ -64,8 +65,9 @@ BEGIN
       USING ERRCODE = '42501';
   END IF;
 
-  -- ゆらぎのシード。6 時間ごとに変わる。
-  v_bucket := floor(extract(epoch FROM v_now) / 21600)::bigint;
+  -- ゆらぎのシード。3 時間ごとに変わる(2026-10-05 に 6 時間から変更)。
+  -- 🆕 の差し込み位置も同じシードなので、3 時間ごとに変わる。
+  v_bucket := floor(extract(epoch FROM v_now) / 10800)::bigint;
 
   -- 同一トランザクションで 2 回呼ばれても落ちないようにする
   -- (ON COMMIT DROP はコミット時までは残るため)。
@@ -359,6 +361,9 @@ REVOKE ALL ON FUNCTION public.recompute_popular_prompts() FROM PUBLIC;
 REVOKE ALL ON FUNCTION public.recompute_popular_prompts() FROM anon;
 REVOKE ALL ON FUNCTION public.recompute_popular_prompts() FROM authenticated;
 GRANT EXECUTE ON FUNCTION public.recompute_popular_prompts() TO service_role;
+
+COMMENT ON COLUMN public.popular_prompt_rankings.bucket IS
+  'ゆらぎのシードに使った 3 時間バケット (floor(epoch / 10800))。2026-10-05 以前は 6 時間 (floor(epoch / 21600))';
 
 -- 次の毎時15分を待たずに、新しい計算で順位を作り直す(書き込み先は popular_prompt_rankings のみ)。
 SELECT public.recompute_popular_prompts();
