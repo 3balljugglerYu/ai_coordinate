@@ -1,7 +1,18 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,6 +69,24 @@ export function GachaPromptField({
         : t("gachaTooFewCandidates")
       : null;
 
+  const exampleValue = `${GACHA_OPEN_TAG}\n${t("gachaExample")}\n${GACHA_CLOSE_TAG}`;
+  /*
+    「例を入れる」「空に戻す」は欄を丸ごと書き換える。書いた候補(「ガチャに分ける」で
+    5ペルコイン使って作ったものを含む)を押し間違いで消さないよう、雛形以外の内容が
+    入っているときは、上書きしてよいかを確かめる(2026-10-04 報告)。
+    確かめ方は、生成後に元の画像を変えるときの確認(One-Tap Style の結果リセット)と同じダイアログ。
+  */
+  const [pendingOverwrite, setPendingOverwrite] = useState<string | null>(null);
+  const requestOverwrite = (next: string) => {
+    if (value === next) return;
+    if (value === GACHA_FIELD_TEMPLATE || value.trim() === "") {
+      onChange(next);
+      return;
+    }
+    setPendingOverwrite(next);
+  };
+  const buttonsDisabled = disabled || fieldLocked;
+
   return (
     <div className="space-y-3">
       <div className="flex items-center space-x-2">
@@ -77,15 +106,6 @@ export function GachaPromptField({
 
       {enabled ? (
         <div className="space-y-2 border-l-2 border-primary/40 pl-3">
-          {split ? (
-            <GachaSplitTool
-              prompt={split.prompt}
-              field={value}
-              onApply={split.onApply}
-              onProposalOpenChange={split.onProposalOpenChange}
-              disabled={disabled}
-            />
-          ) : null}
           <Label htmlFor="gacha-prompt-field" className="text-sm font-medium">
             {t("gachaFieldLabel")}
           </Label>
@@ -112,12 +132,8 @@ export function GachaPromptField({
               type="button"
               variant="outline"
               size="sm"
-              disabled={disabled}
-              onClick={() =>
-                onChange(
-                  `${GACHA_OPEN_TAG}\n${t("gachaExample")}\n${GACHA_CLOSE_TAG}`,
-                )
-              }
+              disabled={buttonsDisabled || pendingOverwrite !== null}
+              onClick={() => requestOverwrite(exampleValue)}
             >
               {t("gachaInsertExample")}
             </Button>
@@ -125,8 +141,8 @@ export function GachaPromptField({
               type="button"
               variant="outline"
               size="sm"
-              disabled={disabled}
-              onClick={() => onChange(GACHA_FIELD_TEMPLATE)}
+              disabled={buttonsDisabled || pendingOverwrite !== null}
+              onClick={() => requestOverwrite(GACHA_FIELD_TEMPLATE)}
             >
               {t("gachaReset")}
             </Button>
@@ -138,6 +154,41 @@ export function GachaPromptField({
           >
             {errorMessage}
           </p>
+          <AlertDialog
+            open={pendingOverwrite !== null}
+            onOpenChange={(open) => {
+              if (!open) setPendingOverwrite(null);
+            }}
+          >
+            <AlertDialogContent data-testid="gacha-overwrite-confirm">
+              <AlertDialogHeader>
+                <AlertDialogTitle>{t("gachaOverwriteConfirmTitle")}</AlertDialogTitle>
+                <AlertDialogDescription className="whitespace-pre-line">
+                  {t("gachaOverwriteConfirm")}
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>{t("gachaOverwriteCancel")}</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => {
+                    if (pendingOverwrite !== null) onChange(pendingOverwrite);
+                    setPendingOverwrite(null);
+                  }}
+                >
+                  {t("gachaOverwriteAccept")}
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+          {split ? (
+            <GachaSplitTool
+              prompt={split.prompt}
+              field={value}
+              onApply={split.onApply}
+              onProposalOpenChange={split.onProposalOpenChange}
+              disabled={disabled}
+            />
+          ) : null}
         </div>
       ) : null}
     </div>
