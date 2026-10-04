@@ -146,6 +146,11 @@ interface GenerationFormProps {
    * `isGachaPromptAvailable`(公開フラグ OR 運営)を判定して渡す。既定は出さない。
    */
   gachaPromptAvailable?: boolean;
+  /**
+   * 「ガチャに分ける」道具(1回5ペルコイン)を出してよいか。/free のサーバー側で
+   * `isGachaSplitAvailable` を判定して渡す。ガチャの欄の中に出すので、ガチャが使えるときだけ効く。
+   */
+  gachaSplitAvailable?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -167,6 +172,7 @@ export function GenerationForm({
   lockedPromptText,
   sourcePostId,
   gachaPromptAvailable = false,
+  gachaSplitAvailable = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -772,6 +778,17 @@ export function GenerationForm({
             onChange={setGachaField}
             validation={gachaValidation}
             disabled={isGenerating || isTutorialInProgress}
+            split={
+              gachaSplitAvailable
+                ? {
+                    prompt,
+                    onApply: (nextBody, nextField) => {
+                      setPrompt(nextBody);
+                      setGachaField(nextField);
+                    },
+                  }
+                : undefined
+            }
           />
         ) : null}
 

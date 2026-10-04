@@ -2,7 +2,11 @@ import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
-import { isGachaPromptAvailable, isUserStylesAvailable } from "@/lib/env";
+import {
+  isGachaPromptAvailable,
+  isGachaSplitAvailable,
+  isUserStylesAvailable,
+} from "@/lib/env";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
 import { GenerationFormContainer } from "./GenerationFormContainer";
 import { GenerationFormSkeleton } from "./GenerationFormSkeleton";
@@ -64,6 +68,7 @@ export async function FreePageBody() {
             authState="authenticated"
             mode="free"
             gachaPromptAvailable={isGachaPromptAvailable(user.id)}
+            gachaSplitAvailable={isGachaSplitAvailable(user.id)}
           />
         </Suspense>
 

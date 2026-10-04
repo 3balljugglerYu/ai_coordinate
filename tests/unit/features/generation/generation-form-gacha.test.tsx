@@ -114,6 +114,10 @@ jest.mock("@/features/generation/lib/source-image-to-file", () => ({
     mockFetchSourceImage(...args),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: jest.fn() }),
+}));
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
@@ -290,5 +294,18 @@ describe("GenerationForm のガチャプロンプト", () => {
     await user.click(screen.getByRole("button", { name: "gachaReset" }));
 
     expect(field.value).toBe(GACHA_FIELD_TEMPLATE);
+  });
+
+  test("「ガチャに分ける」は道具が使える人だけ、ガチャの欄の中に出す", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderFreeForm(jest.fn());
+    await user.click(gachaCheckbox()!);
+    expect(screen.queryByTestId("gacha-split-tool")).toBeNull();
+    unmount();
+
+    renderFreeForm(jest.fn(), { gachaSplitAvailable: true });
+    expect(screen.queryByTestId("gacha-split-tool")).toBeNull();
+    await user.click(gachaCheckbox()!);
+    expect(screen.getByTestId("gacha-split-tool")).toBeTruthy();
   });
 });

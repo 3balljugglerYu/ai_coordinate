@@ -91,6 +91,8 @@ interface GenerationFormContainerProps {
   lockedPromptText?: string | null;
   /** 「ガチャプロンプトにする」を出してよいか(サーバーで判定した値)。 */
   gachaPromptAvailable?: boolean;
+  /** 「ガチャに分ける」道具を出してよいか(サーバーで判定した値)。 */
+  gachaSplitAvailable?: boolean;
 }
 
 type TrackedGenerationJobStatus = Pick<
@@ -181,6 +183,7 @@ export function GenerationFormContainer({
   sourcePostId,
   lockedPromptText,
   gachaPromptAvailable = false,
+  gachaSplitAvailable = false,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
   const creditsT = useTranslations("credits");
@@ -1260,6 +1263,7 @@ export function GenerationFormContainer({
         lockedPromptText={lockedPromptText}
         sourcePostId={sourcePostId}
         gachaPromptAvailable={gachaPromptAvailable}
+        gachaSplitAvailable={gachaSplitAvailable}
       />
 
       {error ? (
