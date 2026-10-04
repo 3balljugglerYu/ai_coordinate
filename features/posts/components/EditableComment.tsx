@@ -265,7 +265,7 @@ export function EditableComment({
                   onChange={(e) => setEditContent(e.target.value)}
                   maxLength={COMMENT_MAX_LENGTH}
                   rows={3}
-                  className="resize-none text-sm"
+                  className="resize-none text-base md:text-sm"
                   disabled={isLoading}
                 />
                 <div className="flex items-center justify-between">
