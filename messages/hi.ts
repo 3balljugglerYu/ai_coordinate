@@ -1551,6 +1551,7 @@ export const hiMessages = {
     gachaSplitInsufficient: "पर्याप्त पर्कॉइन नहीं हैं ({cost} पर्कॉइन चाहिए)।",
     gachaSplitNotSplittable: "उम्मीदवारों की सूची नहीं मिली, इसलिए बाँटा नहीं जा सका। कोई पर्कॉइन नहीं लगा।",
     gachaSplitFailed: "बाँटा नहीं जा सका। कृपया बाद में फिर कोशिश करें। कोई पर्कॉइन नहीं लगा।",
+    gachaSplitConnectionLost: "कनेक्शन बीच में टूट गया। पर्कॉइन लगे या नहीं, यह बैलेंस और इतिहास में देखें।",
     gachaSplitProposalTitle: "{count} उम्मीदवार मिले",
     gachaSplitProposalRemoved: "मुख्य प्रॉम्प्ट से हटाई जाने वाली लाइनें (लाल रेखा वाली)",
     gachaSplitProposalField: "गाचा फ़ील्ड में जाने वाले उम्मीदवार",

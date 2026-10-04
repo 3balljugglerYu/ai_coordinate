@@ -1550,6 +1550,7 @@ export const arMessages = {
     gachaSplitInsufficient: "رصيد البيركوين غير كافٍ (يلزم {cost} بيركوين).",
     gachaSplitNotSplittable: "لم يتم العثور على قائمة مرشحين، لذلك تعذّر التقسيم. لم تُستخدم أي بيركوين.",
     gachaSplitFailed: "تعذّر التقسيم. يُرجى المحاولة لاحقًا. لم تُستخدم أي بيركوين.",
+    gachaSplitConnectionLost: "انقطع الاتصال. يُرجى التحقق من الرصيد والسجل لمعرفة ما إذا كانت البيركوين قد استُخدمت.",
     gachaSplitProposalTitle: "تم العثور على {count} مرشحين",
     gachaSplitProposalRemoved: "الأسطر التي ستُحذف من الموجّه الرئيسي (مشطوبة بالأحمر)",
     gachaSplitProposalField: "المرشحون في حقل الجاتشا",

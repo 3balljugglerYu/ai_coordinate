@@ -1552,6 +1552,7 @@ export const idMessages = {
     gachaSplitInsufficient: "Percoin tidak cukup (perlu {cost} Percoin).",
     gachaSplitNotSplittable: "Daftar kandidat tidak ditemukan, jadi tidak bisa dibagi. Percoin tidak terpakai.",
     gachaSplitFailed: "Gagal membagi. Silakan coba lagi nanti. Percoin tidak terpakai.",
+    gachaSplitConnectionLost: "Koneksi terputus. Periksa saldo dan riwayat untuk melihat apakah Percoin terpakai.",
     gachaSplitProposalTitle: "Ditemukan {count} kandidat",
     gachaSplitProposalRemoved: "Baris yang dihapus dari prompt utama (dicoret merah)",
     gachaSplitProposalField: "Kandidat untuk kolom gacha",

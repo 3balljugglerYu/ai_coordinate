@@ -1547,6 +1547,7 @@ export const zhCnMessages = {
     gachaSplitInsufficient: "Percoin 不足（需要 {cost} 个 Percoin）。",
     gachaSplitNotSplittable: "没有找到候选列表，无法拆分。未使用 Percoin。",
     gachaSplitFailed: "无法拆分。请稍后再试。未使用 Percoin。",
+    gachaSplitConnectionLost: "连接中断了。是否使用了 Percoin，请在余额和记录中确认。",
     gachaSplitProposalTitle: "找到了 {count} 个候选",
     gachaSplitProposalRemoved: "从正文中删除的行（红线标出的行）",
     gachaSplitProposalField: "放入扭蛋栏的候选",

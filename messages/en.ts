@@ -1550,6 +1550,7 @@ export const enMessages = {
     gachaSplitInsufficient: "Not enough Percoins ({cost} Percoins needed).",
     gachaSplitNotSplittable: "No list of candidates was found, so the prompt could not be split. No Percoins were used.",
     gachaSplitFailed: "The prompt could not be split. Please try again later. No Percoins were used.",
+    gachaSplitConnectionLost: "The connection was lost. Please check your balance and history to see whether Percoins were used.",
     gachaSplitProposalTitle: "Found {count} candidates",
     gachaSplitProposalRemoved: "Lines removed from the main prompt (struck through in red)",
     gachaSplitProposalField: "Candidates for the gacha field",

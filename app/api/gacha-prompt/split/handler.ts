@@ -77,10 +77,11 @@ async function defaultDeduct(userId: string): Promise<{ balance: number | null }
 }
 
 function defaultRevalidate(userId: string, locale: string) {
-  // /free の残高表示(CachedGenerationPercoinBalance)とマイページの残高・履歴
-  revalidateTag(`free-${userId}-${locale}`, "max");
-  revalidateTag(`my-page-${userId}`, "max");
-  revalidateTag(`my-page-credits-${userId}`, "max");
+  // /free の残高表示(CachedGenerationPercoinBalance)とマイページの残高・履歴。
+  // 直後の router.refresh で新しい残高を出すため、古い値を返さない expire: 0 にする
+  revalidateTag(`free-${userId}-${locale}`, { expire: 0 });
+  revalidateTag(`my-page-${userId}`, { expire: 0 });
+  revalidateTag(`my-page-credits-${userId}`, { expire: 0 });
 }
 
 export async function postGachaSplitRoute(

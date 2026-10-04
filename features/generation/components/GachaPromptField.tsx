@@ -28,7 +28,10 @@ interface GachaPromptFieldProps {
   split?: {
     prompt: string;
     onApply: (body: string, field: string) => void;
+    onProposalOpenChange?: (open: boolean) => void;
   };
+  /** 「ガチャに分ける」の案を見せている間は、候補欄も書き換えさせない。 */
+  fieldLocked?: boolean;
 }
 
 /**
@@ -45,6 +48,7 @@ export function GachaPromptField({
   validation,
   disabled = false,
   split,
+  fieldLocked = false,
 }: GachaPromptFieldProps) {
   const t = useTranslations("free");
   const errorMessage =
@@ -78,6 +82,7 @@ export function GachaPromptField({
               prompt={split.prompt}
               field={value}
               onApply={split.onApply}
+              onProposalOpenChange={split.onProposalOpenChange}
               disabled={disabled}
             />
           ) : null}
@@ -88,7 +93,7 @@ export function GachaPromptField({
             id="gacha-prompt-field"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            disabled={disabled}
+            disabled={disabled || fieldLocked}
             rows={8}
             aria-invalid={errorMessage !== null}
             aria-describedby="gacha-prompt-hints"

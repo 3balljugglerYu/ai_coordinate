@@ -1550,6 +1550,7 @@ export const viMessages = {
     gachaSplitInsufficient: "Không đủ Percoin (cần {cost} Percoin).",
     gachaSplitNotSplittable: "Không tìm thấy danh sách ứng viên nên không thể tách. Không có Percoin nào bị dùng.",
     gachaSplitFailed: "Không thể tách. Vui lòng thử lại sau. Không có Percoin nào bị dùng.",
+    gachaSplitConnectionLost: "Kết nối bị gián đoạn. Hãy kiểm tra số dư và lịch sử để biết Percoin đã được dùng hay chưa.",
     gachaSplitProposalTitle: "Tìm thấy {count} ứng viên",
     gachaSplitProposalRemoved: "Các dòng bị xóa khỏi prompt chính (gạch đỏ)",
     gachaSplitProposalField: "Ứng viên cho ô gacha",

@@ -263,6 +263,8 @@ export function GenerationForm({
     isFree && !promptLocked && isAuthenticated && gachaPromptAvailable;
   const [isGachaEnabled, setIsGachaEnabled] = useState(false);
   const [gachaField, setGachaField] = useState(GACHA_FIELD_TEMPLATE);
+  // 「ガチャに分ける」の案を見せている間は、本文と候補欄を書き換えさせない
+  const [isSplitProposalOpen, setIsSplitProposalOpen] = useState(false);
   const isGachaActive = canUseGacha && isGachaEnabled;
   const gachaValidation = isGachaActive ? validateGachaField(gachaField) : null;
 
@@ -762,7 +764,12 @@ export function GenerationForm({
           }
           maxLength={promptMaxLength}
           invalid={!promptLocked && isPromptTooLong}
-          disabled={promptLocked || isGenerating || isTutorialInProgress}
+          disabled={
+            promptLocked ||
+            isGenerating ||
+            isTutorialInProgress ||
+            (isGachaActive && isSplitProposalOpen)
+          }
           containerProps={
             isFree ? undefined : { "data-tour": "tour-prompt-input" }
           }
@@ -786,9 +793,11 @@ export function GenerationForm({
                       setPrompt(nextBody);
                       setGachaField(nextField);
                     },
+                    onProposalOpenChange: setIsSplitProposalOpen,
                   }
                 : undefined
             }
+            fieldLocked={isSplitProposalOpen}
           />
         ) : null}
 

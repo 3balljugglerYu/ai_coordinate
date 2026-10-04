@@ -79,6 +79,7 @@ const SPLIT_KEYS = [
   "gachaSplitInsufficient",
   "gachaSplitNotSplittable",
   "gachaSplitFailed",
+  "gachaSplitConnectionLost",
   "gachaSplitProposalTitle",
   "gachaSplitProposalRemoved",
   "gachaSplitProposalField",

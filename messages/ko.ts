@@ -1549,6 +1549,7 @@ export const koMessages = {
     gachaSplitInsufficient: "페르코인이 부족합니다({cost} 페르코인 필요).",
     gachaSplitNotSplittable: "후보 목록을 찾지 못해 나누지 못했습니다. 페르코인은 사용되지 않았습니다.",
     gachaSplitFailed: "나누지 못했습니다. 잠시 후 다시 시도해 주세요. 페르코인은 사용되지 않았습니다.",
+    gachaSplitConnectionLost: "통신이 중간에 끊겼습니다. 페르코인 사용 여부는 잔액과 내역에서 확인해 주세요.",
     gachaSplitProposalTitle: "후보를 {count}개 찾았습니다",
     gachaSplitProposalRemoved: "본문에서 지우는 줄(빨간 줄)",
     gachaSplitProposalField: "가챠 칸에 들어갈 후보",

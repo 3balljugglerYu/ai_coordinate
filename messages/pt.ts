@@ -1553,6 +1553,7 @@ export const ptMessages = {
     gachaSplitInsufficient: "Percoins insuficientes (são necessários {cost}).",
     gachaSplitNotSplittable: "Nenhuma lista de candidatos foi encontrada, então não foi possível dividir. Nenhum Percoin foi usado.",
     gachaSplitFailed: "Não foi possível dividir. Tente novamente mais tarde. Nenhum Percoin foi usado.",
+    gachaSplitConnectionLost: "A conexão caiu. Confira o saldo e o histórico para ver se Percoins foram usados.",
     gachaSplitProposalTitle: "{count} candidatos encontrados",
     gachaSplitProposalRemoved: "Linhas removidas do prompt principal (riscadas em vermelho)",
     gachaSplitProposalField: "Candidatos para o campo gacha",

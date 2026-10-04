@@ -1505,6 +1505,7 @@ export const jaMessages = {
     gachaSplitInsufficient: "ペルコインが足りません（{cost}ペルコイン必要です）。",
     gachaSplitNotSplittable: "候補の並びが見つからず、分けられませんでした。ペルコインは使われていません。",
     gachaSplitFailed: "分けられませんでした。時間をおいてもう一度お試しください。ペルコインは使われていません。",
+    gachaSplitConnectionLost: "通信が途中で切れました。ペルコインが使われたかどうかは、残高と履歴でご確認ください。",
     gachaSplitProposalTitle: "候補が{count}個見つかりました",
     gachaSplitProposalRemoved: "本文から消す行（赤い線の行）",
     gachaSplitProposalField: "ガチャの欄に入る候補",

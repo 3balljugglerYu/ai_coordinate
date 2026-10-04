@@ -1549,6 +1549,7 @@ export const thMessages = {
     gachaSplitInsufficient: "เพอร์คอยน์ไม่พอ (ต้องใช้ {cost} เพอร์คอยน์)",
     gachaSplitNotSplittable: "ไม่พบรายการตัวเลือก จึงแยกไม่ได้ ไม่มีการใช้เพอร์คอยน์",
     gachaSplitFailed: "แยกไม่สำเร็จ กรุณาลองใหม่ภายหลัง ไม่มีการใช้เพอร์คอยน์",
+    gachaSplitConnectionLost: "การเชื่อมต่อขาดหาย กรุณาตรวจสอบยอดคงเหลือและประวัติว่ามีการใช้เพอร์คอยน์หรือไม่",
     gachaSplitProposalTitle: "พบตัวเลือก {count} รายการ",
     gachaSplitProposalRemoved: "บรรทัดที่จะลบออกจากพรอมต์หลัก (ขีดเส้นสีแดง)",
     gachaSplitProposalField: "ตัวเลือกที่จะใส่ในช่องกาชา",

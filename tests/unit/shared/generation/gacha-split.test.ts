@@ -60,15 +60,16 @@ describe("applyGachaSplit", () => {
   test("元の文に無い候補(AI が作り足したもの)は捨てる", () => {
     const result = applyGachaSplit(ORIGINAL, {
       removeLines: [3, 5, 6],
-      candidates: ["医師", "宇宙飛行士", "探偵"],
+      // 「宇宙飛行士」は元の文に無い。「アップロード」は残す行(L2)にしか無い
+      candidates: ["医師", "宇宙飛行士", "アップロード", "探偵"],
     });
 
     expect(result.ok && result.field).toBe("{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}");
   });
 
   test("候補の番号・記号・改行・重複はそろえる", () => {
-    const result = applyGachaSplit("1. 滑り台\n2. ブランコ\nジャングル\nジム", {
-      removeLines: [],
+    const result = applyGachaSplit("本文\n1. 滑り台\n2. ブランコ\nジャングル\nジム", {
+      removeLines: [2, 3, 4, 5],
       candidates: ["1. 滑り台", "・ブランコ", "ブランコ", "ジャングル\nジム"],
     });
 
@@ -76,6 +77,47 @@ describe("applyGachaSplit", () => {
     expect(result.ok && result.field).toBe(
       "{{GACHA}}\n1. 滑り台\n2. ブランコ\n3. ジャングル ジム\n{{/GACHA}}",
     );
+  });
+
+  test("一覧の印(全角の番号・中黒)は外す", () => {
+    const result = applyGachaSplit("本文\n1．医師\n2）探偵\n・写真家", {
+      removeLines: [2, 3, 4],
+      candidates: ["1．医師", "2）探偵", "・写真家"],
+    });
+
+    expect(result.ok && result.field).toBe(
+      "{{GACHA}}\n1. 医師\n2. 探偵\n3. 写真家\n{{/GACHA}}",
+    );
+  });
+
+  test("番号や記号で始まる候補そのものは削らない", () => {
+    const result = applyGachaSplit("本文\n2.5Dイラスト、3、4人の家族、-5℃の雪原", {
+      removeLines: [2],
+      candidates: ["2.5Dイラスト", "3、4人の家族", "-5℃の雪原"],
+    });
+
+    expect(result.ok && result.field).toBe(
+      "{{GACHA}}\n1. 2.5Dイラスト\n2. 3、4人の家族\n3. -5℃の雪原\n{{/GACHA}}",
+    );
+  });
+
+  test("候補の並びが本文に残る(消す行に候補が無い)なら分けない", () => {
+    // 「選んで」の行だけ消して、候補の並び(L6)を本文に残した出力
+    expect(
+      applyGachaSplit(ORIGINAL, {
+        removeLines: [3],
+        candidates: ["医師", "パティシエ", "天文学者", "探偵"],
+      }),
+    ).toEqual({ ok: false, reason: "no_candidates" });
+  });
+
+  test("元からある空行はそのまま、消した跡の空行だけ1つにする", () => {
+    const result = applyGachaSplit("A\n\n\nB\n\n医師、探偵\n\nC", {
+      removeLines: [6],
+      candidates: ["医師", "探偵"],
+    });
+
+    expect(result.ok && result.body).toBe("A\n\n\nB\n\nC");
   });
 
   test("候補が2つ未満なら分けられない", () => {

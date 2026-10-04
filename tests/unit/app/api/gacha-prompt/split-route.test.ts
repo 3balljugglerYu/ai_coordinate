@@ -11,6 +11,7 @@ jest.mock("next/cache", () => ({ revalidateTag: jest.fn() }));
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
 import type { NextRequest } from "next/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { postGachaSplitRoute } from "@/app/api/gacha-prompt/split/handler";
 
 const PROMPT = [
@@ -177,3 +178,54 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_FAILED");
   });
 });
+
+describe("POST /api/gacha-prompt/split の引き落とし(既定の deduct_free_percoins)", () => {
+  const createAdminClientMock = createAdminClient as jest.Mock;
+
+  function mockAdminRpc(result: { data?: unknown; error?: { message: string; code?: string } | null }) {
+    const rpc = jest.fn(async () => ({ data: result.data ?? null, error: result.error ?? null }));
+    createAdminClientMock.mockReturnValue({ rpc });
+    return rpc;
+  }
+
+  function depsWithoutDeduct() {
+    const { deps } = setup();
+    // deductFn を渡さず、既定の deduct_free_percoins を通す
+    return { ...deps, deductFn: undefined };
+  }
+
+  test("5ペルコインを reason=gacha_split で引き落とし、残高を返す", async () => {
+    const rpc = mockAdminRpc({ data: [{ balance: 95, from_promo: 5, from_paid: 0 }] });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt: PROMPT }), depsWithoutDeduct());
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { balance: number }).balance).toBe(95);
+    expect(rpc).toHaveBeenCalledWith("deduct_free_percoins", {
+      p_user_id: "user-1",
+      p_amount: 5,
+      p_metadata: expect.objectContaining({ reason: "gacha_split", source: "gacha_split_api" }),
+      p_related_generation_id: null,
+    });
+  });
+
+  test("残高不足で RPC が断ったら 400 で、結果を返さない", async () => {
+    mockAdminRpc({ error: { message: "insufficient balance", code: "P0001" } });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt: PROMPT }), depsWithoutDeduct());
+
+    expect(response.status).toBe(400);
+    expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_INSUFFICIENT_BALANCE");
+  });
+
+  test("ほかの理由で RPC が失敗したら 500 で、結果を返さない", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockAdminRpc({ error: { message: "boom", code: "XX000" } });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt: PROMPT }), depsWithoutDeduct());
+
+    expect(response.status).toBe(500);
+    expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_FAILED");
+  });
+});
+

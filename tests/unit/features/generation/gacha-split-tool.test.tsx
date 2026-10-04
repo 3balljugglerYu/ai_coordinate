@@ -28,6 +28,8 @@ const SPLIT = {
   balance: 95,
 };
 
+const mockProposalOpen = jest.fn();
+
 function Harness({ initialPrompt = ORIGINAL }: { initialPrompt?: string }) {
   const [prompt, setPrompt] = useState(initialPrompt);
   const [field, setField] = useState("{{GACHA}}\n1. \n{{/GACHA}}");
@@ -40,9 +42,13 @@ function Harness({ initialPrompt = ORIGINAL }: { initialPrompt?: string }) {
           setPrompt(body);
           setField(nextField);
         }}
+        onProposalOpenChange={mockProposalOpen}
       />
       <output data-testid="prompt">{prompt}</output>
       <output data-testid="field">{field}</output>
+      <button type="button" onClick={() => setPrompt(`${prompt}\n追記`)}>
+        edit-body
+      </button>
     </>
   );
 }
@@ -56,6 +62,7 @@ beforeEach(() => {
   fetchMock = jest.fn();
   Object.defineProperty(globalThis, "fetch", { value: fetchMock, writable: true, configurable: true });
   mockRefresh.mockClear();
+  mockProposalOpen.mockClear();
 });
 
 const splitButton = () =>
@@ -140,15 +147,55 @@ describe("GachaSplitTool", () => {
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
-  test("通信に失敗したら失敗の案内を出す", async () => {
+  // 返事が届かないときは、サーバーで引き落とし済みかもしれないので「使っていない」と言わない
+  test.each([
+    ["通信に失敗", () => fetchMock.mockRejectedValueOnce(new TypeError("network"))],
+    ["成功の返事が壊れている", () => respondWith(200, null)],
+  ])("%sしたら、残高を確かめる案内を出す", async (_label, arrange) => {
     const user = userEvent.setup();
-    fetchMock.mockRejectedValueOnce(new TypeError("network"));
+    arrange();
     render(<Harness />);
 
     await user.click(splitButton());
 
     await waitFor(() =>
-      expect(screen.getByTestId("gacha-split-error").textContent).toContain("gachaSplitFailed"),
+      expect(screen.getByTestId("gacha-split-error").textContent).toContain(
+        "gachaSplitConnectionLost",
+      ),
     );
+  });
+
+  test("案を見せている間だけ、呼び出し側へ書き換え止めを伝える", async () => {
+    const user = userEvent.setup();
+    respondWith(200, SPLIT);
+    const { unmount } = render(<Harness />);
+    await user.click(splitButton());
+    await screen.findByTestId("gacha-split-proposal");
+    expect(mockProposalOpen).toHaveBeenLastCalledWith(true);
+
+    await user.click(screen.getByRole("button", { name: "gachaSplitCancel" }));
+    expect(mockProposalOpen).toHaveBeenLastCalledWith(false);
+
+    // 案を開いたまま消えても(ガチャのチェックを外したなど)止めを解く
+    respondWith(200, SPLIT);
+    await user.click(splitButton());
+    await screen.findByTestId("gacha-split-proposal");
+    unmount();
+    expect(mockProposalOpen).toHaveBeenLastCalledWith(false);
+  });
+
+  test("採用のあとに本文を書き換えたら、元に戻すは出さない(書き換えを消さない)", async () => {
+    const user = userEvent.setup();
+    respondWith(200, SPLIT);
+    render(<Harness />);
+    await user.click(splitButton());
+    await screen.findByTestId("gacha-split-proposal");
+    await user.click(screen.getByRole("button", { name: "gachaSplitAccept" }));
+    expect(screen.getByRole("button", { name: "gachaSplitUndo" })).toBeTruthy();
+
+    await user.click(screen.getByRole("button", { name: "edit-body" }));
+
+    expect(screen.queryByRole("button", { name: "gachaSplitUndo" })).toBeNull();
+    expect(screen.getByTestId("prompt").textContent).toBe(`${SPLIT.body}\n追記`);
   });
 });

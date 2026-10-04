@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,11 @@ export interface GachaSplitToolProps {
   field: string;
   /** 本文と候補欄を書き換える。 */
   onApply: (body: string, field: string) => void;
+  /**
+   * 案を見せている間は true。呼び出し側は本文と候補欄を書き換えられないようにする
+   * （案は押したときの本文から作ってあり、採用すると途中の書き換えが消えるため）。
+   */
+  onProposalOpenChange?: (open: boolean) => void;
   disabled?: boolean;
 }
 
@@ -28,7 +33,9 @@ interface Proposal {
 type ErrorKey =
   | "gachaSplitInsufficient"
   | "gachaSplitNotSplittable"
-  | "gachaSplitFailed";
+  | "gachaSplitFailed"
+  // 返事が届かなかった。サーバーで引き落とし済みの可能性があるので「使っていない」と言わない
+  | "gachaSplitConnectionLost";
 
 function errorKeyFor(errorCode: unknown): ErrorKey {
   if (errorCode === "GACHA_SPLIT_INSUFFICIENT_BALANCE") return "gachaSplitInsufficient";
@@ -47,6 +54,7 @@ export function GachaSplitTool({
   prompt,
   field,
   onApply,
+  onProposalOpenChange,
   disabled = false,
 }: GachaSplitToolProps) {
   const t = useTranslations("free");
@@ -54,8 +62,24 @@ export function GachaSplitTool({
   const [pending, setPending] = useState(false);
   const [errorKey, setErrorKey] = useState<ErrorKey | null>(null);
   const [proposal, setProposal] = useState<Proposal | null>(null);
-  const [undo, setUndo] = useState<{ body: string; field: string } | null>(null);
+  const [undo, setUndo] = useState<{
+    before: { body: string; field: string };
+    applied: { body: string; field: string };
+  } | null>(null);
   const hasPrompt = prompt.trim().length > 0;
+  // 採用のあとに本文か候補欄を書き換えたら、元に戻すは出さない（書き換えを消してしまうため）
+  const canUndo =
+    undo !== null &&
+    prompt === undo.applied.body &&
+    field === undo.applied.field;
+
+  // ガチャのチェックを外すなどで消えたら、本文の書き換え止めを解く
+  useEffect(() => () => onProposalOpenChange?.(false), [onProposalOpenChange]);
+
+  const showProposal = (next: Proposal | null) => {
+    setProposal(next);
+    onProposalOpenChange?.(next !== null);
+  };
 
   const split = async () => {
     setPending(true);
@@ -72,11 +96,15 @@ export function GachaSplitTool({
         string,
         unknown
       > | null;
-      if (!response.ok || !data || typeof data.body !== "string" || typeof data.field !== "string") {
+      if (!response.ok) {
         setErrorKey(errorKeyFor(data?.errorCode));
         return;
       }
-      setProposal({
+      if (!data || typeof data.body !== "string" || typeof data.field !== "string") {
+        setErrorKey("gachaSplitConnectionLost");
+        return;
+      }
+      showProposal({
         original,
         body: data.body,
         field: data.field,
@@ -88,7 +116,7 @@ export function GachaSplitTool({
       // 使ったペルコインを残高の表示へ反映する
       router.refresh();
     } catch {
-      setErrorKey("gachaSplitFailed");
+      setErrorKey("gachaSplitConnectionLost");
     } finally {
       setPending(false);
     }
@@ -96,14 +124,17 @@ export function GachaSplitTool({
 
   const accept = () => {
     if (!proposal) return;
-    setUndo({ body: prompt, field });
+    setUndo({
+      before: { body: prompt, field },
+      applied: { body: proposal.body, field: proposal.field },
+    });
     onApply(proposal.body, proposal.field);
-    setProposal(null);
+    showProposal(null);
   };
 
   const revert = () => {
-    if (!undo) return;
-    onApply(undo.body, undo.field);
+    if (!canUndo || !undo) return;
+    onApply(undo.before.body, undo.before.field);
     setUndo(null);
   };
 
@@ -171,7 +202,7 @@ export function GachaSplitTool({
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setProposal(null)}
+              onClick={() => showProposal(null)}
             >
               {t("gachaSplitCancel")}
             </Button>
@@ -179,7 +210,7 @@ export function GachaSplitTool({
         </div>
       ) : null}
 
-      {undo ? (
+      {canUndo ? (
         <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600">
           <span role="status">{t("gachaSplitApplied")}</span>
           <Button type="button" size="sm" variant="ghost" onClick={revert}>

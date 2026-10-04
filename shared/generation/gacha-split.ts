@@ -89,10 +89,62 @@ function normalizeForMatch(text: string): string {
 }
 
 /**
+ * 候補の文字列を、元の文（消す行）にある形へそろえる。
+ *
+ * 一覧の番号や記号（「1. 」「・」「3）」）は外す。ただし「2.5Dイラスト」「3、4人の家族」
+ * 「-5℃の雪原」のように、番号や記号で始まる候補そのものは削らない。
+ * - 必ず一覧の印とみなすもの: 「・」「•」、数字＋「．」「）」「)」
+ * - 後ろに空白があるときだけ印とみなすもの: 数字＋「.」「、」、「-」「*」
+ * - それ以外は、付けたままで元の文に無いときだけ外してみる
+ */
+const LIST_MARK_PATTERN = /^\s*(?:\d+\s*[．）)]|[・•])\s*|^\s*(?:\d+\s*[.、]|[-*])\s+/;
+
+function resolveCandidateText(value: string, source: string): string | null {
+  const text = value.replace(/\s*\r?\n\s*/g, " ").trim();
+  if (!text) return null;
+  const inSource = (candidate: string) =>
+    candidate.length > 0 && source.includes(normalizeForMatch(candidate));
+  if (LIST_MARK_PATTERN.test(text)) {
+    const stripped = text.replace(LIST_MARK_PATTERN, "").trim();
+    return inSource(stripped) ? stripped : null;
+  }
+  if (inSource(text)) return text;
+  const loose = text.replace(LEADING_MARK_PATTERN, "").trim();
+  return loose !== text && inSource(loose) ? loose : null;
+}
+
+/**
+ * 消した行の跡にできた空行の連なりだけを1つにする（元からある空行はそのまま）。
+ */
+function joinKeptLines(lines: string[], removed: Set<number>): string {
+  const kept: string[] = [];
+  let removedSinceLastKept = false;
+  lines.forEach((line, index) => {
+    if (removed.has(index + 1)) {
+      removedSinceLastKept = true;
+      return;
+    }
+    const previous = kept[kept.length - 1];
+    if (
+      removedSinceLastKept &&
+      line.trim() === "" &&
+      previous !== undefined &&
+      previous.trim() === ""
+    ) {
+      return;
+    }
+    kept.push(line);
+    removedSinceLastKept = false;
+  });
+  return kept.join("\n").trim();
+}
+
+/**
  * AI の出力を確かめ、本文と候補欄を組み立てる。
  *
  * - 行番号は範囲内の整数だけを使う（範囲外が1つでもあれば壊れた出力とみなす）
- * - 候補は番号や記号を外し、空白をそろえたうえで元の文にあるものだけを残す
+ * - 候補は**消す行の中にある**ものだけを残す。本文に候補の並びが残ったままだと、
+ *   画像の AI が1番目に引っ張られる元の問題が直らないため（AI が作り足した候補もここで落ちる）
  * - 残った候補が2つ未満、または本文が空になるなら分けられない
  */
 export function applyGachaSplit(
@@ -122,20 +174,18 @@ export function applyGachaSplit(
     return { ok: false, reason: "invalid_output" };
   }
 
-  const normalizedOriginal = normalizeForMatch(original);
+  const removedSource = normalizeForMatch(
+    lines.filter((_, index) => removed.has(index + 1)).join("\n"),
+  );
   const kept: string[] = [];
   const seen = new Set<string>();
   for (const value of candidates) {
     if (typeof value !== "string") return { ok: false, reason: "invalid_output" };
     // 候補欄では1行=1候補なので、改行は空白にそろえる
-    const text = value
-      .replace(LEADING_MARK_PATTERN, "")
-      .replace(/\s*\r?\n\s*/g, " ")
-      .trim();
+    const text = resolveCandidateText(value, removedSource);
+    if (!text) continue;
     const key = normalizeForMatch(text);
-    if (!key || seen.has(key)) continue;
-    // 元の文に無い言葉は、AI が作り足したものとして捨てる
-    if (!normalizedOriginal.includes(key)) continue;
+    if (seen.has(key)) continue;
     seen.add(key);
     kept.push(text);
   }
@@ -144,12 +194,7 @@ export function applyGachaSplit(
     return { ok: false, reason: "no_candidates" };
   }
 
-  const body = lines
-    .filter((_, index) => !removed.has(index + 1))
-    .join("\n")
-    // 行を消した跡の空行は2つまでにそろえる
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  const body = joinKeptLines(lines, removed);
   if (!body) return { ok: false, reason: "empty_body" };
 
   const field = [
