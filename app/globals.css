@@ -1862,3 +1862,49 @@ html[lang="en"]:not(.ppr-locale-ready) .main-content {
     animation: none;
   }
 }
+
+/*
+ * スマホで文字を入力しているあいだ、ヘッダーと下のナビを画面の外へ滑らせて隠す
+ * (`MobileTypingTracker` が `<html data-mobile-typing="true">` を立てる)。
+ *
+ * キーボードを出すと画面の高さそのものが縮むブラウザでは、下に固定したナビが
+ * キーボードの真上へ押し上げられ、入力欄がとても狭くなっていた(2026-10-04 報告)。
+ *
+ * ⭐ 取り除かず(display: none にせず)滑らせて消す。取り除くと本文が上下にずれ、
+ * 打っている位置が動いてしまう。
+ * ⭐ `transform` ではなく個別の `translate` で動かす。生成中のバーは出るときの動き
+ * (`generation-progress-bar-enter`、fill-mode both)が transform を握ったままなので、
+ * transform で書くと上書きできない。translate は transform と別に重なる。
+ * ⭐ カーソルがあるのがそのバーの中の欄(ヘッダーの検索欄)なら、そのバーは隠さない
+ * (:focus-within)。隠すと打っている欄そのものが消える。
+ * ナビの背面に敷いた進み具合のバー(投稿中・生成中)も、ナビが無いと宙に浮くので一緒に隠す。
+ * 幅は下のナビが出ている lg 未満だけ。
+ */
+@media (max-width: 1023.98px) {
+  [data-app-chrome],
+  .post-progress-anchor,
+  .generation-progress-anchor {
+    transition: translate 160ms ease;
+  }
+
+  html[data-mobile-typing="true"] [data-app-chrome="header"]:not(:focus-within) {
+    translate: 0 -100%;
+    pointer-events: none;
+  }
+
+  html[data-mobile-typing="true"] [data-app-chrome="nav"]:not(:focus-within),
+  html[data-mobile-typing="true"] .post-progress-anchor:not(:focus-within),
+  html[data-mobile-typing="true"] .generation-progress-anchor:not(:focus-within) {
+    translate: 0 100%;
+    pointer-events: none;
+  }
+}
+
+@media (max-width: 1023.98px) and (prefers-reduced-motion: reduce) {
+  [data-app-chrome],
+  .post-progress-anchor,
+  .generation-progress-anchor {
+    transition: none;
+  }
+}
+

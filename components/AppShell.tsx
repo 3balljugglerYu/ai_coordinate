@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Suspense, useEffect } from "react";
 import { NavigationBar } from "@/components/NavigationBar";
+import { MobileTypingTracker } from "@/components/MobileTypingTracker";
 import { Footer } from "@/components/Footer";
 import { StickyHeader } from "@/features/posts/components/StickyHeader";
 import { AppSidebar } from "@/components/AppSidebar";
@@ -114,6 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Suspense fallback={<div className="h-16" />}>
         <NavigationBar />
       </Suspense>
+      <MobileTypingTracker />
       <Suspense fallback={null}>
         <TutorialTourProvider />
       </Suspense>
