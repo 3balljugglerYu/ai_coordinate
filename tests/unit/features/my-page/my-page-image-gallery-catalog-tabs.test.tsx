@@ -283,6 +283,90 @@ describe("マイページの生成画像一覧: カタログのタブ", () => {
 });
 
 /*
+  新しく生成したあと(サーバーから最新の一覧 initialImages が届いたとき)。
+  以前は「全カタログ × すべて」の控えだけを捨て、ほかの組み合わせ(例: すべて × My Catalog)は
+  前に読んだ古い一覧のまま出していた。ページを読み直すまで新しい画像が出なかった(2026-10-04 報告)。
+*/
+describe("マイページの生成画像一覧: 最新の一覧が届いたとき", () => {
+  const originalFlag = process.env.NEXT_PUBLIC_USER_STYLES_ENABLED;
+  const originalFetch = global.fetch;
+  afterAll(() => {
+    process.env.NEXT_PUBLIC_USER_STYLES_ENABLED = originalFlag;
+    global.fetch = originalFetch;
+  });
+
+  test("前に開いたカタログの一覧も読み直し、新しい画像を出す", async () => {
+    process.env.NEXT_PUBLIC_USER_STYLES_ENABLED = "true";
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce(mockFetchResponse([{ id: "old-mine" }]))
+      .mockResolvedValue(mockFetchResponse([{ id: "new-mine" }, { id: "old-mine" }]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const view = (images: GeneratedImageRecord[]) => (
+      <UserStylesAvailabilityProvider>
+        <MyPageImageGalleryClient initialImages={images} />
+      </UserStylesAvailabilityProvider>
+    );
+    const { rerender } = render(view(INITIAL_IMAGES));
+
+    // My Catalog を一度開く(古い一覧を控える)
+    fireEvent.click(screen.getByRole("tab", { name: "imageCatalogMyCatalog" }));
+    expect(await screen.findByText("old-mine")).toBeTruthy();
+    fireEvent.click(screen.getByRole("tab", { name: "imageCatalogAll" }));
+
+    // 生成のあと、サーバーから最新の一覧が届く
+    rerender(view([{ id: "new-mine" }, ...INITIAL_IMAGES] as unknown as GeneratedImageRecord[]));
+    expect(await screen.findByText("new-mine")).toBeTruthy();
+
+    // もう一度 My Catalog を開くと読み直し、新しい画像が出る
+    fireEvent.click(screen.getByRole("tab", { name: "imageCatalogMyCatalog" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(fetchMock.mock.calls[1][0]).toBe(
+      "/api/my-page/images?filter=all&limit=20&offset=0&catalog=my_catalog",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getAllByTestId("my-image-card").map((card) => card.textContent),
+      ).toEqual(["new-mine", "old-mine"]),
+    );
+  });
+
+  test("読み込み中に最新の一覧が届いたら、古い読み込みの結果を混ぜない", async () => {
+    process.env.NEXT_PUBLIC_USER_STYLES_ENABLED = "true";
+    let resolveOld: (value: unknown) => void = () => {};
+    const fetchMock = jest
+      .fn()
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveOld = resolve; }))
+      .mockResolvedValue(mockFetchResponse([{ id: "new-mine" }]));
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const view = (images: GeneratedImageRecord[]) => (
+      <UserStylesAvailabilityProvider>
+        <MyPageImageGalleryClient initialImages={images} />
+      </UserStylesAvailabilityProvider>
+    );
+    const { rerender } = render(view(INITIAL_IMAGES));
+    fireEvent.click(screen.getByRole("tab", { name: "imageCatalogMyCatalog" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    // 古い読み込みが終わる前に、最新の一覧が届く → 読み直す
+    rerender(view([...INITIAL_IMAGES] as GeneratedImageRecord[]));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText("new-mine")).toBeTruthy();
+
+    // 遅れて古い結果が届いても混ざらない
+    await act(async () => {
+      resolveOld(mockFetchResponse([{ id: "stale-mine" }]));
+    });
+    expect(screen.queryByText("stale-mine")).toBeNull();
+    expect(
+      screen.getAllByTestId("my-image-card").map((card) => card.textContent),
+    ).toEqual(["new-mine"]);
+  });
+});
+
+/*
   読み込みに失敗したとき。以前は失敗するとすぐ読み直し、失敗が続くあいだ問い合わせを
   繰り返していた。失敗したら止めて案内を出し、「もう一度読み込む」を押したときだけ読み直す。
   一般の利用者にも同じく効く(不具合の修正)。

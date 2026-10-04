@@ -144,6 +144,8 @@ export function MyPageImageGalleryClient({
   const [lists, setLists] = useState<Partial<Record<ListKey, ListState>>>({});
   // 同じ組み合わせを二重に読みに行かないための印(state の反映を待たずに効かせる)
   const inFlightKeysRef = useRef<Set<ListKey>>(new Set());
+  // 控えを捨てた回数。捨てる前に始まった読み込みの結果を、捨てた後の一覧へ混ぜないために使う
+  const listsGenerationRef = useRef(0);
 
   const defaultList = useCallback(
     (key: ListKey): ListState =>
@@ -176,14 +178,14 @@ export function MyPageImageGalleryClient({
 
   const isUnpostedTab = filter === "unposted";
 
-  // initialImages が変更されたら「すべて」の追加分をリセット
+  // サーバーから最新の一覧(initialImages)が届いたら、すべての組み合わせの控えを捨てる。
+  // 生成や投稿のあとに届く。「すべて × すべて」だけ捨てていたため、ほかの組み合わせ
+  // (例: すべて × My Catalog)はページを読み直すまで古い一覧のままだった(2026-10-04 報告)。
+  // 捨てた組み合わせは、開いたとき(指の端末では隣も)に読み直す。
   useEffect(() => {
-    setLists((prev) => {
-      if (!(INITIAL_LIST_KEY in prev)) return prev;
-      const next = { ...prev };
-      delete next[INITIAL_LIST_KEY];
-      return next;
-    });
+    listsGenerationRef.current += 1;
+    inFlightKeysRef.current.clear();
+    setLists((prev) => (Object.keys(prev).length === 0 ? prev : {}));
   }, [initialImages]);
 
   const { ref, inView } = useInView({
@@ -226,6 +228,7 @@ export function MyPageImageGalleryClient({
       if (state.hasLoaded && !state.hasMore) return;
 
       inFlightKeysRef.current.add(key);
+      const generation = listsGenerationRef.current;
       setLists((prev) => ({
         ...prev,
         [key]: { ...(prev[key] ?? defaultList(key)), isLoading: true },
@@ -240,6 +243,8 @@ export function MyPageImageGalleryClient({
           catalogParam,
           state.offset
         );
+        // 読んでいる間に控えを捨てていたら、この結果は古いので使わない
+        if (generation !== listsGenerationRef.current) return;
         setLists((prev) => {
           const current = prev[key] ?? defaultList(key);
           return {
@@ -255,6 +260,7 @@ export function MyPageImageGalleryClient({
           };
         });
       } catch (error) {
+        if (generation !== listsGenerationRef.current) return;
         console.error(`Failed to load images (${key}):`, error);
         setLists((prev) => ({
           ...prev,
@@ -265,7 +271,10 @@ export function MyPageImageGalleryClient({
           },
         }));
       } finally {
-        inFlightKeysRef.current.delete(key);
+        // 捨てた後に始まった同じ組み合わせの読み込みの印は消さない
+        if (generation === listsGenerationRef.current) {
+          inFlightKeysRef.current.delete(key);
+        }
       }
     },
     [lists, defaultList, fetchImages]
