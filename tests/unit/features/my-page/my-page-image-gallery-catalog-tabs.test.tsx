@@ -17,6 +17,11 @@ jest.mock("react-intersection-observer", () => ({
   useInView: () => ({ ref: jest.fn(), inView: false }),
 }));
 
+// 生成の完了の見張り(生成中の問い合わせ)はこのファイルでは扱わない
+jest.mock("@/features/my-page/hooks/useFinishedGenerationWatcher", () => ({
+  useFinishedGenerationWatcher: () => {},
+}));
+
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast: jest.fn() }),
 }));
