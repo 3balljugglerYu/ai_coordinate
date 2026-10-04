@@ -93,13 +93,20 @@ function Button({
       // native の disabled が付いているときは冗長になるので重ねない
       aria-disabled={pending && !disabled ? true : undefined}
       aria-busy={pending ? true : undefined}
-      onClick={(event) => {
-        if (pending) {
-          event.preventDefault()
-          return
-        }
-        onClick?.(event)
-      }}
+      /*
+        ⭐ 処理中でも呼び出し側の onClick も無いときは、関数を渡さない(undefined)。
+        このボタンはサーバーコンポーネントからも使われる(例: お問い合わせ・
+        アカウント画面の「戻る」= <Button asChild><Link/></Button>)。関数を常に
+        渡すと、サーバーからクライアントの Link へ関数を送れずページごと落ちる
+        (「Event handlers cannot be passed to Client Component props」)。
+      */
+      onClick={
+        pending
+          ? (event: React.MouseEvent<HTMLButtonElement>) => {
+              event.preventDefault()
+            }
+          : onClick
+      }
       {...props}
     >
       {content}

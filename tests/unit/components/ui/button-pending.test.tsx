@@ -76,3 +76,27 @@ describe("Button の pending", () => {
     expect(link.querySelector(".animate-spin")).toBeNull();
   });
 });
+
+/*
+  ⭐ サーバーコンポーネントからも使われる(お問い合わせ・アカウント画面の「戻る」=
+  <Button asChild><Link/></Button>)。処理中でも onClick も無いのに関数を子へ渡すと、
+  サーバーからクライアントの Link へ関数を送れず、ページごと
+  「Application error: a server-side exception」になる(2026-10-04 お問い合わせで発生)。
+*/
+describe("Button をサーバーコンポーネントから使うとき", () => {
+  it("処理中でも onClick も無いときは、子へ関数を渡さない", () => {
+    const received: Record<string, unknown>[] = [];
+    function Probe(props: Record<string, unknown>) {
+      received.push(props);
+      return <a data-testid="probe" href={props.href as string} />;
+    }
+
+    render(
+      <Button asChild>
+        <Probe href="/my-page" />
+      </Button>,
+    );
+
+    expect(received.at(-1)?.onClick).toBeUndefined();
+  });
+});
