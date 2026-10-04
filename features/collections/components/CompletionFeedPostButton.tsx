@@ -191,7 +191,7 @@ export function CompletionFeedPostButton({
         maxLength={140}
         rows={2}
         placeholder={`『${displayName ?? ""}』をコンプリート！`}
-        className="w-full resize-none rounded-lg border border-pink-100 bg-pink-50/40 px-3 py-2 text-sm text-stone-700 outline-none focus:border-pink-300"
+        className="w-full resize-none rounded-lg border border-pink-100 bg-pink-50/40 px-3 py-2 text-base md:text-sm text-stone-700 outline-none focus:border-pink-300"
       />
       <div className="mt-2 flex gap-2">
         <button

@@ -97,7 +97,7 @@ export function GachaPromptField({
             rows={8}
             aria-invalid={errorMessage !== null}
             aria-describedby="gacha-prompt-hints"
-            className="max-h-80 font-mono text-sm"
+            className="max-h-80 font-mono text-base md:text-sm"
           />
           <ul
             id="gacha-prompt-hints"
