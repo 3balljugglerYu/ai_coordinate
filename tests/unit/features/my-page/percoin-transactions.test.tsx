@@ -41,6 +41,7 @@ const messages: Record<string, string> = {
   transactionTypeCollectionCompletion: "コレクション完走報酬",
   transactionTypePromptUsageReward: "プロンプト利用の還元",
   transactionTypeStyleUsageReward: "スタイル利用の還元",
+  transactionTypeGachaSplit: "ガチャに分ける",
   expireAt: "有効期限: {date}",
   breakdownPrefix: "内訳: {details}",
   breakdownPeriodLimited: "期間限定 {amount}",
@@ -202,5 +203,41 @@ describe("PercoinTransactions", () => {
     );
 
     expect(screen.getByText("some_future_type")).toBeInTheDocument();
+  });
+  it("「ガチャに分ける」で使った分は、画像の生成と分けて表示する", () => {
+    const transactions: PercoinTransaction[] = [
+      {
+        id: "tx-gacha-split",
+        amount: -5,
+        transaction_type: "consumption",
+        metadata: { reason: "gacha_split", from_promo: 5, from_paid: 0 },
+        created_at: "2026-10-04T00:00:00.000Z",
+        expire_at: null,
+      },
+      {
+        id: "tx-generation",
+        amount: -10,
+        transaction_type: "consumption",
+        metadata: { reason: "image_generation", from_promo: 10, from_paid: 0 },
+        created_at: "2026-10-04T00:01:00.000Z",
+        expire_at: null,
+      },
+    ];
+
+    render(
+      <PercoinTransactions
+        transactions={transactions}
+        filter="all"
+        offset={0}
+        totalCount={2}
+        isLoading={false}
+        onFilterChange={jest.fn()}
+        onPageClick={jest.fn()}
+        onNextPage={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText("ガチャに分ける")).toBeTruthy();
+    expect(screen.getByText("生成利用")).toBeTruthy();
   });
 });

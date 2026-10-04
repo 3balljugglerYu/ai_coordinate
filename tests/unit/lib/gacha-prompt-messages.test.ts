@@ -71,3 +71,38 @@ describe("ガチャプロンプトの文言", () => {
     },
   );
 });
+
+const SPLIT_KEYS = [
+  "gachaSplitDescription",
+  "gachaSplitButton",
+  "gachaSplitPending",
+  "gachaSplitInsufficient",
+  "gachaSplitNotSplittable",
+  "gachaSplitFailed",
+  "gachaSplitConnectionLost",
+  "gachaSplitProposalTitle",
+  "gachaSplitProposalRemoved",
+  "gachaSplitProposalField",
+  "gachaSplitAccept",
+  "gachaSplitCancel",
+  "gachaSplitApplied",
+  "gachaSplitUndo",
+] as const;
+
+describe("「ガチャに分ける」の文言", () => {
+  test.each(locales)("%s: 空でなく、差し込みは {cost}/{count} だけ", async (locale) => {
+    const messages = await getAllMessages(locale);
+
+    for (const key of SPLIT_KEYS) {
+      const text = messages.free[key];
+      expect(text.trim()).not.toBe("");
+      expect(text.replace(/\{(cost|count)\}/g, "")).not.toMatch(/[{}]/);
+    }
+    // 使うペルコインの数をボタンと説明に出す
+    expect(messages.free.gachaSplitButton).toContain("{cost}");
+    expect(messages.free.gachaSplitDescription).toContain("{cost}");
+    expect(messages.free.gachaSplitProposalTitle).toContain("{count}");
+    expect(messages.credits.transactionTypeGachaSplit.trim()).not.toBe("");
+  });
+});
+

@@ -27,10 +27,13 @@ jest.mock("@/features/my-page/lib/server-api", () => ({
 }));
 const mockAvailable = jest.fn<boolean, [string | null | undefined]>();
 const mockGachaAvailable = jest.fn<boolean, [string | null | undefined]>();
+const mockGachaSplitAvailable = jest.fn<boolean, [string | null | undefined]>();
 jest.mock("@/lib/env", () => ({
   isUserStylesAvailable: (userId: string | null | undefined) => mockAvailable(userId),
   isGachaPromptAvailable: (userId: string | null | undefined) =>
     mockGachaAvailable(userId),
+  isGachaSplitAvailable: (userId: string | null | undefined) =>
+    mockGachaSplitAvailable(userId),
 }));
 jest.mock("@/components/RefreshOnMount", () => ({ RefreshOnMount: () => null }));
 jest.mock("@/features/credits/components/CachedGenerationPercoinBalance", () => ({
@@ -55,6 +58,7 @@ beforeEach(() => {
   mockGallery.mockClear();
   mockAvailable.mockReset();
   mockGachaAvailable.mockReset();
+  mockGachaSplitAvailable.mockReset();
   mockFormContainer.mockClear();
 });
 
@@ -102,4 +106,18 @@ describe("FreePageBody のガチャプロンプト", () => {
       });
     },
   );
+});
+
+describe("FreePageBody の「ガチャに分ける」道具", () => {
+  test.each([true, false])("道具の判定(%s)をそのままフォームへ渡す", async (split) => {
+    mockAvailable.mockReturnValue(true);
+    mockGachaAvailable.mockReturnValue(true);
+    mockGachaSplitAvailable.mockReturnValue(split);
+    render(await FreePageBody());
+
+    expect(mockGachaSplitAvailable).toHaveBeenCalledWith("user-1");
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({
+      gachaSplitAvailable: split,
+    });
+  });
 });

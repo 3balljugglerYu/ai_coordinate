@@ -114,6 +114,10 @@ jest.mock("@/features/generation/lib/source-image-to-file", () => ({
     mockFetchSourceImage(...args),
 }));
 
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: jest.fn() }),
+}));
+
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
@@ -290,5 +294,53 @@ describe("GenerationForm のガチャプロンプト", () => {
     await user.click(screen.getByRole("button", { name: "gachaReset" }));
 
     expect(field.value).toBe(GACHA_FIELD_TEMPLATE);
+  });
+
+  test("「ガチャに分ける」は道具が使える人だけ、ガチャの欄の中に出す", async () => {
+    const user = userEvent.setup();
+    const { unmount } = renderFreeForm(jest.fn());
+    await user.click(gachaCheckbox()!);
+    expect(screen.queryByTestId("gacha-split-tool")).toBeNull();
+    unmount();
+
+    renderFreeForm(jest.fn(), { gachaSplitAvailable: true });
+    expect(screen.queryByTestId("gacha-split-tool")).toBeNull();
+    await user.click(gachaCheckbox()!);
+    expect(screen.getByTestId("gacha-split-tool")).toBeTruthy();
+  });
+  test("「ガチャに分ける」の案を見せている間は、本文と候補欄を書き換えられない", async () => {
+    const user = userEvent.setup();
+    fetchMock.mockImplementation(async (url: string) =>
+      String(url).includes("/api/gacha-prompt/split")
+        ? {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              body: "本文",
+              field: CANDIDATES,
+              removedLines: [2],
+              candidateCount: 2,
+              balance: 95,
+            }),
+          }
+        : { ok: true, status: 200, json: async () => ({ items: [], nextOffset: null }) },
+    );
+    renderFreeForm(jest.fn(), { gachaSplitAvailable: true });
+    fireEvent.change(screen.getByLabelText("promptLabel"), {
+      target: { value: "本文\n例：パティシエ、消防士" },
+    });
+    await user.click(gachaCheckbox()!);
+
+    await user.click(screen.getByRole("button", { name: /gachaSplitButton/ }));
+    await screen.findByTestId("gacha-split-proposal");
+
+    expect(screen.getByLabelText("promptLabel")).toHaveProperty("disabled", true);
+    expect(screen.getByLabelText("gachaFieldLabel")).toHaveProperty("disabled", true);
+
+    await user.click(screen.getByRole("button", { name: "gachaSplitAccept" }));
+
+    expect(screen.getByLabelText("promptLabel")).toHaveProperty("disabled", false);
+    expect((screen.getByLabelText("promptLabel") as HTMLTextAreaElement).value).toBe("本文");
+    expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toBe(CANDIDATES);
   });
 });

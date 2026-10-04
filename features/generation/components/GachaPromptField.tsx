@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { GachaSplitTool } from "./GachaSplitTool";
 import {
   GACHA_CLOSE_TAG,
   GACHA_FIELD_TEMPLATE,
@@ -20,6 +21,17 @@ interface GachaPromptFieldProps {
   /** 入力欄の判定結果。チェックが外れているときは null。 */
   validation: GachaFieldValidation | null;
   disabled?: boolean;
+  /**
+   * 「ガチャに分ける」道具。渡されたときだけ出す(公開前は運営だけ)。
+   * prompt は今の本文、onApply は本文と候補欄の書き換え。
+   */
+  split?: {
+    prompt: string;
+    onApply: (body: string, field: string) => void;
+    onProposalOpenChange?: (open: boolean) => void;
+  };
+  /** 「ガチャに分ける」の案を見せている間は、候補欄も書き換えさせない。 */
+  fieldLocked?: boolean;
 }
 
 /**
@@ -35,6 +47,8 @@ export function GachaPromptField({
   onChange,
   validation,
   disabled = false,
+  split,
+  fieldLocked = false,
 }: GachaPromptFieldProps) {
   const t = useTranslations("free");
   const errorMessage =
@@ -63,6 +77,15 @@ export function GachaPromptField({
 
       {enabled ? (
         <div className="space-y-2 border-l-2 border-primary/40 pl-3">
+          {split ? (
+            <GachaSplitTool
+              prompt={split.prompt}
+              field={value}
+              onApply={split.onApply}
+              onProposalOpenChange={split.onProposalOpenChange}
+              disabled={disabled}
+            />
+          ) : null}
           <Label htmlFor="gacha-prompt-field" className="text-sm font-medium">
             {t("gachaFieldLabel")}
           </Label>
@@ -70,7 +93,7 @@ export function GachaPromptField({
             id="gacha-prompt-field"
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            disabled={disabled}
+            disabled={disabled || fieldLocked}
             rows={8}
             aria-invalid={errorMessage !== null}
             aria-describedby="gacha-prompt-hints"

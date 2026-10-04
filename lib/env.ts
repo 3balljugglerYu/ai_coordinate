@@ -107,6 +107,10 @@ const envSchema = {
   // カタログ刷新(NEXT_PUBLIC_USER_STYLES_ENABLED)とは別に公開する。'true' になるまでは運営のみ
   NEXT_PUBLIC_GACHA_PROMPT_ENABLED:
     process.env.NEXT_PUBLIC_GACHA_PROMPT_ENABLED,
+  // 「ガチャに分ける」道具の一般公開フラグ。ガチャとは別に公開する(2026-10-04 ユーザー決定)。
+  // 'true' になるまでは運営のみ
+  NEXT_PUBLIC_GACHA_SPLIT_ENABLED:
+    process.env.NEXT_PUBLIC_GACHA_SPLIT_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -228,6 +232,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED || "",
     NEXT_PUBLIC_GACHA_PROMPT_ENABLED:
       envSchema.NEXT_PUBLIC_GACHA_PROMPT_ENABLED || "",
+    NEXT_PUBLIC_GACHA_SPLIT_ENABLED:
+      envSchema.NEXT_PUBLIC_GACHA_SPLIT_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -577,6 +583,19 @@ export function isGachaPromptAvailable(
   userId: string | null | undefined
 ): boolean {
   return env.NEXT_PUBLIC_GACHA_PROMPT_ENABLED === "true" || isAdminViewer(userId);
+}
+
+/**
+ * 「ガチャに分ける」道具(1回5ペルコイン)を出してよいか。
+ *
+ * ガチャとは別のフラグ `NEXT_PUBLIC_GACHA_SPLIT_ENABLED` で公開する(2026-10-04 ユーザー決定)。
+ * 立つまでは運営だけ。道具はガチャの欄の中にあるので、実際に出すのは
+ * `isGachaPromptAvailable` も true のときだけ(呼び出し側で両方を見る)。
+ */
+export function isGachaSplitAvailable(
+  userId: string | null | undefined
+): boolean {
+  return env.NEXT_PUBLIC_GACHA_SPLIT_ENABLED === "true" || isAdminViewer(userId);
 }
 
 /**
