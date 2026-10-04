@@ -1531,7 +1531,7 @@ export const enMessages = {
     catalogCreateListed: "Create with a prompt you wrote yourself and post it with the before image shown, and it will appear in Everyone’s Catalog.",
     catalogCreateFollowers: "Your followers can generate with that prompt (you can keep the prompt private).",
     catalogCreateReward: "Each time a follower generates with it, you earn Percoins.",
-    // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。運営のみの段階では日本語以外は英語のまま、一般公開のときに訳す
+    // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Make it a gacha prompt",
     gachaFieldLabel: "Gacha",
     gachaHintRandom: "Each time you generate, one candidate is picked at random",
