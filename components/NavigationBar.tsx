@@ -231,7 +231,11 @@ export function NavigationBar() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur-sm shadow-lg lg:hidden safe-area-inset-bottom">
+      {/* data-app-chrome: スマホで入力しているあいだ隠す(MobileTypingTracker / globals.css) */}
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 border-t bg-white/95 backdrop-blur-sm shadow-lg lg:hidden safe-area-inset-bottom"
+        data-app-chrome="nav"
+      >
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-2">
           {/* ナビゲーションアイテム */}
           <div className="flex flex-1 items-center justify-around">

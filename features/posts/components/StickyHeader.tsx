@@ -365,7 +365,8 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     : headerBaseClassName;
 
   return (
-    <header ref={headerRef} className={headerClassName}>
+    // data-app-chrome: スマホで入力しているあいだ隠す(MobileTypingTracker / globals.css)
+    <header ref={headerRef} className={headerClassName} data-app-chrome="header">
       {/* モバイル版の検索ページ: 簡素化されたヘッダー（検索バーのみ） */}
       {searchAvailable && isSearchPage && (
         <div className="w-full px-4 py-3 flex items-center justify-center md:hidden">
