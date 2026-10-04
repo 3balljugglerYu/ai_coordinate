@@ -1545,7 +1545,7 @@ export const zhTwMessages = {
     gachaSplitButton: "用正文建立轉蛋（{cost} 個 Percoin）",
     gachaSplitPending: "正在拆分…",
     gachaSplitInsufficient: "Percoin 不足（需要 {cost} 個 Percoin）。",
-    gachaSplitNotSplittable: "找不到候選列表，無法拆分。未使用 Percoin。",
+    gachaSplitNotSplittable: "沒有用具體名稱寫出 2 個以上的候選，因此無法拆分。未使用 Percoin。像「例：醫師、甜點師、偵探」「例：溜滑梯、鞦韆、單槓」這樣補上候選後即可拆分。",
     gachaSplitFailed: "無法拆分。請稍後再試。未使用 Percoin。",
     gachaSplitConnectionLost: "連線中斷了。是否使用了 Percoin，請在餘額和紀錄中確認。",
     gachaSplitProposalTitle: "找到了 {count} 個候選",

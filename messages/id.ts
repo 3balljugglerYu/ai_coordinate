@@ -1550,7 +1550,7 @@ export const idMessages = {
     gachaSplitButton: "Buat gacha dari prompt ({cost} Percoin)",
     gachaSplitPending: "Sedang membagi…",
     gachaSplitInsufficient: "Percoin tidak cukup (perlu {cost} Percoin).",
-    gachaSplitNotSplittable: "Daftar kandidat tidak ditemukan, jadi tidak bisa dibagi. Percoin tidak terpakai.",
+    gachaSplitNotSplittable: "Tidak bisa dibagi karena belum ada minimal 2 kandidat yang ditulis dengan nama yang jelas. Percoin tidak terpakai. Tambahkan kandidat seperti \"contoh: dokter, pastry chef, detektif\" atau \"contoh: perosotan, ayunan, palang tunggal\" agar bisa dibagi.",
     gachaSplitFailed: "Gagal membagi. Silakan coba lagi nanti. Percoin tidak terpakai.",
     gachaSplitConnectionLost: "Koneksi terputus. Periksa saldo dan riwayat untuk melihat apakah Percoin terpakai.",
     gachaSplitProposalTitle: "Ditemukan {count} kandidat",

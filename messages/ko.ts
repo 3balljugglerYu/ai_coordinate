@@ -1547,7 +1547,7 @@ export const koMessages = {
     gachaSplitButton: "본문으로 가챠 만들기 ({cost} 페르코인)",
     gachaSplitPending: "나누는 중…",
     gachaSplitInsufficient: "페르코인이 부족합니다({cost} 페르코인 필요).",
-    gachaSplitNotSplittable: "후보 목록을 찾지 못해 나누지 못했습니다. 페르코인은 사용되지 않았습니다.",
+    gachaSplitNotSplittable: "고를 후보가 구체적인 이름으로 2개 이상 적혀 있지 않아 나누지 못했습니다. 페르코인은 사용되지 않았습니다. \"예: 의사, 파티시에, 탐정\", \"예: 미끄럼틀, 그네, 철봉\"처럼 후보를 적어 넣으면 나눌 수 있습니다.",
     gachaSplitFailed: "나누지 못했습니다. 잠시 후 다시 시도해 주세요. 페르코인은 사용되지 않았습니다.",
     gachaSplitConnectionLost: "통신이 중간에 끊겼습니다. 페르코인 사용 여부는 잔액과 내역에서 확인해 주세요.",
     gachaSplitProposalTitle: "후보를 {count}개 찾았습니다",

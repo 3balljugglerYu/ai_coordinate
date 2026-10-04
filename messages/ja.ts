@@ -1503,7 +1503,7 @@ export const jaMessages = {
     gachaSplitButton: "本文からガチャを作る（{cost}ペルコイン）",
     gachaSplitPending: "分けています…",
     gachaSplitInsufficient: "ペルコインが足りません（{cost}ペルコイン必要です）。",
-    gachaSplitNotSplittable: "候補の並びが見つからず、分けられませんでした。ペルコインは使われていません。",
+    gachaSplitNotSplittable: "選ぶ候補が、具体的な名前で2つ以上書かれていないため、分けられませんでした。ペルコインは使われていません。「例：医師、パティシエ、探偵」「例：滑り台、ブランコ、鉄棒」のように、候補を書き足すと分けられます。",
     gachaSplitFailed: "分けられませんでした。時間をおいてもう一度お試しください。ペルコインは使われていません。",
     gachaSplitConnectionLost: "通信が途中で切れました。ペルコインが使われたかどうかは、残高と履歴でご確認ください。",
     gachaSplitProposalTitle: "候補が{count}個見つかりました",
