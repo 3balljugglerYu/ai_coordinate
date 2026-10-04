@@ -292,8 +292,82 @@ describe("GenerationForm のガチャプロンプト", () => {
     fireEvent.change(field, { target: { value: "消してしまった" } });
 
     await user.click(screen.getByRole("button", { name: "gachaReset" }));
+    // 書いた内容があるので、上書きしてよいかを確かめてから戻す
+    await user.click(screen.getByRole("button", { name: "gachaOverwriteAccept" }));
 
     expect(field.value).toBe(GACHA_FIELD_TEMPLATE);
+  });
+
+  describe("「例を入れる」「空に戻す」の上書きの確認", () => {
+    async function openWithField(value: string) {
+      const user = userEvent.setup();
+      renderFreeForm(jest.fn());
+      await user.click(gachaCheckbox()!);
+      const field = screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement;
+      fireEvent.change(field, { target: { value } });
+      return { user, field };
+    }
+
+    test.each([
+      ["gachaReset", GACHA_FIELD_TEMPLATE],
+      ["gachaInsertExample", "{{GACHA}}\ngachaExample\n{{/GACHA}}"],
+    ])("書いた候補があるとき、%s は確かめるまで書き換えない", async (button, after) => {
+      const { user, field } = await openWithField(CANDIDATES);
+
+      await user.click(screen.getByRole("button", { name: button }));
+
+      expect(screen.getByTestId("gacha-overwrite-confirm").textContent).toContain(
+        "gachaOverwriteConfirm",
+      );
+      expect(field.value).toBe(CANDIDATES);
+
+      await user.click(screen.getByRole("button", { name: "gachaOverwriteAccept" }));
+
+      expect(field.value).toBe(after);
+      expect(screen.queryByTestId("gacha-overwrite-confirm")).toBeNull();
+    });
+
+    test("「やめる」なら書いた候補はそのまま", async () => {
+      const { user, field } = await openWithField(CANDIDATES);
+
+      await user.click(screen.getByRole("button", { name: "gachaReset" }));
+      await user.click(screen.getByRole("button", { name: "gachaOverwriteCancel" }));
+
+      expect(field.value).toBe(CANDIDATES);
+      expect(screen.queryByTestId("gacha-overwrite-confirm")).toBeNull();
+    });
+
+    test("雛形のまま・空のときは、確かめずにすぐ書き換える", async () => {
+      const user = userEvent.setup();
+      renderFreeForm(jest.fn());
+      await user.click(gachaCheckbox()!);
+      const field = screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement;
+
+      await user.click(screen.getByRole("button", { name: "gachaInsertExample" }));
+      expect(field.value).toBe("{{GACHA}}\ngachaExample\n{{/GACHA}}");
+      // 例を入れた後は内容があるので、空に戻すときは確かめる
+      await user.click(screen.getByRole("button", { name: "gachaReset" }));
+      expect(screen.getByTestId("gacha-overwrite-confirm")).toBeTruthy();
+      await user.click(screen.getByRole("button", { name: "gachaOverwriteCancel" }));
+
+      fireEvent.change(field, { target: { value: "  " } });
+      await user.click(screen.getByRole("button", { name: "gachaReset" }));
+      expect(screen.queryByTestId("gacha-overwrite-confirm")).toBeNull();
+      expect(field.value).toBe(GACHA_FIELD_TEMPLATE);
+    });
+  });
+
+  test("「ガチャに分ける」の道具は「例を入れる」「空に戻す」の下に出す", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn(), { gachaSplitAvailable: true });
+    await user.click(gachaCheckbox()!);
+
+    const reset = screen.getByRole("button", { name: "gachaReset" });
+    const tool = screen.getByTestId("gacha-split-tool");
+
+    expect(
+      reset.compareDocumentPosition(tool) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   test("「ガチャに分ける」は道具が使える人だけ、ガチャの欄の中に出す", async () => {
@@ -336,6 +410,9 @@ describe("GenerationForm のガチャプロンプト", () => {
 
     expect(screen.getByLabelText("promptLabel")).toHaveProperty("disabled", true);
     expect(screen.getByLabelText("gachaFieldLabel")).toHaveProperty("disabled", true);
+    // 欄を丸ごと書き換えるボタンも、案を見せている間は押せない
+    expect(screen.getByRole("button", { name: "gachaReset" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "gachaInsertExample" })).toHaveProperty("disabled", true);
 
     await user.click(screen.getByRole("button", { name: "gachaSplitAccept" }));
 
