@@ -26,6 +26,9 @@
 | 優先順位 | ① 計画書 → ② 今のガチャを早めに一般公開 → ③ **プロンプトを本文とガチャに分ける道具**（ほぼ変えない） → その後に選択・入力の枠 |
 | ガチャの公開 | カタログ刷新とは別のフラグ `NEXT_PUBLIC_GACHA_PROMPT_ENABLED` で行う（2026-10-03 決定・実装済み） |
 | 見た目のイメージ | 2026-10-04 に HTML の見本で確認し「おおよそ合っている」 |
+| 分ける道具の料金 | **1回 5 ペルコイン**（2026-10-04 決定）。分けられたときだけ引き落とす |
+| 分ける道具の公開 | **道具専用のフラグ** `NEXT_PUBLIC_GACHA_SPLIT_ENABLED`（2026-10-04 決定）。運営で試してから公開する |
+| Phase 0 | 全言語の翻訳（#676）をマージ済み。公開はユーザーが環境変数を登録して行う |
 
 ## コードベース調査結果
 
@@ -98,7 +101,7 @@ flowchart LR
 | REQ-104 | The system shall show the removed lines and the candidates side by side with the original, and shall replace the fields only when the user accepts. | 消す行と候補を元の文と並べて見せ、ユーザーが「採用」したときだけ入力欄を書き換える。「元に戻す」で採用前に戻せる |
 | REQ-105 | If the AI output cannot be parsed into at least two candidates, the system shall tell the user that the prompt could not be split and leave the fields unchanged. | AI の出力から候補が2つ以上取れなければ「分けられませんでした」と伝え、入力欄は変えない |
 | REQ-106 | The system shall not store the prompt sent to the tool, and shall not write it to logs. | 道具に送った本文は保存せず、ログにも出さない |
-| REQ-107 | The system shall limit the number of uses per user per day. | 1人1日あたりの使用回数に上限を設ける（数は未決。下の「決めること」） |
+| REQ-107 | When the split succeeds, the system shall deduct 5 Percoins; when the split fails or the balance is below 5, the system shall not deduct any Percoins. | 分けられたときだけ5ペルコインを引き落とす。分けられないとき・残高が5未満のときは引き落とさない |
 
 ### Phase 2〜5（概要。各 Phase の着手時に詳しく書く）
 
@@ -232,11 +235,11 @@ flowchart LR
 - Phase 1: 道具は入力欄を書き換えるだけで、データベースを変えない。PR を revert すればよい
 - Phase 3: 神コレは入れ替え前のプリセットを `.local/backups` に保存してから入れ替える
 
-## 決めること
+## 決めたこと（2026-10-04）
 
-1. **分ける道具の回数とペルコイン**: 無料で1日◯回 / 1回◯ペルコイン。原価は画像生成よりずっと小さい（実装時に単価表で見積もる）
-2. **分ける道具の公開**: ガチャと同じフラグで同時に出すか、道具だけ運営で先に試すか
-3. **Phase 0 の公開日**: 翻訳と実機確認が済み次第でよいか
+1. 分ける道具は 1回 5 ペルコイン（分けられたときだけ）
+2. 分ける道具は専用のフラグ `NEXT_PUBLIC_GACHA_SPLIT_ENABLED` で、運営で試してから公開する
+3. Phase 0 は翻訳（#676）のマージ後、ユーザーが環境変数を登録して公開する
 
 ## 使用スキル
 
