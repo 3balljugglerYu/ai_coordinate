@@ -52,8 +52,9 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
           paymentTitle: "支払い方法とタイミング",
           paymentDescription: "決済手段と課金のタイミングです。",
           paymentMethod: "支払方法",
-          // 2026-10-05: PayPay を追加(Stripe 経由)。PayPay は継続課金に対応しないので、サブスクはカードのみ
-          paymentMethodValue: "クレジットカード、PayPay（Stripe）※サブスクリプションはクレジットカードのみ",
+          // 2026-10-05: PayPay は Stripe で審査中。有効になるまでは「近日対応予定」と書く(書いてあるのに使えない、を避ける)。
+          // 有効になったら「クレジットカード、PayPay（Stripe）※サブスクリプションはクレジットカードのみ」へ
+          paymentMethodValue: "クレジットカード（Stripe）※PayPay は近日対応予定",
           paymentTiming: "支払時期",
           paymentTimingValue: "購入手続き完了時に即時決済されます。",
           additionalFees: "追加手数料",
@@ -74,7 +75,7 @@ export default async function PurchasePage({ searchParams }: PurchasePageProps) 
           paymentTitle: "Payment method and timing",
           paymentDescription: "Supported payment methods and when charges are applied.",
           paymentMethod: "Payment method",
-          paymentMethodValue: "Credit card, PayPay (Stripe) *Subscriptions accept credit cards only",
+          paymentMethodValue: "Credit card (Stripe) *PayPay coming soon",
           paymentTiming: "Charge timing",
           paymentTimingValue: "Payment is processed immediately when the purchase is completed.",
           additionalFees: "Additional fees",
