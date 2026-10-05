@@ -2,7 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
-import { GACHA_MAX_CANDIDATES, GACHA_MIN_CANDIDATES } from "@/shared/generation/gacha-prompt";
+import {
+  GACHA_MAX_BLOCKS,
+  GACHA_MAX_CANDIDATES,
+  GACHA_MIN_CANDIDATES,
+} from "@/shared/generation/gacha-prompt";
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 import { cn } from "@/lib/utils";
 import { AnnotatedShot } from "./AnnotatedShot";
@@ -155,7 +159,12 @@ export async function GachaGuide() {
   };
 
   // 候補の数の案内は、生成画面と同じ上限・下限を使う(上限を変えたときに案内が古くならないように)
-  const candidateRange = { min: GACHA_MIN_CANDIDATES, max: GACHA_MAX_CANDIDATES };
+  const candidateRange = {
+    min: GACHA_MIN_CANDIDATES,
+    max: GACHA_MAX_CANDIDATES,
+    // ランダムに選ぶもの(囲み)の種類の数。一般の利用者の上限(2026-10-06 ユーザー指示で案内に追加)
+    blocks: GACHA_MAX_BLOCKS,
+  };
 
   const jobs = {
     flightAttendant: t("jobFlightAttendant"),
