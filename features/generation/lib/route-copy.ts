@@ -7,6 +7,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "このプロンプトは現在ご利用できません",
     generationFailed: "生成の準備に失敗しました。もう一度お試しください。",
     invalidRequest: "不正なリクエストです",
+    gachaTooManyCandidates: (max: number) => `ガチャの候補は${max}個までです。`,
     sourceStockNotFound: "ストック画像が見つかりません",
     sourceStockFetchFailed: "ストック画像の取得に失敗しました",
     sourceImageTooLarge:
@@ -60,6 +61,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "This prompt is currently unavailable",
     generationFailed: "Failed to prepare the generation. Please try again.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `A gacha can have up to ${max} candidates.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -113,6 +115,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "이 프롬프트는 현재 사용할 수 없습니다",
     generationFailed: "생성 준비에 실패했습니다. 다시 시도해 주세요.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `가챠 후보는 ${max}개까지입니다.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -166,6 +169,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "该提示词当前不可用",
     generationFailed: "生成准备失败，请重试。",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `扭蛋候选最多 ${max} 个。`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -219,6 +223,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "此提示詞目前無法使用",
     generationFailed: "生成準備失敗，請重試。",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `轉蛋候選最多 ${max} 個。`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -272,6 +277,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Este prompt no está disponible por ahora",
     generationFailed: "No se pudo preparar la generación. Inténtalo de nuevo.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Un gacha puede tener hasta ${max} candidatos.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -325,6 +331,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Este prompt não está disponível no momento",
     generationFailed: "Falha ao preparar a geração. Tente novamente.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Um gacha pode ter até ${max} candidatos.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -378,6 +385,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Ce prompt n'est pas disponible pour le moment",
     generationFailed: "Échec de la préparation de la génération. Veuillez réessayer.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Un gacha peut contenir jusqu’à ${max} candidats.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -431,6 +439,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Dieser Prompt ist derzeit nicht verfügbar",
     generationFailed: "Die Generierung konnte nicht vorbereitet werden. Bitte erneut versuchen.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Ein Gacha kann bis zu ${max} Kandidaten enthalten.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -484,6 +493,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Questo prompt non è attualmente disponibile",
     generationFailed: "Preparazione della generazione non riuscita. Riprova.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Un gacha può avere fino a ${max} candidati.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -537,6 +547,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Prompt ini sedang tidak tersedia",
     generationFailed: "Gagal menyiapkan pembuatan. Silakan coba lagi.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Gacha dapat berisi maksimal ${max} kandidat.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -590,6 +601,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "พรอมป์นี้ยังไม่พร้อมใช้งาน",
     generationFailed: "เตรียมการสร้างไม่สำเร็จ กรุณาลองอีกครั้ง",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `กาชามีตัวเลือกได้สูงสุด ${max} รายการ`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -643,6 +655,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "Prompt này hiện không khả dụng",
     generationFailed: "Không thể chuẩn bị tạo ảnh. Vui lòng thử lại.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `Mỗi gacha có tối đa ${max} ứng viên.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -696,6 +709,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "यह प्रॉम्प्ट अभी उपलब्ध नहीं है",
     generationFailed: "जनरेशन तैयार करने में विफल। कृपया पुनः प्रयास करें।",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `एक गाचा में अधिकतम ${max} उम्मीदवार हो सकते हैं।`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -749,6 +763,7 @@ export const generationRouteCopy = {
     derivedSourceUnavailable: "هذا الموجّه غير متاح حاليًا",
     generationFailed: "فشل تحضير التوليد. حاول مرة أخرى.",
     invalidRequest: "The request is invalid.",
+    gachaTooManyCandidates: (max: number) => `يمكن أن تحتوي الجاتشا على ${max} مرشحين كحد أقصى.`,
     sourceStockNotFound: "The stock image could not be found.",
     sourceStockFetchFailed: "Failed to load the stock image.",
     sourceImageTooLarge: "The image is too large. Compress it to 10MB or smaller and try again.",
@@ -802,6 +817,8 @@ export const generationRouteCopy = {
     authRequired: string;
     /** 派生生成の原作が利用できないとき。理由は出さない（ADR-005） */
     derivedSourceUnavailable: string;
+    /** ガチャの囲みの候補が上限を超えたとき（画面では送れないが、直接送られたとき用） */
+    gachaTooManyCandidates: (max: number) => string;
     /** 派生生成の準備に失敗したとき（検証RPCが失敗など） */
     generationFailed: string;
     invalidRequest: string;

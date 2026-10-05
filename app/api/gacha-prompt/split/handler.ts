@@ -136,6 +136,10 @@ export async function postGachaSplitRoute(
 
   const result = applyGachaSplit(prompt, output);
   if (!result.ok) {
+    // 候補が上限(10個)を超えるときは、減らせば分けられることを画面で伝える
+    if (result.reason === "too_many_candidates") {
+      return jsonError("Too many candidates", "GACHA_SPLIT_TOO_MANY_CANDIDATES", 422);
+    }
     return jsonError("Could not split", "GACHA_SPLIT_NOT_SPLITTABLE", 422);
   }
 

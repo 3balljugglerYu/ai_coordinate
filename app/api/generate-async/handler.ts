@@ -41,6 +41,10 @@ import {
   type AsyncGenerationJobRepository,
 } from "@/features/generation/lib/async-generation-job-repository";
 import { jsonError } from "@/lib/api/json-error";
+import {
+  exceedsGachaCandidateLimit,
+  GACHA_MAX_CANDIDATES,
+} from "@/shared/generation/gacha-prompt";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { DEFAULT_LOCALE } from "@/i18n/config";
@@ -152,6 +156,15 @@ export async function postGenerateAsyncRoute(
       creatorLooksMode,
       outputAspectRatioMode,
     } = validationResult.data;
+    // ガチャの候補の上限(10個)。画面では超えると送れないが、直接送られたときもここで止める。
+    // 見るのは本人が送ったプロンプトだけ(ほかの人のプロンプトで作る派生生成は prompt を持たない)
+    if (prompt && exceedsGachaCandidateLimit(prompt)) {
+      return jsonError(
+        copy.gachaTooManyCandidates(GACHA_MAX_CANDIDATES),
+        "GENERATION_GACHA_TOO_MANY_CANDIDATES",
+        400
+      );
+    }
     // 未送信のときは「その人が使えるモデル」を選ぶ(段階公開中に自分のゲートで
     // 弾かれないようにするため)。明示送信された 2.5 は従来どおりゲートで判定する。
     const effectiveModel =

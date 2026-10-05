@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { GACHA_MAX_CANDIDATES } from "@/shared/generation/gacha-prompt";
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 
 export interface GachaSplitToolProps {
@@ -33,6 +34,8 @@ interface Proposal {
 type ErrorKey =
   | "gachaSplitInsufficient"
   | "gachaSplitNotSplittable"
+  // 候補が上限を超えた。ペルコインは使っていない
+  | "gachaSplitTooMany"
   | "gachaSplitFailed"
   // 返事が届かなかった。サーバーで引き落とし済みの可能性があるので「使っていない」と言わない
   | "gachaSplitConnectionLost";
@@ -40,6 +43,7 @@ type ErrorKey =
 function errorKeyFor(errorCode: unknown): ErrorKey {
   if (errorCode === "GACHA_SPLIT_INSUFFICIENT_BALANCE") return "gachaSplitInsufficient";
   if (errorCode === "GACHA_SPLIT_NOT_SPLITTABLE") return "gachaSplitNotSplittable";
+  if (errorCode === "GACHA_SPLIT_TOO_MANY_CANDIDATES") return "gachaSplitTooMany";
   return "gachaSplitFailed";
 }
 
@@ -161,7 +165,7 @@ export function GachaSplitTool({
 
       {errorKey ? (
         <p className="text-xs text-red-600" role="alert" data-testid="gacha-split-error">
-          {t(errorKey, { cost: GACHA_SPLIT_PERCOIN_COST })}
+          {t(errorKey, { cost: GACHA_SPLIT_PERCOIN_COST, max: GACHA_MAX_CANDIDATES })}
         </p>
       ) : null}
 

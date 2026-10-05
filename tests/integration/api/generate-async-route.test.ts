@@ -569,6 +569,25 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         });
       };
 
+      test("ガチャの候補が上限(10個)を超えるプロンプトは、ジョブを作らず 400 で断る", async () => {
+        const candidates = Array.from({ length: 11 }, (_, i) => `${i + 1}. 職業${i + 1}`);
+        const response = await runFree({
+          prompt: ["猫", "{{GACHA}}", ...candidates, "{{/GACHA}}"].join("\n"),
+        });
+        expect(response.status).toBe(400);
+        expect((await readJson(response)).errorCode).toBe("GENERATION_GACHA_TOO_MANY_CANDIDATES");
+        expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      });
+
+      test("ガチャの候補がちょうど10個なら受け付ける", async () => {
+        const candidates = Array.from({ length: 10 }, (_, i) => `${i + 1}. 職業${i + 1}`);
+        const response = await runFree({
+          prompt: ["猫", "{{GACHA}}", ...candidates, "{{/GACHA}}"].join("\n"),
+        });
+        expect(response.status).toBe(200);
+        expect(jobRepository.createImageJob).toHaveBeenCalledTimes(1);
+      });
+
       test("free + 明示比率は generation_metadata.outputAspectRatioMode に保存する", async () => {
         const response = await runFree({ outputAspectRatioMode: "3:4" });
         expect(response.status).toBe(200);

@@ -24,6 +24,15 @@ export const GACHA_FIELD_TEMPLATE = `${GACHA_OPEN_TAG}\n1. \n2. \n3. \n4. \n${GA
 export const GACHA_MIN_CANDIDATES = 2;
 
 /**
+ * 1つの囲みに書ける候補の上限(2026-10-05 ユーザー決定。全員10個)。
+ *
+ * 候補の数は生成の費用を変えない。上限は、あとで課金(サブスク)で広げる余地を残すために
+ * 公開前から付けておく(公開後に絞ると、作ったガチャが使えなくなるため)。
+ * 判定は作った人のプロンプトだけに掛ける。ほかの人のプロンプトで生成する派生生成は見ない。
+ */
+export const GACHA_MAX_CANDIDATES = 10;
+
+/**
  * 選ばれた候補の前に Worker が必ず付ける前置き。
  *
  * 書く人に前置きを任せると、候補の1行だけが何の指定か分からないまま届く。
@@ -75,7 +84,7 @@ export function parseGachaCandidates(blockBody: string): GachaCandidate[] {
 
 export type GachaFieldValidation =
   | { ok: true; candidateCount: number }
-  | { ok: false; reason: "missing_block" | "too_few_candidates" };
+  | { ok: false; reason: "missing_block" | "too_few_candidates" | "too_many_candidates" };
 
 /** ガチャの入力欄が送れる状態かを判定する（画面側の案内に使う）。 */
 export function validateGachaField(field: string): GachaFieldValidation {
@@ -85,7 +94,24 @@ export function validateGachaField(field: string): GachaFieldValidation {
   if (counts.some((count) => count < GACHA_MIN_CANDIDATES)) {
     return { ok: false, reason: "too_few_candidates" };
   }
+  if (counts.some((count) => count > GACHA_MAX_CANDIDATES)) {
+    return { ok: false, reason: "too_many_candidates" };
+  }
   return { ok: true, candidateCount: counts[0] };
+}
+
+/**
+ * 送られてきたプロンプトに、候補が上限を超える囲みがあるか(サーバー側の確認に使う)。
+ *
+ * 画面は上限を超えると送れないようにしてあるが、直接送られた場合に備えて
+ * 生成の受付でも止める。囲みが無いプロンプト・候補が少ない囲みは、ここでは止めない
+ * (少ない側は Worker が今までどおり扱う)。
+ */
+export function exceedsGachaCandidateLimit(prompt: string): boolean {
+  for (const block of prompt.matchAll(GACHA_BLOCK_PATTERN)) {
+    if (parseGachaCandidates(block[1]).length > GACHA_MAX_CANDIDATES) return true;
+  }
+  return false;
 }
 
 /** 本文の末尾にガチャの入力欄を付け、保存・送信する1つのプロンプトにする。 */

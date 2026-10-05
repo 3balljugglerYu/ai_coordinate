@@ -252,6 +252,30 @@ describe("GenerationForm のガチャプロンプト", () => {
     expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
   });
 
+  test("候補が上限(10個)を超えると、上限を知らせて送れない", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(gachaCheckbox()!);
+
+    const field = screen.getByLabelText("gachaFieldLabel");
+    const lines = Array.from({ length: 11 }, (_, i) => `${i + 1}. 職業${i + 1}`);
+    fireEvent.change(field, { target: { value: ["{{GACHA}}", ...lines, "{{/GACHA}}"].join("\n") } });
+    fireEvent.blur(field);
+
+    expect(screen.getByTestId("gacha-prompt-error").textContent).toBe("gachaTooManyCandidates");
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("error");
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+
+    fireEvent.change(field, {
+      target: { value: ["{{GACHA}}", ...lines.slice(0, 10), "{{/GACHA}}"].join("\n") },
+    });
+    expect(screen.getByTestId("gacha-prompt-error").textContent).toBe("");
+    await waitFor(() =>
+      expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false),
+    );
+  });
+
   test("欄から離れると、候補が足りないことを赤字で知らせる", async () => {
     const user = userEvent.setup();
     renderFreeForm(jest.fn());

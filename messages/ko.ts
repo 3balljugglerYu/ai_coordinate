@@ -1544,6 +1544,7 @@ export const koMessages = {
     gachaOverwriteCancel: "돌아가기",
     gachaMissingBlock: "{open}과 {close} 표시가 없습니다. \"초기화\"로 되돌릴 수 있습니다.",
     gachaTooFewCandidates: "후보를 2개 이상 입력해 주세요(내용이 없는 줄은 세지 않습니다).",
+    gachaTooManyCandidates: "후보는 {max}개까지 입력해 주세요.",
     gachaExample: "1. 파티시에. 흰 조리복과 조리모. 양과자점 주방에서 케이크에 생크림을 짜고 있다\n2. 소방관. 주황색 방화복과 헬멧. 소방차 앞에서 호스를 잡고 있다\n3. 플로리스트. 베이지색 앞치마. 길모퉁이 꽃집에서 부케에 리본을 묶고 있다\n4. 역무원. 남색 제복과 제모. 역 승강장에서 손가락으로 가리키며 안전을 확인하고 있다",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 서포트 기능",
@@ -1552,6 +1553,7 @@ export const koMessages = {
     gachaSplitPending: "나누는 중…",
     gachaSplitInsufficient: "페르코인이 부족합니다({cost} 페르코인 필요).",
     gachaSplitNotSplittable: "고를 후보가 구체적인 이름으로 2개 이상 적혀 있지 않아 나누지 못했습니다. 페르코인은 사용되지 않았습니다. \"예: 의사, 파티시에, 탐정\", \"예: 미끄럼틀, 그네, 철봉\"처럼 후보를 적어 넣으면 나눌 수 있습니다.",
+    gachaSplitTooMany: "후보가 {max}개보다 많아 나누지 못했습니다. 페르코인은 사용되지 않았습니다. 후보를 {max}개 이하로 줄이면 나눌 수 있습니다.",
     gachaSplitFailed: "나누지 못했습니다. 잠시 후 다시 시도해 주세요. 페르코인은 사용되지 않았습니다.",
     gachaSplitConnectionLost: "통신이 중간에 끊겼습니다. 페르코인 사용 여부는 잔액과 내역에서 확인해 주세요.",
     gachaSplitProposalTitle: "후보를 {count}개 찾았습니다",

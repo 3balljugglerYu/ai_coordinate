@@ -91,6 +91,20 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(deductFn).not.toHaveBeenCalled();
   });
 
+  test("候補が上限(10個)を超えたら 422 で、引き落とさない(減らせば分けられると伝える)", async () => {
+    const many = Array.from({ length: 11 }, (_, i) => `職業${i + 1}`);
+    const prompt = `職業の制服を着て働く姿。\n職業は、${many.join("、")}のどれか。`;
+    const { deps, deductFn } = setup({
+      callModelFn: (async () => ({ removeLines: [2], candidates: many })) as never,
+    });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt }), deps);
+
+    expect(response.status).toBe(422);
+    expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_TOO_MANY_CANDIDATES");
+    expect(deductFn).not.toHaveBeenCalled();
+  });
+
   test("AI が失敗したら 502 で、引き落とさない", async () => {
     const { deps, deductFn } = setup({
       callModelFn: (async () => {

@@ -1,6 +1,10 @@
 import {
+  GACHA_CLOSE_TAG,
   GACHA_FIELD_TEMPLATE,
+  GACHA_MAX_CANDIDATES,
+  GACHA_OPEN_TAG,
   GACHA_PICK_LEAD,
+  exceedsGachaCandidateLimit,
   composeGachaPrompt,
   expandGachaPrompt,
   parseGachaCandidates,
@@ -138,5 +142,41 @@ describe("expandGachaPrompt", () => {
       seen.add(expandGachaPrompt(prompt).picks[0].number);
     }
     expect([...seen].sort()).toEqual([1, 2, 3]);
+  });
+});
+
+describe("候補の上限(10個)", () => {
+  const block = (count: number) =>
+    [GACHA_OPEN_TAG, ...Array.from({ length: count }, (_, i) => `${i + 1}. 候補${i + 1}`), GACHA_CLOSE_TAG].join("\n");
+
+  test("上限は10個", () => {
+    expect(GACHA_MAX_CANDIDATES).toBe(10);
+  });
+
+  test("ちょうど10個は送れる", () => {
+    expect(validateGachaField(block(10))).toEqual({ ok: true, candidateCount: 10 });
+    expect(exceedsGachaCandidateLimit(`本文\n\n${block(10)}`)).toBe(false);
+  });
+
+  test("11個は上限を超える", () => {
+    expect(validateGachaField(block(11))).toEqual({ ok: false, reason: "too_many_candidates" });
+    expect(exceedsGachaCandidateLimit(`本文\n\n${block(11)}`)).toBe(true);
+  });
+
+  test("中身のない番号だけの行は数えない", () => {
+    const field = block(10).replace(GACHA_CLOSE_TAG, `11. \n12. \n${GACHA_CLOSE_TAG}`);
+    expect(validateGachaField(field)).toEqual({ ok: true, candidateCount: 10 });
+  });
+
+  test("囲みが複数あるときは、どれか1つでも超えていれば止める", () => {
+    expect(exceedsGachaCandidateLimit(`${block(3)}\n${block(11)}`)).toBe(true);
+    expect(validateGachaField(`${block(3)}\n${block(11)}`)).toEqual({
+      ok: false,
+      reason: "too_many_candidates",
+    });
+  });
+
+  test("囲みの無いプロンプトは止めない", () => {
+    expect(exceedsGachaCandidateLimit("ふつうのプロンプト")).toBe(false);
   });
 });

@@ -21,6 +21,7 @@ import { GachaSplitTool } from "./GachaSplitTool";
 import {
   GACHA_CLOSE_TAG,
   GACHA_FIELD_TEMPLATE,
+  GACHA_MAX_CANDIDATES,
   GACHA_OPEN_TAG,
   type GachaFieldValidation,
 } from "@/shared/generation/gacha-prompt";
@@ -67,7 +68,9 @@ export function GachaPromptField({
     validation && !validation.ok
       ? validation.reason === "missing_block"
         ? t("gachaMissingBlock", { open: GACHA_OPEN_TAG, close: GACHA_CLOSE_TAG })
-        : t("gachaTooFewCandidates")
+        : validation.reason === "too_many_candidates"
+          ? t("gachaTooManyCandidates", { max: GACHA_MAX_CANDIDATES })
+          : t("gachaTooFewCandidates")
       : null;
 
   /*
