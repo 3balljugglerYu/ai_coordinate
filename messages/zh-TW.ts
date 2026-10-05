@@ -1532,6 +1532,7 @@ export const zhTwMessages = {
     catalogCreateReward: "每當追蹤者生成一次，你就會獲得 Percoin 回饋。<link>了解詳情</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "設為轉蛋提示詞",
+    gachaGuideLink: "使用方法",
     gachaFieldLabel: "設定轉蛋內容",
     gachaHintRandom: "每次生成時，會從轉蛋內容中隨機選出一個",
     gachaInsertExample: "插入範例",

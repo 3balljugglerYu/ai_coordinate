@@ -1538,6 +1538,7 @@ export const esMessages = {
     catalogCreateReward: "Cada vez que un seguidor genera con él, recibes Percoins. <link>Más información</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Convertir en prompt gacha",
+    gachaGuideLink: "Cómo usarlo",
     gachaFieldLabel: "Configurar elementos del gacha",
     gachaHintRandom: "Cada vez que generas, se elige al azar uno de los elementos del gacha",
     gachaInsertExample: "Insertar ejemplo",

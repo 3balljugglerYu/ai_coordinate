@@ -1532,6 +1532,7 @@ export const zhCnMessages = {
     catalogCreateReward: "每当关注者生成一次，你就会获得 Percoin 回馈。<link>了解详情</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "设为扭蛋提示词",
+    gachaGuideLink: "使用方法",
     gachaFieldLabel: "设置扭蛋内容",
     gachaHintRandom: "每次生成时，会从扭蛋内容中随机选出一个",
     gachaInsertExample: "插入示例",

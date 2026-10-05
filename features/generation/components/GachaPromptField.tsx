@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -129,6 +130,18 @@ export function GachaPromptField({
         >
           {t("gachaToggleLabel")}
         </Label>
+        {/*
+          使い方の紹介ページ(2026-10-06 ユーザー指示)。書きかけの入力を失わないよう新しいタブで開く。
+          ラベルの外に置く(中に入れると、押したときにチェックも切り替わるため)
+        */}
+        <Link
+          href="/guide/gacha"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 whitespace-nowrap text-xs font-medium text-pink-600 underline underline-offset-2 hover:text-pink-700"
+        >
+          {t("gachaGuideLink")}
+        </Link>
       </div>
 
       {enabled ? (

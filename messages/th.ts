@@ -1534,6 +1534,7 @@ export const thMessages = {
     catalogCreateReward: "ทุกครั้งที่ผู้ติดตามสร้างภาพ คุณจะได้รับเพอร์คอยน์คืน <link>ดูรายละเอียด</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "ทำเป็นพรอมต์กาชา",
+    gachaGuideLink: "วิธีใช้",
     gachaFieldLabel: "ตั้งค่าของในกาชา",
     gachaHintRandom: "ทุกครั้งที่สร้างภาพ ระบบจะสุ่มเลือกของในกาชา 1 รายการ",
     gachaInsertExample: "ใส่ตัวอย่าง",

@@ -1538,6 +1538,7 @@ export const frMessages = {
     catalogCreateReward: "Chaque fois qu’un abonné génère avec, vous recevez des Percoins. <link>En savoir plus</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "En faire un prompt gacha",
+    gachaGuideLink: "Mode d’emploi",
     gachaFieldLabel: "Définir les éléments du gacha",
     gachaHintRandom: "À chaque génération, un des éléments du gacha est tiré au hasard",
     gachaInsertExample: "Insérer un exemple",

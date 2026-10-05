@@ -1490,6 +1490,7 @@ export const jaMessages = {
     catalogCreateReward: "フォロワーが生成するたびに、ペルコインが還元されます。<link>詳しくはこちら</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "ガチャプロンプトにする",
+    gachaGuideLink: "使い方はこちら",
     gachaFieldLabel: "ガチャの中身を設定",
     gachaHintRandom: "生成のたびに、ガチャの中身から1つがランダムに選ばれます",
     gachaInsertExample: "例を入れる",
