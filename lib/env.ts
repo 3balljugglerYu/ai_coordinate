@@ -573,6 +573,16 @@ export function isGptImage25Available(
 }
 
 /**
+ * ガチャプロンプトが一般公開されているか(運営かどうかは見ない)。
+ *
+ * ⭐ sitemap はこちらだけを見ること。閲覧者のいない sitemap で運営を含む判定を使うと、
+ * 公開前の URL が検索エンジンに載って 404 へ誘導してしまう(isUserStylesPubliclyEnabled と同じ理由)。
+ */
+export function isGachaPromptPubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_GACHA_PROMPT_ENABLED === "true";
+}
+
+/**
  * ガチャプロンプト(カタログをつくるの「ガチャプロンプトにする」)を出してよいか。
  *
  * カタログ刷新とは別に公開する(2026-10-03 ユーザー決定)。公開フラグ
@@ -582,7 +592,7 @@ export function isGptImage25Available(
 export function isGachaPromptAvailable(
   userId: string | null | undefined
 ): boolean {
-  return env.NEXT_PUBLIC_GACHA_PROMPT_ENABLED === "true" || isAdminViewer(userId);
+  return isGachaPromptPubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**
