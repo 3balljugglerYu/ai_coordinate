@@ -52,7 +52,9 @@ export default async function TokushohoPage() {
           feeLabel: "追加手数料",
           feeValue: "なし",
           paymentMethod: "支払方法",
-          paymentMethodValue: "クレジットカード（Stripe）",
+          // 2026-10-05: PayPay は Stripe で審査中。有効になるまでは「近日対応予定」と書く(書いてあるのに使えない、を避ける)。
+          // 有効になったら「クレジットカード、PayPay（Stripe）※サブスクリプションはクレジットカードのみ」へ
+          paymentMethodValue: "クレジットカード（Stripe）※PayPay は近日対応予定",
           paymentTiming: "支払時期",
           paymentTimingValue: "クレジットカードは商品・サービス購入時に即時決済されます。",
           deliveryTiming: "商品の提供時期",
@@ -89,7 +91,7 @@ export default async function TokushohoPage() {
           feeLabel: "Extra fees",
           feeValue: "None",
           paymentMethod: "Payment method",
-          paymentMethodValue: "Credit card (Stripe)",
+          paymentMethodValue: "Credit card (Stripe) *PayPay coming soon",
           paymentTiming: "Payment timing",
           paymentTimingValue: "Credit cards are charged immediately when a purchase is completed.",
           deliveryTiming: "Service availability",
