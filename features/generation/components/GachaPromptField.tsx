@@ -119,14 +119,10 @@ export function GachaPromptField({
             aria-describedby="gacha-prompt-hints"
             className="max-h-80 font-mono text-base md:text-sm"
           />
-          <ul
-            id="gacha-prompt-hints"
-            className="list-disc space-y-0.5 pl-5 text-xs text-gray-500"
-          >
-            <li>{t("gachaHintRandom")}</li>
-            <li>{t("gachaHintPerCandidate")}</li>
-            <li>{t("gachaHintBody")}</li>
-          </ul>
+          {/* ヒントは1つだけなので箇条書きにしない(2026-10-05 に2つを削除) */}
+          <p id="gacha-prompt-hints" className="text-xs text-gray-500">
+            {t("gachaHintRandom")}
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"

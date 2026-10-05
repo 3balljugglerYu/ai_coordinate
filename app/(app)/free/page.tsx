@@ -1,11 +1,12 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import type { Metadata } from "next";
 import { getLocale, getTranslations } from "next-intl/server";
 import { GenerationFormSkeleton } from "@/features/generation/components/GenerationFormSkeleton";
 import { FreePageBody } from "@/features/generation/components/FreePageBody";
 import { FreePageHeader } from "@/features/generation/components/FreePageHeader";
 import { FreePageFrame } from "@/features/generation/components/FreePageFrame";
-import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 import { isUserStylesPubliclyEnabled } from "@/lib/env";
 
@@ -38,6 +39,8 @@ export default async function FreePage() {
   // 静的ヘッダ(タイトル/説明)に必要なのは翻訳のみ。データ取得・認証は
   // 下の <Suspense> 配下に隔離し、ヘッダを即時描画する。
   const t = await getTranslations("free");
+  const localeValue = await getLocale();
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
 
   return (
     // 背景と上の余白は FreePageFrame が出し分ける(一般の利用者は今のまま、刷新後は白)
@@ -51,9 +54,29 @@ export default async function FreePage() {
         <FreePageHeader
           title={t("pageTitle")}
           description={t("pageDescription")}
-          catalogListed={t("catalogCreateListed")}
+          // 「みんなのカタログ」は /user-styles へのリンクにする(2026-10-05 依頼)
+          catalogListed={t.rich("catalogCreateListed", {
+            link: (chunks) => (
+              <Link
+                href={localizePublicPath("/user-styles", locale)}
+                className="font-medium text-pink-600 underline underline-offset-2 hover:text-pink-700"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
           catalogFollowers={t("catalogCreateFollowers")}
-          catalogReward={t("catalogCreateReward")}
+          // 「詳しくはこちら」はクリエイター還元の紹介ページへ(2026-10-05 依頼。紹介ページは日本語のみ)
+          catalogReward={t.rich("catalogCreateReward", {
+            link: (chunks) => (
+              <Link
+                href="/creator-rewards"
+                className="font-medium text-pink-600 underline underline-offset-2 hover:text-pink-700"
+              >
+                {chunks}
+              </Link>
+            ),
+          })}
         />
 
         {/* ユーザー依存の本体(認証・残高・生成フォーム・生成結果)をストリーミング */}

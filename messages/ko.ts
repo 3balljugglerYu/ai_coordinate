@@ -87,6 +87,7 @@ export const koMessages = {
     promptVisibilityPrivateHint:
       "프롬프트는 아무에게도 보이지 않습니다. 팔로워는 내용을 보지 않고 같은 프롬프트로 생성만 할 수 있습니다. 팔로워 외에는 생성할 수 없습니다.",
     showBeforeImageHint: "원본 이미지를 함께 보여주면 프롬프트가 무엇을 바꾸는지 전달하기 쉬워집니다.",
+    showBeforeImageCatalogNotice: "생성 전 이미지를 표시하지 않으면 ‘모두의 카탈로그’에 올라가지 않습니다.",
     promptVisibilityRetractWarning: "비공개로 바꿔도 이미 보였거나 복사된 내용은 되돌릴 수 없습니다.",
     sourcePromptCardTitle: "이 프롬프트로 만들기",
     sourcePromptCardTitleDerived: "원작 프롬프트로 만들기",
@@ -1528,15 +1529,13 @@ export const koMessages = {
     loginCtaDescription: "로그인하면 자유로운 지시로 내 캐릭터의 일러스트를 생성할 수 있습니다.",
     loginCtaAction: "로그인 / 회원가입",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "직접 쓴 프롬프트로 만들고, 변경 전 이미지도 함께 표시해서 게시하면 모두의 카탈로그에 올라갑니다.",
-    catalogCreateFollowers: "회원님의 팔로워는 그 프롬프트로 생성할 수 있습니다(프롬프트는 비공개로 두어도 됩니다).",
-    catalogCreateReward: "팔로워가 생성할 때마다 페르코인이 지급됩니다.",
+    catalogCreateListed: "여기서 생성해 게시하면 <link>‘모두의 카탈로그’</link>에 올라갑니다.",
+    catalogCreateFollowers: "팔로워는 그 프롬프트로 생성할 수 있습니다(프롬프트는 비공개 그대로 OK!).",
+    catalogCreateReward: "팔로워가 생성할 때마다 페르코인이 환원됩니다. <link>자세히 보기</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "가챠 프롬프트로 만들기",
     gachaFieldLabel: "가챠",
     gachaHintRandom: "생성할 때마다 후보 중 하나가 무작위로 선택됩니다",
-    gachaHintPerCandidate: "후보마다 달라지는 내용(의상·장소·동작 등)은 해당 후보 줄에 모두 적어 주세요",
-    gachaHintBody: "본문은 \"지정된 직업\"처럼 어느 후보에도 맞는 표현으로 적어 주세요",
     gachaInsertExample: "예시 넣기",
     gachaReset: "초기화",
     gachaOverwriteConfirmTitle: "가챠 칸을 덮어씁니다",
@@ -1547,7 +1546,8 @@ export const koMessages = {
     gachaTooFewCandidates: "후보를 2개 이상 입력해 주세요(내용이 없는 줄은 세지 않습니다).",
     gachaExample: "1. 파티시에. 흰 조리복과 조리모. 양과자점 주방에서 케이크에 생크림을 짜고 있다\n2. 소방관. 주황색 방화복과 헬멧. 소방차 앞에서 호스를 잡고 있다\n3. 플로리스트. 베이지색 앞치마. 길모퉁이 꽃집에서 부케에 리본을 묶고 있다\n4. 역무원. 남색 제복과 제모. 역 승강장에서 손가락으로 가리키며 안전을 확인하고 있다",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "ChatGPT 등에서 쓴 프롬프트를 본문에 붙여 넣으면, AI가 후보 목록을 찾아 본문과 가챠로 나눕니다. 나누는 데 성공했을 때만 {cost} 페르코인을 사용합니다.",
+    gachaSplitTitle: "🪄 서포트 기능",
+    gachaSplitDescription: "‘생성할 내용’에 적힌 프롬프트를 AI가 본문과 가챠로 나눕니다. 나누는 데 성공했을 때만 {cost} 페르코인을 사용합니다.",
     gachaSplitButton: "본문으로 가챠 만들기 ({cost} 페르코인)",
     gachaSplitPending: "나누는 중…",
     gachaSplitInsufficient: "페르코인이 부족합니다({cost} 페르코인 필요).",

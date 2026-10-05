@@ -84,6 +84,7 @@ export const jaMessages = {
     promptVisibilityPrivateHint:
       "プロンプトは誰にも見せません。フォロワーは中身を見ずに、同じプロンプトで生成だけできます。フォロワー以外は生成できません。",
     showBeforeImageHint: "元画像も表示することで、どんな変化が起きるか伝わりやすくなります。",
+    showBeforeImageCatalogNotice: "生成前の画像を表示しないと、「みんなのカタログ」には並びません。",
     promptVisibilityRetractWarning: "非公開に変えても、すでに見られた内容やコピーされた内容は取り消せません。",
     sourcePromptCardTitle: "このプロンプトで作る",
     sourcePromptCardTitleDerived: "原作のプロンプトで作る",
@@ -1484,15 +1485,13 @@ export const jaMessages = {
     loginCtaDescription: "ログインすると、自由な指示でうちの子のイラストを生成できます。",
     loginCtaAction: "ログイン / 新規登録",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "自分でプロンプトを書いてつくり、生成前の画像も表示して投稿すると、みんなのカタログに並びます。",
-    catalogCreateFollowers: "あなたのフォロワーは、そのプロンプトで生成できます（プロンプトは非公開のままでもOK）。",
-    catalogCreateReward: "フォロワーが生成するたびに、ペルコインが還元されます。",
+    catalogCreateListed: "ここで生成し投稿すると<link>「みんなのカタログ」</link>に並びます。",
+    catalogCreateFollowers: "フォロワーは、そのプロンプトで生成できます（プロンプトは非公開のままでOK！）。",
+    catalogCreateReward: "フォロワーが生成するたびに、ペルコインが還元されます。<link>詳しくはこちら</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "ガチャプロンプトにする",
     gachaFieldLabel: "ガチャ",
     gachaHintRandom: "生成のたびに、候補から1つがランダムに選ばれます",
-    gachaHintPerCandidate: "候補ごとに変えたいこと（服装・場所・動作など）は、その候補の行にまとめて書いてください",
-    gachaHintBody: "本文では「指定された職業」のように、どの候補でも通じる書き方にしてください",
     gachaInsertExample: "例を入れる",
     gachaReset: "空に戻す",
     gachaOverwriteConfirmTitle: "ガチャの欄を上書きします",
@@ -1503,7 +1502,8 @@ export const jaMessages = {
     gachaTooFewCandidates: "候補を2つ以上入れてください（中身のない行は数えません）。",
     gachaExample: "1. パティシエ。白いコックコートとコック帽。洋菓子店の厨房で、ケーキにクリームを絞っている\n2. 消防士。オレンジ色の防火服とヘルメット。消防車の前で、ホースを構えている\n3. 花屋。ベージュのエプロン。街角の花屋で、ブーケにリボンを結んでいる\n4. 駅員。紺色の制服と制帽。駅のホームで、指差し確認をしている",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "ChatGPT などで書いたプロンプトを本文に貼ると、AIが候補の並びを見つけて、本文とガチャに分けます。分けられたときだけ{cost}ペルコインを使います。",
+    gachaSplitTitle: "🪄 サポート機能",
+    gachaSplitDescription: "『生成したい内容』に記載されたプロンプトから、AIが本文とガチャに分けます。分けられたときだけ{cost}ペルコインを使います。",
     gachaSplitButton: "本文からガチャを作る（{cost}ペルコイン）",
     gachaSplitPending: "分けています…",
     gachaSplitInsufficient: "ペルコインが足りません（{cost}ペルコイン必要です）。",

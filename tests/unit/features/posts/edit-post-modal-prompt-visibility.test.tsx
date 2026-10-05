@@ -225,3 +225,21 @@ describe("送信内容", () => {
     expect("prompt_visibility" in payload).toBe(false);
   });
 });
+
+// ⭐ 編集でも、生成前の画像を外したら「みんなのカタログ」に並ばないことを伝える(2026-10-05)
+describe("生成前の画像を外したときの案内", () => {
+  test("じゆうモードの原本: 外していれば案内を出し、入れれば消す", () => {
+    renderModal({ currentShowBeforeImage: false });
+    expect(screen.getByTestId("show-before-image-catalog-notice")).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "生成前画像も表示する" }));
+
+    expect(screen.queryByTestId("show-before-image-catalog-notice")).toBeNull();
+  });
+
+  test("ほかの人のプロンプトで作った投稿には出さない(もともと並ばない)", () => {
+    renderModal({ currentShowBeforeImage: false, sourcePostId: "src-1" });
+    expect(screen.queryByTestId("show-before-image-catalog-notice")).toBeNull();
+  });
+});
+

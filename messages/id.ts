@@ -87,6 +87,7 @@ export const idMessages = {
     promptVisibilityPrivateHint:
       "Prompt kamu tidak ditampilkan ke siapa pun. Pengikut bisa membuat dengan prompt yang sama tanpa melihat isinya. Hanya pengikut yang bisa membuat dengan prompt ini.",
     showBeforeImageHint: "Menampilkan gambar asli memudahkan orang melihat apa yang diubah prompt.",
+    showBeforeImageCatalogNotice: "Jika gambar sebelum tidak ditampilkan, postingan tidak akan tampil di Katalog semua orang.",
     promptVisibilityRetractWarning: "Mengubah ke privat tidak membatalkan apa yang sudah dilihat atau disalin.",
     sourcePromptCardTitle: "Buat dengan prompt ini",
     sourcePromptCardTitleDerived: "Buat dengan prompt aslinya",
@@ -1531,15 +1532,13 @@ export const idMessages = {
     loginCtaDescription: "Masuk untuk menghasilkan ilustrasi karaktermu dengan instruksimu sendiri.",
     loginCtaAction: "Masuk / Daftar",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "Buat dengan prompt tulisanmu sendiri, lalu posting dengan gambar sebelum ikut ditampilkan — karyamu akan muncul di Katalog semua orang.",
-    catalogCreateFollowers: "Pengikutmu bisa membuat dengan prompt tersebut (prompt boleh tetap privat).",
-    catalogCreateReward: "Setiap kali pengikut membuat dengan prompt itu, kamu dapat Percoin.",
+    catalogCreateListed: "Buat di sini lalu posting, dan karyamu akan tampil di <link>Katalog semua orang</link>.",
+    catalogCreateFollowers: "Pengikutmu bisa membuat gambar dengan prompt itu (prompt tetap privat pun tidak masalah!).",
+    catalogCreateReward: "Setiap kali pengikut membuat gambar dengannya, kamu mendapat Percoin. <link>Selengkapnya</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Jadikan prompt gacha",
     gachaFieldLabel: "Gacha",
     gachaHintRandom: "Setiap kali membuat gambar, satu kandidat dipilih secara acak",
-    gachaHintPerCandidate: "Tulis semua yang berbeda untuk tiap kandidat (pakaian, tempat, aksi, dll.) di baris kandidat tersebut",
-    gachaHintBody: "Di prompt utama, gunakan kalimat yang cocok untuk semua kandidat, misalnya \"profesi yang ditentukan\"",
     gachaInsertExample: "Masukkan contoh",
     gachaReset: "Atur ulang",
     gachaOverwriteConfirmTitle: "Kolom gacha akan ditimpa",
@@ -1550,7 +1549,8 @@ export const idMessages = {
     gachaTooFewCandidates: "Masukkan minimal 2 kandidat (baris kosong tidak dihitung).",
     gachaExample: "1. Pastry chef. Jaket dan topi koki putih. Di dapur toko kue, sedang menghias kue dengan krim\n2. Pemadam kebakaran. Seragam tahan api oranye dan helm. Di depan mobil pemadam, memegang selang\n3. Florist. Celemek krem. Di toko bunga di sudut jalan, sedang mengikat pita pada buket\n4. Petugas stasiun. Seragam dan topi biru tua. Di peron stasiun, sedang menunjuk untuk memeriksa keselamatan",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "Tempel prompt yang ditulis untuk ChatGPT dll. ke kolom utama. AI akan menemukan daftar kandidat dan membaginya menjadi prompt utama dan gacha. {cost} Percoin hanya dipakai jika berhasil dibagi.",
+    gachaSplitTitle: "🪄 Fitur bantuan",
+    gachaSplitDescription: "AI membagi prompt yang ditulis di “Apa yang ingin dibuat” menjadi prompt utama dan gacha. {cost} Percoin hanya dipakai jika berhasil dibagi.",
     gachaSplitButton: "Buat gacha dari prompt ({cost} Percoin)",
     gachaSplitPending: "Sedang membagi…",
     gachaSplitInsufficient: "Percoin tidak cukup (perlu {cost} Percoin).",

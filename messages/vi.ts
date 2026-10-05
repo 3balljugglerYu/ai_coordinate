@@ -87,6 +87,7 @@ export const viMessages = {
     promptVisibilityPrivateHint:
       "Prompt của bạn không hiển thị với ai. Người theo dõi có thể tạo ảnh bằng chính prompt đó mà không thấy nội dung. Chỉ người theo dõi mới tạo được bằng prompt này.",
     showBeforeImageHint: "Hiển thị ảnh gốc giúp thấy rõ câu lệnh thay đổi những gì.",
+    showBeforeImageCatalogNotice: "Nếu không hiển thị ảnh trước khi tạo, bài đăng sẽ không xuất hiện trong Danh mục của mọi người.",
     promptVisibilityRetractWarning: "Chuyển sang riêng tư không hoàn tác những gì đã được xem hoặc sao chép.",
     sourcePromptCardTitle: "Tạo bằng câu lệnh này",
     sourcePromptCardTitleDerived: "Tạo bằng câu lệnh gốc",
@@ -1529,15 +1530,13 @@ export const viMessages = {
     loginCtaDescription: "Đăng nhập để tạo ảnh minh họa nhân vật của bạn bằng chỉ dẫn của riêng bạn.",
     loginCtaAction: "Đăng nhập / Đăng ký",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "Tạo ảnh bằng prompt do chính bạn viết và đăng kèm hình trước khi đổi, tác phẩm sẽ xuất hiện trong Danh mục của mọi người.",
-    catalogCreateFollowers: "Người theo dõi bạn có thể tạo ảnh bằng prompt đó (prompt vẫn có thể để riêng tư).",
-    catalogCreateReward: "Mỗi lần người theo dõi tạo ảnh bằng prompt đó, bạn nhận Percoin.",
+    catalogCreateListed: "Tạo và đăng tại đây, tác phẩm sẽ xuất hiện trong <link>Danh mục của mọi người</link>.",
+    catalogCreateFollowers: "Người theo dõi có thể tạo ảnh bằng prompt đó (cứ để prompt ở chế độ riêng tư cũng được!).",
+    catalogCreateReward: "Mỗi lần người theo dõi tạo ảnh, bạn sẽ nhận lại Percoin. <link>Xem chi tiết</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Biến thành prompt gacha",
     gachaFieldLabel: "Gacha",
     gachaHintRandom: "Mỗi lần tạo ảnh, một ứng viên sẽ được chọn ngẫu nhiên",
-    gachaHintPerCandidate: "Hãy viết tất cả những gì khác nhau ở mỗi ứng viên (trang phục, địa điểm, hành động, v.v.) vào dòng của ứng viên đó",
-    gachaHintBody: "Ở prompt chính, hãy viết sao cho hợp với mọi ứng viên, ví dụ \"nghề nghiệp được chỉ định\"",
     gachaInsertExample: "Chèn ví dụ",
     gachaReset: "Đặt lại",
     gachaOverwriteConfirmTitle: "Ô gacha sẽ bị thay thế",
@@ -1548,7 +1547,8 @@ export const viMessages = {
     gachaTooFewCandidates: "Hãy nhập ít nhất 2 ứng viên (dòng trống không được tính).",
     gachaExample: "1. Thợ làm bánh. Áo đầu bếp và mũ đầu bếp màu trắng. Trong bếp tiệm bánh, đang bắt kem trang trí bánh\n2. Lính cứu hỏa. Đồ chống cháy màu cam và mũ bảo hộ. Trước xe cứu hỏa, đang cầm vòi nước\n3. Người cắm hoa. Tạp dề màu be. Trong tiệm hoa ở góc phố, đang thắt ruy băng cho bó hoa\n4. Nhân viên nhà ga. Đồng phục và mũ màu xanh navy. Trên sân ga, đang chỉ tay kiểm tra an toàn",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "Dán prompt viết cho ChatGPT hoặc công cụ khác vào ô chính. AI sẽ tìm danh sách ứng viên và tách thành prompt chính và gacha. Chỉ dùng {cost} Percoin khi tách thành công.",
+    gachaSplitTitle: "🪄 Tính năng hỗ trợ",
+    gachaSplitDescription: "AI sẽ tách prompt ghi trong “Nội dung muốn tạo” thành prompt chính và gacha. Chỉ dùng {cost} Percoin khi tách thành công.",
     gachaSplitButton: "Tạo gacha từ prompt ({cost} Percoin)",
     gachaSplitPending: "Đang tách…",
     gachaSplitInsufficient: "Không đủ Percoin (cần {cost} Percoin).",

@@ -305,6 +305,29 @@ describe("PostModal", () => {
     });
   });
 
+  // ⭐ 外したときだけ、「みんなのカタログ」に並ばないことを伝える(2026-10-05)。掲載対象(じゆうモードの原本)だけ
+  test.each([
+    ["じゆうモードの原本", { generationType: "free" as const }, true],
+    ["ほかの人のプロンプトで作ったもの", { generationType: "free" as const, sourcePostId: "src-1" }, false],
+    ["One-Tap Style", { generationType: "one_tap_style" as const }, false],
+  ])("生成前の画像を外すと、%s ならカタログに並ばない案内を出す(%s)", (_label, props, expected) => {
+    render(
+      <PostModal
+        open
+        onOpenChange={jest.fn()}
+        imageId="image-1"
+        afterImageUrl="https://cdn.example/after.webp"
+        {...props}
+      />
+    );
+    // チェックが入っているあいだは出さない
+    expect(screen.queryByTestId("show-before-image-catalog-notice")).toBeNull();
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "生成前画像も表示する" }));
+
+    expect(screen.queryByTestId("show-before-image-catalog-notice") !== null).toBe(expected);
+  });
+
   test("beforeImageUrlが渡された場合は自動取得せず親URLを表示する", async () => {
     render(
       <PostModal

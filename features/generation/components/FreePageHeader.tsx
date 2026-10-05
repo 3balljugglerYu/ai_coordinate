@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { Coins, LayoutGrid, Users } from "lucide-react";
 import { useUsageRewardAmounts } from "@/features/credits/hooks/useUsageRewardAmounts";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
@@ -8,12 +8,12 @@ import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStyles
 interface FreePageHeaderProps {
   title: string;
   description: string;
-  /** 投稿すると「みんなのカタログ」に並ぶ条件 */
-  catalogListed: string;
+  /** 投稿すると「みんなのカタログ」に並ぶこと(「みんなのカタログ」は /user-styles へのリンク) */
+  catalogListed: ReactNode;
   /** フォロワーがそのプロンプトで生成できること */
   catalogFollowers: string;
-  /** 使われるとペルコインが還元されること(額は書かない) */
-  catalogReward: string;
+  /** 使われるとペルコインが還元されること(額は書かない。「詳しくはこちら」は /creator-rewards へのリンク) */
+  catalogReward: ReactNode;
 }
 
 /**
@@ -64,9 +64,9 @@ function CatalogCreateHeader({
   reward,
 }: {
   description: string;
-  listed: string;
+  listed: ReactNode;
   followers: string;
-  reward: string;
+  reward: ReactNode;
 }) {
   // 還元が停止中(0)なら言わない。取得前・失敗時も 0 なので、
   // 「もらえないのに還元されると書いてある」ことはない。

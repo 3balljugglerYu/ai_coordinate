@@ -24,6 +24,7 @@ jest.mock("@/features/user-styles/lib/get-public-user-style-page", () => ({
 jest.mock("@/features/user-styles/lib/get-followed-authors", () => ({
   ...jest.requireActual("@/features/user-styles/lib/get-followed-authors"),
   getUserStyleFollowedAuthors: jest.fn(),
+  getUserStyleOwnAuthor: jest.fn(async () => null),
 }));
 jest.mock("@/features/style/lib/style-usage-events", () => ({
   recordStyleUsageEvent: jest.fn(),
@@ -39,7 +40,10 @@ import { POST as postEvent } from "@/app/api/user-styles/events/route";
 import { getUser } from "@/lib/auth";
 import { isUserStylesAvailable } from "@/lib/env";
 import { getUserStylePage } from "@/features/user-styles/lib/get-user-style-page";
-import { getUserStyleFollowedAuthors } from "@/features/user-styles/lib/get-followed-authors";
+import {
+  getUserStyleFollowedAuthors,
+  getUserStyleOwnAuthor,
+} from "@/features/user-styles/lib/get-followed-authors";
 import { getPublicUserStylePage } from "@/features/user-styles/lib/get-public-user-style-page";
 import { recordStyleUsageEvent } from "@/features/style/lib/style-usage-events";
 
@@ -328,6 +332,35 @@ describe("GET /api/user-styles/authors", () => {
     await getAuthors(listRequest("/authors"));
 
     expect(mockGetAuthors).toHaveBeenCalledWith("viewer-9");
+  });
+
+  // ⭐ 2026-10-05: 自分のチップを、フォロー中の作者の先頭に置く
+  test("自分の投稿が並んでいれば、自分のチップを先頭に置く", async () => {
+    mockGetUser.mockResolvedValue({ id: "viewer-9" } as unknown as Awaited<
+      ReturnType<typeof getUser>
+    >);
+    const own = { authorId: "viewer-9", nickname: "me", avatarUrl: null, latestPostedAt: "2026-10-04T00:00:00Z" };
+    const followed = { authorId: "author-1", nickname: "a", avatarUrl: null, latestPostedAt: "2026-10-05T00:00:00Z" };
+    (getUserStyleOwnAuthor as jest.Mock).mockResolvedValueOnce(own);
+    mockGetAuthors.mockResolvedValueOnce([followed]);
+
+    const res = await getAuthors(listRequest("/authors"));
+
+    expect(getUserStyleOwnAuthor).toHaveBeenCalledWith("viewer-9");
+    await expect(res.json()).resolves.toEqual({ authors: [own, followed] });
+  });
+
+  test("自分の投稿が並んでいなければ、フォロー中の作者だけ", async () => {
+    mockGetUser.mockResolvedValue({ id: "viewer-9" } as unknown as Awaited<
+      ReturnType<typeof getUser>
+    >);
+    const followed = { authorId: "author-1", nickname: "a", avatarUrl: null, latestPostedAt: "2026-10-05T00:00:00Z" };
+    (getUserStyleOwnAuthor as jest.Mock).mockResolvedValueOnce(null);
+    mockGetAuthors.mockResolvedValueOnce([followed]);
+
+    const res = await getAuthors(listRequest("/authors"));
+
+    await expect(res.json()).resolves.toEqual({ authors: [followed] });
   });
 });
 
