@@ -12,6 +12,7 @@
 
 import {
   GACHA_CLOSE_TAG,
+  GACHA_MAX_CANDIDATES,
   GACHA_MIN_CANDIDATES,
   GACHA_OPEN_TAG,
   validateGachaField,
@@ -80,7 +81,10 @@ export type GachaSplitResult =
       removedLines: number[];
       candidateCount: number;
     }
-  | { ok: false; reason: "no_candidates" | "empty_body" | "invalid_output" };
+  | {
+      ok: false;
+      reason: "no_candidates" | "too_many_candidates" | "empty_body" | "invalid_output";
+    };
 
 const LEADING_MARK_PATTERN = /^\s*(?:\d+\s*[.．、)）]|[・•\-*])\s*/;
 
@@ -145,7 +149,7 @@ function joinKeptLines(lines: string[], removed: Set<number>): string {
  * - 行番号は範囲内の整数だけを使う（範囲外が1つでもあれば壊れた出力とみなす）
  * - 候補は**消す行の中にある**ものだけを残す。本文に候補の並びが残ったままだと、
  *   画像の AI が1番目に引っ張られる元の問題が直らないため（AI が作り足した候補もここで落ちる）
- * - 残った候補が2つ未満、または本文が空になるなら分けられない
+ * - 残った候補が2つ未満・上限(10個)を超える、または本文が空になるなら分けられない
  */
 export function applyGachaSplit(
   original: string,
@@ -192,6 +196,10 @@ export function applyGachaSplit(
 
   if (kept.length < GACHA_MIN_CANDIDATES) {
     return { ok: false, reason: "no_candidates" };
+  }
+  // 上限を超える候補は、勝手に削らずに分けない(どれを残すかは書いた人が決める)。ペルコインは使わない
+  if (kept.length > GACHA_MAX_CANDIDATES) {
+    return { ok: false, reason: "too_many_candidates" };
   }
 
   const body = joinKeptLines(lines, removed);

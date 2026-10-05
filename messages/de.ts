@@ -1549,6 +1549,7 @@ export const deMessages = {
     gachaOverwriteCancel: "Zurück",
     gachaMissingBlock: "Die Markierungen {open} und {close} fehlen. Mit „Zurücksetzen“ kannst du sie wiederherstellen.",
     gachaTooFewCandidates: "Gib mindestens 2 Kandidaten ein (leere Zeilen zählen nicht).",
+    gachaTooManyCandidates: "Gib bis zu {max} Kandidaten ein.",
     gachaExample: "1. Konditor. Weiße Kochjacke und Kochmütze. In der Backstube einer Konditorei, beim Verzieren einer Torte mit Sahne\n2. Feuerwehrmann. Orangefarbene Schutzkleidung und Helm. Vor einem Feuerwehrauto, mit einem Schlauch in den Händen\n3. Florist. Beige Schürze. In einem Blumenladen an der Ecke, beim Binden einer Schleife um einen Strauß\n4. Bahnhofsmitarbeiter. Marineblaue Uniform und Mütze. Auf dem Bahnsteig, beim Zeigen zur Sicherheitskontrolle",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Hilfsfunktion",
@@ -1557,6 +1558,7 @@ export const deMessages = {
     gachaSplitPending: "Wird aufgeteilt…",
     gachaSplitInsufficient: "Nicht genug Percoins ({cost} Percoins erforderlich).",
     gachaSplitNotSplittable: "Aufteilen nicht möglich, da nicht mindestens 2 Kandidaten mit konkretem Namen genannt sind. Es wurden keine Percoins verbraucht. Ergänze Kandidaten wie „z. B. Ärztin, Konditor, Detektiv“ oder „z. B. Rutsche, Schaukel, Reck“, dann klappt das Aufteilen.",
+    gachaSplitTooMany: "Konnte nicht aufgeteilt werden, da mehr als {max} Kandidaten aufgeführt sind. Es wurden keine Percoins verwendet. Reduziere die Kandidaten auf höchstens {max} und versuche es erneut.",
     gachaSplitFailed: "Aufteilen fehlgeschlagen. Bitte versuche es später erneut. Es wurden keine Percoins verbraucht.",
     gachaSplitConnectionLost: "Die Verbindung wurde unterbrochen. Prüfe Guthaben und Verlauf, um zu sehen, ob Percoins verbraucht wurden.",
     gachaSplitProposalTitle: "{count} Kandidaten gefunden",

@@ -174,3 +174,21 @@ describe("extractResponsesOutputText", () => {
     expect(extractResponsesOutputText({ output: [{ content: [] }] })).toBeNull();
   });
 });
+
+describe("applyGachaSplit の候補の上限(10個)", () => {
+  const items = (count: number) => Array.from({ length: count }, (_, i) => `職業${i + 1}`);
+  const promptWith = (count: number) => `職業の制服を着て働く姿。\n職業は、${items(count).join("、")}のどれか。`;
+
+  test("10個までなら分ける", () => {
+    const result = applyGachaSplit(promptWith(10), { removeLines: [2], candidates: items(10) });
+    expect(result.ok && result.candidateCount).toBe(10);
+  });
+
+  test("11個は勝手に削らず、上限を超えたとして分けない", () => {
+    expect(applyGachaSplit(promptWith(11), { removeLines: [2], candidates: items(11) })).toEqual({
+      ok: false,
+      reason: "too_many_candidates",
+    });
+  });
+});
+
