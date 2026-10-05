@@ -23,8 +23,8 @@ const SHOTS = {
   step1: { src: `${IMG}/step-1-image.jpg`, width: 780, height: 700 },
   step2: { src: `${IMG}/step-2-prompt.jpg`, width: 780, height: 378 },
   step3: { src: `${IMG}/step-3-toggle.jpg`, width: 780, height: 460 },
-  step4: { src: `${IMG}/step-4-gacha-field.jpg`, width: 780, height: 566 },
-  step5Write: { src: `${IMG}/step-5-write.jpg`, width: 780, height: 1346 },
+  step4: { src: `${IMG}/step-4-gacha-field.jpg`, width: 780, height: 598 },
+  step5Write: { src: `${IMG}/step-5-write.jpg`, width: 780, height: 1378 },
   step5Accept: { src: `${IMG}/step-5-accept.jpg`, width: 780, height: 928 },
   step5Done: { src: `${IMG}/step-5-done.jpg`, width: 780, height: 846 },
   step6: { src: `${IMG}/step-6-generate.jpg`, width: 780, height: 736 },
@@ -147,6 +147,7 @@ export async function GachaGuide() {
     userTitle: userStylesT("tabUserTitle"),
     promptLabel: freeT("promptLabel"),
     toggle: freeT("gachaToggleLabel"),
+    fieldLabel: freeT("gachaFieldLabel"),
     splitButton: freeT("gachaSplitButton", { cost: GACHA_SPLIT_PERCOIN_COST }),
     accept: freeT("gachaSplitAccept"),
     addImage: coordinateT("addImage"),
@@ -353,7 +354,7 @@ export async function GachaGuide() {
             <AnnotatedShot
               {...SHOTS.step4}
               alt={t("step4Alt")}
-              rings={[{ left: 12.5, top: 21, width: 79, height: 52 }]}
+              rings={[{ left: 12.6, top: 20.5, width: 78.4, height: 50 }]}
               callouts={[{ left: 46, top: -4, text: t("step4Call"), pointer: "down" }]}
             />
             <Note>{t("step4Text", candidateRange)}</Note>
@@ -364,15 +365,15 @@ export async function GachaGuide() {
             badge={t("step5Badge")}
             wide
           >
-            <Note>{t("step5Text")}</Note>
+            <Note>{t("step5Text", { fieldLabel: ui.fieldLabel })}</Note>
             <div className="grid justify-items-center gap-3.5 min-[860px]:grid-cols-[1fr_auto_1fr_auto_1fr] min-[860px]:items-start">
               <div className="grid w-full min-w-0 justify-items-center gap-2.5 text-center">
                 <AnnotatedShot
                   {...SHOTS.step5Write}
                   alt={t("step5WriteAlt", { promptLabel: ui.promptLabel, splitButton: ui.splitButton })}
                   rings={[
-                    { left: 9, top: 5.5, width: 83, height: 19.5 },
-                    { left: 15, top: 92, width: 74, height: 8 },
+                    { left: 9, top: 5, width: 82, height: 19.5 },
+                    { left: 15.5, top: 92.3, width: 73, height: 7.2 },
                   ]}
                   callouts={[
                     { left: 40, top: -3.2, text: t("step5WriteCall"), pointer: "down" },
