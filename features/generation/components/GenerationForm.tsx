@@ -18,6 +18,7 @@ import { GachaPromptField } from "./GachaPromptField";
 import {
   GACHA_FIELD_TEMPLATE,
   composeGachaPrompt,
+  gachaLimitsFor,
   validateGachaField,
 } from "@/shared/generation/gacha-prompt";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
@@ -151,6 +152,11 @@ interface GenerationFormProps {
    * `isGachaSplitAvailable` を判定して渡す。ガチャの欄の中に出すので、ガチャが使えるときだけ効く。
    */
   gachaSplitAvailable?: boolean;
+  /**
+   * ガチャの上限(囲みの数・候補の数)を掛けない(運営だけ。テストのため。2026-10-05 ユーザー指示)。
+   * 一般の利用者は囲み1つ・候補10個まで(gachaLimitsFor)。
+   */
+  gachaUnlimited?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -173,6 +179,7 @@ export function GenerationForm({
   sourcePostId,
   gachaPromptAvailable = false,
   gachaSplitAvailable = false,
+  gachaUnlimited = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -266,7 +273,9 @@ export function GenerationForm({
   // 「ガチャに分ける」の案を見せている間は、本文と候補欄を書き換えさせない
   const [isSplitProposalOpen, setIsSplitProposalOpen] = useState(false);
   const isGachaActive = canUseGacha && isGachaEnabled;
-  const gachaValidation = isGachaActive ? validateGachaField(gachaField) : null;
+  const gachaValidation = isGachaActive
+    ? validateGachaField(gachaField, gachaLimitsFor(gachaUnlimited))
+    : null;
 
   const promptLength = prompt.length;
   // 上限は送る本文(ガチャの候補欄を付けた後)で判定する。

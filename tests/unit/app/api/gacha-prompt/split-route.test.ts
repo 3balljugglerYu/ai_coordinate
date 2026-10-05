@@ -46,6 +46,7 @@ function setup(overrides: Partial<Parameters<typeof postGachaSplitRoute>[1]> = {
   const deps = {
     getUserFn: jest.fn(async () => ({ id: "user-1" })) as never,
     isAvailableFn: jest.fn(() => true),
+    isAdminFn: jest.fn(() => false),
     getBalanceFn: jest.fn(async () => 100),
     callModelFn: callModelFn as never,
     deductFn,
@@ -103,6 +104,38 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(response.status).toBe(422);
     expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_TOO_MANY_CANDIDATES");
     expect(deductFn).not.toHaveBeenCalled();
+  });
+
+  test("候補の一覧が2つ以上なら 422 で、引き落とさない(要素を1つにすれば作れると伝える)", async () => {
+    const prompt = "働く姿。\n職業は、医師、探偵のどれか。\n場所は、海、森のどれか。";
+    const { deps, deductFn } = setup({
+      callModelFn: (async () => ({
+        removeLines: [2, 3],
+        candidates: ["医師", "探偵", "海", "森"],
+        listCount: 2,
+      })) as never,
+    });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt }), deps);
+
+    expect(response.status).toBe(422);
+    expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_TOO_MANY_BLOCKS");
+    expect(deductFn).not.toHaveBeenCalled();
+  });
+
+  test("運営は候補が11個以上でも分けて、5ペルコインを引き落とす", async () => {
+    const many = Array.from({ length: 11 }, (_, i) => `職業${i + 1}`);
+    const prompt = `職業の制服を着て働く姿。\n職業は、${many.join("、")}のどれか。`;
+    const { deps, deductFn } = setup({
+      callModelFn: (async () => ({ removeLines: [2], candidates: many })) as never,
+      isAdminFn: () => true,
+    });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt }), deps);
+
+    expect(response.status).toBe(200);
+    expect(((await response.json()) as { candidateCount: number }).candidateCount).toBe(11);
+    expect(deductFn).toHaveBeenCalledTimes(1);
   });
 
   test("AI が失敗したら 502 で、引き落とさない", async () => {

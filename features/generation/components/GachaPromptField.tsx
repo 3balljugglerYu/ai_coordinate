@@ -21,6 +21,7 @@ import { GachaSplitTool } from "./GachaSplitTool";
 import {
   GACHA_CLOSE_TAG,
   GACHA_FIELD_TEMPLATE,
+  GACHA_MAX_BLOCKS,
   GACHA_MAX_CANDIDATES,
   GACHA_OPEN_TAG,
   type GachaFieldValidation,
@@ -64,14 +65,23 @@ export function GachaPromptField({
   fieldLocked = false,
 }: GachaPromptFieldProps) {
   const t = useTranslations("free");
-  const errorMessage =
-    validation && !validation.ok
-      ? validation.reason === "missing_block"
-        ? t("gachaMissingBlock", { open: GACHA_OPEN_TAG, close: GACHA_CLOSE_TAG })
-        : validation.reason === "too_many_candidates"
-          ? t("gachaTooManyCandidates", { max: GACHA_MAX_CANDIDATES })
-          : t("gachaTooFewCandidates")
-      : null;
+  const errorMessage = (() => {
+    if (!validation || validation.ok) return null;
+    switch (validation.reason) {
+      case "missing_block":
+        return t("gachaMissingBlock", { open: GACHA_OPEN_TAG, close: GACHA_CLOSE_TAG });
+      case "too_many_blocks":
+        return t("gachaTooManyBlocks", {
+          open: GACHA_OPEN_TAG,
+          close: GACHA_CLOSE_TAG,
+          max: GACHA_MAX_BLOCKS,
+        });
+      case "too_many_candidates":
+        return t("gachaTooManyCandidates", { max: GACHA_MAX_CANDIDATES });
+      default:
+        return t("gachaTooFewCandidates");
+    }
+  })();
 
   /*
     赤字(と赤い枠)は、欄を一度さわって離れてから出す(2026-10-05 ユーザー決定・案A)。

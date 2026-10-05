@@ -4,7 +4,9 @@ import {
   GACHA_MAX_CANDIDATES,
   GACHA_OPEN_TAG,
   GACHA_PICK_LEAD,
-  exceedsGachaCandidateLimit,
+  GACHA_MAX_BLOCKS,
+  findGachaLimitViolation,
+  gachaLimitsFor,
   composeGachaPrompt,
   expandGachaPrompt,
   parseGachaCandidates,
@@ -145,22 +147,31 @@ describe("expandGachaPrompt", () => {
   });
 });
 
-describe("候補の上限(10個)", () => {
+describe("ガチャの上限(一般の利用者は囲み1つ・候補10個。運営は無し)", () => {
   const block = (count: number) =>
     [GACHA_OPEN_TAG, ...Array.from({ length: count }, (_, i) => `${i + 1}. 候補${i + 1}`), GACHA_CLOSE_TAG].join("\n");
+  const admin = gachaLimitsFor(true);
 
-  test("上限は10個", () => {
+  test("一般の利用者の上限は、囲み1つ・候補10個", () => {
     expect(GACHA_MAX_CANDIDATES).toBe(10);
+    expect(GACHA_MAX_BLOCKS).toBe(1);
+    expect(gachaLimitsFor(false)).toEqual({ maxBlocks: 1, maxCandidates: 10 });
   });
 
-  test("ちょうど10個は送れる", () => {
+  test("運営は囲みの数も候補の数も制限しない", () => {
+    expect(admin).toEqual({ maxBlocks: null, maxCandidates: null });
+  });
+
+  test("候補ちょうど10個は送れる", () => {
     expect(validateGachaField(block(10))).toEqual({ ok: true, candidateCount: 10 });
-    expect(exceedsGachaCandidateLimit(`本文\n\n${block(10)}`)).toBe(false);
+    expect(findGachaLimitViolation(`本文\n\n${block(10)}`)).toBeNull();
   });
 
-  test("11個は上限を超える", () => {
+  test("候補11個は上限を超える(運営は通る)", () => {
     expect(validateGachaField(block(11))).toEqual({ ok: false, reason: "too_many_candidates" });
-    expect(exceedsGachaCandidateLimit(`本文\n\n${block(11)}`)).toBe(true);
+    expect(findGachaLimitViolation(`本文\n\n${block(11)}`)).toBe("too_many_candidates");
+    expect(validateGachaField(block(11), admin)).toEqual({ ok: true, candidateCount: 11 });
+    expect(findGachaLimitViolation(`本文\n\n${block(11)}`, admin)).toBeNull();
   });
 
   test("中身のない番号だけの行は数えない", () => {
@@ -168,15 +179,15 @@ describe("候補の上限(10個)", () => {
     expect(validateGachaField(field)).toEqual({ ok: true, candidateCount: 10 });
   });
 
-  test("囲みが複数あるときは、どれか1つでも超えていれば止める", () => {
-    expect(exceedsGachaCandidateLimit(`${block(3)}\n${block(11)}`)).toBe(true);
-    expect(validateGachaField(`${block(3)}\n${block(11)}`)).toEqual({
-      ok: false,
-      reason: "too_many_candidates",
-    });
+  test("囲みが2つあると上限を超える(運営は通る)", () => {
+    const two = `${block(3)}\n${block(2)}`;
+    expect(validateGachaField(two)).toEqual({ ok: false, reason: "too_many_blocks" });
+    expect(findGachaLimitViolation(two)).toBe("too_many_blocks");
+    expect(validateGachaField(two, admin)).toEqual({ ok: true, candidateCount: 3 });
+    expect(findGachaLimitViolation(two, admin)).toBeNull();
   });
 
   test("囲みの無いプロンプトは止めない", () => {
-    expect(exceedsGachaCandidateLimit("ふつうのプロンプト")).toBe(false);
+    expect(findGachaLimitViolation("ふつうのプロンプト")).toBeNull();
   });
 });

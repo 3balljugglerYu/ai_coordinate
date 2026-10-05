@@ -133,6 +133,7 @@ describe("GachaSplitTool", () => {
     ["GACHA_SPLIT_INSUFFICIENT_BALANCE", 400, "gachaSplitInsufficient"],
     ["GACHA_SPLIT_NOT_SPLITTABLE", 422, "gachaSplitNotSplittable"],
     ["GACHA_SPLIT_TOO_MANY_CANDIDATES", 422, "gachaSplitTooMany"],
+    ["GACHA_SPLIT_TOO_MANY_BLOCKS", 422, "gachaSplitTooManyBlocks"],
     ["GACHA_SPLIT_FAILED", 502, "gachaSplitFailed"],
   ])("%s のときは案内を出し、入力欄を変えない", async (errorCode, status, key) => {
     const user = userEvent.setup();

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidateTag } from "next/cache";
 import { getUser } from "@/lib/auth";
-import { isGachaPromptAvailable, isGachaSplitAvailable } from "@/lib/env";
+import { isAdminViewer, isGachaPromptAvailable, isGachaSplitAvailable } from "@/lib/env";
+import { gachaLimitsFor } from "@/shared/generation/gacha-prompt";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -38,6 +39,8 @@ export type GachaSplitErrorCode =
 export interface GachaSplitRouteDependencies {
   getUserFn?: typeof getUser;
   isAvailableFn?: (userId: string) => boolean;
+  /** 運営か(運営はガチャの上限を掛けない) */
+  isAdminFn?: (userId: string) => boolean;
   getBalanceFn?: (userId: string) => Promise<number | null>;
   callModelFn?: typeof callGachaSplitModel;
   deductFn?: (userId: string) => Promise<{ balance: number | null }>;
@@ -93,6 +96,7 @@ export async function postGachaSplitRoute(
     dependencies.isAvailableFn ??
     ((userId: string) =>
       isGachaPromptAvailable(userId) && isGachaSplitAvailable(userId));
+  const isAdminFn = dependencies.isAdminFn ?? isAdminViewer;
   const getBalanceFn = dependencies.getBalanceFn ?? defaultGetBalance;
   const callModelFn = dependencies.callModelFn ?? callGachaSplitModel;
   const deductFn = dependencies.deductFn ?? defaultDeduct;
@@ -134,9 +138,13 @@ export async function postGachaSplitRoute(
     return jsonError("Failed to split", "GACHA_SPLIT_FAILED", 502);
   }
 
-  const result = applyGachaSplit(prompt, output);
+  const result = applyGachaSplit(prompt, output, gachaLimitsFor(isAdminFn(user.id)));
   if (!result.ok) {
-    // 候補が上限(10個)を超えるときは、減らせば分けられることを画面で伝える
+    // 候補が上限(一般は10個)を超えるときは、減らせば分けられることを画面で伝える
+    // 候補の一覧(ガチャの要素)が2つ以上あるときは、まとめれば作れることを画面で伝える
+    if (result.reason === "too_many_blocks") {
+      return jsonError("Too many gacha lists", "GACHA_SPLIT_TOO_MANY_BLOCKS", 422);
+    }
     if (result.reason === "too_many_candidates") {
       return jsonError("Too many candidates", "GACHA_SPLIT_TOO_MANY_CANDIDATES", 422);
     }

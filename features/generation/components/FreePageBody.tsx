@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { getUser } from "@/lib/auth";
 import {
+  isAdminViewer,
   isGachaPromptAvailable,
   isGachaSplitAvailable,
   isUserStylesAvailable,
@@ -69,6 +70,8 @@ export async function FreePageBody() {
             mode="free"
             gachaPromptAvailable={isGachaPromptAvailable(user.id)}
             gachaSplitAvailable={isGachaSplitAvailable(user.id)}
+            // ガチャの上限(囲みの数・候補の数)は、運営だけ掛けない(テストのため)
+            gachaUnlimited={isAdminViewer(user.id)}
           />
         </Suspense>
 

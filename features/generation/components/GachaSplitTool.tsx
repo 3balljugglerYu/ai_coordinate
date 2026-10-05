@@ -36,6 +36,8 @@ type ErrorKey =
   | "gachaSplitNotSplittable"
   // 候補が上限を超えた。ペルコインは使っていない
   | "gachaSplitTooMany"
+  // 候補の一覧(ガチャの要素)が2つ以上あった。ペルコインは使っていない
+  | "gachaSplitTooManyBlocks"
   | "gachaSplitFailed"
   // 返事が届かなかった。サーバーで引き落とし済みの可能性があるので「使っていない」と言わない
   | "gachaSplitConnectionLost";
@@ -44,6 +46,7 @@ function errorKeyFor(errorCode: unknown): ErrorKey {
   if (errorCode === "GACHA_SPLIT_INSUFFICIENT_BALANCE") return "gachaSplitInsufficient";
   if (errorCode === "GACHA_SPLIT_NOT_SPLITTABLE") return "gachaSplitNotSplittable";
   if (errorCode === "GACHA_SPLIT_TOO_MANY_CANDIDATES") return "gachaSplitTooMany";
+  if (errorCode === "GACHA_SPLIT_TOO_MANY_BLOCKS") return "gachaSplitTooManyBlocks";
   return "gachaSplitFailed";
 }
 

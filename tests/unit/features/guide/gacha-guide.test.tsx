@@ -92,6 +92,7 @@ describe("ページの中身", () => {
     expect(text).toContain('gachaGuide.step3Title({"toggle":"free.gachaToggleLabel"})');
     expect(text).toContain('gachaGuide.step3Text({"promptLabel":"free.promptLabel"})');
     expect(text).toContain('gachaGuide.step5AcceptText({"accept":"free.gachaSplitAccept"})');
+    expect(text).toContain('gachaGuide.step5Text({"fieldLabel":"free.gachaFieldLabel"})');
     // ボタンの名前は、実際の画面と同じく額を入れた形で差し込む
     expect(text).toContain(
       `gachaGuide.step5WriteText({"splitButton":"free.gachaSplitButton({\\"cost\\":${GACHA_SPLIT_PERCOIN_COST}})"})`,

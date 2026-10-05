@@ -276,6 +276,39 @@ describe("GenerationForm のガチャプロンプト", () => {
     );
   });
 
+  test("ガチャの囲みが2つあると、1つまでと知らせて送れない", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(gachaCheckbox()!);
+
+    const field = screen.getByLabelText("gachaFieldLabel");
+    fireEvent.change(field, { target: { value: `${CANDIDATES}\n${CANDIDATES}` } });
+    fireEvent.blur(field);
+
+    expect(screen.getByTestId("gacha-prompt-error").textContent).toBe("gachaTooManyBlocks");
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
+  test("運営は、囲み2つ・候補11個でも送れる(テストのため制限しない)", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn(), { gachaUnlimited: true });
+    await fillBodyAndImage(user);
+    await user.click(gachaCheckbox()!);
+
+    const lines = Array.from({ length: 11 }, (_, i) => `${i + 1}. 職業${i + 1}`);
+    const field = screen.getByLabelText("gachaFieldLabel");
+    fireEvent.change(field, {
+      target: { value: [`{{GACHA}}`, ...lines, `{{/GACHA}}`, CANDIDATES].join("\n") },
+    });
+    fireEvent.blur(field);
+
+    expect(screen.getByTestId("gacha-prompt-error").textContent).toBe("");
+    await waitFor(() =>
+      expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false),
+    );
+  });
+
   test("欄から離れると、候補が足りないことを赤字で知らせる", async () => {
     const user = userEvent.setup();
     renderFreeForm(jest.fn());
