@@ -41,6 +41,8 @@ const UNLOCALIZED_PUBLIC_PATHS = [
   "/collab",
   "/tools/image-split",
   "/use-prompts",
+  // ガチャ機能の紹介ページ。一般公開まで isSitemapPathEnabled で落とす
+  "/guide/gacha",
 ] as const;
 
 type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];
@@ -146,7 +148,9 @@ async function getSitemapEntries(): Promise<MetadataRoute.Sitemap> {
     }))
   );
 
-  const unlocalizedPages: MetadataRoute.Sitemap = UNLOCALIZED_PUBLIC_PATHS.map(
+  const unlocalizedPages: MetadataRoute.Sitemap = UNLOCALIZED_PUBLIC_PATHS.filter(
+    (path) => isSitemapPathEnabled(path)
+  ).map(
     (path) => ({
       url: `${baseUrl}${path}`,
       changeFrequency: "weekly" as const,
