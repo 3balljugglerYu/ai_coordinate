@@ -2146,9 +2146,12 @@ export const jaMessages = {
     metaDescription:
       "候補を書いておくと、生成のたびにペルスタが公平に1つを選びます。ガチャでできること、使える画面、つくり方を、実際の画面で紹介します。",
     heroBadge: "NEW",
-    heroTitle: "ガチャプロンプトのかたよりをなくす機能を追加！",
-    heroQuestion: "「{createTitle}」で、候補の中からランダムに選ばせるプロンプトを作っていませんか？",
-    heroLead: "生成のたびに、ペルスタが候補から公平に1つを選んでAIに渡します。",
+    // 「の」のあとで改行する(2026-10-05 ユーザー指示)。改行は画面で whitespace-pre-line により効かせる
+    heroTitle: "ガチャプロンプトの\nかたよりをなくす機能追加！",
+    // タイトル下の説明(2026-10-05 ユーザー指定の文)。段落の区切りは空行で、画面で whitespace-pre-line により効かせる
+    heroQuestion: "「{createTitle}」で、複数の候補からランダムに1つを選ばせる「ガチャプロンプト」を作っていませんか？",
+    heroLead:
+      "AIにそのまま選ばせると、どうしても結果に偏りが出て、同じような候補が続いてしまうことがあります。\n\nそこでペルスタでは、登録した候補の中から公平に1つを選んで生成する機能をつくりました！\n\nより偏りの少ないガチャを、手軽に楽しめるようになります。\nぜひお楽しみください♪",
     compareBefore: "これまで",
     compareBeforeSub: "AIに選ばせる",
     compareBeforeNote: "同じ候補に、かたよりがち",
@@ -2189,7 +2192,7 @@ export const jaMessages = {
     step1Alt: "画像を追加した状態",
     step2Title: "ガチャ用のプロンプトを書く",
     step2Call: "ここに書く",
-    step2Text: "候補の中身は書かずに、「ガチャで選ばれたもの」のように書きます。",
+    step2Text: "ガチャで選ぶ内容はここには書かず、「ガチャで選ばれた内容にしてください」のように書きます。",
     step2Alt: "「{promptLabel}」に、職業はガチャで選ばれたものにする、と書いた状態",
     step3Title: "「{toggle}」にチェック",
     step3Call: "ここにチェック",
@@ -2197,7 +2200,7 @@ export const jaMessages = {
     step3Alt: "「{promptLabel}」のすぐ下にある「{toggle}」のチェック",
     step4Title: "ガチャの欄に、番号と中身を書く",
     step4Call: "番号と中身を書く",
-    step4Text: "1行に1つずつ書きます。候補は2つ以上、いくつでも書けます。",
+    step4Text: "1行に1つずつ書きます。候補は{min}〜{max}個まで書けます。",
     step4Alt: "ガチャの欄に、1. 客室乗務員、2. 気象予報士、3. 陶芸家 と書いた状態",
     step5Title: "サポート機能で、自動で振り分ける",
     step5Badge: "便利",
@@ -2220,6 +2223,6 @@ export const jaMessages = {
     resultAlt: "{count}回目の結果：{job}",
     ctaTitle: "さっそく、ガチャを作ってみよう",
     ctaButton: "ガチャをやってみる",
-    ctaNote: "候補は2つ以上。いくつでも書けます。",
+    ctaNote: "候補は{min}〜{max}個まで書けます。",
   },
 } as const;

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
+import { GACHA_MAX_CANDIDATES, GACHA_MIN_CANDIDATES } from "@/shared/generation/gacha-prompt";
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 import { cn } from "@/lib/utils";
 import { AnnotatedShot } from "./AnnotatedShot";
@@ -152,6 +153,9 @@ export async function GachaGuide() {
     generate: coordinateT("generatingButton"),
   };
 
+  // 候補の数の案内は、生成画面と同じ上限・下限を使う(上限を変えたときに案内が古くならないように)
+  const candidateRange = { min: GACHA_MIN_CANDIDATES, max: GACHA_MAX_CANDIDATES };
+
   const jobs = {
     flightAttendant: t("jobFlightAttendant"),
     weatherForecaster: t("jobWeatherForecaster"),
@@ -175,14 +179,14 @@ export async function GachaGuide() {
             <Tag className="bg-amber-300 text-gray-900">{t("heroBadge")}</Tag>
             <h1
               id="gacha-guide-hero"
-              className="text-balance text-[34px] font-extrabold leading-tight min-[860px]:text-[56px]"
+              className="whitespace-pre-line text-balance text-[clamp(24px,6.6vw,34px)] font-extrabold leading-tight min-[860px]:text-[56px]"
             >
               {t("heroTitle")}
             </h1>
             <p className="max-w-[34em] text-base font-semibold min-[860px]:text-lg">
               {t("heroQuestion", { createTitle: ui.createTitle })}
             </p>
-            <p className="text-base font-semibold">{t("heroLead")}</p>
+            <p className="max-w-[34em] whitespace-pre-line text-base font-semibold">{t("heroLead")}</p>
           </div>
           <div className="grid gap-3.5">
             <CompareRow
@@ -293,7 +297,9 @@ export async function GachaGuide() {
               {...SHOTS.whereCreate}
               alt={t("whereStep3Alt", { createTitle: ui.createTitle })}
               rings={[{ left: 3, top: 9.5, width: 62, height: 7 }]}
-              callouts={[{ left: 12, top: 28, text: t("whereStep3Call"), pointer: "up" }]}
+              // 吹き出しにせず、ラベルとして画面の外(上)に中央そろえで置く(2026-10-05 ユーザー指示)。
+              // 画面の中に置くと、訳によってはタブや説明文に重なるため
+              callouts={[{ left: 50, top: -7, text: t("whereStep3Call"), pointer: "none", center: true }]}
             />
             <p className="text-[15px] font-semibold">{t("whereStep3", { createTitle: ui.createTitle })}</p>
           </li>
@@ -344,7 +350,7 @@ export async function GachaGuide() {
               rings={[{ left: 12.5, top: 21, width: 79, height: 52 }]}
               callouts={[{ left: 46, top: -4, text: t("step4Call"), pointer: "down" }]}
             />
-            <Note>{t("step4Text")}</Note>
+            <Note>{t("step4Text", candidateRange)}</Note>
           </Step>
           <Step
             number={<StepNumber>5</StepNumber>}
@@ -429,7 +435,7 @@ export async function GachaGuide() {
           >
             {t("ctaButton")}
           </Link>
-          <small className="text-white/75">{t("ctaNote")}</small>
+          <small className="text-white/75">{t("ctaNote", candidateRange)}</small>
         </div>
       </section>
     </div>

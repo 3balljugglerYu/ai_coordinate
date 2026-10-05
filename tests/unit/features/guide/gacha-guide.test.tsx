@@ -35,6 +35,7 @@ import { GachaGuide } from "@/features/guide/components/GachaGuide";
 import { getUser } from "@/lib/auth";
 import { isGachaPromptAvailable, isGachaPromptPubliclyEnabled } from "@/lib/env";
 import { isSitemapPathEnabled } from "@/lib/sitemap-paths";
+import { GACHA_MAX_CANDIDATES, GACHA_MIN_CANDIDATES } from "@/shared/generation/gacha-prompt";
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
@@ -96,6 +97,20 @@ describe("ページの中身", () => {
       `gachaGuide.step5WriteText({"splitButton":"free.gachaSplitButton({\\"cost\\":${GACHA_SPLIT_PERCOIN_COST}})"})`,
     );
     expect(text).toContain(`gachaGuide.step5Cost({"cost":${GACHA_SPLIT_PERCOIN_COST}})`);
+  });
+
+  test("候補の数の案内は、生成画面と同じ上限・下限を差し込む", async () => {
+    await renderGuide();
+    const text = document.body.textContent ?? "";
+    const range = JSON.stringify({ min: GACHA_MIN_CANDIDATES, max: GACHA_MAX_CANDIDATES });
+    expect(text).toContain(`gachaGuide.step4Text(${range})`);
+    expect(text).toContain(`gachaGuide.ctaNote(${range})`);
+  });
+
+  test("「この画面で使えます」は三角の無いラベルにする", async () => {
+    await renderGuide();
+    const label = screen.getByText("gachaGuide.whereStep3Call");
+    expect(label.className).toContain("after:hidden");
   });
 
   test("「ガチャをやってみる」は、カタログをつくる(/free)へのリンク", async () => {
