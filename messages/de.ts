@@ -1550,6 +1550,7 @@ export const deMessages = {
     gachaMissingBlock: "Die Markierungen {open} und {close} fehlen. Mit „Zurücksetzen“ kannst du sie wiederherstellen.",
     gachaTooFewCandidates: "Gib mindestens 2 Kandidaten ein (leere Zeilen zählen nicht).",
     gachaTooManyCandidates: "Gib bis zu {max} Kandidaten ein.",
+    gachaTooManyBlocks: "Verwende höchstens {max} Gacha-Block ({open} … {close}).",
     gachaExample: "1. Konditor. Weiße Kochjacke und Kochmütze. In der Backstube einer Konditorei, beim Verzieren einer Torte mit Sahne\n2. Feuerwehrmann. Orangefarbene Schutzkleidung und Helm. Vor einem Feuerwehrauto, mit einem Schlauch in den Händen\n3. Florist. Beige Schürze. In einem Blumenladen an der Ecke, beim Binden einer Schleife um einen Strauß\n4. Bahnhofsmitarbeiter. Marineblaue Uniform und Mütze. Auf dem Bahnsteig, beim Zeigen zur Sicherheitskontrolle",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Hilfsfunktion",

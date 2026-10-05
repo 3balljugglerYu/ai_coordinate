@@ -12,9 +12,10 @@
 
 import {
   GACHA_CLOSE_TAG,
-  GACHA_MAX_CANDIDATES,
+  GACHA_DEFAULT_LIMITS,
   GACHA_MIN_CANDIDATES,
   GACHA_OPEN_TAG,
+  type GachaLimits,
   validateGachaField,
 } from "./gacha-prompt";
 
@@ -149,11 +150,13 @@ function joinKeptLines(lines: string[], removed: Set<number>): string {
  * - 行番号は範囲内の整数だけを使う（範囲外が1つでもあれば壊れた出力とみなす）
  * - 候補は**消す行の中にある**ものだけを残す。本文に候補の並びが残ったままだと、
  *   画像の AI が1番目に引っ張られる元の問題が直らないため（AI が作り足した候補もここで落ちる）
- * - 残った候補が2つ未満・上限(10個)を超える、または本文が空になるなら分けられない
+ * - 残った候補が2つ未満・上限(一般は10個。運営は無し)を超える、または本文が空になるなら分けられない
  */
 export function applyGachaSplit(
   original: string,
   output: GachaSplitModelOutput,
+  // 候補の数の上限。運営は制限しない(gachaLimitsFor)。省略時は一般の利用者の上限
+  limits: GachaLimits = GACHA_DEFAULT_LIMITS,
 ): GachaSplitResult {
   const { removeLines, candidates } = output;
   if (!Array.isArray(removeLines) || !Array.isArray(candidates)) {
@@ -198,7 +201,7 @@ export function applyGachaSplit(
     return { ok: false, reason: "no_candidates" };
   }
   // 上限を超える候補は、勝手に削らずに分けない(どれを残すかは書いた人が決める)。ペルコインは使わない
-  if (kept.length > GACHA_MAX_CANDIDATES) {
+  if (limits.maxCandidates !== null && kept.length > limits.maxCandidates) {
     return { ok: false, reason: "too_many_candidates" };
   }
 
@@ -211,7 +214,7 @@ export function applyGachaSplit(
     GACHA_CLOSE_TAG,
   ].join("\n");
   // 生成側と同じ読み取りで、そのまま送れる欄になっていることを確かめる
-  const validation = validateGachaField(field);
+  const validation = validateGachaField(field, limits);
   if (!validation.ok || validation.candidateCount !== kept.length) {
     return { ok: false, reason: "invalid_output" };
   }

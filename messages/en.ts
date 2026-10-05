@@ -1546,6 +1546,7 @@ export const enMessages = {
     gachaMissingBlock: "The {open} and {close} tags are missing. Use \"Reset\" to restore them.",
     gachaTooFewCandidates: "Enter at least 2 candidates (empty lines are not counted).",
     gachaTooManyCandidates: "Enter up to {max} candidates.",
+    gachaTooManyBlocks: "Use up to {max} gacha block ({open} … {close}).",
     gachaExample: "1. Pastry chef. White chef's jacket and toque. In a patisserie kitchen, piping cream onto a cake\n2. Firefighter. Orange turnout gear and helmet. In front of a fire truck, holding a hose\n3. Florist. Beige apron. At a street-corner flower shop, tying a ribbon around a bouquet\n4. Station attendant. Navy uniform and cap. On a station platform, doing a pointing safety check",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Support tool",

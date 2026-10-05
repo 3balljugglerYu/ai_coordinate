@@ -1501,6 +1501,7 @@ export const jaMessages = {
     gachaMissingBlock: "{open} と {close} の囲みが見つかりません。「空に戻す」で戻せます。",
     gachaTooFewCandidates: "候補を2つ以上入れてください（中身のない行は数えません）。",
     gachaTooManyCandidates: "候補は{max}個までにしてください。",
+    gachaTooManyBlocks: "{open} 〜 {close} の囲み（ガチャ）は{max}つまでにしてください。",
     gachaExample: "1. パティシエ。白いコックコートとコック帽。洋菓子店の厨房で、ケーキにクリームを絞っている\n2. 消防士。オレンジ色の防火服とヘルメット。消防車の前で、ホースを構えている\n3. 花屋。ベージュのエプロン。街角の花屋で、ブーケにリボンを結んでいる\n4. 駅員。紺色の制服と制帽。駅のホームで、指差し確認をしている",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 サポート機能",

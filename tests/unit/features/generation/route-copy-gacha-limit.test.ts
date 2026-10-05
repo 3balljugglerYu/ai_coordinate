@@ -5,12 +5,21 @@
 
 import { locales } from "@/i18n/config";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
-import { GACHA_MAX_CANDIDATES } from "@/shared/generation/gacha-prompt";
+import { GACHA_MAX_BLOCKS, GACHA_MAX_CANDIDATES } from "@/shared/generation/gacha-prompt";
 
 describe("gachaTooManyCandidates", () => {
   test.each(locales)("%s: 上限の数を入れた文を返す", (locale) => {
     const message = getGenerationRouteCopy(locale).gachaTooManyCandidates(GACHA_MAX_CANDIDATES);
     expect(message).toContain(String(GACHA_MAX_CANDIDATES));
+    expect(message).not.toContain("${");
+  });
+});
+
+describe("gachaTooManyBlocks", () => {
+  test.each(locales)("%s: 上限の数と囲みの印を入れた文を返す", (locale) => {
+    const message = getGenerationRouteCopy(locale).gachaTooManyBlocks(GACHA_MAX_BLOCKS);
+    expect(message).toContain(String(GACHA_MAX_BLOCKS));
+    expect(message).toContain("{{GACHA}}");
     expect(message).not.toContain("${");
   });
 });

@@ -1543,6 +1543,7 @@ export const zhTwMessages = {
     gachaMissingBlock: "找不到 {open} 和 {close} 標記。可以點擊「重設」恢復。",
     gachaTooFewCandidates: "請至少輸入 2 個候選（沒有內容的行不計入）。",
     gachaTooManyCandidates: "候選最多 {max} 個。",
+    gachaTooManyBlocks: "{open} … {close} 轉蛋區塊最多 {max} 個。",
     gachaExample: "1. 甜點師。白色廚師服和廚師帽。在西點店的廚房，正往蛋糕上擠奶油\n2. 消防員。橘色防火衣和頭盔。在消防車前，雙手握著水管\n3. 花藝師。米色圍裙。在街角的花店，正為花束繫上緞帶\n4. 車站站務員。深藍色制服和制帽。在月台上，正在指差確認安全",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 輔助功能",

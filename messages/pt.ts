@@ -1549,6 +1549,7 @@ export const ptMessages = {
     gachaMissingBlock: "As marcações {open} e {close} não foram encontradas. Use \"Redefinir\" para restaurá-las.",
     gachaTooFewCandidates: "Digite pelo menos 2 candidatos (linhas vazias não contam).",
     gachaTooManyCandidates: "Escreva até {max} candidatos.",
+    gachaTooManyBlocks: "Use no máximo {max} bloco gacha ({open} … {close}).",
     gachaExample: "1. Confeiteiro. Dólmã e chapéu de chef brancos. Na cozinha de uma confeitaria, decorando um bolo com chantilly\n2. Bombeiro. Roupa de combate laranja e capacete. Em frente a um caminhão de bombeiros, segurando uma mangueira\n3. Florista. Avental bege. Em uma floricultura de esquina, amarrando uma fita em um buquê\n4. Funcionário de estação. Uniforme e quepe azul-marinho. Na plataforma, apontando para conferir a segurança",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Recurso de apoio",

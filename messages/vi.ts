@@ -1546,6 +1546,7 @@ export const viMessages = {
     gachaMissingBlock: "Không tìm thấy ký hiệu {open} và {close}. Bạn có thể khôi phục bằng \"Đặt lại\".",
     gachaTooFewCandidates: "Hãy nhập ít nhất 2 ứng viên (dòng trống không được tính).",
     gachaTooManyCandidates: "Nhập tối đa {max} ứng viên.",
+    gachaTooManyBlocks: "Chỉ dùng tối đa {max} khối gacha ({open} … {close}).",
     gachaExample: "1. Thợ làm bánh. Áo đầu bếp và mũ đầu bếp màu trắng. Trong bếp tiệm bánh, đang bắt kem trang trí bánh\n2. Lính cứu hỏa. Đồ chống cháy màu cam và mũ bảo hộ. Trước xe cứu hỏa, đang cầm vòi nước\n3. Người cắm hoa. Tạp dề màu be. Trong tiệm hoa ở góc phố, đang thắt ruy băng cho bó hoa\n4. Nhân viên nhà ga. Đồng phục và mũ màu xanh navy. Trên sân ga, đang chỉ tay kiểm tra an toàn",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Tính năng hỗ trợ",

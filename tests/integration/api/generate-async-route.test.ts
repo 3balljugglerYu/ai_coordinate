@@ -579,6 +579,25 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         expect(jobRepository.createImageJob).not.toHaveBeenCalled();
       });
 
+      test("ガチャの囲みが2つあるプロンプトは、ジョブを作らず 400 で断る", async () => {
+        const response = await runFree({
+          prompt: ["猫", "{{GACHA}}", "1. 森", "2. 海", "{{/GACHA}}", "{{GACHA}}", "1. 朝", "2. 夜", "{{/GACHA}}"].join("\n"),
+        });
+        expect(response.status).toBe(400);
+        expect((await readJson(response)).errorCode).toBe("GENERATION_GACHA_TOO_MANY_BLOCKS");
+        expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      });
+
+      test("運営は、囲み2つ・候補11個でも受け付ける(テストのため制限しない)", async () => {
+        isAdminViewerMock.mockReturnValue(true);
+        const candidates = Array.from({ length: 11 }, (_, i) => `${i + 1}. 職業${i + 1}`);
+        const response = await runFree({
+          prompt: ["猫", "{{GACHA}}", ...candidates, "{{/GACHA}}", "{{GACHA}}", "1. 朝", "2. 夜", "{{/GACHA}}"].join("\n"),
+        });
+        expect(response.status).toBe(200);
+        expect(jobRepository.createImageJob).toHaveBeenCalledTimes(1);
+      });
+
       test("ガチャの候補がちょうど10個なら受け付ける", async () => {
         const candidates = Array.from({ length: 10 }, (_, i) => `${i + 1}. 職業${i + 1}`);
         const response = await runFree({

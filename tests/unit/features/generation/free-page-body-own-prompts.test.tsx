@@ -28,7 +28,9 @@ jest.mock("@/features/my-page/lib/server-api", () => ({
 const mockAvailable = jest.fn<boolean, [string | null | undefined]>();
 const mockGachaAvailable = jest.fn<boolean, [string | null | undefined]>();
 const mockGachaSplitAvailable = jest.fn<boolean, [string | null | undefined]>();
+const mockIsAdmin = jest.fn<boolean, [string | null | undefined]>(() => false);
 jest.mock("@/lib/env", () => ({
+  isAdminViewer: (userId: string | null | undefined) => mockIsAdmin(userId),
   isUserStylesAvailable: (userId: string | null | undefined) => mockAvailable(userId),
   isGachaPromptAvailable: (userId: string | null | undefined) =>
     mockGachaAvailable(userId),
@@ -119,5 +121,18 @@ describe("FreePageBody の「ガチャに分ける」道具", () => {
     expect(mockFormContainer.mock.calls[0][0]).toMatchObject({
       gachaSplitAvailable: split,
     });
+  });
+});
+
+describe("FreePageBody のガチャの上限", () => {
+  test.each([true, false])("運営か(%s)をそのまま「上限を掛けない」としてフォームへ渡す", async (admin) => {
+    mockAvailable.mockReturnValue(true);
+    mockGachaAvailable.mockReturnValue(true);
+    mockGachaSplitAvailable.mockReturnValue(true);
+    mockIsAdmin.mockReturnValue(admin);
+    render(await FreePageBody());
+
+    expect(mockIsAdmin).toHaveBeenCalledWith("user-1");
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ gachaUnlimited: admin });
   });
 });

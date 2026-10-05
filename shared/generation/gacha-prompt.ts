@@ -33,6 +33,35 @@ export const GACHA_MIN_CANDIDATES = 2;
 export const GACHA_MAX_CANDIDATES = 10;
 
 /**
+ * 1つのプロンプトに書ける囲み(ガチャの要素)の数の上限(2026-10-05 ユーザー決定。一般の利用者は1つ)。
+ *
+ * 候補の数と同じく、あとで課金で広げる余地を残すため公開前から付ける。
+ * 運営はテストのため制限しない(呼び出し側で null を渡す)。作った人のプロンプトだけを見る。
+ */
+export const GACHA_MAX_BLOCKS = 1;
+
+/** ガチャの上限。null は「数えない」。 */
+export interface GachaLimits {
+  /** 1つのプロンプトに書ける囲み(要素)の数 */
+  maxBlocks: number | null;
+  /** 1つの囲みに書ける候補の数 */
+  maxCandidates: number | null;
+}
+
+/** 一般の利用者の上限。 */
+export const GACHA_DEFAULT_LIMITS: GachaLimits = {
+  maxBlocks: GACHA_MAX_BLOCKS,
+  maxCandidates: GACHA_MAX_CANDIDATES,
+};
+
+/**
+ * その人のガチャの上限。運営はテストのため、囲みの数も候補の数も制限しない(2026-10-05 ユーザー指示)。
+ */
+export function gachaLimitsFor(isAdmin: boolean): GachaLimits {
+  return isAdmin ? { maxBlocks: null, maxCandidates: null } : GACHA_DEFAULT_LIMITS;
+}
+
+/**
  * 選ばれた候補の前に Worker が必ず付ける前置き。
  *
  * 書く人に前置きを任せると、候補の1行だけが何の指定か分からないまま届く。
@@ -84,34 +113,58 @@ export function parseGachaCandidates(blockBody: string): GachaCandidate[] {
 
 export type GachaFieldValidation =
   | { ok: true; candidateCount: number }
-  | { ok: false; reason: "missing_block" | "too_few_candidates" | "too_many_candidates" };
+  | {
+      ok: false;
+      reason: "missing_block" | "too_many_blocks" | "too_few_candidates" | "too_many_candidates";
+    };
 
-/** ガチャの入力欄が送れる状態かを判定する（画面側の案内に使う）。 */
-export function validateGachaField(field: string): GachaFieldValidation {
+/**
+ * ガチャの入力欄が送れる状態かを判定する（画面側の案内に使う）。
+ *
+ * limits は上限。null の項目は数えない(運営)。省略時は一般の利用者の上限。
+ */
+export function validateGachaField(
+  field: string,
+  limits: GachaLimits = GACHA_DEFAULT_LIMITS,
+): GachaFieldValidation {
+  const { maxBlocks, maxCandidates } = limits;
   const blocks = [...field.matchAll(GACHA_BLOCK_PATTERN)];
   if (blocks.length === 0) return { ok: false, reason: "missing_block" };
+  if (maxBlocks !== null && blocks.length > maxBlocks) {
+    return { ok: false, reason: "too_many_blocks" };
+  }
   const counts = blocks.map((block) => parseGachaCandidates(block[1]).length);
   if (counts.some((count) => count < GACHA_MIN_CANDIDATES)) {
     return { ok: false, reason: "too_few_candidates" };
   }
-  if (counts.some((count) => count > GACHA_MAX_CANDIDATES)) {
+  if (maxCandidates !== null && counts.some((count) => count > maxCandidates)) {
     return { ok: false, reason: "too_many_candidates" };
   }
   return { ok: true, candidateCount: counts[0] };
 }
 
+
 /**
- * 送られてきたプロンプトに、候補が上限を超える囲みがあるか(サーバー側の確認に使う)。
+ * 送られてきたプロンプトが、ガチャの上限を超えているか(サーバー側の確認に使う)。
  *
  * 画面は上限を超えると送れないようにしてあるが、直接送られた場合に備えて
  * 生成の受付でも止める。囲みが無いプロンプト・候補が少ない囲みは、ここでは止めない
- * (少ない側は Worker が今までどおり扱う)。
+ * (少ない側は Worker が今までどおり扱う)。null の項目は数えない(運営)。
  */
-export function exceedsGachaCandidateLimit(prompt: string): boolean {
-  for (const block of prompt.matchAll(GACHA_BLOCK_PATTERN)) {
-    if (parseGachaCandidates(block[1]).length > GACHA_MAX_CANDIDATES) return true;
+export function findGachaLimitViolation(
+  prompt: string,
+  limits: GachaLimits = GACHA_DEFAULT_LIMITS,
+): "too_many_blocks" | "too_many_candidates" | null {
+  const blocks = [...prompt.matchAll(GACHA_BLOCK_PATTERN)];
+  if (limits.maxBlocks !== null && blocks.length > limits.maxBlocks) return "too_many_blocks";
+  const { maxCandidates } = limits;
+  if (
+    maxCandidates !== null &&
+    blocks.some((block) => parseGachaCandidates(block[1]).length > maxCandidates)
+  ) {
+    return "too_many_candidates";
   }
-  return false;
+  return null;
 }
 
 /** 本文の末尾にガチャの入力欄を付け、保存・送信する1つのプロンプトにする。 */

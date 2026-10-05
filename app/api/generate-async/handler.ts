@@ -42,8 +42,10 @@ import {
 } from "@/features/generation/lib/async-generation-job-repository";
 import { jsonError } from "@/lib/api/json-error";
 import {
-  exceedsGachaCandidateLimit,
+  findGachaLimitViolation,
+  GACHA_MAX_BLOCKS,
   GACHA_MAX_CANDIDATES,
+  gachaLimitsFor,
 } from "@/shared/generation/gacha-prompt";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
@@ -156,9 +158,20 @@ export async function postGenerateAsyncRoute(
       creatorLooksMode,
       outputAspectRatioMode,
     } = validationResult.data;
-    // ガチャの候補の上限(10個)。画面では超えると送れないが、直接送られたときもここで止める。
+    // ガチャの上限(一般の利用者は、囲み1つ・候補10個まで)。画面では超えると送れないが、
+    // 直接送られたときもここで止める。運営はテストのため制限しない(2026-10-05 ユーザー指示)。
     // 見るのは本人が送ったプロンプトだけ(ほかの人のプロンプトで作る派生生成は prompt を持たない)
-    if (prompt && exceedsGachaCandidateLimit(prompt)) {
+    const gachaViolation = prompt
+      ? findGachaLimitViolation(prompt, gachaLimitsFor(isAdminViewer(user.id)))
+      : null;
+    if (gachaViolation === "too_many_blocks") {
+      return jsonError(
+        copy.gachaTooManyBlocks(GACHA_MAX_BLOCKS),
+        "GENERATION_GACHA_TOO_MANY_BLOCKS",
+        400
+      );
+    }
+    if (gachaViolation === "too_many_candidates") {
       return jsonError(
         copy.gachaTooManyCandidates(GACHA_MAX_CANDIDATES),
         "GENERATION_GACHA_TOO_MANY_CANDIDATES",

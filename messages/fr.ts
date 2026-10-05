@@ -1549,6 +1549,7 @@ export const frMessages = {
     gachaMissingBlock: "Les balises {open} et {close} sont introuvables. Utilisez « Réinitialiser » pour les rétablir.",
     gachaTooFewCandidates: "Saisissez au moins 2 candidats (les lignes vides ne comptent pas).",
     gachaTooManyCandidates: "Saisissez jusqu’à {max} candidats.",
+    gachaTooManyBlocks: "Utilisez au maximum {max} bloc gacha ({open} … {close}).",
     gachaExample: "1. Pâtissier. Veste et toque de chef blanches. Dans la cuisine d’une pâtisserie, en train de décorer un gâteau à la crème\n2. Pompier. Tenue de feu orange et casque. Devant un camion de pompiers, tenant une lance à incendie\n3. Fleuriste. Tablier beige. Dans une boutique de fleurs au coin de la rue, en train de nouer un ruban autour d’un bouquet\n4. Agent de gare. Uniforme et casquette bleu marine. Sur un quai de gare, en train de pointer du doigt pour vérifier la sécurité",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Outil d’aide",

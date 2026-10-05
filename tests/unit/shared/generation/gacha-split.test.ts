@@ -3,7 +3,7 @@ import {
   extractResponsesOutputText,
   numberPromptLines,
 } from "@/shared/generation/gacha-split";
-import { validateGachaField } from "@/shared/generation/gacha-prompt";
+import { gachaLimitsFor, validateGachaField } from "@/shared/generation/gacha-prompt";
 
 // 職業ガチャ(ChatGPT 向け)を短くしたもの
 const ORIGINAL = [
@@ -182,6 +182,15 @@ describe("applyGachaSplit の候補の上限(10個)", () => {
   test("10個までなら分ける", () => {
     const result = applyGachaSplit(promptWith(10), { removeLines: [2], candidates: items(10) });
     expect(result.ok && result.candidateCount).toBe(10);
+  });
+
+  test("運営は11個以上でも分ける(上限を掛けない)", () => {
+    const result = applyGachaSplit(
+      promptWith(11),
+      { removeLines: [2], candidates: items(11) },
+      gachaLimitsFor(true),
+    );
+    expect(result.ok && result.candidateCount).toBe(11);
   });
 
   test("11個は勝手に削らず、上限を超えたとして分けない", () => {

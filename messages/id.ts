@@ -1548,6 +1548,7 @@ export const idMessages = {
     gachaMissingBlock: "Tanda {open} dan {close} tidak ditemukan. Gunakan \"Atur ulang\" untuk mengembalikannya.",
     gachaTooFewCandidates: "Masukkan minimal 2 kandidat (baris kosong tidak dihitung).",
     gachaTooManyCandidates: "Masukkan maksimal {max} kandidat.",
+    gachaTooManyBlocks: "Gunakan maksimal {max} blok gacha ({open} … {close}).",
     gachaExample: "1. Pastry chef. Jaket dan topi koki putih. Di dapur toko kue, sedang menghias kue dengan krim\n2. Pemadam kebakaran. Seragam tahan api oranye dan helm. Di depan mobil pemadam, memegang selang\n3. Florist. Celemek krem. Di toko bunga di sudut jalan, sedang mengikat pita pada buket\n4. Petugas stasiun. Seragam dan topi biru tua. Di peron stasiun, sedang menunjuk untuk memeriksa keselamatan",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Fitur bantuan",
