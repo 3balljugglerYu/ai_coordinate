@@ -184,6 +184,26 @@ describe("applyGachaSplit の候補の上限(10個)", () => {
     expect(result.ok && result.candidateCount).toBe(10);
   });
 
+  test("候補の一覧が2つ以上(職業と場所など)なら、混ぜずに分けない", () => {
+    const prompt = "働く姿。\n職業は、医師、探偵のどれか。\n場所は、海、森のどれか。";
+    expect(
+      applyGachaSplit(prompt, {
+        removeLines: [2, 3],
+        candidates: ["医師", "探偵", "海", "森"],
+        listCount: 2,
+      }),
+    ).toEqual({ ok: false, reason: "too_many_blocks" });
+  });
+
+  test("一覧が1つなら、今までどおり分ける", () => {
+    const result = applyGachaSplit(promptWith(3), {
+      removeLines: [2],
+      candidates: items(3),
+      listCount: 1,
+    });
+    expect(result.ok && result.candidateCount).toBe(3);
+  });
+
   test("運営は11個以上でも分ける(上限を掛けない)", () => {
     const result = applyGachaSplit(
       promptWith(11),

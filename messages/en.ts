@@ -1556,6 +1556,7 @@ export const enMessages = {
     gachaSplitInsufficient: "Not enough Percoins ({cost} Percoins needed).",
     gachaSplitNotSplittable: "The prompt could not be split because it does not list at least 2 specific candidates by name. No Percoins were used. Add candidates like \"e.g. doctor, pastry chef, detective\" or \"e.g. slide, swing, horizontal bar\" and try again.",
     gachaSplitTooMany: "The prompt could not be split because it lists more than {max} candidates. No Percoins were used. Reduce the candidates to {max} or fewer and try again.",
+    gachaSplitTooManyBlocks: "Could not create the gacha because the prompt has 2 or more gacha elements. No Percoins were used. Narrow it down to one element to pick from and try again.",
     gachaSplitFailed: "The prompt could not be split. Please try again later. No Percoins were used.",
     gachaSplitConnectionLost: "The connection was lost. Please check your balance and history to see whether Percoins were used.",
     gachaSplitProposalTitle: "Found {count} candidates",

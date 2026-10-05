@@ -1553,6 +1553,7 @@ export const zhTwMessages = {
     gachaSplitInsufficient: "Percoin 不足（需要 {cost} 個 Percoin）。",
     gachaSplitNotSplittable: "沒有用具體名稱寫出 2 個以上的候選，因此無法拆分。未使用 Percoin。像「例：醫師、甜點師、偵探」「例：溜滑梯、鞦韆、單槓」這樣補上候選後即可拆分。",
     gachaSplitTooMany: "候選超過 {max} 個，無法拆分。未使用 Percoin。將候選減少到 {max} 個以內即可拆分。",
+    gachaSplitTooManyBlocks: "轉蛋要素有 2 個以上，無法建立。未使用 Percoin。將要隨機選擇的要素縮減為 1 個即可建立。",
     gachaSplitFailed: "無法拆分。請稍後再試。未使用 Percoin。",
     gachaSplitConnectionLost: "連線中斷了。是否使用了 Percoin，請在餘額和紀錄中確認。",
     gachaSplitProposalTitle: "找到了 {count} 個候選",

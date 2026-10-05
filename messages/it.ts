@@ -1559,6 +1559,7 @@ export const itMessages = {
     gachaSplitInsufficient: "Percoin insufficienti (ne servono {cost}).",
     gachaSplitNotSplittable: "Impossibile dividere, perché non ci sono almeno 2 candidati scritti con un nome preciso. Nessun Percoin è stato usato. Aggiungi candidati come “es.: medico, pasticciere, detective” o “es.: scivolo, altalena, sbarra” e potrai dividere.",
     gachaSplitTooMany: "Impossibile dividere perché ci sono più di {max} candidati. Nessun Percoin è stato usato. Riduci i candidati a {max} o meno e riprova.",
+    gachaSplitTooManyBlocks: "Impossibile creare il gacha perché il prompt ha 2 o più elementi gacha. Nessun Percoin è stato usato. Lascia un solo elemento da estrarre e riprova.",
     gachaSplitFailed: "Impossibile dividere. Riprova più tardi. Nessun Percoin è stato usato.",
     gachaSplitConnectionLost: "La connessione si è interrotta. Controlla saldo e cronologia per sapere se sono stati usati Percoin.",
     gachaSplitProposalTitle: "Trovati {count} candidati",

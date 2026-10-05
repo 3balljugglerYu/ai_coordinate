@@ -141,6 +141,10 @@ export async function postGachaSplitRoute(
   const result = applyGachaSplit(prompt, output, gachaLimitsFor(isAdminFn(user.id)));
   if (!result.ok) {
     // 候補が上限(一般は10個)を超えるときは、減らせば分けられることを画面で伝える
+    // 候補の一覧(ガチャの要素)が2つ以上あるときは、まとめれば作れることを画面で伝える
+    if (result.reason === "too_many_blocks") {
+      return jsonError("Too many gacha lists", "GACHA_SPLIT_TOO_MANY_BLOCKS", 422);
+    }
     if (result.reason === "too_many_candidates") {
       return jsonError("Too many candidates", "GACHA_SPLIT_TOO_MANY_CANDIDATES", 422);
     }

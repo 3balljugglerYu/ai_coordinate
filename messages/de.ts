@@ -1560,6 +1560,7 @@ export const deMessages = {
     gachaSplitInsufficient: "Nicht genug Percoins ({cost} Percoins erforderlich).",
     gachaSplitNotSplittable: "Aufteilen nicht möglich, da nicht mindestens 2 Kandidaten mit konkretem Namen genannt sind. Es wurden keine Percoins verbraucht. Ergänze Kandidaten wie „z. B. Ärztin, Konditor, Detektiv“ oder „z. B. Rutsche, Schaukel, Reck“, dann klappt das Aufteilen.",
     gachaSplitTooMany: "Konnte nicht aufgeteilt werden, da mehr als {max} Kandidaten aufgeführt sind. Es wurden keine Percoins verwendet. Reduziere die Kandidaten auf höchstens {max} und versuche es erneut.",
+    gachaSplitTooManyBlocks: "Das Gacha konnte nicht erstellt werden, da der Prompt 2 oder mehr Gacha-Elemente enthält. Es wurden keine Percoins verwendet. Beschränke dich auf ein Element und versuche es erneut.",
     gachaSplitFailed: "Aufteilen fehlgeschlagen. Bitte versuche es später erneut. Es wurden keine Percoins verbraucht.",
     gachaSplitConnectionLost: "Die Verbindung wurde unterbrochen. Prüfe Guthaben und Verlauf, um zu sehen, ob Percoins verbraucht wurden.",
     gachaSplitProposalTitle: "{count} Kandidaten gefunden",

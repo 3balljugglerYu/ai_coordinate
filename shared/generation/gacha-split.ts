@@ -44,6 +44,9 @@ The prompt is given with line numbers ("L<number>: <text>"). Return:
    - If several candidates are written on one line separated by "、", ",", "／", "/" or similar, split them into separate items.
    - Do not include numbering or bullet marks.
    - Exclude words that are explicitly given as things to avoid.
+3. listCount: how many SEPARATE lists of candidates the prompt asks to pick from.
+   Count lists of different kinds separately (e.g. a list of jobs and a list of places = 2).
+   Several lines that together form one list of the same kind count as 1. Return 0 if there is no list.
 
 If the prompt has no list of candidates to choose from, return empty arrays.`;
 
@@ -53,8 +56,9 @@ export const GACHA_SPLIT_JSON_SCHEMA = {
   properties: {
     removeLines: { type: "array", items: { type: "integer" } },
     candidates: { type: "array", items: { type: "string" } },
+    listCount: { type: "integer" },
   },
-  required: ["removeLines", "candidates"],
+  required: ["removeLines", "candidates", "listCount"],
   additionalProperties: false,
 } as const;
 
@@ -69,6 +73,8 @@ export function numberPromptLines(prompt: string): string {
 export interface GachaSplitModelOutput {
   removeLines: unknown;
   candidates: unknown;
+  /** 候補の一覧(ガチャの要素)がいくつあるか。2つ以上なら、1つの囲みには分けない */
+  listCount?: unknown;
 }
 
 export type GachaSplitResult =
@@ -84,7 +90,12 @@ export type GachaSplitResult =
     }
   | {
       ok: false;
-      reason: "no_candidates" | "too_many_candidates" | "empty_body" | "invalid_output";
+      reason:
+        | "no_candidates"
+        | "too_many_blocks"
+        | "too_many_candidates"
+        | "empty_body"
+        | "invalid_output";
     };
 
 const LEADING_MARK_PATTERN = /^\s*(?:\d+\s*[.．、)）]|[・•\-*])\s*/;
@@ -150,6 +161,7 @@ function joinKeptLines(lines: string[], removed: Set<number>): string {
  * - 行番号は範囲内の整数だけを使う（範囲外が1つでもあれば壊れた出力とみなす）
  * - 候補は**消す行の中にある**ものだけを残す。本文に候補の並びが残ったままだと、
  *   画像の AI が1番目に引っ張られる元の問題が直らないため（AI が作り足した候補もここで落ちる）
+ * - 候補の一覧が2つ以上あるなら分けない(1つの囲みに混ざるのを防ぐ)
  * - 残った候補が2つ未満・上限(一般は10個。運営は無し)を超える、または本文が空になるなら分けられない
  */
 export function applyGachaSplit(
@@ -179,6 +191,13 @@ export function applyGachaSplit(
 
   if (candidates.length > GACHA_SPLIT_MAX_CANDIDATES) {
     return { ok: false, reason: "invalid_output" };
+  }
+
+  // 一覧が2つ以上(職業と場所など)あるプロンプトは、1つの囲みにまとめると「どちらか1つ」が
+  // 選ばれてしまう。混ぜずに分けない(2026-10-05 ユーザー指示)。この道具が作る囲みは1つだけ
+  const { listCount } = output;
+  if (typeof listCount === "number" && Number.isInteger(listCount) && listCount >= 2) {
+    return { ok: false, reason: "too_many_blocks" };
   }
 
   const removedSource = normalizeForMatch(

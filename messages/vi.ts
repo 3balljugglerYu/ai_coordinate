@@ -1556,6 +1556,7 @@ export const viMessages = {
     gachaSplitInsufficient: "Không đủ Percoin (cần {cost} Percoin).",
     gachaSplitNotSplittable: "Không thể tách vì chưa có ít nhất 2 ứng viên được ghi bằng tên cụ thể. Không có Percoin nào bị dùng. Hãy thêm ứng viên như \"ví dụ: bác sĩ, thợ làm bánh, thám tử\" hoặc \"ví dụ: cầu trượt, xích đu, xà đơn\" để có thể tách.",
     gachaSplitTooMany: "Không thể tách vì có hơn {max} ứng viên. Không có Percoin nào bị sử dụng. Hãy giảm còn {max} ứng viên trở xuống rồi thử lại.",
+    gachaSplitTooManyBlocks: "Không thể tạo gacha vì prompt có từ 2 yếu tố gacha trở lên. Không có Percoin nào bị sử dụng. Hãy thu gọn còn một yếu tố để bốc rồi thử lại.",
     gachaSplitFailed: "Không thể tách. Vui lòng thử lại sau. Không có Percoin nào bị dùng.",
     gachaSplitConnectionLost: "Kết nối bị gián đoạn. Hãy kiểm tra số dư và lịch sử để biết Percoin đã được dùng hay chưa.",
     gachaSplitProposalTitle: "Tìm thấy {count} ứng viên",
