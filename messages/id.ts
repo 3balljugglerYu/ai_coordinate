@@ -1537,6 +1537,7 @@ export const idMessages = {
     catalogCreateReward: "Setiap kali pengikut membuat gambar dengannya, kamu mendapat Percoin. <link>Selengkapnya</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Jadikan prompt gacha",
+    gachaGuideLink: "Cara pakai",
     gachaFieldLabel: "Atur isi gacha",
     gachaHintRandom: "Setiap kali membuat gambar, satu isi gacha dipilih secara acak",
     gachaInsertExample: "Masukkan contoh",

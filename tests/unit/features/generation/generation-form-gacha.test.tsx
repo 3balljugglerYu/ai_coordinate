@@ -194,6 +194,17 @@ describe("GenerationForm のガチャプロンプト", () => {
     expect(gachaCheckbox()).toBeNull();
   });
 
+  test("チェックの右に、使い方の紹介ページへのリンクを新しいタブで出す", () => {
+    renderFreeForm(jest.fn());
+
+    const link = screen.getByRole("link", { name: "gachaGuideLink" });
+    expect(link.getAttribute("href")).toBe("/guide/gacha");
+    expect(link.getAttribute("target")).toBe("_blank");
+    // ラベルの中に入れない(押してもチェックが切り替わらない)
+    expect(link.closest("label")).toBeNull();
+    expect(gachaCheckbox()?.getAttribute("aria-checked")).toBe("false");
+  });
+
   test("チェックしなければ本文だけを送る", async () => {
     const user = userEvent.setup();
     const onSubmit = jest.fn();

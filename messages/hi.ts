@@ -1536,6 +1536,7 @@ export const hiMessages = {
     catalogCreateReward: "जब भी कोई फ़ॉलोअर जेनरेट करता है, आपको पर्कॉइन वापस मिलते हैं। <link>और जानें</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "गाचा प्रॉम्प्ट बनाएं",
+    gachaGuideLink: "इस्तेमाल का तरीका",
     gachaFieldLabel: "गाचा आइटम सेट करें",
     gachaHintRandom: "हर बार जनरेट करने पर, गाचा के आइटम में से एक को रैंडम चुना जाता है",
     gachaInsertExample: "उदाहरण डालें",

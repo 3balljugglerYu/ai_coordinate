@@ -1534,6 +1534,7 @@ export const koMessages = {
     catalogCreateReward: "팔로워가 생성할 때마다 페르코인이 환원됩니다. <link>자세히 보기</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "가챠 프롬프트로 만들기",
+    gachaGuideLink: "사용 방법",
     gachaFieldLabel: "가챠 내용물 설정",
     gachaHintRandom: "생성할 때마다 가챠 내용물 중 하나가 무작위로 선택됩니다",
     gachaInsertExample: "예시 넣기",

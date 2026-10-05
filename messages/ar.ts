@@ -1535,6 +1535,7 @@ export const arMessages = {
     catalogCreateReward: "في كل مرة ينشئ فيها أحد المتابعين صورة، تحصل على بيركوين. <link>اعرف المزيد</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "اجعله موجّه جاتشا",
+    gachaGuideLink: "طريقة الاستخدام",
     gachaFieldLabel: "تعيين عناصر الجاتشا",
     gachaHintRandom: "في كل مرة تُنشئ فيها صورة، يُختار أحد عناصر الجاتشا عشوائيًا",
     gachaInsertExample: "إدراج مثال",

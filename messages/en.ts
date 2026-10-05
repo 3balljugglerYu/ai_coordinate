@@ -1535,6 +1535,7 @@ export const enMessages = {
     catalogCreateReward: "Each time a follower generates with it, you earn Percoins. <link>Learn more</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Make it a gacha prompt",
+    gachaGuideLink: "How to use",
     gachaFieldLabel: "Set gacha items",
     gachaHintRandom: "Each time you generate, one of the gacha items is picked at random",
     gachaInsertExample: "Insert example",
