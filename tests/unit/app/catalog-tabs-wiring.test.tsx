@@ -27,11 +27,11 @@ jest.mock("@/features/style-presets/components/OriginalKindTabs", () => ({
   OriginalKindTabs: () => <div data-testid="catalog-tabs-direct" />,
 }));
 
-const mockFreePageHeader = jest.fn((props: Record<string, string>) => (
-  <div data-testid="free-page-header">{props.title}</div>
+const mockFreePageHeader = jest.fn((props: Record<string, unknown>) => (
+  <div data-testid="free-page-header">{String(props.title)}</div>
 ));
 jest.mock("@/features/generation/components/FreePageHeader", () => ({
-  FreePageHeader: (props: Record<string, string>) => mockFreePageHeader(props),
+  FreePageHeader: (props: Record<string, unknown>) => mockFreePageHeader(props),
 }));
 jest.mock("@/features/generation/components/FreePageBody", () => ({
   FreePageBody: () => <div data-testid="free-page-body" />,
@@ -48,7 +48,14 @@ jest.mock("next-intl/server", () => ({
   // getTranslations("free") と getTranslations({ locale, namespace: "free" }) の両方の書き方を受ける
   getTranslations: async (arg: string | { namespace?: string }) => {
     const namespace = typeof arg === "string" ? arg : arg?.namespace;
-    return (key: string) => `${namespace}.${key}`;
+    const t = (key: string) => `${namespace}.${key}`;
+    // t.rich: <link> などのタグを React の要素に置き換えられる形にする
+    return Object.assign(t, {
+      rich: (
+        key: string,
+        tags: Record<string, (chunks: React.ReactNode) => React.ReactNode>,
+      ) => tags.link?.(`${namespace}.${key}`) ?? `${namespace}.${key}`,
+    });
   },
 }));
 jest.mock("next/navigation", () => ({
@@ -112,13 +119,20 @@ describe("タブの置き場所", () => {
     render(element);
 
     expect(mockFreePageHeader).toHaveBeenCalled();
-    expect(mockFreePageHeader.mock.calls[0][0]).toEqual({
+    const props = mockFreePageHeader.mock.calls[0][0] as Record<string, unknown>;
+    expect(props).toMatchObject({
       title: "free.pageTitle",
       description: "free.pageDescription",
-      catalogListed: "free.catalogCreateListed",
       catalogFollowers: "free.catalogCreateFollowers",
-      catalogReward: "free.catalogCreateReward",
     });
+    // 「みんなのカタログ」は /user-styles へのリンク(2026-10-05)
+    render(<>{props.catalogListed as React.ReactNode}</>);
+    const link = screen.getByRole("link", { name: "free.catalogCreateListed" });
+    expect(link.getAttribute("href")).toBe("/ja/user-styles");
+    // 「詳しくはこちら」はクリエイター還元の紹介ページへ(2026-10-05)
+    render(<>{props.catalogReward as React.ReactNode}</>);
+    const rewardLink = screen.getByRole("link", { name: "free.catalogCreateReward" });
+    expect(rewardLink.getAttribute("href")).toBe("/creator-rewards");
     expect(screen.getByTestId("free-page-body")).toBeTruthy();
   });
 

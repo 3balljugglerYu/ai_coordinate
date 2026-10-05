@@ -413,6 +413,22 @@ export function PostModal({
               <p className="pl-6 text-xs leading-relaxed text-muted-foreground">
                 {t("showBeforeImageHint")}
               </p>
+              {/*
+                ⭐ 外したときだけ、「みんなのカタログ」に並ばないことを伝える(2026-10-05 ユーザー指示)。
+                掲載の条件は「Free Style の原本・生成前の画像を表示」(get_user_style_page)。
+                以前は「外した瞬間に出る説明は引き止めになる」として出していなかったが、
+                並ばないことを知らずに投稿して戸惑う方が困るため、事実だけを伝える。
+                掲載の対象になりうる投稿(じゆうモードの原本)にだけ出す。
+              */}
+              {canChoosePromptVisibility && !showBeforeImage ? (
+                <p
+                  className="pl-6 text-xs font-medium leading-relaxed text-red-600"
+                  role="status"
+                  data-testid="show-before-image-catalog-notice"
+                >
+                  {t("showBeforeImageCatalogNotice")}
+                </p>
+              ) : null}
             </div>
 
             {canChoosePromptVisibility && (

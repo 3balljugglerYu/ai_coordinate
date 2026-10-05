@@ -18,8 +18,6 @@ const GACHA_KEYS = [
   "gachaToggleLabel",
   "gachaFieldLabel",
   "gachaHintRandom",
-  "gachaHintPerCandidate",
-  "gachaHintBody",
   "gachaInsertExample",
   "gachaReset",
   "gachaMissingBlock",
@@ -73,6 +71,7 @@ describe("ガチャプロンプトの文言", () => {
 });
 
 const SPLIT_KEYS = [
+  "gachaSplitTitle",
   "gachaSplitDescription",
   "gachaSplitButton",
   "gachaSplitPending",

@@ -58,3 +58,59 @@ export async function getUserStyleFollowedAuthors(
     latestPostedAt: row.latest_posted_at,
   }));
 }
+
+/**
+ * 自分のチップ(2026-10-05 追加)。フォロー中の作者と同じ形で、作者チップの先頭に置く。
+ *
+ * 一覧の掲載条件(get_user_style_page)を同じ閲覧者・作者=自分で1件だけ読み、
+ * 並ぶ投稿が1件も無ければ出さない(押しても空にならないように)。
+ * フォローは自分自身にはできないので、フォロー中の作者チップには入らない。
+ *
+ * **読めなければ null(fail closed)。** チップが出ないだけでページは成立する。
+ */
+export async function getUserStyleOwnAuthor(
+  currentUserId: string | null
+): Promise<UserStyleAuthor | null> {
+  if (!currentUserId) {
+    return null;
+  }
+
+  const supabase = createAdminClient();
+  const [{ data: rows, error: pageError }, { data: profile, error: profileError }] =
+    await Promise.all([
+      supabase.rpc("get_user_style_page", {
+        p_viewer_id: currentUserId,
+        p_limit: 1,
+        p_sort: "newest",
+        p_author_id: currentUserId,
+        p_cursor_posted_at: null,
+        p_cursor_id: null,
+      }),
+      supabase
+        .from("profiles")
+        .select("nickname, avatar_url")
+        .eq("user_id", currentUserId)
+        .maybeSingle(),
+    ]);
+
+  if (pageError || profileError) {
+    console.error("User style own chip fetch failed:", {
+      code: pageError?.code ?? profileError?.code,
+    });
+    return null;
+  }
+
+  const latest = ((rows ?? []) as Array<{ post?: { posted_at?: string | null } }>)[0]
+    ?.post?.posted_at;
+  if (!latest) {
+    return null;
+  }
+
+  return {
+    authorId: currentUserId,
+    nickname: profile?.nickname ?? null,
+    avatarUrl: profile?.avatar_url ?? null,
+    latestPostedAt: latest,
+  };
+}
+

@@ -87,6 +87,7 @@ export const zhTwMessages = {
     promptVisibilityPrivateHint:
       "提示詞不會展示給任何人。追蹤者看不到內容，但可以用同一提示詞生成。只有追蹤者才能用它生成。",
     showBeforeImageHint: "一併顯示原圖，更容易讓人看出提示詞改變了什麼。",
+    showBeforeImageCatalogNotice: "如果不顯示生成前的圖片，就不會出現在「大家的目錄」中。",
     promptVisibilityRetractWarning: "改為私密無法撤回已被看到或複製的內容。",
     sourcePromptCardTitle: "用這個提示詞創作",
     sourcePromptCardTitleDerived: "用原作提示詞創作",
@@ -1526,15 +1527,13 @@ export const zhTwMessages = {
     loginCtaDescription: "登入後即可用你自己的指令生成角色插畫。",
     loginCtaAction: "登入 / 註冊",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "用自己寫的提示詞創作，發布時同時顯示更換前的圖片，作品就會出現在「大家的目錄」中。",
-    catalogCreateFollowers: "你的追蹤者可以用這個提示詞生成（提示詞維持私密也沒關係）。",
-    catalogCreateReward: "追蹤者每次用它生成，你都會獲得佩爾幣。",
+    catalogCreateListed: "在這裡生成並發布後，會出現在<link>「大家的目錄」</link>中。",
+    catalogCreateFollowers: "追蹤者可以用這個提示詞生成（提示詞維持不公開也沒問題！）。",
+    catalogCreateReward: "每當追蹤者生成一次，你就會獲得 Percoin 回饋。<link>了解詳情</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "設為轉蛋提示詞",
     gachaFieldLabel: "轉蛋",
     gachaHintRandom: "每次生成時，會從候選中隨機選出一個",
-    gachaHintPerCandidate: "每個候選不同的內容（服裝、地點、動作等）請都寫在該候選的那一行裡",
-    gachaHintBody: "正文請用適用於所有候選的寫法，例如「指定的職業」",
     gachaInsertExample: "插入範例",
     gachaReset: "重設",
     gachaOverwriteConfirmTitle: "將覆寫轉蛋欄",
@@ -1545,7 +1544,8 @@ export const zhTwMessages = {
     gachaTooFewCandidates: "請至少輸入 2 個候選（沒有內容的行不計入）。",
     gachaExample: "1. 甜點師。白色廚師服和廚師帽。在西點店的廚房，正往蛋糕上擠奶油\n2. 消防員。橘色防火衣和頭盔。在消防車前，雙手握著水管\n3. 花藝師。米色圍裙。在街角的花店，正為花束繫上緞帶\n4. 車站站務員。深藍色制服和制帽。在月台上，正在指差確認安全",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "把為 ChatGPT 等寫的提示詞貼到正文中，AI 會找出候選列表，把它分成正文和轉蛋。僅在成功拆分時使用 {cost} 個 Percoin。",
+    gachaSplitTitle: "🪄 輔助功能",
+    gachaSplitDescription: "AI 會把「想生成的內容」中填寫的提示詞，拆分為正文和轉蛋。僅在成功拆分時使用 {cost} 個 Percoin。",
     gachaSplitButton: "用正文建立轉蛋（{cost} 個 Percoin）",
     gachaSplitPending: "正在拆分…",
     gachaSplitInsufficient: "Percoin 不足（需要 {cost} 個 Percoin）。",

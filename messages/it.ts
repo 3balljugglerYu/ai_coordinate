@@ -87,6 +87,7 @@ export const itMessages = {
     promptVisibilityPrivateHint:
       "Il tuo prompt resta nascosto a tutti. I follower possono generare con esso senza vederne il testo. Solo i follower possono generare con esso.",
     showBeforeImageHint: "Mostrare l'immagine originale aiuta a capire cosa cambia il prompt.",
+    showBeforeImageCatalogNotice: "Se non mostri l’immagine originale, il post non apparirà nel Catalogo di tutti.",
     promptVisibilityRetractWarning: "Passare a privato non annulla ciò che è già stato visto o copiato.",
     sourcePromptCardTitle: "Crea con questo prompt",
     sourcePromptCardTitleDerived: "Crea con il prompt originale",
@@ -1532,15 +1533,13 @@ export const itMessages = {
     loginCtaDescription: "Accedi per generare illustrazioni del tuo personaggio con le tue istruzioni.",
     loginCtaAction: "Accedi / Registrati",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "Crea con un prompt scritto da te e pubblica il risultato mostrando anche l'immagine prima: apparirà nel Catalogo di tutti.",
-    catalogCreateFollowers: "I tuoi follower possono generare con quel prompt (il prompt può restare privato).",
-    catalogCreateReward: "Ogni volta che un follower genera con esso, guadagni Percoin.",
+    catalogCreateListed: "Genera qui e pubblica: apparirà nel <link>Catalogo di tutti</link>.",
+    catalogCreateFollowers: "I tuoi follower possono generare con quel prompt (il prompt può restare privato!).",
+    catalogCreateReward: "Ogni volta che un follower genera con esso, ricevi Percoin. <link>Scopri di più</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Trasforma in prompt gacha",
     gachaFieldLabel: "Gacha",
     gachaHintRandom: "A ogni generazione, viene scelto a caso uno dei candidati",
-    gachaHintPerCandidate: "Scrivi tutto ciò che cambia per ogni candidato (abito, luogo, azione, ecc.) sulla riga di quel candidato",
-    gachaHintBody: "Nel prompt principale, usa una formulazione adatta a tutti i candidati, ad esempio “la professione indicata”",
     gachaInsertExample: "Inserisci esempio",
     gachaReset: "Reimposta",
     gachaOverwriteConfirmTitle: "Il campo gacha verrà sostituito",
@@ -1551,7 +1550,8 @@ export const itMessages = {
     gachaTooFewCandidates: "Inserisci almeno 2 candidati (le righe vuote non contano).",
     gachaExample: "1. Pasticciere. Giacca e cappello da chef bianchi. Nel laboratorio di una pasticceria, mentre decora una torta con la panna\n2. Vigile del fuoco. Tuta ignifuga arancione e casco. Davanti a un camion dei pompieri, con una manichetta in mano\n3. Fiorista. Grembiule beige. In un negozio di fiori all’angolo, mentre lega un nastro a un bouquet\n4. Addetto di stazione. Uniforme e berretto blu navy. Sul binario, mentre indica con il dito per il controllo di sicurezza",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "Incolla nel campo principale un prompt scritto per ChatGPT o simili. L’IA trova l’elenco dei candidati e lo divide in prompt principale e gacha. Usa {cost} Percoin solo se la divisione riesce.",
+    gachaSplitTitle: "🪄 Funzione di supporto",
+    gachaSplitDescription: "L’IA divide il prompt scritto in “Cosa generare” in prompt principale e gacha. Usa {cost} Percoin solo se la divisione riesce.",
     gachaSplitButton: "Crea un gacha dal prompt ({cost} Percoin)",
     gachaSplitPending: "Divisione in corso…",
     gachaSplitInsufficient: "Percoin insufficienti (ne servono {cost}).",

@@ -142,6 +142,7 @@ export function GachaSplitTool({
 
   return (
     <div className="space-y-2 rounded-md bg-gray-50 p-3" data-testid="gacha-split-tool">
+      <p className="text-sm font-medium">{t("gachaSplitTitle")}</p>
       <p className="text-xs text-gray-600">
         {t("gachaSplitDescription", { cost: GACHA_SPLIT_PERCOIN_COST })}
       </p>

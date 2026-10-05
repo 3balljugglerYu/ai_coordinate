@@ -87,6 +87,7 @@ export const enMessages = {
     promptVisibilityPrivateHint:
       "Your prompt stays hidden from everyone. Followers can generate with it without seeing the text. Only followers can generate with it.",
     showBeforeImageHint: "Showing the source image makes it easier to see what the prompt changes.",
+    showBeforeImageCatalogNotice: "If you don’t show the before image, this post won’t appear in Everyone’s Catalog.",
     promptVisibilityRetractWarning: "Switching to private does not undo what has already been seen or copied.",
     sourcePromptCardTitle: "Create with this prompt",
     sourcePromptCardTitleDerived: "Create with the original prompt",
@@ -1529,15 +1530,13 @@ export const enMessages = {
     loginCtaDescription: "Log in to generate illustrations of your character with your own instructions.",
     loginCtaAction: "Log in / Sign up",
     // カタログ刷新後の「カタログをつくる」(/free)の説明。還元の額は書かない(運営が変える・0 で停止もある)
-    catalogCreateListed: "Create with a prompt you wrote yourself and post it with the before image shown, and it will appear in Everyone’s Catalog.",
-    catalogCreateFollowers: "Your followers can generate with that prompt (you can keep the prompt private).",
-    catalogCreateReward: "Each time a follower generates with it, you earn Percoins.",
+    catalogCreateListed: "Generate here and post it, and it will appear in <link>Everyone’s Catalog</link>.",
+    catalogCreateFollowers: "Your followers can generate with that prompt (it’s fine to keep the prompt private!).",
+    catalogCreateReward: "Each time a follower generates with it, you earn Percoins. <link>Learn more</link>",
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Make it a gacha prompt",
     gachaFieldLabel: "Gacha",
     gachaHintRandom: "Each time you generate, one candidate is picked at random",
-    gachaHintPerCandidate: "Write everything that changes per candidate (outfit, place, action, etc.) on that candidate's line",
-    gachaHintBody: "In the main prompt, write in a way that fits every candidate, e.g. \"the specified job\"",
     gachaInsertExample: "Insert example",
     gachaReset: "Reset",
     gachaOverwriteConfirmTitle: "Replace the gacha field",
@@ -1548,7 +1547,8 @@ export const enMessages = {
     gachaTooFewCandidates: "Enter at least 2 candidates (empty lines are not counted).",
     gachaExample: "1. Pastry chef. White chef's jacket and toque. In a patisserie kitchen, piping cream onto a cake\n2. Firefighter. Orange turnout gear and helmet. In front of a fire truck, holding a hose\n3. Florist. Beige apron. At a street-corner flower shop, tying a ribbon around a bouquet\n4. Station attendant. Navy uniform and cap. On a station platform, doing a pointing safety check",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
-    gachaSplitDescription: "Paste a prompt written for ChatGPT or similar into the main field. AI finds the list of candidates and splits it into the main prompt and the gacha. Uses {cost} Percoins only when the split succeeds.",
+    gachaSplitTitle: "🪄 Support tool",
+    gachaSplitDescription: "AI splits the prompt in “What to generate” into the main prompt and the gacha. Uses {cost} Percoins only when the split succeeds.",
     gachaSplitButton: "Make a gacha from the prompt ({cost} Percoins)",
     gachaSplitPending: "Splitting…",
     gachaSplitInsufficient: "Not enough Percoins ({cost} Percoins needed).",

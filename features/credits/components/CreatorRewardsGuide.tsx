@@ -141,19 +141,24 @@ function HeroVisual() {
 /**
  * 現在の還元額を大きく見せるバッジ。
  * 額は props 由来で、文言には埋め込まない(運営が変えたら表示も変わる)。
+ * ⭐ プロンプトとスタイルの2枚が並ぶので、何の還元かを必ず書く
+ * (同じ「現在の還元 +2」が2枚並んで見分けがつかなかった。2026-10-05 報告)。
  */
 function CurrentAmountCard({
   amount,
+  target,
   delay,
 }: {
   amount: number;
+  /** 何が使われたときの還元か */
+  target: string;
   delay: number;
 }) {
   return (
     <PopIn delay={delay} rotate={delay % 200 === 0 ? -5 : 5}>
       <div className="relative overflow-hidden rounded-3xl border-4 border-white bg-gradient-to-br from-pink-500 via-rose-400 to-orange-400 reward-gradient-shift px-6 py-5 text-center shadow-[0_10px_0_rgba(236,72,153,0.25)]">
         <p className="text-[11px] font-bold tracking-wide text-white/80">
-          現在の還元
+          現在の還元｜{target}
         </p>
         <p className="mt-1 flex items-center justify-center gap-2">
           <Image
@@ -184,7 +189,14 @@ export function CreatorRewardsGuide({
   styleUsageRewardAmount: number;
 }) {
   const hasPrompt = promptUsageRewardAmount > 0;
-  const hasStyle = styleUsageRewardAmount > 0;
+  /*
+    ⭐ スタイルの還元(Perstaのカタログで、提供者としてクレジットされているスタイルが
+    使われたとき)のバッジは、いったん出さない(2026-10-05 ユーザー指示)。
+    受け取れるのは運営が提供者として登録した人だけで、一般の方には「自分もスタイルを
+    持てる」と読めてしまうため。額(styleUsageRewardAmount)は受け取ったまま残し、
+    ページを出すかどうかの判定(app/creator-rewards/page.tsx)も変えない。
+  */
+  void styleUsageRewardAmount;
 
   return (
     <div className="min-h-screen overflow-hidden bg-gradient-to-b from-amber-50 via-pink-50 to-white">
@@ -202,10 +214,11 @@ export function CreatorRewardsGuide({
 
         <div className="mx-auto mt-6 flex max-w-sm flex-col gap-4 px-6">
           {hasPrompt && (
-            <CurrentAmountCard amount={promptUsageRewardAmount} delay={200} />
-          )}
-          {hasStyle && (
-            <CurrentAmountCard amount={styleUsageRewardAmount} delay={300} />
+            <CurrentAmountCard
+              amount={promptUsageRewardAmount}
+              target="あなたのプロンプトが使われたとき"
+              delay={200}
+            />
           )}
         </div>
 
@@ -215,7 +228,7 @@ export function CreatorRewardsGuide({
               href="/free"
               className="reward-breathe inline-flex items-center gap-2 rounded-full bg-gray-900 px-9 py-4 text-base font-black text-white shadow-[0_6px_0_rgba(0,0,0,0.2)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_rgba(0,0,0,0.2)]"
             >
-              Free Style でつくる →
+              カタログをつくる →
             </Link>
           </div>
         </PopIn>
@@ -241,7 +254,7 @@ export function CreatorRewardsGuide({
               no: "1",
               emoji: "✍️",
               title: "プロンプトを書いて生成！",
-              body: "Free Style であなたの考えたプロンプトを書いて生成しましょう",
+              body: "「カタログをつくる」で、あなたの考えたプロンプトを書いて生成しましょう",
               label: "イラスト②（書いて生成する／chibi）",
               color: "from-pink-500 to-rose-400",
               src: STEP1_MAIN,
@@ -249,7 +262,7 @@ export function CreatorRewardsGuide({
                 src: STEP1_SUB,
                 width: 382,
                 height: 869,
-                alt: "Free Style の入力画面。人物画像をアップロードし、生成したい内容を文章で入力する",
+                alt: "カタログをつくるの入力画面。人物画像をアップロードし、生成したい内容を文章で入力する",
                 caption: "実際の入力画面",
               },
             },
@@ -257,7 +270,7 @@ export function CreatorRewardsGuide({
               no: "2",
               emoji: "📮",
               title: "投稿しよう！",
-              body: "気に入った作品ができたら、ホームに投稿しましょう。あなたのフォロワーが、同じプロンプトで生成できるようになります。",
+              body: "気に入った作品ができたら投稿しましょう。生成前の画像も表示して投稿すると「みんなのカタログ」に並び、あなたのフォロワーが同じプロンプトで生成できるようになります。",
               label: "イラスト③（投稿する：作品をみんなに見せる／chibi）",
               color: "from-rose-400 to-orange-400",
               src: STEP2_MAIN,
@@ -273,7 +286,7 @@ export function CreatorRewardsGuide({
               no: "3",
               emoji: "🎉",
               title: "フォロワーが使ってくれる！",
-              body: "あなたの投稿を見た人が「このプロンプトで作る」をタップ。プロンプトの中身は見せずに、うちの子づくりを楽しんでもらえます。",
+              body: "あなたの投稿を見た人が「このカタログで生成する」をタップ。プロンプトの中身は見せずに、うちの子づくりを楽しんでもらえます。",
               label: "イラスト④（使われる：みんなに広がる／chibi）",
               color: "from-orange-400 to-amber-400",
               src: STEP3_MAIN,
@@ -281,7 +294,7 @@ export function CreatorRewardsGuide({
                 src: STEP3_SUB,
                 width: 382,
                 height: 979,
-                alt: "投稿の詳細画面。「このプロンプトで作る」ボタンから、同じプロンプトで生成できる",
+                alt: "投稿の詳細画面。「このカタログで生成する」ボタンから、同じプロンプトで生成できる",
                 caption: "実際の投稿画面",
               },
             },
@@ -424,7 +437,7 @@ export function CreatorRewardsGuide({
               href="/free"
               className="reward-breathe inline-flex items-center gap-2 rounded-full bg-white px-10 py-4 text-base font-black text-pink-600 shadow-[0_6px_0_rgba(0,0,0,0.18)] transition-transform active:translate-y-1 active:shadow-[0_2px_0_rgba(0,0,0,0.18)]"
             >
-              Free Style でつくる →
+              カタログをつくる →
             </Link>
           </div>
           <div className="mt-6">

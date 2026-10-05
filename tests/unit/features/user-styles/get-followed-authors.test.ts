@@ -2,7 +2,10 @@
 
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
-import { getUserStyleFollowedAuthors } from "@/features/user-styles/lib/get-followed-authors";
+import {
+  getUserStyleFollowedAuthors,
+  getUserStyleOwnAuthor,
+} from "@/features/user-styles/lib/get-followed-authors";
 import { USER_STYLE_AUTHOR_CHIP_LIMIT } from "@/features/user-styles/lib/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -105,6 +108,76 @@ describe("getUserStyleFollowedAuthors", () => {
 
     await expect(getUserStyleFollowedAuthors("viewer-1")).resolves.toEqual([]);
     spy.mockRestore();
+  });
+});
+
+describe("getUserStyleOwnAuthor(自分のチップ)", () => {
+  function createOwnStub(options: {
+    rows?: unknown[];
+    pageError?: { code: string } | null;
+    profile?: { nickname: string | null; avatar_url: string | null } | null;
+  }) {
+    const rpc = jest.fn().mockResolvedValue({
+      data: options.rows ?? [],
+      error: options.pageError ?? null,
+    });
+    const maybeSingle = jest
+      .fn()
+      .mockResolvedValue({ data: options.profile ?? null, error: null });
+    const eq = jest.fn(() => ({ maybeSingle }));
+    const select = jest.fn(() => ({ eq }));
+    const from = jest.fn(() => ({ select }));
+    return { rpc, from } as unknown as ReturnType<typeof createAdminClient> & {
+      rpc: jest.Mock;
+    };
+  }
+
+  beforeEach(() => jest.clearAllMocks());
+
+  test("未ログインは何も読まずに null", async () => {
+    const stub = createOwnStub({});
+    mockCreateAdminClient.mockReturnValue(stub);
+
+    await expect(getUserStyleOwnAuthor(null)).resolves.toBeNull();
+    expect(stub.rpc).not.toHaveBeenCalled();
+  });
+
+  test("一覧と同じ条件で、作者=自分・閲覧者=自分の1件を読む", async () => {
+    const stub = createOwnStub({
+      rows: [{ post: { posted_at: "2026-10-04T00:00:00Z" } }],
+      profile: { nickname: "みきふく", avatar_url: "https://example.com/a.png" },
+    });
+    mockCreateAdminClient.mockReturnValue(stub);
+
+    await expect(getUserStyleOwnAuthor("me")).resolves.toEqual({
+      authorId: "me",
+      nickname: "みきふく",
+      avatarUrl: "https://example.com/a.png",
+      latestPostedAt: "2026-10-04T00:00:00Z",
+    });
+    expect(stub.rpc).toHaveBeenCalledWith("get_user_style_page", {
+      p_viewer_id: "me",
+      p_limit: 1,
+      p_sort: "newest",
+      p_author_id: "me",
+      p_cursor_posted_at: null,
+      p_cursor_id: null,
+    });
+  });
+
+  test("並ぶ投稿が無ければ null(押しても空になるチップを出さない)", async () => {
+    mockCreateAdminClient.mockReturnValue(
+      createOwnStub({ rows: [], profile: { nickname: "x", avatar_url: null } }),
+    );
+
+    await expect(getUserStyleOwnAuthor("me")).resolves.toBeNull();
+  });
+
+  test("読めなければ null(チップが出ないだけ)", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockCreateAdminClient.mockReturnValue(createOwnStub({ pageError: { code: "XX000" } }));
+
+    await expect(getUserStyleOwnAuthor("me")).resolves.toBeNull();
   });
 });
 
