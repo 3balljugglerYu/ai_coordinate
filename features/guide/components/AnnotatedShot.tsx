@@ -9,14 +9,16 @@ export interface ShotBox {
   height: number;
 }
 
-/** 吹き出しの三角の向き(どちらにある枠を指すか)。 */
-export type CalloutPointer = "down" | "up" | "up-end" | "left";
+/** 吹き出しの三角の向き(どちらにある枠を指すか)。"none" は三角なしのラベル。 */
+export type CalloutPointer = "down" | "up" | "up-end" | "left" | "none";
 
 export interface ShotCallout {
   left: number;
   top: number;
   text: string;
   pointer: CalloutPointer;
+  /** left を吹き出しの中心にする(三角なしのラベルを画像の上に中央そろえで置くとき) */
+  center?: boolean;
 }
 
 interface AnnotatedShotProps {
@@ -36,6 +38,7 @@ const POINTER_CLASS: Record<CalloutPointer, string> = {
   up: "after:left-5 after:bottom-full after:border-b-rose-500",
   "up-end": "after:right-5 after:bottom-full after:border-b-rose-500",
   left: "after:right-full after:top-1/2 after:-translate-y-1/2 after:border-r-rose-500",
+  none: "after:hidden",
 };
 
 /**
@@ -100,7 +103,10 @@ export function AnnotatedShot({
           style={{
             left: `${callout.left}%`,
             top: `${callout.top}%`,
-            maxWidth: `${Math.max(30, Math.min(62, 98 - callout.left))}%`,
+            maxWidth: callout.center
+              ? "90%"
+              : `${Math.max(30, Math.min(62, 98 - callout.left))}%`,
+            transform: callout.center ? "translateX(-50%)" : undefined,
           }}
         >
           {callout.text}
