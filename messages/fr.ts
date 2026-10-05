@@ -1549,7 +1549,7 @@ export const frMessages = {
     gachaMissingBlock: "Les balises {open} et {close} sont introuvables. Utilisez « Réinitialiser » pour les rétablir.",
     gachaTooFewCandidates: "Saisissez au moins 2 candidats (les lignes vides ne comptent pas).",
     gachaTooManyCandidates: "Saisissez jusqu’à {max} candidats.",
-    gachaTooManyBlocks: "Utilisez au maximum {max} bloc gacha ({open} … {close}).",
+    gachaTooManyBlocks: "Utilisez au maximum {max} type de chose à tirer au hasard (un bloc {open} … {close}).",
     gachaExample: "1. Pâtissier. Veste et toque de chef blanches. Dans la cuisine d’une pâtisserie, en train de décorer un gâteau à la crème\n2. Pompier. Tenue de feu orange et casque. Devant un camion de pompiers, tenant une lance à incendie\n3. Fleuriste. Tablier beige. Dans une boutique de fleurs au coin de la rue, en train de nouer un ruban autour d’un bouquet\n4. Agent de gare. Uniforme et casquette bleu marine. Sur un quai de gare, en train de pointer du doigt pour vérifier la sécurité",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Outil d’aide",
@@ -1559,7 +1559,7 @@ export const frMessages = {
     gachaSplitInsufficient: "Percoins insuffisants ({cost} Percoins nécessaires).",
     gachaSplitNotSplittable: "La séparation est impossible, car le prompt ne cite pas au moins 2 candidats par leur nom. Aucun Percoin n’a été utilisé. Ajoutez des candidats comme « ex. : médecin, pâtissier, détective » ou « ex. : toboggan, balançoire, barre fixe » pour pouvoir séparer.",
     gachaSplitTooMany: "Impossible de séparer, car il y a plus de {max} candidats. Aucun Percoin n’a été utilisé. Réduisez les candidats à {max} ou moins, puis réessayez.",
-    gachaSplitTooManyBlocks: "Impossible de créer le gacha, car le prompt contient 2 éléments de gacha ou plus. Aucun Percoin n’a été utilisé. Ne gardez qu’un seul élément à tirer, puis réessayez.",
+    gachaSplitTooManyBlocks: "Impossible de créer le gacha, car il y a 2 types ou plus de choses à tirer au hasard, comme un métier et un lieu. Aucun Percoin n’a été utilisé. Ne gardez qu’un seul type, puis réessayez.",
     gachaSplitFailed: "La séparation a échoué. Réessayez plus tard. Aucun Percoin n’a été utilisé.",
     gachaSplitConnectionLost: "La connexion a été interrompue. Vérifiez votre solde et votre historique pour savoir si des Percoins ont été utilisés.",
     gachaSplitProposalTitle: "{count} candidats trouvés",

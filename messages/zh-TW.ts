@@ -1543,7 +1543,7 @@ export const zhTwMessages = {
     gachaMissingBlock: "找不到 {open} 和 {close} 標記。可以點擊「重設」恢復。",
     gachaTooFewCandidates: "請至少輸入 2 個候選（沒有內容的行不計入）。",
     gachaTooManyCandidates: "候選最多 {max} 個。",
-    gachaTooManyBlocks: "{open} … {close} 轉蛋區塊最多 {max} 個。",
+    gachaTooManyBlocks: "要隨機選擇的東西（{open} … {close} 區塊）最多 {max} 種。",
     gachaExample: "1. 甜點師。白色廚師服和廚師帽。在西點店的廚房，正往蛋糕上擠奶油\n2. 消防員。橘色防火衣和頭盔。在消防車前，雙手握著水管\n3. 花藝師。米色圍裙。在街角的花店，正為花束繫上緞帶\n4. 車站站務員。深藍色制服和制帽。在月台上，正在指差確認安全",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 輔助功能",
@@ -1553,7 +1553,7 @@ export const zhTwMessages = {
     gachaSplitInsufficient: "Percoin 不足（需要 {cost} 個 Percoin）。",
     gachaSplitNotSplittable: "沒有用具體名稱寫出 2 個以上的候選，因此無法拆分。未使用 Percoin。像「例：醫師、甜點師、偵探」「例：溜滑梯、鞦韆、單槓」這樣補上候選後即可拆分。",
     gachaSplitTooMany: "候選超過 {max} 個，無法拆分。未使用 Percoin。將候選減少到 {max} 個以內即可拆分。",
-    gachaSplitTooManyBlocks: "轉蛋要素有 2 個以上，無法建立。未使用 Percoin。將要隨機選擇的要素縮減為 1 個即可建立。",
+    gachaSplitTooManyBlocks: "像職業和地點這樣，要隨機選擇的東西有 2 種以上，因此無法建立。未使用 Percoin。將要隨機選擇的東西縮減為 1 種即可建立。",
     gachaSplitFailed: "無法拆分。請稍後再試。未使用 Percoin。",
     gachaSplitConnectionLost: "連線中斷了。是否使用了 Percoin，請在餘額和紀錄中確認。",
     gachaSplitProposalTitle: "找到了 {count} 個候選",

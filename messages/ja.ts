@@ -1501,7 +1501,7 @@ export const jaMessages = {
     gachaMissingBlock: "{open} と {close} の囲みが見つかりません。「空に戻す」で戻せます。",
     gachaTooFewCandidates: "候補を2つ以上入れてください（中身のない行は数えません）。",
     gachaTooManyCandidates: "候補は{max}個までにしてください。",
-    gachaTooManyBlocks: "{open} 〜 {close} の囲み（ガチャ）は{max}つまでにしてください。",
+    gachaTooManyBlocks: "ランダムに選ぶもの（{open} 〜 {close} の囲み）は、{max}種類までにしてください。",
     gachaExample: "1. パティシエ。白いコックコートとコック帽。洋菓子店の厨房で、ケーキにクリームを絞っている\n2. 消防士。オレンジ色の防火服とヘルメット。消防車の前で、ホースを構えている\n3. 花屋。ベージュのエプロン。街角の花屋で、ブーケにリボンを結んでいる\n4. 駅員。紺色の制服と制帽。駅のホームで、指差し確認をしている",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 サポート機能",
@@ -1511,7 +1511,7 @@ export const jaMessages = {
     gachaSplitInsufficient: "ペルコインが足りません（{cost}ペルコイン必要です）。",
     gachaSplitNotSplittable: "選ぶ候補が、具体的な名前で2つ以上書かれていないため、分けられませんでした。ペルコインは使われていません。「例：医師、パティシエ、探偵」「例：滑り台、ブランコ、鉄棒」のように、候補を書き足すと分けられます。",
     gachaSplitTooMany: "候補が{max}個より多いため、分けられませんでした。ペルコインは使われていません。候補を{max}個までに減らすと分けられます。",
-    gachaSplitTooManyBlocks: "ガチャの要素が2つ以上あるため、作成できませんでした。ペルコインは使われていません。ガチャにしたい要素を1つにしぼると作成できます。",
+    gachaSplitTooManyBlocks: "職業と場所のように、ランダムに選ぶものが2種類以上あるため、作成できませんでした。ペルコインは使われていません。ランダムに選ぶものを1種類にしぼると作成できます。",
     gachaSplitFailed: "分けられませんでした。時間をおいてもう一度お試しください。ペルコインは使われていません。",
     gachaSplitConnectionLost: "通信が途中で切れました。ペルコインが使われたかどうかは、残高と履歴でご確認ください。",
     gachaSplitProposalTitle: "候補が{count}個見つかりました",

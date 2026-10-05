@@ -1546,7 +1546,7 @@ export const enMessages = {
     gachaMissingBlock: "The {open} and {close} tags are missing. Use \"Reset\" to restore them.",
     gachaTooFewCandidates: "Enter at least 2 candidates (empty lines are not counted).",
     gachaTooManyCandidates: "Enter up to {max} candidates.",
-    gachaTooManyBlocks: "Use up to {max} gacha block ({open} … {close}).",
+    gachaTooManyBlocks: "Use up to {max} kind of thing to pick at random (one {open} … {close} block).",
     gachaExample: "1. Pastry chef. White chef's jacket and toque. In a patisserie kitchen, piping cream onto a cake\n2. Firefighter. Orange turnout gear and helmet. In front of a fire truck, holding a hose\n3. Florist. Beige apron. At a street-corner flower shop, tying a ribbon around a bouquet\n4. Station attendant. Navy uniform and cap. On a station platform, doing a pointing safety check",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Support tool",
@@ -1556,7 +1556,7 @@ export const enMessages = {
     gachaSplitInsufficient: "Not enough Percoins ({cost} Percoins needed).",
     gachaSplitNotSplittable: "The prompt could not be split because it does not list at least 2 specific candidates by name. No Percoins were used. Add candidates like \"e.g. doctor, pastry chef, detective\" or \"e.g. slide, swing, horizontal bar\" and try again.",
     gachaSplitTooMany: "The prompt could not be split because it lists more than {max} candidates. No Percoins were used. Reduce the candidates to {max} or fewer and try again.",
-    gachaSplitTooManyBlocks: "Could not create the gacha because the prompt has 2 or more gacha elements. No Percoins were used. Narrow it down to one element to pick from and try again.",
+    gachaSplitTooManyBlocks: "Could not create the gacha because there are 2 or more kinds of things to pick at random, such as a job and a place. No Percoins were used. Narrow it down to one kind and try again.",
     gachaSplitFailed: "The prompt could not be split. Please try again later. No Percoins were used.",
     gachaSplitConnectionLost: "The connection was lost. Please check your balance and history to see whether Percoins were used.",
     gachaSplitProposalTitle: "Found {count} candidates",

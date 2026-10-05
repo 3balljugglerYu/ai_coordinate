@@ -1546,7 +1546,7 @@ export const viMessages = {
     gachaMissingBlock: "Không tìm thấy ký hiệu {open} và {close}. Bạn có thể khôi phục bằng \"Đặt lại\".",
     gachaTooFewCandidates: "Hãy nhập ít nhất 2 ứng viên (dòng trống không được tính).",
     gachaTooManyCandidates: "Nhập tối đa {max} ứng viên.",
-    gachaTooManyBlocks: "Chỉ dùng tối đa {max} khối gacha ({open} … {close}).",
+    gachaTooManyBlocks: "Chỉ dùng tối đa {max} loại thứ cần bốc ngẫu nhiên (một khối {open} … {close}).",
     gachaExample: "1. Thợ làm bánh. Áo đầu bếp và mũ đầu bếp màu trắng. Trong bếp tiệm bánh, đang bắt kem trang trí bánh\n2. Lính cứu hỏa. Đồ chống cháy màu cam và mũ bảo hộ. Trước xe cứu hỏa, đang cầm vòi nước\n3. Người cắm hoa. Tạp dề màu be. Trong tiệm hoa ở góc phố, đang thắt ruy băng cho bó hoa\n4. Nhân viên nhà ga. Đồng phục và mũ màu xanh navy. Trên sân ga, đang chỉ tay kiểm tra an toàn",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Tính năng hỗ trợ",
@@ -1556,7 +1556,7 @@ export const viMessages = {
     gachaSplitInsufficient: "Không đủ Percoin (cần {cost} Percoin).",
     gachaSplitNotSplittable: "Không thể tách vì chưa có ít nhất 2 ứng viên được ghi bằng tên cụ thể. Không có Percoin nào bị dùng. Hãy thêm ứng viên như \"ví dụ: bác sĩ, thợ làm bánh, thám tử\" hoặc \"ví dụ: cầu trượt, xích đu, xà đơn\" để có thể tách.",
     gachaSplitTooMany: "Không thể tách vì có hơn {max} ứng viên. Không có Percoin nào bị sử dụng. Hãy giảm còn {max} ứng viên trở xuống rồi thử lại.",
-    gachaSplitTooManyBlocks: "Không thể tạo gacha vì prompt có từ 2 yếu tố gacha trở lên. Không có Percoin nào bị sử dụng. Hãy thu gọn còn một yếu tố để bốc rồi thử lại.",
+    gachaSplitTooManyBlocks: "Không thể tạo gacha vì có từ 2 loại thứ cần bốc ngẫu nhiên trở lên, như nghề nghiệp và địa điểm. Không có Percoin nào bị sử dụng. Hãy thu gọn còn một loại rồi thử lại.",
     gachaSplitFailed: "Không thể tách. Vui lòng thử lại sau. Không có Percoin nào bị dùng.",
     gachaSplitConnectionLost: "Kết nối bị gián đoạn. Hãy kiểm tra số dư và lịch sử để biết Percoin đã được dùng hay chưa.",
     gachaSplitProposalTitle: "Tìm thấy {count} ứng viên",

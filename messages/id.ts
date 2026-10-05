@@ -1548,7 +1548,7 @@ export const idMessages = {
     gachaMissingBlock: "Tanda {open} dan {close} tidak ditemukan. Gunakan \"Atur ulang\" untuk mengembalikannya.",
     gachaTooFewCandidates: "Masukkan minimal 2 kandidat (baris kosong tidak dihitung).",
     gachaTooManyCandidates: "Masukkan maksimal {max} kandidat.",
-    gachaTooManyBlocks: "Gunakan maksimal {max} blok gacha ({open} … {close}).",
+    gachaTooManyBlocks: "Gunakan maksimal {max} jenis hal yang diundi (satu blok {open} … {close}).",
     gachaExample: "1. Pastry chef. Jaket dan topi koki putih. Di dapur toko kue, sedang menghias kue dengan krim\n2. Pemadam kebakaran. Seragam tahan api oranye dan helm. Di depan mobil pemadam, memegang selang\n3. Florist. Celemek krem. Di toko bunga di sudut jalan, sedang mengikat pita pada buket\n4. Petugas stasiun. Seragam dan topi biru tua. Di peron stasiun, sedang menunjuk untuk memeriksa keselamatan",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Fitur bantuan",
@@ -1558,7 +1558,7 @@ export const idMessages = {
     gachaSplitInsufficient: "Percoin tidak cukup (perlu {cost} Percoin).",
     gachaSplitNotSplittable: "Tidak bisa dibagi karena belum ada minimal 2 kandidat yang ditulis dengan nama yang jelas. Percoin tidak terpakai. Tambahkan kandidat seperti \"contoh: dokter, pastry chef, detektif\" atau \"contoh: perosotan, ayunan, palang tunggal\" agar bisa dibagi.",
     gachaSplitTooMany: "Tidak dapat dipisahkan karena ada lebih dari {max} kandidat. Tidak ada Percoin yang digunakan. Kurangi kandidat menjadi {max} atau lebih sedikit, lalu coba lagi.",
-    gachaSplitTooManyBlocks: "Gacha tidak dapat dibuat karena prompt memiliki 2 elemen gacha atau lebih. Tidak ada Percoin yang digunakan. Persempit menjadi satu elemen yang diundi, lalu coba lagi.",
+    gachaSplitTooManyBlocks: "Gacha tidak dapat dibuat karena ada 2 jenis atau lebih hal yang diundi, seperti pekerjaan dan tempat. Tidak ada Percoin yang digunakan. Persempit menjadi satu jenis, lalu coba lagi.",
     gachaSplitFailed: "Gagal membagi. Silakan coba lagi nanti. Percoin tidak terpakai.",
     gachaSplitConnectionLost: "Koneksi terputus. Periksa saldo dan riwayat untuk melihat apakah Percoin terpakai.",
     gachaSplitProposalTitle: "Ditemukan {count} kandidat",

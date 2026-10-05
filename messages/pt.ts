@@ -1549,7 +1549,7 @@ export const ptMessages = {
     gachaMissingBlock: "As marcações {open} e {close} não foram encontradas. Use \"Redefinir\" para restaurá-las.",
     gachaTooFewCandidates: "Digite pelo menos 2 candidatos (linhas vazias não contam).",
     gachaTooManyCandidates: "Escreva até {max} candidatos.",
-    gachaTooManyBlocks: "Use no máximo {max} bloco gacha ({open} … {close}).",
+    gachaTooManyBlocks: "Use no máximo {max} tipo de coisa para sortear (um bloco {open} … {close}).",
     gachaExample: "1. Confeiteiro. Dólmã e chapéu de chef brancos. Na cozinha de uma confeitaria, decorando um bolo com chantilly\n2. Bombeiro. Roupa de combate laranja e capacete. Em frente a um caminhão de bombeiros, segurando uma mangueira\n3. Florista. Avental bege. Em uma floricultura de esquina, amarrando uma fita em um buquê\n4. Funcionário de estação. Uniforme e quepe azul-marinho. Na plataforma, apontando para conferir a segurança",
     // 「ガチャに分ける」道具(分けられたときだけペルコインを使う。公開前は運営だけ)
     gachaSplitTitle: "🪄 Recurso de apoio",
@@ -1559,7 +1559,7 @@ export const ptMessages = {
     gachaSplitInsufficient: "Percoins insuficientes (são necessários {cost}).",
     gachaSplitNotSplittable: "Não foi possível dividir porque não há pelo menos 2 candidatos escritos com nomes específicos. Nenhum Percoin foi usado. Acrescente candidatos como \"ex.: médico, confeiteiro, detetive\" ou \"ex.: escorregador, balanço, barra fixa\" para poder dividir.",
     gachaSplitTooMany: "Não foi possível dividir porque há mais de {max} candidatos. Nenhum Percoin foi usado. Reduza os candidatos para {max} ou menos e tente novamente.",
-    gachaSplitTooManyBlocks: "Não foi possível criar o gacha porque o prompt tem 2 ou mais elementos de gacha. Nenhum Percoin foi usado. Deixe apenas um elemento para sortear e tente novamente.",
+    gachaSplitTooManyBlocks: "Não foi possível criar o gacha porque há 2 ou mais tipos de coisas para sortear, como uma profissão e um lugar. Nenhum Percoin foi usado. Deixe apenas um tipo e tente novamente.",
     gachaSplitFailed: "Não foi possível dividir. Tente novamente mais tarde. Nenhum Percoin foi usado.",
     gachaSplitConnectionLost: "A conexão caiu. Confira o saldo e o histórico para ver se Percoins foram usados.",
     gachaSplitProposalTitle: "{count} candidatos encontrados",
