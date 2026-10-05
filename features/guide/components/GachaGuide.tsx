@@ -272,6 +272,8 @@ export async function GachaGuide() {
             <StepNumber>1</StepNumber>
             <AnnotatedShot
               device
+              // ラベルと枠の間に隙間をあける分、上の余白を広げる。3台そろえてパソコンで高さを合わせる(2026-10-05 ユーザー指示)
+              className="mt-14"
               {...SHOTS.whereHome}
               alt={t("whereStep1Alt", { catalog: ui.catalog })}
               rings={[{ left: 21, top: 90, width: 18, height: 9.6 }]}
@@ -283,6 +285,8 @@ export async function GachaGuide() {
             <StepNumber>2</StepNumber>
             <AnnotatedShot
               device
+              // ラベルと枠の間に隙間をあける分、上の余白を広げる。3台そろえてパソコンで高さを合わせる(2026-10-05 ユーザー指示)
+              className="mt-14"
               {...SHOTS.whereCatalog}
               alt={t("whereStep2Alt", { create: ui.create, officialTitle: ui.officialTitle })}
               rings={[{ left: 70, top: 17, width: 26.5, height: 8.3 }]}
@@ -294,12 +298,14 @@ export async function GachaGuide() {
             <StepNumber>3</StepNumber>
             <AnnotatedShot
               device
+              // ラベルと枠の間に隙間をあける分、上の余白を広げる。3台そろえてパソコンで高さを合わせる(2026-10-05 ユーザー指示)
+              className="mt-14"
               {...SHOTS.whereCreate}
               alt={t("whereStep3Alt", { createTitle: ui.createTitle })}
               rings={[{ left: 3, top: 9.5, width: 62, height: 7 }]}
               // 吹き出しにせず、ラベルとして画面の外(上)に中央そろえで置く(2026-10-05 ユーザー指示)。
               // 画面の中に置くと、訳によってはタブや説明文に重なるため
-              callouts={[{ left: 50, top: -7, text: t("whereStep3Call"), pointer: "none", center: true }]}
+              callouts={[{ left: 50, top: -9.6, text: t("whereStep3Call"), pointer: "none", center: true }]}
             />
             <p className="text-[15px] font-semibold">{t("whereStep3", { createTitle: ui.createTitle })}</p>
           </li>
