@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
-import { GACHA_MAX_CANDIDATES } from "@/shared/generation/gacha-prompt";
+import { GACHA_MAX_BLOCKS, GACHA_MAX_CANDIDATES } from "@/shared/generation/gacha-prompt";
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 
 export interface GachaSplitToolProps {
@@ -168,7 +168,11 @@ export function GachaSplitTool({
 
       {errorKey ? (
         <p className="text-xs text-red-600" role="alert" data-testid="gacha-split-error">
-          {t(errorKey, { cost: GACHA_SPLIT_PERCOIN_COST, max: GACHA_MAX_CANDIDATES })}
+          {t(errorKey, {
+            cost: GACHA_SPLIT_PERCOIN_COST,
+            max: GACHA_MAX_CANDIDATES,
+            blocks: GACHA_MAX_BLOCKS,
+          })}
         </p>
       ) : null}
 

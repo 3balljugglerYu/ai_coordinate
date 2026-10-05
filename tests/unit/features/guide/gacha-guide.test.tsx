@@ -35,7 +35,11 @@ import { GachaGuide } from "@/features/guide/components/GachaGuide";
 import { getUser } from "@/lib/auth";
 import { isGachaPromptAvailable, isGachaPromptPubliclyEnabled } from "@/lib/env";
 import { isSitemapPathEnabled } from "@/lib/sitemap-paths";
-import { GACHA_MAX_CANDIDATES, GACHA_MIN_CANDIDATES } from "@/shared/generation/gacha-prompt";
+import {
+  GACHA_MAX_BLOCKS,
+  GACHA_MAX_CANDIDATES,
+  GACHA_MIN_CANDIDATES,
+} from "@/shared/generation/gacha-prompt";
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
@@ -103,7 +107,12 @@ describe("ページの中身", () => {
   test("候補の数の案内は、生成画面と同じ上限・下限を差し込む", async () => {
     await renderGuide();
     const text = document.body.textContent ?? "";
-    const range = JSON.stringify({ min: GACHA_MIN_CANDIDATES, max: GACHA_MAX_CANDIDATES });
+    // ランダムに選ぶものの種類の数(今は1種類)も、上限の設定から差し込む
+    const range = JSON.stringify({
+      min: GACHA_MIN_CANDIDATES,
+      max: GACHA_MAX_CANDIDATES,
+      blocks: GACHA_MAX_BLOCKS,
+    });
     expect(text).toContain(`gachaGuide.step4Text(${range})`);
     expect(text).toContain(`gachaGuide.ctaNote(${range})`);
   });
