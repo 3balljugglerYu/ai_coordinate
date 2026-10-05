@@ -219,9 +219,12 @@ describe("GenerationForm のガチャプロンプト", () => {
 
     const field = screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement;
     expect(field.value).toBe(GACHA_FIELD_TEMPLATE);
+    // チェックした直後は、まだ何も書いていないので赤字にしない(案内として灰色で出す)
     expect(screen.getByTestId("gacha-prompt-error").textContent).toBe(
       "gachaTooFewCandidates",
     );
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("hint");
+    expect(field.getAttribute("aria-invalid")).toBe("false");
     expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
 
     fireEvent.change(field, { target: { value: CANDIDATES } });
@@ -238,14 +241,63 @@ describe("GenerationForm のガチャプロンプト", () => {
     await fillBodyAndImage(user);
     await user.click(gachaCheckbox()!);
 
-    fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
-      target: { value: "1. パティシエ\n2. 消防士" },
-    });
+    const field = screen.getByLabelText("gachaFieldLabel");
+    fireEvent.change(field, { target: { value: "1. パティシエ\n2. 消防士" } });
+    fireEvent.blur(field);
 
     expect(screen.getByTestId("gacha-prompt-error").textContent).toBe(
       "gachaMissingBlock",
     );
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("error");
     expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
+  test("欄から離れると、候補が足りないことを赤字で知らせる", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(gachaCheckbox()!);
+
+    const field = screen.getByLabelText("gachaFieldLabel");
+    fireEvent.change(field, { target: { value: "{{GACHA}}\n1. パティシエ\n{{/GACHA}}" } });
+    // 書いている途中は、まだ赤字にしない
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("hint");
+
+    fireEvent.blur(field);
+
+    expect(screen.getByTestId("gacha-prompt-error").textContent).toBe("gachaTooFewCandidates");
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("error");
+    expect(field.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  test("候補がそろえば、離れたあとでも知らせは消える", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(gachaCheckbox()!);
+
+    const field = screen.getByLabelText("gachaFieldLabel");
+    fireEvent.blur(field);
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("error");
+
+    fireEvent.change(field, { target: { value: CANDIDATES } });
+
+    expect(screen.getByTestId("gacha-prompt-error").textContent).toBe("");
+    expect(field.getAttribute("aria-invalid")).toBe("false");
+  });
+
+  test("チェックを外して付け直すと、また赤字にしない状態から始める", async () => {
+    const user = userEvent.setup();
+    renderFreeForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(gachaCheckbox()!);
+    fireEvent.blur(screen.getByLabelText("gachaFieldLabel"));
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("error");
+
+    await user.click(gachaCheckbox()!);
+    await user.click(gachaCheckbox()!);
+
+    expect(screen.getByTestId("gacha-prompt-error").getAttribute("data-tone")).toBe("hint");
   });
 
   test("本文の末尾に候補欄を付けた1つのプロンプトとして送る", async () => {

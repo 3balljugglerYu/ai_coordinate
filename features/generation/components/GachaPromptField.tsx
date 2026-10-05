@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
@@ -69,6 +70,15 @@ export function GachaPromptField({
         : t("gachaTooFewCandidates")
       : null;
 
+  /*
+    赤字(と赤い枠)は、欄を一度さわって離れてから出す(2026-10-05 ユーザー決定・案A)。
+    チェックした直後はまだ何も書いていないので、「間違っている」とは言わない。
+    ただし生成ボタンは候補がそろうまで押せないので、理由が分からなくならないよう、
+    同じ文を灰色の案内として出しておく。
+  */
+  const [touched, setTouched] = useState(false);
+  const showAsError = errorMessage !== null && touched;
+
   const exampleValue = `${GACHA_OPEN_TAG}\n${t("gachaExample")}\n${GACHA_CLOSE_TAG}`;
   /*
     「例を入れる」「空に戻す」は欄を丸ごと書き換える。書いた候補(「ガチャに分ける」で
@@ -93,7 +103,11 @@ export function GachaPromptField({
         <Checkbox
           id="gacha-prompt-enabled"
           checked={enabled}
-          onCheckedChange={(checked) => onEnabledChange(checked === true)}
+          onCheckedChange={(checked) => {
+            // チェックを外したら、次にチェックしたときはまた「さわる前」から始める
+            if (checked !== true) setTouched(false);
+            onEnabledChange(checked === true);
+          }}
           disabled={disabled}
         />
         <Label
@@ -115,7 +129,8 @@ export function GachaPromptField({
             onChange={(event) => onChange(event.target.value)}
             disabled={disabled || fieldLocked}
             rows={8}
-            aria-invalid={errorMessage !== null}
+            onBlur={() => setTouched(true)}
+            aria-invalid={showAsError}
             aria-describedby="gacha-prompt-hints"
             className="max-h-80 font-mono text-base md:text-sm"
           />
@@ -144,9 +159,10 @@ export function GachaPromptField({
             </Button>
           </div>
           <p
-            className="text-xs text-red-600"
+            className={cn("text-xs", showAsError ? "text-red-600" : "text-gray-500")}
             aria-live="polite"
             data-testid="gacha-prompt-error"
+            data-tone={showAsError ? "error" : "hint"}
           >
             {errorMessage}
           </p>
