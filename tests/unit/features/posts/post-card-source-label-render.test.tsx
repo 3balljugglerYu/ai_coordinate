@@ -57,6 +57,12 @@ jest.mock("@/features/style-presets/hooks/useStylesCatalogRevamp", () => ({
   useStylesCatalogRevamp: () => mockRevamp(),
 }));
 
+// ガチャの公開前は運営だけ。既定は見せない(一般の利用者)
+const mockGachaAvailable = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/generation/components/GachaAvailabilityProvider", () => ({
+  useGachaAvailable: () => mockGachaAvailable(),
+}));
+
 import { PostCard } from "@/features/posts/components/PostCard";
 
 const POST_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -269,3 +275,35 @@ describe("PostCard の生成方法ラベル", () => {
     expect(screen.queryByText("modeFromCatalog")).toBeNull();
   });
 });
+
+describe("PostCard の「ガチャ」の札", () => {
+  const gachaPost = () =>
+    makePost({
+      generation_type: "free",
+      generation_metadata: { gachaPicks: [{ number: 1, total: 4 }] },
+    } as Partial<Post>);
+
+  afterEach(() => {
+    mockGachaAvailable.mockReturnValue(false);
+    mockRevamp.mockReturnValue(false);
+  });
+
+  test.each([false, true])("ガチャで作った投稿は、生成方法のラベルの真上に札を出す(カタログ刷新=%s)", (revamp) => {
+    mockRevamp.mockReturnValue(revamp);
+    mockGachaAvailable.mockReturnValue(true);
+    render(<PostCard post={gachaPost()} />);
+    const badge = screen.getByTestId("post-gacha-badge");
+    expect(badge.textContent).toBe("gachaBadge");
+    const stack = badge.parentElement!;
+    expect(stack.className).toContain("flex-col");
+    expect(stack.firstElementChild).toBe(badge);
+    expect(stack.children.length).toBe(2);
+  });
+
+  test("ガチャの公開前で運営でない人には出さない", () => {
+    mockGachaAvailable.mockReturnValue(false);
+    render(<PostCard post={gachaPost()} />);
+    expect(screen.queryByTestId("post-gacha-badge")).toBeNull();
+  });
+});
+

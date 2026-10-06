@@ -21,6 +21,8 @@ import { GptImage25AvailabilityProvider } from "@/features/generation/components
 import { GptImage25AvailabilityLoader } from "@/features/generation/components/GptImage25AvailabilityLoader";
 import { UserStylesAvailabilityProvider } from "@/features/user-styles/components/UserStylesAvailabilityProvider";
 import { UserStylesAvailabilityLoader } from "@/features/user-styles/components/UserStylesAvailabilityLoader";
+import { GachaAvailabilityProvider } from "@/features/generation/components/GachaAvailabilityProvider";
+import { GachaAvailabilityLoader } from "@/features/generation/components/GachaAvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -57,6 +59,7 @@ export async function LocaleShell({
               <PopularPromptsAvailabilityProvider>
                 <GptImage25AvailabilityProvider>
                   <UserStylesAvailabilityProvider>
+                  <GachaAvailabilityProvider>
                   {appContent}
                   {/*
                     検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
@@ -96,6 +99,14 @@ export async function LocaleShell({
                   <Suspense fallback={null}>
                     <UserStylesAvailabilityLoader />
                   </Suspense>
+                  {/*
+                    ガチャプロンプトの段階公開。投稿の「ガチャ」の札(PostCard / PostFeedCard)を
+                    運営だけに見せるため、運営だけ true に昇格させる。カードは appContent の中にある。
+                  */}
+                  <Suspense fallback={null}>
+                    <GachaAvailabilityLoader />
+                  </Suspense>
+                  </GachaAvailabilityProvider>
                   </UserStylesAvailabilityProvider>
                 </GptImage25AvailabilityProvider>
               </PopularPromptsAvailabilityProvider>

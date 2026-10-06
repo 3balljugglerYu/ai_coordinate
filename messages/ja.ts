@@ -125,6 +125,8 @@ export const jaMessages = {
     modeMyOriginal: "My ORIGINAL",
     // カタログ刷新後、カタログの原本(Persta ORIGINAL / User ORIGINAL)を使って作った投稿のラベル。My / User ORIGINAL にそろえて英語にし、全言語同一(2026-09-30 ユーザー決定)
     modeFromCatalog: "from CATALOG",
+    // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
+    gachaBadge: "ガチャ",
     copy: "コピー",
     copied: "コピー済み",
     followRequiredTitle: "フォローが必要です",
