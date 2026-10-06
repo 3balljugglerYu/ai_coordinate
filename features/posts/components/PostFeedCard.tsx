@@ -26,6 +26,8 @@ import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { formatFeedTimestamp } from "../lib/feed-timestamp";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
+import { isGachaPost } from "../lib/gacha-post";
+import { useGachaAvailable } from "@/features/generation/components/GachaAvailabilityProvider";
 import {
   getPostBeforeImageUrl,
   getPostDisplayUrl,
@@ -154,6 +156,14 @@ export function PostFeedCard({
   // カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に User ORIGINAL を出し、
   // 使って作った投稿には出さない(出どころは下の引用元カードが示す)。
   const isCatalogRevamp = useStylesCatalogRevamp();
+  // ガチャプロンプトで作った投稿の「ガチャ」の札。ガチャの公開前は運営だけに見せる(2026-10-06)
+  const isGachaAvailable = useGachaAvailable();
+  const showsGachaBadge = isGachaAvailable && isGachaPost(post);
+  const gachaBadge = showsGachaBadge ? (
+    <span className="rounded-md bg-pink-500 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white" data-testid="post-gacha-badge">
+      {t("gachaBadge")}
+    </span>
+  ) : null;
   const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type, {
     sourcePostId: post.source_post_id,
     isCatalogRevamp,
@@ -411,10 +421,16 @@ export function PostFeedCard({
               一般の利用者は下の従来の形のまま。
             */
             afterCornerLabel={
-              isCatalogRevamp && generationModeLabelKey ? (
-                <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
-              {t(generationModeLabelKey)}
-            </span>
+              isCatalogRevamp && (generationModeLabelKey || showsGachaBadge) ? (
+                // 「ガチャ」は生成方法のラベルの真上に積む(2026-10-06 ユーザー決定)
+                <div className="flex flex-col items-start gap-1">
+                  {gachaBadge}
+                  {generationModeLabelKey ? (
+                    <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+                      {t(generationModeLabelKey)}
+                    </span>
+                  ) : null}
+                </div>
               ) : undefined
             }
           />
@@ -432,7 +448,17 @@ export function PostFeedCard({
               {post.isNew ? <NewPromptBadge /> : null}
             </div>
           ) : null}
-          {!isCatalogRevamp && generationModeLabelKey ? (
+          {!isCatalogRevamp && showsGachaBadge ? (
+            <div className="absolute bottom-2 left-2 z-10 flex flex-col items-start gap-1">
+              {gachaBadge}
+              {generationModeLabelKey ? (
+                <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
+                  {t(generationModeLabelKey)}
+                </span>
+              ) : null}
+            </div>
+          ) : !isCatalogRevamp && generationModeLabelKey ? (
+            // ガチャでない投稿は今までどおり(ラベルを1つだけ角に重ねる)
             <span className="absolute bottom-2 left-2 z-10 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
               {t(generationModeLabelKey)}
             </span>

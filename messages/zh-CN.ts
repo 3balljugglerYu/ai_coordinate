@@ -125,6 +125,8 @@ export const zhCnMessages = {
     modeUserOriginal: "User ORIGINAL",
     modeMyOriginal: "My ORIGINAL",
     modeFromCatalog: "from CATALOG",
+    // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
+    gachaBadge: "扭蛋",
     copy: "复制",
     copied: "已复制",
     followRequiredTitle: "需要先关注",
