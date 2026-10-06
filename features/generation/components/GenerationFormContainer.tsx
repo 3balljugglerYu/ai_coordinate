@@ -93,6 +93,10 @@ interface GenerationFormContainerProps {
   gachaPromptAvailable?: boolean;
   /** 「ガチャに分ける」道具を出してよいか(サーバーで判定した値)。 */
   gachaSplitAvailable?: boolean;
+  /** 「名前を入れられるようにする」を出してよいか。GenerationForm の同名 props を参照 */
+  nameInputAvailable?: boolean;
+  /** 名前の欄の数を制限しない(運営だけ) */
+  nameInputUnlimited?: boolean;
   /** ガチャの上限を掛けない(運営だけ)。GenerationForm の同名 props を参照 */
   gachaUnlimited?: boolean;
 }
@@ -186,6 +190,8 @@ export function GenerationFormContainer({
   lockedPromptText,
   gachaPromptAvailable = false,
   gachaSplitAvailable = false,
+  nameInputAvailable = false,
+  nameInputUnlimited = false,
   gachaUnlimited = false,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
@@ -866,6 +872,8 @@ export function GenerationFormContainer({
     outputAspectRatioMode?: import("@/shared/generation/style-output-aspect-ratio").FreeOutputAspectRatioMode;
     /** 派生生成の原作 root 投稿 ID。本文の代わりにこれだけを送る。 */
     sourcePostId?: string;
+    /** 名前の欄に入れる名前(じゆうモード)。 */
+    nameInput?: string;
   }) => {
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -995,6 +1003,7 @@ export function GenerationFormContainer({
           outputAspectRatioMode: data.outputAspectRatioMode,
           // 派生生成。本文は送らない（schema が同時指定を 400 にする）。
           sourcePostId: data.sourcePostId,
+          nameInput: data.nameInput,
         },
         asyncApiMessages
       );
@@ -1267,6 +1276,8 @@ export function GenerationFormContainer({
         sourcePostId={sourcePostId}
         gachaPromptAvailable={gachaPromptAvailable}
         gachaSplitAvailable={gachaSplitAvailable}
+        nameInputAvailable={nameInputAvailable}
+        nameInputUnlimited={nameInputUnlimited}
         gachaUnlimited={gachaUnlimited}
       />
 

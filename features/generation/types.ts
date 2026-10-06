@@ -350,6 +350,8 @@ export interface GenerationRequest {
    * サーバー側 schema が本文との同時指定を 400 にする。
    */
   sourcePostId?: string;
+  /** 名前の欄に入れる名前(じゆうモードのみ。docs/planning/name-input-slot-plan.md)。 */
+  nameInput?: string;
 }
 
 export interface GenerationResponse {

@@ -11,6 +11,8 @@ import {
   NAME_NOT_PROVIDED_TEXT,
   nameInputMaxSlotsFor,
   parseNameInputSlots,
+  removeNameInputMarkers,
+  upsertNameInputMarker,
 } from "@/shared/generation/name-input";
 
 const PROMPT = [
@@ -142,6 +144,37 @@ describe("ガチャと一緒に使ったときの数え方(Worker はガチャ�
 
   test("必須の欄が囲みの外にあれば止める", () => {
     expect(hasGuaranteedRequiredNameInput(`{{INPUT*:名前}}\n${gacha(["1. a", "2. b"])}`)).toBe(true);
+  });
+});
+
+describe("作る人の画面: 目印の入れ替え", () => {
+  test("入力例は | の後ろに書く", () => {
+    expect(parseNameInputSlots("{{INPUT:うちの子|例：ぺるこ}}")).toEqual([
+      { label: "うちの子", required: false, placeholder: "例：ぺるこ" },
+    ]);
+    expect(buildNameInputMarker({ label: "うちの子", required: true, placeholder: "ぺるこ" })).toBe(
+      "{{INPUT*:うちの子|ぺるこ}}",
+    );
+  });
+
+  test("見出しを書き直している途中は、空のまま返せる", () => {
+    expect(parseNameInputSlots("{{INPUT:}}", { keepEmptyLabel: true })[0].label).toBe("");
+    expect(parseNameInputSlots("{{INPUT:}}")[0].label).toBe("名前");
+  });
+
+  test("目印が無ければ本文の先頭に1行で入れる", () => {
+    expect(upsertNameInputMarker("診断", { label: "名前", required: false })).toBe("{{INPUT:名前}}\n診断");
+    expect(upsertNameInputMarker("", { label: "名前", required: false })).toBe("{{INPUT:名前}}");
+  });
+
+  test("目印があれば、その場所で書き換える(最初の1つだけ)", () => {
+    expect(
+      upsertNameInputMarker("前\n【名前】{{INPUT:名前}}\n後 {{INPUT:別}}", { label: "うちの子", required: true }),
+    ).toBe("前\n【名前】{{INPUT*:うちの子}}\n後 {{INPUT:別}}");
+  });
+
+  test("切ったら目印を消す(目印だけの行は行ごと)", () => {
+    expect(removeNameInputMarkers("{{INPUT:名前}}\n診断\n【名前】{{INPUT*:x}}です")).toBe("診断\n【名前】です");
   });
 });
 

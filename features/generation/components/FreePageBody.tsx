@@ -6,6 +6,7 @@ import {
   isAdminViewer,
   isGachaPromptAvailable,
   isGachaSplitAvailable,
+  isNameInputAvailable,
   isUserStylesAvailable,
 } from "@/lib/env";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
@@ -72,6 +73,9 @@ export async function FreePageBody() {
             gachaSplitAvailable={isGachaSplitAvailable(user.id)}
             // ガチャの上限(囲みの数・候補の数)は、運営だけ掛けない(テストのため)
             gachaUnlimited={isAdminViewer(user.id)}
+            // 名前の欄(公開前は運営だけ。docs/planning/name-input-slot-plan.md)
+            nameInputAvailable={isNameInputAvailable(user.id)}
+            nameInputUnlimited={isAdminViewer(user.id)}
           />
         </Suspense>
 

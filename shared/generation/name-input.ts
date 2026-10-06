@@ -28,7 +28,12 @@ export interface NameInputSlot {
   label: string;
   /** 必須か(`{{INPUT*:…}}`)。 */
   required: boolean;
+  /** 入力例(`{{INPUT:見出し|入力例}}` の `|` の後ろ)。無ければ省く。 */
+  placeholder?: string;
 }
+
+/** 作る人が名前の欄をオンにしたときの既定の見出し。 */
+export const NAME_INPUT_INITIAL_LABEL = "キャラクターの名前";
 
 /** 見出しが空の目印に使う見出し。 */
 export const NAME_INPUT_DEFAULT_LABEL = "名前";
@@ -37,19 +42,56 @@ export const NAME_INPUT_DEFAULT_LABEL = "名前";
  * プロンプトから名前の欄の目印を取り出す(書かれた順)。
  * 見出しが空の目印も、置き換えの対象になるので数える(見出しは既定の「名前」)。
  */
-export function parseNameInputSlots(prompt: string): NameInputSlot[] {
+export function parseNameInputSlots(
+  prompt: string,
+  // 作る人が見出しを書き直している途中は、空のまま返す(既定の見出しで埋めると消せなくなる)
+  { keepEmptyLabel = false }: { keepEmptyLabel?: boolean } = {},
+): NameInputSlot[] {
   const slots: NameInputSlot[] = [];
   for (const match of prompt.matchAll(NAME_INPUT_PATTERN)) {
-    const label = match[2].trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH) || NAME_INPUT_DEFAULT_LABEL;
-    slots.push({ label, required: match[1] === "*" });
+    const [rawLabel, ...rest] = match[2].split("|");
+    const trimmed = rawLabel.trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH);
+    const label = trimmed || (keepEmptyLabel ? "" : NAME_INPUT_DEFAULT_LABEL);
+    const placeholder = rest.join("|").trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH);
+    slots.push({ label, required: match[1] === "*", ...(placeholder ? { placeholder } : {}) });
   }
   return slots;
 }
 
 /** 目印を作る(作る人の画面から本文へ入れるとき)。 */
+/** 目印の中に書ける形にそろえる(波括弧・縦棒・改行を外し、前後の空白を落とす)。 */
+export function normalizeNameInputMarkerText(text: string): string {
+  return text.replace(/[{}|\r\n]/g, "").trim();
+}
+
 export function buildNameInputMarker(slot: NameInputSlot): string {
-  const label = slot.label.replace(/[{}\r\n]/g, "").trim();
-  return `{{INPUT${slot.required ? "*" : ""}:${label}}}`;
+  const label = normalizeNameInputMarkerText(slot.label);
+  const placeholder = slot.placeholder ? normalizeNameInputMarkerText(slot.placeholder) : "";
+  return `{{INPUT${slot.required ? "*" : ""}:${label}${placeholder ? `|${placeholder}` : ""}}}`;
+}
+
+/**
+ * 本文の名前の欄の目印を、設定に合わせて書き換える(作る人の画面)。
+ * 目印が無ければ本文の先頭に1行で入れる(作る人は好きな場所へ動かせる)。
+ * 目印が複数あるときは、最初の1つだけを書き換える。
+ */
+export function upsertNameInputMarker(prompt: string, slot: NameInputSlot): string {
+  const marker = buildNameInputMarker(slot);
+  let replaced = false;
+  const next = prompt.replace(NAME_INPUT_PATTERN, (match) => {
+    if (replaced) return match;
+    replaced = true;
+    return marker;
+  });
+  if (replaced) return next;
+  return prompt.trim() ? `${marker}\n${prompt}` : marker;
+}
+
+/** 本文から名前の欄の目印をすべて取り除く(作る人がスイッチを切ったとき)。目印だけの行は行ごと消す。 */
+export function removeNameInputMarkers(prompt: string): string {
+  return prompt
+    .replace(/^[ \t]*\{\{INPUT\*?:[^{}\r\n]*\}\}[ \t]*(?:\r?\n|$)/gm, "")
+    .replace(NAME_INPUT_PATTERN, "");
 }
 
 export type NameInputValueCheck =

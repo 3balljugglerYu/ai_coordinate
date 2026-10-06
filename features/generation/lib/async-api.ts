@@ -186,6 +186,10 @@ export async function generateImageAsync(
       request.outputAspectRatioMode !== "source"
         ? { outputAspectRatioMode: request.outputAspectRatioMode }
         : {}),
+      // 名前の欄の名前は free のときだけ送る(他モードは schema が 400 にする)
+      ...(request.generationType === "free" && request.nameInput
+        ? { nameInput: request.nameInput }
+        : {}),
     }),
   },
     messages?.networkErrorSubmit ||

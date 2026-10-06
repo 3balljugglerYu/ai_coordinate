@@ -15,6 +15,18 @@ import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
 import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
 import { GachaPromptField } from "./GachaPromptField";
+import { NamePromptField } from "./NamePromptField";
+import { PromptGimmicksBox } from "./PromptGimmicksBox";
+import {
+  checkNameInputValue,
+  countReachableNameInputSlots,
+  exceedsNameInputSlotLimit,
+  hasGuaranteedRequiredNameInput,
+  nameInputMaxSlotsFor,
+  parseNameInputSlots,
+  removeNameInputMarkers,
+  upsertNameInputMarker,
+} from "@/shared/generation/name-input";
 import {
   GACHA_FIELD_TEMPLATE,
   composeGachaPrompt,
@@ -99,6 +111,8 @@ interface GenerationFormProps {
      * これを送ると API は本文を受け取らず、原作の author secret から解決する。
      */
     sourcePostId?: string;
+    /** 名前の欄に入れる名前(じゆうモード。空なら送らない)。 */
+    nameInput?: string;
   }) => void;
   isGenerating?: boolean;
   /**
@@ -157,6 +171,13 @@ interface GenerationFormProps {
    * 一般の利用者は囲み1つ・候補10個まで(gachaLimitsFor)。
    */
   gachaUnlimited?: boolean;
+  /**
+   * 「名前を入れられるようにする」を出してよいか(docs/planning/name-input-slot-plan.md)。
+   * /free のサーバー側で `isNameInputAvailable`(公開フラグ OR 運営)を判定して渡す。既定は出さない。
+   */
+  nameInputAvailable?: boolean;
+  /** 名前の欄の数を制限しない(運営だけ。サーバーの nameInputMaxSlotsFor と同じ)。 */
+  nameInputUnlimited?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -180,6 +201,8 @@ export function GenerationForm({
   gachaPromptAvailable = false,
   gachaSplitAvailable = false,
   gachaUnlimited = false,
+  nameInputAvailable = false,
+  nameInputUnlimited = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -276,6 +299,33 @@ export function GenerationForm({
   const gachaValidation = isGachaActive
     ? validateGachaField(gachaField, gachaLimitsFor(gachaUnlimited))
     : null;
+
+  // 名前の欄(公開前は運営だけ)。スイッチのオン・オフは本文の目印の有無そのもの。
+  const canUseNameInput =
+    isFree && !promptLocked && isAuthenticated && nameInputAvailable;
+  // スイッチと設定は本文の最初の目印。数と必須の判定は、送る文(本文＋ガチャの欄)をサーバーと同じ
+  // 数え方で見る(ガチャの欄に書いた目印や、2つ目以降の目印も含む)
+  const nameSlot = canUseNameInput
+    ? parseNameInputSlots(prompt, { keepEmptyLabel: true })[0] ?? null
+    : null;
+  const nameCheckedPrompt = canUseNameInput
+    ? isGachaActive
+      ? composeGachaPrompt(prompt, gachaField)
+      : prompt
+    : "";
+  const hasReachableNameSlot =
+    canUseNameInput && countReachableNameInputSlots(nameCheckedPrompt) > 0;
+  const isNameRequiredGuaranteed =
+    canUseNameInput && hasGuaranteedRequiredNameInput(nameCheckedPrompt);
+  const hasTooManyNameSlots =
+    canUseNameInput &&
+    exceedsNameInputSlotLimit(nameCheckedPrompt, nameInputMaxSlotsFor(nameInputUnlimited));
+  const [trialName, setTrialName] = useState("");
+  const trialNameCheck = checkNameInputValue(trialName);
+  const isNameInputInvalid =
+    hasTooManyNameSlots ||
+    (hasReachableNameSlot &&
+      (!trialNameCheck.ok || (isNameRequiredGuaranteed && !trialNameCheck.value)));
 
   const promptLength = prompt.length;
   // 上限は送る本文(ガチャの候補欄を付けた後)で判定する。
@@ -401,6 +451,7 @@ export function GenerationForm({
 
     // 送信ボタンは押せない状態にしてあるが、念のため送る前にも止める。
     if (gachaValidation && !gachaValidation.ok) return;
+    if (isNameInputInvalid) return;
     const trimmedPrompt = isGachaActive
       ? composeGachaPrompt(bodyPrompt, gachaField)
       : bodyPrompt;
@@ -444,6 +495,10 @@ export function GenerationForm({
         // 派生生成のときだけ原作を指す。schema は本文との同時指定を 400 にするため、
         // 施錠時に本文を空へ固定していることと対になっている。
         ...(promptLocked && sourcePostId ? { sourcePostId } : {}),
+        // 名前の欄があって名前を書いたときだけ送る(空欄は「名前なし」になる)
+        ...(hasReachableNameSlot && trialNameCheck.ok && trialNameCheck.value
+          ? { nameInput: trialNameCheck.value }
+          : {}),
       });
       return;
     }
@@ -475,7 +530,8 @@ export function GenerationForm({
       isGenerating,
       guestGenerationLocked,
     }) ||
-    (gachaValidation !== null && !gachaValidation.ok);
+    (gachaValidation !== null && !gachaValidation.ok) ||
+    isNameInputInvalid;
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -786,28 +842,48 @@ export function GenerationForm({
           labelRowSingleLine={isFree}
         />
 
-        {canUseGacha ? (
-          <GachaPromptField
-            enabled={isGachaEnabled}
-            onEnabledChange={setIsGachaEnabled}
-            value={gachaField}
-            onChange={setGachaField}
-            validation={gachaValidation}
-            disabled={isGenerating || isTutorialInProgress}
-            split={
-              gachaSplitAvailable
-                ? {
-                    prompt,
-                    onApply: (nextBody, nextField) => {
-                      setPrompt(nextBody);
-                      setGachaField(nextField);
-                    },
-                    onProposalOpenChange: setIsSplitProposalOpen,
-                  }
-                : undefined
-            }
-            fieldLocked={isSplitProposalOpen}
-          />
+        {canUseGacha || canUseNameInput ? (
+          <PromptGimmicksBox>
+            {canUseNameInput ? (
+              <NamePromptField
+                slot={nameSlot}
+                onSlotChange={(slot) => setPrompt((current) => upsertNameInputMarker(current, slot))}
+                onDisable={() => {
+                  setPrompt((current) => removeNameInputMarkers(current));
+                  setTrialName("");
+                }}
+                trialName={trialName}
+                onTrialNameChange={setTrialName}
+                hasReachableSlot={hasReachableNameSlot}
+                requiredGuaranteed={isNameRequiredGuaranteed}
+                tooManySlots={hasTooManyNameSlots}
+                disabled={isGenerating || isTutorialInProgress || isSplitProposalOpen}
+              />
+            ) : null}
+            {canUseGacha ? (
+              <GachaPromptField
+                enabled={isGachaEnabled}
+                onEnabledChange={setIsGachaEnabled}
+                value={gachaField}
+                onChange={setGachaField}
+                validation={gachaValidation}
+                disabled={isGenerating || isTutorialInProgress}
+                split={
+                  gachaSplitAvailable
+                    ? {
+                        prompt,
+                        onApply: (nextBody, nextField) => {
+                          setPrompt(nextBody);
+                          setGachaField(nextField);
+                        },
+                        onProposalOpenChange: setIsSplitProposalOpen,
+                      }
+                    : undefined
+                }
+                fieldLocked={isSplitProposalOpen}
+              />
+            ) : null}
+          </PromptGimmicksBox>
         ) : null}
 
         {/* --- ここから下の設定UIはコーディネート専用。じゆうモードでは全て非表示 --- */}
