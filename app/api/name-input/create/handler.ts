@@ -164,6 +164,12 @@ export async function postNameInputCreateRoute(
     return jsonError("No name lines", "NAME_INPUT_CREATE_NOT_FOUND", 422);
   }
 
+  // まとめた後の本文が長さの上限を超えるなら、生成で使えないので引き落とさない
+  // (短い名前の行を長い目印に差し替えると、上限ぎりぎりの本文は少し伸びる)
+  if (result.body.length > FREE_GENERATION_PROMPT_MAX_LENGTH) {
+    return jsonError("Too long", "NAME_INPUT_CREATE_INVALID_PROMPT", 400);
+  }
+
   // 作れたときだけ引き落とす
   let newBalance: number | null;
   try {

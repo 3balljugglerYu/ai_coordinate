@@ -160,4 +160,15 @@ describe("POST /api/name-input/create", () => {
     expect(response.status).toBe(403);
     expect(cross.callModelFn).not.toHaveBeenCalled();
   });
+
+  test("まとめた後の本文が長さの上限を超えるなら、引き落とさない", async () => {
+    const long = `${"あ".repeat(29_990)}\n【名前】`;
+    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ nameLines: [2] })) as never });
+    const response = await postNameInputCreateRoute(
+      createRequest({ prompt: long, slot: { label: "とても長い見出しをつけたキャラクターの名前", required: true } }),
+      deps,
+    );
+    expect(response.status).toBe(400);
+    expect(deductFn).not.toHaveBeenCalled();
+  });
 });

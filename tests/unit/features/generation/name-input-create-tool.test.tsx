@@ -160,4 +160,15 @@ describe("NameInputCreateTool", () => {
       ),
     );
   });
+
+  test("作っている間も本文とスイッチを止め、案が出なければ解く", async () => {
+    const user = userEvent.setup();
+    let resolve!: (value: unknown) => void;
+    fetchMock.mockReturnValueOnce(new Promise((r) => (resolve = r)));
+    render(<Harness />);
+    await user.click(createButton());
+    expect(mockProposalOpen).toHaveBeenLastCalledWith(true);
+    resolve({ ok: false, status: 422, json: async () => ({ errorCode: "NAME_INPUT_CREATE_NOT_FOUND" }) });
+    await waitFor(() => expect(mockProposalOpen).toHaveBeenLastCalledWith(false));
+  });
 });

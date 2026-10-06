@@ -15,8 +15,9 @@ export interface NameInputCreateToolProps {
   /** 本文を書き換える。 */
   onApply: (body: string) => void;
   /**
-   * 案を見せている間は true。呼び出し側は本文を書き換えられないようにする
-   * (案は押したときの本文から作ってあり、採用すると途中の書き換えが消えるため)。
+   * 作っている間と案を見せている間は true。呼び出し側は本文とスイッチを書き換えられないようにする
+   * (案は押したときの本文から作ってあり、採用すると途中の書き換えが消えるため。
+   * 作っている間にスイッチを切ると、ペルコインだけ使って案が消えるため)。
    */
   onProposalOpenChange?: (open: boolean) => void;
   disabled?: boolean;
@@ -79,6 +80,9 @@ export function NameInputCreateTool({
     setPending(true);
     setErrorKey(null);
     setUndo(null);
+    // 作っている間も本文とスイッチを止める(案が出なければ finally で解く)
+    onProposalOpenChange?.(true);
+    let proposalShown = false;
     try {
       const response = await fetch("/api/name-input/create", {
         method: "POST",
@@ -94,6 +98,7 @@ export function NameInputCreateTool({
         setErrorKey("nameInputCreateConnectionLost");
         return;
       }
+      proposalShown = true;
       showProposal({
         original: data.original,
         body: data.body,
@@ -107,6 +112,7 @@ export function NameInputCreateTool({
       setErrorKey("nameInputCreateConnectionLost");
     } finally {
       setPending(false);
+      if (!proposalShown) onProposalOpenChange?.(false);
     }
   };
 
