@@ -57,7 +57,12 @@ import {
   resolveJobOutputAspectRatio,
   resolveOpenAIOutputTargetSize,
 } from "../../../shared/generation/job-output-aspect.ts";
-import { mergeSuccessGenerationMetadata } from "../../../shared/generation/job-metadata.ts";
+import {
+  mergeSuccessGenerationMetadata,
+  NAME_INPUT_METADATA_KEY,
+  stripNameInputFromMetadata,
+} from "../../../shared/generation/job-metadata.ts";
+import { expandNameInput } from "../../../shared/generation/name-input.ts";
 import {
   expandGachaPrompt,
   type GachaPick,
@@ -2170,6 +2175,8 @@ Deno.serve(async () => {
         const geminiAttempts: GeminiAttemptMetadata[] = [];
         // ガチャプロンプトで選ばれた候補（何番が出たか）。成功時の metadata に残す。
         let gachaPicks: GachaPick[] = [];
+        // 名前の欄に名前を入れて生成したか。成功時の metadata に残す(名前そのものは残さない)。
+        let nameInputUsed = false;
         try {
           let generatedImages: GeneratedImageResult[] = [];
           if (isDerivedJob) {
@@ -2215,6 +2222,17 @@ Deno.serve(async () => {
             const gacha = expandGachaPrompt(generationInput);
             generationInput = gacha.prompt;
             gachaPicks = gacha.picks;
+            // 名前の欄: {{INPUT:見出し}} を「名前あり／なし」の固定文に置き換える(ガチャの後。
+            // 選ばれなかったガチャの中身にある目印は一緒に消える)。名前は受付で確かめ済みだが、
+            // image_jobs の行は作成後に本人が書き換えられるので、expandNameInput の中でも確かめる。
+            const jobMetadata = job.generation_metadata as Record<string, unknown> | null;
+            const rawName = jobMetadata?.[NAME_INPUT_METADATA_KEY];
+            const named = expandNameInput(
+              generationInput,
+              typeof rawName === "string" ? rawName : null,
+            );
+            generationInput = named.prompt;
+            nameInputUsed = named.nameUsed;
           }
 
           currentStage = "generating";
@@ -3250,6 +3268,7 @@ Deno.serve(async () => {
               | null,
             geminiAttempts,
             gachaPicks,
+            nameInputUsed,
           });
           currentStage = "persisting";
           await measureJobStage(
@@ -3520,8 +3539,12 @@ Deno.serve(async () => {
           const shouldMarkAsFailed = isNonRetriable || newAttempts >= 2;
 
           // image_jobsテーブルを更新（失敗時）
+          // 確定で失敗したら名前は要らなくなるので消す。やり直す(queued に戻す)ときは残す
+          const jobMetadataForFailure = job.generation_metadata as Record<string, unknown> | null;
           const failureGenerationMetadata = {
-            ...(job.generation_metadata as Record<string, unknown> | null ?? {}),
+            ...(shouldMarkAsFailed
+              ? stripNameInputFromMetadata(jobMetadataForFailure)
+              : jobMetadataForFailure ?? {}),
             geminiAttempts,
           };
           const { data: failUpdatedJob, error: failUpdateError } = await supabase

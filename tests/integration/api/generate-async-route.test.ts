@@ -29,6 +29,7 @@ jest.mock("@/lib/env", () => ({
   ...jest.requireActual("@/lib/env"),
   isAdminViewer: jest.fn(() => false),
   isGptImage25Available: jest.fn(() => false),
+  isNameInputAvailable: jest.fn(() => false),
 }));
 
 jest.mock("@/features/inspire/lib/repository", () => ({
@@ -61,7 +62,7 @@ import {
   type UserStyleTemplateRow,
 } from "@/features/inspire/lib/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminViewer, isGptImage25Available } from "@/lib/env";
+import { isAdminViewer, isGptImage25Available, isNameInputAvailable } from "@/lib/env";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { getCreatorLooksTwoStageVisibility } from "@/features/inspire/lib/creator-looks-two-stage";
 
@@ -596,6 +597,64 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         });
         expect(response.status).toBe(200);
         expect(jobRepository.createImageJob).toHaveBeenCalledTimes(1);
+      });
+
+      describe("名前の欄", () => {
+        const mockNameAvailable = isNameInputAvailable as jest.MockedFunction<typeof isNameInputAvailable>;
+        afterEach(() => mockNameAvailable.mockReturnValue(false));
+
+        test("名前の欄が2つあるプロンプトは、ジョブを作らず 400 で断る", async () => {
+          const response = await runFree({ prompt: "猫\n{{INPUT:a}}\n{{INPUT:b}}" });
+          expect(response.status).toBe(400);
+          expect((await readJson(response)).errorCode).toBe("GENERATION_NAME_INPUT_TOO_MANY_SLOTS");
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
+
+        test("運営は名前の欄が2つでも受け付ける", async () => {
+          isAdminViewerMock.mockReturnValue(true);
+          const response = await runFree({ prompt: "猫\n{{INPUT:a}}\n{{INPUT:b}}" });
+          expect(response.status).toBe(200);
+        });
+
+        test("使える人の名前は generation_metadata.nameInput に入れる", async () => {
+          mockNameAvailable.mockReturnValue(true);
+          const response = await runFree({ prompt: "猫\n{{INPUT:名前}}", nameInput: " ぺるこ " });
+          expect(response.status).toBe(200);
+          const arg = jobRepository.createImageJob.mock.calls[0][0] as {
+            generation_metadata?: { nameInput?: string };
+          };
+          expect(arg.generation_metadata?.nameInput).toBe("ぺるこ");
+        });
+
+        test("使えない人の名前は捨てる(目印は「名前なし」になる)", async () => {
+          mockNameAvailable.mockReturnValue(false);
+          const response = await runFree({ prompt: "猫\n{{INPUT:名前}}", nameInput: "ぺるこ" });
+          expect(response.status).toBe(200);
+          const arg = jobRepository.createImageJob.mock.calls[0][0] as {
+            generation_metadata?: { nameInput?: string };
+          };
+          expect(arg.generation_metadata?.nameInput).toBeUndefined();
+        });
+
+        test("必須の名前の欄が空なら 400 で断る", async () => {
+          mockNameAvailable.mockReturnValue(true);
+          const response = await runFree({ prompt: "猫\n{{INPUT*:名前}}" });
+          expect(response.status).toBe(400);
+          expect((await readJson(response)).errorCode).toBe("GENERATION_NAME_INPUT_REQUIRED");
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
+
+        test.each([
+          ["9文字", "あいうえおかきくけ"],
+          ["波括弧", "{{GACHA}}"],
+          ["改行", "ぺる\nこ"],
+        ])("名前が%sなら 400(受付で確かめる)", async (_, nameInput) => {
+          mockNameAvailable.mockReturnValue(true);
+          const response = await runFree({ prompt: "猫\n{{INPUT:名前}}", nameInput });
+          expect(response.status).toBe(400);
+          expect((await readJson(response)).errorCode).toBe("GENERATION_INVALID_REQUEST");
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
       });
 
       test("ガチャの候補がちょうど10個なら受け付ける", async () => {

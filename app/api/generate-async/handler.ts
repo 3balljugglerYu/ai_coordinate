@@ -3,7 +3,7 @@ import { getUser } from "@/lib/auth";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
-import { env, isAdminViewer, isGptImage25Available } from "@/lib/env";
+import { env, isAdminViewer, isGptImage25Available, isNameInputAvailable } from "@/lib/env";
 import {
   DEFAULT_FRAMING_MODE,
   type FramingMode,
@@ -41,6 +41,12 @@ import {
   type AsyncGenerationJobRepository,
 } from "@/features/generation/lib/async-generation-job-repository";
 import { jsonError } from "@/lib/api/json-error";
+import {
+  exceedsNameInputSlotLimit,
+  NAME_INPUT_MAX_SLOTS,
+  nameInputMaxSlotsFor,
+  parseNameInputSlots,
+} from "@/shared/generation/name-input";
 import {
   findGachaLimitViolation,
   GACHA_MAX_BLOCKS,
@@ -157,6 +163,7 @@ export async function postGenerateAsyncRoute(
       framingMode,
       creatorLooksMode,
       outputAspectRatioMode,
+      nameInput,
     } = validationResult.data;
     // ガチャの上限(一般の利用者は、囲み1つ・候補10個まで)。画面では超えると送れないが、
     // 直接送られたときもここで止める。運営はテストのため制限しない(2026-10-05 ユーザー指示)。
@@ -177,6 +184,27 @@ export async function postGenerateAsyncRoute(
         "GENERATION_GACHA_TOO_MANY_CANDIDATES",
         400
       );
+    }
+    // 名前の欄(docs/planning/name-input-slot-plan.md)。一般の利用者は1つのプロンプトに1つまで。
+    // 運営はテストのため制限しない。見るのは本人が送ったプロンプトだけ(派生生成は Phase 3)
+    if (prompt && exceedsNameInputSlotLimit(prompt, nameInputMaxSlotsFor(isAdminViewer(user.id)))) {
+      return jsonError(
+        copy.nameInputTooManySlots(NAME_INPUT_MAX_SLOTS),
+        "GENERATION_NAME_INPUT_TOO_MANY_SLOTS",
+        400
+      );
+    }
+    // 名前は、名前の欄を使える人のものだけを受け取る(使えない人の名前は捨て、目印は「名前なし」になる)
+    const acceptedName =
+      nameInput !== undefined && isNameInputAvailable(user.id) ? nameInput.trim() : "";
+    // 必須の名前の欄(`{{INPUT*:…}}`)が空なら止める。本人のプロンプトだけ判定できる
+    if (
+      prompt &&
+      !acceptedName &&
+      isNameInputAvailable(user.id) &&
+      parseNameInputSlots(prompt).some((slot) => slot.required)
+    ) {
+      return jsonError(copy.nameInputRequired, "GENERATION_NAME_INPUT_REQUIRED", 400);
     }
     // 未送信のときは「その人が使えるモデル」を選ぶ(段階公開中に自分のゲートで
     // 弾かれないようにするため)。明示送信された 2.5 は従来どおりゲートで判定する。
@@ -494,6 +522,12 @@ export async function postGenerateAsyncRoute(
       if (normalizedAspect !== "source") {
         generationMetadata.outputAspectRatioMode = normalizedAspect;
       }
+    }
+
+    // 名前の欄に入れる名前。Worker が目印を置き換えるときに読む。投稿側(generated_images)へは
+    // 写さず、使ったかどうかだけを残す(shared/generation/job-metadata.ts)
+    if (generationType === "free" && acceptedName) {
+      generationMetadata.nameInput = acceptedName;
     }
 
     // 派生生成の認可。

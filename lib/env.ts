@@ -111,6 +111,10 @@ const envSchema = {
   // 'true' になるまでは運営のみ
   NEXT_PUBLIC_GACHA_SPLIT_ENABLED:
     process.env.NEXT_PUBLIC_GACHA_SPLIT_ENABLED,
+  // 名前の欄(名前を入れられるプロンプト)の一般公開フラグ。'true' になるまでは運営のみ
+  // (docs/planning/name-input-slot-plan.md)
+  NEXT_PUBLIC_NAME_INPUT_ENABLED:
+    process.env.NEXT_PUBLIC_NAME_INPUT_ENABLED,
   // プレビュー生成で運営側のテストキャラ画像 URL（private bucket、サーバー専用）
   INSPIRE_TEST_CHARACTER_IMAGE_URL:
     process.env.INSPIRE_TEST_CHARACTER_IMAGE_URL,
@@ -234,6 +238,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_GACHA_PROMPT_ENABLED || "",
     NEXT_PUBLIC_GACHA_SPLIT_ENABLED:
       envSchema.NEXT_PUBLIC_GACHA_SPLIT_ENABLED || "",
+    NEXT_PUBLIC_NAME_INPUT_ENABLED:
+      envSchema.NEXT_PUBLIC_NAME_INPUT_ENABLED || "",
     NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED:
       envSchema.NEXT_PUBLIC_POST_IMPRESSIONS_ENABLED || "",
     INSPIRE_TEST_CHARACTER_IMAGE_URL:
@@ -606,6 +612,21 @@ export function isGachaSplitAvailable(
   userId: string | null | undefined
 ): boolean {
   return env.NEXT_PUBLIC_GACHA_SPLIT_ENABLED === "true" || isAdminViewer(userId);
+}
+
+/**
+ * 名前の欄(名前を入れられるプロンプト)が一般公開されているか(運営かどうかは見ない)。
+ */
+export function isNameInputPubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_NAME_INPUT_ENABLED === "true";
+}
+
+/**
+ * 名前の欄を使ってよいか。公開フラグ `NEXT_PUBLIC_NAME_INPUT_ENABLED` が立つまでは運営だけ。
+ * 使えない人が送ってきた名前は、受付で捨てる(目印は「名前なし」に置き換わる)。
+ */
+export function isNameInputAvailable(userId: string | null | undefined): boolean {
+  return isNameInputPubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

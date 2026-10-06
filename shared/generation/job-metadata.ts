@@ -19,6 +19,24 @@ export interface MergeSuccessGenerationMetadataParams {
    * 候補数だけを残す。ガチャを使っていない生成ではキーを足さない。
    */
   gachaPicks?: ReadonlyArray<{ number: number; total: number }>;
+  /**
+   * 名前の欄に名前を入れて生成したか。投稿の「名前入り」の札に使う。
+   * ⭐ 名前そのもの(job 側の `nameInput`)は投稿側へ写さない。`generated_images.generation_metadata`
+   * は公開の投稿で読めるため(docs/planning/name-input-slot-plan.md 3.4)。
+   */
+  nameInputUsed?: boolean;
+}
+
+/** 名前の欄に入れた名前のキー。job にだけ持ち、成功・確定失敗で消す。 */
+export const NAME_INPUT_METADATA_KEY = "nameInput";
+
+/** job の generation_metadata から、名前そのものを取り除く(使ったかどうかは別のキーで残す)。 */
+export function stripNameInputFromMetadata(
+  metadata: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(metadata ?? {}).filter(([key]) => key !== NAME_INPUT_METADATA_KEY),
+  );
 }
 
 /**
@@ -29,10 +47,12 @@ export function mergeSuccessGenerationMetadata({
   jobGenerationMetadata,
   geminiAttempts,
   gachaPicks,
+  nameInputUsed,
 }: MergeSuccessGenerationMetadataParams): Record<string, unknown> {
   return {
-    ...(jobGenerationMetadata ?? {}),
+    ...stripNameInputFromMetadata(jobGenerationMetadata),
     geminiAttempts,
     ...(gachaPicks && gachaPicks.length > 0 ? { gachaPicks } : {}),
+    ...(nameInputUsed ? { nameInputUsed: true } : {}),
   };
 }

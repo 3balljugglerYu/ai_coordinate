@@ -23,3 +23,12 @@ describe("gachaTooManyBlocks", () => {
     expect(message).not.toContain("${");
   });
 });
+
+describe("名前の欄の文言", () => {
+  test.each(locales)("%s: 上限の数を入れた文と、必須の文を返す", (locale) => {
+    const copy = getGenerationRouteCopy(locale);
+    expect(copy.nameInputTooManySlots(1)).toContain("1");
+    expect(copy.nameInputTooManySlots(1)).not.toContain("${");
+    expect(copy.nameInputRequired.length).toBeGreaterThan(0);
+  });
+});

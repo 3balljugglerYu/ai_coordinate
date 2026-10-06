@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { checkNameInputValue, NAME_INPUT_MAX_LENGTH } from "@/shared/generation/name-input";
 import {
   KNOWN_MODEL_INPUTS,
   normalizeModelName,
@@ -64,6 +65,12 @@ export const generationRequestSchema = z.object({
    * （計画書 ADR-006 / REQ-005）。
    */
   sourcePostId: z.string().uuid().optional(),
+  /**
+   * 名前の欄(`{{INPUT:見出し}}`)に入れる名前。じゆうモードのみ。8文字まで、
+   * 波括弧・改行・制御文字・ゼロ幅文字は不可(docs/planning/name-input-slot-plan.md 3.3)。
+   * 長さの細かい判定は superRefine(文字数はコードポイントで数える)。
+   */
+  nameInput: z.string().max(64).optional(),
   sourceImageBase64: z.string().optional(),
   sourceImageMimeType: z
     .string()
@@ -166,6 +173,30 @@ export const generationRequestSchema = z.object({
         code: z.ZodIssueCode.custom,
         path: ["prompt"],
         message: "着せ替え内容を入力してください",
+      });
+      return;
+    }
+  }
+
+  // 名前の欄はじゆうモードだけ。形も同じ部品(shared/generation/name-input.ts)で確かめる
+  if (data.nameInput !== undefined) {
+    if (data.generationType !== "free") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nameInput"],
+        message: "名前の欄はじゆうモードのみ利用できます",
+      });
+      return;
+    }
+    const nameCheck = checkNameInputValue(data.nameInput);
+    if (!nameCheck.ok) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["nameInput"],
+        message:
+          nameCheck.reason === "too_long"
+            ? `名前は${NAME_INPUT_MAX_LENGTH}文字以内で入力してください`
+            : "名前に使えない文字が含まれています",
       });
       return;
     }
