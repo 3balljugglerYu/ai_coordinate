@@ -29,8 +29,10 @@ const mockAvailable = jest.fn<boolean, [string | null | undefined]>();
 const mockGachaAvailable = jest.fn<boolean, [string | null | undefined]>();
 const mockGachaSplitAvailable = jest.fn<boolean, [string | null | undefined]>();
 const mockIsAdmin = jest.fn<boolean, [string | null | undefined]>(() => false);
+const mockNameAvailable = jest.fn<boolean, [string | null | undefined]>(() => false);
 jest.mock("@/lib/env", () => ({
   isAdminViewer: (userId: string | null | undefined) => mockIsAdmin(userId),
+  isNameInputAvailable: (userId: string | null | undefined) => mockNameAvailable(userId),
   isUserStylesAvailable: (userId: string | null | undefined) => mockAvailable(userId),
   isGachaPromptAvailable: (userId: string | null | undefined) =>
     mockGachaAvailable(userId),
@@ -136,3 +138,17 @@ describe("FreePageBody のガチャの上限", () => {
     expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ gachaUnlimited: admin });
   });
 });
+
+describe("FreePageBody の名前の欄", () => {
+  test.each([true, false])("名前の欄の判定(%s)をそのままフォームへ渡す", async (available) => {
+    mockAvailable.mockReturnValue(true);
+    mockGachaAvailable.mockReturnValue(true);
+    mockGachaSplitAvailable.mockReturnValue(true);
+    mockNameAvailable.mockReturnValue(available);
+    render(await FreePageBody());
+
+    expect(mockNameAvailable).toHaveBeenCalledWith("user-1");
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ nameInputAvailable: available });
+  });
+});
+

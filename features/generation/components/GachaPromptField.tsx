@@ -15,7 +15,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { GachaSplitTool } from "./GachaSplitTool";
@@ -113,20 +113,11 @@ export function GachaPromptField({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="gacha-prompt-enabled"
-          checked={enabled}
-          onCheckedChange={(checked) => {
-            // チェックを外したら、次にチェックしたときはまた「さわる前」から始める
-            if (checked !== true) setTouched(false);
-            onEnabledChange(checked === true);
-          }}
-          disabled={disabled}
-        />
+      {/* 「プロンプトの仕掛け」の箱の1行(名前の欄と同じ形のスイッチ。2026-10-06 ユーザー決定) */}
+      <div className="flex items-center gap-2">
         <Label
           htmlFor="gacha-prompt-enabled"
-          className="text-sm font-medium leading-none"
+          className="whitespace-nowrap text-sm font-medium leading-snug"
         >
           {t("gachaToggleLabel")}
         </Label>
@@ -142,6 +133,17 @@ export function GachaPromptField({
         >
           {t("gachaGuideLink")}
         </Link>
+        <Switch
+          id="gacha-prompt-enabled"
+          className="ml-auto"
+          checked={enabled}
+          onCheckedChange={(checked) => {
+            // 切ったら、次に入れたときはまた「さわる前」から始める
+            if (!checked) setTouched(false);
+            onEnabledChange(checked);
+          }}
+          disabled={disabled}
+        />
       </div>
 
       {enabled ? (

@@ -180,7 +180,7 @@ async function fillBodyAndImage(user: ReturnType<typeof userEvent.setup>) {
 }
 
 function gachaCheckbox() {
-  return screen.queryByRole("checkbox", { name: "gachaToggleLabel" });
+  return screen.queryByRole("switch", { name: "gachaToggleLabel" });
 }
 
 describe("GenerationForm のガチャプロンプト", () => {
