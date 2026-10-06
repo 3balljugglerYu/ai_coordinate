@@ -9,7 +9,7 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 
 jest.mock("next/navigation", () => ({
   notFound: jest.fn(() => {
@@ -123,10 +123,41 @@ describe("ページの中身", () => {
     expect(label.className).toContain("after:hidden");
   });
 
-  test("「ガチャをやってみる」は、カタログをつくる(/free)へのリンク", async () => {
+  test("「ガチャをつくってみる」は、画面に浮かぶボタンと締めの章のボタンで、どちらも /free へ", async () => {
     await renderGuide();
-    const link = screen.getByRole("link", { name: "gachaGuide.ctaButton" });
-    expect(link.getAttribute("href")).toBe("/free");
+    const links = screen.getAllByRole("link", { name: "gachaGuide.ctaButton" });
+    expect(links.map((link) => link.getAttribute("href"))).toEqual(["/free", "/free"]);
+    // どこまで読んでいても押せるよう、浮かぶボタンは画面に固定する
+    expect(screen.getByTestId("gacha-guide-floating-cta").className).toContain("fixed");
+  });
+
+  test("締めの章が見えたら、浮かぶボタンを隠す(フッターのリンクに重ねない)", async () => {
+    let notify: ((entries: { isIntersecting: boolean }[]) => void) | undefined;
+    const observe = jest.fn();
+    const original = (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver;
+    (window as unknown as { IntersectionObserver: unknown }).IntersectionObserver = class {
+      constructor(callback: (entries: { isIntersecting: boolean }[]) => void) {
+        notify = callback;
+      }
+      observe = observe;
+      disconnect = jest.fn();
+    };
+    try {
+      await renderGuide();
+      const floating = screen.getByTestId("gacha-guide-floating-cta");
+      expect(observe).toHaveBeenCalledWith(document.getElementById("gacha-guide-closing"));
+      expect(floating.getAttribute("data-docked")).toBe("false");
+
+      act(() => notify?.([{ isIntersecting: true }]));
+      expect(floating.getAttribute("data-docked")).toBe("true");
+      expect(floating.getAttribute("aria-hidden")).toBe("true");
+      expect(floating.getAttribute("tabindex")).toBe("-1");
+
+      act(() => notify?.([{ isIntersecting: false }]));
+      expect(floating.getAttribute("data-docked")).toBe("false");
+    } finally {
+      (window as unknown as { IntersectionObserver?: unknown }).IntersectionObserver = original;
+    }
   });
 
   test("使い方は6つの手順を、決めた順番で出す", async () => {

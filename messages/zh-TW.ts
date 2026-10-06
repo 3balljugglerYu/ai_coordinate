@@ -2252,7 +2252,7 @@ export const zhTwMessages = {
     resultTitle: "每次生成，都是不同的內容",
     resultAlt: "第 {count} 次的結果：{job}",
     ctaTitle: "馬上來做一個轉蛋吧",
-    ctaButton: "試試轉蛋",
+    ctaButton: "試著做個轉蛋",
     ctaNote: "轉蛋內容 {min}～{max} 個。一個提示詞最多 {blocks} 個轉蛋。",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

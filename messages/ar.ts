@@ -2256,7 +2256,7 @@ export const arMessages = {
     resultTitle: "عنصر مختلف في كل مرة تُنشئ فيها صورة",
     resultAlt: "النتيجة رقم {count}: {job}",
     ctaTitle: "هيا، اصنع جاتشا الآن",
-    ctaButton: "جرّب الجاتشا",
+    ctaButton: "جرّب إنشاء جاتشا",
     ctaNote: "من {min} إلى {max} من عناصر الجاتشا. {blocks} جاتشا كحد أقصى لكل موجّه.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

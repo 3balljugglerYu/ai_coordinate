@@ -2258,7 +2258,7 @@ export const hiMessages = {
     resultTitle: "हर बार जनरेट करने पर अलग आइटम",
     resultAlt: "{count}वाँ नतीजा: {job}",
     ctaTitle: "तो चलिए, अपना गाचा बनाइए",
-    ctaButton: "गाचा आज़माएं",
+    ctaButton: "गाचा बनाकर देखें",
     ctaNote: "{min} से {max} गाचा आइटम। एक प्रॉम्प्ट में ज़्यादा से ज़्यादा {blocks} गाचा।",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

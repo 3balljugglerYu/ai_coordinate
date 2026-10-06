@@ -2255,7 +2255,7 @@ export const koMessages = {
     resultTitle: "생성할 때마다 다른 내용물로",
     resultAlt: "{count}번째 결과: {job}",
     ctaTitle: "지금 바로 가챠를 만들어 봐요",
-    ctaButton: "가챠 해 보기",
+    ctaButton: "가챠 만들어 보기",
     ctaNote: "가챠 내용물은 {min}~{max}개까지. 가챠는 프롬프트 하나에 {blocks}개까지예요.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

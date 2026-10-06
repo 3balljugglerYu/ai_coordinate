@@ -2261,7 +2261,7 @@ export const deMessages = {
     resultTitle: "Bei jeder Generierung ein anderer Eintrag",
     resultAlt: "Ergebnis {count}: {job}",
     ctaTitle: "Erstell gleich dein eigenes Gacha",
-    ctaButton: "Gacha ausprobieren",
+    ctaButton: "Gacha erstellen",
     ctaNote: "{min} bis {max} Gacha-Einträge. Höchstens {blocks} Gacha pro Prompt.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

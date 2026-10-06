@@ -2256,7 +2256,7 @@ export const viMessages = {
     resultTitle: "Mỗi lần tạo là một mục khác",
     resultAlt: "Kết quả lần {count}: {job}",
     ctaTitle: "Thử tạo gacha ngay nào",
-    ctaButton: "Thử gacha",
+    ctaButton: "Thử tạo gacha",
     ctaNote: "Từ {min} đến {max} mục trong gacha. Mỗi prompt tối đa {blocks} gacha.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

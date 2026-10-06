@@ -10,6 +10,7 @@ import {
 import { GACHA_SPLIT_PERCOIN_COST } from "@/shared/generation/gacha-split";
 import { cn } from "@/lib/utils";
 import { AnnotatedShot } from "./AnnotatedShot";
+import { FloatingGuideCta } from "./FloatingGuideCta";
 
 /*
   ガチャ機能の紹介ページ(/guide/gacha)の中身。計画書: docs/planning/gacha-guide-page-plan.md
@@ -439,8 +440,12 @@ export async function GachaGuide() {
         </div>
       </Band>
 
-      {/* ⑤ 締め */}
-      <section aria-labelledby="gacha-guide-cta" className="bg-slate-900 px-4 py-14 text-center text-white">
+      {/* ⑤ 締め。ここまで来たら浮かぶボタンを隠し、この章のボタンに任せる(FloatingGuideCta) */}
+      <section
+        id="gacha-guide-closing"
+        aria-labelledby="gacha-guide-cta"
+        className="bg-slate-900 px-4 py-14 text-center text-white"
+      >
         <div className="mx-auto grid max-w-[1200px] justify-items-center gap-4">
           <h2 id="gacha-guide-cta" className="text-balance text-2xl font-extrabold min-[860px]:text-4xl">
             {t("ctaTitle")}
@@ -454,6 +459,9 @@ export async function GachaGuide() {
           <small className="text-white/75">{t("ctaNote", candidateRange)}</small>
         </div>
       </section>
+
+      {/* どこまで読んでいても押せるよう、画面の下に浮かべる(2026-10-06 ユーザー指示) */}
+      <FloatingGuideCta href="/free" label={t("ctaButton")} dockTargetId="gacha-guide-closing" />
     </div>
   );
 }

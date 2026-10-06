@@ -2255,7 +2255,7 @@ export const thMessages = {
     resultTitle: "สร้างกี่ครั้งก็ได้ของที่ต่างกัน",
     resultAlt: "ผลลัพธ์ครั้งที่ {count}: {job}",
     ctaTitle: "มาลองสร้างกาชากันเลย",
-    ctaButton: "ลองเล่นกาชา",
+    ctaButton: "ลองสร้างกาชา",
     ctaNote: "ของในกาชา {min}–{max} รายการ 1 พรอมต์มีกาชาได้สูงสุด {blocks} อัน",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

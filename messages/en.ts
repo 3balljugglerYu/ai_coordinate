@@ -2256,7 +2256,7 @@ export const enMessages = {
     resultTitle: "A different item every time you generate",
     resultAlt: "Result #{count}: {job}",
     ctaTitle: "Go ahead and make your own gacha",
-    ctaButton: "Try the gacha",
+    ctaButton: "Make a gacha",
     ctaNote: "{min} to {max} gacha items. Up to {blocks} gacha per prompt.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;
