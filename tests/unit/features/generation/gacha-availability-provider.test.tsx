@@ -38,7 +38,7 @@ describe("GachaAvailabilityProvider", () => {
   test("Provider の外では false", () => {
     render(<Probe />);
 
-    expect(screen.getByTestId("available")).toHaveTextContent("false");
+    expect(screen.getByTestId("available").textContent).toBe("false");
   });
 
   /*
@@ -50,7 +50,7 @@ describe("GachaAvailabilityProvider", () => {
 
     render(<Probe />);
 
-    expect(screen.getByTestId("available")).toHaveTextContent("true");
+    expect(screen.getByTestId("available").textContent).toBe("true");
   });
 
   test("公開フラグが立っていなければ初期値は false", () => {
@@ -62,7 +62,7 @@ describe("GachaAvailabilityProvider", () => {
       </GachaAvailabilityProvider>
     );
 
-    expect(screen.getByTestId("available")).toHaveTextContent("false");
+    expect(screen.getByTestId("available").textContent).toBe("false");
   });
 
   /*
@@ -78,7 +78,7 @@ describe("GachaAvailabilityProvider", () => {
       </GachaAvailabilityProvider>
     );
 
-    expect(screen.getByTestId("available")).toHaveTextContent("true");
+    expect(screen.getByTestId("available").textContent).toBe("true");
   });
 
   test("'true' 以外の値は立っていないものとして扱う", () => {
@@ -90,7 +90,7 @@ describe("GachaAvailabilityProvider", () => {
       </GachaAvailabilityProvider>
     );
 
-    expect(screen.getByTestId("available")).toHaveTextContent("false");
+    expect(screen.getByTestId("available").textContent).toBe("false");
   });
 
   describe("昇格", () => {
@@ -104,7 +104,7 @@ describe("GachaAvailabilityProvider", () => {
         </GachaAvailabilityProvider>
       );
 
-      expect(screen.getByTestId("available")).toHaveTextContent("true");
+      expect(screen.getByTestId("available").textContent).toBe("true");
     });
 
     test("Upgrade 自体は何も描かない", () => {
@@ -114,7 +114,7 @@ describe("GachaAvailabilityProvider", () => {
         </GachaAvailabilityProvider>
       );
 
-      expect(container).toBeEmptyDOMElement();
+      expect(container.innerHTML).toBe("");
     });
 
     /*

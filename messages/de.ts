@@ -2191,7 +2191,7 @@ export const deMessages = {
     metaTitle: "Gacha-Prompts nutzen | Jedes Mal fair einen deiner Gacha-Einträge auswählen",
     metaDescription: "Schreib deine Gacha-Einträge auf, und Persta wählt bei jeder Generierung fair einen davon aus. Was Gacha kann, wo du es nutzt und wie du eins erstellst – mit echten Screenshots.",
     heroBadge: "NEW",
-    heroTitle: "Neu: Gacha-Prompts ohne Schieflage!",
+    heroTitle: "Schluss mit einseitigen Gacha-Prompts!",
     heroQuestion: "Erstellst du in „{createTitle}“ einen „Gacha-Prompt“, bei dem die KI zufällig einen von mehreren Einträgen auswählen soll?",
     heroLead: "Wenn du die KI einfach selbst wählen lässt, werden die Ergebnisse oft einseitig und ähnliche Einträge kommen immer wieder.\n\nDeshalb hat Persta eine Funktion gebaut, die fair einen deiner eingetragenen Gacha-Einträge auswählt und damit generiert!\n\nSo kannst du ganz einfach ein Gacha mit viel weniger Einseitigkeit genießen.\nViel Spaß! ♪",
     compareBefore: "Bisher",

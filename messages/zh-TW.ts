@@ -2182,7 +2182,7 @@ export const zhTwMessages = {
     metaTitle: "轉蛋提示詞的用法｜每次都從轉蛋內容中公平選出一個",
     metaDescription: "寫好轉蛋內容後，每次生成時 Persta 都會公平地選出一個。用實際畫面介紹轉蛋能做什麼、在哪個畫面使用以及製作方法。",
     heroBadge: "NEW",
-    heroTitle: "新增功能：讓轉蛋提示詞不再偏向！",
+    heroTitle: "消除轉蛋提示詞的\n偏差吧！",
     heroQuestion: "你是否在「{createTitle}」中，製作了讓 AI 從多個內容中隨機選出一個的「轉蛋提示詞」？",
     heroLead: "直接讓 AI 來選的話，結果難免會有偏差，有時會連續出現相似的內容。\n\n所以 Persta 做了一個功能：從你登記的轉蛋內容中公平地選出一個來生成！\n\n現在可以輕鬆享受偏差更少的轉蛋了。\n盡情玩吧♪",
     compareBefore: "以前",

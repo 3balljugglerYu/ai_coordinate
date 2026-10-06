@@ -2190,7 +2190,7 @@ export const itMessages = {
     metaTitle: "Come usare i prompt gacha | Una scelta equa tra gli elementi del tuo gacha, ogni volta",
     metaDescription: "Scrivi gli elementi del tuo gacha e Persta ne sceglie uno in modo equo a ogni generazione. Scopri cosa puoi fare con il gacha, dove usarlo e come crearlo, con schermate reali.",
     heroBadge: "NEW",
-    heroTitle: "Nuova funzione: prompt gacha senza sbilanciamenti!",
+    heroTitle: "Elimina lo sbilanciamento dei prompt gacha!",
     heroQuestion: "Stai creando in «{createTitle}» un «prompt gacha» che chiede all’IA di scegliere a caso uno tra più elementi?",
     heroLead: "Se lasci scegliere l’IA da sola, i risultati finiscono per essere sbilanciati e possono ripetersi elementi simili.\n\nPer questo Persta ha creato una funzione che sceglie in modo equo uno degli elementi del gacha che hai registrato e genera con quello!\n\nOra puoi goderti facilmente un gacha molto meno sbilanciato.\nBuon divertimento! ♪",
     compareBefore: "Prima",
