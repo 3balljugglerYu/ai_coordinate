@@ -2252,7 +2252,7 @@ export const zhCnMessages = {
     resultTitle: "每次生成，都是不同的内容",
     resultAlt: "第 {count} 次的结果：{job}",
     ctaTitle: "马上来做一个扭蛋吧",
-    ctaButton: "试试扭蛋",
+    ctaButton: "试着做个扭蛋",
     ctaNote: "扭蛋内容 {min}～{max} 个。一个提示词最多 {blocks} 个扭蛋。",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

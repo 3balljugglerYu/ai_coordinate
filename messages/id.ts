@@ -2259,7 +2259,7 @@ export const idMessages = {
     resultTitle: "Isi berbeda setiap kali membuat gambar",
     resultAlt: "Hasil ke-{count}: {job}",
     ctaTitle: "Yuk, langsung buat gacha",
-    ctaButton: "Coba gacha",
+    ctaButton: "Coba buat gacha",
     ctaNote: "{min} sampai {max} isi gacha. Maksimal {blocks} gacha per prompt.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;

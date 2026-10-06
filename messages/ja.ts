@@ -2222,7 +2222,7 @@ export const jaMessages = {
     resultTitle: "生成するたびに、ちがう中身に",
     resultAlt: "{count}回目の結果：{job}",
     ctaTitle: "さっそく、ガチャを作ってみよう",
-    ctaButton: "ガチャをやってみる",
+    ctaButton: "ガチャをつくってみる",
     ctaNote: "ガチャの中身は{min}〜{max}個まで。ガチャは1つのプロンプトに{blocks}つまでです。",
   },
 } as const;

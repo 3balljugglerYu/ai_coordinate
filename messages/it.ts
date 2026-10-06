@@ -2260,7 +2260,7 @@ export const itMessages = {
     resultTitle: "Un elemento diverso a ogni generazione",
     resultAlt: "Risultato n. {count}: {job}",
     ctaTitle: "Crea subito il tuo gacha",
-    ctaButton: "Prova il gacha",
+    ctaButton: "Crea un gacha",
     ctaNote: "Da {min} a {max} elementi del gacha. Al massimo {blocks} gacha per prompt.",
   },
 } satisfies DeepReplaceStrings<typeof jaMessages>;
