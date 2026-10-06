@@ -2189,7 +2189,7 @@ export const idMessages = {
     metaTitle: "Cara memakai prompt gacha | Pilih satu dari isi gacha secara adil setiap kali",
     metaDescription: "Tulis isi gacha-mu, dan Persta akan memilih satu secara adil setiap kali kamu membuat gambar. Lihat apa yang bisa dilakukan gacha, di mana memakainya, dan cara membuatnya, lengkap dengan tampilan layar asli.",
     heroBadge: "NEW",
-    heroTitle: "Fitur baru: prompt gacha tanpa berat sebelah!",
+    heroTitle: "Hilangkan bias pada prompt gacha!",
     heroQuestion: "Apakah kamu sedang membuat “prompt gacha” di “{createTitle}” yang meminta AI memilih acak satu dari beberapa isi?",
     heroLead: "Kalau AI dibiarkan memilih sendiri, hasilnya cenderung berat sebelah dan isi yang mirip bisa terus muncul.\n\nKarena itu, Persta membuat fitur yang memilih satu dari isi gacha yang kamu daftarkan secara adil lalu membuat gambar dengannya!\n\nSekarang kamu bisa menikmati gacha yang jauh lebih seimbang dengan mudah.\nSelamat bersenang-senang♪",
     compareBefore: "Dulu",

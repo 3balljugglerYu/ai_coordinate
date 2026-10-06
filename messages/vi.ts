@@ -2186,7 +2186,7 @@ export const viMessages = {
     metaTitle: "Cách dùng prompt gacha | Mỗi lần đều chọn công bằng 1 mục trong gacha",
     metaDescription: "Chỉ cần ghi sẵn các mục trong gacha, mỗi lần tạo ảnh Persta sẽ chọn công bằng 1 mục. Giới thiệu gacha làm được gì, dùng ở màn hình nào và cách tạo, qua màn hình thực tế.",
     heroBadge: "NEW",
-    heroTitle: "Tính năng mới: prompt gacha không còn thiên lệch!",
+    heroTitle: "Hãy xóa bỏ sự thiên lệch của prompt gacha!",
     heroQuestion: "Bạn có đang tạo “prompt gacha” trong “{createTitle}” để AI chọn ngẫu nhiên 1 trong nhiều mục không?",
     heroLead: "Nếu cứ để AI tự chọn, kết quả thường bị thiên lệch và các mục giống nhau có thể xuất hiện liên tục.\n\nVì vậy, Persta đã làm ra tính năng chọn công bằng 1 trong các mục trong gacha bạn đã đăng ký rồi tạo ảnh với nó!\n\nGiờ bạn có thể dễ dàng tận hưởng gacha ít thiên lệch hơn nhiều.\nChúc bạn chơi vui nhé♪",
     compareBefore: "Trước đây",

@@ -2182,7 +2182,7 @@ export const zhCnMessages = {
     metaTitle: "扭蛋提示词的用法｜每次都从扭蛋内容中公平选出一个",
     metaDescription: "写好扭蛋内容后，每次生成时 Persta 都会公平地选出一个。用实际画面介绍扭蛋能做什么、在哪个画面使用以及制作方法。",
     heroBadge: "NEW",
-    heroTitle: "新增功能：让扭蛋提示词不再偏向！",
+    heroTitle: "消除扭蛋提示词的\n偏差吧！",
     heroQuestion: "你是否在“{createTitle}”中，制作了让 AI 从多个内容中随机选出一个的“扭蛋提示词”？",
     heroLead: "直接让 AI 来选的话，结果难免会有偏差，有时会连续出现相似的内容。\n\n所以 Persta 做了一个功能：从你登记的扭蛋内容中公平地选出一个来生成！\n\n现在可以轻松享受偏差更少的扭蛋了。\n尽情玩吧♪",
     compareBefore: "以前",

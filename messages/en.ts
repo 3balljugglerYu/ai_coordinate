@@ -2186,7 +2186,7 @@ export const enMessages = {
     metaTitle: "How to use gacha prompts | One fair pick from your gacha items, every time",
     metaDescription: "Write your gacha items, and Persta fairly picks one each time you generate. See what gacha can do, where to use it, and how to make one, with real screenshots.",
     heroBadge: "NEW",
-    heroTitle: "New feature: gacha prompts without the bias!",
+    heroTitle: "Take the bias out of your gacha prompts!",
     heroQuestion: "Are you making a “gacha prompt” in “{createTitle}” that has the AI randomly pick one of several items?",
     heroLead: "If you just let the AI pick, the results tend to be biased, and similar items can keep coming up.\n\nSo we built a feature in Persta that fairly picks one of the gacha items you register and generates with it!\n\nNow you can easily enjoy a gacha with much less bias.\nHave fun! ♪",
     compareBefore: "Before",

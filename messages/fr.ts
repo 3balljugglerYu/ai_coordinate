@@ -2191,7 +2191,7 @@ export const frMessages = {
     metaTitle: "Utiliser les prompts gacha | Un tirage équitable parmi les éléments de votre gacha, à chaque fois",
     metaDescription: "Écrivez les éléments de votre gacha et Persta en choisit un équitablement à chaque génération. Découvrez ce que permet le gacha, où l’utiliser et comment le créer, captures à l’appui.",
     heroBadge: "NEW",
-    heroTitle: "Nouveau : des prompts gacha sans favoritisme !",
+    heroTitle: "Éliminez le biais de vos prompts gacha !",
     heroQuestion: "Créez-vous dans « {createTitle} » un « prompt gacha » qui demande à l’IA de choisir au hasard un élément parmi plusieurs ?",
     heroLead: "Si vous laissez simplement l’IA choisir, les résultats finissent souvent par être biaisés et des éléments similaires peuvent revenir sans cesse.\n\nC’est pourquoi Persta a créé une fonction qui choisit équitablement un des éléments du gacha que vous avez enregistrés et génère avec lui !\n\nVous pouvez désormais profiter facilement d’un gacha bien moins biaisé.\nAmusez-vous bien ! ♪",
     compareBefore: "Avant",

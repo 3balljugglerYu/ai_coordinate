@@ -2190,7 +2190,7 @@ export const esMessages = {
     metaTitle: "Cómo usar los prompts gacha | Una elección justa entre los elementos de tu gacha, cada vez",
     metaDescription: "Escribe los elementos de tu gacha y Persta elegirá uno de forma justa cada vez que generes. Descubre qué puedes hacer con el gacha, dónde usarlo y cómo crearlo, con capturas reales.",
     heroBadge: "NEW",
-    heroTitle: "¡Nueva función: prompts gacha sin favoritismos!",
+    heroTitle: "¡Elimina el sesgo de tus prompts gacha!",
     heroQuestion: "¿Estás creando en «{createTitle}» un «prompt gacha» que pide a la IA elegir al azar uno entre varios elementos?",
     heroLead: "Si dejas que la IA elija sin más, los resultados suelen sesgarse y pueden repetirse elementos parecidos.\n\nPor eso en Persta creamos una función que elige de forma justa uno de los elementos del gacha que registres y genera con él.\n\nAhora puedes disfrutar fácilmente de un gacha mucho menos sesgado.\n¡Diviértete! ♪",
     compareBefore: "Antes",
