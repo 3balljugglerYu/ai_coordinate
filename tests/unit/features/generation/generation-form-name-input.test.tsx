@@ -307,3 +307,57 @@ describe("名前を入れられるようにする", () => {
     await waitFor(() => expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false));
   });
 });
+
+describe("名前の欄: code-review の指摘への対応", () => {
+  test("見出しと入力例に空白を打てる(本文の目印は前後の空白を落とす)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    const label = screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement;
+    fireEvent.change(label, { target: { value: "Character " } });
+    expect(label.value).toBe("Character ");
+    fireEvent.change(label, { target: { value: "Character name" } });
+    expect(label.value).toBe("Character name");
+    expect(promptField().value).toBe("{{INPUT:Character name}}");
+  });
+
+  test("本文の目印を手で書き換えたら、見出しの欄も合わせる", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:うちの子}}" } });
+    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("うちの子");
+  });
+
+  test("名前の欄が2つあると、知らせて送れない(サーバーと同じ数え方)", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn());
+    await fillBodyAndImage(user);
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:a}}\n{{INPUT:b}}" } });
+    expect(screen.getByTestId("name-input-too-many").textContent).toBe("nameInputTooManySlots");
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
+  test("運営は名前の欄が2つでも送れる", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { nameInputUnlimited: true });
+    await fillBodyAndImage(user);
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:a}}\n{{INPUT:b}}" } });
+    expect(screen.queryByTestId("name-input-too-many")).toBeNull();
+    await waitFor(() => expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false));
+  });
+
+  test("目印がガチャの欄にだけあっても、試しの名前を入れて送れる", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    renderNameForm(onSubmit, { gachaPromptAvailable: true });
+    await fillBodyAndImage(user);
+    await user.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
+    fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
+      target: { value: "{{GACHA}}\n1. 医師 {{INPUT:名前}}\n2. 探偵 {{INPUT:名前}}\n{{/GACHA}}" },
+    });
+    expect(nameSwitch()!.getAttribute("aria-checked")).toBe("false");
+    fireEvent.change(screen.getByLabelText("nameInputTrialLabel"), { target: { value: "ぺるこ" } });
+    await user.click(screen.getByTestId("mock-submit"));
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ nameInput: "ぺるこ" });
+  });
+});
+

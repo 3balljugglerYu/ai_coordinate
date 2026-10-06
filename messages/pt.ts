@@ -1556,6 +1556,7 @@ export const ptMessages = {
     nameInputTooLong: "O nome pode ter até {max} caracteres.",
     nameInputInvalidCharacters: "O nome contém caracteres não permitidos (como chaves ou quebras de linha).",
     nameInputRequiredMissing: "Este prompt exige um nome. Digite um nome.",
+    nameInputTooManySlots: "Um prompt pode ter no máximo {max} campo de nome.",
     gachaFieldLabel: "Definir itens do gacha",
     gachaHintRandom: "A cada geração, um dos itens do gacha é sorteado",
     gachaInsertExample: "Inserir exemplo",

@@ -19,6 +19,10 @@ import { NamePromptField } from "./NamePromptField";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
   checkNameInputValue,
+  countReachableNameInputSlots,
+  exceedsNameInputSlotLimit,
+  hasGuaranteedRequiredNameInput,
+  nameInputMaxSlotsFor,
   parseNameInputSlots,
   removeNameInputMarkers,
   upsertNameInputMarker,
@@ -172,6 +176,8 @@ interface GenerationFormProps {
    * /free のサーバー側で `isNameInputAvailable`(公開フラグ OR 運営)を判定して渡す。既定は出さない。
    */
   nameInputAvailable?: boolean;
+  /** 名前の欄の数を制限しない(運営だけ。サーバーの nameInputMaxSlotsFor と同じ)。 */
+  nameInputUnlimited?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -196,6 +202,7 @@ export function GenerationForm({
   gachaSplitAvailable = false,
   gachaUnlimited = false,
   nameInputAvailable = false,
+  nameInputUnlimited = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -296,14 +303,29 @@ export function GenerationForm({
   // 名前の欄(公開前は運営だけ)。スイッチのオン・オフは本文の目印の有無そのもの。
   const canUseNameInput =
     isFree && !promptLocked && isAuthenticated && nameInputAvailable;
+  // スイッチと設定は本文の最初の目印。数と必須の判定は、送る文(本文＋ガチャの欄)をサーバーと同じ
+  // 数え方で見る(ガチャの欄に書いた目印や、2つ目以降の目印も含む)
   const nameSlot = canUseNameInput
     ? parseNameInputSlots(prompt, { keepEmptyLabel: true })[0] ?? null
     : null;
+  const nameCheckedPrompt = canUseNameInput
+    ? isGachaActive
+      ? composeGachaPrompt(prompt, gachaField)
+      : prompt
+    : "";
+  const hasReachableNameSlot =
+    canUseNameInput && countReachableNameInputSlots(nameCheckedPrompt) > 0;
+  const isNameRequiredGuaranteed =
+    canUseNameInput && hasGuaranteedRequiredNameInput(nameCheckedPrompt);
+  const hasTooManyNameSlots =
+    canUseNameInput &&
+    exceedsNameInputSlotLimit(nameCheckedPrompt, nameInputMaxSlotsFor(nameInputUnlimited));
   const [trialName, setTrialName] = useState("");
   const trialNameCheck = checkNameInputValue(trialName);
   const isNameInputInvalid =
-    nameSlot !== null &&
-    (!trialNameCheck.ok || (nameSlot.required && !trialNameCheck.value));
+    hasTooManyNameSlots ||
+    (hasReachableNameSlot &&
+      (!trialNameCheck.ok || (isNameRequiredGuaranteed && !trialNameCheck.value)));
 
   const promptLength = prompt.length;
   // 上限は送る本文(ガチャの候補欄を付けた後)で判定する。
@@ -474,7 +496,7 @@ export function GenerationForm({
         // 施錠時に本文を空へ固定していることと対になっている。
         ...(promptLocked && sourcePostId ? { sourcePostId } : {}),
         // 名前の欄があって名前を書いたときだけ送る(空欄は「名前なし」になる)
-        ...(nameSlot && trialNameCheck.ok && trialNameCheck.value
+        ...(hasReachableNameSlot && trialNameCheck.ok && trialNameCheck.value
           ? { nameInput: trialNameCheck.value }
           : {}),
       });
@@ -832,6 +854,9 @@ export function GenerationForm({
                 }}
                 trialName={trialName}
                 onTrialNameChange={setTrialName}
+                hasReachableSlot={hasReachableNameSlot}
+                requiredGuaranteed={isNameRequiredGuaranteed}
+                tooManySlots={hasTooManyNameSlots}
                 disabled={isGenerating || isTutorialInProgress || isSplitProposalOpen}
               />
             ) : null}

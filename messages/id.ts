@@ -1555,6 +1555,7 @@ export const idMessages = {
     nameInputTooLong: "Nama maksimal {max} karakter.",
     nameInputInvalidCharacters: "Nama berisi karakter yang tidak bisa dipakai (seperti kurung kurawal atau baris baru).",
     nameInputRequiredMissing: "Prompt ini wajib diisi nama. Silakan masukkan nama.",
+    nameInputTooManySlots: "Satu prompt dapat berisi maksimal {max} kolom nama.",
     gachaFieldLabel: "Atur isi gacha",
     gachaHintRandom: "Setiap kali membuat gambar, satu isi gacha dipilih secara acak",
     gachaInsertExample: "Masukkan contoh",

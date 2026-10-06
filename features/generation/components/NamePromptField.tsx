@@ -12,6 +12,8 @@ import {
   NAME_INPUT_INITIAL_LABEL,
   NAME_INPUT_LABEL_MAX_LENGTH,
   NAME_INPUT_MAX_LENGTH,
+  NAME_INPUT_MAX_SLOTS,
+  normalizeNameInputMarkerText,
   type NameInputSlot,
 } from "@/shared/generation/name-input";
 
@@ -25,7 +27,32 @@ interface NamePromptFieldProps {
   /** 作る人が自分の生成で試す名前。 */
   trialName: string;
   onTrialNameChange: (value: string) => void;
+  /**
+   * 送る文(本文＋ガチャの欄)に、AI に届く名前の欄があるか。本文に目印が無くても、
+   * ガチャの欄に書いてあれば試しの名前を入れられるようにする(サーバーと同じ数え方)。
+   */
+  hasReachableSlot: boolean;
+  /** 必ず届く必須の欄があるか(サーバーの hasGuaranteedRequiredNameInput と同じ)。 */
+  requiredGuaranteed: boolean;
+  /** 名前の欄が上限を超えているか(一般の利用者は1つまで。サーバーでも止める)。 */
+  tooManySlots: boolean;
   disabled?: boolean;
+}
+
+/**
+ * 見出し・入力例の欄は、打っている途中の文字(空白など)をそのまま持つ。
+ * 本文の目印は前後の空白を落とすので、目印から読み戻すと空白が打てなくなるため。
+ * 本文の目印が外から変わったとき(手で書き換えたなど)だけ、目印の値に合わせ直す。
+ */
+function useMarkerTextDraft(markerValue: string) {
+  const [draft, setDraft] = useState(markerValue);
+  const [seenMarkerValue, setSeenMarkerValue] = useState(markerValue);
+  // 描画中に合わせ直す(effect で setState しない。React の「前の値と比べて state を直す」作法)
+  if (seenMarkerValue !== markerValue) {
+    setSeenMarkerValue(markerValue);
+    if (normalizeNameInputMarkerText(draft) !== markerValue) setDraft(markerValue);
+  }
+  return [draft, setDraft] as const;
 }
 
 /**
@@ -40,10 +67,15 @@ export function NamePromptField({
   onDisable,
   trialName,
   onTrialNameChange,
+  hasReachableSlot,
+  requiredGuaranteed,
+  tooManySlots,
   disabled = false,
 }: NamePromptFieldProps) {
   const t = useTranslations("free");
   const enabled = slot !== null;
+  const [labelDraft, setLabelDraft] = useMarkerTextDraft(slot?.label ?? "");
+  const [placeholderDraft, setPlaceholderDraft] = useMarkerTextDraft(slot?.placeholder ?? "");
   // 赤字は欄から離れてから出す(ガチャの欄と同じ作法。#690)
   const [touched, setTouched] = useState(false);
   const check = checkNameInputValue(trialName);
@@ -51,7 +83,7 @@ export function NamePromptField({
     ? check.reason === "too_long"
       ? t("nameInputTooLong", { max: NAME_INPUT_MAX_LENGTH })
       : t("nameInputInvalidCharacters")
-    : slot?.required && !check.value
+    : requiredGuaranteed && !check.value
       ? t("nameInputRequiredMissing")
       : null;
   const showAsError = errorMessage !== null && touched;
@@ -85,10 +117,13 @@ export function NamePromptField({
             </Label>
             <Input
               id="name-input-label"
-              value={slot.label}
+              value={labelDraft}
               maxLength={NAME_INPUT_LABEL_MAX_LENGTH}
               disabled={disabled}
-              onChange={(event) => onSlotChange({ ...slot, label: event.target.value })}
+              onChange={(event) => {
+                setLabelDraft(event.target.value);
+                onSlotChange({ ...slot, label: event.target.value });
+              }}
               className="text-base md:text-sm"
             />
           </div>
@@ -98,13 +133,14 @@ export function NamePromptField({
             </Label>
             <Input
               id="name-input-placeholder"
-              value={slot.placeholder ?? ""}
+              value={placeholderDraft}
               maxLength={NAME_INPUT_LABEL_MAX_LENGTH}
               disabled={disabled}
               placeholder={t("nameInputPlaceholderExample")}
-              onChange={(event) =>
-                onSlotChange({ ...slot, placeholder: event.target.value || undefined })
-              }
+              onChange={(event) => {
+                setPlaceholderDraft(event.target.value);
+                onSlotChange({ ...slot, placeholder: event.target.value || undefined });
+              }}
               className="text-base md:text-sm"
             />
           </div>
@@ -135,6 +171,17 @@ export function NamePromptField({
           <p className="text-xs text-gray-500" data-testid="name-input-marker-hint">
             {t("nameInputMarkerHint", { marker: buildNameInputMarker(slot) })}
           </p>
+        </div>
+      ) : null}
+
+      {tooManySlots ? (
+        <p className="text-xs text-red-600" role="alert" data-testid="name-input-too-many">
+          {t("nameInputTooManySlots", { max: NAME_INPUT_MAX_SLOTS })}
+        </p>
+      ) : null}
+
+      {hasReachableSlot ? (
+        <div className="border-l-2 border-pink-400 pl-3">
           <div className="space-y-1">
             <Label htmlFor="name-input-trial" className="text-xs font-medium">
               {t("nameInputTrialLabel")}
@@ -143,7 +190,7 @@ export function NamePromptField({
               id="name-input-trial"
               value={trialName}
               disabled={disabled}
-              placeholder={slot.placeholder ?? ""}
+              placeholder={slot?.placeholder ?? ""}
               onChange={(event) => onTrialNameChange(event.target.value)}
               onBlur={() => setTouched(true)}
               aria-invalid={showAsError}

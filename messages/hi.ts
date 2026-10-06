@@ -1554,6 +1554,7 @@ export const hiMessages = {
     nameInputTooLong: "नाम {max} अक्षरों तक हो सकता है।",
     nameInputInvalidCharacters: "नाम में ऐसे अक्षर हैं जिनका इस्तेमाल नहीं किया जा सकता (जैसे कर्ली ब्रैकेट या लाइन ब्रेक)।",
     nameInputRequiredMissing: "इस प्रॉम्प्ट के लिए नाम ज़रूरी है। कृपया नाम डालें।",
+    nameInputTooManySlots: "एक प्रॉम्प्ट में अधिकतम {max} नाम फ़ील्ड हो सकता है।",
     gachaFieldLabel: "गाचा आइटम सेट करें",
     gachaHintRandom: "हर बार जनरेट करने पर, गाचा के आइटम में से एक को रैंडम चुना जाता है",
     gachaInsertExample: "उदाहरण डालें",

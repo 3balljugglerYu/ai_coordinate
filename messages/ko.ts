@@ -1552,6 +1552,7 @@ export const koMessages = {
     nameInputTooLong: "이름은 {max}자까지입니다.",
     nameInputInvalidCharacters: "이름에 사용할 수 없는 문자가 포함되어 있습니다(중괄호, 줄바꿈 등).",
     nameInputRequiredMissing: "이 프롬프트는 이름이 필수입니다. 이름을 입력해 주세요.",
+    nameInputTooManySlots: "이름 칸은 프롬프트 하나에 {max}개까지입니다.",
     gachaFieldLabel: "가챠 내용물 설정",
     gachaHintRandom: "생성할 때마다 가챠 내용물 중 하나가 무작위로 선택됩니다",
     gachaInsertExample: "예시 넣기",

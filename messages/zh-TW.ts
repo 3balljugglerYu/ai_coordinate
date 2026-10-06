@@ -1550,6 +1550,7 @@ export const zhTwMessages = {
     nameInputTooLong: "名字最多 {max} 個字。",
     nameInputInvalidCharacters: "名字中含有無法使用的字元（如大括號或換行）。",
     nameInputRequiredMissing: "此提示詞必須填寫名字，請輸入名字。",
+    nameInputTooManySlots: "每個提示詞最多 {max} 個名字欄。",
     gachaFieldLabel: "設定轉蛋內容",
     gachaHintRandom: "每次生成時，會從轉蛋內容中隨機選出一個",
     gachaInsertExample: "插入範例",

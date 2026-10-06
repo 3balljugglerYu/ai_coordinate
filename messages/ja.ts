@@ -1509,6 +1509,7 @@ export const jaMessages = {
     nameInputTooLong: "名前は{max}文字までです。",
     nameInputInvalidCharacters: "名前に使えない文字が含まれています（波かっこや改行など）。",
     nameInputRequiredMissing: "このプロンプトは名前が必須です。名前を入れてください。",
+    nameInputTooManySlots: "名前の欄は、1つのプロンプトに{max}つまでです。",
     gachaFieldLabel: "ガチャの中身を設定",
     gachaHintRandom: "生成のたびに、ガチャの中身から1つがランダムに選ばれます",
     gachaInsertExample: "例を入れる",

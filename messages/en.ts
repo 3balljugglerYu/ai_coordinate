@@ -1553,6 +1553,7 @@ export const enMessages = {
     nameInputTooLong: "Names can be up to {max} characters.",
     nameInputInvalidCharacters: "The name contains characters that can’t be used (such as curly brackets or line breaks).",
     nameInputRequiredMissing: "This prompt requires a name. Please enter one.",
+    nameInputTooManySlots: "A prompt can have up to {max} name field.",
     gachaFieldLabel: "Set gacha items",
     gachaHintRandom: "Each time you generate, one of the gacha items is picked at random",
     gachaInsertExample: "Insert example",

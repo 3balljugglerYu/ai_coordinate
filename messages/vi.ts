@@ -1553,6 +1553,7 @@ export const viMessages = {
     nameInputTooLong: "Tên tối đa {max} ký tự.",
     nameInputInvalidCharacters: "Tên chứa ký tự không dùng được (như dấu ngoặc nhọn hoặc xuống dòng).",
     nameInputRequiredMissing: "Prompt này bắt buộc nhập tên. Vui lòng nhập tên.",
+    nameInputTooManySlots: "Mỗi prompt có tối đa {max} ô tên.",
     gachaFieldLabel: "Thiết lập mục trong gacha",
     gachaHintRandom: "Mỗi lần tạo ảnh, một mục trong gacha sẽ được chọn ngẫu nhiên",
     gachaInsertExample: "Chèn ví dụ",

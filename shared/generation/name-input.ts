@@ -59,10 +59,14 @@ export function parseNameInputSlots(
 }
 
 /** 目印を作る(作る人の画面から本文へ入れるとき)。 */
+/** 目印の中に書ける形にそろえる(波括弧・縦棒・改行を外し、前後の空白を落とす)。 */
+export function normalizeNameInputMarkerText(text: string): string {
+  return text.replace(/[{}|\r\n]/g, "").trim();
+}
+
 export function buildNameInputMarker(slot: NameInputSlot): string {
-  const clean = (text: string) => text.replace(/[{}|\r\n]/g, "").trim();
-  const label = clean(slot.label);
-  const placeholder = slot.placeholder ? clean(slot.placeholder) : "";
+  const label = normalizeNameInputMarkerText(slot.label);
+  const placeholder = slot.placeholder ? normalizeNameInputMarkerText(slot.placeholder) : "";
   return `{{INPUT${slot.required ? "*" : ""}:${label}${placeholder ? `|${placeholder}` : ""}}}`;
 }
 

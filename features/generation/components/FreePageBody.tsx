@@ -75,6 +75,7 @@ export async function FreePageBody() {
             gachaUnlimited={isAdminViewer(user.id)}
             // 名前の欄(公開前は運営だけ。docs/planning/name-input-slot-plan.md)
             nameInputAvailable={isNameInputAvailable(user.id)}
+            nameInputUnlimited={isAdminViewer(user.id)}
           />
         </Suspense>
 
