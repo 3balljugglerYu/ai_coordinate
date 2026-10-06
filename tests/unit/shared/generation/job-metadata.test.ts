@@ -1,6 +1,9 @@
 /** @jest-environment node */
 
-import { mergeSuccessGenerationMetadata } from "@/shared/generation/job-metadata";
+import {
+  mergeSuccessGenerationMetadata,
+  stripNameInputFromMetadata,
+} from "@/shared/generation/job-metadata";
 
 describe("mergeSuccessGenerationMetadata", () => {
   test("geminiAttempts を追記しても job 側の outputAspectRatioMode が保持される", () => {
@@ -68,3 +71,30 @@ describe("mergeSuccessGenerationMetadata", () => {
     }
   });
 });
+
+describe("名前の欄の名前を投稿側へ写さない", () => {
+  test("成功時は名前そのものを消し、使ったことだけを残す", () => {
+    const merged = mergeSuccessGenerationMetadata({
+      jobGenerationMetadata: { nameInput: "ぺるこ", outputAspectRatioMode: "3:4" },
+      geminiAttempts: [],
+      nameInputUsed: true,
+    });
+    expect(merged).not.toHaveProperty("nameInput");
+    expect(merged).toMatchObject({ nameInputUsed: true, outputAspectRatioMode: "3:4" });
+  });
+
+  test("名前を使っていなければ nameInputUsed を足さない", () => {
+    const merged = mergeSuccessGenerationMetadata({
+      jobGenerationMetadata: { nameInput: "ぺるこ" },
+      geminiAttempts: [],
+    });
+    expect(merged).not.toHaveProperty("nameInput");
+    expect(merged).not.toHaveProperty("nameInputUsed");
+  });
+
+  test("stripNameInputFromMetadata は名前だけを取り除く", () => {
+    expect(stripNameInputFromMetadata({ nameInput: "x", framingMode: "free" })).toEqual({ framingMode: "free" });
+    expect(stripNameInputFromMetadata(null)).toEqual({});
+  });
+});
+

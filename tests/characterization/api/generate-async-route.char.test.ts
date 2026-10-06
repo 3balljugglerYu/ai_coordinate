@@ -16,6 +16,8 @@ jest.mock("@/lib/env", () => ({
   // TypeError で 500 になり、本来見たい 400/202 の特性が観測できない。
   isAdminViewer: () => false,
   isGptImage25Available: () => false,
+  // 名前の欄(docs/planning/name-input-slot-plan.md)の可否。特性テストでは使えない側
+  isNameInputAvailable: () => false,
 }));
 
 import type { NextRequest } from "next/server";
