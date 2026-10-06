@@ -42,6 +42,7 @@ const messages: Record<string, string> = {
   transactionTypePromptUsageReward: "プロンプト利用の還元",
   transactionTypeStyleUsageReward: "スタイル利用の還元",
   transactionTypeGachaSplit: "ガチャに分ける",
+  transactionTypeNameInputCreate: "名前の欄を作る",
   expireAt: "有効期限: {date}",
   breakdownPrefix: "内訳: {details}",
   breakdownPeriodLimited: "期間限定 {amount}",
@@ -215,6 +216,14 @@ describe("PercoinTransactions", () => {
         expire_at: null,
       },
       {
+        id: "tx-name-input-create",
+        amount: -5,
+        transaction_type: "consumption",
+        metadata: { reason: "name_input_create", from_promo: 5, from_paid: 0 },
+        created_at: "2026-10-06T00:00:00.000Z",
+        expire_at: null,
+      },
+      {
         id: "tx-generation",
         amount: -10,
         transaction_type: "consumption",
@@ -229,7 +238,7 @@ describe("PercoinTransactions", () => {
         transactions={transactions}
         filter="all"
         offset={0}
-        totalCount={2}
+        totalCount={3}
         isLoading={false}
         onFilterChange={jest.fn()}
         onPageClick={jest.fn()}
@@ -238,6 +247,7 @@ describe("PercoinTransactions", () => {
     );
 
     expect(screen.getByText("ガチャに分ける")).toBeTruthy();
+    expect(screen.getByText("名前の欄を作る")).toBeTruthy();
     expect(screen.getByText("生成利用")).toBeTruthy();
   });
 });

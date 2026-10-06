@@ -29,6 +29,32 @@ export async function callGachaSplitModel(
   prompt: string,
   options: { apiKey?: string; fetchFn?: typeof fetch } = {},
 ): Promise<GachaSplitModelOutput> {
+  return callLineToolModel<GachaSplitModelOutput>(
+    {
+      name: "gacha_split",
+      logLabel: "gacha-split",
+      instructions: GACHA_SPLIT_INSTRUCTIONS,
+      schema: GACHA_SPLIT_JSON_SCHEMA,
+      prompt,
+    },
+    options,
+  );
+}
+
+/**
+ * 行番号付きの本文を渡し、JSON の答えだけを受け取る(「ガチャに分ける」「本文から名前の欄を作る」で共通)。
+ * ⚠️ 本文はログに出さない。
+ */
+export async function callLineToolModel<T>(
+  request: {
+    name: string;
+    logLabel: string;
+    instructions: string;
+    schema: unknown;
+    prompt: string;
+  },
+  options: { apiKey?: string; fetchFn?: typeof fetch } = {},
+): Promise<T> {
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) throw new GachaSplitModelError("OPENAI_API_KEY is not set");
   const fetchFn = options.fetchFn ?? fetch;
@@ -44,15 +70,15 @@ export async function callGachaSplitModel(
       },
       body: JSON.stringify({
         model: GACHA_SPLIT_MODEL,
-        instructions: GACHA_SPLIT_INSTRUCTIONS,
-        input: numberPromptLines(prompt),
-        // 分けるだけなので深く考えさせない（待ち時間と原価を抑える）
+        instructions: request.instructions,
+        input: numberPromptLines(request.prompt),
+        // 行を選ぶだけなので深く考えさせない（待ち時間と原価を抑える）
         reasoning: { effort: "low" },
         text: {
           format: {
             type: "json_schema",
-            name: "gacha_split",
-            schema: GACHA_SPLIT_JSON_SCHEMA,
+            name: request.name,
+            schema: request.schema,
             strict: true,
           },
         },
@@ -68,7 +94,7 @@ export async function callGachaSplitModel(
     const payload: unknown = await response.json();
     const usage = (payload as { usage?: Record<string, unknown> } | null)?.usage;
     // 原価の見積もり用。本文は出さない
-    console.info("[gacha-split] usage", {
+    console.info(`[${request.logLabel}] usage`, {
       input_tokens: usage?.input_tokens,
       output_tokens: usage?.output_tokens,
     });
@@ -76,7 +102,7 @@ export async function callGachaSplitModel(
     const text = extractResponsesOutputText(payload);
     if (!text) throw new GachaSplitModelError("empty output");
     try {
-      return JSON.parse(text) as GachaSplitModelOutput;
+      return JSON.parse(text) as T;
     } catch {
       throw new GachaSplitModelError("output is not JSON");
     }

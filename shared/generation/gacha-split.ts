@@ -131,8 +131,9 @@ function resolveCandidateText(value: string, source: string): string | null {
 
 /**
  * 消した行の跡にできた空行の連なりだけを1つにする（元からある空行はそのまま）。
+ * 「本文から名前の欄を作る」(name-input-create.ts)でも使う。
  */
-function joinKeptLines(lines: string[], removed: Set<number>): string {
+export function joinKeptLines(lines: string[], removed: Set<number>): string {
   const kept: string[] = [];
   let removedSinceLastKept = false;
   lines.forEach((line, index) => {
