@@ -1558,6 +1558,8 @@ export const deMessages = {
     nameInputInvalidCharacters: "Der Name enthält unzulässige Zeichen (z. B. geschweifte Klammern oder Zeilenumbrüche).",
     nameInputRequiredMissing: "Dieser Prompt erfordert einen Namen. Bitte gib einen ein.",
     nameInputTooManySlots: "Ein Prompt kann höchstens {max} Namensfeld enthalten.",
+    nameInputEntryOptionalLabel: "{label} (optional)",
+    nameInputEntryRequiredHint: "Bis zu {max} Zeichen. Dieser Name erscheint im Bild.",
     gachaFieldLabel: "Gacha-Einträge festlegen",
     gachaHintRandom: "Bei jeder Generierung wird zufällig einer der Gacha-Einträge ausgewählt",
     gachaInsertExample: "Beispiel einfügen",

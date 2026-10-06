@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fetchSourceNameInput } from "@/features/posts/lib/source-prompt-slots-api";
+import type { NameInputForUsers } from "@/shared/generation/name-input";
 import { useTranslations } from "next-intl";
 import { Drawer } from "vaul";
 import {
@@ -175,6 +177,27 @@ export function PromptLockedGenerationSheet({
     };
   }, [open, promptVisibility, sourcePostId]);
 
+  /*
+    名前の欄(docs/planning/name-input-slot-plan.md Phase 3)。原作の本文に目印があれば、
+    見出しなどだけを取りに行く(本文は返らないので、非公開プロンプトでも出せる)。
+    取れなくても生成はできる(目印は「名前なし」に置き換わる)。
+  */
+  const [lockedNameInput, setLockedNameInput] = useState<NameInputForUsers | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchSourceNameInput(sourcePostId)
+      .then((value) => {
+        if (!cancelled) setLockedNameInput(value);
+      })
+      .catch(() => {
+        if (!cancelled) setLockedNameInput(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, sourcePostId]);
+
   const form = (
     <GenerationFormContainer
       subscriptionPlan={subscriptionPlan}
@@ -183,6 +206,7 @@ export function PromptLockedGenerationSheet({
       promptLocked
       lockedPromptText={lockedPromptText}
       sourcePostId={sourcePostId}
+      lockedNameInput={lockedNameInput}
     />
   );
 

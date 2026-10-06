@@ -3,6 +3,7 @@ import {
   buildNameProvidedText,
   checkNameInputValue,
   countReachableNameInputSlots,
+  describeNameInputForUsers,
   exceedsNameInputSlotLimit,
   expandNameInput,
   hasGuaranteedRequiredNameInput,
@@ -175,6 +176,25 @@ describe("作る人の画面: 目印の入れ替え", () => {
 
   test("切ったら目印を消す(目印だけの行は行ごと)", () => {
     expect(removeNameInputMarkers("{{INPUT:名前}}\n診断\n【名前】{{INPUT*:x}}です")).toBe("診断\n【名前】です");
+  });
+});
+
+describe("使う人に見せる名前の欄(本文は含めない)", () => {
+  test("囲みの外の最初の欄の見出し・入力例・必須", () => {
+    expect(describeNameInputForUsers("本文 {{INPUT*:うちの子|例：ぺるこ}}")).toEqual({
+      label: "うちの子",
+      placeholder: "例：ぺるこ",
+      required: true,
+    });
+  });
+
+  test("ガチャの候補の中だけなら、その見出しで任意", () => {
+    const prompt = "{{GACHA}}\n1. 医師 {{INPUT*:名前}}\n2. 探偵\n{{/GACHA}}";
+    expect(describeNameInputForUsers(prompt)).toEqual({ label: "名前", required: false });
+  });
+
+  test("欄が無ければ null", () => {
+    expect(describeNameInputForUsers("ふつう")).toBeNull();
   });
 });
 

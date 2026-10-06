@@ -1554,6 +1554,8 @@ export const arMessages = {
     nameInputInvalidCharacters: "يحتوي الاسم على أحرف غير مسموح بها (مثل الأقواس المعقوصة أو فواصل الأسطر).",
     nameInputRequiredMissing: "هذا الموجّه يتطلب اسمًا. يُرجى إدخال اسم.",
     nameInputTooManySlots: "يمكن أن يحتوي الموجّه على {max} حقل اسم كحد أقصى.",
+    nameInputEntryOptionalLabel: "{label} (اختياري)",
+    nameInputEntryRequiredHint: "حتى {max} أحرف. سيظهر هذا الاسم في الصورة.",
     gachaFieldLabel: "تعيين عناصر الجاتشا",
     gachaHintRandom: "في كل مرة تُنشئ فيها صورة، يُختار أحد عناصر الجاتشا عشوائيًا",
     gachaInsertExample: "إدراج مثال",

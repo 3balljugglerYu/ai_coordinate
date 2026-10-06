@@ -187,3 +187,30 @@ export function exceedsNameInputSlotLimit(prompt: string, maxSlots: number | nul
   if (maxSlots === null) return false;
   return countReachableNameInputSlots(prompt) > maxSlots;
 }
+
+/** カタログから使う人の画面に出す名前の欄(本文は含めない)。 */
+export interface NameInputForUsers {
+  label: string;
+  placeholder?: string;
+  /** 必ず AI に届く必須の欄があるか(ガチャの候補の中の必須は含めない)。 */
+  required: boolean;
+}
+
+/**
+ * 使う人に見せる名前の欄の情報を、本文から取り出す(本文そのものは返さない)。
+ * 見出しは、ガチャの囲みの外の最初の欄、無ければ候補の中の最初の欄。届く欄が無ければ null。
+ */
+export function describeNameInputForUsers(prompt: string): NameInputForUsers | null {
+  if (countReachableNameInputSlots(prompt) === 0) return null;
+  const { outside, blocks } = splitGachaPrompt(prompt);
+  const first =
+    parseNameInputSlots(outside)[0] ??
+    blocks.flat().map((text) => parseNameInputSlots(text)[0]).find(Boolean);
+  if (!first) return null;
+  return {
+    label: first.label,
+    ...(first.placeholder ? { placeholder: first.placeholder } : {}),
+    required: hasGuaranteedRequiredNameInput(prompt),
+  };
+}
+
