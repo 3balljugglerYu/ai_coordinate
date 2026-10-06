@@ -182,21 +182,27 @@ export function PromptLockedGenerationSheet({
     見出しなどだけを取りに行く(本文は返らないので、非公開プロンプトでも出せる)。
     取れなくても生成はできる(目印は「名前なし」に置き換わる)。
   */
-  const [lockedNameInput, setLockedNameInput] = useState<NameInputForUsers | null>(null);
+  // 取りに行った原作の ID と結果。原作が変わったら、前の原作の見出しを出さない
+  const [nameInputState, setNameInputState] = useState<{
+    postId: string;
+    value: NameInputForUsers | null;
+  } | null>(null);
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     fetchSourceNameInput(sourcePostId)
       .then((value) => {
-        if (!cancelled) setLockedNameInput(value);
+        if (!cancelled) setNameInputState({ postId: sourcePostId, value });
       })
       .catch(() => {
-        if (!cancelled) setLockedNameInput(null);
+        if (!cancelled) setNameInputState({ postId: sourcePostId, value: null });
       });
     return () => {
       cancelled = true;
     };
   }, [open, sourcePostId]);
+  const nameInputLoaded = nameInputState?.postId === sourcePostId;
+  const lockedNameInput = nameInputLoaded ? nameInputState.value : null;
 
   const form = (
     <GenerationFormContainer
@@ -207,6 +213,8 @@ export function PromptLockedGenerationSheet({
       lockedPromptText={lockedPromptText}
       sourcePostId={sourcePostId}
       lockedNameInput={lockedNameInput}
+      // 取り終わるまでは生成させない(必須の名前を入れる前に送られないように)
+      lockedNameInputLoading={open && !nameInputLoaded}
     />
   );
 

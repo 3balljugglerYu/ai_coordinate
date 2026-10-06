@@ -579,6 +579,29 @@ export async function postGenerateAsyncRoute(
 
       // 派生 ID を渡された場合も root へ解決済みの値を使う（ADR-003）
       derivedRootPostId = validated.root_post_id;
+
+      /*
+        名前の欄(docs/planning/name-input-slot-plan.md REQ-005)。派生生成は本文を受け取らないので、
+        名前が空のときだけ原作の本文を読み、必ず届く必須の欄があれば止める(本文は返さない)。
+        読めないときは止めない(生成は Worker が本文を解決して続けられ、目印は「名前なし」になる)。
+      */
+      if (!acceptedName && isNameInputAvailable(user.id)) {
+        const { data: secretRow, error: secretError } = await adminClient
+          .from("generated_image_prompt_secrets")
+          .select("prompt")
+          .eq("image_id", derivedRootPostId)
+          .maybeSingle();
+        if (secretError) {
+          console.error("Derived prompt secret read failed for name input check", {
+            requestId,
+            code: secretError.code,
+          });
+        }
+        const sourcePrompt = (secretRow as { prompt?: string | null } | null)?.prompt ?? "";
+        if (hasGuaranteedRequiredNameInput(sourcePrompt)) {
+          return jsonError(copy.nameInputRequired, "GENERATION_NAME_INPUT_REQUIRED", 400);
+        }
+      }
     }
 
     // image_jobsテーブルにレコード作成

@@ -99,6 +99,8 @@ interface GenerationFormContainerProps {
   nameInputUnlimited?: boolean;
   /** カタログから使う人の名前の欄。GenerationForm の同名 props を参照 */
   lockedNameInput?: import("@/shared/generation/name-input").NameInputForUsers | null;
+  /** 名前の欄の情報を取りに行っている間(生成させない) */
+  lockedNameInputLoading?: boolean;
   /** ガチャの上限を掛けない(運営だけ)。GenerationForm の同名 props を参照 */
   gachaUnlimited?: boolean;
 }
@@ -195,6 +197,7 @@ export function GenerationFormContainer({
   nameInputAvailable = false,
   nameInputUnlimited = false,
   lockedNameInput = null,
+  lockedNameInputLoading = false,
   gachaUnlimited = false,
 }: GenerationFormContainerProps) {
   const t = useTranslations("coordinate");
@@ -1282,6 +1285,7 @@ export function GenerationFormContainer({
         nameInputAvailable={nameInputAvailable}
         nameInputUnlimited={nameInputUnlimited}
         lockedNameInput={lockedNameInput}
+        lockedNameInputLoading={lockedNameInputLoading}
         gachaUnlimited={gachaUnlimited}
       />
 

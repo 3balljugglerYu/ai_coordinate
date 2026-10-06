@@ -1681,6 +1681,55 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       return { rpc, select, maybeSingle };
     }
 
+    describe("名前の欄(派生生成)", () => {
+      const mockNameAvailable = isNameInputAvailable as jest.MockedFunction<typeof isNameInputAvailable>;
+      afterEach(() => mockNameAvailable.mockReturnValue(false));
+
+      function mockValidationWithSecret(prompt: string | null) {
+        const validationSingle = jest.fn().mockResolvedValue({
+          data: { is_available: true, root_post_id: ROOT_POST_ID },
+          error: null,
+        });
+        const rpc = jest.fn(() => ({ select: () => ({ maybeSingle: validationSingle }) }));
+        const from = jest.fn(() => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: () =>
+                Promise.resolve({ data: prompt === null ? null : { prompt }, error: null }),
+            }),
+          }),
+        }));
+        createAdminClientMock.mockReturnValue({ rpc, from } as unknown as ReturnType<typeof createAdminClient>);
+        return { from };
+      }
+
+      test("原作に必須の名前の欄があり、名前が空なら 400 で断る(本文は返さない)", async () => {
+        mockNameAvailable.mockReturnValue(true);
+        mockValidationWithSecret("ひみつ {{INPUT*:名前}}");
+        const response = await postGenerateAsyncRoute(createRequest(buildBody()), dependencies());
+        expect(response.status).toBe(400);
+        const json = await readJson(response);
+        expect(json.errorCode).toBe("GENERATION_NAME_INPUT_REQUIRED");
+        expect(JSON.stringify(json)).not.toContain("ひみつ");
+        expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+      });
+
+      test("名前を書けば通り、原作の本文は読まない", async () => {
+        mockNameAvailable.mockReturnValue(true);
+        const { from } = mockValidationWithSecret("ひみつ {{INPUT*:名前}}");
+        const response = await postGenerateAsyncRoute(createRequest(buildBody({ nameInput: "ぺるこ" })), dependencies());
+        expect(response.status).toBe(200);
+        expect(from).not.toHaveBeenCalled();
+      });
+
+      test("任意の欄なら、名前が空でも通る", async () => {
+        mockNameAvailable.mockReturnValue(true);
+        mockValidationWithSecret("{{INPUT:名前}}");
+        const response = await postGenerateAsyncRoute(createRequest(buildBody()), dependencies());
+        expect(response.status).toBe(200);
+      });
+    });
+
     test("利用可能な原作なら origin_post_id は root へ解決した値で保存される", async () => {
       // 派生 ID を渡されても root を指す (ADR-003)。
       // ここが原作 ID のままだと、系譜が連鎖して原作者のクレジットが失われる。

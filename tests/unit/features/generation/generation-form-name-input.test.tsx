@@ -397,6 +397,13 @@ describe("カタログから使う人の名前の欄(派生生成)", () => {
     await waitFor(() => expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false));
   });
 
+  test("名前の欄の情報を取りに行っている間は、生成させない", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { promptLocked: true, sourcePostId: SOURCE, lockedNameInput: null, lockedNameInputLoading: true });
+    await user.click(screen.getByText("mock-upload"));
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
   test("名前の欄が無い原作では出さない", () => {
     renderNameForm(jest.fn(), { promptLocked: true, sourcePostId: SOURCE, lockedNameInput: null });
     expect(screen.queryByTestId("name-input-entry")).toBeNull();

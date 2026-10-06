@@ -185,6 +185,11 @@ interface GenerationFormProps {
    * `/api/posts/[id]/prompt-slots` から見出しなどを受け取って渡す(本文は届かない)。
    */
   lockedNameInput?: NameInputForUsers | null;
+  /**
+   * 名前の欄の情報を取りに行っている間は生成させない(必須の名前を入れる前に送られないように)。
+   * 取れなかったときは false に戻り、名前の欄なしで生成できる(サーバーでも必須を確かめる)。
+   */
+  lockedNameInputLoading?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -211,6 +216,7 @@ export function GenerationForm({
   nameInputAvailable = false,
   nameInputUnlimited = false,
   lockedNameInput = null,
+  lockedNameInputLoading = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -463,6 +469,7 @@ export function GenerationForm({
     // 送信ボタンは押せない状態にしてあるが、念のため送る前にも止める。
     if (gachaValidation && !gachaValidation.ok) return;
     if (isNameInputInvalid) return;
+    if (promptLocked && lockedNameInputLoading) return;
     const trimmedPrompt = isGachaActive
       ? composeGachaPrompt(bodyPrompt, gachaField)
       : bodyPrompt;
@@ -542,7 +549,8 @@ export function GenerationForm({
       guestGenerationLocked,
     }) ||
     (gachaValidation !== null && !gachaValidation.ok) ||
-    isNameInputInvalid;
+    isNameInputInvalid ||
+    (promptLocked && lockedNameInputLoading);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
