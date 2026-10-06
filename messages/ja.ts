@@ -127,6 +127,7 @@ export const jaMessages = {
     modeFromCatalog: "from CATALOG",
     // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
     gachaBadge: "ガチャ",
+    nameInputBadge: "名前入り",
     copy: "コピー",
     copied: "コピー済み",
     followRequiredTitle: "フォローが必要です",

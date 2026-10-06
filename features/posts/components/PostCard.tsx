@@ -18,8 +18,7 @@ import {
 import { queuePostImpression } from "../lib/impressions-client";
 import { setPendingPostPreview } from "../lib/pending-post-preview";
 import { getGenerationModeLabelKey } from "../lib/generation-mode-label";
-import { isGachaPost } from "../lib/gacha-post";
-import { useGachaAvailable } from "@/features/generation/components/GachaAvailabilityProvider";
+import { PostGimmickBadges, usePostGimmickBadges } from "./PostGimmickBadges";
 import type { Post } from "../types";
 import type { Locale } from "@/i18n/config";
 import { getPostCardHref } from "@/lib/url-utils";
@@ -82,13 +81,14 @@ export function PostCard({
   // カタログ刷新後(公開前は運営だけ)は、自分のプロンプトの投稿に User ORIGINAL を出し、
   // 使って作った投稿には出さない(出どころは引用元カードが示す)。
   const isCatalogRevamp = useStylesCatalogRevamp();
-  // ガチャプロンプトで作った投稿の「ガチャ」の札。ガチャの公開前は運営だけに見せる(2026-10-06)
-  const isGachaAvailable = useGachaAvailable();
-  const showsGachaBadge = isGachaAvailable && isGachaPost(post);
-  const gachaBadge = showsGachaBadge ? (
-    <span className="rounded-md bg-pink-500 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white" data-testid="post-gacha-badge">
-      {t("gachaBadge")}
-    </span>
+  // プロンプトの仕掛けの札(「ガチャ」「名前入り」)。公開前は運営だけに見せる
+  const gimmickBadges = usePostGimmickBadges(post);
+  const showsGimmickBadges = gimmickBadges.any;
+  const gimmickBadgeRow = showsGimmickBadges ? (
+    <PostGimmickBadges
+      showsGacha={gimmickBadges.showsGacha}
+      showsNameInput={gimmickBadges.showsNameInput}
+    />
   ) : null;
   const generationModeLabelKey = getGenerationModeLabelKey(post.generation_type, {
     sourcePostId: post.source_post_id,
@@ -154,14 +154,14 @@ export function PostCard({
         見られる。ラベルはカードの幅まで使い、入りきらないときは折り返す。
         一般の利用者は下の従来の形のまま。
       */}
-      {isCatalogRevamp && (generationModeLabelKey || showsGachaBadge) ? (
+      {isCatalogRevamp && (generationModeLabelKey || showsGimmickBadges) ? (
         <div
           className="absolute inset-x-2 bottom-2 z-10 flex items-end gap-1"
           data-testid="post-card-corner-row"
         >
-          {/* 「ガチャ」は生成方法のラベルの真上に積む(2026-10-06 ユーザー決定) */}
+          {/* 「ガチャ」「名前入り」は生成方法のラベルの真上に積む(2026-10-06 ユーザー決定) */}
           <div className="flex flex-col items-start gap-1">
-            {gachaBadge}
+            {gimmickBadgeRow}
             {generationModeLabelKey ? (
               <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
                 {t(generationModeLabelKey)}
@@ -172,9 +172,9 @@ export function PostCard({
       ) : null}
       {/* 生成モードラベル(左下)。coordinate系/one_tap_style/inspire/free を表示。
           不明・null は非表示。「ガチャ」はその真上に積む。 */}
-      {!isCatalogRevamp && showsGachaBadge ? (
+      {!isCatalogRevamp && showsGimmickBadges ? (
         <div className="absolute bottom-2 left-2 z-10 flex flex-col items-start gap-1">
-          {gachaBadge}
+          {gimmickBadgeRow}
           {generationModeLabelKey ? (
             <span className="rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-white backdrop-blur-[2px]">
               {t(generationModeLabelKey)}

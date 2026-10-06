@@ -63,6 +63,11 @@ jest.mock("@/features/generation/components/GachaAvailabilityProvider", () => ({
   useGachaAvailable: () => mockGachaAvailable(),
 }));
 
+const mockNameInputAvailable = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/generation/components/NameInputAvailabilityProvider", () => ({
+  useNameInputAvailable: () => mockNameInputAvailable(),
+}));
+
 import { PostCard } from "@/features/posts/components/PostCard";
 
 const POST_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
@@ -294,9 +299,9 @@ describe("PostCard の「ガチャ」の札", () => {
     render(<PostCard post={gachaPost()} />);
     const badge = screen.getByTestId("post-gacha-badge");
     expect(badge.textContent).toBe("gachaBadge");
-    const stack = badge.parentElement!;
+    const stack = badge.parentElement!.parentElement!;
     expect(stack.className).toContain("flex-col");
-    expect(stack.firstElementChild).toBe(badge);
+    expect(stack.firstElementChild).toBe(badge.parentElement);
     expect(stack.children.length).toBe(2);
   });
 
@@ -304,6 +309,37 @@ describe("PostCard の「ガチャ」の札", () => {
     mockGachaAvailable.mockReturnValue(false);
     render(<PostCard post={gachaPost()} />);
     expect(screen.queryByTestId("post-gacha-badge")).toBeNull();
+  });
+});
+
+describe("PostCard の「名前入り」の札", () => {
+  afterEach(() => {
+    mockGachaAvailable.mockReturnValue(false);
+    mockNameInputAvailable.mockReturnValue(false);
+  });
+
+  test("「ガチャ」の右隣に並べる", () => {
+    mockGachaAvailable.mockReturnValue(true);
+    mockNameInputAvailable.mockReturnValue(true);
+    render(
+      <PostCard
+        post={makePost({
+          generation_type: "free",
+          generation_metadata: { gachaPicks: [{ number: 1, total: 4 }], nameInputUsed: true },
+        } as Partial<Post>)}
+      />,
+    );
+    const row = screen.getByTestId("post-gimmick-badges");
+    expect([...row.children].map((child) => child.textContent)).toEqual(["gachaBadge", "nameInputBadge"]);
+  });
+
+  test("名前の欄の公開前で運営でない人には出さない", () => {
+    render(
+      <PostCard
+        post={makePost({ generation_type: "free", generation_metadata: { nameInputUsed: true } } as Partial<Post>)}
+      />,
+    );
+    expect(screen.queryByTestId("post-name-input-badge")).toBeNull();
   });
 });
 

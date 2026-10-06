@@ -127,6 +127,7 @@ export const arMessages = {
     modeFromCatalog: "from CATALOG",
     // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
     gachaBadge: "جاتشا",
+    nameInputBadge: "بالاسم",
     copy: "نسخ",
     copied: "تم النسخ",
     followRequiredTitle: "المتابعة مطلوبة",

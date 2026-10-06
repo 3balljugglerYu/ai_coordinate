@@ -127,6 +127,7 @@ export const hiMessages = {
     modeFromCatalog: "from CATALOG",
     // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
     gachaBadge: "गाचा",
+    nameInputBadge: "नाम सहित",
     copy: "कॉपी करें",
     copied: "कॉपी हो गया",
     followRequiredTitle: "फ़ॉलो आवश्यक",

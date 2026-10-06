@@ -158,6 +158,11 @@ jest.mock("@/features/generation/components/GachaAvailabilityProvider", () => ({
   useGachaAvailable: () => mockGachaAvailable(),
 }));
 
+const mockNameInputAvailable = jest.fn<boolean, []>(() => false);
+jest.mock("@/features/generation/components/NameInputAvailabilityProvider", () => ({
+  useNameInputAvailable: () => mockNameInputAvailable(),
+}));
+
 function createPost(overrides: Partial<Post> = {}): Post {
   return {
     id: "post-1",
@@ -1124,8 +1129,9 @@ describe("PostFeedCard の「ガチャ」の札", () => {
     const badge = screen.getByTestId("post-gacha-badge");
     expect(badge.textContent).toBe("gachaBadge");
     // 生成方法のラベルの真上に積む(同じ縦の並びで、札が先)
-    const stack = badge.parentElement!;
+    const stack = badge.parentElement!.parentElement!;
     expect(stack.className).toContain("flex-col");
+    expect(stack.firstElementChild).toBe(badge.parentElement);
     expect(stack.lastElementChild?.textContent).not.toBe("gachaBadge");
   });
 
@@ -1138,6 +1144,41 @@ describe("PostFeedCard の「ガチャ」の札", () => {
   test("ガチャで作っていない投稿には出さない", () => {
     render(<PostFeedCard post={createPost({ generation_type: "free" } as Partial<Post>)} />);
     expect(screen.queryByTestId("post-gacha-badge")).toBeNull();
+  });
+});
+
+describe("PostFeedCard の「名前入り」の札", () => {
+  afterEach(() => {
+    mockGachaAvailable.mockReturnValue(false);
+    mockNameInputAvailable.mockReturnValue(false);
+    mockRevamp.mockReturnValue(false);
+  });
+
+  test.each([false, true])("名前だけの投稿にも、生成方法のラベルの真上に出す(カタログ刷新=%s)", (revamp) => {
+    mockRevamp.mockReturnValue(revamp);
+    mockNameInputAvailable.mockReturnValue(true);
+    render(
+      <PostFeedCard
+        post={createPost({ generation_type: "free", generation_metadata: { nameInputUsed: true } } as Partial<Post>)}
+      />,
+    );
+    expect(screen.getByTestId("post-name-input-badge").textContent).toBe("nameInputBadge");
+    expect(screen.queryByTestId("post-gacha-badge")).toBeNull();
+  });
+
+  test("「ガチャ」の右隣に並べる", () => {
+    mockGachaAvailable.mockReturnValue(true);
+    mockNameInputAvailable.mockReturnValue(true);
+    render(
+      <PostFeedCard
+        post={createPost({
+          generation_type: "free",
+          generation_metadata: { gachaPicks: [{ number: 1, total: 2 }], nameInputUsed: true },
+        } as Partial<Post>)}
+      />,
+    );
+    const row = screen.getByTestId("post-gimmick-badges");
+    expect([...row.children].map((child) => child.textContent)).toEqual(["gachaBadge", "nameInputBadge"]);
   });
 });
 

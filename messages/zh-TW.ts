@@ -127,6 +127,7 @@ export const zhTwMessages = {
     modeFromCatalog: "from CATALOG",
     // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
     gachaBadge: "轉蛋",
+    nameInputBadge: "含名字",
     copy: "複製",
     copied: "已複製",
     followRequiredTitle: "需要追蹤",
