@@ -44,8 +44,8 @@ import { jsonError } from "@/lib/api/json-error";
 import {
   exceedsNameInputSlotLimit,
   NAME_INPUT_MAX_SLOTS,
+  hasGuaranteedRequiredNameInput,
   nameInputMaxSlotsFor,
-  parseNameInputSlots,
 } from "@/shared/generation/name-input";
 import {
   findGachaLimitViolation,
@@ -202,7 +202,7 @@ export async function postGenerateAsyncRoute(
       prompt &&
       !acceptedName &&
       isNameInputAvailable(user.id) &&
-      parseNameInputSlots(prompt).some((slot) => slot.required)
+      hasGuaranteedRequiredNameInput(prompt)
     ) {
       return jsonError(copy.nameInputRequired, "GENERATION_NAME_INPUT_REQUIRED", 400);
     }

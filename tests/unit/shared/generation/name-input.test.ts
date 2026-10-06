@@ -2,8 +2,10 @@ import {
   buildNameInputMarker,
   buildNameProvidedText,
   checkNameInputValue,
+  countReachableNameInputSlots,
   exceedsNameInputSlotLimit,
   expandNameInput,
+  hasGuaranteedRequiredNameInput,
   NAME_INPUT_DEFAULT_LABEL,
   NAME_INPUT_MAX_LENGTH,
   NAME_NOT_PROVIDED_TEXT,
@@ -117,3 +119,29 @@ describe("名前の欄の数の上限", () => {
     expect(exceedsNameInputSlotLimit(two, null)).toBe(false);
   });
 });
+
+describe("ガチャと一緒に使ったときの数え方(Worker はガチャの後に置き換える)", () => {
+  const gacha = (lines: string[]) => ["{{GACHA}}", ...lines, "{{/GACHA}}"].join("\n");
+
+  test("候補ごとに1つなら、届くのは1つ(一般の利用者でも通る)", () => {
+    const prompt = gacha(["1. 医師 {{INPUT:a}}", "2. 探偵 {{INPUT:b}}"]);
+    expect(countReachableNameInputSlots(prompt)).toBe(1);
+    expect(exceedsNameInputSlotLimit(prompt, 1)).toBe(false);
+  });
+
+  test("囲みの外と候補の中の両方にあれば、足して数える", () => {
+    const prompt = `{{INPUT:a}}\n${gacha(["1. 医師 {{INPUT:b}}", "2. 探偵"])}`;
+    expect(countReachableNameInputSlots(prompt)).toBe(2);
+    expect(exceedsNameInputSlotLimit(prompt, 1)).toBe(true);
+  });
+
+  test("必須の欄が候補の中だけなら、空でも止めない(選ばれるか分からない)", () => {
+    const prompt = gacha(["1. 医師 {{INPUT*:名前}}", "2. 探偵"]);
+    expect(hasGuaranteedRequiredNameInput(prompt)).toBe(false);
+  });
+
+  test("必須の欄が囲みの外にあれば止める", () => {
+    expect(hasGuaranteedRequiredNameInput(`{{INPUT*:名前}}\n${gacha(["1. a", "2. b"])}`)).toBe(true);
+  });
+});
+

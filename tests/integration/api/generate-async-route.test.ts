@@ -610,6 +610,13 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
           expect(jobRepository.createImageJob).not.toHaveBeenCalled();
         });
 
+        test("ガチャの候補ごとに1つなら、一般の利用者でも受け付ける(届くのは1つ)", async () => {
+          const response = await runFree({
+            prompt: "猫\n{{GACHA}}\n1. 医師 {{INPUT:a}}\n2. 探偵 {{INPUT*:b}}\n{{/GACHA}}",
+          });
+          expect(response.status).toBe(200);
+        });
+
         test("運営は名前の欄が2つでも受け付ける", async () => {
           isAdminViewerMock.mockReturnValue(true);
           const response = await runFree({ prompt: "猫\n{{INPUT:a}}\n{{INPUT:b}}" });

@@ -167,6 +167,21 @@ export function findGachaLimitViolation(
   return null;
 }
 
+/**
+ * ガチャの囲みの外の文と、囲みごとの候補の文に分ける(選ばれる前の形)。
+ *
+ * 名前の欄の数え方に使う。Worker はガチャで1つを選んだ後に名前の欄を置き換えるので、
+ * 選ばれなかった候補の中の目印は AI に届かない(shared/generation/name-input.ts)。
+ */
+export function splitGachaPrompt(prompt: string): { outside: string; blocks: string[][] } {
+  const blocks: string[][] = [];
+  const outside = prompt.replace(GACHA_BLOCK_PATTERN, (_match, body: string) => {
+    blocks.push(parseGachaCandidates(body).map((candidate) => candidate.text));
+    return "";
+  });
+  return { outside, blocks };
+}
+
 /** 本文の末尾にガチャの入力欄を付け、保存・送信する1つのプロンプトにする。 */
 export function composeGachaPrompt(body: string, field: string): string {
   return `${body.trim()}\n\n${field.trim()}`;

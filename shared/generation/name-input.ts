@@ -10,6 +10,8 @@
  * Edge Function (Deno) / Next.js (Node) 双方から import するため pure TypeScript。
  */
 
+import { splitGachaPrompt } from "./gacha-prompt.ts";
+
 /** 名前の長さの上限(文字数。2026-10-06 ユーザー決定)。 */
 export const NAME_INPUT_MAX_LENGTH = 8;
 
@@ -114,8 +116,32 @@ export function nameInputMaxSlotsFor(isAdmin: boolean): number | null {
   return isAdmin ? null : NAME_INPUT_MAX_SLOTS;
 }
 
+/**
+ * 画像の AI に届く名前の欄の数(多いほう)。
+ *
+ * Worker はガチャで1つを選んだ後に名前の欄を置き換えるので、ガチャの囲みの中の目印は
+ * 「選ばれうる候補のうち、いちばん多いもの」だけが届く。囲みの外の目印は必ず届く。
+ */
+export function countReachableNameInputSlots(prompt: string): number {
+  const { outside, blocks } = splitGachaPrompt(prompt);
+  let count = parseNameInputSlots(outside).length;
+  for (const candidates of blocks) {
+    count += Math.max(0, ...candidates.map((text) => parseNameInputSlots(text).length));
+  }
+  return count;
+}
+
+/**
+ * 必ず AI に届く必須の名前の欄があるか(ガチャの囲みの外にあるもの)。
+ * 囲みの中の必須の欄は、選ばれるかどうか送る前には分からないので、ここでは止めない
+ * (選ばれて名前が空なら「名前なし」に置き換わる)。
+ */
+export function hasGuaranteedRequiredNameInput(prompt: string): boolean {
+  return parseNameInputSlots(splitGachaPrompt(prompt).outside).some((slot) => slot.required);
+}
+
 /** 送られてきたプロンプトの名前の欄が上限を超えるか(サーバー側の確認に使う)。 */
 export function exceedsNameInputSlotLimit(prompt: string, maxSlots: number | null): boolean {
   if (maxSlots === null) return false;
-  return parseNameInputSlots(prompt).length > maxSlots;
+  return countReachableNameInputSlots(prompt) > maxSlots;
 }
