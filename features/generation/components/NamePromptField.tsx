@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { NameInputCreateTool } from "./NameInputCreateTool";
 import { NameTextInput } from "./NameTextInput";
 import {
   buildNameInputMarker,
@@ -37,6 +38,15 @@ interface NamePromptFieldProps {
   requiredGuaranteed: boolean;
   /** 名前の欄が上限を超えているか(一般の利用者は1つまで。サーバーでも止める)。 */
   tooManySlots: boolean;
+  /**
+   * 「本文から名前の欄を作る」道具(運営だけの段階公開。無ければ出さない)。
+   * 本文の名前に関する行を、目印1つにまとめる。
+   */
+  createTool?: {
+    prompt: string;
+    onApply: (body: string) => void;
+    onProposalOpenChange?: (open: boolean) => void;
+  };
   disabled?: boolean;
 }
 
@@ -74,6 +84,7 @@ export function NamePromptField({
   hasReachableSlot,
   requiredGuaranteed,
   tooManySlots,
+  createTool,
   disabled = false,
 }: NamePromptFieldProps) {
   const t = useTranslations("free");
@@ -164,6 +175,15 @@ export function NamePromptField({
           <p className="text-xs text-gray-500" data-testid="name-input-marker-hint">
             {t("nameInputMarkerHint", { marker: buildNameInputMarker(slot) })}
           </p>
+          {createTool ? (
+            <NameInputCreateTool
+              prompt={createTool.prompt}
+              slot={slot}
+              onApply={createTool.onApply}
+              onProposalOpenChange={createTool.onProposalOpenChange}
+              disabled={disabled}
+            />
+          ) : null}
         </div>
       ) : null}
 

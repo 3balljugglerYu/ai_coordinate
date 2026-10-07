@@ -46,6 +46,7 @@ function formatTransactionType(
     promptUsageReward: string;
     styleUsageReward: string;
     gachaSplit: string;
+    nameInputCreate: string;
   }
 ) {
   switch (type) {
@@ -57,6 +58,10 @@ function formatTransactionType(
       // 「ガチャに分ける」道具の利用(app/api/gacha-prompt/split)。画像の生成と分けて見せる
       if (metadata?.reason === "gacha_split") {
         return labels.gachaSplit;
+      }
+      // 「本文から名前の欄を作る」道具(app/api/name-input/create)
+      if (metadata?.reason === "name_input_create") {
+        return labels.nameInputCreate;
       }
       return labels.consumption;
     case "refund":
@@ -252,6 +257,7 @@ export function PercoinTransactions({
     promptUsageReward: t("transactionTypePromptUsageReward"),
     styleUsageReward: t("transactionTypeStyleUsageReward"),
     gachaSplit: t("transactionTypeGachaSplit"),
+    nameInputCreate: t("transactionTypeNameInputCreate"),
     forfeiture: t("transactionTypeForfeiture"),
   };
   const usageBreakdownLabels = {

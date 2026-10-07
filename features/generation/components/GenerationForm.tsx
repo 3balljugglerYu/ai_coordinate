@@ -309,6 +309,8 @@ export function GenerationForm({
   const [gachaField, setGachaField] = useState(GACHA_FIELD_TEMPLATE);
   // 「ガチャに分ける」の案を見せている間は、本文と候補欄を書き換えさせない
   const [isSplitProposalOpen, setIsSplitProposalOpen] = useState(false);
+  // 「本文から名前の欄を作る」の案を見せている間は、本文を書き換えさせない(ガチャの道具と同じ)
+  const [isNameCreateProposalOpen, setIsNameCreateProposalOpen] = useState(false);
   const isGachaActive = canUseGacha && isGachaEnabled;
   const gachaValidation = isGachaActive
     ? validateGachaField(gachaField, gachaLimitsFor(gachaUnlimited))
@@ -862,7 +864,8 @@ export function GenerationForm({
             promptLocked ||
             isGenerating ||
             isTutorialInProgress ||
-            (isGachaActive && isSplitProposalOpen)
+            (isGachaActive && isSplitProposalOpen) ||
+            isNameCreateProposalOpen
           }
           containerProps={
             isFree ? undefined : { "data-tour": "tour-prompt-input" }
@@ -886,7 +889,17 @@ export function GenerationForm({
                 hasReachableSlot={hasReachableNameSlot}
                 requiredGuaranteed={isNameRequiredGuaranteed}
                 tooManySlots={hasTooManyNameSlots}
-                disabled={isGenerating || isTutorialInProgress || isSplitProposalOpen}
+                createTool={{
+                  prompt,
+                  onApply: setPrompt,
+                  onProposalOpenChange: setIsNameCreateProposalOpen,
+                }}
+                disabled={
+                  isGenerating ||
+                  isTutorialInProgress ||
+                  isSplitProposalOpen ||
+                  isNameCreateProposalOpen
+                }
               />
             ) : null}
             {canUseGacha ? (
@@ -896,7 +909,7 @@ export function GenerationForm({
                 value={gachaField}
                 onChange={setGachaField}
                 validation={gachaValidation}
-                disabled={isGenerating || isTutorialInProgress}
+                disabled={isGenerating || isTutorialInProgress || isNameCreateProposalOpen}
                 split={
                   gachaSplitAvailable
                     ? {
