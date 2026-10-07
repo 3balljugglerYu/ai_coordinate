@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -125,10 +126,23 @@ export function NamePromptField({
   return (
     <div className="space-y-3" data-testid="name-prompt-field">
       <div className="flex items-center gap-2">
-        <Label htmlFor="name-input-enabled" className="flex-1 text-sm font-medium leading-snug">
+        <Label htmlFor="name-input-enabled" className="whitespace-nowrap text-sm font-medium leading-snug">
           {t("nameInputToggleLabel")}
         </Label>
+        {/*
+          使い方の紹介ページ(ガチャの「使い方はこちら」と同じ。書きかけの入力を失わないよう新しいタブで開く。
+          ラベルの外に置く(中に入れると、押したときにスイッチも切り替わるため)
+        */}
+        <Link
+          href="/guide/text"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="shrink-0 whitespace-nowrap text-xs font-medium text-pink-600 underline underline-offset-2 hover:text-pink-700"
+        >
+          {t("gachaGuideLink")}
+        </Link>
         <Switch
+          className="ml-auto"
           id="name-input-enabled"
           checked={enabled}
           disabled={disabled || (!enabled && !!lockedReason)}
