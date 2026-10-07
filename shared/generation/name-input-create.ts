@@ -80,13 +80,15 @@ const NAME_INPUT_MARKER_PATTERN = /\{\{INPUT\*?:[^{}\r\n]*\}\}/;
 
 /**
  * 本文に、もう文字入力の目印があるか(道具を使う必要が無い)。
- * スイッチを入れたときに先頭の行へ入る目印(その行に目印しか無いもの)は除く。
+ * スイッチを入れたときに先頭へ入る目印(本文のいちばん最初にあるもの)は除く。
+ * 空の本文でスイッチを入れると改行なしで目印だけが入るので、そのあとに貼り付けた文が
+ * 同じ行に続いても、先頭の目印は本文の目印と数えない。
  */
 export function hasNameInputMarkerInBody(prompt: string): boolean {
-  const lines = prompt.trim().split(/\r?\n/);
-  const firstIsSwitchMarker =
-    lines.length > 0 && lines[0].trim() !== "" && lines[0].replace(NAME_INPUT_MARKER_PATTERN, "").trim() === "";
-  return lines.slice(firstIsSwitchMarker ? 1 : 0).some((line) => NAME_INPUT_MARKER_PATTERN.test(line));
+  const trimmed = prompt.trimStart();
+  const leading = trimmed.match(NAME_INPUT_MARKER_PATTERN);
+  const rest = leading && leading.index === 0 ? trimmed.slice(leading[0].length) : trimmed;
+  return NAME_INPUT_MARKER_PATTERN.test(rest);
 }
 
 /**
@@ -139,7 +141,9 @@ export function applyNameInputCreate(
     }
     // 差し込む行は消さない(AI が両方に挙げても、差し込みを優先する)
     removed.delete(inlineLine);
-    lines[inlineLine - 1] = line.replace(text, buildNameInputMarker(slot));
+    // 関数で渡す(文字列で渡すと、見出しの「$&」「$'」などが置き換えの記号として読まれて目印が壊れる)
+    const marker = buildNameInputMarker(slot);
+    lines[inlineLine - 1] = line.replace(text, () => marker);
     changedLine = inlineLine;
   }
 

@@ -34,6 +34,15 @@ describe("本文から文字入力の欄を作る(組み立て)", () => {
     });
   });
 
+  test("見出しや入力のヒントに $ があっても、目印はそのまま入る(置き換えの記号として読まない)", () => {
+    const result = applyNameInputCreate(
+      "描く\n名札に「〇〇」と書く",
+      { inlineLine: 2, inlineText: "〇〇", removeLines: [] },
+      { label: "お題$'", placeholder: "a$$b", required: false },
+    );
+    expect(result).toMatchObject({ ok: true, body: "描く\n名札に「{{INPUT:お題$'|a$$b}}」と書く" });
+  });
+
   test("差し込む行を消す行にも挙げられたら、差し込みを優先する", () => {
     const result = applyNameInputCreate("描く\n名札に「〇〇」と書く", { inlineLine: 2, inlineText: "〇〇", removeLines: [2] }, SLOT);
     expect(result).toMatchObject({ ok: true, body: "描く\n名札に「{{INPUT:名前}}」と書く", removedLines: [], changedLine: 2 });
@@ -112,6 +121,7 @@ describe("本文にもう目印があるか(あれば道具は要らない)", ()
     ["スイッチで先頭に入った目印だけ", "{{INPUT:名前}}\n描く\n【名前】〇〇", false],
     ["先頭の目印＋文中の目印", "{{INPUT:名前}}\n1行目：「{{INPUT:名前}}さん」", true],
     ["目印なし", "描く", false],
+    ["空の本文でスイッチ→同じ行に貼り付け", "{{INPUT:名前}}【名前】〇〇\n描く", false],
   ])("%s → %s", (_label, prompt, expected) => {
     expect(hasNameInputMarkerInBody(prompt)).toBe(expected);
   });
