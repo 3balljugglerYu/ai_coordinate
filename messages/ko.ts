@@ -1549,7 +1549,7 @@ export const koMessages = {
     nameInputMarkerHint: "본문에 표시 {marker}가 들어갔어요. 원하는 위치로 옮길 수 있어요.",
     nameInputTrialLabel: "시험 삼아 넣을 이름(내 생성용)",
     nameInputTrialHint: "{max}자까지. 비워 두면 이름이 그려지지 않아요.",
-    nameInputTooLong: "이름은 {max}자까지입니다.",
+    nameInputTooLong: "이름은 {max}자까지입니다. {max}자를 넘으면 생성할 수 없습니다(빨간 글자를 지워 주세요).",
     nameInputInvalidCharacters: "이름에 사용할 수 없는 문자가 포함되어 있습니다(중괄호, 줄바꿈 등).",
     nameInputRequiredMissing: "이 프롬프트는 이름이 필수입니다. 이름을 입력해 주세요.",
     nameInputTooManySlots: "이름 칸은 프롬프트 하나에 {max}개까지입니다.",

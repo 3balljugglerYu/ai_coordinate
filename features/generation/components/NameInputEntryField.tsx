@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { NameTextInput } from "./NameTextInput";
 import {
   checkNameInputValue,
   NAME_INPUT_MAX_LENGTH,
@@ -24,7 +24,8 @@ interface NameInputEntryFieldProps {
  */
 export function NameInputEntryField({ slot, value, onChange, disabled = false }: NameInputEntryFieldProps) {
   const t = useTranslations("free");
-  // 赤字は欄から離れてから出す(ガチャの欄・作る人の試しの名前と同じ作法)
+  // 空欄の赤字は欄から離れてから出す(ガチャの欄と同じ作法)。長すぎ・使えない文字は打った時点で出す
+  // (超えた分を欄の中で赤くするのと合わせる。2026-10-07 ユーザー指示)
   const [touched, setTouched] = useState(false);
   const check = checkNameInputValue(value);
   const errorMessage = !check.ok
@@ -34,23 +35,22 @@ export function NameInputEntryField({ slot, value, onChange, disabled = false }:
     : slot.required && !check.value
       ? t("nameInputRequiredMissing")
       : null;
-  const showAsError = errorMessage !== null && touched;
+  const showAsError = errorMessage !== null && (touched || !check.ok);
 
   return (
     <div className="space-y-1" data-testid="name-input-entry">
       <Label htmlFor="name-input-entry" className="text-base font-medium block">
         {slot.required ? slot.label : t("nameInputEntryOptionalLabel", { label: slot.label })}
       </Label>
-      <Input
+      <NameTextInput
         id="name-input-entry"
         value={value}
         disabled={disabled}
         placeholder={slot.placeholder ?? ""}
-        onChange={(event) => onChange(event.target.value)}
+        onValueChange={onChange}
         onBlur={() => setTouched(true)}
         aria-invalid={showAsError}
         aria-describedby="name-input-entry-hint"
-        className="text-base md:text-sm"
       />
       <p
         id="name-input-entry-hint"

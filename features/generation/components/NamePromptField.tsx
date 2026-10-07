@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import { NameTextInput } from "./NameTextInput";
 import {
   buildNameInputMarker,
   checkNameInputValue,
@@ -90,7 +91,8 @@ export function NamePromptField({
     : requiredGuaranteed && !check.value
       ? t("nameInputRequiredMissing")
       : null;
-  const showAsError = errorMessage !== null && touched;
+  // 長すぎ・使えない文字は打った時点で出す(超えた分を欄の中で赤くするのと合わせる)
+  const showAsError = errorMessage !== null && (touched || !check.ok);
 
   return (
     <div className="space-y-3" data-testid="name-prompt-field">
@@ -177,16 +179,15 @@ export function NamePromptField({
             <Label htmlFor="name-input-trial" className="text-xs font-medium">
               {t("nameInputTrialLabel")}
             </Label>
-            <Input
+            <NameTextInput
               id="name-input-trial"
               value={trialName}
               disabled={disabled}
               placeholder={slot?.placeholder ?? ""}
-              onChange={(event) => onTrialNameChange(event.target.value)}
+              onValueChange={onTrialNameChange}
               onBlur={() => setTouched(true)}
               aria-invalid={showAsError}
               aria-describedby="name-input-trial-hint"
-              className="text-base md:text-sm"
             />
             <p
               id="name-input-trial-hint"

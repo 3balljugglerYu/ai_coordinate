@@ -1550,7 +1550,7 @@ export const viMessages = {
     nameInputMarkerHint: "Đã chèn dấu {marker} vào prompt. Bạn có thể di chuyển nó đến bất kỳ đâu.",
     nameInputTrialLabel: "Tên để thử (cho lần tạo ảnh của bạn)",
     nameInputTrialHint: "Tối đa {max} ký tự. Nếu để trống, tên sẽ không được vẽ.",
-    nameInputTooLong: "Tên tối đa {max} ký tự.",
+    nameInputTooLong: "Tên tối đa {max} ký tự. Vượt quá sẽ không tạo được (hãy xóa các ký tự màu đỏ).",
     nameInputInvalidCharacters: "Tên chứa ký tự không dùng được (như dấu ngoặc nhọn hoặc xuống dòng).",
     nameInputRequiredMissing: "Prompt này bắt buộc nhập tên. Vui lòng nhập tên.",
     nameInputTooManySlots: "Mỗi prompt có tối đa {max} ô tên.",

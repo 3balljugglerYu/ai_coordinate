@@ -1554,7 +1554,7 @@ export const deMessages = {
     nameInputMarkerHint: "Die Markierung {marker} wurde in den Prompt eingefügt. Du kannst sie beliebig verschieben.",
     nameInputTrialLabel: "Testname (für deine eigene Generierung)",
     nameInputTrialHint: "Bis zu {max} Zeichen. Bleibt das Feld leer, wird kein Name gezeichnet.",
-    nameInputTooLong: "Namen dürfen höchstens {max} Zeichen lang sein.",
+    nameInputTooLong: "Namen dürfen höchstens {max} Zeichen haben. Mit mehr kannst du nicht generieren (lösche die roten Zeichen).",
     nameInputInvalidCharacters: "Der Name enthält unzulässige Zeichen (z. B. geschweifte Klammern oder Zeilenumbrüche).",
     nameInputRequiredMissing: "Dieser Prompt erfordert einen Namen. Bitte gib einen ein.",
     nameInputTooManySlots: "Ein Prompt kann höchstens {max} Namensfeld enthalten.",

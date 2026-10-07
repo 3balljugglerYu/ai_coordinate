@@ -1550,7 +1550,7 @@ export const arMessages = {
     nameInputMarkerHint: "تمت إضافة العلامة {marker} إلى الموجّه. يمكنك نقلها إلى أي مكان.",
     nameInputTrialLabel: "اسم للتجربة (لإنشائك الخاص)",
     nameInputTrialHint: "حتى {max} حرفًا. إذا تُرك فارغًا، فلن يُرسم أي اسم.",
-    nameInputTooLong: "يمكن أن يصل الاسم إلى {max} حرفًا.",
+    nameInputTooLong: "يمكن أن يصل الاسم إلى {max} أحرف. لا يمكن الإنشاء إذا تجاوزها (احذف الأحرف الحمراء).",
     nameInputInvalidCharacters: "يحتوي الاسم على أحرف غير مسموح بها (مثل الأقواس المعقوصة أو فواصل الأسطر).",
     nameInputRequiredMissing: "هذا الموجّه يتطلب اسمًا. يُرجى إدخال اسم.",
     nameInputTooManySlots: "يمكن أن يحتوي الموجّه على {max} حقل اسم كحد أقصى.",

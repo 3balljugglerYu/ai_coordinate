@@ -1553,7 +1553,7 @@ export const itMessages = {
     nameInputMarkerHint: "Il segnaposto {marker} è stato aggiunto al prompt. Puoi spostarlo dove vuoi.",
     nameInputTrialLabel: "Nome di prova (per la tua generazione)",
     nameInputTrialHint: "Fino a {max} caratteri. Se lasci vuoto, il nome non viene disegnato.",
-    nameInputTooLong: "Il nome può avere al massimo {max} caratteri.",
+    nameInputTooLong: "Il nome può avere al massimo {max} caratteri. Oltre non puoi generare (elimina i caratteri in rosso).",
     nameInputInvalidCharacters: "Il nome contiene caratteri non consentiti (come parentesi graffe o a capo).",
     nameInputRequiredMissing: "Questo prompt richiede un nome. Inseriscine uno.",
     nameInputTooManySlots: "Un prompt può avere al massimo {max} campo nome.",

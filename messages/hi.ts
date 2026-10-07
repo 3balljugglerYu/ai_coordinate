@@ -1551,7 +1551,7 @@ export const hiMessages = {
     nameInputMarkerHint: "प्रॉम्प्ट में निशान {marker} जोड़ दिया गया है। आप इसे कहीं भी ले जा सकते हैं।",
     nameInputTrialLabel: "आज़माने के लिए नाम (आपके अपने जनरेशन के लिए)",
     nameInputTrialHint: "{max} अक्षरों तक। खाली छोड़ने पर नाम नहीं बनाया जाएगा।",
-    nameInputTooLong: "नाम {max} अक्षरों तक हो सकता है।",
+    nameInputTooLong: "नाम अधिकतम {max} अक्षर का हो सकता है। इससे लंबा होने पर बनाया नहीं जा सकता (लाल अक्षर हटाएँ)।",
     nameInputInvalidCharacters: "नाम में ऐसे अक्षर हैं जिनका इस्तेमाल नहीं किया जा सकता (जैसे कर्ली ब्रैकेट या लाइन ब्रेक)।",
     nameInputRequiredMissing: "इस प्रॉम्प्ट के लिए नाम ज़रूरी है। कृपया नाम डालें।",
     nameInputTooManySlots: "एक प्रॉम्प्ट में अधिकतम {max} नाम फ़ील्ड हो सकता है।",

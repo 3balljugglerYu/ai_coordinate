@@ -1553,7 +1553,7 @@ export const frMessages = {
     nameInputMarkerHint: "Le repère {marker} a été ajouté au prompt. Vous pouvez le déplacer où vous voulez.",
     nameInputTrialLabel: "Nom d’essai (pour votre propre génération)",
     nameInputTrialHint: "Jusqu’à {max} caractères. Si le champ est vide, aucun nom n’est dessiné.",
-    nameInputTooLong: "Le nom peut contenir jusqu’à {max} caractères.",
+    nameInputTooLong: "Le nom peut contenir {max} caractères maximum. Au-delà, la génération est impossible (supprimez les caractères en rouge).",
     nameInputInvalidCharacters: "Le nom contient des caractères non autorisés (comme des accolades ou des retours à la ligne).",
     nameInputRequiredMissing: "Ce prompt exige un nom. Veuillez en saisir un.",
     nameInputTooManySlots: "Un prompt peut contenir au maximum {max} champ de nom.",

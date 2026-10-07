@@ -1553,7 +1553,7 @@ export const ptMessages = {
     nameInputMarkerHint: "A marca {marker} foi adicionada ao prompt. Você pode movê-la para onde quiser.",
     nameInputTrialLabel: "Nome para testar (para a sua própria geração)",
     nameInputTrialHint: "Até {max} caracteres. Se ficar em branco, nenhum nome é desenhado.",
-    nameInputTooLong: "O nome pode ter até {max} caracteres.",
+    nameInputTooLong: "O nome pode ter até {max} caracteres. Com mais não é possível gerar (apague os caracteres em vermelho).",
     nameInputInvalidCharacters: "O nome contém caracteres não permitidos (como chaves ou quebras de linha).",
     nameInputRequiredMissing: "Este prompt exige um nome. Digite um nome.",
     nameInputTooManySlots: "Um prompt pode ter no máximo {max} campo de nome.",

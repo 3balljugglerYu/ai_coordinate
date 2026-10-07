@@ -1553,7 +1553,7 @@ export const esMessages = {
     nameInputMarkerHint: "Se añadió la marca {marker} al prompt. Puedes moverla donde quieras.",
     nameInputTrialLabel: "Nombre de prueba (para tu propia generación)",
     nameInputTrialHint: "Hasta {max} caracteres. Si lo dejas vacío, no se dibuja ningún nombre.",
-    nameInputTooLong: "El nombre puede tener hasta {max} caracteres.",
+    nameInputTooLong: "El nombre puede tener hasta {max} caracteres. Con más no se puede generar (borra los caracteres en rojo).",
     nameInputInvalidCharacters: "El nombre contiene caracteres no permitidos (como llaves o saltos de línea).",
     nameInputRequiredMissing: "Este prompt requiere un nombre. Escribe uno.",
     nameInputTooManySlots: "Un prompt puede tener como máximo {max} campo de nombre.",

@@ -294,15 +294,13 @@ describe("名前を入れられるようにする", () => {
     expect(onSubmit.mock.calls[0][0]).not.toHaveProperty("nameInput");
   });
 
-  test("9文字以上は送れず、欄から離れたら赤字で知らせる", async () => {
+  test("9文字以上は送れず、打った時点で赤字で知らせる", async () => {
     const user = userEvent.setup();
     renderNameForm(jest.fn());
     await fillBodyAndImage(user);
     await user.click(nameSwitch()!);
     const trial = screen.getByLabelText("nameInputTrialLabel");
     fireEvent.change(trial, { target: { value: "あいうえおかきくけ" } });
-    expect(screen.getByTestId("name-input-trial-hint").getAttribute("data-tone")).toBe("hint");
-    fireEvent.blur(trial);
 
     expect(screen.getByTestId("name-input-trial-hint").textContent).toBe("nameInputTooLong");
     expect(screen.getByTestId("name-input-trial-hint").getAttribute("data-tone")).toBe("error");
@@ -429,6 +427,45 @@ describe("カタログから使う人の名前の欄(派生生成)", () => {
   test("名前の欄が無い原作では出さない", () => {
     renderNameForm(jest.fn(), { promptLocked: true, sourcePostId: SOURCE, lockedNameInput: null });
     expect(screen.queryByTestId("name-input-entry")).toBeNull();
+  });
+});
+
+describe("名前が長すぎるときは、打った時点で知らせる(2026-10-07 ユーザー指示)", () => {
+  test("作る人の試しの名前: 欄から離れなくても、生成できない旨を出す", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(nameSwitch()!);
+    fireEvent.change(screen.getByLabelText("nameInputTrialLabel"), { target: { value: "123456789" } });
+    const hint = screen.getByTestId("name-input-trial-hint");
+    expect(hint.getAttribute("data-tone")).toBe("error");
+    expect(hint.textContent).toContain("nameInputTooLong");
+    expect(screen.getByTestId("name-text-overflow-excess").textContent).toBe("9");
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
+  test("カタログから使う人の名前の欄も同じ", () => {
+    renderNameForm(jest.fn(), {
+      promptLocked: true,
+      sourcePostId: "11111111-1111-4111-8111-111111111111",
+      lockedNameInput: { label: "名前", required: false },
+    });
+    fireEvent.change(screen.getByLabelText("nameInputEntryOptionalLabel"), { target: { value: "123456789" } });
+    const hint = screen.getByTestId("name-input-entry-hint");
+    expect(hint.getAttribute("data-tone")).toBe("error");
+    expect(hint.textContent).toContain("nameInputTooLong");
+    expect(screen.getByTestId("name-text-overflow-excess").textContent).toBe("9");
+  });
+
+  test("空欄の赤字は、これまでどおり欄から離れてから", () => {
+    renderNameForm(jest.fn(), {
+      promptLocked: true,
+      sourcePostId: "11111111-1111-4111-8111-111111111111",
+      lockedNameInput: { label: "名前", required: true },
+    });
+    expect(screen.getByTestId("name-input-entry-hint").getAttribute("data-tone")).toBe("hint");
+    fireEvent.blur(screen.getByLabelText("名前"));
+    expect(screen.getByTestId("name-input-entry-hint").getAttribute("data-tone")).toBe("error");
   });
 });
 

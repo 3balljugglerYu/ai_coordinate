@@ -1549,7 +1549,7 @@ export const thMessages = {
     nameInputMarkerHint: "ใส่เครื่องหมาย {marker} ในพรอมต์แล้ว ย้ายไปตำแหน่งที่ต้องการได้",
     nameInputTrialLabel: "ชื่อที่จะลองใส่ (สำหรับการสร้างภาพของคุณเอง)",
     nameInputTrialHint: "ไม่เกิน {max} ตัวอักษร ถ้าเว้นว่าง จะไม่วาดชื่อ",
-    nameInputTooLong: "ชื่อยาวได้ไม่เกิน {max} ตัวอักษร",
+    nameInputTooLong: "ชื่อยาวได้สูงสุด {max} ตัวอักษร ถ้าเกินจะสร้างไม่ได้ (โปรดลบตัวอักษรสีแดง)",
     nameInputInvalidCharacters: "ชื่อมีตัวอักษรที่ใช้ไม่ได้ (เช่น วงเล็บปีกกาหรือการขึ้นบรรทัดใหม่)",
     nameInputRequiredMissing: "พรอมต์นี้ต้องใส่ชื่อ กรุณาใส่ชื่อ",
     nameInputTooManySlots: "หนึ่งพรอมต์มีช่องชื่อได้สูงสุด {max} ช่อง",

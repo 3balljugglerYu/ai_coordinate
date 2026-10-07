@@ -1506,7 +1506,7 @@ export const jaMessages = {
     nameInputMarkerHint: "本文に目印 {marker} が入りました。好きな場所へ動かせます。",
     nameInputTrialLabel: "試しに入れる名前（あなたの生成用）",
     nameInputTrialHint: "{max}文字まで。空欄なら、名前は描かれません。",
-    nameInputTooLong: "名前は{max}文字までです。",
+    nameInputTooLong: "名前は{max}文字までです。{max}文字を超えると生成できません（赤い文字を消してください）。",
     nameInputInvalidCharacters: "名前に使えない文字が含まれています（波かっこや改行など）。",
     nameInputRequiredMissing: "このプロンプトは名前が必須です。名前を入れてください。",
     nameInputTooManySlots: "名前の欄は、1つのプロンプトに{max}つまでです。",

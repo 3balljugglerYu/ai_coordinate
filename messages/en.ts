@@ -1550,7 +1550,7 @@ export const enMessages = {
     nameInputMarkerHint: "The marker {marker} was added to the prompt. You can move it anywhere.",
     nameInputTrialLabel: "Name to try (for your own generation)",
     nameInputTrialHint: "Up to {max} characters. If left blank, no name is drawn.",
-    nameInputTooLong: "Names can be up to {max} characters.",
+    nameInputTooLong: "Names can be up to {max} characters. You can't generate with a longer name (delete the red characters).",
     nameInputInvalidCharacters: "The name contains characters that can’t be used (such as curly brackets or line breaks).",
     nameInputRequiredMissing: "This prompt requires a name. Please enter one.",
     nameInputTooManySlots: "A prompt can have up to {max} name field.",

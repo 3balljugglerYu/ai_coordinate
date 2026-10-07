@@ -1552,7 +1552,7 @@ export const idMessages = {
     nameInputMarkerHint: "Penanda {marker} sudah dimasukkan ke prompt. Kamu bisa memindahkannya ke mana saja.",
     nameInputTrialLabel: "Nama untuk dicoba (untuk pembuatan gambarmu sendiri)",
     nameInputTrialHint: "Maksimal {max} karakter. Jika kosong, nama tidak digambar.",
-    nameInputTooLong: "Nama maksimal {max} karakter.",
+    nameInputTooLong: "Nama maksimal {max} karakter. Lebih dari itu tidak bisa dibuat (hapus karakter berwarna merah).",
     nameInputInvalidCharacters: "Nama berisi karakter yang tidak bisa dipakai (seperti kurung kurawal atau baris baru).",
     nameInputRequiredMissing: "Prompt ini wajib diisi nama. Silakan masukkan nama.",
     nameInputTooManySlots: "Satu prompt dapat berisi maksimal {max} kolom nama.",

@@ -1547,7 +1547,7 @@ export const zhCnMessages = {
     nameInputMarkerHint: "正文中已插入标记 {marker}，可以移动到任意位置。",
     nameInputTrialLabel: "试用的名字（用于你自己的生成）",
     nameInputTrialHint: "最多 {max} 个字。留空则不会画出名字。",
-    nameInputTooLong: "名字最多 {max} 个字。",
+    nameInputTooLong: "名字最多 {max} 个字。超过 {max} 个字将无法生成（请删除红色的字）。",
     nameInputInvalidCharacters: "名字中含有无法使用的字符（如花括号或换行）。",
     nameInputRequiredMissing: "此提示词必须填写名字，请输入名字。",
     nameInputTooManySlots: "每个提示词最多 {max} 个名字栏。",
