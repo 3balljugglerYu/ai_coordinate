@@ -16,6 +16,8 @@ import { FloatingGuideCta } from "./FloatingGuideCta";
   文字入力の紹介ページ(/guide/text)の中身。ガチャの紹介ページ(GachaGuide)と同じ作り
   (docs/planning/name-input-slot-plan.md Phase 6。見本: https://claude.ai/artifact/3wfKhZiHUr16Fv15BdyFDz)。
   - 章ごとに画面の端まで色を敷く(白い枠で囲まない・横幅を狭く制限しない)
+  - 色はガチャのページ(ピンク・オレンジ)と別にする。同じに見えると、同じ機能の案内に見えるため(2026-10-07 ユーザー指摘)
+  - 吹き出しの枠の位置は、撮影したときの要素の位置から割合で出す(目分量で置くとずれる)
   - 画面の名前は生成画面と同じ文言を差し込む(ページに書き写さない)
   - 画像は日本語版1種類を全言語で使い、吹き出しの文字だけ各言語にする
   - 「どこから使える？」の画面・画像の選び方・生成ボタンは、ガチャのページと同じ画像を使う
@@ -126,7 +128,7 @@ function StepNumber({ children, className }: { children: ReactNode; className?: 
   return (
     <span
       className={cn(
-        "grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-rose-500 text-[17px] font-extrabold text-white",
+        "grid h-[34px] w-[34px] shrink-0 place-items-center rounded-full bg-indigo-500 text-[17px] font-extrabold text-white",
         className,
       )}
     >
@@ -208,13 +210,13 @@ export async function TextGuide() {
   return (
     // 見出しは文節で折り返す(日本語で語の途中で切れないように。対応していないブラウザは今までどおり)
     <div
-      className="min-h-screen bg-sky-50 text-slate-900 [&_h1]:[word-break:auto-phrase] [&_h2]:[word-break:auto-phrase] [&_h3]:[word-break:auto-phrase]"
+      className="min-h-screen bg-indigo-50 text-slate-900 [&_h1]:[word-break:auto-phrase] [&_h2]:[word-break:auto-phrase] [&_h3]:[word-break:auto-phrase]"
       data-testid="text-guide"
     >
       {/* ① 新機能 */}
       <Band
         labelledBy="text-guide-hero"
-        className="bg-gradient-to-br from-rose-400 to-orange-300 pb-16 pt-12 text-white"
+        className="bg-gradient-to-br from-indigo-500 to-sky-400 pb-16 pt-12 text-white"
       >
         <div className="grid items-center gap-8 min-[860px]:grid-cols-[1.05fr_1fr]">
           <div className="grid min-w-0 gap-[18px]">
@@ -247,8 +249,8 @@ export async function TextGuide() {
       </Band>
 
       {/* ② できること */}
-      <Band labelledBy="text-guide-uses" className="bg-sky-100">
-        <Tag className="bg-blue-500 text-white">{t("usesTag")}</Tag>
+      <Band labelledBy="text-guide-uses" className="bg-violet-50">
+        <Tag className="bg-violet-500 text-white">{t("usesTag")}</Tag>
         <h2 id="text-guide-uses" className="text-balance text-[26px] font-extrabold leading-snug min-[860px]:text-[40px]">
           {t("usesTitle")}
         </h2>
@@ -280,8 +282,8 @@ export async function TextGuide() {
       </Band>
 
       {/* ③ どこから使える？(ガチャのページと同じ画面・吹き出し) */}
-      <Band labelledBy="text-guide-where" className="bg-amber-100">
-        <Tag className="bg-violet-500 text-white">{gachaT("whereTag")}</Tag>
+      <Band labelledBy="text-guide-where" className="bg-lime-50">
+        <Tag className="bg-lime-600 text-white">{gachaT("whereTag")}</Tag>
         <h2 id="text-guide-where" className="text-balance text-[26px] font-extrabold leading-snug min-[860px]:text-[40px]">
           {gachaT("whereTitle", { createTitle: ui.createTitle })}
         </h2>
@@ -330,8 +332,8 @@ export async function TextGuide() {
       </Band>
 
       {/* ④ 使い方(作る人) */}
-      <Band labelledBy="text-guide-how" className="bg-emerald-50">
-        <Tag className="bg-emerald-600 text-white">{t("howTag")}</Tag>
+      <Band labelledBy="text-guide-how" className="bg-orange-50">
+        <Tag className="bg-orange-500 text-white">{t("howTag")}</Tag>
         <h2
           id="text-guide-how"
           className="whitespace-pre-line text-balance text-[26px] font-extrabold leading-snug min-[860px]:text-[40px]"
@@ -351,7 +353,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step2}
               alt={t("step2Alt", { promptLabel: ui.promptLabel })}
-              rings={[{ left: 9.5, top: 20, width: 82, height: 68 }]}
+              rings={[{ left: 9.5, top: 19, width: 81, height: 69 }]}
               callouts={[{ left: 40, top: -5, text: t("step2Call"), pointer: "down" }]}
             />
             <Note>{t("step2Text")}</Note>
@@ -360,7 +362,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step3}
               alt={t("step3Alt", { optionsTitle: ui.optionsTitle, toggle: ui.toggle })}
-              rings={[{ left: 8, top: 16, width: 86, height: 12 }]}
+              rings={[{ left: 12, top: 16, width: 76, height: 12 }]}
               callouts={[{ left: 44, top: -6, text: t("step3Call"), pointer: "down" }]}
             />
             <Note>
@@ -371,7 +373,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step4}
               alt={t("step4Alt", { label: ui.labelSetting, hint: ui.hintSetting })}
-              rings={[{ left: 9, top: 26, width: 83, height: 56 }]}
+              rings={[{ left: 15.5, top: 33.5, width: 71, height: 48 }]}
               callouts={[{ left: 16, top: -4, text: t("step4Call"), pointer: "down" }]}
             />
             <Note>{t("step4Text", { label: ui.labelSetting, hint: ui.hintSetting, ...limits })}</Note>
@@ -380,7 +382,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step5}
               alt={t("step5Alt", { createButton: ui.createButton })}
-              rings={[{ left: 10, top: 59, width: 76, height: 31 }]}
+              rings={[{ left: 19, top: 61.5, width: 65.5, height: 30 }]}
               callouts={[{ left: 14, top: 100, text: t("step5Call"), pointer: "up" }]}
             />
             <Note>{t("step5Text", limits)}</Note>
@@ -389,7 +391,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step6Trial}
               alt={t("step6TrialAlt")}
-              rings={[{ left: 9, top: 16, width: 82, height: 42 }]}
+              rings={[{ left: 16, top: 28, width: 71.5, height: 43 }]}
               callouts={[{ left: 20, top: 100, text: t("step6TrialCall"), pointer: "up" }]}
             />
             <AnnotatedShot
@@ -411,8 +413,8 @@ export async function TextGuide() {
       </Band>
 
       {/* ⑤ 使う人の画面 */}
-      <Band labelledBy="text-guide-user" className="bg-rose-50">
-        <Tag className="bg-rose-500 text-white">{t("userTag")}</Tag>
+      <Band labelledBy="text-guide-user" className="bg-cyan-50">
+        <Tag className="bg-cyan-600 text-white">{t("userTag")}</Tag>
         <h2 id="text-guide-user" className="text-balance text-[26px] font-extrabold leading-snug min-[860px]:text-[40px]">
           {t("userTitle")}
         </h2>
@@ -422,7 +424,7 @@ export async function TextGuide() {
             className="mt-12"
             {...SHOTS.userSheet}
             alt={t("userAlt", { useCatalog: ui.useCatalog })}
-            rings={[{ left: 8, top: 84, width: 84, height: 13 }]}
+            rings={[{ left: 9, top: 84, width: 82, height: 12.5 }]}
             callouts={[{ left: 14, top: 73, text: t("userCall"), pointer: "down" }]}
           />
           <ul className="grid list-disc gap-2 pl-5 text-[15px]">
@@ -438,7 +440,7 @@ export async function TextGuide() {
       <section
         id="text-guide-closing"
         aria-labelledby="text-guide-cta"
-        className="bg-slate-900 px-4 py-14 text-center text-white"
+        className="bg-indigo-950 px-4 py-14 text-center text-white"
       >
         <div className="mx-auto grid max-w-[1200px] justify-items-center gap-4">
           <h2 id="text-guide-cta" className="text-balance text-2xl font-extrabold min-[860px]:text-4xl">
