@@ -52,7 +52,10 @@ const EXAMPLES = {
     { src: `${IMG}/hero-2.jpg`, text: "レナ" },
   ],
   useName: [{ placeholder: "ぺるこ" }, { placeholder: "みけ" }],
-  useWord: [{ placeholder: "努力" }, { placeholder: "一期一会" }],
+  useWord: [
+    { src: `${IMG}/word-1.jpg`, text: "千変万化" },
+    { src: `${IMG}/word-2.jpg`, text: "楽" },
+  ],
   useShare: [{ placeholder: "努力" }, { placeholder: "ぺるこ" }],
   result: [{ placeholder: "一期一会" }, { placeholder: "ぺるこ" }],
 } satisfies Record<string, Example[]>;

@@ -133,6 +133,13 @@ describe("ページの中身", () => {
     expect(placeholders[0].getAttribute("aria-label")).toMatch(/^textGuide\.exampleAlt\(/);
   });
 
+  test("「好きな言葉・四字熟語」は届いた書道の2枚", async () => {
+    await renderGuide();
+    const alts = screen.getAllByRole("img").map((image) => image.getAttribute("alt"));
+    expect(alts).toContain('textGuide.exampleAlt({"text":"千変万化"})');
+    expect(alts).toContain('textGuide.exampleAlt({"text":"楽"})');
+  });
+
   test("生成例はどの章も2枚ずつ。最初の章は届いた画像(2026-10-08)", async () => {
     await renderGuide();
     const hero = document.querySelector("#text-guide-hero")!.closest("section")!;
