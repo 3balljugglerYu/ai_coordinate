@@ -216,7 +216,7 @@ describe("名前を入れられるようにする", () => {
 
     await user.click(nameSwitch()!);
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("true");
-    expect(promptField().value.startsWith("{{INPUT:nameInputDefaultLabel}}\n")).toBe(true);
+    expect(promptField().value.startsWith("{{INPUT:}}\n")).toBe(true);
 
     await user.click(nameSwitch()!);
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("false");
@@ -235,7 +235,7 @@ describe("名前を入れられるようにする", () => {
     await fillBodyAndImage(user);
     await user.click(nameSwitch()!);
     expect(screen.queryByRole("button", { name: /nameInputRequiredOption/ })).toBeNull();
-    expect(promptField().value.startsWith("{{INPUT:nameInputDefaultLabel}}\n")).toBe(true);
+    expect(promptField().value.startsWith("{{INPUT:}}\n")).toBe(true);
     expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false);
   });
 
@@ -302,7 +302,7 @@ describe("名前を入れられるようにする", () => {
 
     await user.click(screen.getByTestId("mock-submit"));
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ nameInput: "ぺるこ", generationType: "free" });
-    expect(onSubmit.mock.calls[0][0].prompt).toContain("{{INPUT:nameInputDefaultLabel}}");
+    expect(onSubmit.mock.calls[0][0].prompt).toContain("{{INPUT:}}");
   });
 
   test("試しの名前が空なら名前は送らない(サーバーで「名前なし」になる)", async () => {
@@ -505,6 +505,20 @@ describe("文字入力: code-review の指摘への対応(2026-10-07)", () => {
       target: { value: "{{GACHA}}\n1. 医師 {{INPUT:座右の銘}}\n2. 探偵\n{{/GACHA}}" },
     });
     expect(lastTrialLabel()).toBe("座右の銘");
+  });
+});
+
+describe("ラベルは空から始める(2026-10-07 ユーザー決定 案A)", () => {
+  test("オンにすると空のラベルで目印が入り、欄にはうすい灰色の例と、空欄なら「名前」になる説明を出す", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(nameSwitch()!);
+    const label = screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement;
+    expect(label.value).toBe("");
+    expect(label.placeholder).toBe("nameInputLabelExample");
+    expect(document.getElementById(label.getAttribute("aria-describedby")!)?.textContent).toBe("nameInputLabelHelp");
+    expect(promptField().value.startsWith("{{INPUT:}}\n")).toBe(true);
   });
 });
 

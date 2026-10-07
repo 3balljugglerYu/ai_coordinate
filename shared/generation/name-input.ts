@@ -34,9 +34,6 @@ export interface NameInputSlot {
   placeholder?: string;
 }
 
-/** 作る人が名前の欄をオンにしたときの既定の見出し。 */
-export const NAME_INPUT_INITIAL_LABEL = "キャラクターの名前";
-
 /** 見出しが空の目印に使う見出し。 */
 export const NAME_INPUT_DEFAULT_LABEL = "名前";
 

@@ -1499,10 +1499,9 @@ export const jaMessages = {
     // 名前の欄と「プロンプトの仕掛け」の箱(公開前は運営だけ。docs/planning/name-input-slot-plan.md)
     promptGimmicksTitle: "プロンプトオプション",
     nameInputToggleLabel: "文字入力を受け付ける",
-    nameInputDefaultLabel: "キャラクターの名前",
     nameInputLabelSetting: "ラベル",
     nameInputLabelExample: "例：キャラクターの名前／好きな言葉",
-    nameInputLabelHelp: "ユーザーに、何を入力する欄なのかを示す名前です。",
+    nameInputLabelHelp: "ユーザーに、何を入力する欄なのかを示す名前です。空欄なら「名前」になります。",
     nameInputPlaceholderSetting: "入力のヒント",
     nameInputPlaceholderExample: "例：ぺるこ",
     nameInputPlaceholderHelp: "ユーザーに、うすい灰色で表示される入力例です。空欄のときだけ表示され、入力すると消えます。",
