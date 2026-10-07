@@ -1544,7 +1544,7 @@ export const arMessages = {
     promptGimmicksTitle: "خيارات الموجّه",
     nameInputToggleLabel: "السماح بإضافة نص",
     nameInputLabelSetting: "التسمية",
-    nameInputLabelExample: "مثال: اسم الشخصية / كلمتك المفضلة",
+    nameInputLabelExample: "مثال: كلمتك المفضلة",
     nameInputLabelHelp: "الاسم الذي يوضّح للمستخدمين ما يجب إدخاله في الحقل. إذا تُرك فارغًا، يُستخدم «名前» (الاسم).",
     nameInputPlaceholderSetting: "تلميح الإدخال",
     nameInputPlaceholderExample: "بيروكو",

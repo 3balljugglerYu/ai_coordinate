@@ -1541,7 +1541,7 @@ export const zhCnMessages = {
     promptGimmicksTitle: "提示词选项",
     nameInputToggleLabel: "允许输入文字",
     nameInputLabelSetting: "标签",
-    nameInputLabelExample: "例：角色名字／喜欢的词",
+    nameInputLabelExample: "例：喜欢的词",
     nameInputLabelHelp: "告诉用户这个栏要输入什么的名称。留空时会使用「名前」（名字）。",
     nameInputPlaceholderSetting: "输入提示",
     nameInputPlaceholderExample: "佩露可",

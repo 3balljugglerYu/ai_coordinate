@@ -200,4 +200,10 @@ describe("GachaSplitTool", () => {
     expect(screen.queryByRole("button", { name: "gachaSplitUndo" })).toBeNull();
     expect(screen.getByTestId("prompt").textContent).toBe(`${SPLIT.body}\n追記`);
   });
+
+  test("長い文言でも欄からはみ出さないよう、ボタンは折り返せる", () => {
+    render(<Harness />);
+    expect(splitButton().className).toContain("whitespace-normal");
+  });
 });
+

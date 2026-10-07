@@ -1541,7 +1541,7 @@ export const zhTwMessages = {
     promptGimmicksTitle: "提示詞選項",
     nameInputToggleLabel: "允許輸入文字",
     nameInputLabelSetting: "標籤",
-    nameInputLabelExample: "例：角色名字／喜歡的詞",
+    nameInputLabelExample: "例：喜歡的詞",
     nameInputLabelHelp: "告訴使用者這個欄位要輸入什麼的名稱。留空時會使用「名前」（名字）。",
     nameInputPlaceholderSetting: "輸入提示",
     nameInputPlaceholderExample: "佩露可",

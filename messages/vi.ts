@@ -1544,7 +1544,7 @@ export const viMessages = {
     promptGimmicksTitle: "Tùy chọn prompt",
     nameInputToggleLabel: "Cho phép nhập chữ",
     nameInputLabelSetting: "Nhãn",
-    nameInputLabelExample: "VD: Tên nhân vật / Từ yêu thích",
+    nameInputLabelExample: "VD: Từ yêu thích",
     nameInputLabelHelp: "Tên cho người dùng biết ô này cần nhập gì. Nếu để trống, sẽ dùng “名前” (Tên).",
     nameInputPlaceholderSetting: "Gợi ý nhập",
     nameInputPlaceholderExample: "Peruko",

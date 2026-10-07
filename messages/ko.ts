@@ -1543,7 +1543,7 @@ export const koMessages = {
     promptGimmicksTitle: "프롬프트 옵션",
     nameInputToggleLabel: "텍스트 입력 받기",
     nameInputLabelSetting: "라벨",
-    nameInputLabelExample: "예: 캐릭터 이름 / 좋아하는 말",
+    nameInputLabelExample: "예: 좋아하는 말",
     nameInputLabelHelp: "사용자에게 어떤 내용을 입력하는 칸인지 알려 주는 이름입니다. 비워 두면 「名前」(이름)이 됩니다.",
     nameInputPlaceholderSetting: "입력 힌트",
     nameInputPlaceholderExample: "페루코",

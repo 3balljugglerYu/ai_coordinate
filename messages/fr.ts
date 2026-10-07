@@ -1547,7 +1547,7 @@ export const frMessages = {
     promptGimmicksTitle: "Options du prompt",
     nameInputToggleLabel: "Permettre d’ajouter du texte",
     nameInputLabelSetting: "Libellé",
-    nameInputLabelExample: "ex. : Nom du personnage / Mot préféré",
+    nameInputLabelExample: "ex. : Mot préféré",
     nameInputLabelHelp: "Le nom qui indique aux utilisateurs ce qu’il faut saisir dans le champ. S’il est vide, « 名前 » (Nom) est utilisé.",
     nameInputPlaceholderSetting: "Indication de saisie",
     nameInputPlaceholderExample: "Peruko",

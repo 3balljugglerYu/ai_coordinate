@@ -1500,7 +1500,7 @@ export const jaMessages = {
     promptGimmicksTitle: "プロンプトオプション",
     nameInputToggleLabel: "文字入力を受け付ける",
     nameInputLabelSetting: "ラベル",
-    nameInputLabelExample: "例：キャラクターの名前／好きな言葉",
+    nameInputLabelExample: "例：好きな言葉",
     nameInputLabelHelp: "ユーザーに、何を入力する欄なのかを示す名前です。空欄なら「名前」になります。",
     nameInputPlaceholderSetting: "入力のヒント",
     nameInputPlaceholderExample: "ぺるこ",

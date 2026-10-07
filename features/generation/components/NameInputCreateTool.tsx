@@ -144,6 +144,8 @@ export function NameInputCreateTool({
         pending={pending}
         disabled={disabled || !hasPrompt || proposal !== null}
         onClick={create}
+        // 文言が長い言語・狭い画面でも欄からはみ出さないよう、折り返して2行にする
+        className="h-auto min-h-8 max-w-full whitespace-normal py-1.5 text-left"
       >
         {pending
           ? t("nameInputCreatePending")
