@@ -5,7 +5,8 @@
  * (docs/planning/name-input-slot-plan.md Phase 2)。スイッチのオン・オフは本文の目印の有無そのもの。
  */
 
-const stableTranslate = (key: string) => key;
+// 文言はキーのまま返す。差し込んだ値(試しの欄の見出しなど)は呼び出しの記録から確かめる
+const stableTranslate = jest.fn<string, [string, Record<string, unknown>?]>((key) => key);
 jest.mock("next-intl", () => ({
   useTranslations: () => stableTranslate,
 }));
@@ -468,6 +469,42 @@ describe("名前が長すぎるときは、打った時点で知らせる(2026-1
     expect(screen.getByTestId("name-input-entry-hint").getAttribute("data-tone")).toBe("hint");
     fireEvent.blur(screen.getByLabelText("名前"));
     expect(screen.getByTestId("name-input-entry-hint").getAttribute("data-tone")).toBe("error");
+  });
+});
+
+describe("文字入力: code-review の指摘への対応(2026-10-07)", () => {
+  const lastTrialLabel = () =>
+    stableTranslate.mock.calls.filter(([key]) => key === "nameInputTrialLabel").at(-1)?.[1]?.label;
+
+  test("見出し・入力例の欄では、目印に書けない文字(縦棒・波かっこ)を打った時点で外す", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    const label = screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement;
+    fireEvent.change(label, { target: { value: "好き|な{言葉}" } });
+    expect(label.value).toBe("好きな言葉");
+    expect(promptField().value).toBe("{{INPUT:好きな言葉}}");
+    const example = screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement;
+    fireEvent.change(example, { target: { value: "一|期" } });
+    expect(example.value).toBe("一期");
+  });
+
+  test("試しの欄の見出しは、使う人・AI に届くものと同じ(空の見出しは「名前」)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:}}" } });
+    expect(lastTrialLabel()).toBe("名前");
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:好きな言葉}}" } });
+    expect(lastTrialLabel()).toBe("好きな言葉");
+  });
+
+  test("目印がガチャの欄にだけあるときも、その見出しを試しの欄に出す", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true });
+    await fillBodyAndImage(user);
+    await user.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
+    fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
+      target: { value: "{{GACHA}}\n1. 医師 {{INPUT:座右の銘}}\n2. 探偵\n{{/GACHA}}" },
+    });
+    expect(lastTrialLabel()).toBe("座右の銘");
   });
 });
 

@@ -11,6 +11,7 @@ import { NameTextInput } from "./NameTextInput";
 import {
   buildNameInputMarker,
   checkNameInputValue,
+  NAME_INPUT_DEFAULT_LABEL,
   NAME_INPUT_INITIAL_LABEL,
   NAME_INPUT_LABEL_MAX_LENGTH,
   NAME_INPUT_MAX_LENGTH,
@@ -34,6 +35,8 @@ interface NamePromptFieldProps {
    * ガチャの欄に書いてあれば試しの名前を入れられるようにする(サーバーと同じ数え方)。
    */
   hasReachableSlot: boolean;
+  /** 試しの欄の見出し(使う人・AI に届くものと同じ。無ければ本文の目印から)。 */
+  trialLabel?: string;
   /** 必ず届く必須の欄があるか(サーバーの hasGuaranteedRequiredNameInput と同じ)。 */
   requiredGuaranteed: boolean;
   /** 名前の欄が上限を超えているか(一般の利用者は1つまで。サーバーでも止める)。 */
@@ -48,6 +51,11 @@ interface NamePromptFieldProps {
     onProposalOpenChange?: (open: boolean) => void;
   };
   disabled?: boolean;
+}
+
+/** 目印に書けない文字(波かっこ・縦棒・改行)。前後の空白は打っている途中なので残す。 */
+function stripMarkerCharacters(value: string): string {
+  return value.replace(/[{}|\r\n]/g, "");
 }
 
 /**
@@ -83,6 +91,7 @@ export function NamePromptField({
   trialName,
   onTrialNameChange,
   hasReachableSlot,
+  trialLabel,
   requiredGuaranteed,
   tooManySlots,
   createTool,
@@ -144,8 +153,10 @@ export function NamePromptField({
               disabled={disabled}
               placeholder={t("nameInputLabelExample")}
               onChange={(event) => {
-                setLabelDraft(event.target.value);
-                onSlotChange({ ...slot, label: event.target.value });
+                // 目印に書けない文字(波かっこ・縦棒・改行)は、打った時点で外す(欄と目印を食い違わせない)
+                const next = stripMarkerCharacters(event.target.value);
+                setLabelDraft(next);
+                onSlotChange({ ...slot, label: next });
               }}
               aria-describedby="name-input-label-help"
               className="text-base md:text-sm"
@@ -165,8 +176,9 @@ export function NamePromptField({
               disabled={disabled}
               placeholder={t("nameInputPlaceholderExample")}
               onChange={(event) => {
-                setPlaceholderDraft(event.target.value);
-                onSlotChange({ ...slot, placeholder: event.target.value || undefined });
+                const next = stripMarkerCharacters(event.target.value);
+                setPlaceholderDraft(next);
+                onSlotChange({ ...slot, placeholder: next || undefined });
               }}
               aria-describedby="name-input-placeholder-help"
               className="text-base md:text-sm"
@@ -202,7 +214,7 @@ export function NamePromptField({
           <div className="space-y-1">
             <Label htmlFor="name-input-trial" className="text-xs font-medium">
               {t("nameInputTrialLabel", {
-                label: slot?.label || t("nameInputDefaultLabel") || NAME_INPUT_INITIAL_LABEL,
+                label: trialLabel || slot?.label || NAME_INPUT_DEFAULT_LABEL,
               })}
             </Label>
             <NameTextInput

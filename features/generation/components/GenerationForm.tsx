@@ -21,6 +21,7 @@ import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
   checkNameInputValue,
   countReachableNameInputSlots,
+  describeNameInputForUsers,
   exceedsNameInputSlotLimit,
   hasGuaranteedRequiredNameInput,
   nameInputMaxSlotsFor,
@@ -887,6 +888,10 @@ export function GenerationForm({
                 trialName={trialName}
                 onTrialNameChange={setTrialName}
                 hasReachableSlot={hasReachableNameSlot}
+                // 試しの欄の見出しは、使う人・AI に届くものと同じ(ガチャの欄だけの目印・空の見出しも含めて)
+                trialLabel={
+                  hasReachableNameSlot ? describeNameInputForUsers(nameCheckedPrompt)?.label : undefined
+                }
                 requiredGuaranteed={isNameRequiredGuaranteed}
                 tooManySlots={hasTooManyNameSlots}
                 createTool={{

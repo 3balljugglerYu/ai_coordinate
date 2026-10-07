@@ -162,7 +162,8 @@ export function expandNameInput(
   let hadSlot = false;
   const expanded = prompt.replace(NAME_INPUT_PATTERN, (_marker, _required, inner: string) => {
     hadSlot = true;
-    // 目印ごとの見出し(`見出し|入力例` の前半)を固定文に入れる
+    // 目印ごとの見出し(`見出し|入力例` の前半)を固定文に入れる。
+    // 入れる文字は1つなので、目印が複数(運営だけ。一般は1つまで)あればどれにも同じ文字が入る
     const label = inner.split("|")[0].trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH) || NAME_INPUT_DEFAULT_LABEL;
     return value ? buildNameProvidedText(value, label) : buildNameNotProvidedText(label);
   });

@@ -208,6 +208,12 @@ describe("名前以外の文字(2026-10-07 汎用化)", () => {
     expect(result.prompt).not.toContain("例：");
   });
 
+  test("目印が複数(運営だけ)なら、どれにも同じ文字を入れ、見出しはそれぞれ", () => {
+    const result = expandNameInput("{{INPUT:名前}}\n{{INPUT:座右の銘}}", "ぺるこ");
+    expect(result.prompt).toContain("【名前】「ぺるこ」");
+    expect(result.prompt).toContain("【座右の銘】「ぺるこ」");
+  });
+
   test("目印ごとに自分の見出しを使う", () => {
     const result = expandNameInput("{{INPUT:名前}}\n{{INPUT:座右の銘}}", "");
     expect(result.prompt).toContain("【名前】未入力");
