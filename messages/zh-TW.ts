@@ -2296,8 +2296,7 @@ export const zhTwMessages = {
     metaTitle: "為插畫加上文字吧！",
     metaDescription: "在提示詞中設置文字輸入欄後，使用者輸入的名字或喜歡的詞語會原樣出現在圖片裡。透過實際畫面介紹製作方法和使用方法。",
     heroBadge: "NEW",
-    heroTitle: "為插畫
-加上文字吧！",
+    heroTitle: "為插畫\n加上文字吧！",
     heroQuestion: "你是否想過把自家孩子的名字或喜歡的詞語放進圖片裡？",
     heroLead: "只要創作者設置好文字輸入欄，使用者輸入的文字就會原樣出現在圖片裡。",
     heroCompareLabel: "每位使用者",

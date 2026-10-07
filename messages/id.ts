@@ -2303,8 +2303,7 @@ export const idMessages = {
     metaTitle: "Tambahkan teks ke ilustrasimu!",
     metaDescription: "Tambahkan kolom teks ke prompt kamu, dan nama atau kata favorit yang dimasukkan setiap pengguna akan muncul apa adanya di gambar. Lihat cara membuat dan menggunakannya dengan layar asli.",
     heroBadge: "NEW",
-    heroTitle: "Tambahkan teks
-ke ilustrasimu!",
+    heroTitle: "Tambahkan teks\nke ilustrasimu!",
     heroQuestion: "Pernahkah kamu ingin memasukkan nama karaktermu atau kata favorit ke dalam gambar?",
     heroLead: "Saat pembuat prompt menambahkan kolom teks, teks yang dimasukkan setiap pengguna akan muncul apa adanya di gambar.",
     heroCompareLabel: "Setiap pengguna,",

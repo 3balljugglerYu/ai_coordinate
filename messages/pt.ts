@@ -2304,8 +2304,7 @@ export const ptMessages = {
     metaTitle: "Adicione texto às suas ilustrações!",
     metaDescription: "Adicione um campo de texto ao seu prompt e o nome ou a palavra favorita que cada pessoa digitar aparecerá na imagem exatamente como está. Veja como criar e usar com telas reais.",
     heroBadge: "NEW",
-    heroTitle: "Adicione texto
-às suas ilustrações!",
+    heroTitle: "Adicione texto\nàs suas ilustrações!",
     heroQuestion: "Você já quis colocar o nome do seu personagem ou uma palavra favorita dentro da imagem?",
     heroLead: "Quando quem cria o prompt adiciona um campo de texto, o texto que cada pessoa digita aparece na imagem exatamente como está.",
     heroCompareLabel: "Cada pessoa,",

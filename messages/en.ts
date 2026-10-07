@@ -2300,8 +2300,7 @@ export const enMessages = {
     metaTitle: "Add text to your illustrations!",
     metaDescription: "Add a text field to your prompt, and the name or favorite word each user enters appears in the image as is. See how to make and use it with real screens.",
     heroBadge: "NEW",
-    heroTitle: "Add text
-to your illustrations!",
+    heroTitle: "Add text\nto your illustrations!",
     heroQuestion: "Have you ever wanted to put your character's name or a favorite word into the image?",
     heroLead: "When the prompt's author adds a text field, the text each user enters appears in the image as is.",
     heroCompareLabel: "Each user,",

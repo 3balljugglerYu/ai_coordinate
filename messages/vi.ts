@@ -2300,8 +2300,7 @@ export const viMessages = {
     metaTitle: "Thêm chữ vào tranh minh họa nào!",
     metaDescription: "Thêm ô nhập chữ vào prompt, tên hoặc từ yêu thích mà mỗi người nhập sẽ xuất hiện nguyên vẹn trong ảnh. Giới thiệu cách tạo và cách dùng qua màn hình thực tế.",
     heroBadge: "NEW",
-    heroTitle: "Thêm chữ
-vào tranh minh họa nào!",
+    heroTitle: "Thêm chữ\nvào tranh minh họa nào!",
     heroQuestion: "Bạn đã bao giờ muốn đưa tên nhân vật của mình hay một từ yêu thích vào trong ảnh chưa?",
     heroLead: "Khi người tạo prompt thêm ô nhập chữ, chữ mà mỗi người dùng nhập sẽ xuất hiện nguyên vẹn trong ảnh.",
     heroCompareLabel: "Mỗi người dùng,",

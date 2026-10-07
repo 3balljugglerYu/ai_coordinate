@@ -2305,8 +2305,7 @@ export const deMessages = {
     metaTitle: "Füge deinen Illustrationen Text hinzu!",
     metaDescription: "Füge deinem Prompt ein Textfeld hinzu – der Name oder das Lieblingswort, das jede Person eingibt, erscheint unverändert im Bild. Wir zeigen anhand echter Bildschirme, wie du es erstellst und nutzt.",
     heroBadge: "NEW",
-    heroTitle: "Füge deinen Illustrationen
-Text hinzu!",
+    heroTitle: "Füge deinen Illustrationen\nText hinzu!",
     heroQuestion: "Wolltest du schon einmal den Namen deines Charakters oder ein Lieblingswort ins Bild bringen?",
     heroLead: "Wenn die Person, die den Prompt erstellt, ein Textfeld hinzufügt, erscheint der eingegebene Text jeder Person unverändert im Bild.",
     heroCompareLabel: "Jede Person,",
