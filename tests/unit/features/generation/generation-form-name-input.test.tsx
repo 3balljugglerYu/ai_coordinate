@@ -228,16 +228,47 @@ describe("名前を入れられるようにする", () => {
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("true");
   });
 
-  test("入力例・任意/必須の設定は出さず、いつも任意で目印を入れる(サブスクでできることにする。2026-10-07)", async () => {
+  test("任意/必須の設定は出さず、いつも任意で目印を入れる(必須はサブスクでできることにする。2026-10-07)", async () => {
     const user = userEvent.setup();
     renderNameForm(jest.fn());
     await fillBodyAndImage(user);
     await user.click(nameSwitch()!);
-    expect(document.getElementById("name-input-placeholder")).toBeNull();
-    expect(screen.queryByRole("group", { name: /nameInputRequired/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /nameInputRequiredOption/ })).toBeNull();
     expect(promptField().value.startsWith("{{INPUT:nameInputDefaultLabel}}\n")).toBe(true);
-    // 空欄のままでも送れる
     expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false);
+  });
+
+  test("見出し・入力例を決められ、本文の目印も書き換わる(全員。2026-10-07 ユーザー決定)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}\n看板に書く" } });
+    fireEvent.change(screen.getByLabelText("nameInputLabelSetting"), { target: { value: "好きな言葉" } });
+    fireEvent.change(screen.getByLabelText("nameInputPlaceholderSetting"), { target: { value: "例：一期一会" } });
+    expect(promptField().value).toBe("{{INPUT:好きな言葉|例：一期一会}}\n看板に書く");
+  });
+
+  test("入力例には、何のことかの説明を添える(「入力例」だけでは伝わらない。2026-10-07 ユーザー指示)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    const field = screen.getByLabelText("nameInputPlaceholderSetting");
+    const help = document.getElementById(field.getAttribute("aria-describedby")!);
+    expect(help?.textContent).toBe("nameInputPlaceholderHelp");
+  });
+
+  test("見出し・入力例に空白を打てる(本文の目印は前後の空白を落とす)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    const label = screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement;
+    fireEvent.change(label, { target: { value: "好きな " } });
+    expect(label.value).toBe("好きな ");
+    fireEvent.change(label, { target: { value: "好きな 言葉" } });
+    expect(promptField().value).toBe("{{INPUT:好きな 言葉}}");
+  });
+
+  test("本文の目印を手で書き換えたら、見出しの欄も合わせる", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:座右の銘}}" } });
+    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("座右の銘");
   });
 
   test("スイッチを切っても試しの名前を残し、オンに戻すと元どおり(2026-10-07 ユーザー指示)", async () => {
@@ -258,12 +289,6 @@ describe("名前を入れられるようにする", () => {
     // 手で書いた目印(見出し)も元どおり
     expect(promptField().value.split("\n")[0]).toBe("{{INPUT:うちの子}}");
     expect((screen.getByLabelText("nameInputTrialLabel") as HTMLInputElement).value).toBe("みけ");
-  });
-
-  test("見出しの欄は出さない(見出しの編集は今回不要。2026-10-07 ユーザー決定)", () => {
-    renderNameForm(jest.fn());
-    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
-    expect(document.getElementById("name-input-label")).toBeNull();
   });
 
   test("試しの名前を書いたら、名前を一緒に送る", async () => {

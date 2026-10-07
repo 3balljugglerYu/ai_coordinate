@@ -1,8 +1,9 @@
 /**
- * 「本文から名前の欄を作る」道具(docs/planning/name-input-slot-plan.md REQ-009)。
+ * 「本文から文字入力の欄を作る」道具(docs/planning/name-input-slot-plan.md REQ-009)。
  *
- * ChatGPT 向けに書かれたプロンプトの「名前に関する行」(【名前】の見出し・名前の入れ方・
- * 名前の条件の※など)を、名前の欄の目印1つにまとめる。
+ * ChatGPT 向けに書かれたプロンプトの「使う人に入れてもらう文字に関する行」(【名前】の見出し・
+ * 名前や好きな言葉の入れ方・条件の※など)を、文字入力の欄の目印1つにまとめる
+ * (最初は名前専用。2026-10-07 に名前以外の文字にも広げた)。
  *
  * ⭐ 言い換えない(「ガチャに分ける」と同じ作り。gacha-split.ts)。文章の AI には本文を書かせず、
  * 「名前に関する行の番号」だけを返させる。本文はここで「元の行 − 名前の行 + 目印」として組み立てる。
@@ -16,21 +17,22 @@ import { buildNameInputMarker, removeNameInputMarkers, type NameInputSlot } from
 export const NAME_INPUT_CREATE_PERCOIN_COST = 5;
 
 /** 文章の AI に渡す指示。プロンプト本文は別に、行番号を付けて渡す。 */
-export const NAME_INPUT_CREATE_INSTRUCTIONS = `You prepare an image-generation prompt for a "name field".
+export const NAME_INPUT_CREATE_INSTRUCTIONS = `You prepare an image-generation prompt for a "text field".
 
-The user's prompt asks the image AI to draw a character's name (on a name tag, a sign, a caption, etc.).
-Our app will let each user type the name. The server replaces ONE marker with fixed text that tells the image AI
-which name to draw (or, when the user leaves it empty, to draw no name at all).
+The user's prompt asks the image AI to draw some text that each user should choose: a character's name,
+a favorite word or phrase, a four-character idiom, a short message, etc. (on a name tag, a sign, a caption...).
+Our app will let each user type that text. The server replaces ONE marker with fixed text that tells the image AI
+which text to draw (or, when the user leaves it empty, to draw no such text at all).
 
 The prompt is given with line numbers ("L<number>: <text>"). Return nameLines: the numbers of the lines that
 must be replaced by that marker. Include ONLY:
-  - lines that give or ask for the name itself (e.g. "【名前】", "名前：〇〇", "Name: ___", "ここに名前を入れてください"),
-  - lines that tell the AI how to handle the name (keep it exactly, do not translate, what to do when no name is given),
+  - lines that give or ask for that text itself (e.g. "【名前】", "名前：〇〇", "好きな言葉：〇〇", "Name: ___", "ここに文字を入れてください"),
+  - lines that tell the AI how to handle that text (keep it exactly, do not translate, what to do when it is not given),
   - section headings or separators that become empty after the removal.
-Do NOT include lines that describe the drawing itself (outfit, pose, background, where the name tag is), even if they
-mention the word "name" in passing, because removing them would lose the design.
+Do NOT include lines that describe the drawing itself (outfit, pose, background, where the tag or sign is), even if they
+mention the text in passing, because removing them would lose the design.
 
-If the prompt has nothing about a character's name, return an empty array.`;
+If the prompt has nothing about such user-chosen text, return an empty array.`;
 
 /** Responses API の text.format に渡す JSON の形。 */
 export const NAME_INPUT_CREATE_JSON_SCHEMA = {
