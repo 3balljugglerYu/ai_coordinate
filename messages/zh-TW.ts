@@ -1536,10 +1536,9 @@ export const zhTwMessages = {
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "設為轉蛋提示詞",
     gachaGuideLink: "使用方法",
-    promptGimmicksTitle: "提示詞機關",
+    promptGimmicksTitle: "提示詞選項",
     nameInputToggleLabel: "允許輸入名字",
     nameInputDefaultLabel: "角色名字",
-    nameInputLabelSetting: "輸入欄標題（使用者看得到）",
     nameInputPlaceholderSetting: "輸入範例（選填）",
     nameInputPlaceholderExample: "例：佩露可",
     nameInputRequiredSetting: "輸入",

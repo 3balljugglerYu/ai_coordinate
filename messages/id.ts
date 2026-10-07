@@ -1541,10 +1541,9 @@ export const idMessages = {
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Jadikan prompt gacha",
     gachaGuideLink: "Cara pakai",
-    promptGimmicksTitle: "Fitur tambahan prompt",
+    promptGimmicksTitle: "Opsi prompt",
     nameInputToggleLabel: "Izinkan memasukkan nama",
     nameInputDefaultLabel: "Nama karakter",
-    nameInputLabelSetting: "Judul kolom isian (terlihat oleh pengguna)",
     nameInputPlaceholderSetting: "Contoh isian (opsional)",
     nameInputPlaceholderExample: "contoh: Peruko",
     nameInputRequiredSetting: "Isian",

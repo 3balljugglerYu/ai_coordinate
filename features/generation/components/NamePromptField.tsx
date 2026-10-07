@@ -40,7 +40,7 @@ interface NamePromptFieldProps {
 }
 
 /**
- * 見出し・入力例の欄は、打っている途中の文字(空白など)をそのまま持つ。
+ * 入力例の欄は、打っている途中の文字(空白など)をそのまま持つ。
  * 本文の目印は前後の空白を落とすので、目印から読み戻すと空白が打てなくなるため。
  * 本文の目印が外から変わったとき(手で書き換えたなど)だけ、目印の値に合わせ直す。
  */
@@ -60,6 +60,9 @@ function useMarkerTextDraft(markerValue: string) {
  *
  * スイッチのオン・オフは本文の目印 `{{INPUT:見出し}}` の有無そのもの(状態を二重に持たない)。
  * 作る人が本文に目印を手で書いても、ここがオンになる。
+ *
+ * 見出しは既定のまま(作る人は変えられない。見出しの編集はサブスクでできることにする構想。
+ * 2026-10-07 ユーザー決定)。名前だけを扱う。
  */
 export function NamePromptField({
   slot,
@@ -74,7 +77,8 @@ export function NamePromptField({
 }: NamePromptFieldProps) {
   const t = useTranslations("free");
   const enabled = slot !== null;
-  const [labelDraft, setLabelDraft] = useMarkerTextDraft(slot?.label ?? "");
+  // スイッチを切る前の設定(入力例・任意/必須)。オンに戻したら元どおりにする(2026-10-07 ユーザー指示)
+  const [savedSlot, setSavedSlot] = useState<NameInputSlot | null>(null);
   const [placeholderDraft, setPlaceholderDraft] = useMarkerTextDraft(slot?.placeholder ?? "");
   // 赤字は欄から離れてから出す(ガチャの欄と同じ作法。#690)
   const [touched, setTouched] = useState(false);
@@ -101,8 +105,11 @@ export function NamePromptField({
           onCheckedChange={(checked) => {
             setTouched(false);
             if (checked) {
-              onSlotChange({ label: t("nameInputDefaultLabel") || NAME_INPUT_INITIAL_LABEL, required: false });
+              onSlotChange(
+                savedSlot ?? { label: t("nameInputDefaultLabel") || NAME_INPUT_INITIAL_LABEL, required: false },
+              );
             } else {
+              setSavedSlot(slot);
               onDisable();
             }
           }}
@@ -111,22 +118,6 @@ export function NamePromptField({
 
       {slot ? (
         <div className="space-y-3 border-l-2 border-pink-400 pl-3">
-          <div className="space-y-1">
-            <Label htmlFor="name-input-label" className="text-xs font-medium">
-              {t("nameInputLabelSetting")}
-            </Label>
-            <Input
-              id="name-input-label"
-              value={labelDraft}
-              maxLength={NAME_INPUT_LABEL_MAX_LENGTH}
-              disabled={disabled}
-              onChange={(event) => {
-                setLabelDraft(event.target.value);
-                onSlotChange({ ...slot, label: event.target.value });
-              }}
-              className="text-base md:text-sm"
-            />
-          </div>
           <div className="space-y-1">
             <Label htmlFor="name-input-placeholder" className="text-xs font-medium">
               {t("nameInputPlaceholderSetting")}

@@ -1538,10 +1538,9 @@ export const koMessages = {
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "가챠 프롬프트로 만들기",
     gachaGuideLink: "사용 방법",
-    promptGimmicksTitle: "프롬프트 장치",
+    promptGimmicksTitle: "프롬프트 옵션",
     nameInputToggleLabel: "이름을 입력할 수 있게 하기",
     nameInputDefaultLabel: "캐릭터 이름",
-    nameInputLabelSetting: "입력란 제목(사용하는 사람에게 보여요)",
     nameInputPlaceholderSetting: "입력 예시(선택)",
     nameInputPlaceholderExample: "예: 페루코",
     nameInputRequiredSetting: "입력",

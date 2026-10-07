@@ -1540,10 +1540,9 @@ export const hiMessages = {
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "गाचा प्रॉम्प्ट बनाएं",
     gachaGuideLink: "इस्तेमाल का तरीका",
-    promptGimmicksTitle: "प्रॉम्प्ट की खास सुविधाएं",
+    promptGimmicksTitle: "प्रॉम्प्ट विकल्प",
     nameInputToggleLabel: "नाम डालने दें",
     nameInputDefaultLabel: "किरदार का नाम",
-    nameInputLabelSetting: "इनपुट फ़ील्ड का शीर्षक (इस्तेमाल करने वालों को दिखेगा)",
     nameInputPlaceholderSetting: "उदाहरण (वैकल्पिक)",
     nameInputPlaceholderExample: "जैसे: पेरुको",
     nameInputRequiredSetting: "इनपुट",

@@ -1545,7 +1545,6 @@ export const frMessages = {
     promptGimmicksTitle: "Options du prompt",
     nameInputToggleLabel: "Permettre de saisir un nom",
     nameInputDefaultLabel: "Nom du personnage",
-    nameInputLabelSetting: "Titre du champ (visible par les utilisateurs)",
     nameInputPlaceholderSetting: "Exemple (facultatif)",
     nameInputPlaceholderExample: "ex. : Peruko",
     nameInputRequiredSetting: "Saisie",

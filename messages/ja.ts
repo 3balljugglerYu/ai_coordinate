@@ -1495,10 +1495,9 @@ export const jaMessages = {
     gachaToggleLabel: "ガチャプロンプトにする",
     gachaGuideLink: "使い方はこちら",
     // 名前の欄と「プロンプトの仕掛け」の箱(公開前は運営だけ。docs/planning/name-input-slot-plan.md)
-    promptGimmicksTitle: "プロンプトの仕掛け",
+    promptGimmicksTitle: "プロンプトオプション",
     nameInputToggleLabel: "名前を入れられるようにする",
     nameInputDefaultLabel: "キャラクターの名前",
-    nameInputLabelSetting: "入力欄の見出し（使う人に見えます）",
     nameInputPlaceholderSetting: "入力例（任意）",
     nameInputPlaceholderExample: "例：ぺるこ",
     nameInputRequiredSetting: "入力",

@@ -1539,10 +1539,9 @@ export const viMessages = {
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Biến thành prompt gacha",
     gachaGuideLink: "Cách dùng",
-    promptGimmicksTitle: "Tiện ích của prompt",
+    promptGimmicksTitle: "Tùy chọn prompt",
     nameInputToggleLabel: "Cho phép nhập tên",
     nameInputDefaultLabel: "Tên nhân vật",
-    nameInputLabelSetting: "Tiêu đề ô nhập (người dùng sẽ thấy)",
     nameInputPlaceholderSetting: "Ví dụ (không bắt buộc)",
     nameInputPlaceholderExample: "VD: Peruko",
     nameInputRequiredSetting: "Nhập",

@@ -1542,10 +1542,9 @@ export const esMessages = {
     // ガチャプロンプト(公開前は運営だけ)。囲みの文字 {open}/{close} はコードから渡す(ICU の波括弧と衝突するため文言に直接書かない)。全言語訳済み(2026-10-04)
     gachaToggleLabel: "Convertir en prompt gacha",
     gachaGuideLink: "Cómo usarlo",
-    promptGimmicksTitle: "Extras del prompt",
+    promptGimmicksTitle: "Opciones del prompt",
     nameInputToggleLabel: "Permitir escribir un nombre",
     nameInputDefaultLabel: "Nombre del personaje",
-    nameInputLabelSetting: "Título del campo (visible para los usuarios)",
     nameInputPlaceholderSetting: "Ejemplo (opcional)",
     nameInputPlaceholderExample: "p. ej., Peruko",
     nameInputRequiredSetting: "Entrada",

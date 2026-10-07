@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  *
- * カタログをつくる(/free)の「名前を入れられるようにする」と「プロンプトの仕掛け」の箱
+ * カタログをつくる(/free)の「名前を入れられるようにする」と「プロンプトオプション」の箱
  * (docs/planning/name-input-slot-plan.md Phase 2)。スイッチのオン・オフは本文の目印の有無そのもの。
  */
 
@@ -188,7 +188,7 @@ function promptField() {
   return screen.getByLabelText("promptLabel") as HTMLTextAreaElement;
 }
 
-describe("プロンプトの仕掛けの箱", () => {
+describe("プロンプトオプションの箱", () => {
   test("名前もガチャも使えない人には箱ごと出さない", () => {
     renderFreeForm(jest.fn(), { gachaPromptAvailable: false, nameInputAvailable: false });
     expect(screen.queryByTestId("prompt-gimmicks-box")).toBeNull();
@@ -222,31 +222,53 @@ describe("名前を入れられるようにする", () => {
     expect(promptField().value).not.toContain("{{INPUT");
   });
 
-  test("本文に目印を手で書くとスイッチがオンになり、設定に見出しが出る", () => {
+  test("本文に目印を手で書くとスイッチがオンになり、設定に入力例が出る", () => {
     renderNameForm(jest.fn());
     fireEvent.change(promptField(), { target: { value: "診断\n{{INPUT*:うちの子|例：ぺるこ}}" } });
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("true");
-    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("うちの子");
     expect((screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement).value).toBe("例：ぺるこ");
   });
 
-  test("見出し・入力例・必須を変えると、本文の目印も書き換わる", async () => {
+  test("見出しの欄は出さない(見出しの編集は今回不要。2026-10-07 ユーザー決定)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    expect(document.getElementById("name-input-label")).toBeNull();
+  });
+
+  test("入力例・必須を変えると、本文の目印も書き換わる(見出しはそのまま)", async () => {
     const user = userEvent.setup();
     renderNameForm(jest.fn());
-    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}\n診断" } });
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:うちの子}}\n診断" } });
 
-    fireEvent.change(screen.getByLabelText("nameInputLabelSetting"), { target: { value: "うちの子" } });
     fireEvent.change(screen.getByLabelText("nameInputPlaceholderSetting"), { target: { value: "ぺるこ" } });
     await user.click(screen.getByRole("button", { name: "nameInputRequiredOption" }));
 
     expect(promptField().value).toBe("{{INPUT*:うちの子|ぺるこ}}\n診断");
   });
 
-  test("見出しを消しても、書き直せる(既定の見出しで埋めない)", () => {
-    renderNameForm(jest.fn());
-    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
-    fireEvent.change(screen.getByLabelText("nameInputLabelSetting"), { target: { value: "" } });
-    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("");
+  test("スイッチを切っても設定と試しの名前を残し、オンに戻すと元どおり(2026-10-07 ユーザー指示)", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    renderNameForm(onSubmit);
+    await fillBodyAndImage(user);
+    await user.click(nameSwitch()!);
+    fireEvent.change(screen.getByLabelText("nameInputPlaceholderSetting"), { target: { value: "ぺるこ" } });
+    await user.click(screen.getByRole("button", { name: "nameInputRequiredOption" }));
+    fireEvent.change(screen.getByLabelText("nameInputTrialLabel"), { target: { value: "みけ" } });
+    const marker = promptField().value.split("\n")[0];
+
+    await user.click(nameSwitch()!);
+    expect(promptField().value).not.toContain("{{INPUT");
+    // 切っている間は名前を送らない
+    await user.click(screen.getByTestId("mock-submit"));
+    expect(onSubmit.mock.calls[0][0].nameInput).toBeUndefined();
+
+    await user.click(nameSwitch()!);
+    expect(promptField().value.split("\n")[0]).toBe(marker);
+    expect(marker).toContain("{{INPUT*:");
+    expect(marker).toContain("|ぺるこ}}");
+    expect((screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement).value).toBe("ぺるこ");
+    expect((screen.getByLabelText("nameInputTrialLabel") as HTMLInputElement).value).toBe("みけ");
   });
 
   test("試しの名前を書いたら、名前を一緒に送る", async () => {
@@ -309,22 +331,22 @@ describe("名前を入れられるようにする", () => {
 });
 
 describe("名前の欄: code-review の指摘への対応", () => {
-  test("見出しと入力例に空白を打てる(本文の目印は前後の空白を落とす)", () => {
+  test("入力例に空白を打てる(本文の目印は前後の空白を落とす)", () => {
     renderNameForm(jest.fn());
     fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
-    const label = screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement;
-    fireEvent.change(label, { target: { value: "Character " } });
-    expect(label.value).toBe("Character ");
-    fireEvent.change(label, { target: { value: "Character name" } });
-    expect(label.value).toBe("Character name");
-    expect(promptField().value).toBe("{{INPUT:Character name}}");
+    const example = screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement;
+    fireEvent.change(example, { target: { value: "Peru " } });
+    expect(example.value).toBe("Peru ");
+    fireEvent.change(example, { target: { value: "Peru ko" } });
+    expect(example.value).toBe("Peru ko");
+    expect(promptField().value).toBe("{{INPUT:名前|Peru ko}}");
   });
 
-  test("本文の目印を手で書き換えたら、見出しの欄も合わせる", () => {
+  test("本文の目印を手で書き換えたら、入力例の欄も合わせる", () => {
     renderNameForm(jest.fn());
-    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
-    fireEvent.change(promptField(), { target: { value: "{{INPUT:うちの子}}" } });
-    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("うちの子");
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前|a}}" } });
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前|ぺるこ}}" } });
+    expect((screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement).value).toBe("ぺるこ");
   });
 
   test("名前の欄が2つあると、知らせて送れない(サーバーと同じ数え方)", async () => {
