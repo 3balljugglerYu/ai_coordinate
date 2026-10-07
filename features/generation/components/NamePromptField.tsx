@@ -12,7 +12,7 @@ import {
   buildNameInputMarker,
   checkNameInputValue,
   NAME_INPUT_DEFAULT_LABEL,
-  NAME_INPUT_INITIAL_LABEL,
+  NAME_INPUT_HINT_MAX_LENGTH,
   NAME_INPUT_LABEL_MAX_LENGTH,
   NAME_INPUT_MAX_LENGTH,
   NAME_INPUT_MAX_SLOTS,
@@ -129,9 +129,9 @@ export function NamePromptField({
           onCheckedChange={(checked) => {
             setTouched(false);
             if (checked) {
-              onSlotChange(
-                savedSlot ?? { label: t("nameInputDefaultLabel") || NAME_INPUT_INITIAL_LABEL, required: false },
-              );
+              // ラベルは空から始める(何を入れてもらうかを作る人が決める。2026-10-07 ユーザー決定 案A)。
+              // 空のままなら「名前」として扱う(使う人の欄・AI への固定文とも)
+              onSlotChange(savedSlot ?? { label: "", required: false });
             } else {
               setSavedSlot(slot);
               onDisable();
@@ -172,7 +172,7 @@ export function NamePromptField({
             <Input
               id="name-input-placeholder"
               value={placeholderDraft}
-              maxLength={NAME_INPUT_LABEL_MAX_LENGTH}
+              maxLength={NAME_INPUT_HINT_MAX_LENGTH}
               disabled={disabled}
               placeholder={t("nameInputPlaceholderExample")}
               onChange={(event) => {
@@ -221,7 +221,8 @@ export function NamePromptField({
               id="name-input-trial"
               value={trialName}
               disabled={disabled}
-              placeholder={slot?.placeholder ?? ""}
+              // 入力のヒントは「例：」を付けて見せる(使う人の欄と同じ)
+              placeholder={slot?.placeholder ? t("nameInputHintDisplay", { hint: slot.placeholder }) : ""}
               onValueChange={onTrialNameChange}
               onBlur={() => setTouched(true)}
               aria-invalid={showAsError}

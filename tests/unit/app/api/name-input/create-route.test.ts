@@ -67,7 +67,7 @@ describe("POST /api/name-input/create", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       original: "野菜のドレスを着たキャラクターを描く。\n【名前】〇〇\n※名前はそのまま胸元の名札に表示する",
-      body: "野菜のドレスを着たキャラクターを描く。\n{{INPUT*:うちの子|例：ぺるこ}}",
+      body: "野菜のドレスを着たキャラクターを描く。\n{{INPUT*:うちの子|ぺるこ}}",
       removedLines: [2, 3],
       balance: 95,
     });

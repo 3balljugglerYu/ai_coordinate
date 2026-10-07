@@ -10,6 +10,7 @@ import { FREE_GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-valid
 import {
   NAME_INPUT_DEFAULT_LABEL,
   NAME_INPUT_LABEL_MAX_LENGTH,
+  normalizeNameInputHint,
   type NameInputSlot,
 } from "@/shared/generation/name-input";
 import {
@@ -91,11 +92,11 @@ function readSlot(value: unknown): NameInputSlot {
   const record = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   const label =
     typeof record.label === "string"
-      ? record.label.slice(0, NAME_INPUT_LABEL_MAX_LENGTH)
+      ? [...record.label].slice(0, NAME_INPUT_LABEL_MAX_LENGTH).join("")
       : NAME_INPUT_DEFAULT_LABEL;
   const placeholder =
     typeof record.placeholder === "string" && record.placeholder.trim()
-      ? record.placeholder.slice(0, NAME_INPUT_LABEL_MAX_LENGTH)
+      ? normalizeNameInputHint(record.placeholder)
       : undefined;
   return {
     label: label.trim() ? label : NAME_INPUT_DEFAULT_LABEL,

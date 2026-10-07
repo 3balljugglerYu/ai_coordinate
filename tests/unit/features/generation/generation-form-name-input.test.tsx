@@ -216,7 +216,7 @@ describe("名前を入れられるようにする", () => {
 
     await user.click(nameSwitch()!);
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("true");
-    expect(promptField().value.startsWith("{{INPUT:nameInputDefaultLabel}}\n")).toBe(true);
+    expect(promptField().value.startsWith("{{INPUT:}}\n")).toBe(true);
 
     await user.click(nameSwitch()!);
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("false");
@@ -235,7 +235,7 @@ describe("名前を入れられるようにする", () => {
     await fillBodyAndImage(user);
     await user.click(nameSwitch()!);
     expect(screen.queryByRole("button", { name: /nameInputRequiredOption/ })).toBeNull();
-    expect(promptField().value.startsWith("{{INPUT:nameInputDefaultLabel}}\n")).toBe(true);
+    expect(promptField().value.startsWith("{{INPUT:}}\n")).toBe(true);
     expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false);
   });
 
@@ -243,8 +243,8 @@ describe("名前を入れられるようにする", () => {
     renderNameForm(jest.fn());
     fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}\n看板に書く" } });
     fireEvent.change(screen.getByLabelText("nameInputLabelSetting"), { target: { value: "好きな言葉" } });
-    fireEvent.change(screen.getByLabelText("nameInputPlaceholderSetting"), { target: { value: "例：一期一会" } });
-    expect(promptField().value).toBe("{{INPUT:好きな言葉|例：一期一会}}\n看板に書く");
+    fireEvent.change(screen.getByLabelText("nameInputPlaceholderSetting"), { target: { value: "一期一会" } });
+    expect(promptField().value).toBe("{{INPUT:好きな言葉|一期一会}}\n看板に書く");
   });
 
   test("入力例には、何のことかの説明を添える(「入力例」だけでは伝わらない。2026-10-07 ユーザー指示)", () => {
@@ -302,7 +302,7 @@ describe("名前を入れられるようにする", () => {
 
     await user.click(screen.getByTestId("mock-submit"));
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ nameInput: "ぺるこ", generationType: "free" });
-    expect(onSubmit.mock.calls[0][0].prompt).toContain("{{INPUT:nameInputDefaultLabel}}");
+    expect(onSubmit.mock.calls[0][0].prompt).toContain("{{INPUT:}}");
   });
 
   test("試しの名前が空なら名前は送らない(サーバーで「名前なし」になる)", async () => {
@@ -389,14 +389,15 @@ describe("カタログから使う人の名前の欄(派生生成)", () => {
   const lockedProps = (required: boolean) => ({
     promptLocked: true,
     sourcePostId: SOURCE,
-    lockedNameInput: { label: "うちの子", placeholder: "例：ぺるこ", required },
+    lockedNameInput: { label: "うちの子", placeholder: "ぺるこ", required },
   });
 
   test("画像の下に、作る人が決めた見出しで名前の欄を出す", () => {
     renderNameForm(jest.fn(), lockedProps(false));
     const field = screen.getByTestId("name-input-entry");
     expect(field.textContent).toContain("nameInputEntryOptionalLabel");
-    expect((screen.getByLabelText("nameInputEntryOptionalLabel") as HTMLInputElement).placeholder).toBe("例：ぺるこ");
+    // 入力のヒントには「例：」を付けて見せる(nameInputHintDisplay)
+    expect((screen.getByLabelText("nameInputEntryOptionalLabel") as HTMLInputElement).placeholder).toBe("nameInputHintDisplay");
     // 作る人の「プロンプトの仕掛け」の箱は出さない
     expect(screen.queryByTestId("prompt-gimmicks-box")).toBeNull();
   });
@@ -505,6 +506,36 @@ describe("文字入力: code-review の指摘への対応(2026-10-07)", () => {
       target: { value: "{{GACHA}}\n1. 医師 {{INPUT:座右の銘}}\n2. 探偵\n{{/GACHA}}" },
     });
     expect(lastTrialLabel()).toBe("座右の銘");
+  });
+});
+
+describe("ラベルは空から始める(2026-10-07 ユーザー決定 案A)", () => {
+  test("オンにすると空のラベルで目印が入り、欄にはうすい灰色の例と、空欄なら「名前」になる説明を出す", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn());
+    await fillBodyAndImage(user);
+    await user.click(nameSwitch()!);
+    const label = screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement;
+    expect(label.value).toBe("");
+    expect(label.placeholder).toBe("nameInputLabelExample");
+    expect(document.getElementById(label.getAttribute("aria-describedby")!)?.textContent).toBe("nameInputLabelHelp");
+    expect(promptField().value.startsWith("{{INPUT:}}\n")).toBe(true);
+  });
+});
+
+describe("ラベル15文字・入力のヒント8文字(2026-10-07 ユーザー決定)", () => {
+  test("作る人の欄の上限", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:名前}}" } });
+    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).maxLength).toBe(15);
+    expect((screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement).maxLength).toBe(8);
+  });
+
+  test("作る人の試しの欄にも、入力のヒントを「例：」付きで見せる", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:言葉|一期一会}}" } });
+    expect((screen.getByLabelText("nameInputTrialLabel") as HTMLInputElement).placeholder).toBe("nameInputHintDisplay");
+    expect(stableTranslate).toHaveBeenCalledWith("nameInputHintDisplay", { hint: "一期一会" });
   });
 });
 

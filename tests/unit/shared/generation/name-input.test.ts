@@ -4,6 +4,8 @@ import {
   checkNameInputValue,
   countReachableNameInputSlots,
   describeNameInputForUsers,
+  normalizeNameInputHint,
+  NAME_INPUT_LABEL_MAX_LENGTH,
   exceedsNameInputSlotLimit,
   expandNameInput,
   hasGuaranteedRequiredNameInput,
@@ -154,7 +156,7 @@ describe("ガチャと一緒に使ったときの数え方(Worker はガチャ�
 describe("作る人の画面: 目印の入れ替え", () => {
   test("入力例は | の後ろに書く", () => {
     expect(parseNameInputSlots("{{INPUT:うちの子|例：ぺるこ}}")).toEqual([
-      { label: "うちの子", required: false, placeholder: "例：ぺるこ" },
+      { label: "うちの子", required: false, placeholder: "ぺるこ" },
     ]);
     expect(buildNameInputMarker({ label: "うちの子", required: true, placeholder: "ぺるこ" })).toBe(
       "{{INPUT*:うちの子|ぺるこ}}",
@@ -186,7 +188,7 @@ describe("使う人に見せる名前の欄(本文は含めない)", () => {
   test("囲みの外の最初の欄の見出し・入力例・必須", () => {
     expect(describeNameInputForUsers("本文 {{INPUT*:うちの子|例：ぺるこ}}")).toEqual({
       label: "うちの子",
-      placeholder: "例：ぺるこ",
+      placeholder: "ぺるこ",
       required: true,
     });
   });
@@ -224,6 +226,23 @@ describe("名前以外の文字(2026-10-07 汎用化)", () => {
     expect(expandNameInput("{{INPUT:}}", "a").prompt).toContain("【名前】「a」");
     expect(buildNameProvidedText("a", "【言葉】")).toContain("【言葉】「a」");
     expect(buildNameNotProvidedText("【】")).toContain("【名前】未入力");
+  });
+});
+
+describe("ラベル・入力のヒントの長さ(2026-10-07 ユーザー決定)", () => {
+  test("ラベルは15文字まで(見た目の1文字で数える)", () => {
+    expect(NAME_INPUT_LABEL_MAX_LENGTH).toBe(15);
+    const label = "あ".repeat(14) + "😺" + "い";
+    expect(parseNameInputSlots(`{{INPUT:${label}}}`)[0].label).toBe("あ".repeat(14) + "😺");
+    expect(expandNameInput(`{{INPUT:${label}}}`, "x").prompt).toContain(`【${"あ".repeat(14)}😺】「x」`);
+  });
+
+  test("入力のヒントは入れられる文字と同じ8文字まで。手書きの「例：」は外す", () => {
+    expect(normalizeNameInputHint("一二三四五六七八九")).toBe("一二三四五六七八");
+    expect(normalizeNameInputHint(" 例：一期一会 ")).toBe("一期一会");
+    expect(normalizeNameInputHint("例: ぺるこ")).toBe("ぺるこ");
+    expect(normalizeNameInputHint("例えば")).toBe("例えば");
+    expect(parseNameInputSlots("{{INPUT:言葉|例：一期一会}}")[0].placeholder).toBe("一期一会");
   });
 });
 
