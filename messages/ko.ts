@@ -2296,10 +2296,11 @@ export const koMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "프롬프트에 문자 입력을 추가하세요!",
+    metaTitle: "일러스트에 글자를 넣어 보자!",
     metaDescription: "프롬프트에 문자 입력란을 마련하면, 사용하는 사람이 넣은 이름이나 좋아하는 말이 그대로 이미지에 들어갑니다. 만드는 법과 사용법을 실제 화면으로 소개합니다.",
     heroBadge: "NEW",
-    heroTitle: "프롬프트에\n문자 입력을 추가하세요!",
+    heroTitle: "일러스트에
+글자를 넣어 보자!",
     heroQuestion: "우리 아이의 이름이나 좋아하는 말을 이미지 속에 넣고 싶다고 생각한 적 없으신가요?",
     heroLead: "만드는 사람이 문자 입력란을 마련하면, 사용하는 사람이 넣은 문자가 그대로 이미지에 들어갑니다.",
     heroCompareLabel: "사용하는 사람마다",

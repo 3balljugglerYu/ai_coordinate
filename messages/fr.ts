@@ -2302,10 +2302,11 @@ export const frMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "Ajoutez une saisie de texte à vos prompts !",
+    metaTitle: "Ajoutez du texte à vos illustrations !",
     metaDescription: "Ajoutez un champ de texte à votre prompt : le nom ou le mot préféré saisi par chaque personne apparaît tel quel dans l’image. Découvrez comment le créer et l’utiliser avec de vrais écrans.",
     heroBadge: "NEW",
-    heroTitle: "Ajoutez une saisie de texte\nà vos prompts !",
+    heroTitle: "Ajoutez du texte
+à vos illustrations !",
     heroQuestion: "Avez-vous déjà eu envie de mettre le nom de votre personnage ou un mot préféré dans l’image ?",
     heroLead: "Quand l’auteur du prompt ajoute un champ de texte, le texte saisi par chaque personne apparaît tel quel dans l’image.",
     heroCompareLabel: "Chaque personne,",

@@ -2297,10 +2297,11 @@ export const viMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "Thêm ô nhập chữ vào prompt của bạn!",
+    metaTitle: "Thêm chữ vào tranh minh họa nào!",
     metaDescription: "Thêm ô nhập chữ vào prompt, tên hoặc từ yêu thích mà mỗi người nhập sẽ xuất hiện nguyên vẹn trong ảnh. Giới thiệu cách tạo và cách dùng qua màn hình thực tế.",
     heroBadge: "NEW",
-    heroTitle: "Thêm ô nhập chữ\nvào prompt của bạn!",
+    heroTitle: "Thêm chữ
+vào tranh minh họa nào!",
     heroQuestion: "Bạn đã bao giờ muốn đưa tên nhân vật của mình hay một từ yêu thích vào trong ảnh chưa?",
     heroLead: "Khi người tạo prompt thêm ô nhập chữ, chữ mà mỗi người dùng nhập sẽ xuất hiện nguyên vẹn trong ảnh.",
     heroCompareLabel: "Mỗi người dùng,",

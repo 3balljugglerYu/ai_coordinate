@@ -2300,10 +2300,11 @@ export const idMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "Tambahkan input teks ke prompt kamu!",
+    metaTitle: "Tambahkan teks ke ilustrasimu!",
     metaDescription: "Tambahkan kolom teks ke prompt kamu, dan nama atau kata favorit yang dimasukkan setiap pengguna akan muncul apa adanya di gambar. Lihat cara membuat dan menggunakannya dengan layar asli.",
     heroBadge: "NEW",
-    heroTitle: "Tambahkan input teks\nke prompt kamu!",
+    heroTitle: "Tambahkan teks
+ke ilustrasimu!",
     heroQuestion: "Pernahkah kamu ingin memasukkan nama karaktermu atau kata favorit ke dalam gambar?",
     heroLead: "Saat pembuat prompt menambahkan kolom teks, teks yang dimasukkan setiap pengguna akan muncul apa adanya di gambar.",
     heroCompareLabel: "Setiap pengguna,",

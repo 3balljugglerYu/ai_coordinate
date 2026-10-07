@@ -2302,10 +2302,11 @@ export const deMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "Füge deinen Prompts eine Texteingabe hinzu!",
+    metaTitle: "Füge deinen Illustrationen Text hinzu!",
     metaDescription: "Füge deinem Prompt ein Textfeld hinzu – der Name oder das Lieblingswort, das jede Person eingibt, erscheint unverändert im Bild. Wir zeigen anhand echter Bildschirme, wie du es erstellst und nutzt.",
     heroBadge: "NEW",
-    heroTitle: "Füge deinen Prompts\neine Texteingabe hinzu!",
+    heroTitle: "Füge deinen Illustrationen
+Text hinzu!",
     heroQuestion: "Wolltest du schon einmal den Namen deines Charakters oder ein Lieblingswort ins Bild bringen?",
     heroLead: "Wenn die Person, die den Prompt erstellt, ein Textfeld hinzufügt, erscheint der eingegebene Text jeder Person unverändert im Bild.",
     heroCompareLabel: "Jede Person,",

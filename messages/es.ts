@@ -2301,10 +2301,11 @@ export const esMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "¡Añade entrada de texto a tus prompts!",
+    metaTitle: "¡Añade texto a tus ilustraciones!",
     metaDescription: "Añade un campo de texto a tu prompt y el nombre o la palabra favorita que escriba cada persona aparecerá tal cual en la imagen. Te mostramos cómo crearlo y usarlo con pantallas reales.",
     heroBadge: "NEW",
-    heroTitle: "¡Añade entrada de texto\na tus prompts!",
+    heroTitle: "¡Añade texto
+a tus ilustraciones!",
     heroQuestion: "¿Alguna vez has querido poner el nombre de tu personaje o una palabra favorita dentro de la imagen?",
     heroLead: "Cuando quien crea el prompt añade un campo de texto, el texto que escribe cada persona aparece tal cual en la imagen.",
     heroCompareLabel: "Cada persona,",

@@ -2264,10 +2264,11 @@ export const jaMessages = {
   },
   // 文字入力の紹介ページ(/guide/text)。docs/planning/name-input-slot-plan.md Phase 6
   textGuide: {
-    metaTitle: "プロンプトに文字入力を追加！",
+    metaTitle: "イラストに文字を追加しよう！",
     metaDescription: "プロンプトに文字入力の欄を用意すると、使う人が入れた名前や好きな言葉が、そのまま画像に入ります。作り方と使い方を、実際の画面で紹介します。",
     heroBadge: "NEW",
-    heroTitle: "プロンプトに\n文字入力を追加！",
+    heroTitle: "イラストに
+文字を追加しよう！",
     heroQuestion: "うちの子の名前や、好きな言葉を、画像の中に入れたいと思ったことはありませんか？",
     heroLead: "作る人が文字入力の欄を用意すると、使う人が入れた文字が、そのまま画像に入ります。",
     heroCompareLabel: "使う人ごとに",
