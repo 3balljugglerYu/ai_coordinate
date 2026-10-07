@@ -146,8 +146,9 @@ export function GachaPromptField({
         />
       </div>
 
+      {/* 左の線は名前の欄と同じピンク(2026-10-07 ユーザー指示) */}
       {enabled ? (
-        <div className="space-y-2 border-l-2 border-primary/40 pl-3">
+        <div className="space-y-2 border-l-2 border-pink-400 pl-3">
           <Label htmlFor="gacha-prompt-field" className="text-sm font-medium">
             {t("gachaFieldLabel")}
           </Label>
