@@ -1559,6 +1559,8 @@ export const idMessages = {
     nameInputInvalidCharacters: "Berisi karakter yang tidak dapat digunakan (seperti kurung kurawal atau baris baru).",
     nameInputRequiredMissing: "Prompt ini wajib diisi teks. Silakan masukkan.",
     nameInputTooManySlots: "Satu prompt dapat memiliki maksimal {max} kolom teks.",
+    gachaTextExclusiveNote: "Kamu hanya bisa memakai salah satu: gacha atau input teks (memakai keduanya bersamaan akan tersedia nanti).",
+    gachaTextTogetherError: "Gacha dan input teks tidak bisa dipakai bersamaan. Gunakan salah satu saja (memakai keduanya bersamaan akan tersedia nanti).",
     nameInputEntryOptionalLabel: "{label} (opsional)",
     nameInputEntryRequiredHint: "Maksimal {max} karakter. Teks ini akan muncul di gambar.",
     nameInputCreateDescription: "AI mencari baris tentang teks yang perlu dimasukkan pengguna (seperti nama) dari prompt di “Yang ingin dibuat”, lalu menggabungkannya menjadi satu kolom teks. {cost} Percoin hanya digunakan jika berhasil.",

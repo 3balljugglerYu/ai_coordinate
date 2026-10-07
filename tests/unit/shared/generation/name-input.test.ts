@@ -16,6 +16,7 @@ import {
   parseNameInputSlots,
   removeNameInputMarkers,
   upsertNameInputMarker,
+  usesGachaWithNameInput,
 } from "@/shared/generation/name-input";
 
 const PROMPT = [
@@ -243,6 +244,17 @@ describe("ラベル・入力のヒントの長さ(2026-10-07 ユーザー決定)
     expect(normalizeNameInputHint("例: ぺるこ")).toBe("ぺるこ");
     expect(normalizeNameInputHint("例えば")).toBe("例えば");
     expect(parseNameInputSlots("{{INPUT:言葉|例：一期一会}}")[0].placeholder).toBe("一期一会");
+  });
+});
+
+describe("ガチャと文字入力を一緒に使っているか(一般はどちらか1つ。2026-10-07)", () => {
+  test.each([
+    ["文字入力だけ", "猫 {{INPUT:名前}}", false],
+    ["ガチャだけ", "{{GACHA}}\n1. a\n2. b\n{{/GACHA}}", false],
+    ["本文に文字入力＋ガチャ", "{{INPUT:名前}}\n{{GACHA}}\n1. a\n2. b\n{{/GACHA}}", true],
+    ["候補の中に文字入力", "{{GACHA}}\n1. a {{INPUT:x}}\n2. b\n{{/GACHA}}", true],
+  ])("%s → %s", (_label, prompt, expected) => {
+    expect(usesGachaWithNameInput(prompt)).toBe(expected);
   });
 });
 

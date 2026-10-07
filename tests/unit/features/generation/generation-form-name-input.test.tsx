@@ -368,10 +368,10 @@ describe("名前の欄: code-review の指摘への対応", () => {
     await waitFor(() => expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false));
   });
 
-  test("目印がガチャの欄にだけあっても、試しの名前を入れて送れる", async () => {
+  test("目印がガチャの欄にだけあっても、試しの名前を入れて送れる(一緒に使えるのは運営だけ)", async () => {
     const user = userEvent.setup();
     const onSubmit = jest.fn();
-    renderNameForm(onSubmit, { gachaPromptAvailable: true });
+    renderNameForm(onSubmit, { gachaPromptAvailable: true, nameInputUnlimited: true });
     await fillBodyAndImage(user);
     await user.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
     fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
@@ -536,6 +536,47 @@ describe("ラベル15文字・入力のヒント8文字(2026-10-07 ユーザー�
     fireEvent.change(promptField(), { target: { value: "{{INPUT:言葉|一期一会}}" } });
     expect((screen.getByLabelText("nameInputTrialLabel") as HTMLInputElement).placeholder).toBe("nameInputHintDisplay");
     expect(stableTranslate).toHaveBeenCalledWith("nameInputHintDisplay", { hint: "一期一会" });
+  });
+});
+
+describe("ガチャと文字入力は、一般はどちらか1つだけ(2026-10-07 ユーザー決定)", () => {
+  test("ガチャをオンにすると、文字入力のスイッチは押せず、理由を出す", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true });
+    await user.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
+    expect(nameSwitch()).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("name-input-locked-reason").textContent).toBe("gachaTextExclusiveNote");
+  });
+
+  test("文字入力をオンにすると、ガチャのスイッチは押せず、理由を出す", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true });
+    await user.click(nameSwitch()!);
+    expect(screen.getByRole("switch", { name: "gachaToggleLabel" })).toHaveProperty("disabled", true);
+    expect(screen.getByTestId("gacha-locked-reason").textContent).toBe("gachaTextExclusiveNote");
+  });
+
+  test("ガチャの欄に目印を手で書いて一緒になったら、知らせて送れない", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true });
+    await fillBodyAndImage(user);
+    await user.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
+    fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
+      target: { value: "{{GACHA}}\n1. 医師 {{INPUT:名前}}\n2. 探偵\n{{/GACHA}}" },
+    });
+    expect(screen.getByTestId("gacha-text-conflict").textContent).toBe("gachaTextTogetherError");
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
+  test("運営は一緒に使える(どちらのスイッチも押せる)", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true, nameInputUnlimited: true });
+    await user.click(nameSwitch()!);
+    const gacha = screen.getByRole("switch", { name: "gachaToggleLabel" });
+    expect(gacha).toHaveProperty("disabled", false);
+    await user.click(gacha);
+    expect(screen.queryByTestId("gacha-text-conflict")).toBeNull();
+    expect(screen.queryByTestId("gacha-locked-reason")).toBeNull();
   });
 });
 

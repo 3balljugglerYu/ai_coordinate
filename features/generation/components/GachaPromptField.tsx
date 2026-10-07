@@ -37,6 +37,11 @@ interface GachaPromptFieldProps {
   validation: GachaFieldValidation | null;
   disabled?: boolean;
   /**
+   * スイッチを押せないときの理由(文字入力をオンにしている間。一般の利用者はどちらか1つだけ)。
+   * あると、オフの間はスイッチを押せなくし、理由をその下に出す。
+   */
+  lockedReason?: string;
+  /**
    * 「ガチャに分ける」道具。渡されたときだけ出す(公開前は運営だけ)。
    * prompt は今の本文、onApply は本文と候補欄の書き換え。
    */
@@ -62,6 +67,7 @@ export function GachaPromptField({
   onChange,
   validation,
   disabled = false,
+  lockedReason,
   split,
   fieldLocked = false,
 }: GachaPromptFieldProps) {
@@ -142,9 +148,14 @@ export function GachaPromptField({
             if (!checked) setTouched(false);
             onEnabledChange(checked);
           }}
-          disabled={disabled}
+          disabled={disabled || (!enabled && !!lockedReason)}
         />
       </div>
+      {!enabled && lockedReason ? (
+        <p className="text-xs text-gray-500" data-testid="gacha-locked-reason">
+          {lockedReason}
+        </p>
+      ) : null}
 
       {/* 左の線は名前の欄と同じピンク(2026-10-07 ユーザー指示) */}
       {enabled ? (

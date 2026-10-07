@@ -46,6 +46,7 @@ import {
   NAME_INPUT_MAX_SLOTS,
   hasGuaranteedRequiredNameInput,
   nameInputMaxSlotsFor,
+  usesGachaWithNameInput,
 } from "@/shared/generation/name-input";
 import {
   findGachaLimitViolation,
@@ -193,6 +194,18 @@ export async function postGenerateAsyncRoute(
         "GENERATION_NAME_INPUT_TOO_MANY_SLOTS",
         400
       );
+    }
+    // ガチャと文字入力は、一般の利用者はどちらか1つだけ(一緒に使えるのはサブスクの構想。
+    // 2026-10-07 ユーザー決定)。画面では片方をオンにするともう片方が押せないが、直接送られたときもここで止める。
+    // 運営はテストのため制限しない。見るのは本人が送ったプロンプトだけ。
+    // 文字入力を使えない人(公開前の一般の利用者)には出さない(目印は「文字なし」に置き換わるだけ)
+    if (
+      prompt &&
+      isNameInputAvailable(user.id) &&
+      !isAdminViewer(user.id) &&
+      usesGachaWithNameInput(prompt)
+    ) {
+      return jsonError(copy.gachaWithTextInput, "GENERATION_GACHA_WITH_TEXT_INPUT", 400);
     }
     // 名前は、名前の欄を使える人のものだけを受け取る(使えない人の名前は捨て、目印は「名前なし」になる)
     const acceptedName =

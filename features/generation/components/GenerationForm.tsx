@@ -26,6 +26,7 @@ import {
   hasGuaranteedRequiredNameInput,
   nameInputMaxSlotsFor,
   parseNameInputSlots,
+  usesGachaWithNameInput,
   removeNameInputMarkers,
   upsertNameInputMarker,
   type NameInputForUsers,
@@ -337,6 +338,22 @@ export function GenerationForm({
   const hasTooManyNameSlots =
     canUseNameInput &&
     exceedsNameInputSlotLimit(nameCheckedPrompt, nameInputMaxSlotsFor(nameInputUnlimited));
+  /*
+    ガチャと文字入力は、一般の利用者はどちらか1つだけ(一緒に使えるのはサブスクの構想。2026-10-07
+    ユーザー決定)。片方をオンにしている間は、もう片方のスイッチを押せなくして理由を出す。
+    運営は制限しない(テストのため)。受付(generate-async)でも同じく止める
+  */
+  const canCombineGachaAndText = nameInputUnlimited;
+  const exclusiveNote =
+    canUseGacha && canUseNameInput && !canCombineGachaAndText ? freeT("gachaTextExclusiveNote") : undefined;
+  const nameSwitchLockedReason = isGachaActive ? exclusiveNote : undefined;
+  const gachaSwitchLockedReason = nameSlot !== null ? exclusiveNote : undefined;
+  // 手で目印を書くなどして、それでも一緒になったときは送らせない(受付で断られるため)
+  const hasGachaTextConflict =
+    canUseNameInput &&
+    isGachaActive &&
+    !canCombineGachaAndText &&
+    usesGachaWithNameInput(nameCheckedPrompt);
   const [trialName, setTrialName] = useState("");
   const trialNameCheck = checkNameInputValue(trialName);
   // 派生生成(カタログから使う)の名前の欄。作る人の試しの名前と同じ state を使う
@@ -344,6 +361,7 @@ export function GenerationForm({
   const isNameInputInvalid = showsLockedNameInput
     ? !trialNameCheck.ok || (lockedNameInput!.required && !trialNameCheck.value)
     : hasTooManyNameSlots ||
+      hasGachaTextConflict ||
       (hasReachableNameSlot &&
         (!trialNameCheck.ok || (isNameRequiredGuaranteed && !trialNameCheck.value)));
 
@@ -894,6 +912,7 @@ export function GenerationForm({
                 }
                 requiredGuaranteed={isNameRequiredGuaranteed}
                 tooManySlots={hasTooManyNameSlots}
+                lockedReason={nameSwitchLockedReason}
                 createTool={{
                   prompt,
                   onApply: setPrompt,
@@ -928,7 +947,13 @@ export function GenerationForm({
                     : undefined
                 }
                 fieldLocked={isSplitProposalOpen}
+                lockedReason={gachaSwitchLockedReason}
               />
+            ) : null}
+            {hasGachaTextConflict ? (
+              <p className="text-xs text-red-600" role="alert" data-testid="gacha-text-conflict">
+                {freeT("gachaTextTogetherError")}
+              </p>
             ) : null}
           </PromptGimmicksBox>
         ) : null}

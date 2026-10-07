@@ -1556,6 +1556,8 @@ export const koMessages = {
     nameInputInvalidCharacters: "사용할 수 없는 문자가 포함되어 있습니다(중괄호나 줄바꿈 등).",
     nameInputRequiredMissing: "이 프롬프트는 텍스트 입력이 필수입니다. 입력해 주세요.",
     nameInputTooManySlots: "텍스트 입력란은 프롬프트 하나에 {max}개까지입니다.",
+    gachaTextExclusiveNote: "가챠와 문자 입력은 둘 중 하나만 사용할 수 있습니다(함께 사용하는 기능은 앞으로 제공할 예정입니다).",
+    gachaTextTogetherError: "가챠와 문자 입력은 함께 사용할 수 없습니다. 하나만 사용해 주세요(함께 사용하는 기능은 앞으로 제공할 예정입니다).",
     nameInputEntryOptionalLabel: "{label}(선택)",
     nameInputEntryRequiredHint: "{max}자까지. 이 글자가 이미지에 들어갑니다.",
     nameInputCreateDescription: "‘생성하고 싶은 내용’에 적힌 프롬프트에서 AI가 사용하는 사람이 입력할 글자(이름 등)에 관한 줄을 찾아 텍스트 입력란 하나로 정리합니다. 만들어졌을 때만 {cost} 페르코인을 사용합니다.",
