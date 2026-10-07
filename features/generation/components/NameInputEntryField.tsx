@@ -46,7 +46,8 @@ export function NameInputEntryField({ slot, value, onChange, disabled = false }:
         id="name-input-entry"
         value={value}
         disabled={disabled}
-        placeholder={slot.placeholder ?? ""}
+        // 入力のヒントは「例：」を付けて見せる(作る人は「例：」を書かない。2026-10-07 ユーザー決定)
+        placeholder={slot.placeholder ? t("nameInputHintDisplay", { hint: slot.placeholder }) : ""}
         onValueChange={onChange}
         onBlur={() => setTouched(true)}
         aria-invalid={showAsError}

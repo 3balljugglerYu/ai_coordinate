@@ -21,7 +21,25 @@ export const NAME_INPUT_MAX_LENGTH = 8;
 export const NAME_INPUT_MAX_SLOTS = 1;
 
 /** 見出しの長さの上限(使う人の入力欄に出す)。 */
-export const NAME_INPUT_LABEL_MAX_LENGTH = 30;
+export const NAME_INPUT_LABEL_MAX_LENGTH = 15;
+
+/**
+ * 入力のヒント(使う人の欄にうすい灰色で出る見本)の長さの上限。入れられる文字と同じ8文字
+ * (見本だけ長いのはおかしい。2026-10-07 ユーザー指摘)。「例：」は画面で自動で付ける。
+ */
+export const NAME_INPUT_HINT_MAX_LENGTH = NAME_INPUT_MAX_LENGTH;
+
+/** 見た目の1文字(コードポイント)で先頭から切る。 */
+function takeChars(text: string, max: number): string {
+  return [...text].slice(0, max).join("");
+}
+
+/**
+ * 入力のヒントをそろえる。「例：」は画面で付けるので、手で書かれていたら外す(「例：例：」にしない)。
+ */
+export function normalizeNameInputHint(text: string): string {
+  return takeChars(text.trim().replace(/^例\s*[：:]\s*/, ""), NAME_INPUT_HINT_MAX_LENGTH);
+}
 
 const NAME_INPUT_PATTERN = /\{\{INPUT(\*)?:([^{}\r\n]*)\}\}/g;
 
@@ -49,9 +67,9 @@ export function parseNameInputSlots(
   const slots: NameInputSlot[] = [];
   for (const match of prompt.matchAll(NAME_INPUT_PATTERN)) {
     const [rawLabel, ...rest] = match[2].split("|");
-    const trimmed = rawLabel.trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH);
+    const trimmed = takeChars(rawLabel.trim(), NAME_INPUT_LABEL_MAX_LENGTH);
     const label = trimmed || (keepEmptyLabel ? "" : NAME_INPUT_DEFAULT_LABEL);
-    const placeholder = rest.join("|").trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH);
+    const placeholder = normalizeNameInputHint(rest.join("|"));
     slots.push({ label, required: match[1] === "*", ...(placeholder ? { placeholder } : {}) });
   }
   return slots;
@@ -161,7 +179,7 @@ export function expandNameInput(
     hadSlot = true;
     // 目印ごとの見出し(`見出し|入力例` の前半)を固定文に入れる。
     // 入れる文字は1つなので、目印が複数(運営だけ。一般は1つまで)あればどれにも同じ文字が入る
-    const label = inner.split("|")[0].trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH) || NAME_INPUT_DEFAULT_LABEL;
+    const label = takeChars(inner.split("|")[0].trim(), NAME_INPUT_LABEL_MAX_LENGTH) || NAME_INPUT_DEFAULT_LABEL;
     return value ? buildNameProvidedText(value, label) : buildNameNotProvidedText(label);
   });
   return { prompt: expanded, nameUsed: hadSlot && value.length > 0, hadSlot };

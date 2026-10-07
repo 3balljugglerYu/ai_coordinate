@@ -63,7 +63,8 @@ describe("GET /api/posts/[id]/prompt-slots", () => {
     expect(response.status).toBe(200);
     const text = await response.text();
     expect(JSON.parse(text)).toEqual({
-      nameInput: { label: "うちの子", placeholder: "例：ぺるこ", required: true },
+      // 手書きの「例：」は外して返す(画面で付ける)
+      nameInput: { label: "うちの子", placeholder: "ぺるこ", required: true },
     });
     expect(text).not.toContain("ひみつの本文");
   });

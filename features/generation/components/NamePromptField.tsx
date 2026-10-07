@@ -12,6 +12,7 @@ import {
   buildNameInputMarker,
   checkNameInputValue,
   NAME_INPUT_DEFAULT_LABEL,
+  NAME_INPUT_HINT_MAX_LENGTH,
   NAME_INPUT_LABEL_MAX_LENGTH,
   NAME_INPUT_MAX_LENGTH,
   NAME_INPUT_MAX_SLOTS,
@@ -171,7 +172,7 @@ export function NamePromptField({
             <Input
               id="name-input-placeholder"
               value={placeholderDraft}
-              maxLength={NAME_INPUT_LABEL_MAX_LENGTH}
+              maxLength={NAME_INPUT_HINT_MAX_LENGTH}
               disabled={disabled}
               placeholder={t("nameInputPlaceholderExample")}
               onChange={(event) => {
@@ -220,7 +221,8 @@ export function NamePromptField({
               id="name-input-trial"
               value={trialName}
               disabled={disabled}
-              placeholder={slot?.placeholder ?? ""}
+              // 入力のヒントは「例：」を付けて見せる(使う人の欄と同じ)
+              placeholder={slot?.placeholder ? t("nameInputHintDisplay", { hint: slot.placeholder }) : ""}
               onValueChange={onTrialNameChange}
               onBlur={() => setTouched(true)}
               aria-invalid={showAsError}
