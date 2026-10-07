@@ -361,3 +361,52 @@ describe("名前の欄: code-review の指摘への対応", () => {
   });
 });
 
+describe("カタログから使う人の名前の欄(派生生成)", () => {
+  const SOURCE = "11111111-1111-4111-8111-111111111111";
+  const lockedProps = (required: boolean) => ({
+    promptLocked: true,
+    sourcePostId: SOURCE,
+    lockedNameInput: { label: "うちの子", placeholder: "例：ぺるこ", required },
+  });
+
+  test("画像の下に、作る人が決めた見出しで名前の欄を出す", () => {
+    renderNameForm(jest.fn(), lockedProps(false));
+    const field = screen.getByTestId("name-input-entry");
+    expect(field.textContent).toContain("nameInputEntryOptionalLabel");
+    expect((screen.getByLabelText("nameInputEntryOptionalLabel") as HTMLInputElement).placeholder).toBe("例：ぺるこ");
+    // 作る人の「プロンプトの仕掛け」の箱は出さない
+    expect(screen.queryByTestId("prompt-gimmicks-box")).toBeNull();
+  });
+
+  test("名前を書いたら、原作の ID と一緒に名前を送る(本文は送らない)", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    renderNameForm(onSubmit, lockedProps(false));
+    await user.click(screen.getByText("mock-upload"));
+    fireEvent.change(screen.getByLabelText("nameInputEntryOptionalLabel"), { target: { value: "ぺるこ" } });
+    await user.click(screen.getByTestId("mock-submit"));
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ sourcePostId: SOURCE, nameInput: "ぺるこ" });
+  });
+
+  test("必須で空なら送れない", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), lockedProps(true));
+    await user.click(screen.getByText("mock-upload"));
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+    fireEvent.change(screen.getByLabelText("うちの子"), { target: { value: "ぺるこ" } });
+    await waitFor(() => expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", false));
+  });
+
+  test("名前の欄の情報を取りに行っている間は、生成させない", async () => {
+    const user = userEvent.setup();
+    renderNameForm(jest.fn(), { promptLocked: true, sourcePostId: SOURCE, lockedNameInput: null, lockedNameInputLoading: true });
+    await user.click(screen.getByText("mock-upload"));
+    expect(screen.getByTestId("mock-submit")).toHaveProperty("disabled", true);
+  });
+
+  test("名前の欄が無い原作では出さない", () => {
+    renderNameForm(jest.fn(), { promptLocked: true, sourcePostId: SOURCE, lockedNameInput: null });
+    expect(screen.queryByTestId("name-input-entry")).toBeNull();
+  });
+});
+

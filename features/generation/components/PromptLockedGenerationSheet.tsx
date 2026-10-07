@@ -1,6 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { fetchSourceNameInput } from "@/features/posts/lib/source-prompt-slots-api";
+import type { NameInputForUsers } from "@/shared/generation/name-input";
 import { useTranslations } from "next-intl";
 import { Drawer } from "vaul";
 import {
@@ -175,6 +177,33 @@ export function PromptLockedGenerationSheet({
     };
   }, [open, promptVisibility, sourcePostId]);
 
+  /*
+    名前の欄(docs/planning/name-input-slot-plan.md Phase 3)。原作の本文に目印があれば、
+    見出しなどだけを取りに行く(本文は返らないので、非公開プロンプトでも出せる)。
+    取れなくても生成はできる(目印は「名前なし」に置き換わる)。
+  */
+  // 取りに行った原作の ID と結果。原作が変わったら、前の原作の見出しを出さない
+  const [nameInputState, setNameInputState] = useState<{
+    postId: string;
+    value: NameInputForUsers | null;
+  } | null>(null);
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    fetchSourceNameInput(sourcePostId)
+      .then((value) => {
+        if (!cancelled) setNameInputState({ postId: sourcePostId, value });
+      })
+      .catch(() => {
+        if (!cancelled) setNameInputState({ postId: sourcePostId, value: null });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, sourcePostId]);
+  const nameInputLoaded = nameInputState?.postId === sourcePostId;
+  const lockedNameInput = nameInputLoaded ? nameInputState.value : null;
+
   const form = (
     <GenerationFormContainer
       subscriptionPlan={subscriptionPlan}
@@ -183,6 +212,9 @@ export function PromptLockedGenerationSheet({
       promptLocked
       lockedPromptText={lockedPromptText}
       sourcePostId={sourcePostId}
+      lockedNameInput={lockedNameInput}
+      // 取り終わるまでは生成させない(必須の名前を入れる前に送られないように)
+      lockedNameInputLoading={open && !nameInputLoaded}
     />
   );
 

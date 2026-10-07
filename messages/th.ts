@@ -1553,6 +1553,8 @@ export const thMessages = {
     nameInputInvalidCharacters: "ชื่อมีตัวอักษรที่ใช้ไม่ได้ (เช่น วงเล็บปีกกาหรือการขึ้นบรรทัดใหม่)",
     nameInputRequiredMissing: "พรอมต์นี้ต้องใส่ชื่อ กรุณาใส่ชื่อ",
     nameInputTooManySlots: "หนึ่งพรอมต์มีช่องชื่อได้สูงสุด {max} ช่อง",
+    nameInputEntryOptionalLabel: "{label} (ไม่บังคับ)",
+    nameInputEntryRequiredHint: "สูงสุด {max} ตัวอักษร ชื่อนี้จะปรากฏในภาพ",
     gachaFieldLabel: "ตั้งค่าของในกาชา",
     gachaHintRandom: "ทุกครั้งที่สร้างภาพ ระบบจะสุ่มเลือกของในกาชา 1 รายการ",
     gachaInsertExample: "ใส่ตัวอย่าง",

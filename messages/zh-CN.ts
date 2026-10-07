@@ -1551,6 +1551,8 @@ export const zhCnMessages = {
     nameInputInvalidCharacters: "名字中含有无法使用的字符（如花括号或换行）。",
     nameInputRequiredMissing: "此提示词必须填写名字，请输入名字。",
     nameInputTooManySlots: "每个提示词最多 {max} 个名字栏。",
+    nameInputEntryOptionalLabel: "{label}（选填）",
+    nameInputEntryRequiredHint: "最多 {max} 个字。这个名字会出现在图片中。",
     gachaFieldLabel: "设置扭蛋内容",
     gachaHintRandom: "每次生成时，会从扭蛋内容中随机选出一个",
     gachaInsertExample: "插入示例",

@@ -1557,6 +1557,8 @@ export const esMessages = {
     nameInputInvalidCharacters: "El nombre contiene caracteres no permitidos (como llaves o saltos de línea).",
     nameInputRequiredMissing: "Este prompt requiere un nombre. Escribe uno.",
     nameInputTooManySlots: "Un prompt puede tener como máximo {max} campo de nombre.",
+    nameInputEntryOptionalLabel: "{label} (opcional)",
+    nameInputEntryRequiredHint: "Hasta {max} caracteres. Este nombre aparecerá en la imagen.",
     gachaFieldLabel: "Configurar elementos del gacha",
     gachaHintRandom: "Cada vez que generas, se elige al azar uno de los elementos del gacha",
     gachaInsertExample: "Insertar ejemplo",

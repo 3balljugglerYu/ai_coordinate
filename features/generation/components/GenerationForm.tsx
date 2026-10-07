@@ -16,6 +16,7 @@ import { ImageSourcePickerTrigger } from "./ImageSourcePickerTrigger";
 import { PromptInputField } from "./PromptInputField";
 import { GachaPromptField } from "./GachaPromptField";
 import { NamePromptField } from "./NamePromptField";
+import { NameInputEntryField } from "./NameInputEntryField";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
   checkNameInputValue,
@@ -26,6 +27,7 @@ import {
   parseNameInputSlots,
   removeNameInputMarkers,
   upsertNameInputMarker,
+  type NameInputForUsers,
 } from "@/shared/generation/name-input";
 import {
   GACHA_FIELD_TEMPLATE,
@@ -178,6 +180,16 @@ interface GenerationFormProps {
   nameInputAvailable?: boolean;
   /** 名前の欄の数を制限しない(運営だけ。サーバーの nameInputMaxSlotsFor と同じ)。 */
   nameInputUnlimited?: boolean;
+  /**
+   * カタログから使う人の名前の欄(派生生成)。原作の本文に目印があるときだけ、
+   * `/api/posts/[id]/prompt-slots` から見出しなどを受け取って渡す(本文は届かない)。
+   */
+  lockedNameInput?: NameInputForUsers | null;
+  /**
+   * 名前の欄の情報を取りに行っている間は生成させない(必須の名前を入れる前に送られないように)。
+   * 取れなかったときは false に戻り、名前の欄なしで生成できる(サーバーでも必須を確かめる)。
+   */
+  lockedNameInputLoading?: boolean;
 }
 
 type BackgroundModeOption = {
@@ -203,6 +215,8 @@ export function GenerationForm({
   gachaUnlimited = false,
   nameInputAvailable = false,
   nameInputUnlimited = false,
+  lockedNameInput = null,
+  lockedNameInputLoading = false,
 }: GenerationFormProps) {
   const t = useTranslations("coordinate");
   const freeT = useTranslations("free");
@@ -322,10 +336,13 @@ export function GenerationForm({
     exceedsNameInputSlotLimit(nameCheckedPrompt, nameInputMaxSlotsFor(nameInputUnlimited));
   const [trialName, setTrialName] = useState("");
   const trialNameCheck = checkNameInputValue(trialName);
-  const isNameInputInvalid =
-    hasTooManyNameSlots ||
-    (hasReachableNameSlot &&
-      (!trialNameCheck.ok || (isNameRequiredGuaranteed && !trialNameCheck.value)));
+  // 派生生成(カタログから使う)の名前の欄。作る人の試しの名前と同じ state を使う
+  const showsLockedNameInput = isFree && promptLocked && lockedNameInput !== null;
+  const isNameInputInvalid = showsLockedNameInput
+    ? !trialNameCheck.ok || (lockedNameInput!.required && !trialNameCheck.value)
+    : hasTooManyNameSlots ||
+      (hasReachableNameSlot &&
+        (!trialNameCheck.ok || (isNameRequiredGuaranteed && !trialNameCheck.value)));
 
   const promptLength = prompt.length;
   // 上限は送る本文(ガチャの候補欄を付けた後)で判定する。
@@ -452,6 +469,7 @@ export function GenerationForm({
     // 送信ボタンは押せない状態にしてあるが、念のため送る前にも止める。
     if (gachaValidation && !gachaValidation.ok) return;
     if (isNameInputInvalid) return;
+    if (promptLocked && lockedNameInputLoading) return;
     const trimmedPrompt = isGachaActive
       ? composeGachaPrompt(bodyPrompt, gachaField)
       : bodyPrompt;
@@ -496,7 +514,7 @@ export function GenerationForm({
         // 施錠時に本文を空へ固定していることと対になっている。
         ...(promptLocked && sourcePostId ? { sourcePostId } : {}),
         // 名前の欄があって名前を書いたときだけ送る(空欄は「名前なし」になる)
-        ...(hasReachableNameSlot && trialNameCheck.ok && trialNameCheck.value
+        ...((hasReachableNameSlot || showsLockedNameInput) && trialNameCheck.ok && trialNameCheck.value
           ? { nameInput: trialNameCheck.value }
           : {}),
       });
@@ -531,7 +549,8 @@ export function GenerationForm({
       guestGenerationLocked,
     }) ||
     (gachaValidation !== null && !gachaValidation.ok) ||
-    isNameInputInvalid;
+    isNameInputInvalid ||
+    (promptLocked && lockedNameInputLoading);
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -770,6 +789,16 @@ export function GenerationForm({
             disabled={isGenerating || isTutorialInProgress}
           />
         </div>
+
+        {/* 名前の欄(カタログから使う人。画像の下。2026-10-06 ユーザー決定) */}
+        {showsLockedNameInput ? (
+          <NameInputEntryField
+            slot={lockedNameInput!}
+            value={trialName}
+            onChange={setTrialName}
+            disabled={isGenerating}
+          />
+        ) : null}
 
         {/* 元画像タイプ(実写/イラスト)。じゆうモードでは非表示。 */}
         {!isFree ? (

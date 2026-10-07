@@ -48,6 +48,10 @@ jest.mock("next-intl", () => ({
   useTranslations: () => (key: string) => key,
 }));
 
+jest.mock("@/features/posts/lib/source-prompt-slots-api", () => ({
+  fetchSourceNameInput: jest.fn().mockResolvedValue(null),
+}));
+
 jest.mock("@/features/posts/lib/source-prompt-text-api", () => ({
   fetchSourcePromptText: jest.fn().mockResolvedValue(null),
 }));
