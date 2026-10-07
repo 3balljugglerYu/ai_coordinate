@@ -177,5 +177,30 @@ describe("NameInputCreateTool", () => {
     expect(createButton().className).toContain("whitespace-normal");
     expect(createButton().className).toContain("max-w-full");
   });
+
+  test("文中に差し込む行は黄色で示し、行ごとは消さない", async () => {
+    const user = userEvent.setup();
+    respondWith(200, {
+      original: "プレート\n1行目：「〇〇さん」\n※〇〇は名前",
+      body: "プレート\n1行目：「{{INPUT:名前}}さん」",
+      removedLines: [3],
+      changedLine: 2,
+      balance: 95,
+    });
+    render(<Harness />);
+    await user.click(createButton());
+    expect((await screen.findByTestId("name-input-create-changed-line")).textContent).toBe("1行目：「〇〇さん」");
+    expect(screen.getAllByTestId("name-input-create-removed-line").map((n) => n.textContent)).toEqual(["※〇〇は名前"]);
+  });
+
+  test("本文にもう目印があるときは、道具は要らないと伝える", async () => {
+    const user = userEvent.setup();
+    respondWith(422, { errorCode: "NAME_INPUT_CREATE_ALREADY_EXISTS" });
+    render(<Harness />);
+    await user.click(createButton());
+    await waitFor(() =>
+      expect(screen.getByTestId("name-input-create-error").textContent).toContain("nameInputCreateAlreadyExists"),
+    );
+  });
 });
 
