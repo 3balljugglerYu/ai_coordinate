@@ -64,7 +64,7 @@ describe("client bundle の i18n 名前空間", () => {
   test.each(locales)("%s にも userStyles が配られている", async (locale) => {
     const messages = await getClientMessages(locale);
     expect(messages).toHaveProperty("userStyles");
-    expect((messages as Record<string, Record<string, string>>).userStyles)
+    expect((messages as unknown as Record<string, Record<string, string>>).userStyles)
       .toHaveProperty("chipAll");
   });
 });

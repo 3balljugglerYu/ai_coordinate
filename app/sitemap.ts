@@ -43,6 +43,8 @@ const UNLOCALIZED_PUBLIC_PATHS = [
   "/use-prompts",
   // ガチャ機能の紹介ページ。一般公開まで isSitemapPathEnabled で落とす
   "/guide/gacha",
+  // 文字入力の紹介ページ。一般公開まで isSitemapPathEnabled で落とす
+  "/guide/text",
 ] as const;
 
 type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];

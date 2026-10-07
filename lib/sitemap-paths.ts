@@ -1,4 +1,8 @@
-import { isGachaPromptPubliclyEnabled, isUserStylesPubliclyEnabled } from "@/lib/env";
+import {
+  isGachaPromptPubliclyEnabled,
+  isNameInputPubliclyEnabled,
+  isUserStylesPubliclyEnabled,
+} from "@/lib/env";
 
 /**
  * sitemap にその公開パスを載せてよいか。
@@ -19,6 +23,10 @@ export function isSitemapPathEnabled(path: string): boolean {
   // ガチャ機能の紹介ページ。ガチャ機能と一緒に一般公開する(運営だけの間は 404 なので載せない)
   if (path === "/guide/gacha") {
     return isGachaPromptPubliclyEnabled();
+  }
+  // 文字入力の紹介ページ。文字入力と一緒に一般公開する(運営だけの間は 404 なので載せない)
+  if (path === "/guide/text") {
+    return isNameInputPubliclyEnabled();
   }
   return true;
 }
