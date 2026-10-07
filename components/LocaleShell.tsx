@@ -23,6 +23,8 @@ import { UserStylesAvailabilityProvider } from "@/features/user-styles/component
 import { UserStylesAvailabilityLoader } from "@/features/user-styles/components/UserStylesAvailabilityLoader";
 import { GachaAvailabilityProvider } from "@/features/generation/components/GachaAvailabilityProvider";
 import { GachaAvailabilityLoader } from "@/features/generation/components/GachaAvailabilityLoader";
+import { NameInputAvailabilityProvider } from "@/features/generation/components/NameInputAvailabilityProvider";
+import { NameInputAvailabilityLoader } from "@/features/generation/components/NameInputAvailabilityLoader";
 import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { getClientMessages } from "@/i18n/messages";
 import { LocaleDocumentAttributes } from "@/components/LocaleDocumentAttributes";
@@ -60,6 +62,7 @@ export async function LocaleShell({
                 <GptImage25AvailabilityProvider>
                   <UserStylesAvailabilityProvider>
                   <GachaAvailabilityProvider>
+                  <NameInputAvailabilityProvider>
                   {appContent}
                   {/*
                     検索・ハッシュタグの段階公開。運営だけ true に昇格させる。
@@ -106,6 +109,13 @@ export async function LocaleShell({
                   <Suspense fallback={null}>
                     <GachaAvailabilityLoader />
                   </Suspense>
+                  {/*
+                    名前の欄の段階公開。投稿の「名前入り」の札を運営だけに見せる(ガチャと同じ作り)。
+                  */}
+                  <Suspense fallback={null}>
+                    <NameInputAvailabilityLoader />
+                  </Suspense>
+                  </NameInputAvailabilityProvider>
                   </GachaAvailabilityProvider>
                   </UserStylesAvailabilityProvider>
                 </GptImage25AvailabilityProvider>

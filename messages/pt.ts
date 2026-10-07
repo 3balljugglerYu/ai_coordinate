@@ -127,6 +127,7 @@ export const ptMessages = {
     modeFromCatalog: "from CATALOG",
     // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
     gachaBadge: "Gacha",
+    nameInputBadge: "Com nome",
     copy: "Copiar",
     copied: "Copiado",
     followRequiredTitle: "Precisa seguir",

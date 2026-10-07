@@ -127,6 +127,7 @@ export const koMessages = {
     modeFromCatalog: "from CATALOG",
     // ガチャプロンプトで作った投稿の札(2026-10-06)。生成方法のラベルの真上に出す
     gachaBadge: "가챠",
+    nameInputBadge: "이름 입력",
     copy: "복사",
     copied: "복사됨",
     followRequiredTitle: "팔로우가 필요합니다",
