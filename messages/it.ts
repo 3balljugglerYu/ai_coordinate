@@ -1547,7 +1547,7 @@ export const itMessages = {
     promptGimmicksTitle: "Opzioni del prompt",
     nameInputToggleLabel: "Consenti di aggiungere testo",
     nameInputLabelSetting: "Etichetta",
-    nameInputLabelExample: "es. Nome del personaggio / Parola preferita",
+    nameInputLabelExample: "es. Parola preferita",
     nameInputLabelHelp: "Il nome che indica agli utenti cosa inserire nel campo. Se lo lasci vuoto, viene usato «名前» (Nome).",
     nameInputPlaceholderSetting: "Suggerimento di inserimento",
     nameInputPlaceholderExample: "Peruko",

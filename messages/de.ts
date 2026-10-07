@@ -1548,7 +1548,7 @@ export const deMessages = {
     promptGimmicksTitle: "Prompt-Optionen",
     nameInputToggleLabel: "Texteingabe erlauben",
     nameInputLabelSetting: "Bezeichnung",
-    nameInputLabelExample: "z. B. Name der Figur / Lieblingswort",
+    nameInputLabelExample: "z. B. Lieblingswort",
     nameInputLabelHelp: "Der Name, der Nutzern zeigt, was sie in das Feld eingeben sollen. Bleibt er leer, wird „名前“ (Name) verwendet.",
     nameInputPlaceholderSetting: "Eingabehinweis",
     nameInputPlaceholderExample: "Peruko",

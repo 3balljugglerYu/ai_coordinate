@@ -1545,7 +1545,7 @@ export const hiMessages = {
     promptGimmicksTitle: "प्रॉम्प्ट विकल्प",
     nameInputToggleLabel: "टेक्स्ट जोड़ने दें",
     nameInputLabelSetting: "लेबल",
-    nameInputLabelExample: "उदा. किरदार का नाम / पसंदीदा शब्द",
+    nameInputLabelExample: "उदा. पसंदीदा शब्द",
     nameInputLabelHelp: "वह नाम जो उपयोगकर्ताओं को बताता है कि इस फ़ील्ड में क्या लिखना है। खाली छोड़ने पर “名前” (नाम) इस्तेमाल होगा।",
     nameInputPlaceholderSetting: "इनपुट संकेत",
     nameInputPlaceholderExample: "पेरुको",

@@ -1546,7 +1546,7 @@ export const idMessages = {
     promptGimmicksTitle: "Opsi prompt",
     nameInputToggleLabel: "Izinkan pengguna menambahkan teks",
     nameInputLabelSetting: "Label",
-    nameInputLabelExample: "mis. Nama karakter / Kata favorit",
+    nameInputLabelExample: "mis. Kata favorit",
     nameInputLabelHelp: "Nama yang memberi tahu pengguna apa yang harus diisi di kolom ini. Jika dikosongkan, digunakan “名前” (Nama).",
     nameInputPlaceholderSetting: "Petunjuk isian",
     nameInputPlaceholderExample: "Peruko",

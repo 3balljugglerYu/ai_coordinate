@@ -1543,7 +1543,7 @@ export const thMessages = {
     promptGimmicksTitle: "ตัวเลือกพรอมต์",
     nameInputToggleLabel: "เปิดให้กรอกข้อความ",
     nameInputLabelSetting: "ป้ายกำกับ",
-    nameInputLabelExample: "เช่น ชื่อตัวละคร / คำที่ชอบ",
+    nameInputLabelExample: "เช่น คำที่ชอบ",
     nameInputLabelHelp: "ชื่อที่บอกผู้ใช้ว่าช่องนี้ให้กรอกอะไร ถ้าเว้นว่างจะใช้ “名前” (ชื่อ)",
     nameInputPlaceholderSetting: "คำแนะนำการกรอก",
     nameInputPlaceholderExample: "เปรุโกะ",

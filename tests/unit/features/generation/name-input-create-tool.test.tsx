@@ -171,4 +171,11 @@ describe("NameInputCreateTool", () => {
     resolve({ ok: false, status: 422, json: async () => ({ errorCode: "NAME_INPUT_CREATE_NOT_FOUND" }) });
     await waitFor(() => expect(mockProposalOpen).toHaveBeenLastCalledWith(false));
   });
+
+  test("長い文言でも欄からはみ出さないよう、ボタンは折り返せる", () => {
+    render(<Harness />);
+    expect(createButton().className).toContain("whitespace-normal");
+    expect(createButton().className).toContain("max-w-full");
+  });
 });
+

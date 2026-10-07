@@ -1547,7 +1547,7 @@ export const ptMessages = {
     promptGimmicksTitle: "Opções do prompt",
     nameInputToggleLabel: "Permitir que adicionem texto",
     nameInputLabelSetting: "Rótulo",
-    nameInputLabelExample: "ex.: Nome do personagem / Palavra favorita",
+    nameInputLabelExample: "ex.: Palavra favorita",
     nameInputLabelHelp: "O nome que mostra aos usuários o que digitar no campo. Se ficar vazio, será usado “名前” (Nome).",
     nameInputPlaceholderSetting: "Dica de entrada",
     nameInputPlaceholderExample: "Peruko",

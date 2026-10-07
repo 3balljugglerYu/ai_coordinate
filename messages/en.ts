@@ -1544,7 +1544,7 @@ export const enMessages = {
     promptGimmicksTitle: "Prompt options",
     nameInputToggleLabel: "Let users add text",
     nameInputLabelSetting: "Label",
-    nameInputLabelExample: "e.g. Character name / Favorite word",
+    nameInputLabelExample: "e.g. Favorite word",
     nameInputLabelHelp: "The name that tells users what to enter in the field. If left blank, “名前” (Name) is used.",
     nameInputPlaceholderSetting: "Input hint",
     nameInputPlaceholderExample: "Peruko",
