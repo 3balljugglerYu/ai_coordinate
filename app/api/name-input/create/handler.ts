@@ -16,6 +16,7 @@ import {
 import {
   NAME_INPUT_CREATE_PERCOIN_COST,
   applyNameInputCreate,
+  hasNameInputMarkerInBody,
   prepareNameInputCreatePrompt,
 } from "@/shared/generation/name-input-create";
 import { GACHA_SPLIT_MODEL } from "@/features/generation/lib/gacha-split-openai";
@@ -37,6 +38,7 @@ export type NameInputCreateErrorCode =
   | "NAME_INPUT_CREATE_INVALID_PROMPT"
   | "NAME_INPUT_CREATE_INSUFFICIENT_BALANCE"
   | "NAME_INPUT_CREATE_NOT_FOUND"
+  | "NAME_INPUT_CREATE_ALREADY_EXISTS"
   | "NAME_INPUT_CREATE_FAILED";
 
 export interface NameInputCreateRouteDependencies {
@@ -138,6 +140,11 @@ export async function postNameInputCreateRoute(
     return jsonError("Invalid prompt", "NAME_INPUT_CREATE_INVALID_PROMPT", 400);
   }
   const slot = readSlot(body?.slot);
+  // 本文の中にもう目印があるなら、道具を使う必要は無い(AI を呼ばない・ペルコインも使わない)。
+  // 以前は目印を外してから AI に渡していたため、「{{INPUT:…}}さん」の「さん」まで消えた(2026-10-07)
+  if (hasNameInputMarkerInBody(raw)) {
+    return jsonError("Already has a text field", "NAME_INPUT_CREATE_ALREADY_EXISTS", 422);
+  }
 
   const balance = await getBalanceFn(user.id);
   if (balance === null) {
@@ -195,6 +202,7 @@ export async function postNameInputCreateRoute(
     original: prompt,
     body: result.body,
     removedLines: result.removedLines,
+    changedLine: result.changedLine,
     balance: newBalance,
   });
 }

@@ -38,7 +38,7 @@ function createRequest(
 function setup(overrides: Partial<Parameters<typeof postNameInputCreateRoute>[1]> = {}) {
   const deductFn = jest.fn(async () => ({ balance: 95 }));
   // 目印を外した本文では、L2 が【名前】、L3 が※の行
-  const callModelFn = jest.fn(async () => ({ nameLines: [2, 3] }));
+  const callModelFn = jest.fn(async () => ({ inlineLine: 0, inlineText: "", removeLines: [2, 3] }));
   const revalidateFn = jest.fn();
   const deps = {
     getUserFn: jest.fn(async () => ({ id: "user-1" })) as never,
@@ -69,6 +69,7 @@ describe("POST /api/name-input/create", () => {
       original: "野菜のドレスを着たキャラクターを描く。\n【名前】〇〇\n※名前はそのまま胸元の名札に表示する",
       body: "野菜のドレスを着たキャラクターを描く。\n{{INPUT*:うちの子|ぺるこ}}",
       removedLines: [2, 3],
+      changedLine: null,
       balance: 95,
     });
     // AI には、今ある目印を外した本文を渡す
@@ -80,7 +81,7 @@ describe("POST /api/name-input/create", () => {
   });
 
   test("名前の行が見つからなければ 422 で、引き落とさない", async () => {
-    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ nameLines: [] })) as never });
+    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ removeLines: [] })) as never });
     const response = await postNameInputCreateRoute(createRequest({ prompt: PROMPT, slot: SLOT }), deps);
     expect(response.status).toBe(422);
     expect(await errorCodeOf(response)).toBe("NAME_INPUT_CREATE_NOT_FOUND");
@@ -88,7 +89,7 @@ describe("POST /api/name-input/create", () => {
   });
 
   test("AI の出力が壊れていたら(範囲外の行)引き落とさない", async () => {
-    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ nameLines: [99] })) as never });
+    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ removeLines: [99] })) as never });
     const response = await postNameInputCreateRoute(createRequest({ prompt: PROMPT, slot: SLOT }), deps);
     expect(response.status).toBe(502);
     expect(await errorCodeOf(response)).toBe("NAME_INPUT_CREATE_FAILED");
@@ -163,7 +164,7 @@ describe("POST /api/name-input/create", () => {
 
   test("まとめた後の本文が長さの上限を超えるなら、引き落とさない", async () => {
     const long = `${"あ".repeat(29_990)}\n【名前】`;
-    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ nameLines: [2] })) as never });
+    const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ removeLines: [2] })) as never });
     const response = await postNameInputCreateRoute(
       createRequest({ prompt: long, slot: { label: "とても長い見出しをつけたキャラクターの名前", required: true } }),
       deps,
@@ -171,4 +172,32 @@ describe("POST /api/name-input/create", () => {
     expect(response.status).toBe(400);
     expect(deductFn).not.toHaveBeenCalled();
   });
+
+  test("⭐本文にもう目印があるなら、AI を呼ばず・引き落とさずに断る(2026-10-07 報告)", async () => {
+    const { deps, callModelFn, deductFn } = setup();
+    const response = await postNameInputCreateRoute(
+      createRequest({ prompt: "プレート\n1行目：「{{INPUT:お祝いする相手の名前|ぺる}}さん」", slot: SLOT }),
+      deps,
+    );
+    expect(response.status).toBe(422);
+    expect(await errorCodeOf(response)).toBe("NAME_INPUT_CREATE_ALREADY_EXISTS");
+    expect(callModelFn).not.toHaveBeenCalled();
+    expect(deductFn).not.toHaveBeenCalled();
+  });
+
+  test("文中に差し込めたら、書き換えた行の番号も返す", async () => {
+    const { deps } = setup({
+      callModelFn: jest.fn(async () => ({ inlineLine: 2, inlineText: "〇〇", removeLines: [] })) as never,
+    });
+    const response = await postNameInputCreateRoute(
+      createRequest({ prompt: "プレート\n1行目：「〇〇さん」", slot: { label: "相手", required: false } }),
+      deps,
+    );
+    expect(await response.json()).toMatchObject({
+      body: "プレート\n1行目：「{{INPUT:相手}}さん」",
+      removedLines: [],
+      changedLine: 2,
+    });
+  });
 });
+

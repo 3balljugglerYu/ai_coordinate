@@ -28,11 +28,15 @@ interface Proposal {
   original: string;
   body: string;
   removedLines: number[];
+  /** 一部を目印に置き換えた行(1始まり)。無ければ null。 */
+  changedLine: number | null;
 }
 
 type ErrorKey =
   | "nameInputCreateInsufficient"
   | "nameInputCreateNotFound"
+  // 本文にもう目印がある(道具は要らない)。ペルコインは使っていない
+  | "nameInputCreateAlreadyExists"
   | "nameInputCreateFailed"
   // 返事が届かなかった。サーバーで引き落とし済みの可能性があるので「使っていない」と言わない
   | "nameInputCreateConnectionLost";
@@ -40,6 +44,7 @@ type ErrorKey =
 function errorKeyFor(errorCode: unknown): ErrorKey {
   if (errorCode === "NAME_INPUT_CREATE_INSUFFICIENT_BALANCE") return "nameInputCreateInsufficient";
   if (errorCode === "NAME_INPUT_CREATE_NOT_FOUND") return "nameInputCreateNotFound";
+  if (errorCode === "NAME_INPUT_CREATE_ALREADY_EXISTS") return "nameInputCreateAlreadyExists";
   return "nameInputCreateFailed";
 }
 
@@ -105,6 +110,7 @@ export function NameInputCreateTool({
         removedLines: Array.isArray(data.removedLines)
           ? data.removedLines.filter((n): n is number => typeof n === "number")
           : [],
+        changedLine: typeof data.changedLine === "number" ? data.changedLine : null,
       });
       // 使ったペルコインを残高の表示へ反映する
       router.refresh();
@@ -130,6 +136,7 @@ export function NameInputCreateTool({
   };
 
   const removed = new Set(proposal?.removedLines ?? []);
+  const changedLine = proposal?.changedLine ?? null;
 
   return (
     <div className="space-y-2 rounded-md bg-gray-50 p-3" data-testid="name-input-create-tool">
@@ -171,6 +178,15 @@ export function NameInputCreateTool({
                 >
                   {line || " "}
                 </del>
+              ) : index + 1 === changedLine ? (
+                // 一部を文字入力の欄に置き換える行(行ごとは消さない)
+                <mark
+                  key={index}
+                  className="block bg-amber-100 text-gray-900"
+                  data-testid="name-input-create-changed-line"
+                >
+                  {line || " "}
+                </mark>
               ) : (
                 <span key={index} className="block">
                   {line || " "}

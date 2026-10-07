@@ -11,13 +11,13 @@ describe("callNameInputCreateModel", () => {
 
   test("名前の欄用の指示と JSON の形で呼び、行番号の答えを返す", async () => {
     const fetchFn = jest.fn(async () =>
-      new Response(JSON.stringify({ output_text: '{"nameLines":[2]}' }), { status: 200 }),
+      new Response(JSON.stringify({ output_text: '{"inlineLine":0,"inlineText":"","removeLines":[2]}' }), { status: 200 }),
     );
     const output = await callNameInputCreateModel("描く\n【名前】〇〇", {
       apiKey: "test-key",
       fetchFn: fetchFn as unknown as typeof fetch,
     });
-    expect(output).toEqual({ nameLines: [2] });
+    expect(output).toEqual({ inlineLine: 0, inlineText: "", removeLines: [2] });
     const [, init] = fetchFn.mock.calls[0] as unknown as [string, RequestInit];
     const body = JSON.parse(init.body as string);
     expect(body.input).toBe("L1: 描く\nL2: 【名前】〇〇");
