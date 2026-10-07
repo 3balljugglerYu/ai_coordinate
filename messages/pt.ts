@@ -1560,6 +1560,8 @@ export const ptMessages = {
     nameInputInvalidCharacters: "Contém caracteres que não podem ser usados (como chaves ou quebras de linha).",
     nameInputRequiredMissing: "Este prompt exige texto. Digite, por favor.",
     nameInputTooManySlots: "Um prompt pode ter no máximo {max} campo(s) de texto.",
+    gachaTextExclusiveNote: "Você pode usar apenas um: gacha ou entrada de texto (usar os dois juntos está previsto para uma assinatura futura).",
+    gachaTextTogetherError: "Gacha e entrada de texto não podem ser usados juntos. Use apenas um (usar os dois juntos está previsto para uma assinatura futura).",
     nameInputEntryOptionalLabel: "{label} (opcional)",
     nameInputEntryRequiredHint: "Até {max} caracteres. Este texto aparecerá na imagem.",
     nameInputCreateDescription: "A IA procura no prompt de “O que você quer gerar” as linhas sobre o texto que os usuários devem digitar (como um nome) e as combina em um campo de texto. Usa {cost} Percoins somente quando dá certo.",

@@ -1557,6 +1557,8 @@ export const enMessages = {
     nameInputInvalidCharacters: "It contains characters that can’t be used (such as curly brackets or line breaks).",
     nameInputRequiredMissing: "This prompt requires text. Please enter it.",
     nameInputTooManySlots: "A prompt can have up to {max} text field.",
+    gachaTextExclusiveNote: "You can use only one of gacha or text input (using both together is planned for a future subscription).",
+    gachaTextTogetherError: "Gacha and text input can't be used together. Please use only one (using both together is planned for a future subscription).",
     nameInputEntryOptionalLabel: "{label} (optional)",
     nameInputEntryRequiredHint: "Up to {max} characters. This text will appear in the image.",
     nameInputCreateDescription: "AI finds the lines about the text users should enter (such as a name) in your prompt and combines them into one text field. Uses {cost} Percoins only when it works.",

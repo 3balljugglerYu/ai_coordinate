@@ -246,3 +246,12 @@ export function describeNameInputForUsers(prompt: string): NameInputForUsers | n
   };
 }
 
+/**
+ * ガチャ(`{{GACHA}}`)と文字入力の目印を、1つのプロンプトで一緒に使っているか。
+ * 一般の利用者は、どちらか1つだけ(一緒に使えるのはサブスクの構想。2026-10-07 ユーザー決定)。運営は制限しない。
+ * 目印がガチャの候補の中にあっても、一緒に使っているとみなす。
+ */
+export function usesGachaWithNameInput(prompt: string): boolean {
+  return splitGachaPrompt(prompt).blocks.length > 0 && parseNameInputSlots(prompt).length > 0;
+}
+

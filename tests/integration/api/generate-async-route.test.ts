@@ -610,10 +610,34 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
           expect(jobRepository.createImageJob).not.toHaveBeenCalled();
         });
 
-        test("ガチャの候補ごとに1つなら、一般の利用者でも受け付ける(届くのは1つ)", async () => {
+        test("ガチャの候補ごとに1つなら、欄の数は超えない(届くのは1つ。運営で確かめる)", async () => {
+          isAdminViewerMock.mockReturnValue(true);
           const response = await runFree({
             prompt: "猫\n{{GACHA}}\n1. 医師 {{INPUT:a}}\n2. 探偵 {{INPUT*:b}}\n{{/GACHA}}",
           });
+          expect(response.status).toBe(200);
+        });
+
+        test.each([
+          ["本文に文字入力", "猫 {{INPUT:名前}}\n{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}"],
+          ["ガチャの候補の中に文字入力", "猫\n{{GACHA}}\n1. 医師 {{INPUT:a}}\n2. 探偵\n{{/GACHA}}"],
+        ])("一般の利用者は、ガチャと文字入力を一緒に使えない(%s。2026-10-07)", async (_label, prompt) => {
+          mockNameAvailable.mockReturnValue(true);
+          const response = await runFree({ prompt });
+          expect(response.status).toBe(400);
+          expect((await readJson(response)).errorCode).toBe("GENERATION_GACHA_WITH_TEXT_INPUT");
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
+
+        test("文字入力を使えない人(公開前)には、一緒に使っていても断らない(目印は「文字なし」になるだけ)", async () => {
+          mockNameAvailable.mockReturnValue(false);
+          const response = await runFree({ prompt: "猫 {{INPUT:名前}}\n{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}" });
+          expect(response.status).toBe(200);
+        });
+
+        test("運営は、ガチャと文字入力を一緒に使える", async () => {
+          isAdminViewerMock.mockReturnValue(true);
+          const response = await runFree({ prompt: "猫 {{INPUT:名前}}\n{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}" });
           expect(response.status).toBe(200);
         });
 

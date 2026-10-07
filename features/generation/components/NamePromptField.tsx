@@ -50,6 +50,11 @@ interface NamePromptFieldProps {
     onApply: (body: string) => void;
     onProposalOpenChange?: (open: boolean) => void;
   };
+  /**
+   * スイッチを押せないときの理由(ガチャをオンにしている間。一般の利用者はどちらか1つだけ)。
+   * あると、オフの間はスイッチを押せなくし、理由をその下に出す。
+   */
+  lockedReason?: string;
   disabled?: boolean;
 }
 
@@ -95,6 +100,7 @@ export function NamePromptField({
   requiredGuaranteed,
   tooManySlots,
   createTool,
+  lockedReason,
   disabled = false,
 }: NamePromptFieldProps) {
   const t = useTranslations("free");
@@ -125,7 +131,7 @@ export function NamePromptField({
         <Switch
           id="name-input-enabled"
           checked={enabled}
-          disabled={disabled}
+          disabled={disabled || (!enabled && !!lockedReason)}
           onCheckedChange={(checked) => {
             setTouched(false);
             if (checked) {
@@ -139,6 +145,11 @@ export function NamePromptField({
           }}
         />
       </div>
+      {!enabled && lockedReason ? (
+        <p className="text-xs text-gray-500" data-testid="name-input-locked-reason">
+          {lockedReason}
+        </p>
+      ) : null}
 
       {slot ? (
         <div className="space-y-3 border-l-2 border-pink-400 pl-3">

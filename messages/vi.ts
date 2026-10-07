@@ -1557,6 +1557,8 @@ export const viMessages = {
     nameInputInvalidCharacters: "Có chứa ký tự không thể sử dụng (như dấu ngoặc nhọn hoặc xuống dòng).",
     nameInputRequiredMissing: "Prompt này bắt buộc nhập chữ. Vui lòng nhập.",
     nameInputTooManySlots: "Mỗi prompt có tối đa {max} ô nhập chữ.",
+    gachaTextExclusiveNote: "Bạn chỉ có thể dùng gacha hoặc nhập chữ (dùng cả hai cùng lúc dự kiến sẽ có trong gói đăng ký sau này).",
+    gachaTextTogetherError: "Không thể dùng gacha và nhập chữ cùng lúc. Hãy chỉ dùng một trong hai (dùng cả hai cùng lúc dự kiến sẽ có trong gói đăng ký sau này).",
     nameInputEntryOptionalLabel: "{label} (không bắt buộc)",
     nameInputEntryRequiredHint: "Tối đa {max} ký tự. Chữ này sẽ xuất hiện trong ảnh.",
     nameInputCreateDescription: "AI sẽ tìm trong prompt ở mục “Nội dung muốn tạo” các dòng liên quan đến chữ mà người dùng cần nhập (như tên) và gộp thành một ô nhập chữ. Chỉ dùng {cost} Percoin khi tạo thành công.",

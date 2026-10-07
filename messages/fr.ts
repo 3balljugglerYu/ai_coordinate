@@ -1560,6 +1560,8 @@ export const frMessages = {
     nameInputInvalidCharacters: "Contient des caractères non autorisés (comme des accolades ou des sauts de ligne).",
     nameInputRequiredMissing: "Ce prompt nécessite un texte. Veuillez le saisir.",
     nameInputTooManySlots: "Un prompt peut contenir au maximum {max} champ(s) de texte.",
+    gachaTextExclusiveNote: "Vous ne pouvez utiliser que le gacha ou la saisie de texte (les utiliser ensemble est prévu pour un futur abonnement).",
+    gachaTextTogetherError: "Le gacha et la saisie de texte ne peuvent pas être utilisés ensemble. Choisissez-en un seul (les utiliser ensemble est prévu pour un futur abonnement).",
     nameInputEntryOptionalLabel: "{label} (facultatif)",
     nameInputEntryRequiredHint: "Jusqu’à {max} caractères. Ce texte apparaîtra dans l’image.",
     nameInputCreateDescription: "L’IA repère, dans le prompt de « Ce que vous voulez générer », les lignes concernant le texte à saisir par les utilisateurs (comme un nom) et les regroupe en un seul champ de texte. {cost} Percoins ne sont utilisés qu’en cas de réussite.",
