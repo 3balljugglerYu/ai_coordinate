@@ -8,6 +8,7 @@ import {
   closeGenerationScreen,
   GENERATION_SCREEN_ATTRIBUTE,
   notifyGenerationScreenShown,
+  peekOpenedFromApp,
 } from "@/features/generation/lib/generation-screen-transition";
 
 /**
@@ -26,7 +27,7 @@ export function GenerationScreenLoading() {
       <div className="sticky top-0 z-20 flex h-12 items-center gap-2 border-b bg-white/95 px-2">
         <button
           type="button"
-          onClick={() => closeGenerationScreen(router, "/")}
+          onClick={() => closeGenerationScreen(router, "/", peekOpenedFromApp())}
           aria-label={t("generationScreenClose")}
           className="grid h-10 w-10 place-items-center rounded-full text-gray-700"
         >

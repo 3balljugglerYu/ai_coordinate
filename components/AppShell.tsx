@@ -88,6 +88,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         <SignupSourceCapture />
+        {/*
+          生成画面(/generate/...)では、生成の直後に出る通知の常駐処理は残す。
+          ここで外すと、神コレなどの進み具合・完走のモーダルとボーナスの通知が、
+          画面を閉じるまで出ない(シートのときは生成の直後に出ていた)。
+        */}
+        {isGenerationScreen ? (
+          <>
+            <Suspense fallback={null}>
+              <CollectionProgressChecker />
+            </Suspense>
+            <Suspense fallback={null}>
+              <CollectionUnlockDripListener />
+            </Suspense>
+            <Suspense fallback={null}>
+              <BonusNotificationToastListener />
+            </Suspense>
+          </>
+        ) : null}
         {children}
       </>
     );

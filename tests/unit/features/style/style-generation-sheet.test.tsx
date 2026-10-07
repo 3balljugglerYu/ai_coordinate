@@ -281,5 +281,14 @@ describe("スマホは全画面の生成画面へ移る(2026-10-07)", () => {
     render(<StyleGenerationSheet {...defaultProps} />);
     expect(openScreenMock).not.toHaveBeenCalled();
   });
+
+  test("ダイアログを開いたまま画面が狭くなったら、生成画面へ移す", () => {
+    const onOpenChange = jest.fn();
+    const { rerender } = render(<StyleGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />);
+    isDesktopMock.mockReturnValue(false);
+    rerender(<StyleGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />);
+    expect(openScreenMock).toHaveBeenCalledWith(routerMock, "/generate/style/preset-1");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 });
 

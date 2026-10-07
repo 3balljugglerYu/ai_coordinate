@@ -81,12 +81,13 @@ export function StyleGenerationSheet({
   /*
     スマホは全画面の生成画面(ページ)で開く(2026-10-07 ユーザー決定。PromptLockedGenerationSheet と同じ)。
     開けるかの判定はページ側でもう一度行う(未ログイン・段階解放)。
+    ダイアログを開いたまま画面が狭くなったときも移す(isDesktop を依存に入れて測り直す)。
   */
   useEffect(() => {
     if (!open || isDesktopViewportNow()) return;
     openGenerationScreen(router, `/generate/style/${encodeURIComponent(preset.id)}`);
     onOpenChange(false);
-  }, [open, router, preset.id, onOpenChange]);
+  }, [open, isDesktop, router, preset.id, onOpenChange]);
 
   /*
     開いている間だけ全体の生成中バーを止める。

@@ -42,3 +42,26 @@ test.each([
   expect(screen.queryByTestId("header") === null).toBe(hidden);
   expect(screen.queryByTestId("nav") === null).toBe(hidden);
 });
+
+test("生成画面でも、生成の直後に出る通知の常駐処理は残す(神コレの進み具合・ボーナス)", () => {
+  pathnameMock.mockReturnValue("/generate/style/preset-1");
+  render(
+    <AppShell>
+      <p />
+    </AppShell>,
+  );
+  expect(screen.getByTestId("x1")).toBeTruthy();
+  expect(screen.getByTestId("x2")).toBeTruthy();
+  expect(screen.getByTestId("x3")).toBeTruthy();
+});
+
+test("ほかの全画面(投稿フォーム)では、今までどおり出さない", () => {
+  pathnameMock.mockReturnValue("/posts/new/img-1");
+  render(
+    <AppShell>
+      <p />
+    </AppShell>,
+  );
+  expect(screen.queryByTestId("x1")).toBeNull();
+});
+

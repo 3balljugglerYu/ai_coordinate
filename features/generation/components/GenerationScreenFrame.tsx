@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { X } from "lucide-react";
 import {
+  claimOpenedFromApp,
   closeGenerationScreen,
   GENERATION_SCREEN_ATTRIBUTE,
   notifyGenerationScreenShown,
@@ -47,8 +48,11 @@ export function GenerationScreenFrame({
   const backgroundProgressAvailable = useGenerationProgressAvailable();
   const shouldHandOff = backgroundProgressAvailable && handOffProgress;
 
+  // アプリの中から開いたか(閉じたら「戻る」か「元の画面へ置き換える」か)。描かれたときに1回だけ受け取る
+  const openedFromAppRef = useRef(false);
   // 描かれたら、開くアニメーションを始める
   useLayoutEffect(() => {
+    openedFromAppRef.current = claimOpenedFromApp();
     notifyGenerationScreenShown();
   }, []);
 
@@ -66,7 +70,7 @@ export function GenerationScreenFrame({
   }, [shouldHandOff]);
 
   const close = useCallback(() => {
-    closeGenerationScreen(router, fallbackHref);
+    closeGenerationScreen(router, fallbackHref, openedFromAppRef.current);
   }, [router, fallbackHref]);
 
   return (

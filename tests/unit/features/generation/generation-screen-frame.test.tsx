@@ -21,10 +21,14 @@ jest.mock("@/features/generation/components/GenerationProgressAvailabilityProvid
 }));
 const shownMock = jest.fn();
 const closeMock = jest.fn();
+const claimMock = jest.fn(() => true);
+const peekMock = jest.fn(() => false);
 jest.mock("@/features/generation/lib/generation-screen-transition", () => ({
   GENERATION_SCREEN_ATTRIBUTE: "data-generation-screen",
   notifyGenerationScreenShown: () => shownMock(),
   closeGenerationScreen: (...args: unknown[]) => closeMock(...args),
+  claimOpenedFromApp: () => claimMock(),
+  peekOpenedFromApp: () => peekMock(),
 }));
 const routerMock = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
 jest.mock("next/navigation", () => ({ useRouter: () => routerMock }));
@@ -49,7 +53,9 @@ describe("GenerationScreenFrame", () => {
     expect(screen.getByRole("heading").textContent).toBe("このカタログで生成する");
     expect(screen.getByTestId("generation-screen").hasAttribute("data-generation-screen")).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "generationScreenClose" }));
-    expect(closeMock).toHaveBeenCalledWith(routerMock, "/posts/a");
+    // アプリの中から開いたか(描かれたときに受け取った値)を渡す
+    expect(claimMock).toHaveBeenCalledTimes(1);
+    expect(closeMock).toHaveBeenCalledWith(routerMock, "/posts/a", true);
   });
 
   test("開いている間はバーを止め、離れるとき進行中のジョブを渡して解除する", () => {
@@ -86,6 +92,8 @@ describe("GenerationScreenLoading", () => {
     render(<GenerationScreenLoading />);
     expect(shownMock).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", { name: "generationScreenClose" }));
-    expect(closeMock).toHaveBeenCalledWith(routerMock, "/");
+    // 読み込み中は受け取らずに確かめる(このあと本体が受け取る)
+    expect(peekMock).toHaveBeenCalled();
+    expect(closeMock).toHaveBeenCalledWith(routerMock, "/", false);
   });
 });

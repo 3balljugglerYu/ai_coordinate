@@ -107,12 +107,14 @@ export function PromptLockedGenerationSheet({
     名前の欄などでキーボードを出したときにシートが上下し、欄がキーボードの裏に隠れたため。
     開く瞬間に画面幅を測る(useIsDesktopViewport は測る前は false なので使わない)。
     呼び出し側の open は、移動したらすぐ閉じた扱いに戻す(戻ってきたときに開き直さない)。
+    ダイアログを開いたまま画面が狭くなったとき(横向き→縦向き)も、生成画面へ移す
+    (isDesktop を依存に入れて測り直す。何も出ずにボタンが効かなくなるのを防ぐ)。
   */
   useEffect(() => {
     if (!open || isDesktopViewportNow()) return;
     openGenerationScreen(router, `/generate/post/${encodeURIComponent(sourcePostId)}`);
     onOpenChange(false);
-  }, [open, router, sourcePostId, onOpenChange]);
+  }, [open, isDesktop, router, sourcePostId, onOpenChange]);
 
   /*
     段階公開（本番でまず運営のみ）。実機の完全なE2E検証が未実施のため、

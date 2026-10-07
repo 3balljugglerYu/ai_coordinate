@@ -66,7 +66,6 @@ describe("generation-screen-transition", () => {
   test("閉じる: アプリの中から開いたときは戻り、生成画面が消えたら終える", async () => {
     const mod = await loadModule();
     const r = router();
-    mod.openGenerationScreen(r, "/generate/post/a");
     let update!: () => Promise<void>;
     (document as unknown as { startViewTransition: (cb: () => Promise<void>) => Transition }).startViewTransition =
       (cb) => {
@@ -77,7 +76,7 @@ describe("generation-screen-transition", () => {
     screen.setAttribute("data-generation-screen", "");
     document.body.appendChild(screen);
 
-    mod.closeGenerationScreen(r, "/posts/a");
+    mod.closeGenerationScreen(r, "/posts/a", true);
     expect(document.documentElement.getAttribute("data-generation-screen-transition")).toBe("close");
     let settled = false;
     const done = update().then(() => {
@@ -95,7 +94,7 @@ describe("generation-screen-transition", () => {
   test("閉じる: 直接 URL で来たときは、元の画面へ置き換える", async () => {
     const mod = await loadModule();
     const r = router();
-    mod.closeGenerationScreen(r, "/posts/a");
+    mod.closeGenerationScreen(r, "/posts/a", false);
     expect(r.replace).toHaveBeenCalledWith("/posts/a");
     expect(r.back).not.toHaveBeenCalled();
   });
@@ -121,5 +120,32 @@ describe("generation-screen-transition", () => {
     window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
     expect(mod.isDesktopViewportNow()).toBe(false);
     window.matchMedia = original;
+  });
+
+  test("アプリの中から開いたかは、開いた先の画面で1回だけ受け取る", async () => {
+    const mod = await loadModule();
+    window.history.pushState({}, "", "/generate/post/a");
+    mod.openGenerationScreen(router(), "/generate/post/a");
+    expect(mod.peekOpenedFromApp()).toBe(true);
+    expect(mod.claimOpenedFromApp()).toBe(true);
+    // 受け取ったら消える(ブラウザの戻るで離れたあと、別の道から来たときに残らない)
+    expect(mod.claimOpenedFromApp()).toBe(false);
+  });
+
+  test("リダイレクトで別の画面になったときは、アプリの中から開いた扱いにしない", async () => {
+    const mod = await loadModule();
+    mod.openGenerationScreen(router(), "/generate/style/p1");
+    window.history.pushState({}, "", "/login");
+    expect(mod.claimOpenedFromApp()).toBe(false);
+  });
+
+  test("開いてから時間がたちすぎたら、アプリの中から開いた扱いにしない", async () => {
+    const mod = await loadModule();
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_000);
+    mod.openGenerationScreen(router(), "/generate/post/a");
+    window.history.pushState({}, "", "/generate/post/a");
+    now.mockReturnValue(1_000 + 10_001);
+    expect(mod.claimOpenedFromApp()).toBe(false);
+    now.mockRestore();
   });
 });
