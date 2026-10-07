@@ -49,6 +49,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!pathname) return false;
     return /^\/posts\/new\/[^/]+\/?$/.test(stripLocalePrefix(pathname).pathname);
   })();
+  // スマホの生成画面(/generate/post/[id]・/generate/style/[presetId])は全画面にする(ボトムシートの代わり)。
+  // 閉じるはページ側の上部バーの ×。投稿フォームと同じ扱い
+  const isGenerationScreen = (() => {
+    if (!pathname) return false;
+    return /^\/generate\/(?:post|style)\/[^/]+\/?$/.test(stripLocalePrefix(pathname).pathname);
+  })();
   // コレクション完走の「めくれる日記帳」シェアは没入ビュー(/m/<token>/book)。
   const isCollectionBook = (() => {
     if (!pathname) return false;
@@ -60,6 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     isCatalogReader ||
     isCreatorPromptSubmit ||
     isPostComposer ||
+    isGenerationScreen ||
     isCollectionBook;
 
   useEffect(() => {
@@ -81,6 +88,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         <SignupSourceCapture />
+        {/*
+          生成画面(/generate/...)では、生成の直後に出る通知の常駐処理は残す。
+          ここで外すと、神コレなどの進み具合・完走のモーダルとボーナスの通知が、
+          画面を閉じるまで出ない(シートのときは生成の直後に出ていた)。
+        */}
+        {isGenerationScreen ? (
+          <>
+            <Suspense fallback={null}>
+              <CollectionProgressChecker />
+            </Suspense>
+            <Suspense fallback={null}>
+              <CollectionUnlockDripListener />
+            </Suspense>
+            <Suspense fallback={null}>
+              <BonusNotificationToastListener />
+            </Suspense>
+          </>
+        ) : null}
         {children}
       </>
     );

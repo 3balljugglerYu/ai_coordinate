@@ -1512,6 +1512,7 @@ export const hiMessages = {
       "बहुत बढ़िया! अब एक इमेज बनाकर देखें! “हो गया” टैप करने पर आपको बोनस Percoin मिलेगा।",
   },
   free: {
+    generationScreenClose: "बंद करें",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

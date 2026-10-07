@@ -1513,6 +1513,7 @@ export const idMessages = {
       "Kerja bagus! Silakan coba membuat gambar! Ketuk “Selesai” untuk menerima bonus Percoin.",
   },
   free: {
+    generationScreenClose: "Tutup",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

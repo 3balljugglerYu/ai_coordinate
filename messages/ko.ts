@@ -1510,6 +1510,7 @@ export const koMessages = {
       "수고하셨습니다! 이제 직접 생성해 보세요! “완료”를 누르면 보너스 페르코인이 지급됩니다.",
   },
   free: {
+    generationScreenClose: "닫기",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

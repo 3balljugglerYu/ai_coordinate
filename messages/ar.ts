@@ -1511,6 +1511,7 @@ export const arMessages = {
       "أحسنت! جرّب إنشاء صورة الآن! اضغط على «تم» للحصول على مكافأة Percoin.",
   },
   free: {
+    generationScreenClose: "إغلاق",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

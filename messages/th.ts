@@ -1510,6 +1510,7 @@ export const thMessages = {
       "เยี่ยมมาก! ลองสร้างภาพดูเลย! แตะ “เสร็จแล้ว” เพื่อรับโบนัส Percoin",
   },
   free: {
+    generationScreenClose: "ปิด",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

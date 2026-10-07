@@ -13,10 +13,9 @@
  * ライフサイクル effect は mount/unmount ではなく `open` prop の変化で
  * 判定するため、両方のパターンをテストする。
  *
- * 重い子コンポーネント（`GenerationFormContainer` 等）と vaul の `Drawer` は
- * モック化し、配線ロジックだけを検証する。モバイル経路（`Drawer`）だけを
- * 見れば十分（`handleOpenChange` とライフサイクル effect は
- * デスクトップ/モバイル共通のロジックのため）。
+ * 重い子コンポーネント（`GenerationFormContainer` 等）とダイアログは
+ * モック化し、配線ロジックだけを検証する。シートとして開くのはパソコンだけ
+ * （スマホは全画面の生成画面へ移る。2026-10-07。下の「スマホ」の describe）。
  */
 
 import React from "react";
@@ -40,8 +39,20 @@ jest.mock("@/features/generation/components/GenerationProgressAvailabilityProvid
   useGenerationProgressAvailable: () => availableMock(),
 }));
 
+const desktopMock = jest.fn(() => true);
 jest.mock("@/features/generation/hooks/useIsDesktopViewport", () => ({
-  useIsDesktopViewport: () => false,
+  useIsDesktopViewport: () => desktopMock(),
+}));
+
+const openScreenMock = jest.fn();
+jest.mock("@/features/generation/lib/generation-screen-transition", () => ({
+  isDesktopViewportNow: () => desktopMock(),
+  openGenerationScreen: (...args: unknown[]) => openScreenMock(...args),
+}));
+
+const routerMock = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
+jest.mock("next/navigation", () => ({
+  useRouter: () => routerMock,
 }));
 
 jest.mock("next-intl", () => ({
@@ -74,10 +85,9 @@ jest.mock("@/features/generation/components/PromptLockedGenerationResults", () =
   PromptLockedGenerationResults: () => <div data-testid="results" />,
 }));
 
-// vaul の Drawer はポータル/アニメーションを持つため、開閉の入出力だけの
-// 最小実装に差し替える。onOpenChange の伝播だけを検証したい。
-jest.mock("vaul", () => {
-  function Root({
+// ダイアログは開閉の入出力だけの最小実装に差し替える。onOpenChange の伝播だけを検証したい。
+jest.mock("@/components/ui/dialog", () => {
+  function Dialog({
     open,
     onOpenChange,
     children,
@@ -87,31 +97,21 @@ jest.mock("vaul", () => {
     children: React.ReactNode;
   }) {
     return open ? (
-      <div data-testid="drawer-root" data-onopenchange="attached">
-        <button
-          data-testid="drawer-close"
-          onClick={() => onOpenChange(false)}
-        >
+      <div data-testid="drawer-root">
+        <button data-testid="drawer-close" onClick={() => onOpenChange(false)}>
           close
         </button>
         {children}
       </div>
     ) : null;
   }
-  const Portal = ({ children }: { children: React.ReactNode }) => <>{children}</>;
-  const passthrough = (props: { children?: React.ReactNode }) => (
-    <div>{props.children}</div>
-  );
+  const passthrough = (props: { children?: React.ReactNode }) => <div>{props.children}</div>;
   return {
-    Drawer: {
-      Root,
-      Portal,
-      Overlay: passthrough,
-      Content: passthrough,
-      Handle: passthrough,
-      Title: passthrough,
-      Description: passthrough,
-    },
+    Dialog,
+    DialogContent: passthrough,
+    DialogHeader: passthrough,
+    DialogTitle: passthrough,
+    DialogDescription: passthrough,
   };
 });
 
@@ -126,6 +126,7 @@ const defaultProps = {
 beforeEach(() => {
   jest.clearAllMocks();
   availableMock.mockReturnValue(true);
+  desktopMock.mockReturnValue(true);
 });
 
 describe("PromptLockedGenerationSheet と進捗ストアの配線", () => {
@@ -207,3 +208,43 @@ describe("PromptLockedGenerationSheet と進捗ストアの配線", () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 });
+
+describe("スマホは全画面の生成画面へ移る(2026-10-07)", () => {
+  test("開くと生成画面へ移り、呼び出し側の open は閉じた扱いに戻す", () => {
+    desktopMock.mockReturnValue(false);
+    const onOpenChange = jest.fn();
+    const { queryByTestId } = render(
+      <PromptLockedGenerationSheet {...defaultProps} sourcePostId="post 1" onOpenChange={onOpenChange} />
+    );
+    expect(openScreenMock).toHaveBeenCalledWith(routerMock, "/generate/post/post%201");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // シートは描かず、バーの停止は生成画面に任せる
+    expect(queryByTestId("drawer-root")).toBeNull();
+    expect(pauseMock).not.toHaveBeenCalled();
+  });
+
+  test("閉じているときは移らない", () => {
+    desktopMock.mockReturnValue(false);
+    render(<PromptLockedGenerationSheet {...defaultProps} open={false} />);
+    expect(openScreenMock).not.toHaveBeenCalled();
+  });
+
+  test("パソコンでは移らず、ダイアログで開く", () => {
+    const { getByTestId } = render(<PromptLockedGenerationSheet {...defaultProps} />);
+    expect(openScreenMock).not.toHaveBeenCalled();
+    expect(getByTestId("drawer-root")).toBeTruthy();
+  });
+
+  test("ダイアログを開いたまま画面が狭くなったら、生成画面へ移す(横向き→縦向き)", () => {
+    const onOpenChange = jest.fn();
+    const { rerender } = render(
+      <PromptLockedGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />
+    );
+    expect(openScreenMock).not.toHaveBeenCalled();
+    desktopMock.mockReturnValue(false);
+    rerender(<PromptLockedGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />);
+    expect(openScreenMock).toHaveBeenCalledWith(routerMock, "/generate/post/post-1");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+

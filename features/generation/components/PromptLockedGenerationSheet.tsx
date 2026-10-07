@@ -1,10 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { fetchSourceNameInput } from "@/features/posts/lib/source-prompt-slots-api";
-import type { NameInputForUsers } from "@/shared/generation/name-input";
+import { useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Drawer } from "vaul";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +15,11 @@ import { GenerationFormContainer } from "@/features/generation/components/Genera
 import { PromptLockedGenerationHeader } from "@/features/generation/components/PromptLockedGenerationHeader";
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useIsDesktopViewport } from "@/features/generation/hooks/useIsDesktopViewport";
-import { fetchSourcePromptText } from "@/features/posts/lib/source-prompt-text-api";
+import { usePromptLockedGenerationInputs } from "@/features/generation/hooks/usePromptLockedGenerationInputs";
+import {
+  isDesktopViewportNow,
+  openGenerationScreen,
+} from "@/features/generation/lib/generation-screen-transition";
 import {
   checkAndTrackInProgressJob,
   pauseGenerationProgressBar,
@@ -62,16 +64,15 @@ interface PromptLockedGenerationSheetProps {
  *
  * ## 画面幅で見せ方を変える
  *
- * - モバイル: vaul の Drawer。下からせり上がり、先頭で下へ引くと閉じる
+ * - モバイル: 全画面の生成画面(ページ /generate/post/[id]。PromptLockedGenerationScreen)へ移る。
+ *   開くと下から上がり、上部の × で下へ下がって元の画面に戻る(generation-screen-transition.ts)。
+ *   以前は vaul のボトムシートだったが、名前の欄でキーボードを出すとシートが上下し、欄が
+ *   キーボードの裏に隠れた(2026-10-07)。キーボードの扱いをブラウザ標準に任せるため、ページにした
  * - デスクトップ: 横長のモーダル。左に入力、右に生成結果を並べる
  *
  * ボトムシートは指の届く範囲へ寄せる仕組みで、広い画面では縦に間延びし、
  * 左右が大きく余る。「画像を選ぶ」モーダルと同じ2カラムに寄せて、
  * 入力しながら結果を見られるようにする。
- *
- * モバイルで shadcn の Sheet ではなく vaul を使うのは、「画像を選ぶ」の
- * ドロワーと手触りを揃えるためである。shadcn の Sheet はスライドインはする
- * ものの引いて閉じられず、同じ画面の中で操作感が食い違う。
  *
  * ## 生成結果を必ず描画する
  *
@@ -99,7 +100,21 @@ export function PromptLockedGenerationSheet({
   const isCatalogRevamp = useStylesCatalogRevamp();
   const sheetTitle = t(isCatalogRevamp ? "feedUseCatalog" : "lockedSheetTitle");
   const isDesktop = useIsDesktopViewport();
-  const [lockedPromptText, setLockedPromptText] = useState<string | null>(null);
+  const router = useRouter();
+
+  /*
+    スマホは全画面の生成画面(ページ)で開く(2026-10-07 ユーザー決定)。シートだと、
+    名前の欄などでキーボードを出したときにシートが上下し、欄がキーボードの裏に隠れたため。
+    開く瞬間に画面幅を測る(useIsDesktopViewport は測る前は false なので使わない)。
+    呼び出し側の open は、移動したらすぐ閉じた扱いに戻す(戻ってきたときに開き直さない)。
+    ダイアログを開いたまま画面が狭くなったとき(横向き→縦向き)も、生成画面へ移す
+    (isDesktop を依存に入れて測り直す。何も出ずにボタンが効かなくなるのを防ぐ)。
+  */
+  useEffect(() => {
+    if (!open || isDesktopViewportNow()) return;
+    openGenerationScreen(router, `/generate/post/${encodeURIComponent(sourcePostId)}`);
+    onOpenChange(false);
+  }, [open, isDesktop, router, sourcePostId, onOpenChange]);
 
   /*
     段階公開（本番でまず運営のみ）。実機の完全なE2E検証が未実施のため、
@@ -128,14 +143,15 @@ export function PromptLockedGenerationSheet({
     従来どおり正しく resume される）。
   */
   useEffect(() => {
-    if (!backgroundProgressAvailable || !open) {
+    // スマホは生成画面(GenerationScreenFrame)が同じことをする
+    if (!backgroundProgressAvailable || !open || !isDesktop) {
       return;
     }
     pauseGenerationProgressBar();
     return () => {
       resumeGenerationProgressBarIfNeeded();
     };
-  }, [backgroundProgressAvailable, open]);
+  }, [backgroundProgressAvailable, open, isDesktop]);
 
   /*
     シートを閉じる直前に、進行中のジョブが無いかサーバーへ確認する。
@@ -152,57 +168,13 @@ export function PromptLockedGenerationSheet({
     [onOpenChange, backgroundProgressAvailable]
   );
 
-  /*
-    公開プロンプトの本文は開いてから取りに行く。
-
-    props へ載せると未フォロワーのブラウザにも届いてしまうため、
-    サーバー側で認可する /api/posts/[id]/prompt-text 経由にする。
-    取得に失敗しても生成自体は成立する（本文はサーバーが解決する）ので、
-    表示だけ諦めてシートは開いたままにする。
-  */
-  useEffect(() => {
-    if (!open || promptVisibility !== "public") {
-      return;
-    }
-    let cancelled = false;
-    fetchSourcePromptText(sourcePostId)
-      .then((text) => {
-        if (!cancelled) setLockedPromptText(text);
-      })
-      .catch(() => {
-        if (!cancelled) setLockedPromptText(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, promptVisibility, sourcePostId]);
-
-  /*
-    名前の欄(docs/planning/name-input-slot-plan.md Phase 3)。原作の本文に目印があれば、
-    見出しなどだけを取りに行く(本文は返らないので、非公開プロンプトでも出せる)。
-    取れなくても生成はできる(目印は「名前なし」に置き換わる)。
-  */
-  // 取りに行った原作の ID と結果。原作が変わったら、前の原作の見出しを出さない
-  const [nameInputState, setNameInputState] = useState<{
-    postId: string;
-    value: NameInputForUsers | null;
-  } | null>(null);
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    fetchSourceNameInput(sourcePostId)
-      .then((value) => {
-        if (!cancelled) setNameInputState({ postId: sourcePostId, value });
-      })
-      .catch(() => {
-        if (!cancelled) setNameInputState({ postId: sourcePostId, value: null });
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [open, sourcePostId]);
-  const nameInputLoaded = nameInputState?.postId === sourcePostId;
-  const lockedNameInput = nameInputLoaded ? nameInputState.value : null;
+  // 開いてから取りに行くもの(公開プロンプトの本文・名前の欄)。パソコンのダイアログで開いている間だけ
+  const { lockedPromptText, lockedNameInput, lockedNameInputLoading } =
+    usePromptLockedGenerationInputs({
+      active: open && isDesktop,
+      sourcePostId,
+      promptVisibility,
+    });
 
   const form = (
     <GenerationFormContainer
@@ -214,7 +186,7 @@ export function PromptLockedGenerationSheet({
       sourcePostId={sourcePostId}
       lockedNameInput={lockedNameInput}
       // 取り終わるまでは生成させない(必須の名前を入れる前に送られないように)
-      lockedNameInputLoading={open && !nameInputLoaded}
+      lockedNameInputLoading={lockedNameInputLoading}
     />
   );
 
@@ -258,43 +230,6 @@ export function PromptLockedGenerationSheet({
     );
   }
 
-  return (
-    <Drawer.Root open={open} onOpenChange={handleOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Drawer.Content
-          className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-white outline-none"
-          style={{ height: "92dvh", maxHeight: "92dvh" }}
-        >
-          {/*
-            つまみ。ここを引くと閉じる。本文が先頭まで戻っていれば本文側を
-            下へ引いても閉じるので、指の位置を選ばずに閉じられる。
-          */}
-          <div className="flex-shrink-0">
-            <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
-            {/* 読み上げ用。見出しは本文側の Free Style 表記(刷新後は「カタログから生成」)が担う。 */}
-            <Drawer.Title className="sr-only">
-              {sheetTitle}
-            </Drawer.Title>
-            <Drawer.Description className="sr-only">
-              {t("lockedSheetDescription")}
-            </Drawer.Description>
-          </div>
-
-          {/*
-            本文。ここが先頭 (scrollTop = 0) のときだけ、下方向のドラッグが
-            ドロワーを閉じる操作になる。途中までスクロールしている間は通常の
-            スクロールが優先されるので、読んでいる最中に閉じない。
-          */}
-          <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-8 pt-2">
-            <PromptLockedGenerationHeader />
-            <GenerationStateProvider>
-              {form}
-              <PromptLockedGenerationResults />
-            </GenerationStateProvider>
-          </div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
-  );
+  // スマホは上の effect で生成画面へ移る(ここでは何も描かない)
+  return null;
 }
