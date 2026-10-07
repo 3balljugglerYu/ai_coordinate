@@ -1,9 +1,11 @@
 /**
- * 名前を入れられるプロンプト(名前の欄)。計画書: docs/planning/name-input-slot-plan.md
+ * 文字入力の欄(画面では「文字入力を受け付ける」)。計画書: docs/planning/name-input-slot-plan.md
  *
  * プロンプトに目印 `{{INPUT:見出し}}`(必須なら `{{INPUT*:見出し}}`)を書いておくと、
- * 生成する人が名前を入れられる。画像の AI に送る直前に、Worker が目印を
- * 「名前あり／なし」の固定文に置き換える(ガチャの後)。
+ * 生成する人が文字(名前・好きな言葉など)を入れられる。画像の AI に送る直前に、Worker が目印を
+ * 「文字あり／なし」の固定文に置き換える(ガチャの後)。固定文には作る人が決めた見出しを入れる。
+ *
+ * 最初は名前専用だったため、コードの名前(nameInput)はそのまま残している(2026-10-07 に汎用化)。
  *
  * AI に「入力があれば…、無ければ…」と判断させないのが要点。入力の有無はサーバーが先に決める。
  *
@@ -117,20 +119,32 @@ export function checkNameInputValue(raw: string | null | undefined): NameInputVa
   return { ok: true, value };
 }
 
-/** 名前があるときに目印を置き換える固定文。 */
-export function buildNameProvidedText(name: string): string {
+/**
+ * 固定文の見出し。作る人が決めた見出しを入れて、何の文字か(名前・好きな言葉など)を AI に伝える
+ * (2026-10-07 ユーザー決定: 名前に限らず、好きな文字を入れられる機能として出す)。
+ * 見出しの【】は固定文の区切りと紛れるので外す。
+ */
+function fixedTextHeading(label: string): string {
+  return label.replace(/[【】]/g, "").trim() || NAME_INPUT_DEFAULT_LABEL;
+}
+
+/** 文字が入っているときに目印を置き換える固定文。 */
+export function buildNameProvidedText(value: string, label: string = NAME_INPUT_DEFAULT_LABEL): string {
   return [
-    `【名前】「${name}」`,
-    "この名前を正式名として固定し、変更・省略・言い換え・英字化はしないでください。",
-    `画像内に最低1回、「${name}」をそのまま表示してください。`,
+    `【${fixedTextHeading(label)}】「${value}」`,
+    "この文字を正式なものとして固定し、変更・省略・言い換え・翻訳・英字化はしないでください。",
+    `画像内に最低1回、「${value}」をそのまま表示してください。`,
   ].join("\n");
 }
 
-/** 名前が無いときに目印を置き換える固定文。 */
-export const NAME_NOT_PROVIDED_TEXT = [
-  "【名前】未入力",
-  "名前は付けず、名前欄やキャラクター名の表示はしないでください。",
-].join("\n");
+/** 空欄のときに目印を置き換える固定文。AI がこの項目の文字を作らないようにする。 */
+export function buildNameNotProvidedText(label: string = NAME_INPUT_DEFAULT_LABEL): string {
+  const heading = fixedTextHeading(label);
+  return [
+    `【${heading}】未入力`,
+    `「${heading}」にあたる文字は作らず、画像にも表示しないでください。`,
+  ].join("\n");
+}
 
 /**
  * 目印を固定文に置き換える。
@@ -146,9 +160,12 @@ export function expandNameInput(
   const check = checkNameInputValue(name);
   const value = check.ok ? check.value : "";
   let hadSlot = false;
-  const expanded = prompt.replace(NAME_INPUT_PATTERN, () => {
+  const expanded = prompt.replace(NAME_INPUT_PATTERN, (_marker, _required, inner: string) => {
     hadSlot = true;
-    return value ? buildNameProvidedText(value) : NAME_NOT_PROVIDED_TEXT;
+    // 目印ごとの見出し(`見出し|入力例` の前半)を固定文に入れる。
+    // 入れる文字は1つなので、目印が複数(運営だけ。一般は1つまで)あればどれにも同じ文字が入る
+    const label = inner.split("|")[0].trim().slice(0, NAME_INPUT_LABEL_MAX_LENGTH) || NAME_INPUT_DEFAULT_LABEL;
+    return value ? buildNameProvidedText(value, label) : buildNameNotProvidedText(label);
   });
   return { prompt: expanded, nameUsed: hadSlot && value.length > 0, hadSlot };
 }

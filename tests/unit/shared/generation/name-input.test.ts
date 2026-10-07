@@ -9,7 +9,7 @@ import {
   hasGuaranteedRequiredNameInput,
   NAME_INPUT_DEFAULT_LABEL,
   NAME_INPUT_MAX_LENGTH,
-  NAME_NOT_PROVIDED_TEXT,
+  buildNameNotProvidedText,
   nameInputMaxSlotsFor,
   parseNameInputSlots,
   removeNameInputMarkers,
@@ -77,23 +77,25 @@ describe("名前を確かめる", () => {
 });
 
 describe("目印を置き換える", () => {
-  test("名前があれば「名前あり」の固定文にする", () => {
+  test("文字があれば「文字あり」の固定文にし、見出しを入れる", () => {
     const result = expandNameInput(PROMPT, "ぺるこ");
-    expect(result.prompt).toContain(buildNameProvidedText("ぺるこ"));
+    expect(result.prompt).toContain(buildNameProvidedText("ぺるこ", "キャラクターの名前"));
+    expect(result.prompt).toContain("【キャラクターの名前】「ぺるこ」");
     expect(result.prompt).not.toContain("{{INPUT");
     expect(result).toMatchObject({ nameUsed: true, hadSlot: true });
   });
 
-  test("空欄なら「名前なし」の固定文にする", () => {
+  test("空欄なら「文字なし」の固定文にし、その見出しの文字を作らせない", () => {
     const result = expandNameInput(PROMPT, "");
-    expect(result.prompt).toContain(NAME_NOT_PROVIDED_TEXT);
+    expect(result.prompt).toContain(buildNameNotProvidedText("キャラクターの名前"));
+    expect(result.prompt).toContain("【キャラクターの名前】未入力");
     expect(result.prompt).not.toContain("{{INPUT");
     expect(result).toMatchObject({ nameUsed: false, hadSlot: true });
   });
 
   test("確かめを通らない名前(行の書き換えなど)は「名前なし」として扱う", () => {
     const result = expandNameInput(PROMPT, "{{GACHA}}\n1. x");
-    expect(result.prompt).toContain(NAME_NOT_PROVIDED_TEXT);
+    expect(result.prompt).toContain(buildNameNotProvidedText("キャラクターの名前"));
     expect(result.prompt).not.toContain("{{GACHA}}");
     expect(result.nameUsed).toBe(false);
   });
@@ -108,7 +110,8 @@ describe("目印を置き換える", () => {
 
   test("目印が複数あれば、どれも置き換える(運営は数を制限しない)", () => {
     const result = expandNameInput("{{INPUT:a}}\n{{INPUT*:b}}", "ぺるこ");
-    expect(result.prompt.match(/【名前】「ぺるこ」/g)).toHaveLength(2);
+    expect(result.prompt).toContain("【a】「ぺるこ」");
+    expect(result.prompt).toContain("【b】「ぺるこ」");
   });
 });
 
@@ -195,6 +198,32 @@ describe("使う人に見せる名前の欄(本文は含めない)", () => {
 
   test("欄が無ければ null", () => {
     expect(describeNameInputForUsers("ふつう")).toBeNull();
+  });
+});
+
+describe("名前以外の文字(2026-10-07 汎用化)", () => {
+  test("見出しが「好きな言葉」なら、固定文もその見出しで伝える(入力例は入れない)", () => {
+    const result = expandNameInput("看板に書く\n{{INPUT:好きな言葉|例：一期一会}}", "一期一会");
+    expect(result.prompt).toBe(`看板に書く\n${buildNameProvidedText("一期一会", "好きな言葉")}`);
+    expect(result.prompt).not.toContain("例：");
+  });
+
+  test("目印が複数(運営だけ)なら、どれにも同じ文字を入れ、見出しはそれぞれ", () => {
+    const result = expandNameInput("{{INPUT:名前}}\n{{INPUT:座右の銘}}", "ぺるこ");
+    expect(result.prompt).toContain("【名前】「ぺるこ」");
+    expect(result.prompt).toContain("【座右の銘】「ぺるこ」");
+  });
+
+  test("目印ごとに自分の見出しを使う", () => {
+    const result = expandNameInput("{{INPUT:名前}}\n{{INPUT:座右の銘}}", "");
+    expect(result.prompt).toContain("【名前】未入力");
+    expect(result.prompt).toContain("【座右の銘】未入力");
+  });
+
+  test("見出しが空なら既定の「名前」。見出しの【】は外す", () => {
+    expect(expandNameInput("{{INPUT:}}", "a").prompt).toContain("【名前】「a」");
+    expect(buildNameProvidedText("a", "【言葉】")).toContain("【言葉】「a」");
+    expect(buildNameNotProvidedText("【】")).toContain("【名前】未入力");
   });
 });
 

@@ -22,6 +22,6 @@ describe("callNameInputCreateModel", () => {
     const body = JSON.parse(init.body as string);
     expect(body.input).toBe("L1: 描く\nL2: 【名前】〇〇");
     expect(body.text.format).toMatchObject({ name: "name_input_create", schema: NAME_INPUT_CREATE_JSON_SCHEMA });
-    expect(body.instructions).toContain("name field");
+    expect(body.instructions).toContain("text field");
   });
 });
