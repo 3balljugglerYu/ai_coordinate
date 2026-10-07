@@ -1465,6 +1465,7 @@ export const jaMessages = {
       "お疲れ様でした！ぜひ、生成してみてくださいね！『完了』を押すと、ボーナスのペルコインが付与されます。",
   },
   free: {
+    generationScreenClose: "閉じる",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

@@ -1514,6 +1514,7 @@ export const itMessages = {
       "Ottimo lavoro! Prova subito a creare un'immagine! Tocca «Fatto» per ricevere il bonus in Percoin.",
   },
   free: {
+    generationScreenClose: "Chiudi",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

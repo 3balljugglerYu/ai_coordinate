@@ -1514,6 +1514,7 @@ export const frMessages = {
       "Bravo ! Lancez-vous et créez une image ! Touchez « Terminer » pour recevoir votre bonus Percoin.",
   },
   free: {
+    generationScreenClose: "Fermer",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

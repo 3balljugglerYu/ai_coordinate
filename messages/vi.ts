@@ -1511,6 +1511,7 @@ export const viMessages = {
       "Tuyệt vời! Hãy thử tạo một bức ảnh nhé! Chạm “Hoàn thành” để nhận thưởng Percoin.",
   },
   free: {
+    generationScreenClose: "Đóng",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

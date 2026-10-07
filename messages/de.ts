@@ -1515,6 +1515,7 @@ export const deMessages = {
       "Gut gemacht! Probiere es aus und erstelle ein Bild! Tippe auf „Fertig“, um deinen Bonus-Percoin zu erhalten.",
   },
   free: {
+    generationScreenClose: "Schließen",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

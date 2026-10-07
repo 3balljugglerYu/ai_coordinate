@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Drawer } from "vaul";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +14,10 @@ import { GenerationStateProvider } from "@/features/generation/context/Generatio
 import { PromptLockedGenerationHeader } from "@/features/generation/components/PromptLockedGenerationHeader";
 import { PromptLockedGenerationResults } from "@/features/generation/components/PromptLockedGenerationResults";
 import { useIsDesktopViewport } from "@/features/generation/hooks/useIsDesktopViewport";
+import {
+  isDesktopViewportNow,
+  openGenerationScreen,
+} from "@/features/generation/lib/generation-screen-transition";
 import {
   checkAndTrackInProgressJob,
   pauseGenerationProgressBar,
@@ -44,7 +48,8 @@ interface StyleGenerationSheetProps {
  * `/styles`(Persta.AI ORIGINAL)のカードから開く、One-Tap Style の生成シート。
  *
  * 外側は User ORIGINAL の生成シート(`PromptLockedGenerationSheet`)と同じ作りにする。
- * - モバイル: vaul の Drawer(下からせり上がり、先頭で下へ引くと閉じる。高さは画面の 92%)
+ * - モバイル: 全画面の生成画面(ページ /generate/style/[presetId]。StyleGenerationScreen)へ移る
+ *   (2026-10-07。シートだとキーボードで上下し、神コレの名前の欄などが隠れるため)
  * - デスクトップ: 横長のモーダル(左に入力、右に生成結果)
  * - 開いている間は全体の生成中バーを止め、閉じたら進行中のジョブをバーへ引き継ぐ
  *
@@ -71,6 +76,17 @@ export function StyleGenerationSheet({
   const t = useTranslations("style");
   const isDesktop = useIsDesktopViewport();
   const backgroundProgressAvailable = useGenerationProgressAvailable();
+  const router = useRouter();
+
+  /*
+    スマホは全画面の生成画面(ページ)で開く(2026-10-07 ユーザー決定。PromptLockedGenerationSheet と同じ)。
+    開けるかの判定はページ側でもう一度行う(未ログイン・段階解放)。
+  */
+  useEffect(() => {
+    if (!open || isDesktopViewportNow()) return;
+    openGenerationScreen(router, `/generate/style/${encodeURIComponent(preset.id)}`);
+    onOpenChange(false);
+  }, [open, router, preset.id, onOpenChange]);
 
   /*
     開いている間だけ全体の生成中バーを止める。
@@ -79,14 +95,15 @@ export function StyleGenerationSheet({
   */
   useEffect(() => {
     // 未ログインは全体の生成中バーを使わない(進行中のジョブを追えないため)
-    if (!backgroundProgressAvailable || !open || isGuest) {
+    // スマホは生成画面(GenerationScreenFrame)が同じことをする
+    if (!backgroundProgressAvailable || !open || isGuest || !isDesktop) {
       return;
     }
     pauseGenerationProgressBar();
     return () => {
       resumeGenerationProgressBarIfNeeded();
     };
-  }, [backgroundProgressAvailable, open, isGuest]);
+  }, [backgroundProgressAvailable, open, isGuest, isDesktop]);
 
   /*
     閉じる直前に、進行中のジョブが無いかサーバーへ確認し、あれば全体の
@@ -173,40 +190,6 @@ export function StyleGenerationSheet({
     );
   }
 
-  return (
-    <Drawer.Root open={open} onOpenChange={handleOpenChange}>
-      <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        <Drawer.Content
-          className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-white outline-none"
-          style={{ height: "92dvh", maxHeight: "92dvh" }}
-        >
-          {/* つまみ。ここを引くと閉じる(本文が先頭なら本文を引いても閉じる)。 */}
-          <div className="flex-shrink-0">
-            <Drawer.Handle className="mx-auto mt-2 h-1.5 w-12 rounded-full bg-gray-300" />
-            {/* 読み上げ用。見出しは本文側の One-Tap Style 表記(刷新後は「カタログから生成」)が担う。 */}
-            <Drawer.Title className="sr-only">
-              {t("generationSheetTitle")}
-            </Drawer.Title>
-            <Drawer.Description className="sr-only">
-              {t("generationSheetDescription")}
-            </Drawer.Description>
-          </div>
-
-          <div className="flex-1 space-y-6 overflow-y-auto px-4 pb-8 pt-2">
-            <PromptLockedGenerationHeader
-              mode="style"
-              showBalancePlaceholder={!isGuest}
-            />
-            <GenerationStateProvider>
-              {form}
-              {isGuest ? null : (
-                <PromptLockedGenerationResults generationType="one_tap_style" />
-              )}
-            </GenerationStateProvider>
-          </div>
-        </Drawer.Content>
-      </Drawer.Portal>
-    </Drawer.Root>
-  );
+  // スマホは上の effect で生成画面へ移る(ここでは何も描かない)
+  return null;
 }

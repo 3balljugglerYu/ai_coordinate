@@ -1514,6 +1514,7 @@ export const ptMessages = {
       "Bom trabalho! Experimente criar uma imagem! Ao tocar em “Concluir”, você recebe seu Percoin de bônus.",
   },
   free: {
+    generationScreenClose: "Fechar",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

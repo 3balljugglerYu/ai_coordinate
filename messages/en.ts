@@ -1511,6 +1511,7 @@ export const enMessages = {
       "Great job! Go ahead and try creating an image! Tap “Done” to receive your bonus Percoin.",
   },
   free: {
+    generationScreenClose: "Close",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

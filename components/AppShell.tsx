@@ -49,6 +49,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!pathname) return false;
     return /^\/posts\/new\/[^/]+\/?$/.test(stripLocalePrefix(pathname).pathname);
   })();
+  // スマホの生成画面(/generate/post/[id]・/generate/style/[presetId])は全画面にする(ボトムシートの代わり)。
+  // 閉じるはページ側の上部バーの ×。投稿フォームと同じ扱い
+  const isGenerationScreen = (() => {
+    if (!pathname) return false;
+    return /^\/generate\/(?:post|style)\/[^/]+\/?$/.test(stripLocalePrefix(pathname).pathname);
+  })();
   // コレクション完走の「めくれる日記帳」シェアは没入ビュー(/m/<token>/book)。
   const isCollectionBook = (() => {
     if (!pathname) return false;
@@ -60,6 +66,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     isCatalogReader ||
     isCreatorPromptSubmit ||
     isPostComposer ||
+    isGenerationScreen ||
     isCollectionBook;
 
   useEffect(() => {

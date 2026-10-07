@@ -5,7 +5,9 @@
  *
  * 外側は User ORIGINAL の生成シート(`PromptLockedGenerationSheet`)と同じなので、
  * そちらのテスト(tests/unit/features/generation/prompt-locked-generation-sheet.test.tsx)
- * と同じく、重い子と vaul の Drawer をモックして配線だけを見る。
+ * と同じく、重い子とダイアログをモックして配線だけを見る。
+ * シートとして開くのはパソコンだけ(スマホは全画面の生成画面へ移る。2026-10-07)。
+ * スマホの中身は style-generation-screen.test.tsx。
  *
  *  - 開いている間は全体の生成中バーを止め、閉じたら解除して進行中のジョブを引き継ぐ
  *  - 中身は One-Tap Style のフォーム(variant="sheet"、スタイル固定、ログイン中)
@@ -35,9 +37,20 @@ jest.mock(
   })
 );
 
-const isDesktopMock = jest.fn(() => false);
+const isDesktopMock = jest.fn(() => true);
 jest.mock("@/features/generation/hooks/useIsDesktopViewport", () => ({
   useIsDesktopViewport: () => isDesktopMock(),
+}));
+
+const openScreenMock = jest.fn();
+jest.mock("@/features/generation/lib/generation-screen-transition", () => ({
+  isDesktopViewportNow: () => isDesktopMock(),
+  openGenerationScreen: (...args: unknown[]) => openScreenMock(...args),
+}));
+
+const routerMock = { push: jest.fn(), back: jest.fn(), replace: jest.fn() };
+jest.mock("next/navigation", () => ({
+  useRouter: () => routerMock,
 }));
 
 jest.mock("next-intl", () => ({
@@ -121,41 +134,6 @@ jest.mock("@/components/ui/dialog", () => ({
   ),
 }));
 
-jest.mock("vaul", () => {
-  function Root({
-    open,
-    onOpenChange,
-    children,
-  }: {
-    open: boolean;
-    onOpenChange: (next: boolean) => void;
-    children: React.ReactNode;
-  }) {
-    return open ? (
-      <div data-testid="drawer-root">
-        <button data-testid="drawer-close" onClick={() => onOpenChange(false)}>
-          close
-        </button>
-        {children}
-      </div>
-    ) : null;
-  }
-  const passthrough = (props: { children?: React.ReactNode }) => (
-    <div>{props.children}</div>
-  );
-  return {
-    Drawer: {
-      Root,
-      Portal: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-      Overlay: passthrough,
-      Content: passthrough,
-      Handle: passthrough,
-      Title: passthrough,
-      Description: passthrough,
-    },
-  };
-});
-
 const preset = {
   id: "preset-1",
   title: "PARIS CODE",
@@ -171,7 +149,7 @@ const defaultProps = {
 beforeEach(() => {
   jest.clearAllMocks();
   availableMock.mockReturnValue(true);
-  isDesktopMock.mockReturnValue(false);
+  isDesktopMock.mockReturnValue(true);
 });
 
 describe("StyleGenerationSheet", () => {
@@ -190,12 +168,7 @@ describe("StyleGenerationSheet", () => {
     );
   });
 
-  test.each([
-    ["スマホ", false],
-    ["PC", true],
-  ])("%sでも見出しと生成結果一覧をOne-Tap Style用にする", (_label, isDesktop) => {
-    isDesktopMock.mockReturnValue(isDesktop);
-
+  test("見出しと生成結果一覧をOne-Tap Style用にする", () => {
     render(<StyleGenerationSheet {...defaultProps} />);
 
     expect(screen.getByTestId("header")?.getAttribute("data-mode")).toBe("style");
@@ -226,24 +199,15 @@ describe("StyleGenerationSheet", () => {
     expect(resumeMock).toHaveBeenCalledTimes(1);
   });
 
-  test.each([
-    ["スマホ", false, "drawer-close"],
-    ["PC", true, "dialog-close"],
-  ])(
-    "%sで閉じると進行中のジョブを生成中バーへ引き継ぎ、onOpenChangeにも伝える",
-    (_label, isDesktop, closeTestId) => {
-      isDesktopMock.mockReturnValue(isDesktop);
-      const onOpenChange = jest.fn();
+  test("閉じると進行中のジョブを生成中バーへ引き継ぎ、onOpenChangeにも伝える", () => {
+    const onOpenChange = jest.fn();
 
-      render(
-        <StyleGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />
-      );
-      screen.getByTestId(closeTestId).click();
+    render(<StyleGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />);
+    screen.getByTestId("dialog-close").click();
 
-      expect(checkAndTrackMock).toHaveBeenCalledTimes(1);
-      expect(onOpenChange).toHaveBeenCalledWith(false);
-    }
-  );
+    expect(checkAndTrackMock).toHaveBeenCalledTimes(1);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 
   test("生成中バーが無効な間は、止めも引き継ぎもしない", () => {
     availableMock.mockReturnValue(false);
@@ -252,7 +216,7 @@ describe("StyleGenerationSheet", () => {
     const { unmount } = render(
       <StyleGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />
     );
-    screen.getByTestId("drawer-close").click();
+    screen.getByTestId("dialog-close").click();
     unmount();
 
     expect(pauseMock).not.toHaveBeenCalled();
@@ -278,12 +242,7 @@ describe("StyleGenerationSheet", () => {
       );
     });
 
-    test.each([
-      ["スマホ", false],
-      ["PC", true],
-    ])("%sでも生成結果一覧と残高の枠を出さない", (_label, isDesktop) => {
-      isDesktopMock.mockReturnValue(isDesktop);
-
+    test("生成結果一覧と残高の枠を出さない", () => {
       render(<StyleGenerationSheet {...defaultProps} isGuest />);
 
       expect(screen.queryByTestId("results")).toBeNull();
@@ -298,7 +257,7 @@ describe("StyleGenerationSheet", () => {
       render(
         <StyleGenerationSheet {...defaultProps} isGuest onOpenChange={onOpenChange} />
       );
-      screen.getByTestId("drawer-close").click();
+      screen.getByTestId("dialog-close").click();
 
       expect(pauseMock).not.toHaveBeenCalled();
       expect(checkAndTrackMock).not.toHaveBeenCalled();
@@ -306,3 +265,21 @@ describe("StyleGenerationSheet", () => {
     });
   });
 });
+
+describe("スマホは全画面の生成画面へ移る(2026-10-07)", () => {
+  test("開くと生成画面へ移り、呼び出し側の open は閉じた扱いに戻す", () => {
+    isDesktopMock.mockReturnValue(false);
+    const onOpenChange = jest.fn();
+    render(<StyleGenerationSheet {...defaultProps} onOpenChange={onOpenChange} />);
+    expect(openScreenMock).toHaveBeenCalledWith(routerMock, "/generate/style/preset-1");
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+    expect(screen.queryByTestId("form")).toBeNull();
+    expect(pauseMock).not.toHaveBeenCalled();
+  });
+
+  test("パソコンでは移らない", () => {
+    render(<StyleGenerationSheet {...defaultProps} />);
+    expect(openScreenMock).not.toHaveBeenCalled();
+  });
+});
+

@@ -1514,6 +1514,7 @@ export const esMessages = {
       "¡Buen trabajo! ¡Anímate a crear una imagen! Al tocar «Listo» recibirás tu Percoin de bonificación.",
   },
   free: {
+    generationScreenClose: "Cerrar",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",

@@ -1508,6 +1508,7 @@ export const zhTwMessages = {
     stepFinishedDescription: "辛苦了！快去試著生成一張吧！點擊「完成」即可獲得獎勵Percoin。",
   },
   free: {
+    generationScreenClose: "關閉",
     tabLabel: "Free Style",
     tabLabelRevamp: "CREATE",
     pageTitle: "Free Style",
