@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
 import { connection } from "next/server";
 import { getTranslations } from "next-intl/server";
-import { getUser } from "@/lib/auth";
-import { isNameInputAvailable } from "@/lib/env";
+import { isNameInputPubliclyEnabled } from "@/lib/env";
 import {
   createCanonicalAlternates,
   getDefaultOpenGraphImages,
@@ -12,8 +10,8 @@ import {
 import { TextGuide } from "@/features/guide/components/TextGuide";
 
 // 文字入力の紹介ページ。計画書: docs/planning/name-input-slot-plan.md Phase 6
-// 文字入力と同じ判定で出す(運営だけの間は、ほかの人には 404)。文字入力を一般公開すると、
-// このページも一緒に公開される(ガチャの紹介ページと同じ作り)。
+// URL を知っていれば誰でも見られる(2026-10-08 ユーザー決定。以前は運営だけ)。
+// ただし文字入力を一般公開するまでは、検索に出さない(noindex・sitemap にも載せない)。
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("textGuide");
@@ -28,14 +26,13 @@ export async function generateMetadata(): Promise<Metadata> {
     alternates: createCanonicalAlternates("/guide/text"),
     openGraph: { title, description, type: "website", siteName: "Persta.AI", images },
     twitter: { card: "summary_large_image", title, description, images: twitterImages },
+    // 文字入力を一般公開するまでは、検索エンジンに載せない
+    ...(isNameInputPubliclyEnabled() ? {} : { robots: { index: false, follow: false } }),
   };
 }
 
 export default async function TextGuidePage() {
+  // 表示する言語は閲覧者ごとに変わるので、リクエストごとに描く(ガチャの紹介ページと同じ)
   await connection();
-  const user = await getUser();
-  if (!isNameInputAvailable(user?.id)) {
-    notFound();
-  }
   return <TextGuide />;
 }
