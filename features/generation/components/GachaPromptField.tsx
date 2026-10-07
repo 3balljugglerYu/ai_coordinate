@@ -113,7 +113,7 @@ export function GachaPromptField({
 
   return (
     <div className="space-y-3">
-      {/* 「プロンプトの仕掛け」の箱の1行(名前の欄と同じ形のスイッチ。2026-10-06 ユーザー決定) */}
+      {/* 「プロンプトオプション」の箱の1行(名前の欄と同じ形のスイッチ。2026-10-06 ユーザー決定) */}
       <div className="flex items-center gap-2">
         <Label
           htmlFor="gacha-prompt-enabled"

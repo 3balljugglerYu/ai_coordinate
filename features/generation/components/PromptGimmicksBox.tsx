@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 /**
- * 「プロンプトの仕掛け」の箱。名前の欄とガチャのスイッチを1行ずつ並べる
+ * 「プロンプトオプション」の箱。名前の欄とガチャのスイッチを1行ずつ並べる
  * (docs/planning/name-input-slot-plan.md ADR-4。あとで仕掛けが増えても、ここに1行足すだけで済む)。
  */
 export function PromptGimmicksBox({ children }: { children: ReactNode }) {

@@ -878,8 +878,8 @@ export function GenerationForm({
                 slot={nameSlot}
                 onSlotChange={(slot) => setPrompt((current) => upsertNameInputMarker(current, slot))}
                 onDisable={() => {
+                  // 試しの名前は消さない(オンに戻したら使える。切っている間は送らない)
                   setPrompt((current) => removeNameInputMarkers(current));
-                  setTrialName("");
                 }}
                 trialName={trialName}
                 onTrialNameChange={setTrialName}
