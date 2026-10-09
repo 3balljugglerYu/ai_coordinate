@@ -41,42 +41,55 @@ const SHOTS = {
 } as const;
 
 /**
- * 生成例(入れた文字が画像に入ったもの)。運営から届いたら、ここに足す(`public/guide/text/` に置く)。
- * 届くまでは点線の枠を出す(公開前は運営だけに見えるページ)。
+ * 生成例(入れた文字が画像に入ったもの)。どの章も2枚ずつ(2026-10-08 ユーザー決定)。
+ * 運営から届いたら、その章に足す(`public/guide/text/` に置く)。届くまでは点線の枠を出す。
+ * `text` は画像に入っている文字(画像の説明 alt に使う。言語によらず同じ)。
  */
-const EXAMPLES: { src: string; text: string }[] = [];
+type Example = { src: string; text: string } | { placeholder: string };
+const EXAMPLES = {
+  hero: [
+    { src: `${IMG}/hero-1.jpg`, text: "ちゃんりお" },
+    { src: `${IMG}/hero-2.jpg`, text: "レナ" },
+  ],
+  useName: [{ placeholder: "ぺるこ" }, { placeholder: "みけ" }],
+  useWord: [
+    { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
+    { src: `${IMG}/word-2.jpg`, text: "楽" },
+  ],
+  useShare: [{ placeholder: "努力" }, { placeholder: "ぺるこ" }],
+  result: [{ placeholder: "一期一会" }, { placeholder: "ぺるこ" }],
+} satisfies Record<string, Example[]>;
 
-/** 生成例を3枚並べる。足りない分は点線の枠(仮置き)。 */
-function ExampleTrio({
-  texts,
+/** 生成例を2枚並べる。届いていない分は点線の枠(仮置き)。 */
+function ExamplePair({
+  examples,
   altFor,
   placeholderLabel,
   tone = "light",
 }: {
-  texts: string[];
+  examples: Example[];
   altFor: (text: string) => string;
   placeholderLabel: string;
   tone?: "light" | "onColor";
 }) {
   return (
-    <div className="grid grid-cols-3 gap-1.5">
-      {texts.map((text, index) => {
-        const example = EXAMPLES.find((item) => item.text === text);
-        return example ? (
+    <div className="grid grid-cols-2 gap-2">
+      {examples.map((example, index) =>
+        "src" in example ? (
           <Image
-            key={`${text}-${index}`}
+            key={example.src}
             src={example.src}
-            alt={altFor(text)}
-            width={360}
-            height={480}
-            sizes="(min-width: 860px) 200px, 30vw"
+            alt={altFor(example.text)}
+            width={600}
+            height={794}
+            sizes="(min-width: 860px) 280px, 45vw"
             className="aspect-[3/4] w-full rounded-xl object-cover"
           />
         ) : (
           <div
-            key={`${text}-${index}`}
+            key={`${example.placeholder}-${index}`}
             role="img"
-            aria-label={altFor(text)}
+            aria-label={altFor(example.placeholder)}
             className={cn(
               "grid aspect-[3/4] w-full min-w-0 place-items-center overflow-hidden rounded-xl border-2 border-dashed p-1.5 text-center text-xs font-extrabold [overflow-wrap:anywhere]",
               tone === "onColor" ? "border-white/90 text-white" : "border-slate-400 text-slate-500",
@@ -85,11 +98,11 @@ function ExampleTrio({
           >
             <span>
               {placeholderLabel}
-              <span className="block text-base">{text}</span>
+              <span className="block text-base">{example.placeholder}</span>
             </span>
           </div>
-        );
-      })}
+        ),
+      )}
     </div>
   );
 }
@@ -203,8 +216,6 @@ export async function TextGuide() {
     cost: NAME_INPUT_CREATE_PERCOIN_COST,
   };
 
-  // 生成例の文字(画像に入っている文字。言語によらず同じ)
-  const sampleTexts = [t("sampleText1"), t("sampleText2"), t("sampleText3")];
   const exampleAlt = (text: string) => t("exampleAlt", { text });
 
   return (
@@ -230,13 +241,13 @@ export async function TextGuide() {
             <p className="max-w-[34em] text-base font-semibold min-[860px]:text-lg">{t("heroQuestion")}</p>
             <p className="max-w-[34em] text-base font-semibold">{t("heroLead")}</p>
           </div>
-          <div className="grid min-w-0 grid-cols-[5.5em_minmax(0,1fr)] items-center gap-3">
+          <div className="grid min-w-0 grid-cols-[6.5em_minmax(0,1fr)] items-center gap-3 min-[860px]:max-w-[540px]">
             <span className="text-[15px] font-extrabold leading-tight">
               {t("heroCompareLabel")}
               <small className="block text-[11px] font-semibold opacity-85">{t("heroCompareSub")}</small>
             </span>
-            <ExampleTrio
-              texts={sampleTexts}
+            <ExamplePair
+              examples={EXAMPLES.hero}
               altFor={exampleAlt}
               placeholderLabel={t("examplePlaceholder")}
               tone="onColor"
@@ -257,8 +268,8 @@ export async function TextGuide() {
         <div className="grid gap-9 min-[860px]:grid-cols-3 min-[860px]:gap-7">
           <div className="grid min-w-0 content-start gap-2.5">
             <h3 className="text-xl font-extrabold">🐱 {t("useNameTitle")}</h3>
-            <ExampleTrio
-              texts={[t("useNameSample1"), t("useNameSample2"), t("useNameSample3")]}
+            <ExamplePair
+              examples={EXAMPLES.useName}
               altFor={exampleAlt}
               placeholderLabel={t("examplePlaceholder")}
             />
@@ -266,8 +277,8 @@ export async function TextGuide() {
           </div>
           <div className="grid min-w-0 content-start gap-2.5">
             <h3 className="text-xl font-extrabold">✍️ {t("useWordTitle")}</h3>
-            <ExampleTrio
-              texts={[t("useWordSample1"), t("useWordSample2"), t("useWordSample3")]}
+            <ExamplePair
+              examples={EXAMPLES.useWord}
               altFor={exampleAlt}
               placeholderLabel={t("examplePlaceholder")}
             />
@@ -275,7 +286,7 @@ export async function TextGuide() {
           </div>
           <div className="grid min-w-0 content-start gap-2.5">
             <h3 className="text-xl font-extrabold">🫶 {t("useShareTitle")}</h3>
-            <ExampleTrio texts={sampleTexts} altFor={exampleAlt} placeholderLabel={t("examplePlaceholder")} />
+            <ExamplePair examples={EXAMPLES.useShare} altFor={exampleAlt} placeholderLabel={t("examplePlaceholder")} />
             <Note>{t("useShareText", { userTitle: ui.userTitle })}</Note>
           </div>
         </div>
@@ -407,7 +418,7 @@ export async function TextGuide() {
             number={<StepNumber className="bg-amber-300 text-gray-900">★</StepNumber>}
             title={t("resultTitle")}
           >
-            <ExampleTrio texts={sampleTexts} altFor={exampleAlt} placeholderLabel={t("examplePlaceholder")} />
+            <ExamplePair examples={EXAMPLES.result} altFor={exampleAlt} placeholderLabel={t("examplePlaceholder")} />
           </Step>
         </div>
       </Band>

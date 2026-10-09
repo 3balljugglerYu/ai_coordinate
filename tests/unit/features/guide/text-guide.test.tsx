@@ -31,10 +31,10 @@ jest.mock("next-intl/server", () => ({
     values ? `${namespace}.${key}(${JSON.stringify(values)})` : `${namespace}.${key}`,
 }));
 
-import TextGuidePage from "@/app/guide/text/page";
+import TextGuidePage, { generateMetadata } from "@/app/guide/text/page";
 import { TextGuide } from "@/features/guide/components/TextGuide";
 import { getUser } from "@/lib/auth";
-import { isNameInputAvailable, isNameInputPubliclyEnabled } from "@/lib/env";
+import { isNameInputPubliclyEnabled } from "@/lib/env";
 import { isSitemapPathEnabled } from "@/lib/sitemap-paths";
 import {
   NAME_INPUT_HINT_MAX_LENGTH,
@@ -44,34 +44,28 @@ import {
 import { NAME_INPUT_CREATE_PERCOIN_COST } from "@/shared/generation/name-input-create";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
-const mockAvailable = isNameInputAvailable as jest.MockedFunction<typeof isNameInputAvailable>;
 const mockPublic = isNameInputPubliclyEnabled as jest.MockedFunction<typeof isNameInputPubliclyEnabled>;
 
 beforeEach(() => {
   jest.clearAllMocks();
 });
 
-describe("見せる相手", () => {
-  test("文字入力を使えない人(運営でない・未公開)には 404", async () => {
-    mockGetUser.mockResolvedValue({ id: "user-1" } as Awaited<ReturnType<typeof getUser>>);
-    mockAvailable.mockReturnValue(false);
-    await expect(TextGuidePage()).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(mockAvailable).toHaveBeenCalledWith("user-1");
-  });
-
-  test("ログインしていない人は、未公開なら 404", async () => {
-    mockGetUser.mockResolvedValue(null);
-    mockAvailable.mockReturnValue(false);
-    await expect(TextGuidePage()).rejects.toThrow("NEXT_NOT_FOUND");
-    expect(mockAvailable).toHaveBeenCalledWith(undefined);
-  });
-
-  test("文字入力を使える人には、ページを出す", async () => {
-    mockGetUser.mockResolvedValue({ id: "admin-1" } as Awaited<ReturnType<typeof getUser>>);
-    mockAvailable.mockReturnValue(true);
+describe("見せる相手(URL を知っていれば誰でも。2026-10-08 ユーザー決定)", () => {
+  test("ログインしていなくても、運営でなくても、ページを出す", async () => {
     const element = await TextGuidePage();
     render(await (element.type as () => Promise<React.ReactElement>)());
     expect(screen.getByTestId("text-guide")).toBeTruthy();
+    expect(mockGetUser).not.toHaveBeenCalled();
+  });
+
+  test("文字入力を一般公開するまでは、検索に出さない(noindex)", async () => {
+    mockPublic.mockReturnValue(false);
+    expect((await generateMetadata()).robots).toEqual({ index: false, follow: false });
+  });
+
+  test("一般公開したら、検索に出す", async () => {
+    mockPublic.mockReturnValue(true);
+    expect((await generateMetadata()).robots).toBeUndefined();
   });
 });
 
@@ -137,6 +131,28 @@ describe("ページの中身", () => {
     const placeholders = screen.getAllByTestId("text-guide-example-placeholder");
     expect(placeholders.length).toBeGreaterThan(0);
     expect(placeholders[0].getAttribute("aria-label")).toMatch(/^textGuide\.exampleAlt\(/);
+  });
+
+  test("「好きな言葉・四字熟語」は届いた書道の2枚", async () => {
+    await renderGuide();
+    const alts = screen.getAllByRole("img").map((image) => image.getAttribute("alt"));
+    expect(alts).toContain('textGuide.exampleAlt({"text":"平々凡々"})');
+    expect(alts).toContain('textGuide.exampleAlt({"text":"楽"})');
+  });
+
+  test("生成例はどの章も2枚ずつ。最初の章は届いた画像(2026-10-08)", async () => {
+    await renderGuide();
+    const hero = document.querySelector("#text-guide-hero")!.closest("section")!;
+    const heroImages = [...hero.querySelectorAll("img")];
+    expect(heroImages.map((image) => image.getAttribute("alt"))).toEqual([
+      'textGuide.exampleAlt({"text":"ちゃんりお"})',
+      'textGuide.exampleAlt({"text":"レナ"})',
+    ]);
+    document.querySelectorAll(".grid-cols-2").forEach((pair) => {
+      if (pair.querySelector('[data-testid="text-guide-example-placeholder"], img[alt^="textGuide.exampleAlt"]')) {
+        expect(pair.children).toHaveLength(2);
+      }
+    });
   });
 
   test("画像の説明(alt)も翻訳した文言を使う(日本語を直書きしない)", async () => {
