@@ -53,7 +53,7 @@ const EXAMPLES = {
   ],
   useName: [{ placeholder: "ぺるこ" }, { placeholder: "みけ" }],
   useWord: [
-    { src: `${IMG}/word-1.jpg`, text: "千変万化" },
+    { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
     { src: `${IMG}/word-2.jpg`, text: "楽" },
   ],
   useShare: [{ placeholder: "努力" }, { placeholder: "ぺるこ" }],

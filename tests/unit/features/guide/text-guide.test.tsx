@@ -136,7 +136,7 @@ describe("ページの中身", () => {
   test("「好きな言葉・四字熟語」は届いた書道の2枚", async () => {
     await renderGuide();
     const alts = screen.getAllByRole("img").map((image) => image.getAttribute("alt"));
-    expect(alts).toContain('textGuide.exampleAlt({"text":"千変万化"})');
+    expect(alts).toContain('textGuide.exampleAlt({"text":"平々凡々"})');
     expect(alts).toContain('textGuide.exampleAlt({"text":"楽"})');
   });
 
