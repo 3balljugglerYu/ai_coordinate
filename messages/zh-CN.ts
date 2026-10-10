@@ -2306,7 +2306,7 @@ export const zhCnMessages = {
     usesTag: "文字输入可以做什么",
     usesTitle: "一个提示词，写下每个人喜欢的文字",
     useNameTitle: "自家孩子的名字",
-    useNameText: "把自家孩子的名字原样写在名牌或卡片上。",
+    useNameText: "可以放入自家孩子的名字。",
     useWordTitle: "喜欢的词语・四字成语",
     useWordText: "可以把喜欢的词语写进书法作品或招牌里。",
     howTag: "使用方法",

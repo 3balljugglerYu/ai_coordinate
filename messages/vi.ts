@@ -2310,7 +2310,7 @@ export const viMessages = {
     usesTag: "Những gì bạn có thể làm",
     usesTitle: "Một prompt, chữ yêu thích của mọi người",
     useNameTitle: "Tên nhân vật của bạn",
-    useNameText: "Đặt nguyên tên nhân vật của bạn lên bảng tên hoặc thẻ.",
+    useNameText: "Bạn có thể thêm tên nhân vật của mình.",
     useWordTitle: "Từ và câu yêu thích",
     useWordText: "Có thể đưa từ yêu thích vào bức thư pháp hoặc bảng hiệu.",
     howTag: "Cách tạo",

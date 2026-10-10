@@ -2315,7 +2315,7 @@ export const deMessages = {
     usesTag: "Was du damit machen kannst",
     usesTitle: "Ein Prompt, der eigene Text für alle",
     useNameTitle: "Der Name deines Charakters",
-    useNameText: "Schreib den Namen deines Charakters genau so auf ein Namensschild oder eine Karte.",
+    useNameText: "Du kannst den Namen deines Charakters einfügen.",
     useWordTitle: "Lieblingswörter und -sprüche",
     useWordText: "Bring dein Lieblingswort auf eine Kalligrafie oder ein Schild.",
     howTag: "So erstellst du ihn",

@@ -2315,7 +2315,7 @@ export const frMessages = {
     usesTag: "Ce que vous pouvez faire",
     usesTitle: "Un seul prompt, le texte de chacun",
     useNameTitle: "Le nom de votre personnage",
-    useNameText: "Mettez le nom de votre personnage sur un badge ou une carte, tel quel.",
+    useNameText: "Vous pouvez ajouter le nom de votre personnage.",
     useWordTitle: "Mots et expressions préférés",
     useWordText: "Ajoutez votre mot préféré à une calligraphie ou à une enseigne.",
     howTag: "Comment le créer",

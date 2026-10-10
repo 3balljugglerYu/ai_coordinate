@@ -2313,7 +2313,7 @@ export const idMessages = {
     usesTag: "Yang bisa kamu lakukan",
     usesTitle: "Satu prompt, teks favorit semua orang",
     useNameTitle: "Nama karaktermu",
-    useNameText: "Tulis nama karaktermu apa adanya di papan nama atau kartu.",
+    useNameText: "Kamu bisa memasukkan nama karaktermu.",
     useWordTitle: "Kata dan ungkapan favorit",
     useWordText: "Masukkan kata favoritmu ke kaligrafi atau papan tanda.",
     howTag: "Cara membuat",

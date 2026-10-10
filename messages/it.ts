@@ -2314,7 +2314,7 @@ export const itMessages = {
     usesTag: "Cosa puoi fare",
     usesTitle: "Un solo prompt, il testo di ognuno",
     useNameTitle: "Il nome del tuo personaggio",
-    useNameText: "Metti il nome del tuo personaggio su un cartellino o una card, così com’è.",
+    useNameText: "Puoi inserire il nome del tuo personaggio.",
     useWordTitle: "Parole e frasi preferite",
     useWordText: "Aggiungi la tua parola preferita a una calligrafia o a un’insegna.",
     howTag: "Come crearlo",

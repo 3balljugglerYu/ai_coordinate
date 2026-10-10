@@ -2309,7 +2309,7 @@ export const koMessages = {
     usesTag: "문자 입력으로 할 수 있는 것",
     usesTitle: "하나의 프롬프트로, 모두가 좋아하는 문자를",
     useNameTitle: "우리 아이의 이름",
-    useNameText: "이름표나 카드에 우리 아이의 이름을 그대로.",
+    useNameText: "우리 아이의 이름을 넣을 수 있어요.",
     useWordTitle: "좋아하는 말・사자성어",
     useWordText: "붓글씨나 간판에 좋아하는 말을 넣을 수 있어요.",
     howTag: "사용법",

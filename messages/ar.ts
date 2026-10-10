@@ -2310,7 +2310,7 @@ export const arMessages = {
     usesTag: "ما يمكنك فعله",
     usesTitle: "موجّه واحد، ونص خاص بكل شخص",
     useNameTitle: "اسم شخصيتك",
-    useNameText: "ضع اسم شخصيتك على بطاقة اسم أو بطاقة كما هو.",
+    useNameText: "يمكنك إضافة اسم شخصيتك.",
     useWordTitle: "كلمات وعبارات مفضّلة",
     useWordText: "أضِف كلمتك المفضّلة إلى لوحة خط أو لافتة.",
     howTag: "طريقة الإنشاء",

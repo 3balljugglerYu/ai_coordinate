@@ -2314,7 +2314,7 @@ export const ptMessages = {
     usesTag: "O que você pode fazer",
     usesTitle: "Um só prompt, o texto de cada um",
     useNameTitle: "O nome do seu personagem",
-    useNameText: "Coloque o nome do seu personagem em um crachá ou cartão, exatamente como está.",
+    useNameText: "Você pode colocar o nome do seu personagem.",
     useWordTitle: "Palavras e frases favoritas",
     useWordText: "Adicione sua palavra favorita a uma caligrafia ou a uma placa.",
     howTag: "Como criar",
