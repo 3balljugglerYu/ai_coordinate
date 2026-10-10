@@ -33,12 +33,12 @@ const SHOTS = {
   whereCreate: { src: `${GACHA_IMG}/where-3-create.jpg`, width: 780, height: 1328 },
   step1: { src: `${GACHA_IMG}/step-1-image.jpg`, width: 780, height: 700 },
   step2: { src: `${IMG}/step-2-prompt-v2.jpg`, width: 780, height: 1076 },
-  step3: { src: `${IMG}/step-3-on.jpg`, width: 780, height: 642 },
+  step3: { src: `${IMG}/step-3-on-v2.jpg`, width: 780, height: 638 },
   step4: { src: `${IMG}/step-4-settings-v2.jpg`, width: 780, height: 638 },
   step5: { src: `${IMG}/step-support.jpg`, width: 780, height: 436 },
   step6Trial: { src: `${IMG}/step-5-trial-v2.jpg`, width: 780, height: 208 },
   step6Generate: { src: `${GACHA_IMG}/step-6-generate.jpg`, width: 780, height: 736 },
-  userSheet: { src: `${IMG}/user-sheet-v2.jpg`, width: 780, height: 1416 },
+  userSheet: { src: `${IMG}/user-sheet-v3.jpg`, width: 780, height: 1416 },
 } as const;
 
 /**
@@ -366,8 +366,8 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step2}
               alt={t("step2Alt", { promptLabel: ui.promptLabel })}
-              rings={[{ left: 11, top: 60.3, width: 79, height: 18 }]}
-              callouts={[{ left: 24, top: 79.5, text: t("step2Call"), pointer: "up" }]}
+              rings={[{ left: 9.5, top: 7.2, width: 81, height: 88.2 }]}
+              callouts={[{ left: 40, top: -5, text: t("step2Call"), pointer: "down" }]}
             />
             <Note>{t("step2Text")}</Note>
           </Step>

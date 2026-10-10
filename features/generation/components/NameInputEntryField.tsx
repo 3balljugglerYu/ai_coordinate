@@ -40,7 +40,8 @@ export function NameInputEntryField({ slot, value, onChange, disabled = false }:
   return (
     <div className="space-y-1" data-testid="name-input-entry">
       <Label htmlFor="name-input-entry" className="text-base font-medium block">
-        {slot.required ? slot.label : t("nameInputEntryOptionalLabel", { label: slot.label })}
+        {/* 「（任意）」は付けない。空欄でよいことは下の説明で伝わる(2026-10-11 ユーザー指示) */}
+        {slot.label}
       </Label>
       <NameTextInput
         id="name-input-entry"

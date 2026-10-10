@@ -395,9 +395,10 @@ describe("カタログから使う人の名前の欄(派生生成)", () => {
   test("画像の下に、作る人が決めた見出しで名前の欄を出す", () => {
     renderNameForm(jest.fn(), lockedProps(false));
     const field = screen.getByTestId("name-input-entry");
-    expect(field.textContent).toContain("nameInputEntryOptionalLabel");
+    // 見出しはラベルそのまま(「（任意）」は付けない。2026-10-11)
+    expect(field.querySelector("label")!.textContent).toBe("うちの子");
     // 入力のヒントには「例：」を付けて見せる(nameInputHintDisplay)
-    expect((screen.getByLabelText("nameInputEntryOptionalLabel") as HTMLInputElement).placeholder).toBe("nameInputHintDisplay");
+    expect((screen.getByLabelText("うちの子") as HTMLInputElement).placeholder).toBe("nameInputHintDisplay");
     // 作る人の「プロンプトの仕掛け」の箱は出さない
     expect(screen.queryByTestId("prompt-gimmicks-box")).toBeNull();
   });
@@ -407,7 +408,7 @@ describe("カタログから使う人の名前の欄(派生生成)", () => {
     const onSubmit = jest.fn();
     renderNameForm(onSubmit, lockedProps(false));
     await user.click(screen.getByText("mock-upload"));
-    fireEvent.change(screen.getByLabelText("nameInputEntryOptionalLabel"), { target: { value: "ぺるこ" } });
+    fireEvent.change(screen.getByLabelText("うちの子"), { target: { value: "ぺるこ" } });
     await user.click(screen.getByTestId("mock-submit"));
     expect(onSubmit.mock.calls[0][0]).toMatchObject({ sourcePostId: SOURCE, nameInput: "ぺるこ" });
   });
@@ -454,7 +455,7 @@ describe("名前が長すぎるときは、打った時点で知らせる(2026-1
       sourcePostId: "11111111-1111-4111-8111-111111111111",
       lockedNameInput: { label: "名前", required: false },
     });
-    fireEvent.change(screen.getByLabelText("nameInputEntryOptionalLabel"), { target: { value: "123456789" } });
+    fireEvent.change(screen.getByLabelText("名前"), { target: { value: "123456789" } });
     const hint = screen.getByTestId("name-input-entry-hint");
     expect(hint.getAttribute("data-tone")).toBe("error");
     expect(hint.textContent).toContain("nameInputTooLong");
