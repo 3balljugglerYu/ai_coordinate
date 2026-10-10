@@ -23,6 +23,7 @@ import { FloatingGuideCta } from "./FloatingGuideCta";
   - 「どこから使える？」の画面・画像の選び方・生成ボタンは、ガチャのページと同じ画像を使う
 */
 
+// 画像を差し替えるときは、ファイル名を変える(同じ名前だと、画像の最適化のキャッシュが古い画像を返し続ける)
 const IMG = "/guide/text";
 const GACHA_IMG = "/guide/gacha";
 
@@ -31,13 +32,13 @@ const SHOTS = {
   whereCatalog: { src: `${GACHA_IMG}/where-2-catalog.jpg`, width: 780, height: 1328 },
   whereCreate: { src: `${GACHA_IMG}/where-3-create.jpg`, width: 780, height: 1328 },
   step1: { src: `${GACHA_IMG}/step-1-image.jpg`, width: 780, height: 700 },
-  step2: { src: `${IMG}/step-2-prompt.jpg`, width: 780, height: 424 },
-  step3: { src: `${IMG}/step-3-on.jpg`, width: 780, height: 642 },
-  step4: { src: `${IMG}/step-4-settings.jpg`, width: 780, height: 642 },
+  step2: { src: `${IMG}/step-2-prompt-v2.jpg`, width: 780, height: 1076 },
+  step3: { src: `${IMG}/step-3-on-v2.jpg`, width: 780, height: 638 },
+  step4: { src: `${IMG}/step-4-settings-v2.jpg`, width: 780, height: 638 },
   step5: { src: `${IMG}/step-support.jpg`, width: 780, height: 436 },
-  step6Trial: { src: `${IMG}/step-5-trial.jpg`, width: 780, height: 208 },
+  step6Trial: { src: `${IMG}/step-5-trial-v2.jpg`, width: 780, height: 208 },
   step6Generate: { src: `${GACHA_IMG}/step-6-generate.jpg`, width: 780, height: 736 },
-  userSheet: { src: `${IMG}/user-sheet.jpg`, width: 780, height: 1414 },
+  userSheet: { src: `${IMG}/user-sheet-v3.jpg`, width: 780, height: 1416 },
 } as const;
 
 /**
@@ -51,13 +52,19 @@ const EXAMPLES = {
     { src: `${IMG}/hero-1.jpg`, text: "ちゃんりお" },
     { src: `${IMG}/hero-2.jpg`, text: "レナ" },
   ],
-  useName: [{ placeholder: "ぺるこ" }, { placeholder: "みけ" }],
+  useName: [
+    { src: `${IMG}/name-1.jpg`, text: "もも" },
+    { src: `${IMG}/name-2.jpg`, text: "REIKA" },
+  ],
   useWord: [
     { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
     { src: `${IMG}/word-2.jpg`, text: "楽" },
   ],
-  useShare: [{ placeholder: "努力" }, { placeholder: "ぺるこ" }],
-  result: [{ placeholder: "一期一会" }, { placeholder: "ぺるこ" }],
+  // 最後の★は、「好きな言葉・四字熟語」と同じ書道の2枚(2026-10-11 ユーザー指示)
+  result: [
+    { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
+    { src: `${IMG}/word-2.jpg`, text: "楽" },
+  ],
 } satisfies Record<string, Example[]>;
 
 /** 生成例を2枚並べる。届いていない分は点線の枠(仮置き)。 */
@@ -265,7 +272,7 @@ export async function TextGuide() {
         <h2 id="text-guide-uses" className="text-balance text-[26px] font-extrabold leading-snug min-[860px]:text-[40px]">
           {t("usesTitle")}
         </h2>
-        <div className="grid gap-9 min-[860px]:grid-cols-3 min-[860px]:gap-7">
+        <div className="grid gap-9 min-[860px]:grid-cols-2 min-[860px]:gap-7">
           <div className="grid min-w-0 content-start gap-2.5">
             <h3 className="text-xl font-extrabold">🐱 {t("useNameTitle")}</h3>
             <ExamplePair
@@ -283,11 +290,6 @@ export async function TextGuide() {
               placeholderLabel={t("examplePlaceholder")}
             />
             <Note>{t("useWordText")}</Note>
-          </div>
-          <div className="grid min-w-0 content-start gap-2.5">
-            <h3 className="text-xl font-extrabold">🫶 {t("useShareTitle")}</h3>
-            <ExamplePair examples={EXAMPLES.useShare} altFor={exampleAlt} placeholderLabel={t("examplePlaceholder")} />
-            <Note>{t("useShareText", { userTitle: ui.userTitle })}</Note>
           </div>
         </div>
       </Band>
@@ -364,7 +366,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step2}
               alt={t("step2Alt", { promptLabel: ui.promptLabel })}
-              rings={[{ left: 9.5, top: 19, width: 81, height: 69 }]}
+              rings={[{ left: 9.5, top: 7.2, width: 81, height: 88.2 }]}
               callouts={[{ left: 40, top: -5, text: t("step2Call"), pointer: "down" }]}
             />
             <Note>{t("step2Text")}</Note>
@@ -384,7 +386,7 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step4}
               alt={t("step4Alt", { label: ui.labelSetting, hint: ui.hintSetting })}
-              rings={[{ left: 15.5, top: 33.5, width: 71, height: 48 }]}
+              rings={[{ left: 15.5, top: 34, width: 71, height: 48 }]}
               callouts={[{ left: 16, top: -4, text: t("step4Call"), pointer: "down" }]}
             />
             <Note>{t("step4Text", { label: ui.labelSetting, hint: ui.hintSetting, ...limits })}</Note>
