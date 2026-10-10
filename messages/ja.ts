@@ -2277,7 +2277,7 @@ export const jaMessages = {
     usesTag: "文字入力でできること",
     usesTitle: "1つのプロンプトで、みんなの好きな文字を",
     useNameTitle: "うちの子の名前",
-    useNameText: "名札やカードに、うちの子の名前をそのまま。",
+    useNameText: "うちの子の名前を入れられます。",
     useWordTitle: "好きな言葉・四字熟語",
     useWordText: "書き初めや看板に、好きな言葉を入れられます。",
     howTag: "使い方",
