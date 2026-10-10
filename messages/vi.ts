@@ -2314,8 +2314,6 @@ export const viMessages = {
     useNameText: "Đặt nguyên tên nhân vật của bạn lên bảng tên hoặc thẻ.",
     useWordTitle: "Từ và câu yêu thích",
     useWordText: "Có thể đưa từ yêu thích vào bức thư pháp hoặc bảng hiệu.",
-    useShareTitle: "Chia sẻ cho mọi người dùng",
-    useShareText: "Khi được hiển thị trong “{userTitle}”, mỗi người dùng có thể tạo ảnh bằng chữ của riêng mình.",
     howTag: "Cách tạo",
     howTitle: "Tạo prompt có ô nhập chữ\nchỉ với 6 bước",
     step1Title: "Chọn ảnh nhân vật của bạn",

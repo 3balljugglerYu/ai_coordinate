@@ -2281,8 +2281,6 @@ export const jaMessages = {
     useNameText: "名札やカードに、うちの子の名前をそのまま。",
     useWordTitle: "好きな言葉・四字熟語",
     useWordText: "書き初めや看板に、好きな言葉を入れられます。",
-    useShareTitle: "みんなに使ってもらう",
-    useShareText: "「{userTitle}」に並ぶと、使った人がそれぞれの文字で作れます。",
     howTag: "使い方",
     howTitle: "6ステップで、\n文字入力のプロンプトをつくろう",
     step1Title: "うちの子の画像を選ぶ",

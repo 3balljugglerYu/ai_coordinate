@@ -126,33 +126,22 @@ describe("ページの中身", () => {
     expect(links.map((link) => link.getAttribute("href"))).toEqual(["/free", "/free"]);
   });
 
-  test("生成例が届くまでは、点線の枠に翻訳した説明を付けて出す", async () => {
+  test("生成例はすべて届いた画像(点線の仮置きは残っていない)", async () => {
     await renderGuide();
-    const placeholders = screen.getAllByTestId("text-guide-example-placeholder");
-    expect(placeholders.length).toBeGreaterThan(0);
-    expect(placeholders[0].getAttribute("aria-label")).toMatch(/^textGuide\.exampleAlt\(/);
+    expect(screen.queryAllByTestId("text-guide-example-placeholder")).toHaveLength(0);
   });
 
-  test("「好きな言葉・四字熟語」は届いた書道の2枚", async () => {
+  test("「うちの子の名前」は届いた2枚、最後の★は「好きな言葉」と同じ書道の2枚(2026-10-11)", async () => {
     await renderGuide();
     const alts = screen.getAllByRole("img").map((image) => image.getAttribute("alt"));
-    expect(alts).toContain('textGuide.exampleAlt({"text":"平々凡々"})');
-    expect(alts).toContain('textGuide.exampleAlt({"text":"楽"})');
+    expect(alts).toContain('textGuide.exampleAlt({"text":"もも"})');
+    expect(alts).toContain('textGuide.exampleAlt({"text":"REIKA"})');
+    expect(alts.filter((alt) => alt === 'textGuide.exampleAlt({"text":"平々凡々"})')).toHaveLength(2);
   });
 
-  test("生成例はどの章も2枚ずつ。最初の章は届いた画像(2026-10-08)", async () => {
+  test("「みんなに使ってもらう」の章は出さない", async () => {
     await renderGuide();
-    const hero = document.querySelector("#text-guide-hero")!.closest("section")!;
-    const heroImages = [...hero.querySelectorAll("img")];
-    expect(heroImages.map((image) => image.getAttribute("alt"))).toEqual([
-      'textGuide.exampleAlt({"text":"ちゃんりお"})',
-      'textGuide.exampleAlt({"text":"レナ"})',
-    ]);
-    document.querySelectorAll(".grid-cols-2").forEach((pair) => {
-      if (pair.querySelector('[data-testid="text-guide-example-placeholder"], img[alt^="textGuide.exampleAlt"]')) {
-        expect(pair.children).toHaveLength(2);
-      }
-    });
+    expect(document.body.textContent).not.toContain("useShareTitle");
   });
 
   test("画像の説明(alt)も翻訳した文言を使う(日本語を直書きしない)", async () => {

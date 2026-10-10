@@ -2314,8 +2314,6 @@ export const arMessages = {
     useNameText: "ضع اسم شخصيتك على بطاقة اسم أو بطاقة كما هو.",
     useWordTitle: "كلمات وعبارات مفضّلة",
     useWordText: "أضِف كلمتك المفضّلة إلى لوحة خط أو لافتة.",
-    useShareTitle: "شاركه مع الجميع",
-    useShareText: "بمجرد ظهوره في «{userTitle}»، يمكن لكل مستخدم إنشاؤه بنصه الخاص.",
     howTag: "طريقة الإنشاء",
     howTitle: "أنشئ موجّهًا بإدخال النص\nفي 6 خطوات",
     step1Title: "اختر صورة شخصيتك",

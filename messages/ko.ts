@@ -2313,8 +2313,6 @@ export const koMessages = {
     useNameText: "이름표나 카드에 우리 아이의 이름을 그대로.",
     useWordTitle: "좋아하는 말・사자성어",
     useWordText: "붓글씨나 간판에 좋아하는 말을 넣을 수 있어요.",
-    useShareTitle: "모두에게 사용하게 하기",
-    useShareText: "「{userTitle}」에 올라가면, 사용한 사람이 각자의 문자로 만들 수 있어요.",
     howTag: "사용법",
     howTitle: "6단계로,\n문자 입력 프롬프트를 만들어 보세요",
     step1Title: "우리 아이의 이미지를 선택",

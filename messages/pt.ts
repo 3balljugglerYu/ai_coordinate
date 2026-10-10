@@ -2318,8 +2318,6 @@ export const ptMessages = {
     useNameText: "Coloque o nome do seu personagem em um crachá ou cartão, exatamente como está.",
     useWordTitle: "Palavras e frases favoritas",
     useWordText: "Adicione sua palavra favorita a uma caligrafia ou a uma placa.",
-    useShareTitle: "Compartilhe com todos",
-    useShareText: "Quando estiver em “{userTitle}”, cada pessoa poderá criar com o próprio texto.",
     howTag: "Como criar",
     howTitle: "Crie um prompt com entrada de texto\nem 6 passos",
     step1Title: "Escolha a imagem do seu personagem",

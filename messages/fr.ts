@@ -2319,8 +2319,6 @@ export const frMessages = {
     useNameText: "Mettez le nom de votre personnage sur un badge ou une carte, tel quel.",
     useWordTitle: "Mots et expressions préférés",
     useWordText: "Ajoutez votre mot préféré à une calligraphie ou à une enseigne.",
-    useShareTitle: "Partagez-le avec tout le monde",
-    useShareText: "Une fois dans « {userTitle} », chacun peut le créer avec son propre texte.",
     howTag: "Comment le créer",
     howTitle: "Créez un prompt avec saisie de texte\nen 6 étapes",
     step1Title: "Choisissez l’image de votre personnage",

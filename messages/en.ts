@@ -2314,8 +2314,6 @@ export const enMessages = {
     useNameText: "Put your character's name on a name tag or card, exactly as written.",
     useWordTitle: "Favorite words and phrases",
     useWordText: "Add a favorite word to calligraphy or a sign.",
-    useShareTitle: "Share it with everyone",
-    useShareText: "Once it's listed in “{userTitle}”, each user can make it with their own text.",
     howTag: "How to make one",
     howTitle: "Make a text-input prompt\nin 6 steps",
     step1Title: "Choose your character's image",

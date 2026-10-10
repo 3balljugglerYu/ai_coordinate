@@ -51,13 +51,19 @@ const EXAMPLES = {
     { src: `${IMG}/hero-1.jpg`, text: "ちゃんりお" },
     { src: `${IMG}/hero-2.jpg`, text: "レナ" },
   ],
-  useName: [{ placeholder: "ぺるこ" }, { placeholder: "みけ" }],
+  useName: [
+    { src: `${IMG}/name-1.jpg`, text: "もも" },
+    { src: `${IMG}/name-2.jpg`, text: "REIKA" },
+  ],
   useWord: [
     { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
     { src: `${IMG}/word-2.jpg`, text: "楽" },
   ],
-  useShare: [{ placeholder: "努力" }, { placeholder: "ぺるこ" }],
-  result: [{ placeholder: "一期一会" }, { placeholder: "ぺるこ" }],
+  // 最後の★は、「好きな言葉・四字熟語」と同じ書道の2枚(2026-10-11 ユーザー指示)
+  result: [
+    { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
+    { src: `${IMG}/word-2.jpg`, text: "楽" },
+  ],
 } satisfies Record<string, Example[]>;
 
 /** 生成例を2枚並べる。届いていない分は点線の枠(仮置き)。 */
@@ -265,7 +271,7 @@ export async function TextGuide() {
         <h2 id="text-guide-uses" className="text-balance text-[26px] font-extrabold leading-snug min-[860px]:text-[40px]">
           {t("usesTitle")}
         </h2>
-        <div className="grid gap-9 min-[860px]:grid-cols-3 min-[860px]:gap-7">
+        <div className="grid gap-9 min-[860px]:grid-cols-2 min-[860px]:gap-7">
           <div className="grid min-w-0 content-start gap-2.5">
             <h3 className="text-xl font-extrabold">🐱 {t("useNameTitle")}</h3>
             <ExamplePair
@@ -283,11 +289,6 @@ export async function TextGuide() {
               placeholderLabel={t("examplePlaceholder")}
             />
             <Note>{t("useWordText")}</Note>
-          </div>
-          <div className="grid min-w-0 content-start gap-2.5">
-            <h3 className="text-xl font-extrabold">🫶 {t("useShareTitle")}</h3>
-            <ExamplePair examples={EXAMPLES.useShare} altFor={exampleAlt} placeholderLabel={t("examplePlaceholder")} />
-            <Note>{t("useShareText", { userTitle: ui.userTitle })}</Note>
           </div>
         </div>
       </Band>

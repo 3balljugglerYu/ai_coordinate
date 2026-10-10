@@ -2318,8 +2318,6 @@ export const itMessages = {
     useNameText: "Metti il nome del tuo personaggio su un cartellino o una card, così com’è.",
     useWordTitle: "Parole e frasi preferite",
     useWordText: "Aggiungi la tua parola preferita a una calligrafia o a un’insegna.",
-    useShareTitle: "Condividilo con tutti",
-    useShareText: "Una volta in “{userTitle}”, ognuno può crearlo con il proprio testo.",
     howTag: "Come crearlo",
     howTitle: "Crea un prompt con inserimento di testo\nin 6 passaggi",
     step1Title: "Scegli l’immagine del tuo personaggio",

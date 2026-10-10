@@ -2318,8 +2318,6 @@ export const esMessages = {
     useNameText: "Pon el nombre de tu personaje en una etiqueta o tarjeta, tal cual.",
     useWordTitle: "Palabras y frases favoritas",
     useWordText: "Añade tu palabra favorita a una caligrafía o a un letrero.",
-    useShareTitle: "Compártelo con todos",
-    useShareText: "Cuando aparezca en “{userTitle}”, cada persona podrá crearlo con su propio texto.",
     howTag: "Cómo crearlo",
     howTitle: "Crea un prompt con entrada de texto\nen 6 pasos",
     step1Title: "Elige la imagen de tu personaje",

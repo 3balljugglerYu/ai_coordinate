@@ -2319,8 +2319,6 @@ export const deMessages = {
     useNameText: "Schreib den Namen deines Charakters genau so auf ein Namensschild oder eine Karte.",
     useWordTitle: "Lieblingswörter und -sprüche",
     useWordText: "Bring dein Lieblingswort auf eine Kalligrafie oder ein Schild.",
-    useShareTitle: "Mit allen teilen",
-    useShareText: "Sobald er in „{userTitle}“ erscheint, kann jede Person ihn mit ihrem eigenen Text nutzen.",
     howTag: "So erstellst du ihn",
     howTitle: "Erstelle einen Prompt mit Texteingabe\nin 6 Schritten",
     step1Title: "Wähle das Bild deines Charakters",

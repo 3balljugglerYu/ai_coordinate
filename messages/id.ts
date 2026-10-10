@@ -2317,8 +2317,6 @@ export const idMessages = {
     useNameText: "Tulis nama karaktermu apa adanya di papan nama atau kartu.",
     useWordTitle: "Kata dan ungkapan favorit",
     useWordText: "Masukkan kata favoritmu ke kaligrafi atau papan tanda.",
-    useShareTitle: "Bagikan ke semua orang",
-    useShareText: "Setelah tampil di “{userTitle}”, setiap pengguna bisa membuatnya dengan teks mereka sendiri.",
     howTag: "Cara membuat",
     howTitle: "Buat prompt input teks\ndalam 6 langkah",
     step1Title: "Pilih gambar karaktermu",

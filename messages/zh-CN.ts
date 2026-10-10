@@ -2310,8 +2310,6 @@ export const zhCnMessages = {
     useNameText: "把自家孩子的名字原样写在名牌或卡片上。",
     useWordTitle: "喜欢的词语・四字成语",
     useWordText: "可以把喜欢的词语写进书法作品或招牌里。",
-    useShareTitle: "让大家都来使用",
-    useShareText: "上架到「{userTitle}」后，每位使用者都能用自己的文字来创作。",
     howTag: "使用方法",
     howTitle: "只需6步，\n制作文字输入提示词",
     step1Title: "选择自家孩子的图片",
