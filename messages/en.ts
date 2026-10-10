@@ -2310,7 +2310,7 @@ export const enMessages = {
     usesTag: "What you can do",
     usesTitle: "One prompt, everyone's own text",
     useNameTitle: "Your character's name",
-    useNameText: "Put your character's name on a name tag or card, exactly as written.",
+    useNameText: "You can add your character's name.",
     useWordTitle: "Favorite words and phrases",
     useWordText: "Add a favorite word to calligraphy or a sign.",
     howTag: "How to make one",
