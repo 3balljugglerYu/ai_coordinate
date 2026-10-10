@@ -2340,7 +2340,7 @@ export const esMessages = {
     step5Call: "Toca",
     step5Text: "Si tu prompt tiene una línea como “[Nombre] ___”, la IA la encuentra y la convierte en un campo de texto. Solo usa {cost} Percoins cuando funciona.",
     step6Title: "Escribe el texto y genera",
-    step6TrialAlt: "“一期一会” escrito en el campo para esta generación",
+    step6TrialAlt: "“平々凡々” escrito en el campo para esta generación",
     step6TrialCall: "Escribe un texto de prueba",
     step6GenerateAlt: "El botón “{generate}”",
     step6GenerateCall: "Toca para generar",

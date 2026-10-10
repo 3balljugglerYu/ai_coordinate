@@ -2336,7 +2336,7 @@ export const viMessages = {
     step5Call: "Chạm",
     step5Text: "Nếu prompt có dòng như “[Tên] ___”, AI sẽ tìm dòng đó và gộp thành một ô nhập chữ. Chỉ dùng {cost} Percoin khi gộp thành công.",
     step6Title: "Nhập chữ và tạo ảnh",
-    step6TrialAlt: "Đã nhập “一期一会” vào ô dùng cho lần tạo này",
+    step6TrialAlt: "Đã nhập “平々凡々” vào ô dùng cho lần tạo này",
     step6TrialCall: "Nhập chữ để thử",
     step6GenerateAlt: "Nút “{generate}”",
     step6GenerateCall: "Chạm để tạo",

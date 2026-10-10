@@ -2341,7 +2341,7 @@ export const deMessages = {
     step5Call: "Tippen",
     step5Text: "Wenn dein Prompt eine Zeile wie „[Name] ___“ enthält, findet die KI sie und macht daraus ein Textfeld. Es werden nur dann {cost} Percoins verbraucht, wenn es klappt.",
     step6Title: "Text eingeben und generieren",
-    step6TrialAlt: "„一期一会“ im Feld für diese Generierung eingegeben",
+    step6TrialAlt: "„平々凡々“ im Feld für diese Generierung eingegeben",
     step6TrialCall: "Testtext eingeben",
     step6GenerateAlt: "Die Schaltfläche „{generate}“",
     step6GenerateCall: "Zum Generieren tippen",

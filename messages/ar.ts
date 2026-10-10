@@ -2336,7 +2336,7 @@ export const arMessages = {
     step5Call: "اضغط",
     step5Text: "إذا كان موجّهك يحتوي على سطر مثل «[الاسم] ___»، يعثر عليه الذكاء الاصطناعي ويحوّله إلى حقل نص واحد. يُستخدم {cost} بيركوين فقط عند النجاح.",
     step6Title: "أدخِل النص وأنشئ الصورة",
-    step6TrialAlt: "تم إدخال «一期一会» في حقل هذا الإنشاء",
+    step6TrialAlt: "تم إدخال «平々凡々» في حقل هذا الإنشاء",
     step6TrialCall: "أدخِل نصًا للتجربة",
     step6GenerateAlt: "زر «{generate}»",
     step6GenerateCall: "اضغط للإنشاء",

@@ -2340,7 +2340,7 @@ export const itMessages = {
     step5Call: "Tocca",
     step5Text: "Se il tuo prompt contiene una riga come “[Nome] ___”, l’IA la trova e la trasforma in un campo di testo. Usa {cost} Percoin solo quando funziona.",
     step6Title: "Inserisci il testo e genera",
-    step6TrialAlt: "“一期一会” inserito nel campo per questa generazione",
+    step6TrialAlt: "“平々凡々” inserito nel campo per questa generazione",
     step6TrialCall: "Inserisci un testo di prova",
     step6GenerateAlt: "Il pulsante “{generate}”",
     step6GenerateCall: "Tocca per generare",

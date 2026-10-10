@@ -2339,7 +2339,7 @@ export const idMessages = {
     step5Call: "Ketuk",
     step5Text: "Jika prompt kamu memiliki baris seperti “[Nama] ___”, AI akan menemukannya dan mengubahnya menjadi satu kolom teks. {cost} Percoin hanya digunakan jika berhasil.",
     step6Title: "Masukkan teks dan buat gambar",
-    step6TrialAlt: "“一期一会” dimasukkan ke kolom untuk pembuatan kali ini",
+    step6TrialAlt: "“平々凡々” dimasukkan ke kolom untuk pembuatan kali ini",
     step6TrialCall: "Masukkan teks percobaan",
     step6GenerateAlt: "Tombol “{generate}”",
     step6GenerateCall: "Ketuk untuk membuat",

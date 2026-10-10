@@ -2336,7 +2336,7 @@ export const enMessages = {
     step5Call: "Tap",
     step5Text: "If your prompt has a line like “[Name] ___”, AI finds it and turns it into one text field. It uses {cost} Percoins only when it works.",
     step6Title: "Enter text and generate",
-    step6TrialAlt: "“一期一会” entered in the field for this generation",
+    step6TrialAlt: "“平々凡々” entered in the field for this generation",
     step6TrialCall: "Enter text to try",
     step6GenerateAlt: "The “{generate}” button",
     step6GenerateCall: "Tap to generate",

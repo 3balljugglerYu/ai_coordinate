@@ -2341,7 +2341,7 @@ export const frMessages = {
     step5Call: "Touchez",
     step5Text: "Si votre prompt contient une ligne comme « [Nom] ___ », l’IA la repère et la transforme en un champ de texte. {cost} Percoins ne sont utilisés que si cela fonctionne.",
     step6Title: "Saisissez le texte et générez",
-    step6TrialAlt: "« 一期一会 » saisi dans le champ de cette génération",
+    step6TrialAlt: "« 平々凡々 » saisi dans le champ de cette génération",
     step6TrialCall: "Saisissez un texte d’essai",
     step6GenerateAlt: "Le bouton « {generate} »",
     step6GenerateCall: "Touchez pour générer",
