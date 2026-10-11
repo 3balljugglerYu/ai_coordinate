@@ -1553,7 +1553,6 @@ export const ptMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "ex.: {hint}",
     nameInputPlaceholderHelp: "Um exemplo mostrado aos usuários em cinza-claro. Só aparece enquanto o campo está vazio e some ao digitar. “ex.:” é adicionado automaticamente.",
-    nameInputMarkerHint: "A marca {marker} foi adicionada ao prompt. Você pode movê-la para onde quiser.",
     nameInputTrialLabel: "{label} (para esta geração)",
     nameInputTrialHint: "Até {max} caracteres. Também gera se ficar vazio.",
     nameInputTooLong: "Até {max} caracteres. Com mais de {max} não é possível gerar (apague os caracteres em vermelho).",

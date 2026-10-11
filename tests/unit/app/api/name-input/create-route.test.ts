@@ -67,7 +67,8 @@ describe("POST /api/name-input/create", () => {
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       original: "野菜のドレスを着たキャラクターを描く。\n【名前】〇〇\n※名前はそのまま胸元の名札に表示する",
-      body: "野菜のドレスを着たキャラクターを描く。\n{{INPUT*:うちの子|ぺるこ}}",
+      // 名前の行を消すだけ(目印は本文に入れない。送るときに先頭へ付く。2026-10-11)
+      body: "野菜のドレスを着たキャラクターを描く。",
       removedLines: [2, 3],
       changedLine: null,
       balance: 95,
@@ -137,13 +138,15 @@ describe("POST /api/name-input/create", () => {
     expect(callModelFn).not.toHaveBeenCalled();
   });
 
-  test("欄の設定がおかしければ既定の見出し・任意に寄せる", async () => {
-    const { deps } = setup();
+  test("欄の設定がおかしければ既定の見出し(名前)に寄せる", async () => {
+    const { deps } = setup({
+      callModelFn: jest.fn(async () => ({ inlineLine: 2, inlineText: "〇〇", removeLines: [] })) as never,
+    });
     const response = await postNameInputCreateRoute(
-      createRequest({ prompt: PROMPT, slot: { label: 3, required: "yes" } }),
+      createRequest({ prompt: "描く\n名札に〇〇と書く", slot: { label: 3, required: "yes" } }),
       deps,
     );
-    expect(((await response.json()) as { body: string }).body).toContain("{{INPUT:名前}}");
+    expect(((await response.json()) as { body: string }).body).toBe("描く\n名札に【名前】と書く");
   });
 
   test("未ログインは 401・使えない人は 403・別のサイトからは断る", async () => {
@@ -162,7 +165,7 @@ describe("POST /api/name-input/create", () => {
     expect(cross.callModelFn).not.toHaveBeenCalled();
   });
 
-  test("まとめた後の本文が長さの上限を超えるなら、引き落とさない", async () => {
+  test("まとめた後に送る文(先頭の目印＋本文)が長さの上限を超えるなら、引き落とさない", async () => {
     const long = `${"あ".repeat(29_990)}\n【名前】`;
     const { deps, deductFn } = setup({ callModelFn: jest.fn(async () => ({ removeLines: [2] })) as never });
     const response = await postNameInputCreateRoute(
@@ -194,7 +197,7 @@ describe("POST /api/name-input/create", () => {
       deps,
     );
     expect(await response.json()).toMatchObject({
-      body: "プレート\n1行目：「{{INPUT:相手}}さん」",
+      body: "プレート\n1行目：「【相手】さん」",
       removedLines: [],
       changedLine: 2,
     });

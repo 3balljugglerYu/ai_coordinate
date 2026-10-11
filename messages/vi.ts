@@ -1550,7 +1550,6 @@ export const viMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "VD: {hint}",
     nameInputPlaceholderHelp: "Ví dụ hiển thị cho người dùng bằng màu xám nhạt. Chỉ hiện khi ô còn trống và biến mất khi họ nhập. “VD:” được thêm tự động.",
-    nameInputMarkerHint: "Đã chèn dấu {marker} vào prompt. Bạn có thể di chuyển nó đến bất kỳ đâu.",
     nameInputTrialLabel: "{label} (cho lần tạo này)",
     nameInputTrialHint: "Tối đa {max} ký tự. Để trống vẫn tạo được.",
     nameInputTooLong: "Tối đa {max} ký tự. Vượt quá {max} ký tự sẽ không thể tạo (hãy xóa các ký tự màu đỏ).",

@@ -6,12 +6,15 @@
  * (最初は名前専用。2026-10-07 に名前以外の文字にも広げた)。
  *
  * ⭐ 言い換えない(「ガチャに分ける」と同じ作り。gacha-split.ts)。文章の AI には本文を書かせず、
- * 「名前に関する行の番号」だけを返させる。本文はここで「元の行 − 名前の行 + 目印」として組み立てる。
- * 目印は、名前に関する行のうち最初の行の場所に入れる。
+ * 「名前に関する行の番号」だけを返させる。本文はここで「元の行 − 名前の行」として組み立てる。
+ *
+ * 目印は本文には入れない(2026-10-11 ユーザー指示: ガチャと同じく、本文に見慣れない目印を出さない)。
+ * 目印は送るときに本文の先頭へ付き(composeNameInputPrompt)、Worker が「【見出し】「文字」」の固定文にする。
+ * そのため、本文の見本の名前(〇〇・ぺる 等)は、見出しの【】(例: 【名前】)に置き換えて、固定文の文字を指す。
  */
 
 import { joinKeptLines } from "./gacha-split.ts";
-import { buildNameInputMarker, removeNameInputMarkers, type NameInputSlot } from "./name-input.ts";
+import { nameInputHeadingReference, removeNameInputMarkers, type NameInputSlot } from "./name-input.ts";
 
 /** 1回作るのに使うペルコイン(2026-10-06 ユーザー決定。ガチャの道具と同じ)。 */
 export const NAME_INPUT_CREATE_PERCOIN_COST = 5;
@@ -21,8 +24,8 @@ export const NAME_INPUT_CREATE_INSTRUCTIONS = `You prepare an image-generation p
 
 The user's prompt asks the image AI to draw some text that each user should choose: a character's name,
 a favorite word or phrase, a short message, etc. (on a name tag, a plate, a sign, a caption...).
-Our app will let each user type that text. The server puts ONE marker where that text goes, and replaces the marker
-with the text the user typed (or tells the image AI to draw no such text when the field is left empty).
+Our app will let each user type that text. The server replaces the sample text with a reference to the field
+(e.g. 【名前】) and tells the image AI which text the user typed (or to draw no such text when the field is left empty).
 
 The prompt is given with line numbers ("L<number>: <text>"). Return:
 
@@ -67,11 +70,11 @@ export interface NameInputCreateModelOutput {
 export type NameInputCreateResult =
   | {
       ok: true;
-      /** 目印を入れた本文。 */
+      /** 名前に関する行を消し、見本の名前を見出し(例: 【名前】)に置き換えた本文(目印は入れない)。 */
       body: string;
       /** 丸ごと消した行の番号(1始まり・昇順)。画面で赤線を引くのに使う。 */
       removedLines: number[];
-      /** 一部を目印に置き換えた行(1始まり)。無ければ null。画面で印を付けるのに使う。 */
+      /** 一部を見出しに置き換えた行(1始まり)。無ければ null。画面で印を付けるのに使う。 */
       changedLine: number | null;
     }
   | { ok: false; reason: "no_name_lines" | "empty_body" | "invalid_output" };
@@ -107,9 +110,9 @@ function isLineNumber(value: unknown, max: number): value is number {
 /**
  * AI の出力を確かめ、本文を組み立てる(言い換えはしない。2026-10-07 改訂)。
  *
- * - 文字を差し込む場所(inlineLine/inlineText)があれば、その行の該当部分だけを目印に置き換える。
+ * - 文字を差し込む場所(inlineLine/inlineText)があれば、その行の該当部分だけを見出し(例: 【名前】)に置き換える。
  *   「〇〇さん」の「さん」や「1行目：」のような、同じ行の前後の文字は残す(以前は行ごと消して「さん」が消えた)
- * - 無ければ、消す行のうち最初の行の場所に目印を入れる(【名前】の見出し行など)
+ * - 消す行は丸ごと消す(【名前】の見出し行など。文字は送るときに先頭へ付く固定文で届く)
  * - 行番号は範囲内の整数だけを使う。差し込む文字は、その行にそのまま書かれたものだけを使う
  * - 波括弧の目印(ガチャの囲みなど)を含む行は消さない・書き換えない(壊れた出力とみなす)
  * - 差し込む場所も消す行も無い・本文が目印だけになるなら作れない(ペルコインは使わない)
@@ -141,24 +144,16 @@ export function applyNameInputCreate(
     }
     // 差し込む行は消さない(AI が両方に挙げても、差し込みを優先する)
     removed.delete(inlineLine);
-    // 関数で渡す(文字列で渡すと、見出しの「$&」「$'」などが置き換えの記号として読まれて目印が壊れる)
-    const marker = buildNameInputMarker(slot);
-    lines[inlineLine - 1] = line.replace(text, () => marker);
+    // 関数で渡す(文字列で渡すと、見出しの「$&」「$'」などが置き換えの記号として読まれて壊れる)
+    const reference = nameInputHeadingReference(slot);
+    lines[inlineLine - 1] = line.replace(text, () => reference);
     changedLine = inlineLine;
   }
 
   if (changedLine === null && removed.size === 0) return { ok: false, reason: "no_name_lines" };
 
   const removedLines = [...removed].sort((a, b) => a - b);
-  let body: string;
-  if (changedLine !== null) {
-    body = joinKeptLines(lines, removed);
-  } else {
-    // 目印は、消す行のうち最初の行の場所に入れる(その行は消さずに目印へ差し替える)
-    const [first, ...rest] = removedLines;
-    const withMarker = lines.map((line, index) => (index + 1 === first ? buildNameInputMarker(slot) : line));
-    body = joinKeptLines(withMarker, new Set(rest));
-  }
+  const body = joinKeptLines(lines, removed);
   if (!removeNameInputMarkers(body).trim()) return { ok: false, reason: "empty_body" };
 
   return { ok: true, body, removedLines, changedLine };

@@ -1547,7 +1547,6 @@ export const zhTwMessages = {
     nameInputPlaceholderExample: "佩露可",
     nameInputHintDisplay: "例：{hint}",
     nameInputPlaceholderHelp: "以淺灰色顯示給使用者的輸入範例。只在欄位為空時顯示，輸入後就會消失。「例：」會自動加上。",
-    nameInputMarkerHint: "正文中已插入標記 {marker}，可以移到任意位置。",
     nameInputTrialLabel: "{label}（本次生成用）",
     nameInputTrialHint: "最多 {max} 個字。留空也可以生成。",
     nameInputTooLong: "最多{max}個字。超過{max}個字將無法生成（請刪除紅色文字）。",

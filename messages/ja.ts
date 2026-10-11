@@ -1506,7 +1506,6 @@ export const jaMessages = {
     nameInputPlaceholderExample: "ぺるこ",
     nameInputHintDisplay: "例：{hint}",
     nameInputPlaceholderHelp: "ユーザーに、うすい灰色で表示される入力例です。空欄のときだけ表示され、入力すると消えます。「例：」は自動で付きます。",
-    nameInputMarkerHint: "本文に目印 {marker} が入りました。好きな場所へ動かせます。",
     nameInputTrialLabel: "{label}（今回の生成用）",
     nameInputTrialHint: "{max}文字まで。空欄でも生成されます。",
     nameInputTooLong: "{max}文字までです。{max}文字を超えると生成できません（赤い文字を消してください）。",

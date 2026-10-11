@@ -1549,7 +1549,6 @@ export const koMessages = {
     nameInputPlaceholderExample: "페루코",
     nameInputHintDisplay: "예: {hint}",
     nameInputPlaceholderHelp: "사용자에게 연한 회색으로 표시되는 입력 예시입니다. 칸이 비어 있을 때만 보이고, 입력하면 사라집니다. “예:”는 자동으로 붙습니다.",
-    nameInputMarkerHint: "본문에 표시 {marker}가 들어갔어요. 원하는 위치로 옮길 수 있어요.",
     nameInputTrialLabel: "{label} (이번 생성용)",
     nameInputTrialHint: "{max}자까지. 비워 두어도 생성됩니다.",
     nameInputTooLong: "{max}자까지입니다. {max}자를 넘으면 생성할 수 없습니다(빨간 글자를 지워 주세요).",

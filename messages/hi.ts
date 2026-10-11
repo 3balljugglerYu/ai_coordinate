@@ -1551,7 +1551,6 @@ export const hiMessages = {
     nameInputPlaceholderExample: "पेरुको",
     nameInputHintDisplay: "उदा. {hint}",
     nameInputPlaceholderHelp: "उपयोगकर्ताओं को हल्के धूसर रंग में दिखने वाला उदाहरण। यह केवल फ़ील्ड खाली होने पर दिखता है और लिखते ही गायब हो जाता है। “उदा.” अपने-आप जुड़ जाता है।",
-    nameInputMarkerHint: "प्रॉम्प्ट में निशान {marker} जोड़ दिया गया है। आप इसे कहीं भी ले जा सकते हैं।",
     nameInputTrialLabel: "{label} (इस बार की जनरेशन के लिए)",
     nameInputTrialHint: "अधिकतम {max} अक्षर। खाली छोड़ने पर भी बनाया जाएगा।",
     nameInputTooLong: "अधिकतम {max} अक्षर। {max} अक्षरों से ज़्यादा होने पर जनरेट नहीं होगा (लाल अक्षर हटाएं)।",

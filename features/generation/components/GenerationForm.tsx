@@ -25,10 +25,10 @@ import {
   exceedsNameInputSlotLimit,
   hasGuaranteedRequiredNameInput,
   nameInputMaxSlotsFor,
-  parseNameInputSlots,
   usesGachaWithNameInput,
-  removeNameInputMarkers,
-  upsertNameInputMarker,
+  composeNameInputPrompt,
+  nameInputHeadingReference,
+  type NameInputSlot,
   type NameInputForUsers,
 } from "@/shared/generation/name-input";
 import {
@@ -318,19 +318,19 @@ export function GenerationForm({
     ? validateGachaField(gachaField, gachaLimitsFor(gachaUnlimited))
     : null;
 
-  // 名前の欄(公開前は運営だけ)。スイッチのオン・オフは本文の目印の有無そのもの。
+  // 文字入力の欄(公開前は運営だけ)。設定(ラベル・入力のヒント)は本文とは別に持ち、
+  // 送るときに目印を本文の先頭へ付ける(ガチャの欄と同じ考え方。本文に目印を出さない。2026-10-11 ユーザー指示)
   const canUseNameInput =
     isFree && !promptLocked && isAuthenticated && nameInputAvailable;
-  // スイッチと設定は本文の最初の目印。数と必須の判定は、送る文(本文＋ガチャの欄)をサーバーと同じ
-  // 数え方で見る(ガチャの欄に書いた目印や、2つ目以降の目印も含む)
-  const nameSlot = canUseNameInput
-    ? parseNameInputSlots(prompt, { keepEmptyLabel: true })[0] ?? null
-    : null;
-  const nameCheckedPrompt = canUseNameInput
-    ? isGachaActive
-      ? composeGachaPrompt(prompt, gachaField)
-      : prompt
-    : "";
+  const [nameSlotState, setNameSlotState] = useState<NameInputSlot | null>(null);
+  const nameSlot = canUseNameInput ? nameSlotState : null;
+  // 送る本文(目印＋本文＋ガチャの欄)。数と必須の判定は、これをサーバーと同じ数え方で見る
+  // (本文やガチャの欄に手で書いた目印も含む)
+  const composeSubmittedPrompt = (body: string) => {
+    const withName = composeNameInputPrompt(body, nameSlot);
+    return isGachaActive ? composeGachaPrompt(withName, gachaField) : withName;
+  };
+  const nameCheckedPrompt = canUseNameInput ? composeSubmittedPrompt(prompt) : "";
   const hasReachableNameSlot =
     canUseNameInput && countReachableNameInputSlots(nameCheckedPrompt) > 0;
   const isNameRequiredGuaranteed =
@@ -368,9 +368,7 @@ export function GenerationForm({
   const promptLength = prompt.length;
   // 上限は送る本文(ガチャの候補欄を付けた後)で判定する。
   const isPromptTooLong =
-    (isGachaActive
-      ? composeGachaPrompt(prompt, gachaField).length
-      : promptLength) > promptMaxLength;
+    (isGachaActive || nameSlot ? composeSubmittedPrompt(prompt).length : promptLength) > promptMaxLength;
   // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は実効値を既定モデルへ丸める。
   const gptImage25Available = useGptImage25Available();
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
@@ -491,9 +489,7 @@ export function GenerationForm({
     if (gachaValidation && !gachaValidation.ok) return;
     if (isNameInputInvalid) return;
     if (promptLocked && lockedNameInputLoading) return;
-    const trimmedPrompt = isGachaActive
-      ? composeGachaPrompt(bodyPrompt, gachaField)
-      : bodyPrompt;
+    const trimmedPrompt = promptLocked ? bodyPrompt : composeSubmittedPrompt(bodyPrompt);
 
     if (!uploadedImage && !selectedStock && !selectedGenerated) {
       alert(t("missingUploadedImage"));
@@ -898,10 +894,21 @@ export function GenerationForm({
             {canUseNameInput ? (
               <NamePromptField
                 slot={nameSlot}
-                onSlotChange={(slot) => setPrompt((current) => upsertNameInputMarker(current, slot))}
+                onSlotChange={(slot) => {
+                  // 本文で見出し(例: 【名前】)を使って文字を指しているときは、ラベルを変えたら一緒に書き換える
+                  // (「本文から文字入力の欄を作る」道具が、見本の名前をこの見出しに置き換えるため)
+                  if (nameSlotState) {
+                    const before = nameInputHeadingReference(nameSlotState);
+                    const after = nameInputHeadingReference(slot);
+                    if (before !== after) {
+                      setPrompt((current) => current.split(before).join(after));
+                    }
+                  }
+                  setNameSlotState(slot);
+                }}
                 onDisable={() => {
                   // 試しの名前は消さない(オンに戻したら使える。切っている間は送らない)
-                  setPrompt((current) => removeNameInputMarkers(current));
+                  setNameSlotState(null);
                 }}
                 trialName={trialName}
                 onTrialNameChange={setTrialName}
