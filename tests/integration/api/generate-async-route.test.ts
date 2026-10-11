@@ -603,6 +603,67 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         const mockNameAvailable = isNameInputAvailable as jest.MockedFunction<typeof isNameInputAvailable>;
         afterEach(() => mockNameAvailable.mockReturnValue(false));
 
+        describe("文字入力の文字を、生成の前に AI で確かめる(2026-10-11)", () => {
+          const runWithModeration = (
+            extra: Record<string, unknown>,
+            result: "flagged" | "ok" | "unavailable",
+          ) => {
+            const moderateTextInputFn = jest.fn().mockResolvedValue(result);
+            const response = postGenerateAsyncRoute(
+              createRequest({
+                prompt: "猫 {{INPUT:紙に書く文字|天才}}",
+                sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+                generationType: "free",
+                ...extra,
+              }),
+              {
+                getUserFn,
+                jobRepository,
+                invokeImageWorkerFn,
+                supabaseUrl: "https://example.supabase.co",
+                moderateTextInputFn,
+              },
+            );
+            return { response, moderateTextInputFn };
+          };
+
+          test("不適切と判定されたら、ジョブを作らず(課金せず) 400 で断る", async () => {
+            mockNameAvailable.mockReturnValue(true);
+            const { response, moderateTextInputFn } = runWithModeration({ nameInput: "ぺるこ" }, "flagged");
+            const res = await response;
+            expect(res.status).toBe(400);
+            expect((await readJson(res)).errorCode).toBe("GENERATION_TEXT_INPUT_FLAGGED");
+            expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+            // 入れた文字と、作る人のラベル・入力のヒントを一緒に確かめる
+            expect(moderateTextInputFn).toHaveBeenCalledWith(["ぺるこ", "紙に書く文字", "天才"]);
+          });
+
+          test("問題なしなら生成する", async () => {
+            mockNameAvailable.mockReturnValue(true);
+            const { response } = runWithModeration({ nameInput: "ぺるこ" }, "ok");
+            expect((await response).status).toBe(200);
+          });
+
+          test("判定が使えないときは止めない(止めすぎない方針)", async () => {
+            mockNameAvailable.mockReturnValue(true);
+            const { response } = runWithModeration({ nameInput: "ぺるこ" }, "unavailable");
+            expect((await response).status).toBe(200);
+          });
+
+          test("文字入力を使えない人には確かめない(文字は捨てられ、目印は「文字なし」になる)", async () => {
+            const { response, moderateTextInputFn } = runWithModeration({ nameInput: "ぺるこ" }, "flagged");
+            expect((await response).status).toBe(200);
+            expect(moderateTextInputFn).not.toHaveBeenCalled();
+          });
+
+          test("文字入力の目印も文字も無いときは確かめない(待たせない)", async () => {
+            mockNameAvailable.mockReturnValue(true);
+            const { response, moderateTextInputFn } = runWithModeration({ prompt: "猫" }, "flagged");
+            expect((await response).status).toBe(200);
+            expect(moderateTextInputFn).not.toHaveBeenCalled();
+          });
+        });
+
         test("名前の欄が2つあるプロンプトは、ジョブを作らず 400 で断る", async () => {
           const response = await runFree({ prompt: "猫\n{{INPUT:a}}\n{{INPUT:b}}" });
           expect(response.status).toBe(400);
@@ -1744,6 +1805,20 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         const response = await postGenerateAsyncRoute(createRequest(buildBody({ nameInput: "ぺるこ" })), dependencies());
         expect(response.status).toBe(200);
         expect(from).not.toHaveBeenCalled();
+      });
+
+      test("カタログから使う人の文字も、不適切と判定されたら 400 で断る(2026-10-11)", async () => {
+        mockNameAvailable.mockReturnValue(true);
+        mockValidationWithSecret("{{INPUT:名前}}");
+        const moderateTextInputFn = jest.fn().mockResolvedValue("flagged");
+        const response = await postGenerateAsyncRoute(createRequest(buildBody({ nameInput: "ぺるこ" })), {
+          ...dependencies(),
+          moderateTextInputFn,
+        });
+        expect(response.status).toBe(400);
+        expect((await readJson(response)).errorCode).toBe("GENERATION_TEXT_INPUT_FLAGGED");
+        expect(moderateTextInputFn).toHaveBeenCalledWith(["ぺるこ"]);
+        expect(jobRepository.createImageJob).not.toHaveBeenCalled();
       });
 
       test("任意の欄なら、名前が空でも通る", async () => {
