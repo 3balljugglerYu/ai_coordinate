@@ -46,8 +46,10 @@ import {
   NAME_INPUT_MAX_SLOTS,
   hasGuaranteedRequiredNameInput,
   nameInputMaxSlotsFor,
+  parseNameInputSlots,
   usesGachaWithNameInput,
 } from "@/shared/generation/name-input";
+import { moderateTextInput } from "@/features/generation/lib/text-input-moderation";
 import {
   findGachaLimitViolation,
   GACHA_MAX_BLOCKS,
@@ -68,6 +70,7 @@ interface GenerateAsyncRouteDependencies {
   jobRepository?: AsyncGenerationJobRepository;
   invokeImageWorkerFn?: (edgeFunctionUrl: string) => void;
   supabaseUrl?: string;
+  moderateTextInputFn?: typeof moderateTextInput;
 }
 
 function logGenerateAsyncTiming(
@@ -218,6 +221,22 @@ export async function postGenerateAsyncRoute(
       hasGuaranteedRequiredNameInput(prompt)
     ) {
       return jsonError(copy.nameInputRequired, "GENERATION_NAME_INPUT_REQUIRED", 400);
+    }
+    // 文字入力の文字は、そのまま画像に描かれて投稿で公開される。生成(課金)の前に
+    // OpenAI Moderation API で確かめ、はっきり不適切と判定されたものだけ止める(2026-10-11 ユーザー決定)。
+    // 作る人が決めたラベル・入力のヒントも、使う人の画面にそのまま出るので一緒に確かめる。
+    // API が使えないときは止めない(止めすぎない方針)
+    if (isNameInputAvailable(user.id)) {
+      const slotTexts = prompt
+        ? parseNameInputSlots(prompt).flatMap((slot) => [slot.label, slot.placeholder ?? ""])
+        : [];
+      const textsToModerate = [acceptedName, ...slotTexts].filter(Boolean);
+      if (textsToModerate.length > 0) {
+        const moderateTextInputFn = dependencies.moderateTextInputFn ?? moderateTextInput;
+        if ((await moderateTextInputFn(textsToModerate)) === "flagged") {
+          return jsonError(copy.textInputFlagged, "GENERATION_TEXT_INPUT_FLAGGED", 400);
+        }
+      }
     }
     // 未送信のときは「その人が使えるモデル」を選ぶ(段階公開中に自分のゲートで
     // 弾かれないようにするため)。明示送信された 2.5 は従来どおりゲートで判定する。
