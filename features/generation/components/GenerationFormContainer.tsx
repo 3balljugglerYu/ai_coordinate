@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { isTextInputFlaggedError } from "@/features/generation/lib/generation-submit-error";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -1249,7 +1250,9 @@ export function GenerationFormContainer({
       track("coordinate_generation_failed", {
         error: errorMessage.substring(0, 100),
       });
-      setError(errorMessage);
+      // 文字入力の文字で断られたときは、スナックバーだけで知らせる
+      // (ボタンの下にも同じ文を出すと二重になる。2026-10-12 ユーザー指示)
+      if (!isTextInputFlaggedError(generationError)) setError(errorMessage);
       showGenerationErrorToast(errorMessage);
       resetGenerationState();
       return;
