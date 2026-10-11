@@ -4,6 +4,7 @@
  */
 
 import type { GenerationRequest } from "../types";
+import { GenerationSubmitError } from "./generation-submit-error";
 import {
   DEFAULT_GENERATION_MODEL,
   backgroundModeToBackgroundChange,
@@ -209,7 +210,8 @@ export async function generateImageAsync(
       );
     }
 
-    throw new Error(baseMessage);
+    // 理由ごとに出し方を変えられるよう、サーバーの errorCode を持たせる
+    throw new GenerationSubmitError(baseMessage, error?.errorCode);
   }
 
   const data: AsyncGenerationResponse = await response.json();
