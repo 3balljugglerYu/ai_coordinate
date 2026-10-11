@@ -1555,6 +1555,7 @@ export const zhTwMessages = {
     nameInputTooManySlots: "每個提示詞最多只能有{max}個文字輸入欄。",
     gachaTextExclusiveNote: "扭蛋和文字輸入只能使用其中一個（同時使用的功能預計今後提供）。",
     gachaTextTogetherError: "扭蛋和文字輸入不能同時使用。請只使用其中一個（同時使用的功能預計今後提供）。",
+    promptOptionsMoved: "已將貼上的提示詞中的扭蛋和文字輸入移到下方的欄位。",
     nameInputEntryRequiredHint: "最多{max}個字。這些文字會出現在圖片中。",
     nameInputCreateDescription: "AI 會從「想要生成的內容」中的提示詞裡，找出與使用者需輸入的文字（如名字）相關的行，並整合為一個文字輸入欄。僅在成功建立時消耗{cost}佩爾幣。",
     nameInputCreateButton: "從正文建立文字輸入欄（{cost}佩爾幣）",

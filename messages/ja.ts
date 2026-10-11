@@ -1514,6 +1514,7 @@ export const jaMessages = {
     nameInputTooManySlots: "文字入力の欄は、1つのプロンプトに{max}つまでです。",
     gachaTextExclusiveNote: "ガチャと文字入力は、どちらか1つだけ使えます（一緒に使える機能は、今後提供予定です）。",
     gachaTextTogetherError: "ガチャと文字入力は一緒に使えません。どちらか1つにしてください（一緒に使える機能は、今後提供予定です）。",
+    promptOptionsMoved: "貼り付けたプロンプトのガチャ・文字入力を、下の欄に移しました。",
     nameInputEntryRequiredHint: "{max}文字まで。この文字が画像に入ります。",
     nameInputCreateDescription: "『生成したい内容』に記載されたプロンプトから、AIが、使う人に入れてもらう文字（名前など）に関する行を見つけて、文字入力の欄1つにまとめます。作れたときだけ{cost}ペルコインを使います。",
     nameInputCreateButton: "本文から文字入力の欄を作る（{cost}ペルコイン）",

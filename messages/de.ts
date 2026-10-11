@@ -1562,6 +1562,7 @@ export const deMessages = {
     nameInputTooManySlots: "Ein Prompt kann höchstens {max} Textfeld(er) haben.",
     gachaTextExclusiveNote: "Du kannst nur Gacha oder Texteingabe nutzen (beides zusammen ist für später geplant).",
     gachaTextTogetherError: "Gacha und Texteingabe können nicht zusammen verwendet werden. Bitte nur eines nutzen (beides zusammen ist für später geplant).",
+    promptOptionsMoved: "Gacha und Texteingabe aus dem eingefügten Prompt wurden in die Felder unten verschoben.",
     nameInputEntryRequiredHint: "Bis zu {max} Zeichen. Dieser Text erscheint im Bild.",
     nameInputCreateDescription: "Die KI findet im Prompt unter „Was du generieren möchtest“ die Zeilen zum Text, den Nutzer eingeben sollen (z. B. einen Namen), und fasst sie in einem Textfeld zusammen. {cost} Percoins werden nur bei Erfolg verbraucht.",
     nameInputCreateButton: "Textfeld aus dem Prompt erstellen ({cost} Percoins)",

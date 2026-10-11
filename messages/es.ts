@@ -1561,6 +1561,7 @@ export const esMessages = {
     nameInputTooManySlots: "Un prompt puede tener como máximo {max} campo(s) de texto.",
     gachaTextExclusiveNote: "Solo puedes usar el gacha o la entrada de texto (usar ambos a la vez estará disponible más adelante).",
     gachaTextTogetherError: "El gacha y la entrada de texto no se pueden usar juntos. Usa solo uno (usar ambos a la vez estará disponible más adelante).",
+    promptOptionsMoved: "El gacha y la entrada de texto del prompt pegado se movieron a los campos de abajo.",
     nameInputEntryRequiredHint: "Hasta {max} caracteres. Este texto aparecerá en la imagen.",
     nameInputCreateDescription: "La IA busca en el prompt de «Lo que quieres generar» las líneas sobre el texto que deben escribir los usuarios (como un nombre) y las combina en un campo de texto. Solo usa {cost} Percoins si se crea correctamente.",
     nameInputCreateButton: "Crear un campo de texto desde el prompt ({cost} Percoins)",
