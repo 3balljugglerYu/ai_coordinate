@@ -116,6 +116,12 @@ jest.mock("@/features/generation/lib/source-image-to-file", () => ({
     mockFetchSourceImage(...args),
 }));
 
+// 取り込んだことのスナックバー(2026-10-11)
+const mockToast = jest.fn();
+jest.mock("@/components/ui/use-toast", () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: jest.fn() }),
 }));
@@ -637,7 +643,12 @@ describe("「使用プロンプト」を本文に貼ったら、ガチャ・文�
     expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toBe(
       "{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}",
     );
-    expect(screen.getByTestId("prompt-options-moved").textContent).toContain("promptOptionsMoved");
+    // 何を取り込んだかをスナックバーで知らせる(「元に戻す」は出さない)
+    expect(mockToast).toHaveBeenLastCalledWith({
+      title: "promptOptionsImportedTitle",
+      description: "promptOptionsImportedBoth",
+    });
+    expect(screen.queryByRole("button", { name: "gachaSplitUndo" })).toBeNull();
 
     expect(await submittedPrompt(user, onSubmit)).toBe(PASTED);
   });
@@ -650,29 +661,34 @@ describe("「使用プロンプト」を本文に貼ったら、ガチャ・文�
     expect(screen.queryByTestId("name-input-too-many")).toBeNull();
   });
 
-  test("「元に戻す」で、移す前の欄の中身とスイッチに戻す", () => {
+  test.each([
+    ["ガチャだけ", "描く\n\n{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}", "promptOptionsImportedGacha"],
+    ["文字入力だけ", "{{INPUT:名前}}\n描く", "promptOptionsImportedTextInput"],
+  ])("取り込んだものに合わせて知らせる(%s)", (_label, pasted, description) => {
+    mockToast.mockClear();
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true, nameInputUnlimited: true });
+    fireEvent.change(promptField(), { target: { value: pasted } });
+    expect(mockToast).toHaveBeenCalledTimes(1);
+    expect(mockToast).toHaveBeenCalledWith({ title: "promptOptionsImportedTitle", description });
+  });
+
+  test("欄に書いていた中身は、貼り付けた方で上書きする", () => {
     renderNameForm(jest.fn(), { gachaPromptAvailable: true, nameInputUnlimited: true });
     fireEvent.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
     fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
       target: { value: "{{GACHA}}\n1. 書きかけ\n2. の候補\n{{/GACHA}}" },
     });
     fireEvent.change(promptField(), { target: { value: PASTED } });
-    expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toContain("医師");
-
-    fireEvent.click(screen.getByRole("button", { name: "gachaSplitUndo" }));
     expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toBe(
-      "{{GACHA}}\n1. 書きかけ\n2. の候補\n{{/GACHA}}",
+      "{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}",
     );
-    expect(nameSwitch()!.getAttribute("aria-checked")).toBe("false");
-    expect(screen.queryByTestId("prompt-options-moved")).toBeNull();
-    // 本文は移した後のまま
-    expect(promptField().value).toBe("名札に名前を書く。");
   });
 
-  test("目印も囲みも無い本文は、そのまま(案内も出さない)", () => {
+  test("目印も囲みも無い本文は、そのまま(知らせない)", () => {
+    mockToast.mockClear();
     renderNameForm(jest.fn(), { gachaPromptAvailable: true });
     fireEvent.change(promptField(), { target: { value: "ふつうの本文" } });
     expect(promptField().value).toBe("ふつうの本文");
-    expect(screen.queryByTestId("prompt-options-moved")).toBeNull();
+    expect(mockToast).not.toHaveBeenCalled();
   });
 });

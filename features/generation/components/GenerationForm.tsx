@@ -10,7 +10,7 @@ import { AuthModal } from "@/features/auth/components/AuthModal";
 import { ImageUploader } from "./ImageUploader";
 import { GenerationModelControls } from "./GenerationModelControls";
 import { GenerationSubmitButton } from "./GenerationSubmitButton";
-import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
 import { extractPromptOptions } from "@/shared/generation/prompt-options-extract";
 import { GeneratedImagesFromSource } from "./GeneratedImagesFromSource";
 import { ImageSourcePicker } from "./ImageSourcePicker/ImageSourcePicker";
@@ -336,32 +336,31 @@ export function GenerationForm({
 
   // 本文に貼り付けたガチャの囲み・文字入力の目印は、それぞれの欄へ移す(2026-10-11 ユーザー決定 案A)。
   // 「使用プロンプト」には送った文(目印・囲み付き)が残るので、それを貼ると欄が2つになって生成できないため。
-  // 欄にあった中身は上書きするので、移す前の欄に戻せるようにしておく
-  const [movedOptionsUndo, setMovedOptionsUndo] = useState<{
-    gachaField: string;
-    isGachaEnabled: boolean;
-    nameSlot: NameInputSlot | null;
-  } | null>(null);
+  // 欄にあった中身は上書きする。何を取り込んだかはスナックバーで知らせる(「元に戻す」は出さない。2026-10-11 ユーザー指示)
+  const { toast } = useToast();
   const handlePromptChange = (next: string) => {
     const extracted = extractPromptOptions(next, { gacha: canUseGacha, nameInput: canUseNameInput });
     if (!extracted) {
       setPrompt(next);
       return;
     }
-    setMovedOptionsUndo({ gachaField, isGachaEnabled, nameSlot: nameSlotState });
     setPrompt(extracted.body);
-    if (extracted.gachaField !== null) {
-      setGachaField(extracted.gachaField);
+    const movedGacha = extracted.gachaField !== null;
+    if (movedGacha) {
+      setGachaField(extracted.gachaField!);
       setIsGachaEnabled(true);
     }
     if (extracted.nameSlot) setNameSlotState(extracted.nameSlot);
-  };
-  const undoMovedOptions = () => {
-    if (!movedOptionsUndo) return;
-    setGachaField(movedOptionsUndo.gachaField);
-    setIsGachaEnabled(movedOptionsUndo.isGachaEnabled);
-    setNameSlotState(movedOptionsUndo.nameSlot);
-    setMovedOptionsUndo(null);
+    toast({
+      title: freeT("promptOptionsImportedTitle"),
+      description: freeT(
+        movedGacha && extracted.nameSlot
+          ? "promptOptionsImportedBoth"
+          : movedGacha
+            ? "promptOptionsImportedGacha"
+            : "promptOptionsImportedTextInput",
+      ),
+    });
   };
   const hasReachableNameSlot =
     canUseNameInput && countReachableNameInputSlots(nameCheckedPrompt) > 0;
@@ -923,17 +922,6 @@ export function GenerationForm({
 
         {canUseGacha || canUseNameInput ? (
           <PromptGimmicksBox>
-            {movedOptionsUndo ? (
-              <div
-                className="flex flex-wrap items-center gap-2 rounded-md bg-pink-50 px-3 py-2 text-xs text-gray-700"
-                data-testid="prompt-options-moved"
-              >
-                <span role="status">{freeT("promptOptionsMoved")}</span>
-                <Button type="button" size="sm" variant="ghost" onClick={undoMovedOptions}>
-                  {freeT("gachaSplitUndo")}
-                </Button>
-              </div>
-            ) : null}
             {canUseNameInput ? (
               <NamePromptField
                 slot={nameSlot}
