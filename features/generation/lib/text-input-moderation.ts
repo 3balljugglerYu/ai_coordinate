@@ -88,9 +88,13 @@ export async function moderateTextInput(
       return "unavailable";
     }
     // 止める線を決めるため、毎回スコアを残す(送った順=入れた文字・ラベル・入力のヒント。文字そのものは出さない)
-    console.info("[text-input-moderation] scores", {
-      results: results.map((result) => ({ flagged: result?.flagged === true, top: topScores(result ?? {}) })),
-    });
+    // 文字列にして出す(オブジェクトのままだと、ログで入れ子の配列が [Array] に省かれて数値が読めない)
+    console.info(
+      "[text-input-moderation] scores",
+      JSON.stringify(
+        results.map((result) => ({ flagged: result?.flagged === true, top: topScores(result ?? {}) })),
+      ),
+    );
     const thresholds = options.thresholds ?? TEXT_INPUT_SCORE_THRESHOLDS;
     const flagged = results.filter(
       (result) => result?.flagged === true || isOverThreshold(result ?? {}, thresholds),

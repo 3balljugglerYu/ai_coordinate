@@ -95,9 +95,11 @@ describe("moderateTextInput(文字入力を生成の前に確かめる。2026-10
       }),
     );
     await moderateTextInput(["ひみつの言葉"], { apiKey: "k", fetchFn });
-    expect(console.info).toHaveBeenCalledWith("[text-input-moderation] scores", {
-      results: [{ flagged: false, top: [["sexual", 0.312], ["harassment", 0.02], ["violence", 0.001]] }],
-    });
+    // ログで省かれないよう、文字列で出す
+    expect(console.info).toHaveBeenCalledWith(
+      "[text-input-moderation] scores",
+      JSON.stringify([{ flagged: false, top: [["sexual", 0.312], ["harassment", 0.02], ["violence", 0.001]] }]),
+    );
     expect(JSON.stringify((console.info as jest.Mock).mock.calls)).not.toContain("ひみつの言葉");
   });
 
