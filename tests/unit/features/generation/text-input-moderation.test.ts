@@ -82,4 +82,41 @@ describe("moderateTextInput(文字入力を生成の前に確かめる。2026-10
     expect(fetchFn).not.toHaveBeenCalled();
     if (saved !== undefined) process.env.OPENAI_API_KEY = saved;
   });
+
+  test("毎回、スコアの上位3つを残す(文字は出さない。線を決めるための記録)", async () => {
+    const fetchFn = jest.fn().mockResolvedValue(
+      jsonResponse({
+        results: [
+          {
+            flagged: false,
+            category_scores: { sexual: 0.31234, harassment: 0.02, violence: 0.001, hate: 0.0001 },
+          },
+        ],
+      }),
+    );
+    await moderateTextInput(["ひみつの言葉"], { apiKey: "k", fetchFn });
+    expect(console.info).toHaveBeenCalledWith("[text-input-moderation] scores", {
+      results: [{ flagged: false, top: [["sexual", 0.312], ["harassment", 0.02], ["violence", 0.001]] }],
+    });
+    expect(JSON.stringify((console.info as jest.Mock).mock.calls)).not.toContain("ひみつの言葉");
+  });
+
+  test("flagged でなくても、種類ごとの線以上なら止める", async () => {
+    const fetchFn = jest.fn().mockResolvedValue(
+      jsonResponse({ results: [{ flagged: false, category_scores: { sexual: 0.3, violence: 0.01 } }] }),
+    );
+    await expect(
+      moderateTextInput(["ぺるこ"], { apiKey: "k", fetchFn, thresholds: { sexual: 0.3 } }),
+    ).resolves.toBe("flagged");
+    await expect(
+      moderateTextInput(["ぺるこ"], { apiKey: "k", fetchFn, thresholds: { sexual: 0.31, violence: 0.5 } }),
+    ).resolves.toBe("ok");
+  });
+
+  test("線が空のあいだは、これまでどおり flagged だけで止める", async () => {
+    const fetchFn = jest.fn().mockResolvedValue(
+      jsonResponse({ results: [{ flagged: false, category_scores: { sexual: 0.99 } }] }),
+    );
+    await expect(moderateTextInput(["ぺるこ"], { apiKey: "k", fetchFn })).resolves.toBe("ok");
+  });
 });
