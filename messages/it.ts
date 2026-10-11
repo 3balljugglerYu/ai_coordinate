@@ -1553,7 +1553,6 @@ export const itMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "es. {hint}",
     nameInputPlaceholderHelp: "Un esempio mostrato agli utenti in grigio chiaro. Appare solo quando il campo è vuoto e scompare quando si scrive. «es.» viene aggiunto automaticamente.",
-    nameInputMarkerHint: "Il segnaposto {marker} è stato aggiunto al prompt. Puoi spostarlo dove vuoi.",
     nameInputTrialLabel: "{label} (per questa generazione)",
     nameInputTrialHint: "Fino a {max} caratteri. Si genera anche se è vuoto.",
     nameInputTooLong: "Massimo {max} caratteri. Oltre {max} non è possibile generare (elimina i caratteri in rosso).",

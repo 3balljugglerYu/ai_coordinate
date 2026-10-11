@@ -1550,7 +1550,6 @@ export const enMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "e.g. {hint}",
     nameInputPlaceholderHelp: "An example shown to users in light gray. It only appears while the field is empty and disappears when they type. “e.g.” is added automatically.",
-    nameInputMarkerHint: "The marker {marker} was added to the prompt. You can move it anywhere.",
     nameInputTrialLabel: "{label} (for this generation)",
     nameInputTrialHint: "Up to {max} characters. You can generate with it empty.",
     nameInputTooLong: "Up to {max} characters. You can't generate with more (delete the red characters).",

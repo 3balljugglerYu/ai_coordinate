@@ -1553,7 +1553,6 @@ export const frMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "ex. : {hint}",
     nameInputPlaceholderHelp: "Un exemple affiché aux utilisateurs en gris clair. Il n’apparaît que lorsque le champ est vide et disparaît dès la saisie. « ex. : » est ajouté automatiquement.",
-    nameInputMarkerHint: "Le repère {marker} a été ajouté au prompt. Vous pouvez le déplacer où vous voulez.",
     nameInputTrialLabel: "{label} (pour cette génération)",
     nameInputTrialHint: "{max} caractères maximum. La génération fonctionne aussi s’il est vide.",
     nameInputTooLong: "{max} caractères maximum. Au-delà de {max}, la génération est impossible (supprimez les caractères en rouge).",

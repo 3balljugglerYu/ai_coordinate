@@ -10,7 +10,6 @@ import { cn } from "@/lib/utils";
 import { NameInputCreateTool } from "./NameInputCreateTool";
 import { NameTextInput } from "./NameTextInput";
 import {
-  buildNameInputMarker,
   checkNameInputValue,
   NAME_INPUT_DEFAULT_LABEL,
   NAME_INPUT_HINT_MAX_LENGTH,
@@ -22,11 +21,11 @@ import {
 } from "@/shared/generation/name-input";
 
 interface NamePromptFieldProps {
-  /** 本文にある名前の欄(最初の1つ)。無ければ null = スイッチはオフ。 */
+  /** 文字入力の欄の設定(本文とは別に持つ)。無ければ null = スイッチはオフ。 */
   slot: NameInputSlot | null;
-  /** スイッチを入れた(設定を変えた)とき。本文の目印を書き換える。 */
+  /** スイッチを入れた(設定を変えた)とき。 */
   onSlotChange: (slot: NameInputSlot) => void;
-  /** スイッチを切ったとき。本文の目印を取り除く。 */
+  /** スイッチを切ったとき。 */
   onDisable: () => void;
   /** 作る人が自分の生成で試す名前。 */
   trialName: string;
@@ -83,8 +82,9 @@ function useMarkerTextDraft(markerValue: string) {
 /**
  * 「名前を入れられるようにする」(docs/planning/name-input-slot-plan.md)。
  *
- * スイッチのオン・オフは本文の目印 `{{INPUT:見出し}}` の有無そのもの(状態を二重に持たない)。
- * 作る人が本文に目印を手で書いても、ここがオンになる。
+ * 設定は本文とは別に持ち、送るときに目印 `{{INPUT:見出し}}` を本文の先頭へ付ける
+ * (ガチャの欄と同じく、本文に目印を出さない。2026-10-11 ユーザー指示)。
+ * 本文やガチャの欄に目印を手で書いた場合も、送る文には届く(試しの欄はそれで出る)。
  *
  * 画面では「文字入力を受け付ける」。名前に限らず、好きな文字を入れてもらえる(2026-10-07 ユーザー決定)。
  * - 見出し・入力例は、作る人が決められる(全員。何の文字を入れてほしいかは見出しで伝わる)
@@ -213,9 +213,6 @@ export function NamePromptField({
               {t("nameInputPlaceholderHelp")}
             </p>
           </div>
-          <p className="text-xs text-gray-500" data-testid="name-input-marker-hint">
-            {t("nameInputMarkerHint", { marker: buildNameInputMarker(slot) })}
-          </p>
           {createTool ? (
             <NameInputCreateTool
               prompt={createTool.prompt}

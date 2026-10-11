@@ -1554,7 +1554,6 @@ export const deMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "z. B. {hint}",
     nameInputPlaceholderHelp: "Ein Beispiel, das Nutzern in Hellgrau angezeigt wird. Es erscheint nur, solange das Feld leer ist, und verschwindet beim Tippen. „z. B.“ wird automatisch ergänzt.",
-    nameInputMarkerHint: "Die Markierung {marker} wurde in den Prompt eingefügt. Du kannst sie beliebig verschieben.",
     nameInputTrialLabel: "{label} (für diese Generierung)",
     nameInputTrialHint: "Bis zu {max} Zeichen. Auch leer wird generiert.",
     nameInputTooLong: "Maximal {max} Zeichen. Bei mehr als {max} Zeichen ist keine Generierung möglich (lösche die roten Zeichen).",

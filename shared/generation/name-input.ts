@@ -143,6 +143,27 @@ function fixedTextHeading(label: string): string {
   return label.replace(/[【】]/g, "").trim() || NAME_INPUT_DEFAULT_LABEL;
 }
 
+/**
+ * 固定文の見出しを【】で囲んだもの(例: 【名前】)。本文からこの見出しで文字を指せる
+ * (「本文から文字入力の欄を作る」道具が、本文の見本の名前をこれに置き換える)。
+ * 作る人の画面の設定から、Worker と同じ見出しを出す(目印を作って読み戻す)。
+ */
+export function nameInputHeadingReference(slot: NameInputSlot): string {
+  const [parsed] = parseNameInputSlots(buildNameInputMarker(slot));
+  return `【${fixedTextHeading(parsed?.label ?? "")}】`;
+}
+
+/**
+ * 送る文を組み立てる(作る人の画面)。目印は本文には出さず、送るときに本文の先頭へ1行で付ける
+ * (ガチャの欄を本文の末尾に付けて送るのと同じ考え方。2026-10-11 ユーザー指示)。
+ * Worker は目印を固定文に置き換えるので、先頭に付けると「【見出し】「文字」」が本文より先に読まれる。
+ */
+export function composeNameInputPrompt(body: string, slot: NameInputSlot | null): string {
+  if (!slot) return body;
+  const marker = buildNameInputMarker(slot);
+  return body.trim() ? `${marker}\n${body}` : marker;
+}
+
 /** 文字が入っているときに目印を置き換える固定文。 */
 export function buildNameProvidedText(value: string, label: string = NAME_INPUT_DEFAULT_LABEL): string {
   return [

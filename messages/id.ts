@@ -1552,7 +1552,6 @@ export const idMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "mis. {hint}",
     nameInputPlaceholderHelp: "Contoh isian yang ditampilkan kepada pengguna dengan warna abu-abu muda. Hanya muncul saat kolom kosong dan hilang saat mereka mengetik. “mis.” ditambahkan otomatis.",
-    nameInputMarkerHint: "Penanda {marker} sudah dimasukkan ke prompt. Kamu bisa memindahkannya ke mana saja.",
     nameInputTrialLabel: "{label} (untuk pembuatan kali ini)",
     nameInputTrialHint: "Maksimal {max} karakter. Tetap bisa dibuat meski kosong.",
     nameInputTooLong: "Maksimal {max} karakter. Lebih dari {max} karakter tidak bisa dibuat (hapus karakter berwarna merah).",

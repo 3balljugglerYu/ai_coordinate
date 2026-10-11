@@ -8,7 +8,7 @@ const SLOT = { label: "名前", required: false };
 const none = { inlineLine: 0, inlineText: "" };
 
 describe("本文から文字入力の欄を作る(組み立て)", () => {
-  test("⭐同じ行に前後の文字があるときは、その部分だけを目印にし、「さん」などは残す(2026-10-07 報告)", () => {
+  test("⭐同じ行に前後の文字があるときは、その部分だけを見出し(【ラベル】)にし、「さん」などは残す(2026-10-07 報告。目印は本文に入れない 2026-10-11)", () => {
     const original = [
       "プレートには、以下の2行の文字を表示する。",
       "1行目：「ぺるさん」",
@@ -25,7 +25,7 @@ describe("本文から文字入力の欄を作る(組み立て)", () => {
       ok: true,
       body: [
         "プレートには、以下の2行の文字を表示する。",
-        "1行目：「{{INPUT:お祝いする相手の名前|ぺる}}さん」",
+        "1行目：「【お祝いする相手の名前】さん」",
         "2行目：「おめでとう！」",
         "名前の直後に必ず「さん」を付ける。",
       ].join("\n"),
@@ -34,25 +34,25 @@ describe("本文から文字入力の欄を作る(組み立て)", () => {
     });
   });
 
-  test("見出しや入力のヒントに $ があっても、目印はそのまま入る(置き換えの記号として読まない)", () => {
+  test("見出しに $ があっても、そのまま入る(置き換えの記号として読まない)", () => {
     const result = applyNameInputCreate(
       "描く\n名札に「〇〇」と書く",
       { inlineLine: 2, inlineText: "〇〇", removeLines: [] },
       { label: "お題$'", placeholder: "a$$b", required: false },
     );
-    expect(result).toMatchObject({ ok: true, body: "描く\n名札に「{{INPUT:お題$'|a$$b}}」と書く" });
+    expect(result).toMatchObject({ ok: true, body: "描く\n名札に「【お題$'】」と書く" });
   });
 
   test("差し込む行を消す行にも挙げられたら、差し込みを優先する", () => {
     const result = applyNameInputCreate("描く\n名札に「〇〇」と書く", { inlineLine: 2, inlineText: "〇〇", removeLines: [2] }, SLOT);
-    expect(result).toMatchObject({ ok: true, body: "描く\n名札に「{{INPUT:名前}}」と書く", removedLines: [], changedLine: 2 });
+    expect(result).toMatchObject({ ok: true, body: "描く\n名札に「【名前】」と書く", removedLines: [], changedLine: 2 });
   });
 
-  test("差し込む場所が無ければ、消す行のうち最初の行の場所に目印を入れる(ほかの行は言い換えない)", () => {
+  test("差し込む場所が無ければ、消す行を消すだけ(目印は入れない。ほかの行は言い換えない)", () => {
     const original = "【衣装】野菜のドレス\n【名前】〇〇\n※名前は変えない\n背景は畑";
     expect(applyNameInputCreate(original, { ...none, removeLines: [3, 2] }, SLOT)).toEqual({
       ok: true,
-      body: "【衣装】野菜のドレス\n{{INPUT:名前}}\n背景は畑",
+      body: "【衣装】野菜のドレス\n背景は畑",
       removedLines: [2, 3],
       changedLine: null,
     });
@@ -61,16 +61,25 @@ describe("本文から文字入力の欄を作る(組み立て)", () => {
   test("消した跡にできた空行の連なりは1つにする", () => {
     const original = "上\n\n【名前】〇〇\n\n※名前は変えない\n\n下";
     const result = applyNameInputCreate(original, { ...none, removeLines: [3, 4, 5] }, SLOT);
-    expect(result).toMatchObject({ ok: true, body: "上\n\n{{INPUT:名前}}\n\n下" });
+    expect(result).toMatchObject({ ok: true, body: "上\n\n下" });
   });
 
-  test("見出し・入力のヒントは、今の欄の設定で目印を作る", () => {
+  test("見出しは今の欄のラベルを使う(入力のヒントは本文に入れない。空のラベルは「名前」)", () => {
     const result = applyNameInputCreate(
-      "描く\n名前：〇〇",
-      { ...none, removeLines: [2] },
+      "描く\n名札に〇〇と書く",
+      { inlineLine: 2, inlineText: "〇〇", removeLines: [] },
       { label: "うちの子", placeholder: "ぺるこ", required: false },
     );
-    expect(result).toMatchObject({ ok: true, body: "描く\n{{INPUT:うちの子|ぺるこ}}" });
+    expect(result).toMatchObject({ ok: true, body: "描く\n名札に【うちの子】と書く" });
+    expect(
+      applyNameInputCreate("名札に〇〇と書く", { inlineLine: 1, inlineText: "〇〇", removeLines: [] }, { label: "", required: false }),
+    ).toMatchObject({ ok: true, body: "名札に【名前】と書く" });
+  });
+
+  test("できた本文に目印は入らない(送るときに先頭へ付く。2026-10-11)", () => {
+    const result = applyNameInputCreate("描く\n【名前】〇〇\n名札に〇〇と書く", { inlineLine: 3, inlineText: "〇〇", removeLines: [2] }, SLOT);
+    expect(result.ok && result.body).toBe("描く\n名札に【名前】と書く");
+    expect(result.ok && result.body).not.toContain("{{INPUT");
   });
 
   test("差し込む場所も消す行も無ければ作れない", () => {

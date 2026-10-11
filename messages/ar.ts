@@ -1550,7 +1550,6 @@ export const arMessages = {
     nameInputPlaceholderExample: "بيروكو",
     nameInputHintDisplay: "مثال: {hint}",
     nameInputPlaceholderHelp: "مثال يظهر للمستخدمين باللون الرمادي الفاتح. يظهر فقط عندما يكون الحقل فارغًا ويختفي عند الكتابة. تُضاف «مثال:» تلقائيًا.",
-    nameInputMarkerHint: "تمت إضافة العلامة {marker} إلى الموجّه. يمكنك نقلها إلى أي مكان.",
     nameInputTrialLabel: "{label} (لهذا الإنشاء)",
     nameInputTrialHint: "حتى {max} أحرف. يمكن الإنشاء حتى لو تُرك فارغًا.",
     nameInputTooLong: "الحد الأقصى {max} حرفًا. لا يمكن الإنشاء إذا تجاوز النص {max} حرفًا (احذف الأحرف الحمراء).",

@@ -1549,7 +1549,6 @@ export const thMessages = {
     nameInputPlaceholderExample: "เปรุโกะ",
     nameInputHintDisplay: "เช่น {hint}",
     nameInputPlaceholderHelp: "ตัวอย่างการกรอกที่แสดงให้ผู้ใช้เห็นเป็นสีเทาอ่อน จะแสดงเฉพาะตอนที่ช่องว่าง และหายไปเมื่อเริ่มพิมพ์ คำว่า “เช่น” จะใส่ให้อัตโนมัติ",
-    nameInputMarkerHint: "ใส่เครื่องหมาย {marker} ในพรอมต์แล้ว ย้ายไปตำแหน่งที่ต้องการได้",
     nameInputTrialLabel: "{label} (สำหรับการสร้างครั้งนี้)",
     nameInputTrialHint: "สูงสุด {max} ตัวอักษร เว้นว่างไว้ก็สร้างได้",
     nameInputTooLong: "ได้สูงสุด {max} ตัวอักษร หากเกิน {max} ตัวอักษรจะสร้างไม่ได้ (โปรดลบตัวอักษรสีแดง)",

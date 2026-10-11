@@ -1553,7 +1553,6 @@ export const esMessages = {
     nameInputPlaceholderExample: "Peruko",
     nameInputHintDisplay: "p. ej., {hint}",
     nameInputPlaceholderHelp: "Un ejemplo que los usuarios ven en gris claro. Solo aparece mientras el campo está vacío y desaparece al escribir. «p. ej.» se añade automáticamente.",
-    nameInputMarkerHint: "Se añadió la marca {marker} al prompt. Puedes moverla donde quieras.",
     nameInputTrialLabel: "{label} (para esta generación)",
     nameInputTrialHint: "Hasta {max} caracteres. También se genera si lo dejas vacío.",
     nameInputTooLong: "Máximo {max} caracteres. Con más de {max} no se puede generar (borra los caracteres en rojo).",

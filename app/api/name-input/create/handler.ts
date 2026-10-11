@@ -8,6 +8,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { FREE_GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 import {
+  composeNameInputPrompt,
   NAME_INPUT_DEFAULT_LABEL,
   NAME_INPUT_LABEL_MAX_LENGTH,
   normalizeNameInputHint,
@@ -172,9 +173,9 @@ export async function postNameInputCreateRoute(
     return jsonError("No name lines", "NAME_INPUT_CREATE_NOT_FOUND", 422);
   }
 
-  // まとめた後の本文が長さの上限を超えるなら、生成で使えないので引き落とさない
-  // (短い名前の行を長い目印に差し替えると、上限ぎりぎりの本文は少し伸びる)
-  if (result.body.length > FREE_GENERATION_PROMPT_MAX_LENGTH) {
+  // まとめた後に送る文(先頭に付く目印＋本文)が長さの上限を超えるなら、生成で使えないので引き落とさない
+  // (見本の名前を長い見出しに置き換えると、上限ぎりぎりの本文は少し伸びる)
+  if (composeNameInputPrompt(result.body, slot).length > FREE_GENERATION_PROMPT_MAX_LENGTH) {
     return jsonError("Too long", "NAME_INPUT_CREATE_INVALID_PROMPT", 400);
   }
 
