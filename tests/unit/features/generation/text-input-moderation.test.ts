@@ -1,4 +1,8 @@
-import { moderateTextInput, TEXT_INPUT_MODERATION_MODEL } from "@/features/generation/lib/text-input-moderation";
+import {
+  isExactBlockedWord,
+  moderateTextInput,
+  TEXT_INPUT_MODERATION_MODEL,
+} from "@/features/generation/lib/text-input-moderation";
 
 // jsdom には Response が無いので、使う所だけの形にする
 const jsonResponse = (body: unknown, status = 200) => ({
@@ -115,10 +119,36 @@ describe("moderateTextInput(文字入力を生成の前に確かめる。2026-10
     ).resolves.toBe("ok");
   });
 
-  test("線が空のあいだは、これまでどおり flagged だけで止める", async () => {
+  test("線が空なら、flagged だけで止める", async () => {
     const fetchFn = jest.fn().mockResolvedValue(
       jsonResponse({ results: [{ flagged: false, category_scores: { sexual: 0.99 } }] }),
     );
-    await expect(moderateTextInput(["ぺるこ"], { apiKey: "k", fetchFn })).resolves.toBe("ok");
+    await expect(moderateTextInput(["ぺるこ"], { apiKey: "k", fetchFn, thresholds: {} })).resolves.toBe("ok");
+  });
+
+  test.each([
+    ["ディープキス(0.289)は通す", 0.289, "ok"],
+    ["ビキニ(0.243)は通す", 0.243, "ok"],
+    ["0.33 ちょうどは止める", 0.33, "flagged"],
+    ["えっち(0.375)は止める", 0.375, "flagged"],
+  ])("既定の線は性的 0.33(2026-10-11 本番のスコアから決定): %s", async (_label, score, expected) => {
+    const fetchFn = jest.fn().mockResolvedValue(
+      jsonResponse({ results: [{ flagged: false, category_scores: { sexual: score } }] }),
+    );
+    await expect(moderateTextInput(["ぺるこ"], { apiKey: "k", fetchFn })).resolves.toBe(expected);
+  });
+
+  test("「sex」は文字全体が一致したら、API に聞かずに止める(スコアではビキニと分けられない)", async () => {
+    const fetchFn = jest.fn();
+    for (const word of ["sex", "SEX", "ｓｅｘ", " s e x "]) {
+      await expect(moderateTextInput(["ぺるこ", word], { apiKey: "k", fetchFn })).resolves.toBe("flagged");
+    }
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  test("一部に含まれるだけなら一覧では止めない(ウルトラマンコスモスと同じ誤判定を出さない)", () => {
+    for (const word of ["sexy", "Sussex", "sex大好き", "ぺるこ"]) {
+      expect(isExactBlockedWord(word)).toBe(false);
+    }
   });
 });
