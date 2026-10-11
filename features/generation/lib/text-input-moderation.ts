@@ -20,9 +20,34 @@ export type TextInputModerationResult = "flagged" | "ok" | "unavailable";
 /**
  * API の flagged に加えて、種類ごとのスコアがこの線以上なら止める。
  * flagged は「有害な内容の文章」向けで、単語だけ(えっち・おっぱい 等)では立たなかった(2026-10-11 本番で確認)。
- * 線は本番のスコアの記録(下の scores ログ)を見て決める。空のあいだは flagged だけで止める。
+ * 線は本番のスコアの記録(下の scores ログ)を見て決める。
  */
-export const TEXT_INPUT_SCORE_THRESHOLDS: Readonly<Partial<Record<string, number>>> = {};
+export const TEXT_INPUT_SCORE_THRESHOLDS: Readonly<Partial<Record<string, number>>> = {
+  // 2026-10-11 本番で試したスコア(性的):
+  //   通したい: ハート 0.003 / 玲華 0.052 / ラブラブ 0.097 / ちび 0.18 / キス 0.181 / ビキニ 0.243 / ディープキス 0.289
+  //   止めたい: sexy 0.374 / えっち 0.375 / メスガキ 0.377 / セックス 0.379 / ちんこ 0.38 / 射精 0.569
+  // そのあいだの 0.33 で止める(ユーザー決定)。暴力・悪口は API の flagged で止まっている(死ね・殺す)
+  sexual: 0.33,
+};
+
+/**
+ * スコアの線では止められない言葉(文字全体が一致したときだけ止める)。
+ * 例: sex は 0.243 でビキニと同じスコアのため、線では分けられない(2026-10-11 ユーザー決定)。
+ * 一部に含まれるだけなら止めない(「ウルトラマンコスモス」のような誤判定を出さないため)。
+ */
+export const TEXT_INPUT_EXACT_BLOCKED_WORDS: readonly string[] = ["sex"];
+
+/** 一覧と比べる形にそろえる(全角・半角、大文字・小文字、前後と途中の空白)。 */
+function normalizeForExactMatch(text: string): string {
+  return text.normalize("NFKC").toLowerCase().replace(/\s/g, "");
+}
+
+const NORMALIZED_EXACT_BLOCKED_WORDS = new Set(TEXT_INPUT_EXACT_BLOCKED_WORDS.map(normalizeForExactMatch));
+
+/** 一覧の言葉と、文字全体が一致するか。 */
+export function isExactBlockedWord(text: string): boolean {
+  return NORMALIZED_EXACT_BLOCKED_WORDS.has(normalizeForExactMatch(text));
+}
 
 type ModerationResult = {
   flagged?: unknown;
@@ -56,6 +81,11 @@ export async function moderateTextInput(
 ): Promise<TextInputModerationResult> {
   const inputs = [...new Set(texts.map((text) => text.trim()).filter(Boolean))];
   if (inputs.length === 0) return "ok";
+  // 一覧の言葉は、API に聞くまでもなく止める
+  if (inputs.some(isExactBlockedWord)) {
+    console.info("[text-input-moderation] flagged", { categories: ["exact_word"] });
+    return "flagged";
+  }
 
   const apiKey = options.apiKey ?? process.env.OPENAI_API_KEY?.trim();
   if (!apiKey) {
