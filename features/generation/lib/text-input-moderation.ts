@@ -17,9 +17,42 @@ const REQUEST_TIMEOUT_MS = 5_000;
 
 export type TextInputModerationResult = "flagged" | "ok" | "unavailable";
 
+/**
+ * API の flagged に加えて、種類ごとのスコアがこの線以上なら止める。
+ * flagged は「有害な内容の文章」向けで、単語だけ(えっち・おっぱい 等)では立たなかった(2026-10-11 本番で確認)。
+ * 線は本番のスコアの記録(下の scores ログ)を見て決める。空のあいだは flagged だけで止める。
+ */
+export const TEXT_INPUT_SCORE_THRESHOLDS: Readonly<Partial<Record<string, number>>> = {};
+
+type ModerationResult = {
+  flagged?: unknown;
+  categories?: Record<string, unknown>;
+  category_scores?: Record<string, unknown>;
+};
+
+/** スコアの高い順に上から3つ(線を決めるための記録用。入れた文字は含めない)。 */
+function topScores(result: ModerationResult): Array<[string, number]> {
+  return Object.entries(result.category_scores ?? {})
+    .filter((entry): entry is [string, number] => typeof entry[1] === "number")
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([name, score]) => [name, Math.round(score * 1000) / 1000]);
+}
+
+function isOverThreshold(result: ModerationResult, thresholds: Readonly<Partial<Record<string, number>>>): boolean {
+  return Object.entries(result.category_scores ?? {}).some(([name, score]) => {
+    const threshold = thresholds[name];
+    return typeof threshold === "number" && typeof score === "number" && score >= threshold;
+  });
+}
+
 export async function moderateTextInput(
   texts: readonly string[],
-  options: { apiKey?: string; fetchFn?: typeof fetch } = {},
+  options: {
+    apiKey?: string;
+    fetchFn?: typeof fetch;
+    thresholds?: Readonly<Partial<Record<string, number>>>;
+  } = {},
 ): Promise<TextInputModerationResult> {
   const inputs = [...new Set(texts.map((text) => text.trim()).filter(Boolean))];
   if (inputs.length === 0) return "ok";
@@ -48,15 +81,20 @@ export async function moderateTextInput(
       console.warn("[text-input-moderation] request failed", { status: response.status });
       return "unavailable";
     }
-    const payload = (await response.json()) as {
-      results?: Array<{ flagged?: unknown; categories?: Record<string, unknown> }>;
-    } | null;
+    const payload = (await response.json()) as { results?: ModerationResult[] } | null;
     const results = payload?.results;
     if (!Array.isArray(results) || results.length === 0) {
       console.warn("[text-input-moderation] unexpected response");
       return "unavailable";
     }
-    const flagged = results.filter((result) => result?.flagged === true);
+    // 止める線を決めるため、毎回スコアを残す(送った順=入れた文字・ラベル・入力のヒント。文字そのものは出さない)
+    console.info("[text-input-moderation] scores", {
+      results: results.map((result) => ({ flagged: result?.flagged === true, top: topScores(result ?? {}) })),
+    });
+    const thresholds = options.thresholds ?? TEXT_INPUT_SCORE_THRESHOLDS;
+    const flagged = results.filter(
+      (result) => result?.flagged === true || isOverThreshold(result ?? {}, thresholds),
+    );
     if (flagged.length === 0) return "ok";
     // どの種類で止めたかだけ残す(入れた文字は出さない)
     console.info("[text-input-moderation] flagged", {
