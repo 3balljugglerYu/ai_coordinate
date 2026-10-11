@@ -1558,6 +1558,7 @@ export const viMessages = {
     nameInputTooManySlots: "Mỗi prompt có tối đa {max} ô nhập chữ.",
     gachaTextExclusiveNote: "Bạn chỉ có thể dùng gacha hoặc nhập chữ (tính năng dùng cả hai cùng lúc sẽ có trong tương lai).",
     gachaTextTogetherError: "Không thể dùng gacha và nhập chữ cùng lúc. Hãy chỉ dùng một trong hai (tính năng dùng cả hai cùng lúc sẽ có trong tương lai).",
+    promptOptionsMoved: "Đã chuyển gacha và phần nhập chữ trong prompt vừa dán xuống các ô bên dưới.",
     nameInputEntryRequiredHint: "Tối đa {max} ký tự. Chữ này sẽ xuất hiện trong ảnh.",
     nameInputCreateDescription: "AI sẽ tìm trong prompt ở mục “Nội dung muốn tạo” các dòng liên quan đến chữ mà người dùng cần nhập (như tên) và gộp thành một ô nhập chữ. Chỉ dùng {cost} Percoin khi tạo thành công.",
     nameInputCreateButton: "Tạo ô nhập chữ từ prompt ({cost} Percoin)",

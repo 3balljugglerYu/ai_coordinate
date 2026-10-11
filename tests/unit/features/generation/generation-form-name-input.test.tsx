@@ -238,9 +238,18 @@ describe("名前を入れられるようにする", () => {
     expect(await submittedPrompt(user, onSubmit)).toBe("指定された職業を体験している様子を描く。");
   });
 
-  test("本文に目印を手で書いたときは、スイッチはオフのままでも送る文に届く(試しの欄が出る)", () => {
+  test("1行まるごとの目印を本文に書くと、欄へ移ってスイッチがオンになる(2026-10-11 案A)", () => {
     renderNameForm(jest.fn());
     fireEvent.change(promptField(), { target: { value: "診断\n{{INPUT:うちの子}}" } });
+    expect(promptField().value).toBe("診断");
+    expect(nameSwitch()!.getAttribute("aria-checked")).toBe("true");
+    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("うちの子");
+  });
+
+  test("文中に手で書いた目印は本文に残り、スイッチはオフのままでも送る文に届く(試しの欄が出る)", () => {
+    renderNameForm(jest.fn());
+    fireEvent.change(promptField(), { target: { value: "名札に「{{INPUT:うちの子}}さん」と書く" } });
+    expect(promptField().value).toBe("名札に「{{INPUT:うちの子}}さん」と書く");
     expect(nameSwitch()!.getAttribute("aria-checked")).toBe("false");
     expect(screen.getByLabelText("nameInputTrialLabel")).toBeTruthy();
   });
@@ -608,3 +617,62 @@ describe("ガチャと文字入力は、一般はどちらか1つだけ(2026-10-
   });
 });
 
+
+describe("「使用プロンプト」を本文に貼ったら、ガチャ・文字入力の欄へ移す(2026-10-11 案A)", () => {
+  const PASTED = "{{INPUT:なまえ|玲華}}\n名札に名前を書く。\n\n{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}";
+
+  test("本文から目印・囲みが消え、それぞれの欄に入ってスイッチがオンになる。送る文は1つずつ", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    // 一緒に使えるのは運営だけなので、運営で確かめる
+    renderNameForm(onSubmit, { gachaPromptAvailable: true, nameInputUnlimited: true });
+    await user.click(screen.getByText("mock-upload"));
+    fireEvent.change(promptField(), { target: { value: PASTED } });
+
+    expect(promptField().value).toBe("名札に名前を書く。");
+    expect(nameSwitch()!.getAttribute("aria-checked")).toBe("true");
+    expect((screen.getByLabelText("nameInputLabelSetting") as HTMLInputElement).value).toBe("なまえ");
+    expect((screen.getByLabelText("nameInputPlaceholderSetting") as HTMLInputElement).value).toBe("玲華");
+    expect(screen.getByRole("switch", { name: "gachaToggleLabel" }).getAttribute("aria-checked")).toBe("true");
+    expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toBe(
+      "{{GACHA}}\n1. 医師\n2. 探偵\n{{/GACHA}}",
+    );
+    expect(screen.getByTestId("prompt-options-moved").textContent).toContain("promptOptionsMoved");
+
+    expect(await submittedPrompt(user, onSubmit)).toBe(PASTED);
+  });
+
+  test("一般の利用者でも、貼り付けた分で欄が2つにならない(1つまでの案内が出ない)", () => {
+    renderNameForm(jest.fn());
+    turnOnTextInput();
+    fireEvent.change(promptField(), { target: { value: "{{INPUT:なまえ|玲華}}\n名札に名前を書く。" } });
+    expect(promptField().value).toBe("名札に名前を書く。");
+    expect(screen.queryByTestId("name-input-too-many")).toBeNull();
+  });
+
+  test("「元に戻す」で、移す前の欄の中身とスイッチに戻す", () => {
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true, nameInputUnlimited: true });
+    fireEvent.click(screen.getByRole("switch", { name: "gachaToggleLabel" }));
+    fireEvent.change(screen.getByLabelText("gachaFieldLabel"), {
+      target: { value: "{{GACHA}}\n1. 書きかけ\n2. の候補\n{{/GACHA}}" },
+    });
+    fireEvent.change(promptField(), { target: { value: PASTED } });
+    expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toContain("医師");
+
+    fireEvent.click(screen.getByRole("button", { name: "gachaSplitUndo" }));
+    expect((screen.getByLabelText("gachaFieldLabel") as HTMLTextAreaElement).value).toBe(
+      "{{GACHA}}\n1. 書きかけ\n2. の候補\n{{/GACHA}}",
+    );
+    expect(nameSwitch()!.getAttribute("aria-checked")).toBe("false");
+    expect(screen.queryByTestId("prompt-options-moved")).toBeNull();
+    // 本文は移した後のまま
+    expect(promptField().value).toBe("名札に名前を書く。");
+  });
+
+  test("目印も囲みも無い本文は、そのまま(案内も出さない)", () => {
+    renderNameForm(jest.fn(), { gachaPromptAvailable: true });
+    fireEvent.change(promptField(), { target: { value: "ふつうの本文" } });
+    expect(promptField().value).toBe("ふつうの本文");
+    expect(screen.queryByTestId("prompt-options-moved")).toBeNull();
+  });
+});
