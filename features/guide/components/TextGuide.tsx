@@ -35,7 +35,9 @@ const SHOTS = {
   step2: { src: `${IMG}/step-2-prompt-v2.jpg`, width: 780, height: 1076 },
   step3: { src: `${IMG}/step-3-on-v2.jpg`, width: 780, height: 638 },
   step4: { src: `${IMG}/step-4-settings-v2.jpg`, width: 780, height: 638 },
-  step5: { src: `${IMG}/step-support.jpg`, width: 780, height: 436 },
+  step5Write: { src: `${IMG}/step-5-write.jpg`, width: 780, height: 1464 },
+  step5Accept: { src: `${IMG}/step-5-accept.jpg`, width: 780, height: 636 },
+  step5Done: { src: `${IMG}/step-5-done.jpg`, width: 780, height: 424 },
   step6Trial: { src: `${IMG}/step-5-trial-v2.jpg`, width: 780, height: 208 },
   step6Generate: { src: `${GACHA_IMG}/step-6-generate.jpg`, width: 780, height: 736 },
   userSheet: { src: `${IMG}/user-sheet-v3.jpg`, width: 780, height: 1416 },
@@ -161,15 +163,17 @@ function Step({
   number,
   title,
   badge,
+  wide = false,
   children,
 }: {
   number: ReactNode;
   title: string;
   badge?: string;
+  wide?: boolean;
   children: ReactNode;
 }) {
   return (
-    <div className="grid min-w-0 content-start gap-3.5">
+    <div className={cn("grid min-w-0 content-start gap-3.5", wide && "min-[860px]:col-span-2")}>
       <div className="flex items-center gap-3">
         {number}
         <h3 className="min-w-0 text-lg font-extrabold min-[860px]:text-[22px]">{title}</h3>
@@ -210,6 +214,7 @@ export async function TextGuide() {
     labelSetting: freeT("nameInputLabelSetting"),
     hintSetting: freeT("nameInputPlaceholderSetting"),
     createButton: freeT("nameInputCreateButton", { cost: NAME_INPUT_CREATE_PERCOIN_COST }),
+    accept: freeT("gachaSplitAccept"),
     gachaToggle: freeT("gachaToggleLabel"),
     addImage: coordinateT("addImage"),
     generate: coordinateT("generatingButton"),
@@ -391,14 +396,47 @@ export async function TextGuide() {
             />
             <Note>{t("step4Text", { label: ui.labelSetting, hint: ui.hintSetting, ...limits })}</Note>
           </Step>
-          <Step number={<StepNumber>5</StepNumber>} title={t("step5Title")} badge={t("step5Badge")}>
-            <AnnotatedShot
-              {...SHOTS.step5}
-              alt={t("step5Alt", { createButton: ui.createButton })}
-              rings={[{ left: 19, top: 61.5, width: 65.5, height: 30 }]}
-              callouts={[{ left: 14, top: 100, text: t("step5Call"), pointer: "up" }]}
-            />
-            <Note>{t("step5Text", limits)}</Note>
+          {/* ガチャの紹介ページと同じく、書いて押す → 案を採用 → まとまった、の3枚で見せる(2026-10-11 ユーザー指示) */}
+          <Step number={<StepNumber>5</StepNumber>} title={t("step5Title")} badge={t("step5Badge")} wide>
+            <Note>{t("step5Text")}</Note>
+            <div className="grid justify-items-center gap-3.5 min-[860px]:grid-cols-[1fr_auto_1fr_auto_1fr] min-[860px]:items-start">
+              <div className="grid w-full min-w-0 justify-items-center gap-2.5 text-center">
+                <AnnotatedShot
+                  {...SHOTS.step5Write}
+                  alt={t("step5WriteAlt", { promptLabel: ui.promptLabel, createButton: ui.createButton })}
+                  rings={[
+                    { left: 9.5, top: 6, width: 81, height: 20 },
+                    { left: 19.5, top: 90, width: 64.5, height: 8.8 },
+                  ]}
+                  callouts={[
+                    { left: 38, top: -3.2, text: t("step5WriteCall"), pointer: "down" },
+                    { left: 20, top: 101.5, text: t("step5TapCall"), pointer: "up" },
+                  ]}
+                />
+                <p className="text-sm">{t("step5WriteText", { createButton: ui.createButton })}</p>
+              </div>
+              <FlowArrow />
+              <div className="grid w-full min-w-0 justify-items-center gap-2.5 text-center">
+                <AnnotatedShot
+                  {...SHOTS.step5Accept}
+                  alt={t("step5AcceptAlt", { accept: ui.accept })}
+                  rings={[{ left: 19.5, top: 84.5, width: 22.5, height: 12 }]}
+                  callouts={[{ left: 45, top: 85.5, text: t("step5TapCall"), pointer: "left" }]}
+                />
+                <p className="text-sm">{t("step5AcceptText", { accept: ui.accept })}</p>
+              </div>
+              <FlowArrow />
+              <div className="grid w-full min-w-0 justify-items-center gap-2.5 text-center">
+                <AnnotatedShot
+                  {...SHOTS.step5Done}
+                  alt={t("step5DoneAlt")}
+                  rings={[{ left: 10, top: 59, width: 66, height: 17 }]}
+                  callouts={[{ left: 34, top: 86, text: t("step5DoneCall"), pointer: "up" }]}
+                />
+                <p className="text-sm">{t("step5DoneText")}</p>
+              </div>
+            </div>
+            <p className="text-[13px] text-slate-600">{t("step5Cost", limits)}</p>
           </Step>
           <Step number={<StepNumber>6</StepNumber>} title={t("step6Title")}>
             <AnnotatedShot
@@ -472,5 +510,13 @@ export async function TextGuide() {
       {/* どこまで読んでいても押せるよう、画面の下に浮かべる(ガチャのページと同じ) */}
       <FloatingGuideCta href="/free" label={t("ctaButton")} dockTargetId="text-guide-closing" />
     </div>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <span aria-hidden className="rotate-90 text-[28px] font-extrabold text-indigo-500 min-[860px]:rotate-0 min-[860px]:self-center">
+      →
+    </span>
   );
 }
