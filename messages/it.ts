@@ -2327,7 +2327,7 @@ export const itMessages = {
     step2Title: "Scrivi un prompt per l’inserimento di testo",
     step2Alt: "«{promptLabel}» che indica che il testo inserito va nella riga 2 del cartello di presentazione",
     step2Call: "Scrivi dove va il testo",
-    step2Text: "Nei punti del prompt in cui indichi il testo che l’utente inserisce, scrivi «il testo inserito».\nEsempio: Mostra «il testo inserito» nella riga 2.",
+    step2Text: "Nei punti del prompt in cui indichi il testo che l’utente inserisce, scrivi «il testo inserito».",
     step3Title: "Attiva “{toggle}”",
     step3Alt: "L’interruttore “{toggle}” in “{optionsTitle}” attivato",
     step3Call: "Attiva qui",

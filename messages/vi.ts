@@ -2323,7 +2323,7 @@ export const viMessages = {
     step2Title: "Viết prompt cho phần nhập chữ",
     step2Alt: "“{promptLabel}” ghi rằng chữ được nhập nằm ở dòng 2 của bảng tự giới thiệu",
     step2Call: "Viết vị trí đặt chữ",
-    step2Text: "Ở những chỗ trong prompt chỉ đến chữ người dùng nhập, hãy ghi “chữ được nhập”.\nVí dụ: Hiển thị “chữ được nhập” ở dòng 2.",
+    step2Text: "Ở những chỗ trong prompt chỉ đến chữ người dùng nhập, hãy ghi “chữ được nhập”.",
     step3Title: "Bật “{toggle}”",
     step3Alt: "Công tắc “{toggle}” trong “{optionsTitle}” đã được bật",
     step3Call: "Bật ở đây",

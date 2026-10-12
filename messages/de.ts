@@ -2328,7 +2328,7 @@ export const deMessages = {
     step2Title: "Einen Prompt für die Texteingabe schreiben",
     step2Alt: "„{promptLabel}“ mit der Angabe, dass der eingegebene Text in Zeile 2 des Vorstellungsschilds kommt",
     step2Call: "Schreiben, wo der Text hinkommt",
-    step2Text: "Schreib an den Stellen im Prompt, an denen der von Nutzer*innen eingegebene Text gemeint ist, „der eingegebene Text“.\nBeispiel: Zeige in Zeile 2 „den eingegebenen Text“ an.",
+    step2Text: "Schreib an den Stellen im Prompt, an denen der von Nutzer*innen eingegebene Text gemeint ist, „der eingegebene Text“.",
     step3Title: "„{toggle}“ einschalten",
     step3Alt: "Der Schalter „{toggle}“ in „{optionsTitle}“ eingeschaltet",
     step3Call: "Hier einschalten",

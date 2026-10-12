@@ -373,8 +373,7 @@ export async function TextGuide() {
               rings={[{ left: 11, top: 9.6, width: 79, height: 43 }]}
               callouts={[{ left: 28, top: -5, text: t("step2Call"), pointer: "down" }]}
             />
-            {/* 例は別の行に出す(2026-10-12 ユーザー指示の文言) */}
-            <p className="whitespace-pre-line text-sm text-slate-600">{t("step2Text")}</p>
+            <Note>{t("step2Text")}</Note>
           </Step>
           <Step number={<StepNumber>3</StepNumber>} title={t("step3Title", { toggle: ui.toggle })}>
             <AnnotatedShot

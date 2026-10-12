@@ -2319,7 +2319,7 @@ export const zhCnMessages = {
     step2Title: "编写文字输入用的提示词",
     step2Alt: "在「{promptLabel}」中写明在自我介绍牌的第2行放入输入的文字",
     step2Call: "写出输入文字的位置",
-    step2Text: "在提示词中指定用户输入文字的位置，请写「输入的文字」。\n例：第2行请显示「输入的文字」。",
+    step2Text: "在提示词中指定用户输入文字的位置，请写「输入的文字」。",
     step3Title: "开启「{toggle}」",
     step3Alt: "已开启「{optionsTitle}」中「{toggle}」开关的状态",
     step3Call: "开启这里",

@@ -2326,7 +2326,7 @@ export const idMessages = {
     step2Title: "Tulis prompt untuk input teks",
     step2Alt: "“{promptLabel}” yang menyebutkan teks yang dimasukkan ada di baris 2 papan perkenalan",
     step2Call: "Tulis tempat teks dimasukkan",
-    step2Text: "Di bagian prompt yang menunjuk teks yang diketik pengguna, tulis “teks yang dimasukkan”.\nContoh: Tampilkan “teks yang dimasukkan” di baris 2.",
+    step2Text: "Di bagian prompt yang menunjuk teks yang diketik pengguna, tulis “teks yang dimasukkan”.",
     step3Title: "Aktifkan “{toggle}”",
     step3Alt: "Sakelar “{toggle}” di “{optionsTitle}” dalam keadaan aktif",
     step3Call: "Aktifkan di sini",
