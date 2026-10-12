@@ -2327,7 +2327,7 @@ export const esMessages = {
     step2Title: "Escribe un prompt para la entrada de texto",
     step2Alt: "«{promptLabel}» indicando que el texto introducido va en la línea 2 del cartel de presentación",
     step2Call: "Escribe dónde va el texto",
-    step2Text: "En «{promptLabel}», escribe dónde y cómo dibujar el texto introducido. No escribas el texto en sí (como un nombre); escribe «el texto introducido» y el texto que escriba cada usuario se añadirá automáticamente. Ejemplo: «Línea 2: “el texto introducido” desu!»",
+    step2Text: "En los lugares del prompt donde indiques el texto que escribe el usuario, escribe «el texto introducido».\nEjemplo: Muestra «el texto introducido» en la línea 2.",
     step3Title: "Activa “{toggle}”",
     step3Alt: "El interruptor “{toggle}” de “{optionsTitle}” activado",
     step3Call: "Activa esto",

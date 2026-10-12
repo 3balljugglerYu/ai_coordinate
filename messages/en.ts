@@ -2323,7 +2323,7 @@ export const enMessages = {
     step2Title: "Write a prompt for text input",
     step2Alt: "“{promptLabel}” saying that the entered text goes on line 2 of the self-introduction plate",
     step2Call: "Write where the text goes",
-    step2Text: "In “{promptLabel}”, write where and how to draw the entered text. Don't write the text itself (such as a name). Write “the entered text” instead, and the text each user types goes in automatically. Example: “Line 2: ‘the entered text’ desu!”",
+    step2Text: "Wherever your prompt refers to the text a user types, write “the entered text”.\nExample: Show “the entered text” on line 2.",
     step3Title: "Turn on “{toggle}”",
     step3Alt: "The “{toggle}” switch in “{optionsTitle}” turned on",
     step3Call: "Turn this on",

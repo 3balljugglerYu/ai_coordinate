@@ -2328,7 +2328,7 @@ export const frMessages = {
     step2Title: "Écrire un prompt pour la saisie de texte",
     step2Alt: "« {promptLabel} » indiquant que le texte saisi va sur la ligne 2 de la pancarte de présentation",
     step2Call: "Écrire où va le texte",
-    step2Text: "Dans « {promptLabel} », indiquez où et comment dessiner le texte saisi. N’écrivez pas le texte lui-même (comme un nom) : écrivez « le texte saisi », et le texte de chaque utilisateur s’y placera automatiquement. Exemple : « Ligne 2 : “le texte saisi” desu ! »",
+    step2Text: "Aux endroits du prompt où vous désignez le texte saisi par l’utilisateur, écrivez « le texte saisi ».\nExemple : Affichez « le texte saisi » sur la ligne 2.",
     step3Title: "Activez « {toggle} »",
     step3Alt: "L’interrupteur « {toggle} » de « {optionsTitle} » activé",
     step3Call: "Activez ceci",

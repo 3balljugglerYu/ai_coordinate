@@ -2319,7 +2319,7 @@ export const zhTwMessages = {
     step2Title: "撰寫文字輸入用的提示詞",
     step2Alt: "在「{promptLabel}」中寫明在自我介紹牌的第2行放入輸入的文字",
     step2Call: "寫出輸入文字的位置",
-    step2Text: "在「{promptLabel}」中，寫出把輸入的文字畫在哪裡、怎麼畫。不要寫名字等文字本身，寫「輸入的文字」即可，使用者輸入的文字會自動放進去。例：「第2行：「輸入的文字」です！」",
+    step2Text: "在提示詞中指定使用者輸入文字的位置，請寫「輸入的文字」。\n例：第2行請顯示「輸入的文字」。",
     step3Title: "開啟「{toggle}」",
     step3Alt: "已開啟「{optionsTitle}」中「{toggle}」開關的狀態",
     step3Call: "開啟這裡",

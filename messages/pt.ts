@@ -2327,7 +2327,7 @@ export const ptMessages = {
     step2Title: "Escreva um prompt para a entrada de texto",
     step2Alt: "“{promptLabel}” dizendo que o texto inserido vai na linha 2 da placa de apresentação",
     step2Call: "Escreva onde o texto vai",
-    step2Text: "Em “{promptLabel}”, escreva onde e como desenhar o texto inserido. Não escreva o texto em si (como um nome); escreva “o texto inserido” e o texto que cada usuário digitar entra automaticamente. Exemplo: “Linha 2: ‘o texto inserido’ desu!”",
+    step2Text: "Nos pontos do prompt em que você indica o texto que o usuário digita, escreva “o texto inserido”.\nExemplo: Mostre “o texto inserido” na linha 2.",
     step3Title: "Ative “{toggle}”",
     step3Alt: "O botão “{toggle}” em “{optionsTitle}” ativado",
     step3Call: "Ative aqui",

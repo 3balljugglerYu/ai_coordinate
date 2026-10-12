@@ -2322,7 +2322,7 @@ export const koMessages = {
     step2Title: "문자 입력용 프롬프트를 쓰기",
     step2Alt: "「{promptLabel}」에 자기소개 플레이트 2행에 입력된 글자를 넣는다고 쓴 상태",
     step2Call: "입력된 글자의 위치를 쓰기",
-    step2Text: "「{promptLabel}」에는 입력된 글자를 어디에, 어떻게 그릴지를 씁니다. 이름 같은 글자 자체는 쓰지 말고 「입력된 글자」라고 써 두면, 사용하는 사람이 넣은 글자가 자동으로 들어갑니다. 예: 「2행: 「입력된 글자」です！」",
+    step2Text: "프롬프트 안에서 사용자가 입력하는 글자를 지정하는 곳에는 「입력된 글자」라고 적어 주세요.\n예: 2행에는 「입력된 글자」를 표시해 주세요.",
     step3Title: "「{toggle}」 켜기",
     step3Alt: "「{optionsTitle}」의 「{toggle}」 스위치를 켠 상태",
     step3Call: "여기를 켜기",
