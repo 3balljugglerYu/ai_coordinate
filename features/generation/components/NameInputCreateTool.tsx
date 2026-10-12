@@ -28,8 +28,10 @@ interface Proposal {
   original: string;
   body: string;
   removedLines: number[];
-  /** 一部を目印に置き換えた行(1始まり)。無ければ null。 */
+  /** 一部を見出しに置き換えた行(1始まり)。無ければ null。 */
   changedLine: number | null;
+  /** 書き換えた後のその行。 */
+  changedLineText: string | null;
 }
 
 type ErrorKey =
@@ -111,6 +113,7 @@ export function NameInputCreateTool({
           ? data.removedLines.filter((n): n is number => typeof n === "number")
           : [],
         changedLine: typeof data.changedLine === "number" ? data.changedLine : null,
+        changedLineText: typeof data.changedLineText === "string" ? data.changedLineText : null,
       });
       // 使ったペルコインを残高の表示へ反映する
       router.refresh();
@@ -179,27 +182,29 @@ export function NameInputCreateTool({
                   {line || " "}
                 </del>
               ) : index + 1 === changedLine ? (
-                // 一部を文字入力の欄に置き換える行(行ごとは消さない)
-                <mark
-                  key={index}
-                  className="block bg-amber-100 text-gray-900"
-                  data-testid="name-input-create-changed-line"
-                >
-                  {line || " "}
-                </mark>
+                // 一部を書き換える行は、変更前(赤い取り消し線)と変更後(緑)を並べる(2026-10-12 ユーザー指示)
+                <span key={index} className="block">
+                  <del
+                    className="block bg-red-50 text-red-700"
+                    data-testid="name-input-create-changed-line-before"
+                  >
+                    {line || " "}
+                  </del>
+                  {proposal.changedLineText !== null ? (
+                    <ins
+                      className="block bg-green-100 text-green-900 no-underline"
+                      data-testid="name-input-create-changed-line-after"
+                    >
+                      {proposal.changedLineText || " "}
+                    </ins>
+                  ) : null}
+                </span>
               ) : (
                 <span key={index} className="block">
                   {line || " "}
                 </span>
               ),
             )}
-          </pre>
-          <p className="text-xs text-gray-600">{t("nameInputCreateProposalBody")}</p>
-          <pre
-            className="max-h-60 overflow-auto whitespace-pre-wrap break-words rounded border bg-white p-2 font-mono text-xs"
-            data-testid="name-input-create-proposal-body"
-          >
-            {proposal.body}
           </pre>
           <div className="flex flex-wrap gap-2">
             <Button type="button" size="sm" onClick={accept}>

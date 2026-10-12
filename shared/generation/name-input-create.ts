@@ -76,6 +76,8 @@ export type NameInputCreateResult =
       removedLines: number[];
       /** 一部を見出しに置き換えた行(1始まり)。無ければ null。画面で印を付けるのに使う。 */
       changedLine: number | null;
+      /** 書き換えた後のその行(画面で「変更前→変更後」を並べて見せる)。無ければ null。 */
+      changedLineText: string | null;
     }
   | { ok: false; reason: "no_name_lines" | "empty_body" | "invalid_output" };
 
@@ -135,6 +137,7 @@ export function applyNameInputCreate(
 
   const { inlineLine, inlineText } = output;
   let changedLine: number | null = null;
+  let changedLineText: string | null = null;
   if (inlineLine !== undefined && inlineLine !== 0) {
     if (!isLineNumber(inlineLine, lines.length)) return { ok: false, reason: "invalid_output" };
     const text = typeof inlineText === "string" ? inlineText : "";
@@ -148,6 +151,7 @@ export function applyNameInputCreate(
     const reference = nameInputHeadingReference(slot);
     lines[inlineLine - 1] = line.replace(text, () => reference);
     changedLine = inlineLine;
+    changedLineText = lines[inlineLine - 1];
   }
 
   if (changedLine === null && removed.size === 0) return { ok: false, reason: "no_name_lines" };
@@ -156,5 +160,5 @@ export function applyNameInputCreate(
   const body = joinKeptLines(lines, removed);
   if (!removeNameInputMarkers(body).trim()) return { ok: false, reason: "empty_body" };
 
-  return { ok: true, body, removedLines, changedLine };
+  return { ok: true, body, removedLines, changedLine, changedLineText };
 }

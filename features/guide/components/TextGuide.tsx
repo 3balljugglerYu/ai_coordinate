@@ -32,15 +32,15 @@ const SHOTS = {
   whereCatalog: { src: `${GACHA_IMG}/where-2-catalog.jpg`, width: 780, height: 1328 },
   whereCreate: { src: `${GACHA_IMG}/where-3-create.jpg`, width: 780, height: 1328 },
   step1: { src: `${GACHA_IMG}/step-1-image.jpg`, width: 780, height: 700 },
-  step2: { src: `${IMG}/step-2-prompt-v2.jpg`, width: 780, height: 1076 },
+  step2: { src: `${IMG}/step-2-prompt-v3.jpg`, width: 780, height: 1076 },
   step3: { src: `${IMG}/step-3-on-v2.jpg`, width: 780, height: 638 },
-  step4: { src: `${IMG}/step-4-settings-v2.jpg`, width: 780, height: 638 },
-  step5Write: { src: `${IMG}/step-5-write.jpg`, width: 780, height: 1464 },
-  step5Accept: { src: `${IMG}/step-5-accept.jpg`, width: 780, height: 636 },
-  step5Done: { src: `${IMG}/step-5-done.jpg`, width: 780, height: 424 },
-  step6Trial: { src: `${IMG}/step-5-trial-v2.jpg`, width: 780, height: 208 },
+  step4: { src: `${IMG}/step-4-settings-v3.jpg`, width: 780, height: 638 },
+  step5Write: { src: `${IMG}/step-5-write-v2.jpg`, width: 780, height: 1512 },
+  step5Accept: { src: `${IMG}/step-5-accept-v3.jpg`, width: 780, height: 436 },
+  step5Done: { src: `${IMG}/step-5-done-v2.jpg`, width: 780, height: 524 },
+  step6Trial: { src: `${IMG}/step-5-trial-v3.jpg`, width: 780, height: 208 },
   step6Generate: { src: `${GACHA_IMG}/step-6-generate.jpg`, width: 780, height: 736 },
-  userSheet: { src: `${IMG}/user-sheet-v3.jpg`, width: 780, height: 1416 },
+  userSheet: { src: `${IMG}/user-sheet-v4.jpg`, width: 780, height: 1416 },
 } as const;
 
 /**
@@ -63,10 +63,8 @@ const EXAMPLES = {
     { src: `${IMG}/word-2.jpg`, text: "楽" },
   ],
   // 最後の★は、「好きな言葉・四字熟語」と同じ書道の2枚(2026-10-11 ユーザー指示)
-  result: [
-    { src: `${IMG}/word-1.jpg`, text: "平々凡々" },
-    { src: `${IMG}/word-2.jpg`, text: "楽" },
-  ],
+  // 使い方の例(自己紹介のプレート)で生成した1枚(2026-10-12 ユーザー指示)
+  result: [{ src: `${IMG}/result-1.jpg`, text: "玲華" }],
 } satisfies Record<string, Example[]>;
 
 /** 生成例を2枚並べる。届いていない分は点線の枠(仮置き)。 */
@@ -82,7 +80,8 @@ function ExamplePair({
   tone?: "light" | "onColor";
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
+    // 1枚だけのときは、2枚並びの半分の幅で真ん中に置く
+    <div className={examples.length === 1 ? "mx-auto grid w-1/2 min-w-[180px]" : "grid grid-cols-2 gap-2"}>
       {examples.map((example, index) =>
         "src" in example ? (
           <Image
@@ -371,8 +370,8 @@ export async function TextGuide() {
             <AnnotatedShot
               {...SHOTS.step2}
               alt={t("step2Alt", { promptLabel: ui.promptLabel })}
-              rings={[{ left: 9.5, top: 7.2, width: 81, height: 88.2 }]}
-              callouts={[{ left: 40, top: -5, text: t("step2Call"), pointer: "down" }]}
+              rings={[{ left: 11, top: 9.6, width: 79, height: 43 }]}
+              callouts={[{ left: 28, top: -5, text: t("step2Call"), pointer: "down" }]}
             />
             <Note>{t("step2Text")}</Note>
           </Step>
@@ -405,8 +404,8 @@ export async function TextGuide() {
                   {...SHOTS.step5Write}
                   alt={t("step5WriteAlt", { promptLabel: ui.promptLabel, createButton: ui.createButton })}
                   rings={[
-                    { left: 9.5, top: 6, width: 81, height: 20 },
-                    { left: 19.5, top: 90, width: 64.5, height: 8.8 },
+                    { left: 9.5, top: 5.8, width: 81, height: 22.5 },
+                    { left: 19.5, top: 90.6, width: 64.5, height: 8.2 },
                   ]}
                   callouts={[
                     { left: 38, top: -3.2, text: t("step5WriteCall"), pointer: "down" },
@@ -420,8 +419,8 @@ export async function TextGuide() {
                 <AnnotatedShot
                   {...SHOTS.step5Accept}
                   alt={t("step5AcceptAlt", { accept: ui.accept })}
-                  rings={[{ left: 19.5, top: 84.5, width: 22.5, height: 12 }]}
-                  callouts={[{ left: 45, top: 85.5, text: t("step5TapCall"), pointer: "left" }]}
+                  rings={[{ left: 19.5, top: 78.5, width: 22.5, height: 16.5 }]}
+                  callouts={[{ left: 45, top: 80.5, text: t("step5TapCall"), pointer: "left" }]}
                 />
                 <p className="text-sm">{t("step5AcceptText", { accept: ui.accept })}</p>
               </div>
@@ -430,8 +429,8 @@ export async function TextGuide() {
                 <AnnotatedShot
                   {...SHOTS.step5Done}
                   alt={t("step5DoneAlt")}
-                  rings={[{ left: 10, top: 59, width: 66, height: 17 }]}
-                  callouts={[{ left: 34, top: 86, text: t("step5DoneCall"), pointer: "up" }]}
+                  rings={[{ left: 10, top: 57, width: 80, height: 19 }]}
+                  callouts={[{ left: 34, top: 84, text: t("step5DoneCall"), pointer: "up" }]}
                 />
                 <p className="text-sm">{t("step5DoneText")}</p>
               </div>

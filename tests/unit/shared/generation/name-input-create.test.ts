@@ -31,6 +31,7 @@ describe("本文から文字入力の欄を作る(組み立て)", () => {
       ].join("\n"),
       removedLines: [5],
       changedLine: 2,
+      changedLineText: "1行目：「【お祝いする相手の名前】さん」",
     });
   });
 
@@ -55,6 +56,7 @@ describe("本文から文字入力の欄を作る(組み立て)", () => {
       body: "【衣装】野菜のドレス\n背景は畑",
       removedLines: [2, 3],
       changedLine: null,
+      changedLineText: null,
     });
   });
 

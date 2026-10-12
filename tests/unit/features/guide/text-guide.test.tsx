@@ -131,12 +131,14 @@ describe("ページの中身", () => {
     expect(screen.queryAllByTestId("text-guide-example-placeholder")).toHaveLength(0);
   });
 
-  test("「うちの子の名前」は届いた2枚、最後の★は「好きな言葉」と同じ書道の2枚(2026-10-11)", async () => {
+  test("「うちの子の名前」は届いた2枚、最後の★は自己紹介の例で生成した1枚だけ(2026-10-12)", async () => {
     await renderGuide();
     const alts = screen.getAllByRole("img").map((image) => image.getAttribute("alt"));
     expect(alts).toContain('textGuide.exampleAlt({"text":"もも"})');
     expect(alts).toContain('textGuide.exampleAlt({"text":"REIKA"})');
-    expect(alts.filter((alt) => alt === 'textGuide.exampleAlt({"text":"平々凡々"})')).toHaveLength(2);
+    expect(alts.filter((alt) => alt === 'textGuide.exampleAlt({"text":"玲華"})')).toHaveLength(1);
+    // 「好きな言葉」の書道の2枚は、その章にだけ出る
+    expect(alts.filter((alt) => alt === 'textGuide.exampleAlt({"text":"平々凡々"})')).toHaveLength(1);
   });
 
   test("「みんなに使ってもらう」の章は出さない", async () => {

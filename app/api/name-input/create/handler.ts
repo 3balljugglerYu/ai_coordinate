@@ -204,6 +204,7 @@ export async function postNameInputCreateRoute(
     body: result.body,
     removedLines: result.removedLines,
     changedLine: result.changedLine,
+    changedLineText: result.changedLineText,
     balance: newBalance,
   });
 }
