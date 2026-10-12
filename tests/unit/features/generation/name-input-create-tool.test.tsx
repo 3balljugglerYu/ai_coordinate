@@ -83,7 +83,8 @@ describe("NameInputCreateTool", () => {
     expect(screen.getAllByTestId("name-input-create-removed-line").map((n) => n.textContent)).toEqual([
       "【名前】〇〇",
     ]);
-    expect(screen.getByTestId("name-input-create-proposal-body").textContent).toBe(CREATED.body);
+    // まとめた後の本文の枠は出さない(変更前と変更後を1つの枠で見せる。2026-10-12)
+    expect(screen.queryByTestId("name-input-create-proposal-body")).toBeNull();
     expect(promptText()).toBe(ORIGINAL);
     expect(mockProposalOpen).toHaveBeenLastCalledWith(true);
     expect(mockRefresh).toHaveBeenCalledTimes(1);
@@ -178,18 +179,26 @@ describe("NameInputCreateTool", () => {
     expect(createButton().className).toContain("max-w-full");
   });
 
-  test("文中に差し込む行は黄色で示し、行ごとは消さない", async () => {
+  test("⭐書き換える行は、変更前(赤い取り消し線)と変更後(緑)を並べて見せる(2026-10-12 ユーザー指示)", async () => {
     const user = userEvent.setup();
     respondWith(200, {
       original: "プレート\n1行目：「〇〇さん」\n※〇〇は名前",
-      body: "プレート\n1行目：「{{INPUT:名前}}さん」",
+      body: "プレート\n1行目：「【名前】さん」",
       removedLines: [3],
       changedLine: 2,
+      changedLineText: "1行目：「【名前】さん」",
       balance: 95,
     });
     render(<Harness />);
     await user.click(createButton());
-    expect((await screen.findByTestId("name-input-create-changed-line")).textContent).toBe("1行目：「〇〇さん」");
+    const before = await screen.findByTestId("name-input-create-changed-line-before");
+    const after = screen.getByTestId("name-input-create-changed-line-after");
+    expect(before.tagName).toBe("DEL");
+    expect(before.textContent).toBe("1行目：「〇〇さん」");
+    expect(after.tagName).toBe("INS");
+    expect(after.textContent).toBe("1行目：「【名前】さん」");
+    // 変更前の次に変更後が来る
+    expect(before.compareDocumentPosition(after) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.getAllByTestId("name-input-create-removed-line").map((n) => n.textContent)).toEqual(["※〇〇は名前"]);
   });
 

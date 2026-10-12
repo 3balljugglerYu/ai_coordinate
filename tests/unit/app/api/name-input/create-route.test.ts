@@ -71,6 +71,7 @@ describe("POST /api/name-input/create", () => {
       body: "野菜のドレスを着たキャラクターを描く。",
       removedLines: [2, 3],
       changedLine: null,
+      changedLineText: null,
       balance: 95,
     });
     // AI には、今ある目印を外した本文を渡す
@@ -200,6 +201,7 @@ describe("POST /api/name-input/create", () => {
       body: "プレート\n1行目：「【相手】さん」",
       removedLines: [],
       changedLine: 2,
+      changedLineText: "1行目：「【相手】さん」",
     });
   });
 });

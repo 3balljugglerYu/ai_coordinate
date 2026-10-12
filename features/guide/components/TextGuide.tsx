@@ -36,7 +36,7 @@ const SHOTS = {
   step3: { src: `${IMG}/step-3-on-v2.jpg`, width: 780, height: 638 },
   step4: { src: `${IMG}/step-4-settings-v3.jpg`, width: 780, height: 638 },
   step5Write: { src: `${IMG}/step-5-write-v2.jpg`, width: 780, height: 1512 },
-  step5Accept: { src: `${IMG}/step-5-accept-v2.jpg`, width: 780, height: 696 },
+  step5Accept: { src: `${IMG}/step-5-accept-v3.jpg`, width: 780, height: 436 },
   step5Done: { src: `${IMG}/step-5-done-v2.jpg`, width: 780, height: 524 },
   step6Trial: { src: `${IMG}/step-5-trial-v3.jpg`, width: 780, height: 208 },
   step6Generate: { src: `${GACHA_IMG}/step-6-generate.jpg`, width: 780, height: 736 },
@@ -419,8 +419,8 @@ export async function TextGuide() {
                 <AnnotatedShot
                   {...SHOTS.step5Accept}
                   alt={t("step5AcceptAlt", { accept: ui.accept })}
-                  rings={[{ left: 19.5, top: 86.2, width: 22.5, height: 11 }]}
-                  callouts={[{ left: 45, top: 87, text: t("step5TapCall"), pointer: "left" }]}
+                  rings={[{ left: 19.5, top: 78.5, width: 22.5, height: 16.5 }]}
+                  callouts={[{ left: 45, top: 80.5, text: t("step5TapCall"), pointer: "left" }]}
                 />
                 <p className="text-sm">{t("step5AcceptText", { accept: ui.accept })}</p>
               </div>
