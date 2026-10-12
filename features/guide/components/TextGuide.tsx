@@ -35,7 +35,7 @@ const SHOTS = {
   step2: { src: `${IMG}/step-2-prompt-v3.jpg`, width: 780, height: 1076 },
   step3: { src: `${IMG}/step-3-on-v2.jpg`, width: 780, height: 638 },
   step4: { src: `${IMG}/step-4-settings-v3.jpg`, width: 780, height: 638 },
-  step5Write: { src: `${IMG}/step-5-write-v2.jpg`, width: 780, height: 1512 },
+  step5Write: { src: `${IMG}/step-5-write-v3.jpg`, width: 780, height: 1608 },
   step5Accept: { src: `${IMG}/step-5-accept-v3.jpg`, width: 780, height: 436 },
   step5Done: { src: `${IMG}/step-5-done-v2.jpg`, width: 780, height: 524 },
   step6Trial: { src: `${IMG}/step-5-trial-v3.jpg`, width: 780, height: 208 },
@@ -404,8 +404,8 @@ export async function TextGuide() {
                   {...SHOTS.step5Write}
                   alt={t("step5WriteAlt", { promptLabel: ui.promptLabel, createButton: ui.createButton })}
                   rings={[
-                    { left: 9.5, top: 5.8, width: 81, height: 22.5 },
-                    { left: 19.5, top: 90.6, width: 64.5, height: 8.2 },
+                    { left: 9.5, top: 5.4, width: 81, height: 21.2 },
+                    { left: 19.5, top: 91.1, width: 64.5, height: 7.7 },
                   ]}
                   callouts={[
                     { left: 38, top: -3.2, text: t("step5WriteCall"), pointer: "down" },
