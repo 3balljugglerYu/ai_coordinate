@@ -1565,7 +1565,7 @@ export const idMessages = {
     promptOptionsImportedTextInput: "Penanda kolom teks ditemukan, jadi input teks diaktifkan dan diimpor.",
     promptOptionsImportedBoth: "Blok gacha dan penanda kolom teks ditemukan, jadi keduanya diaktifkan dan diimpor.",
     nameInputEntryRequiredHint: "Maksimal {max} karakter. Teks ini akan muncul di gambar.",
-    nameInputCreateDescription: "AI otomatis menemukan nama (mis. 玲華) dan teks serupa yang ditulis di prompt, lalu menghapus baris kolom isian. AI juga mengganti bagian yang sesuai di kalimat dengan 【label】 agar teks yang dimasukkan pengguna lebih mudah tercermin. {cost} Percoin hanya terpakai jika baris kolom isian dihapus atau teks di kalimat diganti.",
+    nameInputCreateDescription: "AI menemukan nama (mis. 玲華) dan teks serupa di prompt, menghapus baris kolom isian yang tidak perlu, dan mengganti bagian yang sesuai dengan 【label】.",
     nameInputCreateButton: "Ganti otomatis dari isi prompt ({cost} Percoin)",
     nameInputCreatePending: "Menggabungkan…",
     nameInputCreateInsufficient: "Percoin tidak cukup (perlu {cost} Percoin).",

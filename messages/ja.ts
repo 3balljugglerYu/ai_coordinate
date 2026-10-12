@@ -1519,7 +1519,7 @@ export const jaMessages = {
     promptOptionsImportedTextInput: "文字入力の欄の目印が見つかったので、文字入力をオンにして取り込みました。",
     promptOptionsImportedBoth: "ガチャプロンプトの囲みと文字入力の欄の目印が見つかったので、両方をオンにして取り込みました。",
     nameInputEntryRequiredHint: "{max}文字まで。この文字が画像に入ります。",
-    nameInputCreateDescription: "AIが「生成したい内容」に書かれた名前（例：玲華）などを自動で見つけ、入力欄の行を削除します。さらに、文中の該当箇所を【ラベル】に置き換えることで、ユーザーが入力した文字を反映しやすくします。入力欄の行の削除、または文中の文字の置き換えが行われた場合のみ、{cost}ペルコインが消費されます。",
+    nameInputCreateDescription: "AIが本文中の名前（例：玲華）などを見つけ、不要な入力欄の行を削除したり、該当箇所を【ラベル】に置き換えます。",
     nameInputCreateButton: "本文から自動で置き換える（{cost}ペルコイン）",
     nameInputCreatePending: "まとめています…",
     nameInputCreateInsufficient: "ペルコインが足りません（{cost}ペルコイン必要です）。",

@@ -1566,7 +1566,7 @@ export const itMessages = {
     promptOptionsImportedTextInput: "È stato trovato un segnaposto del campo di testo, quindi l’inserimento di testo è stato attivato e importato.",
     promptOptionsImportedBoth: "Sono stati trovati un blocco gacha e un segnaposto del campo di testo, quindi entrambi sono stati attivati e importati.",
     nameInputEntryRequiredHint: "Fino a {max} caratteri. Questo testo apparirà nell’immagine.",
-    nameInputCreateDescription: "L’IA trova automaticamente nomi (es. 玲華) e testi simili scritti nel prompt ed elimina le righe del campo di inserimento. Inoltre sostituisce i punti corrispondenti del testo con 【etichetta】, così il testo inserito dall’utente si riflette più facilmente. {cost} Percoin vengono consumati solo se viene eliminata una riga del campo o sostituito del testo.",
+    nameInputCreateDescription: "L’IA trova nomi (es. 玲華) e testi simili nel prompt, elimina le righe del campo di inserimento non necessarie e sostituisce i punti corrispondenti con 【etichetta】.",
     nameInputCreateButton: "Sostituisci automaticamente nel prompt ({cost} Percoin)",
     nameInputCreatePending: "Unione in corso…",
     nameInputCreateInsufficient: "Percoin insufficienti (ne servono {cost}).",

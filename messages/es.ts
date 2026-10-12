@@ -1566,7 +1566,7 @@ export const esMessages = {
     promptOptionsImportedTextInput: "Se encontró una marca de campo de texto, así que se activó la entrada de texto y se importó.",
     promptOptionsImportedBoth: "Se encontraron un bloque de gacha y una marca de campo de texto, así que se activaron ambos y se importaron.",
     nameInputEntryRequiredHint: "Hasta {max} caracteres. Este texto aparecerá en la imagen.",
-    nameInputCreateDescription: "La IA encuentra automáticamente los nombres (p. ej., 玲華) y textos similares escritos en tu prompt y elimina las líneas de campo de entrada. Además, sustituye los puntos correspondientes del texto por 【etiqueta】 para que se refleje mejor lo que escriba el usuario. Solo se consumen {cost} Percoins cuando se elimina una línea de campo de entrada o se sustituye texto.",
+    nameInputCreateDescription: "La IA encuentra nombres (p. ej., 玲華) y textos similares en tu prompt, elimina las líneas de campo de entrada innecesarias y sustituye los puntos correspondientes por 【etiqueta】.",
     nameInputCreateButton: "Sustituir automáticamente en el prompt ({cost} Percoins)",
     nameInputCreatePending: "Combinando…",
     nameInputCreateInsufficient: "No tienes suficientes Percoins (se necesitan {cost}).",

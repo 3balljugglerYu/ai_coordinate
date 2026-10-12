@@ -1560,7 +1560,7 @@ export const zhCnMessages = {
     promptOptionsImportedTextInput: "发现了文字输入栏的标记，已开启文字输入并导入。",
     promptOptionsImportedBoth: "发现了扭蛋和文字输入栏的标记，已同时开启并导入。",
     nameInputEntryRequiredHint: "最多{max}个字。这些文字会出现在图片中。",
-    nameInputCreateDescription: "AI 会自动找出「想生成的内容」中写的名字（例：玲華）等，并删除输入栏的行。同时把文中的相应位置替换为【标签】，让用户输入的文字更容易体现出来。只有删除了输入栏的行或替换了文中的文字时，才会消耗 {cost} 佩尔币。",
+    nameInputCreateDescription: "AI 会找出正文中的名字（例：玲華）等，删除不需要的输入栏行，或把相应位置替换为【标签】。",
     nameInputCreateButton: "从正文自动替换（{cost} 佩尔币）",
     nameInputCreatePending: "正在合并…",
     nameInputCreateInsufficient: "佩尔币不足（需要 {cost} 佩尔币）。",

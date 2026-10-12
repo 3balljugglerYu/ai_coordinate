@@ -1566,7 +1566,7 @@ export const frMessages = {
     promptOptionsImportedTextInput: "Un marqueur de champ de texte a été trouvé : la saisie de texte a été activée et importée.",
     promptOptionsImportedBoth: "Un bloc de gacha et un marqueur de champ de texte ont été trouvés : les deux ont été activés et importés.",
     nameInputEntryRequiredHint: "Jusqu’à {max} caractères. Ce texte apparaîtra dans l’image.",
-    nameInputCreateDescription: "L’IA repère automatiquement les noms (ex. : 玲華) et autres textes écrits dans votre prompt, puis supprime les lignes de champ de saisie. Elle remplace aussi les passages correspondants par 【libellé】 pour que le texte saisi par l’utilisateur soit mieux pris en compte. {cost} Percoins ne sont consommés que si une ligne de champ de saisie est supprimée ou un texte remplacé.",
+    nameInputCreateDescription: "L’IA repère les noms (ex. : 玲華) et autres textes de votre prompt, supprime les lignes de champ de saisie inutiles et remplace les passages correspondants par 【libellé】.",
     nameInputCreateButton: "Remplacer automatiquement dans le prompt ({cost} Percoins)",
     nameInputCreatePending: "Regroupement…",
     nameInputCreateInsufficient: "Percoins insuffisants ({cost} Percoins nécessaires).",

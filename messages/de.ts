@@ -1567,7 +1567,7 @@ export const deMessages = {
     promptOptionsImportedTextInput: "Eine Textfeld-Markierung wurde gefunden, daher wurde die Texteingabe aktiviert und übernommen.",
     promptOptionsImportedBoth: "Ein Gacha-Block und eine Textfeld-Markierung wurden gefunden, daher wurde beides aktiviert und übernommen.",
     nameInputEntryRequiredHint: "Bis zu {max} Zeichen. Dieser Text erscheint im Bild.",
-    nameInputCreateDescription: "Die KI findet automatisch Namen (z. B. 玲華) und Ähnliches in deinem Prompt und löscht die Eingabefeld-Zeilen. Außerdem ersetzt sie die passenden Stellen im Text durch 【Bezeichnung】, damit der eingegebene Text leichter übernommen wird. {cost} Percoins werden nur verbraucht, wenn eine Eingabefeld-Zeile gelöscht oder Text ersetzt wurde.",
+    nameInputCreateDescription: "Die KI findet Namen (z. B. 玲華) und Ähnliches in deinem Prompt, löscht unnötige Eingabefeld-Zeilen und ersetzt die passenden Stellen durch 【Bezeichnung】.",
     nameInputCreateButton: "Im Prompt automatisch ersetzen ({cost} Percoins)",
     nameInputCreatePending: "Wird zusammengefasst…",
     nameInputCreateInsufficient: "Nicht genug Percoins ({cost} Percoins benötigt).",

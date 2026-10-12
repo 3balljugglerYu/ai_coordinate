@@ -1563,7 +1563,7 @@ export const viMessages = {
     promptOptionsImportedTextInput: "Đã tìm thấy dấu ô nhập chữ nên đã bật nhập chữ và nhập vào.",
     promptOptionsImportedBoth: "Đã tìm thấy khối gacha và dấu ô nhập chữ nên đã bật cả hai và nhập vào.",
     nameInputEntryRequiredHint: "Tối đa {max} ký tự. Chữ này sẽ xuất hiện trong ảnh.",
-    nameInputCreateDescription: "AI tự động tìm tên (ví dụ: 玲華) và các nội dung tương tự được viết trong prompt, rồi xóa các dòng ô nhập. Ngoài ra, AI thay chỗ tương ứng trong câu bằng 【nhãn】 để chữ người dùng nhập được phản ánh dễ hơn. Chỉ tiêu {cost} Percoin khi có dòng ô nhập bị xóa hoặc chữ trong câu được thay.",
+    nameInputCreateDescription: "AI tìm tên (ví dụ: 玲華) và các nội dung tương tự trong prompt, xóa các dòng ô nhập không cần thiết hoặc thay chỗ tương ứng bằng 【nhãn】.",
     nameInputCreateButton: "Tự động thay trong prompt ({cost} Percoin)",
     nameInputCreatePending: "Đang gộp…",
     nameInputCreateInsufficient: "Không đủ Percoin (cần {cost} Percoin).",

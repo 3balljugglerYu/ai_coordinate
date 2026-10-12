@@ -1563,7 +1563,7 @@ export const enMessages = {
     promptOptionsImportedTextInput: "A text field marker was found, so text input was turned on and imported.",
     promptOptionsImportedBoth: "A gacha block and a text field marker were found, so both were turned on and imported.",
     nameInputEntryRequiredHint: "Up to {max} characters. This text will appear in the image.",
-    nameInputCreateDescription: "AI automatically finds names (e.g. 玲華) and similar text written in your prompt and deletes the input-field lines. It also replaces the matching spots in your sentences with 【label】, so the text users enter is reflected more easily. {cost} Percoins are used only when an input-field line is deleted or text in a sentence is replaced.",
+    nameInputCreateDescription: "AI finds names (e.g. 玲華) and similar text in your prompt, deletes unneeded input-field lines, and replaces the matching spots with 【label】.",
     nameInputCreateButton: "Replace automatically in the prompt ({cost} Percoins)",
     nameInputCreatePending: "Combining…",
     nameInputCreateInsufficient: "Not enough Percoins ({cost} Percoins needed).",

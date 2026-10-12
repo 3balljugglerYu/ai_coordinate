@@ -1562,7 +1562,7 @@ export const koMessages = {
     promptOptionsImportedTextInput: "문자 입력 칸 표시를 찾아서 문자 입력을 켜고 가져왔습니다.",
     promptOptionsImportedBoth: "가챠 블록과 문자 입력 칸 표시를 찾아서 둘 다 켜고 가져왔습니다.",
     nameInputEntryRequiredHint: "{max}자까지. 이 글자가 이미지에 들어갑니다.",
-    nameInputCreateDescription: "AI가 「생성하고 싶은 내용」에 쓰인 이름(예: 玲華) 등을 자동으로 찾아 입력 칸 줄을 삭제합니다. 또한 문장 속 해당 부분을 【라벨】로 바꿔, 사용자가 입력한 글자가 반영되기 쉽게 합니다. 입력 칸 줄이 삭제되거나 문장 속 글자가 바뀐 경우에만 {cost}페르코인이 소비됩니다.",
+    nameInputCreateDescription: "AI가 본문 속 이름(예: 玲華) 등을 찾아, 필요 없는 입력 칸 줄을 삭제하거나 해당 부분을 【라벨】로 바꿉니다.",
     nameInputCreateButton: "본문에서 자동으로 바꾸기({cost}페르코인)",
     nameInputCreatePending: "합치는 중…",
     nameInputCreateInsufficient: "페르코인이 부족합니다({cost} 페르코인 필요).",
