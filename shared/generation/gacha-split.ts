@@ -47,22 +47,27 @@ The prompt is given with line numbers ("L<number>: <text>"). Return:
 3. listCount: how many SEPARATE lists of candidates the prompt asks to pick from.
    Count lists of different kinds separately (e.g. a list of jobs and a list of places = 2).
    Several lines that together form one list of the same kind count as 1. Return 0 if there is no list.
-4. asksAiToJudge: true if the prompt lists options but asks the image AI to choose the best / most suitable one
-   by its own judgment (e.g. "choose the one that suits the character best"), or presents the options only as
-   examples it may go beyond (e.g. "not limited to these"). false if it asks to pick at random, or if there is no list.
+4. asksAiToJudge: decide this FIRST and independently of the other fields.
+   true if the prompt names two or more options of the same kind (even only as examples) AND leaves the choice
+   to the image AI's own judgment instead of a random pick. Typical signs:
+   - asking for the best / most suitable / most flattering one ("最も似合う", "最適な", "似合う〜を選ぶ", "お任せ", "suits best"),
+   - saying the options are not exhaustive ("など", "これらに限定せず", "ほかの〜も選択できます", "not limited to these").
+   It stays true even when you decide there is no list to split and return empty arrays.
+   false only if the prompt asks to pick at random, or names no options at all.
 
-If the prompt has no list of candidates to choose from, return empty arrays.`;
+If the prompt has no list of candidates to choose from, return empty arrays for removeLines and candidates.`;
 
 /** Responses API の text.format に渡す JSON の形。 */
 export const GACHA_SPLIT_JSON_SCHEMA = {
   type: "object",
+  // asksAiToJudge を先に答えさせる(後ろに置くと、候補を空にした流れで false に寄った。2026-10-13 本番)
   properties: {
+    asksAiToJudge: { type: "boolean" },
     removeLines: { type: "array", items: { type: "integer" } },
     candidates: { type: "array", items: { type: "string" } },
     listCount: { type: "integer" },
-    asksAiToJudge: { type: "boolean" },
   },
-  required: ["removeLines", "candidates", "listCount", "asksAiToJudge"],
+  required: ["asksAiToJudge", "removeLines", "candidates", "listCount"],
   additionalProperties: false,
 } as const;
 

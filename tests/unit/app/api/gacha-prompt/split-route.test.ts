@@ -141,6 +141,31 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(deductFn).not.toHaveBeenCalled();
   });
 
+  test("分けられなかったときは理由と数だけを記録し、本文は記録しない", async () => {
+    const prompt = "似合う髪型を選ぶ。\nショート、ボブなど。これらに限定しない。";
+    const info = jest.spyOn(console, "info").mockImplementation(() => undefined);
+    const { deps } = setup({
+      callModelFn: (async () => ({
+        asksAiToJudge: false,
+        removeLines: [],
+        candidates: [],
+        listCount: 0,
+      })) as never,
+    });
+
+    await postGachaSplitRoute(createRequest({ prompt }), deps);
+
+    expect(info).toHaveBeenCalledWith("[gacha-split] not split", {
+      reason: "no_candidates",
+      asksAiToJudge: false,
+      listCount: 0,
+      removeLines: 0,
+      candidates: 0,
+    });
+    expect(JSON.stringify(info.mock.calls)).not.toContain("髪型");
+    info.mockRestore();
+  });
+
   test("運営は候補が11個以上でも分けて、5ペルコインを引き落とす", async () => {
     const many = Array.from({ length: 11 }, (_, i) => `職業${i + 1}`);
     const prompt = `職業の制服を着て働く姿。\n職業は、${many.join("、")}のどれか。`;

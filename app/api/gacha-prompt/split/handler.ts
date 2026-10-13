@@ -140,6 +140,14 @@ export async function postGachaSplitRoute(
 
   const result = applyGachaSplit(prompt, output, gachaLimitsFor(isAdminFn(user.id)));
   if (!result.ok) {
+    // 分けられなかった理由を後から確かめるための記録。本文と候補の中身は出さない(数と印だけ)
+    console.info("[gacha-split] not split", {
+      reason: result.reason,
+      asksAiToJudge: output.asksAiToJudge,
+      listCount: output.listCount,
+      removeLines: Array.isArray(output.removeLines) ? output.removeLines.length : null,
+      candidates: Array.isArray(output.candidates) ? output.candidates.length : null,
+    });
     // 候補が上限(一般は10個)を超えるときは、減らせば分けられることを画面で伝える
     // 候補の一覧(ガチャの要素)が2つ以上あるときは、まとめれば作れることを画面で伝える
     if (result.reason === "too_many_blocks") {
