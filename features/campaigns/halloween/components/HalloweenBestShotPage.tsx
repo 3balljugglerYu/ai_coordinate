@@ -48,7 +48,7 @@ interface JoinStep {
   hashtag?: boolean;
 }
 
-// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う(手順3は画像、手順4はプロンプトの文だけ差し替えた版)。枠の位置は画像に対する割合(%)。
+// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う(手順3は画像、手順4はプロンプトの文、手順5はモデル名だけ差し替えた版)。枠の位置は画像に対する割合(%)。
 const GUIDE_IMG = "/guide/gacha";
 
 const STEPS: readonly JoinStep[] = [
@@ -106,7 +106,7 @@ const STEPS: readonly JoinStep[] = [
     title: "「コーデ開始！」で生成する",
     text: "うちの子のハロウィンのイラストができあがります。",
     shot: {
-      src: `${GUIDE_IMG}/step-6-generate.jpg`,
+      src: "/campaigns/halloween-best-shot/join-5-generate.jpg",
       alt: "生成の設定と、いちばん下のコーデ開始！のボタン",
       width: 780,
       height: 736,
@@ -115,13 +115,21 @@ const STEPS: readonly JoinStep[] = [
     },
   },
   {
-    title: "ハッシュタグを付けて投稿する",
-    text: "気に入った1枚を投稿します。本文にハッシュタグを入れてください。",
+    title: "できあがったら、サムネイルをタップ",
+    text: "生成されたイラストの小さな画像(サムネイル)をタップして開きます。",
+  },
+  {
+    title: "「投稿」をタップ",
+    text: "画像が大きく開いたら、「＋ 投稿」をタップします。",
+  },
+  {
+    title: "説明とハッシュタグを付けて投稿！",
+    text: "キャプションにイラストの説明と、このハッシュタグを入れて「投稿する」をタップします。",
     hashtag: true,
   },
   {
-    title: "みんなのカタログに並ぶ",
-    text: "ほかの人もあなたのプロンプトで、自分の子のハロウィンをつくれます。",
+    title: "完了！",
+    text: "投稿したイラストは「みんなのカタログ」に並びます。ほかの人もあなたのプロンプトで、自分の子のハロウィンをつくれます。",
   },
 ];
 
@@ -129,6 +137,11 @@ const JUDGE_POINTS = [
   { icon: "✨", name: "安定性", text: "だれの子で生成しても、After とできるだけ同じ雰囲気・構図に仕上がるか" },
   { icon: "🎃", name: "ハロウィンらしさ", text: "見た瞬間にハロウィンの魔法が伝わるか" },
   { icon: "💖", name: "うちの子らしさ", text: "その子の魅力がいちばん輝く“ベストショット”か" },
+] as const;
+
+const MORE_TIPS = [
+  { icon: "📣", text: "Xにシェアすると、あなたのプロンプトを使ってくれる人が増えるかも！？" },
+  { icon: "💖", text: "運営も「いいね」などで応援します！" },
 ] as const;
 
 export function HalloweenBestShotPage() {
@@ -326,6 +339,24 @@ export function HalloweenBestShotPage() {
                   <span className={styles.what}>結果発表（特設ページで作品とクリエイターをご紹介）</span>
                 </li>
               </ol>
+            </RevealOnScroll>
+          </div>
+        </section>
+
+        <section className={styles.section} aria-labelledby="hbs-more">
+          <div className={styles.wrap}>
+            <div id="hbs-more">
+              <Ribbon en="MORE">その他</Ribbon>
+            </div>
+            <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+              <div className={styles.points}>
+                {MORE_TIPS.map((tip) => (
+                  <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
+                    <span aria-hidden="true">{tip.icon}</span>
+                    <span>{tip.text}</span>
+                  </div>
+                ))}
+              </div>
             </RevealOnScroll>
           </div>
         </section>

@@ -37,13 +37,22 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(link.getAttribute("href")).toBe("/use-prompts");
   });
 
-  test("参加方法は7つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
+  test("参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
     render(<HalloweenBestShotPage />);
     const steps = screen.getAllByTestId("halloween-join-step");
-    expect(steps).toHaveLength(7);
+    expect(steps).toHaveLength(9);
     expect(within(steps[0]).getAllByTestId("shot-ring")).toHaveLength(1);
-    expect(within(steps[5]).getByRole("button", { name: "コピーする" })).toBeTruthy();
-    expect(within(steps[5]).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+    expect(within(steps[7]).getByRole("button", { name: "コピーする" })).toBeTruthy();
+    expect(within(steps[7]).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+  });
+
+  test("その他に、Xへのシェアと運営の応援を書く", () => {
+    render(<HalloweenBestShotPage />);
+    const tips = screen.getAllByTestId("halloween-more-tip").map((tip) => tip.textContent);
+    expect(tips).toEqual([
+      expect.stringContaining("Xにシェアすると"),
+      expect.stringContaining("「いいね」などで応援します"),
+    ]);
   });
 
   test("賞品: 最優秀賞 10,000円分 1名様／優秀賞 5,000円分 2名様", () => {
@@ -61,6 +70,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
       "HOW TO JOIN参加方法",
       "POINT審査のポイント",
       "SCHEDULEスケジュール",
+      "MOREその他",
       "あなたのベストショット、待ってます",
     ]);
   });
