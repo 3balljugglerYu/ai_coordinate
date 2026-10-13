@@ -261,10 +261,10 @@ flowchart TD
 - **Reason**: 「subscriptions」は Web Push とサブスク（課金）と紛らわしい
 - **Consequence**: `.cursor/rules/database-design.mdc` と `docs/architecture/data.*.md` の記述を直す
 
-### ADR-009: アプリは宛先を Supabase に直接書く（Web API を通さない）
-- **Decision**: 本人だけ書ける RLS のもとで、アプリから `push_device_tokens` を upsert／delete。ログアウトは `signOut()` の直前に自分の端末の行を消す。退会は `/api/account/deactivate` でサーバー側からその人の全宛先を消す
-- **Reason**: 単純な本人の CRUD（`docs/architecture/data.ja.md:39`）。通知の既読化と同じく直接で足りる
-- **Consequence**: `user_id` は RLS（`auth.uid()`）で強制し、クライアントの値は信用しない
+### ADR-009: アプリは宛先を RPC で登録する（Web API を通さない）
+- **Decision**: アプリは Supabase の RPC `register_push_device(device_id, platform, token, app_version)` / `unregister_push_device(device_id)` を直接呼ぶ。表への直接の書き込みは許さず、本人の行の SELECT だけ RLS で許す。ログアウトは `signOut()` の直前に `unregister_push_device`。退会は `/api/account/deactivate` でサーバー側からその人の全宛先を消す
+- **Reason**: 同じ端末で別のアカウントにログインし直したとき、前の人の行（同じ `device_id`・同じ `token`）を消して付け替える必要があり、RLS の本人 CRUD では書けない（2026-10-13 Phase 1 実装時に変更。当初は直接 upsert の案）
+- **Consequence**: 利用者は RPC の中で `auth.uid()` から決め、引数では受け取らない
 
 ### ADR-010: スタイル開放・PICK UP 入り・フォロー中の新作は後の段階
 - **Context**: スタイル開放は出来事が保存されておらず TS で毎回計算。PICK UP は毎時作り直し

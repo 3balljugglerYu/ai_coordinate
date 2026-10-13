@@ -48,7 +48,9 @@ alwaysApply: false
 - `post_reports`
 - `profiles`
 - `prompt_overrides`
-- `push_subscriptions`
+- `push_device_tokens`
+- `push_outbox`
+- `push_preferences`
 - `referrals`
 - `source_image_stocks`
 - `style_presets`
@@ -255,7 +257,7 @@ alwaysApply: false
 - 主キー: `id`
 - 主要カラム: `recipient_id`, `actor_id`, `type`, `entity_type`, `entity_id`, `title`, `body`, `data`, `is_read`, `read_at`, `pushed_at`, `push_status`, `created_at`, `comment_id`
 - 外部キー: `recipient_id -> auth.users.id`, `actor_id -> auth.users.id`, `comment_id -> comments.id`
-- 備考: `type` は `like/comment/follow/bonus/style_template_approved/style_template_rejected/style_template_unpublished/catalog_entry_approved/catalog_entry_rejected/catalog_entry_unpublished`、`entity_type` は `post/comment/user/style_template/catalog_entry`、`push_status` は `pending/sent/failed`。クリエイター還元の `usage_reward_earned` は**受け手×JST日付で1行**に集約され、付与のたびに `data.usage_count`/`data.total_amount` を加算して未読へ戻し、`created_at` も進めて一覧の先頭へ浮上させる（この type に限り `created_at` は「最後に付与された時刻」の意味になる）
+- 備考: `type` は `like/comment/follow/bonus/style_template_approved/style_template_rejected/style_template_unpublished/catalog_entry_approved/catalog_entry_rejected/catalog_entry_unpublished`、`entity_type` は `post/comment/user/style_template/catalog_entry`。`push_status`/`pushed_at` は**使っていない**（初期構築の名残で全行 `pending` のまま。アプリのプッシュ通知の送信状態は `push_outbox` が持つ）。クリエイター還元の `usage_reward_earned` は**受け手×JST日付で1行**に集約され、付与のたびに `data.usage_count`/`data.total_amount` を加算して未読へ戻し、`created_at` も進めて一覧の先頭へ浮上させる（この type に限り `created_at` は「最後に付与された時刻」の意味になる）
 - RLS:
   - `SELECT`: 受信者本人のみ
   - `INSERT`: 直接INSERTは禁止（`with_check false`）
@@ -268,12 +270,29 @@ alwaysApply: false
 - 外部キー: `user_id -> auth.users.id`
 - RLS: 本人のみ `ALL`
 
-#### `push_subscriptions`
+- 備考: オフにすると**通知の記録自体をしない**。アプリのプッシュ通知だけを止める設定は `push_preferences`（2026-10 時点で UI からの参照なし）
+
+#### `push_device_tokens`
 - 主キー: `id`
-- 主要カラム: `user_id`, `device_id`, `platform`, `token`, `last_seen_at`, `created_at`
+- 主要カラム: `user_id`, `device_id`, `platform`(`ios/android`), `token`, `app_version`, `created_at`, `last_seen_at`
 - 外部キー: `user_id -> auth.users.id`
-- 制約: `(user_id, device_id)` UNIQUE
-- RLS: 本人のみ `ALL`
+- 制約: `device_id` UNIQUE, `token` UNIQUE（1 台・1 トークンは同時に 1 人だけ）
+- RLS: 本人のみ `SELECT`。書き込みは RPC `register_push_device` / `unregister_push_device`（同じ端末で別アカウントにログインし直したら付け替える）
+- 備考: 旧 `push_subscriptions`（未使用）を 2026-10 に置き換え。計画書 `docs/planning/push-notifications-implementation-plan.md`
+
+#### `push_preferences`
+- 主キー: `user_id`
+- 主要カラム: `enabled`, `categories`（既定値と違う種類だけ `{"likes": false}` の形）, `quiet_start`, `quiet_end`, `time_zone`, `paused_until`
+- 外部キー: `user_id -> auth.users.id`
+- RLS: 本人のみ `SELECT/INSERT/UPDATE`
+- 備考: 止めるのは**プッシュ通知だけ**（通知タブの中身は変わらない）。行が無い人は既定値（`push_category_default`）。送信時の判定は `push_allowed_now`
+
+#### `push_outbox`
+- 主キー: `id`
+- 主要カラム: `recipient_id`, `category`, `notification_id`, `image_job_id`, `collapse_key`, `title`, `body`, `data`, `send_after`, `status`(`pending/processing/sent/skipped/failed`), `attempt_count`
+- 外部キー: `notification_id -> notifications.id`（**ON DELETE CASCADE＝取り消された通知は送らない**）, `image_job_id -> image_jobs.id`
+- RLS: 公開 policy なし（service role と SECURITY DEFINER のみ）
+- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み、`image_jobs` の succeeded/failed で即時に積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす
 
 ### ユーザープロフィール
 
