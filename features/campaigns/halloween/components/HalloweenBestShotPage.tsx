@@ -67,9 +67,7 @@ export function HalloweenBestShotPage() {
               </span>
             </h1>
             <p className={styles.lead}>
-              CREATEで、あなたの“うちの子”が一番かがやくハロウィンのプロンプトをつくろう。
-              <br />
-              だれの子で生成しても、同じように素敵に仕上がるプロンプトを募集します！
+              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿してアマギフをGETしよう！
             </p>
             <div className={styles.period}>
               <span className={styles.periodLabel}>開催期間</span>
