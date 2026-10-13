@@ -112,7 +112,7 @@ export function HalloweenBestShotPage() {
                 <span className={styles.accent}>「安定したプロンプト」</span>。
               </p>
               <p>
-                ハロウィンをテーマに、あなたの“ベストショット”なプロンプトを CREATE でつくって投稿してください。選ばれた作品は、特設ページでご紹介します！
+                ハロウィンをテーマに、あなたの“うちの子”のベストショットを CREATE でつくって、ペルスタに投稿してください。選ばれた作品は、特設ページでご紹介します！
               </p>
             </RevealOnScroll>
           </div>
