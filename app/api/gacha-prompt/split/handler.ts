@@ -140,19 +140,29 @@ export async function postGachaSplitRoute(
 
   const result = applyGachaSplit(prompt, output, gachaLimitsFor(isAdminFn(user.id)));
   if (!result.ok) {
+    // 分けられなかった理由を後から確かめるための記録。本文と候補の中身は出さない(数と印だけ)
+    console.info("[gacha-split] not split", {
+      reason: result.reason,
+      asksAiToJudge: output.asksAiToJudge,
+      listCount: output.listCount,
+      removeLines: Array.isArray(output.removeLines) ? output.removeLines.length : null,
+      candidates: Array.isArray(output.candidates) ? output.candidates.length : null,
+    });
     // 候補が上限(一般は10個)を超えるときは、減らせば分けられることを画面で伝える
     // 候補の一覧(ガチャの要素)が2つ以上あるときは、まとめれば作れることを画面で伝える
-    if (result.reason === "too_many_blocks") {
-      return jsonError("Too many gacha lists", "GACHA_SPLIT_TOO_MANY_BLOCKS", 422);
-    }
-    // 「似合うものを選ぶ」書き方のときは、ランダムに選ばせる書き方を画面で伝える
-    if (result.reason === "asks_ai_to_judge") {
-      return jsonError("Asks the AI to judge", "GACHA_SPLIT_ASKS_AI_TO_JUDGE", 422);
-    }
-    if (result.reason === "too_many_candidates") {
-      return jsonError("Too many candidates", "GACHA_SPLIT_TOO_MANY_CANDIDATES", 422);
-    }
-    return jsonError("Could not split", "GACHA_SPLIT_NOT_SPLITTABLE", 422);
+    // 当てはまる理由すべてを返し、画面で箇条書きにする。errorCode は先頭の理由(古い画面向け)
+    const errorCode =
+      result.reason === "too_many_blocks"
+        ? "GACHA_SPLIT_TOO_MANY_BLOCKS"
+        : result.reason === "asks_ai_to_judge"
+          ? "GACHA_SPLIT_ASKS_AI_TO_JUDGE"
+          : result.reason === "too_many_candidates"
+            ? "GACHA_SPLIT_TOO_MANY_CANDIDATES"
+            : "GACHA_SPLIT_NOT_SPLITTABLE";
+    return NextResponse.json(
+      { error: "Could not split", errorCode, reasons: result.issues ?? [] },
+      { status: 422 },
+    );
   }
 
   // 分けられたときだけ引き落とす

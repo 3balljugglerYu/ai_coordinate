@@ -129,6 +129,31 @@ describe("GachaSplitTool", () => {
     expect(screen.getByTestId("prompt").textContent).toBe(ORIGINAL);
   });
 
+  test("理由が返ってきたら、当てはまるものを箇条書きで出す(知らない理由は出さない)", async () => {
+    const user = userEvent.setup();
+    respondWith(422, {
+      error: "x",
+      errorCode: "GACHA_SPLIT_ASKS_AI_TO_JUDGE",
+      reasons: [
+        { kind: "asks_ai_to_judge" },
+        { kind: "too_many_candidates", count: 16 },
+        { kind: "something_new" },
+      ],
+    });
+    render(<Harness />);
+
+    await user.click(splitButton());
+
+    const message = await screen.findByTestId("gacha-split-error");
+    expect(message.textContent).toContain("gachaSplitReasonsLead");
+    const items = screen.getAllByTestId("gacha-split-reason");
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toContain("gachaSplitReasonAsksAiToJudge");
+    expect(items[1].textContent).toContain("gachaSplitReasonTooMany");
+    expect(items[1].textContent).toContain("16");
+    expect(screen.getByTestId("prompt").textContent).toBe(ORIGINAL);
+  });
+
   test.each([
     ["GACHA_SPLIT_INSUFFICIENT_BALANCE", 400, "gachaSplitInsufficient"],
     ["GACHA_SPLIT_NOT_SPLITTABLE", 422, "gachaSplitNotSplittable"],

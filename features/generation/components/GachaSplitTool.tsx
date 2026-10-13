@@ -44,6 +44,33 @@ type ErrorKey =
   // 返事が届かなかった。サーバーで引き落とし済みの可能性があるので「使っていない」と言わない
   | "gachaSplitConnectionLost";
 
+/** 分けられなかった理由(API の reasons)。当てはまるものすべてを箇条書きにする */
+type SplitIssue =
+  | { kind: "too_many_blocks" | "asks_ai_to_judge" | "no_candidates" }
+  | { kind: "too_many_candidates"; count: number };
+
+const ISSUE_KEYS = {
+  too_many_blocks: "gachaSplitReasonTooManyBlocks",
+  asks_ai_to_judge: "gachaSplitReasonAsksAiToJudge",
+  too_many_candidates: "gachaSplitReasonTooMany",
+  no_candidates: "gachaSplitReasonNoCandidates",
+} as const;
+
+function issuesFrom(value: unknown): SplitIssue[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((item): SplitIssue[] => {
+    const kind = (item as { kind?: unknown } | null)?.kind;
+    if (kind === "too_many_candidates") {
+      const count = (item as { count?: unknown }).count;
+      return typeof count === "number" ? [{ kind, count }] : [];
+    }
+    if (kind === "too_many_blocks" || kind === "asks_ai_to_judge" || kind === "no_candidates") {
+      return [{ kind }];
+    }
+    return [];
+  });
+}
+
 function errorKeyFor(errorCode: unknown): ErrorKey {
   if (errorCode === "GACHA_SPLIT_INSUFFICIENT_BALANCE") return "gachaSplitInsufficient";
   if (errorCode === "GACHA_SPLIT_NOT_SPLITTABLE") return "gachaSplitNotSplittable";
@@ -71,6 +98,7 @@ export function GachaSplitTool({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [errorKey, setErrorKey] = useState<ErrorKey | null>(null);
+  const [issues, setIssues] = useState<SplitIssue[]>([]);
   const [proposal, setProposal] = useState<Proposal | null>(null);
   const [undo, setUndo] = useState<{
     before: { body: string; field: string };
@@ -94,6 +122,7 @@ export function GachaSplitTool({
   const split = async () => {
     setPending(true);
     setErrorKey(null);
+    setIssues([]);
     setUndo(null);
     const original = prompt.trim();
     try {
@@ -108,6 +137,7 @@ export function GachaSplitTool({
       > | null;
       if (!response.ok) {
         setErrorKey(errorKeyFor(data?.errorCode));
+        setIssues(issuesFrom(data?.reasons));
         return;
       }
       if (!data || typeof data.body !== "string" || typeof data.field !== "string") {
@@ -171,7 +201,22 @@ export function GachaSplitTool({
           : t("gachaSplitButton", { cost: GACHA_SPLIT_PERCOIN_COST })}
       </Button>
 
-      {errorKey ? (
+      {errorKey && issues.length > 0 ? (
+        <div className="text-xs text-red-600" role="alert" data-testid="gacha-split-error">
+          <p>{t("gachaSplitReasonsLead")}</p>
+          <ul className="mt-1 list-disc space-y-0.5 pl-4">
+            {issues.map((issue) => (
+              <li key={issue.kind} data-testid="gacha-split-reason">
+                {t(ISSUE_KEYS[issue.kind], {
+                  max: GACHA_MAX_CANDIDATES,
+                  blocks: GACHA_MAX_BLOCKS,
+                  count: issue.kind === "too_many_candidates" ? issue.count : 0,
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : errorKey ? (
         <p className="text-xs text-red-600" role="alert" data-testid="gacha-split-error">
           {t(errorKey, {
             cost: GACHA_SPLIT_PERCOIN_COST,

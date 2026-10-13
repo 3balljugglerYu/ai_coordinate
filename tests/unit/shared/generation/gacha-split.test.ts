@@ -108,7 +108,7 @@ describe("applyGachaSplit", () => {
         removeLines: [3],
         candidates: ["医師", "パティシエ", "天文学者", "探偵"],
       }),
-    ).toEqual({ ok: false, reason: "no_candidates" });
+    ).toEqual({ ok: false, reason: "no_candidates", issues: [{ kind: "no_candidates" }] });
   });
 
   test("元からある空行はそのまま、消した跡の空行だけ1つにする", () => {
@@ -123,16 +123,16 @@ describe("applyGachaSplit", () => {
   test("候補が2つ未満なら分けられない", () => {
     expect(
       applyGachaSplit(ORIGINAL, { removeLines: [], candidates: ["医師"] }),
-    ).toEqual({ ok: false, reason: "no_candidates" });
+    ).toEqual({ ok: false, reason: "no_candidates", issues: [{ kind: "no_candidates" }] });
     expect(
       applyGachaSplit(ORIGINAL, { removeLines: [], candidates: [] }),
-    ).toEqual({ ok: false, reason: "no_candidates" });
+    ).toEqual({ ok: false, reason: "no_candidates", issues: [{ kind: "no_candidates" }] });
   });
 
   test("候補が無く、AIに判断して選ばせる書き方なら asks_ai_to_judge", () => {
     expect(
       applyGachaSplit(ORIGINAL, { removeLines: [], candidates: [], asksAiToJudge: true }),
-    ).toEqual({ ok: false, reason: "asks_ai_to_judge" });
+    ).toEqual({ ok: false, reason: "asks_ai_to_judge", issues: [{ kind: "asks_ai_to_judge" }] });
   });
 
   test("判断して選ばせる書き方でも、候補が2つ以上取れたら今までどおり分ける", () => {
@@ -149,7 +149,7 @@ describe("applyGachaSplit", () => {
     for (const asksAiToJudge of [false, undefined, "true"]) {
       expect(
         applyGachaSplit(ORIGINAL, { removeLines: [], candidates: [], asksAiToJudge }),
-      ).toEqual({ ok: false, reason: "no_candidates" });
+      ).toEqual({ ok: false, reason: "no_candidates", issues: [{ kind: "no_candidates" }] });
     }
   });
 
@@ -216,7 +216,7 @@ describe("applyGachaSplit の候補の上限(10個)", () => {
         candidates: ["医師", "探偵", "海", "森"],
         listCount: 2,
       }),
-    ).toEqual({ ok: false, reason: "too_many_blocks" });
+    ).toEqual({ ok: false, reason: "too_many_blocks", issues: [{ kind: "too_many_blocks" }] });
   });
 
   test("一覧が1つなら、今までどおり分ける", () => {
@@ -241,7 +241,49 @@ describe("applyGachaSplit の候補の上限(10個)", () => {
     expect(applyGachaSplit(promptWith(11), { removeLines: [2], candidates: items(11) })).toEqual({
       ok: false,
       reason: "too_many_candidates",
+      issues: [{ kind: "too_many_candidates", count: 11 }],
     });
+  });
+
+  test("当てはまる理由はすべて返す(判断させる書き方 + 上限超え。候補が本文に残っていても数える)", () => {
+    // 「似合うものを選ぶ」書き方で、候補の行を消さずに返した出力
+    expect(
+      applyGachaSplit(promptWith(16), {
+        asksAiToJudge: true,
+        removeLines: [],
+        candidates: items(16),
+        listCount: 1,
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "asks_ai_to_judge",
+      issues: [{ kind: "asks_ai_to_judge" }, { kind: "too_many_candidates", count: 16 }],
+    });
+  });
+
+  test("一覧が2つ以上 + 判断させる書き方は、両方を返す(数は上限内なら出さない)", () => {
+    expect(
+      applyGachaSplit("働く姿。\n職業は、医師、探偵など。\n場所は、海、森など。", {
+        asksAiToJudge: true,
+        removeLines: [2, 3],
+        candidates: ["医師", "探偵", "海", "森"],
+        listCount: 2,
+      }),
+    ).toEqual({
+      ok: false,
+      reason: "too_many_blocks",
+      issues: [{ kind: "too_many_blocks" }, { kind: "asks_ai_to_judge" }],
+    });
+  });
+
+  test("運営(上限なし)には、上限超えの理由を出さない", () => {
+    expect(
+      applyGachaSplit(
+        promptWith(16),
+        { asksAiToJudge: true, removeLines: [], candidates: items(16), listCount: 1 },
+        { maxBlocks: null, maxCandidates: null },
+      ),
+    ).toEqual({ ok: false, reason: "asks_ai_to_judge", issues: [{ kind: "asks_ai_to_judge" }] });
   });
 });
 
