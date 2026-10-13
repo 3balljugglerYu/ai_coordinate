@@ -174,7 +174,8 @@
   position: relative;
   justify-self: center;
   width: min(78vw, 340px);
-  aspect-ratio: 3 / 4;
+  /* 作例のイラスト(4:5)を切らずに見せる */
+  aspect-ratio: 4 / 5;
   margin: 0;
   border-radius: 26px;
   overflow: hidden;

@@ -218,7 +218,7 @@ export function HalloweenBestShotPage() {
           </div>
           <figure className={styles.heroPhoto}>
             <Image
-              src="/campaigns/halloween-best-shot/hero.jpg"
+              src="/campaigns/halloween-best-shot/hero-v2.jpg"
               alt="ペルスタで生成したハロウィンのイラストの例"
               fill
               priority
