@@ -37,6 +37,15 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(link.getAttribute("href")).toBe("/use-prompts");
   });
 
+  test("参加方法は7つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
+    render(<HalloweenBestShotPage />);
+    const steps = screen.getAllByTestId("halloween-join-step");
+    expect(steps).toHaveLength(7);
+    expect(within(steps[0]).getAllByTestId("shot-ring")).toHaveLength(1);
+    expect(within(steps[5]).getByRole("button", { name: "コピーする" })).toBeTruthy();
+    expect(within(steps[5]).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+  });
+
   test("賞品: 最優秀賞 10,000円分 1名様／優秀賞 5,000円分 2名様", () => {
     render(<HalloweenBestShotPage />);
     const prizes = screen.getAllByTestId("halloween-prize").map((node) => node.textContent);

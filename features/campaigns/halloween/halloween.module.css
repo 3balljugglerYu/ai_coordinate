@@ -511,41 +511,63 @@
 }
 
 .step {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  gap: 14px;
-  align-items: start;
   background: var(--cream);
   border-radius: 18px;
   padding: 16px;
+  min-width: 0;
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .stepNum {
-  width: 56px;
-  height: 56px;
+  flex: none;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   display: grid;
   place-items: center;
   color: #fff;
   background: var(--grad-brand);
-  font-size: 26px;
+  font-size: 22px;
   box-shadow: 0 4px 0 #b8336f;
 }
 
 .stepTitle {
-  margin: 2px 0 4px;
-  font-size: 16px;
+  margin: 0;
+  font-size: 17px;
 }
 
 .stepText {
-  margin: 0;
+  margin: 10px 0 0;
   font-size: 14px;
   color: var(--ink-soft);
 }
 
+.hashtagRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.copyButton {
+  padding: 4px 12px;
+  border: 2px solid var(--plum-800);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--plum-800);
+  font-weight: 800;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .hashtag {
   display: inline-block;
-  margin-top: 6px;
   padding: 3px 12px;
   border-radius: 999px;
   background: var(--plum-800);
@@ -711,15 +733,7 @@
     grid-template-columns: 1.2fr 1fr;
   }
 
-  .steps {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .step {
-    grid-template-columns: 1fr;
-    justify-items: center;
-    text-align: center;
-  }
+  /* 手順はスクショ付きで縦に長いので、パソコンでも1列のまま読ませる */
 }
 
 /* ===== 動き ===== */

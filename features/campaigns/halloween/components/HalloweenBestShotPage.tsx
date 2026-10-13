@@ -1,7 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
+import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/components/AnnotatedShot";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
+import { CopyHashtagButton } from "./CopyHashtagButton";
 import { Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { RevealOnScroll } from "./RevealOnScroll";
 
@@ -30,14 +32,98 @@ function JoinButton() {
   );
 }
 
-const STEPS = [
-  { title: "CREATEでプロンプトをつくる", text: "ハロウィンをテーマに、うちの子の画像とプロンプトで生成します。" },
-  { title: "ハッシュタグを付けて投稿", text: "気に入った1枚を投稿します。", hashtag: true },
+interface JoinStep {
+  title: string;
+  text: string;
+  shot?: {
+    src: string;
+    alt: string;
+    width: number;
+    height: number;
+    rings: ShotBox[];
+    callouts: ShotCallout[];
+    /** 画面まるごとのスクショはスマホの外枠で囲む */
+    device?: boolean;
+  };
+  hashtag?: boolean;
+}
+
+// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う。枠の位置は画像に対する割合(%)。
+const GUIDE_IMG = "/guide/gacha";
+
+const STEPS: readonly JoinStep[] = [
+  {
+    title: "「カタログ」を開く",
+    text: "画面の下にある「カタログ」をタップします。",
+    shot: {
+      src: `${GUIDE_IMG}/where-1-home.jpg`,
+      alt: "ホーム画面。下のメニューの「カタログ」を赤い枠で囲んでいる",
+      width: 780,
+      height: 1328,
+      device: true,
+      rings: [{ left: 21, top: 90, width: 18, height: 9.6 }],
+      callouts: [{ left: 8, top: 78, text: "ここをタップ", pointer: "down" }],
+    },
+  },
+  {
+    title: "「CREATE」を選ぶ",
+    text: "カタログの上にあるタブから「CREATE」を選びます。",
+    shot: {
+      src: `${GUIDE_IMG}/where-2-catalog.jpg`,
+      alt: "カタログの画面。上のタブの「CREATE」を赤い枠で囲んでいる",
+      width: 780,
+      height: 1328,
+      device: true,
+      rings: [{ left: 70, top: 17, width: 26.5, height: 8.3 }],
+      callouts: [{ left: 40, top: 28, text: "CREATEを選ぶ", pointer: "up-end" }],
+    },
+  },
+  {
+    title: "うちの子の画像を入れる",
+    text: "「人物画像をアップロード」から、うちの子の画像を選びます。",
+    shot: {
+      src: `${GUIDE_IMG}/step-1-image.jpg`,
+      alt: "人物画像をアップロードする欄に、うちの子の画像が入っている",
+      width: 780,
+      height: 700,
+      rings: [{ left: 9, top: 21, width: 82, height: 63 }],
+      callouts: [{ left: 50, top: -6, text: "うちの子の画像", pointer: "down" }],
+    },
+  },
+  {
+    title: "ハロウィンのプロンプトを書く",
+    text: "「生成したい内容」に、ハロウィンの衣装・ポーズ・背景などを自由に書きます。「ガチャプロンプトにする」はオフのままにしてください。",
+    shot: {
+      src: `${GUIDE_IMG}/step-3-toggle.jpg`,
+      alt: "生成したい内容の欄と、その下のガチャプロンプトにするのチェック(オフ)",
+      width: 780,
+      height: 460,
+      rings: [{ left: 9.5, top: 18, width: 81.5, height: 52 }],
+      callouts: [{ left: 30, top: -5, text: "ここにプロンプトを書く", pointer: "down" }],
+    },
+  },
+  {
+    title: "「コーデ開始！」で生成する",
+    text: "うちの子のハロウィンのイラストができあがります。",
+    shot: {
+      src: `${GUIDE_IMG}/step-6-generate.jpg`,
+      alt: "生成の設定と、いちばん下のコーデ開始！のボタン",
+      width: 780,
+      height: 736,
+      rings: [{ left: 9, top: 83.5, width: 82, height: 15 }],
+      callouts: [{ left: 20, top: 100.5, text: "ここをタップ", pointer: "up" }],
+    },
+  },
+  {
+    title: "ハッシュタグを付けて投稿する",
+    text: "気に入った1枚を投稿します。本文にハッシュタグを入れてください。",
+    hashtag: true,
+  },
   {
     title: "みんなのカタログに並ぶ",
     text: "ほかの人もあなたのプロンプトで、自分の子のハロウィンをつくれます。",
   },
-] as const;
+];
 
 const JUDGE_POINTS = [
   { icon: "✨", name: "安定性", text: "だれの子で生成しても、After とできるだけ同じ雰囲気・構図に仕上がるか" },
@@ -165,18 +251,36 @@ export function HalloweenBestShotPage() {
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <ol className={styles.steps}>
                 {STEPS.map((step, index) => (
-                  <li key={step.title} className={styles.step}>
-                    <span className={`${styles.stepNum} ${styles.en}`} aria-hidden="true">
-                      {index + 1}
-                    </span>
-                    <div>
+                  <li key={step.title} className={styles.step} data-testid="halloween-join-step">
+                    <div className={styles.stepHead}>
+                      <span className={`${styles.stepNum} ${styles.en}`} aria-hidden="true">
+                        {index + 1}
+                      </span>
                       <h3 className={styles.stepTitle}>{step.title}</h3>
-                      <p className={styles.stepText}>{step.text}</p>
-                      {"hashtag" in step ? <span className={styles.hashtag}>{CAMPAIGN.hashtag}</span> : null}
                     </div>
+                    <p className={styles.stepText}>{step.text}</p>
+                    {step.hashtag ? (
+                      <div className={styles.hashtagRow}>
+                        <span className={styles.hashtag}>{CAMPAIGN.hashtag}</span>
+                        <CopyHashtagButton hashtag={CAMPAIGN.hashtag} />
+                      </div>
+                    ) : null}
+                    {step.shot ? (
+                      <AnnotatedShot
+                        src={step.shot.src}
+                        alt={step.shot.alt}
+                        width={step.shot.width}
+                        height={step.shot.height}
+                        device={step.shot.device}
+                        rings={step.shot.rings}
+                        callouts={step.shot.callouts}
+                        className={step.shot.device ? undefined : "mt-9"}
+                      />
+                    ) : null}
                   </li>
                 ))}
               </ol>
+              <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
               <p className={styles.note}>※ ガチャプロンプトは対象外です</p>
             </RevealOnScroll>
           </div>
