@@ -31,6 +31,12 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     links.forEach((link) => expect(link.getAttribute("href")).toBe("/free"));
   });
 
+  test("企画についての「利用特典について」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
+    render(<HalloweenBestShotPage />);
+    const link = screen.getByRole("link", { name: "利用特典について" });
+    expect(link.getAttribute("href")).toBe("/use-prompts");
+  });
+
   test("賞品: 最優秀賞 10,000円分 1名様／優秀賞 5,000円分 2名様", () => {
     render(<HalloweenBestShotPage />);
     const prizes = screen.getAllByTestId("halloween-prize").map((node) => node.textContent);

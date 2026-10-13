@@ -413,6 +413,19 @@
   font-weight: 800;
 }
 
+.aboutLead {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--pink);
+}
+
+.textLink {
+  color: var(--violet);
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 .highlight {
   background: linear-gradient(transparent 62%, rgba(255, 194, 61, 0.55) 0);
   font-weight: 800;

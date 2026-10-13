@@ -103,17 +103,26 @@ export function HalloweenBestShotPage() {
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <Bunting />
+              <p className={styles.aboutLead}>知っていますか！？</p>
               <p>
-                ペルスタでは、ほかの人のプロンプトを使って、
-                <span className={styles.highlight}>自分のうちの子で同じイラストをつくれます</span>。
+                ペルスタでは、ほかのユーザーが作成したプロンプトを使って、
+                <span className={styles.highlight}>自分の「うちの子」のイラストを生成できるんです！</span>✨
+                <br />
+                <Link href="/use-prompts" className={styles.textLink}>
+                  利用特典について
+                </Link>
               </p>
               <p>
-                だからこそ大切なのが、だれの子で生成しても After どおりに仕上がる
+                だからこそ大切なのが、だれの子で生成しても、イメージどおりに仕上がる
                 <span className={styles.accent}>「安定したプロンプト」</span>。
               </p>
               <p>
-                ハロウィンをテーマに、あなたの“うちの子”のベストショットを CREATE でつくって、ペルスタに投稿してください。選ばれた作品は、特設ページでご紹介します！
+                ハロウィンをテーマに、あなたが思う「ベストショット」を生み出すプロンプトを作成し、投稿してください！🎃
               </p>
+              <p>
+                <strong>賞に選ばれた方には、Amazonギフトカードをプレゼント！</strong>🎁
+              </p>
+              <p>さらに、受賞作品は特設ページでもご紹介します！✨</p>
             </RevealOnScroll>
           </div>
         </section>
