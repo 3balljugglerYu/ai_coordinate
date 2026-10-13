@@ -48,7 +48,7 @@ interface JoinStep {
   hashtag?: boolean;
 }
 
-// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う。枠の位置は画像に対する割合(%)。
+// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う(手順3は画像だけ差し替えた版)。枠の位置は画像に対する割合(%)。
 const GUIDE_IMG = "/guide/gacha";
 
 const STEPS: readonly JoinStep[] = [
@@ -82,7 +82,7 @@ const STEPS: readonly JoinStep[] = [
     title: "うちの子の画像を入れる",
     text: "「人物画像をアップロード」から、うちの子の画像を選びます。",
     shot: {
-      src: `${GUIDE_IMG}/step-1-image.jpg`,
+      src: "/campaigns/halloween-best-shot/join-3-image.jpg",
       alt: "人物画像をアップロードする欄に、うちの子の画像が入っている",
       width: 780,
       height: 700,
