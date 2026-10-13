@@ -31,6 +31,41 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     links.forEach((link) => expect(link.getAttribute("href")).toBe("/free"));
   });
 
+  test("企画についての「利用特典について」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
+    render(<HalloweenBestShotPage />);
+    const link = screen.getByRole("link", { name: "利用特典について" });
+    expect(link.getAttribute("href")).toBe("/use-prompts");
+  });
+
+  test("参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
+    render(<HalloweenBestShotPage />);
+    const steps = screen.getAllByTestId("halloween-join-step");
+    expect(steps).toHaveLength(9);
+    expect(within(steps[0]).getAllByTestId("shot-ring")).toHaveLength(1);
+    expect(within(steps[7]).getByRole("button", { name: "コピーする" })).toBeTruthy();
+    expect(within(steps[7]).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+    // 投稿の画面は、箇条の番号と同じ数だけ赤枠を付ける
+    expect(within(steps[7]).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(steps[7]).getAllByTestId("shot-ring")).toHaveLength(3);
+  });
+
+  test("審査のポイントは4つ(安定性・ハロウィンらしさ・うちの子らしさ・使ってみたくなる魅力)", () => {
+    render(<HalloweenBestShotPage />);
+    const names = screen
+      .getAllByTestId("halloween-judge-point")
+      .map((point) => point.querySelector("b")?.textContent);
+    expect(names).toEqual(["安定性", "ハロウィンらしさ", "うちの子らしさ", "使ってみたくなる魅力"]);
+  });
+
+  test("その他に、Xへのシェアと運営の応援を書く", () => {
+    render(<HalloweenBestShotPage />);
+    const tips = screen.getAllByTestId("halloween-more-tip").map((tip) => tip.textContent);
+    expect(tips).toEqual([
+      expect.stringContaining("Xにシェアすると"),
+      expect.stringContaining("「いいね」などで応援します"),
+    ]);
+  });
+
   test("賞品: 最優秀賞 10,000円分 1名様／優秀賞 5,000円分 2名様", () => {
     render(<HalloweenBestShotPage />);
     const prizes = screen.getAllByTestId("halloween-prize").map((node) => node.textContent);
@@ -46,6 +81,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
       "HOW TO JOIN参加方法",
       "POINT審査のポイント",
       "SCHEDULEスケジュール",
+      "MOREその他",
       "あなたのベストショット、待ってます",
     ]);
   });
@@ -62,10 +98,15 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     svgs.forEach((svg) => expect(svg.getAttribute("aria-hidden")).toBe("true"));
   });
 
-  test("作例の画像には説明(alt)がある", () => {
+  test("冒頭の作例は5枚で、どれにも説明(alt)がある。流すための2回目の並びは読み上げない", () => {
     render(<HalloweenBestShotPage />);
     const header = screen.getByRole("banner");
-    expect(within(header).getByAltText("ペルスタで生成したハロウィンのイラストの例")).toBeTruthy();
+    const gallery = within(header).getByRole("group", { name: "ペルスタで生成したハロウィンのイラストの例" });
+    const cards = within(gallery).getAllByTestId("halloween-gallery-card");
+    expect(cards).toHaveLength(5);
+    cards.forEach((card) => expect(card.querySelector("img")?.getAttribute("alt")).not.toBe(""));
+    // 読み上げで見える画像は1回目の5枚だけ
+    expect(within(gallery).getAllByRole("img")).toHaveLength(5);
   });
 });
 
