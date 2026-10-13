@@ -49,6 +49,14 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(within(steps[7]).getAllByTestId("shot-ring")).toHaveLength(3);
   });
 
+  test("審査のポイントは4つ(安定性・ハロウィンらしさ・うちの子らしさ・使ってみたくなる魅力)", () => {
+    render(<HalloweenBestShotPage />);
+    const names = screen
+      .getAllByTestId("halloween-judge-point")
+      .map((point) => point.querySelector("b")?.textContent);
+    expect(names).toEqual(["安定性", "ハロウィンらしさ", "うちの子らしさ", "使ってみたくなる魅力"]);
+  });
+
   test("その他に、Xへのシェアと運営の応援を書く", () => {
     render(<HalloweenBestShotPage />);
     const tips = screen.getAllByTestId("halloween-more-tip").map((tip) => tip.textContent);

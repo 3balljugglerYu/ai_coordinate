@@ -166,9 +166,14 @@ const STEPS: readonly JoinStep[] = [
 ];
 
 const JUDGE_POINTS = [
-  { icon: "✨", name: "安定性", text: "だれの子で生成しても、After とできるだけ同じ雰囲気・構図に仕上がるか" },
-  { icon: "🎃", name: "ハロウィンらしさ", text: "見た瞬間にハロウィンの魔法が伝わるか" },
-  { icon: "💖", name: "うちの子らしさ", text: "その子の魅力がいちばん輝く“ベストショット”か" },
+  { icon: "✨", name: "安定性", text: "だれの子で生成しても、イメージどおりの雰囲気や構図を再現できるか" },
+  { icon: "🎃", name: "ハロウィンらしさ", text: "ひと目でハロウィンの世界観や魅力が伝わるか" },
+  { icon: "💖", name: "うちの子らしさ", text: "その子ならではの魅力が輝く「ベストショット」になっているか" },
+  {
+    icon: "🪄",
+    name: "使ってみたくなる魅力",
+    text: "ほかの人が「自分のうちの子でも試してみたい！」と思えるプロンプトか",
+  },
 ] as const;
 
 const MORE_TIPS = [
@@ -351,7 +356,7 @@ export function HalloweenBestShotPage() {
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <div className={styles.points}>
                 {JUDGE_POINTS.map((point) => (
-                  <div key={point.name} className={styles.point}>
+                  <div key={point.name} className={styles.point} data-testid="halloween-judge-point">
                     <span aria-hidden="true">{point.icon}</span>
                     <span>
                       <b>{point.name}</b>：{point.text}
