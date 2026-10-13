@@ -47,6 +47,9 @@ The prompt is given with line numbers ("L<number>: <text>"). Return:
 3. listCount: how many SEPARATE lists of candidates the prompt asks to pick from.
    Count lists of different kinds separately (e.g. a list of jobs and a list of places = 2).
    Several lines that together form one list of the same kind count as 1. Return 0 if there is no list.
+4. asksAiToJudge: true if the prompt lists options but asks the image AI to choose the best / most suitable one
+   by its own judgment (e.g. "choose the one that suits the character best"), or presents the options only as
+   examples it may go beyond (e.g. "not limited to these"). false if it asks to pick at random, or if there is no list.
 
 If the prompt has no list of candidates to choose from, return empty arrays.`;
 
@@ -57,8 +60,9 @@ export const GACHA_SPLIT_JSON_SCHEMA = {
     removeLines: { type: "array", items: { type: "integer" } },
     candidates: { type: "array", items: { type: "string" } },
     listCount: { type: "integer" },
+    asksAiToJudge: { type: "boolean" },
   },
-  required: ["removeLines", "candidates", "listCount"],
+  required: ["removeLines", "candidates", "listCount", "asksAiToJudge"],
   additionalProperties: false,
 } as const;
 
@@ -75,6 +79,8 @@ export interface GachaSplitModelOutput {
   candidates: unknown;
   /** 候補の一覧(ガチャの要素)がいくつあるか。2つ以上なら、1つの囲みには分けない */
   listCount?: unknown;
+  /** 候補の並びはあるが、AI に「似合うもの」を判断して選ばせる書き方(例として並べただけ)か */
+  asksAiToJudge?: unknown;
 }
 
 export type GachaSplitResult =
@@ -92,6 +98,7 @@ export type GachaSplitResult =
       ok: false;
       reason:
         | "no_candidates"
+        | "asks_ai_to_judge"
         | "too_many_blocks"
         | "too_many_candidates"
         | "empty_body"
@@ -218,6 +225,9 @@ export function applyGachaSplit(
   }
 
   if (kept.length < GACHA_MIN_CANDIDATES) {
+    // 並びはあるのに「似合うものを選ぶ」書き方のときだけ、ランダムの書き方を案内する(2026-10-13 ユーザー決定)。
+    // それ以外は今までどおり「具体的な名前で2つ以上」の案内
+    if (output.asksAiToJudge === true) return { ok: false, reason: "asks_ai_to_judge" };
     return { ok: false, reason: "no_candidates" };
   }
   // 上限を超える候補は、勝手に削らずに分けない(どれを残すかは書いた人が決める)。ペルコインは使わない

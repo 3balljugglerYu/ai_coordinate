@@ -132,6 +132,7 @@ describe("GachaSplitTool", () => {
   test.each([
     ["GACHA_SPLIT_INSUFFICIENT_BALANCE", 400, "gachaSplitInsufficient"],
     ["GACHA_SPLIT_NOT_SPLITTABLE", 422, "gachaSplitNotSplittable"],
+    ["GACHA_SPLIT_ASKS_AI_TO_JUDGE", 422, "gachaSplitAsksAiToJudge"],
     ["GACHA_SPLIT_TOO_MANY_CANDIDATES", 422, "gachaSplitTooMany"],
     ["GACHA_SPLIT_TOO_MANY_BLOCKS", 422, "gachaSplitTooManyBlocks"],
     ["GACHA_SPLIT_FAILED", 502, "gachaSplitFailed"],

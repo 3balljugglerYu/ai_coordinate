@@ -1597,6 +1597,7 @@ export const deMessages = {
     gachaSplitPending: "Wird aufgeteilt…",
     gachaSplitInsufficient: "Nicht genug Percoins ({cost} Percoins erforderlich).",
     gachaSplitNotSplittable: "Aufteilen nicht möglich, da die Gacha-Einträge nicht als mindestens 2 konkrete Namen dastehen. Es wurden keine Percoins verbraucht. Ergänze Gacha-Einträge wie „z. B. Ärztin, Konditor, Detektiv“ oder „z. B. Rutsche, Schaukel, Reck“, dann klappt das Aufteilen.",
+    gachaSplitAsksAiToJudge: "Das Gacha konnte nicht erstellt werden, weil der Prompt die KI nach eigenem Urteil wählen lässt, etwa „wähle das, was am besten passt“ oder „nicht darauf beschränkt“. Es wurden keine Percoins verwendet. Wenn jedes Mal zufällig gewählt werden soll, schreibe „wähle zufällig eines der folgenden“ und beschränke die Kandidaten auf höchstens {max}.",
     gachaSplitTooMany: "Konnte nicht aufgeteilt werden, da mehr als {max} Gacha-Einträge aufgeführt sind. Es wurden keine Percoins verwendet. Reduziere die Gacha-Einträge auf höchstens {max}, dann klappt das Aufteilen.",
     gachaSplitTooManyBlocks: "Das Gacha konnte nicht erstellt werden, da es 2 oder mehr Dinge gibt, die du zu einem Gacha machen möchtest, etwa Beruf und Ort. Es wurden keine Percoins verwendet. Derzeit kann ein Prompt höchstens {blocks} Gacha enthalten (Unterstützung für 2 oder mehr ist geplant). Beschränke dich auf {blocks} und versuche es erneut.",
     gachaSplitFailed: "Aufteilen fehlgeschlagen. Bitte versuche es später erneut. Es wurden keine Percoins verbraucht.",
