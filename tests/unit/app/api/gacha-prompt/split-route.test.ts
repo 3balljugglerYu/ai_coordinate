@@ -141,6 +141,30 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(deductFn).not.toHaveBeenCalled();
   });
 
+  test("当てはまる理由をすべて reasons で返す(画面の箇条書き用)", async () => {
+    const many = Array.from({ length: 16 }, (_, i) => `髪型${i + 1}`);
+    const prompt = `似合う髪型を選ぶ。\n${many.join("、")}など。`;
+    const { deps, deductFn } = setup({
+      callModelFn: (async () => ({
+        asksAiToJudge: true,
+        removeLines: [],
+        candidates: many,
+        listCount: 1,
+      })) as never,
+    });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt }), deps);
+    const body = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(body.errorCode).toBe("GACHA_SPLIT_ASKS_AI_TO_JUDGE");
+    expect(body.reasons).toEqual([
+      { kind: "asks_ai_to_judge" },
+      { kind: "too_many_candidates", count: 16 },
+    ]);
+    expect(deductFn).not.toHaveBeenCalled();
+  });
+
   test("分けられなかったときは理由と数だけを記録し、本文は記録しない", async () => {
     const prompt = "似合う髪型を選ぶ。\nショート、ボブなど。これらに限定しない。";
     const info = jest.spyOn(console, "info").mockImplementation(() => undefined);

@@ -88,6 +88,16 @@ export interface GachaSplitModelOutput {
   asksAiToJudge?: unknown;
 }
 
+/**
+ * 分けられなかった理由の1つ。当てはまるものをすべて画面に箇条書きで出す(2026-10-13 ユーザー決定)。
+ * no_candidates は、ほかのどれにも当てはまらないときだけ出す。
+ */
+export type GachaSplitIssue =
+  | { kind: "too_many_blocks" }
+  | { kind: "asks_ai_to_judge" }
+  | { kind: "too_many_candidates"; count: number }
+  | { kind: "no_candidates" };
+
 export type GachaSplitResult =
   | {
       ok: true;
@@ -108,6 +118,8 @@ export type GachaSplitResult =
         | "too_many_candidates"
         | "empty_body"
         | "invalid_output";
+      /** 当てはまる理由すべて(先頭が reason)。empty_body / invalid_output のときは無い */
+      issues?: GachaSplitIssue[];
     };
 
 const LEADING_MARK_PATTERN = /^\s*(?:\d+\s*[.．、)）]|[・•\-*])\s*/;
@@ -209,17 +221,21 @@ export function applyGachaSplit(
   // 一覧が2つ以上(職業と場所など)あるプロンプトは、1つの囲みにまとめると「どちらか1つ」が
   // 選ばれてしまう。混ぜずに分けない(2026-10-05 ユーザー指示)。この道具が作る囲みは1つだけ
   const { listCount } = output;
-  if (typeof listCount === "number" && Number.isInteger(listCount) && listCount >= 2) {
-    return { ok: false, reason: "too_many_blocks" };
-  }
+  const manyLists =
+    typeof listCount === "number" && Number.isInteger(listCount) && listCount >= 2;
 
   const removedSource = normalizeForMatch(
     lines.filter((_, index) => removed.has(index + 1)).join("\n"),
   );
+  const wholeSource = normalizeForMatch(original);
   const kept: string[] = [];
   const seen = new Set<string>();
+  // 本文のどこかに書かれている候補(消す行に無くても数える)。「上限を超えています(◯個)」の案内に使う
+  const listed = new Set<string>();
   for (const value of candidates) {
     if (typeof value !== "string") return { ok: false, reason: "invalid_output" };
+    const anywhere = resolveCandidateText(value, wholeSource);
+    if (anywhere) listed.add(normalizeForMatch(anywhere));
     // 候補欄では1行=1候補なので、改行は空白にそろえる
     const text = resolveCandidateText(value, removedSource);
     if (!text) continue;
@@ -229,16 +245,22 @@ export function applyGachaSplit(
     kept.push(text);
   }
 
-  if (kept.length < GACHA_MIN_CANDIDATES) {
-    // 並びはあるのに「似合うものを選ぶ」書き方のときだけ、ランダムの書き方を案内する(2026-10-13 ユーザー決定)。
-    // それ以外は今までどおり「具体的な名前で2つ以上」の案内
-    if (output.asksAiToJudge === true) return { ok: false, reason: "asks_ai_to_judge" };
-    return { ok: false, reason: "no_candidates" };
+  // 分けられない理由を、当てはまるものすべて集める(画面で箇条書きにする)
+  const issues: GachaSplitIssue[] = [];
+  if (manyLists) issues.push({ kind: "too_many_blocks" });
+  const enoughCandidates = kept.length >= GACHA_MIN_CANDIDATES;
+  // 並びはあるのに「似合うものを選ぶ」書き方なら、ランダムの書き方を案内する。
+  // 候補が取れて分けられるときは、今までどおり分ける
+  if (output.asksAiToJudge === true && (manyLists || !enoughCandidates)) {
+    issues.push({ kind: "asks_ai_to_judge" });
   }
   // 上限を超える候補は、勝手に削らずに分けない(どれを残すかは書いた人が決める)。ペルコインは使わない
-  if (limits.maxCandidates !== null && kept.length > limits.maxCandidates) {
-    return { ok: false, reason: "too_many_candidates" };
+  const count = enoughCandidates && !manyLists ? kept.length : Math.max(kept.length, listed.size);
+  if (limits.maxCandidates !== null && count > limits.maxCandidates) {
+    issues.push({ kind: "too_many_candidates", count });
   }
+  if (issues.length === 0 && !enoughCandidates) issues.push({ kind: "no_candidates" });
+  if (issues.length > 0) return { ok: false, reason: issues[0].kind, issues };
 
   const body = joinKeptLines(lines, removed);
   if (!body) return { ok: false, reason: "empty_body" };
