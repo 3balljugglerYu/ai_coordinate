@@ -48,7 +48,7 @@ interface JoinStep {
   hashtag?: boolean;
 }
 
-// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う(手順3は画像だけ差し替えた版)。枠の位置は画像に対する割合(%)。
+// 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う(手順3は画像、手順4はプロンプトの文だけ差し替えた版)。枠の位置は画像に対する割合(%)。
 const GUIDE_IMG = "/guide/gacha";
 
 const STEPS: readonly JoinStep[] = [
@@ -94,8 +94,8 @@ const STEPS: readonly JoinStep[] = [
     title: "ハロウィンのプロンプトを書く",
     text: "「生成したい内容」に、ハロウィンの衣装・ポーズ・背景などを自由に書きます。「ガチャプロンプトにする」はオフのままにしてください。",
     shot: {
-      src: `${GUIDE_IMG}/step-3-toggle.jpg`,
-      alt: "生成したい内容の欄と、その下のガチャプロンプトにするのチェック(オフ)",
+      src: "/campaigns/halloween-best-shot/join-4-prompt.jpg",
+      alt: "生成したい内容の欄にハロウィンの衣装のプロンプトが入っていて、その下のガチャプロンプトにするのチェックはオフ",
       width: 780,
       height: 460,
       rings: [{ left: 9.5, top: 18, width: 81.5, height: 52 }],
