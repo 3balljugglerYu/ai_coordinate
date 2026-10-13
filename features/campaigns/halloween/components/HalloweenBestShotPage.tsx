@@ -45,6 +45,8 @@ interface JoinStep {
     /** 画面まるごとのスクショはスマホの外枠で囲む */
     device?: boolean;
   };
+  /** 画面の赤枠の番号(1, 2, 3…)と対応させる箇条 */
+  points?: readonly string[];
   hashtag?: boolean;
 }
 
@@ -133,8 +135,29 @@ const STEPS: readonly JoinStep[] = [
   },
   {
     title: "説明とハッシュタグを付けて投稿！",
-    text: "キャプションにイラストの説明と、このハッシュタグを入れて「投稿する」をタップします。",
+    text: "投稿の画面で、次の3つをします。",
+    points: [
+      "「キャプション」に、イラストの説明とハッシュタグを入れる",
+      "「生成前の画像も表示する」にチェックを入れる",
+      "「投稿する」をタップ",
+    ],
     hashtag: true,
+    shot: {
+      src: "/campaigns/halloween-best-shot/join-8-post-form.jpg",
+      alt: "画像を投稿する画面。1 キャプションの欄、2 生成前の画像も表示するのチェック、3 投稿するのボタンを赤い枠で囲んでいる",
+      width: 780,
+      height: 992,
+      rings: [
+        { left: 3.3, top: 46.5, width: 93.4, height: 21.3 },
+        { left: 2.3, top: 87.4, width: 45, height: 5.4 },
+        { left: 75, top: 1.2, width: 21.5, height: 7.3 },
+      ],
+      callouts: [
+        { left: 88.5, top: 43, text: "1", pointer: "none" },
+        { left: 48.5, top: 86.2, text: "2", pointer: "none" },
+        { left: 66.5, top: 2.6, text: "3", pointer: "none" },
+      ],
+    },
   },
   {
     title: "完了！",
@@ -281,6 +304,18 @@ export function HalloweenBestShotPage() {
                       <h3 className={styles.stepTitle}>{step.title}</h3>
                     </div>
                     <p className={styles.stepText}>{step.text}</p>
+                    {step.points ? (
+                      <ol className={styles.stepPoints}>
+                        {step.points.map((point, pointIndex) => (
+                          <li key={point}>
+                            <span className={styles.stepPointNum} aria-hidden="true">
+                              {pointIndex + 1}
+                            </span>
+                            {point}
+                          </li>
+                        ))}
+                      </ol>
+                    ) : null}
                     {step.hashtag ? (
                       <div className={styles.hashtagRow}>
                         <span className={styles.hashtag}>{CAMPAIGN.hashtag}</span>

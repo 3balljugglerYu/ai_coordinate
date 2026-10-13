@@ -44,6 +44,9 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(within(steps[0]).getAllByTestId("shot-ring")).toHaveLength(1);
     expect(within(steps[7]).getByRole("button", { name: "コピーする" })).toBeTruthy();
     expect(within(steps[7]).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+    // 投稿の画面は、箇条の番号と同じ数だけ赤枠を付ける
+    expect(within(steps[7]).getAllByRole("listitem")).toHaveLength(3);
+    expect(within(steps[7]).getAllByTestId("shot-ring")).toHaveLength(3);
   });
 
   test("その他に、Xへのシェアと運営の応援を書く", () => {

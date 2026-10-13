@@ -547,6 +547,36 @@
   color: var(--ink-soft);
 }
 
+.stepPoints {
+  display: grid;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.stepPoints li {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* 画面の赤枠に付けた番号(AnnotatedShot の吹き出し)と同じ色 */
+.stepPointNum {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #f43f5e;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .hashtagRow {
   display: flex;
   flex-wrap: wrap;
