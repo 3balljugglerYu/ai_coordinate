@@ -120,7 +120,16 @@ const STEPS: readonly JoinStep[] = [
   },
   {
     title: "「投稿」をタップ",
-    text: "画像が大きく開いたら、「＋ 投稿」をタップします。",
+    text: "画像が大きく開いたら、上にある「＋ 投稿」をタップします。",
+    shot: {
+      src: "/campaigns/halloween-best-shot/join-7-post.jpg",
+      alt: "生成した画像を大きく開いた画面。上に並ぶボタンのうち「＋ 投稿」を赤い枠で囲んでいる",
+      width: 780,
+      height: 1515,
+      device: true,
+      rings: [{ left: 60.5, top: 0.8, width: 17.5, height: 4.6 }],
+      callouts: [{ left: 34, top: 8, text: "ここをタップ", pointer: "up-end" }],
+    },
   },
   {
     title: "説明とハッシュタグを付けて投稿！",
