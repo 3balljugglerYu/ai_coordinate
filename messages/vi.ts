@@ -1593,6 +1593,7 @@ export const viMessages = {
     gachaSplitPending: "Đang tách…",
     gachaSplitInsufficient: "Không đủ Percoin (cần {cost} Percoin).",
     gachaSplitNotSplittable: "Không thể tách vì các mục trong gacha chưa được ghi thành ít nhất 2 tên cụ thể. Không có Percoin nào bị dùng. Hãy thêm các mục trong gacha như \"ví dụ: bác sĩ, thợ làm bánh, thám tử\" hoặc \"ví dụ: cầu trượt, xích đu, xà đơn\" để có thể tách.",
+    gachaSplitAsksAiToJudge: "Không thể tạo gacha vì prompt yêu cầu AI tự đánh giá để chọn, như \"chọn kiểu hợp nhất\" hoặc \"không giới hạn ở những kiểu này\". Không có Percoin nào bị sử dụng. Nếu muốn chọn ngẫu nhiên mỗi lần, hãy viết \"chọn ngẫu nhiên 1 trong các mục sau\" và giữ tối đa {max} ứng viên.",
     gachaSplitTooMany: "Không thể tách vì có hơn {max} mục trong gacha. Không có Percoin nào bị sử dụng. Hãy giảm còn {max} mục trở xuống để có thể tách.",
     gachaSplitTooManyBlocks: "Không thể tạo gacha vì có từ 2 thứ bạn muốn biến thành gacha trở lên, như nghề nghiệp và địa điểm. Không có Percoin nào bị sử dụng. Hiện tại mỗi prompt chỉ có tối đa {blocks} gacha (dự kiến sẽ hỗ trợ từ 2 trở lên). Hãy thu gọn còn {blocks} rồi thử lại.",
     gachaSplitFailed: "Không thể tách. Vui lòng thử lại sau. Không có Percoin nào bị dùng.",

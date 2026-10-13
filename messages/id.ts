@@ -1595,6 +1595,7 @@ export const idMessages = {
     gachaSplitPending: "Sedang membagi…",
     gachaSplitInsufficient: "Percoin tidak cukup (perlu {cost} Percoin).",
     gachaSplitNotSplittable: "Tidak bisa dibagi karena isi gacha belum ditulis sebagai minimal 2 nama yang jelas. Percoin tidak terpakai. Tambahkan isi gacha seperti \"contoh: dokter, pastry chef, detektif\" atau \"contoh: perosotan, ayunan, palang tunggal\" agar bisa dibagi.",
+    gachaSplitAsksAiToJudge: "Gacha tidak dapat dibuat karena prompt meminta AI memilih berdasarkan penilaiannya sendiri, seperti \"pilih yang paling cocok\" atau \"tidak terbatas pada ini\". Tidak ada Percoin yang digunakan. Jika ingin dipilih secara acak setiap kali, tulis \"pilih satu secara acak dari berikut ini\" dan batasi kandidat hingga {max}.",
     gachaSplitTooMany: "Tidak dapat dipisahkan karena isi gacha lebih dari {max}. Tidak ada Percoin yang digunakan. Kurangi isi gacha menjadi {max} atau lebih sedikit agar bisa dipisahkan.",
     gachaSplitTooManyBlocks: "Gacha tidak dapat dibuat karena ada 2 hal atau lebih yang ingin dijadikan gacha, seperti pekerjaan dan tempat. Tidak ada Percoin yang digunakan. Untuk saat ini, satu prompt dapat berisi maksimal {blocks} gacha (dukungan untuk 2 atau lebih direncanakan). Persempit menjadi {blocks}, lalu coba lagi.",
     gachaSplitFailed: "Gagal membagi. Silakan coba lagi nanti. Percoin tidak terpakai.",

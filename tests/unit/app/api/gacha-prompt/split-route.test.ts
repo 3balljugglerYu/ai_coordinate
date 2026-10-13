@@ -123,6 +123,24 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(deductFn).not.toHaveBeenCalled();
   });
 
+  test("AIに判断して選ばせる書き方なら 422 で、引き落とさない(ランダムの書き方を伝える)", async () => {
+    const prompt = "似合う髪型を選ぶ。\nショート、ボブなど。これらに限定しない。";
+    const { deps, deductFn } = setup({
+      callModelFn: (async () => ({
+        removeLines: [],
+        candidates: [],
+        listCount: 0,
+        asksAiToJudge: true,
+      })) as never,
+    });
+
+    const response = await postGachaSplitRoute(createRequest({ prompt }), deps);
+
+    expect(response.status).toBe(422);
+    expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_ASKS_AI_TO_JUDGE");
+    expect(deductFn).not.toHaveBeenCalled();
+  });
+
   test("運営は候補が11個以上でも分けて、5ペルコインを引き落とす", async () => {
     const many = Array.from({ length: 11 }, (_, i) => `職業${i + 1}`);
     const prompt = `職業の制服を着て働く姿。\n職業は、${many.join("、")}のどれか。`;

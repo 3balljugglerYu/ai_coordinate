@@ -1596,6 +1596,7 @@ export const frMessages = {
     gachaSplitPending: "Séparation…",
     gachaSplitInsufficient: "Percoins insuffisants ({cost} Percoins nécessaires).",
     gachaSplitNotSplittable: "La séparation est impossible, car les éléments du gacha ne sont pas écrits sous forme d’au moins 2 noms précis. Aucun Percoin n’a été utilisé. Ajoutez des éléments du gacha comme « ex. : médecin, pâtissier, détective » ou « ex. : toboggan, balançoire, barre fixe » pour pouvoir séparer.",
+    gachaSplitAsksAiToJudge: "Impossible de créer le gacha, car le prompt demande à l’IA de choisir selon son propre jugement, par exemple « choisis celui qui convient le mieux » ou « sans s’y limiter ». Aucun Percoin n’a été utilisé. Pour un choix aléatoire à chaque fois, écrivez « choisis-en un au hasard parmi les suivants » et gardez {max} candidats au maximum.",
     gachaSplitTooMany: "Impossible de séparer, car il y a plus de {max} éléments du gacha. Aucun Percoin n’a été utilisé. Réduisez les éléments du gacha à {max} ou moins pour pouvoir séparer.",
     gachaSplitTooManyBlocks: "Impossible de créer le gacha, car il y a 2 choses ou plus dont vous voulez faire un gacha, comme un métier et un lieu. Aucun Percoin n’a été utilisé. Pour l’instant, un prompt peut contenir au maximum {blocks} gacha (la prise en charge de 2 ou plus est prévue). Limitez-vous à {blocks}, puis réessayez.",
     gachaSplitFailed: "La séparation a échoué. Réessayez plus tard. Aucun Percoin n’a été utilisé.",

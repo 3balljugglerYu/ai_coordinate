@@ -34,6 +34,8 @@ interface Proposal {
 type ErrorKey =
   | "gachaSplitInsufficient"
   | "gachaSplitNotSplittable"
+  // 候補の並びはあるが、AI に判断して選ばせる書き方だった。ペルコインは使っていない
+  | "gachaSplitAsksAiToJudge"
   // 候補が上限を超えた。ペルコインは使っていない
   | "gachaSplitTooMany"
   // 候補の一覧(ガチャの要素)が2つ以上あった。ペルコインは使っていない
@@ -45,6 +47,7 @@ type ErrorKey =
 function errorKeyFor(errorCode: unknown): ErrorKey {
   if (errorCode === "GACHA_SPLIT_INSUFFICIENT_BALANCE") return "gachaSplitInsufficient";
   if (errorCode === "GACHA_SPLIT_NOT_SPLITTABLE") return "gachaSplitNotSplittable";
+  if (errorCode === "GACHA_SPLIT_ASKS_AI_TO_JUDGE") return "gachaSplitAsksAiToJudge";
   if (errorCode === "GACHA_SPLIT_TOO_MANY_CANDIDATES") return "gachaSplitTooMany";
   if (errorCode === "GACHA_SPLIT_TOO_MANY_BLOCKS") return "gachaSplitTooManyBlocks";
   return "gachaSplitFailed";

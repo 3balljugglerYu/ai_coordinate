@@ -145,6 +145,10 @@ export async function postGachaSplitRoute(
     if (result.reason === "too_many_blocks") {
       return jsonError("Too many gacha lists", "GACHA_SPLIT_TOO_MANY_BLOCKS", 422);
     }
+    // 「似合うものを選ぶ」書き方のときは、ランダムに選ばせる書き方を画面で伝える
+    if (result.reason === "asks_ai_to_judge") {
+      return jsonError("Asks the AI to judge", "GACHA_SPLIT_ASKS_AI_TO_JUDGE", 422);
+    }
     if (result.reason === "too_many_candidates") {
       return jsonError("Too many candidates", "GACHA_SPLIT_TOO_MANY_CANDIDATES", 422);
     }

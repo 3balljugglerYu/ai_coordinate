@@ -129,6 +129,30 @@ describe("applyGachaSplit", () => {
     ).toEqual({ ok: false, reason: "no_candidates" });
   });
 
+  test("候補が無く、AIに判断して選ばせる書き方なら asks_ai_to_judge", () => {
+    expect(
+      applyGachaSplit(ORIGINAL, { removeLines: [], candidates: [], asksAiToJudge: true }),
+    ).toEqual({ ok: false, reason: "asks_ai_to_judge" });
+  });
+
+  test("判断して選ばせる書き方でも、候補が2つ以上取れたら今までどおり分ける", () => {
+    const result = applyGachaSplit("A\n医師、探偵\nC", {
+      removeLines: [2],
+      candidates: ["医師", "探偵"],
+      asksAiToJudge: true,
+    });
+
+    expect(result.ok).toBe(true);
+  });
+
+  test("判断の印が true 以外なら、今までどおり no_candidates", () => {
+    for (const asksAiToJudge of [false, undefined, "true"]) {
+      expect(
+        applyGachaSplit(ORIGINAL, { removeLines: [], candidates: [], asksAiToJudge }),
+      ).toEqual({ ok: false, reason: "no_candidates" });
+    }
+  });
+
   test("全部の行を消すと本文が空になるので分けられない", () => {
     expect(
       applyGachaSplit("医師、探偵", {
