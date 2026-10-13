@@ -170,18 +170,57 @@
   font-weight: 700;
 }
 
-.heroPhoto {
+/* 冒頭の作例(5枚)。スマホは流れる帯、パソコンは扇形 */
+.gallery {
+  /* 冒頭の左右の余白をこえて、画面の端から端まで流す */
+  margin-inline: -16px;
+  padding: 18px 0 26px;
+  overflow: hidden;
+}
+
+.galleryTrack {
+  display: flex;
+  width: max-content;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  animation: galleryFlow 36s linear infinite;
+}
+
+.gallery:hover .galleryTrack,
+.gallery:active .galleryTrack {
+  animation-play-state: paused;
+}
+
+.galleryCard {
+  /* 間はカードの右の余白で作る(-50% 動かしたときに、2回目の先頭とぴったり重なるように) */
+  padding-right: 22px;
+  --sway: 3deg;
+}
+
+.galleryPhoto {
   position: relative;
-  justify-self: center;
   width: min(78vw, 340px);
-  /* 作例のイラスト(4:5)を切らずに見せる */
   aspect-ratio: 4 / 5;
   margin: 0;
   border-radius: 26px;
   overflow: hidden;
   border: 5px solid #fff;
-  transform: rotate(3deg);
   box-shadow: 0 16px 0 rgba(0, 0, 0, 0.2);
+  transform-origin: 50% 0;
+  animation: gallerySway 3.4s ease-in-out infinite alternate;
+  /* 1枚ずつ揺れの拍をずらす */
+  animation-delay: calc(var(--i) * -0.7s);
+}
+
+@keyframes galleryFlow {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes gallerySway {
+  from { transform: rotate(calc(var(--sway) * -1)); }
+  to { transform: rotate(var(--sway)); }
 }
 
 .heroPhotoTag {
@@ -744,8 +783,14 @@
     font-size: 17px;
   }
 
-  .heroPhoto {
-    width: 360px;
+  /* 扇を広げる幅が足りない間は、右の欄の中で流す */
+  .gallery {
+    margin-inline: 0;
+    border-radius: 26px;
+  }
+
+  .galleryPhoto {
+    width: 220px;
   }
 
   .section {
@@ -839,6 +884,53 @@
   100% { left: 130%; }
 }
 
+/* ===== 広いパソコン: 作例を扇形に広げる ===== */
+@media (min-width: 1180px) {
+  /* 扇形: 真ん中(3枚目)を前に、左右へ広げる */
+  .gallery {
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+  }
+
+  .galleryTrack {
+    position: relative;
+    width: 100%;
+    height: 400px;
+    animation: none;
+  }
+
+  .galleryCard {
+    --offset: calc(var(--i) - 2);
+    position: absolute;
+    /* 右端の1枚が画面の端で切れないよう、少し左に寄せる */
+    left: calc(50% - 20px);
+    top: 40px;
+    padding: 0;
+    width: 210px;
+    margin-left: -105px;
+    transform: translateX(calc(var(--offset) * 44px)) translateY(calc(var(--offset) * var(--offset) * 8px))
+      rotate(calc(var(--offset) * 7deg));
+    transform-origin: 50% 120%;
+    z-index: calc(10 - var(--offset) * var(--offset));
+    transition: transform 0.25s ease, z-index 0s;
+    --sway: 1.5deg;
+  }
+
+  .galleryCard[data-copy] {
+    display: none;
+  }
+
+  .galleryCard:hover {
+    z-index: 20;
+    transform: translateX(calc(var(--offset) * 44px)) translateY(-18px) rotate(calc(var(--offset) * 7deg)) scale(1.06);
+  }
+
+  .galleryPhoto {
+    width: 210px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .star,
   .floatStar,
@@ -852,9 +944,12 @@
   .titleEn,
   .magic,
   .buntingFlags,
-  .cta::after {
+  .cta::after,
+  .galleryTrack,
+  .galleryPhoto {
     animation: none !important;
   }
+
 
   .cta {
     transition: none;
@@ -865,5 +960,26 @@
     opacity: 1;
     transform: none;
     transition: none;
+  }
+}
+
+/* 動きを減らす設定で、流す形の幅のとき: 流さず、指で横にスクロールして見る(2回目の並びは出さない)。
+   扇形の幅では扇のまま止めるだけなので、ここには入れない */
+@media (prefers-reduced-motion: reduce) and (max-width: 1179px) {
+  .gallery {
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .galleryCard {
+    scroll-snap-align: center;
+  }
+
+  .galleryCard[data-copy] {
+    display: none;
+  }
+
+  .galleryCard:first-child {
+    padding-left: 16px;
   }
 }

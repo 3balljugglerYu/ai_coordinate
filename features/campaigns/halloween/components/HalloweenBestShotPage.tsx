@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/components/AnnotatedShot";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
 import { Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
+import { HeroGallery } from "./HeroGallery";
 import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
@@ -216,17 +216,7 @@ export function HalloweenBestShotPage() {
               <JoinButton />
             </div>
           </div>
-          <figure className={styles.heroPhoto}>
-            <Image
-              src="/campaigns/halloween-best-shot/hero-v2.jpg"
-              alt="ペルスタで生成したハロウィンのイラストの例"
-              fill
-              priority
-              sizes="(min-width: 860px) 360px, 78vw"
-              style={{ objectFit: "cover" }}
-            />
-            <span className={styles.heroPhotoTag}>作例</span>
-          </figure>
+          <HeroGallery />
         </div>
         <Wave className={styles.wave} />
       </header>

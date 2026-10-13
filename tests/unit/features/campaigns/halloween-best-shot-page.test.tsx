@@ -98,10 +98,15 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     svgs.forEach((svg) => expect(svg.getAttribute("aria-hidden")).toBe("true"));
   });
 
-  test("作例の画像には説明(alt)がある", () => {
+  test("冒頭の作例は5枚で、どれにも説明(alt)がある。流すための2回目の並びは読み上げない", () => {
     render(<HalloweenBestShotPage />);
     const header = screen.getByRole("banner");
-    expect(within(header).getByAltText("ペルスタで生成したハロウィンのイラストの例")).toBeTruthy();
+    const gallery = within(header).getByRole("group", { name: "ペルスタで生成したハロウィンのイラストの例" });
+    const cards = within(gallery).getAllByTestId("halloween-gallery-card");
+    expect(cards).toHaveLength(5);
+    cards.forEach((card) => expect(card.querySelector("img")?.getAttribute("alt")).not.toBe(""));
+    // 読み上げで見える画像は1回目の5枚だけ
+    expect(within(gallery).getAllByRole("img")).toHaveLength(5);
   });
 });
 
