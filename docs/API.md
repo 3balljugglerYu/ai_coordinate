@@ -916,8 +916,11 @@ POST `/api/comments/[id]/replies` の request body は `{ "content": string, "re
 | --- | --- | --- | --- |
 | POST | `/api/style-presets/favorites` | user session | プリセットをお気に入り(しおり)に追加する（冪等） |
 | DELETE | `/api/style-presets/favorites` | user session | プリセットのお気に入りを解除する（冪等） |
+| GET | `/api/style-presets/popular` | public | 「👑人気」の並び（公開中のスタイル ID を直近30日の生成数の多い順に）を返す |
 
 Request body は `{ "presetId": "uuid" }`。Same-Origin `Origin` 検証 + セッション必須で、`style_preset_favorites` に RLS（本人行のみ）で書き込む。初期のお気に入り集合は `/style` の RSC（StylePageBody / CachedHomeStylePresetSection）がサーバー側で供給するため、GET は提供しない。
+
+`/api/style-presets/popular` は `{ "presetIds": ["uuid", ...] }` を返す（生成数が1以上のものだけ。同数は公開一覧の並び）。生成数そのものは返さない。生成数の元（`style_usage_events`）は RLS 全拒否・集計 RPC は service_role 専用でアプリから読めないため、Flutter アプリの「👑人気」タブ用に並びだけを公開する。
 
 ### tutorial
 
