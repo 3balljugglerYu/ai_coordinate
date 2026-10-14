@@ -138,6 +138,84 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
   return out;
 }
 
+/**
+ * 通知に添える画像の出どころ。
+ * - 投稿への反応(いいね・コメント・プロンプト/スタイルの利用投稿・利用数の節目)は、その投稿
+ * - フォローは、フォローした人のアイコン
+ * - 生成の完了は、できた画像(失敗した時は無し)
+ * 運営の措置・ペルコインなどには付けない(措置の対象画像を再び見せないため)。
+ */
+export type PushImageSource =
+  | { kind: "post"; postId: string }
+  | { kind: "comment"; commentId: string }
+  | { kind: "avatar"; userId: string }
+  | { kind: "generation"; imageJobId: string };
+
+const POST_IMAGE_NOTIFICATION_TYPES = new Set([
+  "like",
+  "comment",
+  "derived_post_published",
+  "style_preset_post_published",
+  "creator_looks_post_published",
+  "derived_usage_milestone",
+]);
+
+export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
+  if (row.category === "generation") {
+    const jobId = row.data?.image_job_id;
+    return row.data?.status === "succeeded" && typeof jobId === "string" && jobId
+      ? { kind: "generation", imageJobId: jobId }
+      : null;
+  }
+
+  const type = row.notification_type;
+  if (type === "follow") {
+    return row.notification_actor_id
+      ? { kind: "avatar", userId: row.notification_actor_id }
+      : null;
+  }
+  if (!type || !POST_IMAGE_NOTIFICATION_TYPES.has(type)) return null;
+
+  const entityId = row.notification_entity_id;
+  if (!entityId) return null;
+  if (row.notification_entity_type === "post") {
+    return { kind: "post", postId: entityId };
+  }
+  if (row.notification_entity_type === "comment") {
+    const imageId = row.notification_data?.image_id;
+    return typeof imageId === "string" && imageId
+      ? { kind: "post", postId: imageId }
+      : { kind: "comment", commentId: entityId };
+  }
+  return null;
+}
+
+/**
+ * 投稿画像の小さい版の公開 URL(Web の getPostThumbUrl と同じ順:
+ * storage_path_thumb → image_url → storage_path)。
+ */
+export function postThumbUrl(
+  supabaseUrl: string,
+  post: {
+    storage_path_thumb?: string | null;
+    storage_path?: string | null;
+    image_url?: string | null;
+  },
+): string | null {
+  const base = supabaseUrl.replace(/\/+$/, "");
+  const fromPath = (path: string) =>
+    `${base}/storage/v1/object/public/generated-images/${path.replace(/^\/+/, "")}`;
+  if (post.storage_path_thumb) return fromPath(post.storage_path_thumb);
+  if (post.image_url) return post.image_url;
+  if (post.storage_path) return fromPath(post.storage_path);
+  return null;
+}
+
+/** 端末が取りに行ける URL だけを使う(相対パスや空文字は付けない) */
+export function usableImageUrl(url: string | null | undefined): string | null {
+  return typeof url === "string" && /^https:\/\//i.test(url.trim()) ? url.trim() : null;
+}
+
 export interface FcmMessageInput {
   token: string;
   title: string;
@@ -146,12 +224,19 @@ export interface FcmMessageInput {
   category: string;
   collapseKey: string | null;
   badge: number | null;
+  /** 通知に添える画像(https のみ)。無ければ文字だけの通知 */
+  imageUrl?: string | null;
 }
 
 /** FCM HTTP v1 の message。Android はチャンネル=種類、iOS は未読数のバッジ */
 export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown> {
   const notification: Record<string, string> = { title: input.title };
   if (input.body) notification.body = input.body;
+  const imageUrl = usableImageUrl(input.imageUrl);
+  // Android は FCM がそのまま大きな画像つきで出す。iOS はアプリの
+  // Notification Service Extension が画像を取ってきて添える(mutable-content と
+  // fcm_options.image が要る)
+  if (imageUrl) notification.image = imageUrl;
 
   const androidNotification: Record<string, unknown> = {
     channel_id: input.category,
@@ -168,6 +253,9 @@ export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown>
   if (input.badge !== null && input.badge >= 0) {
     aps.badge = input.badge;
   }
+  if (imageUrl) {
+    aps["mutable-content"] = 1;
+  }
 
   const apnsHeaders: Record<string, string> = { "apns-priority": "10" };
   if (input.collapseKey) {
@@ -183,12 +271,18 @@ export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown>
     android.collapse_key = input.collapseKey;
   }
 
+  const apns: Record<string, unknown> = { headers: apnsHeaders, payload: { aps } };
+  if (imageUrl) {
+    apns.fcm_options = { image: imageUrl };
+  }
+
   return {
     token: input.token,
     notification,
-    data: input.data,
+    // アプリを開いている時はアプリが自分で通知を出すので、画像の URL も渡す
+    data: imageUrl ? { ...input.data, image_url: imageUrl } : input.data,
     android,
-    apns: { headers: apnsHeaders, payload: { aps } },
+    apns,
   };
 }
 

@@ -15,6 +15,8 @@ import {
   type FcmOutcome,
   groupRows,
   type PushGroup,
+  pushImageSourceFor,
+  type PushImageSource,
   resolveText,
   summarizeOutcomes,
 } from "./messages.ts";
@@ -59,6 +61,8 @@ export interface PushStore {
   /** その投稿への未読のいいね数。取れなければ null */
   unreadLikeCount(userId: string, entityId: string): Promise<number | null>;
   nickname(userId: string): Promise<string | null>;
+  /** 通知に添える画像の URL。無い・取れなければ null */
+  imageUrl(source: PushImageSource): Promise<string | null>;
   /** もう使えないトークンの行を消す。消した行数を返す */
   removeTokens(tokens: string[]): Promise<{ removed: number; error: string | null }>;
 }
@@ -264,6 +268,7 @@ async function processRows(
       const likeTitle = await resolveLikeTitle(store, group);
       const { title, body } = resolveText(group.latest, likeTitle);
       const data = buildDataPayload(group.latest);
+      const imageUrl = await resolveImageUrl(store, group.latest);
 
       for (const device of devicesByUser.get(group.recipientId) ?? []) {
         const message = buildFcmMessage({
@@ -274,6 +279,7 @@ async function processRows(
           category: group.category,
           collapseKey: group.collapseKey,
           badge: badges.get(group.recipientId) ?? null,
+          imageUrl,
         });
         const outcome = await sender.send(accessToken, message);
         if (outcome.kind === "invalid_token") invalidTokens.add(device.token);
@@ -318,4 +324,19 @@ async function resolveLikeTitle(store: PushStore, group: PushGroup): Promise<str
     ? await store.nickname(row.notification_actor_id)
     : null;
   return buildLikeTitle(nickname, count);
+}
+
+/**
+ * 通知に添える画像。画像は飾りなので、取れなくても文字だけで送る
+ * (ここで失敗して通知そのものが遅れたり届かなかったりしないように)。
+ */
+async function resolveImageUrl(store: PushStore, row: ClaimedRow): Promise<string | null> {
+  const source = pushImageSourceFor(row);
+  if (!source) return null;
+  try {
+    return await store.imageUrl(source);
+  } catch (e) {
+    console.error("[send-push] image lookup failed:", errorMessage(e));
+    return null;
+  }
 }
