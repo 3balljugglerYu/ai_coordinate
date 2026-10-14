@@ -12,6 +12,8 @@ import { RevealOnScroll } from "./RevealOnScroll";
  * ハロウィン企画「うちの子のベストショット with Halloween Magic」のページ(2026-10-12)。
  * 見た目は見本(今/変更後)でユーザーが確認済み。参加は CREATE でプロンプトを作って投稿。
  * 2026-10-14: 応募作を使って投稿する人(つかう人)の賞と手順を追加。参加方法はタブで分ける。
+ * 2026-10-14: 審査があるのはつくる人の賞だけなので、審査のポイントは独立した区画をやめて
+ * 参加方法の「つくる人」タブの中(手順の下)に置く。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -281,6 +283,26 @@ function PrizeList({ prizes, testId }: { prizes: readonly Prize[]; testId: strin
   );
 }
 
+function JudgePoints() {
+  return (
+    <div className={styles.judge}>
+      <h3 className={styles.judgeTitle}>
+        <span aria-hidden="true">🏆</span> 審査のポイント
+      </h3>
+      <div className={styles.points}>
+        {JUDGE_POINTS.map((point) => (
+          <div key={point.name} className={styles.point} data-testid="halloween-judge-point">
+            <span aria-hidden="true">{point.icon}</span>
+            <span>
+              <b>{point.name}</b>：{point.text}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function TicketTable() {
   return (
     <ul className={styles.tickets} data-testid="halloween-tickets">
@@ -476,6 +498,7 @@ export function HalloweenBestShotPage() {
                         <StepList steps={CREATOR_STEPS} role="creator" />
                         <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
                         <p className={styles.note}>※ ガチャプロンプトは対象外です</p>
+                        <JudgePoints />
                       </>
                     ),
                   },
@@ -498,26 +521,6 @@ export function HalloweenBestShotPage() {
                   },
                 ]}
               />
-            </RevealOnScroll>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="hbs-point">
-          <div className={styles.wrap}>
-            <div id="hbs-point">
-              <Ribbon en="POINT">審査のポイント</Ribbon>
-            </div>
-            <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-              <div className={styles.points}>
-                {JUDGE_POINTS.map((point) => (
-                  <div key={point.name} className={styles.point} data-testid="halloween-judge-point">
-                    <span aria-hidden="true">{point.icon}</span>
-                    <span>
-                      <b>{point.name}</b>：{point.text}
-                    </span>
-                  </div>
-                ))}
-              </div>
             </RevealOnScroll>
           </div>
         </section>
