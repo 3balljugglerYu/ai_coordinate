@@ -1,7 +1,7 @@
 /**
  * @jest-environment jsdom
  */
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { HalloweenBestShotPage } from "@/features/campaigns/halloween/components/HalloweenBestShotPage";
 import { RevealOnScroll } from "@/features/campaigns/halloween/components/RevealOnScroll";
 import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
@@ -31,15 +31,72 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     links.forEach((link) => expect(link.getAttribute("href")).toBe("/free"));
   });
 
+  test("応募作をつかうボタンは、ハッシュタグの検索へ行く(冒頭と締めの2か所)", () => {
+    render(<HalloweenBestShotPage />);
+    const links = screen.getAllByRole("link", { name: /応募作をつかう/ });
+    expect(links).toHaveLength(2);
+    links.forEach((link) =>
+      expect(link.getAttribute("href")).toBe(`/search?q=${encodeURIComponent("#うちの子のベストショット")}`),
+    );
+  });
+
+  test("企画についてで、つくる人とつかう人の2つの参加のしかたを書く", () => {
+    render(<HalloweenBestShotPage />);
+    const roles = screen.getAllByTestId("halloween-about-role").map((role) => role.textContent);
+    expect(roles).toEqual([expect.stringContaining("つくる人"), expect.stringContaining("つかう人")]);
+    expect(roles[0]).toContain("審査");
+    expect(roles[1]).toContain("抽選");
+  });
+
   test("企画についての「利用特典について」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
     render(<HalloweenBestShotPage />);
     const link = screen.getByRole("link", { name: "利用特典について" });
     expect(link.getAttribute("href")).toBe("/use-prompts");
   });
 
-  test("参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
+  test("参加方法は「つくる人」「つかう人」のタブで、最初はつくる人を出す", () => {
     render(<HalloweenBestShotPage />);
-    const steps = screen.getAllByTestId("halloween-join-step");
+    const creatorTab = screen.getByRole("tab", { name: /つくる人/ });
+    const userTab = screen.getByRole("tab", { name: /つかう人/ });
+    expect(creatorTab.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: /つくる人/ })).toBeTruthy();
+    expect(screen.queryByRole("tabpanel", { name: /つかう人/ })).toBeNull();
+
+    fireEvent.click(userTab);
+    expect(userTab.getAttribute("aria-selected")).toBe("true");
+    expect(creatorTab.getAttribute("aria-selected")).toBe("false");
+    expect(screen.getByRole("tabpanel", { name: /つかう人/ })).toBeTruthy();
+    expect(screen.queryByRole("tabpanel", { name: /つくる人/ })).toBeNull();
+  });
+
+  test("タブは左右の矢印キーでも切り替えられる", () => {
+    render(<HalloweenBestShotPage />);
+    const creatorTab = screen.getByRole("tab", { name: /つくる人/ });
+    fireEvent.keyDown(creatorTab, { key: "ArrowRight" });
+    const userTab = screen.getByRole("tab", { name: /つかう人/ });
+    expect(userTab.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(userTab);
+    fireEvent.keyDown(userTab, { key: "ArrowRight" });
+    expect(creatorTab.getAttribute("aria-selected")).toBe("true");
+  });
+
+  test("つかう人の手順は6つで、応募作をさがす入口と口数の表がある", () => {
+    render(<HalloweenBestShotPage />);
+    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    const steps = screen.getAllByTestId("halloween-join-step-user");
+    expect(steps).toHaveLength(6);
+    const entries = within(steps[0]).getByRole("link", { name: /応募作を見る/ });
+    expect(entries.getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
+    expect(within(steps[1]).getAllByTestId("shot-ring")).toHaveLength(1);
+    expect(within(steps[5]).getByTestId("halloween-tickets").textContent).toBe("3作品▶1口6作品▶2口10作品▶3口");
+    const panel = screen.getByRole("tabpanel", { name: /つかう人/ });
+    expect(panel.textContent).toContain("自分の応募作を使った投稿は数えません");
+    expect(panel.textContent).toContain("何回使っても1作品");
+  });
+
+  test("つくる人の参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
+    render(<HalloweenBestShotPage />);
+    const steps = screen.getAllByTestId("halloween-join-step-creator");
     expect(steps).toHaveLength(9);
     expect(within(steps[0]).getAllByTestId("shot-ring")).toHaveLength(1);
     expect(within(steps[7]).getByRole("button", { name: "コピーする" })).toBeTruthy();
@@ -49,12 +106,12 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(within(steps[7]).getAllByTestId("shot-ring")).toHaveLength(3);
   });
 
-  test("審査のポイントは4つ(安定性・ハロウィンらしさ・うちの子らしさ・使ってみたくなる魅力)", () => {
+  test("審査のポイントは3つ(ハロウィンらしさ・うちの子らしさ・使ってみたくなる魅力。安定性は 10/14 に削除)", () => {
     render(<HalloweenBestShotPage />);
     const names = screen
       .getAllByTestId("halloween-judge-point")
       .map((point) => point.querySelector("b")?.textContent);
-    expect(names).toEqual(["安定性", "ハロウィンらしさ", "うちの子らしさ", "使ってみたくなる魅力"]);
+    expect(names).toEqual(["ハロウィンらしさ", "うちの子らしさ", "使ってみたくなる魅力"]);
   });
 
   test("その他に、Xへのシェアと運営の応援を書く", () => {
@@ -70,6 +127,14 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     render(<HalloweenBestShotPage />);
     const prizes = screen.getAllByTestId("halloween-prize").map((node) => node.textContent);
     expect(prizes).toEqual(["🏆最優秀賞10,000円分1名様", "🎖️優秀賞5,000円分2名様"]);
+  });
+
+  test("つかう人の賞(抽選): Amazonギフト券 1,000円分 10名様／ペルコイン 300枚 30名様。両方には当選しない", () => {
+    render(<HalloweenBestShotPage />);
+    const prizes = screen.getAllByTestId("halloween-user-prize").map((node) => node.textContent);
+    expect(prizes).toEqual(["🎁Amazonギフト券1,000円分10名様", "🪙ペルコイン300枚30名様"]);
+    expect(screen.getByText("※ つくる人の賞とつかう人の賞の、両方には当選しません")).toBeTruthy();
+    expect(document.body.textContent).toContain("Amazonギフト券 総額3万円");
   });
 
   test("セクションの見出しは文字のまま(読み上げ・翻訳のため画像にしない)", () => {

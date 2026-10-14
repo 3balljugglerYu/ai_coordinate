@@ -5,11 +5,13 @@ import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
 import { Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
+import { JoinTabs } from "./JoinTabs";
 import { RevealOnScroll } from "./RevealOnScroll";
 
 /**
  * ハロウィン企画「うちの子のベストショット with Halloween Magic」のページ(2026-10-12)。
  * 見た目は見本(今/変更後)でユーザーが確認済み。参加は CREATE でプロンプトを作って投稿。
+ * 2026-10-14: 応募作を使って投稿する人(つかう人)の賞と手順を追加。参加方法はタブで分ける。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -21,14 +23,22 @@ function Ribbon({ en, children }: { en: string; children: string }) {
   );
 }
 
-function JoinButton() {
+function JoinButtons() {
   return (
-    <Link className={styles.cta} href={CAMPAIGN.joinHref}>
-      CREATEで参加する
-      <span className={styles.ctaArrow} aria-hidden="true">
-        →
-      </span>
-    </Link>
+    <div className={styles.ctaRow}>
+      <Link className={styles.cta} href={CAMPAIGN.joinHref}>
+        CREATEで参加する
+        <span className={styles.ctaArrow} aria-hidden="true">
+          →
+        </span>
+      </Link>
+      <Link className={styles.ctaSub} href={CAMPAIGN.entriesHref}>
+        応募作をつかう
+        <span className={styles.ctaArrow} aria-hidden="true">
+          →
+        </span>
+      </Link>
+    </div>
   );
 }
 
@@ -48,12 +58,27 @@ interface JoinStep {
   /** 画面の赤枠の番号(1, 2, 3…)と対応させる箇条 */
   points?: readonly string[];
   hashtag?: boolean;
+  /** 応募作をさがす(ハッシュタグの検索)へのボタン */
+  entriesLink?: boolean;
+  /** 抽選の口数の表 */
+  tickets?: boolean;
 }
 
 // 画面のスクショはガチャの紹介ページ(/guide/gacha)の実画面を使う(手順3は画像、手順4はプロンプトの文、手順5はモデル名だけ差し替えた版)。枠の位置は画像に対する割合(%)。
 const GUIDE_IMG = "/guide/gacha";
 
-const STEPS: readonly JoinStep[] = [
+const POST_SHOT: NonNullable<JoinStep["shot"]> = {
+  src: "/campaigns/halloween-best-shot/join-7-post.jpg",
+  alt: "生成した画像を大きく開いた画面。上に並ぶボタンのうち「＋ 投稿」を赤い枠で囲んでいる",
+  width: 780,
+  height: 1515,
+  device: true,
+  rings: [{ left: 60.5, top: 0.8, width: 17.5, height: 4.6 }],
+  callouts: [{ left: 34, top: 8, text: "ここをタップ", pointer: "up-end" }],
+};
+
+/** つくる人(応募作のプロンプトを作って投稿する人)の手順 */
+const CREATOR_STEPS: readonly JoinStep[] = [
   {
     title: "「カタログ」を開く",
     text: "画面の下にある「カタログ」をタップします。",
@@ -123,15 +148,7 @@ const STEPS: readonly JoinStep[] = [
   {
     title: "「投稿」をタップ",
     text: "画像が大きく開いたら、上にある「＋ 投稿」をタップします。",
-    shot: {
-      src: "/campaigns/halloween-best-shot/join-7-post.jpg",
-      alt: "生成した画像を大きく開いた画面。上に並ぶボタンのうち「＋ 投稿」を赤い枠で囲んでいる",
-      width: 780,
-      height: 1515,
-      device: true,
-      rings: [{ left: 60.5, top: 0.8, width: 17.5, height: 4.6 }],
-      callouts: [{ left: 34, top: 8, text: "ここをタップ", pointer: "up-end" }],
-    },
+    shot: POST_SHOT,
   },
   {
     title: "説明とハッシュタグを付けて投稿！",
@@ -165,8 +182,65 @@ const STEPS: readonly JoinStep[] = [
   },
 ];
 
+// つかう人の画面は、プロンプト利用の案内(/use-prompts)の実画面を使う。
+const USE_IMG = "/use-prompts";
+
+/** つかう人(応募作のプロンプトで生成して投稿する人)の手順 */
+const USER_STEPS: readonly JoinStep[] = [
+  {
+    title: "応募作をさがす",
+    text: `ハッシュタグ「${CAMPAIGN.hashtag}」の付いた投稿が応募作です。下の「応募作を見る」から、まとめて見られます。`,
+    entriesLink: true,
+  },
+  {
+    title: "「このカタログで生成する」をタップ",
+    text: "使いたい応募作の下にあるボタンをタップします。フォローしていない人の応募作では「フォローして生成する」と出るので、そのままタップすればOKです。",
+    shot: {
+      src: `${USE_IMG}/step2-sub.webp`,
+      alt: "応募作の下に出る「このプロンプトで生成してみる」の枠。「フォローして生成する」のボタンを赤い枠で囲んでいる",
+      width: 640,
+      height: 495,
+      rings: [{ left: 5.5, top: 63, width: 47, height: 12.5 }],
+      callouts: [{ left: 56, top: 66, text: "ここをタップ", pointer: "none" }],
+    },
+  },
+  {
+    title: "うちの子の画像を入れて生成",
+    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある応募作なら、好きな文字も入れられます。",
+    shot: {
+      src: `${USE_IMG}/step3-sub.webp`,
+      alt: "生成の画面。人物画像をアップロードする欄に、うちの子の画像が入っている",
+      width: 560,
+      height: 921,
+      rings: [{ left: 4, top: 6.5, width: 92, height: 34 }],
+      callouts: [{ left: 50, top: 1, text: "うちの子の画像", pointer: "down" }],
+    },
+  },
+  {
+    title: "できあがったら「投稿」をタップ",
+    text: "サムネイルをタップして画像を開き、上にある「＋ 投稿」をタップします。",
+    shot: POST_SHOT,
+  },
+  {
+    title: "投稿してペルコインもGET！",
+    text: "キャプションは自由に書いてOK。応募作から生成した投稿は、ハッシュタグを付けなくても自動で数えます。その日はじめてプロンプトを使って投稿すると、ミッションのペルコインも届きます。",
+    shot: {
+      src: `${USE_IMG}/step4-sub.webp`,
+      alt: "投稿したあとに出る「ミッションクリア！ プロンプトを利用して投稿！ ＋20ペルコイン」のお知らせ",
+      width: 640,
+      height: 390,
+      rings: [],
+      callouts: [],
+    },
+  },
+  {
+    title: "ちがう応募作で、口数アップ！",
+    text: "ちがう応募作を使って投稿するほど、抽選の口数が増えます(最大3口)。",
+    tickets: true,
+  },
+];
+
 const JUDGE_POINTS = [
-  { icon: "✨", name: "安定性", text: "だれの子で生成しても、イメージどおりの雰囲気や構図を再現できるか" },
   { icon: "🎃", name: "ハロウィンらしさ", text: "ひと目でハロウィンの世界観や魅力が伝わるか" },
   { icon: "💖", name: "うちの子らしさ", text: "その子ならではの魅力が輝く「ベストショット」になっているか" },
   {
@@ -180,6 +254,107 @@ const MORE_TIPS = [
   { icon: "📣", text: "Xにシェアすると、あなたのプロンプトを使ってくれる人が増えるかも！？" },
   { icon: "💖", text: "運営も「いいね」などで応援します！" },
 ] as const;
+
+type Prize = (typeof CAMPAIGN.prizes)[number] | (typeof CAMPAIGN.userPrizes)[number];
+
+function PrizeList({ prizes, testId }: { prizes: readonly Prize[]; testId: string }) {
+  return (
+    <div className={styles.prizes}>
+      {prizes.map((prize) => (
+        <div
+          key={prize.rank}
+          className={`${styles.prize} ${prize.tone === "gold" ? styles.prizeGold : styles.prizeSilver}`}
+          data-testid={testId}
+        >
+          <span className={styles.medal} aria-hidden="true">
+            {prize.medal}
+          </span>
+          <div className={styles.prizeName}>{prize.rank}</div>
+          <div className={styles.prizeAmount}>
+            {prize.amount}
+            <small>{prize.unit}</small>
+          </div>
+          <span className={styles.prizeWho}>{prize.winners}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TicketTable() {
+  return (
+    <ul className={styles.tickets} data-testid="halloween-tickets">
+      {CAMPAIGN.tickets.map((row) => (
+        <li key={row.tickets} className={styles.ticket}>
+          <span className={styles.ticketWorks}>
+            <b className={styles.en}>{row.works}</b>作品
+          </span>
+          <span className={styles.ticketArrow} aria-hidden="true">
+            ▶
+          </span>
+          <span className={styles.ticketCount}>
+            <b className={styles.en}>{row.tickets}</b>口
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function StepList({ steps, role }: { steps: readonly JoinStep[]; role: "creator" | "user" }) {
+  return (
+    <ol className={styles.steps}>
+      {steps.map((step, index) => (
+        <li key={step.title} className={styles.step} data-testid={`halloween-join-step-${role}`}>
+          <div className={styles.stepHead}>
+            <span className={`${styles.stepNum} ${styles.en}`} aria-hidden="true">
+              {index + 1}
+            </span>
+            <h3 className={styles.stepTitle}>{step.title}</h3>
+          </div>
+          <p className={styles.stepText}>{step.text}</p>
+          {step.points ? (
+            <ol className={styles.stepPoints}>
+              {step.points.map((point, pointIndex) => (
+                <li key={point}>
+                  <span className={styles.stepPointNum} aria-hidden="true">
+                    {pointIndex + 1}
+                  </span>
+                  {point}
+                </li>
+              ))}
+            </ol>
+          ) : null}
+          {step.hashtag ? (
+            <div className={styles.hashtagRow}>
+              <span className={styles.hashtag}>{CAMPAIGN.hashtag}</span>
+              <CopyHashtagButton hashtag={CAMPAIGN.hashtag} />
+            </div>
+          ) : null}
+          {step.entriesLink ? (
+            <Link className={styles.entriesLink} href={CAMPAIGN.entriesHref}>
+              応募作を見る
+              <span aria-hidden="true">→</span>
+            </Link>
+          ) : null}
+          {step.tickets ? <TicketTable /> : null}
+          {step.shot ? (
+            <AnnotatedShot
+              src={step.shot.src}
+              alt={step.shot.alt}
+              width={step.shot.width}
+              height={step.shot.height}
+              device={step.shot.device}
+              rings={step.shot.rings}
+              callouts={step.shot.callouts}
+              className={step.shot.device ? undefined : "mt-9"}
+            />
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 export function HalloweenBestShotPage() {
   return (
@@ -212,9 +387,7 @@ export function HalloweenBestShotPage() {
               </span>
               <span className={styles.periodNote}>結果発表：{CAMPAIGN.announceLabel}</span>
             </div>
-            <div>
-              <JoinButton />
-            </div>
+            <JoinButtons />
           </div>
           <HeroGallery />
         </div>
@@ -238,15 +411,33 @@ export function HalloweenBestShotPage() {
                   利用特典について
                 </Link>
               </p>
+              <p>ハロウィンをテーマに、2つの楽しみ方で参加できます！🎃</p>
+              <div className={styles.roles}>
+                <div className={`${styles.role} ${styles.roleCreator}`} data-testid="halloween-about-role">
+                  <p className={styles.roleName}>
+                    <span aria-hidden="true">🪄</span> つくる人
+                  </p>
+                  <p>
+                    だれの子で生成しても、イメージどおりに仕上がる
+                    <span className={styles.accent}>「安定したプロンプト」</span>
+                    で、あなたが思う「ベストショット」を作成し、投稿してください！
+                  </p>
+                  <p className={styles.roleGet}>審査で選ばれた方に Amazonギフト券！</p>
+                </div>
+                <div className={`${styles.role} ${styles.roleUser}`} data-testid="halloween-about-role">
+                  <p className={styles.roleName}>
+                    <span aria-hidden="true">🍬</span> つかう人
+                  </p>
+                  <p>
+                    応募されたプロンプトで、
+                    <span className={styles.highlight}>あなたの「うちの子」のハロウィン</span>
+                    を生成して投稿しよう！ちがう応募作を使うほど、抽選の口数が増えます。
+                  </p>
+                  <p className={styles.roleGet}>抽選で Amazonギフト券・ペルコイン！</p>
+                </div>
+              </div>
               <p>
-                だからこそ大切なのが、だれの子で生成しても、イメージどおりに仕上がる
-                <span className={styles.accent}>「安定したプロンプト」</span>。
-              </p>
-              <p>
-                ハロウィンをテーマに、あなたが思う「ベストショット」を生み出すプロンプトを作成し、投稿してください！🎃
-              </p>
-              <p>
-                <strong>賞に選ばれた方には、Amazonギフトカードをプレゼント！</strong>🎁
+                <strong>どちらも、賞に選ばれた方にはプレゼントがあります！</strong>🎁
               </p>
               <p>さらに、受賞作品は特設ページでもご紹介します！✨</p>
             </RevealOnScroll>
@@ -258,28 +449,25 @@ export function HalloweenBestShotPage() {
             <div id="hbs-prize">
               <Ribbon en="PRIZE">賞品</Ribbon>
             </div>
-            <RevealOnScroll className={`${styles.prizes} ${styles.reveal}`}>
-              {CAMPAIGN.prizes.map((prize) => (
-                <div
-                  key={prize.rank}
-                  className={`${styles.prize} ${prize.tone === "gold" ? styles.prizeGold : styles.prizeSilver}`}
-                  data-testid="halloween-prize"
-                >
-                  <span className={styles.medal} aria-hidden="true">
-                    {prize.medal}
-                  </span>
-                  <div className={styles.prizeName}>{prize.rank}</div>
-                  <div className={styles.prizeAmount}>
-                    {prize.amount}
-                    <small>円分</small>
-                  </div>
-                  <span className={styles.prizeWho}>{prize.winners}</span>
-                </div>
-              ))}
+            <RevealOnScroll className={styles.reveal}>
+              <h3 className={styles.prizeGroup}>
+                <span aria-hidden="true">🪄</span> つくる人の賞<small>（審査）</small>
+              </h3>
+              <PrizeList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
+              <h3 className={styles.prizeGroup}>
+                <span aria-hidden="true">🍬</span> つかう人の賞<small>（抽選）</small>
+              </h3>
+              <PrizeList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
+              <div className={styles.ticketBox}>
+                <p className={styles.ticketLead}>ちがう応募作を使うほど、当たりやすく！(最大3口)</p>
+                <TicketTable />
+              </div>
             </RevealOnScroll>
-            <p className={styles.note} style={{ textAlign: "center" }}>
-              ※ Amazonギフト券でお贈りします
-            </p>
+            <div className={styles.prizeNotes}>
+              <p className={styles.note}>※ Amazonギフト券でお贈りします</p>
+              <p className={styles.note}>※ ペルコインには有効期限があります</p>
+              <p className={styles.note}>※ つくる人の賞とつかう人の賞の、両方には当選しません</p>
+            </div>
           </div>
         </section>
 
@@ -289,51 +477,40 @@ export function HalloweenBestShotPage() {
               <Ribbon en="HOW TO JOIN">参加方法</Ribbon>
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-              <ol className={styles.steps}>
-                {STEPS.map((step, index) => (
-                  <li key={step.title} className={styles.step} data-testid="halloween-join-step">
-                    <div className={styles.stepHead}>
-                      <span className={`${styles.stepNum} ${styles.en}`} aria-hidden="true">
-                        {index + 1}
-                      </span>
-                      <h3 className={styles.stepTitle}>{step.title}</h3>
-                    </div>
-                    <p className={styles.stepText}>{step.text}</p>
-                    {step.points ? (
-                      <ol className={styles.stepPoints}>
-                        {step.points.map((point, pointIndex) => (
-                          <li key={point}>
-                            <span className={styles.stepPointNum} aria-hidden="true">
-                              {pointIndex + 1}
-                            </span>
-                            {point}
-                          </li>
-                        ))}
-                      </ol>
-                    ) : null}
-                    {step.hashtag ? (
-                      <div className={styles.hashtagRow}>
-                        <span className={styles.hashtag}>{CAMPAIGN.hashtag}</span>
-                        <CopyHashtagButton hashtag={CAMPAIGN.hashtag} />
-                      </div>
-                    ) : null}
-                    {step.shot ? (
-                      <AnnotatedShot
-                        src={step.shot.src}
-                        alt={step.shot.alt}
-                        width={step.shot.width}
-                        height={step.shot.height}
-                        device={step.shot.device}
-                        rings={step.shot.rings}
-                        callouts={step.shot.callouts}
-                        className={step.shot.device ? undefined : "mt-9"}
-                      />
-                    ) : null}
-                  </li>
-                ))}
-              </ol>
-              <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-              <p className={styles.note}>※ ガチャプロンプトは対象外です</p>
+              <JoinTabs
+                tabs={[
+                  {
+                    key: "creator",
+                    icon: "🪄",
+                    label: "つくる人",
+                    sub: "プロンプトを応募",
+                    panel: (
+                      <>
+                        <StepList steps={CREATOR_STEPS} role="creator" />
+                        <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                        <p className={styles.note}>※ ガチャプロンプトは対象外です</p>
+                      </>
+                    ),
+                  },
+                  {
+                    key: "user",
+                    icon: "🍬",
+                    label: "つかう人",
+                    sub: "応募作で生成して投稿",
+                    panel: (
+                      <>
+                        <StepList steps={USER_STEPS} role="user" />
+                        <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                        <p className={styles.note}>※ 同じ応募作は、何回使っても1作品と数えます</p>
+                        <p className={styles.note}>※ 自分の応募作を使った投稿は数えません</p>
+                        <p className={styles.note}>
+                          ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
+                        </p>
+                      </>
+                    ),
+                  },
+                ]}
+              />
             </RevealOnScroll>
           </div>
         </section>
@@ -409,7 +586,7 @@ export function HalloweenBestShotPage() {
             あなたのベストショット、待ってます
           </h2>
           <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
-          <JoinButton />
+          <JoinButtons />
         </section>
       </main>
     </div>
