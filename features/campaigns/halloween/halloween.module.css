@@ -187,7 +187,14 @@
   animation: galleryFlow 36s linear infinite;
 }
 
-.gallery:hover .galleryTrack,
+/* マウスを乗せている間だけ止める。スマホは触ると :hover が残り続けて止まったままになるため、
+   マウスで操作する端末に限る。スマホは指で押している間(:active)だけ止める。 */
+@media (hover: hover) and (pointer: fine) {
+  .gallery:hover .galleryTrack {
+    animation-play-state: paused;
+  }
+}
+
 .gallery:active .galleryTrack {
   animation-play-state: paused;
 }
@@ -746,6 +753,227 @@
 }
 
 /* スクロールで画面に入ったらふわっと出す(JS が動くときだけ隠す) */
+/* ===== つかう人の追加(2026-10-14) ===== */
+.ctaRow {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: inherit;
+  gap: 14px 12px;
+}
+
+/* 応募作をつかう: 主ボタン(ピンク→オレンジ)と並べる、かぼちゃ色の副ボタン */
+.ctaSub {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  background: var(--amber);
+  color: var(--plum-900);
+  font-weight: 800;
+  font-size: 17px;
+  padding: 16px 24px;
+  border-radius: 999px;
+  box-shadow: 0 6px 0 #c47a00;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ctaSub:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 0 #c47a00;
+}
+
+.ctaSub:active {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 #c47a00;
+}
+
+.ctaSub:focus-visible {
+  outline: 3px solid #fff;
+  outline-offset: 3px;
+}
+
+.closing .ctaRow {
+  justify-content: center;
+}
+
+.ctaSub .ctaArrow {
+  background: rgba(61, 16, 80, 0.12);
+}
+
+/* 賞品: つくる人/つかう人の見出し */
+.prizeGroup {
+  margin: 22px 0 10px;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--plum-800);
+}
+
+.prizeGroup:first-child {
+  margin-top: 0;
+}
+
+.prizeGroup small {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.prizeNotes {
+  text-align: center;
+}
+
+.prizeNotes .note {
+  margin-top: 4px;
+}
+
+.ticketBox {
+  margin-top: 14px;
+  background: #fff;
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow-card);
+}
+
+.ticketLead {
+  margin: 0 0 10px;
+  text-align: center;
+  font-weight: 800;
+  color: var(--plum-800);
+}
+
+/* 抽選の口数(3作品→1口…) */
+.tickets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ticket {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: 10px 4px;
+  border-radius: 16px;
+  background: var(--grad-night);
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  text-align: center;
+}
+
+.ticket b {
+  font-size: 24px;
+  line-height: 1.1;
+  font-weight: 400;
+}
+
+.ticketWorks b {
+  color: #fff;
+}
+
+.ticketArrow {
+  font-size: 10px;
+  color: var(--amber);
+  transform: rotate(90deg);
+}
+
+.ticketCount {
+  padding: 0 10px;
+  border-radius: 999px;
+  background: var(--amber);
+  color: var(--plum-900);
+}
+
+.ticketCount b {
+  font-size: 20px;
+}
+
+.entriesLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: var(--plum-800);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.entriesLink:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+/* 参加方法のタブ */
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tab {
+  display: grid;
+  justify-items: center;
+  gap: 0;
+  padding: 10px 6px 12px;
+  border: 2px solid var(--plum-800);
+  border-radius: 18px;
+  background: #fff;
+  color: var(--plum-800);
+  cursor: pointer;
+  font: inherit;
+  box-shadow: 0 4px 0 rgba(61, 16, 80, 0.18);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tab[aria-selected="true"] {
+  background: var(--grad-night);
+  color: #fff;
+  box-shadow: 0 4px 0 var(--orange);
+}
+
+.tab:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.tab:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 rgba(61, 16, 80, 0.18);
+}
+
+.tabIcon {
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+.tabLabel {
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.tabSub {
+  font-size: 11px;
+  font-weight: 700;
+  opacity: 0.8;
+}
+
+.tab[aria-selected="true"] .tabSub {
+  color: var(--amber);
+  opacity: 1;
+}
+
+.tabPanel:focus-visible {
+  outline: 3px solid var(--amber);
+}
+
 @media (scripting: enabled) {
   .reveal {
     opacity: 0;
