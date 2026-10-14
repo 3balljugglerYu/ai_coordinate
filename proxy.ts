@@ -174,6 +174,8 @@ export async function proxy(request: NextRequest) {
       "/login",
       "/auth/callback",
       "/auth/x-complete",
+      // アプリのログインの入口(Safari の Cookie が退会中の Web セッションでも通す)
+      "/api/auth/app-oauth",
     ];
 
     const isAllowedWhileDeactivated = allowedWhileDeactivated.some((path) =>
