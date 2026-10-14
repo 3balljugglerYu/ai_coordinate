@@ -166,7 +166,12 @@ export function AnnouncementListClient({
                           className="border-slate-300 text-slate-600"
                         >
                           プッシュ:{" "}
-                          {getPushBroadcastStatusLabel(announcement.push.status).label}
+                          {
+                            getPushBroadcastStatusLabel(
+                              announcement.push.status,
+                              announcement.push.pendingCount
+                            ).label
+                          }
                         </Badge>
                       )}
                     </div>

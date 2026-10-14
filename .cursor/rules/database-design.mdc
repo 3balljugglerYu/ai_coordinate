@@ -280,6 +280,7 @@ alwaysApply: false
 - 制約: `device_id` UNIQUE, `token` UNIQUE（1 台・1 トークンは同時に 1 人だけ）
 - RLS: 本人のみ `SELECT`。書き込みは RPC `register_push_device` / `unregister_push_device`（同じ端末で別アカウントにログインし直したら付け替える）
 - 備考: 旧 `push_subscriptions`（未使用）を 2026-10 に置き換え。計画書 `docs/planning/push-notifications-implementation-plan.md`
+- 退会・停止（`profiles.deactivated_at` が入る）: トリガー `trg_delete_push_devices_on_deactivation` がその人の宛先をすべて消し、退会・停止のあいだは `register_push_device` も登録しない（REQ-008。退会は削除まで `auth.users` が残るので CASCADE では消えない）
 
 #### `push_preferences`
 - 主キー: `user_id`
@@ -294,7 +295,7 @@ alwaysApply: false
 - 外部キー: `notification_id -> notifications.id`（**ON DELETE CASCADE＝取り消された通知は送らない**）, `image_job_id -> image_jobs.id`, `broadcast_id -> admin_push_broadcasts.id`（ON DELETE CASCADE）
 - 制約: 元は `notification_id` / `image_job_id` / `broadcast_id` のどれか 1 つまで。`(broadcast_id, recipient_id)` は部分 UNIQUE
 - RLS: 公開 policy なし（service role と SECURITY DEFINER のみ）
-- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み（延ばすのは最初に積んでから 5 分まで）、`image_jobs` の succeeded/failed で即時に積む。運営配信は `admin_push_broadcasts` から展開して積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす。`claim_push_outbox` は、送る時刻を 1 時間（生成完了は 15 分）過ぎた行を `skipped`（`last_error = 'expired'`）、確保したまま止まって確保 5 回目の行を `failed`（`stale_claim`）にして送らない
+- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み（延ばすのは最初に積んでから 5 分まで）、`image_jobs` の succeeded/failed で即時に積む。運営配信は `admin_push_broadcasts` から展開して積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす。`claim_push_outbox` は、送る時刻を 1 時間（生成完了は 15 分）過ぎた行を `skipped`（`last_error = 'expired'`）、確保したまま止まって確保 5 回目の行を `failed`（`stale_claim`）にして送らない。取り出しは運営配信の行（`broadcast_id` あり）を後回しにする（大きな配信のあいだも生成完了などを待たせない）
 
 ### ユーザープロフィール
 
@@ -350,11 +351,11 @@ alwaysApply: false
 
 #### `admin_push_broadcasts`
 - 主キー: `id`
-- 主要カラム: `title`, `body`, `url`, `announcement_id`, `send_at`, `status`(`scheduled/sending/sent/canceled`), `enqueued_count`, `last_recipient_id`, `created_by`, `started_at`, `finished_at`, `canceled_at`
+- 主要カラム: `title`, `body`, `url`, `announcement_id`, `send_at`, `status`(`scheduled/sending/sent/canceled/expired`。`sent` は「送信待ちを積み終えた」、`expired` は送信日時から 1 時間たっても積み終えられず残りを送らなかった), `enqueued_count`, `last_recipient_id`, `created_by`, `started_at`, `finished_at`, `canceled_at`
 - 外部キー: `announcement_id -> admin_announcements.id`（**ON DELETE CASCADE＝お知らせを消したら配信も未送信の outbox も消える**）, `created_by -> auth.users.id`
 - 制約: `announcement_id` は部分 UNIQUE（お知らせ 1 件に配信 1 つ）。`url` は `/` 始まりのパスか `https://`
 - RLS: 有効・policy なし（service role のみ。admin API が `requireAdmin()` の後に扱う）
-- 備考: 運営お知らせの「プッシュ通知も送る」と `/admin/push-broadcasts` の全体配信。`send_at` を過ぎると `push_outbox_kick`（cron から呼ばれた時だけ）が `fan_out_push_broadcasts()` で宛先があり `announcements` がオンの人へ 2,000 人ずつ `push_outbox` に積む（続きは `last_recipient_id` から次の 10 秒で）。取り消せるのは `scheduled` の間だけ。送信結果の件数は `admin_push_broadcast_stats(uuid[])`
+- 備考: 運営お知らせの「プッシュ通知も送る」と `/admin/push-broadcasts` の全体配信。`send_at` を過ぎると `push_outbox_kick`（cron から呼ばれた時だけ）が `fan_out_push_broadcasts()` で宛先があり `announcements` がオンで退会・停止中でない人へ 2,000 人ずつ `push_outbox` に積む（続きは `last_recipient_id` から次の 10 秒で。行の `send_after` は `send_at` なので、`claim_push_outbox` の期限も予定の時刻から数える）。`send_at` から 1 時間たっても積み終えていない配信は `expired`。取り消せるのは `scheduled` の間だけ。送信結果の件数は `admin_push_broadcast_stats(uuid[])`
 
 #### `catalog_campaigns`
 - 主キー: `id`

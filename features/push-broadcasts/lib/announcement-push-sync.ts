@@ -11,15 +11,19 @@ import {
  * 1 つのお知らせにつき配信は 1 行（DB の uq_admin_push_broadcasts_announcement）。
  * 編集のたびに増やさず、送る前（scheduled / canceled）の行だけを書き換える。
  *
- * | 今の配信          | 保存した内容                     | すること                         |
- * |-------------------|----------------------------------|----------------------------------|
- * | 無い              | 公開 ＋ 送る                     | 作る（send_at = 公開日時）       |
- * | 無い              | それ以外                         | 何もしない                       |
- * | scheduled         | 公開 ＋ 送る                     | 公開日時・表示文を合わせる       |
- * | scheduled         | 下書き または 送らない           | 取り消す                         |
- * | canceled          | 公開 ＋ 送る                     | 予約に戻す（公開日時・表示文も） |
- * | canceled          | それ以外                         | 何もしない                       |
- * | sending / sent    | 何でも                           | 何もしない（送ったものは戻せない）|
+ * | 今の配信                 | 保存した内容             | すること                         |
+ * |--------------------------|--------------------------|----------------------------------|
+ * | 無い                     | 公開 ＋ 送る             | 作る（send_at = 公開日時）       |
+ * | 無い                     | それ以外                 | 何もしない                       |
+ * | scheduled                | 公開 ＋ 送る             | 公開日時・表示文を合わせる       |
+ * | scheduled                | 下書き または 送らない   | 取り消す                         |
+ * | canceled                 | 公開 ＋ 送る             | 予約に戻す（公開日時・表示文も） |
+ * | canceled                 | それ以外                 | 何もしない                       |
+ * | sending / sent / expired | 何でも                   | 何もしない（送ったもの・期限を過ぎたものは戻せない）|
+ *
+ * send_at は公開日時。ただし過去の公開日時（公開済みのお知らせで後から「送る」に
+ * したときなど）は保存した今にする。過去のままだと、DB は送信日時から 1 時間たった
+ * 配信を古いものとして送らない（expired）ため。
  *
  * `sendPush` が未指定（古い画面からの保存など）のときは「今の状態を保つ」＝
  * 有効な予約があれば送る扱い、無ければ送らない扱いにする。
@@ -51,6 +55,17 @@ export interface AnnouncementPushSyncInput {
     status: AnnouncementStatus;
     publishAt: string | null;
   };
+  /** 保存した時刻（テスト用。既定は今） */
+  now?: Date;
+}
+
+/** 送信日時。公開日時が過去なら今にする */
+function resolveSendAt(publishAt: string, now: Date): string {
+  const publishMs = Date.parse(publishAt);
+  if (Number.isNaN(publishMs) || publishMs >= now.getTime()) {
+    return publishAt;
+  }
+  return now.toISOString();
 }
 
 /** お知らせ本文からプッシュ本文（1 行・短め）を作る */
@@ -77,7 +92,10 @@ export function decideAnnouncementPushAction(
     ? {
         title: announcement.title.trim().slice(0, PUSH_BROADCAST_TITLE_MAX),
         body: buildAnnouncementPushBody(announcement.bodyText),
-        sendAt: announcement.publishAt as string,
+        sendAt: resolveSendAt(
+          announcement.publishAt as string,
+          input.now ?? new Date()
+        ),
       }
     : null;
 
@@ -85,7 +103,11 @@ export function decideAnnouncementPushAction(
     return content ? { type: "create", content } : { type: "none" };
   }
 
-  if (existing.status === "sending" || existing.status === "sent") {
+  if (
+    existing.status === "sending" ||
+    existing.status === "sent" ||
+    existing.status === "expired"
+  ) {
     return { type: "none" };
   }
 

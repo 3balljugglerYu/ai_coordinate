@@ -211,12 +211,16 @@ export async function cancelScheduledPushBroadcast(
   return data ? mapRow(data as PushBroadcastRow) : null;
 }
 
-function toAnnouncementPushSummary(row: PushBroadcastRow): AnnouncementPushSummary {
+function toAnnouncementPushSummary(
+  row: PushBroadcastRow,
+  stats: PushBroadcastDeliveryStats | undefined
+): AnnouncementPushSummary {
   return {
     id: row.id,
     status: row.status,
     sendAt: row.send_at,
     enqueuedCount: row.enqueued_count ?? 0,
+    pendingCount: stats?.pending ?? 0,
   };
 }
 
@@ -239,11 +243,23 @@ export async function getAnnouncementPushSummaries(
     throw new Error("プッシュ通知の状態の取得に失敗しました");
   }
 
+  const rows = ((data ?? []) as PushBroadcastRow[]).filter(
+    (row) => row.announcement_id
+  );
+  // 送り終えていない数（「送信中／送信済み」の表示用）。積み始めたものだけ数える
+  const stats = await getPushBroadcastDeliveryStats(
+    rows
+      .filter((row) => row.status !== "scheduled" && row.status !== "canceled")
+      .map((row) => row.id),
+    supabase
+  );
+
   const result = new Map<string, AnnouncementPushSummary>();
-  for (const row of (data ?? []) as PushBroadcastRow[]) {
-    if (row.announcement_id) {
-      result.set(row.announcement_id, toAnnouncementPushSummary(row));
-    }
+  for (const row of rows) {
+    result.set(
+      row.announcement_id as string,
+      toAnnouncementPushSummary(row, stats.get(row.id))
+    );
   }
   return result;
 }
@@ -252,15 +268,18 @@ export async function getAnnouncementPushSummaries(
  * decideAnnouncementPushAction の結果を書き込む。
  * 送る前（scheduled / canceled）の行だけを書き換えるよう status で絞る
  * （その間に展開が始まっていたら何も変えない）。
+ *
+ * 戻り値は書き換えられたか。予約の変更・取り消しで、その間に送信が始まっていた
+ * （0 行だった）ときは false。呼び出し側はそれを運営に知らせる。
  */
 export async function applyAnnouncementPushAction(
   announcementId: string,
   action: AnnouncementPushAction,
   createdBy: string | null,
   client?: SupabaseClient
-): Promise<void> {
+): Promise<boolean> {
   if (action.type === "none") {
-    return;
+    return true;
   }
 
   const supabase = getSupabase(client);
@@ -280,11 +299,11 @@ export async function applyAnnouncementPushAction(
       console.error("[push-broadcasts] create for announcement error:", error);
       throw new Error("プッシュ通知の予約に失敗しました");
     }
-    return;
+    return true;
   }
 
   if (action.type === "reschedule") {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("admin_push_broadcasts")
       .update({
         title: action.content.title,
@@ -294,16 +313,17 @@ export async function applyAnnouncementPushAction(
         canceled_at: null,
       })
       .eq("id", action.id)
-      .in("status", ["scheduled", "canceled"]);
+      .in("status", ["scheduled", "canceled"])
+      .select("id");
 
     if (error) {
       console.error("[push-broadcasts] reschedule error:", error);
       throw new Error("プッシュ通知の予約の更新に失敗しました");
     }
-    return;
+    return (data ?? []).length > 0;
   }
 
-  await cancelScheduledPushBroadcast(action.id, supabase);
+  return (await cancelScheduledPushBroadcast(action.id, supabase)) !== null;
 }
 
 /** 管理画面の一覧（状態別件数と表示用の値つき） */

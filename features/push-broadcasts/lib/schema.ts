@@ -6,11 +6,17 @@ import { z } from "zod";
  * 表: supabase/migrations/20261014120000_add_admin_push_broadcasts.sql
  */
 
+/**
+ * sent は「宛先ごとの送信待ちを積み終えた」で、届いたかどうかではない（送れた数は
+ * push_outbox で数える）。expired は送信日時から 1 時間たっても積み終えられず、
+ * （残りを）送らなかったもの。
+ */
 export const PUSH_BROADCAST_STATUS_VALUES = [
   "scheduled",
   "sending",
   "sent",
   "canceled",
+  "expired",
 ] as const;
 
 export type PushBroadcastStatus = (typeof PUSH_BROADCAST_STATUS_VALUES)[number];
@@ -108,4 +114,6 @@ export interface AnnouncementPushSummary {
   status: PushBroadcastStatus;
   sendAt: string;
   enqueuedCount: number;
+  /** まだ送り終えていない送信待ちの数（表示の「送信中／送信済み」の判定に使う） */
+  pendingCount: number;
 }

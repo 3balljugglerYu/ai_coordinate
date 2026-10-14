@@ -19,7 +19,10 @@ import type {
   AnnouncementAdminView,
   AnnouncementStatus,
 } from "@/features/announcements/lib/schema";
-import { getPushBroadcastStatusLabel } from "@/features/push-broadcasts/lib/presentation";
+import {
+  describeExpiredPushBroadcast,
+  getPushBroadcastStatusLabel,
+} from "@/features/push-broadcasts/lib/presentation";
 
 interface AnnouncementFormProps {
   announcement?: AnnouncementAdminView;
@@ -50,9 +53,11 @@ export function AnnouncementForm({
     announcement?.bodyJson ?? undefined
   );
   const existingPush = announcement?.push ?? null;
-  // 送信が始まった・済んだ配信は戻せないので、チェックは変えられない
+  // 送信が始まった・済んだ・期限切れの配信は戻せないので、チェックは変えられない
   const isPushLocked =
-    existingPush?.status === "sending" || existingPush?.status === "sent";
+    existingPush?.status === "sending" ||
+    existingPush?.status === "sent" ||
+    existingPush?.status === "expired";
   const [sendPush, setSendPush] = useState(
     existingPush !== null && existingPush.status !== "canceled"
   );
@@ -114,8 +119,9 @@ export function AnnouncementForm({
 
       await onSuccess(payload);
       if ("pushError" in payload && payload.pushError) {
+        // 予約・変更・取り消しのどれが効かなかったかは pushError に書いてある
         toast({
-          title: "プッシュ通知を予約できませんでした",
+          title: "プッシュ通知の設定を反映できませんでした",
           description: `お知らせは保存しました。${payload.pushError}`,
           variant: "destructive",
         });
@@ -206,11 +212,21 @@ export function AnnouncementForm({
               {existingPush && (
                 <p className="text-xs text-slate-600">
                   プッシュ通知:{" "}
-                  {getPushBroadcastStatusLabel(existingPush.status).label}
+                  {
+                    getPushBroadcastStatusLabel(
+                      existingPush.status,
+                      existingPush.pendingCount
+                    ).label
+                  }
                   {existingPush.status !== "scheduled" &&
                   existingPush.status !== "canceled"
                     ? `（宛先 ${existingPush.enqueuedCount} 人）`
                     : ""}
+                </p>
+              )}
+              {existingPush?.status === "expired" && (
+                <p className="text-xs text-rose-700">
+                  {describeExpiredPushBroadcast(existingPush.enqueuedCount)}
                 </p>
               )}
             </div>

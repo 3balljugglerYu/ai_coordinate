@@ -3,8 +3,11 @@
  *
  * 守ること:
  *  - 1 つのお知らせに配信は 1 つ（編集のたびに作らない）
- *  - 送る前（scheduled / canceled）だけ書き換え、送ったもの（sending / sent）は触らない
+ *  - 送る前（scheduled / canceled）だけ書き換え、送ったもの（sending / sent）と
+ *    期限切れ（expired）は触らない
  *  - 下書きに戻す・「送る」を外すと、予約は取り消す
+ *  - 過去の公開日時で送るときは、保存した今を送信日時にする（DB は送信日時から
+ *    1 時間たった配信を古いものとして送らないため）
  */
 
 import {
@@ -13,6 +16,8 @@ import {
   type AnnouncementPushSyncInput,
 } from "@/features/push-broadcasts/lib/announcement-push-sync";
 
+/** 保存した時刻（公開日時 PUBLISH_AT より前） */
+const NOW = new Date("2026-10-14T03:00:00.000Z");
 const PUBLISH_AT = "2026-10-20T11:00:00.000Z";
 
 function input(
@@ -30,6 +35,7 @@ function input(
       publishAt: PUBLISH_AT,
       ...overrides.announcement,
     },
+    now: overrides.now ?? NOW,
   };
 }
 
@@ -105,7 +111,39 @@ describe("decideAnnouncementPushAction", () => {
     ).toEqual({ type: "none" });
   });
 
-  test.each(["sending", "sent"] as const)(
+  test("公開日時が過去なら、保存した今を送信日時にする（作る・予約に戻す）", () => {
+    const past = "2026-10-10T11:00:00.000Z";
+    expect(
+      decideAnnouncementPushAction(input({ announcement: { publishAt: past } }))
+    ).toEqual({
+      type: "create",
+      content: expect.objectContaining({ sendAt: NOW.toISOString() }),
+    });
+    expect(
+      decideAnnouncementPushAction(
+        input({
+          existing: { id: "b1", status: "canceled" },
+          announcement: { publishAt: past },
+        })
+      )
+    ).toEqual({
+      type: "reschedule",
+      id: "b1",
+      content: expect.objectContaining({ sendAt: NOW.toISOString() }),
+    });
+  });
+
+  test("公開日時がちょうど今なら、その日時のまま", () => {
+    const action = decideAnnouncementPushAction(
+      input({ announcement: { publishAt: NOW.toISOString() } })
+    );
+    expect(action).toEqual({
+      type: "create",
+      content: expect.objectContaining({ sendAt: NOW.toISOString() }),
+    });
+  });
+
+  test.each(["sending", "sent", "expired"] as const)(
     "%s の配信は、何を保存しても触らない",
     (status) => {
       expect(
