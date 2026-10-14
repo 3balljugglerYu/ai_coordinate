@@ -40,17 +40,18 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     );
   });
 
-  test("企画についてで、つくる人とつかう人の2つの参加のしかたを書く", () => {
+  test("企画についてで、プロンプトは非公開のままでよいことと、使った人にも当たるチャンスを書く", () => {
     render(<HalloweenBestShotPage />);
-    const roles = screen.getAllByTestId("halloween-about-role").map((role) => role.textContent);
-    expect(roles).toEqual([expect.stringContaining("つくる人"), expect.stringContaining("つかう人")]);
-    expect(roles[0]).toContain("審査");
-    expect(roles[1]).toContain("抽選");
+    const about = screen.getByRole("region", { name: /企画について/ });
+    expect(about.textContent).toContain("プロンプトの内容は非公開のままなので、安心して公開・利用できます");
+    expect(about.textContent).toContain("今回のテーマは 「ハロウィン」");
+    expect(about.textContent).toContain("選ばれた方には、Amazonギフトカードをプレゼント！");
+    expect(about.textContent).toContain("プロンプトを使ってイラストを生成してくれた方にも、Amazonギフトカードが当たるチャンス！");
   });
 
-  test("企画についての「利用特典について」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
+  test("企画についての「プロンプト作成者のメリットはこちら」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
     render(<HalloweenBestShotPage />);
-    const link = screen.getByRole("link", { name: "利用特典について" });
+    const link = screen.getByRole("link", { name: "プロンプト作成者のメリットはこちら" });
     expect(link.getAttribute("href")).toBe("/use-prompts");
   });
 

@@ -402,44 +402,31 @@ export function HalloweenBestShotPage() {
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <Bunting />
-              <p className={styles.aboutLead}>知っていますか！？</p>
+              <p className={styles.aboutLead}>🎃 知っていますか！？</p>
               <p>
                 ペルスタでは、ほかのユーザーが作成したプロンプトを使って、
-                <span className={styles.highlight}>自分の「うちの子」のイラストを生成できるんです！</span>✨
-                <br />
+                <strong>自分の「うちの子」のイラストを生成できるんです！</strong>✨
+              </p>
+              <p>もちろん、プロンプトの内容は非公開のままなので、安心して公開・利用できます！🙌</p>
+              <p>
+                👉{" "}
                 <Link href="/use-prompts" className={styles.textLink}>
-                  利用特典について
+                  プロンプト作成者のメリットはこちら
                 </Link>
               </p>
-              <p>ハロウィンをテーマに、2つの楽しみ方で参加できます！🎃</p>
-              <div className={styles.roles}>
-                <div className={`${styles.role} ${styles.roleCreator}`} data-testid="halloween-about-role">
-                  <p className={styles.roleName}>
-                    <span aria-hidden="true">🪄</span> つくる人
-                  </p>
-                  <p>
-                    だれの子で生成しても、イメージどおりに仕上がる
-                    <span className={styles.accent}>「安定したプロンプト」</span>
-                    で、あなたが思う「ベストショット」を作成し、投稿してください！
-                  </p>
-                  <p className={styles.roleGet}>審査で選ばれた方に Amazonギフト券！</p>
-                </div>
-                <div className={`${styles.role} ${styles.roleUser}`} data-testid="halloween-about-role">
-                  <p className={styles.roleName}>
-                    <span aria-hidden="true">🍬</span> つかう人
-                  </p>
-                  <p>
-                    応募されたプロンプトで、
-                    <span className={styles.highlight}>あなたの「うちの子」のハロウィン</span>
-                    を生成して投稿しよう！ちがう応募作を使うほど、抽選の口数が増えます。
-                  </p>
-                  <p className={styles.roleGet}>抽選で Amazonギフト券・ペルコイン！</p>
-                </div>
-              </div>
               <p>
-                <strong>どちらも、賞に選ばれた方にはプレゼントがあります！</strong>🎁
+                今回のテーマは <strong>「ハロウィン」</strong> 🎃
               </p>
-              <p>さらに、受賞作品は特設ページでもご紹介します！✨</p>
+              <p>
+                あなたが思い描く、とっておきの「ベストショット」を生み出すプロンプトを作成して、投稿してください！
+              </p>
+              <p>
+                🏆 <strong>選ばれた方には、Amazonギフトカードをプレゼント！</strong> 🎁
+              </p>
+              <p>
+                さらに！プロンプトを使ってイラストを生成してくれた方にも、
+                <strong>Amazonギフトカードが当たるチャンス！</strong> 🎉
+              </p>
             </RevealOnScroll>
           </div>
         </section>

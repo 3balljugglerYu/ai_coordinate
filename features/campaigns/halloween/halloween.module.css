@@ -794,46 +794,6 @@
   background: rgba(61, 16, 80, 0.12);
 }
 
-/* 企画について: つくる人・つかう人 */
-.roles {
-  display: grid;
-  gap: 12px;
-  margin: 4px 0 14px;
-}
-
-.role {
-  border-radius: 18px;
-  padding: 14px 16px 12px;
-  border: 2px dashed transparent;
-}
-
-.role p {
-  margin: 0 0 6px;
-  font-size: 14px;
-}
-
-.roleCreator {
-  background: #f6efff;
-  border-color: rgba(123, 63, 228, 0.35);
-}
-
-.roleUser {
-  background: #fff3e2;
-  border-color: rgba(255, 122, 26, 0.4);
-}
-
-.role .roleName {
-  font-size: 17px;
-  font-weight: 800;
-  color: var(--plum-800);
-}
-
-.role .roleGet {
-  margin: 8px 0 0;
-  font-weight: 800;
-  color: var(--pink);
-}
-
 /* 賞品: つくる人/つかう人の見出し */
 .prizeGroup {
   margin: 22px 0 10px;
@@ -1022,10 +982,6 @@
 
 /* ===== パソコン ===== */
 @media (min-width: 860px) {
-  .roles {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .hero {
     padding: 54px 32px 120px;
   }
