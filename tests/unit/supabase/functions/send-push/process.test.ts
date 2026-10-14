@@ -54,6 +54,7 @@ interface StoreOptions {
   finishFailures?: number;
   devicesThrow?: boolean;
   unreadLikeCount?: (userId: string, entityId: string) => Promise<number | null>;
+  imageUrl?: PushStore["imageUrl"];
 }
 
 function fakeStore(options: StoreOptions = {}) {
@@ -97,6 +98,7 @@ function fakeStore(options: StoreOptions = {}) {
     async nickname() {
       return "Miki";
     },
+    imageUrl: options.imageUrl ?? (async () => null),
     async removeTokens(tokens) {
       calls.removeTokens.push(tokens);
       return { removed: tokens.length, error: null };
@@ -175,6 +177,49 @@ describe("runSendPush", () => {
       r3: "skipped:preference",
     });
     expect(fcm.sentTokens).toEqual(["tok-a"]);
+  });
+
+  test("投稿への反応には、その投稿の画像を添える", async () => {
+    const sources: unknown[] = [];
+    const { store } = fakeStore({
+      batches: [[row("r1")]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl: async (source) => {
+        sources.push(source);
+        return "https://cdn.example/thumb.webp";
+      },
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    expect(sources).toHaveLength(1);
+    const message = fcm.messages[0] as {
+      notification: { image?: string };
+      data: Record<string, string>;
+    };
+    expect(message.notification.image).toBe("https://cdn.example/thumb.webp");
+    expect(message.data.image_url).toBe("https://cdn.example/thumb.webp");
+  });
+
+  test("⭐画像が取れなくても、文字だけで送る", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { store, calls } = fakeStore({
+      batches: [[row("r1")]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl: async () => {
+        throw new Error("storage down");
+      },
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    expect(fcm.sentTokens).toEqual(["tok-a"]);
+    expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
+      .toBeUndefined();
+    expect(statusById(calls.finish[0])).toEqual({ r1: "sent:" });
+    consoleError.mockRestore();
   });
 
   test("同じ宛先・同じ collapse_key のいいねは 1 通にまとめ、まとめ文で送る", async () => {
