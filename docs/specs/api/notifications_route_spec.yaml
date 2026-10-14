@@ -1,7 +1,13 @@
 metadata:
   class: NotificationsRoute
   source: app/api/notifications/route.ts
-  version: "1.1"
+  version: "1.2"
+  updated_at: "2026-10-15"
+  note: |
+    v1.2: 一覧・相手のプロフィール・投稿のサムネイルを get_notifications_page(RPC)で
+    1 回で取るようにした。カーソルの絞り込みとコメントからの投稿の解決は RPC の中で行い、
+    匿名通知の actor 除外・サムネイル非表示・URL 組み立ては toNotification で行う。
+    以下の各仕様の「クエリ」は RPC の結果に読み替える。
   created_at: "2026-03-23"
 
 dependencies:
@@ -11,10 +17,10 @@ dependencies:
     - createClient (Supabase server)
     - getRouteLocale
     - getNotificationsRouteCopy
-    - enrichNotificationsWithDetails
+    - fetchNotificationsPage / toNotification
     - jsonError
   external:
-    - Supabase tables notifications, profiles, generated_images, comments
+    - Supabase RPC get_notifications_page (notifications, profiles, generated_images, comments を結合)
 
 state_properties: []
 
@@ -116,7 +122,7 @@ specifications:
     test_cases:
       - GET_GivenNoRows_ShouldReturn200EmptyList
     test_cases_ja:
-      - GET_0件の場合_200で空配列
+      - GET_0件の場合_200で空配列_問い合わせは1回
 
   - id: NOTIFGET-004
     method: GET
@@ -248,7 +254,7 @@ specifications:
     test_cases:
       - GET_GivenValidCursor_ShouldApplyCursorOrFilter
     test_cases_ja:
-      - GET_有効なcursorの場合_ORフィルタを適用する
+      - GET_有効なcursorの場合_続きの位置をRPCへ渡す
 
   - id: NOTIFGET-008
     method: GET
@@ -279,7 +285,7 @@ specifications:
     test_cases:
       - GET_GivenCursorDecodeThrows_ShouldIgnoreCursorFilter
     test_cases_ja:
-      - GET_cursor復号例外の場合_フィルタを付けず続行
+      - GET_cursorが読めない場合(%s)_先頭から返す
 
   - id: NOTIFGET-009
     method: GET
@@ -378,7 +384,7 @@ specifications:
     test_cases:
       - GET_GivenCommentEntityWithImageId_ShouldAttachPostWithoutCommentsLookup
     test_cases_ja:
-      - GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する
+      - GET_comment通知_RPCが解決した投稿IDをdata.image_idに入れる
 
   - id: NOTIFGET-010B
     method: GET
@@ -416,7 +422,7 @@ specifications:
     test_cases:
       - GET_GivenCommentEntityWithoutImageId_ShouldResolveCommentImageIdAndAttachPost
     test_cases_ja:
-      - GET_comment通知でimage_id欠落時_commentsから投稿IDを解決する
+      - GET_comment通知_RPCが解決した投稿IDをdata.image_idに入れる
 
   - id: NOTIFGET-011
     method: GET
