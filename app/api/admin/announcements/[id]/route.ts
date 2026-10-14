@@ -16,6 +16,10 @@ import {
 import { deleteAnnouncementImages } from "@/features/announcements/lib/announcement-storage";
 import { decorateAnnouncementAdmin } from "@/features/announcements/lib/presentation";
 import { revalidateAnnouncements } from "@/features/announcements/lib/revalidate-announcements";
+import {
+  attachAnnouncementPushSummaries,
+  syncAnnouncementPush,
+} from "@/features/push-broadcasts/lib/announcement-push-service";
 
 function difference(source: string[], target: string[]) {
   return source.filter((value) => !target.includes(value));
@@ -46,7 +50,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(decorateAnnouncementAdmin(announcement));
+    const [view] = await attachAnnouncementPushSummaries([
+      decorateAnnouncementAdmin(announcement),
+    ]);
+    return NextResponse.json(view);
   } catch (error) {
     console.error("[Admin Announcements] GET by id error:", error);
     return NextResponse.json(
@@ -126,6 +133,13 @@ export async function PATCH(
       }
     }
 
+    // 公開日時の変更・下書きへの戻し・「送る」を外した場合も、送る前なら合わせる
+    const pushResult = await syncAnnouncementPush({
+      announcement: updated,
+      sendPush: payload.data.sendPush,
+      adminUserId: user.id,
+    });
+
     await logAdminAction({
       adminUserId: user.id,
       actionType: "announcement_update",
@@ -140,11 +154,17 @@ export async function PATCH(
           status: updated.status,
           publishAt: updated.publishAt,
         },
+        push: pushResult.action,
+        ...(pushResult.error ? { pushError: pushResult.error } : {}),
       },
     });
 
     revalidateAnnouncements(updated.id);
-    return NextResponse.json(decorateAnnouncementAdmin(updated));
+    return NextResponse.json({
+      ...decorateAnnouncementAdmin(updated),
+      push: pushResult.push,
+      ...(pushResult.error ? { pushError: pushResult.error } : {}),
+    });
   } catch (error) {
     console.error("[Admin Announcements] PATCH error:", error);
 

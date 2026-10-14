@@ -614,6 +614,62 @@ Main errors:
 - `403`: 管理者権限なし
 - `500`: ルックアップ失敗、RPC 失敗、残高取得失敗
 
+### `POST /api/admin/push-broadcasts`
+
+アプリへ運営からのお知らせをプッシュ通知で送る（全体配信）。行を `admin_push_broadcasts` に `scheduled` で作り、`send_at` を過ぎると pg_cron の `push_outbox_kick()` が宛先ごとに `push_outbox` へ展開して Edge Function `send-push` が送る。
+
+- Access: `admin session`
+- 届くのは宛先（`push_device_tokens`）があり、`push_preferences` の `announcements`（既定オフ）をオンにしている人だけ。一時停止・止める時間帯の人は送信時に `skipped`
+- Request body:
+
+```json
+{
+  "title": "ハロウィン企画が始まりました",
+  "body": "うちの子のベストショットを投稿しよう",
+  "url": "/style",
+  "sendAt": "2026-10-16T11:00:00.000Z"
+}
+```
+
+制約:
+
+- `title` 1〜120 文字、`body` 300 文字以下（任意）
+- `url` は任意。`/` から始まるアプリ内のパス（`//` は不可）か `https://` の URL。空文字は `null`
+- `sendAt` は任意。`null`・未指定は今すぐ。5 分より前の過去は 400
+
+アプリに渡る FCM の `data`（文字列のみ）: `kind=announcement`、`broadcast_id`、`url`（あれば）、`announcement_id`（運営お知らせの配信のみ）、`category=announcements`
+
+Response: 作成した配信（`id`, `title`, `body`, `url`, `announcementId`, `sendAt`, `status`, `enqueuedCount`, `stats`, `statusLabel` ほか）
+
+Main errors:
+
+- `400`: 入力不正、過去の日時
+- `401`: 未認証
+- `403`: 管理者権限なし
+- `500`: 作成失敗
+
+### `PATCH /api/admin/push-broadcasts/[id]`
+
+予約中（`scheduled`）の配信を取り消す。送信が始まった（`sending` / `sent`）配信は戻せない。
+
+- Access: `admin session`
+- Request body: `{ "status": "canceled" }`（これ以外は 400）
+
+Main errors:
+
+- `404`: 配信が無い（id が UUID でない場合も）
+- `409`: 送信が始まっていて取り消せない
+
+### 運営お知らせの「プッシュ通知も送る」
+
+`POST /api/admin/announcements` と `PATCH /api/admin/announcements/[id]` は任意の `sendPush`（boolean）を受け取る。公開（`status=published`）で `sendPush=true` なら、公開日時（`publishAt`、未指定は今）を `send_at` にした配信を 1 つ作る（お知らせ 1 件につき配信は 1 つ）。
+
+- 送る前（`scheduled` / `canceled`）なら保存のたびに公開日時・タイトル・本文の冒頭を合わせる。下書きに戻す・`sendPush=false` で取り消す
+- 送信が始まった配信は変えない
+- `sendPush` 未指定は今の予約を保つ
+- お知らせを削除すると配信と未送信の `push_outbox` も消える（ON DELETE CASCADE）
+- レスポンスに `push`（`id`, `status`, `sendAt`, `enqueuedCount` または `null`）を付ける。お知らせは保存できたがプッシュの予約だけ失敗したときは 200 のまま `pushError` を付ける
+
 ### `GET|POST /api/internal/account-purge`
 
 削除予定アカウントを物理削除し、関連ストレージと台帳を整理します。
@@ -709,6 +765,10 @@ Main errors:
 
 | Method | Path | Access | Summary |
 | --- | --- | --- | --- |
+| GET | `/api/admin/announcements` | admin session | 運営お知らせ一覧を取得する（紐づくプッシュ配信の `push` つき） |
+| POST | `/api/admin/announcements` | admin session | 運営お知らせを作成する。`sendPush` でプッシュ通知も予約する |
+| PATCH | `/api/admin/announcements/[id]` | admin session | 運営お知らせを更新する。送る前のプッシュ配信の日時を合わせる・取り消す |
+| DELETE | `/api/admin/announcements/[id]` | admin session | 運営お知らせを削除する（未送信のプッシュ配信も消える） |
 | GET | `/api/admin/audit-log` | admin session | 管理操作ログを取得する |
 | PATCH | `/api/admin/banners/[id]` | admin session | バナーを更新する |
 | DELETE | `/api/admin/banners/[id]` | admin session | バナーを削除する |
@@ -741,6 +801,9 @@ Main errors:
 | POST | `/api/admin/moderation/appeals/[appealId]/decision` | admin session | 異議申立てを判定する。`action` は `uphold`(棄却・`removed` のまま) / `overturn`(認容・`visible` へ復帰)。`note` 必須。元判定者と同一なら `independenceExceptionReason` 必須で 400。対象が現在有効な公開停止でなければ 409 |
 | GET | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を取得する |
 | PATCH | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を更新する |
+| GET | `/api/admin/push-broadcasts` | admin session | プッシュ通知の全体配信の履歴（新しい順 100 件・状態別の送信数つき）を取得する |
+| POST | `/api/admin/push-broadcasts` | admin session | プッシュ通知の全体配信を作成する（今すぐ／予約） |
+| PATCH | `/api/admin/push-broadcasts/[id]` | admin session | 予約中の全体配信を取り消す。送信が始まっていれば 409 |
 | GET | `/api/admin/reports/aggregated` | admin session | 通報集計結果を取得する |
 | GET | `/api/admin/reports` | admin session | 通報一覧を取得する |
 | GET | `/api/admin/test-auth` | admin session | 管理者判定の動作確認を行う |

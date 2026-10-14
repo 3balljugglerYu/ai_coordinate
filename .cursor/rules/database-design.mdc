@@ -19,6 +19,7 @@ alwaysApply: false
 
 ## `public` テーブル一覧
 - `admin_audit_log`
+- `admin_push_broadcasts`
 - `admin_users`
 - `banners`
 - `catalog_audit_logs`
@@ -289,10 +290,11 @@ alwaysApply: false
 
 #### `push_outbox`
 - 主キー: `id`
-- 主要カラム: `recipient_id`, `category`, `notification_id`, `image_job_id`, `collapse_key`, `title`, `body`, `data`, `send_after`, `status`(`pending/processing/sent/skipped/failed`), `attempt_count`
-- 外部キー: `notification_id -> notifications.id`（**ON DELETE CASCADE＝取り消された通知は送らない**）, `image_job_id -> image_jobs.id`
+- 主要カラム: `recipient_id`, `category`, `notification_id`, `image_job_id`, `broadcast_id`, `collapse_key`, `title`, `body`, `data`, `send_after`, `status`(`pending/processing/sent/skipped/failed`), `attempt_count`
+- 外部キー: `notification_id -> notifications.id`（**ON DELETE CASCADE＝取り消された通知は送らない**）, `image_job_id -> image_jobs.id`, `broadcast_id -> admin_push_broadcasts.id`（ON DELETE CASCADE）
+- 制約: 元は `notification_id` / `image_job_id` / `broadcast_id` のどれか 1 つまで。`(broadcast_id, recipient_id)` は部分 UNIQUE
 - RLS: 公開 policy なし（service role と SECURITY DEFINER のみ）
-- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み（延ばすのは最初に積んでから 5 分まで）、`image_jobs` の succeeded/failed で即時に積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす。`claim_push_outbox` は、送る時刻を 1 時間（生成完了は 15 分）過ぎた行を `skipped`（`last_error = 'expired'`）、確保したまま止まって確保 5 回目の行を `failed`（`stale_claim`）にして送らない
+- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み（延ばすのは最初に積んでから 5 分まで）、`image_jobs` の succeeded/failed で即時に積む。運営配信は `admin_push_broadcasts` から展開して積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす。`claim_push_outbox` は、送る時刻を 1 時間（生成完了は 15 分）過ぎた行を `skipped`（`last_error = 'expired'`）、確保したまま止まって確保 5 回目の行を `failed`（`stale_claim`）にして送らない
 
 ### ユーザープロフィール
 
@@ -345,6 +347,14 @@ alwaysApply: false
 - 主要カラム: `admin_user_id`, `action_type`, `target_type`, `target_id`, `metadata`, `created_at`
 - 外部キー: `admin_user_id -> auth.users.id`
 - RLS: 公開アクセス禁止（`ALL false`）
+
+#### `admin_push_broadcasts`
+- 主キー: `id`
+- 主要カラム: `title`, `body`, `url`, `announcement_id`, `send_at`, `status`(`scheduled/sending/sent/canceled`), `enqueued_count`, `last_recipient_id`, `created_by`, `started_at`, `finished_at`, `canceled_at`
+- 外部キー: `announcement_id -> admin_announcements.id`（**ON DELETE CASCADE＝お知らせを消したら配信も未送信の outbox も消える**）, `created_by -> auth.users.id`
+- 制約: `announcement_id` は部分 UNIQUE（お知らせ 1 件に配信 1 つ）。`url` は `/` 始まりのパスか `https://`
+- RLS: 有効・policy なし（service role のみ。admin API が `requireAdmin()` の後に扱う）
+- 備考: 運営お知らせの「プッシュ通知も送る」と `/admin/push-broadcasts` の全体配信。`send_at` を過ぎると `push_outbox_kick`（cron から呼ばれた時だけ）が `fan_out_push_broadcasts()` で宛先があり `announcements` がオンの人へ 2,000 人ずつ `push_outbox` に積む（続きは `last_recipient_id` から次の 10 秒で）。取り消せるのは `scheduled` の間だけ。送信結果の件数は `admin_push_broadcast_stats(uuid[])`
 
 #### `catalog_campaigns`
 - 主キー: `id`

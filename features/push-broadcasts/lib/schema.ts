@@ -1,0 +1,111 @@
+import { z } from "zod";
+
+/**
+ * 運営お知らせ・全体配信のプッシュ通知（admin_push_broadcasts）。
+ * 計画書: docs/planning/push-notifications-implementation-plan.md Phase 5
+ * 表: supabase/migrations/20261014120000_add_admin_push_broadcasts.sql
+ */
+
+export const PUSH_BROADCAST_STATUS_VALUES = [
+  "scheduled",
+  "sending",
+  "sent",
+  "canceled",
+] as const;
+
+export type PushBroadcastStatus = (typeof PUSH_BROADCAST_STATUS_VALUES)[number];
+
+/** DB の CHECK と同じ上限 */
+export const PUSH_BROADCAST_TITLE_MAX = 120;
+export const PUSH_BROADCAST_BODY_MAX = 300;
+export const PUSH_BROADCAST_URL_MAX = 500;
+/** お知らせ本文から作るプッシュ本文の長さ（通知の表示で切れる前提で短め） */
+export const ANNOUNCEMENT_PUSH_BODY_MAX = 100;
+
+/**
+ * 押したときの行き先。アプリ内のパス（`/` 始まり、`//` は不可）か https の URL。
+ * DB の CHECK（url ~ '^/[^/]' OR url = '/' OR url ~ '^https://'）と同じ。
+ */
+export function isValidPushBroadcastUrl(value: string): boolean {
+  if (value.length > PUSH_BROADCAST_URL_MAX) {
+    return false;
+  }
+  if (value === "/") {
+    return true;
+  }
+  if (/^\/[^/]/.test(value)) {
+    return true;
+  }
+  if (!value.startsWith("https://")) {
+    return false;
+  }
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export const pushBroadcastCreateSchema = z.object({
+  title: z.string().trim().min(1).max(PUSH_BROADCAST_TITLE_MAX),
+  body: z.string().trim().max(PUSH_BROADCAST_BODY_MAX).default(""),
+  url: z
+    .string()
+    .trim()
+    .max(PUSH_BROADCAST_URL_MAX)
+    .nullable()
+    .optional()
+    .transform((value) => (value ? value : null))
+    .refine((value) => value === null || isValidPushBroadcastUrl(value), {
+      message: "行き先は / から始まるパスか https:// の URL にしてください",
+    }),
+  /** null・未指定ならすぐ送る */
+  sendAt: z.string().datetime().nullable().optional(),
+});
+
+export type PushBroadcastCreateInput = z.infer<typeof pushBroadcastCreateSchema>;
+
+export interface PushBroadcast {
+  id: string;
+  title: string;
+  body: string;
+  url: string | null;
+  announcementId: string | null;
+  sendAt: string;
+  status: PushBroadcastStatus;
+  enqueuedCount: number;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  startedAt: string | null;
+  finishedAt: string | null;
+  canceledAt: string | null;
+}
+
+/** push_outbox の状態別件数（7 日で掃除されるので古い配信は 0 になる） */
+export interface PushBroadcastDeliveryStats {
+  pending: number;
+  sent: number;
+  skipped: number;
+  failed: number;
+}
+
+export function emptyDeliveryStats(): PushBroadcastDeliveryStats {
+  return { pending: 0, sent: 0, skipped: 0, failed: 0 };
+}
+
+export interface PushBroadcastAdminView extends PushBroadcast {
+  stats: PushBroadcastDeliveryStats;
+  sendAtDisplay: string;
+  statusLabel: string;
+  statusClassName: string;
+}
+
+/** お知らせの一覧・フォームに出す、紐づく配信の要約 */
+export interface AnnouncementPushSummary {
+  id: string;
+  status: PushBroadcastStatus;
+  sendAt: string;
+  enqueuedCount: number;
+}
