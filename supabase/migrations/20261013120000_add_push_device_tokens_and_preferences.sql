@@ -109,13 +109,16 @@ BEGIN
     AND token = p_token
     AND device_id <> p_device_id;
 
+  -- 上の DELETE とこの INSERT のあいだに別の人が同じ端末を登録していても、
+  -- 最後に登録した人の行にする(user_id も付け替える)
   INSERT INTO public.push_device_tokens (
     user_id, device_id, platform, token, app_version, last_seen_at
   ) VALUES (
     v_user_id, p_device_id, p_platform, p_token, p_app_version, now()
   )
   ON CONFLICT (device_id) DO UPDATE
-  SET platform = EXCLUDED.platform,
+  SET user_id = EXCLUDED.user_id,
+      platform = EXCLUDED.platform,
       token = EXCLUDED.token,
       app_version = EXCLUDED.app_version,
       last_seen_at = now();

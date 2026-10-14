@@ -292,7 +292,7 @@ alwaysApply: false
 - 主要カラム: `recipient_id`, `category`, `notification_id`, `image_job_id`, `collapse_key`, `title`, `body`, `data`, `send_after`, `status`(`pending/processing/sent/skipped/failed`), `attempt_count`
 - 外部キー: `notification_id -> notifications.id`（**ON DELETE CASCADE＝取り消された通知は送らない**）, `image_job_id -> image_jobs.id`
 - RLS: 公開 policy なし（service role と SECURITY DEFINER のみ）
-- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み、`image_jobs` の succeeded/failed で即時に積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす
+- 備考: `notifications` の INSERT（と `created_at` が進む UPDATE）で 30 秒後に積み（延ばすのは最初に積んでから 5 分まで）、`image_jobs` の succeeded/failed で即時に積む。`push_outbox_kick`（pg_cron 10 秒ごと）が送る時刻を過ぎた行がある時だけ Edge Function `send-push` を起こす。`claim_push_outbox` は、送る時刻を 1 時間（生成完了は 15 分）過ぎた行を `skipped`（`last_error = 'expired'`）、確保したまま止まって確保 5 回目の行を `failed`（`stale_claim`）にして送らない
 
 ### ユーザープロフィール
 

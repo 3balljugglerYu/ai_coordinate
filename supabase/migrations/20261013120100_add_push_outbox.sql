@@ -23,6 +23,16 @@
 -- (2026-10-13 実測)。このマイグレーション以後にトリガーで積んだ分だけを送り、
 -- notifications.push_status / pushed_at は使わない。
 --
+-- 【古くなったもの・送れないものは送らずに閉じる】
+-- claim_push_outbox が確保の前に閉じる。
+--   ・送る時刻を 1 時間(生成完了は 15 分)過ぎても送れていない行 → skipped
+--     (last_error = 'expired')。送信関数や FCM が長く止まったあと、古い通知を
+--     まとめて送らないため(過去分を送らない ADR-004 と同じ考え方)
+--   ・確保したまま止まった行で、確保が 5 回目に達したもの → failed
+--     (last_error = 'stale_claim')。送信関数を毎回落とす行が、5 分ごとに
+--     送り直され続けないため(finish_push_outbox の retry と同じ上限)
+-- notifications の更新で送る時刻を延ばすのは、最初に積んでから 5 分まで。
+--
 -- 【負荷(ADR-003)】
 -- 高頻度ポーリングは Disk IO 枯渇の一因になった(20260809120000)。
 -- 10 秒ごとの確認は索引だけを見て、送るものがある時だけ net.http_post する。
@@ -87,6 +97,16 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_push_outbox_image_job
   ON public.push_outbox (image_job_id)
   WHERE image_job_id IS NOT NULL;
 
+-- 元の通知が消えたときの CASCADE 用。上の一意索引は送る前の行だけなので、
+-- 送り終えた行まで含めて引けるものを別に持つ(いいねの取り消しなどで全件を読まない)
+CREATE INDEX IF NOT EXISTS idx_push_outbox_notification
+  ON public.push_outbox (notification_id)
+  WHERE notification_id IS NOT NULL;
+
+-- 退会(auth.users の削除)の CASCADE 用
+CREATE INDEX IF NOT EXISTS idx_push_outbox_recipient
+  ON public.push_outbox (recipient_id);
+
 -- 古い行の掃除用
 CREATE INDEX IF NOT EXISTS idx_push_outbox_finished
   ON public.push_outbox (finished_at)
@@ -145,7 +165,8 @@ COMMENT ON FUNCTION public.push_category_for_notification_type(TEXT) IS
 -- いいね・フォローは一意制約に当たると INSERT ではなく UPDATE で created_at を
 -- 進める(create_notification)。usage_reward_earned も UPSERT で created_at を
 -- 進める。どちらも「新しく届いた」扱いにして、送る前の行があれば送る時刻を
--- 延ばし、無ければ積み直す。
+-- 延ばし、無ければ積み直す。延ばすのは最初に積んでから 5 分まで(30 秒より
+-- 短い間隔で更新が続いても、いつまでも送られないことがないように)。
 CREATE OR REPLACE FUNCTION public.enqueue_push_for_notification()
 RETURNS TRIGGER
 LANGUAGE plpgsql
@@ -171,10 +192,10 @@ BEGIN
     END IF;
 
     IF TG_OP = 'UPDATE' THEN
-      UPDATE public.push_outbox
-      SET send_after = v_send_after
-      WHERE notification_id = NEW.id
-        AND status = 'pending';
+      UPDATE public.push_outbox o
+      SET send_after = LEAST(v_send_after, o.created_at + interval '5 minutes')
+      WHERE o.notification_id = NEW.id
+        AND o.status = 'pending';
       IF FOUND THEN
         RETURN NULL;
       END IF;
@@ -296,6 +317,7 @@ SET search_path = ''
 AS $$
 DECLARE
   v_succeeded BOOLEAN := NEW.status = 'succeeded';
+  v_inserted INTEGER;
 BEGIN
   BEGIN
     -- 未ログインの生成(ゲスト)には宛先が無い
@@ -329,9 +351,14 @@ BEGIN
       now()
     )
     ON CONFLICT (image_job_id) WHERE image_job_id IS NOT NULL DO NOTHING;
+    GET DIAGNOSTICS v_inserted = ROW_COUNT;
 
+    -- 新しく積んだときだけ起こす。image_jobs は本人が UPDATE できるので、
+    -- 同じジョブの status を切り替え続けても送信関数を呼ばせない。
     -- pg_net は確定後に送るので、確定前の行を送ることはない
-    PERFORM public.push_outbox_kick();
+    IF v_inserted > 0 THEN
+      PERFORM public.push_outbox_kick();
+    END IF;
   EXCEPTION WHEN OTHERS THEN
     RAISE WARNING 'enqueue_push_for_image_job failed for job %: %', NEW.id, SQLERRM;
   END;
@@ -358,6 +385,9 @@ CREATE TRIGGER trg_enqueue_push_on_image_job_finished
 -- -----------------------------------------------
 -- 送る時刻を過ぎた行(と、確保したまま 5 分止まった行)を確保して返す。
 -- 元の通知の中身(表示文・行き先)も一緒に返す。
+-- 確保の前に、もう送らない行を閉じる(期限切れ → skipped、確保 5 回 → failed)。
+-- 閉じないと pending / processing のまま残り、push_outbox_kick が 10 秒ごとに
+-- 送信関数を起こし続ける。
 CREATE OR REPLACE FUNCTION public.claim_push_outbox(p_limit INTEGER DEFAULT 100)
 RETURNS TABLE (
   id UUID,
@@ -380,13 +410,57 @@ LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = ''
 AS $$
+DECLARE
+  v_now TIMESTAMPTZ := now();
+  -- これより前に確保したままの行は、送信関数が落ちたとみなす
+  v_stale_before TIMESTAMPTZ := now() - interval '5 minutes';
+  -- 送る時刻がこれより前なら期限切れ(生成完了は短く)
+  v_expire_before TIMESTAMPTZ := now() - interval '1 hour';
+  v_expire_generation_before TIMESTAMPTZ := now() - interval '15 minutes';
 BEGIN
+  -- もう送らない行を閉じる。ほかの呼び出しが確保中の行は飛ばす(SKIP LOCKED)
+  WITH closing AS (
+    SELECT
+      o.id,
+      (
+        o.send_after < v_expire_before
+        OR (o.category = 'generation' AND o.send_after < v_expire_generation_before)
+      ) AS is_expired
+    FROM public.push_outbox o
+    WHERE (
+        o.status = 'pending'
+        OR (o.status = 'processing' AND o.claimed_at < v_stale_before)
+      )
+      AND (
+        o.send_after < v_expire_before
+        OR (o.category = 'generation' AND o.send_after < v_expire_generation_before)
+        OR (o.status = 'processing' AND o.attempt_count >= 5)
+      )
+    FOR UPDATE SKIP LOCKED
+  )
+  UPDATE public.push_outbox o
+  SET status = CASE WHEN c.is_expired THEN 'skipped' ELSE 'failed' END,
+      last_error = CASE WHEN c.is_expired THEN 'expired' ELSE 'stale_claim' END,
+      claimed_at = NULL,
+      finished_at = v_now
+  FROM closing c
+  WHERE o.id = c.id;
+
   RETURN QUERY
   WITH picked AS (
     SELECT o.id
     FROM public.push_outbox o
-    WHERE (o.status = 'pending' AND o.send_after <= now())
-       OR (o.status = 'processing' AND o.claimed_at < now() - interval '5 minutes')
+    WHERE (
+        (o.status = 'pending' AND o.send_after <= v_now)
+        OR (
+          o.status = 'processing'
+          AND o.claimed_at < v_stale_before
+          AND o.attempt_count < 5
+        )
+      )
+      -- 上で閉じられなかった(ほかの呼び出しが確保中だった)期限切れも送らない
+      AND o.send_after >= v_expire_before
+      AND NOT (o.category = 'generation' AND o.send_after < v_expire_generation_before)
     ORDER BY o.send_after
     LIMIT GREATEST(COALESCE(p_limit, 100), 1)
     FOR UPDATE SKIP LOCKED
@@ -422,13 +496,16 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.claim_push_outbox(INTEGER) IS
-  '送る時刻を過ぎた送信待ちを FOR UPDATE SKIP LOCKED で確保し、元の通知の表示文と行き先と一緒に返す。send-push(service role)専用。';
+  '送る時刻を過ぎた送信待ちを FOR UPDATE SKIP LOCKED で確保し、元の通知の表示文と行き先と一緒に返す。確保の前に、送る時刻を 1 時間(生成完了は 15 分)過ぎた行を skipped(expired)、確保したまま止まって確保 5 回目の行を failed(stale_claim)にする。send-push(service role)専用。';
 
 REVOKE ALL ON FUNCTION public.claim_push_outbox(INTEGER) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.claim_push_outbox(INTEGER) TO service_role;
 
 -- 結果を記録する。p_results は [{"id": "...", "status": "sent|skipped|failed|retry", "error": "..."}]
 -- retry は pending に戻し、送る時刻を延ばす(5 回目で failed)。
+-- 形の合わない項目(status が無い・知らない、id が UUID でない)は飛ばす。
+-- 1 件のせいで関数ごと失敗すると、その回の全行が processing のまま残り、
+-- 5 分後に取り直されて、届いた通知がもう一度届くため。
 CREATE OR REPLACE FUNCTION public.finish_push_outbox(p_results JSONB)
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -438,6 +515,7 @@ AS $$
 DECLARE
   v_item JSONB;
   v_status TEXT;
+  v_id TEXT;
   v_updated INTEGER := 0;
 BEGIN
   IF jsonb_typeof(p_results) <> 'array' THEN
@@ -447,7 +525,13 @@ BEGIN
   FOR v_item IN SELECT value FROM jsonb_array_elements(p_results)
   LOOP
     v_status := v_item ->> 'status';
-    IF v_status NOT IN ('sent', 'skipped', 'failed', 'retry') THEN
+    IF v_status IS NULL OR v_status NOT IN ('sent', 'skipped', 'failed', 'retry') THEN
+      CONTINUE;
+    END IF;
+
+    v_id := v_item ->> 'id';
+    IF v_id IS NULL
+       OR v_id !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
       CONTINUE;
     END IF;
 
@@ -468,7 +552,7 @@ BEGIN
         END,
         claimed_at = NULL,
         last_error = LEFT(v_item ->> 'error', 1000)
-    WHERE o.id = (v_item ->> 'id')::UUID
+    WHERE o.id = v_id::UUID
       AND o.status = 'processing';
 
     IF FOUND THEN
@@ -481,7 +565,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.finish_push_outbox(JSONB) IS
-  'send-push が送った結果を記録する。retry は送る時刻を延ばして pending に戻し、5 回目で failed。send-push(service role)専用。';
+  'send-push が送った結果を記録する。retry は送る時刻を延ばして pending に戻し、5 回目で failed。形の合わない項目は飛ばす。send-push(service role)専用。';
 
 REVOKE ALL ON FUNCTION public.finish_push_outbox(JSONB) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.finish_push_outbox(JSONB) TO service_role;

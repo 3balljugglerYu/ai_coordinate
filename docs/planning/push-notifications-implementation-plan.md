@@ -257,7 +257,7 @@ flowchart TD
 - **Consequence**: 生成完了は止める時間帯・一時停止に従う（自分の操作の直後だが、静かにしたい時間の設定を優先）。アプリが前面にいて同じジョブを表示中なら、アプリ側で出さない
 
 ### ADR-008: 宛先は新しいテーブル `push_device_tokens`、`push_subscriptions` は削除
-- **Decision**: ユーザー決定（A）。`push_device_tokens (user_id, device_id, platform ios|android, token, app_version, last_seen_at)`、UNIQUE(user_id, device_id) と UNIQUE(token)。本人だけ RLS。`push_subscriptions` は同じマイグレーションで DROP（本番 0 行・参照なしを確認済み）
+- **Decision**: ユーザー決定（A）。`push_device_tokens (user_id, device_id, platform ios|android, token, app_version, last_seen_at)`、UNIQUE(device_id) と UNIQUE(token)（1 台の端末・1 つのトークンは同時に 1 人にだけ結びつく。同じ端末で別のアカウントにログインし直したら付け替える）。本人だけ RLS。`push_subscriptions` は同じマイグレーションで DROP（本番 0 行・参照なしを確認済み）
 - **Reason**: 「subscriptions」は Web Push とサブスク（課金）と紛らわしい
 - **Consequence**: `.cursor/rules/database-design.mdc` と `docs/architecture/data.*.md` の記述を直す
 
@@ -303,12 +303,12 @@ flowchart LR
 
 - [ ] `push_device_tokens` 作成・RLS（本人のみ）・`push_subscriptions` を DROP
 - [ ] `push_preferences` 作成・RLS（本人のみ）。行が無い人は既定値（`likes` 〜 `moderation` と `generation` はオン、`following_posts` と `announcements` はオフ）として扱う関数 `push_category_enabled(user_id, category)`
-- [ ] `push_outbox` 作成（`notification_id` ON DELETE CASCADE、`image_job_id`、`broadcast_id`、`category`、`collapse_key`、`send_after`、`status pending|processing|sent|skipped|failed`、`attempt_count`、`last_error`）。RLS は全拒否（service role のみ）。`(status, send_after)` の部分索引
+- [ ] `push_outbox` 作成（`notification_id` ON DELETE CASCADE、`image_job_id`、`category`、`collapse_key`、`send_after`、`status pending|processing|sent|skipped|failed`、`attempt_count`、`last_error`）。RLS は全拒否（service role のみ）。`(status, send_after)` の部分索引と、CASCADE 用の `notification_id`・`recipient_id` の索引。`broadcast_id` は Phase 5 で足す（元が1つだけの CHECK `push_outbox_single_source_check` も同時に作り直す）
 - [ ] `notifications` の AFTER INSERT トリガー：type → category の対応表で積む（宛先が無い人・自分宛ては積まない）。いいねは `collapse_key = like:{entity_id}`
-- [ ] いいね・フォローの UPSERT（一意制約で UPDATE）と `usage_reward_earned` の UPSERT で `created_at` が進んだときも積み直す（既存の `pending` があれば `send_after` を延ばす）
+- [ ] いいね・フォローの UPSERT（一意制約で UPDATE）と `usage_reward_earned` の UPSERT で `created_at` が進んだときも積み直す（既存の `pending` があれば `send_after` を延ばす。延ばすのは最初に積んでから 5 分まで）
 - [ ] `image_jobs` の AFTER UPDATE OF status トリガー（succeeded／failed のみ、リトライの queued は除外）で積み、即時に送信関数を呼ぶ（`20260602101200` の例外を握る作法）
 - [ ] `push_outbox_kick()`：送る時刻を過ぎた `pending` がある時だけ `net.http_post`。pg_cron を 10 秒ごとに登録し、`cleanup_cron_job_run_details` の高頻度一覧に追加
-- [ ] `claim_push_outbox(limit)`（`FOR UPDATE SKIP LOCKED` で `processing` に）と `finish_push_outbox(...)`（結果の記録・再試行の予約）の RPC（service role のみ）
+- [ ] `claim_push_outbox(limit)`（`FOR UPDATE SKIP LOCKED` で `processing` に）と `finish_push_outbox(...)`（結果の記録・再試行の予約）の RPC（service role のみ）。確保の前に、送る時刻を 1 時間（生成完了は 15 分）過ぎた行は `skipped`（`expired`）、確保したまま止まって確保 5 回目の行は `failed`（`stale_claim`）にして送らない。記録は形の合わない項目を飛ばす（1 件で全体を失敗させない）
 - [ ] テスト：取り消しで outbox が消える／30 秒の `send_after`／自分宛て・宛先なしは積まない（`supabase-validate-plpgsql-without-applying` の作法で事前検証）
 
 ### Phase 2: 送信（Edge Function `send-push`）
