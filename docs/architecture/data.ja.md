@@ -399,6 +399,8 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `generated_image_prompt_secrets` `BEFORE INSERT/UPDATE` | `reject_derived_image_prompt_secret()` | 派生画像への author secret 作成を service_role でも拒否 |
 | `comments`, `image_jobs`, `profiles`, `source_image_stocks`, `user_credits` `BEFORE UPDATE` | `update_updated_at_column()` | 汎用 `updated_at` 更新 |
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | 通知設定の更新時刻管理 |
+| `notifications` `AFTER INSERT / UPDATE OF created_at` | `enqueue_push_for_notification()` | アプリのプッシュ通知を 30 秒後に送る予約を `push_outbox` へ積む（宛先のある人だけ。取り消しで通知が消えると予約も CASCADE で消える） |
+| `image_jobs` `AFTER UPDATE OF status` | `enqueue_push_for_image_job()` | 生成の完了・失敗を即時にプッシュ（通知タブには載せない） |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | バナー更新時刻管理 |
 | `materials_images` `BEFORE UPDATE` | `update_materials_images_updated_at()` | 素材画像更新時刻管理 |
 | `style_presets` `BEFORE UPDATE` | `update_updated_at_column()` | One-Tap Style プリセット更新時刻管理 |
@@ -420,7 +422,9 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `follows` | 当事者 SELECT、本人書き込み |
 | `notifications` | 受信者の read/update/delete、直接 insert 禁止 |
 | `notification_preferences` | 本人 `ALL` |
-| `push_subscriptions` | 本人 `ALL` |
+| `push_device_tokens` | 本人 `SELECT`（書き込みは RPC） |
+| `push_preferences` | 本人 `SELECT/INSERT/UPDATE` |
+| `push_outbox` | 公開 policy なし（service role のみ） |
 | `user_credits` | 本人 SELECT |
 | `credit_transactions` | 本人 SELECT |
 | `free_percoin_batches` | 本人 SELECT |

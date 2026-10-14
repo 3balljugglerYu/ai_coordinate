@@ -82,6 +82,11 @@ const REQUIRED = {
     "public.reserve_collection_completion(p_category_key text, p_allow_admin_only boolean)",
     // 関数内で admin_users による本人確認あり（監査済み）
     "public.get_creator_looks_secret_for_admin(p_template_id uuid)",
+    // アプリが端末のプッシュ通知の宛先を登録・解除する（ADR-009）。利用者は
+    // 関数内で auth.uid() からだけ決め、未ログインは拒否する
+    // （20261013120000_add_push_device_tokens_and_preferences.sql）
+    "public.register_push_device(p_device_id text, p_platform text, p_token text, p_app_version text)",
+    "public.unregister_push_device(p_device_id text)",
   ]),
 };
 
