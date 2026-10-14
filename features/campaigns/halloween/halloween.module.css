@@ -187,7 +187,14 @@
   animation: galleryFlow 36s linear infinite;
 }
 
-.gallery:hover .galleryTrack,
+/* マウスを乗せている間だけ止める。スマホは触ると :hover が残り続けて止まったままになるため、
+   マウスで操作する端末に限る。スマホは指で押している間(:active)だけ止める。 */
+@media (hover: hover) and (pointer: fine) {
+  .gallery:hover .galleryTrack {
+    animation-play-state: paused;
+  }
+}
+
 .gallery:active .galleryTrack {
   animation-play-state: paused;
 }

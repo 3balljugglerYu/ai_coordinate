@@ -28,7 +28,10 @@ export function RevealOnScroll({ className, children }: { className?: string; ch
           observer.disconnect();
         }
       },
-      { threshold: 0.15 },
+      // 割合(threshold)で決めると、参加方法のような画面の何倍も縦長なカードは
+      // どこまでスクロールしても割合に届かず、ずっと透明のままになる。
+      // 上の端が画面の下から 15% のところまで来たら出す。
+      { threshold: 0, rootMargin: "0px 0px -15% 0px" },
     );
     observer.observe(node);
     return () => observer.disconnect();

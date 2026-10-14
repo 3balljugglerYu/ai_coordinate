@@ -199,6 +199,18 @@ describe("RevealOnScroll(スクロールでふわっと出す)", () => {
     expect(disconnect).toHaveBeenCalled();
   });
 
+  test("縦長のカードでも出せるよう、割合ではなく端が入ったかで判定する(PCで参加方法が透明のままだった不具合)", () => {
+    let options: IntersectionObserverInit | undefined;
+    globalThis.IntersectionObserver = jest.fn(
+      (_callback: IntersectionObserverCallback, init?: IntersectionObserverInit) => {
+        options = init;
+        return { observe: jest.fn(), disconnect: jest.fn(), unobserve: jest.fn(), takeRecords: jest.fn() };
+      },
+    ) as unknown as typeof IntersectionObserver;
+    render(<RevealOnScroll>中身</RevealOnScroll>);
+    expect(options?.threshold).toBe(0);
+  });
+
   test("IntersectionObserver が無い環境では、すぐに出す", () => {
     // @ts-expect-error 古い環境を再現する
     delete globalThis.IntersectionObserver;
