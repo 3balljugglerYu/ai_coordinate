@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { describeExpiredPushBroadcast } from "@/features/push-broadcasts/lib/presentation";
 import {
   PUSH_BROADCAST_BODY_MAX,
   PUSH_BROADCAST_TITLE_MAX,
@@ -361,8 +362,15 @@ export function PushBroadcastClient({
                         行き先: {broadcast.url}
                       </p>
                     )}
+                    {broadcast.status === "expired" && (
+                      <p className="text-xs text-rose-700">
+                        {describeExpiredPushBroadcast(broadcast.enqueuedCount)}
+                      </p>
+                    )}
                     {(broadcast.status === "sending" ||
-                      broadcast.status === "sent") && (
+                      broadcast.status === "sent" ||
+                      (broadcast.status === "expired" &&
+                        broadcast.enqueuedCount > 0)) && (
                       <p className="text-xs text-slate-600">
                         宛先 {broadcast.enqueuedCount} 人 ／ 送信 {broadcast.stats.sent}
                         ・送らず {broadcast.stats.skipped}・失敗 {broadcast.stats.failed}

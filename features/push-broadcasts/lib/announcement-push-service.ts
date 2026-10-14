@@ -12,8 +12,30 @@ import type { AnnouncementPushSummary } from "./schema";
 export interface AnnouncementPushSyncResult {
   action: AnnouncementPushAction["type"];
   push: AnnouncementPushSummary | null;
-  /** お知らせ自体は保存できたが、プッシュの予約だけ失敗したときの文言 */
+  /**
+   * お知らせ自体は保存できたが、プッシュの予約・変更・取り消しが効かなかったときの文言
+   * （画面と監査ログに出す）
+   */
   error?: string;
+}
+
+/**
+ * 予約の変更・取り消しが 0 行で終わったときの文言。読み直した今の状態で書き分ける
+ * （保存の直前に送信が始まった・期限切れになった、など）。
+ */
+export function describeUnappliedAnnouncementPush(
+  action: "reschedule" | "cancel",
+  current: AnnouncementPushSummary | null
+): string {
+  if (current?.status === "sending" || current?.status === "sent") {
+    return action === "cancel"
+      ? "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした"
+      : "プッシュ通知はすでに送信が始まっていたため、変更できませんでした（変更前の内容で送られます）";
+  }
+  if (current?.status === "expired") {
+    return "プッシュ通知は送信日時から 1 時間を過ぎて期限切れになっていたため、変更できませんでした";
+  }
+  return "プッシュ通知の状態が変わっていたため、変更できませんでした。画面を読み込み直して確認してください";
 }
 
 /**
@@ -50,7 +72,7 @@ export async function syncAnnouncementPush(params: {
       return { action: action.type, push: existing };
     }
 
-    await applyAnnouncementPushAction(
+    const applied = await applyAnnouncementPushAction(
       announcement.id,
       action,
       params.adminUserId
@@ -60,6 +82,15 @@ export async function syncAnnouncementPush(params: {
       (await getAnnouncementPushSummaries([announcement.id])).get(
         announcement.id
       ) ?? null;
+
+    if (!applied && (action.type === "reschedule" || action.type === "cancel")) {
+      // 読んでから書くまでのあいだに送信が始まっていた。成功扱いにしない
+      return {
+        action: action.type,
+        push,
+        error: describeUnappliedAnnouncementPush(action.type, push),
+      };
+    }
     return { action: action.type, push };
   } catch (error) {
     console.error("[push-broadcasts] announcement sync error:", error);

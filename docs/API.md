@@ -619,7 +619,8 @@ Main errors:
 アプリへ運営からのお知らせをプッシュ通知で送る（全体配信）。行を `admin_push_broadcasts` に `scheduled` で作り、`send_at` を過ぎると pg_cron の `push_outbox_kick()` が宛先ごとに `push_outbox` へ展開して Edge Function `send-push` が送る。
 
 - Access: `admin session`
-- 届くのは宛先（`push_device_tokens`）があり、`push_preferences` の `announcements`（既定オフ）をオンにしている人だけ。一時停止・止める時間帯の人は送信時に `skipped`
+- 届くのは宛先（`push_device_tokens`）があり、`push_preferences` の `announcements`（既定オフ）をオンにしている人だけ。退会・停止中の人には積まない。一時停止・止める時間帯の人は送信時に `skipped`
+- `send_at` から 1 時間たっても展開し終えていない配信（cron や DB が長く止まっていたとき）は `expired` にして、残りを送らない
 - Request body:
 
 ```json
@@ -639,7 +640,7 @@ Main errors:
 
 アプリに渡る FCM の `data`（文字列のみ）: `kind=announcement`、`broadcast_id`、`url`（あれば）、`announcement_id`（運営お知らせの配信のみ）、`category=announcements`
 
-Response: 作成した配信（`id`, `title`, `body`, `url`, `announcementId`, `sendAt`, `status`, `enqueuedCount`, `stats`, `statusLabel` ほか）
+Response: 作成した配信（`id`, `title`, `body`, `url`, `announcementId`, `sendAt`, `status`, `enqueuedCount`, `stats`, `statusLabel` ほか）。`status` は `scheduled` / `sending` / `sent`（送信待ちを積み終えた）/ `canceled` / `expired`。`statusLabel` は `sent` でも送り終えていない送信待ち（`stats.pending`）が残る間は「送信中」
 
 Main errors:
 
@@ -650,7 +651,7 @@ Main errors:
 
 ### `PATCH /api/admin/push-broadcasts/[id]`
 
-予約中（`scheduled`）の配信を取り消す。送信が始まった（`sending` / `sent`）配信は戻せない。
+予約中（`scheduled`）の配信を取り消す。送信が始まった（`sending` / `sent`）配信と期限切れ（`expired`）の配信は戻せない。
 
 - Access: `admin session`
 - Request body: `{ "status": "canceled" }`（これ以外は 400）
@@ -662,13 +663,13 @@ Main errors:
 
 ### 運営お知らせの「プッシュ通知も送る」
 
-`POST /api/admin/announcements` と `PATCH /api/admin/announcements/[id]` は任意の `sendPush`（boolean）を受け取る。公開（`status=published`）で `sendPush=true` なら、公開日時（`publishAt`、未指定は今）を `send_at` にした配信を 1 つ作る（お知らせ 1 件につき配信は 1 つ）。
+`POST /api/admin/announcements` と `PATCH /api/admin/announcements/[id]` は任意の `sendPush`（boolean）を受け取る。公開（`status=published`）で `sendPush=true` なら、公開日時（`publishAt`、未指定は今）を `send_at` にした配信を 1 つ作る（お知らせ 1 件につき配信は 1 つ）。公開日時が過去なら `send_at` は保存した今にする（送信日時から 1 時間たった配信は送らないため）。
 
 - 送る前（`scheduled` / `canceled`）なら保存のたびに公開日時・タイトル・本文の冒頭を合わせる。下書きに戻す・`sendPush=false` で取り消す
-- 送信が始まった配信は変えない
+- 送信が始まった配信と期限切れの配信は変えない
 - `sendPush` 未指定は今の予約を保つ
 - お知らせを削除すると配信と未送信の `push_outbox` も消える（ON DELETE CASCADE）
-- レスポンスに `push`（`id`, `status`, `sendAt`, `enqueuedCount` または `null`）を付ける。お知らせは保存できたがプッシュの予約だけ失敗したときは 200 のまま `pushError` を付ける
+- レスポンスに `push`（`id`, `status`, `sendAt`, `enqueuedCount`, `pendingCount` または `null`）を付ける。お知らせは保存できたが、プッシュの予約・変更・取り消しが効かなかったとき（保存の直前に送信が始まっていた・期限切れになっていた、を含む）は 200 のまま `pushError` を付け、監査ログにも残す
 
 ### `GET|POST /api/internal/account-purge`
 

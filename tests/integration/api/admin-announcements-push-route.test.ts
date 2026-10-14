@@ -97,6 +97,7 @@ const pushSummary = {
   status: "scheduled" as const,
   sendAt: PUBLISH_AT,
   enqueuedCount: 0,
+  pendingCount: 0,
 };
 
 beforeEach(() => {
@@ -171,5 +172,31 @@ describe("PATCH /api/admin/announcements/[id]", () => {
       adminUserId: "admin-1",
     });
     expect((await response.json()).push.status).toBe("canceled");
+  });
+
+  test("取り消しが効かなかった（送信が始まっていた）ら、画面と監査ログに pushError を残す", async () => {
+    const error = "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした";
+    mockUpdate.mockResolvedValue(announcement({ status: "draft", publishAt: null }));
+    mockSync.mockResolvedValue({
+      action: "cancel",
+      push: { ...pushSummary, status: "sent", enqueuedCount: 3 },
+      error,
+    });
+
+    const response = await PATCH(
+      request("PATCH", saveBody({ status: "draft", publishAt: null, sendPush: false })),
+      { params: Promise.resolve({ id: "a1" }) }
+    );
+
+    expect(response.status).toBe(200);
+    const json = await response.json();
+    expect(json.pushError).toBe(error);
+    expect(json.push.status).toBe("sent");
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "announcement_update",
+        metadata: expect.objectContaining({ push: "cancel", pushError: error }),
+      })
+    );
   });
 });
