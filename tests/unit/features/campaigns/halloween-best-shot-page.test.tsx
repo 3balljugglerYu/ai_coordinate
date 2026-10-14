@@ -115,6 +115,16 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(names).toEqual(["ハロウィンらしさ", "うちの子らしさ", "使ってみたくなる魅力"]);
   });
 
+  test("審査のポイントは「つくる人」のタブの中だけに出す(審査があるのはつくる人の賞だけ。10/14 に独立した区画から移動)", () => {
+    render(<HalloweenBestShotPage />);
+    const creatorPanel = screen.getByRole("tabpanel", { name: /つくる人/ });
+    expect(within(creatorPanel).getByRole("heading", { name: "審査のポイント" })).toBeTruthy();
+    expect(within(creatorPanel).getAllByTestId("halloween-judge-point")).toHaveLength(3);
+    // ページ全体でも3つだけ(つかう人のタブや、ほかの区画には出さない)
+    expect(screen.getAllByTestId("halloween-judge-point")).toHaveLength(3);
+    expect(screen.getAllByRole("heading", { name: /審査のポイント/ })).toHaveLength(1);
+  });
+
   test("その他に、Xへのシェアと運営の応援を書く", () => {
     render(<HalloweenBestShotPage />);
     const tips = screen.getAllByTestId("halloween-more-tip").map((tip) => tip.textContent);
@@ -145,7 +155,6 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
       "ABOUT企画について",
       "PRIZE賞品",
       "HOW TO JOIN参加方法",
-      "POINT審査のポイント",
       "SCHEDULEスケジュール",
       "MOREその他",
       "あなたのベストショット、待ってます",
