@@ -18,3 +18,8 @@ verify_jwt = false
 # 関数内で EDGE_FUNCTION_SECRET を Authorization ヘッダ照合（ADR-011 vault パターン）。
 [functions.extract-creator-looks-prompt]
 verify_jwt = false
+
+# send-push は push_outbox_kick()(pg_net / pg_cron)から呼び出されるため verify_jwt は無効。
+# 関数内で PUSH_SEND_SECRET を Authorization ヘッダ照合（本機能専用の secret）。
+[functions.send-push]
+verify_jwt = false
