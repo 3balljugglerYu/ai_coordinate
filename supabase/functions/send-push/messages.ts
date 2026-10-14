@@ -199,6 +199,8 @@ export type FcmOutcome =
   | { kind: "invalid_token"; error: string }
   /** 混雑・一時障害 → 送る時刻を延ばしてやり直す */
   | { kind: "retry"; error: string }
+  /** アクセストークンが無効(鍵の差し替え直後など)→ 使い回しを捨ててやり直す */
+  | { kind: "unauthorized"; error: string }
   /** それ以外(設定の誤りなど)→ やり直しても直らない */
   | { kind: "failed"; error: string };
 
@@ -222,18 +224,18 @@ export function classifyFcmResponse(status: number, body: unknown): FcmOutcome {
     .replace(/\s+/g, " ")
     .trim();
 
-  if (fcmCode === "UNREGISTERED" || status === 404) {
+  // 宛先を消すのは、宛先そのものが使えないと FCM が言っている時だけ。
+  // 詳細コードの無い 404 や SENDER_ID_MISMATCH は、鍵やプロジェクトの設定の誤り
+  // (こちら側)でも返るので消さない(消すと、設定を一度間違えるだけで全員の宛先が消える)
+  if (fcmCode === "UNREGISTERED") {
     return { kind: "invalid_token", error: message };
   }
-  // INVALID_ARGUMENT はトークンの形が壊れている時にも返る。message にトークンの語がある時だけ宛先を消す
-  if (
-    fcmCode === "INVALID_ARGUMENT" &&
-    /registration token|token/i.test(err?.message ?? "")
-  ) {
+  // INVALID_ARGUMENT は送る中身の誤りでも返る。登録トークンが壊れている時だけ宛先を消す
+  if (fcmCode === "INVALID_ARGUMENT" && /registration token/i.test(err?.message ?? "")) {
     return { kind: "invalid_token", error: message };
   }
-  if (fcmCode === "SENDER_ID_MISMATCH") {
-    return { kind: "invalid_token", error: message };
+  if (status === 401) {
+    return { kind: "unauthorized", error: message };
   }
   if (status === 429 || status >= 500 || fcmCode === "QUOTA_EXCEEDED" ||
     fcmCode === "UNAVAILABLE" || fcmCode === "INTERNAL") {
@@ -246,7 +248,8 @@ export type GroupStatus = "sent" | "skipped" | "failed" | "retry";
 
 /**
  * 宛先(端末)ごとの結果から、その 1 通の結果を決める。
- * 1 台でも届けば sent。届かず一時障害があれば retry。端末が無ければ skipped。
+ * 1 台でも届けば sent。届かず一時障害(アクセストークンの無効を含む)があれば retry。
+ * 端末が無ければ skipped。
  */
 export function summarizeOutcomes(
   outcomes: FcmOutcome[],
@@ -258,7 +261,7 @@ export function summarizeOutcomes(
     return { status: "sent", error: null };
   }
   const firstError = (o: FcmOutcome) => ("error" in o ? o.error : "");
-  const retry = outcomes.find((o) => o.kind === "retry");
+  const retry = outcomes.find((o) => o.kind === "retry" || o.kind === "unauthorized");
   if (retry) {
     return { status: "retry", error: firstError(retry) };
   }

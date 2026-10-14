@@ -215,6 +215,32 @@ describe("classifyFcmResponse", () => {
     expect(classifyFcmResponse(400, body).kind).toBe("failed");
   });
 
+  test("⭐本文に token の語があっても、登録トークンの話でなければ宛先を消さない", () => {
+    const body = fcmError(
+      "INVALID_ARGUMENT",
+      "INVALID_ARGUMENT",
+      "Invalid JSON payload received. Unknown name \"tokens\" at 'message': Cannot find field.",
+    );
+    expect(classifyFcmResponse(400, body).kind).toBe("failed");
+  });
+
+  test("⭐SENDER_ID_MISMATCH は鍵の設定の誤りでも返るので、宛先を消さずに失敗", () => {
+    const body = fcmError("PERMISSION_DENIED", "SENDER_ID_MISMATCH", "SenderId mismatch");
+    expect(classifyFcmResponse(403, body)).toEqual({
+      kind: "failed",
+      error: "403 SENDER_ID_MISMATCH SenderId mismatch",
+    });
+  });
+
+  test("⭐詳細コードの無い 404(プロジェクトの取り違えなど)は、宛先を消さずに失敗", () => {
+    expect(
+      classifyFcmResponse(404, {
+        error: { status: "NOT_FOUND", message: "Requested entity was not found." },
+      }).kind,
+    ).toBe("failed");
+    expect(classifyFcmResponse(404, null).kind).toBe("failed");
+  });
+
   test("429 と 5xx はやり直す", () => {
     expect(classifyFcmResponse(429, fcmError("RESOURCE_EXHAUSTED", "QUOTA_EXCEEDED")).kind).toBe(
       "retry",
@@ -222,10 +248,17 @@ describe("classifyFcmResponse", () => {
     expect(classifyFcmResponse(503, null).kind).toBe("retry");
   });
 
-  test("認証の誤りは失敗", () => {
+  test("⭐401 はアクセストークンの無効(作り直してやり直す)", () => {
     expect(classifyFcmResponse(401, { error: { status: "UNAUTHENTICATED" } })).toEqual({
-      kind: "failed",
+      kind: "unauthorized",
       error: "401 UNAUTHENTICATED",
+    });
+  });
+
+  test("403(権限の誤り)は失敗", () => {
+    expect(classifyFcmResponse(403, { error: { status: "PERMISSION_DENIED" } })).toEqual({
+      kind: "failed",
+      error: "403 PERMISSION_DENIED",
     });
   });
 });
@@ -245,6 +278,12 @@ describe("summarizeOutcomes", () => {
     expect(
       summarizeOutcomes([{ kind: "failed", error: "f" }, { kind: "retry", error: "r" }]),
     ).toEqual({ status: "retry", error: "r" });
+  });
+
+  test("⭐アクセストークンの無効も retry(失敗で確定させない)", () => {
+    expect(
+      summarizeOutcomes([{ kind: "failed", error: "f" }, { kind: "unauthorized", error: "401" }]),
+    ).toEqual({ status: "retry", error: "401" });
   });
 
   test("全部の宛先が使えなければ skipped", () => {

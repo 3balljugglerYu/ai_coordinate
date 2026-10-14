@@ -100,7 +100,10 @@ interface CachedToken {
 
 let cached: CachedToken | null = null;
 
-/** テスト用: 使い回しを捨てる */
+/**
+ * 使い回しを捨てる。FCM が 401 を返した時(鍵の差し替え・失効の直後)に呼び、
+ * 次の送信で作り直させる。テストでも使う。
+ */
 export function resetAccessTokenCache(): void {
   cached = null;
 }

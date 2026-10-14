@@ -76,6 +76,18 @@ describe("getAccessToken", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(2);
   });
 
+  test("⭐使い回しを捨てたら、期限内でも作り直す(FCM の 401 のあと)", async () => {
+    let issued = 0;
+    const fetchImpl = jest.fn(async () =>
+      tokenResponse({ access_token: `a${++issued}`, expires_in: 3600 })
+    ) as unknown as typeof fetch;
+
+    expect(await getAccessToken(account, fetchImpl, 1000)).toBe("a1");
+    resetAccessTokenCache();
+    expect(await getAccessToken(account, fetchImpl, 1001)).toBe("a2");
+    expect(fetchImpl).toHaveBeenCalledTimes(2);
+  });
+
   test("OAuth に失敗したら例外", async () => {
     const fetchImpl = jest.fn(async () =>
       tokenResponse({ error: "invalid_grant" }, false, 400)
