@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import type { AnnouncementAdminView } from "@/features/announcements/lib/schema";
+import { getPushBroadcastStatusLabel } from "@/features/push-broadcasts/lib/presentation";
 import { AnnouncementForm } from "./AnnouncementForm";
 
 interface AnnouncementListClientProps {
@@ -159,6 +160,15 @@ export function AnnouncementListClient({
                       <span className="text-xs text-slate-500">
                         公開日時: {announcement.publishAtDisplay}
                       </span>
+                      {announcement.push && (
+                        <Badge
+                          variant="outline"
+                          className="border-slate-300 text-slate-600"
+                        >
+                          プッシュ:{" "}
+                          {getPushBroadcastStatusLabel(announcement.push.status).label}
+                        </Badge>
+                      )}
                     </div>
                     <h3 className="truncate text-base font-semibold text-slate-900">
                       {announcement.title}

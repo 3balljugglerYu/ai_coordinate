@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
@@ -18,6 +19,7 @@ import type {
   AnnouncementAdminView,
   AnnouncementStatus,
 } from "@/features/announcements/lib/schema";
+import { getPushBroadcastStatusLabel } from "@/features/push-broadcasts/lib/presentation";
 
 interface AnnouncementFormProps {
   announcement?: AnnouncementAdminView;
@@ -46,6 +48,13 @@ export function AnnouncementForm({
   );
   const [bodyJson, setBodyJson] = useState<unknown>(
     announcement?.bodyJson ?? undefined
+  );
+  const existingPush = announcement?.push ?? null;
+  // 送信が始まった・済んだ配信は戻せないので、チェックは変えられない
+  const isPushLocked =
+    existingPush?.status === "sending" || existingPush?.status === "sent";
+  const [sendPush, setSendPush] = useState(
+    existingPush !== null && existingPush.status !== "canceled"
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -77,6 +86,7 @@ export function AnnouncementForm({
             status,
             publishAt: publishAt ? new Date(publishAt).toISOString() : null,
             bodyJson,
+            ...(isPushLocked ? {} : { sendPush }),
           }),
         }
       );
@@ -103,6 +113,14 @@ export function AnnouncementForm({
       }
 
       await onSuccess(payload);
+      if ("pushError" in payload && payload.pushError) {
+        toast({
+          title: "プッシュ通知を予約できませんでした",
+          description: `お知らせは保存しました。${payload.pushError}`,
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "保存しました",
         description: "お知らせを保存しました",
@@ -163,6 +181,39 @@ export function AnnouncementForm({
             <p className="mt-1 text-xs text-slate-500">
               公開を選び、未入力のまま保存すると即時公開されます。
             </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="send_push"
+              checked={isPushLocked ? true : sendPush}
+              disabled={isPushLocked}
+              onCheckedChange={(checked) => setSendPush(checked === true)}
+              className="mt-1"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="send_push" className="cursor-pointer text-sm">
+                プッシュ通知も送る
+              </Label>
+              <p className="text-xs text-slate-500">
+                公開日時にアプリへプッシュ通知を送ります（タイトルと本文の冒頭）。届くのは、アプリの通知設定で「運営からのお知らせ」をオンにしている人だけです（既定はオフ）。
+              </p>
+              <p className="text-xs text-slate-500">
+                下書きに戻す・チェックを外す・お知らせを削除すると、送る前なら予約も取り消します。
+              </p>
+              {existingPush && (
+                <p className="text-xs text-slate-600">
+                  プッシュ通知:{" "}
+                  {getPushBroadcastStatusLabel(existingPush.status).label}
+                  {existingPush.status !== "scheduled" &&
+                  existingPush.status !== "canceled"
+                    ? `（宛先 ${existingPush.enqueuedCount} 人）`
+                    : ""}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 

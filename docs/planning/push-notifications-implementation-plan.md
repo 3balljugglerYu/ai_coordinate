@@ -356,6 +356,13 @@ flowchart LR
 - [ ] 配信：`send_at` を過ぎた broadcast を `push_outbox_kick` が見つけたら、`announcements` がオンの宛先へ outbox を展開（大量になるのでバッチ）
 - [ ] 押したらお知らせの詳細（`AnnouncementDetailRoute`）へ
 
+実装時に決めたこと（2026-10-14、`20261014120000_add_admin_push_broadcasts.sql`）:
+- 展開先は「宛先があり、`announcements` がオン」の人だけを表の結合で絞る（既定オフなので大半を積まずに済む）。一時停止・止める時間帯は時刻で変わるため展開時には見ず、送信時に `send-push` が `push_allowed_now` で `skipped` にする
+- `announcement_id` は ON DELETE CASCADE。お知らせを消したら配信と未送信の `push_outbox` も消える（ADR-002 と同じく削除＝取り消し）。履歴は `admin_audit_log` に残る
+- お知らせ 1 件に配信は 1 つ（部分 UNIQUE）。送る前（`scheduled`/`canceled`）なら保存のたびに公開日時・表示文を合わせ、下書きに戻す・チェックを外すと取り消す。送信が始まったものは変えない
+- 展開は cron から呼ばれた `push_outbox_kick` だけで行う（生成完了のトリガー経由では `pg_trigger_depth()` で避け、生成結果を書くトランザクションに大量の INSERT を混ぜない）
+- アプリに渡す `data`: `kind=announcement`・`broadcast_id`・`url`（全体配信で指定したとき）・`announcement_id`（お知らせの配信のとき）
+
 ### Phase 6: ペルスタならではの新しい通知
 目的: PICK UP 入り・スタイル開放・フォロー中の新作
 ビルド確認: Phase 1 と同じ

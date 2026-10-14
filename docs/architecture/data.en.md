@@ -394,6 +394,7 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | Maintain notification preference timestamp |
 | `notifications` `AFTER INSERT / UPDATE OF created_at` | `enqueue_push_for_notification()` | Queues an app push into `push_outbox` to be sent 30 seconds later (only for users with a device; a retracted notification deletes its queued push by CASCADE) |
 | `image_jobs` `AFTER UPDATE OF status` | `enqueue_push_for_image_job()` | Pushes generation success/failure immediately (not added to the notification list) |
+| pg_cron `push_outbox_kick` (every 10 s) | `push_outbox_kick()` → `fan_out_push_broadcasts()` | When an admin broadcast (`admin_push_broadcasts`) is due, fans it out into `push_outbox` in batches of 2,000 for users who have a device and turned on "announcements", then wakes `send-push` (only a partial-index check when nothing is due) |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | Maintain banner timestamp |
 | `materials_images` `BEFORE UPDATE` | `update_materials_images_updated_at()` | Maintain materials image timestamp |
 | `style_presets` `BEFORE UPDATE` | `update_updated_at_column()` | Maintain One-Tap Style preset timestamp |
@@ -418,6 +419,7 @@ Use this section to decide whether a new feature should use session access, serv
 | `push_device_tokens` | Owner `SELECT` (writes via RPC) |
 | `push_preferences` | Owner `SELECT/INSERT/UPDATE` |
 | `push_outbox` | No public policy (service role only) |
+| `admin_push_broadcasts` | No public policy (service role only; managed via admin API) |
 | `user_credits` | Owner read |
 | `credit_transactions` | Owner read |
 | `free_percoin_batches` | Owner read |

@@ -9,7 +9,8 @@ export type AdminNavIconKey =
   | "rectangle-horizontal"
   | "image"
   | "file-text"
-  | "flag";
+  | "flag"
+  | "bell";
 
 export interface AdminNavItem {
   path: string;
@@ -163,6 +164,12 @@ export const adminNavItems: AdminNavItem[] = [
     label: "個人あてのお知らせ",
     description: "選んだ人だけにお知らせを送る",
     iconKey: "file-text",
+  },
+  {
+    path: "/admin/push-broadcasts",
+    label: "プッシュ通知の配信",
+    description: "アプリへ運営からのお知らせをプッシュ通知で送る",
+    iconKey: "bell",
   },
   {
     path: "/admin/image-optimization",
