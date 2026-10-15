@@ -8,7 +8,7 @@ import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campai
 import styles from "../halloween.module.css";
 
 /**
- * 「キャンペーン対象の投稿」(2026-10-15 ユーザー決定)。
+ * 「キャンペーン対象作品」(2026-10-15 ユーザー決定)。
  *
  * 3列 × 2段の6件を1ページにし、左右にスワイプすると次の6件へ移る(1件ずつではなく6件単位)。
  * ページ分けと「1ページに同じ人は1件まで」はサーバー側(paginateOnePerAuthor)で済ませてある。
@@ -58,7 +58,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
         className={styles.worksScroller}
         onScroll={handleScroll}
         role="group"
-        aria-label="キャンペーン対象の投稿"
+        aria-label="キャンペーン対象作品"
         data-testid="halloween-works"
       >
         {pages.map((items, pageIndex) => (

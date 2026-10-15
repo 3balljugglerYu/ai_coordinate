@@ -20,6 +20,9 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 2026-10-15: Amazon のキャンペーンページを参考に、企画についての上へ「キャンペーン対象の投稿」
  * (応募作がまだないあいだは出さない)と「エントリー」(つかう人の抽選の進捗バー)を置く。
  * 抽選はエントリーした人だけ。ガチャの応募作も対象にする。
+ * 2026-10-15: 画面での呼び名は、見出しを「キャンペーン対象作品」、文中を「対象作品」にそろえる
+ * (「応募作」「キャンペーン対象の投稿」などが混ざっていた。数える単位の「3作品で1口」とも合わせる)。
+ * コードと DB では、これまでどおり応募作(submissions)と呼ぶ。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -41,7 +44,7 @@ function JoinButtons() {
         </span>
       </Link>
       <Link className={styles.ctaSub} href={CAMPAIGN.entriesHref}>
-        応募作をつかう
+        対象作品をつかう
         <span className={styles.ctaArrow} aria-hidden="true">
           →
         </span>
@@ -203,16 +206,16 @@ const USER_STEPS: readonly JoinStep[] = [
     entryLink: true,
   },
   {
-    title: "応募作をさがす",
-    text: `ハッシュタグ「${CAMPAIGN.hashtag}」の付いた投稿が応募作です。下の「応募作を見る」から、まとめて見られます。`,
+    title: "対象作品をさがす",
+    text: `ハッシュタグ「${CAMPAIGN.hashtag}」の付いた作品が、キャンペーン対象作品です。下の「対象作品を見る」から、まとめて見られます。`,
     entriesLink: true,
   },
   {
     title: "「このカタログで生成する」をタップ",
-    text: "使いたい応募作の下にあるボタンをタップします。フォローしていない人の応募作では「フォローして生成する」と出るので、そのままタップすればOKです。",
+    text: "使いたい対象作品の下にあるボタンをタップします。フォローしていない人の対象作品では「フォローして生成する」と出るので、そのままタップすればOKです。",
     shot: {
       src: `${USE_IMG}/step2-sub.webp`,
-      alt: "応募作の下に出る「このプロンプトで生成してみる」の枠。「フォローして生成する」のボタンを赤い枠で囲んでいる",
+      alt: "対象作品の下に出る「このプロンプトで生成してみる」の枠。「フォローして生成する」のボタンを赤い枠で囲んでいる",
       width: 640,
       height: 495,
       rings: [{ left: 5.5, top: 63, width: 47, height: 12.5 }],
@@ -221,7 +224,7 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "うちの子の画像を入れて生成",
-    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある応募作なら、好きな文字も入れられます。",
+    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある対象作品なら、好きな文字も入れられます。",
     shot: {
       src: `${USE_IMG}/step3-sub.webp`,
       alt: "生成の画面。人物画像をアップロードする欄に、うちの子の画像が入っている",
@@ -238,7 +241,7 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "投稿してペルコインもGET！",
-    text: "キャプションは自由に書いてOK。応募作から生成した投稿は、ハッシュタグを付けなくても自動で数えます。その日はじめてプロンプトを使って投稿すると、ミッションのペルコインも届きます。",
+    text: "キャプションは自由に書いてOK。対象作品から生成した投稿は、ハッシュタグを付けなくても自動で数えます。その日はじめてプロンプトを使って投稿すると、ミッションのペルコインも届きます。",
     shot: {
       src: `${USE_IMG}/step4-sub.webp`,
       alt: "投稿したあとに出る「ミッションクリア！ プロンプトを利用して投稿！ ＋20ペルコイン」のお知らせ",
@@ -249,8 +252,8 @@ const USER_STEPS: readonly JoinStep[] = [
     },
   },
   {
-    title: "ちがう応募作で、口数アップ！",
-    text: "ちがう応募作を使って投稿するほど、抽選の口数が増えます(最大3口)。",
+    title: "ちがう対象作品で、口数アップ！",
+    text: "ちがう対象作品を使って投稿するほど、抽選の口数が増えます(最大3口)。",
     tickets: true,
   },
 ];
@@ -368,7 +371,7 @@ function StepList({ steps, role }: { steps: readonly JoinStep[]; role: "creator"
           ) : null}
           {step.entriesLink ? (
             <Link className={styles.entriesLink} href={CAMPAIGN.entriesHref}>
-              応募作を見る
+              対象作品を見る
               <span aria-hidden="true">→</span>
             </Link>
           ) : null}
@@ -445,7 +448,7 @@ export function HalloweenBestShotPage({
           <section className={styles.section} aria-labelledby="hbs-works">
             <div className={styles.wrap}>
               <div id="hbs-works">
-                <Ribbon en="WORKS">キャンペーン対象の投稿</Ribbon>
+                <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
               </div>
               <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
               <RevealOnScroll className={styles.reveal}>
@@ -517,7 +520,7 @@ export function HalloweenBestShotPage({
               </h3>
               <PrizeList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
               <div className={styles.ticketBox}>
-                <p className={styles.ticketLead}>ちがう応募作を使うほど、当たりやすく！(最大3口)</p>
+                <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
                 <TicketTable />
               </div>
             </RevealOnScroll>
@@ -556,14 +559,14 @@ export function HalloweenBestShotPage({
                     key: "user",
                     icon: "🍬",
                     label: "つかう人",
-                    sub: "応募作で生成して投稿",
+                    sub: "対象作品で生成して投稿",
                     panel: (
                       <>
                         <StepList steps={USER_STEPS} role="user" />
                         <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
                         <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
-                        <p className={styles.note}>※ 同じ応募作は、何回使っても1作品と数えます</p>
-                        <p className={styles.note}>※ 自分の応募作を使った投稿は数えません</p>
+                        <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
+                        <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
                         <p className={styles.note}>
                           ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
                         </p>

@@ -186,7 +186,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         <div>
           {entered ? <p className={styles.entryStatus}>✓ エントリー済み</p> : null}
           <h3 className={styles.entryTitle}>キャンペーンに参加</h3>
-          <p className={styles.entrySub}>キャンペーン対象の投稿を利用してAmazonギフトカードをゲットしよう！</p>
+          <p className={styles.entrySub}>キャンペーン対象作品を利用してAmazonギフトカードをゲットしよう！</p>
         </div>
       </div>
 
@@ -251,8 +251,8 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
       </p>
       <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します</p>
       <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
-      <p className={styles.note}>※ 同じ投稿作品で生成してもカウントは増えません</p>
-      <p className={styles.note}>※ 「{CAMPAIGN.hashtag}」のタグが記載されているコンテンツが対象です</p>
+      <p className={styles.note}>※ 同じ対象作品で生成してもカウントは増えません</p>
+      <p className={styles.note}>※ 「{CAMPAIGN.hashtag}」のタグが記載されている作品が、対象作品です</p>
     </div>
   );
 }

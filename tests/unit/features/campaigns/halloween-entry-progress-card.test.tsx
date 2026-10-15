@@ -198,7 +198,7 @@ describe("EntryProgressCard", () => {
     render(<EntryProgressCard now={DURING} />);
     expect(await screen.findByRole("heading", { name: "キャンペーンに参加" })).toBeTruthy();
     expect(
-      screen.getByText("キャンペーン対象の投稿を利用してAmazonギフトカードをゲットしよう！"),
+      screen.getByText("キャンペーン対象作品を利用してAmazonギフトカードをゲットしよう！"),
     ).toBeTruthy();
     // 注意書きは4つ、この順(10/15 ユーザー指示)
     const card = screen.getByTestId("halloween-entry-card");
@@ -208,8 +208,8 @@ describe("EntryProgressCard", () => {
     expect(notes).toEqual([
       "※ 1口達成するたびに自動で応募は完了します",
       "※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)",
-      "※ 同じ投稿作品で生成してもカウントは増えません",
-      "※ 「#うちの子のベストショット」のタグが記載されているコンテンツが対象です",
+      "※ 同じ対象作品で生成してもカウントは増えません",
+      "※ 「#うちの子のベストショット」のタグが記載されている作品が、対象作品です",
     ]);
     // 未ログイン(= 未エントリー)では吹き出しを出さない
     expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
