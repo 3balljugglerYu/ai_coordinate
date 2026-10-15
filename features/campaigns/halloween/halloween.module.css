@@ -1155,6 +1155,9 @@
   color: #fff;
   font-weight: 700;
   font-size: 13px;
+  /* 言葉の切れ目でだけ折り返す。入りきらないときだけ、どこでも折り返す(はみ出さない) */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .entryBubble::after {

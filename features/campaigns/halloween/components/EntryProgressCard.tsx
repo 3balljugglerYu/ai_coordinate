@@ -22,8 +22,8 @@ import styles from "../halloween.module.css";
  *
  * 本人ごとに違う内容なので、ページ(キャッシュされる)とは別に、開いたあとで読む。
  *
- * 2026-10-15 ユーザー指示: 題名は「キャンペーンに参加」。数え方の吹き出しはエントリーしてから出す。
- * エントリー前の「◯作品分たまっています」は出さない。
+ * 2026-10-15 ユーザー指示: 題名は「キャンペーンに参加」。数え方の吹き出しと「※」の注意書き4つは
+ * エントリーしてから出す。エントリー前の「◯作品分たまっています」と、始まる前の「◯から数えます」は出さない。
  */
 
 const PROGRESS_URL = `/api/hashtag-campaigns/${CAMPAIGN.campaignKey}/progress`;
@@ -191,9 +191,14 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
 
       {entered ? (
         <>
-          {/* 幅が狭いと言葉の途中で折り返すので、「1カウント！」「○作品で○口」はひとまとまりで折り返す */}
+          {/*
+            幅が狭いと言葉の途中で折り返すので、言葉の切れ目(<wbr />・「、」「・」の後)でだけ折り返す
+            (CSS の word-break: keep-all)。「1カウント！」「○作品で○口」はひとまとまり。
+          */}
           <p className={styles.entryBubble} data-testid="halloween-entry-bubble">
-            生成して投稿するたびに、<span className={styles.nowrap}>1カウント！</span>
+            対象作品を<wbr />
+            生成して<wbr />
+            投稿するたびに、<span className={styles.nowrap}>1カウント！</span>
             <br />
             {CAMPAIGN.tickets.map((tier, index) => (
               <Fragment key={tier.tickets}>
@@ -249,17 +254,23 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         </div>
       )}
 
-      <p className={styles.entryTime}>
-        {phase === "before"
-          ? `${CAMPAIGN.startLabel} から数えます`
-          : phase === "open"
+      {/* 始まる前は出さない(10/15 ユーザー指示) */}
+      {phase === "before" ? null : (
+        <p className={styles.entryTime}>
+          {phase === "open"
             ? `企画終了まであと：${formatTimeLeft(Date.parse(data.endsAt) - current)}`
             : "企画は終了しました"}
-      </p>
-      <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)</p>
-      <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
-      <p className={styles.note}>※ 同じ対象作品で生成してもカウントは増えません</p>
-      <p className={styles.note}>※ 期間中に「{CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、対象作品です</p>
+        </p>
+      )}
+      {/* 注意書きは「エントリーする」を押したあとに出す(10/15 ユーザー指示) */}
+      {entered ? (
+        <>
+          <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)</p>
+          <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
+          <p className={styles.note}>※ 同じ対象作品で生成してもカウントは増えません</p>
+          <p className={styles.note}>※ 期間中に「{CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、対象作品です</p>
+        </>
+      ) : null}
     </div>
   );
 }

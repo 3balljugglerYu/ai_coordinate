@@ -44,6 +44,21 @@ function mockFetch(...responses: unknown[]) {
   return fetchMock;
 }
 
+/** カードの「※」の注意書き(出ている順) */
+function notesInCard(): string[] {
+  const card = screen.getByTestId("halloween-entry-card");
+  return Array.from(card.querySelectorAll("p"))
+    .map((node) => node.textContent ?? "")
+    .filter((text) => text.startsWith("※"));
+}
+
+const NOTES = [
+  "※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)",
+  "※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)",
+  "※ 同じ対象作品で生成してもカウントは増えません",
+  "※ 期間中に「#うちの子のベストショット」のタグを付けて投稿された作品が、対象作品です",
+];
+
 afterEach(() => {
   // @ts-expect-error テストごとに置き換えた fetch を戻す
   delete global.fetch;
@@ -81,16 +96,19 @@ describe("EntryProgressCard", () => {
     );
     render(<EntryProgressCard now={DURING} />);
     await screen.findByRole("button", { name: "エントリーする" });
-    // 押す前は、たまった数も数え方の吹き出しも出さない
+    // 押す前は、たまった数も数え方の吹き出しも「※」の注意書きも出さない
     expect(screen.queryByText(/たまっています/)).toBeNull();
     expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
     expect(screen.queryByText("✓ エントリー済み")).toBeNull();
+    expect(notesInCard()).toEqual([]);
 
     fireEvent.click(screen.getByRole("button", { name: "エントリーする" }));
     expect(await screen.findByText("✓ エントリー済み")).toBeTruthy();
     expect(screen.getByTestId("halloween-entry-bubble").textContent).toBe(
-      "生成して投稿するたびに、1カウント！3作品で1口・6作品で2口・10作品で3口",
+      "対象作品を生成して投稿するたびに、1カウント！3作品で1口・6作品で2口・10作品で3口",
     );
+    // 押したあとに注意書き4つが出る
+    expect(notesInCard()).toEqual(NOTES);
     expect(fetchMock).toHaveBeenLastCalledWith("/api/hashtag-campaigns/halloween-best-shot/entry", { method: "POST" });
 
     const bar = screen.getByRole("progressbar");
@@ -127,10 +145,15 @@ describe("EntryProgressCard", () => {
     expect(screen.getByText("3口達成！おめでとうございます🎉")).toBeTruthy();
   });
 
-  test("始まる前は「10/16(金) 20:00 から数えます」", async () => {
+  test("始まる前は、いつから数えるか・終わりまでの残りを出さない(10/15 ユーザー指示)", async () => {
     mockFetch(progress({ enteredAt: STARTS, usedWorks: 0, celebratedTickets: 0 }));
     render(<EntryProgressCard now={BEFORE} />);
-    expect(await screen.findByText("10/16(金) 20:00 から数えます")).toBeTruthy();
+    const card = await screen.findByTestId("halloween-entry-card");
+    expect(card.textContent).not.toContain("から数えます");
+    expect(card.textContent).not.toContain("企画終了まであと");
+    // エントリー済みなので、バーと注意書きは出る
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+    expect(notesInCard()).toEqual(NOTES);
   });
 
   test("終わったあと: 未エントリーなら受付終了(ボタンを出さない)。エントリー済みなら結果の数を出す", async () => {
@@ -139,6 +162,7 @@ describe("EntryProgressCard", () => {
     expect(await screen.findByText("エントリーの受付は終了しました")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "エントリーする" })).toBeNull();
     expect(screen.getByText("企画は終了しました")).toBeTruthy();
+    expect(notesInCard()).toEqual([]);
     unmount();
 
     mockFetch(progress({ enteredAt: STARTS, usedWorks: 3, celebratedTickets: 1 }));
@@ -193,26 +217,22 @@ describe("EntryProgressCard", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "ログインしてエントリー" })).toBeTruthy());
   });
 
-  test("題名は「キャンペーンに参加」。注意書きは、自動で応募・エントリーした人だけ・同じ作品は増えない・タグ付きが対象、の4つ", async () => {
+  test("題名は「キャンペーンに参加」。未ログイン(= 未エントリー)では吹き出しも注意書きも出さない", async () => {
     mockFetch(progress(null));
     render(<EntryProgressCard now={DURING} />);
     expect(await screen.findByRole("heading", { name: "キャンペーンに参加" })).toBeTruthy();
     expect(
       screen.getByText("キャンペーン対象作品を利用してAmazonギフトカードをゲットしよう！"),
     ).toBeTruthy();
-    // 注意書きは4つ、この順(10/15 ユーザー指示)
-    const card = screen.getByTestId("halloween-entry-card");
-    const notes = Array.from(card.querySelectorAll("p"))
-      .map((node) => node.textContent ?? "")
-      .filter((text) => text.startsWith("※"));
-    expect(notes).toEqual([
-      "※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)",
-      "※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)",
-      "※ 同じ対象作品で生成してもカウントは増えません",
-      "※ 期間中に「#うちの子のベストショット」のタグを付けて投稿された作品が、対象作品です",
-    ]);
-    // 未ログイン(= 未エントリー)では吹き出しを出さない
     expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
+    expect(notesInCard()).toEqual([]);
+  });
+
+  test("エントリー済み: 注意書きは、自動で応募・エントリーした人だけ・同じ作品は増えない・期間中のタグ付きが対象、の4つをこの順で出す", async () => {
+    mockFetch(progress({ enteredAt: STARTS, usedWorks: 1, celebratedTickets: 0 }));
+    render(<EntryProgressCard now={DURING} />);
+    await screen.findByText("✓ エントリー済み");
+    expect(notesInCard()).toEqual(NOTES);
   });
 });
 
