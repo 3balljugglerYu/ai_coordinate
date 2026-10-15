@@ -648,7 +648,6 @@ export function HalloweenBestShotPage({
                     key: "creator",
                     icon: CAMPAIGN.prizeCategories.creative.icon,
                     label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
-                    sub: "プロンプトを応募",
                     panel: (
                       <>
                         <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
@@ -661,7 +660,6 @@ export function HalloweenBestShotPage({
                     key: "user",
                     icon: CAMPAIGN.prizeCategories.enjoy.icon,
                     label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
-                    sub: "対象作品で生成して投稿",
                     panel: (
                       <>
                         <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />

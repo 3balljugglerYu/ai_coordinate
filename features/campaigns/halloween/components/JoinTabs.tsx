@@ -8,7 +8,6 @@ export interface JoinTab {
   icon: string;
   /** タブの名前。スマホで2行に分けるため、文字だけでなく要素も渡せる */
   label: ReactNode;
-  sub: string;
   panel: ReactNode;
 }
 
@@ -57,7 +56,6 @@ export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
               {tab.icon}
             </span>
             <span className={styles.tabLabel}>{tab.label}</span>
-            <span className={styles.tabSub}>{tab.sub}</span>
           </button>
         ))}
       </div>

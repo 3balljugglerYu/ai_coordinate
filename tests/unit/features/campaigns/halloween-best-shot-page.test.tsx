@@ -103,13 +103,11 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.queryByRole("tabpanel", { name: /クリエイティブ\s*部門/ })).toBeNull();
   });
 
-  test("参加方法のタブは、賞品の部門と同じ呼び名とアイコン。画面に「つくる人」「つかう人」とは書かない(10/15 統一感のため)", () => {
+  test("参加方法のタブは、賞品の部門と同じ呼び名とアイコンだけ。画面に「つくる人」「つかう人」とは書かない(10/15 統一感のため)", () => {
     render(<HalloweenBestShotPage />);
     const tabs = screen.getAllByRole("tab");
-    expect(tabs.map((tab) => tab.textContent)).toEqual([
-      "🎨クリエイティブ部門プロンプトを応募",
-      "🎁エンジョイ部門対象作品で生成して投稿",
-    ]);
+    // タブは部門の名前だけ(下の小さな説明は 10/15 ユーザー指示で出さない)
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["🎨クリエイティブ部門", "🎁エンジョイ部門"]);
     expect(document.body.textContent).not.toMatch(/つくる人|つかう人|つくる側|つかう側/);
   });
 
