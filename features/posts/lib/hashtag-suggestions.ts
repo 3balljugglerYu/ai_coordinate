@@ -7,8 +7,10 @@ import { normalizeHashtag } from "@/lib/hashtag";
  * 投稿時に出すタグ候補を組み立てる。
  *
  * タグがまだ 1 件しか無い状態（実測: 公開投稿 1,480 件中 `#` を含むのは 1 件）から
- * 立ち上げるため、候補の供給源を 2 つ持つ:
+ * 立ち上げるため、候補の供給源を 3 つ持つ（並びもこの順）:
  *
+ *  0. **開催中のハッシュタグ企画のタグ** — 期間中は、どの投稿画面でも、作品の種類に
+ *     かかわらず出す（2026-10-16 ユーザー決定。最初はハロウィン企画）
  *  1. **作品の文脈** — その作品を作ったプリセットの企画に設定されたタグ
  *  2. **自分が前に使ったタグ** — 1 が空のときの受け皿。繰り返し投稿する人に効く
  *
@@ -25,17 +27,19 @@ export interface HashtagSuggestion {
   /** `#` を含まない表記 */
   name: string;
   /** どこから出てきた候補か。UI の並び順と説明に使う。 */
-  source: "category" | "recent";
+  source: "campaign" | "category" | "recent";
 }
 
 /**
  * @param userId 投稿しようとしている本人。作品の所有者と一致しない場合は文脈を返さない
  *   （他人の作品 ID を渡して、どの企画で作られたかを覗けないようにする）
  * @param imageId generated_images.id
+ * @param now 企画の期間の判定に使う今の時刻（テストで差し替える）
  */
 export async function getHashtagSuggestions(
   userId: string,
-  imageId: string
+  imageId: string,
+  now: Date = new Date()
 ): Promise<HashtagSuggestion[]> {
   try {
     const supabase = createAdminClient();
@@ -50,7 +54,8 @@ export async function getHashtagSuggestions(
       return [];
     }
 
-    const [categoryTags, recentTags] = await Promise.all([
+    const [campaignTags, categoryTags, recentTags] = await Promise.all([
+      findActiveCampaignTags(supabase, now),
       findCategoryTags(supabase, image.image_job_id as string | null),
       findRecentlyUsedTags(supabase, userId),
     ]);
@@ -59,6 +64,7 @@ export async function getHashtagSuggestions(
     const result: HashtagSuggestion[] = [];
 
     for (const [names, source] of [
+      [campaignTags, "campaign"] as const,
       [categoryTags, "category"] as const,
       [recentTags, "recent"] as const,
     ]) {
@@ -80,6 +86,35 @@ export async function getHashtagSuggestions(
 }
 
 type AdminClient = ReturnType<typeof createAdminClient>;
+
+/**
+ * 開催中のハッシュタグ企画のタグ。
+ *
+ * 企画のタグと期間は `hashtag_campaigns` が正本（応募作の記録・口数の計算と同じものを読む）。
+ * 企画は年に数件なので全件を読み、期間（始まり ≤ 今 < 終わり）はここで判定する。
+ * 表記は `hashtag_normalized`（NFKC・小文字）。日本語のタグは書いたままの見た目になる。
+ */
+async function findActiveCampaignTags(
+  supabase: AdminClient,
+  now: Date
+): Promise<string[]> {
+  const { data } = await supabase
+    .from("hashtag_campaigns")
+    .select("hashtag_normalized, starts_at, ends_at")
+    .order("starts_at", { ascending: true });
+
+  const nowMs = now.getTime();
+  return ((data ?? []) as Array<{
+    hashtag_normalized: string;
+    starts_at: string;
+    ends_at: string;
+  }>)
+    .filter(
+      (campaign) =>
+        Date.parse(campaign.starts_at) <= nowMs && nowMs < Date.parse(campaign.ends_at)
+    )
+    .map((campaign) => campaign.hashtag_normalized);
+}
 
 /**
  * 作品 → プリセット → カテゴリ → 設定されたタグ。
