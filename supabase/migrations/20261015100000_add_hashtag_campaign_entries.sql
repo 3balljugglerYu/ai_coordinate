@@ -15,8 +15,8 @@
 
 BEGIN;
 
--- post_hashtags へトリガーを足すときに表ロックを取る。取れないまま待つと、
--- その裏で投稿のタグ保存が行列を作るので、待たずに失敗させて流し直す。
+-- post_hashtags と generated_images へトリガーを足すときに表ロックを取る。取れないまま待つと、
+-- その裏で投稿・生成の書き込みが行列を作るので、待たずに失敗させて流し直す。
 SET LOCAL lock_timeout = '3s';
 
 -- =============================================================================
@@ -100,9 +100,9 @@ ON CONFLICT (key) DO NOTHING;
 -- タグの保存(sync_post_hashtags)は INSERT ... ON CONFLICT DO NOTHING なので、
 -- 新しく付いたタグの行でだけ発火する。投稿・キャプションの編集のどちらで付いても拾う。
 --
--- 拾えないもの: 期間の前にタグ付きで投稿し、取り消して期間中に投稿し直した作品
--- (タグの行が残ったままなので新しい行ができない)。期間前の投稿は対象外なので、
--- 実害が出るのはこの組み合わせだけ。
+-- 取り消し(unpostImageServer)はタグの行を消さない。そのため「期間の前にタグ付きで投稿し、
+-- 取り消して期間中に投稿し直した作品」では新しい行ができず、このトリガーは動かない。
+-- その分は 4b(投稿し直したとき)で拾う。
 
 CREATE OR REPLACE FUNCTION public.record_hashtag_campaign_submission()
 RETURNS trigger
@@ -147,6 +147,56 @@ CREATE TRIGGER trg_record_hashtag_campaign_submission
   AFTER INSERT ON public.post_hashtags
   FOR EACH ROW
   EXECUTE FUNCTION public.record_hashtag_campaign_submission();
+
+-- 4b. 取り消してから投稿し直したとき(is_posted が false → true)
+-- 残っているタグの行に企画のハッシュタグがあれば記録する。
+-- 投稿し直すときにキャプションからタグを外していた場合も、この時点では古い行が残っているので
+-- 記録されうる。その作品は直後のタグの洗い替えで行が消え、一覧(いまタグが付いている作品)には
+-- 出ない。使われたときに数えるだけで、害はない。
+-- はじめての投稿では、この時点でタグの行がまだ無いので何もしない(タグの保存で 4 が拾う)。
+
+CREATE OR REPLACE FUNCTION public.record_hashtag_campaign_submission_on_repost()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  -- 記録に失敗しても、投稿そのものは止めない
+  BEGIN
+    INSERT INTO public.hashtag_campaign_submissions (campaign_key, post_id, author_id)
+    SELECT c.key, NEW.id, NEW.user_id
+    FROM public.post_hashtags ph
+    JOIN public.hashtags h
+      ON h.id = ph.hashtag_id
+    JOIN public.hashtag_campaigns c
+      ON c.hashtag_normalized = h.name_normalized
+    WHERE ph.post_id = NEW.id
+      AND now() >= c.starts_at
+      AND now() < c.ends_at
+      AND NEW.posted_at >= c.starts_at
+      AND NEW.posted_at < c.ends_at
+      AND NEW.generation_type = 'free'
+      AND NEW.source_post_id IS NULL
+      AND NEW.user_id IS NOT NULL
+    ON CONFLICT (campaign_key, post_id) DO NOTHING;
+  EXCEPTION WHEN OTHERS THEN
+    RAISE WARNING 'record_hashtag_campaign_submission_on_repost failed: % (%)', SQLERRM, SQLSTATE;
+  END;
+
+  RETURN NULL;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.record_hashtag_campaign_submission_on_repost() FROM PUBLIC, anon, authenticated;
+
+-- 投稿の状態が「投稿していない → 投稿した」に変わったときだけ動かす(生成や編集では呼ばない)
+DROP TRIGGER IF EXISTS trg_record_hashtag_campaign_submission_on_repost ON public.generated_images;
+CREATE TRIGGER trg_record_hashtag_campaign_submission_on_repost
+  AFTER UPDATE OF is_posted ON public.generated_images
+  FOR EACH ROW
+  WHEN (NEW.is_posted IS TRUE AND OLD.is_posted IS DISTINCT FROM TRUE)
+  EXECUTE FUNCTION public.record_hashtag_campaign_submission_on_repost();
 
 -- 期間が始まってから流した場合に備えて、すでに付いているタグを拾っておく
 INSERT INTO public.hashtag_campaign_submissions (campaign_key, post_id, author_id)
