@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   nextTicketTier,
   ticketsForWorks,
@@ -33,7 +33,6 @@ const LOGIN_HREF = `/login?redirect=${encodeURIComponent(CAMPAIGN.path)}`;
 /** バーの段の数 = 最後の口数に届く作品数(10) */
 const BAR_STEPS = Math.max(...CAMPAIGN.tickets.map((tier) => tier.works));
 const MAX_TICKETS = Math.max(...CAMPAIGN.tickets.map((tier) => tier.tickets));
-const TIER_SUMMARY = CAMPAIGN.tickets.map((tier) => `${tier.works}作品で${tier.tickets}口`).join("・");
 
 type LoadState =
   | { status: "loading" }
@@ -192,10 +191,18 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
 
       {entered ? (
         <>
+          {/* 幅が狭いと言葉の途中で折り返すので、「1カウント！」「○作品で○口」はひとまとまりで折り返す */}
           <p className={styles.entryBubble} data-testid="halloween-entry-bubble">
-            生成して投稿するたびに、1カウント！
+            生成して投稿するたびに、<span className={styles.nowrap}>1カウント！</span>
             <br />
-            {TIER_SUMMARY}
+            {CAMPAIGN.tickets.map((tier, index) => (
+              <Fragment key={tier.tickets}>
+                {index > 0 ? "・" : null}
+                <span className={styles.nowrap}>
+                  {tier.works}作品で{tier.tickets}口
+                </span>
+              </Fragment>
+            ))}
           </p>
           <ProgressBar works={works} />
           <p className={styles.entryNow} data-testid="halloween-entry-now">

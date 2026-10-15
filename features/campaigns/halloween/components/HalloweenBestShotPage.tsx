@@ -19,8 +19,9 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 2026-10-14: 審査があるのはつくる人の賞だけなので、審査のポイントは独立した区画をやめて
  * 参加方法の「つくる人」タブの中(手順の下)に置く。
  * 2026-10-15: Amazon のキャンペーンページを参考に、企画についての上へ「キャンペーン対象の投稿」
- * (応募作がまだないあいだは出さない)と「エントリー」(つかう人の抽選の進捗バー)を置く。
- * 抽選はエントリーした人だけ。ガチャの応募作も対象にする。
+ * (応募作がまだないあいだは出さない)を置く。抽選はエントリーした人だけ。ガチャの応募作も対象にする。
+ * 2026-10-15: エントリー(つかう人の抽選の進捗バー)は、独立した区画をやめて「つかう人」タブの手順1の中に置く
+ * (ユーザー指示。つかう人のための仕組みなので、つかう人の手順の中にあるほうが分かりやすい)。
  * 2026-10-15: 画面での呼び名は、見出しを「キャンペーン対象作品」、文中を「対象作品」にそろえる
  * (「応募作」「キャンペーン対象の投稿」などが混ざっていた。数える単位の「3作品で1口」とも合わせる)。
  * コードと DB では、これまでどおり応募作(submissions)と呼ぶ。
@@ -92,8 +93,8 @@ interface JoinStep {
   hashtag?: boolean;
   /** 応募作をさがす(ハッシュタグの検索)へのボタン */
   entriesLink?: boolean;
-  /** このページのエントリー(進捗カード)へのボタン */
-  entryLink?: boolean;
+  /** エントリー(つかう人の抽選の進捗カード)をこの手順の中に出す */
+  entryCard?: boolean;
   /** 抽選の口数の表 */
   tickets?: boolean;
 }
@@ -223,8 +224,8 @@ const USE_IMG = "/use-prompts";
 const USER_STEPS: readonly JoinStep[] = [
   {
     title: "エントリーする",
-    text: "このページの「エントリー」で「エントリーする」をタップします。抽選はエントリーした人が対象です。エントリー前の投稿も数えます。",
-    entryLink: true,
+    text: "下の「エントリーする」をタップします。",
+    entryCard: true,
   },
   {
     title: "対象作品をさがす",
@@ -404,11 +405,10 @@ function StepList({
               <span aria-hidden="true">→</span>
             </WorksLink>
           ) : null}
-          {step.entryLink ? (
-            <a className={styles.entriesLink} href="#hbs-entry">
-              エントリーへ
-              <span aria-hidden="true">↑</span>
-            </a>
+          {step.entryCard ? (
+            <div className={styles.stepEntry} id="hbs-entry">
+              <EntryProgressCard />
+            </div>
           ) : null}
           {step.tickets ? <TicketTable /> : null}
           {step.shot ? (
@@ -487,17 +487,6 @@ export function HalloweenBestShotPage({
             </div>
           </section>
         ) : null}
-
-        <section className={styles.section} aria-labelledby="hbs-entry">
-          <div className={styles.wrap}>
-            <div id="hbs-entry">
-              <Ribbon en="ENTRY">エントリー</Ribbon>
-            </div>
-            <RevealOnScroll className={styles.reveal}>
-              <EntryProgressCard />
-            </RevealOnScroll>
-          </div>
-        </section>
 
         <section className={styles.section} aria-labelledby="hbs-about">
           <div className={styles.wrap}>
