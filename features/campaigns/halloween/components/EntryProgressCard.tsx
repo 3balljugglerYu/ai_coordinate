@@ -249,10 +249,10 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
             ? `企画終了まであと：${formatTimeLeft(Date.parse(data.endsAt) - current)}`
             : "企画は終了しました"}
       </p>
-      <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します</p>
+      <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)</p>
       <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
       <p className={styles.note}>※ 同じ対象作品で生成してもカウントは増えません</p>
-      <p className={styles.note}>※ 「{CAMPAIGN.hashtag}」のタグが記載されている作品が、対象作品です</p>
+      <p className={styles.note}>※ 期間中に「{CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、対象作品です</p>
     </div>
   );
 }

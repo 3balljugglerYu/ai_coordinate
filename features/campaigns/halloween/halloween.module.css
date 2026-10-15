@@ -921,7 +921,12 @@
   outline-offset: 2px;
 }
 
-/* ===== キャンペーン対象の投稿・エントリー(2026-10-15) ===== */
+/* ===== キャンペーン対象作品・エントリー(2026-10-15) ===== */
+/* ページの中へ飛ぶリンク(#hbs-works など)で、見出しが上の固定ヘッダーの下に隠れないようにする */
+.page [id^="hbs-"] {
+  scroll-margin-top: 80px;
+}
+
 .worksLead {
   margin: -8px 0 14px;
   text-align: center;

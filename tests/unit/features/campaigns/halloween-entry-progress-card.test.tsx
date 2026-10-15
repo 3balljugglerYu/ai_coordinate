@@ -206,10 +206,10 @@ describe("EntryProgressCard", () => {
       .map((node) => node.textContent ?? "")
       .filter((text) => text.startsWith("※"));
     expect(notes).toEqual([
-      "※ 1口達成するたびに自動で応募は完了します",
+      "※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)",
       "※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)",
       "※ 同じ対象作品で生成してもカウントは増えません",
-      "※ 「#うちの子のベストショット」のタグが記載されている作品が、対象作品です",
+      "※ 期間中に「#うちの子のベストショット」のタグを付けて投稿された作品が、対象作品です",
     ]);
     // 未ログイン(= 未エントリー)では吹き出しを出さない
     expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();

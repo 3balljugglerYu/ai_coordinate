@@ -49,13 +49,26 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     links.forEach((link) => expect(link.getAttribute("href")).toBe("/free"));
   });
 
-  test("対象作品をつかうボタンは、ハッシュタグの検索へ行く(冒頭と締めの2か所)", () => {
+  test("対象作品がまだ一覧に無いとき、対象作品をつかうボタン・対象作品を見るは、ハッシュタグの検索へ行く(冒頭と締めの2か所)", () => {
     render(<HalloweenBestShotPage />);
     const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
     expect(links).toHaveLength(2);
     links.forEach((link) =>
       expect(link.getAttribute("href")).toBe(`/search?q=${encodeURIComponent("#うちの子のベストショット")}`),
     );
+    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
+  });
+
+  test("一覧に対象作品があるときは、対象作品をつかうボタン・対象作品を見るは、ページの中の一覧へ行く(10/15)", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
+    const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
+    expect(links).toHaveLength(2);
+    links.forEach((link) => expect(link.getAttribute("href")).toBe("#hbs-works"));
+    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe("#hbs-works");
+    // 飛び先(一覧の見出し)がある
+    expect(document.getElementById("hbs-works")).toBeTruthy();
   });
 
   test("企画についてで、プロンプトは非公開のままでよいことと、使った人にも当たるチャンスを書く", () => {
