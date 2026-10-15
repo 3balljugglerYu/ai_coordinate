@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Lilita_One, M_PLUS_Rounded_1c } from "next/font/google";
 import { HalloweenBestShotPage } from "@/features/campaigns/halloween/components/HalloweenBestShotPage";
 import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
+import { getCampaignSubmissionPages } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 
 /**
  * このページだけで使うポップな書体(他のページの Geist には影響しない。CSS 変数で渡す)。
@@ -31,10 +32,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
-export default function Page() {
+export default async function Page() {
+  // キャンペーン対象の投稿。数分ごとに読み直す(use cache)。読めなければ空で、区画ごと出さない
+  const submissionPages = await getCampaignSubmissionPages(HALLOWEEN_BEST_SHOT.campaignKey);
   return (
     <div className={`${roundedBody.variable} ${display.variable}`}>
-      <HalloweenBestShotPage />
+      <HalloweenBestShotPage submissionPages={submissionPages} />
     </div>
   );
 }

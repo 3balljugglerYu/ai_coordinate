@@ -209,8 +209,11 @@ export async function getUsablePromptShowcase(): Promise<
   });
 }
 
-/** 作者名。読めなければ空(呼び出し側で既定名に倒れる)。 */
-async function fetchAuthorNames(
+/**
+ * 作者名。読めなければ空(呼び出し側で既定名に倒れる)。
+ * ハロウィン企画の「キャンペーン対象の投稿」も同じものを使う。
+ */
+export async function fetchAuthorNames(
   supabase: ReturnType<typeof createAdminClient>,
   authorIds: string[]
 ): Promise<Map<string, string>> {
@@ -247,7 +250,7 @@ async function fetchAuthorNames(
  * 利用回数。数え方の正本は `get_prompt_usage_counts`(投稿詳細と同じ)。
  * 集計 SQL を書き写すと、詳細と一覧で数字が食い違う。
  */
-async function fetchUsageCounts(
+export async function fetchUsageCounts(
   supabase: ReturnType<typeof createAdminClient>,
   originPostIds: string[]
 ): Promise<Map<string, number>> {
