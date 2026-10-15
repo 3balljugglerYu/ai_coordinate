@@ -1070,6 +1070,11 @@
 }
 
 /* エントリーと進捗バー(Amazon のキャンペーンページが参考) */
+/* つかう人の手順1の中に置く(手順の枠の中なので、上との間だけあける) */
+.stepEntry {
+  margin-top: 12px;
+}
+
 .entryCard {
   position: relative;
   max-width: 560px;
@@ -1150,6 +1155,9 @@
   color: #fff;
   font-weight: 700;
   font-size: 13px;
+  /* 言葉の切れ目でだけ折り返す。入りきらないときだけ、どこでも折り返す(はみ出さない) */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .entryBubble::after {
@@ -1160,6 +1168,10 @@
   border: 8px solid transparent;
   border-top-color: var(--plum-800);
   border-bottom: 0;
+}
+
+.nowrap {
+  white-space: nowrap;
 }
 
 .barWrap {
