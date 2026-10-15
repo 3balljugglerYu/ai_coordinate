@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { usePostPageNavigation } from "@/features/posts/hooks/usePostPageNavigation";
+import { useCloseViewerAfterLeavingToPost } from "../hooks/useCloseViewerAfterLeavingToPost";
 import { useLocale, useTranslations } from "next-intl";
 import { Calendar, Copy, Download, Loader2, Plus, Sparkles, Wand2 } from "lucide-react";
 import {
@@ -103,6 +104,7 @@ export function GeneratedImageList({
   const { isNavigating, openPostPage } = usePostPageNavigation();
   const [selectedImageIndex, setSelectedImageIndex] =
     useState<number | null>(null);
+  const markLeavingToPost = useCloseViewerAfterLeavingToPost(setSelectedImageIndex);
   const [navigateConfirmImage, setNavigateConfirmImage] =
     useState<GeneratedImageData | null>(null);
 
@@ -463,8 +465,10 @@ export function GeneratedImageList({
             /*
               ここで拡大表示を閉じない。閉じると遷移が終わるまでの間だけ
               下の一覧が見えてしまう（実際にチラつきとして報告があった）。
-              遷移すればこの画面ごと外れるので、開いたまま渡す。
+              開いたまま渡し、この画面が隠れたら閉じる(useCloseViewerAfterLeavingToPost)。
+              閉じずに残すと、投稿して戻ったときに拡大表示が投稿の演出を覆い隠す。
             */
+            markLeavingToPost();
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}

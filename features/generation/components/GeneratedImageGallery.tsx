@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import Masonry from "react-masonry-css";
 import Link from "next/link";
 import { usePostPageNavigation } from "@/features/posts/hooks/usePostPageNavigation";
+import { useCloseViewerAfterLeavingToPost } from "../hooks/useCloseViewerAfterLeavingToPost";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
@@ -40,6 +41,7 @@ export function GeneratedImageGallery({
   const t = useTranslations("coordinate");
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const { isNavigating, openPostPage } = usePostPageNavigation();
+  const markLeavingToPost = useCloseViewerAfterLeavingToPost(setSelectedImageIndex);
   const [loadedImageIds, setLoadedImageIds] = useState<Set<string>>(new Set());
 
   const handleImageLoad = (imageRenderKey: string) => {
@@ -289,8 +291,10 @@ export function GeneratedImageGallery({
             /*
               ここで拡大表示を閉じない。閉じると遷移が終わるまでの間だけ
               下の一覧が見えてしまう（実際にチラつきとして報告があった）。
-              遷移すればこの画面ごと外れるので、開いたまま渡す。
+              開いたまま渡し、この画面が隠れたら閉じる(useCloseViewerAfterLeavingToPost)。
+              閉じずに残すと、投稿して戻ったときに拡大表示が投稿の演出を覆い隠す。
             */
+            markLeavingToPost();
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
