@@ -1,6 +1,8 @@
 /**
  * @jest-environment jsdom
  */
+import fs from "node:fs";
+import path from "node:path";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { HalloweenBestShotPage } from "@/features/campaigns/halloween/components/HalloweenBestShotPage";
 import { RevealOnScroll } from "@/features/campaigns/halloween/components/RevealOnScroll";
@@ -186,6 +188,19 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(winners).toBe(34);
     // 前の賞(最優秀賞・優秀賞)は残さない
     expect(document.body.textContent).not.toMatch(/最優秀賞|優秀賞/);
+  });
+
+  test("賞のサムネイルは、ユーザーが用意した賞ごとの画像(10/15。つくる人5つ・つかう人2つ)。ファイルがあり、仮置きではない", () => {
+    const srcs = [...HALLOWEEN_BEST_SHOT.prizes, ...HALLOWEEN_BEST_SHOT.userPrizes].map((prize) => prize.thumb.src);
+    expect(new Set(srcs).size).toBe(7);
+    for (const src of srcs) {
+      expect(src).toMatch(/^\/campaigns\/halloween-best-shot\/prize-[a-z-]+\.jpg$/);
+      expect(fs.existsSync(path.join(process.cwd(), "public", src))).toBe(true);
+    }
+    render(<HalloweenBestShotPage />);
+    for (const item of screen.getAllByTestId("halloween-user-prize")) {
+      expect(within(item).getByRole("img").getAttribute("alt")).toBeTruthy();
+    }
   });
 
   test("つくる人の賞は見本どおり、サムネイル(説明つき)・説明・評価を出す。セレクション賞はねらいと評価なし", () => {

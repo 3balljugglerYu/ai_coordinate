@@ -324,31 +324,10 @@ function BreakHints({ text }: { text: string }) {
   ));
 }
 
-/** 賞のサムネイル。作例のイラストは枠いっぱい、アイコンの絵は余白をとって収める。絵がまだ無い賞は仮の絵文字 */
-function AwardThumb({ thumb }: { thumb: Award["thumb"] }) {
-  if ("emoji" in thumb) {
-    return (
-      <span className={styles.awardThumbEmoji} aria-hidden="true">
-        {thumb.emoji}
-      </span>
-    );
-  }
-  const contain = "contain" in thumb && thumb.contain;
-  return (
-    <Image
-      src={thumb.src}
-      alt={thumb.alt}
-      fill
-      sizes="(min-width: 860px) 168px, 112px"
-      className={contain ? styles.awardThumbIcon : undefined}
-      style={{ objectFit: contain ? "contain" : "cover" }}
-    />
-  );
-}
-
 /**
  * 賞の一覧(2026-10-15 ユーザーの見本。つくる人・つかう人とも同じ形)。
- * 左にサムネイル、右に賞の名前・ねらい・賞品と人数・説明・評価(評価は審査のある賞だけ)。
+ * 左にサムネイル(ユーザーが用意した賞ごとの正方形の画像)、右に賞の名前・ねらい・賞品と人数・説明・評価
+ * (評価は審査のある賞だけ)。
  * スマホはサムネイルの右に名前とねらいだけを置き、賞品と人数・説明・評価は下の全幅に回す
  * (「Amazonギフトカード 10,000円分」の札はサムネイルの右の幅に入りきらない)。
  */
@@ -358,7 +337,13 @@ function AwardList({ prizes, testId }: { prizes: readonly Award[]; testId: strin
       {prizes.map((prize) => (
         <li key={prize.name} className={styles.award} data-testid={testId}>
           <div className={styles.awardThumb}>
-            <AwardThumb thumb={prize.thumb} />
+            <Image
+              src={prize.thumb.src}
+              alt={prize.thumb.alt}
+              fill
+              sizes="(min-width: 860px) 168px, 112px"
+              style={{ objectFit: "cover" }}
+            />
           </div>
           <div className={styles.awardHead}>
             <h4 className={styles.awardName}>

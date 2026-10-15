@@ -25,7 +25,8 @@ export const HALLOWEEN_BEST_SHOT = {
   announceLabel: "終了後 1週間程度",
   /**
    * つくる人の賞(審査)。2026-10-15 ユーザー決定で5つ(計34名様)に。
-   * サムネイル(thumb)は差し替える予定。今は冒頭の作例(gallery-*.jpg)を仮に使う。差し替えるときは alt も直す。
+   * サムネイル(thumb)は、ユーザーが用意した賞ごとの正方形の画像(2026-10-15。1254px の PNG を 800px の JPEG にして置いた)。
+   * 画像の中の文字は alt にも書く。差し替えるときは alt も直す。
    */
   prizes: [
     {
@@ -39,7 +40,10 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "円分",
       winners: "1名様",
       tone: "gold",
-      thumb: { src: "/campaigns/halloween-best-shot/gallery-witch.jpg", alt: "魔女の帽子とステッキで、月夜のお城の前を歩く女の子" },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-best-shot.jpg",
+        alt: "「ハロウィン・ベストショット賞 総合的に最も魅力的な作品」の文字と、金のトロフィーを掲げる魔女の女の子のイラスト",
+      },
     },
     {
       icon: "👻",
@@ -52,7 +56,10 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "円分",
       winners: "1名様",
       tone: "gold",
-      thumb: { src: "/campaigns/halloween-best-shot/gallery-pastel.jpg", alt: "パステルカラーの魔女の衣装で、お菓子の国を歩く女の子" },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-cute.jpg",
+        alt: "「トリック・オア・キュート賞 可愛さや愛らしさが際立つ作品」の文字と、おばけのぬいぐるみを抱いてウインクする女の子のイラスト",
+      },
     },
     {
       icon: "🪄",
@@ -65,7 +72,10 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "円分",
       winners: "1名様",
       tone: "gold",
-      thumb: { src: "/campaigns/halloween-best-shot/gallery-cat.jpg", alt: "黒猫の耳としっぽを付けて、ランタンの灯る遺跡ではしゃぐ女の子" },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-idea.jpg",
+        alt: "「マジカル・アイデア賞 独創的な発想や演出が光る作品」の文字と、魔法の本から紫の光を出す魔女の女の子のイラスト",
+      },
     },
     {
       icon: "🌙",
@@ -78,7 +88,10 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "円分",
       winners: "1名様",
       tone: "gold",
-      thumb: { src: "/campaigns/halloween-best-shot/gallery-moonlight.jpg", alt: "紫のドレスで、満月の夜の遺跡にたたずむ女の子" },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-midnight.jpg",
+        alt: "「ミッドナイト・マジック賞 幻想的で美しい世界観を表現した作品」の文字と、満月の夜に光る水晶玉を持つ女の子のイラスト",
+      },
     },
     {
       icon: "🎃",
@@ -91,13 +104,16 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "枚",
       winners: "30名様",
       tone: "silver",
-      thumb: { src: "/campaigns/halloween-best-shot/gallery-market.jpg", alt: "オレンジのジャケットで、ハロウィンのお菓子の市場に立つ女の子" },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-selection.jpg",
+        alt: "「ハロウィン・セレクション賞 ハロウィンの魅力が詰まった素敵な作品」の文字と、ジャック・オ・ランタンを抱える女の子のイラスト",
+      },
     },
   ],
   /**
    * つかう人の賞(抽選)。2026-10-15 ユーザー決定で賞の名前と説明を付け、つくる人の賞と同じ形で出す。
    * トリック・オア・コイン賞は同日 300枚 → 200枚(ユーザー指示)。
-   * サムネイルは仮。ペルコインの賞はペルコインの絵(余白つきで収める)、Amazonギフトカードの賞は合う絵がまだ無いので絵文字。
+   * サムネイルは、つくる人の賞と同じくユーザーが用意した正方形の画像(2026-10-15)。
    * 名前とねらいの「|」は、狭い幅で折り返してよい位置(画面には出さない)。
    */
   userPrizes: [
@@ -112,7 +128,10 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "円分",
       winners: "10名様",
       tone: "gold",
-      thumb: { emoji: "🎁" },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-master.jpg",
+        alt: "「ハロウィン・マスター賞 たくさんのプロンプトを楽しんでくれた利用者へ」の文字と、かぼちゃの絵のカードを手にウインクする魔女の女の子のイラスト",
+      },
     },
     {
       icon: "🪙",
@@ -125,7 +144,10 @@ export const HALLOWEEN_BEST_SHOT = {
       unit: "枚",
       winners: "30名様",
       tone: "silver",
-      thumb: { src: "/percoin/percoin3.webp", alt: "", contain: true },
+      thumb: {
+        src: "/campaigns/halloween-best-shot/prize-coin.jpg",
+        alt: "「トリック・オア・コイン賞 ハロウィンのプロンプトを楽しんでくれた利用者へ」の文字と、宝箱からあふれるコインに手を広げる魔女の女の子のイラスト",
+      },
     },
   ],
   /** つかう人の抽選の口数(ちがう応募作をいくつ使って投稿したか)。最大3口 */
