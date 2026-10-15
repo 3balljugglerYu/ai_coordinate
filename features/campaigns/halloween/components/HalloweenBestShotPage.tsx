@@ -32,6 +32,8 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品は部門に分けて「クリエイティブ部門(全5賞)」
  * 「エンジョイ部門(全2賞)」と見出しを付ける。参加方法のタブや読み上げの名前も、画面では「つくる人」「つかう人」と
  * 書かずに部門の呼び名にそろえる(統一感のため。ユーザー指示)。
+ * 2026-10-15: 賞品の区画の口数の表(「ちがう対象作品を使うほど、当たりやすく！」)はやめる。同じ表が
+ * 参加方法のエンジョイ部門の手順にあるため(ユーザー指示)。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -117,6 +119,12 @@ const POST_SHOT: NonNullable<JoinStep["shot"]> = {
   device: true,
   rings: [{ left: 60.5, top: 0.8, width: 17.5, height: 4.6 }],
   callouts: [{ left: 34, top: 8, text: "ここをタップ", pointer: "up-end" }],
+};
+
+/** エンジョイ部門の「投稿」の画像。押す場所は同じで、拡大表示の絵だけユーザーの画像に差し替えた版(2026-10-15) */
+const USER_POST_SHOT: NonNullable<JoinStep["shot"]> = {
+  ...POST_SHOT,
+  src: "/campaigns/halloween-best-shot/use-5-post.jpg",
 };
 
 /** つくる人(応募作のプロンプトを作って投稿する人)の手順 */
@@ -224,9 +232,6 @@ const CREATOR_STEPS: readonly JoinStep[] = [
   },
 ];
 
-// つかう人の画面は、プロンプト利用の案内(/use-prompts)の実画面を使う。
-const USE_IMG = "/use-prompts";
-
 /** つかう人(応募作のプロンプトで生成して投稿する人)の手順 */
 const USER_STEPS: readonly JoinStep[] = [
   {
@@ -240,22 +245,25 @@ const USER_STEPS: readonly JoinStep[] = [
     entriesLink: true,
   },
   {
-    title: "「このカタログで生成する」をタップ",
+    title: "「このカタログで|生成する」|をタップ",
     text: "使いたい対象作品の下にあるボタンをタップします。フォローしていない人の対象作品では「フォローして生成する」と出るので、そのままタップすればOKです。",
     shot: {
-      src: `${USE_IMG}/step2-sub.webp`,
-      alt: "対象作品の下に出る「このプロンプトで生成してみる」の枠。「フォローして生成する」のボタンを赤い枠で囲んでいる",
-      width: 640,
-      height: 495,
-      rings: [{ left: 5.5, top: 63, width: 47, height: 12.5 }],
-      callouts: [{ left: 56, top: 66, text: "ここをタップ", pointer: "none" }],
+      // 2026-10-15: フォロー済みの人が見る今の画面(「カタログ作成者」の枠と「このカタログで生成する」)に差し替え
+      // (ユーザー指示)。本物の部品をフォロー済みの状態で描いて写したもの。もとの /use-prompts の画像は刷新前の画面
+      src: "/campaigns/halloween-best-shot/use-3-catalog-button.webp",
+      alt: "対象作品の下に出る「カタログ作成者」の枠。「このカタログで生成する」のボタンを赤い枠で囲んでいる",
+      width: 780,
+      height: 309,
+      rings: [{ left: 4.9, top: 59.2, width: 55.4, height: 28.5 }],
+      callouts: [{ left: 44, top: 22, text: "ここをタップ", pointer: "down" }],
     },
   },
   {
-    title: "うちの子の画像を入れて生成",
+    title: "うちの子の画像を|入れて生成",
     text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある対象作品なら、好きな文字も入れられます。",
     shot: {
-      src: `${USE_IMG}/step3-sub.webp`,
+      // 2026-10-15: アップロード欄の絵をユーザーの画像に差し替えた版(もとは /use-prompts/step3-sub.webp。案内ページは変えない)
+      src: "/campaigns/halloween-best-shot/use-4-upload.webp",
       alt: "生成の画面。人物画像をアップロードする欄に、うちの子の画像が入っている",
       width: 560,
       height: 921,
@@ -264,24 +272,25 @@ const USER_STEPS: readonly JoinStep[] = [
     },
   },
   {
-    title: "できあがったら「投稿」をタップ",
+    title: "できあがったら|「投稿」をタップ",
     text: "サムネイルをタップして画像を開き、上にある「＋ 投稿」をタップします。",
-    shot: POST_SHOT,
+    shot: USER_POST_SHOT,
   },
   {
-    title: "投稿してペルコインもGET！",
-    text: "キャプションは自由に書いてOK。対象作品から生成した投稿は、ハッシュタグを付けなくても自動で数えます。その日はじめてプロンプトを使って投稿すると、ミッションのペルコインも届きます。",
+    title: "カウントが|増えていることを|確認！",
+    text: "投稿したら、手順1のカードでカウントが増えていることを確かめましょう。対象作品から生成した投稿は、ハッシュタグを付けなくても自動で数えます。",
     shot: {
-      src: `${USE_IMG}/step4-sub.webp`,
-      alt: "投稿したあとに出る「ミッションクリア！ プロンプトを利用して投稿！ ＋20ペルコイン」のお知らせ",
-      width: 640,
-      height: 390,
+      // エントリー済みで4作品使ったときのカード(本物のカードを、進捗の返事だけ差し替えて写したもの)
+      src: "/campaigns/halloween-best-shot/use-6-count.webp",
+      alt: "エントリーのカード。10段のバーのうち4段が埋まり、「現在 4作品(1口)」「あと2作品で2口！」と出ている",
+      width: 572,
+      height: 862,
       rings: [],
       callouts: [],
     },
   },
   {
-    title: "ちがう対象作品で、口数アップ！",
+    title: "ちがう対象作品で、|当選率アップ！",
     text: "ちがう対象作品を使って投稿するほど、抽選の口数が増えます(最大3口)。",
     tickets: true,
   },
@@ -463,7 +472,10 @@ function StepList({
             <span className={`${styles.stepNum} ${styles.en}`} aria-hidden="true">
               {index + 1}
             </span>
-            <h3 className={styles.stepTitle}>{step.title}</h3>
+            {/* 題名の「|」は、狭い幅で折り返してよい位置(画面には出さない)。入れた題名は言葉の途中で折らない */}
+            <h3 className={`${styles.stepTitle} ${step.title.includes("|") ? styles.stepTitleHinted : ""}`}>
+              <BreakHints text={step.title} />
+            </h3>
           </div>
           <p className={styles.stepText}>{step.text}</p>
           {step.points ? (
@@ -580,31 +592,34 @@ export function HalloweenBestShotPage({
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <Bunting />
+              {/* 2026-10-15 ユーザーの文に差し替え(「カタログ化」の説明・作る人も使う人も楽しめる企画) */}
               <p className={styles.aboutLead}>🎃 知っていますか！？</p>
+              <p>ペルスタでは、ほかのユーザーが作成したスタイルを使って、自分の「うちの子」のイラストを生成できるんです！✨</p>
               <p>
-                ペルスタでは、ほかのユーザーが作成したプロンプトを使って、
-                <strong>自分の「うちの子」のイラストを生成できるんです！</strong>✨
+                これを <strong>「カタログ化」</strong> って言うんです！
               </p>
-              <p>もちろん、プロンプトの内容は非公開のままなので、安心して公開・利用できます！🙌</p>
+              <p>
+                カタログ化すると、<strong>作成したプロンプトを公開せずに、ほかのユーザーに使ってもらえる</strong>んです！🔥
+              </p>
               <p>
                 👉{" "}
                 <Link href="/use-prompts" className={styles.textLink}>
-                  プロンプト作成者のメリットはこちら
+                  作成者のメリットはこちら
                 </Link>
               </p>
               <p>
-                今回のテーマは <strong>「ハロウィン」</strong> 🎃
+                そして、今回のテーマは <strong>「ハロウィン」</strong> 🎃
               </p>
-              <p>
-                あなたが思い描く、とっておきの「ベストショット」を生み出すプロンプトを作成して、投稿してください！
-              </p>
+              <p>あなたが思い描く、とっておきの「ベストショット」を作成して、投稿してください！✨</p>
               <p>
                 🏆 <strong>選ばれた方には、Amazonギフトカードをプレゼント！</strong> 🎁
               </p>
               <p>
-                さらに！プロンプトを使ってイラストを生成してくれた方にも、
-                <strong>Amazonギフトカードが当たるチャンス！</strong> 🎉
+                さらに！
+                <br />
+                <strong>カタログを使ってイラストを生成してくれた方にも、Amazonギフトカードが当たるチャンス！</strong> 🎉
               </p>
+              <p>作る人も、使う人も楽しめるハロウィン企画です！🎃✨</p>
             </RevealOnScroll>
           </div>
         </section>
@@ -619,10 +634,6 @@ export function HalloweenBestShotPage({
               <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
               <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.enjoy} count={CAMPAIGN.userPrizes.length} />
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
-              <div className={styles.ticketBox}>
-                <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
-                <TicketTable />
-              </div>
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>

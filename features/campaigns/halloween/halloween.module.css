@@ -651,6 +651,12 @@
   font-size: 17px;
 }
 
+/* 題名に「|」(<wbr>)で折り返す位置を入れたものは、その位置と句読点でだけ折り返す */
+.stepTitleHinted {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .stepText {
   margin: 10px 0 0;
   font-size: 14px;
@@ -900,26 +906,13 @@
 }
 
 .prizeNotes {
+  /* 上のカードの影(下に 10px)から離す */
+  margin-top: 20px;
   text-align: center;
 }
 
 .prizeNotes .note {
   margin-top: 4px;
-}
-
-.ticketBox {
-  margin-top: 14px;
-  background: #fff;
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: var(--shadow-card);
-}
-
-.ticketLead {
-  margin: 0 0 10px;
-  text-align: center;
-  font-weight: 800;
-  color: var(--plum-800);
 }
 
 /* 抽選の口数(3作品→1口…) */
