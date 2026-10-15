@@ -29,8 +29,8 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 2026-10-15: つくる側の賞を5つ(ハロウィン・ベストショット賞ほか・計34名様)にし、つかう側の賞にも名前
  * (ハロウィン・マスター賞・トリック・オア・コイン賞)を付けて、どちらもユーザーの見本どおりサムネイル付きの一覧で出す。
  * 賞品は賞ごとに書くので「Amazonギフト券でお贈りします」の注意はやめる(セレクション賞はペルコイン)。
- * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品の見出しは「つくる側の賞」「つかう側の賞」
- * (参加方法のタブは人を指すので「つくる人」「つかう人」のまま)。
+ * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品は部門に分けて「クリエイティブ部門(全5賞)」
+ * 「エンジョイ部門(全2賞)」と見出しを付ける(参加方法のタブは人を指すので「つくる人」「つかう人」のまま)。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -300,6 +300,21 @@ const MORE_TIPS = [
   { icon: "📣", text: "Xにシェアすると、あなたのプロンプトを使ってくれる人が増えるかも！？" },
   { icon: "💖", text: "運営も「いいね」などで応援します！" },
 ] as const;
+
+type PrizeCategory = (typeof CAMPAIGN.prizeCategories)[keyof typeof CAMPAIGN.prizeCategories];
+
+/** 賞の部門の見出し(「全○賞」は賞の数)と、その下のひとこと(2026-10-15 ユーザー決定) */
+function PrizeCategoryHeading({ category, count }: { category: PrizeCategory; count: number }) {
+  return (
+    <>
+      <h3 className={styles.prizeGroup}>
+        <span aria-hidden="true">{category.icon}</span> {category.name}
+        <small>（全{count}賞）</small>
+      </h3>
+      <p className={styles.prizeGroupLead}>{category.lead}</p>
+    </>
+  );
+}
 
 type Award = (typeof CAMPAIGN.prizes)[number] | (typeof CAMPAIGN.userPrizes)[number];
 
@@ -584,13 +599,9 @@ export function HalloweenBestShotPage({
               <Ribbon en="PRIZE">賞品</Ribbon>
             </div>
             <RevealOnScroll className={styles.reveal}>
-              <h3 className={styles.prizeGroup}>
-                <span aria-hidden="true">🪄</span> つくる側の賞<small>（審査）</small>
-              </h3>
+              <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.creative} count={CAMPAIGN.prizes.length} />
               <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
-              <h3 className={styles.prizeGroup}>
-                <span aria-hidden="true">🍬</span> つかう側の賞<small>（抽選）</small>
-              </h3>
+              <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.enjoy} count={CAMPAIGN.userPrizes.length} />
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
               <div className={styles.ticketBox}>
                 <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
@@ -599,8 +610,11 @@ export function HalloweenBestShotPage({
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>
-              <p className={styles.note}>※ つくる側の賞とつかう側の賞の、両方には当選しません</p>
-              <p className={styles.note}>※ つかう側の賞は、エントリーした人の中から抽選します</p>
+              <p className={styles.note}>
+                ※ {CAMPAIGN.prizeCategories.creative.name}と{CAMPAIGN.prizeCategories.enjoy.name}
+                の、両方には当選しません
+              </p>
+              <p className={styles.note}>※ {CAMPAIGN.prizeCategories.enjoy.name}は、エントリーした人の中から抽選します</p>
               <p className={styles.note}>※ 1人1アカウントでご参加ください。不正な参加は対象外です</p>
             </div>
           </div>

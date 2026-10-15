@@ -171,7 +171,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     ]);
   });
 
-  test("つくる側の賞は5つ・計34名様(10/15 ユーザー決定)。賞の名前の順と、賞品・人数", () => {
+  test("クリエイティブ部門(つくる側の賞)は5つ・計34名様(10/15 ユーザー決定)。賞の名前の順と、賞品・人数", () => {
     render(<HalloweenBestShotPage />);
     const prizes = screen.getAllByTestId("halloween-prize").map((item) => [
       within(item).getByRole("heading", { level: 4 }).textContent,
@@ -203,7 +203,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     }
   });
 
-  test("つくる側の賞は見本どおり、サムネイル(説明つき)・説明・評価を出す。セレクション賞はねらいと評価なし", () => {
+  test("クリエイティブ部門は見本どおり、サムネイル(説明つき)・説明・評価を出す。セレクション賞はねらいと評価なし", () => {
     render(<HalloweenBestShotPage />);
     const items = screen.getAllByTestId("halloween-prize");
     for (const item of items) {
@@ -220,7 +220,25 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(selection.textContent).not.toContain("評価：");
   });
 
-  test("つかう側の賞(抽選)は、ハロウィン・マスター賞 Amazonギフトカード 1,000円分 10名様／トリック・オア・コイン賞 ペルコイン 200枚 30名様(10/15)", () => {
+  test("賞品は部門に分ける: 🎨 クリエイティブ部門(全5賞)・🎁 エンジョイ部門(全2賞)と、それぞれのひとこと(10/15 ユーザー決定)", () => {
+    render(<HalloweenBestShotPage />);
+    const prizeSection = screen.getByRole("region", { name: /賞品/ });
+    expect(within(prizeSection).getAllByRole("heading", { level: 3 }).map((node) => node.textContent)).toEqual([
+      "🎨 クリエイティブ部門（全5賞）",
+      "🎁 エンジョイ部門（全2賞）",
+    ]);
+    // 「全○賞」は並べた賞の数と合う
+    expect(screen.getAllByTestId("halloween-prize")).toHaveLength(5);
+    expect(screen.getAllByTestId("halloween-user-prize")).toHaveLength(2);
+    expect(prizeSection.textContent).toContain("ハロウィンをテーマに、あなただけの素敵な作品をつくって投稿しよう！🎃");
+    expect(prizeSection.textContent).toContain(
+      "みんなが投稿した作品を使って、自分の「うちの子」のハロウィンイラストを楽しもう！✨",
+    );
+    // 前の見出し(つくる側の賞・つかう側の賞)は残さない
+    expect(prizeSection.textContent).not.toMatch(/つくる側の賞|つかう側の賞/);
+  });
+
+  test("エンジョイ部門(つかう側の賞・抽選)は、ハロウィン・マスター賞 Amazonギフトカード 1,000円分 10名様／トリック・オア・コイン賞 ペルコイン 200枚 30名様(10/15)", () => {
     render(<HalloweenBestShotPage />);
     const items = screen.getAllByTestId("halloween-user-prize");
     expect(
@@ -247,14 +265,10 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     // 抽選なので評価は書かない
     expect(master.textContent).not.toContain("評価：");
     expect(coin.textContent).not.toContain("評価：");
-    const prizeSection = screen.getByRole("region", { name: /賞品/ });
-    expect(within(prizeSection).getAllByRole("heading", { level: 3 }).map((node) => node.textContent)).toEqual([
-      "🪄 つくる側の賞（審査）",
-      "🍬 つかう側の賞（抽選）",
-    ]);
+
     // ねらいの「|」は折り返してよい位置の印で、画面には出さない
     expect(document.body.textContent).not.toContain("|");
-    expect(screen.getByText("※ つくる側の賞とつかう側の賞の、両方には当選しません")).toBeTruthy();
+    expect(screen.getByText("※ クリエイティブ部門とエンジョイ部門の、両方には当選しません")).toBeTruthy();
   });
 
   test("冒頭の「総額」は、つくる人とつかう人の Amazonギフトカードの合計(25,000円＋10,000円＝3.5万円。ペルコインは入れない)", () => {
@@ -294,10 +308,10 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(steps[3].textContent).not.toContain("オフのままにしてください");
   });
 
-  test("賞品の注意: つかう側の賞はエントリーした人から抽選・1人1アカウント・不正は対象外", () => {
+  test("賞品の注意: エンジョイ部門はエントリーした人から抽選・1人1アカウント・不正は対象外", () => {
     render(<HalloweenBestShotPage />);
     const prize = screen.getByRole("region", { name: /賞品/ });
-    expect(prize.textContent).toContain("※ つかう側の賞は、エントリーした人の中から抽選します");
+    expect(prize.textContent).toContain("※ エンジョイ部門は、エントリーした人の中から抽選します");
     expect(prize.textContent).toContain("※ 1人1アカウントでご参加ください。不正な参加は対象外です");
   });
 
