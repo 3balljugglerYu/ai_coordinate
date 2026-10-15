@@ -7,7 +7,7 @@ import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
 import { EntryProgressCard } from "./EntryProgressCard";
-import { Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
+import { AboutDecorations, Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
 import { JoinTabs } from "./JoinTabs";
 import { RevealOnScroll } from "./RevealOnScroll";
@@ -260,7 +260,7 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "うちの子の画像を|入れて生成",
-    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある対象作品なら、好きな文字も入れられます。",
+    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。",
     shot: {
       // 2026-10-15: アップロード欄の絵をユーザーの画像に差し替えた版(もとは /use-prompts/step3-sub.webp。案内ページは変えない)
       src: "/campaigns/halloween-best-shot/use-4-upload.webp",
@@ -361,6 +361,20 @@ function BreakHints({ text }: { text: string }) {
           ) : null}
         </Fragment>
       ))}
+    </Fragment>
+  ));
+}
+
+/**
+ * 企画についての文: 「|」で区切った文節の切れ目でだけ折り返す(文節の中では折らない)。
+ * 「」のあとの「を」「の」が行の頭に来たり、文末の絵文字だけが次の行に落ちたりしない。
+ * 端の「|」は、となりの言葉との切れ目で折り返してよい印。「|」は画面に出さない
+ */
+function Phrases({ text }: { text: string }) {
+  return text.split("|").map((chunk, index) => (
+    <Fragment key={index}>
+      {index > 0 ? <wbr /> : null}
+      {chunk ? <span className={styles.nowrap}>{chunk}</span> : null}
     </Fragment>
   ));
 }
@@ -590,36 +604,61 @@ export function HalloweenBestShotPage({
             <div id="hbs-about">
               <Ribbon en="ABOUT">企画について</Ribbon>
             </div>
-            <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-              <Bunting />
-              {/* 2026-10-15 ユーザーの文に差し替え(「カタログ化」の説明・作る人も使う人も楽しめる企画) */}
-              <p className={styles.aboutLead}>🎃 知っていますか！？</p>
-              <p>ペルスタでは、ほかのユーザーが作成したスタイルを使って、自分の「うちの子」のイラストを生成できるんです！✨</p>
-              <p>
-                これを <strong>「カタログ化」</strong> って言うんです！
-              </p>
-              <p>
-                カタログ化すると、<strong>作成したプロンプトを公開せずに、ほかのユーザーに使ってもらえる</strong>んです！🔥
-              </p>
-              <p>
-                👉{" "}
-                <Link href="/use-prompts" className={styles.textLink}>
-                  作成者のメリットはこちら
-                </Link>
-              </p>
-              <p>
-                そして、今回のテーマは <strong>「ハロウィン」</strong> 🎃
-              </p>
-              <p>あなたが思い描く、とっておきの「ベストショット」を作成して、投稿してください！✨</p>
-              <p>
-                🏆 <strong>選ばれた方には、Amazonギフトカードをプレゼント！</strong> 🎁
-              </p>
-              <p>
-                さらに！
-                <br />
-                <strong>カタログを使ってイラストを生成してくれた方にも、Amazonギフトカードが当たるチャンス！</strong> 🎉
-              </p>
-              <p>作る人も、使う人も楽しめるハロウィン企画です！🎃✨</p>
+            {/* 2026-10-16 ユーザーの文に差し替え。ユーザー指示で、色の下線(やわらかいマーカー)・大きな「カタログ化」(グラデーションの文字)・角の飾りでポップに。
+                カタログ化は大切なポイントなので2か所とも目立たせる。文は「|」で区切った文節の切れ目でだけ折り返す(Phrases) */}
+            <RevealOnScroll className={`${styles.aboutStage} ${styles.reveal}`}>
+              <AboutDecorations />
+              <div className={`${styles.card} ${styles.aboutCard}`}>
+                <Bunting />
+                <p className={styles.aboutLead}>🎃 知っていますか！？</p>
+                <p>
+                  <Phrases text="ペルスタでは、ほかの|ユーザーさんが|作った|プロンプトを|使って、自分の|「うちの子」の|イラストを|生成できるんです！✨" />
+                </p>
+                <p>
+                  これが{" "}
+                  <span className={styles.catalogWord}>
+                    <strong>「カタログ化」</strong>！
+                  </span>
+                  <br />
+                  <strong className={styles.markOrange}>
+                    <Phrases text="作成した|プロンプトは|非公開のまま、|みんなに|利用して|もらえます！🙌" />
+                  </strong>
+                </p>
+                <p>
+                  👉{" "}
+                  <Link href="/use-prompts" className={styles.textLink}>
+                    作成者のメリットはこちら
+                  </Link>
+                </p>
+                <p>
+                  今回のテーマは{" "}
+                  <span className={styles.nowrap}>
+                    <strong className={styles.keyWord}>「ハロウィン」</strong> 🎃
+                  </span>
+                </p>
+                <p>
+                  <Phrases text="とっておきの|「ベストショット」を|" />
+                  <span className={styles.nowrap}>
+                    <strong className={styles.keyWord}>カタログ化</strong>して
+                  </span>
+                  <Phrases text="|みんなに|使って|もらおう！✨" />
+                </p>
+                <p>
+                  🏆{" "}
+                  <strong className={styles.markYellow}>
+                    <Phrases text="選ばれた方には|Amazonギフトカードを|プレゼント！ 🎁" />
+                  </strong>
+                </p>
+                <p>
+                  さらに、
+                  <strong className={styles.markPurple}>
+                    <Phrases text="カタログを|使って|生成した|方にも|当たる|チャンス！🎉" />
+                  </strong>
+                </p>
+                <p>
+                  <Phrases text="作る人も、|使う人も|楽しめる|ハロウィン企画です！ 🎃" />
+                </p>
+              </div>
             </RevealOnScroll>
           </div>
         </section>

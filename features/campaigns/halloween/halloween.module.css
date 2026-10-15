@@ -460,10 +460,84 @@
   font-weight: 800;
 }
 
+/* ===== 企画について(2026-10-16 ユーザー指示: ハロウィンの色の下線・「カタログ化」を大きく・もっとポップに) ===== */
+/* 枠と角の飾りをまとめて「ふわっと」出す。飾りは枠の角に重ねる(枠は overflow: hidden なので外に置く) */
+.aboutStage {
+  position: relative;
+}
+
+/* 文は文節の切れ目でだけ折り返す(大きい文字や下線の言葉が途中で切れないように。文節は Phrases で区切る) */
+.aboutCard p:not(.aboutLead) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .aboutLead {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 800;
   color: var(--pink);
+  letter-spacing: 0.04em;
+}
+
+/* 「カタログ化」: ボタンと同じピンク→オレンジのグラデーションの大きな文字(10/16 ユーザーが見本の案Aを選択。ふち・影・傾きは却下) */
+.catalogWord {
+  display: inline-block;
+  margin: 0 2px;
+  font-size: 1.6em;
+  font-weight: 800;
+  line-height: 1.3;
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 大事な文に引く、ハロウィンの色のやわらかいマーカーの下線(行をまたいでも行ごとに引く。10/16 ユーザーが見本の案Xを選択) */
+.markOrange,
+.markYellow,
+.markPurple {
+  padding: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.markOrange {
+  background: linear-gradient(transparent 58%, rgba(255, 122, 26, 0.42) 58%);
+}
+
+.markYellow {
+  background: linear-gradient(transparent 58%, rgba(255, 194, 61, 0.8) 58%);
+}
+
+.markPurple {
+  background: linear-gradient(transparent 58%, rgba(138, 77, 255, 0.32) 58%);
+}
+
+/* 「ハロウィン」と2つめの「カタログ化」: 少し大きいオレンジの太字(しま模様の下線は却下) */
+.keyWord {
+  font-size: 1.1em;
+  font-weight: 800;
+  color: var(--orange);
+}
+
+/* 白いおばけが白い枠に溶けないよう、ふちに濃い紫の影 */
+.aboutGhost {
+  composes: deco;
+  z-index: 2;
+  top: -46px;
+  right: -2px;
+  width: 54px;
+  filter: drop-shadow(0 0 1.5px rgba(61, 16, 80, 0.55)) drop-shadow(0 5px 6px rgba(61, 16, 80, 0.3));
+  animation: aboutGhost 3.6s ease-in-out infinite;
+}
+
+.aboutPumpkin {
+  composes: deco;
+  z-index: 2;
+  left: -8px;
+  bottom: -22px;
+  width: 58px;
+  animation: glow 2.2s ease-in-out infinite, bob 5s ease-in-out infinite;
 }
 
 .textLink {
@@ -1560,6 +1634,11 @@
   50% { transform: skewX(6deg); }
 }
 
+@keyframes aboutGhost {
+  0%, 100% { transform: translateY(0) rotate(8deg); }
+  50% { transform: translateY(-8px) rotate(-4deg); }
+}
+
 @keyframes sweep {
   0%, 60% { left: -60%; }
   100% { left: 130%; }
@@ -1627,7 +1706,9 @@
   .buntingFlags,
   .cta::after,
   .galleryTrack,
-  .galleryPhoto {
+  .galleryPhoto,
+  .aboutGhost,
+  .aboutPumpkin {
     animation: none !important;
   }
 

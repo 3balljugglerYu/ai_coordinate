@@ -73,21 +73,35 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(document.getElementById("hbs-works")).toBeTruthy();
   });
 
-  test("企画について(10/15 ユーザーの文): カタログ化の説明・プロンプトは公開せずに使ってもらえる・使った人にも当たるチャンス", () => {
+  test("企画について(10/16 ユーザーの文): カタログ化の説明・プロンプトは非公開のまま使ってもらえる・ベストショットをカタログ化・使った人にも当たるチャンス", () => {
     render(<HalloweenBestShotPage />);
     const about = screen.getByRole("region", { name: /企画について/ });
-    const lines = Array.from(about.querySelectorAll("p")).map((node) => node.textContent);
-    expect(lines).toEqual([
+    const paragraphs = Array.from(about.querySelectorAll("p"));
+    expect(paragraphs.map((node) => node.textContent)).toEqual([
       "🎃 知っていますか！？",
-      "ペルスタでは、ほかのユーザーが作成したスタイルを使って、自分の「うちの子」のイラストを生成できるんです！✨",
-      "これを 「カタログ化」 って言うんです！",
-      "カタログ化すると、作成したプロンプトを公開せずに、ほかのユーザーに使ってもらえるんです！🔥",
+      "ペルスタでは、ほかのユーザーさんが作ったプロンプトを使って、自分の「うちの子」のイラストを生成できるんです！✨",
+      "これが 「カタログ化」！作成したプロンプトは非公開のまま、みんなに利用してもらえます！🙌",
       "👉 作成者のメリットはこちら",
-      "そして、今回のテーマは 「ハロウィン」 🎃",
-      "あなたが思い描く、とっておきの「ベストショット」を作成して、投稿してください！✨",
-      "🏆 選ばれた方には、Amazonギフトカードをプレゼント！ 🎁",
-      "さらに！カタログを使ってイラストを生成してくれた方にも、Amazonギフトカードが当たるチャンス！ 🎉",
-      "作る人も、使う人も楽しめるハロウィン企画です！🎃✨",
+      "今回のテーマは 「ハロウィン」 🎃",
+      "とっておきの「ベストショット」をカタログ化してみんなに使ってもらおう！✨",
+      "🏆 選ばれた方にはAmazonギフトカードをプレゼント！ 🎁",
+      "さらに、カタログを使って生成した方にも当たるチャンス！🎉",
+      "作る人も、使う人も楽しめるハロウィン企画です！ 🎃",
+    ]);
+    // 「これが「カタログ化」！」のあとは、ユーザーの文どおり同じ段落の中で改行する
+    expect(paragraphs[2].querySelectorAll("br")).toHaveLength(1);
+  });
+
+  test("企画についての目立たせる言葉: カタログ化は大切なポイントなので2か所とも。大事な文には下線(文末の絵文字ごと)", () => {
+    render(<HalloweenBestShotPage />);
+    const about = screen.getByRole("region", { name: /企画について/ });
+    expect(Array.from(about.querySelectorAll("strong")).map((node) => node.textContent)).toEqual([
+      "「カタログ化」",
+      "作成したプロンプトは非公開のまま、みんなに利用してもらえます！🙌",
+      "「ハロウィン」",
+      "カタログ化",
+      "選ばれた方にはAmazonギフトカードをプレゼント！ 🎁",
+      "カタログを使って生成した方にも当たるチャンス！🎉",
     ]);
   });
 
@@ -369,6 +383,15 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(creatorPost?.querySelector("img")?.getAttribute("src")).toBe(
       "/campaigns/halloween-best-shot/join-7-post.jpg",
     );
+  });
+
+  test("エンジョイ部門の手順4の文: 文字入力の欄の一文は出さない(10/16 ユーザー指示)", () => {
+    render(<HalloweenBestShotPage />);
+    const steps = screen.getAllByTestId("halloween-join-step-user");
+    expect(steps[3].querySelector("p")?.textContent).toBe(
+      "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。",
+    );
+    expect(document.body.textContent).not.toContain("好きな文字も入れられます");
   });
 
   test("口数の表は、参加方法のエンジョイ部門の手順の中だけ。賞品の区画には出さない(同じ表が二重になるため。10/15)", () => {
