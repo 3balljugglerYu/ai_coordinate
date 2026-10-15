@@ -4,9 +4,15 @@ import { buildHashtagSearchHref } from "@/lib/hashtag";
  * ハロウィン企画「うちの子のベストショット with Halloween Magic」の決まり(2026-10-11/12 ユーザー決定)。
  * 期間・賞品・ハッシュタグを変えるときはここだけ直す。
  * 使った人の賞(抽選)と口数は 2026-10-14 ユーザー決定。両方の賞には当たらない。
+ * 2026-10-15: 抽選はエントリーした人だけ(エントリー前の投稿も数える)。ガチャの応募作も対象。
  */
 export const HALLOWEEN_BEST_SHOT = {
   path: "/campaigns/halloween-best-shot",
+  /**
+   * DB の hashtag_campaigns.key(エントリー・応募作の記録・口数の計算)。
+   * 期間とハッシュタグの正本は DB 側(20261015100000 のマイグレーション)。表示の文字はこのファイル。
+   */
+  campaignKey: "halloween-best-shot",
   titleJp: "うちの子のベストショット",
   titleEn: "with Halloween Magic",
   hashtag: "#うちの子のベストショット",

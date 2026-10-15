@@ -11,6 +11,24 @@ jest.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element -- テスト用に next/image を素の img に置き換える
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+
+// エントリーのカードは開いたあとに進捗を読む。このファイルではページの中身だけを見るので、読み込み中のままにする
+// (カードの動きは halloween-entry-progress-card.test.tsx)
+beforeEach(() => {
+  global.fetch = jest.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
+});
+afterEach(() => {
+  // @ts-expect-error テストごとに置き換えた fetch を戻す
+  delete global.fetch;
+});
+
+const SUBMISSION_PAGES = [
+  [
+    { postId: "p1", thumbnailUrl: "https://img.test/p1.webp", authorName: "かぼちゃ" },
+    { postId: "p2", thumbnailUrl: "https://img.test/p2.webp", authorName: "こうもり" },
+  ],
+];
 
 describe("ハロウィン企画「うちの子のベストショット with Halloween Magic」のページ(2026-10-12)", () => {
   test("題名・期間・発表・ハッシュタグを出す", () => {
@@ -31,13 +49,26 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     links.forEach((link) => expect(link.getAttribute("href")).toBe("/free"));
   });
 
-  test("応募作をつかうボタンは、ハッシュタグの検索へ行く(冒頭と締めの2か所)", () => {
+  test("対象作品がまだ一覧に無いとき、対象作品をつかうボタン・対象作品を見るは、ハッシュタグの検索へ行く(冒頭と締めの2か所)", () => {
     render(<HalloweenBestShotPage />);
-    const links = screen.getAllByRole("link", { name: /応募作をつかう/ });
+    const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
     expect(links).toHaveLength(2);
     links.forEach((link) =>
       expect(link.getAttribute("href")).toBe(`/search?q=${encodeURIComponent("#うちの子のベストショット")}`),
     );
+    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
+  });
+
+  test("一覧に対象作品があるときは、対象作品をつかうボタン・対象作品を見るは、ページの中の一覧へ行く(10/15)", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
+    const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
+    expect(links).toHaveLength(2);
+    links.forEach((link) => expect(link.getAttribute("href")).toBe("#hbs-works"));
+    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe("#hbs-works");
+    // 飛び先(一覧の見出し)がある
+    expect(document.getElementById("hbs-works")).toBeTruthy();
   });
 
   test("企画についてで、プロンプトは非公開のままでよいことと、使った人にも当たるチャンスを書く", () => {
@@ -81,18 +112,21 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(creatorTab.getAttribute("aria-selected")).toBe("true");
   });
 
-  test("つかう人の手順は6つで、応募作をさがす入口と口数の表がある", () => {
+  test("つかう人の手順は7つで、最初にエントリー。対象作品をさがす入口と口数の表がある", () => {
     render(<HalloweenBestShotPage />);
     fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
     const steps = screen.getAllByTestId("halloween-join-step-user");
-    expect(steps).toHaveLength(6);
-    const entries = within(steps[0]).getByRole("link", { name: /応募作を見る/ });
+    expect(steps).toHaveLength(7);
+    expect(within(steps[0]).getByRole("heading", { name: "エントリーする" })).toBeTruthy();
+    expect(within(steps[0]).getByRole("link", { name: /エントリーへ/ }).getAttribute("href")).toBe("#hbs-entry");
+    const entries = within(steps[1]).getByRole("link", { name: /対象作品を見る/ });
     expect(entries.getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
-    expect(within(steps[1]).getAllByTestId("shot-ring")).toHaveLength(1);
-    expect(within(steps[5]).getByTestId("halloween-tickets").textContent).toBe("3作品▶1口6作品▶2口10作品▶3口");
+    expect(within(steps[2]).getAllByTestId("shot-ring")).toHaveLength(1);
+    expect(within(steps[6]).getByTestId("halloween-tickets").textContent).toBe("3作品▶1口6作品▶2口10作品▶3口");
     const panel = screen.getByRole("tabpanel", { name: /つかう人/ });
-    expect(panel.textContent).toContain("自分の応募作を使った投稿は数えません");
+    expect(panel.textContent).toContain("自分の対象作品を使った投稿は数えません");
     expect(panel.textContent).toContain("何回使っても1作品");
+    expect(panel.textContent).toContain("※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)");
   });
 
   test("つくる人の参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
@@ -152,6 +186,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     render(<HalloweenBestShotPage />);
     const names = screen.getAllByRole("heading", { level: 2 }).map((node) => node.textContent);
     expect(names).toEqual([
+      "ENTRYエントリー",
       "ABOUT企画について",
       "PRIZE賞品",
       "HOW TO JOIN参加方法",
@@ -161,9 +196,57 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     ]);
   });
 
-  test("ガチャプロンプトは対象外と書く", () => {
+  test("ガチャプロンプトも対象(10/15 に変更)。対象外の注意は出さず、手順で「ガチャでもOK」と書く", () => {
     render(<HalloweenBestShotPage />);
-    expect(screen.getByText("※ ガチャプロンプトは対象外です")).toBeTruthy();
+    expect(screen.queryByText("※ ガチャプロンプトは対象外です")).toBeNull();
+    const steps = screen.getAllByTestId("halloween-join-step-creator");
+    expect(steps[3].textContent).toContain("ガチャプロンプトでもOKです");
+    expect(steps[3].textContent).not.toContain("オフのままにしてください");
+  });
+
+  test("賞品の注意: つかう人の賞はエントリーした人から抽選・1人1アカウント・不正は対象外", () => {
+    render(<HalloweenBestShotPage />);
+    const prize = screen.getByRole("region", { name: /賞品/ });
+    expect(prize.textContent).toContain("※ つかう人の賞は、エントリーした人の中から抽選します");
+    expect(prize.textContent).toContain("※ 1人1アカウントでご参加ください。不正な参加は対象外です");
+  });
+
+  test("企画についての上にエントリー(進捗カード)を置く", () => {
+    render(<HalloweenBestShotPage />);
+    const entry = screen.getByRole("region", { name: /エントリー/ });
+    const about = screen.getByRole("region", { name: /企画について/ });
+    expect(entry.compareDocumentPosition(about) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(entry).getByTestId("halloween-entry-loading")).toBeTruthy();
+    expect(document.getElementById("hbs-entry")).toBeTruthy();
+  });
+
+  test("画面の呼び名は「対象作品」にそろえる(「応募作」「キャンペーン対象の投稿」「投稿作品」「コンテンツ」を出さない。10/15)", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
+    // つくる人・つかう人の両方のタブの中身を見る(出ているタブの中身だけが描かれる)
+    const creatorText = document.body.textContent ?? "";
+    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    const userText = document.body.textContent ?? "";
+    for (const word of ["応募作", "キャンペーン対象の投稿", "投稿作品", "コンテンツ"]) {
+      expect(creatorText).not.toContain(word);
+      expect(userText).not.toContain(word);
+    }
+    const alts = Array.from(document.querySelectorAll("img")).map((img) => img.getAttribute("alt") ?? "");
+    expect(alts.join("|")).not.toContain("応募作");
+  });
+
+  test("応募作がまだないあいだは「キャンペーン対象作品」を出さない", () => {
+    render(<HalloweenBestShotPage submissionPages={[]} />);
+    expect(screen.queryByRole("region", { name: /キャンペーン対象作品/ })).toBeNull();
+    expect(screen.queryByTestId("halloween-works")).toBeNull();
+  });
+
+  test("応募作があれば、いちばん上(エントリーと企画についての上)に「キャンペーン対象作品」を出す", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
+    const names = screen.getAllByRole("heading", { level: 2 }).map((node) => node.textContent);
+    expect(names.slice(0, 3)).toEqual(["WORKSキャンペーン対象作品", "ENTRYエントリー", "ABOUT企画について"]);
+    const works = screen.getByRole("region", { name: /キャンペーン対象作品/ });
+    expect(within(works).getAllByTestId("halloween-work")).toHaveLength(2);
+    expect(within(works).getByRole("link", { name: /かぼちゃ/ }).getAttribute("href")).toBe("/posts/p1");
   });
 
   test("飾り(コウモリ・おばけ・クモ・ランタン・波・旗)は読み上げない", () => {

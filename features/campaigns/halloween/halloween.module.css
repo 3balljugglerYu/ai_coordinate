@@ -921,6 +921,348 @@
   outline-offset: 2px;
 }
 
+/* ===== キャンペーン対象作品・エントリー(2026-10-15) ===== */
+/* ページの中へ飛ぶリンク(#hbs-works など)で、見出しが上の固定ヘッダーの下に隠れないようにする */
+.page [id^="hbs-"] {
+  scroll-margin-top: 80px;
+}
+
+.worksLead {
+  margin: -8px 0 14px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--plum-800);
+}
+
+.works {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* 6件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
+.worksScroller {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.worksScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.worksPage {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 2px 10px;
+  list-style: none;
+}
+
+.workLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.workLink:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: 16px;
+}
+
+.workThumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  background: var(--cream);
+  box-shadow: 0 4px 0 rgba(61, 16, 80, 0.15);
+}
+
+.workImg {
+  object-fit: cover;
+}
+
+.worksNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.worksArrow {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 0 3px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--plum-800);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.worksArrow[aria-disabled="true"] {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.worksArrow:focus-visible,
+.worksDot:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.worksDots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 押せる広さは 24px、見た目の点は 8px */
+.worksDot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.worksDot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(61, 16, 80, 0.25);
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.worksDot[aria-current="true"]::before {
+  width: 18px;
+  background: var(--orange);
+}
+
+.worksCount {
+  min-width: 64px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--plum-800);
+}
+
+/* エントリーと進捗バー(Amazon のキャンペーンページが参考) */
+.entryCard {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 18px 18px;
+  border: 3px solid var(--amber);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.entrySkeleton {
+  max-width: 560px;
+  height: 236px;
+  margin: 0 auto;
+  border-radius: 22px;
+  background: linear-gradient(90deg, #f6eaf8 0%, #ffffff 50%, #f6eaf8 100%);
+  background-size: 200% 100%;
+  animation: entryShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes entryShimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.entryHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.entryIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffc27a 0%, var(--orange) 70%);
+  box-shadow: 0 4px 0 #c45500;
+  font-size: 30px;
+}
+
+.entryStatus {
+  margin: 0;
+  font-weight: 800;
+  font-size: 15px;
+  color: #2f8a3e;
+}
+
+.entryTitle {
+  margin: 0;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--plum-800);
+}
+
+.entrySub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* 条件の吹き出し */
+.entryBubble {
+  position: relative;
+  margin: 14px 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--plum-800);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+.entryBubble::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  bottom: -8px;
+  border: 8px solid transparent;
+  border-top-color: var(--plum-800);
+  border-bottom: 0;
+}
+
+.barWrap {
+  margin-top: 4px;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--plum-800);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.barCell {
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(61, 16, 80, 0.08);
+  transition: background-color 0.4s ease;
+}
+
+.barCell[data-filled="true"] {
+  background: linear-gradient(180deg, #ffb057 0%, var(--orange) 100%);
+}
+
+/* 口数が増える段は、かぼちゃ色の縁で目印にする */
+.barCell[data-goal="true"] {
+  box-shadow: inset 0 0 0 2px var(--amber);
+}
+
+.barGoals {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  margin-top: 4px;
+}
+
+.barGoal {
+  justify-self: end;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.barGoal[data-reached="true"] {
+  color: var(--orange);
+}
+
+.entryNow {
+  margin: 12px 0 0;
+  font-weight: 800;
+  font-size: 16px;
+  color: #2f8a3e;
+}
+
+.entryNext {
+  margin: 2px 0 0;
+  font-weight: 800;
+  color: var(--pink);
+}
+
+.entryAction {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* .cta / .ctaSub はリンク用の見た目。ボタンで使うときは指の形にする */
+.entryAction .cta,
+.entryAction .ctaSub {
+  cursor: pointer;
+}
+
+.entryAction .cta[aria-disabled="true"] {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.entryClosed {
+  margin: 6px 0 0;
+  text-align: center;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.entryError {
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #c0392b;
+}
+
+.entryTime {
+  margin: 12px 0 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+
 /* 参加方法のタブ */
 .tabs {
   display: grid;
@@ -1191,6 +1533,15 @@
 
 
   .cta {
+    transition: none;
+  }
+
+  .entrySkeleton {
+    animation: none;
+  }
+
+  .barCell,
+  .worksDot::before {
     transition: none;
   }
 

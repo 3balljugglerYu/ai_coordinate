@@ -1,12 +1,16 @@
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/components/AnnotatedShot";
+import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
+import { EntryProgressCard } from "./EntryProgressCard";
 import { Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
 import { JoinTabs } from "./JoinTabs";
 import { RevealOnScroll } from "./RevealOnScroll";
+import { SubmissionCarousel } from "./SubmissionCarousel";
 
 /**
  * ハロウィン企画「うちの子のベストショット with Halloween Magic」のページ(2026-10-12)。
@@ -14,6 +18,12 @@ import { RevealOnScroll } from "./RevealOnScroll";
  * 2026-10-14: 応募作を使って投稿する人(つかう人)の賞と手順を追加。参加方法はタブで分ける。
  * 2026-10-14: 審査があるのはつくる人の賞だけなので、審査のポイントは独立した区画をやめて
  * 参加方法の「つくる人」タブの中(手順の下)に置く。
+ * 2026-10-15: Amazon のキャンペーンページを参考に、企画についての上へ「キャンペーン対象の投稿」
+ * (応募作がまだないあいだは出さない)と「エントリー」(つかう人の抽選の進捗バー)を置く。
+ * 抽選はエントリーした人だけ。ガチャの応募作も対象にする。
+ * 2026-10-15: 画面での呼び名は、見出しを「キャンペーン対象作品」、文中を「対象作品」にそろえる
+ * (「応募作」「キャンペーン対象の投稿」などが混ざっていた。数える単位の「3作品で1口」とも合わせる)。
+ * コードと DB では、これまでどおり応募作(submissions)と呼ぶ。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -25,7 +35,27 @@ function Ribbon({ en, children }: { en: string; children: string }) {
   );
 }
 
-function JoinButtons() {
+/**
+ * 対象作品へのリンク。このページの一覧に作品があれば一覧へ、まだ無ければハッシュタグの検索へ。
+ * 検索には、タグが付いていても対象にならない投稿(期間前・ワンタップ・人のプロンプトで作った投稿)も
+ * 出てくるので、一覧があるときは一覧を見せる(2026-10-15 ユーザー決定)。
+ */
+const WORKS_ANCHOR = "#hbs-works";
+
+function WorksLink({ href, className, children }: { href: string; className: string; children: ReactNode }) {
+  // ページの中へ飛ぶときは素の a(Link を通さない)
+  return href.startsWith("#") ? (
+    <a className={className} href={href}>
+      {children}
+    </a>
+  ) : (
+    <Link className={className} href={href}>
+      {children}
+    </Link>
+  );
+}
+
+function JoinButtons({ worksHref }: { worksHref: string }) {
   return (
     <div className={styles.ctaRow}>
       <Link className={styles.cta} href={CAMPAIGN.joinHref}>
@@ -34,12 +64,12 @@ function JoinButtons() {
           →
         </span>
       </Link>
-      <Link className={styles.ctaSub} href={CAMPAIGN.entriesHref}>
-        応募作をつかう
+      <WorksLink className={styles.ctaSub} href={worksHref}>
+        対象作品をつかう
         <span className={styles.ctaArrow} aria-hidden="true">
           →
         </span>
-      </Link>
+      </WorksLink>
     </div>
   );
 }
@@ -62,6 +92,8 @@ interface JoinStep {
   hashtag?: boolean;
   /** 応募作をさがす(ハッシュタグの検索)へのボタン */
   entriesLink?: boolean;
+  /** このページのエントリー(進捗カード)へのボタン */
+  entryLink?: boolean;
   /** 抽選の口数の表 */
   tickets?: boolean;
 }
@@ -121,7 +153,7 @@ const CREATOR_STEPS: readonly JoinStep[] = [
   },
   {
     title: "ハロウィンのプロンプトを書く",
-    text: "「生成したい内容」に、ハロウィンの衣装・ポーズ・背景などを自由に書きます。「ガチャプロンプトにする」はオフのままにしてください。",
+    text: "「生成したい内容」に、ハロウィンの衣装・ポーズ・背景などを自由に書きます。ガチャプロンプトでもOKです。",
     shot: {
       src: "/campaigns/halloween-best-shot/join-4-prompt.jpg",
       alt: "生成したい内容の欄にハロウィンの衣装のプロンプトが入っていて、その下のガチャプロンプトにするのチェックはオフ",
@@ -190,16 +222,21 @@ const USE_IMG = "/use-prompts";
 /** つかう人(応募作のプロンプトで生成して投稿する人)の手順 */
 const USER_STEPS: readonly JoinStep[] = [
   {
-    title: "応募作をさがす",
-    text: `ハッシュタグ「${CAMPAIGN.hashtag}」の付いた投稿が応募作です。下の「応募作を見る」から、まとめて見られます。`,
+    title: "エントリーする",
+    text: "このページの「エントリー」で「エントリーする」をタップします。抽選はエントリーした人が対象です。エントリー前の投稿も数えます。",
+    entryLink: true,
+  },
+  {
+    title: "対象作品をさがす",
+    text: `期間中に「${CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、キャンペーン対象作品です。下の「対象作品を見る」から、まとめて見られます。`,
     entriesLink: true,
   },
   {
     title: "「このカタログで生成する」をタップ",
-    text: "使いたい応募作の下にあるボタンをタップします。フォローしていない人の応募作では「フォローして生成する」と出るので、そのままタップすればOKです。",
+    text: "使いたい対象作品の下にあるボタンをタップします。フォローしていない人の対象作品では「フォローして生成する」と出るので、そのままタップすればOKです。",
     shot: {
       src: `${USE_IMG}/step2-sub.webp`,
-      alt: "応募作の下に出る「このプロンプトで生成してみる」の枠。「フォローして生成する」のボタンを赤い枠で囲んでいる",
+      alt: "対象作品の下に出る「このプロンプトで生成してみる」の枠。「フォローして生成する」のボタンを赤い枠で囲んでいる",
       width: 640,
       height: 495,
       rings: [{ left: 5.5, top: 63, width: 47, height: 12.5 }],
@@ -208,7 +245,7 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "うちの子の画像を入れて生成",
-    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある応募作なら、好きな文字も入れられます。",
+    text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。文字入力の欄がある対象作品なら、好きな文字も入れられます。",
     shot: {
       src: `${USE_IMG}/step3-sub.webp`,
       alt: "生成の画面。人物画像をアップロードする欄に、うちの子の画像が入っている",
@@ -225,7 +262,7 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "投稿してペルコインもGET！",
-    text: "キャプションは自由に書いてOK。応募作から生成した投稿は、ハッシュタグを付けなくても自動で数えます。その日はじめてプロンプトを使って投稿すると、ミッションのペルコインも届きます。",
+    text: "キャプションは自由に書いてOK。対象作品から生成した投稿は、ハッシュタグを付けなくても自動で数えます。その日はじめてプロンプトを使って投稿すると、ミッションのペルコインも届きます。",
     shot: {
       src: `${USE_IMG}/step4-sub.webp`,
       alt: "投稿したあとに出る「ミッションクリア！ プロンプトを利用して投稿！ ＋20ペルコイン」のお知らせ",
@@ -236,8 +273,8 @@ const USER_STEPS: readonly JoinStep[] = [
     },
   },
   {
-    title: "ちがう応募作で、口数アップ！",
-    text: "ちがう応募作を使って投稿するほど、抽選の口数が増えます(最大3口)。",
+    title: "ちがう対象作品で、口数アップ！",
+    text: "ちがう対象作品を使って投稿するほど、抽選の口数が増えます(最大3口)。",
     tickets: true,
   },
 ];
@@ -323,7 +360,15 @@ function TicketTable() {
   );
 }
 
-function StepList({ steps, role }: { steps: readonly JoinStep[]; role: "creator" | "user" }) {
+function StepList({
+  steps,
+  role,
+  worksHref,
+}: {
+  steps: readonly JoinStep[];
+  role: "creator" | "user";
+  worksHref: string;
+}) {
   return (
     <ol className={styles.steps}>
       {steps.map((step, index) => (
@@ -354,10 +399,16 @@ function StepList({ steps, role }: { steps: readonly JoinStep[]; role: "creator"
             </div>
           ) : null}
           {step.entriesLink ? (
-            <Link className={styles.entriesLink} href={CAMPAIGN.entriesHref}>
-              応募作を見る
+            <WorksLink className={styles.entriesLink} href={worksHref}>
+              対象作品を見る
               <span aria-hidden="true">→</span>
-            </Link>
+            </WorksLink>
+          ) : null}
+          {step.entryLink ? (
+            <a className={styles.entriesLink} href="#hbs-entry">
+              エントリーへ
+              <span aria-hidden="true">↑</span>
+            </a>
           ) : null}
           {step.tickets ? <TicketTable /> : null}
           {step.shot ? (
@@ -378,7 +429,13 @@ function StepList({ steps, role }: { steps: readonly JoinStep[]; role: "creator"
   );
 }
 
-export function HalloweenBestShotPage() {
+export function HalloweenBestShotPage({
+  submissionPages = [],
+}: {
+  /** キャンペーン対象の投稿(6件ずつのページ)。空なら区画ごと出さない */
+  submissionPages?: readonly CampaignSubmissionItem[][];
+}) {
+  const worksHref = submissionPages.length > 0 ? WORKS_ANCHOR : CAMPAIGN.entriesHref;
   return (
     <div className={styles.page} data-testid="halloween-best-shot">
       <header className={styles.hero}>
@@ -409,7 +466,7 @@ export function HalloweenBestShotPage() {
               </span>
               <span className={styles.periodNote}>結果発表：{CAMPAIGN.announceLabel}</span>
             </div>
-            <JoinButtons />
+            <JoinButtons worksHref={worksHref} />
           </div>
           <HeroGallery />
         </div>
@@ -417,6 +474,31 @@ export function HalloweenBestShotPage() {
       </header>
 
       <main>
+        {submissionPages.length > 0 ? (
+          <section className={styles.section} aria-labelledby="hbs-works">
+            <div className={styles.wrap}>
+              <div id="hbs-works">
+                <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
+              </div>
+              <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
+              <RevealOnScroll className={styles.reveal}>
+                <SubmissionCarousel pages={submissionPages} />
+              </RevealOnScroll>
+            </div>
+          </section>
+        ) : null}
+
+        <section className={styles.section} aria-labelledby="hbs-entry">
+          <div className={styles.wrap}>
+            <div id="hbs-entry">
+              <Ribbon en="ENTRY">エントリー</Ribbon>
+            </div>
+            <RevealOnScroll className={styles.reveal}>
+              <EntryProgressCard />
+            </RevealOnScroll>
+          </div>
+        </section>
+
         <section className={styles.section} aria-labelledby="hbs-about">
           <div className={styles.wrap}>
             <div id="hbs-about">
@@ -468,7 +550,7 @@ export function HalloweenBestShotPage() {
               </h3>
               <PrizeList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
               <div className={styles.ticketBox}>
-                <p className={styles.ticketLead}>ちがう応募作を使うほど、当たりやすく！(最大3口)</p>
+                <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
                 <TicketTable />
               </div>
             </RevealOnScroll>
@@ -476,6 +558,8 @@ export function HalloweenBestShotPage() {
               <p className={styles.note}>※ Amazonギフト券でお贈りします</p>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>
               <p className={styles.note}>※ つくる人の賞とつかう人の賞の、両方には当選しません</p>
+              <p className={styles.note}>※ つかう人の賞は、エントリーした人の中から抽選します</p>
+              <p className={styles.note}>※ 1人1アカウントでご参加ください。不正な参加は対象外です</p>
             </div>
           </div>
         </section>
@@ -495,9 +579,8 @@ export function HalloweenBestShotPage() {
                     sub: "プロンプトを応募",
                     panel: (
                       <>
-                        <StepList steps={CREATOR_STEPS} role="creator" />
+                        <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
                         <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                        <p className={styles.note}>※ ガチャプロンプトは対象外です</p>
                         <JudgePoints />
                       </>
                     ),
@@ -506,13 +589,14 @@ export function HalloweenBestShotPage() {
                     key: "user",
                     icon: "🍬",
                     label: "つかう人",
-                    sub: "応募作で生成して投稿",
+                    sub: "対象作品で生成して投稿",
                     panel: (
                       <>
-                        <StepList steps={USER_STEPS} role="user" />
+                        <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
                         <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                        <p className={styles.note}>※ 同じ応募作は、何回使っても1作品と数えます</p>
-                        <p className={styles.note}>※ 自分の応募作を使った投稿は数えません</p>
+                        <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
+                        <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
+                        <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
                         <p className={styles.note}>
                           ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
                         </p>
@@ -576,7 +660,7 @@ export function HalloweenBestShotPage() {
             あなたのベストショット、待ってます
           </h2>
           <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
-          <JoinButtons />
+          <JoinButtons worksHref={worksHref} />
         </section>
       </main>
     </div>
