@@ -1,11 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
-import { usageCountBucket } from "@/features/posts/lib/constants";
-import {
-  fetchAuthorNames,
-  fetchUsageCounts,
-} from "@/features/credits/lib/get-usable-prompt-showcase";
+import { fetchAuthorNames } from "@/features/credits/lib/get-usable-prompt-showcase";
 import { paginateOnePerAuthor } from "./paginate";
 
 /**
@@ -14,8 +10,8 @@ import { paginateOnePerAuthor } from "./paginate";
  * - 対象: 応募作の記録(hashtag_campaign_submissions)のうち、いまも公開中で、
  *   いまもハッシュタグが付いている投稿(list_hashtag_campaign_submissions)
  * - 並び: 新しい順。6件ずつのページにし、1ページに同じ人は1件まで
- * - 見せ方は /use-prompts の「フォローすると使えるプロンプト」と同じ
- *   (サムネイル・作者名・利用回数。押すと確認してから投稿のページへ)
+ * - 見せ方はサムネイルだけ(作者名・利用回数は出さない。2026-10-15 ユーザー指示)。
+ *   押すと /use-prompts と同じ確認を出してから投稿のページへ(確認に作者名を出す)
  *
  * 「使えるか」は投稿詳細と同じ validate_derived_prompt_sources で確かめる
  * (判定を書き写さない。理由は get-usable-prompt-showcase.ts)。
@@ -28,9 +24,8 @@ export interface CampaignSubmissionItem {
   /** 応募作の投稿 ID。`/posts/{id}` へのリンクになる。 */
   postId: string;
   thumbnailUrl: string;
+  /** 読み上げ用の説明(alt)と、押したときの確認に使う */
   authorName: string;
-  /** 丸めた利用回数(下限未満は null)。表示は「◯回以上」。 */
-  usageCount: number | null;
 }
 
 /** 1ページの件数(3列 × 2段)。 */
@@ -107,16 +102,10 @@ export async function getCampaignSubmissionPages(
     return [];
   }
 
-  const [names, usageCounts] = await Promise.all([
-    fetchAuthorNames(
-      supabase,
-      usable.map((row) => row.author_id),
-    ),
-    fetchUsageCounts(
-      supabase,
-      usable.map((row) => row.post_id),
-    ),
-  ]);
+  const names = await fetchAuthorNames(
+    supabase,
+    usable.map((row) => row.author_id),
+  );
 
   const items = usable.flatMap((row) => {
     const thumbnailUrl = getPostThumbUrl(row);
@@ -131,7 +120,6 @@ export async function getCampaignSubmissionPages(
           postId: row.post_id,
           thumbnailUrl,
           authorName: names.get(row.author_id) ?? "匿名ユーザー",
-          usageCount: usageCountBucket(usageCounts.get(row.post_id) ?? 0),
         },
       },
     ];

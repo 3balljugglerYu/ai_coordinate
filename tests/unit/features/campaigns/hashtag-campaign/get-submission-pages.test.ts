@@ -15,7 +15,6 @@ jest.mock("@/lib/supabase/admin", () => ({
 }));
 jest.mock("@/features/credits/lib/get-usable-prompt-showcase", () => ({
   fetchAuthorNames: jest.fn(async (_client: unknown, ids: string[]) => new Map(ids.map((id) => [id, `name-${id}`]))),
-  fetchUsageCounts: jest.fn(async () => new Map([["p1", 12]])),
 }));
 
 import { cacheTag } from "next/cache";
@@ -98,18 +97,17 @@ describe("getCampaignSubmissionPages", () => {
     ]);
   });
 
-  test("1件の中身はサムネイル・作者名・丸めた利用回数(下限未満は null)", async () => {
-    mockRpc({ rows: [row("p1", "A"), row("p2", "B")] });
-    const [[first, second]] = await getCampaignSubmissionPages("halloween-best-shot");
+  test("1件の中身は投稿 ID・サムネイル・作者名(画像の説明と確認に使う)。利用回数は読まない", async () => {
+    mockRpc({ rows: [row("p1", "A")] });
+    const [[first]] = await getCampaignSubmissionPages("halloween-best-shot");
     expect(first).toEqual({
       postId: "p1",
       thumbnailUrl: expect.stringContaining("thumb/p1.webp"),
       authorName: "name-A",
-      usageCount: 10,
     });
-    expect(second.usageCount).toBeNull();
     // 作者の ID は画面へ渡さない(ページ分けにだけ使う)
     expect(Object.keys(first)).not.toContain("authorId");
+    expect(rpcMock).not.toHaveBeenCalledWith("get_prompt_usage_counts", expect.anything());
   });
 
   test("使えるかは作品ごとに作者本人を requester にして確かめ、使えないものは出さない", async () => {

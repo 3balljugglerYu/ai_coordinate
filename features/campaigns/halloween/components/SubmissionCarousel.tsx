@@ -12,6 +12,8 @@ import styles from "../halloween.module.css";
  *
  * 3列 × 2段の6件を1ページにし、左右にスワイプすると次の6件へ移る(1件ずつではなく6件単位)。
  * ページ分けと「1ページに同じ人は1件まで」はサーバー側(paginateOnePerAuthor)で済ませてある。
+ * カードはサムネイルだけ(作者名・利用回数は出さない。2026-10-15 ユーザー指示)。作者名は
+ * 読み上げ用の説明(alt)と、押したときの確認にだけ使う。
  *
  * 動かし方はブラウザのスクロールとスナップ(scroll-snap)に任せる。自前のアニメーションで
  * 動かさないので、途中で止まって動かなくなることがない。PC 向けに左右の矢印も置く。
@@ -93,11 +95,6 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
                       className={styles.workImg}
                     />
                   </span>
-                  <span className={styles.workAuthor}>{item.authorName}</span>
-                  {/* 丸めた値で、下限未満は null(出さない)。丸めてあるので「以上」を付ける */}
-                  {item.usageCount !== null ? (
-                    <span className={styles.workUsage}>{item.usageCount}回以上利用</span>
-                  ) : null}
                 </Link>
               </li>
             ))}

@@ -21,6 +21,9 @@ import styles from "../halloween.module.css";
  *   自分の投稿を取り消すと減る
  *
  * 本人ごとに違う内容なので、ページ(キャッシュされる)とは別に、開いたあとで読む。
+ *
+ * 2026-10-15 ユーザー指示: 題名は「キャンペーンに参加」。数え方の吹き出しはエントリーしてから出す。
+ * エントリー前の「◯作品分たまっています」は出さない。
  */
 
 const PROGRESS_URL = `/api/hashtag-campaigns/${CAMPAIGN.campaignKey}/progress`;
@@ -182,15 +185,18 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         </span>
         <div>
           {entered ? <p className={styles.entryStatus}>✓ エントリー済み</p> : null}
-          <h3 className={styles.entryTitle}>つかう人の抽選</h3>
-          <p className={styles.entrySub}>ちがう応募作を使うほど、当たりやすく！(最大{MAX_TICKETS}口)</p>
+          <h3 className={styles.entryTitle}>キャンペーンに参加</h3>
+          <p className={styles.entrySub}>キャンペーン対象の投稿を利用してAmazonギフトカードをゲットしよう！</p>
         </div>
       </div>
 
-      <p className={styles.entryBubble}>{TIER_SUMMARY}</p>
-
       {entered ? (
         <>
+          <p className={styles.entryBubble} data-testid="halloween-entry-bubble">
+            生成して投稿するたびに、1カウント！
+            <br />
+            {TIER_SUMMARY}
+          </p>
           <ProgressBar works={works} />
           <p className={styles.entryNow} data-testid="halloween-entry-now">
             現在 {works}作品({tickets}口)
@@ -213,11 +219,6 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         </div>
       ) : (
         <div className={styles.entryAction}>
-          {works > 0 ? (
-            <p className={styles.entryStock}>
-              いま{works}作品分たまっています。エントリーすると抽選の対象になります！
-            </p>
-          ) : null}
           {/*
             処理中は native の disabled にしない(フォーカスが落ちる)。共通の Button の pending と同じく
             aria-disabled + aria-busy にして、押しても何もしない。
@@ -248,6 +249,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
             ? `企画終了まであと：${formatTimeLeft(Date.parse(data.endsAt) - current)}`
             : "企画は終了しました"}
       </p>
+      <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します</p>
       <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
     </div>
   );

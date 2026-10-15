@@ -25,8 +25,8 @@ afterEach(() => {
 
 const SUBMISSION_PAGES = [
   [
-    { postId: "p1", thumbnailUrl: "https://img.test/p1.webp", authorName: "かぼちゃ", usageCount: 5 },
-    { postId: "p2", thumbnailUrl: "https://img.test/p2.webp", authorName: "こうもり", usageCount: null },
+    { postId: "p1", thumbnailUrl: "https://img.test/p1.webp", authorName: "かぼちゃ" },
+    { postId: "p2", thumbnailUrl: "https://img.test/p2.webp", authorName: "こうもり" },
   ],
 ];
 

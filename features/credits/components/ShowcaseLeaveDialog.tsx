@@ -34,7 +34,7 @@ export function ShowcaseLeaveDialog({
   onOpenChange,
 }: {
   /** 確認中の作品。null なら閉じる。 */
-  item: UsablePromptShowcaseItem | null;
+  item: Pick<UsablePromptShowcaseItem, "postId" | "thumbnailUrl" | "authorName"> | null;
   onOpenChange: (open: boolean) => void;
 }) {
   const router = useRouter();

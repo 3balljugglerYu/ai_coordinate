@@ -5,6 +5,7 @@
 /**
  * 「キャンペーン対象の投稿」(2026-10-15 ユーザー決定)。
  * 3列 × 2段の6件を1ページにし、左右のスワイプ(と矢印・点)で6件単位に移る。
+ * カードはサムネイルだけ(作者名・利用回数は出さない)。
  * サムネイルを押すと /use-prompts と同じ確認を出してから投稿のページへ。
  */
 import { fireEvent, render, screen, within } from "@testing-library/react";
@@ -20,8 +21,8 @@ jest.mock("next/image", () => ({
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
 
-function item(id: string, usageCount: number | null = null) {
-  return { postId: id, thumbnailUrl: `https://img.test/${id}.webp`, authorName: `作者${id}`, usageCount };
+function item(id: string) {
+  return { postId: id, thumbnailUrl: `https://img.test/${id}.webp`, authorName: `作者${id}` };
 }
 
 function pages(count: number) {
@@ -42,13 +43,12 @@ function stubScroller(scroller: HTMLElement, width = 300) {
 beforeEach(() => routerPushMock.mockReset());
 
 describe("SubmissionCarousel", () => {
-  test("ページごとに6件を並べ、作者名と利用回数(下限未満は出さない)を出す", () => {
-    render(<SubmissionCarousel pages={[[item("a", 10), item("b")]]} />);
+  test("カードはサムネイルだけ(作者名・利用回数の文字は出さない)。作者名は画像の説明(alt)に入れる", () => {
+    render(<SubmissionCarousel pages={[[item("a"), item("b")]]} />);
     const works = screen.getAllByTestId("halloween-work");
     expect(works).toHaveLength(2);
     expect(within(works[0]).getByAltText("作者aさんの作品")).toBeTruthy();
-    expect(works[0].textContent).toContain("10回以上利用");
-    expect(works[1].textContent).not.toContain("回以上利用");
+    works.forEach((work) => expect(work.textContent).toBe(""));
   });
 
   test("1ページだけなら、矢印も点も出さない", () => {

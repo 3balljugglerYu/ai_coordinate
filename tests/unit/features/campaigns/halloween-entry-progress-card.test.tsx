@@ -9,6 +9,7 @@
  * - ログイン中・未エントリー: 「エントリーする」→「エントリー済み」になりバーが出る
  * - バーは10段。ちがう応募作1つで1段、3・6・10段で1〜3口
  * - 抽選はエントリーした人だけ。エントリー前の投稿も数える
+ * - 題名は「キャンペーンに参加」。数え方の吹き出しはエントリーしてから出す(10/15 ユーザー指示)
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { EntryProgressCard, formatTimeLeft } from "@/features/campaigns/halloween/components/EntryProgressCard";
@@ -79,12 +80,17 @@ describe("EntryProgressCard", () => {
       { ok: true, status: 200, json: async () => ({ enteredAt: "2026-10-26T15:00:00.000Z" }) },
     );
     render(<EntryProgressCard now={DURING} />);
-    // エントリー前の投稿も数えるので、押す前から「たまっている」と伝える
-    expect(await screen.findByText("いま4作品分たまっています。エントリーすると抽選の対象になります！")).toBeTruthy();
+    await screen.findByRole("button", { name: "エントリーする" });
+    // 押す前は、たまった数も数え方の吹き出しも出さない
+    expect(screen.queryByText(/たまっています/)).toBeNull();
+    expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
     expect(screen.queryByText("✓ エントリー済み")).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "エントリーする" }));
     expect(await screen.findByText("✓ エントリー済み")).toBeTruthy();
+    expect(screen.getByTestId("halloween-entry-bubble").textContent).toBe(
+      "生成して投稿するたびに、1カウント！3作品で1口・6作品で2口・10作品で3口",
+    );
     expect(fetchMock).toHaveBeenLastCalledWith("/api/hashtag-campaigns/halloween-best-shot/entry", { method: "POST" });
 
     const bar = screen.getByRole("progressbar");
@@ -187,13 +193,17 @@ describe("EntryProgressCard", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "ログインしてエントリー" })).toBeTruthy());
   });
 
-  test("抽選はエントリーした人だけ・エントリー前の投稿も数える、と書く", async () => {
+  test("題名は「キャンペーンに参加」。注意書きに、1口ごとに自動で応募・抽選はエントリーした人だけ、と書く", async () => {
     mockFetch(progress(null));
     render(<EntryProgressCard now={DURING} />);
+    expect(await screen.findByRole("heading", { name: "キャンペーンに参加" })).toBeTruthy();
     expect(
-      await screen.findByText("※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)"),
+      screen.getByText("キャンペーン対象の投稿を利用してAmazonギフトカードをゲットしよう！"),
     ).toBeTruthy();
-    expect(screen.getByText("3作品で1口・6作品で2口・10作品で3口")).toBeTruthy();
+    expect(screen.getByText("※ 1口達成するたびに自動で応募は完了します")).toBeTruthy();
+    expect(screen.getByText("※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)")).toBeTruthy();
+    // 未ログイン(= 未エントリー)では吹き出しを出さない
+    expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
   });
 });
 

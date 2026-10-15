@@ -955,7 +955,7 @@
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   align-content: start;
-  gap: 12px 10px;
+  gap: 10px;
   margin: 0;
   padding: 4px 2px 10px;
   list-style: none;
@@ -986,27 +986,6 @@
 
 .workImg {
   object-fit: cover;
-}
-
-.workAuthor,
-.workUsage {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  text-align: center;
-  font-weight: 800;
-}
-
-.workAuthor {
-  margin-top: 4px;
-  font-size: 11px;
-  color: var(--ink);
-}
-
-.workUsage {
-  font-size: 10px;
-  color: var(--orange);
 }
 
 .worksNav {
@@ -1255,14 +1234,6 @@
 .entryAction .cta[aria-disabled="true"] {
   opacity: 0.7;
   cursor: default;
-}
-
-.entryStock {
-  margin: 0;
-  text-align: center;
-  font-weight: 800;
-  font-size: 14px;
-  color: var(--pink);
 }
 
 .entryClosed {

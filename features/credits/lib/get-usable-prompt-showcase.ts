@@ -250,7 +250,7 @@ export async function fetchAuthorNames(
  * 利用回数。数え方の正本は `get_prompt_usage_counts`(投稿詳細と同じ)。
  * 集計 SQL を書き写すと、詳細と一覧で数字が食い違う。
  */
-export async function fetchUsageCounts(
+async function fetchUsageCounts(
   supabase: ReturnType<typeof createAdminClient>,
   originPostIds: string[]
 ): Promise<Map<string, number>> {
