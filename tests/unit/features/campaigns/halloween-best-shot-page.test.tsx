@@ -169,18 +169,85 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     ]);
   });
 
-  test("賞品: 最優秀賞 10,000円分 1名様／優秀賞 5,000円分 2名様", () => {
+  test("つくる人の賞は5つ・計34名様(10/15 ユーザー決定)。賞の名前の順と、賞品・人数", () => {
     render(<HalloweenBestShotPage />);
-    const prizes = screen.getAllByTestId("halloween-prize").map((node) => node.textContent);
-    expect(prizes).toEqual(["🏆最優秀賞10,000円分1名様", "🎖️優秀賞5,000円分2名様"]);
+    const prizes = screen.getAllByTestId("halloween-prize").map((item) => [
+      within(item).getByRole("heading", { level: 4 }).textContent,
+      within(item).getByTestId("halloween-prize-gift").textContent,
+    ]);
+    expect(prizes).toEqual([
+      ["🏆 ハロウィン・ベストショット賞", "Amazonギフトカード 10,000円分1名様"],
+      ["👻 トリック・オア・キュート賞", "Amazonギフトカード 5,000円分1名様"],
+      ["🪄 マジカル・アイデア賞", "Amazonギフトカード 5,000円分1名様"],
+      ["🌙 ミッドナイト・マジック賞", "Amazonギフトカード 5,000円分1名様"],
+      ["🎃 ハロウィン・セレクション賞", "ペルコイン 200枚30名様"],
+    ]);
+    const winners = HALLOWEEN_BEST_SHOT.prizes.reduce((sum, prize) => sum + Number.parseInt(prize.winners, 10), 0);
+    expect(winners).toBe(34);
+    // 前の賞(最優秀賞・優秀賞)は残さない
+    expect(document.body.textContent).not.toMatch(/最優秀賞|優秀賞/);
   });
 
-  test("つかう人の賞(抽選): Amazonギフト券 1,000円分 10名様／ペルコイン 300枚 30名様。両方には当選しない", () => {
+  test("つくる人の賞は見本どおり、サムネイル(説明つき)・説明・評価を出す。セレクション賞はねらいと評価なし", () => {
     render(<HalloweenBestShotPage />);
-    const prizes = screen.getAllByTestId("halloween-user-prize").map((node) => node.textContent);
-    expect(prizes).toEqual(["🎁Amazonギフト券1,000円分10名様", "🪙ペルコイン300枚30名様"]);
+    const items = screen.getAllByTestId("halloween-prize");
+    for (const item of items) {
+      expect(within(item).getByRole("img").getAttribute("alt")).toBeTruthy();
+    }
+    const [best, , , midnight, selection] = items;
+    expect(best.textContent).toContain("総合評価・最高賞");
+    expect(best.textContent).toContain(
+      "ハロウィンの世界観、キャラクターの魅力、構図、演出など、総合的に最も印象に残る作品。",
+    );
+    expect(best.textContent).toContain("評価：世界観・完成度・インパクト");
+    expect(midnight.textContent).toContain("評価：幻想的な美しさ・色彩・光の演出・世界観");
+    expect(selection.textContent).toContain("ハロウィンの魅力を感じる、素敵な作品30点を選出。");
+    expect(selection.textContent).not.toContain("評価：");
+  });
+
+  test("つかう人の賞(抽選)は、ハロウィン・マスター賞 Amazonギフトカード 1,000円分 10名様／トリック・オア・コイン賞 ペルコイン 300枚 30名様(10/15)", () => {
+    render(<HalloweenBestShotPage />);
+    const items = screen.getAllByTestId("halloween-user-prize");
+    expect(
+      items.map((item) => [
+        within(item).getByRole("heading", { level: 4 }).textContent,
+        within(item).getByTestId("halloween-prize-gift").textContent,
+      ]),
+    ).toEqual([
+      ["🏆 ハロウィン・マスター賞", "Amazonギフトカード 1,000円分10名様"],
+      ["🪙 トリック・オア・コイン賞", "ペルコイン 300枚30名様"],
+    ]);
+    const [master, coin] = items;
+    expect(master.textContent).toContain("たくさんのプロンプトを楽しんだ利用者へ");
+    expect(master.textContent).toContain(
+      "みんなが投稿したハロウィンのプロンプトを使って、たくさんの「うちの子」のベストショットを生み出してくれた方に、抽選で贈られる賞です！🎃",
+    );
+    expect(coin.textContent).toContain("ハロウィンのプロンプトを楽しんでくれた利用者へ");
+    expect(coin.textContent).toContain(
+      "ハロウィンのプロンプトを使って、イベントを一緒に盛り上げてくれた方に、抽選で贈られる賞です！✨",
+    );
+    // 抽選なので評価は書かない
+    expect(master.textContent).not.toContain("評価：");
+    expect(coin.textContent).not.toContain("評価：");
+    // ねらいの「|」は折り返してよい位置の印で、画面には出さない
+    expect(document.body.textContent).not.toContain("|");
     expect(screen.getByText("※ つくる人の賞とつかう人の賞の、両方には当選しません")).toBeTruthy();
-    expect(document.body.textContent).toContain("Amazonギフト券 総額3万円");
+  });
+
+  test("冒頭の「総額」は、つくる人とつかう人の Amazonギフトカードの合計(25,000円＋10,000円＝3.5万円。ペルコインは入れない)", () => {
+    const yen = (amount: string, winners: string) =>
+      Number(amount.replace(/,/g, "")) * Number.parseInt(winners, 10);
+    const amazonYen = (prizes: readonly { gift: string; amount: string; winners: string }[]) =>
+      prizes
+        .filter((prize) => prize.gift === "Amazonギフトカード")
+        .reduce((sum, prize) => sum + yen(prize.amount, prize.winners), 0);
+    expect([amazonYen(HALLOWEEN_BEST_SHOT.prizes), amazonYen(HALLOWEEN_BEST_SHOT.userPrizes)]).toEqual([
+      25_000, 10_000,
+    ]);
+    render(<HalloweenBestShotPage />);
+    expect(document.body.textContent).toContain("Amazonギフトカード 総額3.5万円");
+    // 呼び名は「Amazonギフトカード」にそろえる(ユーザーの文と同じ)。賞品をまとめて言い切る注意も出さない
+    expect(document.body.textContent).not.toContain("ギフト券");
   });
 
   test("セクションの見出しは文字のまま(読み上げ・翻訳のため画像にしない)", () => {

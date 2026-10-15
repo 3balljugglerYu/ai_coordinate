@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/components/AnnotatedShot";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
@@ -25,6 +26,10 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 2026-10-15: 画面での呼び名は、見出しを「キャンペーン対象作品」、文中を「対象作品」にそろえる
  * (「応募作」「キャンペーン対象の投稿」などが混ざっていた。数える単位の「3作品で1口」とも合わせる)。
  * コードと DB では、これまでどおり応募作(submissions)と呼ぶ。
+ * 2026-10-15: つくる人の賞を5つ(ハロウィン・ベストショット賞ほか・計34名様)にし、つかう人の賞にも名前
+ * (ハロウィン・マスター賞・トリック・オア・コイン賞)を付けて、どちらもユーザーの見本どおりサムネイル付きの一覧で出す。
+ * 賞品は賞ごとに書くので「Amazonギフト券でお贈りします」の注意はやめる(セレクション賞はペルコイン)。
+ * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -295,29 +300,92 @@ const MORE_TIPS = [
   { icon: "💖", text: "運営も「いいね」などで応援します！" },
 ] as const;
 
-type Prize = (typeof CAMPAIGN.prizes)[number] | (typeof CAMPAIGN.userPrizes)[number];
+type Award = (typeof CAMPAIGN.prizes)[number] | (typeof CAMPAIGN.userPrizes)[number];
 
-function PrizeList({ prizes, testId }: { prizes: readonly Prize[]; testId: string }) {
-  return (
-    <div className={styles.prizes}>
-      {prizes.map((prize) => (
-        <div
-          key={prize.rank}
-          className={`${styles.prize} ${prize.tone === "gold" ? styles.prizeGold : styles.prizeSilver}`}
-          data-testid={testId}
-        >
-          <span className={styles.medal} aria-hidden="true">
-            {prize.medal}
-          </span>
-          <div className={styles.prizeName}>{prize.rank}</div>
-          <div className={styles.prizeAmount}>
-            {prize.amount}
-            <small>{prize.unit}</small>
-          </div>
-          <span className={styles.prizeWho}>{prize.winners}</span>
-        </div>
+/**
+ * 狭い幅でも言葉の途中で折り返さないよう、「・」の後ろと「|」の位置だけを折り返してよい所にする
+ * (「|」は画面に出さない。CSS の word-break: keep-all と組み合わせる)。
+ */
+function BreakHints({ text }: { text: string }) {
+  return text.split("|").map((chunk, chunkIndex) => (
+    <Fragment key={chunkIndex}>
+      {chunkIndex > 0 ? <wbr /> : null}
+      {chunk.split("・").map((part, index, parts) => (
+        <Fragment key={index}>
+          {part}
+          {index < parts.length - 1 ? (
+            <>
+              ・<wbr />
+            </>
+          ) : null}
+        </Fragment>
       ))}
-    </div>
+    </Fragment>
+  ));
+}
+
+/** 賞のサムネイル。作例のイラストは枠いっぱい、アイコンの絵は余白をとって収める。絵がまだ無い賞は仮の絵文字 */
+function AwardThumb({ thumb }: { thumb: Award["thumb"] }) {
+  if ("emoji" in thumb) {
+    return (
+      <span className={styles.awardThumbEmoji} aria-hidden="true">
+        {thumb.emoji}
+      </span>
+    );
+  }
+  const contain = "contain" in thumb && thumb.contain;
+  return (
+    <Image
+      src={thumb.src}
+      alt={thumb.alt}
+      fill
+      sizes="(min-width: 860px) 168px, 112px"
+      className={contain ? styles.awardThumbIcon : undefined}
+      style={{ objectFit: contain ? "contain" : "cover" }}
+    />
+  );
+}
+
+/**
+ * 賞の一覧(2026-10-15 ユーザーの見本。つくる人・つかう人とも同じ形)。
+ * 左にサムネイル、右に賞の名前・ねらい・賞品と人数・説明・評価(評価は審査のある賞だけ)。
+ * スマホはサムネイルの右に名前とねらいだけを置き、賞品と人数・説明・評価は下の全幅に回す
+ * (「Amazonギフトカード 10,000円分」の札はサムネイルの右の幅に入りきらない)。
+ */
+function AwardList({ prizes, testId }: { prizes: readonly Award[]; testId: string }) {
+  return (
+    <ul className={styles.awards}>
+      {prizes.map((prize) => (
+        <li key={prize.name} className={styles.award} data-testid={testId}>
+          <div className={styles.awardThumb}>
+            <AwardThumb thumb={prize.thumb} />
+          </div>
+          <div className={styles.awardHead}>
+            <h4 className={styles.awardName}>
+              <span aria-hidden="true">{prize.icon}</span> <BreakHints text={prize.name} />
+            </h4>
+            {prize.tagline ? (
+              <p className={styles.awardTagline}>
+                <BreakHints text={prize.tagline} />
+              </p>
+            ) : null}
+          </div>
+          <p className={styles.awardGift} data-testid="halloween-prize-gift">
+            <span
+              className={`${styles.awardGiftItem} ${prize.tone === "gold" ? styles.awardGiftGold : styles.awardGiftSilver}`}
+            >
+              {prize.gift} <b>{prize.amount}</b>
+              {prize.unit}
+            </span>
+            <span className={styles.awardWinners}>{prize.winners}</span>
+          </p>
+          <div className={styles.awardBody}>
+            <p className={styles.awardText}>{prize.text}</p>
+            {prize.criteria ? <p className={styles.awardCriteria}>評価：{prize.criteria}</p> : null}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -533,18 +601,17 @@ export function HalloweenBestShotPage({
               <h3 className={styles.prizeGroup}>
                 <span aria-hidden="true">🪄</span> つくる人の賞<small>（審査）</small>
               </h3>
-              <PrizeList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
+              <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
               <h3 className={styles.prizeGroup}>
                 <span aria-hidden="true">🍬</span> つかう人の賞<small>（抽選）</small>
               </h3>
-              <PrizeList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
+              <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
               <div className={styles.ticketBox}>
                 <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
                 <TicketTable />
               </div>
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
-              <p className={styles.note}>※ Amazonギフト券でお贈りします</p>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>
               <p className={styles.note}>※ つくる人の賞とつかう人の賞の、両方には当選しません</p>
               <p className={styles.note}>※ つかう人の賞は、エントリーした人の中から抽選します</p>

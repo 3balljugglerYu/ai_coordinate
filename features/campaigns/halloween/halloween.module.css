@@ -484,68 +484,143 @@
   color: var(--ink-soft);
 }
 
-/* 賞品 */
-.prizes {
+/*
+ * 賞品: つくる人の賞・つかう人の賞(2026-10-15 ユーザーの見本)。白いカードに、左サムネイル・右に文字の行を積む。
+ * スマホはサムネイルの右に名前とねらいだけを置き、賞品と人数・説明・評価は下の全幅に回す
+ * (「Amazonギフト券 10,000円分」の札は、サムネイルの右の幅だと 375px 以下の画面ではみ出す)。
+ */
+.awards {
+  list-style: none;
+  margin: 0;
+  padding: 4px 16px;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: var(--shadow-card);
+}
+
+.award {
   display: grid;
-  gap: 14px;
+  grid-template-columns: clamp(84px, 26vw, 112px) minmax(0, 1fr);
+  grid-template-areas:
+    "thumb head"
+    "gift gift"
+    "body body";
+  column-gap: 14px;
+  row-gap: 10px;
+  padding: 16px 0;
 }
 
-.prize {
+.award + .award {
+  border-top: 2px dashed rgba(61, 16, 80, 0.14);
+}
+
+.awardThumb {
+  grid-area: thumb;
   position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 4 / 5;
   overflow: hidden;
-  border-radius: 20px;
-  padding: 18px 18px 18px 92px;
-  color: #fff;
-  box-shadow: 0 6px 0 rgba(61, 16, 80, 0.25);
+  border-radius: 14px;
+  /* 作例のイラストは枠いっぱいに覆う。アイコンの絵と仮の絵文字のときは、ハロウィンの夜の地が見える */
+  background: radial-gradient(circle at 50% 38%, #8a3fb8 0%, #4a1466 55%, var(--plum-900) 100%);
+  box-shadow: 0 0 0 1px rgba(61, 16, 80, 0.12), 0 4px 10px rgba(61, 16, 80, 0.16);
 }
 
-.prizeGold {
+.awardThumbIcon {
+  box-sizing: border-box;
+  padding: 16%;
+}
+
+.awardThumbEmoji {
+  font-size: 44px;
+  line-height: 1;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+
+.awardHead {
+  grid-area: head;
+  align-self: center;
+  min-width: 0;
+}
+
+.awardName {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.45;
+  color: var(--plum-800);
+  /* 名前は「・」の後ろ(<wbr>)だけで折り返す。入りきらないときだけ文字の途中で切る */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.awardTagline {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  /* 名前と同じく、「・」「|」の位置(<wbr>)だけで折り返す */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.awardGift {
+  grid-area: gift;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.awardGiftItem {
+  padding: 2px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.awardGiftItem b {
+  font-size: 16px;
+}
+
+.awardGiftGold {
   background: linear-gradient(120deg, #ff7a1a, #ffb12e);
 }
 
-.prizeSilver {
+.awardGiftSilver {
   background: linear-gradient(120deg, #8a4dff, #c062ff);
 }
 
-.medal {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #fff;
-  font-size: 30px;
-  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.12);
-}
-
-.prizeName {
-  font-weight: 800;
-  font-size: 14px;
-  opacity: 0.95;
-}
-
-.prizeAmount {
-  font-weight: 800;
-  font-size: 28px;
-  line-height: 1.2;
-}
-
-.prizeAmount small {
-  font-size: 14px;
-}
-
-.prizeWho {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 10px;
+.awardWinners {
+  padding: 0 10px;
+  border: 2px solid var(--plum-800);
   border-radius: 999px;
+  color: var(--plum-800);
+  font-size: 12px;
   font-weight: 800;
-  font-size: 13px;
-  background: rgba(255, 255, 255, 0.22);
+  white-space: nowrap;
+}
+
+.awardBody {
+  grid-area: body;
+  min-width: 0;
+}
+
+.awardText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.awardCriteria {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
 }
 
 /* 参加方法 */
@@ -1398,8 +1473,37 @@
     font-size: 24px;
   }
 
-  .prizes {
-    grid-template-columns: 1.2fr 1fr;
+  /* 賞の一覧: 見本どおり、サムネイルの右に文字をすべて並べる */
+  .awards {
+    padding: 6px 28px;
+  }
+
+  .award {
+    grid-template-columns: 168px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "thumb head"
+      "thumb gift"
+      "thumb body";
+    column-gap: 24px;
+    row-gap: 8px;
+    padding: 22px 0;
+  }
+
+  .awardHead {
+    align-self: start;
+  }
+
+  .awardName {
+    font-size: 20px;
+  }
+
+  .awardThumbEmoji {
+    font-size: 72px;
+  }
+
+  .awardText {
+    font-size: 15px;
   }
 
   /* 手順はスクショ付きで縦に長いので、パソコンでも1列のまま読ませる */
