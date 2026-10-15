@@ -205,7 +205,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(selection.textContent).not.toContain("評価：");
   });
 
-  test("つかう人の賞(抽選)は、ハロウィン・マスター賞 Amazonギフトカード 1,000円分 10名様／トリック・オア・コイン賞 ペルコイン 300枚 30名様(10/15)", () => {
+  test("つかう人の賞(抽選)は、ハロウィン・マスター賞 Amazonギフトカード 1,000円分 10名様／トリック・オア・コイン賞 ペルコイン 200枚 30名様(10/15)", () => {
     render(<HalloweenBestShotPage />);
     const items = screen.getAllByTestId("halloween-user-prize");
     expect(
@@ -215,7 +215,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
       ]),
     ).toEqual([
       ["🏆 ハロウィン・マスター賞", "Amazonギフトカード 1,000円分10名様"],
-      ["🪙 トリック・オア・コイン賞", "ペルコイン 300枚30名様"],
+      ["🪙 トリック・オア・コイン賞", "ペルコイン 200枚30名様"],
     ]);
     const [master, coin] = items;
     expect(master.textContent).toContain("たくさんのプロンプトを楽しんだ利用者へ");
