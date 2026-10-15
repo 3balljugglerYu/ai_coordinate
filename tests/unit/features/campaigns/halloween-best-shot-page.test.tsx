@@ -58,7 +58,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     links.forEach((link) =>
       expect(link.getAttribute("href")).toBe(`/search?q=${encodeURIComponent("#うちの子のベストショット")}`),
     );
-    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
   });
 
@@ -67,7 +67,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
     expect(links).toHaveLength(2);
     links.forEach((link) => expect(link.getAttribute("href")).toBe("#hbs-works"));
-    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe("#hbs-works");
     // 飛び先(一覧の見出し)がある
     expect(document.getElementById("hbs-works")).toBeTruthy();
@@ -88,35 +88,45 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(link.getAttribute("href")).toBe("/use-prompts");
   });
 
-  test("参加方法は「つくる人」「つかう人」のタブで、最初はつくる人を出す", () => {
+  test("参加方法は「クリエイティブ部門」「エンジョイ部門」のタブで、最初はクリエイティブ部門を出す", () => {
     render(<HalloweenBestShotPage />);
-    const creatorTab = screen.getByRole("tab", { name: /つくる人/ });
-    const userTab = screen.getByRole("tab", { name: /つかう人/ });
+    const creatorTab = screen.getByRole("tab", { name: /クリエイティブ\s*部門/ });
+    const userTab = screen.getByRole("tab", { name: /エンジョイ\s*部門/ });
     expect(creatorTab.getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByRole("tabpanel", { name: /つくる人/ })).toBeTruthy();
-    expect(screen.queryByRole("tabpanel", { name: /つかう人/ })).toBeNull();
+    expect(screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ })).toBeTruthy();
+    expect(screen.queryByRole("tabpanel", { name: /エンジョイ\s*部門/ })).toBeNull();
 
     fireEvent.click(userTab);
     expect(userTab.getAttribute("aria-selected")).toBe("true");
     expect(creatorTab.getAttribute("aria-selected")).toBe("false");
-    expect(screen.getByRole("tabpanel", { name: /つかう人/ })).toBeTruthy();
-    expect(screen.queryByRole("tabpanel", { name: /つくる人/ })).toBeNull();
+    expect(screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ })).toBeTruthy();
+    expect(screen.queryByRole("tabpanel", { name: /クリエイティブ\s*部門/ })).toBeNull();
+  });
+
+  test("参加方法のタブは、賞品の部門と同じ呼び名とアイコン。画面に「つくる人」「つかう人」とは書かない(10/15 統一感のため)", () => {
+    render(<HalloweenBestShotPage />);
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "🎨クリエイティブ部門プロンプトを応募",
+      "🎁エンジョイ部門対象作品で生成して投稿",
+    ]);
+    expect(document.body.textContent).not.toMatch(/つくる人|つかう人|つくる側|つかう側/);
   });
 
   test("タブは左右の矢印キーでも切り替えられる", () => {
     render(<HalloweenBestShotPage />);
-    const creatorTab = screen.getByRole("tab", { name: /つくる人/ });
+    const creatorTab = screen.getByRole("tab", { name: /クリエイティブ\s*部門/ });
     fireEvent.keyDown(creatorTab, { key: "ArrowRight" });
-    const userTab = screen.getByRole("tab", { name: /つかう人/ });
+    const userTab = screen.getByRole("tab", { name: /エンジョイ\s*部門/ });
     expect(userTab.getAttribute("aria-selected")).toBe("true");
     expect(document.activeElement).toBe(userTab);
     fireEvent.keyDown(userTab, { key: "ArrowRight" });
     expect(creatorTab.getAttribute("aria-selected")).toBe("true");
   });
 
-  test("つかう人の手順は7つで、最初にエントリー。対象作品をさがす入口と口数の表がある", () => {
+  test("エンジョイ部門の手順は7つで、最初にエントリー。対象作品をさがす入口と口数の表がある", () => {
     render(<HalloweenBestShotPage />);
-    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     const steps = screen.getAllByTestId("halloween-join-step-user");
     expect(steps).toHaveLength(7);
     expect(within(steps[0]).getByRole("heading", { name: "エントリーする" })).toBeTruthy();
@@ -126,13 +136,13 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(entries.getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
     expect(within(steps[2]).getAllByTestId("shot-ring")).toHaveLength(1);
     expect(within(steps[6]).getByTestId("halloween-tickets").textContent).toBe("3作品▶1口6作品▶2口10作品▶3口");
-    const panel = screen.getByRole("tabpanel", { name: /つかう人/ });
+    const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
     expect(panel.textContent).toContain("自分の対象作品を使った投稿は数えません");
     expect(panel.textContent).toContain("何回使っても1作品");
     expect(panel.textContent).toContain("※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)");
   });
 
-  test("つくる人の参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
+  test("クリエイティブ部門の参加方法は9つの手順で、画面のスクショに押す場所の枠を重ねる", () => {
     render(<HalloweenBestShotPage />);
     const steps = screen.getAllByTestId("halloween-join-step-creator");
     expect(steps).toHaveLength(9);
@@ -152,12 +162,12 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(names).toEqual(["ハロウィンらしさ", "うちの子らしさ", "使ってみたくなる魅力"]);
   });
 
-  test("審査のポイントは「つくる人」のタブの中だけに出す(審査があるのはつくる人の賞だけ。10/14 に独立した区画から移動)", () => {
+  test("審査のポイントは「クリエイティブ部門」のタブの中だけに出す(審査があるのはクリエイティブ部門だけ。10/14 に独立した区画から移動)", () => {
     render(<HalloweenBestShotPage />);
-    const creatorPanel = screen.getByRole("tabpanel", { name: /つくる人/ });
+    const creatorPanel = screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ });
     expect(within(creatorPanel).getByRole("heading", { name: "審査のポイント" })).toBeTruthy();
     expect(within(creatorPanel).getAllByTestId("halloween-judge-point")).toHaveLength(3);
-    // ページ全体でも3つだけ(つかう人のタブや、ほかの区画には出さない)
+    // ページ全体でも3つだけ(エンジョイ部門のタブや、ほかの区画には出さない)
     expect(screen.getAllByTestId("halloween-judge-point")).toHaveLength(3);
     expect(screen.getAllByRole("heading", { name: /審査のポイント/ })).toHaveLength(1);
   });
@@ -190,7 +200,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(document.body.textContent).not.toMatch(/最優秀賞|優秀賞/);
   });
 
-  test("賞のサムネイルは、ユーザーが用意した賞ごとの画像(10/15。つくる人5つ・つかう人2つ)。ファイルがあり、仮置きではない", () => {
+  test("賞のサムネイルは、ユーザーが用意した賞ごとの画像(10/15。クリエイティブ部門5つ・エンジョイ部門2つ)。ファイルがあり、仮置きではない", () => {
     const srcs = [...HALLOWEEN_BEST_SHOT.prizes, ...HALLOWEEN_BEST_SHOT.userPrizes].map((prize) => prize.thumb.src);
     expect(new Set(srcs).size).toBe(7);
     for (const src of srcs) {
@@ -271,7 +281,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.getByText("※ クリエイティブ部門とエンジョイ部門の、両方には当選しません")).toBeTruthy();
   });
 
-  test("冒頭の「総額」は、つくる人とつかう人の Amazonギフトカードの合計(25,000円＋10,000円＝3.5万円。ペルコインは入れない)", () => {
+  test("冒頭の「総額」は、クリエイティブ部門とエンジョイ部門の Amazonギフトカードの合計(25,000円＋10,000円＝3.5万円。ペルコインは入れない)", () => {
     const yen = (amount: string, winners: string) =>
       Number(amount.replace(/,/g, "")) * Number.parseInt(winners, 10);
     const amazonYen = (prizes: readonly { gift: string; amount: string; winners: string }[]) =>
@@ -315,28 +325,28 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(prize.textContent).toContain("※ 1人1アカウントでご参加ください。不正な参加は対象外です");
   });
 
-  test("エントリー(進捗カード)は「つかう人」タブの手順1の中だけに置く(10/15 に独立した区画から移動)", () => {
+  test("エントリー(進捗カード)は「エンジョイ部門」タブの手順1の中だけに置く(10/15 に独立した区画から移動)", () => {
     render(<HalloweenBestShotPage />);
     // 独立した「ENTRY」の区画は無い
     expect(screen.queryByRole("region", { name: /^ENTRY/ })).toBeNull();
-    // ページに1つだけで、「つかう人」タブの中にある(タブは隠れていても描かれている)
+    // ページに1つだけで、「エンジョイ部門」タブの中にある(タブは隠れていても描かれている)
     const cards = screen.getAllByTestId("halloween-entry-loading");
     expect(cards).toHaveLength(1);
     expect(cards[0].closest('[role="tabpanel"]')?.hasAttribute("hidden")).toBe(true);
-    // 最初の「つくる人」タブでは見えない
-    expect(within(screen.getByRole("tabpanel", { name: /つくる人/ })).queryByTestId("halloween-entry-loading")).toBeNull();
+    // 最初の「クリエイティブ部門」タブでは見えない
+    expect(within(screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ })).queryByTestId("halloween-entry-loading")).toBeNull();
 
-    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
-    const panel = screen.getByRole("tabpanel", { name: /つかう人/ });
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
+    const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
     const steps = within(panel).getAllByTestId("halloween-join-step-user");
     expect(within(steps[0]).getByTestId("halloween-entry-loading")).toBeTruthy();
   });
 
   test("画面の呼び名は「対象作品」にそろえる(「応募作」「キャンペーン対象の投稿」「投稿作品」「コンテンツ」を出さない。10/15)", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
-    // つくる人・つかう人の両方のタブの中身を見る(出ているタブの中身だけが描かれる)
+    // クリエイティブ部門・エンジョイ部門の両方のタブの中身を見る(出ているタブの中身だけが描かれる)
     const creatorText = document.body.textContent ?? "";
-    fireEvent.click(screen.getByRole("tab", { name: /つかう人/ }));
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     const userText = document.body.textContent ?? "";
     for (const word of ["応募作", "キャンペーン対象の投稿", "投稿作品", "コンテンツ"]) {
       expect(creatorText).not.toContain(word);

@@ -30,7 +30,8 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * (ハロウィン・マスター賞・トリック・オア・コイン賞)を付けて、どちらもユーザーの見本どおりサムネイル付きの一覧で出す。
  * 賞品は賞ごとに書くので「Amazonギフト券でお贈りします」の注意はやめる(セレクション賞はペルコイン)。
  * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品は部門に分けて「クリエイティブ部門(全5賞)」
- * 「エンジョイ部門(全2賞)」と見出しを付ける(参加方法のタブは人を指すので「つくる人」「つかう人」のまま)。
+ * 「エンジョイ部門(全2賞)」と見出しを付ける。参加方法のタブや読み上げの名前も、画面では「つくる人」「つかう人」と
+ * 書かずに部門の呼び名にそろえる(統一感のため。ユーザー指示)。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -302,6 +303,21 @@ const MORE_TIPS = [
 ] as const;
 
 type PrizeCategory = (typeof CAMPAIGN.prizeCategories)[keyof typeof CAMPAIGN.prizeCategories];
+
+/**
+ * 参加方法のタブの名前(部門の呼び名)。スマホのタブの幅では「クリエイティブ部門」が1行に入らないので、
+ * 2つのタブとも「部門」を2行目に回して形をそろえる(PC は1行。CSS の .tabLabelTail)。
+ */
+function CategoryTabLabel({ name }: { name: string }) {
+  const tail = "部門";
+  if (!name.endsWith(tail)) return name;
+  return (
+    <>
+      {name.slice(0, -tail.length)}
+      <span className={styles.tabLabelTail}>{tail}</span>
+    </>
+  );
+}
 
 /** 賞の部門の見出し(「全○賞」は賞の数)と、その下のひとこと(2026-10-15 ユーザー決定) */
 function PrizeCategoryHeading({ category, count }: { category: PrizeCategory; count: number }) {
@@ -630,8 +646,8 @@ export function HalloweenBestShotPage({
                 tabs={[
                   {
                     key: "creator",
-                    icon: "🪄",
-                    label: "つくる人",
+                    icon: CAMPAIGN.prizeCategories.creative.icon,
+                    label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
                     sub: "プロンプトを応募",
                     panel: (
                       <>
@@ -643,8 +659,8 @@ export function HalloweenBestShotPage({
                   },
                   {
                     key: "user",
-                    icon: "🍬",
-                    label: "つかう人",
+                    icon: CAMPAIGN.prizeCategories.enjoy.icon,
+                    label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
                     sub: "対象作品で生成して投稿",
                     panel: (
                       <>

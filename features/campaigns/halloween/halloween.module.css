@@ -1391,7 +1391,14 @@
 
 .tabLabel {
   font-weight: 800;
-  font-size: 17px;
+  /* 320px の画面でも「クリエイティブ」が1行に入る大きさまで縮める */
+  font-size: clamp(14px, 4.4vw, 17px);
+  line-height: 1.35;
+}
+
+/* タブの名前の「部門」は、スマホでは2行目に回す(2つのタブの形をそろえる)。PC は1行 */
+.tabLabelTail {
+  display: block;
 }
 
 .tabSub {
@@ -1466,6 +1473,10 @@
 
   .ribbon {
     font-size: 24px;
+  }
+
+  .tabLabelTail {
+    display: inline;
   }
 
   /* 賞の一覧: 見本どおり、サムネイルの右に文字をすべて並べる */
