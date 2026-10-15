@@ -193,15 +193,24 @@ describe("EntryProgressCard", () => {
     await waitFor(() => expect(screen.getByRole("link", { name: "ログインしてエントリー" })).toBeTruthy());
   });
 
-  test("題名は「キャンペーンに参加」。注意書きに、1口ごとに自動で応募・抽選はエントリーした人だけ、と書く", async () => {
+  test("題名は「キャンペーンに参加」。注意書きは、自動で応募・エントリーした人だけ・同じ作品は増えない・タグ付きが対象、の4つ", async () => {
     mockFetch(progress(null));
     render(<EntryProgressCard now={DURING} />);
     expect(await screen.findByRole("heading", { name: "キャンペーンに参加" })).toBeTruthy();
     expect(
       screen.getByText("キャンペーン対象の投稿を利用してAmazonギフトカードをゲットしよう！"),
     ).toBeTruthy();
-    expect(screen.getByText("※ 1口達成するたびに自動で応募は完了します")).toBeTruthy();
-    expect(screen.getByText("※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)")).toBeTruthy();
+    // 注意書きは4つ、この順(10/15 ユーザー指示)
+    const card = screen.getByTestId("halloween-entry-card");
+    const notes = Array.from(card.querySelectorAll("p"))
+      .map((node) => node.textContent ?? "")
+      .filter((text) => text.startsWith("※"));
+    expect(notes).toEqual([
+      "※ 1口達成するたびに自動で応募は完了します",
+      "※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)",
+      "※ 同じ投稿作品で生成してもカウントは増えません",
+      "※ 「#うちの子のベストショット」のタグが記載されているコンテンツが対象です",
+    ]);
     // 未ログイン(= 未エントリー)では吹き出しを出さない
     expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
   });

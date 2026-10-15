@@ -251,6 +251,8 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
       </p>
       <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します</p>
       <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
+      <p className={styles.note}>※ 同じ投稿作品で生成してもカウントは増えません</p>
+      <p className={styles.note}>※ 「{CAMPAIGN.hashtag}」のタグが記載されているコンテンツが対象です</p>
     </div>
   );
 }
