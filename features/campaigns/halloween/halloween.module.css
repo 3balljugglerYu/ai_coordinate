@@ -651,6 +651,12 @@
   font-size: 17px;
 }
 
+/* 題名に「|」(<wbr>)で折り返す位置を入れたものは、その位置と句読点でだけ折り返す */
+.stepTitleHinted {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .stepText {
   margin: 10px 0 0;
   font-size: 14px;

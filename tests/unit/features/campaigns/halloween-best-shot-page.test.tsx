@@ -73,18 +73,27 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(document.getElementById("hbs-works")).toBeTruthy();
   });
 
-  test("企画についてで、プロンプトは非公開のままでよいことと、使った人にも当たるチャンスを書く", () => {
+  test("企画について(10/15 ユーザーの文): カタログ化の説明・プロンプトは公開せずに使ってもらえる・使った人にも当たるチャンス", () => {
     render(<HalloweenBestShotPage />);
     const about = screen.getByRole("region", { name: /企画について/ });
-    expect(about.textContent).toContain("プロンプトの内容は非公開のままなので、安心して公開・利用できます");
-    expect(about.textContent).toContain("今回のテーマは 「ハロウィン」");
-    expect(about.textContent).toContain("選ばれた方には、Amazonギフトカードをプレゼント！");
-    expect(about.textContent).toContain("プロンプトを使ってイラストを生成してくれた方にも、Amazonギフトカードが当たるチャンス！");
+    const lines = Array.from(about.querySelectorAll("p")).map((node) => node.textContent);
+    expect(lines).toEqual([
+      "🎃 知っていますか！？",
+      "ペルスタでは、ほかのユーザーが作成したスタイルを使って、自分の「うちの子」のイラストを生成できるんです！✨",
+      "これを 「カタログ化」 って言うんです！",
+      "カタログ化すると、作成したプロンプトを公開せずに、ほかのユーザーに使ってもらえるんです！🔥",
+      "👉 作成者のメリットはこちら",
+      "そして、今回のテーマは 「ハロウィン」 🎃",
+      "あなたが思い描く、とっておきの「ベストショット」を作成して、投稿してください！✨",
+      "🏆 選ばれた方には、Amazonギフトカードをプレゼント！ 🎁",
+      "さらに！カタログを使ってイラストを生成してくれた方にも、Amazonギフトカードが当たるチャンス！ 🎉",
+      "作る人も、使う人も楽しめるハロウィン企画です！🎃✨",
+    ]);
   });
 
-  test("企画についての「プロンプト作成者のメリットはこちら」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
+  test("企画についての「作成者のメリットはこちら」は、プロンプト利用の案内(/use-prompts)へ行く", () => {
     render(<HalloweenBestShotPage />);
-    const link = screen.getByRole("link", { name: "プロンプト作成者のメリットはこちら" });
+    const link = screen.getByRole("link", { name: "作成者のメリットはこちら" });
     expect(link.getAttribute("href")).toBe("/use-prompts");
   });
 
@@ -133,6 +142,12 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const entries = within(steps[1]).getByRole("link", { name: /対象作品を見る/ });
     expect(entries.getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
     expect(within(steps[2]).getAllByTestId("shot-ring")).toHaveLength(1);
+    // 手順3の画像は、フォロー済みの人が見る今の画面(「このカタログで生成する」)。10/15 に差し替え
+    const step3Image = within(steps[2]).getByRole("img");
+    expect(step3Image.getAttribute("alt")).toContain("「このカタログで生成する」のボタン");
+    const step3Src = step3Image.getAttribute("src") ?? "";
+    expect(step3Src).toBe("/campaigns/halloween-best-shot/use-3-catalog-button.webp");
+    expect(fs.existsSync(path.join(process.cwd(), "public", step3Src))).toBe(true);
     expect(within(steps[6]).getByTestId("halloween-tickets").textContent).toBe("3作品▶1口6作品▶2口10作品▶3口");
     const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
     expect(panel.textContent).toContain("自分の対象作品を使った投稿は数えません");
@@ -217,14 +232,18 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     for (const item of items) {
       expect(within(item).getByRole("img").getAttribute("alt")).toBeTruthy();
     }
-    const [best, , , midnight, selection] = items;
+    const [best, , idea, midnight, selection] = items;
     expect(best.textContent).toContain("総合評価・最高賞");
     expect(best.textContent).toContain(
       "ハロウィンの世界観、キャラクターの魅力、構図、演出など、総合的に最も印象に残る作品。",
     );
     expect(best.textContent).toContain("評価：世界観・完成度・インパクト");
     expect(midnight.textContent).toContain("評価：幻想的な美しさ・色彩・光の演出・世界観");
-    expect(selection.textContent).toContain("ハロウィンの魅力を感じる、素敵な作品30点を選出。");
+    // 10/15 ユーザー指示: セレクション賞の説明は数(30点)を書かない。マジカル・アイデア賞の評価は「表現の工夫」
+    expect(selection.textContent).toContain(
+      "ハロウィンの魅力を感じる、素敵な作品を選出。特別賞に次ぐ入選作品として、そのアイデアと創意工夫を称え、賞を贈ります。",
+    );
+    expect(idea.textContent).toContain("評価：独創性・意外性・表現の工夫");
     expect(selection.textContent).not.toContain("評価：");
   });
 
@@ -314,6 +333,42 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const steps = screen.getAllByTestId("halloween-join-step-creator");
     expect(steps[3].textContent).toContain("ガチャプロンプトでもOKです");
     expect(steps[3].textContent).not.toContain("オフのままにしてください");
+  });
+
+  test("エンジョイ部門の手順の題名と画像(10/15 ユーザー指示: 手順4・5の絵を差し替え、手順6はカウントの確認、手順7は当選率アップ)", () => {
+    render(<HalloweenBestShotPage />);
+    const steps = screen.getAllByTestId("halloween-join-step-user");
+    // 題名の「|」は折り返しの印で、文字には出ない
+    expect(steps.map((step) => step.querySelector("h3")?.textContent)).toEqual([
+      "エントリーする",
+      "対象作品をさがす",
+      "「このカタログで生成する」をタップ",
+      "うちの子の画像を入れて生成",
+      "できあがったら「投稿」をタップ",
+      "カウントが増えていることを確認！",
+      "ちがう対象作品で、当選率アップ！",
+    ]);
+    // タブは隠れていても描かれている。役割(role)で探すと隠れた中身は除かれるので、要素で見る
+    const src = (index: number) => steps[index].querySelector("img")?.getAttribute("src") ?? "";
+    expect([src(3), src(4), src(5)]).toEqual([
+      "/campaigns/halloween-best-shot/use-4-upload.webp",
+      "/campaigns/halloween-best-shot/use-5-post.jpg",
+      "/campaigns/halloween-best-shot/use-6-count.webp",
+    ]);
+    for (const index of [3, 4, 5]) {
+      expect(fs.existsSync(path.join(process.cwd(), "public", src(index)))).toBe(true);
+    }
+    expect(steps[5].textContent).toContain("手順1のカードでカウントが増えていることを確かめましょう");
+    expect(steps[5].textContent).toContain("ハッシュタグを付けなくても自動で数えます");
+    // 「投稿してペルコインもGET！」の手順はやめた
+    expect(document.body.textContent).not.toContain("ペルコインもGET");
+    // クリエイティブ部門の「投稿」の画像は今のまま(エンジョイ部門だけ絵を差し替えた)
+    const creatorPost = screen
+      .getAllByTestId("halloween-join-step-creator")
+      .find((step) => step.querySelector("h3")?.textContent === "「投稿」をタップ");
+    expect(creatorPost?.querySelector("img")?.getAttribute("src")).toBe(
+      "/campaigns/halloween-best-shot/join-7-post.jpg",
+    );
   });
 
   test("口数の表は、参加方法のエンジョイ部門の手順の中だけ。賞品の区画には出さない(同じ表が二重になるため。10/15)", () => {
