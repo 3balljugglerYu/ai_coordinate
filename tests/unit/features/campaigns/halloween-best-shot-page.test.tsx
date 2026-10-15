@@ -316,6 +316,17 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(steps[3].textContent).not.toContain("オフのままにしてください");
   });
 
+  test("口数の表は、参加方法のエンジョイ部門の手順の中だけ。賞品の区画には出さない(同じ表が二重になるため。10/15)", () => {
+    render(<HalloweenBestShotPage />);
+    const prizeSection = screen.getByRole("region", { name: /賞品/ });
+    expect(within(prizeSection).queryByTestId("halloween-tickets")).toBeNull();
+    expect(prizeSection.textContent).not.toContain("当たりやすく");
+    // ページ全体で1つだけ(エンジョイ部門のタブの中。タブは隠れていても描かれている)
+    const tables = screen.getAllByTestId("halloween-tickets");
+    expect(tables).toHaveLength(1);
+    expect(screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ }).contains(tables[0])).toBe(false);
+  });
+
   test("賞品の注意: エンジョイ部門はエントリーした人から抽選・1人1アカウント・不正は対象外", () => {
     render(<HalloweenBestShotPage />);
     const prize = screen.getByRole("region", { name: /賞品/ });

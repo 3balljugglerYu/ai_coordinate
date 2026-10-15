@@ -32,6 +32,8 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品は部門に分けて「クリエイティブ部門(全5賞)」
  * 「エンジョイ部門(全2賞)」と見出しを付ける。参加方法のタブや読み上げの名前も、画面では「つくる人」「つかう人」と
  * 書かずに部門の呼び名にそろえる(統一感のため。ユーザー指示)。
+ * 2026-10-15: 賞品の区画の口数の表(「ちがう対象作品を使うほど、当たりやすく！」)はやめる。同じ表が
+ * 参加方法のエンジョイ部門の手順にあるため(ユーザー指示)。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -619,10 +621,6 @@ export function HalloweenBestShotPage({
               <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
               <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.enjoy} count={CAMPAIGN.userPrizes.length} />
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
-              <div className={styles.ticketBox}>
-                <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
-                <TicketTable />
-              </div>
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>
