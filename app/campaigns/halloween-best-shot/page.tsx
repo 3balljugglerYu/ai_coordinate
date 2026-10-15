@@ -27,7 +27,7 @@ const display = Lilita_One({
 export const metadata: Metadata = {
   title: `${HALLOWEEN_BEST_SHOT.titleJp} ${HALLOWEEN_BEST_SHOT.titleEn} | Persta.AI`,
   description:
-    "CREATEでハロウィンのプロンプトをつくって投稿しよう。だれの子で生成しても素敵に仕上がるプロンプトを募集。最優秀賞はAmazonギフト券1万円分。",
+    "CREATEでハロウィンのプロンプトをつくって投稿しよう。だれの子で生成しても素敵に仕上がるプロンプトを募集。ハロウィン・ベストショット賞はAmazonギフトカード1万円分。",
   // 中身(審査のポイント等)の最終確認が済むまでは検索に載せない
   robots: { index: false, follow: true },
 };

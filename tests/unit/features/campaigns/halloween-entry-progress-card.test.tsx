@@ -123,6 +123,8 @@ describe("EntryProgressCard", () => {
     mockFetch(progress({ enteredAt: STARTS, usedWorks: 6, celebratedTickets: 2 }));
     render(<EntryProgressCard now={DURING} />);
     const bar = await screen.findByRole("progressbar");
+    // 読み上げの名前は、賞品・参加方法と同じ部門の呼び名(10/15 統一感のため)
+    expect(bar.getAttribute("aria-label")).toBe("エンジョイ部門の抽選の進み具合");
     const cells = Array.from(bar.children);
     expect(cells).toHaveLength(10);
     expect(cells.map((cell) => cell.getAttribute("data-filled"))).toEqual([

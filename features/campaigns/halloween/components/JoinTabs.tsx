@@ -6,13 +6,13 @@ import styles from "../halloween.module.css";
 export interface JoinTab {
   key: string;
   icon: string;
-  label: string;
-  sub: string;
+  /** タブの名前。スマホで2行に分けるため、文字だけでなく要素も渡せる */
+  label: ReactNode;
   panel: ReactNode;
 }
 
 /**
- * 参加方法を「つくる人」「つかう人」で切り替えるタブ(2026-10-14)。
+ * 参加方法を「クリエイティブ部門」「エンジョイ部門」で切り替えるタブ(2026-10-14。呼び名は 10/15 に賞品の部門へそろえた)。
  * 中身はサーバーで両方描いておき、ここでは見せる方を切り替えるだけ。
  */
 export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
@@ -56,7 +56,6 @@ export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
               {tab.icon}
             </span>
             <span className={styles.tabLabel}>{tab.label}</span>
-            <span className={styles.tabSub}>{tab.sub}</span>
           </button>
         ))}
       </div>

@@ -63,7 +63,7 @@ function ProgressBar({ works }: { works: number }) {
       <div
         className={styles.bar}
         role="progressbar"
-        aria-label="つかう人の抽選の進み具合"
+        aria-label={`${CAMPAIGN.prizeCategories.enjoy.name}の抽選の進み具合`}
         aria-valuemin={0}
         aria-valuemax={BAR_STEPS}
         aria-valuenow={filled}

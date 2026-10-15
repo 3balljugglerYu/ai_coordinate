@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { Fragment, type ReactNode } from "react";
 import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/components/AnnotatedShot";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
@@ -25,6 +26,12 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 2026-10-15: 画面での呼び名は、見出しを「キャンペーン対象作品」、文中を「対象作品」にそろえる
  * (「応募作」「キャンペーン対象の投稿」などが混ざっていた。数える単位の「3作品で1口」とも合わせる)。
  * コードと DB では、これまでどおり応募作(submissions)と呼ぶ。
+ * 2026-10-15: つくる側の賞を5つ(ハロウィン・ベストショット賞ほか・計34名様)にし、つかう側の賞にも名前
+ * (ハロウィン・マスター賞・トリック・オア・コイン賞)を付けて、どちらもユーザーの見本どおりサムネイル付きの一覧で出す。
+ * 賞品は賞ごとに書くので「Amazonギフト券でお贈りします」の注意はやめる(セレクション賞はペルコイン)。
+ * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品は部門に分けて「クリエイティブ部門(全5賞)」
+ * 「エンジョイ部門(全2賞)」と見出しを付ける。参加方法のタブや読み上げの名前も、画面では「つくる人」「つかう人」と
+ * 書かずに部門の呼び名にそろえる(統一感のため。ユーザー指示)。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -295,29 +302,107 @@ const MORE_TIPS = [
   { icon: "💖", text: "運営も「いいね」などで応援します！" },
 ] as const;
 
-type Prize = (typeof CAMPAIGN.prizes)[number] | (typeof CAMPAIGN.userPrizes)[number];
+type PrizeCategory = (typeof CAMPAIGN.prizeCategories)[keyof typeof CAMPAIGN.prizeCategories];
 
-function PrizeList({ prizes, testId }: { prizes: readonly Prize[]; testId: string }) {
+/**
+ * 参加方法のタブの名前(部門の呼び名)。スマホのタブの幅では「クリエイティブ部門」が1行に入らないので、
+ * 2つのタブとも「部門」を2行目に回して形をそろえる(PC は1行。CSS の .tabLabelTail)。
+ */
+function CategoryTabLabel({ name }: { name: string }) {
+  const tail = "部門";
+  if (!name.endsWith(tail)) return name;
   return (
-    <div className={styles.prizes}>
-      {prizes.map((prize) => (
-        <div
-          key={prize.rank}
-          className={`${styles.prize} ${prize.tone === "gold" ? styles.prizeGold : styles.prizeSilver}`}
-          data-testid={testId}
-        >
-          <span className={styles.medal} aria-hidden="true">
-            {prize.medal}
-          </span>
-          <div className={styles.prizeName}>{prize.rank}</div>
-          <div className={styles.prizeAmount}>
-            {prize.amount}
-            <small>{prize.unit}</small>
-          </div>
-          <span className={styles.prizeWho}>{prize.winners}</span>
-        </div>
+    <>
+      {name.slice(0, -tail.length)}
+      <span className={styles.tabLabelTail}>{tail}</span>
+    </>
+  );
+}
+
+/** 賞の部門の見出し(「全○賞」は賞の数)と、その下のひとこと(2026-10-15 ユーザー決定) */
+function PrizeCategoryHeading({ category, count }: { category: PrizeCategory; count: number }) {
+  return (
+    <>
+      <h3 className={styles.prizeGroup}>
+        <span aria-hidden="true">{category.icon}</span> {category.name}
+        <small>（全{count}賞）</small>
+      </h3>
+      <p className={styles.prizeGroupLead}>{category.lead}</p>
+    </>
+  );
+}
+
+type Award = (typeof CAMPAIGN.prizes)[number] | (typeof CAMPAIGN.userPrizes)[number];
+
+/**
+ * 狭い幅でも言葉の途中で折り返さないよう、「・」の後ろと「|」の位置だけを折り返してよい所にする
+ * (「|」は画面に出さない。CSS の word-break: keep-all と組み合わせる)。
+ */
+function BreakHints({ text }: { text: string }) {
+  return text.split("|").map((chunk, chunkIndex) => (
+    <Fragment key={chunkIndex}>
+      {chunkIndex > 0 ? <wbr /> : null}
+      {chunk.split("・").map((part, index, parts) => (
+        <Fragment key={index}>
+          {part}
+          {index < parts.length - 1 ? (
+            <>
+              ・<wbr />
+            </>
+          ) : null}
+        </Fragment>
       ))}
-    </div>
+    </Fragment>
+  ));
+}
+
+/**
+ * 賞の一覧(2026-10-15 ユーザーの見本。つくる人・つかう人とも同じ形)。
+ * 左にサムネイル(ユーザーが用意した賞ごとの正方形の画像)、右に賞の名前・ねらい・賞品と人数・説明・評価
+ * (評価は審査のある賞だけ)。
+ * スマホはサムネイルの右に名前とねらいだけを置き、賞品と人数・説明・評価は下の全幅に回す
+ * (「Amazonギフトカード 10,000円分」の札はサムネイルの右の幅に入りきらない)。
+ */
+function AwardList({ prizes, testId }: { prizes: readonly Award[]; testId: string }) {
+  return (
+    <ul className={styles.awards}>
+      {prizes.map((prize) => (
+        <li key={prize.name} className={styles.award} data-testid={testId}>
+          <div className={styles.awardThumb}>
+            <Image
+              src={prize.thumb.src}
+              alt={prize.thumb.alt}
+              fill
+              sizes="(min-width: 860px) 168px, 112px"
+              style={{ objectFit: "cover" }}
+            />
+          </div>
+          <div className={styles.awardHead}>
+            <h4 className={styles.awardName}>
+              <span aria-hidden="true">{prize.icon}</span> <BreakHints text={prize.name} />
+            </h4>
+            {prize.tagline ? (
+              <p className={styles.awardTagline}>
+                <BreakHints text={prize.tagline} />
+              </p>
+            ) : null}
+          </div>
+          <p className={styles.awardGift} data-testid="halloween-prize-gift">
+            <span
+              className={`${styles.awardGiftItem} ${prize.tone === "gold" ? styles.awardGiftGold : styles.awardGiftSilver}`}
+            >
+              {prize.gift} <b>{prize.amount}</b>
+              {prize.unit}
+            </span>
+            <span className={styles.awardWinners}>{prize.winners}</span>
+          </p>
+          <div className={styles.awardBody}>
+            <p className={styles.awardText}>{prize.text}</p>
+            {prize.criteria ? <p className={styles.awardCriteria}>評価：{prize.criteria}</p> : null}
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -530,24 +615,22 @@ export function HalloweenBestShotPage({
               <Ribbon en="PRIZE">賞品</Ribbon>
             </div>
             <RevealOnScroll className={styles.reveal}>
-              <h3 className={styles.prizeGroup}>
-                <span aria-hidden="true">🪄</span> つくる人の賞<small>（審査）</small>
-              </h3>
-              <PrizeList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
-              <h3 className={styles.prizeGroup}>
-                <span aria-hidden="true">🍬</span> つかう人の賞<small>（抽選）</small>
-              </h3>
-              <PrizeList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
+              <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.creative} count={CAMPAIGN.prizes.length} />
+              <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
+              <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.enjoy} count={CAMPAIGN.userPrizes.length} />
+              <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
               <div className={styles.ticketBox}>
                 <p className={styles.ticketLead}>ちがう対象作品を使うほど、当たりやすく！(最大3口)</p>
                 <TicketTable />
               </div>
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
-              <p className={styles.note}>※ Amazonギフト券でお贈りします</p>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>
-              <p className={styles.note}>※ つくる人の賞とつかう人の賞の、両方には当選しません</p>
-              <p className={styles.note}>※ つかう人の賞は、エントリーした人の中から抽選します</p>
+              <p className={styles.note}>
+                ※ {CAMPAIGN.prizeCategories.creative.name}と{CAMPAIGN.prizeCategories.enjoy.name}
+                の、両方には当選しません
+              </p>
+              <p className={styles.note}>※ {CAMPAIGN.prizeCategories.enjoy.name}は、エントリーした人の中から抽選します</p>
               <p className={styles.note}>※ 1人1アカウントでご参加ください。不正な参加は対象外です</p>
             </div>
           </div>
@@ -563,9 +646,8 @@ export function HalloweenBestShotPage({
                 tabs={[
                   {
                     key: "creator",
-                    icon: "🪄",
-                    label: "つくる人",
-                    sub: "プロンプトを応募",
+                    icon: CAMPAIGN.prizeCategories.creative.icon,
+                    label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
                     panel: (
                       <>
                         <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
@@ -576,9 +658,8 @@ export function HalloweenBestShotPage({
                   },
                   {
                     key: "user",
-                    icon: "🍬",
-                    label: "つかう人",
-                    sub: "対象作品で生成して投稿",
+                    icon: CAMPAIGN.prizeCategories.enjoy.icon,
+                    label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
                     panel: (
                       <>
                         <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
