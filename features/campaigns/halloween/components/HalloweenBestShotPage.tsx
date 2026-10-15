@@ -26,10 +26,11 @@ import { SubmissionCarousel } from "./SubmissionCarousel";
  * 2026-10-15: 画面での呼び名は、見出しを「キャンペーン対象作品」、文中を「対象作品」にそろえる
  * (「応募作」「キャンペーン対象の投稿」などが混ざっていた。数える単位の「3作品で1口」とも合わせる)。
  * コードと DB では、これまでどおり応募作(submissions)と呼ぶ。
- * 2026-10-15: つくる人の賞を5つ(ハロウィン・ベストショット賞ほか・計34名様)にし、つかう人の賞にも名前
+ * 2026-10-15: つくる側の賞を5つ(ハロウィン・ベストショット賞ほか・計34名様)にし、つかう側の賞にも名前
  * (ハロウィン・マスター賞・トリック・オア・コイン賞)を付けて、どちらもユーザーの見本どおりサムネイル付きの一覧で出す。
  * 賞品は賞ごとに書くので「Amazonギフト券でお贈りします」の注意はやめる(セレクション賞はペルコイン)。
- * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。
+ * 呼び名はユーザーの文と同じ「Amazonギフトカード」にそろえる。賞品の見出しは「つくる側の賞」「つかう側の賞」
+ * (参加方法のタブは人を指すので「つくる人」「つかう人」のまま)。
  */
 
 function Ribbon({ en, children }: { en: string; children: string }) {
@@ -584,11 +585,11 @@ export function HalloweenBestShotPage({
             </div>
             <RevealOnScroll className={styles.reveal}>
               <h3 className={styles.prizeGroup}>
-                <span aria-hidden="true">🪄</span> つくる人の賞<small>（審査）</small>
+                <span aria-hidden="true">🪄</span> つくる側の賞<small>（審査）</small>
               </h3>
               <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
               <h3 className={styles.prizeGroup}>
-                <span aria-hidden="true">🍬</span> つかう人の賞<small>（抽選）</small>
+                <span aria-hidden="true">🍬</span> つかう側の賞<small>（抽選）</small>
               </h3>
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
               <div className={styles.ticketBox}>
@@ -598,8 +599,8 @@ export function HalloweenBestShotPage({
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
               <p className={styles.note}>※ ペルコインには有効期限があります</p>
-              <p className={styles.note}>※ つくる人の賞とつかう人の賞の、両方には当選しません</p>
-              <p className={styles.note}>※ つかう人の賞は、エントリーした人の中から抽選します</p>
+              <p className={styles.note}>※ つくる側の賞とつかう側の賞の、両方には当選しません</p>
+              <p className={styles.note}>※ つかう側の賞は、エントリーした人の中から抽選します</p>
               <p className={styles.note}>※ 1人1アカウントでご参加ください。不正な参加は対象外です</p>
             </div>
           </div>
