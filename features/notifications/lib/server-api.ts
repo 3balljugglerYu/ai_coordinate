@@ -10,159 +10,130 @@ import { shouldHideThumbnailForPolicy } from "@/constants/moderation-policy";
 
 type NotificationRow = Omit<Notification, "actor" | "post">;
 
-function getResolvedImageId(
-  notification: NotificationRow,
-  commentImageIdMap: Record<string, string>
-) {
-  if (notification.entity_type === "post") {
-    return notification.entity_id;
-  }
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-  if (
-    notification.entity_type === "comment" &&
-    typeof notification.data?.image_id === "string" &&
-    notification.data.image_id.length > 0
-  ) {
-    return notification.data.image_id;
-  }
+/** get_notifications_page が返す 1 行(通知の列 + 結合した値) */
+export type NotificationPageRow = NotificationRow & {
+  resolved_image_id: string | null;
+  actor: {
+    user_id: string;
+    nickname: string | null;
+    avatar_url: string | null;
+  } | null;
+  post: {
+    id: string;
+    image_url: string | null;
+    storage_path: string | null;
+    storage_path_thumb: string | null;
+    caption: string | null;
+  } | null;
+};
 
-  if (notification.entity_type === "comment") {
-    return commentImageIdMap[notification.entity_id] ?? null;
-  }
-
-  return null;
-}
-
-export async function enrichNotificationsWithDetails(
-  supabase: SupabaseClient,
-  notifications: NotificationRow[]
-): Promise<Notification[]> {
+/**
+ * RPC の 1 行を画面用の通知にする。DB は結合した生の値だけを返すので、
+ * 表示の規則はここで決める(アプリの notification_repository.dart と同じ規則)。
+ */
+export function toNotification(row: NotificationPageRow): Notification {
+  const { resolved_image_id: resolvedImageId, actor, post, ...notification } =
+    row;
   // 匿名通知（moderation 系・利用数マイルストーン）は actor_id に recipient
-  // 本人が入るため、プロフィールを引くと「自分が自分に通知した」ように見える。
-  // enrichment 対象から外す (ADR-011 / B案 REQ-005)。
-  const actorIds = Array.from(
-    new Set(
-      notifications
-        .filter(
-          (notification) =>
-            !isAnonymousActorNotificationType(notification.type)
-        )
-        .map((notification) => notification.actor_id)
-        .filter(Boolean)
-    )
-  );
+  // 本人が入るため、プロフィールを付けると「自分が自分に通知した」ように見える。
+  // (ADR-011 / B案 REQ-005)
+  const showActor =
+    !isAnonymousActorNotificationType(notification.type) && actor !== null;
+  // 重大な安全カテゴリでは、削除対象画像を通知でも再表示しない (ADR-011)。
+  const hidePost =
+    isModerationNotificationType(notification.type) &&
+    shouldHideThumbnailForPolicy(notification.data?.policy_code);
 
-  const actorMap: Record<
-    string,
-    { nickname: string | null; avatar_url: string | null }
-  > = {};
-
-  if (actorIds.length > 0) {
-    const { data: actors, error: actorsError } = await supabase
-      .from("profiles")
-      .select("user_id, nickname, avatar_url")
-      .in("user_id", actorIds);
-
-    if (!actorsError && actors) {
-      for (const actor of actors) {
-        actorMap[actor.user_id] = {
+  return {
+    ...notification,
+    data:
+      notification.entity_type === "comment" && resolvedImageId
+        ? { ...notification.data, image_id: resolvedImageId }
+        : notification.data,
+    actor: showActor
+      ? {
+          id: notification.actor_id,
           nickname: actor.nickname,
           avatar_url: actor.avatar_url,
-        };
-      }
-    }
-  }
-
-  const unresolvedCommentEntityIds = notifications
-    .filter(
-      (notification) =>
-        notification.entity_type === "comment" &&
-        (!notification.data?.image_id ||
-          typeof notification.data.image_id !== "string")
-    )
-    .map((notification) => notification.entity_id);
-
-  const commentImageIdMap: Record<string, string> = {};
-  if (unresolvedCommentEntityIds.length > 0) {
-    const { data: commentRows, error: commentsError } = await supabase
-      .from("comments")
-      .select("id, image_id")
-      .in("id", unresolvedCommentEntityIds);
-
-    if (!commentsError && commentRows) {
-      for (const comment of commentRows) {
-        commentImageIdMap[comment.id] = comment.image_id;
-      }
-    }
-  }
-
-  const imageIds = Array.from(
-    new Set(
-      notifications
-        .map((notification) => getResolvedImageId(notification, commentImageIdMap))
-        .filter((imageId): imageId is string => Boolean(imageId))
-    )
-  );
-
-  const postMap: Record<
-    string,
-    { image_url: string | null; caption: string | null }
-  > = {};
-  if (imageIds.length > 0) {
-    const { data: posts, error: postsError } = await supabase
-      .from("generated_images")
-      .select("id, image_url, storage_path, storage_path_thumb, caption")
-      .in("id", imageIds);
-
-    if (!postsError && posts) {
-      for (const post of posts) {
-        postMap[post.id] = {
-          image_url:
-            getPostThumbUrl({
-              storage_path_thumb: post.storage_path_thumb,
-              storage_path: post.storage_path,
-              image_url: post.image_url,
-            }) || null,
-          caption: post.caption,
-        };
-      }
-    }
-  }
-
-  return notifications.map((notification) => {
-    const isModeration = isModerationNotificationType(notification.type);
-    // 匿名通知は、同一バッチの別通知経由で recipient 本人のプロフィールが
-    // actorMap に入っていても付与しない (ADR-011 / B案 REQ-005)。
-    const actor = isAnonymousActorNotificationType(notification.type)
-      ? undefined
-      : actorMap[notification.actor_id];
-    const resolvedImageId = getResolvedImageId(notification, commentImageIdMap);
-    const resolvedPost = resolvedImageId ? postMap[resolvedImageId] : null;
-    // 重大な安全カテゴリでは、削除対象画像を通知でも再表示しない (ADR-011)。
-    const post =
-      isModeration && shouldHideThumbnailForPolicy(notification.data?.policy_code)
-        ? null
-        : resolvedPost;
-
-    return {
-      ...notification,
-      data:
-        notification.entity_type === "comment" && resolvedImageId
-          ? {
-              ...notification.data,
-              image_id: resolvedImageId,
-            }
-          : notification.data,
-      actor: actor
+        }
+      : null,
+    post:
+      post && !hidePost
         ? {
-            id: notification.actor_id,
-            nickname: actor.nickname,
-            avatar_url: actor.avatar_url,
+            image_url:
+              getPostThumbUrl({
+                storage_path_thumb: post.storage_path_thumb,
+                storage_path: post.storage_path,
+                image_url: post.image_url,
+              }) || null,
+            caption: post.caption,
           }
         : null,
-      post: post || null,
-    };
+  };
+}
+
+/** `created_at|id` の base64。読めないカーソルは無視して先頭から返す */
+export function decodeNotificationCursor(
+  cursor: string | null | undefined
+): { createdAt: string; id: string } | null {
+  if (!cursor) return null;
+  try {
+    const [createdAt, id] = Buffer.from(cursor, "base64").toString().split("|");
+    if (!createdAt || !id || !UUID_PATTERN.test(id)) return null;
+    if (Number.isNaN(Date.parse(createdAt))) return null;
+    return { createdAt, id };
+  } catch {
+    return null;
+  }
+}
+
+function encodeNotificationCursor(row: { created_at: string; id: string }) {
+  return Buffer.from(`${row.created_at}|${row.id}`).toString("base64");
+}
+
+export type NotificationsPageResult =
+  | { ok: true; notifications: Notification[]; nextCursor: string | null }
+  | { ok: false; error: unknown };
+
+/**
+ * お知らせ 1 ページ分を、相手のプロフィールと投稿のサムネイルつきで 1 回で取る。
+ * notificationId を渡すとその 1 件だけ(Realtime の新着用)。
+ */
+export async function fetchNotificationsPage(
+  supabase: SupabaseClient,
+  params: {
+    userId: string;
+    limit: number;
+    cursor?: string | null;
+    notificationId?: string | null;
+  }
+): Promise<NotificationsPageResult> {
+  const cursor = decodeNotificationCursor(params.cursor);
+  const { data, error } = await supabase.rpc("get_notifications_page", {
+    p_user_id: params.userId,
+    p_limit: params.limit,
+    p_cursor_created_at: cursor?.createdAt ?? null,
+    p_cursor_id: cursor?.id ?? null,
+    p_notification_id: params.notificationId ?? null,
   });
+  if (error) {
+    return { ok: false, error };
+  }
+
+  const rows = (Array.isArray(data) ? data : []) as NotificationPageRow[];
+  // RPC は次のページの有無を見るため limit + 1 件返す
+  const hasNextPage = rows.length > params.limit;
+  const pageRows = hasNextPage ? rows.slice(0, params.limit) : rows;
+  const last = pageRows[pageRows.length - 1];
+
+  return {
+    ok: true,
+    notifications: pageRows.map(toNotification),
+    nextCursor: hasNextPage && last ? encodeNotificationCursor(last) : null,
+  };
 }
 
 /**
@@ -176,39 +147,14 @@ export async function getNotificationsServer(
 ): Promise<NotificationsResponse> {
   const supabase = supabaseOverride ?? (await createClient());
 
-  const { data, error } = await supabase
-    .from("notifications")
-    .select("*")
-    .eq("recipient_id", userId)
-    .order("created_at", { ascending: false })
-    .order("id", { ascending: false })
-    .limit(limit + 1);
-
-  if (error) {
-    console.error("Database query error:", error);
+  const result = await fetchNotificationsPage(supabase, { userId, limit });
+  if (!result.ok) {
+    console.error("Database query error:", result.error);
     return { notifications: [], nextCursor: null };
   }
-
-  if (!data || data.length === 0) {
-    return { notifications: [], nextCursor: null };
-  }
-
-  const hasNextPage = data.length > limit;
-  const notifications = hasNextPage ? data.slice(0, limit) : data;
-
-  let nextCursor: string | null = null;
-  if (hasNextPage && notifications.length > 0) {
-    const lastNotification = notifications[notifications.length - 1];
-    const cursorString = `${lastNotification.created_at}|${lastNotification.id}`;
-    nextCursor = Buffer.from(cursorString).toString("base64");
-  }
-  const notificationsWithDetails = await enrichNotificationsWithDetails(
-    supabase,
-    notifications
-  );
 
   return {
-    notifications: notificationsWithDetails,
-    nextCursor,
+    notifications: result.notifications,
+    nextCursor: result.nextCursor,
   };
 }
