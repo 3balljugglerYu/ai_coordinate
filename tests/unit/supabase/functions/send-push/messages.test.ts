@@ -7,6 +7,8 @@ import {
   type ClaimedRow,
   classifyFcmResponse,
   groupRows,
+  postThumbUrl,
+  pushImageSourceFor,
   resolveText,
   summarizeOutcomes,
 } from "@/supabase/functions/send-push/messages";
@@ -297,5 +299,122 @@ describe("summarizeOutcomes", () => {
     expect(
       summarizeOutcomes([{ kind: "invalid_token", error: "x" }, { kind: "failed", error: "f" }]),
     ).toEqual({ status: "failed", error: "f" });
+  });
+});
+
+describe("pushImageSourceFor", () => {
+  test("いいね・コメントは、その投稿", () => {
+    expect(pushImageSourceFor(row({ notification_type: "like", category: "likes" })))
+      .toEqual({ kind: "post", postId: "post-1" });
+    expect(pushImageSourceFor(row())).toEqual({ kind: "post", postId: "post-1" });
+  });
+
+  test("コメントが対象の通知は data.image_id、無ければコメントから投稿を探す", () => {
+    const onComment = {
+      notification_entity_type: "comment",
+      notification_entity_id: "c-9",
+    } satisfies Partial<ClaimedRow>;
+    expect(pushImageSourceFor(row({ ...onComment, notification_data: { image_id: "post-7" } })))
+      .toEqual({ kind: "post", postId: "post-7" });
+    expect(pushImageSourceFor(row({ ...onComment, notification_data: {} })))
+      .toEqual({ kind: "comment", commentId: "c-9" });
+  });
+
+  test("プロンプト・スタイルの利用投稿と利用数の節目は、その投稿", () => {
+    for (const type of [
+      "derived_post_published",
+      "style_preset_post_published",
+      "derived_usage_milestone",
+    ]) {
+      expect(pushImageSourceFor(row({ notification_type: type, category: "creator_activity" })))
+        .toEqual({ kind: "post", postId: "post-1" });
+    }
+  });
+
+  test("フォローは、フォローした人のアイコン", () => {
+    expect(pushImageSourceFor(row({
+      notification_type: "follow",
+      category: "follows",
+      notification_entity_type: "user",
+      notification_entity_id: "user-a",
+    }))).toEqual({ kind: "avatar", userId: "actor-1" });
+  });
+
+  test("生成は、完了した時だけできた画像", () => {
+    const generation = {
+      category: "generation",
+      notification_id: null,
+      notification_type: null,
+      notification_entity_type: null,
+      notification_entity_id: null,
+      notification_actor_id: null,
+      notification_data: null,
+    } satisfies Partial<ClaimedRow>;
+    expect(pushImageSourceFor(row({
+      ...generation,
+      data: { kind: "generation", status: "succeeded", image_job_id: "job-1" },
+    }))).toEqual({ kind: "generation", imageJobId: "job-1" });
+    expect(pushImageSourceFor(row({
+      ...generation,
+      data: { kind: "generation", status: "failed", image_job_id: "job-1" },
+    }))).toBeNull();
+  });
+
+  test("⭐運営の措置・ペルコインには付けない", () => {
+    expect(pushImageSourceFor(row({
+      notification_type: "post_moderation_removed",
+      category: "moderation",
+    }))).toBeNull();
+    expect(pushImageSourceFor(row({ notification_type: "bonus", category: "percoin" })))
+      .toBeNull();
+  });
+});
+
+describe("postThumbUrl", () => {
+  const base = "https://ref.supabase.co/";
+  test("小さい版 → image_url → 原本の順", () => {
+    expect(postThumbUrl(base, { storage_path_thumb: "u/p_thumb.webp", image_url: "https://x/y.png" }))
+      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p_thumb.webp");
+    expect(postThumbUrl(base, { image_url: "https://x/y.png", storage_path: "u/p.png" }))
+      .toBe("https://x/y.png");
+    expect(postThumbUrl(base, { storage_path: "u/p.png" }))
+      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p.png");
+    expect(postThumbUrl(base, {})).toBeNull();
+  });
+});
+
+describe("buildFcmMessage の画像", () => {
+  const base = {
+    token: "tok",
+    title: "t",
+    body: "",
+    data: { kind: "notification" },
+    category: "likes",
+    collapseKey: null,
+    badge: null,
+  };
+
+  test("画像があれば Android・iOS・アプリ用の data に入れる", () => {
+    const message = buildFcmMessage({ ...base, imageUrl: "https://cdn.example/a.webp" }) as {
+      notification: Record<string, string>;
+      data: Record<string, string>;
+      apns: { fcm_options?: { image: string }; payload: { aps: Record<string, unknown> } };
+    };
+    expect(message.notification.image).toBe("https://cdn.example/a.webp");
+    expect(message.apns.fcm_options).toEqual({ image: "https://cdn.example/a.webp" });
+    expect(message.apns.payload.aps["mutable-content"]).toBe(1);
+    expect(message.data).toEqual({ kind: "notification", image_url: "https://cdn.example/a.webp" });
+  });
+
+  test("⭐https でない URL は付けない(端末が取りに行けない)", () => {
+    for (const imageUrl of [null, "", "u/p.png", "http://insecure.example/a.png"]) {
+      const message = buildFcmMessage({ ...base, imageUrl }) as {
+        notification: Record<string, string>;
+        apns: { fcm_options?: unknown; payload: { aps: Record<string, unknown> } };
+      };
+      expect(message.notification.image).toBeUndefined();
+      expect(message.apns.fcm_options).toBeUndefined();
+      expect(message.apns.payload.aps["mutable-content"]).toBeUndefined();
+    }
   });
 });
