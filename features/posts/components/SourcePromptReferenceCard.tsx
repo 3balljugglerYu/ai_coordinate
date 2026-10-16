@@ -21,6 +21,8 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/use-toast";
 import { FollowButton } from "@/features/users/components/FollowButton";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
+import { HALLOWEEN_TARGET_BUTTON_CLASS } from "@/features/campaigns/halloween/halloween-target-style";
 import {
   BeforeAfterFrame,
   FALLBACK_ASPECT_RATIO,
@@ -141,6 +143,8 @@ export function SourcePromptReferenceCard({
     (2026-10-01 ユーザー決定)。
   */
   const isCatalogRevamp = useStylesCatalogRevamp();
+  // 原作がハロウィン企画の対象作品なら、ボタンを企画の色にする(2026-10-16 ユーザー指示)
+  const isHalloweenTarget = useIsHalloweenTarget(reference.postId);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
   const [isOpenOriginConfirmOpen, setIsOpenOriginConfirmOpen] = useState(false);
@@ -376,9 +380,21 @@ export function SourcePromptReferenceCard({
               trackPromptUseTapped(reference.postId);
               setIsSheetOpen(true);
             }}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90"
+            data-halloween-target={isHalloweenTarget ? "true" : undefined}
+            className={`inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90 ${
+              isHalloweenTarget
+                ? HALLOWEEN_TARGET_BUTTON_CLASS
+                : "bg-gradient-to-r from-pink-500 to-orange-400 text-white"
+            }`}
           >
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
+            {isHalloweenTarget ? (
+              // アイコンと同じ大きさのかぼちゃ。ボタンの大きさは普段と変えない
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none" aria-hidden="true">
+                🎃
+              </span>
+            ) : (
+              <Sparkles className="h-4 w-4" aria-hidden="true" />
+            )}
             {t(isCatalogRevamp ? "feedUseCatalog" : "sourcePromptCardTitle")}
           </button>
         ) : null}

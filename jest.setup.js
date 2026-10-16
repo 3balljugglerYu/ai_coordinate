@@ -18,3 +18,13 @@ jest.mock('next/server', () => ({
   ...jest.requireActual('next/server'),
   connection: jest.fn().mockResolvedValue(undefined),
 }));
+
+// ハロウィン企画の対象作品の判定(useHalloweenTargets)は、期間中(ブラウザの時刻)だけ API を呼ぶ。
+// そのままでは、投稿カードや投稿の詳細を描く既存のテストが「テストを流した日時」で
+// 結果を変えてしまう(期間中だけ fetch が飛び、ラベルが付く)。全体では「対象作品なし」に固定し、
+// 判定そのものは専用のテストで jest.requireActual して確かめる。
+jest.mock('@/features/campaigns/halloween/hooks/useHalloweenTargets', () => ({
+  useHalloweenTargetPostIds: jest.fn(() => new Set()),
+  useIsHalloweenTarget: jest.fn(() => false),
+  resetHalloweenTargetsForTest: jest.fn(),
+}));

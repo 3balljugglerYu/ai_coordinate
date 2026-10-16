@@ -22,6 +22,20 @@ export const HALLOWEEN_BEST_SHOT = {
   entriesHref: buildHashtagSearchHref("うちの子のベストショット"),
   startLabel: "10/16(金) 20:00",
   endLabel: "10/31(土) 23:59",
+  /**
+   * 期間(始まりの時刻ちょうどから、終わりの時刻ちょうどは含まない)。
+   * 正本は DB の hashtag_campaigns(20261015100000)で、ここは画面の出し分け
+   * (ホームの注記・対象作品のラベルとボタン)にだけ使う。DB と同じ値であることはテストで確かめる。
+   */
+  startsAt: "2026-10-16T20:00:00+09:00",
+  endsAt: "2026-11-01T00:00:00+09:00",
+  /**
+   * ホームの「簡単お着替え！」の横に、期間中だけ小さく添える(2026-10-16 ユーザー指示)。
+   * 簡単お着替え(Persta ORIGINAL)で生成して投稿しても、どちらの部門にも数えないため
+   */
+  homeStyleCarouselNote: "※ハロウィン企画には関係ありません",
+  /** 対象作品の画像の左上に出すラベル(2026-10-16 ユーザー指示) */
+  targetBadgeLabel: "ハロウィン企画対象！",
   announceLabel: "終了後 1週間程度",
   /** 応募規約に書く期間(年と日本時間つき) */
   periodFullLabel: "2026年10月16日(金) 20:00 〜 10月31日(土) 23:59（日本時間）",
@@ -189,3 +203,14 @@ export const HALLOWEEN_BEST_SHOT = {
    */
   prizeTotalLabel: "Amazonギフトカード 総額35,000円分",
 } as const;
+
+/**
+ * いまが企画の期間中か。画面の出し分けだけに使う(数える・記録するのは DB の期間)。
+ * @param nowMs いまの時刻(ミリ秒)。テストで差し替える
+ */
+export function isHalloweenBestShotOpen(nowMs: number): boolean {
+  return (
+    Date.parse(HALLOWEEN_BEST_SHOT.startsAt) <= nowMs &&
+    nowMs < Date.parse(HALLOWEEN_BEST_SHOT.endsAt)
+  );
+}

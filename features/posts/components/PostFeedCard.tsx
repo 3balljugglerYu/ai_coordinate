@@ -41,6 +41,8 @@ import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-
 import { formatCountEnUS } from "@/lib/utils";
 import { isPostImpressionsEnabled } from "@/lib/env";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
+import { HalloweenTargetBadge } from "@/features/campaigns/halloween/components/HalloweenTargetBadge";
 
 interface PostFeedCardProps {
   post: Post;
@@ -157,6 +159,8 @@ export function PostFeedCard({
   const isCatalogRevamp = useStylesCatalogRevamp();
   // プロンプトの仕掛けの札(「ガチャ」「名前入り」)。公開前は運営だけに見せる
   const gimmickBadges = usePostGimmickBadges(post);
+  // ハロウィン企画の対象作品なら、画像の左上にラベルを出す(期間中・日本語の画面だけ)
+  const isHalloweenTarget = useIsHalloweenTarget(post.id);
   const showsGimmickBadges = gimmickBadges.any;
   const gimmickBadgeRow = showsGimmickBadges ? (
     <PostGimmickBadges
@@ -438,8 +442,10 @@ export function PostFeedCard({
               AFTER・BEFORE ラベルは右下なので重ならない。
               左上は横並びの器にして、完走と 🆕 が同時に立っても重ならないようにする
               (現データでは同時に立たないが、片方を握りつぶす作りにはしない)。 */}
-          {post.completion_id || post.isNew ? (
+          {post.completion_id || post.isNew || isHalloweenTarget ? (
             <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
+              {/* 企画の期間中は、対象作品のラベルをいちばん前に(2026-10-16 ユーザー指示) */}
+              {isHalloweenTarget ? <HalloweenTargetBadge /> : null}
               {post.completion_id ? (
                 <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
                   {t("completionBadge")}

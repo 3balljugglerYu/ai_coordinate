@@ -69,6 +69,7 @@ jest.mock("@/features/generation/components/NameInputAvailabilityProvider", () =
 }));
 
 import { PostCard } from "@/features/posts/components/PostCard";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
 
 const POST_ID = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const SOURCE_PATH = "user-1/pre-generation/img-1_display.webp";
@@ -343,3 +344,35 @@ describe("PostCard の「名前入り」の札", () => {
   });
 });
 
+
+/*
+  ハロウィン企画の対象作品には、グリッドでも画像の左上に「ハロウィン企画対象！」
+  (2026-10-16 ユーザー指示)。判定は use-halloween-targets.test.tsx で見る。
+*/
+describe("PostCard(ハロウィン企画の対象作品)", () => {
+  const targetMock = jest.mocked(useIsHalloweenTarget);
+  afterEach(() => targetMock.mockImplementation(() => false));
+
+  it("対象作品なら左上にラベル。🆕 と並ぶときはラベルが先で、入りきらなければ折り返す", () => {
+    targetMock.mockImplementation((postId) => postId === POST_ID);
+    render(<PostCard post={makePost({ isNew: true })} />);
+    const badge = screen.getByTestId("halloween-target-badge");
+    // かぼちゃの絵文字は付けない(2026-10-16 ユーザー指示)
+    expect(badge.textContent).toBe("ハロウィン企画対象！");
+    const row = badge.parentElement as HTMLElement;
+    expect(row.className).toContain("left-2");
+    expect(row.className).toContain("top-2");
+    expect(row.className).toContain("flex-wrap");
+    // 右上の「…」に重ならないよう、右端を空ける
+    expect(row.className).toContain("right-9");
+    expect(row.firstElementChild).toBe(badge);
+    // グリッドは幅が狭いので1段小さい文字。言葉の途中で折れないよう、ラベルは折り返さない
+    expect(badge.className).toContain("text-[10px]");
+    expect(badge.className).toContain("whitespace-nowrap");
+  });
+
+  it("対象作品でなければラベルは出さない", () => {
+    render(<PostCard post={makePost()} />);
+    expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
+  });
+});

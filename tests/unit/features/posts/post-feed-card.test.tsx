@@ -10,6 +10,7 @@ import React from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { PostFeedCard } from "@/features/posts/components/PostFeedCard";
 import type { Post } from "@/features/posts/types";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
 import {
   clearPendingPostPreview,
   getPendingPostPreview,
@@ -1182,3 +1183,67 @@ describe("PostFeedCard の「名前入り」の札", () => {
   });
 });
 
+
+/*
+  ハロウィン企画の対象作品には、画像の左上に「ハロウィン企画対象！」(2026-10-16 ユーザー指示)。
+  対象かどうかの判定(期間・日本語の画面・API)は use-halloween-targets.test.tsx で見る。
+*/
+describe("PostFeedCard(ハロウィン企画の対象作品)", () => {
+  const targetMock = jest.mocked(useIsHalloweenTarget);
+  afterEach(() => targetMock.mockImplementation(() => false));
+
+  test("対象作品なら画像の左上にラベル。判定はこの投稿の ID で行う", () => {
+    targetMock.mockImplementation((postId) => postId === "post-1");
+    render(<PostFeedCard post={createPost()} currentUserId={null} />);
+    const badge = screen.getByTestId("halloween-target-badge");
+    // かぼちゃの絵文字は付けない(2026-10-16 ユーザー指示)
+    expect(badge.textContent).toBe("ハロウィン企画対象！");
+    expect(badge.parentElement?.className).toContain("left-2");
+    expect(badge.parentElement?.className).toContain("top-2");
+  });
+
+  test("🆕 と同時に立つときは、対象作品のラベルを先に並べる", () => {
+    targetMock.mockImplementation(() => true);
+    render(<PostFeedCard post={createPost({ isNew: true })} currentUserId={null} />);
+    const badge = screen.getByTestId("halloween-target-badge");
+    const row = badge.parentElement as HTMLElement;
+    expect(row.firstElementChild).toBe(badge);
+    expect(row.children.length).toBe(2);
+  });
+
+  test("対象作品でなければラベルは出さない", () => {
+    render(<PostFeedCard post={createPost()} currentUserId={null} />);
+    expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
+  });
+
+  /*
+    対象作品を使って作った投稿(from CATALOG)は、それ自体は対象作品ではない(応募作は CREATE の元の作品だけ)。
+    ラベルは付けず、カタログ作成者の「このカタログで生成する」だけが企画仕様になる
+    (ボタンは原作の ID で判定する。見た目は follow-and-use-prompt-button.test.tsx で見る)
+  */
+  test("⭐対象作品から作った投稿(from CATALOG)にはラベルを付けず、ボタンには原作を渡す", () => {
+    targetMock.mockImplementation((postId) => postId === "origin-target");
+    render(
+      <PostFeedCard
+        post={createPost({ id: "derived-1", source_post_id: "origin-target" })}
+        currentUserId="viewer-1"
+        isFollowingPromptAuthor
+        promptAction={{
+          originPostId: "origin-target",
+          isAvailable: true,
+          originAuthorId: "author-2",
+          originAuthorNickname: "作者さん",
+          originAuthorAvatarUrl: null,
+          originThumbnailUrl: null,
+          originCaption: null,
+          usageCount: 0,
+          promptVisibility: "private",
+        }}
+      />
+    );
+    expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
+    expect(targetMock).toHaveBeenCalledWith("derived-1");
+    expect(screen.getByTestId("feed-source-quote").getAttribute("data-variant")).toBe("derived");
+    expect(screen.getByTestId("cta").getAttribute("data-origin")).toBe("origin-target");
+  });
+});
