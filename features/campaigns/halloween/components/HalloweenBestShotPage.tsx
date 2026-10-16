@@ -7,6 +7,7 @@ import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
 import { EntryProgressCard } from "./EntryProgressCard";
+import { AmazonGiftCardNotice } from "./AmazonGiftCardNotice";
 import { AboutDecorations, Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
 import { JoinTabs } from "./JoinTabs";
@@ -568,7 +569,8 @@ export function HalloweenBestShotPage({
               </span>
             </h1>
             <p className={styles.lead}>
-              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿してアマギフをGETしよう！
+              {/* 2026-10-16: 略称「アマギフ」と、全員もらえるように読める「GETしよう」をやめた(Amazonギフトカードの注意事項) */}
+              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！
             </p>
             <div className={styles.period}>
               <span className={styles.periodLabel}>開催期間</span>
@@ -675,13 +677,11 @@ export function HalloweenBestShotPage({
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
-              <p className={styles.note}>※ ペルコインには有効期限があります</p>
-              <p className={styles.note}>
-                ※ {CAMPAIGN.prizeCategories.creative.name}と{CAMPAIGN.prizeCategories.enjoy.name}
-                の、両方には当選しません
-              </p>
-              <p className={styles.note}>※ {CAMPAIGN.prizeCategories.enjoy.name}は、エントリーした人の中から抽選します</p>
-              <p className={styles.note}>※ 1人1アカウントでご参加ください。不正な参加は対象外です</p>
+              {/* 2026-10-16 ユーザー指示: 「※」の注意(対象の方・購入不要・Amazon.co.jp 専用・ペルコインの有効期限・
+                  両方には当選しない・抽選はエントリーした人・1人1アカウント)は応募規約に書いてあるので、ここには並べずリンクだけ */}
+              <Link href={CAMPAIGN.termsPath} className={styles.termsLink}>
+                応募規約・注意事項を見る
+              </Link>
             </div>
           </div>
         </section>
@@ -781,6 +781,13 @@ export function HalloweenBestShotPage({
           </h2>
           <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
           <JoinButtons worksHref={worksHref} />
+          {/* Amazonギフトカードの注意事項(2026-10-16): 応募規約へのリンクと、決まった注記2つ */}
+          <div className={styles.legal}>
+            <Link href={CAMPAIGN.termsPath} className={styles.legalLink}>
+              応募規約・注意事項
+            </Link>
+            <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
+          </div>
         </section>
       </main>
     </div>

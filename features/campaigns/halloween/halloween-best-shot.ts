@@ -23,6 +23,15 @@ export const HALLOWEEN_BEST_SHOT = {
   startLabel: "10/16(金) 20:00",
   endLabel: "10/31(土) 23:59",
   announceLabel: "終了後 1週間程度",
+  /** 応募規約に書く期間(年と日本時間つき) */
+  periodFullLabel: "2026年10月16日(金) 20:00 〜 10月31日(土) 23:59（日本時間）",
+  /**
+   * 応募規約(2026-10-16 ユーザー決定: 企画全体を日本国内にお住まいの18歳以上の方に。
+   * 前回のことわざ企画の規約 /campaigns/kotowaza-lottery と同じ形)
+   */
+  termsPath: "/campaigns/halloween-best-shot/terms",
+  /** キャンペーンのお問い合わせ先(お問い合わせフォーム。ログインが必要。2026-10-16 ユーザー決定) */
+  contactHref: "/my-page/contact",
   /**
    * 賞の部門(2026-10-15 ユーザー決定)。つくる側の賞(prizes・審査)=クリエイティブ部門、
    * つかう側の賞(userPrizes・抽選)=エンジョイ部門。見出しの「全○賞」は賞の数から出す。
@@ -174,6 +183,9 @@ export const HALLOWEEN_BEST_SHOT = {
     { works: 6, tickets: 2 },
     { works: 10, tickets: 3 },
   ],
-  /** つくる人 25,000円(1万+5千×3) + つかう人 10,000円(千×10)。ペルコインは含めない */
-  prizeTotalLabel: "Amazonギフトカード 総額3.5万円",
+  /**
+   * つくる人 25,000円(1万+5千×3) + つかう人 10,000円(千×10)。ペルコインは含めない。
+   * 金額は「○○円分」と書く(2026-10-16 ユーザー提供の Amazonギフトカードの注意事項)
+   */
+  prizeTotalLabel: "Amazonギフトカード 総額35,000円分",
 } as const;

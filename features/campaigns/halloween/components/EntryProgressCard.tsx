@@ -185,7 +185,8 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         <div>
           {entered ? <p className={styles.entryStatus}>✓ エントリー済み</p> : null}
           <h3 className={styles.entryTitle}>キャンペーンに参加</h3>
-          <p className={styles.entrySub}>キャンペーン対象作品を利用してAmazonギフトカードをゲットしよう！</p>
+          {/* 2026-10-16: 全員もらえるように読める「ゲットしよう」をやめた(Amazonギフトカードの注意事項) */}
+          <p className={styles.entrySub}>キャンペーン対象作品を利用して、Amazonギフトカードが当たるチャンス！</p>
         </div>
       </div>
 

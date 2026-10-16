@@ -309,10 +309,9 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
 
     // ねらいの「|」は折り返してよい位置の印で、画面には出さない
     expect(document.body.textContent).not.toContain("|");
-    expect(screen.getByText("※ クリエイティブ部門とエンジョイ部門の、両方には当選しません")).toBeTruthy();
   });
 
-  test("冒頭の「総額」は、クリエイティブ部門とエンジョイ部門の Amazonギフトカードの合計(25,000円＋10,000円＝3.5万円。ペルコインは入れない)", () => {
+  test("冒頭の「総額」は、クリエイティブ部門とエンジョイ部門の Amazonギフトカードの合計を「○○円分」で書く(25,000円＋10,000円。ペルコインは入れない)", () => {
     const yen = (amount: string, winners: string) =>
       Number(amount.replace(/,/g, "")) * Number.parseInt(winners, 10);
     const amazonYen = (prizes: readonly { gift: string; amount: string; winners: string }[]) =>
@@ -323,9 +322,45 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
       25_000, 10_000,
     ]);
     render(<HalloweenBestShotPage />);
-    expect(document.body.textContent).toContain("Amazonギフトカード 総額3.5万円");
+    // 金額は「○○円分」と書く(10/16 ユーザー提供の注意事項。「3.5万円」はやめた)
+    expect(document.body.textContent).toContain("Amazonギフトカード 総額35,000円分");
+    expect(document.body.textContent).not.toContain("3.5万円");
     // 呼び名は「Amazonギフトカード」にそろえる(ユーザーの文と同じ)。賞品をまとめて言い切る注意も出さない
     expect(document.body.textContent).not.toContain("ギフト券");
+  });
+
+  test("Amazonギフトカードの書き方(10/16 ユーザー提供の注意事項): 略称を使わず、全員もらえるように読める言い方をしない", () => {
+    render(<HalloweenBestShotPage />);
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("アマギフ");
+    expect(text).not.toMatch(/GETしよう|ゲットしよう/);
+    expect(screen.getByText("あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！")).toBeTruthy();
+  });
+
+  test("ページのいちばん下に、Amazon の決まった注記2つと、問い合わせ先(お問い合わせフォーム)を出す", () => {
+    render(<HalloweenBestShotPage />);
+    const notice = screen.getByTestId("amazon-gift-card-notice");
+    expect(Array.from(notice.querySelectorAll("p")).map((node) => node.textContent)).toEqual([
+      "本キャンペーンはPersta.AIによる提供です。本キャンペーンについてのお問い合わせはAmazonではお受けしておりません。Persta.AIキャンペーン事務局（お問い合わせフォーム）までお願いいたします。",
+      "Amazon、Amazon.co.jpおよびそれらのロゴはAmazon.com, Inc.またはその関連会社の商標です。",
+    ]);
+    expect(within(notice).getByRole("link", { name: "お問い合わせフォーム" }).getAttribute("href")).toBe(
+      "/my-page/contact",
+    );
+    // 閉じの帯(いちばん下)の中に置く
+    expect(screen.getByRole("region", { name: "あなたのベストショット、待ってます" }).contains(notice)).toBe(true);
+  });
+
+  test("賞品の下は「※」の注意を並べず、応募規約へのリンクだけ(注意は応募規約に書いてある。10/16 ユーザー指示)", () => {
+    render(<HalloweenBestShotPage />);
+    const prizeSection = screen.getByRole("region", { name: /賞品/ });
+    const notes = Array.from(prizeSection.querySelectorAll("p"))
+      .map((node) => node.textContent ?? "")
+      .filter((text) => text.startsWith("※"));
+    expect(notes).toEqual([]);
+    expect(within(prizeSection).getByRole("link", { name: "応募規約・注意事項を見る" }).getAttribute("href")).toBe(
+      "/campaigns/halloween-best-shot/terms",
+    );
   });
 
   test("セクションの見出しは文字のまま(読み上げ・翻訳のため画像にしない)", () => {
@@ -403,13 +438,6 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const tables = screen.getAllByTestId("halloween-tickets");
     expect(tables).toHaveLength(1);
     expect(screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ }).contains(tables[0])).toBe(false);
-  });
-
-  test("賞品の注意: エンジョイ部門はエントリーした人から抽選・1人1アカウント・不正は対象外", () => {
-    render(<HalloweenBestShotPage />);
-    const prize = screen.getByRole("region", { name: /賞品/ });
-    expect(prize.textContent).toContain("※ エンジョイ部門は、エントリーした人の中から抽選します");
-    expect(prize.textContent).toContain("※ 1人1アカウントでご参加ください。不正な参加は対象外です");
   });
 
   test("エントリー(進捗カード)は「エンジョイ部門」タブの手順1の中だけに置く(10/15 に独立した区画から移動)", () => {
