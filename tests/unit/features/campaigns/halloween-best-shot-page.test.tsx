@@ -44,17 +44,36 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.getAllByText(HALLOWEEN_BEST_SHOT.hashtag).length).toBeGreaterThanOrEqual(2);
   });
 
-  test("参加のボタンは CREATE(/free) へ行く(冒頭と締めの2か所)", () => {
+  /*
+    2026-10-16 ユーザー指示: 参加のボタンは「カタログをつくる」「カタログから生成する」にし、
+    ページのどこでも押せるよう画面の下に浮かせる(冒頭と締めに置いていたボタンはやめた)。
+  */
+  test("参加のボタン「カタログをつくる」は CREATE(/free) へ行く(画面の下に浮かせた1か所だけ)", () => {
     render(<HalloweenBestShotPage />);
-    const links = screen.getAllByRole("link", { name: /CREATEで参加する/ });
-    expect(links).toHaveLength(2);
-    links.forEach((link) => expect(link.getAttribute("href")).toBe("/free"));
+    const links = screen.getAllByRole("link", { name: /カタログを\s*つくる/ });
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute("href")).toBe("/free");
+    const floating = screen.getByTestId("halloween-floating-cta");
+    expect(floating.contains(links[0])).toBe(true);
+    // 前の呼び名は出さない
+    expect(document.body.textContent).not.toContain("CREATEで参加する");
+    expect(document.body.textContent).not.toContain("対象作品をつかう");
+    // 冒頭(企画名の区画)にはボタンを置かない
+    expect(screen.getByRole("banner").querySelector("a[href='/free']")).toBeNull();
   });
 
-  test("対象作品がまだ一覧に無いとき、対象作品をつかうボタン・対象作品を見るは、ハッシュタグの検索へ行く(冒頭と締めの2か所)", () => {
+  test("浮いたボタンは、ページの終わりの目印(この下はサイト共通の案内)を持つ", () => {
     render(<HalloweenBestShotPage />);
-    const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
-    expect(links).toHaveLength(2);
+    const floating = screen.getByTestId("halloween-floating-cta");
+    expect(floating.tagName).toBe("NAV");
+    expect(floating.getAttribute("aria-label")).toBe("企画に参加する");
+    expect(document.getElementById("hbs-page-end")).toBeTruthy();
+  });
+
+  test("対象作品がまだ一覧に無いとき、「カタログから生成する」・対象作品を見るは、ハッシュタグの検索へ行く", () => {
+    render(<HalloweenBestShotPage />);
+    const links = screen.getAllByRole("link", { name: /カタログから\s*生成する/ });
+    expect(links).toHaveLength(1);
     links.forEach((link) =>
       expect(link.getAttribute("href")).toBe(`/search?q=${encodeURIComponent("#うちの子のベストショット")}`),
     );
@@ -62,10 +81,10 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
   });
 
-  test("一覧に対象作品があるときは、対象作品をつかうボタン・対象作品を見るは、ページの中の一覧へ行く(10/15)", () => {
+  test("一覧に対象作品があるときは、「カタログから生成する」・対象作品を見るは、ページの中の一覧へ行く(10/15)", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
-    const links = screen.getAllByRole("link", { name: /対象作品をつかう/ });
-    expect(links).toHaveLength(2);
+    const links = screen.getAllByRole("link", { name: /カタログから\s*生成する/ });
+    expect(links).toHaveLength(1);
     links.forEach((link) => expect(link.getAttribute("href")).toBe("#hbs-works"));
     fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe("#hbs-works");
@@ -151,8 +170,9 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const steps = screen.getAllByTestId("halloween-join-step-user");
     expect(steps).toHaveLength(7);
     expect(within(steps[0]).getByRole("heading", { name: "エントリーする" })).toBeTruthy();
-    // エントリーのカードは手順1の中(10/15 に独立した区画から移動)。このファイルでは読み込み中のまま
-    expect(within(steps[0]).getByTestId("halloween-entry-loading")).toBeTruthy();
+    // エントリーのカードは、10/16 から手順の外(ひとことのすぐ下)。手順1は上のカードを指す
+    expect(within(steps[0]).queryByTestId("halloween-entry-loading")).toBeNull();
+    expect(steps[0].textContent).toContain("上のカードの「エントリーする」をタップします。");
     const entries = within(steps[1]).getByRole("link", { name: /対象作品を見る/ });
     expect(entries.getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
     expect(within(steps[2]).getAllByTestId("shot-ring")).toHaveLength(1);
@@ -446,7 +466,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     for (const index of [3, 4, 5]) {
       expect(fs.existsSync(path.join(process.cwd(), "public", src(index)))).toBe(true);
     }
-    expect(steps[5].textContent).toContain("手順1のカードでカウントが増えていることを確かめましょう");
+    expect(steps[5].textContent).toContain("上のエントリーのカードでカウントが増えていることを確かめましょう");
     expect(steps[5].textContent).toContain("ハッシュタグを付けなくても自動で数えます");
     // 「投稿してペルコインもGET！」の手順はやめた
     expect(document.body.textContent).not.toContain("ペルコインもGET");
@@ -479,7 +499,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ }).contains(tables[0])).toBe(false);
   });
 
-  test("エントリー(進捗カード)は「エンジョイ部門」タブの手順1の中だけに置く(10/15 に独立した区画から移動)", () => {
+  test("エントリー(進捗カード)は「エンジョイ部門」タブの、ひとことのすぐ下に置く(閉じた作成手順の外。10/16)", () => {
     render(<HalloweenBestShotPage />);
     // 独立した「ENTRY」の区画は無い
     expect(screen.queryByRole("region", { name: /^ENTRY/ })).toBeNull();
@@ -492,8 +512,62 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
 
     fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
+    const card = within(panel).getByTestId("halloween-entry-loading");
+    // ⭐ 抽選はエントリーした人だけなので、作成手順を閉じたままでもエントリーできる場所に置く
+    expect(card.closest("details")).toBeNull();
     const steps = within(panel).getAllByTestId("halloween-join-step-user");
-    expect(within(steps[0]).getByTestId("halloween-entry-loading")).toBeTruthy();
+    expect(within(steps[0]).queryByTestId("halloween-entry-loading")).toBeNull();
+    expect(steps[0].querySelector("p")?.textContent).toBe("上のカードの「エントリーする」をタップします。");
+  });
+
+  /*
+    2026-10-16 ユーザー指示: いきなり作成手順を見せると嫌気がさすので、まずひとことで伝え、
+    詳しい作成手順は「詳細な作成手順はこちら！」で開く。ひとことはユーザーの文のまま。
+    数えてもらうのに欠かせない条件(ハッシュタグ・エントリー)だけ、下に小さく添える。
+  */
+  test("参加方法: クリエイティブ部門は、ひとこと・ハッシュタグ・閉じた作成手順・審査のポイントの順", () => {
+    render(<HalloweenBestShotPage />);
+    const panel = screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ });
+    const summary = within(panel).getByTestId("halloween-join-summary");
+    expect(summary.querySelector("p")?.textContent).toBe("「カタログをつくる」から生成して投稿するだけでOK！");
+    expect(summary.textContent).toContain("※ 投稿のときに、このハッシュタグを付けてね");
+    expect(within(summary).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+    expect(within(summary).getByRole("button", { name: "コピーする" })).toBeTruthy();
+    const details = within(panel).getByTestId("halloween-join-details") as HTMLDetailsElement;
+    // 最初は閉じている
+    expect(details.open).toBe(false);
+    expect(details.querySelector("summary")?.textContent).toContain("詳細な作成手順はこちら！");
+    // 9つの作成手順はすべて閉じた中にある
+    const steps = within(panel).getAllByTestId("halloween-join-step-creator");
+    expect(steps).toHaveLength(9);
+    steps.forEach((step) => expect(details.contains(step)).toBe(true));
+    // 審査のポイントは作成手順ではないので、閉じずに見せる
+    const judgePoints = within(panel).getAllByTestId("halloween-judge-point");
+    expect(judgePoints).toHaveLength(3);
+    judgePoints.forEach((point) => expect(details.contains(point)).toBe(false));
+    // 並び: ひとこと → 作成手順 → 審査のポイント
+    expect(summary.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(details.compareDocumentPosition(judgePoints[0]) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("参加方法: エンジョイ部門は、ひとこと・エントリーのカード・閉じた作成手順の順", () => {
+    render(<HalloweenBestShotPage />);
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
+    const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
+    const summary = within(panel).getByTestId("halloween-join-summary");
+    expect(summary.querySelector("p")?.textContent).toBe("「カタログから生成する」から生成して投稿するだけでOK！");
+    expect(summary.textContent).toContain("※ 抽選の対象になるには、下の「エントリーする」が必要です");
+    const card = within(panel).getByTestId("halloween-entry-loading");
+    const details = within(panel).getByTestId("halloween-join-details") as HTMLDetailsElement;
+    expect(details.open).toBe(false);
+    expect(details.querySelector("summary")?.textContent).toContain("詳細な作成手順はこちら！");
+    const steps = within(panel).getAllByTestId("halloween-join-step-user");
+    expect(steps).toHaveLength(7);
+    steps.forEach((step) => expect(details.contains(step)).toBe(true));
+    // 注意書きも作成手順と一緒に閉じた中
+    expect(details.textContent).toContain("※ 同じ対象作品は、何回使っても1作品と数えます");
+    expect(summary.compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(card.compareDocumentPosition(details) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   test("画面の呼び名は「対象作品」にそろえる(「応募作」「キャンペーン対象の投稿」「投稿作品」「コンテンツ」を出さない。10/15)", () => {
