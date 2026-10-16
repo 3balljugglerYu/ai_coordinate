@@ -677,21 +677,8 @@ export function HalloweenBestShotPage({
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
-              {/* 2026-10-16 ユーザー決定: 企画全体を日本国内の18歳以上の方に。購入不要(オープン懸賞)。Amazonギフトカードは Amazon.co.jp 専用。
-                  注意は「|」で区切った言葉の切れ目でだけ折り返す(スマホで「…当選しませ／ん」のように1文字だけ落ちないように) */}
-              {[
-                "※ 日本国内にお住まいの|18歳以上の方が対象です",
-                "※ ペルコインの購入は不要です。|購入の有無は、|審査・抽選の結果に|影響しません",
-                "※ Amazonギフトカードは、|Amazon.co.jpでのみ|ご利用いただけます",
-                "※ ペルコインには|有効期限があります",
-                `※ ${CAMPAIGN.prizeCategories.creative.name}と|${CAMPAIGN.prizeCategories.enjoy.name}の、|両方には当選しません`,
-                `※ ${CAMPAIGN.prizeCategories.enjoy.name}は、|エントリーした人の中から|抽選します`,
-                "※ 1人1アカウントでご参加ください。|不正な参加は対象外です",
-              ].map((note) => (
-                <p key={note} className={styles.note}>
-                  <Phrases text={note} />
-                </p>
-              ))}
+              {/* 2026-10-16 ユーザー指示: 「※」の注意(対象の方・購入不要・Amazon.co.jp 専用・ペルコインの有効期限・
+                  両方には当選しない・抽選はエントリーした人・1人1アカウント)は応募規約に書いてあるので、ここには並べずリンクだけ */}
               <Link href={CAMPAIGN.termsPath} className={styles.termsLink}>
                 応募規約・注意事項を見る
               </Link>

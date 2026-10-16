@@ -309,11 +309,6 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
 
     // ねらいの「|」は折り返してよい位置の印で、画面には出さない
     expect(document.body.textContent).not.toContain("|");
-    // 注意は言葉の切れ目ごとに分けて描くので、段落の文字で見る
-    const prizeNotes = Array.from(
-      screen.getByRole("region", { name: /賞品/ }).querySelectorAll("p"),
-    ).map((node) => node.textContent);
-    expect(prizeNotes).toContain("※ クリエイティブ部門とエンジョイ部門の、両方には当選しません");
   });
 
   test("冒頭の「総額」は、クリエイティブ部門とエンジョイ部門の Amazonギフトカードの合計を「○○円分」で書く(25,000円＋10,000円。ペルコインは入れない)", () => {
@@ -356,18 +351,14 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.getByRole("region", { name: "あなたのベストショット、待ってます" }).contains(notice)).toBe(true);
   });
 
-  test("賞品の注意: 日本国内の18歳以上が対象・ペルコインの購入は不要・Amazon.co.jp でのみ使える。応募規約へのリンク", () => {
+  test("賞品の下は「※」の注意を並べず、応募規約へのリンクだけ(注意は応募規約に書いてある。10/16 ユーザー指示)", () => {
     render(<HalloweenBestShotPage />);
     const prizeSection = screen.getByRole("region", { name: /賞品/ });
-    const notes = Array.from(prizeSection.querySelectorAll("p")).map((node) => node.textContent);
-    expect(notes).toEqual(
-      expect.arrayContaining([
-        "※ 日本国内にお住まいの18歳以上の方が対象です",
-        "※ ペルコインの購入は不要です。購入の有無は、審査・抽選の結果に影響しません",
-        "※ Amazonギフトカードは、Amazon.co.jpでのみご利用いただけます",
-      ]),
-    );
-    expect(within(prizeSection).getByRole("link", { name: /応募規約・注意事項/ }).getAttribute("href")).toBe(
+    const notes = Array.from(prizeSection.querySelectorAll("p"))
+      .map((node) => node.textContent ?? "")
+      .filter((text) => text.startsWith("※"));
+    expect(notes).toEqual([]);
+    expect(within(prizeSection).getByRole("link", { name: "応募規約・注意事項を見る" }).getAttribute("href")).toBe(
       "/campaigns/halloween-best-shot/terms",
     );
   });
@@ -447,13 +438,6 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const tables = screen.getAllByTestId("halloween-tickets");
     expect(tables).toHaveLength(1);
     expect(screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ }).contains(tables[0])).toBe(false);
-  });
-
-  test("賞品の注意: エンジョイ部門はエントリーした人から抽選・1人1アカウント・不正は対象外", () => {
-    render(<HalloweenBestShotPage />);
-    const prize = screen.getByRole("region", { name: /賞品/ });
-    expect(prize.textContent).toContain("※ エンジョイ部門は、エントリーした人の中から抽選します");
-    expect(prize.textContent).toContain("※ 1人1アカウントでご参加ください。不正な参加は対象外です");
   });
 
   test("エントリー(進捗カード)は「エンジョイ部門」タブの手順1の中だけに置く(10/15 に独立した区画から移動)", () => {

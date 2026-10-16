@@ -1013,14 +1013,9 @@
   text-align: center;
 }
 
-.prizeNotes .note {
-  margin-top: 4px;
-}
-
-/* 賞品の注意の下の「応募規約・注意事項を見る」(2026-10-16) */
+/* 賞品の下の「応募規約・注意事項を見る」(2026-10-16。「※」の注意は応募規約にまとめた) */
 .termsLink {
   display: inline-block;
-  margin-top: 10px;
   font-size: 13px;
   font-weight: 700;
   color: var(--violet);

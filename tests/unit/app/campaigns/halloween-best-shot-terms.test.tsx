@@ -82,6 +82,24 @@ describe("ハロウィン企画の応募規約(2026-10-16 ユーザー決定: �
     expect(prizes.textContent).toContain("Amazonギフトカードは、Amazon.co.jpでのみご利用いただけます");
   });
 
+  test("企画ページの賞品の下から外した注意(10/16)は、すべてここに書いてある", () => {
+    render(<HalloweenBestShotTermsPage />);
+    const text = document.body.textContent ?? "";
+    for (const note of [
+      "日本国内にお住まいの方",
+      "18歳以上の方",
+      "参加にペルコインの購入は不要です。",
+      "Amazonギフトカードは、Amazon.co.jpでのみご利用いただけます",
+      "ペルコインには有効期限があります",
+      "クリエイティブ部門とエンジョイ部門の、両方には当選しません",
+      "抽選はエントリーした方が対象です",
+      "1人1アカウント",
+      "不正な方法で参加した場合",
+    ]) {
+      expect(text).toContain(note);
+    }
+  });
+
   test("当選のご連絡は個別に。Amazonギフトカードの番号を公開の場では送らない", () => {
     render(<HalloweenBestShotTermsPage />);
     const notice = section("審査・抽選・当選のご連絡");
