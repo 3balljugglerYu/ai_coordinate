@@ -156,11 +156,13 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     const entries = within(steps[1]).getByRole("link", { name: /対象作品を見る/ });
     expect(entries.getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
     expect(within(steps[2]).getAllByTestId("shot-ring")).toHaveLength(1);
-    // 手順3の画像は、フォロー済みの人が見る今の画面(「このカタログで生成する」)。10/15 に差し替え
+    // 手順3の画像は、フォロー済みの人が見る今の画面(「このカタログで生成する」)。10/15 に差し替え。
+    // 10/16 に対象作品のボタンがハロウィン仕様になったので撮り直した(v2)
     const step3Image = within(steps[2]).getByRole("img");
     expect(step3Image.getAttribute("alt")).toContain("「このカタログで生成する」のボタン");
+    expect(step3Image.getAttribute("alt")).toContain("ハロウィン仕様(紫からオレンジ)");
     const step3Src = step3Image.getAttribute("src") ?? "";
-    expect(step3Src).toBe("/campaigns/halloween-best-shot/use-3-catalog-button.webp");
+    expect(step3Src).toBe("/campaigns/halloween-best-shot/use-3-catalog-button-v2.webp");
     expect(fs.existsSync(path.join(process.cwd(), "public", step3Src))).toBe(true);
     expect(within(steps[6]).getByTestId("halloween-tickets").textContent).toBe("3作品▶1口6作品▶2口10作品▶3口");
     const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
