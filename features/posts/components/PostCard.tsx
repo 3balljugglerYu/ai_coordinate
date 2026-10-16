@@ -147,7 +147,7 @@ export function PostCard({
           {/* 企画の期間中は、対象作品のラベルをいちばん前に(2026-10-16 ユーザー指示)。
               右上の「…」(right-2・幅約25px)に重ならないよう右端を空け、🆕 と並んで
               入りきらなければ折り返す。グリッドは幅が狭いのでラベルは1段小さくする
-              (幅 360px の画面まで1行。320px では2行になる) */}
+              (ラベルそのものは折り返さない。幅 320px でも「…」の手前に収まる) */}
           {isHalloweenTarget ? <HalloweenTargetBadge compact /> : null}
           {post.completion_id ? (
             <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">

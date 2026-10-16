@@ -1185,7 +1185,7 @@ describe("PostFeedCard の「名前入り」の札", () => {
 
 
 /*
-  ハロウィン企画の対象作品には、画像の左上に「🎃ハロウィン企画対象！」(2026-10-16 ユーザー指示)。
+  ハロウィン企画の対象作品には、画像の左上に「ハロウィン企画対象！」(2026-10-16 ユーザー指示)。
   対象かどうかの判定(期間・日本語の画面・API)は use-halloween-targets.test.tsx で見る。
 */
 describe("PostFeedCard(ハロウィン企画の対象作品)", () => {
@@ -1196,7 +1196,8 @@ describe("PostFeedCard(ハロウィン企画の対象作品)", () => {
     targetMock.mockImplementation((postId) => postId === "post-1");
     render(<PostFeedCard post={createPost()} currentUserId={null} />);
     const badge = screen.getByTestId("halloween-target-badge");
-    expect(badge.textContent).toBe("🎃ハロウィン企画対象！");
+    // かぼちゃの絵文字は付けない(2026-10-16 ユーザー指示)
+    expect(badge.textContent).toBe("ハロウィン企画対象！");
     expect(badge.parentElement?.className).toContain("left-2");
     expect(badge.parentElement?.className).toContain("top-2");
   });

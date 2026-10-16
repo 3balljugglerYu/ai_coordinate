@@ -346,7 +346,7 @@ describe("PostCard の「名前入り」の札", () => {
 
 
 /*
-  ハロウィン企画の対象作品には、グリッドでも画像の左上に「🎃ハロウィン企画対象！」
+  ハロウィン企画の対象作品には、グリッドでも画像の左上に「ハロウィン企画対象！」
   (2026-10-16 ユーザー指示)。判定は use-halloween-targets.test.tsx で見る。
 */
 describe("PostCard(ハロウィン企画の対象作品)", () => {
@@ -357,7 +357,8 @@ describe("PostCard(ハロウィン企画の対象作品)", () => {
     targetMock.mockImplementation((postId) => postId === POST_ID);
     render(<PostCard post={makePost({ isNew: true })} />);
     const badge = screen.getByTestId("halloween-target-badge");
-    expect(badge.textContent).toBe("🎃ハロウィン企画対象！");
+    // かぼちゃの絵文字は付けない(2026-10-16 ユーザー指示)
+    expect(badge.textContent).toBe("ハロウィン企画対象！");
     const row = badge.parentElement as HTMLElement;
     expect(row.className).toContain("left-2");
     expect(row.className).toContain("top-2");
@@ -365,8 +366,9 @@ describe("PostCard(ハロウィン企画の対象作品)", () => {
     // 右上の「…」に重ならないよう、右端を空ける
     expect(row.className).toContain("right-9");
     expect(row.firstElementChild).toBe(badge);
-    // グリッドは幅が狭いので1段小さい文字
+    // グリッドは幅が狭いので1段小さい文字。言葉の途中で折れないよう、ラベルは折り返さない
     expect(badge.className).toContain("text-[10px]");
+    expect(badge.className).toContain("whitespace-nowrap");
   });
 
   it("対象作品でなければラベルは出さない", () => {

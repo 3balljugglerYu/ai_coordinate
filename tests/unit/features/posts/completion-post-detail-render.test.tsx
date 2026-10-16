@@ -191,7 +191,7 @@ describe("完走投稿の詳細描画", () => {
 });
 
 /*
-  ハロウィン企画の対象作品は、詳細でも画像の左上に「🎃ハロウィン企画対象！」
+  ハロウィン企画の対象作品は、詳細でも画像の左上に「ハロウィン企画対象！」
   (2026-10-16 ユーザー指示)。Before あり/なしのどちらの並びでも出す。
   判定は use-halloween-targets.test.tsx で見る。
 */
@@ -206,7 +206,8 @@ describe("ハロウィン企画の対象作品の詳細描画", () => {
     targetMock.mockImplementation((postId) => postId === "post-target");
     renderDetail(createPost());
     const badge = screen.getByTestId("halloween-target-badge");
-    expect(badge.textContent).toBe("🎃ハロウィン企画対象！");
+    // かぼちゃの絵文字は付けない(2026-10-16 ユーザー指示)
+    expect(badge.textContent).toBe("ハロウィン企画対象！");
     expect(badge.parentElement?.className).toContain("left-2");
     expect(badge.parentElement?.className).toContain("top-2");
   });

@@ -3,8 +3,8 @@
 /**
  * 対象作品のラベルと「このカタログで生成する」の見た目(2026-10-16 ユーザー決定)。
  *
- * - 色は紫 → オレンジ(3案の見本からユーザーが選んだ案C)
- * - 「やや早めに流れる」動き(1周2秒・左から右)
+ * - ラベルはオレンジ(3案の見本の案A)。流さない
+ * - ボタンは紫 → オレンジ(案C)を「やや早めに流れる」動きに(1周2秒・左から右)
  * - 「動きを減らす」設定では流さない(企画ページと同じ扱い)
  *
  * jsdom では CSS の動きを再生できないので、CSS の決まりそのものを読んで確かめる
@@ -33,9 +33,15 @@ function ruleBody(source: string, selectorPattern: RegExp): string {
 }
 
 describe("対象作品のラベルとボタンの見た目", () => {
-  test("ラベルとボタンは同じ流れるグラデーション(文字は白)", () => {
+  test("ラベルは案Aのオレンジで、流さない(文字は白)", () => {
+    expect(HALLOWEEN_TARGET_BADGE_CLASS).toBe(
+      "bg-gradient-to-r from-[#ff7a1a] to-[#ffb12e] text-white",
+    );
+    expect(HALLOWEEN_TARGET_BADGE_CLASS).not.toContain("flow");
+  });
+
+  test("ボタンは流れるグラデーション(文字は白)", () => {
     // CSS Modules はテストでは名前がそのまま返る(next/jest)
-    expect(HALLOWEEN_TARGET_BADGE_CLASS).toBe("flow text-white");
     expect(HALLOWEEN_TARGET_BUTTON_CLASS).toBe("flow text-white");
   });
 
