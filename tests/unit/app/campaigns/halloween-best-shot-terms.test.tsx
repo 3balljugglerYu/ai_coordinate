@@ -100,10 +100,14 @@ describe("ハロウィン企画の応募規約(2026-10-16 ユーザー決定: �
     }
   });
 
-  test("当選のご連絡は個別に。Amazonギフトカードの番号を公開の場では送らない", () => {
+  test("当選のご連絡は Persta.AI 内のお知らせでのみ、個別に。Amazonギフトカードは、フォームで受け取り先を登録してもらいメールで送る(公開の場では送らない)", () => {
     render(<HalloweenBestShotTermsPage />);
     const notice = section("審査・抽選・当選のご連絡");
-    expect(notice.textContent).toContain("個別にご連絡します");
+    expect(notice.textContent).toContain("当選者には、Persta.AI 内のお知らせでのみ、個別にご連絡します。");
+    expect(notice.textContent).not.toContain("主催者所定の方法で個別にご連絡します");
+    expect(notice.textContent).toContain(
+      "Amazonギフトカードは、お知らせに記載のフォームで受け取り用のメールアドレスをご登録いただき、メールでお送りします",
+    );
     expect(notice.textContent).toContain("公開の場ではお送りしません");
   });
 

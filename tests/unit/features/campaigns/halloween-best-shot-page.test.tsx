@@ -376,6 +376,18 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     ]);
   });
 
+  test("スケジュールの最後に、当選後の流れ(お知らせで当選のご連絡→賞品のお届け)を短く書く(2026-10-16 ユーザー指示: 詳細は書かず簡易的に)", () => {
+    render(<HalloweenBestShotPage />);
+    const schedule = screen.getByRole("region", { name: /スケジュール/ });
+    expect(within(schedule).getAllByRole("listitem").map((node) => node.textContent)).toEqual([
+      "10/16(金) 20:00募集スタート",
+      "10/31(土) 23:59募集締め切り",
+      "終了後 1週間程度結果発表（特設ページで作品とクリエイターをご紹介）",
+      "結果発表のあと当選のご連絡（ペルスタ内のお知らせでお送りします）",
+      "ご連絡のあと賞品のお届け",
+    ]);
+  });
+
   test("ガチャプロンプトも対象(10/15 に変更)。対象外の注意は出さず、手順で「ガチャでもOK」と書く", () => {
     render(<HalloweenBestShotPage />);
     expect(screen.queryByText("※ ガチャプロンプトは対象外です")).toBeNull();

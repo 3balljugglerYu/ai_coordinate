@@ -748,6 +748,18 @@ export function HalloweenBestShotPage({
                   <span className={styles.when}>{CAMPAIGN.announceLabel}</span>
                   <span className={styles.what}>結果発表（特設ページで作品とクリエイターをご紹介）</span>
                 </li>
+                {/* 当選後の流れ(2026-10-16 ユーザー指示: 詳細は書かず簡易的に)。フォームや期限などは応募規約の06とお知らせに書く。
+                    スマホ幅で「お知ら／せ」「お送り／します」と語の途中で折れないよう、文節の切れ目でだけ折り返す */}
+                <li className={styles.timelineItem}>
+                  <span className={styles.when}>結果発表のあと</span>
+                  <span className={styles.what}>
+                    <Phrases text="当選のご連絡|（ペルスタ内の|お知らせで|お送りします）" />
+                  </span>
+                </li>
+                <li className={styles.timelineItem}>
+                  <span className={styles.when}>ご連絡のあと</span>
+                  <span className={styles.what}>賞品のお届け</span>
+                </li>
               </ol>
             </RevealOnScroll>
           </div>
