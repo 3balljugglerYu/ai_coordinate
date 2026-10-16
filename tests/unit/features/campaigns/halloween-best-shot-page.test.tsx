@@ -181,6 +181,31 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     // 投稿の画面は、箇条の番号と同じ数だけ赤枠を付ける
     expect(within(steps[7]).getAllByRole("listitem")).toHaveLength(3);
     expect(within(steps[7]).getAllByTestId("shot-ring")).toHaveLength(3);
+    // 10/16: 期間中は投稿画面のタグ候補に企画のタグが出る(#753)ので、その行が写った画像(v3)にした
+    const postFormImage = steps[7].querySelector("img");
+    const postFormSrc = postFormImage?.getAttribute("src") ?? "";
+    expect(postFormSrc).toBe("/campaigns/halloween-best-shot/join-8-post-form-v3.jpg");
+    expect(fs.existsSync(path.join(process.cwd(), "public", postFormSrc))).toBe(true);
+    expect(postFormImage?.getAttribute("alt")).toContain("タグ候補「#うちの子のベストショット」");
+    expect(steps[7].textContent).toContain("タップで入る");
+  });
+
+  test("エンジョイ部門の手順2: 対象作品のラベルが目印だと書き、ラベルの見本の画像を出す(10/16 ユーザー指示)", () => {
+    render(<HalloweenBestShotPage />);
+    fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
+    const steps = screen.getAllByTestId("halloween-join-step-user");
+    expect(steps[1].querySelector("p")?.textContent).toContain(
+      `画像の左上の「${HALLOWEEN_BEST_SHOT.targetBadgeLabel}」のラベルが目印です。`,
+    );
+    // 「対象作品を見る」はそのまま
+    expect(within(steps[1]).getByRole("link", { name: /対象作品を見る/ })).toBeTruthy();
+    const image = steps[1].querySelector("img");
+    const src = image?.getAttribute("src") ?? "";
+    expect(src).toBe("/campaigns/halloween-best-shot/use-2-target-label.webp");
+    expect(fs.existsSync(path.join(process.cwd(), "public", src))).toBe(true);
+    expect(image?.getAttribute("alt")).toContain("「ハロウィン企画対象！」のラベル");
+    expect(within(steps[1]).getAllByTestId("shot-ring")).toHaveLength(1);
+    expect(steps[1].textContent).toContain("これが目印");
   });
 
   test("審査のポイントは3つ(ハロウィンらしさ・うちの子らしさ・使ってみたくなる魅力。安定性は 10/14 に削除)", () => {
