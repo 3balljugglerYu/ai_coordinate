@@ -13,6 +13,8 @@ import {
   trackPromptUseTapped,
 } from "@/features/posts/lib/home-view-events";
 import type { PromptActionSummary } from "@/features/posts/types";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
+import { HALLOWEEN_TARGET_BUTTON_CLASS } from "@/features/campaigns/halloween/halloween-target-style";
 
 const toastMock = jest.fn();
 
@@ -483,5 +485,70 @@ describe("FollowAndUsePromptButton の文言(カタログ刷新後)", () => {
       />
     );
     expect(screen.getByText("posts.feedUsePrompt")).toBeTruthy();
+  });
+});
+
+/*
+  原作がハロウィン企画の対象作品なら、ボタンを企画の色にしてかぼちゃを付ける(2026-10-16 ユーザー指示)。
+  文言・押したあとの流れは変えない。対象かどうかの判定(期間・日本語の画面・API)は
+  use-halloween-targets.test.tsx で見る。ここでは判定の結果を差し替える。
+*/
+describe("FollowAndUsePromptButton(ハロウィン企画の対象作品)", () => {
+  const targetMock = jest.mocked(useIsHalloweenTarget);
+  afterEach(() => {
+    targetMock.mockImplementation(() => false);
+    mockRevamp.mockReturnValue(false);
+  });
+
+  test("原作が対象作品なら企画の色とかぼちゃ。文言は「このカタログで生成する」のまま", () => {
+    mockRevamp.mockReturnValue(true);
+    targetMock.mockImplementation((postId) => postId === "origin-1");
+    render(
+      <FollowAndUsePromptButton
+        summary={buildSummary()}
+        currentUserId="viewer-1"
+        isFollowingAuthor
+      />
+    );
+    const button = screen.getByTestId("feed-use-prompt-button");
+    expect(button.getAttribute("data-halloween-target")).toBe("true");
+    expect(button.className).toContain(HALLOWEEN_TARGET_BUTTON_CLASS);
+    expect(button.className).not.toContain("from-pink-500");
+    expect(button.textContent).toContain("🎃");
+    expect(button.textContent).toContain("posts.feedUseCatalog");
+    // 判定は原作の ID で行う(派生のカードでも原作を見る)
+    expect(targetMock).toHaveBeenCalledWith("origin-1");
+  });
+
+  test("フォローが要る人にも企画の色。アイコンはフォローのまま", () => {
+    mockRevamp.mockReturnValue(true);
+    targetMock.mockImplementation(() => true);
+    render(
+      <FollowAndUsePromptButton
+        summary={buildSummary()}
+        currentUserId="viewer-1"
+        isFollowingAuthor={false}
+      />
+    );
+    const button = screen.getByTestId("feed-use-prompt-button");
+    expect(button.className).toContain(HALLOWEEN_TARGET_BUTTON_CLASS);
+    expect(button.textContent).not.toContain("🎃");
+    expect(button.textContent).toContain("posts.feedFollowAndUsePrompt");
+  });
+
+  test("対象作品でなければ普段のピンク → オレンジのまま", () => {
+    mockRevamp.mockReturnValue(true);
+    render(
+      <FollowAndUsePromptButton
+        summary={buildSummary()}
+        currentUserId="viewer-1"
+        isFollowingAuthor
+      />
+    );
+    const button = screen.getByTestId("feed-use-prompt-button");
+    expect(button.getAttribute("data-halloween-target")).toBeNull();
+    expect(button.className).toContain("from-pink-500");
+    expect(button.className).not.toContain(HALLOWEEN_TARGET_BUTTON_CLASS);
+    expect(button.textContent).not.toContain("🎃");
   });
 });

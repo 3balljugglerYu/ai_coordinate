@@ -26,6 +26,7 @@ import {
   isNewPreset,
 } from "@/features/home/lib/home-carousel-presets";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
+import { isHalloweenBestShotOpen } from "@/features/campaigns/halloween/halloween-best-shot";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 
 // 解放ゲート対象が無い/未ログイン時に使う空コンテキスト(除去・解放判定とも no-op)。
@@ -204,6 +205,8 @@ export async function CachedHomeStylePresetSection({
         presets={carouselPresets}
         newPresetIds={newPresetIds}
         generateTotals={generateTotals}
+        // 期間中は「※ハロウィン企画には関係ありません」を添える(2026-10-16 ユーザー指示)
+        isHalloweenCampaignOpen={isHalloweenBestShotOpen(now.getTime())}
       />
     </>
   );

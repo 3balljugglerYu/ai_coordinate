@@ -11,6 +11,8 @@ import type { SubscriptionPlan } from "@/features/subscription/subscription-conf
 import { trackFollowFromCard, trackPromptUseTapped } from "../lib/home-view-events";
 import type { PromptActionSummary } from "../types";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
+import { HALLOWEEN_TARGET_BUTTON_CLASS } from "@/features/campaigns/halloween/halloween-target-style";
 
 /**
  * 生成シートは遅延読み込みにする。じゆうモードの生成フォーム一式を抱えており、
@@ -57,6 +59,11 @@ export function FollowAndUsePromptButton({
   const t = useTranslations("posts");
   // カタログ刷新後(公開前は運営だけ)は「このカタログで生成する」。原本はカタログに並ぶもの
   const isCatalogRevamp = useStylesCatalogRevamp();
+  /*
+    使う元(原作)がハロウィン企画の対象作品なら、ボタンを企画の色にする(2026-10-16 ユーザー指示)。
+    原作を見るので、対象作品から作った投稿(派生)のカードでも同じになる。押したあとの流れは変えない
+  */
+  const isHalloweenTarget = useIsHalloweenTarget(summary.originPostId);
   const followT = useTranslations("follow");
   const { toast } = useToast();
   const pathname = usePathname();
@@ -187,10 +194,20 @@ export function FollowAndUsePromptButton({
           onClick={handleClick}
           disabled={isWorking}
           data-testid="feed-use-prompt-button"
-          className="inline-flex min-w-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-pink-500 to-orange-400 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-60"
+          data-halloween-target={isHalloweenTarget ? "true" : undefined}
+          className={`inline-flex min-w-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-bold shadow-sm transition hover:opacity-90 disabled:opacity-60 ${
+            isHalloweenTarget
+              ? HALLOWEEN_TARGET_BUTTON_CLASS
+              : "bg-gradient-to-r from-pink-500 to-orange-400 text-white"
+          }`}
         >
           {isWorking ? (
             <Loader2 className="h-4 w-4 shrink-0 animate-spin" aria-hidden="true" />
+          ) : hasAccess && isHalloweenTarget ? (
+            // アイコンと同じ大きさのかぼちゃ。ボタンの大きさは普段と変えない
+            <span className="flex h-4 w-4 shrink-0 items-center justify-center text-sm leading-none" aria-hidden="true">
+              🎃
+            </span>
           ) : hasAccess ? (
             <Sparkles className="h-4 w-4 shrink-0" aria-hidden="true" />
           ) : (

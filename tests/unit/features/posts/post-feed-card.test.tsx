@@ -10,6 +10,7 @@ import React from "react";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { PostFeedCard } from "@/features/posts/components/PostFeedCard";
 import type { Post } from "@/features/posts/types";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
 import {
   clearPendingPostPreview,
   getPendingPostPreview,
@@ -1182,3 +1183,35 @@ describe("PostFeedCard の「名前入り」の札", () => {
   });
 });
 
+
+/*
+  ハロウィン企画の対象作品には、画像の左上に「🎃ハロウィン企画対象！」(2026-10-16 ユーザー指示)。
+  対象かどうかの判定(期間・日本語の画面・API)は use-halloween-targets.test.tsx で見る。
+*/
+describe("PostFeedCard(ハロウィン企画の対象作品)", () => {
+  const targetMock = jest.mocked(useIsHalloweenTarget);
+  afterEach(() => targetMock.mockImplementation(() => false));
+
+  test("対象作品なら画像の左上にラベル。判定はこの投稿の ID で行う", () => {
+    targetMock.mockImplementation((postId) => postId === "post-1");
+    render(<PostFeedCard post={createPost()} currentUserId={null} />);
+    const badge = screen.getByTestId("halloween-target-badge");
+    expect(badge.textContent).toBe("🎃ハロウィン企画対象！");
+    expect(badge.parentElement?.className).toContain("left-2");
+    expect(badge.parentElement?.className).toContain("top-2");
+  });
+
+  test("🆕 と同時に立つときは、対象作品のラベルを先に並べる", () => {
+    targetMock.mockImplementation(() => true);
+    render(<PostFeedCard post={createPost({ isNew: true })} currentUserId={null} />);
+    const badge = screen.getByTestId("halloween-target-badge");
+    const row = badge.parentElement as HTMLElement;
+    expect(row.firstElementChild).toBe(badge);
+    expect(row.children.length).toBe(2);
+  });
+
+  test("対象作品でなければラベルは出さない", () => {
+    render(<PostFeedCard post={createPost()} currentUserId={null} />);
+    expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
+  });
+});

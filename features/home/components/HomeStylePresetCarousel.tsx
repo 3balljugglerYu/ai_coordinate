@@ -19,6 +19,7 @@ import {
   localizePublicPath,
 } from "@/i18n/config";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
 
 import "swiper/css";
 import "swiper/css/free-mode";
@@ -29,6 +30,13 @@ interface HomeStylePresetCarouselProps {
   newPresetIds?: readonly string[];
   /** プリセットID -> 累計生成数(試着確認モーダルの「これまでに◯回」表示)。 */
   generateTotals?: Readonly<Record<string, number>>;
+  /**
+   * ハロウィン企画の期間中か(サーバーが描いた時刻で決める)。
+   * 期間中は見出しの横に「※ハロウィン企画には関係ありません」を小さく添える
+   * (2026-10-16 ユーザー指示: 企画の作品と思って、ここから生成してしまう人がいるため)。
+   * 企画は日本国内向けなので、日本語の画面だけに出す。
+   */
+  isHalloweenCampaignOpen?: boolean;
 }
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
@@ -84,6 +92,7 @@ export function HomeStylePresetCarousel({
   presets,
   newPresetIds,
   generateTotals,
+  isHalloweenCampaignOpen = false,
 }: HomeStylePresetCarouselProps) {
   const router = useRouter();
   const t = useTranslations("style");
@@ -260,9 +269,21 @@ export function HomeStylePresetCarousel({
     <div ref={containerRef} className="mb-8 overflow-x-hidden">
       <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-0">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            {tHome("stylePresetCarouselTitle")}
-          </h2>
+          {/* 注記は見出しの横。入りきらない幅では見出しの下へ折り返す */}
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {tHome("stylePresetCarouselTitle")}
+            </h2>
+            {isHalloweenCampaignOpen && locale === "ja" ? (
+              <p
+                // 下の説明(新着と人気の…)と同じ灰色だと埋もれるので、注意書きの色にする
+                className="text-[11px] font-medium text-amber-700"
+                data-testid="home-style-carousel-halloween-note"
+              >
+                {HALLOWEEN_BEST_SHOT.homeStyleCarouselNote}
+              </p>
+            ) : null}
+          </div>
           {/* カルーセルは人気順上位のみ表示するため、その基準を薄く添える。 */}
           <p className="mt-0.5 text-xs text-slate-500">
             {tHome("stylePresetCarouselCaption")}

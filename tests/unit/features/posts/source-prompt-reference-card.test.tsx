@@ -12,6 +12,8 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { SourcePromptReferenceCard } from "@/features/posts/components/SourcePromptReferenceCard";
 import type { SourcePromptReference } from "@/features/posts/types";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
+import { HALLOWEEN_TARGET_BUTTON_CLASS } from "@/features/campaigns/halloween/halloween-target-style";
 
 jest.mock("next-intl", () => ({
   useTranslations: jest.fn(),
@@ -804,4 +806,38 @@ describe("SourcePromptReferenceCard(カタログ刷新後)", () => {
       expect(screen.queryByText("原作のプロンプトで作る")).toBeNull();
     }
   );
+});
+
+/*
+  原作がハロウィン企画の対象作品なら、詳細の「このカタログで生成する」も企画の色とかぼちゃ
+  (2026-10-16 ユーザー指示)。判定は use-halloween-targets.test.tsx で見る。
+*/
+describe("ハロウィン企画の対象作品", () => {
+  const targetMock = jest.mocked(useIsHalloweenTarget);
+  afterEach(() => {
+    targetMock.mockImplementation(() => false);
+    mockRevamp.mockReturnValue(false);
+  });
+
+  it("原作が対象作品なら企画の色とかぼちゃ。文言は「このカタログで生成する」のまま", () => {
+    mockRevamp.mockReturnValue(true);
+    targetMock.mockImplementation((postId) => postId === ORIGIN_POST_ID);
+    renderCard({ isDerivedPost: true });
+    const button = screen.getByRole("button", { name: /このカタログで生成する/ });
+    expect(button.getAttribute("data-halloween-target")).toBe("true");
+    expect(button.className).toContain(HALLOWEEN_TARGET_BUTTON_CLASS);
+    expect(button.className).not.toContain("from-pink-500");
+    expect(button.textContent).toBe("🎃このカタログで生成する");
+    // 判定は原作の ID(派生の詳細でも原作を見る)
+    expect(targetMock).toHaveBeenCalledWith(ORIGIN_POST_ID);
+  });
+
+  it("対象作品でなければ普段のピンク → オレンジのまま", () => {
+    mockRevamp.mockReturnValue(true);
+    renderCard();
+    const button = screen.getByRole("button", { name: /このカタログで生成する/ });
+    expect(button.getAttribute("data-halloween-target")).toBeNull();
+    expect(button.className).toContain("from-pink-500");
+    expect(button.textContent).not.toContain("🎃");
+  });
 });

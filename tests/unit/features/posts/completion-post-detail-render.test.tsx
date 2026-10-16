@@ -13,6 +13,7 @@ import React from "react";
 import { render, screen } from "@testing-library/react";
 import { useTranslations } from "next-intl";
 import { PostDetailStatic } from "@/features/posts/components/PostDetailStatic";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
 import type { Post } from "@/features/posts/types";
 
 jest.mock("next-intl", () => ({
@@ -42,7 +43,9 @@ jest.mock("@/components/ui/use-toast", () => ({
 
 jest.mock("@/features/posts/lib/utils", () => ({
   getPostImageUrl: () => "https://cdn.example/post.png",
-  getPostBeforeImageUrl: () => null,
+  // Before は投稿に直接持たせた URL だけ使う(既定の投稿には無い = After だけ)
+  getPostBeforeImageUrl: (post: { input_image_url_fallback?: string | null }) =>
+    post.input_image_url_fallback ?? null,
 }));
 
 jest.mock("@/features/posts/components/PostDetailStatsContent", () => ({
@@ -184,5 +187,50 @@ describe("完走投稿の詳細描画", () => {
     expect(screen.queryByText("completionViewMount")).toBeNull();
     expect(screen.queryByText("completionBadge")).toBeNull();
     expect(screen.getByTestId("post-meta-line")).toBeInTheDocument();
+  });
+});
+
+/*
+  ハロウィン企画の対象作品は、詳細でも画像の左上に「🎃ハロウィン企画対象！」
+  (2026-10-16 ユーザー指示)。Before あり/なしのどちらの並びでも出す。
+  判定は use-halloween-targets.test.tsx で見る。
+*/
+describe("ハロウィン企画の対象作品の詳細描画", () => {
+  const targetMock = jest.mocked(useIsHalloweenTarget);
+  afterEach(() => targetMock.mockImplementation(() => false));
+
+  const createPost = (overrides: Partial<Post> = {}) =>
+    makePost({ id: "post-target", generation_type: "free", ...overrides });
+
+  it("After だけの投稿: 画像の左上にラベル(判定はこの投稿の ID)", () => {
+    targetMock.mockImplementation((postId) => postId === "post-target");
+    renderDetail(createPost());
+    const badge = screen.getByTestId("halloween-target-badge");
+    expect(badge.textContent).toBe("🎃ハロウィン企画対象！");
+    expect(badge.parentElement?.className).toContain("left-2");
+    expect(badge.parentElement?.className).toContain("top-2");
+  });
+
+  it("Before と並べる投稿: After の左上にラベル", () => {
+    targetMock.mockImplementation((postId) => postId === "post-target");
+    renderDetail(createPost({ input_image_url_fallback: "https://cdn.example/before.png" }));
+    const badge = screen.getByTestId("halloween-target-badge");
+    expect(badge.parentElement?.className).toContain("left-2");
+    // After の枠(AFTER のラベルと同じ枠)の中にある
+    const afterFrame = badge.parentElement?.parentElement as HTMLElement;
+    expect(afterFrame.textContent).toContain("afterImageLabel");
+    expect(afterFrame.textContent).not.toContain("beforeImageLabel");
+  });
+
+  it("対象作品でなければラベルは出さない", () => {
+    renderDetail(createPost());
+    expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
+  });
+
+  it("完走投稿のバッジは今までどおり左上に出る(ラベルと同じ器)", () => {
+    renderDetail(makePost({ completion_id: COMPLETION_ID, completion_view_mode: "book" }));
+    const badge = screen.getByText("completionBadge");
+    expect(badge.parentElement?.className).toContain("left-2");
+    expect(badge.parentElement?.className).toContain("top-2");
   });
 });
