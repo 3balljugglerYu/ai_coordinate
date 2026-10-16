@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { ShowcaseLeaveDialog } from "@/features/credits/components/ShowcaseLeaveDialog";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
+import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import styles from "../halloween.module.css";
 
 /**
@@ -83,6 +84,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
                       return;
                     }
                     event.preventDefault();
+                    trackCampaignEvent(CAMPAIGN_EVENTS.workTap);
                     setPendingItem(item);
                   }}
                 >

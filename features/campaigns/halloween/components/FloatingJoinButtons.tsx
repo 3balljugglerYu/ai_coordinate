@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import styles from "../halloween.module.css";
 
 /** 企画ページの終わりの目印。ここまで来たら(下はサイト共通の案内)浮いたボタンを消す */
@@ -33,6 +34,7 @@ export function FloatingJoinButtons({ joinHref, worksHref }: { joinHref: string;
   }, []);
 
   const worksClassName = `${styles.floatingCtaButton} ${styles.floatingCtaSub}`;
+  const trackCatalog = () => trackCampaignEvent(CAMPAIGN_EVENTS.ctaCatalog);
   return (
     <nav
       className={`${styles.floatingCta} ${isPastPage ? styles.floatingCtaHidden : ""}`}
@@ -41,20 +43,24 @@ export function FloatingJoinButtons({ joinHref, worksHref }: { joinHref: string;
       inert={isPastPage}
       data-testid="halloween-floating-cta"
     >
-      <Link className={`${styles.floatingCtaButton} ${styles.floatingCtaMain}`} href={joinHref}>
+      <Link
+        className={`${styles.floatingCtaButton} ${styles.floatingCtaMain}`}
+        href={joinHref}
+        onClick={() => trackCampaignEvent(CAMPAIGN_EVENTS.ctaCreate)}
+      >
         カタログを
         <wbr />
         つくる
       </Link>
       {/* ページの中へ飛ぶときは素の a(Link を通さない) */}
       {worksHref.startsWith("#") ? (
-        <a className={worksClassName} href={worksHref}>
+        <a className={worksClassName} href={worksHref} onClick={trackCatalog}>
           カタログから
           <wbr />
           生成する
         </a>
       ) : (
-        <Link className={worksClassName} href={worksHref}>
+        <Link className={worksClassName} href={worksHref} onClick={trackCatalog}>
           カタログから
           <wbr />
           生成する

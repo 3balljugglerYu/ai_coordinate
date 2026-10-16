@@ -110,3 +110,17 @@ describe("getGa4WatchlistPages", () => {
     expect(result.rows).toEqual([]);
   });
 });
+
+describe("WATCHLIST_PAGES の中身", () => {
+  test("⭐ハロウィン企画のページが入っている(管理画面で企画ページの訪問を見る。2026-10-16)", () => {
+    expect(WATCHLIST_PAGES).toContainEqual({ path: "/campaigns/halloween-best-shot", label: "ハロウィン企画" });
+  });
+
+  test("パスはクエリを含まず、重ならない(GA4 の pagePath と完全一致で引くため)", () => {
+    const paths = WATCHLIST_PAGES.map((page) => page.path);
+    for (const path of paths) {
+      expect(path).toMatch(/^\/[^?#]*$/);
+    }
+    expect(new Set(paths).size).toBe(paths.length);
+  });
+});
