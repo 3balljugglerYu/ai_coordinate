@@ -1788,3 +1788,159 @@
     padding-left: 16px;
   }
 }
+
+/* ===== 参加方法: ひとことと、開いて見る作成手順(2026-10-16 ユーザー指示) ===== */
+/* いきなり作成手順を見せず、まず「〜から生成して投稿するだけでOK！」で伝える */
+.joinSummary {
+  margin: 6px 0 18px;
+  text-align: center;
+}
+
+.joinSummaryText {
+  margin: 0;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--plum-900);
+}
+
+.joinSummaryNote {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.joinSummary .hashtagRow {
+  justify-content: center;
+}
+
+.joinDetails {
+  margin: 18px 0 4px;
+}
+
+.joinDetailsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 10px 22px;
+  border: 2px solid var(--plum-800);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--plum-800);
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.joinDetailsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.joinDetailsSummary:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.joinDetailsChevron {
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.joinDetails[open] .joinDetailsChevron {
+  transform: rotate(180deg);
+}
+
+.joinDetailsBody {
+  margin-top: 22px;
+}
+
+/* ===== 浮いたボタン(2026-10-16 ユーザー指示) ===== */
+/* ページのどこにいても押せるよう画面の下に固定する。スマホはアプリの下のメニュー(高さ64px)の上 */
+.floatingCta {
+  position: fixed;
+  z-index: 40;
+  left: 12px;
+  right: 12px;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.floatingCtaButton {
+  pointer-events: auto;
+  flex: 1 1 0;
+  max-width: 240px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  word-break: keep-all;
+  transition: transform 0.2s ease;
+}
+
+.floatingCtaMain {
+  background: var(--grad-brand);
+  color: #fff;
+  box-shadow: 0 4px 0 #b8336f, 0 10px 22px rgba(42, 10, 53, 0.28);
+}
+
+.floatingCtaSub {
+  background: var(--amber);
+  color: var(--plum-900);
+  box-shadow: 0 4px 0 #c47a00, 0 10px 22px rgba(42, 10, 53, 0.28);
+}
+
+.floatingCtaButton:active {
+  transform: translateY(3px);
+}
+
+.floatingCtaButton:focus-visible {
+  outline: 3px solid var(--plum-800);
+  outline-offset: 2px;
+}
+
+/* 企画ページの終わり(この下はサイト共通の案内)まで来たら消す */
+.floatingCta {
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0s;
+}
+
+.floatingCtaHidden {
+  opacity: 0;
+  transform: translateY(16px);
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+}
+
+/* いちばん下の注記が浮いたボタンに隠れないよう、締めの区画の最後に空ける */
+.floatingCtaSpacer {
+  height: 72px;
+}
+
+@media (min-width: 1024px) {
+  .floatingCta {
+    bottom: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatingCta,
+  .floatingCtaHidden,
+  .floatingCtaButton,
+  .joinDetailsChevron {
+    transition: none;
+  }
+}

@@ -11,6 +11,7 @@ import { AmazonGiftCardNotice } from "./AmazonGiftCardNotice";
 import { AboutDecorations, Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
 import { JoinTabs } from "./JoinTabs";
+import { FloatingJoinButtons, HALLOWEEN_PAGE_END_ID } from "./FloatingJoinButtons";
 import { RevealOnScroll } from "./RevealOnScroll";
 import { SubmissionCarousel } from "./SubmissionCarousel";
 
@@ -66,22 +67,43 @@ function WorksLink({ href, className, children }: { href: string; className: str
   );
 }
 
-function JoinButtons({ worksHref }: { worksHref: string }) {
+/**
+ * 参加方法の部門ごとのひとこと(2026-10-16 ユーザー指示: いきなり作成手順を見せると嫌気がさすので、
+ * まずひとことで伝え、詳しい手順は開いて見る)。ひとことはユーザーの文のまま。
+ * 数えてもらうのに欠かせない条件(クリエイティブ部門はハッシュタグ、エンジョイ部門はエントリー)だけ、下に小さく添える。
+ */
+function JoinSummary({ button, note, hashtag = false }: { button: string; note: string; hashtag?: boolean }) {
   return (
-    <div className={styles.ctaRow}>
-      <Link className={styles.cta} href={CAMPAIGN.joinHref}>
-        CREATEで参加する
-        <span className={styles.ctaArrow} aria-hidden="true">
-          →
+    <div className={styles.joinSummary} data-testid="halloween-join-summary">
+      <p className={styles.joinSummaryText}>
+        <span className={styles.nowrap}>
+          <strong className={styles.keyWord}>「{button}」</strong>から
         </span>
-      </Link>
-      <WorksLink className={styles.ctaSub} href={worksHref}>
-        対象作品をつかう
-        <span className={styles.ctaArrow} aria-hidden="true">
-          →
-        </span>
-      </WorksLink>
+        <Phrases text="生成して|投稿するだけで|OK！" />
+      </p>
+      <p className={styles.joinSummaryNote}>※ {note}</p>
+      {hashtag ? (
+        <div className={styles.hashtagRow}>
+          <span className={styles.hashtag}>{CAMPAIGN.hashtag}</span>
+          <CopyHashtagButton hashtag={CAMPAIGN.hashtag} />
+        </div>
+      ) : null}
     </div>
+  );
+}
+
+/** 詳しい作成手順。最初は閉じておき、「詳細な作成手順はこちら！」で開く(2026-10-16 ユーザー指示) */
+function JoinDetails({ children }: { children: ReactNode }) {
+  return (
+    <details className={styles.joinDetails} data-testid="halloween-join-details">
+      <summary className={styles.joinDetailsSummary}>
+        詳細な作成手順はこちら！
+        <span className={styles.joinDetailsChevron} aria-hidden="true">
+          ▼
+        </span>
+      </summary>
+      <div className={styles.joinDetailsBody}>{children}</div>
+    </details>
   );
 }
 
@@ -103,8 +125,6 @@ interface JoinStep {
   hashtag?: boolean;
   /** 応募作をさがす(ハッシュタグの検索)へのボタン */
   entriesLink?: boolean;
-  /** エントリー(つかう人の抽選の進捗カード)をこの手順の中に出す */
-  entryCard?: boolean;
   /** 抽選の口数の表 */
   tickets?: boolean;
 }
@@ -245,8 +265,8 @@ const CREATOR_STEPS: readonly JoinStep[] = [
 const USER_STEPS: readonly JoinStep[] = [
   {
     title: "エントリーする",
-    text: "下の「エントリーする」をタップします。",
-    entryCard: true,
+    // 2026-10-16: エントリーのカードは、閉じた手順の外(ひとことのすぐ下)に出す。閉じたままでもエントリーできるように
+    text: "上のカードの「エントリーする」をタップします。",
   },
   {
     title: "対象作品をさがす",
@@ -300,7 +320,7 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "カウントが|増えていることを|確認！",
-    text: "投稿したら、手順1のカードでカウントが増えていることを確かめましょう。対象作品から生成した投稿は、ハッシュタグを付けなくても自動で数えます。",
+    text: "投稿したら、上のエントリーのカードでカウントが増えていることを確かめましょう。対象作品から生成した投稿は、ハッシュタグを付けなくても自動で数えます。",
     shot: {
       // エントリー済みで4作品使ったときのカード(本物のカードを、進捗の返事だけ差し替えて写したもの)
       src: "/campaigns/halloween-best-shot/use-6-count.webp",
@@ -538,11 +558,6 @@ function StepList({
               <span aria-hidden="true">→</span>
             </WorksLink>
           ) : null}
-          {step.entryCard ? (
-            <div className={styles.stepEntry} id="hbs-entry">
-              <EntryProgressCard />
-            </div>
-          ) : null}
           {step.tickets ? <TicketTable /> : null}
           {step.shot ? (
             <AnnotatedShot
@@ -600,7 +615,6 @@ export function HalloweenBestShotPage({
               </span>
               <span className={styles.periodNote}>結果発表：{CAMPAIGN.announceLabel}</span>
             </div>
-            <JoinButtons worksHref={worksHref} />
           </div>
           <HeroGallery />
         </div>
@@ -721,8 +735,16 @@ export function HalloweenBestShotPage({
                     label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
                     panel: (
                       <>
-                        <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
-                        <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                        <JoinSummary
+                          button="カタログをつくる"
+                          note="投稿のときに、このハッシュタグを付けてね"
+                          hashtag
+                        />
+                        <JoinDetails>
+                          <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
+                          <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                        </JoinDetails>
+                        {/* 審査のポイントは作成手順ではないので、閉じずに見せる */}
                         <JudgePoints />
                       </>
                     ),
@@ -733,14 +755,24 @@ export function HalloweenBestShotPage({
                     label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
                     panel: (
                       <>
-                        <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
-                        <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                        <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
-                        <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
-                        <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
-                        <p className={styles.note}>
-                          ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
-                        </p>
+                        <JoinSummary
+                          button="カタログから生成する"
+                          note="抽選の対象になるには、下の「エントリーする」が必要です"
+                        />
+                        {/* エントリーは抽選に欠かせないので、閉じた手順の外に出す */}
+                        <div className={styles.stepEntry} id="hbs-entry">
+                          <EntryProgressCard />
+                        </div>
+                        <JoinDetails>
+                          <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
+                          <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                          <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
+                          <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
+                          <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
+                          <p className={styles.note}>
+                            ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
+                          </p>
+                        </JoinDetails>
                       </>
                     ),
                   },
@@ -813,7 +845,6 @@ export function HalloweenBestShotPage({
             あなたのベストショット、待ってます
           </h2>
           <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
-          <JoinButtons worksHref={worksHref} />
           {/* Amazonギフトカードの注意事項(2026-10-16): 応募規約へのリンクと、決まった注記2つ */}
           <div className={styles.legal}>
             <Link href={CAMPAIGN.termsPath} className={styles.legalLink}>
@@ -821,8 +852,12 @@ export function HalloweenBestShotPage({
             </Link>
             <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
           </div>
+          {/* 浮いたボタンの高さぶん空けて、いちばん下の注記が隠れないようにする。
+              ここが画面に入ったら浮いたボタンを消す(下はサイト共通の案内なので重ならないように) */}
+          <div id={HALLOWEEN_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
         </section>
       </main>
+      <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={worksHref} />
     </div>
   );
 }
