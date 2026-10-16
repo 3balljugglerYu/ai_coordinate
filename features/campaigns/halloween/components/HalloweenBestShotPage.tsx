@@ -211,19 +211,27 @@ const CREATOR_STEPS: readonly JoinStep[] = [
     ],
     hashtag: true,
     shot: {
-      src: "/campaigns/halloween-best-shot/join-8-post-form-v2.jpg",
-      alt: "画像を投稿する画面。1 キャプションの欄、2 生成前の画像も表示するのチェック、3 投稿するのボタンを赤い枠で囲んでいる",
+      // 2026-10-16: 期間中は投稿画面のタグ候補のいちばん前に企画のタグが出る(#753)ので、
+      // その行が写った画像にした(v3・ユーザー指示)。もとの画面の写真(v2)は変えず、キャプションの
+      // タグを消して(タグ候補はまだ入っていないタグだけ出る)、本物の部品で描いたタグ候補の行を差し込んだ。
+      // 10/13 に消した「タグ候補」は企画と関係のないタグだったもの。今回は企画のタグ1つだけ
+      src: "/campaigns/halloween-best-shot/join-8-post-form-v3.jpg",
+      alt: "画像を投稿する画面。1 キャプションの欄とその下のタグ候補「#うちの子のベストショット」、2 生成前の画像も表示するのチェック、3 投稿するのボタンを赤い枠で囲んでいる",
       width: 780,
-      height: 866,
+      height: 928,
       rings: [
-        { left: 3.3, top: 53.2, width: 93.4, height: 24.4 },
-        { left: 2.3, top: 85.6, width: 45, height: 6.2 },
-        { left: 75, top: 1.4, width: 21.5, height: 8.4 },
+        // 左の端は「タグ候補」の文字にかからないよう、2 と同じところから
+        { left: 2.3, top: 49.65, width: 94.4, height: 29.67 },
+        { left: 2.3, top: 86.56, width: 45, height: 5.79 },
+        { left: 75, top: 1.31, width: 21.5, height: 7.84 },
       ],
       callouts: [
-        { left: 88.5, top: 49.3, text: "1", pointer: "none" },
-        { left: 48.5, top: 84.2, text: "2", pointer: "none" },
-        { left: 66.5, top: 3, text: "3", pointer: "none" },
+        { left: 88.5, top: 46, text: "1", pointer: "none" },
+        { left: 48.5, top: 85.26, text: "2", pointer: "none" },
+        { left: 66.5, top: 2.8, text: "3", pointer: "none" },
+        // 幅 320px でも1行に収まる長さにする(「タップでタグが入る」は2行に折れてタグ候補に重なった)
+        // 吹き出しの大きさは画面の幅で変わらないので、狭い画面でも三角がタグ候補の文字にかからない高さに置く
+        { left: 16, top: 62, text: "タップで入る", pointer: "down" },
       ],
     },
   },
@@ -242,8 +250,19 @@ const USER_STEPS: readonly JoinStep[] = [
   },
   {
     title: "対象作品をさがす",
-    text: `期間中に「${CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、キャンペーン対象作品です。下の「対象作品を見る」から、まとめて見られます。`,
+    text: `期間中に「${CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、キャンペーン対象作品です。画像の左上の「${CAMPAIGN.targetBadgeLabel}」のラベルが目印です。下の「対象作品を見る」から、まとめて見られます。`,
     entriesLink: true,
+    shot: {
+      // 2026-10-16: 対象作品に付くラベル(#759)の見本(ユーザー指示)。ホームのフィードのカードを本物の部品で描いて写した
+      // (運営の作品を、企画のタグ付き・期間中の投稿として描いたもの)。
+      // 枠をラベルから離せるよう、カードのまわりに白い余白を付けた(ぴったりだと分かりにくい。10/16 ユーザー指示)
+      src: "/campaigns/halloween-best-shot/use-2-target-badge.webp",
+      alt: "ホームの投稿のカード。画像の左上の「ハロウィン企画対象！」のラベルを赤い枠で囲んでいる",
+      width: 812,
+      height: 724,
+      rings: [{ left: 1.72, top: 39.57, width: 37.93, height: 12.64 }],
+      callouts: [{ left: 41.38, top: 41.62, text: "これが目印", pointer: "left" }],
+    },
   },
   {
     title: "「このカタログで|生成する」|をタップ",
@@ -251,8 +270,10 @@ const USER_STEPS: readonly JoinStep[] = [
     shot: {
       // 2026-10-15: フォロー済みの人が見る今の画面(「カタログ作成者」の枠と「このカタログで生成する」)に差し替え
       // (ユーザー指示)。本物の部品をフォロー済みの状態で描いて写したもの。もとの /use-prompts の画像は刷新前の画面
-      src: "/campaigns/halloween-best-shot/use-3-catalog-button.webp",
-      alt: "対象作品の下に出る「カタログ作成者」の枠。「このカタログで生成する」のボタンを赤い枠で囲んでいる",
+      // 2026-10-16: 対象作品のボタンがハロウィン仕様(紫 → オレンジ・🎃。#759)になったので撮り直した(ユーザー指示)。
+      // 流れる動きは、止まって見えたときの色のこまで写した。ボタンの位置と大きさは前の画像と同じ(赤い枠はそのまま)
+      src: "/campaigns/halloween-best-shot/use-3-catalog-button-v2.webp",
+      alt: "対象作品の下に出る「カタログ作成者」の枠。ハロウィン仕様(紫からオレンジ)の「このカタログで生成する」のボタンを赤い枠で囲んでいる",
       width: 780,
       height: 309,
       rings: [{ left: 4.9, top: 59.2, width: 55.4, height: 28.5 }],
