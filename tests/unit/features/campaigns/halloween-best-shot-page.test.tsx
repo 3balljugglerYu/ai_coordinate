@@ -201,7 +201,7 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(within(steps[1]).getByRole("link", { name: /対象作品を見る/ })).toBeTruthy();
     const image = steps[1].querySelector("img");
     const src = image?.getAttribute("src") ?? "";
-    expect(src).toBe("/campaigns/halloween-best-shot/use-2-target-label.webp");
+    expect(src).toBe("/campaigns/halloween-best-shot/use-2-target-badge.webp");
     expect(fs.existsSync(path.join(process.cwd(), "public", src))).toBe(true);
     expect(image?.getAttribute("alt")).toContain("「ハロウィン企画対象！」のラベル");
     expect(within(steps[1]).getAllByTestId("shot-ring")).toHaveLength(1);

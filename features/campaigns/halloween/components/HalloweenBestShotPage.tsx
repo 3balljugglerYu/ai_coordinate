@@ -254,13 +254,14 @@ const USER_STEPS: readonly JoinStep[] = [
     entriesLink: true,
     shot: {
       // 2026-10-16: 対象作品に付くラベル(#759)の見本(ユーザー指示)。ホームのフィードのカードを本物の部品で描いて写した
-      // (運営の作品を、企画のタグ付き・期間中の投稿として描いたもの)
-      src: "/campaigns/halloween-best-shot/use-2-target-label.webp",
+      // (運営の作品を、企画のタグ付き・期間中の投稿として描いたもの)。
+      // 枠をラベルから離せるよう、カードのまわりに白い余白を付けた(ぴったりだと分かりにくい。10/16 ユーザー指示)
+      src: "/campaigns/halloween-best-shot/use-2-target-badge.webp",
       alt: "ホームの投稿のカード。画像の左上の「ハロウィン企画対象！」のラベルを赤い枠で囲んでいる",
-      width: 764,
-      height: 700,
-      rings: [{ left: 1.31, top: 40.36, width: 35.08, height: 7.36 }],
-      callouts: [{ left: 38.2, top: 39.9, text: "これが目印", pointer: "left" }],
+      width: 812,
+      height: 724,
+      rings: [{ left: 1.72, top: 39.57, width: 37.93, height: 12.64 }],
+      callouts: [{ left: 41.38, top: 41.62, text: "これが目印", pointer: "left" }],
     },
   },
   {
