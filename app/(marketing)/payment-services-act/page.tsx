@@ -67,7 +67,7 @@ export default async function PaymentServicesActPage() {
           depositTitle: "資金決済法に基づく供託",
           depositDescription: "供託について",
           depositBody:
-            "当サービスは、資金決済法に基づき、前払式支払手段の発行に伴い、未使用残高の一定割合を供託しています。供託の詳細については、請求があった場合には遅滞なく開示いたします。",
+            "資金決済法に基づき、基準日（毎年3月31日・9月30日）における未使用残高が1,000万円を超えた場合は、発行保証金の供託および財務局長等への届出を行います。現時点では、供託・届出の対象となる残高ではありません。",
           complaintTitle: "苦情・相談窓口",
           complaintDescription: "苦情・相談について",
           complaintBody:
@@ -109,7 +109,7 @@ export default async function PaymentServicesActPage() {
           depositTitle: "Security deposit under the Payment Services Act",
           depositDescription: "Information about deposits",
           depositBody:
-            "In accordance with the Payment Services Act, the Service deposits a certain percentage of unused balances when issuing prepaid payment instruments. Details will be disclosed without delay upon request.",
+            "Under the Payment Services Act, if the unused balance on a record date (March 31 and September 30 each year) exceeds 10 million yen, the Service will make the required security deposit and file the required notification with the Director-General of the competent Local Finance Bureau. As of now, the balance does not reach the threshold that requires a deposit or notification.",
           complaintTitle: "Complaints and inquiries",
           complaintDescription: "Where to contact us",
           complaintBody:
