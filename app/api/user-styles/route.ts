@@ -15,6 +15,7 @@ import type {
   UserStyleSort,
 } from "@/features/user-styles/types";
 import { UUID_PATTERN } from "@/features/user-styles/lib/validation";
+import { isHashtagCampaignKey } from "@/features/campaigns/hashtag-campaign/campaign-key";
 
 /**
  * User ORIGINAL(/user-styles)の一覧。2ページ目以降とチップ切替後の取り直しに使う。
@@ -90,6 +91,18 @@ export async function GET(request: NextRequest) {
       return jsonError(copy.invalidAuthor, "USER_STYLES_INVALID_AUTHOR", 400);
     }
 
+    /*
+      🎃 ハッシュタグ企画のタブ(2026-10-16)。新着順だけで、作者・👑 とは組み合わせない(チップは排他)。
+      形の違うキーは DB に問い合わせる前に落とす(知らない企画は空の一覧になる)。
+    */
+    const campaignParam = params.get("campaign");
+    if (
+      campaignParam !== null &&
+      (!isHashtagCampaignKey(campaignParam) || sort === "usage" || authorParam !== null)
+    ) {
+      return jsonError(copy.invalidCampaign, "USER_STYLES_INVALID_CAMPAIGN", 400);
+    }
+
     const cursor: UserStyleCursor | null =
       cursorPosition !== null
         ? { position: cursorPosition }
@@ -108,6 +121,7 @@ export async function GET(request: NextRequest) {
           limit,
           sort,
           authorId: authorParam,
+          campaignKey: campaignParam,
           cursor,
           // ⭐ 閲覧者は必ずサーバーで解決する。クエリから受け取ってはいけない
           //    （ブロック・通報の除外基準になるため、偽装できると他人の除外を外せる）。
@@ -117,6 +131,7 @@ export async function GET(request: NextRequest) {
           limit,
           sort,
           authorId: authorParam,
+          campaignKey: campaignParam,
           cursor,
         });
 

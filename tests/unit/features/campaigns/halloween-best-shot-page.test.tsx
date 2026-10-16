@@ -70,22 +70,25 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(document.getElementById("hbs-page-end")).toBeTruthy();
   });
 
-  test("対象作品がまだ一覧に無いとき、「カタログから生成する」・対象作品を見るは、ハッシュタグの検索へ行く", () => {
+  test("「カタログから生成する」は、みんなのカタログの企画のタブへ行く(10/16 ユーザー指示。ハッシュタグの検索ではなく)", () => {
+    for (const submissionPages of [[], SUBMISSION_PAGES]) {
+      const { unmount } = render(<HalloweenBestShotPage submissionPages={submissionPages} />);
+      const links = screen.getAllByRole("link", { name: /カタログから\s*生成する/ });
+      expect(links).toHaveLength(1);
+      expect(links[0].getAttribute("href")).toBe("/user-styles?campaign=halloween-best-shot");
+      expect(HALLOWEEN_BEST_SHOT.catalogHref).toBe(`/user-styles?campaign=${HALLOWEEN_BEST_SHOT.campaignKey}`);
+      unmount();
+    }
+  });
+
+  test("対象作品がまだ一覧に無いとき、手順2の「対象作品を見る」は、ハッシュタグの検索へ行く", () => {
     render(<HalloweenBestShotPage />);
-    const links = screen.getAllByRole("link", { name: /カタログから\s*生成する/ });
-    expect(links).toHaveLength(1);
-    links.forEach((link) =>
-      expect(link.getAttribute("href")).toBe(`/search?q=${encodeURIComponent("#うちの子のベストショット")}`),
-    );
     fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe(HALLOWEEN_BEST_SHOT.entriesHref);
   });
 
-  test("一覧に対象作品があるときは、「カタログから生成する」・対象作品を見るは、ページの中の一覧へ行く(10/15)", () => {
+  test("一覧に対象作品があるときは、手順2の「対象作品を見る」は、ページの中の一覧へ行く(10/15)", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
-    const links = screen.getAllByRole("link", { name: /カタログから\s*生成する/ });
-    expect(links).toHaveLength(1);
-    links.forEach((link) => expect(link.getAttribute("href")).toBe("#hbs-works"));
     fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     expect(screen.getByRole("link", { name: /対象作品を見る/ }).getAttribute("href")).toBe("#hbs-works");
     // 飛び先(一覧の見出し)がある

@@ -20,6 +20,13 @@ export const HALLOWEEN_BEST_SHOT = {
   joinHref: "/free",
   /** 応募作をさがす入口(ハッシュタグの検索) */
   entriesHref: buildHashtagSearchHref("うちの子のベストショット"),
+  /**
+   * みんなのカタログの企画のタブ(2026-10-16 ユーザー指示)。企画ページの「カタログから生成する」の行き先。
+   * campaign の値は campaignKey と同じ(/user-styles が読んでタブを開く)
+   */
+  catalogHref: "/user-styles?campaign=halloween-best-shot",
+  /** みんなのカタログの企画のタブの名前(ほかのタブと同じく、絵文字のあとにタグ) */
+  catalogTabLabel: "🎃 #うちの子のベストショット",
   startLabel: "10/16(金) 20:00",
   endLabel: "10/31(土) 23:59",
   /**

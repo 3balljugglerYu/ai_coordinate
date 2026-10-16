@@ -28,3 +28,8 @@ jest.mock('@/features/campaigns/halloween/hooks/useHalloweenTargets', () => ({
   useIsHalloweenTarget: jest.fn(() => false),
   resetHalloweenTargetsForTest: jest.fn(),
 }));
+
+// 同じ理由で、みんなのカタログの企画のタブを出すか(useHalloweenCampaignOpen)も全体では「期間外」に固定する
+jest.mock('@/features/campaigns/halloween/hooks/useHalloweenCampaignOpen', () => ({
+  useHalloweenCampaignOpen: jest.fn(() => false),
+}));

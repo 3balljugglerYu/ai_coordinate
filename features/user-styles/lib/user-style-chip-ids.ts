@@ -5,12 +5,18 @@ import type { UserStyleAuthor } from "@/features/user-styles/types";
  * /user-styles のチップ(カタログ刷新後はタブ)の ID を、画面の並び順どおりに返す。
  * 一覧の横スワイプ(`CatalogSwipePanel`)で隣のタブを決めるのに使う。
  *
- * ⭐ `UserStyleChips` の並び(✨すべて → 💖みんなが使ってる → フォロー中の作者)と
- * 必ず同じ順にすること。ずれると、スワイプで画面上の隣とは違うタブへ移る。
+ * ⭐ `UserStyleChips` の並び(✨すべて → 🎃開催中のハッシュタグ企画 → 💖みんなが使ってる →
+ * フォロー中の作者)と必ず同じ順にすること。ずれると、スワイプで画面上の隣とは違うタブへ移る。
+ *
+ * @param campaignChipId 開催中のハッシュタグ企画のタブ(2026-10-16)。無ければ null
  */
-export function userStyleChipIds(authors: UserStyleAuthor[]): UserStyleChipId[] {
+export function userStyleChipIds(
+  authors: UserStyleAuthor[],
+  campaignChipId: UserStyleChipId | null = null
+): UserStyleChipId[] {
   return [
     "all",
+    ...(campaignChipId ? [campaignChipId] : []),
     "usage",
     ...authors.map((author): UserStyleChipId => `author:${author.authorId}`),
   ];
