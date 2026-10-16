@@ -103,3 +103,58 @@ describe("userStyleChipIds", () => {
     expect(userStyleChipIds([])).toEqual(["all", "usage"]);
   });
 });
+
+/*
+  🎃 開催中のハッシュタグ企画のタブ(2026-10-16 ユーザー指示)。「すべて(新着順)」のすぐ右に置く。
+  一覧の横スワイプの並び(userStyleChipIds)も同じ順にする。
+*/
+describe("UserStyleChips(ハッシュタグ企画のタブ)", () => {
+  const CAMPAIGN_TAB = { id: "campaign:halloween-best-shot" as const, label: "🎃 #うちの子のベストショット" };
+
+  test.each([
+    ["刷新後", true],
+    ["刷新前", false],
+  ])("%s: 「すべて」のすぐ右に出し、押すと企画のタブを選ぶ", (_label, revamp) => {
+    catalogRevampMock.mockReturnValue(revamp);
+    const onSelect = jest.fn();
+    render(
+      <UserStyleChips
+        active="campaign:halloween-best-shot"
+        authors={AUTHORS}
+        campaignTab={CAMPAIGN_TAB}
+        onSelect={onSelect}
+      />
+    );
+
+    const tabs = screen.getAllByRole("tab");
+    expect(tabs.map((tab) => tab.textContent)).toEqual([
+      "✨ userStyles.chipAll",
+      "🎃 #うちの子のベストショット",
+      "💖 userStyles.chipUsage",
+      "ミク",
+      "リン",
+    ]);
+    expect(tabs[1].getAttribute("aria-selected")).toBe("true");
+
+    fireEvent.click(screen.getByRole("tab", { name: "✨ userStyles.chipAll" }));
+    expect(onSelect).toHaveBeenCalledWith("all");
+  });
+
+  test("開催中でなければ(null)出さない", () => {
+    catalogRevampMock.mockReturnValue(true);
+    render(<UserStyleChips active="all" authors={[]} campaignTab={null} onSelect={jest.fn()} />);
+    expect(screen.queryByRole("tab", { name: /うちの子のベストショット/ })).toBeNull();
+  });
+
+  test("並び(userStyleChipIds)も「すべて」のすぐ右", () => {
+    expect(userStyleChipIds(AUTHORS, "campaign:halloween-best-shot")).toEqual([
+      "all",
+      "campaign:halloween-best-shot",
+      "usage",
+      "author:author-1",
+      "author:author-2",
+    ]);
+    // 企画が無ければこれまでどおり
+    expect(userStyleChipIds(AUTHORS, null)).toEqual(userStyleChipIds(AUTHORS));
+  });
+});

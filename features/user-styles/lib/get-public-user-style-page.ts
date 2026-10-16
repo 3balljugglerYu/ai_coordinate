@@ -23,7 +23,8 @@ async function getPublicUserStylePageCached(
   sort: UserStyleSort,
   authorId: string | null,
   cursor: UserStyleCursor | null,
-  limit: number | null
+  limit: number | null,
+  campaignKey: string | null
 ): Promise<UserStylePage> {
   "use cache";
   cacheTag(USER_STYLES_CACHE_TAG);
@@ -32,6 +33,7 @@ async function getPublicUserStylePageCached(
   return fetchUserStylePage({
     sort,
     authorId,
+    campaignKey,
     cursor,
     limit: limit ?? undefined,
     currentUserId: null,
@@ -41,6 +43,8 @@ async function getPublicUserStylePageCached(
 export interface PublicUserStylePageParams {
   sort?: UserStyleSort;
   authorId?: string | null;
+  /** ハッシュタグ企画のタブ(hashtag_campaigns.key)。2026-10-16 */
+  campaignKey?: string | null;
   cursor?: UserStyleCursor | null;
   limit?: number;
 }
@@ -68,6 +72,7 @@ export interface PublicUserStylePageParams {
 export async function getPublicUserStylePage({
   sort = "newest",
   authorId = null,
+  campaignKey = null,
   cursor = null,
   limit,
 }: PublicUserStylePageParams = {}): Promise<UserStylePage> {
@@ -76,7 +81,8 @@ export async function getPublicUserStylePage({
       sort,
       authorId,
       cursor,
-      limit ?? null
+      limit ?? null,
+      campaignKey
     );
   } catch (error) {
     if (error instanceof UserStylePageFetchError) {

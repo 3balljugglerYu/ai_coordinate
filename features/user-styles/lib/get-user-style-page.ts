@@ -37,6 +37,11 @@ export interface GetUserStylePageParams {
   /** 作者チップで絞るとき。null なら全作者。 */
   authorId?: string | null;
   /**
+   * ハッシュタグ企画のタブで絞るとき(hashtag_campaigns.key)。null なら絞らない。
+   * 指定したときは新着順だけ(並び・作者の指定は使わない。チップは排他)。2026-10-16 ユーザー指示
+   */
+  campaignKey?: string | null;
+  /**
    * 2ページ目以降。並びと形を合わせること(`newest` は `{ postedAt, id }`、
    * `usage` は `{ position }`)。合わないものは無視して先頭から読む ── 呼び出し側
    * (route)が先に弾いている前提。
@@ -87,10 +92,31 @@ export async function fetchUserStylePage({
   limit = USER_STYLE_PAGE_SIZE,
   sort = "newest",
   authorId = null,
+  campaignKey = null,
   cursor = null,
   currentUserId = null,
 }: GetUserStylePageParams = {}): Promise<UserStylePage> {
   const supabase = createAdminClient();
+
+  /*
+    🎃 ハッシュタグ企画の対象作品(2026-10-16)。掲載条件は「すべて」と同じで、
+    応募作の記録にありタグが付いたままの投稿を新着順に。絞り込みも1文の中で行う
+    (get_user_style_campaign_page。取得後に絞らない理由はこのファイルの冒頭と同じ)。
+  */
+  if (campaignKey) {
+    const { data, error } = await supabase.rpc("get_user_style_campaign_page", {
+      p_viewer_id: currentUserId,
+      p_campaign_key: campaignKey,
+      p_limit: limit,
+      p_cursor_posted_at: cursor && "postedAt" in cursor ? cursor.postedAt : null,
+      p_cursor_id: cursor && "id" in cursor ? cursor.id : null,
+    });
+    if (error) {
+      console.error("User styles campaign page fetch failed:", { code: error.code });
+      throw new UserStylePageFetchError(error.code);
+    }
+    return toPage((data ?? []) as PageRow[], "newest", limit, supabase);
+  }
 
   /*
     👑 よく使われる は、毎時確定する順位(user_style_usage_rankings)を順位で
@@ -120,7 +146,16 @@ export async function fetchUserStylePage({
     throw new UserStylePageFetchError(error.code);
   }
 
-  const rows = (data ?? []) as PageRow[];
+  return toPage((data ?? []) as PageRow[], sort, limit, supabase);
+}
+
+/** RPC の行を一覧の1ページにする(投稿の付け足しと、次ページの cursor) */
+async function toPage(
+  rows: PageRow[],
+  sort: UserStyleSort,
+  limit: number,
+  supabase: ReturnType<typeof createAdminClient>
+): Promise<UserStylePage> {
   if (rows.length === 0) {
     return { posts: [], nextCursor: null };
   }

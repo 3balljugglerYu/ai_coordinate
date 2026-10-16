@@ -268,3 +268,71 @@ describe("getUserStylePage", () => {
   });
 });
 
+
+/*
+  🎃 ハッシュタグ企画のタブ(2026-10-16 ユーザー指示)。絞り込みも1文の中で行う
+  (get_user_style_campaign_page。取得後に絞ると穴が空くため)。新着順だけ。
+*/
+describe("getUserStylePage(ハッシュタグ企画のタブ)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockEnrichPosts.mockImplementation(
+      async (posts) => posts as unknown as Awaited<ReturnType<typeof enrichPosts>>
+    );
+  });
+
+  test("企画のキーを渡すと、企画のタブの RPC を1回だけ呼ぶ(cursor は postedAt と id に分解する)", async () => {
+    const stub = createSupabaseStub({ rows: [] });
+    mockCreateAdminClient.mockReturnValue(stub);
+
+    await getUserStylePage({
+      limit: 5,
+      campaignKey: "halloween-best-shot",
+      cursor: { postedAt: "2026-10-17T00:00:00Z", id: "cursor-1" },
+      currentUserId: "viewer-1",
+    });
+
+    expect(stub.rpc).toHaveBeenCalledTimes(1);
+    expect(stub.rpc).toHaveBeenCalledWith("get_user_style_campaign_page", {
+      p_viewer_id: "viewer-1",
+      p_campaign_key: "halloween-best-shot",
+      p_limit: 5,
+      p_cursor_posted_at: "2026-10-17T00:00:00Z",
+      p_cursor_id: "cursor-1",
+    });
+    expect(stub.from).not.toHaveBeenCalled();
+  });
+
+  test("RPC が並べた順序のまま返し、満杯なら最後の行から次の cursor を作る", async () => {
+    const stub = createSupabaseStub({
+      rows: [row("b", "2026-10-17T02:00:00Z"), row("a", "2026-10-17T01:00:00Z")],
+    });
+    mockCreateAdminClient.mockReturnValue(stub);
+
+    const page = await getUserStylePage({ limit: 2, campaignKey: "halloween-best-shot" });
+
+    expect(page.posts.map((post) => post.id)).toEqual(["b", "a"]);
+    expect(page.nextCursor).toEqual({ postedAt: "2026-10-17T01:00:00Z", id: "a" });
+  });
+
+  test("対象作品がまだ無ければ空(次のページなし)", async () => {
+    mockCreateAdminClient.mockReturnValue(createSupabaseStub({ rows: [] }));
+    await expect(getUserStylePage({ campaignKey: "halloween-best-shot" })).resolves.toEqual({
+      posts: [],
+      nextCursor: null,
+    });
+  });
+
+  test("読めなければ空(getUserStylePage)/投げる(fetchUserStylePage。キャッシュに空を覚えさせない)", async () => {
+    mockCreateAdminClient.mockReturnValue(createSupabaseStub({ error: { code: "57014" } }));
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    await expect(getUserStylePage({ campaignKey: "halloween-best-shot" })).resolves.toEqual({
+      posts: [],
+      nextCursor: null,
+    });
+    await expect(fetchUserStylePage({ campaignKey: "halloween-best-shot" })).rejects.toBeInstanceOf(
+      UserStylePageFetchError
+    );
+    consoleError.mockRestore();
+  });
+});

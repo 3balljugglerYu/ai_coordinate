@@ -7,8 +7,11 @@ import { useFeedPromptActions } from "@/features/posts/hooks/useFeedPromptAction
 import { useFeedFollowStatus } from "@/features/posts/hooks/useFeedFollowStatus";
 import {
   UserStyleChips,
+  type UserStyleCampaignTab,
   type UserStyleChipId,
 } from "@/features/user-styles/components/UserStyleChips";
+import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
+import { useHalloweenCampaignOpen } from "@/features/campaigns/halloween/hooks/useHalloweenCampaignOpen";
 import { userStyleChipIds } from "@/features/user-styles/lib/user-style-chip-ids";
 import { UserStylesFeedCardsSkeleton } from "@/features/user-styles/components/UserStylesFeedSkeleton";
 import {
@@ -34,6 +37,9 @@ import type { Post } from "@/features/posts/types";
  * 払っている間に見えるのは画面の高さの分だけなので、先頭だけ描く(1枚でほぼ画面が埋まる)。
  */
 const PEEK_POST_COUNT = 2;
+
+/** URL でハッシュタグ企画のタブを指定するクエリ(企画ページの「カタログから生成する」から来る) */
+const CAMPAIGN_QUERY = "campaign";
 
 /** 指で操作する端末か(PC では隣のタブを先に読まない。CatalogSwipePanel と同じ判定) */
 function isTouchDevice(): boolean {
@@ -70,6 +76,18 @@ export function UserStylesFeedClient({
   const t = useTranslations("userStyles");
   // カタログ刷新(段階公開中は運営のみ)では、チップをタブにし、一覧の横スワイプで切り替える
   const isCatalogRevamp = useStylesCatalogRevamp();
+  /*
+    🎃 開催中のハッシュタグ企画のタブ(2026-10-16 ユーザー指示)。「すべて」のすぐ右に出し、
+    企画の対象作品だけに絞る。期間中・日本語の画面だけ(企画は日本国内向け)。
+  */
+  const isHalloweenOpen = useHalloweenCampaignOpen();
+  const campaignTab = useMemo<UserStyleCampaignTab | null>(
+    () =>
+      isHalloweenOpen
+        ? { id: `campaign:${HALLOWEEN_BEST_SHOT.campaignKey}`, label: HALLOWEEN_BEST_SHOT.catalogTabLabel }
+        : null,
+    [isHalloweenOpen]
+  );
 
   const [chip, setChip] = useState<UserStyleChipId>("all");
   const [posts, setPosts] = useState<Post[]>(initialPosts);
@@ -136,6 +154,8 @@ export function UserStylesFeedClient({
         params.set("sort", "usage");
       } else if (target.startsWith("author:")) {
         params.set("author", target.slice("author:".length));
+      } else if (target.startsWith("campaign:")) {
+        params.set("campaign", target.slice("campaign:".length));
       }
       if (nextCursor && "position" in nextCursor) {
         // 👑 よく使われる は確定順位で続きを読む
@@ -194,7 +214,13 @@ export function UserStylesFeedClient({
         黙って通ってしまうので、**網羅的に写像する**。
       */
       const chipEvent: UserStyleChipEvent =
-        next === "all" ? "all" : next === "usage" ? "usage" : "author";
+        next === "all"
+          ? "all"
+          : next === "usage"
+            ? "usage"
+            : next.startsWith("campaign:")
+              ? "campaign"
+              : "author";
       if (isCatalogRevamp) {
         // 離れるタブの一覧を覚えておく(戻ったとき・隣として見せるときに、すぐ出す)
         if (!isLoading && !hasError) {
@@ -246,7 +272,26 @@ export function UserStylesFeedClient({
     return () => observer.disconnect();
   }, [cursor, hasError, loadMore]);
 
-  const chipIds = useMemo(() => userStyleChipIds(authors), [authors]);
+  const chipIds = useMemo(
+    () => userStyleChipIds(authors, campaignTab?.id ?? null),
+    [authors, campaignTab]
+  );
+
+  /*
+    企画ページの「カタログから生成する」から来たとき(/user-styles?campaign=<企画のキー>)は、
+    企画のタブを開く。タブは期間の判定のあと(ハイドレーションのあと)に出るので、そのときに1回だけ。
+  */
+  const openedFromQueryRef = useRef(false);
+  useEffect(() => {
+    if (!campaignTab || openedFromQueryRef.current) {
+      return;
+    }
+    openedFromQueryRef.current = true;
+    const requested = new URLSearchParams(window.location.search).get(CAMPAIGN_QUERY);
+    if (requested && `campaign:${requested}` === campaignTab.id) {
+      handleSelect(campaignTab.id);
+    }
+  }, [campaignTab, handleSelect]);
   const activeChipIndex = chipIds.indexOf(chip);
 
   /*
@@ -443,7 +488,12 @@ export function UserStylesFeedClient({
 
   return (
     <div>
-      <UserStyleChips active={chip} authors={authors} onSelect={handleSelect} />
+      <UserStyleChips
+        active={chip}
+        authors={authors}
+        campaignTab={campaignTab}
+        onSelect={handleSelect}
+      />
 
       {isCatalogRevamp ? (
         <CatalogSwipePanel

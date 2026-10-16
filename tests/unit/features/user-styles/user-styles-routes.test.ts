@@ -455,3 +455,71 @@ describe("POST /api/user-styles/events", () => {
     );
   });
 });
+
+/*
+  🎃 ハッシュタグ企画のタブ(2026-10-16 ユーザー指示)。新着順だけで、作者・👑 とは組み合わせない。
+  形の違うキーは DB に問い合わせる前に 400。
+*/
+describe("GET /api/user-styles: ハッシュタグ企画のタブ", () => {
+  test("ログイン済み: 企画のキーと cursor を一覧の取得に渡す(閲覧者は getUser() から)", async () => {
+    loginAs("viewer-1");
+
+    const res = await getList(
+      listRequest(`?campaign=halloween-best-shot&cursorPostedAt=2026-10-17T00:00:00Z&cursorId=${UUID_A}`)
+    );
+
+    expect(res.status).toBe(200);
+    expect(mockGetPage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        campaignKey: "halloween-best-shot",
+        sort: "newest",
+        authorId: null,
+        cursor: { postedAt: "2026-10-17T00:00:00Z", id: UUID_A },
+        currentUserId: "viewer-1",
+      })
+    );
+    expect(mockGetPublicPage).not.toHaveBeenCalled();
+  });
+
+  test("未ログイン: キャッシュから返す(企画のキーもキャッシュの引数に入る)", async () => {
+    await getList(listRequest("?campaign=halloween-best-shot"));
+
+    expect(mockGetPublicPage).toHaveBeenCalledWith(
+      expect.objectContaining({ campaignKey: "halloween-best-shot", sort: "newest" })
+    );
+    expect(mockGetPage).not.toHaveBeenCalled();
+  });
+
+  test("企画を指定しなければ、これまでどおり企画のキーは null", async () => {
+    await getList(listRequest(""));
+
+    expect(mockGetPublicPage).toHaveBeenCalledWith(
+      expect.objectContaining({ campaignKey: null })
+    );
+  });
+
+  test.each([
+    ["?campaign=Halloween", "形の違うキー"],
+    ["?campaign=../etc", "形の違うキー"],
+    ["?campaign=", "空のキー"],
+    [`?campaign=halloween-best-shot&author=${UUID_A}`, "作者と組み合わせた"],
+    ["?campaign=halloween-best-shot&sort=usage", "👑 と組み合わせた"],
+  ])("%s は 400(%s)", async (query) => {
+    const res = await getList(listRequest(query));
+
+    expect(res.status).toBe(400);
+    await expect(res.json()).resolves.toMatchObject({
+      errorCode: "USER_STYLES_INVALID_CAMPAIGN",
+    });
+    expect(mockGetPage).not.toHaveBeenCalled();
+    expect(mockGetPublicPage).not.toHaveBeenCalled();
+  });
+
+  test("企画のタブを選んだ計測は campaign として記録する", async () => {
+    await postEvent(eventRequest({ eventType: "user_styles_chip", chip: "campaign" }));
+
+    expect(mockRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ categoryKey: "campaign" })
+    );
+  });
+});

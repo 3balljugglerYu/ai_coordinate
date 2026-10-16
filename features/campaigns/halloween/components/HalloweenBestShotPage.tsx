@@ -857,7 +857,8 @@ export function HalloweenBestShotPage({
           <div id={HALLOWEEN_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
         </section>
       </main>
-      <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={worksHref} />
+      {/* 「カタログから生成する」は、みんなのカタログの企画のタブへ(2026-10-16 ユーザー指示。ハッシュタグの検索ではなく) */}
+      <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={CAMPAIGN.catalogHref} />
     </div>
   );
 }

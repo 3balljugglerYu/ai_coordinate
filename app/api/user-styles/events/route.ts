@@ -44,7 +44,8 @@ const ALLOWED_EVENT_TYPES = new Set<StyleUsageEventType>([
  * 作者チップは作者IDごとに分けず `author` にまとめる（誰を押したかではなく、
  * 「作者チップという導線が使われたか」を見たいため）。
  */
-const ALLOWED_CHIPS = new Set(["all", "usage", "author"]);
+// "campaign" はハッシュタグ企画のタブ(2026-10-16)
+const ALLOWED_CHIPS = new Set(["all", "usage", "author", "campaign"]);
 
 export async function POST(request: NextRequest) {
   const copy = userStylesRouteCopy[getRouteLocale(request)];
