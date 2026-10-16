@@ -1214,4 +1214,35 @@ describe("PostFeedCard(ハロウィン企画の対象作品)", () => {
     render(<PostFeedCard post={createPost()} currentUserId={null} />);
     expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
   });
+
+  /*
+    対象作品を使って作った投稿(from CATALOG)は、それ自体は対象作品ではない(応募作は CREATE の元の作品だけ)。
+    ラベルは付けず、カタログ作成者の「このカタログで生成する」だけが企画仕様になる
+    (ボタンは原作の ID で判定する。見た目は follow-and-use-prompt-button.test.tsx で見る)
+  */
+  test("⭐対象作品から作った投稿(from CATALOG)にはラベルを付けず、ボタンには原作を渡す", () => {
+    targetMock.mockImplementation((postId) => postId === "origin-target");
+    render(
+      <PostFeedCard
+        post={createPost({ id: "derived-1", source_post_id: "origin-target" })}
+        currentUserId="viewer-1"
+        isFollowingPromptAuthor
+        promptAction={{
+          originPostId: "origin-target",
+          isAvailable: true,
+          originAuthorId: "author-2",
+          originAuthorNickname: "作者さん",
+          originAuthorAvatarUrl: null,
+          originThumbnailUrl: null,
+          originCaption: null,
+          usageCount: 0,
+          promptVisibility: "private",
+        }}
+      />
+    );
+    expect(screen.queryByTestId("halloween-target-badge")).toBeNull();
+    expect(targetMock).toHaveBeenCalledWith("derived-1");
+    expect(screen.getByTestId("feed-source-quote").getAttribute("data-variant")).toBe("derived");
+    expect(screen.getByTestId("cta").getAttribute("data-origin")).toBe("origin-target");
+  });
 });
