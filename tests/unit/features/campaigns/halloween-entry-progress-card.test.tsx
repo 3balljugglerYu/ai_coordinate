@@ -223,8 +223,9 @@ describe("EntryProgressCard", () => {
     mockFetch(progress(null));
     render(<EntryProgressCard now={DURING} />);
     expect(await screen.findByRole("heading", { name: "キャンペーンに参加" })).toBeTruthy();
+    // 全員もらえるように読める「ゲットしよう」はやめた(10/16 ユーザー提供の注意事項)
     expect(
-      screen.getByText("キャンペーン対象作品を利用してAmazonギフトカードをゲットしよう！"),
+      screen.getByText("キャンペーン対象作品を利用して、Amazonギフトカードが当たるチャンス！"),
     ).toBeTruthy();
     expect(screen.queryByTestId("halloween-entry-bubble")).toBeNull();
     expect(notesInCard()).toEqual([]);

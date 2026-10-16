@@ -7,6 +7,7 @@ import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
 import { EntryProgressCard } from "./EntryProgressCard";
+import { AmazonGiftCardNotice } from "./AmazonGiftCardNotice";
 import { AboutDecorations, Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
 import { JoinTabs } from "./JoinTabs";
@@ -568,7 +569,8 @@ export function HalloweenBestShotPage({
               </span>
             </h1>
             <p className={styles.lead}>
-              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿してアマギフをGETしよう！
+              {/* 2026-10-16: 略称「アマギフ」と、全員もらえるように読める「GETしよう」をやめた(Amazonギフトカードの注意事項) */}
+              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！
             </p>
             <div className={styles.period}>
               <span className={styles.periodLabel}>開催期間</span>
@@ -675,13 +677,24 @@ export function HalloweenBestShotPage({
               <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
             </RevealOnScroll>
             <div className={styles.prizeNotes}>
-              <p className={styles.note}>※ ペルコインには有効期限があります</p>
-              <p className={styles.note}>
-                ※ {CAMPAIGN.prizeCategories.creative.name}と{CAMPAIGN.prizeCategories.enjoy.name}
-                の、両方には当選しません
-              </p>
-              <p className={styles.note}>※ {CAMPAIGN.prizeCategories.enjoy.name}は、エントリーした人の中から抽選します</p>
-              <p className={styles.note}>※ 1人1アカウントでご参加ください。不正な参加は対象外です</p>
+              {/* 2026-10-16 ユーザー決定: 企画全体を日本国内の18歳以上の方に。購入不要(オープン懸賞)。Amazonギフトカードは Amazon.co.jp 専用。
+                  注意は「|」で区切った言葉の切れ目でだけ折り返す(スマホで「…当選しませ／ん」のように1文字だけ落ちないように) */}
+              {[
+                "※ 日本国内にお住まいの|18歳以上の方が対象です",
+                "※ ペルコインの購入は不要です。|購入の有無は、|審査・抽選の結果に|影響しません",
+                "※ Amazonギフトカードは、|Amazon.co.jpでのみ|ご利用いただけます",
+                "※ ペルコインには|有効期限があります",
+                `※ ${CAMPAIGN.prizeCategories.creative.name}と|${CAMPAIGN.prizeCategories.enjoy.name}の、|両方には当選しません`,
+                `※ ${CAMPAIGN.prizeCategories.enjoy.name}は、|エントリーした人の中から|抽選します`,
+                "※ 1人1アカウントでご参加ください。|不正な参加は対象外です",
+              ].map((note) => (
+                <p key={note} className={styles.note}>
+                  <Phrases text={note} />
+                </p>
+              ))}
+              <Link href={CAMPAIGN.termsPath} className={styles.termsLink}>
+                応募規約・注意事項を見る
+              </Link>
             </div>
           </div>
         </section>
@@ -781,6 +794,13 @@ export function HalloweenBestShotPage({
           </h2>
           <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
           <JoinButtons worksHref={worksHref} />
+          {/* Amazonギフトカードの注意事項(2026-10-16): 応募規約へのリンクと、決まった注記2つ */}
+          <div className={styles.legal}>
+            <Link href={CAMPAIGN.termsPath} className={styles.legalLink}>
+              応募規約・注意事項
+            </Link>
+            <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
+          </div>
         </section>
       </main>
     </div>

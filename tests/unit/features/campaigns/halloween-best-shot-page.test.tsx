@@ -309,10 +309,14 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
 
     // ねらいの「|」は折り返してよい位置の印で、画面には出さない
     expect(document.body.textContent).not.toContain("|");
-    expect(screen.getByText("※ クリエイティブ部門とエンジョイ部門の、両方には当選しません")).toBeTruthy();
+    // 注意は言葉の切れ目ごとに分けて描くので、段落の文字で見る
+    const prizeNotes = Array.from(
+      screen.getByRole("region", { name: /賞品/ }).querySelectorAll("p"),
+    ).map((node) => node.textContent);
+    expect(prizeNotes).toContain("※ クリエイティブ部門とエンジョイ部門の、両方には当選しません");
   });
 
-  test("冒頭の「総額」は、クリエイティブ部門とエンジョイ部門の Amazonギフトカードの合計(25,000円＋10,000円＝3.5万円。ペルコインは入れない)", () => {
+  test("冒頭の「総額」は、クリエイティブ部門とエンジョイ部門の Amazonギフトカードの合計を「○○円分」で書く(25,000円＋10,000円。ペルコインは入れない)", () => {
     const yen = (amount: string, winners: string) =>
       Number(amount.replace(/,/g, "")) * Number.parseInt(winners, 10);
     const amazonYen = (prizes: readonly { gift: string; amount: string; winners: string }[]) =>
@@ -323,9 +327,49 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
       25_000, 10_000,
     ]);
     render(<HalloweenBestShotPage />);
-    expect(document.body.textContent).toContain("Amazonギフトカード 総額3.5万円");
+    // 金額は「○○円分」と書く(10/16 ユーザー提供の注意事項。「3.5万円」はやめた)
+    expect(document.body.textContent).toContain("Amazonギフトカード 総額35,000円分");
+    expect(document.body.textContent).not.toContain("3.5万円");
     // 呼び名は「Amazonギフトカード」にそろえる(ユーザーの文と同じ)。賞品をまとめて言い切る注意も出さない
     expect(document.body.textContent).not.toContain("ギフト券");
+  });
+
+  test("Amazonギフトカードの書き方(10/16 ユーザー提供の注意事項): 略称を使わず、全員もらえるように読める言い方をしない", () => {
+    render(<HalloweenBestShotPage />);
+    const text = document.body.textContent ?? "";
+    expect(text).not.toContain("アマギフ");
+    expect(text).not.toMatch(/GETしよう|ゲットしよう/);
+    expect(screen.getByText("あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！")).toBeTruthy();
+  });
+
+  test("ページのいちばん下に、Amazon の決まった注記2つと、問い合わせ先(お問い合わせフォーム)を出す", () => {
+    render(<HalloweenBestShotPage />);
+    const notice = screen.getByTestId("amazon-gift-card-notice");
+    expect(Array.from(notice.querySelectorAll("p")).map((node) => node.textContent)).toEqual([
+      "本キャンペーンはPersta.AIによる提供です。本キャンペーンについてのお問い合わせはAmazonではお受けしておりません。Persta.AIキャンペーン事務局（お問い合わせフォーム）までお願いいたします。",
+      "Amazon、Amazon.co.jpおよびそれらのロゴはAmazon.com, Inc.またはその関連会社の商標です。",
+    ]);
+    expect(within(notice).getByRole("link", { name: "お問い合わせフォーム" }).getAttribute("href")).toBe(
+      "/my-page/contact",
+    );
+    // 閉じの帯(いちばん下)の中に置く
+    expect(screen.getByRole("region", { name: "あなたのベストショット、待ってます" }).contains(notice)).toBe(true);
+  });
+
+  test("賞品の注意: 日本国内の18歳以上が対象・ペルコインの購入は不要・Amazon.co.jp でのみ使える。応募規約へのリンク", () => {
+    render(<HalloweenBestShotPage />);
+    const prizeSection = screen.getByRole("region", { name: /賞品/ });
+    const notes = Array.from(prizeSection.querySelectorAll("p")).map((node) => node.textContent);
+    expect(notes).toEqual(
+      expect.arrayContaining([
+        "※ 日本国内にお住まいの18歳以上の方が対象です",
+        "※ ペルコインの購入は不要です。購入の有無は、審査・抽選の結果に影響しません",
+        "※ Amazonギフトカードは、Amazon.co.jpでのみご利用いただけます",
+      ]),
+    );
+    expect(within(prizeSection).getByRole("link", { name: /応募規約・注意事項/ }).getAttribute("href")).toBe(
+      "/campaigns/halloween-best-shot/terms",
+    );
   });
 
   test("セクションの見出しは文字のまま(読み上げ・翻訳のため画像にしない)", () => {

@@ -906,6 +906,34 @@
   opacity: 0.9;
 }
 
+/* 閉じの帯のいちばん下: 応募規約へのリンクと、Amazonギフトカードの決まった注記(2026-10-16) */
+.legal {
+  max-width: 640px;
+  margin: 32px auto 0;
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.legal > .legalLink {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.legalLink {
+  font-weight: 700;
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legalNotice p {
+  margin: 6px 0 0;
+}
+
 /* スクロールで画面に入ったらふわっと出す(JS が動くときだけ隠す) */
 /* ===== つかう人の追加(2026-10-14) ===== */
 .ctaRow {
@@ -987,6 +1015,17 @@
 
 .prizeNotes .note {
   margin-top: 4px;
+}
+
+/* 賞品の注意の下の「応募規約・注意事項を見る」(2026-10-16) */
+.termsLink {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--violet);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* 抽選の口数(3作品→1口…) */
