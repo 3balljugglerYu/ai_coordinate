@@ -8,6 +8,7 @@ import {
   type HashtagCampaignEntryResponse,
   type HashtagCampaignProgressResponse,
 } from "@/features/campaigns/hashtag-campaign/progress";
+import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 
@@ -136,6 +137,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         const body = (await response.json()) as HashtagCampaignEntryResponse;
         setEnteredAt(body.enteredAt);
         setEntry({ status: "idle" });
+        trackCampaignEvent(CAMPAIGN_EVENTS.entryComplete);
         return;
       }
       if (response.status === 401) {
@@ -226,7 +228,11 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         <p className={styles.entryClosed}>エントリーの受付は終了しました</p>
       ) : viewer === null || entry.status === "login" ? (
         <div className={styles.entryAction}>
-          <Link className={styles.cta} href={LOGIN_HREF}>
+          <Link
+            className={styles.cta}
+            href={LOGIN_HREF}
+            onClick={() => trackCampaignEvent(CAMPAIGN_EVENTS.entryLogin)}
+          >
             ログインしてエントリー
           </Link>
         </div>
@@ -240,7 +246,9 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
             type="button"
             className={styles.cta}
             onClick={() => {
-              if (entry.status !== "pending") void enter();
+              if (entry.status === "pending") return;
+              trackCampaignEvent(CAMPAIGN_EVENTS.entryClick);
+              void enter();
             }}
             aria-disabled={entry.status === "pending" ? true : undefined}
             aria-busy={entry.status === "pending" ? true : undefined}

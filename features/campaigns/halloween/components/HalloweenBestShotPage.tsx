@@ -1,8 +1,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
+import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/components/AnnotatedShot";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
+import { CAMPAIGN_EVENTS } from "@/features/campaigns/lib/campaign-events";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
 import { CopyHashtagButton } from "./CopyHashtagButton";
@@ -10,6 +12,7 @@ import { EntryProgressCard } from "./EntryProgressCard";
 import { AmazonGiftCardNotice } from "./AmazonGiftCardNotice";
 import { AboutDecorations, Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
+import { JoinDetails } from "./JoinDetails";
 import { JoinTabs } from "./JoinTabs";
 import { FloatingJoinButtons, HALLOWEEN_PAGE_END_ID } from "./FloatingJoinButtons";
 import { RevealOnScroll } from "./RevealOnScroll";
@@ -89,21 +92,6 @@ function JoinSummary({ button, note, hashtag = false }: { button: string; note: 
         </div>
       ) : null}
     </div>
-  );
-}
-
-/** 詳しい作成手順。最初は閉じておき、「詳細な作成手順はこちら！」で開く(2026-10-16 ユーザー指示) */
-function JoinDetails({ children }: { children: ReactNode }) {
-  return (
-    <details className={styles.joinDetails} data-testid="halloween-join-details">
-      <summary className={styles.joinDetailsSummary}>
-        詳細な作成手順はこちら！
-        <span className={styles.joinDetailsChevron} aria-hidden="true">
-          ▼
-        </span>
-      </summary>
-      <div className={styles.joinDetailsBody}>{children}</div>
-    </details>
   );
 }
 
@@ -732,6 +720,7 @@ export function HalloweenBestShotPage({
                 tabs={[
                   {
                     key: "creator",
+                    eventName: CAMPAIGN_EVENTS.tabCreative,
                     icon: CAMPAIGN.prizeCategories.creative.icon,
                     label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
                     panel: (
@@ -741,7 +730,7 @@ export function HalloweenBestShotPage({
                           note="投稿のときに、このハッシュタグを付けてね"
                           hashtag
                         />
-                        <JoinDetails>
+                        <JoinDetails eventName={CAMPAIGN_EVENTS.stepsCreative}>
                           <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
                           <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
                         </JoinDetails>
@@ -752,6 +741,7 @@ export function HalloweenBestShotPage({
                   },
                   {
                     key: "user",
+                    eventName: CAMPAIGN_EVENTS.tabEnjoy,
                     icon: CAMPAIGN.prizeCategories.enjoy.icon,
                     label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
                     panel: (
@@ -764,7 +754,7 @@ export function HalloweenBestShotPage({
                         <div className={styles.stepEntry} id="hbs-entry">
                           <EntryProgressCard />
                         </div>
-                        <JoinDetails>
+                        <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy}>
                           <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
                           <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
                           <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
@@ -860,6 +850,11 @@ export function HalloweenBestShotPage({
       </main>
       {/* 「カタログから生成する」は、みんなのカタログの企画のタブへ(2026-10-16 ユーザー指示。ハッシュタグの検索ではなく) */}
       <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={CAMPAIGN.catalogHref} />
+      {/*
+        このページに来て登録した人の流入元に、企画のキーと来た場所(X・X の広告・メタ)を残す。
+        X・メタの広告は目印(utm)なしのリンクで出したため(2026-10-16)。ほかの企画ページと同じ仕組み
+      */}
+      <SignupSourceCapture fallbackSource={CAMPAIGN.campaignKey} appendChannel />
     </div>
   );
 }
