@@ -38,6 +38,8 @@ export const CAMPAIGN_EVENTS = {
   homeShelfWorkTap: "campaign_home_shelf_work_tap",
   /** ホームの対象作品の棚の「すべて見る」を押した */
   homeShelfAll: "campaign_home_shelf_all",
+  /** ホームの棚の上の、エントリーした人の進み具合を押した(企画ページへ。2026-10-17) */
+  homeProgressTap: "campaign_home_progress_tap",
 } as const;
 
 export type CampaignEventName = (typeof CAMPAIGN_EVENTS)[keyof typeof CAMPAIGN_EVENTS];

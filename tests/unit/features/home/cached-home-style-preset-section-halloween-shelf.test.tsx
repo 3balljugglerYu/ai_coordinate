@@ -32,6 +32,7 @@ jest.mock("@/features/style/lib/style-popularity", () => ({
 }));
 jest.mock("@/features/home/lib/home-halloween-shelf", () => ({
   getHomeHalloweenShelfItems: jest.fn(),
+  getHomeHalloweenEntryProgress: jest.fn(),
 }));
 // 部品は描画しない(要素の type で見分けるだけ)
 jest.mock("@/features/collections/components/PetitUnlockAnnouncer", () => ({
@@ -61,13 +62,17 @@ import {
   getStyleGenerateCounts,
   getStyleGenerateTotalCounts,
 } from "@/features/style/lib/style-popularity";
-import { getHomeHalloweenShelfItems } from "@/features/home/lib/home-halloween-shelf";
+import {
+  getHomeHalloweenEntryProgress,
+  getHomeHalloweenShelfItems,
+} from "@/features/home/lib/home-halloween-shelf";
 import { HomeHalloweenCatalogShelf } from "@/features/home/components/HomeHalloweenCatalogShelf";
 import { HomeStylePresetCarousel } from "@/features/home/components/HomeStylePresetCarousel";
 import { CachedHomeStylePresetSection } from "@/features/home/components/CachedHomeStylePresetSection";
 
 const mockPresets = getPublishedStylePresets as jest.Mock;
 const mockShelfItems = getHomeHalloweenShelfItems as jest.Mock;
+const mockEntryProgress = getHomeHalloweenEntryProgress as jest.Mock;
 
 type Element = React.ReactElement<Record<string, unknown>>;
 
@@ -91,6 +96,7 @@ beforeEach(() => {
   (getStyleGenerateCounts as jest.Mock).mockResolvedValue({});
   (getStyleGenerateTotalCounts as jest.Mock).mockResolvedValue({});
   mockShelfItems.mockResolvedValue(SHELF_ITEMS);
+  mockEntryProgress.mockResolvedValue(null);
 });
 
 afterEach(() => {
@@ -144,6 +150,27 @@ describe("ホームの「ハロウィン企画」の棚の置き場所", () => {
     const carousel = childrenOf(node).find((child) => child.type === HomeStylePresetCarousel);
 
     expect(carousel?.props.autoScrollStartDelayMs).toBe(0);
+  });
+
+  test("⭐エントリーした人の進み具合を、本人ごとに描いた時刻で読み、棚へ渡す", async () => {
+    mockEntryProgress.mockResolvedValue({ usedWorks: 4 });
+
+    const node = (await CachedHomeStylePresetSection({ userId: "user-1" })) as Element;
+    const shelf = childrenOf(node).find((child) => child.type === HomeHalloweenCatalogShelf);
+
+    expect(mockEntryProgress).toHaveBeenCalledWith(
+      "user-1",
+      new Date("2026-10-20T12:00:00+09:00").getTime(),
+    );
+    expect(shelf?.props.entryProgress).toEqual({ usedWorks: 4 });
+  });
+
+  test("ログインしていなければ、進み具合は null のまま棚へ渡す", async () => {
+    const node = (await CachedHomeStylePresetSection({})) as Element;
+    const shelf = childrenOf(node).find((child) => child.type === HomeHalloweenCatalogShelf);
+
+    expect(mockEntryProgress).toHaveBeenCalledWith(null, expect.any(Number));
+    expect(shelf?.props.entryProgress).toBeNull();
   });
 
   test("棚の作品が無いときも、簡単お着替えは出す", async () => {

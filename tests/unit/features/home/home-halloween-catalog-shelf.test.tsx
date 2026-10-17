@@ -200,6 +200,34 @@ describe("ホームの「ハロウィン企画」の棚", () => {
     expect(() => fireEvent.click(screen.getAllByTestId("home-halloween-shelf-work")[0])).not.toThrow();
   });
 
+  describe("エントリーした人の進み具合(2026-10-17 ユーザー指示)", () => {
+    test("⭐進み具合が渡されたら、棚の見出しの上に出す", () => {
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ usedWorks: 4 }} />);
+
+      const shelf = screen.getByTestId("home-halloween-catalog-shelf");
+      const progress = screen.getByTestId("home-halloween-entry-progress");
+      const heading = within(shelf).getByRole("heading", { level: 2 });
+      expect(shelf.contains(progress)).toBe(true);
+      // 進み具合が先(上)、見出しがあと
+      expect(progress.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      expect(progress.textContent).toContain("現在 4作品(1口)");
+    });
+
+    test("渡されなければ(未ログイン・未エントリー)、出さない", () => {
+      render(<HomeHalloweenCatalogShelf items={ITEMS} />);
+
+      expect(screen.queryByTestId("home-halloween-entry-progress")).toBeNull();
+    });
+
+    test("日本語でない画面では、棚ごと出さない(進み具合も出ない)", () => {
+      mockLocale.mockReturnValue("en");
+
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ usedWorks: 4 }} />);
+
+      expect(screen.queryByTestId("home-halloween-entry-progress")).toBeNull();
+    });
+  });
+
   describe("簡単お着替えのように自動で流す(2026-10-17 ユーザー指示)", () => {
     test(`⭐${AUTO_SCROLL_MIN_ITEMS}件からは3組並べて流す。読み上げ・キーボードは真ん中の1組だけ`, () => {
       const items = manyItems(AUTO_SCROLL_MIN_ITEMS);
