@@ -26,7 +26,10 @@ import {
   isNewPreset,
 } from "@/features/home/lib/home-carousel-presets";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
-import { isHalloweenBestShotOpen } from "@/features/campaigns/halloween/halloween-best-shot";
+import {
+  HALLOWEEN_BEST_SHOT,
+  isHalloweenBestShotOpen,
+} from "@/features/campaigns/halloween/halloween-best-shot";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
 import { HomeHalloweenCatalogShelf } from "./HomeHalloweenCatalogShelf";
 import { getHomeHalloweenShelfItems } from "@/features/home/lib/home-halloween-shelf";
@@ -217,6 +220,12 @@ export async function CachedHomeStylePresetSection({
         generateTotals={generateTotals}
         // 期間中は「※ハロウィン企画には関係ありません」を添える(2026-10-16 ユーザー指示)
         isHalloweenCampaignOpen={isHalloweenBestShotOpen(now.getTime())}
+        // 上の棚が自動で流れるときは、棚より約1秒遅れて流し始める(2026-10-17 ユーザー指示)
+        autoScrollStartDelayMs={
+          halloweenShelfItems.length >= HALLOWEEN_BEST_SHOT.homeShelf.autoScrollMinItems
+            ? HALLOWEEN_BEST_SHOT.homeShelf.carouselStartDelayMs
+            : 0
+        }
       />
     </>
   );

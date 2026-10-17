@@ -21,11 +21,11 @@ const CARD_IMAGE_HEIGHT_PX = 240;
 const CARD_TITLE_HEIGHT_PX = 44;
 
 /**
- * 自動で流すのは、この数から(2026-10-17 ユーザー指示: 簡単お着替えのように自動で流す)。
- * 3組並べて流すので、1組の幅が棚の幅より短いと、つなぎ目にすき間が見える。
- * 8件なら1組 1,536px で、PC の幅いっぱい(1,120px ほど)でも足りる。少ないうちは、指で動かす棚のまま
+ * 自動で流すのは、この数から。決まりと理由は企画の設定(homeShelf.autoScrollMinItems)。
+ * サーバーの区画も同じ値で簡単お着替えの待ちを決めるので、設定から読む
+ * (「use client」のファイルから数を読ませると、サーバーでは値にならない)
  */
-export const AUTO_SCROLL_MIN_ITEMS = 8;
+export const AUTO_SCROLL_MIN_ITEMS = HALLOWEEN_BEST_SHOT.homeShelf.autoScrollMinItems;
 /** 流れている位置を残すキー(簡単お着替えとは別にする) */
 const TRANSLATE_STORAGE_KEY = "home-halloween-shelf-translate";
 /** 3組のうち、読み上げとキーボードで使う組(最初に見えている真ん中の組) */

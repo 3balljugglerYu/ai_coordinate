@@ -37,6 +37,14 @@ interface HomeStylePresetCarouselProps {
    * 企画は日本国内向けなので、日本語の画面だけに出す。
    */
   isHalloweenCampaignOpen?: boolean;
+  /**
+   * 自動で流し始めるまでの待ち(ミリ秒)。既定は0(すぐ流す)。
+   * ホームのハロウィン企画の棚が自動で流れているときに、棚より約1秒遅れて流し始める
+   * (2026-10-17 ユーザー指示: 速さは同じで、棚が先・簡単お着替えはあと)。
+   * 画面の外やタブの裏から戻って流し直すときも、同じだけ待つ。指を離したときは待たない。
+   * 棚は日本語の画面だけに出るので、待つのも日本語の画面だけ。
+   */
+  autoScrollStartDelayMs?: number;
 }
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
@@ -93,12 +101,14 @@ export function HomeStylePresetCarousel({
   newPresetIds,
   generateTotals,
   isHalloweenCampaignOpen = false,
+  autoScrollStartDelayMs = 0,
 }: HomeStylePresetCarouselProps) {
   const router = useRouter();
   const t = useTranslations("style");
   const tHome = useTranslations("home");
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const startDelayMs = locale === "ja" ? autoScrollStartDelayMs : 0;
   const swiperRef = useRef<SwiperType | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isUserActiveRef = useRef(false);
@@ -132,6 +142,8 @@ export function HomeStylePresetCarousel({
     }
 
     let rafId: number | null = null;
+    // 流し始めを遅らせているあいだの待ち(autoScrollStartDelayMs)
+    let startDelayTimer: ReturnType<typeof setTimeout> | null = null;
     let lastTime = performance.now();
 
     const tick = (now: number) => {
@@ -167,14 +179,26 @@ export function HomeStylePresetCarousel({
     };
 
     const startTick = () => {
-      if (rafId !== null) {
+      if (rafId !== null || startDelayTimer !== null) {
         return;
       }
-      lastTime = performance.now();
-      rafId = requestAnimationFrame(tick);
+      const begin = () => {
+        startDelayTimer = null;
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(tick);
+      };
+      if (startDelayMs > 0) {
+        startDelayTimer = setTimeout(begin, startDelayMs);
+        return;
+      }
+      begin();
     };
 
     const stopTick = () => {
+      if (startDelayTimer !== null) {
+        clearTimeout(startDelayTimer);
+        startDelayTimer = null;
+      }
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
@@ -229,7 +253,7 @@ export function HomeStylePresetCarousel({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [presets.length]);
+  }, [presets.length, startDelayMs]);
 
   if (presets.length === 0) {
     return null;
