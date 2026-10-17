@@ -3,6 +3,7 @@ import { Lilita_One, M_PLUS_Rounded_1c } from "next/font/google";
 import { HalloweenBestShotPage } from "@/features/campaigns/halloween/components/HalloweenBestShotPage";
 import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
 import { getCampaignSubmissionPages } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
+import { createCanonicalAlternates } from "@/lib/metadata";
 
 /**
  * このページだけで使うポップな書体(他のページの Geist には影響しない。CSS 変数で渡す)。
@@ -28,8 +29,9 @@ export const metadata: Metadata = {
   title: `${HALLOWEEN_BEST_SHOT.titleJp} ${HALLOWEEN_BEST_SHOT.titleEn} | Persta.AI`,
   description:
     "CREATEでハロウィンのプロンプトをつくって投稿しよう。だれの子で生成しても素敵に仕上がるプロンプトを募集。ハロウィン・ベストショット賞はAmazonギフトカード1万円分。",
-  // 中身(審査のポイント等)の最終確認が済むまでは検索に載せない
-  robots: { index: false, follow: true },
+  // 検索に出す(2026-10-17 ユーザー指示。中身の確認が済んだため noindex を外した)。
+  // 広告などの目印が付いた URL を別のページと数えさせないよう、正規の URL を自分自身にする
+  alternates: createCanonicalAlternates(HALLOWEEN_BEST_SHOT.path),
 };
 
 export default async function Page() {

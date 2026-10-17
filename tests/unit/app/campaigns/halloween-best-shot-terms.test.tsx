@@ -14,7 +14,7 @@ function section(title: string): HTMLElement {
 }
 
 describe("ハロウィン企画の応募規約(2026-10-16 ユーザー決定: 日本国内の18歳以上・お問い合わせはフォーム)", () => {
-  test("検索には出さない(企画ページと同じ)", () => {
+  test("検索には出さない(検索に出すのは企画ページだけ)", () => {
     expect(metadata.robots).toEqual({ index: false, follow: true });
   });
 
