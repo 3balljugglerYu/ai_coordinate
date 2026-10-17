@@ -28,6 +28,8 @@ import {
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
 import { isHalloweenBestShotOpen } from "@/features/campaigns/halloween/halloween-best-shot";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
+import { HomeHalloweenCatalogShelf } from "./HomeHalloweenCatalogShelf";
+import { getHomeHalloweenShelfItems } from "@/features/home/lib/home-halloween-shelf";
 
 // 解放ゲート対象が無い/未ログイン時に使う空コンテキスト(除去・解放判定とも no-op)。
 const EMPTY_UNLOCK_CONTEXT: CollectionUnlockContext = {
@@ -74,6 +76,8 @@ export async function CachedHomeStylePresetSection({
   // 開催中のコレクション企画は専用の「企画棚」へ振り分ける(お着替えカルーセルの上)。
   // 棚は locked(次の1枚のシルエット)も表示するため、gated を locked 除外前に渡す。
   const now = new Date();
+  // ハロウィン企画の対象作品の棚(期間外は読まない・読めなければ空。投げないので先に走らせておく)
+  const halloweenShelfItemsPromise = getHomeHalloweenShelfItems(now.getTime());
 
   // ✓済み判定用: 開催中企画カテゴリの「生成済みプリセットID集合」。
   // 解放方式(順次/一斉/前提付き)に依存せず厳密に判定するためIDで持つ。
@@ -169,9 +173,10 @@ export async function CachedHomeStylePresetSection({
   // 全ユーザー共通の "use cache" 済み集計。
   // 人気(直近30日)はカルーセルの並び順、累計は試着確認モーダルの
   // 「◯回以上利用されました」表示に使う(表示側で usageCountBucket が丸める)。
-  const [generateCounts, generateTotals] = await Promise.all([
+  const [generateCounts, generateTotals, halloweenShelfItems] = await Promise.all([
     getStyleGenerateCounts(),
     getStyleGenerateTotalCounts(),
+    halloweenShelfItemsPromise,
   ]);
 
   // カルーセルは「新着(先頭・最大 CAROUSEL_MAX_NEW_ITEMS 枚) + 人気順」の
@@ -201,6 +206,11 @@ export async function CachedHomeStylePresetSection({
           generateTotals={generateTotals}
         />
       ))}
+      {/*
+        ハロウィン企画の対象作品(みんなのカタログ)の棚。簡単お着替えの上(2026-10-17 ユーザー決定)。
+        同じ区画に入れて、簡単お着替えと一度に出す(別の読み込みにすると、あとから差し込まれて下が押し下がる)
+      */}
+      <HomeHalloweenCatalogShelf items={halloweenShelfItems} />
       <HomeStylePresetCarousel
         presets={carouselPresets}
         newPresetIds={newPresetIds}
