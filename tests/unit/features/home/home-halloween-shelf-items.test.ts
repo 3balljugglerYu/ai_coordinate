@@ -9,9 +9,14 @@
 jest.mock("@/features/campaigns/hashtag-campaign/get-submission-pages", () => ({
   getCampaignSubmissionPages: jest.fn(),
 }));
+jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
 import { getCampaignSubmissionPages } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
-import { getHomeHalloweenShelfItems } from "@/features/home/lib/home-halloween-shelf";
+import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getHomeHalloweenEntryProgress,
+  getHomeHalloweenShelfItems,
+} from "@/features/home/lib/home-halloween-shelf";
 
 const mockPages = getCampaignSubmissionPages as jest.Mock;
 
@@ -94,5 +99,77 @@ describe("ホームの棚に並べる作品", () => {
 
     await expect(getHomeHalloweenShelfItems(at("2026-10-20T12:00:00+09:00"))).resolves.toEqual([]);
     expect(consoleError).toHaveBeenCalled();
+  });
+});
+
+describe("ホームの棚の上に出す、エントリーした人の進み具合", () => {
+  const mockAdmin = createAdminClient as jest.Mock;
+  let rpc: jest.Mock;
+
+  function respond(result: { data: unknown; error: unknown }) {
+    rpc = jest.fn(() => ({ maybeSingle: () => Promise.resolve(result) }));
+    mockAdmin.mockReturnValue({ rpc });
+  }
+
+  test("⭐エントリーしていれば、企画ページと同じ数え方の数を返す", async () => {
+    respond({ data: { used_works: 4, entered_at: "2026-10-16T12:00:00Z" }, error: null });
+
+    const progress = await getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00"));
+
+    expect(progress).toEqual({ usedWorks: 4 });
+    expect(rpc).toHaveBeenCalledWith("get_hashtag_campaign_progress", {
+      p_campaign_key: "halloween-best-shot",
+      p_user_id: "user-1",
+    });
+  });
+
+  test("エントリーしていなければ null(何も出さない)", async () => {
+    respond({ data: { used_works: 2, entered_at: null }, error: null });
+
+    await expect(
+      getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
+    ).resolves.toBeNull();
+  });
+
+  test("ログインしていなければ、読みに行かずに null", async () => {
+    respond({ data: null, error: null });
+
+    await expect(getHomeHalloweenEntryProgress(null, at("2026-10-20T12:00:00+09:00"))).resolves.toBeNull();
+    expect(mockAdmin).not.toHaveBeenCalled();
+  });
+
+  test("期間外(始まる前・終わったあと)は、読みに行かずに null", async () => {
+    respond({ data: { used_works: 4, entered_at: "2026-10-16T12:00:00Z" }, error: null });
+
+    await expect(getHomeHalloweenEntryProgress("user-1", at("2026-10-16T19:59:59+09:00"))).resolves.toBeNull();
+    await expect(getHomeHalloweenEntryProgress("user-1", at("2026-11-01T00:00:00+09:00"))).resolves.toBeNull();
+    expect(mockAdmin).not.toHaveBeenCalled();
+  });
+
+  test("数が読めない値なら0として返す", async () => {
+    respond({ data: { used_works: null, entered_at: "2026-10-16T12:00:00Z" }, error: null });
+
+    await expect(
+      getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
+    ).resolves.toEqual({ usedWorks: 0 });
+  });
+
+  test("DB がエラーを返したら null(投げない)", async () => {
+    respond({ data: null, error: { code: "57014" } });
+
+    await expect(
+      getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
+    ).resolves.toBeNull();
+    expect(consoleError).toHaveBeenCalled();
+  });
+
+  test("問い合わせそのものが投げても null(投げない)", async () => {
+    mockAdmin.mockImplementation(() => {
+      throw new Error("env missing");
+    });
+
+    await expect(
+      getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
+    ).resolves.toBeNull();
   });
 });

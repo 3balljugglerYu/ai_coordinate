@@ -10,8 +10,10 @@ import { Card } from "@/components/ui/card";
 import { HalloweenTargetBadge } from "@/features/campaigns/halloween/components/HalloweenTargetBadge";
 import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
+import type { HomeHalloweenEntryProgressData } from "@/features/home/lib/home-halloween-shelf";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import { useAutoScrollRail } from "@/features/home/hooks/useAutoScrollRail";
+import { HomeHalloweenEntryProgress } from "./HomeHalloweenEntryProgress";
 import "swiper/css";
 import "swiper/css/free-mode";
 
@@ -45,8 +47,11 @@ const PRIMARY_COPY = "b";
  */
 export function HomeHalloweenCatalogShelf({
   items,
+  entryProgress = null,
 }: {
   items: readonly CampaignSubmissionItem[];
+  /** エントリーした人の進み具合。未ログイン・未エントリーなら null(何も出さない) */
+  entryProgress?: HomeHalloweenEntryProgressData | null;
 }) {
   const locale = useLocale();
   const t = useTranslations("style");
@@ -73,6 +78,8 @@ export function HomeHalloweenCatalogShelf({
       className="mb-8 overflow-x-hidden"
       data-testid="home-halloween-catalog-shelf"
     >
+      {/* エントリーした人の進み具合は、棚の上に(2026-10-17 ユーザー指示) */}
+      {entryProgress ? <HomeHalloweenEntryProgress usedWorks={entryProgress.usedWorks} /> : null}
       <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-0">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">
