@@ -40,6 +40,13 @@ export const CAMPAIGN_EVENTS = {
   homeShelfAll: "campaign_home_shelf_all",
   /** ホームの棚の上の、エントリーした人の進み具合を押した(企画ページへ。2026-10-17) */
   homeProgressTap: "campaign_home_progress_tap",
+  /**
+   * 口数のお祝い(1口・2口・3口に届いたとき)を出した(2026-10-17)。
+   * 投稿のあとや企画ページで出るので、ページのパスでは企画を分けられない。期間で分ける
+   */
+  celebrationView: "campaign_celebration_view",
+  /** 口数のお祝いの「対象作品をもっと見る」を押した */
+  celebrationCatalog: "campaign_celebration_catalog",
 } as const;
 
 export type CampaignEventName = (typeof CAMPAIGN_EVENTS)[keyof typeof CAMPAIGN_EVENTS];

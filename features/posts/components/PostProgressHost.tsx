@@ -12,6 +12,8 @@ import {
   getPostProgressSnapshot,
   subscribePostProgress,
 } from "../lib/post-progress-store";
+import { HalloweenTicketCelebrationHost } from "@/features/campaigns/halloween/components/HalloweenTicketCelebrationHost";
+import { requestTicketCelebrationCheckAfterPost } from "@/features/campaigns/halloween/lib/ticket-celebration-requests";
 import { PostBonusModal } from "./PostBonusModal";
 import { PostProgressBar } from "./PostProgressBar";
 
@@ -101,6 +103,12 @@ export function PostProgressHost() {
       ),
     });
 
+    /*
+      ハロウィン企画: 口数が増えていないかを確かめてもらう(届いていればお祝い)。
+      付与が無い投稿でも確かめる。お祝いはミッションクリアを閉じたあとに出る(下の blocked)。
+    */
+    requestTicketCelebrationCheckAfterPost(completed);
+
     const postBonus = completed.bonus_granted ?? 0;
     const promptUseBonus = completed.prompt_use_bonus_granted ?? 0;
     const total = postBonus + promptUseBonus;
@@ -158,6 +166,8 @@ export function PostProgressHost() {
           isPromptUse={bonus.isPromptUse}
         />
       ) : null}
+      {/* ハロウィン企画の口数のお祝い。ミッションクリアが出ている間は待ち、閉じてから出す */}
+      <HalloweenTicketCelebrationHost blocked={bonus !== null} />
     </>
   );
 }
