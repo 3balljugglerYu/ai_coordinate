@@ -54,3 +54,9 @@ export interface HashtagCampaignProgressResponse {
 export interface HashtagCampaignEntryResponse {
   enteredAt: string;
 }
+
+/** POST /api/hashtag-campaigns/[key]/celebration の返り値。 */
+export interface HashtagCampaignCelebrationResponse {
+  /** お祝いをどこまで出したか(口数)。記録したあとの値 */
+  celebratedTickets: number;
+}

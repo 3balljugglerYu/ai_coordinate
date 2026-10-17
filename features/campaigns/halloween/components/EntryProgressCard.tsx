@@ -10,6 +10,7 @@ import {
 } from "@/features/campaigns/hashtag-campaign/progress";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
+import { requestTicketCelebrationCheck } from "../lib/ticket-celebration-requests";
 import styles from "../halloween.module.css";
 
 /**
@@ -114,7 +115,10 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         return (await response.json()) as HashtagCampaignProgressResponse;
       })
       .then((data) => {
-        if (!cancelled) setLoad({ status: "ready", data });
+        if (cancelled) return;
+        setLoad({ status: "ready", data });
+        // 見逃した口数のお祝いは、企画ページを開いたときに出す(ホームはポップアップと重なるので出さない)
+        if (data.viewer?.enteredAt) requestTicketCelebrationCheck();
       })
       .catch(() => {
         if (!cancelled) setLoad({ status: "error" });
@@ -138,6 +142,8 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         setEnteredAt(body.enteredAt);
         setEntry({ status: "idle" });
         trackCampaignEvent(CAMPAIGN_EVENTS.entryComplete);
+        // エントリー前の投稿も数えるので、エントリーしたその場で口数に届いていることがある
+        requestTicketCelebrationCheck();
         return;
       }
       if (response.status === 401) {
