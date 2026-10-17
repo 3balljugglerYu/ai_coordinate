@@ -14,6 +14,8 @@ export type AdminAuditAction =
   | "announcement_create"
   | "announcement_update"
   | "announcement_delete"
+  | "push_broadcast_create"
+  | "push_broadcast_cancel"
   | "style_template_approve"
   | "style_template_reject"
   | "style_template_unpublish"

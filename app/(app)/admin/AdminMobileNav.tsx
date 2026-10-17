@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Bell,
   LayoutDashboard,
   ShieldCheck,
   Coins,
@@ -33,6 +34,7 @@ const iconMap: Record<AdminNavIconKey, typeof LayoutDashboard> = {
   image: ImageIcon,
   "file-text": FileText,
   flag: Flag,
+  bell: Bell,
 };
 
 export function AdminMobileNav() {
