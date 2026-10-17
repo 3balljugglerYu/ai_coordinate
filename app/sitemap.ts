@@ -45,6 +45,8 @@ const UNLOCALIZED_PUBLIC_PATHS = [
   "/guide/gacha",
   // 文字入力の紹介ページ。一般公開まで isSitemapPathEnabled で落とす
   "/guide/text",
+  // ハロウィン企画のページ(2026-10-17 から検索に出す。応募規約のページは検索に出さないので載せない)
+  "/campaigns/halloween-best-shot",
 ] as const;
 
 type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];

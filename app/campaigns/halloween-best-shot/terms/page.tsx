@@ -19,7 +19,7 @@ const PAGE_DESCRIPTION =
 export const metadata: Metadata = {
   title: PAGE_TITLE,
   description: PAGE_DESCRIPTION,
-  // 企画ページと同じく、検索には出さない
+  // 検索には出さない(2026-10-17 に検索へ出したのは企画ページだけ)
   robots: { index: false, follow: true },
 };
 
