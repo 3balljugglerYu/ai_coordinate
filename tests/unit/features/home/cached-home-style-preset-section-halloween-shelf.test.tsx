@@ -116,13 +116,46 @@ describe("ホームの「ハロウィン企画」の棚の置き場所", () => {
     expect(mockShelfItems).toHaveBeenCalledWith(new Date("2026-10-20T12:00:00+09:00").getTime());
   });
 
+  test("⭐棚が自動で流れる数(8件以上)なら、簡単お着替えは棚より1秒遅れて流し始める", async () => {
+    mockShelfItems.mockResolvedValue(
+      Array.from({ length: 8 }, (_, index) => ({
+        postId: `post-${index}`,
+        authorName: `作者${index}`,
+        thumbnailUrl: `https://img.test/${index}.webp`,
+      })),
+    );
+
+    const node = (await CachedHomeStylePresetSection({})) as Element;
+    const carousel = childrenOf(node).find((child) => child.type === HomeStylePresetCarousel);
+
+    expect(carousel?.props.autoScrollStartDelayMs).toBe(1000);
+  });
+
+  test("棚が流れない数(7件以下)なら、簡単お着替えは待たずに流す", async () => {
+    mockShelfItems.mockResolvedValue(
+      Array.from({ length: 7 }, (_, index) => ({
+        postId: `post-${index}`,
+        authorName: `作者${index}`,
+        thumbnailUrl: `https://img.test/${index}.webp`,
+      })),
+    );
+
+    const node = (await CachedHomeStylePresetSection({})) as Element;
+    const carousel = childrenOf(node).find((child) => child.type === HomeStylePresetCarousel);
+
+    expect(carousel?.props.autoScrollStartDelayMs).toBe(0);
+  });
+
   test("棚の作品が無いときも、簡単お着替えは出す", async () => {
     mockShelfItems.mockResolvedValue([]);
 
     const node = (await CachedHomeStylePresetSection({})) as Element;
     const children = childrenOf(node);
 
-    expect(children.some((child) => child.type === HomeStylePresetCarousel)).toBe(true);
+    const carousel = children.find((child) => child.type === HomeStylePresetCarousel);
+    expect(carousel).toBeDefined();
+    // 棚が無いので待たない
+    expect(carousel?.props.autoScrollStartDelayMs).toBe(0);
     const shelf = children.find((child) => child.type === HomeHalloweenCatalogShelf);
     expect(shelf?.props.items).toEqual([]);
   });
