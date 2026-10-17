@@ -23,7 +23,7 @@ const CARD_TITLE_HEIGHT_PX = 44;
  * ホームの「簡単お着替え！」の上に、期間中だけ出す対象作品の棚(2026-10-17 ユーザー決定)。
  *
  * みんなのカタログ(対象作品)を、簡単お着替えと同じ形のカードで並べる。
- * 左上に「ハロウィン企画対象！」、下に作者の名前。押すと作品のページ(「このカタログで生成する」がある)へ。
+ * 画像の左下に「ハロウィン企画対象！」、その下に作者の名前。押すと作品のページ(「このカタログで生成する」がある)へ。
  * 「すべて見る」は、みんなのカタログの企画タブへ。
  *
  * 期間は呼び出し側(サーバー)が決め、期間外は items が空で届く。
@@ -106,7 +106,8 @@ export function HomeHalloweenCatalogShelf({
                         sizes={`${CARD_WIDTH_PX}px`}
                         className="object-cover object-top"
                       />
-                      <span className="absolute left-1.5 top-1.5 z-10">
+                      {/* ラベルは左下(2026-10-17 ユーザー指示)。簡単お着替えのカテゴリのラベルと同じ位置 */}
+                      <span className="absolute bottom-1.5 left-1.5 z-10">
                         <HalloweenTargetBadge />
                       </span>
                     </div>
