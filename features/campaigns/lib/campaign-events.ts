@@ -31,6 +31,13 @@ export const CAMPAIGN_EVENTS = {
   entryComplete: "campaign_entry_complete",
   /** 対象作品の一覧で、作品を押した */
   workTap: "campaign_work_tap",
+  /**
+   * ホームの対象作品の棚で、作品を押した(2026-10-17)。
+   * ホームで送るので、ページのパスでは企画を分けられない。棚は開催中の企画だけに出すので、期間で分ける
+   */
+  homeShelfWorkTap: "campaign_home_shelf_work_tap",
+  /** ホームの対象作品の棚の「すべて見る」を押した */
+  homeShelfAll: "campaign_home_shelf_all",
 } as const;
 
 export type CampaignEventName = (typeof CAMPAIGN_EVENTS)[keyof typeof CAMPAIGN_EVENTS];
