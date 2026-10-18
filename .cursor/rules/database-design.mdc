@@ -39,9 +39,9 @@ alwaysApply: false
 - `notification_preferences`
 - `notifications`
 - `percoin_bonus_defaults`
+- `percoin_streak_defaults`
 - `personal_notice_recipients`
 - `personal_notices`
-- `percoin_streak_defaults`
 - `popup_banner_analytics`
 - `popup_banner_guest_events`
 - `popup_banner_views`

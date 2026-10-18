@@ -19,9 +19,14 @@
 
 BEGIN;
 
+-- 開催中の企画があるので、notifications の表ロックを長く待たない(待つなら失敗させて出直す)
+SET LOCAL lock_timeout = '5s';
+
 -- =============================================================================
 -- 1. 通知の種類に admin_message を足す
 -- =============================================================================
+-- NOT VALID で足してから VALIDATE する。VALIDATE は書き込みを止めないロック
+-- (SHARE UPDATE EXCLUSIVE)で既存の行を確かめる。
 
 ALTER TABLE public.notifications
   DROP CONSTRAINT IF EXISTS notifications_type_check;
@@ -50,7 +55,10 @@ ALTER TABLE public.notifications
         'admin_message'::text
       ]
     )
-  );
+  ) NOT VALID;
+
+ALTER TABLE public.notifications
+  VALIDATE CONSTRAINT notifications_type_check;
 
 -- =============================================================================
 -- 2. 送ったお知らせ(1回分)
@@ -72,6 +80,10 @@ CREATE TABLE IF NOT EXISTS public.personal_notices (
 
 CREATE INDEX IF NOT EXISTS idx_personal_notices_created_at
   ON public.personal_notices (created_at DESC);
+-- 外部キーの索引(参照先の削除で SET NULL するときに全件を読まない)
+CREATE INDEX IF NOT EXISTS idx_personal_notices_created_by
+  ON public.personal_notices (created_by)
+  WHERE created_by IS NOT NULL;
 
 COMMENT ON TABLE public.personal_notices IS
   '個人あてのお知らせの1回分(運営だけが読む)。受け取った人ごとの記録は personal_notice_recipients。';
@@ -103,6 +115,12 @@ CREATE INDEX IF NOT EXISTS idx_personal_notice_recipients_recipient
 CREATE INDEX IF NOT EXISTS idx_personal_notice_recipients_notification
   ON public.personal_notice_recipients (notification_id)
   WHERE notification_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_personal_notice_recipients_post
+  ON public.personal_notice_recipients (post_id)
+  WHERE post_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_personal_notice_recipients_retracted_by
+  ON public.personal_notice_recipients (retracted_by)
+  WHERE retracted_by IS NOT NULL;
 
 COMMENT ON TABLE public.personal_notice_recipients IS
   '個人あてのお知らせの受け取った人ごとの記録(運営だけが読む)。受付番号と相手の対応の正本。取り消しても行は残す。';
@@ -125,13 +143,22 @@ SET search_path = ''
 AS $$
 DECLARE
   v_alphabet CONSTANT TEXT := '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
-  v_bytes BYTEA := uuid_send(gen_random_uuid());
+  v_bytes BYTEA;
+  v_byte INTEGER;
   v_suffix TEXT := '';
   i INTEGER;
 BEGIN
-  -- gen_random_uuid は暗号学的な乱数(v4)。先頭4バイトを使う(バージョンの固定ビットは7バイト目以降)
-  FOR i IN 0..3 LOOP
-    v_suffix := v_suffix || substr(v_alphabet, (get_byte(v_bytes, i) % 31) + 1, 1);
+  -- gen_random_uuid は暗号学的な乱数(v4)。版と変種の固定ビットがある 6・8 バイト目は使わない。
+  -- 31 で割った余りの偏りを避けるため、248 以上(256 = 8×31 + 8 の端数)は捨てて引き直す。
+  WHILE char_length(v_suffix) < 4 LOOP
+    v_bytes := uuid_send(gen_random_uuid());
+    FOR i IN 0..15 LOOP
+      CONTINUE WHEN i IN (6, 8);
+      v_byte := get_byte(v_bytes, i);
+      CONTINUE WHEN v_byte >= 248;
+      v_suffix := v_suffix || substr(v_alphabet, (v_byte % 31) + 1, 1);
+      EXIT WHEN char_length(v_suffix) = 4;
+    END LOOP;
   END LOOP;
   RETURN p_prefix || '-' || v_suffix;
 END;
@@ -145,7 +172,9 @@ $$;
 -- 宛先の解決(投稿の URL → 投稿した人)は API で行い、ここでも
 -- 「作品は宛先本人の公開中の投稿」であることを確かめる(PN-005)。
 --
--- 失敗は RAISE EXCEPTION。MESSAGE はコード、DETAIL は対象の行(0始まり)。
+-- 失敗は RAISE EXCEPTION。MESSAGE はコード(PN_*)、DETAIL は対象の行(0始まり)。
+-- 最初の不備で止まる(1行分だけ返す)。全行の確認は送る前に API の「相手を確かめる」で行い、
+-- ここは最後の砦として同じ条件を強制する。
 
 CREATE OR REPLACE FUNCTION public.send_personal_notice(
   p_admin_user_id UUID,
@@ -177,8 +206,26 @@ DECLARE
   v_notification_id UUID;
   v_results JSONB := '[]'::jsonb;
 BEGIN
-  IF p_admin_user_id IS NULL THEN
+  -- 管理者の確認(API 層の requireAdmin に加えて、既存の管理用 RPC と同じく admin_users でも)
+  IF p_admin_user_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.admin_users a WHERE a.user_id = p_admin_user_id
+  ) THEN
     RAISE EXCEPTION 'PN_ADMIN_REQUIRED';
+  END IF;
+
+  -- 入力の書式(表の CHECK と同じ条件を、画面に出せるコードで先に返す)
+  IF p_memo IS NULL OR char_length(btrim(p_memo)) NOT BETWEEN 1 AND 100 THEN
+    RAISE EXCEPTION 'PN_MEMO_INVALID';
+  END IF;
+  IF p_title IS NULL OR char_length(btrim(p_title)) NOT BETWEEN 1 AND 60 THEN
+    RAISE EXCEPTION 'PN_TITLE_INVALID';
+  END IF;
+  IF position(c_placeholder IN p_title) > 0 THEN
+    -- 題名では置き換えない(本文だけ)。そのまま届くのを防ぐ
+    RAISE EXCEPTION 'PN_PLACEHOLDER_IN_TITLE';
+  END IF;
+  IF p_body_template IS NULL OR char_length(btrim(p_body_template)) NOT BETWEEN 1 AND 2000 THEN
+    RAISE EXCEPTION 'PN_BODY_INVALID';
   END IF;
 
   IF p_recipients IS NULL OR jsonb_typeof(p_recipients) <> 'array' THEN
@@ -193,6 +240,9 @@ BEGIN
   v_prefix := NULLIF(btrim(coalesce(p_code_prefix, '')), '');
   IF v_uses_code AND v_prefix IS NULL THEN
     RAISE EXCEPTION 'PN_CODE_PREFIX_REQUIRED';
+  END IF;
+  IF v_uses_code AND v_prefix !~ '^[A-Z]{2,5}$' THEN
+    RAISE EXCEPTION 'PN_CODE_PREFIX_INVALID';
   END IF;
   IF NOT v_uses_code THEN
     -- 番号を使わないなら頭の英字は残さない
@@ -248,19 +298,34 @@ BEGIN
 
     v_row_id := gen_random_uuid();
     v_code := NULL;
-    IF v_uses_code THEN
-      v_attempt := 0;
-      LOOP
-        v_attempt := v_attempt + 1;
+    -- 先に記録の行を作って番号を確保する。同時に送った別の送信と番号がぶつかったら
+    -- (UNIQUE 違反)、その行だけ引き直す(サブトランザクションなので送信全体は止まらない)
+    v_attempt := 0;
+    LOOP
+      v_attempt := v_attempt + 1;
+      IF v_uses_code THEN
         v_code := public.generate_personal_notice_code(v_prefix);
-        EXIT WHEN NOT EXISTS (
-          SELECT 1 FROM public.personal_notice_recipients r WHERE r.receipt_code = v_code
+      END IF;
+      BEGIN
+        INSERT INTO public.personal_notice_recipients (
+          id, notice_id, recipient_id, receipt_code, post_id
+        ) VALUES (
+          v_row_id, v_notice_id, v_recipient_id, v_code, v_post_id
         );
-        IF v_attempt >= 20 THEN
+        EXIT;
+      EXCEPTION WHEN unique_violation THEN
+        -- 同じ人の2回目(notice_id, recipient_id)は引き直しても直らない
+        IF EXISTS (
+          SELECT 1 FROM public.personal_notice_recipients r
+          WHERE r.notice_id = v_notice_id AND r.recipient_id = v_recipient_id
+        ) THEN
+          RAISE EXCEPTION 'PN_RECIPIENT_DUPLICATED' USING DETAIL = v_index::text;
+        END IF;
+        IF NOT v_uses_code OR v_attempt >= 20 THEN
           RAISE EXCEPTION 'PN_CODE_EXHAUSTED' USING DETAIL = v_index::text;
         END IF;
-      END LOOP;
-    END IF;
+      END;
+    END LOOP;
 
     v_body := CASE
       WHEN v_uses_code THEN replace(p_body_template, c_placeholder, v_code)
@@ -287,11 +352,9 @@ BEGIN
     )
     RETURNING id INTO v_notification_id;
 
-    INSERT INTO public.personal_notice_recipients (
-      id, notice_id, recipient_id, receipt_code, post_id, notification_id
-    ) VALUES (
-      v_row_id, v_notice_id, v_recipient_id, v_code, v_post_id, v_notification_id
-    );
+    UPDATE public.personal_notice_recipients
+    SET notification_id = v_notification_id
+    WHERE id = v_row_id;
 
     v_results := v_results || jsonb_build_array(jsonb_build_object(
       'recipient_row_id', v_row_id,
@@ -308,7 +371,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.send_personal_notice(UUID, TEXT, TEXT, TEXT, TEXT, JSONB) IS
-  '個人あてのお知らせを送る(service_role 専用・管理者の確認は API 層)。全員分を1トランザクションで作り、1件でも不備があれば何も送らない。';
+  '個人あてのお知らせを送る(service_role 専用・管理者の確認は API 層と admin_users)。全員分を1トランザクションで作り、1件でも不備があれば何も送らない。';
 
 -- =============================================================================
 -- 6. 1人分を取り消す(相手の通知を消し、記録は「取り消し」として残す)
@@ -326,7 +389,9 @@ AS $$
 DECLARE
   v_row public.personal_notice_recipients%ROWTYPE;
 BEGIN
-  IF p_admin_user_id IS NULL THEN
+  IF p_admin_user_id IS NULL OR NOT EXISTS (
+    SELECT 1 FROM public.admin_users a WHERE a.user_id = p_admin_user_id
+  ) THEN
     RAISE EXCEPTION 'PN_ADMIN_REQUIRED';
   END IF;
 
