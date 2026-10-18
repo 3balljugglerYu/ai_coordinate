@@ -47,70 +47,49 @@ function createRequestEn(url: string): NextRequest {
   }) as NextRequest;
 }
 
-function createThenableResult(result: { data: unknown; error: unknown }) {
+type RpcRow = {
+  id: string;
+  created_at: string;
+  recipient_id?: string;
+  actor_id?: string | null;
+  type?: string;
+  entity_type?: string;
+  entity_id?: string | null;
+  data?: Record<string, unknown>;
+  resolved_image_id?: string | null;
+  actor?: { user_id: string; nickname: string | null; avatar_url: string | null } | null;
+  post?: {
+    id: string;
+    image_url: string | null;
+    storage_path: string | null;
+    storage_path_thumb: string | null;
+    caption: string | null;
+  } | null;
+};
+
+function row(partial: RpcRow): RpcRow {
   return {
-    then(
-      onFulfilled?: (value: unknown) => unknown,
-      onRejected?: (reason: unknown) => unknown,
-    ) {
-      return Promise.resolve(result).then(onFulfilled as never, onRejected as never);
-    },
+    recipient_id: "user-1",
+    actor_id: null,
+    type: "like",
+    entity_type: "post",
+    entity_id: null,
+    data: {},
+    resolved_image_id: null,
+    actor: null,
+    post: null,
+    ...partial,
   };
 }
 
-function createNotificationsChain(result: { data: unknown; error: unknown }) {
-  const thenable = createThenableResult(result);
-  const orMock = jest.fn(() => thenable);
-  const limitReturn = Object.assign(thenable, { or: orMock });
-  const builder = {
-    select: jest.fn(),
-    eq: jest.fn(),
-    order: jest.fn(),
-    limit: jest.fn(() => limitReturn),
-  };
-  builder.select.mockReturnValue(builder);
-  builder.eq.mockReturnValue(builder);
-  builder.order.mockReturnValue(builder);
-  return { builder, orMock };
-}
-
-function createInChain(result: { data: unknown; error: unknown }) {
-  const thenable = createThenableResult(result);
-  const builder = {
-    select: jest.fn(),
-    in: jest.fn(() => thenable),
-  };
-  builder.select.mockReturnValue(builder);
-  return builder;
-}
-
-function setupSupabaseFromTables(config: {
-  notifications: { data: unknown; error: unknown };
-  profiles?: { data: unknown; error: unknown };
-  generatedImages?: { data: unknown; error: unknown };
-  comments?: { data: unknown; error: unknown };
-}) {
-  const notif = createNotificationsChain(config.notifications);
-  const profilesBuilder = createInChain(
-    config.profiles ?? { data: [], error: null },
-  );
-  const generatedImagesBuilder = createInChain(
-    config.generatedImages ?? { data: [], error: null },
-  );
-  const commentsBuilder = createInChain(
-    config.comments ?? { data: [], error: null },
-  );
-
-  const from = jest.fn((table: string) => {
-    if (table === "notifications") return notif.builder;
-    if (table === "profiles") return profilesBuilder;
-    if (table === "generated_images") return generatedImagesBuilder;
-    if (table === "comments") return commentsBuilder;
-    throw new Error(`unexpected table: ${JSON.stringify(table)}`);
+/** get_notifications_page を 1 回呼ぶだけになったので、rpc だけを用意する */
+function setupRpc(result: { data: unknown; error: unknown }) {
+  const rpc = jest.fn(() => Promise.resolve(result));
+  const from = jest.fn(() => {
+    throw new Error("notifications must be read through get_notifications_page");
   });
-
-  mockCreateClient.mockResolvedValue({ from } as never);
-  return { from, orMock: notif.orMock };
+  mockCreateClient.mockResolvedValue({ rpc, from } as never);
+  return { rpc, from };
 }
 
 describe("GET /api/notifications", () => {
@@ -146,11 +125,21 @@ describe("GET /api/notifications", () => {
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
-  test("GET_0件の場合_200で空配列", async () => {
+  test("GET_limitが数字でない場合_400でinvalidLimit", async () => {
+    // Spec: NOTIFGET-002(NaN は範囲の比較をすり抜けるため、20 件に補われてページ送りが壊れていた)
+    const res = await GET(
+      createRequest("http://localhost/api/notifications?limit=abc"),
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(400);
+    expect(body.errorCode).toBe("NOTIFICATIONS_INVALID_LIMIT");
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  test("GET_0件の場合_200で空配列_問い合わせは1回", async () => {
     // Spec: NOTIFGET-003
-    const { from } = setupSupabaseFromTables({
-      notifications: { data: [], error: null },
-    });
+    const { rpc, from } = setupRpc({ data: [], error: null });
 
     const res = await GET(createRequest("http://localhost/api/notifications"));
     const body = (await res.json()) as {
@@ -161,16 +150,21 @@ describe("GET /api/notifications", () => {
     expect(res.status).toBe(200);
     expect(body.notifications).toEqual([]);
     expect(body.nextCursor).toBeNull();
-    expect(from).toHaveBeenCalledWith("notifications");
-    expect(from).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith("get_notifications_page", {
+      p_user_id: "user-1",
+      p_limit: 20,
+      p_cursor_created_at: null,
+      p_cursor_id: null,
+      p_notification_id: null,
+    });
+    expect(from).not.toHaveBeenCalled();
   });
 
   test("GET_通知クエリエラーの場合_500で取得失敗", async () => {
     // Spec: NOTIFGET-004
     const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
-    setupSupabaseFromTables({
-      notifications: { data: null, error: { message: "db" } },
-    });
+    setupRpc({ data: null, error: { message: "db" } });
 
     try {
       const res = await GET(createRequest("http://localhost/api/notifications"));
@@ -185,35 +179,14 @@ describe("GET /api/notifications", () => {
   });
 
   test("GET_limit超の行がある場合_切り詰めてnextCursorを返す", async () => {
-    // Spec: NOTIFGET-005
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-03T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: null,
-        entity_type: "like",
-        entity_id: null,
-      },
-      {
-        id: "n2",
-        created_at: "2024-01-02T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: null,
-        entity_type: "like",
-        entity_id: null,
-      },
-      {
-        id: "n3",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: null,
-        entity_type: "like",
-        entity_id: null,
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
+    // Spec: NOTIFGET-005 (RPC は limit + 1 件返す)
+    setupRpc({
+      data: [
+        row({ id: "n1", created_at: "2024-01-03T00:00:00Z" }),
+        row({ id: "n2", created_at: "2024-01-02T00:00:00Z" }),
+        row({ id: "n3", created_at: "2024-01-01T00:00:00Z" }),
+      ],
+      error: null,
     });
 
     const res = await GET(
@@ -225,7 +198,6 @@ describe("GET /api/notifications", () => {
     };
 
     expect(res.status).toBe(200);
-    expect(body.notifications).toHaveLength(2);
     expect(body.notifications.map((n) => n.id)).toEqual(["n1", "n2"]);
     expect(body.nextCursor).toBeTruthy();
     const decoded = Buffer.from(body.nextCursor!, "base64").toString();
@@ -234,18 +206,9 @@ describe("GET /api/notifications", () => {
 
   test("GET_limit以下の件数の場合_全件返しnextCursorなし", async () => {
     // Spec: NOTIFGET-006
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: null,
-        entity_type: "like",
-        entity_id: null,
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
+    setupRpc({
+      data: [row({ id: "n1", created_at: "2024-01-01T00:00:00Z" })],
+      error: null,
     });
 
     const res = await GET(
@@ -261,14 +224,13 @@ describe("GET /api/notifications", () => {
     expect(body.nextCursor).toBeNull();
   });
 
-  test("GET_有効なcursorの場合_ORフィルタを適用する", async () => {
+  test("GET_有効なcursorの場合_続きの位置をRPCへ渡す", async () => {
     // Spec: NOTIFGET-007
+    const cursorId = "11111111-2222-3333-4444-555555555555";
     const cursor = Buffer.from(
-      "2024-01-01T00:00:00Z|prev-id",
+      `2024-01-01T00:00:00Z|${cursorId}`,
     ).toString("base64");
-    const { orMock } = setupSupabaseFromTables({
-      notifications: { data: [], error: null },
-    });
+    const { rpc } = setupRpc({ data: [], error: null });
 
     await GET(
       createRequest(
@@ -276,69 +238,59 @@ describe("GET /api/notifications", () => {
       ),
     );
 
-    expect(orMock).toHaveBeenCalledWith(
-      "created_at.lt.2024-01-01T00:00:00Z,and(created_at.eq.2024-01-01T00:00:00Z,id.lt.prev-id)",
+    expect(rpc).toHaveBeenCalledWith(
+      "get_notifications_page",
+      expect.objectContaining({
+        p_cursor_created_at: "2024-01-01T00:00:00Z",
+        p_cursor_id: cursorId,
+      }),
     );
   });
 
-  test("GET_cursor復号例外の場合_フィルタを付けず続行", async () => {
+  test.each([
+    ["base64でない", "__CURSOR__"],
+    ["idがuuidでない", Buffer.from("2024-01-01T00:00:00Z|prev-id").toString("base64")],
+    ["日時が読めない", Buffer.from("yesterday|11111111-2222-3333-4444-555555555555").toString("base64")],
+  ])("GET_cursorが読めない場合(%s)_先頭から返す", async (_label, cursor) => {
     // Spec: NOTIFGET-008
-    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
-    const { orMock } = setupSupabaseFromTables({
-      notifications: { data: [], error: null },
-    });
+    const { rpc } = setupRpc({ data: [], error: null });
 
-    const bufSpy = jest.spyOn(Buffer, "from").mockImplementation((input, enc) => {
-      if (enc === "base64" && input === "__CURSOR_THROW__") {
-        throw new Error("decode fail");
-      }
-      return jest.requireActual("node:buffer").Buffer.from(input as never, enc as never);
-    });
+    const res = await GET(
+      createRequest(
+        `http://localhost/api/notifications?cursor=${encodeURIComponent(cursor)}`,
+      ),
+    );
 
-    try {
-      await GET(
-        createRequest(
-          "http://localhost/api/notifications?cursor=__CURSOR_THROW__",
-        ),
-      );
-      expect(orMock).not.toHaveBeenCalled();
-    } finally {
-      bufSpy.mockRestore();
-      consoleError.mockRestore();
-    }
+    expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith(
+      "get_notifications_page",
+      expect.objectContaining({ p_cursor_created_at: null, p_cursor_id: null }),
+    );
   });
 
   test("GET_actor取得済みの場合_actor詳細を付与する", async () => {
     // Spec: NOTIFGET-009
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "actor-1",
-        entity_type: "like",
-        entity_id: null,
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      profiles: {
-        data: [
-          {
+    setupRpc({
+      data: [
+        row({
+          id: "n1",
+          created_at: "2024-01-01T00:00:00Z",
+          actor_id: "actor-1",
+          actor: {
             user_id: "actor-1",
             nickname: "Actor One",
             avatar_url: "https://av.example/a.png",
           },
-        ],
-        error: null,
-      },
+        }),
+      ],
+      error: null,
     });
 
     const res = await GET(createRequest("http://localhost/api/notifications"));
     const body = (await res.json()) as {
       notifications: Array<{
-        id: string;
         actor: { id: string; nickname: string; avatar_url: string | null } | null;
+        resolved_image_id?: unknown;
       }>;
     };
 
@@ -348,34 +300,29 @@ describe("GET /api/notifications", () => {
       nickname: "Actor One",
       avatar_url: "https://av.example/a.png",
     });
+    expect(body.notifications[0]).not.toHaveProperty("resolved_image_id");
   });
 
   test("GET_post実体の場合_サムネとcaptionを付与する", async () => {
     // Spec: NOTIFGET-010
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: null,
-        entity_type: "post",
-        entity_id: "post-1",
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      generatedImages: {
-        data: [
-          {
+    setupRpc({
+      data: [
+        row({
+          id: "n1",
+          created_at: "2024-01-01T00:00:00Z",
+          entity_type: "post",
+          entity_id: "post-1",
+          resolved_image_id: "post-1",
+          post: {
             id: "post-1",
             image_url: "https://img.example/full.png",
             storage_path: "u/p.png",
             storage_path_thumb: "u/p_thumb.webp",
             caption: "Hello",
           },
-        ],
-        error: null,
-      },
+        }),
+      ],
+      error: null,
     });
 
     const res = await GET(createRequest("http://localhost/api/notifications"));
@@ -397,90 +344,68 @@ describe("GET /api/notifications", () => {
     });
   });
 
-  test("GET_派生投稿通知の場合_派生作品のサムネとactorを付与する", async () => {
-    // Spec: NOTIFGET-013
-    // entity=派生投稿のため、既存の post 実体解決がそのまま効くことを固定する (REQ-006)。
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "deriver-1",
-        type: "derived_post_published",
-        entity_type: "post",
-        entity_id: "derived-post-1",
-        data: { origin_caption: "桜ドレス" },
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      profiles: {
-        data: [
-          {
-            user_id: "deriver-1",
-            nickname: "ゆき",
-            avatar_url: null,
+  test("GET_comment通知_RPCが解決した投稿IDをdata.image_idに入れる", async () => {
+    // Spec: NOTIFGET-010A / NOTIFGET-010B
+    // (コメントからの投稿の解決は get_notifications_page の中で行う)
+    setupRpc({
+      data: [
+        row({
+          id: "n1",
+          created_at: "2024-01-01T00:00:00Z",
+          actor_id: "actor-1",
+          type: "comment",
+          entity_type: "comment",
+          entity_id: "comment-1",
+          data: { comment_content: "かわいい" },
+          resolved_image_id: "post-7",
+          post: {
+            id: "post-7",
+            image_url: null,
+            storage_path: "u/7.png",
+            storage_path_thumb: "u/7_thumb.webp",
+            caption: "春",
           },
-        ],
-        error: null,
-      },
-      generatedImages: {
-        data: [
-          {
-            id: "derived-post-1",
-            image_url: "https://img.example/derived.png",
-            storage_path: "u/d.png",
-            storage_path_thumb: "u/d_thumb.webp",
-            caption: "派生作品のキャプション",
-          },
-        ],
-        error: null,
-      },
+        }),
+      ],
+      error: null,
     });
 
     const res = await GET(createRequest("http://localhost/api/notifications"));
     const body = (await res.json()) as {
       notifications: Array<{
-        actor: { nickname: string } | null;
-        post: { image_url: string | null; caption: string | null } | null;
+        data: Record<string, unknown>;
+        post: { caption: string | null } | null;
       }>;
     };
 
     expect(res.status).toBe(200);
-    expect(body.notifications[0].actor).toEqual(
-      expect.objectContaining({ nickname: "ゆき" })
-    );
-    expect(body.notifications[0].post).toEqual({
-      image_url: "https://cdn.example/thumb.webp",
-      caption: "派生作品のキャプション",
+    expect(body.notifications[0].data).toEqual({
+      comment_content: "かわいい",
+      image_id: "post-7",
     });
+    expect(body.notifications[0].post).toEqual(
+      expect.objectContaining({ caption: "春" }),
+    );
   });
 
-  test("GET_id指定の場合_本人の通知1件をenrichmentして返す", async () => {
+  test("GET_id指定の場合_本人の通知1件をRPCで返す", async () => {
     // Spec: NOTIFGET-014 (Realtime 新着の enrichment 用の単一取得)
-    const rows = [
-      {
-        id: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "deriver-1",
-        type: "derived_post_published",
-        entity_type: "post",
-        entity_id: "derived-post-1",
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      profiles: {
-        data: [{ user_id: "deriver-1", nickname: "ゆき", avatar_url: null }],
-        error: null,
-      },
+    const id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee";
+    const { rpc } = setupRpc({
+      data: [
+        row({
+          id,
+          created_at: "2024-01-01T00:00:00Z",
+          actor_id: "deriver-1",
+          type: "derived_post_published",
+          actor: { user_id: "deriver-1", nickname: "ゆき", avatar_url: null },
+        }),
+      ],
+      error: null,
     });
 
     const res = await GET(
-      createRequest(
-        "http://localhost/api/notifications?id=aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
-      )
+      createRequest(`http://localhost/api/notifications?id=${id}`),
     );
     const body = (await res.json()) as {
       notifications: Array<{ id: string; actor: { nickname: string } | null }>;
@@ -488,242 +413,114 @@ describe("GET /api/notifications", () => {
     };
 
     expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith("get_notifications_page", {
+      p_user_id: "user-1",
+      p_limit: 1,
+      p_cursor_created_at: null,
+      p_cursor_id: null,
+      p_notification_id: id,
+    });
     expect(body.notifications).toHaveLength(1);
     expect(body.notifications[0].actor).toEqual(
-      expect.objectContaining({ nickname: "ゆき" })
+      expect.objectContaining({ nickname: "ゆき" }),
     );
     expect(body.nextCursor).toBeNull();
   });
 
   test("GET_idが不正な形式の場合_400を返す", async () => {
-    setupSupabaseFromTables({
-      notifications: { data: [], error: null },
-    });
+    const { rpc } = setupRpc({ data: [], error: null });
 
     const res = await GET(
-      createRequest("http://localhost/api/notifications?id=not-a-uuid")
+      createRequest("http://localhost/api/notifications?id=not-a-uuid"),
     );
 
     expect(res.status).toBe(400);
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  test("GET_利用数マイルストーン通知_actorをenrichmentしない", async () => {
-    // Spec: NOTIFGET-015 (B案 REQ-005: 匿名通知は actor を引かない)
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "user-1",
-        type: "derived_usage_milestone",
-        entity_type: "post",
-        entity_id: "origin-post-1",
-        data: { milestone: 5 },
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      profiles: {
-        data: [{ user_id: "user-1", nickname: "本人", avatar_url: null }],
-        error: null,
-      },
-      generatedImages: {
-        data: [
-          {
+  test("GET_匿名通知_actorを付けずサムネは付ける", async () => {
+    // Spec: NOTIFGET-015 / NOTIFGET-016 (B案 REQ-005)
+    // RPC は actor_id=本人のプロフィールを返すが、匿名通知には付けない。
+    const self = { user_id: "user-1", nickname: "本人", avatar_url: null };
+    setupRpc({
+      data: [
+        row({
+          id: "n1",
+          created_at: "2024-01-02T00:00:00Z",
+          actor_id: "user-1",
+          type: "derived_usage_milestone",
+          entity_id: "origin-post-1",
+          data: { milestone: 5 },
+          actor: self,
+          resolved_image_id: "origin-post-1",
+          post: {
             id: "origin-post-1",
-            image_url: "https://img.example/origin.png",
+            image_url: null,
             storage_path: "u/o.png",
-            storage_path_thumb: "u/o_thumb.webp",
+            storage_path_thumb: null,
             caption: "桜ドレス",
           },
-        ],
-        error: null,
-      },
+        }),
+        row({
+          id: "n2",
+          created_at: "2024-01-01T00:00:00Z",
+          actor_id: "user-1",
+          type: "like",
+          entity_id: "post-9",
+          actor: self,
+        }),
+      ],
+      error: null,
     });
 
     const res = await GET(createRequest("http://localhost/api/notifications"));
     const body = (await res.json()) as {
       notifications: Array<{
-        actor?: unknown;
-        post: { image_url: string | null; caption: string | null } | null;
+        id: string;
+        actor: { nickname: string } | null;
+        post: { caption: string | null } | null;
       }>;
-    };
-
-    expect(res.status).toBe(200);
-    expect(body.notifications[0].actor ?? null).toBeNull();
-    expect(body.notifications[0].post).toEqual({
-      image_url: "https://cdn.example/thumb.webp",
-      caption: "桜ドレス",
-    });
-  });
-
-  test("GET_匿名通知と本人がactorの通知が混在しても匿名側にactorを復元しない", async () => {
-    // Spec: NOTIFGET-016 (B案 REQ-005)
-    // 別通知経由で recipient 本人のプロフィールが actorMap に入っても、
-    // 匿名通知には付与しないことを最終マッピングの段で固定する。
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-02T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "user-1",
-        type: "derived_usage_milestone",
-        entity_type: "post",
-        entity_id: "origin-post-1",
-        data: { milestone: 5 },
-      },
-      {
-        id: "n2",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "user-1",
-        type: "like",
-        entity_type: "post",
-        entity_id: "post-9",
-        data: {},
-      },
-    ];
-    setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      profiles: {
-        data: [{ user_id: "user-1", nickname: "本人", avatar_url: null }],
-        error: null,
-      },
-    });
-
-    const res = await GET(createRequest("http://localhost/api/notifications"));
-    const body = (await res.json()) as {
-      notifications: Array<{ id: string; actor?: { nickname: string } | null }>;
     };
 
     expect(res.status).toBe(200);
     const milestone = body.notifications.find((n) => n.id === "n1");
     const like = body.notifications.find((n) => n.id === "n2");
-    // actorMap には本人のプロフィールが入っている（like 経由）が、匿名側には付与しない
-    expect(milestone?.actor ?? null).toBeNull();
-    expect(like?.actor).toEqual(
-      expect.objectContaining({ nickname: "本人" })
+    expect(milestone?.actor).toBeNull();
+    expect(milestone?.post).toEqual(
+      expect.objectContaining({ caption: "桜ドレス" }),
     );
+    expect(like?.actor).toEqual(expect.objectContaining({ nickname: "本人" }));
   });
 
-  test("GET_comment通知でimage_id保持済みの場合_投稿サムネを補完する", async () => {
-    // Spec: NOTIFGET-010A
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "actor-1",
-        type: "comment",
-        entity_type: "comment",
-        entity_id: "comment-parent-1",
-        data: {
-          image_id: "post-77",
-          comment_id: "comment-reply-1",
-          comment_content: "reply body",
-        },
-      },
-    ];
-    const { from } = setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      profiles: {
-        data: [
-          {
-            user_id: "actor-1",
-            nickname: "Reply Actor",
-            avatar_url: "https://av.example/reply.png",
+  test("GET_重大カテゴリの措置通知_サムネを付けない", async () => {
+    setupRpc({
+      data: [
+        row({
+          id: "n1",
+          created_at: "2024-01-01T00:00:00Z",
+          actor_id: "user-1",
+          type: "post_moderation_removed",
+          data: { policy_code: "csam" },
+          resolved_image_id: "post-1",
+          post: {
+            id: "post-1",
+            image_url: null,
+            storage_path: "u/p.png",
+            storage_path_thumb: null,
+            caption: "x",
           },
-        ],
-        error: null,
-      },
-      generatedImages: {
-        data: [
-          {
-            id: "post-77",
-            image_url: "https://img.example/post-77.png",
-            storage_path: "u/post-77.png",
-            storage_path_thumb: "u/post-77_thumb.webp",
-            caption: "Reply target",
-          },
-        ],
-        error: null,
-      },
+        }),
+      ],
+      error: null,
     });
 
     const res = await GET(createRequest("http://localhost/api/notifications"));
     const body = (await res.json()) as {
-      notifications: Array<{
-        data: { image_id?: string };
-        post: { image_url: string | null; caption: string | null } | null;
-      }>;
+      notifications: Array<{ post: unknown }>;
     };
 
     expect(res.status).toBe(200);
-    expect(body.notifications[0].data.image_id).toBe("post-77");
-    expect(body.notifications[0].post).toEqual({
-      image_url: "https://cdn.example/thumb.webp",
-      caption: "Reply target",
-    });
-    expect(from).not.toHaveBeenCalledWith("comments");
-  });
-
-  test("GET_comment通知でimage_id欠落時_commentsから投稿IDを解決する", async () => {
-    // Spec: NOTIFGET-010B
-    const rows = [
-      {
-        id: "n1",
-        created_at: "2024-01-01T00:00:00Z",
-        recipient_id: "user-1",
-        actor_id: "actor-1",
-        type: "comment",
-        entity_type: "comment",
-        entity_id: "comment-parent-2",
-        data: {
-          comment_id: "comment-reply-2",
-          comment_content: "reply body",
-        },
-      },
-    ];
-    const { from } = setupSupabaseFromTables({
-      notifications: { data: rows, error: null },
-      comments: {
-        data: [
-          {
-            id: "comment-parent-2",
-            image_id: "post-88",
-          },
-        ],
-        error: null,
-      },
-      generatedImages: {
-        data: [
-          {
-            id: "post-88",
-            image_url: "https://img.example/post-88.png",
-            storage_path: "u/post-88.png",
-            storage_path_thumb: "u/post-88_thumb.webp",
-            caption: "Resolved target",
-          },
-        ],
-        error: null,
-      },
-    });
-
-    const res = await GET(createRequest("http://localhost/api/notifications"));
-    const body = (await res.json()) as {
-      notifications: Array<{
-        data: { image_id?: string };
-        post: { image_url: string | null; caption: string | null } | null;
-      }>;
-    };
-
-    expect(res.status).toBe(200);
-    expect(body.notifications[0].data.image_id).toBe("post-88");
-    expect(body.notifications[0].post).toEqual({
-      image_url: "https://cdn.example/thumb.webp",
-      caption: "Resolved target",
-    });
-    expect(from).toHaveBeenCalledWith("comments");
+    expect(body.notifications[0].post).toBeNull();
   });
 
   test("GET_想定外例外の場合_500で取得失敗", async () => {

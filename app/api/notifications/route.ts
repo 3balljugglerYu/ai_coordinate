@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getNotificationsRouteCopy } from "@/features/notifications/lib/route-copy";
-import { enrichNotificationsWithDetails } from "@/features/notifications/lib/server-api";
+import { fetchNotificationsPage } from "@/features/notifications/lib/server-api";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -23,9 +23,9 @@ export async function GET(request: NextRequest) {
     }
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
-    const cursor = searchParams.get("cursor");
 
-    if (limit < 1 || limit > 100) {
+    // 数字でない limit(NaN)は範囲の比較をすり抜けるので、整数かどうかも見る
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       return jsonError(copy.invalidLimit, "NOTIFICATIONS_INVALID_LIMIT", 400);
     }
 
@@ -35,96 +35,27 @@ export async function GET(request: NextRequest) {
     // 件数窓（直近N件）方式はバースト時に対象を取り逃がすため ID で引く。
     // recipient_id を本人へ固定するため、id を知っていても他人の通知は取れない。
     const idParam = searchParams.get("id");
-    if (idParam) {
-      if (!UUID_PATTERN.test(idParam)) {
-        return jsonError(copy.fetchFailed, "NOTIFICATIONS_INVALID_ID", 400);
-      }
-
-      const { data: idRows, error: idError } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("recipient_id", user.id)
-        .eq("id", idParam)
-        .limit(1);
-
-      if (idError) {
-        console.error("Database query error:", idError);
-        return jsonError(copy.fetchFailed, "NOTIFICATIONS_FETCH_FAILED", 500);
-      }
-
-      const enriched = await enrichNotificationsWithDetails(
-        supabase,
-        idRows ?? []
-      );
-
-      return NextResponse.json({
-        notifications: enriched,
-        nextCursor: null,
-      });
+    if (idParam && !UUID_PATTERN.test(idParam)) {
+      return jsonError(copy.fetchFailed, "NOTIFICATIONS_INVALID_ID", 400);
     }
 
-    // 通知一覧を取得するクエリを構築
-    let query = supabase
-      .from("notifications")
-      .select("*")
-      .eq("recipient_id", user.id)
-      .order("created_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(limit + 1); // 次のページがあるか確認するため+1
+    // 一覧・相手のプロフィール・投稿のサムネイルを 1 回で取る
+    // (get_notifications_page)。読めないカーソルは無視して先頭から返す。
+    const result = await fetchNotificationsPage(supabase, {
+      userId: user.id,
+      limit: idParam ? 1 : limit,
+      cursor: idParam ? null : searchParams.get("cursor"),
+      notificationId: idParam,
+    });
 
-    // カーソルがある場合はフィルタを追加
-    if (cursor) {
-      try {
-        const decoded = Buffer.from(cursor, "base64").toString();
-        const [cursorCreatedAt, cursorId] = decoded.split("|");
-
-        if (cursorCreatedAt && cursorId) {
-          // created_at < cursor_created_at OR (created_at = cursor_created_at AND id < cursor_id)
-          // Supabaseのor構文を使用
-          query = query.or(
-            `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`
-          );
-        }
-      } catch (error) {
-        console.error("Failed to decode cursor:", error);
-        // カーソルのデコードに失敗した場合は無視して続行
-      }
-    }
-
-    const { data, error } = await query;
-
-    if (error) {
-      console.error("Database query error:", error);
+    if (!result.ok) {
+      console.error("Database query error:", result.error);
       return jsonError(copy.fetchFailed, "NOTIFICATIONS_FETCH_FAILED", 500);
     }
 
-    if (!data || data.length === 0) {
-      return NextResponse.json({
-        notifications: [],
-        nextCursor: null,
-      });
-    }
-
-    // 次のページがあるか確認
-    const hasNextPage = data.length > limit;
-    const notifications = hasNextPage ? data.slice(0, limit) : data;
-
-    // 次のカーソルを生成
-    let nextCursor: string | null = null;
-    if (hasNextPage && notifications.length > 0) {
-      const lastNotification = notifications[notifications.length - 1];
-      const cursorString = `${lastNotification.created_at}|${lastNotification.id}`;
-      nextCursor = Buffer.from(cursorString).toString("base64");
-    }
-
-    const notificationsWithDetails = await enrichNotificationsWithDetails(
-      supabase,
-      notifications
-    );
-
     return NextResponse.json({
-      notifications: notificationsWithDetails,
-      nextCursor,
+      notifications: result.notifications,
+      nextCursor: idParam ? null : result.nextCursor,
     });
   } catch (error) {
     console.error("Notifications API error:", error);
