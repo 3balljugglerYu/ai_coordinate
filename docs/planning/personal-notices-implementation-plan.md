@@ -11,9 +11,9 @@
 |---|---|
 | 目的 | 運営が管理画面から、選んだ人だけに、題名と本文を自由に書いたお知らせを送る |
 | 届く場所 | 「お知らせ」画面の「あなたへの通知」タブ（`notifications`）。「運営からのお知らせ」タブ（全員向け `announcements`）には出さない |
-| 送り方 | **まとめて送る**。相手は「メールアドレス」または「メールアドレス, 投稿のURL」を1行に1人 |
+| 送り方 | **まとめて送る**。宛先は1行に1人で、**投稿の URL**（投稿した人が宛先になり、その作品も付く）か、**プロフィールの URL / ユーザーID**（作品なし）。メールアドレスは使わない（2026-10-18 ユーザー決定） |
 | 受付番号 | 本文に `{受付番号}` と書くと、1人ずつちがう番号を自動で入れる（例 `HBS-7F3K`）。頭の英字は送るたびに決める。0/O・1/I などは使わない |
-| 作品 | 1人ずつ任意で投稿を付けられる。付けられるのは**相手自身の公開中の投稿だけ**（違えば送れない） |
+| 作品 | 投稿の URL で指定した行に、その投稿が付く（＝必ず相手自身の投稿）。**公開中の投稿だけ**（非公開・措置済みは送れない） |
 | 管理用のメモ | 送るたびに付ける（例「ハロウィン2026・ベストショット賞」）。一覧の絞り込み用。受け取った人には見えない |
 | 送ったあと | 一覧（誰に・番号・送った日時・開いたか）、CSV 保存、1人ずつ取り消し、操作記録 |
 | 取り消し | 相手のお知らせは消す。送った記録には「取り消し」の印を付けて残す（その番号が使えないと後から分かる） |
@@ -46,7 +46,8 @@
 ### 管理画面
 - ページの認可: `getUser()` + `getAdminUserIds().includes(user.id)`（例 `app/(app)/admin/bonus/bulk/page.tsx`）。API の認可: `requireAdmin()`（`lib/auth.ts`）。
 - メニュー: `app/(app)/admin/admin-nav-items.ts`（サイドバーとモバイルの両方がここを読む）。
-- 相手の確認: ボーナスの一括付与 `app/(app)/admin/bonus/bulk/BulkGrantClient.tsx` と `app/api/admin/bonus/bulk-lookup/route.ts`（`get_user_ids_by_emails`、service_role 専用・最大 300 件・CSV の数式インジェクション対策 `escapeCsvCell`）。
+- 相手の確認の流れの参考: ボーナスの一括付与 `app/(app)/admin/bonus/bulk/BulkGrantClient.tsx` と `app/api/admin/bonus/bulk-lookup/route.ts`（こちらはメールアドレスで引く。最大 300 件・CSV の数式インジェクション対策 `escapeCsvCell`）。
+- 管理画面のユーザー検索（`app/(app)/admin/users/UserSearchClient.tsx`）はユーザーID かニックネームで探し、メールアドレスは出さない。プロフィールの URL は `/users/<user_id>`、投稿は `/posts/<id>`。→ **宛先は投稿の URL かプロフィールの URL / ユーザーID で指定する**（運営がメールアドレスを調べる場面が無い・個人情報を扱わずに済む）。
 - 操作記録: `lib/admin-audit.ts` の `logAdminAction`。`admin_audit_log.action_type` に DB の CHECK は無い（実測）→ TS の union に足すだけ。
 - 管理画面のフォームは浮いた箱でなく専用ページ（モバイルで揺れた経緯）。
 
@@ -70,7 +71,7 @@
 
 ```mermaid
 flowchart TD
-    A["運営が相手を貼る（メール、またはメールと投稿のURL）"] --> B["相手を確かめる"]
+    A["運営が宛先を貼る（投稿のURL、またはプロフィールのURLかユーザーID）"] --> B["相手を確かめる"]
     B --> C{"全員そろっているか"}
     C -->|見つからない人や他人の作品がある| D["赤く表示して送れない"]
     D --> A
@@ -158,8 +159,8 @@ stateDiagram-v2
 | PN-002 | 本文に `{受付番号}` があるとき、システムは相手ごとに `<頭の英字>-<4文字>` の番号を作り、本文の印を置き換えなければならない。番号は全体で重複してはならない（DB の UNIQUE） | When the body contains `{受付番号}`, the system shall generate a unique `<PREFIX>-<4 chars>` code per recipient and substitute it. |
 | PN-003 | 番号の4文字は、見まちがえやすい文字（0 O 1 I L）を除いた英大文字と数字から作らなければならない | The code suffix shall use an unambiguous uppercase alphanumeric alphabet. |
 | PN-004 | 本文に `{受付番号}` が無いとき、システムは番号を作ってはならない（頭の英字も求めない） | When the body has no placeholder, the system shall not generate codes. |
-| PN-005 | 作品が付いた行で、その投稿が相手自身の公開中の投稿でないとき、システムは送信全体を拒否しなければならない（DB の関数でも確かめる） | If an attached post is not the recipient's own visible post, then the system shall reject the whole send. |
-| PN-006 | 見つからないメールアドレス・重複した相手・退会中の相手がいるとき、システムは送信全体を拒否し、どの行かを返さなければならない | If any recipient is unknown, duplicated or deactivated, then the system shall reject the send and report the rows. |
+| PN-005 | 投稿の行では投稿した人を宛先にし、その投稿が公開中でないとき、システムは送信全体を拒否しなければならない（DB の関数でも、作品が宛先本人の公開中の投稿であることを確かめる） | For a post row, the recipient shall be the post's author; if the post is not visible, the system shall reject the whole send (the RPC also enforces that the post belongs to the recipient). |
+| PN-006 | 見つからない投稿・ユーザー、重複した相手、退会中の相手がいるとき、システムは送信全体を拒否し、どの行かを返さなければならない | If any post or user is unknown, a recipient is duplicated or deactivated, then the system shall reject the send and report the rows. |
 | PN-007 | 1回に送れる相手は 1〜200 人でなければならない | The system shall accept 1 to 200 recipients per send. |
 | PN-008 | 通知は運営ロゴで表示し、送った運営の情報を受け取った人に渡してはならない（`actor_id` は本人） | The notification shall be shown with the operator logo and shall not expose the sending admin. |
 | PN-009 | 作品つきの通知は、一覧の右に作品のサムネイルを出さなければならない | Where a post is attached, the list item shall show its thumbnail. |
@@ -259,10 +260,10 @@ PR は3つに分ける: **PR-A = Phase 1**（DB のみ）、**PR-B = Phase 2+3**
 目的: 相手の確認・送信・取り消し・一覧の API。
 ビルド確認: `npm run build -- --webpack` が通る。
 
-- [ ] `features/personal-notices/lib/schema.ts`: 入力の zod（行の解析＝メール／メール,投稿URL or ID、`/posts/<uuid>` の抽出、`{受付番号}` の有無、頭の英字）
+- [ ] `features/personal-notices/lib/schema.ts`: 入力の zod（行の解析＝投稿の URL `/posts/<uuid>`／プロフィールの URL `/users/<uuid>`／ユーザーID だけ、を見分ける。`https://www.persta.ai` 以外のホストの URL は拒む。`{受付番号}` の有無、頭の英字）
 - [ ] `features/personal-notices/lib/repository.ts`: service_role で RPC と一覧の読み取り（1000行の上限に注意。ページングで読む＝`persta-admin-dashboard-1000-row-cap` の教訓）
 - [ ] `features/personal-notices/lib/render.ts`: プレビュー用の置き換え（RPC と同じ規則。結果をテストで突き合わせる）
-- [ ] `POST /api/admin/personal-notices/lookup`: メールから相手（`get_user_ids_by_emails` を再利用）とプロフィール（ニックネーム・アイコン）、投稿（持ち主・公開中か・サムネイル）を返す。行ごとのエラー
+- [ ] `POST /api/admin/personal-notices/lookup`: 投稿の行は投稿（持ち主・公開中か・サムネイル）から宛先を決め、ユーザーの行はプロフィール（ニックネーム・アイコン・退会中か）を返す。行ごとのエラー。メールアドレスは扱わない
 - [ ] `POST /api/admin/personal-notices`: 送信（`requireAdmin()`・同一オリジン・`p_admin_user_id` はセッションから）→ `logAdminAction('personal_notice_send')`
 - [ ] `GET /api/admin/personal-notices`（一覧・メモで絞り込み）、`GET /api/admin/personal-notices/[id]`（1回分の中身）
 - [ ] `POST /api/admin/personal-notices/recipients/[id]/retract` → `logAdminAction('personal_notice_retract')`
@@ -274,7 +275,7 @@ PR は3つに分ける: **PR-A = Phase 1**（DB のみ）、**PR-B = Phase 2+3**
 ビルド確認: build が通り、手元の開発サーバーで管理画面を実描画（ログインは一時的な差し替えのみ・コミットしない）。
 
 - [ ] `app/(app)/admin/personal-notices/page.tsx`（一覧）・`new/page.tsx`（送る）・`[id]/page.tsx`（中身）。認可は `getUser()` + `getAdminUserIds()`
-- [ ] 送るページのクライアント（`BulkGrantClient.tsx` を参考）: 相手を貼る → 確かめる（赤い行は送れない）→ メモ・題名・本文・頭の英字 → プレビュー（一覧の1行＋詳細ページの見た目を、受け取る側と同じ部品で描く）→ 「○人に送る」→ 確認 → 結果と CSV
+- [ ] 送るページのクライアント（`BulkGrantClient.tsx` を参考）: 宛先を貼る（投稿の URL かプロフィールの URL / ユーザーID） → 確かめる（赤い行は送れない）→ メモ・題名・本文・頭の英字 → プレビュー（一覧の1行＋詳細ページの見た目を、受け取る側と同じ部品で描く）→ 「○人に送る」→ 確認 → 結果と CSV
 - [ ] 中身のページ: 相手ごとのアイコン・ニックネーム・番号・作品・開いたか・取り消し、CSV（`escapeCsvCell` を共有）
 - [ ] `admin-nav-items.ts` に「個人あてのお知らせ」を追加
 - [ ] 文言は日本語のみ（管理画面は既存どおり翻訳しない）
@@ -343,7 +344,7 @@ PR は3つに分ける: **PR-A = Phase 1**（DB のみ）、**PR-B = Phase 2+3**
 | カテゴリ | テスト内容 |
 |---|---|
 | 正常系 | 作品あり・なし／番号あり・なしで送れる。一覧に運営ロゴと作品のサムネイル。押すと詳細ページ。開いた記録が1回だけ入る。取り消すと相手の一覧から消え、記録は残る |
-| 異常系 | 見つからないメール・他人の作品・非公開の作品・重複・201人・頭の英字なしで `{受付番号}` → 送れず、どの行かが出る。通信の失敗で全体が戻る |
+| 異常系 | 見つからない投稿・ユーザー、ほかのサイトの URL、非公開の作品・重複・201人・頭の英字なしで `{受付番号}` → 送れず、どの行かが出る。通信の失敗で全体が戻る |
 | 権限テスト | 未ログイン・一般の利用者が管理 API を呼べない。他人の詳細ページ・取り消し済みは 404。anon / authenticated から RPC を呼べない（`has_function_privilege`） |
 | 既存の動き | いいね・コメント・ボーナス・措置などの既存の種類の表示と移動先が変わらない（既存テストを変えずに通す） |
 | 実機確認 | 320 / 390px・PC で、一覧の1行と詳細ページ。長い本文・URL の折り返し。本番で運営のアカウントへの試し送り |
