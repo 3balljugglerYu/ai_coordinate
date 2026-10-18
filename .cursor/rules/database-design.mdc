@@ -40,6 +40,8 @@ alwaysApply: false
 - `notifications`
 - `percoin_bonus_defaults`
 - `percoin_streak_defaults`
+- `personal_notice_recipients`
+- `personal_notices`
 - `popup_banner_analytics`
 - `popup_banner_guest_events`
 - `popup_banner_views`
@@ -257,12 +259,27 @@ alwaysApply: false
 - 主キー: `id`
 - 主要カラム: `recipient_id`, `actor_id`, `type`, `entity_type`, `entity_id`, `title`, `body`, `data`, `is_read`, `read_at`, `pushed_at`, `push_status`, `created_at`, `comment_id`
 - 外部キー: `recipient_id -> auth.users.id`, `actor_id -> auth.users.id`, `comment_id -> comments.id`
-- 備考: `type` は `like/comment/follow/bonus/style_template_approved/style_template_rejected/style_template_unpublished/catalog_entry_approved/catalog_entry_rejected/catalog_entry_unpublished`、`entity_type` は `post/comment/user/style_template/catalog_entry`。`push_status`/`pushed_at` は**使っていない**（初期構築の名残で全行 `pending` のまま。アプリのプッシュ通知の送信状態は `push_outbox` が持つ）。クリエイター還元の `usage_reward_earned` は**受け手×JST日付で1行**に集約され、付与のたびに `data.usage_count`/`data.total_amount` を加算して未読へ戻し、`created_at` も進めて一覧の先頭へ浮上させる（この type に限り `created_at` は「最後に付与された時刻」の意味になる）
+- 備考: `type` は本番の `notifications_type_check` が正本（2026-10-18 時点で22種類。最後に足したのは個人あてのお知らせの `admin_message`＝運営ロゴで表示する匿名の種類・作品つきは `entity_type='post'`、なしは `'user'`（本人））。主なもの: `like/comment/follow/bonus/style_template_approved/style_template_rejected/style_template_unpublished/catalog_entry_approved/catalog_entry_rejected/catalog_entry_unpublished`、`entity_type` は `post/comment/user/style_template/catalog_entry`。`push_status`/`pushed_at` は**使っていない**（初期構築の名残で全行 `pending` のまま。アプリのプッシュ通知の送信状態は `push_outbox` が持つ）。クリエイター還元の `usage_reward_earned` は**受け手×JST日付で1行**に集約され、付与のたびに `data.usage_count`/`data.total_amount` を加算して未読へ戻し、`created_at` も進めて一覧の先頭へ浮上させる（この type に限り `created_at` は「最後に付与された時刻」の意味になる）
 - RLS:
   - `SELECT`: 受信者本人のみ
   - `INSERT`: 直接INSERTは禁止（`with_check false`）
   - `UPDATE`: 受信者本人または `service_role`
   - `DELETE`: 受信者本人のみ
+
+#### `personal_notices`
+- 主キー: `id`
+- 主要カラム: `memo`（管理用のメモ・受け取った人には見えない）, `title`, `body_template`（`{受付番号}` を含みうる置き換え前の本文）, `code_prefix`（受付番号の頭の英字 `^[A-Z]{2,5}$`、番号を使わないときは NULL）, `recipient_count`(1〜200), `created_by`, `created_at`
+- 外部キー: `created_by -> auth.users.id`（ON DELETE SET NULL）
+- RLS: 有効・policy なし（service role と SECURITY DEFINER のみ）
+- 備考: 個人あてのお知らせの1回分。送信は RPC `send_personal_notice`（全員分を1トランザクション）。計画書 `docs/planning/personal-notices-implementation-plan.md`
+
+#### `personal_notice_recipients`
+- 主キー: `id`
+- 主要カラム: `notice_id`, `recipient_id`, `receipt_code`（UNIQUE・`<頭の英字>-<4文字>`、0/O/1/I/L は使わない）, `post_id`（付けた作品）, `notification_id`（届いた `notifications` の行）, `opened_at`（詳細ページを開いた初回）, `retracted_at`, `retracted_by`, `created_at`
+- 外部キー: `notice_id -> personal_notices.id`（CASCADE）, `recipient_id -> auth.users.id`（CASCADE＝退会で消える）, `post_id -> generated_images.id`（SET NULL）, `notification_id -> notifications.id`（SET NULL＝取り消し・本人の削除でも記録は残る）, `retracted_by -> auth.users.id`（SET NULL）
+- 制約: `(notice_id, recipient_id)` UNIQUE
+- RLS: 有効・policy なし（service role と SECURITY DEFINER のみ）
+- 備考: 受付番号と相手の対応の正本。取り消しは RPC `retract_personal_notice_recipient`（通知を消し、行は残す）、開いた記録は `mark_personal_notice_opened`。⭐`notifications.is_read` はお知らせ画面を開くと全件既読になるので「開いた」の判断には `opened_at` を使う
 
 #### `notification_preferences`
 - 主キー: `user_id`
