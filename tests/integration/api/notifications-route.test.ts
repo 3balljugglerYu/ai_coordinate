@@ -125,6 +125,18 @@ describe("GET /api/notifications", () => {
     expect(mockCreateClient).not.toHaveBeenCalled();
   });
 
+  test("GET_limitが数字でない場合_400でinvalidLimit", async () => {
+    // Spec: NOTIFGET-002(NaN は範囲の比較をすり抜けるため、20 件に補われてページ送りが壊れていた)
+    const res = await GET(
+      createRequest("http://localhost/api/notifications?limit=abc"),
+    );
+    const body = (await res.json()) as Record<string, unknown>;
+
+    expect(res.status).toBe(400);
+    expect(body.errorCode).toBe("NOTIFICATIONS_INVALID_LIMIT");
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
   test("GET_0件の場合_200で空配列_問い合わせは1回", async () => {
     // Spec: NOTIFGET-003
     const { rpc, from } = setupRpc({ data: [], error: null });

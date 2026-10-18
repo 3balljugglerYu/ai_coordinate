@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    if (limit < 1 || limit > 100) {
+    // 数字でない limit(NaN)は範囲の比較をすり抜けるので、整数かどうかも見る
+    if (!Number.isInteger(limit) || limit < 1 || limit > 100) {
       return jsonError(copy.invalidLimit, "NOTIFICATIONS_INVALID_LIMIT", 400);
     }
 
