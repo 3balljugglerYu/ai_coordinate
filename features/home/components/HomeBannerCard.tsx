@@ -9,6 +9,7 @@ import {
   HOME_BANNER_IMAGE_WIDTH,
 } from "../lib/home-banner-image";
 import type { HomeBanner } from "@/constants/homeBanners";
+import { trackHomeBannerClick } from "../lib/home-banner-events";
 
 function isExternalUrl(url: string): boolean {
   const trimmed = url.trim();
@@ -55,6 +56,8 @@ export function HomeBannerCard({
     </Card>
   );
 
+  const trackClick = () => trackHomeBannerClick(banner.id, linkUrl);
+
   if (isExternalUrl(linkUrl)) {
     return (
       <a
@@ -62,11 +65,16 @@ export function HomeBannerCard({
         target="_blank"
         rel="noopener noreferrer"
         className="block"
+        onClick={trackClick}
       >
         {card}
       </a>
     );
   }
 
-  return <Link href={linkUrl} className="block">{card}</Link>;
+  return (
+    <Link href={linkUrl} className="block" onClick={trackClick}>
+      {card}
+    </Link>
+  );
 }

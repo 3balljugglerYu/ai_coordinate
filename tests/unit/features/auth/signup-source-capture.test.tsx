@@ -119,3 +119,126 @@ describe("SignupSourceCapture", () => {
     expect(readCookie()).toBeNull();
   });
 });
+
+/*
+  appendChannel(2026-10-16): X・メタの広告を目印(utm)なしのリンクで出したので、
+  企画ページの既定値に、来た場所(X・X の広告・メタ)を添える。
+  守りたいのは、明示指定を優先すること・常駐インスタンスと順序で値が変わらないこと・ほかの企画ページを変えないこと。
+*/
+describe("SignupSourceCapture appendChannel", () => {
+  function setLanding(search: string) {
+    window.history.replaceState({}, "", `/campaigns/halloween-best-shot${search}`);
+  }
+
+  function setUserAgent(userAgent: string) {
+    Object.defineProperty(window.navigator, "userAgent", { value: userAgent, configurable: true });
+  }
+
+  function setReferrer(referrer: string) {
+    Object.defineProperty(document, "referrer", { value: referrer, configurable: true });
+  }
+
+  beforeEach(() => {
+    clearCookie();
+    setLanding("");
+  });
+
+  afterEach(() => {
+    // 上で足した自前のプロパティを消して、jsdom の値に戻す
+    delete (window.navigator as unknown as { userAgent?: string }).userAgent;
+    delete (document as unknown as { referrer?: string }).referrer;
+  });
+
+  afterAll(() => {
+    clearCookie();
+  });
+
+  test("⭐X の広告(twclid)から来たら、企画のキーに _x_ad を添える", () => {
+    setLanding("?twclid=abc123");
+
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("halloween-best-shot_x_ad");
+  });
+
+  test("⭐メタ(fbclid)から来たら _meta を添える", () => {
+    setLanding("?fbclid=IwAR0abc");
+
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("halloween-best-shot_meta");
+  });
+
+  test("Instagram のアプリの中で開いたら _meta(クリック ID が無くても)", () => {
+    setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Instagram 350.0.0.0.0");
+
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("halloween-best-shot_meta");
+  });
+
+  test("X(t.co)から来たら _x", () => {
+    setReferrer("https://t.co/AbCdEf");
+
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("halloween-best-shot_x");
+  });
+
+  test("来た場所が分からなければ、企画のキーだけ", () => {
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("halloween-best-shot");
+  });
+
+  test("⭐URL の明示指定があれば、そのまま(来た場所は添えない)", () => {
+    setLanding("?utm_source=x_post_halloween&fbclid=IwAR0abc");
+
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("x_post_halloween");
+  });
+
+  test("⭐appendChannel を付けていないページ(ほかの企画)は、今までどおり既定値だけ", () => {
+    setLanding("?fbclid=IwAR0abc");
+
+    render(<SignupSourceCapture fallbackSource="fashion_magazine_summer" />);
+
+    expect(readCookie()).toBe("fashion_magazine_summer");
+  });
+
+  test("⭐常駐インスタンスと同時に走っても結果が変わらない(企画ページが先)", () => {
+    setLanding("?fbclid=IwAR0abc");
+
+    render(
+      <>
+        <SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />
+        <SignupSourceCapture />
+      </>,
+    );
+
+    expect(readCookie()).toBe("halloween-best-shot_meta");
+  });
+
+  test("⭐常駐インスタンスと同時に走っても結果が変わらない(常駐が先)", () => {
+    setLanding("?fbclid=IwAR0abc");
+
+    render(
+      <>
+        <SignupSourceCapture />
+        <SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />
+      </>,
+    );
+
+    expect(readCookie()).toBe("halloween-best-shot_meta");
+  });
+
+  test("既に cookie があれば上書きしない(first-touch を尊重)", () => {
+    document.cookie = `${SIGNUP_SOURCE_COOKIE}=travel_to_italy; path=/`;
+    setLanding("?twclid=abc123");
+
+    render(<SignupSourceCapture fallbackSource="halloween-best-shot" appendChannel />);
+
+    expect(readCookie()).toBe("travel_to_italy");
+  });
+});

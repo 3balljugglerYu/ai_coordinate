@@ -30,3 +30,64 @@ export function buildStyleSignupPath(nextPath = "/style"): string {
     signup_source: STYLE_SIGNUP_SOURCE,
   }).toString()}`;
 }
+
+/**
+ * 企画ページの既定値(fallbackSource)に添える、来た場所(SNS)の印(2026-10-16)。
+ *
+ * X とメタ(Instagram・Facebook)の広告を、リンクに目印(utm)を付けずに出したあとでも、
+ * どこから来て登録したかを分けられるようにするため。リンクに目印があれば、そちらが優先される。
+ *
+ * - `x_ad`: X の広告のクリック ID(twclid)が付いている
+ * - `meta`: メタのクリック ID(fbclid)が付いている／Instagram・Facebook のアプリの中で開いた／
+ *   参照元がメタのサイト。fbclid は広告でないリンクにも付くので、広告かどうかは分けない
+ * - `x`: X のアプリの中で開いた／参照元が X(t.co など)。広告かどうかは分けない
+ */
+export type SignupChannel = "x_ad" | "x" | "meta";
+
+const X_HOSTS = ["t.co", "x.com", "twitter.com"] as const;
+const META_HOSTS = ["facebook.com", "instagram.com"] as const;
+
+function referrerHost(referrer: string): string | null {
+  if (!referrer) return null;
+  try {
+    return new URL(referrer).hostname.toLowerCase();
+  } catch {
+    return null;
+  }
+}
+
+function hostMatches(host: string, domains: readonly string[]): boolean {
+  return domains.some((domain) => host === domain || host.endsWith(`.${domain}`));
+}
+
+/** 着地したときの URL・ブラウザ・参照元から、来た場所を見分ける。分からなければ null。 */
+export function detectSignupChannel({
+  search,
+  userAgent,
+  referrer,
+}: {
+  search: string;
+  userAgent: string;
+  referrer: string;
+}): SignupChannel | null {
+  const params = new URLSearchParams(search);
+  // 広告のクリックの印(各社がリンクに自動で付ける)
+  if (params.has("twclid")) return "x_ad";
+  if (params.has("fbclid")) return "meta";
+  // アプリの中のブラウザ(WebViewBanner の見分け方と同じ。Twitter は TwitterAndroid も含む)
+  if (/Twitter/i.test(userAgent)) return "x";
+  if (/FBAN|FBAV|Instagram/i.test(userAgent)) return "meta";
+  const host = referrerHost(referrer);
+  if (host && hostMatches(host, X_HOSTS)) return "x";
+  if (host && hostMatches(host, META_HOSTS)) return "meta";
+  return null;
+}
+
+/** 流入元に来た場所を添える(例: halloween-best-shot_meta)。添えると書式に合わなくなるときは、元のまま。 */
+export function appendSignupChannel(
+  source: SignupSource,
+  channel: SignupChannel | null
+): SignupSource {
+  if (!channel) return source;
+  return parseSignupSource(`${source}_${channel}`) ?? source;
+}

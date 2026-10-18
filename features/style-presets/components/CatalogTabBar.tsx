@@ -16,6 +16,11 @@ export interface CatalogTab<T extends string = string> {
   label: string;
   /** 表示名の前に出すアイコン(User ORIGINAL の作者アバターなど)。 */
   icon?: ReactNode;
+  /**
+   * 名前を切り詰めない(既定は 10rem で切る)。みんなのカタログのハッシュタグ企画のタブ
+   * 「🎃 #うちの子のベストショット」を、途中で切らずに読めるようにする(2026-10-16)
+   */
+  noTruncate?: boolean;
 }
 
 /** 下線がスライドするときの動き(OriginalKindTabs のピルと同じ曲線)。 */
@@ -229,7 +234,7 @@ export function CatalogTabBar<T extends string>({
               <span data-tab-label className="flex items-center gap-1.5">
                 {tab.icon}
                 {/* 長い名前でタブ列が横に伸び切らないように切り詰める */}
-                <span className="max-w-[10rem] truncate">{tab.label}</span>
+                <span className={tab.noTruncate ? undefined : "max-w-[10rem] truncate"}>{tab.label}</span>
               </span>
             </button>
           );

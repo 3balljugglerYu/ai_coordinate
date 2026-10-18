@@ -460,10 +460,84 @@
   font-weight: 800;
 }
 
+/* ===== 企画について(2026-10-16 ユーザー指示: ハロウィンの色の下線・「カタログ化」を大きく・もっとポップに) ===== */
+/* 枠と角の飾りをまとめて「ふわっと」出す。飾りは枠の角に重ねる(枠は overflow: hidden なので外に置く) */
+.aboutStage {
+  position: relative;
+}
+
+/* 文は文節の切れ目でだけ折り返す(大きい文字や下線の言葉が途中で切れないように。文節は Phrases で区切る) */
+.aboutCard p:not(.aboutLead) {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
 .aboutLead {
-  font-size: 18px;
+  font-size: 21px;
   font-weight: 800;
   color: var(--pink);
+  letter-spacing: 0.04em;
+}
+
+/* 「カタログ化」: ボタンと同じピンク→オレンジのグラデーションの大きな文字(10/16 ユーザーが見本の案Aを選択。ふち・影・傾きは却下) */
+.catalogWord {
+  display: inline-block;
+  margin: 0 2px;
+  font-size: 1.6em;
+  font-weight: 800;
+  line-height: 1.3;
+  background: var(--grad-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 大事な文に引く、ハロウィンの色のやわらかいマーカーの下線(行をまたいでも行ごとに引く。10/16 ユーザーが見本の案Xを選択) */
+.markOrange,
+.markYellow,
+.markPurple {
+  padding: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.markOrange {
+  background: linear-gradient(transparent 58%, rgba(255, 122, 26, 0.42) 58%);
+}
+
+.markYellow {
+  background: linear-gradient(transparent 58%, rgba(255, 194, 61, 0.8) 58%);
+}
+
+.markPurple {
+  background: linear-gradient(transparent 58%, rgba(138, 77, 255, 0.32) 58%);
+}
+
+/* 「ハロウィン」と2つめの「カタログ化」: 少し大きいオレンジの太字(しま模様の下線は却下) */
+.keyWord {
+  font-size: 1.1em;
+  font-weight: 800;
+  color: var(--orange);
+}
+
+/* 白いおばけが白い枠に溶けないよう、ふちに濃い紫の影 */
+.aboutGhost {
+  composes: deco;
+  z-index: 2;
+  top: -46px;
+  right: -2px;
+  width: 54px;
+  filter: drop-shadow(0 0 1.5px rgba(61, 16, 80, 0.55)) drop-shadow(0 5px 6px rgba(61, 16, 80, 0.3));
+  animation: aboutGhost 3.6s ease-in-out infinite;
+}
+
+.aboutPumpkin {
+  composes: deco;
+  z-index: 2;
+  left: -8px;
+  bottom: -22px;
+  width: 58px;
+  animation: glow 2.2s ease-in-out infinite, bob 5s ease-in-out infinite;
 }
 
 .textLink {
@@ -484,68 +558,131 @@
   color: var(--ink-soft);
 }
 
-/* 賞品 */
-.prizes {
+/*
+ * 賞品: クリエイティブ部門・エンジョイ部門の賞(2026-10-15 ユーザーの見本)。白いカードに、左サムネイル・右に文字の行を積む。
+ * スマホはサムネイルの右に名前とねらいだけを置き、賞品と人数・説明・評価は下の全幅に回す
+ * (「Amazonギフト券 10,000円分」の札は、サムネイルの右の幅だと 375px 以下の画面ではみ出す)。
+ */
+.awards {
+  list-style: none;
+  margin: 0;
+  padding: 4px 16px;
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: var(--shadow-card);
+}
+
+.award {
   display: grid;
-  gap: 14px;
+  grid-template-columns: clamp(84px, 26vw, 112px) minmax(0, 1fr);
+  grid-template-areas:
+    "thumb head"
+    "gift gift"
+    "body body";
+  column-gap: 14px;
+  row-gap: 10px;
+  padding: 16px 0;
 }
 
-.prize {
+.award + .award {
+  border-top: 2px dashed rgba(61, 16, 80, 0.14);
+}
+
+.awardThumb {
+  grid-area: thumb;
   position: relative;
+  /* 賞の画像は正方形(2026-10-15 ユーザーが用意) */
+  aspect-ratio: 1 / 1;
   overflow: hidden;
-  border-radius: 20px;
-  padding: 18px 18px 18px 92px;
-  color: #fff;
-  box-shadow: 0 6px 0 rgba(61, 16, 80, 0.25);
+  border-radius: 14px;
+  /* 画像を読み込むまでに見える地(画像はどれも夜の色合い) */
+  background: var(--plum-800);
+  box-shadow: 0 0 0 1px rgba(61, 16, 80, 0.12), 0 4px 10px rgba(61, 16, 80, 0.16);
 }
 
-.prizeGold {
+.awardHead {
+  grid-area: head;
+  align-self: center;
+  min-width: 0;
+}
+
+.awardName {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 800;
+  line-height: 1.45;
+  color: var(--plum-800);
+  /* 名前は「・」の後ろ(<wbr>)だけで折り返す。入りきらないときだけ文字の途中で切る */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.awardTagline {
+  margin: 2px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
+  /* 名前と同じく、「・」「|」の位置(<wbr>)だけで折り返す */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.awardGift {
+  grid-area: gift;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+
+.awardGiftItem {
+  padding: 2px 12px;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.awardGiftItem b {
+  font-size: 16px;
+}
+
+.awardGiftGold {
   background: linear-gradient(120deg, #ff7a1a, #ffb12e);
 }
 
-.prizeSilver {
+.awardGiftSilver {
   background: linear-gradient(120deg, #8a4dff, #c062ff);
 }
 
-.medal {
-  position: absolute;
-  left: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  background: #fff;
-  font-size: 30px;
-  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.12);
-}
-
-.prizeName {
-  font-weight: 800;
-  font-size: 14px;
-  opacity: 0.95;
-}
-
-.prizeAmount {
-  font-weight: 800;
-  font-size: 28px;
-  line-height: 1.2;
-}
-
-.prizeAmount small {
-  font-size: 14px;
-}
-
-.prizeWho {
-  display: inline-block;
-  margin-top: 4px;
-  padding: 1px 10px;
+.awardWinners {
+  padding: 0 10px;
+  border: 2px solid var(--plum-800);
   border-radius: 999px;
+  color: var(--plum-800);
+  font-size: 12px;
   font-weight: 800;
-  font-size: 13px;
-  background: rgba(255, 255, 255, 0.22);
+  white-space: nowrap;
+}
+
+.awardBody {
+  grid-area: body;
+  min-width: 0;
+}
+
+.awardText {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.awardCriteria {
+  margin: 6px 0 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-soft);
 }
 
 /* 参加方法 */
@@ -586,6 +723,12 @@
 .stepTitle {
   margin: 0;
   font-size: 17px;
+}
+
+/* 題名に「|」(<wbr>)で折り返す位置を入れたものは、その位置と句読点でだけ折り返す */
+.stepTitleHinted {
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .stepText {
@@ -763,6 +906,34 @@
   opacity: 0.9;
 }
 
+/* 閉じの帯のいちばん下: 応募規約へのリンクと、Amazonギフトカードの決まった注記(2026-10-16) */
+.legal {
+  max-width: 640px;
+  margin: 32px auto 0;
+  font-size: 11px;
+  line-height: 1.7;
+  text-align: left;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.legal > .legalLink {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  text-align: center;
+}
+
+.legalLink {
+  font-weight: 700;
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.legalNotice p {
+  margin: 6px 0 0;
+}
+
 /* スクロールで画面に入ったらふわっと出す(JS が動くときだけ隠す) */
 /* ===== つかう人の追加(2026-10-14) ===== */
 .ctaRow {
@@ -812,7 +983,7 @@
   background: rgba(61, 16, 80, 0.12);
 }
 
-/* 賞品: つくる人/つかう人の見出し */
+/* 賞品: 部門(クリエイティブ部門/エンジョイ部門)の見出し */
 .prizeGroup {
   margin: 22px 0 10px;
   font-size: 18px;
@@ -829,27 +1000,27 @@
   color: var(--ink-soft);
 }
 
+/* 部門の見出しの下のひとこと */
+.prizeGroupLead {
+  margin: -4px 0 12px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
 .prizeNotes {
+  /* 上のカードの影(下に 10px)から離す */
+  margin-top: 20px;
   text-align: center;
 }
 
-.prizeNotes .note {
-  margin-top: 4px;
-}
-
-.ticketBox {
-  margin-top: 14px;
-  background: #fff;
-  border-radius: 20px;
-  padding: 16px;
-  box-shadow: var(--shadow-card);
-}
-
-.ticketLead {
-  margin: 0 0 10px;
-  text-align: center;
-  font-weight: 800;
-  color: var(--plum-800);
+/* 賞品の下の「応募規約・注意事項を見る」(2026-10-16。「※」の注意は応募規約にまとめた) */
+.termsLink {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--violet);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* 抽選の口数(3作品→1口…) */
@@ -921,6 +1092,360 @@
   outline-offset: 2px;
 }
 
+/* ===== キャンペーン対象作品・エントリー(2026-10-15) ===== */
+/* ページの中へ飛ぶリンク(#hbs-works など)で、見出しが上の固定ヘッダーの下に隠れないようにする */
+.page [id^="hbs-"] {
+  scroll-margin-top: 80px;
+}
+
+.worksLead {
+  margin: -8px 0 14px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--plum-800);
+}
+
+.works {
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* 6件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
+.worksScroller {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior-x: contain;
+  scrollbar-width: none;
+}
+
+.worksScroller::-webkit-scrollbar {
+  display: none;
+}
+
+.worksPage {
+  flex: 0 0 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  align-content: start;
+  gap: 10px;
+  margin: 0;
+  padding: 4px 2px 10px;
+  list-style: none;
+}
+
+.workLink {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+.workLink:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+  border-radius: 16px;
+}
+
+.workThumb {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  border: 3px solid #fff;
+  border-radius: 16px;
+  background: var(--cream);
+  box-shadow: 0 4px 0 rgba(61, 16, 80, 0.15);
+}
+
+.workImg {
+  object-fit: cover;
+}
+
+.worksNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.worksArrow {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0 0 3px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--plum-800);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.worksArrow[aria-disabled="true"] {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.worksArrow:focus-visible,
+.worksDot:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.worksDots {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 押せる広さは 24px、見た目の点は 8px */
+.worksDot {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  cursor: pointer;
+}
+
+.worksDot::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(61, 16, 80, 0.25);
+  transition: width 0.2s ease, background-color 0.2s ease;
+}
+
+.worksDot[aria-current="true"]::before {
+  width: 18px;
+  background: var(--orange);
+}
+
+.worksCount {
+  min-width: 64px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--plum-800);
+}
+
+/* エントリーと進捗バー(Amazon のキャンペーンページが参考) */
+/* つかう人の手順1の中に置く(手順の枠の中なので、上との間だけあける) */
+.stepEntry {
+  margin-top: 12px;
+}
+
+.entryCard {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 20px 18px 18px;
+  border: 3px solid var(--amber);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: var(--shadow-card);
+}
+
+.entrySkeleton {
+  max-width: 560px;
+  height: 236px;
+  margin: 0 auto;
+  border-radius: 22px;
+  background: linear-gradient(90deg, #f6eaf8 0%, #ffffff 50%, #f6eaf8 100%);
+  background-size: 200% 100%;
+  animation: entryShimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes entryShimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+.entryHead {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.entryIcon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffc27a 0%, var(--orange) 70%);
+  box-shadow: 0 4px 0 #c45500;
+  font-size: 30px;
+}
+
+.entryStatus {
+  margin: 0;
+  font-weight: 800;
+  font-size: 15px;
+  color: #2f8a3e;
+}
+
+.entryTitle {
+  margin: 0;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.4;
+  color: var(--plum-800);
+}
+
+.entrySub {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+/* 条件の吹き出し */
+.entryBubble {
+  position: relative;
+  margin: 14px 0 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--plum-800);
+  color: #fff;
+  font-weight: 700;
+  font-size: 13px;
+  /* 言葉の切れ目でだけ折り返す。入りきらないときだけ、どこでも折り返す(はみ出さない) */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+
+.entryBubble::after {
+  content: "";
+  position: absolute;
+  left: 24px;
+  bottom: -8px;
+  border: 8px solid transparent;
+  border-top-color: var(--plum-800);
+  border-bottom: 0;
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.barWrap {
+  margin-top: 4px;
+}
+
+.bar {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--plum-800);
+  border-radius: 999px;
+  background: #fff;
+}
+
+.barCell {
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(61, 16, 80, 0.08);
+  transition: background-color 0.4s ease;
+}
+
+.barCell[data-filled="true"] {
+  background: linear-gradient(180deg, #ffb057 0%, var(--orange) 100%);
+}
+
+/* 口数が増える段は、かぼちゃ色の縁で目印にする */
+.barCell[data-goal="true"] {
+  box-shadow: inset 0 0 0 2px var(--amber);
+}
+
+.barGoals {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  margin-top: 4px;
+}
+
+.barGoal {
+  justify-self: end;
+  white-space: nowrap;
+  font-weight: 800;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.barGoal[data-reached="true"] {
+  color: var(--orange);
+}
+
+.entryNow {
+  margin: 12px 0 0;
+  font-weight: 800;
+  font-size: 16px;
+  color: #2f8a3e;
+}
+
+.entryNext {
+  margin: 2px 0 0;
+  font-weight: 800;
+  color: var(--pink);
+}
+
+.entryAction {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* .cta / .ctaSub はリンク用の見た目。ボタンで使うときは指の形にする */
+.entryAction .cta,
+.entryAction .ctaSub {
+  cursor: pointer;
+}
+
+.entryAction .cta[aria-disabled="true"] {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.entryClosed {
+  margin: 6px 0 0;
+  text-align: center;
+  font-weight: 800;
+  color: var(--ink-soft);
+}
+
+.entryError {
+  margin: 0;
+  text-align: center;
+  font-weight: 700;
+  font-size: 13px;
+  color: #c0392b;
+}
+
+.entryTime {
+  margin: 12px 0 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--ink);
+}
+
 /* 参加方法のタブ */
 .tabs {
   display: grid;
@@ -967,18 +1492,14 @@
 
 .tabLabel {
   font-weight: 800;
-  font-size: 17px;
+  /* 320px の画面でも「クリエイティブ」が1行に入る大きさまで縮める */
+  font-size: clamp(14px, 4.4vw, 17px);
+  line-height: 1.35;
 }
 
-.tabSub {
-  font-size: 11px;
-  font-weight: 700;
-  opacity: 0.8;
-}
-
-.tab[aria-selected="true"] .tabSub {
-  color: var(--amber);
-  opacity: 1;
+/* タブの名前の「部門」は、スマホでは2行目に回す(2つのタブの形をそろえる)。PC は1行 */
+.tabLabelTail {
+  display: block;
 }
 
 .tabPanel:focus-visible {
@@ -1044,8 +1565,37 @@
     font-size: 24px;
   }
 
-  .prizes {
-    grid-template-columns: 1.2fr 1fr;
+  .tabLabelTail {
+    display: inline;
+  }
+
+  /* 賞の一覧: 見本どおり、サムネイルの右に文字をすべて並べる */
+  .awards {
+    padding: 6px 28px;
+  }
+
+  .award {
+    grid-template-columns: 168px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr;
+    grid-template-areas:
+      "thumb head"
+      "thumb gift"
+      "thumb body";
+    column-gap: 24px;
+    row-gap: 8px;
+    padding: 22px 0;
+  }
+
+  .awardHead {
+    align-self: start;
+  }
+
+  .awardName {
+    font-size: 20px;
+  }
+
+  .awardText {
+    font-size: 15px;
   }
 
   /* 手順はスクショ付きで縦に長いので、パソコンでも1列のまま読ませる */
@@ -1118,6 +1668,11 @@
   50% { transform: skewX(6deg); }
 }
 
+@keyframes aboutGhost {
+  0%, 100% { transform: translateY(0) rotate(8deg); }
+  50% { transform: translateY(-8px) rotate(-4deg); }
+}
+
 @keyframes sweep {
   0%, 60% { left: -60%; }
   100% { left: 130%; }
@@ -1185,12 +1740,23 @@
   .buntingFlags,
   .cta::after,
   .galleryTrack,
-  .galleryPhoto {
+  .galleryPhoto,
+  .aboutGhost,
+  .aboutPumpkin {
     animation: none !important;
   }
 
 
   .cta {
+    transition: none;
+  }
+
+  .entrySkeleton {
+    animation: none;
+  }
+
+  .barCell,
+  .worksDot::before {
     transition: none;
   }
 
@@ -1220,5 +1786,161 @@
 
   .galleryCard:first-child {
     padding-left: 16px;
+  }
+}
+
+/* ===== 参加方法: ひとことと、開いて見る作成手順(2026-10-16 ユーザー指示) ===== */
+/* いきなり作成手順を見せず、まず「〜から生成して投稿するだけでOK！」で伝える */
+.joinSummary {
+  margin: 6px 0 18px;
+  text-align: center;
+}
+
+.joinSummaryText {
+  margin: 0;
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.7;
+  color: var(--plum-900);
+}
+
+.joinSummaryNote {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.joinSummary .hashtagRow {
+  justify-content: center;
+}
+
+.joinDetails {
+  margin: 18px 0 4px;
+}
+
+.joinDetailsSummary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 10px 22px;
+  border: 2px solid var(--plum-800);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--plum-800);
+  font-weight: 800;
+  font-size: 15px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.joinDetailsSummary::-webkit-details-marker {
+  display: none;
+}
+
+.joinDetailsSummary:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
+}
+
+.joinDetailsChevron {
+  font-size: 11px;
+  transition: transform 0.2s ease;
+}
+
+.joinDetails[open] .joinDetailsChevron {
+  transform: rotate(180deg);
+}
+
+.joinDetailsBody {
+  margin-top: 22px;
+}
+
+/* ===== 浮いたボタン(2026-10-16 ユーザー指示) ===== */
+/* ページのどこにいても押せるよう画面の下に固定する。スマホはアプリの下のメニュー(高さ64px)の上 */
+.floatingCta {
+  position: fixed;
+  z-index: 40;
+  left: 12px;
+  right: 12px;
+  bottom: calc(64px + env(safe-area-inset-bottom, 0px) + 10px);
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.floatingCtaButton {
+  pointer-events: auto;
+  flex: 1 1 0;
+  max-width: 240px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  word-break: keep-all;
+  transition: transform 0.2s ease;
+}
+
+.floatingCtaMain {
+  background: var(--grad-brand);
+  color: #fff;
+  box-shadow: 0 4px 0 #b8336f, 0 10px 22px rgba(42, 10, 53, 0.28);
+}
+
+.floatingCtaSub {
+  background: var(--amber);
+  color: var(--plum-900);
+  box-shadow: 0 4px 0 #c47a00, 0 10px 22px rgba(42, 10, 53, 0.28);
+}
+
+.floatingCtaButton:active {
+  transform: translateY(3px);
+}
+
+.floatingCtaButton:focus-visible {
+  outline: 3px solid var(--plum-800);
+  outline-offset: 2px;
+}
+
+/* 企画ページの終わり(この下はサイト共通の案内)まで来たら消す */
+.floatingCta {
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0s;
+}
+
+.floatingCtaHidden {
+  opacity: 0;
+  transform: translateY(16px);
+  visibility: hidden;
+  transition: opacity 0.2s ease, transform 0.2s ease, visibility 0s linear 0.2s;
+}
+
+/* いちばん下の注記が浮いたボタンに隠れないよう、締めの区画の最後に空ける */
+.floatingCtaSpacer {
+  height: 72px;
+}
+
+@media (min-width: 1024px) {
+  .floatingCta {
+    bottom: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floatingCta,
+  .floatingCtaHidden,
+  .floatingCtaButton,
+  .joinDetailsChevron {
+    transition: none;
   }
 }

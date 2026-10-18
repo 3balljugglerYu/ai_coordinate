@@ -10,8 +10,8 @@
  * 段階公開のフラグが無効なら 404 が返るが、それも無視してよい。
  */
 
-/** チップ識別子。route 側の許可集合と揃えること。 */
-export type UserStyleChipEvent = "all" | "usage" | "author";
+/** チップ識別子。route 側の許可集合と揃えること。"campaign" はハッシュタグ企画のタブ(2026-10-16) */
+export type UserStyleChipEvent = "all" | "usage" | "author" | "campaign";
 
 function send(body: Record<string, unknown>): void {
   void fetch("/api/user-styles/events", {

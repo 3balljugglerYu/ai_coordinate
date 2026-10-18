@@ -1,18 +1,21 @@
 "use client";
 
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { trackCampaignEvent, type CampaignEventName } from "@/features/campaigns/lib/campaign-events";
 import styles from "../halloween.module.css";
 
 export interface JoinTab {
   key: string;
   icon: string;
-  label: string;
-  sub: string;
+  /** タブの名前。スマホで2行に分けるため、文字だけでなく要素も渡せる */
+  label: ReactNode;
   panel: ReactNode;
+  /** このタブに切り替えたときに GA4 に送るイベント(最初に開いているタブは送らない) */
+  eventName?: CampaignEventName;
 }
 
 /**
- * 参加方法を「つくる人」「つかう人」で切り替えるタブ(2026-10-14)。
+ * 参加方法を「クリエイティブ部門」「エンジョイ部門」で切り替えるタブ(2026-10-14。呼び名は 10/15 に賞品の部門へそろえた)。
  * 中身はサーバーで両方描いておき、ここでは見せる方を切り替えるだけ。
  */
 export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
@@ -20,9 +23,15 @@ export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
   const [active, setActive] = useState(0);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
+  const activate = (index: number) => {
+    const eventName = tabs[index]?.eventName;
+    if (index !== active && eventName) trackCampaignEvent(eventName);
+    setActive(index);
+  };
+
   const select = (index: number) => {
     const next = (index + tabs.length) % tabs.length;
-    setActive(next);
+    activate(next);
     buttons.current[next]?.focus();
   };
 
@@ -49,14 +58,13 @@ export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
             aria-controls={`${baseId}-panel-${tab.key}`}
             tabIndex={active === index ? 0 : -1}
             className={styles.tab}
-            onClick={() => setActive(index)}
+            onClick={() => activate(index)}
             onKeyDown={(event) => onKeyDown(event, index)}
           >
             <span className={styles.tabIcon} aria-hidden="true">
               {tab.icon}
             </span>
             <span className={styles.tabLabel}>{tab.label}</span>
-            <span className={styles.tabSub}>{tab.sub}</span>
           </button>
         ))}
       </div>

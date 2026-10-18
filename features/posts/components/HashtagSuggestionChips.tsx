@@ -12,8 +12,8 @@ import { useSearchAvailable } from "./SearchAvailabilityProvider";
 /**
  * 説明欄の下に出すタグ候補。**押して初めて説明文に入る。**
  *
- * タグがほぼ存在しない状態から始まるため、候補の出所は「その作品を作った企画に
- * 設定されたタグ」と「自分が前に使ったタグ」の 2 つ（サーバー側で解決）。
+ * タグがほぼ存在しない状態から始まるため、候補の出所は「開催中のハッシュタグ企画のタグ」
+ * 「その作品を作った企画に設定されたタグ」「自分が前に使ったタグ」の 3 つ（サーバー側で解決）。
  *
  * 既に説明文へ入っているタグは出さない。押しても何も起きない候補は、
  * 押し損に見えるため。
@@ -33,7 +33,7 @@ interface Props {
 
 interface Suggestion {
   name: string;
-  source: "category" | "recent";
+  source: "campaign" | "category" | "recent";
 }
 
 export function HashtagSuggestionChips({

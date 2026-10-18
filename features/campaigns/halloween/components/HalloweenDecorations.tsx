@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import styles from "../halloween.module.css";
 
 /**
@@ -15,6 +16,32 @@ function Bat({ className, top }: { className: string; top: string }) {
         <path d={BAT_PATH} fill="#1a0622" />
       </g>
       <ellipse cx="32" cy="16" rx="4" ry="6" fill="#1a0622" />
+    </svg>
+  );
+}
+
+/** おばけ(冒頭の夜空と、企画についての枠で使う) */
+function Ghost({ className, style }: { className: string; style?: CSSProperties }) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 60 60" aria-hidden="true">
+      <path d="M30 6c-11 0-18 9-18 20v24l6-5 6 5 6-5 6 5 6-5 6 5V26C48 15 41 6 30 6z" fill="#fff" />
+      <circle cx="24" cy="26" r="3.5" fill="#3d1050" />
+      <circle cx="36" cy="26" r="3.5" fill="#3d1050" />
+      <ellipse cx="30" cy="35" rx="4" ry="3" fill="#ff4fa3" />
+    </svg>
+  );
+}
+
+/** ジャック・オー・ランタン(冒頭の夜空と、企画についての枠で使う) */
+function Pumpkin({ className, style }: { className: string; style?: CSSProperties }) {
+  return (
+    <svg className={className} style={style} viewBox="0 0 64 56" aria-hidden="true">
+      <path d="M30 6c2-5 7-6 9-4-3 1-5 3-6 6z" fill="#3e7a2b" />
+      <ellipse cx="32" cy="32" rx="28" ry="22" fill="#ff7a1a" />
+      <path d="M32 10c-8 0-12 10-12 22s4 22 12 22 12-10 12-22-4-22-12-22z" fill="#ff8f2e" />
+      <g className={styles.pumpkinFace} fill="#ffd25a">
+        <path d="M18 26l7-4 3 8zM46 26l-7-4-3 8zM18 38c8 6 20 6 28 0l-4 8-4-4-4 5-4-5-4 4z" />
+      </g>
     </svg>
   );
 }
@@ -45,12 +72,7 @@ export function HeroDecorations() {
       <svg className={styles.floatStar} style={{ left: "52%", top: "6%", width: 40 }} viewBox="0 0 40 40" aria-hidden="true">
         <path d="M20 4 24 15h11l-9 7 4 12-10-7-10 7 4-12-9-7h11z" fill="#ffc23d" />
       </svg>
-      <svg className={styles.ghost} style={{ right: "5%", top: "52%" }} viewBox="0 0 60 60" aria-hidden="true">
-        <path d="M30 6c-11 0-18 9-18 20v24l6-5 6 5 6-5 6 5 6-5 6 5V26C48 15 41 6 30 6z" fill="#fff" />
-        <circle cx="24" cy="26" r="3.5" fill="#3d1050" />
-        <circle cx="36" cy="26" r="3.5" fill="#3d1050" />
-        <ellipse cx="30" cy="35" rx="4" ry="3" fill="#ff4fa3" />
-      </svg>
+      <Ghost className={styles.ghost} style={{ right: "5%", top: "52%" }} />
       <Bat className={styles.bat} top="10%" />
       <Bat className={`${styles.bat} ${styles.batSmall}`} top="30%" />
       <Bat className={`${styles.bat} ${styles.batMid}`} top="4%" />
@@ -64,14 +86,17 @@ export function HeroDecorations() {
         <circle cx="11" cy="61" r="1" fill="#fff" />
         <circle cx="15" cy="61" r="1" fill="#fff" />
       </svg>
-      <svg className={styles.pumpkin} style={{ right: "4%", bottom: 52, zIndex: 2 }} viewBox="0 0 64 56" aria-hidden="true">
-        <path d="M30 6c2-5 7-6 9-4-3 1-5 3-6 6z" fill="#3e7a2b" />
-        <ellipse cx="32" cy="32" rx="28" ry="22" fill="#ff7a1a" />
-        <path d="M32 10c-8 0-12 10-12 22s4 22 12 22 12-10 12-22-4-22-12-22z" fill="#ff8f2e" />
-        <g className={styles.pumpkinFace} fill="#ffd25a">
-          <path d="M18 26l7-4 3 8zM46 26l-7-4-3 8zM18 38c8 6 20 6 28 0l-4 8-4-4-4 5-4-5-4 4z" />
-        </g>
-      </svg>
+      <Pumpkin className={styles.pumpkin} style={{ right: "4%", bottom: 52, zIndex: 2 }} />
+    </>
+  );
+}
+
+/** 企画についての枠の角に重ねる、おばけ(右上)とジャック・オー・ランタン(左下) */
+export function AboutDecorations() {
+  return (
+    <>
+      <Ghost className={styles.aboutGhost} />
+      <Pumpkin className={styles.aboutPumpkin} />
     </>
   );
 }

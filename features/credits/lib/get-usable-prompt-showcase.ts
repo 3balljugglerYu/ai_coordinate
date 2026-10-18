@@ -209,8 +209,11 @@ export async function getUsablePromptShowcase(): Promise<
   });
 }
 
-/** 作者名。読めなければ空(呼び出し側で既定名に倒れる)。 */
-async function fetchAuthorNames(
+/**
+ * 作者名。読めなければ空(呼び出し側で既定名に倒れる)。
+ * ハロウィン企画の「キャンペーン対象の投稿」も同じものを使う。
+ */
+export async function fetchAuthorNames(
   supabase: ReturnType<typeof createAdminClient>,
   authorIds: string[]
 ): Promise<Map<string, string>> {

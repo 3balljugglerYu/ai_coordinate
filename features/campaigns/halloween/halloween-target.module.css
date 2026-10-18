@@ -1,0 +1,35 @@
+/*
+ * 対象作品の「このカタログで生成する」の地(2026-10-16 ユーザー指示)。
+ * 画像の左上のラベルは流さない(案Aのオレンジ。halloween-target-style.ts)。
+ *
+ * 紫 → オレンジのグラデーション(企画ページの --violet / --orange)を、やや早めに左から右へ流す。
+ * 1周は2秒。止まって見えたときの色は、紫 → オレンジ(ユーザーが選んだ案C)。
+ *
+ * 流れ方: 紫 → オレンジ → 紫 の帯を要素の2倍の幅で敷き、帯1周ぶん(要素の2倍)動かす。
+ * 帯はくり返して敷かれるので、最後のこまと最初のこまが同じ絵になり、つなぎ目で跳ばない。
+ *
+ * 「動きを減らす」設定(prefers-reduced-motion)では流さず、紫 → オレンジのまま止める
+ * (企画ページと同じ扱い)。
+ */
+.flow {
+  background-image: linear-gradient(90deg, #7b3fe4 0%, #ff7a1a 50%, #7b3fe4 100%);
+  background-size: 200% 100%;
+  animation: halloween-target-flow 2s linear infinite;
+}
+
+@keyframes halloween-target-flow {
+  from {
+    background-position: 200% 50%;
+  }
+  to {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow {
+    animation: none;
+    background-image: linear-gradient(90deg, #7b3fe4 0%, #ff7a1a 100%);
+    background-size: 100% 100%;
+  }
+}

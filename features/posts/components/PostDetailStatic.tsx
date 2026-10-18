@@ -33,6 +33,8 @@ import {
   shouldShowPromptWithCard,
 } from "@/features/generation/lib/prompt-visibility";
 import { SourcePromptReferenceCard } from "./SourcePromptReferenceCard";
+import { useIsHalloweenTarget } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
+import { HalloweenTargetBadge } from "@/features/campaigns/halloween/components/HalloweenTargetBadge";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import { getOneTapStylePresetMetadata } from "@/shared/generation/one-tap-style-metadata";
@@ -115,6 +117,8 @@ export function PostDetailStatic({
   // 永続化完了までの間は image_jobs.input_image_url を使った楽観表示でつなぐ
   // （getPostBeforeImageUrl が永続パス→fallback→null の順で解決）。
   const beforeImageUrl = getPostBeforeImageUrl(post);
+  // ハロウィン企画の対象作品なら、画像の左上にラベルを出す(期間中・日本語の画面だけ)
+  const isHalloweenTarget = useIsHalloweenTarget(post.id);
   const displayName =
     post.user?.nickname ||
     post.user?.email?.split("@")[0] ||
@@ -405,6 +409,11 @@ export function PostDetailStatic({
               <div className="absolute bottom-2 right-2 z-10 rounded bg-black/60 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-white">
                 {postsT("afterImageLabel")}
               </div>
+              {isHalloweenTarget ? (
+                <div className="absolute left-2 top-2 z-10">
+                  <HalloweenTargetBadge />
+                </div>
+              ) : null}
             </div>
             <div
               className="relative max-h-[40vh] max-w-[33vw] cursor-pointer"
@@ -433,10 +442,15 @@ export function PostDetailStatic({
           <div className="relative w-full overflow-hidden bg-white">
             {/* 完走投稿バッジ(フィードカードと同じ見た目)。完走投稿は Before 画像を
                 持たないため、このブランチにだけ置けば十分 */}
-            {post.completion_id ? (
-              <span className="absolute left-2 top-2 z-10 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-                {postsT("completionBadge")}
-              </span>
+            {post.completion_id || isHalloweenTarget ? (
+              <div className="absolute left-2 top-2 z-10 flex items-center gap-1">
+                {isHalloweenTarget ? <HalloweenTargetBadge /> : null}
+                {post.completion_id ? (
+                  <span className="rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+                    {postsT("completionBadge")}
+                  </span>
+                ) : null}
+              </div>
             ) : null}
             <div
               className={`relative w-full overflow-hidden bg-white cursor-pointer ${

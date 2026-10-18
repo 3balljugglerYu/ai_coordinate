@@ -19,6 +19,7 @@ import {
   localizePublicPath,
 } from "@/i18n/config";
 import type { StylePresetPublicSummary } from "@/features/style-presets/lib/schema";
+import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
 
 import "swiper/css";
 import "swiper/css/free-mode";
@@ -29,6 +30,21 @@ interface HomeStylePresetCarouselProps {
   newPresetIds?: readonly string[];
   /** プリセットID -> 累計生成数(試着確認モーダルの「これまでに◯回」表示)。 */
   generateTotals?: Readonly<Record<string, number>>;
+  /**
+   * ハロウィン企画の期間中か(サーバーが描いた時刻で決める)。
+   * 期間中は見出しの横に「※ハロウィン企画には関係ありません」を小さく添える
+   * (2026-10-16 ユーザー指示: 企画の作品と思って、ここから生成してしまう人がいるため)。
+   * 企画は日本国内向けなので、日本語の画面だけに出す。
+   */
+  isHalloweenCampaignOpen?: boolean;
+  /**
+   * 自動で流し始めるまでの待ち(ミリ秒)。既定は0(すぐ流す)。
+   * ホームのハロウィン企画の棚が自動で流れているときに、棚より約1秒遅れて流し始める
+   * (2026-10-17 ユーザー指示: 速さは同じで、棚が先・簡単お着替えはあと)。
+   * 画面の外やタブの裏から戻って流し直すときも、同じだけ待つ。指を離したときは待たない。
+   * 棚は日本語の画面だけに出るので、待つのも日本語の画面だけ。
+   */
+  autoScrollStartDelayMs?: number;
 }
 
 const SCROLL_VELOCITY_PX_PER_SEC = 32;
@@ -84,12 +100,15 @@ export function HomeStylePresetCarousel({
   presets,
   newPresetIds,
   generateTotals,
+  isHalloweenCampaignOpen = false,
+  autoScrollStartDelayMs = 0,
 }: HomeStylePresetCarouselProps) {
   const router = useRouter();
   const t = useTranslations("style");
   const tHome = useTranslations("home");
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const startDelayMs = locale === "ja" ? autoScrollStartDelayMs : 0;
   const swiperRef = useRef<SwiperType | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isUserActiveRef = useRef(false);
@@ -123,6 +142,8 @@ export function HomeStylePresetCarousel({
     }
 
     let rafId: number | null = null;
+    // 流し始めを遅らせているあいだの待ち(autoScrollStartDelayMs)
+    let startDelayTimer: ReturnType<typeof setTimeout> | null = null;
     let lastTime = performance.now();
 
     const tick = (now: number) => {
@@ -158,14 +179,26 @@ export function HomeStylePresetCarousel({
     };
 
     const startTick = () => {
-      if (rafId !== null) {
+      if (rafId !== null || startDelayTimer !== null) {
         return;
       }
-      lastTime = performance.now();
-      rafId = requestAnimationFrame(tick);
+      const begin = () => {
+        startDelayTimer = null;
+        lastTime = performance.now();
+        rafId = requestAnimationFrame(tick);
+      };
+      if (startDelayMs > 0) {
+        startDelayTimer = setTimeout(begin, startDelayMs);
+        return;
+      }
+      begin();
     };
 
     const stopTick = () => {
+      if (startDelayTimer !== null) {
+        clearTimeout(startDelayTimer);
+        startDelayTimer = null;
+      }
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
@@ -220,7 +253,7 @@ export function HomeStylePresetCarousel({
       document.removeEventListener("visibilitychange", handleVisibilityChange);
       window.removeEventListener("pagehide", handlePageHide);
     };
-  }, [presets.length]);
+  }, [presets.length, startDelayMs]);
 
   if (presets.length === 0) {
     return null;
@@ -260,9 +293,21 @@ export function HomeStylePresetCarousel({
     <div ref={containerRef} className="mb-8 overflow-x-hidden">
       <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-0">
         <div>
-          <h2 className="text-lg font-semibold text-gray-900">
-            {tHome("stylePresetCarouselTitle")}
-          </h2>
+          {/* 注記は見出しの横。入りきらない幅では見出しの下へ折り返す */}
+          <div className="flex flex-wrap items-baseline gap-x-2">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {tHome("stylePresetCarouselTitle")}
+            </h2>
+            {isHalloweenCampaignOpen && locale === "ja" ? (
+              <p
+                // 下の説明(新着と人気の…)と同じ灰色だと埋もれるので、注意書きの色にする
+                className="text-[11px] font-medium text-amber-700"
+                data-testid="home-style-carousel-halloween-note"
+              >
+                {HALLOWEEN_BEST_SHOT.homeStyleCarouselNote}
+              </p>
+            ) : null}
+          </div>
           {/* カルーセルは人気順上位のみ表示するため、その基準を薄く添える。 */}
           <p className="mt-0.5 text-xs text-slate-500">
             {tHome("stylePresetCarouselCaption")}

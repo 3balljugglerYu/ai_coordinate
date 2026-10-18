@@ -26,7 +26,16 @@ import {
   isNewPreset,
 } from "@/features/home/lib/home-carousel-presets";
 import { HomeEventShelfSection } from "./HomeEventShelfSection";
+import {
+  HALLOWEEN_BEST_SHOT,
+  isHalloweenBestShotOpen,
+} from "@/features/campaigns/halloween/halloween-best-shot";
 import { HomeStylePresetCarousel } from "./HomeStylePresetCarousel";
+import { HomeHalloweenCatalogShelf } from "./HomeHalloweenCatalogShelf";
+import {
+  getHomeHalloweenEntryProgress,
+  getHomeHalloweenShelfItems,
+} from "@/features/home/lib/home-halloween-shelf";
 
 // 解放ゲート対象が無い/未ログイン時に使う空コンテキスト(除去・解放判定とも no-op)。
 const EMPTY_UNLOCK_CONTEXT: CollectionUnlockContext = {
@@ -73,6 +82,10 @@ export async function CachedHomeStylePresetSection({
   // 開催中のコレクション企画は専用の「企画棚」へ振り分ける(お着替えカルーセルの上)。
   // 棚は locked(次の1枚のシルエット)も表示するため、gated を locked 除外前に渡す。
   const now = new Date();
+  // ハロウィン企画の対象作品の棚(期間外は読まない・読めなければ空。投げないので先に走らせておく)
+  const halloweenShelfItemsPromise = getHomeHalloweenShelfItems(now.getTime());
+  // エントリーした人の進み具合(本人ごと・期間外と未ログインは読まない・読めなければ null。投げない)
+  const halloweenEntryProgressPromise = getHomeHalloweenEntryProgress(userId, now.getTime());
 
   // ✓済み判定用: 開催中企画カテゴリの「生成済みプリセットID集合」。
   // 解放方式(順次/一斉/前提付き)に依存せず厳密に判定するためIDで持つ。
@@ -168,10 +181,13 @@ export async function CachedHomeStylePresetSection({
   // 全ユーザー共通の "use cache" 済み集計。
   // 人気(直近30日)はカルーセルの並び順、累計は試着確認モーダルの
   // 「◯回以上利用されました」表示に使う(表示側で usageCountBucket が丸める)。
-  const [generateCounts, generateTotals] = await Promise.all([
-    getStyleGenerateCounts(),
-    getStyleGenerateTotalCounts(),
-  ]);
+  const [generateCounts, generateTotals, halloweenShelfItems, halloweenEntryProgress] =
+    await Promise.all([
+      getStyleGenerateCounts(),
+      getStyleGenerateTotalCounts(),
+      halloweenShelfItemsPromise,
+      halloweenEntryProgressPromise,
+    ]);
 
   // カルーセルは「新着(先頭・最大 CAROUSEL_MAX_NEW_ITEMS 枚) + 人気順」の
   // 上位 CAROUSEL_MAX_ITEMS 枚のみ表示する。人気順だけだと登録直後の
@@ -200,10 +216,26 @@ export async function CachedHomeStylePresetSection({
           generateTotals={generateTotals}
         />
       ))}
+      {/*
+        ハロウィン企画の対象作品(みんなのカタログ)の棚。簡単お着替えの上(2026-10-17 ユーザー決定)。
+        同じ区画に入れて、簡単お着替えと一度に出す(別の読み込みにすると、あとから差し込まれて下が押し下がる)
+      */}
+      <HomeHalloweenCatalogShelf
+        items={halloweenShelfItems}
+        entryProgress={halloweenEntryProgress}
+      />
       <HomeStylePresetCarousel
         presets={carouselPresets}
         newPresetIds={newPresetIds}
         generateTotals={generateTotals}
+        // 期間中は「※ハロウィン企画には関係ありません」を添える(2026-10-16 ユーザー指示)
+        isHalloweenCampaignOpen={isHalloweenBestShotOpen(now.getTime())}
+        // 上の棚が自動で流れるときは、棚より約1秒遅れて流し始める(2026-10-17 ユーザー指示)
+        autoScrollStartDelayMs={
+          halloweenShelfItems.length >= HALLOWEEN_BEST_SHOT.homeShelf.autoScrollMinItems
+            ? HALLOWEEN_BEST_SHOT.homeShelf.carouselStartDelayMs
+            : 0
+        }
       />
     </>
   );

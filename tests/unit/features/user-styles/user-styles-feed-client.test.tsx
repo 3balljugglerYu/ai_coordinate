@@ -11,6 +11,7 @@ import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { UserStylesFeedClient } from "@/features/user-styles/components/UserStylesFeedClient";
 import type { Post } from "@/features/posts/types";
+import { useHalloweenCampaignOpen } from "@/features/campaigns/halloween/hooks/useHalloweenCampaignOpen";
 
 jest.mock("next-intl", () => ({
   useTranslations: (namespace: string) => (key: string) => `${namespace}.${key}`,
@@ -40,15 +41,25 @@ jest.mock("@/features/user-styles/components/UserStyleChips", () => ({
   UserStyleChips: ({
     active,
     authors,
+    campaignTab,
     onSelect,
   }: {
     active: string;
     authors: { authorId: string }[];
+    campaignTab?: { id: string; label: string } | null;
     onSelect: (chip: string) => void;
   }) =>
     React.createElement(
       "div",
       { "data-testid": "chips", "data-active": active },
+      // 開催中のハッシュタグ企画のタブ(2026-10-16)
+      campaignTab
+        ? React.createElement(
+            "button",
+            { type: "button", "data-testid": "campaign-tab", onClick: () => onSelect(campaignTab.id) },
+            campaignTab.label
+          )
+        : null,
       React.createElement(
         "button",
         { type: "button", onClick: () => onSelect("usage") },
@@ -561,5 +572,89 @@ describe("UserStylesFeedClient", () => {
 
       expect(screen.getByText("userStyles.empty")).toBeInTheDocument();
     });
+  });
+});
+
+
+/*
+  🎃 開催中のハッシュタグ企画のタブ(2026-10-16 ユーザー指示)。
+  期間中・日本語の画面かの判定(useHalloweenCampaignOpen)は、jest.setup.js で全体は「期間外」に固定してあり、
+  ここで差し替える。判定そのものは期間のテスト(halloween-best-shot-period.test.ts)で見る。
+*/
+describe("UserStylesFeedClient(ハッシュタグ企画のタブ)", () => {
+  const openMock = jest.mocked(useHalloweenCampaignOpen);
+  afterEach(() => {
+    openMock.mockImplementation(() => false);
+    window.history.replaceState({}, "", "/");
+  });
+
+  test("期間中は企画のタブを出し、押すと企画の対象作品だけを取り直す(計測は campaign)", async () => {
+    openMock.mockImplementation(() => true);
+    const calls = stubFetch((url) =>
+      url.includes("campaign=")
+        ? { ok: true, body: { posts: [post("c1")], nextCursor: null } }
+        : { ok: true, body: { authors: [] } }
+    );
+    render(<UserStylesFeedClient initialPosts={[post("p1")]} initialCursor={null} currentUserId={null} />);
+
+    const tab = screen.getByTestId("campaign-tab");
+    expect(tab.textContent).toBe("🎃 #うちの子のベストショット");
+    await userEvent.click(tab);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("feed-card").map((el) => el.textContent)).toEqual(["c1"])
+    );
+    expect(screen.getByTestId("chips").getAttribute("data-active")).toBe("campaign:halloween-best-shot");
+    const listCall = calls.find((url) => url.startsWith("/api/user-styles?"));
+    expect(listCall).toBe("/api/user-styles?limit=20&campaign=halloween-best-shot");
+    // 計測は「企画のタブ」として送る
+    const eventBodies = (global.fetch as jest.Mock).mock.calls
+      .filter(([url]) => String(url) === "/api/user-styles/events")
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+    expect(eventBodies).toContainEqual({ eventType: "user_styles_chip", chip: "campaign" });
+  });
+
+  test("期間外は企画のタブを出さない", () => {
+    stubFetch(() => ({ ok: true, body: { authors: [] } }));
+    render(<UserStylesFeedClient initialPosts={[post("p1")]} initialCursor={null} currentUserId={null} />);
+    expect(screen.queryByTestId("campaign-tab")).toBeNull();
+  });
+
+  test("企画ページの「カタログから生成する」から来たら(?campaign=halloween-best-shot)、企画のタブを開く", async () => {
+    openMock.mockImplementation(() => true);
+    window.history.replaceState({}, "", "/ja/user-styles?campaign=halloween-best-shot");
+    const calls = stubFetch((url) =>
+      url.includes("campaign=")
+        ? { ok: true, body: { posts: [post("c1"), post("c2")], nextCursor: null } }
+        : { ok: true, body: { authors: [] } }
+    );
+    render(<UserStylesFeedClient initialPosts={[post("p1")]} initialCursor={null} currentUserId={null} />);
+
+    await waitFor(() =>
+      expect(screen.getAllByTestId("feed-card").map((el) => el.textContent)).toEqual(["c1", "c2"])
+    );
+    expect(screen.getByTestId("chips").getAttribute("data-active")).toBe("campaign:halloween-best-shot");
+    expect(calls.filter((url) => url.includes("campaign=halloween-best-shot"))).toHaveLength(1);
+  });
+
+  test("知らない企画を指定されても、「すべて」のまま", async () => {
+    openMock.mockImplementation(() => true);
+    window.history.replaceState({}, "", "/ja/user-styles?campaign=other-campaign");
+    const calls = stubFetch(() => ({ ok: true, body: { authors: [] } }));
+    render(<UserStylesFeedClient initialPosts={[post("p1")]} initialCursor={null} currentUserId={null} />);
+
+    await act(async () => {});
+    expect(screen.getByTestId("chips").getAttribute("data-active")).toBe("all");
+    expect(calls.some((url) => url.includes("campaign="))).toBe(false);
+  });
+
+  test("期間外に ?campaign= で来ても、「すべて」のまま", async () => {
+    window.history.replaceState({}, "", "/ja/user-styles?campaign=halloween-best-shot");
+    const calls = stubFetch(() => ({ ok: true, body: { authors: [] } }));
+    render(<UserStylesFeedClient initialPosts={[post("p1")]} initialCursor={null} currentUserId={null} />);
+
+    await act(async () => {});
+    expect(screen.getByTestId("chips").getAttribute("data-active")).toBe("all");
+    expect(calls.some((url) => url.includes("campaign="))).toBe(false);
   });
 });

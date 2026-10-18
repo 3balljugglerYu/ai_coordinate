@@ -13,8 +13,17 @@ import {
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
 import type { UserStyleAuthor } from "@/features/user-styles/types";
 
-/** 選択中のチップ。作者チップは `author:<id>` で表す。 */
-export type UserStyleChipId = "all" | "usage" | `author:${string}`;
+/**
+ * 選択中のチップ。作者チップは `author:<id>`、ハッシュタグ企画のタブは `campaign:<企画のキー>` で表す
+ * (企画のタブは 2026-10-16 ユーザー指示)。
+ */
+export type UserStyleChipId = "all" | "usage" | `author:${string}` | `campaign:${string}`;
+
+/** ハッシュタグ企画のタブ(開催中だけ出す)。「すべて」のすぐ右に置く */
+export interface UserStyleCampaignTab {
+  id: `campaign:${string}`;
+  label: string;
+}
 
 /** 作者アイコンの一辺。ニックネームと同じ行に並ぶので名前の高さに合わせる。 */
 const AUTHOR_AVATAR_PX = 20;
@@ -32,11 +41,14 @@ const AUTHOR_AVATAR_PX = 20;
 export function UserStyleChips({
   active,
   authors,
+  campaignTab = null,
   onSelect,
 }: {
   active: UserStyleChipId;
   /** フォロー中の作者。未ログイン・取得前・0人ならすべて空配列。 */
   authors: UserStyleAuthor[];
+  /** ハッシュタグ企画のタブ。開催中でなければ null(出さない) */
+  campaignTab?: UserStyleCampaignTab | null;
   onSelect: (chip: UserStyleChipId) => void;
 }) {
   const t = useTranslations("userStyles");
@@ -55,6 +67,8 @@ export function UserStyleChips({
     // ⭐ 並び順は userStyleChipIds(一覧のスワイプで隣を決める)と同じにすること
     const tabs: CatalogTab<UserStyleChipId>[] = [
       { id: "all", label: `✨ ${t("chipAll")}` },
+      // 開催中のハッシュタグ企画は「すべて」のすぐ右(2026-10-16 ユーザー指示)
+      ...(campaignTab ? [{ id: campaignTab.id, label: campaignTab.label, noTruncate: true }] : []),
       // ⭐ 👑 は /styles の「人気」(直近30日)が使っている。こちらは累計なので別の絵文字にする
       { id: "usage", label: `💖 ${t("chipUsage")}` },
       ...authors.map(
@@ -92,6 +106,13 @@ export function UserStyleChips({
           onClick={() => onSelect("all")}
           label={`✨ ${t("chipAll")}`}
         />
+        {campaignTab ? (
+          <Chip
+            active={active === campaignTab.id}
+            onClick={() => onSelect(campaignTab.id)}
+            label={campaignTab.label}
+          />
+        ) : null}
         <Chip
           active={active === "usage"}
           onClick={() => onSelect("usage")}
