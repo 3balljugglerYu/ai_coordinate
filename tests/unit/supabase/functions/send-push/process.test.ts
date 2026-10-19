@@ -219,6 +219,8 @@ describe("runSendPush", () => {
     expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
       .toBeUndefined();
     expect(statusById(calls.finish[0])).toEqual({ r1: "sent:" });
+    // 握りつぶさず、何が失敗したかを記録する
+    expect(consoleError).toHaveBeenCalledWith("[send-push] image lookup failed:", "storage down");
     consoleError.mockRestore();
   });
 

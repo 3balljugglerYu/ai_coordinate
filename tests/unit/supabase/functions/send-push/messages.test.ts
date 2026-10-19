@@ -7,8 +7,8 @@ import {
   type ClaimedRow,
   classifyFcmResponse,
   groupRows,
-  postThumbUrl,
   pushImageSourceFor,
+  pushImageUrlFromRow,
   resolveText,
   summarizeOutcomes,
 } from "@/supabase/functions/send-push/messages";
@@ -331,6 +331,24 @@ describe("pushImageSourceFor", () => {
     }
   });
 
+  test("Creator Looks の利用投稿は、テンプレートでなく data.generated_image_id の投稿", () => {
+    expect(pushImageSourceFor(row({
+      notification_type: "creator_looks_post_published",
+      category: "creator_activity",
+      notification_entity_type: "creator_looks_template",
+      notification_entity_id: "template-1",
+      notification_data: { template_id: "template-1", generated_image_id: "post-9" },
+    }))).toEqual({ kind: "post", postId: "post-9" });
+    // 投稿が分からなければ付けない(テンプレートの ID を投稿として探さない)
+    expect(pushImageSourceFor(row({
+      notification_type: "creator_looks_post_published",
+      category: "creator_activity",
+      notification_entity_type: "creator_looks_template",
+      notification_entity_id: "template-1",
+      notification_data: { template_id: "template-1" },
+    }))).toBeNull();
+  });
+
   test("フォローは、フォローした人のアイコン", () => {
     expect(pushImageSourceFor(row({
       notification_type: "follow",
@@ -370,16 +388,35 @@ describe("pushImageSourceFor", () => {
   });
 });
 
-describe("postThumbUrl", () => {
+describe("pushImageUrlFromRow", () => {
   const base = "https://ref.supabase.co/";
-  test("小さい版 → image_url → 原本の順", () => {
-    expect(postThumbUrl(base, { storage_path_thumb: "u/p_thumb.webp", image_url: "https://x/y.png" }))
+  const visible = { is_posted: true, moderation_status: "visible" };
+
+  test("小さい版(サムネイル → 表示用の WebP)を使う", () => {
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: "u/p_thumb.webp", storage_path_display: "u/p.webp" }, { requireVisible: true }))
       .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p_thumb.webp");
-    expect(postThumbUrl(base, { image_url: "https://x/y.png", storage_path: "u/p.png" }))
-      .toBe("https://x/y.png");
-    expect(postThumbUrl(base, { storage_path: "u/p.png" }))
-      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p.png");
-    expect(postThumbUrl(base, {})).toBeNull();
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_display: "/u/p.webp" }, { requireVisible: true }))
+      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p.webp");
+  });
+
+  test("⭐小さい版がまだ無ければ付けない(原本の PNG は重いので付けない)", () => {
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: null, storage_path_display: null }, { requireVisible: true }))
+      .toBeNull();
+    expect(pushImageUrlFromRow(base, null, { requireVisible: false })).toBeNull();
+  });
+
+  test.each([
+    ["非公開(投稿していない)", { is_posted: false, moderation_status: "visible" }],
+    ["確認待ち", { is_posted: true, moderation_status: "pending" }],
+    ["公開停止", { is_posted: true, moderation_status: "removed" }],
+  ])("⭐投稿が%sなら画像を付けない", (_label, state) => {
+    expect(pushImageUrlFromRow(base, { ...state, storage_path_thumb: "u/p_thumb.webp" }, { requireVisible: true }))
+      .toBeNull();
+  });
+
+  test("生成の完了(本人だけに届く・未投稿)は公開中かを見ない", () => {
+    expect(pushImageUrlFromRow(base, { is_posted: false, moderation_status: "visible", storage_path_thumb: "u/g_thumb.webp" }, { requireVisible: false }))
+      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/g_thumb.webp");
   });
 });
 

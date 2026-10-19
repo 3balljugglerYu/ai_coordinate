@@ -38,9 +38,8 @@ import {
   classifyFcmResponse,
   type FcmOutcome,
   type PushImageSource,
-  postThumbUrl,
-  usableImageUrl,
 } from "./messages.ts";
+import { type ImageQueryClient, lookupPushImageUrl } from "./images.ts";
 import {
   type DeviceRow,
   type FcmSender,
@@ -147,42 +146,10 @@ function createStore(supabase: SupabaseClient, supabaseUrl: string): PushStore {
         .maybeSingle();
       return (data as { nickname?: string | null } | null)?.nickname ?? null;
     },
-    async imageUrl(source: PushImageSource) {
-      if (source.kind === "avatar") {
-        const { data } = await supabase
-          .from("profiles")
-          .select("avatar_url")
-          .eq("user_id", source.userId)
-          .maybeSingle();
-        return usableImageUrl((data as { avatar_url?: string | null } | null)?.avatar_url);
-      }
-
-      let postId: string | null = null;
-      let query = supabase
-        .from("generated_images")
-        .select("storage_path_thumb, storage_path, image_url");
-      if (source.kind === "generation") {
-        query = query.eq("image_job_id", source.imageJobId);
-      } else {
-        postId = source.kind === "post" ? source.postId : null;
-        if (source.kind === "comment") {
-          const { data: comment } = await supabase
-            .from("comments")
-            .select("image_id")
-            .eq("id", source.commentId)
-            .maybeSingle();
-          postId = (comment as { image_id?: string | null } | null)?.image_id ?? null;
-        }
-        if (!postId) return null;
-        query = query.eq("id", postId);
-      }
-      const { data } = await query.order("created_at", { ascending: true }).limit(1);
-      const post = (data as Array<{
-        storage_path_thumb: string | null;
-        storage_path: string | null;
-        image_url: string | null;
-      }> | null)?.[0];
-      return post ? usableImageUrl(postThumbUrl(supabaseUrl, post)) : null;
+    imageUrl(source: PushImageSource) {
+      // supabase-js の型を ImageQueryClient に当てはめると型の展開が深すぎて止まるので、
+      // 使う分だけの形として渡す(images.ts は Jest でも読むため supabase-js に依存しない)
+      return lookupPushImageUrl(supabase as unknown as ImageQueryClient, supabaseUrl, source);
     },
     async removeTokens(tokens) {
       const { count, error } = await supabase

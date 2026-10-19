@@ -140,7 +140,7 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
 
 /**
  * 通知に添える画像の出どころ。
- * - 投稿への反応(いいね・コメント・プロンプト/スタイルの利用投稿・利用数の節目)は、その投稿
+ * - 投稿への反応(いいね・コメント・プロンプト/スタイル/Creator Looks の利用投稿・利用数の節目)は、その投稿
  * - フォローは、フォローした人のアイコン
  * - 生成の完了は、できた画像(失敗した時は無し)
  * 運営の措置・ペルコインなどには付けない(措置の対象画像を再び見せないため)。
@@ -176,6 +176,12 @@ export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
   }
   if (!type || !POST_IMAGE_NOTIFICATION_TYPES.has(type)) return null;
 
+  // Creator Looks の利用投稿は、通知がテンプレートを指し、投稿は data に入る
+  const generatedImageId = row.notification_data?.generated_image_id;
+  if (typeof generatedImageId === "string" && generatedImageId) {
+    return { kind: "post", postId: generatedImageId };
+  }
+
   const entityId = row.notification_entity_id;
   if (!entityId) return null;
   if (row.notification_entity_type === "post") {
@@ -190,25 +196,37 @@ export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
   return null;
 }
 
+export interface PushImageRow {
+  storage_path_thumb?: string | null;
+  storage_path_display?: string | null;
+  is_posted?: boolean | null;
+  moderation_status?: string | null;
+}
+
 /**
- * 投稿画像の小さい版の公開 URL(Web の getPostThumbUrl と同じ順:
- * storage_path_thumb → image_url → storage_path)。
+ * 画像の行 → 通知に添える URL。
+ * - 投稿は公開中(投稿済み・措置なし)のときだけ。非公開・確認待ち・公開停止の画像は付けない
+ * - 小さい版(サムネイル → 表示用の WebP)だけを使う。原本(PNG 2MB 前後)は付けない
+ *   (生成完了の直後はまだ小さい版が無いことが多い → 文字だけで送る)
  */
-export function postThumbUrl(
+export function pushImageUrlFromRow(
   supabaseUrl: string,
-  post: {
-    storage_path_thumb?: string | null;
-    storage_path?: string | null;
-    image_url?: string | null;
-  },
+  image: PushImageRow | null | undefined,
+  options: { requireVisible: boolean },
 ): string | null {
+  if (!image) return null;
+  if (
+    options.requireVisible &&
+    (image.is_posted !== true || image.moderation_status !== "visible")
+  ) {
+    return null;
+  }
+  const path = image.storage_path_thumb || image.storage_path_display;
+  if (!path) return null;
   const base = supabaseUrl.replace(/\/+$/, "");
-  const fromPath = (path: string) =>
-    `${base}/storage/v1/object/public/generated-images/${path.replace(/^\/+/, "")}`;
-  if (post.storage_path_thumb) return fromPath(post.storage_path_thumb);
-  if (post.image_url) return post.image_url;
-  if (post.storage_path) return fromPath(post.storage_path);
-  return null;
+  return usableImageUrl(
+    `${base}/storage/v1/object/public/generated-images/${path.replace(/^\/+/, "")}`,
+  );
 }
 
 /** 端末が取りに行ける URL だけを使う(相対パスや空文字は付けない) */
