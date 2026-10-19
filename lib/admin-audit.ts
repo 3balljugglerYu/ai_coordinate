@@ -35,7 +35,9 @@ export type AdminAuditAction =
   | "creator_style_preset_reject"
   | "creator_allowlist_add"
   | "creator_allowlist_update"
-  | "creator_allowlist_remove";
+  | "creator_allowlist_remove"
+  | "personal_notice_send"
+  | "personal_notice_retract";
 
 export interface AdminAuditLogParams {
   adminUserId: string;
