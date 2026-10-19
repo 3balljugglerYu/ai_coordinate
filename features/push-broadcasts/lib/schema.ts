@@ -28,13 +28,17 @@ export const PUSH_BROADCAST_URL_MAX = 500;
 /** お知らせ本文から作るプッシュ本文の長さ（通知の表示で切れる前提で短め） */
 export const ANNOUNCEMENT_PUSH_BODY_MAX = 100;
 
-/** 空白・制御文字・バックスラッシュ（`/\evil.example` は別のサイトと読まれる） */
-const URL_FORBIDDEN_CHARACTER_PATTERN = /[\u0000-\u001F\u007F\s\\]/;
+/**
+ * 空白（全角・ゼロ幅・BOM を含む）・制御文字（C0/C1）・バックスラッシュ
+ * （`/\evil.example` は別のサイトと読まれる）。DB の CHECK も同じ文字を断る
+ */
+const URL_FORBIDDEN_CHARACTER_PATTERN =
+  /[\u0000-\u001F\u007F-\u009F\s\u200B\uFEFF\\]/;
 
 /**
  * 押したときの行き先。アプリ内のパス（`/` 始まり、`//` は不可）か https の URL。
  * 空白・制御文字・`\` は使えない（お知らせのリンクの isSafeAnnouncementLinkUrl と同じ守り）。
- * DB の CHECK も同じ条件。
+ * DB の CHECK も同じ文字を断る（https の URL として読めるかは API だけで確かめる）。
  */
 export function isValidPushBroadcastUrl(value: string): boolean {
   if (value.length > PUSH_BROADCAST_URL_MAX) {

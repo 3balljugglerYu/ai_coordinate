@@ -1,5 +1,6 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   createAnnouncement,
@@ -78,6 +79,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // プッシュの配信も作る・取り消す入口なので、別サイトからの送信を断る
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let uploadedPathsToRollback: string[] = [];
 
   try {

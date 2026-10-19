@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   FileText,
   Loader2,
@@ -75,20 +75,33 @@ export function AnnouncementListClient({
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  // 開いた順の番号。すばやく開き直したとき、前の読み込みの結果で上書きしない
+  const editRequestRef = useRef(0);
   const openEdit = useCallback(async (announcement: AnnouncementAdminView) => {
+    const requestId = ++editRequestRef.current;
     setEditingAnnouncement(announcement);
     setIsLoadingEdit(true);
     try {
       const response = await fetch(`/api/admin/announcements/${announcement.id}`, {
         cache: "no-store",
       });
-      const fresh = (await response.json().catch(() => null)) as
+      const fetched = (await response.json().catch(() => null)) as
         | AnnouncementAdminView
         | null;
-      if (response.ok && fresh && typeof fresh === "object" && "id" in fresh) {
-        setEditingAnnouncement((current) =>
-          current?.id === fresh.id ? fresh : current
-        );
+      if (
+        requestId === editRequestRef.current &&
+        response.ok &&
+        fetched &&
+        typeof fetched === "object" &&
+        "id" in fetched
+      ) {
+        // 配信の行はお知らせを消すまで無くならない。読み直しで push が null なら
+        // 状態を読めなかっただけなので、一覧の値を残す（送信済みを「無い」と見せない）
+        const fresh =
+          fetched.push === null && announcement.push !== null
+            ? { ...fetched, push: announcement.push }
+            : fetched;
+        setEditingAnnouncement(fresh);
         setAnnouncements((current) =>
           sortAnnouncements(
             current.map((item) => (item.id === fresh.id ? fresh : item))
@@ -99,7 +112,9 @@ export function AnnouncementListClient({
       // 読めなければ一覧の値で開く（チェックを変えない限りプッシュは変わらない）
       console.error("[Admin Announcements] reload before edit error:", error);
     } finally {
-      setIsLoadingEdit(false);
+      if (requestId === editRequestRef.current) {
+        setIsLoadingEdit(false);
+      }
     }
   }, []);
 
@@ -294,7 +309,9 @@ export function AnnouncementListClient({
         open={Boolean(editingAnnouncement)}
         onOpenChange={(open) => {
           if (!open) {
+            editRequestRef.current += 1;
             setEditingAnnouncement(null);
+            setIsLoadingEdit(false);
           }
         }}
       >
@@ -310,6 +327,7 @@ export function AnnouncementListClient({
           )}
           {editingAnnouncement && !isLoadingEdit && (
             <AnnouncementForm
+              key={`${editingAnnouncement.id}:${editingAnnouncement.updatedAt}:${editingAnnouncement.push?.status ?? "none"}`}
               announcement={editingAnnouncement}
               onSuccess={(savedAnnouncement) => {
                 setAnnouncements((current) =>

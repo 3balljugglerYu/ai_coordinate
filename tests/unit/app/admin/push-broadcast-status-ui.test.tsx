@@ -11,7 +11,7 @@
  *  - プッシュの予約・変更・取り消しが効かなかったときは、「保存しました」だけで終えない
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { PushBroadcastClient } from "@/app/(app)/admin/push-broadcasts/PushBroadcastClient";
 import { AnnouncementForm } from "@/app/(app)/admin/announcements/AnnouncementForm";
 import { AnnouncementListClient } from "@/app/(app)/admin/announcements/AnnouncementListClient";
@@ -386,5 +386,52 @@ describe("お知らせの一覧: 編集を開くとき", () => {
     expect(
       screen.getByRole("checkbox", { name: "プッシュ通知も送る" }).getAttribute("data-state")
     ).toBe("checked");
+  });
+});
+
+describe("お知らせの一覧: 編集を開くとき（読み直しの失敗とすばやい開き直し）", () => {
+  test("⭐読み直しで配信の状態だけ読めなかったら（push が null）、一覧の値を残す（送信済みを「無い」と見せない）", async () => {
+    const listed = announcement(pushSummary({ status: "sent", enqueuedCount: 5 }));
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...listed, title: "直した題名", push: null }),
+    }) as unknown as typeof fetch;
+
+    render(<AnnouncementListClient initialAnnouncements={[listed]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "プッシュ通知も送る" })).toBeTruthy()
+    );
+    // 送信済みなのでチェックは変えられない（押して送り直せない）
+    expect(
+      screen.getByRole("checkbox", { name: "プッシュ通知も送る" }).hasAttribute("disabled")
+    ).toBe(true);
+    expect((screen.getByLabelText("タイトル") as HTMLInputElement).value).toBe("直した題名");
+  });
+
+  test("⭐閉じてすぐ別のお知らせを開いたら、前の読み込みの結果で上書きしない", async () => {
+    const first = announcement(null, { id: "a1", title: "1つ目" });
+    const second = announcement(null, { id: "a2", title: "2つ目" });
+    let resolveFirst: (value: unknown) => void = () => {};
+    global.fetch = jest.fn((url: string) =>
+      url.endsWith("/a1")
+        ? new Promise((resolve) => { resolveFirst = resolve; })
+        : Promise.resolve({ ok: true, json: async () => ({ ...second, title: "2つ目（最新）" }) })
+    ) as unknown as typeof fetch;
+
+    render(<AnnouncementListClient initialAnnouncements={[first, second]} />);
+    const editButtons = screen.getAllByRole("button", { name: "編集" });
+    fireEvent.click(editButtons[0]);
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+    fireEvent.click(screen.getAllByRole("button", { name: "編集" })[1]);
+
+    await waitFor(() =>
+      expect((screen.getByLabelText("タイトル") as HTMLInputElement).value).toBe("2つ目（最新）")
+    );
+    await act(async () => {
+      resolveFirst({ ok: true, json: async () => ({ ...first, title: "1つ目（遅れて届いた）" }) });
+    });
+    expect((screen.getByLabelText("タイトル") as HTMLInputElement).value).toBe("2つ目（最新）");
   });
 });

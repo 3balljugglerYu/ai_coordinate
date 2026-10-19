@@ -74,8 +74,10 @@ CREATE TABLE IF NOT EXISTS public.admin_push_broadcasts (
     OR (
       char_length(url) <= 500
       AND (url ~ '^/[^/]' OR url = '/' OR url ~ '^https://')
-      -- 空白・制御文字・バックスラッシュは不可(`/\evil.example` は別サイトと読まれる)
-      AND url !~ '[[:space:][:cntrl:]\\]'
+      -- 空白・制御文字・バックスラッシュは不可(`/\evil.example` は別サイトと読まれる)。
+      -- [:space:] [:cntrl:] は ASCII だけなので、C1 制御文字と全角・ゼロ幅などの空白も並べる
+      -- (画面・API の URL_FORBIDDEN_CHARACTER_PATTERN と同じ文字)
+      AND url !~ '[[:space:][:cntrl:]\\\u0080-\u009f\u00a0\u1680\u2000-\u200b\u2028\u2029\u202f\u205f\u3000\ufeff]'
     )
   ),
   -- 運営お知らせに紐づく配信。お知らせを消したら配信も消す(送らない)

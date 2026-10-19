@@ -38,7 +38,7 @@ jest.mock("@/features/push-broadcasts/lib/announcement-push-service", () => ({
   attachAnnouncementPushSummaries: jest.fn(async (items: unknown[]) => items),
 }));
 
-import type { NextRequest } from "next/server";
+import { NextRequest as NextRequestImpl, type NextRequest } from "next/server";
 import { POST } from "@/app/api/admin/announcements/route";
 import { DELETE, PATCH } from "@/app/api/admin/announcements/[id]/route";
 import { requireAdmin } from "@/lib/auth";
@@ -81,11 +81,17 @@ function announcement(overrides: Partial<AnnouncementAdmin> = {}): AnnouncementA
   };
 }
 
-function request(method: string, body: unknown): NextRequest {
-  return new Request("http://localhost/api/admin/announcements", {
+function request(
+  method: string,
+  body: unknown,
+  origin: string | null = "http://localhost"
+): NextRequest {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (origin) headers.origin = origin;
+  return new NextRequestImpl("http://localhost/api/admin/announcements", {
     method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
   }) as unknown as NextRequest;
 }
 
@@ -268,4 +274,25 @@ describe("DELETE /api/admin/announcements/[id]", () => {
       })
     );
   });
+});
+
+describe("別サイトからの保存・削除", () => {
+  test.each(["POST", "PATCH", "DELETE"] as const)(
+    "%s は 403 で何もしない（プッシュの配信も作る・取り消す入口なので）",
+    async (method) => {
+      mockRequireAdmin.mockResolvedValue({ id: "admin-1" } as never);
+      const req = request(method, method === "DELETE" ? undefined : saveBody({ sendPush: true }), "https://evil.example");
+      const response =
+        method === "POST"
+          ? await POST(req)
+          : method === "PATCH"
+            ? await PATCH(req, { params: Promise.resolve({ id: "a1" }) })
+            : await DELETE(req, { params: Promise.resolve({ id: "a1" }) });
+
+      expect(response.status).toBe(403);
+      expect(mockCreate).not.toHaveBeenCalled();
+      expect(mockUpdate).not.toHaveBeenCalled();
+      expect(mockSync).not.toHaveBeenCalled();
+    }
+  );
 });

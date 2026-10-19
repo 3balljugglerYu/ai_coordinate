@@ -210,24 +210,26 @@ describe("syncAnnouncementPush: 効いたとき・失敗したとき", () => {
     });
   });
 
-  test("⭐最初の読み込みが失敗したとき、チェックを変えた保存なら知らせる（何も変えない）", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
-    mockSummaries.mockRejectedValueOnce(new Error("network"));
+  test.each([false, undefined])(
+    "⭐最初の読み込みが失敗したら、チェックを変えたかに関わらず知らせる（sendPush=%s・何も変えない）",
+    async (sendPush) => {
+      jest.spyOn(console, "error").mockImplementation(() => {});
+      mockSummaries.mockRejectedValueOnce(new Error("network"));
 
-    const result = await syncAnnouncementPush(params({ sendPush: false }));
+      const result = await syncAnnouncementPush(params({ sendPush }));
+
+      expect(mockApply).not.toHaveBeenCalled();
+      expect(result.error).toContain("予約に変更を反映していません");
+    }
+  );
+
+  test("送信済みの配信にもう一度送るよう頼んだら、送れないと知らせる", async () => {
+    summariesInOrder(summary("sent"), null);
+
+    const result = await syncAnnouncementPush(params({ sendPush: true }));
 
     expect(mockApply).not.toHaveBeenCalled();
-    expect(result.error).toContain("予約・取り消しをしませんでした");
-  });
-
-  test("最初の読み込みが失敗しても、チェックを変えていない保存なら黙る（何も変えない）", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
-    mockSummaries.mockRejectedValueOnce(new Error("network"));
-
-    const result = await syncAnnouncementPush(params({ sendPush: undefined }));
-
-    expect(mockApply).not.toHaveBeenCalled();
-    expect(result).toEqual({ action: "none", push: null });
+    expect(result.error).toContain("もう一度は送れません");
   });
 
   test("⭐書けたあとの読み直しだけが失敗しても、「効かなかった」とは言わない", async () => {

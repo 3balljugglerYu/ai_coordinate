@@ -65,15 +65,13 @@ export async function syncAnnouncementPush(params: {
       ) ?? null;
   } catch (error) {
     console.error("[push-broadcasts] announcement sync read error:", error);
-    if (params.sendPush === undefined) {
-      // チェックを変えていない保存。何も変えないので、読めなくても黙ってよい
-      return { action: "none", push: null };
-    }
+    // チェックを変えていなくても、題名・公開日時などの変更は予約に合わせる必要がある。
+    // 読めなかったときは必ず知らせる
     return {
       action: "none",
       push: null,
       error:
-        "プッシュ通知の状態を読めなかったため、予約・取り消しをしませんでした。もう一度保存してください",
+        "プッシュ通知の状態を読めなかったため、予約に変更を反映していません。もう一度保存してください",
     };
   }
 
@@ -91,9 +89,11 @@ export async function syncAnnouncementPush(params: {
       action: action.type,
       push: existing,
       error:
-        action.status === "expired"
-          ? "プッシュ通知は期限切れになっていたため、変更できませんでした"
-          : "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした",
+        action.requested === "send"
+          ? "このお知らせのプッシュ通知はすでに送っています（送信済み・期限切れ）。もう一度は送れません"
+          : action.status === "expired"
+            ? "プッシュ通知は期限切れになっていたため、変更できませんでした"
+            : "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした",
     };
   }
 

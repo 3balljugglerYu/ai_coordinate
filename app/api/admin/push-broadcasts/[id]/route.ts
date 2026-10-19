@@ -63,7 +63,9 @@ export async function PATCH(
           error:
             current.status === "expired"
               ? "送信日時から 1 時間を過ぎて期限切れになった配信は取り消せません"
-              : "送信が始まった配信は取り消せません",
+              : current.status === "scheduled"
+                ? "配信の状態が変わりました。「更新」で最新にしてから、もう一度取り消してください"
+                : "送信が始まった配信は取り消せません",
         },
         { status: 409 }
       );

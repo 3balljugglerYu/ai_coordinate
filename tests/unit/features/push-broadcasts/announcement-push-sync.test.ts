@@ -144,32 +144,13 @@ describe("decideAnnouncementPushAction", () => {
   });
 
   test.each(["sending", "sent", "expired"] as const)(
-    "%s の配信は、ふつうの編集では触らない",
+    "%s の配信は、チェックを変えない保存では触らない（下書きにしても警告しない）",
     (status) => {
-      expect(
-        decideAnnouncementPushAction(input({ existing: { id: "b1", status } }))
-      ).toEqual({ type: "none" });
       expect(
         decideAnnouncementPushAction(
           input({ existing: { id: "b1", status }, sendPush: undefined })
         )
       ).toEqual({ type: "none" });
-      expect(
-        decideAnnouncementPushAction(
-          input({ existing: { id: "b1", status }, sendPush: true })
-        )
-      ).toEqual({ type: "none" });
-    }
-  );
-
-  test.each(["sending", "sent", "expired"] as const)(
-    "⭐%s の配信を取り消そうとしたら（送らない・下書き）、変えられないと知らせる",
-    (status) => {
-      expect(
-        decideAnnouncementPushAction(
-          input({ existing: { id: "b1", status }, sendPush: false })
-        )
-      ).toEqual({ type: "locked", status });
       expect(
         decideAnnouncementPushAction(
           input({
@@ -178,7 +159,23 @@ describe("decideAnnouncementPushAction", () => {
             announcement: { status: "draft", publishAt: null },
           })
         )
-      ).toEqual({ type: "locked", status });
+      ).toEqual({ type: "none" });
+    }
+  );
+
+  test.each(["sending", "sent", "expired"] as const)(
+    "⭐%s の配信でチェックを変えたら（外した・入れた）、変えられないと知らせる",
+    (status) => {
+      expect(
+        decideAnnouncementPushAction(
+          input({ existing: { id: "b1", status }, sendPush: false })
+        )
+      ).toEqual({ type: "locked", status, requested: "cancel" });
+      expect(
+        decideAnnouncementPushAction(
+          input({ existing: { id: "b1", status }, sendPush: true })
+        )
+      ).toEqual({ type: "locked", status, requested: "send" });
     }
   );
 

@@ -97,6 +97,9 @@ BEGIN
   --   登録が先: 停止の UPDATE がこの関数の COMMIT を待ち、そのあとのトリガーの DELETE が
   --             登録した行を見て消す
   -- (ただの SELECT だと、どちらも相手の書き込みを見ずに進み、宛先が残ることがある)
+  -- FOR SHARE はプロフィールのほかの更新(本人の保存など)とも待ち合う。アプリの起動を
+  -- 長く止めないよう、待つのは 3 秒まで(超えたらエラー。アプリは次の起動で登録し直す)
+  PERFORM set_config('lock_timeout', '3s', true);
   SELECT deactivated_at INTO v_deactivated_at
   FROM public.profiles
   WHERE user_id = v_user_id

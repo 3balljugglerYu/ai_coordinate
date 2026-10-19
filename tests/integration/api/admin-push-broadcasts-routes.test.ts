@@ -221,6 +221,9 @@ describe("POST /api/admin/push-broadcasts", () => {
     "/\\evil.example/x",
     "/\t/evil.example",
     "/\n/evil.example",
+    "/style\u3000x",
+    "/style\u0085x",
+    "/style\u200bx",
     "style",
   ])("行き先 %j は 400", async (url) => {
     const response = await POST(postRequest({ title: "x", url }));
@@ -287,6 +290,18 @@ describe("PATCH /api/admin/push-broadcasts/[id]", () => {
 
     expect(response.status).toBe(409);
     expect((await response.json()).error).toContain("期限切れ");
+  });
+
+  test("取り消しと再予約が重なって予約中に戻っていたら、「送信が始まった」とは言わない", async () => {
+    mockGet
+      .mockResolvedValueOnce(broadcast({ status: "scheduled" }))
+      .mockResolvedValueOnce(broadcast({ status: "scheduled" }));
+    mockCancel.mockResolvedValue(null);
+
+    const response = await PATCH(patchRequest({ status: "canceled" }), params());
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toContain("状態が変わりました");
   });
 
   test("別サイトからの取り消しは 403（何も変えない）", async () => {

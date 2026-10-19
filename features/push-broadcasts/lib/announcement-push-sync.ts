@@ -19,8 +19,8 @@ import {
  * | scheduled                | 下書き または 送らない   | 取り消す                         |
  * | canceled                 | 公開 ＋ 送る             | 予約に戻す（公開日時・表示文も） |
  * | canceled                 | それ以外                 | 何もしない                       |
- * | sending / sent / expired | 公開（チェックは変えない）| 何もしない（送ったもの・期限を過ぎたものは戻せない）|
- * | sending / sent / expired | 下書き または 送らない   | 変えられないと知らせる（locked）  |
+ * | sending / sent / expired | チェックを変えない       | 何もしない（送ったもの・期限を過ぎたものは戻せない）|
+ * | sending / sent / expired | チェックを変えた         | 変えられないと知らせる（locked）  |
  *
  * send_at は公開日時。ただし過去の公開日時（公開済みのお知らせで後から「送る」に
  * したときなど）は保存した今にする。過去のままだと、DB は送信日時から 1 時間たった
@@ -44,8 +44,12 @@ export interface AnnouncementPushContent {
 
 export type AnnouncementPushAction =
   | { type: "none" }
-  /** 送信が始まった・済んだ・期限切れの配信を、取り消し（下書き・送らない）しようとした */
-  | { type: "locked"; status: "sending" | "sent" | "expired" }
+  /** 送信が始まった・済んだ・期限切れの配信を、チェックを変えて取り消し／送り直ししようとした */
+  | {
+      type: "locked";
+      status: "sending" | "sent" | "expired";
+      requested: "send" | "cancel";
+    }
   | { type: "create"; content: AnnouncementPushContent }
   | { type: "reschedule"; id: string; content: AnnouncementPushContent }
   | { type: "cancel"; id: string };
@@ -118,13 +122,12 @@ export function decideAnnouncementPushAction(
     existing.status === "sent" ||
     existing.status === "expired"
   ) {
-    // 送ったもの・期限を過ぎたものは戻せない。取り消しを頼まれた（チェックを外した・
-    // 下書きにした）ときだけ、黙らずに知らせる。ふつうの編集は何もしない
-    const wantsCancel =
-      input.sendPush === false || announcement.status !== "published";
-    return wantsCancel
-      ? { type: "locked", status: existing.status }
-      : { type: "none" };
+    // 送ったもの・期限を過ぎたものは戻せない。チェックを変えて頼まれた（外した＝取り消し、
+    // 入れた＝もう一度送る）ときだけ、黙らずに知らせる。ふつうの編集・下書きへの
+    // 切り替えは何もしない（チェックに触れていないのに毎回警告しない）
+    return input.sendPush === undefined
+      ? { type: "none" }
+      : { type: "locked", status: existing.status, requested: input.sendPush ? "send" : "cancel" };
   }
 
   if (content) {

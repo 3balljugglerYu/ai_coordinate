@@ -1,5 +1,6 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   deleteAnnouncement,
@@ -68,6 +69,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // プッシュの配信も作る・取り消す入口なので、別サイトからの送信を断る
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let rollbackPaths: string[] = [];
   let cleanupPaths: string[] = [];
 
@@ -192,9 +197,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // プッシュの配信も作る・取り消す入口なので、別サイトからの送信を断る
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const user = await requireAdmin();
     const { id } = await params;
