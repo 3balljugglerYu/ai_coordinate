@@ -577,17 +577,18 @@ export function useNotifications(
   // 通知をクリックして遷移
   const handleNotificationClick = useCallback(
     (notification: Notification) => {
-      // 既読化
-      if (!notification.is_read) {
-        markRead([notification.id]);
-      }
-
       // 個人あてのお知らせは全文の詳細ページへ。entity_type は作品つきなら 'post'、
       // なしなら 'user'(本人)なので、下の entity_type の分岐より前で分ける
-      // (personal-notices 計画書 ADR-005)。
+      // (personal-notices 計画書 ADR-005)。既読は詳細ページの「開いた記録」が
+      // 付けるので、ここでは既読化しない(同じ行を2回書かない)。
       if (notification.type === "admin_message") {
         router.push(`/notifications/messages/${notification.id}`);
         return;
+      }
+
+      // 既読化
+      if (!notification.is_read) {
+        markRead([notification.id]);
       }
 
       // モデレーション通知は判定詳細ページへ遷移する。

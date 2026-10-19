@@ -335,13 +335,14 @@ describe("useNotifications", () => {
     );
   });
 
-  test("個人あてのお知らせは作品つきでも投稿でなく詳細ページへ遷移する", async () => {
+  test("個人あてのお知らせは作品つきでも投稿でなく詳細ページへ遷移し_ここでは既読にしない", async () => {
     const { result } = await renderNotificationsHook();
 
     act(() => {
       result.current.handleNotificationClick(
         createNotification({
           id: "notice-1",
+          is_read: false,
           type: "admin_message",
           entity_type: "post",
           entity_id: "post-777",
@@ -352,6 +353,9 @@ describe("useNotifications", () => {
 
     expect(pushMock).toHaveBeenCalledTimes(1);
     expect(pushMock).toHaveBeenCalledWith("/notifications/messages/notice-1");
+    // 既読は詳細ページの「開いた記録」が付ける(同じ行を2回書かない)
+    await flushAsyncEffects();
+    expect(markNotificationsReadMock).not.toHaveBeenCalled();
   });
 
   test("個人あてのお知らせは文だけ(entity_type=user)でも詳細ページへ遷移する", async () => {

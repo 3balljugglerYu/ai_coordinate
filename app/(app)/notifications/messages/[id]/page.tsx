@@ -2,7 +2,8 @@ import { connection } from "next/server";
 import { notFound } from "next/navigation";
 import { getLocale } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
 import { PersonalNoticeDetailScreen } from "@/features/notifications/components/PersonalNoticeDetailScreen";
 import { getPersonalNoticeDetailForUser } from "@/features/notifications/lib/personal-notice-detail";
 
@@ -20,10 +21,13 @@ export default async function PersonalNoticeDetailPage({
 }: PersonalNoticeDetailPageProps) {
   await connection();
 
-  const { id } = await params;
-  const locale = await getLocale();
-  const user = await requireAuth();
-  const notice = await getPersonalNoticeDetailForUser(await createClient(), {
+  const [{ id }, localeValue, user] = await Promise.all([
+    params,
+    getLocale(),
+    requireAuth(),
+  ]);
+  const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
+  const notice = await getPersonalNoticeDetailForUser(createAdminClient(), {
     notificationId: id,
     userId: user.id,
     locale,

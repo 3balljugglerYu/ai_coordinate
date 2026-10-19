@@ -4,8 +4,11 @@
  */
 
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { PersonalNoticeDetailScreen } from "@/features/notifications/components/PersonalNoticeDetailScreen";
+import { render, screen, waitFor } from "@testing-library/react";
+import {
+  PersonalNoticeDetailScreen,
+  splitBodyIntoLinks,
+} from "@/features/notifications/components/PersonalNoticeDetailScreen";
 import { markPersonalNoticeOpened } from "@/features/notifications/lib/personal-notice-api";
 
 jest.mock("next-intl", () => ({
@@ -16,6 +19,11 @@ jest.mock("next/image", () => ({
   __esModule: true,
   default: ({ alt, src }: { alt?: string; src?: string }) =>
     React.createElement("img", { alt, src }),
+}));
+
+const refreshUnreadCountMock = jest.fn();
+jest.mock("@/features/notifications/components/UnreadNotificationProvider", () => ({
+  useUnreadNotificationCount: () => ({ refreshUnreadCount: refreshUnreadCountMock }),
 }));
 
 jest.mock("@/features/notifications/lib/personal-notice-api", () => ({
@@ -36,6 +44,7 @@ const baseNotice = {
 
 describe("PersonalNoticeDetailScreen", () => {
   beforeEach(() => {
+    refreshUnreadCountMock.mockReset();
     mockMarkOpened.mockReset();
     mockMarkOpened.mockResolvedValue(undefined);
   });
@@ -93,11 +102,80 @@ describe("PersonalNoticeDetailScreen", () => {
     expect(mockMarkOpened).toHaveBeenCalledWith("notice-1");
   });
 
+  test("記録できたらヘッダーの未読の数を合わせ直す(直接開いたとき用)", async () => {
+    render(<PersonalNoticeDetailScreen notice={baseNotice} />);
+
+    await waitFor(() => expect(refreshUnreadCountMock).toHaveBeenCalledTimes(1));
+  });
+
+  test("記録に失敗しても画面は出したまま_未読の数は触らない", async () => {
+    mockMarkOpened.mockRejectedValue(new Error("network"));
+    const errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    render(<PersonalNoticeDetailScreen notice={baseNotice} />);
+
+    await waitFor(() => expect(errorSpy).toHaveBeenCalled());
+    expect(screen.getByText("🎃当選のお知らせ")).toBeTruthy();
+    expect(refreshUnreadCountMock).not.toHaveBeenCalled();
+    errorSpy.mockRestore();
+  });
+
+  test("同じ画面のまま別のお知らせに変わったら_そちらも記録する", () => {
+    const { rerender } = render(
+      <PersonalNoticeDetailScreen notice={baseNotice} />
+    );
+    rerender(
+      <PersonalNoticeDetailScreen notice={{ ...baseNotice, id: "notice-2" }} />
+    );
+
+    expect(mockMarkOpened.mock.calls).toEqual([["notice-1"], ["notice-2"]]);
+  });
+
   test("管理画面のプレビュー(recordOpened=false)では記録しない", () => {
     render(
       <PersonalNoticeDetailScreen notice={baseNotice} recordOpened={false} />
     );
 
     expect(mockMarkOpened).not.toHaveBeenCalled();
+  });
+});
+
+describe("splitBodyIntoLinks", () => {
+  test("URLのすぐ後ろの日本語はリンクに入れない", () => {
+    expect(
+      splitBodyIntoLinks("こちらhttps://forms.gle/abcからご回答ください")
+    ).toEqual([
+      { type: "text", value: "こちら" },
+      { type: "link", value: "https://forms.gle/abc" },
+      { type: "text", value: "からご回答ください" },
+    ]);
+  });
+
+  test("文の終わりの句読点はリンクに入れない", () => {
+    expect(splitBodyIntoLinks("詳しくは https://persta.ai/a?b=1.")).toEqual([
+      { type: "text", value: "詳しくは " },
+      { type: "link", value: "https://persta.ai/a?b=1" },
+      { type: "text", value: "." },
+    ]);
+    expect(splitBodyIntoLinks("https://forms.gle/abc。期限は")).toEqual([
+      { type: "link", value: "https://forms.gle/abc" },
+      { type: "text", value: "。期限は" },
+    ]);
+  });
+
+  test("括弧で囲んだURLは括弧を含めない", () => {
+    expect(splitBodyIntoLinks("（https://forms.gle/abc）(https://x.example/y)")).toEqual([
+      { type: "text", value: "（" },
+      { type: "link", value: "https://forms.gle/abc" },
+      { type: "text", value: "）(" },
+      { type: "link", value: "https://x.example/y" },
+      { type: "text", value: ")" },
+    ]);
+  });
+
+  test("URLが無ければ文字だけ", () => {
+    expect(splitBodyIntoLinks("おめでとうございます")).toEqual([
+      { type: "text", value: "おめでとうございます" },
+    ]);
   });
 });

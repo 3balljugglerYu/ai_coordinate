@@ -5,10 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
+import { isUuid } from "@/lib/is-uuid";
 import { getNotificationsRouteCopy } from "@/features/notifications/lib/route-copy";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * 個人あてのお知らせの詳細ページを開いた記録(初回の時刻と既読)。
@@ -31,7 +29,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    if (!UUID_PATTERN.test(id)) {
+    if (!isUuid(id)) {
       return jsonError(copy.markReadFailed, "NOTIFICATIONS_INVALID_ID", 400);
     }
 
