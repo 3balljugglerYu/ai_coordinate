@@ -5,10 +5,7 @@
 
 import React from "react";
 import { render, screen, waitFor } from "@testing-library/react";
-import {
-  PersonalNoticeDetailScreen,
-  splitBodyIntoLinks,
-} from "@/features/notifications/components/PersonalNoticeDetailScreen";
+import { PersonalNoticeDetailScreen } from "@/features/notifications/components/PersonalNoticeDetailScreen";
 import { markPersonalNoticeOpened } from "@/features/notifications/lib/personal-notice-api";
 
 jest.mock("next-intl", () => ({
@@ -40,6 +37,7 @@ const baseNotice = {
   body: "受付番号: HBS-7F3K\nhttps://forms.gle/abc\njavascript:alert(1)\n<b>太字</b>",
   receivedAtLabel: "2026年11月7日",
   post: null,
+  alreadyOpened: false,
 };
 
 describe("PersonalNoticeDetailScreen", () => {
@@ -131,6 +129,14 @@ describe("PersonalNoticeDetailScreen", () => {
     expect(mockMarkOpened.mock.calls).toEqual([["notice-1"], ["notice-2"]]);
   });
 
+  test("前に開いたことがあれば記録を送らない", () => {
+    render(
+      <PersonalNoticeDetailScreen notice={{ ...baseNotice, alreadyOpened: true }} />
+    );
+
+    expect(mockMarkOpened).not.toHaveBeenCalled();
+  });
+
   test("管理画面のプレビュー(recordOpened=false)では記録しない", () => {
     render(
       <PersonalNoticeDetailScreen notice={baseNotice} recordOpened={false} />
@@ -140,42 +146,41 @@ describe("PersonalNoticeDetailScreen", () => {
   });
 });
 
-describe("splitBodyIntoLinks", () => {
+function linksIn(body: string) {
+  render(<PersonalNoticeDetailScreen notice={{ ...baseNotice, body }} recordOpened={false} />);
+  return screen
+    .getAllByRole("link")
+    .filter((a) => a.getAttribute("target") === "_blank")
+    .map((a) => a.getAttribute("href"));
+}
+
+describe("本文のリンク", () => {
   test("URLのすぐ後ろの日本語はリンクに入れない", () => {
+    expect(linksIn("こちらhttps://forms.gle/abcからご回答ください")).toEqual([
+      "https://forms.gle/abc",
+    ]);
+  });
+
+  test("文の終わりの句読点と閉じ括弧はリンクに入れない", () => {
     expect(
-      splitBodyIntoLinks("こちらhttps://forms.gle/abcからご回答ください")
+      linksIn("https://forms.gle/a。\nhttps://forms.gle/b.\n[https://forms.gle/c]\n（https://forms.gle/d）")
     ).toEqual([
-      { type: "text", value: "こちら" },
-      { type: "link", value: "https://forms.gle/abc" },
-      { type: "text", value: "からご回答ください" },
+      "https://forms.gle/a",
+      "https://forms.gle/b",
+      "https://forms.gle/c",
+      "https://forms.gle/d",
     ]);
   });
 
-  test("文の終わりの句読点はリンクに入れない", () => {
-    expect(splitBodyIntoLinks("詳しくは https://persta.ai/a?b=1.")).toEqual([
-      { type: "text", value: "詳しくは " },
-      { type: "link", value: "https://persta.ai/a?b=1" },
-      { type: "text", value: "." },
-    ]);
-    expect(splitBodyIntoLinks("https://forms.gle/abc。期限は")).toEqual([
-      { type: "link", value: "https://forms.gle/abc" },
-      { type: "text", value: "。期限は" },
-    ]);
-  });
-
-  test("括弧で囲んだURLは括弧を含めない", () => {
-    expect(splitBodyIntoLinks("（https://forms.gle/abc）(https://x.example/y)")).toEqual([
-      { type: "text", value: "（" },
-      { type: "link", value: "https://forms.gle/abc" },
-      { type: "text", value: "）(" },
-      { type: "link", value: "https://x.example/y" },
-      { type: "text", value: ")" },
-    ]);
-  });
-
-  test("URLが無ければ文字だけ", () => {
-    expect(splitBodyIntoLinks("おめでとうございます")).toEqual([
-      { type: "text", value: "おめでとうございます" },
-    ]);
+  test("URLとして読めないものはリンクにしない", () => {
+    render(
+      <PersonalNoticeDetailScreen
+        notice={{ ...baseNotice, body: "https://." }}
+        recordOpened={false}
+      />
+    );
+    expect(
+      screen.queryAllByRole("link").filter((a) => a.getAttribute("target") === "_blank")
+    ).toHaveLength(0);
   });
 });

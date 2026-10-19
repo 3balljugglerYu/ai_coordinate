@@ -30,7 +30,7 @@ export async function POST(
 
     const { id } = await params;
     if (!isUuid(id)) {
-      return jsonError(copy.markReadFailed, "NOTIFICATIONS_INVALID_ID", 400);
+      return jsonError(copy.notFound, "NOTIFICATIONS_INVALID_ID", 400);
     }
 
     const { data: found, error } = await createAdminClient().rpc(
@@ -43,7 +43,7 @@ export async function POST(
       return jsonError(copy.markReadFailed, "NOTIFICATIONS_MARK_READ_FAILED", 500);
     }
     if (found !== true) {
-      return jsonError(copy.markReadFailed, "NOTIFICATIONS_NOT_FOUND", 404);
+      return jsonError(copy.notFound, "NOTIFICATIONS_NOT_FOUND", 404);
     }
 
     revalidateTag(`notifications-${user.id}`, "max");

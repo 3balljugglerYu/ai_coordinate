@@ -6,6 +6,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
+import { linkify } from "@/lib/linkify";
 import { useUnreadNotificationCount } from "./UnreadNotificationProvider";
 import { markPersonalNoticeOpened } from "../lib/personal-notice-api";
 import type { PersonalNoticeDetailView } from "../lib/personal-notice-types";
@@ -17,43 +18,23 @@ interface PersonalNoticeDetailScreenProps {
 }
 
 // http(s) の URL だけをリンクにする(本文は文字として描く。HTML としては入れない)。
-// URL に使える ASCII の文字だけを拾うので、すぐ後ろの日本語(「こちらhttps://…からご回答」)
-// は入らない。括弧と引用符は文の区切りとして扱う。
-const URL_PATTERN = /(https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&*+,;=%]+)/g;
-// 文の終わりの句読点は URL に含めない(「…/abc.」「…/abc,」)
-const TRAILING_PUNCTUATION = /[.,!?;:]+$/;
-
-export function splitBodyIntoLinks(
-  body: string
-): Array<{ type: "text" | "link"; value: string }> {
-  const parts: Array<{ type: "text" | "link"; value: string }> = [];
-  body.split(URL_PATTERN).forEach((part, index) => {
-    if (index % 2 === 0) {
-      if (part) parts.push({ type: "text", value: part });
-      return;
-    }
-    const trailing = part.match(TRAILING_PUNCTUATION)?.[0] ?? "";
-    const url = trailing ? part.slice(0, -trailing.length) : part;
-    parts.push({ type: "link", value: url });
-    if (trailing) parts.push({ type: "text", value: trailing });
-  });
-  return parts;
-}
-
+// 切り出しと正規化は投稿の説明文と同じ lib/linkify(後ろの日本語・句読点・閉じ括弧は含めない)。
 function renderBody(body: string) {
-  return splitBodyIntoLinks(body).map((part, index) =>
-    part.type === "link" ? (
+  return linkify(body).map((token, index) =>
+    token.type === "link" ? (
       <a
         key={index}
-        href={part.value}
+        href={token.href}
         target="_blank"
         rel="noopener noreferrer"
         className="break-all text-blue-600 underline underline-offset-2"
       >
-        {part.value}
+        {token.rawValue}
       </a>
     ) : (
-      <Fragment key={index}>{part.value}</Fragment>
+      <Fragment key={index}>
+        {token.type === "text" ? token.value : token.rawValue}
+      </Fragment>
     )
   );
 }
@@ -72,7 +53,12 @@ export function PersonalNoticeDetailScreen({
   const markedOpenedIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!recordOpened || markedOpenedIdRef.current === notice.id) {
+    // 前に開いたことがあれば送らない(2回目以降は記録も一覧のキャッシュも変わらない)
+    if (
+      !recordOpened ||
+      notice.alreadyOpened ||
+      markedOpenedIdRef.current === notice.id
+    ) {
       return;
     }
     markedOpenedIdRef.current = notice.id;
@@ -83,7 +69,7 @@ export function PersonalNoticeDetailScreen({
         // 開いた記録に失敗しても、読むのは止めない
         console.error("Failed to record personal notice opened:", error);
       });
-  }, [notice.id, recordOpened, refreshUnreadCount]);
+  }, [notice.id, notice.alreadyOpened, recordOpened, refreshUnreadCount]);
 
   return (
     <div className="space-y-6 p-4 md:p-6">

@@ -5,4 +5,6 @@ export interface PersonalNoticeDetailView {
   body: string;
   receivedAtLabel: string;
   post: { id: string; imageUrl: string } | null;
+  /** 前に開いたことがあるか(あるなら開いた記録は送らない) */
+  alreadyOpened: boolean;
 }

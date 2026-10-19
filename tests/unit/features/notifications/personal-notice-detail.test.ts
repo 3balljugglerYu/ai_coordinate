@@ -38,10 +38,21 @@ function createSupabase(results: Record<string, Result>) {
   return { client: client as never, filters };
 }
 
+const visiblePost = {
+  id: POST_ID,
+  user_id: "user-1",
+  is_posted: true,
+  moderation_status: "visible",
+  image_url: null,
+  storage_path: "a.png",
+  storage_path_display: "a.webp",
+};
+
 const recipientRow = (overrides: Record<string, unknown> = {}) => ({
   receipt_code: "HBS-7F3K",
-  post_id: null,
+  opened_at: null,
   created_at: "2026-11-07T11:00:00.000Z",
+  post: null,
   notice: {
     title: "🎃当選のお知らせ",
     body_template: "受付番号: {受付番号}\n控え: {受付番号}",
@@ -82,7 +93,7 @@ describe("getPersonalNoticeDetailForUser", () => {
   });
 
   test("題名と本文は記録から作り_受付番号は全部の印を本人の番号に置き換える", async () => {
-    const { client, filters } = createSupabase({
+    const { client } = createSupabase({
       personal_notice_recipients: { data: recipientRow(), error: null },
     });
 
@@ -94,8 +105,8 @@ describe("getPersonalNoticeDetailForUser", () => {
       body: "受付番号: HBS-7F3K\n控え: HBS-7F3K",
       receivedAtLabel: "2026年11月7日",
       post: null,
+      alreadyOpened: false,
     });
-    expect(filters.generated_images).toBeUndefined();
   });
 
   test("番号を使わない回は本文をそのまま出す", async () => {
@@ -114,14 +125,10 @@ describe("getPersonalNoticeDetailForUser", () => {
     expect(result?.body).toBe("200ペルコインを付与しました");
   });
 
-  test("作品つきは本人の公開中の投稿だけを読み_表示用の画像を付ける", async () => {
+  test("作品つきは1回の問い合わせで読み_本人の公開中の投稿なら表示用の画像を付ける", async () => {
     const { client, filters } = createSupabase({
       personal_notice_recipients: {
-        data: recipientRow({ post_id: POST_ID }),
-        error: null,
-      },
-      generated_images: {
-        data: { id: POST_ID, image_url: null, storage_path: "a.png", storage_path_display: "a.webp" },
+        data: recipientRow({ post: visiblePost }),
         error: null,
       },
     });
@@ -132,27 +139,38 @@ describe("getPersonalNoticeDetailForUser", () => {
       id: POST_ID,
       imageUrl: "https://cdn.example/display.webp",
     });
-    expect(filters.generated_images).toEqual([
-      ["eq", "id", POST_ID],
-      ["eq", "user_id", "user-1"],
-      ["eq", "is_posted", true],
-      ["eq", "moderation_status", "visible"],
-    ]);
+    expect(Object.keys(filters)).toEqual(["personal_notice_recipients"]);
   });
 
-  test("送ったあとに非公開になった作品は出さないが_お知らせは読める", async () => {
+  test.each([
+    ["非公開にした", { is_posted: false }],
+    ["公開停止になった", { moderation_status: "removed" }],
+    ["持ち主が違う", { user_id: "someone-else" }],
+  ])("送ったあとに%s作品は出さないが_お知らせは読める", async (_label, change) => {
     const { client } = createSupabase({
       personal_notice_recipients: {
-        data: recipientRow({ post_id: POST_ID }),
+        data: recipientRow({ post: { ...visiblePost, ...change } }),
         error: null,
       },
-      generated_images: { data: null, error: null },
     });
 
     const result = await getPersonalNoticeDetailForUser(client, params);
 
     expect(result?.title).toBe("🎃当選のお知らせ");
     expect(result?.post).toBeNull();
+  });
+
+  test("前に開いたことがあれば alreadyOpened", async () => {
+    const { client } = createSupabase({
+      personal_notice_recipients: {
+        data: recipientRow({ opened_at: "2026-11-07T12:00:00.000Z" }),
+        error: null,
+      },
+    });
+
+    const result = await getPersonalNoticeDetailForUser(client, params);
+
+    expect(result?.alreadyOpened).toBe(true);
   });
 
   test("読み込みエラーは投げる(error.tsx に任せる)", async () => {

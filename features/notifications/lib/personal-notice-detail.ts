@@ -17,9 +17,18 @@ export function formatPersonalNoticeDate(value: string, locale: string) {
 
 type RecipientRow = {
   receipt_code: string | null;
-  post_id: string | null;
+  opened_at: string | null;
   created_at: string;
   notice: { title: string; body_template: string } | null;
+  post: {
+    id: string;
+    user_id: string;
+    is_posted: boolean | null;
+    moderation_status: string | null;
+    image_url: string | null;
+    storage_path: string | null;
+    storage_path_display: string | null;
+  } | null;
 };
 
 /**
@@ -41,7 +50,7 @@ export async function getPersonalNoticeDetailForUser(
   const { data, error } = await adminClient
     .from("personal_notice_recipients")
     .select(
-      "receipt_code, post_id, created_at, notice:personal_notices(title, body_template)"
+      "receipt_code, opened_at, created_at, notice:personal_notices(title, body_template), post:generated_images(id, user_id, is_posted, moderation_status, image_url, storage_path, storage_path_display)"
     )
     .eq("notification_id", params.notificationId)
     .eq("recipient_id", params.userId)
@@ -66,35 +75,24 @@ export async function getPersonalNoticeDetailForUser(
     title: row.notice.title,
     body,
     receivedAtLabel: formatPersonalNoticeDate(row.created_at, params.locale),
-    post: row.post_id
-      ? await getAttachedPost(adminClient, row.post_id, params.userId)
-      : null,
+    post: toVisiblePost(row.post, params.userId),
+    alreadyOpened: row.opened_at !== null,
   };
 }
 
 /** 送ったあとに非公開・公開停止になった作品は出さない(送るときと同じ条件) */
-async function getAttachedPost(
-  adminClient: SupabaseClient,
-  postId: string,
+function toVisiblePost(
+  post: RecipientRow["post"],
   userId: string
-): Promise<PersonalNoticeDetailView["post"]> {
-  const { data: post, error } = await adminClient
-    .from("generated_images")
-    .select("id, image_url, storage_path, storage_path_display")
-    .eq("id", postId)
-    .eq("user_id", userId)
-    .eq("is_posted", true)
-    .eq("moderation_status", "visible")
-    .maybeSingle();
-
-  if (error) {
-    console.error("Failed to load personal notice post:", error);
+): PersonalNoticeDetailView["post"] {
+  if (
+    !post ||
+    post.user_id !== userId ||
+    post.is_posted !== true ||
+    post.moderation_status !== "visible"
+  ) {
     return null;
   }
-  if (!post) {
-    return null;
-  }
-
   const imageUrl = getPostDisplayUrl(post);
   return imageUrl ? { id: post.id, imageUrl } : null;
 }

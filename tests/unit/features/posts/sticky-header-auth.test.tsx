@@ -21,8 +21,9 @@ jest.mock("next-intl", () => ({
   useTranslations: () => stableTranslate,
 }));
 
+let mockPathname = "/ja";
 jest.mock("next/navigation", () => ({
-  usePathname: () => "/ja",
+  usePathname: () => mockPathname,
   useRouter: () => ({
     push: jest.fn(),
     back: jest.fn(),
@@ -164,11 +165,35 @@ describe("StickyHeader のログイン表示", () => {
     });
     mockSignOutAndLeave.mockReset();
     mockHasGuestImage = false;
+    mockPathname = "/ja";
   });
 
   afterEach(() => {
     jest.useRealTimers();
     jest.restoreAllMocks();
+  });
+
+  test.each([
+    ["/ja/notifications/announcements/a1"],
+    ["/ja/notifications/messages/n1"],
+  ])("お知らせの詳細(%s)は画面の中に戻るがあるのでヘッダーの戻るを出さない", async (pathname) => {
+    mockResolve.mockResolvedValue({ status: "signed-in", user: USER });
+    mockPathname = pathname;
+
+    render(<StickyHeader />);
+    await flush();
+
+    expect(screen.queryByTestId("sticky-header-back")).toBeNull();
+  });
+
+  test("ほかの詳細ページではヘッダーの戻るを出す", async () => {
+    mockResolve.mockResolvedValue({ status: "signed-in", user: USER });
+    mockPathname = "/ja/posts/p1";
+
+    render(<StickyHeader />);
+    await flush();
+
+    expect(screen.getByTestId("sticky-header-back")).toBeTruthy();
   });
 
   test("ヘッダーはログイン中ならアバター", async () => {
