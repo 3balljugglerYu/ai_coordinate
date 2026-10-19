@@ -358,7 +358,7 @@ describe("pushImageSourceFor", () => {
     }))).toEqual({ kind: "avatar", userId: "actor-1" });
   });
 
-  test("生成は、完了した時だけできた画像", () => {
+  test("生成の完了には付けない(送る時点では小さい版がまだ無い)", () => {
     const generation = {
       category: "generation",
       notification_id: null,
@@ -368,14 +368,12 @@ describe("pushImageSourceFor", () => {
       notification_actor_id: null,
       notification_data: null,
     } satisfies Partial<ClaimedRow>;
-    expect(pushImageSourceFor(row({
-      ...generation,
-      data: { kind: "generation", status: "succeeded", image_job_id: "job-1" },
-    }))).toEqual({ kind: "generation", imageJobId: "job-1" });
-    expect(pushImageSourceFor(row({
-      ...generation,
-      data: { kind: "generation", status: "failed", image_job_id: "job-1" },
-    }))).toBeNull();
+    for (const status of ["succeeded", "failed"]) {
+      expect(pushImageSourceFor(row({
+        ...generation,
+        data: { kind: "generation", status, image_job_id: "job-1" },
+      }))).toBeNull();
+    }
   });
 
   test("⭐運営の措置・ペルコインには付けない", () => {
@@ -393,16 +391,21 @@ describe("pushImageUrlFromRow", () => {
   const visible = { is_posted: true, moderation_status: "visible" };
 
   test("小さい版(サムネイル → 表示用の WebP)を使う", () => {
-    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: "u/p_thumb.webp", storage_path_display: "u/p.webp" }, { requireVisible: true }))
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: "u/p_thumb.webp", storage_path_display: "u/p.webp" }))
       .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p_thumb.webp");
-    expect(pushImageUrlFromRow(base, { ...visible, storage_path_display: "/u/p.webp" }, { requireVisible: true }))
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_display: "/u/p.webp" }))
       .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/p.webp");
   });
 
-  test("⭐小さい版がまだ無ければ付けない(原本の PNG は重いので付けない)", () => {
-    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: null, storage_path_display: null }, { requireVisible: true }))
+  test("パスの各部分はエンコードする(区切りの / は残す)", () => {
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: "u/あ い#1.webp" }))
+      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/%E3%81%82%20%E3%81%84%231.webp");
+  });
+
+  test("⭐小さい版が無ければ付けない(原本の PNG は重いので付けない)", () => {
+    expect(pushImageUrlFromRow(base, { ...visible, storage_path_thumb: null, storage_path_display: null }))
       .toBeNull();
-    expect(pushImageUrlFromRow(base, null, { requireVisible: false })).toBeNull();
+    expect(pushImageUrlFromRow(base, null)).toBeNull();
   });
 
   test.each([
@@ -410,13 +413,23 @@ describe("pushImageUrlFromRow", () => {
     ["確認待ち", { is_posted: true, moderation_status: "pending" }],
     ["公開停止", { is_posted: true, moderation_status: "removed" }],
   ])("⭐投稿が%sなら画像を付けない", (_label, state) => {
-    expect(pushImageUrlFromRow(base, { ...state, storage_path_thumb: "u/p_thumb.webp" }, { requireVisible: true }))
+    expect(pushImageUrlFromRow(base, { ...state, storage_path_thumb: "u/p_thumb.webp" }))
       .toBeNull();
   });
+});
 
-  test("生成の完了(本人だけに届く・未投稿)は公開中かを見ない", () => {
-    expect(pushImageUrlFromRow(base, { is_posted: false, moderation_status: "visible", storage_path_thumb: "u/g_thumb.webp" }, { requireVisible: false }))
-      .toBe("https://ref.supabase.co/storage/v1/object/public/generated-images/u/g_thumb.webp");
+describe("buildDataPayload の通知の data", () => {
+  test("⭐原本画像の URL(image_url)は端末に渡さず、ほかの値は残す", () => {
+    const payload = buildDataPayload(row({
+      notification_data: { image_id: "post-1", image_url: "https://x/original.png", comment_id: "c1" },
+    }));
+    expect(JSON.parse(payload.data)).toEqual({ image_id: "post-1", comment_id: "c1" });
+    expect(payload.data).not.toContain("original.png");
+  });
+
+  test("image_url だけなら data を付けない", () => {
+    const payload = buildDataPayload(row({ notification_data: { image_url: "https://x/a.png" } }));
+    expect(payload.data).toBeUndefined();
   });
 });
 

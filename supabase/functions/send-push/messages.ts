@@ -131,8 +131,12 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
     put("entity_id", row.notification_entity_id);
     put("comment_id", row.notification_comment_id);
     put("actor_id", row.notification_actor_id);
-    if (row.notification_data && Object.keys(row.notification_data).length > 0) {
-      put("data", row.notification_data);
+    // 通知の data には投稿の原本画像の URL(image_url)が入っていることがある。
+    // 端末には渡さない(措置・非公開になった投稿の原本を見せない。添える画像は
+    // 上の段の image_url に、公開中の小さい版だけを入れる)
+    const { image_url: _omitImageUrl, ...notificationData } = row.notification_data ?? {};
+    if (Object.keys(notificationData).length > 0) {
+      put("data", notificationData);
     }
   }
   return out;
@@ -142,14 +146,13 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
  * 通知に添える画像の出どころ。
  * - 投稿への反応(いいね・コメント・プロンプト/スタイル/Creator Looks の利用投稿・利用数の節目)は、その投稿
  * - フォローは、フォローした人のアイコン
- * - 生成の完了は、できた画像(失敗した時は無し)
- * 運営の措置・ペルコインなどには付けない(措置の対象画像を再び見せないため)。
+ * 生成の完了には付けない(送る時点では小さい版がまだ無いため。下の pushImageSourceFor)。
+ * 運営の措置・ペルコインなどにも付けない(措置の対象画像を再び見せないため)。
  */
 export type PushImageSource =
   | { kind: "post"; postId: string }
   | { kind: "comment"; commentId: string }
-  | { kind: "avatar"; userId: string }
-  | { kind: "generation"; imageJobId: string };
+  | { kind: "avatar"; userId: string };
 
 const POST_IMAGE_NOTIFICATION_TYPES = new Set([
   "like",
@@ -161,12 +164,9 @@ const POST_IMAGE_NOTIFICATION_TYPES = new Set([
 ]);
 
 export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
-  if (row.category === "generation") {
-    const jobId = row.data?.image_job_id;
-    return row.data?.status === "succeeded" && typeof jobId === "string" && jobId
-      ? { kind: "generation", imageJobId: jobId }
-      : null;
-  }
+  // 生成の完了は付けない。完了と同時に送るが、小さい版(WebP)は worker がそのあと
+  // 数秒かけて作るので、送る時点ではまだ無い(原本の PNG は重いので付けない)
+  if (row.category === "generation") return null;
 
   const type = row.notification_type;
   if (type === "follow") {
@@ -204,29 +204,24 @@ export interface PushImageRow {
 }
 
 /**
- * 画像の行 → 通知に添える URL。
- * - 投稿は公開中(投稿済み・措置なし)のときだけ。非公開・確認待ち・公開停止の画像は付けない
+ * 投稿画像の行 → 通知に添える URL。
+ * - 公開中(投稿済み・措置なし)のときだけ。非公開・確認待ち・公開停止の画像は付けない
  * - 小さい版(サムネイル → 表示用の WebP)だけを使う。原本(PNG 2MB 前後)は付けない
- *   (生成完了の直後はまだ小さい版が無いことが多い → 文字だけで送る)
  */
 export function pushImageUrlFromRow(
   supabaseUrl: string,
   image: PushImageRow | null | undefined,
-  options: { requireVisible: boolean },
 ): string | null {
   if (!image) return null;
-  if (
-    options.requireVisible &&
-    (image.is_posted !== true || image.moderation_status !== "visible")
-  ) {
+  if (image.is_posted !== true || image.moderation_status !== "visible") {
     return null;
   }
   const path = image.storage_path_thumb || image.storage_path_display;
   if (!path) return null;
   const base = supabaseUrl.replace(/\/+$/, "");
-  return usableImageUrl(
-    `${base}/storage/v1/object/public/generated-images/${path.replace(/^\/+/, "")}`,
-  );
+  // パスは区切りの / を残して、各部分をエンコードする(空白・日本語などがあっても壊れない)
+  const encodedPath = path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+  return usableImageUrl(`${base}/storage/v1/object/public/generated-images/${encodedPath}`);
 }
 
 /** 端末が取りに行ける URL だけを使う(相対パスや空文字は付けない) */

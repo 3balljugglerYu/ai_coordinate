@@ -15,9 +15,6 @@ export interface ImageQueryClient {
     select(columns: string): {
       eq(column: string, value: string): {
         maybeSingle(): PromiseLike<QueryResult>;
-        order(column: string, options: { ascending: boolean }): {
-          limit(count: number): PromiseLike<QueryResult>;
-        };
       };
     };
   };
@@ -45,20 +42,6 @@ export async function lookupPushImageUrl(
     return usableImageUrl((data as { avatar_url?: string | null } | null)?.avatar_url);
   }
 
-  if (source.kind === "generation") {
-    // 生成の完了は本人だけに届く、まだ投稿していない画像なので、公開中かは見ない
-    const { data, error } = await client
-      .from("generated_images")
-      .select(IMAGE_COLUMNS)
-      .eq("image_job_id", source.imageJobId)
-      .order("created_at", { ascending: true })
-      .limit(1);
-    if (error) throw new Error(`generation image: ${error.message}`);
-    return pushImageUrlFromRow(supabaseUrl, (data as PushImageRow[] | null)?.[0], {
-      requireVisible: false,
-    });
-  }
-
   let postId = source.kind === "post" ? source.postId : null;
   if (source.kind === "comment") {
     const { data, error } = await client
@@ -77,7 +60,5 @@ export async function lookupPushImageUrl(
     .eq("id", postId)
     .maybeSingle();
   if (error) throw new Error(`post image: ${error.message}`);
-  return pushImageUrlFromRow(supabaseUrl, data as PushImageRow | null, {
-    requireVisible: true,
-  });
+  return pushImageUrlFromRow(supabaseUrl, data as PushImageRow | null);
 }

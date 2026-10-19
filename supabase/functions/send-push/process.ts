@@ -21,6 +21,8 @@ import {
   summarizeOutcomes,
 } from "./messages.ts";
 
+/** 画像を探す上限。超えたら文字だけで送る */
+export const IMAGE_LOOKUP_TIMEOUT_MS = 2500;
 export const CLAIM_LIMIT = 100;
 // 1 回の呼び出しで回す確保の上限(暴走防止)。残りは次の起動で送る
 export const MAX_BATCHES = 5;
@@ -265,12 +267,16 @@ async function processRows(
 
     const outcomes: FcmOutcome[] = [];
     try {
-      const likeTitle = await resolveLikeTitle(store, group);
+      const devices = devicesByUser.get(group.recipientId) ?? [];
+      // 題名(いいねのまとめ)と画像は互いに関係ないので並べて待つ。端末が無ければ画像は探さない
+      const [likeTitle, imageUrl] = await Promise.all([
+        resolveLikeTitle(store, group),
+        devices.length > 0 ? resolveImageUrl(store, group.latest) : Promise.resolve(null),
+      ]);
       const { title, body } = resolveText(group.latest, likeTitle);
       const data = buildDataPayload(group.latest);
-      const imageUrl = await resolveImageUrl(store, group.latest);
 
-      for (const device of devicesByUser.get(group.recipientId) ?? []) {
+      for (const device of devices) {
         const message = buildFcmMessage({
           token: device.token,
           title,
@@ -333,10 +339,20 @@ async function resolveLikeTitle(store: PushStore, group: PushGroup): Promise<str
 async function resolveImageUrl(store: PushStore, row: ClaimedRow): Promise<string | null> {
   const source = pushImageSourceFor(row);
   if (!source) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await store.imageUrl(source);
+    // DB が重いときに、飾りの画像のせいで通知そのものが遅れないよう上限を付ける
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`)),
+        IMAGE_LOOKUP_TIMEOUT_MS,
+      );
+    });
+    return await Promise.race([store.imageUrl(source), timeout]);
   } catch (e) {
     console.error("[send-push] image lookup failed:", errorMessage(e));
     return null;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
   }
 }

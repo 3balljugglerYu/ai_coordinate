@@ -21,10 +21,7 @@ function fakeClient(results: Record<string, Result>) {
             eq(column, value) {
               calls.push({ table, columns, eq: [column, value] });
               const result = Promise.resolve(results[table] ?? { data: null, error: null });
-              return {
-                maybeSingle: () => result,
-                order: () => ({ limit: () => result }),
-              };
+              return { maybeSingle: () => result };
             },
           };
         },
@@ -75,27 +72,6 @@ describe("lookupPushImageUrl", () => {
     ]);
   });
 
-  test("生成の完了は未投稿でも小さい版を付け_小さい版が無ければ付けない", async () => {
-    const ready = fakeClient({
-      generated_images: {
-        data: [{ storage_path_thumb: null, storage_path_display: "u/g.webp", is_posted: false, moderation_status: "visible" }],
-        error: null,
-      },
-    });
-    await expect(lookupPushImageUrl(ready.client, BASE, { kind: "generation", imageJobId: "j1" }))
-      .resolves.toBe(url("u/g.webp"));
-    expect(ready.calls[0].eq).toEqual(["image_job_id", "j1"]);
-
-    const notYet = fakeClient({
-      generated_images: {
-        data: [{ storage_path_thumb: null, storage_path_display: null, is_posted: false, moderation_status: "visible" }],
-        error: null,
-      },
-    });
-    await expect(lookupPushImageUrl(notYet.client, BASE, { kind: "generation", imageJobId: "j1" }))
-      .resolves.toBeNull();
-  });
-
   test("フォローはアイコン(https のときだけ)", async () => {
     const ok = fakeClient({ profiles: { data: { avatar_url: "https://a.example/a.png" }, error: null } });
     await expect(lookupPushImageUrl(ok.client, BASE, { kind: "avatar", userId: "u1" }))
@@ -110,7 +86,6 @@ describe("lookupPushImageUrl", () => {
     ["profiles", { kind: "avatar", userId: "u1" }],
     ["comments", { kind: "comment", commentId: "c1" }],
     ["generated_images", { kind: "post", postId: "p1" }],
-    ["generated_images", { kind: "generation", imageJobId: "j1" }],
   ] as const)("⭐読み込みの失敗(%s)は握りつぶさず投げる", async (table, source) => {
     const { client } = fakeClient({ [table]: { data: null, error: { message: "boom" } } });
 
