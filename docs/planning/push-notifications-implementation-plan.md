@@ -262,7 +262,7 @@ flowchart TD
 - **Consequence**: `.cursor/rules/database-design.mdc` と `docs/architecture/data.*.md` の記述を直す
 
 ### ADR-009: アプリは宛先を RPC で登録する（Web API を通さない）
-- **Decision**: アプリは Supabase の RPC `register_push_device(device_id, platform, token, app_version)` / `unregister_push_device(device_id)` を直接呼ぶ。表への直接の書き込みは許さず、本人の行の SELECT だけ RLS で許す。ログアウトは `signOut()` の直前に `unregister_push_device`。退会は `/api/account/deactivate` でサーバー側からその人の全宛先を消す
+- **Decision**: アプリは Supabase の RPC `register_push_device(device_id, platform, token, app_version)` / `unregister_push_device(device_id)` を直接呼ぶ。表への直接の書き込みは許さず、本人の行の SELECT だけ RLS で許す。ログアウトは `signOut()` の直前に `unregister_push_device`。退会は `/api/account/deactivate` でサーバー側からその人の全宛先を消す（→ 2026-10-14 #742 で、退会と運営による停止のどちらも通る `profiles.deactivated_at` のトリガーで消し、退会・停止のあいだは `register_push_device` も登録しない形にした。`20261019120100_remove_push_devices_on_deactivation.sql`）
 - **Reason**: 同じ端末で別のアカウントにログインし直したとき、前の人の行（同じ `device_id`・同じ `token`）を消して付け替える必要があり、RLS の本人 CRUD では書けない（2026-10-13 Phase 1 実装時に変更。当初は直接 upsert の案）
 - **Consequence**: 利用者は RPC の中で `auth.uid()` から決め、引数では受け取らない
 
@@ -356,6 +356,20 @@ flowchart LR
 - [ ] 配信：`send_at` を過ぎた broadcast を `push_outbox_kick` が見つけたら、`announcements` がオンの宛先へ outbox を展開（大量になるのでバッチ）
 - [ ] 押したらお知らせの詳細（`AnnouncementDetailRoute`）へ
 
+実装時に決めたこと（2026-10-14、`20261019120000_add_admin_push_broadcasts.sql`）:
+- 展開先は「宛先があり、`announcements` がオン」の人だけを表の結合で絞る（既定オフなので大半を積まずに済む）。一時停止・止める時間帯は時刻で変わるため展開時には見ず、送信時に `send-push` が `push_allowed_now` で `skipped` にする
+- `announcement_id` は ON DELETE CASCADE。お知らせを消したら配信の行と、その `push_outbox` の行（送信済みも含む）も消える（ADR-002 と同じく削除＝取り消し）。配信の記録は削除の前に API が `admin_audit_log`（`announcement_delete` の `push`）に写す（2026-10-19 #742 のレビューで、送信済みの履歴まで消えていたのを直した）
+- お知らせ 1 件に配信は 1 つ（部分 UNIQUE）。送る前（`scheduled`/`canceled`）なら保存のたびに公開日時・表示文を合わせ、下書きに戻す・チェックを外すと取り消す。送信が始まったものは変えない
+- 展開は cron から呼ばれた `push_outbox_kick` だけで行う（生成完了のトリガー経由では `pg_trigger_depth()` で避け、生成結果を書くトランザクションに大量の INSERT を混ぜない）
+- アプリに渡す `data`: `kind=announcement`・`broadcast_id`・`url`（全体配信で指定したとき）・`announcement_id`（お知らせの配信のとき）
+
+レビュー（#742）を受けて足したこと（2026-10-14）:
+- 退会・停止中（`profiles.deactivated_at`）の人には積まない。あわせて REQ-008（退会で宛先を消す）がどの Phase にも入っていなかったので、`20261019120100_remove_push_devices_on_deactivation.sql` で、`deactivated_at` が入ったらその人の宛先をすべて消すトリガーと、退会・停止中は `register_push_device` で登録しない形を足した（停止はセッションが残り、アプリが起動のたびに登録し直すため）
+- `send_at` から 1 時間たっても展開し終えていない配信（cron や DB が長く止まっていた）は `expired` にして残りを積まない。積む行の `send_after` は `send_at` にして、`claim_push_outbox` の期限（1 時間）を予定の時刻から数える（送信関数が止まっていても、復旧後に古い告知をまとめて送らない）。お知らせの公開日時が過去のときは、保存した今を `send_at` にする
+- `claim_push_outbox` は配信の行（`broadcast_id` あり）を後回しにして取り出す。数千人への配信のあいだも、生成完了（15 分で期限切れ）やいいねなどを待たせない
+- 管理画面の表示: `sent` は「送信待ちを積み終えた」なので、送り終えていない送信待ちが残る間は「送信中」と出す。`expired` は「期限切れ」
+- お知らせの保存で、予約の変更・取り消しが 0 行だった（読んでから書くまでのあいだに送信が始まった・期限切れになった）ときは、成功扱いにせず `pushError` で画面と監査ログに出す
+
 ### Phase 6: ペルスタならではの新しい通知
 目的: PICK UP 入り・スタイル開放・フォロー中の新作
 ビルド確認: Phase 1 と同じ
@@ -379,7 +393,7 @@ flowchart LR
 | `app/(app)/admin/announcements/AnnouncementForm.tsx` | 修正 | 「プッシュ通知も送る」 |
 | `app/api/admin/announcements/route.ts`・`[id]/route.ts` | 修正 | broadcast の作成 |
 | `app/(app)/admin/admin-nav-items.ts` | 修正 | ナビに追加 |
-| `app/api/account/deactivate/*` | 修正 | 退会で宛先を削除 |
+| `supabase/migrations/<ts>_remove_push_devices_on_deactivation.sql` | 新規 | 退会・停止で宛先を削除（`profiles.deactivated_at` のトリガー）、退会・停止中は登録しない（当初案の `app/api/account/deactivate/*` の修正から変更） |
 | `.cursor/rules/database-design.mdc`・`docs/architecture/data.ja.md`・`data.en.md` | 修正 | 新しい表、`push_subscriptions` の削除、`push_status` は未使用と明記 |
 | `docs/API.md` | 修正 | admin の新しい API |
 | persta-app `pubspec.yaml`・`ios/Runner/*`・`android/app/*` | 修正 | Firebase・権限・チャンネル |

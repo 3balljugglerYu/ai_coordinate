@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   FileText,
   Loader2,
@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import type { AnnouncementAdminView } from "@/features/announcements/lib/schema";
+import { getPushBroadcastStatusLabel } from "@/features/push-broadcasts/lib/presentation";
 import { AnnouncementForm } from "./AnnouncementForm";
 
 interface AnnouncementListClientProps {
@@ -68,8 +69,79 @@ export function AnnouncementListClient({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] =
     useState<AnnouncementAdminView | null>(null);
+  // 編集を開くときは今の状態を読み直す（一覧はページを開いた時のままなので、
+  // ほかの画面でプッシュを取り消した等が反映されていない）
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // 開いた順の番号。すばやく開き直したとき、前の読み込みの結果で上書きしない
+  const editRequestRef = useRef(0);
+  const openEdit = useCallback(async (announcement: AnnouncementAdminView) => {
+    const requestId = ++editRequestRef.current;
+    setEditingAnnouncement(announcement);
+    setIsLoadingEdit(true);
+    try {
+      const response = await fetch(`/api/admin/announcements/${announcement.id}`, {
+        cache: "no-store",
+      });
+      const fetched = (await response.json().catch(() => null)) as
+        | AnnouncementAdminView
+        | null;
+      if (requestId !== editRequestRef.current) {
+        return;
+      }
+      if (response.status === 404) {
+        // ほかのタブで消されていた。古い内容で開いて、全部直してから保存で失敗させない
+        setEditingAnnouncement(null);
+        setAnnouncements((current) =>
+          current.filter((item) => item.id !== announcement.id)
+        );
+        toast({
+          title: "このお知らせは削除されています",
+          description: "一覧から外しました",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!response.ok || !fetched || typeof fetched !== "object" || !("id" in fetched)) {
+        toast({
+          title: "最新の状態を読めませんでした",
+          description: "一覧に出ている内容で開きます。保存の前に、ほかで変えていないか確かめてください",
+          variant: "destructive",
+        });
+        return;
+      }
+      {
+        // 配信の行はお知らせを消すまで無くならない。読み直しで push が null なら
+        // 状態を読めなかっただけなので、一覧の値を残す（送信済みを「無い」と見せない）
+        const fresh =
+          fetched.push === null && announcement.push !== null
+            ? { ...fetched, push: announcement.push }
+            : fetched;
+        setEditingAnnouncement(fresh);
+        setAnnouncements((current) =>
+          sortAnnouncements(
+            current.map((item) => (item.id === fresh.id ? fresh : item))
+          )
+        );
+      }
+    } catch (error) {
+      // 読めなければ一覧の値で開く（チェックを変えない限りプッシュは変わらない）
+      console.error("[Admin Announcements] reload before edit error:", error);
+      if (requestId === editRequestRef.current) {
+        toast({
+          title: "最新の状態を読めませんでした",
+          description: "一覧に出ている内容で開きます。保存の前に、ほかで変えていないか確かめてください",
+          variant: "destructive",
+        });
+      }
+    } finally {
+      if (requestId === editRequestRef.current) {
+        setIsLoadingEdit(false);
+      }
+    }
+  }, [toast]);
 
   const deletingAnnouncement = useMemo(
     () =>
@@ -159,6 +231,20 @@ export function AnnouncementListClient({
                       <span className="text-xs text-slate-500">
                         公開日時: {announcement.publishAtDisplay}
                       </span>
+                      {announcement.push && (
+                        <Badge
+                          variant="outline"
+                          className="border-slate-300 text-slate-600"
+                        >
+                          プッシュ:{" "}
+                          {
+                            getPushBroadcastStatusLabel(
+                              announcement.push.status,
+                              announcement.push.pendingCount
+                            ).label
+                          }
+                        </Badge>
+                      )}
                     </div>
                     <h3 className="truncate text-base font-semibold text-slate-900">
                       {announcement.title}
@@ -182,7 +268,7 @@ export function AnnouncementListClient({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => setEditingAnnouncement(announcement)}
+                          onClick={() => void openEdit(announcement)}
                         >
                           <Pencil className="mr-2 h-4 w-4" aria-hidden />
                           編集
@@ -203,7 +289,7 @@ export function AnnouncementListClient({
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={() => setEditingAnnouncement(announcement)}
+                      onClick={() => void openEdit(announcement)}
                       className="min-h-[44px] min-w-[44px] cursor-pointer"
                       aria-label="編集"
                     >
@@ -248,7 +334,9 @@ export function AnnouncementListClient({
         open={Boolean(editingAnnouncement)}
         onOpenChange={(open) => {
           if (!open) {
+            editRequestRef.current += 1;
             setEditingAnnouncement(null);
+            setIsLoadingEdit(false);
           }
         }}
       >
@@ -256,15 +344,27 @@ export function AnnouncementListClient({
           <DialogHeader>
             <DialogTitle>お知らせを編集</DialogTitle>
           </DialogHeader>
-          {editingAnnouncement && (
+          {editingAnnouncement && isLoadingEdit && (
+            <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              読み込み中…
+            </div>
+          )}
+          {editingAnnouncement && !isLoadingEdit && (
             <AnnouncementForm
+              key={`${editingAnnouncement.id}:${editingAnnouncement.updatedAt}:${editingAnnouncement.push?.status ?? "none"}`}
               announcement={editingAnnouncement}
               onSuccess={(savedAnnouncement) => {
                 setAnnouncements((current) =>
                   sortAnnouncements(
                     current.map((announcement) =>
                       announcement.id === savedAnnouncement.id
-                        ? savedAnnouncement
+                        ? {
+                            ...savedAnnouncement,
+                            // 保存の結果で配信の状態を読めなかった（null）ときは前の値を残す
+                            // （配信の行はお知らせを消すまで無くならない）
+                            push: savedAnnouncement.push ?? announcement.push,
+                          }
                         : announcement
                     )
                   )
@@ -292,6 +392,11 @@ export function AnnouncementListClient({
               {deletingAnnouncement?.title
                 ? `「${deletingAnnouncement.title}」を削除します。この操作は取り消せません。`
                 : "この操作は取り消せません。"}
+              {deletingAnnouncement?.push
+                ? deletingAnnouncement.push.status === "scheduled"
+                  ? "予約中のプッシュ通知も取り消します。"
+                  : "プッシュ通知の配信の記録も一緒に消えます（操作ログには残します）。"
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

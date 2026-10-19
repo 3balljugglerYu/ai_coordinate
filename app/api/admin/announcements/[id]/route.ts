@@ -1,5 +1,6 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   deleteAnnouncement,
@@ -16,6 +17,11 @@ import {
 import { deleteAnnouncementImages } from "@/features/announcements/lib/announcement-storage";
 import { decorateAnnouncementAdmin } from "@/features/announcements/lib/presentation";
 import { revalidateAnnouncements } from "@/features/announcements/lib/revalidate-announcements";
+import {
+  attachAnnouncementPushSummaries,
+  syncAnnouncementPush,
+} from "@/features/push-broadcasts/lib/announcement-push-service";
+import { getPushBroadcastForAnnouncement } from "@/features/push-broadcasts/lib/push-broadcast-repository";
 
 function difference(source: string[], target: string[]) {
   return source.filter((value) => !target.includes(value));
@@ -46,7 +52,10 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(decorateAnnouncementAdmin(announcement));
+    const [view] = await attachAnnouncementPushSummaries([
+      decorateAnnouncementAdmin(announcement),
+    ]);
+    return NextResponse.json(view);
   } catch (error) {
     console.error("[Admin Announcements] GET by id error:", error);
     return NextResponse.json(
@@ -60,6 +69,10 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // プッシュの配信も作る・取り消す入口なので、別サイトからの送信を断る
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let rollbackPaths: string[] = [];
   let cleanupPaths: string[] = [];
 
@@ -126,6 +139,14 @@ export async function PATCH(
       }
     }
 
+    // 公開日時の変更・下書きへの戻し・「送る」を外した場合も、送る前なら合わせる
+    const pushResult = await syncAnnouncementPush({
+      announcement: updated,
+      sendPush: payload.data.sendPush,
+      pushStatusSeen: payload.data.pushStatusSeen,
+      adminUserId: user.id,
+    });
+
     await logAdminAction({
       adminUserId: user.id,
       actionType: "announcement_update",
@@ -140,11 +161,17 @@ export async function PATCH(
           status: updated.status,
           publishAt: updated.publishAt,
         },
+        push: pushResult.action,
+        ...(pushResult.error ? { pushError: pushResult.error } : {}),
       },
     });
 
     revalidateAnnouncements(updated.id);
-    return NextResponse.json(decorateAnnouncementAdmin(updated));
+    return NextResponse.json({
+      ...decorateAnnouncementAdmin(updated),
+      push: pushResult.push,
+      ...(pushResult.error ? { pushError: pushResult.error } : {}),
+    });
   } catch (error) {
     console.error("[Admin Announcements] PATCH error:", error);
 
@@ -171,9 +198,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  // プッシュの配信も作る・取り消す入口なので、別サイトからの送信を断る
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const user = await requireAdmin();
     const { id } = await params;
@@ -184,6 +215,29 @@ export async function DELETE(
         { error: "お知らせが見つかりません" },
         { status: 404 }
       );
+    }
+
+    // お知らせを消すと、紐づく配信の行も CASCADE で消える（送信待ちも送らない）。
+    // 配信の記録はここで操作ログに写しておく（送った・取り消した等の履歴が残るように）
+    let pushRecord: Record<string, unknown> | null = null;
+    try {
+      const push = await getPushBroadcastForAnnouncement(id);
+      pushRecord = push
+        ? {
+            id: push.id,
+            status: push.status,
+            title: push.title,
+            body: push.body,
+            sendAt: push.sendAt,
+            startedAt: push.startedAt,
+            finishedAt: push.finishedAt,
+            canceledAt: push.canceledAt,
+            enqueuedCount: push.enqueuedCount,
+          }
+        : null;
+    } catch (error) {
+      console.error("[Admin Announcements] DELETE push record error:", error);
+      pushRecord = { error: "プッシュ通知の記録を読めませんでした" };
     }
 
     await deleteAnnouncement(id);
@@ -202,8 +256,10 @@ export async function DELETE(
       targetType: "admin_announcement",
       targetId: existing.id,
       metadata: {
+        title: existing.title,
         status: existing.status,
         publishAt: existing.publishAt,
+        ...(pushRecord ? { push: pushRecord } : {}),
       },
     });
 

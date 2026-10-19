@@ -261,7 +261,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 ### 何が起きるか
 
 1. `/api/account/deactivate` が email/password ユーザーを再認証し、`request_account_deletion` を呼ぶ
-2. RPC が削除予定を設定し、プロフィールのライフサイクル項目を更新する
+2. RPC が削除予定を設定し、プロフィールのライフサイクル項目を更新する（`deactivated_at` が入ると、トリガーがアプリのプッシュの宛先を消す。退会のあいだは宛先を登録しない）
 3. `/api/account/reactivate` が `cancel_account_deletion` を呼ぶ
 4. secret 保護された `/api/internal/account-purge` が定期実行され、次を行う
    - `get_due_deletion_candidates` で対象を取る
@@ -402,6 +402,8 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | 通知設定の更新時刻管理 |
 | `notifications` `AFTER INSERT / UPDATE OF created_at` | `enqueue_push_for_notification()` | アプリのプッシュ通知を 30 秒後に送る予約を `push_outbox` へ積む（宛先のある人だけ。取り消しで通知が消えると予約も CASCADE で消える） |
 | `image_jobs` `AFTER UPDATE OF status` | `enqueue_push_for_image_job()` | 生成の完了・失敗を即時にプッシュ（通知タブには載せない） |
+| pg_cron `push_outbox_kick`（10 秒ごと） | `push_outbox_kick()` → `fan_out_push_broadcasts()` | `send_at` を過ぎた運営配信（`admin_push_broadcasts`）があれば、宛先があり「運営からのお知らせ」がオンで退会・停止中でない人へ 2,000 人ずつ `push_outbox` に展開してから `send-push` を起こす（配信が無い時は部分索引を見るだけ。`send_at` から 1 時間たっても展開し終えていない配信は `expired`） |
+| `profiles` `AFTER UPDATE OF deactivated_at` | `delete_push_devices_on_deactivation()` | 退会・停止（`deactivated_at` が入った）で、その人のプッシュの宛先（`push_device_tokens`）をすべて消す（REQ-008） |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | バナー更新時刻管理 |
 | `materials_images` `BEFORE UPDATE` | `update_materials_images_updated_at()` | 素材画像更新時刻管理 |
 | `style_presets` `BEFORE UPDATE` | `update_updated_at_column()` | One-Tap Style プリセット更新時刻管理 |
@@ -426,6 +428,7 @@ RLS をバイパスする必要があるサーバー処理では `createAdminCli
 | `push_device_tokens` | 本人 `SELECT`（書き込みは RPC） |
 | `push_preferences` | 本人 `SELECT/INSERT/UPDATE` |
 | `push_outbox` | 公開 policy なし（service role のみ） |
+| `admin_push_broadcasts` | 公開 policy なし（service role のみ。admin API から操作） |
 | `user_credits` | 本人 SELECT |
 | `credit_transactions` | 本人 SELECT |
 | `free_percoin_batches` | 本人 SELECT |

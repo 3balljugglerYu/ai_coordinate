@@ -251,7 +251,7 @@ This matches Supabase/Postgres best practices used in this repo:
 ### What happens
 
 1. `/api/account/deactivate` reauthenticates email/password users, then calls `request_account_deletion`.
-2. The RPC schedules deletion and updates profile lifecycle fields.
+2. The RPC schedules deletion and updates profile lifecycle fields (setting `deactivated_at` fires a trigger that deletes the user's app push devices; devices cannot be registered while deactivated).
 3. `/api/account/reactivate` calls `cancel_account_deletion`.
 4. A secret-protected internal route `/api/internal/account-purge` periodically:
    - fetches candidates with `get_due_deletion_candidates`
@@ -394,6 +394,8 @@ The table below focuses on RPCs that application developers are likely to touch.
 | `notification_preferences` `BEFORE UPDATE` | `update_notification_preferences_updated_at()` | Maintain notification preference timestamp |
 | `notifications` `AFTER INSERT / UPDATE OF created_at` | `enqueue_push_for_notification()` | Queues an app push into `push_outbox` to be sent 30 seconds later (only for users with a device; a retracted notification deletes its queued push by CASCADE) |
 | `image_jobs` `AFTER UPDATE OF status` | `enqueue_push_for_image_job()` | Pushes generation success/failure immediately (not added to the notification list) |
+| pg_cron `push_outbox_kick` (every 10 s) | `push_outbox_kick()` → `fan_out_push_broadcasts()` | When an admin broadcast (`admin_push_broadcasts`) is due, fans it out into `push_outbox` in batches of 2,000 for users who have a device, turned on "announcements", and are not deactivated or suspended, then wakes `send-push` (only a partial-index check when nothing is due; a broadcast not fully fanned out within 1 hour of `send_at` becomes `expired`) |
+| `profiles` `AFTER UPDATE OF deactivated_at` | `delete_push_devices_on_deactivation()` | Deletes all of the user's push devices (`push_device_tokens`) when they deactivate or are suspended (REQ-008) |
 | `banners` `BEFORE UPDATE` | `update_banners_updated_at()` | Maintain banner timestamp |
 | `materials_images` `BEFORE UPDATE` | `update_materials_images_updated_at()` | Maintain materials image timestamp |
 | `style_presets` `BEFORE UPDATE` | `update_updated_at_column()` | Maintain One-Tap Style preset timestamp |
@@ -418,6 +420,7 @@ Use this section to decide whether a new feature should use session access, serv
 | `push_device_tokens` | Owner `SELECT` (writes via RPC) |
 | `push_preferences` | Owner `SELECT/INSERT/UPDATE` |
 | `push_outbox` | No public policy (service role only) |
+| `admin_push_broadcasts` | No public policy (service role only; managed via admin API) |
 | `user_credits` | Owner read |
 | `credit_transactions` | Owner read |
 | `free_percoin_batches` | Owner read |

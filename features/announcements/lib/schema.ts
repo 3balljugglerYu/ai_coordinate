@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { AnnouncementPushSummary } from "@/features/push-broadcasts/lib/schema";
 
 export const ANNOUNCEMENT_ALLOWED_MIME_TYPES = [
   "image/jpeg",
@@ -37,6 +38,16 @@ export const announcementAdminSaveSchema = z.object({
   status: announcementStatusSchema,
   publishAt: z.string().datetime().nullable().optional(),
   bodyJson: z.unknown(),
+  /** 公開と同時にアプリへプッシュ通知も送る（未指定は今の予約を保つ） */
+  sendPush: z.boolean().optional(),
+  /**
+   * 編集画面を開いたときに見えていたプッシュ配信の状態（無ければ null）。
+   * 保存までに送信が始まっていたら、黙って成功にせず知らせるために使う
+   */
+  pushStatusSeen: z
+    .enum(["scheduled", "sending", "sent", "canceled", "expired"])
+    .nullable()
+    .optional(),
 });
 
 export const announcementSeenRequestSchema = z.object({
@@ -61,6 +72,10 @@ export interface AnnouncementAdminView extends AnnouncementAdmin {
   publishAtDisplay: string;
   displayStatusLabel: string;
   displayStatusClassName: string;
+  /** 紐づくプッシュ配信（admin_push_broadcasts）。無ければ null */
+  push?: AnnouncementPushSummary | null;
+  /** 保存はできたがプッシュの予約だけ失敗したとき */
+  pushError?: string;
 }
 
 export interface AnnouncementSummary {

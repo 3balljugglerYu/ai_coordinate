@@ -1,5 +1,6 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   createAnnouncement,
@@ -18,6 +19,10 @@ import {
 import { deleteAnnouncementImages } from "@/features/announcements/lib/announcement-storage";
 import { decorateAnnouncementAdmin } from "@/features/announcements/lib/presentation";
 import { revalidateAnnouncements } from "@/features/announcements/lib/revalidate-announcements";
+import {
+  attachAnnouncementPushSummaries,
+  syncAnnouncementPush,
+} from "@/features/push-broadcasts/lib/announcement-push-service";
 
 function normalizeSaveInput(input: AnnouncementAdminSaveInput) {
   const validatedDocument = validateAnnouncementDocument(input.bodyJson);
@@ -58,7 +63,11 @@ export async function GET() {
   try {
     const announcements = await listAnnouncementsForAdmin();
     return NextResponse.json(
-      announcements.map((announcement) => decorateAnnouncementAdmin(announcement))
+      await attachAnnouncementPushSummaries(
+        announcements.map((announcement) =>
+          decorateAnnouncementAdmin(announcement)
+        )
+      )
     );
   } catch (error) {
     console.error("[Admin Announcements] GET error:", error);
@@ -70,6 +79,10 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  // プッシュの配信も作る・取り消す入口なので、別サイトからの送信を断る
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   let uploadedPathsToRollback: string[] = [];
 
   try {
@@ -93,6 +106,15 @@ export async function POST(request: NextRequest) {
       createdBy: user.id,
     });
 
+    // お知らせの保存後に。失敗してもお知らせは作れているので pushError で返す
+    const pushResult = await syncAnnouncementPush({
+      announcement: created,
+      sendPush: payload.data.sendPush,
+      adminUserId: user.id,
+      // 作ったばかりなので配信はまだ無い（読まずに決める）
+      isNew: true,
+    });
+
     await logAdminAction({
       adminUserId: user.id,
       actionType: "announcement_create",
@@ -101,11 +123,17 @@ export async function POST(request: NextRequest) {
       metadata: {
         status: created.status,
         publishAt: created.publishAt,
+        push: pushResult.action,
+        ...(pushResult.error ? { pushError: pushResult.error } : {}),
       },
     });
 
     revalidateAnnouncements(created.id);
-    return NextResponse.json(decorateAnnouncementAdmin(created));
+    return NextResponse.json({
+      ...decorateAnnouncementAdmin(created),
+      push: pushResult.push,
+      ...(pushResult.error ? { pushError: pushResult.error } : {}),
+    });
   } catch (error) {
     console.error("[Admin Announcements] POST error:", error);
 

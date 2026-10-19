@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
@@ -18,6 +19,10 @@ import type {
   AnnouncementAdminView,
   AnnouncementStatus,
 } from "@/features/announcements/lib/schema";
+import {
+  describeExpiredPushBroadcast,
+  getPushBroadcastStatusLabel,
+} from "@/features/push-broadcasts/lib/presentation";
 
 interface AnnouncementFormProps {
   announcement?: AnnouncementAdminView;
@@ -47,6 +52,18 @@ export function AnnouncementForm({
   const [bodyJson, setBodyJson] = useState<unknown>(
     announcement?.bodyJson ?? undefined
   );
+  const existingPush = announcement?.push ?? null;
+  // 送信が始まった・済んだ・期限切れの配信は戻せないので、チェックは変えられない
+  const isPushLocked =
+    existingPush?.status === "sending" ||
+    existingPush?.status === "sent" ||
+    existingPush?.status === "expired";
+  const initialSendPush =
+    existingPush !== null && existingPush.status !== "canceled";
+  const [sendPush, setSendPush] = useState(initialSendPush);
+  // 下書きのあいだはプッシュを予約できない（保存しても残らないので、選ばせない）
+  const isDraft = status === "draft";
+  const isPushCheckboxDisabled = isPushLocked || isDraft;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -77,6 +94,14 @@ export function AnnouncementForm({
             status,
             publishAt: publishAt ? new Date(publishAt).toISOString() : null,
             bodyJson,
+            // チェックを変えたときだけ送る。変えていなければサーバーが今の予約を保つ
+            // （開いたままの古い画面の値で、取り消し・復活が黙って起きないように）。
+            // 下書きはサーバーが予約を取り消すので、ここでは送らない
+            ...(isPushCheckboxDisabled || sendPush === initialSendPush
+              ? {}
+              : { sendPush }),
+            // 開いたときに見えていた配信の状態。保存までに送信が始まっていたら知らせてもらう
+            ...(announcement ? { pushStatusSeen: existingPush?.status ?? null } : {}),
           }),
         }
       );
@@ -103,6 +128,15 @@ export function AnnouncementForm({
       }
 
       await onSuccess(payload);
+      if ("pushError" in payload && payload.pushError) {
+        // 予約・変更・取り消しのどれが効かなかったかは pushError に書いてある
+        toast({
+          title: "プッシュ通知の設定を反映できませんでした",
+          description: `お知らせは保存しました。${payload.pushError}`,
+          variant: "destructive",
+        });
+        return;
+      }
       toast({
         title: "保存しました",
         description: "お知らせを保存しました",
@@ -163,6 +197,59 @@ export function AnnouncementForm({
             <p className="mt-1 text-xs text-slate-500">
               公開を選び、未入力のまま保存すると即時公開されます。
             </p>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="send_push"
+              checked={isPushLocked ? true : isDraft ? false : sendPush}
+              disabled={isPushCheckboxDisabled}
+              onCheckedChange={(checked) => setSendPush(checked === true)}
+              className="mt-1"
+            />
+            <div className="space-y-1">
+              <Label htmlFor="send_push" className="cursor-pointer text-sm">
+                プッシュ通知も送る
+              </Label>
+              <p className="text-xs text-slate-500">
+                公開日時にアプリへプッシュ通知を送ります（タイトルと本文の冒頭）。届くのは、アプリの通知設定で「運営からのお知らせ」をオンにしている人だけです（既定はオフ）。
+              </p>
+              {isDraft && !isPushLocked ? (
+                <p className="text-xs text-amber-700">
+                  下書きのあいだは選べません。公開にすると選べます
+                  {existingPush?.status === "scheduled"
+                    ? "（下書きで保存すると、予約中のプッシュ通知は取り消します）"
+                    : ""}
+                  。
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  下書きに戻す・チェックを外す・お知らせを削除すると、送る前なら予約も取り消します。
+                </p>
+              )}
+              {existingPush && (
+                <p className="text-xs text-slate-600">
+                  プッシュ通知:{" "}
+                  {
+                    getPushBroadcastStatusLabel(
+                      existingPush.status,
+                      existingPush.pendingCount
+                    ).label
+                  }
+                  {existingPush.status !== "scheduled" &&
+                  existingPush.status !== "canceled"
+                    ? `（宛先 ${existingPush.enqueuedCount} 人）`
+                    : ""}
+                </p>
+              )}
+              {existingPush?.status === "expired" && (
+                <p className="text-xs text-rose-700">
+                  {describeExpiredPushBroadcast(existingPush.enqueuedCount)}
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
