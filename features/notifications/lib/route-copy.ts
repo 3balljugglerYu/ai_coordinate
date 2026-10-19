@@ -10,6 +10,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "通知の既読化に失敗しました",
     markAllReadFailed: "全件既読化に失敗しました",
     unreadCountFailed: "未読数の取得に失敗しました",
+    notFound: "通知が見つかりません",
   },
   en: {
     authRequired: "You need to be logged in.",
@@ -20,6 +21,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   ko: {
     authRequired: "You need to be logged in.",
@@ -30,6 +32,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   "zh-CN": {
     authRequired: "You need to be logged in.",
@@ -40,6 +43,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   "zh-TW": {
     authRequired: "You need to be logged in.",
@@ -50,6 +54,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   es: {
     authRequired: "You need to be logged in.",
@@ -60,6 +65,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   pt: {
     authRequired: "You need to be logged in.",
@@ -70,6 +76,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   fr: {
     authRequired: "You need to be logged in.",
@@ -80,6 +87,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   de: {
     authRequired: "You need to be logged in.",
@@ -90,6 +98,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   it: {
     authRequired: "You need to be logged in.",
@@ -100,6 +109,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   id: {
     authRequired: "You need to be logged in.",
@@ -110,6 +120,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   th: {
     authRequired: "You need to be logged in.",
@@ -120,6 +131,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   vi: {
     authRequired: "You need to be logged in.",
@@ -130,6 +142,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   hi: {
     authRequired: "You need to be logged in.",
@@ -140,6 +153,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
   ar: {
     authRequired: "You need to be logged in.",
@@ -150,6 +164,7 @@ export const notificationsRouteCopy = {
     markReadFailed: "Failed to mark notifications as read.",
     markAllReadFailed: "Failed to mark all notifications as read.",
     unreadCountFailed: "Failed to load the unread count.",
+    notFound: "Notification not found.",
   },
 } as const satisfies Record<Locale, Record<string, string>>;
 

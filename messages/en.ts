@@ -1986,6 +1986,11 @@ export const enMessages = {
     announcementsMarkSeenFailed: "Failed to update announcement badges.",
     announcementsBackToList: "Back to announcements",
     announcementsPublishedLabel: "Published: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "Back to notifications",
+    personalNoticeFrom: "A message from the Persta.AI team",
+    personalNoticeViewPost: "View the post",
+    personalNoticePostImageAlt: "Featured post",
     unreadDotLabel: "Unread",
     badgeAria: "Notifications",
     badgeAriaWithCount: "Notifications ({count} unread)",

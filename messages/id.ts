@@ -1988,6 +1988,11 @@ export const idMessages = {
     announcementsMarkSeenFailed: "Gagal memperbarui badge pengumuman.",
     announcementsBackToList: "Kembali ke pengumuman",
     announcementsPublishedLabel: "Dipublikasikan: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "Kembali ke notifikasi",
+    personalNoticeFrom: "Pesan dari tim Persta.AI",
+    personalNoticeViewPost: "Lihat postingan",
+    personalNoticePostImageAlt: "Postingan terpilih",
     unreadDotLabel: "Belum dibaca",
     badgeAria: "Notifikasi",
     badgeAriaWithCount: "Notifikasi ({count} belum dibaca)",

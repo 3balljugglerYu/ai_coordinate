@@ -1938,6 +1938,11 @@ export const jaMessages = {
     announcementsMarkSeenFailed: "お知らせ赤丸の更新に失敗しました",
     announcementsBackToList: "お知らせ一覧に戻る",
     announcementsPublishedLabel: "公開日: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "通知一覧に戻る",
+    personalNoticeFrom: "Persta.AI 運営からのお知らせ",
+    personalNoticeViewPost: "作品を見る",
+    personalNoticePostImageAlt: "選ばれた作品",
     unreadDotLabel: "未読",
     badgeAria: "通知",
     badgeAriaWithCount: "通知（未読{count}件）",

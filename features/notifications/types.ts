@@ -13,7 +13,8 @@ export type NotificationType =
   | 'derived_usage_milestone'
   | 'style_preset_post_published'
   | 'style_preset_usage_milestone'
-  | 'usage_reward_earned';
+  | 'usage_reward_earned'
+  | 'admin_message';
 export type EntityType = 'post' | 'comment' | 'user';
 
 /**
@@ -47,6 +48,8 @@ export const ANONYMOUS_ACTOR_NOTIFICATION_TYPES = [
   'derived_usage_milestone',
   'style_preset_usage_milestone',
   'usage_reward_earned',
+  // 個人あてのお知らせ: 送った運営を受け取った人に渡さない(personal-notices 計画書 PN-008)
+  'admin_message',
 ] as const;
 
 export function isAnonymousActorNotificationType(type: string): boolean {
@@ -112,6 +115,11 @@ export interface Notification {
     moderation_event_key?: string;
     /** 運営発の通知であることの印。UI はこれを見て運営ロゴを出す。 */
     system_generated?: boolean;
+    /** 個人あてのお知らせ (admin_message): 送った1回分と受け取った人ごとの記録の ID、受付番号、付けた作品。 */
+    personal_notice_id?: string;
+    personal_notice_recipient_id?: string;
+    receipt_code?: string;
+    post_id?: string;
   };
   is_read: boolean;
   read_at: string | null;

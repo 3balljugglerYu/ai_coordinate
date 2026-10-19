@@ -335,6 +335,51 @@ describe("useNotifications", () => {
     );
   });
 
+  test("個人あてのお知らせは作品つきでも投稿でなく詳細ページへ遷移し_既読にもする", async () => {
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          id: "notice-1",
+          is_read: false,
+          type: "admin_message",
+          entity_type: "post",
+          entity_id: "post-777",
+          data: { post_id: "post-777", receipt_code: "HBS-7F3K" },
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).toHaveBeenCalledWith("/notifications/messages/notice-1");
+    // 詳細ページの「開いた記録」が失敗しても未読のまま残らないよう、押したときにも既読にする
+    await waitFor(() => {
+      expect(markNotificationsReadMock).toHaveBeenCalledWith(["notice-1"], {
+        markReadFailed: "mark read failed",
+      });
+    });
+  });
+
+  test("個人あてのお知らせは文だけ(entity_type=user)でも詳細ページへ遷移する", async () => {
+    const { result } = await renderNotificationsHook();
+
+    act(() => {
+      result.current.handleNotificationClick(
+        createNotification({
+          id: "notice-2",
+          type: "admin_message",
+          entity_type: "user",
+          entity_id: "user-1",
+          data: {},
+        })
+      );
+    });
+
+    expect(pushMock).toHaveBeenCalledTimes(1);
+    expect(pushMock).toHaveBeenCalledWith("/notifications/messages/notice-2");
+  });
+
   test("post通知にcomment_idがない場合_ディープリンクなしで遷移する", async () => {
     const { result } = await renderNotificationsHook();
 

@@ -1982,6 +1982,11 @@ export const zhTwMessages = {
     announcementsMarkSeenFailed: "更新公告徽章失敗。",
     announcementsBackToList: "返回公告列表",
     announcementsPublishedLabel: "發佈: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "返回通知列表",
+    personalNoticeFrom: "來自 Persta.AI 營運團隊的通知",
+    personalNoticeViewPost: "查看作品",
+    personalNoticePostImageAlt: "入選作品",
     unreadDotLabel: "未讀",
     badgeAria: "通知",
     badgeAriaWithCount: "通知 ({count} 則未讀)",

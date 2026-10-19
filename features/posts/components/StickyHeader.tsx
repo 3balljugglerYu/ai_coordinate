@@ -69,8 +69,11 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
   const headerRef = useRef<HTMLElement | null>(null);
   const normalizedPathname = stripLocalePrefix(pathname ?? "/").pathname;
   const localizedHomePath = localizePublicPath("/", locale);
+  // お知らせの詳細(運営からのお知らせ・個人あてのお知らせ)は、画面の中に
+  // 「一覧に戻る」があるので、ヘッダーの戻るボタンは出さない
   const isNotificationAnnouncementDetail =
-    normalizedPathname.startsWith("/notifications/announcements/");
+    normalizedPathname.startsWith("/notifications/announcements/") ||
+    normalizedPathname.startsWith("/notifications/messages/");
 
   // トップレベルのページ（戻るボタン非表示）
   const topLevelPaths = [
