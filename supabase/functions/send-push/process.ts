@@ -15,10 +15,14 @@ import {
   type FcmOutcome,
   groupRows,
   type PushGroup,
+  pushImageSourceFor,
+  type PushImageSource,
   resolveText,
   summarizeOutcomes,
 } from "./messages.ts";
 
+/** 画像を探す上限。超えたら文字だけで送る */
+export const IMAGE_LOOKUP_TIMEOUT_MS = 2500;
 export const CLAIM_LIMIT = 100;
 // 1 回の呼び出しで回す確保の上限(暴走防止)。残りは次の起動で送る
 export const MAX_BATCHES = 5;
@@ -59,6 +63,8 @@ export interface PushStore {
   /** その投稿への未読のいいね数。取れなければ null */
   unreadLikeCount(userId: string, entityId: string): Promise<number | null>;
   nickname(userId: string): Promise<string | null>;
+  /** 通知に添える画像の URL。無い・取れなければ null */
+  imageUrl(source: PushImageSource): Promise<string | null>;
   /** もう使えないトークンの行を消す。消した行数を返す */
   removeTokens(tokens: string[]): Promise<{ removed: number; error: string | null }>;
 }
@@ -261,11 +267,16 @@ async function processRows(
 
     const outcomes: FcmOutcome[] = [];
     try {
-      const likeTitle = await resolveLikeTitle(store, group);
+      const devices = devicesByUser.get(group.recipientId) ?? [];
+      // 題名(いいねのまとめ)と画像は互いに関係ないので並べて待つ。端末が無ければ画像は探さない
+      const [likeTitle, imageUrl] = await Promise.all([
+        resolveLikeTitle(store, group),
+        devices.length > 0 ? resolveImageUrl(store, group.latest) : Promise.resolve(null),
+      ]);
       const { title, body } = resolveText(group.latest, likeTitle);
       const data = buildDataPayload(group.latest);
 
-      for (const device of devicesByUser.get(group.recipientId) ?? []) {
+      for (const device of devices) {
         const message = buildFcmMessage({
           token: device.token,
           title,
@@ -274,6 +285,7 @@ async function processRows(
           category: group.category,
           collapseKey: group.collapseKey,
           badge: badges.get(group.recipientId) ?? null,
+          imageUrl,
         });
         const outcome = await sender.send(accessToken, message);
         if (outcome.kind === "invalid_token") invalidTokens.add(device.token);
@@ -318,4 +330,29 @@ async function resolveLikeTitle(store: PushStore, group: PushGroup): Promise<str
     ? await store.nickname(row.notification_actor_id)
     : null;
   return buildLikeTitle(nickname, count);
+}
+
+/**
+ * 通知に添える画像。画像は飾りなので、取れなくても文字だけで送る
+ * (ここで失敗して通知そのものが遅れたり届かなかったりしないように)。
+ */
+async function resolveImageUrl(store: PushStore, row: ClaimedRow): Promise<string | null> {
+  const source = pushImageSourceFor(row);
+  if (!source) return null;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    // DB が重いときに、飾りの画像のせいで通知そのものが遅れないよう上限を付ける
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error(`timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`)),
+        IMAGE_LOOKUP_TIMEOUT_MS,
+      );
+    });
+    return await Promise.race([store.imageUrl(source), timeout]);
+  } catch (e) {
+    console.error("[send-push] image lookup failed:", errorMessage(e));
+    return null;
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
 }

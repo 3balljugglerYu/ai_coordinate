@@ -33,7 +33,13 @@ import {
   resetAccessTokenCache,
   type ServiceAccount,
 } from "./fcm-auth.ts";
-import { type ClaimedRow, classifyFcmResponse, type FcmOutcome } from "./messages.ts";
+import {
+  type ClaimedRow,
+  classifyFcmResponse,
+  type FcmOutcome,
+  type PushImageSource,
+} from "./messages.ts";
+import { type ImageQueryClient, lookupPushImageUrl } from "./images.ts";
 import {
   type DeviceRow,
   type FcmSender,
@@ -81,7 +87,7 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  const result = await runSendPush(createStore(supabase), createSender(account));
+  const result = await runSendPush(createStore(supabase, supabaseUrl), createSender(account));
   if (!result.ok) {
     return json(500, { error: result.error, totals: result.totals });
   }
@@ -90,7 +96,7 @@ Deno.serve(async (req) => {
   return json(200, result.totals);
 });
 
-function createStore(supabase: SupabaseClient): PushStore {
+function createStore(supabase: SupabaseClient, supabaseUrl: string): PushStore {
   return {
     async claim(limit) {
       const { data, error } = await supabase.rpc("claim_push_outbox", { p_limit: limit });
@@ -139,6 +145,11 @@ function createStore(supabase: SupabaseClient): PushStore {
         .eq("user_id", userId)
         .maybeSingle();
       return (data as { nickname?: string | null } | null)?.nickname ?? null;
+    },
+    imageUrl(source: PushImageSource) {
+      // supabase-js の型を ImageQueryClient に当てはめると型の展開が深すぎて止まるので、
+      // 使う分だけの形として渡す(images.ts は Jest でも読むため supabase-js に依存しない)
+      return lookupPushImageUrl(supabase as unknown as ImageQueryClient, supabaseUrl, source);
     },
     async removeTokens(tokens) {
       const { count, error } = await supabase

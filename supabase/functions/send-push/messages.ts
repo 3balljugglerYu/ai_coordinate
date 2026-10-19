@@ -131,11 +131,104 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
     put("entity_id", row.notification_entity_id);
     put("comment_id", row.notification_comment_id);
     put("actor_id", row.notification_actor_id);
-    if (row.notification_data && Object.keys(row.notification_data).length > 0) {
-      put("data", row.notification_data);
+    // 通知の data には投稿の原本画像の URL(image_url)が入っていることがある。
+    // 端末には渡さない(措置・非公開になった投稿の原本を見せない。添える画像は
+    // 上の段の image_url に、公開中の小さい版だけを入れる)
+    const notificationData = Object.fromEntries(
+      Object.entries(row.notification_data ?? {}).filter(([key]) => key !== "image_url"),
+    );
+    if (Object.keys(notificationData).length > 0) {
+      put("data", notificationData);
     }
   }
   return out;
+}
+
+/**
+ * 通知に添える画像の出どころ。
+ * - 投稿への反応(いいね・コメント・プロンプト/スタイル/Creator Looks の利用投稿・利用数の節目)は、その投稿
+ * - フォローは、フォローした人のアイコン
+ * 生成の完了には付けない(送る時点では小さい版がまだ無いため。下の pushImageSourceFor)。
+ * 運営の措置・ペルコインなどにも付けない(措置の対象画像を再び見せないため)。
+ */
+export type PushImageSource =
+  | { kind: "post"; postId: string }
+  | { kind: "comment"; commentId: string }
+  | { kind: "avatar"; userId: string };
+
+const POST_IMAGE_NOTIFICATION_TYPES = new Set([
+  "like",
+  "comment",
+  "derived_post_published",
+  "style_preset_post_published",
+  "creator_looks_post_published",
+  "derived_usage_milestone",
+]);
+
+export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
+  // 生成の完了は付けない。完了と同時に送るが、小さい版(WebP)は worker がそのあと
+  // 数秒かけて作るので、送る時点ではまだ無い(原本の PNG は重いので付けない)
+  if (row.category === "generation") return null;
+
+  const type = row.notification_type;
+  if (type === "follow") {
+    return row.notification_actor_id
+      ? { kind: "avatar", userId: row.notification_actor_id }
+      : null;
+  }
+  if (!type || !POST_IMAGE_NOTIFICATION_TYPES.has(type)) return null;
+
+  // Creator Looks の利用投稿は、通知がテンプレートを指し、投稿は data に入る
+  const generatedImageId = row.notification_data?.generated_image_id;
+  if (typeof generatedImageId === "string" && generatedImageId) {
+    return { kind: "post", postId: generatedImageId };
+  }
+
+  const entityId = row.notification_entity_id;
+  if (!entityId) return null;
+  if (row.notification_entity_type === "post") {
+    return { kind: "post", postId: entityId };
+  }
+  if (row.notification_entity_type === "comment") {
+    const imageId = row.notification_data?.image_id;
+    return typeof imageId === "string" && imageId
+      ? { kind: "post", postId: imageId }
+      : { kind: "comment", commentId: entityId };
+  }
+  return null;
+}
+
+export interface PushImageRow {
+  storage_path_thumb?: string | null;
+  storage_path_display?: string | null;
+  is_posted?: boolean | null;
+  moderation_status?: string | null;
+}
+
+/**
+ * 投稿画像の行 → 通知に添える URL。
+ * - 公開中(投稿済み・措置なし)のときだけ。非公開・確認待ち・公開停止の画像は付けない
+ * - 小さい版(サムネイル → 表示用の WebP)だけを使う。原本(PNG 2MB 前後)は付けない
+ */
+export function pushImageUrlFromRow(
+  supabaseUrl: string,
+  image: PushImageRow | null | undefined,
+): string | null {
+  if (!image) return null;
+  if (image.is_posted !== true || image.moderation_status !== "visible") {
+    return null;
+  }
+  const path = image.storage_path_thumb || image.storage_path_display;
+  if (!path) return null;
+  const base = supabaseUrl.replace(/\/+$/, "");
+  // パスは区切りの / を残して、各部分をエンコードする(空白・日本語などがあっても壊れない)
+  const encodedPath = path.replace(/^\/+/, "").split("/").map(encodeURIComponent).join("/");
+  return usableImageUrl(`${base}/storage/v1/object/public/generated-images/${encodedPath}`);
+}
+
+/** 端末が取りに行ける URL だけを使う(相対パスや空文字は付けない) */
+export function usableImageUrl(url: string | null | undefined): string | null {
+  return typeof url === "string" && /^https:\/\//i.test(url.trim()) ? url.trim() : null;
 }
 
 export interface FcmMessageInput {
@@ -146,12 +239,19 @@ export interface FcmMessageInput {
   category: string;
   collapseKey: string | null;
   badge: number | null;
+  /** 通知に添える画像(https のみ)。無ければ文字だけの通知 */
+  imageUrl?: string | null;
 }
 
 /** FCM HTTP v1 の message。Android はチャンネル=種類、iOS は未読数のバッジ */
 export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown> {
   const notification: Record<string, string> = { title: input.title };
   if (input.body) notification.body = input.body;
+  const imageUrl = usableImageUrl(input.imageUrl);
+  // Android は FCM がそのまま大きな画像つきで出す。iOS はアプリの
+  // Notification Service Extension が画像を取ってきて添える(mutable-content と
+  // fcm_options.image が要る)
+  if (imageUrl) notification.image = imageUrl;
 
   const androidNotification: Record<string, unknown> = {
     channel_id: input.category,
@@ -168,6 +268,9 @@ export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown>
   if (input.badge !== null && input.badge >= 0) {
     aps.badge = input.badge;
   }
+  if (imageUrl) {
+    aps["mutable-content"] = 1;
+  }
 
   const apnsHeaders: Record<string, string> = { "apns-priority": "10" };
   if (input.collapseKey) {
@@ -183,12 +286,18 @@ export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown>
     android.collapse_key = input.collapseKey;
   }
 
+  const apns: Record<string, unknown> = { headers: apnsHeaders, payload: { aps } };
+  if (imageUrl) {
+    apns.fcm_options = { image: imageUrl };
+  }
+
   return {
     token: input.token,
     notification,
-    data: input.data,
+    // アプリを開いている時はアプリが自分で通知を出すので、画像の URL も渡す
+    data: imageUrl ? { ...input.data, image_url: imageUrl } : input.data,
     android,
-    apns: { headers: apnsHeaders, payload: { aps } },
+    apns,
   };
 }
 

@@ -6,6 +6,7 @@ import {
   type DeviceRow,
   type FcmSender,
   type FinishItem,
+  IMAGE_LOOKUP_TIMEOUT_MS,
   mapWithConcurrency,
   NOT_PROCESSED_ERROR,
   type PushStore,
@@ -54,6 +55,7 @@ interface StoreOptions {
   finishFailures?: number;
   devicesThrow?: boolean;
   unreadLikeCount?: (userId: string, entityId: string) => Promise<number | null>;
+  imageUrl?: PushStore["imageUrl"];
 }
 
 function fakeStore(options: StoreOptions = {}) {
@@ -97,6 +99,7 @@ function fakeStore(options: StoreOptions = {}) {
     async nickname() {
       return "Miki";
     },
+    imageUrl: options.imageUrl ?? (async () => null),
     async removeTokens(tokens) {
       calls.removeTokens.push(tokens);
       return { removed: tokens.length, error: null };
@@ -175,6 +178,91 @@ describe("runSendPush", () => {
       r3: "skipped:preference",
     });
     expect(fcm.sentTokens).toEqual(["tok-a"]);
+  });
+
+  test("投稿への反応には、その投稿の画像を添える", async () => {
+    const sources: unknown[] = [];
+    const { store } = fakeStore({
+      batches: [[row("r1")]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl: async (source) => {
+        sources.push(source);
+        return "https://cdn.example/thumb.webp";
+      },
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    expect(sources).toHaveLength(1);
+    const message = fcm.messages[0] as {
+      notification: { image?: string };
+      data: Record<string, string>;
+    };
+    expect(message.notification.image).toBe("https://cdn.example/thumb.webp");
+    expect(message.data.image_url).toBe("https://cdn.example/thumb.webp");
+  });
+
+  test("⭐画像が取れなくても、文字だけで送る", async () => {
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { store, calls } = fakeStore({
+      batches: [[row("r1")]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl: async () => {
+        throw new Error("storage down");
+      },
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    expect(fcm.sentTokens).toEqual(["tok-a"]);
+    expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
+      .toBeUndefined();
+    expect(statusById(calls.finish[0])).toEqual({ r1: "sent:" });
+    // 握りつぶさず、何が失敗したかを記録する
+    expect(consoleError).toHaveBeenCalledWith("[send-push] image lookup failed:", "storage down");
+    consoleError.mockRestore();
+  });
+
+  test("⭐画像を探すのが遅いときは、上限で打ち切って文字だけで送る", async () => {
+    jest.useFakeTimers();
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    const { store, calls } = fakeStore({
+      batches: [[row("r1")]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl: () => new Promise<string | null>(() => {}),
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    const run = runSendPush(store, sender);
+    await jest.advanceTimersByTimeAsync(IMAGE_LOOKUP_TIMEOUT_MS + 10);
+    await run;
+
+    expect(fcm.sentTokens).toEqual(["tok-a"]);
+    expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
+      .toBeUndefined();
+    expect(statusById(calls.finish[0])).toEqual({ r1: "sent:" });
+    expect(consoleError).toHaveBeenCalledWith(
+      "[send-push] image lookup failed:",
+      `timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`,
+    );
+    consoleError.mockRestore();
+    jest.useRealTimers();
+  });
+
+  test("端末が無い宛先では画像を探さない", async () => {
+    const imageUrl = jest.fn(async () => "https://cdn.example/thumb.webp");
+    const { store } = fakeStore({
+      batches: [[row("r1")]],
+      devices: [],
+      imageUrl,
+    });
+    const { sender } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    expect(imageUrl).not.toHaveBeenCalled();
   });
 
   test("同じ宛先・同じ collapse_key のいいねは 1 通にまとめ、まとめ文で送る", async () => {
