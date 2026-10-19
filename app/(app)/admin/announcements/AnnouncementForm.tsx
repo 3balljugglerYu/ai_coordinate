@@ -58,9 +58,12 @@ export function AnnouncementForm({
     existingPush?.status === "sending" ||
     existingPush?.status === "sent" ||
     existingPush?.status === "expired";
-  const [sendPush, setSendPush] = useState(
-    existingPush !== null && existingPush.status !== "canceled"
-  );
+  const initialSendPush =
+    existingPush !== null && existingPush.status !== "canceled";
+  const [sendPush, setSendPush] = useState(initialSendPush);
+  // 下書きのあいだはプッシュを予約できない（保存しても残らないので、選ばせない）
+  const isDraft = status === "draft";
+  const isPushCheckboxDisabled = isPushLocked || isDraft;
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -91,7 +94,12 @@ export function AnnouncementForm({
             status,
             publishAt: publishAt ? new Date(publishAt).toISOString() : null,
             bodyJson,
-            ...(isPushLocked ? {} : { sendPush }),
+            // チェックを変えたときだけ送る。変えていなければサーバーが今の予約を保つ
+            // （開いたままの古い画面の値で、取り消し・復活が黙って起きないように）。
+            // 下書きはサーバーが予約を取り消すので、ここでは送らない
+            ...(isPushCheckboxDisabled || sendPush === initialSendPush
+              ? {}
+              : { sendPush }),
           }),
         }
       );
@@ -194,8 +202,8 @@ export function AnnouncementForm({
           <div className="flex items-start gap-3">
             <Checkbox
               id="send_push"
-              checked={isPushLocked ? true : sendPush}
-              disabled={isPushLocked}
+              checked={isPushLocked ? true : isDraft ? false : sendPush}
+              disabled={isPushCheckboxDisabled}
               onCheckedChange={(checked) => setSendPush(checked === true)}
               className="mt-1"
             />
@@ -206,9 +214,19 @@ export function AnnouncementForm({
               <p className="text-xs text-slate-500">
                 公開日時にアプリへプッシュ通知を送ります（タイトルと本文の冒頭）。届くのは、アプリの通知設定で「運営からのお知らせ」をオンにしている人だけです（既定はオフ）。
               </p>
-              <p className="text-xs text-slate-500">
-                下書きに戻す・チェックを外す・お知らせを削除すると、送る前なら予約も取り消します。
-              </p>
+              {isDraft && !isPushLocked ? (
+                <p className="text-xs text-amber-700">
+                  下書きのあいだは選べません。公開にすると選べます
+                  {existingPush?.status === "scheduled"
+                    ? "（下書きで保存すると、予約中のプッシュ通知は取り消します）"
+                    : ""}
+                  。
+                </p>
+              ) : (
+                <p className="text-xs text-slate-500">
+                  下書きに戻す・チェックを外す・お知らせを削除すると、送る前なら予約も取り消します。
+                </p>
+              )}
               {existingPush && (
                 <p className="text-xs text-slate-600">
                   プッシュ通知:{" "}

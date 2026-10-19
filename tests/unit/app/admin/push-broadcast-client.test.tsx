@@ -21,13 +21,18 @@ import type {
 } from "@/features/push-broadcasts/lib/schema";
 
 const toast = jest.fn();
+const routerRefreshMock = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: routerRefreshMock, push: jest.fn() }),
+}));
+
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast }),
 }));
 
 function view(
   overrides: Partial<PushBroadcast> = {},
-  stats?: PushBroadcastDeliveryStats
+  stats?: PushBroadcastDeliveryStats | null
 ): PushBroadcastAdminView {
   return decoratePushBroadcastAdmin(
     {
@@ -93,6 +98,7 @@ const originalFetch = global.fetch;
 
 beforeEach(() => {
   toast.mockReset();
+  routerRefreshMock.mockReset();
 });
 
 afterEach(() => {
@@ -190,6 +196,8 @@ describe("送信", () => {
     expect(toast).toHaveBeenCalledWith(
       expect.objectContaining({ title: "送信を始めました" })
     );
+    // ほかの管理画面へ行って戻ったとき、古い一覧を出さない
+    expect(routerRefreshMock).toHaveBeenCalledTimes(1);
   });
 
   test("予約は日時を ISO 形式で送り、「予約しました」と知らせる", async () => {
@@ -205,6 +213,8 @@ describe("送信", () => {
 
     const dialog = screen.getByRole("alertdialog");
     expect(within(dialog).getByText("予約しますか？")).toBeTruthy();
+    // 端末の時間帯がずれていても気づけるよう、日本時間で出す
+    expect(within(dialog).getByText(/送信日時は .*（日本時間）です/)).toBeTruthy();
     fireEvent.click(within(dialog).getByRole("button", { name: "予約する" }));
 
     await waitFor(() =>
@@ -298,6 +308,19 @@ describe("取り消し", () => {
     expect(screen.queryByRole("alertdialog")).toBeNull();
     expect(screen.queryByRole("button", { name: "取り消す" })).toBeNull();
     expect(toast).toHaveBeenCalledWith(expect.objectContaining({ title: "取り消しました" }));
+    expect(routerRefreshMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("件数を読めなかった配信は「0 件」と見せず、読めなかったと出す", () => {
+    render(
+      <PushBroadcastClient
+        initialBroadcasts={[view({ id: "b1", status: "sent", enqueuedCount: 5 }, null)]}
+      />
+    );
+
+    expect(screen.getByText(/送信数を読めませんでした/)).toBeTruthy();
+    expect(screen.getByText("送信済み（件数を確認できません）")).toBeTruthy();
+    expect(screen.queryByText(/送信 0/)).toBeNull();
   });
 
   test("取り消せなかったら理由を出し、取り直した最新の状態に合わせる", async () => {

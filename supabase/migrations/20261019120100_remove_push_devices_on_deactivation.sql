@@ -75,6 +75,7 @@ SET search_path = ''
 AS $$
 DECLARE
   v_user_id UUID := auth.uid();
+  v_deactivated_at TIMESTAMPTZ;
 BEGIN
   -- 利用者はセッションからだけ決める(引数で受け取らない)
   IF v_user_id IS NULL THEN
@@ -86,13 +87,18 @@ BEGIN
   WHERE (device_id = p_device_id OR token = p_token)
     AND user_id <> v_user_id;
 
-  -- 退会・停止中の人は登録しない(REQ-008)。残っている宛先があれば消す
-  IF EXISTS (
-    SELECT 1
-    FROM public.profiles
-    WHERE user_id = v_user_id
-      AND deactivated_at IS NOT NULL
-  ) THEN
+  -- 退会・停止中の人は登録しない(REQ-008)。残っている宛先があれば消す。
+  -- FOR SHARE で読むのは、退会・停止(profiles.deactivated_at の UPDATE)と順番に並べるため。
+  --   停止が先: この SELECT は停止の COMMIT を待ち、deactivated_at を見て登録しない
+  --   登録が先: 停止の UPDATE がこの関数の COMMIT を待ち、そのあとのトリガーの DELETE が
+  --             登録した行を見て消す
+  -- (ただの SELECT だと、どちらも相手の書き込みを見ずに進み、宛先が残ることがある)
+  SELECT deactivated_at INTO v_deactivated_at
+  FROM public.profiles
+  WHERE user_id = v_user_id
+  FOR SHARE;
+
+  IF v_deactivated_at IS NOT NULL THEN
     DELETE FROM public.push_device_tokens
     WHERE user_id = v_user_id;
     RETURN;

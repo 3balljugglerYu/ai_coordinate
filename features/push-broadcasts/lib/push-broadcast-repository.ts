@@ -38,6 +38,9 @@ interface PushBroadcastStatsRow {
 /** 一覧に出す件数（新しい順） */
 export const PUSH_BROADCAST_LIST_LIMIT = 100;
 
+/** お知らせの ID を何件ずつ in(...) で読むか（URL の長さを抑える） */
+export const SUMMARY_ID_CHUNK = 100;
+
 function getSupabase(client?: SupabaseClient) {
   return client ?? createAdminClient();
 }
@@ -112,10 +115,11 @@ export async function listPushBroadcasts(
   return (data ?? []).map((row) => mapRow(row as PushBroadcastRow));
 }
 
+/** 件数。読めなかったら null（0 件と見分けて「確認できません」と出すため） */
 export async function getPushBroadcastDeliveryStats(
   broadcastIds: string[],
   client?: SupabaseClient
-): Promise<Map<string, PushBroadcastDeliveryStats>> {
+): Promise<Map<string, PushBroadcastDeliveryStats> | null> {
   if (broadcastIds.length === 0) {
     return new Map();
   }
@@ -126,9 +130,9 @@ export async function getPushBroadcastDeliveryStats(
   });
 
   if (error) {
-    // 件数は補助情報。取れなくても一覧は出す
+    // 件数は補助情報。取れなくても一覧は出す（null で「確認できません」と出す）
     console.error("[push-broadcasts] stats error:", error);
-    return new Map();
+    return null;
   }
 
   return aggregateDeliveryStats((data ?? []) as PushBroadcastStatsRow[]);
@@ -185,6 +189,26 @@ export async function getPushBroadcastById(
   return data ? mapRow(data as PushBroadcastRow) : null;
 }
 
+/** お知らせに紐づく配信（1 お知らせに 1 行）。無ければ null */
+export async function getPushBroadcastForAnnouncement(
+  announcementId: string,
+  client?: SupabaseClient
+): Promise<PushBroadcast | null> {
+  const supabase = getSupabase(client);
+  const { data, error } = await supabase
+    .from("admin_push_broadcasts")
+    .select("*")
+    .eq("announcement_id", announcementId)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[push-broadcasts] get for announcement error:", error);
+    throw new Error("プッシュ通知の状態の取得に失敗しました");
+  }
+
+  return data ? mapRow(data as PushBroadcastRow) : null;
+}
+
 /**
  * 予約中（scheduled）のときだけ取り消す。展開が始まっていたら null。
  * 展開中の行は fan_out_push_broadcasts が FOR UPDATE で握っているので、
@@ -213,14 +237,14 @@ export async function cancelScheduledPushBroadcast(
 
 function toAnnouncementPushSummary(
   row: PushBroadcastRow,
-  stats: PushBroadcastDeliveryStats | undefined
+  stats: Map<string, PushBroadcastDeliveryStats> | null
 ): AnnouncementPushSummary {
   return {
     id: row.id,
     status: row.status,
     sendAt: row.send_at,
     enqueuedCount: row.enqueued_count ?? 0,
-    pendingCount: stats?.pending ?? 0,
+    pendingCount: stats === null ? null : (stats.get(row.id)?.pending ?? 0),
   };
 }
 
@@ -233,19 +257,22 @@ export async function getAnnouncementPushSummaries(
   }
 
   const supabase = getSupabase(client);
-  const { data, error } = await supabase
-    .from("admin_push_broadcasts")
-    .select("*")
-    .in("announcement_id", announcementIds);
+  // in(...) は URL に入るので、お知らせが多いと長すぎて失敗する。少しずつ読む
+  const rows: PushBroadcastRow[] = [];
+  for (let i = 0; i < announcementIds.length; i += SUMMARY_ID_CHUNK) {
+    const { data, error } = await supabase
+      .from("admin_push_broadcasts")
+      .select("*")
+      .in("announcement_id", announcementIds.slice(i, i + SUMMARY_ID_CHUNK));
 
-  if (error) {
-    console.error("[push-broadcasts] announcement summaries error:", error);
-    throw new Error("プッシュ通知の状態の取得に失敗しました");
+    if (error) {
+      console.error("[push-broadcasts] announcement summaries error:", error);
+      throw new Error("プッシュ通知の状態の取得に失敗しました");
+    }
+    rows.push(
+      ...((data ?? []) as PushBroadcastRow[]).filter((row) => row.announcement_id)
+    );
   }
-
-  const rows = ((data ?? []) as PushBroadcastRow[]).filter(
-    (row) => row.announcement_id
-  );
   // 送り終えていない数（「送信中／送信済み」の表示用）。積み始めたものだけ数える
   const stats = await getPushBroadcastDeliveryStats(
     rows
@@ -258,7 +285,7 @@ export async function getAnnouncementPushSummaries(
   for (const row of rows) {
     result.set(
       row.announcement_id as string,
-      toAnnouncementPushSummary(row, stats.get(row.id))
+      toAnnouncementPushSummary(row, stats)
     );
   }
   return result;
@@ -278,7 +305,7 @@ export async function applyAnnouncementPushAction(
   createdBy: string | null,
   client?: SupabaseClient
 ): Promise<boolean> {
-  if (action.type === "none") {
+  if (action.type === "none" || action.type === "locked") {
     return true;
   }
 
@@ -337,6 +364,9 @@ export async function listPushBroadcastsForAdmin(
     supabase
   );
   return broadcasts.map((broadcast) =>
-    decoratePushBroadcastAdmin(broadcast, stats.get(broadcast.id))
+    decoratePushBroadcastAdmin(
+      broadcast,
+      stats === null ? null : stats.get(broadcast.id)
+    )
   );
 }

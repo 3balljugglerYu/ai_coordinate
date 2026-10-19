@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * 運営お知らせ・全体配信のプッシュ通知（admin_push_broadcasts）。
  * 計画書: docs/planning/push-notifications-implementation-plan.md Phase 5
- * 表: supabase/migrations/20261014120000_add_admin_push_broadcasts.sql
+ * 表: supabase/migrations/20261019120000_add_admin_push_broadcasts.sql
  */
 
 /**
@@ -28,12 +28,19 @@ export const PUSH_BROADCAST_URL_MAX = 500;
 /** お知らせ本文から作るプッシュ本文の長さ（通知の表示で切れる前提で短め） */
 export const ANNOUNCEMENT_PUSH_BODY_MAX = 100;
 
+/** 空白・制御文字・バックスラッシュ（`/\evil.example` は別のサイトと読まれる） */
+const URL_FORBIDDEN_CHARACTER_PATTERN = /[\u0000-\u001F\u007F\s\\]/;
+
 /**
  * 押したときの行き先。アプリ内のパス（`/` 始まり、`//` は不可）か https の URL。
- * DB の CHECK（url ~ '^/[^/]' OR url = '/' OR url ~ '^https://'）と同じ。
+ * 空白・制御文字・`\` は使えない（お知らせのリンクの isSafeAnnouncementLinkUrl と同じ守り）。
+ * DB の CHECK も同じ条件。
  */
 export function isValidPushBroadcastUrl(value: string): boolean {
   if (value.length > PUSH_BROADCAST_URL_MAX) {
+    return false;
+  }
+  if (URL_FORBIDDEN_CHARACTER_PATTERN.test(value)) {
     return false;
   }
   if (value === "/") {
@@ -102,7 +109,8 @@ export function emptyDeliveryStats(): PushBroadcastDeliveryStats {
 }
 
 export interface PushBroadcastAdminView extends PushBroadcast {
-  stats: PushBroadcastDeliveryStats;
+  /** 件数を読めなかったときは null（0 と見分ける） */
+  stats: PushBroadcastDeliveryStats | null;
   sendAtDisplay: string;
   statusLabel: string;
   statusClassName: string;
@@ -114,6 +122,9 @@ export interface AnnouncementPushSummary {
   status: PushBroadcastStatus;
   sendAt: string;
   enqueuedCount: number;
-  /** まだ送り終えていない送信待ちの数（表示の「送信中／送信済み」の判定に使う） */
-  pendingCount: number;
+  /**
+   * まだ送り終えていない送信待ちの数（表示の「送信中／送信済み」の判定に使う）。
+   * 件数を読めなかったときは null
+   */
+  pendingCount: number | null;
 }

@@ -668,7 +668,7 @@ Main errors:
 - 送る前（`scheduled` / `canceled`）なら保存のたびに公開日時・タイトル・本文の冒頭を合わせる。下書きに戻す・`sendPush=false` で取り消す
 - 送信が始まった配信と期限切れの配信は変えない
 - `sendPush` 未指定は今の予約を保つ
-- お知らせを削除すると配信と未送信の `push_outbox` も消える（ON DELETE CASCADE）
+- お知らせを削除すると、配信の行と、その配信の `push_outbox` の行（送信済み・未送信とも）も消える（ON DELETE CASCADE）。未送信の分は送られない。配信の記録（状態・題名・送信日時・宛先の数）は削除の前に `admin_audit_log` の `announcement_delete` に写す
 - レスポンスに `push`（`id`, `status`, `sendAt`, `enqueuedCount`, `pendingCount` または `null`）を付ける。お知らせは保存できたが、プッシュの予約・変更・取り消しが効かなかったとき（保存の直前に送信が始まっていた・期限切れになっていた、を含む）は 200 のまま `pushError` を付け、監査ログにも残す
 
 ### `GET|POST /api/internal/account-purge`
@@ -769,7 +769,7 @@ Main errors:
 | GET | `/api/admin/announcements` | admin session | 運営お知らせ一覧を取得する（紐づくプッシュ配信の `push` つき） |
 | POST | `/api/admin/announcements` | admin session | 運営お知らせを作成する。`sendPush` でプッシュ通知も予約する |
 | PATCH | `/api/admin/announcements/[id]` | admin session | 運営お知らせを更新する。送る前のプッシュ配信の日時を合わせる・取り消す |
-| DELETE | `/api/admin/announcements/[id]` | admin session | 運営お知らせを削除する（未送信のプッシュ配信も消える） |
+| DELETE | `/api/admin/announcements/[id]` | admin session | 運営お知らせを削除する（紐づくプッシュ配信も消え、未送信の分は送らない。配信の記録は操作ログに写す） |
 | GET | `/api/admin/audit-log` | admin session | 管理操作ログを取得する |
 | PATCH | `/api/admin/banners/[id]` | admin session | バナーを更新する |
 | DELETE | `/api/admin/banners/[id]` | admin session | バナーを削除する |

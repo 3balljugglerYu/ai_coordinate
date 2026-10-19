@@ -17,16 +17,26 @@ const STATUS_LABELS: Record<
   expired: { label: "期限切れ", className: "bg-rose-100 text-rose-800" },
 };
 
+/** sent で、送り終えたかの件数を読めなかったとき（「送信済み」と言い切らない） */
+const SENT_UNKNOWN_LABEL = {
+  label: "送信済み（件数を確認できません）",
+  className: "bg-slate-100 text-slate-700",
+};
+
 /**
  * 表示する状態。sent は「送信待ちを積み終えた」だけなので、送り終えていない
  * 送信待ち（pendingCount）が残っている間は「送信中」と出す
  * （送信関数が止まっているあいだに「送信済み」と見せない）。
+ * 件数を読めなかった（null）ときも「送信済み」とは言い切らない。
  */
 export function getPushBroadcastStatusLabel(
   status: PushBroadcastStatus,
-  pendingCount = 0
+  pendingCount: number | null = 0
 ) {
-  if (status === "sent" && pendingCount > 0) {
+  if (status === "sent" && pendingCount === null) {
+    return SENT_UNKNOWN_LABEL;
+  }
+  if (status === "sent" && pendingCount !== null && pendingCount > 0) {
     return STATUS_LABELS.sending;
   }
   return STATUS_LABELS[status] ?? STATUS_LABELS.scheduled;
@@ -37,6 +47,11 @@ export function describeExpiredPushBroadcast(enqueuedCount: number) {
   return enqueuedCount > 0
     ? "送信日時から 1 時間以内に送り終えられなかったため、残りは送っていません。"
     : "送信日時から 1 時間以内に送り始められなかったため、送っていません。";
+}
+
+/** 送信日時を日本時間で（確認画面で、端末の時間帯がずれていても気づけるように） */
+export function formatPushBroadcastSendAtJst(value: string) {
+  return formatAdminDateTime(value);
 }
 
 function formatAdminDateTime(value: string) {
@@ -50,14 +65,18 @@ function formatAdminDateTime(value: string) {
   });
 }
 
+/**
+ * stats: 件数の Map を読めたら、その配信の件数（無ければ 0 件）。
+ * 読めなかったら null（「0 件」と見せない）。
+ */
 export function decoratePushBroadcastAdmin(
   broadcast: PushBroadcast,
-  stats: PushBroadcastDeliveryStats | undefined
+  stats: PushBroadcastDeliveryStats | undefined | null
 ): PushBroadcastAdminView {
-  const deliveryStats = stats ?? emptyDeliveryStats();
+  const deliveryStats = stats === null ? null : (stats ?? emptyDeliveryStats());
   const status = getPushBroadcastStatusLabel(
     broadcast.status,
-    deliveryStats.pending
+    deliveryStats ? deliveryStats.pending : null
   );
   return {
     ...broadcast,

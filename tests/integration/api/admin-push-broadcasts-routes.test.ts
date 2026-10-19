@@ -10,7 +10,7 @@
  *  - 取り消せるのは予約中だけ（送信が始まったら 409）
  */
 
-import { NextResponse } from "next/server";
+import { NextRequest as NextRequestImpl, NextResponse } from "next/server";
 
 jest.mock("@/lib/auth", () => ({ requireAdmin: jest.fn() }));
 jest.mock("@/lib/admin-audit", () => ({ logAdminAction: jest.fn() }));
@@ -67,20 +67,32 @@ function broadcast(overrides: Partial<PushBroadcast> = {}): PushBroadcast {
   };
 }
 
-function postRequest(body: unknown): NextRequest {
-  return new Request("http://localhost/api/admin/push-broadcasts", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+function jsonRequest(
+  url: string,
+  method: string,
+  body: unknown,
+  origin: string | null = "http://localhost"
+): NextRequest {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (origin) headers.origin = origin;
+  return new NextRequestImpl(url, {
+    method,
+    headers,
     body: JSON.stringify(body),
   }) as unknown as NextRequest;
 }
 
-function patchRequest(body: unknown): NextRequest {
-  return new Request(`http://localhost/api/admin/push-broadcasts/${BROADCAST_ID}`, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }) as unknown as NextRequest;
+function postRequest(body: unknown, origin?: string | null): NextRequest {
+  return jsonRequest("http://localhost/api/admin/push-broadcasts", "POST", body, origin);
+}
+
+function patchRequest(body: unknown, origin?: string | null): NextRequest {
+  return jsonRequest(
+    `http://localhost/api/admin/push-broadcasts/${BROADCAST_ID}`,
+    "PATCH",
+    body,
+    origin
+  );
 }
 
 const params = (id = BROADCAST_ID) => ({ params: Promise.resolve({ id }) });
@@ -195,12 +207,22 @@ describe("POST /api/admin/push-broadcasts", () => {
     }
   );
 
+  test("別サイトからの作成は 403（何も作らない）", async () => {
+    const response = await POST(postRequest({ title: "x" }, "https://evil.example"));
+
+    expect(response.status).toBe(403);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   test.each([
     "javascript:alert(1)",
     "http://example.com",
     "//evil.example.com",
+    "/\\evil.example/x",
+    "/\t/evil.example",
+    "/\n/evil.example",
     "style",
-  ])("行き先 %s は 400", async (url) => {
+  ])("行き先 %j は 400", async (url) => {
     const response = await POST(postRequest({ title: "x", url }));
 
     expect(response.status).toBe(400);
@@ -237,7 +259,44 @@ describe("PATCH /api/admin/push-broadcasts/[id]", () => {
     const response = await PATCH(patchRequest({ status: "canceled" }), params());
 
     expect(response.status).toBe(409);
+    expect((await response.json()).error).toBe("送信が始まった配信は取り消せません");
     expect(mockLog).not.toHaveBeenCalled();
+  });
+
+  test("開いたままの画面で、ほかで取り消し済みのものを押したら 200（取り消し済みのまま・記録は増やさない）", async () => {
+    // 押した時点の画面では予約中。読み直すと取り消し済み
+    mockGet
+      .mockResolvedValueOnce(broadcast({ status: "scheduled" }))
+      .mockResolvedValueOnce(broadcast({ status: "canceled", canceledAt: "2026-10-14T01:00:00.000Z" }));
+    mockCancel.mockResolvedValue(null);
+
+    const response = await PATCH(patchRequest({ status: "canceled" }), params());
+
+    expect(response.status).toBe(200);
+    expect((await response.json()).status).toBe("canceled");
+    expect(mockLog).not.toHaveBeenCalled();
+  });
+
+  test("期限切れは「送信が始まった」ではなく期限切れと返す", async () => {
+    mockGet
+      .mockResolvedValueOnce(broadcast({ status: "scheduled" }))
+      .mockResolvedValueOnce(broadcast({ status: "expired" }));
+    mockCancel.mockResolvedValue(null);
+
+    const response = await PATCH(patchRequest({ status: "canceled" }), params());
+
+    expect(response.status).toBe(409);
+    expect((await response.json()).error).toContain("期限切れ");
+  });
+
+  test("別サイトからの取り消しは 403（何も変えない）", async () => {
+    const response = await PATCH(
+      patchRequest({ status: "canceled" }, "https://evil.example"),
+      params()
+    );
+
+    expect(response.status).toBe(403);
+    expect(mockCancel).not.toHaveBeenCalled();
   });
 
   test("無い配信は 404", async () => {

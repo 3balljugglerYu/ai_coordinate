@@ -1,5 +1,6 @@
 import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { pushBroadcastCreateSchema } from "@/features/push-broadcasts/lib/schema";
 import {
@@ -37,6 +38,9 @@ export async function GET() {
 }
 
 export async function POST(request: NextRequest) {
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const user = await requireAdmin();
     const payload = pushBroadcastCreateSchema.safeParse(

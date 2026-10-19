@@ -19,14 +19,16 @@ import {
  * | scheduled                | 下書き または 送らない   | 取り消す                         |
  * | canceled                 | 公開 ＋ 送る             | 予約に戻す（公開日時・表示文も） |
  * | canceled                 | それ以外                 | 何もしない                       |
- * | sending / sent / expired | 何でも                   | 何もしない（送ったもの・期限を過ぎたものは戻せない）|
+ * | sending / sent / expired | 公開（チェックは変えない）| 何もしない（送ったもの・期限を過ぎたものは戻せない）|
+ * | sending / sent / expired | 下書き または 送らない   | 変えられないと知らせる（locked）  |
  *
  * send_at は公開日時。ただし過去の公開日時（公開済みのお知らせで後から「送る」に
  * したときなど）は保存した今にする。過去のままだと、DB は送信日時から 1 時間たった
  * 配信を古いものとして送らない（expired）ため。
  *
- * `sendPush` が未指定（古い画面からの保存など）のときは「今の状態を保つ」＝
- * 有効な予約があれば送る扱い、無ければ送らない扱いにする。
+ * `sendPush` が未指定のときは「今の状態を保つ」＝有効な予約があれば送る扱い、
+ * 無ければ送らない扱いにする。管理画面はチェックを変えたときだけ `sendPush` を送る
+ * （開いたままの古い画面の値で、取り消し・復活が黙って起きないように）。
  */
 
 export interface ExistingAnnouncementPush {
@@ -42,6 +44,8 @@ export interface AnnouncementPushContent {
 
 export type AnnouncementPushAction =
   | { type: "none" }
+  /** 送信が始まった・済んだ・期限切れの配信を、取り消し（下書き・送らない）しようとした */
+  | { type: "locked"; status: "sending" | "sent" | "expired" }
   | { type: "create"; content: AnnouncementPushContent }
   | { type: "reschedule"; id: string; content: AnnouncementPushContent }
   | { type: "cancel"; id: string };
@@ -68,13 +72,17 @@ function resolveSendAt(publishAt: string, now: Date): string {
   return now.toISOString();
 }
 
-/** お知らせ本文からプッシュ本文（1 行・短め）を作る */
+/**
+ * お知らせ本文からプッシュ本文（1 行・短め）を作る。
+ * 文字で数えて文字で切る（UTF-16 の length/slice だと絵文字の途中で切れ、
+ * 片割れのサロゲートが残って DB への保存が失敗する）。
+ */
 export function buildAnnouncementPushBody(bodyText: string): string {
-  const singleLine = bodyText.replace(/\s+/g, " ").trim();
-  if (singleLine.length <= ANNOUNCEMENT_PUSH_BODY_MAX) {
-    return singleLine;
+  const characters = Array.from(bodyText.replace(/\s+/g, " ").trim());
+  if (characters.length <= ANNOUNCEMENT_PUSH_BODY_MAX) {
+    return characters.join("");
   }
-  return `${singleLine.slice(0, ANNOUNCEMENT_PUSH_BODY_MAX - 1)}…`;
+  return `${characters.slice(0, ANNOUNCEMENT_PUSH_BODY_MAX - 1).join("")}…`;
 }
 
 export function decideAnnouncementPushAction(
@@ -90,7 +98,9 @@ export function decideAnnouncementPushAction(
 
   const content: AnnouncementPushContent | null = shouldSend
     ? {
-        title: announcement.title.trim().slice(0, PUSH_BROADCAST_TITLE_MAX),
+        title: Array.from(announcement.title.trim())
+          .slice(0, PUSH_BROADCAST_TITLE_MAX)
+          .join(""),
         body: buildAnnouncementPushBody(announcement.bodyText),
         sendAt: resolveSendAt(
           announcement.publishAt as string,
@@ -108,7 +118,13 @@ export function decideAnnouncementPushAction(
     existing.status === "sent" ||
     existing.status === "expired"
   ) {
-    return { type: "none" };
+    // 送ったもの・期限を過ぎたものは戻せない。取り消しを頼まれた（チェックを外した・
+    // 下書きにした）ときだけ、黙らずに知らせる。ふつうの編集は何もしない
+    const wantsCancel =
+      input.sendPush === false || announcement.status !== "published";
+    return wantsCancel
+      ? { type: "locked", status: existing.status }
+      : { type: "none" };
   }
 
   if (content) {

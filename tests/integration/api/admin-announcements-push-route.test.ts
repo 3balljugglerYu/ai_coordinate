@@ -30,6 +30,9 @@ jest.mock("@/features/announcements/lib/announcement-storage", () => ({
 jest.mock("@/features/announcements/lib/revalidate-announcements", () => ({
   revalidateAnnouncements: jest.fn(),
 }));
+jest.mock("@/features/push-broadcasts/lib/push-broadcast-repository", () => ({
+  getPushBroadcastForAnnouncement: jest.fn(),
+}));
 jest.mock("@/features/push-broadcasts/lib/announcement-push-service", () => ({
   syncAnnouncementPush: jest.fn(),
   attachAnnouncementPushSummaries: jest.fn(async (items: unknown[]) => items),
@@ -37,14 +40,16 @@ jest.mock("@/features/push-broadcasts/lib/announcement-push-service", () => ({
 
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/admin/announcements/route";
-import { PATCH } from "@/app/api/admin/announcements/[id]/route";
+import { DELETE, PATCH } from "@/app/api/admin/announcements/[id]/route";
 import { requireAdmin } from "@/lib/auth";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   createAnnouncement,
+  deleteAnnouncement,
   getAnnouncementForAdminById,
   updateAnnouncement,
 } from "@/features/announcements/lib/announcement-repository";
+import { getPushBroadcastForAnnouncement } from "@/features/push-broadcasts/lib/push-broadcast-repository";
 import { syncAnnouncementPush } from "@/features/push-broadcasts/lib/announcement-push-service";
 import type { AnnouncementAdmin } from "@/features/announcements/lib/schema";
 
@@ -196,6 +201,70 @@ describe("PATCH /api/admin/announcements/[id]", () => {
       expect.objectContaining({
         actionType: "announcement_update",
         metadata: expect.objectContaining({ push: "cancel", pushError: error }),
+      })
+    );
+  });
+});
+
+describe("DELETE /api/admin/announcements/[id]", () => {
+  const mockDelete = deleteAnnouncement as jest.MockedFunction<typeof deleteAnnouncement>;
+  const mockGetPush = getPushBroadcastForAnnouncement as jest.MockedFunction<
+    typeof getPushBroadcastForAnnouncement
+  >;
+  const deleteParams = { params: Promise.resolve({ id: "a1" }) };
+
+  test("⭐消す前に、配信の記録を操作ログに写す（配信の行は CASCADE で消えるため）", async () => {
+    mockRequireAdmin.mockResolvedValue({ id: "admin-1" } as never);
+    mockGet.mockResolvedValue(announcement());
+    mockGetPush.mockResolvedValue({
+      id: "b1",
+      title: "ハロウィン企画",
+      body: "本文",
+      url: null,
+      announcementId: "a1",
+      sendAt: PUBLISH_AT,
+      status: "sent",
+      enqueuedCount: 12,
+      createdBy: "admin-1",
+      createdAt: "2026-10-14T00:00:00.000Z",
+      updatedAt: "2026-10-14T00:00:00.000Z",
+      startedAt: "2026-10-20T11:00:05.000Z",
+      finishedAt: "2026-10-20T11:00:06.000Z",
+      canceledAt: null,
+    });
+
+    const response = await DELETE(request("DELETE", undefined), deleteParams);
+
+    expect(response.status).toBe(200);
+    expect(mockGetPush.mock.invocationCallOrder[0]).toBeLessThan(
+      mockDelete.mock.invocationCallOrder[0]
+    );
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        actionType: "announcement_delete",
+        metadata: expect.objectContaining({
+          title: "ハロウィン企画",
+          push: expect.objectContaining({ id: "b1", status: "sent", enqueuedCount: 12 }),
+        }),
+      })
+    );
+  });
+
+  test("配信の記録を読めなくても、お知らせは消す（読めなかったことを記録に残す）", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockRequireAdmin.mockResolvedValue({ id: "admin-1" } as never);
+    mockGet.mockResolvedValue(announcement());
+    mockGetPush.mockRejectedValue(new Error("boom"));
+
+    const response = await DELETE(request("DELETE", undefined), deleteParams);
+
+    expect(response.status).toBe(200);
+    expect(mockDelete).toHaveBeenCalledWith("a1");
+    expect(mockLog).toHaveBeenCalledWith(
+      expect.objectContaining({
+        metadata: expect.objectContaining({
+          push: { error: "プッシュ通知の記録を読めませんでした" },
+        }),
       })
     );
   });

@@ -69,8 +69,39 @@ export function AnnouncementListClient({
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingAnnouncement, setEditingAnnouncement] =
     useState<AnnouncementAdminView | null>(null);
+  // 編集を開くときは今の状態を読み直す（一覧はページを開いた時のままなので、
+  // ほかの画面でプッシュを取り消した等が反映されていない）
+  const [isLoadingEdit, setIsLoadingEdit] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const openEdit = useCallback(async (announcement: AnnouncementAdminView) => {
+    setEditingAnnouncement(announcement);
+    setIsLoadingEdit(true);
+    try {
+      const response = await fetch(`/api/admin/announcements/${announcement.id}`, {
+        cache: "no-store",
+      });
+      const fresh = (await response.json().catch(() => null)) as
+        | AnnouncementAdminView
+        | null;
+      if (response.ok && fresh && typeof fresh === "object" && "id" in fresh) {
+        setEditingAnnouncement((current) =>
+          current?.id === fresh.id ? fresh : current
+        );
+        setAnnouncements((current) =>
+          sortAnnouncements(
+            current.map((item) => (item.id === fresh.id ? fresh : item))
+          )
+        );
+      }
+    } catch (error) {
+      // 読めなければ一覧の値で開く（チェックを変えない限りプッシュは変わらない）
+      console.error("[Admin Announcements] reload before edit error:", error);
+    } finally {
+      setIsLoadingEdit(false);
+    }
+  }, []);
 
   const deletingAnnouncement = useMemo(
     () =>
@@ -197,7 +228,7 @@ export function AnnouncementListClient({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem
-                          onClick={() => setEditingAnnouncement(announcement)}
+                          onClick={() => void openEdit(announcement)}
                         >
                           <Pencil className="mr-2 h-4 w-4" aria-hidden />
                           編集
@@ -218,7 +249,7 @@ export function AnnouncementListClient({
                       type="button"
                       variant="outline"
                       size="icon"
-                      onClick={() => setEditingAnnouncement(announcement)}
+                      onClick={() => void openEdit(announcement)}
                       className="min-h-[44px] min-w-[44px] cursor-pointer"
                       aria-label="編集"
                     >
@@ -271,7 +302,13 @@ export function AnnouncementListClient({
           <DialogHeader>
             <DialogTitle>お知らせを編集</DialogTitle>
           </DialogHeader>
-          {editingAnnouncement && (
+          {editingAnnouncement && isLoadingEdit && (
+            <div className="flex items-center gap-2 py-8 text-sm text-slate-500">
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              読み込み中…
+            </div>
+          )}
+          {editingAnnouncement && !isLoadingEdit && (
             <AnnouncementForm
               announcement={editingAnnouncement}
               onSuccess={(savedAnnouncement) => {
@@ -307,6 +344,11 @@ export function AnnouncementListClient({
               {deletingAnnouncement?.title
                 ? `「${deletingAnnouncement.title}」を削除します。この操作は取り消せません。`
                 : "この操作は取り消せません。"}
+              {deletingAnnouncement?.push
+                ? deletingAnnouncement.push.status === "scheduled"
+                  ? "予約中のプッシュ通知も取り消します。"
+                  : "プッシュ通知の配信の記録も一緒に消えます（操作ログには残します）。"
+                : ""}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

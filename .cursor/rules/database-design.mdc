@@ -369,7 +369,7 @@ alwaysApply: false
 #### `admin_push_broadcasts`
 - 主キー: `id`
 - 主要カラム: `title`, `body`, `url`, `announcement_id`, `send_at`, `status`(`scheduled/sending/sent/canceled/expired`。`sent` は「送信待ちを積み終えた」、`expired` は送信日時から 1 時間たっても積み終えられず残りを送らなかった), `enqueued_count`, `last_recipient_id`, `created_by`, `started_at`, `finished_at`, `canceled_at`
-- 外部キー: `announcement_id -> admin_announcements.id`（**ON DELETE CASCADE＝お知らせを消したら配信も未送信の outbox も消える**）, `created_by -> auth.users.id`
+- 外部キー: `announcement_id -> admin_announcements.id`（**ON DELETE CASCADE＝お知らせを消したら配信の行も、その outbox の行も送信済みを含めて消える。記録は API が admin_audit_log に写す**）, `created_by -> auth.users.id`
 - 制約: `announcement_id` は部分 UNIQUE（お知らせ 1 件に配信 1 つ）。`url` は `/` 始まりのパスか `https://`
 - RLS: 有効・policy なし（service role のみ。admin API が `requireAdmin()` の後に扱う）
 - 備考: 運営お知らせの「プッシュ通知も送る」と `/admin/push-broadcasts` の全体配信。`send_at` を過ぎると `push_outbox_kick`（cron から呼ばれた時だけ）が `fan_out_push_broadcasts()` で宛先があり `announcements` がオンで退会・停止中でない人へ 2,000 人ずつ `push_outbox` に積む（続きは `last_recipient_id` から次の 10 秒で。行の `send_after` は `send_at` なので、`claim_push_outbox` の期限も予定の時刻から数える）。`send_at` から 1 時間たっても積み終えていない配信は `expired`。取り消せるのは `scheduled` の間だけ。送信結果の件数は `admin_push_broadcast_stats(uuid[])`

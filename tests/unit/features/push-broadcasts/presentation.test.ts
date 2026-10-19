@@ -64,7 +64,7 @@ describe("decoratePushBroadcastAdmin", () => {
       failed: 0,
     });
     expect(view.statusLabel).toBe("送信中");
-    expect(view.stats.pending).toBe(1);
+    expect(view.stats!.pending).toBe(1);
   });
 
   test("件数が無ければ状態どおり", () => {

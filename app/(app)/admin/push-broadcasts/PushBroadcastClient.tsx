@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Bell, Loader2, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { describeExpiredPushBroadcast } from "@/features/push-broadcasts/lib/presentation";
+import {
+  describeExpiredPushBroadcast,
+  formatPushBroadcastSendAtJst,
+} from "@/features/push-broadcasts/lib/presentation";
 import {
   PUSH_BROADCAST_BODY_MAX,
   PUSH_BROADCAST_TITLE_MAX,
@@ -50,6 +54,7 @@ export function PushBroadcastClient({
   initialBroadcasts,
 }: PushBroadcastClientProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const [broadcasts, setBroadcasts] = useState(initialBroadcasts);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -139,6 +144,8 @@ export function PushBroadcastClient({
       }
 
       setBroadcasts((current) => [payload as PushBroadcastAdminView, ...current]);
+      // ほかの管理画面へ行って戻ったとき、Next が残した古い一覧を出さない
+      router.refresh();
       setTitle("");
       setBody("");
       setUrl("");
@@ -186,6 +193,7 @@ export function PushBroadcastClient({
         )
       );
       setCancelTargetId(null);
+      router.refresh();
       toast({ title: "取り消しました", description: "予約を取り消しました" });
     } catch (error) {
       toast({
@@ -372,9 +380,16 @@ export function PushBroadcastClient({
                       (broadcast.status === "expired" &&
                         broadcast.enqueuedCount > 0)) && (
                       <p className="text-xs text-slate-600">
-                        宛先 {broadcast.enqueuedCount} 人 ／ 送信 {broadcast.stats.sent}
-                        ・送らず {broadcast.stats.skipped}・失敗 {broadcast.stats.failed}
-                        ・待ち {broadcast.stats.pending}
+                        宛先 {broadcast.enqueuedCount} 人 ／{" "}
+                        {broadcast.stats ? (
+                          <>
+                            送信 {broadcast.stats.sent}
+                            ・送らず {broadcast.stats.skipped}・失敗 {broadcast.stats.failed}
+                            ・待ち {broadcast.stats.pending}
+                          </>
+                        ) : (
+                          "送信数を読めませんでした（「更新」で読み直せます）"
+                        )}
                       </p>
                     )}
                   </div>
@@ -406,7 +421,7 @@ export function PushBroadcastClient({
               「{title.trim()}」を、「運営からのお知らせ」をオンにしているアプリの利用者へ送ります。
               {sendMode === "now"
                 ? "送信が始まると取り消せません。"
-                : "送信日時になるまでは取り消せます。"}
+                : `送信日時は ${sendAt ? formatPushBroadcastSendAtJst(new Date(sendAt).toISOString()) : ""}（日本時間）です。送信日時になるまでは取り消せます。`}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

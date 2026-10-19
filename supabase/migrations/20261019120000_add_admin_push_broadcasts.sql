@@ -20,7 +20,7 @@
 -- 行の無い人・明示的にオンにしていない人は積まない。
 -- 退会・停止中(profiles.deactivated_at)の人も積まない。退会は削除まで 30 日
 -- auth.users が残るので、宛先の ON DELETE CASCADE では消えない
--- (宛先そのものも 20261014120100 で消す。ここは念のための二重の守り)。
+-- (宛先そのものも 20261019120100 で消す。ここは念のための二重の守り)。
 -- 一時停止と止める時間帯はここでは見ない(時刻で変わるので送る時に send-push が
 -- 判定して skipped にする)。push_allowed_now を 1 人ずつ呼ばず、表の結合だけで
 -- 絞るので軽い。
@@ -38,10 +38,11 @@
 -- 期限切れ)やいいねなどの通知を待たせない。
 --
 -- 【お知らせを消したら送らない】
--- announcement_id は ON DELETE CASCADE。お知らせを削除すると配信も、
--- まだ送っていない push_outbox の行も(broadcast_id の CASCADE で)消える。
+-- announcement_id は ON DELETE CASCADE。お知らせを削除すると配信の行も、
+-- その push_outbox の行も(送信済みを含めて。broadcast_id の CASCADE で)消える。
 -- 通知の取り消しを行の削除で表す ADR-002 と同じ考え方。消えたお知らせへの
--- プッシュ(押しても開けない)を構造的に起こさない。履歴は admin_audit_log に残る。
+-- プッシュ(押しても開けない)を構造的に起こさない。配信の記録(状態・題名・
+-- 送信日時・宛先の数)は、削除の前に API が admin_audit_log に写す。
 --
 -- 【取り消し】
 -- 予約中(scheduled)の間だけ canceled にできる。展開中(sending)の行は
@@ -69,6 +70,8 @@ CREATE TABLE IF NOT EXISTS public.admin_push_broadcasts (
     OR (
       char_length(url) <= 500
       AND (url ~ '^/[^/]' OR url = '/' OR url ~ '^https://')
+      -- 空白・制御文字・バックスラッシュは不可(`/\evil.example` は別サイトと読まれる)
+      AND url !~ '[[:space:][:cntrl:]\\]'
     )
   ),
   -- 運営お知らせに紐づく配信。お知らせを消したら配信も消す(送らない)

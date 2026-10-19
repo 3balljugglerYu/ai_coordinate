@@ -3,6 +3,7 @@ import {
   decideAnnouncementPushAction,
   type AnnouncementPushAction,
 } from "./announcement-push-sync";
+
 import {
   applyAnnouncementPushAction,
   getAnnouncementPushSummaries,
@@ -55,58 +56,86 @@ export async function syncAnnouncementPush(params: {
   adminUserId: string;
 }): Promise<AnnouncementPushSyncResult> {
   const { announcement } = params;
-  let action: AnnouncementPushAction = { type: "none" };
+
+  let existing: AnnouncementPushSummary | null;
   try {
-    const existing =
+    existing =
       (await getAnnouncementPushSummaries([announcement.id])).get(
         announcement.id
       ) ?? null;
-
-    action = decideAnnouncementPushAction({
-      existing,
-      sendPush: params.sendPush,
-      announcement,
-    });
-
-    if (action.type === "none") {
-      return { action: action.type, push: existing };
+  } catch (error) {
+    console.error("[push-broadcasts] announcement sync read error:", error);
+    if (params.sendPush === undefined) {
+      // チェックを変えていない保存。何も変えないので、読めなくても黙ってよい
+      return { action: "none", push: null };
     }
+    return {
+      action: "none",
+      push: null,
+      error:
+        "プッシュ通知の状態を読めなかったため、予約・取り消しをしませんでした。もう一度保存してください",
+    };
+  }
 
-    const applied = await applyAnnouncementPushAction(
+  const action = decideAnnouncementPushAction({
+    existing,
+    sendPush: params.sendPush,
+    announcement,
+  });
+
+  if (action.type === "none") {
+    return { action: action.type, push: existing };
+  }
+  if (action.type === "locked") {
+    return {
+      action: action.type,
+      push: existing,
+      error:
+        action.status === "expired"
+          ? "プッシュ通知は期限切れになっていたため、変更できませんでした"
+          : "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした",
+    };
+  }
+
+  let applied: boolean;
+  try {
+    applied = await applyAnnouncementPushAction(
       announcement.id,
       action,
       params.adminUserId
     );
-
-    const push =
-      (await getAnnouncementPushSummaries([announcement.id])).get(
-        announcement.id
-      ) ?? null;
-
-    if (!applied && (action.type === "reschedule" || action.type === "cancel")) {
-      // 読んでから書くまでのあいだに送信が始まっていた。成功扱いにしない
-      return {
-        action: action.type,
-        push,
-        error: describeUnappliedAnnouncementPush(action.type, push),
-      };
-    }
-    return { action: action.type, push };
   } catch (error) {
-    console.error("[push-broadcasts] announcement sync error:", error);
-    if (params.sendPush !== true && action.type === "none") {
-      // 送るよう頼まれていない保存で、状態を読めなかっただけ。画面には出さない
-      return { action: action.type, push: null };
-    }
+    console.error("[push-broadcasts] announcement sync write error:", error);
     return {
       action: action.type,
-      push: null,
+      push: existing,
       error:
         error instanceof Error
           ? error.message
           : "プッシュ通知の予約に失敗しました",
     };
   }
+
+  // 書けたあとの読み直しは表示のためだけ。失敗しても「効かなかった」とは言わない
+  let push: AnnouncementPushSummary | null = null;
+  try {
+    push =
+      (await getAnnouncementPushSummaries([announcement.id])).get(
+        announcement.id
+      ) ?? null;
+  } catch (error) {
+    console.error("[push-broadcasts] announcement sync re-read error:", error);
+  }
+
+  if (!applied && (action.type === "reschedule" || action.type === "cancel")) {
+    // 読んでから書くまでのあいだに送信が始まっていた。成功扱いにしない
+    return {
+      action: action.type,
+      push,
+      error: describeUnappliedAnnouncementPush(action.type, push),
+    };
+  }
+  return { action: action.type, push };
 }
 
 /** お知らせの一覧に、紐づくプッシュ配信の要約を付ける */

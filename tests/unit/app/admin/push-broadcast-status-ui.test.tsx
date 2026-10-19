@@ -24,6 +24,11 @@ import type {
 import type { AnnouncementAdminView } from "@/features/announcements/lib/schema";
 
 const toast = jest.fn();
+const routerRefreshMock = jest.fn();
+jest.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: routerRefreshMock, push: jest.fn() }),
+}));
+
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: () => ({ toast }),
 }));
@@ -226,6 +231,92 @@ describe("お知らせのフォーム（AnnouncementForm）", () => {
   });
 });
 
+describe("お知らせのフォーム: プッシュの送り方", () => {
+  function savedResponse() {
+    return jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => announcement(null),
+    });
+  }
+
+  function lastBody(fetchMock: jest.Mock) {
+    return JSON.parse(fetchMock.mock.calls[0][1].body as string);
+  }
+
+  test("⭐チェックを変えずに保存したら sendPush を送らない（サーバーが今の予約を保つ）", async () => {
+    const fetchMock = savedResponse();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <AnnouncementForm
+        announcement={announcement(pushSummary({ status: "scheduled", enqueuedCount: 0 }))}
+        onSuccess={jest.fn()}
+        onCancel={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "更新する" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(lastBody(fetchMock)).not.toHaveProperty("sendPush");
+  });
+
+  test("チェックを外して保存したら sendPush: false を送る", async () => {
+    const fetchMock = savedResponse();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <AnnouncementForm
+        announcement={announcement(pushSummary({ status: "scheduled", enqueuedCount: 0 }))}
+        onSuccess={jest.fn()}
+        onCancel={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("checkbox", { name: "プッシュ通知も送る" }));
+    fireEvent.click(screen.getByRole("button", { name: "更新する" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(lastBody(fetchMock).sendPush).toBe(false);
+  });
+
+  test("⭐取り消し済みの予約は、チェックを変えない保存で sendPush を送らない（勝手に戻さない）", async () => {
+    const fetchMock = savedResponse();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <AnnouncementForm
+        announcement={announcement(pushSummary({ status: "canceled", enqueuedCount: 0 }))}
+        onSuccess={jest.fn()}
+        onCancel={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "更新する" }));
+
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(lastBody(fetchMock)).not.toHaveProperty("sendPush");
+  });
+
+  test("⭐下書きのあいだはチェックを押せず、理由を出す（保存しても残らないため）", async () => {
+    const fetchMock = savedResponse();
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <AnnouncementForm
+        announcement={announcement(null, { status: "draft", publishAt: null })}
+        onSuccess={jest.fn()}
+        onCancel={jest.fn()}
+      />
+    );
+
+    const checkbox = screen.getByRole("checkbox", { name: "プッシュ通知も送る" });
+    expect(checkbox.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/下書きのあいだは選べません/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "更新する" }));
+    await waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    expect(lastBody(fetchMock)).not.toHaveProperty("sendPush");
+  });
+});
+
 describe("お知らせの一覧（AnnouncementListClient）", () => {
   test("プッシュの札も、送り終えていない分があれば「送信中」", () => {
     render(
@@ -245,5 +336,55 @@ describe("お知らせの一覧（AnnouncementListClient）", () => {
     );
 
     expect(screen.getByText("プッシュ: 送信済み")).toBeTruthy();
+  });
+});
+
+describe("お知らせの一覧: 編集を開くとき", () => {
+  test("⭐今の状態を読み直してから開く（一覧が古くても、取り消し済みならチェックは外れている）", async () => {
+    const fresh = announcement(pushSummary({ status: "canceled", enqueuedCount: 0 }));
+    const fetchMock = jest.fn().mockResolvedValue({ ok: true, json: async () => fresh });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <AnnouncementListClient
+        initialAnnouncements={[
+          announcement(pushSummary({ status: "scheduled", enqueuedCount: 0 })),
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "プッシュ通知も送る" })).toBeTruthy()
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/announcements/a1",
+      expect.objectContaining({ cache: "no-store" })
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "プッシュ通知も送る" }).getAttribute("data-state")
+    ).toBe("unchecked");
+    expect(screen.getByText("プッシュ: 取り消し")).toBeTruthy();
+  });
+
+  test("読み直せなくても、一覧の値で開く", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    global.fetch = jest.fn().mockRejectedValue(new Error("network")) as unknown as typeof fetch;
+
+    render(
+      <AnnouncementListClient
+        initialAnnouncements={[
+          announcement(pushSummary({ status: "scheduled", enqueuedCount: 0 })),
+        ]}
+      />
+    );
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "プッシュ通知も送る" })).toBeTruthy()
+    );
+    expect(
+      screen.getByRole("checkbox", { name: "プッシュ通知も送る" }).getAttribute("data-state")
+    ).toBe("checked");
   });
 });

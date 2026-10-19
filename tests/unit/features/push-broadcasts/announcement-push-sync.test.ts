@@ -144,22 +144,59 @@ describe("decideAnnouncementPushAction", () => {
   });
 
   test.each(["sending", "sent", "expired"] as const)(
-    "%s の配信は、何を保存しても触らない",
+    "%s の配信は、ふつうの編集では触らない",
     (status) => {
+      expect(
+        decideAnnouncementPushAction(input({ existing: { id: "b1", status } }))
+      ).toEqual({ type: "none" });
+      expect(
+        decideAnnouncementPushAction(
+          input({ existing: { id: "b1", status }, sendPush: undefined })
+        )
+      ).toEqual({ type: "none" });
+      expect(
+        decideAnnouncementPushAction(
+          input({ existing: { id: "b1", status }, sendPush: true })
+        )
+      ).toEqual({ type: "none" });
+    }
+  );
+
+  test.each(["sending", "sent", "expired"] as const)(
+    "⭐%s の配信を取り消そうとしたら（送らない・下書き）、変えられないと知らせる",
+    (status) => {
+      expect(
+        decideAnnouncementPushAction(
+          input({ existing: { id: "b1", status }, sendPush: false })
+        )
+      ).toEqual({ type: "locked", status });
       expect(
         decideAnnouncementPushAction(
           input({
             existing: { id: "b1", status },
-            sendPush: false,
+            sendPush: undefined,
             announcement: { status: "draft", publishAt: null },
           })
         )
-      ).toEqual({ type: "none" });
-      expect(
-        decideAnnouncementPushAction(input({ existing: { id: "b1", status } }))
-      ).toEqual({ type: "none" });
+      ).toEqual({ type: "locked", status });
     }
   );
+
+  test("⭐取り消し済みの予約は、チェックを変えない保存では戻さない", () => {
+    expect(
+      decideAnnouncementPushAction(
+        input({ existing: { id: "b1", status: "canceled" }, sendPush: undefined })
+      )
+    ).toEqual({ type: "none" });
+  });
+
+  test("⭐本文は文字で切る（絵文字の途中で切らない）", () => {
+    const body = buildAnnouncementPushBody("あ".repeat(98) + "🎃ハロウィン企画");
+    expect(Array.from(body)).toHaveLength(100);
+    expect(body.endsWith("🎃…")).toBe(true);
+    // 片割れのサロゲートが残っていない
+    expect(/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(body)).toBe(false);
+  });
 
   test("sendPush 未指定は今の予約を保つ（予約中なら日時だけ合わせる）", () => {
     expect(

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
+import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import {
   cancelScheduledPushBroadcast,
@@ -17,6 +18,9 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const originGuard = ensureSameOrigin(request);
+  if (originGuard) return originGuard;
+
   try {
     const user = await requireAdmin();
     const { id } = await params;
@@ -48,8 +52,19 @@ export async function PATCH(
 
     const canceled = await cancelScheduledPushBroadcast(id);
     if (!canceled) {
+      // 予約中ではなかった。読み直して、今の状態に合った文を返す
+      // （開いたままの画面で、ほかの画面から取り消し済みのものを押した等）
+      const current = (await getPushBroadcastById(id)) ?? existing;
+      if (current.status === "canceled") {
+        return NextResponse.json(decoratePushBroadcastAdmin(current, undefined));
+      }
       return NextResponse.json(
-        { error: "送信が始まった配信は取り消せません" },
+        {
+          error:
+            current.status === "expired"
+              ? "送信日時から 1 時間を過ぎて期限切れになった配信は取り消せません"
+              : "送信が始まった配信は取り消せません",
+        },
         { status: 409 }
       );
     }

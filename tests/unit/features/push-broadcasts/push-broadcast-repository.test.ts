@@ -8,7 +8,7 @@
  *  - お知らせの要約には、送り終えていない送信待ちの数（pendingCount）を付ける。
  *    数えるのは積み始めた配信だけ
  *  - 送信待ちの件数は配信ごと・状態ごとにまとめる（processing は送り終えていない側）。
- *    件数が取れなくても一覧は出す
+ *    件数が取れなくても一覧は出す（ただし「送信済み」「0 件」とは言い切らない）
  *  - 新しい配信は予約中（scheduled）として作る
  */
 
@@ -63,7 +63,7 @@ function fakeClient(results: Result[], rpcResult: Result = { data: [], error: nu
     return builder;
   });
   const rpc = jest.fn(async () => rpcResult);
-  return { client: { from, rpc } as unknown as Client, calls, rpc };
+  return { client: { from, rpc } as unknown as Client, calls, rpc, from };
 }
 
 const RESCHEDULE = {
@@ -270,7 +270,7 @@ describe("listPushBroadcastsForAdmin", () => {
     expect(rpc).toHaveBeenCalledWith("admin_push_broadcast_stats", {
       p_broadcast_ids: ["b2", "b1"],
     });
-    expect(views.map((v) => [v.id, v.statusLabel, v.stats.pending])).toEqual([
+    expect(views.map((v) => [v.id, v.statusLabel, v.stats!.pending])).toEqual([
       ["b2", "送信中", 1],
       ["b1", "予約中", 0],
     ]);
@@ -295,8 +295,9 @@ describe("listPushBroadcastsForAdmin", () => {
     const views = await listPushBroadcastsForAdmin(client);
 
     expect(views).toHaveLength(1);
-    expect(views[0].statusLabel).toBe("送信済み");
-    expect(views[0].stats).toEqual({ sent: 0, skipped: 0, failed: 0, pending: 0 });
+    // 送信関数が止まっているかもしれないので「送信済み」と言い切らない
+    expect(views[0].statusLabel).toBe("送信済み（件数を確認できません）");
+    expect(views[0].stats).toBeNull();
   });
 
   test("配信が無ければ件数を問い合わせない。client を渡さなければ管理用のクライアントを使う", async () => {
@@ -427,7 +428,7 @@ describe("getAnnouncementPushSummaries", () => {
     expect(summaries.get("a2")?.pendingCount).toBe(0);
   });
 
-  test("数が取れなくても要約は返す（pendingCount は 0）", async () => {
+  test("数が取れなくても要約は返す（pendingCount は null＝分からない）", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     const { client } = fakeClient(
       [{ data: [broadcastRow("b1", "sent", "a1")], error: null }],
@@ -437,8 +438,22 @@ describe("getAnnouncementPushSummaries", () => {
     const summaries = await getAnnouncementPushSummaries(["a1"], client);
 
     expect(summaries.get("a1")).toEqual(
-      expect.objectContaining({ status: "sent", pendingCount: 0 })
+      expect.objectContaining({ status: "sent", pendingCount: null })
     );
+  });
+
+  test("お知らせが多いときは 100 件ずつ読む（URL が長すぎて失敗しないように）", async () => {
+    const ids = Array.from({ length: 250 }, (_, i) => `a${i}`);
+    const { client, from } = fakeClient([
+      { data: [broadcastRow("b1", "scheduled", "a1")], error: null },
+      { data: [broadcastRow("b2", "scheduled", "a150")], error: null },
+      { data: [], error: null },
+    ]);
+
+    const summaries = await getAnnouncementPushSummaries(ids, client);
+
+    expect(from).toHaveBeenCalledTimes(3);
+    expect([...summaries.keys()].sort()).toEqual(["a1", "a150"]);
   });
 
   test("積み始めた配信が無ければ数を問い合わせない", async () => {

@@ -188,12 +188,58 @@ describe("syncAnnouncementPush: 効いたとき・失敗したとき", () => {
     });
   });
 
-  test("何もしない保存では書き込まない", async () => {
+  test("送信済みの配信のふつうの編集では書き込まず、error も返さない", async () => {
+    summariesInOrder(summary("sent"), null);
+
+    const result = await syncAnnouncementPush(params({ sendPush: undefined }));
+
+    expect(mockApply).not.toHaveBeenCalled();
+    expect(result).toEqual({ action: "none", push: summary("sent") });
+  });
+
+  test("⭐送信済みの配信を取り消そうとしたら、黙らずに知らせる（書き込まない）", async () => {
     summariesInOrder(summary("sent"), null);
 
     const result = await syncAnnouncementPush(params({ sendPush: false }));
 
     expect(mockApply).not.toHaveBeenCalled();
-    expect(result).toEqual({ action: "none", push: summary("sent") });
+    expect(result).toEqual({
+      action: "locked",
+      push: summary("sent"),
+      error: "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした",
+    });
+  });
+
+  test("⭐最初の読み込みが失敗したとき、チェックを変えた保存なら知らせる（何も変えない）", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockSummaries.mockRejectedValueOnce(new Error("network"));
+
+    const result = await syncAnnouncementPush(params({ sendPush: false }));
+
+    expect(mockApply).not.toHaveBeenCalled();
+    expect(result.error).toContain("予約・取り消しをしませんでした");
+  });
+
+  test("最初の読み込みが失敗しても、チェックを変えていない保存なら黙る（何も変えない）", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockSummaries.mockRejectedValueOnce(new Error("network"));
+
+    const result = await syncAnnouncementPush(params({ sendPush: undefined }));
+
+    expect(mockApply).not.toHaveBeenCalled();
+    expect(result).toEqual({ action: "none", push: null });
+  });
+
+  test("⭐書けたあとの読み直しだけが失敗しても、「効かなかった」とは言わない", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockSummaries
+      .mockResolvedValueOnce(new Map([[ANNOUNCEMENT_ID, summary("scheduled")]]))
+      .mockRejectedValueOnce(new Error("network"));
+    mockApply.mockResolvedValue(true);
+
+    const result = await syncAnnouncementPush(params({ sendPush: false }));
+
+    expect(mockApply).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ action: "cancel", push: null });
   });
 });

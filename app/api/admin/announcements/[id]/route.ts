@@ -20,6 +20,7 @@ import {
   attachAnnouncementPushSummaries,
   syncAnnouncementPush,
 } from "@/features/push-broadcasts/lib/announcement-push-service";
+import { getPushBroadcastForAnnouncement } from "@/features/push-broadcasts/lib/push-broadcast-repository";
 
 function difference(source: string[], target: string[]) {
   return source.filter((value) => !target.includes(value));
@@ -206,6 +207,29 @@ export async function DELETE(
       );
     }
 
+    // お知らせを消すと、紐づく配信の行も CASCADE で消える（送信待ちも送らない）。
+    // 配信の記録はここで操作ログに写しておく（送った・取り消した等の履歴が残るように）
+    let pushRecord: Record<string, unknown> | null = null;
+    try {
+      const push = await getPushBroadcastForAnnouncement(id);
+      pushRecord = push
+        ? {
+            id: push.id,
+            status: push.status,
+            title: push.title,
+            body: push.body,
+            sendAt: push.sendAt,
+            startedAt: push.startedAt,
+            finishedAt: push.finishedAt,
+            canceledAt: push.canceledAt,
+            enqueuedCount: push.enqueuedCount,
+          }
+        : null;
+    } catch (error) {
+      console.error("[Admin Announcements] DELETE push record error:", error);
+      pushRecord = { error: "プッシュ通知の記録を読めませんでした" };
+    }
+
     await deleteAnnouncement(id);
 
     if (existing.assetPaths.length > 0) {
@@ -222,8 +246,10 @@ export async function DELETE(
       targetType: "admin_announcement",
       targetId: existing.id,
       metadata: {
+        title: existing.title,
         status: existing.status,
         publishAt: existing.publishAt,
+        ...(pushRecord ? { push: pushRecord } : {}),
       },
     });
 
