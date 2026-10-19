@@ -1989,6 +1989,11 @@ export const esMessages = {
     announcementsMarkSeenFailed: "No se pudieron actualizar los distintivos de avisos.",
     announcementsBackToList: "Volver a los avisos",
     announcementsPublishedLabel: "Publicado: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "Volver a las notificaciones",
+    personalNoticeFrom: "Un mensaje del equipo de Persta.AI",
+    personalNoticeViewPost: "Ver la publicación",
+    personalNoticePostImageAlt: "Publicación destacada",
     unreadDotLabel: "Sin leer",
     badgeAria: "Notificaciones",
     badgeAriaWithCount: "Notificaciones ({count} sin leer)",

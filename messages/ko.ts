@@ -1985,6 +1985,11 @@ export const koMessages = {
     announcementsMarkSeenFailed: "공지 배지 업데이트에 실패했습니다.",
     announcementsBackToList: "공지 목록으로",
     announcementsPublishedLabel: "게시일: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "알림 목록으로",
+    personalNoticeFrom: "Persta.AI 운영팀의 알림",
+    personalNoticeViewPost: "작품 보기",
+    personalNoticePostImageAlt: "선정된 작품",
     unreadDotLabel: "읽지 않음",
     badgeAria: "알림",
     badgeAriaWithCount: "알림 (읽지 않음 {count}건)",

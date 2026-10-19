@@ -1985,6 +1985,11 @@ export const thMessages = {
     announcementsMarkSeenFailed: "อัปเดตป้ายของประกาศไม่สำเร็จ",
     announcementsBackToList: "กลับไปหน้าประกาศ",
     announcementsPublishedLabel: "เผยแพร่: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "กลับไปที่การแจ้งเตือน",
+    personalNoticeFrom: "ข้อความจากทีมงาน Persta.AI",
+    personalNoticeViewPost: "ดูผลงาน",
+    personalNoticePostImageAlt: "ผลงานที่ได้รับเลือก",
     unreadDotLabel: "ยังไม่อ่าน",
     badgeAria: "การแจ้งเตือน",
     badgeAriaWithCount: "การแจ้งเตือน (ยังไม่อ่าน {count})",

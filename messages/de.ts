@@ -1990,6 +1990,11 @@ export const deMessages = {
     announcementsMarkSeenFailed: "Ankündigungs-Badges konnten nicht aktualisiert werden.",
     announcementsBackToList: "Zurück zu den Ankündigungen",
     announcementsPublishedLabel: "Veröffentlicht: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "Zurück zu den Benachrichtigungen",
+    personalNoticeFrom: "Eine Nachricht vom Persta.AI-Team",
+    personalNoticeViewPost: "Beitrag ansehen",
+    personalNoticePostImageAlt: "Ausgewählter Beitrag",
     unreadDotLabel: "Ungelesen",
     badgeAria: "Benachrichtigungen",
     badgeAriaWithCount: "Benachrichtigungen ({count} ungelesen)",

@@ -582,6 +582,14 @@ export function useNotifications(
         markRead([notification.id]);
       }
 
+      // 個人あてのお知らせは全文の詳細ページへ。entity_type は作品つきなら 'post'、
+      // なしなら 'user'(本人)なので、下の entity_type の分岐より前で分ける
+      // (personal-notices 計画書 ADR-005)。
+      if (notification.type === "admin_message") {
+        router.push(`/notifications/messages/${notification.id}`);
+        return;
+      }
+
       // モデレーション通知は判定詳細ページへ遷移する。
       // entity_type は 'post' だが、公開停止された投稿は本人でも /posts/{id} を
       // 開けないため、下の post 分岐より前に処理して死んだリンクを避ける

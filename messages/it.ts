@@ -1989,6 +1989,11 @@ export const itMessages = {
     announcementsMarkSeenFailed: "Impossibile aggiornare i badge degli annunci.",
     announcementsBackToList: "Torna agli annunci",
     announcementsPublishedLabel: "Pubblicato: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "Torna alle notifiche",
+    personalNoticeFrom: "Un messaggio dal team di Persta.AI",
+    personalNoticeViewPost: "Vedi il post",
+    personalNoticePostImageAlt: "Post selezionato",
     unreadDotLabel: "Non letto",
     badgeAria: "Notifiche",
     badgeAriaWithCount: "Notifiche ({count} non lette)",

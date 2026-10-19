@@ -1986,6 +1986,11 @@ export const arMessages = {
     announcementsMarkSeenFailed: "فشل تحديث شارات الإعلانات.",
     announcementsBackToList: "العودة إلى الإعلانات",
     announcementsPublishedLabel: "نُشر: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "العودة إلى الإشعارات",
+    personalNoticeFrom: "رسالة من فريق Persta.AI",
+    personalNoticeViewPost: "عرض المنشور",
+    personalNoticePostImageAlt: "المنشور المختار",
     unreadDotLabel: "غير مقروء",
     badgeAria: "الإشعارات",
     badgeAriaWithCount: "الإشعارات ({count} غير مقروءة)",

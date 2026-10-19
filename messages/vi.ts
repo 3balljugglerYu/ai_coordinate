@@ -1986,6 +1986,11 @@ export const viMessages = {
     announcementsMarkSeenFailed: "Cập nhật badge thông báo thất bại.",
     announcementsBackToList: "Quay lại danh sách thông báo",
     announcementsPublishedLabel: "Đăng: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "Quay lại thông báo",
+    personalNoticeFrom: "Thông báo từ đội ngũ Persta.AI",
+    personalNoticeViewPost: "Xem bài đăng",
+    personalNoticePostImageAlt: "Bài đăng được chọn",
     unreadDotLabel: "Chưa đọc",
     badgeAria: "Thông báo",
     badgeAriaWithCount: "Thông báo ({count} chưa đọc)",

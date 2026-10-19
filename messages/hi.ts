@@ -1987,6 +1987,11 @@ export const hiMessages = {
     announcementsMarkSeenFailed: "घोषणा बैज अपडेट करने में विफल।",
     announcementsBackToList: "घोषणाओं पर वापस जाएँ",
     announcementsPublishedLabel: "प्रकाशित: {date}",
+    // 個人あてのお知らせの詳細ページ(personal-notices 計画書 PN-010)
+    personalNoticeBackToList: "सूचनाओं पर वापस जाएँ",
+    personalNoticeFrom: "Persta.AI टीम का संदेश",
+    personalNoticeViewPost: "पोस्ट देखें",
+    personalNoticePostImageAlt: "चुनी गई पोस्ट",
     unreadDotLabel: "अपठित",
     badgeAria: "सूचनाएँ",
     badgeAriaWithCount: "सूचनाएँ ({count} अपठित)",
