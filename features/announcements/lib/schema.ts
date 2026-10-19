@@ -40,6 +40,14 @@ export const announcementAdminSaveSchema = z.object({
   bodyJson: z.unknown(),
   /** 公開と同時にアプリへプッシュ通知も送る（未指定は今の予約を保つ） */
   sendPush: z.boolean().optional(),
+  /**
+   * 編集画面を開いたときに見えていたプッシュ配信の状態（無ければ null）。
+   * 保存までに送信が始まっていたら、黙って成功にせず知らせるために使う
+   */
+  pushStatusSeen: z
+    .enum(["scheduled", "sending", "sent", "canceled", "expired"])
+    .nullable()
+    .optional(),
 });
 
 export const announcementSeenRequestSchema = z.object({

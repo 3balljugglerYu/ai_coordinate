@@ -28,6 +28,7 @@ function input(
   return {
     existing: overrides.existing ?? null,
     sendPush: "sendPush" in overrides ? overrides.sendPush : true,
+    ...("pushStatusSeen" in overrides ? { pushStatusSeen: overrides.pushStatusSeen } : {}),
     announcement: {
       title: "ハロウィン企画",
       bodyText: "うちの子のベストショットを投稿しよう",
@@ -178,6 +179,37 @@ describe("decideAnnouncementPushAction", () => {
       ).toEqual({ type: "locked", status, requested: "send" });
     }
   );
+
+  test.each([null, "scheduled", "canceled"] as const)(
+    "⭐開いたときは送る前（%s）だったのに、保存までに送信が始まっていたら知らせる",
+    (seen) => {
+      for (const status of ["sending", "sent", "expired"] as const) {
+        expect(
+          decideAnnouncementPushAction(
+            input({
+              existing: { id: "b1", status },
+              sendPush: undefined,
+              pushStatusSeen: seen,
+              announcement: { status: "draft", publishAt: null },
+            })
+          )
+        ).toEqual({ type: "locked", status, requested: "changed" });
+      }
+    }
+  );
+
+  test("開いたときから送信済みなら、チェックを変えない保存では何も言わない", () => {
+    expect(
+      decideAnnouncementPushAction(
+        input({
+          existing: { id: "b1", status: "sent" },
+          sendPush: undefined,
+          pushStatusSeen: "sent",
+          announcement: { status: "draft", publishAt: null },
+        })
+      )
+    ).toEqual({ type: "none" });
+  });
 
   test("⭐取り消し済みの予約は、チェックを変えない保存では戻さない", () => {
     expect(

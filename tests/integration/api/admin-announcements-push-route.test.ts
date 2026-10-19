@@ -130,6 +130,8 @@ describe("POST /api/admin/announcements", () => {
       announcement: expect.objectContaining({ id: "a1", publishAt: PUBLISH_AT }),
       sendPush: true,
       adminUserId: "admin-1",
+      // 作ったばかりなので配信は読まずに決める
+      isNew: true,
     });
     const json = await response.json();
     expect(json.push).toEqual(pushSummary);
@@ -295,4 +297,22 @@ describe("別サイトからの保存・削除", () => {
       expect(mockSync).not.toHaveBeenCalled();
     }
   );
+});
+
+describe("PATCH で開いたときの配信の状態を渡す", () => {
+  test("pushStatusSeen を配信の同期に渡す", async () => {
+    mockRequireAdmin.mockResolvedValue({ id: "admin-1" } as never);
+    mockGet.mockResolvedValue(announcement());
+    mockUpdate.mockResolvedValue(announcement());
+    mockSync.mockResolvedValue({ action: "none", push: null });
+
+    await PATCH(
+      request("PATCH", saveBody({ pushStatusSeen: "scheduled" })),
+      { params: Promise.resolve({ id: "a1" }) }
+    );
+
+    expect(mockSync).toHaveBeenCalledWith(
+      expect.objectContaining({ pushStatusSeen: "scheduled", sendPush: undefined })
+    );
+  });
 });

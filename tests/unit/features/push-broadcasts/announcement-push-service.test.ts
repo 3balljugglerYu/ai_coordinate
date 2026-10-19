@@ -13,7 +13,10 @@ jest.mock("@/features/push-broadcasts/lib/push-broadcast-repository", () => ({
   getAnnouncementPushSummaries: jest.fn(),
 }));
 
-import { syncAnnouncementPush } from "@/features/push-broadcasts/lib/announcement-push-service";
+import {
+  describeLockedAnnouncementPush,
+  syncAnnouncementPush,
+} from "@/features/push-broadcasts/lib/announcement-push-service";
 import {
   applyAnnouncementPushAction,
   getAnnouncementPushSummaries,
@@ -63,6 +66,7 @@ function params(
     status?: "draft" | "published";
     sendPush?: boolean;
     publishAt?: string | null;
+    isNew?: boolean;
   } = {}
 ) {
   return {
@@ -78,6 +82,7 @@ function params(
     },
     sendPush: "sendPush" in overrides ? overrides.sendPush : true,
     adminUserId: "admin-1",
+    ...(overrides.isNew ? { isNew: true } : {}),
   };
 }
 
@@ -243,5 +248,50 @@ describe("syncAnnouncementPush: 効いたとき・失敗したとき", () => {
 
     expect(mockApply).toHaveBeenCalledTimes(1);
     expect(result).toEqual({ action: "cancel", push: null });
+  });
+});
+
+describe("describeLockedAnnouncementPush", () => {
+  const sent = { id: "b1", status: "sent" as const, sendAt: "x", enqueuedCount: 3, pendingCount: 0 };
+  const expiredNone = { id: "b1", status: "expired" as const, sendAt: "x", enqueuedCount: 0, pendingCount: 0 };
+  const expiredPart = { ...expiredNone, enqueuedCount: 4 };
+
+  test("期限切れは、誰にも送っていないのか、途中までなのかを書き分ける", () => {
+    expect(
+      describeLockedAnnouncementPush({ type: "locked", status: "expired", requested: "send" }, expiredNone)
+    ).toContain("誰にも送っていません");
+    expect(
+      describeLockedAnnouncementPush({ type: "locked", status: "expired", requested: "send" }, expiredPart)
+    ).toContain("残りは送っていません");
+    // 期限切れを「すでに送っています」とは言わない
+    expect(
+      describeLockedAnnouncementPush({ type: "locked", status: "expired", requested: "send" }, expiredNone)
+    ).not.toContain("すでに送っています");
+  });
+
+  test("開いたあとで送信が始まっていたら、変更が効いていないと伝える", () => {
+    expect(
+      describeLockedAnnouncementPush({ type: "locked", status: "sent", requested: "changed" }, sent)
+    ).toContain("変更前の内容で送られています");
+  });
+});
+
+describe("syncAnnouncementPush: 作ったばかりのお知らせ", () => {
+  test("⭐配信の状態を読まずに決める（読み込みの失敗で警告しない・作成をやめない）", async () => {
+    mockSummaries.mockReset();
+    mockSummaries
+      .mockResolvedValueOnce(new Map([[ANNOUNCEMENT_ID, summary("scheduled")]]));
+    mockApply.mockResolvedValue(true);
+
+    const result = await syncAnnouncementPush(params({ sendPush: true, isNew: true }));
+
+    expect(mockApply).toHaveBeenCalledWith(
+      ANNOUNCEMENT_ID,
+      expect.objectContaining({ type: "create" }),
+      expect.anything()
+    );
+    // 呼んだのは書いたあとの読み直しの1回だけ
+    expect(mockSummaries).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ action: "create", push: summary("scheduled") });
   });
 });

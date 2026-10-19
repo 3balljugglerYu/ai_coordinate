@@ -143,6 +143,7 @@ export async function PATCH(
     const pushResult = await syncAnnouncementPush({
       announcement: updated,
       sendPush: payload.data.sendPush,
+      pushStatusSeen: payload.data.pushStatusSeen,
       adminUserId: user.id,
     });
 

@@ -111,6 +111,8 @@ export async function POST(request: NextRequest) {
       announcement: created,
       sendPush: payload.data.sendPush,
       adminUserId: user.id,
+      // 作ったばかりなので配信はまだ無い（読まずに決める）
+      isNew: true,
     });
 
     await logAdminAction({

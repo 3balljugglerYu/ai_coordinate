@@ -258,6 +258,8 @@ describe("お知らせのフォーム: プッシュの送り方", () => {
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     expect(lastBody(fetchMock)).not.toHaveProperty("sendPush");
+    // 開いたときに見えていた状態も送る（保存までに送信が始まっていたら知らせてもらう）
+    expect(lastBody(fetchMock).pushStatusSeen).toBe("scheduled");
   });
 
   test("チェックを外して保存したら sendPush: false を送る", async () => {
@@ -433,5 +435,63 @@ describe("お知らせの一覧: 編集を開くとき（読み直しの失敗�
       resolveFirst({ ok: true, json: async () => ({ ...first, title: "1つ目（遅れて届いた）" }) });
     });
     expect((screen.getByLabelText("タイトル") as HTMLInputElement).value).toBe("2つ目（最新）");
+  });
+});
+
+describe("お知らせの一覧: 読み直しと保存のあとの配信の状態", () => {
+  test("⭐読み直しで 404（ほかで消されていた）なら、知らせて一覧から外す", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: "お知らせが見つかりません" }),
+    }) as unknown as typeof fetch;
+
+    render(<AnnouncementListClient initialAnnouncements={[announcement(null)]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "このお知らせは削除されています" })
+      )
+    );
+    expect(screen.queryByRole("checkbox", { name: "プッシュ通知も送る" })).toBeNull();
+    expect(screen.queryByText("ハロウィン企画")).toBeNull();
+  });
+
+  test("読み直しが失敗したら、一覧の内容で開くことを知らせる", async () => {
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: "boom" }),
+    }) as unknown as typeof fetch;
+
+    render(<AnnouncementListClient initialAnnouncements={[announcement(null)]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+
+    await waitFor(() =>
+      expect(toast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "最新の状態を読めませんでした" })
+      )
+    );
+    expect(screen.getByRole("checkbox", { name: "プッシュ通知も送る" })).toBeTruthy();
+  });
+
+  test("⭐保存の結果で配信の状態を読めなかった（push が null）ら、一覧の札は前の値を残す", async () => {
+    const listed = announcement(pushSummary({ status: "sent", enqueuedCount: 5 }));
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => listed })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ ...listed, push: null }) }) as unknown as typeof fetch;
+
+    render(<AnnouncementListClient initialAnnouncements={[listed]} />);
+    fireEvent.click(screen.getByRole("button", { name: "編集" }));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "更新する" })).toBeTruthy()
+    );
+    fireEvent.click(screen.getByRole("button", { name: "更新する" }));
+
+    await waitFor(() => expect(screen.queryByRole("button", { name: "更新する" })).toBeNull());
+    expect(screen.getByText("プッシュ: 送信済み")).toBeTruthy();
   });
 });

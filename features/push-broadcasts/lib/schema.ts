@@ -37,7 +37,8 @@ const URL_FORBIDDEN_CHARACTER_PATTERN =
 
 /**
  * 押したときの行き先。アプリ内のパス（`/` 始まり、`//` は不可）か https の URL。
- * 空白・制御文字・`\` は使えない（お知らせのリンクの isSafeAnnouncementLinkUrl と同じ守り）。
+ * 空白・制御文字・`\` は使えない（お知らせのリンクの isSafeAnnouncementLinkUrl と同じ考え方で、
+ * こちらは C1 制御文字・ゼロ幅の空白・BOM も断る分だけ厳しい）。
  * DB の CHECK も同じ文字を断る（https の URL として読めるかは API だけで確かめる）。
  */
 export function isValidPushBroadcastUrl(value: string): boolean {

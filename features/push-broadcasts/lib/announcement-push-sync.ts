@@ -21,6 +21,7 @@ import {
  * | canceled                 | それ以外                 | 何もしない                       |
  * | sending / sent / expired | チェックを変えない       | 何もしない（送ったもの・期限を過ぎたものは戻せない）|
  * | sending / sent / expired | チェックを変えた         | 変えられないと知らせる（locked）  |
+ * | sending / sent / expired | 開いた時は送る前だった   | 送信が始まっていたと知らせる（locked）|
  *
  * send_at は公開日時。ただし過去の公開日時（公開済みのお知らせで後から「送る」に
  * したときなど）は保存した今にする。過去のままだと、DB は送信日時から 1 時間たった
@@ -48,7 +49,8 @@ export type AnnouncementPushAction =
   | {
       type: "locked";
       status: "sending" | "sent" | "expired";
-      requested: "send" | "cancel";
+      /** send＝もう一度送る / cancel＝取り消す / changed＝開いたあとで送信が始まっていた */
+      requested: "send" | "cancel" | "changed";
     }
   | { type: "create"; content: AnnouncementPushContent }
   | { type: "reschedule"; id: string; content: AnnouncementPushContent }
@@ -57,6 +59,8 @@ export type AnnouncementPushAction =
 export interface AnnouncementPushSyncInput {
   existing: ExistingAnnouncementPush | null;
   sendPush: boolean | undefined;
+  /** 編集画面を開いたときに見えていた配信の状態（null＝無かった・undefined＝分からない） */
+  pushStatusSeen?: PushBroadcastStatus | null;
   announcement: {
     title: string;
     bodyText: string;
@@ -125,9 +129,20 @@ export function decideAnnouncementPushAction(
     // 送ったもの・期限を過ぎたものは戻せない。チェックを変えて頼まれた（外した＝取り消し、
     // 入れた＝もう一度送る）ときだけ、黙らずに知らせる。ふつうの編集・下書きへの
     // 切り替えは何もしない（チェックに触れていないのに毎回警告しない）
-    return input.sendPush === undefined
-      ? { type: "none" }
-      : { type: "locked", status: existing.status, requested: input.sendPush ? "send" : "cancel" };
+    if (input.sendPush !== undefined) {
+      return {
+        type: "locked",
+        status: existing.status,
+        requested: input.sendPush ? "send" : "cancel",
+      };
+    }
+    // 開いたときは送る前（予約中・取り消し）だったのに、保存までに送信が始まっていた。
+    // 題名・日時の直しや下書きへの戻しは配信に効かないので、黙らずに知らせる
+    const seen = input.pushStatusSeen;
+    if (seen !== undefined && seen !== existing.status && (seen === null || seen === "scheduled" || seen === "canceled")) {
+      return { type: "locked", status: existing.status, requested: "changed" };
+    }
+    return { type: "none" };
   }
 
   if (content) {

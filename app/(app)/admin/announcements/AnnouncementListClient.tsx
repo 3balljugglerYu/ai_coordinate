@@ -88,13 +88,31 @@ export function AnnouncementListClient({
       const fetched = (await response.json().catch(() => null)) as
         | AnnouncementAdminView
         | null;
-      if (
-        requestId === editRequestRef.current &&
-        response.ok &&
-        fetched &&
-        typeof fetched === "object" &&
-        "id" in fetched
-      ) {
+      if (requestId !== editRequestRef.current) {
+        return;
+      }
+      if (response.status === 404) {
+        // ほかのタブで消されていた。古い内容で開いて、全部直してから保存で失敗させない
+        setEditingAnnouncement(null);
+        setAnnouncements((current) =>
+          current.filter((item) => item.id !== announcement.id)
+        );
+        toast({
+          title: "このお知らせは削除されています",
+          description: "一覧から外しました",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!response.ok || !fetched || typeof fetched !== "object" || !("id" in fetched)) {
+        toast({
+          title: "最新の状態を読めませんでした",
+          description: "一覧に出ている内容で開きます。保存の前に、ほかで変えていないか確かめてください",
+          variant: "destructive",
+        });
+        return;
+      }
+      {
         // 配信の行はお知らせを消すまで無くならない。読み直しで push が null なら
         // 状態を読めなかっただけなので、一覧の値を残す（送信済みを「無い」と見せない）
         const fresh =
@@ -111,12 +129,19 @@ export function AnnouncementListClient({
     } catch (error) {
       // 読めなければ一覧の値で開く（チェックを変えない限りプッシュは変わらない）
       console.error("[Admin Announcements] reload before edit error:", error);
+      if (requestId === editRequestRef.current) {
+        toast({
+          title: "最新の状態を読めませんでした",
+          description: "一覧に出ている内容で開きます。保存の前に、ほかで変えていないか確かめてください",
+          variant: "destructive",
+        });
+      }
     } finally {
       if (requestId === editRequestRef.current) {
         setIsLoadingEdit(false);
       }
     }
-  }, []);
+  }, [toast]);
 
   const deletingAnnouncement = useMemo(
     () =>
@@ -334,7 +359,12 @@ export function AnnouncementListClient({
                   sortAnnouncements(
                     current.map((announcement) =>
                       announcement.id === savedAnnouncement.id
-                        ? savedAnnouncement
+                        ? {
+                            ...savedAnnouncement,
+                            // 保存の結果で配信の状態を読めなかった（null）ときは前の値を残す
+                            // （配信の行はお知らせを消すまで無くならない）
+                            push: savedAnnouncement.push ?? announcement.push,
+                          }
                         : announcement
                     )
                   )

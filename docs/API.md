@@ -666,8 +666,12 @@ Main errors:
 `POST /api/admin/announcements` と `PATCH /api/admin/announcements/[id]` は任意の `sendPush`（boolean）を受け取る。公開（`status=published`）で `sendPush=true` なら、公開日時（`publishAt`、未指定は今）を `send_at` にした配信を 1 つ作る（お知らせ 1 件につき配信は 1 つ）。公開日時が過去なら `send_at` は保存した今にする（送信日時から 1 時間たった配信は送らないため）。
 
 - 送る前（`scheduled` / `canceled`）なら保存のたびに公開日時・タイトル・本文の冒頭を合わせる。下書きに戻す・`sendPush=false` で取り消す
-- 送信が始まった配信と期限切れの配信は変えない
-- `sendPush` 未指定は今の予約を保つ
+- `sendPush` 未指定は今の予約を保つ（管理画面はチェックを変えたときだけ `sendPush` を送る。取り消し済みの予約は、チェックを変えない保存では戻さない）
+- 送信が始まった配信と期限切れの配信は変えない。次のときは 200 のまま `pushError` で知らせる
+  - `sendPush` を指定した（`false`＝取り消し・`true`＝もう一度送る）
+  - `pushStatusSeen`（PATCH だけ。管理画面が開いたときに見えていた配信の状態、無ければ `null`）が送る前（`null` / `scheduled` / `canceled`）だったのに、保存までに送信が始まっていた
+  - チェックを変えずに下書きにしただけなら何も言わない
+- 配信の状態を読めなかったときは、何も変えずに `pushError` を付ける（POST は作ったばかりなので読まない）
 - お知らせを削除すると、配信の行と、その配信の `push_outbox` の行（送信済み・未送信とも）も消える（ON DELETE CASCADE）。未送信の分は送られない。配信の記録（状態・題名・送信日時・宛先の数）は削除の前に `admin_audit_log` の `announcement_delete` に写す
 - レスポンスに `push`（`id`, `status`, `sendAt`, `enqueuedCount`, `pendingCount` または `null`）を付ける。お知らせは保存できたが、プッシュの予約・変更・取り消しが効かなかったとき（保存の直前に送信が始まっていた・期限切れになっていた、を含む）は 200 のまま `pushError` を付け、監査ログにも残す
 
@@ -767,9 +771,9 @@ Main errors:
 | Method | Path | Access | Summary |
 | --- | --- | --- | --- |
 | GET | `/api/admin/announcements` | admin session | 運営お知らせ一覧を取得する（紐づくプッシュ配信の `push` つき） |
-| POST | `/api/admin/announcements` | admin session | 運営お知らせを作成する。`sendPush` でプッシュ通知も予約する |
-| PATCH | `/api/admin/announcements/[id]` | admin session | 運営お知らせを更新する。送る前のプッシュ配信の日時を合わせる・取り消す |
-| DELETE | `/api/admin/announcements/[id]` | admin session | 運営お知らせを削除する（紐づくプッシュ配信も消え、未送信の分は送らない。配信の記録は操作ログに写す） |
+| POST | `/api/admin/announcements` | admin session（同一オリジン） | 運営お知らせを作成する。`sendPush` でプッシュ通知も予約する |
+| PATCH | `/api/admin/announcements/[id]` | admin session（同一オリジン） | 運営お知らせを更新する。送る前のプッシュ配信の日時を合わせる・取り消す（`pushStatusSeen` で開いたあとの変化を知らせる） |
+| DELETE | `/api/admin/announcements/[id]` | admin session（同一オリジン） | 運営お知らせを削除する（紐づくプッシュ配信も消え、未送信の分は送らない。配信の記録は操作ログに写す） |
 | GET | `/api/admin/audit-log` | admin session | 管理操作ログを取得する |
 | PATCH | `/api/admin/banners/[id]` | admin session | バナーを更新する |
 | DELETE | `/api/admin/banners/[id]` | admin session | バナーを削除する |
@@ -806,8 +810,8 @@ Main errors:
 | GET | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を取得する |
 | PATCH | `/api/admin/percoin-defaults` | admin session | デフォルト付与値を更新する |
 | GET | `/api/admin/push-broadcasts` | admin session | プッシュ通知の全体配信の履歴（新しい順 100 件・状態別の送信数つき）を取得する |
-| POST | `/api/admin/push-broadcasts` | admin session | プッシュ通知の全体配信を作成する（今すぐ／予約） |
-| PATCH | `/api/admin/push-broadcasts/[id]` | admin session | 予約中の全体配信を取り消す。送信が始まっていれば 409 |
+| POST | `/api/admin/push-broadcasts` | admin session（同一オリジン） | プッシュ通知の全体配信を作成する（今すぐ／予約） |
+| PATCH | `/api/admin/push-broadcasts/[id]` | admin session（同一オリジン） | 予約中の全体配信を取り消す。送信が始まっていれば 409 |
 | GET | `/api/admin/reports/aggregated` | admin session | 通報集計結果を取得する |
 | GET | `/api/admin/reports` | admin session | 通報一覧を取得する |
 | GET | `/api/admin/test-auth` | admin session | 管理者判定の動作確認を行う |

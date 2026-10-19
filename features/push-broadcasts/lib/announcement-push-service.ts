@@ -39,6 +39,29 @@ export function describeUnappliedAnnouncementPush(
   return "プッシュ通知の状態が変わっていたため、変更できませんでした。画面を読み込み直して確認してください";
 }
 
+/** 送信が始まった・済んだ・期限切れの配信を変えようとしたときの文言 */
+export function describeLockedAnnouncementPush(
+  action: Extract<AnnouncementPushAction, { type: "locked" }>,
+  existing: AnnouncementPushSummary | null
+): string {
+  if (action.status === "expired") {
+    const sentNone = (existing?.enqueuedCount ?? 0) === 0;
+    const what = sentNone
+      ? "プッシュ通知は送信日時から 1 時間以内に送り始められず、期限切れになっています（誰にも送っていません）"
+      : "プッシュ通知は送信日時から 1 時間以内に送り終えられず、期限切れになっています（残りは送っていません）";
+    return action.requested === "send"
+      ? `${what}。このお知らせからはもう一度送れないので、送るときは「プッシュ通知の配信」から送ってください`
+      : `${what}。変更・取り消しはできません`;
+  }
+  if (action.requested === "send") {
+    return "このお知らせのプッシュ通知はすでに送っています。もう一度は送れません";
+  }
+  if (action.requested === "changed") {
+    return "編集を開いたあとでプッシュ通知の送信が始まっていたため、変更・取り消しは効いていません（変更前の内容で送られています）";
+  }
+  return "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした";
+}
+
 /**
  * お知らせを保存した直後に、紐づくプッシュ配信を合わせる。
  * お知らせの保存は済んでいるので、ここで失敗しても例外にせず error で返す
@@ -53,31 +76,38 @@ export async function syncAnnouncementPush(params: {
     publishAt: string | null;
   };
   sendPush: boolean | undefined;
+  /** 編集画面を開いたときに見えていた配信の状態 */
+  pushStatusSeen?: AnnouncementPushSummary["status"] | null;
+  /** 作ったばかりのお知らせ（配信はまだ無いので読まない） */
+  isNew?: boolean;
   adminUserId: string;
 }): Promise<AnnouncementPushSyncResult> {
   const { announcement } = params;
 
-  let existing: AnnouncementPushSummary | null;
-  try {
-    existing =
-      (await getAnnouncementPushSummaries([announcement.id])).get(
-        announcement.id
-      ) ?? null;
-  } catch (error) {
-    console.error("[push-broadcasts] announcement sync read error:", error);
-    // チェックを変えていなくても、題名・公開日時などの変更は予約に合わせる必要がある。
-    // 読めなかったときは必ず知らせる
-    return {
-      action: "none",
-      push: null,
-      error:
-        "プッシュ通知の状態を読めなかったため、予約に変更を反映していません。もう一度保存してください",
-    };
+  let existing: AnnouncementPushSummary | null = null;
+  if (!params.isNew) {
+    try {
+      existing =
+        (await getAnnouncementPushSummaries([announcement.id])).get(
+          announcement.id
+        ) ?? null;
+    } catch (error) {
+      console.error("[push-broadcasts] announcement sync read error:", error);
+      // チェックを変えていなくても、題名・公開日時などの変更は予約に合わせる必要がある。
+      // 読めなかったときは必ず知らせる
+      return {
+        action: "none",
+        push: null,
+        error:
+          "プッシュ通知の状態を読めなかったため、予約に変更を反映していません。もう一度保存してください",
+      };
+    }
   }
 
   const action = decideAnnouncementPushAction({
     existing,
     sendPush: params.sendPush,
+    pushStatusSeen: params.pushStatusSeen,
     announcement,
   });
 
@@ -88,12 +118,7 @@ export async function syncAnnouncementPush(params: {
     return {
       action: action.type,
       push: existing,
-      error:
-        action.requested === "send"
-          ? "このお知らせのプッシュ通知はすでに送っています（送信済み・期限切れ）。もう一度は送れません"
-          : action.status === "expired"
-            ? "プッシュ通知は期限切れになっていたため、変更できませんでした"
-            : "プッシュ通知はすでに送信が始まっていたため、取り消せませんでした",
+      error: describeLockedAnnouncementPush(action, existing),
     };
   }
 

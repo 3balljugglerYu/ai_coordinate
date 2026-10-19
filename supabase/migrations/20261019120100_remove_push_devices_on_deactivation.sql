@@ -65,8 +65,8 @@ CREATE TRIGGER trg_delete_push_devices_on_deactivation
 -- -----------------------------------------------
 -- 20261013120000 の定義に「退会・停止中なら登録せずに終える」を足しただけ(ほかは同じ)。
 -- 別の人に結びついていた同じ端末・同じトークンは、その前に外す(この端末に
--- 前の人の宛先を残さない)。アプリには失敗を返さない(登録は裏で行うもので、
--- 利用者にできることが無いため)。
+-- 前の人の宛先を残さない)。ロック待ちは 3 秒まで(超えたら lock_not_available の
+-- エラーを返す。アプリは記録だけして、次の起動で登録し直す)。
 CREATE OR REPLACE FUNCTION public.register_push_device(
   p_device_id TEXT,
   p_platform TEXT,
@@ -81,6 +81,10 @@ DECLARE
   v_user_id UUID := auth.uid();
   v_deactivated_at TIMESTAMPTZ;
 BEGIN
+  -- アプリの起動を長く止めないよう、この関数の中のロック待ちはすべて 3 秒まで
+  -- (下の FOR SHARE はプロフィールのほかの更新とも待ち合う。DELETE も行のロックを待つ)
+  PERFORM set_config('lock_timeout', '3s', true);
+
   -- 利用者はセッションからだけ決める(引数で受け取らない)
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'register_push_device_not_authenticated' USING ERRCODE = '42501';
@@ -97,9 +101,6 @@ BEGIN
   --   登録が先: 停止の UPDATE がこの関数の COMMIT を待ち、そのあとのトリガーの DELETE が
   --             登録した行を見て消す
   -- (ただの SELECT だと、どちらも相手の書き込みを見ずに進み、宛先が残ることがある)
-  -- FOR SHARE はプロフィールのほかの更新(本人の保存など)とも待ち合う。アプリの起動を
-  -- 長く止めないよう、待つのは 3 秒まで(超えたらエラー。アプリは次の起動で登録し直す)
-  PERFORM set_config('lock_timeout', '3s', true);
   SELECT deactivated_at INTO v_deactivated_at
   FROM public.profiles
   WHERE user_id = v_user_id

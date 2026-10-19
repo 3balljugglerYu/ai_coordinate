@@ -100,6 +100,8 @@ export function AnnouncementForm({
             ...(isPushCheckboxDisabled || sendPush === initialSendPush
               ? {}
               : { sendPush }),
+            // 開いたときに見えていた配信の状態。保存までに送信が始まっていたら知らせてもらう
+            ...(announcement ? { pushStatusSeen: existingPush?.status ?? null } : {}),
           }),
         }
       );
