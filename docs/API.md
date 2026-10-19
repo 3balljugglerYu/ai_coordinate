@@ -716,6 +716,9 @@ Main errors:
 | GET | `/api/admin/banners` | admin session | バナー一覧を取得する |
 | POST | `/api/admin/banners` | admin session | バナーを作成する |
 | POST | `/api/admin/bonus/bulk-lookup` | admin session | メールアドレス配列から対象ユーザーと残高を一括取得する |
+| POST | `/api/admin/personal-notices/lookup` | admin session（同一オリジン） | 個人あてのお知らせの宛先（投稿の URL・プロフィールの URL・ユーザーID）を1行ずつ確かめる。書き込みなし |
+| POST | `/api/admin/personal-notices` | admin session（同一オリジン） | 個人あてのお知らせを送る。宛先はサーバーで確かめ直し、1行でも送れなければ何も送らない |
+| POST | `/api/admin/personal-notices/recipients/[id]/retract` | admin session（同一オリジン） | 1人分を取り消す（相手の通知を消し、記録は残す） |
 | POST | `/api/admin/bonus/grant` | admin session | 単一ユーザーへペルコインを付与する |
 | POST | `/api/admin/bonus/grant-batch` | admin session | 複数ユーザーへペルコインを一括付与する |
 | GET | `/api/admin/credits-summary` | admin session | クレジット関連サマリを取得する |

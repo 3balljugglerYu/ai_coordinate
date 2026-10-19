@@ -159,6 +159,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "file-text",
   },
   {
+    path: "/admin/personal-notices",
+    label: "個人あてのお知らせ",
+    description: "選んだ人だけにお知らせを送る",
+    iconKey: "file-text",
+  },
+  {
     path: "/admin/image-optimization",
     label: "画像最適化",
     description: "WebP変換状況を確認",
