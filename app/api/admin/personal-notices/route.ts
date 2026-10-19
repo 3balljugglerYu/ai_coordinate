@@ -54,7 +54,8 @@ export async function POST(request: NextRequest) {
       adminUserId: admin.id,
       memo: input.memo.trim(),
       title: input.title.trim(),
-      body: input.body,
+      // 前後の改行・空白は落とす(画面の文字数は JS の trim で数え、DB の btrim は半角の空白しか落とさないため)
+      body: input.body.trim(),
       codePrefix,
       recipients: resolved.rows.map((row) => ({
         recipientId: row.recipientId as string,

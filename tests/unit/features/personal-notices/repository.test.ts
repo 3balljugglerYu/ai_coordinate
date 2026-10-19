@@ -273,4 +273,13 @@ describe("listPersonalNotices", () => {
     const ilike = queries[0].ops.find((o) => o[0] === "ilike");
     expect(ilike).toEqual(["ilike", "memo", "%100\\%\\_賞%"]);
   });
+
+  test("* は PostgREST で何でもの意味になるので_1文字の印にする", async () => {
+    tables.personal_notices = [];
+
+    await listPersonalNotices("★*賞");
+
+    const ilike = queries[0].ops.find((o) => o[0] === "ilike");
+    expect(ilike).toEqual(["ilike", "memo", "%★_賞%"]);
+  });
 });

@@ -4,7 +4,7 @@ import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { isUuid } from "@/lib/is-uuid";
 import { Card, CardContent } from "@/components/ui/card";
-import { getPersonalNoticeDetail } from "@/features/personal-notices/lib/repository";
+import { getPersonalNoticeTemplate } from "@/features/personal-notices/lib/repository";
 import { PersonalNoticeSendClient } from "@/features/personal-notices/components/PersonalNoticeSendClient";
 
 /**
@@ -26,7 +26,7 @@ export default async function AdminPersonalNoticeNewPage({
   const { from } = await searchParams;
   const source =
     typeof from === "string" && isUuid(from)
-      ? await getPersonalNoticeDetail(from)
+      ? await getPersonalNoticeTemplate(from)
       : null;
 
   return (

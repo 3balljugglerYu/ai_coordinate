@@ -168,6 +168,15 @@ describe("POST /api/admin/personal-notices", () => {
     expect(mockLog).not.toHaveBeenCalled();
   });
 
+  test("本文の前後の改行・空白は落として送る(DB の btrim は半角の空白しか落とさない)", async () => {
+    mockLookup.mockResolvedValue([okRow(1)]);
+    mockSend.mockResolvedValue({ ok: true, noticeId: "n", recipientCount: 1 });
+
+    await sendPost(request("/api/admin/personal-notices", { ...validSend, body: "\n　受付番号: {受付番号}\n\n\n" }));
+
+    expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({ body: "受付番号: {受付番号}" }));
+  });
+
   test("本文に {受付番号} が無ければ頭の英字は送らない", async () => {
     mockLookup.mockResolvedValue([okRow(1)]);
     mockSend.mockResolvedValue({ ok: true, noticeId: "n", recipientCount: 1 });

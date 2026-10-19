@@ -66,7 +66,7 @@ function renderClient() {
 }
 
 function sendButton() {
-  return screen.getAllByRole("button").find((b) => /人に送る|^送る$/.test(b.textContent ?? ""))!;
+  return screen.getAllByRole("button").find((b) => /人に送る|^送る$|^送りました$/.test(b.textContent ?? ""))!;
 }
 
 async function fillAndLookup(rows: unknown[]) {
@@ -147,6 +147,57 @@ describe("PersonalNoticeSendClient", () => {
       code_prefix: "HBS",
     });
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/admin/personal-notices/notice-1"));
+  });
+
+  test("送れたあとは_ページが移るまでの間も2回目を送らない", async () => {
+    renderClient();
+    await fillAndLookup([row(1)]);
+    fillTexts();
+
+    fireEvent.click(sendButton());
+    respond({ notice_id: "notice-1", recipient_count: 1 });
+    const confirm = screen.getByRole("button", { name: "送る" });
+    await act(async () => {
+      fireEvent.click(confirm);
+    });
+    // router.push は終わっていない(画面はまだここ)。もう一度押しても送らない
+    await act(async () => {
+      fireEvent.click(confirm);
+      fireEvent.click(sendButton());
+    });
+
+    const sendCalls = fetchMock.mock.calls.filter(([url]) => url === "/api/admin/personal-notices");
+    expect(sendCalls).toHaveLength(1);
+    expect(sendButton().textContent).toContain("送りました");
+    expect((sendButton() as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  test("連打しても_返事が来る前の2回目は送らない", async () => {
+    renderClient();
+    await fillAndLookup([row(1)]);
+    fillTexts();
+
+    fireEvent.click(sendButton());
+    let resolveSend: (v: unknown) => void = () => {};
+    fetchMock.mockReturnValueOnce(new Promise((r) => { resolveSend = r; }));
+    const confirm = screen.getByRole("button", { name: "送る" });
+    fireEvent.click(confirm);
+    fireEvent.click(confirm);
+    await act(async () => {
+      resolveSend({ ok: true, json: async () => ({ notice_id: "n", recipient_count: 1 }) });
+    });
+
+    const sendCalls = fetchMock.mock.calls.filter(([url]) => url === "/api/admin/personal-notices");
+    expect(sendCalls).toHaveLength(1);
+  });
+
+  test("プレビューの詳細ページは押せない(書きかけのまま離れない)", async () => {
+    renderClient();
+    await fillAndLookup([row(1)]);
+    fillTexts();
+
+    const backLink = screen.getByRole("link", { name: /personalNoticeBackToList/, hidden: true });
+    expect(backLink.closest("[inert]")).not.toBeNull();
   });
 
   test("本文に {受付番号} が無ければ頭の英字は送らない", async () => {

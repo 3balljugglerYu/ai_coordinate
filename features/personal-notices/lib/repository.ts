@@ -247,8 +247,10 @@ export async function listPersonalNotices(
     .limit(LIST_LIMIT);
   const keyword = query?.trim();
   if (keyword) {
-    // ilike の印(% _ \)は文字として探す
-    request = request.ilike("memo", `%${keyword.replace(/[\\%_]/g, "\\$&")}%`);
+    // ilike の印(% _ \)は文字として探す。PostgREST は * も % と同じに扱い、
+    // 文字として書く方法がないので、1文字の印(_)にする(「*」を含むメモも見つかる)
+    const pattern = keyword.replace(/[\\%_]/g, "\\$&").replace(/\*/g, "_");
+    request = request.ilike("memo", `%${pattern}%`);
   }
   const { data: notices, error } = await request;
   if (error) throw error;
@@ -283,6 +285,28 @@ export async function listPersonalNotices(
     retractedCount: counts.get(notice.id)?.retracted ?? 0,
     createdAt: notice.created_at,
   }));
+}
+
+/** 「この文をもとに新しく送る」用。題名・本文・頭の英字だけを読む */
+export async function getPersonalNoticeTemplate(id: string): Promise<{
+  memo: string;
+  title: string;
+  bodyTemplate: string;
+  codePrefix: string | null;
+} | null> {
+  const { data, error } = await createAdminClient()
+    .from("personal_notices")
+    .select("memo, title, body_template, code_prefix")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  return {
+    memo: data.memo,
+    title: data.title,
+    bodyTemplate: data.body_template,
+    codePrefix: data.code_prefix,
+  };
 }
 
 export interface PersonalNoticeRecipientView {

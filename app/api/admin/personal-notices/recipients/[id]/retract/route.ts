@@ -4,9 +4,7 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { retractPersonalNoticeRecipient } from "@/features/personal-notices/lib/repository";
 import { personalNoticeErrorMessage } from "@/features/personal-notices/lib/messages";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+import { isUuid } from "@/lib/is-uuid";
 
 /**
  * 1人分を取り消す。相手の通知を消し、記録は「取り消し」として残す(PN-013)。
@@ -22,7 +20,7 @@ export async function POST(
   try {
     const admin = await requireAdmin();
     const { id } = await params;
-    if (!UUID_PATTERN.test(id)) {
+    if (!isUuid(id)) {
       return NextResponse.json({ error: "取り消す相手が見つかりません" }, { status: 404 });
     }
 

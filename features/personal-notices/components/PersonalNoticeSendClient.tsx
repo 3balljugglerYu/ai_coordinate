@@ -104,6 +104,9 @@ export function PersonalNoticeSendClient({
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  // 送れたら、ページが移るまでの間も二度と送らない(全員に2通目が届くのを防ぐ)
+  const [sent, setSent] = useState(false);
+  const sendingRef = useRef(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
   const isLookupCurrent = lookupRows !== null && lookedUpText === recipientsText;
@@ -118,7 +121,7 @@ export function PersonalNoticeSendClient({
   const usesCode = bodyUsesReceiptCode(body);
   const fieldErrors = validateFields({ memo, title, body, codePrefix });
   const fieldsReady = Object.keys(fieldErrors).length === 0;
-  const canSend = recipientsReady && fieldsReady && !isSending;
+  const canSend = recipientsReady && fieldsReady && !isSending && !sent;
 
   const sampleCode = `${codePrefix || "XX"}-${PERSONAL_NOTICE_SAMPLE_CODE_SUFFIX}`;
   const previewBody = usesCode
@@ -173,8 +176,11 @@ export function PersonalNoticeSendClient({
   }
 
   async function handleSend() {
+    if (sendingRef.current || sent) return;
+    sendingRef.current = true;
     setIsSending(true);
     setSendError(null);
+    let succeeded = false;
     try {
       const res = await fetch("/api/admin/personal-notices", {
         method: "POST",
@@ -199,6 +205,9 @@ export function PersonalNoticeSendClient({
         setConfirmOpen(false);
         return;
       }
+      succeeded = true;
+      setSent(true);
+      setConfirmOpen(false);
       toast({
         title: "送りました",
         description: `${data.recipient_count}人に届けました`,
@@ -208,7 +217,10 @@ export function PersonalNoticeSendClient({
       setSendError("送れませんでした。送れたかどうかは一覧で確かめてください");
       setConfirmOpen(false);
     } finally {
-      setIsSending(false);
+      if (!succeeded) {
+        sendingRef.current = false;
+        setIsSending(false);
+      }
     }
   }
 
@@ -452,27 +464,30 @@ export function PersonalNoticeSendClient({
             <div className="space-y-2">
               <p className="text-xs text-slate-500">押したときの詳細ページ</p>
               <div className="max-h-[640px] overflow-y-auto rounded-xl border bg-slate-50">
-                <PersonalNoticeDetailScreen
-                  recordOpened={false}
-                  notice={{
-                    id: "preview",
-                    title: title.trim(),
-                    body: previewBody,
-                    receivedAtLabel: new Date().toLocaleDateString("ja-JP", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                      timeZone: "Asia/Tokyo",
-                    }),
-                    post:
-                      previewRecipient?.kind === "post" &&
-                      previewRecipient.postId &&
-                      previewRecipient.postThumbUrl
-                        ? { id: previewRecipient.postId, imageUrl: previewRecipient.postThumbUrl }
-                        : null,
-                    alreadyOpened: false,
-                  }}
-                />
+                {/* 見た目だけ。中のリンクを押して書きかけのまま離れないよう、押せなくする(枠は縦にスクロールできる) */}
+                <div inert>
+                  <PersonalNoticeDetailScreen
+                    recordOpened={false}
+                    notice={{
+                      id: "preview",
+                      title: title.trim(),
+                      body: previewBody,
+                      receivedAtLabel: new Date().toLocaleDateString("ja-JP", {
+                        year: "numeric",
+                        month: "long",
+                        day: "numeric",
+                        timeZone: "Asia/Tokyo",
+                      }),
+                      post:
+                        previewRecipient?.kind === "post" &&
+                        previewRecipient.postId &&
+                        previewRecipient.postThumbUrl
+                          ? { id: previewRecipient.postId, imageUrl: previewRecipient.postThumbUrl }
+                          : null,
+                      alreadyOpened: false,
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>
@@ -494,11 +509,11 @@ export function PersonalNoticeSendClient({
         <Button
           type="button"
           onClick={handleOpenConfirm}
-          disabled={!recipientsReady || isSending}
+          disabled={!recipientsReady || isSending || sent}
           pending={isSending}
         >
           {isSending ? null : <Send className="mr-2 h-4 w-4" aria-hidden />}
-          {recipientsReady ? `${okRows.length}人に送る` : "送る"}
+          {sent ? "送りました" : recipientsReady ? `${okRows.length}人に送る` : "送る"}
         </Button>
       </section>
 
@@ -517,7 +532,7 @@ export function PersonalNoticeSendClient({
                 event.preventDefault();
                 void handleSend();
               }}
-              disabled={isSending}
+              disabled={isSending || sent}
             >
               送る
             </AlertDialogAction>
