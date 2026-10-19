@@ -134,7 +134,9 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
     // 通知の data には投稿の原本画像の URL(image_url)が入っていることがある。
     // 端末には渡さない(措置・非公開になった投稿の原本を見せない。添える画像は
     // 上の段の image_url に、公開中の小さい版だけを入れる)
-    const { image_url: _omitImageUrl, ...notificationData } = row.notification_data ?? {};
+    const notificationData = Object.fromEntries(
+      Object.entries(row.notification_data ?? {}).filter(([key]) => key !== "image_url"),
+    );
     if (Object.keys(notificationData).length > 0) {
       put("data", notificationData);
     }
