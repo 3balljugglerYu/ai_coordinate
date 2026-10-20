@@ -93,12 +93,45 @@ export function buildLikeTitle(
   return `${name}ほか${others}人があなたの投稿にいいねしました`;
 }
 
+/** data の回数・枚数(正の整数だけ。文字列で入っていても読む) */
+function positiveInteger(value: unknown): number | null {
+  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  return typeof n === "number" && Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/**
+ * クリエイター還元(usage_reward_earned)の文。この通知は題名・本文を空で記録し、
+ * 回数と枚数を data に持つ(受け手×JST日付で1行にまとめ、利用のたびに足す)。
+ * お知らせ画面(features/notifications/lib/presentation.ts)と同じ文にする。
+ */
+export function buildUsageRewardTitle(row: ClaimedRow): string | null {
+  if (row.notification_type !== "usage_reward_earned") return null;
+  const count = positiveInteger(row.notification_data?.usage_count);
+  const amount = positiveInteger(row.notification_data?.total_amount);
+  if (count === null || amount === null) return null;
+  return `本日、あなたの作品が${count}回利用され${amount}ペルコイン獲得！`;
+}
+
+/**
+ * 端末で前の通知を置き換えるための鍵。クリエイター還元は1日1行の通知を
+ * 書き足していくので、同じ通知の分は置き換える(回数が増えた1件になる)。
+ * usage_reward:<uuid> は 49 バイト(APNs は 64 バイトまで)
+ */
+export function resolveCollapseKey(group: PushGroup): string | null {
+  if (group.collapseKey) return group.collapseKey;
+  const row = group.latest;
+  if (row.notification_type === "usage_reward_earned" && row.notification_id) {
+    return `usage_reward:${row.notification_id}`;
+  }
+  return null;
+}
+
 /** 表示文。タイトルが無い時のための保険も入れる */
 export function resolveText(
   row: ClaimedRow,
   likeTitle: string | null,
 ): { title: string; body: string } {
-  const title = likeTitle ?? row.title?.trim() ?? "";
+  const title = likeTitle ?? buildUsageRewardTitle(row) ?? row.title?.trim() ?? "";
   const body = row.body?.trim() ?? "";
   if (title) {
     return { title, body };
