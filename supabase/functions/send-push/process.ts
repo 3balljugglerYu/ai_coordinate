@@ -17,6 +17,7 @@ import {
   type PushGroup,
   pushImageSourceFor,
   type PushImageSource,
+  resolveCollapseKey,
   resolveText,
   summarizeOutcomes,
 } from "./messages.ts";
@@ -275,6 +276,7 @@ async function processRows(
       ]);
       const { title, body } = resolveText(group.latest, likeTitle);
       const data = buildDataPayload(group.latest);
+      const collapseKey = resolveCollapseKey(group);
 
       for (const device of devices) {
         const message = buildFcmMessage({
@@ -283,7 +285,7 @@ async function processRows(
           body,
           data,
           category: group.category,
-          collapseKey: group.collapseKey,
+          collapseKey,
           badge: badges.get(group.recipientId) ?? null,
           imageUrl,
         });

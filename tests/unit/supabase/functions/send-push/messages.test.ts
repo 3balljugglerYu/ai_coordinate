@@ -9,6 +9,8 @@ import {
   groupRows,
   pushImageSourceFor,
   pushImageUrlFromRow,
+  buildUsageRewardTitle,
+  resolveCollapseKey,
   resolveText,
   summarizeOutcomes,
 } from "@/supabase/functions/send-push/messages";
@@ -73,6 +75,100 @@ describe("buildLikeTitle", () => {
   test("ニックネームが無ければ「ユーザー」", () => {
     expect(buildLikeTitle(null, 2)).toBe("ユーザーほか1人があなたの投稿にいいねしました");
     expect(buildLikeTitle("  ", 1)).toBe("ユーザーがあなたの投稿にいいねしました");
+  });
+});
+
+describe("buildUsageRewardTitle", () => {
+  const reward = (data: Record<string, unknown> | null) =>
+    row({
+      category: "percoin",
+      title: "",
+      body: "",
+      notification_type: "usage_reward_earned",
+      notification_entity_type: "user",
+      notification_data: data,
+    });
+
+  test("お知らせ画面と同じ文を data の回数と枚数で作る", () => {
+    expect(buildUsageRewardTitle(reward({ usage_count: 1, total_amount: 2 }))).toBe(
+      "本日、あなたの作品が1回利用され2ペルコイン獲得！",
+    );
+  });
+
+  test("数が文字列で入っていても読む", () => {
+    expect(buildUsageRewardTitle(reward({ usage_count: "4", total_amount: "8" }))).toBe(
+      "本日、あなたの作品が4回利用され8ペルコイン獲得！",
+    );
+  });
+
+  test.each([
+    ["data が無い", null],
+    ["回数が無い", { total_amount: 2 }],
+    ["枚数が 0", { usage_count: 1, total_amount: 0 }],
+    ["小数", { usage_count: 1.5, total_amount: 2 }],
+    ["数でない", { usage_count: "abc", total_amount: 2 }],
+  ])("%s なら作らない", (_label, data) => {
+    expect(buildUsageRewardTitle(reward(data))).toBeNull();
+  });
+
+  test("ほかの種類では作らない", () => {
+    expect(
+      buildUsageRewardTitle(
+        row({ notification_data: { usage_count: 1, total_amount: 2 } }),
+      ),
+    ).toBeNull();
+  });
+
+  test("resolveText は空の題名の代わりにこの文を使う(固定文にしない)", () => {
+    expect(resolveText(reward({ usage_count: 2, total_amount: 4 }), null)).toEqual({
+      title: "本日、あなたの作品が2回利用され4ペルコイン獲得！",
+      body: "",
+    });
+  });
+
+  test("数が読めなければ、今までどおり固定文", () => {
+    expect(resolveText(reward(null), null).title).toBe("Persta.AI からのお知らせ");
+  });
+});
+
+describe("resolveCollapseKey", () => {
+  const group = (overrides: Partial<ClaimedRow>, collapseKey: string | null = null) => {
+    const latest = row(overrides);
+    return {
+      recipientId: latest.recipient_id,
+      category: latest.category,
+      collapseKey,
+      latest,
+      rowIds: [latest.id],
+    };
+  };
+
+  test("クリエイター還元は通知ごとの鍵(同じ日の分を置き換える)", () => {
+    expect(
+      resolveCollapseKey(
+        group({ notification_type: "usage_reward_earned", notification_id: "n-9" }),
+      ),
+    ).toBe("usage_reward:n-9");
+  });
+
+  test("UUID でも 64 バイトに収まる", () => {
+    const key = resolveCollapseKey(
+      group({
+        notification_type: "usage_reward_earned",
+        notification_id: "123e4567-e89b-12d3-a456-426614174000",
+      }),
+    );
+    expect(Buffer.byteLength(key ?? "")).toBeLessThanOrEqual(64);
+  });
+
+  test("行に鍵があればそれを使う(いいね)", () => {
+    expect(resolveCollapseKey(group({ notification_type: "like" }, "like:post-1"))).toBe(
+      "like:post-1",
+    );
+  });
+
+  test("ほかの種類は鍵なし", () => {
+    expect(resolveCollapseKey(group({}))).toBeNull();
   });
 });
 

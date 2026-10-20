@@ -287,6 +287,43 @@ describe("runSendPush", () => {
     expect(statusById(calls.finish[0])).toEqual({ l1: "sent:", l2: "sent:" });
   });
 
+  test("⭐クリエイター還元は data の回数で文を作り、画像は付けず、同じ日の通知を置き換える鍵で送る", async () => {
+    const imageUrl = jest.fn(async () => "https://cdn.example/thumb.webp");
+    const { store } = fakeStore({
+      batches: [[
+        row("u1", {
+          category: "percoin",
+          title: "",
+          body: "",
+          notification_id: "n-reward",
+          notification_type: "usage_reward_earned",
+          notification_entity_type: "user",
+          notification_entity_id: "user-a",
+          notification_actor_id: "user-a",
+          notification_data: { reward_date: "2026-10-20", usage_count: 3, total_amount: 6 },
+        }),
+      ]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl,
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    const message = fcm.messages[0] as {
+      notification: { title: string; body?: string; image?: string };
+      android: { collapse_key?: string };
+      apns: { headers: Record<string, string> };
+    };
+    expect(message.notification).toEqual({
+      title: "本日、あなたの作品が3回利用され6ペルコイン獲得！",
+    });
+    expect(message.android.collapse_key).toBe("usage_reward:n-reward");
+    expect(message.apns.headers["apns-collapse-id"]).toBe("usage_reward:n-reward");
+    // ペルコインの通知には画像を付けない(探しにも行かない)
+    expect(imageUrl).not.toHaveBeenCalled();
+  });
+
   test("設定の確認に失敗した行は retry", async () => {
     const { store, calls } = fakeStore({
       batches: [[row("r1"), row("r2", { recipient_id: "user-b" })]],
