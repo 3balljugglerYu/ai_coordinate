@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Send } from "lucide-react";
+import { FilePlus, Plus, Search, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -31,6 +31,16 @@ import {
   bodyUsesReceiptCode,
   countChars,
 } from "../lib/constants";
+import {
+  type DraftContent,
+  type PersonalNoticeLocalDraft,
+  draftLabel,
+  isEmptyDraftContent,
+  newDraftId,
+  readDrafts,
+  removeDraft,
+  saveDraft,
+} from "../lib/local-drafts";
 import { PersonalNoticeListRowPreview } from "./PersonalNoticeListRowPreview";
 import { AttachedPostThumb, RecipientIdentity } from "./RecipientCells";
 
@@ -77,6 +87,19 @@ function validateFields(input: {
   return errors;
 }
 
+/** 入力をやめてから、この端末に残すまでの間 */
+const DRAFT_SAVE_DELAY_MS = 400;
+
+function formatDraftTime(iso: string) {
+  return new Date(iso).toLocaleString("ja-JP", {
+    month: "numeric",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Asia/Tokyo",
+  });
+}
+
 /**
  * 個人あてのお知らせを送るページ。
  * ① 宛先を貼って確かめる(赤い行があると送れない)→ ② 文を書く → プレビュー → 送る。
@@ -109,6 +132,28 @@ export function PersonalNoticeSendClient({
   const sendingRef = useRef(false);
   const [sendError, setSendError] = useState<string | null>(null);
 
+  // この端末の下書き(features/personal-notices/lib/local-drafts.ts)。
+  // localStorage は描画のあとでしか読めないので、読むまでは下書きの欄を出さない
+  const [draftsReady, setDraftsReady] = useState(false);
+  const [drafts, setDrafts] = useState<PersonalNoticeLocalDraft[]>([]);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftSave, setDraftSave] = useState<
+    { status: "idle" } | { status: "saved"; at: string } | { status: "failed" }
+  >({ status: "idle" });
+  const [restoredLabel, setRestoredLabel] = useState<string | null>(null);
+  const [draftToDelete, setDraftToDelete] = useState<PersonalNoticeLocalDraft | null>(null);
+  const draftContent: DraftContent = useMemo(
+    () => ({ memo, title, body, codePrefix, recipientsText }),
+    [memo, title, body, codePrefix, recipientsText]
+  );
+  // 離れる直前・別の下書きを開く直前に、待っている分をすぐ残すための控え
+  const latestDraftRef = useRef<{ id: string | null; content: DraftContent; sent: boolean }>({
+    id: null,
+    content: draftContent,
+    sent: false,
+  });
+  latestDraftRef.current = { id: draftId, content: draftContent, sent };
+
   const isLookupCurrent = lookupRows !== null && lookedUpText === recipientsText;
   const errorRowCount = lookupRows?.filter((row) => row.error).length ?? 0;
   const okRows = useMemo(
@@ -128,6 +173,115 @@ export function PersonalNoticeSendClient({
     ? body.split(PERSONAL_NOTICE_CODE_PLACEHOLDER).join(sampleCode)
     : body;
   const previewRecipient = okRows[0] ?? null;
+
+  const persistDraft = useCallback(() => {
+    const { id, content, sent: alreadySent } = latestDraftRef.current;
+    if (!id || alreadySent) return;
+    const ok = saveDraft(id, content);
+    setDrafts(readDrafts());
+    setDraftSave(
+      ok
+        ? isEmptyDraftContent(content)
+          ? { status: "idle" }
+          : { status: "saved", at: new Date().toISOString() }
+        : { status: "failed" }
+    );
+  }, []);
+
+  // 開いたとき: 写して来たのでなければ、いちばん新しい下書きを開く
+  useEffect(() => {
+    const list = readDrafts();
+    setDrafts(list);
+    const latest = list[0];
+    if (!copiedFromMemo && latest) {
+      setMemo(latest.memo);
+      setTitle(latest.title);
+      setBody(latest.body);
+      setCodePrefix(latest.codePrefix);
+      setRecipientsText(latest.recipientsText);
+      setDraftId(latest.id);
+      setRestoredLabel(draftLabel(latest));
+    } else {
+      setDraftId(newDraftId());
+    }
+    setDraftsReady(true);
+  }, [copiedFromMemo]);
+
+  // 入力するたびに、少し待ってからこの端末に残す
+  useEffect(() => {
+    if (!draftsReady || !draftId || sent) return;
+    const timer = window.setTimeout(persistDraft, DRAFT_SAVE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  }, [draftsReady, draftId, draftContent, sent, persistDraft]);
+
+  // 閉じる・移るときは待たずに残す。残せていないときだけ、離れる前に確かめる
+  const draftSaveFailed = draftSave.status === "failed";
+  useEffect(() => {
+    if (!draftsReady) return;
+    const handlePageHide = () => persistDraft();
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      persistDraft();
+      const { content, sent: alreadySent } = latestDraftRef.current;
+      if (draftSaveFailed && !alreadySent && !isEmptyDraftContent(content)) {
+        event.preventDefault();
+        event.returnValue = "";
+      }
+    };
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [draftsReady, draftSaveFailed, persistDraft]);
+
+  function loadIntoForm(content: DraftContent, id: string) {
+    setMemo(content.memo);
+    setTitle(content.title);
+    setBody(content.body);
+    setCodePrefix(content.codePrefix);
+    setRecipientsText(content.recipientsText);
+    setDraftId(id);
+    setLookupRows(null);
+    setLookedUpText(null);
+    setLookupError(null);
+    setSendError(null);
+    setShowErrors(false);
+    setDraftSave({ status: "idle" });
+  }
+
+  function handleOpenDraft(draft: PersonalNoticeLocalDraft) {
+    persistDraft();
+    loadIntoForm(draft, draft.id);
+    setRestoredLabel(draftLabel(draft));
+  }
+
+  function handleNewDraft() {
+    persistDraft();
+    loadIntoForm(
+      { memo: "", title: "", body: "", codePrefix: "", recipientsText: "" },
+      newDraftId()
+    );
+    setRestoredLabel(null);
+  }
+
+  function handleDeleteDraft(draft: PersonalNoticeLocalDraft) {
+    const ok = removeDraft(draft.id);
+    setDrafts(readDrafts());
+    setDraftToDelete(null);
+    if (!ok) {
+      toast({ title: "下書きを消せませんでした", variant: "destructive" });
+      return;
+    }
+    if (draft.id === draftId) {
+      loadIntoForm(
+        { memo: "", title: "", body: "", codePrefix: "", recipientsText: "" },
+        newDraftId()
+      );
+      setRestoredLabel(null);
+    }
+    toast({ title: "下書きを消しました" });
+  }
 
   async function handleLookup() {
     setIsLookingUp(true);
@@ -207,6 +361,11 @@ export function PersonalNoticeSendClient({
       }
       succeeded = true;
       setSent(true);
+      // 送った文の下書きは消す(同じ文を2回送らないように)
+      if (draftId) {
+        removeDraft(draftId);
+        setDrafts(readDrafts());
+      }
       setConfirmOpen(false);
       toast({
         title: "送りました",
@@ -226,9 +385,81 @@ export function PersonalNoticeSendClient({
 
   return (
     <div className="space-y-8">
+      {draftsReady && (
+        <section className="space-y-3 rounded-lg border border-slate-200 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm font-medium text-slate-900">
+              この端末の下書き（{drafts.length}件）
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleNewDraft}
+              disabled={isSending || sent}
+            >
+              <FilePlus className="mr-1 h-4 w-4" aria-hidden />
+              新しく書く
+            </Button>
+          </div>
+          <p className="text-sm text-slate-600">
+            入力すると、このブラウザに自動で残ります。ほかの端末やほかの管理者には見えません。送ると消えます。
+          </p>
+          {drafts.length > 0 && (
+            <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+              {drafts.map((draft) => {
+                const isCurrent = draft.id === draftId;
+                return (
+                  <li
+                    key={draft.id}
+                    className={`flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 ${isCurrent ? "bg-violet-50/60" : ""}`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-slate-900">
+                        {draftLabel(draft)}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {formatDraftTime(draft.updatedAt)}
+                        {isCurrent && "・いま書いているもの"}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 gap-1">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenDraft(draft)}
+                        disabled={isCurrent || isSending || sent}
+                      >
+                        開く
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDraftToDelete(draft)}
+                        disabled={isSending || sent}
+                        aria-label={`下書き「${draftLabel(draft)}」を消す`}
+                      >
+                        <Trash2 className="h-4 w-4" aria-hidden />
+                      </Button>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+      )}
+
       {copiedFromMemo && (
         <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
           「{copiedFromMemo}」の題名・本文・頭の英字を写しました。宛先は貼り直してください。
+        </p>
+      )}
+      {!copiedFromMemo && restoredLabel && (
+        <p className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+          下書き「{restoredLabel}」を開きました。宛先はもう一度確かめてください。
         </p>
       )}
 
@@ -501,6 +732,16 @@ export function PersonalNoticeSendClient({
         {!recipientsReady && (
           <p className="text-sm text-slate-600">宛先を確かめて、赤い行がなくなると送れます。</p>
         )}
+        {!sent && draftSave.status === "saved" && (
+          <p className="text-sm text-slate-600">
+            この端末に下書きを残しました（{formatDraftTime(draftSave.at)}）
+          </p>
+        )}
+        {!sent && draftSave.status === "failed" && (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            このブラウザに下書きを残せませんでした。ページを閉じると入力が消えます。
+          </p>
+        )}
         {sendError && (
           <p className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             {sendError}
@@ -516,6 +757,28 @@ export function PersonalNoticeSendClient({
           {sent ? "送りました" : recipientsReady ? `${okRows.length}人に送る` : "送る"}
         </Button>
       </section>
+
+      <AlertDialog open={draftToDelete !== null} onOpenChange={(open) => !open && setDraftToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>下書きを消しますか？</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{draftToDelete ? draftLabel(draftToDelete) : ""}」を、この端末から消します。元に戻せません。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>やめる</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (draftToDelete) handleDeleteDraft(draftToDelete);
+              }}
+            >
+              消す
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={confirmOpen} onOpenChange={(open) => !isSending && setConfirmOpen(open)}>
         <AlertDialogContent>
