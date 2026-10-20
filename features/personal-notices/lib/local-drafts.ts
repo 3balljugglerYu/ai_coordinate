@@ -117,9 +117,18 @@ export function removeDraft(id: string, storage: StorageLike | null = browserSto
   );
 }
 
-/** 一覧に出す名前。メモ → 題名 → 決まった文 */
-export function draftLabel(draft: Pick<PersonalNoticeLocalDraft, "memo" | "title">): string {
-  return draft.memo.trim() || draft.title.trim() || "（メモ・題名なし）";
+const LABEL_BODY_MAX = 30;
+
+/** 一覧に出す名前。メモ → 題名 → 本文の1行目(長ければ切る) → 決まった文 */
+export function draftLabel(
+  draft: Pick<PersonalNoticeLocalDraft, "memo" | "title" | "body">,
+): string {
+  const firstLine = draft.body.split("\n").map((line) => line.trim()).find(Boolean) ?? "";
+  const bodyLabel =
+    Array.from(firstLine).length > LABEL_BODY_MAX
+      ? `${Array.from(firstLine).slice(0, LABEL_BODY_MAX).join("")}…`
+      : firstLine;
+  return draft.memo.trim() || draft.title.trim() || bodyLabel || "（メモ・題名・本文なし）";
 }
 
 export function newDraftId(): string {

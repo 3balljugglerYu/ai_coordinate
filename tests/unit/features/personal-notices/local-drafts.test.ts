@@ -140,9 +140,15 @@ describe("removeDraft", () => {
 });
 
 describe("draftLabel", () => {
-  test("メモ → 題名 → 決まった文の順", () => {
-    expect(draftLabel({ memo: " メモ ", title: "題名" })).toBe("メモ");
-    expect(draftLabel({ memo: "", title: "題名" })).toBe("題名");
-    expect(draftLabel({ memo: " ", title: "" })).toBe("（メモ・題名なし）");
+  test("メモ → 題名 → 本文の1行目 → 決まった文の順", () => {
+    expect(draftLabel({ memo: " メモ ", title: "題名", body: "本文" })).toBe("メモ");
+    expect(draftLabel({ memo: "", title: "題名", body: "本文" })).toBe("題名");
+    expect(draftLabel({ memo: "", title: "", body: "\n  1行目  \n2行目" })).toBe("1行目");
+    expect(draftLabel({ memo: " ", title: "", body: " \n " })).toBe("（メモ・題名・本文なし）");
+  });
+
+  test("本文の1行目は30文字で切る(絵文字も1文字と数える)", () => {
+    const long = "🎃".repeat(31);
+    expect(draftLabel({ memo: "", title: "", body: long })).toBe(`${"🎃".repeat(30)}…`);
   });
 });
