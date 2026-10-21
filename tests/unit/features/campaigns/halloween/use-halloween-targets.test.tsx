@@ -21,7 +21,12 @@ jest.mock("next-intl", () => ({
 const actual = jest.requireActual<
   typeof import("@/features/campaigns/halloween/hooks/useHalloweenTargets")
 >("@/features/campaigns/halloween/hooks/useHalloweenTargets");
-const { useHalloweenTargetPostIds, useIsHalloweenTarget, resetHalloweenTargetsForTest } = actual;
+const {
+  useHalloweenTargetPostIds,
+  useIsHalloweenTarget,
+  refreshHalloweenTargetsAfterPostChange,
+  resetHalloweenTargetsForTest,
+} = actual;
 
 const BEFORE_START = Date.parse("2026-10-16T19:59:59+09:00");
 const AT_START = Date.parse("2026-10-16T20:00:00+09:00");
@@ -179,5 +184,103 @@ describe("useIsHalloweenTarget", () => {
     const html = renderToString(<Probe postId="post-a" testId="a" />);
     expect(html).toContain("plain");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+/*
+  2026-10-22 ユーザー指示: 投稿してすぐ「このカタログで生成する」をハロウィン仕様にしたい。
+  これまでは3分の取り直し待ち(と配信の使い回し)のあいだ、投稿した作品が対象作品に入らなかった。
+*/
+describe("refreshHalloweenTargetsAfterPostChange", () => {
+  const FRESH_URL = `${TARGETS_URL}?fresh=`;
+
+  function calledUrls(): string[] {
+    return fetchMock.mock.calls.map((call) => String(call[0]));
+  }
+
+  test("⭐見ている画面があれば3分を待たずにすぐ取り直し、投稿した作品を対象作品にする", async () => {
+    render(<Probe postId="post-new" testId="new" />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await act(async () => {});
+    expect(screen.getByTestId("new").textContent).toBe("plain");
+
+    // 1秒後に投稿した(まだ3分たっていない)
+    fetchMock.mockImplementation(async () => jsonResponse({ postIds: ["post-a", "post-new"] }));
+    setNow(AT_START + 1000);
+    await act(async () => {
+      refreshHalloweenTargetsAfterPostChange();
+    });
+
+    await waitFor(() => expect(screen.getByTestId("new").textContent).toBe("target"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    // 配信の使い回しを通さない(URL の後ろに毎回ちがう値)
+    expect(calledUrls()[1]).toBe(`${FRESH_URL}${AT_START + 1000}`);
+  });
+
+  test("見ている画面がなければ取りに行かず、次に使われたときに3分を待たずに取り直す", async () => {
+    const first = render(<Probe postId="post-a" testId="a" />);
+    await waitFor(() => expect(screen.getByTestId("a").textContent).toBe("target"));
+    first.unmount();
+
+    setNow(AT_START + 1000);
+    refreshHalloweenTargetsAfterPostChange();
+    await act(async () => {});
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // 投稿のあと詳細の画面へ移った(まだ3分たっていない)
+    fetchMock.mockImplementation(async () => jsonResponse({ postIds: ["post-a", "post-new"] }));
+    setNow(AT_START + 2000);
+    render(<Probe postId="post-new" testId="new" />);
+    await waitFor(() => expect(screen.getByTestId("new").textContent).toBe("target"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(calledUrls()[1]).toBe(`${FRESH_URL}${AT_START + 2000}`);
+  });
+
+  test("取っている途中に投稿したら、終わったあとにもう一度取る(途中の結果は投稿の前のもの)", async () => {
+    let resolveFirst: (value: Response) => void = () => {};
+    fetchMock.mockImplementationOnce(
+      () => new Promise<Response>((resolve) => {
+        resolveFirst = resolve;
+      }),
+    );
+    render(<Probe postId="post-new" testId="new" />);
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    refreshHalloweenTargetsAfterPostChange();
+    // 途中のあいだは重ねて取らない
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    fetchMock.mockImplementation(async () => jsonResponse({ postIds: ["post-new"] }));
+    await act(async () => {
+      resolveFirst(jsonResponse({ postIds: ["post-a"] }));
+    });
+
+    await waitFor(() => expect(screen.getByTestId("new").textContent).toBe("target"));
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(calledUrls()[1].startsWith(FRESH_URL)).toBe(true);
+  });
+
+  test("期間外の画面しかなければ、投稿しても取りに行かない", async () => {
+    setNow(AT_END);
+    render(<Probe postId="post-a" testId="a" />);
+    await act(async () => {
+      refreshHalloweenTargetsAfterPostChange();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("日本語以外の画面しかなければ、投稿しても取りに行かない", async () => {
+    mockLocale.mockReturnValue("en");
+    render(<Probe postId="post-a" testId="a" />);
+    await act(async () => {
+      refreshHalloweenTargetsAfterPostChange();
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  test("ふだんの取得(投稿していないとき)は配信の使い回しを使う(URL に値を付けない)", async () => {
+    render(<Probe postId="post-a" testId="a" />);
+    await waitFor(() => expect(screen.getByTestId("a").textContent).toBe("target"));
+    expect(calledUrls()).toEqual([TARGETS_URL]);
   });
 });

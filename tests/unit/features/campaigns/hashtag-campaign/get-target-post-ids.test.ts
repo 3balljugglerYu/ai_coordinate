@@ -50,7 +50,11 @@ describe("getHashtagCampaignTargetPostIds", () => {
   test("企画ページの一覧と同じキャッシュのタグ・数分のキャッシュ", async () => {
     rpcMock.mockResolvedValue({ data: [], error: null });
     await getHashtagCampaignTargetPostIds("halloween-best-shot");
-    expect(cacheTag).toHaveBeenCalledWith(hashtagCampaignSubmissionsTag("halloween-best-shot"));
+    expect(cacheTag).toHaveBeenCalledWith(
+      hashtagCampaignSubmissionsTag("halloween-best-shot"),
+      // 投稿・編集・取り消しのあとすぐ取り直すための、企画をまたいだ印
+      "hashtag-campaign-submissions",
+    );
     expect(cacheLife).toHaveBeenCalledWith("minutes");
   });
 

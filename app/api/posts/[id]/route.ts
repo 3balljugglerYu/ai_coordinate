@@ -5,6 +5,7 @@ import { unpostImageServer } from "@/features/generation/lib/server-database";
 import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
+import { revalidateHashtagCampaignSubmissions } from "@/features/campaigns/hashtag-campaign/revalidate-submissions";
 
 /**
  * 投稿取り消しAPI（投稿詳細画面から）
@@ -49,6 +50,8 @@ export async function DELETE(
       「使える」と返し続け、押した人が生成 API で弾かれる。
     */
     revalidatePromptActions();
+    // 取り消した作品は、すぐ対象作品から外す
+    revalidateHashtagCampaignSubmissions();
     revalidatePath("/");
     revalidatePath(`/posts/${id}`);
 

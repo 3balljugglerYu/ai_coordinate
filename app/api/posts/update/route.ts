@@ -6,6 +6,7 @@ import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
+import { revalidateHashtagCampaignSubmissions } from "@/features/campaigns/hashtag-campaign/revalidate-submissions";
 
 /**
  * キャプション更新API
@@ -63,6 +64,8 @@ export async function PUT(request: NextRequest) {
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");
     revalidateTag("search-posts", "max");
+    // 編集で企画のタグを付けた・外したら、すぐ対象作品の一覧に反映する
+    revalidateHashtagCampaignSubmissions();
     if (result.user_id) {
       revalidateTag(`my-page-image-${result.user_id}-${result.id}`, {
         expire: 0,

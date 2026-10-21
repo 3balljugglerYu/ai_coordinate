@@ -26,6 +26,7 @@ jest.mock('next/server', () => ({
 jest.mock('@/features/campaigns/halloween/hooks/useHalloweenTargets', () => ({
   useHalloweenTargetPostIds: jest.fn(() => new Set()),
   useIsHalloweenTarget: jest.fn(() => false),
+  refreshHalloweenTargetsAfterPostChange: jest.fn(),
   resetHalloweenTargetsForTest: jest.fn(),
 }));
 

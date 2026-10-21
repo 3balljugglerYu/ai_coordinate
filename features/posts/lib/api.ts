@@ -1,3 +1,4 @@
+import { refreshHalloweenTargetsAfterPostChange } from "@/features/campaigns/halloween/hooks/useHalloweenTargets";
 import type {
   CommentDeleteResult,
   ParentComment,
@@ -68,6 +69,8 @@ export async function postImageAPI(
     );
   }
 
+  // 企画のタグを付けて投稿したら、すぐ対象作品として見せる(ハロウィン仕様のボタン)
+  refreshHalloweenTargetsAfterPostChange();
   return response.json();
 }
 
@@ -92,6 +95,7 @@ export async function updatePostCaption(
     throw new Error(error?.error || messages?.updateFailed || "更新に失敗しました");
   }
 
+  refreshHalloweenTargetsAfterPostChange();
   return response.json();
 }
 
@@ -145,6 +149,8 @@ export async function deletePost(
     const error = await response.json().catch(() => null);
     throw new Error(error?.error || messages?.deleteFailed || "削除に失敗しました");
   }
+
+  refreshHalloweenTargetsAfterPostChange();
 }
 
 /**

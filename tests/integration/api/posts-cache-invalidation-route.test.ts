@@ -136,6 +136,10 @@ describe("Posts cache invalidation routes", () => {
     );
     expect(mockRevalidatePath).toHaveBeenCalledWith("/");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/posts/post-1");
+    // 企画の対象作品の一覧も即時失効する(投稿してすぐハロウィン仕様のボタンにする)
+    expect(mockRevalidateTag).toHaveBeenCalledWith("hashtag-campaign-submissions", {
+      expire: 0,
+    });
     expect(mockAfter).toHaveBeenCalledTimes(1);
     expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-1");
   });
@@ -262,6 +266,10 @@ describe("Posts cache invalidation routes", () => {
     });
     expect(mockAfter).toHaveBeenCalledTimes(1);
     expect(mockEnsureWebPVariants).toHaveBeenCalledWith("post-2");
+    // 企画の対象作品の一覧も即時失効する(投稿してすぐハロウィン仕様のボタンにする)
+    expect(mockRevalidateTag).toHaveBeenCalledWith("hashtag-campaign-submissions", {
+      expire: 0,
+    });
   });
 
   test("PUT /api/posts/update_show_before_imageをbooleanのままupdatePostedImageServerへ渡す", async () => {
@@ -376,5 +384,9 @@ describe("Posts cache invalidation routes", () => {
     });
     expect(mockRevalidatePath).toHaveBeenCalledWith("/");
     expect(mockRevalidatePath).toHaveBeenCalledWith("/posts/post-3");
+    // 企画の対象作品の一覧も即時失効する(投稿してすぐハロウィン仕様のボタンにする)
+    expect(mockRevalidateTag).toHaveBeenCalledWith("hashtag-campaign-submissions", {
+      expire: 0,
+    });
   });
 });

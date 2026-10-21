@@ -14,6 +14,9 @@ import { HALLOWEEN_BEST_SHOT, isHalloweenBestShotOpen } from "../halloween-best-
  *   (カードごとに問い合わせない)。数分たったら次に使われたときに取り直す
  * - 取れなければ空のまま(普段の見た目になるだけ)
  *
+ * - 自分が投稿・編集・取り消しをしたら、待たずに取り直す(refreshHalloweenTargetsAfterPostChange)。
+ *   2026-10-22 ユーザー指示: 投稿してすぐ「このカタログで生成する」をハロウィン仕様にしたい
+ *
  * 期間はブラウザの時刻で見る。サーバーで描いた HTML とは、ハイドレーションのあとで食い違わないように
  * useSyncExternalStore のサーバー用の値(期間外・空)から始める。
  */
@@ -27,6 +30,12 @@ let targetIds: ReadonlySet<string> = EMPTY_IDS;
 let fetchedAtMs: number | null = null;
 let inflight: Promise<void> | null = null;
 const listeners = new Set<() => void>();
+/** 期間中・日本語の画面で、いま対象作品を見ている部品の数(0 なら取りに行かない) */
+let shownCount = 0;
+/** 取っている途中に投稿などがあった。終わったらもう一度取る(途中の結果は投稿の前のもの) */
+let refetchAfterInflight = false;
+/** 次の取得は配信の使い回し(1〜2分)を通さない。投稿の直後だけ */
+let bypassSharedCache = false;
 
 function subscribeTargetIds(listener: () => void): () => void {
   listeners.add(listener);
@@ -64,9 +73,12 @@ function refreshTargetIds(): void {
     return;
   }
 
-  inflight = fetch(
-    `/api/hashtag-campaigns/${encodeURIComponent(HALLOWEEN_BEST_SHOT.campaignKey)}/targets`,
-  )
+  const url = `/api/hashtag-campaigns/${encodeURIComponent(HALLOWEEN_BEST_SHOT.campaignKey)}/targets`;
+  // 配信は URL ごとに使い回すので、後ろに毎回ちがう値を付けると、サーバーの最新を読める
+  const requestUrl = bypassSharedCache ? `${url}?fresh=${Date.now()}` : url;
+  bypassSharedCache = false;
+
+  inflight = fetch(requestUrl)
     .then((response) => (response.ok ? response.json() : null))
     .then((body: unknown) => {
       const postIds = (body as { postIds?: unknown } | null)?.postIds;
@@ -82,7 +94,35 @@ function refreshTargetIds(): void {
     .finally(() => {
       fetchedAtMs = Date.now();
       inflight = null;
+      if (refetchAfterInflight) {
+        refetchAfterInflight = false;
+        fetchedAtMs = null;
+        bypassSharedCache = true;
+        if (shownCount > 0) {
+          refreshTargetIds();
+        }
+      }
     });
+}
+
+/**
+ * 自分が投稿・キャプションの編集・投稿の取り消しをしたあとに呼ぶ(features/posts/lib/api.ts)。
+ * サーバーは同じタイミングで一覧を失効させている(revalidate-submissions.ts)。
+ *
+ * - いま対象作品を見ている部品があれば、すぐ取り直す
+ * - なければ印だけ付け、次に使われたときに(3分を待たずに)取り直す
+ * - どちらも配信の使い回しを通さない
+ */
+export function refreshHalloweenTargetsAfterPostChange(): void {
+  if (inflight) {
+    refetchAfterInflight = true;
+    return;
+  }
+  fetchedAtMs = null;
+  bypassSharedCache = true;
+  if (shownCount > 0) {
+    refreshTargetIds();
+  }
 }
 
 /** 期間中・日本語の画面なら対象作品の ID、それ以外は空 */
@@ -101,9 +141,14 @@ export function useHalloweenTargetPostIds(): ReadonlySet<string> {
   );
 
   useEffect(() => {
-    if (isShown) {
-      refreshTargetIds();
+    if (!isShown) {
+      return;
     }
+    shownCount += 1;
+    refreshTargetIds();
+    return () => {
+      shownCount -= 1;
+    };
   }, [isShown]);
 
   return isShown ? ids : EMPTY_IDS;
@@ -121,4 +166,7 @@ export function resetHalloweenTargetsForTest(): void {
   fetchedAtMs = null;
   inflight = null;
   listeners.clear();
+  shownCount = 0;
+  refetchAfterInflight = false;
+  bypassSharedCache = false;
 }

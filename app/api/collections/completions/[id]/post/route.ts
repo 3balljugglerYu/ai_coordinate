@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { isCollectionFeedPostEnabled } from "@/lib/env";
 import { postCompletionToFeed } from "@/features/collections/lib/completion-feed-post";
 import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
+import { revalidateHashtagCampaignSubmissions } from "@/features/campaigns/hashtag-campaign/revalidate-submissions";
 
 /**
  * 完走フィード投稿(オプトイン)API。
@@ -35,6 +36,8 @@ function revalidateAfterChange(userId: string, completionId: string, postId?: st
   revalidateTag(`my-page-credits-${userId}`, "max");
   // 完走モーダルの「投稿済み」状態(CachedMyPageCollections が消費)
   revalidateTag(`collection-completions:${userId}`, "max");
+  // 完走の投稿にも企画のタグが付きうる。投稿・取り消しのあとすぐ対象作品の一覧に反映する
+  revalidateHashtagCampaignSubmissions();
   if (postId) {
     revalidateTag(`post-detail-${postId}`, { expire: 0 });
   }

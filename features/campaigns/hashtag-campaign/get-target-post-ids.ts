@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { hashtagCampaignSubmissionsTag } from "./get-submission-pages";
+import { HASHTAG_CAMPAIGN_SUBMISSIONS_ALL_TAG } from "./revalidate-submissions";
 
 /**
  * 対象作品(応募作)の投稿 ID。投稿の画像の左上のラベルと、企画仕様の
@@ -23,7 +24,8 @@ export async function getHashtagCampaignTargetPostIds(
   campaignKey: string,
 ): Promise<string[]> {
   "use cache";
-  cacheTag(hashtagCampaignSubmissionsTag(campaignKey));
+  // 投稿・編集・取り消しのあとすぐ取り直す(revalidate-submissions.ts)
+  cacheTag(hashtagCampaignSubmissionsTag(campaignKey), HASHTAG_CAMPAIGN_SUBMISSIONS_ALL_TAG);
   cacheLife("minutes");
 
   const { data, error } = await createAdminClient().rpc(
