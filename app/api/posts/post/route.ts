@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
+import { revalidateHashtagCampaignSubmissions } from "@/features/campaigns/hashtag-campaign/revalidate-submissions";
 import { enrichPosts } from "@/features/posts/lib/server-api";
 import type { Post } from "@/features/posts/types";
 import {
@@ -192,6 +193,8 @@ export async function POST(request: NextRequest) {
     revalidateTag(`coordinate-${user.id}`, "max");
     revalidateTag(`challenge-${user.id}`, "max");
     revalidateTag(`my-page-image-${user.id}-${id}`, { expire: 0 });
+    // 企画のタグを付けて投稿したら、すぐ対象作品に入れる
+    revalidateHashtagCampaignSubmissions();
     revalidatePath("/");
     revalidatePath(`/posts/${id}`);
 

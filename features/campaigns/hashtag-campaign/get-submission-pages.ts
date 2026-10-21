@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import { fetchAuthorNames } from "@/features/credits/lib/get-usable-prompt-showcase";
 import { paginateOnePerAuthor } from "./paginate";
+import { HASHTAG_CAMPAIGN_SUBMISSIONS_ALL_TAG } from "./revalidate-submissions";
 
 /**
  * 企画ページの「キャンペーン対象の投稿」(2026-10-15 ユーザー決定)。
@@ -54,7 +55,7 @@ export async function getCampaignSubmissionPages(
   campaignKey: string,
 ): Promise<CampaignSubmissionItem[][]> {
   "use cache";
-  cacheTag(hashtagCampaignSubmissionsTag(campaignKey));
+  cacheTag(hashtagCampaignSubmissionsTag(campaignKey), HASHTAG_CAMPAIGN_SUBMISSIONS_ALL_TAG);
   cacheLife("minutes");
 
   const supabase = createAdminClient();
