@@ -260,6 +260,13 @@ export function normalizeModelName(model: string | null | undefined): GeminiMode
     return openaiModel.canonical;
   }
 
+  // Nano Banana 2.1 の保存名はそのまま返す(既定のモデルへ丸めると、ペルコインや表示が
+  // 別のモデルとして数えられる)。入力として受け付けるかは KNOWN_MODEL_INPUTS で決める。
+  const nano21 = parseNanoBanana21Model(model);
+  if (nano21) {
+    return nano21.canonical;
+  }
+
   // 廃止した 2.5 は新しい軽量モデルへ吸収する
   if (model === 'gemini-2.5-flash-image-preview' || model === 'gemini-2.5-flash-image') {
     return 'gemini-3.1-flash-image-preview-512';

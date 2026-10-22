@@ -130,6 +130,21 @@ describe("generation types", () => {
       expect(extractImageSize("gemini-nano-banana-2.1-high-4k")).toBe("4K");
     });
 
+    test("normalizeModelName は 2.1 の保存名をそのまま返す(既定のモデルへ丸めない)", () => {
+      // 丸めると、ペルコインや表示が別のモデルとして数えられる。
+      // 受け付けるかどうかは normalizeModelName ではなく KNOWN_MODEL_INPUTS で決める(下のテスト)。
+      expect(normalizeModelName("gemini-nano-banana-2.1-minimal-1k")).toBe(
+        "gemini-nano-banana-2.1-minimal-1k"
+      );
+      expect(normalizeModelName("gemini-nano-banana-2.1-high-4k")).toBe(
+        "gemini-nano-banana-2.1-high-4k"
+      );
+      // 存在しない組み合わせは今までどおり FALLBACK
+      expect(normalizeModelName("gemini-nano-banana-2.1-low-1k")).toBe(
+        FALLBACK_GENERATION_MODEL
+      );
+    });
+
     test("運営だけのゲート(Phase 3)ができるまで、API の入力としては受け付けない", () => {
       // 先に受け付けると、一般の利用者が直接リクエストして 2.1 を指定できてしまう。
       // Phase 3 でゲートと一緒に開ける(そのときこのテストを書き換える)。

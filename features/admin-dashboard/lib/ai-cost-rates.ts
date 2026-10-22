@@ -30,9 +30,8 @@
  */
 
 import {
-  NANO_BANANA_2_1_CANONICAL_MODELS,
-  parseNanoBanana21Model,
-  type NanoBanana21CanonicalModel,
+  NANO_BANANA_2_1_PARSED_MODELS,
+  type ParsedNanoBanana21Model,
 } from "@/shared/generation/gemini-banana-model";
 
 export type AiCostProvider = "openai" | "google";
@@ -226,17 +225,24 @@ const gemini = (
  *   `candidatesTokenCount` には入っている）
  * - 考える分(`thoughtsTokenCount`): 1K の平均で minimal 0 / medium 335 / high 870 tok
  *
- * 画像以外の出力と考える分の単価は公式に無いため、**画像と同じ $30 / 1M で数える**
- * （いちばん高い見方）。短い指示 1 枚で測った値なので `derived`。
- * 本番の usage を記録したら実測値に置き換える（計画書 Phase 6-C）。
+ * 画像以外の出力と考える分の単価は公式に無いため、画像と同じ $30 / 1M で数える
+ * （単価はいちばん高い見方）。
+ *
+ * ⚠️ **考える分は 1K でしか平均を取っていない。**2K / 4K にも 1K の値を使っている。
+ * 1 回だけ測った medium は 2K 276 / 4K 735 tok で、**4K は 1K の約 2 倍**だった。
+ * このため 4K（特に high × 4K）は、トークン数の側で低めに出ているおそれがある。
+ * 短い指示 1 枚で測った値なので `derived`。本番の usage を記録したら実測値に置き換える
+ * （計画書 Phase 6-C）。
  */
 const NANO_BANANA_2_1_OUTPUT_USD_PER_1M = 30;
 const NANO_BANANA_2_1_IMAGE_TOKENS = { "1k": 1120, "2k": 1680, "4k": 3780 } as const;
 const NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS = 250;
 const NANO_BANANA_2_1_THINKING_TOKENS = { minimal: 0, medium: 335, high: 870 } as const;
 
-const nanoBanana21 = (model: NanoBanana21CanonicalModel): AiModelRate => {
-  const { thinkingLevel, sizeTier } = parseNanoBanana21Model(model)!;
+const nanoBanana21 = ({
+  thinkingLevel,
+  sizeTier,
+}: ParsedNanoBanana21Model): AiModelRate => {
   const tokens =
     NANO_BANANA_2_1_IMAGE_TOKENS[sizeTier] +
     NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS +
@@ -295,7 +301,7 @@ export const MODEL_COST_RATES: Record<string, AiModelRate> = {
 
   // --- Google Nano Banana 2.1（画像は公表値・考える分は Phase 0 の実測 / 全て derived）---
   ...Object.fromEntries(
-    NANO_BANANA_2_1_CANONICAL_MODELS.map((model) => [model, nanoBanana21(model)])
+    NANO_BANANA_2_1_PARSED_MODELS.map((parsed) => [parsed.canonical, nanoBanana21(parsed)])
   ),
 };
 

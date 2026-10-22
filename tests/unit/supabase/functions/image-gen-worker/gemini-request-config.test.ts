@@ -93,6 +93,15 @@ describe("getGeminiRequestShape", () => {
     });
   });
 
+  test("Nano Banana 2.1(gemini-nano-banana-2.1)は Nano 2 と同じ形(imageSize を送らないと 4K を選んでも 1K で返る)", () => {
+    // Phase 0(2026-10-22)で、この形で 1K / 2K / 4K とも通ることを確認済み
+    expect(getGeminiRequestShape("gemini-nano-banana-2.1")).toEqual({
+      requiresImageSize: true,
+      sendsImageSize: true,
+      requiresResponseModalities: true,
+    });
+  });
+
   test("gemini-2.5-flash-image は imageSize も responseModalities も付けない", () => {
     expect(getGeminiRequestShape("gemini-2.5-flash-image")).toEqual({
       requiresImageSize: false,

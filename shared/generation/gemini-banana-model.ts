@@ -199,18 +199,21 @@ export function composeNanoBanana21Model(
  * 保存名 → 分解結果の明示的な表。compose で組み立てた値をキーにするので、
  * 文字列の位置解析(split)に頼らない(OpenAI 側の ADR-002 と同じ考え方)。
  */
-const NANO_BANANA_2_1_PARSE_TABLE: ReadonlyMap<string, ParsedNanoBanana21Model> = new Map(
+export const NANO_BANANA_2_1_PARSED_MODELS: ReadonlyArray<ParsedNanoBanana21Model> =
   NANO_BANANA_2_1_THINKING_LEVELS.flatMap((thinkingLevel) =>
-    NANO_BANANA_2_1_SIZE_TIERS.map((sizeTier) => {
-      const canonical = composeNanoBanana21Model(thinkingLevel, sizeTier);
-      return [canonical, { canonical, thinkingLevel, sizeTier }] as const;
-    })
-  )
-);
+    NANO_BANANA_2_1_SIZE_TIERS.map((sizeTier) => ({
+      canonical: composeNanoBanana21Model(thinkingLevel, sizeTier),
+      thinkingLevel,
+      sizeTier,
+    }))
+  );
 
-export const NANO_BANANA_2_1_CANONICAL_MODELS: ReadonlyArray<NanoBanana21CanonicalModel> = [
-  ...NANO_BANANA_2_1_PARSE_TABLE.keys(),
-] as NanoBanana21CanonicalModel[];
+export const NANO_BANANA_2_1_CANONICAL_MODELS: ReadonlyArray<NanoBanana21CanonicalModel> =
+  NANO_BANANA_2_1_PARSED_MODELS.map((parsed) => parsed.canonical);
+
+const NANO_BANANA_2_1_PARSE_TABLE: ReadonlyMap<string, ParsedNanoBanana21Model> = new Map(
+  NANO_BANANA_2_1_PARSED_MODELS.map((parsed) => [parsed.canonical, parsed])
+);
 
 export function isNanoBanana21Model(value: unknown): value is NanoBanana21CanonicalModel {
   return typeof value === "string" && NANO_BANANA_2_1_PARSE_TABLE.has(value);

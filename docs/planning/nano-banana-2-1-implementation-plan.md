@@ -431,17 +431,19 @@ flowchart LR
 **ビルド確認**: 全チェックが通る。2.1 はどの画面にも出ない。
 
 **計画から変えたこと(2026-10-22)**
-- **API の入力として受け付けるのは Phase 3 へ回した**(`KNOWN_MODEL_INPUTS`・`normalizeModelName`)。運営だけのゲートより先に受け付けると、一般の利用者が直接リクエストして 2.1 を指定できてしまうため。Phase 2 では `getPercoinCost` も 2.1 を既定のモデルとして数える(テストで固定。Phase 3 で書き換える)。
+- **API の入力として受け付けるのは Phase 3 へ回した**(`KNOWN_MODEL_INPUTS`)。運営だけのゲートより先に受け付けると、一般の利用者が直接リクエストして 2.1 を指定できてしまうため。受け付けるかどうかはどの入口でも `isKnownModelInput` が先に決めるので、`normalizeModelName` は 2.1 の保存名をそのまま返す(既定のモデルへ丸めると、`getPercoinCost` が high × 4k を 10 で数える。`/code-review` の指摘で直した)。
 - **worker には触らない**(ペルコイン表の共有も Phase 3 へ)。Phase 2 は Next.js だけで、デプロイ不要。
 - 2.1 は既存の `GeminiBananaFamily` / `parseGeminiBananaModel` に混ぜず、同じファイルに別の型・関数(`parseNanoBanana21Model` など)で持つ。既存の型を広げると、その型を使う画面のコードまで変わるため。
 
 - [x] `shared/generation/gemini-banana-model.ts`: 考える量の軸(`minimal | medium | high`)・`NanoBanana21CanonicalModel`(9 値)・`composeNanoBanana21Model` / `parseNanoBanana21Model`・サイズ(1k / 2k / 4k)・**ペルコイン表 `NANO_BANANA_2_1_PERCOIN_COSTS`**(§0 の値)・API 名 `GEMINI_API_MODEL_NAMES.nano21`
 - [x] `features/generation/types.ts`: `GeminiModel` union・`toApiModelName`(2.1 は 2.5 flash に落とさない)・`extractImageSize`
-- [ ] → Phase 3: `KNOWN_MODEL_INPUTS`・`normalizeModelName`(ゲートと一緒に)
+- [x] `normalizeModelName` は 2.1 をそのまま返す
+- [ ] → Phase 3: `KNOWN_MODEL_INPUTS`(ゲートと一緒に)
 - [x] `features/generation/lib/model-config.ts`: `MODEL_PERCOIN_COSTS` に 2.1 の表を足す
 - [x] `features/admin-dashboard/lib/ai-cost-rates.ts`: 入力単価の tier(`nano21: 1.5`)と 9 行。出力は公表の画像単価 + Phase 0 の考える分・画像以外の出力(約 250 tok)を $30 / 1M で数え、`basis: "derived"`(REQ-013 の「部分計上」の代わりに、測った分を入れて derived とした)
 - [ ] → Phase 3: ペルコイン表を **worker からも同じファイルを import** する(worker の `getPercoinCost` は今ローカルのコピー。参照を共有し、未登録の既定値 20 に落ちないようにする)
-- [x] 単体テスト: 9 値すべてで parse ⇄ compose の往復・ペルコイン(GPT 2.5 と同額)・原価表の登録(REQ-012)・まだ入力として受け付けないこと
+- [x] 単体テスト: 9 値すべてで parse ⇄ compose の往復・ペルコイン(GPT 2.5 と同額・`getPercoinCost` も表どおり)・原価表の登録(REQ-012)・まだ入力として受け付けないこと
+- [x] worker の `getGeminiRequestShape` を、API 名ごとに全部書かないと型エラーになる形にした。2.1 は Nano 2 と同じ形(worker のデプロイは Phase 3 で)
 
 ### Phase 3: ゲートと worker 対応(UI なし)
 
