@@ -1723,7 +1723,7 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
     });
 
-    test("残高の確認は 2.1 の表どおりの額で行う(high × 4k は 130。既定のモデルの額に落とさない)", async () => {
+    test("残高の確認は 2.1 の表どおりの額で行う(high × 4k は 140。既定のモデルの額に落とさない)", async () => {
       isNanoBanana21AvailableMock.mockReturnValue(true);
 
       const response = await postGenerateAsyncRoute(
@@ -1732,10 +1732,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
       const body = await readJson(response);
 
-      // テストの残高は 100。130 が要るので足りない
+      // テストの残高は 100。140 が要るので足りない
       expect(response.status).toBe(400);
       expect(body.errorCode).toBe("GENERATION_INSUFFICIENT_BALANCE");
-      expect(String(body.error)).toContain("130");
+      expect(String(body.error)).toContain("140");
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();
     });
   });
