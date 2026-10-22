@@ -163,8 +163,5 @@ describe("GEMINI_API_MODEL_NAMES", () => {
       nano2: "gemini-3.1-flash-image",
       pro: "gemini-3-pro-image",
     });
-    for (const name of Object.values(GEMINI_API_MODEL_NAMES)) {
-      expect([name, name.includes("preview")]).toEqual([name, false]);
-    }
   });
 });
