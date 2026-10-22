@@ -4,6 +4,7 @@ import {
   MODEL_COST_RATES,
   USD_JPY_RATE,
 } from "@/features/admin-dashboard/lib/ai-cost-rates";
+import { NANO_BANANA_2_1_CANONICAL_MODELS } from "@/shared/generation/gemini-banana-model";
 import {
   GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
   GPT_IMAGE_2_CANONICAL_MODELS,
@@ -350,6 +351,34 @@ describe("buildAiCostEstimate", () => {
       expect(MODEL_COST_RATES["gpt-image-2.5-flare-high-4k"]?.outputUsd).toBeCloseTo(
         (Math.round((1078 * 8294400) / 1572864) * 30) / 1e6,
         6
+      );
+    });
+
+    it("Nano Banana 2.1 の 9 値が登録済みで、入力は $1.50 / 1M・入力画像は 1,120 tok で数える", () => {
+      // 未登録だと getModelRate() が null になり原価が黙って ¥0 になる(REQ-012)。
+      expect(NANO_BANANA_2_1_CANONICAL_MODELS).toHaveLength(9);
+      for (const model of NANO_BANANA_2_1_CANONICAL_MODELS) {
+        const rate = MODEL_COST_RATES[model];
+        expect([model, rate?.provider, rate?.basis]).toEqual([model, "google", "derived"]);
+        expect(rate?.textInputUsdPer1M).toBe(1.5);
+        expect(rate?.inputImageUsd).toBeCloseTo((1120 * 1.5) / 1e6, 9);
+      }
+    });
+
+    it("Nano Banana 2.1 の出力は、公表の画像単価 + Phase 0 の実測の考える分・画像以外の出力を $30 / 1M で数える", () => {
+      // 画像: 1K $0.0336 / 2K $0.0504 / 4K $0.1134(1,120 / 1,680 / 3,780 tok × $30/1M)
+      // 画像以外の出力 約 250 tok + 考える分 minimal 0 / medium 335 / high 870 tok(2026-10-22 実測の平均)
+      expect(MODEL_COST_RATES["gemini-nano-banana-2.1-minimal-1k"]?.outputUsd).toBeCloseTo(
+        ((1120 + 250) * 30) / 1e6,
+        9
+      );
+      expect(MODEL_COST_RATES["gemini-nano-banana-2.1-medium-2k"]?.outputUsd).toBeCloseTo(
+        ((1680 + 250 + 335) * 30) / 1e6,
+        9
+      );
+      expect(MODEL_COST_RATES["gemini-nano-banana-2.1-high-4k"]?.outputUsd).toBeCloseTo(
+        ((3780 + 250 + 870) * 30) / 1e6,
+        9
       );
     });
 

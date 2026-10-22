@@ -16,8 +16,15 @@ import {
   parseOpenAIImageModel,
 } from "@/shared/generation/openai-image-model";
 import type { OpenAIImageCanonicalModel } from "@/shared/generation/openai-image-model";
-import { GEMINI_API_MODEL_NAMES } from "@/shared/generation/gemini-banana-model";
-import type { GeminiApiModel } from "@/shared/generation/gemini-banana-model";
+import {
+  GEMINI_API_MODEL_NAMES,
+  getNanoBanana21ImageSize,
+  parseNanoBanana21Model,
+} from "@/shared/generation/gemini-banana-model";
+import type {
+  GeminiApiModel,
+  NanoBanana21CanonicalModel,
+} from "@/shared/generation/gemini-banana-model";
 
 export {
   BACKGROUND_MODES,
@@ -114,6 +121,8 @@ export type GeminiModel =
   | 'gemini-3-pro-image-1k'
   | 'gemini-3-pro-image-2k'
   | 'gemini-3-pro-image-4k'
+  // Nano Banana 2.1 の 9 値。API の入力として受け付けるのは Phase 3(運営だけのゲート)から
+  | NanoBanana21CanonicalModel
   | OpenAIImageCanonicalModel;
 
 // 画像生成モデル全体の型エイリアス（将来のリネーム足場）
@@ -292,6 +301,10 @@ export function toApiModelName(model: GeminiOnlyModel): GeminiApiModel {
       `toApiModelName: OpenAI image models are not Gemini-routable: ${String(model)}`
     );
   }
+  // 2.1 は「どれにも当たらなければ 2.5 flash」に落とさない(2.1 を選んだのに 2.5 が走る事故を防ぐ)
+  if (parseNanoBanana21Model(model)) {
+    return GEMINI_API_MODEL_NAMES.nano21;
+  }
   if (model.startsWith('gemini-3.1-flash-image-preview-')) {
     return GEMINI_API_MODEL_NAMES.nano2;
   }
@@ -311,6 +324,8 @@ export function extractImageSize(model: GeminiModel): GeminiImageSize | null {
   if (model === 'gemini-3-pro-image-1k') return "1K";
   if (model === 'gemini-3-pro-image-2k') return "2K";
   if (model === 'gemini-3-pro-image-4k') return "4K";
+  const nano21 = parseNanoBanana21Model(model);
+  if (nano21) return getNanoBanana21ImageSize(nano21.sizeTier);
   return null; // gemini-2.5-flash-imageの場合
 }
 

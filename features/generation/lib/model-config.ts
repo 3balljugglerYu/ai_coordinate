@@ -14,6 +14,7 @@ import {
   OPENAI_IMAGE_PERCOIN_COSTS,
   isGptImage25FlareModel,
 } from "@/shared/generation/openai-image-model";
+import { NANO_BANANA_2_1_PERCOIN_COSTS } from "@/shared/generation/gemini-banana-model";
 import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
 export { DEFAULT_GENERATION_MODEL, FALLBACK_GENERATION_MODEL };
@@ -64,6 +65,7 @@ export const MODEL_PERCOIN_COSTS = {
   'gemini-3-pro-image-1k': 50,
   'gemini-3-pro-image-2k': 80,
   'gemini-3-pro-image-4k': 100,
+  ...NANO_BANANA_2_1_PERCOIN_COSTS,
   ...OPENAI_IMAGE_PERCOIN_COSTS,
 } as const;
 

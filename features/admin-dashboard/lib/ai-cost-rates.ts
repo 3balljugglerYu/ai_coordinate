@@ -29,6 +29,12 @@
  *   1枚あたりの価格が公表されているのでそちらを使う
  */
 
+import {
+  NANO_BANANA_2_1_CANONICAL_MODELS,
+  parseNanoBanana21Model,
+  type NanoBanana21CanonicalModel,
+} from "@/shared/generation/gemini-banana-model";
+
 export type AiCostProvider = "openai" | "google";
 
 /**
@@ -164,6 +170,8 @@ const GEMINI_INPUT_USD_PER_1M = {
   flashLite: 0.25,
   /** gemini-2.5-flash-image（旧世代） */
   legacyFlash: 0.3,
+  /** gemini-nano-banana-2.1（2026-10-13 取得） */
+  nano21: 1.5,
 } as const;
 
 /**
@@ -207,6 +215,35 @@ const gemini = (
     // 出力=公表値、入力=公表単価×トークン数。OpenAI の実測ほどではないが
     // 3要素すべてを数えている状態になった。
     inputCompleteness: "counted",
+  };
+};
+
+/**
+ * Nano Banana 2.1 の 1 生成あたりの出力トークン（2026-10-22 の Phase 0 で実測）。
+ *
+ * - 画像: 公表値どおり 1K 1,120 / 2K 1,680 / 4K 3,780 tok
+ * - 画像以外の出力: 毎回 約 250 tok（`candidatesTokensDetails` には IMAGE しか載らないが、
+ *   `candidatesTokenCount` には入っている）
+ * - 考える分(`thoughtsTokenCount`): 1K の平均で minimal 0 / medium 335 / high 870 tok
+ *
+ * 画像以外の出力と考える分の単価は公式に無いため、**画像と同じ $30 / 1M で数える**
+ * （いちばん高い見方）。短い指示 1 枚で測った値なので `derived`。
+ * 本番の usage を記録したら実測値に置き換える（計画書 Phase 6-C）。
+ */
+const NANO_BANANA_2_1_OUTPUT_USD_PER_1M = 30;
+const NANO_BANANA_2_1_IMAGE_TOKENS = { "1k": 1120, "2k": 1680, "4k": 3780 } as const;
+const NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS = 250;
+const NANO_BANANA_2_1_THINKING_TOKENS = { minimal: 0, medium: 335, high: 870 } as const;
+
+const nanoBanana21 = (model: NanoBanana21CanonicalModel): AiModelRate => {
+  const { thinkingLevel, sizeTier } = parseNanoBanana21Model(model)!;
+  const tokens =
+    NANO_BANANA_2_1_IMAGE_TOKENS[sizeTier] +
+    NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS +
+    NANO_BANANA_2_1_THINKING_TOKENS[thinkingLevel];
+  return {
+    ...gemini((tokens * NANO_BANANA_2_1_OUTPUT_USD_PER_1M) / 1e6, "nano21"),
+    basis: "derived",
   };
 };
 
@@ -255,6 +292,11 @@ export const MODEL_COST_RATES: Record<string, AiModelRate> = {
   "gemini-3-pro-image-1k": gemini(0.134, "pro"),
   "gemini-3-pro-image-2k": gemini(0.134, "pro"),
   "gemini-3-pro-image-4k": gemini(0.24, "pro"),
+
+  // --- Google Nano Banana 2.1（画像は公表値・考える分は Phase 0 の実測 / 全て derived）---
+  ...Object.fromEntries(
+    NANO_BANANA_2_1_CANONICAL_MODELS.map((model) => [model, nanoBanana21(model)])
+  ),
 };
 
 /**

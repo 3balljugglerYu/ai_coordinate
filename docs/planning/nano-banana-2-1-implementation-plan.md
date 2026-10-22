@@ -425,18 +425,23 @@ flowchart LR
 - [ ] 既存の保存名・ペルコイン・原価表・表示名は変えない(REQ-015)
 - [ ] 参考: `tests/unit/features/generation/model-config.test.ts`・`tests/unit/shared/generation/gemini-banana-model.test.ts`
 
-### Phase 2: 型体系・ペルコイン・原価表(UI 変更なし)
+### Phase 2: 型体系・ペルコイン・原価表(UI 変更なし)✅ 2026-10-22
 
 **目的**: 2.1 の 9 値を型として受け入れられる状態にする。**既存モデルの挙動は 1 ミリも変えない。**
 **ビルド確認**: 全チェックが通る。2.1 はどの画面にも出ない。
 
-- [ ] `shared/generation/gemini-banana-model.ts` に追加: family `nano-2.1`、thinking 軸(`minimal | medium | high`)、`GeminiBanana21CanonicalModel`(9 値)、`composeGeminiBanana21Model` / `parseGeminiBananaModel` の拡張、`getSizeTiersForFamily("nano-2.1") = ["1k","2k","4k"]`、**ペルコイン表 `NANO_BANANA_2_1_PERCOIN_COSTS`**(§0 の値)、`toNanoBanana21ApiModelName`(定数)
-- [ ] `features/generation/types.ts`: `GeminiModel` union・`KNOWN_MODEL_INPUTS`・`normalizeModelName`・`toApiModelName`・`extractImageSize`・再エクスポート
-- [ ] ⚠️ `toApiModelName` の「どれにも一致しないと `gemini-2.5-flash-image`」の暗黙フォールバックを、2.1 では**例外にする**(§1-1)
-- [ ] `features/generation/lib/model-config.ts`: `MODEL_PERCOIN_COSTS` に 2.1 の表を足す
-- [ ] `features/admin-dashboard/lib/ai-cost-rates.ts`: 入力単価の tier(`nano21: 1.5`)と 9 行。`inputCompleteness: "partial"`(REQ-013)
-- [ ] ペルコイン表を **worker からも同じファイルを import** する(worker の `getPercoinCost` は今ローカルのコピー。参照を共有し、未登録の既定値 20 に落ちないようにする)
-- [ ] 単体テスト: 9 値すべてで parse ⇄ compose の往復・ペルコイン・原価表の登録(REQ-012)
+**計画から変えたこと(2026-10-22)**
+- **API の入力として受け付けるのは Phase 3 へ回した**(`KNOWN_MODEL_INPUTS`・`normalizeModelName`)。運営だけのゲートより先に受け付けると、一般の利用者が直接リクエストして 2.1 を指定できてしまうため。Phase 2 では `getPercoinCost` も 2.1 を既定のモデルとして数える(テストで固定。Phase 3 で書き換える)。
+- **worker には触らない**(ペルコイン表の共有も Phase 3 へ)。Phase 2 は Next.js だけで、デプロイ不要。
+- 2.1 は既存の `GeminiBananaFamily` / `parseGeminiBananaModel` に混ぜず、同じファイルに別の型・関数(`parseNanoBanana21Model` など)で持つ。既存の型を広げると、その型を使う画面のコードまで変わるため。
+
+- [x] `shared/generation/gemini-banana-model.ts`: 考える量の軸(`minimal | medium | high`)・`NanoBanana21CanonicalModel`(9 値)・`composeNanoBanana21Model` / `parseNanoBanana21Model`・サイズ(1k / 2k / 4k)・**ペルコイン表 `NANO_BANANA_2_1_PERCOIN_COSTS`**(§0 の値)・API 名 `GEMINI_API_MODEL_NAMES.nano21`
+- [x] `features/generation/types.ts`: `GeminiModel` union・`toApiModelName`(2.1 は 2.5 flash に落とさない)・`extractImageSize`
+- [ ] → Phase 3: `KNOWN_MODEL_INPUTS`・`normalizeModelName`(ゲートと一緒に)
+- [x] `features/generation/lib/model-config.ts`: `MODEL_PERCOIN_COSTS` に 2.1 の表を足す
+- [x] `features/admin-dashboard/lib/ai-cost-rates.ts`: 入力単価の tier(`nano21: 1.5`)と 9 行。出力は公表の画像単価 + Phase 0 の考える分・画像以外の出力(約 250 tok)を $30 / 1M で数え、`basis: "derived"`(REQ-013 の「部分計上」の代わりに、測った分を入れて derived とした)
+- [ ] → Phase 3: ペルコイン表を **worker からも同じファイルを import** する(worker の `getPercoinCost` は今ローカルのコピー。参照を共有し、未登録の既定値 20 に落ちないようにする)
+- [x] 単体テスト: 9 値すべてで parse ⇄ compose の往復・ペルコイン(GPT 2.5 と同額)・原価表の登録(REQ-012)・まだ入力として受け付けないこと
 
 ### Phase 3: ゲートと worker 対応(UI なし)
 
