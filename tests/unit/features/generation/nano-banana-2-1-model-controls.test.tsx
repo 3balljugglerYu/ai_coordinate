@@ -171,16 +171,20 @@ describe("LockableModelSelect の Nano Banana 2.1 の行", () => {
     expect(screen.getByText("Nano Banana 2")).toBeInTheDocument();
   });
 
-  test("運営には Nano Banana 2 のすぐ下に 2.1 の行を出す", () => {
+  test("運営には Gemini の行を Nano Banana 2.1 → 2 → Pro の順に出す(GPT の行はその上)", () => {
+    // 2026-10-23 ユーザー指示「NanoBanana 2.1 → 2.0 → Pro」
     useNanoBanana21AvailableMock.mockReturnValue(true);
     renderModelSelect("gemini-3.1-flash-image-preview-1024");
 
     const rows = Array.from(document.querySelectorAll("[data-option]")).map(
       (el) => el.getAttribute("data-option")
     );
-    expect(rows.indexOf("nano-banana-2.1-row")).toBe(
-      rows.indexOf("nano-banana-2-row") + 1
-    );
+    expect(rows).toEqual([
+      "gpt-image-2-row",
+      "nano-banana-2.1-row",
+      "nano-banana-2-row",
+      "nano-banana-pro-row",
+    ]);
   });
 
   test("2.1 の行を選ぶと、品質は Low(minimal)・今のサイズが使えればそのまま(REQ-003)", () => {
