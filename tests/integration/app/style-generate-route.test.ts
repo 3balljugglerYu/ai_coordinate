@@ -682,6 +682,33 @@ describe("StyleGenerateRoute integration tests", () => {
     expect(fetchFn).not.toHaveBeenCalled();
   });
 
+  test("postStyleGenerateRoute_未ログインがNano Banana 2.1を指定すると400で生成しない(REQ-017)", async () => {
+    // この経路は未ログイン専用。2.1 はゲスト許可リストに無いので、Gemini を呼ぶ前に止まる。
+    for (const model of [
+      "gemini-nano-banana-2.1-minimal-1k",
+      "gemini-nano-banana-2.1-high-4k",
+    ]) {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("model", model);
+      formData.set("uploadImage", createUploadImage());
+
+      const response = await postStyleGenerateRoute(createRequest(formData), {
+        fetchFn,
+        getUserFn,
+        getPublishedStylePresetForGenerationFn,
+        recordStyleUsageEventFn,
+        checkAndConsumeRateLimitFn,
+        releaseRateLimitAttemptFn,
+      });
+      const body = await readJson(response);
+
+      expect([model, response.status]).toEqual([model, 400]);
+      expect(body.errorCode).toBe("GUEST_MODEL_NOT_ALLOWED");
+    }
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
   test("postStyleGenerateRoute_guest短時間制限時_429とsignup導線を返す", async () => {
     getUserFn.mockResolvedValueOnce(null);
     checkAndConsumeRateLimitFn.mockResolvedValueOnce({

@@ -14,7 +14,8 @@ import {
   GEMINI_GENERATION_ENABLED,
   resolveServerDefaultModel,
 } from "@/features/generation/lib/model-config";
-import { isGptImage25Available } from "@/lib/env";
+import { isGptImage25Available, isNanoBanana21Available } from "@/lib/env";
+import { isNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
 import { isGptImage25FlareModel } from "@/shared/generation/openai-image-model";
 import {
   buildStyleAttemptReinforcementPrefix,
@@ -367,6 +368,21 @@ export async function postStyleGenerateRoute(
     if (
       isGptImage25FlareModel(effectiveModel) &&
       !isGptImage25Available(null)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "STYLE_MODEL_NOT_AVAILABLE_FOR_USER",
+        400
+      );
+    }
+    // Nano Banana 2.1(REQ-006 / REQ-017)。2.5 と同じく 3 つのハンドラすべてに置く。
+    // 2.1 はゲスト許可リストに無いので、今は上の parseGuestModelInput で先に止まり、
+    // ここには来ない。公開フラグが OFF の間は、許可リストに足してもここで止まる。
+    // ⚠️ フラグを ON にすると、ここは誰でも通す(無料プランの制限はサーバーに無い)。
+    // ゲストに開けるかは、公開のとき(Phase 7)に許可リストで決める。
+    if (
+      isNanoBanana21Model(effectiveModel) &&
+      !isNanoBanana21Available(null)
     ) {
       return jsonError(
         copy.modelTemporarilyUnavailable,

@@ -28,6 +28,7 @@ jest.mock("@/lib/env", () => ({
   ...jest.requireActual("@/lib/env"),
   isAdminViewer: jest.fn(() => false),
   isGptImage25Available: jest.fn(() => false),
+  isNanoBanana21Available: jest.fn(() => false),
 }));
 
 import { NextRequest } from "next/server";
@@ -40,13 +41,16 @@ import {
   STYLE_PROMPT_REAL_SUFFIX,
 } from "@/shared/generation/style-prompts";
 import { PROMPT_REGISTRY } from "@/shared/generation/prompt-registry";
-import { isAdminViewer, isGptImage25Available } from "@/lib/env";
+import { isAdminViewer, isGptImage25Available, isNanoBanana21Available } from "@/lib/env";
 
 const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
   typeof isAdminViewer
 >;
 const isGptImage25AvailableMock = isGptImage25Available as jest.MockedFunction<
   typeof isGptImage25Available
+>;
+const isNanoBanana21AvailableMock = isNanoBanana21Available as jest.MockedFunction<
+  typeof isNanoBanana21Available
 >;
 
 type JsonRecord = Record<string, unknown>;
@@ -193,6 +197,8 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     isAdminViewerMock.mockReturnValue(false);
     isGptImage25AvailableMock.mockReset();
     isGptImage25AvailableMock.mockReturnValue(false);
+    isNanoBanana21AvailableMock.mockReset();
+    isNanoBanana21AvailableMock.mockReturnValue(false);
     jobRepository = createAsyncGenerationJobRepositoryMock();
     getPublishedStylePresetForGenerationFn = jest
       .fn()
@@ -774,6 +780,56 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
       // 第2引数は生成実行入力。ここでは対象外なので形だけ確認する
       expect.objectContaining({ kind: expect.any(String) })
     );
+  });
+
+  describe("Nano Banana 2.1 (運営限定ゲート / REQ-006)", () => {
+    // docs/planning/nano-banana-2-1-implementation-plan.md Phase 3。
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      getPublishedStylePresetForGenerationFn,
+      recordStyleUsageEventFn,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildFormData(model: string): FormData {
+      const formData = new FormData();
+      formData.set("styleId", STYLE_ID);
+      formData.set("uploadImage", createUploadImage());
+      formData.set("model", model);
+      return formData;
+    }
+
+    test("利用不可のユーザーが 2.1 を指定すると 400 STYLE_MODEL_NOT_AVAILABLE_FOR_USER (アップロード前に止まる)", async () => {
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gemini-nano-banana-2.1-minimal-1k")),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("STYLE_MODEL_NOT_AVAILABLE_FOR_USER");
+      expect(isNanoBanana21AvailableMock).toHaveBeenCalledWith("user-123");
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("利用可能なユーザー (運営 / 公開後) は 2.1 の保存名のままジョブが作られる", async () => {
+      isNanoBanana21AvailableMock.mockReturnValue(true);
+
+      const response = await postStyleGenerateAsyncRoute(
+        createRequest(buildFormData("gemini-nano-banana-2.1-medium-2k")),
+        dependencies()
+      );
+
+      expect(response.status).toBe(200);
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gemini-nano-banana-2.1-medium-2k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
   });
 
   describe("ChatGPT Images 2.5 (運営限定ゲート / REQ-006)", () => {

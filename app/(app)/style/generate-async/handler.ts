@@ -12,7 +12,13 @@ import { getAllMessages } from "@/i18n/messages";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
-import { env, isAdminViewer, isGptImage25Available } from "@/lib/env";
+import {
+  env,
+  isAdminViewer,
+  isGptImage25Available,
+  isNanoBanana21Available,
+} from "@/lib/env";
+import { isNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import {
   createAsyncGenerationJobRepository,
@@ -305,6 +311,17 @@ export async function postStyleGenerateAsyncRoute(
     if (
       isGptImage25FlareModel(effectiveModel) &&
       !isGptImage25Available(user.id)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "STYLE_MODEL_NOT_AVAILABLE_FOR_USER",
+        400
+      );
+    }
+    // Nano Banana 2.1 の段階公開(nano-banana-2-1 計画書 REQ-006)
+    if (
+      isNanoBanana21Model(effectiveModel) &&
+      !isNanoBanana21Available(user.id)
     ) {
       return jsonError(
         copy.modelTemporarilyUnavailable,

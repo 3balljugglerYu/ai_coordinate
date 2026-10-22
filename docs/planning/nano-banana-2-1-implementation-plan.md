@@ -445,18 +445,20 @@ flowchart LR
 - [x] 単体テスト: 9 値すべてで parse ⇄ compose の往復・ペルコイン(GPT 2.5 と同額・`getPercoinCost` も表どおり)・原価表の登録(REQ-012)・まだ入力として受け付けないこと
 - [x] worker の `getGeminiRequestShape` を、API 名ごとに全部書かないと型エラーになる形にした。2.1 は Nano 2 と同じ形(worker のデプロイは Phase 3 で)
 
-### Phase 3: ゲートと worker 対応(UI なし)
+### Phase 3: ゲートと worker 対応(UI なし)✅ 2026-10-22
 
 **目的**: サーバー側で運営だけが 2.1 を実行できる状態にする。
 **ビルド確認**: 全チェックが通る。UI はまだ無いので、本番の挙動は変わらない。
 
-- [ ] `lib/env.ts`: `NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED` と `isNanoBanana21PubliclyEnabled()` / `isNanoBanana21Available(userId)`(`isGptImage25Available` を参考)
-- [ ] 3 つのハンドラにゲートを足す: `app/api/generate-async/handler.ts`・`app/(app)/style/generate-async/handler.ts`・`app/(app)/style/generate/handler.ts`(REQ-006。後者の `generate/handler.ts` はゲスト経路で `isGptImage25Available(null)` を使っている形に合わせる)
-- [ ] `resolveEffectiveModelForAuthState` と `resolveRequestedModelFromUrl` に 2.1 のオプションを追加(REQ-016)。ゲスト許可リストには**足さない**(REQ-017)
-- [ ] worker: 型・`normalizeModelName`(未登録は例外 = REQ-010)・`toApiModelName`・`extractImageSize`・`getPercoinCost`・`resolveGeminiRequestTimeoutMs`(9 値・ADR-007)
-- [ ] `gemini-request-config.ts`: `buildGeminiGenerationConfig` に `thinkingLevel` を追加(Phase 0 の確認 1 の形で)。単体テスト
-- [ ] worker: `usageMetadata`(thinking を含む)を `geminiAttempts[]` に記録する。OpenAI の `openaiUsage`(`index.ts:162, 2777`)と同じ形(REQ-008)
-- [ ] 単体テスト: ゲート(運営・非運営・フラグ ON/OFF)・リクエスト形(thinking・サイズ・比率)
+- [x] `lib/env.ts`: `NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED` と `isNanoBanana21PubliclyEnabled()` / `isNanoBanana21Available(userId)`(`isGptImage25Available` と同じ形)
+- [x] `KNOWN_MODEL_INPUTS` に 9 値を足した(Phase 2 から回したもの)
+- [x] 3 つのハンドラにゲートを足す: `app/api/generate-async/handler.ts`・`app/(app)/style/generate-async/handler.ts`・`app/(app)/style/generate/handler.ts`(REQ-006)。エラーコードは 2.5 と同じ `*_MODEL_NOT_AVAILABLE_FOR_USER`。ゲストの経路(`style/generate`・`coordinate-generate-guest`)は、ゲスト許可リストに 2.1 が無いので、その手前で `GUEST_MODEL_NOT_ALLOWED` になる(REQ-017)
+- [x] `resolveEffectiveModelForAuthState` と `resolveRequestedModelFromUrl` に `nanoBanana21Available` を追加(REQ-016)。省略時は使えない扱いなので、画面(Phase 5)で渡すまでは 2.1 は常に丸められる
+- [x] worker: 型・`normalizeModelName`・`toApiModelName`・`extractImageSize`・`getPercoinCost`(共有の表を読む・REQ-011)・`resolveGeminiRequestTimeoutMs`(1k 120 秒 / 2k 180 秒 / 4k 300 秒・ADR-007)
+- [x] `gemini-request-config.ts`: `buildGeminiGenerationConfig` に `thinkingLevel` を追加(小文字のまま `thinkingConfig.thinkingLevel`)。本流と Creator Looks の段階1の 2 か所で渡す
+- [x] worker: Gemini の `geminiAttempts[]` に `apiModel` と `geminiUsage`(`usageMetadata`・考える分を含む)を記録する(REQ-008)。既存の Nano 2 / Pro でも、送り先の名前と使用量が DB に残るようになる
+- [x] 単体テスト: ゲート(運営・非運営・2.5 とは別)・残高確認が表どおりの額(high × 4k は 130)・考える量・タイムアウト・使用量の読み取り
+- [ ] → 残し: **REQ-010(未登録の保存名で失敗させる)**。worker の `normalizeModelName` は、未知の値を今までどおり `gemini-2.5-flash-image` に丸める。例外にする場所がジョブの失敗処理(返金)の外にあり、投げるとジョブが処理中のまま残るおそれがあるため。2.1 の 9 値は明示して扱い、DB の CHECK 制約が保存できる値を決めているので、2.1 が丸められることはない
 
 ### Phase 4: DB の CHECK 制約
 
