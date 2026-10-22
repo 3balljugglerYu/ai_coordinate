@@ -476,7 +476,7 @@ flowchart LR
 **目的**: 運営が 2.1 を選んで生成できる。
 **ビルド確認**: 全チェックが通る。非運営には行が出ない。
 
-- [x] `LockableModelSelect.tsx`: 「Nano Banana 2.1」の行を Nano 2 のすぐ下に追加。`getCurrentRowValue`・`toOptionCanonicalValue`(品質 low = minimal、サイズは使えれば維持・0.5K からは 1K)・運営以外には行を出さない
+- [x] `LockableModelSelect.tsx`: 「Nano Banana 2.1」の行を追加。Gemini の並びは Nano Banana 2.1 → 2 → Pro(2026-10-23 ユーザー指示で、最初の「Nano 2 のすぐ下」から変更)。`getCurrentRowValue`・`toOptionCanonicalValue`(品質 low = minimal、サイズは使えれば維持・0.5K からは 1K)・運営以外には行を出さない
 - [x] `NanoBanana21AvailabilityProvider` / `Loader` を新設(`GptImage25AvailabilityProvider` / `Loader` と同じ形)し、`components/LocaleShell.tsx` に差し込む
 - [x] 品質セレクター: **一般化はせず、`NanoBanana21QualitySelector` を別に作った**。GPT の「レンダリング品質」は絵の細かさで、2.1 の品質は考える量なので、見出し・説明・時間の目安が違う。形(tier チップ・南京錠)は GPT 用と揃えた
 - [x] `GeminiBananaSizeSelector.tsx`: 2.1 のサイズ(1k / 2k / 4k)と説明。選択肢の文言は「標準：1K / 高解像度：2K / 最高解像度：4K」で px を書かない(測ったのは 3:4 だけ・Nano 2 / Pro の「1024px目安」「最大 5504px」を流用しない)。px は説明の吹き出しの 3:4 の実測例だけに書く(`/code-review` の指摘で 1K / 2K もそろえた)

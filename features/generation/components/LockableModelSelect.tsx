@@ -103,15 +103,16 @@ const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
     labelKey: "modelChatGptImages",
     engineTag: "engineOpenai",
   },
-  {
-    value: "nano-banana-2-row",
-    labelKey: "modelNanoBanana2",
-    engineTag: "engineGemini",
-  },
-  // 2.1 は段階公開中。運営(またはフラグ ON)にだけ、Nano 2 のすぐ下に出す
+  // Gemini は新しい順に Nano Banana 2.1 → 2 → Pro(2026-10-23 ユーザー指示)。
+  // 2.1 は段階公開中で、運営(またはフラグ ON)にだけ出る
   {
     value: "nano-banana-2.1-row",
     labelKey: "modelNanoBanana21",
+    engineTag: "engineGemini",
+  },
+  {
+    value: "nano-banana-2-row",
+    labelKey: "modelNanoBanana2",
     engineTag: "engineGemini",
   },
   {
@@ -228,7 +229,7 @@ function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
  * 段階公開中の ChatGPT Images 2.5 は、運営（`useGptImage25Available()` が true）にだけ
  * **先頭行**として現れる（全公開後に既定へ据える想定の並び）。
  * 段階公開中の Nano Banana 2.1 は、運営（`useNanoBanana21Available()` が true）にだけ
- * Nano Banana 2 のすぐ下に現れる。品質（考える量）は `NanoBanana21QualitySelector` で選ぶ。
+ * Gemini の行の先頭(Nano Banana 2 の上)に現れる。品質（考える量）は `NanoBanana21QualitySelector` で選ぶ。
  * 行クリック時、現在の size が新ファミリーで有効なら維持、無効なら 1K へフォールバック。
  * Quality（Low/Medium/High）は別カードの `GptImage2QualitySelector` で、size は
  * `GptImage2SizeSelector` / `GeminiBananaSizeSelector` でそれぞれ選ぶ。
