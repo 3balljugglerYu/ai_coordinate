@@ -26,6 +26,8 @@ export const GEMINI_API_MODEL_NAMES = {
   legacyFlash: "gemini-2.5-flash-image",
   nano2: "gemini-3.1-flash-image",
   pro: "gemini-3-pro-image",
+  /** Nano Banana 2.1(2026-10-06 GA)。考える量は generationConfig の thinkingLevel で送る */
+  nano21: "gemini-nano-banana-2.1",
 } as const;
 
 export type GeminiApiModel =
@@ -157,3 +159,99 @@ export function getSizeTiersForFamily(
     ? GEMINI_BANANA_2_SIZE_TIERS
     : GEMINI_BANANA_PRO_SIZE_TIERS;
 }
+
+// ---------------------------------------------------------------------------
+// Nano Banana 2.1(計画書: docs/planning/nano-banana-2-1-implementation-plan.md)
+//
+// 既存の Nano 2 / Pro(family × size の 2 軸)とは別に、GPT と同じ 3 軸
+// (family × 考える量 × size)で持つ。既存の GeminiBananaFamily などに混ぜると、
+// その型を使う画面のコードまで変わるため、ここでは足さない。
+//
+// 保存名は `gemini-nano-banana-2.1-${thinkingLevel}-${sizeTier}`。
+// 考える量は内部名(minimal / medium / high)で持ち、画面では「品質」
+// low / medium / high として見せる(ADR-002)。
+// ---------------------------------------------------------------------------
+
+export const NANO_BANANA_2_1_THINKING_LEVELS = ["minimal", "medium", "high"] as const;
+export type NanoBanana21ThinkingLevel = (typeof NANO_BANANA_2_1_THINKING_LEVELS)[number];
+
+/** 2.1 に 0.5k は無い */
+export const NANO_BANANA_2_1_SIZE_TIERS = ["1k", "2k", "4k"] as const;
+export type NanoBanana21SizeTier = (typeof NANO_BANANA_2_1_SIZE_TIERS)[number];
+
+export type NanoBanana21CanonicalModel =
+  `gemini-nano-banana-2.1-${NanoBanana21ThinkingLevel}-${NanoBanana21SizeTier}`;
+
+export interface ParsedNanoBanana21Model {
+  canonical: NanoBanana21CanonicalModel;
+  thinkingLevel: NanoBanana21ThinkingLevel;
+  sizeTier: NanoBanana21SizeTier;
+}
+
+export function composeNanoBanana21Model(
+  thinkingLevel: NanoBanana21ThinkingLevel,
+  sizeTier: NanoBanana21SizeTier
+): NanoBanana21CanonicalModel {
+  return `gemini-nano-banana-2.1-${thinkingLevel}-${sizeTier}`;
+}
+
+/**
+ * 保存名 → 分解結果の明示的な表。compose で組み立てた値をキーにするので、
+ * 文字列の位置解析(split)に頼らない(OpenAI 側の ADR-002 と同じ考え方)。
+ */
+export const NANO_BANANA_2_1_PARSED_MODELS: ReadonlyArray<ParsedNanoBanana21Model> =
+  NANO_BANANA_2_1_THINKING_LEVELS.flatMap((thinkingLevel) =>
+    NANO_BANANA_2_1_SIZE_TIERS.map((sizeTier) => ({
+      canonical: composeNanoBanana21Model(thinkingLevel, sizeTier),
+      thinkingLevel,
+      sizeTier,
+    }))
+  );
+
+export const NANO_BANANA_2_1_CANONICAL_MODELS: ReadonlyArray<NanoBanana21CanonicalModel> =
+  NANO_BANANA_2_1_PARSED_MODELS.map((parsed) => parsed.canonical);
+
+const NANO_BANANA_2_1_PARSE_TABLE: ReadonlyMap<string, ParsedNanoBanana21Model> = new Map(
+  NANO_BANANA_2_1_PARSED_MODELS.map((parsed) => [parsed.canonical, parsed])
+);
+
+export function isNanoBanana21Model(value: unknown): value is NanoBanana21CanonicalModel {
+  return typeof value === "string" && NANO_BANANA_2_1_PARSE_TABLE.has(value);
+}
+
+/** 2.1 の保存名でなければ null */
+export function parseNanoBanana21Model(
+  value: string | null | undefined
+): ParsedNanoBanana21Model | null {
+  return (value && NANO_BANANA_2_1_PARSE_TABLE.get(value)) || null;
+}
+
+const NANO_BANANA_2_1_IMAGE_SIZE = {
+  "1k": "1K",
+  "2k": "2K",
+  "4k": "4K",
+} as const satisfies Record<NanoBanana21SizeTier, string>;
+
+/** Gemini API の `imageConfig.imageSize` に送る値 */
+export function getNanoBanana21ImageSize(
+  sizeTier: NanoBanana21SizeTier
+): (typeof NANO_BANANA_2_1_IMAGE_SIZE)[NanoBanana21SizeTier] {
+  return NANO_BANANA_2_1_IMAGE_SIZE[sizeTier];
+}
+
+/**
+ * 2.1 のペルコイン消費量(計画書 §0・ADR-003)。画面の品質 low / medium / high が、
+ * GPT の同じ品質・サイズと同額。2026-10-22 に GPT 2.5 の実原価と比べて据え置いた(§10-1)。
+ * Next.js(MODEL_PERCOIN_COSTS)が読む。worker も Phase 3 からこの表を読む(REQ-011・今は worker に独自の表がある)。
+ */
+export const NANO_BANANA_2_1_PERCOIN_COSTS = {
+  "gemini-nano-banana-2.1-minimal-1k": 10,
+  "gemini-nano-banana-2.1-minimal-2k": 20,
+  "gemini-nano-banana-2.1-minimal-4k": 40,
+  "gemini-nano-banana-2.1-medium-1k": 20,
+  "gemini-nano-banana-2.1-medium-2k": 50,
+  "gemini-nano-banana-2.1-medium-4k": 80,
+  "gemini-nano-banana-2.1-high-1k": 50,
+  "gemini-nano-banana-2.1-high-2k": 80,
+  "gemini-nano-banana-2.1-high-4k": 130,
+} as const satisfies Record<NanoBanana21CanonicalModel, number>;

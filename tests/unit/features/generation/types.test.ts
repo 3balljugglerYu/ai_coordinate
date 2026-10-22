@@ -109,11 +109,51 @@ describe("generation types", () => {
       expect(toApiModelName("gemini-2.5-flash-image")).toBe("gemini-2.5-flash-image");
     });
 
+    test("Nano Banana 2.1 の 9 値は gemini-nano-banana-2.1 へ(gemini-2.5-flash-image に落とさない)", () => {
+      expect(toApiModelName("gemini-nano-banana-2.1-minimal-1k")).toBe("gemini-nano-banana-2.1");
+      expect(toApiModelName("gemini-nano-banana-2.1-medium-2k")).toBe("gemini-nano-banana-2.1");
+      expect(toApiModelName("gemini-nano-banana-2.1-high-4k")).toBe("gemini-nano-banana-2.1");
+    });
+
     test("OpenAI 系を渡したらランタイム例外", () => {
       expect(() =>
         // 型上は GeminiOnlyModel に絞られているが、unknown 経由の誤投入を防ぐためのガード
         toApiModelName("gpt-image-2-low-1k" as never)
       ).toThrow(/OpenAI image models are not Gemini-routable/);
+    });
+  });
+
+  describe("Nano Banana 2.1(Phase 2 の時点)", () => {
+    test("extractImageSize はサイズを 1K / 2K / 4K で返す", () => {
+      expect(extractImageSize("gemini-nano-banana-2.1-minimal-1k")).toBe("1K");
+      expect(extractImageSize("gemini-nano-banana-2.1-medium-2k")).toBe("2K");
+      expect(extractImageSize("gemini-nano-banana-2.1-high-4k")).toBe("4K");
+    });
+
+    test("normalizeModelName は 2.1 の保存名をそのまま返す(既定のモデルへ丸めない)", () => {
+      // 丸めると、ペルコインや表示が別のモデルとして数えられる。
+      // 受け付けるかどうかは normalizeModelName ではなく KNOWN_MODEL_INPUTS で決める(下のテスト)。
+      expect(normalizeModelName("gemini-nano-banana-2.1-minimal-1k")).toBe(
+        "gemini-nano-banana-2.1-minimal-1k"
+      );
+      expect(normalizeModelName("gemini-nano-banana-2.1-high-4k")).toBe(
+        "gemini-nano-banana-2.1-high-4k"
+      );
+      // 存在しない組み合わせは今までどおり FALLBACK
+      expect(normalizeModelName("gemini-nano-banana-2.1-low-1k")).toBe(
+        FALLBACK_GENERATION_MODEL
+      );
+    });
+
+    test("運営だけのゲート(Phase 3)ができるまで、API の入力としては受け付けない", () => {
+      // 先に受け付けると、一般の利用者が直接リクエストして 2.1 を指定できてしまう。
+      // Phase 3 でゲートと一緒に開ける(そのときこのテストを書き換える)。
+      expect(isKnownModelInput("gemini-nano-banana-2.1-minimal-1k")).toBe(false);
+      expect(
+        (KNOWN_MODEL_INPUTS as ReadonlyArray<string>).some((m) =>
+          m.startsWith("gemini-nano-banana-2.1")
+        )
+      ).toBe(false);
     });
   });
 });

@@ -78,15 +78,25 @@ export interface GeminiRequestShape {
  * API モデルごとのリクエストの形。worker が apiModel を文字列で比べていた 4 か所を
  * ここへ集めた。プレビュー名から GA 名へ置き換えたときも、形は変えていない。
  *
- * - Nano 2: imageSize 必須・candidateCount / responseModalities あり
+ * - Nano 2 / 2.1: imageSize 必須・candidateCount / responseModalities あり
  * - Pro: imageSize があれば送る・responseModalities なし
  * - gemini-2.5-flash-image: どちらも送らない
  */
 export function getGeminiRequestShape(apiModel: GeminiApiModel): GeminiRequestShape {
-  const isNano2 = apiModel === GEMINI_API_MODEL_NAMES.nano2;
-  return {
-    requiresImageSize: isNano2,
-    sendsImageSize: isNano2 || apiModel === GEMINI_API_MODEL_NAMES.pro,
-    requiresResponseModalities: isNano2,
-  };
+  // GEMINI_API_MODEL_NAMES に名前を足したら、ここで形を決めないと型エラーになる
+  // (足し忘れると imageSize が送られず、4K を選んでも 1K で返る)。
+  switch (apiModel) {
+    case GEMINI_API_MODEL_NAMES.nano2:
+    // 2.1 は Nano 2 と同じ形。Phase 0(2026-10-22)で 1K / 2K / 4K とも通ることを確認済み
+    case GEMINI_API_MODEL_NAMES.nano21:
+      return { requiresImageSize: true, sendsImageSize: true, requiresResponseModalities: true };
+    case GEMINI_API_MODEL_NAMES.pro:
+      return { requiresImageSize: false, sendsImageSize: true, requiresResponseModalities: false };
+    case GEMINI_API_MODEL_NAMES.legacyFlash:
+      return { requiresImageSize: false, sendsImageSize: false, requiresResponseModalities: false };
+    default: {
+      const unhandled: never = apiModel;
+      throw new Error(`getGeminiRequestShape: unknown Gemini API model: ${String(unhandled)}`);
+    }
+  }
 }

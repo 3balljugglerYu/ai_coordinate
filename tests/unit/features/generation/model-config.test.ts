@@ -1,5 +1,6 @@
 import {
   getPercoinCost,
+  MODEL_PERCOIN_COSTS,
   creatorLooksCost,
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
@@ -73,6 +74,19 @@ describe("model-config / model identification helpers", () => {
   });
 
   describe("getPercoinCost", () => {
+    it("MODEL_PERCOIN_COSTS に Nano Banana 2.1 の 9 値が、品質とサイズが同じ GPT と同額で入る", () => {
+      expect(MODEL_PERCOIN_COSTS["gemini-nano-banana-2.1-minimal-1k"]).toBe(10);
+      expect(MODEL_PERCOIN_COSTS["gemini-nano-banana-2.1-medium-2k"]).toBe(50);
+      expect(MODEL_PERCOIN_COSTS["gemini-nano-banana-2.1-high-4k"]).toBe(130);
+    });
+
+    it("getPercoinCost も 2.1 を表どおりの額で数える(既定のモデルの額に落とさない)", () => {
+      // high × 4k を既定の 10 で数えると、130 の画像を 10 で出してしまう。
+      expect(getPercoinCost("gemini-nano-banana-2.1-minimal-1k")).toBe(10);
+      expect(getPercoinCost("gemini-nano-banana-2.1-medium-2k")).toBe(50);
+      expect(getPercoinCost("gemini-nano-banana-2.1-high-4k")).toBe(130);
+    });
+
     it("returns the GPT Image 2 percoin matrix", () => {
       expect(getPercoinCost("gpt-image-2-low-1k")).toBe(10);
       expect(getPercoinCost("gpt-image-2-low-2k")).toBe(20);

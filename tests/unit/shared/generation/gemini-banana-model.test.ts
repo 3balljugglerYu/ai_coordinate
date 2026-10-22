@@ -162,6 +162,7 @@ describe("GEMINI_API_MODEL_NAMES", () => {
       legacyFlash: "gemini-2.5-flash-image",
       nano2: "gemini-3.1-flash-image",
       pro: "gemini-3-pro-image",
+      nano21: "gemini-nano-banana-2.1",
     });
   });
 });
