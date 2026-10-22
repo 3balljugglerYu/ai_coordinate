@@ -95,6 +95,20 @@ type GptImage2Quality = keyof typeof GPT_IMAGE_2_OUTPUT_TOKENS_1K;
 type GptImage2Tier = "1k" | "2k" | "4k";
 
 /**
+ * gpt-image-2.5-flare の出力画像のトークン数（1k tier）。
+ *
+ * 本番の `image_jobs.generation_metadata.geminiAttempts[0].openaiUsage.outputTokens`
+ * の平均（2026-09-10〜10-22 の成功ジョブ。low 1,607件 / medium 643件 / high 2件）。
+ * **medium / high は 2.0 の 1/4〜1/6** しかなく、2.0 と同値と仮定していた間は
+ * 原価カードが 2〜3倍高く出ていた。high は 2件だが、2件とも 1,078 tok で同じだった。
+ */
+const GPT_IMAGE_2_5_FLARE_OUTPUT_TOKENS_1K: Record<GptImage2Quality, number> = {
+  low: 171,
+  medium: 355,
+  high: 1078,
+};
+
+/**
  * tier ごとのピクセル上限比（GPT_IMAGE_2_TIER_LIMITS と同じ値）。
  * 1k=1,572,864 / 2k=4,194,304 / 4k=8,294,400 px。
  */
@@ -114,11 +128,10 @@ const TIER_PIXEL_RATIO: Record<GptImage2Tier, number> = {
  */
 const gptImage2 = (
   quality: GptImage2Quality,
-  tier: GptImage2Tier
+  tier: GptImage2Tier,
+  outputTokens1k: Record<GptImage2Quality, number> = GPT_IMAGE_2_OUTPUT_TOKENS_1K
 ): AiModelRate => {
-  const tokens = Math.round(
-    GPT_IMAGE_2_OUTPUT_TOKENS_1K[quality] * TIER_PIXEL_RATIO[tier]
-  );
+  const tokens = Math.round(outputTokens1k[quality] * TIER_PIXEL_RATIO[tier]);
   return {
     outputUsd: (tokens * OPENAI_IMAGE_OUTPUT_USD_PER_1M) / 1e6,
     inputImageUsd: GPT_IMAGE_2_INPUT_IMAGE_USD,
@@ -130,18 +143,14 @@ const gptImage2 = (
 };
 
 /**
- * gpt-image-2.5-flare は**実測するまで 2.0 と同値と仮定**する(単価表は 2.0 と
- * 完全に同額だが、出力画像のトークン数が同じとは限らない)。
- * 1k も含めて全て `derived` にしておき、実測で置き換えるまで
- * ダッシュボードで「未検証」と分かるようにする。
+ * gpt-image-2.5-flare は単価表が 2.0 と完全に同額なので、出力トークン数だけを
+ * 差し替える。入力画像は 2.0 と同じ値で数える。2k / 4k は 2.0 と同じく外挿（`derived`）。
  */
 const gptImage25Flare = (
   quality: GptImage2Quality,
   tier: GptImage2Tier
-): AiModelRate => ({
-  ...gptImage2(quality, tier),
-  basis: "derived",
-});
+): AiModelRate =>
+  gptImage2(quality, tier, GPT_IMAGE_2_5_FLARE_OUTPUT_TOKENS_1K);
 
 /**
  * Gemini の入力トークン単価（per 1M tokens・2026-08-18 取得）。
@@ -223,7 +232,7 @@ export const MODEL_COST_RATES: Record<string, AiModelRate> = {
   // 旧データに残る legacy alias（正規化前の値がそのまま保存されている）
   "gpt-image-2-low": gptImage2("low", "1k"),
 
-  // --- OpenAI gpt-image-2.5-flare（実測するまで 2.0 と同値の仮定 / 全て derived）---
+  // --- OpenAI gpt-image-2.5-flare（1k は本番の実測 / 2k・4k は外挿）---
   "gpt-image-2.5-flare-low-1k": gptImage25Flare("low", "1k"),
   "gpt-image-2.5-flare-medium-1k": gptImage25Flare("medium", "1k"),
   "gpt-image-2.5-flare-high-1k": gptImage25Flare("high", "1k"),
