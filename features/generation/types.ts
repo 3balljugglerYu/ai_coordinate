@@ -16,6 +16,8 @@ import {
   parseOpenAIImageModel,
 } from "@/shared/generation/openai-image-model";
 import type { OpenAIImageCanonicalModel } from "@/shared/generation/openai-image-model";
+import { GEMINI_API_MODEL_NAMES } from "@/shared/generation/gemini-banana-model";
+import type { GeminiApiModel } from "@/shared/generation/gemini-banana-model";
 
 export {
   BACKGROUND_MODES,
@@ -220,11 +222,8 @@ export type {
   GeminiBananaCanonicalModel,
 } from "@/shared/generation/gemini-banana-model";
 
-// APIエンドポイント用のモデル名型
-export type GeminiApiModel =
-  | 'gemini-2.5-flash-image'
-  | 'gemini-3.1-flash-image-preview'
-  | 'gemini-3-pro-image-preview';
+// APIエンドポイント用のモデル名型(正本は shared の GEMINI_API_MODEL_NAMES)
+export type { GeminiApiModel } from "@/shared/generation/gemini-banana-model";
 
 export type GeminiImageSize = "512" | "1K" | "2K" | "4K";
 
@@ -294,13 +293,13 @@ export function toApiModelName(model: GeminiOnlyModel): GeminiApiModel {
     );
   }
   if (model.startsWith('gemini-3.1-flash-image-preview-')) {
-    return 'gemini-3.1-flash-image-preview';
+    return GEMINI_API_MODEL_NAMES.nano2;
   }
-  // gemini-3-pro-image-* の場合は全て gemini-3-pro-image-preview を使用
+  // gemini-3-pro-image-* の場合は全て Pro の GA 名を使用
   if (model.startsWith('gemini-3-pro-image-')) {
-    return 'gemini-3-pro-image-preview';
+    return GEMINI_API_MODEL_NAMES.pro;
   }
-  return 'gemini-2.5-flash-image';
+  return GEMINI_API_MODEL_NAMES.legacyFlash;
 }
 
 /**

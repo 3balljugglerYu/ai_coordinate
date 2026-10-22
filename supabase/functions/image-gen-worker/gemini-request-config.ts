@@ -11,6 +11,10 @@
  */
 
 import type { GeminiAspectRatio } from "../../../shared/generation/gemini-aspect-ratio.ts";
+import {
+  GEMINI_API_MODEL_NAMES,
+  type GeminiApiModel,
+} from "../../../shared/generation/gemini-banana-model.ts";
 
 export type GeminiImageSize = "512" | "1K" | "2K" | "4K";
 
@@ -20,7 +24,7 @@ export interface BuildGeminiGenerationConfigInput {
   /** `resolveGeminiAspectRatio()` で解決した出力アスペクト比 */
   aspectRatio: GeminiAspectRatio;
   /**
-   * `gemini-3.1-flash-image-preview` 系は `candidateCount: 1` と
+   * Nano 2(`gemini-3.1-flash-image`)は `candidateCount: 1` と
    * `responseModalities: ["TEXT", "IMAGE"]` も必要。それ以外のモデルでは不要。
    */
   requiresResponseModalities?: boolean;
@@ -41,7 +45,7 @@ export interface GeminiGenerationConfigPiece {
  * - `imageSize` が null でも `imageConfig.aspectRatio` は必ず含める。
  *   (`gemini-2.5-flash-image` のように imageSize を持たないモデルでも aspectRatio 指定が必要)
  * - `requiresResponseModalities=true` のときは `candidateCount` と `responseModalities` も付与。
- *   (`gemini-3.1-flash-image-preview` 系のみ true)
+ *   (Nano 2 = `gemini-3.1-flash-image` のみ true。`getGeminiRequestShape` を参照)
  */
 export function buildGeminiGenerationConfig(
   input: BuildGeminiGenerationConfigInput,
@@ -59,4 +63,30 @@ export function buildGeminiGenerationConfig(
     piece.responseModalities = ["TEXT", "IMAGE"];
   }
   return piece;
+}
+
+export interface GeminiRequestShape {
+  /** imageSize が無いジョブを受けたら失敗させる */
+  requiresImageSize: boolean;
+  /** `imageConfig.imageSize` を送る(送らないモデルでも aspectRatio は送る) */
+  sendsImageSize: boolean;
+  /** `candidateCount: 1` と `responseModalities` を付ける */
+  requiresResponseModalities: boolean;
+}
+
+/**
+ * API モデルごとのリクエストの形。worker が apiModel を文字列で比べていた 4 か所を
+ * ここへ集めた。プレビュー名から GA 名へ置き換えたときも、形は変えていない。
+ *
+ * - Nano 2: imageSize 必須・candidateCount / responseModalities あり
+ * - Pro: imageSize があれば送る・responseModalities なし
+ * - gemini-2.5-flash-image: どちらも送らない
+ */
+export function getGeminiRequestShape(apiModel: GeminiApiModel): GeminiRequestShape {
+  const isNano2 = apiModel === GEMINI_API_MODEL_NAMES.nano2;
+  return {
+    requiresImageSize: isNano2,
+    sendsImageSize: isNano2 || apiModel === GEMINI_API_MODEL_NAMES.pro,
+    requiresResponseModalities: isNano2,
+  };
 }

@@ -73,7 +73,14 @@ import {
   parseImageDimensions,
 } from "./openai-image.ts";
 import type { OpenAIImageEditResult } from "./openai-image.ts";
-import { buildGeminiGenerationConfig } from "./gemini-request-config.ts";
+import {
+  buildGeminiGenerationConfig,
+  getGeminiRequestShape,
+} from "./gemini-request-config.ts";
+import {
+  GEMINI_API_MODEL_NAMES,
+  type GeminiApiModel,
+} from "../../../shared/generation/gemini-banana-model.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import {
   type PromptExecutionRecord,
@@ -626,10 +633,6 @@ type GeminiModel =
   | "gemini-3-pro-image-2k"
   | "gemini-3-pro-image-4k"
   | OpenAIImageCanonicalModel;
-type GeminiApiModel =
-  | "gemini-2.5-flash-image"
-  | "gemini-3.1-flash-image-preview"
-  | "gemini-3-pro-image-preview";
 type GeminiImageSize = "512" | "1K" | "2K" | "4K";
 const WORKER_UNKNOWN_MODEL_FALLBACK: GeminiModel = "gemini-2.5-flash-image";
 
@@ -717,13 +720,14 @@ function normalizeModelName(model: string | null): GeminiModel {
  * データベース保存値をAPIエンドポイント名に変換
  */
 function toApiModelName(model: GeminiModel): GeminiApiModel {
+  // DB の保存名はプレビュー名のまま。API に送る名前だけ GA 名にする(GEMINI_API_MODEL_NAMES)。
   if (model.startsWith("gemini-3.1-flash-image-preview-")) {
-    return "gemini-3.1-flash-image-preview";
+    return GEMINI_API_MODEL_NAMES.nano2;
   }
   if (model.startsWith("gemini-3-pro-image-")) {
-    return "gemini-3-pro-image-preview";
+    return GEMINI_API_MODEL_NAMES.pro;
   }
-  return "gemini-2.5-flash-image";
+  return GEMINI_API_MODEL_NAMES.legacyFlash;
 }
 
 /**
@@ -1112,7 +1116,7 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
 async function generateCreatorLooksOutfitStage(params: {
   jobId: string;
   dbModel: string;
-  apiModel: string;
+  apiModel: GeminiApiModel;
   geminiApiKey: string;
   image0: InputImageData;
   image1: InputImageData;
@@ -1152,8 +1156,7 @@ async function generateCreatorLooksOutfitStage(params: {
   );
   const aspectRatio = resolveGeminiAspectRatio(aspectDims);
   const imageSize = extractImageSize(dbModel);
-  const requiresResponseModalities =
-    apiModel === "gemini-3.1-flash-image-preview";
+  const { requiresResponseModalities } = getGeminiRequestShape(apiModel);
 
   const requestBody = {
     contents: [
@@ -2586,8 +2589,10 @@ Deno.serve(async () => {
 
                   const imageSize = extractImageSize(dbModel);
 
-                  // `gemini-3.1-flash-image-preview` は imageSize 必須 (既存仕様)。
-                  if (apiModel === "gemini-3.1-flash-image-preview" && !imageSize) {
+                  const requestShape = getGeminiRequestShape(apiModel);
+
+                  // Nano 2 は imageSize 必須 (既存仕様)。
+                  if (requestShape.requiresImageSize && !imageSize) {
                     throw new Error(`Unsupported image size for model: ${dbModel}`);
                   }
 
@@ -2631,19 +2636,15 @@ Deno.serve(async () => {
                     inputDimensions: aspectDims,
                   }).label;
 
-                  // gemini-3.1-flash-image-preview のみ candidateCount / responseModalities を追加。
-                  // gemini-3-pro-image-preview / gemini-2.5-flash-image 等は不要。
-                  const requiresResponseModalities =
-                    apiModel === "gemini-3.1-flash-image-preview";
+                  // Nano 2 のみ candidateCount / responseModalities を追加。
+                  // Pro / gemini-2.5-flash-image 等は不要。
+                  const { requiresResponseModalities } = requestShape;
 
-                  // gemini-3-pro-image-preview は imageSize がある場合のみ送信 (既存仕様維持)。
+                  // Nano 2 と Pro は imageSize がある場合のみ送信 (既存仕様維持)。
                   // それ以外のモデル (gemini-2.5-flash-image 等) でも `imageConfig.aspectRatio`
                   // は必ず付与し、出力アスペクトをクランプ範囲に収める。
                   const finalImageSize: GeminiImageSize | null =
-                    apiModel === "gemini-3.1-flash-image-preview" ||
-                    apiModel === "gemini-3-pro-image-preview"
-                      ? imageSize
-                      : null;
+                    requestShape.sendsImageSize ? imageSize : null;
 
                   nextRequestBody.generationConfig = {
                     ...nextRequestBody.generationConfig,

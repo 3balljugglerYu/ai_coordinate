@@ -15,8 +15,9 @@ import {
 } from "@/features/i2i-poc/shared/image-constraints";
 import { parseImageDimensions } from "@/features/generation/lib/openai-image";
 import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
+import { GEMINI_API_MODEL_NAMES } from "@/shared/generation/gemini-banana-model";
 
-const MODEL_NAME = "gemini-3.1-flash-image-preview";
+const MODEL_NAME = GEMINI_API_MODEL_NAMES.nano2;
 const OUTPUT_IMAGE_SIZE = "512";
 const GEMINI_TIMEOUT_MS = 35_000;
 const MAX_FEEDBACK_LENGTH = 600;
