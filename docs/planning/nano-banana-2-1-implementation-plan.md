@@ -400,17 +400,18 @@ flowchart LR
     P6 --> P7["Phase 7: 一般公開の判断(別 PR)"]
 ```
 
-### Phase 0: API の試し打ち(コードは書かない・あなたの手元で実行)
+### Phase 0: API の試し打ち(コードは書かない)✅ 2026-10-22 完了
 
 **目的**: 公式に書かれていない 4 点を、実際に呼んで確かめる。**ここが決まらないと Phase 1 と Phase 3 のリクエストの形が確定しない。**
-**注意**: Gemini の鍵は CLAUDE.md の許可範囲外なので、**私は鍵を読めない**。試験スクリプトを用意し、実行をあなたにお願いする(鍵は実行時の環境変数で渡す)。
+**注意**: Gemini の鍵は CLAUDE.md の許可範囲外。試験スクリプトの中だけで鍵を読み、画面・ファイルには出さない。2026-10-22 はユーザーの指示でエージェントが実行した(生成は費用を伝えて承認を得てから)。
+**結果**: §10-1。生成は計 12 回(確認 1・3 で 4 回、確認 2・4 で 8 回)。回数は当初の 25 回から減らした(minimal は確認 1 で測れた・2k/4k の大きさは毎回同じ)。
 
-- [ ] 試験スクリプト(`.local/measure-gemini-image.mjs`)を作る。GPT 側の `.local/measure-openai-cost.mjs` を参考にする。入力画像は本番と同じ正規化(長辺 2048)をかけたもの
-- [ ] **確認 1**: `generationConfig.thinkingConfig.thinkingLevel` の書き方(`"minimal"` と `"MINIMAL"` のどちらが通るか)。`includeThoughts` は付けない
-- [ ] **確認 2**: `usageMetadata` に thinking のトークン数が出るか(`thoughtsTokenCount`)。出る値で minimal / medium / high を 1k で各 5 回測り、**thinking 分の実コスト**を算出する → §1-8 の low × 1k の判定
-- [ ] **確認 3**: GA 名(`gemini-3.1-flash-image` と `gemini-3-pro-image`)が、**今のリクエストの形**(`candidateCount: 1`・`responseModalities: ["TEXT","IMAGE"]`・`imageSize`・`aspectRatio`)で通るか
-- [ ] **確認 4**: 2.1 の 1k / 2k / 4k の**実際の出力ピクセル数**(ユーザー向けの文言「約〇〇px」に使う)と、所要時間(各 5 回の p50 / p90)
-- [ ] 結果を本計画書の §10 に反映する
+- [x] 試験スクリプト(`.local/measure-gemini-image.mjs`)を作る。GPT 側の `.local/measure-openai-cost.mjs` を参考にする。入力画像は本番と同じ正規化(長辺 2048)をかけたもの
+- [x] **確認 1**: `generationConfig.thinkingConfig.thinkingLevel` の書き方(`"minimal"` と `"MINIMAL"` のどちらが通るか)。`includeThoughts` は付けない
+- [x] **確認 2**: `usageMetadata` に thinking のトークン数が出るか(`thoughtsTokenCount`)。出る値で minimal / medium / high を 1k で各 3 回測り(当初 5 回)、**thinking 分の実コスト**を算出する → §1-8 の low × 1k の判定
+- [x] **確認 3**: GA 名(`gemini-3.1-flash-image` と `gemini-3-pro-image`)が、**今のリクエストの形**(`candidateCount: 1`・`responseModalities: ["TEXT","IMAGE"]`・`imageSize`・`aspectRatio`)で通るか
+- [x] **確認 4**: 2.1 の 1k / 2k / 4k の**実際の出力ピクセル数**(ユーザー向けの文言「約〇〇px」に使う)と、所要時間(2k / 4k は各 1 回。p90 は Phase 6-C の本番の記録で見る)
+- [x] 結果を本計画書の §10 に反映する
 
 ### Phase 1: 期限切れのプレビュー名を GA 名へ(既存モデルのみ・UI 変更なし)
 
@@ -627,6 +628,53 @@ flowchart LR
 | 7 | 2.1 の入力画像トークン数が 1,120(Gemini 3 の既定)のまま | `usageMetadata` で確認 | 原価表の `inputImageUsd` を分ける |
 | 8 | 2.1 が多入力(`image[]` 相当の複数 `inline_data`)に対応する | Phase 6-B | 単入力経路だけに 2.1 を出す形へ縮める |
 | 9 | Nano 2 の既存 0.5k の行き先は変えない(2.1 に 0.5k が無いため) | — | 変えるなら別タスク |
+
+### 10-1. Phase 0 の結果(2026-10-22 実測)
+
+条件: 入力は本番と同じ正規化をした 1 枚(1592×2048・JPEG)、`aspectRatio: "3:4"`、短い着せ替えの指示(テキスト 22 tok)。リクエストの形は今の worker と同じ(`candidateCount: 1`・`responseModalities: ["TEXT","IMAGE"]`・`imageConfig`)。生の記録は `.local/gemini-measure/`(git の対象外)。
+
+**上の表の答え**
+
+| # | 結果 |
+|---|---|
+| 1 | ✅ `generationConfig.thinkingConfig.thinkingLevel` で通る。**小文字 `"minimal"` も大文字 `"MINIMAL"` も 200**。計画どおり小文字で送る |
+| 2 | ✅ GA 名 `gemini-3.1-flash-image`(Nano 2)・`gemini-3-pro-image`(Pro)とも、今の形で 200。`models` の一覧にもある。Phase 1 はそのまま進められる |
+| 3 | ✅ `usageMetadata.thoughtsTokenCount` に出る。**minimal では項目ごと出ない(0)**。単価は公式に無いので、下の原価は出力画像と同じ $30 / 1M で見積もった(いちばん高い見方) |
+| 4 | ✅ 3:4 で 1k = **896×1200**、2k = **1792×2400**、4k = **3584×4800**。返ってくるのは JPEG。4k は 1 枚 約 8.0MB(返ってきた JPEG のまま測った値。`generated-images` の上限は #548 で 25MB) |
+| 5 | ✅ 下の表。いちばん遅い 4k medium でも 25.6 秒 |
+| 6 | ✅ `candidateCount: 1` と `responseModalities` を受理した |
+| 7 | ⚠️ **2.1 は入力画像を 1,120 tok と数える**(GA の Nano 2 / Pro は同じ画像を 258 tok)。原価表の前提(1,120)と同じなので直さなくてよい |
+
+**トークンと時間(2.1・1 回ごと)**
+
+| 品質(thinking) | サイズ | 回数 | 出力画像 tok | 画像以外の出力 tok | thinking tok | 時間 |
+|---|---|---|---|---|---|---|
+| low(minimal) | 1k | 2 | 1,120 | 232〜276 | 0 | 10.6〜12.2 秒 |
+| medium | 1k | 3 | 1,120 | 210〜276 | 207〜481(平均 335) | 12.5〜13.8 秒 |
+| high | 1k | 3 | 1,120 | 245〜272 | 743〜1,086(平均 870) | 14.0〜15.6 秒 |
+| medium | 2k | 1 | 1,680 | 267 | 276 | 19.5 秒 |
+| medium | 4k | 1 | 3,780 | 241 | 735 | 25.6 秒 |
+
+- 出力画像の tok は単価表どおり(1k $0.0336・2k $0.0504・4k $0.1134)。
+- `candidatesTokenCount` には、画像の tok のほかに毎回 約 250 tok が入る(`candidatesTokensDetails` には IMAGE しか載らない)。これも課金されるとみて見積もった。
+
+**原価の見積もり(§1-8 の更新)**: 入力は本番のワンタップ相当 $0.0041、画像以外の出力と thinking は $30 / 1M、$1 = ¥155。
+
+| 品質 | サイズ | ペルコイン | 原価の見積もり(平均) | 上限(1pc ¥0.70) | 1pc あたり |
+|---|---|---|---|---|---|
+| low | 1k | 10 | **$0.045** | $0.045 | **¥0.70(上限ちょうど)** |
+| medium | 1k | 20 | $0.055(最大 $0.059) | $0.090 | ¥0.43 |
+| high | 1k | 50 | $0.072(最大 $0.078) | $0.226 | ¥0.22 |
+| medium | 2k | 50 | $0.071 | $0.226 | ¥0.22 |
+| medium | 4k | 80 | $0.147 | $0.361 | ¥0.28 |
+
+- **low × 1k は、いちばん高い見方で上限ちょうど**。thinking は 0 なので、§1-8 で心配した「minimal でも thinking で上限を超える」ことは起きなかった。上限に届くのは「画像以外の出力 約 250 tok」を $30 / 1M で数えた場合だけ。テキストの単価が安ければ余裕が出る。→ **10 ペルコインのまま進め、Phase 6-C で実際の請求額と照らす**。上限を超えていたら、その時点でこの 1 セルだけ見直す(ADR-003)。
+- low 2k / 4k は測っていないが、thinking 0 なら $0.062 / $0.125 で、上限 $0.090 / $0.181 の内側。
+- そのほかのセルは、上限の半分以下。
+
+**タイムアウト(ADR-007)**: 実測はどれも 26 秒以内で、初期値(1k 120 秒・2k 180 秒・4k 300 秒)に十分な余裕がある。初期値はこのまま、Phase 6-C の p90 を見て絞る。
+
+**文言(§1-6)**: 2.1 の 4k は「最大 4800px」(3:4 の長辺)。Pro の「最大 5504px」は流用しない。ほかの縦横比の長辺は未測定なので、文言は「約」をつけるか、Phase 6 で 1 回ずつ確かめる。
 
 ---
 
