@@ -3,6 +3,7 @@
 import {
   buildGeminiGenerationConfig,
   getGeminiRequestShape,
+  isGeminiThoughtPart,
   parseGeminiUsageMetadata,
   resolveNanoBanana21RequestTimeoutMs,
   resolveNanoBanana21ThinkingLevel,
@@ -198,11 +199,42 @@ describe("parseGeminiUsageMetadata(REQ-008)", () => {
     });
   });
 
+  test("出力のトークン数が無い(入力の段階でブロックされた)ときも、入力と考える分は残す", () => {
+    // 入力ぶんは課金されるので、捨てると原価を低く見誤る
+    expect(
+      parseGeminiUsageMetadata({
+        usageMetadata: { promptTokenCount: 5000, totalTokenCount: 5000 },
+      })
+    ).toEqual({
+      promptTokenCount: 5000,
+      candidatesTokenCount: 0,
+      thoughtsTokenCount: 0,
+      totalTokenCount: 5000,
+    });
+  });
+
   test("usageMetadata が無い・数でないときは null", () => {
     expect(parseGeminiUsageMetadata(null)).toBeNull();
     expect(parseGeminiUsageMetadata({})).toBeNull();
+    // 入力のトークン数が読めなければ残さない
     expect(
       parseGeminiUsageMetadata({ usageMetadata: { promptTokenCount: "1142", candidatesTokenCount: 10 } })
     ).toBeNull();
+  });
+});
+
+describe("isGeminiThoughtPart", () => {
+  // 考える途中の下書き(thought: true)を、仕上がりの画像として保存しないため。
+  // includeThoughts を付けていないので通常は返らないが、返っても飛ばす。
+  test("thought: true の part は下書き", () => {
+    expect(
+      isGeminiThoughtPart({ thought: true, inlineData: { mimeType: "image/png", data: "x" } })
+    ).toBe(true);
+  });
+
+  test("thought が無い・false の part は仕上がり", () => {
+    expect(isGeminiThoughtPart({ inlineData: { mimeType: "image/png", data: "x" } })).toBe(false);
+    expect(isGeminiThoughtPart({ thought: false, text: "done" })).toBe(false);
+    expect(isGeminiThoughtPart(null)).toBe(false);
   });
 });

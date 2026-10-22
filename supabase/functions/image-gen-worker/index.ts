@@ -76,6 +76,7 @@ import type { OpenAIImageEditResult } from "./openai-image.ts";
 import {
   buildGeminiGenerationConfig,
   getGeminiRequestShape,
+  isGeminiThoughtPart,
   parseGeminiUsageMetadata,
   resolveNanoBanana21RequestTimeoutMs,
   resolveNanoBanana21ThinkingLevel,
@@ -1117,6 +1118,10 @@ function extractImagesFromGeminiResponse(response: GeminiResponse): Array<{ mime
     }
 
     for (const part of parts) {
+      // 考える途中の下書きは仕上がりとして使わない
+      if (isGeminiThoughtPart(part)) {
+        continue;
+      }
       if (part.inlineData) {
         images.push({
           mimeType: part.inlineData.mimeType,
@@ -2987,33 +2992,57 @@ Deno.serve(async () => {
                   throw attemptError;
                 }
 
-                const nextGeneratedImage = await measureGeneratingSubstep(
-                  jobId,
-                  "responseProcessing",
-                  generatingSubstepDurationsMs,
-                  async () => {
-                    if (!geminiData) {
-                      throw new Error("Internal error: Gemini response data is missing.");
-                    }
+                let nextGeneratedImage: { mimeType: string; data: string } | null;
+                try {
+                  nextGeneratedImage = await measureGeneratingSubstep(
+                    jobId,
+                    "responseProcessing",
+                    generatingSubstepDurationsMs,
+                    async () => {
+                      if (!geminiData) {
+                        throw new Error("Internal error: Gemini response data is missing.");
+                      }
 
-                    if (geminiData.error) {
-                      const geminiErrorMessage = geminiData.error.message
-                        ? sanitizeProviderErrorMessage(geminiData.error.message)
-                        : "Gemini API error";
-                      throw new Error(
-                        `${GEMINI_PROVIDER_ERROR}: ${geminiErrorMessage}`
-                      );
-                    }
+                      if (geminiData.error) {
+                        const geminiErrorMessage = geminiData.error.message
+                          ? sanitizeProviderErrorMessage(geminiData.error.message)
+                          : "Gemini API error";
+                        throw new Error(
+                          `${GEMINI_PROVIDER_ERROR}: ${geminiErrorMessage}`
+                        );
+                      }
 
-                    if (isGeminiSafetyBlocked(geminiData)) {
-                      throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
-                    }
+                      if (isGeminiSafetyBlocked(geminiData)) {
+                        throw new Error(SAFETY_POLICY_BLOCKED_ERROR);
+                      }
 
-                    const images = extractImagesFromGeminiResponse(geminiData);
-                    return images.length > 0 ? images[0] : null;
-                  },
-                  { attempt }
-                );
+                      const images = extractImagesFromGeminiResponse(geminiData);
+                      return images.length > 0 ? images[0] : null;
+                    },
+                    { attempt }
+                  );
+                } catch (processingError) {
+                  // API は 200 でトークンを使ったが、取り出す段階で失敗した(安全のブロックなど)。
+                  // この試行も送り先と使用量つきで残す(原価を低く見誤らないため・REQ-008)
+                  geminiAttempts.push({
+                    attempt,
+                    startedAt: new Date(attemptStartedAtMs).toISOString(),
+                    durationMs: Date.now() - attemptStartedAtMs,
+                    httpStatus: attemptHttpStatus,
+                    httpOk: attemptHttpOk,
+                    finishReasons: geminiData ? extractGeminiFinishReasons(geminiData) : [],
+                    hasImage: false,
+                    timedOut: false,
+                    errorMessage:
+                      processingError instanceof Error
+                        ? processingError.message
+                        : String(processingError),
+                    reinforcementApplied,
+                    apiModel,
+                    geminiUsage: parseGeminiUsageMetadata(geminiData),
+                  });
+                  throw processingError;
+                }
 
                 const finishReasons = extractGeminiFinishReasons(geminiData);
                 geminiAttempts.push({

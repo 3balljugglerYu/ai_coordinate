@@ -114,7 +114,7 @@ function readTokenCount(value: unknown): number | null {
 /**
  * Gemini のレスポンスから `usageMetadata` を読む(REQ-008)。
  * 原価の実測(計画書 Phase 6-C)に使うので、ジョブの geminiAttempts に残す。
- * 入力・出力のトークン数が読めなければ null。
+ * 入力のトークン数が読めなければ null。
  */
 export function parseGeminiUsageMetadata(payload: unknown): GeminiUsage | null {
   if (!payload || typeof payload !== "object") return null;
@@ -122,11 +122,11 @@ export function parseGeminiUsageMetadata(payload: unknown): GeminiUsage | null {
   if (!usage || typeof usage !== "object") return null;
   const raw = usage as Record<string, unknown>;
   const promptTokenCount = readTokenCount(raw.promptTokenCount);
-  const candidatesTokenCount = readTokenCount(raw.candidatesTokenCount);
-  if (promptTokenCount === null || candidatesTokenCount === null) return null;
+  if (promptTokenCount === null) return null;
   return {
     promptTokenCount,
-    candidatesTokenCount,
+    // 入力の段階でブロックされたときは出力の項目が無い。入力ぶんは課金されるので残す
+    candidatesTokenCount: readTokenCount(raw.candidatesTokenCount) ?? 0,
     thoughtsTokenCount: readTokenCount(raw.thoughtsTokenCount) ?? 0,
     totalTokenCount: readTokenCount(raw.totalTokenCount),
   };
@@ -166,4 +166,13 @@ export function getGeminiRequestShape(apiModel: GeminiApiModel): GeminiRequestSh
       throw new Error(`getGeminiRequestShape: unknown Gemini API model: ${String(unhandled)}`);
     }
   }
+}
+
+/**
+ * 考える途中の下書き(`thought: true`)の part か。Gemini 3 の画像モデルは、考える間に
+ * 下書きの画像を作ることがある。`includeThoughts` を付けていないので通常は返らないが、
+ * 返ってきても仕上がりとして保存しないよう、画像を取り出すときに飛ばす。
+ */
+export function isGeminiThoughtPart(part: unknown): boolean {
+  return Boolean(part && typeof part === "object" && (part as { thought?: unknown }).thought === true);
 }
