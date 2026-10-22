@@ -460,15 +460,16 @@ flowchart LR
 - [x] 単体テスト: ゲート(運営・非運営・2.5 とは別)・残高確認が表どおりの額(high × 4k は 130)・考える量・タイムアウト・使用量の読み取り
 - [ ] → 残し: **REQ-010(未登録の保存名で失敗させる)**。worker の `normalizeModelName` は、未知の値を今までどおり `gemini-2.5-flash-image` に丸める。例外にする場所がジョブの失敗処理(返金)の外にあり、投げるとジョブが処理中のまま残るおそれがあるため。2.1 の 9 値は明示して扱い、DB の CHECK 制約が保存できる値を決めているので、2.1 が丸められることはない
 
-### Phase 4: DB の CHECK 制約
+### Phase 4: DB の CHECK 制約(PR 作成 2026-10-22・本番適用は承認待ち)
 
 **目的**: `generated_images.model` と `image_jobs.model` が 2.1 の 9 値を受け入れる。
 **ビルド確認**: `supabase db push --dry-run` でこの migration だけが出る。
-⚠️ **ADR-006 のとおり、Phase 3 の Next.js が本番に出てから適用する。**
+⚠️ **ADR-006 のとおり、Phase 3 の Next.js が本番に出てから適用する。**(#782 と worker v139 は 2026-10-22 に本番へ出た)
 
-- [ ] `supabase/migrations/YYYYMMDDHHMMSS_allow_nano_banana_2_1_models.sql`: `20260910120000_allow_gpt_image_2_5_flare_models.sql` を型に、**既存の全値を残したまま** 9 値を末尾へ足す(DROP → ADD の全列挙)。2 テーブルとも
-- [ ] migration の中で `pg_get_constraintdef` に 9 値と既存の全値が含まれることを自己検証する(GPT 2.5 の migration と同じ形)
-- [ ] 完了 RPC の `p_model`(`20260730090000_expand_complete_rpc_model_params.sql`)には CHECK が無いこと、freeze trigger が有効なことを確認する
+- [x] `supabase/migrations/20261022120000_allow_nano_banana_2_1_models.sql`: `20260910120000_allow_gpt_image_2_5_flare_models.sql` を型に、**既存の全値を残したまま** 9 値を末尾へ足す(DROP → ADD の全列挙)。2 テーブルとも。既存の 25 値が本番の `pg_get_constraintdef` と同じ順で残ることを機械的に照合した
+- [x] migration の中で `pg_get_constraintdef` に 9 値と既存の値が含まれることを自己検証する(GPT 2.5 の migration と同じ形)
+- [x] モデル名を並べている制約・関数は、この 2 つの CHECK だけ(本番で確認)。freeze trigger `trg_enforce_image_job_model_immutable` は有効
+- [ ] 本番適用(`supabase db push`)と、適用後の定義の確認
 
 ### Phase 5: UI と i18n
 
