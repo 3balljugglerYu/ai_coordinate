@@ -324,20 +324,42 @@ describe("buildAiCostEstimate", () => {
       expect(MODEL_COST_RATES["gemini-3-pro-image-1k"]?.basis).toBe("published");
     });
 
-    it("gpt-image-2.5-flare は全 canonical が登録済みで、実測するまで 2.0 と同値の derived", () => {
+    it("gpt-image-2.5-flare は全 canonical が登録済みで、1k は本番の実測・2k/4k は外挿", () => {
       // 未登録だと getModelRate() が null になり原価が黙って ¥0 になる。
-      // 単価表は 2.0 と同額だが出力トークン数は未実測なので 1k も derived にしておく。
       expect(GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS).toHaveLength(9);
       for (const model of GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS) {
         const rate = MODEL_COST_RATES[model];
-        expect([model, rate?.basis]).toEqual([model, "derived"]);
-        const counterpart = model.replace("gpt-image-2.5-flare-", "gpt-image-2-");
-        expect([model, rate?.outputUsd]).toEqual([
+        expect([model, rate?.basis]).toEqual([
           model,
-          MODEL_COST_RATES[counterpart]?.outputUsd,
+          model.endsWith("-1k") ? "measured" : "derived",
         ]);
+        // 入力画像は 2.0 と同じ値で数える(単価もトークン数の測り方も同じ)
+        const counterpart = model.replace("gpt-image-2.5-flare-", "gpt-image-2-");
         expect(rate?.inputImageUsd).toBe(MODEL_COST_RATES[counterpart]?.inputImageUsd);
         expect(rate?.provider).toBe("openai");
+      }
+      // 1k の実測値(本番 usage の平均・2026-09-10〜10-22): 出力 171 / 355 / 1078 tok × $30/1M
+      expect(MODEL_COST_RATES["gpt-image-2.5-flare-low-1k"]?.outputUsd).toBeCloseTo(0.00513, 6);
+      expect(MODEL_COST_RATES["gpt-image-2.5-flare-medium-1k"]?.outputUsd).toBeCloseTo(0.01065, 6);
+      expect(MODEL_COST_RATES["gpt-image-2.5-flare-high-1k"]?.outputUsd).toBeCloseTo(0.03234, 6);
+      // 2k/4k は 2.0 と同じピクセル比で外挿する(4194304/1572864・8294400/1572864)
+      expect(MODEL_COST_RATES["gpt-image-2.5-flare-medium-2k"]?.outputUsd).toBeCloseTo(
+        (Math.round((355 * 4194304) / 1572864) * 30) / 1e6,
+        6
+      );
+      expect(MODEL_COST_RATES["gpt-image-2.5-flare-high-4k"]?.outputUsd).toBeCloseTo(
+        (Math.round((1078 * 8294400) / 1572864) * 30) / 1e6,
+        6
+      );
+    });
+
+    it("gpt-image-2.5-flare の medium / high は 2.0 より安く数える(2.0 と同値の仮定に戻さない)", () => {
+      // 2.5 は medium / high で出力トークンが 2.0 の 1/4〜1/6。同値の仮定だと
+      // 原価カードが 2〜3倍高く出ていた(2026-10-22)。
+      for (const quality of ["medium", "high"] as const) {
+        const flare = estimateGenerationCost(`gpt-image-2.5-flare-${quality}-1k`, "one_tap_style")!;
+        const legacy = estimateGenerationCost(`gpt-image-2-${quality}-1k`, "one_tap_style")!;
+        expect([quality, flare.usd < legacy.usd / 2]).toEqual([quality, true]);
       }
     });
 
