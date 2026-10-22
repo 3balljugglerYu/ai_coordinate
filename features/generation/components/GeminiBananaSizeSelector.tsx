@@ -61,23 +61,7 @@ interface GeminiSizeContext {
     | "geminiBanana2SizeTooltipContent"
     | "geminiBananaProSizeTooltipContent"
     | "nanoBanana21SizeTooltipContent";
-  labelKeys: Partial<Record<GeminiBananaSizeTier, SizeLabelKey>>;
 }
-
-type SizeLabelKey =
-  | (typeof SIZE_LABEL_KEYS)[GeminiBananaSizeTier]
-  | (typeof NANO_BANANA_2_1_SIZE_LABEL_KEYS)[NanoBanana21SizeTier];
-
-/**
- * 2.1 のサイズの文言。測ったのは縦長(3:4)だけなので、選択肢には px を書かない
- * (Nano 2 / Pro の「1024px目安」「最大5504px」を流用しない)。px は説明の吹き出しの
- * 実測例(3:4)だけに書く。
- */
-const NANO_BANANA_2_1_SIZE_LABEL_KEYS = {
-  "1k": "nanoBanana21Size1k",
-  "2k": "nanoBanana21Size2k",
-  "4k": "nanoBanana21Size4k",
-} as const satisfies Record<NanoBanana21SizeTier, string>;
 
 function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null {
   const nano21 = parseNanoBanana21Model(value);
@@ -93,7 +77,6 @@ function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null 
             )
           : null,
       tooltipContentKey: "nanoBanana21SizeTooltipContent",
-      labelKeys: NANO_BANANA_2_1_SIZE_LABEL_KEYS,
     };
   }
   const parsed = parseGeminiBananaModel(value);
@@ -108,7 +91,6 @@ function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null 
       parsed.family === "nano-2"
         ? "geminiBanana2SizeTooltipContent"
         : "geminiBananaProSizeTooltipContent",
-    labelKeys: SIZE_LABEL_KEYS,
   };
 }
 
@@ -193,9 +175,9 @@ export function GeminiBananaSizeSelector({
               isGuest && !isCanonicalGuestAllowedModel(optionModel);
             const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
             const isLocked = isGuestLocked || isPlanLocked;
-            const label = t(
-              context.labelKeys[sizeTier] ?? SIZE_LABEL_KEYS[sizeTier]
-            );
+            // 選択肢は全モデル「名前：0.5K / 1K / 2K / 4K」で px を書かない。
+            // px は縦横比で変わるので、説明の吹き出し(tooltipContentKey)にだけ書く
+            const label = t(SIZE_LABEL_KEYS[sizeTier]);
             const optionContent = (
               <span className="flex w-full items-center">
                 <span>{label}</span>

@@ -1036,12 +1036,15 @@ export const koMessages = {
     poseModeKeepDescription:
       "원본 이미지의 포즈와 카메라 앵글을 최대한 유지합니다",
     modelLabel: "생성 모델 선택",
-    modelTooltipAria: "렌더링 품질 차이 표시",
-    modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성. 약 30초.\nMedium: 균형 중시. 약 70초.\nHigh: 디테일이 잘 깨지지 않음. 약 180초.",
-    gptImage2QualityLabel: "렌더링 품질",
+    modelTooltipAria: "품질 차이 표시",
+    modelTooltipContent: "💡 High에 가까울수록 얼굴과 옷의 디테일이 잘 깨지지 않습니다.\nLow: 빠르게 생성.\nMedium: 균형 중시.\nHigh: 디테일이 잘 깨지지 않음.",
+    gptImage2QualityLabel: "품질",
     gptImage2QualityLow: "빠르게 생성",
     gptImage2QualityMedium: "균형 있게 생성",
     gptImage2QualityHigh: "정성껏 생성",
+    gptImage25QualityLow: "빠르게 생성",
+    gptImage25QualityMedium: "균형 있게 생성",
+    gptImage25QualityHigh: "정성껏 생성",
     modelLight05k: "라이트 모델: Nano Banana 2 | 0.5K (10 Percoin / 장)",
     modelStandard1k: "스탠다드 모델: Nano Banana 2 | 1K (20 Percoin / 장)",
     modelPro1k:
@@ -1072,12 +1075,12 @@ export const koMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "표준 (1K 상당)",
-    gptImage2Size2k: "고해상도 (2K 상당)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / 장",
     geminiBananaSizeLabel: "출력 크기",
-    geminiBananaSizeDescription: "해상도가 클수록 Percoin 소비가 늘어납니다.",
+    geminiBananaSizeDescription: "실제 크기는 이미지 방향에 맞춰 자동으로 조정됩니다. 출력 크기에 따라 Percoin 비용이 달라집니다.",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1097,9 +1100,6 @@ export const koMessages = {
     nanoBanana21QualityHigh: "정성껏 생성",
     nanoBanana21SizeTooltipContent:
       "Nano Banana 2.1에서 선택할 수 있는 출력 크기입니다. 선택한 크기의 한도 안에서 입력 이미지의 화면비에 최대한 맞춰 생성합니다.\n\n─ 1K ─\n세로(3:4) 예: 896 × 1200px\n확인이나 게시에 쓰기 좋은 크기입니다.\n\n─ 2K ─\n세로(3:4) 예: 1792 × 2400px\n더 크고 세부를 보기 쉬운 크기입니다.\n\n─ 4K ─\n세로(3:4) 예: 3584 × 4800px\n마무리용 고해상도 크기입니다.\n\n크기를 키우면 세부를 확인하기 쉬워지지만, 생성 시간과 소비 페르코인이 늘어납니다.",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "게스트 미리보기 결과",
     guestResultTitle: "결과",

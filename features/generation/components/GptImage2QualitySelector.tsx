@@ -27,6 +27,7 @@ import {
   type GeminiModel,
   type GptImage2Quality,
 } from "@/features/generation/types";
+import type { OpenAIImageFamily } from "@/shared/generation/openai-image-model";
 import type { ModelSelectAuthState } from "./LockableModelSelect";
 
 interface GptImage2QualitySelectorProps {
@@ -40,22 +41,31 @@ interface GptImage2QualitySelectorProps {
 
 interface QualityOption {
   value: GptImage2Quality;
-  labelKey:
-    | "gptImage2QualityLow"
-    | "gptImage2QualityMedium"
-    | "gptImage2QualityHigh";
   tierTag: ModelTagKey;
 }
 
 const QUALITY_OPTIONS: ReadonlyArray<QualityOption> = [
-  { value: "low", labelKey: "gptImage2QualityLow", tierTag: "tierLight" },
-  {
-    value: "medium",
-    labelKey: "gptImage2QualityMedium",
-    tierTag: "tierBalanced",
-  },
-  { value: "high", labelKey: "gptImage2QualityHigh", tierTag: "tierQuality" },
+  { value: "low", tierTag: "tierLight" },
+  { value: "medium", tierTag: "tierBalanced" },
+  { value: "high", tierTag: "tierQuality" },
 ];
+
+/**
+ * 品質の行の文言。時間の目安は本番の記録の実際の待ち時間に合わせているので、
+ * family ごとに持つ(2.5 は 2.0 の約半分。2026-10-23 にメニューの文言をそろえた)。
+ */
+const QUALITY_LABEL_KEYS = {
+  "gpt-image-2": {
+    low: "gptImage2QualityLow",
+    medium: "gptImage2QualityMedium",
+    high: "gptImage2QualityHigh",
+  },
+  "gpt-image-2.5-flare": {
+    low: "gptImage25QualityLow",
+    medium: "gptImage25QualityMedium",
+    high: "gptImage25QualityHigh",
+  },
+} as const satisfies Record<OpenAIImageFamily, Record<GptImage2Quality, string>>;
 
 /**
  * ChatGPT Images（2.0 / 2.5）を選択中のときに表示される「レンダリング品質（Low/Medium/High）」セレクター。
@@ -138,7 +148,7 @@ export function GptImage2QualitySelector({
             const tagDisplay = MODEL_TAG_DISPLAY[option.tierTag];
             const optionContent = (
               <span className="flex items-center gap-2">
-                <span>{t(option.labelKey)}</span>
+                <span>{t(QUALITY_LABEL_KEYS[parsed.family][option.value])}</span>
                 <Badge
                   className={cn(
                     "px-1.5 py-0 text-[10px] leading-4 font-medium",

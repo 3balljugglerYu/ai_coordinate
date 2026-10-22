@@ -1035,12 +1035,15 @@ export const zhTwMessages = {
     poseModeKeepDescription:
       "盡可能保持原圖的姿勢和相機視角",
     modelLabel: "選擇生成模型",
-    modelTooltipAria: "顯示渲染品質的差異",
-    modelTooltipContent: "💡 越接近 High，臉部和服裝的細節越不容易崩壞。\nLow：生成快。約 30 秒。\nMedium：均衡。約 70 秒。\nHigh：細節不易崩壞。約 180 秒。",
-    gptImage2QualityLabel: "渲染品質",
+    modelTooltipAria: "顯示品質的差異",
+    modelTooltipContent: "💡 越接近 High，臉部和服裝的細節越不容易崩壞。\nLow：生成快。\nMedium：均衡。\nHigh：細節不易崩壞。",
+    gptImage2QualityLabel: "品質",
     gptImage2QualityLow: "快速生成",
     gptImage2QualityMedium: "均衡生成",
     gptImage2QualityHigh: "精細生成",
+    gptImage25QualityLow: "快速生成",
+    gptImage25QualityMedium: "均衡生成",
+    gptImage25QualityHigh: "精細生成",
     modelLight05k: "輕量模型: Nano Banana 2 | 0.5K (10 Percoin / 張)",
     modelStandard1k: "標準模型: Nano Banana 2 | 1K (20 Percoin / 張)",
     modelPro1k:
@@ -1071,12 +1074,12 @@ export const zhTwMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "標準（約 1K）",
-    gptImage2Size2k: "高解析度（約 2K）",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / 張",
     geminiBananaSizeLabel: "輸出尺寸",
-    geminiBananaSizeDescription: "解析度越大，消耗的 Percoin 越多。",
+    geminiBananaSizeDescription: "實際尺寸會依圖片方向自動調整。Percoin 消耗會隨輸出尺寸變化。",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1096,9 +1099,6 @@ export const zhTwMessages = {
     nanoBanana21QualityHigh: "精細生成",
     nanoBanana21SizeTooltipContent:
       "Nano Banana 2.1 可選擇的輸出尺寸。在所選尺寸的上限內，盡量貼合輸入圖像的長寬比生成。\n\n─ 1K ─\n直圖（3:4）範例：896 × 1200px\n方便確認與發布。\n\n─ 2K ─\n直圖（3:4）範例：1792 × 2400px\n更大，細節更容易看清。\n\n─ 4K ─\n直圖（3:4）範例：3584 × 4800px\n適合最終成品的高解析度尺寸。\n\n尺寸越大越方便查看細節，但生成時間更長，消耗的 Percoin 也更多。",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "訪客預覽結果",
     guestResultTitle: "結果",

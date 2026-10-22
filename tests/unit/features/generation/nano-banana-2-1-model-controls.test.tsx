@@ -126,13 +126,10 @@ const labels: Record<string, string> = {
   nanoBanana21QualityMedium: "バランス良く生成",
   nanoBanana21QualityHigh: "丁寧に生成",
   geminiBananaSizeLabel: "出力サイズを選択",
-  geminiBananaSize05k: "0.5K",
-  geminiBananaSize1k: "1K",
-  geminiBananaSize2k: "2K",
-  geminiBananaSize4k: "最大5504px",
-  nanoBanana21Size1k: "標準：1K",
-  nanoBanana21Size2k: "高解像度：2K",
-  nanoBanana21Size4k: "最高解像度：4K",
+  geminiBananaSize05k: "軽量：0.5K",
+  geminiBananaSize1k: "標準：1K",
+  geminiBananaSize2k: "高解像度：2K",
+  geminiBananaSize4k: "最高解像度：4K",
   geminiBanana2SizeTooltipContent: "nano2-size-tooltip",
   geminiBananaProSizeTooltipContent: "pro-size-tooltip",
   nanoBanana21SizeTooltipContent: "nano21-size-tooltip",
@@ -308,8 +305,8 @@ describe("GeminiBananaSizeSelector の Nano Banana 2.1", () => {
     return onChange;
   }
 
-  test("2.1 は 1K / 2K / 4K を、2.1 用の文言で出す(Nano 2 / Pro の px の目安は使わない)", () => {
-    // 測ったのは 3:4 だけなので、選択肢には px を書かない(px は説明の吹き出しの実測例だけ)
+  test("2.1 は 1K / 2K / 4K を、ほかの Gemini と同じ文言で出す(px は説明の吹き出しだけ)", () => {
+    // 2026-10-23 にモデルのメニューの文言を「名前：1K」の形にそろえた
     renderSize("gemini-nano-banana-2.1-medium-1k");
 
     const options = Array.from(document.querySelectorAll("[data-option]")).map(
@@ -319,7 +316,6 @@ describe("GeminiBananaSizeSelector の Nano Banana 2.1", () => {
     expect(screen.getByText("標準：1K")).toBeInTheDocument();
     expect(screen.getByText("高解像度：2K")).toBeInTheDocument();
     expect(screen.getByText("最高解像度：4K")).toBeInTheDocument();
-    expect(screen.queryByText("最大5504px")).not.toBeInTheDocument();
   });
 
   test("サイズを変えても考える量は保つ", () => {
@@ -328,12 +324,5 @@ describe("GeminiBananaSizeSelector の Nano Banana 2.1", () => {
     fireEvent.click(screen.getByText("高解像度：2K"));
 
     expect(onChange).toHaveBeenCalledWith("gemini-nano-banana-2.1-high-2k");
-  });
-
-  test("Pro の 4K は今までどおり Pro の文言のまま", () => {
-    renderSize("gemini-3-pro-image-1k");
-
-    expect(screen.getByText("最大5504px")).toBeInTheDocument();
-    expect(screen.queryByText("最高解像度：4K")).not.toBeInTheDocument();
   });
 });

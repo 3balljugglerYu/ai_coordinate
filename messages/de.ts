@@ -1040,12 +1040,15 @@ export const deMessages = {
     poseModeKeepDescription:
       "Behält Pose und Kamerawinkel des Originalbilds so weit wie möglich bei.",
     modelLabel: "Wähle ein Generierungsmodell",
-    modelTooltipAria: "Unterschiede der Renderqualität anzeigen",
-    modelTooltipContent: "💡 Je höher, desto weniger werden Gesicht und Kleidung verzerrt.\nLow: schnelle Generierung. ca. 30 s.\nMedium: ausgewogen. ca. 70 s.\nHigh: stabile Details. ca. 180 s.",
-    gptImage2QualityLabel: "Renderqualität",
+    modelTooltipAria: "Unterschiede der Qualität anzeigen",
+    modelTooltipContent: "💡 Je höher, desto weniger werden Gesicht und Kleidung verzerrt.\nLow: schnelle Generierung.\nMedium: ausgewogen.\nHigh: stabile Details.",
+    gptImage2QualityLabel: "Qualität",
     gptImage2QualityLow: "Schnell generieren",
     gptImage2QualityMedium: "Ausgewogen generieren",
     gptImage2QualityHigh: "Sorgfältig generieren",
+    gptImage25QualityLow: "Schnell generieren",
+    gptImage25QualityMedium: "Ausgewogen generieren",
+    gptImage25QualityHigh: "Sorgfältig generieren",
     modelLight05k: "Light-Modell: Nano Banana 2 | 0.5K (10 Percoins / Bild)",
     modelStandard1k: "Standard-Modell: Nano Banana 2 | 1K (20 Percoins / Bild)",
     modelPro1k:
@@ -1076,12 +1079,12 @@ export const deMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "Standard (entspricht 1K)",
-    gptImage2Size2k: "Hohe Auflösung (entspricht 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / Bild",
     geminiBananaSizeLabel: "Ausgabegröße",
-    geminiBananaSizeDescription: "Höhere Auflösung verbraucht mehr Percoins.",
+    geminiBananaSizeDescription: "Die tatsächlichen Abmessungen werden automatisch an die Bildausrichtung angepasst. Die Percoin-Kosten ändern sich je nach Ausgabegröße.",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1101,9 +1104,6 @@ export const deMessages = {
     nanoBanana21QualityHigh: "Sorgfältig generieren",
     nanoBanana21SizeTooltipContent:
       "Verfügbare Ausgabegrößen für Nano Banana 2.1. Das Bild folgt so gut wie möglich dem Seitenverhältnis deines Eingabebilds, innerhalb der gewählten Größe.\n\n─ 1K ─\nBeispiel Hochformat (3:4): 896 × 1200 px\nGut zum Prüfen und Posten.\n\n─ 2K ─\nBeispiel Hochformat (3:4): 1792 × 2400 px\nGrößer, Details sind besser zu sehen.\n\n─ 4K ─\nBeispiel Hochformat (3:4): 3584 × 4800 px\nHohe Auflösung für den letzten Schliff.\n\nGrößere Bilder zeigen mehr Details, dauern aber länger und verbrauchen mehr Percoins.",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Gastvorschau-Ergebnis",
     guestResultTitle: "Ergebnis",

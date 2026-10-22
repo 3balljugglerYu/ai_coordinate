@@ -1036,12 +1036,15 @@ export const viMessages = {
     poseModeKeepDescription:
       "Giữ tư thế và góc máy của ảnh gốc nhiều nhất có thể.",
     modelLabel: "Chọn mô hình tạo",
-    modelTooltipAria: "Hiển thị sự khác biệt về chất lượng kết xuất",
-    modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh. khoảng 30 giây.\nMedium: cân bằng. khoảng 70 giây.\nHigh: chi tiết ổn định. khoảng 180 giây.",
-    gptImage2QualityLabel: "Chất lượng kết xuất",
+    modelTooltipAria: "Hiển thị sự khác biệt về chất lượng",
+    modelTooltipContent: "💡 Càng cao, khuôn mặt và quần áo càng ít bị lỗi.\nLow: tạo nhanh.\nMedium: cân bằng.\nHigh: chi tiết ổn định.",
+    gptImage2QualityLabel: "Chất lượng",
     gptImage2QualityLow: "Tạo nhanh",
     gptImage2QualityMedium: "Tạo cân bằng",
     gptImage2QualityHigh: "Tạo kỹ lưỡng",
+    gptImage25QualityLow: "Tạo nhanh",
+    gptImage25QualityMedium: "Tạo cân bằng",
+    gptImage25QualityHigh: "Tạo kỹ lưỡng",
     modelLight05k: "Mô hình nhẹ: Nano Banana 2 | 0.5K (10 Percoin / hình)",
     modelStandard1k: "Mô hình tiêu chuẩn: Nano Banana 2 | 1K (20 Percoin / hình)",
     modelPro1k:
@@ -1072,12 +1075,12 @@ export const viMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "Tiêu chuẩn (tương đương 1K)",
-    gptImage2Size2k: "Độ phân giải cao (tương đương 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / hình",
     geminiBananaSizeLabel: "Kích thước đầu ra",
-    geminiBananaSizeDescription: "Độ phân giải càng cao, tiêu thụ càng nhiều Percoin.",
+    geminiBananaSizeDescription: "Kích thước thực tế được tự động điều chỉnh theo hướng ảnh. Chi phí Percoin thay đổi theo kích thước đầu ra.",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1097,9 +1100,6 @@ export const viMessages = {
     nanoBanana21QualityHigh: "Tạo kỹ lưỡng",
     nanoBanana21SizeTooltipContent:
       "Các kích thước đầu ra có thể chọn với Nano Banana 2.1. Ảnh sẽ bám theo tỷ lệ khung hình của ảnh đầu vào nhiều nhất có thể, trong giới hạn kích thước đã chọn.\n\n─ 1K ─\nVí dụ ảnh dọc (3:4): 896 × 1200 px\nTiện để kiểm tra và đăng bài.\n\n─ 2K ─\nVí dụ ảnh dọc (3:4): 1792 × 2400 px\nLớn hơn, dễ xem chi tiết hơn.\n\n─ 4K ─\nVí dụ ảnh dọc (3:4): 3584 × 4800 px\nĐộ phân giải cao để hoàn thiện.\n\nKích thước lớn hơn cho nhiều chi tiết hơn, nhưng lâu hơn và tốn nhiều Percoin hơn.",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Kết quả xem trước cho khách",
     guestResultTitle: "Kết quả",

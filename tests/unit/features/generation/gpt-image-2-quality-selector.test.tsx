@@ -81,6 +81,9 @@ const labels: Record<string, string> = {
   gptImage2QualityLow: "Generate quickly",
   gptImage2QualityMedium: "Generate balanced",
   gptImage2QualityHigh: "Generate carefully",
+  gptImage25QualityLow: "2.5 quickly",
+  gptImage25QualityMedium: "2.5 balanced",
+  gptImage25QualityHigh: "2.5 carefully",
   modelTooltipAria: "Show how the models differ",
   modelTooltipContent: "",
   modelTagTierLight: "Low",
@@ -133,6 +136,22 @@ describe("GptImage2QualitySelector", () => {
     ).toBeInTheDocument();
   });
 
+  test("ChatGPT Images 2.5 は 2.5 用の文言(時間の目安が 2.0 と違う)を出す", () => {
+    // 2.5 は待ち時間が 2.0 の約半分。同じ文言だと 2.5 の時間を長く書いてしまう(2026-10-23)
+    render(
+      <GptImage2QualitySelector
+        value="gpt-image-2.5-flare-medium-1k"
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: /2\.5 quickly/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2\.5 balanced/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /2\.5 carefully/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Generate quickly/ })).not.toBeInTheDocument();
+  });
+
   test("authenticated は size tier を保持したまま quality を合成する", () => {
     const onChange = jest.fn();
     render(
@@ -159,7 +178,7 @@ describe("GptImage2QualitySelector", () => {
         onLockedClick={jest.fn()}
       />
     );
-    fireEvent.click(screen.getByRole("button", { name: /Generate carefully/ }));
+    fireEvent.click(screen.getByRole("button", { name: /2\.5 carefully/ }));
     expect(onChange).toHaveBeenCalledWith("gpt-image-2.5-flare-high-2k");
   });
 
