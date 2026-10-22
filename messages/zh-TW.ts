@@ -1096,6 +1096,8 @@ export const zhTwMessages = {
     nanoBanana21QualityHigh: "精細生成",
     nanoBanana21SizeTooltipContent:
       "Nano Banana 2.1 可選擇的輸出尺寸。在所選尺寸的上限內，盡量貼合輸入圖像的長寬比生成。\n\n─ 1K ─\n直圖（3:4）範例：896 × 1200px\n方便確認與發布。\n\n─ 2K ─\n直圖（3:4）範例：1792 × 2400px\n更大，細節更容易看清。\n\n─ 4K ─\n直圖（3:4）範例：3584 × 4800px\n適合最終成品的高解析度尺寸。\n\n尺寸越大越方便查看細節，但生成時間更長，消耗的 Percoin 也更多。",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
     nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "訪客預覽結果",

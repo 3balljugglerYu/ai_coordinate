@@ -10,7 +10,6 @@ import { NANO_BANANA_2_1_PARSED_MODELS } from "@/shared/generation/gemini-banana
  * 未知モデル ID や null 入力では null を返す。呼び出し側はこの場合、
  * モデル名ブロックを描画しない（ADR-002）。
  */
-
 export function getModelBrandName(
   model: string | null | undefined,
 ): string | null {

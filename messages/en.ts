@@ -1098,7 +1098,9 @@ export const enMessages = {
     nanoBanana21QualityHigh: "Generate carefully",
     nanoBanana21SizeTooltipContent:
       "Output sizes available for Nano Banana 2.1. The image follows the aspect ratio of your input as closely as possible, within the limit of the size you choose.\n\n─ 1K ─\nPortrait (3:4) example: 896 × 1200 px\nEasy to use for checking and posting.\n\n─ 2K ─\nPortrait (3:4) example: 1792 × 2400 px\nLarger, with easier-to-see details.\n\n─ 4K ─\nPortrait (3:4) example: 3584 × 4800 px\nHigh resolution for finishing.\n\nLarger sizes show more detail, but take longer and use more Percoins.",
-    nanoBanana21Size4k: "Maximum resolution: approx. 4800 px",
+    nanoBanana21Size1k: "Standard: 1K",
+    nanoBanana21Size2k: "High resolution: 2K",
+    nanoBanana21Size4k: "Maximum resolution: 4K",
     // Phase 6: guest UI
     guestResultAlt: "Guest preview result",
     guestResultTitle: "Result",

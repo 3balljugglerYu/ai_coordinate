@@ -1101,6 +1101,8 @@ export const deMessages = {
     nanoBanana21QualityHigh: "Sorgfältig generieren",
     nanoBanana21SizeTooltipContent:
       "Verfügbare Ausgabegrößen für Nano Banana 2.1. Das Bild folgt so gut wie möglich dem Seitenverhältnis deines Eingabebilds, innerhalb der gewählten Größe.\n\n─ 1K ─\nBeispiel Hochformat (3:4): 896 × 1200 px\nGut zum Prüfen und Posten.\n\n─ 2K ─\nBeispiel Hochformat (3:4): 1792 × 2400 px\nGrößer, Details sind besser zu sehen.\n\n─ 4K ─\nBeispiel Hochformat (3:4): 3584 × 4800 px\nHohe Auflösung für den letzten Schliff.\n\nGrößere Bilder zeigen mehr Details, dauern aber länger und verbrauchen mehr Percoins.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
     nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Gastvorschau-Ergebnis",

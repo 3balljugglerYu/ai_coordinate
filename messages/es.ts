@@ -1100,6 +1100,8 @@ export const esMessages = {
     nanoBanana21QualityHigh: "Genera cuidadosamente",
     nanoBanana21SizeTooltipContent:
       "Tamaños de salida disponibles en Nano Banana 2.1. La imagen sigue en lo posible la relación de aspecto de tu imagen de entrada, dentro del límite del tamaño elegido.\n\n─ 1K ─\nEjemplo vertical (3:4): 896 × 1200 px\nCómodo para revisar y publicar.\n\n─ 2K ─\nEjemplo vertical (3:4): 1792 × 2400 px\nMás grande, con detalles más fáciles de ver.\n\n─ 4K ─\nEjemplo vertical (3:4): 3584 × 4800 px\nAlta resolución para el acabado.\n\nLos tamaños más grandes muestran más detalle, pero tardan más y usan más Percoins.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
     nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Resultado de previsualización para invitados",

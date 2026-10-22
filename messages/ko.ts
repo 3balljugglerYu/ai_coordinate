@@ -1097,6 +1097,8 @@ export const koMessages = {
     nanoBanana21QualityHigh: "정성껏 생성",
     nanoBanana21SizeTooltipContent:
       "Nano Banana 2.1에서 선택할 수 있는 출력 크기입니다. 선택한 크기의 한도 안에서 입력 이미지의 화면비에 최대한 맞춰 생성합니다.\n\n─ 1K ─\n세로(3:4) 예: 896 × 1200px\n확인이나 게시에 쓰기 좋은 크기입니다.\n\n─ 2K ─\n세로(3:4) 예: 1792 × 2400px\n더 크고 세부를 보기 쉬운 크기입니다.\n\n─ 4K ─\n세로(3:4) 예: 3584 × 4800px\n마무리용 고해상도 크기입니다.\n\n크기를 키우면 세부를 확인하기 쉬워지지만, 생성 시간과 소비 페르코인이 늘어납니다.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
     nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "게스트 미리보기 결과",

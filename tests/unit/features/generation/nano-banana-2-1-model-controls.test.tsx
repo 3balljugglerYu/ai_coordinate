@@ -130,7 +130,9 @@ const labels: Record<string, string> = {
   geminiBananaSize1k: "1K",
   geminiBananaSize2k: "2K",
   geminiBananaSize4k: "最大5504px",
-  nanoBanana21Size4k: "約4800px",
+  nanoBanana21Size1k: "標準：1K",
+  nanoBanana21Size2k: "高解像度：2K",
+  nanoBanana21Size4k: "最高解像度：4K",
   geminiBanana2SizeTooltipContent: "nano2-size-tooltip",
   geminiBananaProSizeTooltipContent: "pro-size-tooltip",
   nanoBanana21SizeTooltipContent: "nano21-size-tooltip",
@@ -302,21 +304,24 @@ describe("GeminiBananaSizeSelector の Nano Banana 2.1", () => {
     return onChange;
   }
 
-  test("2.1 は 1K / 2K / 4K を出し、4K は 2.1 の文言(約4800px)にする", () => {
+  test("2.1 は 1K / 2K / 4K を、2.1 用の文言で出す(Nano 2 / Pro の px の目安は使わない)", () => {
+    // 測ったのは 3:4 だけなので、選択肢には px を書かない(px は説明の吹き出しの実測例だけ)
     renderSize("gemini-nano-banana-2.1-medium-1k");
 
     const options = Array.from(document.querySelectorAll("[data-option]")).map(
       (el) => el.getAttribute("data-option")
     );
     expect(options).toEqual(["1k", "2k", "4k"]);
-    expect(screen.getByText("約4800px")).toBeInTheDocument();
+    expect(screen.getByText("標準：1K")).toBeInTheDocument();
+    expect(screen.getByText("高解像度：2K")).toBeInTheDocument();
+    expect(screen.getByText("最高解像度：4K")).toBeInTheDocument();
     expect(screen.queryByText("最大5504px")).not.toBeInTheDocument();
   });
 
   test("サイズを変えても考える量は保つ", () => {
     const onChange = renderSize("gemini-nano-banana-2.1-high-1k");
 
-    fireEvent.click(screen.getByText("2K"));
+    fireEvent.click(screen.getByText("高解像度：2K"));
 
     expect(onChange).toHaveBeenCalledWith("gemini-nano-banana-2.1-high-2k");
   });
@@ -325,6 +330,6 @@ describe("GeminiBananaSizeSelector の Nano Banana 2.1", () => {
     renderSize("gemini-3-pro-image-1k");
 
     expect(screen.getByText("最大5504px")).toBeInTheDocument();
-    expect(screen.queryByText("約4800px")).not.toBeInTheDocument();
+    expect(screen.queryByText("最高解像度：4K")).not.toBeInTheDocument();
   });
 });

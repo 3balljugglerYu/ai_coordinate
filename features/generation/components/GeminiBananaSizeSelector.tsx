@@ -61,9 +61,23 @@ interface GeminiSizeContext {
     | "geminiBanana2SizeTooltipContent"
     | "geminiBananaProSizeTooltipContent"
     | "nanoBanana21SizeTooltipContent";
-  /** 4K の文言。2.1 は Pro の「最大 5504px」を流用しない(実測 3:4 で 3584×4800) */
-  size4kLabelKey: "geminiBananaSize4k" | "nanoBanana21Size4k";
+  labelKeys: Partial<Record<GeminiBananaSizeTier, SizeLabelKey>>;
 }
+
+type SizeLabelKey =
+  | (typeof SIZE_LABEL_KEYS)[GeminiBananaSizeTier]
+  | (typeof NANO_BANANA_2_1_SIZE_LABEL_KEYS)[NanoBanana21SizeTier];
+
+/**
+ * 2.1 のサイズの文言。測ったのは縦長(3:4)だけなので、選択肢には px を書かない
+ * (Nano 2 / Pro の「1024px目安」「最大5504px」を流用しない)。px は説明の吹き出しの
+ * 実測例(3:4)だけに書く。
+ */
+const NANO_BANANA_2_1_SIZE_LABEL_KEYS = {
+  "1k": "nanoBanana21Size1k",
+  "2k": "nanoBanana21Size2k",
+  "4k": "nanoBanana21Size4k",
+} as const satisfies Record<NanoBanana21SizeTier, string>;
 
 function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null {
   const nano21 = parseNanoBanana21Model(value);
@@ -79,7 +93,7 @@ function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null 
             )
           : null,
       tooltipContentKey: "nanoBanana21SizeTooltipContent",
-      size4kLabelKey: "nanoBanana21Size4k",
+      labelKeys: NANO_BANANA_2_1_SIZE_LABEL_KEYS,
     };
   }
   const parsed = parseGeminiBananaModel(value);
@@ -94,7 +108,7 @@ function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null 
       parsed.family === "nano-2"
         ? "geminiBanana2SizeTooltipContent"
         : "geminiBananaProSizeTooltipContent",
-    size4kLabelKey: "geminiBananaSize4k",
+    labelKeys: SIZE_LABEL_KEYS,
   };
 }
 
@@ -180,7 +194,7 @@ export function GeminiBananaSizeSelector({
             const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
             const isLocked = isGuestLocked || isPlanLocked;
             const label = t(
-              sizeTier === "4k" ? context.size4kLabelKey : SIZE_LABEL_KEYS[sizeTier]
+              context.labelKeys[sizeTier] ?? SIZE_LABEL_KEYS[sizeTier]
             );
             const optionContent = (
               <span className="flex w-full items-center">

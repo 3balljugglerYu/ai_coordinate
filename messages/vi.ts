@@ -1097,6 +1097,8 @@ export const viMessages = {
     nanoBanana21QualityHigh: "Tạo kỹ lưỡng",
     nanoBanana21SizeTooltipContent:
       "Các kích thước đầu ra có thể chọn với Nano Banana 2.1. Ảnh sẽ bám theo tỷ lệ khung hình của ảnh đầu vào nhiều nhất có thể, trong giới hạn kích thước đã chọn.\n\n─ 1K ─\nVí dụ ảnh dọc (3:4): 896 × 1200 px\nTiện để kiểm tra và đăng bài.\n\n─ 2K ─\nVí dụ ảnh dọc (3:4): 1792 × 2400 px\nLớn hơn, dễ xem chi tiết hơn.\n\n─ 4K ─\nVí dụ ảnh dọc (3:4): 3584 × 4800 px\nĐộ phân giải cao để hoàn thiện.\n\nKích thước lớn hơn cho nhiều chi tiết hơn, nhưng lâu hơn và tốn nhiều Percoin hơn.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
     nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Kết quả xem trước cho khách",

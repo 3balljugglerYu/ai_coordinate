@@ -18,7 +18,7 @@ import {
 } from "@/features/generation/lib/model-config";
 import {
   MODEL_TAG_DISPLAY,
-  type ModelTagKey,
+  getModelTagsForCanonicalModel,
 } from "@/features/generation/lib/model-tags";
 import { LabelInfoTooltip } from "@/components/LabelInfoTooltip";
 import {
@@ -45,17 +45,14 @@ interface QualityOption {
     | "nanoBanana21QualityLow"
     | "nanoBanana21QualityMedium"
     | "nanoBanana21QualityHigh";
-  tierTag: ModelTagKey;
 }
 
+// 品質チップ(Low / Medium / High)は、生成一覧と同じ getModelTagsForCanonicalModel から
+// 引く。考える量とチップの対応を 1 か所(model-tags.ts)にだけ持つため。
 const QUALITY_OPTIONS: ReadonlyArray<QualityOption> = [
-  { value: "minimal", labelKey: "nanoBanana21QualityLow", tierTag: "tierLight" },
-  {
-    value: "medium",
-    labelKey: "nanoBanana21QualityMedium",
-    tierTag: "tierBalanced",
-  },
-  { value: "high", labelKey: "nanoBanana21QualityHigh", tierTag: "tierQuality" },
+  { value: "minimal", labelKey: "nanoBanana21QualityLow" },
+  { value: "medium", labelKey: "nanoBanana21QualityMedium" },
+  { value: "high", labelKey: "nanoBanana21QualityHigh" },
 ];
 
 /**
@@ -135,18 +132,21 @@ export function NanoBanana21QualitySelector({
               isGuest && !isCanonicalGuestAllowedModel(optionModel);
             const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
             const isLocked = isGuestLocked || isPlanLocked;
-            const tagDisplay = MODEL_TAG_DISPLAY[option.tierTag];
+            const [tierTag] = getModelTagsForCanonicalModel(optionModel);
+            const tagDisplay = tierTag ? MODEL_TAG_DISPLAY[tierTag] : null;
             const optionContent = (
               <span className="flex items-center gap-2">
                 <span>{t(option.labelKey)}</span>
-                <Badge
-                  className={cn(
-                    "px-1.5 py-0 text-[10px] leading-4 font-medium",
-                    tagDisplay.className
-                  )}
-                >
-                  {t(tagDisplay.messageKey)}
-                </Badge>
+                {tagDisplay ? (
+                  <Badge
+                    className={cn(
+                      "px-1.5 py-0 text-[10px] leading-4 font-medium",
+                      tagDisplay.className
+                    )}
+                  >
+                    {t(tagDisplay.messageKey)}
+                  </Badge>
+                ) : null}
               </span>
             );
             return (

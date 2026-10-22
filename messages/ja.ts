@@ -1079,7 +1079,9 @@ export const jaMessages = {
     nanoBanana21QualityHigh: "丁寧に生成：30秒程度で生成",
     nanoBanana21SizeTooltipContent:
       "Nano Banana 2.1 で選べる出力サイズです。入力画像のアスペクト比にできる限り合わせ、選んだサイズの上限内で生成します。\n\n─ 1K ─\n縦長（3:4）の例：896 × 1200px\n通常の確認や投稿に使いやすいサイズです。\n\n─ 2K ─\n縦長（3:4）の例：1792 × 2400px\nより大きく、細部を見やすいサイズです。\n\n─ 4K ─\n縦長（3:4）の例：3584 × 4800px\n仕上げ向きの高精細サイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
-    nanoBanana21Size4k: "最高解像度：約4800px",
+    nanoBanana21Size1k: "標準：1K",
+    nanoBanana21Size2k: "高解像度：2K",
+    nanoBanana21Size4k: "最高解像度：4K",
     // Phase 6: ゲスト用 UI
     guestResultAlt: "お試し生成結果",
     guestResultTitle: "生成結果",

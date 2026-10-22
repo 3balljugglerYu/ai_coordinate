@@ -1099,6 +1099,8 @@ export const idMessages = {
     nanoBanana21QualityHigh: "Hasilkan dengan teliti",
     nanoBanana21SizeTooltipContent:
       "Ukuran keluaran yang tersedia untuk Nano Banana 2.1. Gambar mengikuti rasio aspek gambar masukan sebisa mungkin, dalam batas ukuran yang dipilih.\n\n─ 1K ─\nContoh potret (3:4): 896 × 1200 px\nPraktis untuk memeriksa dan memposting.\n\n─ 2K ─\nContoh potret (3:4): 1792 × 2400 px\nLebih besar, detail lebih mudah terlihat.\n\n─ 4K ─\nContoh potret (3:4): 3584 × 4800 px\nResolusi tinggi untuk hasil akhir.\n\nUkuran lebih besar menampilkan lebih banyak detail, tetapi butuh waktu lebih lama dan lebih banyak Percoin.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
     nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Hasil pratinjau tamu",
