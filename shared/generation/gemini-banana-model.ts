@@ -240,18 +240,22 @@ export function getNanoBanana21ImageSize(
 }
 
 /**
- * 2.1 のペルコイン消費量(計画書 §0・ADR-003)。画面の品質 low / medium / high が、
- * GPT の同じ品質・サイズと同額。2026-10-22 に GPT 2.5 の実原価と比べて据え置いた(§10-1)。
- * Next.js(MODEL_PERCOIN_COSTS)が読む。worker も Phase 3 からこの表を読む(REQ-011・今は worker に独自の表がある)。
+ * 2.1 のペルコイン消費量(計画書 §0・ADR-003)。
+ *
+ * 2026-10-22 にユーザー決定で改定: **GPT の同じ品質・サイズに +10**。
+ * Low 1K を Nano Banana 2 の 1K(20)に合わせ、品質とサイズの上げ幅は GPT と同じにした。
+ * 根拠は本番の長さの指示での実測(§10-2): 2.1 Low 1K は 1 回 約 ¥6.6 で、10 のままだと
+ * 1pc あたり 約 ¥0.66 と、GPT 2.5 Low(約 ¥0.31)の倍だった。20 で 約 ¥0.33 になる。
+ * Next.js(MODEL_PERCOIN_COSTS)と worker の両方がこの表を読む(REQ-011)。
  */
 export const NANO_BANANA_2_1_PERCOIN_COSTS = {
-  "gemini-nano-banana-2.1-minimal-1k": 10,
-  "gemini-nano-banana-2.1-minimal-2k": 20,
-  "gemini-nano-banana-2.1-minimal-4k": 40,
-  "gemini-nano-banana-2.1-medium-1k": 20,
-  "gemini-nano-banana-2.1-medium-2k": 50,
-  "gemini-nano-banana-2.1-medium-4k": 80,
-  "gemini-nano-banana-2.1-high-1k": 50,
-  "gemini-nano-banana-2.1-high-2k": 80,
-  "gemini-nano-banana-2.1-high-4k": 130,
+  "gemini-nano-banana-2.1-minimal-1k": 20,
+  "gemini-nano-banana-2.1-minimal-2k": 30,
+  "gemini-nano-banana-2.1-minimal-4k": 50,
+  "gemini-nano-banana-2.1-medium-1k": 30,
+  "gemini-nano-banana-2.1-medium-2k": 60,
+  "gemini-nano-banana-2.1-medium-4k": 90,
+  "gemini-nano-banana-2.1-high-1k": 60,
+  "gemini-nano-banana-2.1-high-2k": 90,
+  "gemini-nano-banana-2.1-high-4k": 140,
 } as const satisfies Record<NanoBanana21CanonicalModel, number>;
