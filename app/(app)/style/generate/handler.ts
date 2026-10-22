@@ -14,7 +14,8 @@ import {
   GEMINI_GENERATION_ENABLED,
   resolveServerDefaultModel,
 } from "@/features/generation/lib/model-config";
-import { isGptImage25Available } from "@/lib/env";
+import { isGptImage25Available, isNanoBanana21Available } from "@/lib/env";
+import { isNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
 import { isGptImage25FlareModel } from "@/shared/generation/openai-image-model";
 import {
   buildStyleAttemptReinforcementPrefix,
@@ -367,6 +368,18 @@ export async function postStyleGenerateRoute(
     if (
       isGptImage25FlareModel(effectiveModel) &&
       !isGptImage25Available(null)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "STYLE_MODEL_NOT_AVAILABLE_FOR_USER",
+        400
+      );
+    }
+    // Nano Banana 2.1(REQ-006 / REQ-017)。2.1 はゲスト許可リストに無いので上の
+    // parseGuestModelInput で先に止まるが、許可リストを触ったときの保険に置く。
+    if (
+      isNanoBanana21Model(effectiveModel) &&
+      !isNanoBanana21Available(null)
     ) {
       return jsonError(
         copy.modelTemporarilyUnavailable,

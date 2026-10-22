@@ -557,4 +557,45 @@ describe("model-config / model identification helpers", () => {
       ).toBe("gpt-image-2-low-1k");
     });
   });
+
+  describe("Nano Banana 2.1 の段階公開(Phase 3)", () => {
+    // 2.1 は Gemini なので、Gemini の kill switch を ON にして読み込む
+    // (OFF だと段階公開と関係なく FALLBACK に丸まり、テストの意味が無くなる)
+    const MODEL = "gemini-nano-banana-2.1-medium-1k" as const;
+    const config = () => loadConfigWithGemini(true);
+
+    it("resolveEffectiveModelForAuthState: 使えると渡されたときだけ 2.1 のまま通す(省略は使えない扱い)", () => {
+      expect(config().resolveEffectiveModelForAuthState(MODEL, "authenticated")).toBe(
+        FALLBACK_GENERATION_MODEL
+      );
+      expect(
+        config().resolveEffectiveModelForAuthState(MODEL, "authenticated", {
+          nanoBanana21Available: false,
+        })
+      ).toBe(FALLBACK_GENERATION_MODEL);
+      expect(
+        config().resolveEffectiveModelForAuthState(MODEL, "authenticated", {
+          nanoBanana21Available: true,
+        })
+      ).toBe(MODEL);
+    });
+
+    it("resolveEffectiveModelForAuthState: 未ログインは使えると渡されても 2.1 を通さない(REQ-017)", () => {
+      expect(
+        config().resolveEffectiveModelForAuthState(MODEL, "guest", { nanoBanana21Available: true })
+      ).toBe(FALLBACK_GENERATION_MODEL);
+    });
+
+    it("resolveRequestedModelFromUrl: URL で 2.1 を指定しても、使えない人には選ばせない", () => {
+      expect(config().resolveRequestedModelFromUrl(MODEL, "authenticated")).toBeNull();
+      expect(
+        config().resolveRequestedModelFromUrl(MODEL, "authenticated", { nanoBanana21Available: true })
+      ).toBe(MODEL);
+    });
+
+    it("parseGuestRequestedModel: ゲストの経路では 2.1 を受け付けない(REQ-017)", () => {
+      expect(config().parseGuestRequestedModel(MODEL)).toBeNull();
+      expect(config().parseGuestRequestedModel("gemini-nano-banana-2.1-minimal-1k")).toBeNull();
+    });
+  });
 });

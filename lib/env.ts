@@ -103,6 +103,11 @@ const envSchema = {
   // 'true' にしない(docs/planning/gpt-image-2-5-flare-implementation-plan.md ADR-003)
   NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
     process.env.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED,
+  // Nano Banana 2.1(gemini-nano-banana-2.1)の一般公開フラグ。本番で運営だけが
+  // 合格ライン(同一性・品質の差・実原価・生成時間・事故なし)を確かめ終えるまでは
+  // 'true' にしない(docs/planning/nano-banana-2-1-implementation-plan.md Phase 6・7)
+  NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED:
+    process.env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED,
   // ガチャプロンプト(カタログをつくるの「ガチャプロンプトにする」)の一般公開フラグ。
   // カタログ刷新(NEXT_PUBLIC_USER_STYLES_ENABLED)とは別に公開する。'true' になるまでは運営のみ
   NEXT_PUBLIC_GACHA_PROMPT_ENABLED:
@@ -234,6 +239,8 @@ function getEnv() {
       envSchema.NEXT_PUBLIC_BACKGROUND_GENERATION_PROGRESS_ENABLED || "",
     NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED:
       envSchema.NEXT_PUBLIC_GPT_IMAGE_2_5_ENABLED || "",
+    NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED:
+      envSchema.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED || "",
     NEXT_PUBLIC_GACHA_PROMPT_ENABLED:
       envSchema.NEXT_PUBLIC_GACHA_PROMPT_ENABLED || "",
     NEXT_PUBLIC_GACHA_SPLIT_ENABLED:
@@ -576,6 +583,27 @@ export function isGptImage25Available(
   userId: string | null | undefined
 ): boolean {
   return isGptImage25PubliclyEnabled() || isAdminViewer(userId);
+}
+
+/**
+ * Nano Banana 2.1(`gemini-nano-banana-2.1-*`)が一般公開されているか。
+ * 運営だけで合格ラインを確かめ終えるまでは env を未設定のままにしておく。
+ */
+export function isNanoBanana21PubliclyEnabled(): boolean {
+  return env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED === "true";
+}
+
+/**
+ * この利用者が 2.1 のモデルを選べる・実行できるか(唯一の判定)。
+ *
+ * `isGptImage25Available` と同じ形。生成の 3 つのハンドラがジョブ作成前に
+ * **必ずこれで弾く**(REQ-006)。KNOWN_MODEL_INPUTS は 2.1 を受理するので、
+ * UI に行が無くても直接 POST で通ってしまうため。
+ */
+export function isNanoBanana21Available(
+  userId: string | null | undefined
+): boolean {
+  return isNanoBanana21PubliclyEnabled() || isAdminViewer(userId);
 }
 
 /**

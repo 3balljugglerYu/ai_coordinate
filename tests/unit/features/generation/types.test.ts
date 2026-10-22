@@ -145,15 +145,16 @@ describe("generation types", () => {
       );
     });
 
-    test("運営だけのゲート(Phase 3)ができるまで、API の入力としては受け付けない", () => {
-      // 先に受け付けると、一般の利用者が直接リクエストして 2.1 を指定できてしまう。
-      // Phase 3 でゲートと一緒に開ける(そのときこのテストを書き換える)。
-      expect(isKnownModelInput("gemini-nano-banana-2.1-minimal-1k")).toBe(false);
-      expect(
-        (KNOWN_MODEL_INPUTS as ReadonlyArray<string>).some((m) =>
-          m.startsWith("gemini-nano-banana-2.1")
-        )
-      ).toBe(false);
+    test("Phase 3 から API の入力として 9 値すべてを受け付ける(実行できるかは運営だけのゲートで決める)", () => {
+      const nano21Inputs = (KNOWN_MODEL_INPUTS as ReadonlyArray<string>).filter((m) =>
+        m.startsWith("gemini-nano-banana-2.1")
+      );
+      expect(nano21Inputs).toHaveLength(9);
+      expect(isKnownModelInput("gemini-nano-banana-2.1-minimal-1k")).toBe(true);
+      expect(isKnownModelInput("gemini-nano-banana-2.1-high-4k")).toBe(true);
+      // 存在しない組み合わせは受け付けない
+      expect(isKnownModelInput("gemini-nano-banana-2.1-low-1k")).toBe(false);
+      expect(isKnownModelInput("gemini-nano-banana-2.1")).toBe(false);
     });
   });
 });

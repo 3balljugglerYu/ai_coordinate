@@ -76,10 +76,18 @@ import type { OpenAIImageEditResult } from "./openai-image.ts";
 import {
   buildGeminiGenerationConfig,
   getGeminiRequestShape,
+  parseGeminiUsageMetadata,
+  resolveNanoBanana21RequestTimeoutMs,
+  resolveNanoBanana21ThinkingLevel,
+  type GeminiUsage,
 } from "./gemini-request-config.ts";
 import {
   GEMINI_API_MODEL_NAMES,
+  NANO_BANANA_2_1_PERCOIN_COSTS,
+  getNanoBanana21ImageSize,
+  parseNanoBanana21Model,
   type GeminiApiModel,
+  type NanoBanana21CanonicalModel,
 } from "../../../shared/generation/gemini-banana-model.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import {
@@ -140,7 +148,9 @@ function resolveGeminiRequestTimeoutMs(dbModel: string): number {
     case "gemini-3-pro-image-4k":
       return 300_000;
     default:
-      return GEMINI_REQUEST_TIMEOUT_DEFAULT_MS;
+      // Nano Banana 2.1 は 9 値すべてに明示の値を持つ(既定の 60 秒に落とさない・REQ-009)
+      return resolveNanoBanana21RequestTimeoutMs(dbModel) ??
+        GEMINI_REQUEST_TIMEOUT_DEFAULT_MS;
   }
 }
 const GEMINI_GENERATION_ENABLED =
@@ -158,10 +168,16 @@ type GeminiAttemptMetadata = {
   errorMessage: string | null;
   reinforcementApplied: boolean;
   /**
-   * OpenAI 経路のみ: 実際に API へ送ったモデル名(gpt-image-2 / gpt-image-2.5-flare)。
-   * DB の canonical model(family-quality-size)と突き合わせ、2.5 へ正しく投げたかを検証する。
+   * 実際に API へ送ったモデル名。OpenAI(gpt-image-2 / gpt-image-2.5-flare)と、
+   * Gemini(GA 名・gemini-nano-banana-2.1)の両方で残す。DB の canonical model と
+   * 突き合わせ、正しいモデルへ投げたかを DB クエリで検証できるようにする。
    */
-  apiModel?: OpenAIImageApiModelName;
+  apiModel?: OpenAIImageApiModelName | GeminiApiModel;
+  /**
+   * Gemini 経路のみ: レスポンスの usageMetadata(考える分を含む)。返らなければ null。
+   * Nano Banana 2.1 の実原価の測定(計画書 Phase 6-C・REQ-008)に使う。
+   */
+  geminiUsage?: GeminiUsage | null;
   /**
    * OpenAI 経路のみ: レスポンスの usage(トークン消費)。API が返さなかった場合は null。
    * 2.0 / 2.5 の実原価比較(Phase 5)を Edge ログではなく DB クエリでできるようにする。
@@ -632,6 +648,7 @@ type GeminiModel =
   | "gemini-3-pro-image-1k"
   | "gemini-3-pro-image-2k"
   | "gemini-3-pro-image-4k"
+  | NanoBanana21CanonicalModel
   | OpenAIImageCanonicalModel;
 type GeminiImageSize = "512" | "1K" | "2K" | "4K";
 const WORKER_UNKNOWN_MODEL_FALLBACK: GeminiModel = "gemini-2.5-flash-image";
@@ -712,6 +729,12 @@ function normalizeModelName(model: string | null): GeminiModel {
   if (model === "gemini-3-pro-image-1k" || model === "gemini-3-pro-image-2k" || model === "gemini-3-pro-image-4k") {
     return model as GeminiModel;
   }
+  // Nano Banana 2.1 の 9 値。足し忘れると下の既定(2.5 flash)へ丸められ、
+  // 2.1 を選んだのに別のモデルが走る(計画書 §1-1 の落とし穴)
+  const nano21 = parseNanoBanana21Model(model);
+  if (nano21) {
+    return nano21.canonical;
+  }
   console.warn("[image-gen-worker] unknown model received:", model);
   return WORKER_UNKNOWN_MODEL_FALLBACK;
 }
@@ -721,6 +744,9 @@ function normalizeModelName(model: string | null): GeminiModel {
  */
 function toApiModelName(model: GeminiModel): GeminiApiModel {
   // DB の保存名はプレビュー名のまま。API に送る名前だけ GA 名にする(GEMINI_API_MODEL_NAMES)。
+  if (parseNanoBanana21Model(model)) {
+    return GEMINI_API_MODEL_NAMES.nano21;
+  }
   if (model.startsWith("gemini-3.1-flash-image-preview-")) {
     return GEMINI_API_MODEL_NAMES.nano2;
   }
@@ -739,6 +765,8 @@ function extractImageSize(model: GeminiModel): GeminiImageSize | null {
   if (model === "gemini-3-pro-image-1k") return "1K";
   if (model === "gemini-3-pro-image-2k") return "2K";
   if (model === "gemini-3-pro-image-4k") return "4K";
+  const nano21 = parseNanoBanana21Model(model);
+  if (nano21) return getNanoBanana21ImageSize(nano21.sizeTier);
   return null;
 }
 
@@ -754,6 +782,8 @@ function getPercoinCost(model: string | null): number {
     'gemini-3-pro-image-1k': 50,
     'gemini-3-pro-image-2k': 80,
     'gemini-3-pro-image-4k': 100,
+    // Next.js の MODEL_PERCOIN_COSTS と同じ 1 つの表を読む(REQ-011)
+    ...NANO_BANANA_2_1_PERCOIN_COSTS,
     ...OPENAI_IMAGE_PERCOIN_COSTS,
   };
   return costs[normalized] ?? 20;
@@ -1178,6 +1208,7 @@ async function generateCreatorLooksOutfitStage(params: {
       imageSize,
       aspectRatio,
       requiresResponseModalities,
+      thinkingLevel: resolveNanoBanana21ThinkingLevel(dbModel),
     }),
   };
 
@@ -2652,6 +2683,8 @@ Deno.serve(async () => {
                       imageSize: finalImageSize,
                       aspectRatio,
                       requiresResponseModalities,
+                      // Nano Banana 2.1 だけ、保存名の考える量を送る(REQ-007)
+                      thinkingLevel: resolveNanoBanana21ThinkingLevel(dbModel),
                     }),
                   };
 
@@ -2949,6 +2982,7 @@ Deno.serve(async () => {
                     timedOut: attemptTimedOut,
                     errorMessage: attemptErrorMessage,
                     reinforcementApplied,
+                    apiModel,
                   });
                   throw attemptError;
                 }
@@ -2993,6 +3027,8 @@ Deno.serve(async () => {
                   timedOut: false,
                   errorMessage: null,
                   reinforcementApplied,
+                  apiModel,
+                  geminiUsage: parseGeminiUsageMetadata(geminiData),
                 });
 
                 if (nextGeneratedImage) {

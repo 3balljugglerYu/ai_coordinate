@@ -13,7 +13,9 @@
 import type { GeminiAspectRatio } from "../../../shared/generation/gemini-aspect-ratio.ts";
 import {
   GEMINI_API_MODEL_NAMES,
+  parseNanoBanana21Model,
   type GeminiApiModel,
+  type NanoBanana21ThinkingLevel,
 } from "../../../shared/generation/gemini-banana-model.ts";
 
 export type GeminiImageSize = "512" | "1K" | "2K" | "4K";
@@ -28,6 +30,11 @@ export interface BuildGeminiGenerationConfigInput {
    * `responseModalities: ["TEXT", "IMAGE"]` も必要。それ以外のモデルでは不要。
    */
   requiresResponseModalities?: boolean;
+  /**
+   * Nano Banana 2.1 の考える量。2.1 以外は null / 省略(thinkingConfig を付けない)。
+   * Phase 0(2026-10-22)で、小文字のまま `thinkingConfig.thinkingLevel` に送ると通ることを確認済み。
+   */
+  thinkingLevel?: NanoBanana21ThinkingLevel | null;
 }
 
 export interface GeminiGenerationConfigPiece {
@@ -37,6 +44,7 @@ export interface GeminiGenerationConfigPiece {
     imageSize?: GeminiImageSize;
     aspectRatio: GeminiAspectRatio;
   };
+  thinkingConfig?: { thinkingLevel: NanoBanana21ThinkingLevel };
 }
 
 /**
@@ -62,7 +70,66 @@ export function buildGeminiGenerationConfig(
     piece.candidateCount = 1;
     piece.responseModalities = ["TEXT", "IMAGE"];
   }
+  if (input.thinkingLevel) {
+    piece.thinkingConfig = { thinkingLevel: input.thinkingLevel };
+  }
   return piece;
+}
+
+/** 保存名から 2.1 の考える量を取り出す。2.1 以外は null(REQ-007) */
+export function resolveNanoBanana21ThinkingLevel(
+  dbModel: string,
+): NanoBanana21ThinkingLevel | null {
+  return parseNanoBanana21Model(dbModel)?.thinkingLevel ?? null;
+}
+
+const NANO_BANANA_2_1_REQUEST_TIMEOUT_MS = {
+  "1k": 120_000,
+  "2k": 180_000,
+  "4k": 300_000,
+} as const;
+
+/**
+ * 2.1 の 1 回の呼び出しのタイムアウト(計画書 ADR-007 の初期値・品質によらずサイズで決める)。
+ * Phase 0 の実測はどれも 26 秒以内なので余裕がある。本番の p90 を見て絞る。
+ * 2.1 以外は null(呼び出し側の既存の表を使う)。
+ */
+export function resolveNanoBanana21RequestTimeoutMs(dbModel: string): number | null {
+  const parsed = parseNanoBanana21Model(dbModel);
+  return parsed ? NANO_BANANA_2_1_REQUEST_TIMEOUT_MS[parsed.sizeTier] : null;
+}
+
+export interface GeminiUsage {
+  promptTokenCount: number;
+  candidatesTokenCount: number;
+  /** 考えた分。minimal など考えないときは API が項目を返さないので 0 にする */
+  thoughtsTokenCount: number;
+  totalTokenCount: number | null;
+}
+
+function readTokenCount(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * Gemini のレスポンスから `usageMetadata` を読む(REQ-008)。
+ * 原価の実測(計画書 Phase 6-C)に使うので、ジョブの geminiAttempts に残す。
+ * 入力・出力のトークン数が読めなければ null。
+ */
+export function parseGeminiUsageMetadata(payload: unknown): GeminiUsage | null {
+  if (!payload || typeof payload !== "object") return null;
+  const usage = (payload as { usageMetadata?: unknown }).usageMetadata;
+  if (!usage || typeof usage !== "object") return null;
+  const raw = usage as Record<string, unknown>;
+  const promptTokenCount = readTokenCount(raw.promptTokenCount);
+  const candidatesTokenCount = readTokenCount(raw.candidatesTokenCount);
+  if (promptTokenCount === null || candidatesTokenCount === null) return null;
+  return {
+    promptTokenCount,
+    candidatesTokenCount,
+    thoughtsTokenCount: readTokenCount(raw.thoughtsTokenCount) ?? 0,
+    totalTokenCount: readTokenCount(raw.totalTokenCount),
+  };
 }
 
 export interface GeminiRequestShape {

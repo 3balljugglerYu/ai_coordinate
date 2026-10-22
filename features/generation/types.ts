@@ -18,6 +18,7 @@ import {
 import type { OpenAIImageCanonicalModel } from "@/shared/generation/openai-image-model";
 import {
   GEMINI_API_MODEL_NAMES,
+  NANO_BANANA_2_1_CANONICAL_MODELS,
   getNanoBanana21ImageSize,
   parseNanoBanana21Model,
 } from "@/shared/generation/gemini-banana-model";
@@ -156,6 +157,9 @@ export const KNOWN_MODEL_INPUTS = [
   'gemini-2.5-flash-image-preview',
   'gemini-3-pro-image-preview',
   'gemini-3-pro-image',
+  // Nano Banana 2.1 の 9 値。受理しても実行できるのは運営だけ(各ハンドラの
+  // isNanoBanana21Available ゲート・REQ-006)。ゲストは許可リストで弾く(REQ-017)
+  ...NANO_BANANA_2_1_CANONICAL_MODELS,
 ] as const;
 
 export type KnownModelInput = (typeof KNOWN_MODEL_INPUTS)[number];

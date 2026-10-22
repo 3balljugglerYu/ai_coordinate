@@ -29,6 +29,7 @@ jest.mock("@/lib/env", () => ({
   ...jest.requireActual("@/lib/env"),
   isAdminViewer: jest.fn(() => false),
   isGptImage25Available: jest.fn(() => false),
+  isNanoBanana21Available: jest.fn(() => false),
   isNameInputAvailable: jest.fn(() => false),
 }));
 
@@ -62,7 +63,12 @@ import {
   type UserStyleTemplateRow,
 } from "@/features/inspire/lib/repository";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isAdminViewer, isGptImage25Available, isNameInputAvailable } from "@/lib/env";
+import {
+  isAdminViewer,
+  isGptImage25Available,
+  isNameInputAvailable,
+  isNanoBanana21Available,
+} from "@/lib/env";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { getCreatorLooksTwoStageVisibility } from "@/features/inspire/lib/creator-looks-two-stage";
 
@@ -71,6 +77,9 @@ const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
 >;
 const isGptImage25AvailableMock = isGptImage25Available as jest.MockedFunction<
   typeof isGptImage25Available
+>;
+const isNanoBanana21AvailableMock = isNanoBanana21Available as jest.MockedFunction<
+  typeof isNanoBanana21Available
 >;
 const isCreatorLooksEnabledForUserMock =
   isCreatorLooksEnabledForUser as jest.MockedFunction<
@@ -163,6 +172,8 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
     isAdminViewerMock.mockReturnValue(false);
     isGptImage25AvailableMock.mockReset();
     isGptImage25AvailableMock.mockReturnValue(false);
+    isNanoBanana21AvailableMock.mockReset();
+    isNanoBanana21AvailableMock.mockReturnValue(false);
     jobRepository = createAsyncGenerationJobRepositoryMock();
     invokeImageWorkerFn = jest.fn();
     createAdminClientMock = createAdminClient as jest.MockedFunction<
@@ -1616,6 +1627,116 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       expect(response.status).toBe(200);
       const jobData = jobRepository.createImageJob.mock.calls[0][0];
       expect("generation_metadata" in jobData).toBe(false);
+    });
+  });
+
+  describe("Nano Banana 2.1 (運営限定ゲート / REQ-006)", () => {
+    // docs/planning/nano-banana-2-1-implementation-plan.md Phase 3。
+    // KNOWN_MODEL_INPUTS が 2.1 を受理するため、UI に行が無くても直接 POST で通る。
+    // ジョブ作成・残高確認・temp アップロードより前に必ず弾く。
+    const dependencies = () => ({
+      getUserFn,
+      jobRepository,
+      invokeImageWorkerFn,
+      supabaseUrl: "https://example.supabase.co",
+    });
+
+    function buildBody(extra: Record<string, unknown> = {}): JsonRecord {
+      return {
+        prompt: "linen jacket",
+        sourceImageStockId: VALID_SOURCE_IMAGE_STOCK_ID,
+        ...extra,
+      };
+    }
+
+    test("利用不可のユーザーが 2.1 を指定すると 400 (GENERATION_MODEL_NOT_AVAILABLE_FOR_USER) でジョブを作らない", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gemini-nano-banana-2.1-minimal-1k" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("GENERATION_MODEL_NOT_AVAILABLE_FOR_USER");
+      expect(isNanoBanana21AvailableMock).toHaveBeenCalledWith("user-123");
+      expect(jobRepository.getUserCreditBalance).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("ゲートは temp アップロードより前にある", async () => {
+      const response = await postGenerateAsyncRoute(
+        createRequest({
+          prompt: "linen jacket",
+          sourceImageBase64: Buffer.from("png-bytes").toString("base64"),
+          sourceImageMimeType: "image/png",
+          model: "gemini-nano-banana-2.1-high-4k",
+        }),
+        dependencies()
+      );
+
+      expect(response.status).toBe(400);
+      expect(jobRepository.uploadSourceImage).not.toHaveBeenCalled();
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("考える量 / サイズを問わず 2.1 の 9 値はすべて塞がれる", async () => {
+      for (const model of [
+        "gemini-nano-banana-2.1-minimal-4k",
+        "gemini-nano-banana-2.1-medium-2k",
+        "gemini-nano-banana-2.1-high-1k",
+      ]) {
+        const response = await postGenerateAsyncRoute(
+          createRequest(buildBody({ model })),
+          dependencies()
+        );
+        expect([model, response.status]).toEqual([model, 400]);
+      }
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("2.5 を使える人でも、2.1 を使えなければ塞がれる(ゲートは別々)", async () => {
+      isGptImage25AvailableMock.mockReturnValue(true);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gemini-nano-banana-2.1-medium-1k" })),
+        dependencies()
+      );
+
+      expect(response.status).toBe(400);
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    });
+
+    test("利用可能なユーザー (運営 / 公開後) は 2.1 の保存名のままジョブが作られる", async () => {
+      isNanoBanana21AvailableMock.mockReturnValue(true);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gemini-nano-banana-2.1-medium-1k" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      expect(response.status).toBe(200);
+      expect(body).toEqual({ jobId: "job-001", status: "queued" });
+      expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+        expect.objectContaining({ model: "gemini-nano-banana-2.1-medium-1k" }),
+        expect.objectContaining({ kind: expect.any(String) })
+      );
+    });
+
+    test("残高の確認は 2.1 の表どおりの額で行う(high × 4k は 130。既定のモデルの額に落とさない)", async () => {
+      isNanoBanana21AvailableMock.mockReturnValue(true);
+
+      const response = await postGenerateAsyncRoute(
+        createRequest(buildBody({ model: "gemini-nano-banana-2.1-high-4k" })),
+        dependencies()
+      );
+      const body = await readJson(response);
+
+      // テストの残高は 100。130 が要るので足りない
+      expect(response.status).toBe(400);
+      expect(body.errorCode).toBe("GENERATION_INSUFFICIENT_BALANCE");
+      expect(String(body.error)).toContain("130");
+      expect(jobRepository.createImageJob).not.toHaveBeenCalled();
     });
   });
 

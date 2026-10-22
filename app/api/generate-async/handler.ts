@@ -3,7 +3,14 @@ import { getUser } from "@/lib/auth";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
 import { generationRequestSchema, getSafeExtensionFromMimeType } from "@/features/generation/lib/schema";
 import { convertHeicBase64ToJpeg, isHeicImage } from "@/features/generation/lib/heic-converter";
-import { env, isAdminViewer, isGptImage25Available, isNameInputAvailable } from "@/lib/env";
+import {
+  env,
+  isAdminViewer,
+  isGptImage25Available,
+  isNameInputAvailable,
+  isNanoBanana21Available,
+} from "@/lib/env";
+import { isNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
 import {
   DEFAULT_FRAMING_MODE,
   type FramingMode,
@@ -258,6 +265,18 @@ export async function postGenerateAsyncRoute(
     if (
       isGptImage25FlareModel(effectiveModel) &&
       !isGptImage25Available(user.id)
+    ) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "GENERATION_MODEL_NOT_AVAILABLE_FOR_USER",
+        400
+      );
+    }
+    // Nano Banana 2.1 の段階公開(nano-banana-2-1 計画書 REQ-006)。2.5 と同じ理由で、
+    // ジョブ作成・temp アップロードより前にサーバー側で必ず弾く。
+    if (
+      isNanoBanana21Model(effectiveModel) &&
+      !isNanoBanana21Available(user.id)
     ) {
       return jsonError(
         copy.modelTemporarilyUnavailable,

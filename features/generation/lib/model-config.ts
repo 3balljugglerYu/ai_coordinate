@@ -14,7 +14,10 @@ import {
   OPENAI_IMAGE_PERCOIN_COSTS,
   isGptImage25FlareModel,
 } from "@/shared/generation/openai-image-model";
-import { NANO_BANANA_2_1_PERCOIN_COSTS } from "@/shared/generation/gemini-banana-model";
+import {
+  NANO_BANANA_2_1_PERCOIN_COSTS,
+  isNanoBanana21Model,
+} from "@/shared/generation/gemini-banana-model";
 import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
 export { DEFAULT_GENERATION_MODEL, FALLBACK_GENERATION_MODEL };
@@ -192,7 +195,7 @@ export function parseGuestRequestedModel(
 export function resolveEffectiveModelForAuthState(
   model: GeminiModel,
   authState: "guest" | "authenticated",
-  options: { gptImage25Available?: boolean } = {}
+  options: { gptImage25Available?: boolean; nanoBanana21Available?: boolean } = {}
 ): GeminiModel {
   // ⚠️ 丸め先は DEFAULT ではなく FALLBACK(常に 2.0)。既定が 2.5 になった今、
   // DEFAULT へ丸めると「2.5 を 2.5 に丸める」になり、段階公開フラグを戻したときに
@@ -204,6 +207,10 @@ export function resolveEffectiveModelForAuthState(
     return FALLBACK_GENERATION_MODEL;
   }
   if (isGptImage25FlareModel(model) && !options.gptImage25Available) {
+    return FALLBACK_GENERATION_MODEL;
+  }
+  // Nano Banana 2.1 も段階公開中。省略時は使えない扱い(fail closed・REQ-016)
+  if (isNanoBanana21Model(model) && !options.nanoBanana21Available) {
     return FALLBACK_GENERATION_MODEL;
   }
   return model;
@@ -252,7 +259,11 @@ export function resolveServerDefaultModel(
 export function resolveRequestedModelFromUrl(
   raw: string | null | undefined,
   authState: 'guest' | 'authenticated',
-  options: { gptImage25Available?: boolean; isFreePlan?: boolean } = {}
+  options: {
+    gptImage25Available?: boolean;
+    nanoBanana21Available?: boolean;
+    isFreePlan?: boolean;
+  } = {}
 ): GeminiModel | null {
   if (!isKnownModelInput(raw)) {
     return null;
@@ -260,6 +271,7 @@ export function resolveRequestedModelFromUrl(
   const canonical = normalizeModelName(raw);
   const effective = resolveEffectiveModelForAuthState(canonical, authState, {
     gptImage25Available: options.gptImage25Available,
+    nanoBanana21Available: options.nanoBanana21Available,
   });
   if (effective !== canonical) {
     return null;
