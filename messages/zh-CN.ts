@@ -1086,6 +1086,17 @@ export const zhCnMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "质量",
+    nanoBanana21QualityTooltipAria: "显示 Nano Banana 2.1 的质量差异",
+    nanoBanana21QualityTooltipContent:
+      "Nano Banana 2.1 的质量是指模型在绘制前思考的程度。图像尺寸不会改变。\n\n─ Low ─\n思考最少，生成最快。适合快速确认服装的方向和氛围。\n\n─ Medium ─\n日常使用。先整理你的指示再绘制。\n\n─ High ─\n适合较长的提示词，或希望尽量还原细节要求的时候。\n\n质量越高，生成时间越长，消耗的 Percoin 也越多。",
+    nanoBanana21QualityLow: "快速生成",
+    nanoBanana21QualityMedium: "均衡生成",
+    nanoBanana21QualityHigh: "精细生成",
+    nanoBanana21SizeTooltipContent:
+      "Nano Banana 2.1 可选择的输出尺寸。在所选尺寸的上限内，尽量贴合输入图像的宽高比生成。\n\n─ 1K ─\n竖图（3:4）示例：896 × 1200px\n便于确认和发布。\n\n─ 2K ─\n竖图（3:4）示例：1792 × 2400px\n更大，细节更容易看清。\n\n─ 4K ─\n竖图（3:4）示例：3584 × 4800px\n适合最终成品的高清尺寸。\n\n尺寸越大越便于查看细节，但生成时间更长，消耗的 Percoin 也更多。",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "访客预览结果",
     guestResultTitle: "结果",

@@ -19,6 +19,8 @@ import { GenerationProgressAvailabilityProvider } from "@/features/generation/co
 import { GenerationProgressAvailabilityLoader } from "@/features/generation/components/GenerationProgressAvailabilityLoader";
 import { GptImage25AvailabilityProvider } from "@/features/generation/components/GptImage25AvailabilityProvider";
 import { GptImage25AvailabilityLoader } from "@/features/generation/components/GptImage25AvailabilityLoader";
+import { NanoBanana21AvailabilityProvider } from "@/features/generation/components/NanoBanana21AvailabilityProvider";
+import { NanoBanana21AvailabilityLoader } from "@/features/generation/components/NanoBanana21AvailabilityLoader";
 import { UserStylesAvailabilityProvider } from "@/features/user-styles/components/UserStylesAvailabilityProvider";
 import { UserStylesAvailabilityLoader } from "@/features/user-styles/components/UserStylesAvailabilityLoader";
 import { GachaAvailabilityProvider } from "@/features/generation/components/GachaAvailabilityProvider";
@@ -60,6 +62,7 @@ export async function LocaleShell({
             <SearchAvailabilityProvider>
               <PopularPromptsAvailabilityProvider>
                 <GptImage25AvailabilityProvider>
+                <NanoBanana21AvailabilityProvider>
                   <UserStylesAvailabilityProvider>
                   <GachaAvailabilityProvider>
                   <NameInputAvailabilityProvider>
@@ -92,6 +95,14 @@ export async function LocaleShell({
                     <GptImage25AvailabilityLoader />
                   </Suspense>
                   {/*
+                    Nano Banana 2.1 の段階公開。2.5 と同じ理由・同じ位置で、運営だけ true に昇格させる。
+                    ⚠️ これも「行を見せる」層。実行の可否はサーバーの isNanoBanana21Available が
+                    生成の 3 つのハンドラで別途判定する。
+                  */}
+                  <Suspense fallback={null}>
+                    <NanoBanana21AvailabilityLoader />
+                  </Suspense>
+                  {/*
                     User ORIGINAL(/user-styles)の段階公開。運営だけ true に昇格させる。
                     ⭐ Provider をここに置くのは、カタログのタブ(TopTabsSlot)が
                     app/[locale]/layout.tsx にあり appContent の内側だから。
@@ -118,6 +129,7 @@ export async function LocaleShell({
                   </NameInputAvailabilityProvider>
                   </GachaAvailabilityProvider>
                   </UserStylesAvailabilityProvider>
+                </NanoBanana21AvailabilityProvider>
                 </GptImage25AvailabilityProvider>
               </PopularPromptsAvailabilityProvider>
             </SearchAvailabilityProvider>

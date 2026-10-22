@@ -1090,6 +1090,17 @@ export const itMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "Qualità",
+    nanoBanana21QualityTooltipAria: "Mostra le differenze di qualità di Nano Banana 2.1",
+    nanoBanana21QualityTooltipContent:
+      "In Nano Banana 2.1 la qualità indica quanto il modello ragiona prima di disegnare. La dimensione dell'immagine non cambia.\n\n─ Low ─\nRagiona il minimo e genera più in fretta. Utile per verificare rapidamente direzione e atmosfera di un outfit.\n\n─ Medium ─\nPer l'uso quotidiano. Riordina le tue istruzioni prima di disegnare.\n\n─ High ─\nPer prompt lunghi o richieste dettagliate da rispettare il più possibile.\n\nUna qualità più alta richiede più tempo e più Percoin.",
+    nanoBanana21QualityLow: "Genera rapidamente",
+    nanoBanana21QualityMedium: "Genera in modo bilanciato",
+    nanoBanana21QualityHigh: "Genera accuratamente",
+    nanoBanana21SizeTooltipContent:
+      "Dimensioni di output disponibili per Nano Banana 2.1. L'immagine segue il più possibile le proporzioni dell'immagine di partenza, entro il limite della dimensione scelta.\n\n─ 1K ─\nEsempio verticale (3:4): 896 × 1200 px\nComoda per controllare e pubblicare.\n\n─ 2K ─\nEsempio verticale (3:4): 1792 × 2400 px\nPiù grande, dettagli più visibili.\n\n─ 4K ─\nEsempio verticale (3:4): 3584 × 4800 px\nAlta risoluzione per la rifinitura.\n\nLe dimensioni maggiori mostrano più dettagli, ma richiedono più tempo e più Percoin.",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Risultato anteprima ospite",
     guestResultTitle: "Risultato",

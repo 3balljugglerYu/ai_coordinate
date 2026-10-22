@@ -10,6 +10,11 @@
  * 表示色などのスタイルは `MODEL_TAG_DISPLAY` に集約。i18n キーは `coordinate` 名前空間。
  */
 
+import {
+  parseNanoBanana21Model,
+  type NanoBanana21ThinkingLevel,
+} from "@/shared/generation/gemini-banana-model";
+
 export type ModelTagKey =
   | "engineOpenai"
   | "engineGemini"
@@ -62,6 +67,12 @@ export const MODEL_TAG_DISPLAY: Record<ModelTagKey, ModelTagDisplay> = {
   },
 };
 
+const NANO_BANANA_2_1_TIER_TAG = {
+  minimal: "tierLight",
+  medium: "tierBalanced",
+  high: "tierQuality",
+} as const satisfies Record<NanoBanana21ThinkingLevel, ModelTagKey>;
+
 /**
  * 正規モデル ID から「品質ポジション」用の tier チップを返す（最大 1 個）。
  * レンダリング品質セレクター（Low/Medium/High）や、生成結果一覧の品質表示に使う。
@@ -96,6 +107,12 @@ export function getModelTagsForCanonicalModel(
   }
   if (model.startsWith("gpt-image-2-high")) {
     return ["tierQuality"];
+  }
+  // Nano Banana 2.1 は考える量を品質チップで見せる(minimal = Low)。
+  // ⚠️ ここを忘れると品質チップが消える(GPT 2.5 計画書 §1-3 の落とし穴)
+  const nano21 = parseNanoBanana21Model(model);
+  if (nano21) {
+    return [NANO_BANANA_2_1_TIER_TAG[nano21.thinkingLevel]];
   }
   if (model.startsWith("gemini-3-pro-image-")) {
     return ["tierQuality"];

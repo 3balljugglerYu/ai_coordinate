@@ -61,6 +61,7 @@ import {
 } from "../lib/form-preferences";
 import { AspectRatioSelector } from "./AspectRatioSelector";
 import { useGptImage25Available } from "./GptImage25AvailabilityProvider";
+import { useNanoBanana21Available } from "./NanoBanana21AvailabilityProvider";
 import type { FreeOutputAspectRatioMode } from "@/shared/generation/style-output-aspect-ratio";
 import {
   GENERATION_PROMPT_MAX_LENGTH,
@@ -402,10 +403,12 @@ export function GenerationForm({
     (isGachaActive || nameSlot ? composeSubmittedPrompt(prompt).length : promptLength) > promptMaxLength;
   // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は実効値を既定モデルへ丸める。
   const gptImage25Available = useGptImage25Available();
+  // Nano Banana 2.1 も段階公開中。運営以外は実効値を既定モデルへ丸める(REQ-016)
+  const nanoBanana21Available = useNanoBanana21Available();
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
     selectedModel,
     authState,
-    { gptImage25Available }
+    { gptImage25Available, nanoBanana21Available }
   );
   const totalPercoinCost = getPercoinCost(effectiveSelectedModel);
   const showCost = authState === "authenticated";

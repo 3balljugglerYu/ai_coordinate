@@ -1090,6 +1090,17 @@ export const frMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "Qualité",
+    nanoBanana21QualityTooltipAria: "Afficher les différences de qualité de Nano Banana 2.1",
+    nanoBanana21QualityTooltipContent:
+      "Pour Nano Banana 2.1, la qualité correspond au temps de réflexion du modèle avant de dessiner. La taille de l'image ne change pas.\n\n─ Low ─\nRéfléchit le moins et génère le plus vite. Idéal pour vérifier rapidement la direction et l'ambiance d'une tenue.\n\n─ Medium ─\nPour un usage courant. Organise vos instructions avant de dessiner.\n\n─ High ─\nPour les prompts longs ou les demandes détaillées à respecter au plus près.\n\nUne qualité plus élevée prend plus de temps et consomme plus de Percoins.",
+    nanoBanana21QualityLow: "Générer rapidement",
+    nanoBanana21QualityMedium: "Générer équilibré",
+    nanoBanana21QualityHigh: "Générer soigneusement",
+    nanoBanana21SizeTooltipContent:
+      "Tailles de sortie disponibles pour Nano Banana 2.1. L'image suit autant que possible le format de votre image d'entrée, dans la limite de la taille choisie.\n\n─ 1K ─\nExemple portrait (3:4) : 896 × 1200 px\nPratique pour vérifier et publier.\n\n─ 2K ─\nExemple portrait (3:4) : 1792 × 2400 px\nPlus grande, détails plus visibles.\n\n─ 4K ─\nExemple portrait (3:4) : 3584 × 4800 px\nHaute résolution pour la finition.\n\nLes grandes tailles montrent plus de détails, mais prennent plus de temps et consomment plus de Percoins.",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Résultat d'aperçu invité",
     guestResultTitle: "Résultat",

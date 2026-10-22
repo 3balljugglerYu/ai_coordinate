@@ -42,6 +42,22 @@ describe("form-preferences", () => {
       expect(readPreferredModel()).toBe("gpt-image-2-low-1k");
     });
 
+    it("Nano Banana 2.1 の保存値もそのまま復元する(使えるかは実効値の丸めで決める・REQ-016)", () => {
+      window.localStorage.setItem(
+        SELECTED_MODEL_STORAGE_KEY,
+        "gemini-nano-banana-2.1-high-2k"
+      );
+      expect(readPreferredModel()).toBe("gemini-nano-banana-2.1-high-2k");
+    });
+
+    it("存在しない 2.1 の組み合わせは既定に戻す", () => {
+      window.localStorage.setItem(
+        SELECTED_MODEL_STORAGE_KEY,
+        "gemini-nano-banana-2.1-low-1k"
+      );
+      expect(readPreferredModel()).toBe(DEFAULT_GENERATION_MODEL);
+    });
+
     it("migrates the legacy GPT Image 2 low value to the 1k canonical", () => {
       window.localStorage.setItem(
         SELECTED_MODEL_STORAGE_KEY,

@@ -169,3 +169,27 @@ describe("formatImageSize", () => {
     );
   });
 });
+
+describe("Nano Banana 2.1 の表示(REQ-014)", () => {
+  it("ブランド名は Nano Banana 2.1(Nano Banana 2 と混同させない)", () => {
+    expect(getModelBrandName("gemini-nano-banana-2.1-minimal-1k")).toBe("Nano Banana 2.1");
+    expect(getModelBrandName("gemini-nano-banana-2.1-high-4k")).toBe("Nano Banana 2.1");
+    // 既存の Nano Banana 2 は変わらない
+    expect(getModelBrandName("gemini-3.1-flash-image-preview-1024")).toBe("Nano Banana 2");
+  });
+
+  it("一覧の表示名は品質(minimal は Low)つきで、9 値すべてに既定のサイズがある", () => {
+    expect(getModelDisplayInfo("gemini-nano-banana-2.1-minimal-1k")).toEqual({
+      displayName: "Nano Banana 2.1 | Low",
+      defaultSize: { width: 1024, height: 1024 },
+    });
+    expect(getModelDisplayInfo("gemini-nano-banana-2.1-medium-2k")).toEqual({
+      displayName: "Nano Banana 2.1 | Medium",
+      defaultSize: { width: 2048, height: 2048 },
+    });
+    expect(getModelDisplayInfo("gemini-nano-banana-2.1-high-4k")).toEqual({
+      displayName: "Nano Banana 2.1 | High",
+      defaultSize: { width: 4096, height: 4096 },
+    });
+  });
+});

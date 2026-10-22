@@ -1089,6 +1089,17 @@ export const idMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "Kualitas",
+    nanoBanana21QualityTooltipAria: "Tampilkan perbedaan kualitas Nano Banana 2.1",
+    nanoBanana21QualityTooltipContent:
+      "Di Nano Banana 2.1, kualitas adalah seberapa banyak model berpikir sebelum menggambar. Ukuran gambar tidak berubah.\n\n─ Low ─\nBerpikir paling sedikit dan paling cepat. Cocok untuk cepat memeriksa arah dan suasana pakaian.\n\n─ Medium ─\nUntuk penggunaan sehari-hari. Merapikan instruksi Anda sebelum menggambar.\n\n─ High ─\nUntuk prompt panjang atau permintaan detail yang ingin dicerminkan sedekat mungkin.\n\nKualitas lebih tinggi butuh waktu lebih lama dan lebih banyak Percoin.",
+    nanoBanana21QualityLow: "Hasilkan cepat",
+    nanoBanana21QualityMedium: "Hasilkan seimbang",
+    nanoBanana21QualityHigh: "Hasilkan dengan teliti",
+    nanoBanana21SizeTooltipContent:
+      "Ukuran keluaran yang tersedia untuk Nano Banana 2.1. Gambar mengikuti rasio aspek gambar masukan sebisa mungkin, dalam batas ukuran yang dipilih.\n\n─ 1K ─\nContoh potret (3:4): 896 × 1200 px\nPraktis untuk memeriksa dan memposting.\n\n─ 2K ─\nContoh potret (3:4): 1792 × 2400 px\nLebih besar, detail lebih mudah terlihat.\n\n─ 4K ─\nContoh potret (3:4): 3584 × 4800 px\nResolusi tinggi untuk hasil akhir.\n\nUkuran lebih besar menampilkan lebih banyak detail, tetapi butuh waktu lebih lama dan lebih banyak Percoin.",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Hasil pratinjau tamu",
     guestResultTitle: "Hasil",

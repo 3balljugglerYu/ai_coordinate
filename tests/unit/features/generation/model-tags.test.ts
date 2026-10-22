@@ -98,3 +98,12 @@ describe("getModelTagsForCanonicalModel（ChatGPT Images 2.5）", () => {
     ]);
   });
 });
+
+describe("Nano Banana 2.1 の品質チップ", () => {
+  it("考える量を品質チップで返す(minimal = Low)。サイズは関係ない", () => {
+    expect(getModelTagsForCanonicalModel("gemini-nano-banana-2.1-minimal-1k")).toEqual(["tierLight"]);
+    expect(getModelTagsForCanonicalModel("gemini-nano-banana-2.1-minimal-4k")).toEqual(["tierLight"]);
+    expect(getModelTagsForCanonicalModel("gemini-nano-banana-2.1-medium-2k")).toEqual(["tierBalanced"]);
+    expect(getModelTagsForCanonicalModel("gemini-nano-banana-2.1-high-1k")).toEqual(["tierQuality"]);
+  });
+});

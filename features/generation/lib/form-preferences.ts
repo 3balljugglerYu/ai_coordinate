@@ -32,6 +32,7 @@ import {
   type FreeOutputAspectRatioMode,
   type UserSelectableOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
+import { NANO_BANANA_2_1_CANONICAL_MODELS } from "@/shared/generation/gemini-banana-model";
 
 export const SELECTED_MODEL_STORAGE_KEY = "persta-ai:last-selected-model";
 export const BACKGROUND_MODE_STORAGE_KEY = "persta-ai:last-background-mode";
@@ -82,6 +83,8 @@ const PERSISTABLE_MODELS: ReadonlyArray<GeminiModel> = [
   // リロードしても選択が保たれ、非運営が（何らかの経路で）復元しても
   // `resolveEffectiveModelForAuthState` が既定モデルへ丸める（REQ-014）。
   ...GPT_IMAGE_2_5_FLARE_CANONICAL_MODELS,
+  // Nano Banana 2.1 も段階公開中だが、2.5 と同じ理由で保存を許す(REQ-016)
+  ...NANO_BANANA_2_1_CANONICAL_MODELS,
 ];
 
 function safeReadLocalStorage(key: string): string | null {
