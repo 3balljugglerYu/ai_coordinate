@@ -218,38 +218,39 @@ const gemini = (
 };
 
 /**
- * Nano Banana 2.1 の 1 生成あたりの出力トークン（2026-10-22 の Phase 0 で実測）。
+ * Nano Banana 2.1 の 1 生成あたりの出力トークン。
  *
+ * 単価(公式・2026-10-22 取得): 画像の出力 $30 / 1M、**文字と考えた分の出力 $7.50 / 1M**。
+ *
+ * トークン数は 2026-10-22 に本番で、運営アカウントが本番の長さの指示
+ * (ワンタップのプリセット 1,978 / 1,990 字・服 4,419 字)で 1K を 9 回流した平均。
  * - 画像: 公表値どおり 1K 1,120 / 2K 1,680 / 4K 3,780 tok
- * - 画像以外の出力: 毎回 約 250 tok（`candidatesTokensDetails` には IMAGE しか載らないが、
- *   `candidatesTokenCount` には入っている）
- * - 考える分(`thoughtsTokenCount`): 1K の平均で minimal 0 / medium 335 / high 870 tok
+ * - 画像以外の出力: 約 690 tok(`candidatesTokenCount` − 画像。480〜1,538 とばらつく)
+ * - 考えた分(`thoughtsTokenCount`): minimal 0 / medium 835 / high 1,873 tok
  *
- * 画像以外の出力と考える分の単価は公式に無いため、画像と同じ $30 / 1M で数える
- * （単価はいちばん高い見方）。
- *
- * ⚠️ **考える分は 1K でしか平均を取っていない。**2K / 4K にも 1K の値を使っている。
- * 1 回だけ測った medium は 2K 276 / 4K 735 tok で、**4K は 1K の約 2 倍**だった。
- * このため 4K（特に high × 4K）は、トークン数の側で低めに出ているおそれがある。
- * 短い指示 1 枚で測った値なので `derived`。本番の usage を記録したら実測値に置き換える
- * （計画書 Phase 6-C）。
+ * ⚠️ Phase 0 の短い指示(約 45 字)では medium 335 / high 870 と、半分以下だった。
+ * 考えた分は指示の長さで増えるので、値付けには本番の長さで測った値を使う。
+ * 2K / 4K の考えた分は測っていない(1K の値を使う)ので `derived`。
  */
-const NANO_BANANA_2_1_OUTPUT_USD_PER_1M = 30;
+const NANO_BANANA_2_1_IMAGE_OUTPUT_USD_PER_1M = 30;
+const NANO_BANANA_2_1_TEXT_OUTPUT_USD_PER_1M = 7.5;
 const NANO_BANANA_2_1_IMAGE_TOKENS = { "1k": 1120, "2k": 1680, "4k": 3780 } as const;
-const NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS = 250;
-const NANO_BANANA_2_1_THINKING_TOKENS = { minimal: 0, medium: 335, high: 870 } as const;
+const NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS = 690;
+const NANO_BANANA_2_1_THINKING_TOKENS = { minimal: 0, medium: 835, high: 1873 } as const;
 
 const nanoBanana21 = ({
   thinkingLevel,
   sizeTier,
 }: ParsedNanoBanana21Model): AiModelRate => {
-  const tokens =
-    NANO_BANANA_2_1_IMAGE_TOKENS[sizeTier] +
-    NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS +
-    NANO_BANANA_2_1_THINKING_TOKENS[thinkingLevel];
+  const imageUsd =
+    (NANO_BANANA_2_1_IMAGE_TOKENS[sizeTier] * NANO_BANANA_2_1_IMAGE_OUTPUT_USD_PER_1M) / 1e6;
+  const textUsd =
+    ((NANO_BANANA_2_1_NON_IMAGE_OUTPUT_TOKENS + NANO_BANANA_2_1_THINKING_TOKENS[thinkingLevel]) *
+      NANO_BANANA_2_1_TEXT_OUTPUT_USD_PER_1M) /
+    1e6;
   return {
-    ...gemini((tokens * NANO_BANANA_2_1_OUTPUT_USD_PER_1M) / 1e6, "nano21"),
-    basis: "derived",
+    ...gemini(imageUsd + textUsd, "nano21"),
+    basis: sizeTier === "1k" ? "measured" : "derived",
   };
 };
 
@@ -299,7 +300,7 @@ export const MODEL_COST_RATES: Record<string, AiModelRate> = {
   "gemini-3-pro-image-2k": gemini(0.134, "pro"),
   "gemini-3-pro-image-4k": gemini(0.24, "pro"),
 
-  // --- Google Nano Banana 2.1（画像は公表値・考える分は Phase 0 の実測 / 全て derived）---
+  // --- Google Nano Banana 2.1（1k は本番の長さの指示で実測 / 2k・4k は外挿）---
   ...Object.fromEntries(
     NANO_BANANA_2_1_PARSED_MODELS.map((parsed) => [parsed.canonical, nanoBanana21(parsed)])
   ),

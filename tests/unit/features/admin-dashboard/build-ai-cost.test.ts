@@ -359,27 +359,45 @@ describe("buildAiCostEstimate", () => {
       expect(NANO_BANANA_2_1_CANONICAL_MODELS).toHaveLength(9);
       for (const model of NANO_BANANA_2_1_CANONICAL_MODELS) {
         const rate = MODEL_COST_RATES[model];
-        expect([model, rate?.provider, rate?.basis]).toEqual([model, "google", "derived"]);
+        // 1k は本番の長さの指示で実測(2026-10-22)、2k / 4k は外挿
+        expect([model, rate?.provider, rate?.basis]).toEqual([
+          model,
+          "google",
+          model.endsWith("-1k") ? "measured" : "derived",
+        ]);
         expect(rate?.textInputUsdPer1M).toBe(1.5);
         expect(rate?.inputImageUsd).toBeCloseTo((1120 * 1.5) / 1e6, 9);
       }
     });
 
-    it("Nano Banana 2.1 の出力は、公表の画像単価 + Phase 0 の実測の考える分・画像以外の出力を $30 / 1M で数える", () => {
-      // 画像: 1K $0.0336 / 2K $0.0504 / 4K $0.1134(1,120 / 1,680 / 3,780 tok × $30/1M)
-      // 画像以外の出力 約 250 tok + 考える分 minimal 0 / medium 335 / high 870 tok(2026-10-22 実測の平均)
+    it("Nano Banana 2.1 の出力は、画像を $30 / 1M、画像以外の出力と考えた分を $7.50 / 1M で数える", () => {
+      // 公式の単価(2026-10-22): 画像 $30 / 文字と考えた分 $7.50。
+      // 画像: 1K 1,120 / 2K 1,680 / 4K 3,780 tok。画像以外の出力 約 690 tok、
+      // 考えた分 minimal 0 / medium 835 / high 1,873 tok(本番の長さの指示・1K の平均)
       expect(MODEL_COST_RATES["gemini-nano-banana-2.1-minimal-1k"]?.outputUsd).toBeCloseTo(
-        ((1120 + 250) * 30) / 1e6,
+        (1120 * 30 + 690 * 7.5) / 1e6,
         9
       );
       expect(MODEL_COST_RATES["gemini-nano-banana-2.1-medium-2k"]?.outputUsd).toBeCloseTo(
-        ((1680 + 250 + 335) * 30) / 1e6,
+        (1680 * 30 + (690 + 835) * 7.5) / 1e6,
         9
       );
       expect(MODEL_COST_RATES["gemini-nano-banana-2.1-high-4k"]?.outputUsd).toBeCloseTo(
-        ((3780 + 250 + 870) * 30) / 1e6,
+        (3780 * 30 + (690 + 1873) * 7.5) / 1e6,
         9
       );
+    });
+
+    it("Nano Banana 2.1 の 1K の 1 回の原価が、本番の実測(約 ¥6〜10)の帯に入る", () => {
+      // 2026-10-22 の 9 回: low ¥6.2〜7.0 / medium ¥7.0〜7.6 / high ¥8.3〜10.0(ワンタップ)
+      const yen = (model: string) =>
+        estimateGenerationCost(model, "one_tap_style")!.usd * 155;
+      expect(yen("gemini-nano-banana-2.1-minimal-1k")).toBeGreaterThan(6);
+      expect(yen("gemini-nano-banana-2.1-minimal-1k")).toBeLessThan(7.5);
+      expect(yen("gemini-nano-banana-2.1-medium-1k")).toBeGreaterThan(6.5);
+      expect(yen("gemini-nano-banana-2.1-medium-1k")).toBeLessThan(8.5);
+      expect(yen("gemini-nano-banana-2.1-high-1k")).toBeGreaterThan(8);
+      expect(yen("gemini-nano-banana-2.1-high-1k")).toBeLessThan(10.5);
     });
 
     it("gpt-image-2.5-flare の medium / high は 2.0 より安く数える(2.0 と同値の仮定に戻さない)", () => {
