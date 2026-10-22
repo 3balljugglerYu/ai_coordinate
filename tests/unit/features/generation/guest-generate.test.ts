@@ -229,7 +229,7 @@ describe("guest-generate", () => {
         mimeType: "image/png",
       });
       expect(fetchFn).toHaveBeenCalledWith(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent",
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent",
         expect.objectContaining({ method: "POST" })
       );
 

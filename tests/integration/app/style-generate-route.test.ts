@@ -456,7 +456,7 @@ describe("StyleGenerateRoute integration tests", () => {
     };
 
     expect(String(url)).toBe(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image-preview:generateContent"
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-image:generateContent"
     );
     expect(requestBody.contents[0].parts[0]).toEqual({
       text: buildExpectedPrompt({

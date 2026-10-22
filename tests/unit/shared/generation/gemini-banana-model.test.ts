@@ -1,4 +1,5 @@
 import {
+  GEMINI_API_MODEL_NAMES,
   GEMINI_BANANA_2_SIZE_TIERS,
   GEMINI_BANANA_CANONICAL_MODELS,
   GEMINI_BANANA_PRO_SIZE_TIERS,
@@ -152,5 +153,18 @@ describe("GEMINI_BANANA_CANONICAL_MODELS", () => {
     );
     expect(GEMINI_BANANA_CANONICAL_MODELS).toContain("gemini-3-pro-image-1k");
     expect(GEMINI_BANANA_CANONICAL_MODELS).toContain("gemini-3-pro-image-4k");
+  });
+});
+
+describe("GEMINI_API_MODEL_NAMES", () => {
+  it("Gemini API に送る名前は GA 名で、停止予定日を過ぎたプレビュー名を含まない", () => {
+    expect(GEMINI_API_MODEL_NAMES).toEqual({
+      legacyFlash: "gemini-2.5-flash-image",
+      nano2: "gemini-3.1-flash-image",
+      pro: "gemini-3-pro-image",
+    });
+    for (const name of Object.values(GEMINI_API_MODEL_NAMES)) {
+      expect([name, name.includes("preview")]).toEqual([name, false]);
+    }
   });
 });

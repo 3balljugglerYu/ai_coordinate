@@ -94,22 +94,19 @@ describe("generation types", () => {
   });
 
   describe("toApiModelName", () => {
-    test("Gemini 系のサイズ付き ID を Gemini API 名へ変換", () => {
+    test("Gemini 系のサイズ付き ID を Gemini API の GA 名へ変換(プレビュー名は送らない)", () => {
+      // プレビュー名は公式の停止予定日 2026-06-25 を過ぎている。DB の保存名は変えず、
+      // API に送る名前だけを GA 名にする(nano-banana-2-1 計画書 ADR-004)。
       expect(toApiModelName("gemini-3.1-flash-image-preview-512")).toBe(
-        "gemini-3.1-flash-image-preview"
+        "gemini-3.1-flash-image"
       );
       expect(toApiModelName("gemini-3.1-flash-image-preview-1024")).toBe(
-        "gemini-3.1-flash-image-preview"
+        "gemini-3.1-flash-image"
       );
-      expect(toApiModelName("gemini-3-pro-image-1k")).toBe(
-        "gemini-3-pro-image-preview"
-      );
-      expect(toApiModelName("gemini-3-pro-image-2k")).toBe(
-        "gemini-3-pro-image-preview"
-      );
-      expect(toApiModelName("gemini-3-pro-image-4k")).toBe(
-        "gemini-3-pro-image-preview"
-      );
+      expect(toApiModelName("gemini-3-pro-image-1k")).toBe("gemini-3-pro-image");
+      expect(toApiModelName("gemini-3-pro-image-2k")).toBe("gemini-3-pro-image");
+      expect(toApiModelName("gemini-3-pro-image-4k")).toBe("gemini-3-pro-image");
+      expect(toApiModelName("gemini-2.5-flash-image")).toBe("gemini-2.5-flash-image");
     });
 
     test("OpenAI 系を渡したらランタイム例外", () => {

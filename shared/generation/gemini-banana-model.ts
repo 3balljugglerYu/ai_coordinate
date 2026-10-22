@@ -14,6 +14,23 @@
  * リテラル型ではなく明示的なマッピング表で持つ。
  */
 
+/**
+ * Gemini API に送るモデル名(エンドポイント名)。Next.js と worker はここだけを参照する。
+ *
+ * DB の保存名(`gemini-3.1-flash-image-preview-512` など)は履歴・ペルコイン・CHECK 制約の
+ * キーなので変えず、**API に送る名前だけ**を GA 名にしている。プレビュー名
+ * (`gemini-3.1-flash-image-preview` / `gemini-3-pro-image-preview`)は公式の停止予定日
+ * 2026-06-25 を過ぎていたため、2026-10-22 に置き換えた(nano-banana-2-1 計画書 ADR-004)。
+ */
+export const GEMINI_API_MODEL_NAMES = {
+  legacyFlash: "gemini-2.5-flash-image",
+  nano2: "gemini-3.1-flash-image",
+  pro: "gemini-3-pro-image",
+} as const;
+
+export type GeminiApiModel =
+  (typeof GEMINI_API_MODEL_NAMES)[keyof typeof GEMINI_API_MODEL_NAMES];
+
 export const GEMINI_BANANA_FAMILIES = ["nano-2", "nano-pro"] as const;
 export type GeminiBananaFamily = (typeof GEMINI_BANANA_FAMILIES)[number];
 

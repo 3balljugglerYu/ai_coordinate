@@ -54,6 +54,7 @@ import {
   sanitizeProviderErrorMessage,
 } from "@/shared/generation/errors";
 import { processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
+import { GEMINI_API_MODEL_NAMES } from "@/shared/generation/gemini-banana-model";
 import {
   submissionConsentsSchema,
   SUBMISSION_SOURCES,
@@ -493,7 +494,7 @@ export async function handlePreviewGeneration(
       const previewAspectRatio = resolveGeminiAspectRatio(templateAspectDims);
       const response = await client.generateContent({
         apiKey: env.GEMINI_API_KEY,
-        model: "gemini-3.1-flash-image-preview",
+        model: GEMINI_API_MODEL_NAMES.nano2,
         body: {
           contents: [
             {

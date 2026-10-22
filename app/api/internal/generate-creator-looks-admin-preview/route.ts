@@ -43,6 +43,7 @@ import {
 } from "@/features/generation/lib/openai-image";
 import { createNanobananaClient } from "@/features/generation/lib/nanobanana-client";
 import { resolveGeminiAspectRatio } from "@/shared/generation/gemini-aspect-ratio";
+import { GEMINI_API_MODEL_NAMES } from "@/shared/generation/gemini-banana-model";
 import { GEMINI_GENERATION_ENABLED } from "@/features/generation/lib/model-config";
 import { sanitizeProviderErrorMessage } from "@/shared/generation/errors";
 
@@ -185,7 +186,7 @@ export async function POST(request: NextRequest) {
       const aspectRatio = resolveGeminiAspectRatio(testCharacterDims);
       const response = await client.generateContent({
         apiKey: env.GEMINI_API_KEY,
-        model: "gemini-3.1-flash-image-preview",
+        model: GEMINI_API_MODEL_NAMES.nano2,
         body: {
           contents: [
             {

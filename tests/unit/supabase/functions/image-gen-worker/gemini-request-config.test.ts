@@ -1,6 +1,9 @@
 /** @jest-environment node */
 
-import { buildGeminiGenerationConfig } from "@/supabase/functions/image-gen-worker/gemini-request-config";
+import {
+  buildGeminiGenerationConfig,
+  getGeminiRequestShape,
+} from "@/supabase/functions/image-gen-worker/gemini-request-config";
 
 describe("buildGeminiGenerationConfig", () => {
   test("imageSize がある場合は imageConfig に imageSize と aspectRatio を併置", () => {
@@ -67,6 +70,34 @@ describe("buildGeminiGenerationConfig", () => {
       imageConfig: {
         aspectRatio: "3:4",
       },
+    });
+  });
+});
+
+describe("getGeminiRequestShape", () => {
+  // worker の apiModel の文字列比較 4 か所をここへ集めた。GA 名へ置き換えたあとも、
+  // モデルごとのリクエストの形はプレビュー名のときと変えない(nano-banana-2-1 計画書 Phase 1)。
+  test("Nano 2(gemini-3.1-flash-image)は imageSize 必須・送る・candidateCount と responseModalities あり", () => {
+    expect(getGeminiRequestShape("gemini-3.1-flash-image")).toEqual({
+      requiresImageSize: true,
+      sendsImageSize: true,
+      requiresResponseModalities: true,
+    });
+  });
+
+  test("Pro(gemini-3-pro-image)は imageSize を送るが、responseModalities は付けない", () => {
+    expect(getGeminiRequestShape("gemini-3-pro-image")).toEqual({
+      requiresImageSize: false,
+      sendsImageSize: true,
+      requiresResponseModalities: false,
+    });
+  });
+
+  test("gemini-2.5-flash-image は imageSize も responseModalities も付けない", () => {
+    expect(getGeminiRequestShape("gemini-2.5-flash-image")).toEqual({
+      requiresImageSize: false,
+      sendsImageSize: false,
+      requiresResponseModalities: false,
     });
   });
 });
