@@ -22,6 +22,13 @@ import {
   type ModelTagKey,
 } from "@/features/generation/lib/model-tags";
 import { useGptImage25Available } from "@/features/generation/components/GptImage25AvailabilityProvider";
+import { useNanoBanana21Available } from "@/features/generation/components/NanoBanana21AvailabilityProvider";
+import {
+  NANO_BANANA_2_1_SIZE_TIERS,
+  composeNanoBanana21Model,
+  parseNanoBanana21Model,
+  type NanoBanana21SizeTier,
+} from "@/shared/generation/gemini-banana-model";
 import {
   GEMINI_BANANA_2_SIZE_TIERS,
   GEMINI_BANANA_PRO_SIZE_TIERS,
@@ -68,6 +75,7 @@ type ModelRowValue =
   | "gpt-image-2-row"
   | "gpt-image-2.5-flare-row"
   | "nano-banana-2-row"
+  | "nano-banana-2.1-row"
   | "nano-banana-pro-row";
 
 interface ModelOption {
@@ -76,6 +84,7 @@ interface ModelOption {
     | "modelChatGptImages"
     | "modelChatGptImages25"
     | "modelNanoBanana2"
+    | "modelNanoBanana21"
     | "modelNanoBananaPro";
   /** 行に添えるエンジンチップ */
   engineTag: ModelTagKey;
@@ -97,6 +106,12 @@ const MODEL_OPTIONS: ReadonlyArray<ModelOption> = [
   {
     value: "nano-banana-2-row",
     labelKey: "modelNanoBanana2",
+    engineTag: "engineGemini",
+  },
+  // 2.1 は段階公開中。運営(またはフラグ ON)にだけ、Nano 2 のすぐ下に出す
+  {
+    value: "nano-banana-2.1-row",
+    labelKey: "modelNanoBanana21",
     engineTag: "engineGemini",
   },
   {
@@ -124,6 +139,15 @@ function isGeminiBanana2Size(
   );
 }
 
+function isNanoBanana21Size(
+  size: string | null | undefined
+): size is NanoBanana21SizeTier {
+  return (
+    typeof size === "string" &&
+    (NANO_BANANA_2_1_SIZE_TIERS as ReadonlyArray<string>).includes(size)
+  );
+}
+
 function isGeminiBananaProSize(
   size: string | null | undefined
 ): size is GeminiBananaProSizeTier {
@@ -145,8 +169,12 @@ function toOptionCanonicalValue(
 ): GeminiModel {
   const parsedOpenAI = parseOpenAIImageModel(currentModel);
   const parsedGeminiBanana = parseGeminiBananaModel(currentModel);
+  const parsedNanoBanana21 = parseNanoBanana21Model(currentModel);
   const currentSize: GptImage2SizeTier | GeminiBananaSizeTier =
-    parsedOpenAI?.sizeTier ?? parsedGeminiBanana?.sizeTier ?? "1k";
+    parsedOpenAI?.sizeTier ??
+    parsedGeminiBanana?.sizeTier ??
+    parsedNanoBanana21?.sizeTier ??
+    "1k";
 
   if (option.value === "gpt-image-2-row") {
     // この行は family `gpt-image-2` 専用（2.5 は別行）
@@ -166,6 +194,12 @@ function toOptionCanonicalValue(
     const composed = composeGeminiBananaModel("nano-2", size);
     return (composed ?? "gemini-3.1-flash-image-preview-1024") as GeminiModel;
   }
+  if (option.value === "nano-banana-2.1-row") {
+    // 品質(考える量)は low(minimal)を既定にする(REQ-003)。0.5K は無いので 1K へ
+    if (parsedNanoBanana21) return currentModel;
+    const size = isNanoBanana21Size(currentSize) ? currentSize : "1k";
+    return composeNanoBanana21Model("minimal", size);
+  }
   // nano-banana-pro-row
   if (parsedGeminiBanana?.family === "nano-pro") return currentModel;
   const size = isGeminiBananaProSize(currentSize) ? currentSize : "1k";
@@ -180,6 +214,7 @@ function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
   const openAIFamily = parseOpenAIImageModel(model)?.family;
   if (openAIFamily === "gpt-image-2") return "gpt-image-2-row";
   if (openAIFamily === "gpt-image-2.5-flare") return "gpt-image-2.5-flare-row";
+  if (parseNanoBanana21Model(model)) return "nano-banana-2.1-row";
   const parsed = parseGeminiBananaModel(model);
   if (parsed?.family === "nano-2") return "nano-banana-2-row";
   if (parsed?.family === "nano-pro") return "nano-banana-pro-row";
@@ -192,6 +227,8 @@ function getCurrentRowValue(model: GeminiModel): ModelRowValue | null {
  * 3 行（ChatGPT Images 2.0 / Nano Banana 2 / Nano Banana Pro）でファミリーを切り替える。
  * 段階公開中の ChatGPT Images 2.5 は、運営（`useGptImage25Available()` が true）にだけ
  * **先頭行**として現れる（全公開後に既定へ据える想定の並び）。
+ * 段階公開中の Nano Banana 2.1 は、運営（`useNanoBanana21Available()` が true）にだけ
+ * Nano Banana 2 のすぐ下に現れる。品質（考える量）は `NanoBanana21QualitySelector` で選ぶ。
  * 行クリック時、現在の size が新ファミリーで有効なら維持、無効なら 1K へフォールバック。
  * Quality（Low/Medium/High）は別カードの `GptImage2QualitySelector` で、size は
  * `GptImage2SizeSelector` / `GeminiBananaSizeSelector` でそれぞれ選ぶ。
@@ -205,13 +242,15 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
 
   // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は表示上も既定モデルへ丸める。
   const gptImage25Available = useGptImage25Available();
+  // Nano Banana 2.1 も段階公開中。2.5 と同じく、運営以外には行を出さず、表示上も丸める
+  const nanoBanana21Available = useNanoBanana21Available();
   // NEW バッジは「2.5 を選べる人」にだけ、期間内だけ出す。
   // useMemo ではなくレンダー毎の評価で十分(Date.now() の比較のみ)。
   const showNewBadge = gptImage25Available && isWithinNewBadgePeriod();
   const displayModel = resolveEffectiveModelForAuthState(
     props.value,
     props.authState,
-    { gptImage25Available }
+    { gptImage25Available, nanoBanana21Available }
   );
   const displayValue: ModelRowValue | string =
     getCurrentRowValue(displayModel) ?? displayModel;
@@ -230,10 +269,13 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
         ) {
           return false;
         }
+        if (option.value === "nano-banana-2.1-row" && !nanoBanana21Available) {
+          return false;
+        }
         const canonical = toOptionCanonicalValue(option, displayModel);
         return isModelAvailableForGeneration(canonical);
       }),
-    [displayModel, gptImage25Available]
+    [displayModel, gptImage25Available, nanoBanana21Available]
   );
 
   const handleValueChange = (next: string) => {

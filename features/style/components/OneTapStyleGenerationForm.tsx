@@ -110,6 +110,7 @@ import {
 } from "@/features/generation/lib/normalize-source-image";
 import { GenerationModelControls } from "@/features/generation/components/GenerationModelControls";
 import { useGptImage25Available } from "@/features/generation/components/GptImage25AvailabilityProvider";
+import { useNanoBanana21Available } from "@/features/generation/components/NanoBanana21AvailabilityProvider";
 import { GenerationSubmitButton } from "@/features/generation/components/GenerationSubmitButton";
 import { SubscriptionUpsellDialog } from "@/features/subscription/components/SubscriptionUpsellDialog";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
@@ -559,10 +560,12 @@ export function OneTapStyleGenerationForm({
     effectiveAuthState === "authenticated" ? "authenticated" : "guest";
   // ChatGPT Images 2.5 は段階公開中(REQ-014)。運営以外は実効値を既定モデルへ丸める。
   const gptImage25Available = useGptImage25Available();
+  // Nano Banana 2.1 も段階公開中。運営以外は実効値を既定モデルへ丸める(REQ-016)
+  const nanoBanana21Available = useNanoBanana21Available();
   const effectiveSelectedModel = resolveEffectiveModelForAuthState(
     shouldShowGenerationModelControl ? selectedModel : DEFAULT_GENERATION_MODEL,
     modelAuthState,
-    { gptImage25Available }
+    { gptImage25Available, nanoBanana21Available }
   );
   const shouldUseAsyncGeneration = effectiveAuthState === "authenticated";
   const isGuestDailyLimitReached =
@@ -858,6 +861,7 @@ export function OneTapStyleGenerationForm({
       modelAuthState,
       {
         gptImage25Available,
+        nanoBanana21Available,
         isFreePlan: subscriptionPlan === "free",
       }
     );
@@ -881,7 +885,7 @@ export function OneTapStyleGenerationForm({
       resolveEffectiveModelForAuthState(
         DEFAULT_GENERATION_MODEL,
         modelAuthState,
-        { gptImage25Available }
+        { gptImage25Available, nanoBanana21Available }
       ) === DEFAULT_GENERATION_MODEL;
 
     if (canSwitch && stored !== DEFAULT_GENERATION_MODEL && shouldForceGptImage25()) {

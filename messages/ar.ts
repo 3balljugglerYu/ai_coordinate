@@ -1087,6 +1087,19 @@ export const arMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "الجودة",
+    nanoBanana21QualityTooltipAria: "عرض الفروق في جودة Nano Banana 2.1",
+    nanoBanana21QualityTooltipContent:
+      "في Nano Banana 2.1 تعني الجودة مقدار تفكير النموذج قبل الرسم. لا يتغير حجم الصورة.\n\n─ Low ─\nيفكر بأقل قدر ويولّد بأسرع وقت. مناسب للتحقق السريع من اتجاه الإطلالة وأجوائها.\n\n─ Medium ─\nللاستخدام اليومي. ينظّم تعليماتك قبل الرسم.\n\n─ High ─\nللأوامر الطويلة أو الطلبات المفصلة التي تريد أن تنعكس بأقرب ما يمكن.\n\nالجودة الأعلى تستغرق وقتًا أطول وتستهلك المزيد من Percoin.",
+    nanoBanana21QualityLow: "توليد سريع",
+    nanoBanana21QualityMedium: "توليد متوازن",
+    nanoBanana21QualityHigh: "توليد دقيق",
+    nanoBanana21SizeTooltipContent:
+      "أحجام الإخراج المتاحة في Nano Banana 2.1. تتبع الصورة نسبة أبعاد صورتك المُدخلة قدر الإمكان، ضمن حدود الحجم الذي تختاره.\n\n─ 1K ─\nمثال عمودي (3:4): 896 × 1200 بكسل\nمناسب للمراجعة والنشر.\n\n─ 2K ─\nمثال عمودي (3:4): 1792 × 2400 بكسل\nأكبر، ويسهل رؤية التفاصيل.\n\n─ 4K ─\nمثال عمودي (3:4): 3584 × 4800 بكسل\nدقة عالية للّمسات النهائية.\n\nالأحجام الأكبر تُظهر تفاصيل أكثر، لكنها تستغرق وقتًا أطول وتستهلك المزيد من Percoin.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "نتيجة معاينة الضيف",
     guestResultTitle: "النتيجة",

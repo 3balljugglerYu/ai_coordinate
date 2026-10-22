@@ -1069,6 +1069,19 @@ export const jaMessages = {
     geminiBananaSize1k: "標準：1024px目安",
     geminiBananaSize2k: "高解像度：2048px目安",
     geminiBananaSize4k: "最高解像度：最大5504px",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "品質",
+    nanoBanana21QualityTooltipAria: "Nano Banana 2.1 の品質の違いを表示",
+    nanoBanana21QualityTooltipContent:
+      "Nano Banana 2.1 の品質は、描く前に考える量です。画像の大きさは変わりません。\n\n─ Low ─\n考える量がいちばん少なく、素早く生成します。服の方向性や雰囲気を早く確かめる時に。\n\n─ Medium ─\n通常用途。指示を整理してから描きます。\n\n─ High ─\n長い指示や細かい指定を、できるだけ反映させたい時に。\n\n品質を上げると、生成時間と消費ペルコインが増えます。",
+    nanoBanana21QualityLow: "素早く生成：15秒程度で生成",
+    nanoBanana21QualityMedium: "バランス良く生成：20秒程度で生成",
+    nanoBanana21QualityHigh: "丁寧に生成：30秒程度で生成",
+    nanoBanana21SizeTooltipContent:
+      "Nano Banana 2.1 で選べる出力サイズです。入力画像のアスペクト比にできる限り合わせ、選んだサイズの上限内で生成します。\n\n─ 1K ─\n縦長（3:4）の例：896 × 1200px\n通常の確認や投稿に使いやすいサイズです。\n\n─ 2K ─\n縦長（3:4）の例：1792 × 2400px\nより大きく、細部を見やすいサイズです。\n\n─ 4K ─\n縦長（3:4）の例：3584 × 4800px\n仕上げ向きの高精細サイズです。\n\nサイズを大きくすると細部を確認しやすくなりますが、生成時間と消費ペルコインが増えます。",
+    nanoBanana21Size1k: "標準：1K",
+    nanoBanana21Size2k: "高解像度：2K",
+    nanoBanana21Size4k: "最高解像度：4K",
     // Phase 6: ゲスト用 UI
     guestResultAlt: "お試し生成結果",
     guestResultTitle: "生成結果",

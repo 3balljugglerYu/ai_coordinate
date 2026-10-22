@@ -22,6 +22,12 @@ import {
   type GeminiBananaSizeTier,
   type GeminiModel,
 } from "@/features/generation/types";
+import {
+  NANO_BANANA_2_1_SIZE_TIERS,
+  composeNanoBanana21Model,
+  parseNanoBanana21Model,
+  type NanoBanana21SizeTier,
+} from "@/shared/generation/gemini-banana-model";
 import type { ModelSelectAuthState } from "./LockableModelSelect";
 
 interface GeminiBananaSizeSelectorProps {
@@ -44,9 +50,72 @@ const SIZE_LABEL_KEYS = {
 >;
 
 /**
- * Nano Banana 2 / Pro 選択時に表示する出力サイズセレクター。
- * `GptImage2SizeSelector` の Gemini 版で、family ごとに許可される size tier
- * （nano-2: 0.5K/1K、nano-pro: 1K/2K/4K）を `getSizeTiersForFamily` から得て描画する。
+ * 選択中の Gemini モデルで選べるサイズと、サイズを変えたときの組み立て方。
+ * Nano Banana 2.1 は考える量を保ったままサイズだけ組み替える。
+ */
+interface GeminiSizeContext {
+  sizeTier: GeminiBananaSizeTier;
+  sizeTiers: ReadonlyArray<GeminiBananaSizeTier>;
+  compose: (sizeTier: GeminiBananaSizeTier) => GeminiModel | null;
+  tooltipContentKey:
+    | "geminiBanana2SizeTooltipContent"
+    | "geminiBananaProSizeTooltipContent"
+    | "nanoBanana21SizeTooltipContent";
+  labelKeys: Partial<Record<GeminiBananaSizeTier, SizeLabelKey>>;
+}
+
+type SizeLabelKey =
+  | (typeof SIZE_LABEL_KEYS)[GeminiBananaSizeTier]
+  | (typeof NANO_BANANA_2_1_SIZE_LABEL_KEYS)[NanoBanana21SizeTier];
+
+/**
+ * 2.1 のサイズの文言。測ったのは縦長(3:4)だけなので、選択肢には px を書かない
+ * (Nano 2 / Pro の「1024px目安」「最大5504px」を流用しない)。px は説明の吹き出しの
+ * 実測例(3:4)だけに書く。
+ */
+const NANO_BANANA_2_1_SIZE_LABEL_KEYS = {
+  "1k": "nanoBanana21Size1k",
+  "2k": "nanoBanana21Size2k",
+  "4k": "nanoBanana21Size4k",
+} as const satisfies Record<NanoBanana21SizeTier, string>;
+
+function resolveGeminiSizeContext(value: GeminiModel): GeminiSizeContext | null {
+  const nano21 = parseNanoBanana21Model(value);
+  if (nano21) {
+    return {
+      sizeTier: nano21.sizeTier,
+      sizeTiers: NANO_BANANA_2_1_SIZE_TIERS,
+      compose: (sizeTier) =>
+        (NANO_BANANA_2_1_SIZE_TIERS as ReadonlyArray<string>).includes(sizeTier)
+          ? composeNanoBanana21Model(
+              nano21.thinkingLevel,
+              sizeTier as NanoBanana21SizeTier
+            )
+          : null,
+      tooltipContentKey: "nanoBanana21SizeTooltipContent",
+      labelKeys: NANO_BANANA_2_1_SIZE_LABEL_KEYS,
+    };
+  }
+  const parsed = parseGeminiBananaModel(value);
+  if (!parsed) {
+    return null;
+  }
+  return {
+    sizeTier: parsed.sizeTier,
+    sizeTiers: getSizeTiersForFamily(parsed.family),
+    compose: (sizeTier) => composeGeminiBananaModel(parsed.family, sizeTier),
+    tooltipContentKey:
+      parsed.family === "nano-2"
+        ? "geminiBanana2SizeTooltipContent"
+        : "geminiBananaProSizeTooltipContent",
+    labelKeys: SIZE_LABEL_KEYS,
+  };
+}
+
+/**
+ * Nano Banana 2 / 2.1 / Pro 選択時に表示する出力サイズセレクター。
+ * `GptImage2SizeSelector` の Gemini 版で、モデルごとに許可される size tier
+ * （nano-2: 0.5K/1K、nano-2.1: 1K/2K/4K、nano-pro: 1K/2K/4K）を描画する。
  */
 export function GeminiBananaSizeSelector({
   value,
@@ -57,22 +126,18 @@ export function GeminiBananaSizeSelector({
   isModelSelectable,
 }: GeminiBananaSizeSelectorProps) {
   const t = useTranslations("coordinate");
-  const parsed = parseGeminiBananaModel(value);
+  const context = resolveGeminiSizeContext(value);
 
-  if (!parsed) {
+  if (!context) {
     return null;
   }
 
   const isGuest = authState === "guest";
-  const sizeTiers = getSizeTiersForFamily(parsed.family);
-  const tooltipContentKey =
-    parsed.family === "nano-2"
-      ? "geminiBanana2SizeTooltipContent"
-      : "geminiBananaProSizeTooltipContent";
+  const { sizeTiers, tooltipContentKey } = context;
 
   const handleValueChange = (next: string) => {
     const nextSizeTier = next as GeminiBananaSizeTier;
-    const nextModel = composeGeminiBananaModel(parsed.family, nextSizeTier);
+    const nextModel = context.compose(nextSizeTier);
     if (!nextModel) {
       return;
     }
@@ -109,7 +174,7 @@ export function GeminiBananaSizeSelector({
         </p>
       </div>
       <Select
-        value={parsed.sizeTier}
+        value={context.sizeTier}
         onValueChange={handleValueChange}
         disabled={disabled}
       >
@@ -118,12 +183,9 @@ export function GeminiBananaSizeSelector({
         </SelectTrigger>
         <SelectContent>
           {sizeTiers.map((sizeTier) => {
-            const optionModel = composeGeminiBananaModel(
-              parsed.family,
-              sizeTier
-            );
-            // 型上 composeGeminiBananaModel は family と size の不整合で null を返し得るが、
-            // sizeTiers は family 専用リストなのでここでは常に non-null。
+            const optionModel = context.compose(sizeTier);
+            // 型上 compose はモデルと size の不整合で null を返し得るが、
+            // sizeTiers はそのモデル専用のリストなのでここでは常に non-null。
             if (!optionModel) {
               return null;
             }
@@ -131,7 +193,9 @@ export function GeminiBananaSizeSelector({
               isGuest && !isCanonicalGuestAllowedModel(optionModel);
             const isPlanLocked = !(isModelSelectable?.(optionModel) ?? true);
             const isLocked = isGuestLocked || isPlanLocked;
-            const label = t(SIZE_LABEL_KEYS[sizeTier]);
+            const label = t(
+              context.labelKeys[sizeTier] ?? SIZE_LABEL_KEYS[sizeTier]
+            );
             const optionContent = (
               <span className="flex w-full items-center">
                 <span>{label}</span>

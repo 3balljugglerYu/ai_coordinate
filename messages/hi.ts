@@ -1088,6 +1088,19 @@ export const hiMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "गुणवत्ता",
+    nanoBanana21QualityTooltipAria: "Nano Banana 2.1 की गुणवत्ता का अंतर दिखाएँ",
+    nanoBanana21QualityTooltipContent:
+      "Nano Banana 2.1 में गुणवत्ता का मतलब है कि मॉडल चित्र बनाने से पहले कितना सोचता है। चित्र का आकार नहीं बदलता।\n\n─ Low ─\nसबसे कम सोचता है और सबसे तेज़ बनाता है। पोशाक की दिशा और माहौल जल्दी जाँचने के लिए अच्छा।\n\n─ Medium ─\nरोज़मर्रा के उपयोग के लिए। चित्र बनाने से पहले आपके निर्देशों को व्यवस्थित करता है।\n\n─ High ─\nलंबे प्रॉम्प्ट या विस्तृत अनुरोधों के लिए, जिन्हें आप यथासंभव सटीक रूप से दिखाना चाहते हैं।\n\nअधिक गुणवत्ता में ज़्यादा समय और ज़्यादा Percoin लगते हैं।",
+    nanoBanana21QualityLow: "तेज़ी से बनाएँ",
+    nanoBanana21QualityMedium: "संतुलित बनाएँ",
+    nanoBanana21QualityHigh: "सावधानी से बनाएँ",
+    nanoBanana21SizeTooltipContent:
+      "Nano Banana 2.1 में चुने जा सकने वाले आउटपुट आकार। चित्र, चुने गए आकार की सीमा में, आपके इनपुट चित्र के अनुपात का यथासंभव पालन करता है।\n\n─ 1K ─\nखड़ा (3:4) उदाहरण: 896 × 1200 px\nजाँचने और पोस्ट करने के लिए सुविधाजनक।\n\n─ 2K ─\nखड़ा (3:4) उदाहरण: 1792 × 2400 px\nबड़ा, विवरण देखना आसान।\n\n─ 4K ─\nखड़ा (3:4) उदाहरण: 3584 × 4800 px\nअंतिम रूप के लिए उच्च रिज़ॉल्यूशन।\n\nबड़े आकार में ज़्यादा विवरण दिखता है, लेकिन ज़्यादा समय और ज़्यादा Percoin लगते हैं।",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "अतिथि पूर्वावलोकन परिणाम",
     guestResultTitle: "परिणाम",

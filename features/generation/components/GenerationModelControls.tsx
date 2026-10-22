@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { GeminiBananaSizeSelector } from "./GeminiBananaSizeSelector";
 import { GptImage2QualitySelector } from "./GptImage2QualitySelector";
 import { GptImage2SizeSelector } from "./GptImage2SizeSelector";
+import { NanoBanana21QualitySelector } from "./NanoBanana21QualitySelector";
 import {
   LockableModelSelect,
   type ModelSelectAuthState,
@@ -47,6 +48,15 @@ export function GenerationModelControls({
       </div>
 
       <GptImage2QualitySelector
+        value={value}
+        onChange={onChange}
+        onLockedClick={onLockedClick}
+        authState={authState}
+        disabled={disabled}
+        isModelSelectable={isModelSelectable}
+      />
+
+      <NanoBanana21QualitySelector
         value={value}
         onChange={onChange}
         onLockedClick={onLockedClick}

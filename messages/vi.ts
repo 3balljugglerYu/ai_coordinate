@@ -1087,6 +1087,19 @@ export const viMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "Chất lượng",
+    nanoBanana21QualityTooltipAria: "Hiển thị sự khác biệt về chất lượng của Nano Banana 2.1",
+    nanoBanana21QualityTooltipContent:
+      "Với Nano Banana 2.1, chất lượng là mức độ mô hình suy nghĩ trước khi vẽ. Kích thước ảnh không thay đổi.\n\n─ Low ─\nSuy nghĩ ít nhất và tạo nhanh nhất. Phù hợp để kiểm tra nhanh hướng đi và cảm giác của trang phục.\n\n─ Medium ─\nDùng thường ngày. Sắp xếp chỉ dẫn của bạn trước khi vẽ.\n\n─ High ─\nDành cho prompt dài hoặc yêu cầu chi tiết mà bạn muốn được thể hiện sát nhất có thể.\n\nChất lượng cao hơn sẽ lâu hơn và tốn nhiều Percoin hơn.",
+    nanoBanana21QualityLow: "Tạo nhanh",
+    nanoBanana21QualityMedium: "Tạo cân bằng",
+    nanoBanana21QualityHigh: "Tạo kỹ lưỡng",
+    nanoBanana21SizeTooltipContent:
+      "Các kích thước đầu ra có thể chọn với Nano Banana 2.1. Ảnh sẽ bám theo tỷ lệ khung hình của ảnh đầu vào nhiều nhất có thể, trong giới hạn kích thước đã chọn.\n\n─ 1K ─\nVí dụ ảnh dọc (3:4): 896 × 1200 px\nTiện để kiểm tra và đăng bài.\n\n─ 2K ─\nVí dụ ảnh dọc (3:4): 1792 × 2400 px\nLớn hơn, dễ xem chi tiết hơn.\n\n─ 4K ─\nVí dụ ảnh dọc (3:4): 3584 × 4800 px\nĐộ phân giải cao để hoàn thiện.\n\nKích thước lớn hơn cho nhiều chi tiết hơn, nhưng lâu hơn và tốn nhiều Percoin hơn.",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Kết quả xem trước cho khách",
     guestResultTitle: "Kết quả",

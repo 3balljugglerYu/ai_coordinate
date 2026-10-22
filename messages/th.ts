@@ -1087,6 +1087,19 @@ export const thMessages = {
     geminiBananaSize1k: "1K",
     geminiBananaSize2k: "2K",
     geminiBananaSize4k: "4K",
+    modelNanoBanana21: "Nano Banana 2.1",
+    nanoBanana21QualityLabel: "คุณภาพ",
+    nanoBanana21QualityTooltipAria: "แสดงความแตกต่างของคุณภาพ Nano Banana 2.1",
+    nanoBanana21QualityTooltipContent:
+      "สำหรับ Nano Banana 2.1 คุณภาพคือปริมาณที่โมเดลคิดก่อนวาด ขนาดภาพไม่เปลี่ยน\n\n─ Low ─\nคิดน้อยที่สุดและสร้างเร็วที่สุด เหมาะสำหรับตรวจทิศทางและบรรยากาศของชุดอย่างรวดเร็ว\n\n─ Medium ─\nสำหรับการใช้งานทั่วไป จัดลำดับคำสั่งก่อนวาด\n\n─ High ─\nสำหรับพรอมต์ยาวหรือคำขอที่ละเอียดซึ่งต้องการให้สะท้อนออกมาให้ใกล้เคียงที่สุด\n\nคุณภาพสูงขึ้นจะใช้เวลานานขึ้นและใช้ Percoin มากขึ้น",
+    nanoBanana21QualityLow: "สร้างอย่างรวดเร็ว",
+    nanoBanana21QualityMedium: "สร้างอย่างสมดุล",
+    nanoBanana21QualityHigh: "สร้างอย่างประณีต",
+    nanoBanana21SizeTooltipContent:
+      "ขนาดเอาต์พุตที่เลือกได้สำหรับ Nano Banana 2.1 ภาพจะพยายามตามอัตราส่วนของภาพต้นฉบับให้มากที่สุด ภายในขีดจำกัดของขนาดที่เลือก\n\n─ 1K ─\nตัวอย่างแนวตั้ง (3:4): 896 × 1200 px\nสะดวกสำหรับตรวจดูและโพสต์\n\n─ 2K ─\nตัวอย่างแนวตั้ง (3:4): 1792 × 2400 px\nใหญ่ขึ้น เห็นรายละเอียดได้ง่ายขึ้น\n\n─ 4K ─\nตัวอย่างแนวตั้ง (3:4): 3584 × 4800 px\nความละเอียดสูงสำหรับงานขั้นสุดท้าย\n\nขนาดใหญ่ขึ้นเห็นรายละเอียดมากขึ้น แต่ใช้เวลานานขึ้นและใช้ Percoin มากขึ้น",
+    nanoBanana21Size1k: "1K",
+    nanoBanana21Size2k: "2K",
+    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "ผลตัวอย่างสำหรับผู้เยี่ยมชม",
     guestResultTitle: "ผลลัพธ์",

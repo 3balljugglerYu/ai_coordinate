@@ -1,3 +1,5 @@
+import { NANO_BANANA_2_1_PARSED_MODELS } from "@/shared/generation/gemini-banana-model";
+
 /**
  * モデル ID（DB 保存値）からユーザー向けブランド名を導出するヘルパー。
  *
@@ -19,6 +21,11 @@ export function getModelBrandName(
   // 「ChatGPT Images 2.0」と表示される（REQ-012）。
   if (model.startsWith("gpt-image-2.5-")) {
     return "ChatGPT Images 2.5";
+  }
+  // ⚠️ 2.1 は Nano Banana 2 と混同させない(REQ-014)。今の Nano 2 の判定
+  // (`gemini-3.1-flash-image-`)には一致しないが、順序を明示して先に置く。
+  if (model.startsWith("gemini-nano-banana-2.1-")) {
+    return "Nano Banana 2.1";
   }
   if (model.startsWith("gpt-image-")) {
     return "ChatGPT Images 2.0";
@@ -44,6 +51,29 @@ export interface ModelDisplayInfo {
   displayName: string;
   defaultSize: { width: number; height: number };
 }
+
+const NANO_BANANA_2_1_QUALITY_LABEL = {
+  minimal: "Low",
+  medium: "Medium",
+  high: "High",
+} as const;
+
+const NANO_BANANA_2_1_DEFAULT_SIZE = {
+  "1k": { width: 1024, height: 1024 },
+  "2k": { width: 2048, height: 2048 },
+  "4k": { width: 4096, height: 4096 },
+} as const;
+
+const NANO_BANANA_2_1_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> =
+  Object.fromEntries(
+    NANO_BANANA_2_1_PARSED_MODELS.map(({ canonical, thinkingLevel, sizeTier }) => [
+      canonical,
+      {
+        displayName: `Nano Banana 2.1 | ${NANO_BANANA_2_1_QUALITY_LABEL[thinkingLevel]}`,
+        defaultSize: NANO_BANANA_2_1_DEFAULT_SIZE[sizeTier],
+      },
+    ])
+  );
 
 const MODEL_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> = {
   // ChatGPT Images 2.0 は動的サイジングにより、入力アスペクト比と tier の
@@ -156,6 +186,9 @@ const MODEL_LIST_DISPLAY_MAP: Record<string, ModelDisplayInfo> = {
     displayName: "Nano Banana Pro",
     defaultSize: { width: 4096, height: 4096 },
   },
+  // Nano Banana 2.1 は ChatGPT と同じく品質(考える量)を displayName に含める。
+  // 内部の minimal は画面の Low に当たる(ADR-002)。
+  ...NANO_BANANA_2_1_LIST_DISPLAY_MAP,
 };
 
 const FALLBACK_DISPLAY: ModelDisplayInfo = {
