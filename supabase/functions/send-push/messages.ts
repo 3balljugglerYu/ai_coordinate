@@ -231,6 +231,49 @@ export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
   return null;
 }
 
+/**
+ * 送り主のアイコンつきで出す(iOS のコミュニケーション通知)種類。人からの反応だけ。
+ * 2026-10-24 ユーザー決定: アイコンを設定している人だけ。設定していない人(avatar_url が空)は今までどおり。
+ */
+const SENDER_NOTIFICATION_TYPES = new Set(["like", "comment", "follow"]);
+
+export function senderSourceFor(row: ClaimedRow): PushImageSource | null {
+  if (!row.notification_type || !SENDER_NOTIFICATION_TYPES.has(row.notification_type)) {
+    return null;
+  }
+  return row.notification_actor_id
+    ? { kind: "avatar", userId: row.notification_actor_id }
+    : null;
+}
+
+/**
+ * 送り主の名前の下に出す文。iOS は名前を1行目に出すので、名前を外す。
+ * 記録してある題名(「〇〇があなたの投稿にいいねしました」「〇〇があなたのコメントに返信しました」など)の
+ * 「〇〇が」を外して使う(題名の名前は記録したときのものなので、今の名前とは限らない)。
+ * 形が違う題名は null(アイコンつきにせず、今までどおり送る)。
+ */
+export function buildSenderMessage(
+  row: ClaimedRow,
+  likeCount: number | null,
+): string | null {
+  const match = /^.+?が(あなた.+)$/u.exec(row.title?.trim() ?? "");
+  if (!match) return null;
+  let message = match[1];
+  const others = Math.max(0, Math.floor(likeCount ?? 0) - 1);
+  if (row.notification_type === "like" && others > 0) {
+    message = `ほか${others}人と、${message}`;
+  }
+  const body = row.body?.trim();
+  return body ? `${message}\n${body}` : message;
+}
+
+/** 送り主(アイコン・名前・名前の下の文)。端末が iOS のコミュニケーション通知にする */
+export interface PushSender {
+  name: string;
+  iconUrl: string;
+  message: string;
+}
+
 export interface PushImageRow {
   storage_path_thumb?: string | null;
   storage_path_display?: string | null;
@@ -274,6 +317,11 @@ export interface FcmMessageInput {
   badge: number | null;
   /** 通知に添える画像(https のみ)。無ければ文字だけの通知 */
   imageUrl?: string | null;
+  /**
+   * 送り主。iOS はアプリの Notification Service Extension が、左にこのアイコン・右下にアプリのアイコンの
+   * 形(コミュニケーション通知)にする。アイコンが取れなければ今までどおり。Android は使わない
+   */
+  sender?: PushSender | null;
 }
 
 /** FCM HTTP v1 の message。Android はチャンネル=種類、iOS は未読数のバッジ */
@@ -301,7 +349,12 @@ export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown>
   if (input.badge !== null && input.badge >= 0) {
     aps.badge = input.badge;
   }
-  if (imageUrl) {
+  const senderIconUrl = usableImageUrl(input.sender?.iconUrl);
+  const sender =
+    input.sender && senderIconUrl && input.sender.name.trim() && input.sender.message.trim()
+      ? input.sender
+      : null;
+  if (imageUrl || sender) {
     aps["mutable-content"] = 1;
   }
 
@@ -324,11 +377,19 @@ export function buildFcmMessage(input: FcmMessageInput): Record<string, unknown>
     apns.fcm_options = { image: imageUrl };
   }
 
+  const data: Record<string, string> = { ...input.data };
+  // アプリを開いている時はアプリが自分で通知を出すので、画像の URL も渡す
+  if (imageUrl) data.image_url = imageUrl;
+  if (sender && senderIconUrl) {
+    data.sender_name = sender.name.trim();
+    data.sender_icon_url = senderIconUrl;
+    data.sender_message = sender.message.trim();
+  }
+
   return {
     token: input.token,
     notification,
-    // アプリを開いている時はアプリが自分で通知を出すので、画像の URL も渡す
-    data: imageUrl ? { ...input.data, image_url: imageUrl } : input.data,
+    data,
     android,
     apns,
   };
