@@ -1041,6 +1041,7 @@ export const jaMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "NEW",
+    modelNanoBanana21CampaignBadge: "お得！11/30まで！",
     modelSwitchNoticeTitle: "生成モデルが新しくなりました",
     modelSwitchNoticeBody: "ChatGPT Images 2.5 で、待ち時間が約半分になりました。\nこれまでの 2.0 に戻したいときは、ここから切り替えられます。",
     modelSwitchNoticeConfirm: "OK",

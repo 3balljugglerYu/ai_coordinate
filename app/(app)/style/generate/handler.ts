@@ -376,10 +376,8 @@ export async function postStyleGenerateRoute(
       );
     }
     // Nano Banana 2.1(REQ-006 / REQ-017)。2.5 と同じく 3 つのハンドラすべてに置く。
-    // 2.1 はゲスト許可リストに無いので、今は上の parseGuestModelInput で先に止まり、
-    // ここには来ない。公開フラグが OFF の間は、許可リストに足してもここで止まる。
-    // ⚠️ フラグを ON にすると、ここは誰でも通す(無料プランの制限はサーバーに無い)。
-    // ゲストに開けるかは、公開のとき(Phase 7)に許可リストで決める。
+    // ゲスト許可リストには素早く 1K だけが入っている(2026-10-23)。公開の日時までは
+    // ここで止まり、過ぎたら誰でも通す(無料プランの制限はサーバーに無い)。
     if (
       isNanoBanana21Model(effectiveModel) &&
       !isNanoBanana21Available(null)

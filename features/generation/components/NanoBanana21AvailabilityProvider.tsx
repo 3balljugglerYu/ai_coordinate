@@ -7,7 +7,9 @@ import {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from "react";
+import { NANO_BANANA_2_1_PUBLIC_LAUNCH_AT_MS } from "@/shared/generation/percoin-costs";
 
 /**
  * Nano Banana 2.1(`gemini-nano-banana-2.1-*`)を選んでよいかを、
@@ -30,6 +32,26 @@ const NanoBanana21AvailabilityContext = createContext<{
   upgrade: () => void;
 } | null>(null);
 
+/**
+ * 公開の日時(2026-10-24 0:00 JST)を過ぎたか。未ログインの人を含めて全員に開く。
+ *
+ * サーバーの描画では常に false(描画中に時刻を読むと静的シェルの生成で落ちるため)。
+ * ブラウザではハイドレーションのあとに時刻で決まる。開いたままの画面は、
+ * 日時をまたいでも読み込み直すまで変わらない(時刻の変化は購読しない)。
+ * 公開後に公開フラグを立てて再デプロイすれば、最初の描画から行が出る。
+ */
+function hasLaunched(): boolean {
+  return Date.now() >= NANO_BANANA_2_1_PUBLIC_LAUNCH_AT_MS;
+}
+
+function notLaunchedOnServer(): boolean {
+  return false;
+}
+
+function subscribeNothing(): () => void {
+  return () => {};
+}
+
 /** ビルド時に埋め込まれる公開フラグ。認証を伴わないので同期的に読める。 */
 function isPubliclyEnabled(): boolean {
   return process.env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED === "true";
@@ -40,11 +62,17 @@ export function NanoBanana21AvailabilityProvider({
 }: {
   children: React.ReactNode;
 }) {
-  const [available, setAvailable] = useState(isPubliclyEnabled);
+  const [upgraded, setUpgraded] = useState(isPubliclyEnabled);
+  const launched = useSyncExternalStore(
+    subscribeNothing,
+    hasLaunched,
+    notLaunchedOnServer
+  );
+  const available = upgraded || launched;
 
   // 参照を固定する。毎レンダーで作り直すと、これを依存に持つ側の effect が
   // 毎回動く事故を避ける(PopularPromptsAvailabilityProvider と同じ理由)。
-  const upgrade = useCallback(() => setAvailable(true), []);
+  const upgrade = useCallback(() => setUpgraded(true), []);
   const value = useMemo(() => ({ available, upgrade }), [available, upgrade]);
 
   return (

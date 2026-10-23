@@ -39,7 +39,6 @@ import {
   getOneTapStyleReservedAttemptId,
 } from "../../../shared/generation/one-tap-style-metadata.ts";
 import {
-  OPENAI_IMAGE_PERCOIN_COSTS,
   parseOpenAIImageModel,
   toOpenAIApiModelName,
 } from "../../../shared/generation/openai-image-model.ts";
@@ -84,12 +83,12 @@ import {
 } from "./gemini-request-config.ts";
 import {
   GEMINI_API_MODEL_NAMES,
-  NANO_BANANA_2_1_PERCOIN_COSTS,
   getNanoBanana21ImageSize,
   parseNanoBanana21Model,
   type GeminiApiModel,
   type NanoBanana21CanonicalModel,
 } from "../../../shared/generation/gemini-banana-model.ts";
+import { getPercoinCostTable } from "../../../shared/generation/percoin-costs.ts";
 import { resolveAllPromptTemplatesForWorker } from "./prompt-override.ts";
 import {
   type PromptExecutionRecord,
@@ -772,22 +771,15 @@ function extractImageSize(model: GeminiModel): GeminiImageSize | null {
 }
 
 /**
- * モデル名からペルコインコストを取得
+ * モデル名からペルコインコストを取得する。
+ *
+ * Next.js の getPercoinCost と同じ表(`shared/generation/percoin-costs.ts`)を読む。
+ * 表は日時で切り替わり、判定はその場の時刻で行う(ジョブの created_at は
+ * 本人が書き換えられるので使わない)。
  */
 function getPercoinCost(model: string | null): number {
   const normalized = normalizeModelName(model);
-  const costs: Record<string, number> = {
-    'gemini-2.5-flash-image': 20,
-    'gemini-3.1-flash-image-preview-512': 10,
-    'gemini-3.1-flash-image-preview-1024': 20,
-    'gemini-3-pro-image-1k': 50,
-    'gemini-3-pro-image-2k': 80,
-    'gemini-3-pro-image-4k': 100,
-    // Next.js の MODEL_PERCOIN_COSTS と同じ 1 つの表を読む(REQ-011)
-    ...NANO_BANANA_2_1_PERCOIN_COSTS,
-    ...OPENAI_IMAGE_PERCOIN_COSTS,
-  };
-  return costs[normalized] ?? 20;
+  return getPercoinCostTable(Date.now())[normalized] ?? 20;
 }
 
 // Creator Looks 2段階(衣装＋背景)の割引率。

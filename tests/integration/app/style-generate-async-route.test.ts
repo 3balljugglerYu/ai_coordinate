@@ -705,6 +705,10 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
   });
 
   test("UCL-007: 残高不足は 400 STYLE_INSUFFICIENT_PERCOIN_BALANCE", async () => {
+    // 値段の表は日時で切り替わる。改定後(2026-10-24 0:00 JST)の値で確かめる
+    const nowSpy = jest
+      .spyOn(Date, "now")
+      .mockReturnValue(Date.parse("2026-10-24T00:00:00+09:00"));
     jobRepository.getUserCreditBalance.mockResolvedValueOnce({
       data: { balance: 5 },
       error: null,
@@ -713,7 +717,7 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     const formData = new FormData();
     formData.set("styleId", STYLE_ID);
     formData.set("uploadImage", createUploadImage());
-    formData.set("model", "gemini-3.1-flash-image-preview-512"); // cost=10
+    formData.set("model", "gemini-3.1-flash-image-preview-512"); // 改定後は 20
 
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
@@ -728,9 +732,10 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     expect(response.status).toBe(400);
     expect(body.errorCode).toBe("STYLE_INSUFFICIENT_PERCOIN_BALANCE");
     expect(body.error).toBe(
-      "残高が不足しています。10ペルコイン以上を用意してから続けてください。"
+      "残高が不足しています。20ペルコイン以上を用意してから続けてください。"
     );
     expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+    nowSpy.mockRestore();
   });
 
   test("Pro 1K (50) のときは 50 ペルコイン以上を要求する", async () => {

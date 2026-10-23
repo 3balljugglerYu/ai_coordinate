@@ -17,6 +17,8 @@ import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getUser } from "@/lib/auth";
+import { isNanoBanana21Available } from "@/lib/env";
+import { isNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
 import { GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 import {
   BACKGROUND_MODES,
@@ -169,6 +171,15 @@ export async function postCoordinateGenerateGuestRoute(
       return jsonError(
         copy.guestModelNotAllowed,
         "GUEST_MODEL_NOT_ALLOWED",
+        400
+      );
+    }
+    // Nano Banana 2.1 はゲスト許可リストに入っているが、公開の日時までは止める
+    // (/style のゲスト経路と同じ判定)。
+    if (isNanoBanana21Model(model) && !isNanoBanana21Available(null)) {
+      return jsonError(
+        copy.modelTemporarilyUnavailable,
+        "GUEST_MODEL_NOT_AVAILABLE",
         400
       );
     }

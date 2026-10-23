@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { getUser } from "@/lib/auth";
 import {
   isNanoBanana21Available,
-  isNanoBanana21PubliclyEnabled,
+  isNanoBanana21PublicFlagEnabled,
 } from "@/lib/env";
 import { NanoBanana21AvailabilityUpgrade } from "./NanoBanana21AvailabilityProvider";
 
@@ -18,7 +18,9 @@ import { NanoBanana21AvailabilityUpgrade } from "./NanoBanana21AvailabilityProvi
 export async function NanoBanana21AvailabilityLoader() {
   // 一般公開後はクライアント側の初期値で確定している。
   // ここで認証を引くと、全ページに無駄な認証往復が増えるだけになる。
-  if (isNanoBanana21PubliclyEnabled()) {
+  // ⚠️ ここでは日時を見ない(cookies() より前に時刻を読むと静的シェルの生成で落ちる)。
+  // 公開の日時を過ぎたかは、下の isNanoBanana21Available とクライアント側が見る。
+  if (isNanoBanana21PublicFlagEnabled()) {
     return null;
   }
 

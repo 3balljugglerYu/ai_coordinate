@@ -1,6 +1,5 @@
 import {
   getPercoinCost,
-  MODEL_PERCOIN_COSTS,
   creatorLooksCost,
   GUEST_ALLOWED_MODELS,
   isCanonicalGuestAllowedModel,
@@ -18,6 +17,19 @@ import {
   normalizeModelName,
 } from "@/features/generation/types";
 import { loadConfigWithGemini } from "@/tests/helpers/load-config-with-gemini";
+
+// 値段の表は日時で切り替わる(shared/generation/percoin-costs.ts)。時刻を渡さないテストは
+// 改定前(2026-10-24 0:00 JST の 1 ミリ秒前)の値で確かめる。実行した日によって結果が変わらないように。
+const PRICE_REVISION_AT_MS = Date.parse("2026-10-24T00:00:00+09:00");
+const CAMPAIGN_ENDS_AT_MS = Date.parse("2026-12-01T00:00:00+09:00");
+
+beforeEach(() => {
+  jest.spyOn(Date, "now").mockReturnValue(PRICE_REVISION_AT_MS - 1);
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
+});
 
 describe("model-config / model identification helpers", () => {
   describe("creatorLooksCost", () => {
@@ -74,17 +86,24 @@ describe("model-config / model identification helpers", () => {
   });
 
   describe("getPercoinCost", () => {
-    it("MODEL_PERCOIN_COSTS に Nano Banana 2.1 の 9 値が、品質とサイズが同じ GPT に +10 した額で入る", () => {
-      expect(MODEL_PERCOIN_COSTS["gemini-nano-banana-2.1-minimal-1k"]).toBe(20);
-      expect(MODEL_PERCOIN_COSTS["gemini-nano-banana-2.1-medium-2k"]).toBe(60);
-      expect(MODEL_PERCOIN_COSTS["gemini-nano-banana-2.1-high-4k"]).toBe(140);
+    it("時刻を渡すと、その時刻の表で数える(改定前 / キャンペーン中 / 通常価格)", () => {
+      const model = "gemini-nano-banana-2.1-minimal-1k";
+      expect(getPercoinCost(model, PRICE_REVISION_AT_MS - 1)).toBe(20);
+      expect(getPercoinCost(model, PRICE_REVISION_AT_MS)).toBe(10);
+      expect(getPercoinCost(model, CAMPAIGN_ENDS_AT_MS)).toBe(20);
+      expect(getPercoinCost("gemini-3.1-flash-image-preview-1024", PRICE_REVISION_AT_MS)).toBe(30);
+    });
+
+    it("時刻を渡さなければ、今の時刻の表で数える", () => {
+      expect(getPercoinCost("gemini-3.1-flash-image-preview-512")).toBe(10);
+      jest.spyOn(Date, "now").mockReturnValue(PRICE_REVISION_AT_MS);
+      expect(getPercoinCost("gemini-3.1-flash-image-preview-512")).toBe(20);
     });
 
     it("getPercoinCost も 2.1 を表どおりの額で数える(既定のモデルの額に落とさない)", () => {
-      // high × 4k を既定の 10 で数えると、140 の画像を 10 で出してしまう。
-      expect(getPercoinCost("gemini-nano-banana-2.1-minimal-1k")).toBe(20);
-      expect(getPercoinCost("gemini-nano-banana-2.1-medium-2k")).toBe(60);
-      expect(getPercoinCost("gemini-nano-banana-2.1-high-4k")).toBe(140);
+      // high × 4k を既定の 10 で数えると、80 の画像を 10 で出してしまう。
+      expect(getPercoinCost("gemini-nano-banana-2.1-medium-2k", CAMPAIGN_ENDS_AT_MS)).toBe(35);
+      expect(getPercoinCost("gemini-nano-banana-2.1-high-4k", CAMPAIGN_ENDS_AT_MS)).toBe(80);
     });
 
     it("returns the GPT Image 2 percoin matrix", () => {
@@ -477,6 +496,7 @@ describe("model-config / model identification helpers", () => {
         "gpt-image-2-low-1k",
         "gpt-image-2.5-flare-low-1k",
         "gemini-3.1-flash-image-preview-512",
+        "gemini-nano-banana-2.1-minimal-1k",
       ]);
     });
 
@@ -580,9 +600,19 @@ describe("model-config / model identification helpers", () => {
       ).toBe(MODEL);
     });
 
-    it("resolveEffectiveModelForAuthState: 未ログインは使えると渡されても 2.1 を通さない(REQ-017)", () => {
+    it("resolveEffectiveModelForAuthState: 未ログインは素早く 1K だけ通す(2026-10-23 ユーザー決定)", () => {
       expect(
         config().resolveEffectiveModelForAuthState(MODEL, "guest", { nanoBanana21Available: true })
+      ).toBe(FALLBACK_GENERATION_MODEL);
+      expect(
+        config().resolveEffectiveModelForAuthState("gemini-nano-banana-2.1-minimal-1k", "guest", {
+          nanoBanana21Available: true,
+        })
+      ).toBe("gemini-nano-banana-2.1-minimal-1k");
+      expect(
+        config().resolveEffectiveModelForAuthState("gemini-nano-banana-2.1-minimal-1k", "guest", {
+          nanoBanana21Available: false,
+        })
       ).toBe(FALLBACK_GENERATION_MODEL);
     });
 
@@ -593,9 +623,22 @@ describe("model-config / model identification helpers", () => {
       ).toBe(MODEL);
     });
 
-    it("parseGuestRequestedModel: ゲストの経路では 2.1 を受け付けない(REQ-017)", () => {
+    it("parseGuestRequestedModel: ゲストの経路では 2.1 の素早く 1K だけを受け付ける", () => {
+      // 公開の日時より前は、各ハンドラの isNanoBanana21Available(null) で止まる
       expect(config().parseGuestRequestedModel(MODEL)).toBeNull();
-      expect(config().parseGuestRequestedModel("gemini-nano-banana-2.1-minimal-1k")).toBeNull();
+      expect(config().parseGuestRequestedModel("gemini-nano-banana-2.1-minimal-2k")).toBeNull();
+      expect(config().parseGuestRequestedModel("gemini-nano-banana-2.1-minimal-1k")).toBe(
+        "gemini-nano-banana-2.1-minimal-1k"
+      );
+    });
+
+    it("無料プランでは 2.1 の素早く 1K・バランス 1K だけを開く", () => {
+      const { isFreePlanAllowedModel } = config();
+      expect(isFreePlanAllowedModel("gemini-nano-banana-2.1-minimal-1k")).toBe(true);
+      expect(isFreePlanAllowedModel("gemini-nano-banana-2.1-medium-1k")).toBe(true);
+      expect(isFreePlanAllowedModel("gemini-nano-banana-2.1-high-1k")).toBe(false);
+      expect(isFreePlanAllowedModel("gemini-nano-banana-2.1-minimal-2k")).toBe(false);
+      expect(isFreePlanAllowedModel("gemini-nano-banana-2.1-medium-4k")).toBe(false);
     });
   });
 });

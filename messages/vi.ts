@@ -1059,6 +1059,7 @@ export const viMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "MỚI",
+    modelNanoBanana21CampaignBadge: "Ưu đãi! Đến 30/11!",
     modelSwitchNoticeTitle: "Mô hình tạo ảnh đã được cập nhật",
     modelSwitchNoticeBody: "Với ChatGPT Images 2.5, thời gian chờ giảm khoảng một nửa.\nMuốn quay lại 2.0, bạn có thể đổi tại đây.",
     modelSwitchNoticeConfirm: "OK",

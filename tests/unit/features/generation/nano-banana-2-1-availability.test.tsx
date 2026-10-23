@@ -17,8 +17,15 @@ import {
 } from "@/features/generation/components/NanoBanana21AvailabilityProvider";
 
 const ORIGINAL_FLAG = process.env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED;
+const LAUNCH_AT_MS = Date.parse("2026-10-24T00:00:00+09:00");
+
+beforeEach(() => {
+  // 既定は公開の 1 ミリ秒前(実行した日によって結果が変わらないように)
+  jest.spyOn(Date, "now").mockReturnValue(LAUNCH_AT_MS - 1);
+});
 
 afterEach(() => {
+  jest.restoreAllMocks();
   if (ORIGINAL_FLAG === undefined) {
     delete process.env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED;
   } else {
@@ -79,5 +86,18 @@ describe("NanoBanana21AvailabilityProvider", () => {
     expect(screen.getByTestId("available")).toHaveTextContent("true");
     // Upgrade 自体は何も描かない
     expect(container.querySelectorAll("span")).toHaveLength(1);
+  });
+
+  test("公開の日時(2026-10-24 0:00 JST)を過ぎていれば、フラグが無くても表示のあとに true になる", () => {
+    delete process.env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED;
+    jest.spyOn(Date, "now").mockReturnValue(LAUNCH_AT_MS);
+
+    render(
+      <NanoBanana21AvailabilityProvider>
+        <Probe />
+      </NanoBanana21AvailabilityProvider>
+    );
+
+    expect(screen.getByTestId("available")).toHaveTextContent("true");
   });
 });

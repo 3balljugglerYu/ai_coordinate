@@ -1058,6 +1058,7 @@ export const zhTwMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "NEW",
+    modelNanoBanana21CampaignBadge: "優惠！至11/30！",
     modelSwitchNoticeTitle: "生成模型已更新",
     modelSwitchNoticeBody: "使用 ChatGPT Images 2.5，等待時間縮短約一半。\n想換回 2.0 時，可以從這裡切換。",
     modelSwitchNoticeConfirm: "好的",

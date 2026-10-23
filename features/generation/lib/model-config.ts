@@ -10,14 +10,9 @@ import {
   normalizeModelName,
   type GeminiModel,
 } from "../types";
-import {
-  OPENAI_IMAGE_PERCOIN_COSTS,
-  isGptImage25FlareModel,
-} from "@/shared/generation/openai-image-model";
-import {
-  NANO_BANANA_2_1_PERCOIN_COSTS,
-  isNanoBanana21Model,
-} from "@/shared/generation/gemini-banana-model";
+import { isGptImage25FlareModel } from "@/shared/generation/openai-image-model";
+import { isNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
+import { getPercoinCostTable } from "@/shared/generation/percoin-costs";
 import type { CreatorLooksMode } from "@/shared/generation/creator-looks-mode";
 
 export { DEFAULT_GENERATION_MODEL, FALLBACK_GENERATION_MODEL };
@@ -58,19 +53,6 @@ export function isModelAvailableForGeneration(
   );
 }
 
-/**
- * モデルごとのペルコイン消費量
- */
-export const MODEL_PERCOIN_COSTS = {
-  'gemini-2.5-flash-image': 20,
-  'gemini-3.1-flash-image-preview-512': 10,
-  'gemini-3.1-flash-image-preview-1024': 20,
-  'gemini-3-pro-image-1k': 50,
-  'gemini-3-pro-image-2k': 80,
-  'gemini-3-pro-image-4k': 100,
-  ...NANO_BANANA_2_1_PERCOIN_COSTS,
-  ...OPENAI_IMAGE_PERCOIN_COSTS,
-} as const;
 
 /**
  * 未ログインユーザーが選択可能な canonical モデル一覧。
@@ -87,6 +69,9 @@ const BASE_GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   // 公開前のゲストに 2.5 が見えるわけではない。
   'gpt-image-2.5-flare-low-1k',
   'gemini-3.1-flash-image-preview-512',
+  // Nano Banana 2.1 の素早く 1K もお試しに開く(2026-10-23 ユーザー決定)。
+  // 公開の日時まではハンドラの isNanoBanana21Available(null) で止まる。
+  'gemini-nano-banana-2.1-minimal-1k',
 ];
 
 export const GUEST_ALLOWED_MODELS: ReadonlyArray<GeminiModel> =
@@ -138,6 +123,10 @@ const BASE_FREE_PLAN_ALLOWED_MODELS: ReadonlyArray<GeminiModel> = [
   // 運営にしか出ないので、ここを開けても一般ユーザーへの影響は無い。
   'gpt-image-2.5-flare-low-1k',
   'gpt-image-2.5-flare-medium-1k',
+  // Nano Banana 2.1 も GPT と同じく 1K の素早く・バランスを開く(2026-10-23 ユーザー決定)。
+  // 丁寧と 2K 以上は有料プランのまま。公開の日時までは行そのものが運営にしか出ない。
+  'gemini-nano-banana-2.1-minimal-1k',
+  'gemini-nano-banana-2.1-medium-1k',
   'gemini-2.5-flash-image',
   'gemini-3.1-flash-image-preview-512',
   'gemini-3.1-flash-image-preview-1024',
@@ -283,11 +272,17 @@ export function resolveRequestedModelFromUrl(
 }
 
 /**
- * モデル名からペルコイン消費量を取得
+ * モデル名からペルコイン消費量を取得する。
+ *
+ * 表は日時で切り替わる(2026-10-24 の改定・2.1 の公開記念キャンペーン。
+ * `shared/generation/percoin-costs.ts`)。worker も同じ表を読む。
  */
-export function getPercoinCost(model: string | null | undefined): number {
+export function getPercoinCost(
+  model: string | null | undefined,
+  atMs: number = Date.now()
+): number {
   const normalized = normalizeModelName(model);
-  return MODEL_PERCOIN_COSTS[normalized as keyof typeof MODEL_PERCOIN_COSTS] ?? 10;
+  return getPercoinCostTable(atMs)[normalized] ?? 10;
 }
 
 /** Creator Looks の2段階(衣装＋背景)生成の割引率(1回ぶん×2に対して 10% 引き)。 */

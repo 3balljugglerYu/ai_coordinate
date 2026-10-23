@@ -1723,8 +1723,14 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
     });
 
-    test("残高の確認は 2.1 の表どおりの額で行う(high × 4k は 140。既定のモデルの額に落とさない)", async () => {
+    test("残高の確認は 2.1 の表どおりの額で行う(high × 4k は 80。既定のモデルの額に落とさない)", async () => {
+      // 値段の表は日時で切り替わる。改定後(2026-10-24 0:00 JST)の値で確かめる
+      jest.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-24T00:00:00+09:00"));
       isNanoBanana21AvailableMock.mockReturnValue(true);
+      jobRepository.getUserCreditBalance.mockResolvedValueOnce({
+        data: { balance: 50 },
+        error: null,
+      });
 
       const response = await postGenerateAsyncRoute(
         createRequest(buildBody({ model: "gemini-nano-banana-2.1-high-4k" })),
@@ -1732,10 +1738,10 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
       );
       const body = await readJson(response);
 
-      // テストの残高は 100。140 が要るので足りない
+      // 残高は 50。80 が要るので足りない
       expect(response.status).toBe(400);
       expect(body.errorCode).toBe("GENERATION_INSUFFICIENT_BALANCE");
-      expect(String(body.error)).toContain("140");
+      expect(String(body.error)).toContain("80");
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();
     });
   });

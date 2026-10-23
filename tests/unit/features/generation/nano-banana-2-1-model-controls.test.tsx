@@ -234,6 +234,62 @@ describe("LockableModelSelect の Nano Banana 2.1 の行", () => {
   });
 });
 
+describe("2.1 の行の「お得！11/30まで！」バッジ(公開記念キャンペーン)", () => {
+  const CAMPAIGN_STARTS_AT = Date.parse("2026-10-24T00:00:00+09:00");
+  const CAMPAIGN_ENDS_AT = Date.parse("2026-12-01T00:00:00+09:00");
+  const badge = () => screen.queryByTestId("nano-banana-2-1-campaign-badge");
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  test("キャンペーン中(10/24 0:00 〜 11/30 23:59:59)だけ、2.1 の行に出す", () => {
+    useNanoBanana21AvailableMock.mockReturnValue(true);
+    jest.spyOn(Date, "now").mockReturnValue(CAMPAIGN_STARTS_AT);
+    renderModelSelect("gemini-3.1-flash-image-preview-1024");
+
+    expect(badge()).toHaveTextContent("modelNanoBanana21CampaignBadge");
+    expect(
+      badge()?.closest("[data-option]")?.getAttribute("data-option")
+    ).toBe("nano-banana-2.1-row");
+  });
+
+  test("キャンペーンの終わる 1 ミリ秒前までは出す", () => {
+    useNanoBanana21AvailableMock.mockReturnValue(true);
+    jest.spyOn(Date, "now").mockReturnValue(CAMPAIGN_ENDS_AT - 1);
+    renderModelSelect("gemini-3.1-flash-image-preview-1024");
+
+    expect(badge()).toBeInTheDocument();
+  });
+
+  test("始まる前と、終わったあと(12/1 0:00〜)は出さない", () => {
+    useNanoBanana21AvailableMock.mockReturnValue(true);
+    jest.spyOn(Date, "now").mockReturnValue(CAMPAIGN_STARTS_AT - 1);
+    const { unmount } = render(
+      <LockableModelSelect
+        value={"gemini-3.1-flash-image-preview-1024" as never}
+        authState="authenticated"
+        onChange={jest.fn()}
+        onLockedClick={jest.fn()}
+      />
+    );
+    expect(badge()).not.toBeInTheDocument();
+    unmount();
+
+    jest.spyOn(Date, "now").mockReturnValue(CAMPAIGN_ENDS_AT);
+    renderModelSelect("gemini-3.1-flash-image-preview-1024");
+    expect(badge()).not.toBeInTheDocument();
+  });
+
+  test("2.1 を選べない人には出さない(行そのものが無い)", () => {
+    useNanoBanana21AvailableMock.mockReturnValue(false);
+    jest.spyOn(Date, "now").mockReturnValue(CAMPAIGN_STARTS_AT);
+    renderModelSelect("gemini-3.1-flash-image-preview-1024");
+
+    expect(badge()).not.toBeInTheDocument();
+  });
+});
+
 describe("NanoBanana21QualitySelector", () => {
   function renderQuality(value: string, onChange = jest.fn()) {
     render(

@@ -1059,6 +1059,7 @@ export const thMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "ใหม่",
+    modelNanoBanana21CampaignBadge: "คุ้ม! ถึง 30/11!",
     modelSwitchNoticeTitle: "โมเดลการสร้างภาพได้รับการอัปเดตแล้ว",
     modelSwitchNoticeBody: "ด้วย ChatGPT Images 2.5 เวลารอลดลงประมาณครึ่งหนึ่ง\nหากต้องการกลับไปใช้ 2.0 สามารถเปลี่ยนได้จากตรงนี้",
     modelSwitchNoticeConfirm: "ตกลง",

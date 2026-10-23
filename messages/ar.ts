@@ -1059,6 +1059,7 @@ export const arMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "جديد",
+    modelNanoBanana21CampaignBadge: "عرض! حتى 30/11!",
     modelSwitchNoticeTitle: "تم تحديث نموذج الإنشاء",
     modelSwitchNoticeBody: "مع ChatGPT Images 2.5 أصبح وقت الانتظار أقصر بنحو النصف.\nيمكنك العودة إلى 2.0 من هنا في أي وقت.",
     modelSwitchNoticeConfirm: "حسنًا",

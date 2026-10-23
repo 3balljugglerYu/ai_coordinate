@@ -146,24 +146,36 @@ describe("OPENAI_IMAGE_PERCOIN_COSTS", () => {
     );
   });
 
-  it("回帰ガード: gpt-image-2 のペルコインは family 化の前後で 1 つも変わらない", () => {
-    for (const [model, cost] of Object.entries(GPT_IMAGE_2_BASELINE)) {
-      expect([model, OPENAI_IMAGE_PERCOIN_COSTS[model as keyof typeof OPENAI_IMAGE_PERCOIN_COSTS]]).toEqual([
-        model,
-        cost,
-      ]);
-    }
+  it("改定後の通常価格(2026-10-23 ユーザー決定)どおり", () => {
+    expect(OPENAI_IMAGE_PERCOIN_COSTS).toEqual({
+      "gpt-image-2-low-1k": 10,
+      "gpt-image-2-low-2k": 15,
+      "gpt-image-2-low-4k": 20,
+      "gpt-image-2-medium-1k": 20,
+      "gpt-image-2-medium-2k": 40,
+      "gpt-image-2-medium-4k": 50,
+      "gpt-image-2-high-1k": 50,
+      "gpt-image-2-high-2k": 100,
+      "gpt-image-2-high-4k": 140,
+      "gpt-image-2.5-flare-low-1k": 10,
+      "gpt-image-2.5-flare-low-2k": 15,
+      "gpt-image-2.5-flare-low-4k": 20,
+      "gpt-image-2.5-flare-medium-1k": 20,
+      "gpt-image-2.5-flare-medium-2k": 25,
+      "gpt-image-2.5-flare-medium-4k": 35,
+      "gpt-image-2.5-flare-high-1k": 40,
+      "gpt-image-2.5-flare-high-2k": 50,
+      "gpt-image-2.5-flare-high-4k": 70,
+    });
   });
 
-  it("gpt-image-2.5-flare は quality × size tier ごとに 2.0 と同額", () => {
-    for (const quality of GPT_IMAGE_2_QUALITIES) {
-      for (const sizeTier of GPT_IMAGE_2_SIZE_TIERS) {
-        const v2 = composeOpenAIImageModel("gpt-image-2", quality, sizeTier);
-        const v25 = composeOpenAIImageModel("gpt-image-2.5-flare", quality, sizeTier);
-        expect([v25, OPENAI_IMAGE_PERCOIN_COSTS[v25]]).toEqual([
-          v25,
-          OPENAI_IMAGE_PERCOIN_COSTS[v2],
-        ]);
+  it("同じ品質なら、サイズが大きいほど同じか高い(2.0・2.5 とも)", () => {
+    for (const family of ["gpt-image-2", "gpt-image-2.5-flare"] as const) {
+      for (const quality of GPT_IMAGE_2_QUALITIES) {
+        const [c1, c2, c4] = GPT_IMAGE_2_SIZE_TIERS.map(
+          (sizeTier) => OPENAI_IMAGE_PERCOIN_COSTS[composeOpenAIImageModel(family, quality, sizeTier)]
+        );
+        expect([family, quality, c1 <= c2 && c2 <= c4]).toEqual([family, quality, true]);
       }
     }
   });
