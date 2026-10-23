@@ -1039,12 +1039,15 @@ export const ptMessages = {
     poseModeKeepDescription:
       "Mantém a pose e o ângulo de câmera originais sempre que possível.",
     modelLabel: "Selecione um modelo de geração",
-    modelTooltipAria: "Mostrar as diferenças na qualidade de renderização",
-    modelTooltipContent: "💡 Quanto mais alto, menos falhas em rostos e roupas.\nLow: gera rápido. ~30 s.\nMedium: equilibrado. ~70 s.\nHigh: detalhes estáveis. ~180 s.",
-    gptImage2QualityLabel: "Qualidade de renderização",
+    modelTooltipAria: "Mostrar as diferenças de qualidade",
+    modelTooltipContent: "💡 Quanto mais alto, menos falhas em rostos e roupas.\nLow: gera rápido.\nMedium: equilibrado.\nHigh: detalhes estáveis.",
+    gptImage2QualityLabel: "Qualidade",
     gptImage2QualityLow: "Gerar rapidamente",
     gptImage2QualityMedium: "Gerar equilibrado",
     gptImage2QualityHigh: "Gerar com cuidado",
+    gptImage25QualityLow: "Gerar rapidamente",
+    gptImage25QualityMedium: "Gerar equilibrado",
+    gptImage25QualityHigh: "Gerar com cuidado",
     modelLight05k: "Modelo leve: Nano Banana 2 | 0.5K (10 Percoins / imagem)",
     modelStandard1k: "Modelo padrão: Nano Banana 2 | 1K (20 Percoins / imagem)",
     modelPro1k:
@@ -1075,12 +1078,12 @@ export const ptMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "Padrão (equivalente a 1K)",
-    gptImage2Size2k: "Alta resolução (equivalente a 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / imagem",
     geminiBananaSizeLabel: "Tamanho da saída",
-    geminiBananaSizeDescription: "Quanto maior a resolução, mais Percoins consome.",
+    geminiBananaSizeDescription: "As dimensões exatas são ajustadas automaticamente à orientação da imagem. O custo em Percoins muda conforme o tamanho de saída.",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1100,9 +1103,6 @@ export const ptMessages = {
     nanoBanana21QualityHigh: "Gerar com cuidado",
     nanoBanana21SizeTooltipContent:
       "Tamanhos de saída disponíveis no Nano Banana 2.1. A imagem segue ao máximo a proporção da sua imagem de entrada, dentro do limite do tamanho escolhido.\n\n─ 1K ─\nExemplo vertical (3:4): 896 × 1200 px\nPrático para conferir e postar.\n\n─ 2K ─\nExemplo vertical (3:4): 1792 × 2400 px\nMaior, com detalhes mais fáceis de ver.\n\n─ 4K ─\nExemplo vertical (3:4): 3584 × 4800 px\nAlta resolução para o acabamento.\n\nTamanhos maiores mostram mais detalhes, mas levam mais tempo e usam mais Percoins.",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Preview do resultado para visitante",
     guestResultTitle: "Resultado",

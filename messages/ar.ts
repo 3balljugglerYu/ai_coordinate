@@ -1036,12 +1036,15 @@ export const arMessages = {
     poseModeKeepDescription:
       "يحافظ على وضعية الصورة الأصلية وزاوية الكاميرا قدر الإمكان.",
     modelLabel: "اختر نموذج التوليد",
-    modelTooltipAria: "عرض الفروق في جودة العرض",
-    modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع، حوالي 30 ثانية.\nMedium: متوازن، حوالي 70 ثانية.\nHigh: تفاصيل ثابتة، حوالي 180 ثانية.",
-    gptImage2QualityLabel: "جودة العرض",
+    modelTooltipAria: "عرض الفروق في الجودة",
+    modelTooltipContent: "💡 كلما اقتربت من High، قلّت تشوّهات الوجه والملابس.\nLow: توليد سريع.\nMedium: متوازن.\nHigh: تفاصيل ثابتة.",
+    gptImage2QualityLabel: "الجودة",
     gptImage2QualityLow: "توليد سريع",
     gptImage2QualityMedium: "توليد متوازن",
     gptImage2QualityHigh: "توليد دقيق",
+    gptImage25QualityLow: "توليد سريع",
+    gptImage25QualityMedium: "توليد متوازن",
+    gptImage25QualityHigh: "توليد دقيق",
     modelLight05k: "نموذج خفيف: Nano Banana 2 | 0.5K (10 Percoin / صورة)",
     modelStandard1k: "نموذج قياسي: Nano Banana 2 | 1K (20 Percoin / صورة)",
     modelPro1k:
@@ -1072,12 +1075,12 @@ export const arMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "قياسي (يعادل 1K)",
-    gptImage2Size2k: "دقة عالية (يعادل 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / صورة",
     geminiBananaSizeLabel: "حجم الإخراج",
-    geminiBananaSizeDescription: "كلما زادت الدقة، زاد استهلاك Percoin.",
+    geminiBananaSizeDescription: "تُضبط الأبعاد الفعلية تلقائيًا حسب اتجاه الصورة. تختلف تكلفة Percoin حسب حجم الإخراج.",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1097,9 +1100,6 @@ export const arMessages = {
     nanoBanana21QualityHigh: "توليد دقيق",
     nanoBanana21SizeTooltipContent:
       "أحجام الإخراج المتاحة في Nano Banana 2.1. تتبع الصورة نسبة أبعاد صورتك المُدخلة قدر الإمكان، ضمن حدود الحجم الذي تختاره.\n\n─ 1K ─\nمثال عمودي (3:4): 896 × 1200 بكسل\nمناسب للمراجعة والنشر.\n\n─ 2K ─\nمثال عمودي (3:4): 1792 × 2400 بكسل\nأكبر، ويسهل رؤية التفاصيل.\n\n─ 4K ─\nمثال عمودي (3:4): 3584 × 4800 بكسل\nدقة عالية للّمسات النهائية.\n\nالأحجام الأكبر تُظهر تفاصيل أكثر، لكنها تستغرق وقتًا أطول وتستهلك المزيد من Percoin.",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "نتيجة معاينة الضيف",
     guestResultTitle: "النتيجة",

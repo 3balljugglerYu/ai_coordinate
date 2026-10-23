@@ -1038,12 +1038,15 @@ export const idMessages = {
     poseModeKeepDescription:
       "Mempertahankan pose dan sudut kamera asli semaksimal mungkin.",
     modelLabel: "Pilih model generasi",
-    modelTooltipAria: "Tampilkan perbedaan kualitas rendering",
-    modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat. ~30 detik.\nMedium: seimbang. ~70 detik.\nHigh: detail stabil. ~180 detik.",
-    gptImage2QualityLabel: "Kualitas rendering",
+    modelTooltipAria: "Tampilkan perbedaan kualitas",
+    modelTooltipContent: "💡 Semakin tinggi, semakin kecil kemungkinan wajah dan pakaian rusak.\nLow: cepat.\nMedium: seimbang.\nHigh: detail stabil.",
+    gptImage2QualityLabel: "Kualitas",
     gptImage2QualityLow: "Hasilkan cepat",
     gptImage2QualityMedium: "Hasilkan seimbang",
     gptImage2QualityHigh: "Hasilkan dengan teliti",
+    gptImage25QualityLow: "Hasilkan cepat",
+    gptImage25QualityMedium: "Hasilkan seimbang",
+    gptImage25QualityHigh: "Hasilkan dengan teliti",
     modelLight05k: "Model ringan: Nano Banana 2 | 0.5K (10 Percoin / gambar)",
     modelStandard1k: "Model standar: Nano Banana 2 | 1K (20 Percoin / gambar)",
     modelPro1k:
@@ -1074,12 +1077,12 @@ export const idMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "Standar (setara 1K)",
-    gptImage2Size2k: "Resolusi tinggi (setara 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / gambar",
     geminiBananaSizeLabel: "Ukuran output",
-    geminiBananaSizeDescription: "Resolusi lebih tinggi mengonsumsi lebih banyak Percoin.",
+    geminiBananaSizeDescription: "Dimensi sebenarnya disesuaikan otomatis dengan orientasi gambar. Biaya Percoin berubah sesuai ukuran output.",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1099,9 +1102,6 @@ export const idMessages = {
     nanoBanana21QualityHigh: "Hasilkan dengan teliti",
     nanoBanana21SizeTooltipContent:
       "Ukuran keluaran yang tersedia untuk Nano Banana 2.1. Gambar mengikuti rasio aspek gambar masukan sebisa mungkin, dalam batas ukuran yang dipilih.\n\n─ 1K ─\nContoh potret (3:4): 896 × 1200 px\nPraktis untuk memeriksa dan memposting.\n\n─ 2K ─\nContoh potret (3:4): 1792 × 2400 px\nLebih besar, detail lebih mudah terlihat.\n\n─ 4K ─\nContoh potret (3:4): 3584 × 4800 px\nResolusi tinggi untuk hasil akhir.\n\nUkuran lebih besar menampilkan lebih banyak detail, tetapi butuh waktu lebih lama dan lebih banyak Percoin.",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "Hasil pratinjau tamu",
     guestResultTitle: "Hasil",

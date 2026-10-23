@@ -1036,12 +1036,15 @@ export const thMessages = {
     poseModeKeepDescription:
       "คงท่าทางและมุมกล้องของภาพต้นฉบับให้มากที่สุด",
     modelLabel: "เลือกโมเดลสำหรับสร้าง",
-    modelTooltipAria: "แสดงความแตกต่างของคุณภาพการเรนเดอร์",
-    modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว ประมาณ 30 วินาที\nMedium: สมดุล ประมาณ 70 วินาที\nHigh: รายละเอียดคงที่ ประมาณ 180 วินาที",
-    gptImage2QualityLabel: "คุณภาพการเรนเดอร์",
+    modelTooltipAria: "แสดงความแตกต่างของคุณภาพ",
+    modelTooltipContent: "💡 ยิ่งใกล้ High ใบหน้าและเสื้อผ้ายิ่งไม่ค่อยพัง\nLow: สร้างเร็ว\nMedium: สมดุล\nHigh: รายละเอียดคงที่",
+    gptImage2QualityLabel: "คุณภาพ",
     gptImage2QualityLow: "สร้างอย่างรวดเร็ว",
     gptImage2QualityMedium: "สร้างอย่างสมดุล",
     gptImage2QualityHigh: "สร้างอย่างประณีต",
+    gptImage25QualityLow: "สร้างอย่างรวดเร็ว",
+    gptImage25QualityMedium: "สร้างอย่างสมดุล",
+    gptImage25QualityHigh: "สร้างอย่างประณีต",
     modelLight05k: "โมเดลเบา: Nano Banana 2 | 0.5K (10 Percoin / รูป)",
     modelStandard1k: "โมเดลมาตรฐาน: Nano Banana 2 | 1K (20 Percoin / รูป)",
     modelPro1k:
@@ -1072,12 +1075,12 @@ export const thMessages = {
     gptImage2SizeTooltipAria: "Show ChatGPT Images 2.0 output size details",
     gptImage2SizeTooltipContent:
       "Output preserves the input image aspect ratio at the maximum resolution allowed by the selected size.\n\n- Standard -\nTotal pixels up to ~1.6M (long edge <= 1536 px)\nExamples: 1:1 -> 1248 x 1248, 2:3 -> 1024 x 1536, 16:9 -> 1536 x 864\n\n- High resolution -\nTotal pixels up to ~4.2M (long edge <= 2496 px)\nExamples: 1:1 -> 2048 x 2048, 2:3 -> 1664 x 2496, 16:9 -> 2496 x 1408\n\n- Maximum resolution -\nTotal pixels up to ~8.3M (long edge <= 3840 px)\nExamples: 1:1 -> 2880 x 2880, 2:3 -> 2352 x 3520, 16:9 -> 3840 x 2160\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
-    gptImage2Size1k: "มาตรฐาน (เทียบเท่า 1K)",
-    gptImage2Size2k: "ความละเอียดสูง (เทียบเท่า 2K)",
-    gptImage2Size4k: "Maximum resolution: up to 3840 px",
+    gptImage2Size1k: "1K",
+    gptImage2Size2k: "2K",
+    gptImage2Size4k: "4K",
     gptImage2SizePricePerImage: "{cost} Percoins / รูป",
     geminiBananaSizeLabel: "ขนาดผลลัพธ์",
-    geminiBananaSizeDescription: "ความละเอียดยิ่งสูง ยิ่งใช้ Percoin มากขึ้น",
+    geminiBananaSizeDescription: "ขนาดจริงจะถูกปรับอัตโนมัติตามแนวภาพ ค่า Percoin จะเปลี่ยนตามขนาดเอาต์พุต",
     geminiBananaSizeTooltipAria: "Show Nano Banana output size details",
     geminiBanana2SizeTooltipContent:
       "Output sizes available for Nano Banana 2. Matches the input image aspect ratio as closely as possible, at the maximum resolution allowed by the selected size.\n\n- 0.5K -\nSquare (1:1): 512 x 512 px\nUseful for lightweight trials.\n\n- 1K -\nSquare (1:1): 1024 x 1024 px\nPortrait (9:16): 768 x 1376 px\nLandscape (16:9): 1376 x 768 px\nA practical size for checks and posts.\n\nLarger sizes make details easier to inspect, but generation time and Percoin cost increase.",
@@ -1097,9 +1100,6 @@ export const thMessages = {
     nanoBanana21QualityHigh: "สร้างอย่างประณีต",
     nanoBanana21SizeTooltipContent:
       "ขนาดเอาต์พุตที่เลือกได้สำหรับ Nano Banana 2.1 ภาพจะพยายามตามอัตราส่วนของภาพต้นฉบับให้มากที่สุด ภายในขีดจำกัดของขนาดที่เลือก\n\n─ 1K ─\nตัวอย่างแนวตั้ง (3:4): 896 × 1200 px\nสะดวกสำหรับตรวจดูและโพสต์\n\n─ 2K ─\nตัวอย่างแนวตั้ง (3:4): 1792 × 2400 px\nใหญ่ขึ้น เห็นรายละเอียดได้ง่ายขึ้น\n\n─ 4K ─\nตัวอย่างแนวตั้ง (3:4): 3584 × 4800 px\nความละเอียดสูงสำหรับงานขั้นสุดท้าย\n\nขนาดใหญ่ขึ้นเห็นรายละเอียดมากขึ้น แต่ใช้เวลานานขึ้นและใช้ Percoin มากขึ้น",
-    nanoBanana21Size1k: "1K",
-    nanoBanana21Size2k: "2K",
-    nanoBanana21Size4k: "4K",
     // Phase 6: guest UI
     guestResultAlt: "ผลตัวอย่างสำหรับผู้เยี่ยมชม",
     guestResultTitle: "ผลลัพธ์",
