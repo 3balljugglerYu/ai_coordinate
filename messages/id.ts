@@ -1061,6 +1061,7 @@ export const idMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "BARU",
+    modelNanoBanana21CampaignBadge: "Hemat! Sampai 30/11!",
     modelSwitchNoticeTitle: "Model pembuatan gambar diperbarui",
     modelSwitchNoticeBody: "Dengan ChatGPT Images 2.5, waktu tunggu berkurang sekitar setengahnya.\nIngin kembali ke 2.0? Ganti dari sini kapan saja.",
     modelSwitchNoticeConfirm: "OK",

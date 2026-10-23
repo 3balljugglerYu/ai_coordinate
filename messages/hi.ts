@@ -1060,6 +1060,7 @@ export const hiMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "नया",
+    modelNanoBanana21CampaignBadge: "ऑफ़र! 30/11 तक!",
     modelSwitchNoticeTitle: "जनरेशन मॉडल अपडेट हो गया है",
     modelSwitchNoticeBody: "ChatGPT Images 2.5 के साथ प्रतीक्षा समय लगभग आधा हो गया है।\n2.0 पर वापस जाना हो तो यहाँ से बदल सकते हैं।",
     modelSwitchNoticeConfirm: "ठीक है",

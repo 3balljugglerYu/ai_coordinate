@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { Lock } from "lucide-react";
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/features/generation/lib/model-tags";
 import { useGptImage25Available } from "@/features/generation/components/GptImage25AvailabilityProvider";
 import { useNanoBanana21Available } from "@/features/generation/components/NanoBanana21AvailabilityProvider";
+import { isNanoBanana21LaunchCampaignActive } from "@/shared/generation/percoin-costs";
 import {
   NANO_BANANA_2_1_SIZE_TIERS,
   composeNanoBanana21Model,
@@ -57,6 +58,23 @@ const GPT_IMAGE_2_5_NEW_BADGE_UNTIL = Date.parse("2026-09-30T14:59:59Z");
 
 function isWithinNewBadgePeriod(now: number = Date.now()): boolean {
   return now <= GPT_IMAGE_2_5_NEW_BADGE_UNTIL;
+}
+
+/**
+ * 2.1 の公開記念キャンペーン(〜11/30)の「お得！」バッジを出す期間か。
+ * サーバーの描画では出さず(描画中に時刻を読まない)、ブラウザで時刻を見て決める。
+ * 開いたままの画面は、期間をまたいでも読み込み直すまで変わらない。
+ */
+function isWithinNanoBanana21CampaignBadgePeriod(): boolean {
+  return isNanoBanana21LaunchCampaignActive(Date.now());
+}
+
+function outsideCampaignBadgePeriodOnServer(): boolean {
+  return false;
+}
+
+function subscribeNothing(): () => void {
+  return () => {};
 }
 
 export interface LockableModelSelectProps {
@@ -248,6 +266,14 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
   // NEW バッジは「2.5 を選べる人」にだけ、期間内だけ出す。
   // useMemo ではなくレンダー毎の評価で十分(Date.now() の比較のみ)。
   const showNewBadge = gptImage25Available && isWithinNewBadgePeriod();
+  // 2.1 の公開記念キャンペーン(〜11/30)の「お得！」バッジ。期間を過ぎたら何も触らなくても消える
+  const withinCampaignBadgePeriod = useSyncExternalStore(
+    subscribeNothing,
+    isWithinNanoBanana21CampaignBadgePeriod,
+    outsideCampaignBadgePeriodOnServer
+  );
+  const showNanoBanana21CampaignBadge =
+    nanoBanana21Available && withinCampaignBadgePeriod;
   const displayModel = resolveEffectiveModelForAuthState(
     props.value,
     props.authState,
@@ -337,6 +363,14 @@ export function LockableModelSelect(props: LockableModelSelectProps) {
           // animation: none になり、動きだけ止まって文字と色は残る。
           <span className="model-new-badge-shift pointer-events-none inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-orange-400 px-2 py-0.5 text-[10px] font-bold leading-tight text-white shadow">
             {t("modelNewBadge")}
+          </span>
+        ) : null}
+        {option.value === "nano-banana-2.1-row" && showNanoBanana21CampaignBadge ? (
+          <span
+            data-testid="nano-banana-2-1-campaign-badge"
+            className="model-new-badge-shift pointer-events-none inline-flex items-center rounded-full bg-gradient-to-r from-pink-500 via-rose-400 to-orange-400 px-2 py-0.5 text-[10px] font-bold leading-tight text-white shadow"
+          >
+            {t("modelNanoBanana21CampaignBadge")}
           </span>
         ) : null}
       </span>

@@ -1059,6 +1059,7 @@ export const koMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "NEW",
+    modelNanoBanana21CampaignBadge: "할인! 11/30까지!",
     modelSwitchNoticeTitle: "생성 모델이 새로워졌습니다",
     modelSwitchNoticeBody: "ChatGPT Images 2.5로 대기 시간이 약 절반이 되었습니다.\n이전 2.0으로 돌아가려면 여기에서 바꿀 수 있습니다.",
     modelSwitchNoticeConfirm: "확인",

@@ -1063,6 +1063,7 @@ export const deMessages = {
     modelChatGptImages: "ChatGPT Images 2.0",
     modelChatGptImages25: "ChatGPT Images 2.5",
     modelNewBadge: "NEU",
+    modelNanoBanana21CampaignBadge: "Angebot! Bis 30.11.!",
     modelSwitchNoticeTitle: "Das Generierungsmodell wurde aktualisiert",
     modelSwitchNoticeBody: "Mit ChatGPT Images 2.5 halbiert sich die Wartezeit ungefähr.\nZu 2.0 kannst du hier jederzeit zurückwechseln.",
     modelSwitchNoticeConfirm: "OK",

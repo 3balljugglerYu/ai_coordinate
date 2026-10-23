@@ -125,3 +125,11 @@ export function getPercoinCostTable(atMs: number): PercoinCostTable {
   return PERCOIN_COSTS;
 }
 
+
+/** 2.1 の公開記念キャンペーン中か(モデルの行の「お得！」バッジを出す期間)。 */
+export function isNanoBanana21LaunchCampaignActive(atMs: number): boolean {
+  return (
+    atMs >= PERCOIN_PRICE_REVISION_AT_MS &&
+    atMs < NANO_BANANA_2_1_LAUNCH_CAMPAIGN_ENDS_AT_MS
+  );
+}
