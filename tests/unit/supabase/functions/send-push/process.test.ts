@@ -56,6 +56,7 @@ interface StoreOptions {
   devicesThrow?: boolean;
   unreadLikeCount?: (userId: string, entityId: string) => Promise<number | null>;
   imageUrl?: PushStore["imageUrl"];
+  nickname?: PushStore["nickname"];
 }
 
 function fakeStore(options: StoreOptions = {}) {
@@ -96,9 +97,7 @@ function fakeStore(options: StoreOptions = {}) {
       return 2;
     },
     unreadLikeCount: options.unreadLikeCount ?? (async () => 1),
-    async nickname() {
-      return "Miki";
-    },
+    nickname: options.nickname ?? (async () => "Miki"),
     imageUrl: options.imageUrl ?? (async () => null),
     async removeTokens(tokens) {
       calls.removeTokens.push(tokens);
@@ -422,6 +421,61 @@ describe("runSendPush", () => {
       const message = fcm.messages[0] as Sent;
       expect(message.data.sender_icon_url).toBe("https://cdn.example/avatar.webp");
       expect(message.data.sender_message).toBe("あなたをフォローしました");
+    });
+
+    test("⭐送り主の名前が取れなければ、送り主なしで今までどおり送る", async () => {
+      const { store, calls } = fakeStore({
+        batches: [[row("l1", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+        nickname: async () => null,
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      expect((fcm.messages[0] as Sent).data.sender_name).toBeUndefined();
+      expect(statusById(calls.finish[0])).toEqual({ l1: "sent:" });
+    });
+
+    test("⭐送り主の名前を探すのが遅いときは、上限で打ち切って送り主なしで送る", async () => {
+      jest.useFakeTimers();
+      const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+      const { store, calls } = fakeStore({
+        batches: [[row("l1", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+        nickname: () => new Promise<string | null>(() => {}),
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      const run = runSendPush(store, sender);
+      await jest.advanceTimersByTimeAsync(IMAGE_LOOKUP_TIMEOUT_MS + 10);
+      await run;
+
+      expect((fcm.messages[0] as Sent).data.sender_name).toBeUndefined();
+      expect(statusById(calls.finish[0])).toEqual({ l1: "sent:" });
+      expect(consoleError).toHaveBeenCalledWith(
+        "[send-push] sender name lookup failed:",
+        `timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`,
+      );
+      consoleError.mockRestore();
+      jest.useRealTimers();
+    });
+
+    test("題名の形が違えば、送り主なしで今までどおり送る", async () => {
+      const { store } = fakeStore({
+        batches: [[row("c1", { title: "新しいコメントがあります" })]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      const message = fcm.messages[0] as Sent;
+      expect(message.data.sender_name).toBeUndefined();
+      expect(message.notification.title).toBe("新しいコメントがあります");
     });
 
     test("人からの反応でない通知は、送り主のアイコンを探さない", async () => {

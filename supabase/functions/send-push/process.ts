@@ -291,10 +291,16 @@ async function processRows(
         senderIconPromise,
       ]);
 
-      const needsName = (likeCount ?? 0) > 1 || senderIconUrl !== null;
-      const nickname = needsName && row.notification_actor_id
-        ? await store.nickname(row.notification_actor_id)
-        : null;
+      // いいねのまとめ文に要る名前は今までどおり待つ。送り主の名前だけに要るときは飾りなので、
+      // 画像と同じ上限で打ち切る(取れなければ送り主なしの今までの形で送る)
+      const actorId = row.notification_actor_id;
+      const nickname = !actorId
+        ? null
+        : (likeCount ?? 0) > 1
+          ? await store.nickname(actorId)
+          : senderIconUrl !== null
+            ? await withLookupTimeout(store.nickname(actorId), "sender name")
+            : null;
       const likeTitle = likeCount !== null && likeCount > 1
         ? buildLikeTitle(nickname, likeCount)
         : null;
@@ -366,22 +372,29 @@ function sameSource(a: PushImageSource | null, b: PushImageSource): boolean {
  * 通知に添える画像・送り主のアイコン。どちらも飾りなので、取れなくても文字だけで送る
  * (ここで失敗して通知そのものが遅れたり届かなかったりしないように)。
  */
-async function lookupImageUrl(
+function lookupImageUrl(
   store: PushStore,
   source: PushImageSource,
 ): Promise<string | null> {
+  return withLookupTimeout(store.imageUrl(source), "image");
+}
+
+/** 飾りの問い合わせ。DB が重いときに通知そのものが遅れないよう上限を付け、失敗は null */
+async function withLookupTimeout(
+  lookup: Promise<string | null>,
+  label: string,
+): Promise<string | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    // DB が重いときに、飾りの画像のせいで通知そのものが遅れないよう上限を付ける
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(
         () => reject(new Error(`timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`)),
         IMAGE_LOOKUP_TIMEOUT_MS,
       );
     });
-    return await Promise.race([store.imageUrl(source), timeout]);
+    return await Promise.race([lookup, timeout]);
   } catch (e) {
-    console.error("[send-push] image lookup failed:", errorMessage(e));
+    console.error(`[send-push] ${label} lookup failed:`, errorMessage(e));
     return null;
   } finally {
     if (timer !== undefined) clearTimeout(timer);
