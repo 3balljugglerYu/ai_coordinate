@@ -4,6 +4,8 @@
  * 本番環境では必須の環境変数が設定されていることを確認
  */
 
+import { NANO_BANANA_2_1_PUBLIC_LAUNCH_AT_MS } from "@/shared/generation/percoin-costs";
+
 // 環境変数の型定義
 const envSchema = {
   // Supabase
@@ -586,11 +588,29 @@ export function isGptImage25Available(
 }
 
 /**
- * Nano Banana 2.1(`gemini-nano-banana-2.1-*`)が一般公開されているか。
- * 運営だけで合格ラインを確かめ終えるまでは env を未設定のままにしておく。
+ * Nano Banana 2.1 の公開フラグ(env)が立っているか。日時は見ない。
+ *
+ * 描画の途中で時刻を読めない場所(静的シェルに入るサーバーコンポーネント)用。
+ * 公開の日時を過ぎたかまで含めて判定するときは `isNanoBanana21PubliclyEnabled`。
  */
-export function isNanoBanana21PubliclyEnabled(): boolean {
+export function isNanoBanana21PublicFlagEnabled(): boolean {
   return env.NEXT_PUBLIC_NANO_BANANA_2_1_ENABLED === "true";
+}
+
+/**
+ * Nano Banana 2.1(`gemini-nano-banana-2.1-*`)が一般公開されているか。
+ *
+ * 公開フラグが立っているか、公開の日時(2026-10-24 0:00 JST)を過ぎていれば公開。
+ * 日時で開けるのは、ペルコインの改定と同じ瞬間に、デプロイの時刻に左右されず
+ * 切り替えるため(`shared/generation/percoin-costs.ts`)。
+ */
+export function isNanoBanana21PubliclyEnabled(
+  atMs: number = Date.now()
+): boolean {
+  return (
+    isNanoBanana21PublicFlagEnabled() ||
+    atMs >= NANO_BANANA_2_1_PUBLIC_LAUNCH_AT_MS
+  );
 }
 
 /**

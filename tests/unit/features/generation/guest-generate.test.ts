@@ -249,6 +249,91 @@ describe("guest-generate", () => {
       });
     });
 
+    test("Nano Banana 2.1 は品質(考える量)を送り、2.1 の API 名で呼ぶ", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              { content: { parts: [{ inlineData: { mimeType: "image/png", data: "OK" } }] } },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      await dispatchGuestImageGeneration({
+        model: "gemini-nano-banana-2.1-minimal-1k",
+        promptText: "hello",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      expect(fetchFn).toHaveBeenCalledWith(
+        "https://generativelanguage.googleapis.com/v1beta/models/gemini-nano-banana-2.1:generateContent",
+        expect.objectContaining({ method: "POST" })
+      );
+      const requestBody = JSON.parse(String(fetchFn.mock.calls[0][1].body)) as {
+        generationConfig: { thinkingConfig?: unknown; imageConfig?: { imageSize?: string } };
+      };
+      expect(requestBody.generationConfig.thinkingConfig).toEqual({ thinkingLevel: "minimal" });
+      expect(requestBody.generationConfig.imageConfig?.imageSize).toBe("1K");
+    });
+
+    test("2.1 以外の Gemini には品質(考える量)を送らない", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              { content: { parts: [{ inlineData: { mimeType: "image/png", data: "OK" } }] } },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      await dispatchGuestImageGeneration({
+        model: "gemini-3.1-flash-image-preview-512",
+        promptText: "hello",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      const requestBody = JSON.parse(String(fetchFn.mock.calls[0][1].body)) as {
+        generationConfig: Record<string, unknown>;
+      };
+      expect(requestBody.generationConfig).not.toHaveProperty("thinkingConfig");
+    });
+
+    test("考える途中の下書き画像(thought: true)は仕上がりとして返さない", async () => {
+      const fetchFn = jest.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            candidates: [
+              {
+                content: {
+                  parts: [
+                    { thought: true, inlineData: { mimeType: "image/png", data: "DRAFT" } },
+                    { inlineData: { mimeType: "image/png", data: "FINAL" } },
+                  ],
+                },
+              },
+            ],
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } }
+        )
+      );
+      const result = await dispatchGuestImageGeneration({
+        model: "gemini-nano-banana-2.1-minimal-1k",
+        promptText: "hello",
+        uploadImage: createPngFile(),
+        geminiApiKey: "key",
+        fetchFn: fetchFn as unknown as typeof fetch,
+      });
+      expect(result).toEqual({
+        kind: "success",
+        imageDataUrl: "data:image/png;base64,FINAL",
+        mimeType: "image/png",
+      });
+    });
+
     test("referenceImage 指定時は Gemini に image_0 と image_1 を送る", async () => {
       const fetchFn = jest.fn().mockResolvedValue(
         new Response(

@@ -84,32 +84,34 @@ export const DEFAULT_GPT_IMAGE_2_5_FLARE_MODEL =
   "gpt-image-2.5-flare-low-1k" satisfies GptImage25FlareCanonicalModel;
 
 /**
- * モデルごとのペルコイン消費量。
+ * モデルごとのペルコイン消費量(改定後の通常価格・2026-10-23 ユーザー決定)。
  *
- * 2.5 は検証期間中 2.0 と同額に揃える(計画書 §0 の合意事項)。差を付けるときは
- * ここだけを変えれば API・worker・UI の表示がすべて追従する。
+ * 2.0 と 2.5 は別々の値。2.0 は出力画像のトークンが 2.5 の 4〜5倍あるため、
+ * Medium / High の 2K・4K を 2.5 より高くしている。2K・4K の原価は実測がほぼ無く、
+ * 1K の 1.3倍(2K)・2倍(4K)と見積もった(最大は画素比)。
+ * 改定前の値と切り替えの日時は `percoin-costs.ts` が持つ。
  */
 export const OPENAI_IMAGE_PERCOIN_COSTS = {
   // --- gpt-image-2 ---
   "gpt-image-2-low-1k": 10,
-  "gpt-image-2-low-2k": 20,
-  "gpt-image-2-low-4k": 40,
+  "gpt-image-2-low-2k": 15,
+  "gpt-image-2-low-4k": 20,
   "gpt-image-2-medium-1k": 20,
-  "gpt-image-2-medium-2k": 50,
-  "gpt-image-2-medium-4k": 80,
+  "gpt-image-2-medium-2k": 40,
+  "gpt-image-2-medium-4k": 50,
   "gpt-image-2-high-1k": 50,
-  "gpt-image-2-high-2k": 80,
-  "gpt-image-2-high-4k": 130,
-  // --- gpt-image-2.5-flare(2.0 と同額)---
+  "gpt-image-2-high-2k": 100,
+  "gpt-image-2-high-4k": 140,
+  // --- gpt-image-2.5-flare ---
   "gpt-image-2.5-flare-low-1k": 10,
-  "gpt-image-2.5-flare-low-2k": 20,
-  "gpt-image-2.5-flare-low-4k": 40,
+  "gpt-image-2.5-flare-low-2k": 15,
+  "gpt-image-2.5-flare-low-4k": 20,
   "gpt-image-2.5-flare-medium-1k": 20,
-  "gpt-image-2.5-flare-medium-2k": 50,
-  "gpt-image-2.5-flare-medium-4k": 80,
-  "gpt-image-2.5-flare-high-1k": 50,
-  "gpt-image-2.5-flare-high-2k": 80,
-  "gpt-image-2.5-flare-high-4k": 130,
+  "gpt-image-2.5-flare-medium-2k": 25,
+  "gpt-image-2.5-flare-medium-4k": 35,
+  "gpt-image-2.5-flare-high-1k": 40,
+  "gpt-image-2.5-flare-high-2k": 50,
+  "gpt-image-2.5-flare-high-4k": 70,
 } as const satisfies Record<OpenAIImageCanonicalModel, number>;
 
 export interface ParsedOpenAIImageModel {

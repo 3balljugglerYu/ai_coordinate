@@ -33,6 +33,7 @@ import {
   type StyleOutputAspectRatioMode,
 } from "@/shared/generation/style-output-aspect-ratio";
 import { aspectLabelToDimensions } from "@/shared/generation/gemini-aspect-ratio";
+import { parseNanoBanana21Model } from "@/shared/generation/gemini-banana-model";
 import {
   isOpenAIProviderErrorMessage,
   isSafetyPolicyBlockedErrorMessage,
@@ -407,6 +408,10 @@ async function dispatchGemini(
     parts.push(referenceImagePart);
   }
 
+  // 2.1 は品質(考える量)を送る。送らないと Google 側の既定の量で考えてしまう
+  // (worker の buildGeminiGenerationConfig と同じ)。
+  const thinkingLevel = parseNanoBanana21Model(input.model)?.thinkingLevel;
+
   const abortController = new AbortController();
   const timeoutMs = input.geminiTimeoutMs ?? GUEST_GEMINI_TIMEOUT_MS;
   const timeoutId = setTimeout(() => abortController.abort(), timeoutMs);
@@ -427,6 +432,7 @@ async function dispatchGemini(
           // 出力アスペクトを 9:16 〜 16:9 にクランプするため、imageSize 有無に関わらず
           // aspectRatio を必ず付与する。
           imageConfig: imageSize ? { imageSize, aspectRatio } : { aspectRatio },
+          ...(thinkingLevel ? { thinkingConfig: { thinkingLevel } } : {}),
         },
       }),
       signal: abortController.signal,

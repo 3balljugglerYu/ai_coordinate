@@ -116,6 +116,8 @@ export interface GeminiResponse {
     content?: {
       parts?: Array<{
         text?: string;
+        /** 考える途中の下書き。Gemini 3 の画像モデルは考える間に画像を返すことがある */
+        thought?: boolean;
         // スネークケース形式（APIドキュメント）
         inline_data?: {
           mime_type: string;
@@ -156,6 +158,11 @@ export function extractImagesFromGeminiResponse(
     }
 
     for (const part of parts) {
+      // 考える途中の下書きは仕上がりではないので拾わない
+      // (worker の isGeminiThoughtPart と同じ判定)
+      if (part.thought === true) {
+        continue;
+      }
       // キャメルケース形式（実際のレスポンス）
       if (part.inlineData) {
         images.push({

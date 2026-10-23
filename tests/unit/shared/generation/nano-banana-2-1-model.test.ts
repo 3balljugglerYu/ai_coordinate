@@ -70,30 +70,38 @@ describe("Nano Banana 2.1 の保存名", () => {
 });
 
 describe("NANO_BANANA_2_1_PERCOIN_COSTS", () => {
-  it("計画書 §0 の表(2026-10-22 改定: GPT に +10)どおり", () => {
+  it("改定後の通常価格(2026-10-23 ユーザー決定)どおり", () => {
     expect(NANO_BANANA_2_1_PERCOIN_COSTS).toEqual({
       "gemini-nano-banana-2.1-minimal-1k": 20,
       "gemini-nano-banana-2.1-minimal-2k": 30,
-      "gemini-nano-banana-2.1-minimal-4k": 50,
-      "gemini-nano-banana-2.1-medium-1k": 30,
-      "gemini-nano-banana-2.1-medium-2k": 60,
-      "gemini-nano-banana-2.1-medium-4k": 90,
-      "gemini-nano-banana-2.1-high-1k": 60,
-      "gemini-nano-banana-2.1-high-2k": 90,
-      "gemini-nano-banana-2.1-high-4k": 140,
+      "gemini-nano-banana-2.1-minimal-4k": 60,
+      "gemini-nano-banana-2.1-medium-1k": 25,
+      "gemini-nano-banana-2.1-medium-2k": 35,
+      "gemini-nano-banana-2.1-medium-4k": 65,
+      "gemini-nano-banana-2.1-high-1k": 40,
+      "gemini-nano-banana-2.1-high-2k": 50,
+      "gemini-nano-banana-2.1-high-4k": 80,
     });
   });
 
-  it("画面の品質 low / medium / high が、GPT 2.5 の同じ品質・サイズに +10 した額になる", () => {
-    // Low 1K を Nano 2 の 1K(20)に合わせ、品質とサイズの上げ幅は GPT と同じにした(2026-10-22 ユーザー決定)
+  it("どのサイズも、品質の上げ幅は Low → Medium が +5、Medium → High が +15", () => {
+    for (const size of ["1k", "2k", "4k"] as const) {
+      const low = NANO_BANANA_2_1_PERCOIN_COSTS[`gemini-nano-banana-2.1-minimal-${size}`];
+      const medium = NANO_BANANA_2_1_PERCOIN_COSTS[`gemini-nano-banana-2.1-medium-${size}`];
+      const high = NANO_BANANA_2_1_PERCOIN_COSTS[`gemini-nano-banana-2.1-high-${size}`];
+      expect([size, medium - low, high - medium]).toEqual([size, 5, 15]);
+    }
+  });
+
+  it("GPT 2.5 の同じ品質・サイズと同じか、それより高い(2.1 のほうが原価が高い)", () => {
     // 内部の minimal は画面の low に当たる(計画書 ADR-002)
     const qualityOf = { minimal: "low", medium: "medium", high: "high" } as const;
     for (const model of NANO_BANANA_2_1_CANONICAL_MODELS) {
       const { thinkingLevel, sizeTier } = parseNanoBanana21Model(model)!;
       const gpt = `gpt-image-2.5-flare-${qualityOf[thinkingLevel]}-${sizeTier}` as const;
-      expect([model, NANO_BANANA_2_1_PERCOIN_COSTS[model]]).toEqual([
+      expect([model, NANO_BANANA_2_1_PERCOIN_COSTS[model] >= OPENAI_IMAGE_PERCOIN_COSTS[gpt]]).toEqual([
         model,
-        OPENAI_IMAGE_PERCOIN_COSTS[gpt] + 10,
+        true,
       ]);
     }
   });
