@@ -28,9 +28,11 @@ import { withHonorific } from "../../../shared/notifications/honorific.ts";
 /** 画像を探す上限。超えたら文字だけで送る */
 export const IMAGE_LOOKUP_TIMEOUT_MS = 2500;
 // 生成完了の通知で、画像の小さい版ができるのを待つ上限と、探し直す間隔。
-// 小さい版は完了の 0.7〜2.0 秒後にできる(2026-10-24 本番 25 件の実測)。
+// 欄(storage_path_thumb)は小さい版と表示用の両方ができたあとにまとめて書かれる。
+// 完了から欄が書かれるまで p50 1.6 秒・p99 3.1 秒・最長 4.2 秒
+// (2026-10-24 本番 3 日 250 件。3 秒では 3 件が間に合わず画像なしで届いた)。
 // 待っても無ければ文字だけで送る
-export const GENERATED_IMAGE_WAIT_MS = 3000;
+export const GENERATED_IMAGE_WAIT_MS = 6000;
 export const GENERATED_IMAGE_POLL_MS = 500;
 export const CLAIM_LIMIT = 100;
 // 1 回の呼び出しで回す確保の上限(暴走防止)。残りは次の起動で送る
