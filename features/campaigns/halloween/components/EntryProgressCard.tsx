@@ -1,7 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Fragment, useCallback, useEffect, useState } from "react";
+import {
+  Fragment,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   nextTicketTier,
   ticketsForWorks,
@@ -10,6 +19,7 @@ import {
 } from "@/features/campaigns/hashtag-campaign/progress";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
+import { ENJOY_JOIN_TAB_KEY, requestJoinGuide } from "../lib/join-guide-requests";
 import { requestTicketCelebrationCheck } from "../lib/ticket-celebration-requests";
 import styles from "../halloween.module.css";
 
@@ -23,6 +33,14 @@ import styles from "../halloween.module.css";
  *   自分の投稿を取り消すと減る
  *
  * 本人ごとに違う内容なので、ページ(キャッシュされる)とは別に、開いたあとで読む。
+ *
+ * 2026-10-24 ユーザー指示: 対象作品の上にも同じカードを置く(手順1のカードも残す)。
+ * 1ページに2枚あっても、読み込みとエントリーの状態は EntryProgressProvider の1つを使う
+ * (片方で押したら、もう片方も「エントリー済み」になる。読み込みも1回)。
+ * Provider の外で使えば、そのカードだけで読む。
+ * 対象作品の上のカードは compact にする(2026-10-24 ユーザー指示): エントリー済みのときは
+ * 「あと○作品で○口！」までにして、残りの時間と「※」の注意書きは出さない。代わりに「詳しくはこちら」を置き、
+ * 押すと参加方法のエンジョイ部門へスクロールして、詳細な作成手順を開く。
  *
  * 2026-10-15 ユーザー指示: 題名は「キャンペーンに参加」。数え方の吹き出しと「※」の注意書き4つは
  * エントリーしてから出す。エントリー前の「◯作品分たまっています」と、始まる前の「◯から数えます」は出さない。
@@ -97,10 +115,60 @@ function ProgressBar({ works }: { works: number }) {
   );
 }
 
-export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
+type EntryProgressState = {
+  load: LoadState;
+  entry: EntryState;
+  /** 押してエントリーできたときの日時(読み直さずに「エントリー済み」へ切り替える) */
+  enteredAt: string | null;
+  retry: () => void;
+  enter: () => Promise<void>;
+};
+
+const EntryProgressContext = createContext<EntryProgressState | null>(null);
+
+/** ページの中のエントリーのカードに、読み込みとエントリーの状態を1つだけ持たせる */
+export function EntryProgressProvider({ children }: { children: ReactNode }) {
+  const state = useEntryProgressState();
+  return <EntryProgressContext.Provider value={state}>{children}</EntryProgressContext.Provider>;
+}
+
+export function EntryProgressCard({ now = Date.now, compact = false }: { now?: () => number; compact?: boolean }) {
+  const shared = useContext(EntryProgressContext);
+  return shared ? (
+    <EntryProgressView state={shared} now={now} compact={compact} />
+  ) : (
+    <StandaloneEntryProgressCard now={now} compact={compact} />
+  );
+}
+
+function StandaloneEntryProgressCard({ now, compact }: { now: () => number; compact: boolean }) {
+  const state = useEntryProgressState();
+  return <EntryProgressView state={state} now={now} compact={compact} />;
+}
+
+/** 参加方法のエンジョイ部門のタブに切り替えて詳しい作成手順を開き、参加方法の見出しまでスクロールする */
+function openEnjoyGuide() {
+  requestJoinGuide(ENJOY_JOIN_TAB_KEY);
+  // 動きを減らす設定の人には、なめらかに流さずに移る(SubmissionCarousel と同じ)
+  const reduceMotion =
+    typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("hbs-join")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+}
+
+function EnjoyGuideButton() {
+  return (
+    <button type="button" className={styles.entryMore} onClick={openEnjoyGuide} data-testid="halloween-entry-more">
+      詳しくはこちら
+      <span className={styles.joinDetailsChevron} aria-hidden="true">
+        ▼
+      </span>
+    </button>
+  );
+}
+
+function useEntryProgressState(): EntryProgressState {
   const [load, setLoad] = useState<LoadState>({ status: "loading" });
   const [entry, setEntry] = useState<EntryState>({ status: "idle" });
-  /** 押してエントリーできたときの日時(読み直さずに「エントリー済み」へ切り替える) */
   const [enteredAt, setEnteredAt] = useState<string | null>(null);
 
   /** 「もう一度読み込む」で増やして、読み直しのきっかけにする */
@@ -128,10 +196,10 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
     };
   }, [reloadKey]);
 
-  const retry = () => {
+  const retry = useCallback(() => {
     setLoad({ status: "loading" });
     setReloadKey((key) => key + 1);
-  };
+  }, []);
 
   const enter = useCallback(async () => {
     setEntry({ status: "pending" });
@@ -156,6 +224,22 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
     }
   }, []);
 
+  return useMemo(() => ({ load, entry, enteredAt, retry, enter }), [load, entry, enteredAt, retry, enter]);
+}
+
+function EntryProgressView({
+  state,
+  now,
+  compact,
+}: {
+  state: EntryProgressState;
+  now: () => number;
+  compact: boolean;
+}) {
+  const { load, entry, enteredAt, retry, enter } = state;
+  // 状態は2枚で共有するので、「エントリーできませんでした」は押したカードにだけ出す(2つ読み上げない)
+  const [pressedHere, setPressedHere] = useState(false);
+
   if (load.status === "loading") {
     return <div className={styles.entrySkeleton} data-testid="halloween-entry-loading" aria-hidden="true" />;
   }
@@ -169,6 +253,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
             もう一度読み込む
           </button>
         </div>
+        {compact ? <EnjoyGuideButton /> : null}
       </div>
     );
   }
@@ -254,6 +339,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
             onClick={() => {
               if (entry.status === "pending") return;
               trackCampaignEvent(CAMPAIGN_EVENTS.entryClick);
+              setPressedHere(true);
               void enter();
             }}
             aria-disabled={entry.status === "pending" ? true : undefined}
@@ -261,7 +347,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
           >
             {entry.status === "pending" ? "エントリー中…" : "エントリーする"}
           </button>
-          {entry.status === "failed" ? (
+          {entry.status === "failed" && pressedHere ? (
             <p className={styles.entryError} role="alert">
               エントリーできませんでした。時間をおいて、もう一度お試しください。
             </p>
@@ -269,16 +355,16 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
         </div>
       )}
 
-      {/* 始まる前は出さない(10/15 ユーザー指示) */}
-      {phase === "before" ? null : (
+      {/* 始まる前は出さない(10/15 ユーザー指示)。短いカードでエントリー済みなら出さない(10/24) */}
+      {phase === "before" || (compact && entered) ? null : (
         <p className={styles.entryTime}>
           {phase === "open"
             ? `企画終了まであと：${formatTimeLeft(Date.parse(data.endsAt) - current)}`
             : "企画は終了しました"}
         </p>
       )}
-      {/* 注意書きは「エントリーする」を押したあとに出す(10/15 ユーザー指示) */}
-      {entered ? (
+      {/* 注意書きは「エントリーする」を押したあとに出す(10/15 ユーザー指示)。短いカードでは出さない(10/24) */}
+      {entered && !compact ? (
         <>
           <p className={styles.note}>※ 1口達成するたびに自動で応募は完了します(投稿を取り消すと、その分の口数は減ります)</p>
           <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
@@ -286,6 +372,7 @@ export function EntryProgressCard({ now = Date.now }: { now?: () => number }) {
           <p className={styles.note}>※ 期間中に「{CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、対象作品です</p>
         </>
       ) : null}
+      {compact ? <EnjoyGuideButton /> : null}
     </div>
   );
 }

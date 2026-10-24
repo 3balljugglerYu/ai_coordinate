@@ -1106,12 +1106,21 @@
   color: var(--plum-800);
 }
 
+.worksEntry {
+  margin: 0 0 22px;
+}
+
+/* エントリーのカードの下では、見出しに寄せる負のすき間をやめる */
+.worksEntry + .worksLead {
+  margin-top: 0;
+}
+
 .works {
   max-width: 520px;
   margin: 0 auto;
 }
 
-/* 6件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
+/* 9件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
 .worksScroller {
   display: flex;
   overflow-x: auto;
@@ -1444,6 +1453,30 @@
   font-weight: 700;
   font-size: 14px;
   color: var(--ink);
+}
+
+/* 対象作品の上の短いカードの「詳しくはこちら」。見た目は「詳細な作成手順はこちら！」にそろえる(2026-10-24) */
+.entryMore {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 14px auto 0;
+  padding: 8px 20px;
+  border: 2px solid var(--plum-800);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--plum-800);
+  font: inherit;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.entryMore:focus-visible {
+  outline: 3px solid var(--amber);
+  outline-offset: 2px;
 }
 
 /* 参加方法のタブ */

@@ -11,7 +11,8 @@ import styles from "../halloween.module.css";
 /**
  * 「キャンペーン対象作品」(2026-10-15 ユーザー決定)。
  *
- * 3列 × 2段の6件を1ページにし、左右にスワイプすると次の6件へ移る(1件ずつではなく6件単位)。
+ * 3列 × 3段の9件を1ページにし、左右にスワイプすると次のページへ移る(1件ずつではなくページ単位)。
+ * 2026-10-24 ユーザー指示で3列 × 2段から変更。1ページの件数はサーバー側(SUBMISSION_PAGE_SIZE)が決める。
  * ページ分けと「1ページに同じ人は1件まで(足りないページは残りを詰める)」はサーバー側
  * (paginatePreferringDistinctAuthors)で済ませてある。
  * カードはサムネイルだけ(作者名・利用回数は出さない。2026-10-15 ユーザー指示)。作者名は
@@ -114,7 +115,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
               if (current > 0) goTo(current - 1);
             }}
             aria-disabled={current === 0 ? true : undefined}
-            aria-label="前の6件"
+            aria-label="前のページ"
           >
             ‹
           </button>
@@ -143,7 +144,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
               if (current < lastPage) goTo(current + 1);
             }}
             aria-disabled={current === lastPage ? true : undefined}
-            aria-label="次の6件"
+            aria-label="次のページ"
           >
             ›
           </button>

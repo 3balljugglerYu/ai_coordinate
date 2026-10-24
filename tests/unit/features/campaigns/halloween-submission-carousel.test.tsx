@@ -4,7 +4,7 @@
 
 /**
  * 「キャンペーン対象の投稿」(2026-10-15 ユーザー決定)。
- * 3列 × 2段の6件を1ページにし、左右のスワイプ(と矢印・点)で6件単位に移る。
+ * 3列 × 3段の9件を1ページにし(2026-10-24 に 3列 × 2段から変更)、左右のスワイプ(と矢印・点)でページ単位に移る。
  * カードはサムネイルだけ(作者名・利用回数は出さない)。
  * サムネイルを押すと /use-prompts と同じ確認を出してから投稿のページへ。
  */
@@ -27,7 +27,7 @@ function item(id: string) {
 
 function pages(count: number) {
   return Array.from({ length: count }, (_, pageIndex) =>
-    Array.from({ length: 6 }, (_, index) => item(`p${pageIndex}-${index}`)),
+    Array.from({ length: 9 }, (_, index) => item(`p${pageIndex}-${index}`)),
   );
 }
 
@@ -53,14 +53,14 @@ describe("SubmissionCarousel", () => {
 
   test("1ページだけなら、矢印も点も出さない", () => {
     render(<SubmissionCarousel pages={pages(1)} />);
-    expect(screen.queryByRole("button", { name: "次の6件" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "次のページ" })).toBeNull();
   });
 
-  test("矢印で6件ずつ移る(端では押しても動かない・フォーカスは落とさない)", () => {
+  test("矢印で1ページずつ移る(端では押しても動かない・フォーカスは落とさない)", () => {
     render(<SubmissionCarousel pages={pages(3)} />);
     const scrollTo = stubScroller(screen.getByTestId("halloween-works"));
-    const prev = screen.getByRole("button", { name: "前の6件" });
-    const next = screen.getByRole("button", { name: "次の6件" });
+    const prev = screen.getByRole("button", { name: "前のページ" });
+    const next = screen.getByRole("button", { name: "次のページ" });
     expect(prev.getAttribute("aria-disabled")).toBe("true");
     expect(prev.hasAttribute("disabled")).toBe(false);
 

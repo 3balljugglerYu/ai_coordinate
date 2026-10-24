@@ -1,7 +1,8 @@
 "use client";
 
-import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { trackCampaignEvent, type CampaignEventName } from "@/features/campaigns/lib/campaign-events";
+import { subscribeJoinGuideRequests } from "../lib/join-guide-requests";
 import styles from "../halloween.module.css";
 
 export interface JoinTab {
@@ -17,11 +18,26 @@ export interface JoinTab {
 /**
  * 参加方法を「クリエイティブ部門」「エンジョイ部門」で切り替えるタブ(2026-10-14。呼び名は 10/15 に賞品の部門へそろえた)。
  * 中身はサーバーで両方描いておき、ここでは見せる方を切り替えるだけ。
+ * 対象作品の上のカードの「詳しくはこちら」からも切り替わる(join-guide-requests。タブを押したのではないので GA4 には送らない)。
  */
 export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
   const baseId = useId();
   const [active, setActive] = useState(0);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+
+  // tabs は描くたびに新しい配列で渡ってくるので、合図の受け取りは1回だけ付けて、最新の tabs を ref で読む
+  const latestTabs = useRef(tabs);
+  useEffect(() => {
+    latestTabs.current = tabs;
+  });
+  useEffect(
+    () =>
+      subscribeJoinGuideRequests((tabKey) => {
+        const index = latestTabs.current.findIndex((tab) => tab.key === tabKey);
+        if (index >= 0) setActive(index);
+      }),
+    [],
+  );
 
   const activate = (index: number) => {
     const eventName = tabs[index]?.eventName;
