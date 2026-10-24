@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
 import { isAnonymousActorNotificationType } from "../types";
 import { cn } from "@/lib/utils";
+import { withHonorific } from "@/shared/notifications/honorific";
 import {
   User,
   Heart,
@@ -241,9 +242,10 @@ export function NotificationList({
           );
           const actorName =
             notification.actor?.nickname || t("userFallback");
+          // 日本語の文では相手の名前に「さん」を付ける(プッシュと同じ決まり)
           const content = formatNotificationContent(
             notification,
-            actorName,
+            locale === "ja" ? withHonorific(actorName) : actorName,
             translateNotification
           );
           const clickableClass =

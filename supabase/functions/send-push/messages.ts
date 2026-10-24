@@ -6,6 +6,8 @@
 //
 // 計画書: docs/planning/push-notifications-implementation-plan.md Phase 2
 
+import { withHonorific } from "../../../shared/notifications/honorific.ts";
+
 /** claim_push_outbox が返す 1 行 */
 export interface ClaimedRow {
   id: string;
@@ -76,14 +78,8 @@ export function groupRows(rows: ClaimedRow[]): PushGroup[] {
 
 const DEFAULT_ACTOR_NAME = "ユーザー";
 
-/**
- * 通知に出す相手の名前に「さん」を付ける(2026-10-24 ユーザー決定)。
- * 名前の側にもう敬称(さん・様・ちゃん・くん など)が付いていれば重ねない。
- */
-export function withHonorific(name: string): string {
-  const trimmed = name.trim();
-  return /(さん|さま|様|ちゃん|くん|氏|殿)$/u.test(trimmed) ? trimmed : `${trimmed}さん`;
-}
+// 名前の「さん」は Web のお知らせ一覧と同じ決まりを使う
+export { withHonorific };
 
 // 題名が「〇〇があなた…」の形で記録される通知(相手の名前が入る)
 const ACTOR_NAME_TITLE_TYPES = new Set([
