@@ -136,7 +136,8 @@ export async function runSendPush(
   now: () => number = Date.now,
 ): Promise<SendPushResult> {
   const startedAt = now();
-  const overBudget = () => now() - startedAt >= TIME_BUDGET_MS;
+  const budgetLeftMs = () => TIME_BUDGET_MS - (now() - startedAt);
+  const overBudget = () => budgetLeftMs() <= 0;
   const totals: SendPushTotals = {
     claimed: 0,
     sent: 0,
@@ -159,7 +160,7 @@ export async function runSendPush(
 
     const results = new Map<string, FinishItem>();
     try {
-      await processRows(store, sender, rows, results, totals, overBudget);
+      await processRows(store, sender, rows, results, totals, overBudget, budgetLeftMs);
     } catch (e) {
       console.error("[send-push] processing failed:", errorMessage(e));
     }
@@ -205,6 +206,7 @@ async function processRows(
   results: Map<string, FinishItem>,
   totals: SendPushTotals,
   overBudget: () => boolean,
+  budgetLeftMs: () => number,
 ): Promise<void> {
   // 1. 受け手の設定で送らないものを除く(種類オフ・一時停止・止める時間帯)
   const allowedByKey = new Map<string, { allowed: boolean; error: string | null }>();
@@ -285,14 +287,14 @@ async function processRows(
       const imageSource = devices.length > 0 ? pushImageSourceFor(row) : null;
       const senderSource = devices.length > 0 ? senderSourceFor(row) : null;
       const imagePromise = imageSource
-        ? lookupImageUrl(store, imageSource)
+        ? lookupImageUrl(store, imageSource, budgetLeftMs())
         : Promise.resolve(null);
       // フォローは添える画像も送り主のアイコンなので、同じものを2回探さない
       const senderIconPromise = !senderSource
         ? Promise.resolve(null)
         : sameSource(imageSource, senderSource)
           ? imagePromise
-          : lookupImageUrl(store, senderSource);
+          : lookupImageUrl(store, senderSource, budgetLeftMs());
       const [likeCount, imageUrl, senderIconUrl] = await Promise.all([
         resolveLikeCount(store, group),
         imagePromise,
@@ -383,22 +385,28 @@ function sameSource(a: PushImageSource | null, b: PushImageSource): boolean {
 function lookupImageUrl(
   store: PushStore,
   source: PushImageSource,
+  budgetLeftMs: number,
 ): Promise<string | null> {
-  if (source.kind === "generated") return lookupGeneratedImageUrl(store, source);
+  if (source.kind === "generated") {
+    // 持ち時間の残りより長くは待たない(呼び出し元が 30 秒で待つのをやめる前に記録して返す)
+    const waitMs = Math.min(GENERATED_IMAGE_WAIT_MS, Math.max(0, budgetLeftMs));
+    return lookupGeneratedImageUrl(store, source, waitMs);
+  }
   return withLookupTimeout(store.imageUrl(source), "image");
 }
 
 /**
  * 生成完了の通知の画像。小さい版は完了のすぐあとに worker が作るので、
- * 無ければ GENERATED_IMAGE_WAIT_MS まで探し直す(過ぎたら文字だけ)。
+ * 無ければ waitMs まで探し直す(過ぎたら文字だけ)。
  */
 async function lookupGeneratedImageUrl(
   store: PushStore,
   source: Extract<PushImageSource, { kind: "generated" }>,
+  waitMs: number,
 ): Promise<string | null> {
-  const deadline = Date.now() + GENERATED_IMAGE_WAIT_MS;
+  const deadline = Date.now() + waitMs;
   for (;;) {
-    // 1 回の問い合わせも残り時間で打ち切る(全体で GENERATED_IMAGE_WAIT_MS を超えない)
+    // 1 回の問い合わせも残り時間で打ち切る(全体で waitMs を超えない)
     const remaining = deadline - Date.now();
     if (remaining <= 0) return null;
     const url = await withLookupTimeout(
