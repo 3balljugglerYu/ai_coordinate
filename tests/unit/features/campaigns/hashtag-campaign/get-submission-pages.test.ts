@@ -1,8 +1,8 @@
 /**
  * 企画ページの「キャンペーン対象の投稿」の取得(2026-10-15 ユーザー決定)。
  *
- * - 応募作の一覧(list_hashtag_campaign_submissions)を、新しい順のまま6件ずつのページにする
- * - 1ページに同じ人は1件まで(ちがう人だけで6件にならないページは残りを詰める。詳しくは paginate.test.ts)
+ * - 応募作の一覧(list_hashtag_campaign_submissions)を、新しい順のまま9件ずつのページにする(2026-10-24 に6件から変更)
+ * - 1ページに同じ人は1件まで(ちがう人だけで9件にならないページは残りを詰める。詳しくは paginate.test.ts)
  * - 使えるかは validate_derived_prompt_sources(requester = 作者本人)で確かめる(書き写さない)
  * - 読めなければ空配列(呼び出し側は区画ごと出さない)
  */
@@ -77,7 +77,7 @@ beforeEach(() => {
 });
 
 describe("getCampaignSubmissionPages", () => {
-  test("新しい順のまま6件ずつにし、1ページに同じ人は1件まで", async () => {
+  test("新しい順のまま9件ずつにし、1ページに同じ人は1件まで", async () => {
     mockRpc({
       rows: [
         row("p1", "A"),
@@ -88,12 +88,15 @@ describe("getCampaignSubmissionPages", () => {
         row("p6", "E"),
         row("p7", "F"),
         row("p8", "G"),
+        row("p9", "H"),
+        row("p10", "I"),
+        row("p11", "J"),
       ],
     });
     const pages = await getCampaignSubmissionPages("halloween-best-shot");
     expect(pages.map((page) => page.map((item) => item.postId))).toEqual([
-      ["p1", "p3", "p4", "p5", "p6", "p7"],
-      ["p2", "p8"],
+      ["p1", "p3", "p4", "p5", "p6", "p7", "p8", "p9", "p10"],
+      ["p2", "p11"],
     ]);
   });
 

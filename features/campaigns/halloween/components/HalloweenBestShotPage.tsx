@@ -7,8 +7,9 @@ import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campai
 import { CAMPAIGN_EVENTS } from "@/features/campaigns/lib/campaign-events";
 import { HALLOWEEN_BEST_SHOT as CAMPAIGN } from "../halloween-best-shot";
 import styles from "../halloween.module.css";
+import { ENJOY_JOIN_TAB_KEY } from "../lib/join-guide-requests";
 import { CopyHashtagButton } from "./CopyHashtagButton";
-import { EntryProgressCard } from "./EntryProgressCard";
+import { EntryProgressCard, EntryProgressProvider } from "./EntryProgressCard";
 import { AmazonGiftCardNotice } from "./AmazonGiftCardNotice";
 import { AboutDecorations, Bunting, HeroDecorations, Wave } from "./HalloweenDecorations";
 import { HeroGallery } from "./HeroGallery";
@@ -569,7 +570,7 @@ function StepList({
 export function HalloweenBestShotPage({
   submissionPages = [],
 }: {
-  /** キャンペーン対象の投稿(6件ずつのページ)。空なら区画ごと出さない */
+  /** キャンペーン対象の投稿(9件ずつのページ)。空なら区画ごと出さない */
   submissionPages?: readonly CampaignSubmissionItem[][];
 }) {
   const worksHref = submissionPages.length > 0 ? WORKS_ANCHOR : CAMPAIGN.entriesHref;
@@ -611,242 +612,253 @@ export function HalloweenBestShotPage({
       </header>
 
       <main>
-        {submissionPages.length > 0 ? (
-          <section className={styles.section} aria-labelledby="hbs-works">
-            <div className={styles.wrap}>
-              <div id="hbs-works">
-                <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
+        {/* 対象作品の上と手順1のエントリーのカードは、同じ状態を使う(2026-10-24) */}
+        <EntryProgressProvider>
+          {submissionPages.length > 0 ? (
+            <section className={styles.section} aria-labelledby="hbs-works">
+              <div className={styles.wrap}>
+                <div id="hbs-works">
+                  <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
+                </div>
+                {/*
+                  2026-10-24 ユーザー指示: 対象作品の上にもエントリーを置き、とりあえずエントリーしてもらう
+                  (使って投稿した23人のうち、エントリーは8人だった)。手順1のカードも残す。
+                  作品が1画面目に見えるよう、こちらは短いカードにして、詳しくは参加方法へ案内する
+                */}
+                <div className={styles.worksEntry} data-testid="halloween-works-entry">
+                  <EntryProgressCard compact />
+                </div>
+                <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
+                <RevealOnScroll className={styles.reveal}>
+                  <SubmissionCarousel pages={submissionPages} />
+                </RevealOnScroll>
               </div>
-              <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
-              <RevealOnScroll className={styles.reveal}>
-                <SubmissionCarousel pages={submissionPages} />
+            </section>
+          ) : null}
+
+          <section className={styles.section} aria-labelledby="hbs-about">
+            <div className={styles.wrap}>
+              <div id="hbs-about">
+                <Ribbon en="ABOUT">企画について</Ribbon>
+              </div>
+              {/* 2026-10-16 ユーザーの文に差し替え。ユーザー指示で、色の下線(やわらかいマーカー)・大きな「カタログ化」(グラデーションの文字)・角の飾りでポップに。
+                  カタログ化は大切なポイントなので2か所とも目立たせる。文は「|」で区切った文節の切れ目でだけ折り返す(Phrases) */}
+              <RevealOnScroll className={`${styles.aboutStage} ${styles.reveal}`}>
+                <AboutDecorations />
+                <div className={`${styles.card} ${styles.aboutCard}`}>
+                  <Bunting />
+                  <p className={styles.aboutLead}>🎃 知っていますか！？</p>
+                  <p>
+                    <Phrases text="ペルスタでは、ほかの|ユーザーさんが|作った|プロンプトを|使って、自分の|「うちの子」の|イラストを|生成できるんです！✨" />
+                  </p>
+                  <p>
+                    これが{" "}
+                    <span className={styles.catalogWord}>
+                      <strong>「カタログ化」</strong>！
+                    </span>
+                    <br />
+                    <strong className={styles.markOrange}>
+                      <Phrases text="作成した|プロンプトは|非公開のまま、|みんなに|利用して|もらえます！🙌" />
+                    </strong>
+                  </p>
+                  <p>
+                    👉{" "}
+                    <Link href="/use-prompts" className={styles.textLink}>
+                      作成者のメリットはこちら
+                    </Link>
+                  </p>
+                  <p>
+                    今回のテーマは{" "}
+                    <span className={styles.nowrap}>
+                      <strong className={styles.keyWord}>「ハロウィン」</strong> 🎃
+                    </span>
+                  </p>
+                  <p>
+                    <Phrases text="とっておきの|「ベストショット」を|" />
+                    <span className={styles.nowrap}>
+                      <strong className={styles.keyWord}>カタログ化</strong>して
+                    </span>
+                    <Phrases text="|みんなに|使って|もらおう！✨" />
+                  </p>
+                  <p>
+                    🏆{" "}
+                    <strong className={styles.markYellow}>
+                      <Phrases text="選ばれた方には|Amazonギフトカードを|プレゼント！ 🎁" />
+                    </strong>
+                  </p>
+                  <p>
+                    さらに、
+                    <strong className={styles.markPurple}>
+                      <Phrases text="カタログを|使って|生成した|方にも|当たる|チャンス！🎉" />
+                    </strong>
+                  </p>
+                  <p>
+                    <Phrases text="作る人も、|使う人も|楽しめる|ハロウィン企画です！ 🎃" />
+                  </p>
+                </div>
               </RevealOnScroll>
             </div>
           </section>
-        ) : null}
 
-        <section className={styles.section} aria-labelledby="hbs-about">
-          <div className={styles.wrap}>
-            <div id="hbs-about">
-              <Ribbon en="ABOUT">企画について</Ribbon>
-            </div>
-            {/* 2026-10-16 ユーザーの文に差し替え。ユーザー指示で、色の下線(やわらかいマーカー)・大きな「カタログ化」(グラデーションの文字)・角の飾りでポップに。
-                カタログ化は大切なポイントなので2か所とも目立たせる。文は「|」で区切った文節の切れ目でだけ折り返す(Phrases) */}
-            <RevealOnScroll className={`${styles.aboutStage} ${styles.reveal}`}>
-              <AboutDecorations />
-              <div className={`${styles.card} ${styles.aboutCard}`}>
-                <Bunting />
-                <p className={styles.aboutLead}>🎃 知っていますか！？</p>
-                <p>
-                  <Phrases text="ペルスタでは、ほかの|ユーザーさんが|作った|プロンプトを|使って、自分の|「うちの子」の|イラストを|生成できるんです！✨" />
-                </p>
-                <p>
-                  これが{" "}
-                  <span className={styles.catalogWord}>
-                    <strong>「カタログ化」</strong>！
-                  </span>
-                  <br />
-                  <strong className={styles.markOrange}>
-                    <Phrases text="作成した|プロンプトは|非公開のまま、|みんなに|利用して|もらえます！🙌" />
-                  </strong>
-                </p>
-                <p>
-                  👉{" "}
-                  <Link href="/use-prompts" className={styles.textLink}>
-                    作成者のメリットはこちら
-                  </Link>
-                </p>
-                <p>
-                  今回のテーマは{" "}
-                  <span className={styles.nowrap}>
-                    <strong className={styles.keyWord}>「ハロウィン」</strong> 🎃
-                  </span>
-                </p>
-                <p>
-                  <Phrases text="とっておきの|「ベストショット」を|" />
-                  <span className={styles.nowrap}>
-                    <strong className={styles.keyWord}>カタログ化</strong>して
-                  </span>
-                  <Phrases text="|みんなに|使って|もらおう！✨" />
-                </p>
-                <p>
-                  🏆{" "}
-                  <strong className={styles.markYellow}>
-                    <Phrases text="選ばれた方には|Amazonギフトカードを|プレゼント！ 🎁" />
-                  </strong>
-                </p>
-                <p>
-                  さらに、
-                  <strong className={styles.markPurple}>
-                    <Phrases text="カタログを|使って|生成した|方にも|当たる|チャンス！🎉" />
-                  </strong>
-                </p>
-                <p>
-                  <Phrases text="作る人も、|使う人も|楽しめる|ハロウィン企画です！ 🎃" />
-                </p>
+          <section className={styles.section} aria-labelledby="hbs-prize">
+            <div className={styles.wrap}>
+              <div id="hbs-prize">
+                <Ribbon en="PRIZE">賞品</Ribbon>
               </div>
-            </RevealOnScroll>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="hbs-prize">
-          <div className={styles.wrap}>
-            <div id="hbs-prize">
-              <Ribbon en="PRIZE">賞品</Ribbon>
+              <RevealOnScroll className={styles.reveal}>
+                <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.creative} count={CAMPAIGN.prizes.length} />
+                <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
+                <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.enjoy} count={CAMPAIGN.userPrizes.length} />
+                <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
+              </RevealOnScroll>
+              <div className={styles.prizeNotes}>
+                {/* 2026-10-16 ユーザー指示: 「※」の注意(対象の方・購入不要・Amazon.co.jp 専用・ペルコインの有効期限・
+                    両方には当選しない・抽選はエントリーした人・1人1アカウント)は応募規約に書いてあるので、ここには並べずリンクだけ */}
+                <Link href={CAMPAIGN.termsPath} className={styles.termsLink}>
+                  応募規約・注意事項を見る
+                </Link>
+              </div>
             </div>
-            <RevealOnScroll className={styles.reveal}>
-              <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.creative} count={CAMPAIGN.prizes.length} />
-              <AwardList prizes={CAMPAIGN.prizes} testId="halloween-prize" />
-              <PrizeCategoryHeading category={CAMPAIGN.prizeCategories.enjoy} count={CAMPAIGN.userPrizes.length} />
-              <AwardList prizes={CAMPAIGN.userPrizes} testId="halloween-user-prize" />
-            </RevealOnScroll>
-            <div className={styles.prizeNotes}>
-              {/* 2026-10-16 ユーザー指示: 「※」の注意(対象の方・購入不要・Amazon.co.jp 専用・ペルコインの有効期限・
-                  両方には当選しない・抽選はエントリーした人・1人1アカウント)は応募規約に書いてあるので、ここには並べずリンクだけ */}
-              <Link href={CAMPAIGN.termsPath} className={styles.termsLink}>
-                応募規約・注意事項を見る
+          </section>
+
+          <section className={styles.section} aria-labelledby="hbs-join">
+            <div className={styles.wrap}>
+              <div id="hbs-join">
+                <Ribbon en="HOW TO JOIN">参加方法</Ribbon>
+              </div>
+              <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+                <JoinTabs
+                  tabs={[
+                    {
+                      key: "creator",
+                      eventName: CAMPAIGN_EVENTS.tabCreative,
+                      icon: CAMPAIGN.prizeCategories.creative.icon,
+                      label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
+                      panel: (
+                        <>
+                          <JoinSummary
+                            button="カタログをつくる"
+                            note="投稿のときに、このハッシュタグを付けてね"
+                            hashtag
+                          />
+                          <JoinDetails eventName={CAMPAIGN_EVENTS.stepsCreative}>
+                            <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
+                            <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                          </JoinDetails>
+                          {/* 審査のポイントは作成手順ではないので、閉じずに見せる */}
+                          <JudgePoints />
+                        </>
+                      ),
+                    },
+                    {
+                      key: ENJOY_JOIN_TAB_KEY,
+                      eventName: CAMPAIGN_EVENTS.tabEnjoy,
+                      icon: CAMPAIGN.prizeCategories.enjoy.icon,
+                      label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
+                      panel: (
+                        <>
+                          <JoinSummary
+                            button="カタログから生成する"
+                            note="抽選の対象になるには、下の「エントリーする」が必要です"
+                          />
+                          {/* エントリーは抽選に欠かせないので、閉じた手順の外に出す */}
+                          <div className={styles.stepEntry} id="hbs-entry">
+                            <EntryProgressCard />
+                          </div>
+                          <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy} tabKey={ENJOY_JOIN_TAB_KEY}>
+                            <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
+                            <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                            <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
+                            <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
+                            <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
+                            <p className={styles.note}>
+                              ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
+                            </p>
+                          </JoinDetails>
+                        </>
+                      ),
+                    },
+                  ]}
+                />
+              </RevealOnScroll>
+            </div>
+          </section>
+
+          <section className={styles.section} aria-labelledby="hbs-schedule">
+            <div className={styles.wrap}>
+              <div id="hbs-schedule">
+                <Ribbon en="SCHEDULE">スケジュール</Ribbon>
+              </div>
+              <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+                <ol className={styles.timeline}>
+                  <li className={styles.timelineItem}>
+                    <span className={styles.when}>{CAMPAIGN.startLabel}</span>
+                    <span className={styles.what}>募集スタート</span>
+                  </li>
+                  <li className={styles.timelineItem}>
+                    <span className={styles.when}>{CAMPAIGN.endLabel}</span>
+                    <span className={styles.what}>募集締め切り</span>
+                  </li>
+                  <li className={styles.timelineItem}>
+                    <span className={styles.when}>{CAMPAIGN.announceLabel}</span>
+                    <span className={styles.what}>結果発表（特設ページで作品とクリエイターをご紹介）</span>
+                  </li>
+                  {/* 当選後の流れ(2026-10-16 ユーザー指示: 詳細は書かず簡易的に)。フォームや期限などは応募規約の06とお知らせに書く。
+                      スマホ幅で「お知ら／せ」「お送り／します」と語の途中で折れないよう、文節の切れ目でだけ折り返す */}
+                  <li className={styles.timelineItem}>
+                    <span className={styles.when}>結果発表のあと</span>
+                    <span className={styles.what}>
+                      <Phrases text="当選のご連絡|（ペルスタ内の|お知らせで|お送りします）" />
+                    </span>
+                  </li>
+                  <li className={styles.timelineItem}>
+                    <span className={styles.when}>ご連絡のあと</span>
+                    <span className={styles.what}>賞品のお届け</span>
+                  </li>
+                </ol>
+              </RevealOnScroll>
+            </div>
+          </section>
+
+          <section className={styles.section} aria-labelledby="hbs-more">
+            <div className={styles.wrap}>
+              <div id="hbs-more">
+                <Ribbon en="MORE">その他</Ribbon>
+              </div>
+              <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+                <div className={styles.points}>
+                  {MORE_TIPS.map((tip) => (
+                    <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
+                      <span aria-hidden="true">{tip.icon}</span>
+                      <span>{tip.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </RevealOnScroll>
+            </div>
+          </section>
+
+          <section className={styles.closing} aria-labelledby="hbs-closing">
+            <Wave className={styles.waveTop} />
+            <div className={`${styles.closingEn} ${styles.en}`} aria-hidden="true">
+              Trick or Create!
+            </div>
+            <h2 id="hbs-closing" className={styles.closingTitle}>
+              あなたのベストショット、待ってます
+            </h2>
+            <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
+            {/* Amazonギフトカードの注意事項(2026-10-16): 応募規約へのリンクと、決まった注記2つ */}
+            <div className={styles.legal}>
+              <Link href={CAMPAIGN.termsPath} className={styles.legalLink}>
+                応募規約・注意事項
               </Link>
+              <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
             </div>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="hbs-join">
-          <div className={styles.wrap}>
-            <div id="hbs-join">
-              <Ribbon en="HOW TO JOIN">参加方法</Ribbon>
-            </div>
-            <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-              <JoinTabs
-                tabs={[
-                  {
-                    key: "creator",
-                    eventName: CAMPAIGN_EVENTS.tabCreative,
-                    icon: CAMPAIGN.prizeCategories.creative.icon,
-                    label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
-                    panel: (
-                      <>
-                        <JoinSummary
-                          button="カタログをつくる"
-                          note="投稿のときに、このハッシュタグを付けてね"
-                          hashtag
-                        />
-                        <JoinDetails eventName={CAMPAIGN_EVENTS.stepsCreative}>
-                          <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
-                          <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                        </JoinDetails>
-                        {/* 審査のポイントは作成手順ではないので、閉じずに見せる */}
-                        <JudgePoints />
-                      </>
-                    ),
-                  },
-                  {
-                    key: "user",
-                    eventName: CAMPAIGN_EVENTS.tabEnjoy,
-                    icon: CAMPAIGN.prizeCategories.enjoy.icon,
-                    label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
-                    panel: (
-                      <>
-                        <JoinSummary
-                          button="カタログから生成する"
-                          note="抽選の対象になるには、下の「エントリーする」が必要です"
-                        />
-                        {/* エントリーは抽選に欠かせないので、閉じた手順の外に出す */}
-                        <div className={styles.stepEntry} id="hbs-entry">
-                          <EntryProgressCard />
-                        </div>
-                        <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy}>
-                          <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
-                          <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                          <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
-                          <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
-                          <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
-                          <p className={styles.note}>
-                            ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
-                          </p>
-                        </JoinDetails>
-                      </>
-                    ),
-                  },
-                ]}
-              />
-            </RevealOnScroll>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="hbs-schedule">
-          <div className={styles.wrap}>
-            <div id="hbs-schedule">
-              <Ribbon en="SCHEDULE">スケジュール</Ribbon>
-            </div>
-            <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-              <ol className={styles.timeline}>
-                <li className={styles.timelineItem}>
-                  <span className={styles.when}>{CAMPAIGN.startLabel}</span>
-                  <span className={styles.what}>募集スタート</span>
-                </li>
-                <li className={styles.timelineItem}>
-                  <span className={styles.when}>{CAMPAIGN.endLabel}</span>
-                  <span className={styles.what}>募集締め切り</span>
-                </li>
-                <li className={styles.timelineItem}>
-                  <span className={styles.when}>{CAMPAIGN.announceLabel}</span>
-                  <span className={styles.what}>結果発表（特設ページで作品とクリエイターをご紹介）</span>
-                </li>
-                {/* 当選後の流れ(2026-10-16 ユーザー指示: 詳細は書かず簡易的に)。フォームや期限などは応募規約の06とお知らせに書く。
-                    スマホ幅で「お知ら／せ」「お送り／します」と語の途中で折れないよう、文節の切れ目でだけ折り返す */}
-                <li className={styles.timelineItem}>
-                  <span className={styles.when}>結果発表のあと</span>
-                  <span className={styles.what}>
-                    <Phrases text="当選のご連絡|（ペルスタ内の|お知らせで|お送りします）" />
-                  </span>
-                </li>
-                <li className={styles.timelineItem}>
-                  <span className={styles.when}>ご連絡のあと</span>
-                  <span className={styles.what}>賞品のお届け</span>
-                </li>
-              </ol>
-            </RevealOnScroll>
-          </div>
-        </section>
-
-        <section className={styles.section} aria-labelledby="hbs-more">
-          <div className={styles.wrap}>
-            <div id="hbs-more">
-              <Ribbon en="MORE">その他</Ribbon>
-            </div>
-            <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-              <div className={styles.points}>
-                {MORE_TIPS.map((tip) => (
-                  <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
-                    <span aria-hidden="true">{tip.icon}</span>
-                    <span>{tip.text}</span>
-                  </div>
-                ))}
-              </div>
-            </RevealOnScroll>
-          </div>
-        </section>
-
-        <section className={styles.closing} aria-labelledby="hbs-closing">
-          <Wave className={styles.waveTop} />
-          <div className={`${styles.closingEn} ${styles.en}`} aria-hidden="true">
-            Trick or Create!
-          </div>
-          <h2 id="hbs-closing" className={styles.closingTitle}>
-            あなたのベストショット、待ってます
-          </h2>
-          <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
-          {/* Amazonギフトカードの注意事項(2026-10-16): 応募規約へのリンクと、決まった注記2つ */}
-          <div className={styles.legal}>
-            <Link href={CAMPAIGN.termsPath} className={styles.legalLink}>
-              応募規約・注意事項
-            </Link>
-            <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
-          </div>
-          {/* 浮いたボタンの高さぶん空けて、いちばん下の注記が隠れないようにする。
-              ここが画面に入ったら浮いたボタンを消す(下はサイト共通の案内なので重ならないように) */}
-          <div id={HALLOWEEN_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
-        </section>
+            {/* 浮いたボタンの高さぶん空けて、いちばん下の注記が隠れないようにする。
+                ここが画面に入ったら浮いたボタンを消す(下はサイト共通の案内なので重ならないように) */}
+            <div id={HALLOWEEN_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
+          </section>
+        </EntryProgressProvider>
       </main>
       {/* 「カタログから生成する」は、みんなのカタログの企画のタブへ(2026-10-16 ユーザー指示。ハッシュタグの検索ではなく) */}
       <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={CAMPAIGN.catalogHref} />

@@ -12,7 +12,11 @@
  * - 題名は「キャンペーンに参加」。数え方の吹き出しはエントリーしてから出す(10/15 ユーザー指示)
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { EntryProgressCard, formatTimeLeft } from "@/features/campaigns/halloween/components/EntryProgressCard";
+import {
+  EntryProgressCard,
+  EntryProgressProvider,
+  formatTimeLeft,
+} from "@/features/campaigns/halloween/components/EntryProgressCard";
 
 jest.mock("next/link", () => ({
   __esModule: true,
@@ -65,6 +69,80 @@ afterEach(() => {
 });
 
 describe("EntryProgressCard", () => {
+  test("同じ Provider の中の2枚は、読み込みは1回で、片方で押すともう片方もエントリー済みになる(2026-10-24)", async () => {
+    const fetchMock = mockFetch(
+      progress({ enteredAt: null, usedWorks: 4, celebratedTickets: 0 }),
+      { ok: true, status: 200, json: async () => ({ enteredAt: "2026-10-26T15:00:00.000Z" }) },
+    );
+    render(
+      <EntryProgressProvider>
+        <EntryProgressCard now={DURING} />
+        <EntryProgressCard now={DURING} />
+      </EntryProgressProvider>,
+    );
+    const buttons = await screen.findAllByRole("button", { name: "エントリーする" });
+    expect(buttons).toHaveLength(2);
+    fireEvent.click(buttons[0]);
+    await waitFor(() => expect(screen.getAllByText("✓ エントリー済み")).toHaveLength(2));
+    expect(screen.queryByRole("button", { name: "エントリーする" })).toBeNull();
+    expect(screen.getAllByTestId("halloween-entry-now").map((node) => node.textContent)).toEqual([
+      "現在 4作品(1口)",
+      "現在 4作品(1口)",
+    ]);
+    // 読み込み1回 + エントリー1回
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  /*
+    2026-10-24 ユーザー指示: 対象作品の上のカードは長いので、エントリー済みなら「あと○作品で○口！」までにする。
+    残りの時間と「※」の注意書きは出さず、「詳しくはこちら」で参加方法のエンジョイ部門へ案内する。
+  */
+  test("短いカード(エントリー済み): 「あと○作品で○口！」までにして、残りの時間と注意書きは出さず「詳しくはこちら」を置く", async () => {
+    mockFetch(progress({ enteredAt: "2026-10-20T00:00:00.000Z", usedWorks: 4, celebratedTickets: 1 }));
+    render(<EntryProgressCard now={DURING} compact />);
+    await screen.findByText("✓ エントリー済み");
+    expect(screen.getByTestId("halloween-entry-bubble")).toBeTruthy();
+    expect(screen.getByRole("progressbar")).toBeTruthy();
+    expect(screen.getByTestId("halloween-entry-now").textContent).toBe("現在 4作品(1口)");
+    const next = screen.getByText("あと2作品で2口！");
+    const more = screen.getByRole("button", { name: /詳しくはこちら/ });
+    // 「詳しくはこちら」は「あと○作品で○口！」の下で、その間にほかの文はない
+    expect(next.nextElementSibling).toBe(more);
+    expect(screen.queryByText(/企画終了まであと/)).toBeNull();
+    expect(notesInCard()).toEqual([]);
+  });
+
+  test("短いカード(未エントリー): 「エントリーする」と残りの時間はそのまま出し、下に「詳しくはこちら」を置く", async () => {
+    mockFetch(progress({ enteredAt: null, usedWorks: 0, celebratedTickets: 0 }));
+    render(<EntryProgressCard now={DURING} compact />);
+    const button = await screen.findByRole("button", { name: "エントリーする" });
+    const time = screen.getByText("企画終了まであと：5日");
+    const more = screen.getByRole("button", { name: /詳しくはこちら/ });
+    expect(button.compareDocumentPosition(time) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(time.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  test("ふつうのカード(手順1)は、エントリー済みでも残りの時間と注意書きを出し、「詳しくはこちら」は置かない", async () => {
+    mockFetch(progress({ enteredAt: "2026-10-20T00:00:00.000Z", usedWorks: 4, celebratedTickets: 1 }));
+    render(<EntryProgressCard now={DURING} />);
+    await screen.findByText("✓ エントリー済み");
+    expect(screen.getByText("企画終了まであと：5日")).toBeTruthy();
+    expect(notesInCard()).toEqual(NOTES);
+    expect(screen.queryByRole("button", { name: /詳しくはこちら/ })).toBeNull();
+  });
+
+  test("Provider の外のカードは、それぞれ自分で読む", async () => {
+    const fetchMock = mockFetch(progress(null), progress(null));
+    render(
+      <>
+        <EntryProgressCard now={DURING} />
+        <EntryProgressCard now={DURING} />
+      </>,
+    );
+    expect(await screen.findAllByRole("link", { name: "ログインしてエントリー" })).toHaveLength(2);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   test("読み込み中は骨組みだけ出す", () => {
     global.fetch = jest.fn(() => new Promise(() => undefined)) as unknown as typeof fetch;
     render(<EntryProgressCard now={DURING} />);
