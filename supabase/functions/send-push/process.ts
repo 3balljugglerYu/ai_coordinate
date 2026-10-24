@@ -22,10 +22,16 @@ import {
   resolveText,
   senderSourceFor,
   summarizeOutcomes,
+  withHonorific,
 } from "./messages.ts";
 
 /** 画像を探す上限。超えたら文字だけで送る */
 export const IMAGE_LOOKUP_TIMEOUT_MS = 2500;
+// 生成完了の通知で、画像の小さい版ができるのを待つ上限と、探し直す間隔。
+// 小さい版は完了の 0.7〜2.0 秒後にできる(2026-10-24 本番 25 件の実測)。
+// 待っても無ければ文字だけで送る
+export const GENERATED_IMAGE_WAIT_MS = 3000;
+export const GENERATED_IMAGE_POLL_MS = 500;
 export const CLAIM_LIMIT = 100;
 // 1 回の呼び出しで回す確保の上限(暴走防止)。残りは次の起動で送る
 export const MAX_BATCHES = 5;
@@ -306,7 +312,7 @@ async function processRows(
         : null;
       const senderMessage = senderIconUrl ? buildSenderMessage(row, likeCount) : null;
       const pushSender = senderIconUrl && nickname?.trim() && senderMessage
-        ? { name: nickname.trim(), iconUrl: senderIconUrl, message: senderMessage }
+        ? { name: withHonorific(nickname), iconUrl: senderIconUrl, message: senderMessage }
         : null;
 
       const { title, body } = resolveText(row, likeTitle);
@@ -376,7 +382,25 @@ function lookupImageUrl(
   store: PushStore,
   source: PushImageSource,
 ): Promise<string | null> {
+  if (source.kind === "generated") return lookupGeneratedImageUrl(store, source);
   return withLookupTimeout(store.imageUrl(source), "image");
+}
+
+/**
+ * 生成完了の通知の画像。小さい版は完了のすぐあとに worker が作るので、
+ * 無ければ GENERATED_IMAGE_WAIT_MS まで探し直す(過ぎたら文字だけ)。
+ */
+async function lookupGeneratedImageUrl(
+  store: PushStore,
+  source: PushImageSource,
+): Promise<string | null> {
+  const deadline = Date.now() + GENERATED_IMAGE_WAIT_MS;
+  for (;;) {
+    const url = await withLookupTimeout(store.imageUrl(source), "generated image");
+    if (url) return url;
+    if (Date.now() + GENERATED_IMAGE_POLL_MS > deadline) return null;
+    await new Promise((resolve) => setTimeout(resolve, GENERATED_IMAGE_POLL_MS));
+  }
 }
 
 /** 飾りの問い合わせ。DB が重いときに通知そのものが遅れないよう上限を付け、失敗は null */
