@@ -131,6 +131,52 @@ describe("EntryProgressCard", () => {
     expect(screen.queryByRole("button", { name: /詳しくはこちら/ })).toBeNull();
   });
 
+  test("短いカード: 読み込めなかったときも「詳しくはこちら」を置く", async () => {
+    mockFetch({ ok: false, status: 500, json: async () => ({}) });
+    render(<EntryProgressCard now={DURING} compact />);
+    await screen.findByText("エントリーの状況を読み込めませんでした。");
+    expect(screen.getByRole("button", { name: /詳しくはこちら/ })).toBeTruthy();
+  });
+
+  test("2枚のうち押したカードにだけ「エントリーできませんでした」を出す(2つ読み上げない)", async () => {
+    mockFetch(progress({ enteredAt: null, usedWorks: 0, celebratedTickets: 0 }), {
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    render(
+      <EntryProgressProvider>
+        <EntryProgressCard now={DURING} compact />
+        <EntryProgressCard now={DURING} />
+      </EntryProgressProvider>,
+    );
+    const buttons = await screen.findAllByRole("button", { name: "エントリーする" });
+    fireEvent.click(buttons[0]);
+    const alerts = await screen.findAllByRole("alert");
+    expect(alerts).toHaveLength(1);
+    const [topCard] = screen.getAllByTestId("halloween-entry-card");
+    expect(topCard.contains(alerts[0])).toBe(true);
+  });
+
+  test("「詳しくはこちら」: 動きを減らす設定の人には、なめらかに流さずに移る", async () => {
+    mockFetch(progress(null));
+    const target = document.createElement("div");
+    target.id = "hbs-join";
+    document.body.appendChild(target);
+    const scrollIntoView = jest.fn();
+    target.scrollIntoView = scrollIntoView;
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = jest.fn((query: string) => ({ matches: query === "(prefers-reduced-motion: reduce)" })) as unknown as typeof window.matchMedia;
+    try {
+      render(<EntryProgressCard now={DURING} compact />);
+      fireEvent.click(await screen.findByRole("button", { name: /詳しくはこちら/ }));
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "auto", block: "start" });
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      target.remove();
+    }
+  });
+
   test("Provider の外のカードは、それぞれ自分で読む", async () => {
     const fetchMock = mockFetch(progress(null), progress(null));
     render(

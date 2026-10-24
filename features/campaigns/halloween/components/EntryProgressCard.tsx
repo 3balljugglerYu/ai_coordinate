@@ -149,7 +149,21 @@ function StandaloneEntryProgressCard({ now, compact }: { now: () => number; comp
 /** 参加方法のエンジョイ部門のタブに切り替えて詳しい作成手順を開き、参加方法の見出しまでスクロールする */
 function openEnjoyGuide() {
   requestJoinGuide(ENJOY_JOIN_TAB_KEY);
-  document.getElementById("hbs-join")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  // 動きを減らす設定の人には、なめらかに流さずに移る(SubmissionCarousel と同じ)
+  const reduceMotion =
+    typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  document.getElementById("hbs-join")?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
+}
+
+function EnjoyGuideButton() {
+  return (
+    <button type="button" className={styles.entryMore} onClick={openEnjoyGuide} data-testid="halloween-entry-more">
+      詳しくはこちら
+      <span className={styles.joinDetailsChevron} aria-hidden="true">
+        ▼
+      </span>
+    </button>
+  );
 }
 
 function useEntryProgressState(): EntryProgressState {
@@ -223,6 +237,8 @@ function EntryProgressView({
   compact: boolean;
 }) {
   const { load, entry, enteredAt, retry, enter } = state;
+  // 状態は2枚で共有するので、「エントリーできませんでした」は押したカードにだけ出す(2つ読み上げない)
+  const [pressedHere, setPressedHere] = useState(false);
 
   if (load.status === "loading") {
     return <div className={styles.entrySkeleton} data-testid="halloween-entry-loading" aria-hidden="true" />;
@@ -237,6 +253,7 @@ function EntryProgressView({
             もう一度読み込む
           </button>
         </div>
+        {compact ? <EnjoyGuideButton /> : null}
       </div>
     );
   }
@@ -322,6 +339,7 @@ function EntryProgressView({
             onClick={() => {
               if (entry.status === "pending") return;
               trackCampaignEvent(CAMPAIGN_EVENTS.entryClick);
+              setPressedHere(true);
               void enter();
             }}
             aria-disabled={entry.status === "pending" ? true : undefined}
@@ -329,7 +347,7 @@ function EntryProgressView({
           >
             {entry.status === "pending" ? "エントリー中…" : "エントリーする"}
           </button>
-          {entry.status === "failed" ? (
+          {entry.status === "failed" && pressedHere ? (
             <p className={styles.entryError} role="alert">
               エントリーできませんでした。時間をおいて、もう一度お試しください。
             </p>
@@ -354,19 +372,7 @@ function EntryProgressView({
           <p className={styles.note}>※ 期間中に「{CAMPAIGN.hashtag}」のタグを付けて投稿された作品が、対象作品です</p>
         </>
       ) : null}
-      {compact ? (
-        <button
-          type="button"
-          className={styles.entryMore}
-          onClick={openEnjoyGuide}
-          data-testid="halloween-entry-more"
-        >
-          詳しくはこちら
-          <span className={styles.joinDetailsChevron} aria-hidden="true">
-            ▼
-          </span>
-        </button>
-      ) : null}
+      {compact ? <EnjoyGuideButton /> : null}
     </div>
   );
 }

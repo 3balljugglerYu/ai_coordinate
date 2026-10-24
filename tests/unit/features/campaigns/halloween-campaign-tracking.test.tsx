@@ -19,6 +19,7 @@ import { JoinDetails } from "@/features/campaigns/halloween/components/JoinDetai
 import { JoinTabs } from "@/features/campaigns/halloween/components/JoinTabs";
 import { SubmissionCarousel } from "@/features/campaigns/halloween/components/SubmissionCarousel";
 import { SIGNUP_SOURCE_COOKIE } from "@/features/auth/components/SignupSourceCapture";
+import { requestJoinGuide } from "@/features/campaigns/halloween/lib/join-guide-requests";
 
 jest.mock("next/link", () => ({
   __esModule: true,
@@ -178,6 +179,22 @@ describe("参加方法のタブ", () => {
   });
 });
 
+describe("参加方法のタブ(合図で切り替え)", () => {
+  test("「詳しくはこちら」の合図で切り替えたときは、タブの GA4 を送らない", () => {
+    render(
+      <JoinTabs
+        tabs={[
+          { key: "creator", icon: "🎨", label: "クリエイティブ部門", panel: <p>A</p>, eventName: CAMPAIGN_EVENTS.tabCreative },
+          { key: "user", icon: "🎁", label: "エンジョイ部門", panel: <p>B</p>, eventName: CAMPAIGN_EVENTS.tabEnjoy },
+        ]}
+      />,
+    );
+    act(() => requestJoinGuide("user"));
+    expect(screen.getByRole("tab", { name: /エンジョイ部門/ }).getAttribute("aria-selected")).toBe("true");
+    expect(sentEvents()).toEqual([]);
+  });
+});
+
 describe("詳細な作成手順", () => {
   function toggle(details: HTMLDetailsElement, open: boolean) {
     details.open = open;
@@ -196,6 +213,39 @@ describe("詳細な作成手順", () => {
     toggle(details, false);
 
     expect(sentEvents()).toEqual([CAMPAIGN_EVENTS.stepsEnjoy]);
+  });
+
+  /*
+    2026-10-24: 対象作品の上のカードの「詳しくはこちら」で開いたときは、手順を押していないので送らない
+    (ブラウザは open を書き換えても toggle を出す。jsdom は出さないので、ここで出す)。
+    そのあと自分で閉じて開き直したら送る。
+  */
+  test("「詳しくはこちら」の合図で開いたときは送らず、そのあと自分で開いたら送る", () => {
+    render(
+      <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy} tabKey="user">
+        <p>手順</p>
+      </JoinDetails>,
+    );
+    const details = screen.getByTestId("halloween-join-details") as HTMLDetailsElement;
+
+    act(() => requestJoinGuide("user"));
+    expect(details.open).toBe(true);
+    fireEvent(details, new Event("toggle"));
+    expect(sentEvents()).toEqual([]);
+
+    toggle(details, false);
+    toggle(details, true);
+    expect(sentEvents()).toEqual([CAMPAIGN_EVENTS.stepsEnjoy]);
+  });
+
+  test("合図で開くのは同じ部門の手順だけ", () => {
+    render(
+      <JoinDetails eventName={CAMPAIGN_EVENTS.stepsCreative} tabKey="creator">
+        <p>手順</p>
+      </JoinDetails>,
+    );
+    act(() => requestJoinGuide("user"));
+    expect((screen.getByTestId("halloween-join-details") as HTMLDetailsElement).open).toBe(false);
   });
 
   test("ページでは、部門ごとに別の名前で送る", () => {

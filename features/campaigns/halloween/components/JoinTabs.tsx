@@ -25,15 +25,18 @@ export function JoinTabs({ tabs }: { tabs: readonly JoinTab[] }) {
   const [active, setActive] = useState(0);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // tabs は描くたびに新しい配列で渡ってくるので、合図の受け取りは key の並びが変わったときだけ付け直す
-  const tabKeys = tabs.map((tab) => tab.key).join("\n");
+  // tabs は描くたびに新しい配列で渡ってくるので、合図の受け取りは1回だけ付けて、最新の tabs を ref で読む
+  const latestTabs = useRef(tabs);
+  useEffect(() => {
+    latestTabs.current = tabs;
+  });
   useEffect(
     () =>
       subscribeJoinGuideRequests((tabKey) => {
-        const index = tabKeys.split("\n").indexOf(tabKey);
+        const index = latestTabs.current.findIndex((tab) => tab.key === tabKey);
         if (index >= 0) setActive(index);
       }),
-    [tabKeys],
+    [],
   );
 
   const activate = (index: number) => {
