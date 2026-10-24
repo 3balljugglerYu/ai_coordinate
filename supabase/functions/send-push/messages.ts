@@ -78,11 +78,11 @@ const DEFAULT_ACTOR_NAME = "ユーザー";
 
 /**
  * 通知に出す相手の名前に「さん」を付ける(2026-10-24 ユーザー決定)。
- * 名前の側にもう「さん」「様」が付いていれば重ねない。
+ * 名前の側にもう敬称(さん・様・ちゃん・くん など)が付いていれば重ねない。
  */
 export function withHonorific(name: string): string {
   const trimmed = name.trim();
-  return /(さん|様)$/u.test(trimmed) ? trimmed : `${trimmed}さん`;
+  return /(さん|さま|様|ちゃん|くん|氏|殿)$/u.test(trimmed) ? trimmed : `${trimmed}さん`;
 }
 
 // 題名が「〇〇があなた…」の形で記録される通知(相手の名前が入る)
@@ -103,7 +103,8 @@ export function buildHonorificTitle(row: ClaimedRow): string | null {
   if (!row.notification_type || !ACTOR_NAME_TITLE_TYPES.has(row.notification_type)) {
     return null;
   }
-  const match = /^(.+?)が(あなた.+)$/u.exec(row.title?.trim() ?? "");
+  // 名前との切れ目は最後の「があなた」(定型文の側には「があなた」が無いので、名前に入っていても切れる)
+  const match = /^(.+)が(あなた.+)$/u.exec(row.title?.trim() ?? "");
   if (!match) return null;
   return `${withHonorific(match[1])}が${match[2]}`;
 }
@@ -296,7 +297,7 @@ export function buildSenderMessage(
   row: ClaimedRow,
   likeCount: number | null,
 ): string | null {
-  const match = /^.+?が(あなた.+)$/u.exec(row.title?.trim() ?? "");
+  const match = /^.+が(あなた.+)$/u.exec(row.title?.trim() ?? "");
   if (!match) return null;
   let message = match[1];
   const others = Math.max(0, Math.floor(likeCount ?? 0) - 1);

@@ -740,6 +740,8 @@ describe("名前の「さん」", () => {
     expect(withHonorific(" Miki ")).toBe("Mikiさん");
     expect(withHonorific("田中さん")).toBe("田中さん");
     expect(withHonorific("山田様")).toBe("山田様");
+    expect(withHonorific("みきちゃん")).toBe("みきちゃん");
+    expect(withHonorific("たろうくん")).toBe("たろうくん");
   });
 
   test.each([
@@ -765,6 +767,13 @@ describe("名前の「さん」", () => {
       notification_type: "follow",
       title: "ながのがあなたをフォローしました",
     }))).toBe("ながのさんがあなたをフォローしました");
+  });
+
+  test("⭐名前に「があなた」が入っていても、名前の途中で切らない", () => {
+    expect(buildHonorificTitle(row({
+      notification_type: "like",
+      title: "君があなたがあなたの投稿にいいねしました",
+    }))).toBe("君があなたさんがあなたの投稿にいいねしました");
   });
 
   test("名前の入らない通知・形の違う題名は null(記録のまま)", () => {

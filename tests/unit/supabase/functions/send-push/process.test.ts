@@ -788,11 +788,43 @@ describe("生成完了の通知の画像", () => {
     await jest.advanceTimersByTimeAsync(GENERATED_IMAGE_WAIT_MS + GENERATED_IMAGE_POLL_MS);
     await run;
 
-    // 0 秒目から間隔ごとに、上限を超えない範囲で探す
-    expect(imageUrl).toHaveBeenCalledTimes(GENERATED_IMAGE_WAIT_MS / GENERATED_IMAGE_POLL_MS + 1);
+    // 0 秒目から間隔ごとに探し、上限ちょうど(残り 0)では探さない
+    expect(imageUrl).toHaveBeenCalledTimes(GENERATED_IMAGE_WAIT_MS / GENERATED_IMAGE_POLL_MS);
     expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
       .toBeUndefined();
     expect(statusById(calls.finish[0])).toEqual({ g1: "sent:" });
+  });
+
+  test("⭐問い合わせが遅いときも、全体の待ちは上限を超えない", async () => {
+    jest.useFakeTimers();
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    // 1 回目は上限より短く空振り、2 回目は返ってこない
+    let lookups = 0;
+    const imageUrl = jest.fn(() => {
+      lookups += 1;
+      return lookups === 1
+        ? new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 2000))
+        : new Promise<string | null>(() => {});
+    });
+    const { store, calls } = fakeStore({
+      batches: [[row("g1", generation("succeeded"))]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl,
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    const run = runSendPush(store, sender);
+    await jest.advanceTimersByTimeAsync(GENERATED_IMAGE_WAIT_MS);
+    // 上限の時点で送り終わっている(2 回目の問い合わせを 2.5 秒まで待たない)
+    await run;
+    expect(fcm.sentTokens).toEqual(["tok-a"]);
+    expect(imageUrl).toHaveBeenCalledTimes(2);
+    expect(statusById(calls.finish[0])).toEqual({ g1: "sent:" });
+    expect(consoleError).toHaveBeenCalledWith(
+      "[send-push] generated image lookup failed:",
+      `timeout after ${GENERATED_IMAGE_WAIT_MS - 2000 - GENERATED_IMAGE_POLL_MS}ms`,
+    );
+    consoleError.mockRestore();
   });
 
   test("失敗の通知では画像を探さない", async () => {

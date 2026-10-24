@@ -392,11 +392,18 @@ function lookupImageUrl(
  */
 async function lookupGeneratedImageUrl(
   store: PushStore,
-  source: PushImageSource,
+  source: Extract<PushImageSource, { kind: "generated" }>,
 ): Promise<string | null> {
   const deadline = Date.now() + GENERATED_IMAGE_WAIT_MS;
   for (;;) {
-    const url = await withLookupTimeout(store.imageUrl(source), "generated image");
+    // 1 回の問い合わせも残り時間で打ち切る(全体で GENERATED_IMAGE_WAIT_MS を超えない)
+    const remaining = deadline - Date.now();
+    if (remaining <= 0) return null;
+    const url = await withLookupTimeout(
+      store.imageUrl(source),
+      "generated image",
+      Math.min(remaining, IMAGE_LOOKUP_TIMEOUT_MS),
+    );
     if (url) return url;
     if (Date.now() + GENERATED_IMAGE_POLL_MS > deadline) return null;
     await new Promise((resolve) => setTimeout(resolve, GENERATED_IMAGE_POLL_MS));
@@ -407,13 +414,14 @@ async function lookupGeneratedImageUrl(
 async function withLookupTimeout(
   lookup: Promise<string | null>,
   label: string,
+  timeoutMs: number = IMAGE_LOOKUP_TIMEOUT_MS,
 ): Promise<string | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(
-        () => reject(new Error(`timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`)),
-        IMAGE_LOOKUP_TIMEOUT_MS,
+        () => reject(new Error(`timeout after ${timeoutMs}ms`)),
+        timeoutMs,
       );
     });
     return await Promise.race([lookup, timeout]);
