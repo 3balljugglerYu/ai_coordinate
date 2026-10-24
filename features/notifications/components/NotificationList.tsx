@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import type { Notification } from "../types";
 import { isAnonymousActorNotificationType } from "../types";
 import { cn } from "@/lib/utils";
-import { withHonorific } from "@/shared/notifications/honorific";
 import {
   User,
   Heart,
@@ -240,13 +239,15 @@ export function NotificationList({
           const isActorProfileLinkNotification = canLinkToActorProfile(
             notification.type
           );
+          // 空白だけのニックネームも「ユーザー」にする(プッシュと同じ)
           const actorName =
-            notification.actor?.nickname || t("userFallback");
+            notification.actor?.nickname?.trim() || t("userFallback");
           // 日本語の文では相手の名前に「さん」を付ける(プッシュと同じ決まり)
           const content = formatNotificationContent(
             notification,
-            locale === "ja" ? withHonorific(actorName) : actorName,
-            translateNotification
+            actorName,
+            translateNotification,
+            { honorific: locale === "ja" }
           );
           const clickableClass =
             isActorProfileLinkNotification ? "cursor-pointer" : undefined;

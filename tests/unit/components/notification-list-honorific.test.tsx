@@ -96,6 +96,13 @@ describe("お知らせ一覧の名前の「さん」", () => {
     expect(screen.getByText("likeTitle:userFallbackさん")).not.toBeNull();
   });
 
+  it("空白だけのニックネームは「ユーザー」の代わりの文字にする", () => {
+    mockNotifications = [likeFrom("   ")];
+    render(<NotificationList autoMarkAllRead={false} />);
+
+    expect(screen.getByText("likeTitle:userFallbackさん")).not.toBeNull();
+  });
+
   it("日本語以外では付けない", () => {
     mockLocale = "en";
     mockNotifications = [likeFrom("Miki")];

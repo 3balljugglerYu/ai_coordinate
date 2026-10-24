@@ -480,3 +480,49 @@ describe("formatNotificationContent", () => {
     });
   });
 });
+
+describe("formatNotificationContent の「さん」(honorific)", () => {
+  const t = (
+    key: NotificationTranslationKey,
+    values?: Record<string, string | number>
+  ) => (values?.actor !== undefined ? `${key}:${values.actor}` : key);
+
+  test("honorific のときは、文に入れる相手の名前に「さん」を付ける", () => {
+    const like = createNotification({ type: "like" });
+    expect(formatNotificationContent(like, "りる🐣", t, { honorific: true }).title)
+      .toBe("likeTitle:りる🐣さん");
+    const follow = createNotification({ type: "follow", entity_type: "user" });
+    expect(formatNotificationContent(follow, "みきちゃん", t, { honorific: true }).title)
+      .toBe("followTitle:みきちゃん");
+  });
+
+  test("指定しなければ付けない(日本語以外・今までの呼び出し)", () => {
+    const like = createNotification({ type: "like" });
+    expect(formatNotificationContent(like, "Miki", t).title).toBe("likeTitle:Miki");
+    expect(formatNotificationContent(like, "Miki", t, { honorific: false }).title)
+      .toBe("likeTitle:Miki");
+  });
+
+  test("⭐スタイル名が無く記録の題名を出すときも、名前に「さん」を付ける", () => {
+    const stylePost = createNotification({
+      type: "style_preset_post_published",
+      title: "りる🐣があなたのスタイルで作品を投稿しました",
+      body: "",
+      data: {},
+    });
+    expect(formatNotificationContent(stylePost, "りる🐣", t, { honorific: true }).title)
+      .toBe("りる🐣さんがあなたのスタイルで作品を投稿しました");
+    expect(formatNotificationContent(stylePost, "りる🐣", t).title)
+      .toBe("りる🐣があなたのスタイルで作品を投稿しました");
+  });
+
+  test("名前の入らない記録の題名は変えない", () => {
+    const reward = createNotification({
+      type: "usage_reward_earned",
+      title: "あなたのプロンプトが初めて利用されました",
+      data: {},
+    });
+    expect(formatNotificationContent(reward, "ユーザー", t, { honorific: true }).title)
+      .toBe("あなたのプロンプトが初めて利用されました");
+  });
+});
