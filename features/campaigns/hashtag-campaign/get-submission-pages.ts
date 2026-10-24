@@ -2,7 +2,7 @@ import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import { fetchAuthorNames } from "@/features/credits/lib/get-usable-prompt-showcase";
-import { paginateOnePerAuthor } from "./paginate";
+import { paginatePreferringDistinctAuthors } from "./paginate";
 import { HASHTAG_CAMPAIGN_SUBMISSIONS_ALL_TAG } from "./revalidate-submissions";
 
 /**
@@ -10,7 +10,8 @@ import { HASHTAG_CAMPAIGN_SUBMISSIONS_ALL_TAG } from "./revalidate-submissions";
  *
  * - 対象: 応募作の記録(hashtag_campaign_submissions)のうち、いまも公開中で、
  *   いまもハッシュタグが付いている投稿(list_hashtag_campaign_submissions)
- * - 並び: 新しい順。6件ずつのページにし、1ページに同じ人は1件まで
+ * - 並び: 新しい順。6件ずつのページにし、1ページに同じ人は1件まで。ちがう人だけで
+ *   6件にならないページは、残りを新しい順に詰める(2026-10-24。paginate.ts)
  * - 見せ方はサムネイルだけ(作者名・利用回数は出さない。2026-10-15 ユーザー指示)。
  *   押すと /use-prompts と同じ確認を出してから投稿のページへ(確認に作者名を出す)
  *
@@ -126,7 +127,7 @@ export async function getCampaignSubmissionPages(
     ];
   });
 
-  return paginateOnePerAuthor(items, SUBMISSION_PAGE_SIZE).map((page) =>
+  return paginatePreferringDistinctAuthors(items, SUBMISSION_PAGE_SIZE).map((page) =>
     page.map((entry) => entry.item),
   );
 }
