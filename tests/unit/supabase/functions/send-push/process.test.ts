@@ -56,6 +56,7 @@ interface StoreOptions {
   devicesThrow?: boolean;
   unreadLikeCount?: (userId: string, entityId: string) => Promise<number | null>;
   imageUrl?: PushStore["imageUrl"];
+  nickname?: PushStore["nickname"];
 }
 
 function fakeStore(options: StoreOptions = {}) {
@@ -96,9 +97,7 @@ function fakeStore(options: StoreOptions = {}) {
       return 2;
     },
     unreadLikeCount: options.unreadLikeCount ?? (async () => 1),
-    async nickname() {
-      return "Miki";
-    },
+    nickname: options.nickname ?? (async () => "Miki"),
     imageUrl: options.imageUrl ?? (async () => null),
     async removeTokens(tokens) {
       calls.removeTokens.push(tokens);
@@ -194,7 +193,11 @@ describe("runSendPush", () => {
 
     await runSendPush(store, sender);
 
-    expect(sources).toHaveLength(1);
+    // 投稿の画像(と、コメントした人のアイコン)
+    expect(sources).toEqual([
+      { kind: "post", postId: "post-1" },
+      { kind: "avatar", userId: "actor-1" },
+    ]);
     const message = fcm.messages[0] as {
       notification: { image?: string };
       data: Record<string, string>;
@@ -322,6 +325,177 @@ describe("runSendPush", () => {
     expect(message.apns.headers["apns-collapse-id"]).toBe("usage_reward:n-reward");
     // ペルコインの通知には画像を付けない(探しにも行かない)
     expect(imageUrl).not.toHaveBeenCalled();
+  });
+
+  describe("送り主のアイコン(iOS のコミュニケーション通知)", () => {
+    const like = {
+      category: "likes",
+      collapse_key: "like:post-1",
+      title: "マサがあなたの投稿にいいねしました",
+      body: "",
+      notification_type: "like",
+    } satisfies Partial<ClaimedRow>;
+
+    type Sent = {
+      data: Record<string, string>;
+      notification: { title: string; image?: string };
+      apns: { payload: { aps: Record<string, unknown> } };
+    };
+
+    test("アイコンを設定している人のいいねは、送り主の名前(今の名前)・アイコン・文を入れる", async () => {
+      const { store } = fakeStore({
+        batches: [[row("l1", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async (source) =>
+          source.kind === "avatar"
+            ? "https://cdn.example/avatar.webp"
+            : "https://cdn.example/thumb.webp",
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      const message = fcm.messages[0] as Sent;
+      expect(message.data.sender_name).toBe("Miki");
+      expect(message.data.sender_icon_url).toBe("https://cdn.example/avatar.webp");
+      expect(message.data.sender_message).toBe("あなたの投稿にいいねしました");
+      // 投稿の画像は今までどおり添え、題名も変えない(Android とアイコンが取れなかったとき用)
+      expect(message.notification.image).toBe("https://cdn.example/thumb.webp");
+      expect(message.notification.title).toBe("マサがあなたの投稿にいいねしました");
+      expect(message.apns.payload.aps["mutable-content"]).toBe(1);
+    });
+
+    test("いいねのまとめは、題名と同じ人数で「ほか N 人と、」", async () => {
+      const { store } = fakeStore({
+        batches: [[row("l1", like), row("l2", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        unreadLikeCount: async () => 3,
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      const message = fcm.messages[0] as Sent;
+      expect(message.notification.title).toBe("Mikiほか2人があなたの投稿にいいねしました");
+      expect(message.data.sender_message).toBe("ほか2人と、あなたの投稿にいいねしました");
+    });
+
+    test("⭐アイコンを設定していない人(アイコンが見つからない)は、今までどおり", async () => {
+      const { store } = fakeStore({
+        batches: [[row("l1", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async (source) =>
+          source.kind === "avatar" ? null : "https://cdn.example/thumb.webp",
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      const message = fcm.messages[0] as Sent;
+      expect(message.data.sender_name).toBeUndefined();
+      expect(message.data.sender_icon_url).toBeUndefined();
+      expect(message.data.sender_message).toBeUndefined();
+      expect(message.notification.image).toBe("https://cdn.example/thumb.webp");
+    });
+
+    test("フォローは、添える画像と送り主のアイコンが同じなので1回だけ探す", async () => {
+      const imageUrl = jest.fn(async () => "https://cdn.example/avatar.webp");
+      const { store } = fakeStore({
+        batches: [[row("f1", {
+          category: "follows",
+          title: "吉野理沙があなたをフォローしました",
+          body: "",
+          notification_type: "follow",
+          notification_entity_type: "user",
+          notification_entity_id: "user-a",
+        })]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl,
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      expect(imageUrl).toHaveBeenCalledTimes(1);
+      const message = fcm.messages[0] as Sent;
+      expect(message.data.sender_icon_url).toBe("https://cdn.example/avatar.webp");
+      expect(message.data.sender_message).toBe("あなたをフォローしました");
+    });
+
+    test("⭐送り主の名前が取れなければ、送り主なしで今までどおり送る", async () => {
+      const { store, calls } = fakeStore({
+        batches: [[row("l1", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+        nickname: async () => null,
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      expect((fcm.messages[0] as Sent).data.sender_name).toBeUndefined();
+      expect(statusById(calls.finish[0])).toEqual({ l1: "sent:" });
+    });
+
+    test("⭐送り主の名前を探すのが遅いときは、上限で打ち切って送り主なしで送る", async () => {
+      jest.useFakeTimers();
+      const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+      const { store, calls } = fakeStore({
+        batches: [[row("l1", like)]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+        nickname: () => new Promise<string | null>(() => {}),
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      const run = runSendPush(store, sender);
+      await jest.advanceTimersByTimeAsync(IMAGE_LOOKUP_TIMEOUT_MS + 10);
+      await run;
+
+      expect((fcm.messages[0] as Sent).data.sender_name).toBeUndefined();
+      expect(statusById(calls.finish[0])).toEqual({ l1: "sent:" });
+      expect(consoleError).toHaveBeenCalledWith(
+        "[send-push] sender name lookup failed:",
+        `timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`,
+      );
+      consoleError.mockRestore();
+      jest.useRealTimers();
+    });
+
+    test("題名の形が違えば、送り主なしで今までどおり送る", async () => {
+      const { store } = fakeStore({
+        batches: [[row("c1", { title: "新しいコメントがあります" })]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl: async () => "https://cdn.example/avatar.webp",
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      const message = fcm.messages[0] as Sent;
+      expect(message.data.sender_name).toBeUndefined();
+      expect(message.notification.title).toBe("新しいコメントがあります");
+    });
+
+    test("人からの反応でない通知は、送り主のアイコンを探さない", async () => {
+      const imageUrl = jest.fn(async () => "https://cdn.example/avatar.webp");
+      const { store } = fakeStore({
+        batches: [[row("m1", {
+          category: "moderation",
+          title: "投稿が非公開になりました",
+          notification_type: "moderation_rejected",
+        })]],
+        devices: [device("d1", "user-a", "tok-a")],
+        imageUrl,
+      });
+      const { sender, calls: fcm } = fakeSender();
+
+      await runSendPush(store, sender);
+
+      expect(imageUrl).not.toHaveBeenCalled();
+      expect((fcm.messages[0] as Sent).data.sender_name).toBeUndefined();
+    });
   });
 
   test("設定の確認に失敗した行は retry", async () => {

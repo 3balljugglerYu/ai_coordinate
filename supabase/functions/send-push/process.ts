@@ -11,6 +11,7 @@ import {
   buildDataPayload,
   buildFcmMessage,
   buildLikeTitle,
+  buildSenderMessage,
   type ClaimedRow,
   type FcmOutcome,
   groupRows,
@@ -19,6 +20,7 @@ import {
   type PushImageSource,
   resolveCollapseKey,
   resolveText,
+  senderSourceFor,
   summarizeOutcomes,
 } from "./messages.ts";
 
@@ -269,13 +271,46 @@ async function processRows(
     const outcomes: FcmOutcome[] = [];
     try {
       const devices = devicesByUser.get(group.recipientId) ?? [];
-      // 題名(いいねのまとめ)と画像は互いに関係ないので並べて待つ。端末が無ければ画像は探さない
-      const [likeTitle, imageUrl] = await Promise.all([
-        resolveLikeTitle(store, group),
-        devices.length > 0 ? resolveImageUrl(store, group.latest) : Promise.resolve(null),
+      // いいねの数・添える画像・送り主のアイコンは互いに関係ないので並べて待つ。
+      // 端末が無ければ画像とアイコンは探さない
+      const row = group.latest;
+      const imageSource = devices.length > 0 ? pushImageSourceFor(row) : null;
+      const senderSource = devices.length > 0 ? senderSourceFor(row) : null;
+      const imagePromise = imageSource
+        ? lookupImageUrl(store, imageSource)
+        : Promise.resolve(null);
+      // フォローは添える画像も送り主のアイコンなので、同じものを2回探さない
+      const senderIconPromise = !senderSource
+        ? Promise.resolve(null)
+        : sameSource(imageSource, senderSource)
+          ? imagePromise
+          : lookupImageUrl(store, senderSource);
+      const [likeCount, imageUrl, senderIconUrl] = await Promise.all([
+        resolveLikeCount(store, group),
+        imagePromise,
+        senderIconPromise,
       ]);
-      const { title, body } = resolveText(group.latest, likeTitle);
-      const data = buildDataPayload(group.latest);
+
+      // いいねのまとめ文に要る名前は今までどおり待つ。送り主の名前だけに要るときは飾りなので、
+      // 画像と同じ上限で打ち切る(取れなければ送り主なしの今までの形で送る)
+      const actorId = row.notification_actor_id;
+      const nickname = !actorId
+        ? null
+        : (likeCount ?? 0) > 1
+          ? await store.nickname(actorId)
+          : senderIconUrl !== null
+            ? await withLookupTimeout(store.nickname(actorId), "sender name")
+            : null;
+      const likeTitle = likeCount !== null && likeCount > 1
+        ? buildLikeTitle(nickname, likeCount)
+        : null;
+      const senderMessage = senderIconUrl ? buildSenderMessage(row, likeCount) : null;
+      const pushSender = senderIconUrl && nickname?.trim() && senderMessage
+        ? { name: nickname.trim(), iconUrl: senderIconUrl, message: senderMessage }
+        : null;
+
+      const { title, body } = resolveText(row, likeTitle);
+      const data = buildDataPayload(row);
       const collapseKey = resolveCollapseKey(group);
 
       for (const device of devices) {
@@ -288,6 +323,7 @@ async function processRows(
           collapseKey,
           badge: badges.get(group.recipientId) ?? null,
           imageUrl,
+          sender: pushSender,
         });
         const outcome = await sender.send(accessToken, message);
         if (outcome.kind === "invalid_token") invalidTokens.add(device.token);
@@ -318,41 +354,47 @@ async function processRows(
 }
 
 /**
- * いいねは「〇〇ほか N 人が…」にまとめる。N はその投稿の未読のいいね数。
- * 端末は collapse_key で前の通知を置き換えるので、今回確保した分ではなく総数で書く。
+ * いいねの数(その投稿の未読のいいね数)。いいね以外は null。
+ * 2 以上なら「〇〇ほか N 人が…」にまとめる。端末は collapse_key で前の通知を置き換えるので、
+ * 今回確保した分ではなく総数で書く。
  */
-async function resolveLikeTitle(store: PushStore, group: PushGroup): Promise<string | null> {
+async function resolveLikeCount(store: PushStore, group: PushGroup): Promise<number | null> {
   const row = group.latest;
   if (row.notification_type !== "like" || !row.notification_entity_id) return null;
+  return await store.unreadLikeCount(group.recipientId, row.notification_entity_id);
+}
 
-  const count = await store.unreadLikeCount(group.recipientId, row.notification_entity_id);
-  if (!count || count <= 1) return null;
-
-  const nickname = row.notification_actor_id
-    ? await store.nickname(row.notification_actor_id)
-    : null;
-  return buildLikeTitle(nickname, count);
+function sameSource(a: PushImageSource | null, b: PushImageSource): boolean {
+  return a?.kind === "avatar" && b.kind === "avatar" && a.userId === b.userId;
 }
 
 /**
- * 通知に添える画像。画像は飾りなので、取れなくても文字だけで送る
+ * 通知に添える画像・送り主のアイコン。どちらも飾りなので、取れなくても文字だけで送る
  * (ここで失敗して通知そのものが遅れたり届かなかったりしないように)。
  */
-async function resolveImageUrl(store: PushStore, row: ClaimedRow): Promise<string | null> {
-  const source = pushImageSourceFor(row);
-  if (!source) return null;
+function lookupImageUrl(
+  store: PushStore,
+  source: PushImageSource,
+): Promise<string | null> {
+  return withLookupTimeout(store.imageUrl(source), "image");
+}
+
+/** 飾りの問い合わせ。DB が重いときに通知そのものが遅れないよう上限を付け、失敗は null */
+async function withLookupTimeout(
+  lookup: Promise<string | null>,
+  label: string,
+): Promise<string | null> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    // DB が重いときに、飾りの画像のせいで通知そのものが遅れないよう上限を付ける
     const timeout = new Promise<never>((_, reject) => {
       timer = setTimeout(
         () => reject(new Error(`timeout after ${IMAGE_LOOKUP_TIMEOUT_MS}ms`)),
         IMAGE_LOOKUP_TIMEOUT_MS,
       );
     });
-    return await Promise.race([store.imageUrl(source), timeout]);
+    return await Promise.race([lookup, timeout]);
   } catch (e) {
-    console.error("[send-push] image lookup failed:", errorMessage(e));
+    console.error(`[send-push] ${label} lookup failed:`, errorMessage(e));
     return null;
   } finally {
     if (timer !== undefined) clearTimeout(timer);

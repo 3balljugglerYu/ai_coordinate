@@ -4,6 +4,7 @@ import {
   buildDataPayload,
   buildFcmMessage,
   buildLikeTitle,
+  buildSenderMessage,
   type ClaimedRow,
   classifyFcmResponse,
   groupRows,
@@ -12,6 +13,7 @@ import {
   buildUsageRewardTitle,
   resolveCollapseKey,
   resolveText,
+  senderSourceFor,
   summarizeOutcomes,
 } from "@/supabase/functions/send-push/messages";
 
@@ -562,5 +564,118 @@ describe("buildFcmMessage の画像", () => {
       expect(message.apns.fcm_options).toBeUndefined();
       expect(message.apns.payload.aps["mutable-content"]).toBeUndefined();
     }
+  });
+});
+
+describe("送り主のアイコンつき(iOS のコミュニケーション通知)", () => {
+  const fcmBase = {
+    token: "tok",
+    title: "Miki があなたの投稿にいいねしました",
+    body: "",
+    data: { kind: "notification" },
+    category: "likes",
+    collapseKey: null,
+    badge: null,
+  };
+
+  describe("senderSourceFor", () => {
+    test.each(["like", "comment", "follow"])("%s は送り主のアイコンを探す", (type) => {
+      expect(senderSourceFor(row({ notification_type: type, notification_actor_id: "actor-1" })))
+        .toEqual({ kind: "avatar", userId: "actor-1" });
+    });
+
+    test.each(["usage_reward_earned", "derived_post_published", "moderation_rejected", null])(
+      "%s は対象外",
+      (type) => {
+        expect(senderSourceFor(row({ notification_type: type }))).toBeNull();
+      },
+    );
+
+    test("送り主がいなければ対象外", () => {
+      expect(senderSourceFor(row({ notification_type: "like", notification_actor_id: null })))
+        .toBeNull();
+    });
+  });
+
+  describe("buildSenderMessage", () => {
+    test("題名の「〇〇が」を外す(いいね・フォロー)", () => {
+      expect(buildSenderMessage(
+        row({ notification_type: "like", title: "りる🐣があなたの投稿にいいねしました", body: "" }),
+        1,
+      )).toBe("あなたの投稿にいいねしました");
+      expect(buildSenderMessage(
+        row({ notification_type: "follow", title: "吉野理沙があなたをフォローしました", body: "" }),
+        null,
+      )).toBe("あなたをフォローしました");
+    });
+
+    test("いいねが2件以上なら「ほか N 人と、」を付ける", () => {
+      expect(buildSenderMessage(
+        row({ notification_type: "like", title: "りる🐣があなたの投稿にいいねしました", body: null }),
+        3,
+      )).toBe("ほか2人と、あなたの投稿にいいねしました");
+    });
+
+    test("コメント・返信は、本文を次の行に付ける", () => {
+      expect(buildSenderMessage(
+        row({ title: "りる🐣があなたの投稿にコメントしました", body: " かわいい！ " }),
+        null,
+      )).toBe("あなたの投稿にコメントしました\nかわいい！");
+      expect(buildSenderMessage(
+        row({ title: "ちゃんりおがあなたのコメントに返信しました", body: "ありがとう" }),
+        null,
+      )).toBe("あなたのコメントに返信しました\nありがとう");
+      expect(buildSenderMessage(
+        row({ title: "MIOがあなたの返信に返信しました", body: "またね" }),
+        null,
+      )).toBe("あなたの返信に返信しました\nまたね");
+    });
+
+    test("⭐名前に「が」が入っていても、最初の「があなた」で切る", () => {
+      expect(buildSenderMessage(
+        row({ notification_type: "follow", title: "ながのがあなたをフォローしました", body: "" }),
+        null,
+      )).toBe("あなたをフォローしました");
+    });
+
+    test("形の違う題名は null(今までどおり送る)", () => {
+      expect(buildSenderMessage(row({ title: "新しいコメントがあります" }), null)).toBeNull();
+      expect(buildSenderMessage(row({ title: null }), null)).toBeNull();
+    });
+  });
+
+  describe("buildFcmMessage の sender", () => {
+    const sender = { name: "りる🐣", iconUrl: "https://cdn.example/avatar.webp", message: "あなたの投稿にいいねしました" };
+
+    test("送り主を data に入れ、iOS で Notification Service Extension を起こす", () => {
+      const message = buildFcmMessage({ ...fcmBase, sender }) as {
+        data: Record<string, string>;
+        apns: { payload: { aps: Record<string, unknown> }; fcm_options?: unknown };
+        notification: Record<string, string>;
+      };
+      expect(message.data).toEqual({
+        kind: "notification",
+        sender_name: "りる🐣",
+        sender_icon_url: "https://cdn.example/avatar.webp",
+        sender_message: "あなたの投稿にいいねしました",
+      });
+      expect(message.apns.payload.aps["mutable-content"]).toBe(1);
+      // 添える画像とは別(送り主のアイコンを大きな画像として付けない)
+      expect(message.apns.fcm_options).toBeUndefined();
+      expect(message.notification.image).toBeUndefined();
+    });
+
+    test.each([
+      ["https でないアイコン", { ...sender, iconUrl: "http://cdn.example/a.webp" }],
+      ["空の名前", { ...sender, name: " " }],
+      ["空の文", { ...sender, message: "" }],
+    ])("%s なら送り主を入れない(今までどおり)", (_label, bad) => {
+      const message = buildFcmMessage({ ...fcmBase, sender: bad }) as {
+        data: Record<string, string>;
+        apns: { payload: { aps: Record<string, unknown> } };
+      };
+      expect(message.data).toEqual({ kind: "notification" });
+      expect(message.apns.payload.aps["mutable-content"]).toBeUndefined();
+    });
   });
 });
