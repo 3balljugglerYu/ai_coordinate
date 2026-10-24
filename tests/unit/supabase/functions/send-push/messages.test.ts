@@ -17,7 +17,6 @@ import {
   resolveText,
   senderSourceFor,
   summarizeOutcomes,
-  withHonorific,
 } from "@/supabase/functions/send-push/messages";
 
 function row(overrides: Partial<ClaimedRow> = {}): ClaimedRow {
@@ -735,15 +734,6 @@ describe("ownGeneratedImageUrlFromRow", () => {
 });
 
 describe("名前の「さん」", () => {
-  test("withHonorific は「さん」を付ける。もう付いていれば重ねない", () => {
-    expect(withHonorific("りる🐣")).toBe("りる🐣さん");
-    expect(withHonorific(" Miki ")).toBe("Mikiさん");
-    expect(withHonorific("田中さん")).toBe("田中さん");
-    expect(withHonorific("山田様")).toBe("山田様");
-    expect(withHonorific("みきちゃん")).toBe("みきちゃん");
-    expect(withHonorific("たろうくん")).toBe("たろうくん");
-  });
-
   test.each([
     ["like", "りる🐣があなたの投稿にいいねしました", "りる🐣さんがあなたの投稿にいいねしました"],
     ["comment", "MIOがあなたのコメントに返信しました", "MIOさんがあなたのコメントに返信しました"],

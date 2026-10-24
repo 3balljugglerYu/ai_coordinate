@@ -239,12 +239,15 @@ export function NotificationList({
           const isActorProfileLinkNotification = canLinkToActorProfile(
             notification.type
           );
+          // 空白だけのニックネームも「ユーザー」にする(プッシュと同じ)
           const actorName =
-            notification.actor?.nickname || t("userFallback");
+            notification.actor?.nickname?.trim() || t("userFallback");
+          // 日本語の文では相手の名前に「さん」を付ける(プッシュと同じ決まり)
           const content = formatNotificationContent(
             notification,
             actorName,
-            translateNotification
+            translateNotification,
+            { honorific: locale === "ja" }
           );
           const clickableClass =
             isActorProfileLinkNotification ? "cursor-pointer" : undefined;

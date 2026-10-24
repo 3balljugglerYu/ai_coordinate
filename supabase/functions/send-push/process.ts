@@ -22,8 +22,8 @@ import {
   resolveText,
   senderSourceFor,
   summarizeOutcomes,
-  withHonorific,
 } from "./messages.ts";
+import { withHonorific } from "../../../shared/notifications/honorific.ts";
 
 /** 画像を探す上限。超えたら文字だけで送る */
 export const IMAGE_LOOKUP_TIMEOUT_MS = 2500;

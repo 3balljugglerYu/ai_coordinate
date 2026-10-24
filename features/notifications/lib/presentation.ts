@@ -1,4 +1,8 @@
 import type { Notification } from "../types";
+import {
+  withHonorific,
+  withHonorificInActorTitle,
+} from "@/shared/notifications/honorific";
 
 type TranslationValues = Record<string, string | number>;
 export type NotificationTranslationKey =
@@ -142,11 +146,27 @@ function formatBonusNotification(
   }
 }
 
+export interface FormatNotificationOptions {
+  /**
+   * 相手の名前に「さん」を付ける(日本語の表示のとき。2026-10-24 ユーザー決定)。
+   * 記録の題名をそのまま出す場合も、「〇〇があなた…」の形なら名前に付ける(プッシュと同じ決まり)
+   */
+  honorific?: boolean;
+}
+
 export function formatNotificationContent(
   notification: Notification,
-  actorName: string,
-  t: (key: NotificationTranslationKey, values?: TranslationValues) => string
+  rawActorName: string,
+  t: (key: NotificationTranslationKey, values?: TranslationValues) => string,
+  options: FormatNotificationOptions = {}
 ) {
+  const honorific = options.honorific === true;
+  const actorName = honorific ? withHonorific(rawActorName) : rawActorName;
+  // 名前の入る通知で、記録の題名(「〇〇があなた…」)をそのまま出すとき
+  const storedActorTitle = () =>
+    (honorific ? withHonorificInActorTitle(notification.title) : null) ??
+    notification.title;
+
   switch (notification.type) {
     case "like":
       return {
@@ -217,7 +237,7 @@ export function formatNotificationContent(
       // One-Tap Style プリセット利用投稿の実名通知。プリセット名はスナップショット。
       const presetTitle = getStringValue(notification.data?.preset_title);
       if (!presetTitle) {
-        return { title: notification.title, body: notification.body };
+        return { title: storedActorTitle(), body: notification.body };
       }
       return {
         title: t("stylePresetPostTitle", {
