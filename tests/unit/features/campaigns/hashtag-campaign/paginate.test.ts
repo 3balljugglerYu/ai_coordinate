@@ -4,8 +4,8 @@
  * - 1ページ6件、1ページに同じ人は1件まで
  * - ページが変われば、前のページに出た人がまた出てよい
  * - 渡された順(新しい順)を崩さない
- * - 2026-10-24: ちがう人だけでは6件にならないページは、残りを新しい順に詰める
- *   (同じ人の作品が多いと、1件だけのページが続いていた)
+ * - 2026-10-24: ちがう人だけでは6件にならないページは、1人2件まで→3件まで…と広げて残りを詰める
+ *   (同じ人の作品が多いと、1件だけのページが続いていた)。ページの中は新しい順
  */
 import { paginatePreferringDistinctAuthors } from "@/features/campaigns/hashtag-campaign/paginate";
 
@@ -44,11 +44,20 @@ describe("paginatePreferringDistinctAuthors", () => {
     expect(ids(pages)).toEqual([["A1", "B1", "C1", "D1", "E1", "F1"], ["A2", "B2"]]);
   });
 
-  test("ちがう人で埋まらないページは、ちがう人を先に並べ、残りを新しい順に詰める", () => {
+  test("ちがう人で埋まらないページは残りを詰め、ページの中は新しい順に並べる", () => {
     const list = items("A1", "A2", "B1", "C1", "A3", "D1", "E1", "F1", "G1");
     expect(ids(paginatePreferringDistinctAuthors(list, 6))).toEqual([
       ["A1", "B1", "C1", "D1", "E1", "F1"],
-      ["A2", "G1", "A3"],
+      ["A2", "A3", "G1"],
+    ]);
+  });
+
+  test("詰めるときは1人に偏らせない(1人2件まで→3件まで…の順に広げる)", () => {
+    // 順番どおりに詰めると A1・B1・C1・A2・A3・A4 になり、B2 が次のページへ回ってしまう形
+    const list = items("A1", "B1", "C1", "A2", "A3", "A4", "A5", "B2");
+    expect(ids(paginatePreferringDistinctAuthors(list, 6))).toEqual([
+      ["A1", "B1", "C1", "A2", "A3", "B2"],
+      ["A4", "A5"],
     ]);
   });
 
@@ -90,6 +99,19 @@ describe("paginatePreferringDistinctAuthors", () => {
     expect(pages).toHaveLength(Math.ceil(list.length / 6));
     expect(pages.slice(0, -1).every((page) => page.length === 6)).toBe(true);
     expect(pages.flat().map((item) => item.id).sort()).toEqual(list.map((item) => item.id).sort());
+
+    // どのページにも、そのとき残っている人ができるだけ多く(6人まで)入っている
+    const position = new Map(list.map((item, index) => [item.id, index]));
+    let remaining = list;
+    for (const page of pages) {
+      const available = new Set(remaining.map((item) => item.authorId)).size;
+      expect(new Set(page.map((item) => item.authorId)).size).toBe(Math.min(6, available));
+      // ページの中は新しい順(渡された順)
+      const order = page.map((item) => position.get(item.id) ?? -1);
+      expect(order).toEqual([...order].sort((a, b) => a - b));
+      const used = new Set(page.map((item) => item.id));
+      remaining = remaining.filter((item) => !used.has(item.id));
+    }
   });
 
   test("空なら空。件数が0以下・整数でないときも空(無限に回らない)", () => {
