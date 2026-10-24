@@ -1,6 +1,7 @@
 // 通知に添える画像の URL を DB から探す(index.ts の store から呼ぶ)。
 // Deno と Jest の両方で読めるよう、supabase-js には型でも依存しない。
 import {
+  ownGeneratedImageUrlFromRow,
   type PushImageRow,
   type PushImageSource,
   pushImageUrlFromRow,
@@ -9,14 +10,16 @@ import {
 
 type QueryResult = { data: unknown; error: { message: string } | null };
 
+/** 条件を重ねて 1 行を取る部分 */
+export interface ImageQueryFilter {
+  eq(column: string, value: string | number): ImageQueryFilter;
+  maybeSingle(): PromiseLike<QueryResult>;
+}
+
 /** 使う分だけの PostgREST のクエリビルダー */
 export interface ImageQueryClient {
   from(table: string): {
-    select(columns: string): {
-      eq(column: string, value: string): {
-        maybeSingle(): PromiseLike<QueryResult>;
-      };
-    };
+    select(columns: string): ImageQueryFilter;
   };
 }
 
@@ -40,6 +43,18 @@ export async function lookupPushImageUrl(
       .maybeSingle();
     if (error) throw new Error(`avatar: ${error.message}`);
     return usableImageUrl((data as { avatar_url?: string | null } | null)?.avatar_url);
+  }
+
+  if (source.kind === "generated") {
+    // 1 回の生成は 1 枚(#519 で複数枚を廃止)。昔の複数枚のジョブでも 1 枚目だけを見る
+    const { data, error } = await client
+      .from("generated_images")
+      .select(`${IMAGE_COLUMNS}, user_id`)
+      .eq("image_job_id", source.imageJobId)
+      .eq("image_job_result_index", 0)
+      .maybeSingle();
+    if (error) throw new Error(`generated image: ${error.message}`);
+    return ownGeneratedImageUrlFromRow(supabaseUrl, data as PushImageRow | null, source.userId);
   }
 
   let postId = source.kind === "post" ? source.postId : null;

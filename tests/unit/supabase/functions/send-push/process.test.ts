@@ -6,6 +6,8 @@ import {
   type DeviceRow,
   type FcmSender,
   type FinishItem,
+  GENERATED_IMAGE_POLL_MS,
+  GENERATED_IMAGE_WAIT_MS,
   IMAGE_LOOKUP_TIMEOUT_MS,
   mapWithConcurrency,
   NOT_PROCESSED_ERROR,
@@ -285,7 +287,7 @@ describe("runSendPush", () => {
 
     expect(fcm.sentTokens).toEqual(["tok-a"]);
     expect((fcm.messages[0].notification as { title: string }).title).toBe(
-      "Mikiほか2人があなたの投稿にいいねしました",
+      "Mikiさんほか2人があなたの投稿にいいねしました",
     );
     expect(statusById(calls.finish[0])).toEqual({ l1: "sent:", l2: "sent:" });
   });
@@ -356,12 +358,14 @@ describe("runSendPush", () => {
       await runSendPush(store, sender);
 
       const message = fcm.messages[0] as Sent;
-      expect(message.data.sender_name).toBe("Miki");
+      // 名前には「さん」を付ける(2026-10-24 ユーザー決定)
+      expect(message.data.sender_name).toBe("Mikiさん");
       expect(message.data.sender_icon_url).toBe("https://cdn.example/avatar.webp");
       expect(message.data.sender_message).toBe("あなたの投稿にいいねしました");
-      // 投稿の画像は今までどおり添え、題名も変えない(Android とアイコンが取れなかったとき用)
+      // 投稿の画像は今までどおり添え、題名も今までの形(Android とアイコンが取れなかったとき用)。
+      // 題名の名前は記録したときのもので、「さん」だけを足す
       expect(message.notification.image).toBe("https://cdn.example/thumb.webp");
-      expect(message.notification.title).toBe("マサがあなたの投稿にいいねしました");
+      expect(message.notification.title).toBe("マサさんがあなたの投稿にいいねしました");
       expect(message.apns.payload.aps["mutable-content"]).toBe(1);
     });
 
@@ -377,7 +381,7 @@ describe("runSendPush", () => {
       await runSendPush(store, sender);
 
       const message = fcm.messages[0] as Sent;
-      expect(message.notification.title).toBe("Mikiほか2人があなたの投稿にいいねしました");
+      expect(message.notification.title).toBe("Mikiさんほか2人があなたの投稿にいいねしました");
       expect(message.data.sender_message).toBe("ほか2人と、あなたの投稿にいいねしました");
     });
 
@@ -720,5 +724,122 @@ describe("mapWithConcurrency", () => {
     const worker = jest.fn(async () => {});
     await mapWithConcurrency([], 10, worker);
     expect(worker).not.toHaveBeenCalled();
+  });
+});
+
+describe("生成完了の通知の画像", () => {
+  const generation = (status: string) => ({
+    category: "generation",
+    title: "画像が完成しました",
+    body: "タップして確認しましょう",
+    data: { kind: "generation", image_job_id: "job-1", status },
+    notification_id: null,
+    notification_type: null,
+    notification_entity_type: null,
+    notification_entity_id: null,
+    notification_actor_id: null,
+    notification_data: null,
+  }) satisfies Partial<ClaimedRow>;
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  test("小さい版ができるまで探し直し、できたら添えて送る", async () => {
+    jest.useFakeTimers();
+    let lookups = 0;
+    const imageUrl = jest.fn(async () => {
+      lookups += 1;
+      return lookups >= 3 ? "https://cdn.example/g_thumb.webp" : null;
+    });
+    const { store, calls } = fakeStore({
+      batches: [[row("g1", generation("succeeded"))]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl,
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    const run = runSendPush(store, sender);
+    await jest.advanceTimersByTimeAsync(GENERATED_IMAGE_POLL_MS * 2 + 10);
+    await run;
+
+    expect(imageUrl).toHaveBeenCalledTimes(3);
+    expect(imageUrl).toHaveBeenCalledWith({ kind: "generated", imageJobId: "job-1", userId: "user-a" });
+    const message = fcm.messages[0] as { notification: { title: string; image?: string } };
+    expect(message.notification).toEqual({
+      title: "画像が完成しました",
+      body: "タップして確認しましょう",
+      image: "https://cdn.example/g_thumb.webp",
+    });
+    expect(statusById(calls.finish[0])).toEqual({ g1: "sent:" });
+  });
+
+  test("⭐待っても小さい版が無ければ、上限で文字だけで送る", async () => {
+    jest.useFakeTimers();
+    const imageUrl = jest.fn(async () => null);
+    const { store, calls } = fakeStore({
+      batches: [[row("g1", generation("succeeded"))]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl,
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    const run = runSendPush(store, sender);
+    await jest.advanceTimersByTimeAsync(GENERATED_IMAGE_WAIT_MS + GENERATED_IMAGE_POLL_MS);
+    await run;
+
+    // 0 秒目から間隔ごとに探し、上限ちょうど(残り 0)では探さない
+    expect(imageUrl).toHaveBeenCalledTimes(GENERATED_IMAGE_WAIT_MS / GENERATED_IMAGE_POLL_MS);
+    expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
+      .toBeUndefined();
+    expect(statusById(calls.finish[0])).toEqual({ g1: "sent:" });
+  });
+
+  test("⭐問い合わせが遅いときも、全体の待ちは上限を超えない", async () => {
+    jest.useFakeTimers();
+    const consoleError = jest.spyOn(console, "error").mockImplementation(() => {});
+    // 1 回目は上限より短く空振り、2 回目は返ってこない
+    let lookups = 0;
+    const imageUrl = jest.fn(() => {
+      lookups += 1;
+      return lookups === 1
+        ? new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 2000))
+        : new Promise<string | null>(() => {});
+    });
+    const { store, calls } = fakeStore({
+      batches: [[row("g1", generation("succeeded"))]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl,
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    const run = runSendPush(store, sender);
+    await jest.advanceTimersByTimeAsync(GENERATED_IMAGE_WAIT_MS);
+    // 上限の時点で送り終わっている(2 回目の問い合わせを 2.5 秒まで待たない)
+    await run;
+    expect(fcm.sentTokens).toEqual(["tok-a"]);
+    expect(imageUrl).toHaveBeenCalledTimes(2);
+    expect(statusById(calls.finish[0])).toEqual({ g1: "sent:" });
+    expect(consoleError).toHaveBeenCalledWith(
+      "[send-push] generated image lookup failed:",
+      `timeout after ${GENERATED_IMAGE_WAIT_MS - 2000 - GENERATED_IMAGE_POLL_MS}ms`,
+    );
+    consoleError.mockRestore();
+  });
+
+  test("失敗の通知では画像を探さない", async () => {
+    const imageUrl = jest.fn(async () => "https://cdn.example/g_thumb.webp");
+    const { store } = fakeStore({
+      batches: [[row("g1", generation("failed"))]],
+      devices: [device("d1", "user-a", "tok-a")],
+      imageUrl,
+    });
+    const { sender, calls: fcm } = fakeSender();
+
+    await runSendPush(store, sender);
+
+    expect(imageUrl).not.toHaveBeenCalled();
+    expect((fcm.messages[0] as { notification: { image?: string } }).notification.image)
+      .toBeUndefined();
   });
 });

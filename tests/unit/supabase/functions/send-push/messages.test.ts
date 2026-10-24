@@ -3,11 +3,13 @@
 import {
   buildDataPayload,
   buildFcmMessage,
+  buildHonorificTitle,
   buildLikeTitle,
   buildSenderMessage,
   type ClaimedRow,
   classifyFcmResponse,
   groupRows,
+  ownGeneratedImageUrlFromRow,
   pushImageSourceFor,
   pushImageUrlFromRow,
   buildUsageRewardTitle,
@@ -15,6 +17,7 @@ import {
   resolveText,
   senderSourceFor,
   summarizeOutcomes,
+  withHonorific,
 } from "@/supabase/functions/send-push/messages";
 
 function row(overrides: Partial<ClaimedRow> = {}): ClaimedRow {
@@ -67,16 +70,16 @@ describe("groupRows", () => {
 
 describe("buildLikeTitle", () => {
   test("1 件なら元の通知と同じ文", () => {
-    expect(buildLikeTitle("Miki", 1)).toBe("Mikiがあなたの投稿にいいねしました");
+    expect(buildLikeTitle("Miki", 1)).toBe("Mikiさんがあなたの投稿にいいねしました");
   });
 
   test("2 件以上は「ほか N 人」", () => {
-    expect(buildLikeTitle("Miki", 4)).toBe("Mikiほか3人があなたの投稿にいいねしました");
+    expect(buildLikeTitle("Miki", 4)).toBe("Mikiさんほか3人があなたの投稿にいいねしました");
   });
 
   test("ニックネームが無ければ「ユーザー」", () => {
-    expect(buildLikeTitle(null, 2)).toBe("ユーザーほか1人があなたの投稿にいいねしました");
-    expect(buildLikeTitle("  ", 1)).toBe("ユーザーがあなたの投稿にいいねしました");
+    expect(buildLikeTitle(null, 2)).toBe("ユーザーさんほか1人があなたの投稿にいいねしました");
+    expect(buildLikeTitle("  ", 1)).toBe("ユーザーさんがあなたの投稿にいいねしました");
   });
 });
 
@@ -456,9 +459,10 @@ describe("pushImageSourceFor", () => {
     }))).toEqual({ kind: "avatar", userId: "actor-1" });
   });
 
-  test("生成の完了には付けない(送る時点では小さい版がまだ無い)", () => {
+  describe("生成の完了", () => {
     const generation = {
       category: "generation",
+      recipient_id: "user-a",
       notification_id: null,
       notification_type: null,
       notification_entity_type: null,
@@ -466,12 +470,23 @@ describe("pushImageSourceFor", () => {
       notification_actor_id: null,
       notification_data: null,
     } satisfies Partial<ClaimedRow>;
-    for (const status of ["succeeded", "failed"]) {
+
+    test("成功は、できた画像(宛先の本人の画像として探す)", () => {
       expect(pushImageSourceFor(row({
         ...generation,
-        data: { kind: "generation", status, image_job_id: "job-1" },
-      }))).toBeNull();
-    }
+        data: { kind: "generation", status: "succeeded", image_job_id: "job-1" },
+      }))).toEqual({ kind: "generated", imageJobId: "job-1", userId: "user-a" });
+    });
+
+    test("失敗・ジョブが分からないときは付けない", () => {
+      for (const data of [
+        { kind: "generation", status: "failed", image_job_id: "job-1" },
+        { kind: "generation", status: "succeeded" },
+        { kind: "generation", status: "succeeded", image_job_id: "" },
+      ]) {
+        expect(pushImageSourceFor(row({ ...generation, data }))).toBeNull();
+      }
+    });
   });
 
   test("⭐運営の措置・ペルコインには付けない", () => {
@@ -677,5 +692,106 @@ describe("送り主のアイコンつき(iOS のコミュニケーション通�
       expect(message.data).toEqual({ kind: "notification" });
       expect(message.apns.payload.aps["mutable-content"]).toBeUndefined();
     });
+  });
+});
+
+describe("ownGeneratedImageUrlFromRow", () => {
+  const base = "https://ref.supabase.co";
+  const own = {
+    user_id: "user-a",
+    is_posted: false,
+    moderation_status: "visible",
+    storage_path_thumb: "user-a/g_thumb.webp",
+    storage_path_display: "user-a/g.webp",
+  };
+
+  test("本人の画像は、投稿していなくても小さい版を付ける", () => {
+    expect(ownGeneratedImageUrlFromRow(base, own, "user-a"))
+      .toBe(`${base}/storage/v1/object/public/generated-images/user-a/g_thumb.webp`);
+  });
+
+  test("サムネイルが無ければ表示用", () => {
+    expect(ownGeneratedImageUrlFromRow(base, { ...own, storage_path_thumb: null }, "user-a"))
+      .toBe(`${base}/storage/v1/object/public/generated-images/user-a/g.webp`);
+  });
+
+  test("小さい版がまだ無ければ null(原本は付けない)", () => {
+    expect(ownGeneratedImageUrlFromRow(
+      base,
+      { ...own, storage_path_thumb: null, storage_path_display: null },
+      "user-a",
+    )).toBeNull();
+  });
+
+  test("⭐宛先と持ち主が違う・運営が見えなくした画像は付けない", () => {
+    expect(ownGeneratedImageUrlFromRow(base, own, "user-b")).toBeNull();
+    expect(ownGeneratedImageUrlFromRow(base, { ...own, user_id: null }, "user-a")).toBeNull();
+    for (const moderation_status of ["removed", "pending", null]) {
+      expect(ownGeneratedImageUrlFromRow(base, { ...own, moderation_status }, "user-a"))
+        .toBeNull();
+    }
+    expect(ownGeneratedImageUrlFromRow(base, null, "user-a")).toBeNull();
+  });
+});
+
+describe("名前の「さん」", () => {
+  test("withHonorific は「さん」を付ける。もう付いていれば重ねない", () => {
+    expect(withHonorific("りる🐣")).toBe("りる🐣さん");
+    expect(withHonorific(" Miki ")).toBe("Mikiさん");
+    expect(withHonorific("田中さん")).toBe("田中さん");
+    expect(withHonorific("山田様")).toBe("山田様");
+    expect(withHonorific("みきちゃん")).toBe("みきちゃん");
+    expect(withHonorific("たろうくん")).toBe("たろうくん");
+  });
+
+  test.each([
+    ["like", "りる🐣があなたの投稿にいいねしました", "りる🐣さんがあなたの投稿にいいねしました"],
+    ["comment", "MIOがあなたのコメントに返信しました", "MIOさんがあなたのコメントに返信しました"],
+    ["follow", "吉野理沙があなたをフォローしました", "吉野理沙さんがあなたをフォローしました"],
+    [
+      "derived_post_published",
+      "カモネギ。があなたのプロンプトで作品を投稿しました",
+      "カモネギ。さんがあなたのプロンプトで作品を投稿しました",
+    ],
+    [
+      "style_preset_post_published",
+      "りる🐣があなたのスタイルで作品を投稿しました",
+      "りる🐣さんがあなたのスタイルで作品を投稿しました",
+    ],
+  ])("%s の題名の名前に付ける", (type, title, expected) => {
+    expect(buildHonorificTitle(row({ notification_type: type, title }))).toBe(expected);
+  });
+
+  test("⭐名前に「が」が入っていても、最初の「があなた」で切る", () => {
+    expect(buildHonorificTitle(row({
+      notification_type: "follow",
+      title: "ながのがあなたをフォローしました",
+    }))).toBe("ながのさんがあなたをフォローしました");
+  });
+
+  test("⭐名前に「があなた」が入っていても、名前の途中で切らない", () => {
+    expect(buildHonorificTitle(row({
+      notification_type: "like",
+      title: "君があなたがあなたの投稿にいいねしました",
+    }))).toBe("君があなたさんがあなたの投稿にいいねしました");
+  });
+
+  test("名前の入らない通知・形の違う題名は null(記録のまま)", () => {
+    expect(buildHonorificTitle(row({
+      notification_type: "derived_usage_milestone",
+      title: "あなたのプロンプトが初めて利用されました",
+    }))).toBeNull();
+    expect(buildHonorificTitle(row({
+      notification_type: "admin_message",
+      title: "運営があなたに特別賞を贈りました",
+    }))).toBeNull();
+    expect(buildHonorificTitle(row({ notification_type: "comment", title: "新しいコメント" })))
+      .toBeNull();
+    expect(buildHonorificTitle(row({ notification_type: "comment", title: null }))).toBeNull();
+  });
+
+  test("resolveText は記録の題名に「さん」を足して出す", () => {
+    expect(resolveText(row({ title: "りる🐣があなたの投稿にコメントしました" }), null).title)
+      .toBe("りる🐣さんがあなたの投稿にコメントしました");
   });
 });

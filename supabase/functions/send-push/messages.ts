@@ -77,6 +77,39 @@ export function groupRows(rows: ClaimedRow[]): PushGroup[] {
 const DEFAULT_ACTOR_NAME = "ユーザー";
 
 /**
+ * 通知に出す相手の名前に「さん」を付ける(2026-10-24 ユーザー決定)。
+ * 名前の側にもう敬称(さん・様・ちゃん・くん など)が付いていれば重ねない。
+ */
+export function withHonorific(name: string): string {
+  const trimmed = name.trim();
+  return /(さん|さま|様|ちゃん|くん|氏|殿)$/u.test(trimmed) ? trimmed : `${trimmed}さん`;
+}
+
+// 題名が「〇〇があなた…」の形で記録される通知(相手の名前が入る)
+const ACTOR_NAME_TITLE_TYPES = new Set([
+  "like",
+  "comment",
+  "follow",
+  "derived_post_published",
+  "style_preset_post_published",
+]);
+
+/**
+ * 記録してある題名の名前に「さん」を付ける(「りる🐣があなたの…」→「りる🐣さんがあなたの…」)。
+ * 名前の入る通知でない・形の違う題名は null(記録のまま出す)。
+ * 記録の題名は画面のお知らせと共通なので、DB の文は変えずに送るときだけ足す。
+ */
+export function buildHonorificTitle(row: ClaimedRow): string | null {
+  if (!row.notification_type || !ACTOR_NAME_TITLE_TYPES.has(row.notification_type)) {
+    return null;
+  }
+  // 名前との切れ目は最後の「があなた」(定型文の側には「があなた」が無いので、名前に入っていても切れる)
+  const match = /^(.+)が(あなた.+)$/u.exec(row.title?.trim() ?? "");
+  if (!match) return null;
+  return `${withHonorific(match[1])}が${match[2]}`;
+}
+
+/**
  * いいねのまとめ文。likeCount はその投稿の未読のいいね数(今回の分を含む)。
  * 端末側は collapse_key で前の通知を置き換えるので、件数は今回確保した分ではなく
  * 未読の総数で書く。1 件なら元の通知と同じ文。
@@ -85,7 +118,7 @@ export function buildLikeTitle(
   actorNickname: string | null | undefined,
   likeCount: number,
 ): string {
-  const name = actorNickname?.trim() ? actorNickname.trim() : DEFAULT_ACTOR_NAME;
+  const name = withHonorific(actorNickname?.trim() ? actorNickname : DEFAULT_ACTOR_NAME);
   const others = Math.max(0, Math.floor(likeCount) - 1);
   if (others === 0) {
     return `${name}があなたの投稿にいいねしました`;
@@ -131,7 +164,8 @@ export function resolveText(
   row: ClaimedRow,
   likeTitle: string | null,
 ): { title: string; body: string } {
-  const title = likeTitle ?? buildUsageRewardTitle(row) ?? row.title?.trim() ?? "";
+  const title = likeTitle ?? buildUsageRewardTitle(row) ?? buildHonorificTitle(row) ??
+    row.title?.trim() ?? "";
   const body = row.body?.trim() ?? "";
   if (title) {
     return { title, body };
@@ -181,13 +215,14 @@ export function buildDataPayload(row: ClaimedRow): Record<string, string> {
  * 通知に添える画像の出どころ。
  * - 投稿への反応(いいね・コメント・プロンプト/スタイル/Creator Looks の利用投稿・利用数の節目)は、その投稿
  * - フォローは、フォローした人のアイコン
- * 生成の完了には付けない(送る時点では小さい版がまだ無いため。下の pushImageSourceFor)。
- * 運営の措置・ペルコインなどにも付けない(措置の対象画像を再び見せないため)。
+ * - 生成の完了(成功)は、できた画像。本人あてなので投稿していなくても付ける
+ * 運営の措置・ペルコインなどには付けない(措置の対象画像を再び見せないため)。
  */
 export type PushImageSource =
   | { kind: "post"; postId: string }
   | { kind: "comment"; commentId: string }
-  | { kind: "avatar"; userId: string };
+  | { kind: "avatar"; userId: string }
+  | { kind: "generated"; imageJobId: string; userId: string };
 
 const POST_IMAGE_NOTIFICATION_TYPES = new Set([
   "like",
@@ -199,9 +234,15 @@ const POST_IMAGE_NOTIFICATION_TYPES = new Set([
 ]);
 
 export function pushImageSourceFor(row: ClaimedRow): PushImageSource | null {
-  // 生成の完了は付けない。完了と同時に送るが、小さい版(WebP)は worker がそのあと
-  // 数秒かけて作るので、送る時点ではまだ無い(原本の PNG は重いので付けない)
-  if (row.category === "generation") return null;
+  // 生成の完了は、できた画像の小さい版。完了と同時に送るが、小さい版(WebP)は
+  // worker がそのあと作るので、送る側(process.ts)が少し待って探す
+  // (原本の PNG は重いので付けない)。失敗の通知には画像が無い
+  if (row.category === "generation") {
+    const imageJobId = row.data?.image_job_id;
+    return row.data?.status === "succeeded" && typeof imageJobId === "string" && imageJobId
+      ? { kind: "generated", imageJobId, userId: row.recipient_id }
+      : null;
+  }
 
   const type = row.notification_type;
   if (type === "follow") {
@@ -256,7 +297,7 @@ export function buildSenderMessage(
   row: ClaimedRow,
   likeCount: number | null,
 ): string | null {
-  const match = /^.+?が(あなた.+)$/u.exec(row.title?.trim() ?? "");
+  const match = /^.+が(あなた.+)$/u.exec(row.title?.trim() ?? "");
   if (!match) return null;
   let message = match[1];
   const others = Math.max(0, Math.floor(likeCount ?? 0) - 1);
@@ -279,6 +320,7 @@ export interface PushImageRow {
   storage_path_display?: string | null;
   is_posted?: boolean | null;
   moderation_status?: string | null;
+  user_id?: string | null;
 }
 
 /**
@@ -294,6 +336,24 @@ export function pushImageUrlFromRow(
   if (image.is_posted !== true || image.moderation_status !== "visible") {
     return null;
   }
+  return storageImageUrl(supabaseUrl, image);
+}
+
+/**
+ * 生成したばかりの本人の画像(生成完了の通知に添える)。本人あてなので投稿していなくても
+ * 付けるが、宛先と持ち主が違う・運営が見えなくした画像は付けない。小さい版だけ。
+ */
+export function ownGeneratedImageUrlFromRow(
+  supabaseUrl: string,
+  image: PushImageRow | null | undefined,
+  recipientId: string,
+): string | null {
+  if (!image || image.user_id !== recipientId) return null;
+  if (image.moderation_status !== "visible") return null;
+  return storageImageUrl(supabaseUrl, image);
+}
+
+function storageImageUrl(supabaseUrl: string, image: PushImageRow): string | null {
   const path = image.storage_path_thumb || image.storage_path_display;
   if (!path) return null;
   const base = supabaseUrl.replace(/\/+$/, "");

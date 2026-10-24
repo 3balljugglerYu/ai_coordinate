@@ -2,6 +2,7 @@
 
 import {
   type ImageQueryClient,
+  type ImageQueryFilter,
   lookupPushImageUrl,
 } from "@/supabase/functions/send-push/images";
 
@@ -12,18 +13,19 @@ type Result = { data: unknown; error: { message: string } | null };
 
 /** テーブルごとの結果を返し、かけた条件を記録する偽物 */
 function fakeClient(results: Record<string, Result>) {
-  const calls: Array<{ table: string; columns: string; eq: [string, string] }> = [];
+  const calls: Array<{ table: string; columns: string; eq: [string, string | number] }> = [];
   const client: ImageQueryClient = {
     from(table) {
       return {
         select(columns) {
-          return {
+          const filter: ImageQueryFilter = {
             eq(column, value) {
               calls.push({ table, columns, eq: [column, value] });
-              const result = Promise.resolve(results[table] ?? { data: null, error: null });
-              return { maybeSingle: () => result };
+              return filter;
             },
+            maybeSingle: () => Promise.resolve(results[table] ?? { data: null, error: null }),
           };
+          return filter;
         },
       };
     },
@@ -90,5 +92,44 @@ describe("lookupPushImageUrl", () => {
     const { client } = fakeClient({ [table]: { data: null, error: { message: "boom" } } });
 
     await expect(lookupPushImageUrl(client, BASE, source)).rejects.toThrow("boom");
+  });
+});
+
+describe("lookupPushImageUrl(生成の完了)", () => {
+  const source = { kind: "generated", imageJobId: "job-1", userId: "user-a" } as const;
+  const own = {
+    user_id: "user-a",
+    is_posted: false,
+    moderation_status: "visible",
+    storage_path_thumb: "user-a/g_thumb.webp",
+    storage_path_display: "user-a/g.webp",
+  };
+
+  test("ジョブの 1 枚目を、持ち主も含めて探し、小さい版を返す", async () => {
+    const { client, calls } = fakeClient({ generated_images: { data: own, error: null } });
+
+    await expect(lookupPushImageUrl(client, BASE, source)).resolves.toBe(url("user-a/g_thumb.webp"));
+    expect(calls.map((c) => c.eq)).toEqual([
+      ["image_job_id", "job-1"],
+      ["image_job_result_index", 0],
+    ]);
+    expect(calls[0].table).toBe("generated_images");
+    expect(calls[0].columns).toContain("user_id");
+    expect(calls[0].columns).toContain("moderation_status");
+  });
+
+  test("⭐宛先と持ち主が違えば付けない", async () => {
+    const { client } = fakeClient({
+      generated_images: { data: { ...own, user_id: "user-b" }, error: null },
+    });
+    await expect(lookupPushImageUrl(client, BASE, source)).resolves.toBeNull();
+  });
+
+  test("まだ行が無ければ null・問い合わせの失敗は投げる", async () => {
+    await expect(lookupPushImageUrl(fakeClient({}).client, BASE, source)).resolves.toBeNull();
+    const { client } = fakeClient({
+      generated_images: { data: null, error: { message: "db down" } },
+    });
+    await expect(lookupPushImageUrl(client, BASE, source)).rejects.toThrow("generated image: db down");
   });
 });
