@@ -13,7 +13,7 @@ jest.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element -- テスト用に next/image を素の img に置き換える
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }) }));
 
 // エントリーのカードは開いたあとに進捗を読む。このファイルではページの中身だけを見るので、読み込み中のままにする
 // (カードの動きは halloween-entry-progress-card.test.tsx)

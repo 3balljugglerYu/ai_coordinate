@@ -64,8 +64,12 @@ export function HomeHalloweenCatalogShelf({
     enabled: autoScroll,
   });
 
-  if (items.length === 0 || locale !== "ja") {
+  if (locale !== "ja") {
     return null;
+  }
+  // 対象作品が読めない・まだないときも、エントリーの呼びかけだけは出す(棚は出さない)
+  if (items.length === 0) {
+    return entryProgress && !entryProgress.entered ? <HomeHalloweenEntryInvite /> : null;
   }
 
   const { title, caption } = HALLOWEEN_BEST_SHOT.homeShelf;

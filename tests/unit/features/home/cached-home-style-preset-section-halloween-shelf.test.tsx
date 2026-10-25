@@ -165,6 +165,15 @@ describe("ホームの「ハロウィン企画」の棚の置き場所", () => {
     expect(shelf?.props.entryProgress).toEqual({ entered: true, usedWorks: 4 });
   });
 
+  test("まだエントリーしていなければ、そのことを棚へ渡す(棚の上でエントリーを呼びかける。2026-10-25)", async () => {
+    mockEntryProgress.mockResolvedValue({ entered: false });
+
+    const node = (await CachedHomeStylePresetSection({ userId: "user-1" })) as Element;
+    const shelf = childrenOf(node).find((child) => child.type === HomeHalloweenCatalogShelf);
+
+    expect(shelf?.props.entryProgress).toEqual({ entered: false });
+  });
+
   test("ログインしていなければ、進み具合は null のまま棚へ渡す", async () => {
     const node = (await CachedHomeStylePresetSection({})) as Element;
     const shelf = childrenOf(node).find((child) => child.type === HomeHalloweenCatalogShelf);

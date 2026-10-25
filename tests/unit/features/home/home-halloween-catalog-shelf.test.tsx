@@ -252,6 +252,30 @@ describe("ホームの「ハロウィン企画」の棚", () => {
       expect(gtag).toHaveBeenCalledWith("event", "campaign_home_entry_invite_tap", {});
     });
 
+    test("対象作品が読めない・まだないときも、呼びかけだけは出す(棚は出さない)", () => {
+      render(<HomeHalloweenCatalogShelf items={[]} entryProgress={{ entered: false }} />);
+
+      expect(screen.getByTestId("home-halloween-entry-invite")).toBeTruthy();
+      expect(screen.queryByTestId("home-halloween-catalog-shelf")).toBeNull();
+    });
+
+    test("対象作品がないとき、エントリー済み・未ログインなら何も出さない", () => {
+      const { container, rerender } = render(
+        <HomeHalloweenCatalogShelf items={[]} entryProgress={{ entered: true, usedWorks: 2 }} />,
+      );
+      expect(container.innerHTML).toBe("");
+      rerender(<HomeHalloweenCatalogShelf items={[]} />);
+      expect(container.innerHTML).toBe("");
+    });
+
+    test("日本語でない画面では、呼びかけも出さない(企画は日本国内向け)", () => {
+      mockLocale.mockReturnValue("en");
+      const { rerender } = render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: false }} />);
+      expect(screen.queryByTestId("home-halloween-entry-invite")).toBeNull();
+      rerender(<HomeHalloweenCatalogShelf items={[]} entryProgress={{ entered: false }} />);
+      expect(screen.queryByTestId("home-halloween-entry-invite")).toBeNull();
+    });
+
     test("エントリー済みなら、呼びかけは出さない", () => {
       render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: true, usedWorks: 0 }} />);
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Fragment,
   createContext,
@@ -171,6 +172,8 @@ function useEntryProgressState(): EntryProgressState {
   const [entry, setEntry] = useState<EntryState>({ status: "idle" });
   const [enteredAt, setEnteredAt] = useState<string | null>(null);
 
+  const router = useRouter();
+
   /** 「もう一度読み込む」で増やして、読み直しのきっかけにする */
   const [reloadKey, setReloadKey] = useState(0);
 
@@ -210,6 +213,9 @@ function useEntryProgressState(): EntryProgressState {
         setEnteredAt(body.enteredAt);
         setEntry({ status: "idle" });
         trackCampaignEvent(CAMPAIGN_EVENTS.entryComplete);
+        // 画面のキャッシュ(staleTimes 5分)を捨てる。ホームの棚の上は、まだエントリーしていない人に
+        // 「エントリーして…」を出すので、戻ったときに古いまま出さないため(2026-10-25)
+        router.refresh();
         // エントリー前の投稿も数えるので、エントリーしたその場で口数に届いていることがある
         requestTicketCelebrationCheck();
         return;
@@ -222,7 +228,7 @@ function useEntryProgressState(): EntryProgressState {
     } catch {
       setEntry({ status: "failed" });
     }
-  }, []);
+  }, [router]);
 
   return useMemo(() => ({ load, entry, enteredAt, retry, enter }), [load, entry, enteredAt, retry, enter]);
 }

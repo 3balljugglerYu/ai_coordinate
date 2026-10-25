@@ -16,6 +16,9 @@ import {
   resetTicketCelebrationRequestsForTest,
 } from "@/features/campaigns/halloween/lib/ticket-celebration-requests";
 
+const mockRefresh = jest.fn();
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), refresh: mockRefresh }) }));
+
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
