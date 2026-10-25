@@ -128,7 +128,7 @@ describe("getCampaignSubmissionPages", () => {
     await getCampaignSubmissionPages("halloween-best-shot");
     expect(rpcMock).toHaveBeenCalledWith("list_hashtag_campaign_submissions", {
       p_campaign_key: "halloween-best-shot",
-      p_limit: 120,
+      p_limit: 300,
     });
     expect(cacheTag).toHaveBeenCalledWith(
       hashtagCampaignSubmissionsTag("halloween-best-shot"),

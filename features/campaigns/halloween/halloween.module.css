@@ -1106,13 +1106,20 @@
   color: var(--plum-800);
 }
 
-.worksEntry {
-  margin: 0 0 22px;
+
+/* 対象作品の数(2026-10-25)。「タップして…」のすぐ下に寄せ、数だけ大きくする */
+.worksCount {
+  margin: -10px 0 14px;
+  text-align: center;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--plum-800);
 }
 
-/* エントリーのカードの下では、見出しに寄せる負のすき間をやめる */
-.worksEntry + .worksLead {
-  margin-top: 0;
+.worksCountNumber {
+  margin: 0 2px;
+  font-size: 20px;
+  color: var(--orange);
 }
 
 .works {
