@@ -131,9 +131,24 @@ describe("withSignupSourceParam", () => {
     );
   });
 
-  test("URL にすでに signup_source があれば書き換えない", () => {
-    const href = "https://www.persta.ai/login?signup_source=style";
-    expect(withSignupSourceParam(href, "halloween-best-shot")).toBe(href);
+  test("URL に別の signup_source があれば、渡された値に置き換える", () => {
+    expect(
+      withSignupSourceParam("https://www.persta.ai/login?signup_source=style", "halloween-best-shot")
+    ).toBe("https://www.persta.ai/login?signup_source=halloween-best-shot");
+  });
+
+  test("URL の signup_source が空や不正な値でも、渡された値に置き換える", () => {
+    expect(
+      withSignupSourceParam("https://www.persta.ai/c?signup_source=", "halloween-best-shot_meta_ig")
+    ).toBe("https://www.persta.ai/c?signup_source=halloween-best-shot_meta_ig");
+    expect(
+      withSignupSourceParam("https://www.persta.ai/c?signup_source=Bad%20Value!", "halloween-best-shot_meta_ig")
+    ).toBe("https://www.persta.ai/c?signup_source=halloween-best-shot_meta_ig");
+  });
+
+  test("URL の signup_source が同じ値なら、URL を書き直さない", () => {
+    const href = "https://www.persta.ai/login?q=a%20b&signup_source=style";
+    expect(withSignupSourceParam(href, "style")).toBe(href);
   });
 
   test("流入元が無ければ URL をそのまま返す", () => {

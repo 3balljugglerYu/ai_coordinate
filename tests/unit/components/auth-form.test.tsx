@@ -1031,17 +1031,18 @@ describe("AuthForm unit tests from EARS specs", () => {
       expect(signInWithOAuthMock).not.toHaveBeenCalled();
     });
 
-    test("iPhoneでURLにすでに流入元があれば_そのままコピーする", async () => {
+    test("iPhoneでURLに別の流入元があっても_フォームが使う値にそろえてコピーする", async () => {
       setUserAgent(IOS_INSTAGRAM_UA);
       window.history.replaceState({}, "", "/login?signup_source=style");
-      render(<AuthForm mode="signin" signupSource="halloween-best-shot" />);
+      // prop はURLより優先され、登録に使われる値。移った先でも同じ値になるようにそろえる
+      render(<AuthForm mode="signin" signupSource="wardrobe" />);
       await screen.findByText(/Google ログインが使えません/);
 
       fireEvent.click(screen.getByRole("button", { name: "Googleで続ける" }));
       fireEvent.click(await screen.findByRole("button", { name: "URLをコピーして閉じる" }));
 
       await waitFor(() => {
-        expect(writeTextMock).toHaveBeenCalledWith("http://localhost/login?signup_source=style");
+        expect(writeTextMock).toHaveBeenCalledWith("http://localhost/login?signup_source=wardrobe");
       });
     });
 
