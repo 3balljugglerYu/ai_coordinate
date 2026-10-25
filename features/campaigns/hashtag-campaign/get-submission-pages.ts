@@ -37,8 +37,11 @@ export const SUBMISSION_PAGE_SIZE = 9;
  * 取り出す上限(新しいほうから)。使えるかの確認(RPC)は1件ずつ回るので、
  * DB の仕事が増えすぎないところで止める。キャッシュは数分なので、この数を
  * 数分に1回確かめる計算になる。
+ *
+ * 2026-10-25: 120 → 300。企画ページに対象作品の数を出すようにしたため(一覧の件数を数える)。
+ * 10/25 に88件・1日約10件ずつ増えていて、120 では会期中に数が止まる。RPC の上限は500。
  */
-const CANDIDATE_LIMIT = 120;
+const CANDIDATE_LIMIT = 300;
 
 export function hashtagCampaignSubmissionsTag(campaignKey: string): string {
   return `hashtag-campaign-submissions-${campaignKey}`;

@@ -16,6 +16,7 @@ import { HeroGallery } from "./HeroGallery";
 import { JoinDetails } from "./JoinDetails";
 import { JoinTabs } from "./JoinTabs";
 import { FloatingJoinButtons, HALLOWEEN_PAGE_END_ID } from "./FloatingJoinButtons";
+import { HashTargetScroll } from "./HashTargetScroll";
 import { RevealOnScroll } from "./RevealOnScroll";
 import { SubmissionCarousel } from "./SubmissionCarousel";
 
@@ -567,6 +568,11 @@ function StepList({
   );
 }
 
+/** 対象作品の数(ページに分けた一覧の件数の合計) */
+function countWorks(pages: readonly (readonly CampaignSubmissionItem[])[]): number {
+  return pages.reduce((total, page) => total + page.length, 0);
+}
+
 export function HalloweenBestShotPage({
   submissionPages = [],
 }: {
@@ -615,25 +621,39 @@ export function HalloweenBestShotPage({
         {/* 対象作品の上と手順1のエントリーのカードは、同じ状態を使う(2026-10-24) */}
         <EntryProgressProvider>
           {submissionPages.length > 0 ? (
-            <section className={styles.section} aria-labelledby="hbs-works">
-              <div className={styles.wrap}>
-                <div id="hbs-works">
-                  <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
-                </div>
-                {/*
-                  2026-10-24 ユーザー指示: 対象作品の上にもエントリーを置き、とりあえずエントリーしてもらう
-                  (使って投稿した23人のうち、エントリーは8人だった)。手順1のカードも残す。
-                  作品が1画面目に見えるよう、こちらは短いカードにして、詳しくは参加方法へ案内する
-                */}
-                <div className={styles.worksEntry} data-testid="halloween-works-entry">
+            <>
+              {/*
+                2026-10-24 ユーザー指示: 対象作品の上にもエントリーを置き、とりあえずエントリーしてもらう
+                (使って投稿した23人のうち、エントリーは8人だった)。手順1のカードも残す。
+                作品が1画面目に見えるよう、こちらは短いカードにして、詳しくは参加方法へ案内する。
+                2026-10-25 ユーザー指示: 対象作品とは別の項目にして、対象作品の上に置く
+              */}
+              <section className={styles.section} aria-labelledby="hbs-entry-top" data-testid="halloween-works-entry">
+                <div className={styles.wrap}>
+                  <div id="hbs-entry-top">
+                    <Ribbon en="ENTRY">エントリー</Ribbon>
+                  </div>
                   <EntryProgressCard compact />
                 </div>
-                <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
-                <RevealOnScroll className={styles.reveal}>
-                  <SubmissionCarousel pages={submissionPages} />
-                </RevealOnScroll>
-              </div>
-            </section>
+              </section>
+
+              <section className={styles.section} aria-labelledby="hbs-works">
+                <div className={styles.wrap}>
+                  <div id="hbs-works">
+                    <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
+                  </div>
+                  <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
+                  {/* 2026-10-25 ユーザー指示: 対象作品の数を出す(下の一覧と同じ数。押して使える作品だけ) */}
+                  <p className={styles.worksTotal} data-testid="halloween-works-count">
+                    現在、対象作品は<strong className={styles.worksTotalNumber}>{countWorks(submissionPages)}</strong>
+                    作品！
+                  </p>
+                  <RevealOnScroll className={styles.reveal}>
+                    <SubmissionCarousel pages={submissionPages} />
+                  </RevealOnScroll>
+                </div>
+              </section>
+            </>
           ) : null}
 
           <section className={styles.section} aria-labelledby="hbs-about">
@@ -862,6 +882,8 @@ export function HalloweenBestShotPage({
       </main>
       {/* 「カタログから生成する」は、みんなのカタログの企画のタブへ(2026-10-16 ユーザー指示。ハッシュタグの検索ではなく) */}
       <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={CAMPAIGN.catalogHref} />
+      {/* #hbs-works などの場所つきの URL で開いたとき、描いたあとにその場所へ移る(2026-10-25) */}
+      <HashTargetScroll />
       {/*
         このページに来て登録した人の流入元に、企画のキーと来た場所(X・X の広告・メタ)を残す。
         X・メタの広告は目印(utm)なしのリンクで出したため(2026-10-16)。ほかの企画ページと同じ仕組み

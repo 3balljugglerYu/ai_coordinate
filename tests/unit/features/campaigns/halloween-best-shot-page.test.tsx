@@ -594,21 +594,42 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.queryByTestId("halloween-works")).toBeNull();
   });
 
-  test("対象作品の見出しの下、一覧の上にエントリーのカードを置く(2026-10-24。手順1のカードも残す)", () => {
+  test("エントリーは、対象作品の上に別の項目として置く(2026-10-25。手順1のカードも残す)", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
-    const section = screen.getByRole("region", { name: /キャンペーン対象作品/ });
-    const entry = within(section).getByTestId("halloween-works-entry");
-    const works = within(section).getByTestId("halloween-works");
-    expect(entry.compareDocumentPosition(works) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const entrySection = screen.getByRole("region", { name: /エントリー/ });
+    const worksSection = screen.getByRole("region", { name: /キャンペーン対象作品/ });
+    expect(entrySection.compareDocumentPosition(worksSection) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // 対象作品の項目の中にはエントリーのカードを置かない
+    expect(within(worksSection).queryByTestId("halloween-entry-loading")).toBeNull();
     // 読み込み中の骨組みが出ている(中身はエントリーのカード)
-    expect(within(entry).getByTestId("halloween-entry-loading")).toBeTruthy();
+    expect(within(entrySection).getByTestId("halloween-entry-loading")).toBeTruthy();
+    // 対象作品の項目は、見出し → 「タップして…」→ 数 → 作品の順
+    const heading = within(worksSection).getByRole("heading", { level: 2 });
+    const lead = within(worksSection).getByText("タップして、うちの子で生成してみよう！");
+    const works = within(worksSection).getByTestId("halloween-works");
+    expect(heading.compareDocumentPosition(lead) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(lead.compareDocumentPosition(works) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // 進捗の読み込みは、カードが2枚あっても1回
     fireEvent.click(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }));
     expect(screen.getAllByTestId("halloween-entry-loading")).toHaveLength(2);
     expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
-  test("対象作品の上のカードの「詳しくはこちら」: エンジョイ部門のタブに切り替え、詳細な作成手順を開き、参加方法までスクロールする(2026-10-24)", async () => {
+  test("「タップして、うちの子で生成してみよう！」のすぐ下に、対象作品の数(全ページの合計)を出す(2026-10-25)", () => {
+    const pages = [
+      SUBMISSION_PAGES[0],
+      [{ postId: "p3", thumbnailUrl: "https://img.test/p3.webp", authorName: "おばけ" }],
+    ];
+    render(<HalloweenBestShotPage submissionPages={pages} />);
+    const section = screen.getByRole("region", { name: /キャンペーン対象作品/ });
+    const lead = within(section).getByText("タップして、うちの子で生成してみよう！");
+    const count = within(section).getByTestId("halloween-works-count");
+    expect(lead.nextElementSibling).toBe(count);
+    expect(count.textContent).toBe("現在、対象作品は3作品！");
+    expect(count.querySelector("strong")?.textContent).toBe("3");
+  });
+
+  test("エントリーの項目の「詳しくはこちら」: エンジョイ部門のタブに切り替え、詳細な作成手順を開き、参加方法までスクロールする(2026-10-24)", async () => {
     global.fetch = jest.fn(async () => ({
       ok: true,
       status: 200,
@@ -657,10 +678,10 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(screen.queryByTestId("halloween-works-entry")).toBeNull();
   });
 
-  test("応募作があれば、いちばん上(企画についての上)に「キャンペーン対象作品」を出す", () => {
+  test("応募作があれば、いちばん上(企画についての上)に「エントリー」と「キャンペーン対象作品」を出す", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
     const names = screen.getAllByRole("heading", { level: 2 }).map((node) => node.textContent);
-    expect(names.slice(0, 3)).toEqual(["WORKSキャンペーン対象作品", "ABOUT企画について", "PRIZE賞品"]);
+    expect(names.slice(0, 4)).toEqual(["ENTRYエントリー", "WORKSキャンペーン対象作品", "ABOUT企画について", "PRIZE賞品"]);
     const works = screen.getByRole("region", { name: /キャンペーン対象作品/ });
     expect(within(works).getAllByTestId("halloween-work")).toHaveLength(2);
     expect(within(works).getByRole("link", { name: /かぼちゃ/ }).getAttribute("href")).toBe("/posts/p1");
