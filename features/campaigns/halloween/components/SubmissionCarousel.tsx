@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { ShowcaseLeaveDialog } from "@/features/credits/components/ShowcaseLeaveDialog";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
@@ -27,11 +27,17 @@ import styles from "../halloween.module.css";
  * 2026-10-25 ユーザー指示: PC では横が3列だと寂しいので、横幅いっぱいに広げてページを並べて見せる
  * (幅に応じて1・2・3ページ = 3・6・9列。CSS の --works-visible)。矢印と点は1ページ(3列)ずつ進む。
  * マウスで操作する画面(PC)では、ページごとに止めず、ふつうの横スクロールにする(スクロールバーを出す)。
- * マウスのドラッグで送る形も試したが、カクついたのでやめた(2026-10-25 ユーザー判断)。
+ * マウスでドラッグしても横にスクロールする(ユーザー指示)。動かしたぶんだけ付いてきて、離したらその場で止まる。
+ * ページの位置へ合わせ直したり、ドラッグのたびにスナップを付け外ししたりはしない(それでカクついたため)。
+ * 動かすのは画面の書き換え1回につき1回(requestAnimationFrame)。
+ * 少しでも動かしたら、離した直後のクリックでは作品を開かない(ドラッグのつもりが確認が出てしまうため)。
  */
 
 /** これより多いページは点で並べず「3 / 20」で出す(点が折り返して読みにくくなるため) */
 const MAX_DOTS = 10;
+
+/** マウスでこれだけ動かしたら、ドラッグとみなす(作品を開かない) */
+export const DRAG_CLICK_TOLERANCE_PX = 6;
 
 
 export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissionItem[][] }) {
@@ -44,6 +50,11 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
   const lastPage = Math.max(pages.length - visible, 0);
   /** 幅が広がって置ける位置が減ったときも、はみ出さない位置として出す(スクロールが起きなくても) */
   const shown = Math.min(current, lastPage);
+
+  /** ドラッグ中に付けた window のリスナーを外す(途中で画面を離れたときも) */
+  const endDragRef = useRef<(() => void) | null>(null);
+  /** ドラッグのあと、離した直後のクリックで作品を開かない */
+  const suppressClickRef = useRef(false);
 
   /** 1ページの幅(小数まで)。測れないとき(描く前など)は、見えている幅を1ページとみなす */
   const pageWidth = (scroller: HTMLDivElement) => {
@@ -66,6 +77,67 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
     observer.observe(scroller);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => () => endDragRef.current?.(), []);
+
+  // マウスのドラッグで横にスクロールする(指はブラウザのスクロールのまま。左ボタンだけ)
+  const onMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const scroller = scrollerRef.current;
+    // Control+クリックは Mac のメニュー。ドラッグにしない
+    if (!scroller || event.button !== 0 || event.ctrlKey || pages.length <= visible) return;
+    // 押した場所から文字が選ばれないようにする(すき間から外へドラッグしたとき)
+    event.preventDefault();
+    endDragRef.current?.();
+
+    const startX = event.clientX;
+    const startScrollLeft = scroller.scrollLeft;
+    let moved = false;
+    let latestX = startX;
+    let frame = 0;
+
+    const apply = () => {
+      frame = 0;
+      scroller.scrollLeft = startScrollLeft - (latestX - startX);
+    };
+    const cleanup = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = 0;
+      delete scroller.dataset.dragging;
+      endDragRef.current = null;
+    };
+    const finish = () => {
+      if (frame) apply();
+      cleanup();
+      if (!moved) return;
+      // 離した直後のクリック(カードの上で離したとき)だけ止める。外で離してクリックが届かなくても、次のクリックは止めない
+      suppressClickRef.current = true;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+    };
+    const onMove = (move: MouseEvent) => {
+      // 離したのが届かなかったとき(メニューが開いた・窓の外で離した)は、そこで終える
+      if ((move.buttons & 1) === 0) {
+        finish();
+        return;
+      }
+      latestX = move.clientX;
+      if (!moved && Math.abs(latestX - startX) < DRAG_CLICK_TOLERANCE_PX) return;
+      if (!moved) {
+        moved = true;
+        scroller.dataset.dragging = "true";
+      }
+      move.preventDefault();
+      if (!frame) frame = window.requestAnimationFrame(apply);
+    };
+    const onUp = () => finish();
+
+    endDragRef.current = cleanup;
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
 
   const handleScroll = () => {
     const scroller = scrollerRef.current;
@@ -93,6 +165,17 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
         ref={scrollerRef}
         className={styles.worksScroller}
         onScroll={handleScroll}
+        onMouseDown={onMouseDown}
+        // ドラッグしたあとのクリックでは作品を開かない(カードより先にここで止める)
+        onClickCapture={(event) => {
+          if (!suppressClickRef.current) return;
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        // 画像をつかんで動かす(ブラウザの画像のドラッグ)を止め、一覧のドラッグにする
+        onDragStart={(event) => event.preventDefault()}
+        data-draggable={pages.length > visible ? "true" : undefined}
         role="group"
         aria-label="キャンペーン対象作品"
         data-testid="halloween-works"

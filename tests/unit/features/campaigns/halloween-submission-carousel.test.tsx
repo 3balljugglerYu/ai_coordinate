@@ -7,10 +7,13 @@
  * 3列 × 3段の9件を1ページにし(2026-10-24 に 3列 × 2段から変更)、左右のスワイプ(と矢印・点)でページ単位に移る。
  * カードはサムネイルだけ(作者名・利用回数は出さない)。
  * サムネイルを押すと /use-prompts と同じ確認を出してから投稿のページへ。
- * 2026-10-25: PC では横幅いっぱいにページを並べて見せ(6列・9列)、ふつうの横スクロールにする。
+ * 2026-10-25: PC では横幅いっぱいにページを並べて見せ(6列・9列)、ふつうの横スクロールにする。マウスのドラッグでも横に動く。
  */
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
-import { SubmissionCarousel } from "@/features/campaigns/halloween/components/SubmissionCarousel";
+import {
+  DRAG_CLICK_TOLERANCE_PX,
+  SubmissionCarousel,
+} from "@/features/campaigns/halloween/components/SubmissionCarousel";
 
 const routerPushMock = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -192,4 +195,124 @@ describe("SubmissionCarousel: PC で横に並べる(2026-10-25 ユーザー指�
     expect(screen.getByText("1〜3 / 14")).toBeTruthy();
   });
 
+});
+
+describe("SubmissionCarousel: マウスのドラッグで横にスクロールする(2026-10-25 ユーザー指示)", () => {
+  let originalRaf: typeof window.requestAnimationFrame;
+  beforeEach(() => {
+    originalRaf = window.requestAnimationFrame;
+    // 画面の書き換えを待たずに、すぐ動かす
+    window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
+      callback(0);
+      return 1;
+    }) as typeof window.requestAnimationFrame;
+  });
+  afterEach(() => {
+    window.requestAnimationFrame = originalRaf;
+  });
+
+  function drag(scroller: HTMLElement, from: number, to: number, steps = 5) {
+    fireEvent.mouseDown(scroller, { button: 0, clientX: from });
+    for (let index = 1; index <= steps; index += 1) {
+      fireEvent.mouseMove(window, { buttons: 1, clientX: from + ((to - from) * index) / steps });
+    }
+    fireEvent.mouseUp(window, { clientX: to });
+  }
+
+  test("⭐ドラッグしたぶんだけ横に動き、離したらその場で止まる(ページの位置へ合わせ直さない)", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+    expect(scroller.getAttribute("data-draggable")).toBe("true");
+
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 380 });
+    expect(scroller.getAttribute("data-dragging")).toBe("true");
+    expect(scroller.scrollLeft).toBe(120);
+    fireEvent.mouseUp(window, { clientX: 380 });
+
+    expect(scroller.scrollLeft).toBe(120);
+    expect(scrollTo).not.toHaveBeenCalled();
+    expect(scroller.getAttribute("data-dragging")).toBeNull();
+  });
+
+  test("⭐ドラッグしたあとのクリックでは作品を開かない。そのあと普通に押せば開く", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+    const link = screen.getAllByRole("link")[0];
+
+    drag(scroller, 500, 380);
+    fireEvent.click(link);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(link);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  test("外で離してクリックが届かなかったときも、次のクリックは止めない", () => {
+    jest.useFakeTimers();
+    try {
+      render(<SubmissionCarousel pages={pages(3)} />);
+      const scroller = screen.getByTestId("halloween-works");
+      stubScroller(scroller);
+      drag(scroller, 500, 380);
+      act(() => jest.advanceTimersByTime(0));
+      fireEvent.click(screen.getAllByRole("link")[0]);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("ほとんど動かしていなければ(手ぶれ)、ドラッグにせず作品を開く", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+
+    drag(scroller, 500, 500 - (DRAG_CLICK_TOLERANCE_PX - 1), 1);
+    expect(scroller.scrollLeft).toBe(0);
+    fireEvent.click(screen.getAllByRole("link")[0]);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  test("離したのが届かなくても(メニューが開いた・窓の外で離した)、ボタンを離して動かしたら、そこで終える", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 400 });
+    fireEvent.mouseMove(window, { buttons: 0, clientX: 300 });
+    expect(scroller.getAttribute("data-dragging")).toBeNull();
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 100 });
+    expect(scroller.scrollLeft).toBe(100);
+  });
+
+  test("右クリックや Mac の Control+クリック(メニューを開く)ではドラッグしない", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+
+    fireEvent.mouseDown(scroller, { button: 2, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 2, clientX: 300 });
+    fireEvent.mouseUp(window, { clientX: 300 });
+    fireEvent.mouseDown(scroller, { button: 0, ctrlKey: true, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 300 });
+    fireEvent.mouseUp(window, { clientX: 300 });
+    expect(scroller.scrollLeft).toBe(0);
+  });
+
+  test("画面を離れたら、ドラッグのリスナーを外す", () => {
+    const { unmount } = render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+    const removeSpy = jest.spyOn(window, "removeEventListener");
+
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
+    unmount();
+    expect(removeSpy).toHaveBeenCalledWith("mousemove", expect.any(Function));
+    expect(removeSpy).toHaveBeenCalledWith("mouseup", expect.any(Function));
+    removeSpy.mockRestore();
+  });
 });

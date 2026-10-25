@@ -1189,6 +1189,21 @@
     border-radius: 999px;
     background: rgba(61, 16, 80, 0.35);
   }
+
+  /* マウスでつかんで横に動かせる */
+  .worksScroller[data-draggable="true"] {
+    cursor: grab;
+  }
+
+  .worksScroller[data-dragging="true"] {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  /* ドラッグのあいだは、カードの上を通ってもマウスを乗せた見た目にしない */
+  .worksScroller[data-dragging="true"] .workLink {
+    pointer-events: none;
+  }
 }
 
 .worksPage {
