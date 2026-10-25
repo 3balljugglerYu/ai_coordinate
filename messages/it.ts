@@ -383,12 +383,14 @@ export const itMessages = {
     sendResetEmail: "Invia email",
     resetPasswordSubmit: "Aggiorna password",
     backToLogin: "Torna all'accesso",
-    webViewDialogTitle: "L'accesso non è disponibile in {appName}",
+    webViewDialogTitle: "L'accesso con Google non è disponibile in {appName}",
     webViewDialogDescription:
       "Copia l'URL e aprilo nel browser per accedere.",
     webViewCopyUrl: "Copia URL",
     webViewCopyUrlAndClose: "Copia URL e chiudi",
     webViewUrlCopied: "Copiato!",
+    webViewGoogleNotice:
+      "L'accesso con Google non è disponibile nell'app {appName}. Puoi registrarti o accedere con il tuo indirizzo email o con X.",
   },
   contact: {
     pageTitle: "Contatti",

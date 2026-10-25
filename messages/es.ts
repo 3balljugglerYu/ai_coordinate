@@ -383,12 +383,14 @@ export const esMessages = {
     sendResetEmail: "Enviar correo",
     resetPasswordSubmit: "Actualizar contraseña",
     backToLogin: "Volver al inicio de sesión",
-    webViewDialogTitle: "El inicio de sesión no está disponible en {appName}",
+    webViewDialogTitle: "El inicio de sesión con Google no está disponible en {appName}",
     webViewDialogDescription:
       "Copia la URL y ábrela en tu navegador para iniciar sesión.",
     webViewCopyUrl: "Copiar URL",
     webViewCopyUrlAndClose: "Copiar URL y cerrar",
     webViewUrlCopied: "¡Copiado!",
+    webViewGoogleNotice:
+      "El inicio de sesión con Google no está disponible dentro de la app {appName}. Puedes registrarte o iniciar sesión con tu correo electrónico o con X.",
   },
   contact: {
     pageTitle: "Contacto",

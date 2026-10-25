@@ -383,12 +383,14 @@ export const enMessages = {
     sendResetEmail: "Send email",
     resetPasswordSubmit: "Update password",
     backToLogin: "Back to login",
-    webViewDialogTitle: "Login is not available in {appName}",
+    webViewDialogTitle: "Google sign-in isn't available in {appName}",
     webViewDialogDescription:
       "Please copy the URL and open it in your browser to log in.",
     webViewCopyUrl: "Copy URL",
     webViewCopyUrlAndClose: "Copy URL and close",
     webViewUrlCopied: "Copied!",
+    webViewGoogleNotice:
+      "Google sign-in isn't available inside the {appName} app. You can sign up or log in with your email address or X.",
   },
   contact: {
     pageTitle: "Contact",

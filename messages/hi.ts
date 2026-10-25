@@ -383,12 +383,14 @@ export const hiMessages = {
     sendResetEmail: "ईमेल भेजें",
     resetPasswordSubmit: "पासवर्ड अपडेट करें",
     backToLogin: "लॉगिन पर वापस जाएँ",
-    webViewDialogTitle: "{appName} में लॉगिन उपलब्ध नहीं है",
+    webViewDialogTitle: "{appName} में Google से लॉगिन उपलब्ध नहीं है",
     webViewDialogDescription:
       "लॉग इन करने के लिए कृपया URL कॉपी करें और इसे अपने ब्राउज़र में खोलें।",
     webViewCopyUrl: "URL कॉपी करें",
     webViewCopyUrlAndClose: "URL कॉपी करें और बंद करें",
     webViewUrlCopied: "कॉपी हो गया!",
+    webViewGoogleNotice:
+      "{appName} ऐप के अंदर Google से लॉग इन उपलब्ध नहीं है। आप अपने ईमेल पते या X से साइन अप या लॉग इन कर सकते हैं।",
   },
   contact: {
     pageTitle: "संपर्क",

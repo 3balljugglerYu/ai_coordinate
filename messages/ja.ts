@@ -386,12 +386,14 @@ export const jaMessages = {
     sendResetEmail: "メールを送信",
     resetPasswordSubmit: "パスワードを更新",
     backToLogin: "ログイン画面に戻る",
-    webViewDialogTitle: "{appName} アプリ内ではログインできません",
+    webViewDialogTitle: "{appName} アプリ内では Google ログインができません",
     webViewDialogDescription:
       "URLをコピーしてブラウザでログインをしてください。",
     webViewCopyUrl: "URLをコピー",
     webViewCopyUrlAndClose: "URLをコピーして閉じる",
     webViewUrlCopied: "コピーしました",
+    webViewGoogleNotice:
+      "{appName} アプリの中では Google ログインが使えません。メールアドレスか X で登録・ログインできます。",
   },
   contact: {
     pageTitle: "お問い合わせ",

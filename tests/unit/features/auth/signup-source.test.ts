@@ -4,6 +4,7 @@ import {
   appendSignupChannel,
   detectSignupChannel,
   parseSignupSource,
+  withSignupSourceParam,
 } from "@/features/auth/lib/signup-source";
 
 describe("parseSignupSource", () => {
@@ -115,5 +116,47 @@ describe("appendSignupChannel", () => {
   test("つなぐと40字を超えるときは、元のまま(DB の書式に合わない値を作らない)", () => {
     const long = "a".repeat(38);
     expect(appendSignupChannel(long, "meta")).toBe(long);
+  });
+});
+
+describe("withSignupSourceParam", () => {
+  test("流入元があれば signup_source を付ける(ほかのクエリと # は残す)", () => {
+    expect(
+      withSignupSourceParam(
+        "https://www.persta.ai/campaigns/halloween-best-shot?utm_source=meta#hbs-works",
+        "halloween-best-shot_meta_ig"
+      )
+    ).toBe(
+      "https://www.persta.ai/campaigns/halloween-best-shot?utm_source=meta&signup_source=halloween-best-shot_meta_ig#hbs-works"
+    );
+  });
+
+  test("URL に別の signup_source があれば、渡された値に置き換える", () => {
+    expect(
+      withSignupSourceParam("https://www.persta.ai/login?signup_source=style", "halloween-best-shot")
+    ).toBe("https://www.persta.ai/login?signup_source=halloween-best-shot");
+  });
+
+  test("URL の signup_source が空や不正な値でも、渡された値に置き換える", () => {
+    expect(
+      withSignupSourceParam("https://www.persta.ai/c?signup_source=", "halloween-best-shot_meta_ig")
+    ).toBe("https://www.persta.ai/c?signup_source=halloween-best-shot_meta_ig");
+    expect(
+      withSignupSourceParam("https://www.persta.ai/c?signup_source=Bad%20Value!", "halloween-best-shot_meta_ig")
+    ).toBe("https://www.persta.ai/c?signup_source=halloween-best-shot_meta_ig");
+  });
+
+  test("URL の signup_source が同じ値なら、URL を書き直さない", () => {
+    const href = "https://www.persta.ai/login?q=a%20b&signup_source=style";
+    expect(withSignupSourceParam(href, "style")).toBe(href);
+  });
+
+  test("流入元が無ければ URL をそのまま返す", () => {
+    const href = "https://www.persta.ai/login?next=%2Fstyle";
+    expect(withSignupSourceParam(href, null)).toBe(href);
+  });
+
+  test("URL として読めない値はそのまま返す", () => {
+    expect(withSignupSourceParam("not a url", "style")).toBe("not a url");
   });
 });

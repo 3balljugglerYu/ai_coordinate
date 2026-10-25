@@ -383,12 +383,14 @@ export const frMessages = {
     sendResetEmail: "Envoyer l'e-mail",
     resetPasswordSubmit: "Mettre à jour le mot de passe",
     backToLogin: "Retour à la connexion",
-    webViewDialogTitle: "La connexion n'est pas disponible dans {appName}",
+    webViewDialogTitle: "La connexion avec Google n'est pas disponible dans {appName}",
     webViewDialogDescription:
       "Veuillez copier l'URL et l'ouvrir dans votre navigateur pour vous connecter.",
     webViewCopyUrl: "Copier l'URL",
     webViewCopyUrlAndClose: "Copier l'URL et fermer",
     webViewUrlCopied: "Copié !",
+    webViewGoogleNotice:
+      "La connexion avec Google n'est pas disponible dans l'application {appName}. Vous pouvez vous inscrire ou vous connecter avec votre adresse e-mail ou avec X.",
   },
   contact: {
     pageTitle: "Contact",

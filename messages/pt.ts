@@ -383,12 +383,14 @@ export const ptMessages = {
     sendResetEmail: "Enviar e-mail",
     resetPasswordSubmit: "Atualizar senha",
     backToLogin: "Voltar para o login",
-    webViewDialogTitle: "O login não está disponível em {appName}",
+    webViewDialogTitle: "O login com o Google não está disponível em {appName}",
     webViewDialogDescription:
       "Copie a URL e abra no navegador para fazer login.",
     webViewCopyUrl: "Copiar URL",
     webViewCopyUrlAndClose: "Copiar URL e fechar",
     webViewUrlCopied: "Copiado!",
+    webViewGoogleNotice:
+      "O login com o Google não está disponível dentro do app {appName}. Você pode se cadastrar ou fazer login com seu e-mail ou com o X.",
   },
   contact: {
     pageTitle: "Contato",
