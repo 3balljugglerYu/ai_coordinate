@@ -1107,8 +1107,9 @@
 }
 
 
-/* 対象作品の数(2026-10-25)。「タップして…」のすぐ下に寄せ、数だけ大きくする */
-.worksCount {
+/* 対象作品の数(2026-10-25)。「タップして…」のすぐ下に寄せ、数だけ大きくする。
+   .worksCount(一覧のページ送りの「1 / N」)とは別の名前にする */
+.worksTotal {
   margin: -10px 0 14px;
   text-align: center;
   font-weight: 800;
@@ -1116,7 +1117,7 @@
   color: var(--plum-800);
 }
 
-.worksCountNumber {
+.worksTotalNumber {
   margin: 0 2px;
   font-size: 20px;
   color: var(--orange);

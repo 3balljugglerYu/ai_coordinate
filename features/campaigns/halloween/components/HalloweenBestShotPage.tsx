@@ -644,8 +644,8 @@ export function HalloweenBestShotPage({
                   </div>
                   <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
                   {/* 2026-10-25 ユーザー指示: 対象作品の数を出す(下の一覧と同じ数。押して使える作品だけ) */}
-                  <p className={styles.worksCount} data-testid="halloween-works-count">
-                    現在、対象作品は<strong className={styles.worksCountNumber}>{countWorks(submissionPages)}</strong>
+                  <p className={styles.worksTotal} data-testid="halloween-works-count">
+                    現在、対象作品は<strong className={styles.worksTotalNumber}>{countWorks(submissionPages)}</strong>
                     作品！
                   </p>
                   <RevealOnScroll className={styles.reveal}>

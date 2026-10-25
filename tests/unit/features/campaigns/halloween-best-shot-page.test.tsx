@@ -629,6 +629,50 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
     expect(count.querySelector("strong")?.textContent).toBe("3");
   });
 
+  test("エントリーの項目の「詳しくはこちら」: エンジョイ部門のタブに切り替え、詳細な作成手順を開き、参加方法までスクロールする(2026-10-24)", async () => {
+    global.fetch = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        startsAt: "2026-10-16T11:00:00.000Z",
+        endsAt: "2026-10-31T15:00:00.000Z",
+        viewer: { enteredAt: "2026-10-20T00:00:00.000Z", usedWorks: 4, celebratedTickets: 1 },
+      }),
+    })) as unknown as typeof fetch;
+    const scrolled: Element[] = [];
+    const scrollIntoView = jest.fn(function (this: Element) {
+      scrolled.push(this);
+    });
+    Element.prototype.scrollIntoView = scrollIntoView;
+    try {
+      render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
+      const entry = screen.getByTestId("halloween-works-entry");
+      const more = await within(entry).findByRole("button", { name: /詳しくはこちら/ });
+      // 最初はクリエイティブ部門のタブ
+      expect(screen.getByRole("tab", { name: /クリエイティブ\s*部門/ }).getAttribute("aria-selected")).toBe("true");
+
+      act(() => {
+        fireEvent.click(more);
+      });
+
+      expect(screen.getByRole("tab", { name: /エンジョイ\s*部門/ }).getAttribute("aria-selected")).toBe("true");
+      const panel = screen.getByRole("tabpanel", { name: /エンジョイ\s*部門/ });
+      const details = within(panel).getByTestId("halloween-join-details") as HTMLDetailsElement;
+      expect(details.open).toBe(true);
+      expect(scrolled).toEqual([document.getElementById("hbs-join")]);
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "smooth", block: "start" });
+      // クリエイティブ部門の作成手順は開かない
+      fireEvent.click(screen.getByRole("tab", { name: /クリエイティブ\s*部門/ }));
+      const creatorPanel = screen.getByRole("tabpanel", { name: /クリエイティブ\s*部門/ });
+      expect((within(creatorPanel).getByTestId("halloween-join-details") as HTMLDetailsElement).open).toBe(false);
+      // 手順1のカードは短くしない(「詳しくはこちら」は上のカードだけ)
+      expect(screen.getAllByRole("button", { name: /詳しくはこちら/ })).toHaveLength(1);
+    } finally {
+      // @ts-expect-error jsdom にはないので、置いたものを消す
+      delete Element.prototype.scrollIntoView;
+    }
+  });
+
   test("応募作がまだないあいだは、対象作品の上のエントリーのカードも出さない(手順1のカードはある)", () => {
     render(<HalloweenBestShotPage submissionPages={[]} />);
     expect(screen.queryByTestId("halloween-works-entry")).toBeNull();
