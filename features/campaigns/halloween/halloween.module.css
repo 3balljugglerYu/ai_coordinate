@@ -1168,21 +1168,27 @@
   display: none;
 }
 
-/* マウスでつかんで動かせる(ドラッグのあいだはスナップを外し、手に付いてこさせる) */
+/*
+  マウスで操作する画面(PC)では、ページごとに止めず、ふつうの横スクロールにする(2026-10-25 ユーザー指示)。
+  トラックパッドや Shift+ホイール、スクロールバーで動かせるよう、細いスクロールバーを出す
+*/
 @media (hover: hover) and (pointer: fine) {
-  .worksScroller[data-draggable="true"] {
-    cursor: grab;
+  .worksScroller {
+    scroll-snap-type: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(61, 16, 80, 0.35) transparent;
+    padding-bottom: 6px;
   }
-}
 
-.worksScroller[data-dragging="true"] {
-  scroll-snap-type: none;
-  cursor: grabbing;
-  user-select: none;
-}
+  .worksScroller::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+  }
 
-.worksScroller[data-dragging="true"] .workLink {
-  pointer-events: none;
+  .worksScroller::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(61, 16, 80, 0.35);
+  }
 }
 
 .worksPage {
