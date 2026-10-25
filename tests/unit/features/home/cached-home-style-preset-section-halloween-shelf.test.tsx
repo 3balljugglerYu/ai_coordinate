@@ -153,7 +153,7 @@ describe("ホームの「ハロウィン企画」の棚の置き場所", () => {
   });
 
   test("⭐エントリーした人の進み具合を、本人ごとに描いた時刻で読み、棚へ渡す", async () => {
-    mockEntryProgress.mockResolvedValue({ usedWorks: 4 });
+    mockEntryProgress.mockResolvedValue({ entered: true, usedWorks: 4 });
 
     const node = (await CachedHomeStylePresetSection({ userId: "user-1" })) as Element;
     const shelf = childrenOf(node).find((child) => child.type === HomeHalloweenCatalogShelf);
@@ -162,7 +162,7 @@ describe("ホームの「ハロウィン企画」の棚の置き場所", () => {
       "user-1",
       new Date("2026-10-20T12:00:00+09:00").getTime(),
     );
-    expect(shelf?.props.entryProgress).toEqual({ usedWorks: 4 });
+    expect(shelf?.props.entryProgress).toEqual({ entered: true, usedWorks: 4 });
   });
 
   test("ログインしていなければ、進み具合は null のまま棚へ渡す", async () => {

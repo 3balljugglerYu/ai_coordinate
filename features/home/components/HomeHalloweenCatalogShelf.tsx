@@ -13,6 +13,7 @@ import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campai
 import type { HomeHalloweenEntryProgressData } from "@/features/home/lib/home-halloween-shelf";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import { useAutoScrollRail } from "@/features/home/hooks/useAutoScrollRail";
+import { HomeHalloweenEntryInvite } from "./HomeHalloweenEntryInvite";
 import { HomeHalloweenEntryProgress } from "./HomeHalloweenEntryProgress";
 import "swiper/css";
 import "swiper/css/free-mode";
@@ -50,7 +51,7 @@ export function HomeHalloweenCatalogShelf({
   entryProgress = null,
 }: {
   items: readonly CampaignSubmissionItem[];
-  /** エントリーした人の進み具合。未ログイン・未エントリーなら null(何も出さない) */
+  /** 本人のエントリーの状態。未ログイン・読めなかったときは null(何も出さない) */
   entryProgress?: HomeHalloweenEntryProgressData | null;
 }) {
   const locale = useLocale();
@@ -78,8 +79,9 @@ export function HomeHalloweenCatalogShelf({
       className="mb-8 overflow-x-hidden"
       data-testid="home-halloween-catalog-shelf"
     >
-      {/* エントリーした人の進み具合は、棚の上に(2026-10-17 ユーザー指示) */}
-      {entryProgress ? <HomeHalloweenEntryProgress usedWorks={entryProgress.usedWorks} /> : null}
+      {/* エントリーした人の進み具合は、棚の上に(2026-10-17 ユーザー指示)。まだの人には呼びかけ(10/25) */}
+      {entryProgress?.entered ? <HomeHalloweenEntryProgress usedWorks={entryProgress.usedWorks} /> : null}
+      {entryProgress && !entryProgress.entered ? <HomeHalloweenEntryInvite /> : null}
       <div className="mb-3 flex items-center justify-between gap-3 px-4 sm:px-0">
         <div className="min-w-0">
           <h2 className="text-lg font-semibold text-gray-900">
