@@ -1156,6 +1156,8 @@
 /* 9件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
 .worksScroller {
   display: flex;
+  /* 並べられる数よりページが少ないとき(企画の初めなど)は、真ん中に寄せる。はみ出すときは左から(safe) */
+  justify-content: safe center;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;

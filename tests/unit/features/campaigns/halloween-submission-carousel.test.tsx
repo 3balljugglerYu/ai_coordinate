@@ -13,6 +13,7 @@ import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import {
   DRAG_CLICK_TOLERANCE_PX,
   DRAG_PAGE_THRESHOLD_PX,
+  SNAP_RESTORE_FALLBACK_MS,
   SubmissionCarousel,
 } from "@/features/campaigns/halloween/components/SubmissionCarousel";
 
@@ -147,10 +148,7 @@ describe("SubmissionCarousel: PC で横に並べる・マウスでドラッグ�
   /** 見えている幅と1ページの幅を決めて、測り直させる(2ページ並ぶ = 6列) */
   function showSideBySide(scroller: HTMLElement, visible: number, pageWidth = 300) {
     const scrollTo = stubScroller(scroller, pageWidth * visible);
-    Object.defineProperty(scroller.firstElementChild as HTMLElement, "offsetWidth", {
-      configurable: true,
-      value: pageWidth,
-    });
+    (scroller.firstElementChild as HTMLElement).getBoundingClientRect = () => ({ width: pageWidth }) as DOMRect;
     act(() => resizeCallbacks.forEach((callback) => callback()));
     return scrollTo;
   }
@@ -158,7 +156,7 @@ describe("SubmissionCarousel: PC で横に並べる・マウスでドラッグ�
   function drag(scroller: HTMLElement, from: number, to: number, steps = 5) {
     fireEvent.mouseDown(scroller, { button: 0, clientX: from });
     for (let index = 1; index <= steps; index += 1) {
-      fireEvent.mouseMove(window, { clientX: from + ((to - from) * index) / steps });
+      fireEvent.mouseMove(window, { buttons: 1, clientX: from + ((to - from) * index) / steps });
     }
     fireEvent.mouseUp(window, { clientX: to });
   }
@@ -192,14 +190,16 @@ describe("SubmissionCarousel: PC で横に並べる・マウスでドラッグ�
     expect(scroller.getAttribute("data-draggable")).toBe("true");
 
     fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
-    fireEvent.mouseMove(window, { clientX: 400 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 400 });
     // ドラッグのあいだはスナップを外して、動かした分だけ動く
     expect(scroller.getAttribute("data-dragging")).toBe("true");
     expect(scroller.scrollLeft).toBe(100);
     fireEvent.mouseUp(window, { clientX: 400 });
 
-    expect(scroller.getAttribute("data-dragging")).toBeNull();
     expect(scrollTo).toHaveBeenLastCalledWith({ left: 300, behavior: "smooth" });
+    // 移り終わったらスナップを戻す
+    fireEvent(scroller, new Event("scrollend"));
+    expect(scroller.getAttribute("data-dragging")).toBeNull();
     expect(screen.getAllByRole("button", { name: /ページ目$/ })[1].getAttribute("aria-current")).toBe("true");
   });
 
@@ -251,13 +251,98 @@ describe("SubmissionCarousel: PC で横に並べる・マウスでドラッグ�
     expect(screen.getByRole("dialog")).toBeTruthy();
   });
 
+  test("離したのが届かなくても(メニューが開いた・窓の外で離した)、ボタンを離して動かしたら、そこでドラッグを終える", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 400 });
+    // mouseup は届かず、ボタンを離したまま動かした
+    fireEvent.mouseMove(window, { buttons: 0, clientX: 380 });
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 300, behavior: "smooth" });
+    // そのあと動かしても付いてこない
+    const left = scroller.scrollLeft;
+    fireEvent.mouseMove(window, { buttons: 0, clientX: 100 });
+    expect(scroller.scrollLeft).toBe(left);
+  });
+
+  test("外で離してクリックが届かなかったときも、次のクリックは止めない", () => {
+    jest.useFakeTimers();
+    try {
+      render(<SubmissionCarousel pages={pages(3)} />);
+      const scroller = screen.getByTestId("halloween-works");
+      stubScroller(scroller);
+      drag(scroller, 500, 380);
+      // 離した直後のクリックが来なかった
+      act(() => jest.advanceTimersByTime(0));
+      fireEvent.click(screen.getAllByRole("link")[0]);
+      expect(screen.getByRole("dialog")).toBeTruthy();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("スナップを戻すのは、移り終わってから(先に戻すと近いほうのページへ引き戻される)", () => {
+    jest.useFakeTimers();
+    try {
+      render(<SubmissionCarousel pages={pages(3)} />);
+      const scroller = screen.getByTestId("halloween-works");
+      stubScroller(scroller);
+      drag(scroller, 500, 450);
+      expect(scroller.getAttribute("data-dragging")).toBe("true");
+      fireEvent(scroller, new Event("scrollend"));
+      expect(scroller.getAttribute("data-dragging")).toBeNull();
+
+      // scrollend が届かないブラウザでも、少し待てば戻す
+      drag(scroller, 500, 450);
+      expect(scroller.getAttribute("data-dragging")).toBe("true");
+      act(() => jest.advanceTimersByTime(SNAP_RESTORE_FALLBACK_MS));
+      expect(scroller.getAttribute("data-dragging")).toBeNull();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  test("幅が広がって置ける位置が減ったら、スクロールが起きなくても、はみ出さない位置として出す", () => {
+    render(<SubmissionCarousel pages={pages(4)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+    const next = screen.getByRole("button", { name: "次のページ" });
+    fireEvent.click(next);
+    fireEvent.click(next);
+    fireEvent.click(next);
+    // 4ページ目にいるときに、2ページ並ぶ幅になった(置けるのは3ページ目まで)
+    showSideBySide(scroller, 2);
+    const dots = screen.getAllByRole("button", { name: /ページ目$/ });
+    expect(dots).toHaveLength(3);
+    expect(dots[2].getAttribute("aria-current")).toBe("true");
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  test("ページが多くて「○ / ○」で出すとき、並べて見えていれば見えている範囲をページの数で出す", () => {
+    render(<SubmissionCarousel pages={pages(14)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    showSideBySide(scroller, 3);
+    expect(screen.getByText("1〜3 / 14")).toBeTruthy();
+  });
+
+  test("Mac の Control+クリック(メニューを開く)ではドラッグしない", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+    fireEvent.mouseDown(scroller, { button: 0, ctrlKey: true, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 300 });
+    expect(scroller.scrollLeft).toBe(0);
+  });
+
   test("左ボタン以外(右クリックなど)ではドラッグしない", () => {
     render(<SubmissionCarousel pages={pages(3)} />);
     const scroller = screen.getByTestId("halloween-works");
     const scrollTo = stubScroller(scroller);
 
     fireEvent.mouseDown(scroller, { button: 2, clientX: 500 });
-    fireEvent.mouseMove(window, { clientX: 300 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 300 });
     fireEvent.mouseUp(window, { clientX: 300 });
     expect(scroller.scrollLeft).toBe(0);
     expect(scrollTo).not.toHaveBeenCalled();

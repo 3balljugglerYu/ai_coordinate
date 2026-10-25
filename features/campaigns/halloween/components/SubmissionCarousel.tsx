@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { ShowcaseLeaveDialog } from "@/features/credits/components/ShowcaseLeaveDialog";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
@@ -38,6 +38,8 @@ const MAX_DOTS = 10;
 export const DRAG_CLICK_TOLERANCE_PX = 6;
 /** 離したとき、これだけ動かしていれば、動かした向きに少なくとも1ページ進める */
 export const DRAG_PAGE_THRESHOLD_PX = 40;
+/** 移り終わり(scrollend)が届かないブラウザでも、これだけ待ったらスナップを戻す */
+export const SNAP_RESTORE_FALLBACK_MS = 700;
 
 export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissionItem[][] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
@@ -47,16 +49,22 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
   const [visible, setVisible] = useState(1);
   /** いちばん左に置けるページの最後(見えるページの数だけ手前) */
   const lastPage = Math.max(pages.length - visible, 0);
+  /** 幅が広がって置ける位置が減ったときも、はみ出さない位置として出す(スクロールが起きなくても) */
+  const shown = Math.min(current, lastPage);
   const dragRef = useRef<{ startX: number; startScrollLeft: number; moved: boolean } | null>(null);
   const suppressClickRef = useRef(false);
+  /** ドラッグ中に付けた window のリスナーを外す(途中で画面を離れたときも) */
+  const endDragRef = useRef<(() => void) | null>(null);
 
-  /** 1ページの幅。測れないとき(描く前など)は、見えている幅を1ページとみなす */
+  /** 1ページの幅(小数まで)。測れないとき(描く前など)は、見えている幅を1ページとみなす */
   const pageWidth = (scroller: HTMLDivElement) => {
     const first = scroller.firstElementChild as HTMLElement | null;
-    return first && first.offsetWidth > 0 ? first.offsetWidth : scroller.clientWidth;
+    const width = first ? first.getBoundingClientRect().width : 0;
+    return width > 0 ? width : scroller.clientWidth;
   };
 
-  useEffect(() => {
+  // 描く前に測る(PC で最初に全ページ分の点が出てから減る、ちらつきをなくす)
+  useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const measure = () => {
@@ -69,6 +77,8 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
     observer.observe(scroller);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => () => endDragRef.current?.(), []);
 
   const handleScroll = () => {
     const scroller = scrollerRef.current;
@@ -93,11 +103,30 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
   // マウスのドラッグ(指はブラウザのスクロールに任せる。左ボタンだけ)
   const onMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
     const scroller = scrollerRef.current;
-    if (!scroller || event.button !== 0 || pages.length <= visible) return;
+    if (!scroller || event.button !== 0 || event.ctrlKey || pages.length <= visible) return;
+    // 押した場所から文字が選ばれないようにする(すき間から外へドラッグしたとき)
+    event.preventDefault();
+    endDragRef.current?.();
     dragRef.current = { startX: event.clientX, startScrollLeft: scroller.scrollLeft, moved: false };
+
+    const removeListeners = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      endDragRef.current = null;
+    };
+    // ボタンを離したのが届かなかったとき(メニューが開いた・窓の外で離した)や、画面を離れたときの片付け
+    const cancel = () => {
+      removeListeners();
+      dragRef.current = null;
+      delete scroller.dataset.dragging;
+    };
     const onMove = (move: MouseEvent) => {
       const drag = dragRef.current;
       if (!drag) return;
+      if ((move.buttons & 1) === 0) {
+        finish(move.clientX);
+        return;
+      }
       const dx = move.clientX - drag.startX;
       if (!drag.moved && Math.abs(dx) < DRAG_CLICK_TOLERANCE_PX) return;
       if (!drag.moved) {
@@ -108,22 +137,36 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
       move.preventDefault();
       scroller.scrollLeft = drag.startScrollLeft - dx;
     };
-    const onUp = (up: MouseEvent) => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+    const finish = (clientX: number) => {
       const drag = dragRef.current;
+      removeListeners();
       dragRef.current = null;
       if (!drag?.moved) return;
-      delete scroller.dataset.dragging;
+      // 離した直後のクリック(カードの上で離したとき)だけ止める。外で離してクリックが届かなくても、次のクリックは止めない
       suppressClickRef.current = true;
-      const dx = up.clientX - drag.startX;
+      window.setTimeout(() => {
+        suppressClickRef.current = false;
+      }, 0);
+      const dx = clientX - drag.startX;
       const width = pageWidth(scroller);
       const startPage = Math.round(drag.startScrollLeft / width);
       let target = Math.round((drag.startScrollLeft - dx) / width);
       // 少しのドラッグでも、動かした向きに1ページは進める
       if (target === startPage && Math.abs(dx) >= DRAG_PAGE_THRESHOLD_PX) target += dx < 0 ? 1 : -1;
       goTo(target);
+      // スナップを戻すのは、移り終わってから(先に戻すと、近いほうのページへ引き戻されることがある)
+      let restored = false;
+      const restoreSnap = () => {
+        if (restored) return;
+        restored = true;
+        scroller.removeEventListener("scrollend", restoreSnap);
+        delete scroller.dataset.dragging;
+      };
+      scroller.addEventListener("scrollend", restoreSnap);
+      window.setTimeout(restoreSnap, SNAP_RESTORE_FALLBACK_MS);
     };
+    const onUp = (up: MouseEvent) => finish(up.clientX);
+    endDragRef.current = cancel;
     window.addEventListener("mousemove", onMove);
     window.addEventListener("mouseup", onUp);
   };
@@ -180,7 +223,8 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
                       src={item.thumbnailUrl}
                       alt={`${item.authorName}さんの作品`}
                       fill
-                      sizes="(min-width: 760px) 200px, 30vw"
+                      // 6列・9列になるのは区画の幅が700px以上(画面の幅でおよそ732px以上)から
+                      sizes="(min-width: 732px) 190px, 30vw"
                       className={styles.workImg}
                     />
                   </span>
@@ -197,9 +241,9 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
             type="button"
             className={styles.worksArrow}
             onClick={() => {
-              if (current > 0) goTo(current - 1);
+              if (shown > 0) goTo(shown - 1);
             }}
-            aria-disabled={current === 0 ? true : undefined}
+            aria-disabled={shown === 0 ? true : undefined}
             aria-label="前のページ"
           >
             ‹
@@ -213,22 +257,25 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
                   className={styles.worksDot}
                   onClick={() => goTo(pageIndex)}
                   aria-label={`${pageIndex + 1}ページ目`}
-                  aria-current={pageIndex === current ? "true" : undefined}
+                  aria-current={pageIndex === shown ? "true" : undefined}
                 />
               ))}
             </div>
           ) : (
             <span className={styles.worksCount} aria-live="polite">
-              {current + 1} / {lastPage + 1}
+              {/* ページの数で出す(各ページの「全○ページ」とそろえる)。並べて見えるときは、見えている範囲 */}
+              {visible > 1
+                ? `${shown + 1}〜${Math.min(shown + visible, pages.length)} / ${pages.length}`
+                : `${shown + 1} / ${pages.length}`}
             </span>
           )}
           <button
             type="button"
             className={styles.worksArrow}
             onClick={() => {
-              if (current < lastPage) goTo(current + 1);
+              if (shown < lastPage) goTo(shown + 1);
             }}
-            aria-disabled={current === lastPage ? true : undefined}
+            aria-disabled={shown === lastPage ? true : undefined}
             aria-label="次のページ"
           >
             ›
