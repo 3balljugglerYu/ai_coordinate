@@ -376,6 +376,11 @@
   padding: 40px 16px 8px;
 }
 
+/* 対象作品の一覧を、この区画の幅(PC のサイドバーを除いた幅)に合わせて広げるため(2026-10-25)。対象作品の区画だけ */
+.worksSection {
+  container-type: inline-size;
+}
+
 .wrap {
   max-width: 880px;
   margin: 0 auto;
@@ -1124,13 +1129,38 @@
 }
 
 .works {
+  --works-visible: 1;
   max-width: 520px;
   margin: 0 auto;
+}
+
+/*
+  2026-10-25 ユーザー指示: PC では横が3列だと寂しいので、横幅いっぱいに広げてページを並べる。
+  見出しの幅(.wrap 880px)の外まで広げ、幅に応じて2ページ(6列)・3ページ(9列)を並べる。
+  幅は画面全体ではなく、この区画(.worksSection。PC のサイドバーを除いた幅)で決める
+*/
+/* 列を増やすのは、1枚が小さくなりすぎない幅から(6列は約110px・9列は約135px以上) */
+@container (min-width: 700px) {
+  .works {
+    --works-visible: 2;
+    --works-width: min(calc(100cqw - 48px), 1400px);
+    max-width: none;
+    width: var(--works-width);
+    margin-left: calc((100% - var(--works-width)) / 2);
+  }
+}
+
+@container (min-width: 1300px) {
+  .works {
+    --works-visible: 3;
+  }
 }
 
 /* 9件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
 .worksScroller {
   display: flex;
+  /* 並べられる数よりページが少ないとき(企画の初めなど)は、真ん中に寄せる。はみ出すときは左から(safe) */
+  justify-content: safe center;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   overscroll-behavior-x: contain;
@@ -1141,8 +1171,46 @@
   display: none;
 }
 
+/*
+  マウスで操作する画面(PC)では、ページごとに止めず、ふつうの横スクロールにする(2026-10-25 ユーザー指示)。
+  トラックパッドや Shift+ホイール、スクロールバーで動かせるよう、細いスクロールバーを出す
+*/
+@media (hover: hover) and (pointer: fine) {
+  .worksScroller {
+    scroll-snap-type: none;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(61, 16, 80, 0.35) transparent;
+    padding-bottom: 6px;
+  }
+
+  .worksScroller::-webkit-scrollbar {
+    display: block;
+    height: 8px;
+  }
+
+  .worksScroller::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(61, 16, 80, 0.35);
+  }
+
+  /* マウスでつかんで横に動かせる */
+  .worksScroller[data-draggable="true"] {
+    cursor: grab;
+  }
+
+  .worksScroller[data-dragging="true"] {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  /* ドラッグのあいだは、カードの上を通ってもマウスを乗せた見た目にしない */
+  .worksScroller[data-dragging="true"] .workLink {
+    pointer-events: none;
+  }
+}
+
 .worksPage {
-  flex: 0 0 100%;
+  flex: 0 0 calc(100% / var(--works-visible));
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: grid;
