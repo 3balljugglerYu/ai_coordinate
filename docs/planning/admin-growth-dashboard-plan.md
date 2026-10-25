@@ -29,10 +29,10 @@
 | 課金した人の割合 | 2.3%（1人） | 3.0%（1人） |
 | 新しく登録した人 | 29人 → 課金 0人 | 19人 → 課金 0人 |
 | 無料で配ったペルコイン | **21,357** | 23,683 |
-| 使われたペルコイン | **17,350** | 17,780 |
+| 使われたペルコイン（失敗の返金を引いた正味） | **16,870**（消費 17,350 − 返金 480） | 16,860（17,780 − 920） |
 
 - 無料の内訳（直近30日）: 投稿ボーナス 8,280・連続ログイン 6,135・人のプロンプトで生成して投稿 4,060・登録ボーナス 1,450・プロンプトが使われた還元 1,232・紹介 200。
-- よく使う上位10人で、使われた量の77%（13,440）。その10人は、使った分の 98.6%（13,252）を無料でもらっている。
+- よく使う上位10人で、消費の77%（13,440・返金を引く前）。その10人は、使った分の 98.6%（13,252）を無料でもらっている。
 - 配られて残っているペルコインは合計 35,800（使う量の約2か月分）。今の使い方で残高が3日以内になくなる人は5人。
 - 登録から7日たった人で比べると、7日以内に2日目も生成した人は 5/9 人（前）→ 3/8 人（今）。差は2人で、たまたまの範囲。
 - 登録した月ごとの継続（その週に1回でも生成した割合）: 8月登録 38人は 1週目 63%・2週目 13%・4週目 11%。9月登録 14人は 43%・14%・15%。2週目以降は1割強で下げ止まっている。
@@ -64,13 +64,15 @@
 
 ### 4-2. 「購入者」と「売上」の定義
 
-- 購入者は `credit_transactions` の `purchase` と `subscription`、`metadata.mode = 'live'`。金額は `metadata.revenueYen`。
+- 購入者は `credit_transactions` の `purchase` と `subscription`、`metadata.mode = 'live'`。
+- 金額は、今ある `resolveTransactionRevenue`（`features/admin-dashboard/lib/purchase-value.ts:79`）で決める。`metadata.revenueYen` が無い古い purchase は、パッケージの値段を使う（同 94行目）。金額が決まらない subscription は数えない（`get-admin-dashboard-data.ts:821-827`）。新しいカードで別の数え方を書かない。
 - オペレーションサマリーは subscription を含み（`get-admin-dashboard-data.ts:459`）、ファネルは purchase だけ（同 392-394）。これを1つにそろえる。
 
 ### 4-3. 期間
 
 - 既定は直近30日と前の30日。24h/7d/30d/90d を切り替えられる。
-- 段階の比べ方は「その期間に登録した人のうち、登録から N 日たった人」でそろえる（既定 N=7）。
+- 段階の比べ方は「その期間に登録した人のうち、登録から7日たった人」でそろえる。
+- ⑤（道のり）と⑥（曲線）は、登録してから日がたつのを待つ数字なので、30日と90日だけで出す。24h・7d を選んでいるときは「30日で表示中」と書いて30日で出す（24h では分母がいつも0になるため）。
 
 ## 5. 概要タブ（上から順に）
 
@@ -93,8 +95,8 @@
 
 1. **売上**: 金額と前の期間との差。新しく登録した人から／前からの人から、に分ける。
 2. **一番効く直し所**: 次の順に見て、最初に当てはまったものを出す。
-   1. 無料で配った量 ≥ 使った量、かつ、新しく登録した人の課金が0人 → 「ペルコインが足りなくならない」
-   2. 分母が30人以上ある段階のうち、前の期間の割合に戻したときに売上が一番増える段階
+   1. 使っている人が30人以上いて、無料で配った量 ≥ 使った量（返金を引いた正味） → 「ペルコインが足りなくならない」
+   2. 分母が今の期間・前の期間とも30人以上ある段階のうち、前の期間の割合に戻したときに売上が一番増える段階
    3. どれにも当てはまらない → 「まだ判断できません」
 3. **そのほか**: 判断を出していない段階と、その理由（人数が足りない、など）。
 
@@ -115,7 +117,9 @@ flowchart LR
 ### ③ ペルコインの釣り合い
 
 - 配った量（`credit_transactions` の種類ごと）と、使った量・買った量を横棒で並べる。
-- 使い道の内訳: 消費の `related_generation_id` から `generated_images` をたどり、生成の種類ごとに分ける（直近30日の消費 2,049件のうち 1,866件がたどれる。残りは「その他」）。
+- 使った量は、消費（`consumption`）から失敗の返金（`refund`）を引いた正味で出す。返金の量も横に出す。
+- 使い道の内訳: 消費の `related_generation_id` から `generated_images` をたどり、生成の種類ごとに分ける（直近30日の消費 2,049件のうち 1,866件がたどれる）。
+  - たどれない消費は、ガチャの分割・文字入力（いつも null・`app/api/gacha-prompt/split/handler.ts:72`・`app/api/name-input/create/handler.ts:76`）と、worker が失敗して返金したもの（成功したときだけ埋まる）。前者は消費の `metadata` で見分けて行を分け、後者は返金と対にして「失敗（返金済み）」として分ける。どれにも当たらないものだけを「その他」にする。
 - よく使う上位10人が、使った分のうち何%を無料でもらったか。
 - 日ごとの出入り（配った／使った）と、出来事の印。
 - 今の使い方で、残高があと何日もつか（3日以内・4〜7日・8〜30日・31〜90日・91日以上）。3日以内の人は「買う一歩手前の人」として、人の一覧を開ける。
@@ -163,20 +167,24 @@ flowchart LR
 
 | 列 | 中身 |
 |---|---|
-| user_id | 本人（サーバーのセッションから決める。リクエストの本文からは受け取らない） |
-| event_type | `percoin_shortage` / `purchase_view` / `checkout_start` / `checkout_expired` |
-| feature | 足りなくなった場所（例: `generate`・`style_generate`・`gacha_split`・`name_input`）、または買おうとした商品 |
+| user_id | 本人。画面からの記録はサーバーのセッションから決める（リクエストの本文からは受け取らない）。Stripe の通知からの記録は、支払い画面に入れている `client_reference_id`（`app/api/credits/checkout/route.ts:167`・`app/api/subscription/checkout/route.ts:125`）から決める |
+| event_type | `percoin_shortage` / `purchase_view` / `checkout_start` / `checkout_cancel` / `checkout_expired` |
+| feature | 足りなくなった場所（例: `generate`・`style_generate`・`gacha_split`・`name_input`） |
+| origin | どこから買いに来たか。今の購入の `origin`（`app/api/credits/checkout/route.ts:107,173`・webhook で `credit_transactions.metadata.origin` に写す値）と同じ値を使う |
+| product | 買おうとしたパッケージ・プラン |
+| where_detected | `client`（画面で止めた）/ `server`（API が返した） |
 | required / balance | 足りなかったときの、必要な量と残高 |
 | stripe_session_id | 支払いの画面の ID（`checkout_start` と `checkout_expired` を結ぶ） |
 | created_at | 時刻 |
 
-- **足りなくなった**: 生成の API は残高不足をもう返している。返すところで1行書く。
-  - `app/api/generate-async/handler.ts:544-545`（`GENERATION_INSUFFICIENT_BALANCE`）
-  - `app/(app)/style/generate-async/handler.ts:470`（`STYLE_INSUFFICIENT_PERCOIN_BALANCE`）
-  - ガチャの分割・文字入力の残高不足（`app/api/gacha-prompt/split/handler.ts`・`app/api/name-input/create/handler.ts`）
+- **足りなくなった**: ⚠️ Web の画面は、残高が足りないと **API を呼ぶ前に止める**。サーバーで書くだけでは、Web で足りなくなった人はほとんど残らない。なので、画面で止めたところでも記録を送る。
+  - 画面で止めるところ（主）: `features/generation/components/GenerationFormContainer.tsx:986`（`balance < requiredPercoins` で API を呼ばずに戻る）、`features/style/components/OneTapStyleGenerationForm.tsx:578-585`（足りないと生成ボタンを押せなくする）。ボタンを押せなくするほうは、足りない状態で画面を開いた時に、1回の訪問で1回だけ送る。
+  - API が返すところ（従・画面の確認をすり抜けた場合とアプリ）: `app/api/generate-async/handler.ts:544-545`（`GENERATION_INSUFFICIENT_BALANCE`）、`app/(app)/style/generate-async/handler.ts:470`（`STYLE_INSUFFICIENT_PERCOIN_BALANCE`）、ガチャの分割・文字入力の残高不足。
+  - 画面からは、新しい API（ログイン必須・回数の上限つき）に送る。
 - **購入画面を見た**: 購入の画面（`features/credits/components/PercoinPurchaseGrid.tsx`・`features/my-page/components/PercoinPurchaseSection.tsx`）を開いたときに、サーバーへ1回送る。
 - **支払いを始めた**: `app/api/credits/checkout/route.ts`・`app/api/subscription/checkout/route.ts` で、Stripe の支払い画面を作ったときに書く。
-- **途中でやめた**: `app/api/stripe/webhook/route.ts` に `checkout.session.expired` を足す（今は `checkout.session.completed` などだけ・834行目〜）。Stripe のダッシュボードで、この通知を送る設定を足す必要がある（ユーザーの作業）。
+- **やめて戻った**: 支払い画面で戻ると `?canceled=true` つきで購入画面に戻る（`app/api/credits/checkout/route.ts:117`）。この戻りで `checkout_cancel` を書く。すぐに分かるので、こちらを主に使う。サブスクは戻り先が `?tab=subscription`（`app/api/subscription/checkout/route.ts:120`）で区別が無いので、P3 で戻り先にやめた印を足す。
+- **期限切れ**: `app/api/stripe/webhook/route.ts` に `checkout.session.expired` を足す（今は `checkout.session.completed` などだけ・834行目〜）。期限は既定で24時間なので、1日遅れて入る。画面を閉じて戻らなかった人を拾うための補助。同じ人がそのあと別の支払いで買っていたら、④では「やめた」に数えない。Stripe のダッシュボードで、この通知を送る設定を足す必要がある（ユーザーの作業）。
 - **買った**: 今の `credit_transactions` をそのまま使う。
 - 書き込みに失敗しても、生成や支払いは止めない（記録だけ落とす）。
 - RLS を有効にし、policy は作らない（service_role だけが書く・読む）。
@@ -184,23 +192,28 @@ flowchart LR
 ### 6-2. どの画面から来ても流入元を残す
 
 - 今は、URL に `signup_source` か `utm_source` があるときだけ、cookie（`persta_signup_source`・最初に来た時だけ）に残す（`features/auth/components/SignupSourceCapture.tsx`・`components/AppShell.tsx:90,116` で常駐）。
-- 目印の無い訪問では、来る前のサイトから値を作って残す: `ref_x`・`ref_instagram`・`ref_google`・`ref_yahoo`・`ref_other`・`direct`。
-- あとで目印つきの URL で来たときは、目印のほうで上書きする（目印は、こちらが意図して付けたものなので優先する）。目印どうしは今までどおり「最初に来た時」を守る。
-- 最初に開いた画面のパス（例: `/style`・`/posts/...`）も一緒に残し、登録の時に保存する。
+- ⚠️ 今の cookie には書かない。今の cookie は「すでにあれば何もしない」（`SignupSourceCapture.tsx:65-68`）ので、目印の無い訪問の値を先に書くと、あとで開いた企画ページの既定値（例: `halloween-best-shot_meta`）が書けなくなり、企画と広告ごとの登録が減る。
+- 別の cookie（`persta_first_visit`・30日・最初に来た時だけ）に、次の2つを残す。
+  - **来た場所**: 今ある `detectSignupChannel`（`features/auth/lib/signup-source.ts:85`。`twclid`・`fbclid`・アプリ内ブラウザの UA・来る前のサイトで `x_ad`/`x`/`meta` を見分ける）を広げて使う。広げるのは `search`（Google・Yahoo など）・`other`・`direct` の3つだけ。新しい呼び名の組を作らない。
+  - **最初に開いた画面のパス**（例: `/style`・`/posts/...`。クエリは残さない）。
+- 登録の時、`profiles` の新しい列（`first_visit_channel`・`first_landing_path`）に保存する。`signup_source` は今までどおり（目印・企画の既定値）で、触らない。
+  - 書くところ: `features/auth/lib/auth-client.ts:668` と `app/auth/callback/route.ts:86-117`（今 `signup_source` を書いている所）。
+- ⑤では「来た場所」を1つの呼び名（`x_ad`・`x`・`meta`・`search`・`direct`・`other`）でまとめる。`signup_source` に来た場所が付いていればそれを使い、無ければ `first_visit_channel` を使う。
 
 ### 6-3. GA4
 
 - GA4 に、ペルスタの中だけで使う番号（Supabase のユーザー ID）を `user_id` として送る。メールアドレスなど、個人が分かるものは送らない。今は user property の `logged_in` だけ（`features/analytics/components/Ga4LoginStatus.tsx`）。
-- 出来事を GA4 が用意している名前で送る: `sign_up`・`begin_checkout`・`purchase`。生成は `generation_complete`（独自の名前）。送るのは `features/analytics/lib/track-event.ts` の `trackEvent` から。
-- これで、サンキー図（P7）の最後の列を「登録した・生成した・課金した」にできる。
+- 登録・生成・課金は、**GA4 に送らずに DB を正とする**。GA4 の生データ（BigQuery）は、同じ端末なら登録前の訪問（`user_pseudo_id`）と登録後の `user_id` を結べる。サンキー図（P7）では、GA4 の画面の流れに、DB の登録・生成・課金を `user_id` で結んで最後の列にする。
+  - 理由: 課金は Stripe の通知（サーバー）で決まるので、画面から `purchase` を送ると、成功画面に戻らない人（PayPay でアプリを切り替えた人など）の数えもれと、読み込み直しでの二重の数えが起きる。DB の売上とも合わなくなる。
+  - GA4 の画面で見たい場合だけ、あとで `sign_up` をブラウザから送るのを足す（`trackEvent` は今「集計用の定数だけ」の決まり・`features/analytics/lib/track-event.ts:8-13`）。
 
 ### 6-4. 広告の数字
 
-前の計画のまま（P6）。
+P6 で作る。
 
 - **表** `ad_platform_daily_stats`: platform・stat_date・campaign/adset/ad の ID と名前・signup_source・breakdown_type/value・spend_jpy・impressions・reach・clicks・landing_page_views・video_views・source（`api`/`upload`）・imported_at。一意キーは platform・stat_date・ad_id・breakdown_type・breakdown_value。RLS 有効・policy なし。
-- **Meta**: Vercel の `META_ADS_ACCESS_TOKEN`・`META_AD_ACCOUNT_ID`（システムユーザー・`ads_read` だけ・無期限）。`vercel.json` の cron で毎朝6時、直近7日を取り直す（`CRON_SECRET` で守る）。insights を `level=ad` で、breakdowns なし・`age`・`gender`・`publisher_platform,platform_position`。creative の `url_tags` から `signup_source` を読む。「今すぐ取り込む」ボタン。トークンが無ければ「未設定」。
-- **X**: 書き出した `.xlsx` を管理画面からアップロード。新しい依存は入れず、Node の `zlib` で読む。広告（Ad name）ごとに `signup_source` を選び、覚えておく。
+- **Meta**: Vercel の `META_ADS_ACCESS_TOKEN`・`META_AD_ACCOUNT_ID`（システムユーザー・`ads_read` だけ・無期限）。`vercel.json` の cron で毎朝6時（日本時間。cron は UTC なので `0 21 * * *`）、直近7日を取り直す（`CRON_SECRET` で守る）。insights を `level=ad` で、breakdowns なし・`age`・`gender`・`publisher_platform,platform_position`。creative の `url_tags` から `signup_source` を読む。「今すぐ取り込む」ボタン。トークンが無ければ「未設定」。
+- **X**: 書き出したファイルを管理画面からアップロード。まず CSV で書き出してもらい、CSV を読む（新しい依存は入れない）。`.xlsx` を自前で読むのは ZIP と XML の読み込みが要って壊れやすいので、要るときに依存を足すかを相談する。広告（Ad name）ごとに `signup_source` を選び、覚えておく。
 
 ## 7. 進める順番（PR ごと）
 
@@ -221,7 +234,7 @@ flowchart LR
 |---|---|---|---|
 | P1 | `analytics_excluded_users`（表・管理画面・集計で使う共通の関数） | **あり** | SQL を見せて承認をもらってから `supabase db push`。中身はそのあと、承認を取って入れる |
 | P2 | 概要の ①②③（今の「すべて」タブの一番上に置く） | なし | 今ある記録だけで作れる。今日の発見がすぐ見えるようになる |
-| P3 | 記録を取り始める: 6-1・6-2・6-3 | **あり**（`monetization_events`） | 早いほどデータがたまる。Stripe の通知の設定と、GA4 についてのプライバシーポリシーの直し（8章）が要る |
+| P3 | 記録を取り始める: 6-1・6-2・6-3 | **あり**（`monetization_events`、`profiles` に `first_visit_channel`・`first_landing_path`） | 早いほどデータがたまる。Stripe の通知の設定と、GA4 についてのプライバシーポリシーの直し（8章）が要る |
 | P4 | ⑤ 道のり・⑥ 曲線・出来事の印 | **あり**（`admin_timeline_events`） | 広告の「来た」は、P6 の前は空欄 |
 | P5 | ④ 課金の直前の流れ・⑦ 原価と粗利 | なし | P3 の記録が2〜4週たまってから |
 | P6 | 広告の表・Meta の取り込み・X のアップロード | **あり**（`ad_platform_daily_stats`） | Meta のトークンの登録が先。ほかと並行して進められる |
@@ -234,7 +247,7 @@ flowchart LR
 - /code-review を流し、指摘を直すか理由を書く。
 - マージしてよいか聞いてから、マージする。
 
-### タブとサイドバー（P8・前の計画のまま）
+### タブとサイドバー（P8）
 
 | タブ | 中身 |
 |---|---|
@@ -251,7 +264,7 @@ flowchart LR
 
 - **プライバシーポリシー**: 今の文（`app/(marketing)/privacy/page.tsx`）は「Cookie 等の技術」とだけ書いていて、Google アナリティクスの名前が無い。GA4 に `user_id` を送る前に、解析ツールを使うことと、その中身を書き足すかどうかを決める（P3 の前）。
 - **「判断できません」の人数**: まず分母30人とする。画面を見て変える。
-- **目印の無い訪問の値**（6-2）: `ref_*`・`direct` の名前で良いか、P3 で見てもらう。
+- **来た場所の広げ方**（6-2）: `detectSignupChannel` に `search`・`other`・`direct` を足す形で良いか、P3 で見てもらう。
 - **配り方・値段**: この計画では変えない。③で見えた数字をもとに、別に決める。
 - **Meta のトークン**: 予定どおり 2026-10-27 の朝に Vercel へ登録してもらう。使うのは P6。10/29 までの広告の答え合わせは、今回は書き出しと DB で行う。
 
