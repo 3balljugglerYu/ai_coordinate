@@ -374,6 +374,8 @@
 /* ===== セクション ===== */
 .section {
   padding: 40px 16px 8px;
+  /* 対象作品の一覧を、この幅(PC のサイドバーを除いた幅)に合わせて広げるため(2026-10-25) */
+  container-type: inline-size;
 }
 
 .wrap {
@@ -1124,8 +1126,31 @@
 }
 
 .works {
+  --works-visible: 1;
   max-width: 520px;
   margin: 0 auto;
+}
+
+/*
+  2026-10-25 ユーザー指示: PC では横が3列だと寂しいので、横幅いっぱいに広げてページを並べる。
+  見出しの幅(.wrap 880px)の外まで広げ、幅に応じて2ページ(6列)・3ページ(9列)を並べる。
+  幅は画面全体ではなく、この区画(.section。PC のサイドバーを除いた幅)で決める
+*/
+/* 列を増やすのは、1枚が小さくなりすぎない幅から(6列は約110px・9列は約135px以上) */
+@container (min-width: 700px) {
+  .works {
+    --works-visible: 2;
+    --works-width: min(calc(100cqw - 48px), 1400px);
+    max-width: none;
+    width: var(--works-width);
+    margin-left: calc((100% - var(--works-width)) / 2);
+  }
+}
+
+@container (min-width: 1300px) {
+  .works {
+    --works-visible: 3;
+  }
 }
 
 /* 9件ずつのページを横に並べ、スワイプでページ単位に止める(動かすのはブラウザのスクロール) */
@@ -1141,8 +1166,25 @@
   display: none;
 }
 
+/* マウスでつかんで動かせる(ドラッグのあいだはスナップを外し、手に付いてこさせる) */
+@media (hover: hover) and (pointer: fine) {
+  .worksScroller[data-draggable="true"] {
+    cursor: grab;
+  }
+}
+
+.worksScroller[data-dragging="true"] {
+  scroll-snap-type: none;
+  cursor: grabbing;
+  user-select: none;
+}
+
+.worksScroller[data-dragging="true"] .workLink {
+  pointer-events: none;
+}
+
 .worksPage {
-  flex: 0 0 100%;
+  flex: 0 0 calc(100% / var(--works-visible));
   scroll-snap-align: start;
   scroll-snap-stop: always;
   display: grid;

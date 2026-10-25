@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { ShowcaseLeaveDialog } from "@/features/credits/components/ShowcaseLeaveDialog";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
@@ -23,21 +23,57 @@ import styles from "../halloween.module.css";
  * 端の矢印は native の disabled にしない(押したまま端に着くとフォーカスが落ちるため)。
  *
  * サムネイルを押したときは /use-prompts と同じ確認を挟む(読み物の途中で黙って移動しない)。
+ *
+ * 2026-10-25 ユーザー指示: PC では横が3列だと寂しいので、横幅いっぱいに広げてページを並べて見せる
+ * (幅に応じて1・2・3ページ = 3・6・9列。CSS の --works-visible)。矢印と点は1ページ(3列)ずつ進む。
+ * また、マウスでドラッグしても次のページへ進める(指のスワイプはブラウザのスクロールのまま)。
+ * ドラッグのあいだはスナップを外して手に付いてこさせ、離したらページに合わせる。
+ * 少しでも動かしたら、離したときのクリックで作品を開かない(ドラッグのつもりが確認が出てしまうため)。
  */
 
 /** これより多いページは点で並べず「3 / 20」で出す(点が折り返して読みにくくなるため) */
 const MAX_DOTS = 10;
 
+/** マウスでこれだけ動かしたら、ドラッグとみなす(作品を開かない) */
+export const DRAG_CLICK_TOLERANCE_PX = 6;
+/** 離したとき、これだけ動かしていれば、動かした向きに少なくとも1ページ進める */
+export const DRAG_PAGE_THRESHOLD_PX = 40;
+
 export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissionItem[][] }) {
   const scrollerRef = useRef<HTMLDivElement>(null);
   const [current, setCurrent] = useState(0);
   const [pendingItem, setPendingItem] = useState<CampaignSubmissionItem | null>(null);
-  const lastPage = pages.length - 1;
+  /** 一度に見えるページの数(幅で変わる。CSS の --works-visible) */
+  const [visible, setVisible] = useState(1);
+  /** いちばん左に置けるページの最後(見えるページの数だけ手前) */
+  const lastPage = Math.max(pages.length - visible, 0);
+  const dragRef = useRef<{ startX: number; startScrollLeft: number; moved: boolean } | null>(null);
+  const suppressClickRef = useRef(false);
+
+  /** 1ページの幅。測れないとき(描く前など)は、見えている幅を1ページとみなす */
+  const pageWidth = (scroller: HTMLDivElement) => {
+    const first = scroller.firstElementChild as HTMLElement | null;
+    return first && first.offsetWidth > 0 ? first.offsetWidth : scroller.clientWidth;
+  };
+
+  useEffect(() => {
+    const scroller = scrollerRef.current;
+    if (!scroller) return;
+    const measure = () => {
+      const width = pageWidth(scroller);
+      setVisible(width > 0 ? Math.max(1, Math.round(scroller.clientWidth / width)) : 1);
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(scroller);
+    return () => observer.disconnect();
+  }, []);
 
   const handleScroll = () => {
     const scroller = scrollerRef.current;
     if (!scroller || scroller.clientWidth === 0) return;
-    const page = Math.round(scroller.scrollLeft / scroller.clientWidth);
+    const page = Math.round(scroller.scrollLeft / pageWidth(scroller));
     setCurrent(Math.min(Math.max(page, 0), lastPage));
   };
 
@@ -49,9 +85,47 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
         typeof window !== "undefined" &&
         typeof window.matchMedia === "function" &&
         window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      scroller.scrollTo({ left: target * scroller.clientWidth, behavior: reduceMotion ? "auto" : "smooth" });
+      scroller.scrollTo({ left: target * pageWidth(scroller), behavior: reduceMotion ? "auto" : "smooth" });
     }
     setCurrent(target);
+  };
+
+  // マウスのドラッグ(指はブラウザのスクロールに任せる。左ボタンだけ)
+  const onMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const scroller = scrollerRef.current;
+    if (!scroller || event.button !== 0 || pages.length <= visible) return;
+    dragRef.current = { startX: event.clientX, startScrollLeft: scroller.scrollLeft, moved: false };
+    const onMove = (move: MouseEvent) => {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const dx = move.clientX - drag.startX;
+      if (!drag.moved && Math.abs(dx) < DRAG_CLICK_TOLERANCE_PX) return;
+      if (!drag.moved) {
+        drag.moved = true;
+        // 手に付いてこさせるため、ドラッグのあいだはスナップを外す
+        scroller.dataset.dragging = "true";
+      }
+      move.preventDefault();
+      scroller.scrollLeft = drag.startScrollLeft - dx;
+    };
+    const onUp = (up: MouseEvent) => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+      const drag = dragRef.current;
+      dragRef.current = null;
+      if (!drag?.moved) return;
+      delete scroller.dataset.dragging;
+      suppressClickRef.current = true;
+      const dx = up.clientX - drag.startX;
+      const width = pageWidth(scroller);
+      const startPage = Math.round(drag.startScrollLeft / width);
+      let target = Math.round((drag.startScrollLeft - dx) / width);
+      // 少しのドラッグでも、動かした向きに1ページは進める
+      if (target === startPage && Math.abs(dx) >= DRAG_PAGE_THRESHOLD_PX) target += dx < 0 ? 1 : -1;
+      goTo(target);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   return (
@@ -60,6 +134,17 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
         ref={scrollerRef}
         className={styles.worksScroller}
         onScroll={handleScroll}
+        onMouseDown={onMouseDown}
+        // ドラッグしたあとのクリックでは作品を開かない(カードより先にここで止める)
+        onClickCapture={(event) => {
+          if (!suppressClickRef.current) return;
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
+        // 画像をつかんで動かす(ブラウザの画像のドラッグ)を止め、ページのドラッグにする
+        onDragStart={(event) => event.preventDefault()}
+        data-draggable={pages.length > visible ? "true" : undefined}
         role="group"
         aria-label="キャンペーン対象作品"
         data-testid="halloween-works"
@@ -95,7 +180,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
                       src={item.thumbnailUrl}
                       alt={`${item.authorName}さんの作品`}
                       fill
-                      sizes="(min-width: 860px) 170px, 30vw"
+                      sizes="(min-width: 760px) 200px, 30vw"
                       className={styles.workImg}
                     />
                   </span>
@@ -106,7 +191,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
         ))}
       </div>
 
-      {pages.length > 1 ? (
+      {lastPage > 0 ? (
         <div className={styles.worksNav}>
           <button
             type="button"
@@ -119,9 +204,9 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
           >
             ‹
           </button>
-          {pages.length <= MAX_DOTS ? (
+          {lastPage + 1 <= MAX_DOTS ? (
             <div className={styles.worksDots}>
-              {pages.map((items, pageIndex) => (
+              {pages.slice(0, lastPage + 1).map((items, pageIndex) => (
                 <button
                   key={items[0]?.postId ?? pageIndex}
                   type="button"
@@ -134,7 +219,7 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
             </div>
           ) : (
             <span className={styles.worksCount} aria-live="polite">
-              {current + 1} / {pages.length}
+              {current + 1} / {lastPage + 1}
             </span>
           )}
           <button

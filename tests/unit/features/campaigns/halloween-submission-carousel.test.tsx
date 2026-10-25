@@ -7,9 +7,14 @@
  * 3列 × 3段の9件を1ページにし(2026-10-24 に 3列 × 2段から変更)、左右のスワイプ(と矢印・点)でページ単位に移る。
  * カードはサムネイルだけ(作者名・利用回数は出さない)。
  * サムネイルを押すと /use-prompts と同じ確認を出してから投稿のページへ。
+ * 2026-10-25: PC では横幅いっぱいにページを並べて見せ(6列・9列)、マウスのドラッグでもページを送る。
  */
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { SubmissionCarousel } from "@/features/campaigns/halloween/components/SubmissionCarousel";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  DRAG_CLICK_TOLERANCE_PX,
+  DRAG_PAGE_THRESHOLD_PX,
+  SubmissionCarousel,
+} from "@/features/campaigns/halloween/components/SubmissionCarousel";
 
 const routerPushMock = jest.fn();
 jest.mock("next/navigation", () => ({
@@ -118,5 +123,143 @@ describe("SubmissionCarousel", () => {
     render(<SubmissionCarousel pages={[[item("a")]]} />);
     fireEvent.click(screen.getByRole("link", { name: /作者a/ }), { metaKey: true });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("SubmissionCarousel: PC で横に並べる・マウスでドラッグする(2026-10-25 ユーザー指示)", () => {
+  let resizeCallbacks: (() => void)[] = [];
+  class FakeResizeObserver {
+    constructor(callback: () => void) {
+      resizeCallbacks.push(callback);
+    }
+    observe() {}
+    disconnect() {}
+  }
+
+  beforeEach(() => {
+    resizeCallbacks = [];
+    (globalThis as unknown as { ResizeObserver: unknown }).ResizeObserver = FakeResizeObserver;
+  });
+  afterEach(() => {
+    delete (globalThis as unknown as { ResizeObserver?: unknown }).ResizeObserver;
+  });
+
+  /** 見えている幅と1ページの幅を決めて、測り直させる(2ページ並ぶ = 6列) */
+  function showSideBySide(scroller: HTMLElement, visible: number, pageWidth = 300) {
+    const scrollTo = stubScroller(scroller, pageWidth * visible);
+    Object.defineProperty(scroller.firstElementChild as HTMLElement, "offsetWidth", {
+      configurable: true,
+      value: pageWidth,
+    });
+    act(() => resizeCallbacks.forEach((callback) => callback()));
+    return scrollTo;
+  }
+
+  function drag(scroller: HTMLElement, from: number, to: number, steps = 5) {
+    fireEvent.mouseDown(scroller, { button: 0, clientX: from });
+    for (let index = 1; index <= steps; index += 1) {
+      fireEvent.mouseMove(window, { clientX: from + ((to - from) * index) / steps });
+    }
+    fireEvent.mouseUp(window, { clientX: to });
+  }
+
+  test("⭐2ページ並んで見えるときは、点と矢印は「いちばん左に置けるページ」の数だけ(最後のページで余白を出さない)", () => {
+    render(<SubmissionCarousel pages={pages(4)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = showSideBySide(scroller, 2);
+    // 4ページを2ページずつ見るので、左に置けるのは1〜3ページ目
+    expect(screen.getAllByRole("button", { name: /ページ目$/ })).toHaveLength(3);
+    const next = screen.getByRole("button", { name: "次のページ" });
+    fireEvent.click(next);
+    fireEvent.click(next);
+    // 1ページ(3列)ずつ進む
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 600, behavior: "smooth" });
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  test("全部のページが一度に見えるなら、矢印も点も出さない(ドラッグもしない)", () => {
+    render(<SubmissionCarousel pages={pages(2)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    showSideBySide(scroller, 2);
+    expect(screen.queryByRole("button", { name: "次のページ" })).toBeNull();
+    expect(scroller.getAttribute("data-draggable")).toBeNull();
+  });
+
+  test("⭐マウスでドラッグすると手に付いてきて、離すと動かした向きのページに止まる", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+    expect(scroller.getAttribute("data-draggable")).toBe("true");
+
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
+    fireEvent.mouseMove(window, { clientX: 400 });
+    // ドラッグのあいだはスナップを外して、動かした分だけ動く
+    expect(scroller.getAttribute("data-dragging")).toBe("true");
+    expect(scroller.scrollLeft).toBe(100);
+    fireEvent.mouseUp(window, { clientX: 400 });
+
+    expect(scroller.getAttribute("data-dragging")).toBeNull();
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 300, behavior: "smooth" });
+    expect(screen.getAllByRole("button", { name: /ページ目$/ })[1].getAttribute("aria-current")).toBe("true");
+  });
+
+  test("少しのドラッグ(1ページの半分より短い)でも、決めた長さを動かせば1ページ進む。戻す向きなら前へ", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+
+    drag(scroller, 500, 500 - DRAG_PAGE_THRESHOLD_PX);
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 300, behavior: "smooth" });
+
+    drag(scroller, 500, 500 + DRAG_PAGE_THRESHOLD_PX);
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: "smooth" });
+  });
+
+  test("決めた長さに届かないドラッグは、元のページに戻る", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+
+    drag(scroller, 500, 500 - (DRAG_PAGE_THRESHOLD_PX - 1));
+    expect(scrollTo).toHaveBeenLastCalledWith({ left: 0, behavior: "smooth" });
+  });
+
+  test("⭐ドラッグしたあとのクリックでは作品を開かない。そのあと普通に押せば開く", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+    const link = screen.getAllByRole("link")[0];
+
+    drag(scroller, 500, 380);
+    fireEvent.click(link);
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    fireEvent.click(link);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  test("ほとんど動かしていなければ(手ぶれ)、ドラッグにせず作品を開く", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+    const link = screen.getAllByRole("link")[0];
+
+    drag(scroller, 500, 500 - (DRAG_CLICK_TOLERANCE_PX - 1), 1);
+    expect(scroller.getAttribute("data-dragging")).toBeNull();
+    expect(scrollTo).not.toHaveBeenCalled();
+    fireEvent.click(link);
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  test("左ボタン以外(右クリックなど)ではドラッグしない", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    const scrollTo = stubScroller(scroller);
+
+    fireEvent.mouseDown(scroller, { button: 2, clientX: 500 });
+    fireEvent.mouseMove(window, { clientX: 300 });
+    fireEvent.mouseUp(window, { clientX: 300 });
+    expect(scroller.scrollLeft).toBe(0);
+    expect(scrollTo).not.toHaveBeenCalled();
   });
 });
