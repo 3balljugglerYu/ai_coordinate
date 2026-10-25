@@ -39,7 +39,12 @@ export type AdminAuditAction =
   | "creator_allowlist_update"
   | "creator_allowlist_remove"
   | "personal_notice_send"
-  | "personal_notice_retract";
+  | "personal_notice_retract"
+  | "analytics_exclusion_add"
+  | "analytics_exclusion_remove"
+  | "timeline_event_create"
+  | "timeline_event_update"
+  | "timeline_event_delete";
 
 export interface AdminAuditLogParams {
   adminUserId: string;
