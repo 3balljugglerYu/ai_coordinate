@@ -188,6 +188,18 @@ describe("SubmissionCarousel: PC で横に並べる(2026-10-25 ユーザー指�
     expect(next.getAttribute("aria-disabled")).toBe("true");
   });
 
+  test("幅が変わったら、今いる位置を測り直す(PC はスナップしないので、スクロールが起きないことがある)", () => {
+    render(<SubmissionCarousel pages={pages(10)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller, 300);
+    // 1ページ300pxの幅で、900px(4ページ目)まで動かしてある
+    scroller.scrollLeft = 900;
+    // 幅が狭くなって1ページ150pxになった(位置はそのまま = 7ページ目の始まり)
+    showSideBySide(scroller, 2, 150);
+    const dots = screen.getAllByRole("button", { name: /ページ目$/ });
+    expect(dots[6].getAttribute("aria-current")).toBe("true");
+  });
+
   test("ページが多くて「○ / ○」で出すとき、並べて見えていれば見えている範囲をページの数で出す", () => {
     render(<SubmissionCarousel pages={pages(14)} />);
     const scroller = screen.getByTestId("halloween-works");
@@ -202,9 +214,10 @@ describe("SubmissionCarousel: マウスのドラッグで横にスクロール�
   beforeEach(() => {
     originalRaf = window.requestAnimationFrame;
     // 画面の書き換えを待たずに、すぐ動かす
+    // 待つものが残らないよう、番号は 0 を返す(本物は呼び出したあとで動くので、番号が先に入る)
     window.requestAnimationFrame = ((callback: FrameRequestCallback) => {
       callback(0);
-      return 1;
+      return 0;
     }) as typeof window.requestAnimationFrame;
   });
   afterEach(() => {
@@ -225,13 +238,17 @@ describe("SubmissionCarousel: マウスのドラッグで横にスクロール�
     const scrollTo = stubScroller(scroller);
     expect(scroller.getAttribute("data-draggable")).toBe("true");
 
-    fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
-    fireEvent.mouseMove(window, { buttons: 1, clientX: 380 });
+    // 押したときは、ふだんの動き(フォーカスなど)を止めない
+    expect(fireEvent.mouseDown(scroller, { button: 0, clientX: 500 })).toBe(true);
+    // 6px でドラッグと決まり、そこから動かし始める(決まるまでの分を一度に動かさない)
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 494 });
     expect(scroller.getAttribute("data-dragging")).toBe("true");
-    expect(scroller.scrollLeft).toBe(120);
+    expect(scroller.scrollLeft).toBe(0);
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 380 });
+    expect(scroller.scrollLeft).toBe(114);
     fireEvent.mouseUp(window, { clientX: 380 });
 
-    expect(scroller.scrollLeft).toBe(120);
+    expect(scroller.scrollLeft).toBe(114);
     expect(scrollTo).not.toHaveBeenCalled();
     expect(scroller.getAttribute("data-dragging")).toBeNull();
   });
@@ -282,11 +299,26 @@ describe("SubmissionCarousel: マウスのドラッグで横にスクロール�
     stubScroller(scroller);
 
     fireEvent.mouseDown(scroller, { button: 0, clientX: 500 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 494 });
     fireEvent.mouseMove(window, { buttons: 1, clientX: 400 });
     fireEvent.mouseMove(window, { buttons: 0, clientX: 300 });
     expect(scroller.getAttribute("data-dragging")).toBeNull();
     fireEvent.mouseMove(window, { buttons: 1, clientX: 100 });
-    expect(scroller.scrollLeft).toBe(100);
+    expect(scroller.scrollLeft).toBe(94);
+  });
+
+  test("スクロールバーをつかんだときは、ドラッグにせずブラウザに任せる", () => {
+    render(<SubmissionCarousel pages={pages(3)} />);
+    const scroller = screen.getByTestId("halloween-works");
+    stubScroller(scroller);
+    Object.defineProperty(scroller, "clientHeight", { configurable: true, value: 400 });
+    scroller.getBoundingClientRect = () => ({ top: 100, left: 0, width: 300, height: 408 }) as DOMRect;
+
+    // 中身(上から400pxまで)の下、スクロールバーのところ
+    fireEvent.mouseDown(scroller, { button: 0, clientX: 200, clientY: 504 });
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 100, clientY: 504 });
+    expect(scroller.getAttribute("data-dragging")).toBeNull();
+    expect(scroller.scrollLeft).toBe(0);
   });
 
   test("右クリックや Mac の Control+クリック(メニューを開く)ではドラッグしない", () => {

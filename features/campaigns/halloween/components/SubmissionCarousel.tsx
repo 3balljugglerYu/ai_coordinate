@@ -55,21 +55,39 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
   const endDragRef = useRef<(() => void) | null>(null);
   /** ドラッグのあと、離した直後のクリックで作品を開かない */
   const suppressClickRef = useRef(false);
+  /** 1ページの幅(小数まで)。幅が変わったときだけ測り直す(スクロールのたびに測ると、そのたびに描き直しの計算が走る) */
+  const pageWidthRef = useRef(0);
+  const pageCountRef = useRef(pages.length);
+  useLayoutEffect(() => {
+    pageCountRef.current = pages.length;
+  }, [pages.length]);
 
-  /** 1ページの幅(小数まで)。測れないとき(描く前など)は、見えている幅を1ページとみなす */
-  const pageWidth = (scroller: HTMLDivElement) => {
-    const first = scroller.firstElementChild as HTMLElement | null;
-    const width = first ? first.getBoundingClientRect().width : 0;
-    return width > 0 ? width : scroller.clientWidth;
-  };
+  /** 1ページの幅。測れていないとき(描く前など)は、見えている幅を1ページとみなす */
+  const pageWidth = (scroller: HTMLDivElement) => pageWidthRef.current || scroller.clientWidth;
 
-  // 描く前に測る(PC で最初に全ページ分の点が出てから減る、ちらつきをなくす)
+  // 幅が変わったら、並べる数と1ページの幅を測り直し、今いる位置も見直す。
+  // PC はスナップしないので、幅が変わってもスクロールが起きず、点がずれたままになるため。
+  // (サーバーで描いた最初の表示は1ページ並びのまま。読み込み終わったところで合わせる)
   useLayoutEffect(() => {
     const scroller = scrollerRef.current;
     if (!scroller) return;
     const measure = () => {
-      const width = pageWidth(scroller);
-      setVisible(width > 0 ? Math.max(1, Math.round(scroller.clientWidth / width)) : 1);
+      const first = scroller.firstElementChild as HTMLElement | null;
+      const width = first ? first.getBoundingClientRect().width : 0;
+      pageWidthRef.current = width;
+      // 並べる数は CSS(--works-visible)が決める。読めないとき(テストなど)は幅の比から
+      const fromCss = Number.parseInt(getComputedStyle(scroller).getPropertyValue("--works-visible"), 10);
+      const nextVisible =
+        Number.isFinite(fromCss) && fromCss > 0
+          ? fromCss
+          : width > 0
+            ? Math.max(1, Math.round(scroller.clientWidth / width))
+            : 1;
+      setVisible(nextVisible);
+      if (width > 0) {
+        const last = Math.max(pageCountRef.current - nextVisible, 0);
+        setCurrent(Math.min(Math.max(Math.round(scroller.scrollLeft / width), 0), last));
+      }
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -85,11 +103,11 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
     const scroller = scrollerRef.current;
     // Control+クリックは Mac のメニュー。ドラッグにしない
     if (!scroller || event.button !== 0 || event.ctrlKey || pages.length <= visible) return;
-    // 押した場所から文字が選ばれないようにする(すき間から外へドラッグしたとき)
-    event.preventDefault();
+    // スクロールバーをつかんだときは、ブラウザに任せる(中身のドラッグと逆向きに動いてしまうため)
+    if (event.clientY > scroller.getBoundingClientRect().top + scroller.clientHeight) return;
     endDragRef.current?.();
 
-    const startX = event.clientX;
+    let startX = event.clientX;
     const startScrollLeft = scroller.scrollLeft;
     let moved = false;
     let latestX = startX;
@@ -127,7 +145,11 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
       if (!moved && Math.abs(latestX - startX) < DRAG_CLICK_TOLERANCE_PX) return;
       if (!moved) {
         moved = true;
+        // ドラッグと決まった場所から動かし始める(決まるまでの6pxを一度に動かすと、そこでカクッとするため)
+        startX = latestX;
         scroller.dataset.dragging = "true";
+        // 押したところから文字が選ばれていたら外す(押したときには止めない。カードにフォーカスが移らなくなるため)
+        window.getSelection()?.removeAllRanges();
       }
       move.preventDefault();
       if (!frame) frame = window.requestAnimationFrame(apply);

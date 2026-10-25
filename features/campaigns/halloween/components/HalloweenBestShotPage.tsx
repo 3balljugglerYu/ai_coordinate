@@ -637,7 +637,7 @@ export function HalloweenBestShotPage({
                 </div>
               </section>
 
-              <section className={styles.section} aria-labelledby="hbs-works">
+              <section className={`${styles.section} ${styles.worksSection}`} aria-labelledby="hbs-works">
                 <div className={styles.wrap}>
                   <div id="hbs-works">
                     <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
