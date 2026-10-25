@@ -4,6 +4,7 @@ import { AuthForm } from "@/features/auth/components/AuthForm";
 import { signIn, signInWithOAuth, signUp } from "@/features/auth/lib/auth-client";
 import { useToast } from "@/components/ui/use-toast";
 import { jaMessages } from "@/messages/ja";
+import { buildIntentUrl } from "@/features/auth/components/WebViewBanner";
 
 jest.mock("next-intl", () => {
   return {
@@ -28,6 +29,12 @@ jest.mock("@/features/auth/lib/auth-client", () => ({
   signUp: jest.fn(),
   signInWithOAuth: jest.fn(),
 }));
+
+// Android で外のブラウザへ移すURLを受け取って確かめる。実際の intent:// へは移さない(jsdom は移れない)
+jest.mock("@/features/auth/components/WebViewBanner", () => {
+  const actual = jest.requireActual("@/features/auth/components/WebViewBanner");
+  return { ...actual, buildIntentUrl: jest.fn(() => "#android-intent") };
+});
 
 jest.mock("@/components/ui/use-toast", () => ({
   useToast: jest.fn(),
@@ -946,6 +953,124 @@ describe("AuthForm unit tests from EARS specs", () => {
       expect(passwordInput.type).toBe("password");
 
       signInDeferred.resolve({} as Awaited<ReturnType<typeof signIn>>);
+    });
+  });
+
+  describe("AUTH-012 アプリ内ブラウザ", () => {
+    const IOS_INSTAGRAM_UA =
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 350.0.0.0.0";
+    const ANDROID_INSTAGRAM_UA =
+      "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/AP1A; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/129.0.0.0 Mobile Safari/537.36 Instagram 350.0.0.0.0 Android";
+    const originalUserAgent = window.navigator.userAgent;
+    const writeTextMock = jest.fn();
+    const buildIntentUrlMock = buildIntentUrl as jest.MockedFunction<typeof buildIntentUrl>;
+
+    function setUserAgent(ua: string) {
+      Object.defineProperty(window.navigator, "userAgent", { value: ua, configurable: true });
+    }
+
+    beforeEach(() => {
+      writeTextMock.mockReset().mockResolvedValue(undefined);
+      Object.defineProperty(window.navigator, "clipboard", {
+        value: { writeText: writeTextMock },
+        configurable: true,
+      });
+      window.history.replaceState({}, "", "/campaigns/halloween-best-shot?utm_source=meta#hbs-works");
+    });
+
+    afterEach(() => {
+      setUserAgent(originalUserAgent);
+      window.history.replaceState({}, "", "/");
+    });
+
+    const notice = () => screen.queryByText(/Google ログインが使えません/);
+    const oauthButtons = () =>
+      screen
+        .getAllByRole("button")
+        .map((button) => button.textContent ?? "")
+        .filter((text) => text === "Googleで続ける" || text === "X (Twitter)で続ける");
+
+    test("iPhoneのアプリ内ブラウザでは_押す前からGoogleが使えない案内を出し_Xを先に並べる", async () => {
+      setUserAgent(IOS_INSTAGRAM_UA);
+      render(<AuthForm mode="signup" />);
+
+      expect(await screen.findByText(/Google ログインが使えません/)).toBeInTheDocument();
+      expect(oauthButtons()).toEqual(["X (Twitter)で続ける", "Googleで続ける"]);
+    });
+
+    test("ふつうのブラウザでは_案内を出さず_Googleを先に並べる", () => {
+      render(<AuthForm mode="signup" />);
+
+      expect(notice()).not.toBeInTheDocument();
+      expect(oauthButtons()).toEqual(["Googleで続ける", "X (Twitter)で続ける"]);
+    });
+
+    test("Androidのアプリ内ブラウザでは_Googleで外のブラウザに移れるので案内を出さない", async () => {
+      setUserAgent(ANDROID_INSTAGRAM_UA);
+      render(<AuthForm mode="signup" />);
+
+      // useEffect で判定が終わるのを待ってから、出ていないことを確かめる
+      await act(async () => {});
+      expect(notice()).not.toBeInTheDocument();
+      expect(oauthButtons()).toEqual(["Googleで続ける", "X (Twitter)で続ける"]);
+    });
+
+    test("iPhoneでコピーするURLに_流入元を付ける", async () => {
+      setUserAgent(IOS_INSTAGRAM_UA);
+      render(<AuthForm mode="signup" signupSource="halloween-best-shot_meta_ig" />);
+      await screen.findByText(/Google ログインが使えません/);
+
+      fireEvent.click(screen.getByRole("button", { name: "Googleで続ける" }));
+      fireEvent.click(await screen.findByRole("button", { name: "URLをコピーして閉じる" }));
+
+      await waitFor(() => {
+        expect(writeTextMock).toHaveBeenCalledWith(
+          "http://localhost/campaigns/halloween-best-shot?utm_source=meta&signup_source=halloween-best-shot_meta_ig#hbs-works"
+        );
+      });
+      expect(signInWithOAuthMock).not.toHaveBeenCalled();
+    });
+
+    test("iPhoneでURLにすでに流入元があれば_そのままコピーする", async () => {
+      setUserAgent(IOS_INSTAGRAM_UA);
+      window.history.replaceState({}, "", "/login?signup_source=style");
+      render(<AuthForm mode="signin" signupSource="halloween-best-shot" />);
+      await screen.findByText(/Google ログインが使えません/);
+
+      fireEvent.click(screen.getByRole("button", { name: "Googleで続ける" }));
+      fireEvent.click(await screen.findByRole("button", { name: "URLをコピーして閉じる" }));
+
+      await waitFor(() => {
+        expect(writeTextMock).toHaveBeenCalledWith("http://localhost/login?signup_source=style");
+      });
+    });
+
+    test("iPhoneで流入元が無ければ_URLをそのままコピーする", async () => {
+      setUserAgent(IOS_INSTAGRAM_UA);
+      render(<AuthForm mode="signup" />);
+      await screen.findByText(/Google ログインが使えません/);
+
+      fireEvent.click(screen.getByRole("button", { name: "Googleで続ける" }));
+      fireEvent.click(await screen.findByRole("button", { name: "URLをコピーして閉じる" }));
+
+      await waitFor(() => {
+        expect(writeTextMock).toHaveBeenCalledWith(
+          "http://localhost/campaigns/halloween-best-shot?utm_source=meta#hbs-works"
+        );
+      });
+    });
+
+    test("Androidで外のブラウザに移すURLに_流入元を付ける", async () => {
+      setUserAgent(ANDROID_INSTAGRAM_UA);
+      render(<AuthForm mode="signup" signupSource="halloween-best-shot_meta_ig" />);
+      await act(async () => {});
+
+      fireEvent.click(screen.getByRole("button", { name: "Googleで続ける" }));
+
+      expect(buildIntentUrlMock).toHaveBeenCalledWith(
+        "http://localhost/campaigns/halloween-best-shot?utm_source=meta&signup_source=halloween-best-shot_meta_ig#hbs-works"
+      );
+      expect(signInWithOAuthMock).not.toHaveBeenCalled();
     });
   });
 });

@@ -383,12 +383,14 @@ export const viMessages = {
     sendResetEmail: "Gửi email",
     resetPasswordSubmit: "Cập nhật mật khẩu",
     backToLogin: "Quay về đăng nhập",
-    webViewDialogTitle: "Đăng nhập không khả dụng trong {appName}",
+    webViewDialogTitle: "Không thể đăng nhập bằng Google trong {appName}",
     webViewDialogDescription:
       "Vui lòng sao chép URL và mở trong trình duyệt để đăng nhập.",
     webViewCopyUrl: "Sao chép URL",
     webViewCopyUrlAndClose: "Sao chép URL và đóng",
     webViewUrlCopied: "Đã sao chép!",
+    webViewGoogleNotice:
+      "Không thể đăng nhập bằng Google trong ứng dụng {appName}. Bạn có thể đăng ký hoặc đăng nhập bằng địa chỉ email hoặc X.",
   },
   contact: {
     pageTitle: "Liên hệ",

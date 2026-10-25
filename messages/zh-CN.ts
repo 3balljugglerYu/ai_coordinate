@@ -383,12 +383,14 @@ export const zhCnMessages = {
     sendResetEmail: "发送邮件",
     resetPasswordSubmit: "更新密码",
     backToLogin: "返回登录",
-    webViewDialogTitle: "{appName} 中无法登录",
+    webViewDialogTitle: "{appName} 中无法使用 Google 登录",
     webViewDialogDescription:
       "请复制 URL 后在浏览器中打开进行登录。",
     webViewCopyUrl: "复制 URL",
     webViewCopyUrlAndClose: "复制 URL 并关闭",
     webViewUrlCopied: "已复制!",
+    webViewGoogleNotice:
+      "在 {appName} 应用内无法使用 Google 登录。您可以使用电子邮件地址或 X 注册或登录。",
   },
   contact: {
     pageTitle: "联系我们",

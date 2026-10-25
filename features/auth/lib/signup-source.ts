@@ -24,6 +24,26 @@ export function parseSignupSource(
   return SIGNUP_SOURCE_PATTERN.test(normalized) ? normalized : null;
 }
 
+/**
+ * href に signup_source を付けて返す。アプリ内ブラウザから外のブラウザへ移るとき、
+ * first-touch cookie は移らないので、流入元を URL に載せて引き継ぐ。
+ * すでに signup_source がある URL は書き換えない(着地時の明示指定を優先する)。
+ */
+export function withSignupSourceParam(
+  href: string,
+  source: SignupSource | null
+): string {
+  if (!source) return href;
+  try {
+    const url = new URL(href);
+    if (url.searchParams.has("signup_source")) return href;
+    url.searchParams.set("signup_source", source);
+    return url.toString();
+  } catch {
+    return href;
+  }
+}
+
 export function buildStyleSignupPath(nextPath = "/style"): string {
   return `/signup?${new URLSearchParams({
     next: nextPath,

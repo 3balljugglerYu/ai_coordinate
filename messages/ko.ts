@@ -383,12 +383,14 @@ export const koMessages = {
     sendResetEmail: "메일 전송",
     resetPasswordSubmit: "비밀번호 변경",
     backToLogin: "로그인으로 돌아가기",
-    webViewDialogTitle: "{appName} 에서는 로그인을 사용할 수 없습니다",
+    webViewDialogTitle: "{appName} 에서는 Google 로그인을 사용할 수 없습니다",
     webViewDialogDescription:
       "URL을 복사한 후 브라우저에서 열어 로그인해 주세요.",
     webViewCopyUrl: "URL 복사",
     webViewCopyUrlAndClose: "URL 복사 후 닫기",
     webViewUrlCopied: "복사 완료!",
+    webViewGoogleNotice:
+      "{appName} 앱 안에서는 Google 로그인을 사용할 수 없습니다. 이메일 주소나 X로 가입하거나 로그인해 주세요.",
   },
   contact: {
     pageTitle: "문의",

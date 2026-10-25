@@ -383,12 +383,14 @@ export const arMessages = {
     sendResetEmail: "إرسال البريد",
     resetPasswordSubmit: "تحديث كلمة المرور",
     backToLogin: "العودة إلى تسجيل الدخول",
-    webViewDialogTitle: "تسجيل الدخول غير متاح في {appName}",
+    webViewDialogTitle: "تسجيل الدخول عبر Google غير متاح في {appName}",
     webViewDialogDescription:
       "يُرجى نسخ الرابط وفتحه في متصفحك لتسجيل الدخول.",
     webViewCopyUrl: "نسخ الرابط",
     webViewCopyUrlAndClose: "نسخ الرابط والإغلاق",
     webViewUrlCopied: "تم النسخ!",
+    webViewGoogleNotice:
+      "تسجيل الدخول عبر Google غير متاح داخل تطبيق {appName}. يمكنك التسجيل أو تسجيل الدخول باستخدام بريدك الإلكتروني أو X.",
   },
   contact: {
     pageTitle: "تواصل معنا",

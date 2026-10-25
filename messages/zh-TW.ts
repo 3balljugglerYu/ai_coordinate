@@ -383,12 +383,14 @@ export const zhTwMessages = {
     sendResetEmail: "寄出郵件",
     resetPasswordSubmit: "更新密碼",
     backToLogin: "返回登入",
-    webViewDialogTitle: "{appName} 內無法登入",
+    webViewDialogTitle: "{appName} 內無法使用 Google 登入",
     webViewDialogDescription:
       "請複製 URL，並在瀏覽器中開啟以登入。",
     webViewCopyUrl: "複製 URL",
     webViewCopyUrlAndClose: "複製 URL 並關閉",
     webViewUrlCopied: "已複製!",
+    webViewGoogleNotice:
+      "在 {appName} 應用程式內無法使用 Google 登入。您可以使用電子郵件地址或 X 註冊或登入。",
   },
   contact: {
     pageTitle: "聯絡我們",

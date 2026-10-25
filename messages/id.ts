@@ -383,12 +383,14 @@ export const idMessages = {
     sendResetEmail: "Kirim email",
     resetPasswordSubmit: "Perbarui kata sandi",
     backToLogin: "Kembali ke masuk",
-    webViewDialogTitle: "Masuk tidak tersedia di {appName}",
+    webViewDialogTitle: "Masuk dengan Google tidak tersedia di {appName}",
     webViewDialogDescription:
       "Silakan salin URL dan buka di browser untuk masuk.",
     webViewCopyUrl: "Salin URL",
     webViewCopyUrlAndClose: "Salin URL dan tutup",
     webViewUrlCopied: "Tersalin!",
+    webViewGoogleNotice:
+      "Masuk dengan Google tidak tersedia di dalam aplikasi {appName}. Anda dapat mendaftar atau masuk dengan alamat email atau X.",
   },
   contact: {
     pageTitle: "Kontak",

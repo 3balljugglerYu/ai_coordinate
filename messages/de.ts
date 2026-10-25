@@ -383,12 +383,14 @@ export const deMessages = {
     sendResetEmail: "E-Mail senden",
     resetPasswordSubmit: "Passwort aktualisieren",
     backToLogin: "Zurück zur Anmeldung",
-    webViewDialogTitle: "Anmeldung in {appName} nicht verfügbar",
+    webViewDialogTitle: "Anmeldung mit Google in {appName} nicht verfügbar",
     webViewDialogDescription:
       "Bitte kopiere die URL und öffne sie im Browser, um dich anzumelden.",
     webViewCopyUrl: "URL kopieren",
     webViewCopyUrlAndClose: "URL kopieren und schließen",
     webViewUrlCopied: "Kopiert!",
+    webViewGoogleNotice:
+      "Die Anmeldung mit Google ist in der {appName}-App nicht verfügbar. Du kannst dich mit deiner E-Mail-Adresse oder mit X registrieren oder anmelden.",
   },
   contact: {
     pageTitle: "Kontakt",

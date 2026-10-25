@@ -383,12 +383,14 @@ export const thMessages = {
     sendResetEmail: "ส่งอีเมล",
     resetPasswordSubmit: "อัปเดตรหัสผ่าน",
     backToLogin: "กลับไปหน้าเข้าสู่ระบบ",
-    webViewDialogTitle: "ไม่สามารถเข้าสู่ระบบใน {appName}",
+    webViewDialogTitle: "ไม่สามารถเข้าสู่ระบบด้วย Google ใน {appName}",
     webViewDialogDescription:
       "โปรดคัดลอก URL แล้วเปิดในเบราว์เซอร์เพื่อเข้าสู่ระบบ",
     webViewCopyUrl: "คัดลอก URL",
     webViewCopyUrlAndClose: "คัดลอก URL และปิด",
     webViewUrlCopied: "คัดลอกแล้ว!",
+    webViewGoogleNotice:
+      "ไม่สามารถเข้าสู่ระบบด้วย Google ภายในแอป {appName} ได้ คุณสามารถสมัครหรือเข้าสู่ระบบด้วยอีเมลหรือ X",
   },
   contact: {
     pageTitle: "ติดต่อ",

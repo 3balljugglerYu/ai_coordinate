@@ -4,6 +4,7 @@ import {
   appendSignupChannel,
   detectSignupChannel,
   parseSignupSource,
+  withSignupSourceParam,
 } from "@/features/auth/lib/signup-source";
 
 describe("parseSignupSource", () => {
@@ -115,5 +116,32 @@ describe("appendSignupChannel", () => {
   test("つなぐと40字を超えるときは、元のまま(DB の書式に合わない値を作らない)", () => {
     const long = "a".repeat(38);
     expect(appendSignupChannel(long, "meta")).toBe(long);
+  });
+});
+
+describe("withSignupSourceParam", () => {
+  test("流入元があれば signup_source を付ける(ほかのクエリと # は残す)", () => {
+    expect(
+      withSignupSourceParam(
+        "https://www.persta.ai/campaigns/halloween-best-shot?utm_source=meta#hbs-works",
+        "halloween-best-shot_meta_ig"
+      )
+    ).toBe(
+      "https://www.persta.ai/campaigns/halloween-best-shot?utm_source=meta&signup_source=halloween-best-shot_meta_ig#hbs-works"
+    );
+  });
+
+  test("URL にすでに signup_source があれば書き換えない", () => {
+    const href = "https://www.persta.ai/login?signup_source=style";
+    expect(withSignupSourceParam(href, "halloween-best-shot")).toBe(href);
+  });
+
+  test("流入元が無ければ URL をそのまま返す", () => {
+    const href = "https://www.persta.ai/login?next=%2Fstyle";
+    expect(withSignupSourceParam(href, null)).toBe(href);
+  });
+
+  test("URL として読めない値はそのまま返す", () => {
+    expect(withSignupSourceParam("not a url", "style")).toBe("not a url");
   });
 });
