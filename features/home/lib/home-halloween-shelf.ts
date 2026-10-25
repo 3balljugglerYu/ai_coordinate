@@ -32,11 +32,17 @@ export async function getHomeHalloweenShelfItems(
   }
 }
 
-/** ホームの棚の上に出す、エントリーした人の進み具合 */
-export interface HomeHalloweenEntryProgressData {
-  /** 使ったちがう対象作品の数(エントリー前の投稿も含む) */
-  usedWorks: number;
-}
+/**
+ * ホームの棚の上に出す、本人のエントリーの状態。
+ * エントリー済みなら進み具合、まだならエントリーの呼びかけ(2026-10-25)を出す。
+ */
+export type HomeHalloweenEntryProgressData =
+  | {
+      entered: true;
+      /** 使ったちがう対象作品の数(エントリー前の投稿も含む) */
+      usedWorks: number;
+    }
+  | { entered: false };
 
 type ProgressRow = {
   used_works: number | null;
@@ -47,8 +53,11 @@ type ProgressRow = {
  * エントリーした人の進み具合(2026-10-17 ユーザー指示: エントリーした人は、ホームのハロウィン企画の上に進み具合を出す)。
  *
  * 数え方は企画ページの進み具合と同じ get_hashtag_campaign_progress(本人ごとの値なので、キャッシュしない)。
- * 未ログイン・期間外・未エントリーなら null。期間外とログインしていないときは読みに行かない。
- * **読めなかったら null を返す(投げない)。** 進み具合が出ないだけで、棚と簡単お着替えは出す。
+ * 2026-10-25 ユーザー指示: ログインしていてまだエントリーしていない人(全員)には、エントリーを呼びかける
+ * → `{ entered: false }` を返す。
+ * 未ログイン・期間外なら null。期間外とログインしていないときは読みに行かない。
+ * **読めなかったら null を返す(投げない)。** 何も出ないだけで、棚と簡単お着替えは出す
+ * (読めないのにエントリーしていないと決めつけて、エントリー済みの人に呼びかけない)。
  */
 export async function getHomeHalloweenEntryProgress(
   userId: string | null,
@@ -69,10 +78,13 @@ export async function getHomeHalloweenEntryProgress(
       return null;
     }
     const row = data as ProgressRow | null;
-    if (!row?.entered_at) {
+    if (!row) {
       return null;
     }
-    return { usedWorks: Math.max(0, Number(row.used_works) || 0) };
+    if (!row.entered_at) {
+      return { entered: false };
+    }
+    return { entered: true, usedWorks: Math.max(0, Number(row.used_works) || 0) };
   } catch (error) {
     console.error("Failed to read the home Halloween entry progress", error);
     return null;

@@ -51,7 +51,7 @@ jest.mock("next/image", () => ({
   // eslint-disable-next-line @next/next/no-img-element -- テスト用に next/image を素の img に置き換える
   default: ({ alt, src }: { alt: string; src: string }) => <img alt={alt} src={src} />,
 }));
-jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn() }) }));
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), refresh: jest.fn() }) }));
 
 const gtag = jest.fn();
 

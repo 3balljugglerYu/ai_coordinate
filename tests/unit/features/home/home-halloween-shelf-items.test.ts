@@ -116,15 +116,27 @@ describe("ホームの棚の上に出す、エントリーした人の進み具�
 
     const progress = await getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00"));
 
-    expect(progress).toEqual({ usedWorks: 4 });
+    expect(progress).toEqual({ entered: true, usedWorks: 4 });
     expect(rpc).toHaveBeenCalledWith("get_hashtag_campaign_progress", {
       p_campaign_key: "halloween-best-shot",
       p_user_id: "user-1",
     });
   });
 
-  test("エントリーしていなければ null(何も出さない)", async () => {
+  test("⭐エントリーしていなければ「まだ」を返す(エントリーを呼びかける。2026-10-25。使った数は問わない)", async () => {
     respond({ data: { used_works: 2, entered_at: null }, error: null });
+    await expect(
+      getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
+    ).resolves.toEqual({ entered: false });
+
+    respond({ data: { used_works: 0, entered_at: null }, error: null });
+    await expect(
+      getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
+    ).resolves.toEqual({ entered: false });
+  });
+
+  test("行が返らなければ null(エントリーしていないと決めつけない)", async () => {
+    respond({ data: null, error: null });
 
     await expect(
       getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
@@ -151,7 +163,7 @@ describe("ホームの棚の上に出す、エントリーした人の進み具�
 
     await expect(
       getHomeHalloweenEntryProgress("user-1", at("2026-10-20T12:00:00+09:00")),
-    ).resolves.toEqual({ usedWorks: 0 });
+    ).resolves.toEqual({ entered: true, usedWorks: 0 });
   });
 
   test("DB がエラーを返したら null(投げない)", async () => {

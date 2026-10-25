@@ -18,6 +18,9 @@ import {
   formatTimeLeft,
 } from "@/features/campaigns/halloween/components/EntryProgressCard";
 
+const mockRefresh = jest.fn();
+jest.mock("next/navigation", () => ({ useRouter: () => ({ push: jest.fn(), refresh: mockRefresh }) }));
+
 jest.mock("next/link", () => ({
   __esModule: true,
   default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
@@ -175,6 +178,32 @@ describe("EntryProgressCard", () => {
       window.matchMedia = originalMatchMedia;
       target.remove();
     }
+  });
+
+  test("エントリーできたら画面のキャッシュを捨てる(ホームに戻ったとき「エントリーして…」を古いまま出さない。2026-10-25)", async () => {
+    mockRefresh.mockClear();
+    mockFetch(progress({ enteredAt: null, usedWorks: 0, celebratedTickets: 0 }), {
+      ok: true,
+      status: 200,
+      json: async () => ({ enteredAt: "2026-10-26T15:00:00.000Z" }),
+    });
+    render(<EntryProgressCard now={DURING} />);
+    fireEvent.click(await screen.findByRole("button", { name: "エントリーする" }));
+    await screen.findByText("✓ エントリー済み");
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  test("エントリーできなかったときは、キャッシュを捨てない", async () => {
+    mockRefresh.mockClear();
+    mockFetch(progress({ enteredAt: null, usedWorks: 0, celebratedTickets: 0 }), {
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    });
+    render(<EntryProgressCard now={DURING} />);
+    fireEvent.click(await screen.findByRole("button", { name: "エントリーする" }));
+    await screen.findByRole("alert");
+    expect(mockRefresh).not.toHaveBeenCalled();
   });
 
   test("Provider の外のカードは、それぞれ自分で読む", async () => {

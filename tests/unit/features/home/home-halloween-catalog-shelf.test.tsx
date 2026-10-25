@@ -202,7 +202,7 @@ describe("ホームの「ハロウィン企画」の棚", () => {
 
   describe("エントリーした人の進み具合(2026-10-17 ユーザー指示)", () => {
     test("⭐進み具合が渡されたら、棚の見出しの上に出す", () => {
-      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ usedWorks: 4 }} />);
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: true, usedWorks: 4 }} />);
 
       const shelf = screen.getByTestId("home-halloween-catalog-shelf");
       const progress = screen.getByTestId("home-halloween-entry-progress");
@@ -213,16 +213,80 @@ describe("ホームの「ハロウィン企画」の棚", () => {
       expect(progress.textContent).toContain("現在 4作品(1口)");
     });
 
-    test("渡されなければ(未ログイン・未エントリー)、出さない", () => {
+    test("渡されなければ(未ログイン・読めなかった)、進み具合も呼びかけも出さない", () => {
       render(<HomeHalloweenCatalogShelf items={ITEMS} />);
 
       expect(screen.queryByTestId("home-halloween-entry-progress")).toBeNull();
+      expect(screen.queryByTestId("home-halloween-entry-invite")).toBeNull();
+    });
+
+    /*
+      2026-10-25 ユーザー指示: ログインしていてまだエントリーしていない人(全員)には、同じ場所でエントリーを呼びかける。
+      文はポジティブに「🎁 エントリーして、Amazonギフトカードを当てよう！」だけ。ボタンの見た目・改行させない。たまった数は出さない
+    */
+    test("⭐まだエントリーしていなければ、棚の見出しの上に「エントリーして、Amazonギフトカードを当てよう！」を出す", () => {
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: false }} />);
+
+      const shelf = screen.getByTestId("home-halloween-catalog-shelf");
+      const invite = screen.getByTestId("home-halloween-entry-invite");
+      const heading = within(shelf).getByRole("heading", { level: 2 });
+      expect(shelf.contains(invite)).toBe(true);
+      expect(invite.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+      const link = within(invite).getByRole("link", { name: "🎁 エントリーして、Amazonギフトカードを当てよう！" });
+      // 押すと企画ページのエントリーの項目へ
+      expect(link.getAttribute("href")).toBe("/campaigns/halloween-best-shot#hbs-entry-top");
+      // 改行させない
+      expect(link.className).toContain("whitespace-nowrap");
+      // 進み具合は出さない・たまった数も出さない
+      expect(screen.queryByTestId("home-halloween-entry-progress")).toBeNull();
+      expect(invite.textContent).not.toMatch(/作品/);
+      // この1行だけ(注記は添えない。ユーザー指示)
+      expect(invite.textContent).toBe("🎁 エントリーして、Amazonギフトカードを当てよう！");
+    });
+
+    test("呼びかけを押したら GA4 に送る(進み具合とは別の名前)", () => {
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: false }} />);
+
+      fireEvent.click(screen.getByRole("link", { name: "🎁 エントリーして、Amazonギフトカードを当てよう！" }));
+
+      expect(gtag).toHaveBeenCalledWith("event", "campaign_home_entry_invite_tap", {});
+    });
+
+    test("対象作品が読めない・まだないときも、呼びかけだけは出す(棚は出さない)", () => {
+      render(<HomeHalloweenCatalogShelf items={[]} entryProgress={{ entered: false }} />);
+
+      expect(screen.getByTestId("home-halloween-entry-invite")).toBeTruthy();
+      expect(screen.queryByTestId("home-halloween-catalog-shelf")).toBeNull();
+    });
+
+    test("対象作品がないとき、エントリー済み・未ログインなら何も出さない", () => {
+      const { container, rerender } = render(
+        <HomeHalloweenCatalogShelf items={[]} entryProgress={{ entered: true, usedWorks: 2 }} />,
+      );
+      expect(container.innerHTML).toBe("");
+      rerender(<HomeHalloweenCatalogShelf items={[]} />);
+      expect(container.innerHTML).toBe("");
+    });
+
+    test("日本語でない画面では、呼びかけも出さない(企画は日本国内向け)", () => {
+      mockLocale.mockReturnValue("en");
+      const { rerender } = render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: false }} />);
+      expect(screen.queryByTestId("home-halloween-entry-invite")).toBeNull();
+      rerender(<HomeHalloweenCatalogShelf items={[]} entryProgress={{ entered: false }} />);
+      expect(screen.queryByTestId("home-halloween-entry-invite")).toBeNull();
+    });
+
+    test("エントリー済みなら、呼びかけは出さない", () => {
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: true, usedWorks: 0 }} />);
+
+      expect(screen.getByTestId("home-halloween-entry-progress")).toBeTruthy();
+      expect(screen.queryByTestId("home-halloween-entry-invite")).toBeNull();
     });
 
     test("日本語でない画面では、棚ごと出さない(進み具合も出ない)", () => {
       mockLocale.mockReturnValue("en");
 
-      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ usedWorks: 4 }} />);
+      render(<HomeHalloweenCatalogShelf items={ITEMS} entryProgress={{ entered: true, usedWorks: 4 }} />);
 
       expect(screen.queryByTestId("home-halloween-entry-progress")).toBeNull();
     });
