@@ -35,6 +35,42 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
+/** 最後に改定した日。日本語と英語の両方で、この1つから出す(本番に出す日にする)。 */
+const PRIVACY_POLICY_REVISED_AT = { year: 2026, month: 10, day: 26 } as const;
+
+const PRIVACY_REVISED_AT_JA = `${PRIVACY_POLICY_REVISED_AT.year}年${PRIVACY_POLICY_REVISED_AT.month}月${PRIVACY_POLICY_REVISED_AT.day}日 改定`;
+const PRIVACY_REVISED_AT_EN = `Last revised: ${new Date(
+  Date.UTC(PRIVACY_POLICY_REVISED_AT.year, PRIVACY_POLICY_REVISED_AT.month - 1, PRIVACY_POLICY_REVISED_AT.day),
+).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })}`;
+
+/** 段落の中で、押せるリンクにする URL(文の中の URL と同じ文字列にすること)。 */
+const PRIVACY_LINKS = [
+  "https://policies.google.com/privacy",
+  "https://tools.google.com/dlpage/gaoptout",
+] as const;
+
+const PRIVACY_LINK_PATTERN =
+  /(https:\/\/policies\.google\.com\/privacy|https:\/\/tools\.google\.com\/dlpage\/gaoptout)/;
+
+function renderParagraph(paragraph: string) {
+  const parts = paragraph.split(PRIVACY_LINK_PATTERN);
+  return parts.map((part, index) =>
+    (PRIVACY_LINKS as readonly string[]).includes(part) ? (
+      <a
+        key={index}
+        href={part}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="break-all text-primary underline underline-offset-2"
+      >
+        {part}
+      </a>
+    ) : (
+      part
+    ),
+  );
+}
+
 export default async function PrivacyPage() {
   const localeValue = await getLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
@@ -44,7 +80,7 @@ export default async function PrivacyPage() {
       ? {
           title: "プライバシーポリシー",
           description: "「Persta.AI」のプライバシーポリシーです。",
-          revisedAt: "2026年10月26日 改定",
+          revisedAt: PRIVACY_REVISED_AT_JA,
           sections: [
             {
               icon: "shield",
@@ -121,7 +157,7 @@ export default async function PrivacyPage() {
                 "当サービスは、ユーザーによりよいサービスを提供するため、Cookie等の技術を使用することがあります。Cookieは、ユーザーのコンピュータに識別子を保存することにより、当サービスの利用状況を把握するために使用されます。ユーザーは、ブラウザの設定により、Cookieの受け取りを拒否することができます。",
                 "当サービスは、利用状況を把握してサービスを改善するため、Google LLC が提供するアクセス解析ツール「Google アナリティクス」を利用しています。Google アナリティクスは Cookie を使って、閲覧したページや利用した端末・ブラウザなどの情報を集めます。",
                 "ログインしているユーザーについては、当サービスの中だけで使う識別子（ユーザー ID）を Google アナリティクスに送り、閲覧の記録と当サービス内での利用（登録・生成・購入など）を結び付けて分析することがあります。メールアドレス・氏名など、個人を直接特定できる情報は送りません。",
-                "集められた情報は、Google のプライバシーポリシー（https://policies.google.com/privacy ）に基づいて管理されます。Google アナリティクスによる情報の収集を望まない場合は、Google アナリティクス オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout ）で止めることができます。",
+                "集められた情報は、Google のプライバシーポリシー（https://policies.google.com/privacy）に基づいて管理されます。Google アナリティクスによる情報の収集を望まない場合は、Google アナリティクス オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout）で止めることができます。",
               ],
             },
             {
@@ -158,7 +194,7 @@ export default async function PrivacyPage() {
         }
       : {
           title: "Privacy Policy",
-          revisedAt: "Last revised: October 26, 2026",
+          revisedAt: PRIVACY_REVISED_AT_EN,
           description:
             "This is the Privacy Policy for Persta.AI. The Japanese version is the authoritative text. This English version is a brief notice while the full translation is being prepared — please consult the Japanese version for binding terms.",
           sections: [
@@ -205,7 +241,7 @@ export default async function PrivacyPage() {
               <CardContent>
                 {section.paragraphs?.map((paragraph) => (
                   <p key={paragraph} className="mb-3 text-sm text-gray-800 last:mb-0">
-                    {paragraph}
+                    {renderParagraph(paragraph)}
                   </p>
                 ))}
                 {section.list ? (
@@ -228,7 +264,7 @@ export default async function PrivacyPage() {
         })}
       </div>
 
-      <p className="mt-6 text-right text-xs text-gray-500">{copy.revisedAt}</p>
+      <p className="mt-6 text-end text-xs text-gray-500">{copy.revisedAt}</p>
     </main>
   );
 }
