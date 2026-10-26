@@ -11,6 +11,7 @@ import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
+import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
 
 const checkoutBodySchema = z.object({
   packageId: z.string().min(1, "packageId is required"),
@@ -178,6 +179,15 @@ export async function POST(request: NextRequest) {
     if (!session.url) {
       return jsonError(copy.checkoutUrlFailed, "CREDITS_CHECKOUT_URL_FAILED", 500);
     }
+
+    // 課金の手前の記録(支払いを始めた)。失敗しても支払いは止めない
+    await recordMonetizationEvent({
+      userId: user.id,
+      eventType: "checkout_start",
+      origin: origin ?? null,
+      product: percoinPackage.id,
+      stripeSessionId: session.id,
+    });
 
     return NextResponse.json({
       mode: "stripe",

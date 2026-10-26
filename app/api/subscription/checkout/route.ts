@@ -20,6 +20,7 @@ import {
   createStripeClient,
   resolveSubscriptionPriceId,
 } from "@/features/subscription/lib/stripe-utils";
+import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
 
 const checkoutBodySchema = z.object({
   planId: z.enum(["light", "standard", "premium"]),
@@ -148,6 +149,14 @@ export async function POST(request: NextRequest) {
         500
       );
     }
+
+    // 課金の手前の記録(支払いを始めた)。失敗しても支払いは止めない
+    await recordMonetizationEvent({
+      userId: user.id,
+      eventType: "checkout_start",
+      product: `subscription:${planId}:${billingInterval}`,
+      stripeSessionId: session.id,
+    });
 
     return NextResponse.json({
       checkoutUrl: session.url,

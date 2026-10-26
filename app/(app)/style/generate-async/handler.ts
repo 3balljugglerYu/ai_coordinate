@@ -50,6 +50,7 @@ import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import { resolveUserPromptMaxLength } from "@/features/style-presets/lib/resolve-user-prompt-settings";
+import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
 
 interface StyleGenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -58,6 +59,8 @@ interface StyleGenerateAsyncRouteDependencies {
   supabaseUrl?: string;
   getPublishedStylePresetForGenerationFn?: typeof getPublishedStylePresetForGeneration;
   recordStyleUsageEventFn?: typeof recordStyleUsageEvent;
+  /** 課金の手前の出来事の記録(残高不足)。失敗しても投げない */
+  recordMonetizationEventFn?: typeof recordMonetizationEvent;
 }
 
 function defaultInvokeImageWorker(edgeFunctionUrl: string) {
@@ -462,6 +465,14 @@ export async function postStyleGenerateAsyncRoute(
 
     const currentBalance = creditData.balance;
     if (currentBalance < percoinCost) {
+      await (dependencies.recordMonetizationEventFn ?? recordMonetizationEvent)({
+        userId: user.id,
+        eventType: "percoin_shortage",
+        feature: "style_generate",
+        whereDetected: "server",
+        required: percoinCost,
+        balance: currentBalance,
+      });
       return jsonError(
         copy.authenticatedPaidInsufficientBalance.replace(
           "{cost}",
