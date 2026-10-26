@@ -1,4 +1,4 @@
-import { stripLocalePrefix } from "@/i18n/config";
+import { locales, stripLocalePrefix } from "@/i18n/config";
 
 /**
  * 広告の計測タグ(Pixel)の設定。
@@ -98,7 +98,7 @@ export function toXPageLocationParams(
 }
 
 /** Meta の広告の Pixel(データセット)の ID(Meta のイベントマネージャー・Persta.AI の Web 用)。 */
-export const META_PIXEL_ID = "1623101996277700";
+export const META_PIXEL_ID = "1451721257058367";
 
 /**
  * Meta の Pixel で読み込んでよい URL に付いていてよい「?」のうしろの名前(広告から来た印・流入元)。
@@ -107,8 +107,10 @@ export const META_PIXEL_ID = "1623101996277700";
  *    ブラウザの本当の値から読み、外から差し替える設定が無い(X の page_location にあたるものが無い)。
  *    そのため、URL そのものが「送ってよいページ・? のうしろは下の名前だけ・# 無し」のときにだけ読み込む。
  */
-const META_ALLOWED_QUERY_KEYS = new Set([
+const META_ALLOWED_QUERY_KEY_LIST = [
+  // Meta の広告から来た印
   "fbclid",
+  // 流入元(広告の URL に付ける)
   "utm_source",
   "utm_medium",
   "utm_campaign",
@@ -116,7 +118,17 @@ const META_ALLOWED_QUERY_KEYS = new Set([
   "utm_content",
   "utm_id",
   "signup_source",
-]);
+  // Instagram の共有・Meta の広告の URL パラメータでよく付くもの
+  "igsh",
+  "igshid",
+  "campaign_id",
+  "adset_id",
+  "ad_id",
+  "placement",
+  "site_source_name",
+] as const;
+// ⚠️ 紹介コード(ref)は入れない(だれが紹介したかが Meta に渡るため)。ref が付いたページでは読み込まない。
+const META_ALLOWED_QUERY_KEYS: ReadonlySet<string> = new Set(META_ALLOWED_QUERY_KEY_LIST);
 
 function isMetaCleanUrl(url: URL): boolean {
   if (url.hash !== "") return false;
@@ -150,3 +162,15 @@ export function isMetaPixelLoadableLocation(href: string, referrer: string): boo
     return false;
   }
 }
+
+/**
+ * Meta の Pixel の読み込みの文(ブラウザで動く)に埋める決まり。
+ * 送る瞬間の URL で確かめるため、isMetaPixelLoadableLocation と同じ決まりを、ブラウザの側でも持つ
+ * (tests/unit/features/analytics/meta-pixel-script.test.tsx で、2つの結果が同じことを確かめる)。
+ */
+export const META_PIXEL_INLINE_RULES = {
+  pathPatterns: SHAREABLE_PATH_PATTERNS.map((pattern) => pattern.source),
+  locales: [...locales],
+  allowedQueryKeys: [...META_ALLOWED_QUERY_KEY_LIST],
+};
+

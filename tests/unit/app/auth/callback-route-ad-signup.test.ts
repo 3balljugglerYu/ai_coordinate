@@ -58,7 +58,7 @@ test("今登録した人には、10分だけ残る印を付ける(中身は 1 �
   expect(cookie).not.toContain("u1");
   // Meta 用の印も、同じ決まりで付ける
   expect(metaSignupCookie(response)).toContain("persta_ad_signup_meta=1");
-  expect(metaSignupCookie(response)).toMatch(/Max-Age=600/i);
+  expect(metaSignupCookie(response)).toMatch(/Max-Age=86400/i);
   // 送った印を残す(2回目は送らない)
   expect(mockUpdateUser).toHaveBeenCalledWith({
     data: expect.objectContaining({ ad_signup_reported_at: expect.any(String) }),
