@@ -14,9 +14,12 @@ import {
   HALLOWEEN_GIFT_KEY,
   isCampaignGiftExcludedPath,
   readCampaignGiftDismissed,
+  readCampaignGiftLater,
   shouldShowCampaignGift,
   writeCampaignGiftDismissed,
+  writeCampaignGiftLater,
   type CampaignGiftClaimResult,
+  type CampaignGiftCloseKind,
   type CampaignGiftStatus,
 } from "../campaign-gift";
 import { CampaignGiftModal } from "./CampaignGiftModal";
@@ -26,8 +29,10 @@ import { CampaignGiftModal } from "./CampaignGiftModal";
  *
  * - 企画の期間中で、日本語の画面のときだけ(企画は国内向け)。受け付けの期間の正本は DB(GET の open)
  * - ログインまわり・管理画面・購入の画面では出さない
- * - この端末で閉じたら、もう出さない(人ごとに覚える。ログインしていないときに閉じても、ログインしたあとはもう一度出る)。
- *   受け取りの途中・受け取れなかったときに閉じたら、覚えない(次にページを開いたとき、もう一度出る)
+ * - 閉じたときの覚え方は campaign-gift.ts の CampaignGiftCloseKind:
+ *   受け取った・もう受け取っていた・受け付けが終わっていた → この端末でもう出さない。
+ *   「あとで」→ 3時間出さない(人ごとに覚える。ログインしていないときに押しても、ログインしたあとは出る)。
+ *   受け取れなかった・「ログインして受け取る」→ 同じページでは出し直さず、別のページを開いたら出す(この画面の中だけで覚える)
  * - ほかのモーダルが出ている間・チュートリアルの途中は待つ(口数のお祝いと同じく 0.5 秒ごと・最大 60 秒)
  */
 
@@ -94,6 +99,7 @@ function CampaignGift() {
     if (snoozedPath === pathname) return;
     if (isQuiet(userId, Date.now())) return;
     if (readCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, userId)) return;
+    if (readCampaignGiftLater(HALLOWEEN_GIFT_KEY, userId)) return;
 
     let cancelled = false;
     let timer: number | undefined;
@@ -111,7 +117,13 @@ function CampaignGift() {
           writeCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, userId);
           return;
         }
-        if (!shouldShowCampaignGift({ status: next, dismissed: readCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, userId) })) {
+        if (
+          !shouldShowCampaignGift({
+            status: next,
+            dismissed: readCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, userId),
+            later: readCampaignGiftLater(HALLOWEEN_GIFT_KEY, userId),
+          })
+        ) {
           return;
         }
         let waited = 0;
@@ -141,16 +153,20 @@ function CampaignGift() {
   }, [isCampaignOpen, auth.status, userId, excluded, visible, snoozedPath, pathname]);
 
   /**
-   * 閉じた。remember=false(受け取りの途中・受け取れなかった)のときは覚えない。
-   * 覚えると、受け取れていないのに、この端末ではもう出なくなるため
+   * 閉じた(覚え方は campaign-gift.ts の CampaignGiftCloseKind)。
+   * 覚える人は、サーバーの見え方で決める(ブラウザではログイン中でも、サーバーで未ログインなら guest として覚える)
    */
   const handleClose = useCallback(
-    (remember: boolean) => {
+    (kind: CampaignGiftCloseKind) => {
       setOpen(false);
-      if (remember) {
-        // サーバーの見え方で覚える(ブラウザではログイン中でも、サーバーで未ログインなら guest として覚える)
-        const rememberAs = current?.status.signedIn ? current.userId : null;
+      const rememberAs = current?.status.signedIn ? current.userId : null;
+      if (kind === "done") {
         writeCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, rememberAs);
+      } else if (kind === "later") {
+        // 確かめるとき(ブラウザの見え方の人)と同じ人で覚える。ずれると、ページを移るたびに出てしまう。
+        // サーバーの見え方の人とずれていれば、その人でも覚える
+        writeCampaignGiftLater(HALLOWEEN_GIFT_KEY, userId);
+        if (rememberAs !== userId) writeCampaignGiftLater(HALLOWEEN_GIFT_KEY, rememberAs);
       } else {
         setSnoozedPath(pathname);
       }
@@ -159,7 +175,7 @@ function CampaignGift() {
         window.location.reload();
       }
     },
-    [current, pathname],
+    [current, pathname, userId],
   );
 
   const handleClaimed = useCallback(() => {

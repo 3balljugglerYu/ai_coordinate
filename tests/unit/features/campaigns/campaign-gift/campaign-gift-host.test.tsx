@@ -31,7 +31,7 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
   }: {
     open: boolean;
     signedIn: boolean;
-    onClose: (remember: boolean) => void;
+    onClose: (kind: "done" | "later" | "retry") => void;
     onClaimed?: () => void;
     onClaim?: () => Promise<{ status: string }>;
   }) =>
@@ -50,10 +50,13 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
         <button type="button" onClick={() => onClaimed?.()}>
           受け取った
         </button>
-        <button type="button" onClick={() => onClose(true)}>
+        <button type="button" onClick={() => onClose("done")}>
           閉じる
         </button>
-        <button type="button" onClick={() => onClose(false)}>
+        <button type="button" onClick={() => onClose("later")}>
+          あとで
+        </button>
+        <button type="button" onClick={() => onClose("retry")}>
           受け取れずに閉じる
         </button>
       </div>
@@ -61,6 +64,7 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
 }));
 
 import { __resetCampaignGiftQuietForTest, CampaignGiftHost } from "@/features/campaigns/campaign-gift/components/CampaignGiftHost";
+import { __resetCampaignGiftLaterForTest } from "@/features/campaigns/campaign-gift/campaign-gift";
 
 const fetchMock = jest.fn();
 
@@ -70,6 +74,7 @@ function statusResponse(body: object) {
 
 beforeEach(() => {
   __resetCampaignGiftQuietForTest();
+  __resetCampaignGiftLaterForTest();
   jest.useFakeTimers();
   window.localStorage.clear();
   window.sessionStorage.clear();
@@ -324,5 +329,60 @@ test("通信が失敗しても出さず、しばらく聞きに行かない", as
   rerender(<CampaignGiftHost />);
   await settle();
   expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("「あとで」で閉じたら、3時間はどのページでも出さず(聞きにも行かない)、3時間たったら出す", async () => {
+  const { unmount } = render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("あとで").click();
+  });
+  expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
+  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).not.toBeNull();
+  unmount();
+  mockPathname.mockReturnValue("/ja/style");
+  fetchMock.mockClear();
+  const second = render(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).not.toHaveBeenCalled();
+  second.unmount();
+  // 3時間たったことにする
+  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", String(Date.now() - 3 * 60 * 60 * 1000 - 1));
+  __resetCampaignGiftLaterForTest();
+  render(<CampaignGiftHost />);
+  await settle();
+  expect(screen.getByTestId("gift")).toBeInTheDocument();
+});
+
+test("ログインしていない人が「あとで」を押しても、ログインしたあとは出す", async () => {
+  mockAuth.mockReturnValue({ status: "signed-out", user: null });
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: false, amount: 200, expireAt: null }));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("あとで").click();
+  });
+  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:guest")).not.toBeNull();
+  mockAuth.mockReturnValue({ status: "signed-in", user: { id: "user-1" } });
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: true, amount: 200, expireAt: null }));
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(screen.getByTestId("gift")).toHaveAttribute("data-signed-in", "true");
+});
+
+test("ブラウザではログイン中でサーバーでは未ログインのとき、「あとで」でページを移るたびに出し直さない", async () => {
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: false, amount: 200, expireAt: null }));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("あとで").click();
+  });
+  fetchMock.mockClear();
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(screen.queryByTestId("gift")).toBeNull();
 });
 

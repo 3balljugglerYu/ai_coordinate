@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import {
   CAMPAIGN_GIFT_TAPS_TO_OPEN,
   type CampaignGiftClaimResult,
+  type CampaignGiftCloseKind,
 } from "../campaign-gift";
 import styles from "./campaign-gift.module.css";
 
@@ -44,11 +45,10 @@ type Phase = "tapping" | "opening" | "revealed" | "already" | "closed" | "auth" 
 export interface CampaignGiftModalProps {
   open: boolean;
   /**
-   * 閉じた。remember は「この端末で閉じたことを覚えてよいか」。
-   * 受け取れなかったとき(ログインし直しを含む)は false(覚えると、受け取れていないのにもう出なくなる)。
+   * 閉じた。kind は閉じたときの覚え方(campaign-gift.ts の CampaignGiftCloseKind)。
    * 受け取りの途中は閉じられない
    */
-  onClose: (remember: boolean) => void;
+  onClose: (kind: CampaignGiftCloseKind) => void;
   signedIn: boolean;
   /** 贈る額(DB の campaign_gifts から) */
   amount: number;
@@ -306,12 +306,15 @@ export function CampaignGiftModal({
     description = "ハロウィンだけの、特別な贈り物です。なにが入っているかは、開けてのお楽しみ！";
   }
 
-  // 受け取りの途中・受け取れなかったときは、閉じたことを覚えない
-  const remember = phase !== "error" && phase !== "auth";
+  // 閉じたときの覚え方。受け取った・もう受け取っていた・受け付けが終わっていたときだけ、その端末でもう出さない
+  let closeKind: CampaignGiftCloseKind;
+  if (phase === "error" || phase === "auth") closeKind = "retry";
+  else if ((revealed && signedIn) || phase === "already" || phase === "closed") closeKind = "done";
+  else closeKind = "later";
   // 受け取りの途中(ふくらんでいる間)は閉じない。閉じると、受け取りの返事を待たずに画面が消え、二重に受け取ろうとしてしまう
   const close = () => {
     if (phase === "opening") return;
-    onClose(remember);
+    onClose(closeKind);
   };
 
   return (
@@ -411,7 +414,7 @@ export function CampaignGiftModal({
             </Link>
           ) : null}
           {phase === "auth" ? (
-            <Link href={loginHref} onClick={() => onClose(false)} className={cn(PRIMARY_BUTTON_CLASS, styles.flow)} style={PRIMARY_BUTTON_STYLE}>
+            <Link href={loginHref} onClick={() => onClose("retry")} className={cn(PRIMARY_BUTTON_CLASS, styles.flow)} style={PRIMARY_BUTTON_STYLE}>
               ログインし直して受け取る
             </Link>
           ) : null}
@@ -420,7 +423,8 @@ export function CampaignGiftModal({
               href={loginHref}
               onClick={() => {
                 trackCampaignEvent(CAMPAIGN_EVENTS.giftLogin);
-                close();
+                // 受け取ろうとしている(「あとで」ではない)。ログインをやめても、別のページを開いたらまた出す
+                onClose("retry");
               }}
               className={cn(PRIMARY_BUTTON_CLASS, styles.flow)}
               style={PRIMARY_BUTTON_STYLE}
