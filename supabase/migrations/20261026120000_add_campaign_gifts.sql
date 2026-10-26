@@ -39,13 +39,14 @@ ALTER TABLE public.campaign_gifts ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.campaign_gifts FROM PUBLIC, anon, authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.campaign_gifts TO service_role;
 
--- ハロウィン企画: 200ペルコイン。受け付けと期限は 10/31 23:59:00 JST
+-- ハロウィン企画: 200ペルコイン。受け付けは 10/27 0:00 JST から(2026-10-26 ユーザー指定)。
+-- 受け付けの終わりと期限は 10/31 23:59:00 JST
 -- (ほかの無償ペルコインの期限 23:59:59 より早くして、必ず最初に使われるようにする)
 INSERT INTO public.campaign_gifts (campaign_key, amount, opens_at, closes_at, expire_at, reason)
 VALUES (
   'halloween-best-shot',
   200,
-  '2026-10-26 00:00:00+09',
+  '2026-10-27 00:00:00+09',
   '2026-10-31 23:59:00+09',
   '2026-10-31 23:59:00+09',
   'ハロウィンの贈り物'
