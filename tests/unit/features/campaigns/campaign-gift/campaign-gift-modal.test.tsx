@@ -1,0 +1,132 @@
+/**
+ * 企画の贈り物の画面。5回タップで開け、ログインしている人だけ受け取りを1回呼ぶ。
+ * 動きを減らす設定にして、待ち時間なしで確かめる。
+ */
+
+import { act, fireEvent, render, screen } from "@testing-library/react";
+
+jest.mock("@/features/campaigns/lib/campaign-events", () => ({
+  CAMPAIGN_EVENTS: {
+    giftOpen: "campaign_gift_open",
+    giftClaim: "campaign_gift_claim",
+    giftLogin: "campaign_gift_login",
+    giftWorks: "campaign_gift_works",
+  },
+  trackCampaignEvent: jest.fn(),
+}));
+
+import { CampaignGiftModal } from "@/features/campaigns/campaign-gift/components/CampaignGiftModal";
+import type { CampaignGiftClaimResult } from "@/features/campaigns/campaign-gift/campaign-gift";
+
+beforeAll(() => {
+  Object.defineProperty(window, "matchMedia", {
+    configurable: true,
+    value: (query: string) => ({ matches: query.includes("reduce"), addEventListener() {}, removeEventListener() {} }),
+  });
+});
+
+function renderModal(overrides: Partial<React.ComponentProps<typeof CampaignGiftModal>> = {}) {
+  const onClaim = jest.fn(async (): Promise<CampaignGiftClaimResult> => ({ status: "granted", amount: 200, expireAt: "2026-10-31T14:59:00.000Z" }));
+  const onOpenChange = jest.fn();
+  const onClaimed = jest.fn();
+  render(
+    <CampaignGiftModal
+      open
+      onOpenChange={onOpenChange}
+      signedIn
+      amount={200}
+      expireLabel="10月31日 23:59"
+      onClaim={onClaim}
+      onClaimed={onClaimed}
+      loginHref="/login?next=%2Fja"
+      worksHref="/user-styles?campaign=halloween-best-shot"
+      {...overrides}
+    />,
+  );
+  return { onClaim: (overrides.onClaim as jest.Mock | undefined) ?? onClaim, onOpenChange, onClaimed };
+}
+
+async function tap(times: number) {
+  for (let i = 0; i < times; i++) {
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /プレゼント/ }));
+    });
+  }
+}
+
+test("開ける前は、中身(ペルコイン)を書かない", () => {
+  renderModal();
+  expect(screen.getByText("ペルスタ公式から贈り物")).toBeInTheDocument();
+  expect(screen.getByText("タップして開けてね（あと5回）")).toBeInTheDocument();
+  expect(document.body.textContent).not.toContain("ペルコイン");
+});
+
+test("4回では受け取らず、5回目で受け取りを1回だけ呼び、額と期限を出す", async () => {
+  const { onClaim, onClaimed } = renderModal();
+  await tap(4);
+  expect(onClaim).not.toHaveBeenCalled();
+  expect(screen.getByText("タップして開けてね（あと1回）")).toBeInTheDocument();
+  await tap(1);
+  expect(onClaim).toHaveBeenCalledTimes(1);
+  expect(onClaimed).toHaveBeenCalledTimes(1);
+  expect(await screen.findByText("200ペルコインを受け取りました。気に入った対象作品で、うちの子を生成してみてね。")).toBeInTheDocument();
+  expect(screen.getByText("ハロウィン限定・10月31日 23:59 まで")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "対象作品を見る" })).toHaveAttribute("href", "/user-styles?campaign=halloween-best-shot");
+  // 開けたあとにタップしても、もう呼ばない
+  await tap(1);
+  expect(onClaim).toHaveBeenCalledTimes(1);
+});
+
+test("ログインしていない人は、受け取りを呼ばず、5回目のあと「ログインして受け取る」を出す", async () => {
+  const { onClaim } = renderModal({ signedIn: false });
+  await tap(5);
+  expect(onClaim).not.toHaveBeenCalled();
+  expect(await screen.findByRole("link", { name: "ログインして受け取る" })).toHaveAttribute("href", "/login?next=%2Fja");
+  expect(screen.getByText("ログインすると、200ペルコインを受け取れます。気に入った対象作品で、うちの子を生成してみてね。")).toBeInTheDocument();
+});
+
+test("もう受け取っていたら、その旨を出す(コインは出さない)", async () => {
+  const onClaim = jest.fn(async (): Promise<CampaignGiftClaimResult> => ({ status: "already_claimed" }));
+  const { onClaimed } = renderModal({ onClaim });
+  await tap(5);
+  expect(await screen.findByText(/この贈り物は、もう受け取っています。/)).toBeInTheDocument();
+  expect(onClaimed).not.toHaveBeenCalled();
+  expect(screen.queryByText(/ペルコインを受け取りました/)).toBeNull();
+});
+
+test("受け付けが終わっていたら、その旨を出す", async () => {
+  renderModal({ onClaim: jest.fn(async (): Promise<CampaignGiftClaimResult> => ({ status: "closed" })) });
+  await tap(5);
+  expect(await screen.findByText("この贈り物の受け付けは、終わりました。")).toBeInTheDocument();
+});
+
+test("受け取れなかったら、もう一度受け取れる", async () => {
+  const onClaim = jest
+    .fn<Promise<CampaignGiftClaimResult>, []>()
+    .mockResolvedValueOnce({ status: "error" })
+    .mockResolvedValueOnce({ status: "granted", amount: 200, expireAt: "2026-10-31T14:59:00.000Z" });
+  renderModal({ onClaim });
+  await tap(5);
+  const retry = await screen.findByRole("button", { name: "もう一度受け取る" });
+  await act(async () => {
+    fireEvent.click(retry);
+  });
+  expect(onClaim).toHaveBeenCalledTimes(2);
+  expect(await screen.findByText(/200ペルコインを受け取りました/)).toBeInTheDocument();
+});
+
+test("受け取りが投げても、画面は落ちずに、もう一度受け取れるにする", async () => {
+  renderModal({
+    onClaim: jest.fn(async () => {
+      throw new Error("network");
+    }),
+  });
+  await tap(5);
+  expect(await screen.findByRole("button", { name: "もう一度受け取る" })).toBeInTheDocument();
+});
+
+test("「あとで」で閉じる", async () => {
+  const { onOpenChange } = renderModal();
+  fireEvent.click(screen.getByRole("button", { name: "あとで" }));
+  expect(onOpenChange).toHaveBeenCalledWith(false);
+});

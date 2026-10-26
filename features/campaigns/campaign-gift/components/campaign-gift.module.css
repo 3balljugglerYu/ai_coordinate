@@ -1,0 +1,230 @@
+/* 贈り物の画面の動き(見本: 2026-10-26 ユーザーが案A を選び、開くところを派手に・コイン50枚・15%ずつ大きく) */
+
+.top {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, #2a0a35 0%, #3d1050 65%, #56196b 100%);
+}
+
+.stage {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  height: 220px;
+  place-items: center;
+}
+
+.gift {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.gift:focus-visible {
+  outline: 3px solid #ffc23d;
+  outline-offset: 4px;
+  border-radius: 12px;
+}
+
+.gift svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: scale(var(--s, 1));
+  transition: transform 0.2s;
+}
+
+.hit svg {
+  animation: wobble 0.45s ease;
+}
+
+@keyframes wobble {
+  0% { transform: rotate(0) scale(var(--s, 1)); }
+  25% { transform: rotate(calc(var(--amp) * -1)) scale(calc(var(--s, 1) * 1.06)); }
+  50% { transform: rotate(var(--amp)) scale(var(--s, 1)); }
+  75% { transform: rotate(calc(var(--amp) * -0.5)) scale(var(--s, 1)); }
+  100% { transform: rotate(0) scale(var(--s, 1)); }
+}
+
+.charge svg {
+  animation: charge 0.5s linear infinite;
+}
+
+@keyframes charge {
+  0%, 100% { transform: rotate(0) scale(1.75); }
+  10% { transform: rotate(-9deg) scale(1.78); }
+  20% { transform: rotate(9deg) scale(1.75); }
+  30% { transform: rotate(-11deg) scale(1.82); }
+  40% { transform: rotate(11deg) scale(1.79); }
+  50% { transform: rotate(-13deg) scale(1.86); }
+  60% { transform: rotate(13deg) scale(1.83); }
+  70% { transform: rotate(-14deg) scale(1.9); }
+  80% { transform: rotate(14deg) scale(1.87); }
+  90% { transform: rotate(-8deg) scale(1.95); }
+}
+
+.lid {
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transition: transform 0.45s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+.open .lid {
+  transform: translate(30px, -120px) rotate(40deg);
+}
+
+.gone {
+  animation: gift-out 0.4s 0.25s forwards;
+}
+
+@keyframes gift-out {
+  to { opacity: 0; transform: scale(0.7) translateY(12px); }
+}
+
+.rays {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  z-index: 1;
+  width: 520px;
+  height: 520px;
+  margin: -260px 0 0 -260px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg, rgba(255, 214, 110, 0.55) 0deg 8deg, rgba(255, 214, 110, 0) 8deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 0%, #000 30%, transparent 68%);
+  mask: radial-gradient(circle, #000 0%, #000 30%, transparent 68%);
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+.raysOn {
+  animation: rays-in 0.7s ease-out forwards, rays-spin 9s linear infinite;
+}
+
+@keyframes rays-in {
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes rays-spin {
+  to { rotate: 360deg; }
+}
+
+.flash {
+  pointer-events: none;
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  z-index: 4;
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, #fff6d6 30%, rgba(255, 194, 61, 0.9) 55%, rgba(255, 194, 61, 0) 72%);
+  opacity: 0;
+}
+
+.flashOn {
+  animation: flash 0.9s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes flash {
+  0% { opacity: 1; transform: scale(0.5); }
+  35% { opacity: 1; transform: scale(14); }
+  100% { opacity: 0; transform: scale(22); }
+}
+
+.reveal {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 2px;
+}
+
+.pile {
+  width: 132px;
+  height: 132px;
+  object-fit: contain;
+  filter: drop-shadow(0 0 18px rgba(255, 194, 61, 0.8));
+  animation: pile-in 0.7s cubic-bezier(0.2, 1.5, 0.4, 1) both;
+}
+
+@keyframes pile-in {
+  from { transform: scale(0.2) translateY(30px); }
+  to { transform: scale(1) translateY(0); }
+}
+
+.amount {
+  font-size: 2.1rem;
+  font-weight: 900;
+  line-height: 1.1;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 12px rgba(255, 194, 61, 0.7);
+}
+
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.2s, transform 0.2s;
+}
+
+.dotOn {
+  background: #ffc23d;
+  transform: scale(1.1);
+}
+
+.fx {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow: hidden;
+}
+
+.fx img {
+  position: absolute;
+  left: 0;
+  top: 0;
+  will-change: transform, opacity;
+}
+
+/* ボタンの紫→オレンジに流れる色(対象作品のボタンと同じ) */
+.flow {
+  animation: flow 2s linear infinite;
+}
+
+@keyframes flow {
+  from { background-position: 200% 50%; }
+  to { background-position: 0% 50%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flow,
+  .gift svg,
+  .hit svg,
+  .charge svg,
+  .lid,
+  .pile,
+  .rays,
+  .raysOn,
+  .flashOn {
+    animation: none !important;
+    transition: none !important;
+  }
+  .raysOn {
+    opacity: 1;
+    transform: none;
+  }
+}
