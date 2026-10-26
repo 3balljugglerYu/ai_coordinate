@@ -321,13 +321,14 @@ export function CampaignGiftModal({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) close();
+        // ボタンでない閉じ方(Esc など)は、うっかりのことがあるので「あとで」(3時間)にしない。別のページを開いたらまた出す
+        if (!next && phase !== "opening") onClose(closeKind === "later" ? "retry" : closeKind);
       }}
     >
       <DialogContent
         showCloseButton={false}
         className="gap-0 overflow-hidden rounded-2xl border-0 p-0 outline-none sm:max-w-sm"
-        // 外側を触っても閉じない(うっかり閉じると3時間出なくなるため。2026-10-27 ユーザー指示)。閉じるのは × と「あとで」・「閉じる」
+        // 外側を触っても閉じない(2026-10-27 ユーザー指示)。閉じるのは ×・「あとで」・「閉じる」のボタンと Esc キー
         onInteractOutside={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
           event.preventDefault();

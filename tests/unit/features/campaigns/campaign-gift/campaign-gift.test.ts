@@ -137,3 +137,9 @@ test("受け取って閉じたら、「あとで」の時刻は消す", () => {
   expect(window.localStorage.getItem("campaign-gift-later-v2:halloween-best-shot:user-1")).toBeNull();
 });
 
+test("受け取って閉じたら、v2 より前の名前の「あとで」の時刻も消す", () => {
+  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", "1");
+  writeCampaignGiftDismissed("halloween-best-shot", "user-1");
+  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).toBeNull();
+});
+
