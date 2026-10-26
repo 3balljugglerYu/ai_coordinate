@@ -8,6 +8,7 @@ import { MissionDotProvider } from "@/features/challenges/components/MissionDotP
 import { Ga4Script } from "@/features/analytics/components/Ga4Script";
 import { Ga4LoginStatus } from "@/features/analytics/components/Ga4LoginStatus";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
+import { XPixelScript } from "@/features/analytics/components/XPixelScript";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { PostProgressHost } from "@/features/posts/components/PostProgressHost";
 import { GenerationProgressHost } from "@/features/generation/components/GenerationProgressHost";
@@ -166,6 +167,7 @@ export async function LocaleShell({
       <Ga4Script />
       <Ga4LoginStatus />
       <VercelAnalyticsScripts />
+      <XPixelScript />
     </NextIntlClientProvider>
   );
 }

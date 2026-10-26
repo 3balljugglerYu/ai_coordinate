@@ -14,6 +14,7 @@ import { formatLegalDate } from "@/features/legal/lib/legal-text";
  *  - Google アナリティクス: features/analytics/components/Ga4Script.tsx(+ features/analytics/lib/track-event.ts の trackEvent)
  *  - Vercel Analytics・Speed Insights: features/analytics/components/VercelAnalyticsScripts.tsx(+ @vercel/analytics の track)
  *  - Cloudflare Turnstile: features/catalog/components/CatalogSubmissionForm.tsx(作品の申請のフォーム)
+ *  - X の広告の Pixel: features/analytics/components/XPixelScript.tsx(設定は features/analytics/lib/ad-pixels.ts)
  * 日本語が正本。ほかの言語は、送り先の一覧と日本語のページへの案内を出す(プライバシーポリシーと同じ)。
  */
 
@@ -75,12 +76,33 @@ const DESTINATIONS_JA: Destination[] = [
       },
     ],
   },
+  {
+    name: "4. X の広告の計測タグ（X Pixel）",
+    rows: [
+      { label: "送り先", text: "X Corp." },
+      {
+        label: "使い道",
+        text: "X に出した当サービスの広告の効果（広告を見た人・押した人が、当サービスを訪れたか）を測り、広告の配信を調整するため。X は、この情報を、X での広告の表示に使うことがあります",
+      },
+      {
+        label: "送る情報",
+        text: "開いたページの URL（当サービスの最初のページ・企画・カタログ・スタイル・使い方・料金などのページだけで、ドメインとページの場所だけを送ります。「?」「#」のうしろは送りません。投稿・作品・プロフィール・共有・ログイン・検索などのページでは、URL を送りません）、端末・OS・ブラウザの種類と端末の機種名、言語、タイムゾーン、画面の大きさ・色の深さ・画素の細かさ、CPU のコアの数、タッチ操作に対応しているか、ブラウザのトラッキング拒否（Do Not Track）の設定、電池の残量と充電中かどうか、IP アドレス、Cookie などに保存した識別子、X の広告から来たことを示す値、ページを開いた日時。ページを読み込んだときに1回だけ送ります（当サービスの中でほかのページへ移ったときは送りません）。管理画面から開いたときは読み込みません。来る前のページの URL、押したボタンの文字、フォームに入力した内容（メールアドレス・電話番号・名前など）、ページにいた時間は送りません",
+      },
+      { label: "送り先のプライバシーポリシー", link: "https://x.com/ja/privacy" },
+      {
+        label: "オプトアウト",
+        text: "X の設定の「広告の環境設定」で、パーソナライズド広告をオフにできます（X にログインした状態で行います）。方法は X のヘルプをご覧ください",
+        link: "https://help.x.com/ja/safety-and-security/privacy-controls-for-tailored-ads",
+      },
+    ],
+  },
 ];
 
 const DESTINATIONS_EN = [
   "Google Analytics (Google LLC): usage measurement and analysis. When you are logged in, an identifier used only within the Service (user ID) is also sent.",
   "Vercel Analytics and Vercel Speed Insights (Vercel Inc.): measurement of page views and page speed.",
   "Cloudflare Turnstile (Cloudflare, Inc.): prevention of automated submissions, on the work submission form only.",
+  "X Pixel (X Corp.): measuring the effectiveness of the Service's ads on X and adjusting ad delivery. X may use this information to show ads on X.",
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -132,8 +154,8 @@ export default async function ExternalTransmissionPage() {
         </h1>
         <p className="mt-2 text-sm text-gray-600">
           {isJa
-            ? "Persta.AI（以下「当サービス」）では、サービスの利用状況を把握して改善するため、利用者の端末から、次の外部の事業者へ、利用者に関する情報を送っています。電気通信事業法第27条の12（外部送信規律）にもとづき、送る情報の中身・送り先・送り先での使い道をお知らせします。"
-            : "To understand and improve how the Service is used, Persta.AI sends information about users from their devices to the outside companies below. The Japanese version of this page is the authoritative text and lists in detail what is sent, to whom, and for what purpose."}
+            ? "Persta.AI（以下「当サービス」）では、サービスの利用状況を把握して改善するため、また、当サービスの広告の効果を測るため、利用者の端末から、次の外部の事業者へ、利用者に関する情報を送っています。電気通信事業法第27条の12（外部送信規律）にもとづき、送る情報の中身・送り先・送り先での使い道をお知らせします。"
+            : "To understand and improve how the Service is used, and to measure the effectiveness of its ads, Persta.AI sends information about users from their devices to the outside companies below. The Japanese version of this page is the authoritative text and lists in detail what is sent, to whom, and for what purpose."}
         </p>
       </div>
 
