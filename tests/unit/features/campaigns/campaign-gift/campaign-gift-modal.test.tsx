@@ -207,3 +207,43 @@ test("受け取りの途中は閉じない", async () => {
   expect(await screen.findByText(/10\/31までの限定ペルコインGET！/)).toBeInTheDocument();
 });
 
+test("外側を触っても閉じない(閉じるのは × と「あとで」)", async () => {
+  const { onClose } = renderModal();
+  const outside = document.createElement("button");
+  document.body.appendChild(outside);
+  try {
+    // Radix は、開いた直後のタップを拾わないよう、少し遅れてから外側の監視を始める
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    });
+    await act(async () => {
+      fireEvent.pointerDown(outside);
+      fireEvent.mouseDown(outside);
+      fireEvent.click(outside);
+      outside.focus();
+    });
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByText("タップして開けてね（あと5回）")).toBeInTheDocument();
+  } finally {
+    outside.remove();
+  }
+});
+
+test("Esc キーで閉じたときは「あとで」(3時間)にせず、別のページでまた出す(retry)", async () => {
+  const { onClose } = renderModal();
+  await act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  });
+  expect(onClose).toHaveBeenCalledWith("retry");
+});
+
+test("受け取ったあとに Esc で閉じたら、もう出さない(done)", async () => {
+  const { onClose } = renderModal();
+  await tap(5);
+  await screen.findByText(/限定ペルコインGET！/);
+  await act(async () => {
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+  });
+  expect(onClose).toHaveBeenCalledWith("done");
+});
+

@@ -74,8 +74,9 @@ export function readCampaignGiftDismissed(campaignKey: string, userId: string | 
 export function writeCampaignGiftDismissed(campaignKey: string, userId: string | null): void {
   try {
     window.localStorage.setItem(campaignGiftDismissKey(campaignKey, userId), "1");
-    // もう出さないので、「あとで」の時刻は要らない(端末に残し続けない)
+    // もう出さないので、「あとで」の時刻は要らない(端末に残し続けない。v2 より前の名前のものも消す)
     window.localStorage.removeItem(campaignGiftLaterKey(campaignKey, userId));
+    window.localStorage.removeItem(`campaign-gift-later:${campaignKey}:${userId ?? "guest"}`);
   } catch {
     // 残せない端末では、次に開いたときにもう一度出る(受け取りは DB で1回だけなので害はない)
   }
@@ -88,9 +89,12 @@ export function writeCampaignGiftDismissed(campaignKey: string, userId: string |
  */
 export const CAMPAIGN_GIFT_LATER_MS = 3 * 60 * 60 * 1000;
 
-/** 「あとで」で閉じた時刻を覚えるキー。人ごとに分ける(ログインしていない人は guest) */
+/**
+ * 「あとで」で閉じた時刻を覚えるキー。人ごとに分ける(ログインしていない人は guest)。
+ * v2: 外側を触っただけで閉じていた(=「あとで」扱い)ころの覚えを使わないよう、名前を変えた(2026-10-27)
+ */
 export function campaignGiftLaterKey(campaignKey: string, userId: string | null): string {
-  return `campaign-gift-later:${campaignKey}:${userId ?? "guest"}`;
+  return `campaign-gift-later-v2:${campaignKey}:${userId ?? "guest"}`;
 }
 
 /** 端末に残せないブラウザのための、ページを開いている間だけの控え */
