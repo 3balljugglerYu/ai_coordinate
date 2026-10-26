@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getUser } from "@/lib/auth";
-import { getAdminUserIds } from "@/lib/env";
+import { ensureAdminPage } from "@/lib/admin-page-guard";
 import { AdminHeader } from "./AdminHeader";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminMobileNav } from "./AdminMobileNav";
@@ -30,12 +28,7 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const user = await getUser();
-  const adminUserIds = getAdminUserIds();
-
-  if (!user || adminUserIds.length === 0 || !adminUserIds.includes(user.id)) {
-    redirect("/");
-  }
+  await ensureAdminPage();
 
   return (
     <div

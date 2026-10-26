@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { ensureAdminPage } from "@/lib/admin-page-guard";
 import { Card, CardContent } from "@/components/ui/card";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCreatorLooksTwoStageVisibility } from "@/features/inspire/lib/creator-looks-two-stage";
@@ -10,10 +11,12 @@ export const metadata = {
 
 /**
  * Creator Looks「2段階(衣装＋背景)生成モード」の公開レベルを管理する admin 設定ページ。
- * admin 認可は app/(app)/admin/layout.tsx で一括(非 admin は / へ redirect)。
+ * admin 認可はレイアウトに加えて、ページの先頭でも行う(lib/admin-page-guard.ts)。
  */
 export default async function AdminCreatorLooksTwoStagePage() {
   await connection();
+  // レイアウトの確認だけでは、ページのデータが先に流れ出る(lib/admin-page-guard.ts)
+  await ensureAdminPage();
 
   const visibility = await getCreatorLooksTwoStageVisibility(
     createAdminClient(),
