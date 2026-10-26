@@ -1,4 +1,5 @@
 import { AdminDashboardView } from "@/features/admin-dashboard/components/AdminDashboardView";
+import { ensureAdminPage } from "@/lib/admin-page-guard";
 import {
   AdminCollectionsView,
   type AdminCollectionSeries,
@@ -50,6 +51,8 @@ export default async function AdminDashboardPage({
   searchParams,
 }: AdminDashboardPageProps) {
   await connection();
+  // レイアウトの確認だけでは、ページのデータが先に流れ出る(lib/admin-page-guard.ts)
+  await ensureAdminPage();
 
   const params = (await searchParams) ?? {};
   const range = parseDashboardRange(params.range);

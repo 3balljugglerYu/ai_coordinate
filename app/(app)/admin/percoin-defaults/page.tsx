@@ -1,4 +1,5 @@
 import { connection } from "next/server";
+import { ensureAdminPage } from "@/lib/admin-page-guard";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { Card, CardContent } from "@/components/ui/card";
 import { PercoinDefaultsForm } from "./PercoinDefaultsForm";
@@ -42,6 +43,8 @@ function toFormRow(row: {
  */
 export default async function AdminPercoinDefaultsPage() {
   await connection();
+  // レイアウトの確認だけでは、ページのデータが先に流れ出る(lib/admin-page-guard.ts)
+  await ensureAdminPage();
 
   const supabase = createAdminClient();
 
