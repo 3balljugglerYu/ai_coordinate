@@ -28,6 +28,7 @@ import { SIGNUP_SOURCE_COOKIE } from "./SignupSourceCapture";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
+import { pickSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 /** first-touch で保存された流入元 cookie を読む(SSR では null)。 */
 function readSignupSourceCookie(): string | null {
@@ -109,11 +110,10 @@ export function AuthForm({
     parseSignupSource(searchParams.get("signup_source")) ??
     parseSignupSource(readSignupSourceCookie());
 
+  // 移る先はこのサイトの中のパスだけ(外から渡された「https://evil.com」「//evil.com」などで、よそへ移されないように)。
+  // 候補を順に見て、空でなく決まりに合う最初のものを使う(空の ?redirect= で ?next= が無視されないように)
   const resolveRedirectTarget = () =>
-    redirectTo ??
-    searchParams.get("redirect") ??
-    searchParams.get("next") ??
-    "/";
+    pickSafeRedirectPath([redirectTo, searchParams.get("redirect"), searchParams.get("next")]);
 
   // 保存導線(claim_wardrobe)経由のとき、確認メールが別ブラウザで開く場合の
   // 案内を表示する(=このブラウザに戻ってログインすれば保存される)。

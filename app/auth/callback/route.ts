@@ -1,6 +1,7 @@
 import { connection, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
+import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 const REFERRAL_METADATA_UPDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
@@ -28,7 +29,8 @@ export async function GET(request: Request) {
   await connection();
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get("code");
-  const next = requestUrl.searchParams.get("next") || "/";
+  // 移る先はこのサイトの中のパスだけ(「@evil.com」「//evil.com」などで、よそへ移されないように)
+  const next = toSafeRedirectPath(requestUrl.searchParams.get("next"));
   const referralCode = requestUrl.searchParams.get("ref");
   const signupSource = parseSignupSource(
     requestUrl.searchParams.get("signup_source")
@@ -146,7 +148,7 @@ export async function GET(request: Request) {
     if (referralCode) {
       oauthCompleteQuery.set("ref", referralCode);
     }
-    if (next && next !== "/") {
+    if (next !== "/") {
       oauthCompleteQuery.set("next", next);
     }
     const oauthCompleteSuffix =
