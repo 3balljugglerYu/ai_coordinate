@@ -19,14 +19,27 @@ describe("isAdPixelHost", () => {
 });
 
 describe("isAdPixelExcludedPath", () => {
-  test.each(["/admin", "/admin/analytics-exclusions", "/ja/admin", "/zh-CN/admin/timeline-events", "/auth/callback", "/en/auth/x-complete"])(
+  test.each([
+    "/admin",
+    "/admin/analytics-exclusions",
+    "/ja/admin",
+    "/zh-CN/admin/timeline-events",
+    "/auth/callback",
+    "/en/auth/x-complete",
+    "/login",
+    "/ja/signup",
+    "/reset-password/confirm",
+    "/account/reactivate",
+    "/ja/search",
+    "/ja/admin/",
+  ])(
     "%s は外す",
     (path) => {
       expect(isAdPixelExcludedPath(path)).toBe(true);
     },
   );
 
-  test.each(["/", "/ja", "/style", "/ja/style", "/administrator-guide", "/ja/authors", "/zz/admin"])(
+  test.each(["/", "/ja", "/style", "/ja/style", "/administrator-guide", "/ja/authors", "/zz/admin", "/searching", "/ja/users/abc"])(
     "%s は外さない",
     (path) => {
       expect(isAdPixelExcludedPath(path)).toBe(false);

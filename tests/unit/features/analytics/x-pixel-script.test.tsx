@@ -37,6 +37,18 @@ test("本番のサイトでは、ID つきの読み込みのタグを出す", ()
   expect(script.textContent).toContain("https://static.ads-twitter.com/uwt.js");
 });
 
+test("自動の計測4つを、config より前に止める", () => {
+  setHostname("www.persta.ai");
+  const { getByTestId } = render(<XPixelScript />);
+  const text = getByTestId("x-pixel").textContent ?? "";
+  const configAt = text.indexOf("twq('config','r9ypz')");
+  for (const name of ["autoConfig", "autoAdvancedMatching", "dataLayerTracking", "autoDwellTracking"]) {
+    const at = text.indexOf(`twq('set','${name}','false','r9ypz')`);
+    expect(at).toBeGreaterThan(-1);
+    expect(at).toBeLessThan(configAt);
+  }
+});
+
 test("本番でないサイト(開発・プレビュー)では出さない", () => {
   setHostname("localhost");
   const { queryByTestId } = render(<XPixelScript />);

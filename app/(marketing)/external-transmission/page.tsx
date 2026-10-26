@@ -86,7 +86,7 @@ const DESTINATIONS_JA: Destination[] = [
       },
       {
         label: "送る情報",
-        text: "開いたページの URL、来る前のページの URL、端末・OS・ブラウザの種類、IP アドレス、Cookie などに保存した識別子、ページを開いた日時。管理画面とログインの途中のページでは送りません。メールアドレス・電話番号などは送りません",
+        text: "開いたページの URL、来る前のページの URL、端末・OS・ブラウザの種類、IP アドレス、Cookie などに保存した識別子、ページを開いた日時・離れた日時。ページを離れたときは、そのとき開いているページの URL を送ります（当サービスの中でほかのページへ移ったあとは、移った先のページの URL になります）。管理画面・ログインや登録・パスワードの再設定・検索のページから開いたときは、読み込みません。押したボタンの文字や、フォームに入力した内容（メールアドレス・電話番号・名前など）は送りません",
       },
       { label: "送り先のプライバシーポリシー", link: "https://x.com/ja/privacy" },
       {
@@ -154,8 +154,8 @@ export default async function ExternalTransmissionPage() {
         </h1>
         <p className="mt-2 text-sm text-gray-600">
           {isJa
-            ? "Persta.AI（以下「当サービス」）では、サービスの利用状況を把握して改善するため、利用者の端末から、次の外部の事業者へ、利用者に関する情報を送っています。電気通信事業法第27条の12（外部送信規律）にもとづき、送る情報の中身・送り先・送り先での使い道をお知らせします。"
-            : "To understand and improve how the Service is used, Persta.AI sends information about users from their devices to the outside companies below. The Japanese version of this page is the authoritative text and lists in detail what is sent, to whom, and for what purpose."}
+            ? "Persta.AI（以下「当サービス」）では、サービスの利用状況を把握して改善するため、また、当サービスの広告の効果を測るため、利用者の端末から、次の外部の事業者へ、利用者に関する情報を送っています。電気通信事業法第27条の12（外部送信規律）にもとづき、送る情報の中身・送り先・送り先での使い道をお知らせします。"
+            : "To understand and improve how the Service is used, and to measure the effectiveness of its ads, Persta.AI sends information about users from their devices to the outside companies below. The Japanese version of this page is the authoritative text and lists in detail what is sent, to whom, and for what purpose."}
         </p>
       </div>
 
