@@ -18,6 +18,9 @@ jest.mock("@/features/campaigns/lib/campaign-events", () => ({
 import { CampaignGiftModal } from "@/features/campaigns/campaign-gift/components/CampaignGiftModal";
 import type { CampaignGiftClaimResult } from "@/features/campaigns/campaign-gift/campaign-gift";
 
+// 5回のタップを1回ずつ待つので、テスト全体を流して重いときは5秒を超えることがある
+jest.setTimeout(20_000);
+
 beforeAll(() => {
   Object.defineProperty(window, "matchMedia", {
     configurable: true,
