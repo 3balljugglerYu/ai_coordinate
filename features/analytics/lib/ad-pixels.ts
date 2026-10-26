@@ -12,6 +12,9 @@ import { stripLocalePrefix } from "@/i18n/config";
 /** X の広告の Pixel の ID(X 広告のイベントマネージャー)。 */
 export const X_PIXEL_ID = "r9ypz";
 
+/** 「登録した」のイベントの ID(イベントマネージャーの Lead Generation Tracker・種類は新規登録)。 */
+export const X_SIGNUP_EVENT_ID = "tw-r9ypz-r9yq1";
+
 /**
  * uwt.js が自動で行う計測のうち、止めるもの(`twq('set', <名前>, 'false', <ID>)`)。
  * uwt.js(2026-10-26 に読んだもの)の中の名前。
@@ -20,7 +23,8 @@ export const X_PIXEL_ID = "r9ypz";
  * - dataLayerTracking: GA4 の記録(window.dataLayer)を読み取って、X にも送る
  * - autoDwellTracking: ページにいた時間を送る。これを止めると、ページを離れたとき・
  *   ほかのタブへ切り替えたときの出来事(auto_page_leave)も送られなくなる(同じ止め方を見ている)
- * 4つとも止めると、送るのは config のときの「ページを見た」1回だけになる。
+ * 4つとも止めると、送るのは config のときの「ページを見た」1回と、
+ * 登録が終わったときの「登録した」(X_SIGNUP_EVENT_ID)だけになる。
  * ⚠️ uwt.js は X の CDN から最新を読み込む(版を固定できない)。X が名前を変えたり、自動の計測を
  *    足したりすると、ここで止めたつもりのものが送られうる。外部送信のページを直すときや、
  *    数か月に1度は、uwt.js を読み直して、この名前と送る項目が変わっていないかを確かめること。

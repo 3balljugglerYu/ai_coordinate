@@ -117,3 +117,15 @@ test("登録のページが広告の行き先でも読み込む(URL は送らな
   expect(getByTestId("x-pixel").textContent).toContain(`"hide_page_location":true`);
 });
 
+test("登録が終わったあと(印の Cookie があるとき)は、config のあとに「登録した」を1回送り、印を消す", () => {
+  setHostname("www.persta.ai");
+  const { getByTestId } = render(<XPixelScript />);
+  const text = getByTestId("x-pixel").textContent ?? "";
+  const configAt = text.indexOf("twq('config','r9ypz')");
+  const eventAt = text.indexOf("twq('event','tw-r9ypz-r9yq1',{})");
+  expect(eventAt).toBeGreaterThan(configAt);
+  expect(text).toContain("indexOf('persta_ad_signup=1')");
+  // 付けたときと同じ Path・SameSite で消す(ずれると消えずに、もう一度送ってしまう)
+  expect(text).toContain("document.cookie='persta_ad_signup=; Max-Age=0; Path=/; SameSite=Lax; Secure'");
+});
+

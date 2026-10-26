@@ -86,7 +86,7 @@ const DESTINATIONS_JA: Destination[] = [
       },
       {
         label: "送る情報",
-        text: "開いたページの URL（当サービスの最初のページ・企画・カタログ・スタイル・使い方・料金などのページだけで、ドメインとページの場所だけを送ります。「?」「#」のうしろは送りません。投稿・作品・プロフィール・共有・ログイン・検索などのページでは、URL を送りません）、端末・OS・ブラウザの種類と端末の機種名、言語、タイムゾーン、画面の大きさ・色の深さ・画素の細かさ、CPU のコアの数、タッチ操作に対応しているか、ブラウザのトラッキング拒否（Do Not Track）の設定、電池の残量と充電中かどうか、IP アドレス、Cookie などに保存した識別子、X の広告から来たことを示す値、ページを開いた日時。ページを読み込んだときに1回だけ送ります（当サービスの中でほかのページへ移ったときは送りません）。管理画面から開いたときは読み込みません。来る前のページの URL、押したボタンの文字、フォームに入力した内容（メールアドレス・電話番号・名前など）、ページにいた時間は送りません",
+        text: "開いたページの URL（当サービスの最初のページ・企画・カタログ・スタイル・使い方・料金などのページだけで、ドメインとページの場所だけを送ります。「?」「#」のうしろは送りません。投稿・作品・プロフィール・共有・ログイン・検索などのページでは、URL を送りません）、端末・OS・ブラウザの種類と端末の機種名、言語、タイムゾーン、画面の大きさ・色の深さ・画素の細かさ、CPU のコアの数、タッチ操作に対応しているか、ブラウザのトラッキング拒否（Do Not Track）の設定、電池の残量と充電中かどうか、IP アドレス、Cookie などに保存した識別子、X の広告から来たことを示す値、ページを開いた日時。ページを読み込んだときに1回だけ送ります（当サービスの中でほかのページへ移ったときは送りません）。当サービスへの登録が終わったときは、登録が終わったという出来事も1回送ります（だれが登録したか・メールアドレスなどは送りません）。管理画面から開いたときは読み込みません。来る前のページの URL、押したボタンの文字、フォームに入力した内容（メールアドレス・電話番号・名前など）、ページにいた時間は送りません",
       },
       { label: "送り先のプライバシーポリシー", link: "https://x.com/ja/privacy" },
       {
@@ -102,7 +102,7 @@ const DESTINATIONS_EN = [
   "Google Analytics (Google LLC): usage measurement and analysis. When you are logged in, an identifier used only within the Service (user ID) is also sent.",
   "Vercel Analytics and Vercel Speed Insights (Vercel Inc.): measurement of page views and page speed.",
   "Cloudflare Turnstile (Cloudflare, Inc.): prevention of automated submissions, on the work submission form only.",
-  "X Pixel (X Corp.): measuring the effectiveness of the Service's ads on X and adjusting ad delivery. X may use this information to show ads on X.",
+  "X Pixel (X Corp.): measuring the effectiveness of the Service's ads on X (page visits and completed sign-ups, without who signed up) and adjusting ad delivery. X may use this information to show ads on X.",
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
