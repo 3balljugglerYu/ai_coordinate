@@ -9,7 +9,9 @@ import {
   toXPageLocationParams,
   X_PIXEL_DISABLED_AUTO_FEATURES,
   X_PIXEL_ID,
+  X_SIGNUP_EVENT_ID,
 } from "@/features/analytics/lib/ad-pixels";
+import { AD_SIGNUP_COOKIE, AD_SIGNUP_COOKIE_DELETE } from "@/features/analytics/lib/ad-signup-signal";
 
 /**
  * X の広告の Pixel(広告から来た人が、サイトを訪れたかを測る)。
@@ -22,6 +24,7 @@ import {
  * - 送る URL は toXPageLocationParams で決める(送ってよいページは、ドメインとページの場所だけ。
  *   ほかのページは送らない)。
  * - 送るのは、読み込んだときの「ページを見た」1回だけ(画面の中でページを移っても送らない)。
+ *   登録が終わったあと(AD_SIGNUP_COOKIE があるとき)は、続けて「登録した」を1回送り、印を消す。
  */
 const subscribeNothing = () => () => {};
 
@@ -63,6 +66,10 @@ export function XPixelScript() {
         ${X_PIXEL_DISABLED_AUTO_FEATURES.map((name) => `twq('set','${name}','false','${X_PIXEL_ID}');`).join("\n        ")}
         twq('set',${toInlineScriptJson(pageLocationParams)});
         twq('config','${X_PIXEL_ID}');
+        if(document.cookie.split('; ').indexOf('${AD_SIGNUP_COOKIE}=1')>-1){
+          twq('event','${X_SIGNUP_EVENT_ID}',{});
+          document.cookie='${AD_SIGNUP_COOKIE_DELETE}';
+        }
       `}
     </Script>
   );

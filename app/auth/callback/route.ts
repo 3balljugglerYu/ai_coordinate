@@ -1,6 +1,14 @@
 import { connection, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
+import {
+  AD_SIGNUP_COOKIE,
+  AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
+  AD_SIGNUP_COOKIE_PATH,
+  AD_SIGNUP_COOKIE_SAME_SITE,
+  AD_SIGNUP_REPORTED_METADATA_KEY,
+  shouldReportAdSignup,
+} from "@/features/analytics/lib/ad-signup-signal";
 import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 const REFERRAL_METADATA_UPDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -56,6 +64,8 @@ export async function GET(request: Request) {
 
   // 認証コードを使用してセッションを確立
   if (code) {
+    // 広告の Pixel に「登録した」を知らせるか(1人1回。下の updateUser で送った印を残せたときだけ)
+    let shouldSetAdSignupCookie = false;
     const supabase = await createClient();
     const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -74,6 +84,11 @@ export async function GET(request: Request) {
         isWithinReferralMetadataUpdateWindow(sessionData.user);
 
       const nextUserMetadata: Record<string, string> = {};
+
+      const shouldReportSignup = shouldReportAdSignup(sessionData.user, Date.now());
+      if (shouldReportSignup) {
+        nextUserMetadata[AD_SIGNUP_REPORTED_METADATA_KEY] = new Date().toISOString();
+      }
 
       if (
         referralCode &&
@@ -101,6 +116,9 @@ export async function GET(request: Request) {
               "Failed to update user metadata during auth callback:",
               updateError
             );
+          } else if (shouldReportSignup) {
+            // 送った印を残せたときだけ送る(残せないと、次のログインでもう一度送ってしまう)
+            shouldSetAdSignupCookie = true;
           }
         } catch (err) {
           console.error(
@@ -162,15 +180,26 @@ export async function GET(request: Request) {
       ? `/auth/x-complete${oauthCompleteSuffix}`
       : next;
     
-    if (isLocalEnv) {
-      // 開発環境ではoriginをそのまま使用
-      return NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
-    } else if (forwardedHost) {
-      // 本番環境でロードバランサー経由の場合
-      return NextResponse.redirect(`https://${forwardedHost}${redirectPath}`);
-    } else {
-      return NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
+    const response = isLocalEnv
+      ? // 開発環境ではoriginをそのまま使用
+        NextResponse.redirect(`${requestUrl.origin}${redirectPath}`)
+      : forwardedHost
+        ? // 本番環境でロードバランサー経由の場合
+          NextResponse.redirect(`https://${forwardedHost}${redirectPath}`)
+        : NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
+
+    // 新しく登録した人にだけ、広告の Pixel に「登録した」を知らせる印を付ける(中身は "1" だけ)
+    if (shouldSetAdSignupCookie) {
+      response.cookies.set(AD_SIGNUP_COOKIE, "1", {
+        maxAge: AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
+        path: AD_SIGNUP_COOKIE_PATH,
+        sameSite: AD_SIGNUP_COOKIE_SAME_SITE,
+        secure: !isLocalEnv,
+        httpOnly: false,
+      });
     }
+
+    return response;
   }
 
   // コードがない場合はエラー
