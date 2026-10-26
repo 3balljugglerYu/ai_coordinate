@@ -423,7 +423,8 @@ export function CampaignGiftModal({
               href={loginHref}
               onClick={() => {
                 trackCampaignEvent(CAMPAIGN_EVENTS.giftLogin);
-                close();
+                // 受け取ろうとしている(「あとで」ではない)。ログインをやめても、別のページを開いたらまた出す
+                onClose("retry");
               }}
               className={cn(PRIMARY_BUTTON_CLASS, styles.flow)}
               style={PRIMARY_BUTTON_STYLE}

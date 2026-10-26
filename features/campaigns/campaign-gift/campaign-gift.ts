@@ -74,6 +74,8 @@ export function readCampaignGiftDismissed(campaignKey: string, userId: string | 
 export function writeCampaignGiftDismissed(campaignKey: string, userId: string | null): void {
   try {
     window.localStorage.setItem(campaignGiftDismissKey(campaignKey, userId), "1");
+    // もう出さないので、「あとで」の時刻は要らない(端末に残し続けない)
+    window.localStorage.removeItem(campaignGiftLaterKey(campaignKey, userId));
   } catch {
     // 残せない端末では、次に開いたときにもう一度出る(受け取りは DB で1回だけなので害はない)
   }
@@ -98,19 +100,20 @@ export function __resetCampaignGiftLaterForTest() {
   laterInMemory.clear();
 }
 
+function isWithinLater(at: number | null, nowMs: number): boolean {
+  return at !== null && Number.isFinite(at) && nowMs - at >= 0 && nowMs - at < CAMPAIGN_GIFT_LATER_MS;
+}
+
+/** ページの中の控えと、端末に残した時刻の、どちらかが3時間の中なら「あとで」の間(時計が戻って未来の時刻になった値は、もう片方を消さない) */
 export function readCampaignGiftLater(campaignKey: string, userId: string | null, nowMs: number = Date.now()): boolean {
   const key = campaignGiftLaterKey(campaignKey, userId);
-  let at = laterInMemory.get(key) ?? null;
+  if (isWithinLater(laterInMemory.get(key) ?? null, nowMs)) return true;
   try {
     const stored = window.localStorage.getItem(key);
-    if (stored !== null) {
-      const parsed = Number(stored);
-      if (Number.isFinite(parsed)) at = Math.max(at ?? 0, parsed);
-    }
+    return stored !== null && isWithinLater(Number(stored), nowMs);
   } catch {
-    // 読めなければ、ページの中の控えだけで決める
+    return false;
   }
-  return at !== null && nowMs - at >= 0 && nowMs - at < CAMPAIGN_GIFT_LATER_MS;
 }
 
 export function writeCampaignGiftLater(campaignKey: string, userId: string | null, nowMs: number = Date.now()): void {
@@ -126,8 +129,8 @@ export function writeCampaignGiftLater(campaignKey: string, userId: string | nul
 /**
  * 閉じたときの覚え方。
  * - done: 受け取った・もう受け取っていた・受け付けが終わっていた → その端末でもう出さない
- * - later: 「あとで」(開ける前・ログインしていない人) → しばらく(3時間)出さない
- * - retry: 受け取れなかった・ログインし直し → 同じページでは出し直さず、別のページを開いたら出す
+ * - later: 「あとで」と × → しばらく(3時間)出さない
+ * - retry: 受け取れなかった・ログインし直し・ログインして受け取る → 同じページでは出し直さず、別のページを開いたら出す
  */
 export type CampaignGiftCloseKind = "done" | "later" | "retry";
 

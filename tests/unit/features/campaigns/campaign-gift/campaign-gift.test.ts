@@ -124,3 +124,16 @@ describe("「あとで」の覚え方(3時間・人ごと)", () => {
   });
 });
 
+test("端末の時計が戻って、残した時刻が未来になっても、ページの中の控えは効く", () => {
+  const NOW = Date.parse("2026-10-27T03:00:00.000Z");
+  writeCampaignGiftLater("halloween-best-shot", "user-1", NOW);
+  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", String(NOW + 60 * 60 * 1000));
+  expect(readCampaignGiftLater("halloween-best-shot", "user-1", NOW + 1000)).toBe(true);
+});
+
+test("受け取って閉じたら、「あとで」の時刻は消す", () => {
+  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", "1");
+  writeCampaignGiftDismissed("halloween-best-shot", "user-1");
+  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).toBeNull();
+});
+

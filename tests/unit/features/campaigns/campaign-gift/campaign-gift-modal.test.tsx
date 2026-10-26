@@ -144,11 +144,11 @@ test("ログインしていない人が開けたあとの「あとで」も late
   expect(onClose).toHaveBeenCalledWith("later");
 });
 
-test("ログインしていない人の「ログインして受け取る」も later(ログインしたあとは出す)", async () => {
+test("ログインしていない人の「ログインして受け取る」は retry(ログインをやめても、別のページでまた出す)", async () => {
   const { onClose } = renderModal({ signedIn: false });
   await tap(5);
   fireEvent.click(await screen.findByRole("link", { name: "ログインして受け取る" }));
-  expect(onClose).toHaveBeenCalledWith("later");
+  expect(onClose).toHaveBeenCalledWith("retry");
 });
 
 test("受け取れなかったまま閉じたら、閉じたことを覚えない(次にもう一度出る)", async () => {
