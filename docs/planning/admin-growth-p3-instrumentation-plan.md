@@ -13,7 +13,7 @@
 **含める**
 - **P3-1** プライバシーポリシーに、Google アナリティクスとユーザー ID を送ることを書き足す（文はユーザーの OK をもらう）
 - **P3-2** 課金の手前の出来事の記録 `monetization_events`
-  - 足りなくなった・購入画面を見た・支払いを始めた・やめて戻った・期限切れ
+  - 足りなくなった・購入画面を見た・支払いを始めた・期限切れ（やめた）
 - **P3-3** どの画面から来ても流入元を残す
   - 別の cookie と `profiles` の新しい列
 - **P3-4** GA4 にユーザー ID を送る（P3-1 のあと）
@@ -67,13 +67,13 @@
 |---|---|
 | id | uuid |
 | user_id | 本人。画面からの記録はサーバーのセッションから決める（本文から受け取らない）。Stripe の通知からの記録は `client_reference_id` から決める |
-| event_type | `percoin_shortage` / `purchase_view` / `checkout_start` / `checkout_cancel` / `checkout_expired`（CHECK） |
+| event_type | `percoin_shortage` / `purchase_view` / `checkout_start` / `checkout_expired`（CHECK） |
 | feature | 足りなくなった場所: `generate` / `style_generate` / `gacha_split` / `name_input` |
 | where_detected | `client`（画面で止めた）/ `server`（API が返した） |
 | origin | 買いに来た場所（今の購入の `origin` と同じ値） |
 | product | パッケージ・プラン |
 | required / balance | 足りなかったときの、必要な量と残高 |
-| stripe_session_id | 支払い画面の ID（開始・やめた・期限切れを結ぶ） |
+| stripe_session_id | 支払い画面の ID（開始と期限切れを結ぶ） |
 | created_at | 時刻 |
 
 - RLS 有効・policy なし。PUBLIC・anon・authenticated から REVOKE。service_role だけが書く・読む。
@@ -83,23 +83,31 @@
 
 | 出来事 | 場所 | 書き方 |
 |---|---|---|
-| 足りなくなった（画面） | `GenerationFormContainer.tsx:986` の早期 return の直前、`OneTapStyleGenerationForm.tsx` で `hasEnoughPercoins` が false になったとき（1回の訪問で1回） | 新しい API `POST /api/monetization-events`（ログイン必須・same-origin・1人あたり1分に10回まで）へ送る |
+| 足りなくなった（画面） | `GenerationFormContainer.tsx:986` の早期 return の直前。`OneTapStyleGenerationForm.tsx` では、**残高が数として読めていて**（読み込み中・失敗ではなく）、選んだモデルの量より少ないとき（1回の訪問で1回）。⚠️ `hasEnoughPercoins` は、残高が読めていないときも false なので、そのまま使わない | 新しい API `POST /api/monetization-events`（ログイン必須・same-origin）へ送る |
 | 足りなくなった（API） | 上の4つの handler の残高不足の返り値の直前 | サーバーから直接書く |
 | 購入画面を見た | `PercoinPurchaseGrid`・`PercoinPurchaseSection` を開いたとき（1回の訪問で1回） | 新しい API へ送る |
 | 支払いを始めた | 2つの checkout の route で、Stripe の支払い画面を作ったあと | サーバーから直接書く |
-| やめて戻った | 購入画面が `?canceled=true` で開かれたとき。サブスクの戻り先にも、やめた印（`&canceled=true`）を足す | 新しい API へ送る（`session_id` を戻り先に載せて結ぶ） |
-| 期限切れ | webhook に `checkout.session.expired` を足す（Stripe のダッシュボードで、この通知を送る設定もする・ユーザーの作業） | サーバーから直接書く |
+| 期限切れ（やめた） | webhook に `checkout.session.expired` を足す（Stripe のダッシュボードで、この通知を送る設定もする・ユーザーの作業） | サーバーから直接書く。人は `client_reference_id` で決める |
 
 - 書き込みに失敗しても、生成や支払いは止めない（ログに残して続ける）。
-- 新しい API は、本文の `user_id` を受け取らない。`event_type` は画面から送れる3つ（`percoin_shortage`・`purchase_view`・`checkout_cancel`）だけを受け付ける。
+- 新しい API は、本文の `user_id` を受け取らない。`event_type` は画面から送れる2つ（`percoin_shortage`・`purchase_view`）だけを受け付ける。
+- **回数の上限は DB で数える**: 書き込みは RPC `record_monetization_event` を通し、その中で「同じ人の直近1分の行が10件以上なら書かない」を確かめる。サーバーレスでは、プロセスの中の数え方（Map など）だと、インスタンスごとに数がばらばらになって効かないため。
+- **「やめた」は、支払い画面ごとに結果を1つにする**
+  - 支払い画面でやめて戻ってきたときの記録（`?canceled=true`）は取らない。Stripe は、やめた支払い画面も期限まで開いたままにするので、戻ってきたときの記録と24時間後の `checkout.session.expired` とで、同じ人を2回数えてしまうため。
+  - また、`cancel_url` に支払い画面の ID を入れる書き方（`{CHECKOUT_SESSION_ID}`）は、`success_url` のためのもの。画面から送られた ID が本人のものかを確かめる手間も増える。
+  - P5 のカードでは、`stripe_session_id` ごとに「買った（`credit_transactions` にある）＞ 期限切れ」の順で、1つの結果にして数える。
+  - 「やめた」が分かるまで24時間かかる。短くしたいときは、支払い画面の期限（`expires_at`・最短30分）を短くすることを、P5 で考える。
 
 ## 5. P3-3 どの画面から来ても流入元を残す
 
 - ⚠️ 今の cookie（`persta_signup_source`）には書かない。すでにあると何も書かないので、目印の無い訪問の値を先に書くと、あとで開いた企画ページの既定値が書けなくなる。
 - 別の cookie `persta_first_visit`（30日・最初に来た時だけ）に、次の2つを残す。
-  - **来た場所**: `detectSignupChannel` を広げて使う。広げるのは `search`（Google・Yahoo・Bing）・`other`・`direct` の3つ。
+  - **来た場所**: 新しい `detectFirstVisitChannel` で決める。中で今の `detectSignupChannel`（`x_ad`/`x`/`meta`）を呼び、それが null のときだけ `search`（Google・Yahoo・Bing）・`other`・`direct` を足して返す。
+    - ⚠️ `detectSignupChannel` そのものは広げない。企画ページの `appendSignupChannel` がこれを使っているので、広げると `halloween-best-shot_direct` のような新しい値ができて、今の流入元の数え方が分かれてしまう。
   - **最初に開いた画面のパス**（クエリは残さない・200文字まで）。
-- 登録の時、`profiles` の新しい列に保存する。保存する所は、今 `signup_source` を書いている2か所（`auth-client.ts:668`・`auth/callback/route.ts:86-117`）。
+- 登録の時、`profiles` の新しい列に保存する。
+  - メールでの登録: `auth-client.ts:668` は値を user_metadata に入れるだけで、`profiles` の行はトリガー `handle_new_user`（最新の定義は `20260817100000`）が作る。今はこのトリガーが `signup_source` だけを写しているので、**新しい2つの列も user_metadata から写すようにトリガーを直す**（マイグレーションに入れる）。
+  - OAuth での登録: `auth/callback/route.ts:86-117` で、`signup_source` と同じように書く。
   - `first_visit_channel`（text・CHECK で決まった値だけ）
   - `first_landing_path`（text・200文字まで）
 
@@ -112,6 +120,8 @@
 
 - `monetization_events` の表（4章）
 - `profiles` に `first_visit_channel`・`first_landing_path`（5章）。どちらも NULL 可。今ある行は変えない。
+- `handle_new_user` のトリガーの関数を直し、新しい2つの列も user_metadata から写す（5章）。`signup_source` の扱いは変えない。
+- RPC `record_monetization_event`（4章・回数の上限つき・service_role だけ）
 - 適用の前に、SQL を見せて承認をもらう。マージより前に適用する。
 
 ## 8. 進める順番
@@ -130,12 +140,12 @@ flowchart LR
 
 | 種類 | 中身 |
 |---|---|
-| 新しい API | 未ログインは 401、別のサイトからは 403。受け付けない `event_type` は 400。本文の `user_id` は使わない。1分に11回目は 429 |
-| 画面 | 残高不足で止めたとき、1回だけ送る（同じ訪問で2回目は送らない）。送れなくても生成の画面はふつうに動く |
+| 新しい API | 未ログインは 401、別のサイトからは 403。受け付けない `event_type`（`checkout_start` など、画面から送れないもの）は 400。本文の `user_id` は使わない。同じ人の1分に11回目は書かれない（RPC で数える） |
+| 画面 | 残高不足で止めたとき、1回だけ送る（同じ訪問で2回目は送らない）。残高の読み込み中・読み込み失敗では送らない。送れなくても生成の画面はふつうに動く |
 | API の残高不足 | 残高不足を返すとき1行書く。書けなくても、返す内容は今と同じ |
 | checkout | 支払い画面を作ったら `checkout_start` を書き、`stripe_session_id` が入る |
 | webhook | `checkout.session.expired` で `checkout_expired` を書き、`client_reference_id` の人になる |
-| 流入元 | 今の cookie があっても `persta_first_visit` を書く。すでにあれば書き直さない。企画ページの既定値の動きは今と同じ |
+| 流入元 | 今の cookie があっても `persta_first_visit` を書く。すでにあれば書き直さない。企画ページの既定値の動き（`appendSignupChannel` の値）は今と同じ。メールでの登録でも、トリガーで新しい列に入る |
 | GA4 | ログインで `user_id` を設定し、ログアウトで null にする |
 
 ## 10. 決めてもらうこと

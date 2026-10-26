@@ -25,43 +25,58 @@
 
 ## 2. 直し方の案
 
-### 案A（おすすめ）: 支払いの記録を、付与とは別の行にする
+### 前提（リポジトリの決まり）
 
-- `credit_transactions.transaction_type` に `subscription_payment` を足す（量は0。ペルコインは動かない）。
-- 新しい RPC `record_subscription_payment(p_user_id, p_invoice_id, p_metadata)` を作る。
-  - 同じ請求（`invoice_id`）では1回だけ書く（今の `grant_subscription_percoins` と同じく、advisory lock と `stripe_payment_intent_id` で重複を防ぐ）。
+- `credit_transactions.transaction_type` を増やすと、CHECK・管理画面の集計・通知のマッピング・履歴の表示まで影響が広がる。そのため、内訳は metadata で見る（`supabase/migrations/20260813100000_*.sql` の注記）。
+- `stripe_payment_intent_id` には、表全体で一意の索引がある（`idx_credit_transactions_stripe_payment_intent_id`）。プランを上げたときの付与は、もう請求の ID をここに書いている。なので、同じ請求の ID で2行目を入れることはできない。
+- 処理の途中で落ちたら、支払いの記録が永遠に残らない作りは避ける。Stripe の webhook は、失敗したら Stripe が送り直す。
+
+### 案A（おすすめ）: webhook で、量0の `subscription` の行として支払いを記録する
+
+- **記録する所: webhook の `invoice.paid`**
+  - 今は、プラン変更の日割りの請求（`subscription_update` で日割りの行があるもの）を「付与済み」として何もしない（`shouldHandleSubscriptionInvoicePaid`）。
+  - このときに、**付与はせずに、支払いだけを記録する**ように分ける。付与は今までどおり `change-service.ts` が行う。
+  - webhook なので、途中で落ちても Stripe が送り直す。
+- **新しい RPC `record_subscription_payment(p_user_id, p_invoice_id, p_metadata)`**
+  - `transaction_type = 'subscription'`・`amount = 0` の行を1つ入れる。ペルコインは動かない。種類は増やさない（CHECK は変えない）。
+  - `stripe_payment_intent_id` には `payment:<請求 ID>` を入れる。付与の行（請求 ID そのもの）とぶつからず、同じ請求の2回目は今の一意の索引で止まる（送り直しが来ても1行だけ）。
+  - metadata: `plan`・`billingInterval`・`revenueYen`（`invoice.amount_paid`）・`revenueSource: "stripe_subscription_change"`・`mode`（`isStripeTestMode()`）・`paymentOnly: true`・`invoiceId`。
   - service_role だけが呼べる（`FROM PUBLIC, anon, authenticated`）。
-- `change-service.ts` は、即時の変更で請求が済んだら、付与とは別にこれを呼ぶ。
-  - 書く項目: `plan`・`billingInterval`・`revenueYen`（`latestInvoice.amount_paid`）・`revenueSource: "stripe_subscription_change"`・`mode`（`isStripeTestMode()`）。
-- 売上の決まり（`isRevenueTransaction`）と、概要の SQL（`get_growth_active_users`・`get_percoin_daily_flow`）に、`subscription_payment` を足す。
-- **よい点**
-  - 付与の量が0でも、支払いが残る（月額 → 年額も拾える）。
-  - 付与の量と金額を混ぜないので、「買った量」と「売上」が、それぞれ正しく出る。
-- **気をつけること**
-  - `transaction_type` の CHECK を変えるマイグレーション。CHECK を付け直すあいだ、表を一瞬ロックする。
-  - ペルコインの残高の計算・集計で `transaction_type` を並べている所が、新しい種類を「付与」と取り違えないかを確かめる（量は0なので、合計には影響しない）。
+- **売上の決まりは、そのままで数えられる**
+  - `isRevenueTransaction` は「本番の subscription で `revenueYen` がある」ものを数える。なので、この行は直さずに売上に入る。
+  - 概要の SQL（`get_growth_active_users`・`get_percoin_daily_flow`）も同じ決まりなので、課金した人に入る。量が0なので、「買った量」は増えない（正しい）。
+- **月額 → 年額**
+  - 年額の請求も `subscription_update` の請求なので、同じ所で記録される。付与が0でも、支払いは残る。
 
-### 案B: 付与の行に金額を書く
+### 直す・確かめる所（漏れやすい所）
 
-- `change-service.ts` の付与に、`p_metadata`（`revenueYen` など）を渡す。
-- **よい点**: 変更が小さい（コードだけ・マイグレーションなし）。
-- **足りない点**: 月額 → 年額のように付与が0の場合は、行が作られないので拾えない。
+| 所 | 中身 |
+|---|---|
+| `app/api/stripe/webhook/route.ts` | 日割りの請求のとき、`record_subscription_payment` を呼ぶ |
+| 新しい RPC（マイグレーション） | 上のとおり |
+| 量0の `subscription` の行が増えて困る所 | ペルコインの履歴の表示（`PercoinTransactions.tsx` など）では、`paymentOnly` の行を出さないか、「サブスクのお支払い」と出す。通知のマッピング、`credit_transactions` への挿入で動くトリガー（残高・付与の束）が、量0の行で何もしないことを確かめる |
+| 管理画面 | 概要の `fetchPayments`（`get-growth-overview.ts` の `.in("transaction_type", ["purchase","subscription"])`）は、種類が同じなので直さなくてよい。今までのカードの売上（`get-admin-dashboard-data.ts`）も同じ |
+| テスト | webhook の分かれ道（日割りの請求なら支払いだけを記録・それ以外は今のまま）、RPC の重複（同じ請求で2回呼んでも1行）、売上に入ること |
+
+### 案B: `change-service.ts` で、付与の行に金額を書く
+
+- 変更が小さい（コードだけ）。
+- ただし、月額 → 年額のように付与が0だと、行が作られないので拾えない。途中で落ちたときに記録が残らない。
 
 ### 案C: 売上を Stripe から直接読む
 
-- Stripe の請求（Invoice）を、管理画面の集計のときに読む。
-- **よい点**: Stripe が正しい記録なので、抜けがない。
-- **足りない点**: 集計のたびに外の API を呼ぶ。テスト・本番の切り替えや、内部アカウントの除外を、別に作る必要がある。今の規模では大きすぎる。
+- Stripe が正しい記録なので、抜けがない。
+- ただし、集計のたびに外の API を呼ぶことになり、テストと本番の切り替えや内部アカウントの除外も別に作る必要がある。今の規模では大きすぎる。
 
 ## 3. おすすめ
 
-**案A。** 案Bでは、月額 → 年額の支払いを拾えないため。
+**案A。** 付与が0の場合も拾えて、途中で落ちても Stripe の送り直しで記録されるため。種類を増やさないので、影響が広がる範囲も小さい。
 
-- 必要なもの: マイグレーション1本（CHECK・RPC）、`change-service.ts` の呼び出し、売上の決まりと概要の SQL の更新、テスト。
+- 必要なもの: マイグレーション1本（RPC だけ。CHECK は変えない）、webhook の分かれ道、履歴の表示、テスト。
 - マイグレーションは、SQL を見せて承認をもらってから適用する。
 - 過去の分を埋め直す必要はない（本番では、まだ起きていないため）。
 
 ## 4. 決めてもらうこと
 
 1. 案A で進めてよいか。
-2. 売上の名前: 管理画面では、今までどおり「売上」に、プラン変更の支払いも入れる（別の行にはしない）でよいか。
+2. ペルコインの履歴に、プラン変更の支払い（量0）を「サブスクのお支払い」として出すか、出さないか（おすすめ: 出さない。ペルコインの増減の一覧なので）。
