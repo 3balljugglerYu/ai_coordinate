@@ -3,6 +3,7 @@ import { getLocale } from "next-intl/server";
 import { Database, Eye, Lock, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath, type Locale } from "@/i18n/config";
+import { formatLegalDate, splitLegalText, type LegalLink } from "@/features/legal/lib/legal-text";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
 type Section = {
@@ -38,46 +39,37 @@ export async function generateMetadata(): Promise<Metadata> {
 /** 最後に改定した日。日本語と英語の両方で、この1つから出す(本番に出す日にする)。 */
 const PRIVACY_POLICY_REVISED_AT = { year: 2026, month: 10, day: 26 } as const;
 
-const PRIVACY_REVISED_AT_JA = `${PRIVACY_POLICY_REVISED_AT.year}年${PRIVACY_POLICY_REVISED_AT.month}月${PRIVACY_POLICY_REVISED_AT.day}日 改定`;
-const PRIVACY_REVISED_AT_EN = `Last revised: ${new Date(
-  Date.UTC(PRIVACY_POLICY_REVISED_AT.year, PRIVACY_POLICY_REVISED_AT.month - 1, PRIVACY_POLICY_REVISED_AT.day),
-).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric", timeZone: "UTC" })}`;
-
-/** 段落の中で、押せるリンクにする URL(文の中の URL と同じ文字列にすること)。 */
-const PRIVACY_LINKS = [
-  "https://policies.google.com/privacy",
-  "https://tools.google.com/dlpage/gaoptout",
-] as const;
-
-/** 段落の中で、外部送信のページへのリンクにする言葉。 */
-const EXTERNAL_TRANSMISSION_LINK_TEXT = "「利用者情報の外部送信について」";
-
-const PRIVACY_LINK_PATTERN =
-  /(https:\/\/policies\.google\.com\/privacy|https:\/\/tools\.google\.com\/dlpage\/gaoptout|「利用者情報の外部送信について」)/;
+/** 本文の中で、リンクにする文字列。⚠️ 本文に書いた文字と同じにすること(tests/unit/features/legal で確かめる)。 */
+function privacyLinks(locale: Locale): LegalLink[] {
+  return [
+    { match: "https://policies.google.com/privacy", href: "https://policies.google.com/privacy", external: true },
+    { match: "https://tools.google.com/dlpage/gaoptout", href: "https://tools.google.com/dlpage/gaoptout", external: true },
+    {
+      match: "「利用者情報の外部送信について」",
+      href: localizePublicPath("/external-transmission", locale),
+      external: false,
+    },
+    {
+      match: "External Transmission of User Information",
+      href: localizePublicPath("/external-transmission", locale),
+      external: false,
+    },
+  ];
+}
 
 function renderParagraph(paragraph: string, locale: Locale) {
-  const parts = paragraph.split(PRIVACY_LINK_PATTERN);
-  return parts.map((part, index) =>
-    part === EXTERNAL_TRANSMISSION_LINK_TEXT ? (
+  return splitLegalText(paragraph, privacyLinks(locale)).map((segment, index) =>
+    segment.type === "link" ? (
       <a
         key={index}
-        href={localizePublicPath("/external-transmission", locale)}
-        className="text-primary underline underline-offset-2"
-      >
-        {part}
-      </a>
-    ) : (PRIVACY_LINKS as readonly string[]).includes(part) ? (
-      <a
-        key={index}
-        href={part}
-        target="_blank"
-        rel="noopener noreferrer"
+        href={segment.href}
+        {...(segment.external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
         className="break-all text-primary underline underline-offset-2"
       >
-        {part}
+        {segment.text}
       </a>
     ) : (
-      part
+      segment.text
     ),
   );
 }
@@ -91,7 +83,7 @@ export default async function PrivacyPage() {
       ? {
           title: "プライバシーポリシー",
           description: "「Persta.AI」のプライバシーポリシーです。",
-          revisedAt: PRIVACY_REVISED_AT_JA,
+          revisedAt: formatLegalDate(PRIVACY_POLICY_REVISED_AT, "ja", "revised"),
           sections: [
             {
               icon: "shield",
@@ -206,7 +198,7 @@ export default async function PrivacyPage() {
         }
       : {
           title: "Privacy Policy",
-          revisedAt: PRIVACY_REVISED_AT_EN,
+          revisedAt: formatLegalDate(PRIVACY_POLICY_REVISED_AT, "en", "revised"),
           description:
             "This is the Privacy Policy for Persta.AI. The Japanese version is the authoritative text. This English version is a brief notice while the full translation is being prepared — please consult the Japanese version for binding terms.",
           sections: [
@@ -217,6 +209,7 @@ export default async function PrivacyPage() {
               paragraphs: [
                 "The full English translation of this Privacy Policy is being prepared. For the binding terms, please consult the Japanese version of this page.",
                 "Major topics covered in the Japanese version include: information collected by the Service, purposes of use, the Service's policy on AI training and operator secondary use of user content, security management, provision to third parties (including service providers and emergency disclosure to authorities for CSAM), use of cookies and analytics tools (Google Analytics), disclosure/correction/deletion requests, retention on withdrawal, and contact information.",
+                "Information sent from your device to outside companies (Google Analytics, Vercel Analytics and others) is listed on the External Transmission of User Information page.",
               ],
             },
             {

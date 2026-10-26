@@ -1,73 +1,86 @@
 import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
+import { formatLegalDate } from "@/features/legal/lib/legal-text";
 
 /**
  * 利用者情報の外部送信について(電気通信事業法第27条の12・外部送信規律)。
  *
  * 利用者の端末から外部の事業者へ送っている情報を、送り先ごとに知らせる。
- * ⚠️ 解析・計測のタグや SDK を足したり、送る情報を変えたりしたときは、ここも直すこと
- * (今の送り先: features/analytics/components/Ga4Script.tsx・VercelAnalyticsScripts.tsx)。
- * 日本語が正本。ほかの言語は要約の案内だけを出す(プライバシーポリシーと同じ)。
+ * ⚠️ 外部のスクリプト・タグ・SDK を足したり、送る情報を変えたりしたときは、ここも直すこと。
+ * 2026-10-26 時点の送り先:
+ *  - Google アナリティクス: features/analytics/components/Ga4Script.tsx(+ features/analytics/lib/track-event.ts の trackEvent)
+ *  - Vercel Analytics・Speed Insights: features/analytics/components/VercelAnalyticsScripts.tsx(+ @vercel/analytics の track)
+ *  - Cloudflare Turnstile: features/catalog/components/CatalogSubmissionForm.tsx(作品の申請のフォーム)
+ * 日本語が正本。ほかの言語は、送り先の一覧と日本語のページへの案内を出す(プライバシーポリシーと同じ)。
  */
 
-/** 作った日。日本語と英語の両方で、この1つから出す。 */
 const EXTERNAL_TRANSMISSION_ESTABLISHED_AT = { year: 2026, month: 10, day: 26 } as const;
 
-type Row = { label: string; value: string; href?: string };
+type Row =
+  | { label: string; text: string }
+  | { label: string; text?: string; link: string };
+
 type Destination = { name: string; rows: Row[] };
 
 const DESTINATIONS_JA: Destination[] = [
   {
     name: "1. Google アナリティクス",
     rows: [
-      { label: "送り先", value: "Google LLC" },
+      { label: "送り先", text: "Google LLC" },
       {
         label: "使い道",
-        value:
-          "当サービスの利用状況（見られているページ・来る前のページ・使われている端末など）を計測・分析し、サービスを改善するため",
+        text: "当サービスの利用状況（見られているページ・来る前のページ・使われている端末など）を計測・分析し、サービスを改善するため",
       },
       {
         label: "送る情報",
-        value:
-          "閲覧したページの URL、来る前のページの URL、端末・OS・ブラウザの種類、言語、画面の大きさ、IP アドレス、Cookie などに保存した識別子、ログインしているかどうか。ログインしている利用者は、当サービスの中だけで使う識別子（ユーザー ID）",
+        text: "閲覧したページの URL、来る前のページの URL、端末・OS・ブラウザの種類、言語、画面の大きさ、IP アドレス、Cookie などに保存した識別子、ログインしているかどうか、当サービスの中の操作（ホームのバナーを押した・企画のページのボタンを押した・画像の分割を使ったなどの出来事と、押したバナーの行き先などの中身）。ログインしている利用者は、当サービスの中だけで使う識別子（ユーザー ID）",
       },
-      {
-        label: "送り先のプライバシーポリシー",
-        value: "https://policies.google.com/privacy",
-        href: "https://policies.google.com/privacy",
-      },
+      { label: "送り先のプライバシーポリシー", link: "https://policies.google.com/privacy" },
       {
         label: "オプトアウト",
-        value:
-          "パソコンのブラウザでは、Google アナリティクス オプトアウト アドオンで止めることができます",
-        href: "https://tools.google.com/dlpage/gaoptout",
+        text: "パソコンのブラウザでは、Google アナリティクス オプトアウト アドオンで止めることができます",
+        link: "https://tools.google.com/dlpage/gaoptout",
       },
     ],
   },
   {
     name: "2. Vercel Analytics・Vercel Speed Insights",
     rows: [
-      { label: "送り先", value: "Vercel Inc." },
-      {
-        label: "使い道",
-        value: "ページの見られ方と表示の速さを計測し、サービスを改善するため",
-      },
+      { label: "送り先", text: "Vercel Inc." },
+      { label: "使い道", text: "ページの見られ方と表示の速さを計測し、サービスを改善するため" },
       {
         label: "送る情報",
-        value:
-          "閲覧したページの URL、来る前のページの URL、端末・OS・ブラウザの種類、国・地域、ページの表示にかかった時間、当サービスの中の操作（購入を始めた・生成が終わったなどの出来事と、その件数）",
+        text: "閲覧したページの URL、来る前のページの URL、端末・OS・ブラウザの種類、IP アドレス（国・地域の判定に使われます）、ページの表示にかかった時間、当サービスの中の操作（購入を始めた・生成が終わったなどの出来事と、選んだ商品・件数・失敗したときのエラーの文（100文字まで））",
       },
-      {
-        label: "送り先のプライバシーポリシー",
-        value: "https://vercel.com/legal/privacy-policy",
-        href: "https://vercel.com/legal/privacy-policy",
-      },
-      { label: "オプトアウト", value: "送り先が用意しているオプトアウトの方法はありません" },
+      { label: "送り先のプライバシーポリシー", link: "https://vercel.com/legal/privacy-policy" },
+      { label: "オプトアウト", text: "送り先が用意しているオプトアウトの方法はありません" },
     ],
   },
+  {
+    name: "3. Cloudflare Turnstile（作品の申請のフォームだけ）",
+    rows: [
+      { label: "送り先", text: "Cloudflare, Inc." },
+      { label: "使い道", text: "作品の申請のフォームで、機械による不正な送信を防ぐため" },
+      {
+        label: "送る情報",
+        text: "IP アドレス、端末・OS・ブラウザの種類と設定、画面での操作の様子など、人による操作かどうかの判定に使う情報",
+      },
+      { label: "送り先のプライバシーポリシー", link: "https://www.cloudflare.com/privacypolicy/" },
+      {
+        label: "オプトアウト",
+        text: "申請の送信に必要なため、止めることはできません（作品の申請のフォームを開いたときだけ送ります）",
+      },
+    ],
+  },
+];
+
+const DESTINATIONS_EN = [
+  "Google Analytics (Google LLC): usage measurement and analysis. When you are logged in, an identifier used only within the Service (user ID) is also sent.",
+  "Vercel Analytics and Vercel Speed Insights (Vercel Inc.): measurement of page views and page speed.",
+  "Cloudflare Turnstile (Cloudflare, Inc.): prevention of automated submissions, on the work submission form only.",
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -85,16 +98,25 @@ export async function generateMetadata(): Promise<Metadata> {
   });
 }
 
-function formatEstablishedAt(locale: string): string {
-  const { year, month, day } = EXTERNAL_TRANSMISSION_ESTABLISHED_AT;
-  if (locale === "ja") return `${year}年${month}月${day}日 制定`;
-  const date = new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "UTC",
-  });
-  return `Established: ${date}`;
+function RowValue({ row }: { row: Row }) {
+  if (!("link" in row)) return <>{row.text}</>;
+  const anchor = (
+    <a
+      href={row.link}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="break-all text-primary underline underline-offset-2"
+    >
+      {row.link}
+    </a>
+  );
+  return row.text ? (
+    <>
+      {row.text}（{anchor}）
+    </>
+  ) : (
+    anchor
+  );
 }
 
 export default async function ExternalTransmissionPage() {
@@ -111,7 +133,7 @@ export default async function ExternalTransmissionPage() {
         <p className="mt-2 text-sm text-gray-600">
           {isJa
             ? "Persta.AI（以下「当サービス」）では、サービスの利用状況を把握して改善するため、利用者の端末から、次の外部の事業者へ、利用者に関する情報を送っています。電気通信事業法第27条の12（外部送信規律）にもとづき、送る情報の中身・送り先・送り先での使い道をお知らせします。"
-            : "To understand and improve how the Service is used, Persta.AI sends information about users from their devices to the outside companies below (Google LLC for Google Analytics, and Vercel Inc. for Vercel Analytics and Speed Insights). The Japanese version of this page is the authoritative text and lists what is sent, to whom, and for what purpose."}
+            : "To understand and improve how the Service is used, Persta.AI sends information about users from their devices to the outside companies below. The Japanese version of this page is the authoritative text and lists in detail what is sent, to whom, and for what purpose."}
         </p>
       </div>
 
@@ -128,21 +150,7 @@ export default async function ExternalTransmissionPage() {
                     <div key={row.label} className="py-2 sm:grid sm:grid-cols-[10rem_1fr] sm:gap-3">
                       <dt className="font-medium text-gray-600">{row.label}</dt>
                       <dd className="mt-1 text-gray-800 sm:mt-0">
-                        {row.href === row.value ? null : row.value}
-                        {row.href ? (
-                          <>
-                            {row.href !== row.value ? "（" : null}
-                            <a
-                              href={row.href}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="break-all text-primary underline underline-offset-2"
-                            >
-                              {row.href}
-                            </a>
-                            {row.href !== row.value ? "）" : null}
-                          </>
-                        ) : null}
+                        <RowValue row={row} />
                       </dd>
                     </div>
                   ))}
@@ -151,9 +159,31 @@ export default async function ExternalTransmissionPage() {
             </Card>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <Card>
+          <CardContent className="space-y-3 pt-6 text-sm text-gray-800">
+            <ul className="list-disc space-y-2 ps-5">
+              {DESTINATIONS_EN.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <p>
+              For the full details (what is sent, purposes, privacy policies and opt-out), please see the{" "}
+              <a
+                href={localizePublicPath("/external-transmission", "ja")}
+                className="text-primary underline underline-offset-2"
+              >
+                Japanese version of this page
+              </a>
+              .
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
-      <p className="mt-6 text-end text-xs text-gray-500">{formatEstablishedAt(locale)}</p>
+      <p className="mt-6 text-end text-xs text-gray-500">
+        {formatLegalDate(EXTERNAL_TRANSMISSION_ESTABLISHED_AT, locale, "established")}
+      </p>
     </main>
   );
 }
