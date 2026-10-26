@@ -8,6 +8,10 @@ import { getPurchaseMode, resolveTransactionRevenue } from "./purchase-value";
  *
  * 今のダッシュボード(get-admin-dashboard-data)と概要の両方がこれを使う。
  * 決まりを書き写して、売上の数が画面ごとにずれないようにするため。
+ *
+ * ⚠️ 概要の SQL(get_growth_active_users・get_percoin_daily_flow・20261026010200)も
+ * 同じ決まりで「支払った人」「買った量」を数えている(subscription は revenueYen があるもの)。
+ * ここを変えるときは、その SQL も一緒に直すこと。食い違うと、課金した人の割合がゆがむ。
  */
 export function isRevenueTransaction(transaction: {
   amount: number;

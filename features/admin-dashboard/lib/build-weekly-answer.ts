@@ -4,7 +4,7 @@ import { GROWTH_MIN_SAMPLE } from "./growth-overview-types";
 import { formatCount, formatDiff, formatPct as pct } from "./growth-format";
 
 /**
- * 「今週の答え」(純関数・ADR-004)。
+ * 「この期間の答え」(純関数・ADR-004)。
  *
  * 直し所を決まりで1つ選び、「効いたかを見る数字」を添える。
  * 配り方や値段をどう変えるかの答えは出さない(それはユーザーが決める)。

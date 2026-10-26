@@ -145,6 +145,12 @@ export function isWithinDateRange(
   return timestamp >= start.getTime() && timestamp <= end.getTime();
 }
 
+/** その時刻を含む日本時間の日の始まり(0:00 JST)。 */
+export function startOfJstDay(at: Date): Date {
+  const shifted = at.getTime() + JST_OFFSET_MS;
+  return new Date(shifted - (shifted % DAY_MS) - JST_OFFSET_MS);
+}
+
 export function toJstDateKey(value: string | Date): string {
   const date = typeof value === "string" ? new Date(value) : value;
   return new Date(date.getTime() + JST_OFFSET_MS).toISOString().slice(0, 10);

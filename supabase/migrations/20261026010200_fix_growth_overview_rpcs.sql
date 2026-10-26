@@ -1,20 +1,20 @@
 BEGIN;
 
 /*
-  20261025233400 の集計の関数を3つ直す(#804 のレビューで見つかった2点)。
+  20261025233400 の集計の関数を3つ直す(#804・#805 のレビューで見つかった2点)。
   1 は get_growth_active_users と get_percoin_daily_flow、2 は growth_percoin_consumers。
   計画: docs/planning/admin-growth-overview-p1-p2-implementation-plan.md
 
-  ## 1. サブスクの付与に「本番」の印が無い経路がある(get_growth_active_users・get_percoin_daily_flow)
+  ## 1. 「支払った」の決まりを、売上の決まりと1つにする(get_growth_active_users・get_percoin_daily_flow)
 
-  プラン変更(features/subscription/lib/change-service.ts の grant_subscription_percoins)と、
-  年額プランの毎月の付与(20260331193000 の cron)は、metadata に mode を書かない。
-  mode = 'live' だけで数えると、本当の支払いが「使っている人」と「買った量」から落ちる。
-  サブスクは「test・mock 以外」を本番として数える(purchase は今までどおり live だけ)。
-  2026-10-26 時点で mode の無いサブスクの行は、4月に内部アカウントが試した6件だけ。
-  ⚠️ 売上(アプリの isRevenueTransaction)は、今までどおり mode = 'live' で金額の決まるものだけ。
-     mode の無い付与は金額(プラン)が metadata に無く、売上には数えられない。
-     なので「使っている人」と「買った量」には入るが、「課金した人」と売上には入らない。
+  20261025233400 は「mode = 'live' の purchase と subscription」を支払いとしていた。
+  アプリの売上(isRevenueTransaction)は「本番の purchase と、金額(revenueYen)の決まる本番の subscription」。
+  決まりが2つあると、「使っている人」には入るのに「課金した人」には絶対に入らない人が出て、
+  課金した人の割合が低く出る。
+  そこで SQL も売上と同じ決まりにする。お金の記録が無いサブスクの付与
+  (年額プランの毎月付与 20260331193000 の cron・プラン変更の即時付与 change-service.ts)は、
+  お金が動いた記録ではないので、「使っている人」の支払いの側にも「買った量」にも入れない。
+  ⚠️ 決まりを変えるときは、revenue-transaction.ts とこの2つの関数を一緒に直すこと。
 
   ## 2. 期間の終わりが未来だと、残りの日数が長く出る(growth_percoin_consumers)
 
@@ -50,11 +50,12 @@ AS $function$
     SELECT t.user_id
     FROM public.credit_transactions t
     WHERE (
+        -- 売上に数える支払い(アプリの isRevenueTransaction と同じ決まり)だけ。
+        -- お金の記録が無いサブスクの付与(年額の毎月付与・プラン変更の付与)は入れない
         (t.transaction_type = 'purchase' AND t.metadata->>'mode' = 'live')
-        -- サブスクは mode を書かない経路がある(プラン変更・年額の毎月付与)。
-        -- テスト・見本の印があるものだけを外す
         OR (t.transaction_type = 'subscription'
-            AND coalesce(t.metadata->>'mode', 'live') NOT IN ('test', 'mock'))
+            AND t.metadata->>'mode' = 'live'
+            AND t.metadata->>'revenueYen' ~ '^[0-9]+(\.[0-9]+)?$')
       )
       AND t.created_at >= p_start
       AND t.created_at < p_end
@@ -122,7 +123,8 @@ AS $function$
         AND (
           (t.transaction_type = 'purchase' AND t.metadata->>'mode' = 'live')
           OR (t.transaction_type = 'subscription'
-              AND coalesce(t.metadata->>'mode', 'live') NOT IN ('test', 'mock'))
+              AND t.metadata->>'mode' = 'live'
+              AND t.metadata->>'revenueYen' ~ '^[0-9]+(\.[0-9]+)?$')
         )
     ), 0)::bigint AS purchased
   FROM days

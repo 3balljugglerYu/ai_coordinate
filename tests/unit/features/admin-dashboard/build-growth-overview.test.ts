@@ -8,7 +8,8 @@
 import { buildPercoinBalance, sumDailyFlow } from "@/features/admin-dashboard/lib/build-percoin-balance";
 import { buildRevenueTree, ratePct } from "@/features/admin-dashboard/lib/build-revenue-tree";
 import { buildWeeklyAnswer } from "@/features/admin-dashboard/lib/build-weekly-answer";
-import { getChartRange, startOfJstDay } from "@/features/admin-dashboard/lib/chart-range";
+import { getChartRange } from "@/features/admin-dashboard/lib/chart-range";
+import { startOfJstDay } from "@/features/admin-dashboard/lib/dashboard-range";
 import type {
   PercoinConsumerSummaryRow,
   PercoinDailyFlowRow,

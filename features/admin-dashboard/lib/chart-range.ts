@@ -1,7 +1,6 @@
-import type { DashboardRange } from "./dashboard-range";
+import { startOfJstDay, type DashboardRange } from "./dashboard-range";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 /** 日ごとのグラフを最低何日分描くか。24h では1〜2点しか出ず、線にならないため。 */
 export const MIN_CHART_DAYS = 7;
@@ -12,12 +11,6 @@ const RANGE_DAYS: Record<DashboardRange, number> = {
   "30d": 30,
   "90d": 90,
 };
-
-/** その時刻を含む日本時間の日の始まり(0:00 JST)。 */
-export function startOfJstDay(at: Date): Date {
-  const shifted = at.getTime() + JST_OFFSET_MS;
-  return new Date(shifted - (shifted % DAY_MS) - JST_OFFSET_MS);
-}
 
 /**
  * 日ごとのグラフの範囲(OV-7)。

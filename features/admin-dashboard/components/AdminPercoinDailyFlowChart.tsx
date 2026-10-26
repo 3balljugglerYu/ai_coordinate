@@ -109,7 +109,7 @@ export default function AdminPercoinDailyFlowChart({
             <Line
               type="monotone"
               dataKey="purchased"
-              name="買った(本番の支払い)"
+              name="買った(売上の支払い)"
               stroke="#16A34A"
               strokeWidth={2}
               dot={false}

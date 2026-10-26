@@ -1,7 +1,6 @@
 import { revalidateTag } from "next/cache";
 import Stripe from "stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isStripeTestMode } from "@/lib/env";
 import {
   fetchUserSubscription,
   type UserSubscription,
@@ -264,8 +263,6 @@ async function grantSubscriptionPercoins(params: {
   userId: string;
   amount: number;
   invoiceId: string;
-  plan: PaidSubscriptionPlan;
-  billingInterval: SubscriptionBillingInterval;
 }) {
   if (params.amount <= 0) {
     return 0;
@@ -276,19 +273,6 @@ async function grantSubscriptionPercoins(params: {
     p_user_id: params.userId,
     p_amount: params.amount,
     p_invoice_id: params.invoiceId,
-    /*
-      webhook の付与(app/api/stripe/webhook/route.ts)と同じく、本番かテストかの印を書く。
-      無いと、管理画面の集計で本番の支払いかどうかを見分けられない。
-      revenueYen はここでは書かない(今までどおり)。⚠️ この請求(日割り)では webhook が付与しないので
-      (app/api/stripe/webhook/route.ts の subscription_update + 日割りの判定)、日割りの金額は
-      今どこにも売上として記録されていない。売上に入れるかは別に決める(2026-10-26 #805)。
-    */
-    p_metadata: {
-      plan: params.plan,
-      billingInterval: params.billingInterval,
-      revenueSource: "subscription_plan_change",
-      mode: isStripeTestMode() ? "test" : "live",
-    },
   });
 
   if (error) {
@@ -571,8 +555,6 @@ async function performImmediateChange(params: {
       targetBillingInterval,
     }),
     invoiceId: latestInvoice.id,
-    plan: targetPlan,
-    billingInterval: targetBillingInterval,
   });
 
   revalidateSubscriptionSurfaces(ctx.userSubscription.user_id);

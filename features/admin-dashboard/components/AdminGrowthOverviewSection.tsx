@@ -30,7 +30,7 @@ function WeeklyAnswerCard({ answer }: { answer: WeeklyAnswer }) {
   return (
     <Card className="border-violet-200/60 bg-white/95 shadow-sm">
       <CardHeader className="pb-3">
-        <SectionTitle index={1} title="今週の答え" question="今、何をすればよい?" />
+        <SectionTitle index={1} title="この期間の答え" question="今、何をすればよい?" />
       </CardHeader>
       <CardContent className="grid gap-3 lg:grid-cols-[1fr_1.3fr_1fr]">
         <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4">
@@ -154,7 +154,8 @@ function RevenueTreeCard({
           {branchLine("前から使っている人", c.existingUsers)}
         </div>
         <p className="text-xs text-slate-500">
-          使っている人 = 期間内に生成に成功した人か、お金を払った人(サブスクの更新も含む)。課金した人は必ずこの中に入ります。
+          使っている人 = 期間内に生成に成功した人か、売上に数えた支払いをした人。課金した人は必ずこの中に入ります。
+          年額プランの毎月の付与など、お金の記録が無い付与は支払いに数えません。
         </p>
       </CardContent>
     </Card>
@@ -187,7 +188,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
             {[
               { label: "配った(無料)", value: c.freeGranted, prev: p.freeGranted, color: "#8B5CF6" },
               { label: "使った(正味)", value: c.netConsumed, prev: p.netConsumed, color: "#F97316" },
-              { label: "買った(本番の支払い)", value: c.purchased, prev: p.purchased, color: "#16A34A" },
+              { label: "買った(売上の支払い)", value: c.purchased, prev: p.purchased, color: "#16A34A" },
             ].map((row) => (
               <div key={row.label} className="flex items-center gap-3 text-sm">
                 <span className="w-24 shrink-0 text-slate-700 sm:w-36">{row.label}</span>
@@ -336,6 +337,7 @@ async function AdminGrowthOverviewLoader({
     <div className="space-y-4">
       <p className="text-xs text-slate-500">
         {rangeLabel}と、その前の同じ長さの期間を比べています。運営と内部アカウント({num(data.excludedUserCount)}人)を除いています。
+        下の今までのカード(KPI・売上トレンドなど)は、まだ運営を除いていないので、売上や人数が違うことがあります。
       </p>
       <WeeklyAnswerCard answer={data.answer} />
       <RevenueTreeCard
@@ -362,7 +364,7 @@ function AdminGrowthOverviewSkeleton() {
   );
 }
 
-/** 「すべて」タブの一番上に置く概要(①今週の答え・②売上のツリー・③ペルコインの釣り合い)。 */
+/** 「すべて」タブの一番上に置く概要(①この期間の答え・②売上のツリー・③ペルコインの釣り合い)。 */
 export function AdminGrowthOverviewSection(props: {
   overviewPromise: Promise<GrowthOverviewResult>;
   rangeLabel: string;

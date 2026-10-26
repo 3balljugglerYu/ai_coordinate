@@ -1,5 +1,5 @@
 /**
- * 概要(売上のツリー・ペルコインの釣り合い・今週の答え)の型。
+ * 概要(売上のツリー・ペルコインの釣り合い・この期間の答え)の型。
  * RPC の行の型は supabase/migrations/20261025233400_add_growth_overview_tables_and_rpcs.sql の
  * RETURNS TABLE とそろえる。bigint は JSON では数値で来るが、念のため受け取り側で Number() を通す。
  */

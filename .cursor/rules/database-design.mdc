@@ -673,7 +673,7 @@ alwaysApply: false
   - 運営除外は**アプリ側から `uuid[]` で渡す**。`ADMIN_USER_IDS` / `ADMIN_PREVIEW_USER_IDS`（env）と `admin_users`（DB）の和集合は DB 側で作れないため。比較は `user_id IS NULL` を明示的に扱い、ゲスト行を落とさないこと（`NULL <> ALL(...)` は NULL に評価される）
   - 横並び比較のみ `"use cache"` + `admin-collection-summaries` タグ + `cacheLife("minutes")`。単一企画のビューは開催中の鮮度が要るのでキャッシュしない
 - 管理ダッシュボードの概要（`service_role` のみ EXECUTE 可・PUBLIC / anon / authenticated から REVOKE・20261025233400）:
-  - `get_growth_active_users(p_start, p_end, p_exclude_user_ids)` — 使っている人＝期間内に `image_jobs` が succeeded の人 **または** 本番の支払いをした人（purchase は `mode = 'live'`、subscription は `mode` が test・mock 以外。プラン変更と年額の毎月付与は `mode` を書かないため・20261026010200）。期間内に登録した人と前からの人に分ける。`generated_images` で数えないのは、投稿していない画像を消すと人が減るため
+  - `get_growth_active_users(p_start, p_end, p_exclude_user_ids)` — 使っている人＝期間内に `image_jobs` が succeeded の人 **または** 本番の支払いをした人（売上と同じ決まり: purchase は `mode = 'live'`、subscription は `mode = 'live'` かつ `revenueYen` があるもの。年額の毎月付与・プラン変更の即時付与のようにお金の記録が無い付与は入れない。`revenue-transaction.ts` と一緒に直す・20261026010200）。期間内に登録した人と前からの人に分ける。`generated_images` で数えないのは、投稿していない画像を消すと人が減るため
   - `get_percoin_usage_breakdown(p_start, p_end, p_exclude_user_ids)` — 消費と返金を使い道で分ける。`metadata.job_id` → `image_jobs`（失敗は `failed_job`、ほかは `generation_type`）、ガチャ・文字入力は `metadata.source`。**`related_generation_id` に頼らない**（worker は成功時だけ埋め、画像を消すと NULL に戻る）。有料分は消費の `from_paid` と返金の `to_paid` を別に返す
   - `get_percoin_daily_flow(p_start, p_end, p_exclude_user_ids)` — JST の日ごとの無料付与・消費・返金・購入（本番だけ。サブスクの数え方は上と同じ）。動きのない日も0で返す
   - `get_percoin_consumer_summary(p_start, p_end, p_exclude_user_ids, p_top_n)` — 消費した人のまとめを **1行で** 返す（上位N人の正味の消費と無料でもらった量・残りの日数の分布）。人ごとの行を返すと PostgREST の 1,000行上限に当たるため

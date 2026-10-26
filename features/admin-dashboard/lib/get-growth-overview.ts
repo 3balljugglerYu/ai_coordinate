@@ -27,7 +27,7 @@ import { isRevenueTransaction } from "./revenue-transaction";
 import { listTimelineEvents } from "./timeline-event-repository";
 
 /**
- * 概要(①今週の答え・②売上のツリー・③ペルコインの釣り合い)の取得。
+ * 概要(①この期間の答え・②売上のツリー・③ペルコインの釣り合い)の取得。
  *
  * ## 失敗したとき(ADR-003)
  *
