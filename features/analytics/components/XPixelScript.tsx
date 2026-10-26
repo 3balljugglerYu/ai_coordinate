@@ -1,11 +1,8 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
 import Script from "next/script";
-import { usePathname } from "next/navigation";
+import { useAdPixelGate } from "@/features/analytics/hooks/use-ad-pixel-gate";
 import {
-  isAdPixelExcludedPath,
-  isAdPixelHost,
   toXPageLocationParams,
   X_PIXEL_DISABLED_AUTO_FEATURES,
   X_PIXEL_ID,
@@ -26,8 +23,6 @@ import { AD_SIGNUP_COOKIE, AD_SIGNUP_COOKIE_DELETE } from "@/features/analytics/
  * - 送るのは、読み込んだときの「ページを見た」1回だけ(画面の中でページを移っても送らない)。
  *   登録が終わったあと(AD_SIGNUP_COOKIE があるとき)は、続けて「登録した」を1回送り、印を消す。
  */
-const subscribeNothing = () => () => {};
-
 /** <script> の中に埋める JSON。URL に </script> などが入っても、タグを閉じさせない。 */
 function toInlineScriptJson(value: unknown): string {
   return JSON.stringify(value)
@@ -39,18 +34,10 @@ function toInlineScriptJson(value: unknown): string {
 }
 
 export function XPixelScript() {
-  const pathname = usePathname() ?? "/";
-  // 最初に開いたページ(画面の中で移っても変わらない)
-  const [openedOnExcludedPath] = useState(() => isAdPixelExcludedPath(pathname));
-  // サーバーでは false(本番かどうかは、ブラウザの URL でしか分からない)
-  const isProductionHost = useSyncExternalStore(
-    subscribeNothing,
-    () => isAdPixelHost(window.location.hostname),
-    () => false,
-  );
+  const { enabled, pathname } = useAdPixelGate();
 
   // next/script は同じ id を2回動かさないので、config(「ページを見た」)は最初の1回だけ
-  if (!isProductionHost || openedOnExcludedPath) {
+  if (!enabled) {
     return null;
   }
 

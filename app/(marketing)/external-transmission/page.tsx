@@ -15,10 +15,13 @@ import { formatLegalDate } from "@/features/legal/lib/legal-text";
  *  - Vercel Analytics・Speed Insights: features/analytics/components/VercelAnalyticsScripts.tsx(+ @vercel/analytics の track)
  *  - Cloudflare Turnstile: features/catalog/components/CatalogSubmissionForm.tsx(作品の申請のフォーム)
  *  - X の広告の Pixel: features/analytics/components/XPixelScript.tsx(設定は features/analytics/lib/ad-pixels.ts)
+ *  - Meta の広告の Pixel: features/analytics/components/MetaPixelScript.tsx(設定は同じ ad-pixels.ts)
  * 日本語が正本。ほかの言語は、送り先の一覧と日本語のページへの案内を出す(プライバシーポリシーと同じ)。
  */
 
 const EXTERNAL_TRANSMISSION_ESTABLISHED_AT = { year: 2026, month: 10, day: 26 } as const;
+/** 最後に改定した日(送り先を足したり、送る情報を変えたりしたら、本番に出す日にする)。2026-10-27: Meta Pixel を足した */
+const EXTERNAL_TRANSMISSION_REVISED_AT = { year: 2026, month: 10, day: 27 } as const;
 
 type Row =
   | { label: string; text: string }
@@ -96,6 +99,26 @@ const DESTINATIONS_JA: Destination[] = [
       },
     ],
   },
+  {
+    name: "5. Meta の広告の計測タグ（Meta Pixel）",
+    rows: [
+      { label: "送り先", text: "Meta Platforms, Inc.（Facebook・Instagram を運営する事業者）" },
+      {
+        label: "使い道",
+        text: "Facebook・Instagram に出した当サービスの広告の効果（広告を見た人・押した人が、当サービスを訪れたか・登録したか）を測り、広告の配信を調整するため。Meta は、この情報を、Facebook・Instagram での広告の表示に使うことがあります",
+      },
+      {
+        label: "送る情報",
+        text: "開いたページの URL（「?」「#」のうしろも含みます。検索の語句などが入ることがあります）、来る前のページの URL、端末・OS・ブラウザの種類、言語、画面の大きさ、IP アドレス、Cookie などに保存した識別子、Meta の広告から来たことを示す値、ページを開いた日時。当サービスの中でほかのページへ移ったときも、そのたびに、ページを開いたことを送ります。当サービスへの登録が終わったときは、登録が終わったという出来事も1回送ります（だれが登録したか・メールアドレスなどは送りません）。管理画面・ログインと登録の画面・パスワードの再設定・検索・マイページ・お知らせ・投稿の下書き・共有リンクのページでは、Meta Pixel を動かしません（ただし、ほかのページで送る準備をしている間にこれらのページへ移ったときは、移った先のページの URL が送られることがあります）。押したボタンの文字や、フォームに入力した内容（メールアドレス・電話番号・名前など）は送りません",
+      },
+      { label: "送り先のプライバシーポリシー", link: "https://www.facebook.com/privacy/policy/" },
+      {
+        label: "オプトアウト",
+        text: "Meta のアカウントセンターの「Meta テクノロジー外のアクティビティ」で、当サービスなどから送られた情報とアカウントの結び付けを解除し、今後の結び付けを止めることができます（Facebook または Instagram にログインした状態で行います）",
+        link: "https://accountscenter.facebook.com/info_and_permissions/off_facebook_activity",
+      },
+    ],
+  },
 ];
 
 const DESTINATIONS_EN = [
@@ -103,6 +126,7 @@ const DESTINATIONS_EN = [
   "Vercel Analytics and Vercel Speed Insights (Vercel Inc.): measurement of page views and page speed.",
   "Cloudflare Turnstile (Cloudflare, Inc.): prevention of automated submissions, on the work submission form only.",
   "X Pixel (X Corp.): measuring the effectiveness of the Service's ads on X (page visits and completed sign-ups, without who signed up) and adjusting ad delivery. X may use this information to show ads on X.",
+  "Meta Pixel (Meta Platforms, Inc.): measuring the effectiveness of the Service's ads on Facebook and Instagram (page visits and completed sign-ups, without who signed up) and adjusting ad delivery. Meta may use this information to show ads on Facebook and Instagram.",
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -205,6 +229,8 @@ export default async function ExternalTransmissionPage() {
 
       <p className="mt-6 text-end text-xs text-gray-500">
         {formatLegalDate(EXTERNAL_TRANSMISSION_ESTABLISHED_AT, locale, "established")}
+        <br />
+        {formatLegalDate(EXTERNAL_TRANSMISSION_REVISED_AT, locale, "revised")}
       </p>
     </main>
   );

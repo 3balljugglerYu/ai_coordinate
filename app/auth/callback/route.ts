@@ -4,6 +4,8 @@ import { parseSignupSource } from "@/features/auth/lib/signup-source";
 import {
   AD_SIGNUP_COOKIE,
   AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
+  AD_SIGNUP_META_COOKIE,
+  AD_SIGNUP_META_COOKIE_MAX_AGE_SECONDS,
   AD_SIGNUP_COOKIE_PATH,
   AD_SIGNUP_COOKIE_SAME_SITE,
   AD_SIGNUP_REPORTED_METADATA_KEY,
@@ -189,14 +191,20 @@ export async function GET(request: Request) {
         : NextResponse.redirect(`${requestUrl.origin}${redirectPath}`);
 
     // 新しく登録した人にだけ、広告の Pixel に「登録した」を知らせる印を付ける(中身は "1" だけ)
+    // X と Meta で印を分ける(読み込まれる時が違うので、片方が消しても、もう片方が送れるように)
     if (shouldSetAdSignupCookie) {
-      response.cookies.set(AD_SIGNUP_COOKIE, "1", {
-        maxAge: AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
-        path: AD_SIGNUP_COOKIE_PATH,
-        sameSite: AD_SIGNUP_COOKIE_SAME_SITE,
-        secure: !isLocalEnv,
-        httpOnly: false,
-      });
+      for (const [name, maxAge] of [
+        [AD_SIGNUP_COOKIE, AD_SIGNUP_COOKIE_MAX_AGE_SECONDS],
+        [AD_SIGNUP_META_COOKIE, AD_SIGNUP_META_COOKIE_MAX_AGE_SECONDS],
+      ] as const) {
+        response.cookies.set(name, "1", {
+          maxAge,
+          path: AD_SIGNUP_COOKIE_PATH,
+          sameSite: AD_SIGNUP_COOKIE_SAME_SITE,
+          secure: !isLocalEnv,
+          httpOnly: false,
+        });
+      }
     }
 
     return response;

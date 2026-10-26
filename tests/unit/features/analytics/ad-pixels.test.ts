@@ -6,6 +6,8 @@ import {
   isAdPixelExcludedPath,
   isAdPixelHost,
   isAdPixelShareablePath,
+  isMetaPixelExcludedPath,
+  isMetaPixelExcludedReferrer,
   toXPageLocationParams,
 } from "@/features/analytics/lib/ad-pixels";
 
@@ -23,7 +25,7 @@ describe("isAdPixelHost", () => {
 });
 
 describe("isAdPixelExcludedPath(読み込まないのは管理画面だけ)", () => {
-  test.each(["/admin", "/admin/analytics-exclusions", "/ja/admin", "/zh-CN/admin/timeline-events", "/ja/admin/"])("%s は読み込まない", (path) => {
+  test.each(["/admin", "/admin/analytics-exclusions", "/ja/admin", "/zh-CN/admin/timeline-events", "/ja/admin/", "//admin", "/ja//admin"])("%s は読み込まない", (path) => {
     expect(isAdPixelExcludedPath(path)).toBe(true);
   });
 
@@ -88,5 +90,49 @@ describe("toXPageLocationParams", () => {
 
   test("ほかのページは、URL を送らない", () => {
     expect(toXPageLocationParams("https://www.persta.ai", "/ja/posts/123")).toEqual({ hide_page_location: true });
+  });
+});
+
+describe("isMetaPixelExcludedPath(Meta は URL をそのまま送るので、送らないページを決める)", () => {
+  test.each([
+    "/ja/admin",
+    "/admin/users/u1",
+    "/auth/x-complete",
+    "/login",
+    "/ja/signup",
+    "/reset-password/confirm",
+    "/account/reactivate",
+    "/ja/search",
+    "/search",
+    "/my-page/credits",
+    "/notifications/messages/1",
+    "/ja/posts/new/img1",
+    "/m/token123",
+    "/m/token123/book",
+    "//ja//search",
+  ])("%s では動かさない", (path) => {
+    expect(isMetaPixelExcludedPath(path)).toBe(true);
+  });
+
+  test.each(["/", "/ja", "/ja/style", "/campaigns/halloween-best-shot", "/ja/posts/123", "/users/u1", "/ja/searching", "/mypage", "/catalog"])(
+    "%s では動かす",
+    (path) => {
+      expect(isMetaPixelExcludedPath(path)).toBe(false);
+    },
+  );
+});
+
+describe("isMetaPixelExcludedReferrer", () => {
+  const O = "https://www.persta.ai";
+  test.each([
+    [`${O}/ja/search?q=secret`, true],
+    [`${O}/m/token123`, true],
+    [`${O}//ja//my-page`, true],
+    [`${O}/ja/style`, false],
+    ["https://l.facebook.com/search", false],
+    ["", false],
+    ["not a url", false],
+  ])("%s → %s", (referrer, expected) => {
+    expect(isMetaPixelExcludedReferrer(referrer, O)).toBe(expected);
   });
 });

@@ -43,16 +43,27 @@ export function isAdPixelHost(hostname: string): boolean {
   return AD_PIXEL_HOSTS.has(hostname.toLowerCase());
 }
 
-/** 先頭の言語(/ja など)と、末尾の / を外したページの場所。 */
+/**
+ * 先頭の言語(/ja など)と、末尾の / を外したページの場所。
+ * 「//ja//admin」のような URL でも同じページが開くので、/ が続くところは1つにしてから比べる。
+ */
 function normalizePath(pathname: string): string {
-  const withoutLocale = stripLocalePrefix(pathname).pathname;
+  const withoutLocale = stripLocalePrefix(pathname.replace(/\/+/g, "/")).pathname;
   return withoutLocale.length > 1 ? withoutLocale.replace(/\/+$/, "") : withoutLocale;
 }
 
-/** 開いたときに Pixel を読み込まないページ(管理画面。広告から来る人はいない)。 */
-export function isAdPixelExcludedPath(pathname: string): boolean {
+/** そのページか、その下のページか。 */
+function isUnderAnyPrefix(pathname: string, prefixes: readonly string[]): boolean {
   const path = normalizePath(pathname);
-  return path === "/admin" || path.startsWith("/admin/");
+  return prefixes.some((prefix) => path === prefix || path.startsWith(`${prefix}/`));
+}
+
+/** 管理画面。X・Meta とも、ここから開いたときは読み込まない(広告から来る人はいない・運営の操作を数えない)。 */
+const AD_PIXEL_ADMIN_PREFIXES = ["/admin"] as const;
+
+/** 開いたときに Pixel を読み込まないページ(管理画面)。 */
+export function isAdPixelExcludedPath(pathname: string): boolean {
+  return isUnderAnyPrefix(pathname, AD_PIXEL_ADMIN_PREFIXES);
 }
 
 /**
@@ -95,4 +106,55 @@ export function toXPageLocationParams(
     return { hide_page_location: true };
   }
   return { page_location: `${origin}${pathname}` };
+}
+
+/** Meta の広告の Pixel(データセット)の ID(Meta のイベントマネージャー・Persta.AI の Web 用)。 */
+export const META_PIXEL_ID = "1451721257058367";
+
+/**
+ * Meta の Pixel を動かさないページ(その下のページも含む)。
+ *
+ * ⭐ Meta の fbevents.js(2026-10-26 に読んだもの)は、送る URL(dl)と来る前のページの URL(rl)を
+ *    ブラウザの本当の値から読み、外から差し替える設定が無い(X の page_location にあたるものが無い)。
+ *    そのため Meta には、開いたページの URL を「?」「#」のうしろも含めてそのまま送る
+ *    (ほかのサイトと同じ決まり・2026-10-27 にユーザーが決めた。外部送信のページにそう書いてある)。
+ *    ただし、次のページでは動かさない(送らない)。
+ * - 管理画面・ログインと登録・パスワードの再設定・退会の取り消し(ログインのコードなどが URL に付く)
+ * - 検索(検索の語句が URL に付く)
+ * - マイページ・お知らせ・投稿の下書き(本人だけのページ)
+ * - 共有リンク(/m/<コード>。コードを知っている人だけが見られる)
+ */
+const META_PIXEL_EXCLUDED_PREFIXES = [
+  ...AD_PIXEL_ADMIN_PREFIXES,
+  "/auth",
+  "/login",
+  "/signup",
+  "/reset-password",
+  "/account",
+  "/search",
+  "/my-page",
+  "/notifications",
+  "/posts/new",
+  "/m",
+] as const;
+
+export function isMetaPixelExcludedPath(pathname: string): boolean {
+  return isUnderAnyPrefix(pathname, META_PIXEL_EXCLUDED_PREFIXES);
+}
+
+/**
+ * 来る前のページの URL(document.referrer)が、Meta Pixel を動かさないページか。
+ * fbevents.js は来る前のページの URL もそのまま送るので、検索の結果を新しいタブで開いたときなどに、
+ * 動かさないページの URL が送られてしまう。そのタブでは、Meta Pixel を動かさない
+ * (document.referrer は、画面の中でページを移っても変わらない)。
+ * ほかのサイトから来たとき・来る前のページが無いときは false。
+ */
+export function isMetaPixelExcludedReferrer(referrer: string, origin: string): boolean {
+  if (!referrer) return false;
+  try {
+    const url = new URL(referrer);
+    return url.origin === origin && isMetaPixelExcludedPath(url.pathname);
+  } catch {
+    return false;
+  }
 }
