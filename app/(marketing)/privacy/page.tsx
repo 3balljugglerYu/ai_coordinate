@@ -50,6 +50,12 @@ function privacyLinks(locale: Locale): LegalLink[] {
       href: "https://help.x.com/ja/safety-and-security/privacy-controls-for-tailored-ads",
       external: true,
     },
+    { match: "https://www.facebook.com/privacy/policy/", href: "https://www.facebook.com/privacy/policy/", external: true },
+    {
+      match: "https://accountscenter.facebook.com/info_and_permissions/off_facebook_activity",
+      href: "https://accountscenter.facebook.com/info_and_permissions/off_facebook_activity",
+      external: true,
+    },
     {
       match: "「利用者情報の外部送信について」",
       href: localizePublicPath("/external-transmission", locale),
@@ -150,7 +156,7 @@ export default async function PrivacyPage() {
               description: "第三者への提供について",
               paragraphs: [
                 "当サービスは、以下の場合を除き、ユーザーの個人情報を第三者に提供することはありません。",
-                "なお、当サービスは、Supabase（認証・データベース・ストレージサービス）、Stripe（決済サービス）、画像生成 API 提供元（OpenAI、Google 等）、アクセス解析ツールの提供元（Google 等）、広告の計測タグの提供元（X Corp. 等）、その他のクラウドインフラ事業者を利用しており、これらのサービス提供者に必要な範囲でデータが提供される場合があります。これらのサービス提供者は、それぞれのプライバシーポリシーに従って個人情報を管理します。",
+                "なお、当サービスは、Supabase（認証・データベース・ストレージサービス）、Stripe（決済サービス）、画像生成 API 提供元（OpenAI、Google 等）、アクセス解析ツールの提供元（Google 等）、広告の計測タグの提供元（X Corp.、Meta Platforms, Inc. 等）、その他のクラウドインフラ事業者を利用しており、これらのサービス提供者に必要な範囲でデータが提供される場合があります。これらのサービス提供者は、それぞれのプライバシーポリシーに従って個人情報を管理します。",
               ],
               list: [
                 "ユーザーの同意がある場合",
@@ -170,6 +176,8 @@ export default async function PrivacyPage() {
                 "集められた情報は、Google のプライバシーポリシー（https://policies.google.com/privacy）に基づいて管理されます。Google アナリティクスによる情報の収集を望まない場合は、パソコンのブラウザでは、Google アナリティクス オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout）で止めることができます。",
                 "当サービスは、X（旧 Twitter）に出した広告の効果を測るため、X Corp. が提供する広告の計測タグ「X Pixel」を利用しています。X Pixel は Cookie などを使って、当サービスのページを開いたことや、そのときのページ（一部のページだけで、「?」「#」のうしろを除きます）、当サービスへの登録が終わったこと、利用した端末・ブラウザなどの情報を X Corp. に送ります。X Corp. は、この情報を X での広告の表示に使うことがあります。フォームに入力した内容（メールアドレス・氏名など、個人を直接特定できる情報）は送りません。",
                 "X Corp. に送られた情報は、X のプライバシーポリシー（https://x.com/ja/privacy）に基づいて管理されます。X での興味関心に基づく広告を望まない場合は、X の設定の「広告の環境設定」でオフにできます（https://help.x.com/ja/safety-and-security/privacy-controls-for-tailored-ads）。",
+                "また、Facebook・Instagram に出した広告の効果を測るため、Meta Platforms, Inc. が提供する広告の計測タグ「Meta Pixel」を利用しています。Meta Pixel は Cookie などを使って、当サービスのページを開いたことや、そのときのページと来る前のページ（一部のページだけで、URL の「?」のうしろが広告から来たことを示す値だけのときに限ります）、当サービスへの登録が終わったこと、利用した端末・ブラウザなどの情報を Meta Platforms, Inc. に送ります。Meta Platforms, Inc. は、この情報を Facebook・Instagram での広告の表示に使うことがあります。フォームに入力した内容（メールアドレス・氏名など、個人を直接特定できる情報）は送りません。",
+                "Meta Platforms, Inc. に送られた情報は、Meta のプライバシーポリシー（https://www.facebook.com/privacy/policy/）に基づいて管理されます。Meta のアカウントセンターの「Meta テクノロジー外のアクティビティ」（https://accountscenter.facebook.com/info_and_permissions/off_facebook_activity）で、送られた情報とアカウントの結び付けを解除し、今後の結び付けを止めることができます。",
                 "当サービスが外部へ送っている情報の詳しい中身は、「利用者情報の外部送信について」をご覧ください。",
               ],
             },
@@ -217,8 +225,8 @@ export default async function PrivacyPage() {
               description: "English translation pending",
               paragraphs: [
                 "The full English translation of this Privacy Policy is being prepared. For the binding terms, please consult the Japanese version of this page.",
-                "Major topics covered in the Japanese version include: information collected by the Service, purposes of use, the Service's policy on AI training and operator secondary use of user content, security management, provision to third parties (including service providers and emergency disclosure to authorities for CSAM), use of cookies, analytics tools (Google Analytics) and advertising measurement tags (X Pixel), disclosure/correction/deletion requests, retention on withdrawal, and contact information.",
-                "Information sent from your device to outside companies (Google Analytics, Vercel Analytics, X Pixel and others) is listed on the External Transmission of User Information page.",
+                "Major topics covered in the Japanese version include: information collected by the Service, purposes of use, the Service's policy on AI training and operator secondary use of user content, security management, provision to third parties (including service providers and emergency disclosure to authorities for CSAM), use of cookies, analytics tools (Google Analytics) and advertising measurement tags (X Pixel, Meta Pixel), disclosure/correction/deletion requests, retention on withdrawal, and contact information.",
+                "Information sent from your device to outside companies (Google Analytics, Vercel Analytics, X Pixel, Meta Pixel and others) is listed on the External Transmission of User Information page.",
               ],
             },
             {

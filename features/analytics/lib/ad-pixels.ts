@@ -96,3 +96,57 @@ export function toXPageLocationParams(
   }
   return { page_location: `${origin}${pathname}` };
 }
+
+/** Meta の広告の Pixel(データセット)の ID(Meta のイベントマネージャー・Persta.AI の Web 用)。 */
+export const META_PIXEL_ID = "1623101996277700";
+
+/**
+ * Meta の Pixel で読み込んでよい URL に付いていてよい「?」のうしろの名前(広告から来た印・流入元)。
+ *
+ * ⭐ Meta の fbevents.js(2026-10-26 に読んだもの)は、送る URL(dl)と来る前のページの URL(rl)を
+ *    ブラウザの本当の値から読み、外から差し替える設定が無い(X の page_location にあたるものが無い)。
+ *    そのため、URL そのものが「送ってよいページ・? のうしろは下の名前だけ・# 無し」のときにだけ読み込む。
+ */
+const META_ALLOWED_QUERY_KEYS = new Set([
+  "fbclid",
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_term",
+  "utm_content",
+  "utm_id",
+  "signup_source",
+]);
+
+function isMetaCleanUrl(url: URL): boolean {
+  if (url.hash !== "") return false;
+  if (!isAdPixelShareablePath(url.pathname)) return false;
+  for (const key of url.searchParams.keys()) {
+    if (!META_ALLOWED_QUERY_KEYS.has(key)) return false;
+  }
+  return true;
+}
+
+/**
+ * 今の URL で Meta の Pixel を読み込んでよいか。
+ * - 今の URL が、送ってよいページで、? のうしろは広告の印だけ、# が無い。
+ * - 来る前のページがこのサイトの中なら、そのページの URL も同じ決まりに合う
+ *   (来る前のページの URL もそのまま送られるので、検索の語句などが付いたページから来たときは読み込まない)。
+ *   ほかのサイトから来たとき(広告・検索など)は、来る前のページの URL がそのまま送られる(外部送信のページに書いてある)。
+ */
+export function isMetaPixelLoadableLocation(href: string, referrer: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return false;
+  }
+  if (!isMetaCleanUrl(url)) return false;
+  if (!referrer) return true;
+  try {
+    const ref = new URL(referrer);
+    return ref.origin !== url.origin || isMetaCleanUrl(ref);
+  } catch {
+    return false;
+  }
+}

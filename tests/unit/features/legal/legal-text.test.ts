@@ -63,6 +63,8 @@ describe("プライバシーポリシーの本文", () => {
     "（https://tools.google.com/dlpage/gaoptout）",
     "（https://x.com/ja/privacy）",
     "（https://help.x.com/ja/safety-and-security/privacy-controls-for-tailored-ads）",
+    "（https://www.facebook.com/privacy/policy/）",
+    "（https://accountscenter.facebook.com/info_and_permissions/off_facebook_activity）",
     "「利用者情報の外部送信について」をご覧ください",
     "External Transmission of User Information page",
   ])("本文に「%s」がある", (text) => {

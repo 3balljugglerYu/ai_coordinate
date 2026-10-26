@@ -6,6 +6,7 @@ import {
   isAdPixelExcludedPath,
   isAdPixelHost,
   isAdPixelShareablePath,
+  isMetaPixelLoadableLocation,
   toXPageLocationParams,
 } from "@/features/analytics/lib/ad-pixels";
 
@@ -90,3 +91,30 @@ describe("toXPageLocationParams", () => {
     expect(toXPageLocationParams("https://www.persta.ai", "/ja/posts/123")).toEqual({ hide_page_location: true });
   });
 });
+
+describe("isMetaPixelLoadableLocation(Meta は URL を差し替えられないので、きれいな URL のときだけ読み込む)", () => {
+  const O = "https://www.persta.ai";
+
+  test.each([
+    [`${O}/ja`, ""],
+    [`${O}/ja/campaigns/halloween-best-shot?fbclid=abc&utm_source=meta`, "https://l.facebook.com/"],
+    [`${O}/ja/style?signup_source=halloween-best-shot_meta_ad2`, ""],
+    [`${O}/ja/style`, `${O}/ja/campaigns/halloween-best-shot?utm_campaign=x`],
+  ])("%s(来る前 %j)は読み込む", (href, referrer) => {
+    expect(isMetaPixelLoadableLocation(href, referrer)).toBe(true);
+  });
+
+  test.each([
+    [`${O}/ja/posts/123`, ""],
+    [`${O}/ja/search?q=secret`, ""],
+    [`${O}/ja/style?q=secret`, ""],
+    [`${O}/ja/style#access_token=abc`, ""],
+    [`${O}/auth/x-complete?next=/ja/style`, ""],
+    [`${O}/ja/style`, `${O}/ja/search?q=secret`],
+    [`${O}/ja/style`, `${O}/ja/posts/123`],
+    ["not a url", ""],
+  ])("%s(来る前 %j)は読み込まない", (href, referrer) => {
+    expect(isMetaPixelLoadableLocation(href, referrer)).toBe(false);
+  });
+});
+

@@ -11,7 +11,16 @@
  *    (ログインの処理と取り合わないように、ログインの側では送らないと決めた・#811)。
  */
 
+/** X の Pixel が読む印。 */
 export const AD_SIGNUP_COOKIE = "persta_ad_signup";
+
+/**
+ * Meta の Pixel が読む印(X とは別にする)。
+ * Meta はきれいな URL のページでしか読み込まないので、X より後で読み込まれることがある
+ * (Google・X でのログインは、?next= の付いた完了の画面を通ってから移る)。印を分けておけば、
+ * 先に読み込んだほうが消しても、もう片方が送れる。
+ */
+export const AD_SIGNUP_META_COOKIE = "persta_ad_signup_meta";
 
 /** 印を残しておく長さ。登録のあとのページで Pixel が読み込まれるまでの余裕。 */
 export const AD_SIGNUP_COOKIE_MAX_AGE_SECONDS = 10 * 60;
@@ -26,7 +35,12 @@ const SAME_SITE_ATTRIBUTE = { lax: "Lax", strict: "Strict", none: "None" } as co
  * ブラウザで Cookie を消す文(付けたときと同じ Path・SameSite にする)。
  * Pixel は本番(https)でしか読み込まないので、Secure を付ける。
  */
-export const AD_SIGNUP_COOKIE_DELETE = `${AD_SIGNUP_COOKIE}=; Max-Age=0; Path=${AD_SIGNUP_COOKIE_PATH}; SameSite=${SAME_SITE_ATTRIBUTE[AD_SIGNUP_COOKIE_SAME_SITE]}; Secure`;
+export function adSignupCookieDelete(name: string): string {
+  return `${name}=; Max-Age=0; Path=${AD_SIGNUP_COOKIE_PATH}; SameSite=${SAME_SITE_ATTRIBUTE[AD_SIGNUP_COOKIE_SAME_SITE]}; Secure`;
+}
+
+export const AD_SIGNUP_COOKIE_DELETE = adSignupCookieDelete(AD_SIGNUP_COOKIE);
+export const AD_SIGNUP_META_COOKIE_DELETE = adSignupCookieDelete(AD_SIGNUP_META_COOKIE);
 
 /** 送った印の user_metadata のキー(値は送った日時)。 */
 export const AD_SIGNUP_REPORTED_METADATA_KEY = "ad_signup_reported_at";
