@@ -62,6 +62,9 @@ export default async function AdminDashboardPage({
   });
   const formattedStyleFrom = formatAdminDateTimeLabel(oneTapStyleRangeBounds.fromIso);
   const formattedStyleTo = formatAdminDateTimeLabel(oneTapStyleRangeBounds.toIso);
+  // 概要は「すべて」タブだけ。主な集計を待つ前に始め、並行して取る
+  const growthOverviewPromise =
+    tab === "all" ? getGrowthOverview(range) : null;
   const data = await getAdminDashboardData(range, oneTapStyleRangeBounds);
 
   const collectionRange = parseCustomDashboardRange(params.collectionRange);
@@ -140,10 +143,12 @@ export default async function AdminDashboardPage({
       ) : (
         <>
           {/* 概要(売上への道筋)。取得は promise のまま渡し、ほかのカードを待たせない */}
-          <AdminGrowthOverviewSection
-            overviewPromise={getGrowthOverview(range)}
-            rangeLabel={RANGE_LABELS[range]}
-          />
+          {growthOverviewPromise ? (
+            <AdminGrowthOverviewSection
+              overviewPromise={growthOverviewPromise}
+              rangeLabel={RANGE_LABELS[range]}
+            />
+          ) : null}
           <AdminPageAnalyticsSectionServer
             ga4Promise={getGa4DashboardData(range)}
             trend={data.trend}

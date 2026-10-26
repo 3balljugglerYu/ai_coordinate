@@ -20,7 +20,7 @@ interface AdminPercoinDailyFlowChartProps {
 }
 
 /**
- * 日ごとの「配った(無料)」と「使った(正味)」。出来事の印を縦の点線で出す。
+ * 日ごとの「配った(無料)」「使った(正味)」「買った」。出来事の印を縦の点線で出す。
  * 2本の線の上下で、配る方が多い日・使う方が多い日が分かる。
  */
 export default function AdminPercoinDailyFlowChart({
@@ -104,6 +104,14 @@ export default function AdminPercoinDailyFlowChart({
               name="配った(無料)"
               stroke="#8B5CF6"
               strokeWidth={2.5}
+              dot={false}
+            />
+            <Line
+              type="monotone"
+              dataKey="purchased"
+              name="買った(本番の支払い)"
+              stroke="#16A34A"
+              strokeWidth={2}
               dot={false}
             />
             <Line

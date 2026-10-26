@@ -1,6 +1,7 @@
 import type { PercoinBalance } from "./build-percoin-balance";
 import type { RevenueTree } from "./build-revenue-tree";
 import { GROWTH_MIN_SAMPLE } from "./growth-overview-types";
+import { formatCount, formatDiff, formatPct as pct } from "./growth-format";
 
 /**
  * 「今週の答え」(純関数・ADR-004)。
@@ -10,7 +11,8 @@ import { GROWTH_MIN_SAMPLE } from "./growth-overview-types";
  *
  * 決まり(計画 2-3 の順):
  *   1. 使っている人が30人未満 → まだ判断できない
- *   2. 無料で配った量 ≥ 使った量(正味) → ペルコインが足りなくならない
+ *   2. 無料で配った量 ≥ 使った量(正味)、かつ配った量が0より多い → ペルコインが足りなくならない
+ *      (使った量が0でも、配っていれば当てはまる。全部が返金された期間も同じ)
  *   3. 前の期間も30人以上いて、課金した人の割合が下がった → 課金した人の割合
  *   4. 前の期間も30人以上いて、使っている人が減った → 使っている人
  *   5. どれでもない → 大きな詰まりは見つからない
@@ -40,17 +42,7 @@ export interface WeeklyAnswer {
 }
 
 function yen(value: number): string {
-  return `${value.toLocaleString("ja-JP")}円`;
-}
-
-function diffText(current: number, previous: number, unit: string): string {
-  const d = current - previous;
-  if (d === 0) return "±0";
-  return `${d > 0 ? "+" : "−"}${Math.abs(d).toLocaleString("ja-JP")}${unit}`;
-}
-
-function pct(value: number | null): string {
-  return value === null ? "—" : `${value}%`;
+  return `${formatCount(value)}円`;
 }
 
 export function buildWeeklyAnswer(input: {
@@ -63,7 +55,7 @@ export function buildWeeklyAnswer(input: {
   const { balance } = input;
 
   const revenue = {
-    headline: `${yen(current.revenueYen)}(前の期間 ${yen(previous.revenueYen)}・${diffText(current.revenueYen, previous.revenueYen, "円")})`,
+    headline: `${yen(current.revenueYen)}(前の期間 ${yen(previous.revenueYen)}・${formatDiff(current.revenueYen, previous.revenueYen, "円")})`,
     detail: `新しく登録した人から ${yen(current.newUsers.revenueYen)}(${current.newUsers.payers}人)・前から使っている人から ${yen(current.existingUsers.revenueYen)}(${current.existingUsers.payers}人)`,
   };
 
@@ -95,7 +87,7 @@ export function buildWeeklyAnswer(input: {
   }
 
   if (
-    balance.current.netConsumed > 0 &&
+    balance.current.freeGranted > 0 &&
     balance.current.freeGranted >= balance.current.netConsumed
   ) {
     return {
@@ -103,7 +95,7 @@ export function buildWeeklyAnswer(input: {
       finding: {
         kind: "percoin_surplus",
         title: "ペルコインが足りなくならない",
-        detail: `無料で配った量(${balance.current.freeGranted.toLocaleString("ja-JP")})が、使った量(正味 ${balance.current.netConsumed.toLocaleString("ja-JP")})以上です。買う理由が生まれにくい状態です。`,
+        detail: `無料で配った量(${formatCount(balance.current.freeGranted)})が、使った量(正味 ${formatCount(balance.current.netConsumed)})以上です。買う理由が生まれにくい状態です。`,
         watch: surplusWatch,
       },
       notes,

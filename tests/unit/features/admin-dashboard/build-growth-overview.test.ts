@@ -8,7 +8,7 @@
 import { buildPercoinBalance, sumDailyFlow } from "@/features/admin-dashboard/lib/build-percoin-balance";
 import { buildRevenueTree, ratePct } from "@/features/admin-dashboard/lib/build-revenue-tree";
 import { buildWeeklyAnswer } from "@/features/admin-dashboard/lib/build-weekly-answer";
-import { getChartRange } from "@/features/admin-dashboard/lib/chart-range";
+import { getChartRange, startOfJstDay } from "@/features/admin-dashboard/lib/chart-range";
 import type {
   PercoinConsumerSummaryRow,
   PercoinDailyFlowRow,
@@ -231,6 +231,17 @@ describe("buildWeeklyAnswer", () => {
     expect(a.finding.kind).toBe("percoin_surplus");
   });
 
+  test("使った量(正味)が0でも、配っていれば「足りなくならない」", () => {
+    // 全部が返金された期間(消費 300・返金 300)
+    const a = buildWeeklyAnswer({ tree: tree(40, 40, 0, 0), balance: balanceOf(5000, 300, 300) });
+    expect(a.finding.kind).toBe("percoin_surplus");
+  });
+
+  test("配っても使ってもいなければ、足りなくならない とは言わない", () => {
+    const a = buildWeeklyAnswer({ tree: tree(40, 40, 0, 0), balance: balanceOf(0, 0) });
+    expect(a.finding.kind).not.toBe("percoin_surplus");
+  });
+
   test("足りている状態で、課金した人の割合が下がったら、それを直し所にする", () => {
     const a = buildWeeklyAnswer({ tree: tree(40, 40, 1, 2), balance: balanceOf(100, 500) });
     expect(a.finding.kind).toBe("payer_rate_down");
@@ -264,21 +275,27 @@ describe("buildWeeklyAnswer", () => {
 });
 
 describe("getChartRange", () => {
+  // 2026-10-26 21:00 JST
   const now = new Date("2026-10-26T12:00:00Z");
-  const day = 24 * 60 * 60 * 1000;
 
-  test.each(["24h", "7d"] as const)("%s は直近7日", (range) => {
-    const currentStart = new Date(now.getTime() - (range === "24h" ? 1 : 7) * day);
-    const chart = getChartRange(range, currentStart, now);
-    expect(chart.start.toISOString()).toBe("2026-10-19T12:00:00.000Z");
+  test.each([
+    ["24h", "2026-10-19T15:00:00.000Z", 7],
+    ["7d", "2026-10-19T15:00:00.000Z", 7],
+    ["30d", "2026-09-26T15:00:00.000Z", 30],
+    ["90d", "2026-07-28T15:00:00.000Z", 90],
+  ] as const)("%s は今日を含めて N日。始まりは日本時間の 0:00", (range, start, days) => {
+    const chart = getChartRange(range, now);
+    expect(chart.start.toISOString()).toBe(start);
     expect(chart.end).toBe(now);
-    expect(chart.sameAsCurrent).toBe(range === "7d");
+    expect(chart.days).toBe(days);
   });
 
-  test.each(["30d", "90d"] as const)("%s は選んだ期間", (range) => {
-    const currentStart = new Date(now.getTime() - (range === "30d" ? 30 : 90) * day);
-    const chart = getChartRange(range, currentStart, now);
-    expect(chart.start).toBe(currentStart);
-    expect(chart.sameAsCurrent).toBe(true);
+  test("日本時間の 0:00 ちょうどは、その日の始まり", () => {
+    expect(startOfJstDay(new Date("2026-10-25T15:00:00Z")).toISOString()).toBe(
+      "2026-10-25T15:00:00.000Z",
+    );
+    expect(startOfJstDay(new Date("2026-10-25T14:59:59Z")).toISOString()).toBe(
+      "2026-10-24T15:00:00.000Z",
+    );
   });
 });

@@ -1,4 +1,5 @@
 import type { GrowthActiveUsersRow, GrowthPayment } from "./growth-overview-types";
+import { toNumber } from "./growth-format";
 
 /**
  * 売上のツリー(純関数)。
@@ -32,11 +33,6 @@ export interface RevenueTreePeriod {
 export interface RevenueTree {
   current: RevenueTreePeriod;
   previous: RevenueTreePeriod;
-}
-
-function toNumber(value: unknown): number {
-  const n = Number(value ?? 0);
-  return Number.isFinite(n) ? n : 0;
 }
 
 export function ratePct(numerator: number, denominator: number): number | null {

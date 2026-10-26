@@ -158,7 +158,7 @@ export async function getGrowthOverview(
 ): Promise<GrowthOverviewResult> {
   try {
     const { currentStart, previousStart } = getRangeBounds(range, now);
-    const chart = getChartRange(range, currentStart, now);
+    const chart = getChartRange(range, now);
     const supabase = createAdminClient();
 
     let excluded: string[];
@@ -180,9 +180,7 @@ export async function getGrowthOverview(
       rpcSingle<GrowthActiveUsersRow>("使っている人(前)", supabase.rpc("get_growth_active_users", prev)),
       rpc<PercoinDailyFlowRow[]>("日ごとの出入り(今)", supabase.rpc("get_percoin_daily_flow", cur)),
       rpc<PercoinDailyFlowRow[]>("日ごとの出入り(前)", supabase.rpc("get_percoin_daily_flow", prev)),
-      chart.sameAsCurrent
-        ? Promise.resolve<PercoinDailyFlowRow[] | null>(null)
-        : rpc<PercoinDailyFlowRow[]>("日ごとの出入り(グラフ)", supabase.rpc("get_percoin_daily_flow", chartArgs)),
+      rpc<PercoinDailyFlowRow[]>("日ごとの出入り(グラフ)", supabase.rpc("get_percoin_daily_flow", chartArgs)),
       rpc<PercoinGrantRow[]>(
         "配布の内訳",
         supabase.rpc("get_percoin_grant_breakdown", cur),
@@ -242,7 +240,7 @@ export async function getGrowthOverview(
       GrowthActiveUsersRow,
       PercoinDailyFlowRow[],
       PercoinDailyFlowRow[],
-      PercoinDailyFlowRow[] | null,
+      PercoinDailyFlowRow[],
       PercoinGrantRow[],
       PercoinUsageRow[],
       PercoinConsumerSummaryRow,
@@ -274,7 +272,7 @@ export async function getGrowthOverview(
     const balance = buildPercoinBalance({
       currentFlow: flowCur,
       previousFlow: flowPrev,
-      chartFlow: flowChart ?? flowCur,
+      chartFlow: flowChart,
       grants,
       usage,
       summary,

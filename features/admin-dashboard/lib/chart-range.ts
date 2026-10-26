@@ -1,25 +1,44 @@
 import type { DashboardRange } from "./dashboard-range";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 
 /** 日ごとのグラフを最低何日分描くか。24h では1〜2点しか出ず、線にならないため。 */
 export const MIN_CHART_DAYS = 7;
 
+const RANGE_DAYS: Record<DashboardRange, number> = {
+  "24h": MIN_CHART_DAYS,
+  "7d": MIN_CHART_DAYS,
+  "30d": 30,
+  "90d": 90,
+};
+
+/** その時刻を含む日本時間の日の始まり(0:00 JST)。 */
+export function startOfJstDay(at: Date): Date {
+  const shifted = at.getTime() + JST_OFFSET_MS;
+  return new Date(shifted - (shifted % DAY_MS) - JST_OFFSET_MS);
+}
+
 /**
  * 日ごとのグラフの範囲(OV-7)。
  *
- * 24h・7d のときは直近7日、30d・90d のときは選んだ期間。
- * 取得の前にここで決め、日ごとの出入りと出来事の印は、この範囲で別に取る
- * (今の期間・前の期間の合計とは範囲が違うことがあるため)。
+ * - 24h・7d は直近7日、30d・90d はその日数。今日を含めて数える
+ * - **始まりは日本時間の 0:00 にそろえる**。今の期間(「今」から N日前の同じ時刻)のまま
+ *   描くと、左端の日が途中からの数になり、線が急に下がって見えるため
+ *   (その日に出来事の印があると、出来事のせいで下がったように読めてしまう)
+ * - 右端の日(今日)は途中までの数。画面にそう書く
+ *
+ * 今の期間・前の期間の合計とは範囲が違うので、日ごとの出入りと出来事の印は、この範囲で別に取る。
  */
 export function getChartRange(
   range: DashboardRange,
-  currentStart: Date,
   now: Date,
-): { start: Date; end: Date; sameAsCurrent: boolean } {
-  const minStart = new Date(now.getTime() - MIN_CHART_DAYS * DAY_MS);
-  if (range === "24h" || range === "7d") {
-    return { start: minStart, end: now, sameAsCurrent: range === "7d" };
-  }
-  return { start: currentStart, end: now, sameAsCurrent: true };
+): { start: Date; end: Date; days: number } {
+  const days = RANGE_DAYS[range];
+  const todayStart = startOfJstDay(now);
+  return {
+    start: new Date(todayStart.getTime() - (days - 1) * DAY_MS),
+    end: now,
+    days,
+  };
 }

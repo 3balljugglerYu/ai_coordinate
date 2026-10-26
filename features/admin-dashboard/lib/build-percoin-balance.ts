@@ -1,5 +1,6 @@
 import { labelForGrantSource } from "./build-percoin-analytics";
 import { ratePct } from "./build-revenue-tree";
+import { toNumber as n } from "./growth-format";
 import type {
   GrowthTimelineEvent,
   PercoinConsumerSummaryRow,
@@ -85,11 +86,6 @@ export interface PercoinBalance {
     purchased: number;
   }>;
   events: GrowthTimelineEvent[];
-}
-
-function n(value: unknown): number {
-  const v = Number(value ?? 0);
-  return Number.isFinite(v) ? v : 0;
 }
 
 export function sumDailyFlow(rows: PercoinDailyFlowRow[]): PercoinFlowTotals {

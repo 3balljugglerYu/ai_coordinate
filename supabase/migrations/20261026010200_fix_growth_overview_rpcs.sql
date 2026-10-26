@@ -1,18 +1,22 @@
 BEGIN;
 
 /*
-  20261025233400 の集計の関数を3つ直す(#804 のレビューで見つかったもの)。
+  20261025233400 の集計の関数を3つ直す(#804 のレビューで見つかった2点)。
+  1 は get_growth_active_users と get_percoin_daily_flow、2 は growth_percoin_consumers。
   計画: docs/planning/admin-growth-overview-p1-p2-implementation-plan.md
 
-  ## 1. サブスクの付与に「本番」の印が無い経路がある
+  ## 1. サブスクの付与に「本番」の印が無い経路がある(get_growth_active_users・get_percoin_daily_flow)
 
   プラン変更(features/subscription/lib/change-service.ts の grant_subscription_percoins)と、
   年額プランの毎月の付与(20260331193000 の cron)は、metadata に mode を書かない。
   mode = 'live' だけで数えると、本当の支払いが「使っている人」と「買った量」から落ちる。
   サブスクは「test・mock 以外」を本番として数える(purchase は今までどおり live だけ)。
   2026-10-26 時点で mode の無いサブスクの行は、4月に内部アカウントが試した6件だけ。
+  ⚠️ 売上(アプリの isRevenueTransaction)は、今までどおり mode = 'live' で金額の決まるものだけ。
+     mode の無い付与は金額(プラン)が metadata に無く、売上には数えられない。
+     なので「使っている人」と「買った量」には入るが、「課金した人」と売上には入らない。
 
-  ## 2. 期間の終わりが未来だと、残りの日数が長く出る
+  ## 2. 期間の終わりが未来だと、残りの日数が長く出る(growth_percoin_consumers)
 
   1日あたりの消費を「期間の長さ」で割っていたので、終わりが未来だと
   まだ来ていない日まで分母に入る。least(p_end, now()) までの長さで割る。
@@ -197,5 +201,7 @@ REVOKE ALL ON FUNCTION public.growth_percoin_consumers(timestamptz, timestamptz,
 COMMIT;
 
 -- ===============================================
--- DOWN: 20261025233400 の3つの関数の定義に戻す(CREATE OR REPLACE で上書き)
+-- DOWN: 戻すときは、20261025233400 の get_growth_active_users・get_percoin_daily_flow・
+-- growth_percoin_consumers の CREATE OR REPLACE FUNCTION 文を、そのまま流し直す
+-- (引数と戻り値は同じなので、権限はそのまま残る)。
 -- ===============================================

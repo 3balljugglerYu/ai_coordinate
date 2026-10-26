@@ -5,25 +5,13 @@ import type { PercoinBalance } from "../lib/build-percoin-balance";
 import type { RevenueTree, RevenueTreePeriod } from "../lib/build-revenue-tree";
 import type { WeeklyAnswer } from "../lib/build-weekly-answer";
 import type { GrowthOverviewResult } from "../lib/get-growth-overview";
+import { formatCount as num, formatDiff as diff, formatPct as pct } from "../lib/growth-format";
+import { LOW_RUNWAY_LIST_LIMIT, LOW_RUNWAY_MAX_DAYS } from "../lib/growth-overview-types";
 import { AdminPercoinDailyFlowChartPanel } from "./AdminPercoinDailyFlowChartPanel";
 
 const HEADING_STYLE = {
   fontFamily: "var(--font-admin-heading), ui-monospace, monospace",
 };
-
-function num(value: number): string {
-  return value.toLocaleString("ja-JP");
-}
-
-function pct(value: number | null): string {
-  return value === null ? "—" : `${value}%`;
-}
-
-function diff(current: number, previous: number, unit = ""): string {
-  const d = current - previous;
-  if (d === 0) return "±0";
-  return `${d > 0 ? "+" : "−"}${num(Math.abs(d))}${unit}`;
-}
 
 function SectionTitle({ index, title, question }: { index: number; title: string; question: string }) {
   return (
@@ -273,7 +261,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
 
           <details className="rounded-xl border border-slate-200 p-3 text-xs">
             <summary className="cursor-pointer font-bold text-slate-800">
-              残りが3日以内の人({num(balance.lowRunwayUsers.length)}
+              残りが{LOW_RUNWAY_MAX_DAYS}日以内の人({num(balance.lowRunwayUsers.length)}
               {balance.lowRunwayHasMore ? "人より多い" : "人"})= 買う一歩手前の人の候補
             </summary>
             {balance.lowRunwayUsers.length === 0 ? (
@@ -296,7 +284,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
               </ul>
             )}
             {balance.lowRunwayHasMore ? (
-              <p className="mt-2 text-slate-500">ほかにもいます(残りの日数が少ない順に50人まで表示)。</p>
+              <p className="mt-2 text-slate-500">ほかにもいます(残りの日数が少ない順に{LOW_RUNWAY_LIST_LIMIT}人まで表示)。</p>
             ) : null}
           </details>
         </div>
