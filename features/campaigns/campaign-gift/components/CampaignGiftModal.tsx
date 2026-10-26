@@ -339,7 +339,7 @@ export function CampaignGiftModal({
           </button>
           {/* タイトルは2行(2026-10-26 ユーザー指定) */}
           <DialogTitle className="relative z-[2] flex flex-col items-center gap-0.5">
-            <span className="text-sm font-bold tracking-[0.04em] text-[#ffc23d]">ハロウィンイベント</span>
+            <span className="text-sm font-bold tracking-[0.04em] text-[#ffc23d]">🎃ハロウィン ギフト🦇</span>
             <span className="text-xl font-black text-white">公式からの贈り物！</span>
           </DialogTitle>
           <div className={styles.stage}>
