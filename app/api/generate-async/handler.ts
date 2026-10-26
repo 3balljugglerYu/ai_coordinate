@@ -66,7 +66,10 @@ import {
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { DEFAULT_LOCALE } from "@/i18n/config";
-import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -543,14 +546,10 @@ export async function postGenerateAsyncRoute(
 
     // 残高チェック
     if (currentBalance < requiredPercoinCost) {
-      await (dependencies.recordMonetizationEventFn ?? recordMonetizationEvent)({
-        userId: user.id,
-        eventType: "percoin_shortage",
-        feature: "generate",
-        whereDetected: "server",
-        required: requiredPercoinCost,
-        balance: currentBalance,
-      });
+      await recordPercoinShortage(
+        { userId: user.id, feature: "generate", required: requiredPercoinCost, balance: currentBalance },
+        dependencies.recordMonetizationEventFn,
+      );
       return jsonError(
         copy.insufficientBalance(requiredPercoinCost, currentBalance),
         "GENERATION_INSUFFICIENT_BALANCE",

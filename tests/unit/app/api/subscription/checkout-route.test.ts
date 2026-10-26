@@ -24,6 +24,12 @@ jest.mock("@/features/subscription/lib/stripe-utils", () => ({
   resolveSubscriptionPriceId: jest.fn(),
 }));
 
+// 記録は応答を返したあとに書く(after)。テストではその場で流す
+jest.mock("next/server", () => {
+  const actual = jest.requireActual("next/server");
+  return { ...actual, after: jest.fn((fn: () => unknown) => fn()) };
+});
+
 jest.mock("@/features/monetization/lib/record-monetization-event", () => ({
   recordMonetizationEvent: jest.fn(async () => true),
 }));

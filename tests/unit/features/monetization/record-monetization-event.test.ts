@@ -9,7 +9,7 @@ jest.mock("server-only", () => ({}));
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import { recordMonetizationEvent, recordPercoinShortage } from "@/features/monetization/lib/record-monetization-event";
 import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checkout-session-expired";
 
 const USER = "11111111-1111-4111-8111-111111111111";
@@ -79,13 +79,15 @@ describe("recordCheckoutSessionExpired", () => {
     });
   });
 
-  test("サブスクの支払い画面: 商品は subscription:<プラン>", async () => {
+  test("サブスクの支払い画面: 商品は支払いの開始と同じ subscription:<プラン>:<期間>", async () => {
     const recordFn = jest.fn(async () => true);
     await recordCheckoutSessionExpired(
-      { id: "cs_2", client_reference_id: USER, mode: "subscription", metadata: { plan: "light" } },
+      { id: "cs_2", client_reference_id: USER, mode: "subscription", metadata: { plan: "light", billingInterval: "month" } },
       recordFn,
     );
-    expect(recordFn).toHaveBeenCalledWith(expect.objectContaining({ product: "subscription:light", origin: null }));
+    expect(recordFn).toHaveBeenCalledWith(
+      expect.objectContaining({ product: "subscription:light:month", origin: null }),
+    );
   });
 
   test.each([
@@ -99,3 +101,19 @@ describe("recordCheckoutSessionExpired", () => {
     expect(recordFn).not.toHaveBeenCalled();
   });
 });
+
+describe("recordPercoinShortage", () => {
+  test("サーバーで判定した「足りなくなった」として書く。残高がマイナスでも 0 にする", async () => {
+    const recordFn = jest.fn(async () => true);
+    await recordPercoinShortage({ userId: USER, feature: "gacha_split", required: 5, balance: -3 }, recordFn);
+    expect(recordFn).toHaveBeenCalledWith({
+      userId: USER,
+      eventType: "percoin_shortage",
+      feature: "gacha_split",
+      whereDetected: "server",
+      required: 5,
+      balance: 0,
+    });
+  });
+});
+

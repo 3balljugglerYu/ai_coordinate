@@ -1,10 +1,9 @@
 import "server-only";
 
 import type Stripe from "stripe";
+import { isUuid } from "@/lib/is-uuid";
 import { recordMonetizationEvent } from "./record-monetization-event";
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
  * Stripe の checkout.session.expired(支払い画面が使われないまま期限切れ = 途中でやめた)を記録する。
@@ -18,12 +17,13 @@ export async function recordCheckoutSessionExpired(
   recordFn: typeof recordMonetizationEvent = recordMonetizationEvent,
 ): Promise<boolean | null> {
   const userId = session.client_reference_id;
-  if (!userId || !UUID_PATTERN.test(userId)) return null;
+  if (!userId || !isUuid(userId)) return null;
 
   const metadata = session.metadata ?? {};
   const product =
     session.mode === "subscription"
-      ? `subscription:${metadata.plan ?? "unknown"}`
+      ? // 支払いの開始(subscription/checkout)と同じ書き方にする
+        `subscription:${metadata.plan ?? "unknown"}:${metadata.billingInterval ?? "unknown"}`
       : (metadata.packageId ?? null);
 
   return recordFn({

@@ -22,7 +22,10 @@ import {
 } from "@/shared/generation/name-input-create";
 import { GACHA_SPLIT_MODEL } from "@/features/generation/lib/gacha-split-openai";
 import { callNameInputCreateModel } from "@/features/generation/lib/name-input-create-openai";
-import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
 
 /**
  * POST /api/name-input/create — 「本文から名前の欄を作る」(docs/planning/name-input-slot-plan.md REQ-009)。
@@ -155,14 +158,10 @@ export async function postNameInputCreateRoute(
     return jsonError("Failed to read balance", "NAME_INPUT_CREATE_FAILED", 500);
   }
   if (balance < NAME_INPUT_CREATE_PERCOIN_COST) {
-    await (dependencies.recordMonetizationEventFn ?? recordMonetizationEvent)({
-      userId: user.id,
-      eventType: "percoin_shortage",
-      feature: "name_input",
-      whereDetected: "server",
-      required: NAME_INPUT_CREATE_PERCOIN_COST,
-      balance,
-    });
+    await recordPercoinShortage(
+      { userId: user.id, feature: "name_input", required: NAME_INPUT_CREATE_PERCOIN_COST, balance: balance },
+      dependencies.recordMonetizationEventFn,
+    );
     return jsonError("Insufficient balance", "NAME_INPUT_CREATE_INSUFFICIENT_BALANCE", 400);
   }
 

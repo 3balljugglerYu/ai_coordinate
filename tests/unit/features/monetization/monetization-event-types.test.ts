@@ -37,11 +37,15 @@ describe("parseClientMonetizationEvent", () => {
     ["量が小数", { eventType: "percoin_shortage", feature: "generate", required: 1.5 }],
     ["量が大きすぎる", { eventType: "percoin_shortage", feature: "generate", required: 1_000_001 }],
     ["表示元に記号", { eventType: "purchase_view", origin: "a b" }],
-    ["表示元が長すぎる", { eventType: "purchase_view", origin: "a".repeat(65) }],
+    ["表示元が41文字(購入の決まりと同じく40文字まで)", { eventType: "purchase_view", origin: "a".repeat(41) }],
     ["本文が配列", []],
     ["本文が null", null],
   ])("%s は断る", (_label, body) => {
     expect(parseClientMonetizationEvent(body)).toBeNull();
+  });
+
+  test("表示元は、購入の支払い開始と同じく、前後の空白を落として小文字にする", () => {
+    expect(parseClientMonetizationEvent({ eventType: "purchase_view", origin: " My_Page " })?.origin).toBe("my_page");
   });
 
   test("本文の user_id は使わない(返す値に入らない)", () => {

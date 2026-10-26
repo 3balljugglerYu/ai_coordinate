@@ -50,3 +50,21 @@ export async function recordMonetizationEvent(
     return false;
   }
 }
+
+/**
+ * API が残高不足を返すときの記録(足りなくなった・サーバーで判定)。4つの生成の API が使う。
+ * ⚠️ 画面は同じ訪問で1回にまとめるが、API は断るたびに1行書く。見るときは、行の数ではなく人の数で数えること。
+ */
+export function recordPercoinShortage(
+  params: { userId: string; feature: MonetizationFeature; required: number; balance: number },
+  recordFn: typeof recordMonetizationEvent = recordMonetizationEvent,
+): Promise<boolean> {
+  return recordFn({
+    userId: params.userId,
+    eventType: "percoin_shortage",
+    feature: params.feature,
+    whereDetected: "server",
+    required: params.required,
+    balance: Math.max(params.balance, 0),
+  });
+}

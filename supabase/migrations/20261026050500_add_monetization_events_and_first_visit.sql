@@ -71,6 +71,9 @@ GRANT SELECT, INSERT ON TABLE public.monetization_events TO service_role;
 -- ===============================================
 -- 戻り値: 書いたら true、書かなかったら false(回数の上限・同じ支払い画面の2回目)。
 -- 回数の上限は DB で数える(サーバーレスでは、プロセスの中の数え方だとインスタンスごとにばらばらになる)。
+-- ⭐ 上限をかけるのは「足りなくなった」「購入画面を見た」だけ(画面から何度でも送れるもの)。
+--    支払いの開始・期限切れは、支払い画面ごとに1回しか来ないので、必ず書く(上限で落とすと、
+--    開始のない期限切れや、期限切れのない開始ができて、流れを結べなくなる)。
 -- 同じ人の数え方と書き込みを、人ごとの advisory lock で1つずつにする。
 CREATE OR REPLACE FUNCTION public.record_monetization_event(
   p_user_id uuid,
@@ -97,15 +100,18 @@ BEGIN
     RETURN false;
   END IF;
 
-  PERFORM pg_advisory_xact_lock(hashtext('monetization_event:' || p_user_id::text));
+  IF p_event_type IN ('percoin_shortage', 'purchase_view') THEN
+    PERFORM pg_advisory_xact_lock(hashtext('monetization_event:' || p_user_id::text));
 
-  SELECT count(*) INTO v_recent
-  FROM public.monetization_events e
-  WHERE e.user_id = p_user_id
-    AND e.created_at > now() - interval '1 minute';
+    SELECT count(*) INTO v_recent
+    FROM public.monetization_events e
+    WHERE e.user_id = p_user_id
+      AND e.event_type IN ('percoin_shortage', 'purchase_view')
+      AND e.created_at > now() - interval '1 minute';
 
-  IF v_recent >= greatest(coalesce(p_max_per_minute, 10), 0) THEN
-    RETURN false;
+    IF v_recent >= greatest(coalesce(p_max_per_minute, 10), 0) THEN
+      RETURN false;
+    END IF;
   END IF;
 
   INSERT INTO public.monetization_events (

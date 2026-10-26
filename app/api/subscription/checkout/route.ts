@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
 import { ROUTES } from "@/constants";
@@ -150,13 +150,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 課金の手前の記録(支払いを始めた)。失敗しても支払いは止めない
-    await recordMonetizationEvent({
+    // 課金の手前の記録(支払いを始めた)。応答を返したあとに書く(支払い画面へ移るのを待たせない)
+    const checkoutSessionId = session.id;
+    after(() => recordMonetizationEvent({
       userId: user.id,
       eventType: "checkout_start",
       product: `subscription:${planId}:${billingInterval}`,
-      stripeSessionId: session.id,
-    });
+      stripeSessionId: checkoutSessionId,
+    }));
 
     return NextResponse.json({
       checkoutUrl: session.url,

@@ -50,7 +50,10 @@ import type { SourceImageType } from "@/shared/generation/prompt-core";
 import { buildStyleGenerationPrompt } from "@/shared/generation/style-prompts";
 import { resolveAllPromptTemplates } from "@/features/generation-prompts/lib/resolve-templates";
 import { resolveUserPromptMaxLength } from "@/features/style-presets/lib/resolve-user-prompt-settings";
-import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
 
 interface StyleGenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -465,14 +468,10 @@ export async function postStyleGenerateAsyncRoute(
 
     const currentBalance = creditData.balance;
     if (currentBalance < percoinCost) {
-      await (dependencies.recordMonetizationEventFn ?? recordMonetizationEvent)({
-        userId: user.id,
-        eventType: "percoin_shortage",
-        feature: "style_generate",
-        whereDetected: "server",
-        required: percoinCost,
-        balance: currentBalance,
-      });
+      await recordPercoinShortage(
+        { userId: user.id, feature: "style_generate", required: percoinCost, balance: currentBalance },
+        dependencies.recordMonetizationEventFn,
+      );
       return jsonError(
         copy.authenticatedPaidInsufficientBalance.replace(
           "{cost}",

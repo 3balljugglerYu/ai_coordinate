@@ -1,3 +1,5 @@
+import { purchaseOriginSchema } from "./purchase-origin";
+
 /**
  * 課金の手前の出来事(monetization_events)の種類と、画面から受け取る値の確認(純関数)。
  * 値の一覧は DB の CHECK(20261026050500)とそろえること。
@@ -31,7 +33,6 @@ export interface ClientMonetizationEventInput {
   balance: number | null;
 }
 
-const TOKEN_PATTERN = /^[a-z0-9_-]{1,64}$/;
 const MAX_AMOUNT = 1_000_000;
 
 function optionalAmount(value: unknown): number | null | undefined {
@@ -65,8 +66,9 @@ export function parseClientMonetizationEvent(body: unknown): ClientMonetizationE
 
   let origin: string | null = null;
   if (input.origin !== undefined && input.origin !== null) {
-    if (typeof input.origin !== "string" || !TOKEN_PATTERN.test(input.origin)) return null;
-    origin = input.origin;
+    const parsed = purchaseOriginSchema.safeParse(input.origin);
+    if (!parsed.success) return null;
+    origin = parsed.data;
   }
 
   const required = optionalAmount(input.required);

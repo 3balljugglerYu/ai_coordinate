@@ -16,7 +16,10 @@ import {
   GACHA_SPLIT_MODEL,
   callGachaSplitModel,
 } from "@/features/generation/lib/gacha-split-openai";
-import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
 
 /**
  * POST /api/gacha-prompt/split — 「ガチャに分ける」。
@@ -128,14 +131,10 @@ export async function postGachaSplitRoute(
     return jsonError("Failed to read balance", "GACHA_SPLIT_FAILED", 500);
   }
   if (balance < GACHA_SPLIT_PERCOIN_COST) {
-    await (dependencies.recordMonetizationEventFn ?? recordMonetizationEvent)({
-      userId: user.id,
-      eventType: "percoin_shortage",
-      feature: "gacha_split",
-      whereDetected: "server",
-      required: GACHA_SPLIT_PERCOIN_COST,
-      balance,
-    });
+    await recordPercoinShortage(
+      { userId: user.id, feature: "gacha_split", required: GACHA_SPLIT_PERCOIN_COST, balance: balance },
+      dependencies.recordMonetizationEventFn,
+    );
     return jsonError("Insufficient balance", "GACHA_SPLIT_INSUFFICIENT_BALANCE", 400);
   }
 

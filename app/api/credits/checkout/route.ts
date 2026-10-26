@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
 import { ROUTES } from "@/constants";
@@ -12,16 +12,12 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import { purchaseOriginSchema } from "@/features/monetization/lib/purchase-origin";
 
 const checkoutBodySchema = z.object({
   packageId: z.string().min(1, "packageId is required"),
   // 課金起点(計測用・任意): どの画面/導線から購入したか。例: purchase_page, balance_empty_modal, collection_complete。
-  origin: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z0-9_-]{1,40}$/)
-    .optional(),
+  origin: purchaseOriginSchema.optional(),
 });
 
 function handleStripeError(
@@ -180,14 +176,15 @@ export async function POST(request: NextRequest) {
       return jsonError(copy.checkoutUrlFailed, "CREDITS_CHECKOUT_URL_FAILED", 500);
     }
 
-    // 課金の手前の記録(支払いを始めた)。失敗しても支払いは止めない
-    await recordMonetizationEvent({
+    // 課金の手前の記録(支払いを始めた)。応答を返したあとに書く(支払い画面へ移るのを待たせない)
+    const checkoutSessionId = session.id;
+    after(() => recordMonetizationEvent({
       userId: user.id,
       eventType: "checkout_start",
       origin: origin ?? null,
       product: percoinPackage.id,
-      stripeSessionId: session.id,
-    });
+      stripeSessionId: checkoutSessionId,
+    }));
 
     return NextResponse.json({
       mode: "stripe",
