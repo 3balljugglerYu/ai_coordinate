@@ -50,6 +50,7 @@ export const idMessages = {
     terms: "Syarat",
     privacy: "Kebijakan Privasi",
     communityGuidelines: "Pedoman Komunitas",
+    externalTransmission: "Pengiriman data eksternal",
     disclosure: "Pengungkapan Komersial",
     styles: "Galeri gaya",
     catalog: "Katalog ilustrator",

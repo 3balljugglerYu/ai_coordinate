@@ -50,6 +50,7 @@ export const thMessages = {
     terms: "ข้อกำหนด",
     privacy: "นโยบายความเป็นส่วนตัว",
     communityGuidelines: "แนวปฏิบัติของชุมชน",
+    externalTransmission: "การส่งข้อมูลภายนอก",
     disclosure: "การเปิดเผยทางการค้า",
     styles: "แกลเลอรีสไตล์",
     catalog: "แคตตาล็อกนักวาด",

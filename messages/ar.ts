@@ -50,6 +50,7 @@ export const arMessages = {
     terms: "الشروط",
     privacy: "سياسة الخصوصية",
     communityGuidelines: "إرشادات المجتمع",
+    externalTransmission: "إرسال البيانات الخارجي",
     disclosure: "الإفصاح التجاري",
     styles: "معرض الأنماط",
     catalog: "دليل الرسّامين",

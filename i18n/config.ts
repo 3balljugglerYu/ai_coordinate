@@ -40,6 +40,7 @@ const PUBLIC_PATH_PATTERNS = [
   /^\/pricing$/,
   /^\/terms$/,
   /^\/privacy$/,
+  /^\/external-transmission$/,
   /^\/community-guidelines$/,
   /^\/tokushoho$/,
   /^\/payment-services-act$/,

@@ -50,6 +50,7 @@ export const zhTwMessages = {
     terms: "服務條款",
     privacy: "隱私權政策",
     communityGuidelines: "社群守則",
+    externalTransmission: "外部傳送說明",
     disclosure: "商業揭露",
     styles: "風格一覽",
     catalog: "繪師目錄",

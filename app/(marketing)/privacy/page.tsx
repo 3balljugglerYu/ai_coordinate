@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { getLocale } from "next-intl/server";
 import { Database, Eye, Lock, Shield } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DEFAULT_LOCALE, isLocale } from "@/i18n/config";
+import { DEFAULT_LOCALE, isLocale, localizePublicPath, type Locale } from "@/i18n/config";
 import { createMarketingPageMetadata } from "@/lib/metadata";
 
 type Section = {
@@ -49,13 +49,24 @@ const PRIVACY_LINKS = [
   "https://tools.google.com/dlpage/gaoptout",
 ] as const;
 
-const PRIVACY_LINK_PATTERN =
-  /(https:\/\/policies\.google\.com\/privacy|https:\/\/tools\.google\.com\/dlpage\/gaoptout)/;
+/** 段落の中で、外部送信のページへのリンクにする言葉。 */
+const EXTERNAL_TRANSMISSION_LINK_TEXT = "「利用者情報の外部送信について」";
 
-function renderParagraph(paragraph: string) {
+const PRIVACY_LINK_PATTERN =
+  /(https:\/\/policies\.google\.com\/privacy|https:\/\/tools\.google\.com\/dlpage\/gaoptout|「利用者情報の外部送信について」)/;
+
+function renderParagraph(paragraph: string, locale: Locale) {
   const parts = paragraph.split(PRIVACY_LINK_PATTERN);
   return parts.map((part, index) =>
-    (PRIVACY_LINKS as readonly string[]).includes(part) ? (
+    part === EXTERNAL_TRANSMISSION_LINK_TEXT ? (
+      <a
+        key={index}
+        href={localizePublicPath("/external-transmission", locale)}
+        className="text-primary underline underline-offset-2"
+      >
+        {part}
+      </a>
+    ) : (PRIVACY_LINKS as readonly string[]).includes(part) ? (
       <a
         key={index}
         href={part}
@@ -157,7 +168,8 @@ export default async function PrivacyPage() {
                 "当サービスは、ユーザーによりよいサービスを提供するため、Cookie等の技術を使用することがあります。Cookieは、ユーザーのコンピュータに識別子を保存することにより、当サービスの利用状況を把握するために使用されます。ユーザーは、ブラウザの設定により、Cookieの受け取りを拒否することができます。",
                 "当サービスは、利用状況を把握してサービスを改善するため、Google LLC が提供するアクセス解析ツール「Google アナリティクス」を利用しています。Google アナリティクスは Cookie を使って、閲覧したページや利用した端末・ブラウザなどの情報を集めます。",
                 "ログインしているユーザーについては、当サービスの中だけで使う識別子（ユーザー ID）を Google アナリティクスに送り、閲覧の記録と当サービス内での利用（登録・生成・購入など）を結び付けて分析することがあります。メールアドレス・氏名など、個人を直接特定できる情報は送りません。",
-                "集められた情報は、Google のプライバシーポリシー（https://policies.google.com/privacy）に基づいて管理されます。Google アナリティクスによる情報の収集を望まない場合は、Google アナリティクス オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout）で止めることができます。",
+                "集められた情報は、Google のプライバシーポリシー（https://policies.google.com/privacy）に基づいて管理されます。Google アナリティクスによる情報の収集を望まない場合は、パソコンのブラウザでは、Google アナリティクス オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout）で止めることができます。",
+                "当サービスが外部へ送っている情報の詳しい中身は、「利用者情報の外部送信について」をご覧ください。",
               ],
             },
             {
@@ -241,7 +253,7 @@ export default async function PrivacyPage() {
               <CardContent>
                 {section.paragraphs?.map((paragraph) => (
                   <p key={paragraph} className="mb-3 text-sm text-gray-800 last:mb-0">
-                    {renderParagraph(paragraph)}
+                    {renderParagraph(paragraph, locale)}
                   </p>
                 ))}
                 {section.list ? (

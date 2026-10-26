@@ -50,6 +50,7 @@ export const koMessages = {
     terms: "이용약관",
     privacy: "개인정보 처리방침",
     communityGuidelines: "커뮤니티 가이드라인",
+    externalTransmission: "외부 전송 안내",
     disclosure: "특정상거래법 표시",
     styles: "스타일 목록",
     catalog: "일러스트레이터 카탈로그",

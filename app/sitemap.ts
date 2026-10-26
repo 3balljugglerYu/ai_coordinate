@@ -23,6 +23,7 @@ const LOCALIZED_PUBLIC_PATHS = [
   "/pricing",
   "/terms",
   "/privacy",
+  "/external-transmission",
   "/community-guidelines",
   "/credits/purchase",
   "/tokushoho",
@@ -78,7 +79,7 @@ function priorityFor(path: LocalizedPath): number {
   }
   if (path === "/about" || path === "/credits/purchase") return 0.7;
   if (path === "/free-materials") return 0.6;
-  if (path === "/terms" || path === "/privacy") return 0.5;
+  if (path === "/terms" || path === "/privacy" || path === "/external-transmission") return 0.5;
   return 0.4;
 }
 

@@ -50,6 +50,7 @@ export const hiMessages = {
     terms: "नियम",
     privacy: "गोपनीयता नीति",
     communityGuidelines: "सामुदायिक दिशानिर्देश",
+    externalTransmission: "बाहरी डेटा प्रेषण",
     disclosure: "व्यावसायिक प्रकटीकरण",
     styles: "स्टाइल गैलरी",
     catalog: "आर्टिस्ट कैटलॉग",
