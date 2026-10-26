@@ -28,6 +28,18 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "dashboard",
   },
   {
+    path: "/admin/analytics-exclusions",
+    label: "集計から除く",
+    description: "集計から除く内部・審査用のアカウント",
+    iconKey: "settings",
+  },
+  {
+    path: "/admin/timeline-events",
+    label: "出来事の印",
+    description: "企画・広告・値段の改定などの日を記録",
+    iconKey: "file-text",
+  },
+  {
     path: "/admin/users",
     label: "ユーザー検索",
     description: "ユーザー情報を検索して確認",
