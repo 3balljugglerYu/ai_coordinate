@@ -66,6 +66,11 @@ import {
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getGenerationRouteCopy } from "@/features/generation/lib/route-copy";
 import { DEFAULT_LOCALE } from "@/i18n/config";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -78,6 +83,8 @@ interface GenerateAsyncRouteDependencies {
   invokeImageWorkerFn?: (edgeFunctionUrl: string) => void;
   supabaseUrl?: string;
   moderateTextInputFn?: typeof moderateTextInput;
+  /** 課金の手前の出来事の記録(残高不足)。失敗しても投げない */
+  recordMonetizationEventFn?: typeof recordMonetizationEvent;
 }
 
 function logGenerateAsyncTiming(
@@ -540,6 +547,12 @@ export async function postGenerateAsyncRoute(
 
     // 残高チェック
     if (currentBalance < requiredPercoinCost) {
+      runAfterResponse(() =>
+        recordPercoinShortage(
+          { userId: user.id, feature: "generate", required: requiredPercoinCost, balance: currentBalance },
+          dependencies.recordMonetizationEventFn,
+        ),
+      );
       return jsonError(
         copy.insufficientBalance(requiredPercoinCost, currentBalance),
         "GENERATION_INSUFFICIENT_BALANCE",

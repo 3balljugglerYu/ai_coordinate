@@ -283,7 +283,19 @@ describe("Characterization: GenerateAsyncRoute POST", () => {
     // プラン取得は枚数計算のためだけに存在していたので、
     // 複数枚生成の廃止(2026-08-15)に伴い問い合わせ自体が無くなった
     expect(supabase.profilesBuilder.eq).not.toHaveBeenCalled();
-    expect(supabase.rpc).not.toHaveBeenCalled();
+    // 残高不足のときに呼ぶ DB の関数は、課金の手前の記録(足りなくなった)の1回だけ
+    // (2026-10-26・管理ダッシュボード P3-2 で足した。ジョブは作らない)
+    expect(supabase.rpc).toHaveBeenCalledTimes(1);
+    expect(supabase.rpc).toHaveBeenCalledWith(
+      "record_monetization_event",
+      expect.objectContaining({
+        p_event_type: "percoin_shortage",
+        p_feature: "generate",
+        p_where_detected: "server",
+        p_required: 10,
+        p_balance: 5,
+      })
+    );
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

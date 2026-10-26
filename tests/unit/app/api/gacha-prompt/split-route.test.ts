@@ -51,6 +51,7 @@ function setup(overrides: Partial<Parameters<typeof postGachaSplitRoute>[1]> = {
     callModelFn: callModelFn as never,
     deductFn,
     revalidateFn,
+    recordMonetizationEventFn: jest.fn(async () => true),
     ...overrides,
   };
   return { deps, deductFn, callModelFn, revalidateFn };
@@ -228,6 +229,21 @@ describe("POST /api/gacha-prompt/split", () => {
     expect(await errorCodeOf(response)).toBe("GACHA_SPLIT_INSUFFICIENT_BALANCE");
     expect(callModelFn).not.toHaveBeenCalled();
     expect(deductFn).not.toHaveBeenCalled();
+    // 課金の手前の記録(足りなくなった)
+    expect(deps.recordMonetizationEventFn).toHaveBeenCalledWith({
+      userId: "user-1",
+      eventType: "percoin_shortage",
+      feature: "gacha_split",
+      whereDetected: "server",
+      required: 5,
+      balance: 4,
+    });
+  });
+
+  test("残高が足りるときは、足りなくなった記録を書かない", async () => {
+    const { deps } = setup();
+    await postGachaSplitRoute(createRequest({ prompt: PROMPT }), deps);
+    expect(deps.recordMonetizationEventFn).not.toHaveBeenCalled();
   });
 
   test("残高がちょうど5なら使える", async () => {

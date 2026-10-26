@@ -16,6 +16,11 @@ import {
   GACHA_SPLIT_MODEL,
   callGachaSplitModel,
 } from "@/features/generation/lib/gacha-split-openai";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 
 /**
  * POST /api/gacha-prompt/split — 「ガチャに分ける」。
@@ -45,6 +50,8 @@ export interface GachaSplitRouteDependencies {
   callModelFn?: typeof callGachaSplitModel;
   deductFn?: (userId: string) => Promise<{ balance: number | null }>;
   revalidateFn?: (userId: string, locale: string) => void;
+  /** 課金の手前の出来事の記録(残高不足)。失敗しても投げない */
+  recordMonetizationEventFn?: typeof recordMonetizationEvent;
 }
 
 async function defaultGetBalance(userId: string): Promise<number | null> {
@@ -125,6 +132,12 @@ export async function postGachaSplitRoute(
     return jsonError("Failed to read balance", "GACHA_SPLIT_FAILED", 500);
   }
   if (balance < GACHA_SPLIT_PERCOIN_COST) {
+    runAfterResponse(() =>
+      recordPercoinShortage(
+        { userId: user.id, feature: "gacha_split", required: GACHA_SPLIT_PERCOIN_COST, balance: balance },
+        dependencies.recordMonetizationEventFn,
+      ),
+    );
     return jsonError("Insufficient balance", "GACHA_SPLIT_INSUFFICIENT_BALANCE", 400);
   }
 
@@ -171,6 +184,13 @@ export async function postGachaSplitRoute(
     ({ balance: newBalance } = await deductFn(user.id));
   } catch (error) {
     if (error instanceof InsufficientBalanceError) {
+      // 確かめたあとに、別のタブなどで使われて足りなくなった
+      runAfterResponse(() =>
+        recordPercoinShortage(
+          { userId: user.id, feature: "gacha_split", required: GACHA_SPLIT_PERCOIN_COST, balance },
+          dependencies.recordMonetizationEventFn,
+        ),
+      );
       return jsonError("Insufficient balance", "GACHA_SPLIT_INSUFFICIENT_BALANCE", 400);
     }
     console.error("[gacha-split] deduct failed", {

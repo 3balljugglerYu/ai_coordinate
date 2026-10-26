@@ -22,6 +22,11 @@ import {
 } from "@/shared/generation/name-input-create";
 import { GACHA_SPLIT_MODEL } from "@/features/generation/lib/gacha-split-openai";
 import { callNameInputCreateModel } from "@/features/generation/lib/name-input-create-openai";
+import {
+  recordMonetizationEvent,
+  recordPercoinShortage,
+} from "@/features/monetization/lib/record-monetization-event";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 
 /**
  * POST /api/name-input/create — 「本文から名前の欄を作る」(docs/planning/name-input-slot-plan.md REQ-009)。
@@ -49,6 +54,8 @@ export interface NameInputCreateRouteDependencies {
   callModelFn?: typeof callNameInputCreateModel;
   deductFn?: (userId: string) => Promise<{ balance: number | null }>;
   revalidateFn?: (userId: string, locale: string) => void;
+  /** 課金の手前の出来事の記録(残高不足)。失敗しても投げない */
+  recordMonetizationEventFn?: typeof recordMonetizationEvent;
 }
 
 async function defaultGetBalance(userId: string): Promise<number | null> {
@@ -152,6 +159,12 @@ export async function postNameInputCreateRoute(
     return jsonError("Failed to read balance", "NAME_INPUT_CREATE_FAILED", 500);
   }
   if (balance < NAME_INPUT_CREATE_PERCOIN_COST) {
+    runAfterResponse(() =>
+      recordPercoinShortage(
+        { userId: user.id, feature: "name_input", required: NAME_INPUT_CREATE_PERCOIN_COST, balance: balance },
+        dependencies.recordMonetizationEventFn,
+      ),
+    );
     return jsonError("Insufficient balance", "NAME_INPUT_CREATE_INSUFFICIENT_BALANCE", 400);
   }
 
@@ -185,6 +198,13 @@ export async function postNameInputCreateRoute(
     ({ balance: newBalance } = await deductFn(user.id));
   } catch (error) {
     if (error instanceof InsufficientBalanceError) {
+      // 確かめたあとに、別のタブなどで使われて足りなくなった
+      runAfterResponse(() =>
+        recordPercoinShortage(
+          { userId: user.id, feature: "name_input", required: NAME_INPUT_CREATE_PERCOIN_COST, balance },
+          dependencies.recordMonetizationEventFn,
+        ),
+      );
       return jsonError("Insufficient balance", "NAME_INPUT_CREATE_INSUFFICIENT_BALANCE", 400);
     }
     console.error("[name-input-create] deduct failed", {

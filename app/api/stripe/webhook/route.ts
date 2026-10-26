@@ -23,6 +23,7 @@ import {
 } from "@/features/subscription/subscription-config";
 import { getSubscriptionPlanFromStripeSubscription } from "@/features/subscription/lib/stripe-utils";
 import { createYearlyPercoinGrantState } from "@/features/subscription/lib/yearly-grant-schedule";
+import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checkout-session-expired";
 
 type SubscriptionRecord = {
   user_id: string;
@@ -324,6 +325,15 @@ async function grantSubscriptionPercoins(params: {
   if (error) {
     throw new Error(error.message);
   }
+}
+
+/**
+ * 支払い画面が使われないまま期限切れになった(= 途中でやめた)ことを記録する。
+ * 記録できなくても 200 を返す(記録のために Stripe に送り直させない)。
+ */
+async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
+  const recorded = await recordCheckoutSessionExpired(session);
+  return NextResponse.json({ received: true, handled: recorded !== null, recorded: recorded === true });
 }
 
 function hasProrationLine(invoice: Stripe.Invoice) {
@@ -886,6 +896,14 @@ export async function POST(request: NextRequest) {
           invoiceId: invoice.id,
         });
       }
+      case "checkout.session.expired":
+        // テストの支払い画面は、本番の記録に入れない
+        if (!event.livemode) {
+          return NextResponse.json({ received: true, handled: false, reason: "test_mode" });
+        }
+        return await handleCheckoutSessionExpired(
+          event.data.object as Stripe.Checkout.Session
+        );
       default:
         return NextResponse.json({
           received: true,
