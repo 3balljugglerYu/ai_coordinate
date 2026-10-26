@@ -148,7 +148,7 @@ export async function GET(request: Request) {
     if (referralCode) {
       oauthCompleteQuery.set("ref", referralCode);
     }
-    if (next && next !== "/") {
+    if (next !== "/") {
       oauthCompleteQuery.set("next", next);
     }
     const oauthCompleteSuffix =

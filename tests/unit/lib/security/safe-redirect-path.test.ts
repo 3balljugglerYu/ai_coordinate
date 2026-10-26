@@ -2,7 +2,7 @@
  * ログインのあとなどに移る先を、このサイトの中のパスだけにする(オープンリダイレクトを防ぐ)。
  */
 
-import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
+import { pickSafeRedirectPath, toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 describe("toSafeRedirectPath", () => {
   test.each([
@@ -56,3 +56,21 @@ describe("toSafeRedirectPath", () => {
     expect(toSafeRedirectPath("//evil.com", "/login")).toBe("/login");
   });
 });
+
+describe("pickSafeRedirectPath", () => {
+  test("空・おかしな値を飛ばして、決まりに合う最初の候補を使う", () => {
+    expect(pickSafeRedirectPath(["", "/ja/style"])).toBe("/ja/style");
+    expect(pickSafeRedirectPath(["//evil.com", null, "/ja/posts/1"])).toBe("/ja/posts/1");
+    expect(pickSafeRedirectPath([undefined, "@evil.com", "/..//evil.com", "/ja"])).toBe("/ja");
+  });
+
+  test("1つ目が正しければ、それを使う", () => {
+    expect(pickSafeRedirectPath(["/my-page", "/ja/style"])).toBe("/my-page");
+  });
+
+  test("どれも合わなければ既定の値", () => {
+    expect(pickSafeRedirectPath(["https://evil.com", "", null])).toBe("/");
+    expect(pickSafeRedirectPath([], "/login")).toBe("/login");
+  });
+});
+

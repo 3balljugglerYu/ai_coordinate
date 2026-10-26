@@ -21,12 +21,28 @@ export function toSafeRedirectPath(value: string | null | undefined, fallback = 
     const resolved = new URL(path, base);
     if (resolved.origin !== base) return fallback;
     const normalized = `${resolved.pathname}${resolved.search}${resolved.hash}`;
-    // 読み直したあとでも、プロトコルを省いた URL("//" や "/\\")になっていないこと
-    if (!normalized.startsWith("/") || normalized.startsWith("//") || normalized.startsWith("/\\")) {
+    // 読み直したあとでも、プロトコルを省いた URL("//")になっていないこと
+    // (読み直すと "\\" は "/" になるので、"/\\" はここでは "//" として見つかる)
+    if (!normalized.startsWith("/") || normalized.startsWith("//")) {
       return fallback;
     }
     return normalized;
   } catch {
     return fallback;
   }
+}
+
+/**
+ * 移る先の候補を順に見て、空でなく決まりに合う最初のものを返す(どれも合わなければ fallback)。
+ * 1つ目がおかしな値でも、2つ目以降の正しい値を使えるようにする。
+ */
+export function pickSafeRedirectPath(
+  candidates: ReadonlyArray<string | null | undefined>,
+  fallback = "/",
+): string {
+  for (const candidate of candidates) {
+    const safe = toSafeRedirectPath(candidate, "");
+    if (safe !== "") return safe;
+  }
+  return fallback;
 }

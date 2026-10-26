@@ -4,7 +4,7 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
-import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
+import { pickSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 /**
  * OAuth完了ページ（X / Google / GitHub）
@@ -41,7 +41,6 @@ function XOAuthCompleteContent() {
       const storedReferralCode = localStorage.getItem("x_oauth_referral");
       const redirectToFromQuery = searchParams.get("next");
       const referralCodeFromQuery = searchParams.get("ref");
-      const redirectTo = storedRedirectTo || redirectToFromQuery;
       const referralCodeRaw = storedReferralCode || referralCodeFromQuery;
       const referralCode =
         typeof referralCodeRaw === "string" && referralCodeRaw.trim().length > 0
@@ -87,8 +86,9 @@ function XOAuthCompleteContent() {
       }
 
       // リダイレクト先へ遷移
-      // "/" で始まるだけでは "//evil.com" が通るので、このサイトの中のパスだけにする
-      const destination = toSafeRedirectPath(redirectTo);
+      // "/" で始まるだけでは "//evil.com" が通るので、このサイトの中のパスだけにする。
+      // 保存した値がおかしくても、?next= の正しい値を使えるように、候補を順に確かめる
+      const destination = pickSafeRedirectPath([storedRedirectTo, redirectToFromQuery]);
       router.replace(destination);
       router.refresh();
     };
