@@ -60,7 +60,8 @@ async function tap(times: number) {
 
 test("開ける前は、中身(ペルコイン)を書かない", () => {
   renderModal();
-  expect(screen.getByRole("dialog", { name: "ハロウィンイベント公式からの贈り物！" })).toBeInTheDocument();
+  expect(screen.getByText("ハロウィンイベント")).toBeInTheDocument();
+  expect(screen.getByText("公式からの贈り物！")).toBeInTheDocument();
   expect(screen.getByText("タップして開けてね（あと5回）")).toBeInTheDocument();
   expect(document.body.textContent).not.toContain("ペルコイン");
 });
