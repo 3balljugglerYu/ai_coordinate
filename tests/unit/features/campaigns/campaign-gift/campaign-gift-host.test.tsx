@@ -64,6 +64,7 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
 }));
 
 import { __resetCampaignGiftQuietForTest, CampaignGiftHost } from "@/features/campaigns/campaign-gift/components/CampaignGiftHost";
+import { __resetCampaignGiftLaterForTest } from "@/features/campaigns/campaign-gift/campaign-gift";
 
 const fetchMock = jest.fn();
 
@@ -73,6 +74,7 @@ function statusResponse(body: object) {
 
 beforeEach(() => {
   __resetCampaignGiftQuietForTest();
+  __resetCampaignGiftLaterForTest();
   jest.useFakeTimers();
   window.localStorage.clear();
   window.sessionStorage.clear();
@@ -329,28 +331,58 @@ test("通信が失敗しても出さず、しばらく聞きに行かない", as
   expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
-test("「あとで」で閉じたら、その訪問の間は出さず、次の訪問(ブラウザを開き直し)でまた出す", async () => {
+test("「あとで」で閉じたら、3時間はどのページでも出さず(聞きにも行かない)、3時間たったら出す", async () => {
   const { unmount } = render(<CampaignGiftHost />);
   await settle();
   act(() => {
     screen.getByText("あとで").click();
   });
   expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
-  expect(window.sessionStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).toBe("1");
+  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).not.toBeNull();
   unmount();
-  // 同じ訪問の中で別のページを開いても出さない
   mockPathname.mockReturnValue("/ja/style");
   fetchMock.mockClear();
   const second = render(<CampaignGiftHost />);
   await settle();
   expect(fetchMock).not.toHaveBeenCalled();
-  expect(screen.queryByTestId("gift")).toBeNull();
   second.unmount();
-  // ブラウザを開き直した(sessionStorage が空)ら、また出す
-  window.sessionStorage.clear();
-  __resetCampaignGiftQuietForTest();
+  // 3時間たったことにする
+  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", String(Date.now() - 3 * 60 * 60 * 1000 - 1));
+  __resetCampaignGiftLaterForTest();
   render(<CampaignGiftHost />);
   await settle();
   expect(screen.getByTestId("gift")).toBeInTheDocument();
+});
+
+test("ログインしていない人が「あとで」を押しても、ログインしたあとは出す", async () => {
+  mockAuth.mockReturnValue({ status: "signed-out", user: null });
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: false, amount: 200, expireAt: null }));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("あとで").click();
+  });
+  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:guest")).not.toBeNull();
+  mockAuth.mockReturnValue({ status: "signed-in", user: { id: "user-1" } });
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: true, amount: 200, expireAt: null }));
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(screen.getByTestId("gift")).toHaveAttribute("data-signed-in", "true");
+});
+
+test("ブラウザではログイン中でサーバーでは未ログインのとき、「あとで」でページを移るたびに出し直さない", async () => {
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: false, amount: 200, expireAt: null }));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("あとで").click();
+  });
+  fetchMock.mockClear();
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(screen.queryByTestId("gift")).toBeNull();
 });
 

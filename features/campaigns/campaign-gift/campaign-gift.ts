@@ -4,7 +4,7 @@
  * - 額・受け付ける期間・期限の正本は DB の campaign_gifts(supabase/migrations/20261026120000_add_campaign_gifts.sql)。
  * - 贈った分は、ほかの無償ペルコインより期限が早いので、引き落としで必ず最初に使われる。
  * - 画面は、受け取っていない人が、どのページを開いても最初に1回だけ出す。
- *   「あとで」で閉じたら、その訪問の間(ブラウザを閉じるまで)は出さず、次に開いたときにまた出す(2026-10-26 ユーザー決定)。
+ *   「あとで」で閉じたら、しばらく(3時間)出さず、そのあと開いたときにまた出す(2026-10-26 ユーザー決定の「次に開いたときにまた出す」)。
  *   その端末でもう出さないのは、受け取った・もう受け取っていた・受け付けが終わっていたときだけ。
  *   ログインしていない人にも出し、5回タップのあと「ログインして受け取る」にする。
  */
@@ -79,31 +79,54 @@ export function writeCampaignGiftDismissed(campaignKey: string, userId: string |
   }
 }
 
-/** 「あとで」で閉じたことを、この訪問の間(ブラウザを閉じるまで)だけ覚えるキー。人ごとに分ける */
+/**
+ * 「あとで」で閉じたら、出さない長さ。
+ * ⭐ sessionStorage(ブラウザを閉じるまで)は使わない。スマホはタブを閉じない限り残り続け(アプリを開き直しても残る)、
+ *    10/31 まで二度と出ないことがあるため。時刻で決め、3時間たったら次に開いたときにまた出す。
+ */
+export const CAMPAIGN_GIFT_LATER_MS = 3 * 60 * 60 * 1000;
+
+/** 「あとで」で閉じた時刻を覚えるキー。人ごとに分ける(ログインしていない人は guest) */
 export function campaignGiftLaterKey(campaignKey: string, userId: string | null): string {
   return `campaign-gift-later:${campaignKey}:${userId ?? "guest"}`;
 }
 
-export function readCampaignGiftLater(campaignKey: string, userId: string | null): boolean {
-  try {
-    return window.sessionStorage.getItem(campaignGiftLaterKey(campaignKey, userId)) === "1";
-  } catch {
-    return false;
-  }
+/** 端末に残せないブラウザのための、ページを開いている間だけの控え */
+const laterInMemory = new Map<string, number>();
+
+export function __resetCampaignGiftLaterForTest() {
+  laterInMemory.clear();
 }
 
-export function writeCampaignGiftLater(campaignKey: string, userId: string | null): void {
+export function readCampaignGiftLater(campaignKey: string, userId: string | null, nowMs: number = Date.now()): boolean {
+  const key = campaignGiftLaterKey(campaignKey, userId);
+  let at = laterInMemory.get(key) ?? null;
   try {
-    window.sessionStorage.setItem(campaignGiftLaterKey(campaignKey, userId), "1");
+    const stored = window.localStorage.getItem(key);
+    if (stored !== null) {
+      const parsed = Number(stored);
+      if (Number.isFinite(parsed)) at = Math.max(at ?? 0, parsed);
+    }
   } catch {
-    // 残せない端末では、別のページを開いたときにもう一度出る
+    // 読めなければ、ページの中の控えだけで決める
+  }
+  return at !== null && nowMs - at >= 0 && nowMs - at < CAMPAIGN_GIFT_LATER_MS;
+}
+
+export function writeCampaignGiftLater(campaignKey: string, userId: string | null, nowMs: number = Date.now()): void {
+  const key = campaignGiftLaterKey(campaignKey, userId);
+  laterInMemory.set(key, nowMs);
+  try {
+    window.localStorage.setItem(key, String(nowMs));
+  } catch {
+    // 残せない端末では、ページを開いている間だけ控える(ページを移るたびに出し直さないように)
   }
 }
 
 /**
  * 閉じたときの覚え方。
  * - done: 受け取った・もう受け取っていた・受け付けが終わっていた → その端末でもう出さない
- * - later: 「あとで」(開ける前・ログインしていない人) → その訪問の間だけ出さない
+ * - later: 「あとで」(開ける前・ログインしていない人) → しばらく(3時間)出さない
  * - retry: 受け取れなかった・ログインし直し → 同じページでは出し直さず、別のページを開いたら出す
  */
 export type CampaignGiftCloseKind = "done" | "later" | "retry";
@@ -111,13 +134,15 @@ export type CampaignGiftCloseKind = "done" | "later" | "retry";
 /**
  * 贈り物の画面を出すか(状態を取ってきたあとの判定)。
  * - 受け付けの期間中で、まだ受け取っていない
- * - この端末で閉じていない
+ * - この端末で、受け取り済みなどで閉じていない(dismissed)
+ * - 「あとで」から、しばらくたっている(later でない)
  */
 export function shouldShowCampaignGift(input: {
   status: CampaignGiftStatus;
   dismissed: boolean;
+  later: boolean;
 }): boolean {
-  return input.status.open && !input.status.claimed && !input.dismissed;
+  return input.status.open && !input.status.claimed && !input.dismissed && !input.later;
 }
 
 /** 期限の日付の短い表示(例: 10/31)。5回タップしたあとの説明に使う */
