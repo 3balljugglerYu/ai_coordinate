@@ -21,6 +21,9 @@ export const X_PIXEL_ID = "r9ypz";
  * - autoDwellTracking: ページにいた時間を送る。これを止めると、ページを離れたとき・
  *   ほかのタブへ切り替えたときの出来事(auto_page_leave)も送られなくなる(同じ止め方を見ている)
  * 4つとも止めると、送るのは config のときの「ページを見た」1回だけになる。
+ * ⚠️ uwt.js は X の CDN から最新を読み込む(版を固定できない)。X が名前を変えたり、自動の計測を
+ *    足したりすると、ここで止めたつもりのものが送られうる。外部送信のページを直すときや、
+ *    数か月に1度は、uwt.js を読み直して、この名前と送る項目が変わっていないかを確かめること。
  */
 export const X_PIXEL_DISABLED_AUTO_FEATURES = [
   "autoConfig",
@@ -36,42 +39,39 @@ export function isAdPixelHost(hostname: string): boolean {
   return AD_PIXEL_HOSTS.has(hostname.toLowerCase());
 }
 
-function matchesPrefix(pathname: string, prefixes: readonly string[]): boolean {
+/** 先頭の言語(/ja など)と、末尾の / を外したページの場所。 */
+function normalizePath(pathname: string): string {
   const withoutLocale = stripLocalePrefix(pathname).pathname;
-  return prefixes.some(
-    (prefix) => withoutLocale === prefix || withoutLocale.startsWith(`${prefix}/`),
-  );
+  return withoutLocale.length > 1 ? withoutLocale.replace(/\/+$/, "") : withoutLocale;
 }
 
 /** 開いたときに Pixel を読み込まないページ(管理画面。広告から来る人はいない)。 */
 export function isAdPixelExcludedPath(pathname: string): boolean {
-  return matchesPrefix(pathname, ["/admin"]);
+  const path = normalizePath(pathname);
+  return path === "/admin" || path.startsWith("/admin/");
 }
 
 /**
- * ページの場所を X に送ってよいページ(だれでも見られる、案内・企画・カタログのページ)。
- * ⭐ ここに無いページ(投稿・プロフィール・共有・ログイン・検索・新しく作ったページなど)は、
+ * ページの場所を X に送ってよいページの形(だれでも見られる、案内・企画・カタログのページ)。
+ * ⭐ ここに無いページ(投稿・プロフィール・共有・ログイン・検索・作品ごとのページ・新しく作ったページなど)は、
  *    URL を送らない。場所そのものに ID や共有のコードが入るページがあるため、
- *    送ってよいページを並べる形にしている(足し忘れても、送らない側に倒れる)。
+ *    送ってよいページの形を1つずつ並べる(始まりが同じでも、下のページは許さない。足し忘れても送らない側に倒れる)。
+ * <名前> の所に入るのは、企画・カテゴリ・スタイルなどの公開の名前で、人や作品の ID ではない。
  */
-const SHAREABLE_PATH_PREFIXES = [
-  "/style",
-  "/free",
-  "/campaigns",
-  "/collections",
-  "/catalog",
-  "/styles",
-  "/user-styles",
-  "/guide",
-  "/pricing",
-  "/about",
-  "/tools",
-  "/creator-rewards",
-  "/collab",
-] as const;
+const SHAREABLE_PATH_PATTERNS: readonly RegExp[] = [
+  /^\/$/,
+  /^\/(?:style|free|pricing|about|styles|user-styles|catalog|collections|creator-rewards|collab)$/,
+  /^\/styles\/[^/]+$/, // スタイルの名前
+  /^\/catalog\/[^/]+$/, // カタログのカテゴリ(作品ごとの /catalog/<カテゴリ>/p/<ID> は送らない)
+  /^\/campaigns\/[^/]+(?:\/terms)?$/, // 企画の名前と、その応募規約
+  /^\/collections\/[^/]+$/, // コレクションの名前
+  /^\/guide\/[^/]+$/, // 使い方のページ
+  /^\/tools\/[^/]+$/, // 道具のページ
+];
 
 export function isAdPixelShareablePath(pathname: string): boolean {
-  return stripLocalePrefix(pathname).pathname === "/" || matchesPrefix(pathname, SHAREABLE_PATH_PREFIXES);
+  const path = normalizePath(pathname);
+  return SHAREABLE_PATH_PATTERNS.some((pattern) => pattern.test(path));
 }
 
 /**
@@ -90,5 +90,5 @@ export function toXPageLocationParams(
   if (!isAdPixelShareablePath(pathname)) {
     return { hide_page_location: true };
   }
-  return { page_location: `${origin}${pathname.startsWith("/") ? pathname : `/${pathname}`}` };
+  return { page_location: `${origin}${pathname}` };
 }

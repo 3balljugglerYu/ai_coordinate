@@ -62,12 +62,22 @@ test("管理画面から開いたときは出さない", () => {
   expect(queryByTestId("x-pixel")).toBeNull();
 });
 
-test("管理画面からふつうのページへ移ったら、そこで読み込む", () => {
+test("管理画面から開いたときは、ふつうのページへ移っても読み込まない(画面の中の移動では送らない)", () => {
   setHostname("www.persta.ai");
   mockPathname.mockReturnValue("/ja/admin");
   const { queryByTestId, rerender } = render(<XPixelScript />);
   expect(queryByTestId("x-pixel")).toBeNull();
   mockPathname.mockReturnValue("/ja/style");
+  rerender(<XPixelScript />);
+  expect(queryByTestId("x-pixel")).toBeNull();
+});
+
+test("ふつうのページから開いたあと、管理画面へ移っても、読み込みのタグは出したまま(もう一度は動かない)", () => {
+  setHostname("www.persta.ai");
+  mockPathname.mockReturnValue("/ja/style");
+  const { queryByTestId, rerender } = render(<XPixelScript />);
+  expect(queryByTestId("x-pixel")).not.toBeNull();
+  mockPathname.mockReturnValue("/ja/admin");
   rerender(<XPixelScript />);
   expect(queryByTestId("x-pixel")).not.toBeNull();
 });
@@ -82,13 +92,13 @@ test("送る URL を、config より前に、ドメインとページの場所�
   expect(setAt).toBeLessThan(text.indexOf("twq('config','r9ypz')"));
 });
 
-test("URL に </script> が入っても、タグを閉じる文字のまま埋めない", () => {
+test("URL に < や > が入っても、そのまま埋めない(</script> でタグを閉じさせない)", () => {
   setHostname("www.persta.ai");
-  mockPathname.mockReturnValue("/ja/campaigns/</script><img src=x>");
+  mockPathname.mockReturnValue("/ja/campaigns/<script>alert(1)");
   const { getByTestId } = render(<XPixelScript />);
   const text = getByTestId("x-pixel").textContent ?? "";
-  expect(text).not.toContain("</script>");
-  expect(text).toContain("\\u003c/script\\u003e");
+  expect(text).not.toContain("<script>");
+  expect(text).toContain("\\u003cscript\\u003e");
 });
 
 test("場所に ID が入るページでは、URL を送らない(hide_page_location)", () => {

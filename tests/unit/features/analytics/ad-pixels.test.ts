@@ -33,7 +33,22 @@ describe("isAdPixelExcludedPath(読み込まないのは管理画面だけ)", ()
 });
 
 describe("isAdPixelShareablePath(ページの場所を送ってよいページ)", () => {
-  test.each(["/", "/ja", "/ja/", "/style", "/ja/style", "/ja/campaigns/halloween-best-shot", "/en/catalog", "/ja/guide/gacha", "/zh-CN/pricing"])(
+  test.each([
+    "/",
+    "/ja",
+    "/ja/",
+    "/style",
+    "/ja/style/",
+    "/ja/campaigns/halloween-best-shot",
+    "/ja/campaigns/halloween-best-shot/terms",
+    "/en/catalog",
+    "/ja/catalog/halloween",
+    "/ja/styles/some-preset",
+    "/ja/collections/italy",
+    "/ja/guide/gacha",
+    "/ja/tools/image-split",
+    "/zh-CN/pricing",
+  ])(
     "%s は送ってよい",
     (path) => {
       expect(isAdPixelShareablePath(path)).toBe(true);
@@ -55,6 +70,10 @@ describe("isAdPixelShareablePath(ページの場所を送ってよいページ)"
     "/ja/my-page",
     "/ja/styles-secret",
     "/ja/brand-new-page",
+    "/ja/catalog/halloween/p/entry-123",
+    "/ja/campaigns/halloween-best-shot/new-sub-page",
+    "/ja/styles/some-preset/edit",
+    "/ja/style/abc",
   ])("%s は送らない", (path) => {
     expect(isAdPixelShareablePath(path)).toBe(false);
   });

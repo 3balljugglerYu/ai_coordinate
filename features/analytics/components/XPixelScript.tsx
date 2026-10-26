@@ -1,6 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Script from "next/script";
 import { usePathname } from "next/navigation";
 import {
@@ -15,7 +15,8 @@ import {
  * X の広告の Pixel(広告から来た人が、サイトを訪れたかを測る)。
  *
  * - 本番のサイト(www.persta.ai)だけで読み込む。
- * - 管理画面から開いたときは読み込まない。ほかのページは、広告の行き先になりうるので読み込む
+ * - 管理画面から開いたときは、そのあとほかのページへ移っても読み込まない
+ *   (「ページを読み込んだときだけ送る」を守るため)。ほかのページは、広告の行き先になりうるので読み込む
  *   (読み込まないと、広告から来た印 twclid を受け取れない)。
  * - 自動の計測(ボタンの文字・フォームの欄・GA4 の記録の転送・いた時間と離れたとき)は、config より前に止める。
  * - 送る URL は toXPageLocationParams で決める(送ってよいページは、ドメインとページの場所だけ。
@@ -36,6 +37,8 @@ function toInlineScriptJson(value: unknown): string {
 
 export function XPixelScript() {
   const pathname = usePathname() ?? "/";
+  // 最初に開いたページ(画面の中で移っても変わらない)
+  const [openedOnExcludedPath] = useState(() => isAdPixelExcludedPath(pathname));
   // サーバーでは false(本番かどうかは、ブラウザの URL でしか分からない)
   const isProductionHost = useSyncExternalStore(
     subscribeNothing,
@@ -44,7 +47,7 @@ export function XPixelScript() {
   );
 
   // next/script は同じ id を2回動かさないので、config(「ページを見た」)は最初の1回だけ
-  if (!isProductionHost || isAdPixelExcludedPath(pathname)) {
+  if (!isProductionHost || openedOnExcludedPath) {
     return null;
   }
 
