@@ -6,7 +6,7 @@ import {
   isAdPixelExcludedPath,
   isAdPixelHost,
   isAdPixelShareablePath,
-  isMetaPixelLoadableLocation,
+  isMetaPixelExcludedPath,
   toXPageLocationParams,
 } from "@/features/analytics/lib/ad-pixels";
 
@@ -92,29 +92,31 @@ describe("toXPageLocationParams", () => {
   });
 });
 
-describe("isMetaPixelLoadableLocation(Meta は URL を差し替えられないので、きれいな URL のときだけ読み込む)", () => {
-  const O = "https://www.persta.ai";
-
+describe("isMetaPixelExcludedPath(Meta は URL をそのまま送るので、送らないページを決める)", () => {
   test.each([
-    [`${O}/ja`, ""],
-    [`${O}/ja/campaigns/halloween-best-shot?fbclid=abc&utm_source=meta`, "https://l.facebook.com/"],
-    [`${O}/ja/style?signup_source=halloween-best-shot_meta_ad2`, ""],
-    [`${O}/ja/style`, `${O}/ja/campaigns/halloween-best-shot?utm_campaign=x`],
-  ])("%s(来る前 %j)は読み込む", (href, referrer) => {
-    expect(isMetaPixelLoadableLocation(href, referrer)).toBe(true);
+    "/ja/admin",
+    "/admin/users/u1",
+    "/auth/x-complete",
+    "/login",
+    "/ja/signup",
+    "/reset-password/confirm",
+    "/account/reactivate",
+    "/ja/search",
+    "/search",
+    "/my-page/credits",
+    "/notifications/messages/1",
+    "/ja/posts/new/img1",
+    "/m/token123",
+    "/m/token123/book",
+    "//ja//search",
+  ])("%s では動かさない", (path) => {
+    expect(isMetaPixelExcludedPath(path)).toBe(true);
   });
 
-  test.each([
-    [`${O}/ja/posts/123`, ""],
-    [`${O}/ja/search?q=secret`, ""],
-    [`${O}/ja/style?q=secret`, ""],
-    [`${O}/ja/style#access_token=abc`, ""],
-    [`${O}/auth/x-complete?next=/ja/style`, ""],
-    [`${O}/ja/style`, `${O}/ja/search?q=secret`],
-    [`${O}/ja/style`, `${O}/ja/posts/123`],
-    ["not a url", ""],
-  ])("%s(来る前 %j)は読み込まない", (href, referrer) => {
-    expect(isMetaPixelLoadableLocation(href, referrer)).toBe(false);
-  });
+  test.each(["/", "/ja", "/ja/style", "/campaigns/halloween-best-shot", "/ja/posts/123", "/users/u1", "/ja/searching", "/mypage", "/catalog"])(
+    "%s では動かす",
+    (path) => {
+      expect(isMetaPixelExcludedPath(path)).toBe(false);
+    },
+  );
 });
-

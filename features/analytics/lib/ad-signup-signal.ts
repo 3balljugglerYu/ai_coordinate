@@ -5,8 +5,8 @@
  * 新しく登録した人の user_metadata に送った印(AD_SIGNUP_REPORTED_METADATA_KEY)を残し、
  * 残せたときだけ、移る先への応答に、X 用と Meta 用の2つの Cookie を付ける。
  * - X: AD_SIGNUP_COOKIE(10分)。次に読み込んだページで XPixelScript.tsx が「登録した」を送り、消す。
- * - Meta: AD_SIGNUP_META_COOKIE(24時間)。MetaPixelScript.tsx が、きれいな URL のページで
- *   Pixel を動かしたときに CompleteRegistration を送り、消す(きれいなページへ移るまで待つので長めにする)。
+ * - Meta: AD_SIGNUP_META_COOKIE(24時間)。MetaPixelScript.tsx が、動かしてよいページで
+ *   「ページを見た」を送るときに CompleteRegistration を送り、消す(マイページなど動かさないページへ移ったときに待てるよう長めにする)。
  * - 1人につき1回だけ(ログインし直し・別の端末・登録の直後のやり直しで、もう一度送らない)。
  * - Cookie の中身は "1" だけ(だれが登録したかは入れない)。印を2つに分けているので、1つにまとめないこと。
  * ⚠️ 確認のメールを別のブラウザで開き、パスワードでログインした人は、この処理を通らないので数えない
@@ -18,8 +18,7 @@ export const AD_SIGNUP_COOKIE = "persta_ad_signup";
 
 /**
  * Meta の Pixel が読む印(X とは別にする)。
- * Meta はきれいな URL のページでしか読み込まないので、X より後で読み込まれることがある
- * (Google・X でのログインは、?next= の付いた完了の画面を通ってから移る)。印を分けておけば、
+ * Meta は動かさないページ(ログインの完了の画面・マイページなど)では送らないので、X より後で送ることがある。印を分けておけば、
  * 先に読み込んだほうが消しても、もう片方が送れる。
  */
 export const AD_SIGNUP_META_COOKIE = "persta_ad_signup_meta";
@@ -27,7 +26,7 @@ export const AD_SIGNUP_META_COOKIE = "persta_ad_signup_meta";
 /** X 用の印を残しておく長さ。登録のあとのページで Pixel が読み込まれるまでの余裕。 */
 export const AD_SIGNUP_COOKIE_MAX_AGE_SECONDS = 10 * 60;
 
-/** Meta 用の印を残しておく長さ。Meta はきれいな URL のページでしか動かないので、そこへ移るまで待てるように長めにする。 */
+/** Meta 用の印を残しておく長さ。動かさないページから、動かしてよいページへ移るまで待てるように長めにする。 */
 export const AD_SIGNUP_META_COOKIE_MAX_AGE_SECONDS = 24 * 60 * 60;
 
 /** Cookie を付けるときの決まり。消す文(AD_SIGNUP_COOKIE_DELETE)もここから作る。 */
