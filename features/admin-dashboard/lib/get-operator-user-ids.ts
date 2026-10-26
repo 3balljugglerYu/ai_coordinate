@@ -59,6 +59,28 @@ export async function getOperatorUserIds(
   return mergeOperatorUserIds(envIds, adminUserIds, excludedUserIds);
 }
 
+/**
+ * 「集計から除く」の画面では外せない人(env の2つと admin_users)。
+ * この画面で一覧から外しても、ここに入っている人は除かれたままになる。
+ * 一覧の表を読み直さずに数えるため、表は読まない。
+ */
+export async function getBuiltInOperatorUserIds(): Promise<string[]> {
+  const envIds = mergeOperatorUserIds(getAdminUserIds(), getAdminPreviewUserIds());
+  let supabase: SupabaseClient;
+  try {
+    supabase = createAdminClient();
+  } catch (error) {
+    console.error("[operator ids] admin client failed:", error);
+    return envIds;
+  }
+  const adminUserIds = await readSource(
+    "admin_users",
+    () => readAdminUsers(supabase),
+    false,
+  );
+  return mergeOperatorUserIds(envIds, adminUserIds);
+}
+
 async function readAdminUsers(supabase: SupabaseClient): Promise<string[]> {
   const { data, error } = await supabase.from("admin_users").select("user_id");
   if (error) {

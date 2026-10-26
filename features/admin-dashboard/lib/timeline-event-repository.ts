@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "./fetch-all-rows";
 import type {
   TimelineEventInput,
   TimelineEventKind,
@@ -55,22 +56,31 @@ function toTimelineEvent(row: TimelineEventRow): TimelineEvent {
   };
 }
 
-/** 一覧。from / to(YYYY-MM-DD・両端を含む)で絞れる。日付の新しい順。 */
+/**
+ * 一覧。from / to(YYYY-MM-DD・両端を含む)で絞れる。日付の新しい順。
+ * 1,000行の打ち切りで黙って欠けないよう、id のカーソルで全件たどってから並べる。
+ */
 export async function listTimelineEvents(
   range: { from?: string; to?: string } = {},
   client?: SupabaseClient,
 ): Promise<TimelineEvent[]> {
   const supabase = getSupabase(client);
-  let query = supabase.from("admin_timeline_events").select(COLUMNS);
-  if (range.from) query = query.gte("event_date", range.from);
-  if (range.to) query = query.lte("event_date", range.to);
-  const { data, error } = await query
-    .order("event_date", { ascending: false })
-    .order("created_at", { ascending: false });
+  const { data, error } = await fetchAllRows<TimelineEventRow>((cursor, size) => {
+    let query = supabase.from("admin_timeline_events").select(COLUMNS);
+    if (range.from) query = query.gte("event_date", range.from);
+    if (range.to) query = query.lte("event_date", range.to);
+    if (cursor) query = query.gt("id", cursor);
+    return query.order("id", { ascending: true }).limit(size);
+  });
   if (error) {
     throw new Error(`出来事の印の取得に失敗しました: ${error.message}`);
   }
-  return ((data ?? []) as TimelineEventRow[]).map(toTimelineEvent);
+  return (data ?? [])
+    .map(toTimelineEvent)
+    .sort(
+      (a, b) =>
+        b.eventDate.localeCompare(a.eventDate) || b.createdAt.localeCompare(a.createdAt),
+    );
 }
 
 export async function createTimelineEvent(

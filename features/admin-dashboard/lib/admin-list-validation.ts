@@ -5,13 +5,24 @@
  * (supabase/migrations/20261025233400_add_growth_overview_tables_and_rpcs.sql)。
  * ここで先に確かめるのは、DB のエラーをそのまま画面に出さず、
  * どこが悪いかを日本語で返すため。値は DB の CHECK とそろえること。
+ *
+ * 文字数は、個人あてのお知らせと同じ countChars(コードポイント)で数える。
+ * DB の char_length と同じ数え方で、String#length だと絵文字を2文字と数えて DB より厳しくなる。
  */
+
+import { countChars } from "@/features/personal-notices/lib/constants";
+
+export { countChars };
 
 export const EXCLUSION_REASON_MAX_LENGTH = 200;
 export const TIMELINE_TITLE_MAX_LENGTH = 60;
 export const TIMELINE_NOTE_MAX_LENGTH = 500;
 
-/** 出来事の種類。DB の CHECK・API・画面の選択肢は、すべてこの一覧から作る。 */
+/**
+ * 出来事の種類。API の確認と画面の選択肢は、この一覧から作る。
+ * ⚠️ DB の CHECK(admin_timeline_events_kind_check)は手で書いた一覧なので、
+ * ここに足すときは、CHECK を直すマイグレーションも一緒に出すこと。
+ */
 export const TIMELINE_EVENT_KINDS = [
   "campaign",
   "ad",
@@ -31,14 +42,6 @@ export const TIMELINE_EVENT_KIND_LABELS: Record<TimelineEventKind, string> = {
   notice: "お知らせ",
   other: "そのほか",
 };
-
-/**
- * 文字数。DB の char_length と同じく、コードポイントで数える
- * (String#length は絵文字を2つと数え、DB より厳しくなる)。
- */
-export function countChars(value: string): number {
-  return Array.from(value).length;
-}
 
 export type ValidationResult<T> =
   | { ok: true; value: T }
@@ -69,9 +72,17 @@ export function validateExclusionReason(value: unknown): ValidationResult<string
   return { ok: true, value: reason };
 }
 
-/** YYYY-MM-DD で、実在する日付か。 */
+/** 出来事の日付として受け付ける年の範囲(0000年など、DB が断る値を先に断る)。 */
+export const TIMELINE_MIN_YEAR = 2000;
+export const TIMELINE_MAX_YEAR = 2100;
+
+/** YYYY-MM-DD で、実在する日付か(年は 2000〜2100)。 */
 export function isValidIsoDate(value: unknown): value is string {
   if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+  const year = Number(value.slice(0, 4));
+  if (year < TIMELINE_MIN_YEAR || year > TIMELINE_MAX_YEAR) {
     return false;
   }
   const date = new Date(`${value}T00:00:00Z`);

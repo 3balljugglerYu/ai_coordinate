@@ -2,6 +2,7 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { fetchAllRows } from "./fetch-all-rows";
 
 /**
  * 集計から除くアカウント(analytics_excluded_users)の読み書き。
@@ -32,19 +33,40 @@ function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
 }
 
+interface ExclusionRow {
+  /** user_id の別名(fetchAllRows のカーソル用) */
+  id: string;
+  reason: string;
+  added_by: string | null;
+  created_at: string;
+}
+
+/**
+ * 表を全件たどる。PostgREST は既定で 1,000行しか返さず、エラーにもならない(#579)。
+ * 除く人が欠けると、内部アカウントが実ユーザーとして数えられ、strict でも気づけないので、
+ * user_id のカーソルで最後まで読む。
+ */
+async function fetchAllExclusionRows(supabase: SupabaseClient): Promise<ExclusionRow[]> {
+  const { data, error } = await fetchAllRows<ExclusionRow>((cursor, size) => {
+    let query = supabase
+      .from("analytics_excluded_users")
+      .select("id:user_id, reason, added_by, created_at");
+    if (cursor) query = query.gt("user_id", cursor);
+    return query.order("user_id", { ascending: true }).limit(size);
+  });
+  if (error) {
+    throw new Error(`analytics_excluded_users の取得に失敗しました: ${error.message}`);
+  }
+  return data ?? [];
+}
+
 /** 除く人の user_id だけ(集計用)。読めなければ throw する。 */
 export async function listAnalyticsExcludedUserIds(
   client?: SupabaseClient,
 ): Promise<string[]> {
-  const supabase = getSupabase(client);
-  const { data, error } = await supabase
-    .from("analytics_excluded_users")
-    .select("user_id");
-  if (error) {
-    throw new Error(`analytics_excluded_users の取得に失敗しました: ${error.message}`);
-  }
-  return (data ?? [])
-    .map((row) => (row as { user_id: string | null }).user_id)
+  const rows = await fetchAllExclusionRows(getSupabase(client));
+  return rows
+    .map((row) => row.id)
     .filter((id): id is string => typeof id === "string" && id.length > 0);
 }
 
@@ -53,26 +75,20 @@ export async function listAnalyticsExclusions(
   client?: SupabaseClient,
 ): Promise<AnalyticsExclusion[]> {
   const supabase = getSupabase(client);
-  const { data, error } = await supabase
-    .from("analytics_excluded_users")
-    .select("user_id, reason, added_by, created_at")
-    .order("created_at", { ascending: false });
-  if (error) {
+  let rows: ExclusionRow[];
+  try {
+    rows = await fetchAllExclusionRows(supabase);
+  } catch (error) {
     console.error("[analytics-exclusions] list error:", error);
     throw new Error("集計から除く一覧の取得に失敗しました");
   }
-
-  const rows = (data ?? []) as Array<{
-    user_id: string;
-    reason: string;
-    added_by: string | null;
-    created_at: string;
-  }>;
   if (rows.length === 0) return [];
+  // 新しい順(全件たどるために user_id 順で取っているので、ここで並べ直す)
+  rows = [...rows].sort((a, b) => b.created_at.localeCompare(a.created_at));
 
   const ids = Array.from(
     new Set(
-      rows.flatMap((row) => (row.added_by ? [row.user_id, row.added_by] : [row.user_id])),
+      rows.flatMap((row) => (row.added_by ? [row.id, row.added_by] : [row.id])),
     ),
   );
   const { data: profiles, error: profileError } = await supabase
@@ -91,8 +107,8 @@ export async function listAnalyticsExclusions(
   );
 
   return rows.map((row) => ({
-    userId: row.user_id,
-    nickname: nicknames.get(row.user_id) ?? null,
+    userId: row.id,
+    nickname: nicknames.get(row.id) ?? null,
     reason: row.reason,
     addedBy: row.added_by,
     addedByNickname: row.added_by ? (nicknames.get(row.added_by) ?? null) : null,

@@ -27,7 +27,10 @@ jest.mock("@/features/admin-dashboard/lib/analytics-exclusion-repository", () =>
   listAnalyticsExcludedUserIds: jest.fn(),
 }));
 
-import { getOperatorUserIds } from "@/features/admin-dashboard/lib/get-operator-user-ids";
+import {
+  getBuiltInOperatorUserIds,
+  getOperatorUserIds,
+} from "@/features/admin-dashboard/lib/get-operator-user-ids";
 import { getAdminPreviewUserIds, getAdminUserIds } from "@/lib/env";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { listAnalyticsExcludedUserIds } from "@/features/admin-dashboard/lib/analytics-exclusion-repository";
@@ -140,5 +143,31 @@ describe("getOperatorUserIds", () => {
     await expect(getOperatorUserIds({ strict: true })).resolves.toEqual(
       [ENV_ADMIN, ENV_PREVIEW, DB_ADMIN, EXCLUDED].sort(),
     );
+  });
+});
+
+describe("getBuiltInOperatorUserIds", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    jest.spyOn(console, "error").mockImplementation(() => {});
+    mockGetAdminUserIds.mockReturnValue([ENV_ADMIN]);
+    mockGetPreview.mockReturnValue([ENV_PREVIEW]);
+    mockCreateAdminClient.mockReturnValue(
+      adminUsersClient({ data: [{ user_id: DB_ADMIN }], error: null }),
+    );
+  });
+
+  test("env 2つと admin_users だけを返し、集計から除く一覧は読まない", async () => {
+    await expect(getBuiltInOperatorUserIds()).resolves.toEqual(
+      [ENV_ADMIN, ENV_PREVIEW, DB_ADMIN].sort(),
+    );
+    expect(mockListExcluded).not.toHaveBeenCalled();
+  });
+
+  test("admin_users を読めなければ env の分だけを返す", async () => {
+    mockCreateAdminClient.mockReturnValue(
+      adminUsersClient({ data: null, error: { message: "denied" } }),
+    );
+    await expect(getBuiltInOperatorUserIds()).resolves.toEqual([ENV_ADMIN, ENV_PREVIEW].sort());
   });
 });

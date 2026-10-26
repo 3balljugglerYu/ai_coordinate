@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { listAnalyticsExclusions } from "@/features/admin-dashboard/lib/analytics-exclusion-repository";
-import { getOperatorUserIds } from "@/features/admin-dashboard/lib/get-operator-user-ids";
+import { getBuiltInOperatorUserIds } from "@/features/admin-dashboard/lib/get-operator-user-ids";
 import { AnalyticsExclusionsClient } from "./AnalyticsExclusionsClient";
 
 export default async function AdminAnalyticsExclusionsPage() {
@@ -16,13 +16,11 @@ export default async function AdminAnalyticsExclusionsPage() {
     redirect("/");
   }
 
-  const [exclusions, operatorUserIds] = await Promise.all([
+  // env と admin_users から入っている人(この画面では外せない)。一覧の表は読み直さない
+  const [exclusions, builtInUserIds] = await Promise.all([
     listAnalyticsExclusions(),
-    getOperatorUserIds(),
+    getBuiltInOperatorUserIds(),
   ]);
-  // env と admin_users から入っている人(この画面では外せない)
-  const listed = new Set(exclusions.map((e) => e.userId));
-  const builtInCount = operatorUserIds.filter((id) => !listed.has(id)).length;
 
   return (
     <div className="space-y-6">
@@ -40,13 +38,16 @@ export default async function AdminAnalyticsExclusionsPage() {
           ここに入れた人は、ペルコイン・企画のタブと概要の数字から除かれます。
         </p>
         <p className="mt-1 text-sm text-slate-500">
-          ほかに、運営の設定(環境変数・admin_users)から {builtInCount}人 を除いています(この画面では外せません)。
+          ほかに、運営の設定(環境変数・admin_users)から {builtInUserIds.length}人 を除いています(この画面では外せません)。
         </p>
       </header>
 
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
-          <AnalyticsExclusionsClient initialExclusions={exclusions} />
+          <AnalyticsExclusionsClient
+            initialExclusions={exclusions}
+            builtInUserIds={builtInUserIds}
+          />
         </CardContent>
       </Card>
     </div>

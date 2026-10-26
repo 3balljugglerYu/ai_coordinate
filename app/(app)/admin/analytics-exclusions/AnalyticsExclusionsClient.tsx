@@ -23,8 +23,11 @@ function formatDate(iso: string): string {
 
 export function AnalyticsExclusionsClient({
   initialExclusions,
+  builtInUserIds,
 }: {
   initialExclusions: AnalyticsExclusion[];
+  /** 運営の設定(env・admin_users)で除いている人。ここで外しても、集計には戻らない */
+  builtInUserIds: string[];
 }) {
   const { toast } = useToast();
   const [exclusions, setExclusions] = useState<AnalyticsExclusion[]>(initialExclusions);
@@ -35,6 +38,7 @@ export function AnalyticsExclusionsClient({
   const [busyUserId, setBusyUserId] = useState<string | null>(null);
 
   const excludedUserIds = new Set(exclusions.map((e) => e.userId));
+  const builtIn = new Set(builtInUserIds);
   const reasonCheck = validateExclusionReason(reason);
 
   const reload = async () => {
@@ -106,7 +110,11 @@ export function AnalyticsExclusionsClient({
 
   const handleRemove = async (exclusion: AnalyticsExclusion) => {
     const name = exclusion.nickname ?? exclusion.userId;
-    if (!window.confirm(`「${name}」を集計に戻しますか?`)) return;
+    const stillExcluded = builtIn.has(exclusion.userId);
+    const message = stillExcluded
+      ? `「${name}」を一覧から外しますか?(運営の設定でも除いているので、集計には戻りません)`
+      : `「${name}」を集計に戻しますか?`;
+    if (!window.confirm(message)) return;
     setBusyUserId(exclusion.userId);
     try {
       const res = await fetch(`/api/admin/analytics-exclusions/${exclusion.userId}`, {
@@ -116,7 +124,12 @@ export function AnalyticsExclusionsClient({
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
         throw new Error(body?.error || "外せませんでした");
       }
-      toast({ title: "外しました", description: "集計に戻しました" });
+      toast({
+        title: "外しました",
+        description: stillExcluded
+          ? "運営の設定で除いているので、集計には戻りません"
+          : "集計に戻しました",
+      });
       await reload();
     } catch (error) {
       showError(error, "外せませんでした");
@@ -169,6 +182,8 @@ export function AnalyticsExclusionsClient({
                 </div>
                 {excludedUserIds.has(u.user_id) ? (
                   <Badge variant="secondary">除いています</Badge>
+                ) : builtIn.has(u.user_id) ? (
+                  <Badge variant="secondary">運営の設定で除いています</Badge>
                 ) : (
                   <Button
                     type="button"
@@ -197,9 +212,14 @@ export function AnalyticsExclusionsClient({
             {exclusions.map((e) => (
               <li key={e.userId} className="flex items-center gap-3 p-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium text-slate-900">
-                    {e.nickname ?? "(名前未設定)"}
-                  </p>
+                  <div className="flex items-center gap-2">
+                    <p className="truncate text-sm font-medium text-slate-900">
+                      {e.nickname ?? "(名前未設定)"}
+                    </p>
+                    {builtIn.has(e.userId) ? (
+                      <Badge variant="secondary">運営の設定でも除いています</Badge>
+                    ) : null}
+                  </div>
                   <p className="truncate text-xs text-slate-500">{e.reason}</p>
                   <p className="truncate text-xs text-slate-400">
                     {formatDate(e.createdAt)}

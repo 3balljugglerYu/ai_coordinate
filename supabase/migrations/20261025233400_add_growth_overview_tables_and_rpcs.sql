@@ -29,6 +29,12 @@ BEGIN;
   credit_transactions と image_jobs は 1,000行を大きく超える。行を取ってアプリで数えると、
   PostgREST の上限でエラーも出さずに過小になる(#579 / #580)。
   人ごとの行を返す関数も同じ上限に当たるので、1行のまとめか、上限つきの一覧だけを返す。
+
+  ## 除く人の配列
+
+  `x = ANY(arr)` は、arr に NULL が1つでもあると、一致しない行で NULL になる。
+  `NOT NULL` も NULL なので、全部の行が落ちて 0 が返る(エラーにならない)。
+  そのため、どの関数も `array_remove(..., NULL)` してから比べる。
 */
 
 -- ===============================================
@@ -114,6 +120,9 @@ CREATE TRIGGER trg_update_admin_timeline_events_updated_at
 -- 使っている人 = 期間内に image_jobs が succeeded になった人、または本番の支払いをした人。
 -- ⭐ generated_images では数えない。投稿していない画像は消せるので、消した人が減る。
 -- ⭐ 支払いをした人も入れる。入れないと「生成せずに買った人」で課金した人の割合が100%を超える。
+--    サブスクの自動更新(生成していない月)も「使っている人」に入る。売上のツリーでは
+--    課金した人が必ず「使っている人」の中に入ることを優先した(割合が100%を超えないように)。
+--    お金を払い続けていることも利用の一つと数える。
 -- 期間内に登録した人(profiles.created_at >= p_start)と、それより前の人に分ける。
 CREATE OR REPLACE FUNCTION public.get_growth_active_users(
   p_start timestamptz,
@@ -153,7 +162,7 @@ AS $function$
       AS active_existing_users
   FROM active a
   LEFT JOIN public.profiles p ON p.user_id = a.user_id
-  WHERE NOT (a.user_id = ANY (coalesce(p_exclude_user_ids, '{}')));
+  WHERE NOT (a.user_id = ANY (array_remove(coalesce(p_exclude_user_ids, '{}'), NULL)));
 $function$;
 
 -- ===============================================
@@ -200,7 +209,7 @@ AS $function$
       AND tx.created_at >= p_start
       AND tx.created_at < p_end
       AND tx.user_id IS NOT NULL
-      AND NOT (tx.user_id = ANY (coalesce(p_exclude_user_ids, '{}')))
+      AND NOT (tx.user_id = ANY (array_remove(coalesce(p_exclude_user_ids, '{}'), NULL)))
   ),
   k AS (
     SELECT
@@ -284,7 +293,7 @@ AS $function$
     WHERE tx.created_at >= p_start
       AND tx.created_at < p_end
       AND tx.user_id IS NOT NULL
-      AND NOT (tx.user_id = ANY (coalesce(p_exclude_user_ids, '{}')))
+      AND NOT (tx.user_id = ANY (array_remove(coalesce(p_exclude_user_ids, '{}'), NULL)))
   )
   SELECT
     days.day,
@@ -346,7 +355,7 @@ AS $function$
     WHERE tx.created_at >= p_start
       AND tx.created_at < p_end
       AND tx.user_id IS NOT NULL
-      AND NOT (tx.user_id = ANY (coalesce(p_exclude_user_ids, '{}')))
+      AND NOT (tx.user_id = ANY (array_remove(coalesce(p_exclude_user_ids, '{}'), NULL)))
     GROUP BY tx.user_id
     HAVING count(*) FILTER (WHERE tx.transaction_type = 'consumption') > 0
   )
@@ -371,8 +380,13 @@ $function$;
 -- 消費した人のまとめ(1行)
 -- ===============================================
 -- 上位 p_top_n 人の正味の消費と、その人たちが無料でもらった量。
--- 残りの日数の分け方: 3日以内 / 3〜7日 / 7〜30日 / 30〜90日 / 90日より先
--- (境界は「以下」の側に入れる。例: ちょうど7日は runway_4_7)。
+-- 残りの日数の分け方(days_left は小数):
+--   runway_le3   : 3日以内
+--   runway_3_7   : 3日より多く、7日以内
+--   runway_7_30  : 7日より多く、30日以内
+--   runway_30_90 : 30日より多く、90日以内
+--   runway_gt90  : 90日より多い
+-- 境界ちょうどは「以内」の側に入れる(例: ちょうど7日は runway_3_7)。
 CREATE OR REPLACE FUNCTION public.get_percoin_consumer_summary(
   p_start timestamptz,
   p_end timestamptz,
@@ -386,9 +400,9 @@ RETURNS TABLE (
   top_consumed_net bigint,
   top_free_granted bigint,
   runway_le3 bigint,
-  runway_4_7 bigint,
-  runway_8_30 bigint,
-  runway_31_90 bigint,
+  runway_3_7 bigint,
+  runway_7_30 bigint,
+  runway_30_90 bigint,
   runway_gt90 bigint,
   non_positive_count bigint
 )
@@ -415,9 +429,9 @@ AS $function$
     (SELECT coalesce(sum(top.consumed_net), 0) FROM top)::bigint AS top_consumed_net,
     (SELECT coalesce(sum(top.free_granted), 0) FROM top)::bigint AS top_free_granted,
     (SELECT count(*) FROM c WHERE c.days_left <= 3) AS runway_le3,
-    (SELECT count(*) FROM c WHERE c.days_left > 3 AND c.days_left <= 7) AS runway_4_7,
-    (SELECT count(*) FROM c WHERE c.days_left > 7 AND c.days_left <= 30) AS runway_8_30,
-    (SELECT count(*) FROM c WHERE c.days_left > 30 AND c.days_left <= 90) AS runway_31_90,
+    (SELECT count(*) FROM c WHERE c.days_left > 3 AND c.days_left <= 7) AS runway_3_7,
+    (SELECT count(*) FROM c WHERE c.days_left > 7 AND c.days_left <= 30) AS runway_7_30,
+    (SELECT count(*) FROM c WHERE c.days_left > 30 AND c.days_left <= 90) AS runway_30_90,
     (SELECT count(*) FROM c WHERE c.days_left > 90) AS runway_gt90,
     (SELECT count(*) FROM c WHERE c.consumed_net <= 0) AS non_positive_count;
 $function$;

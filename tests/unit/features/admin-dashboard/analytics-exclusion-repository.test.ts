@@ -38,6 +38,37 @@ beforeEach(() => {
   jest.spyOn(console, "error").mockImplementation(() => {});
 });
 
+/**
+ * fetchAllRows が呼ぶ形(select → gt? → order → limit)のスタブ。
+ * pages の順に返し、受け取ったカーソルを記録する。
+ */
+function pagedTable(pages: Array<{ data: unknown; error: unknown }>) {
+  const cursors: Array<string | null> = [];
+  const selects: string[] = [];
+  let call = 0;
+  const table = {
+    select: jest.fn((columns: string) => {
+      selects.push(columns);
+      let cursor: string | null = null;
+      const query = {
+        gt: jest.fn((_col: string, value: string) => {
+          cursor = value;
+          return query;
+        }),
+        order: jest.fn(() => query),
+        limit: jest.fn(() => {
+          cursors.push(cursor);
+          const page = pages[call] ?? { data: [], error: null };
+          call += 1;
+          return Promise.resolve(page);
+        }),
+      };
+      return query;
+    }),
+  };
+  return { table, cursors, selects };
+}
+
 describe("addAnalyticsExclusion", () => {
   test("足す人・理由・足した管理者を入れる", async () => {
     const insert = jest.fn(() => Promise.resolve({ error: null }));
@@ -93,33 +124,52 @@ describe("removeAnalyticsExclusion", () => {
 });
 
 describe("listAnalyticsExcludedUserIds", () => {
-  test("user_id だけを返し、空や null は落とす", async () => {
-    const select = jest.fn(() =>
-      Promise.resolve({ data: [{ user_id: USER }, { user_id: null }, { user_id: "" }], error: null }),
-    );
+  test("user_id を id の別名で取り、空は落とす", async () => {
+    const { table, selects } = pagedTable([
+      { data: [{ id: USER }, { id: "" }], error: null },
+    ]);
     await expect(
-      listAnalyticsExcludedUserIds(client({ analytics_excluded_users: { select } })),
+      listAnalyticsExcludedUserIds(client({ analytics_excluded_users: table })),
     ).resolves.toEqual([USER]);
+    expect(selects[0]).toContain("id:user_id");
+  });
+
+  test("1,000行を超えても、user_id のカーソルで最後まで読む(黙って欠けない)", async () => {
+    const firstPage = Array.from({ length: 1000 }, (_, i) => ({
+      id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+    }));
+    const { table, cursors } = pagedTable([
+      { data: firstPage, error: null },
+      { data: [{ id: USER }], error: null },
+    ]);
+    const ids = await listAnalyticsExcludedUserIds(
+      client({ analytics_excluded_users: table }),
+    );
+    expect(ids).toHaveLength(1001);
+    expect(ids).toContain(USER);
+    expect(cursors).toEqual([null, firstPage[999].id]);
   });
 
   test("読めなければ throw する(握りつぶさない)", async () => {
-    const select = jest.fn(() => Promise.resolve({ data: null, error: { message: "denied" } }));
+    const { table } = pagedTable([{ data: null, error: { message: "denied" } }]);
     await expect(
-      listAnalyticsExcludedUserIds(client({ analytics_excluded_users: { select } })),
+      listAnalyticsExcludedUserIds(client({ analytics_excluded_users: table })),
     ).rejects.toThrow("analytics_excluded_users の取得に失敗しました: denied");
   });
 });
 
 describe("listAnalyticsExclusions", () => {
-  test("本人と足した管理者のニックネームを付ける", async () => {
-    const order = jest.fn(() =>
-      Promise.resolve({
+  test("本人と足した管理者のニックネームを付け、新しい順に並べる", async () => {
+    const OLDER = "33333333-3333-4333-8333-333333333333";
+    const { table } = pagedTable([
+      {
         data: [
-          { user_id: USER, reason: "審査用", added_by: ADMIN, created_at: "2026-10-26T00:00:00Z" },
+          { id: USER, reason: "審査用", added_by: ADMIN, created_at: "2026-10-26T00:00:00Z" },
+          { id: OLDER, reason: "別名", added_by: null, created_at: "2026-10-01T00:00:00Z" },
         ],
         error: null,
-      }),
-    );
+      },
+    ]);
     const inFn = jest.fn(() =>
       Promise.resolve({
         data: [
@@ -130,7 +180,7 @@ describe("listAnalyticsExclusions", () => {
       }),
     );
     const c = client({
-      analytics_excluded_users: { select: () => ({ order }) },
+      analytics_excluded_users: table,
       profiles: { select: () => ({ in: inFn }) },
     });
     await expect(listAnalyticsExclusions(c)).resolves.toEqual([
@@ -142,15 +192,23 @@ describe("listAnalyticsExclusions", () => {
         addedByNickname: "運営",
         createdAt: "2026-10-26T00:00:00Z",
       },
+      {
+        userId: OLDER,
+        nickname: null,
+        reason: "別名",
+        addedBy: null,
+        addedByNickname: null,
+        createdAt: "2026-10-01T00:00:00Z",
+      },
     ]);
-    expect(inFn).toHaveBeenCalledWith("user_id", [USER, ADMIN]);
+    expect(inFn).toHaveBeenCalledWith("user_id", [USER, ADMIN, OLDER]);
   });
 
   test("空なら profiles を引かない", async () => {
-    const order = jest.fn(() => Promise.resolve({ data: [], error: null }));
+    const { table } = pagedTable([{ data: [], error: null }]);
     const profiles = { select: jest.fn() };
     const c = client({
-      analytics_excluded_users: { select: () => ({ order }) },
+      analytics_excluded_users: table,
       profiles,
     });
     await expect(listAnalyticsExclusions(c)).resolves.toEqual([]);

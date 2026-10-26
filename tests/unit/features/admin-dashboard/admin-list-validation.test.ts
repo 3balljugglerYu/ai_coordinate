@@ -56,7 +56,7 @@ describe("countChars", () => {
 });
 
 describe("isValidIsoDate", () => {
-  test.each(["2026-10-16", "2024-02-29"])("%s は通る", (value) => {
+  test.each(["2026-10-16", "2024-02-29", "2000-01-01", "2100-12-31"])("%s は通る", (value) => {
     expect(isValidIsoDate(value)).toBe(true);
   });
 
@@ -65,6 +65,9 @@ describe("isValidIsoDate", () => {
     ["うるう年でない2/29", "2025-02-29"],
     ["形が違う", "2026/10/16"],
     ["時刻つき", "2026-10-16T00:00:00Z"],
+    ["0000年(DB が断る)", "0000-01-01"],
+    ["2000年より前", "1999-12-31"],
+    ["2100年より後", "2101-01-01"],
     ["文字列でない", 20261016],
   ])("%s は断る", (_label, value) => {
     expect(isValidIsoDate(value)).toBe(false);
