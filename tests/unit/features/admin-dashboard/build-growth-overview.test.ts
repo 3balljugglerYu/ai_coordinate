@@ -247,6 +247,14 @@ describe("buildWeeklyAnswer", () => {
     expect(a.finding.kind).toBe("payer_rate_down");
   });
 
+  test("課金した人の割合は丸める前の値で比べる(どちらも 3.0% と出る場合でも、下がったと分かる)", () => {
+    // 前 2/66 = 3.03% → 3.0%、今 3/100 = 3.00% → 3.0%
+    const t = tree(100, 66, 3, 2);
+    expect(t.current.payerRatePct).toBe(t.previous.payerRatePct);
+    const a = buildWeeklyAnswer({ tree: t, balance: balanceOf(100, 500) });
+    expect(a.finding.kind).toBe("payer_rate_down");
+  });
+
   test("前の期間が30人未満なら、前と比べず、そのことを書く", () => {
     const a = buildWeeklyAnswer({ tree: tree(40, 20, 1, 2), balance: balanceOf(100, 500) });
     expect(a.finding.kind).toBe("no_bottleneck");

@@ -67,9 +67,10 @@ export function buildWeeklyAnswer(input: {
     );
   }
 
+  const lowRunwayCount = balance.runway.find((r) => r.key === "le3")?.users ?? 0;
   const surplusWatch = [
     `配った量 ÷ 使った量(今 ${balance.freeToNetRatio ?? "—"})`,
-    `残りが3日以内の人(今 ${balance.runway.find((r) => r.key === "le3")?.users ?? 0}人)`,
+    `残りが3日以内の人(今 ${lowRunwayCount}人)`,
     `課金した人の割合(今 ${pct(current.payerRatePct)})`,
   ];
 
@@ -104,9 +105,10 @@ export function buildWeeklyAnswer(input: {
 
   if (
     previousComparable &&
-    current.payerRatePct !== null &&
-    previous.payerRatePct !== null &&
-    current.payerRatePct < previous.payerRatePct
+    // 丸める前の値で比べる(3.03% と 2.98% は、丸めるとどちらも 3.0%)
+    current.payerRate !== null &&
+    previous.payerRate !== null &&
+    current.payerRate < previous.payerRate
   ) {
     return {
       revenue,
@@ -116,7 +118,7 @@ export function buildWeeklyAnswer(input: {
         detail: `${pct(previous.payerRatePct)} → ${pct(current.payerRatePct)}(${previous.payers}人 → ${current.payers}人)。`,
         watch: [
           `課金した人の割合(今 ${pct(current.payerRatePct)})`,
-          `残りが3日以内の人(今 ${balance.runway.find((r) => r.key === "le3")?.users ?? 0}人)`,
+          `残りが3日以内の人(今 ${lowRunwayCount}人)`,
         ],
       },
       notes,

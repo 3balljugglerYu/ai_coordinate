@@ -137,13 +137,18 @@ async function fetchUserCreatedAt(
   supabase: SupabaseClient,
   userIds: string[],
 ): Promise<Map<string, string>> {
-  const map = new Map<string, string>();
+  const chunks: string[][] = [];
   for (let i = 0; i < userIds.length; i += 200) {
-    const chunk = userIds.slice(i, i + 200);
-    const { data, error } = await supabase
-      .from("profiles")
-      .select("user_id, created_at")
-      .in("user_id", chunk);
+    chunks.push(userIds.slice(i, i + 200));
+  }
+  // 200人ずつに分けて、同時に引く
+  const results = await Promise.all(
+    chunks.map((chunk) =>
+      supabase.from("profiles").select("user_id, created_at").in("user_id", chunk),
+    ),
+  );
+  const map = new Map<string, string>();
+  for (const { data, error } of results) {
     if (error) throw new OverviewFetchError("課金した人の登録日", error.message);
     for (const row of (data ?? []) as Array<{ user_id: string; created_at: string }>) {
       map.set(row.user_id, row.created_at);
@@ -180,7 +185,17 @@ export async function getGrowthOverview(
       rpcSingle<GrowthActiveUsersRow>("使っている人(前)", supabase.rpc("get_growth_active_users", prev)),
       rpc<PercoinDailyFlowRow[]>("日ごとの出入り(今)", supabase.rpc("get_percoin_daily_flow", cur)),
       rpc<PercoinDailyFlowRow[]>("日ごとの出入り(前)", supabase.rpc("get_percoin_daily_flow", prev)),
-      rpc<PercoinDailyFlowRow[]>("日ごとの出入り(グラフ)", supabase.rpc("get_percoin_daily_flow", chartArgs)),
+      /*
+        7d・30d・90d のグラフの日は、今の期間の日ごとの出入りに丸ごと入っている
+        (グラフは日本時間の 0:00 から始まり、今の期間はそれより前から始まるため)。
+        別に取るのは、グラフが今の期間より長い 24h のときだけ。
+      */
+      range === "24h"
+        ? rpc<PercoinDailyFlowRow[]>(
+            "日ごとの出入り(グラフ)",
+            supabase.rpc("get_percoin_daily_flow", chartArgs),
+          )
+        : Promise.resolve<PercoinDailyFlowRow[] | null>(null),
       rpc<PercoinGrantRow[]>(
         "配布の内訳",
         supabase.rpc("get_percoin_grant_breakdown", cur),
@@ -240,7 +255,7 @@ export async function getGrowthOverview(
       GrowthActiveUsersRow,
       PercoinDailyFlowRow[],
       PercoinDailyFlowRow[],
-      PercoinDailyFlowRow[],
+      PercoinDailyFlowRow[] | null,
       PercoinGrantRow[],
       PercoinUsageRow[],
       PercoinConsumerSummaryRow,
@@ -272,7 +287,9 @@ export async function getGrowthOverview(
     const balance = buildPercoinBalance({
       currentFlow: flowCur,
       previousFlow: flowPrev,
-      chartFlow: flowChart,
+      chartFlow:
+        flowChart ??
+        flowCur.filter((row) => String(row.day).slice(0, 10) >= toJstDateKey(chart.start)),
       grants,
       usage,
       summary,

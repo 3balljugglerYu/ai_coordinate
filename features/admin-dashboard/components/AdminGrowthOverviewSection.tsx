@@ -106,7 +106,13 @@ function TreeNode({
   );
 }
 
-function RevenueTreeCard({ tree, stuck }: { tree: RevenueTree; stuck: "payer_rate" | null }) {
+function RevenueTreeCard({
+  tree,
+  stuck,
+}: {
+  tree: RevenueTree;
+  stuck: "payer_rate" | "active_users" | null;
+}) {
   const { current: c, previous: p } = tree;
   const branchLine = (label: string, b: RevenueTreePeriod["newUsers"]) => (
     <div className="rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 text-xs text-slate-700">
@@ -123,7 +129,12 @@ function RevenueTreeCard({ tree, stuck }: { tree: RevenueTree; stuck: "payer_rat
         <div className="grid items-center gap-2 sm:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr]">
           <TreeNode root label="売上" value={`${num(c.revenueYen)}円`} sub={`前 ${num(p.revenueYen)}円(${diff(c.revenueYen, p.revenueYen, "円")})`} />
           <span className="hidden text-center text-xl font-bold text-slate-400 sm:block">=</span>
-          <TreeNode label="使っている人" value={`${num(c.activeUsers)}人`} sub={`前 ${num(p.activeUsers)}人(${diff(c.activeUsers, p.activeUsers, "人")})`} />
+          <TreeNode
+            emphasis={stuck === "active_users"}
+            label="使っている人"
+            value={`${num(c.activeUsers)}人`}
+            sub={`前 ${num(p.activeUsers)}人(${diff(c.activeUsers, p.activeUsers, "人")})`}
+          />
           <span className="hidden text-center text-xl font-bold text-slate-400 sm:block">×</span>
           <TreeNode
             emphasis={stuck === "payer_rate"}
@@ -329,7 +340,13 @@ async function AdminGrowthOverviewLoader({
       <WeeklyAnswerCard answer={data.answer} />
       <RevenueTreeCard
         tree={data.tree}
-        stuck={data.answer.finding.kind === "payer_rate_down" ? "payer_rate" : null}
+        stuck={
+          data.answer.finding.kind === "payer_rate_down"
+            ? "payer_rate"
+            : data.answer.finding.kind === "active_users_down"
+              ? "active_users"
+              : null
+        }
       />
       <PercoinBalanceCard balance={data.balance} />
     </div>

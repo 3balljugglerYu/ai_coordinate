@@ -15,15 +15,13 @@ export interface RevenueBranch {
   activeUsers: number;
   payers: number;
   revenueYen: number;
-  /** 課金した人の割合(%・小数1桁)。使っている人が0なら null */
+  /** 課金した人の割合(%・小数1桁・表示用)。使っている人が0なら null */
   payerRatePct: number | null;
+  /** 課金した人の割合(丸める前・比べる用)。使っている人が0なら null */
+  payerRate: number | null;
 }
 
-export interface RevenueTreePeriod {
-  revenueYen: number;
-  activeUsers: number;
-  payers: number;
-  payerRatePct: number | null;
+export interface RevenueTreePeriod extends RevenueBranch {
   /** 課金した人1人あたり(円)。課金した人が0なら null */
   revenuePerPayerYen: number | null;
   newUsers: RevenueBranch;
@@ -48,6 +46,7 @@ function branch(activeUsers: number, payments: GrowthPayment[]): RevenueBranch {
     payers,
     revenueYen,
     payerRatePct: ratePct(payers, activeUsers),
+    payerRate: activeUsers > 0 ? payers / activeUsers : null,
   };
 }
 
@@ -64,15 +63,13 @@ export function buildRevenueTreePeriod(
     toNumber(active.active_existing_users),
     payments.filter((p) => !p.isNewUser),
   );
-  const payers = new Set(payments.map((p) => p.userId)).size;
-  const revenueYen = payments.reduce((sum, p) => sum + p.yen, 0);
+  // 合計も、分けたものと同じ数え方(branch)で出す
+  const total = branch(activeUsers, payments);
 
   return {
-    revenueYen,
-    activeUsers,
-    payers,
-    payerRatePct: ratePct(payers, activeUsers),
-    revenuePerPayerYen: payers > 0 ? Math.round(revenueYen / payers) : null,
+    ...total,
+    revenuePerPayerYen:
+      total.payers > 0 ? Math.round(total.revenueYen / total.payers) : null,
     newUsers,
     existingUsers,
   };

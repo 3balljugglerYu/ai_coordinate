@@ -167,10 +167,8 @@ test("数をまとめ、運営とテストの支払いを除いて、売上を�
   expect(result.data.answer.finding.kind).toBe("percoin_surplus");
   // 除く人をどの RPC にも渡す
   expect(calls.every((c) => (c.args.p_exclude_user_ids as string[]).includes(OPERATOR))).toBe(true);
-  // 日ごとの出入りは、今・前・グラフ用(日本時間の 0:00 にそろえた30日)の3回
-  const flows = calls.filter((c) => c.name === "get_percoin_daily_flow");
-  expect(flows).toHaveLength(3);
-  expect(flows.map((c) => c.args.p_start)).toContain("2026-09-26T15:00:00.000Z");
+  // 30d のグラフの日は今の期間に入っているので、日ごとの出入りは今・前の2回だけ
+  expect(calls.filter((c) => c.name === "get_percoin_daily_flow")).toHaveLength(2);
 });
 
 test("24h のときは、グラフ用の日ごとの出入りを直近7日(日本時間の 0:00 から)で取り、出来事もその範囲で取る", async () => {
