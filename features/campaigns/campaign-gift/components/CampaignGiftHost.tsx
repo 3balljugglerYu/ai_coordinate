@@ -10,6 +10,7 @@ import { isTutorialTourInProgress } from "@/features/tutorial/lib/tutorial-statu
 import { stripLocalePrefix } from "@/i18n/config";
 import {
   formatCampaignGiftExpire,
+  formatCampaignGiftExpireShort,
   HALLOWEEN_GIFT_KEY,
   isCampaignGiftExcludedPath,
   readCampaignGiftDismissed,
@@ -180,10 +181,11 @@ function CampaignGift() {
       signedIn={status.signedIn}
       amount={status.amount ?? 0 /* 額が読めないときは出さない(上で止めている) */}
       expireLabel={formatCampaignGiftExpire(status.expireAt)}
+      expireShortLabel={formatCampaignGiftExpireShort(status.expireAt)}
       onClaim={postClaim}
       onClaimed={handleClaimed}
       loginHref={`/login?redirect=${encodeURIComponent(`${pathname}${typeof window === "undefined" ? "" : window.location.search}`)}`}
-      worksHref={HALLOWEEN_BEST_SHOT.catalogHref}
+      worksHref={`${HALLOWEEN_BEST_SHOT.path}#hbs-works`}
     />
   );
 }

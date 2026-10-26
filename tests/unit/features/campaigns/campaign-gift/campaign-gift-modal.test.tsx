@@ -40,10 +40,11 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof CampaignGift
       signedIn
       amount={200}
       expireLabel="10月31日 23:59"
+      expireShortLabel="10/31"
       onClaim={onClaim}
       onClaimed={onClaimed}
       loginHref="/login?next=%2Fja"
-      worksHref="/user-styles?campaign=halloween-best-shot"
+      worksHref="/campaigns/halloween-best-shot#hbs-works"
       {...overrides}
     />,
   );
@@ -74,9 +75,9 @@ test("4回では受け取らず、5回目で受け取りを1回だけ呼び、�
   await tap(1);
   expect(onClaim).toHaveBeenCalledTimes(1);
   expect(onClaimed).toHaveBeenCalledTimes(1);
-  expect(await screen.findByText("200ペルコインを受け取りました。気に入った対象作品で、うちの子を生成してみてね。")).toBeInTheDocument();
+  expect(await screen.findByText(/^10\/31までの限定ペルコインGET！🪙\s+気に入ったカタログを生成して応援しよう‼️$/)).toBeInTheDocument();
   expect(screen.getByText("ハロウィン限定・10月31日 23:59 まで")).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "対象作品を見る" })).toHaveAttribute("href", "/user-styles?campaign=halloween-best-shot");
+  expect(screen.getByRole("link", { name: "対象作品を見る" })).toHaveAttribute("href", "/campaigns/halloween-best-shot#hbs-works");
   // 開けたあとにタップしても、もう呼ばない
   await tap(1);
   expect(onClaim).toHaveBeenCalledTimes(1);
@@ -87,7 +88,7 @@ test("ログインしていない人は、受け取りを呼ばず、5回目の�
   await tap(5);
   expect(onClaim).not.toHaveBeenCalled();
   expect(await screen.findByRole("link", { name: "ログインして受け取る" })).toHaveAttribute("href", "/login?next=%2Fja");
-  expect(screen.getByText("ログインすると、200ペルコインを受け取れます。気に入った対象作品で、うちの子を生成してみてね。")).toBeInTheDocument();
+  expect(screen.getByText(/^ログインして、10\/31までの限定ペルコインをGET！🪙\s+気に入ったカタログを生成して応援しよう‼️$/)).toBeInTheDocument();
 });
 
 test("もう受け取っていたら、その旨を出す(コインは出さない)", async () => {
@@ -96,7 +97,7 @@ test("もう受け取っていたら、その旨を出す(コインは出さな�
   await tap(5);
   expect(await screen.findByText(/この贈り物は、もう受け取っています。/)).toBeInTheDocument();
   expect(onClaimed).not.toHaveBeenCalled();
-  expect(screen.queryByText(/ペルコインを受け取りました/)).toBeNull();
+  expect(screen.queryByText(/限定ペルコインGET！/)).toBeNull();
 });
 
 test("受け付けが終わっていたら、その旨を出す", async () => {
@@ -117,7 +118,7 @@ test("受け取れなかったら、もう一度受け取れる", async () => {
     fireEvent.click(retry);
   });
   expect(onClaim).toHaveBeenCalledTimes(2);
-  expect(await screen.findByText(/200ペルコインを受け取りました/)).toBeInTheDocument();
+  expect(await screen.findByText(/10\/31までの限定ペルコインGET！/)).toBeInTheDocument();
 });
 
 test("受け取りが投げても、画面は落ちずに、もう一度受け取れるにする", async () => {
@@ -148,7 +149,7 @@ test("受け取れなかったまま閉じたら、閉じたことを覚えな�
 test("受け取ったあとに閉じたら、閉じたことを覚える", async () => {
   const { onClose } = renderModal();
   await tap(5);
-  await screen.findByText(/200ペルコインを受け取りました/);
+  await screen.findByText(/10\/31までの限定ペルコインGET！/);
   // 右上の × と、下の「閉じる」は同じ動き。下のほうを押す
   fireEvent.click(screen.getAllByRole("button", { name: "閉じる" }).at(-1)!);
   expect(onClose).toHaveBeenCalledWith(true);
@@ -174,7 +175,7 @@ test("「開けた」は5回目のタップで1回だけ数える(もう一度�
   await act(async () => {
     fireEvent.click(await screen.findByRole("button", { name: "もう一度受け取る" }));
   });
-  await screen.findByText(/200ペルコインを受け取りました/);
+  await screen.findByText(/10\/31までの限定ペルコインGET！/);
   expect(mockTrack.mock.calls.filter((c) => c[0] === "campaign_gift_open")).toHaveLength(1);
   expect(mockTrack.mock.calls.filter((c) => c[0] === "campaign_gift_claim")).toHaveLength(1);
 });
@@ -189,6 +190,6 @@ test("受け取りの途中は閉じない", async () => {
   await act(async () => {
     resolveClaim({ status: "granted", amount: 200, expireAt: "2026-10-31T14:59:00.000Z" });
   });
-  expect(await screen.findByText(/200ペルコインを受け取りました/)).toBeInTheDocument();
+  expect(await screen.findByText(/10\/31までの限定ペルコインGET！/)).toBeInTheDocument();
 });
 

@@ -89,6 +89,16 @@ export function shouldShowCampaignGift(input: {
   return input.status.open && !input.status.claimed && !input.dismissed;
 }
 
+/** 期限の日付の短い表示(例: 10/31)。5回タップしたあとの説明に使う */
+export function formatCampaignGiftExpireShort(expireAt: string | null): string | null {
+  if (!expireAt) return null;
+  const date = new Date(expireAt);
+  if (Number.isNaN(date.getTime())) return null;
+  const parts = new Intl.DateTimeFormat("ja-JP", { timeZone: "Asia/Tokyo", month: "numeric", day: "numeric" }).formatToParts(date);
+  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("month")}/${get("day")}`;
+}
+
 /** 期限の表示(例: 10月31日 23:59) */
 export function formatCampaignGiftExpire(expireAt: string | null): string | null {
   if (!expireAt) return null;

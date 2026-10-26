@@ -54,6 +54,8 @@ export interface CampaignGiftModalProps {
   amount: number;
   /** 期限の表示(例: 10月31日 23:59) */
   expireLabel: string | null;
+  /** 期限の日付の短い表示(例: 10/31)。5回タップしたあとの説明に使う */
+  expireShortLabel: string | null;
   /** 受け取る(ログインしている人だけ呼ぶ) */
   onClaim: () => Promise<CampaignGiftClaimResult>;
   /** 受け取ったあと(残高の表示を新しくするなど) */
@@ -94,6 +96,7 @@ export function CampaignGiftModal({
   signedIn,
   amount,
   expireLabel,
+  expireShortLabel,
   onClaim,
   onClaimed,
   loginHref,
@@ -102,7 +105,6 @@ export function CampaignGiftModal({
   const [taps, setTaps] = useState(0);
   const [phase, setPhase] = useState<Phase>("tapping");
   const [finale, setFinale] = useState(false);
-  const [grantedAmount, setGrantedAmount] = useState(amount);
   const [count, setCount] = useState(0);
   const giftRef = useRef<HTMLButtonElement | null>(null);
   const fxRef = useRef<HTMLDivElement | null>(null);
@@ -212,7 +214,6 @@ export function CampaignGiftModal({
 
   const showFinale = useCallback(
     (value: number) => {
-      setGrantedAmount(value);
       if (prefersReducedMotion()) {
         setFinale(true);
         setPhase("revealed");
@@ -286,13 +287,15 @@ export function CampaignGiftModal({
   else if (phase === "tapping") hint = `タップして開けてね（あと${tapsLeft}回）`;
   else hint = "";
 
+  // 5回タップしたあとの説明(2026-10-26 ユーザー指定の文。2行)
+  const limitedLabel = expireShortLabel ? `${expireShortLabel}までの限定ペルコイン` : "限定ペルコイン";
   let description: string;
   if (revealed && signedIn) {
-    description = `${grantedAmount}ペルコインを受け取りました。気に入った対象作品で、うちの子を生成してみてね。`;
+    description = `${limitedLabel}GET！🪙\n気に入ったカタログを生成して応援しよう‼️`;
   } else if (revealed) {
-    description = `ログインすると、${grantedAmount}ペルコインを受け取れます。気に入った対象作品で、うちの子を生成してみてね。`;
+    description = `ログインして、${limitedLabel}をGET！🪙\n気に入ったカタログを生成して応援しよう‼️`;
   } else if (phase === "already") {
-    description = "この贈り物は、もう受け取っています。気に入った対象作品で、うちの子を生成してみてね。";
+    description = "この贈り物は、もう受け取っています。\n気に入ったカタログを生成して応援しよう‼️";
   } else if (phase === "closed") {
     description = "この贈り物の受け付けは、終わりました。";
   } else if (phase === "auth") {
@@ -393,7 +396,7 @@ export function CampaignGiftModal({
         </div>
 
         <div className="relative z-[2] grid gap-2.5 bg-white px-5 pb-4 pt-4 text-center text-slate-700 [overflow-wrap:anywhere] [word-break:keep-all]">
-          <DialogDescription className="text-sm leading-relaxed text-slate-700">{description}</DialogDescription>
+          <DialogDescription className="whitespace-pre-line text-sm leading-relaxed text-slate-700">{description}</DialogDescription>
           {revealed && signedIn ? (
             <Link
               href={worksHref}

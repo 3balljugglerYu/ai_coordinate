@@ -40,9 +40,10 @@ function renderModal(signedIn = true) {
       signedIn={signedIn}
       amount={200}
       expireLabel="10月31日 23:59"
+      expireShortLabel="10/31"
       onClaim={onClaim}
       loginHref="/login"
-      worksHref="/user-styles?campaign=halloween-best-shot"
+      worksHref="/campaigns/halloween-best-shot#hbs-works"
     />,
   );
   return { ...view, onClaim, onClose };
@@ -91,7 +92,7 @@ test("5回目で、ふくらんでから光り、コインがあふれ出て落�
   expect(fx?.querySelectorAll("img").length).toBeGreaterThanOrEqual(50);
   // 受け取った画面と、数が増えきったところ
   await runFor(2000);
-  expect(screen.getByText("200ペルコインを受け取りました。気に入った対象作品で、うちの子を生成してみてね。")).toBeInTheDocument();
+  expect(screen.getByText(/^10\/31までの限定ペルコインGET！🪙\s+気に入ったカタログを生成して応援しよう‼️$/)).toBeInTheDocument();
   expect(screen.getByText("200")).toBeInTheDocument();
   // コインは落ちきって消える
   await runFor(3000);

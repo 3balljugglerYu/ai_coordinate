@@ -5,6 +5,7 @@
 import {
   campaignGiftDismissKey,
   formatCampaignGiftExpire,
+  formatCampaignGiftExpireShort,
   isCampaignGiftExcludedPath,
   isCampaignGiftKey,
   readCampaignGiftDismissed,
@@ -74,3 +75,11 @@ test("期限は日本時間で表示する", () => {
   expect(formatCampaignGiftExpire(null)).toBeNull();
   expect(formatCampaignGiftExpire("not a date")).toBeNull();
 });
+
+test("期限の日付の短い表示は、日本時間の月/日", () => {
+  expect(formatCampaignGiftExpireShort("2026-10-31T14:59:00.000Z")).toBe("10/31");
+  expect(formatCampaignGiftExpireShort("2026-10-31T15:30:00.000Z")).toBe("11/1");
+  expect(formatCampaignGiftExpireShort(null)).toBeNull();
+  expect(formatCampaignGiftExpireShort("bad")).toBeNull();
+});
+
