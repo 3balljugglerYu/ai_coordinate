@@ -110,11 +110,12 @@ export function AuthForm({
     parseSignupSource(searchParams.get("signup_source")) ??
     parseSignupSource(readSignupSourceCookie());
 
-  // 移る先はこのサイトの中のパスだけ(外から渡された「https://evil.com」「//evil.com」などで、よそへ移されないように)
+  // 移る先はこのサイトの中のパスだけ(外から渡された「https://evil.com」「//evil.com」などで、よそへ移されないように)。
+  // 候補を順に見て、空でなく決まりに合う最初のものを使う(空の ?redirect= で ?next= が無視されないように)
   const resolveRedirectTarget = () =>
-    toSafeRedirectPath(
-      redirectTo ?? searchParams.get("redirect") ?? searchParams.get("next"),
-    );
+    [redirectTo, searchParams.get("redirect"), searchParams.get("next")]
+      .map((candidate) => toSafeRedirectPath(candidate, ""))
+      .find((candidate) => candidate !== "") ?? "/";
 
   // 保存導線(claim_wardrobe)経由のとき、確認メールが別ブラウザで開く場合の
   // 案内を表示する(=このブラウザに戻ってログインすれば保存される)。

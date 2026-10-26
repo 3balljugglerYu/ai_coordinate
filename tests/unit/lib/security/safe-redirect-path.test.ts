@@ -25,10 +25,29 @@ describe("toSafeRedirectPath", () => {
     "/\t/evil.com",
     "/\n/evil.com",
     "javascript:alert(1)",
+    "/..//evil.com",
+    "/.//evil.com",
+    "/a/..//evil.com",
+    "/%2e%2e//evil.com",
+    "/./\\evil.com",
+    "/a/../\\evil.com",
     "evil.com",
     "",
   ])("よそへ移る値 %j は既定の / にする", (input) => {
     expect(toSafeRedirectPath(input)).toBe("/");
+  });
+
+  test("返す値は、どんな値を入れても // で始まらない(読み直したあとで確かめる)", () => {
+    const inputs = ["/..//x.com", "/./\\x.com", "/%2e//x.com", "/a/b/../../..//x.com", "/;/..//x.com", "/.%2e//x.com"];
+    for (const input of inputs) {
+      const out = toSafeRedirectPath(input);
+      expect(out.startsWith("//")).toBe(false);
+      expect(out.startsWith("/\\")).toBe(false);
+    }
+  });
+
+  test("..を含んでも、このサイトの中に収まるならそのまま縮めた値を返す", () => {
+    expect(toSafeRedirectPath("/ja/style/../posts/1")).toBe("/ja/posts/1");
   });
 
   test("値が無いときは既定の値にする(既定は変えられる)", () => {

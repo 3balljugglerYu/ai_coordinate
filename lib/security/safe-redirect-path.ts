@@ -5,6 +5,8 @@
  * - "https://evil.com" や "//evil.com"(プロトコルを省いた URL)は、ブラウザも Next.js のルーターも、よそへ移る。
  * - "@evil.com" は、`${origin}${next}` とつなぐと "https://www.persta.ai@evil.com" になり、evil.com へ移る。
  * - "/\\evil.com" は、ブラウザが "\\" を "/" と読むので "//evil.com" と同じになる。
+ * - "/..//evil.com" や "/./\\evil.com" は、URL として読み直すと "//evil.com" に縮む。
+ *   ⭐ そのため、入ってきた値ではなく、読み直したあとの値で確かめる。
  * 決まりに合わない値は、fallback(既定は "/")にする。
  */
 export function toSafeRedirectPath(value: string | null | undefined, fallback = "/"): string {
@@ -18,7 +20,12 @@ export function toSafeRedirectPath(value: string | null | undefined, fallback = 
     const base = "https://persta.invalid";
     const resolved = new URL(path, base);
     if (resolved.origin !== base) return fallback;
-    return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+    const normalized = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+    // 読み直したあとでも、プロトコルを省いた URL("//" や "/\\")になっていないこと
+    if (!normalized.startsWith("/") || normalized.startsWith("//") || normalized.startsWith("/\\")) {
+      return fallback;
+    }
+    return normalized;
   } catch {
     return fallback;
   }

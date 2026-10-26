@@ -33,7 +33,7 @@ test("このサイトの中のパスへは、そのまま移る", async () => {
   expect(await locationFor("/ja/style")).toBe("https://www.persta.ai/ja/style");
 });
 
-test.each(["@evil.com", "//evil.com", "https://evil.com", "/\\evil.com"])("%s は最初のページへ移す(よそへ移さない)", async (next) => {
+test.each(["@evil.com", "//evil.com", "https://evil.com", "/\\evil.com", "/..//evil.com", "/./\\evil.com"])("%s は最初のページへ移す(よそへ移さない)", async (next) => {
   const location = await locationFor(next);
   expect(location).toBe("https://www.persta.ai/");
   expect(new URL(location as string).host).toBe("www.persta.ai");
