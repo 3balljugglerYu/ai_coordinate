@@ -105,6 +105,7 @@ const SOURCE_LABELS: Record<string, string> = {
   style_usage_reward: "スタイル利用還元",
   tour_bonus: "チュートリアル完走",
   admin_bonus: "運営付与",
+  campaign_gift: "企画の贈り物",
   referral: "招待",
   subscription: "サブスク付与",
   purchase: "購入",

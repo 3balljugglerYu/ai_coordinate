@@ -9,6 +9,7 @@ import { Ga4Script } from "@/features/analytics/components/Ga4Script";
 import { Ga4LoginStatus } from "@/features/analytics/components/Ga4LoginStatus";
 import { VercelAnalyticsScripts } from "@/features/analytics/components/VercelAnalyticsScripts";
 import { XPixelScript } from "@/features/analytics/components/XPixelScript";
+import { CampaignGiftHost } from "@/features/campaigns/campaign-gift/components/CampaignGiftHost";
 import { CoordinateSourceStockSavePromptDialogHost } from "@/features/generation/components/CoordinateSourceStockSavePromptDialogHost";
 import { PostProgressHost } from "@/features/posts/components/PostProgressHost";
 import { GenerationProgressHost } from "@/features/generation/components/GenerationProgressHost";
@@ -164,6 +165,7 @@ export async function LocaleShell({
         </Suspense>
       </GenerationProgressAvailabilityProvider>
       <Toaster />
+      <CampaignGiftHost />
       <Ga4Script />
       <Ga4LoginStatus />
       <VercelAnalyticsScripts />

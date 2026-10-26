@@ -49,6 +49,19 @@ export const CAMPAIGN_EVENTS = {
   celebrationView: "campaign_celebration_view",
   /** 口数のお祝いの「対象作品をもっと見る」を押した */
   celebrationCatalog: "campaign_celebration_catalog",
+  /**
+   * 企画の贈り物(2026-10-26)。どのページでも出すので、ページのパスでは企画を分けられない。期間で分ける
+   */
+  /** 贈り物の画面を出した */
+  giftView: "campaign_gift_view",
+  /** 5回タップして開けた */
+  giftOpen: "campaign_gift_open",
+  /** 受け取れた(ログインしている人) */
+  giftClaim: "campaign_gift_claim",
+  /** 「ログインして受け取る」を押した(ログインしていない人) */
+  giftLogin: "campaign_gift_login",
+  /** 受け取ったあとの「対象作品を見る」を押した */
+  giftWorks: "campaign_gift_works",
 } as const;
 
 export type CampaignEventName = (typeof CAMPAIGN_EVENTS)[keyof typeof CAMPAIGN_EVENTS];
