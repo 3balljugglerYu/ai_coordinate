@@ -22,9 +22,22 @@ jest.mock("@/features/campaigns/lib/campaign-events", () => ({
   trackCampaignEvent: jest.fn(),
 }));
 jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () => ({
-  CampaignGiftModal: ({ open, signedIn, onClose }: { open: boolean; signedIn: boolean; onClose: (remember: boolean) => void }) =>
+  CampaignGiftModal: ({
+    open,
+    signedIn,
+    onClose,
+    onClaimed,
+  }: {
+    open: boolean;
+    signedIn: boolean;
+    onClose: (remember: boolean) => void;
+    onClaimed?: () => void;
+  }) =>
     open ? (
       <div role="dialog" data-testid="gift" data-signed-in={String(signedIn)}>
+        <button type="button" onClick={() => onClaimed?.()}>
+          受け取った
+        </button>
         <button type="button" onClick={() => onClose(true)}>
           閉じる
         </button>
@@ -35,7 +48,7 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
     ) : null,
 }));
 
-import { CampaignGiftHost } from "@/features/campaigns/campaign-gift/components/CampaignGiftHost";
+import { __resetCampaignGiftQuietForTest, CampaignGiftHost } from "@/features/campaigns/campaign-gift/components/CampaignGiftHost";
 
 const fetchMock = jest.fn();
 
@@ -44,6 +57,7 @@ function statusResponse(body: object) {
 }
 
 beforeEach(() => {
+  __resetCampaignGiftQuietForTest();
   jest.useFakeTimers();
   window.localStorage.clear();
   window.sessionStorage.clear();
@@ -184,5 +198,67 @@ test("ログインしていない人の画面が開いている間にログイ�
   expect(screen.queryByTestId("gift")).toBeNull();
   await settle();
   expect(screen.getByTestId("gift")).toHaveAttribute("data-signed-in", "true");
+});
+
+test("額が読めないときは出さない", async () => {
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: true, amount: null, expireAt: null }));
+  render(<CampaignGiftHost />);
+  await settle();
+  expect(screen.queryByTestId("gift")).toBeNull();
+});
+
+test("まだ受け付けていないときは、ページを移っても、しばらく聞きに行かない", async () => {
+  fetchMock.mockImplementation(() => statusResponse({ open: false, claimed: false, signedIn: true, amount: 200, expireAt: null }));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("ブラウザではログイン中でも、サーバーで未ログインだったら、guest として覚える(その人の分は覚えない)", async () => {
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: false, amount: 200, expireAt: null }));
+  render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("閉じる").click();
+  });
+  expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
+  expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:guest")).toBe("1");
+});
+
+test("生成の画面で受け取って閉じたら、ページを読み込み直す(画面の中の残高を新しくする)", async () => {
+  const reload = jest.fn();
+  const original = window.location;
+  Object.defineProperty(window, "location", { configurable: true, value: { ...original, reload } });
+  mockPathname.mockReturnValue("/ja/style");
+  render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("受け取った").click();
+  });
+  act(() => {
+    screen.getByText("閉じる").click();
+  });
+  expect(reload).toHaveBeenCalledTimes(1);
+  Object.defineProperty(window, "location", { configurable: true, value: original });
+});
+
+test("生成の画面でないところでは、受け取って閉じても読み込み直さない", async () => {
+  const reload = jest.fn();
+  const original = window.location;
+  Object.defineProperty(window, "location", { configurable: true, value: { ...original, reload } });
+  render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("受け取った").click();
+  });
+  act(() => {
+    screen.getByText("閉じる").click();
+  });
+  expect(reload).not.toHaveBeenCalled();
+  Object.defineProperty(window, "location", { configurable: true, value: original });
 });
 

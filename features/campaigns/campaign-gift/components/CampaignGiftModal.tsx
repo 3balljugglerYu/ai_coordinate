@@ -83,6 +83,8 @@ type Coin = {
   gone: boolean;
 };
 
+/** 見本は 60Hz の1コマを1として作った。画面の書き換えの速さによらず同じ速さで動くよう、経った時間をコマに直す */
+const FRAME_MS = 1000 / 60;
 const GRAVITY = 0.32;
 const COIN_LIFE_FRAMES = 95;
 
@@ -155,26 +157,30 @@ export function CampaignGiftModal({
       });
     }
     if (rafRef.current) return;
-    const step = () => {
+    let last = performance.now();
+    const step = (now: number) => {
+      // 経ったコマ数(タブが裏に回ったときなどに、一度に飛びすぎないよう 3 コマまで)
+      const dt = Math.min((now - last) / FRAME_MS, 3);
+      last = now;
       let alive = false;
       for (const coin of coinsRef.current) {
         if (coin.gone) continue;
         if (coin.delay > 0) {
-          coin.delay -= 1;
+          coin.delay -= dt;
           alive = true;
           continue;
         }
-        coin.life += 1;
+        coin.life += dt;
         if (coin.life > COIN_LIFE_FRAMES) {
           coin.gone = true;
           coin.el.remove();
           continue;
         }
         alive = true;
-        coin.vy += GRAVITY;
-        coin.x += coin.vx;
-        coin.y += coin.vy;
-        coin.r += coin.vr;
+        coin.vy += GRAVITY * dt;
+        coin.x += coin.vx * dt;
+        coin.y += coin.vy * dt;
+        coin.r += coin.vr * dt;
         const fade = coin.life > COIN_LIFE_FRAMES - 25 ? (COIN_LIFE_FRAMES - coin.life) / 25 : 1;
         coin.el.style.opacity = String(fade);
         coin.el.style.transform = `translate(${coin.x}px, ${coin.y}px) rotate(${coin.r}deg)`;
