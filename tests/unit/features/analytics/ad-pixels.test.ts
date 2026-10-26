@@ -7,6 +7,7 @@ import {
   isAdPixelHost,
   isAdPixelShareablePath,
   isMetaPixelExcludedPath,
+  isMetaPixelExcludedReferrer,
   toXPageLocationParams,
 } from "@/features/analytics/lib/ad-pixels";
 
@@ -24,7 +25,7 @@ describe("isAdPixelHost", () => {
 });
 
 describe("isAdPixelExcludedPath(読み込まないのは管理画面だけ)", () => {
-  test.each(["/admin", "/admin/analytics-exclusions", "/ja/admin", "/zh-CN/admin/timeline-events", "/ja/admin/"])("%s は読み込まない", (path) => {
+  test.each(["/admin", "/admin/analytics-exclusions", "/ja/admin", "/zh-CN/admin/timeline-events", "/ja/admin/", "//admin", "/ja//admin"])("%s は読み込まない", (path) => {
     expect(isAdPixelExcludedPath(path)).toBe(true);
   });
 
@@ -119,4 +120,19 @@ describe("isMetaPixelExcludedPath(Meta は URL をそのまま送るので、送
       expect(isMetaPixelExcludedPath(path)).toBe(false);
     },
   );
+});
+
+describe("isMetaPixelExcludedReferrer", () => {
+  const O = "https://www.persta.ai";
+  test.each([
+    [`${O}/ja/search?q=secret`, true],
+    [`${O}/m/token123`, true],
+    [`${O}//ja//my-page`, true],
+    [`${O}/ja/style`, false],
+    ["https://l.facebook.com/search", false],
+    ["", false],
+    ["not a url", false],
+  ])("%s → %s", (referrer, expected) => {
+    expect(isMetaPixelExcludedReferrer(referrer, O)).toBe(expected);
+  });
 });
