@@ -1,5 +1,5 @@
 import { env } from "@/lib/env";
-import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
+import { toSafeLinkUrl } from "@/lib/security/safe-link-url";
 import type { AnnouncementFontSize } from "./schema";
 
 const ALLOWED_FONT_SIZES = new Set<AnnouncementFontSize>([
@@ -54,17 +54,8 @@ export function isSafeAnnouncementLinkUrl(url: string): boolean {
     return false;
   }
 
-  if (trimmed.startsWith("/")) {
-    // 読み直すと "//evil.com" に縮むもの("/..//evil.com" など)も断る(ログインのあとの移る先と同じ決まり)
-    return toSafeRedirectPath(trimmed, "") !== "";
-  }
-
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === "https:" && Boolean(parsed.hostname);
-  } catch {
-    return false;
-  }
+  // 行き先の決まりは、バナーなどと同じ(toSafeLinkUrl)。上は、お知らせだけの追加の決まり(空白・長さ)
+  return toSafeLinkUrl(trimmed) !== null;
 }
 
 export function isValidAnnouncementImageUrl(url: string): boolean {

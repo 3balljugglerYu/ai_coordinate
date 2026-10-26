@@ -17,11 +17,6 @@ function isExternalUrl(url: string): boolean {
   return trimmed.startsWith("https://");
 }
 
-/** 安全な行き先のみ許可（javascript: 等の XSS・よそのサイトへ移すパスを防止） */
-function getSafeLinkUrl(url: string): string {
-  return toSafeLinkUrl(url) ?? "#";
-}
-
 interface HomeBannerCardProps {
   banner: HomeBanner;
   prioritizeImage?: boolean;
@@ -36,7 +31,8 @@ export function HomeBannerCard({
   banner,
   prioritizeImage = false,
 }: HomeBannerCardProps) {
-  const linkUrl = getSafeLinkUrl(banner.linkUrl);
+  // 安全な行き先のみ許可（javascript: 等の XSS・よそのサイトへ移すパスを防止）
+  const linkUrl = toSafeLinkUrl(banner.linkUrl) ?? "#";
   const card = (
     <Card className="overflow-hidden hover:scale-[1.02] transition-transform duration-200 p-0">
       <div className="relative w-full overflow-hidden bg-gray-100">

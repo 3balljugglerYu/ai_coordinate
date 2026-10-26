@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { toSafeLinkUrl } from "@/lib/security/safe-link-url";
 
 /**
  * 運営お知らせ・全体配信のプッシュ通知（admin_push_broadcasts）。
@@ -36,7 +37,7 @@ const URL_FORBIDDEN_CHARACTER_PATTERN =
   /[\u0000-\u001F\u007F-\u009F\s\u200B\uFEFF\\]/;
 
 /**
- * 押したときの行き先。アプリ内のパス（`/` 始まり、`//` は不可）か https の URL。
+ * 押したときの行き先。アプリ内のパス（`/` 始まり、`//` や読み直すと `//` になるものは不可）か https の URL。
  * 空白・制御文字・`\` は使えない（お知らせのリンクの isSafeAnnouncementLinkUrl と同じ考え方で、
  * こちらは C1 制御文字・ゼロ幅の空白・BOM も断る分だけ厳しい）。
  * DB の CHECK も同じ文字を断る（https の URL として読めるかは API だけで確かめる）。
@@ -48,21 +49,8 @@ export function isValidPushBroadcastUrl(value: string): boolean {
   if (URL_FORBIDDEN_CHARACTER_PATTERN.test(value)) {
     return false;
   }
-  if (value === "/") {
-    return true;
-  }
-  if (/^\/[^/]/.test(value)) {
-    return true;
-  }
-  if (!value.startsWith("https://")) {
-    return false;
-  }
-  try {
-    new URL(value);
-    return true;
-  } catch {
-    return false;
-  }
+  // 行き先の決まりは、バナー・お知らせと同じ(toSafeLinkUrl。"/..//evil.com" のように読み直すと "//" に縮むものも断る)
+  return toSafeLinkUrl(value) !== null;
 }
 
 export const pushBroadcastCreateSchema = z.object({

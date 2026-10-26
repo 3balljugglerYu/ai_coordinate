@@ -21,11 +21,6 @@ interface PopupBannerOverlayProps {
   banners: ActivePopupBanner[];
 }
 
-/** 安全な行き先のみ許可（javascript: 等の XSS・よそのサイトへ移すパスを防止） */
-function getSafeLinkUrl(url: string | null) {
-  return toSafeLinkUrl(url);
-}
-
 function isExternalUrl(url: string | null) {
   return Boolean(url?.startsWith("https://"));
 }
@@ -123,7 +118,8 @@ export function PopupBannerOverlay({ banners }: PopupBannerOverlayProps) {
   }
 
   const dismissForeverChecked = dismissForeverByBannerId[visibleBanner.id] ?? false;
-  const safeLinkUrl = getSafeLinkUrl(visibleBanner.linkUrl);
+  // 安全な行き先のみ許可（javascript: 等の XSS・よそのサイトへ移すパスを防止）
+  const safeLinkUrl = toSafeLinkUrl(visibleBanner.linkUrl);
   const shouldAllowDismissForever =
     visibleBanner.showOnceOnly && dismissForeverChecked;
 
