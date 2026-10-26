@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
 import type { TimelineEvent } from "@/features/admin-dashboard/lib/timeline-event-repository";
+import { toJstDateKey } from "@/features/admin-dashboard/lib/dashboard-range";
 import {
   TIMELINE_EVENT_KINDS,
   TIMELINE_EVENT_KIND_LABELS,
@@ -23,13 +24,9 @@ interface FormState {
   note: string;
 }
 
-/** 今日(日本時間)の YYYY-MM-DD。 */
-function todayInJst(): string {
-  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Tokyo" });
-}
-
 function emptyForm(): FormState {
-  return { eventDate: todayInJst(), kind: "campaign", title: "", note: "" };
+  // 今日(日本時間)。グラフの日付と同じ関数で作る
+  return { eventDate: toJstDateKey(new Date()), kind: "campaign", title: "", note: "" };
 }
 
 const SELECT_CLASS =
@@ -49,10 +46,18 @@ export function TimelineEventsClient({
 
   const check = validateTimelineEventInput(form);
 
+  /** 保存のあとに一覧を読み直す。読めなければ、古い一覧のままだと知らせる。 */
   const reload = async () => {
-    const res = await fetch("/api/admin/timeline-events");
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/admin/timeline-events");
+      if (!res.ok) throw new Error(String(res.status));
       setEvents((await res.json()) as TimelineEvent[]);
+    } catch {
+      toast({
+        title: "一覧を読み直せませんでした",
+        description: "保存はできています。ページを開き直してください",
+        variant: "destructive",
+      });
     }
   };
 

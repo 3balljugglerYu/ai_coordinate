@@ -35,7 +35,8 @@ export default async function AdminAnalyticsExclusionsPage() {
         </h1>
         <p className="mt-1 text-slate-600">
           ダッシュボードの集計から除くアカウント(内部の確認用・審査用など)を管理します。
-          ここに入れた人は、ペルコイン・企画のタブと概要の数字から除かれます。
+          ここに入れた人は、ペルコイン・企画のタブの数字から除かれます(これから作る概要の数字でも除きます)。
+          「すべて」タブの今のカード(KPI・売上トレンドなど)は、まだ除いていません。
         </p>
         <p className="mt-1 text-sm text-slate-500">
           ほかに、運営の設定(環境変数・admin_users)から {builtInUserIds.length}人 を除いています(この画面では外せません)。

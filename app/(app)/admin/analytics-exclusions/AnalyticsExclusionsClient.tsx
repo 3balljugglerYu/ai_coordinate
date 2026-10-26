@@ -41,10 +41,18 @@ export function AnalyticsExclusionsClient({
   const builtIn = new Set(builtInUserIds);
   const reasonCheck = validateExclusionReason(reason);
 
+  /** 保存のあとに一覧を読み直す。読めなければ、古い一覧のままだと知らせる。 */
   const reload = async () => {
-    const res = await fetch("/api/admin/analytics-exclusions");
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/admin/analytics-exclusions");
+      if (!res.ok) throw new Error(String(res.status));
       setExclusions((await res.json()) as AnalyticsExclusion[]);
+    } catch {
+      toast({
+        title: "一覧を読み直せませんでした",
+        description: "保存はできています。ページを開き直してください",
+        variant: "destructive",
+      });
     }
   };
 

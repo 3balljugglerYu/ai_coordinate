@@ -33,6 +33,30 @@ function getSupabase(client?: SupabaseClient): SupabaseClient {
   return client ?? createAdminClient();
 }
 
+/** profiles の .in(...) を分けて引く数(URL の長さと 1,000行の上限に当たらないように)。 */
+const PROFILE_LOOKUP_CHUNK = 200;
+
+/**
+ * 足す前に、そのユーザーが profiles にいるか。
+ * ⚠️ 読めなかったときは false ではなく throw する。false にすると、障害なのに
+ * 「該当するユーザーが見つかりません」(400)と出て、いる人を足せないと誤解させる。
+ */
+export async function profileExistsForExclusion(
+  userId: string,
+  client?: SupabaseClient,
+): Promise<boolean> {
+  const supabase = getSupabase(client);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(`profiles の取得に失敗しました: ${error.message}`);
+  }
+  return Boolean(data);
+}
+
 interface ExclusionRow {
   /** user_id の別名(fetchAllRows のカーソル用) */
   id: string;
@@ -91,20 +115,22 @@ export async function listAnalyticsExclusions(
       rows.flatMap((row) => (row.added_by ? [row.id, row.added_by] : [row.id])),
     ),
   );
-  const { data: profiles, error: profileError } = await supabase
-    .from("profiles")
-    .select("user_id, nickname")
-    .in("user_id", ids);
-  if (profileError) {
-    console.error("[analytics-exclusions] profiles error:", profileError);
-    throw new Error("集計から除く一覧の取得に失敗しました");
-  }
-  const nicknames = new Map(
-    (profiles ?? []).map((p) => {
+  const nicknames = new Map<string, string | null>();
+  for (let i = 0; i < ids.length; i += PROFILE_LOOKUP_CHUNK) {
+    const chunk = ids.slice(i, i + PROFILE_LOOKUP_CHUNK);
+    const { data: profiles, error: profileError } = await supabase
+      .from("profiles")
+      .select("user_id, nickname")
+      .in("user_id", chunk);
+    if (profileError) {
+      console.error("[analytics-exclusions] profiles error:", profileError);
+      throw new Error("集計から除く一覧の取得に失敗しました");
+    }
+    for (const p of profiles ?? []) {
       const row = p as { user_id: string; nickname: string | null };
-      return [row.user_id, row.nickname] as const;
-    }),
-  );
+      nicknames.set(row.user_id, row.nickname);
+    }
+  }
 
   return rows.map((row) => ({
     userId: row.id,

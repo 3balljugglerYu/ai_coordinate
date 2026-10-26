@@ -27,10 +27,6 @@ jest.mock("@/lib/admin-audit", () => ({
   logAdminAction: jest.fn(),
 }));
 
-jest.mock("@/features/creators/lib/creator-allowlist-repository", () => ({
-  profileExistsForUserId: jest.fn(),
-}));
-
 jest.mock("@/features/admin-dashboard/lib/analytics-exclusion-repository", () => {
   class AnalyticsExclusionExistsError extends Error {
     constructor() {
@@ -41,6 +37,7 @@ jest.mock("@/features/admin-dashboard/lib/analytics-exclusion-repository", () =>
     AnalyticsExclusionExistsError,
     addAnalyticsExclusion: jest.fn(),
     listAnalyticsExclusions: jest.fn(),
+    profileExistsForExclusion: jest.fn(),
     removeAnalyticsExclusion: jest.fn(),
   };
 });
@@ -51,19 +48,19 @@ import { DELETE } from "@/app/api/admin/analytics-exclusions/[userId]/route";
 import { requireAdmin } from "@/lib/auth";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
-import { profileExistsForUserId } from "@/features/creators/lib/creator-allowlist-repository";
 import {
   AnalyticsExclusionExistsError,
   addAnalyticsExclusion,
   listAnalyticsExclusions,
+  profileExistsForExclusion,
   removeAnalyticsExclusion,
 } from "@/features/admin-dashboard/lib/analytics-exclusion-repository";
 
 const mockRequireAdmin = requireAdmin as jest.MockedFunction<typeof requireAdmin>;
 const mockSameOrigin = ensureSameOrigin as jest.MockedFunction<typeof ensureSameOrigin>;
 const mockAudit = logAdminAction as jest.MockedFunction<typeof logAdminAction>;
-const mockProfileExists = profileExistsForUserId as jest.MockedFunction<
-  typeof profileExistsForUserId
+const mockProfileExists = profileExistsForExclusion as jest.MockedFunction<
+  typeof profileExistsForExclusion
 >;
 const mockAdd = addAnalyticsExclusion as jest.MockedFunction<typeof addAnalyticsExclusion>;
 const mockList = listAnalyticsExclusions as jest.MockedFunction<
@@ -203,6 +200,13 @@ describe("POST", () => {
     mockProfileExists.mockResolvedValue(false);
     const response = await POST(postRequest({ userId: TARGET_ID, reason: "x" }));
     expect(response.status).toBe(400);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  test("ユーザーを確かめられなければ 500(いないことにしない)", async () => {
+    mockProfileExists.mockRejectedValue(new Error("profiles の取得に失敗しました: timeout"));
+    const response = await POST(postRequest({ userId: TARGET_ID, reason: "x" }));
+    expect(response.status).toBe(500);
     expect(mockAdd).not.toHaveBeenCalled();
   });
 

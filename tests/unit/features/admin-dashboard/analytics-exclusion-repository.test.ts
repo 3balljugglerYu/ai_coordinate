@@ -18,6 +18,7 @@ import {
   addAnalyticsExclusion,
   listAnalyticsExcludedUserIds,
   listAnalyticsExclusions,
+  profileExistsForExclusion,
   removeAnalyticsExclusion,
 } from "@/features/admin-dashboard/lib/analytics-exclusion-repository";
 
@@ -158,6 +159,28 @@ describe("listAnalyticsExcludedUserIds", () => {
   });
 });
 
+describe("profileExistsForExclusion", () => {
+  function profileClient(result: { data: unknown; error: unknown }) {
+    const maybeSingle = jest.fn(() => Promise.resolve(result));
+    return client({ profiles: { select: () => ({ eq: () => ({ maybeSingle }) }) } });
+  }
+
+  test("いれば true・いなければ false", async () => {
+    await expect(
+      profileExistsForExclusion(USER, profileClient({ data: { user_id: USER }, error: null })),
+    ).resolves.toBe(true);
+    await expect(
+      profileExistsForExclusion(USER, profileClient({ data: null, error: null })),
+    ).resolves.toBe(false);
+  });
+
+  test("読めなければ false にせず throw する(障害を「いない」と見せない)", async () => {
+    await expect(
+      profileExistsForExclusion(USER, profileClient({ data: null, error: { message: "timeout" } })),
+    ).rejects.toThrow("profiles の取得に失敗しました: timeout");
+  });
+});
+
 describe("listAnalyticsExclusions", () => {
   test("本人と足した管理者のニックネームを付け、新しい順に並べる", async () => {
     const OLDER = "33333333-3333-4333-8333-333333333333";
@@ -214,4 +237,26 @@ describe("listAnalyticsExclusions", () => {
     await expect(listAnalyticsExclusions(c)).resolves.toEqual([]);
     expect(profiles.select).not.toHaveBeenCalled();
   });
+
+  test("ニックネームは200人ずつに分けて引く(URL の長さと行数の上限に当たらないように)", async () => {
+    const rows = Array.from({ length: 450 }, (_, i) => ({
+      id: `00000000-0000-4000-8000-${String(i).padStart(12, "0")}`,
+      reason: "別名",
+      added_by: null,
+      created_at: "2026-10-26T00:00:00Z",
+    }));
+    const { table } = pagedTable([{ data: rows, error: null }]);
+    const inFn = jest.fn((_col: string, ids: string[]) =>
+      Promise.resolve({ data: ids.map((id) => ({ user_id: id, nickname: `n-${id.slice(-3)}` })), error: null }),
+    );
+    const c = client({
+      analytics_excluded_users: table,
+      profiles: { select: () => ({ in: inFn }) },
+    });
+    const list = await listAnalyticsExclusions(c);
+    expect(inFn.mock.calls.map((call) => call[1].length)).toEqual([200, 200, 50]);
+    expect(list).toHaveLength(450);
+    expect(list.every((e) => e.nickname !== null)).toBe(true);
+  });
 });
+

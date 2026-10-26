@@ -3,11 +3,11 @@ import { requireAdmin } from "@/lib/auth";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { isUuid } from "@/lib/is-uuid";
-import { profileExistsForUserId } from "@/features/creators/lib/creator-allowlist-repository";
 import {
   AnalyticsExclusionExistsError,
   addAnalyticsExclusion,
   listAnalyticsExclusions,
+  profileExistsForExclusion,
 } from "@/features/admin-dashboard/lib/analytics-exclusion-repository";
 import { validateExclusionReason } from "@/features/admin-dashboard/lib/admin-list-validation";
 
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    if (!(await profileExistsForUserId(userId))) {
+    if (!(await profileExistsForExclusion(userId))) {
       return NextResponse.json(
         { error: "該当するユーザーが見つかりません" },
         { status: 400 },

@@ -33,6 +33,36 @@ export async function getOperatorUserIds(
   options: { strict?: boolean } = {},
 ): Promise<string[]> {
   const strict = options.strict === true;
+  const builtIn = await readBuiltInOperatorUserIds(strict);
+  if (!builtIn.supabase) {
+    return builtIn.ids;
+  }
+  const supabase = builtIn.supabase;
+  const excludedUserIds = await readSource(
+    "analytics_excluded_users",
+    () => listAnalyticsExcludedUserIds(supabase),
+    strict,
+  );
+  return mergeOperatorUserIds(builtIn.ids, excludedUserIds);
+}
+
+/**
+ * 「集計から除く」の画面では外せない人(env の2つと admin_users)。
+ * この画面で一覧から外しても、ここに入っている人は除かれたままになる。
+ * 一覧の表は読まない(ページが同じ表を2回読まないように)。
+ */
+export async function getBuiltInOperatorUserIds(): Promise<string[]> {
+  return (await readBuiltInOperatorUserIds(false)).ids;
+}
+
+/**
+ * env の2つと admin_users の和集合。getOperatorUserIds と getBuiltInOperatorUserIds の
+ * 両方がここを通る(元を足すときに、片方だけ直して食い違わないように)。
+ * クライアントを作れなかったときは supabase を null で返す(既定では env の分だけで続ける)。
+ */
+async function readBuiltInOperatorUserIds(
+  strict: boolean,
+): Promise<{ ids: string[]; supabase: SupabaseClient | null }> {
   const envIds = mergeOperatorUserIds(
     getAdminUserIds(),
     getAdminPreviewUserIds(),
@@ -44,41 +74,15 @@ export async function getOperatorUserIds(
   } catch (error) {
     if (strict) throw error;
     console.error("[operator ids] admin client failed:", error);
-    return envIds;
+    return { ids: envIds, supabase: null };
   }
 
-  const [adminUserIds, excludedUserIds] = await Promise.all([
-    readSource("admin_users", () => readAdminUsers(supabase), strict),
-    readSource(
-      "analytics_excluded_users",
-      () => listAnalyticsExcludedUserIds(supabase),
-      strict,
-    ),
-  ]);
-
-  return mergeOperatorUserIds(envIds, adminUserIds, excludedUserIds);
-}
-
-/**
- * 「集計から除く」の画面では外せない人(env の2つと admin_users)。
- * この画面で一覧から外しても、ここに入っている人は除かれたままになる。
- * 一覧の表を読み直さずに数えるため、表は読まない。
- */
-export async function getBuiltInOperatorUserIds(): Promise<string[]> {
-  const envIds = mergeOperatorUserIds(getAdminUserIds(), getAdminPreviewUserIds());
-  let supabase: SupabaseClient;
-  try {
-    supabase = createAdminClient();
-  } catch (error) {
-    console.error("[operator ids] admin client failed:", error);
-    return envIds;
-  }
   const adminUserIds = await readSource(
     "admin_users",
     () => readAdminUsers(supabase),
-    false,
+    strict,
   );
-  return mergeOperatorUserIds(envIds, adminUserIds);
+  return { ids: mergeOperatorUserIds(envIds, adminUserIds), supabase };
 }
 
 async function readAdminUsers(supabase: SupabaseClient): Promise<string[]> {
