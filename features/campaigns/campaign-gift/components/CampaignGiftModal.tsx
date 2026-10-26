@@ -39,11 +39,15 @@ const PRIMARY_BUTTON_STYLE: CSSProperties = {
   backgroundSize: "200% 100%",
 };
 
-type Phase = "tapping" | "opening" | "revealed" | "already" | "closed" | "error";
+type Phase = "tapping" | "opening" | "revealed" | "already" | "closed" | "auth" | "error";
 
 export interface CampaignGiftModalProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  /**
+   * 閉じた。remember は「この端末で閉じたことを覚えてよいか」。
+   * 受け取りの途中・受け取れなかったときは false(覚えると、受け取れていないのにもう出なくなる)
+   */
+  onClose: (remember: boolean) => void;
   signedIn: boolean;
   /** 贈る額(DB の campaign_gifts から) */
   amount: number;
@@ -83,7 +87,7 @@ const COIN_LIFE_FRAMES = 95;
 
 export function CampaignGiftModal({
   open,
-  onOpenChange,
+  onClose,
   signedIn,
   amount,
   expireLabel,
@@ -101,12 +105,14 @@ export function CampaignGiftModal({
   const fxRef = useRef<HTMLDivElement | null>(null);
   const coinsRef = useRef<Coin[]>([]);
   const rafRef = useRef(0);
+  const countRafRef = useRef(0);
   const timersRef = useRef<number[]>([]);
 
   useEffect(() => {
     const timers = timersRef.current;
     return () => {
       cancelAnimationFrame(rafRef.current);
+      cancelAnimationFrame(countRafRef.current);
       timers.forEach((id) => window.clearTimeout(id));
     };
   }, []);
@@ -187,13 +193,14 @@ export function CampaignGiftModal({
       setCount(target);
       return;
     }
+    cancelAnimationFrame(countRafRef.current);
     const startedAt = performance.now();
     const tick = (now: number) => {
       const k = Math.min((now - startedAt) / COUNT_UP_MS, 1);
       setCount(Math.round(target * (1 - Math.pow(1 - k, 3))));
-      if (k < 1) requestAnimationFrame(tick);
+      if (k < 1) countRafRef.current = requestAnimationFrame(tick);
     };
-    requestAnimationFrame(tick);
+    countRafRef.current = requestAnimationFrame(tick);
   }, []);
 
   const showFinale = useCallback(
@@ -236,6 +243,8 @@ export function CampaignGiftModal({
       setPhase("already");
     } else if (result.status === "closed") {
       setPhase("closed");
+    } else if (result.status === "auth_required") {
+      setPhase("auth");
     } else {
       setPhase("error");
     }
@@ -278,14 +287,25 @@ export function CampaignGiftModal({
     description = "この贈り物は、もう受け取っています。気に入った対象作品で、うちの子を生成してみてね。";
   } else if (phase === "closed") {
     description = "この贈り物の受け付けは、終わりました。";
+  } else if (phase === "auth") {
+    description = "ログインし直すと、受け取れます。";
   } else if (phase === "error") {
     description = "受け取れませんでした。通信のよい所で、もう一度お試しください。";
   } else {
     description = "ハロウィンだけの、特別な贈り物です。なにが入っているかは、開けてのお楽しみ！";
   }
 
+  // 受け取りの途中・受け取れなかったときは、閉じたことを覚えない
+  const remember = phase !== "opening" && phase !== "error" && phase !== "auth";
+  const close = () => onClose(remember);
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) close();
+      }}
+    >
       <DialogContent
         showCloseButton={false}
         className="gap-0 overflow-hidden rounded-2xl border-0 p-0 outline-none sm:max-w-sm"
@@ -299,7 +319,7 @@ export function CampaignGiftModal({
           <div aria-hidden="true" className={cn(styles.flash, finale && styles.flashOn)} />
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={close}
             className="absolute right-3 top-3 z-10 flex h-8 w-8 items-center justify-center rounded-full text-white/70"
             aria-label="閉じる"
           >
@@ -364,7 +384,7 @@ export function CampaignGiftModal({
               href={worksHref}
               onClick={() => {
                 trackCampaignEvent(CAMPAIGN_EVENTS.giftWorks);
-                onOpenChange(false);
+                close();
               }}
               className={cn(PRIMARY_BUTTON_CLASS, styles.flow)}
               style={PRIMARY_BUTTON_STYLE}
@@ -372,12 +392,17 @@ export function CampaignGiftModal({
               対象作品を見る
             </Link>
           ) : null}
+          {phase === "auth" ? (
+            <Link href={loginHref} onClick={() => onClose(false)} className={cn(PRIMARY_BUTTON_CLASS, styles.flow)} style={PRIMARY_BUTTON_STYLE}>
+              ログインし直して受け取る
+            </Link>
+          ) : null}
           {revealed && !signedIn ? (
             <Link
               href={loginHref}
               onClick={() => {
                 trackCampaignEvent(CAMPAIGN_EVENTS.giftLogin);
-                onOpenChange(false);
+                close();
               }}
               className={cn(PRIMARY_BUTTON_CLASS, styles.flow)}
               style={PRIMARY_BUTTON_STYLE}
@@ -388,7 +413,7 @@ export function CampaignGiftModal({
           {phase === "already" ? (
             <Link
               href={worksHref}
-              onClick={() => onOpenChange(false)}
+              onClick={close}
               className={cn(PRIMARY_BUTTON_CLASS, styles.flow)}
               style={PRIMARY_BUTTON_STYLE}
             >
@@ -402,7 +427,7 @@ export function CampaignGiftModal({
           ) : null}
           <button
             type="button"
-            onClick={() => onOpenChange(false)}
+            onClick={close}
             className="min-h-[40px] px-4 text-sm font-medium text-slate-500"
           >
             {phase === "tapping" || (revealed && !signedIn) ? "あとで" : "閉じる"}

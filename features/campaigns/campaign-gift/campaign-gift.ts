@@ -32,6 +32,8 @@ export type CampaignGiftClaimResult =
   | { status: "granted"; amount: number; expireAt: string }
   | { status: "already_claimed" }
   | { status: "closed" }
+  /** サーバーではログインが切れていた(画面ではログイン中に見えていた) */
+  | { status: "auth_required" }
   | { status: "error" };
 
 /**

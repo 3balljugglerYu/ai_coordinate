@@ -27,12 +27,12 @@ beforeAll(() => {
 
 function renderModal(overrides: Partial<React.ComponentProps<typeof CampaignGiftModal>> = {}) {
   const onClaim = jest.fn(async (): Promise<CampaignGiftClaimResult> => ({ status: "granted", amount: 200, expireAt: "2026-10-31T14:59:00.000Z" }));
-  const onOpenChange = jest.fn();
+  const onClose = jest.fn();
   const onClaimed = jest.fn();
   render(
     <CampaignGiftModal
       open
-      onOpenChange={onOpenChange}
+      onClose={onClose}
       signedIn
       amount={200}
       expireLabel="10月31日 23:59"
@@ -43,7 +43,7 @@ function renderModal(overrides: Partial<React.ComponentProps<typeof CampaignGift
       {...overrides}
     />,
   );
-  return { onClaim: (overrides.onClaim as jest.Mock | undefined) ?? onClaim, onOpenChange, onClaimed };
+  return { onClaim: (overrides.onClaim as jest.Mock | undefined) ?? onClaim, onClose, onClaimed };
 }
 
 async function tap(times: number) {
@@ -125,8 +125,35 @@ test("受け取りが投げても、画面は落ちずに、もう一度受け�
   expect(await screen.findByRole("button", { name: "もう一度受け取る" })).toBeInTheDocument();
 });
 
-test("「あとで」で閉じる", async () => {
-  const { onOpenChange } = renderModal();
+test("「あとで」で閉じ、閉じたことを覚える", async () => {
+  const { onClose } = renderModal();
   fireEvent.click(screen.getByRole("button", { name: "あとで" }));
-  expect(onOpenChange).toHaveBeenCalledWith(false);
+  expect(onClose).toHaveBeenCalledWith(true);
+});
+
+test("受け取れなかったまま閉じたら、閉じたことを覚えない(次にもう一度出る)", async () => {
+  const { onClose } = renderModal({ onClaim: jest.fn(async (): Promise<CampaignGiftClaimResult> => ({ status: "error" })) });
+  await tap(5);
+  await screen.findByRole("button", { name: "もう一度受け取る" });
+  // 右上の × と、下の「閉じる」は同じ動き。下のほうを押す
+  fireEvent.click(screen.getAllByRole("button", { name: "閉じる" }).at(-1)!);
+  expect(onClose).toHaveBeenCalledWith(false);
+});
+
+test("受け取ったあとに閉じたら、閉じたことを覚える", async () => {
+  const { onClose } = renderModal();
+  await tap(5);
+  await screen.findByText(/200ペルコインを受け取りました/);
+  // 右上の × と、下の「閉じる」は同じ動き。下のほうを押す
+  fireEvent.click(screen.getAllByRole("button", { name: "閉じる" }).at(-1)!);
+  expect(onClose).toHaveBeenCalledWith(true);
+});
+
+test("サーバーでログインが切れていたら、「ログインし直して受け取る」を出す(覚えない)", async () => {
+  const { onClose } = renderModal({ onClaim: jest.fn(async (): Promise<CampaignGiftClaimResult> => ({ status: "auth_required" })) });
+  await tap(5);
+  const link = await screen.findByRole("link", { name: "ログインし直して受け取る" });
+  expect(link).toHaveAttribute("href", "/login?next=%2Fja");
+  fireEvent.click(link);
+  expect(onClose).toHaveBeenCalledWith(false);
 });

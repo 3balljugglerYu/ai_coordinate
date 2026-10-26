@@ -22,11 +22,14 @@ jest.mock("@/features/campaigns/lib/campaign-events", () => ({
   trackCampaignEvent: jest.fn(),
 }));
 jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () => ({
-  CampaignGiftModal: ({ open, signedIn, onOpenChange }: { open: boolean; signedIn: boolean; onOpenChange: (open: boolean) => void }) =>
+  CampaignGiftModal: ({ open, signedIn, onClose }: { open: boolean; signedIn: boolean; onClose: (remember: boolean) => void }) =>
     open ? (
       <div role="dialog" data-testid="gift" data-signed-in={String(signedIn)}>
-        <button type="button" onClick={() => onOpenChange(false)}>
+        <button type="button" onClick={() => onClose(true)}>
           閉じる
+        </button>
+        <button type="button" onClick={() => onClose(false)}>
+          受け取れずに閉じる
         </button>
       </div>
     ) : null,
@@ -152,3 +155,29 @@ test("チュートリアルの途中は待つ", async () => {
   await settle();
   expect(screen.queryByTestId("gift")).toBeNull();
 });
+
+test("受け取れずに閉じたら覚えない(次にページを開いたとき、もう一度出る)", async () => {
+  render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("受け取れずに閉じる").click();
+  });
+  expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
+  expect(screen.queryByTestId("gift")).toBeNull();
+});
+
+test("ログインしていない人の画面が開いている間にログインしたら、その人の状態で聞き直して出し直す", async () => {
+  mockAuth.mockReturnValue({ status: "signed-out", user: null });
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: false, amount: 200, expireAt: null }));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  expect(screen.getByTestId("gift")).toHaveAttribute("data-signed-in", "false");
+  mockAuth.mockReturnValue({ status: "signed-in", user: { id: "user-1" } });
+  fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: true, amount: 200, expireAt: null }));
+  rerender(<CampaignGiftHost />);
+  // 前の人の画面は、すぐに消す
+  expect(screen.queryByTestId("gift")).toBeNull();
+  await settle();
+  expect(screen.getByTestId("gift")).toHaveAttribute("data-signed-in", "true");
+});
+

@@ -54,10 +54,22 @@ async function defaultClaim(campaignKey: string, userId: string): Promise<RpcCla
   return (data ?? {}) as RpcClaim;
 }
 
-/** 残高を出している画面のキャッシュ(付与のほかのルートと同じタグ) */
+/**
+ * 残高を出している画面のキャッシュ。
+ * - 生成の画面(CachedGenerationPercoinBalance)は `${source}-${userId}-${locale}`。贈り物は日本語の画面だけに出すので ja
+ * - 直後の router.refresh で新しい残高を出すため、古い値を返さない expire: 0 にする(ガチャ・文字入力と同じ)
+ */
+const GENERATION_BALANCE_SOURCES = ["style", "free", "coordinate"] as const;
+
 function defaultRevalidate(userId: string): void {
-  for (const tag of [`my-page-${userId}`, `my-page-credits-${userId}`, `coordinate-${userId}`, `challenge-${userId}`]) {
-    revalidateTag(tag, "max");
+  const tags = [
+    `my-page-${userId}`,
+    `my-page-credits-${userId}`,
+    `challenge-${userId}`,
+    ...GENERATION_BALANCE_SOURCES.map((source) => `${source}-${userId}-ja`),
+  ];
+  for (const tag of tags) {
+    revalidateTag(tag, { expire: 0 });
   }
 }
 

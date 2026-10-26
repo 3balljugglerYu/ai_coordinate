@@ -9,6 +9,7 @@ jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 jest.mock("next/cache", () => ({ revalidateTag: jest.fn() }));
 
 import type { NextRequest } from "next/server";
+import { revalidateTag } from "next/cache";
 import { getCampaignGiftRoute, postCampaignGiftRoute } from "@/app/api/campaign-gifts/[key]/handler";
 
 function createRequest(headers: Record<string, string> = { origin: "http://localhost", host: "localhost" }) {
@@ -136,3 +137,17 @@ describe("POST(受け取る)", () => {
     expect(response.status).toBe(200);
   });
 });
+
+test("受け取れたら、マイページと生成の画面の残高のキャッシュを、古い値を返さない形で消す", async () => {
+  (revalidateTag as jest.Mock).mockClear();
+  await postCampaignGiftRoute(createRequest(), "halloween-best-shot", {
+    getUserFn: jest.fn(async () => USER) as never,
+    claimFn: jest.fn(async () => ({ status: "granted", amount: 200, expire_at: EXPIRE })),
+  });
+  const calls = (revalidateTag as jest.Mock).mock.calls;
+  expect(calls.map((c) => c[0]).sort()).toEqual(
+    ["challenge-user-1", "coordinate-user-1-ja", "free-user-1-ja", "my-page-credits-user-1", "my-page-user-1", "style-user-1-ja"].sort(),
+  );
+  for (const call of calls) expect(call[1]).toEqual({ expire: 0 });
+});
+
