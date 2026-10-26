@@ -44,6 +44,7 @@ export default async function PrivacyPage() {
       ? {
           title: "プライバシーポリシー",
           description: "「Persta.AI」のプライバシーポリシーです。",
+          revisedAt: "2026年10月26日 改定",
           sections: [
             {
               icon: "shield",
@@ -103,7 +104,7 @@ export default async function PrivacyPage() {
               description: "第三者への提供について",
               paragraphs: [
                 "当サービスは、以下の場合を除き、ユーザーの個人情報を第三者に提供することはありません。",
-                "なお、当サービスは、Supabase（認証・データベース・ストレージサービス）、Stripe（決済サービス）、画像生成 API 提供元（OpenAI、Google 等）、その他のクラウドインフラ事業者を利用しており、これらのサービス提供者に必要な範囲でデータが提供される場合があります。これらのサービス提供者は、それぞれのプライバシーポリシーに従って個人情報を管理します。",
+                "なお、当サービスは、Supabase（認証・データベース・ストレージサービス）、Stripe（決済サービス）、画像生成 API 提供元（OpenAI、Google 等）、アクセス解析ツールの提供元（Google 等）、その他のクラウドインフラ事業者を利用しており、これらのサービス提供者に必要な範囲でデータが提供される場合があります。これらのサービス提供者は、それぞれのプライバシーポリシーに従って個人情報を管理します。",
               ],
               list: [
                 "ユーザーの同意がある場合",
@@ -118,6 +119,9 @@ export default async function PrivacyPage() {
               description: "Cookie等の利用について",
               paragraphs: [
                 "当サービスは、ユーザーによりよいサービスを提供するため、Cookie等の技術を使用することがあります。Cookieは、ユーザーのコンピュータに識別子を保存することにより、当サービスの利用状況を把握するために使用されます。ユーザーは、ブラウザの設定により、Cookieの受け取りを拒否することができます。",
+                "当サービスは、利用状況を把握してサービスを改善するため、Google LLC が提供するアクセス解析ツール「Google アナリティクス」を利用しています。Google アナリティクスは Cookie を使って、閲覧したページや利用した端末・ブラウザなどの情報を集めます。",
+                "ログインしているユーザーについては、当サービスの中だけで使う識別子（ユーザー ID）を Google アナリティクスに送り、閲覧の記録と当サービス内での利用（登録・生成・購入など）を結び付けて分析することがあります。メールアドレス・氏名など、個人を直接特定できる情報は送りません。",
+                "集められた情報は、Google のプライバシーポリシー（https://policies.google.com/privacy ）に基づいて管理されます。Google アナリティクスによる情報の収集を望まない場合は、Google アナリティクス オプトアウト アドオン（https://tools.google.com/dlpage/gaoptout ）で止めることができます。",
               ],
             },
             {
@@ -154,6 +158,7 @@ export default async function PrivacyPage() {
         }
       : {
           title: "Privacy Policy",
+          revisedAt: "Last revised: October 26, 2026",
           description:
             "This is the Privacy Policy for Persta.AI. The Japanese version is the authoritative text. This English version is a brief notice while the full translation is being prepared — please consult the Japanese version for binding terms.",
           sections: [
@@ -163,7 +168,7 @@ export default async function PrivacyPage() {
               description: "English translation pending",
               paragraphs: [
                 "The full English translation of this Privacy Policy is being prepared. For the binding terms, please consult the Japanese version of this page.",
-                "Major topics covered in the Japanese version include: information collected by the Service, purposes of use, the Service's policy on AI training and operator secondary use of user content, security management, provision to third parties (including service providers and emergency disclosure to authorities for CSAM), use of cookies, disclosure/correction/deletion requests, retention on withdrawal, and contact information.",
+                "Major topics covered in the Japanese version include: information collected by the Service, purposes of use, the Service's policy on AI training and operator secondary use of user content, security management, provision to third parties (including service providers and emergency disclosure to authorities for CSAM), use of cookies and analytics tools (Google Analytics), disclosure/correction/deletion requests, retention on withdrawal, and contact information.",
               ],
             },
             {
@@ -222,6 +227,8 @@ export default async function PrivacyPage() {
           );
         })}
       </div>
+
+      <p className="mt-6 text-right text-xs text-gray-500">{copy.revisedAt}</p>
     </main>
   );
 }
