@@ -61,6 +61,8 @@ describe("プライバシーポリシーの本文", () => {
   test.each([
     "（https://policies.google.com/privacy）",
     "（https://tools.google.com/dlpage/gaoptout）",
+    "（https://x.com/ja/privacy）",
+    "（https://help.x.com/ja/safety-and-security/privacy-controls-for-tailored-ads）",
     "「利用者情報の外部送信について」をご覧ください",
     "External Transmission of User Information page",
   ])("本文に「%s」がある", (text) => {

@@ -14,6 +14,7 @@ import { formatLegalDate } from "@/features/legal/lib/legal-text";
  *  - Google アナリティクス: features/analytics/components/Ga4Script.tsx(+ features/analytics/lib/track-event.ts の trackEvent)
  *  - Vercel Analytics・Speed Insights: features/analytics/components/VercelAnalyticsScripts.tsx(+ @vercel/analytics の track)
  *  - Cloudflare Turnstile: features/catalog/components/CatalogSubmissionForm.tsx(作品の申請のフォーム)
+ *  - X の広告の Pixel: features/analytics/components/XPixelScript.tsx(設定は features/analytics/lib/ad-pixels.ts)
  * 日本語が正本。ほかの言語は、送り先の一覧と日本語のページへの案内を出す(プライバシーポリシーと同じ)。
  */
 
@@ -75,12 +76,33 @@ const DESTINATIONS_JA: Destination[] = [
       },
     ],
   },
+  {
+    name: "4. X の広告の計測タグ（X Pixel）",
+    rows: [
+      { label: "送り先", text: "X Corp." },
+      {
+        label: "使い道",
+        text: "X に出した当サービスの広告の効果（広告を見た人・押した人が、当サービスを訪れたか）を測り、広告の配信を調整するため。X は、この情報を、X での広告の表示に使うことがあります",
+      },
+      {
+        label: "送る情報",
+        text: "開いたページの URL、来る前のページの URL、端末・OS・ブラウザの種類、IP アドレス、Cookie などに保存した識別子、ページを開いた日時。管理画面とログインの途中のページでは送りません。メールアドレス・電話番号などは送りません",
+      },
+      { label: "送り先のプライバシーポリシー", link: "https://x.com/ja/privacy" },
+      {
+        label: "オプトアウト",
+        text: "X の設定の「広告の環境設定」で、パーソナライズド広告をオフにできます（X にログインした状態で行います）。方法は X のヘルプをご覧ください",
+        link: "https://help.x.com/ja/safety-and-security/privacy-controls-for-tailored-ads",
+      },
+    ],
+  },
 ];
 
 const DESTINATIONS_EN = [
   "Google Analytics (Google LLC): usage measurement and analysis. When you are logged in, an identifier used only within the Service (user ID) is also sent.",
   "Vercel Analytics and Vercel Speed Insights (Vercel Inc.): measurement of page views and page speed.",
   "Cloudflare Turnstile (Cloudflare, Inc.): prevention of automated submissions, on the work submission form only.",
+  "X Pixel (X Corp.): measuring the effectiveness of the Service's ads on X and adjusting ad delivery. X may use this information to show ads on X.",
 ];
 
 export async function generateMetadata(): Promise<Metadata> {
