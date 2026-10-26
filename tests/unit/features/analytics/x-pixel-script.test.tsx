@@ -20,13 +20,14 @@ const originalLocation = window.location;
 function setHostname(hostname: string) {
   Object.defineProperty(window, "location", {
     configurable: true,
-    value: { ...originalLocation, hostname },
+    value: { ...originalLocation, hostname, origin: `https://${hostname}` },
   });
 }
 
 afterEach(() => {
   Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
   mockPathname.mockReturnValue("/ja");
+  delete window.twq;
 });
 
 test("本番のサイトでは、ID つきの読み込みのタグを出す", () => {
@@ -71,3 +72,43 @@ test("管理画面からふつうのページへ移ったら、そこで読み�
   rerender(<XPixelScript />);
   expect(queryByTestId("x-pixel")).not.toBeNull();
 });
+
+test("送る URL を、config より前に、ドメインとページの場所だけに決める", () => {
+  setHostname("www.persta.ai");
+  mockPathname.mockReturnValue("/ja/style");
+  const { getByTestId } = render(<XPixelScript />);
+  const text = getByTestId("x-pixel").textContent ?? "";
+  const setAt = text.indexOf(`twq('set',{"page_location":"https://www.persta.ai/ja/style"})`);
+  expect(setAt).toBeGreaterThan(-1);
+  expect(setAt).toBeLessThan(text.indexOf("twq('config','r9ypz')"));
+});
+
+test("URL に </script> が入っても、タグを閉じる文字のまま埋めない", () => {
+  setHostname("www.persta.ai");
+  mockPathname.mockReturnValue("/ja/posts/</script><img src=x>");
+  const { getByTestId } = render(<XPixelScript />);
+  const text = getByTestId("x-pixel").textContent ?? "";
+  expect(text).not.toContain("</script>");
+  expect(text).toContain("\\u003c/script\\u003e");
+});
+
+test("読み込んだあと、ページを移るたびに送る URL を置き換え、外すページではサイトの最初のページにする", () => {
+  setHostname("www.persta.ai");
+  const twq = jest.fn();
+  window.twq = twq;
+  mockPathname.mockReturnValue("/ja/style");
+  const { rerender } = render(<XPixelScript />);
+  expect(twq).toHaveBeenLastCalledWith("set", { page_location: "https://www.persta.ai/ja/style" });
+  mockPathname.mockReturnValue("/ja/search");
+  rerender(<XPixelScript />);
+  expect(twq).toHaveBeenLastCalledWith("set", { page_location: "https://www.persta.ai/" });
+});
+
+test("本番でないサイトでは、送る URL も置き換えない", () => {
+  setHostname("localhost");
+  const twq = jest.fn();
+  window.twq = twq;
+  render(<XPixelScript />);
+  expect(twq).not.toHaveBeenCalled();
+});
+

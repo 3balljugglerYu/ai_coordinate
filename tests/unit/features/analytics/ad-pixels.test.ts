@@ -3,7 +3,7 @@
  * 本番のサイトだけ・管理画面とログインの途中では読み込まない。
  */
 
-import { isAdPixelExcludedPath, isAdPixelHost } from "@/features/analytics/lib/ad-pixels";
+import { isAdPixelExcludedPath, isAdPixelHost, toXPageLocation } from "@/features/analytics/lib/ad-pixels";
 
 describe("isAdPixelHost", () => {
   test.each(["www.persta.ai", "persta.ai", "WWW.Persta.AI"])("%s は本番", (host) => {
@@ -46,3 +46,14 @@ describe("isAdPixelExcludedPath", () => {
     },
   );
 });
+
+describe("toXPageLocation", () => {
+  test("ドメインとページの場所だけにする", () => {
+    expect(toXPageLocation("https://www.persta.ai", "/ja/posts/123")).toBe("https://www.persta.ai/ja/posts/123");
+  });
+
+  test.each(["/ja/search", "/admin/timeline-events", "/reset-password/confirm"])("外すページ %s は、サイトの最初のページにする", (path) => {
+    expect(toXPageLocation("https://www.persta.ai", path)).toBe("https://www.persta.ai/");
+  });
+});
+

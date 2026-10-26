@@ -19,8 +19,9 @@ export const X_PIXEL_ID = "r9ypz";
  * - autoAdvancedMatching: フォームのメールアドレス・電話番号・名前の欄を読み取って送る
  * - dataLayerTracking: GA4 の記録(window.dataLayer)を読み取って、X にも送る
  * - autoDwellTracking: ページにいた時間を送る
- * ⚠️ ページを離れたときの出来事(auto_page_leave)は、止める設定が無い。
- *    そのときに開いているページの URL が送られるので、外部送信のページにそう書いてある。
+ * ⚠️ ページを離れたとき・ほかのタブやアプリへ切り替えたときの出来事(auto_page_leave)は、
+ *    止める設定が無い。送る URL は toXPageLocation で決めたものに置き換えるので、
+ *    そのときのページの場所(? や # のうしろは無し)が送られる。
  */
 export const X_PIXEL_DISABLED_AUTO_FEATURES = [
   "autoConfig",
@@ -50,4 +51,20 @@ export function isAdPixelExcludedPath(pathname: string): boolean {
   return EXCLUDED_PATH_PREFIXES.some(
     (prefix) => withoutLocale === prefix || withoutLocale.startsWith(`${prefix}/`),
   );
+}
+
+/**
+ * X に送るページの URL(uwt.js の page_location)。
+ *
+ * uwt.js は、page_location が決まっていると、送るたびに
+ * 「ページの URL」と「来る前のページの URL」の両方をこの値に置き換える(2026-10-26 に読んだ uwt.js)。
+ * - ドメインとページの場所だけにする(? や # のうしろの、検索の語句・ログインのコード・トークンは送らない)。
+ * - 読み込まないページ(管理画面など)は、ページの場所も送らず、サイトの最初のページにする。
+ * 広告から来たかの印(twclid)は、uwt.js が本当の URL から別に読むので、置き換えても消えない。
+ */
+export function toXPageLocation(origin: string, pathname: string): string {
+  if (isAdPixelExcludedPath(pathname)) {
+    return `${origin}/`;
+  }
+  return `${origin}${pathname.startsWith("/") ? pathname : `/${pathname}`}`;
 }
