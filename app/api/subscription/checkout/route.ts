@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
 import { ROUTES } from "@/constants";
@@ -21,10 +21,14 @@ import {
   resolveSubscriptionPriceId,
 } from "@/features/subscription/lib/stripe-utils";
 import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
+import { purchaseOriginSchema } from "@/features/monetization/lib/purchase-origin";
 
 const checkoutBodySchema = z.object({
   planId: z.enum(["light", "standard", "premium"]),
   billingInterval: z.enum(["month", "year"]),
+  // 課金の表示元(計測用・任意)。購入と同じ決まり
+  origin: purchaseOriginSchema.optional(),
 });
 
 export async function POST(request: NextRequest) {
@@ -73,7 +77,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { planId, billingInterval } = parsed.data;
+    const { planId, billingInterval, origin } = parsed.data;
     const stripe = createStripeClient();
     const customerId = await getOrCreateStripeCustomer({
       stripe,
@@ -131,6 +135,7 @@ export async function POST(request: NextRequest) {
         userId: user.id,
         plan: planId,
         billingInterval,
+        ...(origin ? { origin } : {}),
       },
       subscription_data: {
         metadata: {
@@ -152,9 +157,10 @@ export async function POST(request: NextRequest) {
 
     // 課金の手前の記録(支払いを始めた)。応答を返したあとに書く(支払い画面へ移るのを待たせない)
     const checkoutSessionId = session.id;
-    after(() => recordMonetizationEvent({
+    runAfterResponse(() => recordMonetizationEvent({
       userId: user.id,
       eventType: "checkout_start",
+      origin: origin ?? null,
       product: `subscription:${planId}:${billingInterval}`,
       stripeSessionId: checkoutSessionId,
     }));

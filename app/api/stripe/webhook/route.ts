@@ -897,6 +897,10 @@ export async function POST(request: NextRequest) {
         });
       }
       case "checkout.session.expired":
+        // テストの支払い画面は、本番の記録に入れない
+        if (!event.livemode) {
+          return NextResponse.json({ received: true, handled: false, reason: "test_mode" });
+        }
         return await handleCheckoutSessionExpired(
           event.data.object as Stripe.Checkout.Session
         );

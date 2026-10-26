@@ -113,6 +113,7 @@ describe("POST /api/subscription/checkout", () => {
     expect(recordMonetizationEvent).toHaveBeenCalledWith({
       userId: "user_123",
       eventType: "checkout_start",
+      origin: null,
       product: "subscription:light:month",
       stripeSessionId: "cs_test_123",
     });

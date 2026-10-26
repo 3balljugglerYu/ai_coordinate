@@ -1,4 +1,4 @@
-import { after, NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { z } from "zod";
 import { ROUTES } from "@/constants";
@@ -13,6 +13,7 @@ import { getRouteLocale } from "@/lib/api/route-locale";
 import { getCreditsRouteCopy } from "@/features/credits/lib/route-copy";
 import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
 import { purchaseOriginSchema } from "@/features/monetization/lib/purchase-origin";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 
 const checkoutBodySchema = z.object({
   packageId: z.string().min(1, "packageId is required"),
@@ -178,7 +179,7 @@ export async function POST(request: NextRequest) {
 
     // 課金の手前の記録(支払いを始めた)。応答を返したあとに書く(支払い画面へ移るのを待たせない)
     const checkoutSessionId = session.id;
-    after(() => recordMonetizationEvent({
+    runAfterResponse(() => recordMonetizationEvent({
       userId: user.id,
       eventType: "checkout_start",
       origin: origin ?? null,

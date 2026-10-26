@@ -23,6 +23,7 @@ import type { UserSubscription } from "@/features/subscription/lib/server-api";
 import { SubscriptionChangeConfirmDialog } from "@/features/subscription/components/SubscriptionChangeConfirmDialog";
 import { SubscriptionImmediateChangeFinalDialog } from "@/features/subscription/components/SubscriptionImmediateChangeFinalDialog";
 import { SubscriptionChangeFailureDialog } from "@/features/subscription/components/SubscriptionChangeFailureDialog";
+import { trackMonetizationEventOnce } from "@/features/monetization/lib/track-monetization-event";
 
 const PLANS: PaidSubscriptionPlan[] = ["light", "standard", "premium"];
 
@@ -37,6 +38,13 @@ export function PricingPlans({ subscription }: PricingPlansProps) {
   const defaultBillingInterval = subscription?.billing_interval ?? "month";
   const [billingInterval, setBillingInterval] =
     useState<SubscriptionBillingInterval>(defaultBillingInterval);
+  // 課金の手前の記録(サブスクの料金を見た)。1回の訪問で1回
+  useEffect(() => {
+    trackMonetizationEventOnce("purchase_view:subscription_plans", {
+      eventType: "purchase_view",
+      origin: "subscription_plans",
+    });
+  }, []);
   const [processingKey, setProcessingKey] = useState<string | null>(null);
   const [cancelingScheduledChange, setCancelingScheduledChange] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -135,6 +143,7 @@ export function PricingPlans({ subscription }: PricingPlansProps) {
         body: JSON.stringify({
           planId,
           billingInterval,
+          origin: "subscription_plans",
         }),
       });
       const data = await response.json().catch(() => null);

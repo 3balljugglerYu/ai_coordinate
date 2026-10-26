@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { track } from "@vercel/analytics/react";
 import { useLocale, useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
 import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
 import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
 import { PercoinPurchaseCard } from "@/features/credits/components/PercoinPurchaseCard";
-import { trackMonetizationEventOnce } from "@/features/monetization/lib/track-monetization-event";
 
 interface PercoinPurchaseSectionProps {
   onBalanceUpdate: (balance: number) => void;
@@ -22,11 +21,6 @@ export function PercoinPurchaseSection({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // 課金の手前の記録(購入画面を見た)。1回の訪問で1回
-  useEffect(() => {
-    trackMonetizationEventOnce("purchase_view:my_page", { eventType: "purchase_view", origin: "my_page" });
-  }, []);
-
   const handlePurchase = async (packageId: string) => {
     try {
       setProcessingId(packageId);
@@ -38,7 +32,7 @@ export function PercoinPurchaseSection({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ packageId, origin: "my_page" }),
+        body: JSON.stringify({ packageId }),
       });
 
       const data = await response.json().catch(() => null);

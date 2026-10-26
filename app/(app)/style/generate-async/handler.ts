@@ -54,6 +54,7 @@ import {
   recordMonetizationEvent,
   recordPercoinShortage,
 } from "@/features/monetization/lib/record-monetization-event";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 
 interface StyleGenerateAsyncRouteDependencies {
   getUserFn?: typeof getUser;
@@ -468,9 +469,11 @@ export async function postStyleGenerateAsyncRoute(
 
     const currentBalance = creditData.balance;
     if (currentBalance < percoinCost) {
-      await recordPercoinShortage(
-        { userId: user.id, feature: "style_generate", required: percoinCost, balance: currentBalance },
-        dependencies.recordMonetizationEventFn,
+      runAfterResponse(() =>
+        recordPercoinShortage(
+          { userId: user.id, feature: "style_generate", required: percoinCost, balance: currentBalance },
+          dependencies.recordMonetizationEventFn,
+        ),
       );
       return jsonError(
         copy.authenticatedPaidInsufficientBalance.replace(

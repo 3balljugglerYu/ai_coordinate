@@ -584,26 +584,6 @@ export function OneTapStyleGenerationForm({
     (percoinBalanceState.isLoading ||
       Boolean(percoinBalanceState.error) ||
       !hasEnoughPercoins);
-  /*
-    課金の手前の記録(足りなくて生成ボタンを押せない)。1回の訪問で1回。
-    ⚠️ hasEnoughPercoins は、残高の読み込み中・読み込み失敗でも false になるので、
-    残高が数として読めていて、足りないときだけにする。
-  */
-  const isKnownPercoinShortage =
-    isAuthenticatedPaidOnlyMode &&
-    !percoinBalanceState.isLoading &&
-    !percoinBalanceState.error &&
-    typeof percoinBalanceState.balance === "number" &&
-    percoinBalanceState.balance < selectedModelPercoinCost;
-  useEffect(() => {
-    if (!isKnownPercoinShortage) return;
-    trackMonetizationEventOnce("percoin_shortage:style_generate", {
-      eventType: "percoin_shortage",
-      feature: "style_generate",
-      required: selectedModelPercoinCost,
-      balance: Math.max(percoinBalanceState.balance ?? 0, 0),
-    });
-  }, [isKnownPercoinShortage, selectedModelPercoinCost, percoinBalanceState.balance]);
 
   const isGenerating = generationPhase !== "idle";
   // ゲストが1枚生成した後の状態。1日1回のため再生成できず、結果を消す操作をすると
@@ -628,6 +608,29 @@ export function OneTapStyleGenerationForm({
       ? posePromptValue.trim()
       : "";
   const hasSourceImage = Boolean(uploadedImage) || Boolean(selectedRemoteSource);
+  /*
+    課金の手前の記録(足りなくて生成ボタンを押せない)。1回の訪問で1回。
+    ⚠️ hasEnoughPercoins は、残高の読み込み中・読み込み失敗でも false になるので、
+    残高が数として読めていて、足りないときだけにする。
+    ⚠️ 画面を開いただけ・モデルを見比べただけでは数えない。画像を選んで、生成しようとしている
+    (hasSourceImage)ときだけにする(ふつうの生成の画面が「生成を押したとき」に数えるのに合わせる)。
+  */
+  const isKnownPercoinShortage =
+    hasSourceImage &&
+    isAuthenticatedPaidOnlyMode &&
+    !percoinBalanceState.isLoading &&
+    !percoinBalanceState.error &&
+    typeof percoinBalanceState.balance === "number" &&
+    percoinBalanceState.balance < selectedModelPercoinCost;
+  useEffect(() => {
+    if (!isKnownPercoinShortage) return;
+    trackMonetizationEventOnce("percoin_shortage:style_generate", {
+      eventType: "percoin_shortage",
+      feature: "style_generate",
+      required: selectedModelPercoinCost,
+      balance: Math.max(percoinBalanceState.balance ?? 0, 0),
+    });
+  }, [isKnownPercoinShortage, selectedModelPercoinCost, percoinBalanceState.balance]);
   // ゲストの無料生成（1日1回）は category.key が "coordinate" のプリセットのみ許可。
   // それ以外のカテゴリは生成させず「ログインで生成可能！」CTA を出す（サーバ側でも検証）。
   const isGuestRestrictedCategory =

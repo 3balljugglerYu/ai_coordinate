@@ -70,6 +70,7 @@ import {
   recordMonetizationEvent,
   recordPercoinShortage,
 } from "@/features/monetization/lib/record-monetization-event";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -546,9 +547,11 @@ export async function postGenerateAsyncRoute(
 
     // 残高チェック
     if (currentBalance < requiredPercoinCost) {
-      await recordPercoinShortage(
-        { userId: user.id, feature: "generate", required: requiredPercoinCost, balance: currentBalance },
-        dependencies.recordMonetizationEventFn,
+      runAfterResponse(() =>
+        recordPercoinShortage(
+          { userId: user.id, feature: "generate", required: requiredPercoinCost, balance: currentBalance },
+          dependencies.recordMonetizationEventFn,
+        ),
       );
       return jsonError(
         copy.insufficientBalance(requiredPercoinCost, currentBalance),

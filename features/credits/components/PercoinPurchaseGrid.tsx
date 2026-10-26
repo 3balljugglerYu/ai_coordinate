@@ -8,6 +8,7 @@ import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
 import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
 import { PercoinPurchaseCard } from "./PercoinPurchaseCard";
 import { trackMonetizationEventOnce } from "@/features/monetization/lib/track-monetization-event";
+import { purchaseOriginSchema } from "@/features/monetization/lib/purchase-origin";
 
 /**
  * ペルコイン購入グリッド（自前UI + Checkout Session API）
@@ -26,9 +27,15 @@ export function PercoinPurchaseGrid({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // 課金の手前の記録(購入画面を見た)。表示元ごとに、1回の訪問で1回
+  // 課金の手前の記録(購入画面を見た)。表示元ごとに、1回の訪問で1回。
+  // 表示元はサーバーと同じ決まりで整えてから送る(決まりに合わない値は送らない)
   useEffect(() => {
-    trackMonetizationEventOnce(`purchase_view:${origin}`, { eventType: "purchase_view", origin });
+    const parsed = purchaseOriginSchema.safeParse(origin);
+    if (!parsed.success) return;
+    trackMonetizationEventOnce(`purchase_view:${parsed.data}`, {
+      eventType: "purchase_view",
+      origin: parsed.data,
+    });
   }, [origin]);
 
   const handlePurchase = async (packageId: string) => {
