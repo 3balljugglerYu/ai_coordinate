@@ -191,9 +191,9 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
               { label: "買った(本番の支払い)", value: c.purchased, prev: p.purchased, color: "#16A34A" },
             ].map((row) => (
               <div key={row.label} className="flex items-center gap-3 text-sm">
-                <span className="w-36 shrink-0 text-slate-700">{row.label}</span>
+                <span className="w-24 shrink-0 text-slate-700 sm:w-36">{row.label}</span>
                 <Bar value={row.value} max={max} color={row.color} />
-                <span className="w-28 shrink-0 text-right tabular-nums">
+                <span className="w-20 shrink-0 text-right tabular-nums sm:w-28">
                   <span className="font-bold">{num(row.value)}</span>
                   <span className="block text-xs text-slate-500">前 {num(row.prev)}</span>
                 </span>
@@ -213,9 +213,9 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
             ) : (
               balance.freeBySource.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 text-xs">
-                  <span className="w-44 shrink-0 truncate text-slate-700">{item.label}</span>
+                  <span className="w-28 shrink-0 truncate text-slate-700 sm:w-44" title={item.label}>{item.label}</span>
                   <Bar value={item.amount} max={balance.freeBySource[0].amount} color="#A78BFA" />
-                  <span className="w-24 shrink-0 text-right tabular-nums">
+                  <span className="w-20 shrink-0 text-right tabular-nums sm:w-24">
                     {num(item.amount)}
                     <span className="text-slate-500">({num(item.users ?? 0)}人)</span>
                   </span>
@@ -231,9 +231,9 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
             ) : (
               balance.usageByKind.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 text-xs">
-                  <span className="w-44 shrink-0 truncate text-slate-700">{item.label}</span>
+                  <span className="w-28 shrink-0 truncate text-slate-700 sm:w-44" title={item.label}>{item.label}</span>
                   <Bar value={Math.max(item.amount, 0)} max={usageMax} color="#FDBA74" />
-                  <span className="w-24 shrink-0 text-right tabular-nums">{num(item.amount)}</span>
+                  <span className="w-20 shrink-0 text-right tabular-nums sm:w-24">{num(item.amount)}</span>
                 </div>
               ))
             )}
