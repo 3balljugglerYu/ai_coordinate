@@ -37,7 +37,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 /** 最後に改定した日。日本語と英語の両方で、この1つから出す(本番に出す日にする)。 */
-const PRIVACY_POLICY_REVISED_AT = { year: 2026, month: 10, day: 26 } as const;
+const PRIVACY_POLICY_REVISED_AT = { year: 2026, month: 10, day: 27 } as const;
 
 /** 本文の中で、リンクにする文字列。⚠️ 本文に書いた文字と同じにすること(tests/unit/features/legal で確かめる)。 */
 function privacyLinks(locale: Locale): LegalLink[] {

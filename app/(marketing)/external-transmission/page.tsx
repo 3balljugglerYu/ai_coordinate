@@ -20,6 +20,8 @@ import { formatLegalDate } from "@/features/legal/lib/legal-text";
  */
 
 const EXTERNAL_TRANSMISSION_ESTABLISHED_AT = { year: 2026, month: 10, day: 26 } as const;
+/** 最後に改定した日(送り先を足したり、送る情報を変えたりしたら、本番に出す日にする)。2026-10-27: Meta Pixel を足した */
+const EXTERNAL_TRANSMISSION_REVISED_AT = { year: 2026, month: 10, day: 27 } as const;
 
 type Row =
   | { label: string; text: string }
@@ -227,6 +229,8 @@ export default async function ExternalTransmissionPage() {
 
       <p className="mt-6 text-end text-xs text-gray-500">
         {formatLegalDate(EXTERNAL_TRANSMISSION_ESTABLISHED_AT, locale, "established")}
+        <br />
+        {formatLegalDate(EXTERNAL_TRANSMISSION_REVISED_AT, locale, "revised")}
       </p>
     </main>
   );
