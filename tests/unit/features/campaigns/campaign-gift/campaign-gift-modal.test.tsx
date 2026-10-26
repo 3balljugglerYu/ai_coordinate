@@ -207,3 +207,22 @@ test("受け取りの途中は閉じない", async () => {
   expect(await screen.findByText(/10\/31までの限定ペルコインGET！/)).toBeInTheDocument();
 });
 
+test("外側を触っても閉じない(閉じるのは × と「あとで」)", async () => {
+  const { onClose } = renderModal();
+  const outside = document.createElement("button");
+  document.body.appendChild(outside);
+  // Radix は、開いた直後のタップを拾わないよう、少し遅れてから外側の監視を始める
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  });
+  await act(async () => {
+    fireEvent.pointerDown(outside);
+    fireEvent.mouseDown(outside);
+    fireEvent.click(outside);
+    outside.focus();
+  });
+  expect(onClose).not.toHaveBeenCalled();
+  expect(screen.getByText("タップして開けてね（あと5回）")).toBeInTheDocument();
+  outside.remove();
+});
+

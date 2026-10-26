@@ -338,7 +338,7 @@ test("「あとで」で閉じたら、3時間はどのページでも出さず(
     screen.getByText("あとで").click();
   });
   expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
-  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).not.toBeNull();
+  expect(window.localStorage.getItem("campaign-gift-later-v2:halloween-best-shot:user-1")).not.toBeNull();
   unmount();
   mockPathname.mockReturnValue("/ja/style");
   fetchMock.mockClear();
@@ -347,7 +347,7 @@ test("「あとで」で閉じたら、3時間はどのページでも出さず(
   expect(fetchMock).not.toHaveBeenCalled();
   second.unmount();
   // 3時間たったことにする
-  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", String(Date.now() - 3 * 60 * 60 * 1000 - 1));
+  window.localStorage.setItem("campaign-gift-later-v2:halloween-best-shot:user-1", String(Date.now() - 3 * 60 * 60 * 1000 - 1));
   __resetCampaignGiftLaterForTest();
   render(<CampaignGiftHost />);
   await settle();
@@ -362,7 +362,7 @@ test("ログインしていない人が「あとで」を押しても、ログ�
   act(() => {
     screen.getByText("あとで").click();
   });
-  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:guest")).not.toBeNull();
+  expect(window.localStorage.getItem("campaign-gift-later-v2:halloween-best-shot:guest")).not.toBeNull();
   mockAuth.mockReturnValue({ status: "signed-in", user: { id: "user-1" } });
   fetchMock.mockImplementation(() => statusResponse({ open: true, claimed: false, signedIn: true, amount: 200, expireAt: null }));
   mockPathname.mockReturnValue("/ja/style");

@@ -103,8 +103,8 @@ describe("「あとで」の覚え方(3時間・人ごと)", () => {
     writeCampaignGiftLater("halloween-best-shot", null, NOW);
     expect(readCampaignGiftLater("halloween-best-shot", null, NOW)).toBe(true);
     expect(readCampaignGiftLater("halloween-best-shot", "user-1", NOW)).toBe(false);
-    expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:guest")).toBe(String(NOW));
-    expect(window.sessionStorage.getItem("campaign-gift-later:halloween-best-shot:guest")).toBeNull();
+    expect(window.localStorage.getItem("campaign-gift-later-v2:halloween-best-shot:guest")).toBe(String(NOW));
+    expect(window.sessionStorage.getItem("campaign-gift-later-v2:halloween-best-shot:guest")).toBeNull();
   });
 
   test("端末に残せないブラウザでも投げず、ページを開いている間は覚える", () => {
@@ -119,7 +119,7 @@ describe("「あとで」の覚え方(3時間・人ごと)", () => {
   });
 
   test("こわれた値は、無い扱い", () => {
-    window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", "abc");
+    window.localStorage.setItem("campaign-gift-later-v2:halloween-best-shot:user-1", "abc");
     expect(readCampaignGiftLater("halloween-best-shot", "user-1", NOW)).toBe(false);
   });
 });
@@ -127,13 +127,13 @@ describe("「あとで」の覚え方(3時間・人ごと)", () => {
 test("端末の時計が戻って、残した時刻が未来になっても、ページの中の控えは効く", () => {
   const NOW = Date.parse("2026-10-27T03:00:00.000Z");
   writeCampaignGiftLater("halloween-best-shot", "user-1", NOW);
-  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", String(NOW + 60 * 60 * 1000));
+  window.localStorage.setItem("campaign-gift-later-v2:halloween-best-shot:user-1", String(NOW + 60 * 60 * 1000));
   expect(readCampaignGiftLater("halloween-best-shot", "user-1", NOW + 1000)).toBe(true);
 });
 
 test("受け取って閉じたら、「あとで」の時刻は消す", () => {
-  window.localStorage.setItem("campaign-gift-later:halloween-best-shot:user-1", "1");
+  window.localStorage.setItem("campaign-gift-later-v2:halloween-best-shot:user-1", "1");
   writeCampaignGiftDismissed("halloween-best-shot", "user-1");
-  expect(window.localStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).toBeNull();
+  expect(window.localStorage.getItem("campaign-gift-later-v2:halloween-best-shot:user-1")).toBeNull();
 });
 

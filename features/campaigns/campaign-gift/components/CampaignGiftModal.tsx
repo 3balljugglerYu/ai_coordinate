@@ -327,6 +327,8 @@ export function CampaignGiftModal({
       <DialogContent
         showCloseButton={false}
         className="gap-0 overflow-hidden rounded-2xl border-0 p-0 outline-none sm:max-w-sm"
+        // 外側を触っても閉じない(うっかり閉じると3時間出なくなるため。2026-10-27 ユーザー指示)。閉じるのは × と「あとで」・「閉じる」
+        onInteractOutside={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           giftRef.current?.focus({ preventScroll: true });
