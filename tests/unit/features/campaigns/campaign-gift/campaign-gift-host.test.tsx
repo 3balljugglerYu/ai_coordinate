@@ -156,14 +156,19 @@ test("チュートリアルの途中は待つ", async () => {
   expect(screen.queryByTestId("gift")).toBeNull();
 });
 
-test("受け取れずに閉じたら覚えない(次にページを開いたとき、もう一度出る)", async () => {
-  render(<CampaignGiftHost />);
+test("受け取れずに閉じたら覚えず、同じページでは出し直さず、別のページを開いたら出す", async () => {
+  const { rerender } = render(<CampaignGiftHost />);
   await settle();
   act(() => {
     screen.getByText("受け取れずに閉じる").click();
   });
   expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
+  await settle();
   expect(screen.queryByTestId("gift")).toBeNull();
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(screen.getByTestId("gift")).toBeInTheDocument();
 });
 
 test("ログインしていない人の画面が開いている間にログインしたら、その人の状態で聞き直して出し直す", async () => {

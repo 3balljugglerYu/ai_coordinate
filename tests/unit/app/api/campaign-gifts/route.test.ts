@@ -145,9 +145,10 @@ test("受け取れたら、マイページと生成の画面の残高のキャ�
     claimFn: jest.fn(async () => ({ status: "granted", amount: 200, expire_at: EXPIRE })),
   });
   const calls = (revalidateTag as jest.Mock).mock.calls;
-  expect(calls.map((c) => c[0]).sort()).toEqual(
-    ["challenge-user-1", "coordinate-user-1-ja", "free-user-1-ja", "my-page-credits-user-1", "my-page-user-1", "style-user-1-ja"].sort(),
-  );
+  const tags = calls.map((c) => c[0]);
+  for (const tag of ["challenge-user-1", "my-page-credits-user-1", "my-page-user-1", "style-user-1-ja", "free-user-1-ja", "coordinate-user-1-ja", "style-user-1-en", "free-user-1-zh-CN"]) {
+    expect(tags).toContain(tag);
+  }
   for (const call of calls) expect(call[1]).toEqual({ expire: 0 });
 });
 

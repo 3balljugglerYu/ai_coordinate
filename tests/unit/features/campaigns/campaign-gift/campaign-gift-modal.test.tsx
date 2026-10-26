@@ -5,6 +5,7 @@
 
 import { act, fireEvent, render, screen } from "@testing-library/react";
 
+const mockTrack = jest.fn();
 jest.mock("@/features/campaigns/lib/campaign-events", () => ({
   CAMPAIGN_EVENTS: {
     giftOpen: "campaign_gift_open",
@@ -12,7 +13,7 @@ jest.mock("@/features/campaigns/lib/campaign-events", () => ({
     giftLogin: "campaign_gift_login",
     giftWorks: "campaign_gift_works",
   },
-  trackCampaignEvent: jest.fn(),
+  trackCampaignEvent: (name: string) => mockTrack(name),
 }));
 
 import { CampaignGiftModal } from "@/features/campaigns/campaign-gift/components/CampaignGiftModal";
@@ -160,3 +161,33 @@ test("サーバーでログインが切れていたら、「ログインし直�
   fireEvent.click(link);
   expect(onClose).toHaveBeenCalledWith(false);
 });
+
+test("「開けた」は5回目のタップで1回だけ数える(もう一度受け取るでは数えない)", async () => {
+  mockTrack.mockClear();
+  const onClaim = jest
+    .fn<Promise<CampaignGiftClaimResult>, []>()
+    .mockResolvedValueOnce({ status: "error" })
+    .mockResolvedValueOnce({ status: "granted", amount: 200, expireAt: "2026-10-31T14:59:00.000Z" });
+  renderModal({ onClaim });
+  await tap(5);
+  await act(async () => {
+    fireEvent.click(await screen.findByRole("button", { name: "もう一度受け取る" }));
+  });
+  await screen.findByText(/200ペルコインを受け取りました/);
+  expect(mockTrack.mock.calls.filter((c) => c[0] === "campaign_gift_open")).toHaveLength(1);
+  expect(mockTrack.mock.calls.filter((c) => c[0] === "campaign_gift_claim")).toHaveLength(1);
+});
+
+test("受け取りの途中は閉じない", async () => {
+  let resolveClaim: (value: CampaignGiftClaimResult) => void = () => {};
+  const onClaim = jest.fn(() => new Promise<CampaignGiftClaimResult>((resolve) => (resolveClaim = resolve)));
+  const { onClose } = renderModal({ onClaim });
+  await tap(5);
+  fireEvent.click(screen.getAllByRole("button", { name: "閉じる" }).at(-1)!);
+  expect(onClose).not.toHaveBeenCalled();
+  await act(async () => {
+    resolveClaim({ status: "granted", amount: 200, expireAt: "2026-10-31T14:59:00.000Z" });
+  });
+  expect(await screen.findByText(/200ペルコインを受け取りました/)).toBeInTheDocument();
+});
+

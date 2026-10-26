@@ -45,7 +45,8 @@ export interface CampaignGiftModalProps {
   open: boolean;
   /**
    * 閉じた。remember は「この端末で閉じたことを覚えてよいか」。
-   * 受け取りの途中・受け取れなかったときは false(覚えると、受け取れていないのにもう出なくなる)
+   * 受け取れなかったとき(ログインし直しを含む)は false(覚えると、受け取れていないのにもう出なくなる)。
+   * 受け取りの途中は閉じられない
    */
   onClose: (remember: boolean) => void;
   signedIn: boolean;
@@ -225,7 +226,6 @@ export function CampaignGiftModal({
 
   const claim = useCallback(async () => {
     setPhase("opening");
-    trackCampaignEvent(CAMPAIGN_EVENTS.giftOpen);
     if (!signedIn) {
       await wait(prefersReducedMotion() ? 0 : CHARGE_MS);
       showFinale(amount);
@@ -255,6 +255,8 @@ export function CampaignGiftModal({
     const next = taps + 1;
     setTaps(next);
     if (next >= CAMPAIGN_GIFT_TAPS_TO_OPEN) {
+      // 「開けた」は5回目のタップで1回だけ数える(「もう一度受け取る」では数えない)
+      trackCampaignEvent(CAMPAIGN_EVENTS.giftOpen);
       void claim();
       return;
     }
@@ -296,8 +298,12 @@ export function CampaignGiftModal({
   }
 
   // 受け取りの途中・受け取れなかったときは、閉じたことを覚えない
-  const remember = phase !== "opening" && phase !== "error" && phase !== "auth";
-  const close = () => onClose(remember);
+  const remember = phase !== "error" && phase !== "auth";
+  // 受け取りの途中(ふくらんでいる間)は閉じない。閉じると、受け取りの返事を待たずに画面が消え、二重に受け取ろうとしてしまう
+  const close = () => {
+    if (phase === "opening") return;
+    onClose(remember);
+  };
 
   return (
     <Dialog

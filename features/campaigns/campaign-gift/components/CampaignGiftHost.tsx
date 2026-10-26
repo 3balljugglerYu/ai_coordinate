@@ -58,6 +58,8 @@ export function CampaignGiftHost() {
   const router = useRouter();
   const [current, setCurrent] = useState<StatusFor | null>(null);
   const [open, setOpen] = useState(false);
+  // 覚えずに閉じた(受け取れなかった)ページ。同じページにいる間は出し直さず、別のページを開いたら出す
+  const [snoozedPath, setSnoozedPath] = useState<string | null>(null);
 
   const userId = auth.status === "signed-in" ? auth.user.id : null;
   const excluded = isCampaignGiftExcludedPath(stripLocalePrefix(pathname).pathname);
@@ -66,6 +68,7 @@ export function CampaignGiftHost() {
 
   useEffect(() => {
     if (!isCampaignOpen || auth.status === "loading" || excluded || visible) return;
+    if (snoozedPath === pathname) return;
     if (readCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, userId)) return;
 
     let cancelled = false;
@@ -105,7 +108,7 @@ export function CampaignGiftHost() {
       cancelled = true;
       if (timer !== undefined) window.clearTimeout(timer);
     };
-  }, [isCampaignOpen, auth.status, userId, excluded, visible]);
+  }, [isCampaignOpen, auth.status, userId, excluded, visible, snoozedPath, pathname]);
 
   /**
    * 閉じた。remember=false(受け取りの途中・受け取れなかった)のときは覚えない。
@@ -114,9 +117,13 @@ export function CampaignGiftHost() {
   const handleClose = useCallback(
     (remember: boolean) => {
       setOpen(false);
-      if (remember) writeCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, current?.userId ?? userId);
+      if (remember) {
+        writeCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, current?.userId ?? userId);
+      } else {
+        setSnoozedPath(pathname);
+      }
     },
-    [current, userId],
+    [current, userId, pathname],
   );
 
   const handleClaimed = useCallback(() => {
@@ -139,7 +146,7 @@ export function CampaignGiftHost() {
       expireLabel={formatCampaignGiftExpire(status.expireAt)}
       onClaim={postClaim}
       onClaimed={handleClaimed}
-      loginHref={`/login?next=${encodeURIComponent(pathname)}`}
+      loginHref={`/login?redirect=${encodeURIComponent(`${pathname}${typeof window === "undefined" ? "" : window.location.search}`)}`}
       worksHref={HALLOWEEN_BEST_SHOT.catalogHref}
     />
   );

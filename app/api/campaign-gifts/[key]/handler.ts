@@ -4,6 +4,7 @@ import { getUser } from "@/lib/auth";
 import { jsonError } from "@/lib/api/json-error";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
+import { locales } from "@/i18n/config";
 import {
   isCampaignGiftKey,
   type CampaignGiftClaimResult,
@@ -56,7 +57,8 @@ async function defaultClaim(campaignKey: string, userId: string): Promise<RpcCla
 
 /**
  * 残高を出している画面のキャッシュ。
- * - 生成の画面(CachedGenerationPercoinBalance)は `${source}-${userId}-${locale}`。贈り物は日本語の画面だけに出すので ja
+ * - 生成の画面(CachedGenerationPercoinBalance)は `${source}-${userId}-${locale}`。
+ *   贈り物は日本語の画面だけに出すが、受け取ったあとにほかの言語の画面を開くこともあるので、全部の言語を消す
  * - 直後の router.refresh で新しい残高を出すため、古い値を返さない expire: 0 にする(ガチャ・文字入力と同じ)
  */
 const GENERATION_BALANCE_SOURCES = ["style", "free", "coordinate"] as const;
@@ -66,7 +68,7 @@ function defaultRevalidate(userId: string): void {
     `my-page-${userId}`,
     `my-page-credits-${userId}`,
     `challenge-${userId}`,
-    ...GENERATION_BALANCE_SOURCES.map((source) => `${source}-${userId}-ja`),
+    ...GENERATION_BALANCE_SOURCES.flatMap((source) => locales.map((locale) => `${source}-${userId}-${locale}`)),
   ];
   for (const tag of tags) {
     revalidateTag(tag, { expire: 0 });

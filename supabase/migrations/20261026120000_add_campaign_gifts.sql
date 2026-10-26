@@ -110,6 +110,10 @@ BEGIN
     RETURN jsonb_build_object('status', 'closed');
   END IF;
 
+  -- 同じ人への付与(投稿ボーナス・還元など)と、同じキーで1つずつにする。
+  -- ほかの付与と同じく、表に書く前に取る(取る順番をそろえて、行き詰まりを起こさない)
+  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
+
   -- 1人1回。ここを通れた者だけが付与に進む
   INSERT INTO public.campaign_gift_claims (campaign_key, user_id, amount)
   VALUES (v_gift.campaign_key, p_user_id, v_gift.amount)
@@ -119,9 +123,6 @@ BEGIN
   IF v_claimed IS NULL THEN
     RETURN jsonb_build_object('status', 'already_claimed');
   END IF;
-
-  -- 同じ人への付与(投稿ボーナス・還元など)と、同じキー・同じ順序で1つずつにする
-  PERFORM pg_advisory_xact_lock(hashtextextended(p_user_id::text, 0));
 
   INSERT INTO public.credit_transactions (user_id, amount, transaction_type, metadata)
   VALUES (
