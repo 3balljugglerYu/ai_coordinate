@@ -4,6 +4,7 @@ import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
+import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 /**
  * OAuth完了ページ（X / Google / GitHub）
@@ -86,8 +87,8 @@ function XOAuthCompleteContent() {
       }
 
       // リダイレクト先へ遷移
-      const destination =
-        redirectTo && redirectTo.startsWith("/") ? redirectTo : "/";
+      // "/" で始まるだけでは "//evil.com" が通るので、このサイトの中のパスだけにする
+      const destination = toSafeRedirectPath(redirectTo);
       router.replace(destination);
       router.refresh();
     };
