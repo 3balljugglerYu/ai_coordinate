@@ -152,3 +152,42 @@ test("受け取れたら、マイページと生成の画面の残高のキャ�
   for (const call of calls) expect(call[1]).toEqual({ expire: 0 });
 });
 
+
+describe("本番の DB を呼ぶ所(差し替えないとき)", () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { createAdminClient } = require("@/lib/supabase/admin") as { createAdminClient: jest.Mock };
+
+  test("GET は get_campaign_gift_status を、企画と人で呼ぶ", async () => {
+    const rpc = jest.fn(async () => ({ data: { open: true, claimed: false, amount: 200, expire_at: EXPIRE }, error: null }));
+    createAdminClient.mockReturnValue({ rpc });
+    const response = await getCampaignGiftRoute("halloween-best-shot", { getUserFn: jest.fn(async () => USER) as never });
+    expect(rpc).toHaveBeenCalledWith("get_campaign_gift_status", { p_campaign_key: "halloween-best-shot", p_user_id: "user-1" });
+    await expect(response.json()).resolves.toMatchObject({ open: true, amount: 200 });
+  });
+
+  test("GET で DB がエラーを返したら 500", async () => {
+    createAdminClient.mockReturnValue({ rpc: jest.fn(async () => ({ data: null, error: { code: "XX000" } })) });
+    const response = await getCampaignGiftRoute("halloween-best-shot", { getUserFn: jest.fn(async () => null) as never });
+    expect(response.status).toBe(500);
+  });
+
+  test("POST は claim_campaign_gift を、企画と人で呼ぶ", async () => {
+    const rpc = jest.fn(async () => ({ data: { status: "already_claimed" }, error: null }));
+    createAdminClient.mockReturnValue({ rpc });
+    const response = await postCampaignGiftRoute(createRequest(), "halloween-best-shot", { getUserFn: jest.fn(async () => USER) as never });
+    expect(rpc).toHaveBeenCalledWith("claim_campaign_gift", { p_campaign_key: "halloween-best-shot", p_user_id: "user-1" });
+    await expect(response.json()).resolves.toEqual({ status: "already_claimed" });
+  });
+
+  test("POST で DB がエラーを返したら 500", async () => {
+    createAdminClient.mockReturnValue({ rpc: jest.fn(async () => ({ data: null, error: { code: "XX000" } })) });
+    const response = await postCampaignGiftRoute(createRequest(), "halloween-best-shot", { getUserFn: jest.fn(async () => USER) as never });
+    expect(response.status).toBe(500);
+  });
+
+  test("DB の返事の額や期限がおかしいときは、無い扱いにする", async () => {
+    createAdminClient.mockReturnValue({ rpc: jest.fn(async () => ({ data: { open: true, claimed: false, amount: "200", expire_at: "bad" }, error: null })) });
+    const response = await getCampaignGiftRoute("halloween-best-shot", { getUserFn: jest.fn(async () => null) as never });
+    await expect(response.json()).resolves.toMatchObject({ amount: null, expireAt: null });
+  });
+});

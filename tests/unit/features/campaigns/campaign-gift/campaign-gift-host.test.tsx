@@ -27,14 +27,26 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
     signedIn,
     onClose,
     onClaimed,
+    onClaim,
   }: {
     open: boolean;
     signedIn: boolean;
     onClose: (remember: boolean) => void;
     onClaimed?: () => void;
+    onClaim?: () => Promise<{ status: string }>;
   }) =>
     open ? (
       <div role="dialog" data-testid="gift" data-signed-in={String(signedIn)}>
+        <button
+          type="button"
+          onClick={() => {
+            void onClaim?.().then((result) => {
+              document.body.setAttribute("data-claim-result", result.status);
+            });
+          }}
+        >
+          受け取る
+        </button>
         <button type="button" onClick={() => onClaimed?.()}>
           受け取った
         </button>
@@ -260,5 +272,57 @@ test("生成の画面でないところでは、受け取って閉じても読�
   });
   expect(reload).not.toHaveBeenCalled();
   Object.defineProperty(window, "location", { configurable: true, value: original });
+});
+
+describe("受け取りを送る", () => {
+  async function claimWith(response: Partial<Response>) {
+    render(<CampaignGiftHost />);
+    await settle();
+    fetchMock.mockImplementationOnce(() => Promise.resolve(response as Response));
+    await act(async () => {
+      screen.getByText("受け取る").click();
+      for (let i = 0; i < 10; i++) await Promise.resolve();
+    });
+    return document.body.getAttribute("data-claim-result");
+  }
+
+  afterEach(() => {
+    document.body.removeAttribute("data-claim-result");
+  });
+
+  test("POST で送り、受け取れた返事をそのまま返す", async () => {
+    const result = await claimWith({ ok: true, status: 200, json: async () => ({ status: "granted", amount: 200, expireAt: "x" }) });
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/campaign-gifts/halloween-best-shot", { method: "POST" });
+    expect(result).toBe("granted");
+  });
+
+  test("401 はログインし直し、ほかの失敗はエラーにする", async () => {
+    expect(await claimWith({ ok: false, status: 401, json: async () => ({}) })).toBe("auth_required");
+  });
+
+  test("500 はエラー", async () => {
+    expect(await claimWith({ ok: false, status: 500, json: async () => ({}) })).toBe("error");
+  });
+});
+
+test("受け取れるかを聞けなかったら出さず、しばらく聞きに行かない", async () => {
+  fetchMock.mockImplementation(() => Promise.resolve({ ok: false, status: 500 } as Response));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  expect(screen.queryByTestId("gift")).toBeNull();
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("通信が失敗しても出さず、しばらく聞きに行かない", async () => {
+  fetchMock.mockImplementation(() => Promise.reject(new Error("offline")));
+  const { rerender } = render(<CampaignGiftHost />);
+  await settle();
+  mockPathname.mockReturnValue("/ja/style");
+  rerender(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
 });
 
