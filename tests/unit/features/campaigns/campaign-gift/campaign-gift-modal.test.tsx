@@ -131,10 +131,17 @@ test("受け取りが投げても、画面は落ちずに、もう一度受け�
   expect(await screen.findByRole("button", { name: "もう一度受け取る" })).toBeInTheDocument();
 });
 
-test("「あとで」で閉じ、閉じたことを覚える", async () => {
+test("開ける前の「あとで」は、その訪問の間だけ出さない(later)", async () => {
   const { onClose } = renderModal();
   fireEvent.click(screen.getByRole("button", { name: "あとで" }));
-  expect(onClose).toHaveBeenCalledWith(true);
+  expect(onClose).toHaveBeenCalledWith("later");
+});
+
+test("ログインしていない人が開けたあとの「あとで」も later(まだ受け取っていない)", async () => {
+  const { onClose } = renderModal({ signedIn: false });
+  await tap(5);
+  fireEvent.click(await screen.findByRole("button", { name: "あとで" }));
+  expect(onClose).toHaveBeenCalledWith("later");
 });
 
 test("受け取れなかったまま閉じたら、閉じたことを覚えない(次にもう一度出る)", async () => {
@@ -143,7 +150,7 @@ test("受け取れなかったまま閉じたら、閉じたことを覚えな�
   await screen.findByRole("button", { name: "もう一度受け取る" });
   // 右上の × と、下の「閉じる」は同じ動き。下のほうを押す
   fireEvent.click(screen.getAllByRole("button", { name: "閉じる" }).at(-1)!);
-  expect(onClose).toHaveBeenCalledWith(false);
+  expect(onClose).toHaveBeenCalledWith("retry");
 });
 
 test("受け取ったあとに閉じたら、閉じたことを覚える", async () => {
@@ -152,7 +159,7 @@ test("受け取ったあとに閉じたら、閉じたことを覚える", async
   await screen.findByText(/10\/31までの限定ペルコインGET！/);
   // 右上の × と、下の「閉じる」は同じ動き。下のほうを押す
   fireEvent.click(screen.getAllByRole("button", { name: "閉じる" }).at(-1)!);
-  expect(onClose).toHaveBeenCalledWith(true);
+  expect(onClose).toHaveBeenCalledWith("done");
 });
 
 test("サーバーでログインが切れていたら、「ログインし直して受け取る」を出す(覚えない)", async () => {
@@ -161,7 +168,7 @@ test("サーバーでログインが切れていたら、「ログインし直�
   const link = await screen.findByRole("link", { name: "ログインし直して受け取る" });
   expect(link).toHaveAttribute("href", "/login?next=%2Fja");
   fireEvent.click(link);
-  expect(onClose).toHaveBeenCalledWith(false);
+  expect(onClose).toHaveBeenCalledWith("retry");
 });
 
 test("「開けた」は5回目のタップで1回だけ数える(もう一度受け取るでは数えない)", async () => {

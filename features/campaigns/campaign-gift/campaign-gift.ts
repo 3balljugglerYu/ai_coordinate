@@ -3,7 +3,9 @@
  *
  * - 額・受け付ける期間・期限の正本は DB の campaign_gifts(supabase/migrations/20261026120000_add_campaign_gifts.sql)。
  * - 贈った分は、ほかの無償ペルコインより期限が早いので、引き落としで必ず最初に使われる。
- * - 画面は、受け取っていない人が、どのページを開いても最初に1回だけ出す。閉じたら、その端末ではもう出さない。
+ * - 画面は、受け取っていない人が、どのページを開いても最初に1回だけ出す。
+ *   「あとで」で閉じたら、その訪問の間(ブラウザを閉じるまで)は出さず、次に開いたときにまた出す(2026-10-26 ユーザー決定)。
+ *   その端末でもう出さないのは、受け取った・もう受け取っていた・受け付けが終わっていたときだけ。
  *   ログインしていない人にも出し、5回タップのあと「ログインして受け取る」にする。
  */
 
@@ -76,6 +78,35 @@ export function writeCampaignGiftDismissed(campaignKey: string, userId: string |
     // 残せない端末では、次に開いたときにもう一度出る(受け取りは DB で1回だけなので害はない)
   }
 }
+
+/** 「あとで」で閉じたことを、この訪問の間(ブラウザを閉じるまで)だけ覚えるキー。人ごとに分ける */
+export function campaignGiftLaterKey(campaignKey: string, userId: string | null): string {
+  return `campaign-gift-later:${campaignKey}:${userId ?? "guest"}`;
+}
+
+export function readCampaignGiftLater(campaignKey: string, userId: string | null): boolean {
+  try {
+    return window.sessionStorage.getItem(campaignGiftLaterKey(campaignKey, userId)) === "1";
+  } catch {
+    return false;
+  }
+}
+
+export function writeCampaignGiftLater(campaignKey: string, userId: string | null): void {
+  try {
+    window.sessionStorage.setItem(campaignGiftLaterKey(campaignKey, userId), "1");
+  } catch {
+    // 残せない端末では、別のページを開いたときにもう一度出る
+  }
+}
+
+/**
+ * 閉じたときの覚え方。
+ * - done: 受け取った・もう受け取っていた・受け付けが終わっていた → その端末でもう出さない
+ * - later: 「あとで」(開ける前・ログインしていない人) → その訪問の間だけ出さない
+ * - retry: 受け取れなかった・ログインし直し → 同じページでは出し直さず、別のページを開いたら出す
+ */
+export type CampaignGiftCloseKind = "done" | "later" | "retry";
 
 /**
  * 贈り物の画面を出すか(状態を取ってきたあとの判定)。

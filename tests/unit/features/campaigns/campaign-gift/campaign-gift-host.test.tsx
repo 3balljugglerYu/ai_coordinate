@@ -31,7 +31,7 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
   }: {
     open: boolean;
     signedIn: boolean;
-    onClose: (remember: boolean) => void;
+    onClose: (kind: "done" | "later" | "retry") => void;
     onClaimed?: () => void;
     onClaim?: () => Promise<{ status: string }>;
   }) =>
@@ -50,10 +50,13 @@ jest.mock("@/features/campaigns/campaign-gift/components/CampaignGiftModal", () 
         <button type="button" onClick={() => onClaimed?.()}>
           受け取った
         </button>
-        <button type="button" onClick={() => onClose(true)}>
+        <button type="button" onClick={() => onClose("done")}>
           閉じる
         </button>
-        <button type="button" onClick={() => onClose(false)}>
+        <button type="button" onClick={() => onClose("later")}>
+          あとで
+        </button>
+        <button type="button" onClick={() => onClose("retry")}>
           受け取れずに閉じる
         </button>
       </div>
@@ -324,5 +327,30 @@ test("通信が失敗しても出さず、しばらく聞きに行かない", as
   rerender(<CampaignGiftHost />);
   await settle();
   expect(fetchMock).toHaveBeenCalledTimes(1);
+});
+
+test("「あとで」で閉じたら、その訪問の間は出さず、次の訪問(ブラウザを開き直し)でまた出す", async () => {
+  const { unmount } = render(<CampaignGiftHost />);
+  await settle();
+  act(() => {
+    screen.getByText("あとで").click();
+  });
+  expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
+  expect(window.sessionStorage.getItem("campaign-gift-later:halloween-best-shot:user-1")).toBe("1");
+  unmount();
+  // 同じ訪問の中で別のページを開いても出さない
+  mockPathname.mockReturnValue("/ja/style");
+  fetchMock.mockClear();
+  const second = render(<CampaignGiftHost />);
+  await settle();
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(screen.queryByTestId("gift")).toBeNull();
+  second.unmount();
+  // ブラウザを開き直した(sessionStorage が空)ら、また出す
+  window.sessionStorage.clear();
+  __resetCampaignGiftQuietForTest();
+  render(<CampaignGiftHost />);
+  await settle();
+  expect(screen.getByTestId("gift")).toBeInTheDocument();
 });
 

@@ -9,8 +9,10 @@ import {
   isCampaignGiftExcludedPath,
   isCampaignGiftKey,
   readCampaignGiftDismissed,
+  readCampaignGiftLater,
   shouldShowCampaignGift,
   writeCampaignGiftDismissed,
+  writeCampaignGiftLater,
   type CampaignGiftStatus,
 } from "@/features/campaigns/campaign-gift/campaign-gift";
 
@@ -81,5 +83,21 @@ test("期限の日付の短い表示は、日本時間の月/日", () => {
   expect(formatCampaignGiftExpireShort("2026-10-31T15:30:00.000Z")).toBe("11/1");
   expect(formatCampaignGiftExpireShort(null)).toBeNull();
   expect(formatCampaignGiftExpireShort("bad")).toBeNull();
+});
+
+test("「あとで」は、この訪問の間(sessionStorage)だけ・人ごとに覚え、使えない端末でも投げない", () => {
+  window.sessionStorage.clear();
+  writeCampaignGiftLater("halloween-best-shot", "user-1");
+  expect(readCampaignGiftLater("halloween-best-shot", "user-1")).toBe(true);
+  expect(readCampaignGiftLater("halloween-best-shot", null)).toBe(false);
+  expect(window.localStorage.getItem("campaign-gift-dismissed:halloween-best-shot:user-1")).toBeNull();
+  jest.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+    throw new Error("denied");
+  });
+  jest.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+    throw new Error("denied");
+  });
+  expect(() => writeCampaignGiftLater("halloween-best-shot", "user-1")).not.toThrow();
+  expect(readCampaignGiftLater("halloween-best-shot", "user-1")).toBe(false);
 });
 

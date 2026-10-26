@@ -14,9 +14,12 @@ import {
   HALLOWEEN_GIFT_KEY,
   isCampaignGiftExcludedPath,
   readCampaignGiftDismissed,
+  readCampaignGiftLater,
   shouldShowCampaignGift,
   writeCampaignGiftDismissed,
+  writeCampaignGiftLater,
   type CampaignGiftClaimResult,
+  type CampaignGiftCloseKind,
   type CampaignGiftStatus,
 } from "../campaign-gift";
 import { CampaignGiftModal } from "./CampaignGiftModal";
@@ -94,6 +97,7 @@ function CampaignGift() {
     if (snoozedPath === pathname) return;
     if (isQuiet(userId, Date.now())) return;
     if (readCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, userId)) return;
+    if (readCampaignGiftLater(HALLOWEEN_GIFT_KEY, userId)) return;
 
     let cancelled = false;
     let timer: number | undefined;
@@ -141,16 +145,17 @@ function CampaignGift() {
   }, [isCampaignOpen, auth.status, userId, excluded, visible, snoozedPath, pathname]);
 
   /**
-   * 閉じた。remember=false(受け取りの途中・受け取れなかった)のときは覚えない。
-   * 覚えると、受け取れていないのに、この端末ではもう出なくなるため
+   * 閉じた(覚え方は campaign-gift.ts の CampaignGiftCloseKind)。
+   * 覚える人は、サーバーの見え方で決める(ブラウザではログイン中でも、サーバーで未ログインなら guest として覚える)
    */
   const handleClose = useCallback(
-    (remember: boolean) => {
+    (kind: CampaignGiftCloseKind) => {
       setOpen(false);
-      if (remember) {
-        // サーバーの見え方で覚える(ブラウザではログイン中でも、サーバーで未ログインなら guest として覚える)
-        const rememberAs = current?.status.signedIn ? current.userId : null;
+      const rememberAs = current?.status.signedIn ? current.userId : null;
+      if (kind === "done") {
         writeCampaignGiftDismissed(HALLOWEEN_GIFT_KEY, rememberAs);
+      } else if (kind === "later") {
+        writeCampaignGiftLater(HALLOWEEN_GIFT_KEY, rememberAs);
       } else {
         setSnoozedPath(pathname);
       }
