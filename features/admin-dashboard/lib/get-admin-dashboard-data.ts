@@ -25,6 +25,7 @@ import {
 } from "./build-one-tap-style-detailed";
 import { buildAiCostEstimate } from "./build-ai-cost";
 import { fetchAllRows } from "./fetch-all-rows";
+import { isRevenueTransaction } from "./revenue-transaction";
 import type {
   AdminDashboardData,
   AdminDashboardKpi,
@@ -809,26 +810,7 @@ export async function getAdminDashboardData(
     isWithinDateRange(generation.created_at, previousStart, currentStart)
   );
 
-  const revenueTransactions = transactions.filter((transaction) => {
-    if (getPurchaseMode(transaction.metadata) !== "live") {
-      return false;
-    }
-
-    if (transaction.transaction_type === "purchase") {
-      return true;
-    }
-
-    if (transaction.transaction_type === "subscription") {
-      const { yenValue } = resolveTransactionRevenue({
-        amount: transaction.amount,
-        transactionType: transaction.transaction_type,
-        metadata: transaction.metadata,
-      });
-      return yenValue !== null;
-    }
-
-    return false;
-  });
+  const revenueTransactions = transactions.filter(isRevenueTransaction);
   const currentRevenueTransactions = revenueTransactions.filter((transaction) =>
     isWithinDateRange(transaction.created_at, currentStart, now)
   );

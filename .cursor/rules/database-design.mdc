@@ -673,13 +673,13 @@ alwaysApply: false
   - 運営除外は**アプリ側から `uuid[]` で渡す**。`ADMIN_USER_IDS` / `ADMIN_PREVIEW_USER_IDS`（env）と `admin_users`（DB）の和集合は DB 側で作れないため。比較は `user_id IS NULL` を明示的に扱い、ゲスト行を落とさないこと（`NULL <> ALL(...)` は NULL に評価される）
   - 横並び比較のみ `"use cache"` + `admin-collection-summaries` タグ + `cacheLife("minutes")`。単一企画のビューは開催中の鮮度が要るのでキャッシュしない
 - 管理ダッシュボードの概要（`service_role` のみ EXECUTE 可・PUBLIC / anon / authenticated から REVOKE・20261025233400）:
-  - `get_growth_active_users(p_start, p_end, p_exclude_user_ids)` — 使っている人＝期間内に `image_jobs` が succeeded の人 **または** 本番の支払い（`metadata.mode = 'live'`）をした人。期間内に登録した人と前からの人に分ける。`generated_images` で数えないのは、投稿していない画像を消すと人が減るため
+  - `get_growth_active_users(p_start, p_end, p_exclude_user_ids)` — 使っている人＝期間内に `image_jobs` が succeeded の人 **または** 本番の支払いをした人（売上と同じ決まり: purchase は `mode = 'live'`、subscription は `mode = 'live'` かつ `revenueYen` があるもの。年額の毎月付与・プラン変更の即時付与のようにお金の記録が無い付与は入れない。`revenue-transaction.ts` と一緒に直す・20261026010200）。期間内に登録した人と前からの人に分ける。`generated_images` で数えないのは、投稿していない画像を消すと人が減るため
   - `get_percoin_usage_breakdown(p_start, p_end, p_exclude_user_ids)` — 消費と返金を使い道で分ける。`metadata.job_id` → `image_jobs`（失敗は `failed_job`、ほかは `generation_type`）、ガチャ・文字入力は `metadata.source`。**`related_generation_id` に頼らない**（worker は成功時だけ埋め、画像を消すと NULL に戻る）。有料分は消費の `from_paid` と返金の `to_paid` を別に返す
-  - `get_percoin_daily_flow(p_start, p_end, p_exclude_user_ids)` — JST の日ごとの無料付与・消費・返金・購入（本番だけ）。動きのない日も0で返す
+  - `get_percoin_daily_flow(p_start, p_end, p_exclude_user_ids)` — JST の日ごとの無料付与・消費・返金・購入（本番だけ。サブスクの数え方は上と同じ）。動きのない日も0で返す
   - `get_percoin_consumer_summary(p_start, p_end, p_exclude_user_ids, p_top_n)` — 消費した人のまとめを **1行で** 返す（上位N人の正味の消費と無料でもらった量・残りの日数の分布）。人ごとの行を返すと PostgREST の 1,000行上限に当たるため
   - `get_percoin_low_runway_users(p_start, p_end, p_exclude_user_ids, p_max_days, p_limit)` — 残りの日数が少ない人の一覧（上限 200）。呼び出し側は「上限 + 1」で呼んで続きの有無を知る
   - `growth_percoin_consumers(...)` — 上の2本が共通で使う中の関数。**service_role にも EXECUTE を渡さない**（呼び出し元の SECURITY DEFINER の所有者権限で呼ぶ）
-  - 正味の消費 ＝ 消費 − 返金。残りの日数 ＝ 残高 ÷（正味の消費 ÷ 期間の日数）。正味が0以下の人は残りの日数を出さない
+  - 正味の消費 ＝ 消費 − 返金。残りの日数 ＝ 残高 ÷（正味の消費 ÷ 期間の日数）。期間の日数は `least(p_end, now())` までで数える（終わりが未来でも長く出ないように・20261026010200）。正味が0以下の人は残りの日数を出さない
 - プロンプト秘匿境界（`service_role` のみ EXECUTE 可）:
   - `create_image_job_with_prompt_execution(p_job jsonb, p_prompt_execution jsonb)` — job と `generation_prompt_snapshots` を同一トランザクションで作成し、execution record を持たない job を作らせない。`prompt_text` は常に空へ正規化する
   - `complete_image_job_with_prompt_secrets(p_job_id uuid, p_images jsonb, p_generation_metadata jsonb DEFAULT NULL, p_result_image_url text DEFAULT NULL, p_model text DEFAULT NULL, p_background_mode text DEFAULT NULL)` — 生成画像・author secret・job 成功更新・`credit_transactions.related_generation_id` 更新を同一トランザクションで確定する。末尾2引数はWorkerが正規化済みの値を渡すために使い、NULL時だけjobの値へfallbackする。author secret は `snapshot_kind = 'materialized'` かつ `author_input` / owner が揃うときだけ作るため、派生 job には作られない
