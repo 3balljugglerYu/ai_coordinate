@@ -24,11 +24,17 @@ jest.mock("@/features/subscription/lib/stripe-utils", () => ({
   resolveSubscriptionPriceId: jest.fn(),
 }));
 
+jest.mock("@/features/monetization/lib/record-monetization-event", () => ({
+  recordMonetizationEvent: jest.fn(async () => true),
+}));
+
 import { NextRequest } from "next/server";
 import { POST } from "@/app/api/subscription/checkout/route";
 import { getUser } from "@/lib/auth";
 import { fetchUserSubscription } from "@/features/subscription/lib/server-api";
-import { createStripeClient } from "@/features/subscription/lib/stripe-utils";
+import { createStripeClient, resolveSubscriptionPriceId } from "@/features/subscription/lib/stripe-utils";
+import { getOrCreateStripeCustomer } from "@/features/subscription/lib/stripe-customer";
+import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockFetchUserSubscription =
@@ -85,5 +91,24 @@ describe("POST /api/subscription/checkout", () => {
     expect(body.errorCode).toBe("SUBSCRIPTION_ALREADY_ACTIVE");
     expect(typeof body.error).toBe("string");
     expect(mockCreateStripeClient).not.toHaveBeenCalled();
+  });
+
+  test("支払い画面を作ったら、支払いを始めた記録(checkout_start)を支払い画面の ID つきで書く", async () => {
+    mockGetUser.mockResolvedValue({ id: "user_123", email: "user@example.com" } as never);
+    mockFetchUserSubscription.mockResolvedValue(null as never);
+    (getOrCreateStripeCustomer as jest.Mock).mockResolvedValue("cus_123");
+    (resolveSubscriptionPriceId as jest.Mock).mockResolvedValue("price_123");
+    const create = jest.fn(async () => ({ id: "cs_test_123", url: "https://checkout.stripe.com/c/cs_test_123" }));
+    mockCreateStripeClient.mockReturnValue({ checkout: { sessions: { create } } } as never);
+
+    const response = await POST(createRequest());
+
+    expect(response.status).toBe(200);
+    expect(recordMonetizationEvent).toHaveBeenCalledWith({
+      userId: "user_123",
+      eventType: "checkout_start",
+      product: "subscription:light:month",
+      stripeSessionId: "cs_test_123",
+    });
   });
 });

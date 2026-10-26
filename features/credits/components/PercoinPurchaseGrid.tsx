@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { track } from "@vercel/analytics/react";
 import { useLocale, useTranslations } from "next-intl";
 import { PERCOIN_PACKAGES } from "@/features/credits/percoin-packages";
 import { completeMockPercoinPurchase } from "@/features/credits/lib/api";
 import { PercoinPurchaseCard } from "./PercoinPurchaseCard";
+import { trackMonetizationEventOnce } from "@/features/monetization/lib/track-monetization-event";
 
 /**
  * ペルコイン購入グリッド（自前UI + Checkout Session API）
@@ -24,6 +25,11 @@ export function PercoinPurchaseGrid({
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // 課金の手前の記録(購入画面を見た)。表示元ごとに、1回の訪問で1回
+  useEffect(() => {
+    trackMonetizationEventOnce(`purchase_view:${origin}`, { eventType: "purchase_view", origin });
+  }, [origin]);
 
   const handlePurchase = async (packageId: string) => {
     try {

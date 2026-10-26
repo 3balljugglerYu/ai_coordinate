@@ -23,7 +23,7 @@ import {
 } from "@/features/subscription/subscription-config";
 import { getSubscriptionPlanFromStripeSubscription } from "@/features/subscription/lib/stripe-utils";
 import { createYearlyPercoinGrantState } from "@/features/subscription/lib/yearly-grant-schedule";
-import { recordMonetizationEvent } from "@/features/monetization/lib/record-monetization-event";
+import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checkout-session-expired";
 
 type SubscriptionRecord = {
   user_id: string;
@@ -327,33 +327,13 @@ async function grantSubscriptionPercoins(params: {
   }
 }
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
 /**
  * 支払い画面が使われないまま期限切れになった(= 途中でやめた)ことを記録する。
- * 人は支払い画面に入れた client_reference_id で決める(webhook にはセッションが無い)。
- * 同じ支払い画面の2回目(Stripe の送り直し)は DB の一意の索引で止まる。
  * 記録できなくても 200 を返す(記録のために Stripe に送り直させない)。
  */
 async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
-  const userId = session.client_reference_id;
-  if (!userId || !UUID_PATTERN.test(userId)) {
-    return NextResponse.json({ received: true, handled: false, reason: "no_user" });
-  }
-  const metadata = session.metadata ?? {};
-  const product =
-    session.mode === "subscription"
-      ? `subscription:${metadata.plan ?? "unknown"}`
-      : (metadata.packageId ?? null);
-  const recorded = await recordMonetizationEvent({
-    userId,
-    eventType: "checkout_expired",
-    origin: metadata.origin ?? null,
-    product,
-    stripeSessionId: session.id,
-  });
-  return NextResponse.json({ received: true, handled: true, recorded });
+  const recorded = await recordCheckoutSessionExpired(session);
+  return NextResponse.json({ received: true, handled: recorded !== null, recorded: recorded === true });
 }
 
 function hasProrationLine(invoice: Stripe.Invoice) {

@@ -1732,15 +1732,26 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
         error: null,
       });
 
+      const recordMonetizationEventFn = jest.fn(async () => true);
       const response = await postGenerateAsyncRoute(
         createRequest(buildBody({ model: "gemini-nano-banana-2.1-high-4k" })),
-        dependencies()
+        { ...dependencies(), recordMonetizationEventFn }
       );
       const body = await readJson(response);
 
       // 残高は 50。80 が要るので足りない
       expect(response.status).toBe(400);
       expect(body.errorCode).toBe("GENERATION_INSUFFICIENT_BALANCE");
+      // 課金の手前の記録(足りなくなった)
+      expect(recordMonetizationEventFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: "percoin_shortage",
+          feature: "generate",
+          whereDetected: "server",
+          required: 80,
+          balance: 50,
+        }),
+      );
       expect(String(body.error)).toContain("80");
       expect(jobRepository.createImageJob).not.toHaveBeenCalled();
     });

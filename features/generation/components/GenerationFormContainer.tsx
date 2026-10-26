@@ -61,6 +61,7 @@ import {
   clearGuestGeneration,
   setGuestGeneration,
 } from "@/features/wardrobe/lib/guest-generation-store";
+import { trackMonetizationEventOnce } from "@/features/monetization/lib/track-monetization-event";
 
 interface GenerationFormContainerProps {
   subscriptionPlan: SubscriptionPlan;
@@ -984,6 +985,13 @@ export function GenerationFormContainer({
       });
 
       if (balance < requiredPercoins) {
+        // 課金の手前の記録(画面で止めたので API には届かない)。1回の訪問で1回
+        trackMonetizationEventOnce("percoin_shortage:generate", {
+          eventType: "percoin_shortage",
+          feature: "generate",
+          required: requiredPercoins,
+          balance: Math.max(balance, 0),
+        });
         setError(
           t("insufficientBalance", {
             requiredPercoins,

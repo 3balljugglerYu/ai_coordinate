@@ -47,6 +47,7 @@ function setup(overrides: Partial<Parameters<typeof postNameInputCreateRoute>[1]
     callModelFn: callModelFn as never,
     deductFn,
     revalidateFn,
+    recordMonetizationEventFn: jest.fn(async () => true),
     ...overrides,
   };
   return { deps, deductFn, callModelFn, revalidateFn };
@@ -114,6 +115,15 @@ describe("POST /api/name-input/create", () => {
     const response = await postNameInputCreateRoute(createRequest({ prompt: PROMPT, slot: SLOT }), deps);
     expect(response.status).toBe(400);
     expect(await errorCodeOf(response)).toBe("NAME_INPUT_CREATE_INSUFFICIENT_BALANCE");
+    // 課金の手前の記録(足りなくなった)
+    expect(deps.recordMonetizationEventFn).toHaveBeenCalledWith({
+      userId: "user-1",
+      eventType: "percoin_shortage",
+      feature: "name_input",
+      whereDetected: "server",
+      required: 5,
+      balance: 4,
+    });
     expect(callModelFn).not.toHaveBeenCalled();
   });
 

@@ -719,11 +719,13 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
     formData.set("uploadImage", createUploadImage());
     formData.set("model", "gemini-3.1-flash-image-preview-512"); // 改定後は 20
 
+    const recordMonetizationEventFn = jest.fn(async () => true);
     const response = await postStyleGenerateAsyncRoute(createRequest(formData), {
       getUserFn,
       jobRepository,
       getPublishedStylePresetForGenerationFn,
       recordStyleUsageEventFn,
+      recordMonetizationEventFn,
       invokeImageWorkerFn,
       supabaseUrl: "https://example.supabase.co",
     });
@@ -731,6 +733,16 @@ describe("StyleGenerateAsyncRoute integration tests (Phase 5)", () => {
 
     expect(response.status).toBe(400);
     expect(body.errorCode).toBe("STYLE_INSUFFICIENT_PERCOIN_BALANCE");
+    // 課金の手前の記録(足りなくなった)
+    expect(recordMonetizationEventFn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventType: "percoin_shortage",
+        feature: "style_generate",
+        whereDetected: "server",
+        required: 20,
+        balance: 5,
+      }),
+    );
     expect(body.error).toBe(
       "残高が不足しています。20ペルコイン以上を用意してから続けてください。"
     );
