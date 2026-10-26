@@ -4,6 +4,7 @@ import { enforceApiDocsBasicAuth } from "@/lib/api-docs-auth";
 import { readBearerJwt } from "@/lib/auth/bearer";
 import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
+import { isFullAdmin } from "@/lib/env";
 import {
   ensureGuestIdOnResponse,
   shouldIssueGuestIdForPathname,
@@ -207,6 +208,23 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  /*
+    管理画面(/admin・/admin/*)の1つ目の関門。ページを描く前に、管理者でなければ / へ戻す。
+    Next.js はレイアウトとページを同時に描くので、レイアウトの確認だけだと、
+    ページが読み込んだデータが応答に流れ出る(2026-10-26 に未ログインの応答で確認)。
+    ここの userId は cookie を署名の確認なしに読んだもの(getSession)なので、これだけに頼らない。
+    各ページの先頭の ensureAdminPage()(getUser で確かめる)と二重に守る。
+    /api/admin は requireAdmin() が守るので、ここでは扱わない。
+  */
+  if (isAdminPagePath(request.nextUrl.pathname) && !isFullAdmin(userId)) {
+    const redirectUrl = request.nextUrl.clone();
+    redirectUrl.pathname = "/";
+    redirectUrl.search = "";
+    const redirectResponse = NextResponse.redirect(redirectUrl);
+    applyLocaleCookie(redirectResponse, resolvedLocale);
+    return redirectResponse;
+  }
+
   // 認証が必要なページ（(app)ルートグループ）の保護
   // /dashboard など認証が必要なパスを保護
   const protectedPaths = ["/dashboard", "/challenge"];
@@ -255,6 +273,11 @@ function applyLocaleCookie(response: NextResponse, locale: Locale) {
     maxAge: getLocaleCookieMaxAge(),
     sameSite: "lax",
   });
+}
+
+/** 管理画面のページか(/admin と /admin/ の下。/administrator のような別のパスは含めない)。 */
+export function isAdminPagePath(pathname: string): boolean {
+  return pathname === "/admin" || pathname.startsWith("/admin/");
 }
 
 export const config = {
