@@ -15,24 +15,15 @@ import {
 import { usePopupBanner } from "@/features/popup-banners/hooks/usePopupBanner";
 import { POPUP_BANNER_IMAGE_SIZES } from "@/features/popup-banners/lib/popup-banner-image";
 import type { ActivePopupBanner } from "@/features/popup-banners/lib/schema";
+import { toSafeLinkUrl } from "@/lib/security/safe-link-url";
 
 interface PopupBannerOverlayProps {
   banners: ActivePopupBanner[];
 }
 
+/** 安全な行き先のみ許可（javascript: 等の XSS・よそのサイトへ移すパスを防止） */
 function getSafeLinkUrl(url: string | null) {
-  if (!url) {
-    return null;
-  }
-
-  const trimmed = url.trim();
-  if (trimmed.startsWith("https://")) {
-    return trimmed;
-  }
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
-    return trimmed;
-  }
-  return null;
+  return toSafeLinkUrl(url);
 }
 
 function isExternalUrl(url: string | null) {

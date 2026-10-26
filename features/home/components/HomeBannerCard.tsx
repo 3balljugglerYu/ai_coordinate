@@ -10,18 +10,16 @@ import {
 } from "../lib/home-banner-image";
 import type { HomeBanner } from "@/constants/homeBanners";
 import { trackHomeBannerClick } from "../lib/home-banner-events";
+import { toSafeLinkUrl } from "@/lib/security/safe-link-url";
 
 function isExternalUrl(url: string): boolean {
   const trimmed = url.trim();
   return trimmed.startsWith("https://");
 }
 
-/** 安全なプロトコルのみ許可（javascript: 等の XSS を防止） */
+/** 安全な行き先のみ許可（javascript: 等の XSS・よそのサイトへ移すパスを防止） */
 function getSafeLinkUrl(url: string): string {
-  const trimmed = url.trim();
-  if (trimmed.startsWith("https://")) return trimmed;
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) return trimmed;
-  return "#";
+  return toSafeLinkUrl(url) ?? "#";
 }
 
 interface HomeBannerCardProps {

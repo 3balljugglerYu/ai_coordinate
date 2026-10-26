@@ -1,4 +1,5 @@
 import { env } from "@/lib/env";
+import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 import type { AnnouncementFontSize } from "./schema";
 
 const ALLOWED_FONT_SIZES = new Set<AnnouncementFontSize>([
@@ -53,8 +54,9 @@ export function isSafeAnnouncementLinkUrl(url: string): boolean {
     return false;
   }
 
-  if (trimmed.startsWith("/") && !trimmed.startsWith("//")) {
-    return true;
+  if (trimmed.startsWith("/")) {
+    // 読み直すと "//evil.com" に縮むもの("/..//evil.com" など)も断る(ログインのあとの移る先と同じ決まり)
+    return toSafeRedirectPath(trimmed, "") !== "";
   }
 
   try {
