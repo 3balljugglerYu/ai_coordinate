@@ -21,6 +21,8 @@ import {
   parseOneTapStyleDashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import { getGa4DashboardData } from "@/features/analytics/lib/get-ga4-dashboard-data";
+import { AdminGrowthOverviewSection } from "@/features/admin-dashboard/components/AdminGrowthOverviewSection";
+import { getGrowthOverview } from "@/features/admin-dashboard/lib/get-growth-overview";
 import { connection } from "next/server";
 
 /** 期間タブの表示名。画面の「期間は◯◯」に使う */
@@ -136,17 +138,24 @@ export default async function AdminDashboardPage({
           currentStyleToLabel={formattedStyleTo}
         />
       ) : (
-        <AdminPageAnalyticsSectionServer
-          ga4Promise={getGa4DashboardData(range)}
-          trend={data.trend}
-          oneTapStyle={data.oneTapStyle}
-          funnel={data.funnel}
-          modelMix={data.modelMix}
-          loginMethodMix={data.loginMethodMix}
-          aiCostEstimate={data.aiCostEstimate}
-          aiCostActualsPromise={getAiCostActuals(range)}
-          impressionsPromise={getPostImpressionStats(range)}
-        />
+        <>
+          {/* 概要(売上への道筋)。取得は promise のまま渡し、ほかのカードを待たせない */}
+          <AdminGrowthOverviewSection
+            overviewPromise={getGrowthOverview(range)}
+            rangeLabel={RANGE_LABELS[range]}
+          />
+          <AdminPageAnalyticsSectionServer
+            ga4Promise={getGa4DashboardData(range)}
+            trend={data.trend}
+            oneTapStyle={data.oneTapStyle}
+            funnel={data.funnel}
+            modelMix={data.modelMix}
+            loginMethodMix={data.loginMethodMix}
+            aiCostEstimate={data.aiCostEstimate}
+            aiCostActualsPromise={getAiCostActuals(range)}
+            impressionsPromise={getPostImpressionStats(range)}
+          />
+        </>
       )}
     </AdminDashboardView>
   );
