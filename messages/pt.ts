@@ -50,6 +50,7 @@ export const ptMessages = {
     terms: "Termos",
     privacy: "Política de privacidade",
     communityGuidelines: "Diretrizes da comunidade",
+    externalTransmission: "Transmissão externa de dados",
     disclosure: "Divulgação comercial",
     styles: "Galeria de estilos",
     catalog: "Catálogo de artistas",

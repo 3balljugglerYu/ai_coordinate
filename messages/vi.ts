@@ -50,6 +50,7 @@ export const viMessages = {
     terms: "Điều khoản",
     privacy: "Chính sách bảo mật",
     communityGuidelines: "Nguyên tắc cộng đồng",
+    externalTransmission: "Truyền dữ liệu ra bên ngoài",
     disclosure: "Công bố thương mại",
     styles: "Thư viện phong cách",
     catalog: "Danh mục họa sĩ",

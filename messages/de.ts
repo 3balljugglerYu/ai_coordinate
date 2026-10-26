@@ -50,6 +50,7 @@ export const deMessages = {
     terms: "AGB",
     privacy: "Datenschutz",
     communityGuidelines: "Community-Richtlinien",
+    externalTransmission: "Externe Datenübermittlung",
     disclosure: "Impressum",
     styles: "Stil-Galerie",
     catalog: "Künstlerkatalog",

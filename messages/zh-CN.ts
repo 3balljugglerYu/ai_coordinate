@@ -50,6 +50,7 @@ export const zhCnMessages = {
     terms: "服务条款",
     privacy: "隐私政策",
     communityGuidelines: "社区准则",
+    externalTransmission: "外部发送说明",
     disclosure: "商业披露",
     styles: "风格一览",
     catalog: "画师目录",

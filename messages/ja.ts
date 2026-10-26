@@ -47,6 +47,7 @@ export const jaMessages = {
     terms: "利用規約",
     privacy: "プライバシーポリシー",
     communityGuidelines: "コミュニティガイドライン",
+    externalTransmission: "外部送信について",
     disclosure: "商取引に関する開示",
     styles: "スタイル一覧",
     catalog: "絵師カタログ",

@@ -50,6 +50,7 @@ export const frMessages = {
     terms: "Conditions",
     privacy: "Politique de confidentialité",
     communityGuidelines: "Règles de la communauté",
+    externalTransmission: "Transmission externe des données",
     disclosure: "Mentions légales",
     styles: "Galerie de styles",
     catalog: "Catalogue d'artistes",

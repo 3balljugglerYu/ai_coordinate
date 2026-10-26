@@ -89,6 +89,7 @@ export function StickyHeader({ children, showBackButton }: StickyHeaderProps) {
     "/pricing",
     "/terms",
     "/privacy",
+    "/external-transmission",
     "/tokushoho",
     "/payment-services-act",
   ];

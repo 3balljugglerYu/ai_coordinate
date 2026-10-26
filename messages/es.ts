@@ -50,6 +50,7 @@ export const esMessages = {
     terms: "Términos",
     privacy: "Política de privacidad",
     communityGuidelines: "Normas de la comunidad",
+    externalTransmission: "Transmisión externa de datos",
     disclosure: "Divulgación comercial",
     styles: "Galería de estilos",
     catalog: "Catálogo de artistas",

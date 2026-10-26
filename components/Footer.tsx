@@ -34,6 +34,10 @@ export function Footer() {
 		{ href: localizePublicPath("/terms", locale), label: t("terms") },
 		{ href: localizePublicPath("/privacy", locale), label: t("privacy") },
 		{
+			href: localizePublicPath("/external-transmission", locale),
+			label: t("externalTransmission"),
+		},
+		{
 			href: localizePublicPath("/community-guidelines", locale),
 			label: t("communityGuidelines"),
 		},

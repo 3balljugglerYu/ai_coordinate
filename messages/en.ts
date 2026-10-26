@@ -50,6 +50,7 @@ export const enMessages = {
     terms: "Terms",
     privacy: "Privacy Policy",
     communityGuidelines: "Community Guidelines",
+    externalTransmission: "External transmission",
     disclosure: "Commercial Disclosure",
     styles: "Style Gallery",
     catalog: "Artist Catalog",
