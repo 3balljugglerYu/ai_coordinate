@@ -27,7 +27,6 @@ function setHostname(hostname: string) {
 afterEach(() => {
   Object.defineProperty(window, "location", { configurable: true, value: originalLocation });
   mockPathname.mockReturnValue("/ja");
-  delete window.twq;
 });
 
 test("本番のサイトでは、ID つきの読み込みのタグを出す", () => {
@@ -85,30 +84,26 @@ test("送る URL を、config より前に、ドメインとページの場所�
 
 test("URL に </script> が入っても、タグを閉じる文字のまま埋めない", () => {
   setHostname("www.persta.ai");
-  mockPathname.mockReturnValue("/ja/posts/</script><img src=x>");
+  mockPathname.mockReturnValue("/ja/campaigns/</script><img src=x>");
   const { getByTestId } = render(<XPixelScript />);
   const text = getByTestId("x-pixel").textContent ?? "";
   expect(text).not.toContain("</script>");
   expect(text).toContain("\\u003c/script\\u003e");
 });
 
-test("読み込んだあと、ページを移るたびに送る URL を置き換え、外すページではサイトの最初のページにする", () => {
+test("場所に ID が入るページでは、URL を送らない(hide_page_location)", () => {
   setHostname("www.persta.ai");
-  const twq = jest.fn();
-  window.twq = twq;
-  mockPathname.mockReturnValue("/ja/style");
-  const { rerender } = render(<XPixelScript />);
-  expect(twq).toHaveBeenLastCalledWith("set", { page_location: "https://www.persta.ai/ja/style" });
-  mockPathname.mockReturnValue("/ja/search");
-  rerender(<XPixelScript />);
-  expect(twq).toHaveBeenLastCalledWith("set", { page_location: "https://www.persta.ai/" });
+  mockPathname.mockReturnValue("/ja/m/secret-token");
+  const { getByTestId } = render(<XPixelScript />);
+  const text = getByTestId("x-pixel").textContent ?? "";
+  expect(text).toContain(`twq('set',{"hide_page_location":true})`);
+  expect(text).not.toContain("secret-token");
 });
 
-test("本番でないサイトでは、送る URL も置き換えない", () => {
-  setHostname("localhost");
-  const twq = jest.fn();
-  window.twq = twq;
-  render(<XPixelScript />);
-  expect(twq).not.toHaveBeenCalled();
+test("登録のページが広告の行き先でも読み込む(URL は送らない)", () => {
+  setHostname("www.persta.ai");
+  mockPathname.mockReturnValue("/ja/signup");
+  const { getByTestId } = render(<XPixelScript />);
+  expect(getByTestId("x-pixel").textContent).toContain(`"hide_page_location":true`);
 });
 
