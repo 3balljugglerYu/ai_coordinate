@@ -20,7 +20,11 @@ import {
 } from "@/features/generation/lib/prompt-visibility";
 import { resolveVisiblePrompts } from "@/features/generation/lib/prompt-secrets";
 import { getImageDimensions, getPostImageUrl } from "./utils";
-import { resolveSourcePromptReference } from "./source-prompt-reference";
+import {
+  applyViewerToSourceReference,
+  resolveSourcePromptReference,
+} from "./source-prompt-reference";
+import { canViewerSeePost } from "./post-viewer-gate";
 import { isAllowedInputImageUrl } from "./before-image-storage";
 import {
   MAX_MATCHED_AUTHORS,
@@ -944,53 +948,10 @@ export const getPost = cache(async (
 
   const isPostOwner = !!currentUserId && data.user_id === currentUserId;
 
-  // 投稿済みの場合は全ユーザーが閲覧可能
-  // 未投稿の場合は所有者または管理者のみ閲覧可能
-  if (!data.is_posted && !isPostOwner && !isFullAdminViewer) {
+  // 見せてよいか（未投稿・公開停止・ブロック・通報済み）。詳細の一部だけを返す API と
+  // 決まりをそろえるため、post-viewer-gate に置いてある。
+  if (!(await canViewerSeePost(supabase, data, currentUserId, isFullAdminViewer))) {
     return null;
-  }
-
-  if (
-    data.is_posted &&
-    data.moderation_status &&
-    data.moderation_status !== "visible" &&
-    !isFullAdminViewer
-  ) {
-    // 投稿者本人は自分の pending 投稿を閲覧できる（フィードから消えていることに気づかせる）。
-    // ただし removed は本人にも表示しない。
-    const isOwnerPending =
-      isPostOwner && data.moderation_status === "pending";
-    if (!isOwnerPending) {
-      return null;
-    }
-  }
-
-  if (currentUserId && data.user_id && !isFullAdminViewer) {
-    const [{ data: blockAsBlocker }, { data: blockAsBlocked }, { data: reportRow }] =
-      await Promise.all([
-        supabase
-          .from("user_blocks")
-          .select("id")
-          .eq("blocker_id", currentUserId)
-          .eq("blocked_id", data.user_id)
-          .maybeSingle(),
-        supabase
-          .from("user_blocks")
-          .select("id")
-          .eq("blocker_id", data.user_id)
-          .eq("blocked_id", currentUserId)
-          .maybeSingle(),
-        supabase
-          .from("post_reports")
-          .select("id")
-          .eq("reporter_id", currentUserId)
-          .eq("post_id", data.id)
-          .maybeSingle(),
-      ]);
-
-    if (blockAsBlocker || blockAsBlocked || reportRow) {
-      return null;
-    }
   }
 
   // プロフィール情報・いいね数・コメント数・実寸・Before 画像フォールバックを並列取得する。
@@ -1119,10 +1080,15 @@ export const getPost = cache(async (
   // ではなく admin クライアントで解決する。返る値は可否・クレジット・サムネイル・
   // 利用数だけで、プロンプト本文は含まない。
   // 解決に失敗してもページ全体は落とさず、カードだけ出さない。
+  const adminForReference = createAdminClient();
   const sourceReference = await resolveSourcePromptReference(
     data,
-    createAdminClient()
-  ).catch((referenceError) => {
+    adminForReference
+  )
+    .then((reference) =>
+      applyViewerToSourceReference(reference, currentUserId, adminForReference)
+    )
+    .catch((referenceError) => {
     console.error("Failed to resolve source prompt reference:", referenceError);
     return null;
   });

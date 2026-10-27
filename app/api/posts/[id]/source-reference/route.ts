@@ -1,11 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { isFullAdmin } from "@/lib/env";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
-import { getPost } from "@/features/posts/lib/server-api";
+import { canViewerSeePost } from "@/features/posts/lib/post-viewer-gate";
+import {
+  applyViewerToSourceReference,
+  resolveSourcePromptReference,
+} from "@/features/posts/lib/source-prompt-reference";
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** 閲覧者ごとの結果なので、成功も失敗も途中のキャッシュに残さない。 */
+const NO_STORE = { "Cache-Control": "private, no-store" };
 
 /**
  * 投稿詳細の「User ORIGINAL で生成」カード（参照カード）の値を返す API。
@@ -20,17 +29,23 @@ const UUID_PATTERN =
  * 「生成前の画像も表示する」を外しても共有キャッシュが切れるまで返し続けてしまう
  * （PR #818 のレビューで取りやめた）。
  *
- * ここは Web の詳細と同じ `getPost` を通す。見られるかどうか（未投稿は本人だけ・
- * 公開停止・ブロック・通報済み）も、本人の下書きを原作にした派生の例外も、
- * Web の詳細とまったく同じになる。`getPost` の結果は閲覧者ごとで、共有キャッシュには
- * 置かない。
+ * ## 決まり（投稿詳細と同じ部品を使う）
+ *
+ * 1. 投稿を見せてよいか: `canViewerSeePost`（`getPost` と同じ。未投稿は本人だけ・
+ *    公開停止・ブロック・通報済み）。見せられなければ理由を区別せず 404。
+ * 2. カード: `resolveSourcePromptReference` → `applyViewerToSourceReference`
+ *    （原作が取り消し・公開停止になっていたり、原作者とブロックし合っていたりすれば
+ *    「使えない」にして、サムネイルと Before を返さない。原作者本人は除く）。
+ *
+ * `getPost` そのものは呼ばない。プロフィール・いいね数・実寸の補完・プロンプトの解決まで
+ * 走らせてカードだけを使うのは重く（公開・キャッシュなしの経路で DB の負荷になる）、
+ * 本文を読み込まないこの形のほうが秘匿の面でも安全なため。
  *
  * ## 返すもの
  *
  * `{ reference }`。`SourcePromptReference`（可否・原作者・サムネイル・実寸・Before・
- * 利用数・公開設定）か null。**プロンプト本文は含まない**（PROMPT-SECRECY-001。
- * 本文は `/api/posts/[id]/prompt-text` が認可してから返す）。
- * 投稿が見られないときは理由を区別せず 404 にする（状態を推測させない）。
+ * 利用数・公開設定）か null（参照カードの無い投稿）。**プロンプト本文は含まない**
+ * （PROMPT-SECRECY-001。本文は `/api/posts/[id]/prompt-text` が認可してから返す）。
  * 未ログインでも呼べる（Web の詳細も未ログインでカードを出す）。
  */
 export async function GET(
@@ -43,30 +58,40 @@ export async function GET(
     if (!id || !UUID_PATTERN.test(id)) {
       return NextResponse.json(
         { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
-        { status: 400 }
+        { status: 400, headers: NO_STORE }
       );
     }
 
     const user = await getUser();
-    // 閲覧数は数えない（カードの値を取りに来ただけで、詳細の表示は別に数える）
-    const post = await getPost(id, user?.id ?? null, true);
-    if (!post) {
+    const viewerId = user?.id ?? null;
+    // 投稿詳細と同じく admin で読み、見せてよいかは canViewerSeePost で決める
+    const supabase = createAdminClient();
+    const { data: row, error } = await supabase
+      .from("generated_images")
+      .select("id, user_id, is_posted, moderation_status, generation_type, source_post_id, source_author_id")
+      .eq("id", id)
+      .maybeSingle();
+    if (error) {
+      throw error;
+    }
+    if (!row || !(await canViewerSeePost(supabase, row, viewerId, isFullAdmin(viewerId)))) {
       return NextResponse.json(
-        { error: copy.promptTextUnavailable, errorCode: "POSTS_NOT_FOUND" },
-        { status: 404, headers: { "Cache-Control": "private, no-store" } }
+        { error: copy.postNotFound, errorCode: "POSTS_NOT_FOUND" },
+        { status: 404, headers: NO_STORE }
       );
     }
 
-    return NextResponse.json(
-      { reference: post.source_reference ?? null },
-      // 閲覧者ごとの結果なので、途中のキャッシュに残さない
-      { headers: { "Cache-Control": "private, no-store" } }
+    const reference = await applyViewerToSourceReference(
+      await resolveSourcePromptReference(row, supabase),
+      viewerId,
+      supabase
     );
+    return NextResponse.json({ reference }, { headers: NO_STORE });
   } catch (error) {
     console.error("[source-reference] unexpected error:", error);
     return NextResponse.json(
       { error: copy.postsFetchFailed, errorCode: "POSTS_SOURCE_REFERENCE_FAILED" },
-      { status: 500 }
+      { status: 500, headers: NO_STORE }
     );
   }
 }

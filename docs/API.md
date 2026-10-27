@@ -299,7 +299,9 @@ Main errors:
 投稿詳細の「User ORIGINAL で生成」カード（参照カード）の値を返します。ネイティブアプリの投稿詳細が、Web の詳細と同じカードを出すために使います。
 
 - Access: `public`（未ログインでも可。Web の詳細も未ログインでカードを出す）
-- Web の詳細と同じ `getPost` を通すので、見られるかどうか（未投稿は本人だけ・公開停止・ブロック・通報済み）も、本人の下書きを原作にした派生の扱いも、Web の詳細と同じです。
+- 投稿詳細と同じ部品を使います。投稿を見せてよいかは `canViewerSeePost`（未投稿は本人だけ・公開停止・ブロック・通報済み）、カードは `resolveSourcePromptReference` → `applyViewerToSourceReference`。
+- 見ているのが原作者本人でなければ、原作が取り消し・公開停止になっているとき、または原作者とどちらかの向きでブロックしているときは、`isAvailable: false` でサムネイル・実寸・Before を返しません（投稿詳細も同じ）。
+- `getPost` そのものは呼びません（重く、本文まで読み込むため）。
 - 閲覧者ごとの結果なので `Cache-Control: private, no-store`。一覧用の `POST /api/posts/prompt-actions` には実寸と生成前の画像（Before）を載せません（未ログインで50件ずつ引け、共有キャッシュに置くため）。
 - **プロンプト本文は返しません**（PROMPT-SECRECY-001。本文は `GET /api/posts/[id]/prompt-text`）。
 

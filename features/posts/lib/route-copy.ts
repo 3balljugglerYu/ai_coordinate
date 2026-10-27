@@ -4,6 +4,7 @@ export const postsRouteCopy = {
   ja: {
     authRequired: "ログインが必要です",
     imageIdRequired: "画像IDが必要です",
+    postNotFound: "投稿が見つかりません",
     commentIdRequired: "コメントIDが必要です",
     contentRequired: "コメント内容を入力してください",
     invalidLimit: "limit は 1 以上 100 以下で指定してください",
@@ -38,6 +39,7 @@ export const postsRouteCopy = {
   en: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -72,6 +74,7 @@ export const postsRouteCopy = {
   ko: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -106,6 +109,7 @@ export const postsRouteCopy = {
   "zh-CN": {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -140,6 +144,7 @@ export const postsRouteCopy = {
   "zh-TW": {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -174,6 +179,7 @@ export const postsRouteCopy = {
   es: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -208,6 +214,7 @@ export const postsRouteCopy = {
   pt: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -242,6 +249,7 @@ export const postsRouteCopy = {
   fr: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -276,6 +284,7 @@ export const postsRouteCopy = {
   de: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -310,6 +319,7 @@ export const postsRouteCopy = {
   it: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -344,6 +354,7 @@ export const postsRouteCopy = {
   id: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -378,6 +389,7 @@ export const postsRouteCopy = {
   th: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -412,6 +424,7 @@ export const postsRouteCopy = {
   vi: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -446,6 +459,7 @@ export const postsRouteCopy = {
   hi: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -480,6 +494,7 @@ export const postsRouteCopy = {
   ar: {
     authRequired: "You need to be logged in.",
     imageIdRequired: "Image ID is required.",
+    postNotFound: "Post not found.",
     commentIdRequired: "Comment ID is required.",
     contentRequired: "Enter the comment content.",
     invalidLimit: "limit must be between 1 and 100.",
@@ -516,6 +531,7 @@ export const postsRouteCopy = {
   {
     authRequired: string;
     imageIdRequired: string;
+    postNotFound: string;
     commentIdRequired: string;
     contentRequired: string;
     invalidLimit: string;
