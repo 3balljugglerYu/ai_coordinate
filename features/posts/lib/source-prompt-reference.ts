@@ -481,6 +481,9 @@ function unavailableSummary(originPostId: string): PromptActionSummary {
     originAuthorNickname: null,
     originAuthorAvatarUrl: null,
     originThumbnailUrl: null,
+    originThumbnailWidth: null,
+    originThumbnailHeight: null,
+    originBeforeThumbnailUrl: null,
     originCaption: null,
     usageCount: 0,
     promptVisibility: "private",
@@ -490,9 +493,10 @@ function unavailableSummary(originPostId: string): PromptActionSummary {
 /**
  * 参照カード用の値から、一覧に載せてよい項目だけを取り出す。
  *
- * 載せるのは原作の**公開情報**（作者・サムネイル・キャプション・利用回数）だけ。
+ * 載せるのは原作の**公開情報**（作者・サムネイル・実寸・Before・キャプション・利用回数）だけ。
  * プロンプト本文はそもそも `SourcePromptReference` に含まれない
- * （PROMPT-SECRECY-001）。Before サムネイルは引用カードでは使わないので落とす。
+ * （PROMPT-SECRECY-001）。実寸と Before は Web の引用カードでは使わないが、アプリの
+ * 投稿詳細の参照カードが使う（`PromptActionSummary` の説明）。
  */
 export function toPromptActionSummary(
   reference: SourcePromptReference,
@@ -505,6 +509,9 @@ export function toPromptActionSummary(
     originAuthorNickname: reference.authorNickname,
     originAuthorAvatarUrl: reference.authorAvatarUrl,
     originThumbnailUrl: reference.thumbnailUrl,
+    originThumbnailWidth: reference.thumbnailWidth,
+    originThumbnailHeight: reference.thumbnailHeight,
+    originBeforeThumbnailUrl: reference.beforeThumbnailUrl,
     originCaption,
     usageCount: reference.usageCount,
     promptVisibility: reference.promptVisibility,

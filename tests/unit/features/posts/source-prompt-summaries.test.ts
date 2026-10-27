@@ -194,17 +194,23 @@ describe("toPromptActionSummary", () => {
       originAuthorNickname: "原作者さん",
       originAuthorAvatarUrl: "https://cdn/a.png",
       originThumbnailUrl: "https://cdn/thumb.webp",
+      originThumbnailWidth: 896,
+      originThumbnailHeight: 1152,
+      originBeforeThumbnailUrl: "https://cdn/before.webp",
       originCaption: "原作のキャプション",
       usageCount: 7,
       promptVisibility: "public",
     });
   });
 
-  it("Before サムネイルと実寸は載せない(引用カードでは使わない)", () => {
+  it("実寸と Before はアプリの詳細の参照カード用に載せる(原作者が Before を隠していれば null)", () => {
+    const hidden = toPromptActionSummary({ ...reference, beforeThumbnailUrl: null });
+    expect(hidden.originBeforeThumbnailUrl).toBeNull();
+    expect(hidden.originThumbnailWidth).toBe(896);
+    // 名前は summary の命名にそろえる(reference の名前のままは載せない)
     const summary = toPromptActionSummary(reference) as Record<string, unknown>;
     expect(summary.beforeThumbnailUrl).toBeUndefined();
     expect(summary.thumbnailWidth).toBeUndefined();
-    expect(summary.thumbnailHeight).toBeUndefined();
   });
 });
 
@@ -341,9 +347,12 @@ describe("resolveSourcePromptSummaries", () => {
       "originAuthorAvatarUrl",
       "originAuthorId",
       "originAuthorNickname",
+      "originBeforeThumbnailUrl",
       "originCaption",
       "originPostId",
+      "originThumbnailHeight",
       "originThumbnailUrl",
+      "originThumbnailWidth",
       "promptVisibility",
       "usageCount",
     ]);
@@ -382,6 +391,9 @@ describe("resolveSourcePromptSummaries", () => {
       originAuthorNickname: null,
       originAuthorAvatarUrl: null,
       originThumbnailUrl: null,
+      originThumbnailWidth: null,
+      originThumbnailHeight: null,
+      originBeforeThumbnailUrl: null,
       originCaption: null,
       usageCount: 0,
       promptVisibility: "private",

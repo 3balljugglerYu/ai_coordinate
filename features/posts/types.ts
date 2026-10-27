@@ -96,6 +96,18 @@ export interface PromptActionSummary {
   /** 引用カードのサムネイル。正方形にトリミングして出す。 */
   originThumbnailUrl: string | null;
   /**
+   * 原作画像の実寸と、生成元画像（Before）の URL（`SourcePromptReference` と同じ値）。
+   *
+   * Web の引用カードは正方形に切って After だけを出すので使わない。**アプリの投稿詳細**の
+   * 「User ORIGINAL で生成」カードが、Web の詳細（`SourcePromptReferenceCard`）と同じく
+   * 原作の比率で Before / After を並べるために使う（アプリには詳細の参照カードを返す API が
+   * これしか無い）。どれも原作の公開情報で、Before は原作者が「生成前の画像も表示する」を
+   * 外していれば null（設定を尊重する）。
+   */
+  originThumbnailWidth: number | null;
+  originThumbnailHeight: number | null;
+  originBeforeThumbnailUrl: string | null;
+  /**
    * 原作のキャプション（公開情報）。
    *
    * ⭐ **いまは画面に出していない。** 引用カードに1行で出していたが、切り詰められて
