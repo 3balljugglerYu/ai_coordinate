@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PromptActionSummary, SourcePromptReference } from "../types";
 import { getPostBeforeImageUrl, getPostThumbUrl } from "./utils";
+import { isUuid } from "@/lib/is-uuid";
 
 /**
  * プロンプト非公開投稿・派生投稿の参照カードを解決する（REQ-013 / REQ-014）。
@@ -212,18 +213,24 @@ export async function resolveSourcePromptReference(
  * - 原作が今、公開中（投稿済み・visible）でない
  * - 見ている人と原作者が、どちらかの向きでブロックしている（プロンプト本文の API と同じ扱い）
  *
- * 原作者本人には今までどおり出す（自分の下書きを原作にした派生も、自分の画面では使える）。
+ * 使えない側にするときは、原作者（ID・ニックネーム・アイコン）と利用数も落とす。カードは
+ * 「現在、ご利用できません」しか描かないので使い道が無く、取り消した投稿やブロックした相手の
+ * 情報を返す理由がない（一覧の `unavailableSummary` と同じ）。
+ *
+ * 原作者本人と運営（`isModerator`。通報対応の判断材料として、詳細の本文と同じ扱い・REQ-018）
+ * には今までどおり出す（自分の下書きを原作にした派生も、自分の画面では使える）。
  * 判定できないときは使えない側へ倒す（fail closed）。
  */
 export async function applyViewerToSourceReference(
   reference: SourcePromptReference | null,
   viewerId: string | null | undefined,
-  supabase: SupabaseClient
+  supabase: SupabaseClient,
+  { isModerator = false }: { isModerator?: boolean } = {}
 ): Promise<SourcePromptReference | null> {
   if (!reference || !reference.isAvailable) {
     return reference;
   }
-  if (viewerId && viewerId === reference.authorId) {
+  if (isModerator || (viewerId && viewerId === reference.authorId)) {
     return reference;
   }
 
@@ -237,13 +244,17 @@ export async function applyViewerToSourceReference(
     return reference;
   }
   return {
-    ...reference,
+    postId: reference.postId,
     isAvailable: false,
+    authorId: null,
+    authorNickname: null,
+    authorAvatarUrl: null,
     thumbnailUrl: null,
     thumbnailWidth: null,
     thumbnailHeight: null,
     beforeThumbnailUrl: null,
     promptVisibility: "private",
+    usageCount: 0,
   };
 }
 
@@ -254,8 +265,7 @@ async function isBlockedEitherWay(
   authorId: string
 ): Promise<boolean> {
   // 文字列のフィルタに埋めるので、UUID 以外は通さない(ブロック扱い)
-  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  if (!uuid.test(viewerId) || !uuid.test(authorId)) {
+  if (!isUuid(viewerId) || !isUuid(authorId)) {
     return true;
   }
   const { data, error } = await supabase

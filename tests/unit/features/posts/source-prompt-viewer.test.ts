@@ -72,17 +72,31 @@ it.each([
   ["a guest looks at a withdrawn original", { originPublic: false }, null],
   ["the viewer and the author block each other", { blocked: true }, VIEWER],
   ["blocks cannot be read (fail closed)", { blockError: true }, VIEWER],
-])("drops the pictures when %s", async (_name, options, viewer) => {
+])("drops the pictures and the author when %s", async (_name, options, viewer) => {
   const { supabase } = stub(options);
   const result = await applyViewerToSourceReference(REFERENCE, viewer, supabase);
-  expect(result).toMatchObject({
+  // 一覧の unavailableSummary と同じく、原作の系譜(作者・利用数)も返さない
+  expect(result).toEqual({
+    postId: ORIGIN,
     isAvailable: false,
+    authorId: null,
+    authorNickname: null,
+    authorAvatarUrl: null,
     thumbnailUrl: null,
     thumbnailWidth: null,
     thumbnailHeight: null,
     beforeThumbnailUrl: null,
     promptVisibility: "private",
+    usageCount: 0,
   });
+});
+
+it("moderators still see the original (material for reports)", async () => {
+  const { supabase, calls } = stub({ originPublic: false, blocked: true });
+  expect(
+    await applyViewerToSourceReference(REFERENCE, VIEWER, supabase, { isModerator: true })
+  ).toEqual(REFERENCE);
+  expect(calls).toEqual([]);
 });
 
 it("the original's author still sees their own (e.g. a draft) without any check", async () => {

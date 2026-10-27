@@ -1086,7 +1086,9 @@ export const getPost = cache(async (
     adminForReference
   )
     .then((reference) =>
-      applyViewerToSourceReference(reference, currentUserId, adminForReference)
+      applyViewerToSourceReference(reference, currentUserId, adminForReference, {
+        isModerator: isFullAdminViewer,
+      })
     )
     .catch((referenceError) => {
     console.error("Failed to resolve source prompt reference:", referenceError);

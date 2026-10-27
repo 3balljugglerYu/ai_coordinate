@@ -102,13 +102,17 @@ it("returns the viewer's card, never caches it, and never reads the prompt", asy
   // 本文の列(prompt)を読まない
   expect(selectedColumns).not.toMatch(/prompt/);
   expect(mockGate).toHaveBeenCalledWith(expect.anything(), ROW, VIEWER_ID, false);
-  expect(mockApply).toHaveBeenCalledWith(REFERENCE, VIEWER_ID, expect.anything());
+  expect(mockApply).toHaveBeenCalledWith(REFERENCE, VIEWER_ID, expect.anything(), {
+    isModerator: false,
+  });
 });
 
 it("guests are judged as nobody", async () => {
   await call();
   expect(mockGate).toHaveBeenCalledWith(expect.anything(), ROW, null, false);
-  expect(mockApply).toHaveBeenCalledWith(REFERENCE, null, expect.anything());
+  expect(mockApply).toHaveBeenCalledWith(REFERENCE, null, expect.anything(), {
+    isModerator: false,
+  });
 });
 
 it("passes the admin flag like the web detail", async () => {
@@ -116,6 +120,17 @@ it("passes the admin flag like the web detail", async () => {
   mockIsFullAdmin.mockReturnValue(true);
   await call();
   expect(mockGate).toHaveBeenCalledWith(expect.anything(), ROW, VIEWER_ID, true);
+  expect(mockApply).toHaveBeenCalledWith(REFERENCE, VIEWER_ID, expect.anything(), {
+    isModerator: true,
+  });
+});
+
+it("a card that fails to resolve is no card (like the web detail), not a 500", async () => {
+  mockResolve.mockRejectedValue(new Error("rpc failed"));
+  jest.spyOn(console, "error").mockImplementation(() => {});
+  const response = await call();
+  expect(response.status).toBe(200);
+  expect(await response.json()).toEqual({ reference: null });
 });
 
 it("returns what the viewer check decided (e.g. a withdrawn original)", async () => {
@@ -128,7 +143,7 @@ it("returns what the viewer check decided (e.g. a withdrawn original)", async ()
 it.each([
   ["a post the viewer may not see", () => mockGate.mockResolvedValue(false)],
   ["a post that does not exist", () => stubRow(null)],
-])("%s is a 404 without resolving a card", async (_name, arrange) => {
+])("%s is a 404 with no card in it", async (_name, arrange) => {
   arrange();
   const response = await call();
   expect(response.status).toBe(404);
@@ -136,7 +151,6 @@ it.each([
   const body = await response.json();
   expect(body.reference).toBeUndefined();
   expect(body.errorCode).toBe("POSTS_NOT_FOUND");
-  expect(mockResolve).not.toHaveBeenCalled();
 });
 
 it("rejects an id that is not a UUID without looking it up", async () => {

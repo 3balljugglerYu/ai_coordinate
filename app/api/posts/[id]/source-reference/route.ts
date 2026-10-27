@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isFullAdmin } from "@/lib/env";
+import { isUuid } from "@/lib/is-uuid";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { canViewerSeePost } from "@/features/posts/lib/post-viewer-gate";
@@ -9,9 +10,6 @@ import {
   applyViewerToSourceReference,
   resolveSourcePromptReference,
 } from "@/features/posts/lib/source-prompt-reference";
-
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** 閲覧者ごとの結果なので、成功も失敗も途中のキャッシュに残さない。 */
 const NO_STORE = { "Cache-Control": "private, no-store" };
@@ -48,6 +46,13 @@ const NO_STORE = { "Cache-Control": "private, no-store" };
  * （PROMPT-SECRECY-001。本文は `/api/posts/[id]/prompt-text` が認可してから返す）。
  * 未ログインでも呼べる（Web の詳細も未ログインでカードを出す）。
  */
+function notFound(message: string) {
+  return NextResponse.json(
+    { error: message, errorCode: "POSTS_NOT_FOUND" },
+    { status: 404, headers: NO_STORE }
+  );
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -55,7 +60,7 @@ export async function GET(
   const copy = postsRouteCopy[getRouteLocale(request)];
   try {
     const { id } = await params;
-    if (!id || !UUID_PATTERN.test(id)) {
+    if (!id || !isUuid(id)) {
       return NextResponse.json(
         { error: copy.imageIdRequired, errorCode: "POSTS_IMAGE_ID_REQUIRED" },
         { status: 400, headers: NO_STORE }
@@ -74,18 +79,28 @@ export async function GET(
     if (error) {
       throw error;
     }
-    if (!row || !(await canViewerSeePost(supabase, row, viewerId, isFullAdmin(viewerId)))) {
-      return NextResponse.json(
-        { error: copy.postNotFound, errorCode: "POSTS_NOT_FOUND" },
-        { status: 404, headers: NO_STORE }
-      );
+    if (!row) {
+      return notFound(copy.postNotFound);
     }
 
-    const reference = await applyViewerToSourceReference(
-      await resolveSourcePromptReference(row, supabase),
-      viewerId,
-      supabase
-    );
+    const isModerator = isFullAdmin(viewerId);
+    // カードは見せてよいかと並べて解く(見せられなければ捨てる)。カードの失敗は
+    // 投稿詳細と同じく「カードなし」にする(詳細全体を失敗にしない)
+    const [canSee, reference] = await Promise.all([
+      canViewerSeePost(supabase, row, viewerId, isModerator),
+      resolveSourcePromptReference(row, supabase)
+        .then((resolved) =>
+          applyViewerToSourceReference(resolved, viewerId, supabase, { isModerator })
+        )
+        .catch((referenceError) => {
+          console.error("[source-reference] failed to resolve the card:", referenceError);
+          return null;
+        }),
+    ]);
+    if (!canSee) {
+      return notFound(copy.postNotFound);
+    }
+
     return NextResponse.json({ reference }, { headers: NO_STORE });
   } catch (error) {
     console.error("[source-reference] unexpected error:", error);

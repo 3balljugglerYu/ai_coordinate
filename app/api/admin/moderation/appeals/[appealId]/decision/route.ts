@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appealDecisionSchema } from "@/features/moderation/lib/schemas";
 import { logAdminAction } from "@/lib/admin-audit";
+import { sourceReferenceCacheTag } from "@/features/posts/lib/source-reference-cache";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 
 /**
@@ -26,6 +27,8 @@ function revalidateModerationTags(postId: string, authorUserId: string | null) {
     "search-posts",
     ...(authorUserId ? [`user-profile-${authorUserId}`] : []),
     `post-detail-${postId}`,
+    // この投稿を原作にした派生投稿の詳細のカード
+    sourceReferenceCacheTag(postId),
   ];
 
   for (const tag of tags) {
