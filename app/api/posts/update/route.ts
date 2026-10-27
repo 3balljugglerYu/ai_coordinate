@@ -6,6 +6,7 @@ import { ensureWebPVariants } from "@/features/generation/lib/webp-storage";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { syncPostHashtags } from "@/features/posts/lib/hashtag-sync";
+import { sourceReferenceCacheTag } from "@/features/posts/lib/source-reference-cache";
 import { revalidateHashtagCampaignSubmissions } from "@/features/campaigns/hashtag-campaign/revalidate-submissions";
 
 /**
@@ -60,6 +61,8 @@ export async function PUT(request: NextRequest) {
     if (result.id) {
       // 詳細画面はキャプション更新直後に stale を返さないようにする
       revalidateTag(`post-detail-${result.id}`, { expire: 0 });
+      // 「生成前の画像も表示する」・公開設定は、派生投稿の詳細のカードにも出ている
+      revalidateTag(sourceReferenceCacheTag(result.id), { expire: 0 });
     }
     revalidateTag("home-posts", "max");
     revalidateTag("home-posts-week", "max");

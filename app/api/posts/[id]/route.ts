@@ -3,6 +3,7 @@ import { revalidateTag, revalidatePath } from "next/cache";
 import { getUser } from "@/lib/auth";
 import { unpostImageServer } from "@/features/generation/lib/server-database";
 import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
+import { sourceReferenceCacheTag } from "@/features/posts/lib/source-reference-cache";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
 import { revalidateHashtagCampaignSubmissions } from "@/features/campaigns/hashtag-campaign/revalidate-submissions";
@@ -41,6 +42,8 @@ export async function DELETE(
     revalidateTag("search-posts", "max");
     // 投稿取り消し直後の詳細画面は stale を返さないように即時失効する
     revalidateTag(`post-detail-${id}`, { expire: 0 });
+    // この投稿を原作にした派生投稿の詳細のカード(サムネイル・生成前の画像)も消す
+    revalidateTag(sourceReferenceCacheTag(id), { expire: 0 });
     revalidateTag(`user-profile-${user.id}`, "max");
     revalidateTag(`my-page-${user.id}`, "max");
     revalidateTag(`my-page-image-${user.id}-${id}`, { expire: 0 });

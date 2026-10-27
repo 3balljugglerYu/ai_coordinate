@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { PromptActionSummary, SourcePromptReference } from "../types";
 import { getPostBeforeImageUrl, getPostThumbUrl } from "./utils";
+import { isUuid } from "@/lib/is-uuid";
 
 /**
  * プロンプト非公開投稿・派生投稿の参照カードを解決する（REQ-013 / REQ-014）。
@@ -194,6 +195,91 @@ export async function resolveSourcePromptReference(
     beforeThumbnailUrl: thumbnail.beforeUrl,
     promptVisibility: thumbnail.promptVisibility,
   };
+}
+
+/**
+ * 参照カードを、見ている人に合わせて絞る（投稿詳細と `/api/posts/[id]/source-reference`）。
+ *
+ * `resolveSourcePromptReference` は requester に**原作者自身**を渡して可否を判定するので、
+ * `validate_derived_prompt_source` の「本人は自分の未投稿を原作にできる」例外が常に効く。
+ * そのままでは、原作者が原作を取り消したり公開停止になったりしたあとも、派生投稿の詳細の
+ * カードに原作のサムネイルと**生成前の画像（Before）**が出続けてしまう（ゲストにも）。
+ * 一覧（`resolveSourcePromptSummaries`）は `fetchPubliclyUsableOrigins` で打ち消しているが、
+ * 詳細には無かった。
+ *
+ * そこで、見ているのが原作者本人でなければ、次のときは「使えない」（サムネイル・Before なし）
+ * にする。表示は「現在、ご利用できません」だけになり、原因は区別しない（ADR-005）。
+ *
+ * - 原作が今、公開中（投稿済み・visible）でない
+ * - 見ている人と原作者が、どちらかの向きでブロックしている（プロンプト本文の API と同じ扱い）
+ *
+ * 使えない側にするときは、原作者（ID・ニックネーム・アイコン）と利用数も落とす。カードは
+ * 「現在、ご利用できません」しか描かないので使い道が無く、取り消した投稿やブロックした相手の
+ * 情報を返す理由がない（一覧の `unavailableSummary` と同じ）。
+ *
+ * 原作者本人と運営（`isModerator`。通報対応の判断材料として、詳細の本文と同じ扱い・REQ-018）
+ * には今までどおり出す（自分の下書きを原作にした派生も、自分の画面では使える）。
+ * 判定できないときは使えない側へ倒す（fail closed）。
+ */
+export async function applyViewerToSourceReference(
+  reference: SourcePromptReference | null,
+  viewerId: string | null | undefined,
+  supabase: SupabaseClient,
+  { isModerator = false }: { isModerator?: boolean } = {}
+): Promise<SourcePromptReference | null> {
+  if (!reference || !reference.isAvailable) {
+    return reference;
+  }
+  if (isModerator || (viewerId && viewerId === reference.authorId)) {
+    return reference;
+  }
+
+  const [publicOrigins, blocked] = await Promise.all([
+    fetchPubliclyUsableOrigins(supabase, [reference.postId]),
+    viewerId && reference.authorId
+      ? isBlockedEitherWay(supabase, viewerId, reference.authorId)
+      : Promise.resolve(false),
+  ]);
+  if (publicOrigins.has(reference.postId) && !blocked) {
+    return reference;
+  }
+  return {
+    postId: reference.postId,
+    isAvailable: false,
+    authorId: null,
+    authorNickname: null,
+    authorAvatarUrl: null,
+    thumbnailUrl: null,
+    thumbnailWidth: null,
+    thumbnailHeight: null,
+    beforeThumbnailUrl: null,
+    promptVisibility: "private",
+    usageCount: 0,
+  };
+}
+
+/** どちらかの向きでブロックしているか。読めなければブロック扱い（fail closed）。 */
+async function isBlockedEitherWay(
+  supabase: SupabaseClient,
+  viewerId: string,
+  authorId: string
+): Promise<boolean> {
+  // 文字列のフィルタに埋めるので、UUID 以外は通さない(ブロック扱い)
+  if (!isUuid(viewerId) || !isUuid(authorId)) {
+    return true;
+  }
+  const { data, error } = await supabase
+    .from("user_blocks")
+    .select("id")
+    .or(
+      `and(blocker_id.eq.${viewerId},blocked_id.eq.${authorId}),and(blocker_id.eq.${authorId},blocked_id.eq.${viewerId})`
+    )
+    .limit(1);
+  if (error) {
+    console.error("Failed to check blocks for the source reference", { code: error.code });
+    return true;
+  }
+  return (data ?? []).length > 0;
 }
 
 /**

@@ -7,6 +7,7 @@ import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { getModerationRouteCopy } from "@/features/moderation/lib/route-copy";
 import { getAdminUserIds } from "@/lib/env";
+import { sourceReferenceCacheTag } from "@/features/posts/lib/source-reference-cache";
 import { revalidatePromptActions } from "@/features/posts/lib/prompt-action-cache";
 
 const REPORT_LIMIT_PER_10_MINUTES = 10;
@@ -367,6 +368,8 @@ export async function POST(request: NextRequest) {
     }
     if (post?.id) {
       revalidateTag(`post-detail-${post.id}`, "max");
+      // 原作として使われていれば、派生投稿の詳細のカードも
+      revalidateTag(sourceReferenceCacheTag(post.id), "max");
     }
     if (postModerationStatus !== "visible") {
       /*

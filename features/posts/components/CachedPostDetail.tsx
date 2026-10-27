@@ -1,6 +1,7 @@
 import { cacheLife, cacheTag } from "next/cache";
 import { notFound } from "next/navigation";
 import { getPost } from "../lib/server-api";
+import { sourceReferenceCacheTag } from "../lib/source-reference-cache";
 import {
   deriveAspectRatioFromDimensions,
   getImageAspectRatio,
@@ -56,6 +57,10 @@ export async function CachedPostDetail({
 
   if (post.user_id) {
     cacheTag(`subscription-ui-${post.user_id}`);
+  }
+  // 原作の参照カードも一緒にキャッシュしているので、原作の側の変更で失効させる
+  if (post.source_reference?.postId) {
+    cacheTag(sourceReferenceCacheTag(post.source_reference.postId));
   }
 
   // One-Tap Style 投稿は、保存時メタデータに提供者情報を持たないため、

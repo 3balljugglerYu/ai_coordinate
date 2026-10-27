@@ -294,6 +294,45 @@ Main errors:
 - `401`: 未認証
 - `404`: 利用不可（`POSTS_PROMPT_TEXT_UNAVAILABLE`）。非公開・未フォロー・削除・投稿取消・公開停止のいずれでも**同じ応答**（原作の状態を推測させない）
 
+### `GET /api/posts/[id]/source-reference`
+
+投稿詳細の「User ORIGINAL で生成」カード（参照カード）の値を返します。ネイティブアプリの投稿詳細が、Web の詳細と同じカードを出すために使います。
+
+- Access: `public`（未ログインでも可。Web の詳細も未ログインでカードを出す）
+- 投稿詳細と同じ部品を使います。投稿を見せてよいかは `canViewerSeePost`（未投稿は本人だけ・公開停止・ブロック・通報済み）、カードは `resolveSourcePromptReference` → `applyViewerToSourceReference`。
+- 見ているのが原作者本人でなければ、原作が取り消し・公開停止になっているとき、または原作者とどちらかの向きでブロックしているときは、`isAvailable: false` でサムネイル・実寸・Before を返しません（投稿詳細も同じ）。
+- `getPost` そのものは呼びません（重く、本文まで読み込むため）。
+- 閲覧者ごとの結果なので `Cache-Control: private, no-store`。一覧用の `POST /api/posts/prompt-actions` には実寸と生成前の画像（Before）を載せません（未ログインで50件ずつ引け、共有キャッシュに置くため）。
+- **プロンプト本文は返しません**（PROMPT-SECRECY-001。本文は `GET /api/posts/[id]/prompt-text`）。
+
+Success response:
+
+```json
+{
+  "reference": {
+    "postId": "root-post-uuid",
+    "isAvailable": true,
+    "authorId": "user-uuid",
+    "authorNickname": "原作者",
+    "authorAvatarUrl": null,
+    "thumbnailUrl": "https://.../thumb.webp",
+    "thumbnailWidth": 768,
+    "thumbnailHeight": 1376,
+    "beforeThumbnailUrl": "https://.../before.webp",
+    "promptVisibility": "public",
+    "usageCount": 12
+  }
+}
+```
+
+`reference` は参照カードの無い投稿（coordinate など）では `null`。`beforeThumbnailUrl` は原作者が「生成前の画像も表示する」を外していれば `null`。
+
+Main errors:
+
+- `400`: ID が UUID でない（`POSTS_IMAGE_ID_REQUIRED`）
+- `404`: 投稿が見られない（`POSTS_NOT_FOUND`）。理由は区別しない
+- `500`: 取得失敗（`POSTS_SOURCE_REFERENCE_FAILED`）
+
 ### `POST /api/generate-async`
 
 非同期画像生成ジョブを作成し、キューへ投入します。
@@ -939,6 +978,7 @@ POST `/api/comments/[id]/replies` の request body は `{ "content": string, "re
 | POST | `/api/posts/post` | user session | 投稿完了処理とデイリー特典付与を行う。`prompt_visibility`（`public`/`private`・`/free` のみ）を受け付ける |
 | GET | `/api/posts` | public | 投稿一覧を取得する |
 | GET | `/api/posts/[id]/prompt-text` | user session | 公開プロンプトの本文を返す（フォロワー限定・非公開は返さない） |
+| GET | `/api/posts/[id]/source-reference` | public | 投稿詳細の参照カードの値（Web の詳細と同じ判定・本文なし・キャッシュしない） |
 | PUT | `/api/posts/update` | user session | 投稿キャプション・`prompt_visibility` を更新する |
 
 ### referral
