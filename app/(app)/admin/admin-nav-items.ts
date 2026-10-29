@@ -40,6 +40,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "file-text",
   },
   {
+    path: "/admin/ad-stats",
+    label: "広告の成果",
+    description: "Meta・X の広告の数字と、そこから来た人の登録・生成",
+    iconKey: "flag",
+  },
+  {
     path: "/admin/users",
     label: "ユーザー検索",
     description: "ユーザー情報を検索して確認",

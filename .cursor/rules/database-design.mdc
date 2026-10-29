@@ -22,6 +22,8 @@ alwaysApply: false
 - `admin_push_broadcasts`
 - `admin_timeline_events`
 - `admin_users`
+- `ad_platform_ads`
+- `ad_platform_daily_stats`
 - `analytics_excluded_users`
 - `banners`
 - `catalog_audit_logs`
@@ -398,6 +400,21 @@ alwaysApply: false
 - trigger: `trg_update_admin_timeline_events_updated_at`（BEFORE UPDATE で `updated_at`）
 - RLS: 有効・policy なし。service_role だけが読み書きする（20261025233400）
 - 注: 企画・広告・値段の改定など「何かを変えた日」の印。ダッシュボードの日ごとのグラフに縦線で出す。種類の一覧の正本は `features/admin-dashboard/lib/admin-list-validation.ts` の `TIMELINE_EVENT_KINDS`（CHECK とそろえる）
+
+#### `ad_platform_daily_stats`
+- 主キー: `id`
+- 主要カラム: `platform`（`meta` / `x`）, `stat_date`（広告の画面の日付）, `ad_key`, `ad_name`, `breakdown_type`（`none` / `age` / `gender` / `placement` / `device` / `location`）, `breakdown_value`（`none` のときだけ空文字）, `spend_jpy`, `impressions`, `reach`, `link_clicks`, `landing_page_views`, `video_views`（書き出しに列が無いものは NULL）, `source`（`upload` / `api`）, `imported_by`, `imported_at`
+- 制約: UNIQUE(`platform`, `stat_date`, `ad_key`, `breakdown_type`, `breakdown_value`)。同じ日・広告・内訳を取り込み直すと上書き（upsert）
+- インデックス: `ad_platform_daily_stats_stat_date_idx`
+- RLS: 有効・policy なし。service_role だけが読み書きする（20261029130000）
+- 注: 管理画面「広告の成果」で、Meta の CSV・X の xlsx を取り込んで書く。`ad_key` は X が Ad ID、Meta の CSV は `name:` + 広告名、X の年齢・性別・端末のシート（書き出し全体の数字）は `all:` + Ad ID の並び。読み込みは `features/admin-dashboard/lib/ad-stats/`
+
+#### `ad_platform_ads`
+- 主キー: `id`
+- 主要カラム: `platform`, `ad_key`（UNIQUE(`platform`, `ad_key`)）, `ad_name`, `signup_source`（`profiles.signup_source` と同じ書式・CHECK）, `updated_by`, `created_at`, `updated_at`
+- trigger: `trg_update_ad_platform_ads_updated_at`（BEFORE UPDATE で `updated_at`）
+- RLS: 有効・policy なし。service_role だけが読み書きする（20261029130000）
+- 注: 広告ごとに、登録の目印を覚える。取り込みで行ができ（名前だけ更新し、選んだ目印は消さない）、目印は管理画面で選ぶ。目印から、その広告で来た人の登録・生成・投稿を数える（運営は除く）
 
 #### `admin_push_broadcasts`
 - 主キー: `id`

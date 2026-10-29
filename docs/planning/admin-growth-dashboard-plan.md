@@ -214,6 +214,12 @@ P6 で作る。
 - **表** `ad_platform_daily_stats`: platform・stat_date・campaign/adset/ad の ID と名前・signup_source・breakdown_type/value・spend_jpy・impressions・reach・clicks・landing_page_views・video_views・source（`api`/`upload`）・imported_at。一意キーは platform・stat_date・ad_id・breakdown_type・breakdown_value。RLS 有効・policy なし。
 - **Meta**: Vercel の `META_ADS_ACCESS_TOKEN`・`META_AD_ACCOUNT_ID`（システムユーザー・`ads_read` だけ・無期限）。`vercel.json` の cron で毎朝6時（日本時間。cron は UTC なので `0 21 * * *`）、直近7日を取り直す（`CRON_SECRET` で守る）。insights を `level=ad` で、breakdowns なし・`age`・`gender`・`publisher_platform,platform_position`。creative の `url_tags` から `signup_source` を読む。「今すぐ取り込む」ボタン。トークンが無ければ「未設定」。
 - **X**: 書き出したファイルを管理画面からアップロード。まず CSV で書き出してもらい、CSV を読む（新しい依存は入れない）。`.xlsx` を自前で読むのは ZIP と XML の読み込みが要って壊れやすいので、要るときに依存を足すかを相談する。広告（Ad name）ごとに `signup_source` を選び、覚えておく。
+- **2026-10-29 の変更（P6 の1本目）**
+  - X は CSV で書き出せず .xlsx だけだった。ユーザーと相談し、依存を足さずに読むことにした（`node:zlib` で zip をほどき、XML から文字と数字のセルだけを読む・`features/admin-dashboard/lib/ad-stats/read-xlsx.ts`）。列の名前が想定と違えば取り込まずに理由を出す。
+  - Meta のトークンはまだ登録していない。そのため 1本目では、Meta も書き出した CSV を取り込む。API からの取り込みは、トークンの登録後に 2本目で足す。
+  - Meta の CSV には広告 ID が無いので、`ad_key` を `name:` + 広告名にした。一意キーは `ad_id` ではなく `ad_key`。
+  - 広告ごとの目印は、日ごとの表ではなく別の表 `ad_platform_ads` に持つ（あとから選び直せるように）。
+  - X の年齢・性別・端末のシートは書き出し全体の数字で、広告ごとに分かれていない。`ad_key` を `all:` + Ad ID の並びにして、広告の一覧ではなく内訳にだけ出す。
 
 ## 7. 進める順番（PR ごと）
 
