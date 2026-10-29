@@ -44,6 +44,8 @@ function ImportForm() {
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  // 取り込んだあとに、ファイルの欄を空に戻す（同じ名前のファイルを選び直せるように）
+  const [inputKey, setInputKey] = useState(0);
 
   const submit = async () => {
     if (!file) return;
@@ -65,6 +67,7 @@ function ImportForm() {
         description: `${AD_PLATFORM_LABELS[json.platform ?? "meta"]}・${json.dateFrom}〜${json.dateTo}・${json.rows}行`,
       });
       setFile(null);
+      setInputKey((key) => key + 1);
       router.refresh();
     } catch (error) {
       toast({
@@ -89,6 +92,7 @@ function ImportForm() {
       </ul>
       <div className="flex flex-wrap items-center gap-3">
         <Input
+          key={inputKey}
           type="file"
           accept=".csv,.xlsx"
           className="max-w-sm"
@@ -158,7 +162,8 @@ function AdsTable({ overview }: { overview: AdStatsOverview }) {
     <section className="space-y-3">
       <h2 className="text-base font-semibold text-slate-900">広告ごと</h2>
       <p className="text-sm text-slate-600">
-        目印（登録のときに残る流入元）を選ぶと、その広告から来て登録・生成・投稿した人数が出ます。運営の登録は数えません。
+        目印（登録のときに残る流入元）を選ぶと、その広告から来て登録・生成・投稿した人数が出ます。数えるのは、広告の最初の日から最後の日の7日後までの登録で、運営の登録は数えません。
+        同じ目印を使う広告どうしは分けられないので、人数はその広告たちの合算です。
         Meta の「ページを開いた」は広告のリンクから実際にページが開いた数です（X には無い数字です）。
       </p>
       <datalist id={SIGNUP_SOURCE_LIST_ID}>
@@ -209,7 +214,14 @@ function AdsTable({ overview }: { overview: AdStatsOverview }) {
                 <td className={TD}>
                   <SignupSourceEditor ad={ad} />
                 </td>
-                <td className={TD}>{ad.funnel ? `${ad.funnel.signups}人` : "—"}</td>
+                <td className={TD}>
+                  {ad.funnel ? `${ad.funnel.signups}人` : "—"}
+                  {ad.sharesSignupSource && (
+                    <Badge variant="secondary" className="ml-2">
+                      合算
+                    </Badge>
+                  )}
+                </td>
                 <td className={TD}>{ad.funnel ? `${ad.funnel.generated}人` : "—"}</td>
                 <td className={TD}>{ad.funnel ? `${ad.funnel.posted}人` : "—"}</td>
               </tr>
@@ -285,10 +297,24 @@ function BreakdownSection({ group }: { group: BreakdownGroup }) {
   );
 }
 
-export function AdStatsClient({ overview }: { overview: AdStatsOverview }) {
+export function AdStatsClient({ overview }: { overview: AdStatsOverview | null }) {
   return (
     <div className="space-y-8">
       <ImportForm />
+      {overview ? (
+        <AdStatsBody overview={overview} />
+      ) : (
+        <p className="text-sm text-red-700">
+          広告の数字を読めませんでした。少し待ってから開き直してください（取り込みはできます）。
+        </p>
+      )}
+    </div>
+  );
+}
+
+function AdStatsBody({ overview }: { overview: AdStatsOverview }) {
+  return (
+    <>
       <AdsTable overview={overview} />
       {overview.groups.length > 0 && (
         <section className="space-y-3">
@@ -303,6 +329,6 @@ export function AdStatsClient({ overview }: { overview: AdStatsOverview }) {
           </div>
         </section>
       )}
-    </div>
+    </>
   );
 }

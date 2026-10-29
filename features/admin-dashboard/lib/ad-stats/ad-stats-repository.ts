@@ -2,14 +2,16 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fetchAllRows } from "../fetch-all-rows";
+import { fetchAllById } from "../fetch-all-rows";
 import { getOperatorUserIds } from "../get-operator-user-ids";
 import type { AdPlatform, AdStatRow, ParsedAdExport } from "./ad-stats-types";
 import {
+  attachFunnel,
+  signupWindows,
   summarizeAdStats,
   type AdFunnel,
-  type AdMeta,
   type AdStatsSummary,
+  type SignupWindow,
 } from "./summarize-ad-stats";
 
 /**
@@ -18,8 +20,6 @@ import {
  */
 
 const UPSERT_CHUNK = 500;
-/** URL が長くなりすぎないよう、user_id の絞り込みはこの数ずつに分ける */
-const IN_CHUNK = 100;
 /** 目印の候補に出す、最近の登録の範囲 */
 const SIGNUP_SOURCE_LOOKBACK_DAYS = 180;
 
@@ -42,6 +42,7 @@ interface AdDbRow {
   id: string;
   platform: AdPlatform;
   ad_key: string;
+  ad_name: string;
   signup_source: string | null;
 }
 
@@ -122,113 +123,75 @@ export async function updateAdSignupSource(
 }
 
 async function listStatRows(supabase: SupabaseClient): Promise<StatDbRow[]> {
-  const { data, error } = await fetchAllRows<StatDbRow>((cursor, size) => {
-    let query = supabase
+  const { data, error } = await fetchAllById<StatDbRow>(() =>
+    supabase
       .from("ad_platform_daily_stats")
       .select(
         "id, platform, stat_date, ad_key, ad_name, breakdown_type, breakdown_value, spend_jpy, impressions, link_clicks, landing_page_views, video_views",
-      );
-    if (cursor) query = query.gt("id", cursor);
-    return query.order("id", { ascending: true }).limit(size);
-  });
+      ),
+  );
   if (error) throw new Error(`広告の数字の取得に失敗しました: ${error.message}`);
   return data ?? [];
 }
 
 async function listAds(supabase: SupabaseClient): Promise<AdDbRow[]> {
-  const { data, error } = await fetchAllRows<AdDbRow>((cursor, size) => {
-    let query = supabase.from("ad_platform_ads").select("id, platform, ad_key, signup_source");
-    if (cursor) query = query.gt("id", cursor);
-    return query.order("id", { ascending: true }).limit(size);
-  });
+  const { data, error } = await fetchAllById<AdDbRow>(() =>
+    supabase.from("ad_platform_ads").select("id, platform, ad_key, ad_name, signup_source"),
+  );
   if (error) throw new Error(`広告の一覧の取得に失敗しました: ${error.message}`);
   return data ?? [];
 }
 
-/** user_id ごとに、条件に合う行があるか（生成・投稿の人数を数えるため） */
-async function usersWithRows(
-  supabase: SupabaseClient,
-  table: "image_jobs" | "generated_images",
-  userIds: string[],
-  filter: { column: string; value: string | boolean },
-): Promise<Set<string>> {
-  const found = new Set<string>();
-  for (const ids of chunk(userIds, IN_CHUNK)) {
-    const { data, error } = await fetchAllRows<{ id: string; user_id: string }>((cursor, size) => {
-      let query = supabase
-        .from(table)
-        .select("id, user_id")
-        .in("user_id", ids)
-        .eq(filter.column, filter.value);
-      if (cursor) query = query.gt("id", cursor);
-      return query.order("id", { ascending: true }).limit(size);
-    });
-    if (error) throw new Error(`${table} の取得に失敗しました: ${error.message}`);
-    for (const row of data ?? []) found.add(row.user_id);
-  }
-  return found;
-}
-
 /**
- * 目印ごとの登録・生成・投稿の人数。運営（集計から除く人）は数えない。
+ * 目印ごとの登録・生成・投稿の人数（RPC get_ad_signup_funnel）。運営（集計から除く人）は数えない。
  * 生成は「成功した生成が1回以上」、投稿は「投稿した画像が1枚以上」。
  */
 async function getFunnelBySource(
   supabase: SupabaseClient,
-  sources: string[],
+  windows: SignupWindow[],
 ): Promise<Map<string, AdFunnel>> {
   const funnel = new Map<string, AdFunnel>();
-  if (sources.length === 0) return funnel;
-  const operators = new Set(await getOperatorUserIds({ strict: true }));
-
-  const { data, error } = await fetchAllRows<{ id: string; user_id: string; signup_source: string }>(
-    (cursor, size) => {
-      let query = supabase
-        .from("profiles")
-        .select("id, user_id, signup_source")
-        .in("signup_source", sources);
-      if (cursor) query = query.gt("id", cursor);
-      return query.order("id", { ascending: true }).limit(size);
-    },
-  );
-  if (error) throw new Error(`登録の取得に失敗しました: ${error.message}`);
-  const profiles = (data ?? []).filter((row) => !operators.has(row.user_id));
-  const userIds = profiles.map((row) => row.user_id);
-
-  const [generated, posted] = await Promise.all([
-    usersWithRows(supabase, "image_jobs", userIds, { column: "status", value: "succeeded" }),
-    usersWithRows(supabase, "generated_images", userIds, { column: "is_posted", value: true }),
-  ]);
-
-  for (const source of sources) funnel.set(source, { signups: 0, generated: 0, posted: 0 });
-  for (const row of profiles) {
-    const entry = funnel.get(row.signup_source)!;
-    entry.signups += 1;
-    if (generated.has(row.user_id)) entry.generated += 1;
-    if (posted.has(row.user_id)) entry.posted += 1;
+  if (windows.length === 0) return funnel;
+  const operators = await getOperatorUserIds({ strict: true });
+  const { data, error } = await supabase.rpc("get_ad_signup_funnel", {
+    p_windows: windows.map((window) => ({
+      signup_source: window.signupSource,
+      from_date: window.fromDate,
+      to_date: window.toDate,
+    })),
+    p_exclude_user_ids: operators,
+  });
+  if (error) throw new Error(`登録の人数の取得に失敗しました: ${error.message}`);
+  for (const row of (data ?? []) as Array<{
+    signup_source: string;
+    signups: number | string;
+    generated: number | string;
+    posted: number | string;
+  }>) {
+    funnel.set(row.signup_source, {
+      signups: Number(row.signups),
+      generated: Number(row.generated),
+      posted: Number(row.posted),
+    });
   }
   return funnel;
 }
 
-/** 目印の候補（最近の登録に付いていた目印と、広告に選んである目印） */
-async function listRecentSignupSources(
+/**
+ * 目印の候補（最近の登録に付いていた目印と、広告に選んである目印）。
+ * 入力の手助けなので、読めなくても画面は出す（選んである目印だけにする）。
+ */
+async function listSignupSourceOptions(
   supabase: SupabaseClient,
   chosen: string[],
 ): Promise<string[]> {
   const since = new Date(Date.now() - SIGNUP_SOURCE_LOOKBACK_DAYS * 86_400_000).toISOString();
-  const { data, error } = await fetchAllRows<{ id: string; signup_source: string }>(
-    (cursor, size) => {
-      let query = supabase
-        .from("profiles")
-        .select("id, signup_source")
-        .not("signup_source", "is", null)
-        .gte("created_at", since);
-      if (cursor) query = query.gt("id", cursor);
-      return query.order("id", { ascending: true }).limit(size);
-    },
-  );
-  if (error) throw new Error(`目印の候補の取得に失敗しました: ${error.message}`);
-  return [...new Set([...(data ?? []).map((row) => row.signup_source), ...chosen])].sort();
+  const { data, error } = await supabase.rpc("list_recent_signup_sources", { p_since: since });
+  if (error) {
+    console.error("[admin ad-stats] signup source options:", error.message);
+  }
+  const recent = ((data ?? []) as Array<{ signup_source: string }>).map((row) => row.signup_source);
+  return [...new Set([...recent, ...chosen])].sort();
 }
 
 export interface AdStatsOverview extends AdStatsSummary {
@@ -238,16 +201,6 @@ export interface AdStatsOverview extends AdStatsSummary {
 export async function getAdStatsOverview(client?: SupabaseClient): Promise<AdStatsOverview> {
   const supabase = getSupabase(client);
   const [statRows, adRows] = await Promise.all([listStatRows(supabase), listAds(supabase)]);
-  const ads: AdMeta[] = adRows.map((row) => ({
-    platform: row.platform,
-    adKey: row.ad_key,
-    signupSource: row.signup_source,
-  }));
-  const chosen = [...new Set(ads.map((ad) => ad.signupSource).filter((s): s is string => !!s))];
-  const [funnel, signupSourceOptions] = await Promise.all([
-    getFunnelBySource(supabase, chosen),
-    listRecentSignupSources(supabase, chosen),
-  ]);
 
   const summary = summarizeAdStats(
     statRows.map((row) => ({
@@ -263,8 +216,19 @@ export async function getAdStatsOverview(client?: SupabaseClient): Promise<AdSta
       landingPageViews: toNumber(row.landing_page_views),
       videoViews: toNumber(row.video_views),
     })),
-    ads,
-    funnel,
+    adRows.map((row) => ({
+      platform: row.platform,
+      adKey: row.ad_key,
+      adName: row.ad_name,
+      signupSource: row.signup_source,
+    })),
   );
-  return { ...summary, signupSourceOptions };
+  const chosen = [
+    ...new Set(adRows.map((row) => row.signup_source).filter((s): s is string => !!s)),
+  ];
+  const [funnel, signupSourceOptions] = await Promise.all([
+    getFunnelBySource(supabase, signupWindows(summary.ads)),
+    listSignupSourceOptions(supabase, chosen),
+  ]);
+  return { ...attachFunnel(summary, funnel), signupSourceOptions };
 }

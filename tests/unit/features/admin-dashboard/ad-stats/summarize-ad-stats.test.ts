@@ -9,6 +9,8 @@
  */
 
 import {
+  attachFunnel,
+  signupWindows,
   summarizeAdStats,
   type AdFunnel,
 } from "@/features/admin-dashboard/lib/ad-stats/summarize-ad-stats";
@@ -40,7 +42,7 @@ describe("summarizeAdStats", () => {
       row({ breakdownType: "placement", breakdownValue: "Instagram / フィード", spendJpy: 150, impressions: 15, linkClicks: 3 }),
     ];
 
-    const summary = summarizeAdStats(rows, [], new Map());
+    const summary = summarizeAdStats(rows, []);
 
     expect(summary.ads).toHaveLength(1);
     expect(summary.ads[0]).toMatchObject({ spendJpy: 150, impressions: 15, linkClicks: 3 });
@@ -56,7 +58,7 @@ describe("summarizeAdStats", () => {
       row({ statDate: "2026-10-28", breakdownType: "age", breakdownValue: "25-34", spendJpy: 30, impressions: 3 }),
     ];
 
-    const [ad] = summarizeAdStats(rows, [], new Map()).ads;
+    const [ad] = summarizeAdStats(rows, []).ads;
 
     expect(ad).toMatchObject({
       spendJpy: 100,
@@ -73,7 +75,7 @@ describe("summarizeAdStats", () => {
       row({ platform: "x", adKey: "all:111", adName: "この書き出しの広告すべて（90作品）", breakdownType: "age", breakdownValue: "45-54", spendJpy: 10, impressions: 1 }),
     ];
 
-    const summary = summarizeAdStats(rows, [], new Map());
+    const summary = summarizeAdStats(rows, []);
 
     expect(summary.ads.map((ad) => ad.adKey)).toEqual(["111"]);
     expect(summary.groups).toEqual([
@@ -100,12 +102,11 @@ describe("summarizeAdStats", () => {
     ];
     const funnel = new Map<string, AdFunnel>([["tag_b", { signups: 2, generated: 1, posted: 0 }]]);
 
-    const summary = summarizeAdStats(
-      rows,
-      [
-        { platform: "meta", adKey: "name:B", signupSource: "tag_b" },
-        { platform: "meta", adKey: "name:C", signupSource: "tag_c" },
-      ],
+    const summary = attachFunnel(
+      summarizeAdStats(rows, [
+        { platform: "meta", adKey: "name:B", adName: "B", signupSource: "tag_b" },
+        { platform: "meta", adKey: "name:C", adName: "C", signupSource: "tag_c" },
+      ]),
       funnel,
     );
     const byKey = Object.fromEntries(summary.ads.map((ad) => [ad.adKey, ad]));
@@ -121,9 +122,45 @@ describe("summarizeAdStats", () => {
       row({ platform: "x", adKey: "111", statDate: "2026-10-28", landingPageViews: null, spendJpy: 1, impressions: 1 }),
     ];
 
-    const summary = summarizeAdStats(rows, [], new Map());
+    const summary = summarizeAdStats(rows, []);
 
     expect(summary.ads[0].landingPageViews).toBeNull();
     expect(summary.totals[0].landingPageViews).toBeNull();
+  });
+
+  it("広告名は、広告の一覧にある最新の名前を出す（古い取り込みの行の名前ではない）", () => {
+    const rows = [
+      row({ platform: "x", adKey: "111", adName: "古い名前", spendJpy: 1, impressions: 1 }),
+      row({ platform: "x", adKey: "111", adName: "新しい名前", statDate: "2026-10-28", spendJpy: 1, impressions: 1 }),
+    ];
+
+    const [ad] = summarizeAdStats(rows, [
+      { platform: "x", adKey: "111", adName: "新しい名前", signupSource: null },
+    ]).ads;
+
+    expect(ad.adName).toBe("新しい名前");
+  });
+
+  it("同じ目印の広告には合算の印を付け、数える期間はその広告たちの最初の日〜最後の日の7日後", () => {
+    const rows = [
+      row({ adKey: "name:A", adName: "A", statDate: "2026-10-26", spendJpy: 1, impressions: 1 }),
+      row({ adKey: "name:B", adName: "B", statDate: "2026-10-29", spendJpy: 1, impressions: 1 }),
+      row({ adKey: "name:C", adName: "C", statDate: "2026-10-27", spendJpy: 1, impressions: 1 }),
+    ];
+
+    const summary = summarizeAdStats(rows, [
+      { platform: "meta", adKey: "name:A", adName: "A", signupSource: "shared" },
+      { platform: "meta", adKey: "name:B", adName: "B", signupSource: "shared" },
+      { platform: "meta", adKey: "name:C", adName: "C", signupSource: "solo" },
+    ]);
+    const byKey = Object.fromEntries(summary.ads.map((ad) => [ad.adKey, ad]));
+
+    expect(byKey["name:A"].sharesSignupSource).toBe(true);
+    expect(byKey["name:B"].sharesSignupSource).toBe(true);
+    expect(byKey["name:C"].sharesSignupSource).toBe(false);
+    expect(signupWindows(summary.ads).sort((a, b) => a.signupSource.localeCompare(b.signupSource))).toEqual([
+      { signupSource: "shared", fromDate: "2026-10-26", toDate: "2026-11-05" },
+      { signupSource: "solo", fromDate: "2026-10-27", toDate: "2026-11-03" },
+    ]);
   });
 });

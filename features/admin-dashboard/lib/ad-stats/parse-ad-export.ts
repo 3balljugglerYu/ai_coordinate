@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   AD_EXPORT_GROUP_KEY_PREFIX,
   AD_NAME_KEY_PREFIX,
@@ -67,6 +68,8 @@ const X_BREAKDOWN_COLUMNS: Array<[string, AdBreakdownType]> = [
 ];
 
 const AD_NAME_MAX = 300;
+/** DB の ad_key の上限（CHECK）と同じ */
+const AD_KEY_MAX = 300;
 const BREAKDOWN_VALUE_MAX = 200;
 
 function header(table: AdExportTable): string[] {
@@ -112,16 +115,24 @@ function dateCell(row: string[], index: number | null, label: string): string {
   const raw = cell(row, index);
   const match = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/.exec(raw);
   if (match) {
-    return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+    const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])];
+    const date = new Date(Date.UTC(year, month - 1, day));
+    // 2026-02-30 のような実在しない日は、DB に入れる前に止める
+    if (date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day) {
+      return `${match[1]}-${match[2].padStart(2, "0")}-${match[3].padStart(2, "0")}`;
+    }
+  } else if (/^\d{5}(\.\d+)?$/.test(raw)) {
+    return excelSerialToDate(Number(raw));
   }
-  if (/^\d{5}(\.\d+)?$/.test(raw)) return excelSerialToDate(Number(raw));
   throw new AdExportFormatError(
     `「${label}」の値「${raw}」が1日の日付ではありません。日ごとに書き出してください`,
   );
 }
 
+/** 文字（コードポイント）で数えて切る。DB の char_length と同じ数え方で、絵文字を途中で割らない */
 function clip(value: string, max: number): string {
-  return value.length > max ? value.slice(0, max) : value;
+  const chars = Array.from(value);
+  return chars.length > max ? chars.slice(0, max).join("") : value;
 }
 
 function normalizeAge(value: string): string {
@@ -150,24 +161,22 @@ function rowKey(row: AdStatRow): string {
  * リーチは足すと同じ人を二重に数えるので、2行以上まとめたときは null にする。
  */
 export function mergeAdStatRows(rows: AdStatRow[]): AdStatRow[] {
-  const merged = new Map<string, { row: AdStatRow; count: number }>();
+  const merged = new Map<string, AdStatRow>();
   for (const row of rows) {
     const key = rowKey(row);
-    const current = merged.get(key);
-    if (!current) {
-      merged.set(key, { row: { ...row }, count: 1 });
+    const target = merged.get(key);
+    if (!target) {
+      merged.set(key, { ...row });
       continue;
     }
-    const target = current.row;
     target.spendJpy += row.spendJpy;
     target.impressions += row.impressions;
     target.linkClicks = sumNullable(target.linkClicks, row.linkClicks);
     target.landingPageViews = sumNullable(target.landingPageViews, row.landingPageViews);
     target.videoViews = sumNullable(target.videoViews, row.videoViews);
     target.reach = null;
-    current.count += 1;
   }
-  return [...merged.values()].map(({ row }) => ({
+  return [...merged.values()].map((row) => ({
     ...row,
     spendJpy: Math.round(row.spendJpy * 100) / 100,
   }));
@@ -220,7 +229,7 @@ function parseMetaTable(table: AdExportTable): ParsedAdExport {
     const base = {
       platform: "meta" as const,
       statDate: start,
-      adKey: `${AD_NAME_KEY_PREFIX}${adName}`,
+      adKey: clip(`${AD_NAME_KEY_PREFIX}${adName}`, AD_KEY_MAX),
       adName,
       spendJpy: numberCell(raw, col(META.spend), META.spend) ?? 0,
       impressions: countCell(raw, col(META.impressions), META.impressions) ?? 0,
@@ -262,26 +271,48 @@ function isXAdTable(table: AdExportTable): boolean {
   return names.includes(X.adId) && names.includes(X.adName) && names.includes(X.spend);
 }
 
-function xBreakdownColumn(table: AdExportTable): [number, AdBreakdownType, string] | null {
+function xBreakdownColumn(table: AdExportTable): [number, AdBreakdownType] | null {
   const col = columnFinder(table);
   if (col(X.date) === null || col(X.spend) === null || col(X.adId) !== null) return null;
   for (const [name, type] of X_BREAKDOWN_COLUMNS) {
     const index = col(name);
-    if (index !== null) return [index, type, name];
+    if (index !== null) return [index, type];
   }
   return null;
 }
 
-function xMetrics(raw: string[], table: AdExportTable) {
+/** 表ごとに列の位置を1回だけ探し、行ごとの数字を読む関数を返す */
+function xMetricsReader(table: AdExportTable) {
   const col = columnFinder(table);
-  return {
-    spendJpy: numberCell(raw, col(X.spend), X.spend) ?? 0,
-    impressions: countCell(raw, col(X.impressions), X.impressions) ?? 0,
+  const spend = col(X.spend);
+  const impressions = col(X.impressions);
+  const linkClicks = col(X.linkClicks);
+  const videoViews = col(X.videoViews);
+  return (raw: string[]) => ({
+    spendJpy: numberCell(raw, spend, X.spend) ?? 0,
+    impressions: countCell(raw, impressions, X.impressions) ?? 0,
     reach: null,
-    linkClicks: countCell(raw, col(X.linkClicks), X.linkClicks),
+    linkClicks: countCell(raw, linkClicks, X.linkClicks),
     landingPageViews: null,
-    videoViews: countCell(raw, col(X.videoViews), X.videoViews),
-  };
+    videoViews: countCell(raw, videoViews, X.videoViews),
+  });
+}
+
+/**
+ * X の内訳の行の ad_key。Ad ID を並べると長くなるときは、並びのハッシュにする
+ * （途中で切ると、別の広告の組み合わせが同じ ad_key になって上書きし合うため）。
+ */
+function exportGroupKey(ids: string[]): string {
+  const plain = `${AD_EXPORT_GROUP_KEY_PREFIX}${ids.join(",")}`;
+  if (Array.from(plain).length <= AD_KEY_MAX) return plain;
+  const digest = createHash("sha256").update(ids.join(",")).digest("hex");
+  return `${AD_EXPORT_GROUP_KEY_PREFIX}sha256:${digest}`;
+}
+
+/** 内訳のシートの、日付が空の行・合計の行（広告の画面が最後に付けることがある） */
+function isXTotalRow(raw: string[], dateIndex: number | null): boolean {
+  const first = (raw[0] ?? "").trim().toLowerCase();
+  return cell(raw, dateIndex) === "" || first === "total" || first === "合計";
 }
 
 function parseXTables(tables: AdExportTable[]): ParsedAdExport {
@@ -292,6 +323,7 @@ function parseXTables(tables: AdExportTable[]): ParsedAdExport {
     );
   }
   const col = columnFinder(adTable);
+  const adMetrics = xMetricsReader(adTable);
   const dateIndex = col(X.period) ?? col(X.date);
   if (dateIndex === null) {
     throw new AdExportFormatError("X の書き出しに「Time period」の列がありません");
@@ -312,7 +344,7 @@ function parseXTables(tables: AdExportTable[]): ParsedAdExport {
       adName,
       breakdownType: "none",
       breakdownValue: "",
-      ...xMetrics(raw, adTable),
+      ...adMetrics(raw),
     };
     ads.push({ platform: "x", adKey: adId, adName });
     if (!isEmptyDay(row)) rows.push(row);
@@ -320,7 +352,7 @@ function parseXTables(tables: AdExportTable[]): ParsedAdExport {
 
   // 年齢などのシートは書き出し全体の数字。どの広告の合計かを ad_key に残す
   const ids = [...allAds.keys()].sort();
-  const groupKey = clip(`${AD_EXPORT_GROUP_KEY_PREFIX}${ids.join(",")}`, AD_NAME_MAX);
+  const groupKey = exportGroupKey(ids);
   const groupName = clip(
     `この書き出しの広告すべて（${ids.map((id) => allAds.get(id)).join("・")}）`,
     AD_NAME_MAX,
@@ -330,7 +362,9 @@ function parseXTables(tables: AdExportTable[]): ParsedAdExport {
     if (!breakdown) continue;
     const [valueIndex, breakdownType] = breakdown;
     const dateIdx = columnFinder(table)(X.date);
+    const metrics = xMetricsReader(table);
     for (const raw of table.rows.slice(1)) {
+      if (isXTotalRow(raw, dateIdx)) continue;
       const rawValue = cell(raw, valueIndex);
       const value =
         breakdownType === "age"
@@ -345,7 +379,7 @@ function parseXTables(tables: AdExportTable[]): ParsedAdExport {
         adName: groupName,
         breakdownType,
         breakdownValue: clip(value || "unknown", BREAKDOWN_VALUE_MAX),
-        ...xMetrics(raw, table),
+        ...metrics(raw),
       };
       if (!isEmptyDay(row)) rows.push(row);
     }

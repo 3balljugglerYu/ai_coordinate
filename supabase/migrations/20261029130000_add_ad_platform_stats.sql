@@ -15,7 +15,11 @@
 --   取り込んだときに行ができ、目印は管理画面で選ぶ。目印が付くと、
 --   その広告から来て登録・生成・投稿した人数を、広告の数字と並べて見られる。
 --
--- どちらも service_role だけが触る（RLS 有効・policy なし）。既存の表は変えない。
+--   ## get_ad_signup_funnel / list_recent_signup_sources
+--   目印ごとの登録・生成・投稿の人数と、目印の候補を返す。生成や投稿の行を
+--   画面側へ全部送らずに、DB で人数だけにする（読み込む量が増えても画面が重くならないように）。
+--
+-- 表も関数も service_role だけが触る（RLS 有効・policy なし）。既存の表は変えない。
 
 BEGIN;
 
@@ -122,6 +126,8 @@ END;
 $$;
 
 REVOKE ALL ON FUNCTION public.update_ad_platform_ads_updated_at() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.update_ad_platform_ads_updated_at() FROM anon;
+REVOKE ALL ON FUNCTION public.update_ad_platform_ads_updated_at() FROM authenticated;
 
 DROP TRIGGER IF EXISTS trg_update_ad_platform_ads_updated_at
   ON public.ad_platform_ads;
@@ -129,6 +135,73 @@ CREATE TRIGGER trg_update_ad_platform_ads_updated_at
   BEFORE UPDATE ON public.ad_platform_ads
   FOR EACH ROW
   EXECUTE FUNCTION public.update_ad_platform_ads_updated_at();
+
+-- 目印ごとに、その期間（日本時間の日付・両端を含む）に登録した人と、
+-- そのうち生成が1回以上成功した人・投稿が1枚以上ある人を数える。運営は p_exclude_user_ids で除く。
+-- p_windows: [{"signup_source": "...", "from_date": "YYYY-MM-DD", "to_date": "YYYY-MM-DD"}, ...]
+-- 生成・投稿の行を画面側へ全部送らずに、人数だけを返す。
+CREATE OR REPLACE FUNCTION public.get_ad_signup_funnel(
+  p_windows jsonb,
+  p_exclude_user_ids uuid[] DEFAULT '{}'::uuid[]
+)
+RETURNS TABLE(signup_source text, signups bigint, generated bigint, posted bigint)
+LANGUAGE sql
+STABLE
+SET search_path TO 'public', 'pg_temp'
+AS $$
+  WITH windows AS (
+    SELECT
+      w->>'signup_source' AS source,
+      (w->>'from_date')::date AS from_date,
+      (w->>'to_date')::date AS to_date
+    FROM jsonb_array_elements(COALESCE(p_windows, '[]'::jsonb)) AS w
+  ),
+  users AS (
+    SELECT DISTINCT windows.source, p.user_id
+    FROM windows
+    JOIN public.profiles AS p
+      ON p.signup_source = windows.source
+     AND (p.created_at AT TIME ZONE 'Asia/Tokyo')::date BETWEEN windows.from_date AND windows.to_date
+    WHERE NOT (p.user_id = ANY (COALESCE(p_exclude_user_ids, '{}'::uuid[])))
+  )
+  SELECT
+    users.source,
+    count(*),
+    count(*) FILTER (WHERE EXISTS (
+      SELECT 1 FROM public.image_jobs AS j
+      WHERE j.user_id = users.user_id AND j.status = 'succeeded'
+    )),
+    count(*) FILTER (WHERE EXISTS (
+      SELECT 1 FROM public.generated_images AS g
+      WHERE g.user_id = users.user_id AND g.is_posted
+    ))
+  FROM users
+  GROUP BY users.source;
+$$;
+
+-- 目印の候補（p_since 以降の登録に付いていた目印の一覧）
+CREATE OR REPLACE FUNCTION public.list_recent_signup_sources(p_since timestamptz)
+RETURNS TABLE(signup_source text)
+LANGUAGE sql
+STABLE
+SET search_path TO 'public', 'pg_temp'
+AS $$
+  SELECT DISTINCT p.signup_source
+  FROM public.profiles AS p
+  WHERE p.signup_source IS NOT NULL
+    AND p.created_at >= p_since
+  ORDER BY 1;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_ad_signup_funnel(jsonb, uuid[]) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.get_ad_signup_funnel(jsonb, uuid[]) FROM anon;
+REVOKE ALL ON FUNCTION public.get_ad_signup_funnel(jsonb, uuid[]) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.get_ad_signup_funnel(jsonb, uuid[]) TO service_role;
+
+REVOKE ALL ON FUNCTION public.list_recent_signup_sources(timestamptz) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.list_recent_signup_sources(timestamptz) FROM anon;
+REVOKE ALL ON FUNCTION public.list_recent_signup_sources(timestamptz) FROM authenticated;
+GRANT EXECUTE ON FUNCTION public.list_recent_signup_sources(timestamptz) TO service_role;
 
 COMMIT;
 

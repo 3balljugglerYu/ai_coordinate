@@ -178,15 +178,53 @@ function readSheetRows(xml: string, sharedStrings: string[]): string[][] {
   return rows;
 }
 
-function resolveTarget(target: string): string {
-  const path = target.startsWith("/") ? target.slice(1) : `xl/${target}`;
+/** rels の Target を zip の中の場所にする（基準のフォルダからの相対・"/" 始まりの絶対） */
+function resolveTarget(baseDir: string, target: string): string {
+  const path = target.startsWith("/") ? target.slice(1) : `${baseDir}${target}`;
   // "xl/worksheets/../worksheets/sheet1.xml" のような書き方をそろえる
   const parts: string[] = [];
   for (const part of path.split("/")) {
     if (part === "..") parts.pop();
-    else if (part !== ".") parts.push(part);
+    else if (part !== "." && part !== "") parts.push(part);
   }
   return parts.join("/");
+}
+
+interface Relationship {
+  type: string;
+  target: string;
+}
+
+/** rels（関係の目次）を Id → 種類と場所 にする */
+function readRelationships(xml: string | null, baseDir: string): Map<string, Relationship> {
+  const relations = new Map<string, Relationship>();
+  for (const match of (xml ?? "").matchAll(/<Relationship\b([^>]*?)\/?>/g)) {
+    const attributes = readAttributes(match[1]);
+    if (attributes.Id && attributes.Target && attributes.TargetMode !== "External") {
+      relations.set(attributes.Id, {
+        type: attributes.Type ?? "",
+        target: resolveTarget(baseDir, attributes.Target),
+      });
+    }
+  }
+  return relations;
+}
+
+function findByType(relations: Map<string, Relationship>, suffix: string): string | null {
+  for (const relation of relations.values()) {
+    if (relation.type.endsWith(suffix)) return relation.target;
+  }
+  return null;
+}
+
+function directoryOf(path: string): string {
+  const slash = path.lastIndexOf("/");
+  return slash >= 0 ? path.slice(0, slash + 1) : "";
+}
+
+function relsPathOf(path: string): string {
+  const dir = directoryOf(path);
+  return `${dir}_rels/${path.slice(dir.length)}.rels`;
 }
 
 export function readXlsx(data: Uint8Array): XlsxSheet[] {
@@ -197,22 +235,23 @@ export function readXlsx(data: Uint8Array): XlsxSheet[] {
     return entry ? readZipEntry(buf, entry).toString("utf8") : null;
   };
 
-  const workbook = readEntry("xl/workbook.xml") ?? fail("xlsx の中に workbook がありません");
-  const relations = new Map<string, string>();
-  for (const match of (readEntry("xl/_rels/workbook.xml.rels") ?? "").matchAll(
-    /<Relationship\b([^>]*?)\/?>/g,
-  )) {
-    const attributes = readAttributes(match[1]);
-    if (attributes.Id && attributes.Target) {
-      relations.set(attributes.Id, resolveTarget(attributes.Target));
-    }
-  }
-  const sharedStrings = readSharedStrings(readEntry("xl/sharedStrings.xml"));
+  // workbook の場所はパッケージの目次（_rels/.rels）から引く。無ければ決まりの場所
+  const packageRels = readRelationships(readEntry("_rels/.rels"), "");
+  const workbookPath = findByType(packageRels, "/officeDocument") ?? "xl/workbook.xml";
+  const workbook = readEntry(workbookPath) ?? fail("xlsx の中に workbook がありません");
+
+  // シートと共有文字列の場所は、workbook の目次から引く
+  const relations = readRelationships(
+    readEntry(relsPathOf(workbookPath)),
+    directoryOf(workbookPath),
+  );
+  const sharedStringsPath = findByType(relations, "/sharedStrings");
+  const sharedStrings = readSharedStrings(sharedStringsPath ? readEntry(sharedStringsPath) : null);
 
   const sheets: XlsxSheet[] = [];
   for (const match of workbook.matchAll(/<sheet\b([^>]*?)\/?>/g)) {
     const attributes = readAttributes(match[1]);
-    const path = relations.get(attributes["r:id"] ?? "");
+    const path = relations.get(attributes["r:id"] ?? "")?.target;
     const xml = path ? readEntry(path) : null;
     if (xml === null) continue;
     sheets.push({

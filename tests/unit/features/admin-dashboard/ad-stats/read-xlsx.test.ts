@@ -65,6 +65,7 @@ const RELS = `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 <Relationship Id="rId2" Type="worksheet" Target="worksheets/sheet2.xml"/>
 <Relationship Id="rId1" Type="worksheet" Target="/xl/worksheets/sheet1.xml"/>
+<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
 </Relationships>`;
 
 const SHARED = `<?xml version="1.0" encoding="UTF-8"?>
@@ -97,6 +98,26 @@ describe("readXlsx", () => {
       ["変身_正方形", "", "453.88"],
       ["A&B <1>", "", "0"],
     ]);
+    expect(sheets[1].rows).toEqual([["Age"]]);
+  });
+
+  it("workbook と共有文字列の場所は、決まりの場所ではなく目次（rels）から引く", () => {
+    const files = {
+      "_rels/.rels": `<Relationships><Relationship Id="r1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="book/main.xml"/></Relationships>`,
+      "book/main.xml": WORKBOOK,
+      "book/_rels/main.xml.rels": `<Relationships>
+<Relationship Id="rId1" Type="worksheet" Target="sheets/a.xml"/>
+<Relationship Id="rId2" Type="worksheet" Target="sheets/b.xml"/>
+<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="strings.xml"/>
+</Relationships>`,
+      "book/strings.xml": SHARED,
+      "book/sheets/a.xml": SHEET1,
+      "book/sheets/b.xml": SHEET2,
+    };
+
+    const sheets = readXlsx(buildZip(files));
+
+    expect(sheets[0].rows[1][0]).toBe("変身_正方形");
     expect(sheets[1].rows).toEqual([["Age"]]);
   });
 

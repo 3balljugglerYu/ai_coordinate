@@ -1,8 +1,6 @@
 import { connection } from "next/server";
-import { redirect } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { getUser } from "@/lib/auth";
-import { getAdminUserIds } from "@/lib/env";
+import { ensureAdminPage } from "@/lib/admin-page-guard";
 import {
   getAdStatsOverview,
   type AdStatsOverview,
@@ -11,12 +9,7 @@ import { AdStatsClient } from "./AdStatsClient";
 
 export default async function AdminAdStatsPage() {
   await connection();
-
-  const user = await getUser();
-  const adminUserIds = getAdminUserIds();
-  if (!user || adminUserIds.length === 0 || !adminUserIds.includes(user.id)) {
-    redirect("/");
-  }
+  await ensureAdminPage();
 
   let overview: AdStatsOverview | null = null;
   try {
@@ -43,13 +36,7 @@ export default async function AdminAdStatsPage() {
 
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
-          {overview ? (
-            <AdStatsClient overview={overview} />
-          ) : (
-            <p className="text-sm text-red-700">
-              広告の数字を読めませんでした。少し待ってから開き直してください。
-            </p>
-          )}
+          <AdStatsClient overview={overview} />
         </CardContent>
       </Card>
     </div>

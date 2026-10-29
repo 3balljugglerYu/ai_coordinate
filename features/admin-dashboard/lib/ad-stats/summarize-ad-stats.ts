@@ -11,7 +11,15 @@ import {
  * 広告ごとの合計は、日ごとに「内訳なしの行」を使い、無い日は内訳の行を1種類だけ足す。
  * Meta の書き出しは年齢別か配置別しかないことが多いので、内訳の行から合計を作る。
  * 年齢別と配置別の両方を取り込んでも、1種類だけ使うので二重に数えない。
+ *
+ * 登録・生成・投稿の人数は、目印（signup_source）ごとに数える。同じ目印を2本の広告で
+ * 使うと分けられないので、その広告には「同じ目印の広告と合算」の印を付ける。
+ * 数える期間は、その目印の広告が出た最初の日から、最後の日の7日後まで
+ * （Meta の既定の「クリックから7日間」に合わせる）。
  */
+
+/** 広告の最後の日から、何日後の登録まで数えるか */
+export const SIGNUP_WINDOW_DAYS_AFTER = 7;
 
 /** 内訳の行から合計を作るときに使う順（年齢は全員が必ずどこか1つに入るので最初） */
 const TOTAL_SOURCE_ORDER: AdBreakdownType[] = [
@@ -44,6 +52,8 @@ export interface AdSummary extends AdMetrics {
   firstDate: string;
   lastDate: string;
   signupSource: string | null;
+  /** 同じ目印をほかの広告も使っている（人数はその広告たちの合算） */
+  sharesSignupSource: boolean;
   /** 目印が無いときは null（0人とは区別する） */
   funnel: AdFunnel | null;
 }
@@ -72,7 +82,16 @@ export interface AdStatsSummary {
 export interface AdMeta {
   platform: AdPlatform;
   adKey: string;
+  /** ad_platform_ads の名前（取り込むたびに最新になる） */
+  adName: string;
   signupSource: string | null;
+}
+
+export interface SignupWindow {
+  signupSource: string;
+  /** YYYY-MM-DD（日本時間・両端を含む） */
+  fromDate: string;
+  toDate: string;
 }
 
 type StatRow = Pick<
@@ -118,11 +137,7 @@ function byLatestThenName<T extends { lastDate: string; adName: string }>(a: T, 
   return b.lastDate.localeCompare(a.lastDate) || a.adName.localeCompare(b.adName, "ja");
 }
 
-export function summarizeAdStats(
-  rows: StatRow[],
-  ads: AdMeta[],
-  funnelBySource: Map<string, AdFunnel>,
-): AdStatsSummary {
+export function summarizeAdStats(rows: StatRow[], ads: AdMeta[]): AdStatsSummary {
   const meta = new Map(ads.map((ad) => [adId(ad.platform, ad.adKey), ad]));
 
   // 広告ごと・日ごとに、内訳の種類ごとの行を分ける
@@ -160,18 +175,17 @@ export function summarizeAdStats(
         const source = TOTAL_SOURCE_ORDER.find((type) => day.has(type));
         for (const row of source ? (day.get(source) ?? []) : []) addMetrics(metrics, row);
       }
-      const signupSource = meta.get(adId(ad.platform, ad.adKey))?.signupSource ?? null;
+      const adMeta = meta.get(adId(ad.platform, ad.adKey));
       summaries.push({
         platform: ad.platform,
         adKey: ad.adKey,
-        adName: ad.adName,
+        adName: adMeta?.adName ?? ad.adName,
         firstDate,
         lastDate,
         ...roundYen(metrics),
-        signupSource,
-        funnel: signupSource
-          ? (funnelBySource.get(signupSource) ?? { signups: 0, generated: 0, posted: 0 })
-          : null,
+        signupSource: adMeta?.signupSource ?? null,
+        sharesSignupSource: false,
+        funnel: null,
       });
     }
 
@@ -211,6 +225,14 @@ export function summarizeAdStats(
     }
   }
 
+  const sourceCount = new Map<string, number>();
+  for (const ad of summaries) {
+    if (ad.signupSource) sourceCount.set(ad.signupSource, (sourceCount.get(ad.signupSource) ?? 0) + 1);
+  }
+  for (const ad of summaries) {
+    ad.sharesSignupSource = !!ad.signupSource && (sourceCount.get(ad.signupSource) ?? 0) > 1;
+  }
+
   const totals = new Map<AdPlatform, AdMetrics>();
   for (const ad of summaries) {
     const metrics = totals.get(ad.platform) ?? emptyMetrics();
@@ -222,6 +244,43 @@ export function summarizeAdStats(
     ads: summaries.sort(byLatestThenName),
     totals: [...totals.entries()].map(([platform, metrics]) => ({ platform, ...metrics })),
     groups: groups.sort(byLatestThenName),
+  };
+}
+
+function addDays(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
+}
+
+/** 目印ごとの数える期間（その目印の広告の最初の日〜最後の日の7日後） */
+export function signupWindows(ads: AdSummary[]): SignupWindow[] {
+  const windows = new Map<string, SignupWindow>();
+  for (const ad of ads) {
+    if (!ad.signupSource) continue;
+    const toDate = addDays(ad.lastDate, SIGNUP_WINDOW_DAYS_AFTER);
+    const current = windows.get(ad.signupSource);
+    windows.set(ad.signupSource, {
+      signupSource: ad.signupSource,
+      fromDate: current && current.fromDate < ad.firstDate ? current.fromDate : ad.firstDate,
+      toDate: current && current.toDate > toDate ? current.toDate : toDate,
+    });
+  }
+  return [...windows.values()];
+}
+
+/** 目印ごとの人数を広告に付ける。目印があって登録が無ければ 0人 */
+export function attachFunnel(
+  summary: AdStatsSummary,
+  funnelBySource: Map<string, AdFunnel>,
+): AdStatsSummary {
+  return {
+    ...summary,
+    ads: summary.ads.map((ad) => ({
+      ...ad,
+      funnel: ad.signupSource
+        ? (funnelBySource.get(ad.signupSource) ?? { signups: 0, generated: 0, posted: 0 })
+        : null,
+    })),
   };
 }
 

@@ -106,6 +106,25 @@ describe("parseAdExport: Meta", () => {
     ).toThrow("日ごとの書き出しではありません");
   });
 
+  it("実在しない日付（2026-02-30）は、DB に入れる前に止める", () => {
+    expect(() =>
+      parseAdExport(csv([META_HEAD, "2026-02-30,2026-02-30,A,25-34,10,10,10,1,1"].join("\n"))),
+    ).toThrow("「レポート開始日」の値「2026-02-30」が1日の日付ではありません");
+  });
+
+  it("とても長い広告名でも、ad_key は DB の上限（300文字）に収まり、絵文字を割らない", () => {
+    const longName = "🎃".repeat(400);
+    const parsed = parseAdExport(
+      csv([META_HEAD, `2026-10-29,2026-10-29,${longName},25-34,10,10,10,1,1`].join("\n")),
+    );
+    const key = parsed.rows[0].adKey;
+
+    expect(Array.from(key)).toHaveLength(300);
+    expect(key.startsWith("name:🎃")).toBe(true);
+    expect(key).not.toMatch(/[\ud800-\udbff](?![\udc00-\udfff])/);
+    expect(Array.from(parsed.rows[0].adName)).toHaveLength(300);
+  });
+
   it("消化金額の列が数字でなければ止める", () => {
     expect(() =>
       parseAdExport(csv([META_HEAD, "2026-10-29,2026-10-29,A,25-34,abc,10,10,1,1"].join("\n"))),
@@ -187,6 +206,43 @@ describe("parseAdExport: X", () => {
     expect(group[0].adName).toBe("この書き出しの広告すべて（90作品_正方形・変身_正方形）");
     // 目印を選べるのは本当の広告だけ
     expect(parsed.ads.map((ad) => ad.adKey)).toEqual(["111", "222"]);
+  });
+
+  it("内訳のシートの日付が空の行・合計の行は読み飛ばす", () => {
+    const withTotal: AdExportTable = {
+      name: "Age",
+      rows: [...ageSheet.rows, ["Total", "", "1000", "8548", "29"], ["", "", "", "", ""]],
+    };
+
+    const parsed = parseAdExport([adSheet, withTotal]);
+
+    expect(parsed.rows.filter((row) => row.breakdownType === "age")).toHaveLength(2);
+  });
+
+  it("Ad ID が多くて長いときは、まとめの ad_key をハッシュにして、別の組み合わせと重ならないようにする", () => {
+    const manyAds = (lastId: string): AdExportTable => ({
+      name: "Ads",
+      rows: [
+        adSheet.rows[0],
+        ...Array.from({ length: 20 }, (_, i) => [
+          "2026-10-25",
+          i === 19 ? lastId : `6755454${String(i).padStart(5, "0")}0000`,
+          `ad${i}`,
+          "1",
+          "1",
+          "0",
+          "0",
+        ]),
+      ],
+    });
+    const keyOf = (table: AdExportTable) =>
+      parseAdExport([table, ageSheet]).rows.find((row) => row.breakdownType === "age")!.adKey;
+
+    const a = keyOf(manyAds("999999999999999990"));
+    const b = keyOf(manyAds("999999999999999991"));
+
+    expect(a).toMatch(/^all:sha256:[0-9a-f]{64}$/);
+    expect(a).not.toBe(b);
   });
 
   it("広告ごとのシートが無い X の書き出しは止める", () => {
