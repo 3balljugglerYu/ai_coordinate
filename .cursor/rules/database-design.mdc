@@ -27,7 +27,11 @@ alwaysApply: false
 - `catalog_audit_logs`
 - `catalog_campaigns`
 - `catalog_entries`
+- `catalog_reference_images`
 - `comments`
+- `generated_image_catalog_reviews`
+- `generated_image_reference_secrets`
+- `i2i_catalog_allowlist`
 - `credit_forfeiture_ledger`
 - `credit_transactions`
 - `follows`
@@ -142,6 +146,7 @@ alwaysApply: false
 - 外部キー: `user_id -> auth.users.id`, `source_image_stock_id -> source_image_stocks.id`
 - 備考: `status` は `queued/processing/succeeded/failed`、`processing_stage` は `queued/processing/charging/generating/uploading/persisting/completed/failed`、`requested_image_count` は `1..4`（OpenAI batched edit の受理枚数）、`generation_type` は `coordinate/specified_coordinate/full_body/chibi/one_tap_style/inspire/free`（`specified_coordinate/full_body/chibi` は歴史的経緯で CHECK に残るが新規未使用）、`source_image_type` は `illustration/real`、`background_mode` は `keep/ai_auto/include_in_prompt`、`model` は `gemini-2.5-flash-image` の履歴値に加えて `gemini-3.1-flash-image-preview-512` / `gemini-3.1-flash-image-preview-1024` / `gemini-3-pro-image-1k` / `gemini-3-pro-image-2k` / `gemini-3-pro-image-4k` / `gpt-image-2-low-1k` / `gpt-image-2-low-2k` / `gpt-image-2-low-4k` / `gpt-image-2-medium-1k` / `gpt-image-2-medium-2k` / `gpt-image-2-medium-4k` / `gpt-image-2-high-1k` / `gpt-image-2-high-2k` / `gpt-image-2-high-4k`（旧 `gpt-image-2-low` も履歴互換で許可）、および ChatGPT Images 2.5 の `gpt-image-2.5-flare-{low,medium,high}-{1k,2k,4k}` 9 値（2026-09-10 追加・運営限定の段階公開中）を保持する。**`model` は作成後不変**（`trg_enforce_image_job_model_immutable` が `UPDATE OF model` で値の変更を無条件に拒否。RLS が本人の全列 UPDATE を許すため、ゲート通過後にモデルをすり替える TOCTOU を DB 層で塞ぐ／ADR-007）
 - 追加カラム(Phase 1): `origin_post_id`（派生生成の原作 root・**FKなし**・service-only の job 作成 RPC のみ設定可・作成後不変）
+- 追加カラム(見本つきカタログ・20261029100000): `catalog_reference_id`（FK → `catalog_reference_images.id`）, `catalog_reference_takes`（`outfit/pose/angle/background` の1〜4個）。作者が自分の見本で `free` 生成するときだけ入る（`origin_post_id` とは同時に入らない・CHECK）。`trg_enforce_image_job_catalog_reference` が非信頼の INSERT での設定と、作成後の変更を拒否
 - 備考(秘匿): `prompt_text` は常に空。本文は `generation_prompt_snapshots` にのみ存在する。SELECT RLS が本人開放のため、ここへ書くと One-Tap Style の運営プリセットが生成者本人から読めてしまう（REQ-019）
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
 
@@ -211,6 +216,16 @@ alwaysApply: false
 - 外部キー: `user_id -> auth.users.id`
 - 制約: `(user_id, name)` の部分UNIQUE（`name IS NOT NULL`）
 - RLS: 本人のみ `SELECT/INSERT/UPDATE/DELETE`
+
+#### 見本（参照画像）つきカタログ（i2i・審査あり／20261029100000）
+- 計画: `docs/planning/i2i-catalog-review-implementation-plan.md`
+- `i2i_catalog_allowlist`: 見本を使える人（`user_id` UNIQUE, `added_by`, `note`≤200, `is_active`）。本人 SELECT のみ・書き込みは service_role。判定は `is_in_i2i_catalog_allowlist(uuid)`（service_role のみ EXECUTE・fail-closed）
+- `catalog_reference_images`: 見本1枚（`user_id`, `storage_path` UNIQUE, `copyright_consent_at` NOT NULL）。本人 SELECT のみ。実体は非公開バケット `catalog-references`（利用者の storage ポリシーなし・サーバーが上げて署名 URL で見せる）
+- `generated_image_reference_secrets`: 根の作品 → 見本・まねるもの（`image_id` PK, `reference_id`, `takes`）。**service_role 専用**（anon/authenticated 全 REVOKE・ポリシーなし）。派生生成の画像には置かない
+- `generated_image_catalog_reviews`: 審査（`image_id` PK, `user_id`, `status` = `not_submitted/pending/approved/rejected`, `reason_category` = `official_or_others_work/real_person/sexual_or_violent/other`（rejected で必須）, `reason`≤500, `submitted_at`, `reviewed_at`, `reviewed_by`）。本人と運営の SELECT のみ・書くのは RPC
+- 投稿の制限: `trg_enforce_catalog_review_before_publish`（`generated_images` BEFORE INSERT OR UPDATE OF is_posted）。審査の行があって `approved` でない画像を `is_posted=true` にすると `post_review_pending`（42501）。**行のない画像（既存すべて）は対象外**・信頼できる書き手も例外にしない
+- 行ができる時: `complete_image_job_with_prompt_secrets` が、作者の見本のジョブ（reference secret も書く）と、承認されていない見本つきの根から作った派生ジョブ（ADR-008）で `not_submitted` を作る
+- 作り直し（rejected）の根は、`validate_derived_prompt_source` が作者本人にも「使えない」を返す
 
 ### ソーシャル
 
@@ -637,6 +652,7 @@ alwaysApply: false
   - 注: `get_style_generate_counts(p_days INT)` は `style_usage_events` の `event_type='generate'` を style_id 別に集計する参照 RPC。EXECUTE は service_role のみ（anon/authenticated 不可）。呼び出しは `features/style/lib/style-popularity.ts`（admin client + "use cache"）から。
   - 注: `reserve_style_guest_generate_attempt` は意味を画面横断ゲスト試行（`/style` と `/coordinate` 合算）に拡張済み。現行 default は `p_short_limit=999`（実質無効）/ `p_daily_limit=1`。引数の `p_client_ip_hash` には `SHA-256("<ip>|<persta_guest_id>|<salt>")` を渡す（`features/style/lib/style-rate-limit.ts`）。
   - 注: `consume_style_authenticated_generate_attempt` と `reserve_style_authenticated_generate_attempt` は Phase 5 で `/style/generate-async` の無料枠廃止に伴って呼び出されなくなる予定（残回数表示の互換のため当面残す）。
+- 見本つきカタログ: `submit_catalog_review`（authenticated・本人の `not_submitted` → `pending`）, `apply_catalog_review_decision`（service_role・`pending` → `approved/rejected` と通知 `catalog_review_approved/rejected` を同じトランザクションで作る）, `resolve_catalog_reference_for_job`（service_role・worker が課金前に呼ぶ。見本の場所とまねるものを返す／見本なしは0行／使えないときは `CATALOG_REFERENCE_UNAVAILABLE`。承認前の根は作者本人かつ一覧にいるときだけ）
 - コレクション: `get_collection_progress`, `reserve_collection_completion`, `reserve_collection_completion_for_user`, `finalize_collection_completion`, `fail_collection_completion`
   - 注: `get_collection_progress` / `reserve_collection_completion` は authenticated 用で `auth.uid()` を使う。`reserve_collection_completion_for_user` / `finalize_collection_completion` / `fail_collection_completion` は service role route 専用で、ユーザーから直接実行させない。`reserve_collection_completion_for_user` は route が session user と `isAdminViewer()` を検証した後、admin_only の台紙生成予約を行う。
 - User ORIGINAL (`/user-styles`): `get_user_style_page`, `get_user_style_followed_authors`, `get_user_style_usage_page`, `recompute_user_style_usage_rankings`
