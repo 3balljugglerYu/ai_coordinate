@@ -44,7 +44,9 @@ export type AdminAuditAction =
   | "analytics_exclusion_remove"
   | "timeline_event_create"
   | "timeline_event_update"
-  | "timeline_event_delete";
+  | "timeline_event_delete"
+  | "ad_stats_import"
+  | "ad_signup_source_update";
 
 export interface AdminAuditLogParams {
   adminUserId: string;
