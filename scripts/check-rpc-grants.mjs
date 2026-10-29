@@ -87,6 +87,10 @@ const REQUIRED = {
     // （20261013120000_add_push_device_tokens_and_preferences.sql）
     "public.register_push_device(p_device_id text, p_platform text, p_token text, p_app_version text)",
     "public.unregister_push_device(p_device_id text)",
+    // 作者が「審査に出す」を押す。本人は関数内で auth.uid() からだけ決め、
+    // 本人の not_submitted の行だけを pending にする
+    // （20261029100000_add_i2i_catalog_review.sql）
+    "public.submit_catalog_review(p_image_id uuid)",
   ]),
 };
 

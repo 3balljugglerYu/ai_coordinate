@@ -20,6 +20,10 @@
 
 BEGIN;
 
+-- image_jobs・notifications・generated_images は書き込みが多い。表ロックを長く
+-- 待たない（待つなら失敗させて出直す）。前例: 20261018120000
+SET LOCAL lock_timeout = '5s';
+
 -- -----------------------------------------------
 -- 1. 見本を使える人
 -- -----------------------------------------------
@@ -113,6 +117,8 @@ CREATE TABLE IF NOT EXISTS public.catalog_reference_images (
   storage_path TEXT NOT NULL UNIQUE
     CHECK (char_length(storage_path) BETWEEN 1 AND 512),
   copyright_consent_at TIMESTAMPTZ NOT NULL,
+  -- 運営が作り直しにした見本。以後この見本では生成できない（作者本人も）
+  rejected_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -146,7 +152,7 @@ CREATE POLICY "catalog_reference_images_self_select"
 
 ALTER TABLE public.image_jobs
   ADD COLUMN IF NOT EXISTS catalog_reference_id UUID
-    REFERENCES public.catalog_reference_images(id),
+    REFERENCES public.catalog_reference_images(id) ON DELETE SET NULL,
   ADD COLUMN IF NOT EXISTS catalog_reference_takes TEXT[];
 
 COMMENT ON COLUMN public.image_jobs.catalog_reference_id IS
@@ -165,6 +171,11 @@ ALTER TABLE public.image_jobs
       AND origin_post_id IS NULL
       AND cardinality(catalog_reference_takes) BETWEEN 1 AND 4
       AND catalog_reference_takes <@ ARRAY['outfit', 'pose', 'angle', 'background']::text[]
+      -- 重複なし: 4つの値のうち含まれる数と要素数が一致する
+      AND cardinality(catalog_reference_takes) = (
+        ('outfit' = ANY(catalog_reference_takes))::int + ('pose' = ANY(catalog_reference_takes))::int
+        + ('angle' = ANY(catalog_reference_takes))::int + ('background' = ANY(catalog_reference_takes))::int
+      )
     )
   ) NOT VALID;
 -- 既存行はすべて NULL なので検証は軽い
@@ -192,6 +203,15 @@ BEGIN
       RAISE EXCEPTION 'catalog_reference はクライアントから設定できない'
         USING ERRCODE = '42501';
     END IF;
+  ELSIF OLD.catalog_reference_id IS NOT NULL
+     AND NEW.catalog_reference_id IS NULL
+     AND NOT EXISTS (
+       SELECT 1 FROM public.catalog_reference_images WHERE id = OLD.catalog_reference_id
+     )
+  THEN
+    -- 見本の行が消えたとき（ON DELETE SET NULL）だけは通す。まねるものも一緒に消す。
+    -- 見本を消せないと、権利の問題がある画像を置き場所から外せない。
+    NEW.catalog_reference_takes := NULL;
   ELSIF NEW.catalog_reference_id IS DISTINCT FROM OLD.catalog_reference_id
      OR NEW.catalog_reference_takes IS DISTINCT FROM OLD.catalog_reference_takes
   THEN
@@ -221,8 +241,13 @@ CREATE TABLE IF NOT EXISTS public.generated_image_reference_secrets (
   reference_id UUID NOT NULL
     REFERENCES public.catalog_reference_images(id) ON DELETE CASCADE,
   takes TEXT[] NOT NULL CHECK (
-    cardinality(takes) BETWEEN 1 AND 4
-    AND takes <@ ARRAY['outfit', 'pose', 'angle', 'background']::text[]
+      cardinality(takes) BETWEEN 1 AND 4
+      AND takes <@ ARRAY['outfit', 'pose', 'angle', 'background']::text[]
+      -- 重複なし: 4つの値のうち含まれる数と要素数が一致する
+      AND cardinality(takes) = (
+        ('outfit' = ANY(takes))::int + ('pose' = ANY(takes))::int
+        + ('angle' = ANY(takes))::int + ('background' = ANY(takes))::int
+      )
   ),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -269,12 +294,12 @@ CREATE TABLE IF NOT EXISTS public.generated_image_catalog_reviews (
 );
 
 COMMENT ON TABLE public.generated_image_catalog_reviews IS
-  '見本つきの作品の審査。行があって approved でない画像は投稿できない';
+  '見本つきの作品の審査。行があって approved でない画像は投稿できない。本人だけ読める（運営は service_role）';
 COMMENT ON COLUMN public.generated_image_catalog_reviews.reason_category IS
   '作り直しの理由（ガイドラインの項目）。rejected のとき必須';
 
 CREATE INDEX IF NOT EXISTS idx_generated_image_catalog_reviews_status
-  ON public.generated_image_catalog_reviews (status, submitted_at)
+  ON public.generated_image_catalog_reviews (submitted_at)
   WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_generated_image_catalog_reviews_user
   ON public.generated_image_catalog_reviews (user_id, updated_at DESC);
@@ -286,19 +311,16 @@ REVOKE ALL ON TABLE public.generated_image_catalog_reviews FROM anon;
 REVOKE ALL ON TABLE public.generated_image_catalog_reviews FROM authenticated;
 GRANT SELECT ON TABLE public.generated_image_catalog_reviews TO authenticated;
 
-DROP POLICY IF EXISTS "generated_image_catalog_reviews_owner_or_admin_select"
+-- 本人だけ。運営は管理 API（service_role）で読む。
+-- ポリシーで admin_users を見ると、authenticated には admin_users の SELECT 権限が
+-- 無いため、本人の読み取りまで 42501 で落ちる（レビュー指摘・本番で確認）。
+DROP POLICY IF EXISTS "generated_image_catalog_reviews_owner_select"
   ON public.generated_image_catalog_reviews;
-CREATE POLICY "generated_image_catalog_reviews_owner_or_admin_select"
+CREATE POLICY "generated_image_catalog_reviews_owner_select"
   ON public.generated_image_catalog_reviews
   FOR SELECT
   TO authenticated
-  USING (
-    (SELECT auth.uid()) = user_id
-    OR EXISTS (
-      SELECT 1 FROM public.admin_users
-      WHERE admin_users.user_id = (SELECT auth.uid())
-    )
-  );
+  USING ((SELECT auth.uid()) = user_id);
 
 DROP TRIGGER IF EXISTS update_generated_image_catalog_reviews_updated_at
   ON public.generated_image_catalog_reviews;
@@ -456,7 +478,31 @@ BEGIN
     RAISE EXCEPTION 'CATALOG_REVIEW_INVALID_STATE' USING ERRCODE = '22023';
   END IF;
 
+  -- 出したあとに削除・非表示になった画像は承認しない（通知も出さない）。
+  -- 作り直しにはできる（見本を止めるため）。
+  IF p_action = 'approve' AND NOT EXISTS (
+    SELECT 1 FROM public.generated_images AS gi
+    WHERE gi.id = p_image_id
+      AND gi.moderation_status = 'visible'
+  ) THEN
+    RAISE EXCEPTION 'CATALOG_REVIEW_IMAGE_UNAVAILABLE' USING ERRCODE = '22023';
+  END IF;
+
   v_new_status := CASE p_action WHEN 'approve' THEN 'approved' ELSE 'rejected' END;
+
+  -- 作り直しは、使った見本そのものを止める。見本は根の作品にだけ対応があるので、
+  -- 派生の作品なら根をたどる。止めないと、同じ見本で新しく作って出し直せてしまう。
+  IF p_action = 'reject' THEN
+    UPDATE public.catalog_reference_images AS c
+    SET rejected_at = COALESCE(c.rejected_at, now())
+    WHERE c.id IN (
+      SELECT s.reference_id
+      FROM public.generated_images AS gi
+      JOIN public.generated_image_reference_secrets AS s
+        ON s.image_id = COALESCE(gi.source_post_id, gi.id)
+      WHERE gi.id = p_image_id
+    );
+  END IF;
 
   UPDATE public.generated_image_catalog_reviews AS r
   SET status = v_new_status,
@@ -467,6 +513,7 @@ BEGIN
   WHERE r.image_id = p_image_id;
 
   -- 文言は画面側で type から組み立てる。title / body は通知一覧の予備。
+  -- actor は受け取った本人にする（審査した運営を見せない。moderation 系の決まり ADR-011）。
   INSERT INTO public.notifications (
     recipient_id,
     actor_id,
@@ -479,7 +526,7 @@ BEGIN
   )
   VALUES (
     v_review.user_id,
-    p_admin_id,
+    v_review.user_id,
     CASE p_action WHEN 'approve' THEN 'catalog_review_approved' ELSE 'catalog_review_rejected' END,
     'post',
     p_image_id,
@@ -518,7 +565,6 @@ GRANT EXECUTE ON FUNCTION public.apply_catalog_review_decision(uuid, uuid, text,
 CREATE OR REPLACE FUNCTION public.resolve_catalog_reference_for_job(p_job_id uuid)
 RETURNS TABLE(storage_path text, takes text[])
 LANGUAGE plpgsql
-STABLE
 SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $$
@@ -546,7 +592,8 @@ BEGIN
     SELECT c.storage_path, v_job.catalog_reference_takes
     FROM public.catalog_reference_images AS c
     WHERE c.id = v_job.catalog_reference_id
-      AND c.user_id = v_job.user_id;
+      AND c.user_id = v_job.user_id
+      AND c.rejected_at IS NULL;
 
     IF NOT FOUND THEN
       RAISE EXCEPTION 'CATALOG_REFERENCE_UNAVAILABLE';
@@ -591,7 +638,8 @@ BEGIN
   RETURN QUERY
   SELECT c.storage_path, v_secret.takes
   FROM public.catalog_reference_images AS c
-  WHERE c.id = v_secret.reference_id;
+  WHERE c.id = v_secret.reference_id
+    AND c.rejected_at IS NULL;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'CATALOG_REFERENCE_UNAVAILABLE';
