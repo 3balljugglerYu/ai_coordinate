@@ -46,6 +46,13 @@ jest.mock("@/features/inspire/lib/creator-looks-two-stage", () => ({
   getCreatorLooksTwoStageVisibility: jest.fn(),
 }));
 
+jest.mock("@/lib/auth/i2i-catalog", () => ({
+  isInI2iCatalogAllowlist: jest.fn(async () => true),
+}));
+jest.mock("@/features/catalog-references/lib/reference-image-repository", () => ({
+  isUsableOwnCatalogReference: jest.fn(async () => true),
+}));
+
 import type { NextRequest } from "next/server";
 import { POST } from "@/app/api/generate-async/route";
 import {
@@ -70,6 +77,8 @@ import {
   isNanoBanana21Available,
 } from "@/lib/env";
 import { isCreatorLooksEnabledForUser } from "@/lib/auth/creator-looks";
+import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
+import { isUsableOwnCatalogReference } from "@/features/catalog-references/lib/reference-image-repository";
 import { getCreatorLooksTwoStageVisibility } from "@/features/inspire/lib/creator-looks-two-stage";
 
 const isAdminViewerMock = isAdminViewer as jest.MockedFunction<
@@ -580,6 +589,70 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
           supabaseUrl: "https://example.supabase.co",
         });
       };
+
+      describe("見本(参照画像)つきのカタログ(i2i Phase 3)", () => {
+        const REFERENCE_ID = "33333333-3333-4333-8333-333333333333";
+        const allowlistMock = isInI2iCatalogAllowlist as jest.MockedFunction<typeof isInI2iCatalogAllowlist>;
+        const usableMock = isUsableOwnCatalogReference as jest.MockedFunction<typeof isUsableOwnCatalogReference>;
+
+        beforeEach(() => {
+          allowlistMock.mockReset().mockResolvedValue(true);
+          usableMock.mockReset().mockResolvedValue(true);
+        });
+
+        test("見本を使える人の本人の見本なら、見本の id とまねるものをジョブに入れる", async () => {
+          const response = await runFree({ referenceImageId: REFERENCE_ID, referenceTakes: ["outfit", "pose"] });
+
+          expect(response.status).toBe(200);
+          expect(usableMock).toHaveBeenCalledWith({ userId: "user-123", referenceId: REFERENCE_ID });
+          expect(jobRepository.createImageJob).toHaveBeenCalledWith(
+            expect.objectContaining({
+              generation_type: "free",
+              catalog_reference_id: REFERENCE_ID,
+              catalog_reference_takes: ["outfit", "pose"],
+            }),
+            expect.anything(),
+          );
+        });
+
+        test("見本を使わない依頼では、見本の確かめをせず、ジョブにも入れない", async () => {
+          const response = await runFree({});
+
+          expect(response.status).toBe(200);
+          expect(allowlistMock).not.toHaveBeenCalled();
+          const job = (jobRepository.createImageJob as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
+          expect(job).not.toHaveProperty("catalog_reference_id");
+          expect(job).not.toHaveProperty("catalog_reference_takes");
+        });
+
+        test.each([
+          ["見本を使える人でない", () => allowlistMock.mockResolvedValue(false), 403, "GENERATION_REFERENCE_NOT_ALLOWED"],
+          ["本人の見本でない・作り直し", () => usableMock.mockResolvedValue(false), 404, "GENERATION_REFERENCE_NOT_FOUND"],
+          ["確かめで DB が失敗", () => usableMock.mockRejectedValue(new Error("timeout")), 500, "GENERATION_REFERENCE_CHECK_FAILED"],
+        ])("%s ならジョブを作らない(状態と理由を返す)", async (_label, arrange, status, errorCode) => {
+          arrange();
+
+          const response = await runFree({ referenceImageId: REFERENCE_ID, referenceTakes: ["outfit"] });
+
+          expect(response.status).toBe(status);
+          expect((await readJson(response)).errorCode).toBe(errorCode);
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
+
+        test.each([
+          ["まねるものが無い", { referenceImageId: REFERENCE_ID }],
+          ["見本の id が無い", { referenceTakes: ["outfit"] }],
+          ["まねるものが重なっている", { referenceImageId: REFERENCE_ID, referenceTakes: ["outfit", "outfit"] }],
+          ["まねるものの値が違う", { referenceImageId: REFERENCE_ID, referenceTakes: ["face"] }],
+          ["じゆうモード以外", { referenceImageId: REFERENCE_ID, referenceTakes: ["outfit"], generationType: "coordinate" }],
+        ])("%s → 400 でジョブを作らない", async (_label, extra) => {
+          const response = await runFree(extra);
+
+          expect(response.status).toBe(400);
+          expect(allowlistMock).not.toHaveBeenCalled();
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
+      });
 
       test("ガチャの候補が上限(10個)を超えるプロンプトは、ジョブを作らず 400 で断る", async () => {
         const candidates = Array.from({ length: 11 }, (_, i) => `${i + 1}. 職業${i + 1}`);
