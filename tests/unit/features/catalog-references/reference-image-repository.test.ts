@@ -8,16 +8,12 @@
  *  - 行には本人・置き場所・同意の時刻を入れ、id を返す
  *  - 行を作れなかったら、置いたファイルを消して投げる
  *  - 受付の確かめは、本人の見本で、作り直しになっていないものだけ true。DB のエラーは投げる
- *  - 初めて同意した時刻は、本人の見本の行のいちばん古い同意の時刻。行が無ければ null。DB のエラーは投げる
- *  - 同意済みかは、本人の見本の行が1つでもあるか。DB のエラーは false(同意の画面をもう一度出す)
  */
 
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
-  getFirstCatalogReferenceConsentAt,
-  hasCatalogReferenceConsent,
   isUsableOwnCatalogReference,
   saveCatalogReferenceImage,
 } from "@/features/catalog-references/lib/reference-image-repository";
@@ -41,7 +37,7 @@ function client(options: {
   };
   let op = "select";
   const chain: Record<string, unknown> = {};
-  for (const method of ["insert", "select", "eq", "is", "order", "limit", "single", "maybeSingle"]) {
+  for (const method of ["insert", "select", "eq", "is", "single", "maybeSingle"]) {
     chain[method] = (...args: unknown[]) => {
       dbCalls.push([method, args]);
       if (method === "insert") op = "insert";
@@ -136,64 +132,5 @@ describe("isUsableOwnCatalogReference", () => {
         client({ select: { data: null, error: { message: "timeout" } } }).supabase,
       ),
     ).rejects.toThrow("見本の確認に失敗しました");
-  });
-});
-
-describe("getFirstCatalogReferenceConsentAt", () => {
-  test("本人の見本の行を、同意の時刻の古い順に1行だけ読み、その時刻を返す", async () => {
-    const { supabase, dbCalls } = client({
-      select: { data: [{ copyright_consent_at: "2026-10-30T14:41:44.000Z" }], error: null },
-    });
-
-    await expect(getFirstCatalogReferenceConsentAt(USER, supabase)).resolves.toEqual(
-      new Date("2026-10-30T14:41:44.000Z"),
-    );
-    expect(dbCalls).toEqual(
-      expect.arrayContaining([
-        ["select", ["copyright_consent_at"]],
-        ["eq", ["user_id", USER]],
-        ["order", ["copyright_consent_at", { ascending: true }]],
-        ["limit", [1]],
-      ]),
-    );
-  });
-
-  test("行が無ければ null・DB のエラーは投げる", async () => {
-    await expect(
-      getFirstCatalogReferenceConsentAt(USER, client({ select: { data: [], error: null } }).supabase),
-    ).resolves.toBeNull();
-    jest.spyOn(console, "error").mockImplementation(() => {});
-    await expect(
-      getFirstCatalogReferenceConsentAt(
-        USER,
-        client({ select: { data: null, error: { message: "timeout" } } }).supabase,
-      ),
-    ).rejects.toThrow("見本の同意の確認に失敗しました");
-  });
-});
-
-describe("hasCatalogReferenceConsent", () => {
-  test("本人の見本の行が1つでもあれば true", async () => {
-    const { supabase, dbCalls } = client({
-      select: { data: [{ copyright_consent_at: "2026-10-30T14:41:44.000Z" }], error: null },
-    });
-
-    await expect(hasCatalogReferenceConsent(USER, supabase)).resolves.toBe(true);
-    expect(dbCalls).toEqual(expect.arrayContaining([["eq", ["user_id", USER]], ["limit", [1]]]));
-  });
-
-  test("行が無ければ false", async () => {
-    await expect(
-      hasCatalogReferenceConsent(USER, client({ select: { data: [], error: null } }).supabase),
-    ).resolves.toBe(false);
-  });
-
-  test("DB のエラーは投げずに false(同意の画面をもう一度出す)", async () => {
-    jest.spyOn(console, "error").mockImplementation(() => {});
-    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
-    await expect(
-      hasCatalogReferenceConsent(USER, client({ select: { data: null, error: { message: "timeout" } } }).supabase),
-    ).resolves.toBe(false);
-    expect(warn).toHaveBeenCalled();
   });
 });

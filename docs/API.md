@@ -418,9 +418,19 @@ Main errors:
 - Access: `user session`（見本を使える人だけ。ほかの人は `403` + `CATALOG_REFERENCE_NOT_ALLOWED`）。よそのサイトからの送信は止める
 - Request: `multipart/form-data`
   - `file`: 画像（JPEG・PNG・WebP・HEIC。4MB まで・縦横とも768px以上4096px以下）。基盤（Vercel）の本文の上限が約4.5MB なので、画面で送る前に縮める。中身で形式を確かめ、WebP に作り直して位置情報などを消す
-  - `copyrightConsent`: `"true"`（使える見本・使えない見本の案内への同意。無ければ `400`）。画面は初めて見本を入れたときだけ案内を出すので、行に残す同意の時刻は、初めて同意したとき（本人の前の見本の行のいちばん古い時刻）を引き継ぐ。前の行が無ければ、上げた時刻
+  - `copyrightConsent`: `"true"`（無ければ `400`）
+- 同意: 「使える見本・使えない見本」への本人の同意が、サーバーに残っていること（`POST /api/catalog-references/consent`）。同意が無い・同意のあとに本人の見本が作り直しになったときは `400` + `CATALOG_REFERENCE_CONSENT_REQUIRED`。見本の行には、その同意の時刻を写す
 - Response: `201` `{ "id": "uuid" }`。置き場所は返さない（非公開のバケット `catalog-references` に置く）
-- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（同意の時刻を読めない・保存に失敗）
+- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（同意を確かめられない `CATALOG_REFERENCE_CONSENT_CHECK_FAILED`・保存に失敗 `CATALOG_REFERENCE_SAVE_FAILED`）
+
+### `POST /api/catalog-references/consent`
+
+「使える見本・使えない見本」で「わかりました」を押したことを、本人ごとに残します。画面は、有効な同意が無い人にだけ、見本を選んだ直後にこの案内を出します。
+
+- Access: `user session`（見本を使える人だけ。ほかの人は `403` + `CATALOG_REFERENCE_NOT_ALLOWED`）。よそのサイトからの送信は止める
+- Request body: なし
+- Response: `200` `{ "consentedAt": "ISO 8601" }`。本人ごとに1行（`catalog_reference_consents`）。もう一度押したら時刻を書き換える
+- Errors: `401`（ログインしていない）、`403`（見本を使える人でない）、`500`（残せなかった `CATALOG_REFERENCE_CONSENT_SAVE_FAILED`）
 
 ### `POST /api/catalog-references/review`
 

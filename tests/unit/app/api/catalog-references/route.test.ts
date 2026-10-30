@@ -7,8 +7,8 @@
  *  - よそのサイトからは止める。ログインしていなければ 401、見本を使える人でなければ 403
  *  - 同意が無ければ 400。画像が無い・4MB を超える・形式が違う・小さすぎる・大きすぎるは断る
  *  - 画像は作り直した WebP を、ログイン中の本人の見本として、同意の時刻つきで保存する
- *  - 同意の時刻は、初めて同意したとき(前の見本の行のいちばん古い時刻)を引き継ぐ。前の行が無ければ今。
- *    読めなければ保存しない(画面で同意を取っていない時刻を残さない)
+ *  - 同意は、サーバーに残した本人の同意を見る。同意が無い・同意のあとに作り直しになったら 400。
+ *    見本の行には、その同意の時刻を写す(画面で同意を取っていない時刻を残さない)。確かめられなければ 500
  *  - 返すのは id だけ(場所は返さない)。保存に失敗したら 500
  */
 
@@ -18,7 +18,9 @@ jest.mock("@/lib/security/same-origin", () => ({ ensureSameOrigin: jest.fn(() =>
 jest.mock("@/features/inspire/lib/creator-looks-image", () => ({ processSubmissionImage: jest.fn() }));
 jest.mock("@/features/catalog-references/lib/reference-image-repository", () => ({
   saveCatalogReferenceImage: jest.fn(),
-  getFirstCatalogReferenceConsentAt: jest.fn(),
+}));
+jest.mock("@/features/catalog-references/lib/consent-repository", () => ({
+  getCatalogReferenceConsentState: jest.fn(),
 }));
 
 import { NextRequest, NextResponse } from "next/server";
@@ -27,19 +29,18 @@ import { getUser } from "@/lib/auth";
 import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
-import {
-  getFirstCatalogReferenceConsentAt,
-  saveCatalogReferenceImage,
-} from "@/features/catalog-references/lib/reference-image-repository";
+import { saveCatalogReferenceImage } from "@/features/catalog-references/lib/reference-image-repository";
+import { getCatalogReferenceConsentState } from "@/features/catalog-references/lib/consent-repository";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockAllowlist = isInI2iCatalogAllowlist as jest.MockedFunction<typeof isInI2iCatalogAllowlist>;
 const mockSameOrigin = ensureSameOrigin as jest.MockedFunction<typeof ensureSameOrigin>;
 const mockProcess = processSubmissionImage as jest.MockedFunction<typeof processSubmissionImage>;
 const mockSave = saveCatalogReferenceImage as jest.MockedFunction<typeof saveCatalogReferenceImage>;
-const mockFirstConsent = getFirstCatalogReferenceConsentAt as jest.MockedFunction<
-  typeof getFirstCatalogReferenceConsentAt
+const mockConsentState = getCatalogReferenceConsentState as jest.MockedFunction<
+  typeof getCatalogReferenceConsentState
 >;
+const CONSENTED_AT = new Date("2026-10-31T01:00:00.000Z");
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const WEBP = Buffer.from("webp");
@@ -61,18 +62,16 @@ beforeEach(() => {
     data: { webpBuffer: WEBP, width: 1024, height: 1024, originalFormat: "png" },
   });
   mockSave.mockResolvedValue({ id: "ref-1" });
-  mockFirstConsent.mockResolvedValue(null);
+  mockConsentState.mockResolvedValue({ consentedAt: CONSENTED_AT, needsConsent: false });
 });
 
-test("見本を使える人が同意つきで上げると、作り直した WebP を本人の見本として保存し、id だけを返す", async () => {
-  const before = Date.now();
-
+test("見本を使える人が同意つきで上げると、作り直した WebP を本人の見本として、同意の時刻つきで保存し、id だけを返す", async () => {
   const response = await POST(request({}));
 
   expect(response.status).toBe(201);
   await expect(response.json()).resolves.toEqual({ id: "ref-1" });
-  expect(mockSave).toHaveBeenCalledWith({ userId: USER_ID, webpBuffer: WEBP, consentedAt: expect.any(Date) });
-  expect(mockSave.mock.calls[0][0].consentedAt.getTime()).toBeGreaterThanOrEqual(before);
+  expect(mockConsentState).toHaveBeenCalledWith(USER_ID);
+  expect(mockSave).toHaveBeenCalledWith({ userId: USER_ID, webpBuffer: WEBP, consentedAt: CONSENTED_AT });
 });
 
 test("よそのサイトからは、ログインの確認より前に止める", async () => {
@@ -140,34 +139,27 @@ test("保存に失敗したら 500", async () => {
   expect(response.status).toBe(500);
 });
 
-describe("同意の時刻", () => {
-  test("前に見本を上げていれば、初めて同意した時刻を引き継ぐ", async () => {
-    const first = new Date("2026-10-30T14:41:44.000Z");
-    mockFirstConsent.mockResolvedValue(first);
+describe("サーバーに残した同意", () => {
+  test.each([
+    ["同意したことが無い", { consentedAt: null, needsConsent: true }],
+    ["同意のあとに本人の見本が作り直しになった", { consentedAt: CONSENTED_AT, needsConsent: true }],
+  ])("%s ときは、保存せずに 400", async (_label, state) => {
+    mockConsentState.mockResolvedValue(state);
 
     const response = await POST(request({}));
 
-    expect(response.status).toBe(201);
-    expect(mockFirstConsent).toHaveBeenCalledWith(USER_ID);
-    expect(mockSave.mock.calls[0][0].consentedAt).toBe(first);
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REFERENCE_CONSENT_REQUIRED" });
+    expect(mockSave).not.toHaveBeenCalled();
   });
 
-  test("初めて上げるときは、今の時刻を残す", async () => {
-    const before = Date.now();
-
-    await POST(request({}));
-
-    expect(mockSave.mock.calls[0][0].consentedAt.getTime()).toBeGreaterThanOrEqual(before);
-  });
-
-  test("初めて同意した時刻を読めなければ、保存せずに 500", async () => {
-    mockFirstConsent.mockRejectedValue(new Error("見本の同意の確認に失敗しました"));
-    jest.spyOn(console, "error").mockImplementation(() => {});
+  test("同意を確かめられなければ、保存せずに 500(保存の失敗とは分ける)", async () => {
+    mockConsentState.mockRejectedValue(new Error("見本の同意の確認に失敗しました"));
 
     const response = await POST(request({}));
 
     expect(response.status).toBe(500);
-    await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REFERENCE_SAVE_FAILED" });
+    await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REFERENCE_CONSENT_CHECK_FAILED" });
     expect(mockSave).not.toHaveBeenCalled();
   });
 });

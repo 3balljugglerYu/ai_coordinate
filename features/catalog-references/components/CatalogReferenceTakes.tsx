@@ -8,7 +8,7 @@ import {
   CATALOG_REFERENCE_TAKES,
   type CatalogReferenceTake,
 } from "@/shared/generation/catalog-reference";
-import type { CatalogReferenceValue } from "./CatalogReferencePicker";
+import type { CatalogReferenceValue } from "@/features/catalog-references/types";
 
 interface CatalogReferenceTakesProps {
   value: CatalogReferenceValue;

@@ -5,10 +5,11 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { jsonError } from "@/lib/api/json-error";
 import { MAX_DIMENSION, processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
 import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
+import { saveCatalogReferenceImage } from "@/features/catalog-references/lib/reference-image-repository";
 import {
-  getFirstCatalogReferenceConsentAt,
-  saveCatalogReferenceImage,
-} from "@/features/catalog-references/lib/reference-image-repository";
+  getCatalogReferenceConsentState,
+  type CatalogReferenceConsentState,
+} from "@/features/catalog-references/lib/consent-repository";
 
 /**
  * 4MB まで。基盤(Vercel)の本文の上限が約4.5MB なので、それより大きいものはここまで届かない。
@@ -21,8 +22,9 @@ const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 3・REQ-001・REQ-002・ADR-002)
  *
  * - 見本を使える人(運営が選んだ人)だけ。ほかの人は 403
- * - 「使える見本・使えない見本」の案内への同意が要る。画面は初めてのときだけ案内を出すので、
- *   残す同意の時刻は、初めて同意したとき(前の見本の行のいちばん古い時刻)を引き継ぐ。前の行が無ければ今
+ * - 「使える見本・使えない見本」への同意が要る。同意は「わかりました」を押したときに本人ごとにサーバーに残す
+ *   (POST /api/catalog-references/consent)。有効な同意が無い・同意のあとに本人の見本が作り直しになったときは 400。
+ *   見本の行には、その同意の時刻を写す(同意の画面を出していない時刻を、同意の時刻として残さない)
  * - 画像は中身で形式を確かめ、WebP に作り直して(位置情報などを消して)非公開の置き場所に置く
  * - 返すのは見本の id だけ(生成の依頼には id を渡す)。場所は返さない
  */
@@ -56,7 +58,20 @@ export async function POST(request: NextRequest) {
     return jsonError("画像は4MBまでです", "CATALOG_REFERENCE_FILE_TOO_LARGE", 413);
   }
 
-  const processed = await processSubmissionImage(Buffer.from(await file.arrayBuffer()));
+  // 同意の確認(DB)と画像の作り直しを並べて走らせる
+  const [consent, processed] = await Promise.all([
+    getCatalogReferenceConsentState(user.id).then(
+      (state): CatalogReferenceConsentState | null => state,
+      () => null,
+    ),
+    file.arrayBuffer().then((buffer) => processSubmissionImage(Buffer.from(buffer))),
+  ]);
+  if (consent === null) {
+    return jsonError("見本の同意を確かめられませんでした", "CATALOG_REFERENCE_CONSENT_CHECK_FAILED", 500);
+  }
+  if (consent.needsConsent || consent.consentedAt === null) {
+    return jsonError("見本の案内への同意が必要です", "CATALOG_REFERENCE_CONSENT_REQUIRED", 400);
+  }
   if (!processed.ok) {
     if (processed.error.code === "DIMENSION_TOO_SMALL") {
       return jsonError(
@@ -76,11 +91,10 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const consentedAt = (await getFirstCatalogReferenceConsentAt(user.id)) ?? new Date();
     const { id } = await saveCatalogReferenceImage({
       userId: user.id,
       webpBuffer: processed.data.webpBuffer,
-      consentedAt,
+      consentedAt: consent.consentedAt,
     });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {

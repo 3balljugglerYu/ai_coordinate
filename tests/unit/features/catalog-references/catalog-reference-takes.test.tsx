@@ -17,7 +17,7 @@ jest.mock("next-intl", () => ({
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
-import type { CatalogReferenceValue } from "@/features/catalog-references/components/CatalogReferencePicker";
+import type { CatalogReferenceValue } from "@/features/catalog-references/types";
 
 const value: CatalogReferenceValue = { id: "ref-1", previewUrl: "blob:preview", takes: ["outfit"] };
 

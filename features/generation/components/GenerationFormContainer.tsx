@@ -99,8 +99,10 @@ interface GenerationFormContainerProps {
   nameInputAvailable?: boolean;
   /** 見本(参照画像)の欄を出すか(見本を使える人だけ。/free のサーバーで一覧を確かめて渡す) */
   catalogReferenceAvailable?: boolean;
-  /** 見本を前に上げたことがあるか(初めてのときだけ同意の画面と案内を出す。/free のサーバーで確かめて渡す) */
+  /** 見本の有効な同意がサーバーにあるか(無いときだけ同意の画面と案内を出す。/free のサーバーで確かめて渡す) */
   catalogReferenceConsented?: boolean;
+  /** 本人の ID(見本の案内を見た印を本人ごとに分ける。見本を使える人のときだけ渡す) */
+  catalogReferenceUserId?: string;
   /** 名前の欄の数を制限しない(運営だけ) */
   nameInputUnlimited?: boolean;
   /** カタログから使う人の名前の欄。GenerationForm の同名 props を参照 */
@@ -204,6 +206,7 @@ export function GenerationFormContainer({
   nameInputUnlimited = false,
   catalogReferenceAvailable = false,
   catalogReferenceConsented = false,
+  catalogReferenceUserId,
   lockedNameInput = null,
   lockedNameInputLoading = false,
   gachaUnlimited = false,
@@ -1307,6 +1310,7 @@ export function GenerationFormContainer({
         nameInputAvailable={nameInputAvailable}
         catalogReferenceAvailable={catalogReferenceAvailable}
         catalogReferenceConsented={catalogReferenceConsented}
+        catalogReferenceUserId={catalogReferenceUserId}
         nameInputUnlimited={nameInputUnlimited}
         lockedNameInput={lockedNameInput}
         lockedNameInputLoading={lockedNameInputLoading}

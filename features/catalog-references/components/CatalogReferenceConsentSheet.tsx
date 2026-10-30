@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -66,12 +67,16 @@ export function CatalogReferenceConsentSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        showCloseButton={false}
         className="max-h-[90dvh] overflow-y-auto rounded-t-2xl px-5 pt-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
         data-testid="catalog-reference-consent-sheet"
       >
-        <SheetHeader className="px-0 text-left">
-          <SheetTitle className="text-lg">{t("catalogReferenceConsentTitle")}</SheetTitle>
-          <SheetDescription>{t("catalogReferenceConsentLead")}</SheetDescription>
+        <SheetHeader className="flex-row items-start justify-between gap-3 px-0 text-left">
+          <div className="min-w-0 space-y-1.5">
+            <SheetTitle className="text-lg">{t("catalogReferenceConsentTitle")}</SheetTitle>
+            <SheetDescription>{t("catalogReferenceConsentLead")}</SheetDescription>
+          </div>
+          <SheetCloseButton label={t("catalogReferenceSheetClose")} />
         </SheetHeader>
 
         <div className="mx-auto w-full max-w-md space-y-4">
@@ -142,5 +147,16 @@ function ExampleRow({
         ))}
       </ul>
     </section>
+  );
+}
+
+/** 同意しないで閉じるボタン(押せる広さ 44px・読み上げは各言語の文言) */
+export function SheetCloseButton({ label }: { label: string }) {
+  return (
+    <SheetClose asChild>
+      <Button type="button" variant="ghost" size="icon" className="-mr-2 -mt-2 h-11 w-11 flex-none" aria-label={label}>
+        <X className="h-5 w-5" />
+      </Button>
+    </SheetClose>
   );
 }

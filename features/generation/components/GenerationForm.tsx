@@ -19,10 +19,8 @@ import { PromptInputField } from "./PromptInputField";
 import { GachaPromptField } from "./GachaPromptField";
 import { NamePromptField } from "./NamePromptField";
 import { NameInputEntryField } from "./NameInputEntryField";
-import {
-  CatalogReferencePicker,
-  type CatalogReferenceValue,
-} from "@/features/catalog-references/components/CatalogReferencePicker";
+import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
+import type { CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
@@ -199,8 +197,10 @@ interface GenerationFormProps {
    * /free のサーバー側で、見本を使える人の一覧(運営が選んだ人)に入っているかを確かめて渡す。既定は出さない。
    */
   catalogReferenceAvailable?: boolean;
-  /** 見本を前に上げたことがあるか(初めてのときだけ同意の画面と案内を出す。/free のサーバーで確かめて渡す) */
+  /** 見本の有効な同意がサーバーにあるか(無いときだけ同意の画面と案内を出す。/free のサーバーで確かめて渡す) */
   catalogReferenceConsented?: boolean;
+  /** 本人の ID(見本の案内を見た印を、本人ごとに分けて残す。見本を使える人のときだけ渡す) */
+  catalogReferenceUserId?: string;
   /**
    * カタログから使う人の名前の欄(派生生成)。原作の本文に目印があるときだけ、
    * `/api/posts/[id]/prompt-slots` から見出しなどを受け取って渡す(本文は届かない)。
@@ -238,6 +238,7 @@ export function GenerationForm({
   nameInputUnlimited = false,
   catalogReferenceAvailable = false,
   catalogReferenceConsented = false,
+  catalogReferenceUserId,
   lockedNameInput = null,
   lockedNameInputLoading = false,
 }: GenerationFormProps) {
@@ -346,7 +347,7 @@ export function GenerationForm({
 
   // 見本(参照画像)。見本を使える人が、自分で書く本文のときだけ(派生生成では元の作品の見本が使われる)
   const canUseCatalogReference =
-    isFree && !promptLocked && isAuthenticated && catalogReferenceAvailable;
+    isFree && !promptLocked && isAuthenticated && catalogReferenceAvailable && Boolean(catalogReferenceUserId);
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
   // 上げている間と、見本を選んだのにまねるものが無いときは送らない
@@ -872,7 +873,7 @@ export function GenerationForm({
             // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す)
             <CatalogReferencePicker
               ownImage={renderSourceImageUploader({
-                label: `${freeT("catalogReferenceOwnImage")}${freeT("catalogReferenceOwnImageRequired")}`,
+                label: freeT("catalogReferenceOwnImageLabel"),
                 hideLabel: true,
                 aspectRatio: 3 / 4,
               })}
@@ -881,6 +882,7 @@ export function GenerationForm({
               onUploadingChange={setIsCatalogReferenceUploading}
               disabled={isGenerating}
               consented={catalogReferenceConsented}
+              userId={catalogReferenceUserId ?? ""}
             />
           ) : (
             renderSourceImageUploader()

@@ -214,7 +214,14 @@ beforeEach(() => {
 
 function renderForm(onSubmit: jest.Mock, props: Partial<React.ComponentProps<typeof GenerationForm>> = {}) {
   return render(
-    <GenerationForm subscriptionPlan="free" onSubmit={onSubmit} mode="free" catalogReferenceAvailable {...props} />,
+    <GenerationForm
+      subscriptionPlan="free"
+      onSubmit={onSubmit}
+      mode="free"
+      catalogReferenceAvailable
+      catalogReferenceUserId="user-1"
+      {...props}
+    />,
   );
 }
 
@@ -237,15 +244,16 @@ describe("見本の欄の出し分け", () => {
     // うちの子の欄は並べた中にあり、見出しは読み上げだけに残して縦長にする
     expect(within(screen.getByTestId("mock-reference-picker")).getByTestId("mock-image-uploader")).toBeTruthy();
     expect(mockImageUploader).toHaveBeenLastCalledWith({
-      label: "catalogReferenceOwnImagecatalogReferenceOwnImageRequired",
+      label: "catalogReferenceOwnImageLabel",
       hideLabel: true,
       aspectRatio: 3 / 4,
     });
-    expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({ consented: true, value: null });
+    expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({ consented: true, userId: "user-1", value: null });
   });
 
   test.each([
     ["見本を使えない人", { catalogReferenceAvailable: false }],
+    ["本人の ID が渡っていない", { catalogReferenceUserId: undefined }],
     ["コーディネート", { mode: "coordinate" as const }],
     ["派生生成(本文が施錠されている)", { promptLocked: true, sourcePostId: "post-1", lockedPromptText: "" }],
     ["ログインしていない", { authState: "guest" as const }],

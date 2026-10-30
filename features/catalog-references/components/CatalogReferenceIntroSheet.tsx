@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { REFERENCE_STRIPES_CLASS } from "./reference-styles";
+import { SheetCloseButton } from "./CatalogReferenceConsentSheet";
 
 interface CatalogReferenceIntroSheetProps {
   open: boolean;
@@ -30,15 +31,19 @@ export function CatalogReferenceIntroSheet({ open, onOpenChange }: CatalogRefere
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         side="bottom"
+        showCloseButton={false}
         aria-describedby={undefined}
         className="max-h-[90dvh] overflow-y-auto rounded-t-2xl px-5 pt-5 pb-[calc(1.5rem+env(safe-area-inset-bottom))]"
         data-testid="catalog-reference-intro-sheet"
       >
         <div className="mx-auto w-full max-w-md space-y-5">
           <SheetHeader className="items-start gap-3 px-0 text-left">
-            <span className="inline-flex h-6 items-center rounded-full bg-violet-50 px-2.5 text-xs font-bold tracking-wide text-violet-800">
-              {t("catalogReferenceBeta")}
-            </span>
+            <div className="flex w-full items-start justify-between gap-3">
+              <span className="inline-flex h-6 items-center rounded-full bg-violet-50 px-2.5 text-xs font-bold tracking-wide text-violet-800">
+                {t("catalogReferenceBeta")}
+              </span>
+              <SheetCloseButton label={t("catalogReferenceSheetClose")} />
+            </div>
             <SheetTitle className="text-xl leading-snug text-balance">
               {t("catalogReferenceIntroTitle")}
             </SheetTitle>

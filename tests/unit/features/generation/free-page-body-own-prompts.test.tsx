@@ -44,7 +44,7 @@ jest.mock("@/lib/auth/i2i-catalog", () => ({
   isInI2iCatalogAllowlist: (userId: string | null | undefined) => mockI2iAllowed(userId),
 }));
 const mockReferenceConsent = jest.fn<Promise<boolean>, [string]>(async () => false);
-jest.mock("@/features/catalog-references/lib/reference-image-repository", () => ({
+jest.mock("@/features/catalog-references/lib/consent-repository", () => ({
   hasCatalogReferenceConsent: (userId: string) => mockReferenceConsent(userId),
 }));
 jest.mock("@/components/RefreshOnMount", () => ({ RefreshOnMount: () => null }));
@@ -172,23 +172,27 @@ describe("FreePageBody の見本(参照画像)の欄", () => {
     expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceAvailable: allowed });
   });
 
-  // 見本を前に上げたことがあるか(初めてのときだけ同意の画面と案内を出す)は、使える人のときだけ確かめる
-  test.each([true, false])("使える人なら、同意済みか(%s)を確かめて渡す", async (consented) => {
+  // 有効な同意がサーバーにあるか(無いときだけ同意の画面と案内を出す)は、使える人のときだけ確かめる
+  test.each([true, false])("使える人なら、同意があるか(%s)を確かめ、本人の ID と一緒に渡す", async (consented) => {
     mockAvailable.mockReturnValue(true);
     mockI2iAllowed.mockResolvedValueOnce(true);
     mockReferenceConsent.mockResolvedValueOnce(consented);
     render(await FreePageBody());
 
     expect(mockReferenceConsent).toHaveBeenCalledWith("user-1");
-    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceConsented: consented });
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({
+      catalogReferenceConsented: consented,
+      catalogReferenceUserId: "user-1",
+    });
   });
 
-  test("使えない人には、同意済みかを確かめない(一般の利用者の読み込みを増やさない)", async () => {
+  test("使えない人には、同意を確かめず、本人の ID も渡さない(一般の利用者の読み込みを増やさない)", async () => {
     mockAvailable.mockReturnValue(true);
     mockI2iAllowed.mockResolvedValueOnce(false);
     render(await FreePageBody());
 
     expect(mockReferenceConsent).not.toHaveBeenCalled();
     expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceConsented: false });
+    expect(mockFormContainer.mock.calls[0][0].catalogReferenceUserId).toBeUndefined();
   });
 });
