@@ -98,10 +98,13 @@ export function resolveTransactionRevenue(params: {
   if (params.transactionType === "subscription") {
     const plan = getSubscriptionPlan(params.metadata);
     const billingInterval = getSubscriptionBillingInterval(params.metadata);
-    const label =
+    const baseLabel =
       plan && billingInterval
         ? `サブスクリプション ${plan} ${billingInterval === "year" ? "年額" : "月額"}`
         : "サブスクリプション";
+    // プランを途中で上げたときの支払いだけの行(量0・ペルコインは付与の行で別に付く)
+    const label =
+      params.metadata?.paymentOnly === true ? `${baseLabel}（プラン変更の支払い）` : baseLabel;
 
     return {
       key:
