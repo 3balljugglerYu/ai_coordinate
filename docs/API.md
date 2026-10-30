@@ -959,6 +959,7 @@ POST `/api/comments/[id]/replies` の request body は `{ "content": string, "re
 | --- | --- | --- | --- |
 | POST | `/api/notifications/mark-all-read` | user session | 通知を全件既読にする |
 | POST | `/api/notifications/mark-read` | user session | 単一通知を既読にする |
+| GET | `/api/notifications/messages/[id]` | user session / Bearer（アプリ） | 個人あてのお知らせの詳細（題名・本文・受け取った日・付けた作品・開いたことがあるか）。本人の・取り消していない通知だけ、それ以外は 404 |
 | POST | `/api/notifications/messages/[id]/opened` | user session（同一オリジン） | 個人あてのお知らせを開いた記録（初回の時刻・既読）。本人の・取り消していない通知だけ |
 | GET | `/api/notifications` | user session | 通知一覧を取得する |
 | GET | `/api/notifications/unread-count` | user session | 未読件数を取得する |
