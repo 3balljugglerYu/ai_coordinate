@@ -544,8 +544,7 @@ async function handleSubscriptionCheckoutCompleted(
       amount_paid: session.amount_total,
       currency: session.currency,
       livemode: session.livemode,
-      // checkout には支払った時刻が無いので、支払い画面の時刻を使う
-      status_transitions: { paid_at: session.created },
+      // checkout には支払った時刻が無い(支払い画面を作った時刻はずれるので使わない)。paidAt は null
     },
   });
   await revalidateSubscriptionSurfaces(userId);

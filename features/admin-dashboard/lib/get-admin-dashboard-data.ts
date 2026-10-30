@@ -39,6 +39,7 @@ import type {
   DashboardRevenueTrendPoint,
   DashboardTrendPoint,
 } from "./dashboard-types";
+import { subscriptionPaymentLabelSuffix } from "@/features/subscription/lib/subscription-change-payment";
 
 type ProfileRow = {
   user_id: string;
@@ -501,7 +502,8 @@ function buildRecentPurchases(params: {
           ? params.nicknameMap.get(purchase.user_id) ?? null
           : null,
         mode: getPurchaseMode(purchase.metadata),
-        packageLabel: label,
+        // 売上のグラフの系列名は付与の行と同じにし、一覧でだけ支払いだけの行に印を付ける
+        packageLabel: `${label}${subscriptionPaymentLabelSuffix(purchase.metadata)}`,
         percoins: purchase.amount,
         yenValue,
       };

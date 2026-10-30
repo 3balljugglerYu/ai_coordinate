@@ -8,7 +8,8 @@
  *  - 0円・円以外の請求は記録しない
  *  - 同じ請求の2回目(Stripe の送り直し)は duplicate
  *  - RPC が失敗したら投げる(Stripe に送り直させて、記録の漏れを防ぐ)
- *  - 支払いだけの行は、管理画面の売上に「プラン変更の支払い」として入る(isRevenueTransaction の決まりのまま)
+ *  - 支払いだけの行は、管理画面の売上に入る(isRevenueTransaction の決まりのまま)。売上のグラフでは付与の行と
+ *    同じ系列・同じ名前にし、利用者の詳細と「最近の購入」でだけ支払いだけの行と分かるようにする
  */
 
 import type Stripe from "stripe";
@@ -22,6 +23,7 @@ import {
   paidAtOfPayment,
   recordSubscriptionChangePayment,
   revenueYenOfPayment,
+  subscriptionPaymentLabelSuffix,
 } from "@/features/subscription/lib/subscription-change-payment";
 import { isRevenueTransaction } from "@/features/admin-dashboard/lib/revenue-transaction";
 import { resolveTransactionRevenue } from "@/features/admin-dashboard/lib/purchase-value";
@@ -172,6 +174,12 @@ describe("支払いだけの行と管理画面の売上", () => {
     expect(payment.yenValue).toBe(1480);
     expect(payment.key).toBe(grant.key);
     expect(payment.label).toBe(grant.label);
+  });
+
+  it("「最近の購入」では、支払いだけの行にだけ印を付ける", () => {
+    expect(subscriptionPaymentLabelSuffix(metadata)).toBe("（プラン変更の支払い）");
+    expect(subscriptionPaymentLabelSuffix({ ...metadata, revenueSource: "stripe_subscription" })).toBe("（支払い）");
+    expect(subscriptionPaymentLabelSuffix({ revenueYen: 1480 })).toBe("");
   });
 
   it("管理画面の利用者の詳細では、支払いだけの行の種類で出し分ける", () => {

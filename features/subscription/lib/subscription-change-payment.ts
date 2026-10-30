@@ -106,29 +106,28 @@ export function paidAtOfPayment(payment: SubscriptionPaymentInvoice): string | n
 }
 
 /**
- * 支払いだけの行(量0の subscription・paymentOnly)で売上を記録する。0円・円以外は記録しない。
+ * プランを上げたときの日割りの請求の支払いを、支払いだけの行(量0の subscription・paymentOnly)で記録する
+ * (付与は change-service.ts が金額なしで行う)。0円・円以外は記録しない。
  * 同じ請求の売上は1行だけ(RPC が付与の関数と同じロックの中で、付与の行にもう売上があれば書かない)。
  */
-export async function recordSubscriptionPayment(
+export async function recordSubscriptionChangePayment(
   supabase: SupabaseClient,
   params: {
     userId: string;
     plan: SubscriptionPlan;
     billingInterval: SubscriptionBillingInterval | null;
     invoice: SubscriptionPaymentInvoice;
-    revenueSource: "stripe_subscription" | "stripe_subscription_change";
   },
 ): Promise<SubscriptionChangePaymentResult> {
   const { invoice } = params;
-  if ((invoice.currency ?? "").toLowerCase() !== "jpy") {
-    console.warn("[Stripe Webhook] Skip non-JPY subscription payment", {
-      invoiceId: invoice.id,
-      currency: invoice.currency,
-    });
-    return "skipped";
-  }
   const revenueYen = revenueYenOfPayment(invoice);
   if (!revenueYen) {
+    if ((invoice.currency ?? "").toLowerCase() !== "jpy") {
+      console.warn("[Stripe Webhook] Skip non-JPY subscription payment", {
+        invoiceId: invoice.id,
+        currency: invoice.currency,
+      });
+    }
     return "skipped";
   }
 
@@ -140,7 +139,7 @@ export async function recordSubscriptionPayment(
         plan: params.plan,
         billingInterval: params.billingInterval,
         revenueYen,
-        revenueSource: params.revenueSource,
+        revenueSource: "stripe_subscription_change",
         mode: invoice.livemode ? "live" : "test",
       }),
       // 付与の行と同じキーでも請求 ID を持つ(RPC は invoiceId も入れる)
@@ -156,23 +155,20 @@ export async function recordSubscriptionPayment(
   return data === true ? "recorded" : "duplicate";
 }
 
-/** プランを上げたときの日割りの請求の支払いを記録する(付与は change-service.ts が金額なしで行う) */
-export function recordSubscriptionChangePayment(
-  supabase: SupabaseClient,
-  params: {
-    userId: string;
-    plan: SubscriptionPlan;
-    billingInterval: SubscriptionBillingInterval | null;
-    invoice: SubscriptionPaymentInvoice;
-  },
-): Promise<SubscriptionChangePaymentResult> {
-  return recordSubscriptionPayment(supabase, { ...params, revenueSource: "stripe_subscription_change" });
-}
-
 /** 支払いだけの行の種類(管理画面の表示に使う)。付与の行なら null */
 export function getSubscriptionPaymentKind(
   metadata: Record<string, unknown> | null | undefined,
 ): "plan_change" | "payment" | null {
   if (metadata?.paymentOnly !== true) return null;
   return metadata.revenueSource === "stripe_subscription_change" ? "plan_change" : "payment";
+}
+
+/** 支払いだけの行に付ける印(管理画面の「最近の購入」で付与の行と見分ける)。付与の行なら空 */
+export function subscriptionPaymentLabelSuffix(
+  metadata: Record<string, unknown> | null | undefined,
+): string {
+  const kind = getSubscriptionPaymentKind(metadata);
+  if (kind === "plan_change") return "（プラン変更の支払い）";
+  if (kind === "payment") return "（支払い）";
+  return "";
 }
