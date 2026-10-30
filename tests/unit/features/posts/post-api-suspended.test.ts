@@ -50,7 +50,9 @@ import { getUser } from "@/lib/auth";
 import { postImageServer } from "@/features/generation/lib/server-database";
 import { PostApiError } from "@/features/posts/lib/api";
 import {
+  POSTS_REVIEW_PENDING,
   POSTS_SUSPENDED_CANNOT_PUBLISH,
+  isReviewPendingPublishError,
   isSuspendedPublishError,
 } from "@/features/posts/lib/post-error-codes";
 
@@ -91,6 +93,21 @@ describe("POST /api/posts/post — 公開停止中コンテンツ", () => {
     expect(payload.errorCode).toBe("POSTS_SUSPENDED_CANNOT_PUBLISH");
     // 文言はユーザー向けに整えたものを返す（生の例外メッセージを露出させない）
     expect(payload.error).not.toContain("post_suspended_cannot_publish");
+  });
+
+  it("見本つきの作品で審査が済んでいない(DB trigger の post_review_pending)ときは 409 と専用 errorCode", async () => {
+    // i2i カタログ REQ-005: trigger enforce_catalog_review_before_publish が出す例外
+    mockPostImageServer.mockRejectedValue(new Error("画像の投稿に失敗しました: post_review_pending"));
+
+    const response = await POST(request({ id: IMAGE_ID }));
+    const payload = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(payload.errorCode).toBe(POSTS_REVIEW_PENDING);
+    expect(payload.error).not.toContain("post_review_pending");
+    expect(isReviewPendingPublishError({ code: payload.errorCode })).toBe(true);
+    expect(isReviewPendingPublishError({ code: POSTS_SUSPENDED_CANNOT_PUBLISH })).toBe(false);
+    expect(isReviewPendingPublishError(null)).toBe(false);
   });
 
   it("それ以外の失敗は従来どおり 500 のまま", async () => {

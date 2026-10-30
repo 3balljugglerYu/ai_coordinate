@@ -14,7 +14,10 @@ export type NotificationType =
   | 'style_preset_post_published'
   | 'style_preset_usage_milestone'
   | 'usage_reward_earned'
-  | 'admin_message';
+  | 'admin_message'
+  // 見本(参照画像)つきの作品の審査の結果(i2i カタログ Phase 4)。entity は作品(post)
+  | 'catalog_review_approved'
+  | 'catalog_review_rejected';
 export type EntityType = 'post' | 'comment' | 'user';
 
 /**
@@ -50,6 +53,9 @@ export const ANONYMOUS_ACTOR_NOTIFICATION_TYPES = [
   'usage_reward_earned',
   // 個人あてのお知らせ: 送った運営を受け取った人に渡さない(personal-notices 計画書 PN-008)
   'admin_message',
+  // 見本つきの作品の審査の結果: 審査した運営を見せない(i2i カタログ・DB の RPC も actor を本人にしている)
+  'catalog_review_approved',
+  'catalog_review_rejected',
 ] as const;
 
 export function isAnonymousActorNotificationType(type: string): boolean {
@@ -120,6 +126,8 @@ export interface Notification {
     personal_notice_recipient_id?: string;
     receipt_code?: string;
     post_id?: string;
+    /** 見本つきの作品の審査の作り直しの理由の分類(catalog_review_rejected) */
+    reason_category?: string | null;
   };
   is_read: boolean;
   read_at: string | null;

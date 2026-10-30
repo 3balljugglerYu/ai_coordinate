@@ -26,6 +26,8 @@ import {
   Shirt,
   Coins,
   Mail,
+  BadgeCheck,
+  RotateCcw,
 } from "lucide-react";
 
 /**
@@ -142,6 +144,10 @@ export function NotificationList({
         return <Coins className="h-4 w-4 text-amber-500" />;
       case "admin_message":
         return <Mail className="h-4 w-4 text-violet-500" />;
+      case "catalog_review_approved":
+        return <BadgeCheck className="h-4 w-4 text-emerald-500" />;
+      case "catalog_review_rejected":
+        return <RotateCcw className="h-4 w-4 text-orange-500" />;
       default:
         return <Bell className="h-4 w-4" />;
     }
