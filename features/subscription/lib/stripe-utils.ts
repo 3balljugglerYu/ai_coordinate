@@ -68,7 +68,16 @@ export function getBillingIntervalFromStripeSubscription(
 export function getSubscriptionPlanFromStripeSubscription(
   subscription: Stripe.Subscription
 ): PaidSubscriptionPlan | null {
-  const price = getSubscriptionItem(subscription)?.price;
+  return getSubscriptionPlanFromStripePrice(getSubscriptionItem(subscription)?.price);
+}
+
+/**
+ * 価格からプランを決める(lookup_key か、環境変数で上書きした価格 ID)。
+ * 通知の「変わる前の値」(previous_attributes の items)の価格にも使う。
+ */
+export function getSubscriptionPlanFromStripePrice(
+  price: Stripe.Price | string | null | undefined
+): PaidSubscriptionPlan | null {
   if (!price || typeof price === "string") {
     return null;
   }

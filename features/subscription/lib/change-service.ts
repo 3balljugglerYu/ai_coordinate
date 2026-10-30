@@ -27,6 +27,7 @@ import {
   type PaidSubscriptionPlan,
   type SubscriptionBillingInterval,
 } from "@/features/subscription/subscription-config";
+import { readGrantedSubscriptionAmount } from "./subscription-upgrade-grant";
 
 class SubscriptionChangeServiceError extends Error {
   constructor(
@@ -286,7 +287,17 @@ async function grantSubscriptionPercoins(params: {
     );
   }
 
-  return typeof data === "number" ? data : params.amount;
+  const granted = typeof data === "number" ? data : params.amount;
+  if (granted > 0) {
+    return granted;
+  }
+
+  // 0 のときは、Stripe の通知(webhook)が同じ請求 ID で先に付けていることがある。
+  // そのときは付いた量を返す(画面に「0ペルコイン」と出さないように)
+  return readGrantedSubscriptionAmount(supabase, {
+    userId: params.userId,
+    invoiceId: params.invoiceId,
+  });
 }
 
 function revalidateSubscriptionSurfaces(userId: string) {
