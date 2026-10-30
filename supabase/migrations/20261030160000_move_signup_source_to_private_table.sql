@@ -21,10 +21,6 @@ BEGIN;
 
 SET LOCAL lock_timeout = '5s';
 
--- 写してから空にするまでの間に、古いコードが profiles.signup_source に書くと、写されずに消える。
--- 最初に profiles への書き込みを止めておく(読み込みは止めない。COMMIT まで数秒)
-LOCK TABLE public.profiles IN SHARE ROW EXCLUSIVE MODE;
-
 CREATE TABLE IF NOT EXISTS public.user_signup_sources (
   user_id uuid PRIMARY KEY
     REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -50,6 +46,12 @@ REVOKE ALL ON TABLE public.user_signup_sources FROM PUBLIC;
 REVOKE ALL ON TABLE public.user_signup_sources FROM anon;
 REVOKE ALL ON TABLE public.user_signup_sources FROM authenticated;
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_signup_sources TO service_role;
+
+-- 写してから空にするまでの間に、古いコードが profiles.signup_source に書くと、写されずに消える。
+-- 写す前に profiles への書き込みを止めておく(読み込みは止めない。COMMIT まで数秒)。
+-- ロックの順は、登録の処理(auth.users に INSERT → handle_new_user が profiles に INSERT)と同じ
+-- 「auth.users(上の REFERENCES) → profiles」にする。逆にすると登録とデッドロックしうる
+LOCK TABLE public.profiles IN SHARE ROW EXCLUSIVE MODE;
 
 -- 今の値を写す
 INSERT INTO public.user_signup_sources (user_id, signup_source, signed_up_at)
@@ -102,19 +104,26 @@ COMMENT ON FUNCTION public.record_signup_source(uuid, text) IS
 
 -- 切り替えの間の古いコードの書き込みを、新しい表に移す(profiles には残さない)。2回目で消す。
 -- 古い /auth/callback と同じく、登録から24時間以内の人だけ写す(前から使っている人が自分の行を
--- 書き換えても、新しい表には入れない)。どちらの場合も profiles には残さない
+-- 書き換えても、新しい表には入れない)。どちらの場合も profiles には残さない。
+-- 登録した時刻は、利用者が書き換えられる profiles.created_at ではなく auth.users.created_at で見る
 CREATE OR REPLACE FUNCTION public.divert_profile_signup_source()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path TO 'public', 'pg_temp'
 AS $function$
+DECLARE
+  v_signed_up_at timestamptz;
 BEGIN
   IF NEW.signup_source IS NOT NULL THEN
-    IF NEW.user_id IS NOT NULL
-       AND COALESCE(NEW.created_at, now()) > now() - interval '24 hours' THEN
+    SELECT u.created_at INTO v_signed_up_at
+    FROM auth.users AS u
+    WHERE u.id = NEW.user_id;
+
+    IF v_signed_up_at IS NOT NULL
+       AND v_signed_up_at > now() - interval '24 hours' THEN
       INSERT INTO public.user_signup_sources (user_id, signup_source, signed_up_at)
-      VALUES (NEW.user_id, NEW.signup_source, COALESCE(NEW.created_at, now()))
+      VALUES (NEW.user_id, NEW.signup_source, v_signed_up_at)
       ON CONFLICT (user_id) DO NOTHING;
     END IF;
     NEW.signup_source := NULL;

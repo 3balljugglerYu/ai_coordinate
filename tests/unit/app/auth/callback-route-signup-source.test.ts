@@ -12,7 +12,10 @@
 
 const mockExchange = jest.fn();
 const mockUserFrom = jest.fn();
-const mockAdminRpc = jest.fn(async () => ({ data: true, error: null as { message: string } | null }));
+const mockAdminRpc = jest.fn(async () => ({
+  data: true as boolean | null,
+  error: null as { message: string } | null,
+}));
 
 jest.mock("next/server", () => {
   const actual = jest.requireActual("next/server");
