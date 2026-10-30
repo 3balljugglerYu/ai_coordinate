@@ -1,4 +1,4 @@
--- i2i カタログ: 作り直しになった見本で作った、ほかの作品を、審査に出せない・承認できないようにする
+-- i2i カタログ: 使えなくなった見本で作った作品を、審査に出せない・承認できないようにする
 -- 計画: docs/planning/i2i-catalog-review-implementation-plan.md（Phase 4）
 --
 -- 段階1（20261029100000）では、作品を作り直しにすると、その見本（catalog_reference_images.rejected_at）が止まる。
@@ -6,8 +6,14 @@
 -- ほかの人の生成ではその見本が使えない（resolve_catalog_reference_for_job が止める）。
 -- 2026-10-30 ユーザー決定: 審査に出すことも、承認することもできないようにする（作り直しにはできる）。
 --
+-- 確かめは「見本がたどれて、止まっていないときだけ通す」にする（fail-closed）。
+-- 見本は根の作品にだけ対応があり（generated_image_reference_secrets）、派生の作品は根をたどる。
+-- 根が消されると対応の行もカスケードで消え、たどれなくなる（source_post_id には FK が無い）。
+-- 「止まっていれば断る」だと、そのとき確かめが空振りするので、たどれないときも断る。
+-- 審査の行があるのは見本を使った作品（根か、承認前の根からの派生）だけなので、たどれないのは消されたときだけ。
+--
 -- 変えるのは2つの RPC だけ。どちらも段階1の定義に確かめを1つ足して置き換える（権限は同じに付け直す）。
--- 断るときは 'CATALOG_REVIEW_REFERENCE_REJECTED'（ERRCODE 22023）。API はこの文で見分ける。
+-- 断るときは 'CATALOG_REVIEW_REFERENCE_UNAVAILABLE'（ERRCODE 22023）。API はこの文で見分ける。
 
 CREATE OR REPLACE FUNCTION public.submit_catalog_review(p_image_id uuid)
 RETURNS TABLE(status text, submitted_at timestamptz)
@@ -48,10 +54,10 @@ BEGIN
     RAISE EXCEPTION 'CATALOG_REVIEW_NOT_FOUND' USING ERRCODE = 'P0002';
   END IF;
 
-  -- 見本が、ほかの作品の審査で作り直しになっていれば出せない。
-  -- 承認されても、その見本はもう使えない（resolve_catalog_reference_for_job が止める）。
+  -- 見本がたどれて、止まっていないときだけ出せる。ほかの作品の審査で作り直しになった見本や、
+  -- 根が消されてたどれない見本は、承認されても使えない（resolve_catalog_reference_for_job が止める）。
   -- 見本は根の作品にだけ対応があるので、派生の作品なら根をたどる。
-  IF EXISTS (
+  IF NOT EXISTS (
     SELECT 1
     FROM public.generated_images AS gi
     JOIN public.generated_image_reference_secrets AS s
@@ -59,9 +65,9 @@ BEGIN
     JOIN public.catalog_reference_images AS c
       ON c.id = s.reference_id
     WHERE gi.id = p_image_id
-      AND c.rejected_at IS NOT NULL
+      AND c.rejected_at IS NULL
   ) THEN
-    RAISE EXCEPTION 'CATALOG_REVIEW_REFERENCE_REJECTED' USING ERRCODE = '22023';
+    RAISE EXCEPTION 'CATALOG_REVIEW_REFERENCE_UNAVAILABLE' USING ERRCODE = '22023';
   END IF;
 
   UPDATE public.generated_image_catalog_reviews AS r
@@ -139,21 +145,19 @@ BEGIN
     RAISE EXCEPTION 'CATALOG_REVIEW_IMAGE_UNAVAILABLE' USING ERRCODE = '22023';
   END IF;
 
-  -- 見本が、ほかの作品の審査で作り直しになっていれば承認しない（その見本はもう使えない）。
+  -- 見本がたどれて、止まっていないときだけ承認する（submit_catalog_review と同じ確かめ）。
   -- 作り直しにはできる。
-  IF p_action = 'approve' THEN
-    IF EXISTS (
-      SELECT 1
-      FROM public.generated_images AS gi
-      JOIN public.generated_image_reference_secrets AS s
-        ON s.image_id = COALESCE(gi.source_post_id, gi.id)
-      JOIN public.catalog_reference_images AS c
-        ON c.id = s.reference_id
-      WHERE gi.id = p_image_id
-        AND c.rejected_at IS NOT NULL
-    ) THEN
-      RAISE EXCEPTION 'CATALOG_REVIEW_REFERENCE_REJECTED' USING ERRCODE = '22023';
-    END IF;
+  IF p_action = 'approve' AND NOT EXISTS (
+    SELECT 1
+    FROM public.generated_images AS gi
+    JOIN public.generated_image_reference_secrets AS s
+      ON s.image_id = COALESCE(gi.source_post_id, gi.id)
+    JOIN public.catalog_reference_images AS c
+      ON c.id = s.reference_id
+    WHERE gi.id = p_image_id
+      AND c.rejected_at IS NULL
+  ) THEN
+    RAISE EXCEPTION 'CATALOG_REVIEW_REFERENCE_UNAVAILABLE' USING ERRCODE = '22023';
   END IF;
 
   v_new_status := CASE p_action WHEN 'approve' THEN 'approved' ELSE 'rejected' END;

@@ -111,7 +111,7 @@ test("作品・見本(期限つきの URL)・まねたもの・プロンプト�
       prompt: "猫耳の衣装",
       derived: false,
       referenceId: "ref-1",
-      referenceRejected: false,
+      referenceUnavailable: false,
       imageUnavailable: false,
     },
     {
@@ -126,7 +126,7 @@ test("作品・見本(期限つきの URL)・まねたもの・プロンプト�
       prompt: "猫耳の衣装",
       derived: true,
       referenceId: "ref-1",
-      referenceRejected: false,
+      referenceUnavailable: false,
       imageUnavailable: false,
     },
   ]);
@@ -165,7 +165,7 @@ test("見本がほかの作品の審査で作り直しになっている・作�
 
   const [item] = await listPendingCatalogReviews(supabase);
 
-  expect(item.referenceRejected).toBe(true);
+  expect(item.referenceUnavailable).toBe(true);
   expect(item.referenceUrl).toBe("https://signed/ref");
   expect(item.imageUnavailable).toBe(true);
 });
@@ -183,4 +183,28 @@ test.each([
   const [item] = await listPendingCatalogReviews(supabase);
 
   expect(item.imageUnavailable).toBe(unavailable);
+});
+
+test("派生の作品で、元の作品が消されて見本がたどれなければ、見本が使えない印を付ける", async () => {
+  const { supabase } = client({
+    generated_image_catalog_reviews: { data: [{ image_id: "img-derived", user_id: "u1", submitted_at: null }], error: null },
+    generated_images: {
+      data: [
+        {
+          id: "img-derived",
+          image_url: null,
+          pre_generation_storage_path: null,
+          source_post_id: "img-deleted-root",
+          moderation_status: "visible",
+        },
+      ],
+      error: null,
+    },
+  });
+
+  const [item] = await listPendingCatalogReviews(supabase);
+
+  expect(item.derived).toBe(true);
+  expect(item.referenceUnavailable).toBe(true);
+  expect(item.referenceUrl).toBeNull();
 });

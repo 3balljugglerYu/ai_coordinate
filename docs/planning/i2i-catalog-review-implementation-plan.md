@@ -242,7 +242,7 @@ flowchart LR
 
 ### Phase 4: 審査と通知（4a・4b: 2026-10-30 実装）
 
-- [x] 作り直しになった見本で作った、ほかの作品は、審査に出せない・承認できない（作り直しにはできる）。2026-10-30 ユーザー決定。マイグレーション `20261030180000_block_rejected_reference_reviews.sql` で `submit_catalog_review`・`apply_catalog_review_decision` に確かめを足した（派生の作品は元の作品の見本をたどる）。断りは `CATALOG_REVIEW_REFERENCE_REJECTED`（409）。審査ページは、その作品の承認ボタンを押せない
+- [x] 作り直しになった見本で作った、ほかの作品は、審査に出せない・承認できない（作り直しにはできる）。2026-10-30 ユーザー決定。マイグレーション `20261030180000_block_rejected_reference_reviews.sql` で `submit_catalog_review`・`apply_catalog_review_decision` に確かめを足した（見本がたどれて止まっていないときだけ通す。派生の作品は元の作品の見本をたどり、元の作品が消されてたどれないときも断る）。断りは `CATALOG_REVIEW_REFERENCE_UNAVAILABLE`（409）。審査ページは、その作品の承認ボタンを押せない
 - 見本を使える人の一覧から外された人も、外される前に作った作品は審査に出せる（2026-10-30 ユーザー決定・変更なし）
 - [x] `POST /api/catalog-references/review`（作者が審査に出す）。本人のログインの権限で RPC `submit_catalog_review` を呼ぶ。見つからない（他人の作品を含む）404。「未申請」でなければ本人の審査の行を読み、審査中・承認済み・作り直しを別の 409 で返す。RPC にログインの情報が届かない（42501）ときは 401
 - [x] 管理画面の審査ページ `/admin/catalog-reviews`（参照画像は期限つきの URL・Before・After・取り入れたもの・プロンプト・作者を並べる。派生の作品は元の作品の見本を使う。見本がほかの作品の審査で作り直しになっていれば印を出す）と判定 API `POST /api/admin/catalog-reviews/[imageId]/decision`（RPC `apply_catalog_review_decision`・監査ログ `catalog_review_approve` / `_reject`）→ 4b

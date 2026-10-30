@@ -92,10 +92,10 @@ export async function POST(
     if (message.includes("CATALOG_REVIEW_INVALID_STATE")) {
       return jsonError("この作品はもう判定されています", "CATALOG_REVIEW_ALREADY_DECIDED", 409);
     }
-    if (message.includes("CATALOG_REVIEW_REFERENCE_REJECTED")) {
+    if (message.includes("CATALOG_REVIEW_REFERENCE_UNAVAILABLE")) {
       return jsonError(
-        "この見本は、ほかの作品の審査で作り直しになっているため承認できません。作り直しにしてください",
-        "CATALOG_REVIEW_REFERENCE_REJECTED",
+        "この作品の見本は使えないため(作り直しになったか、元の作品が消されています)、承認できません。作り直しにしてください",
+        "CATALOG_REVIEW_REFERENCE_UNAVAILABLE",
         409,
       );
     }

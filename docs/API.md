@@ -434,7 +434,7 @@ Main errors:
   - `401`: ログインしていない・ログインの情報が届かない（`CATALOG_REVIEW_AUTH_REQUIRED`）
   - `403`: よそのサイトからの送信
   - `404`: 審査に出せる作品が見つからない（他人の作品・見本の作品でない・公開停止など。`CATALOG_REVIEW_NOT_FOUND`）
-  - `409`: もう審査中（`CATALOG_REVIEW_ALREADY_SUBMITTED`）・もう承認済み（`CATALOG_REVIEW_ALREADY_APPROVED`）・作り直しになった（`CATALOG_REVIEW_REJECTED`。同じ作品は出し直せない）・見本がほかの作品の審査で作り直しになった（`CATALOG_REVIEW_REFERENCE_REJECTED`。見本を変えて作り直す）
+  - `409`: もう審査中（`CATALOG_REVIEW_ALREADY_SUBMITTED`）・もう承認済み（`CATALOG_REVIEW_ALREADY_APPROVED`）・作り直しになった（`CATALOG_REVIEW_REJECTED`。同じ作品は出し直せない）・見本が使えなくなった（作り直しになった・元の作品が消された。`CATALOG_REVIEW_REFERENCE_UNAVAILABLE`。見本を変えて作り直す）
   - `500`: 審査に出せなかった（`CATALOG_REVIEW_SUBMIT_FAILED`）
 
 見本つきの作品は、承認されるまで `POST /api/posts/post` が `409` + `POSTS_REVIEW_PENDING` を返します（DB のトリガーが投稿を止める）。
@@ -453,7 +453,7 @@ Main errors:
   - `400`: 作品の ID の形が違う（`CATALOG_REVIEW_INVALID_ID`）・本文が JSON でない（`CATALOG_REVIEW_INVALID_REQUEST`）・判定の内容が違う（作り直しに分類が無い・500文字を超えるなど。`CATALOG_REVIEW_INVALID_DECISION`）
   - `403`: 運営でない・よそのサイトからの送信・運営として登録されていない（`CATALOG_REVIEW_UNAUTHORIZED`）
   - `404`: 審査の作品が見つからない（`CATALOG_REVIEW_NOT_FOUND`）
-  - `409`: もう判定した（`CATALOG_REVIEW_ALREADY_DECIDED`）・作品が公開停止などで使えない（`CATALOG_REVIEW_IMAGE_UNAVAILABLE`）・見本がほかの作品の審査で作り直しになっていて承認できない（`CATALOG_REVIEW_REFERENCE_REJECTED`。作り直しにはできる）
+  - `409`: もう判定した（`CATALOG_REVIEW_ALREADY_DECIDED`）・作品が公開停止などで使えない（`CATALOG_REVIEW_IMAGE_UNAVAILABLE`）・見本が使えないため承認できない（作り直しになった・元の作品が消された。`CATALOG_REVIEW_REFERENCE_UNAVAILABLE`。作り直しにはできる）
   - `500`: 判定に失敗した（`CATALOG_REVIEW_DECISION_FAILED`）
 
 ### `POST /api/coordinate-generate-guest`
