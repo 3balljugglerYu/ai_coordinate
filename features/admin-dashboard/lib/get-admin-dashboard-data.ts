@@ -651,10 +651,11 @@ export async function getAdminDashboardData(
     reportsResult,
     activeVisiblePostsResult,
     authProviderSignupsResult,
+    signupSourcesResult,
   ] = await Promise.all([
     supabase
       .from("profiles")
-      .select("user_id, nickname, created_at, signup_source")
+      .select("user_id, nickname, created_at")
       .gte("created_at", sharedFetchStartIso)
       .lte("created_at", sharedFetchEndIso),
     fetchAllRows<GeneratedImageRow>((cursor, size) => {
@@ -728,6 +729,13 @@ export async function getAdminDashboardData(
       .not("user_id", "is", null)
       .gte("posted_at", activeThresholdIso),
     supabase.rpc("get_auth_provider_signups"),
+    // 登録した経路は、だれでも読める profiles ではなく user_signup_sources にある。
+    // signed_up_at は profiles.created_at と同じ値なので、上の profiles と同じ期間で読む
+    supabase
+      .from("user_signup_sources")
+      .select("user_id, signup_source")
+      .gte("signed_up_at", sharedFetchStartIso)
+      .lte("signed_up_at", sharedFetchEndIso),
   ]);
 
   /*
@@ -780,7 +788,18 @@ export async function getAdminDashboardData(
     );
   }
 
-  const profiles = (profilesResult.data ?? []) as ProfileRow[];
+  if (signupSourcesResult.error) {
+    console.error("Dashboard signup sources fetch error:", signupSourcesResult.error);
+  }
+  const signupSourceByUserId = new Map(
+    ((signupSourcesResult.data ?? []) as Array<{ user_id: string; signup_source: string }>).map(
+      (row) => [row.user_id, row.signup_source],
+    ),
+  );
+  const profiles = ((profilesResult.data ?? []) as ProfileRow[]).map((profile) => ({
+    ...profile,
+    signup_source: signupSourceByUserId.get(profile.user_id) ?? null,
+  }));
   const generatedImages = (generatedResult.data ?? []) as GeneratedImageRow[];
   const styleUsageEvents = (styleUsageEventsResult.data ?? []) as StyleUsageEventRow[];
   const styleGuestAttempts =

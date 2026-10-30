@@ -170,23 +170,27 @@ export async function GET(request: Request) {
         }
       }
 
+      // 登録した経路は、だれでも読める profiles ではなく、運営(service_role)だけが読む表に書く。
+      // すでにあれば書き直さない(最初の1つだけ持つ)
       if (signupSource && shouldUpdateRecentUserMetadata) {
         try {
-          const { error: profileUpdateError } = await supabase
-            .from("profiles")
-            .update({ signup_source: signupSource })
-            .eq("user_id", sessionData.user.id)
-            .is("signup_source", null);
+          const { error: signupSourceError } = await createAdminClient().rpc(
+            "record_signup_source",
+            {
+              p_user_id: sessionData.user.id,
+              p_signup_source: signupSource,
+            }
+          );
 
-          if (profileUpdateError) {
+          if (signupSourceError) {
             console.error(
-              "Failed to update profile signup_source during auth callback:",
-              profileUpdateError
+              "Failed to record signup_source during auth callback:",
+              signupSourceError
             );
           }
         } catch (err) {
           console.error(
-            "Failed to update profile signup_source during auth callback:",
+            "Failed to record signup_source during auth callback:",
             err
           );
         }

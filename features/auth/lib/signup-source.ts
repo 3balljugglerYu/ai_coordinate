@@ -5,7 +5,7 @@ export const WARDROBE_SIGNUP_SOURCE = "wardrobe" as const;
  * 流入元タグ。代表値は STYLE_SIGNUP_SOURCE / WARDROBE_SIGNUP_SOURCE だが、
  * X 等の外部チャネル(例: x_profile, x_post_20260627)も自由形式で受け付ける。
  * 値は parseSignupSource でサニタイズ済み(小文字英数 + _ -、1..40文字)。
- * DB 側の CHECK 制約(profiles_signup_source_check)も同じ書式。
+ * DB 側の CHECK 制約(user_signup_sources_signup_source_check)も同じ書式。
  */
 export type SignupSource = string;
 

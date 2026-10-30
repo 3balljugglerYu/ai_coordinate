@@ -3,7 +3,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { toJstDateKey } from "../dashboard-range";
-import { fetchAllById } from "../fetch-all-rows";
+import { fetchAllById, fetchAllRows } from "../fetch-all-rows";
 import { getOperatorUserIds } from "../get-operator-user-ids";
 import { listTimelineEvents } from "../timeline-event-repository";
 import type { AdPlatform, AdStatRow, ParsedAdExport } from "./ad-stats-types";
@@ -60,11 +60,11 @@ interface AdDbRow {
   signup_source: string | null;
 }
 
-interface ProfileSignupRow {
+/** user_signup_sources の行(ページ送りのため user_id を id として読む) */
+interface SignupSourceRow {
   id: string;
-  user_id: string;
   signup_source: string;
-  created_at: string;
+  signed_up_at: string;
 }
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
@@ -231,23 +231,26 @@ async function readSignupDays(
   operators: string[],
 ): Promise<AdSignupDay[]> {
   const { from, to } = range;
-  const { data, error } = await fetchAllById<ProfileSignupRow>(() =>
-    supabase
-      .from("profiles")
-      .select("id, user_id, signup_source, created_at")
+  // 登録した経路は、運営だけが読む user_signup_sources にある(1人1行・user_id で送る)
+  const { data, error } = await fetchAllRows<SignupSourceRow>((cursor, size) => {
+    let query = supabase
+      .from("user_signup_sources")
+      .select("id:user_id, signup_source, signed_up_at")
       .in(
         "signup_source",
         windows.map((w) => w.signupSource),
       )
-      .gte("created_at", jstDayStartIso(from))
-      .lt("created_at", jstDayStartIso(addDays(to, 1))),
-  );
+      .gte("signed_up_at", jstDayStartIso(from))
+      .lt("signed_up_at", jstDayStartIso(addDays(to, 1)));
+    if (cursor) query = query.gt("user_id", cursor);
+    return query.order("user_id", { ascending: true }).limit(size);
+  });
   if (error) throw new Error(`日ごとの登録の取得に失敗しました: ${error.message}`);
   return filterSignupDays(
     (data ?? []).map((row) => ({
-      userId: row.user_id,
+      userId: row.id,
       signupSource: row.signup_source,
-      createdAt: row.created_at,
+      createdAt: row.signed_up_at,
     })),
     windows,
     operators,
