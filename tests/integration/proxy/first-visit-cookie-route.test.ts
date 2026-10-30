@@ -4,9 +4,10 @@
  * proxy を通したとき、はじめて来た人に「最初に来た場所」の cookie を付ける(管理ダッシュボード P3-3)。
  *
  * ここで守ること:
- *  - ロケール付きの URL へのリダイレクトでも付け、パスはリダイレクト前(最初に開いた URL)のもの
+ *  - ロケール付きの URL へのリダイレクトでも付け、パスは言語の部分を外したもの
  *  - ふつうの画面の応答でも付ける
  *  - すでにあれば付け直さない
+ *  - URL の first_visit(引き継ぎ)は、消したアドレスへ移し直して、その値で付ける
  */
 
 jest.mock("@supabase/ssr", () => ({
@@ -55,7 +56,7 @@ test("ふつうの画面の応答でも付ける", async () => {
     pageRequest("http://localhost/ja/style", { referer: "https://www.google.com/" }),
   )) as NextResponse;
 
-  expect(response.cookies.get("persta_first_visit")?.value).toBe("search|/ja/style");
+  expect(response.cookies.get("persta_first_visit")?.value).toBe("search|/style");
 });
 
 test("すでにあれば付け直さない", async () => {
@@ -67,4 +68,14 @@ test("すでにあれば付け直さない", async () => {
   )) as NextResponse;
 
   expect(response.cookies.get("persta_first_visit")).toBeUndefined();
+});
+
+test("URL の first_visit は、消したアドレスへ移し直して、その値で付ける", async () => {
+  const response = (await proxy(
+    pageRequest("http://localhost/ja/login?first_visit=meta%7C%2Fcollections%2Fhalloween"),
+  )) as NextResponse;
+
+  expect(response.status).toBe(307);
+  expect(new URL(response.headers.get("location")!).search).toBe("");
+  expect(response.cookies.get("persta_first_visit")?.value).toBe("meta|/collections/halloween");
 });

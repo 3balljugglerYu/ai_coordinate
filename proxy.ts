@@ -5,7 +5,10 @@ import { readBearerJwt } from "@/lib/auth/bearer";
 import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
 import { isFullAdmin } from "@/lib/env";
-import { attachFirstVisitCookie } from "@/features/auth/lib/first-visit-proxy";
+import {
+  attachFirstVisitCookie,
+  handleFirstVisitHandoff,
+} from "@/features/auth/lib/first-visit-proxy";
 import {
   ensureGuestIdOnResponse,
   shouldIssueGuestIdForPathname,
@@ -28,8 +31,19 @@ import {
  *
  * どの応答(リダイレクトを含む)にも、はじめて来た人なら「最初に来た場所」の cookie を付ける
  * (管理ダッシュボード P3-3・features/auth/lib/first-visit-proxy.ts)。
+ * URL に引き継ぎの first_visit があれば、先にそれを消したアドレスへ移し直す。
  */
 export async function proxy(request: NextRequest) {
+  // 計測のための処理なので、ここで何が起きてもページは出す
+  try {
+    const handoff = handleFirstVisitHandoff(request);
+    if (handoff) {
+      return handoff;
+    }
+  } catch (error) {
+    console.error("[proxy] first visit handoff:", error);
+  }
+
   const response = await handleProxyRequest(request);
   if (response instanceof NextResponse) {
     // 計測のための cookie なので、ここで何が起きてもページは出す

@@ -1,4 +1,9 @@
-import { detectSignupChannel, referrerHost } from "./signup-source";
+import {
+  detectSignupChannel,
+  referrerHost,
+  withSignupSourceParam,
+  type SignupSource,
+} from "./signup-source";
 
 /**
  * 最初に来た場所と、最初に開いた画面(管理ダッシュボード P3-3)。
@@ -93,14 +98,18 @@ function isDecodable(value: string): boolean {
 
 /**
  * パスを DB の決まりにそろえる。合わなければ null。
- * 長すぎるものは切る。日本語などは `%E3%83%8F` の形なので、途中で切って壊れた形を
- * 残さないよう、読める形になるまで後ろを削る。
+ * 長すぎるものは切る。日本語などは `%E3%83%8F` の形(1文字が %XX の2〜4つ)なので、
+ * 切った所で途中になった %X と、途中で切れた1文字の分(%80 以上の %XX)だけを削る。
+ * それでも読めなければ(切った所より前が壊れている)、違うパスを返さないよう null にする。
  */
 export function normalizeLandingPath(pathname: string | null | undefined): string | null {
   if (!pathname) return null;
-  let path = pathname.slice(0, FIRST_LANDING_PATH_MAX_LENGTH);
-  if (path.length < pathname.length) {
-    while (path.length > 1 && !isDecodable(path)) path = path.slice(0, -1);
+  let path = pathname;
+  if (path.length > FIRST_LANDING_PATH_MAX_LENGTH) {
+    path = path.slice(0, FIRST_LANDING_PATH_MAX_LENGTH).replace(/%[0-9A-Fa-f]?$/, "");
+    for (let i = 0; i < 3 && !isDecodable(path) && /%[89A-Fa-f][0-9A-Fa-f]$/.test(path); i += 1) {
+      path = path.slice(0, -3);
+    }
   }
   return LANDING_PATH_PATTERN.test(path) && isDecodable(path) ? path : null;
 }
@@ -160,6 +169,14 @@ export function withFirstVisitParam(href: string, visit: FirstVisit | null): str
 export function withFirstVisitParamFromDocument(href: string): string {
   if (typeof document === "undefined") return href;
   return withFirstVisitParam(href, readFirstVisitFromCookieHeader(document.cookie));
+}
+
+/**
+ * アプリの中のブラウザから外のブラウザで開き直す URL。cookie は移らないので、
+ * 流入元(signup_source)と最初に来た場所(first_visit)を URL に載せる。
+ */
+export function buildExternalBrowserHref(href: string, signupSource: SignupSource | null): string {
+  return withFirstVisitParamFromDocument(withSignupSourceParam(href, signupSource));
 }
 
 /** 記録したあとに消す(同じブラウザで別の人が登録したとき、前の人の値を使わないように) */

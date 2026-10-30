@@ -20,6 +20,7 @@ import {
   normalizeLandingPath,
   parseFirstVisit,
   readFirstVisitFromCookieHeader,
+  buildExternalBrowserHref,
   serializeFirstVisit,
   withFirstVisitParam,
   withFirstVisitParamFromDocument,
@@ -69,12 +70,19 @@ describe("normalizeLandingPath", () => {
     expect(normalizeLandingPath(`/${"a".repeat(300)}`)).toHaveLength(200);
   });
 
-  it("日本語(%E3%83%8F の形)の途中で切れたら、読める形になるまで後ろを削る", () => {
-    const path = normalizeLandingPath(`/${"a".repeat(197)}%E3%83%8F%E3%83%AD`)!;
+  it.each([
+    ["%X の途中", `/${"a".repeat(197)}%E3%83%8F`, `/${"a".repeat(197)}`],
+    // 200文字で切ると「%E3%83」まで残る(ハ=%E3%83%8F の途中)。その2つを削る
+    ["1文字(%XX 3つ)の途中", `/${"a".repeat(193)}%E3%83%8F`, `/${"a".repeat(193)}`],
+  ])("日本語の%sで切れたら、その文字の分だけ削る", (_label, input, expected) => {
+    const path = normalizeLandingPath(input)!;
 
-    expect(path.length).toBeLessThanOrEqual(200);
+    expect(path).toBe(expected);
     expect(() => decodeURIComponent(path)).not.toThrow();
-    expect(path).toBe(`/${"a".repeat(197)}`);
+  });
+
+  it("切った所より前が壊れていたら、違う短いパスを返さずに null", () => {
+    expect(normalizeLandingPath(`/bad%ZZ/${"a".repeat(250)}`)).toBeNull();
   });
 
   it("/ で始まらない・? や # を含む・読めないものは null", () => {
@@ -129,6 +137,15 @@ describe("外のブラウザへの引き継ぎ", () => {
     expect(url.searchParams.get("signup_source")).toBe("tag");
   });
 
+  it("外のブラウザ用の URL には、流入元と最初に来た場所の両方を載せる", () => {
+    document.cookie = `${FIRST_VISIT_COOKIE}=${encodeURIComponent("meta|/collections/halloween")}; path=/`;
+
+    const url = new URL(buildExternalBrowserHref("https://www.persta.ai/ja/login", "halloween-best-shot_meta"));
+
+    expect(url.searchParams.get("signup_source")).toBe("halloween-best-shot_meta");
+    expect(url.searchParams.get(FIRST_VISIT_PARAM)).toBe("meta|/collections/halloween");
+  });
+
   it("ブラウザの cookie の値を載せる。cookie が無ければ URL はそのまま", () => {
     expect(withFirstVisitParamFromDocument("https://www.persta.ai/ja/login")).toBe("https://www.persta.ai/ja/login");
 
@@ -141,12 +158,20 @@ describe("外のブラウザへの引き継ぎ", () => {
 });
 
 describe("signUp(メールでの登録)", () => {
-  const supabaseSignUp = jest.fn(async () => ({ data: {}, error: null as { message: string } | null }));
+  const NEW_USER = { user: { id: "u1", identities: [{ id: "i1" }], email_confirmed_at: null } };
+  const supabaseSignUp = jest.fn(async () => ({
+    data: NEW_USER as unknown,
+    error: null as { message: string } | null,
+  }));
 
   beforeEach(() => {
     clearCookie();
     supabaseSignUp.mockClear();
     (createClient as jest.Mock).mockReturnValue({ auth: { signUp: supabaseSignUp } });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
   });
 
   it("最初に来た場所を user_metadata に入れ(流入元と並べて)、入れたら cookie を消す", async () => {
@@ -166,6 +191,15 @@ describe("signUp(メールでの登録)", () => {
       }),
     );
     expect(readFirstVisitFromCookieHeader(document.cookie)).toBeNull();
+  });
+
+  it("登録済みのメールで見せかけの成功(identities が空)が返ったら、何も記録されていないので cookie は残す", async () => {
+    document.cookie = `${FIRST_VISIT_COOKIE}=${encodeURIComponent("search|/ja/style")}; path=/`;
+    supabaseSignUp.mockResolvedValueOnce({ data: { user: { id: "fake", identities: [] } }, error: null });
+
+    await signUp("used@example.com", "Aa1!aaaa");
+
+    expect(readFirstVisitFromCookieHeader(document.cookie)).toEqual({ channel: "search", landingPath: "/ja/style" });
   });
 
   it("登録に失敗したら cookie は残す(やり直しで使う)", async () => {

@@ -6,7 +6,6 @@ import {
   FIRST_VISIT_COOKIE,
   readFirstVisitFromCookieHeader,
 } from "@/features/auth/lib/first-visit";
-import { runAfterResponse } from "@/features/monetization/lib/after-response";
 import {
   AD_SIGNUP_COOKIE,
   AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
@@ -20,11 +19,6 @@ import {
 import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 const REFERRAL_METADATA_UPDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
-/**
- * 最初に来た場所を書くのは、登録したばかりの人だけ(OAuth の登録は、作られてすぐここに戻る)。
- * 24時間にすると、別の端末でのログインで、その端末の訪問を書いてしまう。
- */
-const FIRST_VISIT_RECORD_WINDOW_MS = 30 * 60 * 1000;
 
 function isWithinReferralMetadataUpdateWindow(
   user: {
@@ -121,6 +115,39 @@ export async function GET(request: Request) {
         nextUserMetadata.signup_source = signupSource;
       }
 
+      // 最初に来た場所(管理ダッシュボード P3-3)。OAuth の登録は user_metadata を通らないので、ここで書く。
+      // メールでの登録は user_metadata にあり、トリガーが書いているので何もしない。
+      // 書けたら、user_metadata に印を付け(次のログインでは書かない)、cookie を消す。
+      // 書けなかったら cookie は残す(次のログインでもう一度試す)。すでに行があれば書き直さない。
+      // 運営(service_role)だけが読み書きする表なので、管理用の接続で書く。
+      const firstVisit = readFirstVisitFromCookieHeader(request.headers.get("cookie"));
+      if (
+        firstVisit &&
+        shouldUpdateRecentUserMetadata &&
+        !sessionData.user.user_metadata?.first_visit_channel
+      ) {
+        try {
+          const { error: firstVisitError } = await createAdminClient()
+            .from("user_first_visits")
+            .upsert(
+              {
+                user_id: sessionData.user.id,
+                channel: firstVisit.channel,
+                landing_path: firstVisit.landingPath,
+              },
+              { onConflict: "user_id", ignoreDuplicates: true },
+            );
+          if (firstVisitError) {
+            console.error("Failed to record first visit during auth callback:", firstVisitError);
+          } else {
+            nextUserMetadata.first_visit_channel = firstVisit.channel;
+            shouldClearFirstVisitCookie = true;
+          }
+        } catch (err) {
+          console.error("Failed to record first visit during auth callback:", err);
+        }
+      }
+
       if (Object.keys(nextUserMetadata).length > 0) {
         try {
           const { error: updateError } = await supabase.auth.updateUser({
@@ -163,30 +190,6 @@ export async function GET(request: Request) {
             err
           );
         }
-      }
-
-      // 最初に来た場所(管理ダッシュボード P3-3)。OAuth の登録は user_metadata を通らないので、ここで書く。
-      // メールでの登録は user_metadata にあり、トリガーが書いているので何もしない。
-      // 運営(service_role)だけが読み書きする表なので、管理用の接続で書く。応答は待たせない。
-      // すでに行があれば書き直さない(最初の値を残す)。書いたら cookie を消す。
-      const firstVisit = readFirstVisitFromCookieHeader(request.headers.get("cookie"));
-      const createdAtMs = Date.parse(sessionData.user.created_at ?? "");
-      const isJustCreated =
-        !Number.isNaN(createdAtMs) && Date.now() - createdAtMs <= FIRST_VISIT_RECORD_WINDOW_MS;
-      if (firstVisit && isJustCreated && !sessionData.user.user_metadata?.first_visit_channel) {
-        shouldClearFirstVisitCookie = true;
-        const userId = sessionData.user.id;
-        runAfterResponse(async () => {
-          const { error: firstVisitError } = await createAdminClient()
-            .from("user_first_visits")
-            .upsert(
-              { user_id: userId, channel: firstVisit.channel, landing_path: firstVisit.landingPath },
-              { onConflict: "user_id", ignoreDuplicates: true },
-            );
-          if (firstVisitError) {
-            console.error("Failed to record first visit during auth callback:", firstVisitError);
-          }
-        });
       }
 
       // 2. 紹介特典チェックは /auth/x-complete 側で実行する

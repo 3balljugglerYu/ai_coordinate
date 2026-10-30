@@ -713,8 +713,11 @@ export async function signUp(
   }
 
   // 最初に来た場所は user_metadata に入れたので消す(同じブラウザで別の人が登録したとき、
-  // 前の人の値を使わないように)。次に開いた画面で、サーバーが新しく付け直す
-  if (firstVisit) {
+  // 前の人の値を使わないように)。次に開いた画面で、サーバーが新しく付け直す。
+  // 登録済みのメールでは、Supabase が人を作らずに見せかけの成功を返す(identities が空)。
+  // そのときは何も記録されていないので消さない
+  const createdNewUser = (data.user?.identities?.length ?? 0) > 0;
+  if (firstVisit && createdNewUser) {
     clearFirstVisitCookieInDocument();
   }
 
