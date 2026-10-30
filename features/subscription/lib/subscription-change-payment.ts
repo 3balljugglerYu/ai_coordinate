@@ -22,24 +22,25 @@ import type {
 
 export type SubscriptionInvoiceKind = "grant" | "payment_only";
 
-/** 日割りの行があるか(新しい SDK の parent と、古い通知の proration の両方を見る) */
+/** 日割りの行か(新しい SDK の parent と、古い通知の proration の両方を見る) */
+export function isProrationLine(line: Stripe.InvoiceLineItem): boolean {
+  const prorationOnParent =
+    line.parent?.type === "subscription_item_details" &&
+    line.parent.subscription_item_details?.proration === true;
+
+  // Some Stripe webhook payloads still include a legacy top-level proration flag
+  // that is not present in the current SDK type definitions.
+  const legacyProrationFlag =
+    "proration" in line &&
+    typeof line.proration === "boolean" &&
+    line.proration === true;
+
+  return prorationOnParent || legacyProrationFlag;
+}
+
+/** 日割りの行があるか */
 export function hasProrationLine(invoice: Stripe.Invoice): boolean {
-  const lines = invoice.lines.data ?? [];
-
-  return lines.some((line) => {
-    const prorationOnParent =
-      line.parent?.type === "subscription_item_details" &&
-      line.parent.subscription_item_details?.proration === true;
-
-    // Some Stripe webhook payloads still include a legacy top-level proration flag
-    // that is not present in the current SDK type definitions.
-    const legacyProrationFlag =
-      "proration" in line &&
-      typeof line.proration === "boolean" &&
-      line.proration === true;
-
-    return prorationOnParent || legacyProrationFlag;
-  });
+  return (invoice.lines.data ?? []).some(isProrationLine);
 }
 
 /**

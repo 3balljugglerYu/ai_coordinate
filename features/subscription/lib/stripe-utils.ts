@@ -61,7 +61,17 @@ export function getSubscriptionItem(
 export function getBillingIntervalFromStripeSubscription(
   subscription: Stripe.Subscription
 ): SubscriptionBillingInterval | null {
-  const interval = getSubscriptionItem(subscription)?.price.recurring?.interval;
+  return getBillingIntervalFromStripePrice(getSubscriptionItem(subscription)?.price);
+}
+
+/** 価格から請求の期間(月額・年額)を決める */
+export function getBillingIntervalFromStripePrice(
+  price: Stripe.Price | string | null | undefined
+): SubscriptionBillingInterval | null {
+  if (!price || typeof price === "string") {
+    return null;
+  }
+  const interval = price.recurring?.interval;
   return interval === "month" || interval === "year" ? interval : null;
 }
 

@@ -35,8 +35,7 @@ import {
 } from "@/features/subscription/lib/subscription-change-payment";
 import {
   grantSubscriptionUpgradeDifference,
-  isSettledUpgradeInvoice,
-  resolveSubscriptionUpgrade,
+  resolveUpgradeFromInvoice,
 } from "@/features/subscription/lib/subscription-upgrade-grant";
 
 type SubscriptionRecord = {
@@ -664,17 +663,30 @@ async function handleSubscriptionInvoicePaid(
   if (isChangePayment) {
     // 付与とサブスクの行の更新は change-service.ts と customer.subscription.updated が行う。
     // ここでは支払いだけを記録する(0円の請求は何もしない)
-    const recorded = await recordSubscriptionChangePayment(createAdminClient(), {
+    const supabase = createAdminClient();
+    const recorded = await recordSubscriptionChangePayment(supabase, {
       userId,
       plan,
       billingInterval,
       invoice,
     });
+    // 差のペルコインの保険。change-service.ts と同じ請求 ID で付けにいくので、すでに付いていれば何もしない。
+    // 前と後のプランは請求の明細から決める。失敗したら投げて、Stripe に送り直させる(支払いの記録は1行だけ)
+    const upgrade = await resolveUpgradeFromInvoice(invoice, (priceId) =>
+      stripe.prices.retrieve(priceId)
+    );
+    const upgradeGranted = upgrade
+      ? await grantSubscriptionUpgradeDifference(supabase, { userId, upgrade, invoice })
+      : null;
+    if (upgradeGranted) {
+      await revalidateSubscriptionSurfaces(userId);
+    }
     return NextResponse.json({
       received: true,
       handled: true,
       mode: "subscription_change_payment",
       recorded,
+      upgradeGranted,
       userId,
       invoiceId: invoice.id,
     });
@@ -699,9 +711,7 @@ async function handleSubscriptionInvoicePaid(
 
 async function handleSubscriptionUpdated(
   stripe: Stripe,
-  subscription: Stripe.Subscription,
-  // customer.subscription.updated の「変わる前の値」(プランを上げたときの差の付与に使う)
-  previousAttributes?: unknown
+  subscription: Stripe.Subscription
 ) {
   // Stripe doesn't guarantee webhook delivery order. Always re-fetch the
   // subscription so a stale update event can't overwrite newer state like
@@ -763,20 +773,6 @@ async function handleSubscriptionUpdated(
     lastPercoinGrantAt: yearlyGrantState.lastPercoinGrantAt,
     nextPercoinGrantAt: yearlyGrantState.nextPercoinGrantAt,
   });
-
-  // プランを上げたときの差のペルコイン(保険)。change-service.ts と同じ請求 ID で付けにいくので、
-  // すでに付いていれば何もしない。付与に失敗したら 500 を返し、Stripe に送り直させる
-  let upgradeGranted: number | null = null;
-  const upgrade = previousAttributes
-    ? resolveSubscriptionUpgrade({ previousAttributes, subscription: latestSubscription })
-    : null;
-  if (upgrade && isSettledUpgradeInvoice(latestSubscription.latest_invoice)) {
-    upgradeGranted = await grantSubscriptionUpgradeDifference(createAdminClient(), {
-      userId,
-      upgrade,
-      invoice: latestSubscription.latest_invoice,
-    });
-  }
   await revalidateSubscriptionSurfaces(userId);
 
   return NextResponse.json({
@@ -785,7 +781,6 @@ async function handleSubscriptionUpdated(
     mode: "subscription_updated",
     userId,
     subscriptionId: latestSubscription.id,
-    upgradeGranted,
   });
 }
 
@@ -890,11 +885,6 @@ export async function POST(request: NextRequest) {
           event.data.object as Stripe.Invoice
         );
       case "customer.subscription.updated":
-        return await handleSubscriptionUpdated(
-          stripe,
-          event.data.object as Stripe.Subscription,
-          event.data.previous_attributes
-        );
       case "customer.subscription.created":
         return await handleSubscriptionUpdated(
           stripe,

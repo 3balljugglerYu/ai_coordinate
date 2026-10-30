@@ -1,12 +1,13 @@
 /**
- * プランを上げたときの差のペルコインを、Stripe の通知の側でも付ける(保険)。
+ * プランを上げたときの差のペルコインを、その請求が払われたときの通知(invoice.paid)の側でも付ける(保険)。
  *
  * ここで守ること:
- *  - 前のプランは通知の「変わる前の値」(previous_attributes の items の価格)で決める
+ *  - 前と後のプランは、その請求の明細で決める(日割りでマイナスの行=前の価格・日割りでないプラスの行=新しい期間の代金)
  *  - 付けるのは、同じ期間(月額どうし・年額どうし)でプランを上げたときだけ。量は change-service.ts と同じ
  *    (新しいプランの月の量 − 前のプランの月の量)
- *  - 下げた・期間を変えた・価格が変わっていない通知では付けない
- *  - その変更の請求(subscription_update)が支払い済みのときだけ付ける(古い請求 ID で付けない)
+ *  - 新しい期間の代金が無い請求(期間を区切り直さずに上げた)は付けない(わずかな日割りで差がまるごと付くのを防ぐ)
+ *  - 下げた・期間を変えた・ペルスタのプランでない価格は付けない
+ *  - 明細の価格が ID だけなら読んで決める
  *  - 付与の RPC に同じ請求 ID で渡す(すでに付いていれば RPC が0を返し、二重には付かない)
  *  - 売上は載せない(支払いの行で数える)・付与に失敗したら投げる(Stripe に送り直させる)
  */
@@ -14,10 +15,10 @@
 import type Stripe from "stripe";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  findUpgradeLinePrices,
   grantSubscriptionUpgradeDifference,
-  isSettledUpgradeInvoice,
   readGrantedSubscriptionAmount,
-  resolveSubscriptionUpgrade,
+  resolveUpgradeFromInvoice,
 } from "@/features/subscription/lib/subscription-upgrade-grant";
 
 function price(plan: string, interval: "month" | "year"): Stripe.Price {
@@ -28,59 +29,83 @@ function price(plan: string, interval: "month" | "year"): Stripe.Price {
   } as unknown as Stripe.Price;
 }
 
-function subscription(plan: string, interval: "month" | "year"): Stripe.Subscription {
-  return { items: { data: [{ price: price(plan, interval) }] } } as unknown as Stripe.Subscription;
+function line(amount: number, proration: boolean, linePrice: Stripe.Price | string) {
+  return {
+    amount,
+    parent: { type: "subscription_item_details", subscription_item_details: { proration } },
+    pricing: { type: "price_details", price_details: { price: linePrice } },
+  };
 }
 
-function previous(plan: string, interval: "month" | "year") {
-  return { items: { data: [{ price: price(plan, interval) }] } };
+function invoice(lines: Array<Record<string, unknown>>): Stripe.Invoice {
+  return { id: "in_1", livemode: true, lines: { data: lines } } as unknown as Stripe.Invoice;
 }
 
-describe("resolveSubscriptionUpgrade", () => {
+/** アプリと同じ上げ方(今日から新しい期間): 前のプランの残りの返金 + 新しいプランの代金 */
+function upgradeInvoice(from: string, to: string, interval: "month" | "year") {
+  return invoice([line(-200, true, price(from, interval)), line(980, false, price(to, interval))]);
+}
+
+const noLoad = async () => null;
+
+describe("resolveUpgradeFromInvoice", () => {
   it.each([
     ["ライト→スタンダード(月額)", "light", "standard", "month", 700],
     ["スタンダード→プレミアム(月額)", "standard", "premium", "month", 1500],
     ["ライト→プレミアム(年額どうし)", "light", "premium", "year", 2200],
-  ])("%s は差 %p ペルコイン", (_label, from, to, interval, amount) => {
-    expect(
-      resolveSubscriptionUpgrade({
-        previousAttributes: previous(from, interval as "month" | "year"),
-        subscription: subscription(to, interval as "month" | "year"),
-      }),
-    ).toEqual({ previousPlan: from, currentPlan: to, billingInterval: interval, grantAmount: amount });
+  ])("%s は差 %p ペルコイン", async (_label, from, to, interval, amount) => {
+    await expect(
+      resolveUpgradeFromInvoice(upgradeInvoice(from, to, interval as "month" | "year"), noLoad),
+    ).resolves.toEqual({ previousPlan: from, currentPlan: to, billingInterval: interval, grantAmount: amount });
+  });
+
+  it("明細の価格が ID だけなら読んで決める", async () => {
+    const prices: Record<string, Stripe.Price> = {
+      price_light_month: price("light", "month"),
+      price_standard_month: price("standard", "month"),
+    };
+    const loadPrice = jest.fn(async (id: string) => prices[id] ?? null);
+
+    await expect(
+      resolveUpgradeFromInvoice(
+        invoice([line(-200, true, "price_light_month"), line(980, false, "price_standard_month")]),
+        loadPrice,
+      ),
+    ).resolves.toMatchObject({ previousPlan: "light", currentPlan: "standard", grantAmount: 700 });
+    expect(loadPrice).toHaveBeenCalledTimes(2);
   });
 
   it.each([
-    ["プランを下げた", previous("premium", "month"), subscription("light", "month")],
-    ["月額→年額(予約の変更)", previous("light", "month"), subscription("light", "year")],
-    ["プランも期間も変えた", previous("light", "month"), subscription("premium", "year")],
-    ["価格が変わっていない(ほかの項目の変更)", { cancel_at_period_end: true }, subscription("standard", "month")],
-    ["変わる前の値が無い", undefined, subscription("standard", "month")],
-    ["前の価格が ID だけ", { items: { data: [{ price: "price_x" }] } }, subscription("standard", "month")],
+    ["プランを下げた", upgradeInvoice("premium", "light", "month")],
+    ["期間が違う(月額→年額)", invoice([line(-200, true, price("light", "month")), line(9800, false, price("light", "year"))])],
     [
-      "前の価格がペルスタのプランでない",
-      { items: { data: [{ price: { id: "price_other", lookup_key: "other", recurring: { interval: "month" } } }] } },
-      subscription("standard", "month"),
+      "新しい期間の代金が無い(期間を区切り直さずに上げた)",
+      invoice([line(-200, true, price("light", "month")), line(300, true, price("premium", "month"))]),
     ],
-  ])("%s ときは付けない", (_label, previousAttributes, sub) => {
-    expect(resolveSubscriptionUpgrade({ previousAttributes, subscription: sub })).toBeNull();
+    ["前のプランの返金の行が無い", invoice([line(980, false, price("standard", "month"))])],
+    [
+      "ペルスタのプランでない価格",
+      invoice([
+        line(-200, true, { id: "price_other", lookup_key: "other", recurring: { interval: "month" } } as unknown as Stripe.Price),
+        line(980, false, price("standard", "month")),
+      ]),
+    ],
+    ["明細が無い", invoice([])],
+  ])("%s ときは付けない", async (_label, inv) => {
+    await expect(resolveUpgradeFromInvoice(inv, noLoad)).resolves.toBeNull();
   });
 });
 
-describe("isSettledUpgradeInvoice", () => {
-  const paid = { id: "in_1", status: "paid", billing_reason: "subscription_update" } as Stripe.Invoice;
-
-  it("プラン変更の請求が支払い済みなら付ける", () => {
-    expect(isSettledUpgradeInvoice(paid)).toBe(true);
-  });
-
-  it.each([
-    ["支払い前", { ...paid, status: "open" }],
-    ["毎月の更新の請求(古い請求の ID で付けない)", { ...paid, billing_reason: "subscription_cycle" }],
-    ["ID だけ(展開されていない)", "in_1"],
-    ["請求が無い", null],
-  ])("%s なら付けない", (_label, invoice) => {
-    expect(isSettledUpgradeInvoice(invoice as Stripe.Invoice | string | null)).toBe(false);
+describe("findUpgradeLinePrices", () => {
+  it("古い形の通知(line.price と line.proration)でも見つける", () => {
+    const legacy = invoice([
+      { amount: -200, proration: true, price: price("light", "month") },
+      { amount: 980, proration: false, price: price("standard", "month") },
+    ]);
+    expect(findUpgradeLinePrices(legacy)).toEqual({
+      previous: price("light", "month"),
+      current: price("standard", "month"),
+    });
   });
 });
 
@@ -106,7 +131,7 @@ describe("grantSubscriptionUpgradeDifference", () => {
         plan: "standard",
         previousPlan: "light",
         billingInterval: "month",
-        grantSource: "stripe_subscription_upgrade_webhook",
+        grantSource: "stripe_invoice_paid_upgrade",
         mode: "live",
       },
     });
@@ -163,5 +188,28 @@ describe("readGrantedSubscriptionAmount", () => {
     const { supabase } = client(null);
 
     await expect(readGrantedSubscriptionAmount(supabase, { userId: "u1", invoiceId: "in_1" })).resolves.toBe(0);
+  });
+
+  it("読めなかったらログに残して0を返す(プラン変更そのものは失敗にしない)", async () => {
+    interface Builder {
+      select: () => Builder;
+      eq: () => Builder;
+      maybeSingle: () => Promise<{ data: null; error: { message: string } }>;
+    }
+    const builder: Builder = {
+      select: () => builder,
+      eq: () => builder,
+      maybeSingle: async () => ({ data: null, error: { message: "db down" } }),
+    };
+    const errors = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      readGrantedSubscriptionAmount({ from: () => builder } as unknown as SupabaseClient, {
+        userId: "u1",
+        invoiceId: "in_1",
+      }),
+    ).resolves.toBe(0);
+    expect(errors).toHaveBeenCalled();
+    errors.mockRestore();
   });
 });
