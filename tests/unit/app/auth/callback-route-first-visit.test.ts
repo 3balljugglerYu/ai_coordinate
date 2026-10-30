@@ -4,8 +4,9 @@
  * OAuth の登録のあと、最初に来た場所を user_first_visits に書く(管理ダッシュボード P3-3)。
  *
  * ここで守ること:
- *  - 新しく登録した人(24時間以内)だけ書く。前から使っている人のログインでは書かない
- *  - すでに行があれば書き直さない(メールでの登録はトリガーが先に書いている・最初の値を残す)
+ *  - 登録したばかりの人(30分以内)だけ書く。前から使っている人や、別の端末でのログインでは書かない
+ *  - メールでの登録(user_metadata にあり、トリガーが書いた)では書かない
+ *  - すでに行があれば書き直さない(最初の値を残す)。書いたら cookie を消す
  *  - cookie が無い・読めないときは書かない
  *  - 書けなくても、ログインはふつうに終わる
  */
@@ -46,11 +47,17 @@ async function settle() {
   await new Promise((resolve) => setImmediate(resolve));
 }
 
-function signedIn(createdAt: string) {
+function signedIn(createdAt: string, userMetadata: Record<string, string> = {}) {
   mockExchange.mockResolvedValue({
-    data: { user: { id: "u1", created_at: createdAt, email_confirmed_at: createdAt, user_metadata: {} } },
+    data: { user: { id: "u1", created_at: createdAt, email_confirmed_at: createdAt, user_metadata: userMetadata } },
     error: null,
   });
+}
+
+function firstVisitCookie(response: Response) {
+  return (response.headers.get("set-cookie") ?? "")
+    .split(/,(?=\s*\w+=)/)
+    .find((c) => c.trim().startsWith("persta_first_visit="));
 }
 
 beforeEach(() => {
@@ -59,7 +66,7 @@ beforeEach(() => {
   mockAdminFrom.mockClear();
 });
 
-test("新しく登録した人は、cookie の来た場所とパスを書く。すでに行があれば書き直さない", async () => {
+test("登録したばかりの人は、cookie の来た場所とパスを書き(すでに行があれば書き直さない)、cookie を消す", async () => {
   signedIn(minutesAgo(1));
 
   const response = await callback(`persta_first_visit=${encodeURIComponent("search|/ja/style")}`);
@@ -71,10 +78,24 @@ test("新しく登録した人は、cookie の来た場所とパスを書く。�
     { user_id: "u1", channel: "search", landing_path: "/ja/style" },
     { onConflict: "user_id", ignoreDuplicates: true },
   );
+  expect(firstVisitCookie(response)).toMatch(/Max-Age=0/i);
 });
 
-test("前から使っている人(24時間より前の登録)のログインでは書かない", async () => {
-  signedIn(minutesAgo(60 * 25));
+test.each([
+  ["登録から40分たった人(別の端末でのログインなど)", 40],
+  ["前から使っている人", 60 * 25],
+])("%sのログインでは書かず、cookie も消さない", async (_label, minutes) => {
+  signedIn(minutesAgo(minutes));
+
+  const response = await callback(`persta_first_visit=${encodeURIComponent("direct|/")}`);
+  await settle();
+
+  expect(mockUpsert).not.toHaveBeenCalled();
+  expect(firstVisitCookie(response)).toBeUndefined();
+});
+
+test("メールでの登録(user_metadata にあり、トリガーが書いた)では書かない", async () => {
+  signedIn(minutesAgo(1), { first_visit_channel: "search" });
 
   await callback(`persta_first_visit=${encodeURIComponent("direct|/")}`);
   await settle();

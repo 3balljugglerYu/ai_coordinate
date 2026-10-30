@@ -2,7 +2,10 @@ import { connection, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
-import { readFirstVisitFromCookieHeader } from "@/features/auth/lib/first-visit";
+import {
+  FIRST_VISIT_COOKIE,
+  readFirstVisitFromCookieHeader,
+} from "@/features/auth/lib/first-visit";
 import { runAfterResponse } from "@/features/monetization/lib/after-response";
 import {
   AD_SIGNUP_COOKIE,
@@ -17,6 +20,11 @@ import {
 import { toSafeRedirectPath } from "@/lib/security/safe-redirect-path";
 
 const REFERRAL_METADATA_UPDATE_WINDOW_MS = 24 * 60 * 60 * 1000;
+/**
+ * 最初に来た場所を書くのは、登録したばかりの人だけ(OAuth の登録は、作られてすぐここに戻る)。
+ * 24時間にすると、別の端末でのログインで、その端末の訪問を書いてしまう。
+ */
+const FIRST_VISIT_RECORD_WINDOW_MS = 30 * 60 * 1000;
 
 function isWithinReferralMetadataUpdateWindow(
   user: {
@@ -71,6 +79,8 @@ export async function GET(request: Request) {
   if (code) {
     // 広告の Pixel に「登録した」を知らせるか(1人1回。下の updateUser で送った印を残せたときだけ)
     let shouldSetAdSignupCookie = false;
+    // 最初に来た場所を書いたか(書いたら cookie を消す)
+    let shouldClearFirstVisitCookie = false;
     const supabase = await createClient();
     const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -156,10 +166,15 @@ export async function GET(request: Request) {
       }
 
       // 最初に来た場所(管理ダッシュボード P3-3)。OAuth の登録は user_metadata を通らないので、ここで書く。
-      // メールでの登録はトリガーが先に書いているので、すでにあれば何もしない(最初の値を残す)。
+      // メールでの登録は user_metadata にあり、トリガーが書いているので何もしない。
       // 運営(service_role)だけが読み書きする表なので、管理用の接続で書く。応答は待たせない。
+      // すでに行があれば書き直さない(最初の値を残す)。書いたら cookie を消す。
       const firstVisit = readFirstVisitFromCookieHeader(request.headers.get("cookie"));
-      if (firstVisit && shouldUpdateRecentUserMetadata) {
+      const createdAtMs = Date.parse(sessionData.user.created_at ?? "");
+      const isJustCreated =
+        !Number.isNaN(createdAtMs) && Date.now() - createdAtMs <= FIRST_VISIT_RECORD_WINDOW_MS;
+      if (firstVisit && isJustCreated && !sessionData.user.user_metadata?.first_visit_channel) {
+        shouldClearFirstVisitCookie = true;
         const userId = sessionData.user.id;
         runAfterResponse(async () => {
           const { error: firstVisitError } = await createAdminClient()
@@ -227,6 +242,10 @@ export async function GET(request: Request) {
           httpOnly: false,
         });
       }
+    }
+
+    if (shouldClearFirstVisitCookie) {
+      response.cookies.set(FIRST_VISIT_COOKIE, "", { maxAge: 0, path: "/" });
     }
 
     return response;

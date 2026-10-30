@@ -5,6 +5,7 @@ import { readBearerJwt } from "@/lib/auth/bearer";
 import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { enforceI2iPocBasicAuth } from "@/lib/i2i-poc-auth";
 import { isFullAdmin } from "@/lib/env";
+import { attachFirstVisitCookie } from "@/features/auth/lib/first-visit-proxy";
 import {
   ensureGuestIdOnResponse,
   shouldIssueGuestIdForPathname,
@@ -24,8 +25,24 @@ import {
  * プロキシ（ミドルウェア）
  * 認証状態の確認とセッション管理を行う
  * Next.js 16では middleware.ts の代わりに proxy.ts を使用
+ *
+ * どの応答(リダイレクトを含む)にも、はじめて来た人なら「最初に来た場所」の cookie を付ける
+ * (管理ダッシュボード P3-3・features/auth/lib/first-visit-proxy.ts)。
  */
 export async function proxy(request: NextRequest) {
+  const response = await handleProxyRequest(request);
+  if (response instanceof NextResponse) {
+    // 計測のための cookie なので、ここで何が起きてもページは出す
+    try {
+      attachFirstVisitCookie(request, response);
+    } catch (error) {
+      console.error("[proxy] first visit cookie:", error);
+    }
+  }
+  return response;
+}
+
+async function handleProxyRequest(request: NextRequest) {
   const apiDocsAuthResponse = enforceApiDocsBasicAuth(request);
   if (apiDocsAuthResponse) {
     return apiDocsAuthResponse;

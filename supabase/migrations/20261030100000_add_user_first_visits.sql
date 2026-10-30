@@ -83,9 +83,10 @@ BEGIN
   ON CONFLICT (user_id) DO NOTHING;
 
   -- 最初に来た場所と最初に開いた画面(管理ダッシュボード P3-3)。
-  -- 書式の合わない値は捨てる(表の CHECK と同じ決まり)。ここで何が起きても登録は止めない:
-  -- この関数の最後の EXCEPTION に落ちると、上の profiles などの INSERT まで取り消されるので、
-  -- 別の BEGIN で囲んでこの中だけで握りつぶす。
+  -- 来た場所の値の決まりは表の CHECK だけに持つ(合わなければ下の EXCEPTION で捨てる)。
+  -- パスは、合わなければパスだけを捨てて行は残すので、ここで先に確かめる。
+  -- ここで何が起きても登録は止めない: この関数の最後の EXCEPTION に落ちると、
+  -- 上の profiles などの INSERT まで取り消されるので、別の BEGIN で囲んでこの中だけで握りつぶす。
   BEGIN
     v_first_visit_channel := NULLIF(NEW.raw_user_meta_data->>'first_visit_channel', '');
     v_first_landing_path := NULLIF(NEW.raw_user_meta_data->>'first_landing_path', '');
@@ -93,7 +94,7 @@ BEGIN
        AND (char_length(v_first_landing_path) > 200 OR v_first_landing_path !~ '^/[^?#]*$') THEN
       v_first_landing_path := NULL;
     END IF;
-    IF v_first_visit_channel IN ('x_ad', 'x', 'meta', 'search', 'direct', 'other') THEN
+    IF v_first_visit_channel IS NOT NULL THEN
       INSERT INTO public.user_first_visits (user_id, channel, landing_path)
       VALUES (NEW.id, v_first_visit_channel, v_first_landing_path)
       ON CONFLICT (user_id) DO NOTHING;

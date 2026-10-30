@@ -348,7 +348,7 @@ alwaysApply: false
 - 主キー: `user_id`（`auth.users.id` を参照・ON DELETE CASCADE）
 - 主要カラム: `channel`（`x_ad` / `x` / `meta` / `search` / `direct` / `other`）, `landing_path`（最初に開いた画面のパス。`/` で始まり、`?` と `#` を含まない・200文字まで。NULL 可）, `created_at`
 - RLS: 有効・policy なし。service_role だけが読み書きする（20261030100000）
-- 注: 管理ダッシュボード P3-3。cookie `persta_first_visit`（30日・最初に来た時だけ）の値を、登録のときに書く。メールの登録は user_metadata の `first_visit_channel`・`first_landing_path` を `handle_new_user` が写し、OAuth の登録は `/auth/callback` が書く（すでにあれば書き直さない）。`profiles.signup_source`（目印・企画の既定値）とは別に持つ。見分け方は `features/auth/lib/first-visit.ts`
+- 注: 管理ダッシュボード P3-3。cookie `persta_first_visit`（30日・最初に来た時だけ・`proxy.ts` がページを開いた最初の通信で付ける）の値を、登録のときに書く。メールの登録は user_metadata の `first_visit_channel`・`first_landing_path` を `handle_new_user` が写し、OAuth の登録は `/auth/callback` が書く（すでにあれば書き直さない）。`profiles.signup_source`（目印・企画の既定値）とは別に持つ。見分け方は `features/auth/lib/first-visit.ts`
 
 ### 管理・モデレーション・運用
 

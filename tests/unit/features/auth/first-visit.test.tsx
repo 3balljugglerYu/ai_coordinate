@@ -3,25 +3,26 @@
  *
  * ここで守ること:
  *  - X・X の広告・メタは今の見分け方(detectSignupChannel)のまま。それ以外を、検索・ほかのサイト・直接に分ける
+ *  - 「検索」は検索の画面だけ(Gmail・Google ドキュメント・Yahoo! ニュースなどは入れない)
  *  - 参照元がペルスタの中(www の有無を問わない)なら直接
- *  - 最初に開いた画面のパスは、DB の決まり(/ で始まる・? と # を含まない・200文字まで)にそろえる
- *  - cookie は最初の訪問だけ書き、すでにあれば書き直さない
- *  - 流入元の cookie(persta_signup_source)には触らない(企画ページの既定値が書けなくならないように)
- *  - メールで登録するとき、cookie の値を user_metadata に入れる(トリガーが写す)
+ *  - 最初に開いた画面のパスは、DB の決まり(/ で始まる・? と # を含まない・200文字まで)にそろえ、
+ *    日本語などを途中で切って壊れた形を残さない
+ *  - アプリの中のブラウザから外へ移るとき、URL に載せて引き継ぐ
+ *  - メールで登録するとき、cookie の値を user_metadata に入れ(トリガーが写す)、入れたら cookie を消す
  */
 
-import { render } from "@testing-library/react";
 import { createClient } from "@/lib/supabase/client";
-import { FirstVisitCapture } from "@/features/auth/components/FirstVisitCapture";
-import { SIGNUP_SOURCE_COOKIE } from "@/features/auth/components/SignupSourceCapture";
 import { signUp } from "@/features/auth/lib/auth-client";
 import {
   FIRST_VISIT_COOKIE,
+  FIRST_VISIT_PARAM,
   detectFirstVisitChannel,
   normalizeLandingPath,
   parseFirstVisit,
   readFirstVisitFromCookieHeader,
   serializeFirstVisit,
+  withFirstVisitParam,
+  withFirstVisitParamFromDocument,
 } from "@/features/auth/lib/first-visit";
 
 jest.mock("@/lib/supabase/client", () => ({ createClient: jest.fn() }));
@@ -42,9 +43,14 @@ describe("detectFirstVisitChannel", () => {
     ["Google(日本)", "https://www.google.co.jp/", "", "search"],
     ["Android の Google アプリ", "android-app://com.google.android.googlequicksearchbox/", "", "search"],
     ["Yahoo! JAPAN の検索", "https://search.yahoo.co.jp/search?p=persta", "", "search"],
+    ["Yahoo! の地域ごとの検索", "https://jp.search.yahoo.com/search?p=persta", "", "search"],
     ["Bing", "https://www.bing.com/search?q=persta", "", "search"],
-    ["ほかのサイト", "https://note.com/someone/n/abc", "", "other"],
+    ["NAVER の検索", "https://search.naver.com/search.naver?query=persta", "", "search"],
+    ["Gmail(検索ではない)", "https://mail.google.com/", "", "other"],
+    ["Google ドキュメント(検索ではない)", "https://docs.google.com/document/d/1", "", "other"],
     ["Yahoo! のニュース(検索ではない)", "https://news.yahoo.co.jp/articles/1", "", "other"],
+    ["NAVER のブログ(検索ではない)", "https://blog.naver.com/someone", "", "other"],
+    ["ほかのサイト", "https://note.com/someone/n/abc", "", "other"],
     ["参照元なし", "", "", "direct"],
     ["ペルスタの中(www なし)", "https://persta.ai/style", "", "direct"],
     ["読めない参照元", "not a url", "", "direct"],
@@ -63,15 +69,24 @@ describe("normalizeLandingPath", () => {
     expect(normalizeLandingPath(`/${"a".repeat(300)}`)).toHaveLength(200);
   });
 
-  it("/ で始まらない・? や # を含むものは null", () => {
+  it("日本語(%E3%83%8F の形)の途中で切れたら、読める形になるまで後ろを削る", () => {
+    const path = normalizeLandingPath(`/${"a".repeat(197)}%E3%83%8F%E3%83%AD`)!;
+
+    expect(path.length).toBeLessThanOrEqual(200);
+    expect(() => decodeURIComponent(path)).not.toThrow();
+    expect(path).toBe(`/${"a".repeat(197)}`);
+  });
+
+  it("/ で始まらない・? や # を含む・読めないものは null", () => {
     expect(normalizeLandingPath("style")).toBeNull();
     expect(normalizeLandingPath("/style?x=1")).toBeNull();
     expect(normalizeLandingPath("/style#top")).toBeNull();
+    expect(normalizeLandingPath("/bad%E3%83")).toBeNull();
     expect(normalizeLandingPath("")).toBeNull();
   });
 });
 
-describe("cookie の値", () => {
+describe("cookie と URL の値", () => {
   it("書いた値を読み戻せる。パスが無くても来た場所だけ読める", () => {
     expect(parseFirstVisit(serializeFirstVisit({ channel: "search", landingPath: "/posts/1" }))).toEqual({
       channel: "search",
@@ -95,50 +110,46 @@ describe("cookie の値", () => {
   });
 });
 
-function clearCookies() {
-  for (const name of [FIRST_VISIT_COOKIE, SIGNUP_SOURCE_COOKIE]) {
-    document.cookie = `${name}=; path=/; max-age=0`;
-  }
+function clearCookie() {
+  document.cookie = `${FIRST_VISIT_COOKIE}=; path=/; max-age=0`;
 }
 
-describe("FirstVisitCapture", () => {
-  beforeEach(() => {
-    clearCookies();
-    window.history.replaceState({}, "", "/ja/posts/123?fbclid=abc");
+describe("外のブラウザへの引き継ぎ", () => {
+  beforeEach(clearCookie);
+
+  it("URL に first_visit を載せ、ほかのパラメータは残す", () => {
+    const url = new URL(
+      withFirstVisitParam("https://www.persta.ai/ja/login?signup_source=tag", {
+        channel: "meta",
+        landingPath: "/ja/collections/halloween",
+      }),
+    );
+
+    expect(url.searchParams.get(FIRST_VISIT_PARAM)).toBe("meta|/ja/collections/halloween");
+    expect(url.searchParams.get("signup_source")).toBe("tag");
   });
 
-  it("最初の訪問で、来た場所とパス(クエリなし)を残す。流入元の cookie には触らない", () => {
-    render(<FirstVisitCapture />);
+  it("ブラウザの cookie の値を載せる。cookie が無ければ URL はそのまま", () => {
+    expect(withFirstVisitParamFromDocument("https://www.persta.ai/ja/login")).toBe("https://www.persta.ai/ja/login");
 
-    expect(readFirstVisitFromCookieHeader(document.cookie)).toEqual({
-      channel: "meta",
-      landingPath: "/ja/posts/123",
-    });
-    expect(document.cookie).not.toContain(`${SIGNUP_SOURCE_COOKIE}=`);
-  });
+    document.cookie = `${FIRST_VISIT_COOKIE}=${encodeURIComponent("x_ad|/ja")}; path=/`;
 
-  it("すでに残っていれば書き直さない", () => {
-    document.cookie = `${FIRST_VISIT_COOKIE}=${encodeURIComponent("search|/style")}; path=/`;
-
-    render(<FirstVisitCapture />);
-
-    expect(readFirstVisitFromCookieHeader(document.cookie)).toEqual({
-      channel: "search",
-      landingPath: "/style",
-    });
+    expect(new URL(withFirstVisitParamFromDocument("https://www.persta.ai/ja/login")).searchParams.get(FIRST_VISIT_PARAM)).toBe(
+      "x_ad|/ja",
+    );
   });
 });
 
 describe("signUp(メールでの登録)", () => {
-  const supabaseSignUp = jest.fn(async () => ({ data: {}, error: null }));
+  const supabaseSignUp = jest.fn(async () => ({ data: {}, error: null as { message: string } | null }));
 
   beforeEach(() => {
-    clearCookies();
+    clearCookie();
     supabaseSignUp.mockClear();
     (createClient as jest.Mock).mockReturnValue({ auth: { signUp: supabaseSignUp } });
   });
 
-  it("最初に来た場所を user_metadata に入れる(流入元と並べて)", async () => {
+  it("最初に来た場所を user_metadata に入れ(流入元と並べて)、入れたら cookie を消す", async () => {
     document.cookie = `${FIRST_VISIT_COOKIE}=${encodeURIComponent("search|/ja/style")}; path=/`;
 
     await signUp("user@example.com", "Aa1!aaaa", undefined, "halloween-best-shot");
@@ -154,6 +165,17 @@ describe("signUp(メールでの登録)", () => {
         }),
       }),
     );
+    expect(readFirstVisitFromCookieHeader(document.cookie)).toBeNull();
+  });
+
+  it("登録に失敗したら cookie は残す(やり直しで使う)", async () => {
+    document.cookie = `${FIRST_VISIT_COOKIE}=${encodeURIComponent("search|/ja/style")}; path=/`;
+    supabaseSignUp.mockResolvedValueOnce({ data: {}, error: { message: "Password should be at least 8 characters" } });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(signUp("user@example.com", "short")).rejects.toThrow();
+
+    expect(readFirstVisitFromCookieHeader(document.cookie)).toEqual({ channel: "search", landingPath: "/ja/style" });
   });
 
   it("cookie が無ければ、今までどおり何も足さない", async () => {

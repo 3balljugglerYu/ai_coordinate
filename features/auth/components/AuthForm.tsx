@@ -25,6 +25,7 @@ import {
   type SignupSource,
 } from "../lib/signup-source";
 import { SIGNUP_SOURCE_COOKIE } from "./SignupSourceCapture";
+import { withFirstVisitParamFromDocument } from "../lib/first-visit";
 import { useToast } from "@/components/ui/use-toast";
 import { PasswordRequirements, isPasswordValid } from "./PasswordRequirements";
 import { useWebViewDetection, buildIntentUrl } from "./WebViewBanner";
@@ -210,8 +211,11 @@ export function AuthForm({
     if (provider === "google" && webView.isWebView) {
       if (webView.isAndroid) {
         // Android: 自動で外部ブラウザを起動
+        // 外のブラウザには cookie が移らないので、流入元と最初に来た場所を URL に載せる
         window.location.href = buildIntentUrl(
-          withSignupSourceParam(window.location.href, signupSource)
+          withFirstVisitParamFromDocument(
+            withSignupSourceParam(window.location.href, signupSource)
+          )
         );
         return;
       }
@@ -238,7 +242,9 @@ export function AuthForm({
   };
 
   const handleCopyUrl = async () => {
-    const currentUrl = withSignupSourceParam(window.location.href, signupSource);
+    const currentUrl = withFirstVisitParamFromDocument(
+      withSignupSourceParam(window.location.href, signupSource)
+    );
     let copiedSuccessfully = false;
     try {
       await navigator.clipboard.writeText(currentUrl);

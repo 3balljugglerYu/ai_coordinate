@@ -68,7 +68,8 @@ export type SignupChannel = "x_ad" | "x" | "meta";
 const X_HOSTS = ["t.co", "x.com", "twitter.com"] as const;
 const META_HOSTS = ["facebook.com", "instagram.com"] as const;
 
-function referrerHost(referrer: string): string | null {
+/** 参照元の URL のホスト(小文字)。読めなければ null */
+export function referrerHost(referrer: string): string | null {
   if (!referrer) return null;
   try {
     return new URL(referrer).hostname.toLowerCase();

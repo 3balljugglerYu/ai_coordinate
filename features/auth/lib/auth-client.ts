@@ -12,7 +12,7 @@ import { getSiteUrlForClient } from "@/lib/public-env";
 import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 import type { SignupSource } from "./signup-source";
-import { readFirstVisitFromCookieHeader } from "./first-visit";
+import { clearFirstVisitCookieInDocument, readFirstVisitFromCookieHeader } from "./first-visit";
 import {
   DEFAULT_LOCALE,
   getLocaleCookieMaxAge,
@@ -710,6 +710,12 @@ export async function signUp(
       locale
     );
     throw new Error(translatedMessage);
+  }
+
+  // 最初に来た場所は user_metadata に入れたので消す(同じブラウザで別の人が登録したとき、
+  // 前の人の値を使わないように)。次に開いた画面で、サーバーが新しく付け直す
+  if (firstVisit) {
+    clearFirstVisitCookieInDocument();
   }
 
   // メール確認が必要な場合の情報を返す

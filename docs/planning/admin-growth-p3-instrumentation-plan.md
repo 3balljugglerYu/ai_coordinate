@@ -101,6 +101,8 @@
 ## 5. P3-3 どの画面から来ても流入元を残す
 
 > 2026-10-30 の変更: 計画では `profiles` に2列を足すはずだったが、`profiles` は「だれでも全部の列を読める」表（SELECT の policy が true・anon にも表ごとの SELECT がある）だった。来た場所と最初に開いた画面をほかの人から読めないように、**別の表 `user_first_visits`（service_role だけ）**にした（`20261030100000`）。トリガー `handle_new_user` は、この表に写す処理だけを足した（ほかは変えていない）。OAuth は `/auth/callback` が管理用の接続で書く。「来た場所」に search・other・direct を足すことは、2026-10-30 にユーザーの OK をもらった。
+>
+> 2026-10-30 の変更（/code-review のあと・ユーザーが案A を選んだ）: cookie は**ブラウザではなくサーバー（`proxy.ts`）が、ページを開いた最初の通信で付ける**（`features/auth/lib/first-visit-proxy.ts`）。ブラウザで書いた cookie は Safari（ITP）で7日・広告の印つきは24時間で消えるため。メールの登録で画面が読むので HttpOnly にはしない。アプリの中のブラウザから外へ移る3か所（Android の Chrome・iOS の URL のコピー・LINE）では URL の `first_visit` に載せて引き継ぐ。記録したら cookie を消す。OAuth の戻り先で書くのは、登録から30分以内で、メールの登録（user_metadata にある）でない人だけ。「検索」は検索の画面だけにした（Gmail・Google ドキュメントなどは other）。
 
 - ⚠️ 今の cookie（`persta_signup_source`）には書かない。すでにあると何も書かないので、目印の無い訪問の値を先に書くと、あとで開いた企画ページの既定値が書けなくなる。
 - 別の cookie `persta_first_visit`（30日・最初に来た時だけ）に、次の2つを残す。

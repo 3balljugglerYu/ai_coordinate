@@ -1,11 +1,16 @@
-import { detectSignupChannel } from "./signup-source";
+import { detectSignupChannel, referrerHost } from "./signup-source";
 
 /**
  * 最初に来た場所と、最初に開いた画面(管理ダッシュボード P3-3)。
  * 計画: docs/planning/admin-growth-p3-instrumentation-plan.md 5章
  *
- * はじめてペルスタに来たとき、cookie `persta_first_visit`(30日・最初に来た時だけ)に残し、
+ * はじめてペルスタを開いた最初の通信で、サーバー(proxy.ts → first-visit-proxy.ts)が
+ * cookie `persta_first_visit`(30日・最初に来た時だけ)を付ける。ブラウザ(document.cookie)で
+ * 書くと、Safari(ITP)では7日、広告の印が付いた URL から来たときは24時間で消えるため。
  * 登録のときに user_first_visits へ書く(メールは user_metadata → トリガー、OAuth は /auth/callback)。
+ *
+ * アプリの中のブラウザ(X・Instagram)から外のブラウザへ移るときは cookie が移らないので、
+ * URL の `first_visit` に載せて引き継ぐ(流入元の withSignupSourceParam と同じ考え方)。
  *
  * ⚠️ 流入元の cookie(persta_signup_source)とは別に持つ。あちらは「すでにあれば書かない」ので、
  * 目印の無い訪問の値を先に書くと、あとで開いた企画ページの既定値が書けなくなる。
@@ -15,6 +20,8 @@ import { detectSignupChannel } from "./signup-source";
 
 export const FIRST_VISIT_COOKIE = "persta_first_visit";
 export const FIRST_VISIT_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
+/** アプリの中のブラウザから外のブラウザへ引き継ぐ URL のパラメータ */
+export const FIRST_VISIT_PARAM = "first_visit";
 
 /** DB の user_first_visits_channel_check と一致させること */
 export const FIRST_VISIT_CHANNELS = ["x_ad", "x", "meta", "search", "direct", "other"] as const;
@@ -30,27 +37,22 @@ export interface FirstVisit {
   landingPath: string | null;
 }
 
-/** 検索サイト(参照元のホスト) */
+/**
+ * 検索の画面(参照元のホスト)。同じ会社でも検索でない所(Gmail・Google ドキュメント・
+ * Yahoo! ニュース・NAVER ブログなど)は入れない。
+ */
 const SEARCH_HOSTS: readonly RegExp[] = [
-  /(^|\.)google\.[a-z]{2,3}(\.[a-z]{2})?$/,
+  /^(www\.)?google\.[a-z]{2,3}(\.[a-z]{2})?$/,
+  // Android の Google アプリ(検索と Discover)
   /^com\.google\.android\.googlequicksearchbox$/,
-  /(^|\.)bing\.com$/,
-  /^search\.yahoo\.(co\.jp|com)$/,
-  /(^|\.)duckduckgo\.com$/,
-  /(^|\.)ecosia\.org$/,
+  /^(www\.)?bing\.com$/,
+  /^([a-z]{2}\.)?search\.yahoo\.(co\.jp|com)$/,
+  /^(www\.|html\.)?duckduckgo\.com$/,
+  /^(www\.)?ecosia\.org$/,
   /^search\.brave\.com$/,
-  /(^|\.)naver\.com$/,
-  /(^|\.)baidu\.com$/,
+  /^(m\.)?search\.naver\.com$/,
+  /^(www\.|m\.)?baidu\.com$/,
 ];
-
-function hostOf(url: string): string | null {
-  if (!url) return null;
-  try {
-    return new URL(url).hostname.toLowerCase() || null;
-  } catch {
-    return null;
-  }
-}
 
 function withoutWww(host: string): string {
   return host.startsWith("www.") ? host.slice(4) : host;
@@ -74,29 +76,45 @@ export function detectFirstVisitChannel({
 }): FirstVisitChannel {
   const known = detectSignupChannel({ search, userAgent, referrer });
   if (known) return known;
-  const host = hostOf(referrer);
+  const host = referrerHost(referrer);
   if (!host || withoutWww(host) === withoutWww(siteHost.toLowerCase())) return "direct";
   if (SEARCH_HOSTS.some((pattern) => pattern.test(host))) return "search";
   return "other";
 }
 
-/** パスを DB の決まりにそろえる。合わなければ null(長すぎるものは切る) */
+function isDecodable(value: string): boolean {
+  try {
+    decodeURIComponent(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * パスを DB の決まりにそろえる。合わなければ null。
+ * 長すぎるものは切る。日本語などは `%E3%83%8F` の形なので、途中で切って壊れた形を
+ * 残さないよう、読める形になるまで後ろを削る。
+ */
 export function normalizeLandingPath(pathname: string | null | undefined): string | null {
   if (!pathname) return null;
-  const path = pathname.slice(0, FIRST_LANDING_PATH_MAX_LENGTH);
-  return LANDING_PATH_PATTERN.test(path) ? path : null;
+  let path = pathname.slice(0, FIRST_LANDING_PATH_MAX_LENGTH);
+  if (path.length < pathname.length) {
+    while (path.length > 1 && !isDecodable(path)) path = path.slice(0, -1);
+  }
+  return LANDING_PATH_PATTERN.test(path) && isDecodable(path) ? path : null;
 }
 
 function isFirstVisitChannel(value: string): value is FirstVisitChannel {
   return (FIRST_VISIT_CHANNELS as readonly string[]).includes(value);
 }
 
-/** cookie の値(エンコード前)。`<来た場所>|<パス>` */
+/** cookie と URL に載せる値(エンコード前)。`<来た場所>|<パス>` */
 export function serializeFirstVisit(visit: FirstVisit): string {
   return `${visit.channel}|${visit.landingPath ?? ""}`;
 }
 
-/** cookie の値(デコード後)を読む。来た場所が決まりに合わなければ null */
+/** cookie・URL の値(デコード後)を読む。来た場所が決まりに合わなければ null */
 export function parseFirstVisit(value: string | null | undefined): FirstVisit | null {
   if (!value) return null;
   const separator = value.indexOf("|");
@@ -121,4 +139,31 @@ export function readFirstVisitFromCookieHeader(cookieHeader: string | null | und
     }
   }
   return null;
+}
+
+/**
+ * 外のブラウザで開き直す URL に、最初に来た場所を載せる(アプリの中のブラウザの cookie は移らないため)。
+ * 値が無ければ、URL はそのまま。
+ */
+export function withFirstVisitParam(href: string, visit: FirstVisit | null): string {
+  if (!visit) return href;
+  try {
+    const url = new URL(href);
+    url.searchParams.set(FIRST_VISIT_PARAM, serializeFirstVisit(visit));
+    return url.toString();
+  } catch {
+    return href;
+  }
+}
+
+/** ブラウザの cookie にある値で withFirstVisitParam する(画面から使う) */
+export function withFirstVisitParamFromDocument(href: string): string {
+  if (typeof document === "undefined") return href;
+  return withFirstVisitParam(href, readFirstVisitFromCookieHeader(document.cookie));
+}
+
+/** 記録したあとに消す(同じブラウザで別の人が登録したとき、前の人の値を使わないように) */
+export function clearFirstVisitCookieInDocument(): void {
+  if (typeof document === "undefined") return;
+  document.cookie = `${FIRST_VISIT_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
 }
