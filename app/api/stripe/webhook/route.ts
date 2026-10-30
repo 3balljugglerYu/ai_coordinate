@@ -28,7 +28,10 @@ import {
   buildSubscriptionRevenueMetadata,
   classifySubscriptionInvoice,
   normalizeRevenueYen,
+  paidAtOfPayment,
   recordSubscriptionChangePayment,
+  revenueYenOfPayment,
+  type SubscriptionPaymentInvoice,
 } from "@/features/subscription/lib/subscription-change-payment";
 
 type SubscriptionRecord = {
@@ -291,31 +294,38 @@ async function updateSubscriptionStatus(params: {
   return data?.user_id ?? null;
 }
 
+/**
+ * サブスクのペルコインを付け、付与の行に売上を載せる。
+ * 付与の行に売上が載らないとき(無料のペルコインが上限で付与が0・同じ請求の付与が先にある)は、
+ * 付与の関数が同じロックの中で、支払いだけの行で売上を記録する(請求1件につき売上は1行だけ)。
+ * 本番かテストかは請求の livemode、売上は円の請求だけ(円以外・金額が分からないときは載せない)。
+ */
 async function grantSubscriptionPercoins(params: {
   userId: string;
   plan: SubscriptionPlan;
   billingInterval: SubscriptionBillingInterval | null;
-  invoiceId: string;
-  paidAmountYen?: number | null;
+  payment: SubscriptionPaymentInvoice;
 }) {
   const amount = getSubscriptionMonthlyPercoins(params.plan);
   if (amount <= 0) {
     return;
   }
 
-  const revenueYen = normalizeRevenueYen(params.paidAmountYen);
   const supabase = createAdminClient();
   const { error } = await supabase.rpc("grant_subscription_percoins", {
     p_user_id: params.userId,
     p_amount: amount,
-    p_invoice_id: params.invoiceId,
-    p_metadata: buildSubscriptionRevenueMetadata({
-      plan: params.plan,
-      billingInterval: params.billingInterval,
-      revenueYen,
-      revenueSource: "stripe_subscription",
-      mode: isStripeTestMode() ? "test" : "live",
-    }),
+    p_invoice_id: params.payment.id,
+    p_metadata: {
+      ...buildSubscriptionRevenueMetadata({
+        plan: params.plan,
+        billingInterval: params.billingInterval,
+        revenueYen: revenueYenOfPayment(params.payment),
+        revenueSource: "stripe_subscription",
+        mode: params.payment.livemode ? "live" : "test",
+      }),
+      paidAt: paidAtOfPayment(params.payment),
+    },
   });
 
   if (error) {
@@ -529,8 +539,13 @@ async function handleSubscriptionCheckoutCompleted(
     userId,
     plan,
     billingInterval,
-    invoiceId,
-    paidAmountYen: session.amount_total,
+    payment: {
+      id: invoiceId,
+      amount_paid: session.amount_total,
+      currency: session.currency,
+      livemode: session.livemode,
+      // checkout には支払った時刻が無い(支払い画面を作った時刻はずれるので使わない)。paidAt は null
+    },
   });
   await revalidateSubscriptionSurfaces(userId);
 
@@ -664,8 +679,7 @@ async function handleSubscriptionInvoicePaid(
     userId,
     plan,
     billingInterval,
-    invoiceId: invoice.id,
-    paidAmountYen: invoice.amount_paid,
+    payment: invoice,
   });
   await revalidateSubscriptionSurfaces(userId);
 

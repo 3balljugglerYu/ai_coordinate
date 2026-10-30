@@ -8,7 +8,8 @@
  *  - 0円・円以外の請求は記録しない
  *  - 同じ請求の2回目(Stripe の送り直し)は duplicate
  *  - RPC が失敗したら投げる(Stripe に送り直させて、記録の漏れを防ぐ)
- *  - 支払いだけの行は、管理画面の売上に「プラン変更の支払い」として入る(isRevenueTransaction の決まりのまま)
+ *  - 支払いだけの行は、管理画面の売上に入る(isRevenueTransaction の決まりのまま)。売上のグラフでは付与の行と
+ *    同じ系列・同じ名前にし、利用者の詳細と「最近の購入」でだけ支払いだけの行と分かるようにする
  */
 
 import type Stripe from "stripe";
@@ -16,9 +17,13 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildSubscriptionRevenueMetadata,
   classifySubscriptionInvoice,
+  getSubscriptionPaymentKind,
   hasProrationLine,
   normalizeRevenueYen,
+  paidAtOfPayment,
   recordSubscriptionChangePayment,
+  revenueYenOfPayment,
+  subscriptionPaymentLabelSuffix,
 } from "@/features/subscription/lib/subscription-change-payment";
 import { isRevenueTransaction } from "@/features/admin-dashboard/lib/revenue-transaction";
 import { resolveTransactionRevenue } from "@/features/admin-dashboard/lib/purchase-value";
@@ -158,16 +163,55 @@ describe("支払いだけの行と管理画面の売上", () => {
     paymentOnly: true,
   };
 
-  it("量0でも、本番の売上として数え、ラベルでプラン変更の支払いと分かる", () => {
+  it("量0でも本番の売上として数え、売上のグラフでは付与の行と同じ系列・同じ名前にする", () => {
     expect(isRevenueTransaction({ transaction_type: "subscription", amount: 0, metadata })).toBe(true);
-    const { yenValue, label } = resolveTransactionRevenue({ amount: 0, transactionType: "subscription", metadata });
-    expect(yenValue).toBe(1480);
-    expect(label).toContain("プラン変更の支払い");
+    const payment = resolveTransactionRevenue({ amount: 0, transactionType: "subscription", metadata });
+    const grant = resolveTransactionRevenue({
+      amount: 1000,
+      transactionType: "subscription",
+      metadata: { ...metadata, paymentOnly: undefined },
+    });
+    expect(payment.yenValue).toBe(1480);
+    expect(payment.key).toBe(grant.key);
+    expect(payment.label).toBe(grant.label);
+  });
+
+  it("「最近の購入」では、支払いだけの行にだけ印を付ける", () => {
+    expect(subscriptionPaymentLabelSuffix(metadata)).toBe("（プラン変更の支払い）");
+    expect(subscriptionPaymentLabelSuffix({ ...metadata, revenueSource: "stripe_subscription" })).toBe("（支払い）");
+    expect(subscriptionPaymentLabelSuffix({ revenueYen: 1480 })).toBe("");
+  });
+
+  it("管理画面の利用者の詳細では、支払いだけの行の種類で出し分ける", () => {
+    expect(getSubscriptionPaymentKind(metadata)).toBe("plan_change");
+    expect(getSubscriptionPaymentKind({ ...metadata, revenueSource: "stripe_subscription" })).toBe("payment");
+    expect(getSubscriptionPaymentKind({ revenueYen: 1480 })).toBeNull();
+    expect(getSubscriptionPaymentKind(null)).toBeNull();
   });
 
   it("テストの支払いは売上に数えない", () => {
     expect(
       isRevenueTransaction({ transaction_type: "subscription", amount: 0, metadata: { ...metadata, mode: "test" } }),
     ).toBe(false);
+  });
+});
+
+describe("revenueYenOfPayment / paidAtOfPayment", () => {
+  const base = { id: "in_1", amount_paid: 1480, currency: "jpy", livemode: true };
+
+  it.each([
+    ["円の請求", base, 1480],
+    ["円以外の請求", { ...base, currency: "usd" }, null],
+    ["金額が分からない(checkout の amount_total が null)", { ...base, amount_paid: null }, null],
+    ["通貨が分からない", { ...base, currency: null }, null],
+  ])("%s → %p", (_label, payment, expected) => {
+    expect(revenueYenOfPayment(payment)).toBe(expected);
+  });
+
+  it("支払った時刻(秒)を ISO にし、無ければ null", () => {
+    expect(paidAtOfPayment({ ...base, status_transitions: { paid_at: 1_793_000_000 } })).toBe(
+      new Date(1_793_000_000 * 1000).toISOString(),
+    );
+    expect(paidAtOfPayment(base)).toBeNull();
   });
 });

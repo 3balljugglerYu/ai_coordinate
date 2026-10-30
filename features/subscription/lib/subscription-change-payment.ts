@@ -6,7 +6,7 @@ import type {
 } from "@/features/subscription/subscription-config";
 
 /**
- * サブスクの請求(invoice.paid)の見分けと、プランを途中で上げたときの支払いの記録。
+ * サブスクの請求(invoice.paid)の見分けと、支払いだけの行(record_subscription_payment)の記録。
  * 計画: docs/planning/subscription-change-revenue-recording-plan.md(案A・2026-10-26 ユーザー決定)
  *
  * プランを上げたとき(change-service.ts の即時の変更)は、日割りの請求が払われる。ペルコインの付与は
@@ -83,29 +83,54 @@ export function buildSubscriptionRevenueMetadata(params: {
 
 export type SubscriptionChangePaymentResult = "recorded" | "duplicate" | "skipped";
 
+/** 売上を記録する請求(必要なところだけ。checkout の支払いからも作る) */
+export interface SubscriptionPaymentInvoice {
+  id: string;
+  /** 金額が分からないときは null(売上に数えない) */
+  amount_paid: number | null;
+  currency: string | null;
+  livemode: boolean;
+  status_transitions?: { paid_at?: number | null } | null;
+}
+
+/** 円の請求の売上(円以外・金額が分からないときは null) */
+export function revenueYenOfPayment(payment: SubscriptionPaymentInvoice): number | null {
+  if ((payment.currency ?? "").toLowerCase() !== "jpy") return null;
+  return normalizeRevenueYen(payment.amount_paid);
+}
+
+/** 支払った時刻(ISO)。分からなければ null */
+export function paidAtOfPayment(payment: SubscriptionPaymentInvoice): string | null {
+  const seconds = payment.status_transitions?.paid_at ?? null;
+  return seconds ? new Date(seconds * 1000).toISOString() : null;
+}
+
+/**
+ * プランを上げたときの日割りの請求の支払いを、支払いだけの行(量0の subscription・paymentOnly)で記録する
+ * (付与は change-service.ts が金額なしで行う)。0円・円以外は記録しない。
+ * 同じ請求の売上は1行だけ(RPC が付与の関数と同じロックの中で、付与の行にもう売上があれば書かない)。
+ */
 export async function recordSubscriptionChangePayment(
   supabase: SupabaseClient,
   params: {
     userId: string;
     plan: SubscriptionPlan;
     billingInterval: SubscriptionBillingInterval | null;
-    invoice: Pick<Stripe.Invoice, "id" | "amount_paid" | "currency" | "livemode" | "status_transitions">;
+    invoice: SubscriptionPaymentInvoice;
   },
 ): Promise<SubscriptionChangePaymentResult> {
   const { invoice } = params;
-  const revenueYen = normalizeRevenueYen(invoice.amount_paid);
+  const revenueYen = revenueYenOfPayment(invoice);
   if (!revenueYen) {
-    return "skipped";
-  }
-  if ((invoice.currency ?? "").toLowerCase() !== "jpy") {
-    console.warn("[Stripe Webhook] Skip non-JPY subscription change payment", {
-      invoiceId: invoice.id,
-      currency: invoice.currency,
-    });
+    if ((invoice.currency ?? "").toLowerCase() !== "jpy") {
+      console.warn("[Stripe Webhook] Skip non-JPY subscription payment", {
+        invoiceId: invoice.id,
+        currency: invoice.currency,
+      });
+    }
     return "skipped";
   }
 
-  const paidAtSeconds = invoice.status_transitions?.paid_at ?? null;
   const { data, error } = await supabase.rpc("record_subscription_payment", {
     p_user_id: params.userId,
     p_invoice_id: invoice.id,
@@ -120,7 +145,7 @@ export async function recordSubscriptionChangePayment(
       // 付与の行と同じキーでも請求 ID を持つ(RPC は invoiceId も入れる)
       invoice_id: invoice.id,
       // 行の created_at は処理した時刻なので、支払った時刻を別に残す(送り直しで日がずれても分かるように)
-      paidAt: paidAtSeconds ? new Date(paidAtSeconds * 1000).toISOString() : null,
+      paidAt: paidAtOfPayment(invoice),
     },
   });
 
@@ -128,4 +153,22 @@ export async function recordSubscriptionChangePayment(
     throw new Error(error.message);
   }
   return data === true ? "recorded" : "duplicate";
+}
+
+/** 支払いだけの行の種類(管理画面の表示に使う)。付与の行なら null */
+export function getSubscriptionPaymentKind(
+  metadata: Record<string, unknown> | null | undefined,
+): "plan_change" | "payment" | null {
+  if (metadata?.paymentOnly !== true) return null;
+  return metadata.revenueSource === "stripe_subscription_change" ? "plan_change" : "payment";
+}
+
+/** 支払いだけの行に付ける印(管理画面の「最近の購入」で付与の行と見分ける)。付与の行なら空 */
+export function subscriptionPaymentLabelSuffix(
+  metadata: Record<string, unknown> | null | undefined,
+): string {
+  const kind = getSubscriptionPaymentKind(metadata);
+  if (kind === "plan_change") return "（プラン変更の支払い）";
+  if (kind === "payment") return "（支払い）";
+  return "";
 }
