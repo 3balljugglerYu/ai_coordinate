@@ -45,8 +45,8 @@ function renderClient() {
 test("見出しは画面ごとの言葉で、人数も出す", () => {
   renderClient();
 
-  expect(screen.getByRole("heading", { name: "使える人を追加" })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "見本を使える人(1人)" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "使える人を追加" })).toBeTruthy();
+  expect(screen.getByRole("heading", { name: "見本を使える人(1人)" })).toBeTruthy();
 });
 
 test("検索して足すと、渡された API に POST し、一覧を読み直す", async () => {
