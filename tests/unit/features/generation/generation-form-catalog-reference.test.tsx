@@ -259,6 +259,8 @@ describe("見本の送信", () => {
     const onSubmit = jest.fn();
     renderForm(onSubmit);
     await fillBodyAndImage(user);
+    // きっかけの前は送れる(ほかの理由で止まっていないことを先に確かめる)
+    expect((screen.getByTestId("mock-submit") as HTMLButtonElement).disabled).toBe(false);
 
     await user.click(screen.getByText(trigger));
 

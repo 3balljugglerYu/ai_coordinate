@@ -26,6 +26,17 @@ import {
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
 import { isReviewPendingPublishError, isSuspendedPublishError } from "../lib/post-error-codes";
+
+/**
+ * 審査に出す API(POST /api/catalog-references/review)の断りのうち、押し直しても変わらないもの。
+ * 文言は言語ごとに出す(API の文は日本語だけ)。審査中は「出せた」と同じ扱いにする。
+ */
+const REVIEW_SUBMIT_SETTLED = {
+  CATALOG_REVIEW_ALREADY_SUBMITTED: "catalogReviewAlreadySubmitted",
+  CATALOG_REVIEW_ALREADY_APPROVED: "catalogReviewAlreadyApproved",
+  CATALOG_REVIEW_REJECTED: "catalogReviewRejected",
+  CATALOG_REVIEW_REFERENCE_UNAVAILABLE: "catalogReviewReferenceUnavailable",
+} as const;
 import {
   beforeImageUrlCache,
   cacheBeforeImageUrl,
@@ -121,7 +132,9 @@ export function PostModal({
   const [suspendedDialogOpen, setSuspendedDialogOpen] = useState(false);
   // 見本(参照画像)を使った作品で、審査が済んでいないために投稿を断られた
   const [reviewPending, setReviewPending] = useState(false);
-  const [reviewSubmitState, setReviewSubmitState] = useState<"idle" | "submitting" | "submitted">("idle");
+  // idle: 押せる / submitting: 送っている / settled: 出せた・押し直しても変わらない(ボタンを消す)
+  const [reviewSubmitState, setReviewSubmitState] = useState<"idle" | "submitting" | "settled">("idle");
+  const [reviewSubmitMessage, setReviewSubmitMessage] = useState<string | null>(null);
   const [reviewSubmitError, setReviewSubmitError] = useState<string | null>(null);
   // 呼び出し元から beforeImageUrl が渡されていない場合に自動取得した URL。
   // ImageModal が事前に取得済みの値を共有 cache から同期取得することで、
@@ -173,6 +186,8 @@ export function PostModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // 断られた理由が変わることがあるので、審査の枠は断られるたびに出し直す
+    setReviewPending(false);
 
     if (caption.length > MAX_CAPTION_LENGTH) {
       setError(t("captionTooLong", { max: MAX_CAPTION_LENGTH }));
@@ -279,15 +294,28 @@ export function PostModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageId }),
       });
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
-      if (!res.ok) {
-        throw new Error(body?.error || t("catalogReviewSubmitFailed"));
+      const body = (await res.json().catch(() => null)) as { errorCode?: string } | null;
+      if (res.ok) {
+        setReviewSubmitState("settled");
+        setReviewSubmitMessage(t("catalogReviewSubmitted"));
+        setError(null);
+        return;
       }
-      setReviewSubmitState("submitted");
-      setError(null);
-    } catch (e) {
+      const settledKey =
+        body?.errorCode && Object.hasOwn(REVIEW_SUBMIT_SETTLED, body.errorCode)
+          ? REVIEW_SUBMIT_SETTLED[body.errorCode as keyof typeof REVIEW_SUBMIT_SETTLED]
+          : null;
+      if (settledKey) {
+        setReviewSubmitState("settled");
+        setReviewSubmitMessage(t(settledKey));
+        setError(null);
+        return;
+      }
       setReviewSubmitState("idle");
-      setReviewSubmitError(e instanceof Error && e.message ? e.message : t("catalogReviewSubmitFailed"));
+      setReviewSubmitError(t("catalogReviewSubmitFailed"));
+    } catch {
+      setReviewSubmitState("idle");
+      setReviewSubmitError(t("catalogReviewSubmitFailed"));
     }
   };
 
@@ -418,8 +446,8 @@ export function PostModal({
               </div>
               {reviewPending ? (
                 <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm" data-testid="catalog-review-submit">
-                  {reviewSubmitState === "submitted" ? (
-                    <p>{t("catalogReviewSubmitted")}</p>
+                  {reviewSubmitState === "settled" ? (
+                    <p>{reviewSubmitMessage}</p>
                   ) : (
                     <Button
                       type="button"

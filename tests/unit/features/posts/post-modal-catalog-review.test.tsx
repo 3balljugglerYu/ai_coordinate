@@ -7,7 +7,8 @@
  * ここで守ること:
  *  - 審査が済んでいないために投稿を断られたら(POSTS_REVIEW_PENDING)、理由と「審査に出す」を出す
  *  - 「審査に出す」は、その作品を POST /api/catalog-references/review に送り、出せたらそう出す
- *  - 出せなければ、API の理由を出して、もう一度押せるようにする
+ *  - 押し直しても変わらない断り(確認中・公開できる・作り直しが必要・見本が使えない)は、言語ごとの文言を出してボタンを消す
+ *  - それ以外の失敗は、決まった文言を出して、もう一度押せるようにする
  *  - ほかの理由で断られたときは「審査に出す」を出さない
  */
 
@@ -91,18 +92,52 @@ test("「審査に出す」は、その作品を審査に送り、出せたら�
   expect(screen.queryByText("承認されるまで投稿できません")).toBeNull();
 });
 
-test("出せなければ、API の理由を出して、もう一度押せるようにする", async () => {
+test.each([
+  ["確認中", "CATALOG_REVIEW_ALREADY_SUBMITTED", "catalogReviewAlreadySubmitted"],
+  ["公開できる", "CATALOG_REVIEW_ALREADY_APPROVED", "catalogReviewAlreadyApproved"],
+  ["作り直しが必要", "CATALOG_REVIEW_REJECTED", "catalogReviewRejected"],
+  ["見本が使えない", "CATALOG_REVIEW_REFERENCE_UNAVAILABLE", "catalogReviewReferenceUnavailable"],
+])("押し直しても変わらない断り(%s)は、言語ごとの文言を出してボタンを消す", async (_label, errorCode, key) => {
   mockPostImage.mockRejectedValue(postError("POSTS_REVIEW_PENDING", "承認されるまで投稿できません"));
-  fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "この作品はもう審査に出しています" }) });
+  fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "日本語の理由", errorCode }) });
   renderModal();
   await submitPost();
 
   fireEvent.click(await screen.findByRole("button", { name: "catalogReviewSubmit" }));
 
-  expect(await screen.findByText("この作品はもう審査に出しています")).toBeTruthy();
+  expect(await screen.findByText(key)).toBeTruthy();
+  expect(screen.queryByText("日本語の理由")).toBeNull();
+  expect(screen.queryByRole("button", { name: "catalogReviewSubmit" })).toBeNull();
+});
+
+test.each([
+  ["API が失敗した", () => fetchMock.mockResolvedValue({ ok: false, json: async () => ({ error: "日本語の理由", errorCode: "CATALOG_REVIEW_SUBMIT_FAILED" }) })],
+  ["通信が切れた", () => fetchMock.mockRejectedValue(new TypeError("Failed to fetch"))],
+])("それ以外の失敗(%s)は、決まった文言を出して、もう一度押せるようにする", async (_label, arrange) => {
+  mockPostImage.mockRejectedValue(postError("POSTS_REVIEW_PENDING", "承認されるまで投稿できません"));
+  arrange();
+  renderModal();
+  await submitPost();
+
+  fireEvent.click(await screen.findByRole("button", { name: "catalogReviewSubmit" }));
+
+  expect(await screen.findByText("catalogReviewSubmitFailed")).toBeTruthy();
   await waitFor(() =>
     expect((screen.getByRole("button", { name: "catalogReviewSubmit" }) as HTMLButtonElement).disabled).toBe(false),
   );
+});
+
+test("審査の枠は、次に断られた理由に合わせて出し直す(ほかの理由なら消す)", async () => {
+  mockPostImage.mockRejectedValueOnce(postError("POSTS_REVIEW_PENDING", "承認されるまで投稿できません"));
+  renderModal();
+  await submitPost();
+  expect(await screen.findByTestId("catalog-review-submit")).toBeTruthy();
+
+  mockPostImage.mockRejectedValueOnce(new Error("投稿に失敗しました"));
+  await submitPost();
+
+  expect(await screen.findByText("投稿に失敗しました")).toBeTruthy();
+  expect(screen.queryByTestId("catalog-review-submit")).toBeNull();
 });
 
 test("ほかの理由で断られたときは「審査に出す」を出さない", async () => {

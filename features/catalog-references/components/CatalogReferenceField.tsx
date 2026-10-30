@@ -6,7 +6,12 @@ import { ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import { normalizeSourceImage } from "@/features/generation/lib/normalize-source-image";
+import {
+  prepareCatalogReferenceImage,
+  ReferenceImageError,
+  type ReferenceImageProblem,
+} from "@/features/catalog-references/lib/prepare-reference-image";
+import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
 import {
   CATALOG_REFERENCE_TAKES,
   type CatalogReferenceTake,
@@ -38,13 +43,30 @@ const TAKE_LABEL_KEYS = {
 /** 上げたときに最初から選んでおくまねるもの */
 const DEFAULT_TAKES: CatalogReferenceTake[] = ["outfit"];
 
+/** 手元で断った理由の文言 */
+const PROBLEM_KEYS = {
+  load_failed: "catalogReferenceInvalid",
+  too_small: "catalogReferenceTooSmall",
+  too_large: "catalogReferenceTooLarge",
+} as const satisfies Record<ReferenceImageProblem, string>;
+
+/** API の断りの文言(API の文は日本語だけなので、言語ごとの文言に置き換える) */
+const UPLOAD_ERROR_KEYS: Record<string, (typeof PROBLEM_KEYS)[ReferenceImageProblem]> = {
+  CATALOG_REFERENCE_IMAGE_INVALID: "catalogReferenceInvalid",
+  CATALOG_REFERENCE_IMAGE_TOO_SMALL: "catalogReferenceTooSmall",
+  CATALOG_REFERENCE_IMAGE_TOO_LARGE: "catalogReferenceTooLarge",
+  CATALOG_REFERENCE_FILE_TOO_LARGE: "catalogReferenceTooLarge",
+};
+
 /**
  * カタログをつくる(/free)の「見本(参照画像)」の欄。見本を使える人(運営が選んだ人)にだけ出す。
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 6)
  *
  * - 使ってはいけない画像を選ばないことへの同意にチェックしてから選べる(API も同意を確かめる)
- * - 選んだら元の画像と同じく縮めて(大きい写真で上限に当たらないように)、POST /api/catalog-references に上げる
- * - 見本はほかの人には見えない。見本を使った作品は、運営の確認のあとで投稿できる
+ * - 選んだら、API の決まり(縦横とも 768〜4096px・4MB まで)に合わせて手元で縮め、POST /api/catalog-references に上げる
+ *   (HEIC はブラウザで読めないので受け付けない。iPhone は JPEG に変えて渡す)
+ * - 見本はほかの人には見えない。見本を使った作品は、運営の確認のあとで投稿できる(第2案の帯。目安は2日以内)
+ * - 同意は今は毎回のチェック。第2案(初めてのときだけ絵の例で見せる)は 6b で作る
  */
 export function CatalogReferenceField({
   value,
@@ -59,7 +81,7 @@ export function CatalogReferenceField({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // 外したとき・置き換えたときに、前のプレビューの URL を放す
+  // 外したときに、プレビューの URL を放す
   const previewUrl = value?.previewUrl;
   useEffect(() => {
     return () => {
@@ -72,26 +94,36 @@ export function CatalogReferenceField({
     onUploadingChange?.(next);
   };
 
+  const messageFor = (key: (typeof PROBLEM_KEYS)[ReferenceImageProblem] | "catalogReferenceUploadFailed") =>
+    key === "catalogReferenceTooSmall" ? t(key, { min: SUBMISSION_IMAGE_MIN_DIMENSION }) : t(key);
+
   const handleFile = async (file: File) => {
     setError(null);
     setUploadingState(true);
     try {
-      const normalized = await normalizeSourceImage(file);
-      const form = new FormData();
-      form.append("file", normalized);
-      form.append("copyrightConsent", "true");
-      const res = await fetch("/api/catalog-references", { method: "POST", body: form });
-      const body = (await res.json().catch(() => null)) as { id?: string; error?: string } | null;
-      if (!res.ok || !body?.id) {
-        throw new Error(body?.error || t("catalogReferenceUploadFailed"));
+      let prepared: File;
+      try {
+        prepared = await prepareCatalogReferenceImage(file);
+      } catch (e) {
+        setError(messageFor(e instanceof ReferenceImageError ? PROBLEM_KEYS[e.problem] : "catalogReferenceInvalid"));
+        return;
       }
-      onChange({
-        id: body.id,
-        previewUrl: URL.createObjectURL(normalized),
-        takes: value?.takes.length ? value.takes : DEFAULT_TAKES,
-      });
-    } catch (e) {
-      setError(e instanceof Error && e.message ? e.message : t("catalogReferenceUploadFailed"));
+      const form = new FormData();
+      form.append("file", prepared);
+      form.append("copyrightConsent", "true");
+      let res: Response;
+      try {
+        res = await fetch("/api/catalog-references", { method: "POST", body: form });
+      } catch {
+        setError(messageFor("catalogReferenceUploadFailed"));
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { id?: string; errorCode?: string } | null;
+      if (!res.ok || !body?.id) {
+        setError(messageFor((body?.errorCode && UPLOAD_ERROR_KEYS[body.errorCode]) || "catalogReferenceUploadFailed"));
+        return;
+      }
+      onChange({ id: body.id, previewUrl: URL.createObjectURL(prepared), takes: DEFAULT_TAKES });
     } finally {
       setUploadingState(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -156,7 +188,11 @@ export function CatalogReferenceField({
             {value.takes.length === 0 ? (
               <p className="mt-2 text-sm text-destructive">{t("catalogReferenceTakesRequired")}</p>
             ) : null}
+            <p className="mt-2 text-xs text-muted-foreground">{t("catalogReferenceNotTaken")}</p>
           </fieldset>
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900" data-testid="catalog-reference-review-banner">
+            {t("catalogReferenceReviewBanner")}
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -174,7 +210,7 @@ export function CatalogReferenceField({
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             data-testid="catalog-reference-file"
             onChange={(event) => {
