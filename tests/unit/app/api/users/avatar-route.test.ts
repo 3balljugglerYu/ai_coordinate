@@ -6,6 +6,8 @@
  * ここが誤ると (a) 原寸のまま保存されて全画面のアイコンが重くなる、
  * (b) 変換に失敗したときアップロードごと失敗する、のどちらかが起きる。
  * 本番では 44 件で合計 34MB（中央値 746KB・最大 2.0MB）になっていた。
+ *
+ * avatar_url は利用者が直接書けない列(20261030170000)なので、本人を確かめたあと運営の接続で書く。
  */
 
 jest.mock("@/lib/auth", () => ({
@@ -14,6 +16,10 @@ jest.mock("@/lib/auth", () => ({
 
 jest.mock("@/lib/supabase/server", () => ({
   createClient: jest.fn(),
+}));
+
+jest.mock("@/lib/supabase/admin", () => ({
+  createAdminClient: jest.fn(),
 }));
 
 jest.mock("@/features/generation/lib/webp-converter", () => ({
@@ -28,10 +34,14 @@ import { NextRequest } from "next/server";
 import { POST } from "@/app/api/users/[userId]/avatar/route";
 import { getUser } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { convertToWebP } from "@/features/generation/lib/webp-converter";
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreateAdminClient = createAdminClient as jest.MockedFunction<typeof createAdminClient>;
+/** 運営の接続での profiles の書き込み(update に渡した中身) */
+const adminProfileUpdates: unknown[] = [];
 const mockConvertToWebP = convertToWebP as jest.MockedFunction<typeof convertToWebP>;
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -70,6 +80,26 @@ function mockSupabase() {
       })),
     },
   } as unknown as Awaited<ReturnType<typeof createClient>>);
+
+  adminProfileUpdates.length = 0;
+  interface AdminQuery {
+    update: (patch: unknown) => AdminQuery;
+    eq: () => AdminQuery;
+    select: () => AdminQuery;
+    single: () => Promise<{ data: { user_id: string }; error: null }>;
+  }
+  const adminQuery: AdminQuery = {
+    update: jest.fn((patch: unknown) => {
+      adminProfileUpdates.push(patch);
+      return adminQuery;
+    }),
+    eq: jest.fn(() => adminQuery),
+    select: jest.fn(() => adminQuery),
+    single: jest.fn(() => Promise.resolve({ data: { user_id: USER_ID }, error: null })),
+  };
+  mockCreateAdminClient.mockReturnValue({
+    from: jest.fn(() => adminQuery),
+  } as unknown as ReturnType<typeof createAdminClient>);
 
   return uploads;
 }
@@ -144,6 +174,17 @@ describe("POST /api/users/[userId]/avatar", () => {
     errorSpy.mockRestore();
   });
 
+  test("プロフィールのアイコンは、本人を確かめたあと運営の接続で書く", async () => {
+    const uploads = mockSupabase();
+
+    const response = await POST(buildRequest(bigPngFile()), { params });
+
+    expect(response.status).toBe(200);
+    expect(adminProfileUpdates).toEqual([
+      { avatar_url: `https://example.test/${uploads[0].path}` },
+    ]);
+  });
+
   test("他人のアバターは変更できない", async () => {
     mockSupabase();
     mockGetUser.mockResolvedValue({ id: "another-user" } as never);
@@ -152,6 +193,7 @@ describe("POST /api/users/[userId]/avatar", () => {
 
     expect(response.status).toBe(403);
     expect(mockConvertToWebP).not.toHaveBeenCalled();
+    expect(adminProfileUpdates).toEqual([]);
   });
 
   test("10MB 超は受け付けない(変換を試みる前に弾く)", async () => {
