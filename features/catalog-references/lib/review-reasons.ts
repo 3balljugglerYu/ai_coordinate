@@ -12,6 +12,18 @@ export const CATALOG_REVIEW_REASON_CATEGORIES = [
 
 export type CatalogReviewReasonCategory = (typeof CATALOG_REVIEW_REASON_CATEGORIES)[number];
 
+/** 作者への説明の上限(DB の char_length と同じく、文字の数で数える) */
+export const CATALOG_REVIEW_REASON_MAX_CHARS = 500;
+
+export function catalogReviewReasonLength(reason: string): number {
+  return Array.from(reason).length;
+}
+
+/** 「そのほか」は分類だけでは何を直せばよいか伝わらないので、説明を必須にする */
+export function catalogReviewReasonRequired(category: CatalogReviewReasonCategory): boolean {
+  return category === "other";
+}
+
 /** 運営の画面での呼び名 */
 export const CATALOG_REVIEW_REASON_LABELS: Record<CatalogReviewReasonCategory, string> = {
   official_or_others_work: "公式の作品・ほかの人の作品",

@@ -10,8 +10,20 @@ import type { PendingCatalogReview } from "@/features/catalog-references/lib/rev
 import {
   CATALOG_REVIEW_REASON_CATEGORIES,
   CATALOG_REVIEW_REASON_LABELS,
+  CATALOG_REVIEW_REASON_MAX_CHARS,
+  catalogReviewReasonRequired,
   type CatalogReviewReasonCategory,
 } from "@/features/catalog-references/lib/review-reasons";
+
+/** もう判定された・見つからない作品は、押し直しても変わらないので一覧から消す */
+const GONE_ERROR_CODES = new Set(["CATALOG_REVIEW_ALREADY_DECIDED", "CATALOG_REVIEW_NOT_FOUND"]);
+
+// サーバーで描いた時刻とブラウザで描き直した時刻が食い違わないように、日本時間に決めて出す
+const submittedAtFormat = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: "Asia/Tokyo",
+  dateStyle: "short",
+  timeStyle: "short",
+});
 
 const TAKE_LABELS: Record<string, string> = {
   outfit: "衣装",
@@ -20,28 +32,59 @@ const TAKE_LABELS: Record<string, string> = {
   background: "背景",
 };
 
-export function CatalogReviewsClient({ initialItems }: { initialItems: PendingCatalogReview[] }) {
+export function CatalogReviewsClient({
+  initialItems,
+  limit,
+}: {
+  initialItems: PendingCatalogReview[];
+  /** 一度に並べる数。これと同じ数が来たら、まだ続きがあるかもしれない */
+  limit: number;
+}) {
   const [items, setItems] = useState(initialItems);
+  const mayHaveMore = initialItems.length >= limit;
+
+  const handleDecided = (decided: PendingCatalogReview, action: "approve" | "reject" | "gone") => {
+    setItems((current) =>
+      current
+        .filter((row) => row.imageId !== decided.imageId)
+        // 作り直しは見本そのものを止めるので、同じ見本のほかの作品にも印を出す
+        .map((row) =>
+          action === "reject" && decided.referenceId && row.referenceId === decided.referenceId
+            ? { ...row, referenceRejected: true }
+            : row,
+        ),
+    );
+  };
 
   if (items.length === 0) {
-    return <p className="text-sm text-slate-500">審査待ちの作品はありません。</p>;
+    return (
+      <p className="text-sm text-slate-500">
+        {mayHaveMore
+          ? "表示した分は判定し終えました。ページを読み直すと、続きが出ます。"
+          : "審査待ちの作品はありません。"}
+      </p>
+    );
   }
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-slate-600">審査待ち {items.length}件(申請の古い順)</p>
+      <p className="text-sm text-slate-600">
+        審査待ち {items.length}件(申請の古い順{mayHaveMore ? `に最大${limit}件を表示。判定し終えたら読み直すと続きが出ます` : ""})
+      </p>
       {items.map((item) => (
-        <ReviewCard
-          key={item.imageId}
-          item={item}
-          onDecided={() => setItems((current) => current.filter((row) => row.imageId !== item.imageId))}
-        />
+        <ReviewCard key={item.imageId} item={item} onDecided={(action) => handleDecided(item, action)} />
       ))}
     </div>
   );
 }
 
-function ReviewCard({ item, onDecided }: { item: PendingCatalogReview; onDecided: () => void }) {
+function ReviewCard({
+  item,
+  onDecided,
+}: {
+  item: PendingCatalogReview;
+  onDecided: (action: "approve" | "reject" | "gone") => void;
+}) {
   const { toast } = useToast();
   const [category, setCategory] = useState<CatalogReviewReasonCategory | "">("");
   const [reason, setReason] = useState("");
@@ -50,6 +93,10 @@ function ReviewCard({ item, onDecided }: { item: PendingCatalogReview; onDecided
   const decide = async (action: "approve" | "reject") => {
     if (action === "reject" && !category) {
       toast({ title: "理由の分類を選んでください", variant: "destructive" });
+      return;
+    }
+    if (action === "reject" && catalogReviewReasonRequired(category as CatalogReviewReasonCategory) && !reason.trim()) {
+      toast({ title: "「そのほか」のときは、作者への説明を書いてください", variant: "destructive" });
       return;
     }
     setBusy(action);
@@ -61,12 +108,17 @@ function ReviewCard({ item, onDecided }: { item: PendingCatalogReview; onDecided
           action === "approve" ? { action } : { action, reasonCategory: category, reason: reason.trim() || null },
         ),
       });
-      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      const body = (await res.json().catch(() => null)) as { error?: string; errorCode?: string } | null;
       if (!res.ok) {
+        if (body?.errorCode && GONE_ERROR_CODES.has(body.errorCode)) {
+          toast({ title: body.error || "この作品はもう判定されています" });
+          onDecided("gone");
+          return;
+        }
         throw new Error(body?.error || "判定に失敗しました");
       }
       toast({ title: action === "approve" ? "承認しました" : "作り直しにしました" });
-      onDecided();
+      onDecided(action);
     } catch (error) {
       toast({
         title: "エラー",
@@ -85,11 +137,14 @@ function ReviewCard({ item, onDecided }: { item: PendingCatalogReview; onDecided
           <span className="font-medium text-slate-900">{item.nickname ?? "(名前未設定)"}</span>
           <span className="text-xs text-slate-400">{item.userId}</span>
           {item.submittedAt ? (
-            <span>申請 {new Date(item.submittedAt).toLocaleString("ja-JP")}</span>
+            <span>申請 {submittedAtFormat.format(new Date(item.submittedAt))}</span>
           ) : null}
           {item.derived ? <Badge variant="secondary">元の作品の見本を使った派生</Badge> : null}
           {item.referenceRejected ? (
             <Badge variant="destructive">この見本は、ほかの作品の審査で作り直しになっています</Badge>
+          ) : null}
+          {item.imageUnavailable ? (
+            <Badge variant="destructive">公開停止などのため承認できません(作り直しにはできます)</Badge>
           ) : null}
         </div>
 
@@ -144,8 +199,10 @@ function ReviewCard({ item, onDecided }: { item: PendingCatalogReview; onDecided
             </select>
             <Textarea
               value={reason}
-              onChange={(event) => setReason(event.target.value.slice(0, 500))}
-              placeholder="作者への説明(任意・500文字まで。そのまま通知に出ます)"
+              onChange={(event) =>
+                setReason(Array.from(event.target.value).slice(0, CATALOG_REVIEW_REASON_MAX_CHARS).join(""))
+              }
+              placeholder="作者への説明(500文字まで。そのまま通知に出ます。「そのほか」のときは必須)"
               rows={3}
             />
             <Button

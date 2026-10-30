@@ -6,15 +6,26 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
 import { jsonError } from "@/lib/api/json-error";
 import { isUuid } from "@/lib/is-uuid";
-import { CATALOG_REVIEW_REASON_CATEGORIES } from "@/features/catalog-references/lib/review-reasons";
+import {
+  CATALOG_REVIEW_REASON_CATEGORIES,
+  CATALOG_REVIEW_REASON_MAX_CHARS,
+  catalogReviewReasonLength,
+  catalogReviewReasonRequired,
+} from "@/features/catalog-references/lib/review-reasons";
 
 const decisionSchema = z.discriminatedUnion("action", [
   z.object({ action: z.literal("approve") }),
-  z.object({
-    action: z.literal("reject"),
-    reasonCategory: z.enum(CATALOG_REVIEW_REASON_CATEGORIES),
-    reason: z.string().max(500).optional().nullable(),
-  }),
+  z
+    .object({
+      action: z.literal("reject"),
+      reasonCategory: z.enum(CATALOG_REVIEW_REASON_CATEGORIES),
+      reason: z
+        .string()
+        .refine((value) => catalogReviewReasonLength(value) <= CATALOG_REVIEW_REASON_MAX_CHARS)
+        .optional()
+        .nullable(),
+    })
+    .refine((value) => !catalogReviewReasonRequired(value.reasonCategory) || !!value.reason?.trim()),
 ]);
 
 /**
@@ -22,9 +33,9 @@ const decisionSchema = z.discriminatedUnion("action", [
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 4・REQ-007)
  *
  * - 運営だけ。よそのサイトからは止める
- * - 承認(approve)か、作り直し(reject・理由の分類が要る・説明は500文字まで)
+ * - 承認(approve)か、作り直し(reject・理由の分類が要る・説明は500文字まで。「そのほか」は説明も要る)
  * - 判定・通知の作成は DB の RPC apply_catalog_review_decision が1つのトランザクションで行う
- * - 監査ログに残す(catalog_review_approve / catalog_review_reject)
+ * - 監査ログに残す(catalog_review_approve / catalog_review_reject。作り直しは分類と説明も)
  */
 export async function POST(
   request: NextRequest,
@@ -54,7 +65,11 @@ export async function POST(
   }
   const parsed = decisionSchema.safeParse(body);
   if (!parsed.success) {
-    return jsonError("判定の内容が不正です(作り直しには理由の分類が必要です)", "CATALOG_REVIEW_INVALID_DECISION", 400);
+    return jsonError(
+      "判定の内容が不正です(作り直しには理由の分類が必要で、「そのほか」は説明も必要です)",
+      "CATALOG_REVIEW_INVALID_DECISION",
+      400,
+    );
   }
   const decision = parsed.data;
   const reason = decision.action === "reject" ? decision.reason?.trim() || null : null;
@@ -94,7 +109,7 @@ export async function POST(
     targetId: imageId,
     metadata:
       decision.action === "reject"
-        ? { reasonCategory: decision.reasonCategory, hasReason: reason !== null }
+        ? { reasonCategory: decision.reasonCategory, reason }
         : {},
   });
 

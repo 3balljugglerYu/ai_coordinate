@@ -5,7 +5,7 @@
  *
  * ここで守ること(計画書 REQ-007):
  *  - 運営だけ。よそのサイトからは止める
- *  - 承認か、作り直し(理由の分類が要る・説明は500文字まで)。それ以外は 400
+ *  - 承認か、作り直し(理由の分類が要る・説明は文字の数で500文字まで・「そのほか」は説明も要る)。それ以外は 400
  *  - 判定はログイン中の運営として RPC apply_catalog_review_decision に渡す(通知は RPC が作る)
  *  - RPC の断りを、見つからない 404・もう判定した 409・作品が使えない 409・運営でない 403 に分ける
  *  - 判定できたら監査ログに残す。断られたら残さない
@@ -77,7 +77,7 @@ test("承認: ログイン中の運営として RPC に渡し、監査ログに�
   );
 });
 
-test("作り直し: 理由の分類と説明(前後の空白を除く)を渡し、監査ログに分類を残す", async () => {
+test("作り直し: 理由の分類と説明(前後の空白を除く)を渡し、監査ログに分類と説明を残す", async () => {
   rpcResult({ data: { status: "rejected", reviewed_at: "2026-10-30T12:00:00Z" }, error: null });
 
   const response = await request({ action: "reject", reasonCategory: "real_person", reason: "  実在の俳優です  " });
@@ -90,7 +90,7 @@ test("作り直し: 理由の分類と説明(前後の空白を除く)を渡し�
   expect(mockAudit).toHaveBeenCalledWith(
     expect.objectContaining({
       actionType: "catalog_review_reject",
-      metadata: { reasonCategory: "real_person", hasReason: true },
+      metadata: { reasonCategory: "real_person", reason: "実在の俳優です" },
     }),
   );
 });
@@ -118,6 +118,8 @@ test.each([
   ["作り直しに理由の分類が無い", { action: "reject" }, IMAGE_ID],
   ["理由の分類が決まりに無い", { action: "reject", reasonCategory: "ugly" }, IMAGE_ID],
   ["説明が500文字を超える", { action: "reject", reasonCategory: "other", reason: "あ".repeat(501) }, IMAGE_ID],
+  ["「そのほか」なのに説明が無い", { action: "reject", reasonCategory: "other" }, IMAGE_ID],
+  ["「そのほか」なのに説明が空白だけ", { action: "reject", reasonCategory: "other", reason: "   " }, IMAGE_ID],
   ["判定が決まりに無い", { action: "unpublish" }, IMAGE_ID],
   ["本文が JSON でない", "not json", IMAGE_ID],
 ])("%s → 400 で判定しない", async (_label, body, imageId) => {
@@ -143,4 +145,24 @@ test.each([
   expect(response.status).toBe(status);
   await expect(response.json()).resolves.toMatchObject({ errorCode });
   expect(mockAudit).not.toHaveBeenCalled();
+});
+
+test("説明は文字の数で数える(絵文字500文字は通す)", async () => {
+  rpcResult({ data: { status: "rejected", reviewed_at: "2026-10-30T12:00:00Z" }, error: null });
+
+  const response = await request({ action: "reject", reasonCategory: "other", reason: "😀".repeat(500) });
+
+  expect(response.status).toBe(200);
+});
+
+test("「そのほか」以外は、説明が無くても作り直しにできる(監査ログの説明は null)", async () => {
+  rpcResult({ data: { status: "rejected", reviewed_at: "2026-10-30T12:00:00Z" }, error: null });
+
+  const response = await request({ action: "reject", reasonCategory: "sexual_or_violent" });
+
+  expect(response.status).toBe(200);
+  expect(rpc).toHaveBeenCalledWith("apply_catalog_review_decision", expect.objectContaining({ p_reason: null }));
+  expect(mockAudit).toHaveBeenCalledWith(
+    expect.objectContaining({ metadata: { reasonCategory: "sexual_or_violent", reason: null } }),
+  );
 });

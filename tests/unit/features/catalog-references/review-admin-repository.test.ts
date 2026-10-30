@@ -9,6 +9,7 @@
  *  - 派生の作品(作品そのものに見本の情報が無い)は、元の作品の見本とプロンプトを使い、派生と分かる
  *  - 作者の名前・元の画像・できた画像・まねたものを合わせる。読めなければ投げる
  *  - 見本がほかの作品の審査で作り直しになっていれば、印を付ける
+ *  - 申請のあとに公開停止などになった作品に、印を付ける
  */
 
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
@@ -65,8 +66,20 @@ test("作品・見本(期限つきの URL)・まねたもの・プロンプト�
       },
       generated_images: {
         data: [
-          { id: "img-own", image_url: "https://cdn/after1.webp", pre_generation_storage_path: "before/1.webp", source_post_id: null },
-          { id: "img-derived", image_url: "https://cdn/after2.webp", pre_generation_storage_path: null, source_post_id: "img-own" },
+          {
+            id: "img-own",
+            image_url: "https://cdn/after1.webp",
+            pre_generation_storage_path: "before/1.webp",
+            source_post_id: null,
+            moderation_status: "visible",
+          },
+          {
+            id: "img-derived",
+            image_url: "https://cdn/after2.webp",
+            pre_generation_storage_path: null,
+            source_post_id: "img-own",
+            moderation_status: "visible",
+          },
         ],
         error: null,
       },
@@ -97,7 +110,9 @@ test("作品・見本(期限つきの URL)・まねたもの・プロンプト�
       takes: ["outfit", "pose"],
       prompt: "猫耳の衣装",
       derived: false,
+      referenceId: "ref-1",
       referenceRejected: false,
+      imageUnavailable: false,
     },
     {
       imageId: "img-derived",
@@ -110,7 +125,9 @@ test("作品・見本(期限つきの URL)・まねたもの・プロンプト�
       takes: ["outfit", "pose"],
       prompt: "猫耳の衣装",
       derived: true,
+      referenceId: "ref-1",
       referenceRejected: false,
+      imageUnavailable: false,
     },
   ]);
 });
@@ -129,11 +146,14 @@ test.each(["generated_image_catalog_reviews", "generated_images", "generated_ima
   },
 );
 
-test("見本がほかの作品の審査で作り直しになっていれば、印を付ける", async () => {
+test("見本がほかの作品の審査で作り直しになっている・作品が公開停止なら、印を付ける", async () => {
   const { supabase } = client(
     {
       generated_image_catalog_reviews: { data: [{ image_id: "img", user_id: "u1", submitted_at: null }], error: null },
-      generated_images: { data: [{ id: "img", image_url: null, pre_generation_storage_path: null, source_post_id: null }], error: null },
+      generated_images: {
+        data: [{ id: "img", image_url: null, pre_generation_storage_path: null, source_post_id: null, moderation_status: "removed" }],
+        error: null,
+      },
       generated_image_reference_secrets: { data: [{ image_id: "img", reference_id: "ref-1", takes: ["pose"] }], error: null },
       catalog_reference_images: {
         data: [{ id: "ref-1", storage_path: "u1/ref.webp", rejected_at: "2026-10-30T00:00:00Z" }],
@@ -147,4 +167,5 @@ test("見本がほかの作品の審査で作り直しになっていれば、�
 
   expect(item.referenceRejected).toBe(true);
   expect(item.referenceUrl).toBe("https://signed/ref");
+  expect(item.imageUnavailable).toBe(true);
 });

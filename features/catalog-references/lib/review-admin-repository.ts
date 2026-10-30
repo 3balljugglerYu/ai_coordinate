@@ -15,7 +15,8 @@ import { CATALOG_REFERENCE_BUCKET } from "./reference-image-repository";
  */
 
 const SIGNED_URL_SECONDS = 600;
-const MAX_ITEMS = 50;
+/** 一度に並べる数(申請の古い順) */
+export const MAX_PENDING_CATALOG_REVIEWS = 50;
 
 export interface PendingCatalogReview {
   imageId: string;
@@ -29,8 +30,12 @@ export interface PendingCatalogReview {
   prompt: string | null;
   /** 承認前の作品から作った派生の作品か(見本は元の作品のもの) */
   derived: boolean;
+  /** 見本の ID(作り直しにしたとき、同じ見本のほかの作品に印を出すため) */
+  referenceId: string | null;
   /** 見本がほかの作品の審査で作り直しになり、もう使えないか */
   referenceRejected: boolean;
+  /** 申請のあとに公開停止などになった(承認できない。作り直しにはできる) */
+  imageUnavailable: boolean;
 }
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
@@ -50,23 +55,31 @@ export async function listPendingCatalogReviews(client?: SupabaseClient): Promis
     .select("image_id, user_id, submitted_at")
     .eq("status", "pending")
     .order("submitted_at", { ascending: true })
-    .limit(MAX_ITEMS);
+    .limit(MAX_PENDING_CATALOG_REVIEWS);
   if (reviewError) fail("reviews", reviewError);
   const reviewRows = (reviews ?? []) as Array<{ image_id: string; user_id: string; submitted_at: string | null }>;
   if (reviewRows.length === 0) return [];
 
   const imageIds = reviewRows.map((row) => row.image_id);
-  const { data: images, error: imageError } = await supabase
-    .from("generated_images")
-    .select("id, image_url, pre_generation_storage_path, source_post_id")
-    .in("id", imageIds);
-  if (imageError) fail("images", imageError);
+  const [imagesResult, profilesResult] = await Promise.all([
+    supabase
+      .from("generated_images")
+      .select("id, image_url, pre_generation_storage_path, source_post_id, moderation_status")
+      .in("id", imageIds),
+    supabase
+      .from("profiles")
+      .select("user_id, nickname")
+      .in("user_id", [...new Set(reviewRows.map((row) => row.user_id))]),
+  ]);
+  if (imagesResult.error) fail("images", imagesResult.error);
+  if (profilesResult.error) fail("profiles", profilesResult.error);
   const imageById = new Map(
-    ((images ?? []) as Array<{
+    ((imagesResult.data ?? []) as Array<{
       id: string;
       image_url: string | null;
       pre_generation_storage_path: string | null;
       source_post_id: string | null;
+      moderation_status: string | null;
     }>).map((image) => [image.id, image]),
   );
 
@@ -74,17 +87,12 @@ export async function listPendingCatalogReviews(client?: SupabaseClient): Promis
   const rootIds = [...new Set([...imageById.values()].map((image) => image.source_post_id).filter((id): id is string => !!id))];
   const lookupIds = [...new Set([...imageIds, ...rootIds])];
 
-  const [secretsResult, promptsResult, profilesResult] = await Promise.all([
+  const [secretsResult, promptsResult] = await Promise.all([
     supabase.from("generated_image_reference_secrets").select("image_id, reference_id, takes").in("image_id", lookupIds),
     supabase.from("generated_image_prompt_secrets").select("image_id, prompt").in("image_id", lookupIds),
-    supabase
-      .from("profiles")
-      .select("user_id, nickname")
-      .in("user_id", [...new Set(reviewRows.map((row) => row.user_id))]),
   ]);
   if (secretsResult.error) fail("reference secrets", secretsResult.error);
   if (promptsResult.error) fail("prompt secrets", promptsResult.error);
-  if (profilesResult.error) fail("profiles", profilesResult.error);
 
   const secretByImage = new Map(
     ((secretsResult.data ?? []) as Array<{ image_id: string; reference_id: string; takes: string[] | null }>).map(
@@ -144,7 +152,9 @@ export async function listPendingCatalogReviews(client?: SupabaseClient): Promis
       takes: secret?.takes ?? [],
       prompt: promptByImage.get(review.image_id) ?? (rootId ? promptByImage.get(rootId) ?? null : null),
       derived: !ownSecret && !!rootId,
+      referenceId: secret?.reference_id ?? null,
       referenceRejected: secret ? rejectedReferences.has(secret.reference_id) : false,
+      imageUnavailable: !image || image.moderation_status !== "visible",
     };
   });
 }

@@ -1,6 +1,9 @@
 import { connection } from "next/server";
 import { ensureAdminPage } from "@/lib/admin-page-guard";
-import { listPendingCatalogReviews } from "@/features/catalog-references/lib/review-admin-repository";
+import {
+  listPendingCatalogReviews,
+  MAX_PENDING_CATALOG_REVIEWS,
+} from "@/features/catalog-references/lib/review-admin-repository";
 import { CatalogReviewsClient } from "./CatalogReviewsClient";
 
 /**
@@ -28,7 +31,7 @@ export default async function AdminCatalogReviewsPage() {
           作り直しにすると、理由と一緒に通知が届きます(同じ作品は出し直せません)。審査の目安は2日以内です。
         </p>
       </header>
-      <CatalogReviewsClient initialItems={items} />
+      <CatalogReviewsClient initialItems={items} limit={MAX_PENDING_CATALOG_REVIEWS} />
     </div>
   );
 }
