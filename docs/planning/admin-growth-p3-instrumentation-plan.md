@@ -113,6 +113,8 @@
 
 ## 6. P3-4 GA4 にユーザー ID を送る（P3-1 のあと）
 
+> 2026-10-30: 作った（`features/analytics/components/Ga4LoginStatus.tsx`）。P3-1（#808）で、プライバシーポリシーと外部送信のページにユーザー ID を送ることは書いてある。
+
 - `Ga4LoginStatus.tsx` で、ログインしているときは `gtag('set', { user_id: <Supabase のユーザー ID> })`、ログアウトしたら `user_id: null` にする。
 - 登録・生成・課金のできごとは、GA4 には送らない。DB の記録を正として、GA4 の生データ（BigQuery）と `user_id` で結ぶ（親の計画 6-3）。
 
