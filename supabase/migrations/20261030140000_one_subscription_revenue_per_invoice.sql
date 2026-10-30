@@ -22,11 +22,12 @@
 --   - 付与の行を書くとき、その請求の支払いだけの行がもうあれば、付与の行には売上(revenueYen・revenueSource)を載せない
 --   - 付与が0(上限)のとき、または同じ請求の付与の行がもうあるとき、p_metadata に売上があり、
 --     その請求の売上がまだどこにも無ければ、支払いだけの行で記録する
---   ※ 引数3つの版(change-service.ts のプラン変更の差・売上なし)は変えない
+--   ※ change-service.ts のプラン変更の差は p_metadata に売上を載せない(支払いは invoice.paid で記録する)
 --
 --   ## record_subscription_payment(p_user_id, p_invoice_id, p_metadata)
 --   同じロックを取り、その請求の付与の行にもう売上があれば書かない(false を返す)。
---   プラン変更の日割りの請求(付与は change-service.ts が売上なしで行う)と、上の付与の関数から使う。
+--   プラン変更の日割りの請求(付与は change-service.ts が売上なしで行う)で使う。
+--   付与の関数の中からは、同じロックの中なので insert_subscription_payment_row を直接呼ぶ。
 
 BEGIN;
 
