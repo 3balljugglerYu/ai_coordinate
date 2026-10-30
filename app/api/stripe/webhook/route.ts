@@ -24,6 +24,11 @@ import {
 import { getSubscriptionPlanFromStripeSubscription } from "@/features/subscription/lib/stripe-utils";
 import { createYearlyPercoinGrantState } from "@/features/subscription/lib/yearly-grant-schedule";
 import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checkout-session-expired";
+import {
+  isSubscriptionChangePaymentInvoice,
+  recordSubscriptionChangePayment,
+  shouldGrantOnSubscriptionInvoicePaid,
+} from "@/features/subscription/lib/subscription-change-payment";
 
 type SubscriptionRecord = {
   user_id: string;
@@ -336,37 +341,6 @@ async function handleCheckoutSessionExpired(session: Stripe.Checkout.Session) {
   return NextResponse.json({ received: true, handled: recorded !== null, recorded: recorded === true });
 }
 
-function hasProrationLine(invoice: Stripe.Invoice) {
-  const lines = invoice.lines.data ?? [];
-
-  return lines.some((line) => {
-    const prorationOnParent =
-      line.parent?.type === "subscription_item_details" &&
-      line.parent.subscription_item_details?.proration === true;
-
-    // Some Stripe webhook payloads still include a legacy top-level proration flag
-    // that is not present in the current SDK type definitions.
-    const legacyProrationFlag =
-      "proration" in line &&
-      typeof line.proration === "boolean" &&
-      line.proration === true;
-
-    return prorationOnParent || legacyProrationFlag;
-  });
-}
-
-function shouldHandleSubscriptionInvoicePaid(invoice: Stripe.Invoice) {
-  if (invoice.billing_reason === "subscription_cycle") {
-    return true;
-  }
-
-  if (invoice.billing_reason === "subscription_update") {
-    return !hasProrationLine(invoice);
-  }
-
-  return false;
-}
-
 async function handlePercoinCheckoutCompleted(
   stripe: Stripe,
   session: Stripe.Checkout.Session
@@ -583,7 +557,8 @@ async function handleSubscriptionInvoicePaid(
   stripe: Stripe,
   invoice: Stripe.Invoice
 ) {
-  if (!shouldHandleSubscriptionInvoicePaid(invoice)) {
+  const isChangePayment = isSubscriptionChangePaymentInvoice(invoice);
+  if (!isChangePayment && !shouldGrantOnSubscriptionInvoicePaid(invoice)) {
     return NextResponse.json({
       received: true,
       handled: false,
@@ -620,7 +595,7 @@ async function handleSubscriptionInvoicePaid(
       existingRecord?.billing_interval ??
       null;
 
-    if (userId) {
+    if (userId && !isChangePayment) {
       const yearlyGrantState =
         billingInterval === "year"
           ? createYearlyPercoinGrantState({
@@ -658,6 +633,27 @@ async function handleSubscriptionInvoicePaid(
       { error: "Missing user for subscription renewal" },
       { status: 400 }
     );
+  }
+
+  if (isChangePayment) {
+    // 付与とサブスクの行の更新は change-service.ts と customer.subscription.updated が行う。
+    // ここでは支払いだけを記録する(0円の請求は何もしない)
+    const recorded = await recordSubscriptionChangePayment(createAdminClient(), {
+      userId,
+      plan,
+      billingInterval,
+      invoiceId: invoice.id,
+      paidAmountYen: invoice.amount_paid,
+      mode: isStripeTestMode() ? "test" : "live",
+    });
+    return NextResponse.json({
+      received: true,
+      handled: true,
+      mode: "subscription_change_payment",
+      recorded,
+      userId,
+      invoiceId: invoice.id,
+    });
   }
 
   await grantSubscriptionPercoins({
