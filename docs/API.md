@@ -430,10 +430,12 @@ Main errors:
 - Request body: `{ "imageId": "uuid" }`
 - Response: `200` `{ "status": "pending", "submittedAt": "..." }`
 - Errors:
-  - `400`: `imageId` の形が違う
+  - `400`: `imageId` の形が違う・本文が JSON でない（`CATALOG_REVIEW_INVALID_REQUEST`）
   - `401`: ログインしていない・ログインの情報が届かない（`CATALOG_REVIEW_AUTH_REQUIRED`）
+  - `403`: よそのサイトからの送信
   - `404`: 審査に出せる作品が見つからない（他人の作品・見本の作品でない・公開停止など。`CATALOG_REVIEW_NOT_FOUND`）
   - `409`: もう審査中（`CATALOG_REVIEW_ALREADY_SUBMITTED`）・もう承認済み（`CATALOG_REVIEW_ALREADY_APPROVED`）・作り直しになった（`CATALOG_REVIEW_REJECTED`。同じ作品は出し直せない）
+  - `500`: 審査に出せなかった（`CATALOG_REVIEW_SUBMIT_FAILED`）
 
 見本つきの作品は、承認されるまで `POST /api/posts/post` が `409` + `POSTS_REVIEW_PENDING` を返します（DB のトリガーが投稿を止める）。
 

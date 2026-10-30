@@ -29,11 +29,18 @@ const USER_ID = "11111111-1111-4111-8111-111111111111";
 const IMAGE_ID = "22222222-2222-4222-8222-222222222222";
 
 const rpc = jest.fn();
-const reviewStatus = jest.fn(async () => ({ data: null as { status: string } | null, error: null }));
+const reviewStatus = jest.fn(async () => ({
+  data: null as { status: string } | null,
+  error: null as { code: string; message: string } | null,
+}));
+const eq = jest.fn();
 const from = jest.fn(() => {
   const chain: Record<string, unknown> = {};
   chain.select = () => chain;
-  chain.eq = () => chain;
+  chain.eq = (...args: unknown[]) => {
+    eq(...args);
+    return chain;
+  };
   chain.maybeSingle = reviewStatus;
   return chain;
 });
@@ -124,4 +131,16 @@ test.each([
   expect(response.status).toBe(409);
   await expect(response.json()).resolves.toMatchObject({ errorCode });
   expect(from).toHaveBeenCalledWith("generated_image_catalog_reviews");
+  expect(eq).toHaveBeenCalledWith("image_id", IMAGE_ID);
+});
+
+test("「未申請」でないのに審査の行を読めなければ、審査中と決めつけず 500", async () => {
+  rpcResult({ data: null, error: { code: "22023", message: "CATALOG_REVIEW_INVALID_STATE" } });
+  reviewStatus.mockResolvedValue({ data: null, error: { code: "57014", message: "timeout" } });
+  jest.spyOn(console, "error").mockImplementation(() => {});
+
+  const response = await POST(request({ imageId: IMAGE_ID }));
+
+  expect(response.status).toBe(500);
+  await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REVIEW_SUBMIT_FAILED" });
 });

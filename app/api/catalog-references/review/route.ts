@@ -46,6 +46,8 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     if (error.code === "42501") {
+      // auth.uid() が NULL(ログインの情報が届かない)。実行の権限が外れたときも同じコードなので記録する
+      console.warn("[catalog-references/review] submit refused with 42501");
       return jsonError("ログインし直してください", "CATALOG_REVIEW_AUTH_REQUIRED", 401);
     }
     if (error.code === "P0002") {
@@ -67,14 +69,20 @@ async function alreadyDecidedResponse(
   supabase: Awaited<ReturnType<typeof createClient>>,
   imageId: string,
 ) {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("generated_image_catalog_reviews")
     .select("status")
     .eq("image_id", imageId)
     .maybeSingle();
+  if (error) {
+    // 読めないまま「審査中」と返すと、作り直しの案内が出なくなるので失敗にする
+    console.error("[catalog-references/review] status read error:", error.code, error.message);
+    return jsonError("審査に出せませんでした", "CATALOG_REVIEW_SUBMIT_FAILED", 500);
+  }
   const status = (data as { status?: string } | null)?.status;
   if (status === "approved") {
-    return jsonError("この作品はもう承認されています。投稿できます", "CATALOG_REVIEW_ALREADY_APPROVED", 409);
+    // 承認のあとに公開停止された作品もここに来るので、「投稿できます」とは言わない
+    return jsonError("この作品はもう承認されています", "CATALOG_REVIEW_ALREADY_APPROVED", 409);
   }
   if (status === "rejected") {
     return jsonError(
