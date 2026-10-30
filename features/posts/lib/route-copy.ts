@@ -16,6 +16,7 @@ export const postsRouteCopy = {
     postFailed: "投稿に失敗しました",
     postSuspendedCannotPublish:
       "このコンテンツは公開停止中のため、投稿できません。異議申立ての手続きをご確認ください。",
+    postReviewPending: "この作品は見本を使っているため、運営の確認で承認されるまで投稿できません。",
     promptVisibilityNotAllowed:
       "プロンプトを非公開にできるのは、じゆうモードで作った自分の投稿だけです。",
     promptTextUnavailable: "このプロンプトは現在ご利用できません",
@@ -51,6 +52,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "This work uses a reference image, so you can post it after it is approved in our review.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -86,6 +88,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "이 작품은 참고 이미지를 사용해서, 운영팀의 확인으로 승인될 때까지 게시할 수 없어요.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -121,6 +124,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "此作品使用了参考图，需经运营审核通过后才能发布。",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -156,6 +160,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "此作品使用了參考圖，需經營運審核通過後才能發布。",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -191,6 +196,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Esta obra usa una imagen de referencia, así que podrás publicarla cuando sea aprobada en nuestra revisión.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -226,6 +232,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Este trabalho usa uma imagem de referência, então você poderá publicá-lo depois que for aprovado na nossa revisão.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -261,6 +268,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Cette création utilise une image de référence : vous pourrez la publier une fois approuvée lors de notre examen.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -296,6 +304,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Dieses Werk verwendet ein Referenzbild. Du kannst es posten, sobald es in unserer Prüfung freigegeben wurde.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -331,6 +340,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Quest'opera usa un'immagine di riferimento, quindi potrai pubblicarla dopo l'approvazione nella nostra verifica.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -366,6 +376,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Karya ini memakai gambar referensi, jadi bisa diposting setelah disetujui dalam pemeriksaan kami.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -401,6 +412,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "ผลงานนี้ใช้ภาพอ้างอิง จึงโพสต์ได้หลังจากผ่านการอนุมัติในการตรวจสอบของเรา",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -436,6 +448,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "Tác phẩm này dùng ảnh tham khảo nên chỉ có thể đăng sau khi được duyệt trong quá trình kiểm tra của chúng tôi.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -471,6 +484,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "यह रचना संदर्भ छवि का उपयोग करती है, इसलिए हमारी जाँच में स्वीकृत होने के बाद ही पोस्ट की जा सकती है।",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -506,6 +520,7 @@ export const postsRouteCopy = {
     postFailed: "Failed to publish the post.",
     postSuspendedCannotPublish:
       "This content is suspended and cannot be published. Please review the appeal process.",
+    postReviewPending: "يستخدم هذا العمل صورة مرجعية، لذا يمكنك نشره بعد الموافقة عليه في مراجعتنا.",
     promptVisibilityNotAllowed:
       "Only your own posts created in Free mode can have a private prompt.",
     promptTextUnavailable: "This prompt is currently unavailable.",
@@ -543,6 +558,8 @@ export const postsRouteCopy = {
     postFailed: string;
     /** 公開停止中コンテンツの再投稿を DB trigger が拒否したときの文言。 */
     postSuspendedCannotPublish: string;
+    /** 見本つきの作品で、審査が承認されていないのに投稿しようとしたとき(DB trigger が拒否)の文言。 */
+    postReviewPending: string;
     /** free 以外・派生投稿でプロンプト非公開を指定したときの文言。 */
     promptVisibilityNotAllowed: string;
     /** 公開プロンプト本文を取得できなかったときの文言。理由は区別しない。 */

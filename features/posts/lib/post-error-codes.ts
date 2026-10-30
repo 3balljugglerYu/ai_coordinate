@@ -26,3 +26,17 @@ export function isSuspendedPublishError(error: unknown): boolean {
   const code = (error as { code?: unknown }).code;
   return code === POSTS_SUSPENDED_CANNOT_PUBLISH;
 }
+
+/**
+ * 見本(参照画像)つきの作品で、運営の審査が承認されていないのに投稿しようとしたときに API が返す errorCode。
+ * 実際のブロックは DB trigger `enforce_catalog_review_before_publish` が行う(i2i カタログ REQ-005)。
+ */
+export const POSTS_REVIEW_PENDING = "POSTS_REVIEW_PENDING";
+
+/** 審査が済んでいないため投稿できないエラーかどうか(UI 分岐用・権限境界ではない) */
+export function isReviewPendingPublishError(error: unknown): boolean {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+  return (error as { code?: unknown }).code === POSTS_REVIEW_PENDING;
+}

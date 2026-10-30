@@ -240,10 +240,11 @@ flowchart LR
 - 派生生成（Phase 5）の見本も、同じ RPC が元の作品から返すので、worker の部分はこれで済んでいる（API の応答に見本が出ないことのテストは Phase 5 で）
 - [ ] 5つのモデルすべてで2枚の入力が通ることを、本番の運営アカウントで確かめる（Phase 7）
 
-### Phase 4: 審査と通知
-- [ ] `POST /api/catalog-references/review`（作者が審査に出す）
-- [ ] 管理画面の審査ページ（参照画像・Before・After・取り入れたもの・プロンプトを並べる。`/admin/catalog/entries` を参考）と判定 API（`app/api/admin/catalog/entries/[id]/decision/route.ts` を参考）
-- [ ] 通知の表示（`features/notifications/types.ts`・`presentation.ts`）。押すと投稿詳細へ
+### Phase 4: 審査と通知（4a: 2026-10-30 実装・4b はこのあと）
+- [x] `POST /api/catalog-references/review`（作者が審査に出す）。本人のログインの権限で RPC `submit_catalog_review` を呼び、本人でない 403・見つからない 404・もう申請した 409
+- [ ] 管理画面の審査ページ（参照画像・Before・After・取り入れたもの・プロンプトを並べる。`/admin/catalog/entries` を参考）と判定 API（`app/api/admin/catalog/entries/[id]/decision/route.ts` を参考）→ 4b
+- [x] 通知の表示（`features/notifications/types.ts`・`presentation.ts`・アイコン）。文言は15言語（承認・作り直し・理由の4分類）。審査した運営は見せない。押すと投稿詳細へ（今の決まりのまま）
+- [x] 投稿 API の 409 `POSTS_REVIEW_PENDING`（Phase 6 から前倒し。文言は15言語・`post-error-codes.ts` に判定）
 
 ### Phase 5: ほかの人の生成
 - [ ] worker の派生生成で、RPC が返した参照画像を image_1 にする（場所を引くのは課金の前）。元が承認されていない作者本人の生成では、作者がまだ一覧にいるかも確かめる

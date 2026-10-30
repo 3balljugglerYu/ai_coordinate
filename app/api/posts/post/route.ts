@@ -14,6 +14,7 @@ import {
   getSubscriptionBonusMultiplier,
   normalizeSubscriptionPlan,
 } from "@/features/subscription/subscription-config";
+import { POSTS_REVIEW_PENDING } from "@/features/posts/lib/post-error-codes";
 
 /**
  * デイリー投稿特典を付与するヘルパー関数
@@ -275,6 +276,18 @@ export async function POST(request: NextRequest) {
         {
           error: copy.postSuspendedCannotPublish,
           errorCode: "POSTS_SUSPENDED_CANNOT_PUBLISH",
+        },
+        { status: 409 }
+      );
+    }
+
+    // 見本(参照画像)つきの作品は、運営の審査で承認されるまで DB trigger
+    // (enforce_catalog_review_before_publish) が投稿を拒否する(i2i カタログ REQ-005)。
+    if (error instanceof Error && error.message.includes("post_review_pending")) {
+      return NextResponse.json(
+        {
+          error: copy.postReviewPending,
+          errorCode: POSTS_REVIEW_PENDING,
         },
         { status: 409 }
       );

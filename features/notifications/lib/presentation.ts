@@ -37,7 +37,23 @@ export type NotificationTranslationKey =
   | "moderationRemovedBody"
   | "moderationAppealUpheldTitle"
   | "moderationAppealOverturnedTitle"
-  | "moderationAppealResultTitle";
+  | "moderationAppealResultTitle"
+  | "catalogReviewApprovedTitle"
+  | "catalogReviewApprovedBody"
+  | "catalogReviewRejectedTitle"
+  | "catalogReviewRejectedBody"
+  | "catalogReviewReasonOfficialOrOthersWork"
+  | "catalogReviewReasonRealPerson"
+  | "catalogReviewReasonSexualOrViolent"
+  | "catalogReviewReasonOther";
+
+/** 作り直しの理由の分類(generated_image_catalog_reviews.reason_category)ごとの文言 */
+const CATALOG_REVIEW_REASON_KEYS: Record<string, NotificationTranslationKey> = {
+  official_or_others_work: "catalogReviewReasonOfficialOrOthersWork",
+  real_person: "catalogReviewReasonRealPerson",
+  sexual_or_violent: "catalogReviewReasonSexualOrViolent",
+  other: "catalogReviewReasonOther",
+};
 
 function getStringValue(value: unknown): string | null {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
@@ -295,6 +311,26 @@ export function formatNotificationContent(
           getStringValue(notification.body) ??
           t("moderationRemovedBody"),
       };
+    case "catalog_review_approved":
+      return {
+        title: t("catalogReviewApprovedTitle"),
+        body: t("catalogReviewApprovedBody"),
+      };
+    case "catalog_review_rejected": {
+      // 理由は分類の文言(翻訳する)と、運営が書いた説明(翻訳できないので原文)を並べる
+      const category = getStringValue(notification.data?.reason_category);
+      const categoryKey = category ? CATALOG_REVIEW_REASON_KEYS[category] : undefined;
+      return {
+        title: t("catalogReviewRejectedTitle"),
+        body: [
+          categoryKey ? t(categoryKey) : null,
+          getStringValue(notification.data?.reason),
+          t("catalogReviewRejectedBody"),
+        ]
+          .filter((part): part is string => part !== null)
+          .join(" "),
+      };
+    }
     case "post_moderation_appeal_result": {
       const status = getStringValue(notification.data?.appeal_status);
       const title =
