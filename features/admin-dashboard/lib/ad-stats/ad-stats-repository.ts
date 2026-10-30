@@ -13,6 +13,7 @@ import {
   buildPlatformFunnels,
   filterSignupDays,
   type AdDailyChartRow,
+  type AdDailyRange,
   type AdSignupDay,
   type PlatformFunnel,
 } from "./build-ad-charts";
@@ -169,10 +170,11 @@ async function listAds(supabase: SupabaseClient): Promise<AdDbRow[]> {
 async function getFunnelBySource(
   supabase: SupabaseClient,
   windows: SignupWindow[],
-  operators: string[],
+  operatorsPromise: Promise<string[]>,
 ): Promise<Map<string, AdFunnel>> {
   const funnel = new Map<string, AdFunnel>();
   if (windows.length === 0) return funnel;
+  const operators = await operatorsPromise;
   const { data, error } = await supabase.rpc("get_ad_signup_funnel", {
     p_windows: windows.map((window) => ({
       signup_source: window.signupSource,
@@ -203,17 +205,32 @@ function jstDayStartIso(day: string): string {
 }
 
 /**
- * 日ごとのグラフの登録。期間の中の、目印の付いた登録だけを読む
+ * 日ごとのグラフの登録。グラフの期間の中の、目印の付いた登録だけを読む
  * （広告から来た人は少ないので、行は多くない）。絞り込みは filterSignupDays。
+ * グラフの添え物なので、読めなくても画面は出す（null を返し、登録のグラフだけ外す）。
  */
 async function listSignupDays(
   supabase: SupabaseClient,
   windows: SignupWindow[],
+  range: AdDailyRange,
+  operatorsPromise: Promise<string[]>,
+): Promise<AdSignupDay[] | null> {
+  if (windows.length === 0) return [];
+  try {
+    return await readSignupDays(supabase, windows, range, await operatorsPromise);
+  } catch (error) {
+    console.error("[admin ad-stats] signup days:", error);
+    return null;
+  }
+}
+
+async function readSignupDays(
+  supabase: SupabaseClient,
+  windows: SignupWindow[],
+  range: AdDailyRange,
   operators: string[],
 ): Promise<AdSignupDay[]> {
-  if (windows.length === 0) return [];
-  const from = windows.reduce((min, w) => (w.fromDate < min ? w.fromDate : min), windows[0].fromDate);
-  const to = windows.reduce((max, w) => (w.toDate > max ? w.toDate : max), windows[0].toDate);
+  const { from, to } = range;
   const { data, error } = await fetchAllById<ProfileSignupRow>(() =>
     supabase
       .from("profiles")
@@ -273,9 +290,12 @@ export interface AdDailyChart {
   events: Array<{ eventDate: string; title: string }>;
   /** 最後の日が今日（途中までの数） */
   endsToday: boolean;
+  /** 日ごとの登録を読めた（読めなければ登録のグラフを出さない） */
+  signupsAvailable: boolean;
 }
 
-export interface AdStatsOverview extends AdStatsSummary {
+/** 画面へ渡すもの（日ごとの合計は dailyChart に入れてあるので、元の daily は渡さない） */
+export interface AdStatsOverview extends Omit<AdStatsSummary, "daily"> {
   signupSourceOptions: string[];
   funnels: PlatformFunnel[];
   /** 広告が無いときは null */
@@ -313,23 +333,26 @@ export async function getAdStatsOverview(client?: SupabaseClient): Promise<AdSta
   const windows = signupWindows(summary.ads);
   const today = toJstDateKey(new Date());
   const range = adDailyRange(summary.ads, today, SIGNUP_WINDOW_DAYS_AFTER);
-  const operators = windows.length > 0 ? await getOperatorUserIds({ strict: true }) : [];
+  // 運営の一覧は人数を数える2つだけが待つ（目印の候補・出来事の印は先に読み始める）
+  const operatorsPromise =
+    windows.length > 0 ? getOperatorUserIds({ strict: true }) : Promise.resolve([]);
   const [funnel, signupDays, events, signupSourceOptions] = await Promise.all([
-    getFunnelBySource(supabase, windows, operators),
-    listSignupDays(supabase, windows, operators),
+    getFunnelBySource(supabase, windows, operatorsPromise),
+    range ? listSignupDays(supabase, windows, range, operatorsPromise) : Promise.resolve([]),
     range ? listChartEvents(range.from, range.to) : Promise.resolve([]),
     listSignupSourceOptions(supabase, chosen),
   ]);
-  const withFunnel = attachFunnel(summary, funnel);
+  const { daily, ...withFunnel } = attachFunnel(summary, funnel);
   return {
     ...withFunnel,
     signupSourceOptions,
     funnels: buildPlatformFunnels(withFunnel.ads),
     dailyChart: range
       ? {
-          rows: buildAdDailyRows(range, withFunnel.daily, signupDays, withFunnel.ads),
+          rows: buildAdDailyRows(range, daily, signupDays ?? [], withFunnel.ads),
           events,
           endsToday: range.to === today,
+          signupsAvailable: signupDays !== null,
         }
       : null,
   };

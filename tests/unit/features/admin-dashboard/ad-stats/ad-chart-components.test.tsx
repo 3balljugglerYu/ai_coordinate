@@ -50,6 +50,22 @@ describe("AdFunnelBars", () => {
     expect(screen.queryByText(/・1人/)).not.toBeInTheDocument();
   });
 
+  it("登録がクリックより多くても（広告以外から来た人にも同じ目印が付く）、棒は枠からはみ出さない", () => {
+    const { container } = render(
+      <AdFunnelBars
+        funnels={buildPlatformFunnels([
+          ad({ platform: "x", adKey: "1", linkClicks: 20, landingPageViews: null, funnel: { signups: 35, generated: 0, posted: 0 } }),
+        ])}
+      />,
+    );
+
+    const widths = [...container.querySelectorAll<HTMLElement>("[style*='width']")].map((el) =>
+      parseFloat(el.style.width),
+    );
+    expect(widths.length).toBeGreaterThan(0);
+    expect(Math.max(...widths)).toBeLessThanOrEqual(100);
+  });
+
   it("目印のある広告が無ければ、登録から先の段の代わりに案内を出す", () => {
     render(<AdFunnelBars funnels={buildPlatformFunnels([ad({ signupSource: null, funnel: null })])} />);
 
@@ -101,16 +117,40 @@ describe("AdBreakdownBars", () => {
     expect(screen.getAllByRole("heading", { name: "年齢" }).length).toBeGreaterThan(0);
     expect(screen.getByText("52%")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "x:all:1,2" } });
 
     expect(screen.queryAllByRole("heading", { name: "年齢" })).toHaveLength(0);
     expect(screen.getAllByRole("heading", { name: "性別" }).length).toBeGreaterThan(0);
     expect(screen.getAllByText("男性").length).toBeGreaterThan(0);
   });
 
+  it("選んだ広告は、取り込み直して並びが変わっても選んだまま", () => {
+    const { rerender } = render(<AdBreakdownBars groups={groups} />);
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "x:all:1,2" } });
+
+    rerender(<AdBreakdownBars groups={[...groups].reverse()} />);
+
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("x:all:1,2");
+    expect(screen.getAllByRole("heading", { name: "性別" }).length).toBeGreaterThan(0);
+  });
+
+  it("表示名が同じ「不明」になる値（unknown と 不明）が並んでも、別の行として出す", () => {
+    const errors = jest.spyOn(console, "error").mockImplementation(() => {});
+    render(
+      <AdBreakdownBars
+        groups={[{ ...groups[0], breakdowns: [{ type: "age", items: [item("unknown", 0.5), item("不明", 0.5)] }] }]}
+      />,
+    );
+
+    const bars = screen.getAllByRole("list")[0];
+    expect(within(bars).getAllByText("不明")).toHaveLength(2);
+    expect(errors.mock.calls.some((call) => String(call[0]).includes("same key"))).toBe(false);
+    errors.mockRestore();
+  });
+
   it(`横棒は${BREAKDOWN_BAR_LIMIT}件までで、残りは「そのほか」にまとめる。表には全部出す`, () => {
     render(<AdBreakdownBars groups={groups} />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "1" } });
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "x:all:1,2" } });
 
     const bars = screen.getAllByRole("list").find((list) => within(list).queryByText("そのほか（2件）"))!;
     expect(within(bars).getAllByRole("listitem")).toHaveLength(BREAKDOWN_BAR_LIMIT + 1);

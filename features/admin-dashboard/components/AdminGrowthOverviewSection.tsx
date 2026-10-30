@@ -7,6 +7,7 @@ import type { WeeklyAnswer } from "../lib/build-weekly-answer";
 import type { GrowthOverviewResult } from "../lib/get-growth-overview";
 import { formatCount as num, formatDiff as diff, formatPct as pct } from "../lib/growth-format";
 import { LOW_RUNWAY_LIST_LIMIT, LOW_RUNWAY_MAX_DAYS } from "../lib/growth-overview-types";
+import { AdminBar } from "./AdminBar";
 import { AdminPercoinDailyFlowChartPanel } from "./AdminPercoinDailyFlowChartPanel";
 
 const HEADING_STYLE = {
@@ -162,15 +163,6 @@ function RevenueTreeCard({
   );
 }
 
-function Bar({ value, max, color }: { value: number; max: number; color: string }) {
-  const width = max > 0 ? Math.max((value / max) * 100, value > 0 ? 1.5 : 0) : 0;
-  return (
-    <div className="h-3 flex-1 overflow-hidden rounded bg-slate-100">
-      <div className="h-full rounded" style={{ width: `${width}%`, backgroundColor: color }} />
-    </div>
-  );
-}
-
 function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
   const { current: c, previous: p } = balance;
   const max = Math.max(c.freeGranted, c.netConsumed, c.purchased, 1);
@@ -192,7 +184,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
             ].map((row) => (
               <div key={row.label} className="flex items-center gap-3 text-sm">
                 <span className="w-24 shrink-0 text-slate-700 sm:w-36">{row.label}</span>
-                <Bar value={row.value} max={max} color={row.color} />
+                <AdminBar value={row.value} max={max} color={row.color} />
                 <span className="w-20 shrink-0 text-right tabular-nums sm:w-28">
                   <span className="font-bold">{num(row.value)}</span>
                   <span className="block text-xs text-slate-500">前 {num(row.prev)}</span>
@@ -214,7 +206,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
               balance.freeBySource.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 text-xs">
                   <span className="w-28 shrink-0 truncate text-slate-700 sm:w-44" title={item.label}>{item.label}</span>
-                  <Bar value={item.amount} max={balance.freeBySource[0].amount} color="#A78BFA" />
+                  <AdminBar value={item.amount} max={balance.freeBySource[0].amount} color="#A78BFA" />
                   <span className="w-20 shrink-0 text-right tabular-nums sm:w-24">
                     {num(item.amount)}
                     <span className="text-slate-500">({num(item.users ?? 0)}人)</span>
@@ -232,7 +224,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
               balance.usageByKind.map((item) => (
                 <div key={item.key} className="flex items-center gap-3 text-xs">
                   <span className="w-28 shrink-0 truncate text-slate-700 sm:w-44" title={item.label}>{item.label}</span>
-                  <Bar value={Math.max(item.amount, 0)} max={usageMax} color="#FDBA74" />
+                  <AdminBar value={Math.max(item.amount, 0)} max={usageMax} color="#FDBA74" />
                   <span className="w-20 shrink-0 text-right tabular-nums sm:w-24">{num(item.amount)}</span>
                 </div>
               ))
@@ -260,7 +252,7 @@ function PercoinBalanceCard({ balance }: { balance: PercoinBalance }) {
             {balance.runway.map((r) => (
               <div key={r.key} className="flex items-center gap-3 text-xs">
                 <span className="w-20 shrink-0 text-slate-700">{r.label}</span>
-                <Bar value={r.users} max={runwayMax} color={r.low ? "#F97316" : "#C4B5FD"} />
+                <AdminBar value={r.users} max={runwayMax} color={r.low ? "#F97316" : "#C4B5FD"} />
                 <span className="w-12 shrink-0 text-right tabular-nums">{num(r.users)}人</span>
               </div>
             ))}

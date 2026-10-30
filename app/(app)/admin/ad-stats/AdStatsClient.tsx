@@ -18,6 +18,7 @@ import {
   formatYen as yen,
 } from "@/features/admin-dashboard/lib/ad-stats/format-ad-stats";
 import { ratio, type AdSummary } from "@/features/admin-dashboard/lib/ad-stats/summarize-ad-stats";
+import { GROWTH_MIN_SAMPLE } from "@/features/admin-dashboard/lib/growth-overview-types";
 
 const TH = "px-3 py-2 text-left text-xs font-semibold text-slate-600 whitespace-nowrap";
 const TD = "px-3 py-2 text-sm text-slate-900 whitespace-nowrap tabular-nums";
@@ -261,24 +262,26 @@ function SectionHeading({ title, question }: { title: string; question: string }
 }
 
 function AdStatsBody({ overview }: { overview: AdStatsOverview }) {
-  if (overview.ads.length === 0) {
+  const platforms = overview.funnels.map((funnel) => funnel.platform);
+  if (overview.ads.length === 0 && overview.groups.length === 0) {
     return (
       <p className="text-sm text-slate-600">
         まだ取り込んだ広告がありません。下の欄から、広告の書き出しを取り込んでください。
       </p>
     );
   }
-  const platforms = overview.funnels.map((funnel) => funnel.platform);
   return (
     <>
-      <section className="space-y-3">
-        <SectionHeading title="道のり" question="広告のお金は、どこで止まった？" />
-        <p className="text-sm text-slate-600">
-          クリックとページを開いたは「回」、登録から先は「人」で、数え方が違います。割合は目安です。
-          前の段が30に届かない段は「まだ判断できません」と出します。
-        </p>
-        <AdFunnelBars funnels={overview.funnels} />
-      </section>
+      {overview.funnels.length > 0 ? (
+        <section className="space-y-3">
+          <SectionHeading title="道のり" question="広告のお金は、どこで止まった？" />
+          <p className="text-sm text-slate-600">
+            クリックとページを開いたは「回」、登録から先は「人」で、数え方が違います。割合は目安です。
+            前の段が{GROWTH_MIN_SAMPLE}に届かない段は「まだ判断できません」と出します。
+          </p>
+          <AdFunnelBars funnels={overview.funnels} />
+        </section>
+      ) : null}
 
       {overview.dailyChart ? (
         <section className="space-y-3">
@@ -291,7 +294,7 @@ function AdStatsBody({ overview }: { overview: AdStatsOverview }) {
         </section>
       ) : null}
 
-      <AdsTable overview={overview} />
+      {overview.ads.length > 0 ? <AdsTable overview={overview} /> : null}
 
       {overview.groups.length > 0 && (
         <section className="space-y-3">

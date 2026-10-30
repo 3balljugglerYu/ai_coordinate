@@ -139,6 +139,49 @@ describe("buildPlatformFunnels", () => {
     expect(meta.sourcedAdCount).toBe(0);
   });
 
+  it("同じ目印を Meta と X の両方で使っても、人数は1つの媒体（先に見つかった広告の媒体）にだけ数える", () => {
+    const shared = { signups: 10, generated: 4, posted: 2 };
+    const funnels = buildPlatformFunnels([
+      ad({ platform: "meta", adKey: "name:A", linkClicks: 300, landingPageViews: 200, signupSource: "campaign", funnel: shared }),
+      ad({ platform: "x", adKey: "1", linkClicks: 100, landingPageViews: null, signupSource: "campaign", funnel: shared }),
+    ]);
+
+    const signups = (platform: string) =>
+      funnels.find((funnel) => funnel.platform === platform)!.steps.find((step) => step.key === "signups")?.value;
+    expect(signups("meta")).toBe(10);
+    expect(signups("x")).toBeUndefined();
+    expect(funnels.find((funnel) => funnel.platform === "x")).toMatchObject({ adCount: 1, sourcedAdCount: 0 });
+  });
+
+  it("登録の割合と1人あたりの額は、目印のある広告だけで出す（目印のない広告のクリック・額を入れない）", () => {
+    const [meta] = buildPlatformFunnels([
+      ad({ adKey: "name:A", spendJpy: 1000, linkClicks: 100, landingPageViews: 100, signupSource: "tag", funnel: { signups: 5, generated: 0, posted: 0 } }),
+      ad({ adKey: "name:B", spendJpy: 9000, linkClicks: 900, landingPageViews: 700 }),
+    ]);
+
+    const signups = meta.steps.find((step) => step.key === "signups")!;
+    expect(signups).toMatchObject({ previousValue: 100, rateFromPrevious: 0.05, costPerUnitJpy: 200 });
+    // ページを開いた段は、両方の広告で出す
+    expect(meta.steps.find((step) => step.key === "landingPageViews")).toMatchObject({ value: 800, previousValue: 1000 });
+    expect(meta).toMatchObject({ adCount: 2, sourcedAdCount: 1 });
+  });
+
+  it("ページを開いた段の分母は、ページを開いた数がある広告のクリックだけ。クリック率も、クリックの数がある広告だけで出す", () => {
+    const [meta] = buildPlatformFunnels([
+      ad({ adKey: "name:A", impressions: 9000, linkClicks: 900, landingPageViews: null }),
+      ad({ adKey: "name:B", impressions: 1000, linkClicks: 100, landingPageViews: 90 }),
+      ad({ adKey: "name:C", impressions: 5000, linkClicks: null, landingPageViews: null }),
+    ]);
+
+    expect(meta.steps.find((step) => step.key === "landingPageViews")).toMatchObject({
+      value: 90,
+      previousValue: 100,
+      rateFromPrevious: 0.9,
+    });
+    expect(meta.clickRate).toBe(0.1);
+    expect(meta.impressions).toBe(15000);
+  });
+
   it("目印のない広告は数えて知らせる。媒体の並びは Meta・X の順で、広告の無い媒体は出さない", () => {
     const funnels = buildPlatformFunnels([
       ad({ platform: "x", adKey: "1", signupSource: "tag_x", funnel: { signups: 0, generated: 0, posted: 0 } }),

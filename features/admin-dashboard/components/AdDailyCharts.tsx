@@ -10,6 +10,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { buildChartEventMarkers } from "../lib/chart-event-markers";
 import { formatJstDateLabel } from "../lib/dashboard-range";
 import {
   AD_PLATFORM_COLORS,
@@ -18,6 +19,7 @@ import {
 } from "../lib/ad-stats/ad-stats-types";
 import type { AdDailyChartRow } from "../lib/ad-stats/build-ad-charts";
 import type { AdDailyChart } from "../lib/ad-stats/ad-stats-repository";
+import { ChartEventMarkerList } from "./ChartEventMarkerList";
 
 export interface AdDailyChartsProps {
   chart: AdDailyChart;
@@ -44,19 +46,10 @@ const PANELS: Array<{
  */
 export default function AdDailyCharts({ chart, platforms, hasSignupSources }: AdDailyChartsProps) {
   const points = chart.rows.map((row) => ({ ...row, label: formatJstDateLabel(row.day) }));
-  const days = new Set(chart.rows.map((row) => row.day));
-  // 同じ日の出来事は1本の線にまとめる。名前はグラフの下に番号つきで並べる（近い日で重なるため）
-  const eventsByDay = new Map<string, string[]>();
-  for (const event of [...chart.events].sort((a, b) => a.eventDate.localeCompare(b.eventDate))) {
-    if (!days.has(event.eventDate)) continue;
-    eventsByDay.set(event.eventDate, [...(eventsByDay.get(event.eventDate) ?? []), event.title]);
-  }
-  const markers = Array.from(eventsByDay.entries()).map(([day, names], index) => ({
-    day,
-    names,
-    number: index + 1,
-  }));
-  const panels = hasSignupSources ? PANELS : PANELS.slice(0, 2);
+  const markers = buildChartEventMarkers(chart.events, new Set(chart.rows.map((row) => row.day)));
+  const eventsByDay = new Map(markers.map((marker) => [marker.day, marker.names]));
+  const showSignups = hasSignupSources && chart.signupsAvailable;
+  const panels = showSignups ? PANELS : PANELS.slice(0, 2);
 
   return (
     <div className="w-full space-y-3">
@@ -157,17 +150,12 @@ export default function AdDailyCharts({ chart, platforms, hasSignupSources }: Ad
 
       {!hasSignupSources ? (
         <p className="text-xs text-slate-500">広告に目印を選ぶと、日ごとの登録も出ます。</p>
+      ) : !chart.signupsAvailable ? (
+        <p className="text-xs text-red-700">
+          日ごとの登録を読めませんでした。少し待ってから開き直してください。
+        </p>
       ) : null}
-      {markers.length > 0 ? (
-        <ol className="space-y-0.5 text-xs text-slate-600">
-          {markers.map((marker) => (
-            <li key={marker.day}>
-              <span className="font-bold text-slate-700">{marker.number}.</span>{" "}
-              {formatJstDateLabel(marker.day)} {marker.names.join("・")}
-            </li>
-          ))}
-        </ol>
-      ) : null}
+      <ChartEventMarkerList markers={markers} />
       <p className="text-xs text-slate-400">
         登録は、広告の最後の日の7日後まで数えます。
         {chart.endsToday ? "右端の日（今日）は、途中までの数です。" : ""}

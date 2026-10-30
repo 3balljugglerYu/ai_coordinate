@@ -11,8 +11,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { buildChartEventMarkers } from "../lib/chart-event-markers";
 import { formatJstDateLabel } from "../lib/dashboard-range";
 import type { PercoinBalance } from "../lib/build-percoin-balance";
+import { ChartEventMarkerList } from "./ChartEventMarkerList";
 
 interface AdminPercoinDailyFlowChartProps {
   daily: PercoinBalance["daily"];
@@ -36,19 +38,8 @@ export default function AdminPercoinDailyFlowChart({
   }
 
   const points = daily.map((d) => ({ ...d, label: formatJstDateLabel(d.day) }));
-  const days = new Set(daily.map((d) => d.day));
-  // 同じ日の出来事は1本の線にまとめる。線には番号だけを出し、名前はグラフの下に並べる
-  // (近い日どうしで名前が重なって読めなくなるため)
-  const eventsByDay = new Map<string, string[]>();
-  for (const e of [...events].sort((a, b) => a.eventDate.localeCompare(b.eventDate))) {
-    if (!days.has(e.eventDate)) continue;
-    eventsByDay.set(e.eventDate, [...(eventsByDay.get(e.eventDate) ?? []), e.title]);
-  }
-  const markers = Array.from(eventsByDay.entries()).map(([day, names], i) => ({
-    day,
-    names,
-    number: i + 1,
-  }));
+  const markers = buildChartEventMarkers(events, new Set(daily.map((d) => d.day)));
+  const eventsByDay = new Map(markers.map((m) => [m.day, m.names]));
 
   return (
     <div className="w-full">
@@ -125,16 +116,7 @@ export default function AdminPercoinDailyFlowChart({
           </LineChart>
         </ResponsiveContainer>
       </div>
-      {markers.length > 0 ? (
-        <ol className="mt-2 space-y-0.5 text-xs text-slate-600">
-          {markers.map((m) => (
-            <li key={m.day}>
-              <span className="font-bold text-slate-700">{m.number}.</span>{" "}
-              {formatJstDateLabel(m.day)} {m.names.join("・")}
-            </li>
-          ))}
-        </ol>
-      ) : null}
+      <ChartEventMarkerList markers={markers} className="mt-2" />
       <p className="mt-1 text-xs text-slate-400">右端の日(今日)は、途中までの数です。</p>
     </div>
   );

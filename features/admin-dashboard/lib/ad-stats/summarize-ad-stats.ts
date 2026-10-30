@@ -133,7 +133,7 @@ function addMetrics(target: AdMetrics, row: AdMetrics): void {
   target.videoViews = addNullable(target.videoViews, row.videoViews);
 }
 
-function roundYen(metrics: AdMetrics): AdMetrics {
+function roundYen<T extends AdMetrics>(metrics: T): T {
   return { ...metrics, spendJpy: Math.round(metrics.spendJpy) };
 }
 
@@ -260,7 +260,7 @@ export function summarizeAdStats(rows: StatRow[], ads: AdMeta[]): AdStatsSummary
     totals: [...totals.entries()].map(([platform, metrics]) => ({ platform, ...metrics })),
     groups: groups.sort(byLatestThenName),
     daily: [...daily.values()]
-      .map((total) => ({ ...total, ...roundYen(total) }))
+      .map(roundYen)
       .sort((a, b) => a.day.localeCompare(b.day) || a.platform.localeCompare(b.platform)),
   };
 }
