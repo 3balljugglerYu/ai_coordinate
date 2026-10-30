@@ -11,7 +11,7 @@
  *  - 申請の時刻は日本時間で出す。打ち切った数と同じだけ来たら、続きがあると出す
  */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CatalogReviewsClient } from "@/app/(app)/admin/catalog-reviews/CatalogReviewsClient";
 import type { PendingCatalogReview } from "@/features/catalog-references/lib/review-admin-repository";
 
@@ -137,15 +137,16 @@ test("作り直しにしたら、同じ見本のほかの作品にも印を出�
   fireEvent.click(screen.getAllByRole("button", { name: "作り直しにする" })[0]);
 
   await waitFor(() => expect(screen.queryByText("はな")).toBeNull());
-  expect(screen.getAllByText("この見本は、ほかの作品の審査で作り直しになっています")).toHaveLength(1);
-  expect(screen.getByText("そら")).toBeTruthy();
+  const badge = "この見本は、ほかの作品の審査で作り直しになっています";
+  expect(within(screen.getByText("そら").parentElement as HTMLElement).getByText(badge)).toBeTruthy();
+  expect(within(screen.getByText("うみ").parentElement as HTMLElement).queryByText(badge)).toBeNull();
 });
 
 test("申請の時刻は日本時間で出す", () => {
   render(<CatalogReviewsClient initialItems={[ITEM]} limit={50} />);
 
-  // 2026-10-30T01:00:00Z は日本時間の 10:00
-  expect(screen.getByText(/申請 2026\/10\/30 10:00/)).toBeTruthy();
+  // 2026-10-30T01:00:00Z は日本時間の 10:00(手元の時間帯や秒の有無に左右されないよう、全体で比べる)
+  expect(screen.getByText("申請 2026/10/30 10:00")).toBeTruthy();
 });
 
 test("打ち切った数と同じだけ来たら、判定し終えたあとに続きがあると出す", async () => {
@@ -155,11 +156,25 @@ test("打ち切った数と同じだけ来たら、判定し終えたあとに�
   expect(screen.getByText(/最大1件を表示/)).toBeTruthy();
   fireEvent.click(screen.getByRole("button", { name: "承認する" }));
 
-  await waitFor(() => expect(screen.getByText(/ページを読み直すと、続きが出ます/)).toBeTruthy());
+  await waitFor(() => expect(screen.getByText(/続きがあれば、ページを読み直すと出ます/)).toBeTruthy());
 });
 
-test("公開停止の作品には、承認できないと出す", () => {
+test("公開停止の作品には、承認できないと出し、承認ボタンを押せない(作り直しは押せる)", () => {
   render(<CatalogReviewsClient initialItems={[{ ...ITEM, imageUnavailable: true }]} limit={50} />);
 
   expect(screen.getByText("公開停止などのため承認できません(作り直しにはできます)")).toBeTruthy();
+  expect((screen.getByRole("button", { name: "承認する" }) as HTMLButtonElement).disabled).toBe(true);
+  expect((screen.getByRole("button", { name: "作り直しにする" }) as HTMLButtonElement).disabled).toBe(false);
+});
+
+test("開いたあとに公開停止になって承認を断られたら、そのカードに印を出して残す", async () => {
+  respond(false, { error: "承認できません", errorCode: "CATALOG_REVIEW_IMAGE_UNAVAILABLE" });
+  render(<CatalogReviewsClient initialItems={[ITEM]} limit={50} />);
+
+  fireEvent.click(screen.getByRole("button", { name: "承認する" }));
+
+  await waitFor(() =>
+    expect(screen.getByText("公開停止などのため承認できません(作り直しにはできます)")).toBeTruthy(),
+  );
+  expect(screen.getByText("はな")).toBeTruthy();
 });

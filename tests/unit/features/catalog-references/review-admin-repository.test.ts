@@ -169,3 +169,18 @@ test("見本がほかの作品の審査で作り直しになっている・作�
   expect(item.referenceUrl).toBe("https://signed/ref");
   expect(item.imageUnavailable).toBe(true);
 });
+
+test.each([
+  ["審査中(pending)", [{ id: "img", image_url: null, pre_generation_storage_path: null, source_post_id: null, moderation_status: "pending" }], true],
+  ["作品の行が無い", [], true],
+  ["表示中(visible)", [{ id: "img", image_url: null, pre_generation_storage_path: null, source_post_id: null, moderation_status: "visible" }], false],
+])("作品が %s なら、公開停止の印は %p", async (_label, images, unavailable) => {
+  const { supabase } = client({
+    generated_image_catalog_reviews: { data: [{ image_id: "img", user_id: "u1", submitted_at: null }], error: null },
+    generated_images: { data: images, error: null },
+  });
+
+  const [item] = await listPendingCatalogReviews(supabase);
+
+  expect(item.imageUnavailable).toBe(unavailable);
+});

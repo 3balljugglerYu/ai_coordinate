@@ -43,6 +43,12 @@ export function CatalogReviewsClient({
   const [items, setItems] = useState(initialItems);
   const mayHaveMore = initialItems.length >= limit;
 
+  const markImageUnavailable = (target: PendingCatalogReview) => {
+    setItems((current) =>
+      current.map((row) => (row.imageId === target.imageId ? { ...row, imageUnavailable: true } : row)),
+    );
+  };
+
   const handleDecided = (decided: PendingCatalogReview, action: "approve" | "reject" | "gone") => {
     setItems((current) =>
       current
@@ -60,7 +66,7 @@ export function CatalogReviewsClient({
     return (
       <p className="text-sm text-slate-500">
         {mayHaveMore
-          ? "表示した分は判定し終えました。ページを読み直すと、続きが出ます。"
+          ? "表示した分は判定し終えました。続きがあれば、ページを読み直すと出ます。"
           : "審査待ちの作品はありません。"}
       </p>
     );
@@ -69,10 +75,15 @@ export function CatalogReviewsClient({
   return (
     <div className="space-y-6">
       <p className="text-sm text-slate-600">
-        審査待ち {items.length}件(申請の古い順{mayHaveMore ? `に最大${limit}件を表示。判定し終えたら読み直すと続きが出ます` : ""})
+        審査待ち {items.length}件(申請の古い順{mayHaveMore ? `に最大${limit}件を表示。続きがあれば、判定し終えたあとに読み直すと出ます` : ""})
       </p>
       {items.map((item) => (
-        <ReviewCard key={item.imageId} item={item} onDecided={(action) => handleDecided(item, action)} />
+        <ReviewCard
+          key={item.imageId}
+          item={item}
+          onDecided={(action) => handleDecided(item, action)}
+          onImageUnavailable={() => markImageUnavailable(item)}
+        />
       ))}
     </div>
   );
@@ -81,9 +92,12 @@ export function CatalogReviewsClient({
 function ReviewCard({
   item,
   onDecided,
+  onImageUnavailable,
 }: {
   item: PendingCatalogReview;
   onDecided: (action: "approve" | "reject" | "gone") => void;
+  /** 承認を、作品が公開停止などのために断られた(画面を開いたあとに止まった) */
+  onImageUnavailable: () => void;
 }) {
   const { toast } = useToast();
   const [category, setCategory] = useState<CatalogReviewReasonCategory | "">("");
@@ -110,6 +124,9 @@ function ReviewCard({
       });
       const body = (await res.json().catch(() => null)) as { error?: string; errorCode?: string } | null;
       if (!res.ok) {
+        if (body?.errorCode === "CATALOG_REVIEW_IMAGE_UNAVAILABLE") {
+          onImageUnavailable();
+        }
         if (body?.errorCode && GONE_ERROR_CODES.has(body.errorCode)) {
           toast({ title: body.error || "この作品はもう判定されています" });
           onDecided("gone");
@@ -176,7 +193,12 @@ function ReviewCard({
 
         <div className="space-y-3 border-t border-slate-100 pt-4">
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={() => decide("approve")} pending={busy === "approve"} disabled={busy !== null}>
+            <Button
+              type="button"
+              onClick={() => decide("approve")}
+              pending={busy === "approve"}
+              disabled={busy !== null || item.imageUnavailable}
+            >
               承認する
             </Button>
           </div>
