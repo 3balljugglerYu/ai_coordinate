@@ -25,7 +25,7 @@ import {
 } from "./PromptVisibilityField";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
-import { isSuspendedPublishError } from "../lib/post-error-codes";
+import { isReviewPendingPublishError, isSuspendedPublishError } from "../lib/post-error-codes";
 import {
   beforeImageUrlCache,
   cacheBeforeImageUrl,
@@ -119,6 +119,10 @@ export function PostModal({
   const [error, setError] = useState<string | null>(null);
   // 公開停止中コンテンツの再投稿を試みたときの案内ダイアログ
   const [suspendedDialogOpen, setSuspendedDialogOpen] = useState(false);
+  // 見本(参照画像)を使った作品で、審査が済んでいないために投稿を断られた
+  const [reviewPending, setReviewPending] = useState(false);
+  const [reviewSubmitState, setReviewSubmitState] = useState<"idle" | "submitting" | "submitted">("idle");
+  const [reviewSubmitError, setReviewSubmitError] = useState<string | null>(null);
   // 呼び出し元から beforeImageUrl が渡されていない場合に自動取得した URL。
   // ImageModal が事前に取得済みの値を共有 cache から同期取得することで、
   // モーダルが開いた瞬間に Before 画像が表示できるようにする。
@@ -249,6 +253,11 @@ export function PostModal({
         return;
       }
 
+      // 見本を使った作品は、運営の承認のあとで投稿できる。断られたら、その場で審査に出せるようにする
+      if (isReviewPendingPublishError(err)) {
+        setReviewPending(true);
+      }
+
       // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
       console.error("Post error:", err);
       setError(
@@ -258,6 +267,27 @@ export function PostModal({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    setReviewSubmitState("submitting");
+    setReviewSubmitError(null);
+    try {
+      const res = await fetch("/api/catalog-references/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageId }),
+      });
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) {
+        throw new Error(body?.error || t("catalogReviewSubmitFailed"));
+      }
+      setReviewSubmitState("submitted");
+      setError(null);
+    } catch (e) {
+      setReviewSubmitState("idle");
+      setReviewSubmitError(e instanceof Error && e.message ? e.message : t("catalogReviewSubmitFailed"));
     }
   };
 
@@ -386,6 +416,25 @@ export function PostModal({
                   <span className="text-destructive text-right">{error}</span>
                 )}
               </div>
+              {reviewPending ? (
+                <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm" data-testid="catalog-review-submit">
+                  {reviewSubmitState === "submitted" ? (
+                    <p>{t("catalogReviewSubmitted")}</p>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSubmitReview}
+                      pending={reviewSubmitState === "submitting"}
+                      disabled={reviewSubmitState === "submitting"}
+                    >
+                      {t("catalogReviewSubmit")}
+                    </Button>
+                  )}
+                  {reviewSubmitError ? <p className="text-destructive">{reviewSubmitError}</p> : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-1">

@@ -188,6 +188,13 @@ export async function generateImageAsync(
         ? { outputAspectRatioMode: request.outputAspectRatioMode }
         : {}),
       // 名前の欄の名前は free のときだけ送る(他モードは schema が 400 にする)
+      // 見本はじゆうモードだけ。id とまねるものは一緒に送る(schema が片方だけを 400 にする)
+      ...(request.generationType === "free" &&
+      request.referenceImageId &&
+      request.referenceTakes &&
+      request.referenceTakes.length > 0
+        ? { referenceImageId: request.referenceImageId, referenceTakes: request.referenceTakes }
+        : {}),
       ...(request.generationType === "free" && request.nameInput
         ? { nameInput: request.nameInput }
         : {}),

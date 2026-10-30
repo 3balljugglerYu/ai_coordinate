@@ -2,6 +2,7 @@
  * 画像生成機能の型定義
  */
 
+import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import type {
   BackgroundMode,
   SourceImageType,
@@ -377,6 +378,10 @@ export interface GenerationRequest {
   sourcePostId?: string;
   /** 名前の欄に入れる名前(じゆうモードのみ。docs/planning/name-input-slot-plan.md)。 */
   nameInput?: string;
+  /** 見本(参照画像)の id(じゆうモードで見本を使える人だけ。referenceTakes と一緒に送る) */
+  referenceImageId?: string;
+  /** 見本からまねるもの(1〜4個) */
+  referenceTakes?: CatalogReferenceTake[];
 }
 
 export interface GenerationResponse {

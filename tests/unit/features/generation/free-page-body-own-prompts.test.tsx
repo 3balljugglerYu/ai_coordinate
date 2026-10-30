@@ -39,6 +39,10 @@ jest.mock("@/lib/env", () => ({
   isGachaSplitAvailable: (userId: string | null | undefined) =>
     mockGachaSplitAvailable(userId),
 }));
+const mockI2iAllowed = jest.fn<Promise<boolean>, [string | null | undefined]>(async () => false);
+jest.mock("@/lib/auth/i2i-catalog", () => ({
+  isInI2iCatalogAllowlist: (userId: string | null | undefined) => mockI2iAllowed(userId),
+}));
 jest.mock("@/components/RefreshOnMount", () => ({ RefreshOnMount: () => null }));
 jest.mock("@/features/credits/components/CachedGenerationPercoinBalance", () => ({
   CachedGenerationPercoinBalance: () => null,
@@ -152,3 +156,14 @@ describe("FreePageBody の名前の欄", () => {
   });
 });
 
+describe("FreePageBody の見本(参照画像)の欄", () => {
+  // 見本を使える人の一覧(運営が選んだ人)に入っているかを、そのままフォームへ渡す
+  test.each([true, false])("一覧の判定(%s)をそのままフォームへ渡す", async (allowed) => {
+    mockAvailable.mockReturnValue(true);
+    mockI2iAllowed.mockResolvedValueOnce(allowed);
+    render(await FreePageBody());
+
+    expect(mockI2iAllowed).toHaveBeenCalledWith("user-1");
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceAvailable: allowed });
+  });
+});
