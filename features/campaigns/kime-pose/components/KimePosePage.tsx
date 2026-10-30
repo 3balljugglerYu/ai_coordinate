@@ -15,6 +15,7 @@ import { JoinDetails } from "./JoinDetails";
 import { HeroDecorations, Wave } from "./KimePoseDecorations";
 import { PhaseNotice } from "./PhaseNotice";
 import { SubmissionCarousel } from "./SubmissionCarousel";
+import { WorksAnchor } from "./WorksAnchor";
 
 /**
  * 11月の企画「うちの子の決めポーズ」のページ(2026-10-30)。
@@ -43,19 +44,6 @@ function Ribbon({ en, children }: { en: string; children: string }) {
 }
 
 const WORKS_ANCHOR = "#kp-works";
-
-/** ページの中へ飛ぶときは素の a(Link を通さない) */
-function WorksLink({ href, className, children }: { href: string; className: string; children: ReactNode }) {
-  return href.startsWith("#") ? (
-    <a className={className} href={href}>
-      {children}
-    </a>
-  ) : (
-    <Link className={className} href={href}>
-      {children}
-    </Link>
-  );
-}
 
 /**
  * 狭い幅でも言葉の途中で折り返さないよう、「・」の後ろと「|」の位置だけを折り返してよい所にする
@@ -342,10 +330,10 @@ function StepList({
             </div>
           ) : null}
           {step.worksLink ? (
-            <WorksLink className={styles.entriesLink} href={worksHref}>
+            <WorksAnchor className={styles.entriesLink} href={worksHref}>
               応募作品を見る
               <span aria-hidden="true">→</span>
-            </WorksLink>
+            </WorksAnchor>
           ) : null}
           {step.shot ? (
             <AnnotatedShot
@@ -398,8 +386,8 @@ export function KimePosePage({
               </span>
             </h1>
             <p className={styles.lead}>
-              あなたの“うちの子”の、とっておきの決めポーズを大募集！いちばん使われた決めポーズには、Amazonギフトカード
-              5,000円分をプレゼント！
+              あなたの“うちの子”の、とっておきの決めポーズを大募集！いちばん使われた決めポーズには、
+              {CAMPAIGN.prizeTotalLabel}をプレゼント！
             </p>
             <dl className={styles.periods}>
               <div className={styles.periodRow}>
@@ -486,7 +474,7 @@ export function KimePosePage({
                 <p>
                   🏆{" "}
                   <strong className={styles.markYellow}>
-                    <Phrases text="いちばん|使われた|決めポーズには、|Amazonギフトカード|5,000円分を|プレゼント！🎁" />
+                    <Phrases text={`いちばん|使われた|決めポーズには、|${CAMPAIGN.prizeTotalLabel.replace(" ", "|")}を|プレゼント！🎁`} />
                   </strong>
                 </p>
               </div>
@@ -544,7 +532,7 @@ export function KimePosePage({
                 }
                 note="応募期間中の生成も、票に入ります"
               />
-              <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy} summary="詳しい投票のしかたはこちら！">
+              <JoinDetails eventName={CAMPAIGN_EVENTS.stepsVote} summary="詳しい投票のしかたはこちら！">
                 <StepList steps={VOTE_STEPS} role="voter" worksHref={worksHref} />
                 <p className={styles.note}>※ 生成には、ログインとペルコインが必要です</p>
                 <p className={styles.note}>※ 自分の応募作品での生成は数えません</p>

@@ -27,8 +27,7 @@ const display = Lilita_One({
 
 export const metadata: Metadata = {
   title: `${KIME_POSE.titleJp} | Persta.AI`,
-  description:
-    "CREATEで、うちの子の決めポーズのプロンプトをつくって投稿しよう。投票は、気に入った決めポーズで生成するだけ。いちばん使われた決めポーズにはAmazonギフトカード5,000円分。",
+  description: `CREATEで、うちの子の決めポーズのプロンプトをつくって投稿しよう。投票は、気に入った決めポーズで生成するだけ。いちばん使われた決めポーズには${KIME_POSE.prizeTotalLabel}。`,
   // 広告などの目印が付いた URL を別のページと数えさせないよう、正規の URL を自分自身にする
   alternates: createCanonicalAlternates(KIME_POSE.path),
 };

@@ -5,21 +5,17 @@ import { useEffect, useState, type ReactNode } from "react";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
 import { useKimePosePhase } from "../hooks/useKimePosePhase";
 import styles from "../kime-pose.module.css";
+import { WorksAnchor } from "./WorksAnchor";
 
 /** 企画ページの終わりの目印。ここまで来たら(下はサイト共通の案内)浮いたボタンを消す */
 export const KIME_POSE_PAGE_END_ID = "kp-page-end";
 
-/** ページの中へ飛ぶときは素の a(Link を通さない) */
+/** 応募作品へのボタン(押したら GA4 に送る。ハロウィンの「カタログから生成する」と同じイベント) */
 function WorksButton({ href, className, children }: { href: string; className: string; children: ReactNode }) {
-  const track = () => trackCampaignEvent(CAMPAIGN_EVENTS.ctaCatalog);
-  return href.startsWith("#") ? (
-    <a className={className} href={href} onClick={track}>
+  return (
+    <WorksAnchor className={className} href={href} onClick={() => trackCampaignEvent(CAMPAIGN_EVENTS.ctaCatalog)}>
       {children}
-    </a>
-  ) : (
-    <Link className={className} href={href} onClick={track}>
-      {children}
-    </Link>
+    </WorksAnchor>
   );
 }
 

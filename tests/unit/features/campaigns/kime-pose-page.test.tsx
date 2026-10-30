@@ -124,6 +124,28 @@ describe("11月の企画「うちの子の決めポーズ」のページ(2026-10
       expect(vote.getAttribute("href")).toBe("#kp-works");
     });
 
+    test("⭐開いたまま 11/1 0:00 をまたぐと、読み直さなくても応募期間の表示に変わる", () => {
+      renderAt("2026-10-31T23:59:58+09:00");
+      expect(screen.getByTestId("kime-pose-phase-notice").textContent).toContain("まもなくスタート");
+      expect(screen.queryByTestId("kime-pose-floating-cta")).toBeNull();
+      act(() => {
+        jest.advanceTimersByTime(3000);
+      });
+      expect(screen.getByTestId("kime-pose-phase-notice").textContent).toContain("ただいま応募期間中");
+      expect(screen.getByTestId("kime-pose-floating-cta").getAttribute("data-phase")).toBe("submit");
+    });
+
+    test("⭐開いたまま 11/16 0:00 をまたぐと、応募のボタンが消えて投票のボタンになる", () => {
+      renderAt("2026-11-15T23:59:59+09:00", SUBMISSION_PAGES);
+      expect(screen.getByTestId("kime-pose-floating-cta").getAttribute("data-phase")).toBe("submit");
+      act(() => {
+        jest.advanceTimersByTime(2000);
+      });
+      const floating = screen.getByTestId("kime-pose-floating-cta");
+      expect(floating.getAttribute("data-phase")).toBe("vote");
+      expect(within(floating).queryByRole("link", { name: /カタログを\s*つくる/ })).toBeNull();
+    });
+
     test("締め切りのあと: 結果発表の日を出し、浮いたボタンは出さない", () => {
       renderAt("2026-11-23T00:00:00+09:00", SUBMISSION_PAGES);
       expect(screen.getByTestId("kime-pose-phase-notice").textContent).toContain("結果発表は 11/29(日)ごろ です");
