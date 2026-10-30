@@ -149,8 +149,11 @@ function formatTransactionType(
     return String(metadata.reason);
   }
   if (type === "subscription") {
-    // プランを途中で上げたときの支払いだけの行(量0)と、ペルコインの付与の行を分けて出す
-    return metadata?.paymentOnly === true ? "サブスクの支払い（プラン変更）" : "サブスクの付与";
+    // 支払いだけの行(量0)と、ペルコインの付与の行を分けて出す
+    if (metadata?.paymentOnly !== true) return "サブスクの付与";
+    return metadata?.revenueSource === "stripe_subscription_change"
+      ? "サブスクの支払い（プラン変更）"
+      : "サブスクの支払い";
   }
   return map[type] || type;
 }

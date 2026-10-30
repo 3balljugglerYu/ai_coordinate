@@ -27,8 +27,10 @@ import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checko
 import {
   buildSubscriptionRevenueMetadata,
   classifySubscriptionInvoice,
+  ensureSubscriptionRevenueRecorded,
   normalizeRevenueYen,
   recordSubscriptionChangePayment,
+  type SubscriptionPaymentInvoice,
 } from "@/features/subscription/lib/subscription-change-payment";
 
 type SubscriptionRecord = {
@@ -291,36 +293,44 @@ async function updateSubscriptionStatus(params: {
   return data?.user_id ?? null;
 }
 
+/**
+ * サブスクのペルコインを付け(付与の行に売上も載せる)、そのあとで、その請求の売上が
+ * 記録されたかを確かめる。付与の行に売上が載らなかったとき(無料のペルコインが上限で付与が0、
+ * 同じ請求で change-service.ts が金額なしで先に付けていた、など)は、支払いだけの行で記録する。
+ */
 async function grantSubscriptionPercoins(params: {
   userId: string;
   plan: SubscriptionPlan;
   billingInterval: SubscriptionBillingInterval | null;
-  invoiceId: string;
-  paidAmountYen?: number | null;
+  payment: SubscriptionPaymentInvoice;
 }) {
-  const amount = getSubscriptionMonthlyPercoins(params.plan);
-  if (amount <= 0) {
-    return;
-  }
-
-  const revenueYen = normalizeRevenueYen(params.paidAmountYen);
   const supabase = createAdminClient();
-  const { error } = await supabase.rpc("grant_subscription_percoins", {
-    p_user_id: params.userId,
-    p_amount: amount,
-    p_invoice_id: params.invoiceId,
-    p_metadata: buildSubscriptionRevenueMetadata({
-      plan: params.plan,
-      billingInterval: params.billingInterval,
-      revenueYen,
-      revenueSource: "stripe_subscription",
-      mode: isStripeTestMode() ? "test" : "live",
-    }),
-  });
+  const amount = getSubscriptionMonthlyPercoins(params.plan);
+  if (amount > 0) {
+    const { error } = await supabase.rpc("grant_subscription_percoins", {
+      p_user_id: params.userId,
+      p_amount: amount,
+      p_invoice_id: params.payment.id,
+      p_metadata: buildSubscriptionRevenueMetadata({
+        plan: params.plan,
+        billingInterval: params.billingInterval,
+        revenueYen: normalizeRevenueYen(params.payment.amount_paid),
+        revenueSource: "stripe_subscription",
+        mode: isStripeTestMode() ? "test" : "live",
+      }),
+    });
 
-  if (error) {
-    throw new Error(error.message);
+    if (error) {
+      throw new Error(error.message);
+    }
   }
+
+  await ensureSubscriptionRevenueRecorded(supabase, {
+    userId: params.userId,
+    plan: params.plan,
+    billingInterval: params.billingInterval,
+    invoice: params.payment,
+  });
 }
 
 /**
@@ -529,8 +539,12 @@ async function handleSubscriptionCheckoutCompleted(
     userId,
     plan,
     billingInterval,
-    invoiceId,
-    paidAmountYen: session.amount_total,
+    payment: {
+      id: invoiceId,
+      amount_paid: session.amount_total ?? 0,
+      currency: session.currency ?? "",
+      livemode: session.livemode,
+    },
   });
   await revalidateSubscriptionSurfaces(userId);
 
@@ -664,8 +678,7 @@ async function handleSubscriptionInvoicePaid(
     userId,
     plan,
     billingInterval,
-    invoiceId: invoice.id,
-    paidAmountYen: invoice.amount_paid,
+    payment: invoice,
   });
   await revalidateSubscriptionSurfaces(userId);
 

@@ -102,9 +102,14 @@ export function resolveTransactionRevenue(params: {
       plan && billingInterval
         ? `サブスクリプション ${plan} ${billingInterval === "year" ? "年額" : "月額"}`
         : "サブスクリプション";
-    // プランを途中で上げたときの支払いだけの行(量0・ペルコインは付与の行で別に付く)
+    // 支払いだけの行(量0・ペルコインは付与の行で別に付く)。プランを途中で上げたときと、
+    // 付与の行に売上が載らなかったとき(無料のペルコインが上限など)がある
     const label =
-      params.metadata?.paymentOnly === true ? `${baseLabel}（プラン変更の支払い）` : baseLabel;
+      params.metadata?.paymentOnly !== true
+        ? baseLabel
+        : params.metadata?.revenueSource === "stripe_subscription_change"
+          ? `${baseLabel}（プラン変更の支払い）`
+          : `${baseLabel}（支払い）`;
 
     return {
       key:

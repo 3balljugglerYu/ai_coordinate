@@ -16,6 +16,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   buildSubscriptionRevenueMetadata,
   classifySubscriptionInvoice,
+  ensureSubscriptionRevenueRecorded,
   hasProrationLine,
   normalizeRevenueYen,
   recordSubscriptionChangePayment,
@@ -169,5 +170,85 @@ describe("支払いだけの行と管理画面の売上", () => {
     expect(
       isRevenueTransaction({ transaction_type: "subscription", amount: 0, metadata: { ...metadata, mode: "test" } }),
     ).toBe(false);
+  });
+});
+
+describe("ensureSubscriptionRevenueRecorded(付与のあとで、売上が記録されたかを確かめる)", () => {
+  function client(grantRow: { metadata: Record<string, unknown> } | null) {
+    interface Builder {
+      select: () => Builder;
+      eq: () => Builder;
+      maybeSingle: () => Promise<{ data: typeof grantRow; error: null }>;
+    }
+    const builder: Builder = {
+      select: () => builder,
+      eq: () => builder,
+      maybeSingle: async () => ({ data: grantRow, error: null }),
+    };
+    const rpc = jest.fn(async () => ({ data: true, error: null }));
+    return { supabase: { from: jest.fn(() => builder), rpc } as unknown as SupabaseClient, rpc };
+  }
+
+  const params = {
+    userId: "u1",
+    plan: "standard" as const,
+    billingInterval: "month" as const,
+    invoice: { id: "in_9", amount_paid: 1480, currency: "jpy", livemode: true },
+  };
+
+  it.each([
+    ["数", 1480],
+    ["文字", "1480"],
+  ])("付与の行に売上(%s)があれば、何もしない(二重に数えない)", async (_label, revenueYen) => {
+    const { supabase, rpc } = client({ metadata: { revenueYen, mode: "live" } });
+
+    await expect(ensureSubscriptionRevenueRecorded(supabase, params)).resolves.toBe("already_recorded");
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it("付与の行が無い(無料のペルコインが上限で付与が0)なら、支払いだけの行で売上を記録する", async () => {
+    const { supabase, rpc } = client(null);
+
+    await expect(ensureSubscriptionRevenueRecorded(supabase, params)).resolves.toBe("recorded");
+    expect(rpc).toHaveBeenCalledWith(
+      "record_subscription_payment",
+      expect.objectContaining({
+        p_invoice_id: "in_9",
+        p_metadata: expect.objectContaining({ revenueYen: 1480, revenueSource: "stripe_subscription", mode: "live" }),
+      }),
+    );
+  });
+
+  it("付与の行に売上が無い(change-service が差だけ金額なしで付けた)なら、支払いだけの行で記録する", async () => {
+    const { supabase, rpc } = client({ metadata: { invoice_id: "in_9", granted_amount: 700 } });
+
+    await expect(ensureSubscriptionRevenueRecorded(supabase, params)).resolves.toBe("recorded");
+    expect(rpc).toHaveBeenCalledTimes(1);
+  });
+
+  it("付与の行を読めなかったら投げる(Stripe に送り直させる)", async () => {
+    const builder = {
+      select: () => builder,
+      eq: () => builder,
+      maybeSingle: async () => ({ data: null, error: { message: "db down" } }),
+    };
+    const supabase = { from: () => builder, rpc: jest.fn() } as unknown as SupabaseClient;
+
+    await expect(ensureSubscriptionRevenueRecorded(supabase, params)).rejects.toThrow("db down");
+  });
+
+  it("管理画面では、付与の行に載らなかった支払いを「（支払い）」と出す", () => {
+    const metadata = {
+      ...buildSubscriptionRevenueMetadata({
+        plan: "standard",
+        billingInterval: "month",
+        revenueYen: 1480,
+        revenueSource: "stripe_subscription",
+        mode: "live",
+      }),
+      paymentOnly: true,
+    };
+    expect(isRevenueTransaction({ transaction_type: "subscription", amount: 0, metadata })).toBe(true);
+    expect(resolveTransactionRevenue({ amount: 0, transactionType: "subscription", metadata }).label).toContain("（支払い）");
   });
 });

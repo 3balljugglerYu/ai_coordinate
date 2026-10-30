@@ -83,13 +83,24 @@ export function buildSubscriptionRevenueMetadata(params: {
 
 export type SubscriptionChangePaymentResult = "recorded" | "duplicate" | "skipped";
 
-export async function recordSubscriptionChangePayment(
+/** 売上を記録する請求(支払いの行に必要なところだけ) */
+export type SubscriptionPaymentInvoice = Pick<
+  Stripe.Invoice,
+  "id" | "amount_paid" | "currency" | "livemode"
+> & { status_transitions?: Stripe.Invoice["status_transitions"] | null };
+
+/**
+ * 支払いだけの行(量0の subscription・paymentOnly)で売上を記録する。
+ * 同じ請求は1行だけ(RPC が `payment:<請求 ID>` の一意の索引で止める)。0円・円以外は記録しない。
+ */
+export async function recordSubscriptionPayment(
   supabase: SupabaseClient,
   params: {
     userId: string;
     plan: SubscriptionPlan;
     billingInterval: SubscriptionBillingInterval | null;
-    invoice: Pick<Stripe.Invoice, "id" | "amount_paid" | "currency" | "livemode" | "status_transitions">;
+    invoice: SubscriptionPaymentInvoice;
+    revenueSource: "stripe_subscription" | "stripe_subscription_change";
   },
 ): Promise<SubscriptionChangePaymentResult> {
   const { invoice } = params;
@@ -98,7 +109,7 @@ export async function recordSubscriptionChangePayment(
     return "skipped";
   }
   if ((invoice.currency ?? "").toLowerCase() !== "jpy") {
-    console.warn("[Stripe Webhook] Skip non-JPY subscription change payment", {
+    console.warn("[Stripe Webhook] Skip non-JPY subscription payment", {
       invoiceId: invoice.id,
       currency: invoice.currency,
     });
@@ -114,7 +125,7 @@ export async function recordSubscriptionChangePayment(
         plan: params.plan,
         billingInterval: params.billingInterval,
         revenueYen,
-        revenueSource: "stripe_subscription_change",
+        revenueSource: params.revenueSource,
         mode: invoice.livemode ? "live" : "test",
       }),
       // 付与の行と同じキーでも請求 ID を持つ(RPC は invoiceId も入れる)
@@ -128,4 +139,68 @@ export async function recordSubscriptionChangePayment(
     throw new Error(error.message);
   }
   return data === true ? "recorded" : "duplicate";
+}
+
+/** プランを上げたときの日割りの請求の支払いを記録する(付与は change-service.ts が金額なしで行う) */
+export function recordSubscriptionChangePayment(
+  supabase: SupabaseClient,
+  params: {
+    userId: string;
+    plan: SubscriptionPlan;
+    billingInterval: SubscriptionBillingInterval | null;
+    invoice: SubscriptionPaymentInvoice;
+  },
+): Promise<SubscriptionChangePaymentResult> {
+  return recordSubscriptionPayment(supabase, { ...params, revenueSource: "stripe_subscription_change" });
+}
+
+function hasRevenueYen(metadata: unknown): boolean {
+  const value = (metadata as Record<string, unknown> | null | undefined)?.revenueYen;
+  return (
+    (typeof value === "number" && Number.isFinite(value)) ||
+    (typeof value === "string" && /^[0-9]+(\.[0-9]+)?$/.test(value))
+  );
+}
+
+/**
+ * その請求の売上が、付与の行(請求 ID そのもの・revenueYen あり)に記録されているか。
+ * 管理画面の売上は「本番の subscription で revenueYen がある行」を数えるので、ここで確かめる。
+ */
+export async function hasSubscriptionRevenueOnGrant(
+  supabase: SupabaseClient,
+  params: { userId: string; invoiceId: string },
+): Promise<boolean> {
+  const { data, error } = await supabase
+    .from("credit_transactions")
+    .select("metadata")
+    .eq("user_id", params.userId)
+    .eq("transaction_type", "subscription")
+    .eq("stripe_payment_intent_id", params.invoiceId)
+    .maybeSingle();
+  if (error) {
+    throw new Error(error.message);
+  }
+  return hasRevenueYen(data?.metadata);
+}
+
+/**
+ * 付与のあとに、その請求の売上が記録されたかを確かめ、無ければ支払いだけの行で記録する。
+ * 付与の行に売上が載らないのは、次のとき(どれも、お金は払われている)。
+ * - 無料のペルコインが上限で、付与が0(付与の行ができない)
+ * - 同じ請求で、change-service.ts がプラン変更の差を金額なしで先に付けていた
+ * ふだんは付与の行に売上が載るので、何もしない(二重に数えない)。
+ */
+export async function ensureSubscriptionRevenueRecorded(
+  supabase: SupabaseClient,
+  params: {
+    userId: string;
+    plan: SubscriptionPlan;
+    billingInterval: SubscriptionBillingInterval | null;
+    invoice: SubscriptionPaymentInvoice;
+  },
+): Promise<SubscriptionChangePaymentResult | "already_recorded"> {
+  if (await hasSubscriptionRevenueOnGrant(supabase, { userId: params.userId, invoiceId: params.invoice.id })) {
+    return "already_recorded";
+  }
+  return recordSubscriptionPayment(supabase, { ...params, revenueSource: "stripe_subscription" });
 }
