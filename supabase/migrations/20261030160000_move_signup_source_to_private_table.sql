@@ -7,7 +7,9 @@
 --   20261030100000 の user_first_visits と同じく、service_role だけが読み書きできる表に移す。
 --
 --   ## この移行でやること(1回目)
---   - user_signup_sources を作り、profiles.signup_source の値を写す(signed_up_at は profiles.created_at)
+--   - user_signup_sources を作り、profiles.signup_source の値を写す
+--   - 登録した時刻(signed_up_at)は、どの書き方でも auth.users.created_at を使う。
+--     profiles.created_at は利用者が自分で書き換えられる(列の UPDATE 権限があり、RLS は本人の行かだけを見る)ため
 --   - profiles.signup_source を空にする(updated_at は変えない)
 --   - 書く所を新しい表に向ける: handle_new_user・record_signup_source(/auth/callback が呼ぶ)
 --   - 読む所を新しい表に向ける: get_ad_signup_funnel・list_recent_signup_sources
@@ -28,7 +30,7 @@ CREATE TABLE IF NOT EXISTS public.user_signup_sources (
   signup_source text NOT NULL
     CONSTRAINT user_signup_sources_signup_source_check
     CHECK (signup_source ~ '^[a-z0-9_-]{1,40}$'),
-  -- 登録した時刻(profiles.created_at と同じ値)。管理画面の日ごとの集計に使う
+  -- 登録した時刻(auth.users.created_at。利用者は書き換えられない)。管理画面の日ごとの集計に使う
   signed_up_at timestamptz NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now()
 );
@@ -50,13 +52,16 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_signup_sources TO serv
 -- 写してから空にするまでの間に、古いコードが profiles.signup_source に書くと、写されずに消える。
 -- 写す前に profiles への書き込みを止めておく(読み込みは止めない。COMMIT まで数秒)。
 -- ロックの順は、登録の処理(auth.users に INSERT → handle_new_user が profiles に INSERT)と同じ
--- 「auth.users(上の REFERENCES) → profiles」にする。逆にすると登録とデッドロックしうる
+-- 「auth.users → profiles」にする(逆にすると登録とデッドロックしうる)。auth.users のロックは、
+-- 上の CREATE TABLE の REFERENCES auth.users で取っている(表がまだ無いとき。本番はまだ無い)。
+-- profiles のロックを待つ間(lock_timeout の5秒まで)は auth.users への書き込みも止まる
 LOCK TABLE public.profiles IN SHARE ROW EXCLUSIVE MODE;
 
 -- 今の値を写す
 INSERT INTO public.user_signup_sources (user_id, signup_source, signed_up_at)
-SELECT p.user_id, p.signup_source, p.created_at
+SELECT p.user_id, p.signup_source, COALESCE(u.created_at, p.created_at)
 FROM public.profiles AS p
+LEFT JOIN auth.users AS u ON u.id = p.user_id
 WHERE p.signup_source IS NOT NULL
   AND p.user_id IS NOT NULL
 ON CONFLICT (user_id) DO NOTHING;
@@ -84,8 +89,9 @@ BEGIN
   END IF;
 
   INSERT INTO public.user_signup_sources (user_id, signup_source, signed_up_at)
-  SELECT p.user_id, p_signup_source, p.created_at
+  SELECT p.user_id, p_signup_source, COALESCE(u.created_at, p.created_at)
   FROM public.profiles AS p
+  LEFT JOIN auth.users AS u ON u.id = p.user_id
   WHERE p.user_id = p_user_id
   ON CONFLICT (user_id) DO NOTHING
   RETURNING user_id INTO v_user_id;
@@ -100,7 +106,7 @@ REVOKE ALL ON FUNCTION public.record_signup_source(uuid, text) FROM authenticate
 GRANT EXECUTE ON FUNCTION public.record_signup_source(uuid, text) TO service_role;
 
 COMMENT ON FUNCTION public.record_signup_source(uuid, text) IS
-  '登録した経路を user_signup_sources に1つ書く(すでにあれば書かない・書式が合わなければ false)。登録した時刻は profiles.created_at。service_role のみ';
+  '登録した経路を user_signup_sources に1つ書く(すでにあれば書かない・書式が合わなければ false)。登録した時刻は auth.users.created_at(利用者は書き換えられない)。service_role のみ';
 
 -- 切り替えの間の古いコードの書き込みを、新しい表に移す(profiles には残さない)。2回目で消す。
 -- 古い /auth/callback と同じく、登録から24時間以内の人だけ写す(前から使っている人が自分の行を

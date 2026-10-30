@@ -630,6 +630,14 @@ export async function getAdminDashboardData(
     Math.max(now.getTime(), oneTapStyleBounds.now.getTime())
   ).toISOString();
 
+  const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+  const signupSourceFetchStartIso = new Date(
+    new Date(sharedFetchStartIso).getTime() - ONE_DAY_MS
+  ).toISOString();
+  const signupSourceFetchEndIso = new Date(
+    new Date(sharedFetchEndIso).getTime() + ONE_DAY_MS
+  ).toISOString();
+
   const expiringCutoffIso = new Date(
     now.getTime() + 7 * 24 * 60 * 60 * 1000
   ).toISOString();
@@ -730,14 +738,15 @@ export async function getAdminDashboardData(
       .gte("posted_at", activeThresholdIso),
     supabase.rpc("get_auth_provider_signups"),
     // 登録した経路は、だれでも読める profiles ではなく user_signup_sources にある。
-    // signed_up_at は profiles.created_at と同じ値なので、上の profiles と同じ期間で読む。
+    // signed_up_at は auth.users.created_at で、profiles.created_at とほぼ同じ(ずれは1秒ほど)。
+    // 期間の端で抜けないよう、上の profiles の期間より前後1日広く読み、user_id で突き合わせる。
     // 1人1行なので user_id で送る(ページ送りのため user_id を id として読む)
     fetchAllRows<{ id: string; signup_source: string }>((cursor, size) => {
       let query = supabase
         .from("user_signup_sources")
         .select("id:user_id, signup_source")
-        .gte("signed_up_at", sharedFetchStartIso)
-        .lte("signed_up_at", sharedFetchEndIso);
+        .gte("signed_up_at", signupSourceFetchStartIso)
+        .lte("signed_up_at", signupSourceFetchEndIso);
       if (cursor) query = query.gt("user_id", cursor);
       return query.order("user_id", { ascending: true }).limit(size);
     }),

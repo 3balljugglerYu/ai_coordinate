@@ -353,9 +353,9 @@ alwaysApply: false
 
 #### `user_signup_sources`
 - 主キー: `user_id`（`auth.users.id` を参照・ON DELETE CASCADE）
-- 主要カラム: `signup_source`（登録した経路。書式のみ `^[a-z0-9_-]{1,40}$`。`style` / `wardrobe` / 企画キー / 広告の目印など。値の許可リストは持たない）, `signed_up_at`（登録した時刻・`profiles.created_at` と同じ値。管理画面の日ごとの集計に使う）, `created_at`
+- 主要カラム: `signup_source`（登録した経路。書式のみ `^[a-z0-9_-]{1,40}$`。`style` / `wardrobe` / 企画キー / 広告の目印など。値の許可リストは持たない）, `signed_up_at`（登録した時刻・`auth.users.created_at`。`profiles.created_at` は利用者が書き換えられるので使わない。管理画面の日ごとの集計に使う）, `created_at`
 - RLS: 有効・policy なし。service_role だけが読み書きする（20261030160000）
-- 書く: メールの登録は user_metadata の `signup_source` を `handle_new_user` が、OAuth の登録は `/auth/callback` が、どちらも `record_signup_source(p_user_id, p_signup_source)`（service_role のみ・すでにあれば書き直さない・`signed_up_at` は `profiles.created_at`）で書く
+- 書く: メールの登録は user_metadata の `signup_source` を `handle_new_user` が、OAuth の登録は `/auth/callback` が、どちらも `record_signup_source(p_user_id, p_signup_source)`（service_role のみ・すでにあれば書き直さない・`signed_up_at` は `auth.users.created_at`）で書く
 - 読む: 管理画面だけ（`get_ad_signup_funnel`・`list_recent_signup_sources`・`features/admin-dashboard/lib/ad-stats/ad-stats-repository.ts`・`get-admin-dashboard-data.ts`）
 - 注: 前は `profiles.signup_source` にあり、ログインしていない人にも見えていた（2026-10-30 に移した）
 
