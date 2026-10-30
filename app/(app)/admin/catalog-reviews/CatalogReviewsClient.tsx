@@ -49,6 +49,16 @@ export function CatalogReviewsClient({
     );
   };
 
+  const markReferenceRejected = (target: PendingCatalogReview) => {
+    setItems((current) =>
+      current.map((row) =>
+        row.imageId === target.imageId || (target.referenceId && row.referenceId === target.referenceId)
+          ? { ...row, referenceRejected: true }
+          : row,
+      ),
+    );
+  };
+
   const handleDecided = (decided: PendingCatalogReview, action: "approve" | "reject" | "gone") => {
     setItems((current) =>
       current
@@ -83,6 +93,7 @@ export function CatalogReviewsClient({
           item={item}
           onDecided={(action) => handleDecided(item, action)}
           onImageUnavailable={() => markImageUnavailable(item)}
+          onReferenceRejected={() => markReferenceRejected(item)}
         />
       ))}
     </div>
@@ -93,11 +104,14 @@ function ReviewCard({
   item,
   onDecided,
   onImageUnavailable,
+  onReferenceRejected,
 }: {
   item: PendingCatalogReview;
   onDecided: (action: "approve" | "reject" | "gone") => void;
   /** 承認を、作品が公開停止などのために断られた(画面を開いたあとに止まった) */
   onImageUnavailable: () => void;
+  /** 承認を、見本がほかの作品の審査で止まっているために断られた(画面を開いたあとに止まった) */
+  onReferenceRejected: () => void;
 }) {
   const { toast } = useToast();
   const [category, setCategory] = useState<CatalogReviewReasonCategory | "">("");
@@ -126,6 +140,9 @@ function ReviewCard({
       if (!res.ok) {
         if (body?.errorCode === "CATALOG_REVIEW_IMAGE_UNAVAILABLE") {
           onImageUnavailable();
+        }
+        if (body?.errorCode === "CATALOG_REVIEW_REFERENCE_REJECTED") {
+          onReferenceRejected();
         }
         if (body?.errorCode && GONE_ERROR_CODES.has(body.errorCode)) {
           toast({ title: body.error || "この作品はもう判定されています" });
@@ -197,7 +214,8 @@ function ReviewCard({
               type="button"
               onClick={() => decide("approve")}
               pending={busy === "approve"}
-              disabled={busy !== null || item.imageUnavailable}
+              // 見本が止まっている作品は DB が承認を断る(作り直しにはできる)
+              disabled={busy !== null || item.imageUnavailable || item.referenceRejected}
             >
               承認する
             </Button>

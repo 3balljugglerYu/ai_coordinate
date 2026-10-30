@@ -17,6 +17,7 @@ const bodySchema = z.object({ imageId: z.string().uuid() });
  * - 見つからない(他人の作品・見本の作品でない・公開停止など) 404
  * - 「未申請」でない(22023)ときは、本人の審査の行を読んで分ける: 審査中 409 ALREADY_SUBMITTED・
  *   承認済み 409 ALREADY_APPROVED・作り直し 409 REJECTED(同じ作品は出し直せない。作り直して新しく申請する)
+ * - 見本がほかの作品の審査で作り直しになっていれば 409 REFERENCE_REJECTED(承認されても、その見本はもう使えない)
  * - RPC にログインの情報が届かなかった(42501・auth.uid() が NULL)ときは 401(ログインし直す)
  */
 export async function POST(request: NextRequest) {
@@ -52,6 +53,14 @@ export async function POST(request: NextRequest) {
     }
     if (error.code === "P0002") {
       return jsonError("審査に出せる作品が見つかりません", "CATALOG_REVIEW_NOT_FOUND", 404);
+    }
+    // 22023 のうち、見本が止まっているときだけは文で見分ける(状態を読み直しても「未申請」のため)
+    if ((error.message ?? "").includes("CATALOG_REVIEW_REFERENCE_REJECTED")) {
+      return jsonError(
+        "この見本は作り直しになったため、審査に出せません。見本を変えて作り直してください",
+        "CATALOG_REVIEW_REFERENCE_REJECTED",
+        409,
+      );
     }
     if (error.code === "22023") {
       return await alreadyDecidedResponse(supabase, parsed.data.imageId);

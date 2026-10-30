@@ -92,6 +92,13 @@ export async function POST(
     if (message.includes("CATALOG_REVIEW_INVALID_STATE")) {
       return jsonError("この作品はもう判定されています", "CATALOG_REVIEW_ALREADY_DECIDED", 409);
     }
+    if (message.includes("CATALOG_REVIEW_REFERENCE_REJECTED")) {
+      return jsonError(
+        "この見本は、ほかの作品の審査で作り直しになっているため承認できません。作り直しにしてください",
+        "CATALOG_REVIEW_REFERENCE_REJECTED",
+        409,
+      );
+    }
     if (message.includes("CATALOG_REVIEW_IMAGE_UNAVAILABLE")) {
       return jsonError("作品が公開停止などで使えないため、承認できません", "CATALOG_REVIEW_IMAGE_UNAVAILABLE", 409);
     }
