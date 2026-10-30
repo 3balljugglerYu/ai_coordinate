@@ -62,7 +62,7 @@ test("検索して足すと、渡された API に POST し、一覧を読み直
   fireEvent.click(screen.getByRole("button", { name: "検索" }));
   fireEvent.click(await screen.findByRole("button", { name: "追加" }));
 
-  await waitFor(() => expect(screen.getByText("見本を使える人(2人)")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("見本を使える人(2人)")).toBeTruthy());
   expect(fetchMock).toHaveBeenNthCalledWith(2, API, expect.objectContaining({ method: "POST", body: JSON.stringify({ userId: "u2" }) }));
   expect(fetchMock).toHaveBeenNthCalledWith(3, API);
   expect(mockToast).toHaveBeenCalledWith({ title: "追加しました", description: "見本を使える人に追加しました" });
@@ -74,7 +74,7 @@ test("無効にすると、その人の API に PATCH する", async () => {
 
   fireEvent.click(screen.getByRole("button", { name: "無効化" }));
 
-  await waitFor(() => expect(screen.getByText("無効")).toBeInTheDocument());
+  await waitFor(() => expect(screen.getByText("無効")).toBeTruthy());
   expect(fetchMock).toHaveBeenNthCalledWith(
     1,
     `${API}/u1`,
@@ -95,7 +95,7 @@ test("削除は、画面ごとの言葉で確かめてから DELETE する。や
     fetchMock.mockImplementationOnce(() => ok({ ok: true })).mockImplementationOnce(() => ok([]));
     fireEvent.click(screen.getByRole("button", { name: "削除" }));
 
-    await waitFor(() => expect(screen.getByText("見本を使える人(0人)")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText("見本を使える人(0人)")).toBeTruthy());
     expect(fetchMock).toHaveBeenNthCalledWith(1, `${API}/u1`, { method: "DELETE" });
   } finally {
     confirmSpy.mockRestore();
