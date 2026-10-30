@@ -144,3 +144,14 @@ test("「未申請」でないのに審査の行を読めなければ、審査�
   expect(response.status).toBe(500);
   await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REVIEW_SUBMIT_FAILED" });
 });
+
+test("見本が使えなくなっていれば(作り直し・元の作品の削除)、状態を読み直さずに 409 REFERENCE_UNAVAILABLE", async () => {
+  rpcResult({ data: null, error: { code: "22023", message: "CATALOG_REVIEW_REFERENCE_UNAVAILABLE" } });
+  reviewStatus.mockResolvedValue({ data: { status: "not_submitted" }, error: null });
+
+  const response = await POST(request({ imageId: IMAGE_ID }));
+
+  expect(response.status).toBe(409);
+  await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REVIEW_REFERENCE_UNAVAILABLE" });
+  expect(from).not.toHaveBeenCalled();
+});

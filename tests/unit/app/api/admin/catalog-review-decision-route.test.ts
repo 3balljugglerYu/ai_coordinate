@@ -134,6 +134,7 @@ test.each([
   ["見つからない", { code: "P0002", message: "CATALOG_REVIEW_NOT_FOUND" }, 404, "CATALOG_REVIEW_NOT_FOUND"],
   ["もう判定した", { code: "22023", message: "CATALOG_REVIEW_INVALID_STATE" }, 409, "CATALOG_REVIEW_ALREADY_DECIDED"],
   ["作品が使えない", { code: "22023", message: "CATALOG_REVIEW_IMAGE_UNAVAILABLE" }, 409, "CATALOG_REVIEW_IMAGE_UNAVAILABLE"],
+  ["見本が使えない(作り直し・元の作品や見本の削除)", { code: "22023", message: "CATALOG_REVIEW_REFERENCE_UNAVAILABLE" }, 409, "CATALOG_REVIEW_REFERENCE_UNAVAILABLE"],
   ["運営として登録されていない", { code: "42501", message: "CATALOG_REVIEW_UNAUTHORIZED" }, 403, "CATALOG_REVIEW_UNAUTHORIZED"],
   ["そのほかの失敗", { code: "57014", message: "timeout" }, 500, "CATALOG_REVIEW_DECISION_FAILED"],
 ])("RPC が断った(%s)ら、状態と理由を返し、監査ログに残さない", async (_label, error, status, errorCode) => {

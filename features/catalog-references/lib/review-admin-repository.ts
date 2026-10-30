@@ -10,7 +10,8 @@ import { CATALOG_REFERENCE_BUCKET } from "./reference-image-repository";
  * - 見本は非公開の置き場所にあるので、運営が見る間だけ使える URL(10分)を作る
  * - 承認前の作品から作った派生の作品(ADR-008)は、作品そのものに見本の情報が無いので、元の作品の見本を使う
  * - プロンプトは作品の秘密の表から読む(派生の作品で無ければ元の作品のもの)
- * - 見本がほかの作品の審査で作り直しになっていれば印を付ける(承認しても、その見本はもう使えない)
+ * - 見本が使えなければ印を付ける(ほかの作品の審査で作り直しになった・元の作品や見本が消されて見本がたどれない。
+ *   DB が承認を断る)
  * - 運営だけの操作なので service role で動かす
  */
 
@@ -32,8 +33,8 @@ export interface PendingCatalogReview {
   derived: boolean;
   /** 見本の ID(作り直しにしたとき、同じ見本のほかの作品に印を出すため) */
   referenceId: string | null;
-  /** 見本がほかの作品の審査で作り直しになり、もう使えないか */
-  referenceRejected: boolean;
+  /** 見本がもう使えないか(ほかの作品の審査で作り直しになった・元の作品や見本が消されて見本がたどれない) */
+  referenceUnavailable: boolean;
   /** 申請のあとに公開停止などになった(承認できない。作り直しにはできる) */
   imageUnavailable: boolean;
 }
@@ -153,7 +154,9 @@ export async function listPendingCatalogReviews(client?: SupabaseClient): Promis
       prompt: promptByImage.get(review.image_id) ?? (rootId ? promptByImage.get(rootId) ?? null : null),
       derived: !ownSecret && !!rootId,
       referenceId: secret?.reference_id ?? null,
-      referenceRejected: secret ? rejectedReferences.has(secret.reference_id) : false,
+      // DB の確かめ(見本がたどれて止まっていないときだけ通す)と同じ決まり
+      referenceUnavailable:
+        !secret || !pathByReference.has(secret.reference_id) || rejectedReferences.has(secret.reference_id),
       imageUnavailable: !image || image.moderation_status !== "visible",
     };
   });
