@@ -503,9 +503,9 @@ async function downloadCatalogReferenceImage(
   );
 
   if (error || !data) {
-    throw new Error(
-      `Catalog reference download failed: ${error?.message ?? "Unknown error"}`
-    );
+    // 決まった文だけにする。storage の失敗の文(ネットワークの失敗)には見本の URL が入りうり、
+    // この文は job の error_message とログに残るため(ADR-003: 見本の場所を書かない)
+    throw new Error("Catalog reference download failed");
   }
 
   const mimeType = data.type || "image/png";

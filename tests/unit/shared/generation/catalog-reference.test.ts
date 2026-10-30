@@ -9,10 +9,7 @@
  *  - まねるものの値は DB の CHECK と同じ4つ
  */
 
-import {
-  CATALOG_REFERENCE_TAKES,
-  isCatalogReferenceTake,
-} from "@/shared/generation/catalog-reference";
+import { CATALOG_REFERENCE_TAKES } from "@/shared/generation/catalog-reference";
 import { buildCatalogReferenceDirective } from "@/shared/generation/prompt-core";
 import { PROMPT_REGISTRY } from "@/shared/generation/prompt-registry";
 
@@ -22,9 +19,6 @@ const GUARD = PROMPT_REGISTRY["free.catalog_reference_person_guard"].defaultCont
 
 test("まねるものは DB の CHECK と同じ4つ", () => {
   expect([...CATALOG_REFERENCE_TAKES].sort()).toEqual(["angle", "background", "outfit", "pose"]);
-  expect(isCatalogReferenceTake("outfit")).toBe(true);
-  expect(isCatalogReferenceTake("face")).toBe(false);
-  expect(isCatalogReferenceTake(1)).toBe(false);
 });
 
 test("選んだものだけを決まった順で足し、最後に人物の守りを足す", () => {

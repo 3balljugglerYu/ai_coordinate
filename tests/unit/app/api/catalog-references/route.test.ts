@@ -5,7 +5,7 @@
  *
  * ここで守ること(計画書 REQ-001・REQ-002・ADR-002):
  *  - よそのサイトからは止める。ログインしていなければ 401、見本を使える人でなければ 403
- *  - 同意が無ければ 400。画像が無い・10MB を超える・形式が違う・小さすぎるは断る
+ *  - 同意が無ければ 400。画像が無い・4MB を超える・形式が違う・小さすぎる・大きすぎるは断る
  *  - 画像は作り直した WebP を、ログイン中の本人の見本として、同意の時刻つきで保存する
  *  - 返すのは id だけ(場所は返さない)。保存に失敗したら 500
  */
@@ -93,8 +93,8 @@ test.each([
   ["同意が true でない", { consent: "yes" }, 400, "CATALOG_REFERENCE_CONSENT_REQUIRED"],
   ["画像が無い", { file: null }, 400, "CATALOG_REFERENCE_FILE_REQUIRED"],
   [
-    "10MB を超える",
-    { file: new File([new Uint8Array(10 * 1024 * 1024 + 1)], "big.png", { type: "image/png" }) },
+    "4MB を超える",
+    { file: new File([new Uint8Array(4 * 1024 * 1024 + 1)], "big.png", { type: "image/png" }) },
     413,
     "CATALOG_REFERENCE_FILE_TOO_LARGE",
   ],
@@ -109,6 +109,8 @@ test.each([
 test.each([
   ["形式が違う", "FORMAT_NOT_SUPPORTED", "CATALOG_REFERENCE_IMAGE_INVALID"],
   ["小さすぎる", "DIMENSION_TOO_SMALL", "CATALOG_REFERENCE_IMAGE_TOO_SMALL"],
+  ["大きすぎる", "DIMENSION_TOO_LARGE", "CATALOG_REFERENCE_IMAGE_TOO_LARGE"],
+  ["作り直しに失敗", "RE_ENCODE_FAILED", "CATALOG_REFERENCE_IMAGE_INVALID"],
 ] as const)("画像の中身を確かめて%s → 400 で保存しない", async (_label, code, errorCode) => {
   mockProcess.mockResolvedValue({ ok: false, error: { code, message: "x" } });
 

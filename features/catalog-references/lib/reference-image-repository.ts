@@ -46,7 +46,13 @@ export async function saveCatalogReferenceImage(
     .single();
   if (error || !data) {
     console.error("[catalog-references] insert error:", error?.message);
-    await supabase.storage.from(CATALOG_REFERENCE_BUCKET).remove([storagePath]);
+    const { error: removeError } = await supabase.storage
+      .from(CATALOG_REFERENCE_BUCKET)
+      .remove([storagePath]);
+    if (removeError) {
+      // 行の無い見本のファイルが残る。気づけるように記録する(場所は運営だけが見るログ)
+      console.error("[catalog-references] orphan file left:", storagePath, removeError.message);
+    }
     throw new Error("見本の保存に失敗しました");
   }
 

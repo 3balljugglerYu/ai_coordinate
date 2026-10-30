@@ -378,16 +378,6 @@ Main errors:
   - Worker も課金の前にもう一度確かめ、使えなければ課金せずに失敗させる（`CATALOG_REFERENCE_UNAVAILABLE`）
   - 見本を使った作品は、運営の審査で承認されるまで投稿できない（審査の流れは Phase 4）
 
-### `POST /api/catalog-references`
-
-見本（参照画像）を1枚上げ、id を返します。生成の依頼（`POST /api/generate-async`）には、この id だけを渡します。
-
-- Access: `user session`（見本を使える人だけ。ほかの人は `403` + `CATALOG_REFERENCE_NOT_ALLOWED`）。よそのサイトからの送信は止める
-- Request: `multipart/form-data`
-  - `file`: 画像（JPEG・PNG・WebP・HEIC。10MB まで・縦横とも768px以上）。中身で形式を確かめ、WebP に作り直して位置情報などを消す
-  - `copyrightConsent`: `"true"`（使える見本・使えない見本の案内への同意。無ければ `400`）
-- Response: `201` `{ "id": "uuid" }`。置き場所は返さない（非公開のバケット `catalog-references` に置く）
-- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる）、`413`（10MB を超える）、`500`（保存に失敗）
   - 認可は job 作成前・Worker のペルコイン減算前・完了 RPC の画像 INSERT 前の3ヶ所で再検証される。完了時に失効していた場合は成果物を破棄して返金する
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
@@ -420,6 +410,18 @@ Main errors:
 - `409`: 派生生成の原作が利用不可（`FREE_SOURCE_UNAVAILABLE`）
 - `500`: アップロード失敗、ジョブ作成失敗など
 - `202`: ジョブ作成済みだがキュー投入が遅延している可能性あり
+
+
+### `POST /api/catalog-references`
+
+見本（参照画像）を1枚上げ、id を返します。生成の依頼（`POST /api/generate-async`）には、この id だけを渡します。
+
+- Access: `user session`（見本を使える人だけ。ほかの人は `403` + `CATALOG_REFERENCE_NOT_ALLOWED`）。よそのサイトからの送信は止める
+- Request: `multipart/form-data`
+  - `file`: 画像（JPEG・PNG・WebP・HEIC。4MB まで・縦横とも768px以上4096px以下）。基盤（Vercel）の本文の上限が約4.5MB なので、画面で送る前に縮める。中身で形式を確かめ、WebP に作り直して位置情報などを消す
+  - `copyrightConsent`: `"true"`（使える見本・使えない見本の案内への同意。無ければ `400`）
+- Response: `201` `{ "id": "uuid" }`。置き場所は返さない（非公開のバケット `catalog-references` に置く）
+- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（保存に失敗）
 
 ### `POST /api/coordinate-generate-guest`
 

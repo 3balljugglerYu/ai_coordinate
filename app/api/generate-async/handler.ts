@@ -315,7 +315,7 @@ export async function postGenerateAsyncRoute(
           referenceId: referenceImageId,
         });
       } catch {
-        return jsonError(copy.invalidRequest, "GENERATION_REFERENCE_CHECK_FAILED", 500);
+        return jsonError(copy.generateAsyncFailed, "GENERATION_REFERENCE_CHECK_FAILED", 500);
       }
       if (!usable) {
         return jsonError("見本が見つかりません", "GENERATION_REFERENCE_NOT_FOUND", 404);

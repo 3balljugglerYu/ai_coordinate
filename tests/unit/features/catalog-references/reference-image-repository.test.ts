@@ -94,6 +94,17 @@ describe("saveCatalogReferenceImage", () => {
     const uploadedPath = (storageCalls.find(([m]) => m === "upload")?.[1] as [string])[0];
     expect(storageCalls).toContainEqual(["remove", [[uploadedPath]]]);
   });
+
+  test("消すのにも失敗したら、残ったファイルを記録する", async () => {
+    const { supabase } = client({ insert: { data: null, error: { message: "fk" } } });
+    (supabase.storage.from("catalog-references").remove as jest.Mock).mockResolvedValueOnce({ error: { message: "gone" } });
+    const errors = jest.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
+    ).rejects.toThrow("見本の保存に失敗しました");
+    expect(errors).toHaveBeenCalledWith("[catalog-references] orphan file left:", expect.stringMatching(/^1111/), "gone");
+  });
 });
 
 describe("isUsableOwnCatalogReference", () => {

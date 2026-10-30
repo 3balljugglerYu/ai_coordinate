@@ -4,13 +4,16 @@
  *
  * - 作者が自分の見本で生成するジョブ(catalog_reference_id あり)と、派生生成のジョブ(origin_post_id あり)で呼ぶ
  * - 持ち主・使える人の一覧・作り直し・元の作品の審査の状態は、DB の resolve_catalog_reference_for_job が確かめる
- * - 使えないときは CATALOG_REFERENCE_UNAVAILABLE を投げる(課金の前・再試行しない・理由は分けない)
+ * - 使えないとき(RPC が例外 P0001 で断った)は CATALOG_REFERENCE_UNAVAILABLE を投げる(課金の前・再試行しない・
+ *   理由は分けない)。DB の一時的な失敗(それ以外のエラー)は CATALOG_REFERENCE_CHECK_FAILED を投げ、
+ *   ふつうの失敗としてやり直させる(見本の無い派生生成まで、一時的な失敗で確定の失敗にしない)
  * - 見本の無い派生生成は null(今までどおり生成する)
  * - 見本を使えるのはじゆうモードだけ(受付でも止めている)
  * - 返す場所はメモリの中だけで使い、job・ログ・応答には書かない
  */
 
 export const CATALOG_REFERENCE_UNAVAILABLE = "CATALOG_REFERENCE_UNAVAILABLE";
+export const CATALOG_REFERENCE_CHECK_FAILED = "CATALOG_REFERENCE_CHECK_FAILED";
 
 export interface CatalogReferenceForJob {
   storagePath: string;
@@ -44,11 +47,12 @@ export async function resolveCatalogReferenceForJob(
   });
   if (error) {
     // 理由は返さない。場所が入りうるので error を丸ごとログに出さない
-    logError("[Job Processing] Catalog reference unavailable", {
+    logError("[Job Processing] Catalog reference check failed", {
       jobId: job.id,
       code: error.code,
     });
-    throw new Error(CATALOG_REFERENCE_UNAVAILABLE);
+    // RPC が RAISE EXCEPTION で断ったときだけ確定の失敗にする
+    throw new Error(error.code === "P0001" ? CATALOG_REFERENCE_UNAVAILABLE : CATALOG_REFERENCE_CHECK_FAILED);
   }
 
   const row = (Array.isArray(data) ? data[0] : null) as
@@ -62,9 +66,10 @@ export async function resolveCatalogReferenceForJob(
     return null;
   }
 
-  if (job.generation_type !== "free") {
+  // 見本を使えるのはじゆうモードだけ。まねるものが無い見本は指示の無い2枚目の画像になるので使わない
+  if (job.generation_type !== "free" || !row.takes || row.takes.length === 0) {
     throw new Error(CATALOG_REFERENCE_UNAVAILABLE);
   }
 
-  return { storagePath: row.storage_path, takes: row.takes ?? [] };
+  return { storagePath: row.storage_path, takes: row.takes };
 }

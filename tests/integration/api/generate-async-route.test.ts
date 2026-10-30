@@ -645,6 +645,15 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
           ["まねるものが重なっている", { referenceImageId: REFERENCE_ID, referenceTakes: ["outfit", "outfit"] }],
           ["まねるものの値が違う", { referenceImageId: REFERENCE_ID, referenceTakes: ["face"] }],
           ["じゆうモード以外", { referenceImageId: REFERENCE_ID, referenceTakes: ["outfit"], generationType: "coordinate" }],
+          [
+            "派生生成と一緒",
+            {
+              referenceImageId: REFERENCE_ID,
+              referenceTakes: ["outfit"],
+              prompt: undefined,
+              sourcePostId: "44444444-4444-4444-8444-444444444444",
+            },
+          ],
         ])("%s → 400 でジョブを作らない", async (_label, extra) => {
           const response = await runFree(extra);
 

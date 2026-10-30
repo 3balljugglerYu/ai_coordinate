@@ -8,7 +8,3 @@
 export const CATALOG_REFERENCE_TAKES = ["outfit", "angle", "pose", "background"] as const;
 
 export type CatalogReferenceTake = (typeof CATALOG_REFERENCE_TAKES)[number];
-
-export function isCatalogReferenceTake(value: unknown): value is CatalogReferenceTake {
-  return typeof value === "string" && (CATALOG_REFERENCE_TAKES as readonly string[]).includes(value);
-}

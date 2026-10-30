@@ -6,8 +6,11 @@ import { jsonError } from "@/lib/api/json-error";
 import { processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
 import { saveCatalogReferenceImage } from "@/features/catalog-references/lib/reference-image-repository";
 
-/** バケットの上限と同じ(10MB) */
-const MAX_REFERENCE_BYTES = 10 * 1024 * 1024;
+/**
+ * 4MB まで。基盤(Vercel)の本文の上限が約4.5MB なので、それより大きいものはここまで届かない。
+ * 画面(段階6)では送る前に縮める
+ */
+const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
 
 /**
  * POST /api/catalog-references: 見本(参照画像)を1枚上げる(multipart: file・copyrightConsent=true)。
@@ -45,17 +48,18 @@ export async function POST(request: NextRequest) {
     return jsonError("画像を選んでください", "CATALOG_REFERENCE_FILE_REQUIRED", 400);
   }
   if (file.size > MAX_REFERENCE_BYTES) {
-    return jsonError("画像は10MBまでです", "CATALOG_REFERENCE_FILE_TOO_LARGE", 413);
+    return jsonError("画像は4MBまでです", "CATALOG_REFERENCE_FILE_TOO_LARGE", 413);
   }
 
   const processed = await processSubmissionImage(Buffer.from(await file.arrayBuffer()));
   if (!processed.ok) {
-    const tooSmall = processed.error.code === "DIMENSION_TOO_SMALL";
-    return jsonError(
-      tooSmall ? "画像が小さすぎます(縦横とも768px以上)" : "この画像は使えません(JPEG・PNG・WebP・HEIC)",
-      tooSmall ? "CATALOG_REFERENCE_IMAGE_TOO_SMALL" : "CATALOG_REFERENCE_IMAGE_INVALID",
-      400,
-    );
+    if (processed.error.code === "DIMENSION_TOO_SMALL") {
+      return jsonError("画像が小さすぎます(縦横とも768px以上)", "CATALOG_REFERENCE_IMAGE_TOO_SMALL", 400);
+    }
+    if (processed.error.code === "DIMENSION_TOO_LARGE") {
+      return jsonError("画像が大きすぎます(縦横とも4096px以下)", "CATALOG_REFERENCE_IMAGE_TOO_LARGE", 400);
+    }
+    return jsonError("この画像は使えません(JPEG・PNG・WebP・HEIC)", "CATALOG_REFERENCE_IMAGE_INVALID", 400);
   }
 
   try {
