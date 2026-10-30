@@ -25,8 +25,10 @@ export type SubscriptionInvoiceKind = "grant" | "payment_only";
 /** 日割りの行か(新しい SDK の parent と、古い通知の proration の両方を見る) */
 export function isProrationLine(line: Stripe.InvoiceLineItem): boolean {
   const prorationOnParent =
-    line.parent?.type === "subscription_item_details" &&
-    line.parent.subscription_item_details?.proration === true;
+    (line.parent?.type === "subscription_item_details" &&
+      line.parent.subscription_item_details?.proration === true) ||
+    (line.parent?.type === "invoice_item_details" &&
+      line.parent.invoice_item_details?.proration === true);
 
   // Some Stripe webhook payloads still include a legacy top-level proration flag
   // that is not present in the current SDK type definitions.

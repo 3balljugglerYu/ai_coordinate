@@ -52,11 +52,24 @@ export function findUpgradeLinePrices(
   invoice: Stripe.Invoice
 ): { previous: Stripe.Price | string; current: Stripe.Price | string } | null {
   const lines = invoice.lines?.data ?? [];
-  const previousLine = lines.find((line) => isProrationLine(line) && line.amount < 0);
+  const priceId = (price: Stripe.Price | string) => (typeof price === "string" ? price : price.id);
+  // 前のプランの返金の行。前からの日割りが混ざって2種類以上あると、どれが置き換えたプランか
+  // 決められないので付けない(保険なので、決められないときは付けずにログで気づく)
+  const refundPrices = lines
+    .filter((line) => isProrationLine(line) && line.amount < 0)
+    .map(priceOfLine)
+    .filter((price): price is Stripe.Price | string => price !== null);
+  if (new Set(refundPrices.map(priceId)).size !== 1) {
+    if (refundPrices.length > 1) {
+      console.warn("[Subscription] Upgrade invoice has several refunded prices; skip the difference grant", {
+        invoiceId: invoice.id,
+      });
+    }
+    return null;
+  }
   const currentLine = lines.find((line) => !isProrationLine(line) && line.amount > 0);
-  const previous = previousLine ? priceOfLine(previousLine) : null;
   const current = currentLine ? priceOfLine(currentLine) : null;
-  return previous && current ? { previous, current } : null;
+  return current ? { previous: refundPrices[0], current } : null;
 }
 
 /**

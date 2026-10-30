@@ -36,6 +36,9 @@ const PRORATION_LINE = {
   parent: { type: "subscription_item_details", subscription_item_details: { proration: true } },
 };
 const LEGACY_PRORATION_LINE = { proration: true };
+const INVOICE_ITEM_PRORATION_LINE = {
+  parent: { type: "invoice_item_details", invoice_item_details: { proration: true } },
+};
 const NORMAL_LINE = {
   parent: { type: "subscription_item_details", subscription_item_details: { proration: false } },
 };
@@ -44,6 +47,11 @@ describe("classifySubscriptionInvoice", () => {
   it.each([
     ["日割りの行があるプラン変更", invoice("subscription_update", [NORMAL_LINE, PRORATION_LINE]), "payment_only"],
     ["古い形の日割りの行があるプラン変更", invoice("subscription_update", [LEGACY_PRORATION_LINE]), "payment_only"],
+    [
+      "請求の明細(invoice_item_details)の日割りの行があるプラン変更",
+      invoice("subscription_update", [NORMAL_LINE, INVOICE_ITEM_PRORATION_LINE]),
+      "payment_only",
+    ],
     ["日割りの無いプラン変更", invoice("subscription_update", [NORMAL_LINE]), "grant"],
     ["毎月の更新(月額→年額の切り替わりもここ)", invoice("subscription_cycle", [NORMAL_LINE]), "grant"],
     ["はじめての契約", invoice("subscription_create", [NORMAL_LINE]), null],

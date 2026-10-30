@@ -48,6 +48,10 @@ function upgradeInvoice(from: string, to: string, interval: "month" | "year") {
 
 const noLoad = async () => null;
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 describe("resolveUpgradeFromInvoice", () => {
   it.each([
     ["ライト→スタンダード(月額)", "light", "standard", "month", 700],
@@ -210,6 +214,30 @@ describe("readGrantedSubscriptionAmount", () => {
       }),
     ).resolves.toBe(0);
     expect(errors).toHaveBeenCalled();
-    errors.mockRestore();
+  });
+});
+
+describe("findUpgradeLinePrices(前のプランの返金の行が混ざるとき)", () => {
+  it("返金の行が同じ価格で2行あっても、その価格を前のプランとする", () => {
+    const light = price("light", "month");
+    const standard = price("standard", "month");
+    expect(
+      findUpgradeLinePrices(invoice([line(-100, true, light), line(-50, true, light), line(980, false, standard)])),
+    ).toEqual({ previous: light, current: standard });
+  });
+
+  it("前からの日割りが混ざり、返金の価格が2種類あると、どれを置き換えたか決められないので付けない", async () => {
+    const warns = jest.spyOn(console, "warn").mockImplementation(() => {});
+    // ライト→スタンダード(未請求のまま)のあとに、スタンダード→プレミアム
+    const mixed = invoice([
+      line(-300, true, price("light", "month")),
+      line(400, true, price("standard", "month")),
+      line(-200, true, price("standard", "month")),
+      line(2980, false, price("premium", "month")),
+    ]);
+
+    expect(findUpgradeLinePrices(mixed)).toBeNull();
+    await expect(resolveUpgradeFromInvoice(mixed, noLoad)).resolves.toBeNull();
+    expect(warns).toHaveBeenCalled();
   });
 });
