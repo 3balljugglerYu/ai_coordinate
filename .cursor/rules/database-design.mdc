@@ -344,6 +344,7 @@ alwaysApply: false
 - 注: `signup_source`（登録した経路）は 20261030160000 で `user_signup_sources` に移した。だれでも読める表なので、ここには書かない。切り替えの間に古いコードが書いても、トリガー `trg_divert_profile_signup_source` が新しい表に移して NULL にする。列とトリガーは、新しいコードが出たあと消す
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
 - ⚠️ 公開 `SELECT` なので、ここに入れた列はだれでも読める。人に見せたくない記録（来た場所など）は別の表にする（`user_first_visits` を参照）
+- ⚠️ 利用者（authenticated）が書き換えられるのは `nickname`・`bio`・`avatar_url`・`signup_source` の4列だけ（列ごとの UPDATE の権限・20261030170000。RLS は本人の行だけ）。INSERT は無い（行は `handle_new_user` が作る）。プラン・ボーナスの記録・登録時刻・退会の列などは、サーバーの関数（SECURITY DEFINER）か service_role から書く。**利用者に書かせる列を足すときは、マイグレーションで `GRANT UPDATE (列) ON public.profiles TO authenticated` を足す**（足さないと Web・アプリの更新が permission denied になる）
 
 #### `user_first_visits`
 - 主キー: `user_id`（`auth.users.id` を参照・ON DELETE CASCADE）
