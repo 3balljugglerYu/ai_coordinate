@@ -54,7 +54,9 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.user_signup_sources TO serv
 -- ロックの順は、登録の処理(auth.users に INSERT → handle_new_user が profiles に INSERT)と同じ
 -- 「auth.users → profiles」にする(逆にすると登録とデッドロックしうる)。auth.users のロックは、
 -- 上の CREATE TABLE の REFERENCES auth.users で取っている(表がまだ無いとき。本番はまだ無い)。
--- profiles のロックを待つ間(lock_timeout の5秒まで)は auth.users への書き込みも止まる
+-- このロックと auth.users のロックは COMMIT まで続く。その間(profiles のロックを待つ最大5秒と、
+-- 写しと空にする UPDATE の時間)は、auth.users への書き込み(登録・ログインの last_sign_in_at)と
+-- profiles への書き込みが待たされる。本番の profiles は約260行なので数秒以内
 LOCK TABLE public.profiles IN SHARE ROW EXCLUSIVE MODE;
 
 -- 今の値を写す
