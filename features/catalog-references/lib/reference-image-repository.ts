@@ -80,8 +80,30 @@ export async function isUsableOwnCatalogReference(
 }
 
 /**
- * 見本を前に上げたことがあるか(初めての同意の画面を出すかどうか。第2案: 同意は初めて入れたときだけ)。
- * 上げるたびに同意の時刻を行に残しているので、行が1つでもあれば同意済みとみなす。
+ * 本人が初めて同意した時刻(いちばん古い見本の行の同意の時刻)。行が無ければ null。DB のエラーは投げる。
+ * 第2案では、同意は見本を初めて入れたときだけ画面で取る。2回目からの行には、この時刻を引き継いで残す
+ * (同意の画面を出していない時刻を、同意の時刻として残さない)
+ */
+export async function getFirstCatalogReferenceConsentAt(
+  userId: string,
+  client?: SupabaseClient,
+): Promise<Date | null> {
+  const { data, error } = await getSupabase(client)
+    .from("catalog_reference_images")
+    .select("copyright_consent_at")
+    .eq("user_id", userId)
+    .order("copyright_consent_at", { ascending: true })
+    .limit(1);
+  if (error) {
+    console.error("[catalog-references] consent lookup error:", error.message);
+    throw new Error("見本の同意の確認に失敗しました");
+  }
+  const first = (data ?? [])[0] as { copyright_consent_at: string } | undefined;
+  return first ? new Date(first.copyright_consent_at) : null;
+}
+
+/**
+ * 見本を前に上げたことがあるか(初めての同意の画面を出すかどうか)。
  * DB のエラーは false(同意の画面をもう一度出す。安全なほうに倒す)
  */
 export async function hasCatalogReferenceConsent(
@@ -89,18 +111,9 @@ export async function hasCatalogReferenceConsent(
   client?: SupabaseClient,
 ): Promise<boolean> {
   try {
-    const { data, error } = await getSupabase(client)
-      .from("catalog_reference_images")
-      .select("id")
-      .eq("user_id", userId)
-      .limit(1);
-    if (error) {
-      console.warn("[catalog-references] consent check error:", error.message);
-      return false;
-    }
-    return (data ?? []).length > 0;
+    return (await getFirstCatalogReferenceConsentAt(userId, client)) !== null;
   } catch (e) {
-    console.warn("[catalog-references] consent check threw:", e);
+    console.warn("[catalog-references] consent check failed:", e);
     return false;
   }
 }

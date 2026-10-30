@@ -8,12 +8,13 @@
  *  - うちの子の欄と見本の欄を並べて出す
  *  - 見本を前に上げたことが無い人は、選んだ直後に「使える見本・使えない見本」を出し、
  *    「わかりました」を押すまで上げない(閉じたら上げない)。一度同意したら次からは出さない
- *  - 前に上げたことがある人は、選んだらすぐ上げる
+ *    (この端末に印を残すので、上げるのに失敗しても、開き直しても出さない)
+ *  - 前に上げたことがある人は、選んだらすぐ上げる(サーバーの値があとから変わっても合わせる)
  *  - 上げるときは見本用に縮めてから、縮めた画像を同意つきで POST /api/catalog-references に上げ、
  *    返った id と最初のまねるもの(衣装)を渡す。上げている間は、そのことを親に知らせる
  *  - 上げられなければ、言語ごとの文言で理由を出して何も渡さない(手元で断った・API が断った・通信が切れた)
  *  - HEIC は受け付けない。外すと null を渡し、プレビューの URL を放す
- *  - 「使える見本・使えない見本」は、あとから見返せる(見返しても上げない)
+ *  - 「使える見本・使えない見本」は、あとから見返せる(見返しても上げない・同意にもしない)
  *  - 「先行公開」の案内は、前に上げたことが無く、まだ見ていない人にだけ1回出す
  */
 
@@ -39,7 +40,23 @@ import {
 import { ReferenceImageError } from "@/features/catalog-references/lib/prepare-reference-image";
 
 const INTRO_SEEN_KEY = "persta:catalog-reference-intro-seen-v1";
+const CONSENT_GIVEN_KEY = "persta:catalog-reference-consent-given-v1";
 const fetchMock = jest.fn();
+const originalFetch = global.fetch;
+const originalCreateObjectURL = Object.getOwnPropertyDescriptor(URL, "createObjectURL");
+const originalRevokeObjectURL = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
+
+afterEach(() => {
+  global.fetch = originalFetch;
+  for (const [name, descriptor] of [
+    ["createObjectURL", originalCreateObjectURL],
+    ["revokeObjectURL", originalRevokeObjectURL],
+  ] as const) {
+    if (descriptor) Object.defineProperty(URL, name, descriptor);
+    else delete (URL as unknown as Record<string, unknown>)[name];
+  }
+  window.localStorage.clear();
+});
 
 beforeEach(() => {
   fetchMock.mockReset();
@@ -120,6 +137,8 @@ describe("初めての同意(前に見本を上げたことが無い人)", () =>
     expect(URL.createObjectURL).toHaveBeenCalledWith(PREPARED);
     expect(onChange).toHaveBeenCalledWith({ id: "ref-1", previewUrl: "blob:preview", takes: ["outfit"] });
     expect(onUploadingChange.mock.calls).toEqual([[true], [false]]);
+    // この端末に、同意した印を残す
+    expect(window.localStorage.getItem(CONSENT_GIVEN_KEY)).toBe("1");
   });
 
   test("同意せずに閉じたら上げない。もう一度選ぶと、また出す", async () => {
@@ -149,6 +168,36 @@ describe("初めての同意(前に見本を上げたことが無い人)", () =>
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(2));
     expect(screen.queryByTestId("catalog-reference-consent-sheet")).toBeNull();
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("同意したあと上げるのに失敗して見本の行ができなくても、開き直したときに出さない", async () => {
+    fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+    const { unmount } = renderPicker({ consented: false });
+    pickFile();
+    fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentAgree" }));
+    await screen.findByRole("alert");
+    unmount();
+
+    // 開き直し: サーバーの値はまだ「前に上げたことが無い」
+    respondWithId();
+    const onChange = jest.fn();
+    renderPicker({ consented: false, onChange });
+    pickFile();
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(screen.queryByTestId("catalog-reference-consent-sheet")).toBeNull();
+  });
+
+  test("サーバーの値があとから「前に上げたことがある」に変わったら、それに合わせて出さない", async () => {
+    respondWithId();
+    const onChange = jest.fn();
+    const { rerender, props } = renderPicker({ consented: false, onChange });
+
+    rerender(<CatalogReferencePicker {...props} consented />);
+    pickFile();
+
+    await waitFor(() => expect(onChange).toHaveBeenCalled());
+    expect(screen.queryByTestId("catalog-reference-consent-sheet")).toBeNull();
   });
 });
 
@@ -232,13 +281,27 @@ test("外すと null を渡し、プレビューの URL を放す", () => {
 test("「使える見本・使えない見本」をあとから見返せる(見返しても上げない・「次からは出ません」は出さない)", async () => {
   renderPicker({ consented: true });
 
-  fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentReopen" }));
+  fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentTitle" }));
   expect(screen.getByTestId("catalog-reference-consent-sheet")).toBeTruthy();
   expect(screen.queryByText("catalogReferenceConsentOnce", { exact: false })).toBeNull();
 
   fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentAgree" }));
   await waitFor(() => expect(screen.queryByTestId("catalog-reference-consent-sheet")).toBeNull());
   expect(mockPrepare).not.toHaveBeenCalled();
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test("まだ同意していない人が見返して「わかりました」を押しても、同意にはしない(選んだら同意の画面を出す)", async () => {
+  renderPicker({ consented: false });
+  fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentTitle" }));
+  fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentAgree" }));
+  await waitFor(() => expect(screen.queryByTestId("catalog-reference-consent-sheet")).toBeNull());
+  expect(window.localStorage.getItem(CONSENT_GIVEN_KEY)).toBeNull();
+
+  pickFile();
+
+  expect(screen.getByTestId("catalog-reference-consent-sheet")).toBeTruthy();
+  expect(screen.getByText("catalogReferenceConsentOnce", { exact: false })).toBeTruthy();
   expect(fetchMock).not.toHaveBeenCalled();
 });
 

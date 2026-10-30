@@ -4,6 +4,8 @@ import { useTranslations } from "next-intl";
 import { ArrowRight, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { cn } from "@/lib/utils";
+import { REFERENCE_STRIPES_CLASS } from "./reference-styles";
 
 interface CatalogReferenceIntroSheetProps {
   open: boolean;
@@ -12,7 +14,8 @@ interface CatalogReferenceIntroSheetProps {
 
 const STEP_KEYS = [
   "catalogReferenceIntroStep1",
-  "catalogReferenceIntroStep2",
+  // 作る画面の一言と同じ文(「見本の画像は、あなたと運営だけが見られます」)
+  "catalogReferenceHint",
   "catalogReferenceIntroStep3",
 ] as const;
 
@@ -46,7 +49,12 @@ export function CatalogReferenceIntroSheet({ open, onOpenChange }: CatalogRefere
               {t("catalogReferenceOwnImage")}
             </span>
             <Plus className="h-4 w-4 flex-none text-muted-foreground" />
-            <span className="flex aspect-[3/4] w-20 items-center justify-center rounded-lg bg-[repeating-linear-gradient(45deg,#ede9fe_0_8px,#f5f3ff_8px_16px)] text-xs text-violet-800">
+            <span
+              className={cn(
+                "flex aspect-[3/4] w-20 items-center justify-center rounded-lg text-xs text-violet-800",
+                REFERENCE_STRIPES_CLASS,
+              )}
+            >
               {t("catalogReferenceImageAlt")}
             </span>
             <ArrowRight className="h-4 w-4 flex-none text-muted-foreground" />

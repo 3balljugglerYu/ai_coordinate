@@ -92,7 +92,7 @@ export function CatalogReferenceConsentSheet({
               href={localizePublicPath("/community-guidelines", locale)}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline underline-offset-2"
+              className="inline-flex min-h-11 items-center underline underline-offset-2"
             >
               {t("catalogReferenceConsentGuidelines")}
             </a>

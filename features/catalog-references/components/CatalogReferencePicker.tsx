@@ -11,13 +11,16 @@ import {
   type ReferenceImageProblem,
 } from "@/features/catalog-references/lib/prepare-reference-image";
 import {
+  hasGivenCatalogReferenceConsent,
   hasSeenCatalogReferenceIntro,
+  markCatalogReferenceConsentGiven,
   markCatalogReferenceIntroSeen,
-} from "@/features/catalog-references/lib/intro-seen";
+} from "@/features/catalog-references/lib/local-flags";
 import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { CatalogReferenceConsentSheet } from "./CatalogReferenceConsentSheet";
 import { CatalogReferenceIntroSheet } from "./CatalogReferenceIntroSheet";
+import { REFERENCE_STRIPES_CLASS } from "./reference-styles";
 
 /** 上げ終えた見本(id はサーバーが返したもの。画像の場所は持たない) */
 export interface CatalogReferenceValue {
@@ -72,7 +75,9 @@ const noopSubscribe = () => () => {};
  * 見本を使える人(運営が選んだ人)にだけ出す。計画: docs/planning/i2i-catalog-review-implementation-plan.md §10
  *
  * - 見本を初めて選んだ直後に1回だけ「使える見本・使えない見本」を出し、「わかりました」で上げる
- *   (閉じたら上げない。2回目からは出さない。あとから見返すこともできる)
+ *   (閉じたら上げない。あとから見返すこともできる。見返して「わかりました」を押しても同意にはしない)
+ * - 同意済みとみなすのは、前に見本を上げたことがある(サーバーの値)・この画面で同意した・この端末で同意した、のどれか
+ *   (上げるのに失敗して見本の行ができなくても、「次からは出ません」のとおり出さない)
  * - 選んだら、API の決まり(縦横とも 768〜4096px・4MB まで)に合わせて手元で縮め、POST /api/catalog-references に上げる
  *   (HEIC はブラウザで読めないので受け付けない)
  * - 見本を使える人に最初の1回だけ「先行公開」の案内を出す(前に見本を上げた人には出さない)
@@ -87,12 +92,23 @@ export function CatalogReferencePicker({
 }: CatalogReferencePickerProps) {
   const t = useTranslations("free");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [agreed, setAgreed] = useState(consented);
+  const [agreedInPage, setAgreedInPage] = useState(false);
+  // サーバーの値はあとから変わることがある(戻るで古い値が出て、読み直すと true になる)ので、毎回合わせて見る
+  const consentGivenOnDevice = useSyncExternalStore(
+    noopSubscribe,
+    () => !consented && hasGivenCatalogReferenceConsent(),
+    () => false,
+  );
+  const agreed = consented || agreedInPage || consentGivenOnDevice;
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // 同意の画面を出している間、選んだ画像を持っておく(同意したら上げる)
   const [pendingFile, setPendingFile] = useState<File | null>(null);
-  const [viewingConsent, setViewingConsent] = useState(false);
+  // 開いたときの使い方を、閉じていく間も変えずに持つ(閉じる途中で文が変わらないように)
+  const [consentSheet, setConsentSheet] = useState<{ open: boolean; mode: "consent" | "view" }>({
+    open: false,
+    mode: "view",
+  });
 
   // 案内は、前に見本を上げたことがなく、まだ見ていない人にだけ出す(SSR では出さない)
   const introEligible = useSyncExternalStore(
@@ -159,19 +175,23 @@ export function CatalogReferencePicker({
     }
     setError(null);
     setPendingFile(file);
+    setConsentSheet({ open: true, mode: "consent" });
   };
 
   const closeConsent = () => {
     // 同意せずに閉じたら、選んだ画像は上げない
     setPendingFile(null);
-    setViewingConsent(false);
+    setConsentSheet((current) => ({ ...current, open: false }));
   };
 
   const handleAgree = () => {
     const file = pendingFile;
-    setAgreed(true);
     closeConsent();
-    if (file) void upload(file);
+    // 見返しただけのときは閉じるだけ(同意の画面を通らずに同意にしない)
+    if (consentSheet.mode !== "consent" || !file) return;
+    setAgreedInPage(true);
+    markCatalogReferenceConsentGiven();
+    void upload(file);
   };
 
   const closeIntro = () => {
@@ -184,7 +204,8 @@ export function CatalogReferencePicker({
       <div className="grid grid-cols-2 gap-3">
         <div className="min-w-0 space-y-1.5">
           {ownImage}
-          <p className="text-center text-xs text-muted-foreground">
+          {/* 読み上げでは、うちの子の欄の見出し(画面には出さない)で読む */}
+          <p className="text-center text-xs text-muted-foreground" aria-hidden="true">
             <span className="font-bold text-foreground">{t("catalogReferenceOwnImage")}</span>
             {t("catalogReferenceOwnImageRequired")}
           </p>
@@ -201,16 +222,19 @@ export function CatalogReferencePicker({
                   alt={t("catalogReferenceImageAlt")}
                   className="h-full w-full bg-gray-100 object-contain"
                 />
+                {/* 押せる広さは 44px、見た目の丸は 32px */}
                 <Button
                   type="button"
                   size="icon"
-                  variant="secondary"
-                  className="absolute right-2 top-2 h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/70"
+                  variant="ghost"
+                  className="group absolute right-0 top-0 h-11 w-11 rounded-full hover:bg-transparent"
                   onClick={() => onChange(null)}
                   disabled={disabled}
                   aria-label={t("catalogReferenceRemove")}
                 >
-                  <X className="h-4 w-4" />
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white group-hover:bg-black/70">
+                    <X className="h-4 w-4" />
+                  </span>
                 </Button>
               </>
             ) : (
@@ -221,7 +245,8 @@ export function CatalogReferencePicker({
                 aria-busy={uploading}
                 className={cn(
                   "flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300 p-2 text-center text-xs font-medium text-violet-800",
-                  "bg-[repeating-linear-gradient(45deg,#ede9fe_0_8px,#f5f3ff_8px_16px)] transition-colors hover:border-violet-400",
+                  REFERENCE_STRIPES_CLASS,
+                  "transition-colors hover:border-violet-400",
                   "disabled:cursor-not-allowed disabled:opacity-70",
                 )}
               >
@@ -261,24 +286,24 @@ export function CatalogReferencePicker({
         </p>
       ) : null}
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {t("catalogReferenceHint")}{" "}
+      <div className="flex flex-wrap items-center gap-x-1 text-xs leading-relaxed text-muted-foreground">
+        <p>{t("catalogReferenceHint")}</p>
         <button
           type="button"
-          className="underline underline-offset-2 hover:text-foreground"
-          onClick={() => setViewingConsent(true)}
+          className="inline-flex min-h-11 items-center underline underline-offset-2 hover:text-foreground"
+          onClick={() => setConsentSheet({ open: true, mode: "view" })}
         >
-          {t("catalogReferenceConsentReopen")}
+          {t("catalogReferenceConsentTitle")}
         </button>
-      </p>
+      </div>
 
       <CatalogReferenceConsentSheet
-        open={pendingFile !== null || viewingConsent}
+        open={consentSheet.open}
         onOpenChange={(open) => {
           if (!open) closeConsent();
         }}
         onAgree={handleAgree}
-        mode={pendingFile !== null ? "consent" : "view"}
+        mode={consentSheet.mode}
       />
       <CatalogReferenceIntroSheet
         open={introOpen}

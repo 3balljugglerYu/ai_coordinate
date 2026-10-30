@@ -72,6 +72,7 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
     ...layout
   }: {
     label?: string;
+    hideLabel?: boolean;
     aspectRatio?: number;
     onImageUpload: (image: {
       file: File;
@@ -233,9 +234,13 @@ describe("見本の欄の出し分け", () => {
 
     expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
     expect(screen.getByText("catalogReferenceImagesLabel")).toBeTruthy();
-    // うちの子の欄は並べた中にあり、見出しを消して縦長にする
+    // うちの子の欄は並べた中にあり、見出しは読み上げだけに残して縦長にする
     expect(within(screen.getByTestId("mock-reference-picker")).getByTestId("mock-image-uploader")).toBeTruthy();
-    expect(mockImageUploader).toHaveBeenLastCalledWith({ label: "", aspectRatio: 3 / 4 });
+    expect(mockImageUploader).toHaveBeenLastCalledWith({
+      label: "catalogReferenceOwnImagecatalogReferenceOwnImageRequired",
+      hideLabel: true,
+      aspectRatio: 3 / 4,
+    });
     expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({ consented: true, value: null });
   });
 

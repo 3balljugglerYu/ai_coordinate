@@ -831,9 +831,9 @@ export function GenerationForm({
     return () => document.removeEventListener("tutorial:set-demo-image", handler);
   }, [handleImageUpload]);
 
-  // 元の画像(うちの子)を上げる部品。見本を使える人の2枚並べでは、見出しを消して縦長にする
+  // 元の画像(うちの子)を上げる部品。見本を使える人の2枚並べでは、見出しを読み上げだけに残して縦長にする
   const renderSourceImageUploader = (
-    layout: Pick<ComponentProps<typeof ImageUploader>, "label" | "aspectRatio"> = {},
+    layout: Pick<ComponentProps<typeof ImageUploader>, "label" | "hideLabel" | "aspectRatio"> = {},
   ) => (
     <ImageUploader
       onImageUpload={handleImageUpload}
@@ -869,9 +869,13 @@ export function GenerationForm({
             {canUseCatalogReference ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
           </Label>
           {canUseCatalogReference ? (
-            // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す
+            // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す)
             <CatalogReferencePicker
-              ownImage={renderSourceImageUploader({ label: "", aspectRatio: 3 / 4 })}
+              ownImage={renderSourceImageUploader({
+                label: `${freeT("catalogReferenceOwnImage")}${freeT("catalogReferenceOwnImageRequired")}`,
+                hideLabel: true,
+                aspectRatio: 3 / 4,
+              })}
               value={catalogReference}
               onChange={setCatalogReference}
               onUploadingChange={setIsCatalogReferenceUploading}

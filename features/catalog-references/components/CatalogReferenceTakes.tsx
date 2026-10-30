@@ -16,15 +16,23 @@ interface CatalogReferenceTakesProps {
   disabled?: boolean;
 }
 
-/** カードの並び(画面の案のとおり。送るときは決まった順にそろえる) */
-const DISPLAY_ORDER: CatalogReferenceTake[] = ["outfit", "pose", "angle", "background"];
-
+/** カードの中身と並び(order は画面の案の並び。送るときは決まった順にそろえる) */
 const TAKE_CARDS = {
-  outfit: { icon: Shirt, label: "catalogReferenceTakeOutfit", hint: "catalogReferenceTakeOutfitHint" },
-  pose: { icon: PersonStanding, label: "catalogReferenceTakePose", hint: "catalogReferenceTakePoseHint" },
-  angle: { icon: ScanEye, label: "catalogReferenceTakeAngle", hint: "catalogReferenceTakeAngleHint" },
-  background: { icon: Mountain, label: "catalogReferenceTakeBackground", hint: "catalogReferenceTakeBackgroundHint" },
-} as const satisfies Record<CatalogReferenceTake, { icon: LucideIcon; label: string; hint: string }>;
+  outfit: { order: 0, icon: Shirt, label: "catalogReferenceTakeOutfit", hint: "catalogReferenceTakeOutfitHint" },
+  pose: { order: 1, icon: PersonStanding, label: "catalogReferenceTakePose", hint: "catalogReferenceTakePoseHint" },
+  angle: { order: 2, icon: ScanEye, label: "catalogReferenceTakeAngle", hint: "catalogReferenceTakeAngleHint" },
+  background: {
+    order: 3,
+    icon: Mountain,
+    label: "catalogReferenceTakeBackground",
+    hint: "catalogReferenceTakeBackgroundHint",
+  },
+} as const satisfies Record<CatalogReferenceTake, { order: number; icon: LucideIcon; label: string; hint: string }>;
+
+/** まねるものを足したら、TAKE_CARDS が型で足りないと言うので、カードの出し忘れは起きない */
+const DISPLAY_ORDER: CatalogReferenceTake[] = [...CATALOG_REFERENCE_TAKES].sort(
+  (a, b) => TAKE_CARDS[a].order - TAKE_CARDS[b].order,
+);
 
 /**
  * 見本を入れたあとに出す部分(第2案)。計画: docs/planning/i2i-catalog-review-implementation-plan.md §10

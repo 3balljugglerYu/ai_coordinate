@@ -418,9 +418,9 @@ Main errors:
 - Access: `user session`（見本を使える人だけ。ほかの人は `403` + `CATALOG_REFERENCE_NOT_ALLOWED`）。よそのサイトからの送信は止める
 - Request: `multipart/form-data`
   - `file`: 画像（JPEG・PNG・WebP・HEIC。4MB まで・縦横とも768px以上4096px以下）。基盤（Vercel）の本文の上限が約4.5MB なので、画面で送る前に縮める。中身で形式を確かめ、WebP に作り直して位置情報などを消す
-  - `copyrightConsent`: `"true"`（使える見本・使えない見本の案内への同意。無ければ `400`）
+  - `copyrightConsent`: `"true"`（使える見本・使えない見本の案内への同意。無ければ `400`）。画面は初めて見本を入れたときだけ案内を出すので、行に残す同意の時刻は、初めて同意したとき（本人の前の見本の行のいちばん古い時刻）を引き継ぐ。前の行が無ければ、上げた時刻
 - Response: `201` `{ "id": "uuid" }`。置き場所は返さない（非公開のバケット `catalog-references` に置く）
-- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（保存に失敗）
+- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（同意の時刻を読めない・保存に失敗）
 
 ### `POST /api/catalog-references/review`
 

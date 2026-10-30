@@ -43,15 +43,16 @@ export async function FreePageBody() {
     return <FreeGuestLoginCta />;
   }
 
-  // 見本(参照画像)を使える人か。運営が選んだ人だけ(一覧が空ならだれも使えない。fail-closed)
-  const [profile, catalogReferenceAvailable] = await Promise.all([
+  // 見本(参照画像)を使える人か。運営が選んだ人だけ(一覧が空ならだれも使えない。fail-closed)。
+  // 使える人だけ、続けて見本を前に上げたことがあるかを確かめる(初めてのときだけ同意の画面と案内を出す)。
+  // プロフィールの読み込みと並べて走らせ、一般の利用者の読み込みは増やさない
+  const [profile, catalogReference] = await Promise.all([
     getUserProfileServer(user.id),
-    isInI2iCatalogAllowlist(user.id),
+    isInI2iCatalogAllowlist(user.id).then(async (available) => ({
+      available,
+      consented: available ? await hasCatalogReferenceConsent(user.id) : false,
+    })),
   ]);
-  // 見本を前に上げたことがあるか(初めてのときだけ同意の画面と案内を出す)。使える人のときだけ確かめる
-  const catalogReferenceConsented = catalogReferenceAvailable
-    ? await hasCatalogReferenceConsent(user.id)
-    : false;
 
   return (
     <>
@@ -87,8 +88,8 @@ export async function FreePageBody() {
             nameInputAvailable={isNameInputAvailable(user.id)}
             nameInputUnlimited={isAdminViewer(user.id)}
             // 見本の欄(運営が選んだ人だけ。docs/planning/i2i-catalog-review-implementation-plan.md)
-            catalogReferenceAvailable={catalogReferenceAvailable}
-            catalogReferenceConsented={catalogReferenceConsented}
+            catalogReferenceAvailable={catalogReference.available}
+            catalogReferenceConsented={catalogReference.consented}
           />
         </Suspense>
 
