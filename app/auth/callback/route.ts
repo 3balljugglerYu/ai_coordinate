@@ -1,6 +1,11 @@
 import { connection, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
+import {
+  FIRST_VISIT_COOKIE,
+  readFirstVisitFromCookieHeader,
+} from "@/features/auth/lib/first-visit";
 import {
   AD_SIGNUP_COOKIE,
   AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
@@ -68,6 +73,8 @@ export async function GET(request: Request) {
   if (code) {
     // 広告の Pixel に「登録した」を知らせるか(1人1回。下の updateUser で送った印を残せたときだけ)
     let shouldSetAdSignupCookie = false;
+    // 最初に来た場所を書いたか(書いたら cookie を消す)
+    let shouldClearFirstVisitCookie = false;
     const supabase = await createClient();
     const { data: sessionData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
 
@@ -106,6 +113,39 @@ export async function GET(request: Request) {
         shouldUpdateRecentUserMetadata
       ) {
         nextUserMetadata.signup_source = signupSource;
+      }
+
+      // 最初に来た場所(管理ダッシュボード P3-3)。OAuth の登録は user_metadata を通らないので、ここで書く。
+      // メールでの登録は user_metadata にあり、トリガーが書いているので何もしない。
+      // 書けたら、user_metadata に印を付け(次のログインでは書かない)、cookie を消す。
+      // 書けなかったら cookie は残す(次のログインでもう一度試す)。すでに行があれば書き直さない。
+      // 運営(service_role)だけが読み書きする表なので、管理用の接続で書く。
+      const firstVisit = readFirstVisitFromCookieHeader(request.headers.get("cookie"));
+      if (
+        firstVisit &&
+        shouldUpdateRecentUserMetadata &&
+        !sessionData.user.user_metadata?.first_visit_channel
+      ) {
+        try {
+          const { error: firstVisitError } = await createAdminClient()
+            .from("user_first_visits")
+            .upsert(
+              {
+                user_id: sessionData.user.id,
+                channel: firstVisit.channel,
+                landing_path: firstVisit.landingPath,
+              },
+              { onConflict: "user_id", ignoreDuplicates: true },
+            );
+          if (firstVisitError) {
+            console.error("Failed to record first visit during auth callback:", firstVisitError);
+          } else {
+            nextUserMetadata.first_visit_channel = firstVisit.channel;
+            shouldClearFirstVisitCookie = true;
+          }
+        } catch (err) {
+          console.error("Failed to record first visit during auth callback:", err);
+        }
       }
 
       if (Object.keys(nextUserMetadata).length > 0) {
@@ -205,6 +245,10 @@ export async function GET(request: Request) {
           httpOnly: false,
         });
       }
+    }
+
+    if (shouldClearFirstVisitCookie) {
+      response.cookies.set(FIRST_VISIT_COOKIE, "", { maxAge: 0, path: "/" });
     }
 
     return response;

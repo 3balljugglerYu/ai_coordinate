@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { withFirstVisitParamFromDocument } from "../lib/first-visit";
 
 /** WebView を提供しているアプリの種別 */
 export type WebViewApp = "line" | "x" | "facebook" | "instagram" | "tiktok" | "wechat" | "other" | null;
@@ -50,7 +51,8 @@ function getAppDisplayName(app: WebViewApp): string {
  * 現在のURLに openExternalBrowser=1 を付与して返す（LINE用）。
  */
 export function buildLineExternalUrl(): string {
-  const url = new URL(window.location.href);
+  // 外のブラウザには cookie が移らないので、最初に来た場所を URL に載せる
+  const url = new URL(withFirstVisitParamFromDocument(window.location.href));
   url.searchParams.set("openExternalBrowser", "1");
   return url.toString();
 }

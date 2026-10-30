@@ -12,6 +12,7 @@ import { getSiteUrlForClient } from "@/lib/public-env";
 import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 import type { SignupSource } from "./signup-source";
+import { clearFirstVisitCookieInDocument, readFirstVisitFromCookieHeader } from "./first-visit";
 import {
   DEFAULT_LOCALE,
   getLocaleCookieMaxAge,
@@ -652,12 +653,21 @@ export async function signUp(
 
   const signUpOptions: {
     emailRedirectTo: string;
-    data?: { referral_code?: string; signup_source?: SignupSource };
+    data?: {
+      referral_code?: string;
+      signup_source?: SignupSource;
+      first_visit_channel?: string;
+      first_landing_path?: string;
+    };
   } = {
     emailRedirectTo: callbackUrl.toString(),
   };
 
-  if (referralCode || signupSource) {
+  // 最初に来た場所(管理ダッシュボード P3-3)。トリガー handle_new_user が user_first_visits へ写す
+  const firstVisit =
+    typeof document === "undefined" ? null : readFirstVisitFromCookieHeader(document.cookie);
+
+  if (referralCode || signupSource || firstVisit) {
     signUpOptions.data = {};
 
     if (referralCode) {
@@ -666,6 +676,13 @@ export async function signUp(
 
     if (signupSource) {
       signUpOptions.data.signup_source = signupSource;
+    }
+
+    if (firstVisit) {
+      signUpOptions.data.first_visit_channel = firstVisit.channel;
+      if (firstVisit.landingPath) {
+        signUpOptions.data.first_landing_path = firstVisit.landingPath;
+      }
     }
   }
 
@@ -693,6 +710,15 @@ export async function signUp(
       locale
     );
     throw new Error(translatedMessage);
+  }
+
+  // 最初に来た場所は user_metadata に入れたので消す(同じブラウザで別の人が登録したとき、
+  // 前の人の値を使わないように)。次に開いた画面で、サーバーが新しく付け直す。
+  // 登録済みのメールでは、Supabase が人を作らずに見せかけの成功を返す(identities が空)。
+  // そのときは何も記録されていないので消さない
+  const createdNewUser = (data.user?.identities?.length ?? 0) > 0;
+  if (firstVisit && createdNewUser) {
+    clearFirstVisitCookieInDocument();
   }
 
   // メール確認が必要な場合の情報を返す
