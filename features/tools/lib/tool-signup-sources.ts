@@ -1,7 +1,7 @@
 /**
  * ツールページの流入元タグ。
  *
- * `profiles.signup_source` に残す値で、書式は `parseSignupSource` と
+ * `user_signup_sources.signup_source` に残す値で、書式は `parseSignupSource` と
  * DB の CHECK に合わせる(小文字英数 + `_` `-`、1..40文字)。
  *
  * ツールは未ログインで完結するため、ここを付けないと

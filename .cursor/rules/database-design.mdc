@@ -338,9 +338,10 @@ alwaysApply: false
 
 #### `profiles`
 - 主キー: `id`
-- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `signup_source`, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `coordinate_stocks_tab_seen_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
+- 主要カラム: `user_id`, `nickname`, `bio`, `avatar_url`, `website_url`, `subscription_plan`, `signup_source`（使わない・常に NULL。下の注）, `last_daily_post_bonus_at`, `last_streak_login_at`, `streak_days`, `referral_code`, `last_coordinate_toast_ack_at`, `coordinate_stocks_tab_seen_at`, `deactivation_requested_at`, `deletion_scheduled_at`, `deactivated_at`, `reactivated_at`, `created_at`, `updated_at`
 - 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
-- 制約: `user_id` UNIQUE、`referral_code` UNIQUE、`signup_source` は書式のみ `^[a-z0-9_-]{1,40}$`（`style` / `wardrobe` に加え、企画キー等の任意タグを保持する）
+- 制約: `user_id` UNIQUE、`referral_code` UNIQUE、`signup_source` は書式のみ `^[a-z0-9_-]{1,40}$`
+- 注: `signup_source`（登録した経路）は 20261030160000 で `user_signup_sources` に移した。だれでも読める表なので、ここには書かない。切り替えの間に古いコードが書いても、トリガー `trg_divert_profile_signup_source` が新しい表に移して NULL にする。列とトリガーは、新しいコードが出たあと消す
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
 - ⚠️ 公開 `SELECT` なので、ここに入れた列はだれでも読める。人に見せたくない記録（来た場所など）は別の表にする（`user_first_visits` を参照）
 
@@ -348,7 +349,15 @@ alwaysApply: false
 - 主キー: `user_id`（`auth.users.id` を参照・ON DELETE CASCADE）
 - 主要カラム: `channel`（`x_ad` / `x` / `meta` / `search` / `direct` / `other`）, `landing_path`（最初に開いた画面のパス。`/` で始まり、`?` と `#` を含まない・200文字まで。NULL 可）, `created_at`
 - RLS: 有効・policy なし。service_role だけが読み書きする（20261030100000）
-- 注: 管理ダッシュボード P3-3。cookie `persta_first_visit`（30日・最初に来た時だけ・`proxy.ts` がページを開いた最初の通信で付ける）の値を、登録のときに書く。メールの登録は user_metadata の `first_visit_channel`・`first_landing_path` を `handle_new_user` が写し、OAuth の登録は `/auth/callback` が書く（すでにあれば書き直さない）。`profiles.signup_source`（目印・企画の既定値）とは別に持つ。見分け方は `features/auth/lib/first-visit.ts`
+- 注: 管理ダッシュボード P3-3。cookie `persta_first_visit`（30日・最初に来た時だけ・`proxy.ts` がページを開いた最初の通信で付ける）の値を、登録のときに書く。メールの登録は user_metadata の `first_visit_channel`・`first_landing_path` を `handle_new_user` が写し、OAuth の登録は `/auth/callback` が書く（すでにあれば書き直さない）。`user_signup_sources`（目印・企画の既定値）とは別に持つ。見分け方は `features/auth/lib/first-visit.ts`
+
+#### `user_signup_sources`
+- 主キー: `user_id`（`auth.users.id` を参照・ON DELETE CASCADE）
+- 主要カラム: `signup_source`（登録した経路。書式のみ `^[a-z0-9_-]{1,40}$`。`style` / `wardrobe` / 企画キー / 広告の目印など。値の許可リストは持たない）, `signed_up_at`（登録した時刻・`auth.users.created_at`。`profiles.created_at` は利用者が書き換えられるので使わない。管理画面の日ごとの集計に使う）, `created_at`
+- RLS: 有効・policy なし。service_role だけが読み書きする（20261030160000）
+- 書く: メールの登録は user_metadata の `signup_source` を `handle_new_user` が、OAuth の登録は `/auth/callback` が、どちらも `record_signup_source(p_user_id, p_signup_source)`（service_role のみ・すでにあれば書き直さない・`signed_up_at` は `auth.users.created_at`）で書く
+- 読む: 管理画面だけ（`get_ad_signup_funnel`・`list_recent_signup_sources`・`features/admin-dashboard/lib/ad-stats/ad-stats-repository.ts`・`get-admin-dashboard-data.ts`）
+- 注: 前は `profiles.signup_source` にあり、ログインしていない人にも見えていた（2026-10-30 に移した）
 
 ### 管理・モデレーション・運用
 
@@ -419,7 +428,7 @@ alwaysApply: false
 
 #### `ad_platform_ads`
 - 主キー: `id`
-- 主要カラム: `platform`, `ad_key`（UNIQUE(`platform`, `ad_key`)）, `ad_name`, `signup_source`（`profiles.signup_source` と同じ書式・CHECK）, `updated_by`, `created_at`, `updated_at`
+- 主要カラム: `platform`, `ad_key`（UNIQUE(`platform`, `ad_key`)）, `ad_name`, `signup_source`（`user_signup_sources.signup_source` と同じ書式・CHECK）, `updated_by`, `created_at`, `updated_at`
 - trigger: `trg_update_ad_platform_ads_updated_at`（BEFORE UPDATE で `updated_at`）
 - RLS: 有効・policy なし。service_role だけが読み書きする（20261029130000）
 - 注: 広告ごとに、登録の目印を覚える。取り込みで行ができ（名前だけ更新し、選んだ目印は消さない）、目印は管理画面で選ぶ。目印から、その広告で来た人の登録・生成・投稿を数える（運営は除く）

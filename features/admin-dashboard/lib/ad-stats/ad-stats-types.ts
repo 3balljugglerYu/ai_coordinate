@@ -77,5 +77,5 @@ export function isExportGroupKey(adKey: string): boolean {
   return adKey.startsWith(AD_EXPORT_GROUP_KEY_PREFIX);
 }
 
-/** profiles.signup_source と同じ書式（DB の CHECK と一致させる） */
+/** user_signup_sources.signup_source と同じ書式（DB の CHECK と一致させる） */
 export const AD_SIGNUP_SOURCE_PATTERN = /^[a-z0-9_-]{1,40}$/;

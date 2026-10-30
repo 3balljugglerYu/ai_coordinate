@@ -37,7 +37,7 @@ function buildCollectionSignupSource(
  *
  * categoryKey を渡すと `?signup_source=<key>` が付く。着地時に
  * SignupSourceCapture が first-touch で cookie に保存し、登録まで到達すると
- * profiles.signup_source に残る = 「どの企画のシェア経由で登録したか」が取れる。
+ * user_signup_sources に残る = 「どの企画のシェア経由で登録したか」が取れる。
  */
 export function buildPublicMountUrl(
   completionId: string,

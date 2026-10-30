@@ -4,8 +4,9 @@
  * 「広告の成果」の画面に渡すものを読む（getAdStatsOverview）。
  *
  * ここで守ること:
- *  - 日ごとの登録（profiles）が読めなくても、画面全体は出す（登録のグラフだけ外す）
- *  - 日ごとの登録は、グラフの期間（日本時間）の中だけを読む
+ *  - 日ごとの登録（user_signup_sources）が読めなくても、画面全体は出す（登録のグラフだけ外す）
+ *  - 日ごとの登録は、グラフの期間（日本時間）の中だけを、運営だけが読む表から読む
+ *    （だれでも読める profiles からは読まない）
  *  - 日ごとの合計の元（daily）は画面へ渡さない（dailyChart に入れてある）
  */
 
@@ -57,7 +58,7 @@ function statRow(overrides: Record<string, unknown>) {
   };
 }
 
-function setup(profiles: Result) {
+function setup(signupSources: Result) {
   const tables = {
     ad_platform_daily_stats: table({
       data: [statRow({ stat_date: "2026-10-26" }), statRow({ stat_date: "2026-10-29" })],
@@ -67,7 +68,7 @@ function setup(profiles: Result) {
       data: [{ id: "a1", platform: "x", ad_key: "111", ad_name: "変身", signup_source: "tag_x" }],
       error: null,
     }),
-    profiles: table(profiles),
+    user_signup_sources: table(signupSources),
   };
   const rpc = jest.fn(async (name: string) =>
     name === "get_ad_signup_funnel"
@@ -105,8 +106,8 @@ describe("getAdStatsOverview", () => {
   it("日ごとの登録は、グラフの期間（日本時間の最初の日 0:00 〜 最後の日の翌日 0:00）だけを読み、運営を除く", async () => {
     const { client, tables } = setup({
       data: [
-        { id: "p1", user_id: "u1", signup_source: "tag_x", created_at: "2026-10-27T03:00:00Z" },
-        { id: "p2", user_id: "operator", signup_source: "tag_x", created_at: "2026-10-27T04:00:00Z" },
+        { id: "u1", signup_source: "tag_x", signed_up_at: "2026-10-27T03:00:00Z" },
+        { id: "operator", signup_source: "tag_x", signed_up_at: "2026-10-27T04:00:00Z" },
       ],
       error: null,
     });
@@ -114,11 +115,13 @@ describe("getAdStatsOverview", () => {
     const overview = await getAdStatsOverview(client);
 
     // 広告は 10/26〜10/29、7日後は 11/05 だが今日（10/30）で止める
-    expect(tables.profiles.calls).toEqual(
+    expect(client.from).not.toHaveBeenCalledWith("profiles");
+    expect(tables.user_signup_sources.calls).toEqual(
       expect.arrayContaining([
         ["in", ["signup_source", ["tag_x"]]],
-        ["gte", ["created_at", "2026-10-25T15:00:00.000Z"]],
-        ["lt", ["created_at", "2026-10-30T15:00:00.000Z"]],
+        ["gte", ["signed_up_at", "2026-10-25T15:00:00.000Z"]],
+        ["lt", ["signed_up_at", "2026-10-30T15:00:00.000Z"]],
+        ["order", ["user_id", { ascending: true }]],
       ]),
     );
     expect(overview.dailyChart?.signupsAvailable).toBe(true);

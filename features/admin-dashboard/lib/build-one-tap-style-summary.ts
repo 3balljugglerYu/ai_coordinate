@@ -183,7 +183,7 @@ export function buildOneTapStyleSummary(params: {
     params.previousStart,
     params.currentStart
   );
-  // 保存導線経由の「新規登録到達」: profiles.signup_source = 'wardrobe'。
+  // 保存導線経由の「新規登録到達」: user_signup_sources.signup_source = 'wardrobe'。
   const wardrobeSignupsCurrent = countProfiles(
     params.profiles,
     "wardrobe",
