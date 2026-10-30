@@ -17,6 +17,7 @@ import { CachedGenerationPercoinBalance } from "@/features/credits/components/Ca
 import { CachedGeneratedImageGallery } from "./CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
+import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
 import { type Locale } from "@/i18n/config";
 import { FreeGuestLoginCta } from "./FreeGuestLoginCta";
 
@@ -41,7 +42,11 @@ export async function FreePageBody() {
     return <FreeGuestLoginCta />;
   }
 
-  const profile = await getUserProfileServer(user.id);
+  // 見本(参照画像)を使える人か。運営が選んだ人だけ(一覧が空ならだれも使えない。fail-closed)
+  const [profile, catalogReferenceAvailable] = await Promise.all([
+    getUserProfileServer(user.id),
+    isInI2iCatalogAllowlist(user.id),
+  ]);
 
   return (
     <>
@@ -76,6 +81,8 @@ export async function FreePageBody() {
             // 名前の欄(公開前は運営だけ。docs/planning/name-input-slot-plan.md)
             nameInputAvailable={isNameInputAvailable(user.id)}
             nameInputUnlimited={isAdminViewer(user.id)}
+            // 見本の欄(運営が選んだ人だけ。docs/planning/i2i-catalog-review-implementation-plan.md)
+            catalogReferenceAvailable={catalogReferenceAvailable}
           />
         </Suspense>
 

@@ -97,6 +97,8 @@ interface GenerationFormContainerProps {
   gachaSplitAvailable?: boolean;
   /** 「名前を入れられるようにする」を出してよいか。GenerationForm の同名 props を参照 */
   nameInputAvailable?: boolean;
+  /** 見本(参照画像)の欄を出すか(見本を使える人だけ。/free のサーバーで一覧を確かめて渡す) */
+  catalogReferenceAvailable?: boolean;
   /** 名前の欄の数を制限しない(運営だけ) */
   nameInputUnlimited?: boolean;
   /** カタログから使う人の名前の欄。GenerationForm の同名 props を参照 */
@@ -198,6 +200,7 @@ export function GenerationFormContainer({
   gachaSplitAvailable = false,
   nameInputAvailable = false,
   nameInputUnlimited = false,
+  catalogReferenceAvailable = false,
   lockedNameInput = null,
   lockedNameInputLoading = false,
   gachaUnlimited = false,
@@ -882,6 +885,9 @@ export function GenerationFormContainer({
     sourcePostId?: string;
     /** 名前の欄に入れる名前(じゆうモード)。 */
     nameInput?: string;
+    /** 見本の id とまねるもの(じゆうモードで見本を使える人だけ) */
+    referenceImageId?: string;
+    referenceTakes?: import("@/shared/generation/catalog-reference").CatalogReferenceTake[];
   }) => {
     const showGenerationErrorToast = (message: string) => {
       toast({
@@ -1019,6 +1025,8 @@ export function GenerationFormContainer({
           // 派生生成。本文は送らない（schema が同時指定を 400 にする）。
           sourcePostId: data.sourcePostId,
           nameInput: data.nameInput,
+          referenceImageId: data.referenceImageId,
+          referenceTakes: data.referenceTakes,
         },
         asyncApiMessages
       );
@@ -1294,6 +1302,7 @@ export function GenerationFormContainer({
         gachaPromptAvailable={gachaPromptAvailable}
         gachaSplitAvailable={gachaSplitAvailable}
         nameInputAvailable={nameInputAvailable}
+        catalogReferenceAvailable={catalogReferenceAvailable}
         nameInputUnlimited={nameInputUnlimited}
         lockedNameInput={lockedNameInput}
         lockedNameInputLoading={lockedNameInputLoading}

@@ -25,7 +25,8 @@ import {
 } from "./PromptVisibilityField";
 import { useUnreadNotificationCount } from "@/features/notifications/components/UnreadNotificationProvider";
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
-import { isSuspendedPublishError } from "../lib/post-error-codes";
+import { isReviewPendingPublishError, isSuspendedPublishError } from "../lib/post-error-codes";
+
 import {
   beforeImageUrlCache,
   cacheBeforeImageUrl,
@@ -40,6 +41,17 @@ import {
   persistPendingHomePostRefresh,
 } from "../lib/home-post-refresh";
 import type { PostImageResponse } from "../types";
+
+/**
+ * 審査に出す API(POST /api/catalog-references/review)の断りのうち、押し直しても変わらないもの。
+ * 文言は言語ごとに出す(API の文は日本語だけ)。審査中は「出せた」と同じ扱いにする。
+ */
+const REVIEW_SUBMIT_SETTLED = {
+  CATALOG_REVIEW_ALREADY_SUBMITTED: "catalogReviewAlreadySubmitted",
+  CATALOG_REVIEW_ALREADY_APPROVED: "catalogReviewAlreadyApproved",
+  CATALOG_REVIEW_REJECTED: "catalogReviewRejected",
+  CATALOG_REVIEW_REFERENCE_UNAVAILABLE: "catalogReviewReferenceUnavailable",
+} as const;
 
 /**
  * 入力欄にフォーカスしたとき、その欄をラベルごと画面の上端へ寄せる。
@@ -119,6 +131,12 @@ export function PostModal({
   const [error, setError] = useState<string | null>(null);
   // 公開停止中コンテンツの再投稿を試みたときの案内ダイアログ
   const [suspendedDialogOpen, setSuspendedDialogOpen] = useState(false);
+  // 見本(参照画像)を使った作品で、審査が済んでいないために投稿を断られた
+  const [reviewPending, setReviewPending] = useState(false);
+  // idle: 押せる / submitting: 送っている / settled: 出せた・押し直しても変わらない(ボタンを消す)
+  const [reviewSubmitState, setReviewSubmitState] = useState<"idle" | "submitting" | "settled">("idle");
+  const [reviewSubmitMessage, setReviewSubmitMessage] = useState<string | null>(null);
+  const [reviewSubmitError, setReviewSubmitError] = useState<string | null>(null);
   // 呼び出し元から beforeImageUrl が渡されていない場合に自動取得した URL。
   // ImageModal が事前に取得済みの値を共有 cache から同期取得することで、
   // モーダルが開いた瞬間に Before 画像が表示できるようにする。
@@ -169,6 +187,11 @@ export function PostModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    // 断られた理由や審査の状態が変わることがあるので、審査の枠は断られるたびに一から出し直す
+    setReviewPending(false);
+    setReviewSubmitState("idle");
+    setReviewSubmitMessage(null);
+    setReviewSubmitError(null);
 
     if (caption.length > MAX_CAPTION_LENGTH) {
       setError(t("captionTooLong", { max: MAX_CAPTION_LENGTH }));
@@ -249,6 +272,11 @@ export function PostModal({
         return;
       }
 
+      // 見本を使った作品は、運営の承認のあとで投稿できる。断られたら、その場で審査に出せるようにする
+      if (isReviewPendingPublishError(err)) {
+        setReviewPending(true);
+      }
+
       // TODO: エラー監視が必要な場合は、Sentryなどの専用サービスを利用することを検討してください
       console.error("Post error:", err);
       setError(
@@ -258,6 +286,40 @@ export function PostModal({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleSubmitReview = async () => {
+    setReviewSubmitState("submitting");
+    setReviewSubmitError(null);
+    try {
+      const res = await fetch("/api/catalog-references/review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageId }),
+      });
+      const body = (await res.json().catch(() => null)) as { errorCode?: string } | null;
+      if (res.ok) {
+        setReviewSubmitState("settled");
+        setReviewSubmitMessage(t("catalogReviewSubmitted"));
+        setError(null);
+        return;
+      }
+      const settledKey =
+        body?.errorCode && Object.hasOwn(REVIEW_SUBMIT_SETTLED, body.errorCode)
+          ? REVIEW_SUBMIT_SETTLED[body.errorCode as keyof typeof REVIEW_SUBMIT_SETTLED]
+          : null;
+      if (settledKey) {
+        setReviewSubmitState("settled");
+        setReviewSubmitMessage(t(settledKey));
+        setError(null);
+        return;
+      }
+      setReviewSubmitState("idle");
+      setReviewSubmitError(t("catalogReviewSubmitFailed"));
+    } catch {
+      setReviewSubmitState("idle");
+      setReviewSubmitError(t("catalogReviewSubmitFailed"));
     }
   };
 
@@ -386,6 +448,25 @@ export function PostModal({
                   <span className="text-destructive text-right">{error}</span>
                 )}
               </div>
+              {reviewPending ? (
+                <div className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm" data-testid="catalog-review-submit">
+                  {reviewSubmitState === "settled" ? (
+                    <p>{reviewSubmitMessage}</p>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSubmitReview}
+                      pending={reviewSubmitState === "submitting"}
+                      disabled={reviewSubmitState === "submitting"}
+                    >
+                      {t("catalogReviewSubmit")}
+                    </Button>
+                  )}
+                  {reviewSubmitError ? <p className="text-destructive">{reviewSubmitError}</p> : null}
+                </div>
+              ) : null}
             </div>
 
             <div className="space-y-1">

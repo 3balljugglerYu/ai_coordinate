@@ -14,6 +14,12 @@
 export const SUBMISSION_IMAGE_MIN_DIMENSION = 768;
 
 /**
+ * 投稿画像の各辺の上限 (px)。サーバーの検証 (`creator-looks-image.ts` の MAX_DIMENSION) と、
+ * 見本を上げる前の手元の縮め方 (`prepare-reference-image.ts`) が同じ値を使う。
+ */
+export const SUBMISSION_IMAGE_MAX_DIMENSION = 4096;
+
+/**
  * 画像が下限を下回るか (= reject 対象か) を判定する。
  * 片辺でも下限未満なら true を返す。
  */

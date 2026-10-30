@@ -19,6 +19,11 @@ import { PromptInputField } from "./PromptInputField";
 import { GachaPromptField } from "./GachaPromptField";
 import { NamePromptField } from "./NamePromptField";
 import { NameInputEntryField } from "./NameInputEntryField";
+import {
+  CatalogReferenceField,
+  type CatalogReferenceValue,
+} from "@/features/catalog-references/components/CatalogReferenceField";
+import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
   checkNameInputValue,
@@ -120,6 +125,9 @@ interface GenerationFormProps {
     sourcePostId?: string;
     /** 名前の欄に入れる名前(じゆうモード。空なら送らない)。 */
     nameInput?: string;
+    /** 見本の id とまねるもの(見本を使える人が見本を選んだときだけ) */
+    referenceImageId?: string;
+    referenceTakes?: CatalogReferenceTake[];
   }) => void;
   isGenerating?: boolean;
   /**
@@ -186,6 +194,11 @@ interface GenerationFormProps {
   /** 名前の欄の数を制限しない(運営だけ。サーバーの nameInputMaxSlotsFor と同じ)。 */
   nameInputUnlimited?: boolean;
   /**
+   * 見本(参照画像)の欄を出してよいか(docs/planning/i2i-catalog-review-implementation-plan.md)。
+   * /free のサーバー側で、見本を使える人の一覧(運営が選んだ人)に入っているかを確かめて渡す。既定は出さない。
+   */
+  catalogReferenceAvailable?: boolean;
+  /**
    * カタログから使う人の名前の欄(派生生成)。原作の本文に目印があるときだけ、
    * `/api/posts/[id]/prompt-slots` から見出しなどを受け取って渡す(本文は届かない)。
    */
@@ -220,6 +233,7 @@ export function GenerationForm({
   gachaUnlimited = false,
   nameInputAvailable = false,
   nameInputUnlimited = false,
+  catalogReferenceAvailable = false,
   lockedNameInput = null,
   lockedNameInputLoading = false,
 }: GenerationFormProps) {
@@ -325,6 +339,16 @@ export function GenerationForm({
   // 送るときに目印を本文の先頭へ付ける(ガチャの欄と同じ考え方。本文に目印を出さない。2026-10-11 ユーザー指示)
   const canUseNameInput =
     isFree && !promptLocked && isAuthenticated && nameInputAvailable;
+
+  // 見本(参照画像)。見本を使える人が、自分で書く本文のときだけ(派生生成では元の作品の見本が使われる)
+  const canUseCatalogReference =
+    isFree && !promptLocked && isAuthenticated && catalogReferenceAvailable;
+  const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
+  const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
+  // 上げている間と、見本を選んだのにまねるものが無いときは送らない
+  const catalogReferenceBlocksSubmit =
+    canUseCatalogReference &&
+    (isCatalogReferenceUploading || (catalogReference !== null && catalogReference.takes.length === 0));
   const [nameSlotState, setNameSlotState] = useState<NameInputSlot | null>(null);
   const nameSlot = canUseNameInput ? nameSlotState : null;
   // 送る本文(目印＋本文＋ガチャの欄)。数と必須の判定は、これをサーバーと同じ数え方で見る
@@ -523,6 +547,7 @@ export function GenerationForm({
     if (gachaValidation && !gachaValidation.ok) return;
     if (isNameInputInvalid) return;
     if (promptLocked && lockedNameInputLoading) return;
+    if (catalogReferenceBlocksSubmit) return;
     const trimmedPrompt = promptLocked ? bodyPrompt : composeSubmittedPrompt(bodyPrompt);
 
     if (!uploadedImage && !selectedStock && !selectedGenerated) {
@@ -568,6 +593,10 @@ export function GenerationForm({
         ...((hasReachableNameSlot || showsLockedNameInput) && trialNameCheck.ok && trialNameCheck.value
           ? { nameInput: trialNameCheck.value }
           : {}),
+        // 見本を選んだときだけ送る
+        ...(canUseCatalogReference && catalogReference
+          ? { referenceImageId: catalogReference.id, referenceTakes: catalogReference.takes }
+          : {}),
       });
       return;
     }
@@ -601,7 +630,8 @@ export function GenerationForm({
     }) ||
     (gachaValidation !== null && !gachaValidation.ok) ||
     isNameInputInvalid ||
-    (promptLocked && lockedNameInputLoading);
+    (promptLocked && lockedNameInputLoading) ||
+    catalogReferenceBlocksSubmit;
 
   const handleImageUpload = useCallback((image: UploadedImage) => {
     setUploadedImage(image);
@@ -840,6 +870,16 @@ export function GenerationForm({
             disabled={isGenerating || isTutorialInProgress}
           />
         </div>
+
+        {/* 見本(参照画像)の欄(見本を使える人だけ。元の画像の下) */}
+        {canUseCatalogReference ? (
+          <CatalogReferenceField
+            value={catalogReference}
+            onChange={setCatalogReference}
+            onUploadingChange={setIsCatalogReferenceUploading}
+            disabled={isGenerating}
+          />
+        ) : null}
 
         {/* 名前の欄(カタログから使う人。画像の下。2026-10-06 ユーザー決定) */}
         {showsLockedNameInput ? (
