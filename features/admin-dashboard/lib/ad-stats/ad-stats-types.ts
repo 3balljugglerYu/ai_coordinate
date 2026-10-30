@@ -11,6 +11,12 @@ export const AD_PLATFORM_LABELS: Record<AdPlatform, string> = {
   x: "X",
 };
 
+/** グラフの媒体の色（媒体ごとに固定。白地で色覚の違いがあっても見分けられることを確かめた組み合わせ） */
+export const AD_PLATFORM_COLORS: Record<AdPlatform, string> = {
+  meta: "#7C3AED",
+  x: "#EA580C",
+};
+
 export const AD_BREAKDOWN_TYPES = [
   "none",
   "age",

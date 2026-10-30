@@ -68,6 +68,25 @@ describe("summarizeAdStats", () => {
     });
   });
 
+  it("日ごとの合計は、広告ごとの合計と同じ決まり（内訳は1種類だけ）で、媒体ごとにまとめる。書き出し全体の行は入れない", () => {
+    const rows = [
+      row({ adKey: "name:A", breakdownType: "age", breakdownValue: "25-34", spendJpy: 100, impressions: 10, linkClicks: 2 }),
+      row({ adKey: "name:A", breakdownType: "placement", breakdownValue: "Instagram / フィード", spendJpy: 100, impressions: 10, linkClicks: 2 }),
+      row({ adKey: "name:B", adName: "B", breakdownType: "age", breakdownValue: "25-34", spendJpy: 40.4, impressions: 4, linkClicks: 1 }),
+      row({ statDate: "2026-10-28", adKey: "name:A", breakdownType: "age", breakdownValue: "25-34", spendJpy: 30, impressions: 3, linkClicks: 0 }),
+      row({ platform: "x", adKey: "111", adName: "X1", spendJpy: 50, impressions: 5, linkClicks: 1, landingPageViews: null }),
+      row({ platform: "x", adKey: "all:111", adName: "この書き出しの広告すべて（X1）", breakdownType: "age", breakdownValue: "25-34", spendJpy: 50, impressions: 5, linkClicks: 1, landingPageViews: null }),
+    ];
+
+    const { daily } = summarizeAdStats(rows, []);
+
+    expect(daily.map(({ day, platform, spendJpy, linkClicks }) => ({ day, platform, spendJpy, linkClicks }))).toEqual([
+      { day: "2026-10-27", platform: "meta", spendJpy: 140, linkClicks: 3 },
+      { day: "2026-10-27", platform: "x", spendJpy: 50, linkClicks: 1 },
+      { day: "2026-10-28", platform: "meta", spendJpy: 30, linkClicks: 0 },
+    ]);
+  });
+
   it("X の書き出し全体の行は、広告の一覧に出さず内訳にだけ出す", () => {
     const rows = [
       row({ platform: "x", adKey: "111", adName: "90作品", spendJpy: 40, impressions: 4, landingPageViews: null }),

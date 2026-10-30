@@ -2,11 +2,25 @@ import "server-only";
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { toJstDateKey } from "../dashboard-range";
 import { fetchAllById } from "../fetch-all-rows";
 import { getOperatorUserIds } from "../get-operator-user-ids";
+import { listTimelineEvents } from "../timeline-event-repository";
 import type { AdPlatform, AdStatRow, ParsedAdExport } from "./ad-stats-types";
 import {
+  adDailyRange,
+  buildAdDailyRows,
+  buildPlatformFunnels,
+  filterSignupDays,
+  type AdDailyChartRow,
+  type AdDailyRange,
+  type AdSignupDay,
+  type PlatformFunnel,
+} from "./build-ad-charts";
+import {
+  addDays,
   attachFunnel,
+  SIGNUP_WINDOW_DAYS_AFTER,
   signupWindows,
   summarizeAdStats,
   type AdFunnel,
@@ -44,6 +58,13 @@ interface AdDbRow {
   ad_key: string;
   ad_name: string;
   signup_source: string | null;
+}
+
+interface ProfileSignupRow {
+  id: string;
+  user_id: string;
+  signup_source: string;
+  created_at: string;
 }
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
@@ -149,10 +170,11 @@ async function listAds(supabase: SupabaseClient): Promise<AdDbRow[]> {
 async function getFunnelBySource(
   supabase: SupabaseClient,
   windows: SignupWindow[],
+  operatorsPromise: Promise<string[]>,
 ): Promise<Map<string, AdFunnel>> {
   const funnel = new Map<string, AdFunnel>();
   if (windows.length === 0) return funnel;
-  const operators = await getOperatorUserIds({ strict: true });
+  const operators = await operatorsPromise;
   const { data, error } = await supabase.rpc("get_ad_signup_funnel", {
     p_windows: windows.map((window) => ({
       signup_source: window.signupSource,
@@ -177,6 +199,75 @@ async function getFunnelBySource(
   return funnel;
 }
 
+/** 日本時間のその日の 0:00（ISO） */
+function jstDayStartIso(day: string): string {
+  return new Date(`${day}T00:00:00+09:00`).toISOString();
+}
+
+/**
+ * 日ごとのグラフの登録。グラフの期間の中の、目印の付いた登録だけを読む
+ * （広告から来た人は少ないので、行は多くない）。絞り込みは filterSignupDays。
+ * グラフの添え物なので、読めなくても画面は出す（null を返し、登録のグラフだけ外す）。
+ */
+async function listSignupDays(
+  supabase: SupabaseClient,
+  windows: SignupWindow[],
+  range: AdDailyRange,
+  operatorsPromise: Promise<string[]>,
+): Promise<AdSignupDay[] | null> {
+  if (windows.length === 0) return [];
+  try {
+    return await readSignupDays(supabase, windows, range, await operatorsPromise);
+  } catch (error) {
+    console.error("[admin ad-stats] signup days:", error);
+    return null;
+  }
+}
+
+async function readSignupDays(
+  supabase: SupabaseClient,
+  windows: SignupWindow[],
+  range: AdDailyRange,
+  operators: string[],
+): Promise<AdSignupDay[]> {
+  const { from, to } = range;
+  const { data, error } = await fetchAllById<ProfileSignupRow>(() =>
+    supabase
+      .from("profiles")
+      .select("id, user_id, signup_source, created_at")
+      .in(
+        "signup_source",
+        windows.map((w) => w.signupSource),
+      )
+      .gte("created_at", jstDayStartIso(from))
+      .lt("created_at", jstDayStartIso(addDays(to, 1))),
+  );
+  if (error) throw new Error(`日ごとの登録の取得に失敗しました: ${error.message}`);
+  return filterSignupDays(
+    (data ?? []).map((row) => ({
+      userId: row.user_id,
+      signupSource: row.signup_source,
+      createdAt: row.created_at,
+    })),
+    windows,
+    operators,
+  );
+}
+
+/** 出来事の印。グラフの添え物なので、読めなくても画面は出す（印なしにする） */
+async function listChartEvents(
+  from: string,
+  to: string,
+): Promise<Array<{ eventDate: string; title: string }>> {
+  try {
+    const events = await listTimelineEvents({ from, to });
+    return events.map((event) => ({ eventDate: event.eventDate, title: event.title }));
+  } catch (error) {
+    console.error("[admin ad-stats] timeline events:", error);
+    return [];
+  }
+}
+
 /**
  * 目印の候補（最近の登録に付いていた目印と、広告に選んである目印）。
  * 入力の手助けなので、読めなくても画面は出す（選んである目印だけにする）。
@@ -194,8 +285,21 @@ async function listSignupSourceOptions(
   return [...new Set([...recent, ...chosen])].sort();
 }
 
-export interface AdStatsOverview extends AdStatsSummary {
+export interface AdDailyChart {
+  rows: AdDailyChartRow[];
+  events: Array<{ eventDate: string; title: string }>;
+  /** 最後の日が今日（途中までの数） */
+  endsToday: boolean;
+  /** 日ごとの登録を読めた（読めなければ登録のグラフを出さない） */
+  signupsAvailable: boolean;
+}
+
+/** 画面へ渡すもの（日ごとの合計は dailyChart に入れてあるので、元の daily は渡さない） */
+export interface AdStatsOverview extends Omit<AdStatsSummary, "daily"> {
   signupSourceOptions: string[];
+  funnels: PlatformFunnel[];
+  /** 広告が無いときは null */
+  dailyChart: AdDailyChart | null;
 }
 
 export async function getAdStatsOverview(client?: SupabaseClient): Promise<AdStatsOverview> {
@@ -226,9 +330,30 @@ export async function getAdStatsOverview(client?: SupabaseClient): Promise<AdSta
   const chosen = [
     ...new Set(adRows.map((row) => row.signup_source).filter((s): s is string => !!s)),
   ];
-  const [funnel, signupSourceOptions] = await Promise.all([
-    getFunnelBySource(supabase, signupWindows(summary.ads)),
+  const windows = signupWindows(summary.ads);
+  const today = toJstDateKey(new Date());
+  const range = adDailyRange(summary.ads, today, SIGNUP_WINDOW_DAYS_AFTER);
+  // 運営の一覧は人数を数える2つだけが待つ（目印の候補・出来事の印は先に読み始める）
+  const operatorsPromise =
+    windows.length > 0 ? getOperatorUserIds({ strict: true }) : Promise.resolve([]);
+  const [funnel, signupDays, events, signupSourceOptions] = await Promise.all([
+    getFunnelBySource(supabase, windows, operatorsPromise),
+    range ? listSignupDays(supabase, windows, range, operatorsPromise) : Promise.resolve([]),
+    range ? listChartEvents(range.from, range.to) : Promise.resolve([]),
     listSignupSourceOptions(supabase, chosen),
   ]);
-  return { ...attachFunnel(summary, funnel), signupSourceOptions };
+  const { daily, ...withFunnel } = attachFunnel(summary, funnel);
+  return {
+    ...withFunnel,
+    signupSourceOptions,
+    funnels: buildPlatformFunnels(withFunnel.ads),
+    dailyChart: range
+      ? {
+          rows: buildAdDailyRows(range, daily, signupDays ?? [], withFunnel.ads),
+          events,
+          endsToday: range.to === today,
+          signupsAvailable: signupDays !== null,
+        }
+      : null,
+  };
 }

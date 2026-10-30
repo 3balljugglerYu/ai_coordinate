@@ -6,35 +6,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
+import { AdBreakdownBars } from "@/features/admin-dashboard/components/AdBreakdownBars";
+import { AdDailyChartsPanel } from "@/features/admin-dashboard/components/AdDailyChartsPanel";
+import { AdFunnelBars } from "@/features/admin-dashboard/components/AdFunnelBars";
 import type { AdStatsOverview } from "@/features/admin-dashboard/lib/ad-stats/ad-stats-repository";
+import { AD_PLATFORM_LABELS } from "@/features/admin-dashboard/lib/ad-stats/ad-stats-types";
 import {
-  AD_BREAKDOWN_LABELS,
-  AD_PLATFORM_LABELS,
-  type AdBreakdownType,
-} from "@/features/admin-dashboard/lib/ad-stats/ad-stats-types";
-import {
-  ratio,
-  type AdSummary,
-  type BreakdownGroup,
-} from "@/features/admin-dashboard/lib/ad-stats/summarize-ad-stats";
-
-const yen = (value: number | null) =>
-  value === null ? "—" : `${Math.round(value).toLocaleString("ja-JP")}円`;
-const count = (value: number | null) => (value === null ? "—" : value.toLocaleString("ja-JP"));
-const percent = (value: number | null) =>
-  value === null ? "—" : `${(value * 100).toFixed(value < 0.01 ? 3 : 2)}%`;
-const perUnit = (spend: number, units: number | null) => yen(ratio(spend, units));
-
-const VALUE_LABELS: Record<string, string> = {
-  male: "男性",
-  female: "女性",
-  unknown: "不明",
-};
-
-function valueLabel(type: AdBreakdownType, value: string): string {
-  if (type === "gender" || value === "unknown") return VALUE_LABELS[value] ?? value;
-  return value;
-}
+  formatCount as count,
+  formatPercent as percent,
+  formatPerUnit as perUnit,
+  formatYen as yen,
+} from "@/features/admin-dashboard/lib/ad-stats/format-ad-stats";
+import { ratio, type AdSummary } from "@/features/admin-dashboard/lib/ad-stats/summarize-ad-stats";
+import { GROWTH_MIN_SAMPLE } from "@/features/admin-dashboard/lib/growth-overview-types";
 
 const TH = "px-3 py-2 text-left text-xs font-semibold text-slate-600 whitespace-nowrap";
 const TD = "px-3 py-2 text-sm text-slate-900 whitespace-nowrap tabular-nums";
@@ -155,12 +139,9 @@ function SignupSourceEditor({ ad }: { ad: AdSummary }) {
 }
 
 function AdsTable({ overview }: { overview: AdStatsOverview }) {
-  if (overview.ads.length === 0) {
-    return <p className="text-sm text-slate-600">まだ取り込んだ広告がありません。</p>;
-  }
   return (
     <section className="space-y-3">
-      <h2 className="text-base font-semibold text-slate-900">広告ごと</h2>
+      <SectionHeading title="広告ごと" question="どの広告が、いくらで、何人を連れてきた？" />
       <p className="text-sm text-slate-600">
         目印（登録のときに残る流入元）を選ぶと、その広告から来て登録・生成・投稿した人数が出ます。数えるのは、広告の最初の日から最後の日の7日後までの登録で、運営の登録は数えません。
         同じ目印を使う広告どうしは分けられないので、人数はその広告たちの合算です。
@@ -251,82 +232,77 @@ function AdsTable({ overview }: { overview: AdStatsOverview }) {
   );
 }
 
-function BreakdownSection({ group }: { group: BreakdownGroup }) {
-  return (
-    <details className="rounded-md border border-slate-200 p-3">
-      <summary className="cursor-pointer text-sm font-medium text-slate-900">
-        <Badge variant="outline" className="mr-2">
-          {AD_PLATFORM_LABELS[group.platform]}
-        </Badge>
-        {group.adName}（{group.firstDate}〜{group.lastDate}）
-      </summary>
-      <div className="mt-3 grid gap-4 lg:grid-cols-2">
-        {group.breakdowns.map((breakdown) => (
-          <div key={breakdown.type} className="min-w-0 overflow-x-auto">
-            <h4 className="mb-1 text-xs font-semibold text-slate-600">
-              {AD_BREAKDOWN_LABELS[breakdown.type]}
-            </h4>
-            <table className="min-w-full divide-y divide-slate-200 text-sm">
-              <thead>
-                <tr>
-                  <th className={TH}>{AD_BREAKDOWN_LABELS[breakdown.type]}</th>
-                  <th className={TH}>使った額（割合）</th>
-                  <th className={TH}>表示</th>
-                  <th className={TH}>クリック（率）</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {breakdown.items.map((item) => (
-                  <tr key={item.value}>
-                    <td className={TD}>{valueLabel(breakdown.type, item.value)}</td>
-                    <td className={TD}>
-                      {yen(item.spendJpy)}（{percent(item.spendShare)}）
-                    </td>
-                    <td className={TD}>{count(item.impressions)}</td>
-                    <td className={TD}>
-                      {count(item.linkClicks)}（{percent(ratio(item.linkClicks, item.impressions))}）
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
-
+/**
+ * 管理画面の決まりに合わせて、答える問いの順に上から並べる:
+ * 道のり（どこで止まった？）→ 日ごと（何をした日に、何が変わった？）→ 広告ごとの表 →
+ * 誰に届いたか。取り込みはときどきしか使わないので一番下。
+ */
 export function AdStatsClient({ overview }: { overview: AdStatsOverview | null }) {
   return (
-    <div className="space-y-8">
-      <ImportForm />
+    <div className="space-y-10">
       {overview ? (
         <AdStatsBody overview={overview} />
       ) : (
         <p className="text-sm text-red-700">
-          広告の数字を読めませんでした。少し待ってから開き直してください（取り込みはできます）。
+          広告の数字を読めませんでした。少し待ってから開き直してください（下の欄から取り込みはできます）。
         </p>
       )}
+      <ImportForm />
+    </div>
+  );
+}
+
+function SectionHeading({ title, question }: { title: string; question: string }) {
+  return (
+    <div>
+      <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+      <p className="text-sm text-slate-500">{question}</p>
     </div>
   );
 }
 
 function AdStatsBody({ overview }: { overview: AdStatsOverview }) {
+  const platforms = overview.funnels.map((funnel) => funnel.platform);
+  if (overview.ads.length === 0 && overview.groups.length === 0) {
+    return (
+      <p className="text-sm text-slate-600">
+        まだ取り込んだ広告がありません。下の欄から、広告の書き出しを取り込んでください。
+      </p>
+    );
+  }
   return (
     <>
-      <AdsTable overview={overview} />
+      {overview.funnels.length > 0 ? (
+        <section className="space-y-3">
+          <SectionHeading title="道のり" question="広告のお金は、どこで止まった？" />
+          <p className="text-sm text-slate-600">
+            クリックとページを開いたは「回」、登録から先は「人」で、数え方が違います。割合は目安です。
+            前の段が{GROWTH_MIN_SAMPLE}に届かない段は「まだ判断できません」と出します。
+          </p>
+          <AdFunnelBars funnels={overview.funnels} />
+        </section>
+      ) : null}
+
+      {overview.dailyChart ? (
+        <section className="space-y-3">
+          <SectionHeading title="日ごとの動き" question="何をした日に、何が変わった？" />
+          <AdDailyChartsPanel
+            chart={overview.dailyChart}
+            platforms={platforms}
+            hasSignupSources={overview.funnels.some((funnel) => funnel.sourcedAdCount > 0)}
+          />
+        </section>
+      ) : null}
+
+      {overview.ads.length > 0 ? <AdsTable overview={overview} /> : null}
+
       {overview.groups.length > 0 && (
         <section className="space-y-3">
-          <h2 className="text-base font-semibold text-slate-900">誰に届いたか（内訳）</h2>
+          <SectionHeading title="誰に届いたか" question="届けたい相手に届いた？" />
           <p className="text-sm text-slate-600">
             Meta は広告ごと、X は書き出し全体の数字です（X の書き出しの年齢・性別・端末は、広告ごとに分かれていません）。
           </p>
-          <div className="space-y-2">
-            {overview.groups.map((group) => (
-              <BreakdownSection key={`${group.platform}:${group.adKey}`} group={group} />
-            ))}
-          </div>
+          <AdBreakdownBars groups={overview.groups} />
         </section>
       )}
     </>
