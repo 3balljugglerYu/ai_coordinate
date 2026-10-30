@@ -35,6 +35,14 @@ test.each([
   expect(ownAvatarStoragePath(url, USER, BUCKET)).toBeNull();
 });
 
+test("うちの Supabase のサイトを渡したら、ほかのサイトの URL は消さない", () => {
+  const path = `/storage/v1/object/public/generated-images/avatars/${USER}/1.webp`;
+  expect(ownAvatarStoragePath(`https://ref.supabase.co${path}`, USER, BUCKET, "https://ref.supabase.co")).toBe(
+    `avatars/${USER}/1.webp`,
+  );
+  expect(ownAvatarStoragePath(`https://evil.example${path}`, USER, BUCKET, "https://ref.supabase.co")).toBeNull();
+});
+
 test("アイコンが無いときは消さない", () => {
   expect(ownAvatarStoragePath(null, USER, BUCKET)).toBeNull();
   expect(ownAvatarStoragePath(undefined, USER, BUCKET)).toBeNull();

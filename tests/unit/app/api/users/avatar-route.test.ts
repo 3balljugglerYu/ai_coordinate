@@ -22,6 +22,12 @@ jest.mock("@/lib/supabase/admin", () => ({
   createAdminClient: jest.fn(),
 }));
 
+// 古いアイコンを消すのは、うちの Supabase の URL のときだけ(テストではこの URL にする)
+jest.mock("@/lib/env", () => {
+  const actual = jest.requireActual("@/lib/env");
+  return { ...actual, env: { ...actual.env, NEXT_PUBLIC_SUPABASE_URL: "https://ref.supabase.co" } };
+});
+
 jest.mock("@/features/generation/lib/webp-converter", () => ({
   convertToWebP: jest.fn(),
 }));
@@ -42,6 +48,8 @@ const mockCreateClient = createClient as jest.MockedFunction<typeof createClient
 const mockCreateAdminClient = createAdminClient as jest.MockedFunction<typeof createAdminClient>;
 /** 運営の接続での profiles の書き込み(update に渡した中身) */
 const adminProfileUpdates: unknown[] = [];
+/** 運営の接続で消したファイル */
+const adminRemovedPaths: string[][] = [];
 const mockConvertToWebP = convertToWebP as jest.MockedFunction<typeof convertToWebP>;
 
 const USER_ID = "11111111-1111-4111-8111-111111111111";
@@ -52,7 +60,7 @@ interface UploadCall {
   options: { contentType?: string } | undefined;
 }
 
-function mockSupabase() {
+function mockSupabase(currentAvatarUrl: string | null = null) {
   const uploads: UploadCall[] = [];
   const upload = jest.fn(
     (path: string, body: unknown, options?: { contentType?: string }) => {
@@ -67,7 +75,7 @@ function mockSupabase() {
       eq: jest.fn().mockReturnThis(),
       update: jest.fn().mockReturnThis(),
       single: jest.fn(() =>
-        Promise.resolve({ data: { avatar_url: null }, error: null })
+        Promise.resolve({ data: { avatar_url: currentAvatarUrl }, error: null })
       ),
     })),
     storage: {
@@ -97,8 +105,17 @@ function mockSupabase() {
     select: jest.fn(() => adminQuery),
     single: jest.fn(() => Promise.resolve({ data: { user_id: USER_ID }, error: null })),
   };
+  adminRemovedPaths.length = 0;
   mockCreateAdminClient.mockReturnValue({
     from: jest.fn(() => adminQuery),
+    storage: {
+      from: jest.fn(() => ({
+        remove: jest.fn((paths: string[]) => {
+          adminRemovedPaths.push(paths);
+          return Promise.resolve({ error: null });
+        }),
+      })),
+    },
   } as unknown as ReturnType<typeof createAdminClient>);
 
   return uploads;
@@ -183,6 +200,22 @@ describe("POST /api/users/[userId]/avatar", () => {
     expect(adminProfileUpdates).toEqual([
       { avatar_url: `https://example.test/${uploads[0].path}` },
     ]);
+  });
+
+  test("古いアイコンは、本人のフォルダの中なら運営の接続で消し、ほかの人のファイルは消さない", async () => {
+    const storage = "https://ref.supabase.co/storage/v1/object/public/generated-images";
+    const logSpy = jest.spyOn(console, "log").mockImplementation(() => {});
+    try {
+      mockSupabase(`${storage}/avatars/${USER_ID}/old.webp`);
+      await POST(buildRequest(bigPngFile()), { params });
+      expect(adminRemovedPaths).toEqual([[`avatars/${USER_ID}/old.webp`]]);
+
+      mockSupabase(`${storage}/avatars/22222222-2222-4222-8222-222222222222/theirs.webp`);
+      await POST(buildRequest(bigPngFile()), { params });
+      expect(adminRemovedPaths).toEqual([]);
+    } finally {
+      logSpy.mockRestore();
+    }
   });
 
   test("他人のアバターは変更できない", async () => {

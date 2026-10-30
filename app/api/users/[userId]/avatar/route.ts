@@ -3,7 +3,6 @@ import { revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getUser } from "@/lib/auth";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import { jsonError } from "@/lib/api/json-error";
 import { getRouteLocale } from "@/lib/api/route-locale";
@@ -72,6 +71,9 @@ export async function POST(
     }
 
     const supabase = await createClient();
+    // avatar_url を書く・古いファイルを消すのに使う運営の接続。新しいファイルを置く前に作る
+    // (鍵が無い環境で、置いたファイルだけが残らないように)
+    const adminSupabase = createAdminClient();
 
     // Storageバケット名（既存のgenerated-imagesバケットを再利用）
     const AVATAR_BUCKET = "generated-images";
@@ -156,7 +158,7 @@ export async function POST(
 
     // profilesテーブルのavatar_urlを更新。
     // avatar_url は利用者が直接書けない列(20261030170000)なので、本人を確かめたあと運営の接続で書く
-    const { data: updatedProfile, error: updateError } = await createAdminClient()
+    const { data: updatedProfile, error: updateError } = await adminSupabase
       .from("profiles")
       .update({ avatar_url: publicUrl })
       .eq("user_id", userId)
@@ -177,44 +179,32 @@ export async function POST(
         
         // 消してよいのは本人のフォルダ(avatars/<本人の ID>/)の中のファイルだけ。
         // Google などの外の URL や、本人のフォルダの外を指す URL は消さない
-        const oldPath = ownAvatarStoragePath(oldAvatarUrl, userId, AVATAR_BUCKET);
+        const oldPath = ownAvatarStoragePath(oldAvatarUrl, userId, AVATAR_BUCKET, env.NEXT_PUBLIC_SUPABASE_URL);
         if (!oldPath) {
           console.log("Old avatar URL is not in the user's own folder, skipping deletion:", oldAvatarUrl);
         } else {
           // 古い画像を削除（エラーが発生しても処理は続行）
           console.log("Deleting old avatar image:", oldPath);
           
-          // Service Role Keyを使用して削除（RLSポリシーをバイパス）
-          if (!env.SUPABASE_SERVICE_ROLE_KEY || !env.NEXT_PUBLIC_SUPABASE_URL) {
-            // Service Role Keyが存在しない場合は、古い画像の削除をスキップ
-            // 新しい画像のアップロードは既に成功しているため、処理は続行
-            // 古い画像はStorageに残るが、新しい画像は正常にアップロードされている
-            console.warn("Service role key or Supabase URL is missing. Old avatar image will not be deleted from storage.");
-          } else {
-            try {
-              const storageClient = createSupabaseClient(
-                env.NEXT_PUBLIC_SUPABASE_URL,
-                env.SUPABASE_SERVICE_ROLE_KEY
-              );
+          // 運営の接続で削除（RLSポリシーをバイパス）
+          try {
+            const { error: deleteError } = await adminSupabase.storage
+              .from(AVATAR_BUCKET)
+              .remove([oldPath]);
 
-              const { error: deleteError } = await storageClient.storage
-                .from(AVATAR_BUCKET)
-                .remove([oldPath]);
-
-              if (deleteError) {
-                // 削除エラーはログに記録するが、レスポンスは成功を返す
-                console.error("Failed to delete old avatar image:", {
-                  path: oldPath,
-                  error: deleteError,
-                  url: oldAvatarUrl,
-                });
-              } else {
-                console.log("Successfully deleted old avatar image:", oldPath);
-              }
-            } catch (storageError) {
-              // ストレージ削除エラーはログに記録するが、レスポンスは成功を返す
-              console.error("Error while deleting old avatar image:", storageError);
+            if (deleteError) {
+              // 削除エラーはログに記録するが、レスポンスは成功を返す
+              console.error("Failed to delete old avatar image:", {
+                path: oldPath,
+                error: deleteError,
+                url: oldAvatarUrl,
+              });
+            } else {
+              console.log("Successfully deleted old avatar image:", oldPath);
             }
+          } catch (storageError) {
+            // ストレージ削除エラーはログに記録するが、レスポンスは成功を返す
+            console.error("Error while deleting old avatar image:", storageError);
           }
         }
       } catch (deleteError) {
