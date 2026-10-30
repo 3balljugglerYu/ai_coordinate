@@ -129,6 +129,28 @@ test("よそのサイトからの追加・切り替え・削除は止め、管�
   expect(mockRemove).not.toHaveBeenCalled();
 });
 
+describe("GET(一覧)", () => {
+  test("一覧を返す", async () => {
+    mockList.mockResolvedValue([
+      { userId: USER_ID, nickname: "はな", avatarUrl: null, isActive: true, note: null, addedAt: "2026-10-30T00:00:00Z" },
+    ]);
+
+    const response = await GET();
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual([expect.objectContaining({ userId: USER_ID, nickname: "はな" })]);
+  });
+
+  test("読めなければ 500", async () => {
+    mockList.mockRejectedValue(new Error("timeout"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await GET();
+
+    expect(response.status).toBe(500);
+  });
+});
+
 describe("POST(足す)", () => {
   test("実在する人を、ログイン中の管理者が足した人として足し、監査ログに残す", async () => {
     const response = await POST(
@@ -164,6 +186,25 @@ describe("POST(足す)", () => {
     );
 
     expect(response.status).toBe(200);
+  });
+
+  test("本文が JSON でなければ 400", async () => {
+    const response = await POST(
+      new NextRequest("http://localhost/api/admin/i2i-allowlist", { method: "POST", body: "not json" }),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockAdd).not.toHaveBeenCalled();
+  });
+
+  test("足すのに失敗したら 500 で、監査ログに残さない", async () => {
+    mockAdd.mockRejectedValue(new Error("boom"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST(jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID }));
+
+    expect(response.status).toBe(500);
+    expect(mockAudit).not.toHaveBeenCalled();
   });
 
   test("実在の確認で DB が失敗したら 500(見つからない、にしない)", async () => {
@@ -247,6 +288,34 @@ describe("PATCH(有効・無効)と DELETE(削除)", () => {
     );
 
     expect([patch.status, remove.status]).toEqual([404, 404]);
+    expect(mockAudit).not.toHaveBeenCalled();
+  });
+
+  test("PATCH の本文が JSON でなければ 400 で変えない", async () => {
+    const response = await PATCH(
+      new NextRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, { method: "PATCH", body: "not json" }),
+      userParams(USER_ID),
+    );
+
+    expect(response.status).toBe(400);
+    expect(mockSetActive).not.toHaveBeenCalled();
+  });
+
+  test("切り替え・削除に失敗したら 500 で、監査ログに残さない", async () => {
+    mockSetActive.mockRejectedValue(new Error("boom"));
+    mockRemove.mockRejectedValue(new Error("boom"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const patch = await PATCH(
+      jsonRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, "PATCH", { isActive: true }),
+      userParams(USER_ID),
+    );
+    const remove = await DELETE(
+      jsonRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, "DELETE"),
+      userParams(USER_ID),
+    );
+
+    expect([patch.status, remove.status]).toEqual([500, 500]);
     expect(mockAudit).not.toHaveBeenCalled();
   });
 

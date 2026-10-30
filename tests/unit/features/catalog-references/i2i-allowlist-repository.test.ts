@@ -17,6 +17,7 @@ jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   addI2iAllowlistMember,
+  listI2iAllowlist,
   profileExistsForI2iAllowlist,
   removeI2iAllowlistMember,
   setI2iAllowlistActive,
@@ -144,6 +145,71 @@ describe("切り替え・削除", () => {
     await expect(
       setI2iAllowlistActive("u1", true, client({ update: { data: null, error: { message: "timeout" } } }).supabase),
     ).rejects.toThrow("見本を使える人の更新に失敗しました");
+  });
+});
+
+describe("listI2iAllowlist", () => {
+  /** 表ごとに結果を返すクライアント(一覧と profiles) */
+  function listClient(allowlist: Result, profiles: Result) {
+    const calls: Array<[string, string, unknown[]]> = [];
+    const supabase = {
+      from: jest.fn((table: string) => {
+        const chain: Record<string, unknown> = {};
+        for (const method of ["select", "order", "in"]) {
+          chain[method] = (...args: unknown[]) => {
+            calls.push([table, method, args]);
+            return chain;
+          };
+        }
+        chain.then = (resolve: (value: Result) => unknown) =>
+          resolve(table === "i2i_catalog_allowlist" ? allowlist : profiles);
+        return chain;
+      }),
+    } as unknown as SupabaseClient;
+    return { supabase, calls };
+  }
+
+  test("足した順の新しい順で読み、その人たちの名前とアイコンを合わせる(プロフィールが無い人は空)", async () => {
+    const { supabase, calls } = listClient(
+      {
+        data: [
+          { user_id: "u2", is_active: false, note: "一時停止", created_at: "2026-10-30T02:00:00Z" },
+          { user_id: "u1", is_active: true, note: null, created_at: "2026-10-29T02:00:00Z" },
+        ],
+        error: null,
+      },
+      { data: [{ user_id: "u1", nickname: "はな", avatar_url: "https://example.test/a.webp" }], error: null },
+    );
+
+    await expect(listI2iAllowlist(supabase)).resolves.toEqual([
+      { userId: "u2", nickname: null, avatarUrl: null, isActive: false, note: "一時停止", addedAt: "2026-10-30T02:00:00Z" },
+      {
+        userId: "u1",
+        nickname: "はな",
+        avatarUrl: "https://example.test/a.webp",
+        isActive: true,
+        note: null,
+        addedAt: "2026-10-29T02:00:00Z",
+      },
+    ]);
+    expect(calls).toContainEqual(["i2i_catalog_allowlist", "order", ["created_at", { ascending: false }]]);
+    expect(calls).toContainEqual(["profiles", "in", ["user_id", ["u2", "u1"]]]);
+  });
+
+  test("だれもいなければ、プロフィールを読まずに空を返す", async () => {
+    const { supabase, calls } = listClient({ data: [], error: null }, { data: [], error: null });
+
+    await expect(listI2iAllowlist(supabase)).resolves.toEqual([]);
+    expect(calls.some(([table]) => table === "profiles")).toBe(false);
+  });
+
+  test.each([
+    ["一覧", { data: null, error: { message: "timeout" } }, { data: [], error: null }],
+    ["プロフィール", { data: [{ user_id: "u1", is_active: true, note: null, created_at: "x" }], error: null }, { data: null, error: { message: "timeout" } }],
+  ])("%sが読めなければ投げる", async (_label, allowlist, profiles) => {
+    await expect(listI2iAllowlist(listClient(allowlist, profiles).supabase)).rejects.toThrow(
+      "見本を使える人の一覧の取得に失敗しました",
+    );
   });
 });
 
