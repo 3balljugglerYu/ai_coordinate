@@ -646,14 +646,14 @@ async function handleSubscriptionInvoicePaid(
   if (!userId) {
     if (isChangePayment) {
       // ペルスタのプランの引き上げなら、差のペルコインを付ける必要があるので、Stripe に送り直させる
-      // (利用者の記録の読み込みが一時的に失敗したときなど)。そうでなければ(別の商品など)200 で終える
-      const upgrade = await resolveUpgradeFromInvoice(invoice, loadPrice);
+      // (利用者の記録の読み込みが一時的に失敗したときなど)。そうでなければ(別の商品など)200 で終える。
+      // 引き上げの判定は Stripe に価格を問い合わせることがあり、失敗すると投げるので、ログを先に残す
       console.error("[Stripe Webhook] Could not resolve subscription change payment user", {
         invoiceId: invoice.id,
         subscriptionId,
         customerId,
-        isPerstaUpgrade: upgrade !== null,
       });
+      const upgrade = await resolveUpgradeFromInvoice(invoice, loadPrice);
       if (upgrade) {
         return NextResponse.json(
           { error: "Missing user for subscription upgrade" },
