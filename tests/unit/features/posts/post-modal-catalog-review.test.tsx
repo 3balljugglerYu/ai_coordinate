@@ -149,3 +149,17 @@ test("ほかの理由で断られたときは「審査に出す」を出さな�
   expect(await screen.findByText("投稿に失敗しました")).toBeTruthy();
   expect(screen.queryByTestId("catalog-review-submit")).toBeNull();
 });
+
+test("投稿し直して同じ理由で断られたら、審査の枠を一から出し直す(前の失敗の文言を残さない)", async () => {
+  mockPostImage.mockRejectedValue(postError("POSTS_REVIEW_PENDING", "承認されるまで投稿できません"));
+  fetchMock.mockRejectedValue(new TypeError("Failed to fetch"));
+  renderModal();
+  await submitPost();
+  fireEvent.click(await screen.findByRole("button", { name: "catalogReviewSubmit" }));
+  expect(await screen.findByText("catalogReviewSubmitFailed")).toBeTruthy();
+
+  await submitPost();
+
+  await waitFor(() => expect(screen.queryByText("catalogReviewSubmitFailed")).toBeNull());
+  expect(screen.getByRole("button", { name: "catalogReviewSubmit" })).toBeTruthy();
+});

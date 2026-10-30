@@ -1,4 +1,7 @@
-import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
+import {
+  SUBMISSION_IMAGE_MAX_DIMENSION,
+  SUBMISSION_IMAGE_MIN_DIMENSION,
+} from "@/features/inspire/lib/submission-image-constraints";
 
 /**
  * 見本(参照画像)を上げる前に、手元で縮める。
@@ -10,8 +13,8 @@ import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submissio
 
 /** 送る大きさの上限(API は 4MB。基盤の本文の上限が約 4.5MB なので余裕をみる) */
 export const REFERENCE_UPLOAD_MAX_BYTES = 3.5 * 1024 * 1024;
-/** 縦横の上限(サーバーの MAX_DIMENSION と同じ) */
-export const REFERENCE_IMAGE_MAX_DIMENSION = 4096;
+/** 縦横の上限(サーバーの MAX_DIMENSION と同じ値を使う) */
+export const REFERENCE_IMAGE_MAX_DIMENSION = SUBMISSION_IMAGE_MAX_DIMENSION;
 /** 縮めるときの長い辺のめやす(短い辺が 768px を下回るときは、短い辺を優先する) */
 const TARGET_LONG_EDGE = 2048;
 const JPEG_QUALITIES = [0.85, 0.7] as const;
@@ -110,6 +113,9 @@ export async function prepareCatalogReferenceImage(file: File): Promise<File> {
   canvas.height = plan.height;
   const context = canvas.getContext("2d");
   if (!context) throw new ReferenceImageError("load_failed");
+  // JPEG には透明が無いので、透明な部分は白にする(塗らないと黒になる)
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, plan.width, plan.height);
   context.drawImage(image, 0, 0, plan.width, plan.height);
 
   for (const quality of JPEG_QUALITIES) {

@@ -51,7 +51,12 @@ const PROBLEM_KEYS = {
 } as const satisfies Record<ReferenceImageProblem, string>;
 
 /** API の断りの文言(API の文は日本語だけなので、言語ごとの文言に置き換える) */
-const UPLOAD_ERROR_KEYS: Record<string, (typeof PROBLEM_KEYS)[ReferenceImageProblem]> = {
+const UPLOAD_ERROR_KEYS: Record<
+  string,
+  (typeof PROBLEM_KEYS)[ReferenceImageProblem] | "catalogReferenceAuthRequired" | "catalogReferenceNotAllowed"
+> = {
+  CATALOG_REFERENCE_AUTH_REQUIRED: "catalogReferenceAuthRequired",
+  CATALOG_REFERENCE_NOT_ALLOWED: "catalogReferenceNotAllowed",
   CATALOG_REFERENCE_IMAGE_INVALID: "catalogReferenceInvalid",
   CATALOG_REFERENCE_IMAGE_TOO_SMALL: "catalogReferenceTooSmall",
   CATALOG_REFERENCE_IMAGE_TOO_LARGE: "catalogReferenceTooLarge",
@@ -94,7 +99,7 @@ export function CatalogReferenceField({
     onUploadingChange?.(next);
   };
 
-  const messageFor = (key: (typeof PROBLEM_KEYS)[ReferenceImageProblem] | "catalogReferenceUploadFailed") =>
+  const messageFor = (key: (typeof UPLOAD_ERROR_KEYS)[string] | "catalogReferenceUploadFailed") =>
     key === "catalogReferenceTooSmall" ? t(key, { min: SUBMISSION_IMAGE_MIN_DIMENSION }) : t(key);
 
   const handleFile = async (file: File) => {

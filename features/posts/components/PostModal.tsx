@@ -27,16 +27,6 @@ import { useUnreadNotificationCount } from "@/features/notifications/components/
 import { fetchBeforeSourceUrl, postImageAPI } from "../lib/api";
 import { isReviewPendingPublishError, isSuspendedPublishError } from "../lib/post-error-codes";
 
-/**
- * 審査に出す API(POST /api/catalog-references/review)の断りのうち、押し直しても変わらないもの。
- * 文言は言語ごとに出す(API の文は日本語だけ)。審査中は「出せた」と同じ扱いにする。
- */
-const REVIEW_SUBMIT_SETTLED = {
-  CATALOG_REVIEW_ALREADY_SUBMITTED: "catalogReviewAlreadySubmitted",
-  CATALOG_REVIEW_ALREADY_APPROVED: "catalogReviewAlreadyApproved",
-  CATALOG_REVIEW_REJECTED: "catalogReviewRejected",
-  CATALOG_REVIEW_REFERENCE_UNAVAILABLE: "catalogReviewReferenceUnavailable",
-} as const;
 import {
   beforeImageUrlCache,
   cacheBeforeImageUrl,
@@ -51,6 +41,17 @@ import {
   persistPendingHomePostRefresh,
 } from "../lib/home-post-refresh";
 import type { PostImageResponse } from "../types";
+
+/**
+ * 審査に出す API(POST /api/catalog-references/review)の断りのうち、押し直しても変わらないもの。
+ * 文言は言語ごとに出す(API の文は日本語だけ)。審査中は「出せた」と同じ扱いにする。
+ */
+const REVIEW_SUBMIT_SETTLED = {
+  CATALOG_REVIEW_ALREADY_SUBMITTED: "catalogReviewAlreadySubmitted",
+  CATALOG_REVIEW_ALREADY_APPROVED: "catalogReviewAlreadyApproved",
+  CATALOG_REVIEW_REJECTED: "catalogReviewRejected",
+  CATALOG_REVIEW_REFERENCE_UNAVAILABLE: "catalogReviewReferenceUnavailable",
+} as const;
 
 /**
  * 入力欄にフォーカスしたとき、その欄をラベルごと画面の上端へ寄せる。
@@ -186,8 +187,11 @@ export function PostModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    // 断られた理由が変わることがあるので、審査の枠は断られるたびに出し直す
+    // 断られた理由や審査の状態が変わることがあるので、審査の枠は断られるたびに一から出し直す
     setReviewPending(false);
+    setReviewSubmitState("idle");
+    setReviewSubmitMessage(null);
+    setReviewSubmitError(null);
 
     if (caption.length > MAX_CAPTION_LENGTH) {
       setError(t("captionTooLong", { max: MAX_CAPTION_LENGTH }));

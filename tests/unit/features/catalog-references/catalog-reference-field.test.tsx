@@ -14,8 +14,10 @@
  *  - まねるものは決まった順で持ち、0個なら選ぶように出す。外すと null を渡す
  */
 
+// 文言はキーのまま返す。差し込む値(小さすぎるときの下限)は「キー:値」にして、渡っていることを確かめる
 jest.mock("next-intl", () => ({
-  useTranslations: () => (key: string) => key,
+  useTranslations: () => (key: string, values?: { min?: number }) =>
+    values?.min !== undefined ? `${key}:${values.min}` : key,
 }));
 
 const PREPARED = new File(["prepared"], "ref.jpg", { type: "image/jpeg" });
@@ -86,7 +88,7 @@ test("選んだら見本用に縮め、縮めた画像を同意つきで上げ�
 
 test.each([
   ["読めない画像", "load_failed", "catalogReferenceInvalid"],
-  ["小さすぎる", "too_small", "catalogReferenceTooSmall"],
+  ["小さすぎる", "too_small", "catalogReferenceTooSmall:768"],
   ["大きすぎる・細長すぎる", "too_large", "catalogReferenceTooLarge"],
 ] as const)("手元で断ったら(%s)、上げずに言語ごとの文言を出す", async (_label, problem, key) => {
   mockPrepare.mockRejectedValue(new ReferenceImageError(problem));
@@ -104,7 +106,9 @@ test.each([
 });
 
 test.each([
-  ["小さすぎる", "CATALOG_REFERENCE_IMAGE_TOO_SMALL", "catalogReferenceTooSmall"],
+  ["小さすぎる", "CATALOG_REFERENCE_IMAGE_TOO_SMALL", "catalogReferenceTooSmall:768"],
+  ["ログインが切れた", "CATALOG_REFERENCE_AUTH_REQUIRED", "catalogReferenceAuthRequired"],
+  ["一覧から外れた", "CATALOG_REFERENCE_NOT_ALLOWED", "catalogReferenceNotAllowed"],
   ["使えない形式", "CATALOG_REFERENCE_IMAGE_INVALID", "catalogReferenceInvalid"],
   ["大きすぎる", "CATALOG_REFERENCE_FILE_TOO_LARGE", "catalogReferenceTooLarge"],
   ["そのほか", "CATALOG_REFERENCE_SAVE_FAILED", "catalogReferenceUploadFailed"],
