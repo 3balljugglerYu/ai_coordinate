@@ -6,7 +6,7 @@ import type {
 } from "@/features/subscription/subscription-config";
 
 /**
- * サブスクの請求(invoice.paid)の見分けと、プランを途中で上げたときの支払いの記録。
+ * サブスクの請求(invoice.paid)の見分けと、支払いだけの行(record_subscription_payment)の記録。
  * 計画: docs/planning/subscription-change-revenue-recording-plan.md(案A・2026-10-26 ユーザー決定)
  *
  * プランを上げたとき(change-service.ts の即時の変更)は、日割りの請求が払われる。ペルコインの付与は
@@ -83,15 +83,31 @@ export function buildSubscriptionRevenueMetadata(params: {
 
 export type SubscriptionChangePaymentResult = "recorded" | "duplicate" | "skipped";
 
-/** 売上を記録する請求(支払いの行に必要なところだけ) */
-export type SubscriptionPaymentInvoice = Pick<
-  Stripe.Invoice,
-  "id" | "amount_paid" | "currency" | "livemode"
-> & { status_transitions?: Stripe.Invoice["status_transitions"] | null };
+/** 売上を記録する請求(必要なところだけ。checkout の支払いからも作る) */
+export interface SubscriptionPaymentInvoice {
+  id: string;
+  /** 金額が分からないときは null(売上に数えない) */
+  amount_paid: number | null;
+  currency: string | null;
+  livemode: boolean;
+  status_transitions?: { paid_at?: number | null } | null;
+}
+
+/** 円の請求の売上(円以外・金額が分からないときは null) */
+export function revenueYenOfPayment(payment: SubscriptionPaymentInvoice): number | null {
+  if ((payment.currency ?? "").toLowerCase() !== "jpy") return null;
+  return normalizeRevenueYen(payment.amount_paid);
+}
+
+/** 支払った時刻(ISO)。分からなければ null */
+export function paidAtOfPayment(payment: SubscriptionPaymentInvoice): string | null {
+  const seconds = payment.status_transitions?.paid_at ?? null;
+  return seconds ? new Date(seconds * 1000).toISOString() : null;
+}
 
 /**
- * 支払いだけの行(量0の subscription・paymentOnly)で売上を記録する。
- * 同じ請求は1行だけ(RPC が `payment:<請求 ID>` の一意の索引で止める)。0円・円以外は記録しない。
+ * 支払いだけの行(量0の subscription・paymentOnly)で売上を記録する。0円・円以外は記録しない。
+ * 同じ請求の売上は1行だけ(RPC が付与の関数と同じロックの中で、付与の行にもう売上があれば書かない)。
  */
 export async function recordSubscriptionPayment(
   supabase: SupabaseClient,
@@ -104,10 +120,6 @@ export async function recordSubscriptionPayment(
   },
 ): Promise<SubscriptionChangePaymentResult> {
   const { invoice } = params;
-  const revenueYen = normalizeRevenueYen(invoice.amount_paid);
-  if (!revenueYen) {
-    return "skipped";
-  }
   if ((invoice.currency ?? "").toLowerCase() !== "jpy") {
     console.warn("[Stripe Webhook] Skip non-JPY subscription payment", {
       invoiceId: invoice.id,
@@ -115,8 +127,11 @@ export async function recordSubscriptionPayment(
     });
     return "skipped";
   }
+  const revenueYen = revenueYenOfPayment(invoice);
+  if (!revenueYen) {
+    return "skipped";
+  }
 
-  const paidAtSeconds = invoice.status_transitions?.paid_at ?? null;
   const { data, error } = await supabase.rpc("record_subscription_payment", {
     p_user_id: params.userId,
     p_invoice_id: invoice.id,
@@ -131,7 +146,7 @@ export async function recordSubscriptionPayment(
       // 付与の行と同じキーでも請求 ID を持つ(RPC は invoiceId も入れる)
       invoice_id: invoice.id,
       // 行の created_at は処理した時刻なので、支払った時刻を別に残す(送り直しで日がずれても分かるように)
-      paidAt: paidAtSeconds ? new Date(paidAtSeconds * 1000).toISOString() : null,
+      paidAt: paidAtOfPayment(invoice),
     },
   });
 
@@ -154,53 +169,10 @@ export function recordSubscriptionChangePayment(
   return recordSubscriptionPayment(supabase, { ...params, revenueSource: "stripe_subscription_change" });
 }
 
-function hasRevenueYen(metadata: unknown): boolean {
-  const value = (metadata as Record<string, unknown> | null | undefined)?.revenueYen;
-  return (
-    (typeof value === "number" && Number.isFinite(value)) ||
-    (typeof value === "string" && /^[0-9]+(\.[0-9]+)?$/.test(value))
-  );
-}
-
-/**
- * その請求の売上が、付与の行(請求 ID そのもの・revenueYen あり)に記録されているか。
- * 管理画面の売上は「本番の subscription で revenueYen がある行」を数えるので、ここで確かめる。
- */
-export async function hasSubscriptionRevenueOnGrant(
-  supabase: SupabaseClient,
-  params: { userId: string; invoiceId: string },
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from("credit_transactions")
-    .select("metadata")
-    .eq("user_id", params.userId)
-    .eq("transaction_type", "subscription")
-    .eq("stripe_payment_intent_id", params.invoiceId)
-    .maybeSingle();
-  if (error) {
-    throw new Error(error.message);
-  }
-  return hasRevenueYen(data?.metadata);
-}
-
-/**
- * 付与のあとに、その請求の売上が記録されたかを確かめ、無ければ支払いだけの行で記録する。
- * 付与の行に売上が載らないのは、次のとき(どれも、お金は払われている)。
- * - 無料のペルコインが上限で、付与が0(付与の行ができない)
- * - 同じ請求で、change-service.ts がプラン変更の差を金額なしで先に付けていた
- * ふだんは付与の行に売上が載るので、何もしない(二重に数えない)。
- */
-export async function ensureSubscriptionRevenueRecorded(
-  supabase: SupabaseClient,
-  params: {
-    userId: string;
-    plan: SubscriptionPlan;
-    billingInterval: SubscriptionBillingInterval | null;
-    invoice: SubscriptionPaymentInvoice;
-  },
-): Promise<SubscriptionChangePaymentResult | "already_recorded"> {
-  if (await hasSubscriptionRevenueOnGrant(supabase, { userId: params.userId, invoiceId: params.invoice.id })) {
-    return "already_recorded";
-  }
-  return recordSubscriptionPayment(supabase, { ...params, revenueSource: "stripe_subscription" });
+/** 支払いだけの行の種類(管理画面の表示に使う)。付与の行なら null */
+export function getSubscriptionPaymentKind(
+  metadata: Record<string, unknown> | null | undefined,
+): "plan_change" | "payment" | null {
+  if (metadata?.paymentOnly !== true) return null;
+  return metadata.revenueSource === "stripe_subscription_change" ? "plan_change" : "payment";
 }

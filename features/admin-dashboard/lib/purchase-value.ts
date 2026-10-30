@@ -98,18 +98,12 @@ export function resolveTransactionRevenue(params: {
   if (params.transactionType === "subscription") {
     const plan = getSubscriptionPlan(params.metadata);
     const billingInterval = getSubscriptionBillingInterval(params.metadata);
-    const baseLabel =
+    // 付与の行と支払いだけの行は、同じ系列(key)・同じ名前にする(売上のグラフの系列名を揺らさない)。
+    // 支払いだけの行かどうかは、管理画面の利用者の詳細で出し分ける
+    const label =
       plan && billingInterval
         ? `サブスクリプション ${plan} ${billingInterval === "year" ? "年額" : "月額"}`
         : "サブスクリプション";
-    // 支払いだけの行(量0・ペルコインは付与の行で別に付く)。プランを途中で上げたときと、
-    // 付与の行に売上が載らなかったとき(無料のペルコインが上限など)がある
-    const label =
-      params.metadata?.paymentOnly !== true
-        ? baseLabel
-        : params.metadata?.revenueSource === "stripe_subscription_change"
-          ? `${baseLabel}（プラン変更の支払い）`
-          : `${baseLabel}（支払い）`;
 
     return {
       key:

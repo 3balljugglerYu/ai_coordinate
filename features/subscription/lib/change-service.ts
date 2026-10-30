@@ -273,6 +273,9 @@ async function grantSubscriptionPercoins(params: {
     p_user_id: params.userId,
     p_amount: params.amount,
     p_invoice_id: params.invoiceId,
+    // 付与の関数は引数4つの1つだけ(20261030140000 で引数3つの古い版を消した)。
+    // プラン変更の差の付与なので売上は載せない(支払いは invoice.paid で記録する)
+    p_metadata: { grantSource: "subscription_change_upgrade" },
   });
 
   if (error) {

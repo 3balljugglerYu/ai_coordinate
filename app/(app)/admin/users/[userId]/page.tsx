@@ -14,6 +14,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, User, ImageIcon, MessageCircle, CreditCard, Clock } from "lucide-react";
 import { UserDetailActions } from "./UserDetailActions";
+import { getSubscriptionPaymentKind } from "@/features/subscription/lib/subscription-change-payment";
 
 async function getUserDetail(userId: string) {
   const supabase = createAdminClient();
@@ -150,10 +151,10 @@ function formatTransactionType(
   }
   if (type === "subscription") {
     // 支払いだけの行(量0)と、ペルコインの付与の行を分けて出す
-    if (metadata?.paymentOnly !== true) return "サブスクの付与";
-    return metadata?.revenueSource === "stripe_subscription_change"
-      ? "サブスクの支払い（プラン変更）"
-      : "サブスクの支払い";
+    const paymentKind = getSubscriptionPaymentKind(metadata);
+    if (paymentKind === "plan_change") return "サブスクの支払い（プラン変更）";
+    if (paymentKind === "payment") return "サブスクの支払い";
+    return "サブスクの付与";
   }
   return map[type] || type;
 }

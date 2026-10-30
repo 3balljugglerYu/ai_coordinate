@@ -27,9 +27,10 @@ import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checko
 import {
   buildSubscriptionRevenueMetadata,
   classifySubscriptionInvoice,
-  ensureSubscriptionRevenueRecorded,
   normalizeRevenueYen,
+  paidAtOfPayment,
   recordSubscriptionChangePayment,
+  revenueYenOfPayment,
   type SubscriptionPaymentInvoice,
 } from "@/features/subscription/lib/subscription-change-payment";
 
@@ -294,9 +295,10 @@ async function updateSubscriptionStatus(params: {
 }
 
 /**
- * サブスクのペルコインを付け(付与の行に売上も載せる)、そのあとで、その請求の売上が
- * 記録されたかを確かめる。付与の行に売上が載らなかったとき(無料のペルコインが上限で付与が0、
- * 同じ請求で change-service.ts が金額なしで先に付けていた、など)は、支払いだけの行で記録する。
+ * サブスクのペルコインを付け、付与の行に売上を載せる。
+ * 付与の行に売上が載らないとき(無料のペルコインが上限で付与が0・同じ請求の付与が先にある)は、
+ * 付与の関数が同じロックの中で、支払いだけの行で売上を記録する(請求1件につき売上は1行だけ)。
+ * 本番かテストかは請求の livemode、売上は円の請求だけ(円以外・金額が分からないときは載せない)。
  */
 async function grantSubscriptionPercoins(params: {
   userId: string;
@@ -304,33 +306,31 @@ async function grantSubscriptionPercoins(params: {
   billingInterval: SubscriptionBillingInterval | null;
   payment: SubscriptionPaymentInvoice;
 }) {
-  const supabase = createAdminClient();
   const amount = getSubscriptionMonthlyPercoins(params.plan);
-  if (amount > 0) {
-    const { error } = await supabase.rpc("grant_subscription_percoins", {
-      p_user_id: params.userId,
-      p_amount: amount,
-      p_invoice_id: params.payment.id,
-      p_metadata: buildSubscriptionRevenueMetadata({
-        plan: params.plan,
-        billingInterval: params.billingInterval,
-        revenueYen: normalizeRevenueYen(params.payment.amount_paid),
-        revenueSource: "stripe_subscription",
-        mode: isStripeTestMode() ? "test" : "live",
-      }),
-    });
-
-    if (error) {
-      throw new Error(error.message);
-    }
+  if (amount <= 0) {
+    return;
   }
 
-  await ensureSubscriptionRevenueRecorded(supabase, {
-    userId: params.userId,
-    plan: params.plan,
-    billingInterval: params.billingInterval,
-    invoice: params.payment,
+  const supabase = createAdminClient();
+  const { error } = await supabase.rpc("grant_subscription_percoins", {
+    p_user_id: params.userId,
+    p_amount: amount,
+    p_invoice_id: params.payment.id,
+    p_metadata: {
+      ...buildSubscriptionRevenueMetadata({
+        plan: params.plan,
+        billingInterval: params.billingInterval,
+        revenueYen: revenueYenOfPayment(params.payment),
+        revenueSource: "stripe_subscription",
+        mode: params.payment.livemode ? "live" : "test",
+      }),
+      paidAt: paidAtOfPayment(params.payment),
+    },
   });
+
+  if (error) {
+    throw new Error(error.message);
+  }
 }
 
 /**
@@ -541,9 +541,11 @@ async function handleSubscriptionCheckoutCompleted(
     billingInterval,
     payment: {
       id: invoiceId,
-      amount_paid: session.amount_total ?? 0,
-      currency: session.currency ?? "",
+      amount_paid: session.amount_total,
+      currency: session.currency,
       livemode: session.livemode,
+      // checkout には支払った時刻が無いので、支払い画面の時刻を使う
+      status_transitions: { paid_at: session.created },
     },
   });
   await revalidateSubscriptionSurfaces(userId);
