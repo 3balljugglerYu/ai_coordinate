@@ -372,13 +372,12 @@ Main errors:
   - `prompt` との同時指定は `400`（原作の認可だけ借りて本文を差し替える経路を塞ぐ）
   - `generationType` は `free` 必須（省略時の default `coordinate` では `400`）
   - 原作が利用不可（削除・投稿取消・公開停止・secret なし・原作者が利用不可・未フォロー・ブロック関係）の場合は `409` + `FREE_SOURCE_UNAVAILABLE`。**理由は区別されない**
+  - 認可は job 作成前・Worker のペルコイン減算前・完了 RPC の画像 INSERT 前の3ヶ所で再検証される。完了時に失効していた場合は成果物を破棄して返金する
 - **見本（参照画像）つきのカタログ（i2i・計画書 `docs/planning/i2i-catalog-review-implementation-plan.md`）**: `referenceImageId`（`POST /api/catalog-references` が返した id）と `referenceTakes`（見本からまねるもの）を一緒に送ると、Worker が見本を image_1 にして生成します。
   - `generationType` は `free` 必須。`sourcePostId`（派生生成）とは同時に使えない。片方だけ・値の重複・知らない値は `400`
   - 見本を使える人（運営が選んだ人・`/admin/i2i-allowlist`）でなければ `403` + `GENERATION_REFERENCE_NOT_ALLOWED`。本人の見本でない・作り直しになった見本は `404` + `GENERATION_REFERENCE_NOT_FOUND`
-  - Worker も課金の前にもう一度確かめ、使えなければ課金せずに失敗させる（`CATALOG_REFERENCE_UNAVAILABLE`）
+  - Worker も課金の前にもう一度確かめ、使えなければ課金せずに失敗させる（`CATALOG_REFERENCE_UNAVAILABLE`・やり直さない）。確かめるときの DB の一時的な失敗は `CATALOG_REFERENCE_CHECK_FAILED` で、ほかの失敗と同じく1回だけやり直す
   - 見本を使った作品は、運営の審査で承認されるまで投稿できない（審査の流れは Phase 4）
-
-  - 認可は job 作成前・Worker のペルコイン減算前・完了 RPC の画像 INSERT 前の3ヶ所で再検証される。完了時に失効していた場合は成果物を破棄して返金する
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
 - `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。

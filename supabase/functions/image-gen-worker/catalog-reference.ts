@@ -24,7 +24,7 @@ interface CatalogReferenceRpcClient {
   rpc: (
     fn: "resolve_catalog_reference_for_job",
     args: { p_job_id: string },
-  ) => PromiseLike<{ data: unknown; error: { code?: string } | null }>;
+  ) => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>;
 }
 
 export async function resolveCatalogReferenceForJob(
@@ -51,8 +51,11 @@ export async function resolveCatalogReferenceForJob(
       jobId: job.id,
       code: error.code,
     });
-    // RPC が RAISE EXCEPTION で断ったときだけ確定の失敗にする
-    throw new Error(error.code === "P0001" ? CATALOG_REFERENCE_UNAVAILABLE : CATALOG_REFERENCE_CHECK_FAILED);
+    // RPC が RAISE EXCEPTION 'CATALOG_REFERENCE_UNAVAILABLE' で断ったときだけ確定の失敗にする。
+    // P0001 は ERRCODE を付けない RAISE すべての既定なので、断りの文でも確かめる
+    const refused =
+      error.code === "P0001" && (error.message ?? "").startsWith(CATALOG_REFERENCE_UNAVAILABLE);
+    throw new Error(refused ? CATALOG_REFERENCE_UNAVAILABLE : CATALOG_REFERENCE_CHECK_FAILED);
   }
 
   const row = (Array.isArray(data) ? data[0] : null) as

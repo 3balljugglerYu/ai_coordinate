@@ -61,6 +61,14 @@ test("DB の一時的な失敗は CATALOG_REFERENCE_CHECK_FAILED(確定の失敗
   );
 });
 
+test("同じ種類(P0001)でも、断りの文でなければ確定の失敗にしない(CATALOG_REFERENCE_CHECK_FAILED)", async () => {
+  const { supabase } = client({ data: null, error: { code: "P0001", message: "some other raise" } });
+
+  await expect(resolveCatalogReferenceForJob(supabase, FREE_DERIVED, logError)).rejects.toThrow(
+    CATALOG_REFERENCE_CHECK_FAILED,
+  );
+});
+
 test("DB が断ったら CATALOG_REFERENCE_UNAVAILABLE。ログは job の id とコードだけ", async () => {
   const { supabase } = client({
     data: null,

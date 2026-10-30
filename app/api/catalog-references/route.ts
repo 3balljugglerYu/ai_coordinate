@@ -3,7 +3,8 @@ import { getUser } from "@/lib/auth";
 import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { jsonError } from "@/lib/api/json-error";
-import { processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
+import { MAX_DIMENSION, processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
+import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
 import { saveCatalogReferenceImage } from "@/features/catalog-references/lib/reference-image-repository";
 
 /**
@@ -54,10 +55,18 @@ export async function POST(request: NextRequest) {
   const processed = await processSubmissionImage(Buffer.from(await file.arrayBuffer()));
   if (!processed.ok) {
     if (processed.error.code === "DIMENSION_TOO_SMALL") {
-      return jsonError("画像が小さすぎます(縦横とも768px以上)", "CATALOG_REFERENCE_IMAGE_TOO_SMALL", 400);
+      return jsonError(
+        `画像が小さすぎます(縦横とも${SUBMISSION_IMAGE_MIN_DIMENSION}px以上)`,
+        "CATALOG_REFERENCE_IMAGE_TOO_SMALL",
+        400,
+      );
     }
     if (processed.error.code === "DIMENSION_TOO_LARGE") {
-      return jsonError("画像が大きすぎます(縦横とも4096px以下)", "CATALOG_REFERENCE_IMAGE_TOO_LARGE", 400);
+      return jsonError(
+        `画像が大きすぎます(縦横とも${MAX_DIMENSION}px以下)`,
+        "CATALOG_REFERENCE_IMAGE_TOO_LARGE",
+        400,
+      );
     }
     return jsonError("この画像は使えません(JPEG・PNG・WebP・HEIC)", "CATALOG_REFERENCE_IMAGE_INVALID", 400);
   }
