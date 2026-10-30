@@ -227,10 +227,11 @@ flowchart LR
 - [ ] 通知の `type` に `catalog_review_approved`・`catalog_review_rejected`、プッシュの分類に足す
 - [ ] `.cursor/rules/database-design.mdc` を更新
 
-### Phase 2: 使える人の管理画面
-- [ ] `/admin/i2i-allowlist`（`app/(app)/admin/creator-allowlist/` を参考）と API（`requireAdmin`・`ensureSameOrigin`・監査）
-- [ ] 判定 `isInI2iCatalogAllowlist`（`lib/auth/creator-looks.ts` を参考・fail-closed）
-- [ ] 管理画面のサイドバーに足す
+### Phase 2: 使える人の管理画面（2026-10-30 実装）
+- [x] `/admin/i2i-allowlist`（`app/(app)/admin/creator-allowlist/` を参考）と API（`requireAdmin`・`ensureSameOrigin`・監査 `i2i_allowlist_add` / `_update` / `_remove`）
+- [x] 判定 `isInI2iCatalogAllowlist`（`lib/auth/i2i-catalog.ts`・fail-closed）。決まりは DB の関数 `is_in_i2i_catalog_allowlist` に置き、TS はそれを呼ぶ（worker も同じ関数を使う）。運営も一覧に足して使う（自動では開かない）
+- [x] 管理画面のサイドバーに足す（「見本を使える人」）
+- 画面の部品は、クリエイター招待と共通の `app/(app)/admin/_components/AllowlistManagerClient.tsx` にした（同じ270行を2つ持たない）
 
 ### Phase 3: 作者の生成
 - [ ] `POST /api/catalog-references`（使える人か・同意・形式・大きさ。`features/inspire` の検査を参考）

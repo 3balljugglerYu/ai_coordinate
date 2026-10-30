@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getUser } from "@/lib/auth";
 import { getAdminUserIds } from "@/lib/env";
 import { listCreatorAllowlist } from "@/features/creators/lib/creator-allowlist-repository";
-import { CreatorAllowlistClient } from "./CreatorAllowlistClient";
+import { AllowlistManagerClient } from "../_components/AllowlistManagerClient";
 
 export default async function AdminCreatorAllowlistPage() {
   await connection();
@@ -37,7 +37,17 @@ export default async function AdminCreatorAllowlistPage() {
 
       <Card className="overflow-hidden border-violet-200/60 bg-white/95 shadow-sm">
         <CardContent className="p-6 sm:p-8">
-          <CreatorAllowlistClient initialMembers={members} />
+          <AllowlistManagerClient
+            initialMembers={members}
+            apiPath="/api/admin/creator-allowlist"
+            copy={{
+              addHeading: "クリエイターを追加",
+              addButton: "招待",
+              addedDescription: "招待クリエイターに追加しました",
+              listHeading: "招待クリエイター",
+              removeConfirm: "この招待を削除しますか?(履歴は残りません)",
+            }}
+          />
         </CardContent>
       </Card>
     </div>

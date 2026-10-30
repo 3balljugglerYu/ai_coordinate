@@ -6,7 +6,28 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/use-toast";
-import type { CreatorAllowlistMember } from "@/features/creators/lib/creator-allowlist-repository";
+/** 一覧の1人(画面で使うところだけ) */
+export interface AllowlistManagerMember {
+  userId: string;
+  nickname: string | null;
+  avatarUrl: string | null;
+  isActive: boolean;
+  note: string | null;
+}
+
+/** 画面ごとに変える言葉 */
+export interface AllowlistManagerCopy {
+  /** 追加の見出し(例: クリエイターを追加) */
+  addHeading: string;
+  /** 検索結果の追加ボタン(例: 招待) */
+  addButton: string;
+  /** 追加できたときの説明 */
+  addedDescription: string;
+  /** 一覧の見出し。人数は後ろに付く(例: 招待クリエイター) */
+  listHeading: string;
+  /** 削除の確かめ */
+  removeConfirm: string;
+}
 
 interface SearchUser {
   user_id: string;
@@ -14,13 +35,22 @@ interface SearchUser {
   avatar_url: string | null;
 }
 
-export function CreatorAllowlistClient({
+/**
+ * 運営が人を選んで機能を開く一覧(allowlist)の管理画面。検索して足す・有効と無効の切り替え・削除。
+ * API は apiPath(GET 一覧・POST 追加)と apiPath/ユーザー ID(PATCH 有効/無効・DELETE)。
+ * クリエイター招待(/admin/creator-allowlist)と、見本を使える人(/admin/i2i-allowlist)で使う。
+ */
+export function AllowlistManagerClient({
   initialMembers,
+  apiPath,
+  copy,
 }: {
-  initialMembers: CreatorAllowlistMember[];
+  initialMembers: AllowlistManagerMember[];
+  apiPath: string;
+  copy: AllowlistManagerCopy;
 }) {
   const { toast } = useToast();
-  const [members, setMembers] = useState<CreatorAllowlistMember[]>(initialMembers);
+  const [members, setMembers] = useState<AllowlistManagerMember[]>(initialMembers);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchUser[]>([]);
   const [searching, setSearching] = useState(false);
@@ -29,9 +59,9 @@ export function CreatorAllowlistClient({
   const memberUserIds = new Set(members.map((m) => m.userId));
 
   const reload = async () => {
-    const res = await fetch("/api/admin/creator-allowlist");
+    const res = await fetch(apiPath);
     if (res.ok) {
-      setMembers((await res.json()) as CreatorAllowlistMember[]);
+      setMembers((await res.json()) as AllowlistManagerMember[]);
     }
   };
 
@@ -71,7 +101,7 @@ export function CreatorAllowlistClient({
   const handleAdd = async (userId: string) => {
     setBusyUserId(userId);
     try {
-      const res = await fetch("/api/admin/creator-allowlist", {
+      const res = await fetch(apiPath, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ userId }),
@@ -82,7 +112,7 @@ export function CreatorAllowlistClient({
       if (!res.ok) {
         throw new Error(body?.error || "追加に失敗しました");
       }
-      toast({ title: "追加しました", description: "招待クリエイターに追加しました" });
+      toast({ title: "追加しました", description: copy.addedDescription });
       await reload();
     } catch (error) {
       toast({
@@ -98,7 +128,7 @@ export function CreatorAllowlistClient({
   const handleToggle = async (userId: string, nextActive: boolean) => {
     setBusyUserId(userId);
     try {
-      const res = await fetch(`/api/admin/creator-allowlist/${userId}`, {
+      const res = await fetch(`${apiPath}/${userId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ isActive: nextActive }),
@@ -122,10 +152,10 @@ export function CreatorAllowlistClient({
   };
 
   const handleRemove = async (userId: string) => {
-    if (!window.confirm("この招待を削除しますか?(履歴は残りません)")) return;
+    if (!window.confirm(copy.removeConfirm)) return;
     setBusyUserId(userId);
     try {
-      const res = await fetch(`/api/admin/creator-allowlist/${userId}`, {
+      const res = await fetch(`${apiPath}/${userId}`, {
         method: "DELETE",
       });
       if (!res.ok) {
@@ -151,7 +181,7 @@ export function CreatorAllowlistClient({
     <div className="space-y-8">
       {/* 追加: ユーザー検索 */}
       <section className="space-y-3">
-        <h2 className="text-base font-semibold text-slate-900">クリエイターを追加</h2>
+        <h2 className="text-base font-semibold text-slate-900">{copy.addHeading}</h2>
         <div className="flex gap-2">
           <Input
             value={query}
@@ -194,7 +224,7 @@ export function CreatorAllowlistClient({
                       onClick={() => handleAdd(u.user_id)}
                       pending={busyUserId === u.user_id}
                     >
-                      招待
+                      {copy.addButton}
                     </Button>
                   )}
                 </li>
@@ -207,7 +237,7 @@ export function CreatorAllowlistClient({
       {/* 一覧 */}
       <section className="space-y-3">
         <h2 className="text-base font-semibold text-slate-900">
-          招待クリエイター({members.length}人)
+          {copy.listHeading}({members.length}人)
         </h2>
         {members.length === 0 ? (
           <p className="text-sm text-slate-500">まだ登録がありません。</p>
