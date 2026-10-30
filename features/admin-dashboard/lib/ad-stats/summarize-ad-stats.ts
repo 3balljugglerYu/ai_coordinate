@@ -73,10 +73,18 @@ export interface BreakdownGroup {
   breakdowns: Array<{ type: AdBreakdownType; items: BreakdownItem[] }>;
 }
 
+/** 媒体ごと・日ごとの合計（広告ごとの合計と同じ決まりで、内訳は1種類だけ使う） */
+export interface AdDailyTotal extends AdMetrics {
+  /** YYYY-MM-DD */
+  day: string;
+  platform: AdPlatform;
+}
+
 export interface AdStatsSummary {
   ads: AdSummary[];
   totals: Array<{ platform: AdPlatform } & AdMetrics>;
   groups: BreakdownGroup[];
+  daily: AdDailyTotal[];
 }
 
 export interface AdMeta {
@@ -164,6 +172,7 @@ export function summarizeAdStats(rows: StatRow[], ads: AdMeta[]): AdStatsSummary
 
   const summaries: AdSummary[] = [];
   const groups: BreakdownGroup[] = [];
+  const daily = new Map<string, AdDailyTotal>();
   for (const ad of perAd.values()) {
     const dates = [...ad.days.keys()].sort();
     const firstDate = dates[0];
@@ -171,9 +180,15 @@ export function summarizeAdStats(rows: StatRow[], ads: AdMeta[]): AdStatsSummary
 
     if (!isExportGroupKey(ad.adKey)) {
       const metrics = emptyMetrics();
-      for (const day of ad.days.values()) {
+      for (const [date, day] of ad.days) {
         const source = TOTAL_SOURCE_ORDER.find((type) => day.has(type));
-        for (const row of source ? (day.get(source) ?? []) : []) addMetrics(metrics, row);
+        const dailyKey = adId(ad.platform, date);
+        const dayTotal = daily.get(dailyKey) ?? { day: date, platform: ad.platform, ...emptyMetrics() };
+        for (const row of source ? (day.get(source) ?? []) : []) {
+          addMetrics(metrics, row);
+          addMetrics(dayTotal, row);
+        }
+        daily.set(dailyKey, dayTotal);
       }
       const adMeta = meta.get(adId(ad.platform, ad.adKey));
       summaries.push({
@@ -244,10 +259,14 @@ export function summarizeAdStats(rows: StatRow[], ads: AdMeta[]): AdStatsSummary
     ads: summaries.sort(byLatestThenName),
     totals: [...totals.entries()].map(([platform, metrics]) => ({ platform, ...metrics })),
     groups: groups.sort(byLatestThenName),
+    daily: [...daily.values()]
+      .map((total) => ({ ...total, ...roundYen(total) }))
+      .sort((a, b) => a.day.localeCompare(b.day) || a.platform.localeCompare(b.platform)),
   };
 }
 
-function addDays(date: string, days: number): string {
+/** YYYY-MM-DD に日数を足す */
+export function addDays(date: string, days: number): string {
   const [year, month, day] = date.split("-").map(Number);
   return new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10);
 }
