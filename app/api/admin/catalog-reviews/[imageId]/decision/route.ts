@@ -94,7 +94,7 @@ export async function POST(
     }
     if (message.includes("CATALOG_REVIEW_REFERENCE_UNAVAILABLE")) {
       return jsonError(
-        "この作品の見本は使えないため(作り直しになったか、元の作品が消されています)、承認できません。作り直しにしてください",
+        "この作品の見本は使えないため(作り直しになったか、元の作品や見本が消されています)、承認できません。作り直しにしてください",
         "CATALOG_REVIEW_REFERENCE_UNAVAILABLE",
         409,
       );

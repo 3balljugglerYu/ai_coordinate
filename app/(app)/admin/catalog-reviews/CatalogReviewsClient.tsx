@@ -87,7 +87,13 @@ export function CatalogReviewsClient({
           item={item}
           onDecided={(action) => handleDecided(item, action)}
           onImageUnavailable={() => markImageUnavailable(item)}
-          onReferenceUnavailable={() => setItems((current) => markReferenceUnavailable(current, item))}
+          // 断られた理由が「元の作品や見本が消された」なら、その作品の系統だけの話なので、
+          // 同じ見本のほかのカードには広げない(作り直しで見本が止まったときだけ広げる)
+          onReferenceUnavailable={() =>
+            setItems((current) =>
+              current.map((row) => (row.imageId === item.imageId ? { ...row, referenceUnavailable: true } : row)),
+            )
+          }
         />
       ))}
     </div>
@@ -169,7 +175,7 @@ function ReviewCard({
           ) : null}
           {item.derived ? <Badge variant="secondary">元の作品の見本を使った派生</Badge> : null}
           {item.referenceUnavailable ? (
-            <Badge variant="destructive">この作品の見本は使えません(作り直しになったか、元の作品が消されています)</Badge>
+            <Badge variant="destructive">この作品の見本は使えません(作り直しになったか、元の作品や見本が消されています)</Badge>
           ) : null}
           {item.imageUnavailable ? (
             <Badge variant="destructive">公開停止などのため承認できません(作り直しにはできます)</Badge>

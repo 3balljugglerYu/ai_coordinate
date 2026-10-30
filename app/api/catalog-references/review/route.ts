@@ -17,7 +17,7 @@ const bodySchema = z.object({ imageId: z.string().uuid() });
  * - 見つからない(他人の作品・見本の作品でない・公開停止など) 404
  * - 「未申請」でない(22023)ときは、本人の審査の行を読んで分ける: 審査中 409 ALREADY_SUBMITTED・
  *   承認済み 409 ALREADY_APPROVED・作り直し 409 REJECTED(同じ作品は出し直せない。作り直して新しく申請する)
- * - 見本が使えなくなっていれば 409 REFERENCE_UNAVAILABLE(作り直しになった・元の作品が消された。承認されても使えない)
+ * - 見本が使えなくなっていれば 409 REFERENCE_UNAVAILABLE(作り直しになった・元の作品や見本が消された。承認されても使えない)
  * - RPC にログインの情報が届かなかった(42501・auth.uid() が NULL)ときは 401(ログインし直す)
  */
 export async function POST(request: NextRequest) {

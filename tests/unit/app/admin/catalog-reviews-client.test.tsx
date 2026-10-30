@@ -102,10 +102,10 @@ test("失敗したら一覧に残し、理由を出す", async () => {
   expect(screen.getByText("はな")).toBeTruthy();
 });
 
-test("見本が作り直しで止まっていれば、そう出し、承認ボタンを押せない(作り直しは押せる)", () => {
+test("見本が使えなければ、そう出し、承認ボタンを押せない(作り直しは押せる)", () => {
   render(<CatalogReviewsClient initialItems={[{ ...ITEM, referenceUnavailable: true }]} limit={50} />);
 
-  expect(screen.getByText("この作品の見本は使えません(作り直しになったか、元の作品が消されています)")).toBeTruthy();
+  expect(screen.getByText("この作品の見本は使えません(作り直しになったか、元の作品や見本が消されています)")).toBeTruthy();
   expect((screen.getByRole("button", { name: "承認する" }) as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getByRole("button", { name: "作り直しにする" }) as HTMLButtonElement).disabled).toBe(false);
 });
@@ -139,7 +139,7 @@ test("作り直しにしたら、同じ見本のほかの作品にも印を出�
   fireEvent.click(screen.getAllByRole("button", { name: "作り直しにする" })[0]);
 
   await waitFor(() => expect(screen.queryByText("はな")).toBeNull());
-  const badge = "この作品の見本は使えません(作り直しになったか、元の作品が消されています)";
+  const badge = "この作品の見本は使えません(作り直しになったか、元の作品や見本が消されています)";
   expect(within(screen.getByText("そら").parentElement as HTMLElement).getByText(badge)).toBeTruthy();
   expect(within(screen.getByText("うみ").parentElement as HTMLElement).queryByText(badge)).toBeNull();
 });
@@ -181,7 +181,7 @@ test("開いたあとに公開停止になって承認を断られたら、そ�
   expect(screen.getByText("はな")).toBeTruthy();
 });
 
-test("見本が止まっているために承認を断られたら、そのカードと同じ見本のカードに印を出して残す", async () => {
+test("見本が使えないために承認を断られたら、そのカードにだけ印を出して残す(理由が分からないので同じ見本のカードには広げない)", async () => {
   respond(false, { error: "承認できません", errorCode: "CATALOG_REVIEW_REFERENCE_UNAVAILABLE" });
   const sameReference = { ...ITEM, imageId: "img-2", nickname: "そら" };
   const otherReference = { ...ITEM, imageId: "img-3", nickname: "うみ", referenceId: "ref-2" };
@@ -189,9 +189,9 @@ test("見本が止まっているために承認を断られたら、そのカ�
 
   fireEvent.click(screen.getAllByRole("button", { name: "承認する" })[0]);
 
-  const badge = "この作品の見本は使えません(作り直しになったか、元の作品が消されています)";
+  const badge = "この作品の見本は使えません(作り直しになったか、元の作品や見本が消されています)";
   await waitFor(() => expect(within(screen.getByText("はな").parentElement as HTMLElement).getByText(badge)).toBeTruthy());
-  expect(within(screen.getByText("そら").parentElement as HTMLElement).getByText(badge)).toBeTruthy();
+  expect(within(screen.getByText("そら").parentElement as HTMLElement).queryByText(badge)).toBeNull();
   // 断られたカードは承認を押せなくなり、作り直しは押せるまま
   expect((screen.getAllByRole("button", { name: "承認する" })[0] as HTMLButtonElement).disabled).toBe(true);
   expect((screen.getAllByRole("button", { name: "作り直しにする" })[0] as HTMLButtonElement).disabled).toBe(false);
