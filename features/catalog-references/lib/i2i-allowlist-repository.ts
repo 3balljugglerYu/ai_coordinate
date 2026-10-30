@@ -75,44 +75,52 @@ export async function listI2iAllowlist(client?: SupabaseClient): Promise<I2iAllo
 }
 
 /**
- * 足す(何度呼んでも同じ)。新しく足したら reactivated=false、すでにいた人を有効に戻したら true。
- * - 先に足してみて、すでに行があれば(user_id の UNIQUE)、is_active=true に戻すだけにする。
- *   同じ人をほぼ同時に足しても失敗しない
- * - 有効に戻すとき、足した人(added_by)は残す。note は今回指定されたときだけ上書きする
+ * 足す(何度呼んでも同じ)。新しく足したら created=true、もう一覧にいた人なら false(有効に戻す)。
+ * - user_id がぶつかったら何もしない足し方(ON CONFLICT DO NOTHING)で足し、足せた件数で判定する。
+ *   同じ人をほぼ同時に足しても失敗せず、ほかの制約の違反と取り違えない
+ * - もう一覧にいた人は is_active=true に戻す。足した人(added_by)は残し、note は指定したときだけ上書き。
+ *   戻す前に消されていた(0件)なら失敗にする(足したと記録して実は一覧にいない、を避ける)
  */
 export async function addI2iAllowlistMember(
   params: { userId: string; note?: string | null; addedBy?: string | null },
   client?: SupabaseClient,
-): Promise<{ reactivated: boolean }> {
+): Promise<{ created: boolean }> {
   const supabase = getSupabase(client);
 
-  const { error: insertError } = await supabase.from("i2i_catalog_allowlist").insert({
-    user_id: params.userId,
-    is_active: true,
-    note: params.note ?? null,
-    added_by: params.addedBy ?? null,
-  });
-  if (!insertError) {
-    return { reactivated: false };
-  }
-  if (insertError.code !== "23505") {
+  const { data: inserted, error: insertError } = await supabase
+    .from("i2i_catalog_allowlist")
+    .upsert(
+      {
+        user_id: params.userId,
+        is_active: true,
+        note: params.note ?? null,
+        added_by: params.addedBy ?? null,
+      },
+      { onConflict: "user_id", ignoreDuplicates: true },
+    )
+    .select("user_id");
+  if (insertError) {
     console.error("[i2i-allowlist] add(insert) error:", insertError);
     throw new Error("見本を使える人の追加に失敗しました");
+  }
+  if ((inserted ?? []).length > 0) {
+    return { created: true };
   }
 
   const patch: { is_active: boolean; note?: string | null } = { is_active: true };
   if (params.note != null) {
     patch.note = params.note;
   }
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("i2i_catalog_allowlist")
     .update(patch)
-    .eq("user_id", params.userId);
-  if (error) {
-    console.error("[i2i-allowlist] add(reactivate) error:", error);
+    .eq("user_id", params.userId)
+    .select("user_id");
+  if (error || (updated ?? []).length === 0) {
+    console.error("[i2i-allowlist] add(reactivate) error:", error ?? "row disappeared");
     throw new Error("見本を使える人の追加に失敗しました");
   }
-  return { reactivated: true };
+  return { created: false };
 }
 
 /** 有効・無効の切り替え(無効にすると一時的に使えなくなる)。一覧にいなければ false。 */

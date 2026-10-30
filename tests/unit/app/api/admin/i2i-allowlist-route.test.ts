@@ -80,7 +80,7 @@ beforeEach(() => {
   mockSameOrigin.mockReturnValue(null);
   mockProfileExists.mockResolvedValue(true);
   mockList.mockResolvedValue([]);
-  mockAdd.mockResolvedValue({ reactivated: false });
+  mockAdd.mockResolvedValue({ created: true });
   mockSetActive.mockResolvedValue(true);
   mockRemove.mockResolvedValue(true);
 });
@@ -143,18 +143,18 @@ describe("POST(足す)", () => {
         actionType: "i2i_allowlist_add",
         targetType: "i2i_catalog_allowlist",
         targetId: USER_ID,
-        metadata: { reactivated: false, noteUpdated: true },
+        metadata: { created: true, noteUpdated: true },
       }),
     );
   });
 
-  test("無効だった人を有効に戻したときは、監査ログでそれと分かる", async () => {
-    mockAdd.mockResolvedValue({ reactivated: true });
+  test("もう一覧にいた人を有効にしたときは、監査ログでそれと分かる(新しく足したのではない)", async () => {
+    mockAdd.mockResolvedValue({ created: false });
 
     await POST(jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID }));
 
     expect(mockAudit).toHaveBeenCalledWith(
-      expect.objectContaining({ metadata: { reactivated: true, noteUpdated: false } }),
+      expect.objectContaining({ metadata: { created: false, noteUpdated: false } }),
     );
   });
 

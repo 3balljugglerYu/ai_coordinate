@@ -76,14 +76,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { reactivated } = await addI2iAllowlistMember({ userId, note, addedBy: adminUser.id });
+    const { created } = await addI2iAllowlistMember({ userId, note, addedBy: adminUser.id });
     await logAdminAction({
       adminUserId: adminUser.id,
       actionType: "i2i_allowlist_add",
       targetType: "i2i_catalog_allowlist",
       targetId: userId,
-      // 新しく足したのか、無効から有効に戻したのか。メモを付けたか
-      metadata: { reactivated, noteUpdated: note !== null },
+      // 新しく足したのか(false ならもう一覧にいた人を有効にした)。メモを付けたか
+      metadata: { created, noteUpdated: note !== null },
     });
     return NextResponse.json({ ok: true });
   } catch (error) {
