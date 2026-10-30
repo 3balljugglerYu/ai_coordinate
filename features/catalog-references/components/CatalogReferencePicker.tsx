@@ -1,0 +1,291 @@
+"use client";
+
+import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
+import { ImagePlus, LoaderCircle, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import {
+  prepareCatalogReferenceImage,
+  ReferenceImageError,
+  type ReferenceImageProblem,
+} from "@/features/catalog-references/lib/prepare-reference-image";
+import {
+  hasSeenCatalogReferenceIntro,
+  markCatalogReferenceIntroSeen,
+} from "@/features/catalog-references/lib/intro-seen";
+import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
+import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
+import { CatalogReferenceConsentSheet } from "./CatalogReferenceConsentSheet";
+import { CatalogReferenceIntroSheet } from "./CatalogReferenceIntroSheet";
+
+/** 上げ終えた見本(id はサーバーが返したもの。画像の場所は持たない) */
+export interface CatalogReferenceValue {
+  id: string;
+  /** 手元のファイルから作った blob の URL(表示だけに使う) */
+  previewUrl: string;
+  takes: CatalogReferenceTake[];
+}
+
+interface CatalogReferencePickerProps {
+  /** うちの子の欄(元の画像を上げる部品。並べて置く) */
+  ownImage: ReactNode;
+  value: CatalogReferenceValue | null;
+  onChange: (value: CatalogReferenceValue | null) => void;
+  /** 上げている間は生成させない */
+  onUploadingChange?: (uploading: boolean) => void;
+  disabled?: boolean;
+  /** 見本を前に上げたことがあるか(/free のサーバーで確かめた値)。あれば同意の画面と案内を出さない */
+  consented: boolean;
+}
+
+/** 上げたときに最初から選んでおくまねるもの */
+const DEFAULT_TAKES: CatalogReferenceTake[] = ["outfit"];
+
+/** 手元で断った理由の文言 */
+const PROBLEM_KEYS = {
+  load_failed: "catalogReferenceInvalid",
+  too_small: "catalogReferenceTooSmall",
+  too_large: "catalogReferenceTooLarge",
+} as const satisfies Record<ReferenceImageProblem, string>;
+
+type UploadErrorKey =
+  | (typeof PROBLEM_KEYS)[ReferenceImageProblem]
+  | "catalogReferenceAuthRequired"
+  | "catalogReferenceNotAllowed"
+  | "catalogReferenceUploadFailed";
+
+/** API の断りの文言(API の文は日本語だけなので、言語ごとの文言に置き換える) */
+const UPLOAD_ERROR_KEYS: Record<string, UploadErrorKey> = {
+  CATALOG_REFERENCE_AUTH_REQUIRED: "catalogReferenceAuthRequired",
+  CATALOG_REFERENCE_NOT_ALLOWED: "catalogReferenceNotAllowed",
+  CATALOG_REFERENCE_IMAGE_INVALID: "catalogReferenceInvalid",
+  CATALOG_REFERENCE_IMAGE_TOO_SMALL: "catalogReferenceTooSmall",
+  CATALOG_REFERENCE_IMAGE_TOO_LARGE: "catalogReferenceTooLarge",
+  CATALOG_REFERENCE_FILE_TOO_LARGE: "catalogReferenceTooLarge",
+};
+
+const noopSubscribe = () => () => {};
+
+/**
+ * カタログをつくる(/free)の画像の欄を、「うちの子」と「見本」の2枚並べにする(第2案)。
+ * 見本を使える人(運営が選んだ人)にだけ出す。計画: docs/planning/i2i-catalog-review-implementation-plan.md §10
+ *
+ * - 見本を初めて選んだ直後に1回だけ「使える見本・使えない見本」を出し、「わかりました」で上げる
+ *   (閉じたら上げない。2回目からは出さない。あとから見返すこともできる)
+ * - 選んだら、API の決まり(縦横とも 768〜4096px・4MB まで)に合わせて手元で縮め、POST /api/catalog-references に上げる
+ *   (HEIC はブラウザで読めないので受け付けない)
+ * - 見本を使える人に最初の1回だけ「先行公開」の案内を出す(前に見本を上げた人には出さない)
+ */
+export function CatalogReferencePicker({
+  ownImage,
+  value,
+  onChange,
+  onUploadingChange,
+  disabled = false,
+  consented,
+}: CatalogReferencePickerProps) {
+  const t = useTranslations("free");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [agreed, setAgreed] = useState(consented);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // 同意の画面を出している間、選んだ画像を持っておく(同意したら上げる)
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [viewingConsent, setViewingConsent] = useState(false);
+
+  // 案内は、前に見本を上げたことがなく、まだ見ていない人にだけ出す(SSR では出さない)
+  const introEligible = useSyncExternalStore(
+    noopSubscribe,
+    () => !consented && !hasSeenCatalogReferenceIntro(),
+    () => false,
+  );
+  const [introDismissed, setIntroDismissed] = useState(false);
+  const introOpen = introEligible && !introDismissed;
+
+  // 外したときに、プレビューの URL を放す
+  const previewUrl = value?.previewUrl;
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  const setUploadingState = (next: boolean) => {
+    setUploading(next);
+    onUploadingChange?.(next);
+  };
+
+  const messageFor = (key: UploadErrorKey) =>
+    key === "catalogReferenceTooSmall" ? t(key, { min: SUBMISSION_IMAGE_MIN_DIMENSION }) : t(key);
+
+  const upload = async (file: File) => {
+    setError(null);
+    setUploadingState(true);
+    try {
+      let prepared: File;
+      try {
+        prepared = await prepareCatalogReferenceImage(file);
+      } catch (e) {
+        setError(messageFor(e instanceof ReferenceImageError ? PROBLEM_KEYS[e.problem] : "catalogReferenceInvalid"));
+        return;
+      }
+      const form = new FormData();
+      form.append("file", prepared);
+      form.append("copyrightConsent", "true");
+      let res: Response;
+      try {
+        res = await fetch("/api/catalog-references", { method: "POST", body: form });
+      } catch {
+        setError(messageFor("catalogReferenceUploadFailed"));
+        return;
+      }
+      const body = (await res.json().catch(() => null)) as { id?: string; errorCode?: string } | null;
+      if (!res.ok || !body?.id) {
+        setError(messageFor((body?.errorCode && UPLOAD_ERROR_KEYS[body.errorCode]) || "catalogReferenceUploadFailed"));
+        return;
+      }
+      onChange({ id: body.id, previewUrl: URL.createObjectURL(prepared), takes: DEFAULT_TAKES });
+    } finally {
+      setUploadingState(false);
+    }
+  };
+
+  const handleSelected = (file: File) => {
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (agreed) {
+      void upload(file);
+      return;
+    }
+    setError(null);
+    setPendingFile(file);
+  };
+
+  const closeConsent = () => {
+    // 同意せずに閉じたら、選んだ画像は上げない
+    setPendingFile(null);
+    setViewingConsent(false);
+  };
+
+  const handleAgree = () => {
+    const file = pendingFile;
+    setAgreed(true);
+    closeConsent();
+    if (file) void upload(file);
+  };
+
+  const closeIntro = () => {
+    markCatalogReferenceIntroSeen();
+    setIntroDismissed(true);
+  };
+
+  return (
+    <div className="space-y-3" data-testid="catalog-reference-picker">
+      <div className="grid grid-cols-2 gap-3">
+        <div className="min-w-0 space-y-1.5">
+          {ownImage}
+          <p className="text-center text-xs text-muted-foreground">
+            <span className="font-bold text-foreground">{t("catalogReferenceOwnImage")}</span>
+            {t("catalogReferenceOwnImageRequired")}
+          </p>
+        </div>
+
+        <div className="min-w-0 space-y-1.5">
+          <div className="relative mt-3 aspect-[3/4] w-full overflow-hidden rounded-xl">
+            {value ? (
+              <>
+                {/* 手元のファイルの blob の URL なので next/image を通さない */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={value.previewUrl}
+                  alt={t("catalogReferenceImageAlt")}
+                  className="h-full w-full bg-gray-100 object-contain"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="secondary"
+                  className="absolute right-2 top-2 h-8 w-8 rounded-full bg-black/60 text-white hover:bg-black/70"
+                  onClick={() => onChange(null)}
+                  disabled={disabled}
+                  aria-label={t("catalogReferenceRemove")}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || uploading}
+                aria-busy={uploading}
+                className={cn(
+                  "flex h-full w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-violet-300 p-2 text-center text-xs font-medium text-violet-800",
+                  "bg-[repeating-linear-gradient(45deg,#ede9fe_0_8px,#f5f3ff_8px_16px)] transition-colors hover:border-violet-400",
+                  "disabled:cursor-not-allowed disabled:opacity-70",
+                )}
+              >
+                {uploading ? (
+                  <LoaderCircle className="h-7 w-7 animate-spin" aria-hidden="true" />
+                ) : (
+                  <ImagePlus className="h-7 w-7" aria-hidden="true" />
+                )}
+                <span>{uploading ? t("catalogReferenceUploading") : t("catalogReferenceChoose")}</span>
+              </button>
+            )}
+            <span className="pointer-events-none absolute left-2 top-2 inline-flex h-5 items-center rounded-full bg-white/90 px-2 text-[10px] font-bold tracking-wide text-violet-800">
+              {t("catalogReferenceBeta")}
+            </span>
+          </div>
+          <p className="text-center text-xs text-muted-foreground">
+            <span className="font-bold text-foreground">{t("catalogReferenceImageAlt")}</span>
+            {t("catalogReferenceOptional")}
+          </p>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            data-testid="catalog-reference-file"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) handleSelected(file);
+            }}
+          />
+        </div>
+      </div>
+
+      {error ? (
+        <p className="text-sm text-destructive" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      <p className="text-xs leading-relaxed text-muted-foreground">
+        {t("catalogReferenceHint")}{" "}
+        <button
+          type="button"
+          className="underline underline-offset-2 hover:text-foreground"
+          onClick={() => setViewingConsent(true)}
+        >
+          {t("catalogReferenceConsentReopen")}
+        </button>
+      </p>
+
+      <CatalogReferenceConsentSheet
+        open={pendingFile !== null || viewingConsent}
+        onOpenChange={(open) => {
+          if (!open) closeConsent();
+        }}
+        onAgree={handleAgree}
+        mode={pendingFile !== null ? "consent" : "view"}
+      />
+      <CatalogReferenceIntroSheet
+        open={introOpen}
+        onOpenChange={(open) => {
+          if (!open) closeIntro();
+        }}
+      />
+    </div>
+  );
+}

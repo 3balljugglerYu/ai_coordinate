@@ -6,26 +6,28 @@
  *
  * ここで守ること:
  *  - 見本を使える人(サーバーで一覧を確かめた人)の、じゆうモードの自分で書く本文にだけ出す
- *    (派生生成・コーディネート・使えない人には出さない)
+ *    (派生生成・コーディネート・使えない人には出さない。出さない人の画像の欄は今のまま)
+ *  - 見本を使える人は、うちの子と見本の2枚並べ(第2案)。うちの子の欄は見出しを消して縦長にする
+ *  - 同意済みか(サーバーで確かめた値)を、そのまま渡す
+ *  - まねるものの欄は、見本を入れたときだけ出す
  *  - 見本を選んだときだけ、id とまねるものを送る
  *  - 上げている間と、まねるものが0個のときは送らない
  */
 
 // 見本の欄は部品のテストで確かめるので、ここでは値を渡すだけにする
-const mockReferenceField = jest.fn();
-jest.mock("@/features/catalog-references/components/CatalogReferenceField", () => ({
-  CatalogReferenceField: (props: {
+const mockReferencePicker = jest.fn();
+jest.mock("@/features/catalog-references/components/CatalogReferencePicker", () => ({
+  CatalogReferencePicker: (props: {
+    ownImage: React.ReactNode;
     onChange: (value: unknown) => void;
     onUploadingChange: (uploading: boolean) => void;
   }) => {
-    mockReferenceField(props);
+    mockReferencePicker(props);
     return (
-      <div data-testid="mock-reference-field">
+      <div data-testid="mock-reference-picker">
+        {props.ownImage}
         <button type="button" onClick={() => props.onChange({ id: "ref-1", previewUrl: "blob:r", takes: ["outfit", "pose"] })}>
           mock-pick-reference
-        </button>
-        <button type="button" onClick={() => props.onChange({ id: "ref-1", previewUrl: "blob:r", takes: [] })}>
-          mock-empty-takes
         </button>
         <button type="button" onClick={() => props.onUploadingChange(true)}>
           mock-uploading
@@ -33,6 +35,15 @@ jest.mock("@/features/catalog-references/components/CatalogReferenceField", () =
       </div>
     );
   },
+}));
+jest.mock("@/features/catalog-references/components/CatalogReferenceTakes", () => ({
+  CatalogReferenceTakes: (props: { value: { id: string }; onChange: (value: unknown) => void }) => (
+    <div data-testid="mock-reference-takes">
+      <button type="button" onClick={() => props.onChange({ ...props.value, takes: [] })}>
+        mock-empty-takes
+      </button>
+    </div>
+  ),
 }));
 
 // 文言はキーのまま返す。差し込んだ値(試しの欄の見出しなど)は呼び出しの記録から確かめる
@@ -52,12 +63,16 @@ jest.mock("@/features/generation/components/GeneratedImagesFromSource", () => ({
   GeneratedImagesFromSource: () => null,
 }));
 
+const mockImageUploader = jest.fn();
 jest.mock("@/features/generation/components/ImageUploader", () => ({
   ImageUploader: ({
     onImageUpload,
     onImageRemove,
     value,
+    ...layout
   }: {
+    label?: string;
+    aspectRatio?: number;
     onImageUpload: (image: {
       file: File;
       previewUrl: string;
@@ -66,7 +81,10 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
     }) => void;
     onImageRemove?: () => void;
     value?: unknown;
-  }) => (
+  }) => {
+    // 並べ方(見出し・縦横の比)だけを記録する
+    mockImageUploader(layout);
+    return (
     <div data-testid="mock-image-uploader">
       <button
         type="button"
@@ -87,7 +105,8 @@ jest.mock("@/features/generation/components/ImageUploader", () => ({
         </button>
       ) : null}
     </div>
-  ),
+    );
+  },
 }));
 
 jest.mock("@/features/generation/components/GenerationModelControls", () => ({
@@ -154,7 +173,7 @@ jest.mock("next/navigation", () => ({
   useRouter: () => ({ refresh: jest.fn() }),
 }));
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { GenerationForm } from "@/features/generation/components/GenerationForm";
 
@@ -204,9 +223,20 @@ async function fillBodyAndImage(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("見本の欄の出し分け", () => {
-  test("見本を使える人の、じゆうモードの自分で書く本文には出す", () => {
-    renderForm(jest.fn());
-    expect(screen.getByTestId("mock-reference-field")).toBeTruthy();
+  beforeEach(() => {
+    mockReferencePicker.mockClear();
+    mockImageUploader.mockClear();
+  });
+
+  test("見本を使える人の、じゆうモードの自分で書く本文には、うちの子と見本の2枚並べを出す", () => {
+    renderForm(jest.fn(), { catalogReferenceConsented: true });
+
+    expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
+    expect(screen.getByText("catalogReferenceImagesLabel")).toBeTruthy();
+    // うちの子の欄は並べた中にあり、見出しを消して縦長にする
+    expect(within(screen.getByTestId("mock-reference-picker")).getByTestId("mock-image-uploader")).toBeTruthy();
+    expect(mockImageUploader).toHaveBeenLastCalledWith({ label: "", aspectRatio: 3 / 4 });
+    expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({ consented: true, value: null });
   });
 
   test.each([
@@ -214,9 +244,23 @@ describe("見本の欄の出し分け", () => {
     ["コーディネート", { mode: "coordinate" as const }],
     ["派生生成(本文が施錠されている)", { promptLocked: true, sourcePostId: "post-1", lockedPromptText: "" }],
     ["ログインしていない", { authState: "guest" as const }],
-  ])("%s には出さない", (_label, props) => {
+  ])("%s には出さず、画像の欄は今のまま", (_label, props) => {
     renderForm(jest.fn(), props);
-    expect(screen.queryByTestId("mock-reference-field")).toBeNull();
+
+    expect(screen.queryByTestId("mock-reference-picker")).toBeNull();
+    expect(screen.queryByText("catalogReferenceImagesLabel")).toBeNull();
+    expect(screen.getByText("imageSourceLabel")).toBeTruthy();
+    expect(mockImageUploader).toHaveBeenLastCalledWith({});
+  });
+
+  test("まねるものの欄は、見本を入れたときだけ出す", async () => {
+    const user = userEvent.setup();
+    renderForm(jest.fn());
+    expect(screen.queryByTestId("mock-reference-takes")).toBeNull();
+
+    await user.click(screen.getByText("mock-pick-reference"));
+
+    expect(screen.getByTestId("mock-reference-takes")).toBeTruthy();
   });
 });
 
@@ -252,9 +296,9 @@ describe("見本の送信", () => {
   });
 
   test.each([
-    ["まねるものが0個", "mock-empty-takes"],
-    ["見本を上げている間", "mock-uploading"],
-  ])("%s は送らない", async (_label, trigger) => {
+    ["まねるものが0個", ["mock-pick-reference", "mock-empty-takes"]],
+    ["見本を上げている間", ["mock-uploading"]],
+  ])("%s は送らない", async (_label, triggers) => {
     const user = userEvent.setup();
     const onSubmit = jest.fn();
     renderForm(onSubmit);
@@ -262,7 +306,9 @@ describe("見本の送信", () => {
     // きっかけの前は送れる(ほかの理由で止まっていないことを先に確かめる)
     expect((screen.getByTestId("mock-submit") as HTMLButtonElement).disabled).toBe(false);
 
-    await user.click(screen.getByText(trigger));
+    for (const trigger of triggers) {
+      await user.click(screen.getByText(trigger));
+    }
 
     expect((screen.getByTestId("mock-submit") as HTMLButtonElement).disabled).toBe(true);
   });

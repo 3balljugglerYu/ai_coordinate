@@ -43,6 +43,10 @@ const mockI2iAllowed = jest.fn<Promise<boolean>, [string | null | undefined]>(as
 jest.mock("@/lib/auth/i2i-catalog", () => ({
   isInI2iCatalogAllowlist: (userId: string | null | undefined) => mockI2iAllowed(userId),
 }));
+const mockReferenceConsent = jest.fn<Promise<boolean>, [string]>(async () => false);
+jest.mock("@/features/catalog-references/lib/reference-image-repository", () => ({
+  hasCatalogReferenceConsent: (userId: string) => mockReferenceConsent(userId),
+}));
 jest.mock("@/components/RefreshOnMount", () => ({ RefreshOnMount: () => null }));
 jest.mock("@/features/credits/components/CachedGenerationPercoinBalance", () => ({
   CachedGenerationPercoinBalance: () => null,
@@ -68,6 +72,7 @@ beforeEach(() => {
   mockGachaAvailable.mockReset();
   mockGachaSplitAvailable.mockReset();
   mockFormContainer.mockClear();
+  mockReferenceConsent.mockClear();
 });
 
 describe("FreePageBody の生成結果一覧", () => {
@@ -165,5 +170,25 @@ describe("FreePageBody の見本(参照画像)の欄", () => {
 
     expect(mockI2iAllowed).toHaveBeenCalledWith("user-1");
     expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceAvailable: allowed });
+  });
+
+  // 見本を前に上げたことがあるか(初めてのときだけ同意の画面と案内を出す)は、使える人のときだけ確かめる
+  test.each([true, false])("使える人なら、同意済みか(%s)を確かめて渡す", async (consented) => {
+    mockAvailable.mockReturnValue(true);
+    mockI2iAllowed.mockResolvedValueOnce(true);
+    mockReferenceConsent.mockResolvedValueOnce(consented);
+    render(await FreePageBody());
+
+    expect(mockReferenceConsent).toHaveBeenCalledWith("user-1");
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceConsented: consented });
+  });
+
+  test("使えない人には、同意済みかを確かめない(一般の利用者の読み込みを増やさない)", async () => {
+    mockAvailable.mockReturnValue(true);
+    mockI2iAllowed.mockResolvedValueOnce(false);
+    render(await FreePageBody());
+
+    expect(mockReferenceConsent).not.toHaveBeenCalled();
+    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceConsented: false });
   });
 });

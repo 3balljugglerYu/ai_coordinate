@@ -78,3 +78,29 @@ export async function isUsableOwnCatalogReference(
   }
   return data !== null;
 }
+
+/**
+ * 見本を前に上げたことがあるか(初めての同意の画面を出すかどうか。第2案: 同意は初めて入れたときだけ)。
+ * 上げるたびに同意の時刻を行に残しているので、行が1つでもあれば同意済みとみなす。
+ * DB のエラーは false(同意の画面をもう一度出す。安全なほうに倒す)
+ */
+export async function hasCatalogReferenceConsent(
+  userId: string,
+  client?: SupabaseClient,
+): Promise<boolean> {
+  try {
+    const { data, error } = await getSupabase(client)
+      .from("catalog_reference_images")
+      .select("id")
+      .eq("user_id", userId)
+      .limit(1);
+    if (error) {
+      console.warn("[catalog-references] consent check error:", error.message);
+      return false;
+    }
+    return (data ?? []).length > 0;
+  } catch (e) {
+    console.warn("[catalog-references] consent check threw:", e);
+    return false;
+  }
+}

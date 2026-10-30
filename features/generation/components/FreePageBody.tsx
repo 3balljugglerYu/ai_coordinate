@@ -18,6 +18,7 @@ import { CachedGeneratedImageGallery } from "./CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
+import { hasCatalogReferenceConsent } from "@/features/catalog-references/lib/reference-image-repository";
 import { type Locale } from "@/i18n/config";
 import { FreeGuestLoginCta } from "./FreeGuestLoginCta";
 
@@ -47,6 +48,10 @@ export async function FreePageBody() {
     getUserProfileServer(user.id),
     isInI2iCatalogAllowlist(user.id),
   ]);
+  // 見本を前に上げたことがあるか(初めてのときだけ同意の画面と案内を出す)。使える人のときだけ確かめる
+  const catalogReferenceConsented = catalogReferenceAvailable
+    ? await hasCatalogReferenceConsent(user.id)
+    : false;
 
   return (
     <>
@@ -83,6 +88,7 @@ export async function FreePageBody() {
             nameInputUnlimited={isAdminViewer(user.id)}
             // 見本の欄(運営が選んだ人だけ。docs/planning/i2i-catalog-review-implementation-plan.md)
             catalogReferenceAvailable={catalogReferenceAvailable}
+            catalogReferenceConsented={catalogReferenceConsented}
           />
         </Suspense>
 
