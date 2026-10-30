@@ -44,7 +44,7 @@ begin
   );
 
   -- この請求の売上がもうどこかにあるか(支払いだけの行・付与の行)。
-  -- 0円の請求は売上として残さない(アプリの recordSubscriptionPayment と同じ決まり)
+  -- 0円の請求は売上として残さない(アプリの recordSubscriptionChangePayment と同じ決まり)
   v_has_revenue := jsonb_typeof(v_metadata->'revenueYen') = 'number'
     and (v_metadata->>'revenueYen')::numeric > 0;
   v_payment_exists := p_invoice_id is not null and exists (
