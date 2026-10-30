@@ -154,6 +154,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "shield-check",
   },
   {
+    path: "/admin/catalog-reviews",
+    label: "見本の審査",
+    description: "見本(参照画像)を使った作品を承認・作り直しにする",
+    iconKey: "shield-check",
+  },
+  {
     path: "/admin/creator-looks-two-stage",
     label: "Creator Looks設定",
     description: "衣装＋背景の2段階生成モードの公開レベルを管理",

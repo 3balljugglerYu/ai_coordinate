@@ -439,6 +439,23 @@ Main errors:
 
 見本つきの作品は、承認されるまで `POST /api/posts/post` が `409` + `POSTS_REVIEW_PENDING` を返します（DB のトリガーが投稿を止める）。
 
+### `POST /api/admin/catalog-reviews/[imageId]/decision`
+
+見本（参照画像）つきの作品の審査を判定します（運営の審査ページ `/admin/catalog-reviews` から）。
+
+- Access: `admin session`（同一オリジン）
+- Request body:
+  - 承認: `{ "action": "approve" }`
+  - 作り直し: `{ "action": "reject", "reasonCategory": "official_or_others_work" | "real_person" | "sexual_or_violent" | "other", "reason": "作者への説明（任意・500文字まで）" }`
+- Response: `200` `{ "status": "approved" | "rejected", "reviewedAt": "..." }`
+- 判定・作者への通知・作り直しのときの見本の停止は、RPC `apply_catalog_review_decision` が1つのトランザクションで行う。監査ログに `catalog_review_approve` / `catalog_review_reject` を残す
+- Errors:
+  - `400`: 作品の ID の形が違う（`CATALOG_REVIEW_INVALID_ID`）・本文が JSON でない（`CATALOG_REVIEW_INVALID_REQUEST`）・判定の内容が違う（作り直しに分類が無い・500文字を超えるなど。`CATALOG_REVIEW_INVALID_DECISION`）
+  - `403`: 運営でない・よそのサイトからの送信・運営として登録されていない（`CATALOG_REVIEW_UNAUTHORIZED`）
+  - `404`: 審査の作品が見つからない（`CATALOG_REVIEW_NOT_FOUND`）
+  - `409`: もう判定した（`CATALOG_REVIEW_ALREADY_DECIDED`）・作品が公開停止などで使えない（`CATALOG_REVIEW_IMAGE_UNAVAILABLE`）
+  - `500`: 判定に失敗した（`CATALOG_REVIEW_DECISION_FAILED`）
+
 ### `POST /api/coordinate-generate-guest`
 
 未ログインユーザー向けのコーディネート同期生成エンドポイント (Phase 3)。
@@ -867,6 +884,7 @@ Main errors:
 | GET | `/api/admin/catalog/campaigns` | admin session | 絵師カタログ企画一覧を取得する |
 | POST | `/api/admin/catalog/campaigns` | admin session | 絵師カタログ企画を作成する |
 | POST | `/api/admin/catalog/entries/[id]/decision` | admin session | カタログ申請の承認・差戻し・非公開化を確定する |
+| POST | `/api/admin/catalog-reviews/[imageId]/decision` | admin session（同一オリジン） | 見本つきの作品の審査を、承認か作り直し（理由の分類と説明）に決める |
 | PATCH | `/api/admin/catalog/entries/[id]/order` | admin session | カタログページの表示順を更新する |
 | GET | `/api/admin/catalog/entries` | admin session | カタログ申請一覧を取得する |
 | POST | `/api/admin/deduction` | admin session | 管理者がペルコインを減算する |

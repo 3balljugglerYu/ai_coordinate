@@ -38,6 +38,8 @@ export type AdminAuditAction =
   | "creator_allowlist_add"
   | "creator_allowlist_update"
   | "creator_allowlist_remove"
+  | "catalog_review_approve"
+  | "catalog_review_reject"
   | "i2i_allowlist_add"
   | "i2i_allowlist_update"
   | "i2i_allowlist_remove"
