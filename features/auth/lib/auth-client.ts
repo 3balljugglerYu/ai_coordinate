@@ -12,6 +12,7 @@ import { getSiteUrlForClient } from "@/lib/public-env";
 import { SIGN_OUT_API_PATH } from "@/lib/auth/sign-out-path";
 import { checkReferralBonusOnFirstLogin } from "@/features/referral/lib/api";
 import type { SignupSource } from "./signup-source";
+import { readFirstVisitFromCookieHeader } from "./first-visit";
 import {
   DEFAULT_LOCALE,
   getLocaleCookieMaxAge,
@@ -652,12 +653,21 @@ export async function signUp(
 
   const signUpOptions: {
     emailRedirectTo: string;
-    data?: { referral_code?: string; signup_source?: SignupSource };
+    data?: {
+      referral_code?: string;
+      signup_source?: SignupSource;
+      first_visit_channel?: string;
+      first_landing_path?: string;
+    };
   } = {
     emailRedirectTo: callbackUrl.toString(),
   };
 
-  if (referralCode || signupSource) {
+  // 最初に来た場所(管理ダッシュボード P3-3)。トリガー handle_new_user が user_first_visits へ写す
+  const firstVisit =
+    typeof document === "undefined" ? null : readFirstVisitFromCookieHeader(document.cookie);
+
+  if (referralCode || signupSource || firstVisit) {
     signUpOptions.data = {};
 
     if (referralCode) {
@@ -666,6 +676,13 @@ export async function signUp(
 
     if (signupSource) {
       signUpOptions.data.signup_source = signupSource;
+    }
+
+    if (firstVisit) {
+      signUpOptions.data.first_visit_channel = firstVisit.channel;
+      if (firstVisit.landingPath) {
+        signUpOptions.data.first_landing_path = firstVisit.landingPath;
+      }
     }
   }
 

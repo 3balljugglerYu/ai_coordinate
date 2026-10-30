@@ -11,6 +11,7 @@ import { CollectionProgressChecker } from "@/components/CollectionProgressChecke
 import { CollectionUnlockDripListener } from "@/features/collections/components/CollectionUnlockDripListener";
 import { BonusNotificationToastListener } from "@/features/notifications/components/BonusNotificationToastListener";
 import { TutorialTourProvider } from "@/features/tutorial/components/TutorialTourProvider";
+import { FirstVisitCapture } from "@/features/auth/components/FirstVisitCapture";
 import { SignupSourceCapture } from "@/features/auth/components/SignupSourceCapture";
 import { stripLocalePrefix } from "@/i18n/config";
 
@@ -80,7 +81,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   if (shouldBypassAppShell) {
     /*
-      共通 chrome は出さないが、SignupSourceCapture だけは描く。
+      共通 chrome は出さないが、SignupSourceCapture と FirstVisitCapture だけは描く。
       これを外すと、没入ビュー(/m/<token>/book 等)へ直接着地した人の
       ?signup_source= が cookie に入らず、シェア経由の登録が計測できない。
       表示は何も持たない(null を返す)ので chrome を出さない方針とは両立する。
@@ -88,6 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return (
       <>
         <SignupSourceCapture />
+        <FirstVisitCapture />
         {/*
           生成画面(/generate/...)では、生成の直後に出る通知の常駐処理は残す。
           ここで外すと、神コレなどの進み具合・完走のモーダルとボーナスの通知が、
@@ -114,6 +116,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       <SignupSourceCapture />
+      <FirstVisitCapture />
       <Suspense fallback={<div className="h-16" />}>
         <StickyHeader />
       </Suspense>

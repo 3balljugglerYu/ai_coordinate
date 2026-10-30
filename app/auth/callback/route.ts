@@ -1,6 +1,9 @@
 import { connection, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { parseSignupSource } from "@/features/auth/lib/signup-source";
+import { readFirstVisitFromCookieHeader } from "@/features/auth/lib/first-visit";
+import { runAfterResponse } from "@/features/monetization/lib/after-response";
 import {
   AD_SIGNUP_COOKIE,
   AD_SIGNUP_COOKIE_MAX_AGE_SECONDS,
@@ -150,6 +153,25 @@ export async function GET(request: Request) {
             err
           );
         }
+      }
+
+      // 最初に来た場所(管理ダッシュボード P3-3)。OAuth の登録は user_metadata を通らないので、ここで書く。
+      // メールでの登録はトリガーが先に書いているので、すでにあれば何もしない(最初の値を残す)。
+      // 運営(service_role)だけが読み書きする表なので、管理用の接続で書く。応答は待たせない。
+      const firstVisit = readFirstVisitFromCookieHeader(request.headers.get("cookie"));
+      if (firstVisit && shouldUpdateRecentUserMetadata) {
+        const userId = sessionData.user.id;
+        runAfterResponse(async () => {
+          const { error: firstVisitError } = await createAdminClient()
+            .from("user_first_visits")
+            .upsert(
+              { user_id: userId, channel: firstVisit.channel, landing_path: firstVisit.landingPath },
+              { onConflict: "user_id", ignoreDuplicates: true },
+            );
+          if (firstVisitError) {
+            console.error("Failed to record first visit during auth callback:", firstVisitError);
+          }
+        });
       }
 
       // 2. 紹介特典チェックは /auth/x-complete 側で実行する

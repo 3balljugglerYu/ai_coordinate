@@ -69,6 +69,7 @@ alwaysApply: false
 - `style_usage_events`
 - `style_guest_generate_attempts`
 - `user_blocks`
+- `user_first_visits`
 - `user_style_usage_rankings`
 - `user_credits`
 
@@ -341,6 +342,13 @@ alwaysApply: false
 - 外部キー: `id -> auth.users.id`, `user_id -> auth.users.id`
 - 制約: `user_id` UNIQUE、`referral_code` UNIQUE、`signup_source` は書式のみ `^[a-z0-9_-]{1,40}$`（`style` / `wardrobe` に加え、企画キー等の任意タグを保持する）
 - RLS: 公開 `SELECT`、`INSERT/UPDATE` は本人のみ
+- ⚠️ 公開 `SELECT` なので、ここに入れた列はだれでも読める。人に見せたくない記録（来た場所など）は別の表にする（`user_first_visits` を参照）
+
+#### `user_first_visits`
+- 主キー: `user_id`（`auth.users.id` を参照・ON DELETE CASCADE）
+- 主要カラム: `channel`（`x_ad` / `x` / `meta` / `search` / `direct` / `other`）, `landing_path`（最初に開いた画面のパス。`/` で始まり、`?` と `#` を含まない・200文字まで。NULL 可）, `created_at`
+- RLS: 有効・policy なし。service_role だけが読み書きする（20261030100000）
+- 注: 管理ダッシュボード P3-3。cookie `persta_first_visit`（30日・最初に来た時だけ）の値を、登録のときに書く。メールの登録は user_metadata の `first_visit_channel`・`first_landing_path` を `handle_new_user` が写し、OAuth の登録は `/auth/callback` が書く（すでにあれば書き直さない）。`profiles.signup_source`（目印・企画の既定値）とは別に持つ。見分け方は `features/auth/lib/first-visit.ts`
 
 ### 管理・モデレーション・運用
 
