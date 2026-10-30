@@ -21,6 +21,10 @@ BEGIN;
 
 SET LOCAL lock_timeout = '5s';
 
+-- 写してから空にするまでの間に、古いコードが profiles.signup_source に書くと、写されずに消える。
+-- 最初に profiles への書き込みを止めておく(読み込みは止めない。COMMIT まで数秒)
+LOCK TABLE public.profiles IN SHARE ROW EXCLUSIVE MODE;
+
 CREATE TABLE IF NOT EXISTS public.user_signup_sources (
   user_id uuid PRIMARY KEY
     REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -96,7 +100,9 @@ GRANT EXECUTE ON FUNCTION public.record_signup_source(uuid, text) TO service_rol
 COMMENT ON FUNCTION public.record_signup_source(uuid, text) IS
   '登録した経路を user_signup_sources に1つ書く(すでにあれば書かない・書式が合わなければ false)。登録した時刻は profiles.created_at。service_role のみ';
 
--- 切り替えの間の古いコードの書き込みを、新しい表に移す(profiles には残さない)。2回目で消す
+-- 切り替えの間の古いコードの書き込みを、新しい表に移す(profiles には残さない)。2回目で消す。
+-- 古い /auth/callback と同じく、登録から24時間以内の人だけ写す(前から使っている人が自分の行を
+-- 書き換えても、新しい表には入れない)。どちらの場合も profiles には残さない
 CREATE OR REPLACE FUNCTION public.divert_profile_signup_source()
 RETURNS trigger
 LANGUAGE plpgsql
@@ -105,7 +111,8 @@ SET search_path TO 'public', 'pg_temp'
 AS $function$
 BEGIN
   IF NEW.signup_source IS NOT NULL THEN
-    IF NEW.user_id IS NOT NULL THEN
+    IF NEW.user_id IS NOT NULL
+       AND COALESCE(NEW.created_at, now()) > now() - interval '24 hours' THEN
       INSERT INTO public.user_signup_sources (user_id, signup_source, signed_up_at)
       VALUES (NEW.user_id, NEW.signup_source, COALESCE(NEW.created_at, now()))
       ON CONFLICT (user_id) DO NOTHING;

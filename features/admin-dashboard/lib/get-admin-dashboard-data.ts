@@ -730,23 +730,28 @@ export async function getAdminDashboardData(
       .gte("posted_at", activeThresholdIso),
     supabase.rpc("get_auth_provider_signups"),
     // 登録した経路は、だれでも読める profiles ではなく user_signup_sources にある。
-    // signed_up_at は profiles.created_at と同じ値なので、上の profiles と同じ期間で読む
-    supabase
-      .from("user_signup_sources")
-      .select("user_id, signup_source")
-      .gte("signed_up_at", sharedFetchStartIso)
-      .lte("signed_up_at", sharedFetchEndIso),
+    // signed_up_at は profiles.created_at と同じ値なので、上の profiles と同じ期間で読む。
+    // 1人1行なので user_id で送る(ページ送りのため user_id を id として読む)
+    fetchAllRows<{ id: string; signup_source: string }>((cursor, size) => {
+      let query = supabase
+        .from("user_signup_sources")
+        .select("id:user_id, signup_source")
+        .gte("signed_up_at", sharedFetchStartIso)
+        .lte("signed_up_at", sharedFetchEndIso);
+      if (cursor) query = query.gt("user_id", cursor);
+      return query.order("user_id", { ascending: true }).limit(size);
+    }),
   ]);
 
   /*
-    fetchAllRows を通す4本は、失敗したら握りつぶさず throw する。
+    fetchAllRows を通す5本は、失敗したら握りつぶさず throw する。
 
     ここで `?? []` に落とすと「0件」が正常な集計結果として画面に出る。
     上限到達時にエラーを返すようにしたのは silent undercount を止めるためなのに、
     呼び出し側で空配列に潰すと**別の形で同じ事故に戻る**（0件は「0件だった」
     という嘘の数字として読めてしまい、console を見ない限り気づけない）。
 
-    この4本はダッシュボードのほぼ全カードの土台なので、欠けた状態で
+    この5本はダッシュボードのほぼ全カードの土台(登録した経路は登録の集計の土台)なので、欠けた状態で
     描画しても判断材料にならない。ページごとエラーにする方が正しい。
   */
   const criticalResults: Array<[string, { error: { message: string } | null }]> = [
@@ -754,6 +759,8 @@ export async function getAdminDashboardData(
     ["style_usage_events", styleUsageEventsResult],
     ["credit_transactions", transactionsResult],
     ["image_jobs", jobsResult],
+    // 読めないと One-Tap Style・保存からの登録が 0 と出てしまう(0件を正しい数として出さない)
+    ["user_signup_sources", signupSourcesResult],
   ];
   for (const [label, result] of criticalResults) {
     if (result.error) {
@@ -788,13 +795,8 @@ export async function getAdminDashboardData(
     );
   }
 
-  if (signupSourcesResult.error) {
-    console.error("Dashboard signup sources fetch error:", signupSourcesResult.error);
-  }
   const signupSourceByUserId = new Map(
-    ((signupSourcesResult.data ?? []) as Array<{ user_id: string; signup_source: string }>).map(
-      (row) => [row.user_id, row.signup_source],
-    ),
+    (signupSourcesResult.data ?? []).map((row) => [row.id, row.signup_source]),
   );
   const profiles = ((profilesResult.data ?? []) as ProfileRow[]).map((profile) => ({
     ...profile,

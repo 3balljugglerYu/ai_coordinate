@@ -67,6 +67,8 @@ describe("getAdminDashboardData の土台データ取得が失敗したとき", 
     "style_usage_events",
     "credit_transactions",
     "image_jobs",
+    // 登録した経路（One-Tap Style・保存からの登録の土台）
+    "user_signup_sources",
   ])("%s が失敗したら throw する（0件として描画しない）", async (table) => {
     mockClientFailing(table);
 
