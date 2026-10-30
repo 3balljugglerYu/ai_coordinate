@@ -148,6 +148,12 @@ export const adminNavItems: AdminNavItem[] = [
     iconKey: "shield-check",
   },
   {
+    path: "/admin/i2i-allowlist",
+    label: "見本を使える人",
+    description: "見本(参照画像)つきのカタログを作れる人を管理",
+    iconKey: "shield-check",
+  },
+  {
     path: "/admin/creator-looks-two-stage",
     label: "Creator Looks設定",
     description: "衣装＋背景の2段階生成モードの公開レベルを管理",
