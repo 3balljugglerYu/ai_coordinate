@@ -5,6 +5,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 import { decodeBase64, encodeBase64 } from "jsr:@std/encoding@1/base64";
 import {
   buildPrompt as buildSharedPrompt,
+  buildCatalogReferenceDirective,
   buildCoordinateAttemptReinforcementPrefix,
   buildInspirePrompt,
   resolveBackgroundMode,
@@ -14,6 +15,10 @@ import {
   composeCreatorLooksPrompt,
   composeBackgroundStagePrompt,
 } from "./creator-looks-prompt.ts";
+import {
+  CATALOG_REFERENCE_UNAVAILABLE,
+  resolveCatalogReferenceForJob,
+} from "./catalog-reference.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
 import { buildStyleAttemptReinforcementPrefix } from "../../../shared/generation/style-prompts.ts";
 import { getFramingModeFromGenerationMetadata } from "../../../shared/generation/framing-mode.ts";
@@ -483,6 +488,35 @@ async function downloadStyleTemplateImage(
 }
 
 /**
+ * 見本(参照画像)つきのカタログ用: catalog-references private bucket から見本を取得する。
+ * storagePath は resolve_catalog_reference_for_job が返したもの(持ち主・一覧・作り直しを確かめ済み)。
+ */
+async function downloadCatalogReferenceImage(
+  // 型は付けない(ほかの download 関数と同じく、接続の型が合わず deno check が通らないため)
+  // deno-lint-ignore no-explicit-any
+  supabase: any, // eslint-disable-line @typescript-eslint/no-explicit-any
+  storagePath: string
+): Promise<InputImageData> {
+  const { data, error } = await withInputImageFetchTimeout<StorageDownloadResult>(
+    supabase.storage.from("catalog-references").download(storagePath),
+    "Catalog reference download"
+  );
+
+  if (error || !data) {
+    throw new Error(
+      `Catalog reference download failed: ${error?.message ?? "Unknown error"}`
+    );
+  }
+
+  const mimeType = data.type || "image/png";
+  const arrayBuffer = await data.arrayBuffer();
+  return {
+    base64: encodeBase64(new Uint8Array(arrayBuffer)),
+    mimeType,
+  };
+}
+
+/**
  * One-Tap Style dual モード用: style_presets bucket から admin が登録した
  * 参考画像 (image_1) を取得する。`job.style_reference_image_url` は
  * `{presetId}/reference.webp` 形式の storage path。
@@ -868,6 +902,7 @@ const GENERATION_PROMPT_EXECUTION_MISSING =
  */
 const DERIVED_PROMPT_SOURCE_UNAVAILABLE = "DERIVED_PROMPT_SOURCE_UNAVAILABLE";
 
+
 /**
  * 最終失敗したジョブの課金後処理を冪等に実行する。
  *
@@ -920,6 +955,7 @@ function isNonRetriableGenerationError(errorMessage: string): boolean {
   return (
     errorMessage === GENERATION_PROMPT_EXECUTION_MISSING ||
     errorMessage === DERIVED_PROMPT_SOURCE_UNAVAILABLE ||
+    errorMessage === CATALOG_REFERENCE_UNAVAILABLE ||
     errorMessage === "No images generated" ||
     isInvalidGeminiArgumentErrorMessage(errorMessage) ||
     isMalformedGeminiPartsErrorMessage(errorMessage) ||
@@ -1938,6 +1974,9 @@ Deno.serve(async () => {
         let promptExecution: PromptExecutionRecord | null = null;
         const isDerivedJob = job.origin_post_id != null;
         let generationInput = "";
+        // 見本(参照画像)つきのカタログで使う見本の場所と、まねるもの。課金の前に解決する。
+        // 場所はメモリの中だけに置き、job・ログ・応答には書かない(ADR-003)。
+        let catalogReference: { storagePath: string; takes: string[] } | null = null;
         try {
           // 生成入力の解決 (プロンプト秘匿境界)
           //
@@ -1987,6 +2026,14 @@ Deno.serve(async () => {
               throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
           }
+
+          // 見本(参照画像)つきのカタログ: 作者が自分の見本で生成する、または見本つきの作品から
+          // 派生生成する。使えないときは課金の前に失敗させる(REQ-003・REQ-013)
+          catalogReference = await resolveCatalogReferenceForJob(
+            supabase,
+            { ...job, id: jobId },
+            (message, detail) => console.error(message, detail),
+          );
 
           // 派生生成の本文は provider 送信直前に解決するため、ここでは空。
           generationInput = isDerivedJob
@@ -2429,6 +2476,19 @@ Deno.serve(async () => {
                         },
                       });
                     }
+                  } else if (catalogReference) {
+                    // (c) 見本(参照画像)つきのカタログ(じゆうモード)。課金の前に解決した場所から読む
+                    const catalogReferenceImage = await downloadCatalogReferenceImage(
+                      supabase,
+                      catalogReference.storagePath,
+                    );
+                    resolvedInspireTemplateImage = catalogReferenceImage;
+                    parts.push({
+                      inline_data: {
+                        mime_type: catalogReferenceImage.mimeType,
+                        data: catalogReferenceImage.base64,
+                      },
+                    });
                   }
 
                   // 全 prompt_key を 1 クエリで取得 (invocation 内メモリキャッシュ付き)
@@ -2510,6 +2570,17 @@ Deno.serve(async () => {
                         job.generation_metadata,
                       ),
                     });
+                  }
+                  // 見本(参照画像)つきのカタログ: 作者のプロンプトの後ろに、まねるものと
+                  // 「見本の人物は使わない」の指示を足す(ADR-007)
+                  if (catalogReference) {
+                    const directive = buildCatalogReferenceDirective({
+                      takes: catalogReference.takes,
+                      templates: promptTemplates,
+                    });
+                    if (directive) {
+                      fullPrompt = `${fullPrompt}\n\n${directive}`;
+                    }
                   }
 
                   // === Creator Looks 生成モード処理(方式A) ===
@@ -2703,9 +2774,11 @@ Deno.serve(async () => {
                 // image_1 を多入力で渡すケース:
                 //   - Inspire (style template)
                 //   - One-Tap Style dual モード preset (admin 登録の参考画像)
+                //   - 見本(参照画像)つきのカタログ(じゆうモード)。出力の起点は image_0
                 const isInspireOpenAI =
                   (job.generation_type === "inspire" ||
-                    job.generation_type === "one_tap_style") &&
+                    job.generation_type === "one_tap_style" ||
+                    (job.generation_type === "free" && catalogReference !== null)) &&
                   resolvedInspireTemplateImage !== null;
                 const openaiModel = parseOpenAIImageModel(dbModel);
                 if (!openaiModel) {
