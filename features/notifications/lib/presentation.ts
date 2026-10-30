@@ -319,13 +319,17 @@ export function formatNotificationContent(
     case "catalog_review_rejected": {
       // 理由は分類の文言(翻訳する)と、運営が書いた説明(翻訳できないので原文)を並べる
       const category = getStringValue(notification.data?.reason_category);
-      const categoryKey = category ? CATALOG_REVIEW_REASON_KEYS[category] : undefined;
+      const categoryKey =
+        category && Object.hasOwn(CATALOG_REVIEW_REASON_KEYS, category)
+          ? CATALOG_REVIEW_REASON_KEYS[category]
+          : undefined;
+      // 一覧は本文を2行で切るので、作り直しの案内を運営の説明(長いことがある)より前に置く
       return {
         title: t("catalogReviewRejectedTitle"),
         body: [
           categoryKey ? t(categoryKey) : null,
-          getStringValue(notification.data?.reason),
           t("catalogReviewRejectedBody"),
+          getStringValue(notification.data?.reason),
         ]
           .filter((part): part is string => part !== null)
           .join(" "),

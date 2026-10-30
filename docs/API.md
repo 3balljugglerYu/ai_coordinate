@@ -422,6 +422,21 @@ Main errors:
 - Response: `201` `{ "id": "uuid" }`。置き場所は返さない（非公開のバケット `catalog-references` に置く）
 - Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（保存に失敗）
 
+### `POST /api/catalog-references/review`
+
+見本（参照画像）つきの作品を、運営の審査に出します（作者が選んで押す）。
+
+- Access: `user session`（本人の作品だけ）。よそのサイトからの送信は止める
+- Request body: `{ "imageId": "uuid" }`
+- Response: `200` `{ "status": "pending", "submittedAt": "..." }`
+- Errors:
+  - `400`: `imageId` の形が違う
+  - `401`: ログインしていない・ログインの情報が届かない（`CATALOG_REVIEW_AUTH_REQUIRED`）
+  - `404`: 審査に出せる作品が見つからない（他人の作品・見本の作品でない・公開停止など。`CATALOG_REVIEW_NOT_FOUND`）
+  - `409`: もう審査中（`CATALOG_REVIEW_ALREADY_SUBMITTED`）・もう承認済み（`CATALOG_REVIEW_ALREADY_APPROVED`）・作り直しになった（`CATALOG_REVIEW_REJECTED`。同じ作品は出し直せない）
+
+見本つきの作品は、承認されるまで `POST /api/posts/post` が `409` + `POSTS_REVIEW_PENDING` を返します（DB のトリガーが投稿を止める）。
+
 ### `POST /api/coordinate-generate-guest`
 
 未ログインユーザー向けのコーディネート同期生成エンドポイント (Phase 3)。

@@ -33,7 +33,7 @@ export function isSuspendedPublishError(error: unknown): boolean {
  */
 export const POSTS_REVIEW_PENDING = "POSTS_REVIEW_PENDING";
 
-/** 審査が済んでいないため投稿できないエラーかどうか(UI 分岐用・権限境界ではない) */
+/** 審査が済んでいないため投稿できないエラーかどうか(UI 分岐用・権限境界ではない。段階6の画面で使う) */
 export function isReviewPendingPublishError(error: unknown): boolean {
   if (typeof error !== "object" || error === null) {
     return false;

@@ -14,7 +14,10 @@ const bodySchema = z.object({ imageId: z.string().uuid() });
  * - 作者が選んで押す(完成のたびには回さない)
  * - 本人の作品で「未申請」のときだけ「審査中」にする。決まりは DB の RPC submit_catalog_review が持つ
  *   (本人のログインの権限で呼ぶ。RPC が auth.uid() で本人かを確かめる)
- * - 本人でない 403・見つからない(見本の作品でない・公開停止など) 404・もう申請した 409
+ * - 見つからない(他人の作品・見本の作品でない・公開停止など) 404
+ * - 「未申請」でない(22023)ときは、本人の審査の行を読んで分ける: 審査中 409 ALREADY_SUBMITTED・
+ *   承認済み 409 ALREADY_APPROVED・作り直し 409 REJECTED(同じ作品は出し直せない。作り直して新しく申請する)
+ * - RPC にログインの情報が届かなかった(42501・auth.uid() が NULL)ときは 401(ログインし直す)
  */
 export async function POST(request: NextRequest) {
   const originReject = ensureSameOrigin(request);
@@ -43,13 +46,13 @@ export async function POST(request: NextRequest) {
 
   if (error) {
     if (error.code === "42501") {
-      return jsonError("この作品は審査に出せません", "CATALOG_REVIEW_FORBIDDEN", 403);
+      return jsonError("ログインし直してください", "CATALOG_REVIEW_AUTH_REQUIRED", 401);
     }
     if (error.code === "P0002") {
       return jsonError("審査に出せる作品が見つかりません", "CATALOG_REVIEW_NOT_FOUND", 404);
     }
     if (error.code === "22023") {
-      return jsonError("この作品はもう審査に出しています", "CATALOG_REVIEW_ALREADY_SUBMITTED", 409);
+      return await alreadyDecidedResponse(supabase, parsed.data.imageId);
     }
     console.error("[catalog-references/review] submit error:", error.code, error.message);
     return jsonError("審査に出せませんでした", "CATALOG_REVIEW_SUBMIT_FAILED", 500);
@@ -57,4 +60,28 @@ export async function POST(request: NextRequest) {
 
   const row = data as { status?: string; submitted_at?: string | null } | null;
   return NextResponse.json({ status: row?.status ?? "pending", submittedAt: row?.submitted_at ?? null });
+}
+
+/** 「未申請」でなかったとき、本人の審査の行の状態で応答を分ける(本人は自分の行を読める) */
+async function alreadyDecidedResponse(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  imageId: string,
+) {
+  const { data } = await supabase
+    .from("generated_image_catalog_reviews")
+    .select("status")
+    .eq("image_id", imageId)
+    .maybeSingle();
+  const status = (data as { status?: string } | null)?.status;
+  if (status === "approved") {
+    return jsonError("この作品はもう承認されています。投稿できます", "CATALOG_REVIEW_ALREADY_APPROVED", 409);
+  }
+  if (status === "rejected") {
+    return jsonError(
+      "作り直しになった作品は出し直せません。見本を変えて作り直してください",
+      "CATALOG_REVIEW_REJECTED",
+      409,
+    );
+  }
+  return jsonError("この作品はもう審査に出しています", "CATALOG_REVIEW_ALREADY_SUBMITTED", 409);
 }
