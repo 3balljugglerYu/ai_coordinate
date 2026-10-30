@@ -44,7 +44,9 @@ export async function PATCH(
   }
 
   try {
-    await setI2iAllowlistActive(userId, isActive);
+    if (!(await setI2iAllowlistActive(userId, isActive))) {
+      return NextResponse.json({ error: "一覧にいない人です" }, { status: 404 });
+    }
     await logAdminAction({
       adminUserId: adminUser.id,
       actionType: "i2i_allowlist_update",
@@ -84,7 +86,9 @@ export async function DELETE(
   }
 
   try {
-    await removeI2iAllowlistMember(userId);
+    if (!(await removeI2iAllowlistMember(userId))) {
+      return NextResponse.json({ error: "一覧にいない人です" }, { status: 404 });
+    }
     await logAdminAction({
       adminUserId: adminUser.id,
       actionType: "i2i_allowlist_remove",

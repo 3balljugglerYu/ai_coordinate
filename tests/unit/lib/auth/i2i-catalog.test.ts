@@ -10,6 +10,8 @@
 
 const mockRpc = jest.fn();
 
+jest.mock("server-only", () => ({}));
+
 jest.mock("@/lib/supabase/admin", () => ({
   createAdminClient: jest.fn(() => ({ rpc: mockRpc })),
 }));

@@ -75,78 +75,97 @@ export async function listI2iAllowlist(client?: SupabaseClient): Promise<I2iAllo
 }
 
 /**
- * 足す(何度呼んでも同じ)。
- * - すでに行があれば is_active=true に戻すだけ(note は今回指定されたときだけ上書き。足した人は残す)
- * - 行が無ければ新しく足す
- * upsert(onConflict) は、ぶつかったときに note や added_by まで書き換えるので使わない。
+ * 足す(何度呼んでも同じ)。新しく足したら reactivated=false、すでにいた人を有効に戻したら true。
+ * - 先に足してみて、すでに行があれば(user_id の UNIQUE)、is_active=true に戻すだけにする。
+ *   同じ人をほぼ同時に足しても失敗しない
+ * - 有効に戻すとき、足した人(added_by)は残す。note は今回指定されたときだけ上書きする
  */
 export async function addI2iAllowlistMember(
   params: { userId: string; note?: string | null; addedBy?: string | null },
   client?: SupabaseClient,
-): Promise<void> {
+): Promise<{ reactivated: boolean }> {
   const supabase = getSupabase(client);
 
-  const { data: existing, error: selectError } = await supabase
-    .from("i2i_catalog_allowlist")
-    .select("user_id")
-    .eq("user_id", params.userId)
-    .maybeSingle();
-  if (selectError) {
-    console.error("[i2i-allowlist] add(select) error:", selectError);
-    throw new Error("見本を使える人の追加に失敗しました");
-  }
-
-  if (existing) {
-    const patch: { is_active: boolean; note?: string | null } = { is_active: true };
-    if (params.note != null) {
-      patch.note = params.note;
-    }
-    const { error } = await supabase
-      .from("i2i_catalog_allowlist")
-      .update(patch)
-      .eq("user_id", params.userId);
-    if (error) {
-      console.error("[i2i-allowlist] add(reactivate) error:", error);
-      throw new Error("見本を使える人の追加に失敗しました");
-    }
-    return;
-  }
-
-  const { error } = await supabase.from("i2i_catalog_allowlist").insert({
+  const { error: insertError } = await supabase.from("i2i_catalog_allowlist").insert({
     user_id: params.userId,
     is_active: true,
     note: params.note ?? null,
     added_by: params.addedBy ?? null,
   });
-  if (error) {
-    console.error("[i2i-allowlist] add(insert) error:", error);
+  if (!insertError) {
+    return { reactivated: false };
+  }
+  if (insertError.code !== "23505") {
+    console.error("[i2i-allowlist] add(insert) error:", insertError);
     throw new Error("見本を使える人の追加に失敗しました");
   }
+
+  const patch: { is_active: boolean; note?: string | null } = { is_active: true };
+  if (params.note != null) {
+    patch.note = params.note;
+  }
+  const { error } = await supabase
+    .from("i2i_catalog_allowlist")
+    .update(patch)
+    .eq("user_id", params.userId);
+  if (error) {
+    console.error("[i2i-allowlist] add(reactivate) error:", error);
+    throw new Error("見本を使える人の追加に失敗しました");
+  }
+  return { reactivated: true };
 }
 
-/** 有効・無効の切り替え(無効にすると一時的に使えなくなる)。 */
+/** 有効・無効の切り替え(無効にすると一時的に使えなくなる)。一覧にいなければ false。 */
 export async function setI2iAllowlistActive(
   userId: string,
   isActive: boolean,
   client?: SupabaseClient,
-): Promise<void> {
+): Promise<boolean> {
   const supabase = getSupabase(client);
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("i2i_catalog_allowlist")
     .update({ is_active: isActive })
-    .eq("user_id", userId);
+    .eq("user_id", userId)
+    .select("user_id");
   if (error) {
     console.error("[i2i-allowlist] set active error:", error);
     throw new Error("見本を使える人の更新に失敗しました");
   }
+  return (data ?? []).length > 0;
 }
 
-/** 一覧から消す。 */
-export async function removeI2iAllowlistMember(userId: string, client?: SupabaseClient): Promise<void> {
+/** 一覧から消す。一覧にいなければ false。 */
+export async function removeI2iAllowlistMember(userId: string, client?: SupabaseClient): Promise<boolean> {
   const supabase = getSupabase(client);
-  const { error } = await supabase.from("i2i_catalog_allowlist").delete().eq("user_id", userId);
+  const { data, error } = await supabase
+    .from("i2i_catalog_allowlist")
+    .delete()
+    .eq("user_id", userId)
+    .select("user_id");
   if (error) {
     console.error("[i2i-allowlist] remove error:", error);
     throw new Error("見本を使える人の削除に失敗しました");
   }
+  return (data ?? []).length > 0;
+}
+
+/**
+ * 実在する人か(profiles に行があるか)。DB のエラーは投げる
+ * (「見つからない」と取り違えて、運営が ID の間違いだと思い込まないように)。
+ */
+export async function profileExistsForI2iAllowlist(
+  userId: string,
+  client?: SupabaseClient,
+): Promise<boolean> {
+  const supabase = getSupabase(client);
+  const { data, error } = await supabase
+    .from("profiles")
+    .select("user_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[i2i-allowlist] profile exists error:", error);
+    throw new Error("利用者の確認に失敗しました");
+  }
+  return data !== null;
 }

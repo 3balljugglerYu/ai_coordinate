@@ -9,6 +9,7 @@
  * - server-only(service role で呼ぶ)
  */
 
+import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function isInI2iCatalogAllowlist(userId: string | null | undefined): Promise<boolean> {

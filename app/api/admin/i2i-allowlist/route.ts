@@ -2,10 +2,10 @@ import { connection, NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
-import { profileExistsForUserId } from "@/features/creators/lib/creator-allowlist-repository";
 import {
   addI2iAllowlistMember,
   listI2iAllowlist,
+  profileExistsForI2iAllowlist,
 } from "@/features/catalog-references/lib/i2i-allowlist-repository";
 import { isUuid } from "@/lib/is-uuid";
 
@@ -55,8 +55,8 @@ export async function POST(request: NextRequest) {
       : "";
   const noteRaw = (body as { note?: unknown })?.note;
   const note = typeof noteRaw === "string" && noteRaw.length > 0 ? noteRaw : null;
-  // 表の CHECK と同じ(200文字まで)
-  if (note !== null && note.length > 200) {
+  // 表の CHECK と同じ(char_length で200文字まで。絵文字なども1文字と数える)
+  if (note !== null && [...note].length > 200) {
     return NextResponse.json({ error: "メモは200文字までです" }, { status: 400 });
   }
 
@@ -69,19 +69,21 @@ export async function POST(request: NextRequest) {
 
   try {
     // 実在ユーザー(profiles)のみ許可。
-    if (!(await profileExistsForUserId(userId))) {
+    if (!(await profileExistsForI2iAllowlist(userId))) {
       return NextResponse.json(
         { error: "該当するユーザーが見つかりません" },
         { status: 400 }
       );
     }
 
-    await addI2iAllowlistMember({ userId, note, addedBy: adminUser.id });
+    const { reactivated } = await addI2iAllowlistMember({ userId, note, addedBy: adminUser.id });
     await logAdminAction({
       adminUserId: adminUser.id,
       actionType: "i2i_allowlist_add",
       targetType: "i2i_catalog_allowlist",
       targetId: userId,
+      // 新しく足したのか、無効から有効に戻したのか。メモを付けたか
+      metadata: { reactivated, noteUpdated: note !== null },
     });
     return NextResponse.json({ ok: true });
   } catch (error) {

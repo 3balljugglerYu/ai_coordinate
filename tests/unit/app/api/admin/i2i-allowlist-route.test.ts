@@ -5,8 +5,10 @@
  *
  * ここで守ること:
  *  - 管理者だけが使える。よそのサイトからの書き込みは止める
- *  - 足せるのは実在する人だけ。ユーザー ID とメモ(200文字まで)を確かめる
+ *  - 足せるのは実在する人だけ。ユーザー ID とメモ(200文字まで・文字の数で数える)を確かめる
+ *  - 実在の確認で DB が失敗したら、「見つからない」(400)ではなく 500
  *  - 足した人はログイン中の管理者で決め、足す・切り替え・削除を監査ログに残す(i2i_catalog_allowlist)
+ *  - 一覧にいない人の切り替え・削除は 404 で、監査ログにも残さない
  */
 
 jest.mock("server-only", () => ({}));
@@ -28,15 +30,12 @@ jest.mock("@/lib/admin-audit", () => ({
   logAdminAction: jest.fn(),
 }));
 
-jest.mock("@/features/creators/lib/creator-allowlist-repository", () => ({
-  profileExistsForUserId: jest.fn(),
-}));
-
 jest.mock("@/features/catalog-references/lib/i2i-allowlist-repository", () => ({
   listI2iAllowlist: jest.fn(),
   addI2iAllowlistMember: jest.fn(),
   setI2iAllowlistActive: jest.fn(),
   removeI2iAllowlistMember: jest.fn(),
+  profileExistsForI2iAllowlist: jest.fn(),
 }));
 
 import { NextRequest, NextResponse } from "next/server";
@@ -45,10 +44,10 @@ import { DELETE, PATCH } from "@/app/api/admin/i2i-allowlist/[userId]/route";
 import { requireAdmin } from "@/lib/auth";
 import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { logAdminAction } from "@/lib/admin-audit";
-import { profileExistsForUserId } from "@/features/creators/lib/creator-allowlist-repository";
 import {
   addI2iAllowlistMember,
   listI2iAllowlist,
+  profileExistsForI2iAllowlist,
   removeI2iAllowlistMember,
   setI2iAllowlistActive,
 } from "@/features/catalog-references/lib/i2i-allowlist-repository";
@@ -56,7 +55,7 @@ import {
 const mockRequireAdmin = requireAdmin as jest.MockedFunction<typeof requireAdmin>;
 const mockSameOrigin = ensureSameOrigin as jest.MockedFunction<typeof ensureSameOrigin>;
 const mockAudit = logAdminAction as jest.MockedFunction<typeof logAdminAction>;
-const mockProfileExists = profileExistsForUserId as jest.MockedFunction<typeof profileExistsForUserId>;
+const mockProfileExists = profileExistsForI2iAllowlist as jest.MockedFunction<typeof profileExistsForI2iAllowlist>;
 const mockList = listI2iAllowlist as jest.MockedFunction<typeof listI2iAllowlist>;
 const mockAdd = addI2iAllowlistMember as jest.MockedFunction<typeof addI2iAllowlistMember>;
 const mockSetActive = setI2iAllowlistActive as jest.MockedFunction<typeof setI2iAllowlistActive>;
@@ -81,9 +80,9 @@ beforeEach(() => {
   mockSameOrigin.mockReturnValue(null);
   mockProfileExists.mockResolvedValue(true);
   mockList.mockResolvedValue([]);
-  mockAdd.mockResolvedValue(undefined);
-  mockSetActive.mockResolvedValue(undefined);
-  mockRemove.mockResolvedValue(undefined);
+  mockAdd.mockResolvedValue({ reactivated: false });
+  mockSetActive.mockResolvedValue(true);
+  mockRemove.mockResolvedValue(true);
 });
 
 describe("管理者でないとき", () => {
@@ -111,14 +110,23 @@ describe("管理者でないとき", () => {
   });
 });
 
-test("よそのサイトからの追加は止め、管理者の確認より前に返す", async () => {
+test("よそのサイトからの追加・切り替え・削除は止め、管理者の確認より前に返す", async () => {
   mockSameOrigin.mockReturnValue(NextResponse.json({ error: "Forbidden" }, { status: 403 }));
 
-  const response = await POST(jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID }));
+  const responses = [
+    await POST(jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID })),
+    await PATCH(
+      jsonRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, "PATCH", { isActive: false }),
+      userParams(USER_ID),
+    ),
+    await DELETE(jsonRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, "DELETE"), userParams(USER_ID)),
+  ];
 
-  expect(response.status).toBe(403);
+  expect(responses.map((response) => response.status)).toEqual([403, 403, 403]);
   expect(mockRequireAdmin).not.toHaveBeenCalled();
   expect(mockAdd).not.toHaveBeenCalled();
+  expect(mockSetActive).not.toHaveBeenCalled();
+  expect(mockRemove).not.toHaveBeenCalled();
 });
 
 describe("POST(足す)", () => {
@@ -135,8 +143,37 @@ describe("POST(足す)", () => {
         actionType: "i2i_allowlist_add",
         targetType: "i2i_catalog_allowlist",
         targetId: USER_ID,
+        metadata: { reactivated: false, noteUpdated: true },
       }),
     );
+  });
+
+  test("無効だった人を有効に戻したときは、監査ログでそれと分かる", async () => {
+    mockAdd.mockResolvedValue({ reactivated: true });
+
+    await POST(jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID }));
+
+    expect(mockAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ metadata: { reactivated: true, noteUpdated: false } }),
+    );
+  });
+
+  test("メモは文字の数で数える(絵文字200文字は通る)", async () => {
+    const response = await POST(
+      jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID, note: "😀".repeat(200) }),
+    );
+
+    expect(response.status).toBe(200);
+  });
+
+  test("実在の確認で DB が失敗したら 500(見つからない、にしない)", async () => {
+    mockProfileExists.mockRejectedValue(new Error("timeout"));
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    const response = await POST(jsonRequest("http://localhost/api/admin/i2i-allowlist", "POST", { userId: USER_ID }));
+
+    expect(response.status).toBe(500);
+    expect(mockAdd).not.toHaveBeenCalled();
   });
 
   test.each([
@@ -183,6 +220,34 @@ describe("PATCH(有効・無効)と DELETE(削除)", () => {
 
     expect(response.status).toBe(400);
     expect(mockSetActive).not.toHaveBeenCalled();
+  });
+
+  test.each([
+    ["PATCH", () => PATCH(jsonRequest("http://localhost/api/admin/i2i-allowlist/bad", "PATCH", { isActive: true }), userParams("bad"))],
+    ["DELETE", () => DELETE(jsonRequest("http://localhost/api/admin/i2i-allowlist/bad", "DELETE"), userParams("bad"))],
+  ])("%s: ユーザー ID の形が違えば 400 で変えない", async (_method, call) => {
+    const response = await call();
+
+    expect(response.status).toBe(400);
+    expect(mockSetActive).not.toHaveBeenCalled();
+    expect(mockRemove).not.toHaveBeenCalled();
+  });
+
+  test("一覧にいない人の切り替え・削除は 404 で、監査ログに残さない", async () => {
+    mockSetActive.mockResolvedValue(false);
+    mockRemove.mockResolvedValue(false);
+
+    const patch = await PATCH(
+      jsonRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, "PATCH", { isActive: true }),
+      userParams(USER_ID),
+    );
+    const remove = await DELETE(
+      jsonRequest(`http://localhost/api/admin/i2i-allowlist/${USER_ID}`, "DELETE"),
+      userParams(USER_ID),
+    );
+
+    expect([patch.status, remove.status]).toEqual([404, 404]);
+    expect(mockAudit).not.toHaveBeenCalled();
   });
 
   test("削除して、監査ログに残す", async () => {
