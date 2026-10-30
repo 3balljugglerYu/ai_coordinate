@@ -350,7 +350,9 @@ Main errors:
   "backgroundMode": "enum, optional",
   "generationType": "coordinate | specified_coordinate | full_body | chibi | one_tap_style | inspire | free",
   "model": "gemini-3.1-flash-image-preview-512 | gemini-3.1-flash-image-preview-1024 | gemini-3-pro-image-1k | gemini-3-pro-image-2k | gemini-3-pro-image-4k | gpt-image-2-{low|medium|high}-{1k|2k|4k}",
-  "sourcePostId": "uuid, optional (派生生成)"
+  "sourcePostId": "uuid, optional (派生生成)",
+  "referenceImageId": "uuid, optional (見本＝参照画像。free のみ。referenceTakes と一緒に送る)",
+  "referenceTakes": "(\"outfit\" | \"angle\" | \"pose\" | \"background\")[], 1〜4個・重複なし (referenceImageId と一緒に送る)"
 }
 ```
 
@@ -371,6 +373,11 @@ Main errors:
   - `generationType` は `free` 必須（省略時の default `coordinate` では `400`）
   - 原作が利用不可（削除・投稿取消・公開停止・secret なし・原作者が利用不可・未フォロー・ブロック関係）の場合は `409` + `FREE_SOURCE_UNAVAILABLE`。**理由は区別されない**
   - 認可は job 作成前・Worker のペルコイン減算前・完了 RPC の画像 INSERT 前の3ヶ所で再検証される。完了時に失効していた場合は成果物を破棄して返金する
+- **見本（参照画像）つきのカタログ（i2i・計画書 `docs/planning/i2i-catalog-review-implementation-plan.md`）**: `referenceImageId`（`POST /api/catalog-references` が返した id）と `referenceTakes`（見本からまねるもの）を一緒に送ると、Worker が見本を image_1 にして生成します。
+  - `generationType` は `free` 必須。`sourcePostId`（派生生成）とは同時に使えない。片方だけ・値の重複・知らない値は `400`
+  - 見本を使える人（運営が選んだ人・`/admin/i2i-allowlist`）でなければ `403` + `GENERATION_REFERENCE_NOT_ALLOWED`。本人の見本でない・作り直しになった見本は `404` + `GENERATION_REFERENCE_NOT_FOUND`
+  - Worker も課金の前にもう一度確かめ、使えなければ課金せずに失敗させる（`CATALOG_REFERENCE_UNAVAILABLE`・やり直さない）。確かめるときの DB の一時的な失敗は `CATALOG_REFERENCE_CHECK_FAILED` で、ほかの失敗と同じく1回だけやり直す
+  - 見本を使った作品は、運営の審査で承認されるまで投稿できない（審査の流れは Phase 4）
 - Base64 元画像は 10MB を超えると `400` になります。
 - HEIC/HEIF はサーバー側で JPEG 変換を試みます。
 - `gemini-2.5-flash-image` と `gemini-2.5-flash-image-preview` は後方互換のため受け付けますが、サーバー側で `gemini-3.1-flash-image-preview-512` に正規化されます。
@@ -402,6 +409,18 @@ Main errors:
 - `409`: 派生生成の原作が利用不可（`FREE_SOURCE_UNAVAILABLE`）
 - `500`: アップロード失敗、ジョブ作成失敗など
 - `202`: ジョブ作成済みだがキュー投入が遅延している可能性あり
+
+
+### `POST /api/catalog-references`
+
+見本（参照画像）を1枚上げ、id を返します。生成の依頼（`POST /api/generate-async`）には、この id だけを渡します。
+
+- Access: `user session`（見本を使える人だけ。ほかの人は `403` + `CATALOG_REFERENCE_NOT_ALLOWED`）。よそのサイトからの送信は止める
+- Request: `multipart/form-data`
+  - `file`: 画像（JPEG・PNG・WebP・HEIC。4MB まで・縦横とも768px以上4096px以下）。基盤（Vercel）の本文の上限が約4.5MB なので、画面で送る前に縮める。中身で形式を確かめ、WebP に作り直して位置情報などを消す
+  - `copyrightConsent`: `"true"`（使える見本・使えない見本の案内への同意。無ければ `400`）
+- Response: `201` `{ "id": "uuid" }`。置き場所は返さない（非公開のバケット `catalog-references` に置く）
+- Errors: `400`（同意なし・画像なし・形式が違う・小さすぎる・大きすぎる）、`413`（4MB を超える）、`500`（保存に失敗）
 
 ### `POST /api/coordinate-generate-guest`
 

@@ -71,6 +71,8 @@ import {
   recordPercoinShortage,
 } from "@/features/monetization/lib/record-monetization-event";
 import { runAfterResponse } from "@/features/monetization/lib/after-response";
+import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
+import { isUsableOwnCatalogReference } from "@/features/catalog-references/lib/reference-image-repository";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -182,6 +184,8 @@ export async function postGenerateAsyncRoute(
       creatorLooksMode,
       outputAspectRatioMode,
       nameInput,
+      referenceImageId,
+      referenceTakes,
     } = validationResult.data;
     // ガチャの上限(一般の利用者は、囲み1つ・候補10個まで)。画面では超えると送れないが、
     // 直接送られたときもここで止める。運営はテストのため制限しない(2026-10-05 ユーザー指示)。
@@ -297,6 +301,26 @@ export async function postGenerateAsyncRoute(
     // その場合は保守的に DEFAULT_FRAMING_MODE (locked = 現行挙動) へフォールバックする。
     const effectiveFramingMode: FramingMode = framingMode ?? DEFAULT_FRAMING_MODE;
     const isInspireRequest = generationType === "inspire";
+
+    // 見本(参照画像)つきのカタログ(i2i・Phase 3): 見本を使える人の、本人の見本で、
+    // 作り直しになっていないものだけ(REQ-001・REQ-003)。worker も課金の前にもう一度確かめる
+    if (referenceImageId) {
+      if (!(await isInI2iCatalogAllowlist(user.id))) {
+        return jsonError("見本を使える人ではありません", "GENERATION_REFERENCE_NOT_ALLOWED", 403);
+      }
+      let usable: boolean;
+      try {
+        usable = await isUsableOwnCatalogReference({
+          userId: user.id,
+          referenceId: referenceImageId,
+        });
+      } catch {
+        return jsonError(copy.generateAsyncFailed, "GENERATION_REFERENCE_CHECK_FAILED", 500);
+      }
+      if (!usable) {
+        return jsonError("見本が見つかりません", "GENERATION_REFERENCE_NOT_FOUND", 404);
+      }
+    }
 
     // inspire 専用: テンプレ visibility 検証
     let inspireStyleTemplateImageUrl: string | null = null;
@@ -703,6 +727,11 @@ export async function postGenerateAsyncRoute(
       // 派生生成の原作。trigger がクライアントロールからの設定を拒否するため、
       // この値は service role 経路（原子的 job 作成 RPC）でのみ通る。
       ...(derivedRootPostId ? { origin_post_id: derivedRootPostId } : {}),
+      // 見本(参照画像)の id とまねるもの。origin_post_id と同じく、trigger が service role
+      // 経路(原子的 job 作成 RPC)以外からの設定と、あとからの変更を拒否する(ADR-003)
+      ...(referenceImageId && referenceTakes
+        ? { catalog_reference_id: referenceImageId, catalog_reference_takes: referenceTakes }
+        : {}),
       // generation_metadata: framingMode(locked 以外) と Creator Looks モード/段階数。
       // worker がプロンプト構築・2段階生成判定に使い、完了 RPC 経由で
       // generated_images.generation_metadata へコピーされて品質比較にも使える。

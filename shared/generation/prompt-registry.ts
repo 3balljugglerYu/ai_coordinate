@@ -506,6 +506,16 @@ export const PROMPT_REGISTRY = {
     defaultContent: FREE_BASE_PREFIX_DEFAULT,
     supportedVariables: [],
   },
+  "free.catalog_reference_person_guard": {
+    category: "free",
+    description:
+      "じゆうモード: 見本(参照画像・image_1)を使うときに、まねるものの指示文(inspire.*_on)の後に必ず足す文。" +
+      "見本に写っている人物の顔や髪型が image_0 のキャラに混ざらないようにする(i2i カタログ ADR-007)。" +
+      "錨+入力30,000字+まねるもの4つ+この文が OpenAI の上限32,000字に収まるよう、短く保つこと。",
+    defaultContent:
+      "image_1は見本です。image_1に写っている人物の顔・髪型・髪の色・目の色・体型・肌の色は使わないでください。人物はimage_0のキャラクターのままにしてください。",
+    supportedVariables: [],
+  },
   "free.user_direction_label": {
     category: "free",
     description:

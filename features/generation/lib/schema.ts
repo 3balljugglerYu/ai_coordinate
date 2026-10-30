@@ -12,6 +12,7 @@ import { getPromptMaxLength } from "./prompt-validation";
 import { FRAMING_MODES } from "@/shared/generation/framing-mode";
 import { CREATOR_LOOKS_MODES } from "@/shared/generation/creator-looks-mode";
 import { FREE_OUTPUT_ASPECT_RATIO_MODES } from "@/shared/generation/style-output-aspect-ratio";
+import { CATALOG_REFERENCE_TAKES } from "@/shared/generation/catalog-reference";
 
 /**
  * 画像生成機能のZodスキーマ
@@ -65,6 +66,21 @@ export const generationRequestSchema = z.object({
    * （計画書 ADR-006 / REQ-005）。
    */
   sourcePostId: z.string().uuid().optional(),
+  /**
+   * 見本(参照画像)の id(POST /api/catalog-references が返したもの)。じゆうモードのみ。
+   * 見本を使える人の本人の見本だけ(handler で確かめる)。referenceTakes と一緒に送る。
+   * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 3)
+   */
+  referenceImageId: z.string().uuid().optional(),
+  /** 見本からまねるもの(衣装・アングル・ポーズ・背景から1〜4個・重複なし) */
+  referenceTakes: z
+    .array(z.enum(CATALOG_REFERENCE_TAKES))
+    .min(1)
+    .max(4)
+    .refine((takes) => new Set(takes).size === takes.length, {
+      message: "まねるものが重なっています",
+    })
+    .optional(),
   /**
    * 名前の欄(`{{INPUT:見出し}}`)に入れる名前。じゆうモードのみ。8文字まで、
    * 波括弧・改行・制御文字・ゼロ幅文字は不可(docs/planning/name-input-slot-plan.md 3.3)。
@@ -139,6 +155,35 @@ export const generationRequestSchema = z.object({
   // superRefine で 400 にする(責務分担: API は拒否・localStorage/Worker は source フォールバック)。
   outputAspectRatioMode: z.enum(FREE_OUTPUT_ASPECT_RATIO_MODES).optional(),
 }).superRefine((data, ctx) => {
+  // 見本(参照画像): id とまねるものは一緒に送る。じゆうモードだけで、派生生成とは一緒に使えない
+  // (派生生成の見本は元の作品から worker が引く)
+  if ((data.referenceImageId === undefined) !== (data.referenceTakes === undefined)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ["referenceTakes"],
+      message: "見本とまねるものは一緒に指定してください",
+    });
+    return;
+  }
+  if (data.referenceImageId !== undefined) {
+    if (data.generationType !== "free") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["generationType"],
+        message: "見本はじゆうモードのみ利用できます",
+      });
+      return;
+    }
+    if (data.sourcePostId) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["referenceImageId"],
+        message: "派生生成では見本を指定できません",
+      });
+      return;
+    }
+  }
+
   // プロンプト上限は generationType 別(free=30,000 / 他=1,500)。
   // default 適用後の generationType で判定するため superRefine で検証する。
   // 派生生成と本文指定は同時に使えない。両方来た場合はどちらを使うか

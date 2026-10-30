@@ -233,10 +233,11 @@ flowchart LR
 - [x] 管理画面のサイドバーに足す（「見本を使える人」）
 - 画面の部品は、クリエイター招待と共通の `app/(app)/admin/_components/AllowlistManagerClient.tsx` にした（同じ270行を2つ持たない）
 
-### Phase 3: 作者の生成
-- [ ] `POST /api/catalog-references`（使える人か・同意・形式・大きさ。`features/inspire` の検査を参考）
-- [ ] `generate-async` に `referenceImageId`・`referenceTakes`（free だけ・使える人か・本人の参照か・派生生成とは同時に使えない）
-- [ ] worker: 課金の前の確認（`index.ts:1963-1990`）で、参照の持ち主と一覧を確かめる。読み込みは `index.ts:2383-2433` と同じ分岐に free を足し、取り入れる指示を足す。OpenAI は2枚の経路へ
+### Phase 3: 作者の生成（2026-10-30 実装）
+- [x] `POST /api/catalog-references`（使える人か・同意・形式・大きさ。`features/inspire/lib/creator-looks-image.ts` の `processSubmissionImage` で中身から形式を確かめ、WebP に作り直す。768px 以上・10MB まで）。保存は `features/catalog-references/lib/reference-image-repository.ts`
+- [x] `generate-async` に `referenceImageId`・`referenceTakes`（free だけ・使える人か・本人の参照か・作り直しでないか・派生生成とは同時に使えない）。ジョブには信頼できる書き手（ジョブを作る RPC）で `catalog_reference_id`・`catalog_reference_takes` を入れる。DB の変更は無し
+- [x] worker: 課金の前に `resolve_catalog_reference_for_job` を呼ぶ（`supabase/functions/image-gen-worker/catalog-reference.ts`）。使えなければ `CATALOG_REFERENCE_UNAVAILABLE` で課金の前に失敗させる（再試行しない）。見本は非公開の置き場所から読んで image_1 にし、まねるものの指示（`inspire.*_on`）と人物の守り（新しい指示文 `free.catalog_reference_person_guard`）をプロンプトの後ろに足す（`buildCatalogReferenceDirective`）。OpenAI は2枚の経路へ（出力の起点は image_0）
+- 派生生成（Phase 5）の見本も、同じ RPC が元の作品から返すので、worker の部分はこれで済んでいる（API の応答に見本が出ないことのテストは Phase 5 で）
 - [ ] 5つのモデルすべてで2枚の入力が通ることを、本番の運営アカウントで確かめる（Phase 7）
 
 ### Phase 4: 審査と通知

@@ -20,7 +20,7 @@ import sharp from "sharp";
 
 import { SUBMISSION_IMAGE_MIN_DIMENSION } from "./submission-image-constraints";
 
-const MAX_DIMENSION = 4096;
+export const MAX_DIMENSION = 4096;
 // 低解像度の素材は生成品質を落とすため、両辺とも下限を強制する (client と共有の定数)
 const MIN_DIMENSION = SUBMISSION_IMAGE_MIN_DIMENSION;
 const WEBP_QUALITY = 85;

@@ -1,0 +1,78 @@
+/**
+ * 見本(参照画像)つきのカタログで、ジョブが使う見本を課金の前に解決する。
+ * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 3・Phase 5・ADR-003)
+ *
+ * - 作者が自分の見本で生成するジョブ(catalog_reference_id あり)と、派生生成のジョブ(origin_post_id あり)で呼ぶ
+ * - 持ち主・使える人の一覧・作り直し・元の作品の審査の状態は、DB の resolve_catalog_reference_for_job が確かめる
+ * - 使えないとき(RPC が例外 P0001 で断った)は CATALOG_REFERENCE_UNAVAILABLE を投げる(課金の前・再試行しない・
+ *   理由は分けない)。DB の一時的な失敗(それ以外のエラー)は CATALOG_REFERENCE_CHECK_FAILED を投げ、
+ *   ふつうの失敗としてやり直させる(見本の無い派生生成まで、一時的な失敗で確定の失敗にしない)
+ * - 見本の無い派生生成は null(今までどおり生成する)
+ * - 見本を使えるのはじゆうモードだけ(受付でも止めている)
+ * - 返す場所はメモリの中だけで使い、job・ログ・応答には書かない
+ */
+
+export const CATALOG_REFERENCE_UNAVAILABLE = "CATALOG_REFERENCE_UNAVAILABLE";
+export const CATALOG_REFERENCE_CHECK_FAILED = "CATALOG_REFERENCE_CHECK_FAILED";
+
+export interface CatalogReferenceForJob {
+  storagePath: string;
+  takes: string[];
+}
+
+interface CatalogReferenceRpcClient {
+  rpc: (
+    fn: "resolve_catalog_reference_for_job",
+    args: { p_job_id: string },
+  ) => PromiseLike<{ data: unknown; error: { code?: string; message?: string } | null }>;
+}
+
+export async function resolveCatalogReferenceForJob(
+  supabase: CatalogReferenceRpcClient,
+  job: {
+    id: string;
+    generation_type: string;
+    catalog_reference_id?: string | null;
+    origin_post_id?: string | null;
+  },
+  logError: (message: string, detail: Record<string, unknown>) => void,
+): Promise<CatalogReferenceForJob | null> {
+  const usesOwnReference = job.catalog_reference_id != null;
+  if (!usesOwnReference && job.origin_post_id == null) {
+    return null;
+  }
+
+  const { data, error } = await supabase.rpc("resolve_catalog_reference_for_job", {
+    p_job_id: job.id,
+  });
+  if (error) {
+    // 理由は返さない。場所が入りうるので error を丸ごとログに出さない
+    logError("[Job Processing] Catalog reference check failed", {
+      jobId: job.id,
+      code: error.code,
+    });
+    // RPC が RAISE EXCEPTION 'CATALOG_REFERENCE_UNAVAILABLE' で断ったときだけ確定の失敗にする。
+    // P0001 は ERRCODE を付けない RAISE すべての既定なので、断りの文でも確かめる
+    const refused =
+      error.code === "P0001" && (error.message ?? "").startsWith(CATALOG_REFERENCE_UNAVAILABLE);
+    throw new Error(refused ? CATALOG_REFERENCE_UNAVAILABLE : CATALOG_REFERENCE_CHECK_FAILED);
+  }
+
+  const row = (Array.isArray(data) ? data[0] : null) as
+    | { storage_path?: string | null; takes?: string[] | null }
+    | null;
+  if (!row?.storage_path) {
+    // 自分の見本を指しているのに見本が引けないのはおかしい(作り直し・消された)
+    if (usesOwnReference) {
+      throw new Error(CATALOG_REFERENCE_UNAVAILABLE);
+    }
+    return null;
+  }
+
+  // 見本を使えるのはじゆうモードだけ。まねるものが無い見本は指示の無い2枚目の画像になるので使わない
+  if (job.generation_type !== "free" || !row.takes || row.takes.length === 0) {
+    throw new Error(CATALOG_REFERENCE_UNAVAILABLE);
+  }
+
+  return { storagePath: row.storage_path, takes: row.takes };
+}
