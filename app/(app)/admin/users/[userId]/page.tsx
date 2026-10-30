@@ -148,6 +148,10 @@ function formatTransactionType(
   if (type === "admin_deduction" && metadata?.reason) {
     return String(metadata.reason);
   }
+  if (type === "subscription") {
+    // プランを途中で上げたときの支払いだけの行(量0)と、ペルコインの付与の行を分けて出す
+    return metadata?.paymentOnly === true ? "サブスクの支払い（プラン変更）" : "サブスクの付与";
+  }
   return map[type] || type;
 }
 

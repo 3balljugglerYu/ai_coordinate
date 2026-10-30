@@ -25,9 +25,10 @@ import { getSubscriptionPlanFromStripeSubscription } from "@/features/subscripti
 import { createYearlyPercoinGrantState } from "@/features/subscription/lib/yearly-grant-schedule";
 import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checkout-session-expired";
 import {
-  isSubscriptionChangePaymentInvoice,
+  buildSubscriptionRevenueMetadata,
+  classifySubscriptionInvoice,
+  normalizeRevenueYen,
   recordSubscriptionChangePayment,
-  shouldGrantOnSubscriptionInvoicePaid,
 } from "@/features/subscription/lib/subscription-change-payment";
 
 type SubscriptionRecord = {
@@ -115,16 +116,6 @@ function getPlanFromSubscription(
   return getSubscriptionPlanFromStripeSubscription(subscription);
 }
 
-function normalizeRevenueYen(value?: number | null): number | null {
-  if (
-    typeof value === "number" &&
-    Number.isFinite(value)
-  ) {
-    return Math.max(value, 0);
-  }
-
-  return null;
-}
 
 function getSubscriptionIdFromInvoice(
   invoice: Stripe.Invoice
@@ -318,13 +309,13 @@ async function grantSubscriptionPercoins(params: {
     p_user_id: params.userId,
     p_amount: amount,
     p_invoice_id: params.invoiceId,
-    p_metadata: {
+    p_metadata: buildSubscriptionRevenueMetadata({
       plan: params.plan,
       billingInterval: params.billingInterval,
       revenueYen,
       revenueSource: "stripe_subscription",
       mode: isStripeTestMode() ? "test" : "live",
-    },
+    }),
   });
 
   if (error) {
@@ -557,8 +548,9 @@ async function handleSubscriptionInvoicePaid(
   stripe: Stripe,
   invoice: Stripe.Invoice
 ) {
-  const isChangePayment = isSubscriptionChangePaymentInvoice(invoice);
-  if (!isChangePayment && !shouldGrantOnSubscriptionInvoicePaid(invoice)) {
+  const invoiceKind = classifySubscriptionInvoice(invoice);
+  const isChangePayment = invoiceKind === "payment_only";
+  if (!invoiceKind) {
     return NextResponse.json({
       received: true,
       handled: false,
@@ -624,6 +616,20 @@ async function handleSubscriptionInvoicePaid(
   }
 
   if (!userId) {
+    if (isChangePayment) {
+      // プラン変更の支払いの記録は売上のためだけなので、Stripe に送り直させない(前と同じく 200)
+      console.error("[Stripe Webhook] Could not resolve subscription change payment user", {
+        invoiceId: invoice.id,
+        subscriptionId,
+        customerId,
+      });
+      return NextResponse.json({
+        received: true,
+        handled: false,
+        eventType: "invoice.paid",
+        reason: "subscription_change_payment_user_not_found",
+      });
+    }
     console.error("[Stripe Webhook] Could not resolve subscription renewal user", {
       invoiceId: invoice.id,
       subscriptionId,
@@ -642,9 +648,7 @@ async function handleSubscriptionInvoicePaid(
       userId,
       plan,
       billingInterval,
-      invoiceId: invoice.id,
-      paidAmountYen: invoice.amount_paid,
-      mode: isStripeTestMode() ? "test" : "live",
+      invoice,
     });
     return NextResponse.json({
       received: true,

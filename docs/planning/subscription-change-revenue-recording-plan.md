@@ -1,7 +1,7 @@
 # プラン変更の支払いを売上として記録する計画
 
 - 作成: 2026-10-26
-- 状態: 実装（2026-10-30・案A。`20261030120000_record_subscription_change_payments.sql`・webhook `invoice.paid`・`features/subscription/lib/subscription-change-payment.ts`）。2026-10-26 ユーザー決定: 案A・ペルコインの履歴には出さない。2026-10-30 ユーザー「売上として記録するように直してください」
+- 状態: 実装（2026-10-30・案A。⚠️実装してわかったこと: 月額→年額は `change-service.ts` で予約の変更（期間の終わりに切り替わる）になり、日割りの請求は出ない。その年額の請求は毎月の更新と同じ付与の経路で売上が記録される。1章の表の「月額→年額」の抜けは、今のコードでは起きない。`20261030120000_record_subscription_change_payments.sql`・webhook `invoice.paid`・`features/subscription/lib/subscription-change-payment.ts`）。2026-10-26 ユーザー決定: 案A・ペルコインの履歴には出さない。2026-10-30 ユーザー「売上として記録するように直してください」
 - きっかけ: 管理ダッシュボードの概要（#805）を作る中で見つかった、もとからある抜け
 
 ## 1. 何が起きているか
