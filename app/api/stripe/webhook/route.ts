@@ -21,7 +21,10 @@ import {
   type SubscriptionBillingInterval,
   type SubscriptionPlan,
 } from "@/features/subscription/subscription-config";
-import { getSubscriptionPlanFromStripeSubscription } from "@/features/subscription/lib/stripe-utils";
+import {
+  getBillingIntervalFromStripeSubscription,
+  getSubscriptionPlanFromStripeSubscription,
+} from "@/features/subscription/lib/stripe-utils";
 import { createYearlyPercoinGrantState } from "@/features/subscription/lib/yearly-grant-schedule";
 import { recordCheckoutSessionExpired } from "@/features/monetization/lib/checkout-session-expired";
 import {
@@ -33,6 +36,10 @@ import {
   revenueYenOfPayment,
   type SubscriptionPaymentInvoice,
 } from "@/features/subscription/lib/subscription-change-payment";
+import {
+  grantSubscriptionUpgradeDifference,
+  resolveUpgradeFromInvoice,
+} from "@/features/subscription/lib/subscription-upgrade-grant";
 
 type SubscriptionRecord = {
   user_id: string;
@@ -83,8 +90,7 @@ function getSubscriptionId(
 function getBillingIntervalFromSubscription(
   subscription: Stripe.Subscription
 ): SubscriptionBillingInterval | null {
-  const interval = subscription.items.data[0]?.price.recurring?.interval;
-  return interval === "month" || interval === "year" ? interval : null;
+  return getBillingIntervalFromStripeSubscription(subscription);
 }
 
 function getSubscriptionPeriodStart(
@@ -584,9 +590,16 @@ async function handleSubscriptionInvoicePaid(
   let userId = existingRecord?.user_id ?? null;
   let plan = existingRecord?.plan ?? "free";
   let billingInterval = existingRecord?.billing_interval ?? null;
+  // サブスクに入っている価格(請求の明細の価格を、Stripe に問い合わせずに読むのに使う)
+  const knownPrices = new Map<string, Stripe.Price>();
+  const loadPrice = async (priceId: string) =>
+    knownPrices.get(priceId) ?? (await stripe.prices.retrieve(priceId));
 
   if (subscriptionId) {
     const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+    for (const item of subscription.items.data) {
+      if (item.price?.id) knownPrices.set(item.price.id, item.price);
+    }
     userId =
       userId ??
       getStringValue(subscription.metadata.userId) ??
@@ -632,12 +645,21 @@ async function handleSubscriptionInvoicePaid(
 
   if (!userId) {
     if (isChangePayment) {
-      // プラン変更の支払いの記録は売上のためだけなので、Stripe に送り直させない(前と同じく 200)
+      // ペルスタのプランの引き上げなら、差のペルコインを付ける必要があるので、Stripe に送り直させる
+      // (利用者の記録の読み込みが一時的に失敗したときなど)。そうでなければ(別の商品など)200 で終える。
+      // 引き上げの判定は Stripe に価格を問い合わせることがあり、失敗すると投げるので、ログを先に残す
       console.error("[Stripe Webhook] Could not resolve subscription change payment user", {
         invoiceId: invoice.id,
         subscriptionId,
         customerId,
       });
+      const upgrade = await resolveUpgradeFromInvoice(invoice, loadPrice);
+      if (upgrade) {
+        return NextResponse.json(
+          { error: "Missing user for subscription upgrade" },
+          { status: 500 }
+        );
+      }
       return NextResponse.json({
         received: true,
         handled: false,
@@ -657,19 +679,30 @@ async function handleSubscriptionInvoicePaid(
   }
 
   if (isChangePayment) {
-    // 付与とサブスクの行の更新は change-service.ts と customer.subscription.updated が行う。
-    // ここでは支払いだけを記録する(0円の請求は何もしない)
-    const recorded = await recordSubscriptionChangePayment(createAdminClient(), {
+    // プランを上げたときの日割りの請求: 支払いを記録し、差のペルコインを付けにいく(保険)。
+    // サブスクの行の更新は change-service.ts と customer.subscription.updated が行う
+    const supabase = createAdminClient();
+    const recorded = await recordSubscriptionChangePayment(supabase, {
       userId,
       plan,
       billingInterval,
       invoice,
     });
+    // 差のペルコインの保険。change-service.ts と同じ請求 ID で付けにいくので、すでに付いていれば何もしない。
+    // 前と後のプランは請求の明細から決める。失敗したら投げて、Stripe に送り直させる(支払いの記録は1行だけ)
+    const upgrade = await resolveUpgradeFromInvoice(invoice, loadPrice);
+    const upgradeGranted = upgrade
+      ? await grantSubscriptionUpgradeDifference(supabase, { userId, upgrade, invoice })
+      : null;
+    if (upgradeGranted) {
+      await revalidateSubscriptionSurfaces(userId);
+    }
     return NextResponse.json({
       received: true,
       handled: true,
       mode: "subscription_change_payment",
       recorded,
+      upgradeGranted,
       userId,
       invoiceId: invoice.id,
     });

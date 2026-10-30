@@ -9,8 +9,9 @@ import type {
  * サブスクの請求(invoice.paid)の見分けと、支払いだけの行(record_subscription_payment)の記録。
  * 計画: docs/planning/subscription-change-revenue-recording-plan.md(案A・2026-10-26 ユーザー決定)
  *
- * プランを上げたとき(change-service.ts の即時の変更)は、日割りの請求が払われる。ペルコインの付与は
- * change-service.ts が金額なしで行うので、ここでは「支払いだけ」を量0の subscription の行で記録する。
+ * プランを上げたとき(change-service.ts の即時の変更)は、日割りの請求が払われる。差のペルコインは
+ * change-service.ts が金額なしで付け、通知の側(subscription-upgrade-grant.ts)も同じ請求 ID で付けにいく
+ * (保険・1回だけ付く)。ここでは「支払いだけ」を量0の subscription の行で記録する。
  * - 同じ請求は1行だけ(RPC が `payment:<請求 ID>` の一意の索引で止める。Stripe が送り直しても増えない)
  * - 0円・円以外の請求は記録しない
  * - 本番かテストかは、請求そのもの(invoice.livemode)で決める(本番の URL でテストの通知を受けることがあるため)
@@ -22,24 +23,27 @@ import type {
 
 export type SubscriptionInvoiceKind = "grant" | "payment_only";
 
-/** 日割りの行があるか(新しい SDK の parent と、古い通知の proration の両方を見る) */
+/** 日割りの行か(新しい SDK の parent と、古い通知の proration の両方を見る) */
+export function isProrationLine(line: Stripe.InvoiceLineItem): boolean {
+  const prorationOnParent =
+    (line.parent?.type === "subscription_item_details" &&
+      line.parent.subscription_item_details?.proration === true) ||
+    (line.parent?.type === "invoice_item_details" &&
+      line.parent.invoice_item_details?.proration === true);
+
+  // Some Stripe webhook payloads still include a legacy top-level proration flag
+  // that is not present in the current SDK type definitions.
+  const legacyProrationFlag =
+    "proration" in line &&
+    typeof line.proration === "boolean" &&
+    line.proration === true;
+
+  return prorationOnParent || legacyProrationFlag;
+}
+
+/** 日割りの行があるか */
 export function hasProrationLine(invoice: Stripe.Invoice): boolean {
-  const lines = invoice.lines.data ?? [];
-
-  return lines.some((line) => {
-    const prorationOnParent =
-      line.parent?.type === "subscription_item_details" &&
-      line.parent.subscription_item_details?.proration === true;
-
-    // Some Stripe webhook payloads still include a legacy top-level proration flag
-    // that is not present in the current SDK type definitions.
-    const legacyProrationFlag =
-      "proration" in line &&
-      typeof line.proration === "boolean" &&
-      line.proration === true;
-
-    return prorationOnParent || legacyProrationFlag;
-  });
+  return (invoice.lines.data ?? []).some(isProrationLine);
 }
 
 /**
@@ -107,7 +111,7 @@ export function paidAtOfPayment(payment: SubscriptionPaymentInvoice): string | n
 
 /**
  * プランを上げたときの日割りの請求の支払いを、支払いだけの行(量0の subscription・paymentOnly)で記録する
- * (付与は change-service.ts が金額なしで行う)。0円・円以外は記録しない。
+ * (差のペルコインは change-service.ts と通知の側が、金額なしで同じ請求 ID で付ける)。0円・円以外は記録しない。
  * 同じ請求の売上は1行だけ(RPC が付与の関数と同じロックの中で、付与の行にもう売上があれば書かない)。
  */
 export async function recordSubscriptionChangePayment(

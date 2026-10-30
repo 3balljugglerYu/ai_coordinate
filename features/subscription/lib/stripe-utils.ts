@@ -61,14 +61,33 @@ export function getSubscriptionItem(
 export function getBillingIntervalFromStripeSubscription(
   subscription: Stripe.Subscription
 ): SubscriptionBillingInterval | null {
-  const interval = getSubscriptionItem(subscription)?.price.recurring?.interval;
+  return getBillingIntervalFromStripePrice(getSubscriptionItem(subscription)?.price);
+}
+
+/** 価格から請求の期間(月額・年額)を決める */
+export function getBillingIntervalFromStripePrice(
+  price: Stripe.Price | string | null | undefined
+): SubscriptionBillingInterval | null {
+  if (!price || typeof price === "string") {
+    return null;
+  }
+  const interval = price.recurring?.interval;
   return interval === "month" || interval === "year" ? interval : null;
 }
 
 export function getSubscriptionPlanFromStripeSubscription(
   subscription: Stripe.Subscription
 ): PaidSubscriptionPlan | null {
-  const price = getSubscriptionItem(subscription)?.price;
+  return getSubscriptionPlanFromStripePrice(getSubscriptionItem(subscription)?.price);
+}
+
+/**
+ * 価格からプランを決める(lookup_key か、環境変数で上書きした価格 ID)。
+ * 請求の明細の価格(プランを上げたときの差の付与・subscription-upgrade-grant.ts)にも使う。
+ */
+export function getSubscriptionPlanFromStripePrice(
+  price: Stripe.Price | string | null | undefined
+): PaidSubscriptionPlan | null {
   if (!price || typeof price === "string") {
     return null;
   }
