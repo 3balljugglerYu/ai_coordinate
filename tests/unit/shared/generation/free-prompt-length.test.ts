@@ -1,4 +1,4 @@
-import { buildPrompt } from "@/shared/generation/prompt-core";
+import { buildCatalogReferenceDirective, buildPrompt } from "@/shared/generation/prompt-core";
 import { PROMPT_REGISTRY } from "@/shared/generation/prompt-registry";
 import { FREE_GENERATION_PROMPT_MAX_LENGTH } from "@/lib/generation/prompt-validation";
 
@@ -24,6 +24,22 @@ describe("じゆうモードのプロンプト長設計", () => {
       backgroundMode: "keep",
     });
     expect(finalPrompt.length).toBeLessThanOrEqual(
+      OPENAI_GPT_IMAGE_PROMPT_LIMIT,
+    );
+  });
+
+  test("見本(参照画像)のまねるもの4つと人物の守りを足しても、OpenAI上限32,000文字を超えない", () => {
+    // worker は見本を使うとき、じゆうモードの最終プロンプトの後ろに見本の指示文を足す。
+    const maxUserInput = "あ".repeat(FREE_GENERATION_PROMPT_MAX_LENGTH);
+    const finalPrompt = buildPrompt({
+      generationType: "free",
+      outfitDescription: maxUserInput,
+      backgroundMode: "keep",
+    });
+    const directive = buildCatalogReferenceDirective({
+      takes: ["outfit", "angle", "pose", "background"],
+    });
+    expect(`${finalPrompt}\n\n${directive}`.length).toBeLessThanOrEqual(
       OPENAI_GPT_IMAGE_PROMPT_LIMIT,
     );
   });

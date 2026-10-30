@@ -8,6 +8,7 @@
  */
 
 import { PROMPT_REGISTRY } from "./prompt-registry.ts";
+import { CATALOG_REFERENCE_TAKES } from "./catalog-reference.ts";
 import { applyTemplate } from "./prompt-template.ts";
 import { isUnlockedFramingMode } from "./framing-mode.ts";
 import type { FramingMode } from "./framing-mode.ts";
@@ -325,6 +326,31 @@ export function buildInspirePrompt(options: BuildInspirePromptOptions): string {
   const preamble = resolveTemplate(templates, "inspire.preamble");
   const actions = getInspireActionSentences(overrides, templates);
   return [preamble, ...actions].join("\n\n");
+}
+
+/**
+ * 見本(参照画像)つきのカタログ(じゆうモード)で、作者のプロンプトの後ろに足す指示文。
+ *
+ * - 選んだまねるものだけ、Inspire の `inspire.*_on`(「image_1 の〜を image_0 に」)を足す。
+ *   選ばなかったものに `*_off`(「変えない」)は足さない。作者のプロンプトが背景などを変えることがあるため
+ * - 最後に必ず `free.catalog_reference_person_guard`(見本の人物の顔・髪型などは使わない)を足す
+ * - まねるものが1つも無ければ空(見本を使わない)
+ *
+ * 画像の順は image_0 = うちの子、image_1 = 見本(worker で揃える)。
+ */
+export function buildCatalogReferenceDirective(options: {
+  takes: readonly string[];
+  templates?: Record<string, string>;
+}): string {
+  const selected = CATALOG_REFERENCE_TAKES.filter((take) => options.takes.includes(take));
+  if (selected.length === 0) {
+    return "";
+  }
+  const sentences = selected.map((take) =>
+    resolveTemplate(options.templates, `inspire.${take}_on` as keyof typeof PROMPT_REGISTRY),
+  );
+  sentences.push(resolveTemplate(options.templates, "free.catalog_reference_person_guard"));
+  return sentences.join("\n\n");
 }
 
 /**
