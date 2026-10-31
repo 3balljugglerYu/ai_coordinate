@@ -11,7 +11,9 @@
  *  - 「イラストから」では、うちの子と見本の2枚並べ(第2案)。うちの子の欄は見出しを読み上げだけに残して縦長にする。
  *    同意の状態(サーバーで確かめた値)を、そのまま渡す。プロンプトの見出しは「なくてもOK」のものにする
  *  - 「先行公開」の案内の「ためしてみる」で「イラストから」へ移る
+ *  - タブを切り替えても見本の欄は作り直さず、隠すだけ(この画面での同意や、上げている途中の状態を消さない)
  *  - 見本のプレビューの blob URL は、値を持つここで、外したときに放す
+ *  - カタログから使う画面(派生生成)で、元の作品がプロンプトなしで作られていたら、非公開とは分けて知らせる
  *  - まねるものの欄は、「イラストから」で見本を入れたときだけ出す
  *  - 「イラストから」は、見本を入れてまねるものを選べば、プロンプトなしでも送れる。見本の id とまねるものを送る
  *  - 「イラストから」は、見本を入れるまで・上げている間・まねるものが0個のときは送らない
@@ -20,6 +22,7 @@
 
 // 見本の欄は部品のテストで確かめるので、ここでは値を渡すだけにする
 const mockReferencePicker = jest.fn();
+const mockReferencePickerMounted = jest.fn();
 jest.mock("@/features/catalog-references/components/CatalogReferencePicker", () => ({
   CatalogReferencePicker: (props: {
     ownImage: React.ReactNode;
@@ -27,6 +30,10 @@ jest.mock("@/features/catalog-references/components/CatalogReferencePicker", () 
     onUploadingChange: (uploading: boolean) => void;
   }) => {
     mockReferencePicker(props);
+    // 作り直されたかを数える(タブの切り替えで作り直さないことを確かめる)
+    jest.requireActual<typeof import("react")>("react").useEffect(() => {
+      mockReferencePickerMounted();
+    }, []);
     return (
       <div data-testid="mock-reference-picker">
         {props.ownImage}
@@ -258,7 +265,9 @@ describe("作り方のタブと見本の欄の出し分け", () => {
 
     expect(screen.getByRole("tab", { name: "createTabPrompt" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByRole("tab", { name: "createTabReference" }).getAttribute("aria-selected")).toBe("false");
-    expect(screen.queryByTestId("mock-reference-picker")).toBeNull();
+    // 見本の欄は隠したまま(うちの子の欄は入れない)
+    expect((screen.getByTestId("catalog-reference-panel") as HTMLElement).hidden).toBe(true);
+    expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({ ownImage: null });
     expect(screen.getByText("imageSourceLabel")).toBeTruthy();
     expect(mockImageUploader).toHaveBeenLastCalledWith({});
     expect(screen.getByLabelText("promptLabel")).toBeTruthy();
@@ -271,7 +280,7 @@ describe("作り方のタブと見本の欄の出し分け", () => {
     await openReferenceTab(user);
 
     expect(screen.getByRole("tab", { name: "createTabReference" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
+    expect((screen.getByTestId("catalog-reference-panel") as HTMLElement).hidden).toBe(false);
     expect(screen.getByText("catalogReferenceImagesLabel")).toBeTruthy();
     // うちの子の欄は並べた中にあり、見出しは読み上げだけに残して縦長にする
     expect(within(screen.getByTestId("mock-reference-picker")).getByTestId("mock-image-uploader")).toBeTruthy();
@@ -295,7 +304,21 @@ describe("作り方のタブと見本の欄の出し分け", () => {
     await user.click(screen.getByText("mock-intro-try"));
 
     expect(screen.getByRole("tab", { name: "createTabReference" }).getAttribute("aria-selected")).toBe("true");
-    expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
+    expect((screen.getByTestId("catalog-reference-panel") as HTMLElement).hidden).toBe(false);
+  });
+
+  test("タブを行き来しても、見本の欄の部品は作り直さない(同意や上げている途中の状態を消さない)", async () => {
+    const user = userEvent.setup();
+    mockReferencePickerMounted.mockClear();
+    renderForm(jest.fn());
+
+    await openReferenceTab(user);
+    await user.click(screen.getByRole("tab", { name: "createTabPrompt" }));
+    await openReferenceTab(user);
+
+    expect(mockReferencePickerMounted).toHaveBeenCalledTimes(1);
+    // うちの子の欄は、見せている側にだけ1つ置く
+    expect(screen.getAllByTestId("mock-image-uploader")).toHaveLength(1);
   });
 
   test.each([
@@ -443,5 +466,21 @@ describe("見本の送信", () => {
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect("referenceImageId" in onSubmit.mock.calls[0][0]).toBe(false);
+  });
+});
+
+describe("カタログから使う画面(派生生成)のプロンプトの欄", () => {
+  test.each([
+    ["元の作品がプロンプトなしで作られている(本文が空)", "", "sourcePromptEmpty"],
+    ["本文が取れない(非公開など)", null, "lockedSheetPromptLocked"],
+  ])("%s ときの見出し", (_label, lockedPromptText, placeholder) => {
+    renderForm(jest.fn(), {
+      catalogReference: undefined,
+      promptLocked: true,
+      sourcePostId: "post-1",
+      lockedPromptText,
+    });
+
+    expect(screen.getByLabelText("lockedSheetPromptLabel").getAttribute("placeholder")).toBe(placeholder);
   });
 });

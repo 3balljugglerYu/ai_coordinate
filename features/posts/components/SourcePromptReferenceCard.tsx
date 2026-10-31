@@ -32,6 +32,9 @@ import { usageCountBucket } from "../lib/constants";
 import { copyTextFromPromise } from "@/lib/clipboard";
 import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
+
+/** プロンプトなしで作られたカタログをコピーしようとしたとき(失敗とは分けて知らせる) */
+const SOURCE_PROMPT_EMPTY = "SOURCE_PROMPT_EMPTY";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import type { SourcePromptReference } from "../types";
 
@@ -211,11 +214,21 @@ export function SourcePromptReferenceCard({
         (同期的にテキストを持っている他のコピーは動く)。
         Promise を渡せる形にして、押した瞬間の権限を保つ。
       */
-      await copyTextFromPromise(fetchSourcePromptText(reference.postId));
+      await copyTextFromPromise(
+        fetchSourcePromptText(reference.postId).then((text) => {
+          // プロンプトなしで作られたカタログ(見本つきの「イラストから」)は、写すものが無い
+          if (text.trim() === "") throw new Error(SOURCE_PROMPT_EMPTY);
+          return text;
+        }),
+      );
       setIsCopied(true);
       toast({ title: t("sourcePromptCopied") });
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
+      if (error instanceof Error && error.message === SOURCE_PROMPT_EMPTY) {
+        toast({ title: t("sourcePromptEmpty") });
+        return;
+      }
       console.error("Failed to copy source prompt:", error);
       toast({
         title: t("sourcePromptCopyFailed"),

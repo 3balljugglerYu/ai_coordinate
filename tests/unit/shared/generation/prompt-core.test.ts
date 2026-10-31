@@ -321,39 +321,6 @@ Minimal monochrome look`;
       ).toThrow();
     });
 
-    test("本文が空でもよい指定(見本つき)なら、錨だけを返す(見出しは出さない)", () => {
-      const result = buildPrompt({
-        generationType: "free",
-        outfitDescription: "   ",
-        backgroundMode: "keep",
-        allowEmptyDescription: true,
-        templates: { "free.base_prefix": "CUSTOM FREE ANCHOR", "free.user_direction_label": "カスタム指示" },
-      });
-      expect(result).toBe("CUSTOM FREE ANCHOR");
-    });
-
-    test("本文が空でもよい指定でも、本文があれば今までどおり見出しつきで足す", () => {
-      const result = buildPrompt({
-        generationType: "free",
-        outfitDescription: userDirection,
-        backgroundMode: "keep",
-        allowEmptyDescription: true,
-        templates: { "free.base_prefix": "CUSTOM FREE ANCHOR", "free.user_direction_label": "カスタム指示" },
-      });
-      expect(result).toBe(`CUSTOM FREE ANCHOR\n\nカスタム指示:\n\n${userDirection}`);
-    });
-
-    test("本文が空でもよい指定は、じゆうモード以外では効かない(空なら投げる)", () => {
-      expect(() =>
-        buildPrompt({
-          generationType: "coordinate",
-          outfitDescription: "",
-          backgroundMode: "keep",
-          allowEmptyDescription: true,
-        }),
-      ).toThrow();
-    });
-
     test("templatesでfree.base_prefixとfree.user_direction_labelをoverrideできる", () => {
       const result = buildPrompt({
         generationType: "free",

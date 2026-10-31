@@ -86,9 +86,29 @@ export async function resolveCatalogReferenceForJob(
 export function isAuthorInputMissing(
   authorInput: string | null | undefined,
   hasCatalogReference: boolean,
-): boolean {
+): authorInput is null | undefined | "" {
   if (authorInput === null || authorInput === undefined) {
     return true;
   }
   return authorInput === "" && !hasCatalogReference;
+}
+
+/**
+ * 作者の本文と見本の指示文(buildCatalogReferenceDirective)の組み合わせ方を決める。
+ * - description: 指示文の本文(User's Direction)として渡すもの
+ * - suffix: できあがった指示文の後ろに足すもの
+ * 本文なしの見本つき(「イラストから」)は、見本の指示文そのものを本文として渡す。
+ * 錨の「User's Direction に従い、触れていないものは image_0 のまま」とぶつからないようにするため
+ */
+export function planCatalogReferencePrompt(
+  authorInput: string,
+  directive: string,
+): { description: string; suffix: string } {
+  if (directive === "") {
+    return { description: authorInput, suffix: "" };
+  }
+  if (authorInput.trim() === "") {
+    return { description: directive, suffix: "" };
+  }
+  return { description: authorInput, suffix: directive };
 }

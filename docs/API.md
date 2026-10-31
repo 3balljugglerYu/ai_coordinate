@@ -279,6 +279,7 @@ admin がシリーズ別 KPI と達成者一覧を取得します。
 - 背景: 公開プロンプトはフォロワー限定の開示のため、本文は投稿詳細の payload に載せません（本人と管理者を除く）。本文が要る場面だけ、この API がサーバー側で認可してから返します。
 - 認可: `validate_derived_prompt_source` と同じ条件（free の root・visible・フォロー済みか本人・ブロックなし）に加えて、**原作が `prompt_visibility = 'public'` であること**。非公開の本文はこの経路から絶対に返しません。
 - 派生投稿の ID を渡した場合は root へ解決して root の本文を返します。
+- 見本つきのカタログで、プロンプトなしで作られた作品（作る画面の「イラストから」）は、`"prompt": ""` を返します（取れないのとは分ける。画面は「このカタログはプロンプトなしで作られています」と出す）。
 
 Success response:
 
@@ -375,7 +376,7 @@ Main errors:
   - 認可は job 作成前・Worker のペルコイン減算前・完了 RPC の画像 INSERT 前の3ヶ所で再検証される。完了時に失効していた場合は成果物を破棄して返金する
 - **見本（参照画像）つきのカタログ（i2i・計画書 `docs/planning/i2i-catalog-review-implementation-plan.md`）**: `referenceImageId`（`POST /api/catalog-references` が返した id）と `referenceTakes`（見本からまねるもの）を一緒に送ると、Worker が見本を image_1 にして生成します。
   - `generationType` は `free` 必須。`sourcePostId`（派生生成）とは同時に使えない。片方だけ・値の重複・知らない値は `400`
-  - 見本つきなら `prompt` は無くてもよい（作る画面の「イラストから」）。本文は空文字で残し、Worker は錨のあとに見本の指示文を続ける。見本なしで本文が空なら、今までどおり `400`
+  - 見本つきなら `prompt` は無くてもよい（作る画面の「イラストから」）。本文は空文字で残し、Worker は見本の指示文そのものを本文（User's Direction）として渡す（錨の「触れていないものは元のまま」とぶつからないように）。見本なしで本文が空なら、今までどおり `400`
   - 見本を使える人（運営が選んだ人・`/admin/i2i-allowlist`）でなければ `403` + `GENERATION_REFERENCE_NOT_ALLOWED`。本人の見本でない・作り直しになった見本は `404` + `GENERATION_REFERENCE_NOT_FOUND`
   - Worker も課金の前にもう一度確かめ、使えなければ課金せずに失敗させる（`CATALOG_REFERENCE_UNAVAILABLE`・やり直さない）。確かめるときの DB の一時的な失敗は `CATALOG_REFERENCE_CHECK_FAILED` で、ほかの失敗と同じく1回だけやり直す
   - 見本を使った作品は、運営の審査で承認されるまで投稿できない（審査の流れは Phase 4）

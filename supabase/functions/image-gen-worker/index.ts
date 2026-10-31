@@ -18,6 +18,7 @@ import {
 import {
   CATALOG_REFERENCE_UNAVAILABLE,
   isAuthorInputMissing,
+  planCatalogReferencePrompt,
   resolveCatalogReferenceForJob,
 } from "./catalog-reference.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
@@ -2290,7 +2291,7 @@ Deno.serve(async () => {
               ?.author_input;
 
             // 見本つきの作品は本文なしで作れる(「イラストから」)ので、見本を解決できたときだけ空文字を許す
-            if (resolvedInput == null || isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
+            if (isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
               throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
 
@@ -2535,6 +2536,17 @@ Deno.serve(async () => {
                     }
                   }
 
+                  // 見本(参照画像)つきのカタログ: まねるものと「見本の人物は使わない」の指示文(ADR-007)を、
+                  // 作者の本文の後ろに足す。本文なし(「イラストから」)なら、指示文そのものを本文として渡す
+                  const referencePrompt = planCatalogReferencePrompt(
+                    generationInput,
+                    catalogReference
+                      ? buildCatalogReferenceDirective({
+                          takes: catalogReference.takes,
+                          templates: promptTemplates,
+                        })
+                      : "",
+                  );
                   let fullPrompt = generationInput;
                   if (job.generation_type === "one_tap_style") {
                     fullPrompt = generationInput;
@@ -2561,7 +2573,7 @@ Deno.serve(async () => {
                   } else if (job.input_image_url) {
                     fullPrompt = buildSharedPrompt({
                       generationType: job.generation_type as GenerationType,
-                      outfitDescription: generationInput,
+                      outfitDescription: referencePrompt.description,
                       backgroundMode,
                       sourceImageType:
                         job.source_image_type === "real"
@@ -2573,20 +2585,10 @@ Deno.serve(async () => {
                       framingMode: getFramingModeFromGenerationMetadata(
                         job.generation_metadata,
                       ),
-                      // 見本つきのカタログは本文なしで作れる(錨のあとに、下で見本の指示文を足す)
-                      allowEmptyDescription: catalogReference !== null,
                     });
                   }
-                  // 見本(参照画像)つきのカタログ: 作者のプロンプトの後ろに、まねるものと
-                  // 「見本の人物は使わない」の指示を足す(ADR-007)
-                  if (catalogReference) {
-                    const directive = buildCatalogReferenceDirective({
-                      takes: catalogReference.takes,
-                      templates: promptTemplates,
-                    });
-                    if (directive) {
-                      fullPrompt = `${fullPrompt}\n\n${directive}`;
-                    }
+                  if (referencePrompt.suffix) {
+                    fullPrompt = `${fullPrompt}\n\n${referencePrompt.suffix}`;
                   }
 
                   // === Creator Looks 生成モード処理(方式A) ===

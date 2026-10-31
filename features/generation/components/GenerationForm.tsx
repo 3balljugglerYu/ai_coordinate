@@ -255,7 +255,10 @@ export function GenerationForm({
       : t("promptLabel");
   // 施錠時のプレースホルダ。公開プロンプトは本文を value に入れるので出ない。
   const promptPlaceholder = promptLocked
-    ? postsT("lockedSheetPromptLocked")
+    ? // 取れた本文が空なら、プロンプトなしで作られたカタログ(見本つきの「イラストから」)。非公開とは分ける
+      lockedPromptText === ""
+      ? postsT("sourcePromptEmpty")
+      : postsT("lockedSheetPromptLocked")
     : isFree
       ? freeT("promptPlaceholder")
       : t("promptPlaceholder");
@@ -906,21 +909,35 @@ export function GenerationForm({
           <Label className="text-base font-medium block">
             {activeReference ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
           </Label>
-          {activeReference ? (
-            // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す)
-            <CatalogReferencePicker
-              ownImage={renderSourceImageUploader({
-                label: freeT("catalogReferenceOwnImageLabel"),
-                hideLabel: true,
-                aspectRatio: 3 / 4,
-              })}
-              value={catalogReference}
-              onChange={setCatalogReference}
-              onUploadingChange={setIsCatalogReferenceUploading}
-              disabled={isGenerating}
-              consented={activeReference.consented}
-              consentedBefore={activeReference.consentedBefore}
-            />
+          {referenceAccess ? (
+            <>
+              {/*
+                見本の欄は「イラストから」のときだけ見せる。タブを切り替えても作り直さず、隠すだけにする
+                (この画面での同意や、上げている途中の状態を消さないため)。
+                うちの子の欄は、見せている側にだけ置く(同じ欄を2つ出さない)
+              */}
+              <div hidden={!usingReference} data-testid="catalog-reference-panel">
+                {/* うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す) */}
+                <CatalogReferencePicker
+                  ownImage={
+                    usingReference
+                      ? renderSourceImageUploader({
+                          label: freeT("catalogReferenceOwnImageLabel"),
+                          hideLabel: true,
+                          aspectRatio: 3 / 4,
+                        })
+                      : null
+                  }
+                  value={catalogReference}
+                  onChange={setCatalogReference}
+                  onUploadingChange={setIsCatalogReferenceUploading}
+                  disabled={isGenerating}
+                  consented={referenceAccess.consented}
+                  consentedBefore={referenceAccess.consentedBefore}
+                />
+              </div>
+              {usingReference ? null : renderSourceImageUploader()}
+            </>
           ) : (
             renderSourceImageUploader()
           )}

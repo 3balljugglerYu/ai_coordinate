@@ -37,6 +37,8 @@ interface StubOptions {
   promptVisibility?: "public" | "private";
   originUserId?: string;
   hasSecret?: boolean;
+  /** 本文(既定は PROMPT)。見本つきの「イラストから」は空文字 */
+  secretPrompt?: string;
 }
 
 function mockSupabase(options: StubOptions = {}) {
@@ -66,7 +68,7 @@ function mockSupabase(options: StubOptions = {}) {
                     }
                   : options.hasSecret === false
                     ? null
-                    : { prompt: PROMPT },
+                    : { prompt: options.secretPrompt ?? PROMPT },
               error: null,
             }),
         }),
@@ -143,6 +145,25 @@ describe("GET /api/posts/[id]/prompt-text", () => {
     const response = await GET(request(), { params });
 
     expect(response.status).toBe(401);
+  });
+
+  test("本文が空(プロンプトなしで作られたカタログ)なら、使えないとはせず、空の本文を返す", async () => {
+    mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
+    mockSupabase({ promptVisibility: "public", originUserId: OWNER_ID, secretPrompt: "" });
+
+    const response = await GET(request(), { params });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ postId: POST_ID, prompt: "" });
+  });
+
+  test("本文が空でも、第三者に非公開なら出さない(空かどうかも漏らさない)", async () => {
+    mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
+    mockSupabase({ promptVisibility: "private", originUserId: OWNER_ID, secretPrompt: "" });
+
+    const response = await GET(request(), { params });
+
+    expect(response.status).toBe(404);
   });
 
   test("secret が無ければ出さない(本文の正本が無い)", async () => {

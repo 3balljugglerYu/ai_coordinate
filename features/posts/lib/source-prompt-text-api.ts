@@ -23,11 +23,10 @@ export async function fetchSourcePromptText(
   }
 
   const data = (await response.json()) as { prompt?: unknown };
-  const prompt = typeof data.prompt === "string" ? data.prompt : "";
-
-  if (!prompt) {
+  if (typeof data.prompt !== "string") {
     throw new Error("SOURCE_PROMPT_TEXT_UNAVAILABLE");
   }
 
-  return prompt;
+  // 空文字は「プロンプトなしで作られた」(見本つきのカタログの「イラストから」)。取れなかったのとは分ける
+  return data.prompt;
 }

@@ -127,10 +127,9 @@ export async function GET(
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
-    const promptText = (secretRow as { prompt: string }).prompt ?? "";
-    if (!promptText) {
-      return jsonUnavailable(copy.promptTextUnavailable);
-    }
+    // 見本つきのカタログ(「イラストから」)は、プロンプトなしで作れる。本文が空のときは「使えない」ではなく、
+    // 空の本文を返す(画面は「プロンプトなしで作られています」と出す)
+    const promptText = (secretRow as { prompt: string | null }).prompt ?? "";
 
     return NextResponse.json({
       postId: validated.root_post_id,
