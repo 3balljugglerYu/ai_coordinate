@@ -21,6 +21,8 @@ export const CAMPAIGN_EVENTS = {
   stepsCreative: "campaign_steps_creative",
   /** 「詳細な作成手順はこちら！」を開いた(エンジョイ部門) */
   stepsEnjoy: "campaign_steps_enjoy",
+  /** 「詳しい生成のしかたはこちら！」を開いた(生成期間のある企画。2026-10-30 秋のひととき企画から) */
+  stepsGenerate: "campaign_steps_generate",
   /** ハッシュタグをコピーできた */
   hashtagCopy: "campaign_hashtag_copy",
   /** 「ログインしてエントリー」を押した */

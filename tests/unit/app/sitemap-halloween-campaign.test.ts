@@ -51,4 +51,12 @@ describe("sitemap とハロウィン企画のページ", () => {
       "/campaigns/halloween-best-shot",
     ]);
   });
+
+  test("11月の秋のひととき企画のページも1つだけ載せ、応募規約のページは載せない(2026-10-30)", async () => {
+    const pathnames = await sitemapPathnames();
+
+    expect(pathnames.filter((pathname) => pathname.includes("/campaigns/autumn-moment"))).toEqual([
+      "/campaigns/autumn-moment",
+    ]);
+  });
 });

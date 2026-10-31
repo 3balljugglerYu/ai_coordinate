@@ -4,6 +4,7 @@ import {
   type DashboardRange,
 } from "@/features/admin-dashboard/lib/dashboard-range";
 import { HALLOWEEN_BEST_SHOT } from "@/features/campaigns/halloween/halloween-best-shot";
+import { AUTUMN_MOMENT } from "@/features/campaigns/autumn-moment/autumn-moment";
 import { env } from "@/lib/env";
 import { getGa4Client } from "./ga4-client";
 import type { Ga4DashboardStatus, Ga4TopPageRow } from "./ga4-types";
@@ -47,6 +48,7 @@ export const WATCHLIST_PAGES: readonly Ga4WatchlistPage[] = [
   { path: "/collections", label: "コレクション一覧" },
   // 企画ページ(2026-10-16)。次の企画のページも、ここに1行足せば管理画面で見られる
   { path: HALLOWEEN_BEST_SHOT.path, label: "ハロウィン企画" },
+  { path: AUTUMN_MOMENT.path, label: "秋のひととき企画" },
 ];
 
 export interface Ga4WatchlistData {
