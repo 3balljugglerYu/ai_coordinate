@@ -122,7 +122,11 @@ REVOKE ALL ON FUNCTION public.apply_catalog_reference_consent_on_insert() FROM a
 -- 6a は上げるたびにチェックで同意を取っていたので、いちばん新しいチェックの時刻を同意の時刻にする。
 -- そのあとに本人の見本が作り直しになっていれば、無効にしておく（同意の画面をもう一度出す）。
 -- 「そのあと」は DB の時計どうしで比べる（copyright_consent_at は 6a のアプリの時計なので、行を作った created_at と比べる）。
--- トリガー（4）を付ける前に移す（今ある見本の行は書き換えない）
+-- トリガー（4）を付ける前に移す（今ある見本の行は書き換えない）。
+-- 移す間とトリガーを付けるまでの間に、見本の行が増えたり作り直しになったりしないよう、表をロックしておく
+-- （書き込みだけを止め、読むのは止めない。このトランザクションの終わりで外れる）
+LOCK TABLE public.catalog_reference_images IN SHARE ROW EXCLUSIVE MODE;
+
 INSERT INTO public.catalog_reference_consents (user_id, consented_at, revoked_at)
 SELECT
   r.user_id,

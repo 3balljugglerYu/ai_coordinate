@@ -27,11 +27,14 @@ export function markCatalogReferenceIntroSeen(userId: string): void {
   }
 }
 
-/** ほかのタブで印が書かれたら知らせる(useSyncExternalStore の購読) */
+/**
+ * ほかのタブで印が書かれたら知らせる(useSyncExternalStore の購読)。
+ * 書かれたときだけ知らせる(印が消された・全部消されたときに、使っている途中で案内が開かないように)
+ */
 export function subscribeCatalogReferenceFlags(onChange: () => void): () => void {
   if (typeof window === "undefined") return () => {};
   const handler = (event: StorageEvent) => {
-    if (event.key === null || event.key.startsWith(INTRO_SEEN_KEY_PREFIX)) onChange();
+    if (event.key?.startsWith(INTRO_SEEN_KEY_PREFIX) && event.newValue === "1") onChange();
   };
   window.addEventListener("storage", handler);
   return () => window.removeEventListener("storage", handler);
