@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AmazonGiftCardNotice } from "@/features/campaigns/kime-pose/components/AmazonGiftCardNotice";
-import { KIME_POSE as CAMPAIGN } from "@/features/campaigns/kime-pose/kime-pose";
+import { AmazonGiftCardNotice } from "@/features/campaigns/autumn-moment/components/AmazonGiftCardNotice";
+import { AUTUMN_MOMENT as CAMPAIGN } from "@/features/campaigns/autumn-moment/autumn-moment";
 
 /**
- * 11月の企画「うちの子の決めポーズ」の応募規約(2026-10-30)。
+ * 11月の企画「うちの子の秋のひととき」の応募規約(2026-10-30。10/31 にテーマを決めポーズから変更)。
  *
  * ハロウィン企画の規約(/campaigns/halloween-best-shot/terms)と同じ12条の形。ちがいは次のとおり
  * (2026-10-30 ユーザー決定):
- * - 応募期間のあとに投票期間がある。投票 = 応募作で生成すること。票はいつもの利用回数で、応募期間中の生成も含める
- * - 賞は使われた回数の多い順。審査・抽選はない
+ * - 応募期間のあとに生成期間がある(応募作品で生成して楽しむ期間)
+ * - 賞は主催者が選ぶ。11/1〜11/22 の生成数・いいね・コメントなどを総合して決める(2026-10-31 ユーザー決定)。
+ *   回数の多い順には決めない。抽選はない
  * - 参加は18歳以上。Amazonギフトカードは日本国内にお住まいの方だけ、ペルコインは海外にお住まいの方も受け取れる
  *   (Amazonギフトカードは Amazon.co.jp 専用のため)
  * 賞品・期間は企画ページと同じ設定から出す(書き写さない)。
@@ -46,7 +47,7 @@ function Section({
   );
 }
 
-export default function KimePoseTermsPage() {
+export default function AutumnMomentTermsPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 pb-16 pt-8">
       <p className="text-xs font-bold tracking-wide text-violet-600">CAMPAIGN</p>
@@ -56,7 +57,7 @@ export default function KimePoseTermsPage() {
         応募規約
       </h1>
       <p className="mt-3 rounded-xl bg-violet-50 px-4 py-3 text-sm font-medium text-violet-900">
-        うちの子の決めポーズの作品を投稿し、ほかのユーザーに使われた回数の多い作品に、
+        うちの子の秋のひとときの作品を投稿し、主催者が選んだ作品に、
         <span className="font-bold">
           {AMAZON_PRIZE.gift}（{AMAZON_PRIZE.amount}
           {AMAZON_PRIZE.unit}）
@@ -75,9 +76,9 @@ export default function KimePoseTermsPage() {
         <p className="text-gray-500">※ 本キャンペーンは、Amazon とは一切関係ありません。</p>
       </Section>
 
-      <Section no="02" title="応募期間・投票期間">
+      <Section no="02" title="応募期間・生成期間">
         <p>応募期間：{CAMPAIGN.submitPeriodFullLabel}</p>
-        <p>投票期間：{CAMPAIGN.votePeriodFullLabel}</p>
+        <p>生成期間：{CAMPAIGN.generatePeriodFullLabel}</p>
         <p className="text-gray-500">
           ※ 応募期間中に投稿された作品を対象とします。期間外に投稿された作品は対象外です。
         </p>
@@ -108,10 +109,10 @@ export default function KimePoseTermsPage() {
         <p className="text-gray-500">※ 主催者および本キャンペーンの関係者は参加できません。</p>
       </Section>
 
-      <Section no="04" title="応募方法・投票">
+      <Section no="04" title="応募方法・生成">
         <p className="font-bold text-gray-900">応募</p>
         <ol className="list-decimal space-y-1 pl-5">
-          <li>応募期間中に、Persta.AI の CREATE で決めポーズの作品を作ります。</li>
+          <li>応募期間中に、Persta.AI の CREATE で、うちの子の秋のひとときの作品を作ります。</li>
           <li>
             説明文にハッシュタグ<span className="font-bold">{CAMPAIGN.hashtag}</span>
             を付けて投稿します。投稿した作品が「応募作品」になり、ほかのユーザーが「このカタログで生成する」から使えるようになります。
@@ -119,21 +120,18 @@ export default function KimePoseTermsPage() {
         </ol>
         <p className="text-gray-500">※ ほかのユーザーのカタログ（プロンプト）から作った作品は、応募作品の対象外です。</p>
 
-        <p className="pt-2 font-bold text-gray-900">投票</p>
+        <p className="pt-2 font-bold text-gray-900">生成</p>
         <p>
-          応募作品の「このカタログで生成する」から生成すると、1回の生成でその応募作品に1票が入ります。投稿しなくても数えます。
+          応募作品の「このカタログで生成する」から、ご自身のうちの子で生成できます。応募期間中から、生成期間の終わり（
+          {CAMPAIGN.generateEndLabel}）まで、いつでも生成できます。
         </p>
         <ul className="list-disc space-y-1 pl-5 text-gray-500">
-          <li>応募期間中の生成も、票に数えます。投票期間の終わり（{CAMPAIGN.voteEndLabel}）までの生成を数えます。</li>
-          <li>作品を投稿した本人が、自分の応募作品で生成したものは数えません。</li>
-          <li>プロンプトをコピーして貼り付けた生成は数えません。</li>
-          <li>主催者および本キャンペーンの関係者の生成は数えません。</li>
           <li>生成には、ペルコインが必要です。</li>
         </ul>
 
         <p className="rounded-lg bg-emerald-50 px-3 py-2 text-emerald-800">
           <span className="font-bold">参加にペルコインの購入は不要です。</span>
-          無料でお付けしているペルコインで、応募・投票ができます。購入の有無は、結果に一切影響しません。
+          無料でお付けしているペルコインで、応募・生成ができます。購入の有無は、選考に一切影響しません。
         </p>
       </Section>
 
@@ -157,17 +155,17 @@ export default function KimePoseTermsPage() {
 
       <Section no="06" title="選考・当選のご連絡">
         <p>
-          応募期間の始まりから投票期間の終わりまでに、各応募作品が「このカタログで生成する」から生成された回数（04の数え方）を数え、多い順に受賞作品を決めます。
+          受賞作品は、主催者が選考して決めます。選考では、応募期間の始まりから生成期間の終わりまで（2026年11月1日〜11月22日）の、各応募作品の生成数・いいね・コメントなどを総合して判断します。
         </p>
         <ul className="list-disc space-y-1 pl-5">
           <li>
-            {AMAZON_PRIZE.name}：日本国内にお住まいの方の応募作品のうち、いちばん多く生成された作品の方（{AMAZON_PRIZE.winners}）
+            {AMAZON_PRIZE.name}（{AMAZON_PRIZE.winners}）は、日本国内にお住まいの方の応募作品から選びます。
           </li>
           <li>
-            {PERCOIN_PRIZE.name}：{AMAZON_PRIZE.name}の作品を除いて、多く生成された作品の方から順に（{PERCOIN_PRIZE.winners}）
+            {PERCOIN_PRIZE.name}（{PERCOIN_PRIZE.winners}）は、海外にお住まいの方の応募作品も含めて選びます。
           </li>
-          <li>同じ回数のときは、先に投稿された作品を上とします。</li>
-          <li>1人で複数の作品が入ったときは、いちばん上の作品で1つの賞とし、次の作品の方へ繰り下げます。</li>
+          <li>生成数には、作品を投稿した本人の生成と、主催者および本キャンペーンの関係者の生成は含めません。</li>
+          <li>1人で複数の作品を応募した場合も、賞は1人1つまでです。</li>
         </ul>
         <p>
           結果発表は {CAMPAIGN.announceLabel} を予定しています。受賞作品とクリエイターは、特設ページでご紹介します。
@@ -178,7 +176,7 @@ export default function KimePoseTermsPage() {
         <p>
           Amazonギフトカードは、お知らせに記載のフォームで受け取り用のメールアドレスをご登録いただき、メールでお送りします。公開の場ではお送りしません。
         </p>
-        <p className="text-gray-500">※ 選考の内容や、作品ごとの回数についてのお問い合わせには、お答えできません。</p>
+        <p className="text-gray-500">※ 選考の理由や内容についてのお問い合わせには、お答えできません。</p>
       </Section>
 
       <Section no="07" title="応募・当選が無効となる場合">
@@ -186,7 +184,7 @@ export default function KimePoseTermsPage() {
         <ul className="list-disc space-y-1 pl-5">
           <li>参加資格を満たさないことがわかった場合</li>
           <li>
-            複数アカウントの利用、自動化ツールの利用、投稿と取り消しの繰り返しなど、不正な方法で参加した場合や、生成の回数を不正に増やした場合
+            複数アカウントの利用、自動化ツールの利用、投稿と取り消しの繰り返しなど、不正な方法で参加した場合や、生成数・いいね・コメントを不正に増やした場合
           </li>
           <li>本規約、Persta.AI の利用規約・コミュニティガイドライン、または法令に違反した場合</li>
           <li>第三者の権利を侵害する作品や、虚偽の内容があった場合</li>

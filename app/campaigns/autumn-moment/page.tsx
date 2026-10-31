@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Lilita_One, M_PLUS_Rounded_1c } from "next/font/google";
-import { KimePosePage } from "@/features/campaigns/kime-pose/components/KimePosePage";
-import { KIME_POSE } from "@/features/campaigns/kime-pose/kime-pose";
+import { AutumnMomentPage } from "@/features/campaigns/autumn-moment/components/AutumnMomentPage";
+import { AUTUMN_MOMENT } from "@/features/campaigns/autumn-moment/autumn-moment";
 import { getCampaignSubmissionPages } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { createCanonicalAlternates } from "@/lib/metadata";
 
@@ -15,29 +15,29 @@ const roundedBody = M_PLUS_Rounded_1c({
   subsets: ["latin"],
   display: "swap",
   preload: false,
-  variable: "--font-kime-pose-body",
+  variable: "--font-autumn-moment-body",
 });
 
 const display = Lilita_One({
   weight: "400",
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-kime-pose-display",
+  variable: "--font-autumn-moment-display",
 });
 
 export const metadata: Metadata = {
-  title: `${KIME_POSE.titleJp} | Persta.AI`,
-  description: `CREATEで、うちの子の決めポーズのプロンプトをつくって投稿しよう。投票は、気に入った決めポーズで生成するだけ。いちばん使われた決めポーズには${KIME_POSE.prizeTotalLabel}。`,
+  title: `${AUTUMN_MOMENT.titleJp} | Persta.AI`,
+  description: `CREATEで、うちの子の秋のひとときのプロンプトをつくって投稿しよう。気に入った作品で、うちの子を生成して楽しめます。${AUTUMN_MOMENT.prizes[0].name}には${AUTUMN_MOMENT.prizeTotalLabel}。`,
   // 広告などの目印が付いた URL を別のページと数えさせないよう、正規の URL を自分自身にする
-  alternates: createCanonicalAlternates(KIME_POSE.path),
+  alternates: createCanonicalAlternates(AUTUMN_MOMENT.path),
 };
 
 export default async function Page() {
   // 応募作品。数分ごとに読み直す(use cache)。読めなければ空で、区画ごと出さない
-  const submissionPages = await getCampaignSubmissionPages(KIME_POSE.campaignKey);
+  const submissionPages = await getCampaignSubmissionPages(AUTUMN_MOMENT.campaignKey);
   return (
     <div className={`${roundedBody.variable} ${display.variable}`}>
-      <KimePosePage submissionPages={submissionPages} />
+      <AutumnMomentPage submissionPages={submissionPages} />
     </div>
   );
 }

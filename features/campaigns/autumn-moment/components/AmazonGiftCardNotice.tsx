@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { KIME_POSE as CAMPAIGN } from "../kime-pose";
+import { AUTUMN_MOMENT as CAMPAIGN } from "../autumn-moment";
 
 /**
  * Amazonギフトカードを賞品にするときに、告知物へ必ず入れる注記2つ

@@ -5,32 +5,33 @@ import { AnnotatedShot, type ShotBox, type ShotCallout } from "@/features/guide/
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { RevealOnScroll } from "@/features/campaigns/halloween/components/RevealOnScroll";
 import { CAMPAIGN_EVENTS } from "@/features/campaigns/lib/campaign-events";
-import { KIME_POSE as CAMPAIGN } from "../kime-pose";
-import styles from "../kime-pose.module.css";
+import { AUTUMN_MOMENT as CAMPAIGN } from "../autumn-moment";
+import styles from "../autumn-moment.module.css";
 import { AmazonGiftCardNotice } from "./AmazonGiftCardNotice";
 import { CopyHashtagButton } from "./CopyHashtagButton";
-import { FloatingJoinButtons, KIME_POSE_PAGE_END_ID } from "./FloatingJoinButtons";
+import { FloatingJoinButtons, AUTUMN_MOMENT_PAGE_END_ID } from "./FloatingJoinButtons";
 import { HashTargetScroll } from "./HashTargetScroll";
 import { JoinDetails } from "./JoinDetails";
-import { HeroDecorations, Wave } from "./KimePoseDecorations";
+import { HeroDecorations, Wave } from "./AutumnMomentDecorations";
 import { PhaseNotice } from "./PhaseNotice";
 import { SubmissionCarousel } from "./SubmissionCarousel";
 import { WorksAnchor } from "./WorksAnchor";
 
 /**
- * 11月の企画「うちの子の決めポーズ」のページ(2026-10-30)。
+ * 11月の企画「うちの子の秋のひととき」のページ(2026-10-30。10/31 にテーマを決めポーズから変更)。
  *
  * 作りはハロウィン企画のページ(features/campaigns/halloween)を写したもの。ハロウィンの部品は
  * 10/31 まで本番で動いているので触らずに写し、クリスマスの企画の前に共通の部品へまとめる。
  *
  * ハロウィンとのちがい(2026-10-30 ユーザー決定):
- * - 部門は1つ(つくる人の賞だけ)。投票した人への賞はないので、エントリー・口数・お祝いはない
- * - 応募期間のあとに投票期間がある。投票 = 気に入った応募作で生成すること。票はいつもの利用回数で、
- *   応募期間中の生成も含める。賞は使われた回数の多い順
+ * - 部門は1つ(つくる人の賞だけ)。生成した人への賞はないので、エントリー・口数・お祝いはない
+ * - 応募期間のあとに生成期間がある(気に入った応募作品で生成して楽しむ期間)
+ * - ⭐賞は運営が選ぶ。11/1〜11/22 の生成数・いいね・コメントなどを総合して決める(2026-10-31 ユーザー決定)。
+ *   「投票」「票」「いちばん使われた」とは書かない
  * - 期間で変わるところ(いまの段階のお知らせ・浮いたボタン)は、ブラウザの時刻で出し分ける
  *   (ページはサーバーで前もって描くので、描くときに時刻を読まない)
  *
- * 画面での呼び名: 投稿された作品は「応募作品」、生成することは「投票」。
+ * 画面での呼び名: 投稿された作品は「応募作品」、応募のあとの期間は「生成期間」。
  * コードと DB では、ハロウィンと同じく応募作(submissions)と呼ぶ。
  */
 
@@ -43,7 +44,7 @@ function Ribbon({ en, children }: { en: string; children: string }) {
   );
 }
 
-const WORKS_ANCHOR = "#kp-works";
+const WORKS_ANCHOR = "#am-works";
 
 /**
  * 狭い幅でも言葉の途中で折り返さないよう、「・」の後ろと「|」の位置だけを折り返してよい所にする
@@ -90,7 +91,7 @@ function PeriodRange({ from, to }: { from: string; to: string }) {
 /** 参加のしかたのひとこと(いきなり手順を見せず、まずひとことで伝える。ハロウィンと同じ) */
 function JoinSummary({ lead, note, hashtag = false }: { lead: ReactNode; note: string; hashtag?: boolean }) {
   return (
-    <div className={styles.joinSummary} data-testid="kime-pose-join-summary">
+    <div className={styles.joinSummary} data-testid="autumn-moment-join-summary">
       <p className={styles.joinSummaryText}>{lead}</p>
       <p className={styles.joinSummaryNote}>※ {note}</p>
       {hashtag ? (
@@ -128,13 +129,16 @@ interface JoinStep {
 // 画面のスクショは、ハロウィン企画と同じくガチャの紹介ページ(/guide/gacha)の実画面と、
 // ハロウィン企画で使ったテーマのない画面を使う。枠の位置は画像に対する割合(%)
 const GUIDE_IMG = "/guide/gacha";
-const IMG_DIR = "/campaigns/kime-pose";
+const IMG_DIR = "/campaigns/autumn-moment";
 
-/** プロンプトの例(ポーズだけを書く。服を書かなければ、使う人の子の服はそのままになりやすい) */
-const POSE_PROMPT_EXAMPLE =
-  "【ポーズ】右手でピースサインを作り、目元に添えてウインク。体は少し斜めに向け、左手は腰に当てる。元気いっぱいの笑顔で、カメラに向かって決めポーズ。";
+/**
+ * プロンプトの例(場所・していること・秋の小物を書く)。髪や顔を書かなければ、
+ * 使う人の子はそのままの姿で、同じ秋のひとときを過ごせる
+ */
+const AUTUMN_PROMPT_EXAMPLE =
+  "【シーン】紅葉した公園のベンチに座り、湯気の立つ焼き芋を両手で持って、ほっこり笑顔。足もとには赤や黄色の落ち葉。やわらかな夕方の光。【服装】ベージュのニットに、ブラウンのマフラー。";
 
-/** 応募する人(決めポーズのプロンプトを作って投稿する人)の手順 */
+/** 応募する人(秋のひとときのプロンプトを作って投稿する人)の手順 */
 const CREATOR_STEPS: readonly JoinStep[] = [
   {
     title: "「カタログ」を開く",
@@ -175,13 +179,13 @@ const CREATOR_STEPS: readonly JoinStep[] = [
     },
   },
   {
-    title: "決めポーズのプロンプトを書く",
-    text: "「生成したい内容」に、決めポーズを自由に書きます。ポーズだけを書くのがおすすめ。服を書かなければ、使う人の子はいつもの服のまま、ポーズだけを楽しめます。",
-    example: POSE_PROMPT_EXAMPLE,
+    title: "秋のひとときのプロンプトを書く",
+    text: "「生成したい内容」に、うちの子が過ごす秋のひとときを自由に書きます。場所・していること・秋の小物を書くのがおすすめ。髪や顔のことを書かなければ、使う人の子もそのままの姿で楽しめます。",
+    example: AUTUMN_PROMPT_EXAMPLE,
   },
   {
     title: "「コーデ開始！」で生成する",
-    text: "うちの子の決めポーズのイラストができあがります。",
+    text: "うちの子の秋のひとときのイラストができあがります。",
     shot: {
       src: `${IMG_DIR}/join-5-generate.jpg`,
       alt: "生成の設定と、いちばん下のコーデ開始！のボタン",
@@ -207,15 +211,15 @@ const CREATOR_STEPS: readonly JoinStep[] = [
   },
   {
     title: "完了！",
-    text: "投稿した決めポーズは「みんなのカタログ」に並び、ほかの人も自分の子で使えるようになります。プロンプトは非公開のままでOKです。",
+    text: "投稿した作品は「みんなのカタログ」に並び、ほかの人も自分の子で使えるようになります。プロンプトは非公開のままでOKです。",
   },
 ];
 
-/** 投票する人(気に入った応募作で生成する人)の手順 */
-const VOTE_STEPS: readonly JoinStep[] = [
+/** 生成する人(気に入った応募作品で、うちの子を生成する人)の手順 */
+const GENERATE_STEPS: readonly JoinStep[] = [
   {
     title: "応募作品をさがす",
-    text: "このページの「応募作品」から、気に入った決めポーズをタップします。",
+    text: "このページの「応募作品」から、気に入った作品をタップします。",
     worksLink: true,
   },
   {
@@ -226,7 +230,7 @@ const VOTE_STEPS: readonly JoinStep[] = [
     title: "うちの子の画像を|入れて生成",
     text: "うちの子の画像を選んで「コーデ開始！」をタップします。プロンプトの中身が伏せられていても大丈夫。",
     shot: {
-      src: `${IMG_DIR}/vote-3-upload.webp`,
+      src: `${IMG_DIR}/generate-3-upload.webp`,
       alt: "生成の画面。人物画像をアップロードする欄に、うちの子の画像が入っている",
       width: 560,
       height: 921,
@@ -235,15 +239,16 @@ const VOTE_STEPS: readonly JoinStep[] = [
     },
   },
   {
-    title: "生成できたら1票！",
-    text: "投稿しなくても、生成できたら1票です。気に入った仕上がりは、ぜひ投稿してみんなに見せてね。",
+    title: "できあがり！",
+    text: "気に入った仕上がりは、ぜひ投稿してみんなに見せてね。",
   },
 ];
 
+/** 「|」は、狭い幅で折り返してよい位置(画面には出さない) */
 const MORE_TIPS = [
-  { icon: "📣", text: "Xにシェアすると、あなたの決めポーズを使ってくれる人が増えるかも！？" },
-  { icon: "⏰", text: "応募期間中に使われた回数も票に入るので、早めの投稿がおすすめ！" },
-  { icon: "💖", text: "運営も「いいね」などで応援します！" },
+  { icon: "📣", text: "Xに|シェアすると、|あなたの|秋のひとときを|使ってくれる人が|増えるかも！？" },
+  { icon: "⏰", text: "11/1からの|生成数・|いいね・|コメントも|選考の|参考にするので、|早めの投稿が|おすすめ！" },
+  { icon: "💖", text: "運営も|「いいね」などで|応援します！" },
 ] as const;
 
 type Award = (typeof CAMPAIGN.prizes)[number];
@@ -255,7 +260,7 @@ function AwardList({ prizes }: { prizes: readonly Award[] }) {
   return (
     <ul className={styles.awards}>
       {prizes.map((prize) => (
-        <li key={prize.name} className={`${styles.award} ${styles.awardNoThumb}`} data-testid="kime-pose-prize">
+        <li key={prize.name} className={`${styles.award} ${styles.awardNoThumb}`} data-testid="autumn-moment-prize">
           <div className={styles.awardHead}>
             <h4 className={styles.awardName}>
               <span aria-hidden="true">{prize.icon}</span> <BreakHints text={prize.name} />
@@ -264,7 +269,7 @@ function AwardList({ prizes }: { prizes: readonly Award[] }) {
               <BreakHints text={prize.tagline} />
             </p>
           </div>
-          <p className={styles.awardGift} data-testid="kime-pose-prize-gift">
+          <p className={styles.awardGift} data-testid="autumn-moment-prize-gift">
             <span
               className={`${styles.awardGiftItem} ${prize.tone === "gold" ? styles.awardGiftGold : styles.awardGiftSilver}`}
             >
@@ -288,13 +293,13 @@ function StepList({
   worksHref,
 }: {
   steps: readonly JoinStep[];
-  role: "creator" | "voter";
+  role: "creator" | "generator";
   worksHref: string;
 }) {
   return (
     <ol className={styles.steps}>
       {steps.map((step, index) => (
-        <li key={step.title} className={styles.step} data-testid={`kime-pose-step-${role}`}>
+        <li key={step.title} className={styles.step} data-testid={`autumn-moment-step-${role}`}>
           <div className={styles.stepHead}>
             <span className={`${styles.stepNum} ${styles.en}`} aria-hidden="true">
               {index + 1}
@@ -358,7 +363,7 @@ function countWorks(pages: readonly (readonly CampaignSubmissionItem[])[]): numb
   return pages.reduce((total, page) => total + page.length, 0);
 }
 
-export function KimePosePage({
+export function AutumnMomentPage({
   submissionPages = [],
 }: {
   /** 応募作品(9件ずつのページ)。空なら区画ごと出さない */
@@ -366,28 +371,32 @@ export function KimePosePage({
 }) {
   const worksHref = submissionPages.length > 0 ? WORKS_ANCHOR : CAMPAIGN.entriesHref;
   return (
-    <div className={styles.page} data-testid="kime-pose">
+    <div className={styles.page} data-testid="autumn-moment">
       <header className={styles.hero}>
         <HeroDecorations />
         <div className={`${styles.heroInner} ${styles.heroInnerSingle}`}>
           <div className={styles.heroText}>
             <div className={styles.chips}>
-              <span className={`${styles.chip} ${styles.chipHot}`}>✨ 11月の企画</span>
+              <span className={`${styles.chip} ${styles.chipHot}`}>🍁 11月の企画</span>
               <span className={styles.chip}>{CAMPAIGN.prizeTotalLabel}</span>
             </div>
             <h1 className={styles.title}>
               <span className={styles.titleJp}>
                 うちの子の
                 <br />
-                決めポーズ
+                秋のひととき
               </span>
               <span className={`${styles.titleEn} ${styles.en}`}>
-                Strike a <span className={styles.magic}>Pose!</span>
+                Autumn <span className={styles.magic}>Moments</span>
               </span>
             </h1>
             <p className={styles.lead}>
-              あなたの“うちの子”の、とっておきの決めポーズを大募集！いちばん使われた決めポーズには、
-              {CAMPAIGN.prizeTotalLabel}をプレゼント！
+              あなたの“うちの子”が過ごす、とっておきの秋のひとときを大募集！
+              <span className={styles.nowrap}>{CAMPAIGN.prizes[0].name}には、</span>
+              <wbr />
+              <span className={styles.nowrap}>{CAMPAIGN.prizeTotalLabel}を</span>
+              <wbr />
+              <span className={styles.nowrap}>プレゼント！</span>
             </p>
             <dl className={styles.periods}>
               <div className={styles.periodRow}>
@@ -397,9 +406,9 @@ export function KimePosePage({
                 </dd>
               </div>
               <div className={styles.periodRow}>
-                <dt className={styles.periodLabel}>投票期間</dt>
+                <dt className={styles.periodLabel}>生成期間</dt>
                 <dd className={styles.periodDates}>
-                  <PeriodRange from={CAMPAIGN.voteStartLabel} to={CAMPAIGN.voteEndLabel} />
+                  <PeriodRange from={CAMPAIGN.generateStartLabel} to={CAMPAIGN.generateEndLabel} />
                 </dd>
               </div>
               <div className={styles.periodRow}>
@@ -415,13 +424,13 @@ export function KimePosePage({
 
       <main>
         {submissionPages.length > 0 ? (
-          <section className={`${styles.section} ${styles.worksSection}`} aria-labelledby="kp-works">
+          <section className={`${styles.section} ${styles.worksSection}`} aria-labelledby="am-works">
             <div className={styles.wrap}>
-              <div id="kp-works">
+              <div id="am-works">
                 <Ribbon en="WORKS">応募作品</Ribbon>
               </div>
-              <p className={styles.worksLead}>気に入った決めポーズをタップして、うちの子で生成してみよう！</p>
-              <p className={styles.worksTotal} data-testid="kime-pose-works-count">
+              <p className={styles.worksLead}>気に入った作品をタップして、うちの子で生成してみよう！</p>
+              <p className={styles.worksTotal} data-testid="autumn-moment-works-count">
                 現在、応募作品は<strong className={styles.worksTotalNumber}>{countWorks(submissionPages)}</strong>
                 作品！
               </p>
@@ -432,26 +441,26 @@ export function KimePosePage({
           </section>
         ) : null}
 
-        <section className={styles.section} aria-labelledby="kp-about">
+        <section className={styles.section} aria-labelledby="am-about">
           <div className={styles.wrap}>
-            <div id="kp-about">
+            <div id="am-about">
               <Ribbon en="ABOUT">企画について</Ribbon>
             </div>
             <RevealOnScroll className={`${styles.aboutStage} ${styles.reveal}`}>
               <div className={`${styles.card} ${styles.aboutCard}`}>
                 <p className={styles.aboutLead}>
-                  <Phrases text="✨ 今回の|テーマは|「決めポーズ」！" />
+                  <Phrases text="🍁 今回の|テーマは|「秋のひととき」！" />
                 </p>
                 <p>
-                  <Phrases text="ヒーローの|変身ポーズ、|アイドルの|ウインク、|必殺技の|かまえ、|思わず|まねしたくなる|ピース…" />
+                  <Phrases text="紅葉狩り、|焼き芋、|読書の秋、|お月見、|カフェで|ひと休み、|落ち葉の|じゅうたんで|おさんぽ…" />
                 </p>
                 <p>
                   <strong className={styles.markOrange}>
-                    <Phrases text="うちの子の|“とっておき”の|決めポーズを、|CREATEで|作って|投稿しよう！" />
+                    <Phrases text="うちの子が|過ごす|“とっておき”の|秋のひとときを、|CREATEで|作って|投稿しよう！" />
                   </strong>
                 </p>
                 <p>
-                  <Phrases text="投稿した|決めポーズは|" />
+                  <Phrases text="投稿した|作品は|" />
                   <span className={styles.catalogWord}>
                     <strong>「カタログ化」</strong>
                   </span>
@@ -464,27 +473,29 @@ export function KimePosePage({
                   </Link>
                 </p>
                 <p>
-                  🗳️{" "}
+                  🍂{" "}
                   <strong className={styles.markPurple}>
-                    <Phrases text="投票は|「生成」で！" />
+                    <Phrases text="気に入った|作品で、|うちの子を|生成しよう！" />
                   </strong>
                   <br />
-                  <Phrases text="気に入った|決めポーズで|生成すると、|それが|1票に|なります。|応募期間中の|生成も|票に|入ります。" />
+                  <Phrases text={`応募期間中から、|生成期間の|終わり（${CAMPAIGN.generateEndLabel}）まで|楽しめます。`} />
                 </p>
                 <p>
                   🏆{" "}
                   <strong className={styles.markYellow}>
-                    <Phrases text={`いちばん|使われた|決めポーズには、|${CAMPAIGN.prizeTotalLabel.replace(" ", "|")}を|プレゼント！🎁`} />
+                    <Phrases text={`${CAMPAIGN.prizes[0].name}には、|${CAMPAIGN.prizeTotalLabel.replace(" ", "|")}を|プレゼント！🎁`} />
                   </strong>
+                  <br />
+                  <Phrases text="生成数・|いいね・|コメントなどを|総合して、|運営が|選びます。" />
                 </p>
               </div>
             </RevealOnScroll>
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="kp-join">
+        <section className={styles.section} aria-labelledby="am-join">
           <div className={styles.wrap}>
-            <div id="kp-join">
+            <div id="am-join">
               <Ribbon en="HOW TO JOIN">応募のしかた</Ribbon>
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
@@ -512,14 +523,14 @@ export function KimePosePage({
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="kp-vote">
+        <section className={styles.section} aria-labelledby="am-generate">
           <div className={styles.wrap}>
-            <div id="kp-vote">
-              <Ribbon en="HOW TO VOTE">投票のしかた</Ribbon>
+            <div id="am-generate">
+              <Ribbon en="HOW TO ENJOY">生成期間の楽しみ方</Ribbon>
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <p className={styles.sectionPeriod}>
-                投票期間：{CAMPAIGN.voteStartLabel} 〜 {CAMPAIGN.voteEndLabel}
+                生成期間：{CAMPAIGN.generateStartLabel} 〜 {CAMPAIGN.generateEndLabel}
               </p>
               <JoinSummary
                 lead={
@@ -527,31 +538,27 @@ export function KimePosePage({
                     <span className={styles.nowrap}>
                       <strong className={styles.keyWord}>「このカタログで生成する」</strong>から
                     </span>
-                    <Phrases text="生成するだけで|1票！" />
+                    <Phrases text="うちの子で|生成しよう！" />
                   </>
                 }
-                note="応募期間中の生成も、票に入ります"
+                note="応募期間中から、いつでも生成できます"
               />
-              <JoinDetails eventName={CAMPAIGN_EVENTS.stepsVote} summary="詳しい投票のしかたはこちら！">
-                <StepList steps={VOTE_STEPS} role="voter" worksHref={worksHref} />
+              <JoinDetails eventName={CAMPAIGN_EVENTS.stepsGenerate} summary="詳しい生成のしかたはこちら！">
+                <StepList steps={GENERATE_STEPS} role="generator" worksHref={worksHref} />
                 <p className={styles.note}>※ 生成には、ログインとペルコインが必要です</p>
-                <p className={styles.note}>※ 自分の応募作品での生成は数えません</p>
-                <p className={styles.note}>
-                  ※ 「このカタログで生成する」から生成した回数を数えます(プロンプトをコピーして貼り付けたものは数えません)
-                </p>
               </JoinDetails>
             </RevealOnScroll>
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="kp-prize">
+        <section className={styles.section} aria-labelledby="am-prize">
           <div className={styles.wrap}>
-            <div id="kp-prize">
+            <div id="am-prize">
               <Ribbon en="PRIZE">賞品</Ribbon>
             </div>
             <RevealOnScroll className={styles.reveal}>
               <p className={styles.prizeGroupLead}>
-                <Phrases text="応募期間と|投票期間を|あわせて、|使われた回数の|多い順に|決まります！" />
+                <Phrases text="11/1〜11/22 の|生成数・|いいね・|コメントなどを|総合して、|運営が|選びます！" />
               </p>
               <AwardList prizes={CAMPAIGN.prizes} />
             </RevealOnScroll>
@@ -563,9 +570,9 @@ export function KimePosePage({
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="kp-schedule">
+        <section className={styles.section} aria-labelledby="am-schedule">
           <div className={styles.wrap}>
-            <div id="kp-schedule">
+            <div id="am-schedule">
               <Ribbon en="SCHEDULE">スケジュール</Ribbon>
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
@@ -579,12 +586,12 @@ export function KimePosePage({
                   <span className={styles.what}>応募締め切り</span>
                 </li>
                 <li className={styles.timelineItem}>
-                  <span className={styles.when}>{CAMPAIGN.voteStartLabel}</span>
-                  <span className={styles.what}>投票スタート</span>
+                  <span className={styles.when}>{CAMPAIGN.generateStartLabel}</span>
+                  <span className={styles.what}>生成期間スタート</span>
                 </li>
                 <li className={styles.timelineItem}>
-                  <span className={styles.when}>{CAMPAIGN.voteEndLabel}</span>
-                  <span className={styles.what}>投票締め切り</span>
+                  <span className={styles.when}>{CAMPAIGN.generateEndLabel}</span>
+                  <span className={styles.what}>生成期間おわり</span>
                 </li>
                 <li className={styles.timelineItem}>
                   <span className={styles.when}>{CAMPAIGN.announceLabel}</span>
@@ -605,17 +612,19 @@ export function KimePosePage({
           </div>
         </section>
 
-        <section className={styles.section} aria-labelledby="kp-more">
+        <section className={styles.section} aria-labelledby="am-more">
           <div className={styles.wrap}>
-            <div id="kp-more">
+            <div id="am-more">
               <Ribbon en="MORE">その他</Ribbon>
             </div>
             <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
               <div className={styles.points}>
                 {MORE_TIPS.map((tip) => (
-                  <div key={tip.text} className={styles.point} data-testid="kime-pose-more-tip">
+                  <div key={tip.text} className={styles.point} data-testid="autumn-moment-more-tip">
                     <span aria-hidden="true">{tip.icon}</span>
-                    <span>{tip.text}</span>
+                    <span>
+                      <Phrases text={tip.text} />
+                    </span>
                   </div>
                 ))}
               </div>
@@ -623,13 +632,13 @@ export function KimePosePage({
           </div>
         </section>
 
-        <section className={styles.closing} aria-labelledby="kp-closing">
+        <section className={styles.closing} aria-labelledby="am-closing">
           <Wave className={styles.waveTop} />
           <div className={`${styles.closingEn} ${styles.en}`} aria-hidden="true">
-            Strike a Pose!
+            Autumn Moments
           </div>
-          <h2 id="kp-closing" className={styles.closingTitle}>
-            あなたの決めポーズ、待ってます
+          <h2 id="am-closing" className={styles.closingTitle}>
+            あなたの秋のひととき、待ってます
           </h2>
           <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
           {/* Amazonギフトカードの注意事項: 応募規約へのリンクと、決まった注記2つ */}
@@ -640,7 +649,7 @@ export function KimePosePage({
             <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
           </div>
           {/* 浮いたボタンの高さぶん空けて、いちばん下の注記が隠れないようにする */}
-          <div id={KIME_POSE_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
+          <div id={AUTUMN_MOMENT_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
         </section>
       </main>
       <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={worksHref} />

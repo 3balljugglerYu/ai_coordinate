@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { trackCampaignEvent, type CampaignEventName } from "@/features/campaigns/lib/campaign-events";
-import styles from "../kime-pose.module.css";
+import styles from "../autumn-moment.module.css";
 
 /**
  * 詳しい手順。最初は閉じておき、押して開く(ハロウィン企画と同じ。いきなり手順を並べると嫌気がさすため)。
@@ -20,7 +20,7 @@ export function JoinDetails({
   return (
     <details
       className={styles.joinDetails}
-      data-testid="kime-pose-join-details"
+      data-testid="autumn-moment-join-details"
       onToggle={(event) => {
         if (event.currentTarget.open) trackCampaignEvent(eventName);
       }}

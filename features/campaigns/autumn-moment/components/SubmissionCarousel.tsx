@@ -6,10 +6,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent as ReactM
 import { ShowcaseLeaveDialog } from "@/features/credits/components/ShowcaseLeaveDialog";
 import type { CampaignSubmissionItem } from "@/features/campaigns/hashtag-campaign/get-submission-pages";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
-import styles from "../kime-pose.module.css";
+import styles from "../autumn-moment.module.css";
 
 /**
- * 決めポーズ企画の「応募作品」の一覧(ハロウィン企画の一覧と同じ作り。2026-10-30 に写した)。
+ * 秋のひととき企画の「応募作品」の一覧(ハロウィン企画の一覧と同じ作り。2026-10-30 に写した)。
  * もとの決まり(ハロウィン企画「キャンペーン対象作品」2026-10-15 ユーザー決定):
  *
  * 3列 × 3段の9件を1ページにし、左右にスワイプすると次のページへ移る(1件ずつではなくページ単位)。
@@ -201,17 +201,17 @@ export function SubmissionCarousel({ pages }: { pages: readonly CampaignSubmissi
         data-draggable={pages.length > visible ? "true" : undefined}
         role="group"
         aria-label="応募作品"
-        data-testid="kime-pose-works"
+        data-testid="autumn-moment-works"
       >
         {pages.map((items, pageIndex) => (
           <ul
             key={items.map((item) => item.postId).join(",")}
             className={styles.worksPage}
             aria-label={`${pageIndex + 1}ページ目(全${pages.length}ページ)`}
-            data-testid="kime-pose-works-page"
+            data-testid="autumn-moment-works-page"
           >
             {items.map((item) => (
-              <li key={item.postId} data-testid="kime-pose-work">
+              <li key={item.postId} data-testid="autumn-moment-work">
                 {/*
                   Link のまま onClick で受け止める(/use-prompts と同じ)。button に替えると
                   長押しの「新しいタブで開く」が使えなくなる。

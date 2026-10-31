@@ -1,10 +1,11 @@
 /*
- * 11月の企画「うちの子の決めポーズ」のページだけの見た目(2026-10-30)。
+ * 11月の企画「うちの子の秋のひととき」のページだけの見た目(2026-10-30。10/31 にテーマを決めポーズから変更)。
  *
  * ハロウィン企画のページ(halloween.module.css。ユーザー確認済み)の形をそのまま写し、
  * 使わない部分(ハロウィンの飾り・エントリー・口数など)を外して、色だけを入れ替えた。
  * 形: 明るいベース・リボン見出し・波形の区切り・白いカードを色の帯に積む。
- * 配色は「明るいベース＋黒と赤の帯(ヒーロー)＋スポットライトの金」(2026-10-30 ユーザーが3案から C を選択)。
+ * 配色は「ベージュのベース＋こげ茶→キャラメル色の帯」。茶色とベージュの、ほっこりする秋
+ * (2026-10-31 ユーザーが3案から A キャラメルを選択)。
  * ペルスタのピンク→オレンジをボタンに残す。
  * 色はすべてこの下の変数から出す(配色を入れ替えるときはここだけ)。
  *
@@ -13,38 +14,39 @@
 
 .page {
   /* 色の決まり(このページだけ) */
-  --deep-900: #14141c;
-  --deep-800: #24242f;
+  --deep-900: #3d2a1e;
+  --deep-800: #5c3d2a;
   /* 影や半透明に使う、濃い色の RGB */
-  --deep-rgb: 36, 36, 47;
-  --accent: #e53935;
-  --accent-light: #ff6b5a;
-  --accent-dark: #9e1b1b;
-  --accent-rgb: 229, 57, 53;
-  --accent-soft: #fff1ef;
+  --deep-rgb: 92, 61, 42;
+  --accent: #c8743a;
+  --accent-light: #e39a5c;
+  --accent-dark: #7a4320;
+  --accent-rgb: 200, 116, 58;
+  --accent-soft: #fbefe0;
   --pink: #ff4fa3;
-  --orange: #ff7a1a;
-  --gold: #ffc23d;
+  /* 札・期間の見出しなどの差し色。明るいオレンジだと浮くので、キャラメル色にそろえる */
+  --orange: var(--accent);
+  --gold: #f5c26b;
   --cream: #fff8e8;
-  --base: #f7f5f3;
-  --ink: #1d1d24;
-  --ink-soft: #5e5e6a;
-  --title-shadow: #9e1b1b;
+  --base: #f5ede1;
+  --ink: #3a2a1f;
+  --ink-soft: #7a6555;
+  --title-shadow: #4a2e1c;
   --grad-brand: linear-gradient(90deg, #ff4fa3 0%, #ff7a1a 100%);
-  --grad-stage: linear-gradient(180deg, #14141c 0%, #2a1f2a 55%, #5a1d22 100%);
+  --grad-stage: linear-gradient(180deg, #5c3d2a 0%, #8a5a3a 55%, #b98250 100%);
   --shadow-card: 0 10px 0 rgba(var(--deep-rgb), 0.12), 0 18px 40px rgba(var(--deep-rgb), 0.14);
 
-  font-family: var(--font-kime-pose-body), system-ui, sans-serif;
+  font-family: var(--font-autumn-moment-body), system-ui, sans-serif;
   color: var(--ink);
   background-color: var(--base);
-  background-image: radial-gradient(rgba(255, 79, 163, 0.1) 2px, transparent 2.5px);
+  background-image: radial-gradient(rgba(var(--accent-rgb), 0.1) 2px, transparent 2.5px);
   background-size: 22px 22px;
   line-height: 1.75;
   overflow-x: hidden;
 }
 
 .en {
-  font-family: var(--font-kime-pose-display), var(--font-kime-pose-body), sans-serif;
+  font-family: var(--font-autumn-moment-display), var(--font-autumn-moment-body), sans-serif;
   letter-spacing: 0.02em;
 }
 
@@ -55,16 +57,6 @@
   background: var(--grad-stage);
   color: #fff;
   padding: 28px 16px 104px;
-}
-
-.star {
-  position: absolute;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: #fff;
-  opacity: 0.8;
-  animation: twinkle 3s ease-in-out infinite;
 }
 
 .heroInner {
@@ -112,7 +104,7 @@
   display: block;
   font-weight: 800;
   font-size: 34px;
-  text-shadow: 0 3px 0 #ff4fa3, 0 6px 0 rgba(0, 0, 0, 0.25);
+  text-shadow: 0 3px 0 var(--accent), 0 6px 0 rgba(0, 0, 0, 0.25);
   animation: popIn 0.9s cubic-bezier(0.2, 1.6, 0.4, 1) both;
 }
 
@@ -126,7 +118,7 @@
 }
 
 .magic {
-  background: linear-gradient(100deg, #ffc23d 0%, #ffc23d 40%, #fff6d6 50%, #ffc23d 60%, #ffc23d 100%);
+  background: linear-gradient(100deg, var(--gold) 0%, var(--gold) 40%, #fff6d6 50%, var(--gold) 60%, var(--gold) 100%);
   background-size: 250% 100%;
   -webkit-background-clip: text;
   background-clip: text;
@@ -149,7 +141,7 @@
   max-width: 640px;
 }
 
-/* 期間(応募・投票・結果発表)。ハロウィンの白い札を3行にしたもの */
+/* 期間(応募・生成・結果発表)。ハロウィンの白い札を3行にしたもの */
 .periods {
   display: grid;
   gap: 6px;
@@ -239,49 +231,20 @@
   transform: scaleY(-1);
 }
 
-/* ===== 飾り(舞台のスポットライトときらめき) ===== */
-.deco {
+/* ===== 飾り(落ち葉) ===== */
+/* もみじの葉を、それぞれの傾き(--leaf-turn)を中心にゆっくり揺らす */
+.leaf {
   position: absolute;
   pointer-events: none;
+  height: auto;
+  opacity: 0.85;
+  transform: rotate(var(--leaf-turn, 0deg));
+  animation: leafSway 5.5s ease-in-out infinite;
 }
 
-.floatStar {
-  composes: deco;
-  animation: float 4.5s ease-in-out infinite;
-}
-
-/* 上から当たるスポットライト。円すい形の光を、左右からゆっくり振る */
-.spotlight {
-  composes: deco;
-  top: -40px;
-  width: 220px;
-  height: 520px;
-  background: linear-gradient(180deg, rgba(255, 236, 170, 0.32) 0%, rgba(255, 236, 170, 0) 85%);
-  clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
-  transform-origin: 50% 0;
-  animation: spotlightSwing 7s ease-in-out infinite alternate;
-}
-
-.spotlightLeft {
-  left: -30px;
-  --swing-from: -14deg;
-  --swing-to: 6deg;
-}
-
-.spotlightRight {
-  right: -30px;
-  --swing-from: 14deg;
-  --swing-to: -6deg;
-  animation-delay: -3.5s;
-}
-
-@keyframes spotlightSwing {
-  from {
-    transform: rotate(var(--swing-from));
-  }
-  to {
-    transform: rotate(var(--swing-to));
-  }
+@keyframes leafSway {
+  0%, 100% { transform: translateY(0) rotate(var(--leaf-turn, 0deg)); }
+  50% { transform: translateY(8px) rotate(calc(var(--leaf-turn, 0deg) + 14deg)); }
 }
 
 /* ===== セクション ===== */
@@ -373,7 +336,7 @@
 .aboutLead {
   font-size: 21px;
   font-weight: 800;
-  color: var(--pink);
+  color: var(--accent);
   letter-spacing: 0.04em;
 }
 
@@ -400,7 +363,7 @@
 }
 
 .markOrange {
-  background: linear-gradient(transparent 58%, rgba(255, 122, 26, 0.42) 58%);
+  background: linear-gradient(transparent 58%, rgba(var(--accent-rgb), 0.36) 58%);
 }
 
 .markYellow {
@@ -518,7 +481,7 @@
 }
 
 .awardGiftGold {
-  background: linear-gradient(120deg, #ff7a1a, #ffb12e);
+  background: linear-gradient(120deg, var(--accent), var(--gold));
 }
 
 .awardGiftSilver {
@@ -598,7 +561,7 @@
   color: var(--ink-soft);
 }
 
-/* 決めポーズのプロンプトの例(応募のしかたの手順4) */
+/* 秋のひとときのプロンプトの例(応募のしかたの手順4) */
 .promptExample {
   margin-top: 10px;
   padding: 12px 14px;
@@ -623,7 +586,7 @@
   line-height: 1.8;
 }
 
-/* 応募のしかた・投票のしかたの、カードのいちばん上の期間 */
+/* 応募のしかた・生成期間の楽しみ方の、カードのいちばん上の期間 */
 .sectionPeriod {
   margin: 0 0 12px !important;
   text-align: center;
@@ -729,7 +692,7 @@
   bottom: 6px;
   width: 4px;
   border-radius: 4px;
-  background: var(--grad-brand);
+  background: linear-gradient(180deg, var(--accent), var(--gold));
 }
 
 .timelineItem {
@@ -866,8 +829,8 @@
 }
 
 /* ===== 応募作品(ハロウィンのキャンペーン対象作品の一覧と同じ形) ===== */
-/* ページの中へ飛ぶリンク(#kp-works など)で、見出しが上の固定ヘッダーの下に隠れないようにする */
-.page [id^="kp-"] {
+/* ページの中へ飛ぶリンク(#am-works など)で、見出しが上の固定ヘッダーの下に隠れないようにする */
+.page [id^="am-"] {
   scroll-margin-top: 80px;
 }
 
@@ -1188,16 +1151,6 @@
 }
 
 /* ===== 動き ===== */
-@keyframes twinkle {
-  0%, 100% { opacity: 0.2; }
-  50% { opacity: 1; }
-}
-
-@keyframes float {
-  0%, 100% { transform: translateY(0) rotate(-4deg); }
-  50% { transform: translateY(-10px) rotate(4deg); }
-}
-
 @keyframes popIn {
   0% { opacity: 0; transform: translateY(26px) scale(0.9) rotate(-3deg); }
   100% { opacity: 1; transform: none; }
@@ -1209,9 +1162,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .star,
-  .floatStar,
-  .spotlight,
+  .leaf,
   .titleJp,
   .titleEn,
   .magic {
@@ -1230,7 +1181,7 @@
   }
 }
 
-/* ===== 応募のしかた・投票のしかた: ひとことと、開いて見る手順(ハロウィンと同じ) ===== */
+/* ===== 応募のしかた・生成期間の楽しみ方: ひとことと、開いて見る手順(ハロウィンと同じ) ===== */
 /* いきなり手順を見せず、まず「〜から生成して投稿するだけでOK！」で伝える */
 .joinSummary {
   margin: 6px 0 18px;

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { CAMPAIGN_EVENTS, trackCampaignEvent } from "@/features/campaigns/lib/campaign-events";
-import styles from "../kime-pose.module.css";
+import styles from "../autumn-moment.module.css";
 
 /** ハッシュタグを写して、投稿の本文にそのまま貼れるようにする(ハロウィン企画と同じ動き)。 */
 export function CopyHashtagButton({ hashtag }: { hashtag: string }) {

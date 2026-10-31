@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { MouseEventHandler, ReactNode } from "react";
 
 /**
- * 応募作品へのリンク。ページの中(#kp-works)へ飛ぶときは素の a(Link を通さない)、
+ * 応募作品へのリンク。ページの中(#am-works)へ飛ぶときは素の a(Link を通さない)、
  * 一覧がまだ無くてハッシュタグの検索へ行くときは Link。
  * 手順の「応募作品を見る」と、画面の下に浮いたボタンで同じものを使う。
  */

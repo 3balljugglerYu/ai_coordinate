@@ -1,11 +1,11 @@
 "use client";
 
-import { KIME_POSE as CAMPAIGN } from "../kime-pose";
-import { useKimePosePhase } from "../hooks/useKimePosePhase";
-import styles from "../kime-pose.module.css";
+import { AUTUMN_MOMENT as CAMPAIGN } from "../autumn-moment";
+import { useAutumnMomentPhase } from "../hooks/useAutumnMomentPhase";
+import styles from "../autumn-moment.module.css";
 
 /**
- * いまの段階のお知らせ(冒頭の期間の下)。応募期間・投票期間・締め切りのあとで文を変える。
+ * いまの段階のお知らせ(冒頭の期間の下)。応募期間・生成期間・終わったあとで文を変える。
  * 時刻はブラウザで見るので、分かるまでは同じ高さの空きだけ置く(描いたあとにページが動かないように)。
  */
 const NOTICE = {
@@ -17,28 +17,28 @@ const NOTICE = {
   submit: {
     label: "ただいま応募期間中",
     text: `${CAMPAIGN.submitEndLabel} まで募集中！`,
-    sub: "応募期間中に使われた回数も、票に入ります",
+    sub: "生成・いいね・コメントも、選考の参考にします",
   },
-  vote: {
-    label: "ただいま投票期間中",
-    text: `${CAMPAIGN.voteEndLabel} まで投票受付中！`,
-    sub: "気に入った決めポーズで生成すると、1回で1票！",
+  generate: {
+    label: "ただいま生成期間中",
+    text: `${CAMPAIGN.generateEndLabel} まで！`,
+    sub: "気に入った作品で、うちの子を生成してみよう！",
   },
   closed: {
-    label: "投票は締め切りました",
+    label: "生成期間は終わりました",
     text: `結果発表は ${CAMPAIGN.announceLabel} です。お楽しみに！`,
     sub: "たくさんのご参加、ありがとうございました",
   },
 } as const;
 
 export function PhaseNotice() {
-  const phase = useKimePosePhase();
+  const phase = useAutumnMomentPhase();
   if (!phase) {
     return <div className={styles.phaseNotice} data-pending="true" aria-hidden="true" />;
   }
   const notice = NOTICE[phase];
   return (
-    <div className={styles.phaseNotice} data-phase={phase} data-testid="kime-pose-phase-notice">
+    <div className={styles.phaseNotice} data-phase={phase} data-testid="autumn-moment-phase-notice">
       <p className={styles.phaseNoticeLabel}>{notice.label}</p>
       <p className={styles.phaseNoticeText}>{notice.text}</p>
       <p className={styles.phaseNoticeSub}>{notice.sub}</p>

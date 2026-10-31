@@ -7,13 +7,13 @@ export const HASH_TARGET_SETTLE_MS = 8000;
 
 /** 場所つきの URL で開ける場所(企画ページの項目の見出し) */
 export const HASH_TARGET_IDS: readonly string[] = [
-  "kp-works",
-  "kp-about",
-  "kp-join",
-  "kp-vote",
-  "kp-prize",
-  "kp-schedule",
-  "kp-more",
+  "am-works",
+  "am-about",
+  "am-join",
+  "am-generate",
+  "am-prize",
+  "am-schedule",
+  "am-more",
 ];
 
 /**
@@ -29,7 +29,7 @@ function removeHashFromUrl() {
 }
 
 /**
- * `/campaigns/kime-pose#kp-works` のように、ページの中の場所つきの URL で開いたときに、その場所へ移る
+ * `/campaigns/autumn-moment#am-works` のように、ページの中の場所つきの URL で開いたときに、その場所へ移る
  * (ハロウィン企画の HashTargetScroll と同じ動き。くわしい理由はそちら)。
  *
  * 中身があとから届くページなので、描いたあとにここで移し、少しのあいだ高さが変わるたびに合わせ直す。
