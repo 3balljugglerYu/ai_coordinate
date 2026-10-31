@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
+import { isBlankPrompt } from "@/shared/generation/catalog-reference";
 
 /**
  * 公開プロンプトの本文を返す API。
@@ -127,14 +128,30 @@ export async function GET(
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
-    const promptText = (secretRow as { prompt: string }).prompt ?? "";
-    if (!promptText) {
-      return jsonUnavailable(copy.promptTextUnavailable);
+    const rawPrompt = (secretRow as { prompt: string | null }).prompt ?? "";
+    if (isBlankPrompt(rawPrompt)) {
+      // 見本つきのカタログは「イラストから」でプロンプトなしで作れる。見本つきかは、本文が空のときだけ確かめる
+      const { data: referenceRow, error: referenceError } = await supabase
+        .from("generated_image_reference_secrets")
+        .select("image_id")
+        .eq("image_id", validated.root_post_id)
+        .maybeSingle();
+      if (referenceError) {
+        console.error("Prompt text API reference check error:", referenceError);
+      }
+      // 見本つきの作品は「使えない」とはせず、空の本文を返す(画面は「プロンプトなしで作られています」と出す)
+      if (!referenceError && referenceRow) {
+        return NextResponse.json({ postId: validated.root_post_id, prompt: "" });
+      }
+      // 見本つきでない作品は今までどおり(空なら使えない・空白だけならそのまま返す)
+      if (!rawPrompt) {
+        return jsonUnavailable(copy.promptTextUnavailable);
+      }
     }
 
     return NextResponse.json({
       postId: validated.root_post_id,
-      prompt: promptText,
+      prompt: rawPrompt,
     });
   } catch (error) {
     console.error("Prompt text API error:", error);

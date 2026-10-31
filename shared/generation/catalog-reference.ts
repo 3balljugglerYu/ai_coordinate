@@ -8,3 +8,12 @@
 export const CATALOG_REFERENCE_TAKES = ["outfit", "angle", "pose", "background"] as const;
 
 export type CatalogReferenceTake = (typeof CATALOG_REFERENCE_TAKES)[number];
+
+/**
+ * プロンプトなしで作られた本文か(空白だけも含む)。
+ * 見本つきのカタログは「イラストから」でプロンプトなしで作れる。そのときの本文は空文字で残る(受付でそろえる)。
+ * 受付・本文の API・画面で、この判定を共通に使う
+ */
+export function isBlankPrompt(text: string): boolean {
+  return text.trim() === "";
+}

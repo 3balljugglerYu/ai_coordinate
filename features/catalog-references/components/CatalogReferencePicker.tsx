@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,10 @@ import {
   ReferenceImageError,
   type ReferenceImageProblem,
 } from "@/features/catalog-references/lib/prepare-reference-image";
-import {
-  hasSeenCatalogReferenceIntro,
-  markCatalogReferenceIntroSeen,
-  subscribeCatalogReferenceFlags,
-} from "@/features/catalog-references/lib/local-flags";
 import type { CatalogReferenceValue } from "@/features/catalog-references/types";
 import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { CatalogReferenceConsentSheet } from "./CatalogReferenceConsentSheet";
-import { CatalogReferenceIntroSheet } from "./CatalogReferenceIntroSheet";
 import { REFERENCE_STRIPES_CLASS } from "./reference-styles";
 
 interface CatalogReferencePickerProps {
@@ -35,10 +29,13 @@ interface CatalogReferencePickerProps {
    * 同意が無い・同意のあとに本人の見本が作り直しになったときは false
    */
   consented: boolean;
-  /** 一度でも同意したことがあるか。無いときだけ「先行公開」の案内と「次からは出ません」を出す */
+  /** 一度でも同意したことがあるか。無いときだけ、同意の画面に「次からは出ません」を出す */
   consentedBefore: boolean;
-  /** 本人の ID(案内を見た印を、本人ごとに分けて端末に残す) */
-  userId: string;
+  /**
+   * 見せているか(作る画面の「イラストから」のタブ)。隠している間に同意し直しが要ると分かったら、
+   * 同意の画面は見せたときに出す(「プロンプトから」の上に出さない)。省略時は見せている
+   */
+  active?: boolean;
 }
 
 /** 上げたときに最初から選んでおくまねるもの */
@@ -82,7 +79,7 @@ const UPLOAD_ERROR_KEYS: Record<string, UploadErrorKey> = {
  * - 見本を上げる API が「同意が要る」と断ったら(開いたあとに見本が作り直しになったなど)、選んだ画像を持ったまま同意の画面を出す
  * - 選んだら、API の決まり(縦横とも 768〜4096px・4MB まで)に合わせて手元で縮め、POST /api/catalog-references に上げる
  *   (HEIC はブラウザで読めないので受け付けない)
- * - 「先行公開」の案内は、一度も同意したことが無く、まだ見ていない人に1回だけ出す(見た印は本人ごとに端末に残す)
+ * - 「先行公開」の案内は、作る画面のほう(CatalogReferenceIntro)で出す(「イラストから」のタブへの入口なので)
  * - プレビューの blob URL は値を持つ親(GenerationForm)が片付ける
  */
 export function CatalogReferencePicker({
@@ -93,7 +90,7 @@ export function CatalogReferencePicker({
   disabled = false,
   consented,
   consentedBefore,
-  userId,
+  active = true,
 }: CatalogReferencePickerProps) {
   const t = useTranslations("free");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -111,15 +108,6 @@ export function CatalogReferencePicker({
     open: false,
     mode: "view",
   });
-
-  // 案内は、一度も同意したことが無く、まだ見ていない人にだけ出す(SSR では出さない。ほかのタブで見たら閉じる)
-  const introEligible = useSyncExternalStore(
-    subscribeCatalogReferenceFlags,
-    () => !consentedBefore && !hasSeenCatalogReferenceIntro(userId),
-    () => false,
-  );
-  const [introDismissed, setIntroDismissed] = useState(false);
-  const introOpen = introEligible && !introDismissed;
 
   const setUploadingState = (next: boolean) => {
     setUploading(next);
@@ -227,11 +215,6 @@ export function CatalogReferencePicker({
     });
   };
 
-  const closeIntro = () => {
-    markCatalogReferenceIntroSeen(userId);
-    setIntroDismissed(true);
-  };
-
   return (
     <div className="space-y-3" data-testid="catalog-reference-picker">
       <div className="grid grid-cols-2 gap-3">
@@ -329,7 +312,7 @@ export function CatalogReferencePicker({
       </div>
 
       <CatalogReferenceConsentSheet
-        open={consentSheet.open}
+        open={consentSheet.open && active}
         onOpenChange={(open) => {
           if (!open) closeConsent();
         }}
@@ -338,12 +321,6 @@ export function CatalogReferencePicker({
         // 「次からは出ません」は、一度も同意したことが無い人の初めての同意のときだけ出す
         showOnceNote={!consentedBefore && consentInPage !== "required"}
         notice={consentNotice}
-      />
-      <CatalogReferenceIntroSheet
-        open={introOpen}
-        onOpenChange={(open) => {
-          if (!open) closeIntro();
-        }}
       />
     </div>
   );

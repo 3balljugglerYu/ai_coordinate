@@ -17,6 +17,7 @@ import {
 } from "./creator-looks-prompt.ts";
 import {
   CATALOG_REFERENCE_UNAVAILABLE,
+  isAuthorInputMissing,
   resolveCatalogReferenceForJob,
 } from "./catalog-reference.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
@@ -2049,8 +2050,10 @@ Deno.serve(async () => {
             const requiresProviderPrompt =
               job.generation_type === "one_tap_style";
 
+            // 見本つきのカタログ(「イラストから」)は本文なしで作れるので、見本を解決できたときだけ空文字を許す
             if (
-              (requiresAuthorInput && !promptExecution?.authorInput) ||
+              (requiresAuthorInput &&
+                isAuthorInputMissing(promptExecution?.authorInput, catalogReference !== null)) ||
               (requiresProviderPrompt && !promptExecution?.providerPrompt)
             ) {
               throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
@@ -2286,7 +2289,9 @@ Deno.serve(async () => {
             const resolvedInput = (resolved as { author_input?: string } | null)
               ?.author_input;
 
-            if (!resolvedInput) {
+            // 見本つきの作品は本文なしで作れる(「イラストから」)ので、見本を解決できたときだけ空文字を許す
+            // 「resolvedInput == null」は型を string に絞るため(isAuthorInputMissing も null を失敗とみなす)
+            if (resolvedInput == null || isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
               throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
 
@@ -2531,6 +2536,14 @@ Deno.serve(async () => {
                     }
                   }
 
+                  // 見本(参照画像)つきのカタログ: まねるものと「見本の人物は使わない」の指示文(ADR-007)。
+                  // 指示文を作る関数が、作者の本文のあとに続ける(本文なしの「イラストから」は指示文だけになる)
+                  const referenceDirective = catalogReference
+                    ? buildCatalogReferenceDirective({
+                        takes: catalogReference.takes,
+                        templates: promptTemplates,
+                      })
+                    : "";
                   let fullPrompt = generationInput;
                   if (job.generation_type === "one_tap_style") {
                     fullPrompt = generationInput;
@@ -2569,18 +2582,8 @@ Deno.serve(async () => {
                       framingMode: getFramingModeFromGenerationMetadata(
                         job.generation_metadata,
                       ),
+                      referenceDirective,
                     });
-                  }
-                  // 見本(参照画像)つきのカタログ: 作者のプロンプトの後ろに、まねるものと
-                  // 「見本の人物は使わない」の指示を足す(ADR-007)
-                  if (catalogReference) {
-                    const directive = buildCatalogReferenceDirective({
-                      takes: catalogReference.takes,
-                      templates: promptTemplates,
-                    });
-                    if (directive) {
-                      fullPrompt = `${fullPrompt}\n\n${directive}`;
-                    }
                   }
 
                   // === Creator Looks 生成モード処理(方式A) ===

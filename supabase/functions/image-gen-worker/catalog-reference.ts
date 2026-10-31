@@ -76,3 +76,20 @@ export async function resolveCatalogReferenceForJob(
 
   return { storagePath: row.storage_path, takes: row.takes };
 }
+
+/**
+ * 作者の本文が無いことを、失敗(プロンプトが取れない)とみなすか。
+ * 見本つきのカタログ(「イラストから」)は、本文なしで作れる(本文は空文字で残る)。
+ * そのため、見本を解決できたジョブ(作者の見本のジョブと、見本つきの作品からの派生生成)だけ、空文字を許す。
+ * 本文の行そのものが無い(null)ときは、見本があっても失敗にする
+ */
+export function isAuthorInputMissing(
+  authorInput: string | null | undefined,
+  hasCatalogReference: boolean,
+): boolean {
+  if (authorInput === null || authorInput === undefined) {
+    return true;
+  }
+  // 空白だけも本文なしとみなす(見本なしなら課金の前に止める。受付は見本つきのときだけ空文字にそろえる)
+  return authorInput.trim() === "" && !hasCatalogReference;
+}

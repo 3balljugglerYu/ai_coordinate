@@ -35,6 +35,14 @@ import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import type { SourcePromptReference } from "../types";
 
+/** プロンプトなしで作られたカタログをコピーしようとした(失敗とは分けて知らせる) */
+class SourcePromptEmptyError extends Error {
+  constructor() {
+    super("SOURCE_PROMPT_EMPTY");
+    this.name = "SourcePromptEmptyError";
+  }
+}
+
 /**
  * 生成シートは遅延読み込みにする。
  *
@@ -211,11 +219,22 @@ export function SourcePromptReferenceCard({
         (同期的にテキストを持っている他のコピーは動く)。
         Promise を渡せる形にして、押した瞬間の権限を保つ。
       */
-      await copyTextFromPromise(fetchSourcePromptText(reference.postId));
+      await copyTextFromPromise(
+        fetchSourcePromptText(reference.postId).then((text) => {
+          // プロンプトなしで作られたカタログ(見本つきの「イラストから」)は、写すものが無い。
+          // 本文の API は、見本つきの作品のときだけ空文字を返す(空白だけの本文はそのまま返る)
+          if (text === "") throw new SourcePromptEmptyError();
+          return text;
+        }),
+      );
       setIsCopied(true);
       toast({ title: t("sourcePromptCopied") });
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
+      if (error instanceof SourcePromptEmptyError) {
+        toast({ title: t("sourcePromptEmpty") });
+        return;
+      }
       console.error("Failed to copy source prompt:", error);
       toast({
         title: t("sourcePromptCopyFailed"),

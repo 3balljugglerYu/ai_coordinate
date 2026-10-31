@@ -11,6 +11,8 @@ import { SheetCloseButton } from "./SheetCloseButton";
 interface CatalogReferenceIntroSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** 「ためしてみる」を押した(「イラストから」のタブへ移る) */
+  onTry: () => void;
 }
 
 const STEP_KEYS = [
@@ -24,7 +26,7 @@ const STEP_KEYS = [
  * 見本を使える人に、最初の1回だけ出す案内(第2案の「先行公開」)。
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md §10
  */
-export function CatalogReferenceIntroSheet({ open, onOpenChange }: CatalogReferenceIntroSheetProps) {
+export function CatalogReferenceIntroSheet({ open, onOpenChange, onTry }: CatalogReferenceIntroSheetProps) {
   const t = useTranslations("free");
 
   return (
@@ -82,7 +84,7 @@ export function CatalogReferenceIntroSheet({ open, onOpenChange }: CatalogRefere
           <Button
             type="button"
             className="h-12 w-full rounded-xl text-base font-bold"
-            onClick={() => onOpenChange(false)}
+            onClick={onTry}
           >
             {t("catalogReferenceIntroTry")}
           </Button>

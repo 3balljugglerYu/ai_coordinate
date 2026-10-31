@@ -93,8 +93,9 @@ jest.mock("@/components/ui/alert-dialog", () => ({
   ),
 }));
 
+const mockToast = jest.fn();
 jest.mock("@/components/ui/use-toast", () => ({
-  useToast: () => ({ toast: jest.fn() }),
+  useToast: () => ({ toast: mockToast }),
 }));
 
 jest.mock("@/lib/clipboard", () => ({
@@ -150,6 +151,7 @@ const translations = {
   sourcePromptCopy: "プロンプトをコピーする",
   sourcePromptCopied: "コピーしました",
   sourcePromptCopyFailed: "コピーできませんでした",
+  sourcePromptEmpty: "このカタログはプロンプトなしで作られています",
   sourcePromptOpenOriginConfirmTitle: "原作のページに移動しますか？",
   sourcePromptOpenOriginConfirmDescription:
     "「はい」を選択すると、このプロンプトの原作の投稿へ移動します。",
@@ -637,6 +639,32 @@ describe("プロンプトのコピー", () => {
     const passed = copyTextFromPromise.mock.calls[0][0];
     expect(passed).toBeInstanceOf(Promise);
     await expect(passed).resolves.toBe("白いワンピースにして");
+  });
+
+  it("プロンプトなしで作られたカタログ(本文が空)は、写さずに「プロンプトなし」と知らせる(失敗とは分ける)", async () => {
+    const { fetchSourcePromptText } = jest.requireMock(
+      "@/features/posts/lib/source-prompt-text-api"
+    );
+    const { copyTextFromPromise } = jest.requireMock("@/lib/clipboard");
+    fetchSourcePromptText.mockResolvedValueOnce("");
+    // 本物と同じく、渡された Promise を待ってから写す
+    copyTextFromPromise.mockImplementationOnce(async (text: Promise<string>) => {
+      await text;
+    });
+    mockToast.mockClear();
+
+    renderCard({
+      reference: buildReference({ promptVisibility: "public" }),
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: /プロンプトをコピーする/ })
+    );
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith({ title: "このカタログはプロンプトなしで作られています" });
+    });
+    expect(mockToast).not.toHaveBeenCalledWith(expect.objectContaining({ title: "コピーしました" }));
+    expect(mockToast).not.toHaveBeenCalledWith(expect.objectContaining({ variant: "destructive" }));
   });
 });
 
