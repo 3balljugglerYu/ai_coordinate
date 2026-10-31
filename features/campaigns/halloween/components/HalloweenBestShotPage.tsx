@@ -573,13 +573,39 @@ function countWorks(pages: readonly (readonly CampaignSubmissionItem[])[]): numb
   return pages.reduce((total, page) => total + page.length, 0);
 }
 
+/**
+ * 企画が終わったあと、いちばん下の見出しに出すお礼(2026-11-01)。
+ * スマホ幅の大きな見出しで「ありがとうござ／いました」と折れないよう、文節の切れ目でだけ折り返す
+ */
+const THANKS_PHRASES = "たくさんの|ご参加、|ありがとう|ございました！";
+
+/**
+ * 企画が終わったあとの文(2026-11-01 ユーザー決定)。
+ * 冒頭の文は「投稿して…当てよう！」の呼びかけが「募集は終了しました」と食い違うので差し替える。
+ * 対象作品の上はお礼を重ねず(お礼はいちばん下だけ)、一覧を見られることを書く。
+ * 冒頭の文はスマホ幅で「た／くさん」と折れないよう、文節の切れ目でだけ折り返す
+ */
+const ENDED_LEAD_PHRASES =
+  "“うちの子”が|一番かがやく|ハロウィンの|作品が、|たくさん|集まりました！|結果発表を|お楽しみに。";
+const ENDED_WORKS_LEAD = "タップすると、作品を見られます";
+
 export function HalloweenBestShotPage({
   submissionPages = [],
+  ended = false,
 }: {
   /** キャンペーン対象の投稿(9件ずつのページ)。空なら区画ごと出さない */
   submissionPages?: readonly CampaignSubmissionItem[][];
+  /**
+   * 企画が終わったあとの表示にする(2026-11-01 ユーザー指示)。
+   * 浮いたボタン・対象作品の上のエントリー・参加方法・その他(参加中の人への呼びかけ)は出さず、
+   * エントリーの状態も読みに行かない。対象作品の一覧・企画について・賞品・スケジュールは残す
+   */
+  ended?: boolean;
 }) {
+  // 参加方法の手順の中だけで使う(終わったあとは参加方法を出さない)
   const worksHref = submissionPages.length > 0 ? WORKS_ANCHOR : CAMPAIGN.entriesHref;
+  // 終わったあとはエントリーのカードを1枚も描かないので、状態を読み込む入れ物も置かない
+  const EntryStateScope = ended ? Fragment : EntryProgressProvider;
   return (
     <div className={styles.page} data-testid="halloween-best-shot">
       <header className={styles.hero}>
@@ -602,9 +628,18 @@ export function HalloweenBestShotPage({
             </h1>
             <p className={styles.lead}>
               {/* 2026-10-16: 略称「アマギフ」と、全員もらえるように読める「GETしよう」をやめた(Amazonギフトカードの注意事項) */}
-              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！
+              {ended ? (
+                <Phrases text={ENDED_LEAD_PHRASES} />
+              ) : (
+                "あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！"
+              )}
             </p>
             <div className={styles.period}>
+              {ended ? (
+                <span className={styles.periodEnded} data-testid="halloween-period-ended">
+                  募集は終了しました
+                </span>
+              ) : null}
               <span className={styles.periodLabel}>開催期間</span>
               <span className={styles.periodDates}>
                 {CAMPAIGN.startLabel} 〜 {CAMPAIGN.endLabel}
@@ -619,7 +654,7 @@ export function HalloweenBestShotPage({
 
       <main>
         {/* 対象作品の上と手順1のエントリーのカードは、同じ状態を使う(2026-10-24) */}
-        <EntryProgressProvider>
+        <EntryStateScope>
           {submissionPages.length > 0 ? (
             <>
               {/*
@@ -628,25 +663,30 @@ export function HalloweenBestShotPage({
                 作品が1画面目に見えるよう、こちらは短いカードにして、詳しくは参加方法へ案内する。
                 2026-10-25 ユーザー指示: 対象作品とは別の項目にして、対象作品の上に置く
               */}
-              <section className={styles.section} aria-labelledby="hbs-entry-top" data-testid="halloween-works-entry">
-                <div className={styles.wrap}>
-                  <div id="hbs-entry-top">
-                    <Ribbon en="ENTRY">エントリー</Ribbon>
+              {ended ? null : (
+                <section className={styles.section} aria-labelledby="hbs-entry-top" data-testid="halloween-works-entry">
+                  <div className={styles.wrap}>
+                    <div id="hbs-entry-top">
+                      <Ribbon en="ENTRY">エントリー</Ribbon>
+                    </div>
+                    <EntryProgressCard compact />
                   </div>
-                  <EntryProgressCard compact />
-                </div>
-              </section>
+                </section>
+              )}
 
               <section className={`${styles.section} ${styles.worksSection}`} aria-labelledby="hbs-works">
                 <div className={styles.wrap}>
                   <div id="hbs-works">
                     <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
                   </div>
-                  <p className={styles.worksLead}>タップして、うちの子で生成してみよう！</p>
+                  <p className={styles.worksLead}>
+                    {ended ? ENDED_WORKS_LEAD : "タップして、うちの子で生成してみよう！"}
+                  </p>
                   {/* 2026-10-25 ユーザー指示: 対象作品の数を出す(下の一覧と同じ数。押して使える作品だけ) */}
                   <p className={styles.worksTotal} data-testid="halloween-works-count">
-                    現在、対象作品は<strong className={styles.worksTotalNumber}>{countWorks(submissionPages)}</strong>
-                    作品！
+                    {ended ? "対象作品は" : "現在、対象作品は"}
+                    <strong className={styles.worksTotalNumber}>{countWorks(submissionPages)}</strong>
+                    {ended ? "作品でした！" : "作品！"}
                   </p>
                   <RevealOnScroll className={styles.reveal}>
                     <SubmissionCarousel pages={submissionPages} />
@@ -741,68 +781,71 @@ export function HalloweenBestShotPage({
             </div>
           </section>
 
-          <section className={styles.section} aria-labelledby="hbs-join">
-            <div className={styles.wrap}>
-              <div id="hbs-join">
-                <Ribbon en="HOW TO JOIN">参加方法</Ribbon>
+          {/* 終わったあとは参加できないので、参加方法は区画ごと出さない(2026-11-01 ユーザー指示) */}
+          {ended ? null : (
+            <section className={styles.section} aria-labelledby="hbs-join">
+              <div className={styles.wrap}>
+                <div id="hbs-join">
+                  <Ribbon en="HOW TO JOIN">参加方法</Ribbon>
+                </div>
+                <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+                  <JoinTabs
+                    tabs={[
+                      {
+                        key: "creator",
+                        eventName: CAMPAIGN_EVENTS.tabCreative,
+                        icon: CAMPAIGN.prizeCategories.creative.icon,
+                        label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
+                        panel: (
+                          <>
+                            <JoinSummary
+                              button="カタログをつくる"
+                              note="投稿のときに、このハッシュタグを付けてね"
+                              hashtag
+                            />
+                            <JoinDetails eventName={CAMPAIGN_EVENTS.stepsCreative}>
+                              <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
+                              <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                            </JoinDetails>
+                            {/* 審査のポイントは作成手順ではないので、閉じずに見せる */}
+                            <JudgePoints />
+                          </>
+                        ),
+                      },
+                      {
+                        key: ENJOY_JOIN_TAB_KEY,
+                        eventName: CAMPAIGN_EVENTS.tabEnjoy,
+                        icon: CAMPAIGN.prizeCategories.enjoy.icon,
+                        label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
+                        panel: (
+                          <>
+                            <JoinSummary
+                              button="カタログから生成する"
+                              note="抽選の対象になるには、下の「エントリーする」が必要です"
+                            />
+                            {/* エントリーは抽選に欠かせないので、閉じた手順の外に出す */}
+                            <div className={styles.stepEntry} id="hbs-entry">
+                              <EntryProgressCard />
+                            </div>
+                            <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy} tabKey={ENJOY_JOIN_TAB_KEY}>
+                              <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
+                              <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
+                              <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
+                              <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
+                              <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
+                              <p className={styles.note}>
+                                ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
+                              </p>
+                            </JoinDetails>
+                          </>
+                        ),
+                      },
+                    ]}
+                  />
+                </RevealOnScroll>
               </div>
-              <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-                <JoinTabs
-                  tabs={[
-                    {
-                      key: "creator",
-                      eventName: CAMPAIGN_EVENTS.tabCreative,
-                      icon: CAMPAIGN.prizeCategories.creative.icon,
-                      label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.creative.name} />,
-                      panel: (
-                        <>
-                          <JoinSummary
-                            button="カタログをつくる"
-                            note="投稿のときに、このハッシュタグを付けてね"
-                            hashtag
-                          />
-                          <JoinDetails eventName={CAMPAIGN_EVENTS.stepsCreative}>
-                            <StepList steps={CREATOR_STEPS} role="creator" worksHref={worksHref} />
-                            <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                          </JoinDetails>
-                          {/* 審査のポイントは作成手順ではないので、閉じずに見せる */}
-                          <JudgePoints />
-                        </>
-                      ),
-                    },
-                    {
-                      key: ENJOY_JOIN_TAB_KEY,
-                      eventName: CAMPAIGN_EVENTS.tabEnjoy,
-                      icon: CAMPAIGN.prizeCategories.enjoy.icon,
-                      label: <CategoryTabLabel name={CAMPAIGN.prizeCategories.enjoy.name} />,
-                      panel: (
-                        <>
-                          <JoinSummary
-                            button="カタログから生成する"
-                            note="抽選の対象になるには、下の「エントリーする」が必要です"
-                          />
-                          {/* エントリーは抽選に欠かせないので、閉じた手順の外に出す */}
-                          <div className={styles.stepEntry} id="hbs-entry">
-                            <EntryProgressCard />
-                          </div>
-                          <JoinDetails eventName={CAMPAIGN_EVENTS.stepsEnjoy} tabKey={ENJOY_JOIN_TAB_KEY}>
-                            <StepList steps={USER_STEPS} role="user" worksHref={worksHref} />
-                            <p className={styles.note}>※ 生成と投稿には、ログインが必要です</p>
-                            <p className={styles.note}>※ 抽選はエントリーした人が対象です(エントリー前の投稿も数えます)</p>
-                            <p className={styles.note}>※ 同じ対象作品は、何回使っても1作品と数えます</p>
-                            <p className={styles.note}>※ 自分の対象作品を使った投稿は数えません</p>
-                            <p className={styles.note}>
-                              ※ 「このカタログで生成する」から使った投稿が対象です(プロンプトをコピーして貼り付けたものは数えません)
-                            </p>
-                          </JoinDetails>
-                        </>
-                      ),
-                    },
-                  ]}
-                />
-              </RevealOnScroll>
-            </div>
-          </section>
+            </section>
+          )}
 
           <section className={styles.section} aria-labelledby="hbs-schedule">
             <div className={styles.wrap}>
@@ -840,23 +883,26 @@ export function HalloweenBestShotPage({
             </div>
           </section>
 
-          <section className={styles.section} aria-labelledby="hbs-more">
-            <div className={styles.wrap}>
-              <div id="hbs-more">
-                <Ribbon en="MORE">その他</Ribbon>
-              </div>
-              <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-                <div className={styles.points}>
-                  {MORE_TIPS.map((tip) => (
-                    <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
-                      <span aria-hidden="true">{tip.icon}</span>
-                      <span>{tip.text}</span>
-                    </div>
-                  ))}
+          {/* その他(Xへのシェア・運営の応援)は参加中の人への呼びかけなので、終わったあとは出さない(2026-11-01 ユーザー決定) */}
+          {ended ? null : (
+            <section className={styles.section} aria-labelledby="hbs-more">
+              <div className={styles.wrap}>
+                <div id="hbs-more">
+                  <Ribbon en="MORE">その他</Ribbon>
                 </div>
-              </RevealOnScroll>
-            </div>
-          </section>
+                <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+                  <div className={styles.points}>
+                    {MORE_TIPS.map((tip) => (
+                      <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
+                        <span aria-hidden="true">{tip.icon}</span>
+                        <span>{tip.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </RevealOnScroll>
+              </div>
+            </section>
+          )}
 
           <section className={styles.closing} aria-labelledby="hbs-closing">
             <Wave className={styles.waveTop} />
@@ -864,7 +910,7 @@ export function HalloweenBestShotPage({
               Trick or Create!
             </div>
             <h2 id="hbs-closing" className={styles.closingTitle}>
-              あなたのベストショット、待ってます
+              {ended ? <Phrases text={THANKS_PHRASES} /> : "あなたのベストショット、待ってます"}
             </h2>
             <p className={styles.closingTag}>{CAMPAIGN.hashtag}</p>
             {/* Amazonギフトカードの注意事項(2026-10-16): 応募規約へのリンクと、決まった注記2つ */}
@@ -875,13 +921,17 @@ export function HalloweenBestShotPage({
               <AmazonGiftCardNotice className={styles.legalNotice} linkClassName={styles.legalLink} />
             </div>
             {/* 浮いたボタンの高さぶん空けて、いちばん下の注記が隠れないようにする。
-                ここが画面に入ったら浮いたボタンを消す(下はサイト共通の案内なので重ならないように) */}
-            <div id={HALLOWEEN_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
+                ここが画面に入ったら浮いたボタンを消す(下はサイト共通の案内なので重ならないように)。
+                終わったあとは浮いたボタンを出さないので、空けない */}
+            {ended ? null : (
+              <div id={HALLOWEEN_PAGE_END_ID} className={styles.floatingCtaSpacer} aria-hidden="true" />
+            )}
           </section>
-        </EntryProgressProvider>
+        </EntryStateScope>
       </main>
-      {/* 「カタログから生成する」は、みんなのカタログの企画のタブへ(2026-10-16 ユーザー指示。ハッシュタグの検索ではなく) */}
-      <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={CAMPAIGN.catalogHref} />
+      {/* 「カタログから生成する」は、みんなのカタログの企画のタブへ(2026-10-16 ユーザー指示。ハッシュタグの検索ではなく)。
+          終わったあとは参加できないので出さない(2026-11-01 ユーザー指示) */}
+      {ended ? null : <FloatingJoinButtons joinHref={CAMPAIGN.joinHref} worksHref={CAMPAIGN.catalogHref} />}
       {/* #hbs-works などの場所つきの URL で開いたとき、描いたあとにその場所へ移る(2026-10-25) */}
       <HashTargetScroll />
       {/*
