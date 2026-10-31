@@ -90,5 +90,6 @@ export function isAuthorInputMissing(
   if (authorInput === null || authorInput === undefined) {
     return true;
   }
-  return authorInput === "" && !hasCatalogReference;
+  // 空白だけも本文なしとみなす(見本なしなら課金の前に止める。受付は見本つきのときだけ空文字にそろえる)
+  return authorInput.trim() === "" && !hasCatalogReference;
 }

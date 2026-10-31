@@ -24,7 +24,7 @@ import { CatalogReferenceIntro } from "@/features/catalog-references/components/
 import { CatalogTabBar } from "@/features/style-presets/components/CatalogTabBar";
 import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
-import { isBlankPrompt, type CatalogReferenceTake } from "@/shared/generation/catalog-reference";
+import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
   checkNameInputValue,
@@ -256,7 +256,8 @@ export function GenerationForm({
   // 施錠時のプレースホルダ。公開プロンプトは本文を value に入れるので出ない。
   const promptPlaceholder = promptLocked
     ? // 取れた本文が空なら、プロンプトなしで作られたカタログ(見本つきの「イラストから」)。非公開とは分ける
-      lockedPromptText != null && isBlankPrompt(lockedPromptText)
+      // 本文の API は、見本つきの作品のときだけ空文字を返す(空白だけの本文はそのまま返る)
+      lockedPromptText === ""
       ? postsT("sourcePromptEmpty")
       : postsT("lockedSheetPromptLocked")
     : isFree

@@ -118,20 +118,11 @@ export async function GET(
     }
 
     // 本文の正本は author secret。generated_images.prompt は常に空である。
-    // 見本つきかも並べて読む(見本つきのカタログは「イラストから」でプロンプトなしで作れるため)
-    const [secretResult, referenceResult] = await Promise.all([
-      supabase
-        .from("generated_image_prompt_secrets")
-        .select("prompt")
-        .eq("image_id", validated.root_post_id)
-        .maybeSingle(),
-      supabase
-        .from("generated_image_reference_secrets")
-        .select("image_id")
-        .eq("image_id", validated.root_post_id)
-        .maybeSingle(),
-    ]);
-    const { data: secretRow, error: secretError } = secretResult;
+    const { data: secretRow, error: secretError } = await supabase
+      .from("generated_image_prompt_secrets")
+      .select("prompt")
+      .eq("image_id", validated.root_post_id)
+      .maybeSingle();
 
     if (secretError || !secretRow) {
       return jsonUnavailable(copy.promptTextUnavailable);
@@ -139,8 +130,17 @@ export async function GET(
 
     const rawPrompt = (secretRow as { prompt: string | null }).prompt ?? "";
     if (isBlankPrompt(rawPrompt)) {
+      // 見本つきのカタログは「イラストから」でプロンプトなしで作れる。見本つきかは、本文が空のときだけ確かめる
+      const { data: referenceRow, error: referenceError } = await supabase
+        .from("generated_image_reference_secrets")
+        .select("image_id")
+        .eq("image_id", validated.root_post_id)
+        .maybeSingle();
+      if (referenceError) {
+        console.error("Prompt text API reference check error:", referenceError);
+      }
       // 見本つきの作品は「使えない」とはせず、空の本文を返す(画面は「プロンプトなしで作られています」と出す)
-      if (!referenceResult.error && referenceResult.data) {
+      if (!referenceError && referenceRow) {
         return NextResponse.json({ postId: validated.root_post_id, prompt: "" });
       }
       // 見本つきでない作品は今までどおり(空なら使えない・空白だけならそのまま返す)

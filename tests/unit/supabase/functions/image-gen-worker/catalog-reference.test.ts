@@ -131,6 +131,8 @@ describe("isAuthorInputMissing(作者の本文が無いのを失敗とみなす�
     ["本文がある(見本つき)", "冬の街", true, false],
     ["空文字・見本なし", "", false, true],
     ["空文字・見本つき(「イラストから」は本文なしで作れる)", "", true, false],
+    ["空白だけ・見本なし(課金の前に止める)", "   ", false, true],
+    ["空白だけ・見本つき", "   ", true, false],
     ["本文の行が無い(null)・見本つきでも", null, true, true],
     ["本文が無い(undefined)・見本つきでも", undefined, true, true],
   ] as const)("%s → %p", (_label, input, hasReference, missing) => {

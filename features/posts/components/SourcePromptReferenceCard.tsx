@@ -32,7 +32,6 @@ import { usageCountBucket } from "../lib/constants";
 import { copyTextFromPromise } from "@/lib/clipboard";
 import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
-import { isBlankPrompt } from "@/shared/generation/catalog-reference";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import type { SourcePromptReference } from "../types";
 
@@ -222,8 +221,9 @@ export function SourcePromptReferenceCard({
       */
       await copyTextFromPromise(
         fetchSourcePromptText(reference.postId).then((text) => {
-          // プロンプトなしで作られたカタログ(見本つきの「イラストから」)は、写すものが無い
-          if (isBlankPrompt(text)) throw new SourcePromptEmptyError();
+          // プロンプトなしで作られたカタログ(見本つきの「イラストから」)は、写すものが無い。
+          // 本文の API は、見本つきの作品のときだけ空文字を返す(空白だけの本文はそのまま返る)
+          if (text === "") throw new SourcePromptEmptyError();
           return text;
         }),
       );
