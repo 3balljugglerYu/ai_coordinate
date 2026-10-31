@@ -706,6 +706,119 @@ describe("ハロウィン企画「うちの子のベストショット with Hall
   });
 });
 
+/*
+  2026-11-01 ユーザー指示: 企画が終わったので、ページを終わったあとの表示にする。
+  参加方法は区画ごと隠し、対象作品の一覧は残す(どちらもユーザーの選択)。浮いたボタンと、対象作品の上のエントリーも出さない
+*/
+describe("企画が終わったあとの表示(ended)", () => {
+  test("冒頭の開催期間の枠に「募集は終了しました」を足す。期間と結果発表の時期はそのまま", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
+    const header = screen.getByRole("banner");
+    expect(within(header).getByTestId("halloween-period-ended").textContent).toBe("募集は終了しました");
+    expect(header.textContent).toContain("10/16(金) 20:00 〜 10/31(土) 23:59");
+    expect(header.textContent).toContain("結果発表：終了後 1週間程度");
+  });
+
+  test("冒頭の文は、投稿の呼びかけから終わったあとの文にする(2026-11-01 ユーザー決定)", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
+    const header = screen.getByRole("banner");
+    expect(header.textContent).toContain(
+      "“うちの子”が一番かがやくハロウィンの作品が、たくさん集まりました！結果発表をお楽しみに。",
+    );
+    expect(header.textContent).not.toContain("投稿して、Amazonギフトカードを当てよう！");
+  });
+
+  test("開催中は「募集は終了しました」を出さず、冒頭の文も呼びかけのまま", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
+    expect(screen.queryByTestId("halloween-period-ended")).toBeNull();
+    expect(document.body.textContent).not.toContain("募集は終了しました");
+    expect(screen.getByRole("banner").textContent).toContain(
+      "あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！",
+    );
+  });
+
+  test("浮いたボタン・対象作品の上のエントリー・参加方法・その他を出さず、エントリーの状態も読みに行かない", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
+    expect(screen.queryByTestId("halloween-floating-cta")).toBeNull();
+    // 浮いたボタンのための下の余白(ページの終わりの目印)も置かない
+    expect(document.getElementById("hbs-page-end")).toBeNull();
+    expect(screen.queryByTestId("halloween-works-entry")).toBeNull();
+    expect(screen.queryByRole("region", { name: /参加方法/ })).toBeNull();
+    // その他(Xへのシェア・運営の応援)は参加中の人への呼びかけなので出さない(2026-11-01 ユーザー決定)
+    expect(screen.queryByRole("region", { name: /その他/ })).toBeNull();
+    expect(screen.queryByTestId("halloween-more-tip")).toBeNull();
+    expect(screen.queryByTestId("halloween-entry-card")).toBeNull();
+    expect(screen.queryByTestId("halloween-entry-loading")).toBeNull();
+    // 参加をうながすボタンと文が、ページのどこにも残っていない
+    expect(screen.queryByRole("link", { name: /カタログを\s*つくる/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /カタログから\s*生成する/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "エントリーする" })).toBeNull();
+    expect(document.body.textContent).not.toContain("「エントリーする」が必要です");
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("対象作品の一覧は残し、文を「タップすると、作品を見られます」と「対象作品は○作品でした！」にする", () => {
+    const pages = [
+      SUBMISSION_PAGES[0],
+      [{ postId: "p3", thumbnailUrl: "https://img.test/p3.webp", authorName: "おばけ" }],
+    ];
+    render(<HalloweenBestShotPage submissionPages={pages} ended />);
+    const section = screen.getByRole("region", { name: /キャンペーン対象作品/ });
+    const count = within(section).getByTestId("halloween-works-count");
+    // 「タップして…」の場所(数のすぐ上)。お礼はいちばん下だけにして重ねない(2026-11-01 ユーザー決定)
+    expect(count.previousElementSibling?.textContent).toBe("タップすると、作品を見られます");
+    expect(section.textContent).not.toContain("ありがとうございました");
+    expect(count.textContent).toBe("対象作品は3作品でした！");
+    expect(count.querySelector("strong")?.textContent).toBe("3");
+    // 一覧はそのまま(2ページで3作品。押すと投稿へ行ける)
+    expect(within(section).getAllByTestId("halloween-work")).toHaveLength(3);
+    expect(within(section).getByRole("link", { name: /かぼちゃ/ }).getAttribute("href")).toBe("/posts/p1");
+    expect(section.textContent).not.toContain("タップして、うちの子で生成してみよう！");
+    expect(section.textContent).not.toContain("現在、");
+  });
+
+  test("いちばん下の見出しはお礼にする(「待ってます」は出さない)。ハッシュタグと応募規約・Amazon の注記は残す", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
+    // 文節ごとの span の間に、テストの環境では空白が入って読まれる
+    const closing = screen.getByRole("region", { name: /^たくさんの\s*ご参加、\s*ありがとう\s*ございました！$/ });
+    expect(document.body.textContent).not.toContain("あなたのベストショット、待ってます");
+    // スマホ幅で言葉の途中で折れないよう、文節の切れ目でだけ折り返す
+    const title = within(closing).getByRole("heading", { level: 2 });
+    expect(Array.from(title.querySelectorAll("span")).map((node) => node.textContent)).toEqual([
+      "たくさんの",
+      "ご参加、",
+      "ありがとう",
+      "ございました！",
+    ]);
+    expect(within(closing).getByText(HALLOWEEN_BEST_SHOT.hashtag)).toBeTruthy();
+    expect(within(closing).getByRole("link", { name: "応募規約・注意事項" }).getAttribute("href")).toBe(
+      HALLOWEEN_BEST_SHOT.termsPath,
+    );
+  });
+
+  test("見出しの並び: 対象作品・企画について・賞品・スケジュールを残し、いちばん下にお礼", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
+    const names = screen.getAllByRole("heading", { level: 2 }).map((node) => node.textContent);
+    expect(names).toEqual([
+      "WORKSキャンペーン対象作品",
+      "ABOUT企画について",
+      "PRIZE賞品",
+      "SCHEDULEスケジュール",
+      "たくさんのご参加、ありがとうございました！",
+    ]);
+    // お礼はいちばん下の1か所だけ
+    expect(document.body.textContent?.split("ありがとうございました").length).toBe(2);
+  });
+
+  test("対象作品がまだ無いときも、終わったあとは参加方法と浮いたボタンを出さない", () => {
+    render(<HalloweenBestShotPage submissionPages={[]} ended />);
+    expect(screen.queryByRole("region", { name: /キャンペーン対象作品/ })).toBeNull();
+    expect(screen.queryByRole("region", { name: /参加方法/ })).toBeNull();
+    expect(screen.queryByTestId("halloween-floating-cta")).toBeNull();
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+});
+
 describe("RevealOnScroll(スクロールでふわっと出す)", () => {
   const original = globalThis.IntersectionObserver;
   afterEach(() => {

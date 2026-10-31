@@ -16,7 +16,26 @@ jest.mock("@/features/campaigns/hashtag-campaign/get-submission-pages", () => ({
   getCampaignSubmissionPages: jest.fn(async () => []),
 }));
 
-import { metadata } from "@/app/campaigns/halloween-best-shot/page";
+import Page, { metadata } from "@/app/campaigns/halloween-best-shot/page";
+import { HalloweenBestShotPage } from "@/features/campaigns/halloween/components/HalloweenBestShotPage";
+
+describe("ハロウィン企画のページは、終わったあとの表示で描く(2026-11-01 ユーザー指示)", () => {
+  test("ended を付けて、読んだ対象作品と一緒に渡す", async () => {
+    const element = await Page();
+    const child = element.props.children;
+    expect(child.type).toBe(HalloweenBestShotPage);
+    expect(child.props.ended).toBe(true);
+    expect(child.props.submissionPages).toEqual([]);
+  });
+
+  test("説明文(検索・共有のカードにも使われる)は、募集の呼びかけでなく終わったあとの説明にする", () => {
+    expect(metadata.description).toBe(
+      "ペルスタのハロウィン企画「うちの子のベストショット with Halloween Magic」は終了しました。集まった対象作品と、賞品・結果発表の予定を載せています。",
+    );
+    expect(metadata.description).not.toContain("投稿しよう");
+    expect(metadata.description).not.toContain("募集");
+  });
+});
 
 describe("ハロウィン企画のページを検索に出す", () => {
   test("noindex を付けない(root layout の index: true をそのまま使う)", () => {
