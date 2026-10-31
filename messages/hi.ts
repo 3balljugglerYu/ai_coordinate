@@ -1634,7 +1634,7 @@ export const hiMessages = {
     catalogReferenceOwnImageLabel: "आपका किरदार (ज़रूरी)",
     catalogReferenceSheetClose: "बंद करें",
     catalogReferenceConsentFailed: "आपकी सहमति सहेजी नहीं जा सकी। कृपया छवि फिर से चुनें।",
-    catalogReferenceConsentRequired: "कृपया “इस्तेमाल हो सकने वाली और न हो सकने वाली संदर्भ छवियाँ” फिर से देखें, फिर संदर्भ छवि चुनें।",
+    catalogReferenceConsentRequired: "कृपया “इस्तेमाल हो सकने वाली और न हो सकने वाली संदर्भ छवियाँ” फिर से देखें। “ठीक है” दबाने पर आपकी चुनी हुई छवि अपलोड होगी।",
     nameInputTooManySlots: "एक प्रॉम्प्ट में अधिकतम {max} टेक्स्ट फ़ील्ड हो सकते हैं।",
     gachaTextExclusiveNote: "आप गाचा या टेक्स्ट इनपुट में से केवल एक का इस्तेमाल कर सकते हैं (दोनों को एक साथ इस्तेमाल करने की सुविधा आगे दी जाएगी)।",
     gachaTextTogetherError: "गाचा और टेक्स्ट इनपुट एक साथ इस्तेमाल नहीं हो सकते। कृपया केवल एक चुनें (दोनों को एक साथ इस्तेमाल करने की सुविधा आगे दी जाएगी)।",

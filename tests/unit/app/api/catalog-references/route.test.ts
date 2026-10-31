@@ -6,7 +6,7 @@
  * ここで守ること(計画書 REQ-001・REQ-002・ADR-002):
  *  - よそのサイトからは止める。ログインしていなければ 401、見本を使える人でなければ 403
  *  - 画像が無い・4MB を超える・形式が違う・小さすぎる・大きすぎるは断る
- *  - 画像は作り直した WebP を、ログイン中の本人の見本として、同意の時刻つきで保存する
+ *  - 画像は作り直した WebP を、ログイン中の本人の見本として保存する(同意の時刻は DB が入れる)
  *  - 同意は、サーバーに残した本人の有効な同意を見る。無い・作り直しで無効になったら 400(重い画像の作り直しより先に断る)。
  *    同意は本文を受け取る前に確かめる。確かめられなければ記録して 500。
  *    保存のときに DB が「有効な同意が無い」と断ったら(確かめたあとに作り直しで無効になった)、同じ 400
@@ -73,13 +73,13 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
-test("見本を使える人が同意つきで上げると、作り直した WebP を本人の見本として、同意の時刻つきで保存し、id だけを返す", async () => {
+test("見本を使える人が同意つきで上げると、作り直した WebP を本人の見本として保存し、id だけを返す", async () => {
   const response = await POST(request({}));
 
   expect(response.status).toBe(201);
   await expect(response.json()).resolves.toEqual({ id: "ref-1" });
   expect(mockConsentState).toHaveBeenCalledWith(USER_ID);
-  expect(mockSave).toHaveBeenCalledWith({ userId: USER_ID, webpBuffer: WEBP, consentedAt: CONSENTED_AT });
+  expect(mockSave).toHaveBeenCalledWith({ userId: USER_ID, webpBuffer: WEBP });
 });
 
 test("よそのサイトからは、ログインの確認より前に止める", async () => {

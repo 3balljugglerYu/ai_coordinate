@@ -24,7 +24,7 @@ const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
  * - 見本を使える人(運営が選んだ人)だけ。ほかの人は 403
  * - 「使える見本・使えない見本」への同意が要る。同意は「わかりました」を押したときに本人ごとにサーバーに残す
  *   (POST /api/catalog-references/consent)。有効な同意が無い・同意のあとに本人の見本が作り直しになったときは 400。
- *   見本の行には、その同意の時刻を写す(同意の画面を出していない時刻を、同意の時刻として残さない)。
+ *   見本の行には、DB がその同意の時刻を写す(同意の画面を出していない時刻を、同意の時刻として残さない)。
  *   同意の確認は軽いので、本文を受け取る前に済ませ、通ったときだけ重い画像の作り直しをする。
  *   行を作るときにも DB(トリガー)が有効な同意を確かめて時刻を写すので、その間に作り直しで無効になっても保存しない
  * - 画像は中身で形式を確かめ、WebP に作り直して(位置情報などを消して)非公開の置き場所に置く
@@ -38,18 +38,23 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return jsonError("ログインが必要です", "CATALOG_REFERENCE_AUTH_REQUIRED", 401);
   }
-  if (!(await isInI2iCatalogAllowlist(user.id))) {
+
+  // 使える人かと同意は、どちらも本人だけで決まるので並べて確かめる
+  const [allowed, consent] = await Promise.all([
+    isInI2iCatalogAllowlist(user.id),
+    getCatalogReferenceConsentState(user.id).then(
+      (state) => ({ ok: true as const, consentedAt: state.consentedAt }),
+      (error: unknown) => ({ ok: false as const, error }),
+    ),
+  ]);
+  if (!allowed) {
     return jsonError("見本を使える人ではありません", "CATALOG_REFERENCE_NOT_ALLOWED", 403);
   }
-
-  let consentedAt: Date | null;
-  try {
-    consentedAt = (await getCatalogReferenceConsentState(user.id)).consentedAt;
-  } catch (error) {
-    console.error("[catalog-references] consent check error:", error);
+  if (!consent.ok) {
+    console.error("[catalog-references] consent check error:", consent.error);
     return jsonError("見本の同意を確かめられませんでした", "CATALOG_REFERENCE_CONSENT_CHECK_FAILED", 500);
   }
-  if (consentedAt === null) {
+  if (consent.consentedAt === null) {
     return jsonError("見本の案内への同意が必要です", "CATALOG_REFERENCE_CONSENT_REQUIRED", 400);
   }
 
@@ -91,7 +96,6 @@ export async function POST(request: NextRequest) {
     const { id } = await saveCatalogReferenceImage({
       userId: user.id,
       webpBuffer: processed.data.webpBuffer,
-      consentedAt,
     });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {

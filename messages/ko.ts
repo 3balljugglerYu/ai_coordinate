@@ -1632,7 +1632,7 @@ export const koMessages = {
     catalogReferenceOwnImageLabel: "내 캐릭터 (필수)",
     catalogReferenceSheetClose: "닫기",
     catalogReferenceConsentFailed: "동의를 저장하지 못했습니다. 이미지를 다시 선택해 주세요.",
-    catalogReferenceConsentRequired: "‘쓸 수 있는 참고 이미지·쓸 수 없는 참고 이미지’를 다시 확인한 뒤 참고 이미지를 선택해 주세요.",
+    catalogReferenceConsentRequired: "‘쓸 수 있는 참고 이미지·쓸 수 없는 참고 이미지’를 다시 확인해 주세요. ‘알겠습니다’를 누르면 선택한 이미지를 올립니다.",
     nameInputTooManySlots: "텍스트 입력란은 프롬프트 하나에 {max}개까지입니다.",
     gachaTextExclusiveNote: "가챠와 문자 입력은 둘 중 하나만 사용할 수 있습니다(함께 사용하는 기능은 앞으로 제공할 예정입니다).",
     gachaTextTogetherError: "가챠와 문자 입력은 함께 사용할 수 없습니다. 하나만 사용해 주세요(함께 사용하는 기능은 앞으로 제공할 예정입니다).",

@@ -1636,7 +1636,7 @@ export const esMessages = {
     catalogReferenceOwnImageLabel: "Tu personaje (obligatorio)",
     catalogReferenceSheetClose: "Cerrar",
     catalogReferenceConsentFailed: "No se pudo guardar tu aceptación. Vuelve a elegir la imagen.",
-    catalogReferenceConsentRequired: "Vuelve a revisar «Imágenes que puedes y no puedes usar» y luego elige una imagen de referencia.",
+    catalogReferenceConsentRequired: "Vuelve a revisar «Imágenes que puedes y no puedes usar». Toca «Entendido» para subir la imagen que elegiste.",
     nameInputTooManySlots: "Un prompt puede tener como máximo {max} campo(s) de texto.",
     gachaTextExclusiveNote: "Solo puedes usar el gacha o la entrada de texto (usar ambos a la vez estará disponible más adelante).",
     gachaTextTogetherError: "El gacha y la entrada de texto no se pueden usar juntos. Usa solo uno (usar ambos a la vez estará disponible más adelante).",

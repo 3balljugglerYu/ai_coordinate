@@ -1636,7 +1636,7 @@ export const ptMessages = {
     catalogReferenceOwnImageLabel: "Seu personagem (obrigatório)",
     catalogReferenceSheetClose: "Fechar",
     catalogReferenceConsentFailed: "Não foi possível salvar sua concordância. Escolha a imagem novamente.",
-    catalogReferenceConsentRequired: "Revise “Imagens que você pode e não pode usar” e depois escolha uma imagem de referência.",
+    catalogReferenceConsentRequired: "Revise “Imagens que você pode e não pode usar” novamente. Toque em “Entendi” para enviar a imagem escolhida.",
     nameInputTooManySlots: "Um prompt pode ter no máximo {max} campo(s) de texto.",
     gachaTextExclusiveNote: "Você pode usar apenas um: gacha ou entrada de texto (usar os dois juntos estará disponível no futuro).",
     gachaTextTogetherError: "Gacha e entrada de texto não podem ser usados juntos. Use apenas um (usar os dois juntos estará disponível no futuro).",

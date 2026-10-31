@@ -1635,7 +1635,7 @@ export const idMessages = {
     catalogReferenceOwnImageLabel: "Karaktermu (wajib)",
     catalogReferenceSheetClose: "Tutup",
     catalogReferenceConsentFailed: "Persetujuanmu tidak bisa disimpan. Silakan pilih gambarnya lagi.",
-    catalogReferenceConsentRequired: "Silakan lihat lagi “Gambar yang boleh dan tidak boleh dipakai”, lalu pilih gambar referensi.",
+    catalogReferenceConsentRequired: "Silakan lihat lagi “Gambar yang boleh dan tidak boleh dipakai”. Ketuk “Mengerti” untuk mengunggah gambar yang kamu pilih.",
     nameInputTooManySlots: "Satu prompt dapat memiliki maksimal {max} kolom teks.",
     gachaTextExclusiveNote: "Kamu hanya bisa memakai salah satu: gacha atau input teks (memakai keduanya bersamaan akan tersedia nanti).",
     gachaTextTogetherError: "Gacha dan input teks tidak bisa dipakai bersamaan. Gunakan salah satu saja (memakai keduanya bersamaan akan tersedia nanti).",

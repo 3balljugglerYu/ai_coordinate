@@ -1630,7 +1630,7 @@ export const zhTwMessages = {
     catalogReferenceOwnImageLabel: "你的角色（必填）",
     catalogReferenceSheetClose: "關閉",
     catalogReferenceConsentFailed: "無法儲存你的同意，請重新選擇圖片。",
-    catalogReferenceConsentRequired: "請重新確認「可以使用和不能使用的參考圖」，然後再選擇參考圖。",
+    catalogReferenceConsentRequired: "請重新確認「可以使用和不能使用的參考圖」。點按「知道了」後，將上傳你選擇的圖片。",
     nameInputTooManySlots: "每個提示詞最多只能有{max}個文字輸入欄。",
     gachaTextExclusiveNote: "扭蛋和文字輸入只能使用其中一個（同時使用的功能預計今後提供）。",
     gachaTextTogetherError: "扭蛋和文字輸入不能同時使用。請只使用其中一個（同時使用的功能預計今後提供）。",

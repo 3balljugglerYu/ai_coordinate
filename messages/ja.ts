@@ -1589,7 +1589,7 @@ export const jaMessages = {
     catalogReferenceOwnImageLabel: "うちの子（必須）",
     catalogReferenceSheetClose: "閉じる",
     catalogReferenceConsentFailed: "同意を残せませんでした。もう一度、見本を選んでください。",
-    catalogReferenceConsentRequired: "もう一度「使える見本・使えない見本」を確かめてから、見本を選んでください。",
+    catalogReferenceConsentRequired: "もう一度「使える見本・使えない見本」を確かめてください。「わかりました」を押すと、選んだ見本を上げます。",
     nameInputTooManySlots: "文字入力の欄は、1つのプロンプトに{max}つまでです。",
     gachaTextExclusiveNote: "ガチャと文字入力は、どちらか1つだけ使えます（一緒に使える機能は、今後提供予定です）。",
     gachaTextTogetherError: "ガチャと文字入力は一緒に使えません。どちらか1つにしてください（一緒に使える機能は、今後提供予定です）。",

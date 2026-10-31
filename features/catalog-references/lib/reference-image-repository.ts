@@ -31,10 +31,10 @@ function getSupabase(client?: SupabaseClient): SupabaseClient {
  * 作り直し済み(WebP・メタデータ除去済み)の見本を置き、行を作って id を返す。
  * 行を作れなかったら、置いたファイルを消して投げる(見本の行の無いファイルを残さない)。
  * 有効な同意が無くて DB が断ったときは CatalogReferenceConsentRequiredError を投げる。
- * consentedAt は列の決まり(NOT NULL)のために送るだけで、DB が同意の時刻で書き換える
+ * 同意の時刻(copyright_consent_at)は送らない。DB のトリガーが本人の有効な同意の時刻を入れる
  */
 export async function saveCatalogReferenceImage(
-  params: { userId: string; webpBuffer: Buffer; consentedAt: Date },
+  params: { userId: string; webpBuffer: Buffer },
   client?: SupabaseClient,
 ): Promise<{ id: string }> {
   const supabase = getSupabase(client);
@@ -50,11 +50,7 @@ export async function saveCatalogReferenceImage(
 
   const { data, error } = await supabase
     .from("catalog_reference_images")
-    .insert({
-      user_id: params.userId,
-      storage_path: storagePath,
-      copyright_consent_at: params.consentedAt.toISOString(),
-    })
+    .insert({ user_id: params.userId, storage_path: storagePath })
     .select("id")
     .single();
   if (error || !data) {

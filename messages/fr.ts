@@ -1636,7 +1636,7 @@ export const frMessages = {
     catalogReferenceOwnImageLabel: "Votre personnage (obligatoire)",
     catalogReferenceSheetClose: "Fermer",
     catalogReferenceConsentFailed: "Impossible d’enregistrer votre accord. Veuillez choisir l’image à nouveau.",
-    catalogReferenceConsentRequired: "Veuillez revoir « Images utilisables ou non », puis choisir une image de référence.",
+    catalogReferenceConsentRequired: "Veuillez revoir « Images utilisables ou non ». Touchez « J’ai compris » pour envoyer l’image choisie.",
     nameInputTooManySlots: "Un prompt peut contenir au maximum {max} champ(s) de texte.",
     gachaTextExclusiveNote: "Vous ne pouvez utiliser que le gacha ou la saisie de texte (les utiliser ensemble sera proposé prochainement).",
     gachaTextTogetherError: "Le gacha et la saisie de texte ne peuvent pas être utilisés ensemble. Choisissez-en un seul (les utiliser ensemble sera proposé prochainement).",

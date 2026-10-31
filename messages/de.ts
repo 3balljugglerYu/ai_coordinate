@@ -1637,7 +1637,7 @@ export const deMessages = {
     catalogReferenceOwnImageLabel: "Deine Figur (Pflicht)",
     catalogReferenceSheetClose: "Schließen",
     catalogReferenceConsentFailed: "Deine Zustimmung konnte nicht gespeichert werden. Bitte wähle das Bild erneut.",
-    catalogReferenceConsentRequired: "Bitte sieh dir „Erlaubte und nicht erlaubte Bilder“ noch einmal an und wähle dann ein Referenzbild.",
+    catalogReferenceConsentRequired: "Bitte sieh dir „Erlaubte und nicht erlaubte Bilder“ noch einmal an. Tippe auf „Verstanden“, um das gewählte Bild hochzuladen.",
     nameInputTooManySlots: "Ein Prompt kann höchstens {max} Textfeld(er) haben.",
     gachaTextExclusiveNote: "Du kannst nur Gacha oder Texteingabe nutzen (beides zusammen ist für später geplant).",
     gachaTextTogetherError: "Gacha und Texteingabe können nicht zusammen verwendet werden. Bitte nur eines nutzen (beides zusammen ist für später geplant).",

@@ -1633,7 +1633,7 @@ export const enMessages = {
     catalogReferenceOwnImageLabel: "Your character (required)",
     catalogReferenceSheetClose: "Close",
     catalogReferenceConsentFailed: "We couldn’t save your agreement. Please choose the image again.",
-    catalogReferenceConsentRequired: "Please review “Images you can and can’t use” again, then choose a reference image.",
+    catalogReferenceConsentRequired: "Please review “Images you can and can’t use” again. Tap “Got it” to upload the image you chose.",
     nameInputTooManySlots: "A prompt can have up to {max} text field.",
     gachaTextExclusiveNote: "You can use only one of gacha or text input (using both together is coming in the future).",
     gachaTextTogetherError: "Gacha and text input can't be used together. Please use only one (using both together is coming in the future).",

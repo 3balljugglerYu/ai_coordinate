@@ -5,7 +5,7 @@
  *
  * ここで守ること(計画書 ADR-002):
  *  - 非公開のバケット catalog-references の {本人の ID}/{uuid}.webp に置き、上書きしない
- *  - 行には本人・置き場所・同意の時刻を入れ、id を返す
+ *  - 行には本人・置き場所だけを入れ、id を返す(同意の時刻は DB のトリガーが入れるので送らない)
  *  - 行を作れなかったら、置いたファイルを消して投げる。DB が「有効な同意が無い」と断ったら、それと分かる形で投げる
  *  - 受付の確かめは、本人の見本で、作り直しになっていないものだけ true。DB のエラーは投げる
  */
@@ -57,12 +57,11 @@ function client(options: {
 const USER = "11111111-1111-4111-8111-111111111111";
 
 describe("saveCatalogReferenceImage", () => {
-  test("非公開のバケットの本人のフォルダに WebP で置き、同意の時刻つきの行を作って id を返す", async () => {
+  test("非公開のバケットの本人のフォルダに WebP で置き、行を作って id を返す(同意の時刻は送らない)", async () => {
     const { supabase, storageCalls, dbCalls } = client({});
-    const consentedAt = new Date("2026-10-30T10:00:00Z");
 
     await expect(
-      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt }, supabase),
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w") }, supabase),
     ).resolves.toEqual({ id: "ref-1" });
 
     expect(storageCalls[0]).toEqual(["from", ["catalog-references"]]);
@@ -71,7 +70,7 @@ describe("saveCatalogReferenceImage", () => {
     expect(options).toEqual({ contentType: "image/webp", upsert: false });
     expect(dbCalls).toContainEqual([
       "insert",
-      [{ user_id: USER, storage_path: path, copyright_consent_at: "2026-10-30T10:00:00.000Z" }],
+      [{ user_id: USER, storage_path: path }],
     ]);
   });
 
@@ -80,7 +79,7 @@ describe("saveCatalogReferenceImage", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(
-      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w") }, supabase),
     ).rejects.toThrow("見本の保存に失敗しました");
     expect(dbCalls.some(([method]) => method === "insert")).toBe(false);
   });
@@ -90,7 +89,7 @@ describe("saveCatalogReferenceImage", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(
-      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w") }, supabase),
     ).rejects.toThrow("見本の保存に失敗しました");
     const uploadedPath = (storageCalls.find(([m]) => m === "upload")?.[1] as [string])[0];
     expect(storageCalls).toContainEqual(["remove", [[uploadedPath]]]);
@@ -103,7 +102,7 @@ describe("saveCatalogReferenceImage", () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(
-      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w") }, supabase),
     ).rejects.toBeInstanceOf(CatalogReferenceConsentRequiredError);
     const uploadedPath = (storageCalls.find(([m]) => m === "upload")?.[1] as [string])[0];
     expect(storageCalls).toContainEqual(["remove", [[uploadedPath]]]);
@@ -115,7 +114,7 @@ describe("saveCatalogReferenceImage", () => {
     const errors = jest.spyOn(console, "error").mockImplementation(() => {});
 
     await expect(
-      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w") }, supabase),
     ).rejects.toThrow("見本の保存に失敗しました");
     expect(errors).toHaveBeenCalledWith("[catalog-references] orphan file left:", expect.stringMatching(/^1111/), "gone");
   });

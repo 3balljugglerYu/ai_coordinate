@@ -1633,7 +1633,7 @@ export const arMessages = {
     catalogReferenceOwnImageLabel: "شخصيتك (مطلوبة)",
     catalogReferenceSheetClose: "إغلاق",
     catalogReferenceConsentFailed: "تعذّر حفظ موافقتك. يُرجى اختيار الصورة مرة أخرى.",
-    catalogReferenceConsentRequired: "يُرجى مراجعة «صور يمكنك استخدامها وصور لا يمكنك استخدامها» مرة أخرى، ثم اختيار صورة مرجعية.",
+    catalogReferenceConsentRequired: "يُرجى مراجعة «صور يمكنك استخدامها وصور لا يمكنك استخدامها» مرة أخرى. اضغط «فهمت» لرفع الصورة التي اخترتها.",
     nameInputTooManySlots: "يمكن أن يحتوي الموجّه الواحد على {max} حقل نص كحد أقصى.",
     gachaTextExclusiveNote: "يمكنك استخدام الغاتشا أو إدخال النص فقط (سيتوفر استخدامهما معًا لاحقًا).",
     gachaTextTogetherError: "لا يمكن استخدام الغاتشا وإدخال النص معًا. يُرجى استخدام واحد فقط (سيتوفر استخدامهما معًا لاحقًا).",

@@ -1632,7 +1632,7 @@ export const thMessages = {
     catalogReferenceOwnImageLabel: "ตัวละครของคุณ (จำเป็น)",
     catalogReferenceSheetClose: "ปิด",
     catalogReferenceConsentFailed: "บันทึกความยินยอมของคุณไม่สำเร็จ โปรดเลือกรูปอีกครั้ง",
-    catalogReferenceConsentRequired: "โปรดดู “ภาพอ้างอิงที่ใช้ได้และใช้ไม่ได้” อีกครั้ง แล้วจึงเลือกภาพอ้างอิง",
+    catalogReferenceConsentRequired: "โปรดดู “ภาพอ้างอิงที่ใช้ได้และใช้ไม่ได้” อีกครั้ง แตะ “เข้าใจแล้ว” เพื่ออัปโหลดรูปที่คุณเลือก",
     nameInputTooManySlots: "พรอมต์หนึ่งรายการมีช่องกรอกข้อความได้สูงสุด {max} ช่อง",
     gachaTextExclusiveNote: "ใช้ได้เพียงอย่างใดอย่างหนึ่งระหว่างกาชาหรือการกรอกข้อความ (การใช้พร้อมกันจะเปิดให้ใช้ในอนาคต)",
     gachaTextTogetherError: "ใช้กาชาและการกรอกข้อความพร้อมกันไม่ได้ โปรดเลือกใช้อย่างใดอย่างหนึ่ง (การใช้พร้อมกันจะเปิดให้ใช้ในอนาคต)",

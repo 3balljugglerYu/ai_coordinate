@@ -59,11 +59,13 @@ type UploadErrorKey =
   | "catalogReferenceConsentFailed"
   | "catalogReferenceUploadFailed";
 
-/** API の断りの文言(API の文は日本語だけなので、言語ごとの文言に置き換える) */
+/**
+ * API の断りの文言(API の文は日本語だけなので、言語ごとの文言に置き換える)。
+ * 「同意が要る」(CATALOG_REFERENCE_CONSENT_REQUIRED)は文言ではなく、同意の画面を出し直して受ける
+ */
 const UPLOAD_ERROR_KEYS: Record<string, UploadErrorKey> = {
   CATALOG_REFERENCE_AUTH_REQUIRED: "catalogReferenceAuthRequired",
   CATALOG_REFERENCE_NOT_ALLOWED: "catalogReferenceNotAllowed",
-  CATALOG_REFERENCE_CONSENT_REQUIRED: "catalogReferenceConsentRequired",
   CATALOG_REFERENCE_IMAGE_INVALID: "catalogReferenceInvalid",
   CATALOG_REFERENCE_IMAGE_TOO_SMALL: "catalogReferenceTooSmall",
   CATALOG_REFERENCE_IMAGE_TOO_LARGE: "catalogReferenceTooLarge",
@@ -158,11 +160,9 @@ export function CatalogReferencePicker({
     const body = (await res.json().catch(() => null)) as { id?: string; errorCode?: string } | null;
     if (!res.ok || !body?.id) {
       if (body?.errorCode === "CATALOG_REFERENCE_CONSENT_REQUIRED") {
-        // 同意が無効になっていた(開いたあとに見本が作り直しになったなど)。わけを出し、縮めた画像を持ったまま同意の画面を出す
-        // (わけは同意の画面の中と、閉じたあとの欄の下の両方に出す)
-        const reason = messageFor("catalogReferenceConsentRequired");
-        setError(reason);
-        setConsentNotice(reason);
+        // 同意が無効になっていた(開いたあとに見本が作り直しになったなど)。縮めた画像を持ったまま、
+        // わけ(「わかりました」を押すと、この見本を上げる)を中に出して同意の画面を出す
+        setConsentNotice(messageFor("catalogReferenceConsentRequired"));
         setConsentInPage("required");
         openConsent({ file: prepared, prepared: true });
         return;
@@ -179,10 +179,11 @@ export function CatalogReferencePicker({
       const res = await fetch("/api/catalog-references/consent", { method: "POST" });
       if (res.ok) return null;
       const body = (await res.json().catch(() => null)) as { errorCode?: string } | null;
-      // ログインが切れた・一覧から外れたは、もう一度選んでも同じなので、その理由を出す
-      if (body?.errorCode === "CATALOG_REFERENCE_AUTH_REQUIRED") return "catalogReferenceAuthRequired";
-      if (body?.errorCode === "CATALOG_REFERENCE_NOT_ALLOWED") return "catalogReferenceNotAllowed";
-      return "catalogReferenceConsentFailed";
+      // ログインが切れた・一覧から外れたは、もう一度選んでも同じなので、その理由を出す(文言は見本を上げる API と同じ対応)
+      const key = body?.errorCode ? UPLOAD_ERROR_KEYS[body.errorCode] : undefined;
+      return key === "catalogReferenceAuthRequired" || key === "catalogReferenceNotAllowed"
+        ? key
+        : "catalogReferenceConsentFailed";
     } catch {
       return "catalogReferenceConsentFailed";
     }

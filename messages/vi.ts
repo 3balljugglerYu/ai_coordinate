@@ -1633,7 +1633,7 @@ export const viMessages = {
     catalogReferenceOwnImageLabel: "Nhân vật của bạn (bắt buộc)",
     catalogReferenceSheetClose: "Đóng",
     catalogReferenceConsentFailed: "Không thể lưu sự đồng ý của bạn. Vui lòng chọn lại ảnh.",
-    catalogReferenceConsentRequired: "Vui lòng xem lại “Ảnh tham khảo dùng được và không dùng được”, rồi chọn ảnh tham khảo.",
+    catalogReferenceConsentRequired: "Vui lòng xem lại “Ảnh tham khảo dùng được và không dùng được”. Nhấn “Đã hiểu” để tải lên ảnh bạn đã chọn.",
     nameInputTooManySlots: "Mỗi prompt có tối đa {max} ô nhập chữ.",
     gachaTextExclusiveNote: "Bạn chỉ có thể dùng gacha hoặc nhập chữ (tính năng dùng cả hai cùng lúc sẽ có trong tương lai).",
     gachaTextTogetherError: "Không thể dùng gacha và nhập chữ cùng lúc. Hãy chỉ dùng một trong hai (tính năng dùng cả hai cùng lúc sẽ có trong tương lai).",
