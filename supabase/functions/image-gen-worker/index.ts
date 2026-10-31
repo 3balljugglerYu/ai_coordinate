@@ -17,8 +17,8 @@ import {
 } from "./creator-looks-prompt.ts";
 import {
   CATALOG_REFERENCE_UNAVAILABLE,
+  composeCatalogReferenceDescription,
   isAuthorInputMissing,
-  planCatalogReferencePrompt,
   resolveCatalogReferenceForJob,
 } from "./catalog-reference.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
@@ -2291,7 +2291,7 @@ Deno.serve(async () => {
               ?.author_input;
 
             // 見本つきの作品は本文なしで作れる(「イラストから」)ので、見本を解決できたときだけ空文字を許す
-            if (isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
+            if (resolvedInput == null || isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
               throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
 
@@ -2537,8 +2537,8 @@ Deno.serve(async () => {
                   }
 
                   // 見本(参照画像)つきのカタログ: まねるものと「見本の人物は使わない」の指示文(ADR-007)を、
-                  // 作者の本文の後ろに足す。本文なし(「イラストから」)なら、指示文そのものを本文として渡す
-                  const referencePrompt = planCatalogReferencePrompt(
+                  // 作者の本文に続けて本文(User's Direction)として渡す。本文なし(「イラストから」)なら指示文だけ
+                  const promptDescription = composeCatalogReferenceDescription(
                     generationInput,
                     catalogReference
                       ? buildCatalogReferenceDirective({
@@ -2573,7 +2573,7 @@ Deno.serve(async () => {
                   } else if (job.input_image_url) {
                     fullPrompt = buildSharedPrompt({
                       generationType: job.generation_type as GenerationType,
-                      outfitDescription: referencePrompt.description,
+                      outfitDescription: promptDescription,
                       backgroundMode,
                       sourceImageType:
                         job.source_image_type === "real"
@@ -2586,9 +2586,6 @@ Deno.serve(async () => {
                         job.generation_metadata,
                       ),
                     });
-                  }
-                  if (referencePrompt.suffix) {
-                    fullPrompt = `${fullPrompt}\n\n${referencePrompt.suffix}`;
                   }
 
                   // === Creator Looks 生成モード処理(方式A) ===

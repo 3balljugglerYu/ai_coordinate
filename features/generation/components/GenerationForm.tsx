@@ -22,6 +22,7 @@ import { NameInputEntryField } from "./NameInputEntryField";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
 import { CatalogReferenceIntro } from "@/features/catalog-references/components/CatalogReferenceIntro";
 import { CatalogTabBar } from "@/features/style-presets/components/CatalogTabBar";
+import { StylesCatalogChipBar } from "@/features/style-presets/components/StylesCatalogChipBar";
 import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
@@ -256,7 +257,7 @@ export function GenerationForm({
   // 施錠時のプレースホルダ。公開プロンプトは本文を value に入れるので出ない。
   const promptPlaceholder = promptLocked
     ? // 取れた本文が空なら、プロンプトなしで作られたカタログ(見本つきの「イラストから」)。非公開とは分ける
-      lockedPromptText === ""
+      lockedPromptText?.trim() === ""
       ? postsT("sourcePromptEmpty")
       : postsT("lockedSheetPromptLocked")
     : isFree
@@ -351,9 +352,8 @@ export function GenerationForm({
   const referenceAccess = canUseCatalogReference ? catalogReferenceAccess : undefined;
   // 見本を使える人だけ、「プロンプトから」「イラストから」のタブで作り方を選ぶ(既定はプロンプトから)
   const [createMode, setCreateMode] = useState<"prompt" | "reference">("prompt");
-  // 「イラストから」のタブで作っているときだけの見本の値。見本の欄・まねるもの・送る値はこれで出し分ける
-  const activeReference = createMode === "reference" ? referenceAccess : undefined;
-  const usingReference = activeReference !== undefined;
+  // 「イラストから」のタブで作っているか。見本の欄・まねるもの・送る値・見出しはこれで出し分ける
+  const usingReference = createMode === "reference" && referenceAccess !== undefined;
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
   // 「イラストから」は、見本を入れてまねるものを1つ以上選ぶまで送らない(上げている間も送らない)。
@@ -882,32 +882,37 @@ export function GenerationForm({
   );
 
   return (
+    <>
+    {/*
+      見本を使える人だけ、何で作るかをタブで選ぶ(一般の人の画面は今のまま)。
+      User ORIGINAL と同じく、タブは枠の外の帯(StylesCatalogChipBar)に置く
+    */}
+    {referenceAccess ? (
+      <>
+        <StylesCatalogChipBar>
+          <CatalogTabBar
+            tabs={[
+              { id: "prompt", label: freeT("createTabPrompt") },
+              { id: "reference", label: freeT("createTabReference") },
+            ]}
+            activeId={createMode}
+            onSelect={setCreateMode}
+            ariaLabel={freeT("createTabsLabel")}
+          />
+        </StylesCatalogChipBar>
+        <CatalogReferenceIntro
+          userId={referenceAccess.userId}
+          consentedBefore={referenceAccess.consentedBefore}
+          onTry={() => setCreateMode("reference")}
+        />
+      </>
+    ) : null}
     <Card className="p-6">
       <div className="space-y-6">
-        {/* 見本を使える人だけ、何で作るかをタブで選ぶ(一般の人の画面は今のまま) */}
-        {referenceAccess ? (
-          <>
-            <CatalogTabBar
-              tabs={[
-                { id: "prompt", label: freeT("createTabPrompt") },
-                { id: "reference", label: freeT("createTabReference") },
-              ]}
-              activeId={createMode}
-              onSelect={setCreateMode}
-              ariaLabel={freeT("createTabsLabel")}
-            />
-            <CatalogReferenceIntro
-              userId={referenceAccess.userId}
-              consentedBefore={referenceAccess.consentedBefore}
-              onTry={() => setCreateMode("reference")}
-            />
-          </>
-        ) : null}
-
         {/* 画像入力エリア: アップローダ常時表示 + ピッカートリガ */}
         <div className="space-y-3">
           <Label className="text-base font-medium block">
-            {activeReference ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
+            {usingReference ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
           </Label>
           {referenceAccess ? (
             <>
@@ -934,6 +939,7 @@ export function GenerationForm({
                   disabled={isGenerating}
                   consented={referenceAccess.consented}
                   consentedBefore={referenceAccess.consentedBefore}
+                  active={usingReference}
                 />
               </div>
               {usingReference ? null : renderSourceImageUploader()}
@@ -1019,8 +1025,9 @@ export function GenerationForm({
           // 非公開なら本文が来ないので空のままプレースホルダが出る。
           value={promptLocked ? lockedPromptText ?? "" : prompt}
           onChange={promptLocked ? () => {} : handlePromptChange}
-          // 「イラストから」ではプロンプトはなくてもよいので、見出しで伝える
+          // 「イラストから」ではプロンプトはなくてもよいので、見出しの下の説明で伝える
           label={usingReference ? freeT("referencePromptLabel") : promptLabel}
+          hint={usingReference ? freeT("referencePromptHint") : undefined}
           placeholder={promptPlaceholder}
           clearLabel={t("promptClear")}
           characterCount={
@@ -1265,5 +1272,6 @@ export function GenerationForm({
         />
       </div>
     </Card>
+    </>
   );
 }

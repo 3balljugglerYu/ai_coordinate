@@ -32,11 +32,16 @@ import { usageCountBucket } from "../lib/constants";
 import { copyTextFromPromise } from "@/lib/clipboard";
 import { trackPromptUseTapped } from "../lib/home-view-events";
 import { fetchSourcePromptText } from "../lib/source-prompt-text-api";
-
-/** プロンプトなしで作られたカタログをコピーしようとしたとき(失敗とは分けて知らせる) */
-const SOURCE_PROMPT_EMPTY = "SOURCE_PROMPT_EMPTY";
 import type { SubscriptionPlan } from "@/features/subscription/subscription-config";
 import type { SourcePromptReference } from "../types";
+
+/** プロンプトなしで作られたカタログをコピーしようとした(失敗とは分けて知らせる) */
+class SourcePromptEmptyError extends Error {
+  constructor() {
+    super("SOURCE_PROMPT_EMPTY");
+    this.name = "SourcePromptEmptyError";
+  }
+}
 
 /**
  * 生成シートは遅延読み込みにする。
@@ -217,7 +222,7 @@ export function SourcePromptReferenceCard({
       await copyTextFromPromise(
         fetchSourcePromptText(reference.postId).then((text) => {
           // プロンプトなしで作られたカタログ(見本つきの「イラストから」)は、写すものが無い
-          if (text.trim() === "") throw new Error(SOURCE_PROMPT_EMPTY);
+          if (text.trim() === "") throw new SourcePromptEmptyError();
           return text;
         }),
       );
@@ -225,7 +230,7 @@ export function SourcePromptReferenceCard({
       toast({ title: t("sourcePromptCopied") });
       setTimeout(() => setIsCopied(false), 2000);
     } catch (error) {
-      if (error instanceof Error && error.message === SOURCE_PROMPT_EMPTY) {
+      if (error instanceof SourcePromptEmptyError) {
         toast({ title: t("sourcePromptEmpty") });
         return;
       }

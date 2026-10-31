@@ -46,6 +46,16 @@ function respond(ok: boolean, body: unknown) {
   fetchMock.mockResolvedValueOnce({ ok, json: async () => body } as Response);
 }
 
+test.each([
+  ["無い(null)", null],
+  ["空文字(「イラストから」でプロンプトなしで作った作品)", ""],
+])("プロンプトが%sなら「(なし)」と出す", (_label, prompt) => {
+  render(<CatalogReviewsClient initialItems={[{ ...ITEM, prompt }]} limit={50} />);
+
+  expect(screen.getByText("(なし)")).toBeTruthy();
+  expect(screen.queryByText("猫耳")).toBeNull();
+});
+
 test("審査待ちが無ければ、そう出す", () => {
   render(<CatalogReviewsClient initialItems={[]} limit={50} />);
 

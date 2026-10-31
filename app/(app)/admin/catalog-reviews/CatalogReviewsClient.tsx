@@ -204,7 +204,8 @@ function ReviewCard({
         <details className="rounded-md border border-slate-200 p-3 text-sm">
           <summary className="cursor-pointer text-slate-700">プロンプト</summary>
           <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-slate-700">
-            {item.prompt ?? "(なし)"}
+            {/* プロンプトなしで作った作品(「イラストから」)は本文が空文字 */}
+            {item.prompt?.trim() ? item.prompt : "(なし)"}
           </pre>
         </details>
 

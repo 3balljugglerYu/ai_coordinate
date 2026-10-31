@@ -472,6 +472,7 @@ describe("見本の送信", () => {
 describe("カタログから使う画面(派生生成)のプロンプトの欄", () => {
   test.each([
     ["元の作品がプロンプトなしで作られている(本文が空)", "", "sourcePromptEmpty"],
+    ["元の作品の本文が空白だけ", "   ", "sourcePromptEmpty"],
     ["本文が取れない(非公開など)", null, "lockedSheetPromptLocked"],
   ])("%s ときの見出し", (_label, lockedPromptText, placeholder) => {
     renderForm(jest.fn(), {

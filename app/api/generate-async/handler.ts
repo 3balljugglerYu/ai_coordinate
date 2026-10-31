@@ -753,8 +753,13 @@ export async function postGenerateAsyncRoute(
       ? { kind: "derived_reference" }
       : {
           kind: "materialized",
-          // 見本つき(「イラストから」)は本文なしで送れる。そのときも空文字で残す(本文の行が無いと失敗扱いになるため)
-          authorInput: isInspireRequest ? null : prompt ?? (referenceImageId !== undefined ? "" : null),
+          // 見本つき(「イラストから」)は本文なしで送れる。そのときも空文字で残す(本文の行が無いと失敗扱いになるため)。
+          // 空白だけの本文も空文字にそろえる(「プロンプトなし」を表す値を1つにする)
+          authorInput: isInspireRequest
+            ? null
+            : referenceImageId !== undefined && (prompt ?? "").trim() === ""
+              ? ""
+              : prompt ?? null,
           authorInputOwnerId: isInspireRequest ? null : user.id,
           sourceKind: generationType || "coordinate",
         };

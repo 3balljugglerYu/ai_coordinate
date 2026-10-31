@@ -39,6 +39,8 @@ interface StubOptions {
   hasSecret?: boolean;
   /** 本文(既定は PROMPT)。見本つきの「イラストから」は空文字 */
   secretPrompt?: string;
+  /** 根の作品が見本つきか(generated_image_reference_secrets に行があるか) */
+  isReferenceWork?: boolean;
 }
 
 function mockSupabase(options: StubOptions = {}) {
@@ -66,6 +68,10 @@ function mockSupabase(options: StubOptions = {}) {
                       prompt_visibility: options.promptVisibility ?? "private",
                       user_id: options.originUserId ?? OWNER_ID,
                     }
+                  : table === "generated_image_reference_secrets"
+                    ? options.isReferenceWork
+                      ? { image_id: POST_ID }
+                      : null
                   : options.hasSecret === false
                     ? null
                     : { prompt: options.secretPrompt ?? PROMPT },
@@ -147,9 +153,12 @@ describe("GET /api/posts/[id]/prompt-text", () => {
     expect(response.status).toBe(401);
   });
 
-  test("本文が空(プロンプトなしで作られたカタログ)なら、使えないとはせず、空の本文を返す", async () => {
+  test.each([
+    ["空文字", ""],
+    ["空白だけ", "   "],
+  ])("見本つきの作品で本文が%s(プロンプトなしで作られたカタログ)なら、使えないとはせず、空の本文を返す", async (_label, secretPrompt) => {
     mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
-    mockSupabase({ promptVisibility: "public", originUserId: OWNER_ID, secretPrompt: "" });
+    mockSupabase({ promptVisibility: "public", originUserId: OWNER_ID, secretPrompt, isReferenceWork: true });
 
     const response = await GET(request(), { params });
 
@@ -157,9 +166,18 @@ describe("GET /api/posts/[id]/prompt-text", () => {
     await expect(response.json()).resolves.toEqual({ postId: POST_ID, prompt: "" });
   });
 
+  test("見本つきでない作品の空の本文は、今までどおり出さない", async () => {
+    mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
+    mockSupabase({ promptVisibility: "public", originUserId: OWNER_ID, secretPrompt: "", isReferenceWork: false });
+
+    const response = await GET(request(), { params });
+
+    expect(response.status).toBe(404);
+  });
+
   test("本文が空でも、第三者に非公開なら出さない(空かどうかも漏らさない)", async () => {
     mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
-    mockSupabase({ promptVisibility: "private", originUserId: OWNER_ID, secretPrompt: "" });
+    mockSupabase({ promptVisibility: "private", originUserId: OWNER_ID, secretPrompt: "", isReferenceWork: true });
 
     const response = await GET(request(), { params });
 

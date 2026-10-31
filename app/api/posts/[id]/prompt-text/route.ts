@@ -127,9 +127,20 @@ export async function GET(
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
-    // 見本つきのカタログ(「イラストから」)は、プロンプトなしで作れる。本文が空のときは「使えない」ではなく、
-    // 空の本文を返す(画面は「プロンプトなしで作られています」と出す)
-    const promptText = (secretRow as { prompt: string | null }).prompt ?? "";
+    // 見本つきのカタログ(「イラストから」)は、プロンプトなしで作れる。その作品は本文が空でも「使えない」とはせず、
+    // 空の本文を返す(画面は「プロンプトなしで作られています」と出す)。見本つきでない作品の空の本文は、今までどおり返さない
+    const rawPrompt = (secretRow as { prompt: string | null }).prompt ?? "";
+    const promptText = rawPrompt.trim() === "" ? "" : rawPrompt;
+    if (!promptText) {
+      const { data: referenceRow, error: referenceError } = await supabase
+        .from("generated_image_reference_secrets")
+        .select("image_id")
+        .eq("image_id", validated.root_post_id)
+        .maybeSingle();
+      if (referenceError || !referenceRow) {
+        return jsonUnavailable(copy.promptTextUnavailable);
+      }
+    }
 
     return NextResponse.json({
       postId: validated.root_post_id,

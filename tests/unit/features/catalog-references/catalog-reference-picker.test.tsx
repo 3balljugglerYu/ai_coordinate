@@ -275,6 +275,21 @@ test("見本を上げる API が「同意が要る」と断ったら(開いた�
   expect(screen.queryByRole("alert")).toBeNull();
 });
 
+test("隠している間(「プロンプトから」)に同意し直しが要ると分かったら、同意の画面は見せたときに出す", async () => {
+  uploadResponse = respond(false, { errorCode: "CATALOG_REFERENCE_CONSENT_REQUIRED" });
+  const { rerender, props } = renderPicker({ consented: true, consentedBefore: true });
+  pickFile();
+  // 上げている途中で「プロンプトから」へ移った
+  rerender(<CatalogReferencePicker {...props} active={false} />);
+  await waitFor(() => expect(callsTo(UPLOAD_URL)).toHaveLength(1));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  expect(consentSheet()).toBeNull();
+
+  rerender(<CatalogReferencePicker {...props} active />);
+  await waitFor(() => expect(consentSheet()).toBeTruthy());
+});
+
 test("作り直しで同意が無効になった人(一度は同意している)には、同意の画面を出すが「次からは出ません」は出さない", () => {
   renderPicker({ consented: false, consentedBefore: true });
 

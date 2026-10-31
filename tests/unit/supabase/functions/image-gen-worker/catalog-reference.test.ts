@@ -15,8 +15,8 @@
 import {
   CATALOG_REFERENCE_CHECK_FAILED,
   CATALOG_REFERENCE_UNAVAILABLE,
+  composeCatalogReferenceDescription,
   isAuthorInputMissing,
-  planCatalogReferencePrompt,
   resolveCatalogReferenceForJob,
 } from "@/supabase/functions/image-gen-worker/catalog-reference";
 
@@ -139,19 +139,16 @@ describe("isAuthorInputMissing(作者の本文が無いのを失敗とみなす�
   });
 });
 
-describe("planCatalogReferencePrompt(本文と見本の指示文の組み合わせ方)", () => {
-  test("本文があれば、本文を渡して、見本の指示文は後ろに足す", () => {
-    expect(planCatalogReferencePrompt("冬の街", "衣装をまねる")).toEqual({
-      description: "冬の街",
-      suffix: "衣装をまねる",
-    });
+describe("composeCatalogReferenceDescription(指示文の本文として渡すもの)", () => {
+  test("本文があれば、本文のあとに見本の指示文を続ける", () => {
+    expect(composeCatalogReferenceDescription("冬の街", "衣装をまねる")).toBe("冬の街\n\n衣装をまねる");
   });
 
-  test("本文なし(「イラストから」)なら、見本の指示文そのものを本文として渡し、後ろには足さない", () => {
-    expect(planCatalogReferencePrompt("  ", "衣装をまねる")).toEqual({ description: "衣装をまねる", suffix: "" });
+  test("本文なし(「イラストから」)なら、見本の指示文だけ", () => {
+    expect(composeCatalogReferenceDescription("  ", "衣装をまねる")).toBe("衣装をまねる");
   });
 
   test("見本が無ければ、本文だけ(今までどおり)", () => {
-    expect(planCatalogReferencePrompt("冬の街", "")).toEqual({ description: "冬の街", suffix: "" });
+    expect(composeCatalogReferenceDescription("冬の街", "")).toBe("冬の街");
   });
 });

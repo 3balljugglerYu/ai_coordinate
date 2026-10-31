@@ -635,6 +635,14 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
           expect(promptExecution).toMatchObject({ authorInput: "" });
         });
 
+        test("見本つきで本文が空白だけなら、空文字にそろえて残す", async () => {
+          const response = await runFree({ prompt: "   ", referenceImageId: REFERENCE_ID, referenceTakes: ["outfit"] });
+
+          expect(response.status).toBe(200);
+          const promptExecution = (jobRepository.createImageJob as jest.Mock).mock.calls[0][1] as Record<string, unknown>;
+          expect(promptExecution).toMatchObject({ authorInput: "" });
+        });
+
         test("見本なしで本文が空なら、今までどおり断る", async () => {
           const response = await runFree({ prompt: "" });
 

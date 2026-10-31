@@ -31,6 +31,11 @@ interface CatalogReferencePickerProps {
   consented: boolean;
   /** 一度でも同意したことがあるか。無いときだけ、同意の画面に「次からは出ません」を出す */
   consentedBefore: boolean;
+  /**
+   * 見せているか(作る画面の「イラストから」のタブ)。隠している間に同意し直しが要ると分かったら、
+   * 同意の画面は見せたときに出す(「プロンプトから」の上に出さない)。省略時は見せている
+   */
+  active?: boolean;
 }
 
 /** 上げたときに最初から選んでおくまねるもの */
@@ -85,6 +90,7 @@ export function CatalogReferencePicker({
   disabled = false,
   consented,
   consentedBefore,
+  active = true,
 }: CatalogReferencePickerProps) {
   const t = useTranslations("free");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -306,7 +312,7 @@ export function CatalogReferencePicker({
       </div>
 
       <CatalogReferenceConsentSheet
-        open={consentSheet.open}
+        open={consentSheet.open && active}
         onOpenChange={(open) => {
           if (!open) closeConsent();
         }}
