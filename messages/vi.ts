@@ -1622,6 +1622,7 @@ export const viMessages = {
     catalogReferenceConsentOnce: "Lần sau sẽ không hiện nữa.",
     catalogReferenceConsentGuidelines: "Xem nguyên tắc cộng đồng",
     catalogReferenceIntroTitle: "Lấy trang phục và tư thế từ ảnh tham khảo",
+    catalogReferenceIntroReference: "Ảnh tham khảo",
     catalogReferenceIntroResult: "Kết quả",
     catalogReferenceIntroStep1: "Thêm ảnh tham khảo rồi chọn những gì muốn lấy (trang phục, tư thế, góc chụp, nền).",
     catalogReferenceIntroStep3: "Đội ngũ chúng tôi sẽ kiểm tra trước khi hiển thị cho mọi người. Trong thời gian kiểm tra, bạn vẫn có thể dùng danh mục này.",

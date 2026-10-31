@@ -1622,6 +1622,7 @@ export const arMessages = {
     catalogReferenceConsentOnce: "لن تظهر هذه الرسالة مرة أخرى.",
     catalogReferenceConsentGuidelines: "اطّلع على إرشادات المجتمع",
     catalogReferenceIntroTitle: "خذ الملابس والوضعيات من صورة مرجعية",
+    catalogReferenceIntroReference: "الصورة المرجعية",
     catalogReferenceIntroResult: "النتيجة",
     catalogReferenceIntroStep1: "أضف صورة مرجعية واختر ما تريد أخذه منها (الملابس، الوضعية، الزاوية، الخلفية).",
     catalogReferenceIntroStep3: "يراجعها فريقنا قبل أن تظهر للجميع. يمكنك الاستمرار في استخدام هذا الكتالوج أثناء المراجعة.",

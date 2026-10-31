@@ -43,9 +43,11 @@ const mockI2iAllowed = jest.fn<Promise<boolean>, [string | null | undefined]>(as
 jest.mock("@/lib/auth/i2i-catalog", () => ({
   isInI2iCatalogAllowlist: (userId: string | null | undefined) => mockI2iAllowed(userId),
 }));
-const mockReferenceConsent = jest.fn<Promise<boolean>, [string]>(async () => false);
+const mockReferenceConsent = jest.fn<Promise<{ consented: boolean; consentedBefore: boolean }>, [string]>(
+  async () => ({ consented: false, consentedBefore: false }),
+);
 jest.mock("@/features/catalog-references/lib/consent-repository", () => ({
-  hasCatalogReferenceConsent: (userId: string) => mockReferenceConsent(userId),
+  getCatalogReferenceConsentSummary: (userId: string) => mockReferenceConsent(userId),
 }));
 jest.mock("@/components/RefreshOnMount", () => ({ RefreshOnMount: () => null }));
 jest.mock("@/features/credits/components/CachedGenerationPercoinBalance", () => ({
@@ -162,37 +164,28 @@ describe("FreePageBody の名前の欄", () => {
 });
 
 describe("FreePageBody の見本(参照画像)の欄", () => {
-  // 見本を使える人の一覧(運営が選んだ人)に入っているかを、そのままフォームへ渡す
-  test.each([true, false])("一覧の判定(%s)をそのままフォームへ渡す", async (allowed) => {
+  // 見本を使える人(運営が選んだ人)だけ、同意の状態を確かめ、本人の ID と一緒に渡す
+  test.each([
+    { consented: true, consentedBefore: true },
+    { consented: false, consentedBefore: true },
+    { consented: false, consentedBefore: false },
+  ])("使える人なら、同意の状態(%o)を確かめ、本人の ID と一緒に渡す", async (summary) => {
     mockAvailable.mockReturnValue(true);
-    mockI2iAllowed.mockResolvedValueOnce(allowed);
+    mockI2iAllowed.mockResolvedValueOnce(true);
+    mockReferenceConsent.mockResolvedValueOnce(summary);
     render(await FreePageBody());
 
     expect(mockI2iAllowed).toHaveBeenCalledWith("user-1");
-    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceAvailable: allowed });
-  });
-
-  // 有効な同意がサーバーにあるか(無いときだけ同意の画面と案内を出す)は、使える人のときだけ確かめる
-  test.each([true, false])("使える人なら、同意があるか(%s)を確かめ、本人の ID と一緒に渡す", async (consented) => {
-    mockAvailable.mockReturnValue(true);
-    mockI2iAllowed.mockResolvedValueOnce(true);
-    mockReferenceConsent.mockResolvedValueOnce(consented);
-    render(await FreePageBody());
-
     expect(mockReferenceConsent).toHaveBeenCalledWith("user-1");
-    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({
-      catalogReferenceConsented: consented,
-      catalogReferenceUserId: "user-1",
-    });
+    expect(mockFormContainer.mock.calls[0][0].catalogReference).toEqual({ userId: "user-1", ...summary });
   });
 
-  test("使えない人には、同意を確かめず、本人の ID も渡さない(一般の利用者の読み込みを増やさない)", async () => {
+  test("使えない人には、同意を確かめず、見本の値も渡さない(一般の利用者の読み込みを増やさない)", async () => {
     mockAvailable.mockReturnValue(true);
     mockI2iAllowed.mockResolvedValueOnce(false);
     render(await FreePageBody());
 
     expect(mockReferenceConsent).not.toHaveBeenCalled();
-    expect(mockFormContainer.mock.calls[0][0]).toMatchObject({ catalogReferenceConsented: false });
-    expect(mockFormContainer.mock.calls[0][0].catalogReferenceUserId).toBeUndefined();
+    expect(mockFormContainer.mock.calls[0][0].catalogReference).toBeUndefined();
   });
 });

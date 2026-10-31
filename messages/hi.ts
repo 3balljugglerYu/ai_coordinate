@@ -1623,6 +1623,7 @@ export const hiMessages = {
     catalogReferenceConsentOnce: "यह फिर से नहीं दिखेगा।",
     catalogReferenceConsentGuidelines: "कम्युनिटी दिशानिर्देश देखें",
     catalogReferenceIntroTitle: "संदर्भ छवि से पोशाक और पोज़ लें",
+    catalogReferenceIntroReference: "संदर्भ छवि",
     catalogReferenceIntroResult: "नतीजा",
     catalogReferenceIntroStep1: "संदर्भ छवि जोड़ें और चुनें कि क्या लेना है (पोशाक, पोज़, कोण, बैकग्राउंड)।",
     catalogReferenceIntroStep3: "सबके लिए दिखाने से पहले हमारी टीम इसकी जाँच करती है। जाँच के दौरान भी आप इस कैटलॉग का उपयोग कर सकते हैं।",

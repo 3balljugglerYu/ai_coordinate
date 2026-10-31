@@ -5,10 +5,10 @@
  *
  * ここで守ること(計画書 REQ-001・REQ-002・ADR-002):
  *  - よそのサイトからは止める。ログインしていなければ 401、見本を使える人でなければ 403
- *  - 同意が無ければ 400。画像が無い・4MB を超える・形式が違う・小さすぎる・大きすぎるは断る
+ *  - 画像が無い・4MB を超える・形式が違う・小さすぎる・大きすぎるは断る
  *  - 画像は作り直した WebP を、ログイン中の本人の見本として、同意の時刻つきで保存する
- *  - 同意は、サーバーに残した本人の同意を見る。同意が無い・同意のあとに作り直しになったら 400。
- *    見本の行には、その同意の時刻を写す(画面で同意を取っていない時刻を残さない)。確かめられなければ 500
+ *  - 同意は、サーバーに残した本人の有効な同意を見る。無い・作り直しで無効になったら 400(重い画像の作り直しより先に断る)。
+ *    見本の行には、その同意の時刻を写す(画面で同意を取っていない時刻を残さない)。確かめられなければ記録して 500
  *  - 返すのは id だけ(場所は返さない)。保存に失敗したら 500
  */
 
@@ -45,10 +45,9 @@ const CONSENTED_AT = new Date("2026-10-31T01:00:00.000Z");
 const USER_ID = "11111111-1111-4111-8111-111111111111";
 const WEBP = Buffer.from("webp");
 
-function request(fields: { file?: File | null; consent?: string | null }): NextRequest {
+function request(fields: { file?: File | null }): NextRequest {
   const form = new FormData();
   if (fields.file !== null) form.set("file", fields.file ?? new File([new Uint8Array(16)], "ref.png", { type: "image/png" }));
-  if (fields.consent !== null) form.set("copyrightConsent", fields.consent ?? "true");
   return new NextRequest("http://localhost/api/catalog-references", { method: "POST", body: form });
 }
 
@@ -62,7 +61,11 @@ beforeEach(() => {
     data: { webpBuffer: WEBP, width: 1024, height: 1024, originalFormat: "png" },
   });
   mockSave.mockResolvedValue({ id: "ref-1" });
-  mockConsentState.mockResolvedValue({ consentedAt: CONSENTED_AT, needsConsent: false });
+  mockConsentState.mockResolvedValue({ consentedAt: CONSENTED_AT, consentedBefore: true });
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 test("見本を使える人が同意つきで上げると、作り直した WebP を本人の見本として、同意の時刻つきで保存し、id だけを返す", async () => {
@@ -98,8 +101,6 @@ test.each([
 });
 
 test.each([
-  ["同意が無い", { consent: null }, 400, "CATALOG_REFERENCE_CONSENT_REQUIRED"],
-  ["同意が true でない", { consent: "yes" }, 400, "CATALOG_REFERENCE_CONSENT_REQUIRED"],
   ["画像が無い", { file: null }, 400, "CATALOG_REFERENCE_FILE_REQUIRED"],
   [
     "4MB を超える",
@@ -108,7 +109,7 @@ test.each([
     "CATALOG_REFERENCE_FILE_TOO_LARGE",
   ],
 ])("%s → %p で保存しない", async (_label, fields, status, errorCode) => {
-  const response = await POST(request(fields as { file?: File | null; consent?: string | null }));
+  const response = await POST(request(fields as { file?: File | null }));
 
   expect(response.status).toBe(status);
   await expect(response.json()).resolves.toMatchObject({ errorCode });
@@ -141,25 +142,30 @@ test("保存に失敗したら 500", async () => {
 
 describe("サーバーに残した同意", () => {
   test.each([
-    ["同意したことが無い", { consentedAt: null, needsConsent: true }],
-    ["同意のあとに本人の見本が作り直しになった", { consentedAt: CONSENTED_AT, needsConsent: true }],
-  ])("%s ときは、保存せずに 400", async (_label, state) => {
+    ["同意したことが無い", { consentedAt: null, consentedBefore: false }],
+    ["作り直しで同意が無効になった", { consentedAt: null, consentedBefore: true }],
+  ])("%s ときは、画像を作り直さず、保存せずに 400", async (_label, state) => {
     mockConsentState.mockResolvedValue(state);
 
     const response = await POST(request({}));
 
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REFERENCE_CONSENT_REQUIRED" });
+    expect(mockProcess).not.toHaveBeenCalled();
     expect(mockSave).not.toHaveBeenCalled();
   });
 
-  test("同意を確かめられなければ、保存せずに 500(保存の失敗とは分ける)", async () => {
-    mockConsentState.mockRejectedValue(new Error("見本の同意の確認に失敗しました"));
+  test("同意を確かめられなければ、記録して、保存せずに 500(保存の失敗とは分ける)", async () => {
+    const cause = new Error("見本の同意の確認に失敗しました");
+    mockConsentState.mockRejectedValue(cause);
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {});
 
     const response = await POST(request({}));
 
     expect(response.status).toBe(500);
     await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REFERENCE_CONSENT_CHECK_FAILED" });
+    expect(logged).toHaveBeenCalledWith(expect.any(String), cause);
+    expect(mockProcess).not.toHaveBeenCalled();
     expect(mockSave).not.toHaveBeenCalled();
   });
 });

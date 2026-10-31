@@ -1625,6 +1625,7 @@ export const esMessages = {
     catalogReferenceConsentOnce: "No volverás a ver esto.",
     catalogReferenceConsentGuidelines: "Ver las normas de la comunidad",
     catalogReferenceIntroTitle: "Toma el atuendo y la pose de una imagen de referencia",
+    catalogReferenceIntroReference: "Referencia",
     catalogReferenceIntroResult: "Resultado",
     catalogReferenceIntroStep1: "Añade una imagen de referencia y elige qué tomar (atuendo, pose, ángulo, fondo).",
     catalogReferenceIntroStep3: "Nuestro equipo la revisa antes de mostrarla a todos. Mientras tanto, puedes seguir usando este catálogo.",

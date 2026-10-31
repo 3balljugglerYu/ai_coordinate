@@ -1625,6 +1625,7 @@ export const ptMessages = {
     catalogReferenceConsentOnce: "Isso não aparecerá novamente.",
     catalogReferenceConsentGuidelines: "Ver as diretrizes da comunidade",
     catalogReferenceIntroTitle: "Aproveite a roupa e a pose de uma imagem de referência",
+    catalogReferenceIntroReference: "Referência",
     catalogReferenceIntroResult: "Resultado",
     catalogReferenceIntroStep1: "Adicione uma imagem de referência e escolha o que aproveitar (roupa, pose, ângulo, fundo).",
     catalogReferenceIntroStep3: "Nossa equipe verifica antes de ela aparecer para todos. Enquanto isso, você pode continuar usando este catálogo.",

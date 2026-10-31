@@ -42,6 +42,10 @@ beforeEach(() => {
   mockRecord.mockResolvedValue(CONSENTED_AT);
 });
 
+afterEach(() => {
+  jest.restoreAllMocks();
+});
+
 test("見本を使える人の同意を、ログイン中の本人の同意として残し、時刻を返す", async () => {
   const response = await POST(request());
 

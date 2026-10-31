@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { ImagePlus, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,10 +31,12 @@ interface CatalogReferencePickerProps {
   onUploadingChange?: (uploading: boolean) => void;
   disabled?: boolean;
   /**
-   * 有効な同意がサーバーにあるか(/free のサーバーで確かめた値)。あれば同意の画面と案内を出さない。
+   * 有効な同意がサーバーにあるか(/free のサーバーで確かめた値)。あれば同意の画面を出さない。
    * 同意が無い・同意のあとに本人の見本が作り直しになったときは false
    */
   consented: boolean;
+  /** 一度でも同意したことがあるか。無いときだけ「先行公開」の案内と「次からは出ません」を出す */
+  consentedBefore: boolean;
   /** 本人の ID(案内を見た印を、本人ごとに分けて端末に残す) */
   userId: string;
 }
@@ -74,10 +76,11 @@ const UPLOAD_ERROR_KEYS: Record<string, UploadErrorKey> = {
  * - 有効な同意がサーバーに無い人には、見本を選んだ直後に「使える見本・使えない見本」を出す。
  *   「わかりました」で同意をサーバーに残し(POST /api/catalog-references/consent)、それから上げる。
  *   閉じたら上げない。あとから見返すこともできる(見返して「わかりました」を押しても同意にはしない)
- * - 見本を上げる API が「同意が要る」と断ったら(同意のあとに見本が作り直しになったなど)、次に選んだときに同意の画面を出す
+ * - 見本を上げる API が「同意が要る」と断ったら(開いたあとに見本が作り直しになったなど)、選んだ画像を持ったまま同意の画面を出す
  * - 選んだら、API の決まり(縦横とも 768〜4096px・4MB まで)に合わせて手元で縮め、POST /api/catalog-references に上げる
  *   (HEIC はブラウザで読めないので受け付けない)
- * - 「先行公開」の案内は、有効な同意が無く、まだ見ていない人に1回だけ出す(見た印は本人ごとに端末に残す)
+ * - 「先行公開」の案内は、一度も同意したことが無く、まだ見ていない人に1回だけ出す(見た印は本人ごとに端末に残す)
+ * - プレビューの blob URL は値を持つ親(GenerationForm)が片付ける
  */
 export function CatalogReferencePicker({
   ownImage,
@@ -86,6 +89,7 @@ export function CatalogReferencePicker({
   onUploadingChange,
   disabled = false,
   consented,
+  consentedBefore,
   userId,
 }: CatalogReferencePickerProps) {
   const t = useTranslations("free");
@@ -103,22 +107,14 @@ export function CatalogReferencePicker({
     mode: "view",
   });
 
-  // 案内は、有効な同意が無く、まだ見ていない人にだけ出す(SSR では出さない。ほかのタブで見たら閉じる)
+  // 案内は、一度も同意したことが無く、まだ見ていない人にだけ出す(SSR では出さない。ほかのタブで見たら閉じる)
   const introEligible = useSyncExternalStore(
     subscribeCatalogReferenceFlags,
-    () => !consented && !hasSeenCatalogReferenceIntro(userId),
+    () => !consentedBefore && !hasSeenCatalogReferenceIntro(userId),
     () => false,
   );
   const [introDismissed, setIntroDismissed] = useState(false);
   const introOpen = introEligible && !introDismissed;
-
-  // 外したときに、プレビューの URL を放す
-  const previewUrl = value?.previewUrl;
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
 
   const setUploadingState = (next: boolean) => {
     setUploading(next);
@@ -149,7 +145,6 @@ export function CatalogReferencePicker({
     }
     const form = new FormData();
     form.append("file", prepared);
-    form.append("copyrightConsent", "true");
     let res: Response;
     try {
       res = await fetch("/api/catalog-references", { method: "POST", body: form });
@@ -160,8 +155,10 @@ export function CatalogReferencePicker({
     const body = (await res.json().catch(() => null)) as { id?: string; errorCode?: string } | null;
     if (!res.ok || !body?.id) {
       if (body?.errorCode === "CATALOG_REFERENCE_CONSENT_REQUIRED") {
-        // 同意が無効になっていた(同意のあとに見本が作り直しになったなど)。次に選んだら同意の画面を出す
+        // 同意が無効になっていた(開いたあとに見本が作り直しになったなど)。選んだ画像を持ったまま同意の画面を出す
         setConsentInPage("required");
+        openConsent(file);
+        return;
       }
       setError(messageFor((body?.errorCode && UPLOAD_ERROR_KEYS[body.errorCode]) || "catalogReferenceUploadFailed"));
       return;
@@ -169,15 +166,25 @@ export function CatalogReferencePicker({
     onChange({ id: body.id, previewUrl: URL.createObjectURL(prepared), takes: DEFAULT_TAKES });
   };
 
-  /** 「わかりました」を押したことをサーバーに残す。残せたら true */
-  const recordConsent = async () => {
+  /** 「わかりました」を押したことをサーバーに残す。残せなかったら出す文言のキーを返す */
+  const recordConsent = async (): Promise<UploadErrorKey | "catalogReferenceConsentFailed" | null> => {
     try {
       const res = await fetch("/api/catalog-references/consent", { method: "POST" });
-      return res.ok;
+      if (res.ok) return null;
+      const body = (await res.json().catch(() => null)) as { errorCode?: string } | null;
+      // ログインが切れた・一覧から外れたは、もう一度選んでも同じなので、その理由を出す
+      if (body?.errorCode === "CATALOG_REFERENCE_AUTH_REQUIRED") return "catalogReferenceAuthRequired";
+      if (body?.errorCode === "CATALOG_REFERENCE_NOT_ALLOWED") return "catalogReferenceNotAllowed";
+      return "catalogReferenceConsentFailed";
     } catch {
-      return false;
+      return "catalogReferenceConsentFailed";
     }
   };
+
+  function openConsent(file: File) {
+    setPendingFile(file);
+    setConsentSheet({ open: true, mode: "consent" });
+  }
 
   const handleSelected = (file: File) => {
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -186,8 +193,7 @@ export function CatalogReferencePicker({
       return;
     }
     setError(null);
-    setPendingFile(file);
-    setConsentSheet({ open: true, mode: "consent" });
+    openConsent(file);
   };
 
   const closeConsent = () => {
@@ -202,8 +208,9 @@ export function CatalogReferencePicker({
     // 見返しただけのときは閉じるだけ(同意の画面を通らずに同意にしない)
     if (consentSheet.mode !== "consent" || !file) return;
     void runBusy(async () => {
-      if (!(await recordConsent())) {
-        setError(t("catalogReferenceConsentFailed"));
+      const failure = await recordConsent();
+      if (failure) {
+        setError(failure === "catalogReferenceConsentFailed" ? t(failure) : messageFor(failure));
         return;
       }
       setConsentInPage("agreed");
@@ -319,6 +326,8 @@ export function CatalogReferencePicker({
         }}
         onAgree={handleAgree}
         mode={consentSheet.mode}
+        // 「次からは出ません」は、一度も同意したことが無い人の初めての同意のときだけ出す
+        showOnceNote={!consentedBefore && consentInPage !== "required"}
       />
       <CatalogReferenceIntroSheet
         open={introOpen}

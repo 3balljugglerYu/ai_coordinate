@@ -1621,6 +1621,7 @@ export const thMessages = {
     catalogReferenceConsentOnce: "ครั้งต่อไปจะไม่แสดงอีก",
     catalogReferenceConsentGuidelines: "ดูแนวทางของชุมชน",
     catalogReferenceIntroTitle: "นำชุดและท่าทางมาจากภาพอ้างอิงได้",
+    catalogReferenceIntroReference: "ภาพอ้างอิง",
     catalogReferenceIntroResult: "ผลลัพธ์",
     catalogReferenceIntroStep1: "ใส่ภาพอ้างอิง แล้วเลือกสิ่งที่จะนำมา (ชุด ท่าทาง มุมกล้อง พื้นหลัง)",
     catalogReferenceIntroStep3: "ทีมงานจะตรวจสอบก่อนเผยแพร่ให้ทุกคนเห็น ระหว่างตรวจสอบ คุณยังใช้แคตตาล็อกนี้ได้",

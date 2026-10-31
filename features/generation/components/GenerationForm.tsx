@@ -20,7 +20,7 @@ import { GachaPromptField } from "./GachaPromptField";
 import { NamePromptField } from "./NamePromptField";
 import { NameInputEntryField } from "./NameInputEntryField";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
-import type { CatalogReferenceValue } from "@/features/catalog-references/types";
+import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
@@ -193,14 +193,10 @@ interface GenerationFormProps {
   /** 名前の欄の数を制限しない(運営だけ。サーバーの nameInputMaxSlotsFor と同じ)。 */
   nameInputUnlimited?: boolean;
   /**
-   * 見本(参照画像)の欄を出してよいか(docs/planning/i2i-catalog-review-implementation-plan.md)。
-   * /free のサーバー側で、見本を使える人の一覧(運営が選んだ人)に入っているかを確かめて渡す。既定は出さない。
+   * 見本(参照画像)の欄に要る値(docs/planning/i2i-catalog-review-implementation-plan.md)。
+   * /free のサーバー側で、見本を使える人の一覧(運営が選んだ人)に入っているときだけ渡す。渡さなければ欄を出さない。
    */
-  catalogReferenceAvailable?: boolean;
-  /** 見本の有効な同意がサーバーにあるか(無いときだけ同意の画面と案内を出す。/free のサーバーで確かめて渡す) */
-  catalogReferenceConsented?: boolean;
-  /** 本人の ID(見本の案内を見た印を、本人ごとに分けて残す。見本を使える人のときだけ渡す) */
-  catalogReferenceUserId?: string;
+  catalogReference?: CatalogReferenceAccess;
   /**
    * カタログから使う人の名前の欄(派生生成)。原作の本文に目印があるときだけ、
    * `/api/posts/[id]/prompt-slots` から見出しなどを受け取って渡す(本文は届かない)。
@@ -236,9 +232,7 @@ export function GenerationForm({
   gachaUnlimited = false,
   nameInputAvailable = false,
   nameInputUnlimited = false,
-  catalogReferenceAvailable = false,
-  catalogReferenceConsented = false,
-  catalogReferenceUserId,
+  catalogReference: catalogReferenceAccess,
   lockedNameInput = null,
   lockedNameInputLoading = false,
 }: GenerationFormProps) {
@@ -347,7 +341,7 @@ export function GenerationForm({
 
   // 見本(参照画像)。見本を使える人が、自分で書く本文のときだけ(派生生成では元の作品の見本が使われる)
   const canUseCatalogReference =
-    isFree && !promptLocked && isAuthenticated && catalogReferenceAvailable && Boolean(catalogReferenceUserId);
+    isFree && !promptLocked && isAuthenticated && catalogReferenceAccess !== undefined;
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
   // 上げている間と、見本を選んだのにまねるものが無いときは送らない
@@ -657,6 +651,17 @@ export function GenerationForm({
     };
   }, [uploadedImage?.previewUrl]);
 
+  // 見本のプレビューも blob: の URL。値を持つここで、差し替え・外したとき・unmount 時に放す
+  // (見本の欄の部品が組み直されても、値が残っている間は放さない)
+  useEffect(() => {
+    const currentUrl = catalogReference?.previewUrl;
+    return () => {
+      if (currentUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [catalogReference?.previewUrl]);
+
   const handleSelectStock = useCallback(
     (stock: SourceImageStock) => {
       setSelectedStock(stock);
@@ -881,8 +886,9 @@ export function GenerationForm({
               onChange={setCatalogReference}
               onUploadingChange={setIsCatalogReferenceUploading}
               disabled={isGenerating}
-              consented={catalogReferenceConsented}
-              userId={catalogReferenceUserId ?? ""}
+              consented={catalogReferenceAccess?.consented ?? false}
+              consentedBefore={catalogReferenceAccess?.consentedBefore ?? false}
+              userId={catalogReferenceAccess?.userId ?? ""}
             />
           ) : (
             renderSourceImageUploader()

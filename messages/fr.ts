@@ -1625,6 +1625,7 @@ export const frMessages = {
     catalogReferenceConsentOnce: "Ce message ne s’affichera plus.",
     catalogReferenceConsentGuidelines: "Voir les règles de la communauté",
     catalogReferenceIntroTitle: "Reprenez la tenue et la pose d’une image de référence",
+    catalogReferenceIntroReference: "Référence",
     catalogReferenceIntroResult: "Résultat",
     catalogReferenceIntroStep1: "Ajoutez une image de référence et choisissez ce qu’il faut reprendre (tenue, pose, angle, arrière-plan).",
     catalogReferenceIntroStep3: "Notre équipe la vérifie avant qu’elle soit visible par tous. Vous pouvez continuer à utiliser ce catalogue pendant la vérification.",

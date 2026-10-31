@@ -1626,6 +1626,7 @@ export const deMessages = {
     catalogReferenceConsentOnce: "Das wird nicht mehr angezeigt.",
     catalogReferenceConsentGuidelines: "Zu den Community-Richtlinien",
     catalogReferenceIntroTitle: "Übernimm Outfit und Pose aus einem Referenzbild",
+    catalogReferenceIntroReference: "Referenzbild",
     catalogReferenceIntroResult: "Ergebnis",
     catalogReferenceIntroStep1: "Füge ein Referenzbild hinzu und wähle, was übernommen wird (Outfit, Pose, Kamerawinkel, Hintergrund).",
     catalogReferenceIntroStep3: "Unser Team prüft es, bevor es für alle sichtbar wird. Während der Prüfung kannst du den Katalog weiter nutzen.",

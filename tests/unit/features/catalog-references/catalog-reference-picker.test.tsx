@@ -9,13 +9,15 @@
  *  - 有効な同意がサーバーに無い人は、選んだ直後に「使える見本・使えない見本」を出し、
  *    「わかりました」で同意をサーバーに残してから上げる(閉じたら上げない。残せなければ上げない)
  *  - 有効な同意がある人(あとから変わった値も含む)は、選んだらすぐ上げる
- *  - 見本を上げる API が「同意が要る」と断ったら、次に選んだときに同意の画面を出す
+ *  - 「次からは出ません」は、一度も同意したことが無い人の初めての同意のときだけ出す
+ *  - 同意を残すのを断られたら、理由ごとの文言を出す(ログインが切れた・一覧から外れた・そのほか)
+ *  - 見本を上げる API が「同意が要る」と断ったら、選んだ画像を持ったまま同意の画面を出し、同意したら上げ直す
  *  - 上げるときは見本用に縮めてから、縮めた画像を POST /api/catalog-references に上げ、
  *    返った id と最初のまねるもの(衣装)を渡す。上げている間は、そのことを親に知らせる
  *  - 上げられなければ、言語ごとの文言で理由を出して何も渡さない(手元で断った・API が断った・通信が切れた)
- *  - HEIC は受け付けない。外すと null を渡し、プレビューの URL を放す
+ *  - HEIC は受け付けない。外すと null を渡す(プレビューの URL を放すのは、値を持つ親)
  *  - 「使える見本・使えない見本」は、あとから見返せる(見返しても上げない・同意にもしない)
- *  - 「先行公開」の案内は、有効な同意が無く、まだ見ていない人にだけ1回出す(見た印は本人ごと。ほかのタブの印にも合わせる)
+ *  - 「先行公開」の案内は、一度も同意したことが無く、まだ見ていない人にだけ1回出す(見た印は本人ごと。ほかのタブの印にも合わせる)
  */
 
 // 文言はキーのまま返す。差し込む値(小さすぎるときの下限)は「キー:値」にして、渡っていることを確かめる
@@ -96,6 +98,7 @@ function renderPicker(props: Partial<PickerProps> = {}) {
     value: null,
     onChange: jest.fn(),
     consented: true,
+    consentedBefore: true,
     userId: USER_ID,
     ...props,
   };
@@ -124,9 +127,12 @@ test("うちの子の欄と、見本の欄を並べて出す", () => {
   expect(screen.getByText("catalogReferenceImageCaption")).toBeTruthy();
 });
 
+// 一度も同意したことが無い人
+const FIRST_TIME = { consented: false, consentedBefore: false } as const;
+
 describe("同意(有効な同意がサーバーに無い人)", () => {
   test("選んだ直後に「使える見本・使えない見本」を出し、まだ何も送らない", () => {
-    renderPicker({ consented: false });
+    renderPicker(FIRST_TIME);
 
     pickFile();
 
@@ -139,7 +145,7 @@ describe("同意(有効な同意がサーバーに無い人)", () => {
   test("「わかりました」で同意をサーバーに残してから、縮めた画像を上げ、返った id と最初のまねるもの(衣装)を渡す", async () => {
     const onChange = jest.fn();
     const onUploadingChange = jest.fn();
-    renderPicker({ consented: false, onChange, onUploadingChange });
+    renderPicker({ ...FIRST_TIME, onChange, onUploadingChange });
     const file = pickFile();
 
     agree();
@@ -152,7 +158,8 @@ describe("同意(有効な同意がサーバーに無い人)", () => {
     const [, init] = callsTo(UPLOAD_URL)[0];
     expect(init.method).toBe("POST");
     const form = init.body as FormData;
-    expect(form.get("copyrightConsent")).toBe("true");
+    // 同意はサーバーに残したものを見るので、決まった値は送らない
+    expect(form.get("copyrightConsent")).toBeNull();
     // 元の画像ではなく、縮めた画像を送り、プレビューにも使う
     expect(form.get("file")).toBe(PREPARED);
     expect(URL.createObjectURL).toHaveBeenCalledWith(PREPARED);
@@ -161,10 +168,24 @@ describe("同意(有効な同意がサーバーに無い人)", () => {
     expect(onUploadingChange.mock.calls).toEqual([[true], [false]]);
   });
 
+  test.each([
+    ["ログインが切れた", "CATALOG_REFERENCE_AUTH_REQUIRED", "catalogReferenceAuthRequired"],
+    ["一覧から外れた", "CATALOG_REFERENCE_NOT_ALLOWED", "catalogReferenceNotAllowed"],
+  ])("同意を残すのを断られたら(%s)、その理由を出して上げない", async (_label, errorCode, key) => {
+    consentResponse = respond(false, { errorCode });
+    renderPicker(FIRST_TIME);
+    pickFile();
+
+    agree();
+
+    expect(await screen.findByRole("alert")).toHaveProperty("textContent", key);
+    expect(callsTo(UPLOAD_URL)).toHaveLength(0);
+  });
+
   test("同意をサーバーに残せなければ上げず、次に選んだときにまた同意の画面を出す", async () => {
     consentResponse = respond(false, { errorCode: "CATALOG_REFERENCE_CONSENT_SAVE_FAILED" });
     const onChange = jest.fn();
-    renderPicker({ consented: false, onChange });
+    renderPicker({ ...FIRST_TIME, onChange });
     pickFile();
 
     agree();
@@ -179,7 +200,7 @@ describe("同意(有効な同意がサーバーに無い人)", () => {
   });
 
   test("同意せずに閉じたら(閉じるボタン)、何も送らない。もう一度選ぶと、また出す", async () => {
-    renderPicker({ consented: false });
+    renderPicker(FIRST_TIME);
     pickFile();
 
     fireEvent.click(screen.getByRole("button", { name: "catalogReferenceSheetClose" }));
@@ -193,7 +214,7 @@ describe("同意(有効な同意がサーバーに無い人)", () => {
 
   test("一度同意したら、この画面では次に選んだときに出さずに上げる", async () => {
     const onChange = jest.fn();
-    renderPicker({ consented: false, onChange });
+    renderPicker({ ...FIRST_TIME, onChange });
     pickFile();
     agree();
     await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
@@ -209,7 +230,7 @@ describe("同意(有効な同意がサーバーに無い人)", () => {
 
   test("サーバーの値があとから「同意あり」に変わったら、それに合わせて出さない", async () => {
     const onChange = jest.fn();
-    const { rerender, props } = renderPicker({ consented: false, onChange });
+    const { rerender, props } = renderPicker({ ...FIRST_TIME, onChange });
 
     rerender(<CatalogReferencePicker {...props} consented />);
     pickFile();
@@ -231,18 +252,35 @@ test("有効な同意がある人は、選んだらすぐ上げる(同意の画�
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([UPLOAD_URL]);
 });
 
-test("見本を上げる API が「同意が要る」と断ったら(同意のあとに作り直しになったなど)、文言を出し、次に選んだときに同意の画面を出す", async () => {
-  uploadResponse = respond(false, { errorCode: "CATALOG_REFERENCE_CONSENT_REQUIRED" });
+test("見本を上げる API が「同意が要る」と断ったら(開いたあとに作り直しになったなど)、選んだ画像を持ったまま同意の画面を出し、同意したら上げ直す", async () => {
+  const responses = [
+    respond(false, { errorCode: "CATALOG_REFERENCE_CONSENT_REQUIRED" }),
+    respond(true, { id: "ref-2" }),
+  ];
+  uploadResponse = () => responses.shift()!();
   const onChange = jest.fn();
-  renderPicker({ consented: true, onChange });
+  renderPicker({ consented: true, consentedBefore: true, onChange });
+  const file = pickFile();
 
-  pickFile();
-
-  expect(await screen.findByRole("alert")).toHaveProperty("textContent", "catalogReferenceConsentRequired");
+  await waitFor(() => expect(consentSheet()).toBeTruthy());
   expect(onChange).not.toHaveBeenCalled();
+  // 同意し直しなので「次からは出ません」は出さない
+  expect(screen.queryByText("catalogReferenceConsentOnce", { exact: false })).toBeNull();
+
+  agree();
+
+  await waitFor(() => expect(onChange).toHaveBeenCalledWith({ id: "ref-2", previewUrl: "blob:preview", takes: ["outfit"] }));
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([UPLOAD_URL, CONSENT_URL, UPLOAD_URL]);
+  expect(mockPrepare).toHaveBeenLastCalledWith(file);
+});
+
+test("作り直しで同意が無効になった人(一度は同意している)には、同意の画面を出すが「次からは出ません」は出さない", () => {
+  renderPicker({ consented: false, consentedBefore: true });
 
   pickFile();
+
   expect(consentSheet()).toBeTruthy();
+  expect(screen.queryByText("catalogReferenceConsentOnce", { exact: false })).toBeNull();
 });
 
 test.each([
@@ -298,15 +336,16 @@ test("HEIC は受け付けない(ブラウザで読めない)", () => {
   expect(accept.split(",")).toEqual(["image/jpeg", "image/png", "image/webp"]);
 });
 
-test("外すと null を渡し、プレビューの URL を放す", () => {
+test("外すと null を渡す。プレビューの URL は放さない(値を持つ親が放す。組み直しで壊さない)", () => {
   const value: CatalogReferenceValue = { id: "ref-1", previewUrl: "blob:preview", takes: ["outfit"] };
-  const { rerender, props } = renderPicker({ value });
+  const { rerender, props, unmount } = renderPicker({ value });
 
   fireEvent.click(screen.getByRole("button", { name: "catalogReferenceRemove" }));
   expect(props.onChange).toHaveBeenCalledWith(null);
 
   rerender(<CatalogReferencePicker {...props} value={null} />);
-  expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:preview");
+  unmount();
+  expect(URL.revokeObjectURL).not.toHaveBeenCalled();
 });
 
 test("「使える見本・使えない見本」をあとから見返せる(見返しても上げない・「次からは出ません」は出さない)", async () => {
@@ -323,7 +362,7 @@ test("「使える見本・使えない見本」をあとから見返せる(見�
 });
 
 test("同意の無い人が見返して「わかりました」を押しても、同意にはしない(選んだら同意の画面を出す)", async () => {
-  renderPicker({ consented: false });
+  renderPicker(FIRST_TIME);
   fireEvent.click(screen.getByRole("button", { name: "catalogReferenceConsentTitle" }));
   agree();
   await waitFor(() => expect(consentSheet()).toBeNull());
@@ -341,8 +380,8 @@ describe("「先行公開」の案内", () => {
     window.localStorage.removeItem(INTRO_SEEN_KEY);
   });
 
-  test("有効な同意が無く、まだ見ていない人に出す。閉じたら本人の印を残す", async () => {
-    renderPicker({ consented: false });
+  test("一度も同意したことが無く、まだ見ていない人に出す。閉じたら本人の印を残す", async () => {
+    renderPicker(FIRST_TIME);
 
     expect(screen.getByTestId("catalog-reference-intro-sheet")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "catalogReferenceIntroTry" }));
@@ -353,20 +392,20 @@ describe("「先行公開」の案内", () => {
 
   test("見た印は本人ごと(同じ端末のほかの人の印では出しやめない)", () => {
     window.localStorage.setItem("persta:catalog-reference-intro-seen-v1:someone-else", "1");
-    renderPicker({ consented: false });
+    renderPicker(FIRST_TIME);
 
     expect(screen.getByTestId("catalog-reference-intro-sheet")).toBeTruthy();
   });
 
   test("一度見た人には出さない", () => {
     window.localStorage.setItem(INTRO_SEEN_KEY, "1");
-    renderPicker({ consented: false });
+    renderPicker(FIRST_TIME);
 
     expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull();
   });
 
   test("ほかのタブで見たら、このタブでも閉じる", async () => {
-    renderPicker({ consented: false });
+    renderPicker(FIRST_TIME);
     expect(screen.getByTestId("catalog-reference-intro-sheet")).toBeTruthy();
 
     act(() => {
@@ -377,8 +416,8 @@ describe("「先行公開」の案内", () => {
     await waitFor(() => expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull());
   });
 
-  test("有効な同意がある人には出さない", () => {
-    renderPicker({ consented: true });
+  test("一度でも同意した人には出さない(作り直しで同意が無効になっていても)", () => {
+    renderPicker({ consented: false, consentedBefore: true });
 
     expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull();
   });

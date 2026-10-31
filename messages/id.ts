@@ -1624,6 +1624,7 @@ export const idMessages = {
     catalogReferenceConsentOnce: "Ini tidak akan muncul lagi.",
     catalogReferenceConsentGuidelines: "Lihat pedoman komunitas",
     catalogReferenceIntroTitle: "Ambil pakaian dan pose dari gambar referensi",
+    catalogReferenceIntroReference: "Referensi",
     catalogReferenceIntroResult: "Hasil",
     catalogReferenceIntroStep1: "Tambahkan gambar referensi dan pilih yang mau diambil (pakaian, pose, sudut, latar).",
     catalogReferenceIntroStep3: "Tim kami memeriksanya sebelum ditampilkan ke semua orang. Selama diperiksa, kamu tetap bisa memakai katalog ini.",

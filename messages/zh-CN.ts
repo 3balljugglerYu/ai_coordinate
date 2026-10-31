@@ -1619,6 +1619,7 @@ export const zhCnMessages = {
     catalogReferenceConsentOnce: "下次不再显示。",
     catalogReferenceConsentGuidelines: "查看社区准则",
     catalogReferenceIntroTitle: "可以从参考图借鉴服装和姿势",
+    catalogReferenceIntroReference: "参考图",
     catalogReferenceIntroResult: "成品",
     catalogReferenceIntroStep1: "放入参考图，选择要借鉴的内容（服装、姿势、角度、背景）。",
     catalogReferenceIntroStep3: "在向所有人公开之前，运营团队会进行确认。确认期间你也可以继续使用这个目录。",

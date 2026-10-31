@@ -62,6 +62,7 @@ import {
   setGuestGeneration,
 } from "@/features/wardrobe/lib/guest-generation-store";
 import { trackMonetizationEventOnce } from "@/features/monetization/lib/track-monetization-event";
+import type { CatalogReferenceAccess } from "@/features/catalog-references/types";
 
 interface GenerationFormContainerProps {
   subscriptionPlan: SubscriptionPlan;
@@ -97,12 +98,8 @@ interface GenerationFormContainerProps {
   gachaSplitAvailable?: boolean;
   /** 「名前を入れられるようにする」を出してよいか。GenerationForm の同名 props を参照 */
   nameInputAvailable?: boolean;
-  /** 見本(参照画像)の欄を出すか(見本を使える人だけ。/free のサーバーで一覧を確かめて渡す) */
-  catalogReferenceAvailable?: boolean;
-  /** 見本の有効な同意がサーバーにあるか(無いときだけ同意の画面と案内を出す。/free のサーバーで確かめて渡す) */
-  catalogReferenceConsented?: boolean;
-  /** 本人の ID(見本の案内を見た印を本人ごとに分ける。見本を使える人のときだけ渡す) */
-  catalogReferenceUserId?: string;
+  /** 見本(参照画像)の欄に要る値(見本を使える人だけ。/free のサーバーで一覧を確かめて渡す)。GenerationForm の同名 props を参照 */
+  catalogReference?: CatalogReferenceAccess;
   /** 名前の欄の数を制限しない(運営だけ) */
   nameInputUnlimited?: boolean;
   /** カタログから使う人の名前の欄。GenerationForm の同名 props を参照 */
@@ -204,9 +201,7 @@ export function GenerationFormContainer({
   gachaSplitAvailable = false,
   nameInputAvailable = false,
   nameInputUnlimited = false,
-  catalogReferenceAvailable = false,
-  catalogReferenceConsented = false,
-  catalogReferenceUserId,
+  catalogReference,
   lockedNameInput = null,
   lockedNameInputLoading = false,
   gachaUnlimited = false,
@@ -1308,9 +1303,7 @@ export function GenerationFormContainer({
         gachaPromptAvailable={gachaPromptAvailable}
         gachaSplitAvailable={gachaSplitAvailable}
         nameInputAvailable={nameInputAvailable}
-        catalogReferenceAvailable={catalogReferenceAvailable}
-        catalogReferenceConsented={catalogReferenceConsented}
-        catalogReferenceUserId={catalogReferenceUserId}
+        catalogReference={catalogReference}
         nameInputUnlimited={nameInputUnlimited}
         lockedNameInput={lockedNameInput}
         lockedNameInputLoading={lockedNameInputLoading}

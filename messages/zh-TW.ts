@@ -1619,6 +1619,7 @@ export const zhTwMessages = {
     catalogReferenceConsentOnce: "下次不再顯示。",
     catalogReferenceConsentGuidelines: "查看社群守則",
     catalogReferenceIntroTitle: "可以從參考圖借鑑服裝和姿勢",
+    catalogReferenceIntroReference: "參考圖",
     catalogReferenceIntroResult: "成品",
     catalogReferenceIntroStep1: "放入參考圖，選擇要借鑑的內容（服裝、姿勢、角度、背景）。",
     catalogReferenceIntroStep3: "在向所有人公開之前，營運團隊會進行確認。確認期間你也可以繼續使用這個目錄。",

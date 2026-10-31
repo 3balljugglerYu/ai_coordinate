@@ -1625,6 +1625,7 @@ export const itMessages = {
     catalogReferenceConsentOnce: "Non lo vedrai più.",
     catalogReferenceConsentGuidelines: "Vedi le linee guida della community",
     catalogReferenceIntroTitle: "Riprendi outfit e pose da un’immagine di riferimento",
+    catalogReferenceIntroReference: "Riferimento",
     catalogReferenceIntroResult: "Risultato",
     catalogReferenceIntroStep1: "Aggiungi un’immagine di riferimento e scegli cosa riprendere (outfit, posa, angolazione, sfondo).",
     catalogReferenceIntroStep3: "Il nostro team la controlla prima che sia visibile a tutti. Nel frattempo puoi continuare a usare questo catalogo.",

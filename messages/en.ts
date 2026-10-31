@@ -1622,6 +1622,7 @@ export const enMessages = {
     catalogReferenceConsentOnce: "You won’t see this again.",
     catalogReferenceConsentGuidelines: "See the community guidelines",
     catalogReferenceIntroTitle: "Borrow outfits and poses from a reference image",
+    catalogReferenceIntroReference: "Reference",
     catalogReferenceIntroResult: "Result",
     catalogReferenceIntroStep1: "Add a reference image and choose what to borrow (outfit, pose, angle, background).",
     catalogReferenceIntroStep3: "Our team checks it before it’s shown to everyone. You can keep using the catalog while it’s being checked.",

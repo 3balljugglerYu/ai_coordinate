@@ -1621,6 +1621,7 @@ export const koMessages = {
     catalogReferenceConsentOnce: "다음부터는 표시되지 않습니다.",
     catalogReferenceConsentGuidelines: "커뮤니티 가이드라인 보기",
     catalogReferenceIntroTitle: "참고 이미지에서 의상과 포즈를 가져올 수 있습니다",
+    catalogReferenceIntroReference: "참고 이미지",
     catalogReferenceIntroResult: "완성",
     catalogReferenceIntroStep1: "참고 이미지를 넣고 가져올 것(의상·포즈·앵글·배경)을 고릅니다.",
     catalogReferenceIntroStep3: "모두에게 공개하기 전에 운영팀이 확인합니다. 확인하는 동안에도 이 카탈로그를 사용할 수 있습니다.",

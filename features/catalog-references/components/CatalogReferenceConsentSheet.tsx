@@ -15,7 +15,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
-  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -23,14 +22,17 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
+import { SheetCloseButton } from "./SheetCloseButton";
 
 interface CatalogReferenceConsentSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** 「わかりました」を押した(見るだけのときは閉じるだけ) */
   onAgree: () => void;
-  /** consent: 見本を初めて選んだ直後(同意を取る) / view: あとから見返す */
+  /** consent: 見本を選んだ直後(同意を取る) / view: あとから見返す */
   mode: "consent" | "view";
+  /** 「次からは出ません」を出すか(一度も同意したことが無い人の、初めての同意のときだけ) */
+  showOnceNote: boolean;
 }
 
 type Example = { icon: LucideIcon; label: string };
@@ -58,6 +60,7 @@ export function CatalogReferenceConsentSheet({
   onOpenChange,
   onAgree,
   mode,
+  showOnceNote,
 }: CatalogReferenceConsentSheetProps) {
   const t = useTranslations("free");
   const localeValue = useLocale();
@@ -92,7 +95,7 @@ export function CatalogReferenceConsentSheet({
             {t("catalogReferenceConsentAgree")}
           </Button>
           <p className="text-center text-xs text-muted-foreground">
-            {mode === "consent" ? `${t("catalogReferenceConsentOnce")} ` : null}
+            {mode === "consent" && showOnceNote ? `${t("catalogReferenceConsentOnce")} ` : null}
             <a
               href={localizePublicPath("/community-guidelines", locale)}
               target="_blank"
@@ -147,16 +150,5 @@ function ExampleRow({
         ))}
       </ul>
     </section>
-  );
-}
-
-/** 同意しないで閉じるボタン(押せる広さ 44px・読み上げは各言語の文言) */
-export function SheetCloseButton({ label }: { label: string }) {
-  return (
-    <SheetClose asChild>
-      <Button type="button" variant="ghost" size="icon" className="-mr-2 -mt-2 h-11 w-11 flex-none" aria-label={label}>
-        <X className="h-5 w-5" />
-      </Button>
-    </SheetClose>
   );
 }

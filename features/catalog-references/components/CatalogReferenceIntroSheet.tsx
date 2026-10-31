@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { REFERENCE_STRIPES_CLASS } from "./reference-styles";
-import { SheetCloseButton } from "./CatalogReferenceConsentSheet";
+import { SheetCloseButton } from "./SheetCloseButton";
 
 interface CatalogReferenceIntroSheetProps {
   open: boolean;
@@ -60,7 +60,7 @@ export function CatalogReferenceIntroSheet({ open, onOpenChange }: CatalogRefere
                 REFERENCE_STRIPES_CLASS,
               )}
             >
-              {t("catalogReferenceImageAlt")}
+              {t("catalogReferenceIntroReference")}
             </span>
             <ArrowRight className="h-4 w-4 flex-none text-muted-foreground" />
             <span className="flex aspect-[3/4] w-20 items-center justify-center rounded-lg bg-gradient-to-b from-pink-100 to-orange-100 text-xs text-gray-800">

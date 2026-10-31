@@ -8,7 +8,8 @@
  *  - 見本を使える人(サーバーで一覧を確かめた人)の、じゆうモードの自分で書く本文にだけ出す
  *    (派生生成・コーディネート・使えない人には出さない。出さない人の画像の欄は今のまま)
  *  - 見本を使える人は、うちの子と見本の2枚並べ(第2案)。うちの子の欄は見出しを消して縦長にする
- *  - 同意済みか(サーバーで確かめた値)を、そのまま渡す
+ *  - 本人の ID・同意の状態(サーバーで確かめた値)を、そのまま渡す
+ *  - 見本のプレビューの blob URL は、値を持つここで、外したときに放す
  *  - まねるものの欄は、見本を入れたときだけ出す
  *  - 見本を選んだときだけ、id とまねるものを送る
  *  - 上げている間と、まねるものが0個のときは送らない
@@ -31,6 +32,9 @@ jest.mock("@/features/catalog-references/components/CatalogReferencePicker", () 
         </button>
         <button type="button" onClick={() => props.onUploadingChange(true)}>
           mock-uploading
+        </button>
+        <button type="button" onClick={() => props.onChange(null)}>
+          mock-remove-reference
         </button>
       </div>
     );
@@ -218,8 +222,7 @@ function renderForm(onSubmit: jest.Mock, props: Partial<React.ComponentProps<typ
       subscriptionPlan="free"
       onSubmit={onSubmit}
       mode="free"
-      catalogReferenceAvailable
-      catalogReferenceUserId="user-1"
+      catalogReference={{ userId: "user-1", consented: false, consentedBefore: false }}
       {...props}
     />,
   );
@@ -237,7 +240,7 @@ describe("見本の欄の出し分け", () => {
   });
 
   test("見本を使える人の、じゆうモードの自分で書く本文には、うちの子と見本の2枚並べを出す", () => {
-    renderForm(jest.fn(), { catalogReferenceConsented: true });
+    renderForm(jest.fn(), { catalogReference: { userId: "user-1", consented: true, consentedBefore: true } });
 
     expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
     expect(screen.getByText("catalogReferenceImagesLabel")).toBeTruthy();
@@ -248,12 +251,16 @@ describe("見本の欄の出し分け", () => {
       hideLabel: true,
       aspectRatio: 3 / 4,
     });
-    expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({ consented: true, userId: "user-1", value: null });
+    expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({
+      consented: true,
+      consentedBefore: true,
+      userId: "user-1",
+      value: null,
+    });
   });
 
   test.each([
-    ["見本を使えない人", { catalogReferenceAvailable: false }],
-    ["本人の ID が渡っていない", { catalogReferenceUserId: undefined }],
+    ["見本を使えない人(値が渡っていない)", { catalogReference: undefined }],
     ["コーディネート", { mode: "coordinate" as const }],
     ["派生生成(本文が施錠されている)", { promptLocked: true, sourcePostId: "post-1", lockedPromptText: "" }],
     ["ログインしていない", { authState: "guest" as const }],
@@ -274,6 +281,19 @@ describe("見本の欄の出し分け", () => {
     await user.click(screen.getByText("mock-pick-reference"));
 
     expect(screen.getByTestId("mock-reference-takes")).toBeTruthy();
+  });
+
+  test("見本を外したら、そのプレビューの blob URL を放す", async () => {
+    const revoke = jest.fn();
+    Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revoke });
+    const user = userEvent.setup();
+    renderForm(jest.fn());
+    await user.click(screen.getByText("mock-pick-reference"));
+    expect(revoke).not.toHaveBeenCalledWith("blob:r");
+
+    await user.click(screen.getByText("mock-remove-reference"));
+
+    expect(revoke).toHaveBeenCalledWith("blob:r");
   });
 });
 

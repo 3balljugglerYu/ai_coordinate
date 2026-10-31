@@ -1578,6 +1578,7 @@ export const jaMessages = {
     catalogReferenceConsentOnce: "次からは出ません。",
     catalogReferenceConsentGuidelines: "くわしくはガイドライン",
     catalogReferenceIntroTitle: "見本の画像から、衣装やポーズをまねできます",
+    catalogReferenceIntroReference: "見本",
     catalogReferenceIntroResult: "できあがり",
     catalogReferenceIntroStep1: "見本の画像を入れて、まねるもの（衣装・ポーズ・アングル・背景）を選びます。",
     catalogReferenceIntroStep3: "みんなに公開する前に、運営が確認します。確認中も、あなたはこのカタログを使えます。",

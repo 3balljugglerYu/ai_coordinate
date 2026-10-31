@@ -5,16 +5,17 @@ import { createAdminClient } from "@/lib/supabase/admin";
  * 見本の「使える見本・使えない見本」への同意(catalog_reference_consents)。
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md §10
  *
- * - 同意の画面は、見本を初めて選んだときだけ出す。「わかりました」を押した時刻を本人ごとに1行残す
- * - 本人の見本が、同意のあとに作り直しになったら、同意はもう一度要る(同意の画面をもう一度出す)
+ * - 同意の画面は、有効な同意が無い人にだけ出す。「わかりました」を押した時刻を本人ごとに1行残す(時刻は DB の now())
+ * - 本人の見本が作り直しになったら、DB のトリガーが同じトランザクションで同意を無効にする(revoked_at)。
+ *   無効の間は同意がもう一度要る。もう一度同意すると無効の印が外れる
  * - 書くのも読むのもサーバー(service role)だけ
  */
 
 export type CatalogReferenceConsentState = {
-  /** いちばん新しく同意した時刻。同意したことが無ければ null */
+  /** 有効な同意の時刻。同意が無い・無効になっているときは null */
   consentedAt: Date | null;
-  /** 同意の画面を出す必要があるか(同意が無い・同意のあとに本人の見本が作り直しになった) */
-  needsConsent: boolean;
+  /** 一度でも同意したことがあるか(「先行公開」の案内や「次からは出ません」を出すかに使う) */
+  consentedBefore: boolean;
 };
 
 function getSupabase(client?: SupabaseClient): SupabaseClient {
@@ -26,62 +27,50 @@ export async function getCatalogReferenceConsentState(
   userId: string,
   client?: SupabaseClient,
 ): Promise<CatalogReferenceConsentState> {
-  const supabase = getSupabase(client);
-  const [consent, rejected] = await Promise.all([
-    supabase.from("catalog_reference_consents").select("consented_at").eq("user_id", userId).maybeSingle(),
-    supabase
-      .from("catalog_reference_images")
-      .select("rejected_at")
-      .eq("user_id", userId)
-      .not("rejected_at", "is", null)
-      .order("rejected_at", { ascending: false })
-      .limit(1),
-  ]);
-  if (consent.error || rejected.error) {
-    console.error(
-      "[catalog-references] consent state error:",
-      consent.error?.message ?? rejected.error?.message,
-    );
+  const { data, error } = await getSupabase(client)
+    .from("catalog_reference_consents")
+    .select("consented_at, revoked_at")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) {
+    console.error("[catalog-references] consent state error:", error.message);
     throw new Error("見本の同意の確認に失敗しました");
   }
-
-  const consentRow = consent.data as { consented_at: string } | null;
-  const consentedAt = consentRow ? new Date(consentRow.consented_at) : null;
-  const latestRejected = ((rejected.data ?? [])[0] as { rejected_at: string } | undefined)?.rejected_at;
-  const rejectedAfterConsent =
-    consentedAt !== null && latestRejected !== undefined && new Date(latestRejected) > consentedAt;
-  return { consentedAt, needsConsent: consentedAt === null || rejectedAfterConsent };
+  const row = data as { consented_at: string; revoked_at: string | null } | null;
+  return {
+    consentedAt: row && row.revoked_at === null ? new Date(row.consented_at) : null,
+    consentedBefore: row !== null,
+  };
 }
 
 /**
- * 同意の画面を出さなくてよいか(/free で、同意の画面と案内を出すかを決める)。
- * DB のエラーは false(同意の画面をもう一度出す。安全なほうに倒す)
+ * /free で、同意の画面と案内を出すかを決めるための値。
+ * DB のエラーは「同意なし・初めて」として扱う(同意の画面をもう一度出す。安全なほうに倒す)
  */
-export async function hasCatalogReferenceConsent(
+export async function getCatalogReferenceConsentSummary(
   userId: string,
   client?: SupabaseClient,
-): Promise<boolean> {
+): Promise<{ consented: boolean; consentedBefore: boolean }> {
   try {
-    return !(await getCatalogReferenceConsentState(userId, client)).needsConsent;
+    const state = await getCatalogReferenceConsentState(userId, client);
+    return { consented: state.consentedAt !== null, consentedBefore: state.consentedBefore };
   } catch (e) {
     console.warn("[catalog-references] consent check failed:", e);
-    return false;
+    return { consented: false, consentedBefore: false };
   }
 }
 
-/** 「わかりました」を押した時刻を残す(もう一度同意したら書き換える)。DB のエラーは投げる */
+/** 「わかりました」を押したことを残す(もう一度押したら時刻を書き換え、無効の印を外す)。DB のエラーは投げる */
 export async function recordCatalogReferenceConsent(
   userId: string,
   client?: SupabaseClient,
 ): Promise<Date> {
-  const { data, error } = await getSupabase(client)
-    .from("catalog_reference_consents")
-    .upsert({ user_id: userId, consented_at: new Date().toISOString() }, { onConflict: "user_id" })
-    .select("consented_at")
-    .single();
-  if (error || !data) {
-    console.error("[catalog-references] consent record error:", error?.message);
+  const { data, error } = await getSupabase(client).rpc("record_catalog_reference_consent", {
+    p_user_id: userId,
+  });
+  if (error || typeof data !== "string") {
+    console.error("[catalog-references] consent record error:", error?.message ?? "no time returned");
     throw new Error("見本の同意を残せませんでした");
   }
-  return new Date((data as { consented_at: string }).consented_at);
+  return new Date(data);
 }
