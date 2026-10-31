@@ -17,6 +17,7 @@ import {
 } from "./creator-looks-prompt.ts";
 import {
   CATALOG_REFERENCE_UNAVAILABLE,
+  isAuthorInputMissing,
   resolveCatalogReferenceForJob,
 } from "./catalog-reference.ts";
 import type { GenerationType } from "../../../shared/generation/prompt-core.ts";
@@ -2049,8 +2050,10 @@ Deno.serve(async () => {
             const requiresProviderPrompt =
               job.generation_type === "one_tap_style";
 
+            // 見本つきのカタログ(「イラストから」)は本文なしで作れるので、見本を解決できたときだけ空文字を許す
             if (
-              (requiresAuthorInput && !promptExecution?.authorInput) ||
+              (requiresAuthorInput &&
+                isAuthorInputMissing(promptExecution?.authorInput, catalogReference !== null)) ||
               (requiresProviderPrompt && !promptExecution?.providerPrompt)
             ) {
               throw new Error(GENERATION_PROMPT_EXECUTION_MISSING);
@@ -2286,7 +2289,8 @@ Deno.serve(async () => {
             const resolvedInput = (resolved as { author_input?: string } | null)
               ?.author_input;
 
-            if (!resolvedInput) {
+            // 見本つきの作品は本文なしで作れる(「イラストから」)ので、見本を解決できたときだけ空文字を許す
+            if (resolvedInput == null || isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
               throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
 
@@ -2569,6 +2573,8 @@ Deno.serve(async () => {
                       framingMode: getFramingModeFromGenerationMetadata(
                         job.generation_metadata,
                       ),
+                      // 見本つきのカタログは本文なしで作れる(錨のあとに、下で見本の指示文を足す)
+                      allowEmptyDescription: catalogReference !== null,
                     });
                   }
                   // 見本(参照画像)つきのカタログ: 作者のプロンプトの後ろに、まねるものと

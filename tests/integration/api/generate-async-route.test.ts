@@ -615,6 +615,34 @@ describe("GenerateAsyncRoute integration tests from EARS specs", () => {
           );
         });
 
+        test("見本つき(「イラストから」)なら本文なしで受け付け、本文は空文字で残す", async () => {
+          const response = await runFree({ prompt: "", referenceImageId: REFERENCE_ID, referenceTakes: ["outfit"] });
+
+          expect(response.status).toBe(200);
+          const [job, promptExecution] = (jobRepository.createImageJob as jest.Mock).mock.calls[0] as [
+            Record<string, unknown>,
+            Record<string, unknown>,
+          ];
+          expect(job).toMatchObject({ catalog_reference_id: REFERENCE_ID });
+          expect(promptExecution).toMatchObject({ kind: "materialized", authorInput: "", authorInputOwnerId: "user-123" });
+        });
+
+        test("本文を送らなくても、見本つきなら空文字で残す", async () => {
+          const response = await runFree({ prompt: undefined, referenceImageId: REFERENCE_ID, referenceTakes: ["outfit"] });
+
+          expect(response.status).toBe(200);
+          const promptExecution = (jobRepository.createImageJob as jest.Mock).mock.calls[0][1] as Record<string, unknown>;
+          expect(promptExecution).toMatchObject({ authorInput: "" });
+        });
+
+        test("見本なしで本文が空なら、今までどおり断る", async () => {
+          const response = await runFree({ prompt: "" });
+
+          expect(response.status).toBe(400);
+          expect((await readJson(response)).errorCode).toBe("GENERATION_INVALID_REQUEST");
+          expect(jobRepository.createImageJob).not.toHaveBeenCalled();
+        });
+
         test("見本を使わない依頼では、見本の確かめをせず、ジョブにも入れない", async () => {
           const response = await runFree({});
 

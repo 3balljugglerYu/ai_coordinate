@@ -18,7 +18,6 @@
  *  - 上げられなければ、言語ごとの文言で理由を出して何も渡さない(手元で断った・API が断った・通信が切れた)
  *  - HEIC は受け付けない。外すと null を渡す(プレビューの URL を放すのは、値を持つ親)
  *  - 「使える見本・使えない見本」は、あとから見返せる(見返しても上げない・同意にもしない)
- *  - 「先行公開」の案内は、一度も同意したことが無く、まだ見ていない人にだけ1回出す(見た印は本人ごと。ほかのタブの印にも合わせる)
  */
 
 // 文言はキーのまま返す。差し込む値(小さすぎるときの下限)は「キー:値」にして、渡っていることを確かめる
@@ -38,13 +37,11 @@ jest.mock("@/features/catalog-references/lib/prepare-reference-image", () => ({
   prepareCatalogReferenceImage: (file: File) => mockPrepare(file),
 }));
 
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
 import type { CatalogReferenceValue } from "@/features/catalog-references/types";
 import { ReferenceImageError } from "@/features/catalog-references/lib/prepare-reference-image";
 
-const USER_ID = "user-1";
-const INTRO_SEEN_KEY = `persta:catalog-reference-intro-seen-v1:${USER_ID}`;
 const CONSENT_URL = "/api/catalog-references/consent";
 const UPLOAD_URL = "/api/catalog-references";
 
@@ -87,8 +84,6 @@ beforeEach(() => {
   global.fetch = fetchMock as unknown as typeof fetch;
   Object.defineProperty(URL, "createObjectURL", { configurable: true, value: jest.fn(() => "blob:preview") });
   Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: jest.fn() });
-  // 案内は見たことにしておく(案内のテストだけ消す)
-  window.localStorage.setItem(INTRO_SEEN_KEY, "1");
 });
 
 type PickerProps = React.ComponentProps<typeof CatalogReferencePicker>;
@@ -100,7 +95,6 @@ function renderPicker(props: Partial<PickerProps> = {}) {
     onChange: jest.fn(),
     consented: true,
     consentedBefore: true,
-    userId: USER_ID,
     ...props,
   };
   const utils = render(<CatalogReferencePicker {...merged} />);
@@ -380,52 +374,4 @@ test("同意の無い人が見返して「わかりました」を押しても�
   expect(consentSheet()).toBeTruthy();
   expect(screen.getByText("catalogReferenceConsentOnce", { exact: false })).toBeTruthy();
   expect(fetchMock).not.toHaveBeenCalled();
-});
-
-describe("「先行公開」の案内", () => {
-  beforeEach(() => {
-    window.localStorage.removeItem(INTRO_SEEN_KEY);
-  });
-
-  test("一度も同意したことが無く、まだ見ていない人に出す。閉じたら本人の印を残す", async () => {
-    renderPicker(FIRST_TIME);
-
-    expect(screen.getByTestId("catalog-reference-intro-sheet")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "catalogReferenceIntroTry" }));
-
-    await waitFor(() => expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull());
-    expect(window.localStorage.getItem(INTRO_SEEN_KEY)).toBe("1");
-  });
-
-  test("見た印は本人ごと(同じ端末のほかの人の印では出しやめない)", () => {
-    window.localStorage.setItem("persta:catalog-reference-intro-seen-v1:someone-else", "1");
-    renderPicker(FIRST_TIME);
-
-    expect(screen.getByTestId("catalog-reference-intro-sheet")).toBeTruthy();
-  });
-
-  test("一度見た人には出さない", () => {
-    window.localStorage.setItem(INTRO_SEEN_KEY, "1");
-    renderPicker(FIRST_TIME);
-
-    expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull();
-  });
-
-  test("ほかのタブで見たら、このタブでも閉じる", async () => {
-    renderPicker(FIRST_TIME);
-    expect(screen.getByTestId("catalog-reference-intro-sheet")).toBeTruthy();
-
-    act(() => {
-      window.localStorage.setItem(INTRO_SEEN_KEY, "1");
-      window.dispatchEvent(new StorageEvent("storage", { key: INTRO_SEEN_KEY, newValue: "1" }));
-    });
-
-    await waitFor(() => expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull());
-  });
-
-  test("一度でも同意した人には出さない(作り直しで同意が無効になっていても)", () => {
-    renderPicker({ consented: false, consentedBefore: true });
-
-    expect(screen.queryByTestId("catalog-reference-intro-sheet")).toBeNull();
-  });
 });

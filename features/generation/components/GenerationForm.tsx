@@ -20,6 +20,8 @@ import { GachaPromptField } from "./GachaPromptField";
 import { NamePromptField } from "./NamePromptField";
 import { NameInputEntryField } from "./NameInputEntryField";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
+import { CatalogReferenceIntro } from "@/features/catalog-references/components/CatalogReferenceIntro";
+import { CatalogTabBar } from "@/features/style-presets/components/CatalogTabBar";
 import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
@@ -344,12 +346,18 @@ export function GenerationForm({
     isFree && !promptLocked && isAuthenticated && catalogReferenceAccess !== undefined;
   // 見本の欄に渡す値(使えるときだけ)。値があるかを1か所で確かめ、そのまま渡す
   const referenceAccess = canUseCatalogReference ? catalogReferenceAccess : undefined;
+  // 見本を使える人だけ、「プロンプトから」「イラストから」のタブで作り方を選ぶ(既定はプロンプトから)
+  const [createMode, setCreateMode] = useState<"prompt" | "reference">("prompt");
+  // 「イラストから」のタブで作っているときだけの見本の値。見本の欄・まねるもの・送る値はこれで出し分ける
+  const activeReference = createMode === "reference" ? referenceAccess : undefined;
+  const usingReference = activeReference !== undefined;
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
-  // 上げている間と、見本を選んだのにまねるものが無いときは送らない
+  // 「イラストから」は、見本を入れてまねるものを1つ以上選ぶまで送らない(上げている間も送らない)。
+  // プロンプトは、なくてもよい
   const catalogReferenceBlocksSubmit =
-    canUseCatalogReference &&
-    (isCatalogReferenceUploading || (catalogReference !== null && catalogReference.takes.length === 0));
+    usingReference &&
+    (isCatalogReferenceUploading || catalogReference === null || catalogReference.takes.length === 0);
   const [nameSlotState, setNameSlotState] = useState<NameInputSlot | null>(null);
   const nameSlot = canUseNameInput ? nameSlotState : null;
   // 送る本文(目印＋本文＋ガチャの欄)。数と必須の判定は、これをサーバーと同じ数え方で見る
@@ -533,7 +541,8 @@ export function GenerationForm({
     const bodyPrompt = resolveSubmittedPrompt(promptLocked, prompt);
 
     if (!promptLocked) {
-      if (!bodyPrompt) {
+      // 「イラストから」はプロンプトなしで作れる(見本とまねるものだけで指示になる)
+      if (!bodyPrompt && !usingReference) {
         alert(t("missingPrompt"));
         return;
       }
@@ -594,8 +603,8 @@ export function GenerationForm({
         ...((hasReachableNameSlot || showsLockedNameInput) && trialNameCheck.ok && trialNameCheck.value
           ? { nameInput: trialNameCheck.value }
           : {}),
-        // 見本を選んだときだけ送る
-        ...(canUseCatalogReference && catalogReference
+        // 「イラストから」のタブで見本を選んだときだけ送る(「プロンプトから」に戻したら送らない)
+        ...(usingReference && catalogReference
           ? { referenceImageId: catalogReference.id, referenceTakes: catalogReference.takes }
           : {}),
       });
@@ -624,6 +633,7 @@ export function GenerationForm({
     isGenerationSubmitDisabled({
       promptLocked,
       prompt,
+      promptOptional: usingReference,
       isPromptTooLong,
       hasSourceImage,
       isGenerating,
@@ -871,12 +881,32 @@ export function GenerationForm({
   return (
     <Card className="p-6">
       <div className="space-y-6">
+        {/* 見本を使える人だけ、何で作るかをタブで選ぶ(一般の人の画面は今のまま) */}
+        {referenceAccess ? (
+          <>
+            <CatalogTabBar
+              tabs={[
+                { id: "prompt", label: freeT("createTabPrompt") },
+                { id: "reference", label: freeT("createTabReference") },
+              ]}
+              activeId={createMode}
+              onSelect={setCreateMode}
+              ariaLabel={freeT("createTabsLabel")}
+            />
+            <CatalogReferenceIntro
+              userId={referenceAccess.userId}
+              consentedBefore={referenceAccess.consentedBefore}
+              onTry={() => setCreateMode("reference")}
+            />
+          </>
+        ) : null}
+
         {/* 画像入力エリア: アップローダ常時表示 + ピッカートリガ */}
         <div className="space-y-3">
           <Label className="text-base font-medium block">
-            {referenceAccess ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
+            {activeReference ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
           </Label>
-          {referenceAccess ? (
+          {activeReference ? (
             // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す)
             <CatalogReferencePicker
               ownImage={renderSourceImageUploader({
@@ -888,9 +918,8 @@ export function GenerationForm({
               onChange={setCatalogReference}
               onUploadingChange={setIsCatalogReferenceUploading}
               disabled={isGenerating}
-              consented={referenceAccess.consented}
-              consentedBefore={referenceAccess.consentedBefore}
-              userId={referenceAccess.userId}
+              consented={activeReference.consented}
+              consentedBefore={activeReference.consentedBefore}
             />
           ) : (
             renderSourceImageUploader()
@@ -909,8 +938,8 @@ export function GenerationForm({
           />
         </div>
 
-        {/* 見本から、まねるもの(見本を入れたときだけ。画像の欄の下) */}
-        {canUseCatalogReference && catalogReference ? (
+        {/* 見本から、まねるもの(「イラストから」で見本を入れたときだけ。画像の欄の下) */}
+        {usingReference && catalogReference ? (
           <CatalogReferenceTakes
             value={catalogReference}
             onChange={setCatalogReference}
@@ -973,7 +1002,8 @@ export function GenerationForm({
           // 非公開なら本文が来ないので空のままプレースホルダが出る。
           value={promptLocked ? lockedPromptText ?? "" : prompt}
           onChange={promptLocked ? () => {} : handlePromptChange}
-          label={promptLabel}
+          // 「イラストから」ではプロンプトはなくてもよいので、見出しで伝える
+          label={usingReference ? freeT("referencePromptLabel") : promptLabel}
           placeholder={promptPlaceholder}
           clearLabel={t("promptClear")}
           characterCount={

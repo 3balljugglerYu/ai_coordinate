@@ -44,6 +44,22 @@ describe("通常モードの生成ボタン", () => {
   });
 });
 
+describe("プロンプトが空でもよいとき(見本つきの「イラストから」)の生成ボタン", () => {
+  it("本文が空でも、画像があれば押せる", () => {
+    expect(isGenerationSubmitDisabled({ ...BASE, promptOptional: true, prompt: "" })).toBe(false);
+  });
+
+  it("本文が上限超過なら押せない", () => {
+    expect(
+      isGenerationSubmitDisabled({ ...BASE, promptOptional: true, prompt: "あ", isPromptTooLong: true })
+    ).toBe(true);
+  });
+
+  it("元の画像が無ければ押せない", () => {
+    expect(isGenerationSubmitDisabled({ ...BASE, promptOptional: true, hasSourceImage: false })).toBe(true);
+  });
+});
+
 describe("施錠モードの生成ボタン", () => {
   it("本文が空でも画像があれば押せる", () => {
     // 本文必須のままにすると、施錠モードでは永久に押せない

@@ -130,6 +130,12 @@ export interface BuildPromptOptions {
    * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
    */
   framingMode?: FramingMode;
+  /**
+   * 本文が空でもよいか(じゆうモードだけ)。見本つきのカタログ(「イラストから」)は本文なしで作れるので、
+   * worker は見本があるときだけ true にする。true で本文が空なら、錨だけを返す(見本の指示文は worker が足す)。
+   * 省略時は今までどおり、空なら投げる
+   */
+  allowEmptyDescription?: boolean;
 }
 
 /**
@@ -170,10 +176,12 @@ export function buildPrompt(options: BuildPromptOptions): string {
     sourceImageType = "illustration",
     templates,
     framingMode,
+    allowEmptyDescription = false,
   } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
+  const emptyAllowed = allowEmptyDescription && generationType === "free";
 
-  if (!sanitizedDescription || sanitizedDescription.length === 0) {
+  if (!emptyAllowed && (!sanitizedDescription || sanitizedDescription.length === 0)) {
     throw new Error(
       "Invalid outfit description: empty or contains only prohibited content"
     );
@@ -246,6 +254,11 @@ export function buildPrompt(options: BuildPromptOptions): string {
     // あり完全なインジェクション防止ではないため、錨側で identity 保持を最優先と明記する。
     // (背景/ポーズ等の設定分岐は持たない = coordinate の free_pose 相当を常に適用)
     const basePrefix = resolveTemplate(templates, "free.base_prefix");
+    // 見本つきのカタログ(「イラストから」)は本文なしで作れる(allowEmptyDescription)。
+    // そのときは見出しごと出さず、錨のあとに見本の指示文(worker が足す)が続くようにする
+    if (sanitizedDescription === "") {
+      return basePrefix;
+    }
     const directionLabel = resolveTemplate(
       templates,
       "free.user_direction_label",

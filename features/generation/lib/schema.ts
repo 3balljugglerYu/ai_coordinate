@@ -212,7 +212,8 @@ export const generationRequestSchema = z.object({
   }
 
   // 派生生成でなければ本文は必須。フィールドから min(1) を外した分をここで補う。
-  if (!data.sourcePostId) {
+  // 見本つき(「イラストから」)は本文なしで作れる(見本とまねるものだけで指示になる)
+  if (!data.sourcePostId && data.referenceImageId === undefined) {
     if (data.prompt === undefined || data.prompt.length < 1) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,

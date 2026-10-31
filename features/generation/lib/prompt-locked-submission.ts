@@ -12,6 +12,8 @@ export interface GenerationSubmitGateParams {
   /** プロンプトを閲覧者に入力させないモードか。 */
   promptLocked: boolean;
   prompt: string;
+  /** プロンプトが空でもよいか(見本つきの「イラストから」)。長すぎるときは押せないまま */
+  promptOptional?: boolean;
   isPromptTooLong: boolean;
   hasSourceImage: boolean;
   isGenerating: boolean;
@@ -31,6 +33,7 @@ export function isGenerationSubmitDisabled(
   const {
     promptLocked,
     prompt,
+    promptOptional = false,
     isPromptTooLong,
     hasSourceImage,
     isGenerating,
@@ -38,7 +41,7 @@ export function isGenerationSubmitDisabled(
   } = params;
 
   return (
-    (!promptLocked && (!prompt.trim() || isPromptTooLong)) ||
+    (!promptLocked && ((!promptOptional && !prompt.trim()) || isPromptTooLong)) ||
     !hasSourceImage ||
     isGenerating ||
     guestGenerationLocked

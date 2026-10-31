@@ -5,14 +5,17 @@
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 6)
  *
  * ここで守ること:
- *  - 見本を使える人(サーバーで一覧を確かめた人)の、じゆうモードの自分で書く本文にだけ出す
- *    (派生生成・コーディネート・使えない人には出さない。出さない人の画像の欄は今のまま)
- *  - 見本を使える人は、うちの子と見本の2枚並べ(第2案)。うちの子の欄は見出しを消して縦長にする
- *  - 本人の ID・同意の状態(サーバーで確かめた値)を、そのまま渡す
+ *  - 見本を使える人(サーバーで一覧を確かめた人)の、じゆうモードの自分で書く本文にだけ、
+ *    「プロンプトから」「イラストから」のタブを出す(派生生成・コーディネート・使えない人には出さず、画像の欄は今のまま)
+ *  - はじめは「プロンプトから」で、今までの作る画面(見本の欄なし・プロンプト必須)
+ *  - 「イラストから」では、うちの子と見本の2枚並べ(第2案)。うちの子の欄は見出しを読み上げだけに残して縦長にする。
+ *    同意の状態(サーバーで確かめた値)を、そのまま渡す。プロンプトの見出しは「なくてもOK」のものにする
+ *  - 「先行公開」の案内の「ためしてみる」で「イラストから」へ移る
  *  - 見本のプレビューの blob URL は、値を持つここで、外したときに放す
- *  - まねるものの欄は、見本を入れたときだけ出す
- *  - 見本を選んだときだけ、id とまねるものを送る
- *  - 上げている間と、まねるものが0個のときは送らない
+ *  - まねるものの欄は、「イラストから」で見本を入れたときだけ出す
+ *  - 「イラストから」は、見本を入れてまねるものを選べば、プロンプトなしでも送れる。見本の id とまねるものを送る
+ *  - 「イラストから」は、見本を入れるまで・上げている間・まねるものが0個のときは送らない
+ *  - 「プロンプトから」に戻したら、選んだ見本は送らず、プロンプトは今までどおり必須
  */
 
 // 見本の欄は部品のテストで確かめるので、ここでは値を渡すだけにする
@@ -39,6 +42,13 @@ jest.mock("@/features/catalog-references/components/CatalogReferencePicker", () 
       </div>
     );
   },
+}));
+jest.mock("@/features/catalog-references/components/CatalogReferenceIntro", () => ({
+  CatalogReferenceIntro: (props: { onTry: () => void }) => (
+    <button type="button" onClick={props.onTry}>
+      mock-intro-try
+    </button>
+  ),
 }));
 jest.mock("@/features/catalog-references/components/CatalogReferenceTakes", () => ({
   CatalogReferenceTakes: (props: { value: { id: string }; onChange: (value: unknown) => void }) => (
@@ -233,15 +243,34 @@ async function fillBodyAndImage(user: ReturnType<typeof userEvent.setup>) {
   fireEvent.change(screen.getByLabelText("promptLabel"), { target: { value: "冬の街を歩く様子" } });
 }
 
-describe("見本の欄の出し分け", () => {
+async function openReferenceTab(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole("tab", { name: "createTabReference" }));
+}
+
+describe("作り方のタブと見本の欄の出し分け", () => {
   beforeEach(() => {
     mockReferencePicker.mockClear();
     mockImageUploader.mockClear();
   });
 
-  test("見本を使える人の、じゆうモードの自分で書く本文には、うちの子と見本の2枚並べを出す", () => {
+  test("見本を使える人には「プロンプトから」「イラストから」のタブを出し、はじめは「プロンプトから」(今の画像の欄・見本の欄なし)", () => {
+    renderForm(jest.fn());
+
+    expect(screen.getByRole("tab", { name: "createTabPrompt" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "createTabReference" }).getAttribute("aria-selected")).toBe("false");
+    expect(screen.queryByTestId("mock-reference-picker")).toBeNull();
+    expect(screen.getByText("imageSourceLabel")).toBeTruthy();
+    expect(mockImageUploader).toHaveBeenLastCalledWith({});
+    expect(screen.getByLabelText("promptLabel")).toBeTruthy();
+  });
+
+  test("「イラストから」を押すと、うちの子と見本の2枚並べを出し、プロンプトは「なくてもOK」の見出しにする", async () => {
+    const user = userEvent.setup();
     renderForm(jest.fn(), { catalogReference: { userId: "user-1", consented: true, consentedBefore: true } });
 
+    await openReferenceTab(user);
+
+    expect(screen.getByRole("tab", { name: "createTabReference" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
     expect(screen.getByText("catalogReferenceImagesLabel")).toBeTruthy();
     // うちの子の欄は並べた中にあり、見出しは読み上げだけに残して縦長にする
@@ -254,9 +283,19 @@ describe("見本の欄の出し分け", () => {
     expect(mockReferencePicker.mock.lastCall?.[0]).toMatchObject({
       consented: true,
       consentedBefore: true,
-      userId: "user-1",
       value: null,
     });
+    expect(screen.getByLabelText("referencePromptLabel")).toBeTruthy();
+  });
+
+  test("「先行公開」の案内の「ためしてみる」で「イラストから」へ移る", async () => {
+    const user = userEvent.setup();
+    renderForm(jest.fn());
+
+    await user.click(screen.getByText("mock-intro-try"));
+
+    expect(screen.getByRole("tab", { name: "createTabReference" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByTestId("mock-reference-picker")).toBeTruthy();
   });
 
   test.each([
@@ -264,23 +303,28 @@ describe("見本の欄の出し分け", () => {
     ["コーディネート", { mode: "coordinate" as const }],
     ["派生生成(本文が施錠されている)", { promptLocked: true, sourcePostId: "post-1", lockedPromptText: "" }],
     ["ログインしていない", { authState: "guest" as const }],
-  ])("%s には出さず、画像の欄は今のまま", (_label, props) => {
+  ])("%s にはタブも見本の欄も出さず、画像の欄は今のまま", (_label, props) => {
     renderForm(jest.fn(), props);
 
+    expect(screen.queryByRole("tab", { name: "createTabReference" })).toBeNull();
+    expect(screen.queryByText("mock-intro-try")).toBeNull();
     expect(screen.queryByTestId("mock-reference-picker")).toBeNull();
     expect(screen.queryByText("catalogReferenceImagesLabel")).toBeNull();
     expect(screen.getByText("imageSourceLabel")).toBeTruthy();
     expect(mockImageUploader).toHaveBeenLastCalledWith({});
   });
 
-  test("まねるものの欄は、見本を入れたときだけ出す", async () => {
+  test("まねるものの欄は、「イラストから」で見本を入れたときだけ出す(「プロンプトから」に戻すと消す)", async () => {
     const user = userEvent.setup();
     renderForm(jest.fn());
+    await openReferenceTab(user);
     expect(screen.queryByTestId("mock-reference-takes")).toBeNull();
 
     await user.click(screen.getByText("mock-pick-reference"));
-
     expect(screen.getByTestId("mock-reference-takes")).toBeTruthy();
+
+    await user.click(screen.getByRole("tab", { name: "createTabPrompt" }));
+    expect(screen.queryByTestId("mock-reference-takes")).toBeNull();
   });
 
   test("見本を外したら、そのプレビューの blob URL を放す", async () => {
@@ -290,6 +334,7 @@ describe("見本の欄の出し分け", () => {
     try {
       const user = userEvent.setup();
       renderForm(jest.fn());
+      await openReferenceTab(user);
       await user.click(screen.getByText("mock-pick-reference"));
       expect(revoke).not.toHaveBeenCalledWith("blob:r");
 
@@ -303,51 +348,100 @@ describe("見本の欄の出し分け", () => {
 });
 
 describe("見本の送信", () => {
-  test("見本を選んだら、id とまねるものを送る", async () => {
+  const submitButton = () => screen.getByTestId("mock-submit") as HTMLButtonElement;
+
+  test("「イラストから」で見本を選んだら、プロンプトと一緒に id とまねるものを送る", async () => {
     const user = userEvent.setup();
     const onSubmit = jest.fn();
     renderForm(onSubmit);
-    await fillBodyAndImage(user);
+    await openReferenceTab(user);
+    await user.click(screen.getByText("mock-upload"));
+    fireEvent.change(screen.getByLabelText("referencePromptLabel"), { target: { value: "夕方の教室" } });
 
     await user.click(screen.getByText("mock-pick-reference"));
-    await user.click(screen.getByTestId("mock-submit"));
+    await user.click(submitButton());
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect(onSubmit.mock.calls[0][0]).toMatchObject({
       generationType: "free",
+      prompt: "夕方の教室",
       referenceImageId: "ref-1",
       referenceTakes: ["outfit", "pose"],
     });
   });
 
-  test("見本を選ばなければ、見本の項目を送らない", async () => {
+  test("「イラストから」はプロンプトなしでも送れる(本文は空)", async () => {
     const user = userEvent.setup();
     const onSubmit = jest.fn();
     renderForm(onSubmit);
-    await fillBodyAndImage(user);
+    await openReferenceTab(user);
+    await user.click(screen.getByText("mock-upload"));
+    await user.click(screen.getByText("mock-pick-reference"));
 
-    await user.click(screen.getByTestId("mock-submit"));
+    expect(submitButton().disabled).toBe(false);
+    await user.click(submitButton());
+
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect(onSubmit.mock.calls[0][0]).toMatchObject({ prompt: "", referenceImageId: "ref-1" });
+  });
+
+  test("「イラストから」は、見本を入れるまで送れない", async () => {
+    const user = userEvent.setup();
+    renderForm(jest.fn());
+    await openReferenceTab(user);
+    await user.click(screen.getByText("mock-upload"));
+
+    expect(submitButton().disabled).toBe(true);
+  });
+
+  test.each([
+    ["まねるものが0個", ["mock-pick-reference", "mock-empty-takes"]],
+    ["見本を上げている間", ["mock-pick-reference", "mock-uploading"]],
+  ])("「イラストから」で %s は送らない", async (_label, triggers) => {
+    const user = userEvent.setup();
+    renderForm(jest.fn());
+    await openReferenceTab(user);
+    await user.click(screen.getByText("mock-upload"));
+    await user.click(screen.getByText("mock-pick-reference"));
+    // きっかけの前は送れる(ほかの理由で止まっていないことを先に確かめる)
+    expect(submitButton().disabled).toBe(false);
+
+    for (const trigger of triggers.slice(1)) {
+      await user.click(screen.getByText(trigger));
+    }
+
+    expect(submitButton().disabled).toBe(true);
+  });
+
+  test("「プロンプトから」に戻したら、選んだ見本は送らず、プロンプトは今までどおり必須", async () => {
+    const user = userEvent.setup();
+    const onSubmit = jest.fn();
+    renderForm(onSubmit);
+    await openReferenceTab(user);
+    await user.click(screen.getByText("mock-pick-reference"));
+    await user.click(screen.getByRole("tab", { name: "createTabPrompt" }));
+    await user.click(screen.getByText("mock-upload"));
+
+    // プロンプトが空のうちは送れない
+    expect(submitButton().disabled).toBe(true);
+
+    fireEvent.change(screen.getByLabelText("promptLabel"), { target: { value: "冬の街を歩く様子" } });
+    await user.click(submitButton());
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
     expect("referenceImageId" in onSubmit.mock.calls[0][0]).toBe(false);
     expect("referenceTakes" in onSubmit.mock.calls[0][0]).toBe(false);
   });
 
-  test.each([
-    ["まねるものが0個", ["mock-pick-reference", "mock-empty-takes"]],
-    ["見本を上げている間", ["mock-uploading"]],
-  ])("%s は送らない", async (_label, triggers) => {
+  test("見本を使わずに「プロンプトから」で送ると、見本の項目を送らない", async () => {
     const user = userEvent.setup();
     const onSubmit = jest.fn();
     renderForm(onSubmit);
     await fillBodyAndImage(user);
-    // きっかけの前は送れる(ほかの理由で止まっていないことを先に確かめる)
-    expect((screen.getByTestId("mock-submit") as HTMLButtonElement).disabled).toBe(false);
 
-    for (const trigger of triggers) {
-      await user.click(screen.getByText(trigger));
-    }
+    await user.click(submitButton());
 
-    expect((screen.getByTestId("mock-submit") as HTMLButtonElement).disabled).toBe(true);
+    expect(onSubmit).toHaveBeenCalledTimes(1);
+    expect("referenceImageId" in onSubmit.mock.calls[0][0]).toBe(false);
   });
 });
