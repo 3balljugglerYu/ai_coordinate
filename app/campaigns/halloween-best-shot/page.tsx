@@ -39,7 +39,12 @@ export default async function Page() {
   const submissionPages = await getCampaignSubmissionPages(HALLOWEEN_BEST_SHOT.campaignKey);
   return (
     <div className={`${roundedBody.variable} ${display.variable}`}>
-      <HalloweenBestShotPage submissionPages={submissionPages} />
+      {/*
+        企画は 2026-10-31 23:59 に終わった。終わったあとの表示で固定する(2026-11-01 ユーザー指示)。
+        時刻で切り替えないのは、この変更が終了のあとに出るため。サーバーで時刻を読むと cacheComponents の
+        作りと合わず、ブラウザで切り替えると開催中の表示が一瞬出る
+      */}
+      <HalloweenBestShotPage submissionPages={submissionPages} ended />
     </div>
   );
 }

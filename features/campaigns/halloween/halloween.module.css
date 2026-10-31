@@ -159,6 +159,17 @@
   color: var(--orange);
 }
 
+/* 企画が終わったあと、開催期間の枠のいちばん上に出す印(2026-11-01) */
+.periodEnded {
+  justify-self: start;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: var(--plum-800);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+}
+
 .periodDates {
   font-weight: 800;
   font-size: 18px;
