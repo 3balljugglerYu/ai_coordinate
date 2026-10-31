@@ -6,7 +6,8 @@
  * ここで守ること(計画書 §10):
  *  - 同意の状態は、本人の同意の行だけで決める(作り直しで無効になったかは DB のトリガーが revoked_at に入れる)
  *    有効な同意 = 行があって revoked_at が無い。一度でも同意したか = 行がある
- *  - DB のエラーは投げる。/free で使う値(getCatalogReferenceConsentSummary)だけは「同意なし・初めて」にする
+ *  - DB のエラーは投げる。/free で使う値(getCatalogReferenceConsentSummary)だけは「有効な同意なし」にする
+ *    (一度でも同意したかは分からないので「した」とし、初めての人向けの表示は出さない)
  *  - 「わかりました」を押したことは、DB の関数で残す(時刻は DB の時計・無効の印を外す)
  */
 
@@ -109,13 +110,13 @@ describe("getCatalogReferenceConsentSummary", () => {
     ).resolves.toEqual({ consented: false, consentedBefore: true });
   });
 
-  test("読めなければ投げずに「同意なし・初めて」(同意の画面をもう一度出す)", async () => {
+  test("読めなければ投げずに「有効な同意なし・一度は同意した」(同意の画面は出し、初めての人向けの表示は出さない)", async () => {
     jest.spyOn(console, "error").mockImplementation(() => {});
     const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
 
     await expect(
       getCatalogReferenceConsentSummary(USER, client({ select: { data: null, error: { message: "timeout" } } }).supabase),
-    ).resolves.toEqual({ consented: false, consentedBefore: false });
+    ).resolves.toEqual({ consented: false, consentedBefore: true });
     expect(warn).toHaveBeenCalled();
   });
 });

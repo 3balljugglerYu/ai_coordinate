@@ -56,6 +56,7 @@ type UploadErrorKey =
   | "catalogReferenceAuthRequired"
   | "catalogReferenceNotAllowed"
   | "catalogReferenceConsentRequired"
+  | "catalogReferenceConsentFailed"
   | "catalogReferenceUploadFailed";
 
 /** API の断りの文言(API の文は日本語だけなので、言語ごとの文言に置き換える) */
@@ -99,8 +100,10 @@ export function CatalogReferencePicker({
   const agreed = consentInPage === "agreed" || (consented && consentInPage !== "required");
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // 同意の画面を出している間、選んだ画像を持っておく(同意したら上げる)
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  // 同意の画面を出している間、選んだ画像を持っておく(同意したら上げる)。縮め終えていれば、もう縮めない
+  const [pending, setPending] = useState<{ file: File; prepared: boolean } | null>(null);
+  // もう一度同意が要るわけ(同意の画面の中に出す)
+  const [consentNotice, setConsentNotice] = useState<string | null>(null);
   // 開いたときの使い方を、閉じていく間も変えずに持つ(閉じる途中で文が変わらないように)
   const [consentSheet, setConsentSheet] = useState<{ open: boolean; mode: "consent" | "view" }>({
     open: false,
@@ -135,10 +138,10 @@ export function CatalogReferencePicker({
     }
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadFile = async (file: File, alreadyPrepared = false) => {
     let prepared: File;
     try {
-      prepared = await prepareCatalogReferenceImage(file);
+      prepared = alreadyPrepared ? file : await prepareCatalogReferenceImage(file);
     } catch (e) {
       setError(messageFor(e instanceof ReferenceImageError ? PROBLEM_KEYS[e.problem] : "catalogReferenceInvalid"));
       return;
@@ -155,9 +158,13 @@ export function CatalogReferencePicker({
     const body = (await res.json().catch(() => null)) as { id?: string; errorCode?: string } | null;
     if (!res.ok || !body?.id) {
       if (body?.errorCode === "CATALOG_REFERENCE_CONSENT_REQUIRED") {
-        // 同意が無効になっていた(開いたあとに見本が作り直しになったなど)。選んだ画像を持ったまま同意の画面を出す
+        // 同意が無効になっていた(開いたあとに見本が作り直しになったなど)。わけを出し、縮めた画像を持ったまま同意の画面を出す
+        // (わけは同意の画面の中と、閉じたあとの欄の下の両方に出す)
+        const reason = messageFor("catalogReferenceConsentRequired");
+        setError(reason);
+        setConsentNotice(reason);
         setConsentInPage("required");
-        openConsent(file);
+        openConsent({ file: prepared, prepared: true });
         return;
       }
       setError(messageFor((body?.errorCode && UPLOAD_ERROR_KEYS[body.errorCode]) || "catalogReferenceUploadFailed"));
@@ -167,7 +174,7 @@ export function CatalogReferencePicker({
   };
 
   /** 「わかりました」を押したことをサーバーに残す。残せなかったら出す文言のキーを返す */
-  const recordConsent = async (): Promise<UploadErrorKey | "catalogReferenceConsentFailed" | null> => {
+  const recordConsent = async (): Promise<UploadErrorKey | null> => {
     try {
       const res = await fetch("/api/catalog-references/consent", { method: "POST" });
       if (res.ok) return null;
@@ -181,8 +188,8 @@ export function CatalogReferencePicker({
     }
   };
 
-  function openConsent(file: File) {
-    setPendingFile(file);
+  function openConsent(next: { file: File; prepared: boolean }) {
+    setPending(next);
     setConsentSheet({ open: true, mode: "consent" });
   }
 
@@ -193,28 +200,29 @@ export function CatalogReferencePicker({
       return;
     }
     setError(null);
-    openConsent(file);
+    openConsent({ file, prepared: false });
   };
 
   const closeConsent = () => {
     // 同意せずに閉じたら、選んだ画像は上げない
-    setPendingFile(null);
+    setPending(null);
+    setConsentNotice(null);
     setConsentSheet((current) => ({ ...current, open: false }));
   };
 
   const handleAgree = () => {
-    const file = pendingFile;
+    const selected = pending;
     closeConsent();
     // 見返しただけのときは閉じるだけ(同意の画面を通らずに同意にしない)
-    if (consentSheet.mode !== "consent" || !file) return;
+    if (consentSheet.mode !== "consent" || !selected) return;
     void runBusy(async () => {
       const failure = await recordConsent();
       if (failure) {
-        setError(failure === "catalogReferenceConsentFailed" ? t(failure) : messageFor(failure));
+        setError(messageFor(failure));
         return;
       }
       setConsentInPage("agreed");
-      await uploadFile(file);
+      await uploadFile(selected.file, selected.prepared);
     });
   };
 
@@ -328,6 +336,7 @@ export function CatalogReferencePicker({
         mode={consentSheet.mode}
         // 「次からは出ません」は、一度も同意したことが無い人の初めての同意のときだけ出す
         showOnceNote={!consentedBefore && consentInPage !== "required"}
+        notice={consentNotice}
       />
       <CatalogReferenceIntroSheet
         open={introOpen}

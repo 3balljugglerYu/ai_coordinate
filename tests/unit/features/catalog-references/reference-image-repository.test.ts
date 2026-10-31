@@ -6,7 +6,7 @@
  * ここで守ること(計画書 ADR-002):
  *  - 非公開のバケット catalog-references の {本人の ID}/{uuid}.webp に置き、上書きしない
  *  - 行には本人・置き場所・同意の時刻を入れ、id を返す
- *  - 行を作れなかったら、置いたファイルを消して投げる
+ *  - 行を作れなかったら、置いたファイルを消して投げる。DB が「有効な同意が無い」と断ったら、それと分かる形で投げる
  *  - 受付の確かめは、本人の見本で、作り直しになっていないものだけ true。DB のエラーは投げる
  */
 
@@ -14,6 +14,7 @@ jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
 import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  CatalogReferenceConsentRequiredError,
   isUsableOwnCatalogReference,
   saveCatalogReferenceImage,
 } from "@/features/catalog-references/lib/reference-image-repository";
@@ -91,6 +92,19 @@ describe("saveCatalogReferenceImage", () => {
     await expect(
       saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
     ).rejects.toThrow("見本の保存に失敗しました");
+    const uploadedPath = (storageCalls.find(([m]) => m === "upload")?.[1] as [string])[0];
+    expect(storageCalls).toContainEqual(["remove", [[uploadedPath]]]);
+  });
+
+  test("DB が「有効な同意が無い」と断ったら、置いたファイルを消し、それと分かる形で投げる", async () => {
+    const { supabase, storageCalls } = client({
+      insert: { data: null, error: { message: "CATALOG_REFERENCE_CONSENT_REQUIRED" } },
+    });
+    jest.spyOn(console, "error").mockImplementation(() => {});
+
+    await expect(
+      saveCatalogReferenceImage({ userId: USER, webpBuffer: Buffer.from("w"), consentedAt: new Date() }, supabase),
+    ).rejects.toBeInstanceOf(CatalogReferenceConsentRequiredError);
     const uploadedPath = (storageCalls.find(([m]) => m === "upload")?.[1] as [string])[0];
     expect(storageCalls).toContainEqual(["remove", [[uploadedPath]]]);
   });

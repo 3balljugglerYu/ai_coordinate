@@ -33,6 +33,8 @@ interface CatalogReferenceConsentSheetProps {
   mode: "consent" | "view";
   /** 「次からは出ません」を出すか(一度も同意したことが無い人の、初めての同意のときだけ) */
   showOnceNote: boolean;
+  /** もう一度同意が要るわけ(上げようとしたら断られたとき)。シートの中に出す */
+  notice?: string | null;
 }
 
 type Example = { icon: LucideIcon; label: string };
@@ -61,6 +63,7 @@ export function CatalogReferenceConsentSheet({
   onAgree,
   mode,
   showOnceNote,
+  notice = null,
 }: CatalogReferenceConsentSheetProps) {
   const t = useTranslations("free");
   const localeValue = useLocale();
@@ -83,6 +86,14 @@ export function CatalogReferenceConsentSheet({
         </SheetHeader>
 
         <div className="mx-auto w-full max-w-md space-y-4">
+          {notice ? (
+            <p
+              className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm leading-relaxed text-amber-900"
+              role="status"
+            >
+              {notice}
+            </p>
+          ) : null}
           <ExampleRow title={t("catalogReferenceConsentUsable")} examples={USABLE} usable />
           <ExampleRow title={t("catalogReferenceConsentUnusable")} examples={UNUSABLE} usable={false} />
 

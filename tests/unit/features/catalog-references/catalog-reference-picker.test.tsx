@@ -11,7 +11,8 @@
  *  - 有効な同意がある人(あとから変わった値も含む)は、選んだらすぐ上げる
  *  - 「次からは出ません」は、一度も同意したことが無い人の初めての同意のときだけ出す
  *  - 同意を残すのを断られたら、理由ごとの文言を出す(ログインが切れた・一覧から外れた・そのほか)
- *  - 見本を上げる API が「同意が要る」と断ったら、選んだ画像を持ったまま同意の画面を出し、同意したら上げ直す
+ *  - 見本を上げる API が「同意が要る」と断ったら、わけを出し、縮めた画像を持ったまま同意の画面を出し、同意したら
+ *    縮め直さずに上げ直す
  *  - 上げるときは見本用に縮めてから、縮めた画像を POST /api/catalog-references に上げ、
  *    返った id と最初のまねるもの(衣装)を渡す。上げている間は、そのことを親に知らせる
  *  - 上げられなければ、言語ごとの文言で理由を出して何も渡さない(手元で断った・API が断った・通信が切れた)
@@ -37,7 +38,7 @@ jest.mock("@/features/catalog-references/lib/prepare-reference-image", () => ({
   prepareCatalogReferenceImage: (file: File) => mockPrepare(file),
 }));
 
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
 import type { CatalogReferenceValue } from "@/features/catalog-references/types";
 import { ReferenceImageError } from "@/features/catalog-references/lib/prepare-reference-image";
@@ -264,6 +265,8 @@ test("見本を上げる API が「同意が要る」と断ったら(開いた�
 
   await waitFor(() => expect(consentSheet()).toBeTruthy());
   expect(onChange).not.toHaveBeenCalled();
+  // わけは同意の画面の中に出す
+  expect(within(consentSheet()!).getByRole("status").textContent).toBe("catalogReferenceConsentRequired");
   // 同意し直しなので「次からは出ません」は出さない
   expect(screen.queryByText("catalogReferenceConsentOnce", { exact: false })).toBeNull();
 
@@ -271,7 +274,11 @@ test("見本を上げる API が「同意が要る」と断ったら(開いた�
 
   await waitFor(() => expect(onChange).toHaveBeenCalledWith({ id: "ref-2", previewUrl: "blob:preview", takes: ["outfit"] }));
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([UPLOAD_URL, CONSENT_URL, UPLOAD_URL]);
-  expect(mockPrepare).toHaveBeenLastCalledWith(file);
+  // 縮めるのは最初の1回だけ。上げ直すのは縮めた画像
+  expect(mockPrepare).toHaveBeenCalledTimes(1);
+  expect(mockPrepare).toHaveBeenCalledWith(file);
+  expect((callsTo(UPLOAD_URL)[1][1].body as FormData).get("file")).toBe(PREPARED);
+  expect(screen.queryByRole("alert")).toBeNull();
 });
 
 test("作り直しで同意が無効になった人(一度は同意している)には、同意の画面を出すが「次からは出ません」は出さない", () => {

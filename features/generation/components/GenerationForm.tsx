@@ -342,6 +342,8 @@ export function GenerationForm({
   // 見本(参照画像)。見本を使える人が、自分で書く本文のときだけ(派生生成では元の作品の見本が使われる)
   const canUseCatalogReference =
     isFree && !promptLocked && isAuthenticated && catalogReferenceAccess !== undefined;
+  // 見本の欄に渡す値(使えるときだけ)。値があるかを1か所で確かめ、そのまま渡す
+  const referenceAccess = canUseCatalogReference ? catalogReferenceAccess : undefined;
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
   // 上げている間と、見本を選んだのにまねるものが無いときは送らない
@@ -872,9 +874,9 @@ export function GenerationForm({
         {/* 画像入力エリア: アップローダ常時表示 + ピッカートリガ */}
         <div className="space-y-3">
           <Label className="text-base font-medium block">
-            {canUseCatalogReference ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
+            {referenceAccess ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
           </Label>
-          {canUseCatalogReference ? (
+          {referenceAccess ? (
             // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す)
             <CatalogReferencePicker
               ownImage={renderSourceImageUploader({
@@ -886,9 +888,9 @@ export function GenerationForm({
               onChange={setCatalogReference}
               onUploadingChange={setIsCatalogReferenceUploading}
               disabled={isGenerating}
-              consented={catalogReferenceAccess?.consented ?? false}
-              consentedBefore={catalogReferenceAccess?.consentedBefore ?? false}
-              userId={catalogReferenceAccess?.userId ?? ""}
+              consented={referenceAccess.consented}
+              consentedBefore={referenceAccess.consentedBefore}
+              userId={referenceAccess.userId}
             />
           ) : (
             renderSourceImageUploader()

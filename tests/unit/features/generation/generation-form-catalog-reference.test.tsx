@@ -284,16 +284,21 @@ describe("見本の欄の出し分け", () => {
   });
 
   test("見本を外したら、そのプレビューの blob URL を放す", async () => {
+    const original = Object.getOwnPropertyDescriptor(URL, "revokeObjectURL");
     const revoke = jest.fn();
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: revoke });
-    const user = userEvent.setup();
-    renderForm(jest.fn());
-    await user.click(screen.getByText("mock-pick-reference"));
-    expect(revoke).not.toHaveBeenCalledWith("blob:r");
+    try {
+      const user = userEvent.setup();
+      renderForm(jest.fn());
+      await user.click(screen.getByText("mock-pick-reference"));
+      expect(revoke).not.toHaveBeenCalledWith("blob:r");
 
-    await user.click(screen.getByText("mock-remove-reference"));
+      await user.click(screen.getByText("mock-remove-reference"));
 
-    expect(revoke).toHaveBeenCalledWith("blob:r");
+      expect(revoke).toHaveBeenCalledWith("blob:r");
+    } finally {
+      if (original) Object.defineProperty(URL, "revokeObjectURL", original);
+    }
   });
 });
 

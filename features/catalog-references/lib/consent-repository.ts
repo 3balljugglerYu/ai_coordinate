@@ -45,7 +45,8 @@ export async function getCatalogReferenceConsentState(
 
 /**
  * /free で、同意の画面と案内を出すかを決めるための値。
- * DB のエラーは「同意なし・初めて」として扱う(同意の画面をもう一度出す。安全なほうに倒す)
+ * DB のエラーは「有効な同意なし」として同意の画面をもう一度出す(安全なほうに倒す)。
+ * 一度でも同意したかは分からないので「した」とし、初めての人向けの案内と「次からは出ません」は出さない
  */
 export async function getCatalogReferenceConsentSummary(
   userId: string,
@@ -56,7 +57,7 @@ export async function getCatalogReferenceConsentSummary(
     return { consented: state.consentedAt !== null, consentedBefore: state.consentedBefore };
   } catch (e) {
     console.warn("[catalog-references] consent check failed:", e);
-    return { consented: false, consentedBefore: false };
+    return { consented: false, consentedBefore: true };
   }
 }
 
