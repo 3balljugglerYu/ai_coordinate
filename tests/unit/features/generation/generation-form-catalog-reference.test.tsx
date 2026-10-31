@@ -271,6 +271,8 @@ describe("作り方のタブと見本の欄の出し分け", () => {
     expect(screen.getByText("imageSourceLabel")).toBeTruthy();
     expect(mockImageUploader).toHaveBeenLastCalledWith({});
     expect(screen.getByLabelText("promptLabel")).toBeTruthy();
+    // タブは枠の外の帯に置き、上に留めない(/free はヘッダーが固定なので、留めると隠れる)
+    expect(screen.getByTestId("create-tab-bar").className).not.toMatch(/\bsticky\b/);
   });
 
   test("「イラストから」を押すと、うちの子と見本の2枚並べを出し、プロンプトは「なくてもOK」の見出しにする", async () => {

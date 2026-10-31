@@ -92,13 +92,3 @@ export function isAuthorInputMissing(
   }
   return authorInput === "" && !hasCatalogReference;
 }
-
-/**
- * 指示文の本文(User's Direction)として渡すものを作る。作者の本文のあとに、見本の指示文(buildCatalogReferenceDirective)を続ける。
- * User's Direction は組み立てた指示文の最後なので、後ろに足すのと同じ文になる。本文と同じく消毒(sanitizeUserInput)を通る。
- * 本文なしの見本つき(「イラストから」)では、見本の指示文だけが本文になる
- * (錨の「User's Direction に従い、触れていないものは image_0 のまま」とぶつからないようにするため)
- */
-export function composeCatalogReferenceDescription(authorInput: string, directive: string): string {
-  return [authorInput, directive].filter((part) => part.trim() !== "").join("\n\n");
-}

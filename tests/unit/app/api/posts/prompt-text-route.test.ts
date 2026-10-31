@@ -166,6 +166,16 @@ describe("GET /api/posts/[id]/prompt-text", () => {
     await expect(response.json()).resolves.toEqual({ postId: POST_ID, prompt: "" });
   });
 
+  test("見本つきでない作品の空白だけの本文は、今までどおりそのまま返す", async () => {
+    mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
+    mockSupabase({ promptVisibility: "public", originUserId: OWNER_ID, secretPrompt: "  ", isReferenceWork: false });
+
+    const response = await GET(request(), { params });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({ postId: POST_ID, prompt: "  " });
+  });
+
   test("見本つきでない作品の空の本文は、今までどおり出さない", async () => {
     mockGetUser.mockResolvedValue({ id: FOLLOWER_ID } as never);
     mockSupabase({ promptVisibility: "public", originUserId: OWNER_ID, secretPrompt: "", isReferenceWork: false });

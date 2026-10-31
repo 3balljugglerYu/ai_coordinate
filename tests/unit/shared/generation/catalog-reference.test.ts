@@ -9,7 +9,7 @@
  *  - まねるものの値は DB の CHECK と同じ4つ
  */
 
-import { CATALOG_REFERENCE_TAKES } from "@/shared/generation/catalog-reference";
+import { CATALOG_REFERENCE_TAKES, isBlankPrompt } from "@/shared/generation/catalog-reference";
 import { buildCatalogReferenceDirective } from "@/shared/generation/prompt-core";
 import { PROMPT_REGISTRY } from "@/shared/generation/prompt-registry";
 
@@ -48,4 +48,15 @@ test("運営が直した文があれば、そちらを使う", () => {
       templates: { "inspire.outfit_on": "服をまねる", "free.catalog_reference_person_guard": "人はまねない" },
     }),
   ).toBe("服をまねる\n\n人はまねない");
+});
+
+describe("isBlankPrompt(プロンプトなしで作られた本文か)", () => {
+  test.each([
+    ["空文字", "", true],
+    ["空白だけ", "  \n\t ", true],
+    ["本文がある", "冬の街", false],
+    ["前後に空白がある本文", "  冬の街  ", false],
+  ])("%s → %p", (_label, text, blank) => {
+    expect(isBlankPrompt(text)).toBe(blank);
+  });
 });

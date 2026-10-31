@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/components/ui/use-toast";
 import type { PendingCatalogReview } from "@/features/catalog-references/lib/review-admin-repository";
+import { isBlankPrompt } from "@/shared/generation/catalog-reference";
 import {
   CATALOG_REVIEW_REASON_CATEGORIES,
   CATALOG_REVIEW_REASON_LABELS,
@@ -205,7 +206,7 @@ function ReviewCard({
           <summary className="cursor-pointer text-slate-700">プロンプト</summary>
           <pre className="mt-2 max-h-64 overflow-auto whitespace-pre-wrap break-words text-xs text-slate-700">
             {/* プロンプトなしで作った作品(「イラストから」)は本文が空文字 */}
-            {item.prompt?.trim() ? item.prompt : "(なし)"}
+            {item.prompt == null || isBlankPrompt(item.prompt) ? "(なし)" : item.prompt}
           </pre>
         </details>
 

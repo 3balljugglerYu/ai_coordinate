@@ -73,6 +73,7 @@ import {
 import { runAfterResponse } from "@/features/monetization/lib/after-response";
 import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
 import { isUsableOwnCatalogReference } from "@/features/catalog-references/lib/reference-image-repository";
+import { isBlankPrompt } from "@/shared/generation/catalog-reference";
 
 const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
@@ -757,7 +758,7 @@ export async function postGenerateAsyncRoute(
           // 空白だけの本文も空文字にそろえる(「プロンプトなし」を表す値を1つにする)
           authorInput: isInspireRequest
             ? null
-            : referenceImageId !== undefined && (prompt ?? "").trim() === ""
+            : referenceImageId !== undefined && isBlankPrompt(prompt ?? "")
               ? ""
               : prompt ?? null,
           authorInputOwnerId: isInspireRequest ? null : user.id,

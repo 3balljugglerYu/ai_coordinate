@@ -17,7 +17,6 @@ import {
 } from "./creator-looks-prompt.ts";
 import {
   CATALOG_REFERENCE_UNAVAILABLE,
-  composeCatalogReferenceDescription,
   isAuthorInputMissing,
   resolveCatalogReferenceForJob,
 } from "./catalog-reference.ts";
@@ -2291,6 +2290,7 @@ Deno.serve(async () => {
               ?.author_input;
 
             // 見本つきの作品は本文なしで作れる(「イラストから」)ので、見本を解決できたときだけ空文字を許す
+            // 「resolvedInput == null」は型を string に絞るため(isAuthorInputMissing も null を失敗とみなす)
             if (resolvedInput == null || isAuthorInputMissing(resolvedInput, catalogReference !== null)) {
               throw new Error(DERIVED_PROMPT_SOURCE_UNAVAILABLE);
             }
@@ -2536,17 +2536,14 @@ Deno.serve(async () => {
                     }
                   }
 
-                  // 見本(参照画像)つきのカタログ: まねるものと「見本の人物は使わない」の指示文(ADR-007)を、
-                  // 作者の本文に続けて本文(User's Direction)として渡す。本文なし(「イラストから」)なら指示文だけ
-                  const promptDescription = composeCatalogReferenceDescription(
-                    generationInput,
-                    catalogReference
-                      ? buildCatalogReferenceDirective({
-                          takes: catalogReference.takes,
-                          templates: promptTemplates,
-                        })
-                      : "",
-                  );
+                  // 見本(参照画像)つきのカタログ: まねるものと「見本の人物は使わない」の指示文(ADR-007)。
+                  // 指示文を作る関数が、作者の本文のあとに続ける(本文なしの「イラストから」は指示文だけになる)
+                  const referenceDirective = catalogReference
+                    ? buildCatalogReferenceDirective({
+                        takes: catalogReference.takes,
+                        templates: promptTemplates,
+                      })
+                    : "";
                   let fullPrompt = generationInput;
                   if (job.generation_type === "one_tap_style") {
                     fullPrompt = generationInput;
@@ -2573,7 +2570,7 @@ Deno.serve(async () => {
                   } else if (job.input_image_url) {
                     fullPrompt = buildSharedPrompt({
                       generationType: job.generation_type as GenerationType,
-                      outfitDescription: promptDescription,
+                      outfitDescription: generationInput,
                       backgroundMode,
                       sourceImageType:
                         job.source_image_type === "real"
@@ -2585,6 +2582,7 @@ Deno.serve(async () => {
                       framingMode: getFramingModeFromGenerationMetadata(
                         job.generation_metadata,
                       ),
+                      referenceDirective,
                     });
                   }
 

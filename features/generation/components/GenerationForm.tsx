@@ -22,10 +22,9 @@ import { NameInputEntryField } from "./NameInputEntryField";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
 import { CatalogReferenceIntro } from "@/features/catalog-references/components/CatalogReferenceIntro";
 import { CatalogTabBar } from "@/features/style-presets/components/CatalogTabBar";
-import { StylesCatalogChipBar } from "@/features/style-presets/components/StylesCatalogChipBar";
 import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
-import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
+import { isBlankPrompt, type CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
   checkNameInputValue,
@@ -257,7 +256,7 @@ export function GenerationForm({
   // 施錠時のプレースホルダ。公開プロンプトは本文を value に入れるので出ない。
   const promptPlaceholder = promptLocked
     ? // 取れた本文が空なら、プロンプトなしで作られたカタログ(見本つきの「イラストから」)。非公開とは分ける
-      lockedPromptText?.trim() === ""
+      lockedPromptText != null && isBlankPrompt(lockedPromptText)
       ? postsT("sourcePromptEmpty")
       : postsT("lockedSheetPromptLocked")
     : isFree
@@ -885,11 +884,16 @@ export function GenerationForm({
     <>
     {/*
       見本を使える人だけ、何で作るかをタブで選ぶ(一般の人の画面は今のまま)。
-      User ORIGINAL と同じく、タブは枠の外の帯(StylesCatalogChipBar)に置く
+      User ORIGINAL と同じく、タブは枠の外の帯に置く(見た目は StylesCatalogChipBar と同じ)。
+      /free はスマホでもヘッダーが固定で、入力中はヘッダーだけが隠れるので、帯は上に留めない
+      (留めるとヘッダーの下に隠れたり、入力中の欄をふさいだりする)。カタログ刷新のフラグにもよらない
     */}
     {referenceAccess ? (
       <>
-        <StylesCatalogChipBar>
+        <div
+          className="-mx-4 mb-4 border-b bg-white px-4 pt-1 shadow-sm"
+          data-testid="create-tab-bar"
+        >
           <CatalogTabBar
             tabs={[
               { id: "prompt", label: freeT("createTabPrompt") },
@@ -899,7 +903,7 @@ export function GenerationForm({
             onSelect={setCreateMode}
             ariaLabel={freeT("createTabsLabel")}
           />
-        </StylesCatalogChipBar>
+        </div>
         <CatalogReferenceIntro
           userId={referenceAccess.userId}
           consentedBefore={referenceAccess.consentedBefore}

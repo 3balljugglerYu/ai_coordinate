@@ -130,6 +130,13 @@ export interface BuildPromptOptions {
    * 省略 / "locked" は現行挙動と完全に等価。coordinate 以外の generationType では無視。
    */
   framingMode?: FramingMode;
+  /**
+   * 見本(参照画像)つきのカタログの指示文(buildCatalogReferenceDirective。じゆうモードだけ)。
+   * 運営の文なので、利用者の本文の消毒は通さず、User's Direction の本文のあとに続ける。
+   * これがあるときは、本文が空でもよい(「イラストから」)。そのときは指示文だけが User's Direction になる
+   * (錨の「User's Direction に従い、触れていないものは image_0 のまま」とぶつからないように)
+   */
+  referenceDirective?: string;
 }
 
 /**
@@ -170,10 +177,13 @@ export function buildPrompt(options: BuildPromptOptions): string {
     sourceImageType = "illustration",
     templates,
     framingMode,
+    referenceDirective = "",
   } = options;
   const sanitizedDescription = sanitizeUserInput(outfitDescription);
+  // 見本の指示文があるじゆうモードは、本文が空でも作れる
+  const directive = generationType === "free" ? referenceDirective.trim() : "";
 
-  if (!sanitizedDescription || sanitizedDescription.length === 0) {
+  if (directive === "" && (!sanitizedDescription || sanitizedDescription.length === 0)) {
     throw new Error(
       "Invalid outfit description: empty or contains only prohibited content"
     );
@@ -250,7 +260,8 @@ export function buildPrompt(options: BuildPromptOptions): string {
       templates,
       "free.user_direction_label",
     );
-    return `${basePrefix}\n\n${directionLabel}:\n\n${sanitizedDescription}`;
+    const direction = [sanitizedDescription, directive].filter((part) => part !== "").join("\n\n");
+    return `${basePrefix}\n\n${directionLabel}:\n\n${direction}`;
   }
 
   if (generationType === "inspire") {

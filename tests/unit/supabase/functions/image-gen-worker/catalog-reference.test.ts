@@ -15,7 +15,6 @@
 import {
   CATALOG_REFERENCE_CHECK_FAILED,
   CATALOG_REFERENCE_UNAVAILABLE,
-  composeCatalogReferenceDescription,
   isAuthorInputMissing,
   resolveCatalogReferenceForJob,
 } from "@/supabase/functions/image-gen-worker/catalog-reference";
@@ -136,19 +135,5 @@ describe("isAuthorInputMissing(作者の本文が無いのを失敗とみなす�
     ["本文が無い(undefined)・見本つきでも", undefined, true, true],
   ] as const)("%s → %p", (_label, input, hasReference, missing) => {
     expect(isAuthorInputMissing(input, hasReference)).toBe(missing);
-  });
-});
-
-describe("composeCatalogReferenceDescription(指示文の本文として渡すもの)", () => {
-  test("本文があれば、本文のあとに見本の指示文を続ける", () => {
-    expect(composeCatalogReferenceDescription("冬の街", "衣装をまねる")).toBe("冬の街\n\n衣装をまねる");
-  });
-
-  test("本文なし(「イラストから」)なら、見本の指示文だけ", () => {
-    expect(composeCatalogReferenceDescription("  ", "衣装をまねる")).toBe("衣装をまねる");
-  });
-
-  test("見本が無ければ、本文だけ(今までどおり)", () => {
-    expect(composeCatalogReferenceDescription("冬の街", "")).toBe("冬の街");
   });
 });

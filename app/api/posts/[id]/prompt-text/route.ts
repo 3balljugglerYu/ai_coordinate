@@ -3,6 +3,7 @@ import { getUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getRouteLocale } from "@/lib/api/route-locale";
 import { postsRouteCopy } from "@/features/posts/lib/route-copy";
+import { isBlankPrompt } from "@/shared/generation/catalog-reference";
 
 /**
  * 公開プロンプトの本文を返す API。
@@ -117,34 +118,40 @@ export async function GET(
     }
 
     // 本文の正本は author secret。generated_images.prompt は常に空である。
-    const { data: secretRow, error: secretError } = await supabase
-      .from("generated_image_prompt_secrets")
-      .select("prompt")
-      .eq("image_id", validated.root_post_id)
-      .maybeSingle();
+    // 見本つきかも並べて読む(見本つきのカタログは「イラストから」でプロンプトなしで作れるため)
+    const [secretResult, referenceResult] = await Promise.all([
+      supabase
+        .from("generated_image_prompt_secrets")
+        .select("prompt")
+        .eq("image_id", validated.root_post_id)
+        .maybeSingle(),
+      supabase
+        .from("generated_image_reference_secrets")
+        .select("image_id")
+        .eq("image_id", validated.root_post_id)
+        .maybeSingle(),
+    ]);
+    const { data: secretRow, error: secretError } = secretResult;
 
     if (secretError || !secretRow) {
       return jsonUnavailable(copy.promptTextUnavailable);
     }
 
-    // 見本つきのカタログ(「イラストから」)は、プロンプトなしで作れる。その作品は本文が空でも「使えない」とはせず、
-    // 空の本文を返す(画面は「プロンプトなしで作られています」と出す)。見本つきでない作品の空の本文は、今までどおり返さない
     const rawPrompt = (secretRow as { prompt: string | null }).prompt ?? "";
-    const promptText = rawPrompt.trim() === "" ? "" : rawPrompt;
-    if (!promptText) {
-      const { data: referenceRow, error: referenceError } = await supabase
-        .from("generated_image_reference_secrets")
-        .select("image_id")
-        .eq("image_id", validated.root_post_id)
-        .maybeSingle();
-      if (referenceError || !referenceRow) {
+    if (isBlankPrompt(rawPrompt)) {
+      // 見本つきの作品は「使えない」とはせず、空の本文を返す(画面は「プロンプトなしで作られています」と出す)
+      if (!referenceResult.error && referenceResult.data) {
+        return NextResponse.json({ postId: validated.root_post_id, prompt: "" });
+      }
+      // 見本つきでない作品は今までどおり(空なら使えない・空白だけならそのまま返す)
+      if (!rawPrompt) {
         return jsonUnavailable(copy.promptTextUnavailable);
       }
     }
 
     return NextResponse.json({
       postId: validated.root_post_id,
-      prompt: promptText,
+      prompt: rawPrompt,
     });
   } catch (error) {
     console.error("Prompt text API error:", error);
