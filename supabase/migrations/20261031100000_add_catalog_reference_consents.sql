@@ -10,6 +10,12 @@
 -- - 書くのも読むのもサーバー（service role）だけ。利用者には権限を渡さない
 -- - 6a（毎回のチェック）で見本を上げた人は同意済みとして移す（いちばん新しいチェックの時刻。そのあと作り直しがあれば無効）
 -- 一般の利用者には影響しない（見本を使える人が同意したときだけ行ができる）
+--
+-- 全体を1つのトランザクションにする（5 の LOCK TABLE はトランザクションの中でしか使えない。途中で失敗したら全部取り消す）
+
+BEGIN;
+
+SET LOCAL lock_timeout = '5s';
 
 -- -----------------------------------------------
 -- 1. 同意の表
@@ -142,3 +148,5 @@ CREATE OR REPLACE TRIGGER trg_apply_catalog_reference_consent_on_insert
   BEFORE INSERT ON public.catalog_reference_images
   FOR EACH ROW
   EXECUTE FUNCTION public.apply_catalog_reference_consent_on_insert();
+
+COMMIT;
