@@ -574,10 +574,20 @@ function countWorks(pages: readonly (readonly CampaignSubmissionItem[])[]): numb
 }
 
 /**
- * 企画が終わったあと、いちばん下と対象作品の上に出すお礼(2026-11-01)。
+ * 企画が終わったあと、いちばん下の見出しに出すお礼(2026-11-01)。
  * スマホ幅の大きな見出しで「ありがとうござ／いました」と折れないよう、文節の切れ目でだけ折り返す
  */
 const THANKS_PHRASES = "たくさんの|ご参加、|ありがとう|ございました！";
+
+/**
+ * 企画が終わったあとの文(2026-11-01 ユーザー決定)。
+ * 冒頭の文は「投稿して…当てよう！」の呼びかけが「募集は終了しました」と食い違うので差し替える。
+ * 対象作品の上はお礼を重ねず(お礼はいちばん下だけ)、一覧を見られることを書く。
+ * 冒頭の文はスマホ幅で「た／くさん」と折れないよう、文節の切れ目でだけ折り返す
+ */
+const ENDED_LEAD_PHRASES =
+  "“うちの子”が|一番かがやく|ハロウィンの|作品が、|たくさん|集まりました！|結果発表を|お楽しみに。";
+const ENDED_WORKS_LEAD = "タップすると、作品を見られます";
 
 export function HalloweenBestShotPage({
   submissionPages = [],
@@ -587,11 +597,12 @@ export function HalloweenBestShotPage({
   submissionPages?: readonly CampaignSubmissionItem[][];
   /**
    * 企画が終わったあとの表示にする(2026-11-01 ユーザー指示)。
-   * 浮いたボタン・対象作品の上のエントリー・参加方法は出さず、エントリーの状態も読みに行かない。
-   * 対象作品の一覧・企画について・賞品・スケジュール・その他は残す
+   * 浮いたボタン・対象作品の上のエントリー・参加方法・その他(参加中の人への呼びかけ)は出さず、
+   * エントリーの状態も読みに行かない。対象作品の一覧・企画について・賞品・スケジュールは残す
    */
   ended?: boolean;
 }) {
+  // 参加方法の手順の中だけで使う(終わったあとは参加方法を出さない)
   const worksHref = submissionPages.length > 0 ? WORKS_ANCHOR : CAMPAIGN.entriesHref;
   // 終わったあとはエントリーのカードを1枚も描かないので、状態を読み込む入れ物も置かない
   const EntryStateScope = ended ? Fragment : EntryProgressProvider;
@@ -617,7 +628,11 @@ export function HalloweenBestShotPage({
             </h1>
             <p className={styles.lead}>
               {/* 2026-10-16: 略称「アマギフ」と、全員もらえるように読める「GETしよう」をやめた(Amazonギフトカードの注意事項) */}
-              あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！
+              {ended ? (
+                <Phrases text={ENDED_LEAD_PHRASES} />
+              ) : (
+                "あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！"
+              )}
             </p>
             <div className={styles.period}>
               {ended ? (
@@ -665,7 +680,7 @@ export function HalloweenBestShotPage({
                     <Ribbon en="WORKS">キャンペーン対象作品</Ribbon>
                   </div>
                   <p className={styles.worksLead}>
-                    {ended ? <Phrases text={THANKS_PHRASES} /> : "タップして、うちの子で生成してみよう！"}
+                    {ended ? ENDED_WORKS_LEAD : "タップして、うちの子で生成してみよう！"}
                   </p>
                   {/* 2026-10-25 ユーザー指示: 対象作品の数を出す(下の一覧と同じ数。押して使える作品だけ) */}
                   <p className={styles.worksTotal} data-testid="halloween-works-count">
@@ -868,23 +883,26 @@ export function HalloweenBestShotPage({
             </div>
           </section>
 
-          <section className={styles.section} aria-labelledby="hbs-more">
-            <div className={styles.wrap}>
-              <div id="hbs-more">
-                <Ribbon en="MORE">その他</Ribbon>
-              </div>
-              <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
-                <div className={styles.points}>
-                  {MORE_TIPS.map((tip) => (
-                    <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
-                      <span aria-hidden="true">{tip.icon}</span>
-                      <span>{tip.text}</span>
-                    </div>
-                  ))}
+          {/* その他(Xへのシェア・運営の応援)は参加中の人への呼びかけなので、終わったあとは出さない(2026-11-01 ユーザー決定) */}
+          {ended ? null : (
+            <section className={styles.section} aria-labelledby="hbs-more">
+              <div className={styles.wrap}>
+                <div id="hbs-more">
+                  <Ribbon en="MORE">その他</Ribbon>
                 </div>
-              </RevealOnScroll>
-            </div>
-          </section>
+                <RevealOnScroll className={`${styles.card} ${styles.reveal}`}>
+                  <div className={styles.points}>
+                    {MORE_TIPS.map((tip) => (
+                      <div key={tip.text} className={styles.point} data-testid="halloween-more-tip">
+                        <span aria-hidden="true">{tip.icon}</span>
+                        <span>{tip.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </RevealOnScroll>
+              </div>
+            </section>
+          )}
 
           <section className={styles.closing} aria-labelledby="hbs-closing">
             <Wave className={styles.waveTop} />

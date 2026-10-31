@@ -27,6 +27,14 @@ describe("ハロウィン企画のページは、終わったあとの表示で�
     expect(child.props.ended).toBe(true);
     expect(child.props.submissionPages).toEqual([]);
   });
+
+  test("説明文(検索・共有のカードにも使われる)は、募集の呼びかけでなく終わったあとの説明にする", () => {
+    expect(metadata.description).toBe(
+      "ペルスタのハロウィン企画「うちの子のベストショット with Halloween Magic」は終了しました。集まった対象作品と、賞品・結果発表の予定を載せています。",
+    );
+    expect(metadata.description).not.toContain("投稿しよう");
+    expect(metadata.description).not.toContain("募集");
+  });
 });
 
 describe("ハロウィン企画のページを検索に出す", () => {

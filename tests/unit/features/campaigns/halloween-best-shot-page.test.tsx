@@ -719,19 +719,34 @@ describe("企画が終わったあとの表示(ended)", () => {
     expect(header.textContent).toContain("結果発表：終了後 1週間程度");
   });
 
-  test("開催中は「募集は終了しました」を出さない", () => {
+  test("冒頭の文は、投稿の呼びかけから終わったあとの文にする(2026-11-01 ユーザー決定)", () => {
+    render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
+    const header = screen.getByRole("banner");
+    expect(header.textContent).toContain(
+      "“うちの子”が一番かがやくハロウィンの作品が、たくさん集まりました！結果発表をお楽しみに。",
+    );
+    expect(header.textContent).not.toContain("投稿して、Amazonギフトカードを当てよう！");
+  });
+
+  test("開催中は「募集は終了しました」を出さず、冒頭の文も呼びかけのまま", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} />);
     expect(screen.queryByTestId("halloween-period-ended")).toBeNull();
     expect(document.body.textContent).not.toContain("募集は終了しました");
+    expect(screen.getByRole("banner").textContent).toContain(
+      "あなたの“うちの子”が一番かがやくハロウィンをペルスタに投稿して、Amazonギフトカードを当てよう！",
+    );
   });
 
-  test("浮いたボタン・対象作品の上のエントリー・参加方法を出さず、エントリーの状態も読みに行かない", () => {
+  test("浮いたボタン・対象作品の上のエントリー・参加方法・その他を出さず、エントリーの状態も読みに行かない", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
     expect(screen.queryByTestId("halloween-floating-cta")).toBeNull();
     // 浮いたボタンのための下の余白(ページの終わりの目印)も置かない
     expect(document.getElementById("hbs-page-end")).toBeNull();
     expect(screen.queryByTestId("halloween-works-entry")).toBeNull();
     expect(screen.queryByRole("region", { name: /参加方法/ })).toBeNull();
+    // その他(Xへのシェア・運営の応援)は参加中の人への呼びかけなので出さない(2026-11-01 ユーザー決定)
+    expect(screen.queryByRole("region", { name: /その他/ })).toBeNull();
+    expect(screen.queryByTestId("halloween-more-tip")).toBeNull();
     expect(screen.queryByTestId("halloween-entry-card")).toBeNull();
     expect(screen.queryByTestId("halloween-entry-loading")).toBeNull();
     // 参加をうながすボタンと文が、ページのどこにも残っていない
@@ -742,7 +757,7 @@ describe("企画が終わったあとの表示(ended)", () => {
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
-  test("対象作品の一覧は残し、文をお礼と「対象作品は○作品でした！」にする", () => {
+  test("対象作品の一覧は残し、文を「タップすると、作品を見られます」と「対象作品は○作品でした！」にする", () => {
     const pages = [
       SUBMISSION_PAGES[0],
       [{ postId: "p3", thumbnailUrl: "https://img.test/p3.webp", authorName: "おばけ" }],
@@ -750,8 +765,9 @@ describe("企画が終わったあとの表示(ended)", () => {
     render(<HalloweenBestShotPage submissionPages={pages} ended />);
     const section = screen.getByRole("region", { name: /キャンペーン対象作品/ });
     const count = within(section).getByTestId("halloween-works-count");
-    // 「タップして…」の場所(数のすぐ上)にお礼を出す。文節ごとに分けて描くので、まとめた文字で比べる
-    expect(count.previousElementSibling?.textContent).toBe("たくさんのご参加、ありがとうございました！");
+    // 「タップして…」の場所(数のすぐ上)。お礼はいちばん下だけにして重ねない(2026-11-01 ユーザー決定)
+    expect(count.previousElementSibling?.textContent).toBe("タップすると、作品を見られます");
+    expect(section.textContent).not.toContain("ありがとうございました");
     expect(count.textContent).toBe("対象作品は3作品でした！");
     expect(count.querySelector("strong")?.textContent).toBe("3");
     // 一覧はそのまま(2ページで3作品。押すと投稿へ行ける)
@@ -780,7 +796,7 @@ describe("企画が終わったあとの表示(ended)", () => {
     );
   });
 
-  test("見出しの並び: 対象作品・企画について・賞品・スケジュール・その他を残す", () => {
+  test("見出しの並び: 対象作品・企画について・賞品・スケジュールを残し、いちばん下にお礼", () => {
     render(<HalloweenBestShotPage submissionPages={SUBMISSION_PAGES} ended />);
     const names = screen.getAllByRole("heading", { level: 2 }).map((node) => node.textContent);
     expect(names).toEqual([
@@ -788,9 +804,10 @@ describe("企画が終わったあとの表示(ended)", () => {
       "ABOUT企画について",
       "PRIZE賞品",
       "SCHEDULEスケジュール",
-      "MOREその他",
       "たくさんのご参加、ありがとうございました！",
     ]);
+    // お礼はいちばん下の1か所だけ
+    expect(document.body.textContent?.split("ありがとうございました").length).toBe(2);
   });
 
   test("対象作品がまだ無いときも、終わったあとは参加方法と浮いたボタンを出さない", () => {
