@@ -18,6 +18,8 @@ import { CachedGeneratedImageGallery } from "./CachedGeneratedImageGallery";
 import { GenerationStateProvider } from "@/features/generation/context/GenerationStateContext";
 import { getUserProfileServer } from "@/features/my-page/lib/server-api";
 import { isInI2iCatalogAllowlist } from "@/lib/auth/i2i-catalog";
+import { getCatalogReferenceConsentSummary } from "@/features/catalog-references/lib/consent-repository";
+import type { CatalogReferenceAccess } from "@/features/catalog-references/types";
 import { type Locale } from "@/i18n/config";
 import { FreeGuestLoginCta } from "./FreeGuestLoginCta";
 
@@ -42,10 +44,15 @@ export async function FreePageBody() {
     return <FreeGuestLoginCta />;
   }
 
-  // 見本(参照画像)を使える人か。運営が選んだ人だけ(一覧が空ならだれも使えない。fail-closed)
-  const [profile, catalogReferenceAvailable] = await Promise.all([
+  // 見本(参照画像)を使える人か。運営が選んだ人だけ(一覧が空ならだれも使えない。fail-closed)。
+  // 使える人だけ、続けて見本の同意の状態を確かめる(有効な同意が無いときだけ同意の画面を、初めてなら案内も出す)。
+  // プロフィールの読み込みと並べて走らせ、一般の利用者の読み込みは増やさない
+  const [profile, catalogReference] = await Promise.all([
     getUserProfileServer(user.id),
-    isInI2iCatalogAllowlist(user.id),
+    isInI2iCatalogAllowlist(user.id).then(
+      async (available): Promise<CatalogReferenceAccess | undefined> =>
+        available ? { userId: user.id, ...(await getCatalogReferenceConsentSummary(user.id)) } : undefined,
+    ),
   ]);
 
   return (
@@ -82,7 +89,7 @@ export async function FreePageBody() {
             nameInputAvailable={isNameInputAvailable(user.id)}
             nameInputUnlimited={isAdminViewer(user.id)}
             // 見本の欄(運営が選んだ人だけ。docs/planning/i2i-catalog-review-implementation-plan.md)
-            catalogReferenceAvailable={catalogReferenceAvailable}
+            catalogReference={catalogReference}
           />
         </Suspense>
 

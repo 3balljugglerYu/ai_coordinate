@@ -5,7 +5,11 @@ import { ensureSameOrigin } from "@/lib/security/same-origin";
 import { jsonError } from "@/lib/api/json-error";
 import { MAX_DIMENSION, processSubmissionImage } from "@/features/inspire/lib/creator-looks-image";
 import { SUBMISSION_IMAGE_MIN_DIMENSION } from "@/features/inspire/lib/submission-image-constraints";
-import { saveCatalogReferenceImage } from "@/features/catalog-references/lib/reference-image-repository";
+import {
+  CatalogReferenceConsentRequiredError,
+  saveCatalogReferenceImage,
+} from "@/features/catalog-references/lib/reference-image-repository";
+import { getCatalogReferenceConsentState } from "@/features/catalog-references/lib/consent-repository";
 
 /**
  * 4MB まで。基盤(Vercel)の本文の上限が約4.5MB なので、それより大きいものはここまで届かない。
@@ -14,11 +18,15 @@ import { saveCatalogReferenceImage } from "@/features/catalog-references/lib/ref
 const MAX_REFERENCE_BYTES = 4 * 1024 * 1024;
 
 /**
- * POST /api/catalog-references: 見本(参照画像)を1枚上げる(multipart: file・copyrightConsent=true)。
+ * POST /api/catalog-references: 見本(参照画像)を1枚上げる(multipart: file)。
  * 計画: docs/planning/i2i-catalog-review-implementation-plan.md(Phase 3・REQ-001・REQ-002・ADR-002)
  *
  * - 見本を使える人(運営が選んだ人)だけ。ほかの人は 403
- * - 「使える見本・使えない見本」の案内への同意が要る
+ * - 「使える見本・使えない見本」への同意が要る。同意は「わかりました」を押したときに本人ごとにサーバーに残す
+ *   (POST /api/catalog-references/consent)。有効な同意が無い・同意のあとに本人の見本が作り直しになったときは 400。
+ *   見本の行には、DB がその同意の時刻を写す(同意の画面を出していない時刻を、同意の時刻として残さない)。
+ *   同意の確認は軽いので、本文を受け取る前に済ませ、通ったときだけ重い画像の作り直しをする。
+ *   行を作るときにも DB(トリガー)が有効な同意を確かめて時刻を写すので、その間に作り直しで無効になっても保存しない
  * - 画像は中身で形式を確かめ、WebP に作り直して(位置情報などを消して)非公開の置き場所に置く
  * - 返すのは見本の id だけ(生成の依頼には id を渡す)。場所は返さない
  */
@@ -30,8 +38,24 @@ export async function POST(request: NextRequest) {
   if (!user) {
     return jsonError("ログインが必要です", "CATALOG_REFERENCE_AUTH_REQUIRED", 401);
   }
-  if (!(await isInI2iCatalogAllowlist(user.id))) {
+
+  // 使える人かと同意は、どちらも本人だけで決まるので並べて確かめる
+  const [allowed, consent] = await Promise.all([
+    isInI2iCatalogAllowlist(user.id),
+    getCatalogReferenceConsentState(user.id).then(
+      (state) => ({ ok: true as const, consentedAt: state.consentedAt }),
+      (error: unknown) => ({ ok: false as const, error }),
+    ),
+  ]);
+  if (!allowed) {
     return jsonError("見本を使える人ではありません", "CATALOG_REFERENCE_NOT_ALLOWED", 403);
+  }
+  if (!consent.ok) {
+    console.error("[catalog-references] consent check error:", consent.error);
+    return jsonError("見本の同意を確かめられませんでした", "CATALOG_REFERENCE_CONSENT_CHECK_FAILED", 500);
+  }
+  if (consent.consentedAt === null) {
+    return jsonError("見本の案内への同意が必要です", "CATALOG_REFERENCE_CONSENT_REQUIRED", 400);
   }
 
   let form: FormData;
@@ -41,9 +65,6 @@ export async function POST(request: NextRequest) {
     return jsonError("入力が不正です", "CATALOG_REFERENCE_INVALID_REQUEST", 400);
   }
 
-  if (form.get("copyrightConsent") !== "true") {
-    return jsonError("見本の案内への同意が必要です", "CATALOG_REFERENCE_CONSENT_REQUIRED", 400);
-  }
   const file = form.get("file");
   if (!(file instanceof File) || file.size === 0) {
     return jsonError("画像を選んでください", "CATALOG_REFERENCE_FILE_REQUIRED", 400);
@@ -75,10 +96,12 @@ export async function POST(request: NextRequest) {
     const { id } = await saveCatalogReferenceImage({
       userId: user.id,
       webpBuffer: processed.data.webpBuffer,
-      consentedAt: new Date(),
     });
     return NextResponse.json({ id }, { status: 201 });
   } catch (error) {
+    if (error instanceof CatalogReferenceConsentRequiredError) {
+      return jsonError("見本の案内への同意が必要です", "CATALOG_REFERENCE_CONSENT_REQUIRED", 400);
+    }
     console.error("[catalog-references] POST error:", error);
     return jsonError("見本の保存に失敗しました", "CATALOG_REFERENCE_SAVE_FAILED", 500);
   }

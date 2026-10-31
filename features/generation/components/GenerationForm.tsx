@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
@@ -19,10 +19,9 @@ import { PromptInputField } from "./PromptInputField";
 import { GachaPromptField } from "./GachaPromptField";
 import { NamePromptField } from "./NamePromptField";
 import { NameInputEntryField } from "./NameInputEntryField";
-import {
-  CatalogReferenceField,
-  type CatalogReferenceValue,
-} from "@/features/catalog-references/components/CatalogReferenceField";
+import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
+import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
+import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
 import type { CatalogReferenceTake } from "@/shared/generation/catalog-reference";
 import { PromptGimmicksBox } from "./PromptGimmicksBox";
 import {
@@ -194,10 +193,10 @@ interface GenerationFormProps {
   /** 名前の欄の数を制限しない(運営だけ。サーバーの nameInputMaxSlotsFor と同じ)。 */
   nameInputUnlimited?: boolean;
   /**
-   * 見本(参照画像)の欄を出してよいか(docs/planning/i2i-catalog-review-implementation-plan.md)。
-   * /free のサーバー側で、見本を使える人の一覧(運営が選んだ人)に入っているかを確かめて渡す。既定は出さない。
+   * 見本(参照画像)の欄に要る値(docs/planning/i2i-catalog-review-implementation-plan.md)。
+   * /free のサーバー側で、見本を使える人の一覧(運営が選んだ人)に入っているときだけ渡す。渡さなければ欄を出さない。
    */
-  catalogReferenceAvailable?: boolean;
+  catalogReference?: CatalogReferenceAccess;
   /**
    * カタログから使う人の名前の欄(派生生成)。原作の本文に目印があるときだけ、
    * `/api/posts/[id]/prompt-slots` から見出しなどを受け取って渡す(本文は届かない)。
@@ -233,7 +232,7 @@ export function GenerationForm({
   gachaUnlimited = false,
   nameInputAvailable = false,
   nameInputUnlimited = false,
-  catalogReferenceAvailable = false,
+  catalogReference: catalogReferenceAccess,
   lockedNameInput = null,
   lockedNameInputLoading = false,
 }: GenerationFormProps) {
@@ -342,7 +341,9 @@ export function GenerationForm({
 
   // 見本(参照画像)。見本を使える人が、自分で書く本文のときだけ(派生生成では元の作品の見本が使われる)
   const canUseCatalogReference =
-    isFree && !promptLocked && isAuthenticated && catalogReferenceAvailable;
+    isFree && !promptLocked && isAuthenticated && catalogReferenceAccess !== undefined;
+  // 見本の欄に渡す値(使えるときだけ)。値があるかを1か所で確かめ、そのまま渡す
+  const referenceAccess = canUseCatalogReference ? catalogReferenceAccess : undefined;
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
   // 上げている間と、見本を選んだのにまねるものが無いときは送らない
@@ -652,6 +653,17 @@ export function GenerationForm({
     };
   }, [uploadedImage?.previewUrl]);
 
+  // 見本のプレビューも blob: の URL。値を持つここで、差し替え・外したとき・unmount 時に放す
+  // (見本の欄の部品が組み直されても、値が残っている間は放さない)
+  useEffect(() => {
+    const currentUrl = catalogReference?.previewUrl;
+    return () => {
+      if (currentUrl?.startsWith("blob:")) {
+        URL.revokeObjectURL(currentUrl);
+      }
+    };
+  }, [catalogReference?.previewUrl]);
+
   const handleSelectStock = useCallback(
     (stock: SourceImageStock) => {
       setSelectedStock(stock);
@@ -827,36 +839,62 @@ export function GenerationForm({
     return () => document.removeEventListener("tutorial:set-demo-image", handler);
   }, [handleImageUpload]);
 
+  // 元の画像(うちの子)を上げる部品。見本を使える人の2枚並べでは、見出しを読み上げだけに残して縦長にする
+  const renderSourceImageUploader = (
+    layout: Pick<ComponentProps<typeof ImageUploader>, "label" | "hideLabel" | "aspectRatio"> = {},
+  ) => (
+    <ImageUploader
+      onImageUpload={handleImageUpload}
+      onImageRemove={() => {
+        setUploadedImage(null);
+        setSelectedStock(null);
+        setSelectedGenerated(null);
+      }}
+      value={
+        selectedStock
+          ? {
+              // ストック選択時はリモート URL のみで preview を出す
+              // (file は使わないので渡さない)。
+              previewUrl: selectedStock.image_url,
+            }
+          : selectedGenerated
+            ? {
+                // 生成済み画像選択時も同様に preview のみ表示する。
+                previewUrl: selectedGenerated.imageUrl,
+              }
+            : uploadedImage
+      }
+      {...layout}
+    />
+  );
+
   return (
     <Card className="p-6">
       <div className="space-y-6">
         {/* 画像入力エリア: アップローダ常時表示 + ピッカートリガ */}
         <div className="space-y-3">
           <Label className="text-base font-medium block">
-            {t("imageSourceLabel")}
+            {referenceAccess ? freeT("catalogReferenceImagesLabel") : t("imageSourceLabel")}
           </Label>
-          <ImageUploader
-            onImageUpload={handleImageUpload}
-            onImageRemove={() => {
-              setUploadedImage(null);
-              setSelectedStock(null);
-              setSelectedGenerated(null);
-            }}
-            value={
-              selectedStock
-                ? {
-                    // ストック選択時はリモート URL のみで preview を出す
-                    // (file は使わないので渡さない)。
-                    previewUrl: selectedStock.image_url,
-                  }
-                : selectedGenerated
-                  ? {
-                      // 生成済み画像選択時も同様に preview のみ表示する。
-                      previewUrl: selectedGenerated.imageUrl,
-                    }
-                  : uploadedImage
-            }
-          />
+          {referenceAccess ? (
+            // 見本を使える人は、うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す)
+            <CatalogReferencePicker
+              ownImage={renderSourceImageUploader({
+                label: freeT("catalogReferenceOwnImageLabel"),
+                hideLabel: true,
+                aspectRatio: 3 / 4,
+              })}
+              value={catalogReference}
+              onChange={setCatalogReference}
+              onUploadingChange={setIsCatalogReferenceUploading}
+              disabled={isGenerating}
+              consented={referenceAccess.consented}
+              consentedBefore={referenceAccess.consentedBefore}
+              userId={referenceAccess.userId}
+            />
+          ) : (
+            renderSourceImageUploader()
+          )}
           {selectedStock ? (
             <div>
               <GeneratedImagesFromSource
@@ -871,12 +909,11 @@ export function GenerationForm({
           />
         </div>
 
-        {/* 見本(参照画像)の欄(見本を使える人だけ。元の画像の下) */}
-        {canUseCatalogReference ? (
-          <CatalogReferenceField
+        {/* 見本から、まねるもの(見本を入れたときだけ。画像の欄の下) */}
+        {canUseCatalogReference && catalogReference ? (
+          <CatalogReferenceTakes
             value={catalogReference}
             onChange={setCatalogReference}
-            onUploadingChange={setIsCatalogReferenceUploading}
             disabled={isGenerating}
           />
         ) : null}

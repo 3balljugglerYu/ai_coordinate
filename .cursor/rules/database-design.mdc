@@ -29,6 +29,7 @@ alwaysApply: false
 - `catalog_audit_logs`
 - `catalog_campaigns`
 - `catalog_entries`
+- `catalog_reference_consents`
 - `catalog_reference_images`
 - `comments`
 - `generated_image_catalog_reviews`
@@ -224,6 +225,7 @@ alwaysApply: false
 - 計画: `docs/planning/i2i-catalog-review-implementation-plan.md`
 - `i2i_catalog_allowlist`: 見本を使える人（`user_id` UNIQUE, `added_by`, `note`≤200, `is_active`）。本人 SELECT のみ・書き込みは service_role。判定は `is_in_i2i_catalog_allowlist(uuid)`（service_role のみ EXECUTE・fail-closed）
 - `catalog_reference_images`: 見本1枚（`user_id`, `storage_path` UNIQUE, `copyright_consent_at` NOT NULL）。本人 SELECT のみ。実体は非公開バケット `catalog-references`（利用者の storage ポリシーなし・サーバーが上げて署名 URL で見せる）
+- `catalog_reference_consents`（20261031100000）: 「使える見本・使えない見本」への同意（`user_id` PK・FK → auth.users ON DELETE CASCADE, `consented_at`, `revoked_at`）。**service_role 専用**（anon/authenticated 全 REVOKE・ポリシーなし）。書くのは `record_catalog_reference_consent(uuid)`（service_role のみ EXECUTE・DB の now() で書き、`revoked_at` を外す）。`trg_revoke_catalog_reference_consent_on_reject`（`catalog_reference_images` AFTER UPDATE OF rejected_at・NULL から入ったときだけ）が、作り直しで本人の同意に `revoked_at` を入れる。`trg_apply_catalog_reference_consent_on_insert`（`catalog_reference_images` BEFORE INSERT）が、本人の `revoked_at` の無い行を FOR SHARE で読み、無ければ `CATALOG_REFERENCE_CONSENT_REQUIRED`（22023）で断り、あれば `copyright_consent_at` に `consented_at` を写す（送った値は使わない）。作った時点で、6a で見本を上げた人を同意済みとして移した（いちばん新しい `copyright_consent_at`・そのあと作り直しがあれば `revoked_at`）
 - `generated_image_reference_secrets`: 根の作品 → 見本・まねるもの（`image_id` PK, `reference_id`, `takes`）。**service_role 専用**（anon/authenticated 全 REVOKE・ポリシーなし）。派生生成の画像には置かない
 - `generated_image_catalog_reviews`: 審査（`image_id` PK, `user_id`, `status` = `not_submitted/pending/approved/rejected`, `reason_category` = `official_or_others_work/real_person/sexual_or_violent/other`（rejected で必須）, `reason`≤500, `submitted_at`, `reviewed_at`, `reviewed_by`）。本人と運営の SELECT のみ・書くのは RPC
 - 投稿の制限: `trg_enforce_catalog_review_before_publish`（`generated_images` BEFORE INSERT OR UPDATE OF is_posted）。審査の行があって `approved` でない画像を `is_posted=true` にすると `post_review_pending`（42501）。**行のない画像（既存すべて）は対象外**・信頼できる書き手も例外にしない

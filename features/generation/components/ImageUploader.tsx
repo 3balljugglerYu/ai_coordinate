@@ -39,6 +39,8 @@ interface ImageUploaderProps {
   config?: ImageUploadConfig;
   className?: string;
   label?: string;
+  /** 見出しを画面に出さず、読み上げにだけ残す(見出しをほかの場所に出す並べ方のとき) */
+  hideLabel?: boolean;
   addImageLabel?: string;
   compact?: boolean;
   disabled?: boolean;
@@ -60,6 +62,7 @@ export function ImageUploader({
   disabled = false,
   square = false,
   aspectRatio,
+  hideLabel = false,
   previewObjectFit = "contain",
   filledPreviewMode = "fixed",
 }: ImageUploaderProps) {
@@ -214,9 +217,11 @@ export function ImageUploader({
     }
   };
 
-  const labelClassName = compact
-    ? "text-xs font-medium leading-none block"
-    : "text-base font-medium block";
+  const labelClassName = hideLabel
+    ? "sr-only"
+    : compact
+      ? "text-xs font-medium leading-none block"
+      : "text-base font-medium block";
   const cardSpacingClassName = compact ? "mt-1" : "mt-3";
   const cardSizeClassName =
     compact || square || aspectRatio ? "" : "h-[210px] sm:h-[240px]";
