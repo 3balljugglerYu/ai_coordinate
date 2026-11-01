@@ -183,6 +183,7 @@ export function GeneratedImageGallery({
                       }
                     }}
                   />
+                  {!image.isPreview && image.id ? <OwnCatalogReviewPanel imageId={image.id} onReviewLoaded={onReviewLoaded} presentation="thumbnail"/> : null}
                   {image.is_posted && (
                     image.id ? (
                       <Link
@@ -274,7 +275,6 @@ export function GeneratedImageGallery({
                   </div>
                 </div>
               </Card>
-              {!image.isPreview && image.id ? <OwnCatalogReviewPanel imageId={image.id} onReviewLoaded={onReviewLoaded}/> : null}
             </div>
           ))}
         </Masonry>

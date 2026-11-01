@@ -403,6 +403,7 @@ export function GeneratedImageList({
             <div className="flex flex-row gap-3 sm:gap-4">
               {/* サムネイル */}
               <div className="flex flex-shrink-0 flex-col gap-2">
+                <div className="relative w-fit">
                 <button
                   type="button"
                   onClick={() => setSelectedImageIndex(index)}
@@ -416,6 +417,8 @@ export function GeneratedImageList({
                     className="h-full w-full object-cover"
                   />
                 </button>
+                {!image.isPreview && image.id ? <OwnCatalogReviewPanel imageId={image.id} onReviewLoaded={onReviewLoaded} presentation="thumbnail"/> : null}
+                </div>
                 {/* PC のみ: サムネイル下にバッジ群 */}
                 <div className="hidden flex-col gap-1 text-xs sm:flex">
                   {badges}
@@ -443,7 +446,6 @@ export function GeneratedImageList({
               {promptBlock}
               {actionButtons}
             </div>
-            {!image.isPreview && image.id ? <OwnCatalogReviewPanel imageId={image.id} onReviewLoaded={onReviewLoaded}/> : null}
           </Card>
         );
       })}

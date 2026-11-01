@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRef } from "react";
 import { useTranslations } from "next-intl";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { CatalogReviewStatusChip } from "@/features/catalog-references/components/CatalogReviewStatusChip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getPostThumbUrl } from "@/features/posts/lib/utils";
 import type { GeneratedImageRecord } from "@/features/generation/lib/database";
@@ -47,19 +47,9 @@ export function MyImageCard({
   imageLoading,
 }: MyImageCardProps) {
   const t = useTranslations("myPage");
-  const reviewT = useTranslations("catalogReview");
   const reviewStatus = currentUserId && currentUserId === image.user_id ? image.catalog_review_status : null;
-  const statusStyles = {
-    not_submitted: { badge: "border-slate-200 bg-slate-50/95 text-slate-600", dot: "bg-slate-400" },
-    pending: { badge: "border-sky-100 bg-sky-50/95 text-sky-800", dot: "bg-sky-500" },
-    rejected: { badge: "border-rose-100 bg-rose-50/95 text-rose-800", dot: "bg-rose-400" },
-    approved: { badge: "border-emerald-100 bg-emerald-50/95 text-emerald-800", dot: "bg-emerald-500" },
-  } as const;
-  const reviewBadge = reviewStatus && Object.hasOwn(statusStyles, reviewStatus) ? (
-    <Badge variant="outline" className={`pointer-events-none absolute bottom-2 left-2 h-6 gap-1.5 px-2 text-xs font-medium shadow-sm backdrop-blur-sm ${statusStyles[reviewStatus].badge}`}>
-      <span aria-hidden="true" className={`size-1.5 shrink-0 rounded-full ${statusStyles[reviewStatus].dot}`} />
-      {reviewT(`badge_${reviewStatus}`)}
-    </Badge>
+  const reviewBadge = reviewStatus ? (
+    <CatalogReviewStatusChip status={reviewStatus} className="pointer-events-none absolute bottom-2 left-2" />
   ) : null;
 
   const imageUrl = getPostThumbUrl({

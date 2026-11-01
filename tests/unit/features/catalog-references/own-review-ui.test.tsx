@@ -156,3 +156,26 @@ test("通知対象を変更して取得に失敗しても前の作品を残さ�
  expect(screen.queryByRole("link",{name:"post"})).not.toBeInTheDocument();
  expect(screen.queryByTestId("catalog-review-card")).not.toBeInTheDocument();
 });
+
+
+test.each(["not_submitted","pending","approved","rejected"] as const)("%sはマイページと共通の状態チップで表示し、4段階の進捗を出さない",status=>{
+ render(<CatalogReviewCard review={{...review,status}}/>);
+ const chip=screen.getByText(`badge_${status}`).closest('[data-slot="badge"]');
+ expect(chip).toHaveAttribute("data-variant","outline");
+ const backgrounds={not_submitted:"bg-slate-50/95",pending:"bg-sky-50/95",approved:"bg-emerald-50/95",rejected:"bg-rose-50/95"};
+ expect(chip).toHaveClass(backgrounds[status]);
+ expect(screen.queryByRole("list",{name:"progress"})).not.toBeInTheDocument();
+});
+
+test("サムネイル用パネルはチップから本人の作品詳細へ進み、画像プレビューを開かない",async()=>{
+ fetchMock.mockResolvedValue({ok:true,json:async()=>({review:{...review,status:"not_submitted"}})});
+ const preview=jest.fn(),loaded=jest.fn();
+ render(<div onClick={preview}><OwnCatalogReviewPanel imageId="target" onReviewLoaded={loaded} presentation="thumbnail"/></div>);
+ const chip=await screen.findByRole("link",{name:"badge_not_submitted"});
+ expect(chip).toHaveAttribute("href","/posts/target");
+ expect(screen.queryByTestId("catalog-review-card")).not.toBeInTheDocument();
+ expect(screen.queryByRole("button",{name:"submit"})).not.toBeInTheDocument();
+ fireEvent.click(chip);expect(preview).not.toHaveBeenCalled();
+ expect(loaded).toHaveBeenCalledWith("target",expect.objectContaining({status:"not_submitted"}));
+ expect(fetchMock).toHaveBeenCalledTimes(1);
+});
