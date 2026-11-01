@@ -29,6 +29,8 @@ import { useFinishedGenerationWatcher } from "@/features/my-page/hooks/useFinish
 interface MyPageImageGalleryClientProps {
   initialImages: GeneratedImageRecord[];
   currentUserId?: string | null;
+  /** i2iの招待者だけに作り方のチップを表示する。未指定は非表示。 */
+  catalogReferenceAvailable?: boolean;
 }
 
 const IMAGES_PER_PAGE = 20;
@@ -154,17 +156,19 @@ const CATALOG_TABS: {
 export function MyPageImageGalleryClient({
   initialImages,
   currentUserId,
+  catalogReferenceAvailable = false,
 }: MyPageImageGalleryClientProps) {
   const t = useTranslations("myPage");
   const { toast } = useToast();
   const isCatalogRevamp = useStylesCatalogRevamp();
   const reviewT = useTranslations("catalogReview");
   const [catalogSource,setCatalogSource] = useState<MyCatalogSource>("all");
+  const effectiveSource = catalogReferenceAvailable ? catalogSource : "all";
   const [filter, setFilter] = useState<ImageFilter>("all");
   const [selectedCatalog, setSelectedCatalog] = useState<MyImageCatalog>("all");
   // 刷新前は常に "all"(タブも出さない)
   const catalog: MyImageCatalog = isCatalogRevamp ? selectedCatalog : "all";
-  const currentKey: ListKey = `${filter}:${catalogForSource(catalog,catalogSource)}`;
+  const currentKey: ListKey = `${filter}:${catalogForSource(catalog,effectiveSource)}`;
 
   // 一度開いた組み合わせは、戻ったときに読み直さない。
   // "all:all" の images は initialImages に続けて読んだ分だけを持つ。
@@ -428,8 +432,8 @@ export function MyPageImageGalleryClient({
     const index = CATALOG_TABS.findIndex((tab) => tab.id === catalog);
     return [index - 1, index + 1]
       .filter((i) => i >= 0 && i < CATALOG_TABS.length)
-      .map((i): ListKey => `${filter}:${catalogForSource(CATALOG_TABS[i].id,catalogSource)}`);
-  }, [filter, catalog, catalogSource]);
+      .map((i): ListKey => `${filter}:${catalogForSource(CATALOG_TABS[i].id,effectiveSource)}`);
+  }, [filter, catalog, effectiveSource]);
 
   // 指で操作する端末では、今の一覧を読んだあとで隣のカタログの先頭も読んでおく
   // (払い始めたときに、隣の一覧がもう見えているように)
@@ -652,7 +656,7 @@ export function MyPageImageGalleryClient({
    */
   const renderList = (id: MyImageCatalog, mode: CatalogTabMode) => {
     const isPage = mode === "page";
-    const key: ListKey = `${filter}:${catalogForSource(id,catalogSource)}`;
+    const key: ListKey = `${filter}:${catalogForSource(id,effectiveSource)}`;
     const list = isPage ? currentList : (lists[key] ?? defaultList(key));
     const images = isPage ? displayImages : imagesForKey(key);
     const loading = isPage ? isInitialLoading : !list.hasLoaded;
@@ -716,7 +720,7 @@ export function MyPageImageGalleryClient({
         </div>
       )}
 
-      {isCatalogRevamp && catalog === "my_catalog" ? (
+      {catalogReferenceAvailable && isCatalogRevamp && catalog === "my_catalog" ? (
         <div role="group" aria-label={reviewT("sourceLabel")} className="mb-4 flex flex-wrap gap-2">
           {(["all", "prompt", "illustration"] as const).map(source => (
             <Button key={source} type="button" variant={catalogSource === source ? "default" : "outline"}

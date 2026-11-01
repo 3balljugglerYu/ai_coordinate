@@ -149,3 +149,33 @@ A: Gallery、List、拡大画面、投稿詳細の既存ボタンを読み、同
 - 網羅率: 上記と同じ計測範囲・コマンド（出力先のみ `.local/i2i-pr-coverage`）で248件成功。行99.09%、分岐94.54%。双方90%以上。
 - `git diff --check` と `git diff --cached --check`: 成功。
 - 使用したレビュー基準は指定のcode-reviewスキル。コミット・プッシュ・PR作成はユーザーが承認した後続作業として行う。マージと本番での実アカウント確認は別途。
+
+## 追記: 作り方チップもi2i招待者限定（2026-11-01）
+
+ユーザー指示により、「プロンプトから・イラストから」のチップをカタログ刷新の一般公開条件だけでは表示しない。`MyPageImageGallery.tsx:6` で既存のi2i招待判定をキャッシュの外で実行し、`CachedMyPageImageGallery.tsx:23` からClientへ渡す。Clientは未指定時false、`MyPageImageGalleryClient.tsx:723` で招待者だけ表示する。
+
+変更前: カタログ刷新が有効なら未招待者にもチップを表示。変更後: i2i招待が有効な人だけ。取得・先読み・描画のcatalogForSource呼び出し3箇所は、未招待ならallを使う（同166・435・659行）。次回のサーバー描画時に招待を再確認する。開きっぱなしの画面へ招待変更を即時配信する機能は追加していない。招待DB・マイグレーション・生成APIの変更はない。
+
+| 分類 | 条件 | 確認結果 |
+|---|---|---|
+| 正常 | 招待trueをServer→Cached→Clientへ渡し、My Catalogにチップを表示 | 成功 |
+| 境界 | カタログ刷新が公開済み、または未招待の運営 | チップ非表示、成功 |
+| 境界 | true→falseになった画面の絞り込み・ページング・隣一覧先読み | 作り方別フィルターを使わない、成功 |
+| 異常 | 招待確認のDBエラー・例外・不正応答 | 既存auth/i2i-catalog.test.tsでfalseを確認、成功 |
+
+事前テストレビューAvicenna（`01a1967b-a32e-7af1-9675-15e5b7ebfa38`）の指摘に従い、失効直後の表示とページング・先読みの検証を追加。最終原文:
+
+> 追加テストを4軸で確認し、指摘はありません。
+
+修正前の8件失敗を確認してから実装。実装の限定独立レビュー原文:
+
+> 限定レビューで、動作不具合の指摘はありません。
+
+- 関連テスト: `npx jest --runInBand tests/unit/features/my-page tests/unit/lib/auth/i2i-catalog.test.ts tests/unit/lib/my-page-server-api.test.ts tests/integration/api/my-page-images-get-route.test.ts` → 15スイート・123件成功。
+- ビルド: `npm run build -- --webpack` → 終了コード0。既存の依存解析・image-splitビルド時取得警告は残る。
+- 変更した7ソース・テストファイルのeslint → 終了コード0。
+- 型: `npm run typecheck` → 既存tests配下110件で終了コード2、アプリ側0、今回の変更ファイルのエラー0。
+- 網羅率: `npx jest --runInBand tests/unit/features/my-page/my-page-image-gallery-access.test.tsx tests/unit/features/my-page/catalog-review-cache-tag.test.tsx --coverage --collectCoverageFrom='features/my-page/components/{MyPageImageGallery,CachedMyPageImageGallery}.tsx' --coverageDirectory=.local/i2i-chip-access-coverage` → サーバー受け渡し2ファイルの行・分岐とも100%。既存Client全体は対象外、変更した表示・取得経路は上記画面テストで確認。
+- 自己点検: 招待true/falseの送信値、チップ表示、作品ID、取得URLを検査。失効後の新規fetchを必須にせず、有効な全作品キャッシュからの表示復帰も認める。失効前の絞り込み表示だけで通るテストは修正済み。
+- 横断確認: 通常取得・先読み・隣一覧描画の3箇所すべてを同じeffectiveSourceへ変更。生成側の招待判定を再利用し、DB判定を複製しない。表示制御は生成APIの認可とは区別する。
+- 指定code-reviewスキルの観点でも差分を確認。動作に関わる見送りなし。実アカウントによるブラウザ確認は未実施。マージは未実施。

@@ -6,10 +6,12 @@ import { MyPageImageGalleryClient } from "./MyPageImageGalleryClient";
 
 interface CachedMyPageImageGalleryProps {
   userId: string;
+  catalogReferenceAvailable?: boolean;
 }
 
 export async function CachedMyPageImageGallery({
   userId,
+  catalogReferenceAvailable = false,
 }: CachedMyPageImageGalleryProps) {
   "use cache";
   cacheTag(`my-page-${userId}`, CATALOG_REVIEW_IMAGES_TAG);
@@ -18,5 +20,5 @@ export async function CachedMyPageImageGallery({
   const supabase = createAdminClient();
   const images = await getMyImagesServer(userId, "all", 20, 0, supabase);
 
-  return <MyPageImageGalleryClient initialImages={images} currentUserId={userId} />;
+  return <MyPageImageGalleryClient initialImages={images} currentUserId={userId} catalogReferenceAvailable={catalogReferenceAvailable} />;
 }
