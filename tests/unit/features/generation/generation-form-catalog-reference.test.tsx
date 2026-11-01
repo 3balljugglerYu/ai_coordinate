@@ -511,3 +511,21 @@ describe("作り直しの引継ぎ",()=>{
   await screen.findByText("remakeFailed");expect(screen.queryByText("remakeReady")).not.toBeInTheDocument();
  });
 });
+
+
+test("横スワイプで作り方を切り替え、本文と見本を保持する",async()=>{
+ const user=userEvent.setup();mockReferencePickerMounted.mockClear();renderForm(jest.fn());
+ const Pointer=class extends MouseEvent {pointerId=1;pointerType="touch";isPrimary=true;};
+ window.PointerEvent=Pointer as typeof PointerEvent;
+ const swipe=(target:Element,from:number,to:number)=>{fireEvent.pointerDown(target,{clientX:from,clientY:200});fireEvent.pointerMove(target,{clientX:to,clientY:200});fireEvent.pointerUp(target,{clientX:to,clientY:200});};
+ fireEvent.change(screen.getByLabelText("promptLabel"),{target:{value:"秋のひととき"}});
+ swipe(screen.getByText("imageSourceLabel").parentElement!,300,100);
+ expect(screen.getByRole("tab",{name:"createTabReference"}).getAttribute("aria-selected")).toBe("true");
+ await user.click(screen.getByText("mock-pick-reference"));
+ swipe(screen.getByText("catalogReferenceImagesLabel").parentElement!,100,300);
+ expect(screen.getByRole("tab",{name:"createTabPrompt"}).getAttribute("aria-selected")).toBe("true");
+ expect(screen.getByLabelText("promptLabel")).toHaveProperty("value","秋のひととき");
+ swipe(screen.getByText("imageSourceLabel").parentElement!,300,100);
+ expect(mockReferencePicker.mock.lastCall?.[0].value).toMatchObject({id:"ref-1"});
+ expect(mockReferencePickerMounted).toHaveBeenCalledTimes(1);
+});

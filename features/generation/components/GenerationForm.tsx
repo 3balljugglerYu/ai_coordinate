@@ -22,6 +22,7 @@ import { NamePromptField } from "./NamePromptField";
 import { NameInputEntryField } from "./NameInputEntryField";
 import { CatalogReferencePicker } from "@/features/catalog-references/components/CatalogReferencePicker";
 import { CatalogReferenceIntro } from "@/features/catalog-references/components/CatalogReferenceIntro";
+import { CreateModeSwipePanel } from "./CreateModeSwipePanel";
 import { CatalogTabBar } from "@/features/style-presets/components/CatalogTabBar";
 import type { CatalogReferenceAccess, CatalogReferenceValue } from "@/features/catalog-references/types";
 import { CatalogReferenceTakes } from "@/features/catalog-references/components/CatalogReferenceTakes";
@@ -933,6 +934,7 @@ export function GenerationForm({
         />
       </>
     ) : null}
+    <CreateModeSwipePanel activeMode={createMode} onModeChange={setCreateMode} enabled={referenceAccess !== undefined}>
     <Card className="p-6">
       <div className="space-y-6">
         {/* 画像入力エリア: アップローダ常時表示 + ピッカートリガ */}
@@ -1304,6 +1306,7 @@ export function GenerationForm({
         />
       </div>
     </Card>
+    </CreateModeSwipePanel>
     </>
   );
 }
