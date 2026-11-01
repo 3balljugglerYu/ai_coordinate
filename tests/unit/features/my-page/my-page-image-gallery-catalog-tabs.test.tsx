@@ -8,13 +8,14 @@
  * タブ × カタログの組み合わせでサーバーに絞り込みを頼む」を確かめる。
  */
 
+let mockImagesInView = false;
 const stableTranslate = (key: string) => key;
 jest.mock("next-intl", () => ({
   useTranslations: () => stableTranslate,
 }));
 
 jest.mock("react-intersection-observer", () => ({
-  useInView: () => ({ ref: jest.fn(), inView: false }),
+  useInView: () => ({ ref: jest.fn(), inView: mockImagesInView }),
 }));
 
 // 生成の完了の見張り(生成中の問い合わせ)はこのファイルでは扱わない
@@ -411,5 +412,108 @@ describe("マイページの生成画像一覧: 読み込みに失敗したと�
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByTestId("my-images-load-failed")).toBeNull();
   });
+
+});
+
+test("My Catalogだけに作り方のチップを出し、投稿状態と組み合わせて取得する",async()=>{
+ const fetchMock=jest.fn(async()=>({ok:true,json:async()=>({images:[],hasMore:false})}));global.fetch=fetchMock as unknown as typeof fetch;
+ await act(async()=>{render(<UserStylesAvailabilityProvider><MyPageImageGalleryClient initialImages={INITIAL_IMAGES} catalogReferenceAvailable/><UserStylesAvailabilityUpgrade/></UserStylesAvailabilityProvider>);});
+ expect(screen.queryByRole("group",{name:"sourceLabel"})).toBeNull();
+ fireEvent.click(screen.getByRole("tab",{name:"imageCatalogMyCatalog"}));await screen.findByRole("group",{name:"sourceLabel"});
+ fireEvent.click(screen.getByRole("button",{name:"sourceIllustration"}));
+ await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=all&limit=20&offset=0&catalog=my_catalog_illustration"));
+ fireEvent.click(screen.getByRole("button",{name:"imageTabUnposted"}));
+ await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=unposted&limit=20&offset=0&catalog=my_catalog_illustration"));
+ fireEvent.click(screen.getByRole("button",{name:"sourcePrompt"}));
+ await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=unposted&limit=20&offset=0&catalog=my_catalog_prompt"));
+ fireEvent.click(screen.getByRole("tab",{name:"imageCatalogPerstaOriginal"}));expect(screen.queryByRole("group",{name:"sourceLabel"})).toBeNull();
+});
+
+test("20件を超える作品は作り方ごとにページングし、遅れた応答や他タブを混ぜない",async()=>{
+ const rows=Array.from({length:26},(_,i)=>[{id:`illustration-${i}`,kind:"illustration"},{id:`prompt-${i}`,kind:"prompt"}]).flat();
+ let finishPrompt:(value:unknown)=>void=()=>{};
+ const fetchMock=jest.fn((raw:string)=>{
+   const url=new URL(raw,"http://localhost");const catalog=url.searchParams.get("catalog");const offset=Number(url.searchParams.get("offset"));
+   if(catalog==="my_catalog_prompt")return new Promise(resolve=>{finishPrompt=resolve;});
+   const filtered=catalog==="my_catalog_illustration"?rows.filter(row=>row.kind==="illustration"):catalog==="persta_original"?[]:rows;
+   return Promise.resolve({ok:true,json:async()=>({images:filtered.slice(offset,offset+20),hasMore:offset+20<filtered.length})});
+ });global.fetch=fetchMock as unknown as typeof fetch;
+ const tree=<UserStylesAvailabilityProvider><MyPageImageGalleryClient initialImages={INITIAL_IMAGES} catalogReferenceAvailable/><UserStylesAvailabilityUpgrade/></UserStylesAvailabilityProvider>;
+ const {rerender}=render(tree);
+ await screen.findByRole("tab",{name:"imageCatalogMyCatalog"});
+ fireEvent.click(screen.getByRole("tab",{name:"imageCatalogMyCatalog"}));
+ fireEvent.click(await screen.findByRole("button",{name:"sourceIllustration"}));
+ await waitFor(()=>expect(screen.getAllByTestId("my-image-card")).toHaveLength(20));
+ expect(screen.getAllByTestId("my-image-card").every(node=>node.textContent?.startsWith("illustration-"))).toBe(true);
+ mockImagesInView=true;rerender(<UserStylesAvailabilityProvider><MyPageImageGalleryClient initialImages={INITIAL_IMAGES} catalogReferenceAvailable/><UserStylesAvailabilityUpgrade/></UserStylesAvailabilityProvider>);
+ await waitFor(()=>expect(screen.getAllByTestId("my-image-card")).toHaveLength(26));
+ expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=all&limit=20&offset=20&catalog=my_catalog_illustration");
+ mockImagesInView=false;
+ fireEvent.click(screen.getByRole("button",{name:"sourcePrompt"}));
+ await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=all&limit=20&offset=0&catalog=my_catalog_prompt"));
+ fireEvent.click(screen.getByRole("button",{name:"sourceIllustration"}));
+ await act(async()=>{finishPrompt({ok:true,json:async()=>({images:rows.filter(row=>row.kind==="prompt").slice(0,20),hasMore:true})});});
+ expect(screen.getAllByTestId("my-image-card")).toHaveLength(26);
+ expect(screen.getAllByTestId("my-image-card").every(node=>node.textContent?.startsWith("illustration-"))).toBe(true);
+ fireEvent.click(screen.getByRole("tab",{name:"imageCatalogPerstaOriginal"}));await screen.findByText("emptyImagesDescriptionPerstaOriginal");
+ fireEvent.click(screen.getByRole("tab",{name:"imageCatalogMyCatalog"}));expect(screen.getAllByTestId("my-image-card")).toHaveLength(26);
+});
+
+
+describe("作り方チップの招待制限",()=>{
+ const oldFlag=process.env.NEXT_PUBLIC_USER_STYLES_ENABLED;
+ const oldFetch=global.fetch;
+ afterEach(()=>{process.env.NEXT_PUBLIC_USER_STYLES_ENABLED=oldFlag;global.fetch=oldFetch;mockImagesInView=false;});
+ test.each(["public","staff"])("カタログ刷新が%sでも未招待ならチップを出さない",async mode=>{
+  process.env.NEXT_PUBLIC_USER_STYLES_ENABLED=mode==="public"?"true":"false";
+  global.fetch=jest.fn(async()=>mockFetchResponse([])) as unknown as typeof fetch;
+  render(<UserStylesAvailabilityProvider><MyPageImageGalleryClient initialImages={INITIAL_IMAGES}/>{mode==="staff"?<UserStylesAvailabilityUpgrade/>:null}</UserStylesAvailabilityProvider>);
+  fireEvent.click(await screen.findByRole("tab",{name:"imageCatalogMyCatalog"}));
+  expect(screen.queryByRole("group",{name:"sourceLabel"})).toBeNull();
+  expect(screen.queryByRole("button",{name:"sourceIllustration"})).toBeNull();
+  expect(screen.queryByRole("button",{name:"sourcePrompt"})).toBeNull();
+ });
+ test("招待が無効になったらチップと選択中の作り方を解除する",async()=>{
+  process.env.NEXT_PUBLIC_USER_STYLES_ENABLED="true";
+  const fetchMock=jest.fn(async(url:string)=>mockFetchResponse([{id:url.includes("my_catalog_illustration")?"illustration-mine":"all-mine"}]));global.fetch=fetchMock as unknown as typeof fetch;
+  const tree=(allowed:boolean)=><UserStylesAvailabilityProvider><MyPageImageGalleryClient initialImages={INITIAL_IMAGES} catalogReferenceAvailable={allowed}/></UserStylesAvailabilityProvider>;
+  const {rerender}=render(tree(true));
+  fireEvent.click(screen.getByRole("tab",{name:"imageCatalogMyCatalog"}));
+  fireEvent.click(screen.getByRole("button",{name:"sourceIllustration"}));
+  await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=all&limit=20&offset=0&catalog=my_catalog_illustration"));
+  await screen.findByText("illustration-mine");
+  rerender(tree(false));
+  expect(screen.queryByRole("group",{name:"sourceLabel"})).toBeNull();
+  await screen.findByText("all-mine");
+  expect(screen.queryByText("illustration-mine")).toBeNull();
+  fireEvent.click(screen.getByRole("button",{name:"imageTabUnposted"}));
+  await waitFor(()=>expect(fetchMock).toHaveBeenLastCalledWith("/api/my-page/images?filter=unposted&limit=20&offset=0&catalog=my_catalog"));
+ });
+ test("失効後の続き取得と隣カタログの先読みも作り方で絞らない",async()=>{
+  process.env.NEXT_PUBLIC_USER_STYLES_ENABLED="true";
+  const oldMatchMedia=window.matchMedia;
+  const fetchMock=jest.fn(async(raw:string)=>{
+   const url=new URL(raw,"http://localhost");const offset=Number(url.searchParams.get("offset"));
+   const catalog=url.searchParams.get("catalog");
+   const rows=catalog?.startsWith("my_catalog")?Array.from({length:26},(_,i)=>({id:`${catalog}-${i}`})):[];
+   return {ok:true,json:async()=>({images:rows.slice(offset,offset+20),hasMore:offset+20<rows.length})};
+  });global.fetch=fetchMock as unknown as typeof fetch;
+  const tree=(allowed:boolean)=><UserStylesAvailabilityProvider><MyPageImageGalleryClient initialImages={INITIAL_IMAGES} catalogReferenceAvailable={allowed}/></UserStylesAvailabilityProvider>;
+  try{
+   const {rerender}=render(tree(true));
+   fireEvent.click(screen.getByRole("tab",{name:"imageCatalogMyCatalog"}));
+   fireEvent.click(screen.getByRole("button",{name:"sourceIllustration"}));
+   await screen.findByText("my_catalog_illustration-0");
+   rerender(tree(false));await screen.findByText("my_catalog-0");
+   fetchMock.mockClear();mockImagesInView=true;rerender(tree(false));
+   await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=all&limit=20&offset=20&catalog=my_catalog"));
+   await screen.findByText("my_catalog-25");
+   window.matchMedia=((query:string)=>({matches:query==="(pointer: coarse)",media:query,addEventListener:jest.fn(),removeEventListener:jest.fn()})) as unknown as typeof window.matchMedia;
+   fireEvent.click(screen.getByRole("tab",{name:"imageCatalogPerstaOriginal"}));
+   fireEvent.click(screen.getByRole("button",{name:"imageTabPosted"}));
+   await waitFor(()=>expect(fetchMock).toHaveBeenCalledWith("/api/my-page/images?filter=posted&limit=20&offset=0&catalog=my_catalog"));
+   expect(fetchMock.mock.calls.every(([url])=>!url.includes("my_catalog_illustration")&&!url.includes("my_catalog_prompt"))).toBe(true);
+  }finally{window.matchMedia=oldMatchMedia;mockImagesInView=false;}
+ });
 
 });

@@ -647,6 +647,11 @@ export function useNotifications(
         return;
       }
 
+      if (notification.type === "catalog_review_approved" || notification.type === "catalog_review_rejected") {
+        router.push(`/my-page/catalog-reviews?image=${encodeURIComponent(notification.entity_id)}`);
+        return;
+      }
+
       // 遷移。コメント/返信通知は対象コメントへのディープリンクを付与し、
       // 投稿ページ側(CommentSection)が該当コメント・返信までスクロールする。
       if (notification.entity_type === "post") {

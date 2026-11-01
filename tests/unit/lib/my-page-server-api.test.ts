@@ -985,7 +985,7 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         supabase.client as never
       );
 
-      expect(result).toEqual(rows);
+      expect(result).toEqual(rows.map(image=>({...image,catalog_review_status:null})));
       expect(supabase.fromCalls.generated_images[0].calls.eq).toEqual([
         ["user_id", "user-1"],
       ]);
@@ -1188,6 +1188,15 @@ describe("MyPageServerApi unit tests from EARS specs", () => {
         }),
       ]);
     });
+  });
+
+  test("審査状態だけを本人の一覧へ付け、結合データを応答へ残さない",async()=>{
+    const row={...createImageRecord({id:"reviewed"}),catalog_review:{status:"rejected"}};
+    const supabase=createSupabaseMock({from:{generated_images:[{rangeResult:{data:[row],error:null}}]}});
+    const result=await getMyImagesServer("owner","all",20,0,supabase.client as never,"my_catalog_illustration");
+    expect(result[0]).toMatchObject({id:"reviewed",catalog_review_status:"rejected"});expect(result[0]).not.toHaveProperty("catalog_review");
+    const calls=supabase.fromCalls.generated_images[0].calls;expect(calls.eq).toContainEqual(["user_id","owner"]);expect(calls.not).toContainEqual(["catalog_review","is",null]);
+    expect(calls.select).toEqual([["*, catalog_review:generated_image_catalog_reviews(status)"]]);
   });
 
   describe("MPSAPI-010 getMyImagesServer", () => {

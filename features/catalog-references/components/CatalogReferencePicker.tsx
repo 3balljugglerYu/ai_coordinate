@@ -19,6 +19,7 @@ import { REFERENCE_STRIPES_CLASS } from "./reference-styles";
 interface CatalogReferencePickerProps {
   /** うちの子の欄(元の画像を上げる部品。並べて置く) */
   ownImage: ReactNode;
+  initialTakes?: CatalogReferenceTake[];
   value: CatalogReferenceValue | null;
   onChange: (value: CatalogReferenceValue | null) => void;
   /** 上げている間は生成させない */
@@ -84,6 +85,7 @@ const UPLOAD_ERROR_KEYS: Record<string, UploadErrorKey> = {
  */
 export function CatalogReferencePicker({
   ownImage,
+  initialTakes,
   value,
   onChange,
   onUploadingChange,
@@ -158,7 +160,7 @@ export function CatalogReferencePicker({
       setError(messageFor((body?.errorCode && UPLOAD_ERROR_KEYS[body.errorCode]) || "catalogReferenceUploadFailed"));
       return;
     }
-    onChange({ id: body.id, previewUrl: URL.createObjectURL(prepared), takes: DEFAULT_TAKES });
+    onChange({ id: body.id, previewUrl: URL.createObjectURL(prepared), takes: value?.takes ?? initialTakes ?? DEFAULT_TAKES });
   };
 
   /** 「わかりました」を押したことをサーバーに残す。残せなかったら出す文言のキーを返す */

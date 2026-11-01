@@ -1,9 +1,10 @@
+import { OwnCatalogReviewEntry } from "@/features/catalog-references/components/OwnCatalogReviewEntry";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
 import { requireAuth } from "@/lib/auth";
 import { RefreshOnMount } from "@/components/RefreshOnMount";
-import { CachedMyPageImageGallery } from "@/features/my-page/components/CachedMyPageImageGallery";
+import { MyPageImageGallery } from "@/features/my-page/components/MyPageImageGallery";
 import { CachedMyPagePercoinBalance } from "@/features/my-page/components/CachedMyPagePercoinBalance";
 import { CachedMyPageCollections } from "@/features/my-page/components/CachedMyPageCollections";
 import { CachedMyPageProfileHeader } from "@/features/my-page/components/CachedMyPageProfileHeader";
@@ -68,12 +69,14 @@ export default async function MyPagePage() {
             <MySubmittedTemplatesCard userId={user.id} />
           </Suspense>
 
+          <Suspense fallback={null}><OwnCatalogReviewEntry userId={user.id}/></Suspense>
+
           <div className="mt-8">
             <h2 className="mb-4 text-xl font-semibold text-gray-900">
               {myPageT("generatedImagesTitle")}
             </h2>
             <Suspense fallback={<MyPageImageGallerySkeleton />}>
-              <CachedMyPageImageGallery userId={user.id} />
+              <MyPageImageGallery userId={user.id} />
             </Suspense>
           </div>
         </div>

@@ -488,3 +488,26 @@ describe("カタログから使う画面(派生生成)のプロンプトの欄",
     expect(screen.getByLabelText("lockedSheetPromptLabel").getAttribute("placeholder")).toBe(placeholder);
   });
 });
+
+
+describe("作り直しの引継ぎ",()=>{
+ afterEach(()=>{window.history.replaceState(null,"","/");});
+ test("文章とまねるものを引き継いでも、新しい見本を選ぶまで生成しない",async()=>{
+  window.history.replaceState(null,"","/free?remake=rejected-image");
+  fetchMock.mockImplementation((url:string)=>Promise.resolve({ok:true,json:async()=>url.includes("/remake/")?{prompt:"autumn pose",takes:["pose"]}:{items:[],nextOffset:null}}));
+  const onSubmit=jest.fn();renderForm(onSubmit);
+  await screen.findByText("remakeReady");
+  expect(screen.getByDisplayValue("autumn pose")).toBeInTheDocument();
+  expect(mockReferencePicker).toHaveBeenLastCalledWith(expect.objectContaining({initialTakes:["pose"],value:null}));
+  expect(screen.getByTestId("mock-submit")).toBeDisabled();expect(onSubmit).not.toHaveBeenCalled();
+ });
+ test("一覧から外れた人は引継ぎを取得しない",async()=>{
+  window.history.replaceState(null,"","/free?remake=rejected-image");renderForm(jest.fn(),{catalogReference:undefined});
+  await screen.findByRole("alert");expect(fetchMock.mock.calls.some(([url])=>String(url).includes("/remake/"))).toBe(false);
+ });
+ test("取得失敗を案内し、文章や見本を補わない",async()=>{
+  window.history.replaceState(null,"","/free?remake=rejected-image");
+  fetchMock.mockImplementation((url:string)=>Promise.resolve({ok:!url.includes("/remake/"),json:async()=>({items:[],nextOffset:null})}));renderForm(jest.fn());
+  await screen.findByText("remakeFailed");expect(screen.queryByText("remakeReady")).not.toBeInTheDocument();
+ });
+});

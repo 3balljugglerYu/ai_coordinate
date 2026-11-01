@@ -1,3 +1,5 @@
+import { revalidateTag } from "next/cache";
+import { CATALOG_REVIEW_IMAGES_TAG } from "@/features/catalog-references/lib/review-status";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/auth";
@@ -119,6 +121,8 @@ export async function POST(
         ? { reasonCategory: decision.reasonCategory, reason }
         : {},
   });
+
+  revalidateTag(CATALOG_REVIEW_IMAGES_TAG, {expire:0});
 
   const row = data as { status?: string; reviewed_at?: string | null } | null;
   return NextResponse.json({ status: row?.status ?? null, reviewedAt: row?.reviewed_at ?? null });

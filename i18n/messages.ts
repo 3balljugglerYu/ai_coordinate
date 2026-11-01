@@ -40,6 +40,7 @@ export type ClientMessageNamespace = keyof AppMessages;
 
 const clientNamespaces = [
   "accountManagement",
+  "catalogReview",
   "avatarUpload",
   "auth",
   "challenge",

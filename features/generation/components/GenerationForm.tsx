@@ -1,4 +1,5 @@
 "use client";
+import { CatalogReviewProgress } from "@/features/catalog-references/components/CatalogReviewProgress";
 
 import { useState, useEffect, useCallback, useRef, type ComponentProps } from "react";
 import { useTranslations } from "next-intl";
@@ -356,11 +357,29 @@ export function GenerationForm({
   const usingReference = createMode === "reference" && referenceAccess !== undefined;
   const [catalogReference, setCatalogReference] = useState<CatalogReferenceValue | null>(null);
   const [isCatalogReferenceUploading, setIsCatalogReferenceUploading] = useState(false);
+  const reviewT = useTranslations("catalogReview");
+  const [remakeTakes,setRemakeTakes]=useState<CatalogReferenceTake[] | undefined>();
+  const [remakeState,setRemakeState]=useState<"idle"|"loading"|"ready"|"failed">("idle");
+  useEffect(()=>{
+    const remakeId=new URLSearchParams(window.location.search).get("remake");
+    if(!remakeId)return;
+    if(!canUseCatalogReference){setRemakeState("failed");return;}
+    let active=true;
+    const controller=new AbortController();
+    setRemakeState("loading");
+    fetch(`/api/catalog-references/remake/${encodeURIComponent(remakeId)}`,{signal:controller.signal,cache:"no-store"})
+      .then(async response=>{if(!response.ok)throw new Error();return response.json();})
+      .then((data:{prompt:string;takes:CatalogReferenceTake[]})=>{
+        if(!active)return;
+        setPrompt(data.prompt);setRemakeTakes(data.takes);setCreateMode("reference");setRemakeState("ready");
+      }).catch(()=>{if(active)setRemakeState("failed");});
+    return ()=>{active=false;controller.abort();};
+  },[canUseCatalogReference]);
   // 「イラストから」は、見本を入れてまねるものを1つ以上選ぶまで送らない(上げている間も送らない)。
   // プロンプトは、なくてもよい
   const catalogReferenceBlocksSubmit =
-    usingReference &&
-    (isCatalogReferenceUploading || catalogReference === null || catalogReference.takes.length === 0);
+    remakeState === "loading" || (usingReference &&
+    (isCatalogReferenceUploading || catalogReference === null || catalogReference.takes.length === 0));
   const [nameSlotState, setNameSlotState] = useState<NameInputSlot | null>(null);
   const nameSlot = canUseNameInput ? nameSlotState : null;
   // 送る本文(目印＋本文＋ガチャの欄)。数と必須の判定は、これをサーバーと同じ数え方で見る
@@ -881,6 +900,8 @@ export function GenerationForm({
     />
   );
 
+  if (remakeState === "loading") return <p role="status">{reviewT("loading")}</p>;
+
   return (
     <>
     {/*
@@ -927,6 +948,7 @@ export function GenerationForm({
                 うちの子の欄は、見せている側にだけ置く(同じ欄を2つ出さない)
               */}
               <div hidden={!usingReference} data-testid="catalog-reference-panel">
+                <CatalogReviewProgress status="creating" />
                 {/* うちの子と見本の2枚並べ(第2案)。見出しは並べた欄の下に出す(読み上げには残す) */}
                 <CatalogReferencePicker
                   ownImage={
@@ -939,6 +961,7 @@ export function GenerationForm({
                       : null
                   }
                   value={catalogReference}
+                  initialTakes={remakeTakes}
                   onChange={setCatalogReference}
                   onUploadingChange={setIsCatalogReferenceUploading}
                   disabled={isGenerating}
@@ -965,6 +988,10 @@ export function GenerationForm({
             disabled={isGenerating || isTutorialInProgress}
           />
         </div>
+
+        {remakeState !== "idle" ? <p role={remakeState === "failed" ? "alert" : "status"} className="rounded-xl bg-violet-50 p-3 text-sm">
+          {reviewT(remakeState === "ready" ? "remakeReady" : remakeState === "failed" ? "remakeFailed" : "loading")}
+        </p> : null}
 
         {/* 見本から、まねるもの(「イラストから」で見本を入れたときだけ。画像の欄の下) */}
         {usingReference && catalogReference ? (

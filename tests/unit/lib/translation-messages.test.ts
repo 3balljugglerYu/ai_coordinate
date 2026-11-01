@@ -4,6 +4,8 @@ import { jaMessages } from "@/messages/ja";
 
 const expectedClientNamespaces = [
   "accountManagement",
+  // 審査状態・作り方チップをクライアントで表示する。
+  "catalogReview",
   "adminStyleTemplates",
   "avatarUpload",
   "auth",
