@@ -48,6 +48,8 @@ const UNLOCALIZED_PUBLIC_PATHS = [
   "/guide/text",
   // ハロウィン企画のページ(2026-10-17 から検索に出す。応募規約のページは検索に出さないので載せない)
   "/campaigns/halloween-best-shot",
+  // 11月の秋のひととき企画のページ(2026-10-30。応募規約のページは載せない。ハロウィンと同じ)
+  "/campaigns/autumn-moment",
 ] as const;
 
 type LocalizedPath = (typeof LOCALIZED_PUBLIC_PATHS)[number];
