@@ -566,7 +566,12 @@ describe("useNotifications", () => {
     expect(pushMock).not.toHaveBeenCalled();
   });
 
-  test.each([
+  test.each<[string, Notification, string]>([
+    ...(["catalog_review_approved", "catalog_review_rejected"] as const).map((type): [string, Notification, string] => [
+      type,
+      createNotification({type, entity_type:"post",entity_id:"review-image",data:{}}),
+      "/my-page/catalog-reviews?image=review-image",
+    ]),
     [
       "post通知",
       createNotification({

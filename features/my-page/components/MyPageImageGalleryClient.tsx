@@ -23,7 +23,7 @@ import {
   type CatalogTabMode,
 } from "@/features/style-presets/components/CatalogSwipePanel";
 import { useStylesCatalogRevamp } from "@/features/style-presets/hooks/useStylesCatalogRevamp";
-import type { MyImageCatalog } from "@/features/my-page/lib/my-image-catalog";
+import {catalogForSource, type MyCatalogSource, type MyImageCatalog} from "@/features/my-page/lib/my-image-catalog";
 import { useFinishedGenerationWatcher } from "@/features/my-page/hooks/useFinishedGenerationWatcher";
 
 interface MyPageImageGalleryClientProps {
@@ -158,11 +158,13 @@ export function MyPageImageGalleryClient({
   const t = useTranslations("myPage");
   const { toast } = useToast();
   const isCatalogRevamp = useStylesCatalogRevamp();
+  const reviewT = useTranslations("catalogReview");
+  const [catalogSource,setCatalogSource] = useState<MyCatalogSource>("all");
   const [filter, setFilter] = useState<ImageFilter>("all");
   const [selectedCatalog, setSelectedCatalog] = useState<MyImageCatalog>("all");
   // 刷新前は常に "all"(タブも出さない)
   const catalog: MyImageCatalog = isCatalogRevamp ? selectedCatalog : "all";
-  const currentKey: ListKey = `${filter}:${catalog}`;
+  const currentKey: ListKey = `${filter}:${catalogForSource(catalog,catalogSource)}`;
 
   // 一度開いた組み合わせは、戻ったときに読み直さない。
   // "all:all" の images は initialImages に続けて読んだ分だけを持つ。
@@ -426,8 +428,8 @@ export function MyPageImageGalleryClient({
     const index = CATALOG_TABS.findIndex((tab) => tab.id === catalog);
     return [index - 1, index + 1]
       .filter((i) => i >= 0 && i < CATALOG_TABS.length)
-      .map((i): ListKey => `${filter}:${CATALOG_TABS[i].id}`);
-  }, [filter, catalog]);
+      .map((i): ListKey => `${filter}:${catalogForSource(CATALOG_TABS[i].id,catalogSource)}`);
+  }, [filter, catalog, catalogSource]);
 
   // 指で操作する端末では、今の一覧を読んだあとで隣のカタログの先頭も読んでおく
   // (払い始めたときに、隣の一覧がもう見えているように)
@@ -650,7 +652,7 @@ export function MyPageImageGalleryClient({
    */
   const renderList = (id: MyImageCatalog, mode: CatalogTabMode) => {
     const isPage = mode === "page";
-    const key: ListKey = `${filter}:${id}`;
+    const key: ListKey = `${filter}:${catalogForSource(id,catalogSource)}`;
     const list = isPage ? currentList : (lists[key] ?? defaultList(key));
     const images = isPage ? displayImages : imagesForKey(key);
     const loading = isPage ? isInitialLoading : !list.hasLoaded;
@@ -713,6 +715,18 @@ export function MyPageImageGalleryClient({
           />
         </div>
       )}
+
+      {isCatalogRevamp && catalog === "my_catalog" ? (
+        <div role="group" aria-label={reviewT("sourceLabel")} className="mb-4 flex flex-wrap gap-2">
+          {(["all", "prompt", "illustration"] as const).map(source => (
+            <Button key={source} type="button" variant={catalogSource === source ? "default" : "outline"}
+              className="min-h-11 rounded-full px-4" aria-pressed={catalogSource === source}
+              onClick={() => {setCatalogSource(source);setSelectionMode(false);setSelectedIds(new Set());}}>
+              {reviewT(source === "all" ? "sourceAll" : source === "prompt" ? "sourcePrompt" : "sourceIllustration")}
+            </Button>
+          ))}
+        </div>
+      ) : null}
 
       {/* 未投稿タブ・未選択モード時のみ「一括削除」ボタン */}
       {isUnpostedTab && !selectionMode && displayImages.length > 0 && (

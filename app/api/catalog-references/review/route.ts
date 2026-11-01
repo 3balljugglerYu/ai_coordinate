@@ -1,3 +1,5 @@
+import { revalidateTag } from "next/cache";
+import { CATALOG_REVIEW_IMAGES_TAG } from "@/features/catalog-references/lib/review-status";
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getUser } from "@/lib/auth";
@@ -68,6 +70,8 @@ export async function POST(request: NextRequest) {
     console.error("[catalog-references/review] submit error:", error.code, error.message);
     return jsonError("審査に出せませんでした", "CATALOG_REVIEW_SUBMIT_FAILED", 500);
   }
+
+  revalidateTag(CATALOG_REVIEW_IMAGES_TAG, {expire:0});
 
   const row = data as { status?: string; submitted_at?: string | null } | null;
   return NextResponse.json({ status: row?.status ?? "pending", submittedAt: row?.submitted_at ?? null });

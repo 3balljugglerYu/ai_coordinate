@@ -8,6 +8,8 @@ import type { BackgroundMode, GeminiModel, GenerationType } from "../types";
  */
 
 export interface GeneratedImageRecord {
+  /** 本人のマイページだけに付ける審査状態。見本や審査理由は一覧へ含めない。 */
+  catalog_review_status?: import("@/features/catalog-references/lib/review-status").CatalogReviewStatus | null;
   id?: string;
   user_id: string | null;
   image_url: string;

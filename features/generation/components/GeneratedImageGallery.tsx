@@ -10,6 +10,8 @@ import { useCloseViewerAfterLeavingToPost } from "../hooks/useCloseViewerAfterLe
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import type { GeneratedImageData } from "../types";
+import { useCatalogReviewPosting } from "@/features/catalog-references/lib/use-catalog-review-posting";
+import { OwnCatalogReviewPanel } from "@/features/catalog-references/components/OwnCatalogReviewPanel";
 import { ImageModal } from "./ImageModal";
 import { shareOrDownloadGeneratedImage } from "../lib/download-image";
 
@@ -39,6 +41,7 @@ export function GeneratedImageGallery({
   onDownload,
 }: GeneratedImageGalleryProps) {
   const t = useTranslations("coordinate");
+  const {onReviewLoaded,canPost}=useCatalogReviewPosting();
   const [selectedImageIndex, setSelectedImageIndex] = useState<number | null>(null);
   const { isNavigating, openPostPage } = usePostPageNavigation();
   const markLeavingToPost = useCloseViewerAfterLeavingToPost(setSelectedImageIndex);
@@ -231,7 +234,7 @@ export function GeneratedImageGallery({
                     >
                       <ZoomIn className="h-4 w-4" />
                     </Button>
-                    {!image.is_posted && !image.isPreview && (
+                    {!image.is_posted && !image.isPreview && canPost(image.id) && (
                       <Button
                         size="sm"
                         variant="secondary"
@@ -271,6 +274,7 @@ export function GeneratedImageGallery({
                   </div>
                 </div>
               </Card>
+              {!image.isPreview && image.id ? <OwnCatalogReviewPanel imageId={image.id} onReviewLoaded={onReviewLoaded}/> : null}
             </div>
           ))}
         </Masonry>
@@ -285,7 +289,7 @@ export function GeneratedImageGallery({
           }}
           onDownload={handleDownload}
           onPost={(image) => {
-            if (image.isPreview) {
+            if (image.isPreview || !canPost(image.id)) {
               return;
             }
             /*
@@ -298,6 +302,7 @@ export function GeneratedImageGallery({
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
+          canPostImage={canPost}
           isPostNavigating={isNavigating}
         />
       )}

@@ -91,19 +91,21 @@ function renderIn(mode: "visible" | "hidden", view: ReactNode) {
   return <Activity mode={mode}>{view}</Activity>;
 }
 
-function openViewer() {
+async function openViewer() {
+  await act(async()=>{}); // 投稿可否の本人確認を待つ(このテストの画像は審査対象外)
   fireEvent.click(screen.getAllByRole("button", { name: "previewAction" })[0]);
   expect(screen.getByRole("dialog", { name: "viewer" })).toBeTruthy();
 }
 
 beforeEach(() => {
   mockOpenPostPage.mockReset();
+  global.fetch=jest.fn().mockResolvedValue({ok:true,json:async()=>({review:null})});
 });
 
 describe.each(VIEWS)("$name: 拡大表示から投稿して戻ったとき", ({ view }) => {
-  test("投稿用ページへ移ったあと画面が隠れたら、拡大表示を閉じておく(戻ったときに演出を覆わない)", () => {
+  test("投稿用ページへ移ったあと画面が隠れたら、拡大表示を閉じておく(戻ったときに演出を覆わない)", async () => {
     const { rerender } = render(renderIn("visible", view));
-    openViewer();
+    await openViewer();
 
     fireEvent.click(screen.getByRole("button", { name: "viewer-post" }));
     expect(mockOpenPostPage).toHaveBeenCalledWith("image-1");
@@ -117,9 +119,9 @@ describe.each(VIEWS)("$name: 拡大表示から投稿して戻ったとき", ({ 
     expect(screen.queryByRole("dialog", { name: "viewer" })).toBeNull();
   });
 
-  test("投稿しないで画面が隠れて戻ったときは、拡大表示はそのまま(戻ったときの状態は変えない)", () => {
+  test("投稿しないで画面が隠れて戻ったときは、拡大表示はそのまま(戻ったときの状態は変えない)", async () => {
     const { rerender } = render(renderIn("visible", view));
-    openViewer();
+    await openViewer();
 
     act(() => rerender(renderIn("hidden", view)));
     act(() => rerender(renderIn("visible", view)));
@@ -127,16 +129,16 @@ describe.each(VIEWS)("$name: 拡大表示から投稿して戻ったとき", ({ 
     expect(screen.getByRole("dialog", { name: "viewer" })).toBeTruthy();
   });
 
-  test("一度閉じたあとは、次に隠れても戻っても開かない(印は1回で消える)", () => {
+  test("一度閉じたあとは、次に隠れても戻っても開かない(印は1回で消える)", async () => {
     const { rerender } = render(renderIn("visible", view));
-    openViewer();
+    await openViewer();
     fireEvent.click(screen.getByRole("button", { name: "viewer-post" }));
     act(() => rerender(renderIn("hidden", view)));
     act(() => rerender(renderIn("visible", view)));
     expect(screen.queryByRole("dialog", { name: "viewer" })).toBeNull();
 
     // もう一度開いて、投稿せずに隠れて戻る → 開いたまま
-    openViewer();
+    await openViewer();
     act(() => rerender(renderIn("hidden", view)));
     act(() => rerender(renderIn("visible", view)));
     expect(screen.getByRole("dialog", { name: "viewer" })).toBeTruthy();

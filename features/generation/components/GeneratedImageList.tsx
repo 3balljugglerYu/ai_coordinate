@@ -25,6 +25,8 @@ import { DEFAULT_LOCALE, isLocale, localizePublicPath } from "@/i18n/config";
 import { copyTextToClipboard } from "@/lib/clipboard";
 import type { GeneratedImageData } from "../types";
 import { shareOrDownloadGeneratedImage } from "../lib/download-image";
+import { useCatalogReviewPosting } from "@/features/catalog-references/lib/use-catalog-review-posting";
+import { OwnCatalogReviewPanel } from "@/features/catalog-references/components/OwnCatalogReviewPanel";
 import { ImageModal } from "./ImageModal";
 import {
   COORDINATE_APPLY_FROM_HISTORY_EVENT,
@@ -99,6 +101,7 @@ export function GeneratedImageList({
   const localeValue = useLocale();
   const locale = isLocale(localeValue) ? localeValue : DEFAULT_LOCALE;
   const t = useTranslations("coordinate");
+  const {onReviewLoaded,canPost}=useCatalogReviewPosting();
   const { toast } = useToast();
   // router は別用途（/free への遷移）でも使うので残す
   const { isNavigating, openPostPage } = usePostPageNavigation();
@@ -358,7 +361,7 @@ export function GeneratedImageList({
                 {t("postedBadge")}
               </span>
             ) : (
-              !image.isPreview && (
+              !image.isPreview && canPost(image.id) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -440,6 +443,7 @@ export function GeneratedImageList({
               {promptBlock}
               {actionButtons}
             </div>
+            {!image.isPreview && image.id ? <OwnCatalogReviewPanel imageId={image.id} onReviewLoaded={onReviewLoaded}/> : null}
           </Card>
         );
       })}
@@ -459,7 +463,7 @@ export function GeneratedImageList({
           onClose={() => setSelectedImageIndex(null)}
           onDownload={handleDownload}
           onPost={(image) => {
-            if (image.isPreview) {
+            if (image.isPreview || !canPost(image.id)) {
               return;
             }
             /*
@@ -472,6 +476,7 @@ export function GeneratedImageList({
             openPostPage(image.id);
           }}
           disablePostAndDownload={disablePostAndDownload}
+          canPostImage={canPost}
           isPostNavigating={isNavigating}
         />
       )}

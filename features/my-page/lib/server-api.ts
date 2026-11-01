@@ -284,7 +284,7 @@ export const getMyImagesServer = cache(async (
 
     let query = supabase
       .from("generated_images")
-      .select("*")
+      .select("*, catalog_review:generated_image_catalog_reviews(status)")
       .eq("user_id", userId);
 
     // 完走フィード投稿(completion_id 付き)はツール生成ではないため「生成一覧」には出さない
@@ -319,7 +319,13 @@ export const getMyImagesServer = cache(async (
     }
 
     // プロンプトの正本は service-only の author secret（ADR-001）
-  return redactSensitivePrompts(await resolveVisiblePrompts(data || []));
+    // 一覧に必要な状態だけを返す。見本のID・場所・理由は結合しない。
+    const images = (data || []).map(({catalog_review, ...image}) => {
+      const review = Array.isArray(catalog_review) ? catalog_review[0] : catalog_review;
+      const status = review?.status;
+      return {...image, catalog_review_status: ["not_submitted", "pending", "approved", "rejected"].includes(status) ? status : null};
+    });
+    return redactSensitivePrompts(await resolveVisiblePrompts(images));
   } catch (err) {
     console.error("[getMyImagesServer] Unexpected error:", err);
     if (err instanceof Error) {

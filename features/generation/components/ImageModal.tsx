@@ -38,6 +38,7 @@ interface ImageModalProps {
    * native の disabled にはしない（フォーカスが body に落ちるため）。
    */
   isPostNavigating?: boolean;
+  canPostImage?: (imageId: string) => boolean;
 }
 
 /**
@@ -58,6 +59,7 @@ export function ImageModal({
   onClose,
   onDownload,
   onPost,
+  canPostImage,
   isPostNavigating = false,
   disablePostAndDownload = false,
 }: ImageModalProps) {
@@ -182,7 +184,7 @@ export function ImageModal({
     );
   }
 
-  if (onPost && !currentImage.is_posted && !currentImage.isPreview) {
+  if (onPost && !currentImage.is_posted && !currentImage.isPreview && (canPostImage?.(currentImage.id) ?? true)) {
     toolbarButtons.push(
       <button
         key="post"

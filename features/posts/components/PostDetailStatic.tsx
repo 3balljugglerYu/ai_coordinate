@@ -1,5 +1,7 @@
 "use client";
 
+import { useCatalogReviewPosting } from "@/features/catalog-references/lib/use-catalog-review-posting";
+import { OwnCatalogReviewPanel } from "@/features/catalog-references/components/OwnCatalogReviewPanel";
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -125,6 +127,7 @@ export function PostDetailStatic({
     post.user?.id?.slice(0, 8) ||
     postsT("anonymousUser");
   const isOwner = currentUserId === post.user_id;
+  const {onReviewLoaded,canPost}=useCatalogReviewPosting();
   const followUserId = post.user?.id || post.user_id;
   const [isFollowingAuthor, setIsFollowingAuthor] = useState(false);
   // 運営は通報対応のためフォロー関係に依らず本文を読める（REQ-018）
@@ -612,7 +615,7 @@ export function PostDetailStatic({
                 imageUrl={imageUrl}
                 originalImageUrl={originalImageUrl}
                 onPostClick={
-                  !post.is_posted
+                  !post.is_posted && canPost(postId)
                     ? () => router.push(`/posts/new/${post.id}`)
                     : undefined
                 }
@@ -638,6 +641,8 @@ export function PostDetailStatic({
             </Link>
           </div>
         ) : null}
+
+        {isOwner && post.id ? <div className="bg-white px-4 py-3"><OwnCatalogReviewPanel imageId={post.id} onReviewLoaded={onReviewLoaded}/></div> : null}
 
         {/* キャプション */}
         {post.caption && (

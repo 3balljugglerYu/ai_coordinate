@@ -1,4 +1,5 @@
 import {
+  catalogForSource,
   applyMyImageCatalogFilter,
   parseMyImageCatalog,
 } from "@/features/my-page/lib/my-image-catalog";
@@ -75,4 +76,16 @@ describe("applyMyImageCatalogFilter", () => {
       ["not", "source_post_id", "is", null],
     ]);
   });
+});
+
+test("My Catalogの作り方だけを別のキャッシュキーとサーバー条件にする",()=>{
+ expect(catalogForSource("my_catalog","prompt")).toBe("my_catalog_prompt");
+ expect(catalogForSource("my_catalog","illustration")).toBe("my_catalog_illustration");
+ expect(catalogForSource("my_catalog","all")).toBe("my_catalog");
+ expect(catalogForSource("user_original","illustration")).toBe("user_original");
+});
+test.each(["my_catalog_prompt","my_catalog_illustration"] as const)("%sのサーバー絞り込み",catalog=>{
+ const {query,calls}=createQuery();expect(parseMyImageCatalog(catalog)).toBe(catalog);applyMyImageCatalogFilter(query,catalog);
+ expect(calls.slice(0,2)).toEqual([["eq","generation_type","free"],["is","source_post_id",null]]);
+ expect(calls[2]).toEqual(catalog==="my_catalog_prompt"?["is","catalog_review",null]:["not","catalog_review","is",null]);
 });

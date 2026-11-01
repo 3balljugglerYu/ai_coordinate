@@ -1,3 +1,4 @@
+import { OwnCatalogReviewEntry } from "@/features/catalog-references/components/OwnCatalogReviewEntry";
 import { connection } from "next/server";
 import { Suspense } from "react";
 import { getLocale, getTranslations } from "next-intl/server";
@@ -67,6 +68,8 @@ export default async function MyPagePage() {
           <Suspense fallback={null}>
             <MySubmittedTemplatesCard userId={user.id} />
           </Suspense>
+
+          <Suspense fallback={null}><OwnCatalogReviewEntry userId={user.id}/></Suspense>
 
           <div className="mt-8">
             <h2 className="mb-4 text-xl font-semibold text-gray-900">

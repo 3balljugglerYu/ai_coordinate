@@ -1,4 +1,5 @@
 /** @jest-environment node */
+jest.mock("next/cache",()=>({revalidateTag:jest.fn()}));
 
 /**
  * POST /api/admin/catalog-reviews/[imageId]/decision(見本つきの作品の審査の判定)。
@@ -16,6 +17,8 @@ jest.mock("@/lib/security/same-origin", () => ({ ensureSameOrigin: jest.fn(() =>
 jest.mock("@/lib/admin-audit", () => ({ logAdminAction: jest.fn() }));
 jest.mock("@/lib/supabase/admin", () => ({ createAdminClient: jest.fn() }));
 
+import {revalidateTag} from "next/cache";
+import {CATALOG_REVIEW_IMAGES_TAG} from "@/features/catalog-references/lib/review-status";
 import { NextRequest, NextResponse } from "next/server";
 import { POST } from "@/app/api/admin/catalog-reviews/[imageId]/decision/route";
 import { requireAdmin } from "@/lib/auth";
@@ -60,6 +63,8 @@ test("承認: ログイン中の運営として RPC に渡し、監査ログに�
 
   expect(response.status).toBe(200);
   await expect(response.json()).resolves.toEqual({ status: "approved", reviewedAt: "2026-10-30T12:00:00Z" });
+  expect(revalidateTag).toHaveBeenCalledTimes(1);
+  expect(revalidateTag).toHaveBeenCalledWith(CATALOG_REVIEW_IMAGES_TAG,{expire:0});
   expect(rpc).toHaveBeenCalledWith("apply_catalog_review_decision", {
     p_image_id: IMAGE_ID,
     p_admin_id: ADMIN_ID,
@@ -166,4 +171,9 @@ test("「そのほか」以外は、説明が無くても作り直しにでき�
   expect(mockAudit).toHaveBeenCalledWith(
     expect.objectContaining({ metadata: { reasonCategory: "sexual_or_violent", reason: null } }),
   );
+});
+
+test("入力を断った場合は画像一覧のキャッシュを無効化しない",async()=>{
+ const response=await POST(new NextRequest("http://localhost/api/catalog-references/review",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}),{params:Promise.resolve({imageId:IMAGE_ID})});
+ expect(response.status).toBe(400);expect(revalidateTag).not.toHaveBeenCalled();
 });

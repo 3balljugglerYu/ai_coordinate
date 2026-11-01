@@ -1018,6 +1018,9 @@ POST `/api/comments/[id]/replies` の request body は `{ "content": string, "re
 | --- | --- | --- | --- |
 | GET | `/api/my-page/images` | user session | マイページ用の画像一覧を取得する |
 
+`GET /api/my-page/images` の `catalog` は既存のカタログ値に加え、My Catalog内の作り方として `my_catalog_prompt`（プロンプトから）と `my_catalog_illustration`（イラストから）を受け付ける。どちらも本人の原作（free、source_post_idなし）へ限定し、審査行の有無でDB上で絞ってからページングする。画像の応答へ `catalog_review_status`（`not_submitted` / `pending` / `rejected` / `approved` / `null`）を追加。見本の情報や審査理由は一覧に含めない。
+
+
 ### notifications
 
 | Method | Path | Access | Summary |

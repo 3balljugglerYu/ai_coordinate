@@ -1,3 +1,4 @@
+import { CATALOG_REVIEW_IMAGES_TAG } from "@/features/catalog-references/lib/review-status";
 import { cacheLife, cacheTag } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMyImagesServer } from "../lib/server-api";
@@ -11,7 +12,7 @@ export async function CachedMyPageImageGallery({
   userId,
 }: CachedMyPageImageGalleryProps) {
   "use cache";
-  cacheTag(`my-page-${userId}`);
+  cacheTag(`my-page-${userId}`, CATALOG_REVIEW_IMAGES_TAG);
   cacheLife("minutes");
 
   const supabase = createAdminClient();

@@ -19,6 +19,8 @@
 export const MY_IMAGE_CATALOGS = [
   "all",
   "my_catalog",
+  "my_catalog_prompt",
+  "my_catalog_illustration",
   "persta_original",
   "user_original",
 ] as const;
@@ -47,6 +49,10 @@ export function applyMyImageCatalogFilter<Q extends CatalogFilterableQuery<Q>>(
   catalog: MyImageCatalog,
 ): Q {
   switch (catalog) {
+    case "my_catalog_prompt":
+      return query.eq("generation_type", "free").is("source_post_id", null).is("catalog_review", null);
+    case "my_catalog_illustration":
+      return query.eq("generation_type", "free").is("source_post_id", null).not("catalog_review", "is", null);
     case "my_catalog":
       return query.eq("generation_type", "free").is("source_post_id", null);
     case "persta_original":
@@ -58,4 +64,13 @@ export function applyMyImageCatalogFilter<Q extends CatalogFilterableQuery<Q>>(
     default:
       return query;
   }
+}
+
+
+export type MyCatalogSource = "all" | "prompt" | "illustration";
+
+/** サブチップもサーバーで絞り、未読の画像を含む全件に対してページを区切る。 */
+export function catalogForSource(catalog: MyImageCatalog, source: MyCatalogSource): MyImageCatalog {
+  if (catalog !== "my_catalog" || source === "all") return catalog;
+  return source === "prompt" ? "my_catalog_prompt" : "my_catalog_illustration";
 }

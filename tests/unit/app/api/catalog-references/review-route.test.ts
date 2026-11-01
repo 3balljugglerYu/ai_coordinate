@@ -1,4 +1,5 @@
 /** @jest-environment node */
+jest.mock("next/cache",()=>({revalidateTag:jest.fn()}));
 
 /**
  * POST /api/catalog-references/review(見本つきの作品を審査に出す)。
@@ -15,6 +16,8 @@ jest.mock("@/lib/auth", () => ({ getUser: jest.fn() }));
 jest.mock("@/lib/supabase/server", () => ({ createClient: jest.fn() }));
 jest.mock("@/lib/security/same-origin", () => ({ ensureSameOrigin: jest.fn(() => null) }));
 
+import {revalidateTag} from "next/cache";
+import {CATALOG_REVIEW_IMAGES_TAG} from "@/features/catalog-references/lib/review-status";
 import { NextRequest, NextResponse } from "next/server";
 import { POST } from "@/app/api/catalog-references/review/route";
 import { getUser } from "@/lib/auth";
@@ -72,6 +75,8 @@ test("本人のログインの権限で RPC に画像の ID を渡し、状態�
   expect(response.status).toBe(200);
   await expect(response.json()).resolves.toEqual({ status: "pending", submittedAt: "2026-10-30T12:00:00Z" });
   expect(rpc).toHaveBeenCalledWith("submit_catalog_review", { p_image_id: IMAGE_ID });
+  expect(revalidateTag).toHaveBeenCalledTimes(1);
+  expect(revalidateTag).toHaveBeenCalledWith(CATALOG_REVIEW_IMAGES_TAG,{expire:0});
 });
 
 test("よそのサイトからは、ログインの確認より前に止める", async () => {
@@ -154,4 +159,9 @@ test("見本が使えなくなっていれば(作り直し・元の作品の削�
   expect(response.status).toBe(409);
   await expect(response.json()).resolves.toMatchObject({ errorCode: "CATALOG_REVIEW_REFERENCE_UNAVAILABLE" });
   expect(from).not.toHaveBeenCalled();
+});
+
+test("入力を断った場合は画像一覧のキャッシュを無効化しない",async()=>{
+ const response=await POST(new NextRequest("http://localhost/api/catalog-references/review",{method:"POST",headers:{"Content-Type":"application/json"},body:"{}"}));
+ expect(response.status).toBe(400);expect(revalidateTag).not.toHaveBeenCalled();
 });
